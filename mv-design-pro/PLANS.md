@@ -95,8 +95,21 @@ sekcja „Po programie"): martwe workflowy CI aktywowane, klaster legacy ui/sld
 skasowany (−11,7k linii), lista wykluczeń vitest wyzerowana (odbudowa testu
 inspektora złapała 2 realne regresje komponentu), spójność elektryczna
 szablonów DER (zgubiona moc, TR 3.15 MVA, strona nN za katalogiem),
-test_no_todo_fixme i docs_count trwale zielone. Frontend 7481 testów / backend
-5719 testów — komplet zielony.
+test_no_todo_fixme i docs_count trwale zielone.
+
+Runda 3 (2026-07-17, „Wykonaj"): OBIE ostatnie luki v3 zamknięte end-to-end
+(szczegóły + pomiary: execplan, sekcja „Dług otwarty… ZAMKNIĘTE"):
+(1) §16-v3 biegi OTWARTE + tożsamość łańcucha — realne segmenty ENM bez
+następnika (13 ogonów na fixturze referencyjnej, dotąd niewidocznych) rysowane
+do słupka terminalnego z etykietą „koniec otwarty"; przęsła wieloczłonowe
+niosą kawałek per segment ENM (klik/nakładka per człon); wyrocznia
+`open_terminal_probe` + 21 testów na fixturach z realnego backendu;
+(2) program P-A — nakładka rozpływu deklaruje pochodzenie na kanwie
+(badge case_ref/zbieżność) i niesie atrybuty solverowe na odcinkach/symbolach;
+`sld-pa-powerflow-tor` 6/6, `sld-editor-real-backend-flex` 2/2. Przy okazji
+naprawione DWA defekty produktu: martwy lewy klik w elementy kanwy
+(pointer-capture przekierowywał click na tło) i selekcja transformatora
+(bay-ref zamiast realnego refu + odporność na modele z pustym `bays`).
 
 ### 3.-1 ESKALACJA (2026-07-15): odwrócony znak mocy w canonical PF pipeline — NAPRAWIONE (F9.8, tego samego dnia)
 

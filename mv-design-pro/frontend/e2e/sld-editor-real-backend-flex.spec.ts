@@ -220,12 +220,24 @@ function findBranchCapableFieldPort(snapshot: DomainOpResponse['snapshot']): str
 }
 
 async function openElementInspector(page: Page, elementRef: string): Promise<void> {
-  const symbol = page.locator(`[data-testid^="sld-symbol-"][data-element-id="${elementRef}"]`).first();
+  // Adaptacja v3 (2026-07-17): kanwa v3 nie niesie `sld-symbol-*`/
+  // `data-element-id` — symbol ma `data-element-kind` + `data-owner-ref`
+  // (dla transformatora STACJI ownerRef = bay-ref, realny ref transformatora
+  // rozwiązuje workspace kliku — `resolveTransformerRefForOwnerRef`).
+  // Selektor: transformator w obrębie stacji (`stn/`), odróżniony od
+  // transformatora GPZ (`gpz/`).
+  const isStationTransformer = /\/transformer$/.test(elementRef) && elementRef.startsWith('stn/');
+  const symbol = isStationTransformer
+    ? page.locator('g[data-element-kind="transformer"][data-owner-ref^="stn/"]').first()
+    : page.locator(`g[data-owner-ref="${elementRef}"]`).first();
   await expect(symbol).toHaveCount(1, { timeout: 15000 });
 
-  await symbol.evaluate((node: SVGElement) => {
-    node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
-  });
+  // REALNY klik Playwright (pełna sekwencja pointer/mouse) — celowo NIE
+  // syntetyczny `dispatchEvent`: dowodzi, że lewy klik użytkownika w symbol
+  // działa (naprawa capture-on-pointerdown w `SldCanvasV3.handlePointerDown`,
+  // 2026-07-17 — wcześniej capture przekierowywał click na <svg> i klik w
+  // element kanwy był martwy, co testy maskowały syntetycznym dispatch).
+  await symbol.click({ force: true });
 
   await expect(page.getByTestId('sld-engineering-inspector-wrapper')).toBeVisible();
 }

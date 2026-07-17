@@ -233,6 +233,12 @@ export interface SceneV3 extends PreviewComposition {
 
 const GPZ_TRUNK_GAP = 4 * GRID;
 const ROW_VERTICAL_GAP = 4 * GRID;
+/** §16-v3 (bieg otwarty): minimalna długość pozioma/pionowa JEDNEGO kawałka
+ *  biegu otwartego (ciąg z segmentami ENM, ale bez ŻADNEJ stacji) — na tyle
+ *  długa, żeby kawałek był klikalny i odróżnialny (6×GRID = 48 px świata). */
+const OPEN_RUN_PIECE_SPAN = 6 * GRID;
+/** §16-v3: połowa długości słupka terminalnego (kreska prostopadła ±GRID). */
+const OPEN_TERMINAL_TICK_HALF = GRID;
 const GPZ_NODE_CODE = 'GPZ';
 const NO_POINT_SIZE = SYMBOL_DEFS.noPoint.width;
 const COLLECTIVE_BOX_SIZE = SYMBOL_DEFS.stationCollapsed.width;
@@ -296,6 +302,144 @@ function incomingLabelText(cableRun: SldCableRun | undefined, ownerRef: string):
 function incomingSegmentRef(cableRun: SldCableRun | undefined, ownerRef: string): string | undefined {
   const sp = (cableRun?.segmentPaths ?? []).find((p) => p.toTerminal?.ownerRef === ownerRef);
   return sp?.segmentRef;
+}
+
+/**
+ * §16-v3 (REBUILD_PLAN_V3 „Dług otwarty" pkt 1 — tożsamość ŁAŃCUCHA):
+ * uporządkowane refy segmentów ENM składających się na JEDNO przęsło
+ * rysunkowe `fromOwnerRef→toOwnerRef` (przęsło wieloczłonowe: segmenty
+ * łączone szynami-węzłami BEZ stacji, np. `continue_trunk` ×2 + stacja na
+ * drugim). Dotąd całe przęsło niosło WYŁĄCZNIE ref OSTATNIEGO członu
+ * (`incomingSegmentRef`) — poprzedniki były niewidoczne w DOM (dowód sondą
+ * w execplanie). `fromOwnerRef=null` = początek ciągu (pierwszy segment
+ * `segmentPaths`). Fallback (brak dopasowania/kolejność niespójna) =
+ * `[incomingSegmentRef]` — zachowanie sprzed zmiany, zero zgadywania.
+ */
+function chainSegmentRefs(
+  cableRun: SldCableRun | undefined,
+  fromOwnerRef: string | null,
+  toOwnerRef: string,
+): readonly string[] {
+  const paths = cableRun?.segmentPaths ?? [];
+  const endIdx = paths.findIndex((p) => p.toTerminal?.ownerRef === toOwnerRef);
+  if (endIdx < 0) return [];
+  const startIdx =
+    fromOwnerRef == null ? 0 : paths.findIndex((p) => (p.fromTerminal?.ownerRef ?? null) === fromOwnerRef);
+  if (startIdx < 0 || startIdx > endIdx) return [paths[endIdx].segmentRef];
+  // Człony pośrednie muszą być BEZ stacji (toTerminal bez właściciela) —
+  // inaczej to nie jest jedno przęsło rysunkowe i zostaje sam człon końcowy.
+  for (let i = startIdx; i < endIdx; i++) {
+    if ((paths[i].toTerminal?.ownerRef ?? null) != null) return [paths[endIdx].segmentRef];
+  }
+  return paths.slice(startIdx, endIdx + 1).map((p) => p.segmentRef);
+}
+
+/**
+ * §16-v3: OTWARTY ogon ciągu — uporządkowane refy segmentów ENM ZA ostatnią
+ * stacją przęsła (`fromOwnerRef` = ta stacja), aż do końca `segmentPaths`,
+ * pod warunkiem że ŻADEN człon ogona nie kończy się w stacji (wszystkie
+ * `toTerminal` bez właściciela — prawdziwy koniec otwarty). Pusta lista =
+ * brak ogona (ciąg kończy się stacją — norma).
+ */
+function openTailSegmentRefs(cableRun: SldCableRun | undefined, fromOwnerRef: string): readonly string[] {
+  const paths = cableRun?.segmentPaths ?? [];
+  const startIdx = paths.findIndex((p) => (p.fromTerminal?.ownerRef ?? null) === fromOwnerRef);
+  if (startIdx < 0) return [];
+  const tail = paths.slice(startIdx);
+  if (!tail.every((p) => (p.toTerminal?.ownerRef ?? null) == null)) return [];
+  return tail.map((p) => p.segmentRef);
+}
+
+/**
+ * §16-v3: dzieli ortogonalną polilinię JEDNEGO przęsła rysunkowego na `n`
+ * kawałków o równym udziale długości (reprezentacja łańcucha segmentów ENM —
+ * każdy człon dostaje własny kawałek z własnym `ownerRef`). Cięcia przyciągane
+ * do siatki NA osi bieżącego biegu (polilinie tras są ortogonalne z
+ * konstrukcji `buildSceneV3`). Czysta funkcja. Gdy cięcia degenerują
+ * (przęsło za krótkie na `n` kawałków po przyciągnięciu) — zwraca
+ * `[points]` (jedno przęsło, zachowanie sprzed zmiany; wołający zachowuje
+ * wtedy ref członu końcowego).
+ *
+ * `forbiddenX`: współrzędne X, na których cięcie biegu POZIOMEGO nie może
+ * wypaść — kanały zejść lateralnych. POMIAR (LOD 1, fixtura referencyjna):
+ * cięcie równych długości wypadło DOKŁADNIE na pionie kanału x=5824; koniec
+ * kawałka dotykający WNĘTRZA obcego pionu czyta się w `externalBranchNodes`
+ * (`crossings.ts`) jako fałszywy T-węzeł. Kolizyjne cięcie odsuwane o ±GRID
+ * w obrębie biegu; gdy się nie da — degeneracja `[points]`.
+ */
+function splitPolylineIntoPieces(
+  points: readonly RouteVertex[],
+  n: number,
+  forbiddenX?: ReadonlySet<number>,
+): readonly (readonly RouteVertex[])[] {
+  if (n <= 1 || points.length < 2) return [points];
+  const runLengths: number[] = [];
+  let total = 0;
+  for (let i = 0; i + 1 < points.length; i++) {
+    const len = Math.abs(points[i + 1].x - points[i].x) + Math.abs(points[i + 1].y - points[i].y);
+    runLengths.push(len);
+    total += len;
+  }
+  if (total < n * GRID) return [points];
+  const cuts: RouteVertex[] = [];
+  const cutRunIdx: number[] = [];
+  for (let c = 1; c < n; c++) {
+    const target = (total * c) / n;
+    let acc = 0;
+    let placed = false;
+    for (let i = 0; i < runLengths.length && !placed; i++) {
+      if (target <= acc + runLengths[i]) {
+        const a = points[i];
+        const b = points[i + 1];
+        const offset = target - acc;
+        const dirX = Math.sign(b.x - a.x);
+        const dirY = Math.sign(b.y - a.y);
+        let cut: RouteVertex = {
+          x: dirX !== 0 ? snapToGrid(a.x + dirX * offset) : a.x,
+          y: dirY !== 0 ? snapToGrid(a.y + dirY * offset) : a.y,
+        };
+        // Odsunięcie cięcia z zakazanego pionu (patrz docstring `forbiddenX`).
+        if (dirX !== 0 && forbiddenX?.has(cut.x)) {
+          const forward = { x: cut.x + dirX * GRID, y: cut.y };
+          const backward = { x: cut.x - dirX * GRID, y: cut.y };
+          cut = forbiddenX.has(forward.x) ? backward : forward;
+        }
+        // Cięcie musi leżeć WEWNĄTRZ biegu (nie na wierzchołku), poza
+        // zakazanymi pionami i być ściśle za poprzednim cięciem — inaczej
+        // degeneracja.
+        const withinRun =
+          (dirX !== 0 && (cut.x - a.x) * dirX > 0 && (b.x - cut.x) * dirX > 0) ||
+          (dirY !== 0 && (cut.y - a.y) * dirY > 0 && (b.y - cut.y) * dirY > 0);
+        const offForbidden = dirX === 0 || !forbiddenX?.has(cut.x);
+        const prev = cuts[cuts.length - 1];
+        const prevRun = cutRunIdx[cutRunIdx.length - 1];
+        const monotone =
+          prev == null ||
+          prevRun < i ||
+          (prevRun === i && ((dirX !== 0 && (cut.x - prev.x) * dirX > 0) || (dirY !== 0 && (cut.y - prev.y) * dirY > 0)));
+        if (!withinRun || !offForbidden || !monotone) return [points];
+        cuts.push(cut);
+        cutRunIdx.push(i);
+        placed = true;
+      }
+      acc += runLengths[i];
+    }
+    if (!placed) return [points];
+  }
+  const pieces: RouteVertex[][] = [];
+  let current: RouteVertex[] = [points[0]];
+  let cutPos = 0;
+  for (let i = 0; i + 1 < points.length; i++) {
+    while (cutPos < cuts.length && cutRunIdx[cutPos] === i) {
+      current.push(cuts[cutPos]);
+      pieces.push(current);
+      current = [cuts[cutPos]];
+      cutPos += 1;
+    }
+    current.push(points[i + 1]);
+  }
+  pieces.push(current);
+  return pieces;
 }
 
 /**
@@ -1053,6 +1197,11 @@ function connectRowStations(
   // F13.4 (spec §22.4, D3-6): klasa grubości trasy — ciąg GŁÓWNY woła z
   // 'snTrunk' (magistrala grubsza), laterale zostają na domyślnym 'sn'.
   kind: PreviewSegmentKind = 'sn',
+  // §16-v3: piony, na których NIE wolno ciąć kawałków łańcucha (kanały
+  // zejść lateralnych — patrz docstring `splitPolylineIntoPieces`). OSOBNY
+  // parametr od `channelPointsX` (tamten steruje WYŁĄCZNIE przycinaniem
+  // etykiet przęseł i dla ciągu głównego celowo jest pusty).
+  forbiddenCutX: ReadonlySet<number> = new Set(),
 ): RowConnectResult {
   const connectors: PreviewSegment[] = [];
   const routeGeoms: RouteGeometry[] = [];
@@ -1076,10 +1225,25 @@ function connectRowStations(
     const fromPort = prev.composed.exitPort;
     const toPort = cur.composed.entryPort;
     const route = connectViaCorridor(fromPort, toPort, corridorY, fromTerminal, toTerminal);
-    connectors.push({
-      points: route.points,
-      meta: { kind, ownerRef: incomingSegmentRef(cableRun, cur.id), elementKind: 'segment' },
-    });
+    // §16-v3 (tożsamość łańcucha): przęsło wieloczłonowe (segmenty ENM łączone
+    // węzłami bez stacji) dzieli się na kawałki per człon — każdy z WŁASNYM
+    // `ownerRef` (dotąd: ref wyłącznie ostatniego członu, poprzedniki
+    // niewidoczne w DOM). Łańcuch 1-członowy → zachowanie identyczne.
+    const chain = chainSegmentRefs(cableRun, prev.id, cur.id);
+    const pieces = chain.length > 1 ? splitPolylineIntoPieces(route.points, chain.length, forbiddenCutX) : [route.points];
+    if (chain.length > 0 && pieces.length === chain.length) {
+      pieces.forEach((piecePoints, pi) => {
+        connectors.push({
+          points: piecePoints,
+          meta: { kind, ownerRef: chain[pi], elementKind: 'segment' },
+        });
+      });
+    } else {
+      connectors.push({
+        points: route.points,
+        meta: { kind, ownerRef: incomingSegmentRef(cableRun, cur.id), elementKind: 'segment' },
+      });
+    }
     routeGeoms.push({ points: route.points });
     if (lod === 2) {
       const slot = layout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === i);
@@ -1310,6 +1474,59 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   const stationNameBands: StationNameBandOwnerInput[] = [];
   const portCaptions: PortCaptionOwnerInput[] = [];
   const simpleAnchored: SimpleAnchoredOwnerInput[] = [];
+  // §16-v3: etykiety „koniec otwarty" biegów otwartych — konstruowane WPROST
+  // (jak `terminationLabels` w sekcji 7b — słupek terminalny ma jedną,
+  // deterministyczną pozycję; sloty `resolveLabels` nie są tu potrzebne).
+  const openTerminalLabels: OwnedLabel[] = [];
+
+  /** §16-v3: słupek terminalny + (L2) etykieta „koniec otwarty" na KOŃCU
+   *  biegu otwartego. `horizontalRun` — orientacja OSTATNIEGO biegu trasy
+   *  (słupek jest prostopadły). Punkt (endX,endY) MUSI być ostatnim
+   *  wierzchołkiem kawałka z `meta.openTerminal===true` (wyrocznia
+   *  `openTerminalGaps` sprawdza dotyk; `port_probe` uznaje koniec biegu,
+   *  bo dotyka słupka — zwykły wolny koniec dalej obcina). */
+  const emitOpenTerminalTick = (
+    endX: number,
+    endY: number,
+    horizontalRun: boolean,
+    lastSegmentRef: string,
+    lod2: boolean,
+  ): void => {
+    const tickPoints: RouteVertex[] = horizontalRun
+      ? [
+          { x: endX, y: endY - OPEN_TERMINAL_TICK_HALF },
+          { x: endX, y: endY + OPEN_TERMINAL_TICK_HALF },
+        ]
+      : [
+          { x: endX - OPEN_TERMINAL_TICK_HALF, y: endY },
+          { x: endX + OPEN_TERMINAL_TICK_HALF, y: endY },
+        ];
+    allSegments.push({
+      points: tickPoints,
+      meta: { kind: 'openTerminal', ownerRef: `${lastSegmentRef}#open-terminal` },
+    });
+    if (lod2) {
+      const text = 'koniec otwarty';
+      const labelClass = 't4' as const;
+      const width = measureLabelWidth(text, labelClass);
+      const height = labelLineHeight(labelClass);
+      openTerminalLabels.push({
+        ownerRef: `${lastSegmentRef}#open-terminal-label`,
+        ownerKind: 'port-caption',
+        labelClass,
+        text,
+        slotIndex: 1,
+        // Wycentrowana POD słupkiem (ta sama konwencja co `terminationLabels`
+        // w sekcji 7b — pod znakiem końca, nie na torze).
+        rect: {
+          x: endX - Math.round(width / 2),
+          y: endY + OPEN_TERMINAL_TICK_HALF + 2,
+          width,
+          height,
+        },
+      });
+    }
+  };
 
   // -- 1. Magistrala (main trunk) — measure→bands→columns lokalnie (0,0). ---
   let mainLayout: RowLayout | null = mainTrunkRun
@@ -1468,6 +1685,21 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
     });
 
+    // §16-v3 (cięcia łańcucha): piony kanałów lateralnych znane PRZED
+    // trasowaniem przęseł — cięcie kawałka nie może wypaść na kanale
+    // (fałszywy T-węzeł, patrz `splitPolylineIntoPieces`). TE SAME wejścia
+    // co `lateralChannelXById` w sekcji 6 (funkcja czysta i deterministyczna
+    // — wynik identyczny; sekcja 6 liczy swoją mapę per-run, tu potrzebny
+    // wyłącznie ZBIÓR wartości X).
+    const trunkForbiddenCutXs = new Set(
+      computeLateralChannelXById(
+        sldData.topologyRuns.filter((r) => r.kind === 'branch'),
+        cableRunById,
+        new Map(mainRow.map((r) => [r.id, r])),
+        mainLayout.columnsResult.columns,
+      ).values(),
+    );
+
     if (mainRow.length > 0) {
       const first = mainRow[0];
       // F9.3 (FIX-1, spec §12.3): port GPZ = DOLNY PORT GŁOWICY jego pola
@@ -1521,11 +1753,28 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
               return { points, fromTerminal, toTerminal };
             })()
           : connectViaCorridor(gpzPort, first.composed.entryPort, corridorY, fromTerminal, toTerminal);
-        allSegments.push({
-          points: route.points,
-          // F13.4 (spec §22.4, D3-6): odcinek GPZ→S0 to trasa CIĄGU GŁÓWNEGO.
-          meta: { kind: 'snTrunk', ownerRef: incomingSegmentRef(mainCableRun, first.id), elementKind: 'segment' },
-        });
+        // §16-v3 (tożsamość łańcucha): przęsło GPZ→S0 bywa wieloczłonowe
+        // (`continue_trunk` ×k, stacja dopiero na k-tym segmencie) — kawałek
+        // per człon z WŁASNYM `ownerRef` (jak w `connectRowStations`).
+        const gpzChain = chainSegmentRefs(mainCableRun, gpzData!.id, first.id);
+        const gpzPieces =
+          gpzChain.length > 1
+            ? splitPolylineIntoPieces(route.points, gpzChain.length, trunkForbiddenCutXs)
+            : [route.points];
+        if (gpzChain.length > 0 && gpzPieces.length === gpzChain.length) {
+          gpzPieces.forEach((piecePoints, pi) => {
+            allSegments.push({
+              points: piecePoints,
+              // F13.4 (spec §22.4, D3-6): odcinek GPZ→S0 to trasa CIĄGU GŁÓWNEGO.
+              meta: { kind: 'snTrunk', ownerRef: gpzChain[pi], elementKind: 'segment' },
+            });
+          });
+        } else {
+          allSegments.push({
+            points: route.points,
+            meta: { kind: 'snTrunk', ownerRef: incomingSegmentRef(mainCableRun, first.id), elementKind: 'segment' },
+          });
+        }
         allRouteGeoms.push({ points: route.points });
         if (lod === 2) {
           const slot = mainLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
@@ -1551,12 +1800,105 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       } else {
         stopNotes.push('Brak GPZ w ENM — pierwsza stacja magistrali bez połączenia wejściowego (sieć bez zasilania).');
       }
+    } else if ((mainCableRun?.segmentPaths?.length ?? 0) > 0) {
+      // §16-v3 (REBUILD_PLAN_V3 „Dług otwarty" pkt 1): ciąg główny BEZ ŻADNEJ
+      // stacji, ale z REALNYMI segmentami ENM (źródło→terminal otwarty — np.
+      // świeży projekt po `continue_trunk_segment_sn`, zanim wstawiono
+      // pierwszą stację). Dotąd scena renderowała WYŁĄCZNIE kompozycję GPZ, a
+      // segment ENM był niewidoczny (dowód sondą w execplanie). Bieg otwarty:
+      // port GPZ → dół pod bbox GPZ → prawo do KOTWICY SLOTOWEJ (X pierwszej
+      // NIEISTNIEJĄCEJ stacji = `mainRowDx`, ta sama wielkość co przesunięcie
+      // wiersza w sekcji 3), zakończony słupkiem terminalnym + etykietą
+      // „koniec otwarty" (L2). `ownerRef` = segmentRef (klik/inspektor E-12
+      // działa jak dla przęsła zwykłego). Kawałków tyle, ile segmentów w
+      // `segmentPaths` (łańcuch segment→segment bez stacji dzieli bieg
+      // po równych interwałach `OPEN_RUN_PIECE_SPAN` od końca).
+      const gpzPort = gpzComposition ? findGpzTrunkBottomPort(gpzComposition, gpzData!, stopNotes) : null;
+      if (gpzPort) {
+        const paths = mainCableRun!.segmentPaths!;
+        const gpzBbox = gpzComposition!.bbox;
+        const belowY = snapUp(gpzBbox.y + gpzBbox.height) + 2 * GRID;
+        const xEnd = Math.max(mainRowDx, snapUp(gpzPort.x) + paths.length * OPEN_RUN_PIECE_SPAN);
+        paths.forEach((sp, i) => {
+          const to = xEnd - (paths.length - 1 - i) * OPEN_RUN_PIECE_SPAN;
+          const points: RouteVertex[] =
+            i === 0
+              ? [
+                  { x: gpzPort.x, y: gpzPort.y },
+                  { x: gpzPort.x, y: belowY },
+                  { x: to, y: belowY },
+                ]
+              : [
+                  { x: xEnd - (paths.length - i) * OPEN_RUN_PIECE_SPAN, y: belowY },
+                  { x: to, y: belowY },
+                ];
+          const isLast = i === paths.length - 1;
+          allSegments.push({
+            points,
+            meta: {
+              kind: 'snTrunk',
+              ownerRef: sp.segmentRef,
+              elementKind: 'segment',
+              ...(isLast ? { openTerminal: true } : {}),
+            },
+          });
+          allRouteGeoms.push({ points });
+        });
+        emitOpenTerminalTick(xEnd, belowY, true, paths[paths.length - 1].segmentRef, lod === 2);
+      } else {
+        stopNotes.push(
+          'Ciąg główny z segmentami ENM, ale bez stacji I bez portu GPZ — bieg otwarty nie ma punktu zaczepienia (sieć bez zasilania).',
+        );
+      }
     }
 
-    const internal = connectRowStations(mainRow, mainLayout, mainCableRun, lod, [], 'snTrunk');
+    const internal = connectRowStations(mainRow, mainLayout, mainCableRun, lod, [], 'snTrunk', trunkForbiddenCutXs);
     allSegments.push(...internal.connectors);
     allRouteGeoms.push(...internal.routeGeoms);
     segmentSpans.push(...internal.spanLabels);
+
+    // §16-v3: OTWARTY ogon ciągu głównego — segmenty ENM ZA ostatnią stacją
+    // (np. `continue_trunk_segment_sn` po wstawieniu stacji, jeszcze bez
+    // następnika). Bieg od głowicy wyjściowej ostatniej stacji w prawo,
+    // kawałek per człon, słupek terminalny + „koniec otwarty" (L2).
+    if (mainRow.length > 0) {
+      const lastStation = mainRow[mainRow.length - 1];
+      const tail = openTailSegmentRefs(mainCableRun, lastStation.id);
+      if (tail.length > 0) {
+        const exit = lastStation.composed.exitPort;
+        const tailCorridorY = interStationCorridorY(mainLayout, lod);
+        const xEnd = snapUp(exit.x) + tail.length * OPEN_RUN_PIECE_SPAN;
+        const rawTail: RouteVertex[] = [
+          { x: exit.x, y: exit.y },
+          { x: exit.x, y: tailCorridorY },
+          { x: xEnd, y: tailCorridorY },
+        ];
+        const tailPoints = rawTail.filter(
+          (p, pi) => pi === 0 || p.x !== rawTail[pi - 1].x || p.y !== rawTail[pi - 1].y,
+        );
+        const tailPieces = tail.length > 1 ? splitPolylineIntoPieces(tailPoints, tail.length) : [tailPoints];
+        if (tailPieces.length === tail.length) {
+          tailPieces.forEach((piecePoints, pi) => {
+            allSegments.push({
+              points: piecePoints,
+              meta: {
+                kind: 'snTrunk',
+                ownerRef: tail[pi],
+                elementKind: 'segment',
+                ...(pi === tail.length - 1 ? { openTerminal: true } : {}),
+              },
+            });
+          });
+        } else {
+          allSegments.push({
+            points: tailPoints,
+            meta: { kind: 'snTrunk', ownerRef: tail[tail.length - 1], elementKind: 'segment', openTerminal: true },
+          });
+        }
+        allRouteGeoms.push({ points: tailPoints });
+        emitOpenTerminalTick(xEnd, tailCorridorY, true, tail[tail.length - 1], lod === 2);
+      }
+    }
   }
 
   // -- 6. Laterale (branch runs) — JEDEN poziom, wiersze w dół (spec F6a). --
@@ -1599,7 +1941,57 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
     const cableRun = cableRunById.get(run.id);
     let layout = buildRowLayout(run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true);
-    if (layout.measureInputs.length === 0) continue;
+    if (layout.measureInputs.length === 0) {
+      // §16-v3 (REBUILD_PLAN_V3 „Dług otwarty" pkt 1, „analogicznie
+      // laterale"): odgałęzienie BEZ ŻADNEJ stacji, ale z REALNYMI segmentami
+      // ENM (`start_branch_segment_sn` bez wstawionej stacji) — bieg otwarty
+      // od portu odgałęźnego stacji-origin, tym samym jogiem co normalny
+      // lateral (port → strop strefy zejść → kanał `channelX`), w dół do
+      // końca POD całą dotychczasową treścią, zakończony słupkiem
+      // terminalnym + etykietą „koniec otwarty" (L2).
+      const openPaths = cableRun?.segmentPaths ?? [];
+      if (openPaths.length > 0) {
+        const stripTopY = stripTopYOf(mainLayout!);
+        const yEnd = Math.max(
+          snapUp(nextRowTopY) + 2 * GRID,
+          snapUp(stripTopY) + openPaths.length * OPEN_RUN_PIECE_SPAN,
+        );
+        openPaths.forEach((sp, i) => {
+          const to = yEnd - (openPaths.length - 1 - i) * OPEN_RUN_PIECE_SPAN;
+          const raw: RouteVertex[] =
+            i === 0
+              ? [
+                  { x: originPort.x, y: originPort.y },
+                  { x: originPort.x, y: stripTopY },
+                  { x: channelX, y: stripTopY },
+                  { x: channelX, y: to },
+                ]
+              : [
+                  { x: channelX, y: yEnd - (openPaths.length - i) * OPEN_RUN_PIECE_SPAN },
+                  { x: channelX, y: to },
+                ];
+          // Dedupe (gdy originPort.x === channelX jog degeneruje) — ta sama
+          // filtracja co trasa GPZ→S0 w sekcji 5.
+          const points = raw.filter((p, pi) => pi === 0 || p.x !== raw[pi - 1].x || p.y !== raw[pi - 1].y);
+          const isLast = i === openPaths.length - 1;
+          allSegments.push({
+            points,
+            meta: {
+              kind: 'sn',
+              ownerRef: sp.segmentRef,
+              elementKind: 'segment',
+              ...(isLast ? { openTerminal: true } : {}),
+            },
+          });
+          allRouteGeoms.push({ points });
+        });
+        emitOpenTerminalTick(channelX, yEnd, false, openPaths[openPaths.length - 1].segmentRef, lod === 2);
+        // Rezerwacja pionowa: słupek + etykieta L2 mieszczą się w 4×GRID.
+        nextRowTopY = yEnd + 4 * GRID;
+        lateralRunIds.push(run.id);
+      }
+      continue;
+    }
 
     // Wyrównanie X (F6d, przypadek b — DECYZJA WIĄŻĄCA): pierwsza stacja
     // lateralu leży DOKŁADNIE pod X KANAŁU (`channelX`, poza blokiem
@@ -1797,10 +2189,24 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       const jogPoints = rawJogPoints.filter(
         (p, idx) => idx === 0 || p.x !== rawJogPoints[idx - 1].x || p.y !== rawJogPoints[idx - 1].y,
       );
-      allSegments.push({
-        points: jogPoints,
-        meta: { kind: 'sn', ownerRef: incomingSegmentRef(cableRun, first.id), elementKind: 'segment' },
-      });
+      // §16-v3 (tożsamość łańcucha): zejście origin→stacja0 lateralu bywa
+      // wieloczłonowe — kawałek per człon (jak GPZ→S0 / `connectRowStations`).
+      const lateralChain = chainSegmentRefs(cableRun, originOwnerRef, first.id);
+      const lateralPieces =
+        lateralChain.length > 1 ? splitPolylineIntoPieces(jogPoints, lateralChain.length) : [jogPoints];
+      if (lateralChain.length > 0 && lateralPieces.length === lateralChain.length) {
+        lateralPieces.forEach((piecePoints, pi) => {
+          allSegments.push({
+            points: piecePoints,
+            meta: { kind: 'sn', ownerRef: lateralChain[pi], elementKind: 'segment' },
+          });
+        });
+      } else {
+        allSegments.push({
+          points: jogPoints,
+          meta: { kind: 'sn', ownerRef: incomingSegmentRef(cableRun, first.id), elementKind: 'segment' },
+        });
+      }
       allRouteGeoms.push({ points: jogPoints });
       if (lod === 2) {
         const text = incomingLabelText(cableRun, first.id);
@@ -1830,13 +2236,54 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
     }
 
-    const internal = connectRowStations(lateralRow, layout, cableRun, lod, laterChannelXs);
+    const internal = connectRowStations(lateralRow, layout, cableRun, lod, laterChannelXs, 'sn', new Set(laterChannelXs));
     allSegments.push(...internal.connectors);
     allRouteGeoms.push(...internal.routeGeoms);
     // Etykiety segmentów WEWNĄTRZ lateralu są poziome (stacje lateralu idą w
     // prawo, jak mini-magistrala) — reużywamy `segmentSpans`, nie `segmentLaterals`
     // (rotacja 90° dotyczy WYŁĄCZNIE odcinka pionowego origin→stacja0, powyżej).
     segmentSpans.push(...internal.spanLabels);
+
+    // §16-v3: OTWARTY ogon lateralu — segmenty ENM za ostatnią stacją tego
+    // odgałęzienia (analogicznie do ogona ciągu głównego, sekcja 5).
+    if (lateralRow.length > 0) {
+      const lastStation = lateralRow[lateralRow.length - 1];
+      const tail = openTailSegmentRefs(cableRun, lastStation.id);
+      if (tail.length > 0) {
+        const exit = lastStation.composed.exitPort;
+        const tailCorridorY = interStationCorridorY(layout, lod);
+        const xEnd = snapUp(exit.x) + tail.length * OPEN_RUN_PIECE_SPAN;
+        const rawTail: RouteVertex[] = [
+          { x: exit.x, y: exit.y },
+          { x: exit.x, y: tailCorridorY },
+          { x: xEnd, y: tailCorridorY },
+        ];
+        const tailPoints = rawTail.filter(
+          (p, pi) => pi === 0 || p.x !== rawTail[pi - 1].x || p.y !== rawTail[pi - 1].y,
+        );
+        const tailPieces = tail.length > 1 ? splitPolylineIntoPieces(tailPoints, tail.length) : [tailPoints];
+        if (tailPieces.length === tail.length) {
+          tailPieces.forEach((piecePoints, pi) => {
+            allSegments.push({
+              points: piecePoints,
+              meta: {
+                kind: 'sn',
+                ownerRef: tail[pi],
+                elementKind: 'segment',
+                ...(pi === tail.length - 1 ? { openTerminal: true } : {}),
+              },
+            });
+          });
+        } else {
+          allSegments.push({
+            points: tailPoints,
+            meta: { kind: 'sn', ownerRef: tail[tail.length - 1], elementKind: 'segment', openTerminal: true },
+          });
+        }
+        allRouteGeoms.push({ points: tailPoints });
+        emitOpenTerminalTick(xEnd, tailCorridorY, true, tail[tail.length - 1], lod === 2);
+      }
+    }
   }
 
   // F9.4 (runda korekcyjna, F-1.3, spec §13.1): DER/źródło, którego
@@ -1923,7 +2370,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       });
     }
   }
-  const labels: readonly OwnedLabel[] = [...resolvedLabels, ...terminationLabels];
+  const labels: readonly OwnedLabel[] = [...resolvedLabels, ...terminationLabels, ...openTerminalLabels];
 
   // -- 8. Węzły routingu (junctions/crossings) — WYŁĄCZNIE trasy `route.ts` -
   const { junctions, crossings } = classifyRouteNodes(allRouteGeoms);
@@ -2604,6 +3051,10 @@ export function lineBayCaptionGaps(scene: SceneV3): readonly LineBayCaptionGap[]
     // „koniec toru" (spec §18.6 „uczciwe stwierdzenie faktu") — POZA
         // zakresem formatu „kier./odg." §19.2, własna wyrocznia §18.6.
     .filter((l) => !(l.ownerRef.endsWith('#termination') && l.text === 'koniec toru'))
+    // §16-v3: etykieta biegu OTWARTEGO („koniec otwarty", `#open-terminal-label`)
+    // — ta sama kategoria uczciwego stwierdzenia faktu co „koniec toru" wyżej,
+    // własna wyrocznia `openTerminalGaps`; poza formatem „kier./odg." §19.2.
+    .filter((l) => !(l.ownerRef.endsWith('#open-terminal-label') && l.text === 'koniec otwarty'))
     .filter((l) => !LINE_BAY_CAPTION_PATTERN.test(l.text))
     .map((l) => ({ ownerRef: l.ownerRef, text: l.text }));
 }
@@ -2703,6 +3154,13 @@ function isBusbarLikeSegment(seg: PreviewSegment): boolean {
   // renderu, ta sama semantyka szyny). `#hv-bus-source-extension` — lustro
   // `#source-bus-extension` dla wariantu z kolumną WN (F13.1).
   if (seg.meta?.kind === 'bus' || seg.meta?.kind === 'busGpz') return true;
+  // §16-v3 — JAWNA klasa `openTerminal` (REBUILD_PLAN_V3 „Dług otwarty" pkt 1):
+  // słupek terminalny biegu otwartego — jego WŁASNE końce są krańcami
+  // rysowanej kreski (ten sam status co szyna). Koniec BIEGU otwartego NIE
+  // dostaje tu wyjątku — jest legalny wyłącznie przez DOTYK słupka
+  // (`pointTouchesSegment` niżej); zwykły wolny koniec dalej daje lukę
+  // (test negatywny w `buildScene.openTerminal.test.ts`).
+  if (seg.meta?.kind === 'openTerminal') return true;
   const ref = seg.meta?.ownerRef;
   return ref != null && (ref.endsWith('#lv-bus') || ref.endsWith('#source-bus-extension') || ref.endsWith('#hv-bus-source-extension'));
 }
@@ -2772,6 +3230,51 @@ export function sceneSegmentEndpointGaps(scene: SceneV3): readonly SceneSegmentE
 
 export function allSceneSegmentEndpointsAnchored(scene: SceneV3): boolean {
   return sceneSegmentEndpointGaps(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// §16-v3 — wyrocznia biegów OTWARTYCH (REBUILD_PLAN_V3 „Dług otwarty" pkt 1).
+// Kontrakt: KAŻDY kawałek oznaczony `meta.openTerminal===true` (ostatni
+// kawałek ciągu bez następnika) kończy się DOTYKIEM słupka terminalnego
+// (`meta.kind==='openTerminal'`), a KAŻDY słupek należy do jakiegoś biegu
+// otwartego (zero słupków-sierot rysowanych „z powietrza").
+// ---------------------------------------------------------------------------
+
+export interface OpenTerminalGap {
+  readonly segmentIndex: number;
+  readonly reason: 'koniec-bez-slupka' | 'slupek-sierota';
+  readonly x: number;
+  readonly y: number;
+}
+
+export function openTerminalGaps(scene: SceneV3): readonly OpenTerminalGap[] {
+  const gaps: OpenTerminalGap[] = [];
+  const ticks = scene.segments
+    .map((seg, index) => ({ seg, index }))
+    .filter(({ seg }) => seg.meta?.kind === 'openTerminal');
+  scene.segments.forEach((seg, segmentIndex) => {
+    if (seg.meta?.openTerminal !== true) return;
+    const last = seg.points[seg.points.length - 1];
+    if (!last) return;
+    if (!ticks.some(({ seg: tick }) => pointTouchesSegment(last, tick))) {
+      gaps.push({ segmentIndex, reason: 'koniec-bez-slupka', x: last.x, y: last.y });
+    }
+  });
+  ticks.forEach(({ seg: tick, index }) => {
+    const anchorsOpenRun = scene.segments.some((seg) => {
+      if (seg.meta?.openTerminal !== true) return false;
+      const last = seg.points[seg.points.length - 1];
+      return last != null && pointTouchesSegment(last, tick);
+    });
+    if (!anchorsOpenRun) {
+      gaps.push({ segmentIndex: index, reason: 'slupek-sierota', x: tick.points[0].x, y: tick.points[0].y });
+    }
+  });
+  return gaps;
+}
+
+export function allOpenTerminalsMarked(scene: SceneV3): boolean {
+  return openTerminalGaps(scene).length === 0;
 }
 
 export interface SymbolWireCollision {
@@ -3727,6 +4230,10 @@ export function trunkThicknessGaps(scene: SceneV3): readonly string[] {
   }
   for (const s of scene.segments) {
     const owner = s.meta?.ownerRef ?? '';
+    // §16-v3: słupek terminalny (`kind==='openTerminal'`) to MARKER końca
+    // biegu, nie trasa — nosi ownerRef biegu (sufiks `#open-terminal`) dla
+    // tożsamości, ale nie podlega hierarchii grubości tras §22.4.
+    if (s.meta?.kind === 'openTerminal') continue;
     if (owner.includes('branch_segment') && s.meta?.kind !== 'sn') {
       gaps.push(`Trasa odgałęźna z klasą inną niż sn: ownerRef=${owner} kind=${String(s.meta?.kind)}`);
     }

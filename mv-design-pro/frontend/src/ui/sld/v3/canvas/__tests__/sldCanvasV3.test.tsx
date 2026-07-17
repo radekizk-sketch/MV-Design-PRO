@@ -49,9 +49,18 @@ const CANVAS_HEIGHT = 800;
 /** Strip stroke/fill VALUES only (not the attribute presence) so we can
  *  diff markup for pure-color changes without a full attribute-by-attribute
  *  walk. Geometry attributes (x/y/width/height/d/points/transform) are
- *  untouched by overlay coloring (spec §6 P5) — this proves it structurally. */
+ *  untouched by overlay coloring (spec §6 P5) — this proves it structurally.
+ *
+ *  P-A (2026-07-17): nakładka dopisuje też ATRYBUTY DIAGNOSTYCZNE
+ *  `data-energized`/`data-flow-direction`/`data-flow-source` (czysty odczyt
+ *  nakładki dla audytora DOM/e2e — `sld-pa-powerflow-tor.spec.ts`; zero
+ *  geometrii). Diff geometrii usuwa je W CAŁOŚCI (nie tylko wartości —
+ *  bez nakładki atrybut nie istnieje). */
 function stripColorAttrs(html: string): string {
-  return html.replace(/stroke="[^"]*"/g, 'stroke="_"').replace(/fill="[^"]*"/g, 'fill="_"');
+  return html
+    .replace(/stroke="[^"]*"/g, 'stroke="_"')
+    .replace(/fill="[^"]*"/g, 'fill="_"')
+    .replace(/ data-(?:energized|flow-direction|flow-source)="[^"]*"/g, '');
 }
 
 describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {

@@ -65,6 +65,8 @@ import {
   allMeterSymbolsDisambiguated,
   meterDisambiguationGaps,
   sceneSegmentEndpointGaps,
+  openTerminalGaps,
+  allOpenTerminalsMarked,
   sourceConnectivityGaps,
   sourceCoverageGaps,
   allSourceStatesLegal,
@@ -175,7 +177,14 @@ const EXPECTED_STATION_COUNT = 53;
 // pas szyny; koszt = 2×(dystans strop-wiersza→sub-poziom pod głowicami) na
 // wejście. Zysk twardy: bus_band_clearance_probe 12→0, entry_collinearity
 // 12→0 na L1/L2. L0 bez zmian (stacja zbiorcza — pas szyny nie istnieje).
-const VERTICAL_LENGTH_BASELINE = { 0: 12280, 1: 41880, 2: 54984 };
+// §16-v3 (2026-07-17): L0 12280→12488 (+208), L1 41880→42560 (+680),
+// L2 54984→55664 (+680) — 13 OTWARTYCH ogonów ENM (segmenty za ostatnią
+// stacją każdego ciągu, `…/branch_end`/`…/downstream`) dotąd NIEWIDOCZNYCH
+// jest teraz rysowanych (zejście głowica→korytarz per ogon + pionowy słupek
+// terminalny 2×GRID na ogonie magistrali). Zysk twardy: 13 realnych
+// segmentów ENM w DOM (klik/nakładka), field_entry_probe 13→0 głowic
+// dyndających, `buildScene.openTerminal.test.ts` pilnuje 1 słupka/ogon.
+const VERTICAL_LENGTH_BASELINE = { 0: 12488, 1: 42560, 2: 55664 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -268,13 +277,25 @@ function checkContinuity(scene) {
   for (let i = 1; i < ranges.length; i++) {
     const gapStart = ranges[i - 1].max;
     const gapEnd = ranges[i].min;
-    const bridging = scene.segments.some((segment) => {
-      const xs = segment.points.map((p) => p.x);
-      const minX = Math.min(...xs);
-      const maxX = Math.max(...xs);
-      return minX <= gapStart + GRID && maxX >= gapEnd - GRID;
-    });
-    if (!bridging) bridgingOk = false;
+    // §16-v3 (tożsamość łańcucha, 2026-07-17): przęsło międzystacyjne bywa
+    // ŁAŃCUCHEM kawałków (segment per człon ENM, `chainSegmentRefs`/
+    // `splitPolylineIntoPieces` w `buildScene.ts`) — mostkowanie dowodzi
+    // POKRYCIE SUMĄ przedziałów X kawałków (kawałki stykają się końcami z
+    // konstrukcji), nie jednym odcinkiem. Dla łańcucha 1-członowego suma ==
+    // stary warunek (bez osłabienia: przerwa w pokryciu dalej = FAIL).
+    const spans = scene.segments
+      .map((segment) => {
+        const xs = segment.points.map((p) => p.x);
+        return { minX: Math.min(...xs), maxX: Math.max(...xs) };
+      })
+      .filter((s) => s.minX <= gapEnd - GRID && s.maxX >= gapStart + GRID)
+      .sort((a, b) => a.minX - b.minX);
+    let covered = gapStart + GRID;
+    for (const s of spans) {
+      if (s.minX > covered) break;
+      covered = Math.max(covered, s.maxX);
+    }
+    if (covered < gapEnd - GRID) bridgingOk = false;
   }
   check('§16/§15.2: każda para kolejnych stacji ciągu głównego ma odcinek mostkujący przerwę', bridgingOk);
 
@@ -667,7 +688,13 @@ for (const lod of LODS) {
   // `fieldEntryConnectionsReachCableHead` (`scene/buildScene.ts`) i
   // `buildScene.test.ts` (dowód empiryczny liczby na tej fixturze).
   const unreachedHeads = fieldEntryConnectionsReachCableHead(scene);
-  const expectedDeadEnds = lod === 0 ? 0 : 1 + scene.meta.lateralRunIds.length;
+  // §16-v3 (2026-07-17): fizyczne końce ciągów (1 magistrala + N laterali)
+  // niosą TERAZ bieg otwarty do słupka terminalnego (realne segmenty ENM
+  // `…/branch_end`/`…/downstream`, dotąd niewidoczne — patrz
+  // `buildScene.openTerminal.test.ts`), więc głowica końcowa jest DOTKNIĘTA
+  // trasą — oczekiwane nieosiągnięte spada z `1 + laterale` do ZERA
+  // (pomiar na fixturze referencyjnej: 13 ogonów, 13 głowic domkniętych).
+  const expectedDeadEnds = 0;
   check(
     'field_entry_probe/kontrakt połączenia (§12.3): głowice bez trasy dotykającej portu == TYLKO fizyczne końce ciągów (1 magistrala + N laterali)',
     unreachedHeads.length === expectedDeadEnds,
@@ -969,6 +996,28 @@ for (const lod of LODS) {
     allSceneSegmentEndpointsAnchored(scene) && endpointGaps.length === 0,
     `luki=${endpointGaps.length}`,
   );
+
+  // -- §16-v3 open_terminal_probe (2026-07-17) -------------------------------
+  // Biegi OTWARTE (segmenty ENM bez następnika — na tej fixturze 13 ogonów
+  // za ostatnimi stacjami ciągów): każdy kończy się DOTYKIEM słupka
+  // terminalnego, żaden słupek nie jest sierotą. Dowód pozytywny + negatywy
+  // w `buildScene.openTerminal.test.ts` (3 fixtury z realnego backendu).
+  const otGaps = openTerminalGaps(scene);
+  const otTicks = scene.segments.filter((s) => s.meta?.kind === 'openTerminal').length;
+  const otRuns = scene.segments.filter((s) => s.meta?.openTerminal === true).length;
+  check(
+    'open_terminal_probe (§16-v3): każdy bieg otwarty zakończony słupkiem terminalnym; zero słupków-sierot',
+    allOpenTerminalsMarked(scene) && otGaps.length === 0 && otTicks === otRuns,
+    `biegi_otwarte=${otRuns} słupki=${otTicks} luki=${otGaps.length}`,
+  );
+  {
+    // Test negatywny — wyrocznia MUSI gryźć: scena z usuniętymi słupkami.
+    const sabotaged = { ...scene, segments: scene.segments.filter((s) => s.meta?.kind !== 'openTerminal') };
+    check(
+      'open_terminal_probe (test negatywny — dowód, że wyrocznia gryzie): usunięcie słupków terminalnych MUSI dać FAIL',
+      otRuns === 0 || openTerminalGaps(sabotaged).length > 0,
+    );
+  }
 
   // -- §11.4 wire_probe rozszerzony o symbole (F9.7 wpięcie, F9.10 naprawa) -
   // F9.10 (REBUILD_PLAN_V3 F9.10): naprawa geometryczna U ŹRÓDŁA

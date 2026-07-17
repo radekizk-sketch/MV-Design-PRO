@@ -246,7 +246,14 @@ const DOT_MATCH_TOLERANCE = GRID;
  * kropka jest konwencją WĘZŁA TRASOWEGO, spec §22.1.)
  */
 export function externalBranchNodes(segments: readonly PreviewSegment[]): readonly RouteVertex[] {
-  const ext = segments.filter((s) => (s.meta?.ownerRef ?? '').startsWith('seg/'));
+  // §16-v3: słupek terminalny (`kind==='openTerminal'`) NIE jest torem —
+  // koniec biegu otwartego dotyka jego ŚRODKA z konstrukcji (znak końca,
+  // nie węzeł elektryczny); bez wykluczenia każdy słupek czytałby się jako
+  // fałszywy T-węzeł „rozgalezienie-bez-kropki" (pomiar: 13 luk na fixturze
+  // referencyjnej po dorysowaniu realnych ogonów otwartych ENM).
+  const ext = segments.filter(
+    (s) => (s.meta?.ownerRef ?? '').startsWith('seg/') && s.meta?.kind !== 'openTerminal',
+  );
   const nodes: RouteVertex[] = [];
   const seen = new Set<string>();
   for (const s of ext) {

@@ -53,7 +53,7 @@ import type { ProtectionTopologyGap } from './protectionTopologyValidation';
  *  SN GPZ, grubsza niż szyna stacji (`'bus'`, 4) — dominanta kompozycyjna GPZ
  *  jako WN/SN. Szyna WN (`#hv-bus`) i szyny stacji ZOSTAJĄ `'bus'` (spec
  *  §21.2 różnicuje WYŁĄCZNIE szynę sekcji SN GPZ, nie szynę WN ani stacje). */
-export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'snTrunk' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink';
+export type PreviewSegmentKind = 'bus' | 'busGpz' | 'sn' | 'snTrunk' | 'lv' | 'leader' | 'protectionTrip' | 'measurementLink' | 'openTerminal';
 
 /** Eksportowane (F6b): `SldCanvasV3` reużywa TĘ SAMĄ hierarchię grubości
  *  (spec §6), zero duplikacji stałych między harnessem debug i kanwą docelową. */
@@ -77,6 +77,10 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
   // F10.5 (spec §20.1): linia pomiarowa — CIEŃSZA niż tor wyzwalania (§20.1
   // „linia pomiarowa cienka od CT"), dodatkowo odróżniona dasharray (2-2).
   measurementLink: 0.6,
+  // §16-v3 (SLD_CAD_REBUILD_PLAN_V3 „Dług otwarty" pkt 1): słupek terminalny
+  // OTWARTEGO końca ciągu (kreska prostopadła do ostatniego biegu) — grubość
+  // toru odgałęźnego (to marker KOŃCA toru SN, nie adnotacja ≤0.8).
+  openTerminal: 1.6,
 };
 
 /**
@@ -177,6 +181,12 @@ export interface PreviewElementMeta {
    *  w `missingData`/inspektorze (§20.3 „zwarta, nie zasłania toru"), NIE na
    *  scenie jako osobna etykieta tekstowa. */
   readonly topologyGaps?: readonly ProtectionTopologyGap[];
+  /** §16-v3: `true` WYŁĄCZNIE dla ostatniego kawałka biegu OTWARTEGO (ciąg
+   *  bez stacji na końcu — segment ENM istnieje, następnika brak). Ostatni
+   *  wierzchołek takiego kawałka MUSI dotykać słupka terminalnego
+   *  (`kind==='openTerminal'`) — wyrocznia `openTerminalGaps`
+   *  (`scene/buildScene.ts`); zwykły wolny koniec dalej obcina `port_probe`. */
+  readonly openTerminal?: boolean;
 }
 
 export interface PreviewSymbol {

@@ -176,15 +176,15 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
         const unreached = fieldEntryConnectionsReachCableHead(scene);
         // DECYZJA (F9.3 FIX-1, patrz docstring `fieldEntryConnectionsReachCableHead`):
         // ta wyrocznia dowodzi WYŁĄCZNIE, że TAM GDZIE trasa istnieje, dotyka
-        // głowicy — nie że każda głowica MUSI mieć trasę (fizyczny koniec
-        // ciągu, „stacja końcowa" §9, legalnie nie ma kabla za polem
-        // „następnik"). Na fixturze `sldSubstrate52s` liczba takich końców =
-        // 1 (magistrala główna) + `lateralRunIds.length` (każdy lateral
-        // konczy się gdzieś) — potwierdzone empirycznie (patrz raport F9.3).
+        // głowicy. §16-v3 (2026-07-17): fizyczne końce ciągów (1 magistrala +
+        // N laterali) niosą TERAZ bieg OTWARTY (realne segmenty ENM
+        // `…/branch_end`/`…/downstream` za ostatnią stacją, dotąd niewidoczne
+        // — patrz `buildScene.openTerminal.test.ts`), więc głowica końcowa
+        // JEST dotknięta trasą — nieosiągnięte spada z `1 + laterale` do ZERA.
         // Jeżeli liczba WZROŚNIE bez zmiany topologii fixtury — regresja
-        // (kabel międzystacyjny znowu nie dotyka głowicy WEWNĄTRZ ciągu).
-        expect(unreached.length).toBe(1 + scene.meta.lateralRunIds.length);
-        expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(false);
+        // (kabel międzystacyjny/ogon znowu nie dotyka głowicy).
+        expect(unreached.length).toBe(0);
+        expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(true);
       });
 
       it('F9.3 (§12.1): KAŻDY aparat pola STACJI (składający `apparatusSource`, spec §12.1) na fixturze nosi "konwencja" (brak primary_devices, f92-1)', () => {
@@ -386,17 +386,29 @@ describe('buildSceneV3 — ciągłość elektryczna ciągu głównego (spec §16
   });
 
   it('między KAŻDĄ parą kolejnych stacji ciągu głównego istnieje odcinek mostkujący przerwę (trasa magistrali)', () => {
+    // §16-v3 (tożsamość łańcucha, 2026-07-17): przęsło międzystacyjne bywa
+    // ŁAŃCUCHEM kawałków (kawałek per człon ENM — `chainSegmentRefs`/
+    // `splitPolylineIntoPieces`, kawałki stykają się końcami z konstrukcji)
+    // — mostkowanie dowodzi POKRYCIE SUMĄ przedziałów X, nie jednym
+    // odcinkiem. Dla łańcucha 1-członowego suma == stary warunek (przerwa w
+    // pokryciu dalej = FAIL). TA SAMA asercja co `sld_v3_acceptance.mjs`.
     const ranges = ids.map(stationXRange);
     for (let i = 1; i < ranges.length; i++) {
       const gapStart = ranges[i - 1].max;
       const gapEnd = ranges[i].min;
-      const bridging = scene.segments.some((segment) => {
-        const xs = segment.points.map((p) => p.x);
-        const minX = Math.min(...xs);
-        const maxX = Math.max(...xs);
-        return minX <= gapStart + GRID && maxX >= gapEnd - GRID;
-      });
-      expect(bridging).toBe(true);
+      const spans = scene.segments
+        .map((segment) => {
+          const xs = segment.points.map((p) => p.x);
+          return { minX: Math.min(...xs), maxX: Math.max(...xs) };
+        })
+        .filter((s) => s.minX <= gapEnd - GRID && s.maxX >= gapStart + GRID)
+        .sort((a, b) => a.minX - b.minX);
+      let covered = gapStart + GRID;
+      for (const s of spans) {
+        if (s.minX > covered) break;
+        covered = Math.max(covered, s.maxX);
+      }
+      expect(covered).toBeGreaterThanOrEqual(gapEnd - GRID);
     }
   });
 
@@ -490,6 +502,10 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
       // F13.1 (spec §21.2): `busGpz` = szyna sekcji SN GPZ (grubsza klasa
       // renderu, TA SAMA semantyka `elementKind: 'bus'`).
       if (s.meta?.kind === 'bus' || s.meta?.kind === 'busGpz') expect(s.meta.elementKind).toBe('bus');
+      // §16-v3: słupek terminalny — MARKER końca biegu (nie element
+      // selekcji); ownerRef z sufiksem `#open-terminal` dla tożsamości,
+      // elementKind celowo nieustawiony (klik nie otwiera inspektora).
+      else if (s.meta?.kind === 'openTerminal') expect(s.meta?.elementKind).toBeUndefined();
       else expect(s.meta?.elementKind).toBe('segment');
     }
     // Przynajmniej jeden segment SN-bus (stacja) z ownerRef kończącym się na
@@ -757,9 +773,15 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // współliniowego z osią pola wejściowego przez pas szyny; zysk twardy:
     // bus_band_clearance 12→0, entry_collinearity 12→0). L0 BEZ zmian
     // (stacja zbiorcza — brak szyny/pól, zejście proste zostaje).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12280);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(41880);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(54984);
+    // → §16-v3 (2026-07-17): L0 12280→12488 (+208), L1 41880→42560, L2
+    // 54984→55664 (+680) — 13 OTWARTYCH ogonów ENM (segmenty za ostatnią
+    // stacją każdego ciągu) dotąd NIEWIDOCZNYCH jest teraz rysowanych
+    // (zejście głowica→korytarz per ogon + pionowy słupek terminalny na
+    // ogonie magistrali). Zysk twardy: field_entry 13→0 dyndających głowic,
+    // 13 realnych refów ENM w DOM — `buildScene.openTerminal.test.ts`.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12488);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(42560);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(55664);
   });
 });
 
@@ -800,14 +822,32 @@ describe('buildSceneV3 — F10.1: wyrocznie §18.1/§18.2/§18.6 (aparaty boczne
     expect(gaps.some((g) => g.reason === 'no-branch-segment')).toBe(true);
   });
 
-  it('path_termination_labeled_probe (§18.6): 13 fizycznych końców — wszystkie OPISANE na L2; wyrocznia gryzie po usunięciu etykiet #termination', () => {
+  it('path_termination_labeled_probe (§18.6): fizyczne końce niosą bieg otwarty §16-v3 (0 głowic bez trasy, 0 #termination) — opis końca przejęły etykiety „koniec otwarty"; wyrocznia dalej gryzie po zdjęciu ogonów', () => {
+    // §16-v3 (2026-07-17): 13 dawnych „fizycznych końców" (głowica bez
+    // trasy) niesie TERAZ bieg otwarty do słupka terminalnego (realne
+    // segmenty ENM za ostatnią stacją) — głowice są dotknięte trasą, więc
+    // etykiet `#termination` jest 0, a opis końca daje 13 etykiet
+    // „koniec otwarty" (`#open-terminal-label`, L2).
     const scene = buildSceneV3(enm, 2);
     expect(allPathTerminationsLabeled(scene)).toBe(true);
-    const terminationLabels = scene.labels.filter((l) => l.ownerRef.endsWith('#termination'));
-    expect(terminationLabels.length).toBe(13);
-    // Teksty pochodzą z podpisów §9 (kier./odg.) — zero pustych.
-    expect(terminationLabels.every((l) => l.text.trim().length > 0)).toBe(true);
-    const stripped = { ...scene, labels: scene.labels.filter((l) => !l.ownerRef.endsWith('#termination')) };
+    expect(scene.labels.filter((l) => l.ownerRef.endsWith('#termination'))).toHaveLength(0);
+    const openLabels = scene.labels.filter((l) => l.ownerRef.endsWith('#open-terminal-label'));
+    expect(openLabels.length).toBe(13);
+    expect(openLabels.every((l) => l.text === 'koniec otwarty')).toBe(true);
+    // Wyrocznia §18.6 MUSI dalej gryźć: scena z USUNIĘTYMI ogonami (i ich
+    // etykietami) = 13 głowic znowu bez trasy i bez opisu → 13 luk.
+    const isOpenRunPiece = (ownerRef: string | undefined) =>
+      ownerRef != null && (ownerRef.endsWith('#open-terminal') || ownerRef.endsWith('#open-terminal-label'));
+    const openRunRefs = new Set(
+      scene.segments.filter((s) => s.meta?.openTerminal === true).map((s) => s.meta?.ownerRef),
+    );
+    const stripped = {
+      ...scene,
+      segments: scene.segments.filter(
+        (s) => !isOpenRunPiece(s.meta?.ownerRef) && !openRunRefs.has(s.meta?.ownerRef),
+      ),
+      labels: scene.labels.filter((l) => !isOpenRunPiece(l.ownerRef)),
+    };
     expect(allPathTerminationsLabeled(stripped)).toBe(false);
     expect(pathTerminationLabelGaps(stripped).length).toBe(13);
   });

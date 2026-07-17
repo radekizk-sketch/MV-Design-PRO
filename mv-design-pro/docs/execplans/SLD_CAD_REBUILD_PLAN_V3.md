@@ -1748,44 +1748,59 @@ klikalność ODCINKA lewym przyciskiem (odroczenie F8c pkt 3 wygasłe),
 CTA „Otwórz konfigurację" drawera (K30-91: cable_run→E-12, węzeł→E-14/15),
 normalizacja refu kawałka przęsła (`…segment_L`→`…/segment`) w kliku.
 
-POZOSTAJE (2 specy, przyczyny NIE-testowe — realne luki v3):
-1. `sld-editor-real-backend-flex` (2) — ZABLOKOWANE przez lukę sceny §16-v3:
-   `buildSceneV3` NIE RENDERUJE ciągu do OTWARTEGO terminala (źródło→T1 bez
-   stacji na końcu ⇒ w DOM wyłącznie kompozycja GPZ, segment ENM niewidoczny;
-   dowód sondą: BRANCHES=[seg/…/segment], DOM PATH REFS = tylko gpz/…).
-   W v2 pokrywał to slot-fallback kotwic terminali (§16, zamknięty task 18).
-   PROJEKT NAPRAWY: w sekcji 5 buildSceneV3, gdy `mainTrunkRun.stationRefs`
-   puste a `mainCableRun.segmentPaths` niepuste — narysuj bieg otwarty od
-   portu GPZ do kotwicy slotowej (§16: słupek terminalny + etykieta „koniec
-   otwarty"), ownerRef = segmentRef; wyrocznia §11.3 dostaje jawną klasę
-   `openTerminal` (kotwica slotowa = legalne zakończenie, test negatywny:
-   zwykły wolny koniec dalej FAIL); analogicznie laterale. Rozmiar: sesja
-   robocza z pełnym cyklem wyroczni — NIE łata.
-2. `sld-pa-powerflow-tor` (5) — wymaga PRZYWRÓCENIA deklaracji pochodzenia
-   nakładki w v3 (badge case_ref/converged — spec §14.2 „overlay wyłącznie
-   z wyniku"; do dziś nakładka nie deklaruje NA KANWIE, z którego przypadku
-   pochodzi). PROJEKT DOPRECYZOWANY (2026-07-17, runda 2 — gotowy do
-   wykonania):
-   (a) `SldV3Overlay.provenance?: { caseRef: string; converged: boolean }`
-       → kanwa renderuje badge `data-testid="sld-v3-overlay-provenance"`
-       z `data-case-ref`/`data-converged` w rogu arkusza (obok legendy);
-   (b) atrybuty solverowe NA ODCINKU (diagnostyka, jak `data-owner-ref` —
-       dopisane w commicie 320453aa): `data-energized` z
-       `energizedByOwnerRef[ownerRef]`, `data-flow-direction`/
-       `data-flow-source` z `flowByOwnerRef[ownerRef]` — czysty odczyt
-       nakładki, zero fizyki w kanwie;
-   (c) harness (`screenshot-harness-main.tsx`): fetch
-       `/test-fixtures/sldSubstrate52s.powerflow.json` (companion — JEDNA
-       PRAWDA solvera) → builder nakładki per LOD: klucze = ownerRef-y
-       KAWAŁKÓW sceny (sufiksy `_L`/`_R_…`), wartość z companion po refie
-       bazowym (normalizacja jak w kliku workspace); provenance z
-       case_ref/converged;
-   (d) spec: czytnik segmentów na `path[data-owner-ref^="seg/"]` +
-       normalizacja bazowa; N-1 (wolne końce) i N-7 (hash geometrii) już
-       niezależne od atrybutów v2 — wymaga tylko czytnika; N-2/N-3
-       (równość zbiorów energizacji, kierunek = sign(P)) na atrybutach (b).
-   Rozmiar: jedna sesja robocza z pełnym cyklem (unit na atrybuty +
-   determinizm buildera + 6 testów speca + regresja).
+ZAMKNIĘTE 2026-07-17 (runda 3, „Wykonaj") — OBIE luki wykonane end-to-end:
+
+1. [DONE] §16-v3 biegi otwarte + tożsamość łańcucha (`buildSceneV3`):
+   - bieg otwarty ciągu głównego BEZ stacji (port GPZ → kotwica slotowa
+     `mainRowDx`), otwarte OGONY za ostatnią stacją ciągu/lateralu oraz
+     lateral otwarty (origin→kanał→dół) — wszystkie z REALNYCH segmentów ENM
+     (`…/branch_end`/`…/downstream`), zakończone SŁUPKIEM terminalnym
+     (`kind:'openTerminal'`, prostopadła kreska ±GRID) + etykietą
+     „koniec otwarty" (L2, konwencja `terminationLabels` §18.6);
+   - tożsamość ŁAŃCUCHA: przęsło wieloczłonowe (segmenty łączone węzłami bez
+     stacji — GPZ→S0, międzystacyjne, zejścia lateralne) dzielone
+     `splitPolylineIntoPieces` na kawałek per człon ENM z WŁASNYM `ownerRef`
+     (cięcia równych długości na siatce, odsuwane z pionów kanałów
+     lateralnych — pomiar: cięcie na x=5824 czytało się jako fałszywy
+     T-węzeł); POMIAR na fixturze referencyjnej: 53→88 kawałków `seg/`,
+     13 realnych ogonów ENM odzyskanych (field_entry 13→0 dyndających
+     głowic, baseline pionów L0/L1/L2 podniesiony +208/+680/+680 z
+     uzasadnieniem);
+   - wyrocznie: `openTerminalGaps`/`allOpenTerminalsMarked` (koniec-bez-
+     słupka / słupek-sierota), `open_terminal_probe` w accept:sld-v3 z
+     testem negatywnym (usunięcie słupka ⇒ FAIL, sabotaż dowiedziony);
+     `port_probe` bez osłabienia (koniec biegu legalny WYŁĄCZNIE dotykiem
+     słupka); testy `buildScene.openTerminal.test.ts` (21) na TRZECH
+     fixturach z REALNEGO backendu (`openTerminal`/`openBranch`/
+     `openTrunkChain.enm.json` — te same domain-ops co e2e flex);
+   - `sld-editor-real-backend-flex` 2/2 ZIELONE. Adaptacja wykryła i
+     naprawiła DWA realne defekty produktu: (a) martwy LEWY KLIK w
+     symbol kanwy — `setPointerCapture` w pointerdown przekierowywał
+     click na <svg> (naprawa: capture dopiero z ruchem pan/pinch w
+     pointermove; testy maskowały defekt syntetycznym `dispatchEvent`);
+     (b) selekcja transformatora niosła bay-ref zamiast realnego refu
+     (inspektor inżynierski pusty) + `stationRefForBayOwner` padał na
+     modelach realnego backendu z pustym `snapshot.bays` (fallback:
+     gramatyka refów `stn/⟨id⟩` potwierdzona rekordem `substations`) —
+     test `transformerSelection.test.tsx`.
+   POZA ZAKRESEM (pre-F6a, udokumentowana granica ze stopNote): odgałęzienie
+   startujące z pola GPZ (`start_branch_segment_sn` z `gpz/…` — fixtura
+   `openBranch.enm.json` niesie taki przypadek) — `resolveBranchOrigin`
+   wymaga stacji-origin na magistrali; bieg NIE jest rysowany, stopNote
+   jawny. Plan: przy podjęciu wielo-GPZ/odgałęzień zagnieżdżonych (F6b).
+
+2. [DONE] Program P-A (nakładka rozpływu = jedna prawda solvera):
+   provenance badge `sld-v3-overlay-provenance` (data-case-ref/
+   data-converged, wewnątrz treści arkusza — lekcja F13.1 o marginesie);
+   atrybuty solverowe na odcinku i symbolu (`data-energized`,
+   `data-flow-direction`/`data-flow-source`; KONTRAKT: brak atrybutu ==
+   zero przepływu — `direction:"none"` companion NIE dostaje wpisu);
+   harness czyta companion (`sldSubstrate52s.powerflow.json`) i buduje
+   nakładkę czystym builderem (projekcja szyna→stacja przez `bus_refs`);
+   `sld-pa-powerflow-tor` 6/6 ZIELONE (N-3(b) mierzy GEOMETRIĘ grotów vs
+   kierunek from→to realnej ścieżki DOM). PNG:
+   `docs/audit/visual/sld_substrate_53_PA_tor.png` (86 kawałków pod
+   napięciem, 8 wstecznych OZE, 1 stacja wygaszona za NO).
 
 ## Prompt kontynuacji (wklej świeżemu agentowi — DO WDROŻENIA 100%)
 

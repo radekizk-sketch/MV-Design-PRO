@@ -169,6 +169,18 @@ export interface SldV3Overlay {
    * nie crashuje).
    */
   readonly flowByOwnerRef?: Readonly<Record<string, SegmentFlowOverlay>>;
+  /**
+   * Deklaracja POCHODZENIA nakładki (spec §14.2 „overlay wyłącznie z
+   * wyniku", program P-A): z którego przypadku obliczeniowego pochodzą
+   * wartości i czy solver zbiegł. Kanwa renderuje badge
+   * `sld-v3-overlay-provenance` (róg arkusza) — operator ZAWSZE widzi,
+   * czyj wynik ogląda; brak pola = nakładka bez deklaracji (rysunek bazowy
+   * lub nakładka cząstkowa bez wyniku przypadku) — badge nie renderuje się.
+   */
+  readonly provenance?: {
+    readonly caseRef: string;
+    readonly converged: boolean;
+  };
 }
 
 /** Pojedyncza wartość liczbowa z wyniku solvera + jednostka — WYŁĄCZNIE

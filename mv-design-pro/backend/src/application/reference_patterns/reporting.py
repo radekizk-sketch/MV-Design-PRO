@@ -193,7 +193,7 @@ def export_reference_pattern_to_docx(
 
 
 def _add_docx_title_page(
-    doc: "DocumentType",
+    doc: DocumentType,
     result: ReferencePatternResult,
     metadata: ReportMetadata,
 ) -> None:
@@ -231,7 +231,7 @@ def _add_docx_title_page(
     doc.add_paragraph()
 
 
-def _add_docx_summary_section(doc: "DocumentType", result: ReferencePatternResult) -> None:
+def _add_docx_summary_section(doc: DocumentType, result: ReferencePatternResult) -> None:
     """Dodaje sekcję streszczenia z werdyktem."""
     doc.add_heading("Streszczenie", level=1)
 
@@ -255,7 +255,7 @@ def _add_docx_summary_section(doc: "DocumentType", result: ReferencePatternResul
 
 
 def _add_docx_input_data_section(
-    doc: "DocumentType",
+    doc: DocumentType,
     result: ReferencePatternResult,
 ) -> None:
     """Dodaje sekcję danych wejściowych."""
@@ -302,7 +302,7 @@ def _add_docx_input_data_section(
     doc.add_paragraph()
 
 
-def _add_docx_checks_section(doc: "DocumentType", result: ReferencePatternResult) -> None:
+def _add_docx_checks_section(doc: DocumentType, result: ReferencePatternResult) -> None:
     """Dodaje sekcję sprawdzeń."""
     doc.add_heading("Sprawdzenia", level=1)
 
@@ -335,7 +335,7 @@ def _add_docx_checks_section(doc: "DocumentType", result: ReferencePatternResult
 
 
 def _add_docx_artifacts_section(
-    doc: "DocumentType",
+    doc: DocumentType,
     result: ReferencePatternResult,
 ) -> None:
     """Dodaje sekcję wartości pośrednich (artefaktów)."""
@@ -394,7 +394,7 @@ def _add_docx_artifacts_section(
     doc.add_paragraph()
 
 
-def _add_docx_trace_section(doc: "DocumentType", result: ReferencePatternResult) -> None:
+def _add_docx_trace_section(doc: DocumentType, result: ReferencePatternResult) -> None:
     """Dodaje sekcję śladu obliczeń."""
     doc.add_heading("Ślad obliczeń (skrót)", level=1)
 
@@ -437,7 +437,7 @@ def _add_docx_trace_section(doc: "DocumentType", result: ReferencePatternResult)
 
 
 def _add_docx_reproducibility_section(
-    doc: "DocumentType",
+    doc: DocumentType,
     metadata: ReportMetadata,
 ) -> None:
     """Dodaje sekcję informacji o powtarzalności."""

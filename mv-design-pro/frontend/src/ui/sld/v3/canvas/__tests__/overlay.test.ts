@@ -276,13 +276,18 @@ describe('overlay.ts — F-1 (recenzja Opusa): kontrakt kierunku forward ↔ geo
     expect(checked).toBeGreaterThan(30);
   });
 
-  it('fixtura ZAWIERA przęsła wielokawałkowe (8/53) — bramka F-1 ma realny skutek, nie jest martwa', () => {
+  it('fixtura ZAWIERA przęsła wielokawałkowe (43/88) — bramka F-1 ma realny skutek, nie jest martwa', () => {
+    // §16-v3 (2026-07-17): scena niesie TERAZ tożsamość ŁAŃCUCHA (kawałek
+    // per człon ENM) + 13 otwartych ogonów (pomiar: 53→88 kawałków `seg/`).
+    // Kawałki-poprzedniki i ogony mają terminal bez właściciela ⇒ POZA
+    // bramką singleHop (bez strzałki — uczciwe „nie wiem", pomiar: 8→43).
+    // Bramka F-1 dalej NIE jest martwa: wyklucza niezerowy podzbiór.
     const scene2Bare = scene.segments.filter(
       (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#'),
     );
     const excluded = scene2Bare.filter((s) => !singleHop.has(s.meta!.ownerRef!));
-    expect(scene2Bare.length).toBe(53);
-    expect(excluded.length).toBe(8);
+    expect(scene2Bare.length).toBe(88);
+    expect(excluded.length).toBe(43);
   });
 
   it('TEST NEGATYWNY (bramka gryzie): ref POZA zbiorem singleHop z poprawnym P_MW w payload ⇒ ZERO wpisu (uczciwe „nie wiem" zamiast potencjalnie błędnej strzałki)', () => {

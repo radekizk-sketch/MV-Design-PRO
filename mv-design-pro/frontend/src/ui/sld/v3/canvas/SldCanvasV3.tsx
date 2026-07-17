@@ -221,6 +221,9 @@ function SceneSymbolNode(props: {
       data-apparatus-source={symbol.meta?.apparatusSource}
       data-designation-source={symbol.meta?.designationSource}
       data-source-state={sourceState}
+      data-energized={energizedSym === undefined ? undefined : String(energizedSym)}
+      data-owner-ref={symbol.meta?.ownerRef}
+      data-element-kind={symbol.meta?.elementKind}
       onClick={onElementClick ? () => onElementClick(testId, clickMeta) : undefined}
       onDoubleClick={onElementDoubleClick ? () => onElementDoubleClick(testId, clickMeta) : undefined}
       onContextMenu={
@@ -290,6 +293,13 @@ function SceneSegmentNode(props: {
     ? overlay?.energizedByOwnerRef?.[segment.meta.ownerRef] ?? overlay?.energizedByTestId[testId]
     : overlay?.energizedByTestId[testId];
   const stroke = strokeForEnergization(energizedSeg) ?? V3_STROKE_BASE;
+  // Program P-A (spec §14.2): atrybuty solverowe na odcinku — CZYSTY ODCZYT
+  // nakładki (zero fizyki w kanwie), kanał diagnostyczny/E2E jak
+  // `data-owner-ref`. Brak wpisu nakładki = brak atrybutu (uczciwe „nie
+  // wiem", nie fabrykowany stan).
+  const flowSeg = segment.meta?.ownerRef != null
+    ? overlay?.flowByOwnerRef?.[segment.meta.ownerRef]
+    : undefined;
   const segmentClickMeta: SldElementClickMeta = { ownerRef: segment.meta?.ownerRef, elementKind: segment.meta?.elementKind };
   // F13.2 (spec §22.1): mostki liczone deterministycznie z przecięć sceny —
   // geometria sceny (punkty/porty/bbox/baseline'y §15.1) NIETKNIĘTA, mostek
@@ -309,6 +319,9 @@ function SceneSegmentNode(props: {
       // deterministyczne wskazanie przęsła po refie ENM (luka wykryta
       // adaptacją e2e sld-editor-real-backend-flex, 2026-07-17).
       data-owner-ref={segment.meta?.ownerRef}
+      data-energized={energizedSeg === undefined ? undefined : String(energizedSeg)}
+      data-flow-direction={flowSeg ? (flowSeg.forward ? 'forward' : 'reverse') : undefined}
+      data-flow-source={flowSeg ? 'solver' : undefined}
       data-parity-key={parityKeysOf(segment.meta)}
       data-bridge-count={bridges && bridges.size > 0 ? [...bridges.values()].reduce((n, ys) => n + ys.length, 0) : undefined}
       d={pathD}
@@ -857,8 +870,15 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const panAnchor = useRef<{ x: number; y: number } | null>(null);
 
   const handlePointerDown = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
-    // Optional chaining: jsdom (testy) nie implementuje Pointer Capture API.
-    event.currentTarget.setPointerCapture?.(event.pointerId);
+    // ZAKAZ capture na pointerdown (adaptacja flex, pomiar Chromium
+    // 2026-07-17): `setPointerCapture` w pointerdown przekierowuje zdarzenia
+    // zgodnościowe myszy (mousedown/mouseup) na <svg>, więc wynikowy `click`
+    // celuje w <svg> ZAMIAST w symbol/odcinek — LEWY KLIK użytkownika w
+    // element kanwy był MARTWY (testy e2e maskowały to syntetycznym
+    // `dispatchEvent`; dowód: klik natywny drawer=0, wywołanie handlera
+    // wprost drawer=1). Capture przenosi się do handlePointerMove — startuje
+    // dopiero z FAKTYCZNYM ruchem pan/pinch (klik bez ruchu nie łapie
+    // capture, cel klika zostaje na elemencie).
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     const active = Array.from(pointers.current.values());
     if (active.length === 2) {
@@ -871,6 +891,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
 
   const handlePointerMove = useCallback((event: React.PointerEvent<SVGSVGElement>) => {
     if (!pointers.current.has(event.pointerId)) return;
+    // Capture DOPIERO przy ruchu (pan/pinch w toku) — patrz komentarz w
+    // `handlePointerDown`. Optional chaining: jsdom (testy) nie implementuje
+    // Pointer Capture API; `hasPointerCapture` chroni przed zbędnym wołaniem.
+    if (!event.currentTarget.hasPointerCapture?.(event.pointerId)) {
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+    }
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
     const active = Array.from(pointers.current.values());
     if (active.length === 2 && pinchDistance.current != null) {
@@ -1018,6 +1044,44 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             <SceneFlowPlacementNode key={`flow-${placement.segmentIndex}`} placement={placement} />
           ))}
         </g>
+        {/* Program P-A (spec §14.2 „overlay wyłącznie z wyniku"): deklaracja
+         * POCHODZENIA nakładki — operator zawsze widzi, z którego przypadku
+         * pochodzą wartości i czy solver zbiegł. Render w ukladzie arkusza
+         * (lewy górny róg treści), brak `provenance` = brak badge. */}
+        {effectiveOverlay?.provenance && (
+          <g
+            data-testid="sld-v3-overlay-provenance"
+            data-case-ref={effectiveOverlay.provenance.caseRef}
+            data-converged={String(effectiveOverlay.provenance.converged)}
+          >
+            {/* Pozycja WEWNĄTRZ treści arkusza (świat y<0 = pas marginesu,
+              * przykrywany przez chrom ramki — lekcja F13.1): na prawo od
+              * strefy GPZ przy górnej krawędzi treści. */}
+            <rect
+              x={(scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : 0) + 2 * GRID}
+              y={GRID}
+              width={measureLabelWidth(
+                `Wynik: ${effectiveOverlay.provenance.caseRef} · ${effectiveOverlay.provenance.converged ? 'zbieżny' : 'NIEZBIEŻNY'}`,
+                't3',
+              ) + 2 * GRID}
+              height={2.5 * GRID}
+              fill={SLD_V3_BACKGROUND}
+              stroke={effectiveOverlay.provenance.converged ? FLOW_OVERLAY_COLOR : '#E74C3C'}
+              strokeWidth={1}
+              rx={2}
+            />
+            <text
+              x={(scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : 0) + 3 * GRID}
+              y={2.3 * GRID}
+              fill={effectiveOverlay.provenance.converged ? FLOW_OVERLAY_COLOR : '#E74C3C'}
+              fontFamily="sans-serif"
+              fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
+              dominantBaseline="middle"
+            >
+              {`Wynik: ${effectiveOverlay.provenance.caseRef} · ${effectiveOverlay.provenance.converged ? 'zbieżny' : 'NIEZBIEŻNY'}`}
+            </text>
+          </g>
+        )}
       </SheetFrame>
     </svg>
   );
