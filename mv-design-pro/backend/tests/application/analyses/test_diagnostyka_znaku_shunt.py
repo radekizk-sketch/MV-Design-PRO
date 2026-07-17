@@ -249,25 +249,39 @@ def test_znaki_przeplywu_galezi_bez_i_z_shuntem() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_d8_cosphi_pogarsza_sie_na_punkcie_indukcyjnym() -> None:
-    """Reprodukcja eskalacji na poziomie ``build_compensation_sizing_view``: dla
-    punktu INDUKCYJNEGO (1,0 + j0,5) cosφ dnia liczony z przepływu gałęzi MALEJE
-    monotonicznie z rosnącą baterią, a dobór = ``None``. To potwierdza hipotezę (b):
-    miara cosφ oparta na ``branch_results`` nie rośnie przy poprawnie znakowanej
-    kompensacji odbioru indukcyjnego (stąd fikstura D8 z punktem wyprzedzającym)."""
+def test_d8_cosphi_przekroj_maleje_ale_punkt_rosnie_naprawa_v12k027() -> None:
+    """NAPRAWA V12K-027 (opcja B) — rozdział DWÓCH wielkości w ``build_compensation_sizing_view``.
+
+    Wcześniej ten test dokumentował DEFEKT: cosφ liczony WPROST z przepływu gałęzi
+    (``branch_results``) dla punktu INDUKCYJNEGO (1,0 + j0,5) MALEJE z rosnącą
+    baterią, więc dobór = ``None`` (stąd dawna fikstura D8 z punktem wyprzedzającym).
+    Po naprawie (adapter konwencji + rozdział cosφ przekroju vs cosφ punktu) obie
+    wielkości są jawne:
+
+    - ``cosfi_przekroju_dzien`` (przekrój sieci) — NADAL maleje monotonicznie: to
+      TWARDA PRAWDA LICZBOWA solvera (0,666624 / 0,496668 / 0,312428), niezmieniona;
+    - ``cosfi_punktu_dzien`` (Q_netto = Q_load − Q_cap_eff) — ROŚNIE do ~1 przy
+      pełnej kompensacji, potem spada po przekompensowaniu — DOBÓR opiera się na tym.
+
+    Wynik: dla odbioru indukcyjnego bateria 0,6 Mvar spełnia cosφ ≥ 0,95 (dobór ≠ None)
+    — kierunek fizycznie poprawny (naprawiany błąd)."""
     run = _run(_minimal_net(load_q_mvar=0.5))
     view = build_compensation_sizing_view(run, bus_ref="bus_load", cos_phi_min=0.95)
-    assert view["baseline"]["cos_phi_day"] == pytest.approx(0.894427, abs=1e-5)
-    cos_by_size = [(c["rated_mvar"], c["cos_phi_day"]) for c in view["candidates"]]
-    assert cos_by_size == [
+    # (1) cosφ PRZEKROJU sieciowego — twarda prawda solvera, MALEJE (bez zmian wartości).
+    assert view["baseline"]["cosfi_przekroju_dzien"] == pytest.approx(0.894427, abs=1e-5)
+    przekroj_by_size = [(c["rated_mvar"], c["cosfi_przekroju_dzien"]) for c in view["candidates"]]
+    assert przekroj_by_size == [
         (0.6, pytest.approx(0.666624, abs=1e-5)),
         (1.2, pytest.approx(0.496668, abs=1e-5)),
         (2.4, pytest.approx(0.312428, abs=1e-5)),
     ]
-    # Monotoniczny SPADEK cosφ z rosnącą baterią (przeciwnie do intuicji kompensacji).
-    cos_values = [c["cos_phi_day"] for c in view["candidates"]]
-    assert cos_values == sorted(cos_values, reverse=True)
-    assert cos_values[-1] < view["baseline"]["cos_phi_day"]
-    # Żaden kandydat nie „spełnia" → dobór None na punkcie indukcyjnym.
-    assert all(c["spelnia"] is False for c in view["candidates"])
-    assert view["dobor"] is None
+    przekroj_values = [c["cosfi_przekroju_dzien"] for c in view["candidates"]]
+    assert przekroj_values == sorted(przekroj_values, reverse=True)
+    assert przekroj_values[-1] < view["baseline"]["cosfi_przekroju_dzien"]
+    # (2) cosφ PUNKTU kompensowanego — ROŚNIE względem baseline przy częściowej/pełnej
+    # kompensacji (naprawa V12K-027); pierwsza bateria (0,6) spełnia cosφ ≥ 0,95.
+    assert view["candidates"][0]["cosfi_punktu_dzien"] == pytest.approx(0.993091, abs=1e-5)
+    assert view["candidates"][0]["cosfi_punktu_dzien"] > view["baseline"]["cosfi_punktu_dzien"]
+    assert view["candidates"][0]["spelnia"] is True
+    assert view["dobor"] is not None
+    assert view["dobor"]["rated_mvar"] == 0.6

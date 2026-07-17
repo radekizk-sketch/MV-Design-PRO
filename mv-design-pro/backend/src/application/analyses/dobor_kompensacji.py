@@ -13,9 +13,12 @@ OSD (D7, ``odpowiedz_osd.py``):
 2. uruchamia ISTNIEJĄCY solver rozpływu przez ISTNIEJĄCĄ ścieżkę wykonania
    (``enm.canonical_analysis._execute_power_flow`` — ta sama funkcja, której używa
    kanoniczny przebieg PF; ZERO nowej fizyki, ZERO wołania klas solvera na skróty),
-3. odczytuje P/Q wymieniane z siecią w punkcie przyłączenia Z WYNIKU solvera i
-   projektuje cosφ = |P| / √(P² + Q²) jako WIELKOŚĆ PREZENTACYJNĄ (wynik rozpływu
-   nie niesie cosφ wprost — patrz RECON niżej).
+3. odczytuje P/Q wymieniane z siecią w punkcie przyłączenia Z WYNIKU solvera,
+   przekłada je na KANONICZNĄ konwencję znaku przez adapter
+   (``application/analyses/konwencja_mocy.py``, rozstrzygnięcie V12K-027, opcja B)
+   i wyznacza DWIE ROZDZIELNE wielkości (patrz RECON „dwa cosφ" niżej):
+   (1) cosφ przepływu w przekroju sieciowym, (2) cosφ punktu kompensowanego —
+   podstawę doboru. Obie jako projekcja ``cosφ = |P| / √(P² + Q²)`` (bez fizyki).
 
 RECON WIĄŻĄCY (plik:linia):
 - Kształt rekordu katalogu: ``network_model/catalog/mv_shunt_capacitor_catalog.py:44``
@@ -33,13 +36,30 @@ RECON WIĄŻĄCY (plik:linia):
   solvera (``p_from_mw``/``q_from_mvar``/``p_to_mw``/``q_to_mvar``,
   ``network_model/solvers/power_flow_result.py:74-80``, WHITE BOX), odczytany na
   końcu przy punkcie i zsumowany po gałęziach incydentnych (przy JEDNEJ gałęzi
-  zasilającej = przepływ tej gałęzi). Uwaga: ``p_injected``/``q_injected`` z
-  ``bus_results`` to STAŁY nastaw PQ węzła (generacja − obciążenie) i NIE zmienia
-  się po dopisaniu shuntu; efekt kompensacji ujawnia się WYŁĄCZNIE w przepływach
-  gałęzi (bateria zmienia napięcia i moc bierną płynącą z sieci). ``branch_id`` w
-  wyniku = ``uuid5(NAMESPACE_DNS, ref_id)`` gałęzi (``enm/mapping.py:45,262``),
-  więc końce gałęzi odtwarzamy ze snapshotu tą samą funkcją (``_graph_id_from_ref``).
-  cosφ liczymy wyłącznie jako projekcję P/S (bez fizyki).
+  zasilającej = przepływ tej gałęzi) przez adapter ``moc_kanoniczna_punktu`` — już
+  w znaku kanonicznym (``Q>0`` indukcyjny pobór, ``Q<0`` pojemnościowy).
+  ``branch_id`` w wyniku = ``uuid5(NAMESPACE_DNS, ref_id)`` gałęzi
+  (``enm/mapping.py:45,262``), więc końce gałęzi odtwarzamy ze snapshotu tą samą
+  funkcją (``_graph_id_from_ref``).
+
+RECON „dwa cosφ" (V12K-027, opcja B — dowód liczbowy K1 i ``test_dowod_v12k027``):
+  Dopisanie baterii ``ShuntCapacitor`` (+jB) ZWIĘKSZA moc bierną przepływu gałęzi
+  (``q_to = Q_load + rated·V²`` — anomalia znaku shuntu, patrz docstring
+  ``konwencja_mocy``), więc cosφ liczony WPROST z przepływu gałęzi po wstawieniu
+  baterii MALEJE — to opisuje przekrój sieci, a NIE stopień skompensowania odbioru.
+  Rozdzielamy dwie wielkości:
+    (1) ``cosfi_przekroju`` = |P| / √(P² + Q_przekroju²), gdzie ``Q_przekroju`` to
+        kanoniczny przepływ gałęzi (z ewentualną anomalią shuntu) — wielkość
+        PRZEKROJOWA sieci,
+    (2) ``cosfi_punktu``    = |P| / √(P² + Q_netto²), gdzie
+        ``Q_cap_eff = (Σ znamionowych Mvar baterii w punkcie) · V²`` (model
+        kondensatora z katalogu — dana znamionowa skalowana napięciem, NIE fizyka
+        pola), ``Q_load = Q_przekroju − Q_cap_eff`` (zapotrzebowanie odbioru bez
+        anomalnego wkładu shuntu), ``Q_netto = Q_load − Q_cap_eff`` — wielkość
+        STEROWNIKA doboru. Dodanie kondensatora do odbioru INDUKCYJNEGO obniża
+        ``|Q_netto|`` → ``cosfi_punktu`` ROŚNIE (do ~1 przy pełnej kompensacji),
+        a po przekompensowaniu ``Q_netto<0`` i cosφ spada z drugiej strony.
+  DOBÓR opiera się na (2). (1) pozostaje dostępne z jawną etykietą przekrojową.
 
 Wiązanie katalogowe: kandydaci dobierani są dla NAPIĘCIA ZNAMIONOWEGO szyny punktu
 (rekord katalogu musi mieć ``rated_kv`` zgodne z ``voltage_kv`` szyny) — bateria
@@ -64,6 +84,10 @@ import math
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
+from application.analyses.konwencja_mocy import (
+    moc_kanoniczna_punktu,
+    q_netto_po_kompensacji,
+)
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow, _graph_id_from_ref
 from enm.models import ShuntCapacitor
 from network_model.catalog.mv_shunt_capacitor_catalog import get_all_shunt_capacitor_records
@@ -197,6 +221,52 @@ def _edge_endpoints(snapshot: dict[str, Any]) -> dict[str, tuple[str, str]]:
     return endpoints
 
 
+def _pusty_pomiar() -> dict[str, Any]:
+    """Scenariusz nieoceniony (niezbieżność / punkt poza topologią) — bez zgadywania."""
+    return {
+        "converged": False,
+        "cosfi_przekroju": None,
+        "cosfi_punktu": None,
+        "p_point_mw": None,
+        "q_przekroju_mvar": None,
+        "q_load_mvar": None,
+        "q_cap_eff_mvar": None,
+        "q_netto_punktu_mvar": None,
+        "v_pu": None,
+    }
+
+
+def _cosfi(p_mw: float, q_mvar: float) -> float | None:
+    """Projekcja cosφ = |P| / √(P² + Q²) (wielkość prezentacyjna, bez fizyki)."""
+    apparent = math.hypot(p_mw, q_mvar)
+    return None if apparent == 0.0 else _round6(abs(p_mw) / apparent)
+
+
+def _v_pu_punktu(result_v1: dict[str, Any], point_node: str) -> float | None:
+    """Napięcie [p.u.] w punkcie z ``bus_results`` (``bus_id == _graph_id_from_ref``)."""
+    for bus in result_v1.get("bus_results") or []:
+        if str(bus.get("bus_id")) == point_node:
+            v_pu = bus.get("v_pu")
+            return None if v_pu is None else float(v_pu)
+    return None
+
+
+def _q_kompensacji_znamionowa_mvar(snapshot: dict[str, Any], bus_ref: str) -> float:
+    """Suma ZNAMIONOWYCH mocy biernych baterii kondensatorów (closed) w punkcie [Mvar].
+
+    Dana KATALOGOWA (nameplate) ze snapshotu scenariusza — NIE wielkość liczona
+    fizyką. Skalowana napięciem (``·V²``) w ``_point_cos_phi`` do mocy efektywnej.
+    """
+    total = 0.0
+    for cap in snapshot.get("shunt_capacitors") or []:
+        if str(cap.get("bus_ref") or "") != bus_ref:
+            continue
+        if str(cap.get("status") or "closed") == "open":
+            continue
+        total += float(cap.get("rated_mvar") or 0.0)
+    return total
+
+
 def _point_cos_phi(
     base_run: CanonicalRun,
     *,
@@ -204,17 +274,21 @@ def _point_cos_phi(
     bus_ref: str,
     night: bool,
 ) -> dict[str, Any]:
-    """Uruchom rozpływ scenariusza i zwróć cosφ w punkcie (projekcja P/S).
+    """Uruchom rozpływ scenariusza i zwróć DWA cosφ w punkcie (V12K-027, opcja B).
 
-    P/Q punktu = wypadkowy przepływ gałęzi zasilających węzeł, odczytany na końcu
-    przy punkcie z ``branch_results`` solvera (suma po gałęziach incydentnych; przy
-    jednej gałęzi zasilającej = przepływ tej gałęzi). W przeciwieństwie do
-    ``p_injected`` (stały nastaw PQ), przepływ gałęzi ZALEŻY od dopisanej baterii —
-    to on niesie efekt kompensacji.
+    Przepływ gałęzi incydentnych z punktem odczytany na końcu przy punkcie i
+    przełożony na znak kanoniczny przez adapter ``moc_kanoniczna_punktu``
+    (``Q>0`` indukcyjny pobór, ``Q<0`` pojemnościowy). Z tego wyznaczamy:
 
-    Niezbieżność lub błąd solvera → ``converged=False`` i ``cos_phi=None`` (bez
-    zgadywania). Znak Q raportowany dla czytelności (konwencja: moc wstrzyknięta
-    do gałęzi na końcu przy punkcie).
+    (1) ``cosfi_przekroju`` — cosφ przepływu w przekroju sieciowym (z ``Q_przekroju``,
+        zawiera anomalny wkład dopisanej baterii; opisuje przekrój sieci),
+    (2) ``cosfi_punktu`` — cosφ punktu kompensowanego z ``Q_netto = Q_load − Q_cap_eff``,
+        gdzie ``Q_cap_eff = (Σ znamionowych Mvar baterii w punkcie) · V²`` (model
+        kondensatora z katalogu) i ``Q_load = Q_przekroju − Q_cap_eff`` (odbiór bez
+        anomalnego wkładu shuntu). To (2) jest podstawą doboru.
+
+    Niezbieżność / punkt poza topologią → ``converged=False`` i cosφ=``None`` (bez
+    zgadywania).
     """
     snapshot = _scenario_snapshot(
         base_run.snapshot or {}, record=record, bus_ref=bus_ref, night=night
@@ -223,43 +297,44 @@ def _point_cos_phi(
     try:
         _execute_power_flow(run)
     except Exception:  # noqa: BLE001 — niezbieżność/osobliwość = scenariusz nieoceniony
-        return {"converged": False, "cos_phi": None, "p_point_mw": None, "q_point_mvar": None}
+        return _pusty_pomiar()
 
-    raw_result = run.raw_result or {}
-    result_v1 = raw_result.get("result_v1") or {}
-    converged = bool(result_v1.get("converged", False))
-    if not converged:
-        return {"converged": False, "cos_phi": None, "p_point_mw": None, "q_point_mvar": None}
+    result_v1 = (run.raw_result or {}).get("result_v1") or {}
+    if not bool(result_v1.get("converged", False)):
+        return _pusty_pomiar()
 
     point_node = _graph_id_from_ref(bus_ref)
-    endpoints = _edge_endpoints(snapshot)
-    p_sum = 0.0
-    q_sum = 0.0
-    incident = 0
-    for br in result_v1.get("branch_results") or []:
-        ends = endpoints.get(str(br.get("branch_id")))
-        if ends is None:
-            continue
-        from_node, to_node = ends
-        if to_node == point_node:
-            p_sum += float(br.get("p_to_mw") or 0.0)
-            q_sum += float(br.get("q_to_mvar") or 0.0)
-            incident += 1
-        elif from_node == point_node:
-            p_sum += float(br.get("p_from_mw") or 0.0)
-            q_sum += float(br.get("q_from_mvar") or 0.0)
-            incident += 1
+    kanon = moc_kanoniczna_punktu(
+        branch_results=result_v1.get("branch_results") or [],
+        endpoints=_edge_endpoints(snapshot),
+        point_node=point_node,
+    )
+    if kanon["incydentne"] == 0:
+        return _pusty_pomiar()
 
-    if incident == 0:
-        return {"converged": True, "cos_phi": None, "p_point_mw": None, "q_point_mvar": None}
+    p_point = kanon["p_mw"]
+    q_przekroju = kanon["q_mvar"]  # przepływ gałęzi (kanoniczny) — wielkość przekrojowa (1)
 
-    apparent = math.hypot(p_sum, q_sum)
-    cos_phi = None if apparent == 0.0 else _round6(abs(p_sum) / apparent)
+    # Model kondensatora z katalogu: Q_cap_eff = Σ(rated_mvar) · V² (nameplate·V²,
+    # NIE fizyka pola). V — napięcie punktu zwrócone przez solver dla scenariusza.
+    v_pu = _v_pu_punktu(result_v1, point_node)
+    q_kompensacji = _q_kompensacji_znamionowa_mvar(snapshot, bus_ref)
+    q_cap_eff = q_kompensacji * (v_pu**2) if v_pu is not None else 0.0
+    # Q_load = zapotrzebowanie bierne odbioru (bez anomalnego wkładu shuntu z przepływu).
+    q_load = q_przekroju - q_cap_eff
+    # Q_netto = Q_load − Q_cap_eff (kompensacja pojemnościowa; Q_netto<0 = przekompensowanie).
+    q_netto = q_netto_po_kompensacji(q_load, q_cap_eff)
+
     return {
         "converged": True,
-        "cos_phi": cos_phi,
-        "p_point_mw": _round6(p_sum),
-        "q_point_mvar": _round6(q_sum),
+        "cosfi_przekroju": _cosfi(p_point, q_przekroju),  # (1) przekrój sieci
+        "cosfi_punktu": _cosfi(p_point, q_netto),  # (2) punkt kompensowany — dobór
+        "p_point_mw": _round6(p_point),
+        "q_przekroju_mvar": _round6(q_przekroju),
+        "q_load_mvar": _round6(q_load),
+        "q_cap_eff_mvar": _round6(q_cap_eff),
+        "q_netto_punktu_mvar": _round6(q_netto),
+        "v_pu": _round6(v_pu),
     }
 
 
@@ -281,19 +356,28 @@ def _candidate_verdict(
         if uwzglednij_noc
         else None
     )
-    meets_day = _meets(day["cos_phi"], cos_phi_min)
-    meets_night = True if night is None else _meets(night["cos_phi"], cos_phi_min)
+    # Dobór opiera się na cosφ PUNKTU KOMPENSOWANEGO (wielkość 2), NIE na przekroju.
+    meets_day = _meets(day["cosfi_punktu"], cos_phi_min)
+    meets_night = True if night is None else _meets(night["cosfi_punktu"], cos_phi_min)
     return {
         "catalog_ref": str(record["id"]),
         "name": str(record["name"]),
         "rated_mvar": _round6(record["params"]["rated_mvar"]),
         "rated_kv": _round6(record["params"]["rated_kv"]),
-        "cos_phi_day": day["cos_phi"],
+        # (1) cosφ przepływu w przekroju sieciowym (opisuje przekrój, NIE stopień kompensacji):
+        "cosfi_przekroju_dzien": day["cosfi_przekroju"],
+        "cosfi_przekroju_noc": None if night is None else night["cosfi_przekroju"],
+        # (2) cosφ punktu kompensowanego (Q_netto = Q_load − Q_cap_eff) — podstawa doboru:
+        "cosfi_punktu_dzien": day["cosfi_punktu"],
+        "cosfi_punktu_noc": None if night is None else night["cosfi_punktu"],
         "p_point_day_mw": day["p_point_mw"],
-        "q_point_day_mvar": day["q_point_mvar"],
-        "cos_phi_night": None if night is None else night["cos_phi"],
+        "q_przekroju_dzien_mvar": day["q_przekroju_mvar"],
+        "q_cap_eff_dzien_mvar": day["q_cap_eff_mvar"],
+        "q_netto_punktu_dzien_mvar": day["q_netto_punktu_mvar"],
         "p_point_night_mw": None if night is None else night["p_point_mw"],
-        "q_point_night_mvar": None if night is None else night["q_point_mvar"],
+        "q_przekroju_noc_mvar": None if night is None else night["q_przekroju_mvar"],
+        "q_cap_eff_noc_mvar": None if night is None else night["q_cap_eff_mvar"],
+        "q_netto_punktu_noc_mvar": None if night is None else night["q_netto_punktu_mvar"],
         "spelnia_dzien": meets_day,
         "spelnia_noc": None if night is None else meets_night,
         "spelnia": meets_day and meets_night,
@@ -354,13 +438,18 @@ def build_compensation_sizing_view(
     bus_kv = float(bus.get("voltage_kv") or 0.0)
     records = _sorted_candidates(bus_kv)
 
+    baseline_day = _point_cos_phi(run, record=None, bus_ref=bus_ref, night=False)
+    baseline_night = (
+        _point_cos_phi(run, record=None, bus_ref=bus_ref, night=True) if uwzglednij_noc else None
+    )
+    # Bez baterii (Q_cap_eff=0) cosφ przekroju == cosφ punktu; oba pola wystawiamy jawnie.
     baseline = {
-        "cos_phi_day": _point_cos_phi(run, record=None, bus_ref=bus_ref, night=False)["cos_phi"],
-        "cos_phi_night": (
-            _point_cos_phi(run, record=None, bus_ref=bus_ref, night=True)["cos_phi"]
-            if uwzglednij_noc
-            else None
+        "cosfi_przekroju_dzien": baseline_day["cosfi_przekroju"],
+        "cosfi_przekroju_noc": (
+            None if baseline_night is None else baseline_night["cosfi_przekroju"]
         ),
+        "cosfi_punktu_dzien": baseline_day["cosfi_punktu"],
+        "cosfi_punktu_noc": None if baseline_night is None else baseline_night["cosfi_punktu"],
     }
 
     candidates = [
@@ -381,8 +470,11 @@ def build_compensation_sizing_view(
             "name": selected["name"],
             "rated_mvar": selected["rated_mvar"],
             "rated_kv": selected["rated_kv"],
-            "cos_phi_day": selected["cos_phi_day"],
-            "cos_phi_night": selected["cos_phi_night"],
+            # Dobór to wielkość punktu kompensowanego (2); przekrój (1) dostępny obok.
+            "cosfi_punktu_dzien": selected["cosfi_punktu_dzien"],
+            "cosfi_punktu_noc": selected["cosfi_punktu_noc"],
+            "cosfi_przekroju_dzien": selected["cosfi_przekroju_dzien"],
+            "cosfi_przekroju_noc": selected["cosfi_przekroju_noc"],
         }
         powod = None
     else:
@@ -420,10 +512,20 @@ def build_compensation_sizing_view(
         "whitebox": {
             "pq_source": (
                 "wypadkowy przepływ gałęzi zasilających punkt z branch_results solvera "
-                "(koniec przy punkcie, suma po gałęziach incydentnych); przy jednej gałęzi "
-                "zasilającej = przepływ tej gałęzi"
+                "(koniec przy punkcie, suma po gałęziach incydentnych) przełożony na znak "
+                "kanoniczny przez adapter konwencji (application/analyses/konwencja_mocy.py)"
             ),
-            "cos_phi_projection": "cosφ = |P| / √(P² + Q²) — wielkość prezentacyjna (bez fizyki)",
+            "cosfi_przekroju": (
+                "cosφ przepływu w przekroju sieciowym = |P| / √(P² + Q_przekroju²); "
+                "opisuje przekrój sieci, NIE stopień skompensowania odbioru"
+            ),
+            "cosfi_punktu": (
+                "cosφ punktu kompensowanego = |P| / √(P² + Q_netto²), "
+                "Q_netto = Q_load − Q_cap_eff, Q_cap_eff = Σ(rated_mvar) · V² "
+                "(model kondensatora z katalogu, nie fizyka pola); PODSTAWA DOBORU"
+            ),
+            "konwencja_kanoniczna": "P>0 pobór czynnej, Q>0 pobór indukcyjnej, Q<0 pojemnościowa",
+            "decyzja": "V12K-027 opcja B — PowerFlowResult FROZEN, adapter interpretacyjny",
             "candidate_count": len(candidates),
             "night_scenario": (
                 "moc czynna generatorów = 0 (moc bierna bez zmian)" if uwzglednij_noc else None

@@ -55,9 +55,10 @@ def _compensation_enm(*, load_q_mvar: float, gen_p_mw: float | None) -> EnergyNe
     """Deterministyczny model doboru kompensacji: punkt SN 15 kV zasilany jedną
     linią, z lokalnym warunkiem biernym (``load_q_mvar``) i opcjonalnym źródłem OZE.
 
-    Ujemne ``load_q_mvar`` oznacza lokalną nadwyżkę mocy biernej (punkt
-    wyprzedzający); dopisana bateria z katalogu przesuwa cosφ punktu w rozpływie —
-    kierunek i wartości pochodzą z solvera (test nie liczy fizyki)."""
+    Dodatnie ``load_q_mvar`` = odbiór INDUKCYJNY (typowy przypadek doboru
+    kompensacji): dopisana bateria z katalogu PODNOSI cosφ punktu kompensowanego
+    (``Q_netto = Q_load − Q_cap_eff``, naprawa V12K-027, opcja B). Kierunek i
+    wartości pochodzą z solvera (test nie liczy fizyki)."""
     generators = []
     if gen_p_mw is not None:
         generators.append(
@@ -178,7 +179,7 @@ def _synthetic_run(*, status: str = "FINISHED", analysis_type: str = "PF") -> Ca
 
 
 def test_view_structure() -> None:
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=None))
+    run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=None))
     view = build_compensation_sizing_view(run, bus_ref="bus_pcc", cos_phi_min=0.95)
     assert view["analysis"] == "compensation_sizing"
     assert view["context"]["trace_id"] == str(run.id)
@@ -194,12 +195,21 @@ def test_view_structure() -> None:
     assert view["parameters"]["bus_ref"] == "bus_pcc"
     assert view["parameters"]["bus_voltage_kv"] == 15.0
     cand = view["candidates"][0]
-    assert {"catalog_ref", "name", "rated_mvar", "rated_kv", "cos_phi_day", "spelnia"} <= set(cand)
+    # V12K-027: rozdział dwóch wielkości — cosφ przekroju (1) i cosφ punktu (2).
+    assert {
+        "catalog_ref",
+        "name",
+        "rated_mvar",
+        "rated_kv",
+        "cosfi_przekroju_dzien",
+        "cosfi_punktu_dzien",
+        "spelnia",
+    } <= set(cand)
 
 
 def test_candidates_only_from_catalog_matching_voltage() -> None:
     """Kandydaci WYŁĄCZNIE z katalogu i tylko dla napięcia szyny (15 kV → 3 rekordy)."""
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=None))
+    run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=None))
     view = build_compensation_sizing_view(run, bus_ref="bus_pcc", cos_phi_min=0.95)
     kv = {c["rated_kv"] for c in view["candidates"]}
     assert kv == {15.0}
@@ -211,7 +221,7 @@ def test_candidates_only_from_catalog_matching_voltage() -> None:
 
 
 def test_candidates_sorted_ascending_by_power() -> None:
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=None))
+    run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=None))
     view = build_compensation_sizing_view(run, bus_ref="bus_pcc", cos_phi_min=0.95)
     rated = [c["rated_mvar"] for c in view["candidates"]]
     assert rated == sorted(rated)
@@ -224,14 +234,17 @@ def test_candidates_sorted_ascending_by_power() -> None:
 
 
 def test_dobor_found_first_meeting_candidate() -> None:
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=None))
+    # Naprawa V12K-027: odbiór INDUKCYJNY (q=+1,0) — kompensacja PODNOSI cosφ punktu,
+    # więc dobór działa fizycznie poprawnie (wcześniej fikstura używała punktu
+    # wyprzedzającego q=−2,0 dla obejścia odwróconego kierunku cosφ).
+    run = _run(_compensation_enm(load_q_mvar=1.0, gen_p_mw=None))
     view = build_compensation_sizing_view(run, bus_ref="bus_pcc", cos_phi_min=0.90)
     assert view["dobor"] is not None
     assert view["powod_braku"] is None
-    # Dobór = PIERWSZY kandydat z spelnia=True.
+    # Dobór = PIERWSZY kandydat z spelnia=True (na cosφ PUNKTU kompensowanego).
     first_ok = next(c for c in view["candidates"] if c["spelnia"])
     assert view["dobor"]["catalog_ref"] == first_ok["catalog_ref"]
-    assert view["dobor"]["cos_phi_day"] >= 0.90
+    assert view["dobor"]["cosfi_punktu_dzien"] >= 0.90
     # Kandydaci przed doborem NIE spełniają.
     for cand in view["candidates"]:
         if cand["catalog_ref"] == view["dobor"]["catalog_ref"]:
@@ -240,10 +253,13 @@ def test_dobor_found_first_meeting_candidate() -> None:
 
 
 def test_baseline_cos_phi_present() -> None:
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=None))
+    run = _run(_compensation_enm(load_q_mvar=1.0, gen_p_mw=None))
     view = build_compensation_sizing_view(run, bus_ref="bus_pcc", cos_phi_min=0.95)
-    assert view["baseline"]["cos_phi_day"] is not None
-    assert view["baseline"]["cos_phi_night"] is None  # noc wyłączona domyślnie
+    # V12K-027: rozdział cosφ przekroju (1) i cosφ punktu (2) — oba obecne w baseline.
+    assert view["baseline"]["cosfi_przekroju_dzien"] is not None
+    assert view["baseline"]["cosfi_punktu_dzien"] is not None
+    assert view["baseline"]["cosfi_przekroju_noc"] is None  # noc wyłączona domyślnie
+    assert view["baseline"]["cosfi_punktu_noc"] is None
 
 
 # --------------------------------------------------------------------------
@@ -276,21 +292,25 @@ def test_no_catalog_candidate_for_bus_voltage() -> None:
 
 
 def test_night_scenario_present_in_verdicts() -> None:
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=4.0))
+    run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=4.0))
     view = build_compensation_sizing_view(
         run, bus_ref="bus_pcc", cos_phi_min=0.90, uwzglednij_noc=True
     )
     assert view["parameters"]["uwzglednij_noc"] is True
-    assert view["baseline"]["cos_phi_night"] is not None
+    assert view["baseline"]["cosfi_punktu_noc"] is not None
     for cand in view["candidates"]:
-        assert cand["cos_phi_night"] is not None
+        assert cand["cosfi_punktu_noc"] is not None
+        assert cand["cosfi_przekroju_noc"] is not None
         assert cand["spelnia_noc"] is not None
 
 
 def test_night_scenario_changes_selection() -> None:
     """Noc (P generatorów = 0) obniża cosφ punktu → wymaga większej baterii; dobór
-    z uwzględnieniem nocy jest inny (większy) niż dobór tylko dla dnia."""
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=4.0))
+    z uwzględnieniem nocy jest inny (większy) niż dobór tylko dla dnia.
+
+    Naprawa V12K-027: odbiór INDUKCYJNY (q=+2,0) + generacja OZE; dobór na cosφ
+    PUNKTU kompensowanego (dzień 0,6 Mvar, noc 2,4 Mvar)."""
+    run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=4.0))
     day_only = build_compensation_sizing_view(
         run, bus_ref="bus_pcc", cos_phi_min=0.90, uwzglednij_noc=False
     )
@@ -310,7 +330,7 @@ def test_night_scenario_changes_selection() -> None:
 
 
 def test_night_verdict_requires_both_scenarios() -> None:
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=4.0))
+    run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=4.0))
     view = build_compensation_sizing_view(
         run, bus_ref="bus_pcc", cos_phi_min=0.90, uwzglednij_noc=True
     )
@@ -324,7 +344,7 @@ def test_night_verdict_requires_both_scenarios() -> None:
 
 
 def test_deterministic_two_calls() -> None:
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=4.0))
+    run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=4.0))
     first = build_compensation_sizing_view(
         run, bus_ref="bus_pcc", cos_phi_min=0.92, uwzglednij_noc=True
     )
@@ -335,14 +355,14 @@ def test_deterministic_two_calls() -> None:
 
 
 def test_input_hash_changes_with_cos_phi_min() -> None:
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=None))
+    run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=None))
     a = build_compensation_sizing_view(run, bus_ref="bus_pcc", cos_phi_min=0.90)
     b = build_compensation_sizing_view(run, bus_ref="bus_pcc", cos_phi_min=0.95)
     assert a["input_hash"] != b["input_hash"]
 
 
 def test_input_hash_changes_with_night_flag() -> None:
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=4.0))
+    run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=4.0))
     a = build_compensation_sizing_view(
         run, bus_ref="bus_pcc", cos_phi_min=0.90, uwzglednij_noc=False
     )
@@ -353,7 +373,7 @@ def test_input_hash_changes_with_night_flag() -> None:
 
 
 def test_json_serializable() -> None:
-    run = _run(_compensation_enm(load_q_mvar=-2.0, gen_p_mw=None))
+    run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=None))
     view = build_compensation_sizing_view(run, bus_ref="bus_pcc", cos_phi_min=0.95)
     assert len(json.dumps(view, sort_keys=True)) > 100
 
