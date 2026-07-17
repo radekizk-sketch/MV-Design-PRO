@@ -71,6 +71,9 @@ def balance_to_dict(balance: ReactiveBalance) -> dict[str, Any]:
         "q_absorbed_by_sources_mvar": _opt_float(balance.q_absorbed_by_sources_mvar),
         "q_load_mvar": _opt_float(balance.q_load_mvar),
         "net_source_q_mvar": _opt_float(balance.net_source_q_mvar),
+        "source_q_actuals": [
+            {"ref": c.ref, "q_mvar": float(c.q_mvar)} for c in balance.source_q_actuals
+        ],
         "white_box": [white_box_to_dict(step) for step in balance.white_box],
     }
 

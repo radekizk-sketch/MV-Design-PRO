@@ -41,13 +41,37 @@ def _resolve_converter(catalog_ref: str | None) -> Any | None:
     return get_default_mv_catalog().get_converter_type(str(catalog_ref))
 
 
-def _installed_mva_for_generator(gen: dict[str, Any]) -> float | None:
-    """Moc pozorna znamionowa (S_n) źródła IBG [MVA] z danych modelu.
+def resolve_n_parallel(gen: dict[str, Any]) -> int:
+    """Krotność jednostek równoległych źródła IBG (``n_parallel``).
 
-    Priorytet: ``materialized_params.sn_mva`` (zmaterializowany parametr
-    katalogowy) → ``ConverterType.sn_mva`` (rozwiązany z katalogu). Brak → None.
+    Źródło: ``gen['n_parallel']`` lub ``materialized_params['n_parallel']``
+    (materializacja pola ENM ``GenModel.n_parallel``). Brak/None/≤0 → 1
+    (pojedyncza jednostka — uczciwie, bez fabrykowania krotności).
+    """
+    raw = gen.get("n_parallel")
+    if raw is None:
+        materialized = gen.get("materialized_params") or {}
+        raw = materialized.get("n_parallel")
+    if raw is None:
+        return 1
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return 1
+    return value if value > 0 else 1
+
+
+def _installed_mva_for_generator(gen: dict[str, Any]) -> float | None:
+    """Moc pozorna zainstalowana źródła IBG [MVA] z danych modelu.
+
+    Moc znamionowa pojedynczej jednostki S_n (priorytet:
+    ``materialized_params.sn_mva`` → ``ConverterType.sn_mva`` z katalogu)
+    przemnożona przez krotność jednostek równoległych ``n_parallel``
+    (``resolve_n_parallel``; brak/None → 1): moc zainstalowana = S_n × n_parallel.
+    Brak S_n → None.
     """
     materialized = gen.get("materialized_params") or {}
+    unit_sn: float | None = None
     sn_mva = materialized.get("sn_mva")
     if sn_mva is not None:
         try:
@@ -55,13 +79,16 @@ def _installed_mva_for_generator(gen: dict[str, Any]) -> float | None:
         except (TypeError, ValueError):
             value = 0.0
         if value > 0.0:
-            return value
-    converter = _resolve_converter(gen.get("catalog_ref"))
-    if converter is not None and getattr(converter, "sn_mva", None):
-        value = float(converter.sn_mva)
-        if value > 0.0:
-            return value
-    return None
+            unit_sn = value
+    if unit_sn is None:
+        converter = _resolve_converter(gen.get("catalog_ref"))
+        if converter is not None and getattr(converter, "sn_mva", None):
+            value = float(converter.sn_mva)
+            if value > 0.0:
+                unit_sn = value
+    if unit_sn is None:
+        return None
+    return unit_sn * resolve_n_parallel(gen)
 
 
 def _installed_mva_by_bus(snapshot: dict[str, Any]) -> dict[str, float]:

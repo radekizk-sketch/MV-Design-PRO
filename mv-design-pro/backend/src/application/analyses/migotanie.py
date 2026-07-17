@@ -37,7 +37,7 @@ import hashlib
 import json
 from typing import Any
 
-from application.analyses.grid_strength import IBG_GEN_TYPES
+from application.analyses.grid_strength import IBG_GEN_TYPES, resolve_n_parallel
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 
 # --- Stałe normatywne (KAŻDA ze źródłem powyżej w docstringu modułu) -----------
@@ -88,6 +88,10 @@ def _sn_and_flicker_for_generator(gen: dict[str, Any]) -> tuple[float | None, fl
 
     Priorytet: ``materialized_params`` (zmaterializowany parametr katalogowy) →
     ``ConverterType`` z katalogu. Brak danej → None (jawnie, bez fabrykowania).
+
+    Sn to moc zainstalowana grupy jednostek równoległych: znamionowa moc
+    pojedynczej jednostki przemnożona przez ``n_parallel`` (``resolve_n_parallel``;
+    brak/None → 1), spójnie z ``grid_strength._installed_mva_for_generator``.
     """
     materialized = gen.get("materialized_params") or {}
     converter = _resolve_converter(gen.get("catalog_ref"))
@@ -105,6 +109,8 @@ def _sn_and_flicker_for_generator(gen: dict[str, Any]) -> tuple[float | None, fl
         candidate = float(converter.sn_mva)
         if candidate > 0.0:
             sn_mva = candidate
+    if sn_mva is not None:
+        sn_mva = sn_mva * resolve_n_parallel(gen)
 
     flicker_c: float | None = None
     raw_c = materialized.get("flicker_c")

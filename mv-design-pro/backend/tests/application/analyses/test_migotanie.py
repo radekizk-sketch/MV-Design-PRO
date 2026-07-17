@@ -117,6 +117,25 @@ def test_two_modules_summation_law_m3() -> None:
     assert entry["plt"] == expected
 
 
+def test_n_parallel_doubles_sn_pst_and_rvc() -> None:
+    # n_parallel=2 → Sn modułu = 2.0 × 2 = 4.0. Pst_i = 0.3 · 4 / 100 = 0.012
+    # (podwojenie względem pojedynczej jednostki 0.006); d = 1 · 4 / 100 · 100 = 4.0 %.
+    gen = _ibg("g1", "b1", sn_mva=2.0, flicker_c=0.3)
+    gen["n_parallel"] = 2
+    run = _sc_run(
+        generators=[gen],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    entry = build_migotanie_view(run)["buses"][0]
+    module = entry["modules"][0]
+    assert module["sn_mva"] == 4.0
+    assert module["pst_i"] == 0.012
+    assert entry["pst"] == 0.012
+    assert entry["d_percent"] == 4.0
+
+
 def test_module_without_flicker_coefficient_is_skipped_with_info() -> None:
     run = _sc_run(
         generators=[_ibg("g1", "b1", sn_mva=2.0)],  # brak flicker_c

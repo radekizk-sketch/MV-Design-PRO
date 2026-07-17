@@ -125,6 +125,32 @@ def test_aggregates_multiple_sources_in_same_bus() -> None:
     assert entry["scr"] == 20.0
 
 
+def test_n_parallel_multiplies_installed_power() -> None:
+    # n_parallel=2 → moc zainstalowana = S_n × 2 (2.0 × 2 = 4.0); SCR = 100/4 = 25.
+    gen = _ibg("g1", "b1", sn_mva=2.0)
+    gen["n_parallel"] = 2
+    run = _sc_run(
+        generators=[gen],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    entry = build_grid_strength_view(run)["entries"][0]
+    assert entry["s_installed_mva"] == 4.0
+    assert entry["scr"] == 25.0
+
+
+def test_missing_n_parallel_defaults_to_single_unit() -> None:
+    # Brak n_parallel → krotność 1 (moc zainstalowana = S_n pojedynczej jednostki).
+    run = _sc_run(
+        generators=[_ibg("g1", "b1", sn_mva=2.0)],
+        buses=[_bus("b1")],
+        sc_rows=[{"fault_node_id": "n1", "sk_mva": 100.0}],
+        graph_nodes={"n1": {"element_id": "b1"}},
+    )
+    assert build_grid_strength_view(run)["entries"][0]["s_installed_mva"] == 2.0
+
+
 def test_synchronous_generator_excluded_from_entries() -> None:
     run = _sc_run(
         generators=[_ibg("g_sync", "b1", sn_mva=5.0, gen_type="synchronous")],

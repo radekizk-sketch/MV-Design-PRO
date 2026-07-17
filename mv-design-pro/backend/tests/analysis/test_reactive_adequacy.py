@@ -221,6 +221,28 @@ class TestReactiveBalance:
         assert b.net_source_q_mvar == 1.0  # 1.5 + (−0.5)
         assert b.q_load_mvar == 1.0  # 0.8 + 0.2
 
+    def test_balance_source_q_actuals_sum_to_net(self) -> None:
+        buses = [BusVoltageInput("B", 1.0, 0.95, 1.05)]
+        sources = [
+            SourceReactiveInput("GEN", "B", q_actual_mvar=1.5, q_min_mvar=-2.0, q_max_mvar=2.0),
+            SourceReactiveInput("ABS", "B", q_actual_mvar=-0.5, q_min_mvar=-1.0, q_max_mvar=1.0),
+            # Zrodlo bez Q_actual nie wnosi wpisu do rozbicia.
+            SourceReactiveInput("NA", "B", q_actual_mvar=None, q_min_mvar=-1.0, q_max_mvar=1.0),
+        ]
+        b = ReactiveAdequacyBuilder().build(buses, sources).balance
+        # Kolejnosc jak posortowane zrodla (po ref); zrodlo bez Q_actual pominiete.
+        assert [c.ref for c in b.source_q_actuals] == ["ABS", "GEN"]
+        assert sum(c.q_mvar for c in b.source_q_actuals) == pytest.approx(b.net_source_q_mvar)
+        # Serializacja: pole obecne i spojne z suma netto.
+        d = ReactiveAdequacyBuilder().build(buses, sources).to_dict()["balance"]
+        assert d["source_q_actuals"] == [
+            {"ref": "ABS", "q_mvar": -0.5},
+            {"ref": "GEN", "q_mvar": 1.5},
+        ]
+        assert sum(c["q_mvar"] for c in d["source_q_actuals"]) == pytest.approx(
+            d["net_source_q_mvar"]
+        )
+
     def test_balance_none_when_no_q_data(self) -> None:
         buses = [BusVoltageInput("B", 1.0, 0.95, 1.05)]
         # Zrodlo bez Q_actual -> brak danych do bilansu i tak.

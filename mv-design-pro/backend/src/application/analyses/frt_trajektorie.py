@@ -26,7 +26,7 @@ from application.ncrfg_compliance.frt_input import build_frt_hvrt_input
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from network_model.catalog.types import ConverterType
 from network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
-from network_model.solvers.frt_hvrt.contracts import FrtScenarioResult
+from network_model.solvers.frt_hvrt.contracts import FrtScenario, FrtScenarioResult
 
 # Zaokrąglenie wartości wyjściowych — determinizm i czytelność.
 _ROUND = 6
@@ -56,6 +56,23 @@ def _verdict_pl(scenario_result: FrtScenarioResult) -> str:
     if margin is not None and margin < 0:
         return _WERDYKT_POZA_OBWIEDNIA
     return _WERDYKT_W_OBWIEDNI
+
+
+def _wejscie_solvera_echo(scenario: FrtScenario | None) -> dict[str, Any] | None:
+    """Echo parametrów wejścia solvera dla scenariusza (ślad WHITE BOX).
+
+    Wzorzec ``wejscie_solvera`` z ``frt_sekwencja`` — zapad/wzrost napięcia i czas
+    trwania zakłócenia (stałe testbenchu NC RfG z ``frt_input``). ``None`` gdy brak
+    dopasowania scenariusza wejścia po ``scenario_id`` (nie powinno wystąpić).
+    """
+    if scenario is None:
+        return None
+    return {
+        "test_kind": scenario.test_kind,
+        "voltage_dip_depth_pu": _round(scenario.voltage_dip_depth_pu),
+        "fault_duration_s": _round(scenario.fault_duration_s),
+        "target_der_ref": scenario.target_der_ref,
+    }
 
 
 def build_frt_trajectories_view(
@@ -90,6 +107,10 @@ def build_frt_trajectories_view(
     )
     result = FrtHvrtSolverAdapter().run(solver_input)
 
+    # Echo parametrow wejscia solvera per scenariusz — dopasowanie po scenario_id
+    # (wzorzec ``wejscie_solvera`` z ``frt_sekwencja``).
+    scenarios_by_id = {sc.scenario_id: sc for sc in solver_input.scenarios}
+
     scenariusze: list[dict[str, Any]] = []
     for sc in result.scenario_results:
         trajektoria = [
@@ -117,6 +138,8 @@ def build_frt_trajectories_view(
                 ),
                 "werdykt_pl": _verdict_pl(sc),
                 "liczba_punktow_trajektorii": len(trajektoria),
+                # Ślad WHITE BOX — parametry wejścia solvera dla tego scenariusza.
+                "wejscie_solvera": _wejscie_solvera_echo(scenarios_by_id.get(sc.scenario_id)),
                 "trajektoria": trajektoria,
             }
         )

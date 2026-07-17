@@ -70,6 +70,33 @@ def test_envelope_matches_operator_profile_hvrt() -> None:
     assert obwiednia == expected
 
 
+def test_lvrt_echoes_solver_input_params() -> None:
+    from application.ncrfg_compliance.frt_input import (
+        FRT_FAULT_DURATION_S,
+        LVRT_VOLTAGE_DIP_PU,
+    )
+
+    view = build_frt_trajectories_view(_converter(), _PROFILE, "lvrt")
+    echo = view["scenariusze"][0]["wejscie_solvera"]
+    assert echo["test_kind"] == "lvrt"
+    assert echo["voltage_dip_depth_pu"] == LVRT_VOLTAGE_DIP_PU
+    assert echo["fault_duration_s"] == FRT_FAULT_DURATION_S
+    assert echo["target_der_ref"] == "conv-test-der"
+
+
+def test_hvrt_echoes_solver_input_params() -> None:
+    from application.ncrfg_compliance.frt_input import (
+        FRT_FAULT_DURATION_S,
+        HVRT_VOLTAGE_SWELL_PU,
+    )
+
+    view = build_frt_trajectories_view(_converter(), _PROFILE, "hvrt")
+    echo = view["scenariusze"][0]["wejscie_solvera"]
+    assert echo["test_kind"] == "hvrt"
+    assert echo["voltage_dip_depth_pu"] == HVRT_VOLTAGE_SWELL_PU
+    assert echo["fault_duration_s"] == FRT_FAULT_DURATION_S
+
+
 def test_verdict_pl_is_from_solver_fields() -> None:
     view = build_frt_trajectories_view(_converter(), _PROFILE, "lvrt")
     werdykt = view["scenariusze"][0]["werdykt_pl"]

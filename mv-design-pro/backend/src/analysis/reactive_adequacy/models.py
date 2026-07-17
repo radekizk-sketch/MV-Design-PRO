@@ -193,12 +193,26 @@ class VoltageViolationEntry:
 
 
 @dataclass(frozen=True)
+class SourceQContribution:
+    """Wkład pojedynczego zrodla do sumy netto Q (rozbicie ``net_source_q_mvar``).
+
+    ``q_mvar`` to ``Q_actual`` zrodla z wyniku power-flow (znak: >0 generacja,
+    <0 absorpcja). Suma ``q_mvar`` po liscie = ``net_source_q_mvar``.
+    """
+
+    ref: str
+    q_mvar: float
+
+
+@dataclass(frozen=True)
 class ReactiveBalance:
     q_generated_mvar: float | None  # suma Q wstrzykiwanej przez zrodla (>0)
     q_absorbed_by_sources_mvar: float | None  # suma |Q| absorbowanej przez zrodla
     q_load_mvar: float | None  # suma Q pobranej przez odbiory
     net_source_q_mvar: float | None  # suma Q_actual wszystkich zrodel (netto)
     white_box: tuple[WhiteBoxStep, ...]
+    # ADDYTYWNIE: rozbicie sumy netto na wklady per zrodlo (ref, Q_actual).
+    source_q_actuals: tuple[SourceQContribution, ...] = ()
 
 
 @dataclass(frozen=True)
