@@ -471,6 +471,18 @@ Progress:
         (649 plików) — nowa baza frontendu 8553. BAZY: backend 6027,
         frontend 8553. Karta D14 (certyfikat zgodności NC RfG, E13)
         delegowana.
+        SCALENIE #24 (2026-07-17): D14 certyfikat zgodności projektu NC RfG
+        (1a769f8 → cherry-pick) — POST /api/oze-analysis/
+        compliance-certificate (JSON) i .docx (deterministyczny bajtowo,
+        make_docx_bytes_deterministic); USTALONE: źródłem werdyktów jest
+        NcRfgPtpireeSolver (ta sama ścieżka co macierz, engine.py:208) —
+        ncrfg_compliance.checker to starszy silnik statyczny, nieużyty;
+        braki (no_data) blokują generację z listą PL, werdykt negatywny
+        nie blokuje. PDF = świadome TODO (determinizm bajtowy reportlab
+        wymaga osobnej normalizacji metadanych). Wykonawca: pełny pytest
+        6043 pass, 0 failed. Zarządca: 16 celowanych + 5 guardów OK, push.
+        Konfirmacja w tle. TODO-KARTA: przycisk certyfikatu w macierzy
+        NC RfG (frontend) + PDF certyfikatu.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
