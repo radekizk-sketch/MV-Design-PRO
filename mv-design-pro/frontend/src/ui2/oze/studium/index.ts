@@ -40,4 +40,4 @@ export type {
   WynikWariantuStudium,
   ZdarzenieStudium,
 } from './studiumModel';
-export { STUDIUM_STRINGS } from './strings';
+export { STUDIUM_STRINGS, nazwaPlikuDokumentuStudium } from './strings';

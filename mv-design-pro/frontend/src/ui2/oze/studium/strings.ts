@@ -134,6 +134,41 @@ export const STUDIUM_STRINGS = {
   // Tryb ekspercki
   ekspIdentyfikatorWezla: 'Identyfikator węzła',
 
+  // Dokument studium (akcja po zakończonym biegu — podgląd + eksport DOCX/PDF)
+  dokPrzycisk: 'Dokument studium',
+  dokTytulAktywny:
+    'Zestaw gotowe wyniki zakończonego biegu w dokument studium przyłączeniowego '
+    + '(podgląd oraz eksport DOCX/PDF).',
+  dokTytulNieaktywny:
+    'Najpierw przeprowadź analizy studium — dokument zestawia wyniki zakończonego biegu.',
+  dokNaglowek: 'Dokument studium przyłączeniowego',
+  dokZamknij: 'Zamknij',
+  dokLadowanie: 'Generowanie podglądu dokumentu…',
+  dokBlad: 'Błąd generowania dokumentu',
+  dokBrakiTytul: 'Dokument nie może powstać',
+  dokPobierzDocx: 'Pobierz DOCX',
+  dokPobierzPdf: 'Pobierz PDF',
+  dokIdentyfikacjaTytul: 'Identyfikacja',
+  dokProjekt: 'Projekt',
+  dokPrzypadek: 'Przypadek',
+  dokTypKatalogowy: 'Typ katalogowy',
+  dokOperator: 'Operator',
+  dokPrzebieg: 'Przebieg bazowy',
+  dokLiczbaWariantow: 'Liczba wariantów',
+  dokZalozeniaTytul: 'Założenia i źródła',
+  dokPodsumowanieTytul: 'Podsumowanie porównawcze wariantów',
+  dokKolWezel: 'Węzeł',
+  dokKolMoc: 'Moc przyłączalna',
+  dokKolKlasa: 'Klasa NC RfG',
+  dokKolPokrycie: 'Pokrycie P–Q',
+  dokKolPasmoQ: 'Pasmo Q',
+  dokSekcjeBledowTytul: 'Błędy wariantów',
+  dokBladZdolnosc: 'Zdolność przyłączeniowa',
+  dokBladObszar: 'Obszar pracy P–Q',
+  dokBladPokrycie: 'Pokrycie wymagań P–Q',
+  dokBezBledow: 'Wszystkie warianty policzone bez błędów.',
+  dokProjektBezNazwy: 'Projekt bez nazwy',
+
   // Jednostki i wartości puste
   jednMW: 'MW',
   jednMvar: 'Mvar',
@@ -143,3 +178,14 @@ export const STUDIUM_STRINGS = {
   kreska: '—',
   bladNieznany: 'Nieznany błąd pobierania',
 } as const;
+
+/**
+ * Nazwa pliku dokumentu studium: `studium-RRRR-MM-DD.docx`/`.pdf`. Czysta (data
+ * przekazywana jako argument — bez `Date.now`).
+ */
+export function nazwaPlikuDokumentuStudium(data: Date, rozszerzenie: 'docx' | 'pdf'): string {
+  const rrrr = data.getFullYear().toString().padStart(4, '0');
+  const mm = (data.getMonth() + 1).toString().padStart(2, '0');
+  const dd = data.getDate().toString().padStart(2, '0');
+  return `studium-${rrrr}-${mm}-${dd}.${rozszerzenie}`;
+}

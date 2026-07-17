@@ -14,10 +14,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import './studium.css';
 import type { AdvancementMode } from '../../shell/modeModel';
+import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import { TabelaWynikow } from '../../wyniki/wzorzec';
 import {
+  DokumentStudiumBrakiError,
+  pobierzDokumentStudium,
+  pobierzDokumentStudiumDocx,
+  pobierzDokumentStudiumPdf,
   pobierzKatalogKlasNcRfg,
   pobierzKonwertery,
   pobierzObszarPQ,
@@ -25,6 +30,8 @@ import {
   pobierzZdolnoscPrzylaczeniowa,
   type OdpowiedzKatalogNcRfg,
   type RekordKonwertera,
+  type WidokDokumentuStudium,
+  type ZadanieDokumentuStudium,
 } from '../api';
 import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
 import { klasyOperatora } from '../ranking/rankingModel';
@@ -53,9 +60,35 @@ import {
   type StatusFazyStudium,
   type WynikWariantuStudium,
 } from './studiumModel';
-import { STUDIUM_STRINGS } from './strings';
+import { STUDIUM_STRINGS, nazwaPlikuDokumentuStudium } from './strings';
 
 const LICZBA_KROKOW = 4;
+
+/** Braki twarde dokumentu studium (bramka 422 — uczciwa lista po polsku). */
+interface BrakiDokumentu {
+  readonly komunikat: string;
+  readonly braki: readonly string[];
+}
+
+/** Parametry zakończonego biegu — źródło żądania dokumentu 1:1 (nie stan formularza). */
+interface ParametryZakonczonegoBiegu {
+  readonly runId: string;
+  readonly catalogItemId: string;
+  readonly operatorId: string;
+  readonly warianty: readonly string[];
+}
+
+/** Zapisz blob jako plik do pobrania (mechanika przeglądarkowa, wzorzec P39c). */
+function zapiszBlob(blob: Blob, nazwa: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nazwa;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // ---------------------------------------------------------------------------
 // Pasek kroków (roving tabindex — jeden aktywny przycisk w Tab)
@@ -296,6 +329,22 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
   const [trwaBieg, setTrwaBieg] = useState(false);
   const [wybranyWariant, setWybranyWariant] = useState<string | null>(null);
 
+  // Identyfikacja domyślna z aktywnego projektu/przypadku (read-only, do dokumentu).
+  const nazwaProjektuBazowa = useAppStateStore((s) => s.activeProjectName);
+  const nazwaPrzypadkuBazowa = useAppStateStore((s) => s.activeCaseName);
+
+  // Parametry zakończonego biegu — źródło żądania dokumentu 1:1 (nie stan formularza,
+  // który użytkownik może zmienić po biegu). Ustawiane wyłącznie po zakończonym biegu.
+  const [zakonczonyBieg, setZakonczonyBieg] = useState<ParametryZakonczonegoBiegu | null>(null);
+
+  // Stan podglądu dokumentu studium (widok, braki 422 lub błąd — rozłącznie).
+  const [dokument, setDokument] = useState<WidokDokumentuStudium | null>(null);
+  const [dokBraki, setDokBraki] = useState<BrakiDokumentu | null>(null);
+  const [dokBlad, setDokBlad] = useState<string | null>(null);
+  const [dokLadowanie, setDokLadowanie] = useState(false);
+  const [docxLadowanie, setDocxLadowanie] = useState(false);
+  const [pdfLadowanie, setPdfLadowanie] = useState(false);
+
   // Wczytanie katalogu konwerterów i katalogu NC RfG (raz, przy montażu).
   useEffect(() => {
     let anulowane = false;
@@ -351,11 +400,20 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
     if (runId === null || wybraneWezly.length === 0 || wybranyTyp === '' || operatorId === '') {
       return;
     }
+    // Snapshot parametrów biegu — dokument buduje żądanie 1:1 z nich, nie z formularza.
+    const parametry: ParametryZakonczonegoBiegu = {
+      runId,
+      catalogItemId: wybranyTyp,
+      operatorId,
+      warianty: [...wybraneWezly],
+    };
     setWybranyWariant(null);
+    setZakonczonyBieg(null);
+    zamknijDokument();
     setStan(stanPoczatkowyStudium(wybraneWezly));
     setTrwaBieg(true);
     await przeprowadzStudium(
-      { runId, warianty: wybraneWezly, catalogItemId: wybranyTyp, operatorId },
+      { runId: parametry.runId, warianty: parametry.warianty, catalogItemId: parametry.catalogItemId, operatorId: parametry.operatorId },
       {
         zdolnosc: pobierzZdolnoscPrzylaczeniowa,
         obszar: pobierzObszarPQ,
@@ -364,6 +422,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
       (zdarzenie) => setStan((biezacy) => (biezacy ? zastosujZdarzenieStudium(biezacy, zdarzenie) : biezacy)),
     );
     setTrwaBieg(false);
+    setZakonczonyBieg(parametry);
     setKrok(4);
   };
 
@@ -376,6 +435,96 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
     }),
     [nazwaWezla, napiecieWezla, klasy, rekordTypu],
   );
+
+  // Dokument dostępny wyłącznie z zakończonego biegu z co najmniej jednym wariantem
+  // policzonym (dowolna faza „gotowe") — zero martwych klików.
+  const dokumentDostepny =
+    zakonczonyBieg !== null
+    && !trwaBieg
+    && stan !== null
+    && [...stan.values()].some(
+      (w) =>
+        w.zdolnosc.status === 'gotowe'
+        || w.obszar.status === 'gotowe'
+        || w.pokrycie.status === 'gotowe',
+    );
+
+  // Żądanie 1:1 z parametrów zakończonego biegu + identyfikacja z aktywnego projektu.
+  const zbudujZadanieDokumentu = (): ZadanieDokumentuStudium | null => {
+    if (zakonczonyBieg === null) return null;
+    return {
+      nazwa_projektu: nazwaProjektuBazowa?.trim()
+        ? nazwaProjektuBazowa
+        : STUDIUM_STRINGS.dokProjektBezNazwy,
+      nazwa_przypadku: nazwaPrzypadkuBazowa ?? null,
+      run_id: zakonczonyBieg.runId,
+      catalog_item_id: zakonczonyBieg.catalogItemId,
+      operator_id: zakonczonyBieg.operatorId,
+      warianty: zakonczonyBieg.warianty,
+    };
+  };
+
+  const obsluzBladDokumentu = (err: unknown): void => {
+    if (err instanceof DokumentStudiumBrakiError) {
+      setDokument(null);
+      setDokBlad(null);
+      setDokBraki({ komunikat: err.message, braki: err.braki });
+    } else {
+      setDokBraki(null);
+      setDokBlad(err instanceof Error ? err.message : STUDIUM_STRINGS.dokBlad);
+    }
+  };
+
+  const generujDokument = async (): Promise<void> => {
+    const zadanie = zbudujZadanieDokumentu();
+    if (zadanie === null) return;
+    setDokLadowanie(true);
+    setDokBlad(null);
+    setDokBraki(null);
+    try {
+      setDokument(await pobierzDokumentStudium(zadanie));
+    } catch (err) {
+      obsluzBladDokumentu(err);
+    } finally {
+      setDokLadowanie(false);
+    }
+  };
+
+  const pobierzDocx = async (): Promise<void> => {
+    const zadanie = zbudujZadanieDokumentu();
+    if (zadanie === null) return;
+    setDocxLadowanie(true);
+    setDokBlad(null);
+    try {
+      const blob = await pobierzDokumentStudiumDocx(zadanie);
+      zapiszBlob(blob, nazwaPlikuDokumentuStudium(new Date(), 'docx'));
+    } catch (err) {
+      obsluzBladDokumentu(err);
+    } finally {
+      setDocxLadowanie(false);
+    }
+  };
+
+  const pobierzPdf = async (): Promise<void> => {
+    const zadanie = zbudujZadanieDokumentu();
+    if (zadanie === null) return;
+    setPdfLadowanie(true);
+    setDokBlad(null);
+    try {
+      const blob = await pobierzDokumentStudiumPdf(zadanie);
+      zapiszBlob(blob, nazwaPlikuDokumentuStudium(new Date(), 'pdf'));
+    } catch (err) {
+      obsluzBladDokumentu(err);
+    } finally {
+      setPdfLadowanie(false);
+    }
+  };
+
+  function zamknijDokument(): void {
+    setDokument(null);
+    setDokBraki(null);
+    setDokBlad(null);
+  }
 
   return (
     <div className="mvd-studium" data-testid="mvd-studium-ekran">
@@ -576,6 +725,75 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
               ustawWariant={setWybranyWariant}
             />
           )}
+
+          <div className="mvd-studium-dok-akcja">
+            <button
+              type="button"
+              className="mvd-studium-uruchom"
+              onClick={() => void generujDokument()}
+              disabled={!dokumentDostepny || dokLadowanie}
+              title={
+                dokumentDostepny
+                  ? STUDIUM_STRINGS.dokTytulAktywny
+                  : STUDIUM_STRINGS.dokTytulNieaktywny
+              }
+              data-testid="mvd-studium-dok-przycisk"
+            >
+              {STUDIUM_STRINGS.dokPrzycisk}
+            </button>
+          </div>
+
+          {dokument || dokBraki || dokBlad || dokLadowanie ? (
+            <section className="mvd-studium-dok" data-testid="mvd-studium-dokument">
+              <div className="mvd-studium-dok-head">
+                <h4 className="mvd-studium-dok-tytul">{STUDIUM_STRINGS.dokNaglowek}</h4>
+                <button
+                  type="button"
+                  className="mvd-studium-naw"
+                  onClick={zamknijDokument}
+                  data-testid="mvd-studium-dok-zamknij"
+                >
+                  {STUDIUM_STRINGS.dokZamknij}
+                </button>
+              </div>
+
+              {dokLadowanie ? (
+                <p className="mvd-studium-biegnie" data-testid="mvd-studium-dok-ladowanie">
+                  {STUDIUM_STRINGS.dokLadowanie}
+                </p>
+              ) : null}
+
+              {dokBlad ? (
+                <div className="mvd-studium-stan mvd-studium-stan--blad" data-testid="mvd-studium-dok-blad">
+                  <p className="mvd-studium-stan-title">
+                    {STUDIUM_STRINGS.dokBlad}: {dokBlad}
+                  </p>
+                </div>
+              ) : null}
+
+              {dokBraki ? (
+                <div className="mvd-studium-stan mvd-studium-stan--blad" data-testid="mvd-studium-dok-braki">
+                  <p className="mvd-studium-stan-title">{STUDIUM_STRINGS.dokBrakiTytul}</p>
+                  <p className="mvd-studium-stan-desc">{dokBraki.komunikat}</p>
+                  <ul className="mvd-studium-dok-braki-lista">
+                    {dokBraki.braki.map((brak, indeks) => (
+                      <li key={indeks}>{brak}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {dokument ? (
+                <SekcjaPodgladuDokumentu
+                  dokument={dokument}
+                  docxLadowanie={docxLadowanie}
+                  pdfLadowanie={pdfLadowanie}
+                  onPobierzDocx={() => void pobierzDocx()}
+                  onPobierzPdf={() => void pobierzPdf()}
+                />
+              ) : null}
+            </section>
+          ) : null}
         </section>
       )}
 
@@ -654,6 +872,154 @@ function PrzegladStudium({
           testid="mvd-studium-szczegol-brak"
         />
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Podgląd dokumentu studium — identyfikacja, założenia, tabela wariantów,
+// sekcje błędów (uczciwie) i pobrania DOCX/PDF. Zero fizyki, zero ocen lokalnych.
+// ---------------------------------------------------------------------------
+
+function fmtMocDok(moc: number | null): string {
+  return moc === null ? STUDIUM_STRINGS.kreska : `${fmtMocMW(moc)} ${STUDIUM_STRINGS.jednMW}`;
+}
+
+function SekcjaPodgladuDokumentu({
+  dokument,
+  docxLadowanie,
+  pdfLadowanie,
+  onPobierzDocx,
+  onPobierzPdf,
+}: {
+  dokument: WidokDokumentuStudium;
+  docxLadowanie: boolean;
+  pdfLadowanie: boolean;
+  onPobierzDocx: () => void;
+  onPobierzPdf: () => void;
+}) {
+  const bledyWariantow = dokument.warianty
+    .map((wariant) => {
+      const pozycje: { faza: string; komunikat: string }[] = [];
+      if (wariant.zdolnosc.status === 'blad' && wariant.zdolnosc.komunikat_bledu) {
+        pozycje.push({ faza: STUDIUM_STRINGS.dokBladZdolnosc, komunikat: wariant.zdolnosc.komunikat_bledu });
+      }
+      if (wariant.obszar_pq.status === 'blad' && wariant.obszar_pq.komunikat_bledu) {
+        pozycje.push({ faza: STUDIUM_STRINGS.dokBladObszar, komunikat: wariant.obszar_pq.komunikat_bledu });
+      }
+      if (wariant.pokrycie_pq.status === 'blad' && wariant.pokrycie_pq.komunikat_bledu) {
+        pozycje.push({ faza: STUDIUM_STRINGS.dokBladPokrycie, komunikat: wariant.pokrycie_pq.komunikat_bledu });
+      }
+      return { busRef: wariant.bus_ref, nazwa: wariant.nazwa_wezla, pozycje };
+    })
+    .filter((w) => w.pozycje.length > 0);
+
+  return (
+    <div className="mvd-studium-dok-widok" data-testid="mvd-studium-dok-widok">
+      <dl className="mvd-studium-dok-meta" data-testid="mvd-studium-dok-identyfikacja">
+        <div>
+          <dt>{STUDIUM_STRINGS.dokProjekt}</dt>
+          <dd>{dokument.identyfikacja.projekt}</dd>
+        </div>
+        {dokument.identyfikacja.przypadek ? (
+          <div>
+            <dt>{STUDIUM_STRINGS.dokPrzypadek}</dt>
+            <dd>{dokument.identyfikacja.przypadek}</dd>
+          </div>
+        ) : null}
+        <div>
+          <dt>{STUDIUM_STRINGS.dokTypKatalogowy}</dt>
+          <dd>{dokument.zalozenia.typ_katalogowy.nazwa}</dd>
+        </div>
+        <div>
+          <dt>{STUDIUM_STRINGS.dokOperator}</dt>
+          <dd>{dokument.zalozenia.operator.nazwa}</dd>
+        </div>
+        <div>
+          <dt>{STUDIUM_STRINGS.dokPrzebieg}</dt>
+          <dd className="mvd-num">{dokument.zalozenia.przebieg_bazowy.run_id}</dd>
+        </div>
+        <div>
+          <dt>{STUDIUM_STRINGS.dokLiczbaWariantow}</dt>
+          <dd className="mvd-num">{dokument.zalozenia.liczba_wariantow}</dd>
+        </div>
+      </dl>
+
+      <h5 className="mvd-studium-dok-podtytul">{STUDIUM_STRINGS.dokPodsumowanieTytul}</h5>
+      <div className="mvd-studium-dok-tabela-wrap">
+        <table className="mvd-studium-dok-tabela" data-testid="mvd-studium-dok-podsumowanie">
+          <thead>
+            <tr>
+              <th>{STUDIUM_STRINGS.dokKolWezel}</th>
+              <th>{STUDIUM_STRINGS.dokKolMoc}</th>
+              <th>{STUDIUM_STRINGS.dokKolKlasa}</th>
+              <th>{STUDIUM_STRINGS.dokKolPokrycie}</th>
+              <th>{STUDIUM_STRINGS.dokKolPasmoQ}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {dokument.podsumowanie.map((wiersz) => (
+              <tr key={wiersz.bus_ref} data-testid={`mvd-studium-dok-wiersz-${wiersz.bus_ref}`}>
+                <td>{wiersz.nazwa_wezla}</td>
+                <td className="mvd-num">{fmtMocDok(wiersz.max_moc_mw)}</td>
+                <td>{wiersz.klasa ?? STUDIUM_STRINGS.kreska}</td>
+                <td>{wiersz.pokrycie_pl ?? STUDIUM_STRINGS.kreska}</td>
+                <td className="mvd-num">{wiersz.pasmo_q_pl ?? STUDIUM_STRINGS.kreska}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h5 className="mvd-studium-dok-podtytul">{STUDIUM_STRINGS.dokSekcjeBledowTytul}</h5>
+      {bledyWariantow.length === 0 ? (
+        <p className="mvd-studium-hint" data-testid="mvd-studium-dok-bez-bledow">
+          {STUDIUM_STRINGS.dokBezBledow}
+        </p>
+      ) : (
+        <ul className="mvd-studium-dok-bledy" data-testid="mvd-studium-dok-bledy">
+          {bledyWariantow.map((w) => (
+            <li key={w.busRef} data-testid={`mvd-studium-dok-blad-${w.busRef}`}>
+              <span className="mvd-studium-dok-blad-wezel">{w.nazwa}</span>
+              <ul>
+                {w.pozycje.map((p, i) => (
+                  <li key={i}>
+                    {p.faza}: {p.komunikat}
+                  </li>
+                ))}
+              </ul>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <h5 className="mvd-studium-dok-podtytul">{STUDIUM_STRINGS.dokZalozeniaTytul}</h5>
+      <ul className="mvd-studium-dok-zalozenia">
+        {dokument.zalozenia_pl.map((pozycja, i) => (
+          <li key={i}>{pozycja}</li>
+        ))}
+      </ul>
+
+      <div className="mvd-studium-dok-pobrania">
+        <button
+          type="button"
+          className="mvd-studium-uruchom"
+          onClick={onPobierzDocx}
+          disabled={docxLadowanie}
+          data-testid="mvd-studium-dok-pobierz-docx"
+        >
+          {STUDIUM_STRINGS.dokPobierzDocx}
+        </button>
+        <button
+          type="button"
+          className="mvd-studium-uruchom"
+          onClick={onPobierzPdf}
+          disabled={pdfLadowanie}
+          data-testid="mvd-studium-dok-pobierz-pdf"
+        >
+          {STUDIUM_STRINGS.dokPobierzPdf}
+        </button>
+      </div>
     </div>
   );
 }

@@ -1354,3 +1354,226 @@ export async function pobierzWniosekDocx(zadanie: ZadanieWniosku): Promise<Blob>
   if (!response.ok) throw await bladWniosku(response);
   return response.blob();
 }
+
+// =============================================================================
+// Dokument studium przyłączeniowego OZE — application/analyses/dokument_studium.py
+// (E13, D17); końcówki POST /api/oze-analysis/connection-study(.docx/.pdf)
+// (api/oze_analysis_runs.py). Serwerowa KOMPOZYCJA sekwencji kreatora studium
+// (zdolność → obszar P–Q → pokrycie) — ZERO nowej fizyki, dokument tylko zestawia.
+// =============================================================================
+
+/**
+ * Wejście generatora dokumentu studium (1:1 z `DokumentStudiumRequest`).
+ * Identyfikacja + parametry zakończonego biegu kreatora: przebieg bazowy rozpływu
+ * (`run_id`), typ katalogowy przekształtnika, operator OSD i warianty (węzły
+ * przyłączenia) w kolejności wyboru.
+ */
+export interface ZadanieDokumentuStudium {
+  readonly nazwa_projektu: string;
+  readonly nazwa_przypadku?: string | null;
+  readonly wnioskodawca?: string | null;
+  readonly adres_przylaczenia?: string | null;
+  readonly run_id: string;
+  readonly catalog_item_id: string;
+  readonly operator_id: string;
+  readonly warianty: readonly string[];
+}
+
+/** Status fazy wariantu w dokumencie: `ok` (policzona) lub `blad` (opis PL). */
+export type StatusFazyDokumentu = 'ok' | 'blad';
+
+/** Identyfikacja w dokumencie (blok `identyfikacja`, 1:1 z widokiem backendu). */
+export interface IdentyfikacjaDokumentu {
+  readonly projekt: string;
+  readonly przypadek: string | null;
+  readonly wnioskodawca: string | null;
+  readonly adres_przylaczenia: string | null;
+}
+
+/** Typ katalogowy przekształtnika w założeniach (podzbiór `converter.to_dict`). */
+export interface ZalozeniaTypKatalogowyDokumentu {
+  readonly id: string;
+  readonly nazwa: string;
+  readonly kind: string;
+  readonly pmax_mw: number;
+  readonly sn_mva: number;
+}
+
+/** Operator OSD w założeniach dokumentu. */
+export interface ZalozeniaOperatorDokumentu {
+  readonly id: string;
+  readonly nazwa: string;
+}
+
+/** Przebieg bazowy rozpływu w założeniach (identyfikator + odcisk snapshotu). */
+export interface ZalozeniaPrzebieguDokumentu {
+  readonly run_id: string;
+  readonly snapshot_hash: string | null;
+}
+
+/** Blok założeń dokumentu (1:1 z `zalozenia` w `build_dokument_studium_view`). */
+export interface ZalozeniaDokumentu {
+  readonly typ_katalogowy: ZalozeniaTypKatalogowyDokumentu;
+  readonly operator: ZalozeniaOperatorDokumentu;
+  readonly przebieg_bazowy: ZalozeniaPrzebieguDokumentu;
+  readonly liczba_wariantow: number;
+}
+
+/** Sekcja zdolności przyłączeniowej wariantu (`ok` → moc + kryterium; `blad` → opis). */
+export interface ZdolnoscWariantuDokumentu {
+  readonly status: StatusFazyDokumentu;
+  readonly max_moc_mw: number | null;
+  readonly ograniczenie_pl: string | null;
+  readonly komunikat_bledu: string | null;
+}
+
+/** Sekcja obszaru pracy P–Q wariantu (`ok` → pasmo Q; `blad` → opis). */
+export interface ObszarWariantuDokumentu {
+  readonly status: StatusFazyDokumentu;
+  readonly pasmo_q_pl: string | null;
+  readonly liczba_wierzcholkow: number | null;
+  readonly komunikat_bledu: string | null;
+}
+
+/** Sekcja pokrycia wymagania P–Q wariantu (`ok` → werdykt; `blad` → opis). */
+export interface PokrycieWariantuDokumentu {
+  readonly status: StatusFazyDokumentu;
+  readonly pokryty: boolean | null;
+  readonly werdykt_pl: string | null;
+  readonly opis_pl: string | null;
+  readonly komunikat_bledu: string | null;
+}
+
+/** Klasa NC RfG wariantu (kod klasy lub `null` + opis PL) — z klasyfikacji backendu. */
+export interface KlasaWariantuDokumentu {
+  readonly klasa: string | null;
+  readonly opis_pl: string;
+}
+
+/** Sekcja pojedynczego wariantu dokumentu (trzy fazy + klasa + odcisk sekcji). */
+export interface WariantDokumentu {
+  readonly bus_ref: string;
+  readonly nazwa_wezla: string;
+  readonly napiecie_kv: number | null;
+  readonly zdolnosc: ZdolnoscWariantuDokumentu;
+  readonly obszar_pq: ObszarWariantuDokumentu;
+  readonly pokrycie_pq: PokrycieWariantuDokumentu;
+  readonly klasa_nc_rfg: KlasaWariantuDokumentu;
+  readonly odcisk_sekcji_sha256: string;
+}
+
+/** Wiersz podsumowania porównawczego wariantów (1:1 z `podsumowanie`). */
+export interface PodsumowanieWariantuDokumentu {
+  readonly bus_ref: string;
+  readonly nazwa_wezla: string;
+  readonly max_moc_mw: number | null;
+  readonly klasa: string | null;
+  readonly pokrycie_pl: string | null;
+  readonly pasmo_q_pl: string | null;
+}
+
+/** Widok JSON dokumentu studium (1:1 z `build_dokument_studium_view`). */
+export interface WidokDokumentuStudium {
+  readonly kontrakt: string;
+  readonly tytul: string;
+  readonly identyfikacja: IdentyfikacjaDokumentu;
+  readonly zalozenia: ZalozeniaDokumentu;
+  readonly warianty: readonly WariantDokumentu[];
+  readonly podsumowanie: readonly PodsumowanieWariantuDokumentu[];
+  readonly zalozenia_pl: readonly string[];
+  readonly odciski_sekcji_sha256: Readonly<Record<string, string>>;
+  readonly input_hash: string;
+}
+
+/**
+ * Błąd bramki braków twardych dokumentu (HTTP 422): dokument NIE powstaje, backend
+ * zwraca `detail = { komunikat, braki }` — uczciwa lista braków po polsku.
+ */
+export class DokumentStudiumBrakiError extends Error {
+  readonly braki: readonly string[];
+
+  constructor(komunikat: string, braki: readonly string[]) {
+    super(komunikat);
+    this.name = 'DokumentStudiumBrakiError';
+    this.braki = braki;
+  }
+}
+
+/**
+ * Zamień odpowiedź błędu dokumentu na wyjątek z komunikatem PL. Rozróżnia bramkę
+ * braków twardych (`detail` obiekt z listą `braki` → `DokumentStudiumBrakiError`)
+ * od pozostałych błędów (`detail` łańcuch → zwykły `Error`).
+ */
+async function bladDokumentuStudium(response: Response): Promise<Error> {
+  let komunikat = `Zapytanie dokumentu studium nie powiodło się: ${response.status} ${response.statusText}`;
+  try {
+    const body = (await response.json()) as { detail?: unknown };
+    const detail = body?.detail;
+    if (detail && typeof detail === 'object') {
+      const obiekt = detail as { komunikat?: unknown; braki?: unknown };
+      const braki = Array.isArray(obiekt.braki)
+        ? obiekt.braki.filter((p): p is string => typeof p === 'string')
+        : [];
+      const tekst =
+        typeof obiekt.komunikat === 'string' && obiekt.komunikat.trim()
+          ? obiekt.komunikat
+          : komunikat;
+      if (braki.length > 0) return new DokumentStudiumBrakiError(tekst, braki);
+      komunikat = tekst;
+    } else if (typeof detail === 'string' && detail.trim()) {
+      komunikat = detail;
+    }
+  } catch {
+    // Brak treści JSON — pozostaje komunikat ze statusem HTTP.
+  }
+  return new Error(komunikat);
+}
+
+/**
+ * Pobierz widok JSON dokumentu studium (serwerowa kompozycja sekwencji kreatora).
+ * Rzuca `DokumentStudiumBrakiError` przy 422 (braki twarde), zwykły `Error`
+ * z komunikatem PL przy pozostałych błędach.
+ */
+export async function pobierzDokumentStudium(
+  zadanie: ZadanieDokumentuStudium,
+): Promise<WidokDokumentuStudium> {
+  const response = await fetch('/api/oze-analysis/connection-study', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(zadanie),
+  });
+  if (!response.ok) throw await bladDokumentuStudium(response);
+  return response.json() as Promise<WidokDokumentuStudium>;
+}
+
+/**
+ * Pobierz deterministyczny plik DOCX dokumentu studium (blob). Obsługa błędów PL
+ * jak dla widoku JSON — w tym `DokumentStudiumBrakiError` przy 422 z listą braków.
+ */
+export async function pobierzDokumentStudiumDocx(
+  zadanie: ZadanieDokumentuStudium,
+): Promise<Blob> {
+  const response = await fetch('/api/oze-analysis/connection-study.docx', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(zadanie),
+  });
+  if (!response.ok) throw await bladDokumentuStudium(response);
+  return response.blob();
+}
+
+/**
+ * Pobierz deterministyczny plik PDF dokumentu studium (blob). Obsługa błędów PL
+ * jak dla widoku JSON — w tym `DokumentStudiumBrakiError` przy 422 z listą braków.
+ */
+export async function pobierzDokumentStudiumPdf(
+  zadanie: ZadanieDokumentuStudium,
+): Promise<Blob> {
+  const response = await fetch('/api/oze-analysis/connection-study.pdf', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(zadanie),
+  });
+  if (!response.ok) throw await bladDokumentuStudium(response);
+  return response.blob();
+}

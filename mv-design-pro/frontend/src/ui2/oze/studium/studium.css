@@ -345,3 +345,100 @@
   font-family: var(--mvd-font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+/* ---- dokument studium (akcja + podgląd + pobrania) ---- */
+.mvd-studium-dok-akcja {
+  display: flex;
+}
+.mvd-studium-dok {
+  margin-top: 4px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-bg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-studium-dok-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mvd-studium-dok-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-studium-dok-braki-lista {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+}
+.mvd-studium-dok-widok {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-studium-dok-meta {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 16px;
+  font-size: 12px;
+}
+.mvd-studium-dok-meta > div {
+  display: contents;
+}
+.mvd-studium-dok-meta dt {
+  color: var(--mvd-muted);
+}
+.mvd-studium-dok-meta dd {
+  margin: 0;
+}
+.mvd-studium-dok-podtytul {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mvd-studium-dok-tabela-wrap {
+  overflow-x: auto;
+}
+.mvd-studium-dok-tabela {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+.mvd-studium-dok-tabela th,
+.mvd-studium-dok-tabela td {
+  border: 1px solid var(--mvd-line);
+  padding: 4px 8px;
+  text-align: left;
+}
+.mvd-studium-dok-tabela th {
+  background: var(--mvd-panel);
+  font-weight: 600;
+}
+.mvd-studium-dok-bledy {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-studium-dok-blad-wezel {
+  font-weight: 600;
+}
+.mvd-studium-dok-zalozenia {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+  line-height: 1.5;
+}
+.mvd-studium-dok-pobrania {
+  display: flex;
+  gap: 8px;
+}
