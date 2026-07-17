@@ -585,6 +585,9 @@ Progress:
         frontendowy klasaNcRfg to lustro 1:1). Wykonawca: pełny pytest
         6112 pass, 0 failed (+23). Zarządca: 23 celowane + 5 guardów OK,
         push. Konfirmacja w tle.
+        POTWIERDZENIE #32 (2026-07-17): pełny pytest 6112 passed, 0 failed
+        (673 s) — BAZY: backend 6112, frontend 8634. Karta P35b (okno
+        dokumentu studium w kreatorze) delegowana.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
