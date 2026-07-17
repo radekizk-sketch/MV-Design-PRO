@@ -435,6 +435,17 @@ Progress:
         POTWIERDZENIE #20 (2026-07-17): pełny pytest na drzewie scalonym
         6021 passed, 0 failed (611 s) — nowa baza backendu 6021. Okno P45
         (zakładka „Zgodność powykonawcza") delegowane.
+        SCALENIE #21 (2026-07-17): okno P45 (2dc2ff2) — zakładka „Zgodność
+        powykonawcza" (moduł ui2/wyniki/odbior: wybór przebiegu PF, CSV lub
+        edytor wierszy, jawne tolerancje, raport z werdyktami i śladem).
+        PRZEJĘCIE: wykonawca zatrzymał się w trakcie pełnego vitest
+        (osierocony potok stdout — proces ubity przez zarządcę); bramki
+        zweryfikowane przez zarządcę w worktree (56 celowanych, type-check,
+        lint, 3 guardy UI + codenames), commit w imieniu wykonawcy,
+        cherry-pick, po scaleniu ponowna weryfikacja (56 + type-check).
+        Konfirmacja pełnym vitest w tle. WNIOSEK PROCEDURALNY: wykonawcy
+        mają uruchamiać pełne suity Z PRZEKIEROWANIEM DO PLIKU (np.
+        `npm test > pelny_vitest.log 2>&1`), nie na goły potok.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
