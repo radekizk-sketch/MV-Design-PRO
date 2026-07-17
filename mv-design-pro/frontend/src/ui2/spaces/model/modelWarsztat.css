@@ -9,3 +9,21 @@
 .mvd-model-kreator-okno { background: var(--mvd-panel); border: 1px solid var(--mvd-line); border-radius: 8px; max-width: 920px; width: 92%; max-height: 88vh; overflow: auto; }
 .mvd-model-wlasciwosci { padding: 12px; }
 .mvd-model-wlasciwosci-pusto { padding: 24px; color: var(--mvd-muted); font-size: 13px; text-align: center; }
+
+/* Sekcja „Zgodność referencyjna" (REF-B, HANDOFF pkt 2.3/2.7). */
+.mvd-zgodnosc-referencyjna { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--mvd-line); }
+.mvd-zgodnosc-naglowek { display: flex; align-items: baseline; gap: 8px; margin-bottom: 8px; }
+.mvd-zgodnosc-tytul { font-size: 12px; font-weight: 600; color: var(--mvd-ink); text-transform: uppercase; letter-spacing: 0.04em; }
+.mvd-zgodnosc-multi { font-size: 11px; color: var(--mvd-muted); }
+.mvd-zgodnosc-nota { font-size: 12px; color: var(--mvd-muted); padding: 8px 0; }
+.mvd-zgodnosc-pakiet { margin-bottom: 10px; }
+.mvd-zgodnosc-pakiet-naglowek { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.mvd-zgodnosc-pakiet-nazwa { font-size: 12px; font-weight: 600; color: var(--mvd-ink); }
+.mvd-zgodnosc-pakiet-rodzaj { font-size: 10px; color: var(--mvd-muted); border: 1px solid var(--mvd-line); border-radius: 4px; padding: 1px 6px; }
+.mvd-zgodnosc-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.mvd-zgodnosc-check, .mvd-zgodnosc-osd-nota { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; color: var(--mvd-ink); }
+.mvd-zgodnosc-ikona-ok { color: #16a34a; font-weight: 700; }
+.mvd-zgodnosc-ikona-zle { color: #dc2626; font-weight: 700; }
+.mvd-zgodnosc-ikona-info { color: var(--mvd-muted); }
+.mvd-zgodnosc-osd { margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--mvd-line); }
+.mvd-zgodnosc-osd-naglowek { font-size: 11px; font-weight: 600; color: var(--mvd-muted); margin-bottom: 4px; }

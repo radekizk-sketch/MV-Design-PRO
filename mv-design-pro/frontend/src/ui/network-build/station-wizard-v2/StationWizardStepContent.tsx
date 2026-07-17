@@ -5,11 +5,13 @@
  * inżynierskim z odpowiedniego modułu. Pełne formularze formularzowe to
  * praca dla kolejnych iteracji — tutaj prezentujemy strukturę.
  */
+import { useState } from 'react';
 import { clsx } from 'clsx';
 
 import type { StationWizardStepId } from './stationWizardContract';
 import { getStationWizardStep } from './stationWizardContract';
 import { MiniBaySldPreview } from './MiniBaySldPreview';
+import { PickerRodzinyReferencyjnej } from './PickerRodzinyReferencyjnej';
 import { ReadinessMatrixGrid } from './ReadinessMatrixGrid';
 import { VENDOR_SWITCHGEAR_CATALOG, type VendorSwitchgearTemplate } from './vendorSwitchgearCatalog';
 import { INTERLOCKING_RULES, buildInterlockMatrix } from './interlockingRules';
@@ -203,12 +205,21 @@ function StepCable() {
 // Krok 2 — Switchgear (vendor templates)
 // ============================================================================
 function StepSwitchgear({ selectedVendorId }: { selectedVendorId?: string }) {
+  // Wybór rodziny referencyjnej — reuse istniejącego mechanizmu (callback onSelectFamily),
+  // stan lokalny widoku (kreator v2 nie ma własnej ścieżki zapisu — zero nowej ścieżki).
+  const [selectedFamilyRef, setSelectedFamilyRef] = useState<string | null>(null);
   return (
     <CardSection label="Wybór rozdzielnicy producenta" testId="step-body-switchgear">
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {VENDOR_SWITCHGEAR_CATALOG.map((t) => (
           <VendorCard key={t.id} template={t} selected={selectedVendorId === t.id} />
         ))}
+      </div>
+      <div className="mt-3">
+        <PickerRodzinyReferencyjnej
+          selectedFamilyRef={selectedFamilyRef}
+          onSelectFamily={setSelectedFamilyRef}
+        />
       </div>
     </CardSection>
   );

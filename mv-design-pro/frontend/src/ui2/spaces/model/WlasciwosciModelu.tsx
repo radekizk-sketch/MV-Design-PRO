@@ -20,6 +20,7 @@ import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useAppStateStore } from '../../../ui/app-state';
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { MODEL_WARSZTAT_STRINGS as T } from './strings';
+import { ZgodnoscReferencyjna } from './ZgodnoscReferencyjna';
 
 /** Kolekcje ENM przeszukiwane w poszukiwaniu surowego rekordu elementu. */
 const KOLEKCJE_ELEMENTOW = [
@@ -118,6 +119,12 @@ export function WlasciwosciModelu() {
         elements={elementy}
         onFieldChange={zapiszParametrPojedynczy}
         onFieldChangeMulti={zapiszParametr}
+      />
+      <ZgodnoscReferencyjna
+        elementRef={pierwszy.id}
+        caseId={activeCaseId ?? null}
+        czyStacja={pierwszy.type === 'Station'}
+        multiSelekcja={elementy.length > 1}
       />
     </div>
   );
