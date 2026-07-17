@@ -717,6 +717,24 @@ Progress:
         POTWIERDZENIE #40 (2026-07-17): pełny vitest 8690 passed, 0 failed
         — BAZY: backend 6126, frontend 8690. Karta W5b-1 (wygaszenie E-26,
         Opcja 1, za Bramką Parytetu + STOP-guard kanonu) delegowana.
+        SCALENIE #41 / W5b-1 (9cc9ba4 → cherry-pick, E-26=A, „nic nie
+        wstrzymuj"): usunięty redundantny przycisk mostu FRT/LVRT/HVRT
+        (punkt wejścia legacy), kanon nietknięty, EkranFrt dostawcą.
+        Bramka Parytetu 1-5 zielona; E2E niesprawdzalny w worktree
+        (uczciwie); 181 testów kanonu + bramki OK. STOP-GUARD: E-26
+        osiągalne z SLD → PEŁNE wygaszenie = karta koordynacyjna wątku
+        SLD (TODO). Zarządca: cherry-pick + kanon zielony + push.
+        USUNIĘTY DŁUG API-LIFECYCLE (2026-07-17, dyrektywa „usuwaj dług"):
+        23 końcówki tej sesji (oze-analysis/* + quality/* + warianty
+        .docx/.pdf) zarejestrowane w MACIERZ_KOMPATYBILNOSCI_API.md
+        (Wersja/Data/Zakres/Testy/Właściciel/Status); `api_lifecycle_guard`
+        ZIELONY (był czerwony całą sesję — guard nie był w liście bramek,
+        mój process gap). WPIĘCIE DO BRAMEK: api_lifecycle_guard +
+        v12xx_canon_guard dodane do stałej listy bramek kart backendowych.
+        POZOSTAŁY, PRE-EXISTING DŁUG (nie z tej sesji): v12xx_canon_guard
+        czerwony na `[dark-scada-missing-file] App.tsx` — motyw dark-SCADA
+        (markery nie istnieją nigdzie; migracja main.tsx→AppRoot) — osobna
+        karta.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —

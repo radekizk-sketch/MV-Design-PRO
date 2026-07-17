@@ -119,6 +119,20 @@ Opcja 2 (usunięcie ekranu z kanonu) ODRZUCONA — zmieniałaby źródło prawdy
 generuje dług i ryzyko regresji kanonu.
 
 ## 4. Rejestr wykonania
+- **W5b-1** (2026-07-17, `feat(ui2): wygaszenie trasy legacy E-26, dostawca FRT
+  = EkranFrt`): E-26=A (decyzja właściciela). Bramka Parytetu 1–5 ZIELONA
+  (`EkranFrt` = superset `ComplianceSurface`, tabela dowodowa w raporcie
+  wykonawcy); warunek 6 (E2E) NIEsprawdzalny w worktree (brak backendu) —
+  regresja pokryta pełnym vitest 8689. Usunięto: redundantny przycisk mostu
+  „Charakterystyki FRT/LVRT/HVRT" (punkt wejścia legacy do E-26) + jego
+  parametryczny test launchera (nie-kanon). Kanon NIETKNIĘTY (E-26 zostaje
+  ekranem kanonicznym, dostawca ui2 EkranFrt). STOP-GUARD zadziałał: trasa
+  `case 'E-26'→ComplianceSurface` ZOSTAJE — E-26 osiągalne z wątku SLD
+  (`SldWorkspaceContainer.tsx:774-775,800`, `show-frt-hvrt`/`show-ncrfg`).
+  PEŁNE wygaszenie E-26 = KARTA KOORDYNACYJNA WĄTKU SLD (TODO
+  `U5_E14_SLD_KOORD_E26.md`) — wygaszenie wejścia SLD + usunięcie
+  ComplianceSurface. To samo dotyczy W5b-2 (AnalysisSurface — sprawdzić
+  wejścia SLD przed usunięciem trasy).
 - **W1** (2026-07-17, commit lokalny `feat(ui2): sekcja kontraktu analizy w panelu
   przebiegów (W1)`): sekcja „Kontrakt analizy" w `ui2/spaces/obliczenia/przebiegi/
   SzczegolyPrzebiegu.tsx` — trzy grupy kontraktu wybranego przebiegu (Kontekst

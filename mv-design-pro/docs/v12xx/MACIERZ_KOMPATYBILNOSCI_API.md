@@ -161,6 +161,29 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `PUT /api/study-cases/{case_id}/protection-config` | v12xx | aktywny | 2026-04-24 | - | Zapis konfiguracji zabezpieczen. | protection config tests | Projektant zabezpieczen |
 | `PUT /api/study-cases/{case_id}/sld-overrides` | v12xx.m1 | adapter | 2026-04-24 | koniec M3 | Zapis override SLD; docelowo kontrolowany przez warstwe geometrii. | sld override tests | Architekt SLD |
 | `PUT /api/switchgear/{station_id}/config` | v12xx | aktywny | 2026-04-24 | - | Zapis konfiguracji rozdzielnicy. | switchgear tests | Architekt SLD |
+| `GET /api/oze-analysis/grid-strength` | v12xx | aktywny | 2026-07-17 | - | Sila sieci SCR/WSCR dla zrodel falownikowych (D1). | grid strength tests | Architekt OZE |
+| `GET /api/oze-analysis/reactive-adequacy` | v12xx | aktywny | 2026-07-17 | - | Adekwatnosc mocy biernej ukladu (D1). | reactive adequacy tests | Architekt OZE |
+| `GET /api/oze-analysis/hosting-capacity` | v12xx | aktywny | 2026-07-17 | - | Zdolnosc przylaczeniowa wezla (D3). | hosting capacity tests | Architekt OZE |
+| `GET /api/oze-analysis/pq-area` | v12xx | aktywny | 2026-07-17 | - | Obszar PQ modulu wytworczego (D5). | pq area tests | Architekt OZE |
+| `GET /api/oze-analysis/pq-coverage` | v12xx | aktywny | 2026-07-17 | - | Pokrycie wymagan PQ operatora (D4). | pq coverage tests | Architekt OZE |
+| `GET /api/oze-analysis/frt-trajectories` | v12xx | aktywny | 2026-07-17 | - | Trajektorie FRT/HVRT modulu DER (D6). | frt trajektorie tests | Architekt OZE |
+| `GET /api/oze-analysis/frt-sequence` | v12xx | aktywny | 2026-07-17 | - | Sekwencje zapadow FRT z kontekstem sily sieci (D9). | frt sequence tests | Architekt OZE |
+| `GET /api/oze-analysis/lom-protection` | v12xx | aktywny | 2026-07-17 | - | Ochrona przed praca wyspowa LoM (D10). | lom protection tests | Architekt OZE |
+| `GET /api/oze-analysis/osd-response` | v12xx | aktywny | 2026-07-17 | - | Ocena odpowiedzi na polecenie OSD (D7). | osd response tests | Architekt OZE |
+| `GET /api/oze-analysis/compensation-sizing` | v12xx | aktywny | 2026-07-17 | - | Dobor kompensacji mocy biernej z katalogu (D8/K2, cosfi punktu). | dobor kompensacji tests | Architekt OZE |
+| `POST /api/oze-analysis/compliance-certificate` | v12xx | aktywny | 2026-07-17 | - | Certyfikat zgodnosci projektu NC RfG (JSON, D14). | certyfikat zgodnosci tests | Architekt OZE |
+| `POST /api/oze-analysis/compliance-certificate.docx` | v12xx | aktywny | 2026-07-17 | - | Certyfikat zgodnosci NC RfG (DOCX deterministyczny, D14). | certyfikat zgodnosci tests | Architekt OZE |
+| `POST /api/oze-analysis/compliance-certificate.pdf` | v12xx | aktywny | 2026-07-17 | - | Certyfikat zgodnosci NC RfG (PDF deterministyczny, D16). | certyfikat zgodnosci tests | Architekt OZE |
+| `POST /api/oze-analysis/osd-application` | v12xx | aktywny | 2026-07-17 | - | Generator wniosku OSD (JSON, D15). | wniosek osd tests | Architekt OZE |
+| `POST /api/oze-analysis/osd-application.docx` | v12xx | aktywny | 2026-07-17 | - | Wniosek OSD (DOCX deterministyczny, D15). | wniosek osd tests | Architekt OZE |
+| `POST /api/oze-analysis/osd-application.pdf` | v12xx | aktywny | 2026-07-17 | - | Wniosek OSD (PDF deterministyczny, D16). | wniosek osd tests | Architekt OZE |
+| `POST /api/oze-analysis/connection-study` | v12xx | aktywny | 2026-07-17 | - | Dokument studium przylaczeniowego (JSON, D17). | dokument studium tests | Architekt OZE |
+| `POST /api/oze-analysis/connection-study.docx` | v12xx | aktywny | 2026-07-17 | - | Dokument studium (DOCX deterministyczny, D17). | dokument studium tests | Architekt OZE |
+| `POST /api/oze-analysis/connection-study.pdf` | v12xx | aktywny | 2026-07-17 | - | Dokument studium (PDF deterministyczny, D17). | dokument studium tests | Architekt OZE |
+| `GET /api/quality/sanity-bounds` | v12xx | aktywny | 2026-07-17 | - | Wiarygodnosc Ik'' per wezel (D2). | quality analysis tests | Architekt jakosci |
+| `GET /api/quality/energy-validation` | v12xx | aktywny | 2026-07-17 | - | Walidacja energetyczna rozplywu (D2). | quality analysis tests | Architekt jakosci |
+| `GET /api/quality/flicker` | v12xx | aktywny | 2026-07-17 | - | Migotanie i szybkie zmiany napiecia IEC 61000-3-7 (D11). | migotanie tests | Architekt jakosci |
+| `POST /api/quality/as-built-compliance` | v12xx | aktywny | 2026-07-17 | - | Raport zgodnosci powykonawczej z pomiarow (D12). | zgodnosc powykonawcza tests | Architekt jakosci |
 
 ## Blokada wdrozeniowa
 
