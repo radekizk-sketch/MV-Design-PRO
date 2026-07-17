@@ -422,6 +422,9 @@ Progress:
         Konfirmacja pełnym vitest w tle. TODO-KARTA: selektory
         run_id/bus_ref kontekstu siły sieci w sekcji sekwencji FRT
         (klient je przyjmuje; ekran FRT nie ma dziś źródła przebiegów).
+        POTWIERDZENIE #19 (2026-07-17): pełny vitest na drzewie scalonym
+        8510 passed, 0 failed (510 s) — nowa baza frontendu 8510.
+        Karta D12 (P45 — zgodność powykonawcza) delegowana.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
