@@ -596,6 +596,9 @@ Progress:
         43 celowane + type-check + lint + 4 guardy OK, push. Konfirmacja
         w tle. DOKUMENTY E13 KOMPLETNE end-to-end: certyfikat + wniosek
         OSD + dokument studium (backend JSON/DOCX/PDF + okna).
+        POTWIERDZENIE #33 (2026-07-17): pełny vitest 8647 passed, 0 failed
+        — BAZY: backend 6112, frontend 8647. Karta W1 (kontrakt analizy
+        w panelu przebiegów — fala W1 wygaszania mostu) delegowana.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
