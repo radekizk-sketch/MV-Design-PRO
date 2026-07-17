@@ -510,6 +510,9 @@ Progress:
         delegowane. PROCEDURA: worktree wykonawcy sprzątać dopiero po
         wygaśnięciu agenta (późny raport D15 zastał usunięty worktree —
         bez utraty danych, commit zarządcy wcześniejszy).
+        POTWIERDZENIE #26 (2026-07-17): pełny pytest 6066 passed, 0 failed
+        (704 s) — nowa baza backendu 6066. BAZY: backend 6066, frontend
+        8564.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
