@@ -386,6 +386,14 @@ Progress:
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
+        POTWIERDZENIE po scaleniu K1 (2026-07-17): pełny pytest na drzewie
+        głównym 5915 passed, 0 failed (651 s).
+        FALA 3 ciąg dalszy (2026-07-17): karta D9 (P43 — sekwencje zapadów
+        FRT + kontekst SCR; wsparcie ride-through z magazynu POZA ZAKRESEM,
+        wymaga modelu magazynu w FROZEN solverze FRT — decyzja właścicieli
+        solvera) i karta D10 (P46 — ochrona LoM: ROCOF/przesunięcie wektora,
+        addytywne rozszerzenie ProtectionSetting, koordynacja z SPZ)
+        delegowane równolegle do wykonawców Opus (worktree).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
