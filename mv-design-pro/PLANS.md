@@ -412,6 +412,16 @@ Progress:
         najpierw `df -h`. Okna frontendowe P43/P46/P37 delegowane (karta
         U4_P43_P46_P37_OKNA); monitoring żywotności wykonawcy co 10 min
         (dyspozycja właściciela).
+        SCALENIE #19 (2026-07-17): okna fali 3 (8f1d6c1) — sekcja
+        „Sekwencja zapadów" w EkranFrt (edytor zapadów + kontekst SCR),
+        nowa zakładka warsztatu „Praca wyspowa" (lom, EkranLom), sekcja
+        „Migotanie i szybkie zmiany napięcia" w EkranJakosci. Wykonawca
+        zakończył z pełnym raportem (pełny vitest w worktree 8510 pass,
+        0 failed; +37 netto). Weryfikacja zarządcy na drzewie scalonym:
+        149 testów celowanych, type-check, lint, 4 guardy UI — zielone.
+        Konfirmacja pełnym vitest w tle. TODO-KARTA: selektory
+        run_id/bus_ref kontekstu siły sieci w sekcji sekwencji FRT
+        (klient je przyjmuje; ekran FRT nie ma dziś źródła przebiegów).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
