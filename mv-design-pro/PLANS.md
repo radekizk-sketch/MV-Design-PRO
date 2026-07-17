@@ -425,6 +425,13 @@ Progress:
         POTWIERDZENIE #19 (2026-07-17): pełny vitest na drzewie scalonym
         8510 passed, 0 failed (510 s) — nowa baza frontendu 8510.
         Karta D12 (P45 — zgodność powykonawcza) delegowana.
+        SCALENIE #20 (2026-07-17): D12 — raport zgodności powykonawczej
+        (POST /api/quality/as-built-compliance; porównanie 1:1 pomiar↔wynik
+        FROZEN rozpływu, bez estymacji WLS; Q po |wartości| do V12K-027;
+        DECYZJA: tolerancje wyłącznie JAWNE — EN 50160 nie mapuje odchyłki
+        pomiar↔model, domyślna wartość byłaby heurystyką). Wykonawca
+        zakończył z raportem (pełny pytest 6021 pass, 0 failed); weryfikacja
+        zarządcy: 35 celowanych + 4 guardy OK. Konfirmacja w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
