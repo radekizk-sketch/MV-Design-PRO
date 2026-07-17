@@ -493,6 +493,18 @@ Progress:
         biegiem (uzasadnione odstępstwo). Wykonawca: pełny vitest 8564
         pass, 0 failed. Zarządca: 364 celowane + type-check + lint +
         4 guardy OK, push. Konfirmacja w tle.
+        SCALENIE #26 (2026-07-17): D15 generator wniosku OSD (b656c04 →
+        cherry-pick) — POST /api/oze-analysis/osd-application (JSON+DOCX
+        deterministyczny; bilans z walidacji energetycznej PF, zwarcia
+        punktu z SC, zgodność NC RfG ścieżką D14; schemat SLD i W-702
+        z uczciwymi adnotacjami; bramka braków 422 PL). PRZEJĘCIE: wykonawca
+        zawieszony po pełnym pytest (6066 pass, 0 failed w jego logu) —
+        zarządca: lint+mypy+23 celowane w worktree, commit w jego imieniu,
+        cherry-pick, 23+5 guardów na drzewie głównym, push.
+        AWARIA KONFIRMACJI #25: pełny vitest padł w połowie (10:17, bez
+        podsumowania — najpewniej ubity przy równoległym pełnym pytest
+        D15); restart sekwencyjny (vitest → pytest) w tle. PROCEDURA:
+        nie puszczać dwóch pełnych suit RÓWNOLEGLE.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
