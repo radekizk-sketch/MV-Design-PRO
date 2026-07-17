@@ -9,7 +9,7 @@
  * Dwie warstwy (spec §12.1 „prymat danych nad konwencją"):
  *  1. `apparatusSymbolsForRole` — stos KONWENCJI (fallback rysunkowy, §12.4),
  *     WYŁĄCZNIE gdy pole nie niesie `Bay.primary_devices`. Kolejność OD SZYNY
- *     W DÓŁ (§12.2/V12K-027): pole liniowe `DS→CB→CT→DS→ES→głowica`; pole TR
+ *     W DÓŁ (§12.2/V12K-040): pole liniowe `DS→CB→CT→DS→ES→głowica`; pole TR
  *     `DS→bezpiecznik→TR2W`; pole pomiarowe `DS→VT→ES`; pole sprzęgła
  *     `DS→CB→CT`. Zero SA (surgeArrester) w konwencji — V12K-028: mimo że od
  *     F9.6 ENM zna `SURGE_ARRESTER` w `BayPrimaryDeviceKind`, SA WCIĄŻ nigdy
@@ -175,7 +175,7 @@ export function resolveBayApparatusSymbolIds(
 // szeregowego: uziemnik/przekładnik napięciowy/ogranicznik odgałęziają się
 // bocznie od węzła toru (portu S poprzedzającego aparatu szeregowego — „po
 // stronie kablowej"), a tor główny pozostaje ciągły bez nich. Kolejność
-// `placement` (V12K-027) nadal rządzi: pozycja odgałęzienia wynika z miejsca
+// `placement` (V12K-040) nadal rządzi: pozycja odgałęzienia wynika z miejsca
 // aparatu w sekwencji danych/konwencji — zmienia się WYŁĄCZNIE geometria
 // (bok zamiast osi), nie porządek.
 // ---------------------------------------------------------------------------
@@ -292,7 +292,7 @@ const Q_IDENTIFIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
  *
  * Numeracja: JEDEN licznik na kategorię (Q/QE/T) per POLE, rosnąco wg
  * pozycji w PEŁNEJ sekwencji aparatów pola (tor główny + laterale w
- * kolejności `placement`/konwencji, V12K-027) — deterministyczne, licznik
+ * kolejności `placement`/konwencji, V12K-040) — deterministyczne, licznik
  * resetuje się na każdym polu. Zwraca tablicę index-aligned do `symbolIds`
  * (`null` dla aparatów bez identyfikatora w tej fazie).
  *

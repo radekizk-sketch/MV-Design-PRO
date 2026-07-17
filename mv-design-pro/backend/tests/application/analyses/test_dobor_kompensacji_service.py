@@ -57,7 +57,7 @@ def _compensation_enm(*, load_q_mvar: float, gen_p_mw: float | None) -> EnergyNe
 
     Dodatnie ``load_q_mvar`` = odbiór INDUKCYJNY (typowy przypadek doboru
     kompensacji): dopisana bateria z katalogu PODNOSI cosφ punktu kompensowanego
-    (``Q_netto = Q_load − Q_cap_eff``, naprawa V12K-027, opcja B). Kierunek i
+    (``Q_netto = Q_load − Q_cap_eff``, naprawa V12K-040, opcja B). Kierunek i
     wartości pochodzą z solvera (test nie liczy fizyki)."""
     generators = []
     if gen_p_mw is not None:
@@ -195,7 +195,7 @@ def test_view_structure() -> None:
     assert view["parameters"]["bus_ref"] == "bus_pcc"
     assert view["parameters"]["bus_voltage_kv"] == 15.0
     cand = view["candidates"][0]
-    # V12K-027: rozdział dwóch wielkości — cosφ przekroju (1) i cosφ punktu (2).
+    # V12K-040: rozdział dwóch wielkości — cosφ przekroju (1) i cosφ punktu (2).
     assert {
         "catalog_ref",
         "name",
@@ -234,7 +234,7 @@ def test_candidates_sorted_ascending_by_power() -> None:
 
 
 def test_dobor_found_first_meeting_candidate() -> None:
-    # Naprawa V12K-027: odbiór INDUKCYJNY (q=+1,0) — kompensacja PODNOSI cosφ punktu,
+    # Naprawa V12K-040: odbiór INDUKCYJNY (q=+1,0) — kompensacja PODNOSI cosφ punktu,
     # więc dobór działa fizycznie poprawnie (wcześniej fikstura używała punktu
     # wyprzedzającego q=−2,0 dla obejścia odwróconego kierunku cosφ).
     run = _run(_compensation_enm(load_q_mvar=1.0, gen_p_mw=None))
@@ -255,7 +255,7 @@ def test_dobor_found_first_meeting_candidate() -> None:
 def test_baseline_cos_phi_present() -> None:
     run = _run(_compensation_enm(load_q_mvar=1.0, gen_p_mw=None))
     view = build_compensation_sizing_view(run, bus_ref="bus_pcc", cos_phi_min=0.95)
-    # V12K-027: rozdział cosφ przekroju (1) i cosφ punktu (2) — oba obecne w baseline.
+    # V12K-040: rozdział cosφ przekroju (1) i cosφ punktu (2) — oba obecne w baseline.
     assert view["baseline"]["cosfi_przekroju_dzien"] is not None
     assert view["baseline"]["cosfi_punktu_dzien"] is not None
     assert view["baseline"]["cosfi_przekroju_noc"] is None  # noc wyłączona domyślnie
@@ -308,7 +308,7 @@ def test_night_scenario_changes_selection() -> None:
     """Noc (P generatorów = 0) obniża cosφ punktu → wymaga większej baterii; dobór
     z uwzględnieniem nocy jest inny (większy) niż dobór tylko dla dnia.
 
-    Naprawa V12K-027: odbiór INDUKCYJNY (q=+2,0) + generacja OZE; dobór na cosφ
+    Naprawa V12K-040: odbiór INDUKCYJNY (q=+2,0) + generacja OZE; dobór na cosφ
     PUNKTU kompensowanego (dzień 0,6 Mvar, noc 2,4 Mvar)."""
     run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=4.0))
     day_only = build_compensation_sizing_view(

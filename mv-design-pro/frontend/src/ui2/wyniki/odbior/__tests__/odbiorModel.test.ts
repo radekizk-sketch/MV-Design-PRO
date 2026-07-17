@@ -216,7 +216,7 @@ describe('adaptery tabeli i formatery', () => {
     const dane = widokZgodnosciFixture();
     const zalozenia = naZalozeniaZgodnosci(dane);
     expect(zalozenia).toHaveLength(dane.zalozenia_pl.length);
-    expect(zalozenia[3].wartosc).toContain('V12K-027');
+    expect(zalozenia[3].wartosc).toContain('V12K-040');
   });
 
   it('istotnoscWerdyktu odwzorowuje kolory tokenów per werdykt', () => {

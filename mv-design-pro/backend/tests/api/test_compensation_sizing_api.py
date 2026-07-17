@@ -65,7 +65,7 @@ def test_compensation_sizing_with_night(app_client) -> None:
     assert resp.status_code == 200
     data = resp.json()
     assert data["parameters"]["uwzglednij_noc"] is True
-    # V12K-027: rozdział dwóch wielkości — cosφ przekroju i cosφ punktu (obie dla nocy).
+    # V12K-040: rozdział dwóch wielkości — cosφ przekroju i cosφ punktu (obie dla nocy).
     assert data["baseline"]["cosfi_przekroju_noc"] is not None
     assert data["baseline"]["cosfi_punktu_noc"] is not None
 

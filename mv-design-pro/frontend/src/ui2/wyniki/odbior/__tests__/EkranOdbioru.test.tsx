@@ -98,8 +98,8 @@ describe('EkranOdbioru — serializacja i raport', () => {
     const tabela = screen.getByTestId('mvd-wyn-tabela');
     expect(tabela).toHaveTextContent('w tolerancji');
     expect(tabela).toHaveTextContent('poza tolerancją');
-    // Sekcja założeń zawsze widoczna z uwagą V12K-027 (Q po |wartości|).
-    expect(screen.getByTestId('mvd-wyn-zalozenia')).toHaveTextContent('V12K-027');
+    // Sekcja założeń zawsze widoczna z uwagą V12K-040 (Q po |wartości|).
+    expect(screen.getByTestId('mvd-wyn-zalozenia')).toHaveTextContent('V12K-040');
     // Największa odchyłka z podsumowania (przecinek PL).
     expect(screen.getByTestId('mvd-odbior-najwieksza')).toHaveTextContent('12,50');
     expect(screen.getByTestId('mvd-odbior-najwieksza')).toHaveTextContent('LINE-2');

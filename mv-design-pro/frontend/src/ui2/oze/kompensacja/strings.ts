@@ -4,7 +4,7 @@
  * literałów UI w JSX. Formatery CZYSTE (wejście→wyjście), bez `Date.now`/losowości
  * (Determinism Rule) — przecinek dziesiętny wg konwencji PL.
  *
- * WIĄŻĄCY WYMÓG WŁAŚCICIELA (V12K-027, opcja B): UI rozdziela DWIE wielkości cosφ
+ * WIĄŻĄCY WYMÓG WŁAŚCICIELA (V12K-040, opcja B): UI rozdziela DWIE wielkości cosφ
  * pod JEDNOZNACZNIE różnymi nazwami — „cosφ punktu kompensowanego" (podstawa doboru)
  * i „cosφ przekroju sieciowego" (wielkość informacyjna, przepływ sieci). Etykiety
  * poniżej NIGDY nie mylą tych dwóch pojęć.

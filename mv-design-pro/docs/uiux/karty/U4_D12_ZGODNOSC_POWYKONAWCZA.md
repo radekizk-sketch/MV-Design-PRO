@@ -28,7 +28,7 @@ udokumentowanych stałych normatywnych ze źródłem; WHITE BOX), wzorce:
 3. Porównanie: U z `bus_results.u_pu` (przelicz na kV po `nominal_kv` węzła —
    jak `grid_strength._nominal_kv_by_bus`), P/Q z `branch_results.p_from_mw/
    q_from_mvar` (kierunek „from" — udokumentuj; konwencja znaku Q: NIE
-   interpretuj znaku poza wartością bezwzględną odchyłki, dopóki V12K-027
+   interpretuj znaku poza wartością bezwzględną odchyłki, dopóki V12K-040
    nierozstrzygnięte — porównuj |wartości| dla Q i odnotuj w `zalozenia_pl`).
    Odchyłka bezwzględna + procentowa względem wartości modelowej; werdykt PL
    per punkt („w tolerancji" / „poza tolerancją" / „brak odpowiednika w

@@ -33,7 +33,7 @@ z backendu `POST /api/quality/as-built-compliance` (scalenie #20).
    - raport: chipy podsumowania (liczby wg werdyktów, największa odchyłka),
      tabela wierszy (`TabelaWynikow`: element, wielkość, pomiar, model,
      odchyłka bezwzgl. i %, tolerancja, werdykt PL kolorem tokenów --mvd-*),
-     sekcja `zalozenia_pl` ZAWSZE widoczna (m.in. Q po |wartości| — V12K-027),
+     sekcja `zalozenia_pl` ZAWSZE widoczna (m.in. Q po |wartości| — V12K-040),
      ślad WHITE BOX per wiersz w trybie zaawansowanym (wzorzec inline jak
      sekcja migotania w `EkranJakosci`),
    - błędy API → komunikat PL z `detail` (konwencja `getJsonZDetalem` —

@@ -7,7 +7,7 @@
  * `POST /api/quality/as-built-compliance`:
  *   1. chipy podsumowania (liczby wg werdyktów + największa odchyłka),
  *   2. tabela wierszy na wspólnym wzorcu (`EkranAnalizy`/`TabelaWynikow`),
- *   3. sekcja ZAŁOŻEŃ zawsze widoczna (m.in. Q po |wartości| — V12K-027),
+ *   3. sekcja ZAŁOŻEŃ zawsze widoczna (m.in. Q po |wartości| — V12K-040),
  *   4. ślad WHITE BOX per wiersz w trybie zaawansowanym.
  *
  * Zero fizyki, zero ocen lokalnych — werdykty, odchyłki i tolerancje pochodzą

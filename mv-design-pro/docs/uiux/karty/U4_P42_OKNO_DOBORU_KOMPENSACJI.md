@@ -2,7 +2,7 @@
 
 **Faza:** U4 · **Epik:** E11 · **Wykonawca:** Opus · **Warstwa:** frontend ·
 **Wiążące:** CLAUDE.md (ZERO fizyki w UI; etykiety PL; granica SLD), DECYZJA
-WŁAŚCICIELA V12K-027 = opcja B (K2 scalone). Backend: `GET /api/oze-analysis/
+WŁAŚCICIELA V12K-040 = opcja B (K2 scalone). Backend: `GET /api/oze-analysis/
 compensation-sizing?run_id=&bus_ref=&cos_phi_min=&uwzglednij_noc=`
 (`api/oze_analysis_runs.py:187`), serwis `application/analyses/
 dobor_kompensacji.py`. Wzorce: `ui2/oze/frt/EkranFrt.tsx`, wzorzec

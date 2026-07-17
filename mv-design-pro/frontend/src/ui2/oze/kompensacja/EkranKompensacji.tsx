@@ -15,7 +15,7 @@
  * z backendu. Identyfikatory (bus_ref, input_hash, trace_id) wyłącznie w trybie
  * eksperckim.
  *
- * WIĄŻĄCY WYMÓG WŁAŚCICIELA (V12K-027, opcja B): „cosφ punktu kompensowanego" (dobór)
+ * WIĄŻĄCY WYMÓG WŁAŚCICIELA (V12K-040, opcja B): „cosφ punktu kompensowanego" (dobór)
  * i „cosφ przekroju sieciowego" (informacyjne) prezentowane pod jednoznacznie różnymi
  * nazwami; dobór sterowany WYŁĄCZNIE cosφ punktu.
  */

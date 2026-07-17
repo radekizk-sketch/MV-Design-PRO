@@ -5,7 +5,7 @@
  * ocen lokalnych — wszystkie wielkości i werdykty pochodzą WYŁĄCZNIE z backendu.
  * Zero mutacji, zero wołań API stąd.
  *
- * WIĄŻĄCY WYMÓG WŁAŚCICIELA (V12K-027, opcja B): tabela kandydatów rozdziela DWIE
+ * WIĄŻĄCY WYMÓG WŁAŚCICIELA (V12K-040, opcja B): tabela kandydatów rozdziela DWIE
  * wielkości cosφ pod jednoznacznie różnymi etykietami:
  *  - kolumny DECYZYJNE = „cosφ punktu kompensowanego" (dzień/noc) — na nich opiera się
  *    werdykt `spelnia`; tag ostrzegawczy (tokeny --mvd-*) pojawia się WYŁĄCZNIE przy

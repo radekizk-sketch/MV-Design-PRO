@@ -1585,7 +1585,7 @@ export async function pobierzDokumentStudiumPdf(
 /**
  * Stan wyjściowy punktu (bez baterii) — 1:1 z `build_compensation_sizing_view["baseline"]`.
  * Bez baterii `Q_cap_eff = 0`, więc cosφ przekroju == cosφ punktu; oba pola wystawione
- * JAWNIE (rozdział V12K-027, opcja B). Wartości pochodzą WYŁĄCZNIE z backendu.
+ * JAWNIE (rozdział V12K-040, opcja B). Wartości pochodzą WYŁĄCZNIE z backendu.
  */
 export interface BaselineKompensacji {
   readonly cosfi_przekroju_dzien: number | null;
@@ -1597,7 +1597,7 @@ export interface BaselineKompensacji {
 /**
  * Kandydat doboru (rekord katalogu baterii) — 1:1 z `_candidate_verdict`.
  *
- * ROZDZIAŁ DWÓCH cosφ (wymóg właściciela, V12K-027 opcja B):
+ * ROZDZIAŁ DWÓCH cosφ (wymóg właściciela, V12K-040 opcja B):
  * - `cosfi_punktu_*` (Q_netto = Q_load − Q_cap_eff) — PODSTAWA DOBORU (`spelnia`),
  * - `cosfi_przekroju_*` (przepływ gałęzi z anomalią shuntu) — wielkość INFORMACYJNA
  *   przekroju sieci; NIE jest miarą skompensowania odbioru i NIE steruje doborem.

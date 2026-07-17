@@ -19,7 +19,7 @@ export function widokZgodnosciFixture(): WidokZgodnosci {
       + '(solver WLS istnieje, ale nie jest używany) i bez korekt modelu.',
       'Napięcie U przeliczane na kV z u_pu przez napięcie znamionowe węzła (U = u_pu · U_n).',
       'Moce P/Q odczytywane z gałęzi w kierunku „from" (p_from_mw / q_from_mvar).',
-      'Konwencja znaku Q nierozstrzygnięta (V12K-027): Q porównywane po wartości '
+      'Konwencja znaku Q nierozstrzygnięta (V12K-040): Q porównywane po wartości '
       + 'bezwzględnej |Q|; znak odchyłki nie jest interpretowany.',
       'Tolerancje wyłącznie jawne (z żądania); brak udokumentowanego źródła '
       + 'normatywnego dla wartości domyślnych, więc domyślnych nie przyjęto.',

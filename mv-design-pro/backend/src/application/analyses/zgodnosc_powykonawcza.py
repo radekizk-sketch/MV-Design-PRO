@@ -11,7 +11,7 @@ Zasady (WIĄŻĄCE — CLAUDE.md, karta D12/§0):
 - Napięcie U przeliczane na kV z ``u_pu`` przez napięcie znamionowe węzła
   (``U = u_pu · U_n``; ``U_n`` jak ``grid_strength._nominal_kv_by_bus``).
 - Moce P/Q z gałęzi w kierunku „from" (``p_from_mw`` / ``q_from_mvar``).
-- Konwencja znaku Q nierozstrzygnięta (V12K-027): Q porównywane po wartości
+- Konwencja znaku Q nierozstrzygnięta (V12K-040): Q porównywane po wartości
   bezwzględnej; znak odchyłki NIE jest interpretowany.
 - Tolerancje wyłącznie JAWNE (No-Heuristics). Brak udokumentowanego źródła
   normatywnego dla wartości domyślnych → wartości domyślnych NIE przyjęto; brak
@@ -323,13 +323,13 @@ def _porownaj_punkt(
             slad_model = f"Model P_from = {model:.6f} MW"
             slad_pomiar = f"Pomiar P = {wartosc_pomiar:.6f} MW"
         else:
-            # Q — porównanie po wartości bezwzględnej (V12K-027 nierozstrzygnięte).
+            # Q — porównanie po wartości bezwzględnej (V12K-040 nierozstrzygnięte).
             model_mag = abs(surowa)
             odchylka = abs(wartosc_pomiar) - model_mag
             model = surowa
             slad_model = (
                 f"Model |Q_from| = |{surowa:.6f}| = {model_mag:.6f} Mvar "
-                "(znak nieinterpretowany — V12K-027)"
+                "(znak nieinterpretowany — V12K-040)"
             )
             slad_pomiar = f"Pomiar |Q| = |{wartosc_pomiar:.6f}| = {abs(wartosc_pomiar):.6f} Mvar"
 
@@ -496,7 +496,7 @@ def build_zgodnosc_powykonawcza_view(
             "Napięcie U przeliczane na kV z u_pu przez napięcie znamionowe węzła "
             "(U = u_pu · U_n).",
             "Moce P/Q odczytywane z gałęzi w kierunku 'from' (p_from_mw / q_from_mvar).",
-            "Konwencja znaku Q nierozstrzygnięta (V12K-027): Q porównywane po "
+            "Konwencja znaku Q nierozstrzygnięta (V12K-040): Q porównywane po "
             "wartości bezwzględnej |Q|; znak odchyłki nie jest interpretowany.",
             "Tolerancje wyłącznie jawne (z żądania); brak udokumentowanego źródła "
             "normatywnego dla wartości domyślnych, więc domyślnych nie przyjęto.",

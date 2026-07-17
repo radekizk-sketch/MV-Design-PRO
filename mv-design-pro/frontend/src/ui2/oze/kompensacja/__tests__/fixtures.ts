@@ -154,7 +154,7 @@ export function widokKompensacjiFixture(): WidokDoboruKompensacji {
         + 'Q_cap_eff = Σ(rated_mvar) · V² (model kondensatora z katalogu, nie fizyka pola); '
         + 'PODSTAWA DOBORU',
       konwencja_kanoniczna: 'P>0 pobór czynnej, Q>0 pobór indukcyjnej, Q<0 pojemnościowa',
-      decyzja: 'V12K-027 opcja B — PowerFlowResult FROZEN, adapter interpretacyjny',
+      decyzja: 'V12K-040 opcja B — PowerFlowResult FROZEN, adapter interpretacyjny',
       candidate_count: 3,
       night_scenario: null,
     },

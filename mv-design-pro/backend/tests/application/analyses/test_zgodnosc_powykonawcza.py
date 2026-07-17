@@ -1,7 +1,7 @@
 """Testy serwisu zgodności powykonawczej (pomiary z obiektu vs model) — D12.
 
 Zakres (rachunki ręczne): punkt U/P w tolerancji i poza, U w kV z u_pu, Q po
-wartości bezwzględnej (V12K-027), nieznany element_ref → wiersz raportu (nie
+wartości bezwzględnej (V12K-040), nieznany element_ref → wiersz raportu (nie
 błąd), brak wyniku, parser CSV (średnik+przecinek dziesiętny, przecinek+kropka,
 błąd → numer wiersza), walidacja jednostki/wielkości, brak jawnej tolerancji,
 zły rodzaj/status przebiegu, pusta lista, determinizm i sortowanie.
@@ -163,7 +163,7 @@ def test_p_poza_tolerancja() -> None:
     assert wiersz["werdykt"] == "poza tolerancją"
 
 
-def test_q_po_wartosci_bezwzglednej_v12k027() -> None:
+def test_q_po_wartosci_bezwzglednej_v12k040() -> None:
     # Model Q_from = -0.6 (znak nieinterpretowany); pomiar +0.62 →
     # |0.62| - |−0.6| = 0.02 → 0.02/0.6 = 3.333% < 5% → w tolerancji.
     view = build_zgodnosc_powykonawcza_view(
@@ -176,7 +176,7 @@ def test_q_po_wartosci_bezwzglednej_v12k027() -> None:
     assert wiersz["odchylka_bezwzgledna"] == pytest.approx(0.02, abs=1e-6)
     assert wiersz["odchylka_pct"] == pytest.approx(3.333333, abs=1e-6)
     assert wiersz["werdykt"] == "w tolerancji"
-    assert any("V12K-027" in z for z in view["zalozenia_pl"])
+    assert any("V12K-040" in z for z in view["zalozenia_pl"])
 
 
 # --------------------------------------------------------------------------
