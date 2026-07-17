@@ -1,9 +1,24 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
 import { SzczegolyPrzebiegu } from '../SzczegolyPrzebiegu';
 import { mapujWiersze } from '../adapters/przebiegiAdapter';
 import { PRZEBIEGI_STRINGS as T, formatOdcisk } from '../strings';
-import { runFixture } from './fixtures';
+import { useAnalysisRunContract } from '../../../../../ui/workspace/analysisRunContract';
+import { runFixture, kontraktFixture } from './fixtures';
+
+// Hook kontraktu reużyty BEZ ZMIAN — w teście podmieniamy wyłącznie jego wynik
+// (read-only), formatery kontraktu pozostają rzeczywiste (parytet 1:1 z mostem).
+vi.mock('../../../../../ui/workspace/analysisRunContract', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('../../../../../ui/workspace/analysisRunContract')>();
+  return { ...actual, useAnalysisRunContract: vi.fn() };
+});
+
+const mockKontrakt = vi.mocked(useAnalysisRunContract);
+
+beforeEach(() => {
+  mockKontrakt.mockReturnValue({ data: kontraktFixture(), isLoading: false, error: null });
+});
 
 function wiersz(over: Parameters<typeof runFixture>[0] = {}) {
   return mapujWiersze([runFixture(over)])[0];
@@ -94,5 +109,84 @@ describe('SzczegolyPrzebiegu — akcja „Pokaż wyniki" (karta §3 kryterium 3)
     expect(przycisk).toBeDisabled();
     fireEvent.click(przycisk);
     expect(onPokazWyniki).not.toHaveBeenCalled();
+  });
+});
+
+describe('SzczegolyPrzebiegu — sekcja „Kontrakt analizy" (migracja W1 paneli mostu)', () => {
+  it('renderuje sekcję z tytułem „Kontrakt analizy" dla wybranego przebiegu', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={false} onPokazWyniki={() => {}} />);
+    const sekcja = screen.getByTestId('mvd-przebieg-kontrakt');
+    expect(within(sekcja).getByText(T.sekcjaKontrakt)).toBeInTheDocument();
+    expect(mockKontrakt).toHaveBeenCalledWith('run-1');
+  });
+
+  it('grupa „Kontekst ogólny": typ analizy, ważność wyniku, wersja układu, kompletność, zakres', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const grupa = screen.getByTestId('mvd-przebieg-kontrakt-ogolne');
+    expect(within(grupa).getByText(T.etykietaTypAnalizy)).toBeInTheDocument();
+    expect(within(grupa).getByText('rozpływ mocy')).toBeInTheDocument();
+    expect(within(grupa).getByText('Tak')).toBeInTheDocument();
+    expect(within(grupa).getByText('Kompletny')).toBeInTheDocument();
+    expect(within(grupa).getByText('cała sieć')).toBeInTheDocument();
+  });
+
+  it('grupa „Założenia rozpływu i zbieżności": OLTC z kontraktu (parytet z panelem zbieżności)', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const grupa = screen.getByTestId('mvd-przebieg-kontrakt-rozplyw');
+    expect(within(grupa).getByText(T.etykietaZalozeniaOltc)).toBeInTheDocument();
+    expect(within(grupa).getByText('zaczepy transformatorów ustalone')).toBeInTheDocument();
+  });
+
+  it('grupa „Założenia zwarciowo-sieciowe": uziemienie, stan łączników, temperatura, obciążenia, źródła', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const grupa = screen.getByTestId('mvd-przebieg-kontrakt-zwarcie');
+    expect(within(grupa).getByText(T.etykietaUziemienie)).toBeInTheDocument();
+    expect(within(grupa).getByText(T.etykietaStanLacznikow)).toBeInTheDocument();
+    expect(within(grupa).getByText(T.etykietaTemperatura)).toBeInTheDocument();
+    expect(within(grupa).getByText(T.etykietaZalozeniaObciazen)).toBeInTheDocument();
+    expect(within(grupa).getByText(T.etykietaZalozeniaZrodel)).toBeInTheDocument();
+    expect(within(grupa).getByText('temperatura dla obliczeń zwarciowych')).toBeInTheDocument();
+    expect(within(grupa).getByText('maksymalny wkład źródeł do zwarcia')).toBeInTheDocument();
+  });
+
+  it('brak kontekstu kontraktu → wartości „Do konfiguracji" (uczciwie, bez zgadywania)', () => {
+    mockKontrakt.mockReturnValue({
+      data: kontraktFixture({ analysisCaseContext: null, resultsValid: null, analysisType: null }),
+      isLoading: false,
+      error: null,
+    });
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const rozplyw = screen.getByTestId('mvd-przebieg-kontrakt-rozplyw');
+    expect(within(rozplyw).getByText('Do konfiguracji')).toBeInTheDocument();
+    const ogolne = screen.getByTestId('mvd-przebieg-kontrakt-ogolne');
+    expect(within(ogolne).getAllByText('Do konfiguracji').length).toBeGreaterThan(0);
+  });
+
+  it('stan ładowania → komunikat PL (role=status), bez grup', () => {
+    mockKontrakt.mockReturnValue({ data: null, isLoading: true, error: null });
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    expect(screen.getByTestId('mvd-przebieg-kontrakt-ladowanie')).toHaveTextContent(
+      T.kontraktLadowanie,
+    );
+    expect(screen.queryByTestId('mvd-przebieg-kontrakt-ogolne')).not.toBeInTheDocument();
+  });
+
+  it('stan błędu → komunikat PL (role=alert), bez grup', () => {
+    mockKontrakt.mockReturnValue({ data: null, isLoading: false, error: 'HTTP 500' });
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    const blad = screen.getByTestId('mvd-przebieg-kontrakt-blad');
+    expect(blad).toHaveTextContent(T.kontraktBlad);
+    expect(blad).toHaveAttribute('role', 'alert');
+    expect(screen.queryByTestId('mvd-przebieg-kontrakt-zwarcie')).not.toBeInTheDocument();
+  });
+
+  it('tryb podstawowy → sekcja domyślnie zwinięta', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={false} onPokazWyniki={() => {}} />);
+    expect(screen.getByTestId('mvd-przebieg-kontrakt')).not.toHaveAttribute('open');
+  });
+
+  it('tryb zaawansowany → sekcja domyślnie rozwinięta', () => {
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={true} onPokazWyniki={() => {}} />);
+    expect(screen.getByTestId('mvd-przebieg-kontrakt')).toHaveAttribute('open');
   });
 });

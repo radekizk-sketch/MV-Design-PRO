@@ -45,4 +45,18 @@ Zasada: żadna trasa nie znika, dopóki okno ui2 nie pokrywa funkcji 1:1
 (zero utraty funkcji; inwentarz funkcji INWENTARZ_FUNKCJI_2026-07.md wiąże).
 
 ## 4. Rejestr wykonania
-- (puste — wpisy po scaleniu każdej fali)
+- **W1** (2026-07-17, commit lokalny `feat(ui2): sekcja kontraktu analizy w panelu
+  przebiegów (W1)`): sekcja „Kontrakt analizy" w `ui2/spaces/obliczenia/przebiegi/
+  SzczegolyPrzebiegu.tsx` — trzy grupy kontraktu wybranego przebiegu (Kontekst
+  ogólny / Założenia rozpływu i zbieżności / Założenia zwarciowo-sieciowe)
+  odwzorowujące treść cienkich paneli mostu `AnalysisContractPanel`
+  (SymmetricalComponents E-29, ThermalDynamic E-34, Convergence — `ui/workspace/
+  WorkspaceSurfaceRouter.tsx:2396-2575`). Hook read-only `useAnalysisRunContract`
+  i formatery `formatContractValue`/`formatCompletenessStatus` REUŻYTE BEZ ZMIAN
+  z `ui/workspace/analysisRunContract.ts` (zero importu komponentów mostu, zero
+  fizyki, etykiety PL 1:1 z mostem, wartości brakujące → „Do konfiguracji").
+  Sekcja zwijana: domyślnie zwinięta w trybie podstawowym, rozwinięta
+  w zaawansowanym. Testy Vitest: +9 (łącznie 17 w pliku panelu), pełny bieg
+  8656 passed / 0 failed. **MiniSldCard pozostaje w wątku SLD (poza zakresem
+  tej karty).** Pokrycie treści kontraktowych paneli mostu: 1:1; trasy legacy
+  paneli mostu zostają do fali W5 (zasada pokrycia 1:1).

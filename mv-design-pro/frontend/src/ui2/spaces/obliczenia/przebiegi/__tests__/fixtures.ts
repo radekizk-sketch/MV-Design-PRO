@@ -4,6 +4,7 @@
  */
 
 import type { ExecutionRun } from '../../../../../ui/study-cases/types';
+import type { AnalysisRunContract } from '../../../../../ui/workspace/analysisRunContract';
 
 export function runFixture(over: Partial<ExecutionRun> = {}): ExecutionRun {
   return {
@@ -15,6 +16,53 @@ export function runFixture(over: Partial<ExecutionRun> = {}): ExecutionRun {
     started_at: '2026-07-15T14:32:00Z',
     finished_at: '2026-07-15T14:32:45Z',
     error_message: null,
+    ...over,
+  };
+}
+
+/**
+ * Fixture kontraktu analizy o realnym kształcie `AnalysisRunContract`
+ * (`ui/workspace/analysisRunContract.ts`). Wartości założeń dobrane pod
+ * deterministyczne etykiety `formatContractValue` (mapa `TECHNICAL_TOKEN_LABELS`).
+ */
+export function kontraktFixture(over: Partial<AnalysisRunContract> = {}): AnalysisRunContract {
+  return {
+    id: 'run-1',
+    analysisType: 'load_flow',
+    status: 'finished',
+    resultStatus: 'valid',
+    resultsValid: true,
+    createdAt: '2026-07-15T14:32:00Z',
+    finishedAt: '2026-07-15T14:32:45Z',
+    inputHash: 'a1b2c3',
+    proofPackRef: null,
+    exportArtifact: null,
+    exportPolicy: null,
+    summaryJson: {},
+    traceSummary: null,
+    analysisCaseContext: {
+      caseRef: 'case-1',
+      caseKind: 'auto',
+      snapshotRef: 'v12',
+      variantRef: null,
+      runRef: null,
+      proofPackRef: null,
+      qualityGate: null,
+      applicabilityScope: ['cała sieć'],
+      completeness: 'complete',
+      completenessLegacy: null,
+      missingPrerequisites: [],
+      assumptions: {
+        transformer_tap_assumptions_ref: 'tap_frozen',
+        grounding_assumptions_ref: 'grounded',
+        switching_state_ref: 'normal',
+        temperature_assumptions_ref: 'temperature_short_circuit',
+        load_assumptions_ref: 'nominal',
+        source_assumptions_ref: 'sc_source_max',
+      },
+      lineage: {},
+      reproducibility: null,
+    },
     ...over,
   };
 }

@@ -15,6 +15,13 @@
  * (ResultSet istnieje tylko dla przebiegów zakończonych — `runStore.ts:12`).
  */
 
+import { useState } from 'react';
+
+import {
+  formatCompletenessStatus,
+  formatContractValue,
+  useAnalysisRunContract,
+} from '../../../../ui/workspace/analysisRunContract';
 import type { PrzebiegWiersz } from './adapters/przebiegiAdapter';
 import { formatCzas, formatOdcisk, PRZEBIEGI_STRINGS as T } from './strings';
 
@@ -50,6 +57,151 @@ function WierszWkrotce({ etykieta, testid }: { etykieta: string; testid?: string
       <td className="mvd-num mvd-wkrotce-wartosc">{T.brakWartosci}</td>
       <td className="mvd-przebieg-pochodzenie mvd-wkrotce">{T.pochodzenieWkrotce}</td>
     </tr>
+  );
+}
+
+function WierszKontraktu({ etykieta, wartosc }: { etykieta: string; wartosc: string }) {
+  return (
+    <tr>
+      <td>{etykieta}</td>
+      <td className="mvd-num">{wartosc}</td>
+    </tr>
+  );
+}
+
+function GrupaKontraktu({
+  tytul,
+  testid,
+  wiersze,
+}: {
+  tytul: string;
+  testid: string;
+  wiersze: { etykieta: string; wartosc: string }[];
+}) {
+  return (
+    <div className="mvd-przebieg-kontrakt-grupa" data-testid={testid}>
+      <h5 className="mvd-przebieg-kontrakt-grupa-tytul">{tytul}</h5>
+      <table className="mvd-przebieg-tabela">
+        <tbody>
+          {wiersze.map((w) => (
+            <WierszKontraktu key={w.etykieta} etykieta={w.etykieta} wartosc={w.wartosc} />
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/*
+ * Sekcja „Kontrakt analizy" — odwzorowanie treści cienkich paneli mostu
+ * (`AnalysisContractPanel`: SymmetricalComponents/ThermalDynamic/Convergence,
+ * `ui/workspace/WorkspaceSurfaceRouter.tsx:2396-2575`) w powłoce ui2. Reużywa
+ * BEZ ZMIAN hook read-only `useAnalysisRunContract` i formatery kontraktu
+ * (`ui/workspace/analysisRunContract.ts`) — zero importu komponentów mostu, zero
+ * fizyki. Wartości brakujące → „Do konfiguracji" (semantyka `formatContractValue`
+ * mostu, parytet 1:1). Sekcja zwijana: domyślnie rozwinięta w trybie eksperckim.
+ */
+function SekcjaKontraktAnalizy({
+  runId,
+  trybEkspercki,
+}: {
+  runId: string;
+  trybEkspercki: boolean;
+}) {
+  const { data, isLoading, error } = useAnalysisRunContract(runId);
+  const [rozwinieta, setRozwinieta] = useState(trybEkspercki);
+
+  const kontekst = data?.analysisCaseContext ?? null;
+  const zalozenia = kontekst?.assumptions ?? {};
+
+  return (
+    <details
+      className="mvd-przebieg-sekcja mvd-przebieg-kontrakt"
+      open={rozwinieta}
+      onToggle={(event) => setRozwinieta(event.currentTarget.open)}
+      data-testid="mvd-przebieg-kontrakt"
+    >
+      <summary className="mvd-przebieg-kontrakt-tytul">{T.sekcjaKontrakt}</summary>
+      {isLoading ? (
+        <p
+          className="mvd-przebieg-kontrakt-stan"
+          role="status"
+          data-testid="mvd-przebieg-kontrakt-ladowanie"
+        >
+          {T.kontraktLadowanie}
+        </p>
+      ) : error ? (
+        <p
+          className="mvd-przebieg-kontrakt-stan mvd-przebieg-blad"
+          role="alert"
+          data-testid="mvd-przebieg-kontrakt-blad"
+        >
+          {T.kontraktBlad}
+        </p>
+      ) : (
+        <div className="mvd-przebieg-kontrakt-grupy">
+          <GrupaKontraktu
+            tytul={T.grupaOgolne}
+            testid="mvd-przebieg-kontrakt-ogolne"
+            wiersze={[
+              { etykieta: T.etykietaTypAnalizy, wartosc: formatContractValue(data?.analysisType) },
+              {
+                etykieta: T.etykietaWaznoscWyniku,
+                wartosc: formatContractValue(data?.resultsValid),
+              },
+              {
+                etykieta: T.etykietaWersjaUkladu,
+                wartosc: formatContractValue(kontekst?.snapshotRef),
+              },
+              {
+                etykieta: T.etykietaKompletnosc,
+                wartosc: formatCompletenessStatus(kontekst?.completeness ?? null),
+              },
+              {
+                etykieta: T.etykietaZakresStosowalnosci,
+                wartosc: formatContractValue(kontekst?.applicabilityScope),
+              },
+            ]}
+          />
+          <GrupaKontraktu
+            tytul={T.grupaRozplyw}
+            testid="mvd-przebieg-kontrakt-rozplyw"
+            wiersze={[
+              {
+                etykieta: T.etykietaZalozeniaOltc,
+                wartosc: formatContractValue(zalozenia['transformer_tap_assumptions_ref']),
+              },
+            ]}
+          />
+          <GrupaKontraktu
+            tytul={T.grupaZwarcie}
+            testid="mvd-przebieg-kontrakt-zwarcie"
+            wiersze={[
+              {
+                etykieta: T.etykietaUziemienie,
+                wartosc: formatContractValue(zalozenia['grounding_assumptions_ref']),
+              },
+              {
+                etykieta: T.etykietaStanLacznikow,
+                wartosc: formatContractValue(zalozenia['switching_state_ref']),
+              },
+              {
+                etykieta: T.etykietaTemperatura,
+                wartosc: formatContractValue(zalozenia['temperature_assumptions_ref']),
+              },
+              {
+                etykieta: T.etykietaZalozeniaObciazen,
+                wartosc: formatContractValue(zalozenia['load_assumptions_ref']),
+              },
+              {
+                etykieta: T.etykietaZalozeniaZrodel,
+                wartosc: formatContractValue(zalozenia['source_assumptions_ref']),
+              },
+            ]}
+          />
+        </div>
+      )}
+    </details>
   );
 }
 
@@ -108,6 +260,8 @@ export function SzczegolyPrzebiegu({
           </tbody>
         </table>
       </section>
+
+      <SekcjaKontraktAnalizy runId={przebieg.id} trybEkspercki={trybEkspercki} />
 
       <section className="mvd-przebieg-sekcja" aria-label={T.sekcjaWkrotce}>
         <h4 className="mvd-przebieg-sekcja-tytul">{T.sekcjaWkrotce}</h4>

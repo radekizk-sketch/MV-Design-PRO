@@ -56,6 +56,26 @@ export const PRZEBIEGI_STRINGS = {
   wToku: 'w toku',
   brakWartosci: '—',
 
+  // Sekcja „Kontrakt analizy" (migracja W1 paneli mostu — składowe symetryczne,
+  // weryfikacja cieplna i dynamiczna, zbieżność). Etykiety 1:1 z panelami mostu.
+  sekcjaKontrakt: 'Kontrakt analizy',
+  kontraktLadowanie: 'Wczytywanie kontraktu analizy…',
+  kontraktBlad: 'Nie udało się wczytać kontraktu analizy',
+  grupaOgolne: 'Kontekst ogólny',
+  grupaRozplyw: 'Założenia rozpływu i zbieżności',
+  grupaZwarcie: 'Założenia zwarciowo-sieciowe',
+  etykietaTypAnalizy: 'Typ analizy',
+  etykietaWaznoscWyniku: 'Ważność wyniku',
+  etykietaWersjaUkladu: 'Wersja układu',
+  etykietaKompletnosc: 'Kompletność',
+  etykietaZakresStosowalnosci: 'Zakres stosowalności',
+  etykietaZalozeniaOltc: 'Założenia OLTC',
+  etykietaUziemienie: 'Uziemienie',
+  etykietaStanLacznikow: 'Stan łączników',
+  etykietaTemperatura: 'Temperatura',
+  etykietaZalozeniaObciazen: 'Założenia obciążeń',
+  etykietaZalozeniaZrodel: 'Założenia źródeł',
+
   // Akcja „Pokaż wyniki"
   przyciskPokazWyniki: 'Pokaż wyniki',
   przyciskPokazWynikiOpis: 'Dostępne po zakończeniu przebiegu (status: Zakończony).',
