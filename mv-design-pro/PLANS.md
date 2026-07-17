@@ -686,6 +686,9 @@ Progress:
         Trzy warunki scalenia właściciela SPEŁNIONE. Następny krok:
         okno P42 (frontend) z rozdziałem obu cosφ w UI. Konfirmacja #39
         w tle.
+        POTWIERDZENIE #39 (2026-07-17): pełny pytest 6126 passed, 0 failed
+        (685 s) — BAZY: backend 6126, frontend 8674. Okno P42 (dobór
+        kompensacji, rozdział cosφ przekroju/punktu w UI) delegowane.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
