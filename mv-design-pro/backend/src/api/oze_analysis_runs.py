@@ -57,6 +57,12 @@ from application.analyses.pq_area import (
 )
 from application.analyses.pq_coverage import build_pq_coverage_view
 from application.analyses.reactive_adequacy import build_reactive_adequacy_view
+from application.analyses.wniosek_osd import (
+    WniosekOsdBrakiError,
+    WniosekOsdIdentyfikacja,
+    build_wniosek_osd_view,
+    render_wniosek_osd_docx,
+)
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
@@ -64,7 +70,8 @@ from enm.store import get_enm, has_enm
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import Response
 from network_model.catalog.repository import get_default_mv_catalog
-from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeSolver
+from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeRunRequest, NcRfgPtpireeSolver
+from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["oze-analysis"])
 _ncrfg_solver = NcRfgPtpireeSolver()
@@ -388,6 +395,76 @@ def post_compliance_certificate_docx(request: CertyfikatZgodnosciRequest) -> Res
         content=docx_bytes,
         media_type=("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
         headers={"Content-Disposition": 'attachment; filename="certyfikat_zgodnosci_ncrfg.docx"'},
+    )
+
+
+class WniosekOsdRequest(BaseModel):
+    """Wejście generatora wniosku OSD: identyfikacja + odwołania do przebiegów."""
+
+    nazwa_projektu: str = Field(min_length=1)
+    nazwa_przypadku: str | None = None
+    wnioskodawca: str | None = None
+    adres_przylaczenia: str | None = None
+    pf_run_id: UUID
+    sc_run_id: UUID
+    bus_ref: str = Field(min_length=1)
+    run_request: NcRfgPtpireeRunRequest
+
+
+def _wniosek_osd_view(request: WniosekOsdRequest) -> dict[str, Any]:
+    """Zbuduj widok wniosku OSD z gotowych przebiegów i macierzy NC RfG.
+
+    Ładuje przebieg rozpływu i zwarciowy (404 gdy brak), uruchamia deterministyczny
+    solver NC RfG (404 gdy nieznany profil operatora), po czym komponuje wniosek.
+    Braki kompletności → 422 z listą po polsku (wniosek nie powstaje).
+    """
+    pf_run = _require_run(request.pf_run_id)
+    sc_run = _require_run(request.sc_run_id)
+    try:
+        ncrfg_run_result = _ncrfg_solver.run(request.run_request)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    identyfikacja = WniosekOsdIdentyfikacja(
+        nazwa_projektu=request.nazwa_projektu,
+        nazwa_przypadku=request.nazwa_przypadku,
+        wnioskodawca=request.wnioskodawca,
+        adres_przylaczenia=request.adres_przylaczenia,
+    )
+    try:
+        return build_wniosek_osd_view(
+            pf_run,
+            sc_run,
+            ncrfg_run_result,
+            bus_ref=request.bus_ref,
+            identyfikacja=identyfikacja,
+        )
+    except WniosekOsdBrakiError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "komunikat": "Wniosek nie może powstać — dane przyłączeniowe "
+                "niekompletne. Uzupełnij braki i powtórz generację.",
+                "braki": exc.braki,
+            },
+        ) from exc
+
+
+@router.post("/api/oze-analysis/osd-application")
+def post_osd_application(request: WniosekOsdRequest) -> dict[str, Any]:
+    return _wniosek_osd_view(request)
+
+
+@router.post("/api/oze-analysis/osd-application.docx")
+def post_osd_application_docx(request: WniosekOsdRequest) -> Response:
+    view = _wniosek_osd_view(request)
+    docx_bytes = render_wniosek_osd_docx(view)
+    return Response(
+        content=docx_bytes,
+        media_type=("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        headers={"Content-Disposition": 'attachment; filename="wniosek_osd.docx"'},
     )
 
 
