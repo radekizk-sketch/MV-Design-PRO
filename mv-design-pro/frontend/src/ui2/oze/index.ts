@@ -14,6 +14,7 @@ export * from './studium';
 export * from './frt';
 export * from './osd';
 export * from './lom';
+export * from './wniosek';
 export * from './api';
 export { useNcRfgStore } from './ncRfgStore';
 export type { NcRfgStoreState, StatusBieguNcRfg } from './ncRfgStore';

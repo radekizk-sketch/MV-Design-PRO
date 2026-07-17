@@ -26,6 +26,7 @@ import {
   EkranFrt,
   EkranLom,
   EkranOsd,
+  EkranWniosku,
   EkranKrzywych,
   EkranObszaruPQ,
   EkranRankingu,
@@ -58,6 +59,7 @@ const ZAKLADKI = [
   { id: 'studium', etykieta: T.zakladkaStudium },
   { id: 'frt', etykieta: T.zakladkaFrt },
   { id: 'osd', etykieta: T.zakladkaOsd },
+  { id: 'wniosek', etykieta: T.zakladkaWniosek },
   { id: 'lom', etykieta: T.zakladkaLom },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
 ] as const;
@@ -81,6 +83,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
       'studium',
       'frt',
       'osd',
+      'wniosek',
       'lom',
     ],
   },
@@ -206,6 +209,7 @@ export function WynikiWarsztat({
         {zakladka === 'studium' && <KreatorStudium trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'frt' && <EkranFrt trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'osd' && <EkranOsd trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'wniosek' && <EkranWniosku trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'lom' && <EkranLom trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'pulpit-oze' && (
           <PulpitOze

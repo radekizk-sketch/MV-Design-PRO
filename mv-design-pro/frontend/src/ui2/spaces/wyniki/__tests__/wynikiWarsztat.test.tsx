@@ -133,6 +133,13 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.getByTestId('mvd-oze-pusty')).toBeInTheDocument();
   });
 
+  it('zakładka „Wniosek OSD": bez biegów — okno renderuje się, generacja nieaktywna', () => {
+    render(<WynikiWarsztat {...props()} />);
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-wniosek'));
+    expect(screen.getByTestId('mvd-wniosek-ekran')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-wniosek-generuj')).toBeDisabled();
+  });
+
   it('bez aktywnego przebiegu: startuje na moście (pozostałe analizy)', () => {
     render(<WynikiWarsztat {...props()} />);
     expect(screen.getByTestId('most-pozostale')).toBeInTheDocument();

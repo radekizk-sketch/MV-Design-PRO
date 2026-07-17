@@ -1173,3 +1173,171 @@ export async function pobierzCertyfikatDocx(zadanie: ZadanieCertyfikatu): Promis
   if (!response.ok) throw await bladCertyfikatu(response);
   return response.blob();
 }
+
+// =============================================================================
+// Wniosek o określenie warunków przyłączenia (OSD) —
+// application/analyses/wniosek_osd.py (D15); końcówki
+// POST /api/oze-analysis/osd-application(.docx) (api/oze_analysis_runs.py)
+// =============================================================================
+
+/**
+ * Wejście generatora wniosku OSD (1:1 z `WniosekOsdRequest`). Identyfikacja +
+ * odwołania do zakończonych przebiegów (rozpływ `pf_run_id`, zwarcie `sc_run_id`),
+ * węzeł przyłączenia i żądanie biegu NC RfG (te same dane, które wyprodukowały
+ * wynik macierzy — `ncRfgStore.ostatnieWejscia`).
+ */
+export interface ZadanieWniosku {
+  readonly nazwa_projektu: string;
+  readonly nazwa_przypadku?: string | null;
+  readonly wnioskodawca?: string | null;
+  readonly adres_przylaczenia?: string | null;
+  readonly pf_run_id: string;
+  readonly sc_run_id: string;
+  readonly bus_ref: string;
+  readonly run_request: NcRfgRunRequest;
+}
+
+/** Identyfikacja we wniosku (blok `identyfikacja`, 1:1 z widokiem backendu). */
+export interface IdentyfikacjaWniosku {
+  readonly projekt: string;
+  readonly przypadek: string | null;
+  readonly wnioskodawca: string | null;
+  readonly adres_przylaczenia: string | null;
+  readonly wezel_przylaczenia: string;
+}
+
+/** Podsumowanie walidacji energetycznej w sekcji bilansu (liczby wg werdyktów). */
+export interface PodsumowanieWalidacjiWniosku {
+  readonly spelnione: number;
+  readonly ostrzezenia: number;
+  readonly niespelnione: number;
+  readonly nieobliczone: number;
+}
+
+/** Sekcja „bilans mocy" wniosku (1:1 z `_bilans_mocy_sekcja`). */
+export interface SekcjaBilansuWniosku {
+  readonly moc_zainstalowana_zrodel_mva: number;
+  readonly moc_zainstalowana_w_punkcie_mva: number | null;
+  readonly liczba_wezlow_ze_zrodlami: number;
+  readonly obciazenie_najwyzsze_pct: number | null;
+  readonly obciazenie_element: string | null;
+  readonly wspolczynnik_mocy_slack: number | null;
+  readonly bilans_q_status: string;
+  readonly straty_pct: number | null;
+  readonly straty_status: string;
+  readonly podsumowanie_walidacji: PodsumowanieWalidacjiWniosku;
+}
+
+/** Sekcja „zwarcia w punkcie przyłączenia" wniosku (1:1 z `_zwarcia_sekcja`). */
+export interface SekcjaZwarciaWniosku {
+  readonly bus_ref: string;
+  readonly nazwa_wezla: string;
+  readonly ik_ss_ka: number | null;
+  readonly sk_mva: number | null;
+  readonly ip_ka: number | null;
+  readonly ith_ka: number | null;
+  readonly rodzaj_zwarcia: string | null;
+}
+
+/** Sekcja „zgodność NC RfG" wniosku (1:1 z `_zgodnosc_sekcja`). */
+export interface SekcjaZgodnosciWniosku {
+  readonly status: string;
+  readonly etykieta_pl: string;
+  readonly liczba_modulow: number;
+  readonly modulow_zgodnych: number;
+  readonly modulow_niezgodnych: number;
+  readonly procedura: string;
+  readonly odeslanie_pl: string;
+  readonly odcisk_wejscia_nc_rfg_sha256: string;
+}
+
+/** Widok JSON wniosku OSD (1:1 z `build_wniosek_osd_view`). */
+export interface WidokWniosku {
+  readonly kontrakt: string;
+  readonly tytul: string;
+  readonly identyfikacja: IdentyfikacjaWniosku;
+  readonly bilans_mocy: SekcjaBilansuWniosku;
+  readonly zwarcia_punkt_przylaczenia: SekcjaZwarciaWniosku;
+  readonly zgodnosc_nc_rfg: SekcjaZgodnosciWniosku;
+  readonly zalozenia_pl: readonly string[];
+  readonly odciski_sekcji_sha256: Readonly<Record<string, string>>;
+  readonly zrodla: {
+    readonly pf_run_id: string;
+    readonly sc_run_id: string;
+    readonly nc_rfg_input_hash: string;
+  };
+  readonly input_hash: string;
+}
+
+/**
+ * Błąd bramki kompletności wniosku (HTTP 422): wniosek NIE powstaje, backend
+ * zwraca `detail = { komunikat, braki }` — uczciwa lista braków po polsku.
+ */
+export class WniosekBrakiError extends Error {
+  readonly braki: readonly string[];
+
+  constructor(komunikat: string, braki: readonly string[]) {
+    super(komunikat);
+    this.name = 'WniosekBrakiError';
+    this.braki = braki;
+  }
+}
+
+/**
+ * Zamień odpowiedź błędu wniosku na wyjątek z komunikatem PL. Rozróżnia bramkę
+ * kompletności (`detail` obiekt z listą `braki` → `WniosekBrakiError`) od
+ * pozostałych błędów (`detail` łańcuch → zwykły `Error`).
+ */
+async function bladWniosku(response: Response): Promise<Error> {
+  let komunikat = `Zapytanie wniosku nie powiodło się: ${response.status} ${response.statusText}`;
+  try {
+    const body = (await response.json()) as { detail?: unknown };
+    const detail = body?.detail;
+    if (detail && typeof detail === 'object') {
+      const obiekt = detail as { komunikat?: unknown; braki?: unknown };
+      const braki = Array.isArray(obiekt.braki)
+        ? obiekt.braki.filter((p): p is string => typeof p === 'string')
+        : [];
+      const tekst =
+        typeof obiekt.komunikat === 'string' && obiekt.komunikat.trim()
+          ? obiekt.komunikat
+          : komunikat;
+      if (braki.length > 0) return new WniosekBrakiError(tekst, braki);
+      komunikat = tekst;
+    } else if (typeof detail === 'string' && detail.trim()) {
+      komunikat = detail;
+    }
+  } catch {
+    // Brak treści JSON — pozostaje komunikat ze statusem HTTP.
+  }
+  return new Error(komunikat);
+}
+
+/**
+ * Pobierz widok JSON wniosku OSD (jawny bieg; wniosek zestawia gotowe wyniki).
+ * Rzuca `WniosekBrakiError` przy 422 (braki kompletności), zwykły `Error`
+ * z komunikatem PL przy pozostałych błędach.
+ */
+export async function pobierzWniosek(zadanie: ZadanieWniosku): Promise<WidokWniosku> {
+  const response = await fetch('/api/oze-analysis/osd-application', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(zadanie),
+  });
+  if (!response.ok) throw await bladWniosku(response);
+  return response.json() as Promise<WidokWniosku>;
+}
+
+/**
+ * Pobierz deterministyczny plik DOCX wniosku OSD (blob). Obsługa błędów PL jak
+ * dla widoku JSON — w tym `WniosekBrakiError` przy 422 z listą braków.
+ */
+export async function pobierzWniosekDocx(zadanie: ZadanieWniosku): Promise<Blob> {
+  const response = await fetch('/api/oze-analysis/osd-application.docx', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(zadanie),
+  });
+  if (!response.ok) throw await bladWniosku(response);
+  return response.blob();
+}

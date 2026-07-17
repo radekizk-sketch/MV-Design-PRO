@@ -18,6 +18,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaFrt: 'Walidacja falownika',
   zakladkaOsd: 'Polecenia OSD',
   zakladkaLom: 'Praca wyspowa',
+  zakladkaWniosek: 'Wniosek OSD',
   zakladkaPorownanie: 'Porównanie A/B',
   zakladkaOdbior: 'Zgodność powykonawcza',
   porownanieBezProjektu: 'Otwórz projekt, aby porównywać przebiegi obliczeń.',
