@@ -486,6 +486,13 @@ Progress:
         POTWIERDZENIE #24 (2026-07-17): pełny pytest 6043 passed, 0 failed
         (603 s) — nowa baza backendu 6043. Karta P39c (przycisk certyfikatu
         w macierzy) delegowana.
+        SCALENIE #25 (2026-07-17): P39c certyfikat w macierzy NC RfG
+        (c4d7571 → cherry-pick) — przycisk z podglądem, lista braków 422
+        (CertyfikatBrakiError, detail jako obiekt), pobranie DOCX;
+        ncRfgStore.ostatnieWejscia gwarantuje żądanie 1:1 z zakończonym
+        biegiem (uzasadnione odstępstwo). Wykonawca: pełny vitest 8564
+        pass, 0 failed. Zarządca: 364 celowane + type-check + lint +
+        4 guardy OK, push. Konfirmacja w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
