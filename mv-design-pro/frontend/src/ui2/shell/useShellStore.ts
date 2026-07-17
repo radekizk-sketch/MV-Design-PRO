@@ -25,6 +25,17 @@ export const RAIL_WIDTH = 48;
 
 export type BottomPanelTab = 'problemy' | 'przebiegi' | 'dziennik';
 
+/**
+ * REZERWA (Reference Engine V1, HANDOFF pkt 2.6): punkt ustawień widoku
+ * „Profil renderowania schematu". Do czasu pozyskania ZWERYFIKOWANYCH
+ * wzorników graficznych producentów (legendy symboli 8DJH/UniGear — patrz
+ * docs/uiux/SLOWNIK_IA_2026-07.md §2) jedyną wartością jest 'standard';
+ * implementacja stylów producenckich ZAKAZANA („nie fabrykuj danych
+ * producenta"). Sam typ rezerwuje miejsce — ZERO implementacji przełącznika.
+ */
+export type RenderProfileId = 'standard';
+export const DEFAULT_RENDER_PROFILE: RenderProfileId = 'standard';
+
 export interface PanelLayoutState {
   leftWidth: number;
   rightWidth: number;
