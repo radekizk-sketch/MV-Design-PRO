@@ -546,6 +546,15 @@ Progress:
         4 guardy OK, push. Konfirmacja w tle.
         POTWIERDZENIE #29 (2026-07-17): pełny vitest 8622 passed, 0 failed
         — BAZY: backend 6066, frontend 8622.
+        SCALENIE #30 (2026-07-17): D16 eksport PDF certyfikatu i wniosku
+        OSD (77be560 → cherry-pick) — końcówki .pdf z bramką braków;
+        DETERMINIZM BAJTOWY osiągnięty (canvas invariant=1 +
+        pageCompression=0, mocniejszy niż precedens treściowy repo);
+        renderery obok serwisów D14/D15 (spójnie z DOCX tych dokumentów).
+        Wykonawca: pełny pytest 6082 pass, 0 failed (+16); wyścig
+        commit/przejęcie rozstrzygnięty na korzyść wykonawcy (77be560,
+        bez utraty danych). Zarządca: 55 celowanych + 4 guardy OK, push.
+        Konfirmacja w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
