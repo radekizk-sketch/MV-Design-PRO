@@ -92,6 +92,27 @@ FUNCTION_TYPE_MAP: dict[str, dict[str, Any]] = {
         "required_inputs": ["3i0", "3u0"],
         "execution_mode": "wyzwolenie",
     },
+    # D10 (addytywnie): funkcje ochrony od pracy wyspowej (LoM).
+    "rocof_81R": {
+        "code": "81R",
+        "required_inputs": ["vt"],
+        "execution_mode": "wyzwolenie",
+    },
+    "vector_shift_78": {
+        "code": "78",
+        "required_inputs": ["vt"],
+        "execution_mode": "wyzwolenie",
+    },
+    "underfrequency_81U": {
+        "code": "81U",
+        "required_inputs": ["vt"],
+        "execution_mode": "wyzwolenie",
+    },
+    "overfrequency_81O": {
+        "code": "81O",
+        "required_inputs": ["vt"],
+        "execution_mode": "wyzwolenie",
+    },
 }
 
 
@@ -713,6 +734,34 @@ def _setting_to_function_state(
                 key="krzywa",
                 value=setting.curve_type,
                 unit=None,
+                quality="reczne",
+            )
+        )
+    # D10 (addytywnie): nastawy funkcji LoM (df/dt, przesunięcie wektora, próg f).
+    if setting.threshold_hz_s is not None:
+        settings.append(
+            ProtectionSettingValue(
+                key="df_dt",
+                value=setting.threshold_hz_s,
+                unit="Hz/s",
+                quality="reczne",
+            )
+        )
+    if setting.threshold_deg is not None:
+        settings.append(
+            ProtectionSettingValue(
+                key="przesuniecie_wektora",
+                value=setting.threshold_deg,
+                unit="deg",
+                quality="reczne",
+            )
+        )
+    if setting.threshold_hz is not None:
+        settings.append(
+            ProtectionSettingValue(
+                key="prog_czestotliwosci",
+                value=setting.threshold_hz,
+                unit="Hz",
                 quality="reczne",
             )
         )

@@ -84,6 +84,28 @@ FUNCTION_META = {
         "ansi": ("67N",),
         "label_pl": "Ziemnozwarciowa kierunkowa",
     },
+    # D10 (addytywnie): funkcje ochrony od pracy wyspowej (LoM). Kody spójne z
+    # sanity_checks (ROCOF, UNDERFREQUENCY, OVERFREQUENCY).
+    "rocof_81R": {
+        "code": "ROCOF",
+        "ansi": ("81R",),
+        "label_pl": "Szybkość zmian częstotliwości (df/dt)",
+    },
+    "vector_shift_78": {
+        "code": "VECTOR_SHIFT",
+        "ansi": ("78",),
+        "label_pl": "Przesunięcie wektora napięcia",
+    },
+    "underfrequency_81U": {
+        "code": "UNDERFREQUENCY",
+        "ansi": ("81U",),
+        "label_pl": "Podczęstotliwościowa (f<)",
+    },
+    "overfrequency_81O": {
+        "code": "OVERFREQUENCY",
+        "ansi": ("81O",),
+        "label_pl": "Nadczęstotliwościowa (f>)",
+    },
 }
 
 

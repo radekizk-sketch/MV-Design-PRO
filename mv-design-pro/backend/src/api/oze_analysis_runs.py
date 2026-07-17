@@ -36,6 +36,7 @@ from application.analyses.hosting_capacity import (
     DEFAULT_STEP_MW,
     build_hosting_capacity_view,
 )
+from application.analyses.ochrona_lom import build_ochrona_lom_view
 from application.analyses.odpowiedz_osd import (
     DEFAULT_DEADBAND_HZ,
     DEFAULT_F0_HZ,
@@ -53,6 +54,7 @@ from application.analyses.reactive_adequacy import build_reactive_adequacy_view
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
+from enm.store import get_enm, has_enm
 from fastapi import APIRouter, HTTPException, Query, status
 from network_model.catalog.repository import get_default_mv_catalog
 
@@ -67,6 +69,22 @@ def _require_run(run_id: UUID) -> CanonicalRun:
             detail=f"Przebieg {run_id} nie istnieje.",
         )
     return run
+
+
+@router.get("/api/oze-analysis/lom-protection")
+def get_lom_protection(case_id: str = Query(...)) -> dict[str, Any]:
+    """Weryfikacja ochrony przed pracą wyspową (LoM) dla modułów wytwórczych.
+
+    Ładuje dokument ENM przypadku (404 gdy przypadek nieznany) i deleguje ocenę
+    do serwisu interpretacji (ZERO fizyki). 200 z uczciwymi INFO przy brakach danych.
+    """
+    if not has_enm(case_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Przypadek {case_id} nie ma dokumentu ENM.",
+        )
+    enm = get_enm(case_id)
+    return build_ochrona_lom_view(enm)
 
 
 @router.get("/api/oze-analysis/grid-strength")

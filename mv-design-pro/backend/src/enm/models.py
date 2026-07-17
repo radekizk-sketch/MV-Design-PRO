@@ -61,11 +61,26 @@ class ProtectionSetting(BaseModel):
         "earth_fault_51N",
         "directional_67",
         "directional_67N",
+        # D10 (addytywnie): funkcje ochrony od pracy wyspowej (Loss of Mains).
+        # Rozszerzenie WYŁĄCZNIE dodaje literały — istniejące dokumenty ENM bez
+        # tych typów walidują się bez zmian.
+        "rocof_81R",
+        "vector_shift_78",
+        "underfrequency_81U",
+        "overfrequency_81O",
     ]
     threshold_a: float | None = None
     time_delay_s: float | None = None
     curve_type: Literal["DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LI"] | None = None
     is_directional: bool = False
+    # D10 (addytywnie, opcjonalne — default None): nastawy funkcji LoM.
+    # Zachowanie istniejących typów funkcji NIE zmienia się (pola pozostają None).
+    threshold_hz_s: float | None = None
+    """Nastawa df/dt [Hz/s] dla ROCOF (81R)."""
+    threshold_deg: float | None = None
+    """Nastawa przesunięcia wektora [°] dla funkcji 78."""
+    threshold_hz: float | None = None
+    """Próg częstotliwościowy [Hz] dla 81U/81O."""
 
 
 # ---------------------------------------------------------------------------
