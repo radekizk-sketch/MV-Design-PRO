@@ -11,7 +11,11 @@
   P–Q wskazanego węzła jako deterministyczna siatka scenariuszy rozpływu (``PF``),
 - ``GET /api/oze-analysis/osd-response?run_id=&source_ref=&command=`` — symulacja
   odpowiedzi źródła na polecenie OSD jako porównanie dwóch biegów rozpływu
-  (bazowy + z poleceniem) na modelu przebiegu (``PF``).
+  (bazowy + z poleceniem) na modelu przebiegu (``PF``),
+- ``GET /api/oze-analysis/compensation-sizing?run_id=&bus_ref=&cos_phi_min=&uwzglednij_noc=``
+  — dobór kompensacji mocy biernej z katalogu baterii kondensatorów jako
+  deterministyczny przegląd rekordów katalogu (rosnąco po mocy) na modelu przebiegu
+  (``PF``).
 
 Warstwa PREZENTACJI/API: ładuje przebieg (404 gdy brak), deleguje mapowanie do
 serwisów aplikacyjnych (ZERO fizyki) i zwraca zserializowany widok 1:1 z buildera
@@ -23,6 +27,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from application.analyses.dobor_kompensacji import build_compensation_sizing_view
 from application.analyses.frt_trajektorie import build_frt_trajectories_view
 from application.analyses.grid_strength import build_grid_strength_view
 from application.analyses.hosting_capacity import (
@@ -127,6 +132,28 @@ def get_pq_area(
             step_q_mvar=step_q_mvar,
             max_steps_p=max_steps_p,
             max_steps_q=max_steps_q,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/api/oze-analysis/compensation-sizing")
+def get_compensation_sizing(
+    run_id: UUID = Query(...),
+    bus_ref: str = Query(...),
+    cos_phi_min: float = Query(...),
+    uwzglednij_noc: bool = Query(default=False),
+) -> dict[str, Any]:
+    run = _require_run(run_id)
+    try:
+        return build_compensation_sizing_view(
+            run,
+            bus_ref=bus_ref,
+            cos_phi_min=cos_phi_min,
+            uwzglednij_noc=uwzglednij_noc,
         )
     except ValueError as exc:
         raise HTTPException(
