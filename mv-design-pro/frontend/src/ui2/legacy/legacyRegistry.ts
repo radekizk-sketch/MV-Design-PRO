@@ -46,14 +46,14 @@ export const REJESTR_LEGACY: Readonly<Record<SpaceId, WpisRejestruLegacy>> = {
     przestrzen: 'model',
     zrodlo: 'legacy',
     obszaryLegacy: ['MODEL_SIECI', 'KATALOGI_TECHNICZNE'],
-    montaz: 'SldWorkspaceContainer (kanwa budowy sieci; katalogi przez akcje kanwy)',
+    montaz: 'SldCanvasV3Workspace (kanwa budowy sieci v3; katalogi przez akcje kanwy)',
     wygaszenie: 'U2: okna modelu sieci i przeglądarka katalogów w nowej powłoce (po E1.7c: kanwa + pasek przepływu pracy przez mosty)',
   },
   schemat: {
     przestrzen: 'schemat',
     zrodlo: 'legacy',
     obszaryLegacy: ['SCHEMAT_TOPOLOGIA'],
-    montaz: 'SldWorkspaceContainer (schemat jednokreskowy — osobny wątek SLD)',
+    montaz: 'SldCanvasV3Workspace (schemat jednokreskowy v3 — po konsolidacji wątku SLD)',
     wygaszenie: 'U3/wątek SLD: nowa rama edytora schematu (bez zmian wnętrza ui/sld)',
   },
   gotowosc: {

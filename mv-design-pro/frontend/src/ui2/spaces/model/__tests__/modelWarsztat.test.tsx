@@ -14,8 +14,8 @@ vi.mock('../szablony', () => ({
   ),
 }));
 
-vi.mock('../../../../ui/sld/v2/canvas/SldWorkspaceContainer', () => ({
-  SldWorkspaceContainer: () => <div data-testid="atrapa-schemat" />,
+vi.mock('../../../../ui/sld/v3/canvas/SldCanvasV3Workspace', () => ({
+  SldCanvasV3Workspace: () => <div data-testid="atrapa-schemat" />,
 }));
 
 vi.mock('../../../../ui/network-build/station-templates', () => ({

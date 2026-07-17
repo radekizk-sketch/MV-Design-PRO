@@ -16,7 +16,7 @@
 import type { ReactNode } from 'react';
 import './legacy.css';
 
-import { SldWorkspaceContainer } from '../../ui/sld/v2/canvas/SldWorkspaceContainer';
+import { SldCanvasV3Workspace } from '../../ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
 import type { SpaceId } from '../shell/spaces';
 import { REJESTR_LEGACY } from './legacyRegistry';
@@ -37,7 +37,7 @@ function OprawaWarsztatu({ children }: { children: ReactNode }) {
  * przy JAWNYM wyborze przestrzeni (AppRoot.onActiveSpaceChange); montaż nie
  * może nadpisywać deep-linków (#analysis/#variants/...). */
 function LegacySld() {
-  return <SldWorkspaceContainer />;
+  return <SldCanvasV3Workspace />;
 }
 
 /** Obliczenia: konfiguracja zakresu obliczeń + historia przebiegów (study-cases). */

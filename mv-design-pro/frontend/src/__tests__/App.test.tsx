@@ -14,8 +14,8 @@ import { useSnapshotStore } from '../ui/topology/snapshotStore';
 
 // Kanwa SLD (ciężki komponent canvas) jest atrapowana — test korzenia motywu
 // sprawdza kontrakt markerów i montaż powłoki, nie silnik SLD.
-vi.mock('../ui/sld/v2/canvas/SldWorkspaceContainer', () => ({
-  SldWorkspaceContainer: () => null,
+vi.mock('../ui/sld/v3/canvas/SldCanvasV3Workspace', () => ({
+  SldCanvasV3Workspace: () => null,
 }));
 
 function snapshotZRewizja(revision: number): EnergyNetworkModel {

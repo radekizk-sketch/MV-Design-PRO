@@ -20,7 +20,7 @@ import { EnmInspectorPage } from '../../ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from '../../ui/fault-scenarios';
 import { StationWizardSurface } from '../../ui/network-build/station-wizard-v2/StationWizardSurface';
 import { featureFlags } from '../../ui/config/featureFlags';
-import { SldWorkspaceContainer } from '../../ui/sld/v2/canvas/SldWorkspaceContainer';
+import { SldCanvasV3Workspace } from '../../ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from '../../ui/workspace/surfaces/ProjectDashboardSurface';
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
 import { SemanticIssuesBanner } from '../../ui/tech-card/SemanticIssuesBanner';
@@ -92,7 +92,7 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
   if (route === '#sld-view') {
     return (
       <div data-testid="workspace-surface-main" className="mvd-legacy-host">
-        <SldWorkspaceContainer readOnly />
+        <SldCanvasV3Workspace readOnly />
       </div>
     );
   }
@@ -101,7 +101,7 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
   if (route === ROUTES.SLD.hash) {
     return (
       <div data-testid="workspace-surface-main" className="mvd-legacy-host">
-        <SldWorkspaceContainer />
+        <SldCanvasV3Workspace />
       </div>
     );
   }

@@ -16,8 +16,8 @@ import { useShellStore } from '../shell/useShellStore';
 
 // E1.7b: kanwa SLD (ciężki komponent canvas) jest atrapowana — testy powłoki
 // sprawdzają kontrakt montażu (LegacySurface + testidy), nie silnik SLD.
-vi.mock('../../ui/sld/v2/canvas/SldWorkspaceContainer', () => ({
-  SldWorkspaceContainer: () => null,
+vi.mock('../../ui/sld/v3/canvas/SldCanvasV3Workspace', () => ({
+  SldCanvasV3Workspace: () => null,
 }));
 
 function snapshotZRewizja(revision: number): EnergyNetworkModel {

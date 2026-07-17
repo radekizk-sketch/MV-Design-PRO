@@ -11,7 +11,7 @@
 import { useMemo, useState } from 'react';
 
 import { StationTemplateWizard } from '../../../ui/network-build/station-templates';
-import { SldWorkspaceContainer } from '../../../ui/sld/v2/canvas/SldWorkspaceContainer';
+import { SldCanvasV3Workspace } from '../../../ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { useAppStateStore } from '../../../ui/app-state';
 import { PrzegladarkaSzablonow } from './szablony';
 import { WlasciwosciModelu } from './WlasciwosciModelu';
@@ -89,7 +89,7 @@ export function ModelWarsztat() {
         ))}
       </div>
       <div role="tabpanel" className="mvd-model-tresc">
-        {zakladka === 'schemat' && <SldWorkspaceContainer />}
+        {zakladka === 'schemat' && <SldCanvasV3Workspace />}
         {zakladka === 'wlasciwosci' && <WlasciwosciModelu />}
         {zakladka === 'szablony' && (
           <PrzegladarkaSzablonow
