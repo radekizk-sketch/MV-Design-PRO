@@ -95,14 +95,22 @@ kontynuuje od V12K-060+; zakres **V12K-040…059 pozostaje zarezerwowany dla wą
 
 ## Potwierdzenia
 
-- [ ] Wątek UI: Reference Score w IA (pkt 2.1)
-- [ ] Wątek UI: ostrzeżenia `reference.*` w panelu walidacji (pkt 2.2)
-- [ ] Wątek UI: ✓/✗ per element w inspektorze (pkt 2.3)
-- [ ] Wątek UI: picker rodziny + cell_match w kreatorze (pkt 2.4)
-- [ ] Wątek UI: słownik IA (pkt 2.5)
-- [ ] Wątek UI: rezerwa na Render Profile bez implementacji (pkt 2.6)
-- [ ] Wątek UI: prezentacja OSD (pkt 2.7)
+- [x] Wątek UI: Reference Score w IA (pkt 2.1) — `ui2/spaces/gotowosc/SekcjaZgodnosciReferencyjnej.tsx` (REF-A); `score_percent=null` prezentowane jako „nie dotyczy", progi kolorów wg §2.1
+- [x] Wątek UI: ostrzeżenia `reference.*` w panelu walidacji (pkt 2.2) — grupa „Zgodność referencyjna" w PanelGotowosci (REF-A), nawigacja do `element_refs[0]` + „Napraw" → BayModal
+- [x] Wątek UI: ✓/✗ per element w inspektorze (pkt 2.3) — `ui2/spaces/model/ZgodnoscReferencyjna.tsx` (REF-B); ✗ zawsze z `message_pl`
+- [x] Wątek UI: picker rodziny + cell_match w kreatorze (pkt 2.4) — `ui/network-build/station-wizard-v2/PickerRodzinyReferencyjnej.tsx` (REF-B); nazwa celki z `cell_match`, podpowiedzi standard/opcja z `cell_configurations`
+- [x] Wątek UI: słownik IA (pkt 2.5) — `docs/uiux/SLOWNIK_IA_2026-07.md`
+- [x] Wątek UI: rezerwa na Render Profile bez implementacji (pkt 2.6) — `ui2/shell/useShellStore.ts` (`RenderProfileId`, `DEFAULT_RENDER_PROFILE`), zero implementacji stylów
+- [x] Wątek UI: prezentacja OSD (pkt 2.7) — wyniki OSD na stacjach w sekcji zgodności; `implemented=false` prezentowane informacyjnie
+
+Potwierdzenie numeracji (pkt 3 kontraktu / §6): zakres V12K-040…059 dla wątku UI
+POTWIERDZONY przy konsolidacji gałęzi 2026-07-17 (renumeracja V12K-027→V12K-040
+wykonana; rejestr konfliktów zaktualizowany). Klienty referencji w wątku UI:
+`ui2/referencje/api.ts` — wyłącznie reeksporty z `ui/enm-inspector` + klienty
+GET pakietów (zakaz drugiej definicji, V12K-060). Testy komponentowe z mockiem
+fetch na kontrakcie §1.1 dostarczone (REF-A/REF-B, 668 testów celowanych).
 
 ## Pytania
 
-(brak)
+(brak — po konsolidacji gałęzi 2026-07-17 backend Reference Engine działa na tej
+samej gałęzi; zalecana weryfikacja e2e-real w kolejnej sesji regresyjnej)
