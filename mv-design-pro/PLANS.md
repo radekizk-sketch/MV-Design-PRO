@@ -394,6 +394,17 @@ Progress:
         solvera) i karta D10 (P46 — ochrona LoM: ROCOF/przesunięcie wektora,
         addytywne rozszerzenie ProtectionSetting, koordynacja z SPZ)
         delegowane równolegle do wykonawców Opus (worktree).
+        SCALENIE #18 (2026-07-17): D9+D10+D11 (karta D11 = P37 migotanie
+        IEC 61000-3-7, addytywne pole flicker_c w ConverterType,
+        GET /api/quality/flicker). Restart kontenera zabił pełne pytest
+        wszystkich trzech wykonawców — zarządca przejął: bramki celowane
+        w worktree (D9 29, D10 21, D11 29 pass), ruff/black/mypy czyste,
+        commity w imieniu wykonawców, cherry-pick bez konfliktów
+        (83d1ed7, c684b23, 27b3cb8), 79 testów celowanych na drzewie
+        głównym, 11 guardów OK (catalog_* pod venv poetry — systemowy
+        python bez networkx to fałszywy FAIL). Konfirmacja pełnym pytest
+        w tle. UWAGA: worktree wykonawców mogą mieć świeży pusty venv
+        poetry — bramki uruchamiać venv drzewa głównego (D2vgvUMQ).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
