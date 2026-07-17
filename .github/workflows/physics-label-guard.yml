@@ -16,4 +16,7 @@ jobs:
         with:
           python-version: "3.x"
       - name: Uruchom physics-label-guard
-        run: python scripts/physics_label_guard.py
+        # Ścieżka względem korzenia repo — workflow przeniesiony z martwego
+        # katalogu mv-design-pro/.github/workflows (GitHub czyta wyłącznie
+        # .github/workflows w korzeniu; tam nigdy nie działał).
+        run: python mv-design-pro/scripts/physics_label_guard.py

@@ -51,13 +51,18 @@ jobs:
 
       # === Determinism / trace guards ===
       # CLAUDE.md § Core Rules: Same input MUST produce identical output
+      # 2026-07-17: warn-only ZDJĘTE — wszystkie guardy tego workflowu zielone
+      # na czystym HEAD (weryfikacja lokalna przy przenosinach z martwego
+      # katalogu mv-design-pro/.github/workflows); trace_determinism wymaga
+      # wyłącznie pydantic (import modeli domeny, bez cięższych zależności).
+      - name: Zależności trace guard (pydantic)
+        run: pip install pydantic
+
       - name: Trace determinism
         run: python scripts/trace_determinism_guard.py
-        continue-on-error: true  # warn-only until baselines stabilized
 
       - name: Fault scenarios determinism
         run: python scripts/fault_scenarios_determinism_guard.py
-        continue-on-error: true
 
       # === UI / terminology guards (V12K polski UI 100%) ===
       - name: UI terminology
@@ -72,14 +77,12 @@ jobs:
       # === V12.xx canon guards ===
       - name: V12.xx canon (hierarchy + paths)
         run: python scripts/v12xx_canon_guard.py
-        continue-on-error: true  # warn-only — surfaces api-lifecycle gaps
 
       - name: Severity contract
         run: python scripts/severity_contract_guard.py
 
       - name: Result Set v1 schema
         run: python scripts/resultset_v1_schema_guard.py
-        continue-on-error: true  # warn-only — surfaces missing fields
 
       # === Port binding (P0.3 F2 foundation) ===
       # Strict mode: zero tolerance for missing endpoint ports per port_binding_guard.py

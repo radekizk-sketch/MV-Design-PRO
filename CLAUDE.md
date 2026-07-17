@@ -495,7 +495,6 @@ python scripts/no_direct_fault_params_guard.py    # No direct fault param inject
 python scripts/sld_determinism_guards.py          # SLD rendering determinism
 python scripts/trace_determinism_guard.py         # Trace output determinism
 python scripts/fault_scenarios_determinism_guard.py # Fault scenario determinism
-python scripts/results_workspace_determinism_guard.py # Results workspace determinism
 
 # Schema guards
 python scripts/resultset_v1_schema_guard.py       # ResultSet v1 schema compliance
@@ -728,7 +727,6 @@ python scripts/trace_ui_leak_guard.py
 python scripts/sld_determinism_guards.py
 python scripts/trace_determinism_guard.py
 python scripts/fault_scenarios_determinism_guard.py
-python scripts/results_workspace_determinism_guard.py
 python scripts/resultset_v1_schema_guard.py
 
 # Validation & contracts
