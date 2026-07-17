@@ -465,6 +465,8 @@ Progress:
         istniał z P47a — bez duplikacji). Wykonawca: pełny vitest 8553 pass,
         0 failed. Zarządca: 393 celowane + type-check + lint + 4 guardy OK,
         push. Konfirmacje #22 (pytest) i #23 (vitest) w tle.
+        POTWIERDZENIE #22 (2026-07-17): pełny pytest 6027 passed, 0 failed
+        (620 s) — nowa baza backendu 6027.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
