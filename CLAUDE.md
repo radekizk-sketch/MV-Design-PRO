@@ -783,6 +783,16 @@ Zasady wykonania:
 4. **Dług nienaprawialny w bieżącej sesji** (wymaga decyzji produktowej,
    danych, których nie ma, albo przekracza sesję) — wpis do execplanu z
    pomiarem, przyczyną i planem, nigdy cicho.
+5. **Test maskujący defekt produktu = dwa defekty** (dyrektywa właściciela,
+   2026-07-17). Gdy test „przechodzi" tylko dzięki obejściu realnej ścieżki
+   użytkownika (syntetyczny `dispatchEvent` zamiast natywnego klika,
+   wymuszony stan store zamiast interakcji, sztuczny fixture omijający
+   walidację) — naprawiasz OBA: defekt produktu u źródła ORAZ test, żeby
+   ćwiczył realną ścieżkę (inaczej regresja naprawy będzie niewykrywalna).
+   Precedens: martwy lewy klik w elementy kanwy SLD (capture-on-pointerdown
+   przekierowywał click na tło) był latami niewidoczny, bo wszystkie specy
+   klikały syntetycznie. Nowy test interakcji ZAWSZE zaczyna od ścieżki
+   natywnej; syntetyczny event wymaga uzasadnienia w komentarzu.
 
 ## Escalation
 

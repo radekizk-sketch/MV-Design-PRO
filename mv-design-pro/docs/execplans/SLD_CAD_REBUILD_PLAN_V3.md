@@ -1783,6 +1783,16 @@ ZAMKNIĘTE 2026-07-17 (runda 3, „Wykonaj") — OBIE luki wykonane end-to-end:
      modelach realnego backendu z pustym `snapshot.bays` (fallback:
      gramatyka refów `stn/⟨id⟩` potwierdzona rekordem `substations`) —
      test `transformerSelection.test.tsx`.
+   DOMKNIĘCIE ODMASKOWANIA (dyrektywa właściciela „naprawiaj zawsze takie
+   błędy" → Zero-Debt pkt 5 w CLAUDE.md): WSZYSTKIE syntetyczne
+   `dispatchEvent(new MouseEvent('click'))` w e2e zastąpione klikiem
+   NATYWNYM (critical-der-config: symbol L0; flex: odcinek — cel w punkt NA
+   torze `getPointAtLength(len/2)`; flex: komórka pola inżynierskiego).
+   Klik natywny w ODCINEK ujawnił TRZECI defekt tej samej klasy: widoczna
+   kreska toru 1.6–2.4 px była realnie NIEKLIKALNA — naprawa u źródła:
+   niewidzialny HITBOX odcinka (drugi path, transparent, 12 px świata,
+   WYŁĄCZNIE na kanwie interaktywnej — rendery bazowe harnessu bez zmian,
+   `data-owner-ref` zostaje na dokładnie jednym path-u).
    POZA ZAKRESEM (pre-F6a, udokumentowana granica ze stopNote): odgałęzienie
    startujące z pola GPZ (`start_branch_segment_sn` z `gpz/…` — fixtura
    `openBranch.enm.json` niesie taki przypadek) — `resolveBranchOrigin`

@@ -192,9 +192,21 @@ async function openSegmentInspector(page: Page, segmentRef: string): Promise<voi
   // klik dowolnego kawałka normalizuje się do refu kanonicznego w workspace.
   const hitbox = page.locator(`path[data-owner-ref^="${segmentRef}"]`).first();
   await expect(hitbox).toHaveCount(1, { timeout: 15000 });
-  await hitbox.evaluate((node: SVGPathElement) => {
-    node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
+  // REALNY klik Playwright — NIE syntetyczny `dispatchEvent` (maskował defekt
+  // martwego klika, patrz `openElementInspector` niżej). Cel = punkt NA
+  // torze (`getPointAtLength(len/2)`): środek bboxa polilinii z zagięciem
+  // leży POZA kreską, a realny użytkownik klika w kreskę.
+  const clickPos = await hitbox.evaluate((node: SVGPathElement) => {
+    const len = node.getTotalLength();
+    const pt = node.getPointAtLength(len / 2);
+    const ctm = node.getScreenCTM();
+    const screen = ctm
+      ? { x: ctm.a * pt.x + ctm.c * pt.y + ctm.e, y: ctm.b * pt.x + ctm.d * pt.y + ctm.f }
+      : { x: pt.x, y: pt.y };
+    const rect = node.getBoundingClientRect();
+    return { x: screen.x - rect.left, y: screen.y - rect.top };
   });
+  await hitbox.click({ position: clickPos, force: true });
 
   await expect(page.getByTestId('sld-v2-detail-drawer')).toBeVisible();
   await page.getByTestId('sld-v2-detail-drawer-open-configuration').click();
@@ -246,13 +258,11 @@ async function activateEngineeringFieldEditor(page: Page, fieldKey: string): Pro
   const fieldRow = page.getByTestId(`engineering-field-${fieldKey}`);
   await expect(fieldRow).toHaveCount(1);
 
-  await fieldRow.evaluate((node: HTMLElement, key: string) => {
-    const clickable = node.querySelector('div.cursor-pointer');
-    if (!(clickable instanceof HTMLElement)) {
-      throw new Error(`Missing editable value cell for engineering-field-${key}`);
-    }
-    clickable.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
-  }, fieldKey);
+  // REALNY klik Playwright w komórkę wartości (ta sama zasada co klik w
+  // elementy kanwy: test ćwiczy ścieżkę użytkownika, nie syntetyczny event).
+  const clickable = fieldRow.locator('div.cursor-pointer').first();
+  await expect(clickable, `Missing editable value cell for engineering-field-${fieldKey}`).toBeVisible();
+  await clickable.click();
 
   await expect(fieldRow.locator('input')).toBeVisible();
 }

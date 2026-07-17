@@ -71,6 +71,13 @@ const FLOW_OVERLAY_COLOR = '#4FC3F7';
  *  grot nie dominował nad symbolami toru (spec §6 hierarchia graficzna). */
 const FLOW_ARROW_LENGTH = 12;
 const FLOW_ARROW_HALF_WIDTH = 5;
+/** Zero-Debt pkt 5: szerokość NIEWIDZIALNEGO hitboxa odcinka [px świata] —
+ *  widoczna kreska toru (1.6–2.4) jest za wąska na realny klik użytkownika
+ *  (pomiar 2026-07-17: klik natywny w tor nie trafiał; syntetyczny
+ *  `dispatchEvent` w testach maskował defekt). 12 px świata ≈ czytelny cel
+ *  przy typowym zoomie, wciąż węższy niż odstęp korytarzy (GRID=8 ⇒ tory
+ *  sąsiednie ≥ 2×GRID od siebie — hitboxy się nie nakładają). */
+const SEGMENT_HIT_STROKE_WIDTH = 12;
 /** Offset etykiety wartości od osi przewodu [px świata] — PO PRZECIWNEJ
  *  stronie niż etykiety przęseł pasma B1 (te są NAD osią magistrali,
  *  `layout/bands.ts` B1 u góry; przepływ idzie POD przewód dla biegów
@@ -310,7 +317,8 @@ function SceneSegmentNode(props: {
   const pathD = bridges && bridges.size > 0
     ? polylinePathWithBridges(segment.points, bridges)
     : pointsToPath(segment.points);
-  return (
+  const interactive = Boolean(onElementClick || onElementContextMenu);
+  const visiblePath = (
     <path
       data-testid={testId}
       // Tożsamość elementu w DOM (diagnostyka/E2E): ownerRef segmentu — ten
@@ -329,14 +337,26 @@ function SceneSegmentNode(props: {
       stroke={stroke}
       strokeWidth={strokeWidth}
       strokeDasharray={strokeDasharray}
-      // F8c pkt 3: odcinki dziś NIE mają `onElementClick` (brak selekcji lewym
-      // przyciskiem — poza zakresem tego zadania, geometria/interakcja
-      // odcinków nietknięta). Menu kontekstowe jest DODATKIEM niezależnym od
-      // selekcji — `stopPropagation`, żeby nie bąbelkować do handlera tła.
-      // Parytet klikalności odcinka (odroczone w F8c pkt 3, wymagalne po
-      // wykryciu ślepej uliczki e2e sld-editor-real-backend-flex 2026-07-17):
-      // klik lewym = selekcja odcinka, ta sama trasa co symbole
-      // (`onElementClick` → workspace: drawer odcinka → E-12).
+    />
+  );
+  if (!interactive) return visiblePath;
+  // Parytet klikalności odcinka (F8c pkt 3, wymagalne po ślepej uliczce e2e
+  // sld-editor-real-backend-flex 2026-07-17): klik lewym = selekcja odcinka,
+  // ta sama trasa co symbole (`onElementClick` → workspace: drawer → E-12).
+  //
+  // HITBOX (Zero-Debt pkt 5, pomiar klika NATYWNEGO 2026-07-17): widoczna
+  // kreska toru ma 1.6–2.4 px świata — realny klik użytkownika w tor nie
+  // trafiał (celu nie dało się kliknąć; testy maskowały to syntetycznym
+  // `dispatchEvent`). Drugi, PRZEZROCZYSTY path o tej samej geometrii i
+  // szerokim stroke = poszerzony cel (ten sam kanon co hitboxy segmentów v2
+  // i hit-rect symboli w `SceneSymbolNode`). Zero zmiany rysunku: hitbox
+  // renderowany WYŁĄCZNIE na kanwie interaktywnej (harness renderów
+  // bazowych nie podaje handlerów), bez atrybutów tożsamości (adresowalny
+  // path z `data-owner-ref` pozostaje DOKŁADNIE jeden).
+  return (
+    <g
+      // F8c pkt 3: `stopPropagation` — menu kontekstowe/klik elementu nie
+      // bąbelkuje do handlera tła na `<svg>`.
       onClick={
         onElementClick
           ? (event) => {
@@ -355,7 +375,10 @@ function SceneSegmentNode(props: {
             }
           : undefined
       }
-    />
+    >
+      {visiblePath}
+      <path d={pathD} fill="none" stroke="transparent" strokeWidth={SEGMENT_HIT_STROKE_WIDTH} pointerEvents="stroke" />
+    </g>
   );
 }
 

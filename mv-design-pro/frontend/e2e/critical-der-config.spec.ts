@@ -196,9 +196,12 @@ test('krytyczny DER flow: paleta PV -> stacja -> drawer -> zapis -> generator w 
   await expect(stationL0).toBeAttached({ timeout: 5000 });
 
   await page.getByTestId('der-palette-btn-PV').click();
-  await stationL0.evaluate((node: SVGElement) => {
-    node.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, composed: true }));
-  });
+  // REALNY klik Playwright (pełna sekwencja pointer/mouse), NIE syntetyczny
+  // `dispatchEvent` — syntetyczny klik MASKOWAŁ defekt martwego lewego
+  // klika (capture-on-pointerdown, naprawa w `SldCanvasV3.handlePointerDown`
+  // 2026-07-17); test musi ćwiczyć ścieżkę użytkownika, żeby regresja
+  // naprawy była wykrywalna.
+  await stationL0.click({ force: true });
 
   await expect(page.getByTestId('sld-v2-detail-drawer')).toBeVisible();
   await expect(page.getByTestId('drawer-der-type-select')).toHaveValue('PV');
