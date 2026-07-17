@@ -513,6 +513,14 @@ Progress:
         POTWIERDZENIE #26 (2026-07-17): pełny pytest 6066 passed, 0 failed
         (704 s) — nowa baza backendu 6066. BAZY: backend 6066, frontend
         8564.
+        SCALENIE #27 (2026-07-17): okno W-707 „Wniosek OSD" (76f27e0 →
+        cherry-pick) — nowa zakładka warsztatu (grupa OZE za osd), moduł
+        ui2/oze/wniosek (formularz PF+SC+węzeł+identyfikacja, run_request
+        z ncRfgStore.ostatnieWejscia, sekcje wniosku, braki 422, DOCX).
+        Wykonawca: pełny vitest 8588 pass, 0 failed (+24). Zarządca:
+        55 celowanych + type-check + lint + 4 guardy OK, push.
+        Konfirmacja w tle. ŁAŃCUCH E13 DOMKNIĘTY: certyfikat (D14/P39c)
+        + wniosek OSD (D15/W-707) — backend i okna.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
