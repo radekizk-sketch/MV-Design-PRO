@@ -521,6 +521,8 @@ Progress:
         55 celowanych + type-check + lint + 4 guardy OK, push.
         Konfirmacja w tle. ŁAŃCUCH E13 DOMKNIĘTY: certyfikat (D14/P39c)
         + wniosek OSD (D15/W-707) — backend i okna.
+        POTWIERDZENIE #27 (2026-07-17): pełny vitest 8588 passed, 0 failed
+        (652 plików) — BAZY: backend 6066, frontend 8588.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
