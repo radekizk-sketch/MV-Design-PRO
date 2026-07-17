@@ -97,6 +97,19 @@ inspektora złapała 2 realne regresje komponentu), spójność elektryczna
 szablonów DER (zgubiona moc, TR 3.15 MVA, strona nN za katalogiem),
 test_no_todo_fixme i docs_count trwale zielone.
 
+Runda 7 (2026-07-17, „zaprojektuj i wykonaj end-to-end" — 7 pozycji PLAN
+recenzji NO-GO): szablony technologiczne pól (RMU-liniowe rozłącznik+ES+
+głowica, RMU-trafo z uziemnikiem; nowy glif rozłącznika IEC 60617; wyrocznia
+bay_template_probe z negatywem; korekta klas sylwetek V12K-031-A); tor za TR
+domknięty (wiersze „Szyna nN · 0.4 kV" + odbiór ΣP/ΣQ z rekordów Load albo
+jawna granica modelu; strzałka odbioru na szynie nN); identyfikatory globalne
+S01.F01.Q2 w inspektorze + serializacja Bay.primary_devices na snapshotcie
+(domknięcie V12K-030); walidator blokady uziemnika W034 + pole domeny
+earthing_role; VT/3U0 szyn GPZ z danych Measurement; etykiety kabli z parą
+końców „GPZ ↔ S01 — typ · długość"; pkt 16 (skala) — pomiar próby kompakcji
+wykazał potrzebę lustrzanej kompozycji wiersza (plan). Szczegóły + statusy:
+`docs/sld/SLD_REVIEW_NO_GO_2026-07-17.md`, execplan runda 7.
+
 Runda 6 (2026-07-17, recenzja NO-GO właściciela — 16 punktów, rejestr WIĄŻĄCY
 `docs/sld/SLD_REVIEW_NO_GO_2026-07-17.md`): naprawy GLOBALNE (spec/generator/
 domena/walidator): objazd magistrali poza granicą strefy GPZ (+3×GRID, warunek

@@ -292,6 +292,25 @@ function incomingLabelText(cableRun: SldCableRun | undefined, ownerRef: string):
 }
 
 /**
+ * Recenzja NO-GO 2026-07-17 pkt 13 (spec §12.5): etykieta przęsła ZWIĄZANA
+ * z odcinkiem przez PARĘ KOŃCÓW — „⟨A⟩ ↔ ⟨B⟩ — typ · długość" (format
+ * recenzji: `L01: GPZ.F01 ↔ S01.F01 — …`, realizacja na dostępnych danych:
+ * kody stacji/węzła GPZ; identyfikator pola drugiego końca = program
+ * etykiet pól stacji, plan). Bez obu kodów — sam opis typu (uczciwy brak,
+ * zero fabrykacji końca). Kasuje wieloznaczność recenzji pkt 13 („nie można
+ * ustalić, który kabel należy do którego pola") niezależnie od pozycji slotu.
+ */
+function segmentSpanTextWithEndpoints(
+  base: string | null,
+  fromCode: string | null | undefined,
+  toCode: string | null | undefined,
+): string | null {
+  if (!base) return null;
+  if (!fromCode || !toCode) return base;
+  return `${fromCode} ↔ ${toCode} — ${base}`;
+}
+
+/**
  * F8b-1 (spłata długu k1): realny `segmentRef` odcinka WCHODZĄCEGO do
  * `ownerRef` — TEN SAM wzorzec wyszukania co `incomingLabelText` powyżej
  * (ostatni kawałek wieloczłonowego przęsła, ten którego `toTerminal.ownerRef`
@@ -611,6 +630,12 @@ function buildMeasureInput(
     // `stationBusbarLabelText` degraduje do samego oznaczenia sekcji (zero
     // fabrykacji napięcia).
     busVoltageKv: props.busVoltageKv ?? null,
+    // Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5): strona nN — napięcie
+    // szyny nN z rekordu Bus + zagregowany odbiór z rekordów Load (adapter
+    // `enmToSldAdapter.ts` `buildStationMiniBlockDetails`); null = uczciwy
+    // brak (etykieta bez napięcia / jawna granica modelu).
+    nnVoltageKv: props.nnVoltageKv ?? null,
+    aggregatedLvLoad: props.aggregatedLvLoad ?? null,
   };
 }
 
@@ -657,8 +682,22 @@ function buildRowLayout(
     }
   }
 
+  // pkt 13 (recenzja NO-GO 2026-07-17): pomiar slotów liczy TEN SAM tekst,
+  // który zostanie narysowany (para końców „A ↔ B — …") — inaczej etykieta
+  // przepełniłaby zarezerwowany slot (rozjazd measure↔draw, wzór F6b-1).
+  // Koniec „od": stacja poprzednia w wierszu; dla indeksu 0 — kod węzła GPZ
+  // (wiersz główny/feeder; dla lateralu slot 0 nie niesie etykiety poziomej,
+  // nadmiarowa rezerwacja jest nieszkodliwa).
   const incomingTexts: (string | null)[] =
-    lod === 2 ? validInputs.map((m) => incomingLabelText(cableRun, m.id)) : validInputs.map(() => null);
+    lod === 2
+      ? validInputs.map((m, i) =>
+          segmentSpanTextWithEndpoints(
+            incomingLabelText(cableRun, m.id),
+            i === 0 ? gpzNodeCode : stationCodeOf(validInputs[i - 1].id),
+            stationCodeOf(m.id),
+          ),
+        )
+      : validInputs.map(() => null);
 
   const slotXs = computeSegmentLabelSlotX(validInputs, incomingTexts);
   const rows = colorSegmentLabelRows(slotXs);
@@ -1223,6 +1262,9 @@ function connectRowStations(
   // parametr od `channelPointsX` (tamten steruje WYŁĄCZNIE przycinaniem
   // etykiet przęseł i dla ciągu głównego celowo jest pusty).
   forbiddenCutX: ReadonlySet<number> = new Set(),
+  // Recenzja NO-GO 2026-07-17 pkt 13: kody końców przęsła do etykiety
+  // „A ↔ B — typ · dł." (`segmentSpanTextWithEndpoints`).
+  codeOf?: (id: string) => string | null,
 ): RowConnectResult {
   const connectors: PreviewSegment[] = [];
   const routeGeoms: RouteGeometry[] = [];
@@ -1268,7 +1310,11 @@ function connectRowStations(
     routeGeoms.push({ points: route.points });
     if (lod === 2) {
       const slot = layout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === i);
-      const text = incomingLabelText(cableRun, cur.id);
+      const text = segmentSpanTextWithEndpoints(
+        incomingLabelText(cableRun, cur.id),
+        codeOf?.(prev.id),
+        codeOf?.(cur.id),
+      );
       if (slot && text) {
         const { spanStart, spanEnd } = truncateSpanAtChannels(fromPort.x, toPort.x, channelPointsX);
         spanLabels.push({
@@ -1465,6 +1511,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
   const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
   const stationById = new Map<string, StationOnRunRendererProps>(sldData.stations.map((s) => [s.id, s]));
+  // Recenzja NO-GO 2026-07-17 pkt 13: kod końca przęsła do etykiet
+  // „A ↔ B — …" (GPZ = stały kod węzła; stacja = jej stationCode).
+  const stationCodeOfId = (id: string): string | null => stationById.get(id)?.stationCode ?? null;
   const cableRunById = new Map<string, SldCableRun>(sldData.cableRuns.map((c) => [c.id, c]));
   const lineRuns = buildLineRunShims(sldData.topologyRuns, cableRunById);
 
@@ -1852,7 +1901,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         allRouteGeoms.push({ points: route.points });
         if (lod === 2) {
           const slot = mainLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
-          const text = incomingLabelText(mainCableRun, first.id);
+          const text = segmentSpanTextWithEndpoints(
+            incomingLabelText(mainCableRun, first.id), GPZ_NODE_CODE, stationCodeOfId(first.id),
+          );
           if (slot && text) {
             segmentSpans.push({
               ownerRef: `${first.id}#segment-label`,
@@ -1926,7 +1977,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
     }
 
-    const internal = connectRowStations(mainRow, mainLayout, mainCableRun, lod, [], 'snTrunk', trunkForbiddenCutXs);
+    const internal = connectRowStations(mainRow, mainLayout, mainCableRun, lod, [], 'snTrunk', trunkForbiddenCutXs, stationCodeOfId);
     allSegments.push(...internal.connectors);
     allRouteGeoms.push(...internal.routeGeoms);
     segmentSpans.push(...internal.spanLabels);
@@ -2089,6 +2140,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
 
       // Feeder ZE STACJAMI — pełny wiersz jak magistrala/lateral.
       const feederDy = Math.max(snapUp(nextRowTopY), gpzBottom + 4 * GRID);
+      // Recenzja NO-GO 2026-07-17 pkt 16 (kompozycja/skala) — POMIAR PRÓBY:
+      // wyrównanie wiersza feederu POD strefę GPZ (lewa krawędź + margines)
+      // wypełniłoby pusty lewy-dolny róg arkusza, ALE ciąg wchodzi wtedy „od
+      // prawej" do kompozycji zakładającej wejście z LEWEJ (pole „poprzednik"
+      // = pierwsza kolumna): korytarz wjazdowy przecina cały blok stacji, a
+      // otwarty ogon (rysowany W PRAWO od pola „następnik") nakłada się
+      // WSPÓŁLINIOWO na wjazd (junction_dot_probe: rozgałęzienie-bez-kropki).
+      // Kompakcja wymaga LUSTRZANEJ kompozycji wiersza (odbicie kolejności
+      // pól + portów) — program kompozycji, rejestr recenzji pkt 16 (plan).
       feederLayout = shiftRowLayout(feederLayout, mainRowDx, feederDy);
       nextRowTopY = feederDy + feederLayout.bandsResult.totalHeight + ROW_VERTICAL_GAP;
       lateralRunIds.push(run.id);
@@ -2153,7 +2213,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       allRouteGeoms.push({ points: inPoints });
       if (lod === 2) {
         const slot = feederLayout.columnsResult.segmentLabelSlots.find((s) => s.stationIndex === 0);
-        const text = incomingLabelText(cableRun, first.id);
+        const text = segmentSpanTextWithEndpoints(
+          incomingLabelText(cableRun, first.id), GPZ_NODE_CODE, stationCodeOfId(first.id),
+        );
         if (slot && text) {
           segmentSpans.push({
             ownerRef: `${first.id}#segment-label`,
@@ -2166,7 +2228,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         }
       }
 
-      const feederInternal = connectRowStations(feederRow, feederLayout, cableRun, lod, [], 'sn');
+      const feederInternal = connectRowStations(feederRow, feederLayout, cableRun, lod, [], 'sn', new Set(), stationCodeOfId);
       allSegments.push(...feederInternal.connectors);
       allRouteGeoms.push(...feederInternal.routeGeoms);
       segmentSpans.push(...feederInternal.spanLabels);
@@ -2305,7 +2367,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // zakres nachodziłaby na WŁASNY podpis kierunku pierwszej stacji
     // lateralu (potwierdzone empirycznie na fixturze — patrz raport F6a).
     const priorContentBottom = nextRowTopY - ROW_VERTICAL_GAP;
-    const incomingText = lod === 2 ? incomingLabelText(cableRun, layout.measureInputs[0].id) : null;
+    // pkt 13 (recenzja NO-GO 2026-07-17): korytarz mierzony na TYM SAMYM
+    // tekście, który zostanie narysowany (para końców origin↔stacja0).
+    const incomingText = lod === 2
+      ? segmentSpanTextWithEndpoints(
+          incomingLabelText(cableRun, layout.measureInputs[0].id),
+          stationCodeOfId(originOwnerRef ?? ''),
+          stationCodeOfId(layout.measureInputs[0].id),
+        )
+      : null;
     const requiredCorridorHeight = incomingText != null ? measureLabelWidth(incomingText, 't2') + 2 * GRID : 0;
     const minDy = snapUp(priorContentBottom + requiredCorridorHeight);
     const dy = Math.max(nextRowTopY, minDy);
@@ -2495,7 +2565,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
       allRouteGeoms.push({ points: jogPoints });
       if (lod === 2) {
-        const text = incomingLabelText(cableRun, first.id);
+        // pkt 13 (recenzja NO-GO 2026-07-17): para końców origin↔stacja0.
+        const text = segmentSpanTextWithEndpoints(
+          incomingLabelText(cableRun, first.id),
+          stationCodeOfId(originOwnerRef ?? '') ?? null,
+          stationCodeOfId(first.id),
+        );
         if (text) {
           // DECYZJA (F6a, X zaktualizowany F6d): `originPort.y` (zaczep pola
           // odgałęźnego stacji-origin) leży NA OGÓŁ WYŻEJ niż
@@ -2522,7 +2597,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       }
     }
 
-    const internal = connectRowStations(lateralRow, layout, cableRun, lod, laterChannelXs, 'sn', new Set(laterChannelXs));
+    const internal = connectRowStations(lateralRow, layout, cableRun, lod, laterChannelXs, 'sn', new Set(laterChannelXs), stationCodeOfId);
     allSegments.push(...internal.connectors);
     allRouteGeoms.push(...internal.routeGeoms);
     // Etykiety segmentów WEWNĄTRZ lateralu są poziome (stacje lateralu idą w
@@ -2981,6 +3056,10 @@ export function busbarLabelGaps(scene: SceneV3): readonly BusbarLabelGap[] {
     .map((s) => s.meta?.ownerRef)
     // F13.1 (spec §21.1): `#hv-bus` — szyna 110 kV GPZ objęta TĄ SAMĄ
     // dyscypliną zakazu anonimowej szyny (forma „Szyna WN · V kV").
+    // Recenzja NO-GO 2026-07-17 pkt 6: `#lv-bus` (szyna nN stacji) jest
+    // OPISANA wierszem pasma nazw B5 („Szyna nN · 0.4 kV", `composeStation`
+    // `rows` — kolizyjnie bezpieczne z konstrukcji rezerwacji B5), NIE luźną
+    // etykietą busbar-voltage — dlatego celowo POZA parowaniem tej wyroczni.
     .filter((ref): ref is string => ref != null && (ref.endsWith('#sn-bus') || ref.endsWith('#bus-primary') || ref.endsWith('#hv-bus')));
   for (const busRef of busRefs) {
     const labelRef = busRef.endsWith('#sn-bus')
@@ -3042,6 +3121,9 @@ export function allBusbarLabelsValid(scene: SceneV3): boolean {
 const SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'breaker',
   'disconnector',
+  // Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): rozłącznik — dedykowany
+  // glif (poprzeczka na nożu), własny wpis w zbiorze łączników.
+  'loadBreakSwitch',
   'earthSwitch',
   'fuseSwitch',
 ]);
@@ -3053,6 +3135,7 @@ const SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
 const MAIN_PATH_SWITCH_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'breaker',
   'disconnector',
+  'loadBreakSwitch',
   'fuseSwitch',
 ]);
 
@@ -3071,9 +3154,10 @@ const ALL_BAY_PRIMARY_DEVICE_KINDS: readonly BayPrimaryDeviceKind[] = [
  *  rozłącznika). Wyrocznia (a) AKCEPTUJE dokładnie ten zestaw per symbol —
  *  każdy INNY (nowy kind dopisany, lub istniejący przeniesiony na inny
  *  symbol) jest zgłaszany. */
-const DOCUMENTED_SWITCH_SYMBOL_AMBIGUITIES: ReadonlyMap<SymbolId, ReadonlySet<BayPrimaryDeviceKind>> = new Map([
-  ['disconnector', new Set<BayPrimaryDeviceKind>(['DS', 'LOAD_SWITCH'])],
-]);
+// Recenzja NO-GO 2026-07-17 pkt 5: dawna JEDYNA wieloznaczność
+// (`disconnector` ⇐ DS+LOAD_SWITCH) SKASOWANA — `LOAD_SWITCH` ma dedykowany
+// glif `loadBreakSwitch` (spec §12.5); mapowanie kind→symbol jest 1:1.
+const DOCUMENTED_SWITCH_SYMBOL_AMBIGUITIES: ReadonlyMap<SymbolId, ReadonlySet<BayPrimaryDeviceKind>> = new Map();
 
 /** Wartości `SwitchState` dosłownie z §18.5 b („stan otwarty/zamknięty..."
  *  + `glyphs.tsx` trzeci wariant „nieznany") — jedyne legalne renderowane
@@ -3221,6 +3305,7 @@ export function allSwitchSymbolsUnambiguous(scene: SceneV3): boolean {
 const IDENTIFIER_ELIGIBLE_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'breaker',
   'disconnector',
+  'loadBreakSwitch',
   'fuseSwitch',
   'earthSwitch',
   'transformer2W',
@@ -3385,6 +3470,85 @@ export function stationTypeTopologyMismatches(
     }
   }
   return mismatches;
+}
+
+// ---------------------------------------------------------------------------
+// Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5) — bay_template_probe: pola
+// KONWENCJI stacji SN/nN używają szablonów TECHNOLOGICZNYCH RMU, nie kopii
+// uniwersalnego pola wyłącznikowego GPZ. Ścieżka danych (`primary_devices`
+// niepuste) poza zakresem — prymat danych §12.1 (CB+CT w polu liniowym
+// stacji legalne WYŁĄCZNIE ze świadomego wyboru rozdzielnicy w danych).
+// ---------------------------------------------------------------------------
+
+export interface BayTemplateGap {
+  readonly bayRef: string;
+  readonly reason:
+    | 'rmu-line-breaker-leak'   // CB/CT z konwencji w polu liniowym RMU
+    | 'rmu-line-missing-switch' // pole liniowe RMU bez rozłącznika
+    | 'rmu-tr-missing-earth';   // pole TR RMU bez uziemnika (pkt 6 recenzji)
+  readonly detail?: string;
+}
+
+/**
+ * bay_template_probe (spec §12.5): na SCENIE (symbole z `meta.ownerRef` =
+ * bayRef, `meta.apparatusSource='konwencja'`) każde pole:
+ *  (a) `RMU_LINE` konwencji: ZERO symboli `breaker`/`currentTransformer`
+ *      i ≥1 `loadBreakSwitch`,
+ *  (b) `RMU_TRANSFORMER` konwencji: ≥1 `earthSwitch`.
+ * Role pól czytane z adaptera (`buildSldDataFromSnapshot` → `snBays`), jak
+ * `stationTypeTopologyMismatches`. Pola nienarysowane (L0 — stacje
+ * zbiorcze) poza zakresem (nie ma czego mierzyć).
+ */
+export function bayTemplateGaps(scene: SceneV3, snapshot: EnergyNetworkModel): readonly BayTemplateGap[] {
+  const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
+  const roleByBayRef = new Map<string, { role: string; conventional: boolean }>();
+  for (const s of sldData.stations) {
+    for (const bay of s.snBays ?? []) {
+      roleByBayRef.set(bay.bayRef, {
+        role: bay.fieldRole,
+        conventional: !(bay.primaryDevices && bay.primaryDevices.length > 0),
+      });
+    }
+  }
+  const symbolsByBayRef = new Map<string, SymbolId[]>();
+  for (const sym of scene.symbols) {
+    const ref = sym.meta?.ownerRef;
+    if (!ref || !roleByBayRef.has(ref)) continue;
+    // Wyłącznie stos KONWENCJI (apparatusSource — §12.1); symbole bez
+    // znacznika (np. NO-badge na bayRef) nie są aparatem stosu.
+    if (sym.meta?.apparatusSource !== 'konwencja') continue;
+    const list = symbolsByBayRef.get(ref) ?? [];
+    list.push(sym.symbolId);
+    symbolsByBayRef.set(ref, list);
+  }
+
+  const gaps: BayTemplateGap[] = [];
+  for (const [bayRef, ids] of symbolsByBayRef) {
+    const info = roleByBayRef.get(bayRef)!;
+    if (!info.conventional) continue;
+    if (info.role === 'RMU_LINE') {
+      const leaked = ids.filter((id) => id === 'breaker' || id === 'currentTransformer');
+      if (leaked.length > 0) {
+        gaps.push({
+          bayRef,
+          reason: 'rmu-line-breaker-leak',
+          detail: `pole liniowe RMU z konwencji niesie ${leaked.join(',')} — przeciek szablonu pola wyłącznikowego (spec §12.5)`,
+        });
+      }
+      if (!ids.includes('loadBreakSwitch')) {
+        gaps.push({ bayRef, reason: 'rmu-line-missing-switch', detail: 'pole liniowe RMU bez rozłącznika (loadBreakSwitch)' });
+      }
+    } else if (info.role === 'RMU_TRANSFORMER') {
+      if (!ids.includes('earthSwitch')) {
+        gaps.push({ bayRef, reason: 'rmu-tr-missing-earth', detail: 'pole transformatorowe RMU bez uziemnika (recenzja pkt 6)' });
+      }
+    }
+  }
+  return gaps;
+}
+
+export function allBayTemplatesValid(scene: SceneV3, snapshot: EnergyNetworkModel): boolean {
+  return bayTemplateGaps(scene, snapshot).length === 0;
 }
 
 // ---------------------------------------------------------------------------

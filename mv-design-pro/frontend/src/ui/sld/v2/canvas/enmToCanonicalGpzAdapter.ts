@@ -32,6 +32,7 @@ import type {
   BayFieldRole,
   BayMeasurements,
   CanonicalGpzBay,
+  CanonicalGpzBusVt,
   CanonicalGpzCoupler,
   CanonicalGpzHvSection,
   CanonicalGpzHvSystemSource,
@@ -385,6 +386,7 @@ function buildLvSections(
       label: 'S1',
       busVoltageKv: defaultBus?.voltage_kv ?? 15,
       bays: lvBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
+      busVtMeasurements: busVtMeasurementsOf(defaultBus?.ref_id, protectionCtx),
     }];
   }
 
@@ -402,8 +404,25 @@ function buildLvSections(
         label: sec.name ?? `S${idx + 1}`,
         busVoltageKv: bus?.voltage_kv ?? 15,
         bays: sectionBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
+        busVtMeasurements: busVtMeasurementsOf(sec.bus_ref, protectionCtx),
       };
     });
+}
+
+/**
+ * Recenzja NO-GO 2026-07-17 pkt 12 (spec §12.5): VT SZYNY sekcji GPZ —
+ * `Measurement{measurement_type:'VT', bus_ref: szyna sekcji}` BEZ `bay_ref`
+ * (VT polowe żyją w `resolveBayVtArrangements`, osobny kanał). Zero danych
+ * = pusta lista (kompozycja nie fabrykuje pomiaru).
+ */
+function busVtMeasurementsOf(
+  busRef: string | null | undefined,
+  protectionCtx: ProtectionCtx,
+): CanonicalGpzBusVt[] {
+  if (!busRef) return [];
+  return (protectionCtx.measurements ?? [])
+    .filter((m) => m.measurement_type === 'VT' && m.bus_ref === busRef && !m.bay_ref)
+    .map((m) => ({ measurementRef: m.ref_id, arrangement: m.vt_arrangement ?? null }));
 }
 
 function assignBaysToLvSections(

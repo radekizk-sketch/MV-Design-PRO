@@ -537,13 +537,13 @@ describe('V3 compose/station — F9.3 §12.1: gałąź „dane" (fixtura syntety
     expect(composition.symbols.map((s) => s.symbolId)).toEqual(planOrderedSymbols(FIELD_ROLE.LINE_IN));
   });
 
-  it('LOAD_SWITCH mapuje się na disconnector (aproksymacja udokumentowana, brak dedykowanego glifu)', () => {
+  it('LOAD_SWITCH mapuje się na loadBreakSwitch — dedykowany glif rozłącznika (recenzja NO-GO 2026-07-17 pkt 5, spec §12.5; dawna aproksymacja →disconnector SKASOWANA)', () => {
     const bay = makeBay(FIELD_ROLE.COUPLER, 0, {
       primaryDevices: [{ deviceRef: 'ls-1', kind: 'LOAD_SWITCH', placement: 'UPSTREAM' }],
     });
     const station = makeStation('load-switch', [bay]);
     const composition = composeStation(buildComposeInput(station));
-    expect(composition.symbols.map((s) => s.symbolId)).toEqual(['disconnector']);
+    expect(composition.symbols.map((s) => s.symbolId)).toEqual(['loadBreakSwitch']);
     expect(composition.symbols[0].apparatusSource).toBe('dane');
   });
 
@@ -661,21 +661,31 @@ describe('V3 compose/station — F9.3 §14.3/V12K-031: field_silhouette_probe (r
     expect(new Set(signatures).size).toBe(signatures.length);
   });
 
-  it('RULING V12K-031 (§14.3): LINE_IN/LINE_OUT/LINE_BRANCH/RMU_LINE/GPZ_LINE_BAY należą do JEDNEJ klasy równoważności `line` — fizycznie identyczna konstrukcja (§12.2/§12.4), dzielą sygnaturę ŚWIADOMIE (kierunek niesie podpis §9 + strzałki F9.5, NIE sylwetka) — to NIE jest naruszenie injektywności', () => {
-    const lineRoles: FieldRole[] = [
-      FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT, FIELD_ROLE.LINE_BRANCH, FIELD_ROLE.RMU_LINE, FIELD_ROLE.GPZ_LINE_BAY,
+  // INTENCJA RULINGU V12K-031 zachowana dla PÓL WYŁĄCZNIKOWYCH: wejście/
+  // wyjście/odgałęzienie tej samej technologii są fizycznie identyczne i
+  // dzielą sygnaturę świadomie. KOREKTA (recenzja NO-GO właściciela
+  // 2026-07-17 pkt 5, spec §12.5): RMU_LINE to INNA technologia rozdzielnicy
+  // (rozłącznik+ES+głowica) — własna klasa `rmu_line`, WŁASNA sygnatura;
+  // pomiar recenzji: wspólna sylwetka fabrykowała CB+CT w stacjach 630 kVA.
+  it('RULING V12K-031 + korekta pkt 5: LINE_IN/LINE_OUT/LINE_BRANCH/GPZ_LINE_BAY = jedna klasa `line` (wspólna sygnatura świadomie); RMU_LINE = osobna klasa `rmu_line` z szablonem rozłącznikowym', () => {
+    const breakerLineRoles: FieldRole[] = [
+      FIELD_ROLE.LINE_IN, FIELD_ROLE.LINE_OUT, FIELD_ROLE.LINE_BRANCH, FIELD_ROLE.GPZ_LINE_BAY,
     ];
-    for (const role of lineRoles) expect(fieldSilhouetteClass(role)).toBe('line');
-    const signatures = new Set(lineRoles.map((role) => [...apparatusSymbolsForRole(role)].sort().join(',')));
-    // Wszystkie role „line" dzielą TĘ SAMĄ sygnaturę (stos konwencji per rola
-    // jest identyczny — `apparatusSymbolsForRole` domyślna gałąź) — dowód, że
-    // to jest ŚWIADOME dzielenie w klasie, nie przypadek.
+    for (const role of breakerLineRoles) expect(fieldSilhouetteClass(role)).toBe('line');
+    const signatures = new Set(breakerLineRoles.map((role) => [...apparatusSymbolsForRole(role)].sort().join(',')));
     expect(signatures.size).toBe(1);
+
+    expect(fieldSilhouetteClass(FIELD_ROLE.RMU_LINE)).toBe('rmu_line');
+    const rmuSig = [...apparatusSymbolsForRole(FIELD_ROLE.RMU_LINE)].sort().join(',');
+    expect(rmuSig).toBe('cableHead,earthSwitch,loadBreakSwitch');
+    expect(signatures.has(rmuSig)).toBe(false);
   });
 
-  it('RMU_TRANSFORMER należy do klasy `transformer` (razem z TRANSFORMER) — dzieli sygnaturę z TRANSFORMER, ale RÓŻNI SIĘ od klasy `line` (mv_lv_sectional: RMU_LINE/RMU_TRANSFORMER/COUPLER wymieszane, parami różne KLASY)', () => {
-    expect(fieldSilhouetteClass(FIELD_ROLE.RMU_TRANSFORMER)).toBe('transformer');
+  it('RMU_TRANSFORMER = osobna klasa `rmu_transformer` (pkt 5/6 recenzji: rozłącznik bezpiecznikowy + ES + TR); klasy RMU_LINE/RMU_TRANSFORMER/COUPLER parami rozróżnialne sygnaturą', () => {
+    expect(fieldSilhouetteClass(FIELD_ROLE.RMU_TRANSFORMER)).toBe('rmu_transformer');
     expect(fieldSilhouetteClass(FIELD_ROLE.TRANSFORMER)).toBe('transformer');
+    // pkt 6 recenzji: pole TR RMU MUSI nieść uziemnik.
+    expect(apparatusSymbolsForRole(FIELD_ROLE.RMU_TRANSFORMER)).toContain('earthSwitch');
     const sigLine = [...apparatusSymbolsForRole(FIELD_ROLE.RMU_LINE)].sort().join(',');
     const sigTr = [...apparatusSymbolsForRole(FIELD_ROLE.RMU_TRANSFORMER)].sort().join(',');
     const sigCoupler = [...apparatusSymbolsForRole(FIELD_ROLE.COUPLER)].sort().join(',');

@@ -64,7 +64,8 @@ export type OwnerKind =
   | 'der'                // rodzaj+moc DER (t2) pod symbolem
   | 'busbar-voltage'     // napięcie szyny (t2) nad lewym końcem
   | 'no-point'           // badge „NO" (t3) przy symbolu
-  | 'protection';        // F9.9: numer urządzenia „52" (spec §17.1/§17.3, ANSI/IEEE C37.2)
+  | 'protection'         // F9.9: numer urządzenia „52" (spec §17.1/§17.3, ANSI/IEEE C37.2)
+  | 'lv-load';           // recenzja NO-GO pkt 6: odbiór zagregowany / granica modelu (t4) pod szyną nN
 
 export interface LabelPoint {
   readonly x: number;
@@ -381,7 +382,7 @@ export type SimpleAnchorPlacement = 'above' | 'below' | 'left' | 'right';
 
 export interface SimpleAnchoredOwnerInput {
   readonly ownerRef: string;
-  readonly ownerKind: 'apparatus' | 'field-role' | 'der' | 'busbar-voltage' | 'no-point' | 'protection';
+  readonly ownerKind: 'apparatus' | 'field-role' | 'der' | 'busbar-voltage' | 'no-point' | 'protection' | 'lv-load';
   readonly text: string;
   readonly labelClass: LabelClass;
   readonly anchor: LabelPoint;

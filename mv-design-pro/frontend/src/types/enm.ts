@@ -461,6 +461,12 @@ export interface BayPrimaryDevice {
    *  `backend/src/enm/models.py::BayPrimaryDevice.designation`. `null`/brak =
    *  dana niedostarczona, render pozostaje przy fallbacku konwencji. */
   designation?: string | null;
+  /** Recenzja NO-GO 2026-07-17 pkt 10 (spec §12.5): typologia uziemienia —
+   *  WYŁĄCZNIE dla kind='ES' (albo gałęzi SA): uziemnik pola / ekrany kabla /
+   *  konstrukcja / punkt neutralny / gałąź ogranicznika. Lustro
+   *  `backend/src/enm/models.py::BayPrimaryDevice.earthing_role`. `null`/brak
+   *  = dana niedostarczona (generyczny uziemnik, zero domysłu). */
+  earthing_role?: 'field_earth' | 'cable_screen' | 'structure' | 'neutral_point' | 'surge_ground' | null;
 }
 
 export interface BayMeasurements {

@@ -394,3 +394,59 @@ describe('gpzHvColumnGaps / gpzDominanceGaps — F13.1 wyrocznie (spec §21, D3-
     expect(gaps.some((g) => g.reason.includes('busGpz'))).toBe(true);
   });
 });
+
+/* =============================================================================
+   Recenzja NO-GO 2026-07-17 pkt 12 (spec §12.5) — pomiar U/3U0 szyn GPZ:
+   VT SZYNY sekcji z `Measurement{VT, bus_ref: szyna sekcji, bez bay_ref}`,
+   RÓWNOLEGLE do szyny (§18.2), z etykietą wielkości (gwiazda ⇒ U, otwarty
+   trójkąt ⇒ 3U0).
+   ============================================================================= */
+
+describe('composeGpz — VT szyny sekcji GPZ (recenzja NO-GO pkt 12)', () => {
+  function withBusVt(arrangement: 'open_delta' | 'star'): GpzCanonicalRendererProps {
+    const enm = fullFixture();
+    return buildCanonicalGpzProps(
+      {
+        ...enm,
+        measurements: [
+          {
+            id: 'vt-bus-1',
+            ref_id: 'vt-bus-1',
+            name: 'VT szyn S1',
+            tags: [],
+            meta: {},
+            measurement_type: 'VT',
+            bus_ref: 'bus-sn',
+            bay_ref: null,
+            rating: { ratio_primary: 15000, ratio_secondary: 100 },
+            connection: 'star',
+            purpose: 'protection',
+            vt_arrangement: arrangement,
+          },
+        ],
+      } as Parameters<typeof buildCanonicalGpzProps>[0],
+      'gpz-1',
+      { x: 0, y: 0 },
+    );
+  }
+
+  it('pozytyw: Measurement VT na szynie sekcji ⇒ symbol voltageTransformer RÓWNOLEGLE (zejście z szyny, poza torem) + etykieta „3U0" dla otwartego trójkąta', () => {
+    const composition = composeGpz(withBusVt('open_delta'), { x: 0, y: 0 });
+    const vt = composition.symbols.find((s) => s.meta.testId === 'gpz-canonical-bus-vt-vt-bus-1');
+    expect(vt).toBeDefined();
+    const drop = composition.segments.find((s) => s.ownerRef === 'vt-bus-1#bus-vt-drop');
+    expect(drop).toBeDefined();
+    // Równolegle = zejście PIONOWE z szyny do portu N symbolu (nie w torze
+    // szeregowym): oba punkty zejścia mają ten sam X, górny leży na szynie.
+    expect(drop!.points[0].x).toBe(drop!.points[1].x);
+    const quantity = composition.labels.fieldDesignations.find((l) => l.ownerRef === 'vt-bus-1#bus-vt-quantity');
+    expect(quantity?.text).toBe('3U0');
+  });
+
+  it('gwiazda ⇒ etykieta „U"; brak Measurement VT na szynie ⇒ ZERO symboli (zero fabrykacji pomiaru)', () => {
+    const star = composeGpz(withBusVt('star'), { x: 0, y: 0 });
+    expect(star.labels.fieldDesignations.find((l) => l.ownerRef === 'vt-bus-1#bus-vt-quantity')?.text).toBe('U');
+    const bare = composeGpz(buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 }), { x: 0, y: 0 });
+    expect(bare.symbols.some((s) => (s.meta.testId ?? '').startsWith('gpz-canonical-bus-vt-'))).toBe(false);
+  });
+});

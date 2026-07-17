@@ -1866,6 +1866,44 @@ ZAMKNIĘTE 2026-07-17 (runda 3, „Wykonaj") — OBIE luki wykonane end-to-end:
    `buildScene.test.ts`). Pozycje PLAN recenzji (5, 6, 9-global, 10, 12,
    13, 16) — projekt w `SLD_REVIEW_NO_GO_2026-07-17.md` §Projekt.
 
+   [DONE 2026-07-17, runda 7 — 7 pozycji PLAN recenzji NO-GO end-to-end]
+   (statusy per punkt: `docs/sld/SLD_REVIEW_NO_GO_2026-07-17.md`):
+   - pkt 5 SZABLONY TECHNOLOGICZNE PÓL (spec §12.4 słownik per technologia):
+     RMU-liniowe `rozłącznik→ES→głowica`, RMU-trafo `rozł. bezpiecznikowy→
+     ES→TR`; NOWY glif `loadBreakSwitch` (IEC 60617 switch-disconnector,
+     poprzeczka na nożu) + `LOAD_SWITCH→loadBreakSwitch` (mapowanie
+     kind→symbol 1:1 — dawna udokumentowana wieloznaczność skasowana);
+     klasy sylwetek `rmu_line`/`rmu_transformer` ODRĘBNE (korekta rulingu —
+     REJESTR_KONFLIKTOW V12K-031-A); wyrocznia `bay_template_probe`
+     (bayTemplateGaps) + negatyw sabotażowy w acceptance;
+   - pkt 6 TOR ZA TR DOMKNIĘTY: wiersze strony nN w paśmie nazw stacji
+     („Szyna nN · 0.4 kV" + „Odbiór ΣP/ΣQ (n)" z rekordów `Load` ALBO jawna
+     „granica modelu — bez odbiorów nN"); glif `loadArrow` na szynie nN
+     (kanały `nnVoltageKv`/`aggregatedLvLoad` adapter→measure→compose;
+     teksty w B5 po pomiarze kolizji luźnych etykiet z trunkiem DER; szyna
+     nN przedłużana w lewo, gdy odbiór+DER razem);
+   - pkt 9 ID GLOBALNE: „Identyfikator: S01.F01.Q2" w drawerze (kod stacji
+     + bay_number/F⟨nn⟩ + Q/QE/T z kolejności equipment_refs);
+     `Bay.primary_devices` SERIALIZOWANE na snapshotcie ENM (domknięcie
+     STOP-notatki F9.2/V12K-030 — defensywny odczyt adaptera aktywny);
+   - pkt 10 UZIEMIENIA: walidator W034 `bays.earthing_interlock_violation`
+     (ES zamknięty + łącznik główny zamknięty w tym samym polu, testy z
+     negatywem); pole DOMENY `BayPrimaryDevice.earthing_role` (typologia
+     uziemień, backend+FE);
+   - pkt 12 U/3U0: VT SZYNY sekcji GPZ z `Measurement{VT, bus_ref}` —
+     równolegle do szyny + etykieta „U"/„3U0" (kanał `busVtMeasurements`);
+   - pkt 13 ETYKIETY KABLI: para końców „⟨A⟩ ↔ ⟨B⟩ — typ · długość" we
+     WSZYSTKICH etykietach przęseł (sloty mierzone na tym samym tekście);
+   - pkt 16 SKALA: pomiar próby kompakcji (wiersz feederu pod GPZ) wykazał
+     konieczność LUSTRZANEJ kompozycji wiersza — projekt w kodzie
+     (buildScene.ts), pozycja zostaje w planie.
+   Baseline'y po rundzie 7: L0 12472 (bez zmian), L1 47240 (+4632),
+   L2 67208 (+11496) — koszt czytelności (wiersze nN per stacja + szersze
+   etykiety par końców), częściowo oddany krótszymi stosami RMU;
+   uzasadnienie liczbowe w `buildScene.test.ts`. Nowe testy:
+   `buildScene.reviewPlan.test.ts` (7), bus-VT w `gpzHvColumn.test.ts` (2),
+   `backend tests/enm/test_review_nogo_validators.py` (6).
+
 2. [DONE] Program P-A (nakładka rozpływu = jedna prawda solvera):
    provenance badge `sld-v3-overlay-provenance` (data-case-ref/
    data-converged, wewnątrz treści arkusza — lekcja F13.1 o marginesie);

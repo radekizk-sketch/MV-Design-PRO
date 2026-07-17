@@ -375,14 +375,27 @@ nie względem martwego kodu v2" z F8c pkt 6 — działa w OBIE strony).
 
 ### 12.4 Kompozycja typowa celki wg roli (KONWENCJA RYSUNKOWA — fallback)
 
-- **Wymaganie:** znormalizowane stosy fallback (gdy `primary_devices` puste), spójne z GPZ:
-  - pole liniowe: `DS → CB → CT → DS → ES → głowica`;
-  - pole TR: `DS → (bezpiecznik|CB) → TR2W`;
+- **Wymaganie:** znormalizowane stosy fallback (gdy `primary_devices` puste), PER TECHNOLOGIA
+  rozdzielnicy (recenzja NO-GO właściciela 2026-07-17 pkt 5 — słownik szablonów §12.4a):
+  - pole liniowe WYŁĄCZNIKOWE (`LINE_IN`/`LINE_OUT`/`LINE_BRANCH`/`GPZ_LINE_BAY`):
+    `DS → CB → CT → DS → ES → głowica`;
+  - pole liniowe RMU (`RMU_LINE` — stacje SN/nN kompaktowe): `rozłącznik → ES → głowica`
+    (glif `loadBreakSwitch`, IEC 60617 switch-disconnector — poprzeczka na nożu);
+  - pole TR wyłącznikowe (`TRANSFORMER`): `DS → bezpiecznik → TR2W`;
+  - pole TR bezpiecznikowe RMU (`RMU_TRANSFORMER`): `rozłącznik z bezpiecznikami → ES → TR2W`
+    (ES obowiązkowy — pomiar recenzji pkt 6: dawny szablon nie miał uziemnika pola TR);
   - pole pomiarowe: `DS → VT → ES`;
   - pole sprzęgła: `DS → CB → CT`.
   Każdy stos rysowany z konwencji nosi `data-apparatus-source="konwencja"`.
-- **Źródło danych:** rola pola (`bay_role`/`fieldRole`).
-- **Wyrocznia odbioru:** stos fallback == tabela §12.4; obecność znacznika na każdym takim polu.
+  CB+CT w polu liniowym stacji kompaktowej są legalne WYŁĄCZNIE ze ścieżki danych
+  (`primary_devices` — świadomy wybór rozdzielnicy), nigdy z konwencji.
+- **Źródło danych:** rola pola (`bay_role`/`fieldRole`; adapter mapuje pola stacji SN/nN na
+  `RMU_LINE`/`RMU_TRANSFORMER` — `mapStationBayRoleToMiniRole`).
+- **Wyrocznia odbioru:** `bay_template_probe` (`bayTemplateGaps`, scene/buildScene.ts) — pole
+  `RMU_LINE` konwencji: zero `breaker`/`currentTransformer`, ≥1 `loadBreakSwitch`;
+  `RMU_TRANSFORMER` konwencji: ≥1 `earthSwitch`. Test negatywny (sabotaż CB w polu RMU) w
+  `npm run accept:sld-v3`. Korekta klas sylwetek §14.3: `rmu_line`/`rmu_transformer` to ODRĘBNE
+  klasy równoważności (aktualizacja rulingu V12K-031 — patrz REJESTR_KONFLIKTOW V12K-031-A).
 
 ### 12.5 Ogranicznik przepięć (SA) — status danych
 

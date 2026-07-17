@@ -79,6 +79,13 @@ export interface StationMeasureInput
    *  celowo NIEOBECNE na L0 (spec §7: DER widoczny od L1) — patrz
    *  `scene/buildScene.ts` `buildMeasureInput`. */
   readonly derSources?: readonly StationDerSourceInput[];
+  /** Recenzja NO-GO 2026-07-17 pkt 6: napięcie szyny nN [kV] z rekordu
+   *  `Bus` — kanał `StationOnRunRendererProps.nnVoltageKv` (adapter).
+   *  `null`/brak = etykieta szyny nN bez napięcia (uczciwy brak). */
+  readonly nnVoltageKv?: number | null;
+  /** Recenzja NO-GO 2026-07-17 pkt 6: zagregowany odbiór nN — `null` =
+   *  ZERO rekordów `Load` (kompozycja pisze jawną granicę modelu). */
+  readonly aggregatedLvLoad?: { readonly pMw: number; readonly qMvar: number; readonly count: number } | null;
 }
 
 /** FIX-2 (recenzja F2): re-eksport formatera mocy TR z `StationOnRunRenderer`
@@ -141,6 +148,72 @@ export function stationBusbarLabelHeight(station: Pick<StationMeasureInput, 'snB
 function stationBusbarLabelWidth(station: Pick<StationMeasureInput, 'snBays' | 'busVoltageKv'>): number {
   if (station.snBays.length === 0) return 0;
   return measureLabelWidth(stationBusbarLabelText(station.busVoltageKv), 't2');
+}
+
+// ---------------------------------------------------------------------------
+// Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5) — strona nN: etykieta szyny
+// nN + zagregowany odbiór ALBO jawna granica modelu. Jedna prawda tekstów
+// (measure↔compose — wzór `stationBusbarLabelText`).
+// ---------------------------------------------------------------------------
+
+/** Etykieta szyny nN — TA SAMA zamknięta gramatyka co szyny SN/WN
+ *  (`BUSBAR_LABEL_TEXT_PATTERN`, scene/buildScene.ts): „Szyna nN · 0.4 kV";
+ *  bez napięcia (dana nieobecna) — samo „Szyna nN" (uczciwy brak). */
+export function stationLvBusbarLabelText(nnVoltageKv: number | null | undefined): string {
+  return nnVoltageKv != null ? `Szyna nN · ${nnVoltageKv} kV` : 'Szyna nN';
+}
+
+/** Zagregowany odbiór (pkt 6): suma P/Q rekordów `Load` na szynach nN —
+ *  formatowanie PL (przecinek dziesiętny), liczność w nawiasie. */
+export function stationLvLoadLabelText(load: NonNullable<StationMeasureInput['aggregatedLvLoad']>): string {
+  const fmt = (v: number): string => (Math.round(v * 1000) / 1000).toString().replace('.', ',');
+  return `Odbiór ΣP ${fmt(load.pMw)} MW · ΣQ ${fmt(load.qMvar)} Mvar (${load.count})`;
+}
+
+/** Jawna granica modelu (pkt 6/9 recenzji: „pełna ciągłość toru … aż do
+ *  rzeczywistych odbiorów albo jawnych granic modelu") — rysowana, gdy
+ *  stacja ma stronę nN, ale ZERO rekordów `Load`. */
+export const LV_MODEL_BOUNDARY_TEXT = 'granica modelu — bez odbiorów nN';
+
+/** Czy stacja rysuje stronę nN (pole transformatorowe ⇒ `compose/station.ts`
+ *  zbiera porty LV i rysuje `#lv-bus`) — TEN SAM predykat co `hasLvSection`
+ *  adaptera (`enmToSldAdapter.ts`: `snBays.some(TR-rola)`). */
+export function stationHasLvSide(station: Pick<StationMeasureInput, 'snBays'>): boolean {
+  return station.snBays.some(
+    (bay) => bay.fieldRole === 'TRANSFORMER' || bay.fieldRole === 'RMU_TRANSFORMER',
+  );
+}
+
+const LV_LABEL_GAP = GRID;
+/** Wysokość symbolu strzałki odbioru (`SYMBOL_DEFS.loadArrow`) — literal
+ *  zsynchronizowany przez test spójności w `compose/__tests__/station.test.ts`
+ *  (measure nie importuje SYMBOL_DEFS — utrzymujemy ten plik wolny od
+ *  zależności na bibliotekę glifów, jak dotychczas). */
+export const LV_LOAD_ARROW_HEIGHT = 16;
+
+/** Wysokość DODATKOWA bloku B4 na stronę nN — WYŁĄCZNIE strzałka odbioru
+ *  (pion + symbol + bufor), gdy `aggregatedLvLoad` obecne. TEKSTY strony nN
+ *  żyją w paśmie nazw B5 (`stationNameBandHeight` niżej) — luźne etykiety
+ *  pod szyną kolidowały z pionem trunku DER (pomiar k6 na fixturze). */
+export function lvSideExtraHeight(
+  station: Pick<StationMeasureInput, 'snBays' | 'aggregatedLvLoad'>,
+): number {
+  if (!stationHasLvSide(station) || !station.aggregatedLvLoad) return 0;
+  return LV_LABEL_GAP + LV_LOAD_ARROW_HEIGHT + LV_LABEL_GAP;
+}
+
+/** Szerokości tekstów strony nN — kandydaci pasma nazw B5 (do
+ *  `requiredStationWidth`, ta sama pula co nazwa/kod/kVA/typ). */
+function lvSideNameRowWidths(
+  station: Pick<StationMeasureInput, 'snBays' | 'nnVoltageKv' | 'aggregatedLvLoad'>,
+): number[] {
+  if (!stationHasLvSide(station)) return [];
+  return [
+    measureLabelWidth(stationLvBusbarLabelText(station.nnVoltageKv), 't4'),
+    station.aggregatedLvLoad
+      ? measureLabelWidth(stationLvLoadLabelText(station.aggregatedLvLoad), 't4')
+      : measureLabelWidth(LV_MODEL_BOUNDARY_TEXT, 't4'),
+  ];
 }
 
 /**
@@ -406,9 +479,12 @@ export function stationBlockWidth(
  *  (0, gdy stacja bez DER — zero zmian geometrii). */
 export function stationBlockHeight(station: StationMeasureInput): number {
   const derExtra = derRowExtraHeight(station.derSources ?? []);
-  if (station.snBays.length === 0) return STATION_BLOCK_BUS_CLEARANCE + derExtra;
+  // Recenzja NO-GO 2026-07-17 pkt 6: strona nN (etykieta szyny + odbiór/
+  // granica modelu) rezerwuje własną wysokość POD szyną nN.
+  const lvExtra = lvSideExtraHeight(station);
+  if (station.snBays.length === 0) return STATION_BLOCK_BUS_CLEARANCE + derExtra + lvExtra;
   const tallest = Math.max(...station.snBays.map((bay) => bayColumnFootprint(bay).height));
-  return tallest + STATION_BLOCK_BUS_CLEARANCE + derExtra;
+  return tallest + STATION_BLOCK_BUS_CLEARANCE + derExtra + lvExtra;
 }
 
 /**
@@ -426,6 +502,9 @@ export function stationNameBandHeight(station: StationMeasureInput): number {
   if (station.stationCode) height += LABEL_LINE_HEIGHT_T1;
   if (station.transformerRatedKva != null) height += LABEL_LINE_HEIGHT_T2;
   if (station.stationTypeLabel) height += LABEL_LINE_HEIGHT_T4;
+  // pkt 6 (recenzja NO-GO 2026-07-17): dwa wiersze strony nN (szyna nN +
+  // odbiór/granica modelu) — TA SAMA kolejność co `composeStation` `rows`.
+  if (stationHasLvSide(station)) height += 2 * LABEL_LINE_HEIGHT_T4;
   return height;
 }
 
@@ -454,6 +533,8 @@ export function requiredStationWidth(station: StationMeasureInput): number {
     nameWidths.push(measureLabelWidth(formatTransformerRatedPower(station.transformerRatedKva), 't2'));
   }
   if (station.stationTypeLabel) nameWidths.push(measureLabelWidth(station.stationTypeLabel, 't4'));
+  // pkt 6 (recenzja NO-GO 2026-07-17): wiersze strony nN pasma B5.
+  nameWidths.push(...lvSideNameRowWidths(station));
   const nameBandWidth = Math.max(...nameWidths);
 
   // F10.3 (spec §18.4): trzeci kandydat — etykieta szyny SN, TA SAMA

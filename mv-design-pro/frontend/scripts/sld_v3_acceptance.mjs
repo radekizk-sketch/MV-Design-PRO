@@ -75,6 +75,7 @@ import {
   totalVerticalSegmentLength,
   trunkThicknessGaps,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
+import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
 import { SEGMENT_STROKE_WIDTH } from '../src/ui/sld/v3/compose/preview.tsx';
 import { fieldSilhouettesAreInjective } from '../src/ui/sld/v3/compose/station.ts';
@@ -191,7 +192,11 @@ const EXPECTED_STATION_COUNT = 53;
 // (TR uk%/Pk + „Ekwiwalent sieci zasilającej") pogłębiają nawis → dłuższy
 // pion wyjścia magistrali na L1/L2. Uzasadnienie liczbowe:
 // `buildScene.test.ts` vertical_length_probe (ta sama historia baseline).
-const VERTICAL_LENGTH_BASELINE = { 0: 12472, 1: 42608, 2: 55712 };
+// 7 pozycji PLAN recenzji NO-GO (runda 7): L1 47240, L2 67208 — dwa wiersze
+// strony nN per stacja (pkt 6) + szersze etykiety przęseł z parą końców
+// (pkt 13) minus krótsze stosy RMU (pkt 5); uzasadnienie liczbowe:
+// buildScene.test.ts vertical_length_probe.
+const VERTICAL_LENGTH_BASELINE = { 0: 12472, 1: 47240, 2: 67208 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -783,6 +788,29 @@ for (const lod of LODS) {
     gpzIsDominant(scene) && domGaps.length === 0,
     `luki=${domGaps.length}${domGaps.length ? ' np. ' + JSON.stringify(domGaps[0]) : ''}`,
   );
+
+  // -- §12.5 (recenzja NO-GO 2026-07-17 pkt 5): szablony technologiczne pól --
+  const templateGaps = bayTemplateGaps(scene, enm);
+  check(
+    'bay_template_probe (§12.5): pola KONWENCJI stacji SN/nN używają szablonów RMU (zero CB/CT z konwencji w polu liniowym; rozłącznik obecny; ES w polu TR)',
+    allBayTemplatesValid(scene, enm) && templateGaps.length === 0,
+    `luki=${templateGaps.length}${templateGaps.length ? ' np. ' + JSON.stringify(templateGaps[0]) : ''}`,
+  );
+  if (lod === 2) {
+    // Test negatywny — dowód, że wyrocznia gryzie: breaker WSTRZYKNIĘTY w
+    // pole RMU konwencji MUSI dać gap (sabotaż na kopii sceny).
+    const rmuSwitch = scene.symbols.find(
+      (sym) => sym.symbolId === 'loadBreakSwitch' && sym.meta?.apparatusSource === 'konwencja',
+    );
+    const sabotaged = rmuSwitch
+      ? { ...scene, symbols: [...scene.symbols, { ...rmuSwitch, symbolId: 'breaker' }] }
+      : null;
+    check(
+      'bay_template_probe (test negatywny — dowód, że wyrocznia gryzie): CB wstrzyknięty w pole RMU konwencji MUSI dać FAIL',
+      sabotaged != null && bayTemplateGaps(sabotaged, enm).some((g) => g.reason === 'rmu-line-breaker-leak'),
+      sabotaged ? '' : 'brak pola RMU konwencji na fixturze — sabotaż niewykonalny',
+    );
+  }
 
   // -- §22.1 (F13.2, D3-3/D3-5): fizyka obrazu — skrzyżowania i kropki -------
   const crossings = interiorCrossings(scene.segments);

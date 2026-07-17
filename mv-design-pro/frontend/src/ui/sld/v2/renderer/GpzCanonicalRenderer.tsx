@@ -80,6 +80,15 @@ import type {
  */
 export type CanonicalGpzBusbarTopology = 'single' | 'double' | 'ring';
 
+/** Recenzja NO-GO 2026-07-17 pkt 12 (spec §12.5): pomiar napięcia SZYNY
+ *  sekcji GPZ — `Measurement{measurement_type:'VT', bus_ref: szyna sekcji,
+ *  bez bay_ref}`. `arrangement`: gwiazda = pomiar U; otwarty trójkąt =
+ *  źródło 3U₀ (zabezpieczenia ziemnozwarciowe kierunkowe). */
+export interface CanonicalGpzBusVt {
+  readonly measurementRef: string;
+  readonly arrangement: 'open_delta' | 'star' | null;
+}
+
 export interface CanonicalGpzSection {
   /** Stable id z ENM (`Substation.gpz_sections[].section_id`). */
   readonly sectionId: string;
@@ -93,6 +102,10 @@ export interface CanonicalGpzSection {
   readonly bays: readonly CanonicalGpzBay[];
   /** Topologia szyny (single/double/ring). Default: `single`. */
   readonly busbarTopology?: CanonicalGpzBusbarTopology;
+  /** Recenzja NO-GO pkt 12: VT szyny sekcji (RÓWNOLEGLE do szyny, nigdy w
+   *  torze — §18.2 `vt_parallel_probe`). Puste/brak = dana nieobecna
+   *  (zero fabrykacji pomiaru). */
+  readonly busVtMeasurements?: readonly CanonicalGpzBusVt[];
 }
 
 export interface CanonicalGpzBay {

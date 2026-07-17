@@ -55,9 +55,18 @@ export type BayApparatusSource = 'dane' | 'konwencja';
  * jedna prawda, zero duplikacji tabeli).
  */
 export function apparatusSymbolsForRole(role: FieldRole): readonly SymbolId[] {
-  if (role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER) {
-    // pole TR (spec §12.4): DS → (bezpiecznik|CB) → TR2W — konwencja wybiera
-    // rozłącznik z bezpiecznikiem (wariant najczęstszy dla SN/nN < 1 MVA).
+  if (role === FIELD_ROLE.RMU_TRANSFORMER) {
+    // Recenzja NO-GO 2026-07-17 pkt 5/6 (spec §12.5): pole TRANSFORMATOROWE
+    // BEZPIECZNIKOWE stacji SN/nN (RMU) — rozłącznik z bezpiecznikami +
+    // uziemnik (BOCZNY, §18.1 — dawny szablon w ogóle nie miał ES: pomiar
+    // recenzji pkt 6 „nie przedstawia uziemnika właściwego dla pola
+    // transformatorowego") + TR2W. Wariant wyłącznikowy = ścieżka DANYCH
+    // (`primary_devices` z CB), nie konwencja.
+    return ['fuseSwitch', 'earthSwitch', 'transformer2W'];
+  }
+  if (role === FIELD_ROLE.TRANSFORMER) {
+    // pole TR (spec §12.4, poza RMU — GPZ/rozdzielnice wyłącznikowe):
+    // DS → bezpiecznik → TR2W (jak dotąd).
     return ['disconnector', 'fuseSwitch', 'transformer2W'];
   }
   if (role === FIELD_ROLE.DER_PV) return ['derPv'];
@@ -71,7 +80,17 @@ export function apparatusSymbolsForRole(role: FieldRole): readonly SymbolId[] {
     // pole sprzęgła (spec §12.4): DS → CB → CT.
     return ['disconnector', 'breaker', 'currentTransformer'];
   }
-  // Domyślnie: pole liniowe (LINE_IN/LINE_OUT/LINE_BRANCH/RMU_LINE/
+  if (role === FIELD_ROLE.RMU_LINE) {
+    // Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): pole LINIOWE RMU stacji
+    // SN/nN — rozłącznik + uziemnik (BOCZNY) + głowica kablowa. Dawny
+    // szablon (DS→CB→CT→DS→ES→głowica) był kopią pola WYŁĄCZNIKOWEGO GPZ
+    // („uniwersalny szablon" — pomiar recenzji pkt 5); CB+CT w polu
+    // liniowym stacji kompaktowej pojawiają się WYŁĄCZNIE ze ścieżki
+    // danych (`primary_devices` — świadomy wybór rozdzielnicy), nigdy z
+    // konwencji.
+    return ['loadBreakSwitch', 'earthSwitch', 'cableHead'];
+  }
+  // Domyślnie: pole liniowe WYŁĄCZNIKOWE (LINE_IN/LINE_OUT/LINE_BRANCH/
   // GPZ_LINE_BAY) — spec §12.4/§12.2: DS_szynowy → CB → CT → DS_liniowy →
   // ES → głowica kablowa. (VT)/(SA) są WARUNKOWE (§12.2, obecne wyłącznie w
   // danych) — konwencja rysuje WYŁĄCZNIE elementy bezwarunkowe.
@@ -96,9 +115,9 @@ export function symbolIdForPrimaryDeviceKind(kind: BayPrimaryDeviceKind): Symbol
     case 'CB':
       return 'breaker';
     case 'LOAD_SWITCH':
-      // DECYZJA (nagłówek pliku): brak dedykowanego glifu „rozłącznik" —
-      // najbliższy istniejący łącznik beznapięciowy.
-      return 'disconnector';
+      // Recenzja NO-GO 2026-07-17 pkt 5: dedykowany glif rozłącznika
+      // (spec §12.5) — dawna aproksymacja `→disconnector` skasowana.
+      return 'loadBreakSwitch';
     case 'DS':
       return 'disconnector';
     case 'ES':
@@ -245,6 +264,9 @@ export const LATERAL_BRANCH_GAP = GRID;
 const Q_IDENTIFIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
   'breaker',
   'disconnector',
+  // Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): rozłącznik = ta sama
+  // grupa „Q" (wyłącznik/rozłącznik/odłącznik, §19.1).
+  'loadBreakSwitch',
   'fuseSwitch',
 ]);
 

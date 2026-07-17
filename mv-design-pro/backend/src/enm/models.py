@@ -766,6 +766,16 @@ class Bay(ENMElement):
     # (Invariant 9). Field forward-deklarowany — typ BayRuntimeState w
     # późniejszej sekcji modułu.
     runtime_state: BayRuntimeState | None = None
+    # Recenzja NO-GO 2026-07-17 pkt 9/10 (spec §12.5): aparaty PIERWOTNE pola
+    # NA SNAPSHOTCIE ENM — domknięcie STOP-notatki F9.2 (frontend
+    # `enmToSldAdapter.ts::BayWithOptionalPrimaryDevices` czyta to pole
+    # DEFENSYWNIE od F9.2 — „projekcja aktywuje się automatycznie, gdy backend
+    # zacznie serializować"). Dotąd `primary_devices` istniało wyłącznie na
+    # `BayBaseModel`/`BayCanonicalModel` (kanał field-view) — walidator blokad
+    # uziemnika (W034, validator.py) i identyfikatory globalne aparatów
+    # wymagają tych danych na snapshotcie. Puste = dana niedostarczona
+    # (ścieżka konwencji rysunku, zero domysłu).
+    primary_devices: list[BayPrimaryDevice] = []
 
 
 # ---------------------------------------------------------------------------
@@ -835,6 +845,21 @@ class BayPrimaryDevice(BaseModel):
     # `data-designation-source="konwencja"`). None = dana niedostarczona,
     # render pozostaje przy konwencji ze znacznikiem źródła.
     designation: str | None = None
+    # Recenzja NO-GO 2026-07-17 pkt 10 (spec §12.5): TYPOLOGIA uziemienia —
+    # WYŁĄCZNIE dla kind="ES" (albo gałęzi uziemiającej SA): uziemnik pola /
+    # uziemienie ekranów kabla / konstrukcji / punktu neutralnego / gałąź
+    # ogranicznika. None = dana niedostarczona (rysunek: generyczny uziemnik,
+    # zero domysłu).
+    earthing_role: (
+        Literal[
+            "field_earth",
+            "cable_screen",
+            "structure",
+            "neutral_point",
+            "surge_ground",
+        ]
+        | None
+    ) = None
 
 
 class BayMeasurements(BaseModel):

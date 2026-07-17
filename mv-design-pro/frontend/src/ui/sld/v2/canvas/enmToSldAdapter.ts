@@ -3369,6 +3369,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         totalGenerationKw: stationSldDetails.totalGenerationKw,
         alarmSeverity: stationSldDetails.alarmSeverity,
         busVoltageKv: stationSldDetails.mainBusVoltageKv,
+        nnVoltageKv: stationSldDetails.nnVoltageKv,
+        aggregatedLvLoad: stationSldDetails.aggregatedLvLoad,
         transformerVectorGroup: stationSldDetails.transformerVectorGroup,
         ...(isNop ? { isNop: true } : {}),
         ...(cumKm > 0 ? { distanceFromGpzKm: Math.round(cumKm * 100) / 100 } : {}),
@@ -3409,6 +3411,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         totalGenerationKw: stationSldDetails.totalGenerationKw,
         alarmSeverity: stationSldDetails.alarmSeverity,
         busVoltageKv: stationSldDetails.mainBusVoltageKv,
+        nnVoltageKv: stationSldDetails.nnVoltageKv,
+        aggregatedLvLoad: stationSldDetails.aggregatedLvLoad,
         transformerVectorGroup: stationSldDetails.transformerVectorGroup,
       });
       stationSequence += 1;
@@ -3435,6 +3439,13 @@ interface StationMiniBlockDetails {
    *  spośród buses zakotwiczonych do tej stacji. Renderer dobiera tint koloru
    *  szyny zgodnie z konwencją dyspozytorską (WN/SN/nN). */
   readonly mainBusVoltageKv: number | null;
+  /** Recenzja NO-GO 2026-07-17 pkt 6: napięcie szyny nN [kV] z rekordu
+   *  `Bus` (voltage_kv <= 0.5) — `null` gdy stacja nie niesie szyny nN. */
+  readonly nnVoltageKv: number | null;
+  /** Recenzja NO-GO 2026-07-17 pkt 6: zagregowany odbiór nN (suma
+   *  `Load` × quantity na szynach nN) — `null` = zero rekordów (granica
+   *  modelu, nie zero mocy). */
+  readonly aggregatedLvLoad: { readonly pMw: number; readonly qMvar: number; readonly count: number } | null;
   /** K30-62: vector group transformatora (np. "Dyn5", "Yd11"). Real
    *  industrial SLD pokazuje vector group obok TR symbol per IEC 60076-1. */
   readonly transformerVectorGroup: string | null;
@@ -3493,6 +3504,11 @@ function buildStationMiniBlockDetails(
   // K30-37: znajdź główną szynę SN stacji (najwyższe voltage_kv > 0.5 kV).
   // 0.4 kV LV-side wykluczamy z "main" — main = SN bus.
   let mainBusVoltageKv: number | null = null;
+  // Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5): szyna nN stacji — napięcie
+  // z REKORDU szyny (voltage_kv <= 0.5 ⇒ strona nN) + zbiór refów szyn nN
+  // do agregacji odbiorów niżej.
+  let nnVoltageKv: number | null = null;
+  const nnBusRefs = new Set<string>();
   for (const busRef of station.bus_refs ?? []) {
     const bus = busByRef.get(busRef);
     if (!bus) continue;
@@ -3502,6 +3518,9 @@ function buildStationMiniBlockDetails(
       if (mainBusVoltageKv == null || v > mainBusVoltageKv) {
         mainBusVoltageKv = v;
       }
+    } else if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+      nnBusRefs.add(bus.ref_id);
+      if (nnVoltageKv == null || v > nnVoltageKv) nnVoltageKv = v;
     }
   }
   const totalLoadKw = Math.round(
@@ -3509,6 +3528,20 @@ function buildStationMiniBlockDetails(
       .filter((l) => stationBusRefs.has(l.bus_ref))
       .reduce((acc, l) => acc + (l.p_mw ?? 0) * 1000, 0)
   );
+  // Recenzja NO-GO 2026-07-17 pkt 6: ZAGREGOWANY odbiór nN — WYŁĄCZNIE
+  // rekordy `Load` na szynach nN tej stacji (× quantity). `null` gdy ZERO
+  // rekordów (jawna granica modelu — kompozycja pisze to na rysunku).
+  const lvLoads = (snapshot.loads ?? []).filter((l) => nnBusRefs.has(l.bus_ref));
+  const aggregatedLvLoad = lvLoads.length > 0
+    ? lvLoads.reduce(
+        (acc, l) => ({
+          pMw: acc.pMw + (l.p_mw ?? 0) * (l.quantity ?? 1),
+          qMvar: acc.qMvar + (l.q_mvar ?? 0) * (l.quantity ?? 1),
+          count: acc.count + 1,
+        }),
+        { pMw: 0, qMvar: 0, count: 0 },
+      )
+    : null;
   const totalGenerationKw = Math.round(
     (snapshot.generators ?? [])
       .filter(
@@ -3536,6 +3569,8 @@ function buildStationMiniBlockDetails(
     totalGenerationKw,
     alarmSeverity,
     mainBusVoltageKv,
+    nnVoltageKv,
+    aggregatedLvLoad,
     transformerVectorGroup: inferTransformerVectorGroup(snapshot, transformerRefs),
   };
 }

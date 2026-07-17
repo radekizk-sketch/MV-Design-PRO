@@ -901,6 +901,56 @@ export function buildStationBranchDetailDrawerData(
       if (parentBayLabel) break;
     }
   }
+
+  // Recenzja NO-GO 2026-07-17 pkt 9 (spec §12.5): identyfikator GLOBALNY
+  // ⟨stacja⟩.⟨pole⟩.⟨aparat⟩ (np. „S01.F01.Q2") — w INSPEKTORZE (rysunek
+  // zostaje przy krótkich Q/QE/T w obrębie opisanego pola, per recenzja).
+  // Części: kod stacji (stationCode), oznacznik pola = `Bay.bay_number`
+  // (dane) albo deterministyczna numeracja F⟨nn⟩ wg pozycji pola w stacji
+  // (TA SAMA konwencja co `gpzFieldOrdinalDesignation`, compose/gpz.ts),
+  // aparat = Q/QE/T wg kolejności `equipment_refs` (TA SAMA klasa liter co
+  // §19.1). Brak którejkolwiek części w danych ⇒ `null` (uczciwy brak).
+  let globalId: string | null = null;
+  if ((drawerKind === 'bay' || drawerKind === 'apparatus') && snapshot) {
+    type BayLite = { ref_id?: string; bay_number?: string | null; equipment_refs?: string[] };
+    const inferKindForId = (eqId: string): 'Q' | 'QE' | 'T' | null => {
+      const tail = eqId.toLowerCase();
+      if (tail.includes('es') || tail.includes('earth')) return 'QE';
+      if (tail.includes('tr') || tail.includes('transformer')) return 'T';
+      if (tail.includes('cb') || tail.includes('ds') || tail.includes('switch') || tail.includes('breaker')) return 'Q';
+      return null;
+    };
+    outer: for (const sub of (snapshot.substations ?? []) as Array<{ bays?: BayLite[] }>) {
+      const bays = sub.bays ?? [];
+      for (let bi = 0; bi < bays.length; bi++) {
+        const b = bays[bi];
+        const isBayHit = drawerKind === 'bay' && b.ref_id === id;
+        const isApparatusHit = drawerKind === 'apparatus' && (b.equipment_refs ?? []).includes(id);
+        if (!isBayHit && !isApparatusHit) continue;
+        const code = stationContext?.stationCode ?? null;
+        if (!code) break outer;
+        const fieldPart = (b.bay_number ?? '').trim() || `F${String(bi + 1).padStart(2, '0')}`;
+        if (isBayHit) {
+          globalId = `${code}.${fieldPart}`;
+        } else {
+          // Numeracja Q/QE/T po kolejności equipment_refs — lustro
+          // `apparatusIdentifiers` (compose/apparatusSequence.ts).
+          const counters: Record<string, number> = { Q: 0, QE: 0, T: 0 };
+          let apparatusPart: string | null = null;
+          for (const eqId of b.equipment_refs ?? []) {
+            const cls = inferKindForId(eqId);
+            if (cls) counters[cls] += 1;
+            if (eqId === id) {
+              apparatusPart = cls ? `${cls}${counters[cls]}` : eqId.split('/').pop() ?? eqId;
+              break;
+            }
+          }
+          globalId = apparatusPart ? `${code}.${fieldPart}.${apparatusPart}` : `${code}.${fieldPart}`;
+        }
+        break outer;
+      }
+    }
+  }
   return drawerKind === 'station' && stationDrawerData
     ? stationDrawerData
     : {
@@ -934,6 +984,7 @@ export function buildStationBranchDetailDrawerData(
         apparatusState,
         parentStationLabel,
         parentBayLabel,
+        globalId,
       };
 }
 

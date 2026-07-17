@@ -14,6 +14,7 @@ import { GRID, isOnGrid, type SymbolPort } from '../core/grid';
 export type SymbolId =
   | 'breaker'          // wyłącznik (CB)
   | 'disconnector'     // odłącznik (DS)
+  | 'loadBreakSwitch'  // rozłącznik (łącznik obciążeniowy, spec §12.5 — recenzja NO-GO pkt 5)
   | 'earthSwitch'      // uziemnik (ES)
   | 'fuseSwitch'       // rozłącznik z bezpiecznikiem
   | 'transformer2W'    // transformator dwuuzwojeniowy
@@ -32,7 +33,8 @@ export type SymbolId =
   | 'gridSource'       // sieć zewnętrzna (Source ENM, F9.4 §13.1/§13.2)
   | 'stationCollapsed' // stacja SN/nN, widok zbiorczy (L0) — kontur kwadratu
   | 'protectionRelay'  // F9.9: przekaźnik zabezpieczeniowy (okrąg + kody ANSI, §17.1)
-  | 'meter';           // F9.9: miernik (okrąg „M", §17.1)
+  | 'meter'            // F9.9: miernik (okrąg „M"/litera wielkości, §17.1)
+  | 'loadArrow';       // zagregowany odbiór 0,4 kV (spec §12.5 — recenzja NO-GO pkt 6)
 
 export interface SymbolDef {
   readonly id: SymbolId;
@@ -62,6 +64,15 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'bottom', x: 8, y: 24, dir: 'S' },
   ], 'Odłącznik'),
+  // Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): ROZŁĄCZNIK (łącznik
+  // obciążeniowy, IEC 60617 switch-disconnector) — dedykowany glif,
+  // odróżnialny od odłącznika poprzeczką na końcu styku ruchomego.
+  // Kasuje udokumentowaną aproksymację `LOAD_SWITCH→disconnector`
+  // (nagłówek compose/apparatusSequence.ts).
+  loadBreakSwitch: def('loadBreakSwitch', 16, 24, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+    { name: 'bottom', x: 8, y: 24, dir: 'S' },
+  ], 'Rozłącznik'),
   earthSwitch: def('earthSwitch', 16, 24, [
     { name: 'top', x: 8, y: 0, dir: 'N' },
   ], 'Uziemnik'),
@@ -111,6 +122,11 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   surgeArrester: def('surgeArrester', 16, 24, [
     { name: 'top', x: 8, y: 0, dir: 'N' },
   ], 'Ogranicznik przepięć'),
+  // Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5): zagregowany ODBIÓR 0,4 kV
+  // — strzałka odbioru (IEC 60617), zaczep portem N do szyny nN.
+  loadArrow: def('loadArrow', 16, 16, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+  ], 'Odbiór (zagregowany)'),
   derPv: def('derPv', 32, 32, [
     { name: 'ac', x: 16, y: 0, dir: 'N' },
   ], 'Instalacja fotowoltaiczna'),

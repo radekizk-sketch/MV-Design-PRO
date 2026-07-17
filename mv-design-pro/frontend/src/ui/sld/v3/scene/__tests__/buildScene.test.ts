@@ -791,9 +791,21 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // „Ekwiwalent sieci zasilającej" pkt 3) pogłębiają nawis strefy → dłuższy
     // pion wyjścia magistrali na L1/L2 (świadome odstępstwo od „nie-rosnącej"
     // jak F9.10/F10.3 — uczciwa tabliczka ma pierwszeństwo, §15.1 miękka).
+    // → 7 pozycji PLAN recenzji NO-GO (2026-07-17, runda 7): L1 42608→47240
+    // (+4632), L2 55712→67208 (+11496), L0 BEZ zmian — złożenie trzech
+    // ŚWIADOMYCH kosztów czytelności (§15.1 miękka, precedens F9.10/F10.3):
+    // (a) pkt 6: KAŻDA stacja z polem TR niesie teraz dwa wiersze strony nN
+    // w paśmie B5 („Szyna nN · 0.4 kV" + odbiór/granica modelu) → wyższe
+    // wiersze → dłuższe zejścia międzywierszowe na L1/L2; strzałki odbioru
+    // (12 stacji z Load na fixturze) dokładają pion+symbol pod szyną nN;
+    // (b) pkt 13 (L2): etykiety przęseł z parą końców („S01 ↔ S02 — …") są
+    // szersze → korytarze etykiet lateralnych (wysokość = szerokość
+    // obróconego tekstu) głębsze; (c) pkt 5: szablony RMU skracają stosy
+    // pól (mniej aparatów), co CZĘŚCIOWO oddaje koszt (a)/(b). Zero nowych
+    // kolizji (symbolWireCollisions/k6/overlap — twarde zera niżej/wyżej).
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12472);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(42608);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(55712);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(47240);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(67208);
   });
 });
 

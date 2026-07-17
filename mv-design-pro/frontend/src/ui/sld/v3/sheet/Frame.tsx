@@ -40,6 +40,10 @@ export interface SheetLegendEntry {
 const DEFAULT_SYMBOL_LEGEND_IDS: readonly SymbolId[] = [
   'breaker',
   'disconnector',
+  // Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): rozłącznik — dedykowany
+  // glif szablonu RMU; odbiór zagregowany — zamknięcie toru 0,4 kV (pkt 6).
+  'loadBreakSwitch',
+  'loadArrow',
   'earthSwitch',
   'fuseSwitch',
   'transformer2W',

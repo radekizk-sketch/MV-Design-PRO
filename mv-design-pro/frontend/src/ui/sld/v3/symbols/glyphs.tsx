@@ -88,6 +88,45 @@ export function DisconnectorGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
+/** Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): ROZŁĄCZNIK (łącznik
+ *  obciążeniowy, IEC 60617 switch-disconnector) — geometria odłącznika +
+ *  POPRZECZKA na końcu styku ruchomego (cecha odróżniająca zdolność
+ *  łączenia pod obciążeniem). Stan z geometrii noża jak `DisconnectorGlyph`. */
+export function LoadBreakSwitchGlyph(props: GlyphProps): JSX.Element {
+  const state = props.state ?? 'unknown';
+  const bladeEnd = state === 'open' ? { x: 15, y: 12 } : { x: 8, y: 18 };
+  return (
+    <g {...glyphGroupProps('loadBreakSwitch', props)}>
+      <line x1={8} y1={0} x2={8} y2={6} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      {/* Poprzeczka rozłącznika: krótka kreska PROSTOPADŁA do noża na jego
+          swobodnym końcu (IEC 60617 S00504) — obraca się razem z nożem. */}
+      {state === 'open' ? (
+        <line x1={13} y1={9} x2={17} y2={15} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      ) : (
+        <line x1={4} y1={14} x2={12} y2={14} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      )}
+      <line
+        x1={8} y1={6} x2={bladeEnd.x} y2={bladeEnd.y}
+        stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS}
+        strokeDasharray={state === 'unknown' ? '3 2' : undefined}
+      />
+      <line x1={4} y1={18} x2={12} y2={18} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={8} y1={18} x2={8} y2={24} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+    </g>
+  );
+}
+
+/** Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5): zagregowany ODBIÓR —
+ *  strzałka odbioru (IEC 60617): pion od portu N + grot w dół. */
+export function LoadArrowGlyph(props: GlyphProps): JSX.Element {
+  return (
+    <g {...glyphGroupProps('loadArrow', props)}>
+      <line x1={8} y1={0} x2={8} y2={10} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <path d="M 3 10 L 13 10 L 8 16 Z" fill={stroke(props)} stroke="none" />
+    </g>
+  );
+}
+
 export function EarthSwitchGlyph(props: GlyphProps): JSX.Element {
   const state = props.state ?? 'open';
   const bladeEnd = state === 'open' ? { x: 15, y: 10 } : { x: 8, y: 14 };
@@ -374,6 +413,8 @@ export function MeterGlyph(props: GlyphProps): JSX.Element {
 export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX.Element>> = {
   breaker: BreakerGlyph,
   disconnector: DisconnectorGlyph,
+  loadBreakSwitch: LoadBreakSwitchGlyph,
+  loadArrow: LoadArrowGlyph,
   earthSwitch: EarthSwitchGlyph,
   fuseSwitch: FuseSwitchGlyph,
   transformer2W: Transformer2WGlyph,

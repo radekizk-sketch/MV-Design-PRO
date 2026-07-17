@@ -1271,6 +1271,40 @@ export function composeGpz(
         // rezerwacje (nie max()ują) — jedna prawda measure↔compose.
       }
     });
+
+    // Recenzja NO-GO 2026-07-17 pkt 12 (spec §12.5): VT SZYNY sekcji —
+    // RÓWNOLEGLE do szyny (zejście z szyny + symbol VT portem N, NIGDY w
+    // torze — §18.2 `vt_parallel_probe`), przy PRAWYM końcu sekcji (pas
+    // wolny od zejść pól — piony pól kończą się na `field.centerX`, na
+    // lewo od `busRightX - SECTION_MARGIN`). Etykieta wielkości: gwiazda ⇒
+    // „U", otwarty trójkąt ⇒ „3U0" (źródło składowej zerowej dla 67N).
+    // WYŁĄCZNIE z danych (`Measurement` VT na szynie) — zero fabrykacji.
+    (layout.section.busVtMeasurements ?? []).forEach((vt, vtIndex) => {
+      const vtDef = SYMBOL_DEFS.voltageTransformer;
+      const vtCenterX = snapToGrid(layout.x + layout.width - SECTION_MARGIN - vtIndex * (vtDef.width + 2 * GRID));
+      const vtTopY = snBusY + 2 * GRID;
+      const vtX = snapToGrid(vtCenterX - vtDef.width / 2);
+      segments.push({
+        ownerRef: `${vt.measurementRef}#bus-vt-drop`,
+        points: [{ x: vtCenterX, y: snBusY }, { x: vtCenterX, y: vtTopY }],
+        meta: { parityKeys: ['gpz.bus.vt'], sectionId: layout.section.sectionId },
+      });
+      const vtMeta: GpzElementMeta = {
+        parityKeys: ['gpz.bus.vt'],
+        testId: `gpz-canonical-bus-vt-${vt.measurementRef}`,
+        sectionId: layout.section.sectionId,
+      };
+      tag(vtMeta.parityKeys);
+      symbols.push({ symbolId: 'voltageTransformer', x: vtX, y: vtTopY, ports: portsInWorld('voltageTransformer', vtX, vtTopY), meta: vtMeta });
+      fieldDesignations.push({
+        ownerRef: `${vt.measurementRef}#bus-vt-quantity`,
+        ownerKind: 'field-role',
+        text: vt.arrangement === 'open_delta' ? '3U0' : 'U',
+        labelClass: 't4',
+        anchor: { x: vtCenterX, y: vtTopY + vtDef.height },
+        placement: 'below',
+      });
+    });
   });
 
   // -- 5. Sprzęgła międzysekcyjne (props.couplers). -------------------------

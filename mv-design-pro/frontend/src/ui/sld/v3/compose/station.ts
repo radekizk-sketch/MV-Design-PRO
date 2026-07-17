@@ -69,8 +69,11 @@ import {
   derColumnRequiredWidth,
   entryDescentCaptionInset,
   formatTransformerRatedPower,
+  LV_MODEL_BOUNDARY_TEXT,
   PORT_CAPTION_BUS_CLEARANCE,
   stationBusbarLabelText,
+  stationLvBusbarLabelText,
+  stationLvLoadLabelText,
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../layout/measure';
@@ -148,6 +151,10 @@ export { apparatusSymbolsForRole, stackFootprint };
 function apparatusStateFor(symbolId: SymbolId, bay: MiniBlockBayDescriptor): SwitchState | undefined {
   if (symbolId === 'breaker') return bay.cbState;
   if (symbolId === 'disconnector') return bay.dsState;
+  // Recenzja NO-GO 2026-07-17 pkt 5 (spec §12.5): rozłącznik konwencji RMU —
+  // agregat `dsState` (jeden łącznik główny pola; osobny agregat per kind
+  // byłby polem-atrapą, patrz uzasadnienie `fuseSwitch` wyżej).
+  if (symbolId === 'loadBreakSwitch') return bay.dsState;
   if (symbolId === 'earthSwitch') return bay.esState;
   return undefined;
 }
@@ -1140,7 +1147,14 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     const minX = Math.min(...lvPorts.map((p) => p.x));
     const maxX = Math.max(...lvPorts.map((p) => p.x));
     const busY = snapToGrid(Math.max(...lvPorts.map((p) => p.y)) + GRID);
-    const busLeft = minX === maxX ? minX - GRID : minX;
+    // pkt 6 (recenzja NO-GO 2026-07-17): stacja z odbiorem ORAZ DER —
+    // szyna nN przedłużona w LEWO o 3×GRID, żeby strzałka odbioru na jej
+    // lewym końcu miała prześwit od pionu trunku DER (`#der-row-trunk`
+    // schodzi ze środka szyny; pomiar: na wąskiej szynie 2×GRID gabaryt
+    // strzałki DOTYKAŁ trunku — symbolWireCollisions 24 na fixturze).
+    const lvBusExtendLeft =
+      station.aggregatedLvLoad != null && (station.derSources ?? []).length > 0 ? 3 * GRID : 0;
+    const busLeft = (minX === maxX ? minX - GRID : minX) - lvBusExtendLeft;
     const busRight = minX === maxX ? maxX + GRID : maxX;
 
     segments.push({
@@ -1159,7 +1173,38 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         ],
       });
     });
-    nnBusPoint = { x: snapToGrid((busLeft + busRight) / 2), y: busY };
+    // Środek TREŚCIWEJ części szyny (bez przedłużki pod strzałkę) — punkt
+    // zaczepu DER/etykiet NIE przesuwa się, gdy `lvBusExtendLeft` > 0.
+    nnBusPoint = { x: snapToGrid((busLeft + lvBusExtendLeft + busRight) / 2), y: busY };
+
+    // Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5): zagregowany ODBIÓR z
+    // rekordów `Load` — strzałka odbioru NA szynie nN (pion szyna→port N
+    // symbolu). Gdy stacja niesie też DER (`#der-row-trunk` schodzi z
+    // ŚRODKA szyny nN, `nnBusPoint.x`), strzałka staje na LEWYM końcu szyny
+    // — zero współliniowości z trunkiem DER. TEKSTY strony nN (etykieta
+    // szyny + wiersz odbioru/granicy modelu) żyją w PAŚMIE NAZW B5
+    // (kolizyjnie bezpieczne z konstrukcji — rezerwacja
+    // `stationNameBandHeight`/`requiredStationWidth`), nie jako luźne
+    // etykiety pod szyną (pomiar: kolidowały z pionem trunku DER).
+    if (station.aggregatedLvLoad != null) {
+      const arrowDef = SYMBOL_DEFS.loadArrow;
+      const arrowDropX = (station.derSources ?? []).length > 0 ? busLeft : nnBusPoint.x;
+      const arrowX = snapToGrid(arrowDropX - arrowDef.width / 2);
+      const arrowY = busY + GRID;
+      segments.push({
+        ownerRef: `${station.id}#lv-load-drop`,
+        points: [
+          { x: arrowDropX, y: busY },
+          { x: arrowDropX, y: arrowY },
+        ],
+      });
+      symbols.push({
+        symbolId: 'loadArrow',
+        x: arrowX,
+        y: arrowY,
+        ports: portsInWorld(SYMBOL_DEFS.loadArrow, arrowX, arrowY),
+      });
+    }
   }
 
   // F9.4 (spec §13.1 V12K-029, §14.1 strona nN): DER przyłączone do TEJ
@@ -1270,13 +1315,24 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   }
 
   // Pasmo nazw (B5, spec §4: kolejność pionowa stała) — TA SAMA kolejność
-  // co `stationNameBandHeight` (`layout/measure.ts`): nazwa, kod, kVA, typ.
+  // co `stationNameBandHeight` (`layout/measure.ts`): nazwa, kod, kVA, typ,
+  // strona nN (pkt 6 recenzji NO-GO 2026-07-17: węzeł 0,4 kV zawsze opisany
+  // + odbiór zagregowany ALBO jawna granica modelu).
   const rows: StationNameBandRow[] = [{ text: station.name, labelClass: 't1' }];
   if (station.stationCode) rows.push({ text: station.stationCode, labelClass: 't1' });
   if (station.transformerRatedKva != null) {
     rows.push({ text: formatTransformerRatedPower(station.transformerRatedKva), labelClass: 't2' });
   }
   if (station.stationTypeLabel) rows.push({ text: station.stationTypeLabel, labelClass: 't4' });
+  if (hasLvSection && lvPorts.length > 0) {
+    rows.push({ text: stationLvBusbarLabelText(station.nnVoltageKv), labelClass: 't4' });
+    rows.push({
+      text: station.aggregatedLvLoad
+        ? stationLvLoadLabelText(station.aggregatedLvLoad)
+        : LV_MODEL_BOUNDARY_TEXT,
+      labelClass: 't4',
+    });
+  }
 
   const stationName: StationNameBandOwnerInput = { ownerRef: station.id, nameSlot, rows };
 
@@ -1414,14 +1470,26 @@ export function fieldStacksEndAtCableHead(
  */
 export type FieldSilhouetteClass =
   | 'line'
+  | 'rmu_line'
   | 'transformer'
+  | 'rmu_transformer'
   | 'coupler'
   | 'measurement'
   | 'der_pv'
   | 'der_bess'
   | 'der_fw';
 
+/** KOREKTA RULINGU V12K-031 (recenzja NO-GO właściciela 2026-07-17 pkt 5,
+ *  spec §12.5): przesłanka „wejście/wyjście/odgałęzienie = fizycznie
+ *  identyczna konstrukcja" ZOSTAJE dla pól wyłącznikowych (LINE_IN/LINE_OUT/
+ *  LINE_BRANCH/GPZ_LINE_BAY — jedna klasa `'line'`), ale pole liniowe stacji
+ *  KOMPAKTOWEJ (RMU_LINE: rozłącznik+ES+głowica) i pole trafo bezpiecznikowe
+ *  RMU (RMU_TRANSFORMER: rozłącznik bezpiecznikowy+ES+TR) są INNĄ
+ *  technologią rozdzielnicy — recenzja zmierzyła, że wspólna sylwetka
+ *  fabrykowała CB+CT w stacjach 630 kVA. Osobne klasy = osobne sygnatury. */
 export function fieldSilhouetteClass(role: FieldRole): FieldSilhouetteClass {
+  if (role === FIELD_ROLE.RMU_LINE) return 'rmu_line';
+  if (role === FIELD_ROLE.RMU_TRANSFORMER) return 'rmu_transformer';
   if (isLineLikeRole(role)) return 'line';
   if (isTransformerRole(role)) return 'transformer';
   if (role === FIELD_ROLE.COUPLER) return 'coupler';
@@ -1438,7 +1506,9 @@ export function fieldSilhouetteClass(role: FieldRole): FieldSilhouetteClass {
  *  KATEGORII pól, nie o konkretnej instancji). */
 const SILHOUETTE_CLASS_REPRESENTATIVE_ROLE: Readonly<Record<FieldSilhouetteClass, FieldRole>> = {
   line: FIELD_ROLE.LINE_IN,
+  rmu_line: FIELD_ROLE.RMU_LINE,
   transformer: FIELD_ROLE.TRANSFORMER,
+  rmu_transformer: FIELD_ROLE.RMU_TRANSFORMER,
   coupler: FIELD_ROLE.COUPLER,
   measurement: FIELD_ROLE.MEASUREMENT,
   der_pv: FIELD_ROLE.DER_PV,
