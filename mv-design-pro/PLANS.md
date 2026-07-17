@@ -537,6 +537,13 @@ Progress:
         per punkt z jawnym znacznikiem osieroconych w ScComparisonService.
         POTWIERDZENIE #28 (2026-07-17): pełny vitest 8610 passed, 0 failed
         — BAZY: backend 6066, frontend 8610.
+        SCALENIE #29 (2026-07-17): wirtualizacja tabel wyników (dc4ce13 →
+        cherry-pick) — ręczne okno w TabelaWynikow powyżej 500 wierszy
+        (33 px/wiersz z wyliczeniem z wzorzec.css, przekładki, determinizm
+        scrollTop, kontrakt propsów nietknięty, zero nowych zależności;
+        poniżej progu DOM 1:1). Wykonawca: pełny vitest 8622 pass,
+        0 failed (+12). Zarządca: 90 celowanych + type-check + lint +
+        4 guardy OK, push. Konfirmacja w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
