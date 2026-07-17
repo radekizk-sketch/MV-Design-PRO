@@ -572,6 +572,19 @@ Progress:
         frontend 8634. Rejestr TODO-KART strumienia OZE domknięty poza
         pozycjami dużymi (wygaszanie zakładek mostu, property grid E5.x,
         dokument studium — osobne karty).
+        PLAN WYGASZANIA MOSTU WYNIKÓW (2026-07-17): wiążący dokument
+        docs/uiux/PLAN_WYGASZANIA_MOSTU_WYNIKI.md — inwentarz 20+
+        powierzchni (grupy A pokryte / B do migracji / C nie-wynikowe),
+        fale W1–W5, zasada pokrycia 1:1 przed wygaszeniem trasy.
+        SCALENIE #32 (2026-07-17): D17 dokument studium przyłączeniowego
+        (05f3125 → cherry-pick) — POST /api/oze-analysis/connection-study
+        (+.docx/.pdf, determinizm bajtowy); serwerowa kompozycja sekwencji
+        kreatora (hosting→pq-area→pq-coverage per wariant, serwisy
+        bezpośrednio); błąd wariantu nie przerywa dokumentu; klasa NC RfG
+        z backendowego classify_module (loader.py:79 — źródło prawdy,
+        frontendowy klasaNcRfg to lustro 1:1). Wykonawca: pełny pytest
+        6112 pass, 0 failed (+23). Zarządca: 23 celowane + 5 guardów OK,
+        push. Konfirmacja w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
