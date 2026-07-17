@@ -635,6 +635,22 @@ Progress:
         dublujących po weryfikacji Grupy A) i decyzja właściciela W4.
         POTWIERDZENIE #36 (2026-07-17): pełny vitest 8663 passed, 0 failed
         — BAZY: backend 6112, frontend 8663.
+        AUDYT W5a SCALONY (5ce64e4→cherry-pick, 2026-07-17): pełne tabele
+        pokrycia Grupy A w raporcie wykonawcy + skrót w planie wygaszania.
+        WERDYKTY: ComplianceSurface → WYGASIĆ (rdzeń krzywych FRT pokryty
+        SUPERSETEM EkranFrt; KOREKTA MAPOWANIA: macierz NC RfG pokrywa
+        NcRfgTestsTab, nie E-26); AnalysisSurface → rdzeń pokryty, blokuje
+        tylko STUB „analizy wrażliwości" (pusty panel, entries=[]);
+        ProofSurface → przegląd dowodu pokryty, akcje audit2 (generator
+        pakietów, rozpływ rozszerzony) BEZ odpowiednika — DECYZJA
+        WŁAŚCICIELA (migracja do Dokumentacja/Obliczenia vs most).
+        SCALENIE #37 / W5b-K1 (2026-07-17, zarządca — mikro-delta):
+        trzy wiersze kontraktu domykające luki audytu (Wariant, Model
+        IBG/OZE, Wersja katalogu z reproducibility) + test; 98 celowanych
+        + bramki OK, push. Konfirmacja w tle. DO DECYZJI WŁAŚCICIELA:
+        W5b (wygaszenie trasy E-26 Compliance — gotowe do wykonania;
+        AnalysisSurface — uznanie stubu wrażliwości; ProofSurface — los
+        akcji audit2) i W4 (V126Academic).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
