@@ -27,6 +27,12 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from application.analyses.certyfikat_zgodnosci import (
+    CertyfikatBrakiError,
+    CertyfikatZgodnosciRequest,
+    build_certyfikat_view,
+    render_certyfikat_docx,
+)
 from application.analyses.dobor_kompensacji import build_compensation_sizing_view
 from application.analyses.frt_sekwencja import build_frt_sekwencja_view
 from application.analyses.frt_trajektorie import build_frt_trajectories_view
@@ -56,9 +62,12 @@ from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
 from enm.store import get_enm, has_enm
 from fastapi import APIRouter, HTTPException, Query, status
+from fastapi.responses import Response
 from network_model.catalog.repository import get_default_mv_catalog
+from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeSolver
 
 router = APIRouter(tags=["oze-analysis"])
+_ncrfg_solver = NcRfgPtpireeSolver()
 
 
 def _require_run(run_id: UUID) -> CanonicalRun:
@@ -333,6 +342,53 @@ def get_pq_coverage(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
+
+def _certyfikat_view(request: CertyfikatZgodnosciRequest) -> dict[str, Any]:
+    """Zbuduj widok certyfikatu tą samą ścieżką co macierz frontendu.
+
+    Uruchamia deterministyczny solver NC RfG/PTPiREE (``POST /api/ncrfg-tests/run``
+    używa tego samego solvera), po czym komponuje certyfikat z gotowych werdyktów.
+    Nieznany profil operatora → 404 PL; braki kompletności → 422 z listą PL.
+    """
+    try:
+        run_result = _ncrfg_solver.run(request.run_request)
+    except FileNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    try:
+        return build_certyfikat_view(
+            run_result,
+            nazwa_projektu=request.nazwa_projektu,
+            nazwa_przypadku=request.nazwa_przypadku,
+        )
+    except CertyfikatBrakiError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "komunikat": "Certyfikat nie może powstać — dane zgodności "
+                "niekompletne. Uzupełnij braki i powtórz generację.",
+                "braki": exc.braki,
+            },
+        ) from exc
+
+
+@router.post("/api/oze-analysis/compliance-certificate")
+def post_compliance_certificate(request: CertyfikatZgodnosciRequest) -> dict[str, Any]:
+    return _certyfikat_view(request)
+
+
+@router.post("/api/oze-analysis/compliance-certificate.docx")
+def post_compliance_certificate_docx(request: CertyfikatZgodnosciRequest) -> Response:
+    view = _certyfikat_view(request)
+    docx_bytes = render_certyfikat_docx(view)
+    return Response(
+        content=docx_bytes,
+        media_type=("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        headers={"Content-Disposition": 'attachment; filename="certyfikat_zgodnosci_ncrfg.docx"'},
+    )
 
 
 @router.get("/api/oze-analysis/osd-response")
