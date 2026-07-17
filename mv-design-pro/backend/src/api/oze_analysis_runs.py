@@ -35,6 +35,13 @@ from application.analyses.certyfikat_zgodnosci import (
     render_certyfikat_pdf,
 )
 from application.analyses.dobor_kompensacji import build_compensation_sizing_view
+from application.analyses.dokument_studium import (
+    DokumentStudiumBrakiError,
+    DokumentStudiumIdentyfikacja,
+    build_dokument_studium_view,
+    render_dokument_studium_docx,
+    render_dokument_studium_pdf,
+)
 from application.analyses.frt_sekwencja import build_frt_sekwencja_view
 from application.analyses.frt_trajektorie import build_frt_trajectories_view
 from application.analyses.grid_strength import build_grid_strength_view
@@ -526,3 +533,84 @@ def get_osd_response(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
+
+class DokumentStudiumRequest(BaseModel):
+    """Wejście generatora dokumentu studium: identyfikacja + parametry sekwencji."""
+
+    nazwa_projektu: str = Field(min_length=1)
+    nazwa_przypadku: str | None = None
+    wnioskodawca: str | None = None
+    adres_przylaczenia: str | None = None
+    run_id: UUID
+    catalog_item_id: str = Field(min_length=1)
+    operator_id: str = Field(min_length=1)
+    warianty: list[str] = Field(min_length=1)
+
+
+def _dokument_studium_view(request: DokumentStudiumRequest) -> dict[str, Any]:
+    """Zbuduj widok dokumentu studium serwerową kompozycją sekwencji kreatora.
+
+    Ładuje przebieg bazowy (404 gdy brak), rozwiązuje typ katalogowy i profil
+    operatora (przekazane do bramki braków twardych), po czym komponuje dokument.
+    Braki twarde → 422 z listą po polsku (dokument nie powstaje). Błąd pojedynczego
+    wariantu jest odnotowany w sekcji wariantu i nie przerywa dokumentu.
+    """
+    run = _require_run(request.run_id)
+    converter = get_default_mv_catalog().get_converter_type(request.catalog_item_id)
+    try:
+        profile = load_nc_rfg_profile(request.operator_id)
+    except FileNotFoundError:
+        profile = None
+    identyfikacja = DokumentStudiumIdentyfikacja(
+        nazwa_projektu=request.nazwa_projektu,
+        nazwa_przypadku=request.nazwa_przypadku,
+        wnioskodawca=request.wnioskodawca,
+        adres_przylaczenia=request.adres_przylaczenia,
+    )
+    try:
+        return build_dokument_studium_view(
+            run,
+            converter,
+            profile,
+            catalog_item_id=request.catalog_item_id,
+            operator_id=request.operator_id,
+            warianty=list(request.warianty),
+            identyfikacja=identyfikacja,
+        )
+    except DokumentStudiumBrakiError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "komunikat": "Dokument studium nie może powstać — dane wejściowe "
+                "niekompletne. Uzupełnij braki i powtórz generację.",
+                "braki": exc.braki,
+            },
+        ) from exc
+
+
+@router.post("/api/oze-analysis/connection-study")
+def post_connection_study(request: DokumentStudiumRequest) -> dict[str, Any]:
+    return _dokument_studium_view(request)
+
+
+@router.post("/api/oze-analysis/connection-study.docx")
+def post_connection_study_docx(request: DokumentStudiumRequest) -> Response:
+    view = _dokument_studium_view(request)
+    docx_bytes = render_dokument_studium_docx(view)
+    return Response(
+        content=docx_bytes,
+        media_type=("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+        headers={"Content-Disposition": 'attachment; filename="dokument_studium.docx"'},
+    )
+
+
+@router.post("/api/oze-analysis/connection-study.pdf")
+def post_connection_study_pdf(request: DokumentStudiumRequest) -> Response:
+    view = _dokument_studium_view(request)
+    pdf_bytes = render_dokument_studium_pdf(view)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="dokument_studium.pdf"'},
+    )
