@@ -607,6 +607,15 @@ Progress:
         Wykonawca: pełny vitest 8656 pass, 0 failed (+9). Zarządca:
         90 celowanych + type-check + lint + 4 guardy OK, push.
         Konfirmacja w tle.
+        POTWIERDZENIE #34 (2026-07-17): pełny vitest 8656 passed, 0 failed
+        — BAZY: backend 6112, frontend 8656.
+        SCALENIE #35 / FALA W2 (2026-07-17, zarządca — mikro-delta):
+        rekonesans wykazał, że Convergence i SourceContributions to te
+        same cienkie panele kontraktu co W1 (dane wkładów od dawna
+        w EkranZwarc) — dodano dwa wiersze parytetu („Rodzaj przypadku",
+        „Projekt") + test przez realny formater mostu; rejestr W2
+        w planie wygaszania wypełniony. 91 celowanych + bramki OK, push.
+        Konfirmacja w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
