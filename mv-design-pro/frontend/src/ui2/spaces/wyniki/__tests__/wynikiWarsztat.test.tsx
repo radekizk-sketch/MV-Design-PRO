@@ -114,6 +114,10 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.getByTestId('mvd-frt-ekran')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-osd'));
     expect(screen.getByTestId('mvd-osd-ekran')).toBeInTheDocument();
+    // Zakładka „Praca wyspowa" (LoM): bez aktywnego przypadku — uczciwy stan pusty.
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-lom'));
+    expect(screen.getByTestId('mvd-lom-ekran')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-lom-brak-przypadku')).toBeInTheDocument();
   });
 
   it('zakładka „Zgodność NC RfG": bez modułów wytwórczych — uczciwy stan pusty macierzy', () => {

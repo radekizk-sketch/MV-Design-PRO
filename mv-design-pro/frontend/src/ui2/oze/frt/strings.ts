@@ -101,6 +101,49 @@ export const FRT_STRINGS = {
   jednPu: 'p.u.',
   jednS: 's',
   kreska: '—',
+
+  // --- Sekcja „Sekwencja zapadów" (P43) ---
+  sekwTytul: 'Sekwencja zapadów',
+  sekwOpis:
+    'Zdefiniuj serię kolejnych zapadów napięcia (głębokość i czas trwania) dla '
+    + 'wybranego modułu i operatora, aby ocenić zdolność przejścia przez wielokrotne '
+    + 'zakłócenia. Werdykt sekwencji pochodzi z solvera (koniunkcja werdyktów zapadów).',
+  sekwBrakDoboru: 'Wybierz moduł DER i operatora powyżej',
+  sekwBrakDoboruOpis:
+    'Sekwencja zapadów korzysta z tego samego modułu i operatora co test trajektorii. '
+    + 'Dobierz oba pola, aby zdefiniować zapady.',
+  sekwEdytorTytul: 'Zapady w sekwencji',
+  sekwKolGlebokosc: 'Głębokość zapadu',
+  sekwKolCzas: 'Czas trwania',
+  sekwDodajWiersz: 'Dodaj zapad',
+  sekwUsunWiersz: 'Usuń zapad',
+  sekwUsunAria: 'Usuń zapad z sekwencji',
+  sekwPrzyciskOblicz: 'Uruchom sekwencję',
+  sekwPrzyciskPrzelicz: 'Przelicz sekwencję',
+  sekwIdle: 'Zdefiniuj zapady i uruchom sekwencję',
+  sekwIdleOpis: 'Jawny bieg policzy każdy zapad od stanu ustalonego i złoży werdykt sekwencji.',
+  sekwLadowanie: 'Symulacja sekwencji zapadów…',
+  sekwBlad: 'Nie udało się uruchomić sekwencji zapadów',
+  sekwWerdyktWObwiedni: 'Sekwencja mieści się w obwiedni profilu operatora',
+  sekwWerdyktNiezaliczona: 'Sekwencja niezaliczona — zapad wyszedł poza obwiednię profilu',
+  sekwWerdyktOpis:
+    'Werdykt sekwencji to koniunkcja werdyktów zapadów z solvera — nie jest to '
+    + 'odrębna ocena fizyczna.',
+  sekwZalozeniaTytul: 'Założenia',
+  sekwKolZapad: 'Zapad',
+  sekwKolUtrzymanie: 'Utrzymanie pracy',
+  sekwKolMarginesPu: 'Margines do krzywej',
+  sekwKolMarginesS: 'Margines do krzywej',
+  sekwKolOdzysk: 'Czas odzysku P',
+  sekwKolWerdykt: 'Werdykt',
+  sekwKontekstTytul: 'Kontekst siły sieci',
+  sekwKontekstScr: 'Wskaźnik zwarciowy SCR',
+  sekwKontekstMocZwarciowa: 'Moc zwarciowa Sk″',
+  sekwKontekstMocZainstalowana: 'Moc zainstalowana źródeł',
+  sekwKontekstWezel: 'Węzeł przyłączenia',
+  sekwKontekstWerdykt: 'Ocena siły sieci',
+  sekwEkspHash: 'Odcisk wejścia (SHA-256)',
+  jednMva: 'MVA',
 } as const;
 
 /** Etykieta PL statusu solvera FRT/HVRT. */

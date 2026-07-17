@@ -8,6 +8,8 @@
 export { EkranFrt } from './EkranFrt';
 export type { EkranFrtProps } from './EkranFrt';
 export { WykresTrajektoriiChart } from './WykresTrajektoriiChart';
+export { SekcjaSekwencjiZapadow } from './SekcjaSekwencjiZapadow';
+export type { SekcjaSekwencjiZapadowProps } from './SekcjaSekwencjiZapadow';
 export {
   opcjeModulowFrt,
   opcjeOperatorowFrt,
@@ -26,4 +28,10 @@ export type {
   IstotnoscFrt,
   WerdyktCalosciFrt,
 } from './frtModel';
+export {
+  kolumnyTabeliSekwencji,
+  wierszeTabeliSekwencji,
+  werdyktSekwencji,
+} from './sekwencjaModel';
+export type { IstotnoscSekwencji, WerdyktSekwencji } from './sekwencjaModel';
 export { FRT_STRINGS } from './strings';

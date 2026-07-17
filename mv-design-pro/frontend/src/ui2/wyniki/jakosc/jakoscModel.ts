@@ -17,15 +17,19 @@ import type {
   WierszZalozenia,
 } from '../wzorzec';
 import type {
+  KonfiguracjaMigotania,
   WalidacjaConfig,
   WalidacjaItem,
+  WezelMigotania,
   WiarygodnoscItem,
 } from './api';
 import {
   JAKOSC_STRINGS,
   fmtKA,
   fmtKV,
+  fmtMva,
   fmtProcent,
+  fmtPst,
   fmtWartosc,
   rodzajKontroliPL,
   statusWalidacjiPL,
@@ -224,5 +228,59 @@ export function naZalozeniaWalidacji(config: WalidacjaConfig): WierszZalozenia[]
     { etykieta: JAKOSC_STRINGS.zalProgNapieciaPrzekr, wartosc: fmtProcent(config.voltage_fail_pct), jednostka: proc },
     { etykieta: JAKOSC_STRINGS.zalProgStratOstrz, wartosc: fmtProcent(config.loss_warn_pct), jednostka: proc },
     { etykieta: JAKOSC_STRINGS.zalProgStratPrzekr, wartosc: fmtProcent(config.loss_fail_pct), jednostka: proc },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Sekcja 3 — Migotanie i szybkie zmiany napięcia (P37)
+// ---------------------------------------------------------------------------
+
+export const KLUCZ_WIERSZA_MIGOTANIE = 'wezel';
+
+export const KOLUMNY_MIGOTANIE: DefinicjaKolumny[] = [
+  { klucz: 'wezel', etykieta: JAKOSC_STRINGS.kolWezelMig, wyrownanie: 'lewo' },
+  { klucz: 'sk', etykieta: JAKOSC_STRINGS.kolSk, jednostka: JAKOSC_STRINGS.jednMva, mono: true },
+  { klucz: 'pst', etykieta: JAKOSC_STRINGS.kolPst, mono: true },
+  { klucz: 'plt', etykieta: JAKOSC_STRINGS.kolPlt, mono: true },
+  { klucz: 'd', etykieta: JAKOSC_STRINGS.kolDpercent, jednostka: JAKOSC_STRINGS.jednProcent, mono: true },
+  { klucz: 'werdykt', etykieta: JAKOSC_STRINGS.kolWerdyktMig, wyrownanie: 'lewo', sortowalna: false },
+];
+
+/** Adapter: węzeł migotania → wiersz tabeli wzorca (limity/werdykt z backendu). */
+export function mapujWierszMigotania(wezel: WezelMigotania): WierszTabeli {
+  return {
+    wezel: { wartosc: wezel.bus_ref },
+    sk: komorkaLiczba(wezel.sk_mva, fmtMva),
+    pst: komorkaLiczba(wezel.pst, fmtPst, {
+      ostrzezenie: wezel.pst !== null && wezel.pst > wezel.pst_limit,
+    }),
+    plt: komorkaLiczba(wezel.plt, fmtPst, {
+      ostrzezenie: wezel.plt !== null && wezel.plt > wezel.plt_limit,
+    }),
+    d: komorkaLiczba(wezel.d_percent, fmtProcent),
+    werdykt: { wartosc: wezel.verdict_pl },
+  };
+}
+
+/** Mapuje węzły migotania na wiersze tabeli wzorca (kolejność źródłowa). */
+export function naWierszeMigotania(buses: readonly WezelMigotania[]): WierszTabeli[] {
+  return buses.map(mapujWierszMigotania);
+}
+
+/** Buduje sekcję ZAŁOŻENIA sekcji migotania z konfiguracji normatywnej backendu. */
+export function naZalozeniaMigotania(config: KonfiguracjaMigotania): WierszZalozenia[] {
+  return [
+    { etykieta: JAKOSC_STRINGS.zalMigM, wartosc: config.flicker_summation_exponent_m },
+    {
+      etykieta: JAKOSC_STRINGS.zalMigPst,
+      wartosc: fmtPst(config.planning_level_pst),
+      uwaga: JAKOSC_STRINGS.zalMigUwaga,
+    },
+    {
+      etykieta: JAKOSC_STRINGS.zalMigPlt,
+      wartosc: fmtPst(config.planning_level_plt),
+      uwaga: JAKOSC_STRINGS.zalMigUwaga,
+    },
+    { etykieta: JAKOSC_STRINGS.zalMigKmax, wartosc: fmtPst(config.rvc_kmax) },
   ];
 }

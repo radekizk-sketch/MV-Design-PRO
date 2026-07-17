@@ -853,3 +853,182 @@ export function pobierzOdpowiedzOsd(
   dodaj('deadband_hz', zapytanie.deadbandHz);
   return getJsonZDetalem<WidokOdpowiedziOsd>(`/api/oze-analysis/osd-response?${czesci.join('&')}`);
 }
+
+// =============================================================================
+// Sekwencja wielokrotnych zapadów FRT z kontekstem siły sieci —
+// application/analyses/frt_sekwencja.py::build_frt_sekwencja_view (P43, D9);
+// końcówka GET /api/oze-analysis/frt-sequence (api/oze_analysis_runs.py:271)
+// =============================================================================
+
+/**
+ * Pojedynczy zapad sekwencji (1:1 z `zapady[]` w `build_frt_sekwencja_view`).
+ * `werdykt_pl` przyjmuje „w obwiedni" / „poza obwiednią" / „moduł wypadł" — pola
+ * solvera FROZEN, ZERO oceny w UI. `wejscie_solvera` to ślad WHITE BOX wejścia
+ * scenariusza (tryb ekspercki).
+ */
+export interface ZapadSekwencjiFrt {
+  readonly scenario_id: string;
+  readonly glebokosc_pu: number;
+  readonly czas_s: number;
+  readonly status: StatusSolveraFrt;
+  readonly stayed_connected: boolean;
+  readonly margin_to_curve_pu: number | null;
+  readonly margin_to_curve_s: number | null;
+  readonly p_recovery_time_s: number | null;
+  readonly werdykt_pl: string;
+  readonly wejscie_solvera: {
+    readonly test_kind: string;
+    readonly voltage_dip_depth_pu: number;
+    readonly fault_duration_s: number;
+    readonly target_der_ref: string;
+  };
+}
+
+/**
+ * Widok sekwencji zapadów FRT (odpowiedź frt-sequence, 1:1 z
+ * `build_frt_sekwencja_view`). `werdykt_sekwencji_pl` = koniunkcja werdyktów
+ * zapadów po stronie backendu („sekwencja w obwiedni" lub „sekwencja niezaliczona
+ * — zapad N"). `kontekst_sily_sieci` to wiersz SCR/WSCR węzła z widoku siły sieci
+ * (D1) lub `null` (wtedy `kontekst_sily_sieci_powod_pl` niesie uczciwy powód).
+ */
+export interface WidokSekwencjiFrt {
+  readonly modul_der: ModulDerFrt;
+  readonly operator: OperatorFrt;
+  readonly status_solvera: StatusSolveraFrt;
+  readonly obwiednia_profilu: ObwiedniaProfiluFrt;
+  readonly liczba_zapadow: number;
+  readonly zapady: readonly ZapadSekwencjiFrt[];
+  readonly werdykt_sekwencji_pl: string;
+  readonly zalozenia_pl: string;
+  readonly kontekst_sily_sieci: WpisSilyWezla | null;
+  readonly kontekst_sily_sieci_powod_pl: string | null;
+  readonly input_hash: string;
+}
+
+/** Jeden zapad w edytorze sekwencji (para głębokość p.u. + czas s). */
+export interface ParaZapaduFrt {
+  readonly glebokoscPu: number;
+  readonly czasS: number;
+}
+
+/** Parametry jawnego biegu sekwencji zapadów (moduł DER + operator + zapady). */
+export interface ZapytanieSekwencjiFrt {
+  readonly derRef: string;
+  readonly operatorId: string;
+  readonly zapady: readonly ParaZapaduFrt[];
+  /** Opcjonalny kontekst siły sieci: przebieg zwarciowy + węzeł przyłączenia. */
+  readonly runId?: string;
+  readonly busRef?: string;
+}
+
+/**
+ * Serializuj listę zapadów do parametru `sekwencja` końcówki: pary
+ * `głębokość:czas` po przecinku, KROPKA dziesiętna (kontrakt API — prezentacja
+ * z przecinkiem PL należy do warstwy widoku). Eksport dla testów jednostkowych.
+ */
+export function serializujSekwencjeFrt(zapady: readonly ParaZapaduFrt[]): string {
+  return zapady.map((z) => `${z.glebokoscPu}:${z.czasS}`).join(',');
+}
+
+/**
+ * Sekwencja zapadów FRT modułu DER (jawny bieg). Zwraca uczciwy komunikat PL
+ * z końcówki (404 brak modułu/operatora, 422 zły format/zakres/węzeł spoza
+ * wyników) — wykorzystuje wspólny czytnik `getJsonZDetalem`.
+ */
+export function pobierzSekwencjeFrt(zapytanie: ZapytanieSekwencjiFrt): Promise<WidokSekwencjiFrt> {
+  const czesci = [
+    `der_ref=${encodeURIComponent(zapytanie.derRef)}`,
+    `operator_id=${encodeURIComponent(zapytanie.operatorId)}`,
+    `sekwencja=${encodeURIComponent(serializujSekwencjeFrt(zapytanie.zapady))}`,
+  ];
+  if (zapytanie.runId !== undefined) {
+    czesci.push(`run_id=${encodeURIComponent(zapytanie.runId)}`);
+  }
+  if (zapytanie.busRef !== undefined) {
+    czesci.push(`bus_ref=${encodeURIComponent(zapytanie.busRef)}`);
+  }
+  return getJsonZDetalem<WidokSekwencjiFrt>(`/api/oze-analysis/frt-sequence?${czesci.join('&')}`);
+}
+
+// =============================================================================
+// Ochrona przed pracą wyspową (LoM) — application/analyses/ochrona_lom.py::
+// build_ochrona_lom_view (P46, D10); końcówka GET /api/oze-analysis/lom-protection
+// (api/oze_analysis_runs.py:74)
+// =============================================================================
+
+/** Poziom istotności porównania/pola LoM (1:1 z `severity` backendu). */
+export type IstotnoscLom = 'OK' | 'INFO' | 'WARN' | 'ERROR';
+
+/**
+ * Okno normatywne funkcji LoM z porównania. Dla większości funkcji to łańcuch PL
+ * (np. „df/dt ≥ 2.0 Hz/s") lub `null`; dla koordynacji SPZ backend zwraca obiekt
+ * z czasami przerwy SPZ. Typ celowo szeroki (kontrakt API — patrz `_evaluate_field`).
+ */
+export type OknoNormatywneLom =
+  | string
+  | null
+  | { readonly spz_fast_time_s: number | null; readonly spz_slow_time_s: number | null };
+
+/**
+ * Pojedyncze porównanie (check) pola: obecność funkcji, okno normatywne albo
+ * koordynacja SPZ. `value`/`unit` opisują nastawę; `message_pl` niesie gotowy
+ * werdykt PL z backendu (ZERO oceny w UI).
+ */
+export interface PorownanieLom {
+  readonly kind: string;
+  readonly function_ansi: string | null;
+  readonly function_label_pl: string | null;
+  readonly severity: IstotnoscLom;
+  readonly message_pl: string;
+  readonly value: number | null;
+  readonly unit: string | null;
+  readonly window: OknoNormatywneLom;
+  readonly source_pl: string | null;
+}
+
+/** Pole przyłączeniowe modułu wytwórczego z oceną ochrony LoM. */
+export interface PoleLom {
+  readonly bay_ref: string;
+  readonly bay_name: string;
+  readonly substation_ref: string | null;
+  readonly bus_ref: string;
+  readonly generating_module_refs: readonly string[];
+  readonly status: IstotnoscLom;
+  readonly checks: readonly PorownanieLom[];
+}
+
+/** Źródło normatywne funkcji LoM (okno + cytat) — słownik po function_type. */
+export interface ZrodloNormatywneLom {
+  readonly window_pl: string | null;
+  readonly source_pl: string | null;
+}
+
+/** Podsumowanie liczbowe oceny LoM. */
+export interface PodsumowanieLom {
+  readonly fields_total: number;
+  readonly generating_modules_total: number;
+  readonly by_status: Readonly<Record<IstotnoscLom, number>>;
+  readonly overall_status: IstotnoscLom;
+}
+
+/** Widok weryfikacji ochrony LoM (odpowiedź lom-protection, 1:1 z buildera). */
+export interface WidokOchronyLom {
+  readonly analysis: string;
+  readonly context: { readonly enm_name: string; readonly enm_hash: string };
+  readonly input_hash: string;
+  readonly zalozenia_pl: readonly string[];
+  readonly normative_sources: Readonly<Record<string, ZrodloNormatywneLom>>;
+  readonly fields: readonly PoleLom[];
+  readonly modules_without_field: readonly string[];
+  readonly summary: PodsumowanieLom;
+}
+
+/**
+ * Weryfikacja ochrony LoM modułów wytwórczych dla wskazanego przypadku (ENM).
+ * Zwraca uczciwy komunikat PL z końcówki (404 gdy przypadek nie ma dokumentu ENM).
+ */
+export function pobierzOchronaLom(caseId: string): Promise<WidokOchronyLom> {
+  return getJsonZDetalem<WidokOchronyLom>(
+    `/api/oze-analysis/lom-protection?case_id=${encodeURIComponent(caseId)}`,
+  );
+}

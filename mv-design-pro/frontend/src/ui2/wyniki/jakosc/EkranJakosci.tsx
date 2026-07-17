@@ -23,21 +23,29 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { EkranAnalizy } from '../wzorzec';
 import {
+  fetchMigotanie,
   fetchWalidacjaEnergetyczna,
   fetchWiarygodnoscZwarciowa,
+  type KrokMigotania,
+  type MigotanieResponse,
   type WalidacjaItem,
   type WalidacjaResponse,
+  type WezelMigotania,
   type WiarygodnoscItem,
   type WiarygodnoscResponse,
 } from './api';
 import {
   KLUCZ_WIARYGODNOSCI_WEZEL,
+  KLUCZ_WIERSZA_MIGOTANIE,
   KLUCZ_WIERSZA_WALIDACJI,
+  KOLUMNY_MIGOTANIE,
   KOLUMNY_WALIDACJI,
   KOLUMNY_WIARYGODNOSCI,
   kluczWalidacji,
+  naWierszeMigotania,
   naWierszeWalidacji,
   naWierszeWiarygodnosci,
+  naZalozeniaMigotania,
   naZalozeniaWalidacji,
   naZalozeniaWiarygodnosci,
   przebiegRozplywu,
@@ -47,8 +55,11 @@ import {
   JAKOSC_STRINGS,
   fmtKA,
   fmtKV,
+  fmtMva,
   fmtProcent,
+  fmtPst,
   fmtWartosc,
+  istotnoscMigotania,
   istotnoscWalidacji,
   istotnoscWiarygodnosci,
   rodzajKontroliPL,
@@ -430,7 +441,224 @@ function SzczegolWalidacji({
 }
 
 // ---------------------------------------------------------------------------
-// Okno „Jakość wyników" — kompozycja dwóch sekcji z niezależnym doborem przebiegu
+// Sekcja 3 — Migotanie i szybkie zmiany napięcia (P37)
+// ---------------------------------------------------------------------------
+
+/** Ślad WHITE BOX (Wzór → Podstawienie → Wynik) — wzorzec `SladAnalizy`, inline. */
+function SladMigotania({ kroki }: { kroki: readonly KrokMigotania[] }) {
+  if (kroki.length === 0) return null;
+  return (
+    <ol className="mvd-jakosc-slad" data-testid="mvd-jakosc-mig-slad">
+      {kroki.map((krok) => (
+        <li key={krok.symbol} className="mvd-jakosc-slad-krok">
+          <span className="mvd-jakosc-slad-etyk">
+            {JAKOSC_STRINGS.sladWzor} ({krok.symbol})
+          </span>
+          <code className="mvd-num">{krok.formula_latex}</code>
+          {krok.substitution_pl && (
+            <>
+              <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
+              <code className="mvd-num">{krok.substitution_pl}</code>
+            </>
+          )}
+          <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
+          <code className="mvd-num">{krok.result_pl}</code>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function SzczegolMigotania({
+  wezel,
+  trybZaawansowania,
+}: {
+  wezel: WezelMigotania | null;
+  trybZaawansowania: AdvancementMode;
+}) {
+  const [sladWidoczny, setSladWidoczny] = useState(false);
+  if (!wezel) {
+    return (
+      <section
+        className="mvd-jakosc-szczegol mvd-jakosc-szczegol--pusty"
+        data-testid="mvd-jakosc-migotanie-szczegol-pusty"
+      >
+        <p className="mvd-jakosc-szczegol-brak">{JAKOSC_STRINGS.szczegolBrakWyboru}</p>
+      </section>
+    );
+  }
+  const trybEkspercki = trybZaawansowania === 'expert';
+  const wartoscMva = (v: number | null): string =>
+    v !== null ? `${fmtMva(v)} ${JAKOSC_STRINGS.jednMva}` : JAKOSC_STRINGS.kreska;
+  const wartoscPst = (v: number | null): string =>
+    v !== null ? fmtPst(v) : JAKOSC_STRINGS.kreska;
+  return (
+    <section className="mvd-jakosc-szczegol" data-testid="mvd-jakosc-migotanie-szczegol">
+      <header className="mvd-jakosc-szczegol-head">
+        <h3 className="mvd-jakosc-szczegol-tytul">{wezel.bus_ref}</h3>
+        <TagStatusu tekst={wezel.verdict_pl} istotnosc={istotnoscMigotania(wezel.verdict_pl)} />
+      </header>
+      <dl className="mvd-jakosc-szczegol-dane">
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.kolSk}</dt>
+          <dd className="mvd-num">{wartoscMva(wezel.sk_mva)}</dd>
+        </div>
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.szczegolLimitPst}</dt>
+          <dd className="mvd-num">{fmtPst(wezel.pst_limit)}</dd>
+        </div>
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.szczegolLimitPlt}</dt>
+          <dd className="mvd-num">{fmtPst(wezel.plt_limit)}</dd>
+        </div>
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.kolDpercent}</dt>
+          <dd className="mvd-num">
+            {wezel.d_percent !== null
+              ? `${fmtProcent(wezel.d_percent)} ${JAKOSC_STRINGS.jednProcent}`
+              : JAKOSC_STRINGS.kreska}
+          </dd>
+        </div>
+      </dl>
+
+      <p className="mvd-jakosc-szczegol-sekcja-tytul">{JAKOSC_STRINGS.szczegolModuly}</p>
+      {wezel.modules.length === 0 ? (
+        <p className="mvd-jakosc-szczegol-brak">{JAKOSC_STRINGS.szczegolBrakModulow}</p>
+      ) : (
+        <ul className="mvd-jakosc-mig-moduly" data-testid="mvd-jakosc-mig-moduly">
+          {wezel.modules.map((modul) => (
+            <li key={modul.gen_ref} className="mvd-jakosc-mig-modul">
+              <div className="mvd-jakosc-mig-modul-head">
+                <span className="mvd-num">{modul.gen_ref}</span>
+                <TagStatusu
+                  tekst={modul.included ? JAKOSC_STRINGS.modulWliczony : JAKOSC_STRINGS.modulPominiety}
+                  istotnosc={modul.included ? 'ok' : 'neutral'}
+                />
+              </div>
+              <dl className="mvd-jakosc-szczegol-dane">
+                <div className="mvd-jakosc-szczegol-para">
+                  <dt>{JAKOSC_STRINGS.modulSn}</dt>
+                  <dd className="mvd-num">{wartoscMva(modul.sn_mva)}</dd>
+                </div>
+                <div className="mvd-jakosc-szczegol-para">
+                  <dt>{JAKOSC_STRINGS.modulWspolczynnikC}</dt>
+                  <dd className="mvd-num">{wartoscPst(modul.flicker_c)}</dd>
+                </div>
+                <div className="mvd-jakosc-szczegol-para">
+                  <dt>{JAKOSC_STRINGS.modulPstI}</dt>
+                  <dd className="mvd-num">{wartoscPst(modul.pst_i)}</dd>
+                </div>
+              </dl>
+              {!modul.included && modul.info_pl && (
+                <p className="mvd-jakosc-mig-modul-info" data-testid="mvd-jakosc-mig-modul-info">
+                  {modul.info_pl}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {trybEkspercki && wezel.white_box.length > 0 && (
+        <div className="mvd-jakosc-slad-blok">
+          <button
+            type="button"
+            className="mvd-jakosc-slad-btn"
+            aria-expanded={sladWidoczny}
+            onClick={() => setSladWidoczny((s) => !s)}
+            data-testid="mvd-jakosc-mig-slad-otworz"
+          >
+            {sladWidoczny ? JAKOSC_STRINGS.sladUkryj : JAKOSC_STRINGS.sladPokaz}
+          </button>
+          {sladWidoczny && (
+            <div data-testid="mvd-jakosc-mig-slad-blok">
+              <span className="mvd-jakosc-slad-tytul">{JAKOSC_STRINGS.sladTytul}</span>
+              <SladMigotania kroki={wezel.white_box} />
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function SekcjaMigotania({
+  przebieg,
+  trybZaawansowania,
+  onOtworzDowod,
+  onEksport,
+}: SekcjaProps) {
+  const runId = przebieg?.id ?? null;
+  const { stan, dane } = useZasobJakosci<MigotanieResponse>(runId, fetchMigotanie);
+  const [wybrany, setWybrany] = useState<string | null>(null);
+
+  const buses = dane?.buses ?? [];
+  const wierszeSelektora = useMemo(
+    () => new Map<string, WezelMigotania>(buses.map((b) => [b.bus_ref, b])),
+    [buses],
+  );
+  const wybranyWezel = wybrany ? wierszeSelektora.get(wybrany) ?? null : null;
+
+  if (stan === 'brakPrzebiegu') {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaMigotanie}
+        komunikat={JAKOSC_STRINGS.brakMigotanie}
+        opis={JAKOSC_STRINGS.brakMigotanieOpis}
+        wariant="info"
+        testid="mvd-jakosc-migotanie-brak"
+      />
+    );
+  }
+  if (stan === 'ladowanie') {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaMigotanie}
+        komunikat={JAKOSC_STRINGS.ladowanie}
+        wariant="info"
+        testid="mvd-jakosc-migotanie-ladowanie"
+      />
+    );
+  }
+  if (stan === 'blad' || dane === null) {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaMigotanie}
+        komunikat={JAKOSC_STRINGS.blad}
+        opis={JAKOSC_STRINGS.bladOpis}
+        wariant="blad"
+        testid="mvd-jakosc-migotanie-blad"
+      />
+    );
+  }
+
+  const { summary } = dane;
+  return (
+    <section data-testid="mvd-jakosc-migotanie">
+      <EkranAnalizy
+        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaMigotanie, runId: runId ?? undefined }}
+        zalozenia={naZalozeniaMigotania(dane.config)}
+        kolumny={KOLUMNY_MIGOTANIE}
+        wiersze={naWierszeMigotania(buses)}
+        onOtworzDowod={onOtworzDowod}
+        onEksport={onEksport}
+        trybZaawansowania={trybZaawansowania}
+        kluczWiersza={KLUCZ_WIERSZA_MIGOTANIE}
+        onWybierzWiersz={setWybrany}
+        wybranyWiersz={wybrany}
+      />
+      <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-migotanie-podsumowanie">
+        <Chip etykieta={JAKOSC_STRINGS.podsumOcenione} wartosc={summary.assessed_count} istotnosc="ok" />
+        <Chip etykieta={JAKOSC_STRINGS.podsumPrzekroczenia} wartosc={summary.exceeded_count} istotnosc="err" />
+        <Chip etykieta={JAKOSC_STRINGS.podsumNieocenione} wartosc={summary.not_assessed_count} istotnosc="neutral" />
+      </div>
+      <SzczegolMigotania wezel={wybranyWezel} trybZaawansowania={trybZaawansowania} />
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Okno „Jakość wyników" — kompozycja trzech sekcji z niezależnym doborem przebiegu
 // ---------------------------------------------------------------------------
 
 export interface EkranJakosciProps {
@@ -459,6 +687,12 @@ export function EkranJakosci({ trybZaawansowania, onOtworzDowod, onEksport }: Ek
       />
       <SekcjaWalidacji
         przebieg={przebiegPF}
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={onOtworzDowod}
+        onEksport={onEksport ? eksport : undefined}
+      />
+      <SekcjaMigotania
+        przebieg={przebiegSC}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport ? eksport : undefined}

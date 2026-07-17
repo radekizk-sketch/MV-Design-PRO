@@ -17,14 +17,18 @@ import {
   katalogNcRfgFixture,
   widokLvrtWObwiedniFixture,
   widokModulWypadlFixture,
+  widokSekwencjiNiezaliczonaFixture,
+  widokSekwencjiZaliczonaFixture,
 } from './fixtures';
 
 const pobierzKatalog = vi.fn();
 const pobierzTrajektorie = vi.fn();
+const pobierzSekwencja = vi.fn();
 
 vi.mock('../../api', () => ({
   pobierzKatalogKlasNcRfg: () => pobierzKatalog(),
   pobierzTrajektorieFrt: (zapytanie: unknown) => pobierzTrajektorie(zapytanie),
+  pobierzSekwencjeFrt: (zapytanie: unknown) => pobierzSekwencja(zapytanie),
 }));
 
 const DER_REF = 'conv-pv-1mw-15kv';
@@ -201,5 +205,88 @@ describe('EkranFrt — tryb ekspercki (identyfikatory)', () => {
     const eksp = screen.getByTestId('mvd-frt-eksp');
     expect(eksp).toHaveTextContent(DER_REF);
     expect(eksp).toHaveTextContent('pse');
+  });
+});
+
+describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
+  it('bez wybranego operatora → uczciwy stan, edytor ukryty, bez biegu', async () => {
+    dodajModul(DER_REF);
+    render(<EkranFrt trybZaawansowania="basic" />);
+    await screen.findByTestId('mvd-frt-dobor');
+    // Sekcja obecna, lecz bez kompletnego doboru — brak edytora i wywołań API.
+    expect(screen.getByTestId('mvd-frt-sekw-brak-doboru')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-frt-sekw-edytor')).not.toBeInTheDocument();
+    expect(pobierzSekwencja).not.toHaveBeenCalled();
+  });
+
+  it('po doborze modułu i operatora → edytor z jednym zapadem i stan „uruchom"', async () => {
+    await wczytajISkonfiguruj();
+    expect(screen.getByTestId('mvd-frt-sekw-edytor')).toBeInTheDocument();
+    expect(screen.getAllByTestId('mvd-frt-sekw-wiersz')).toHaveLength(1);
+    expect(screen.getByTestId('mvd-frt-sekw-idle')).toBeInTheDocument();
+    expect(pobierzSekwencja).not.toHaveBeenCalled();
+  });
+
+  it('dodanie i usunięcie wiersza zmienia liczbę zapadów (usuwanie zablokowane przy jednym)', async () => {
+    await wczytajISkonfiguruj();
+    expect(screen.getByTestId('mvd-frt-sekw-usun-0')).toBeDisabled();
+    fireEvent.click(screen.getByTestId('mvd-frt-sekw-dodaj'));
+    expect(screen.getAllByTestId('mvd-frt-sekw-wiersz')).toHaveLength(2);
+    expect(screen.getByTestId('mvd-frt-sekw-usun-0')).not.toBeDisabled();
+    fireEvent.click(screen.getByTestId('mvd-frt-sekw-usun-1'));
+    expect(screen.getAllByTestId('mvd-frt-sekw-wiersz')).toHaveLength(1);
+  });
+
+  it('uruchomienie serializuje zapady i woła API z modułem oraz operatorem', async () => {
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiZaliczonaFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.change(screen.getByTestId('mvd-frt-sekw-glebokosc-0'), { target: { value: '0.3' } });
+    fireEvent.change(screen.getByTestId('mvd-frt-sekw-czas-0'), { target: { value: '0.2' } });
+    fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
+    await screen.findByTestId('mvd-frt-sekw-wynik');
+    expect(pobierzSekwencja).toHaveBeenCalledWith({
+      derRef: DER_REF,
+      operatorId: 'pse',
+      zapady: [{ glebokoscPu: 0.3, czasS: 0.2 }],
+    });
+  });
+
+  it('werdykt sekwencji zaliczonej → odznaka ok, założenia i tabela zapadów', async () => {
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiZaliczonaFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
+    const werdykt = await screen.findByTestId('mvd-frt-sekw-werdykt');
+    expect(werdykt.className).toContain('mvd-frt-sekw-odznaka--ok');
+    expect(werdykt).toHaveTextContent('sekwencja w obwiedni');
+    expect(screen.getByTestId('mvd-frt-sekw-zalozenia')).toHaveTextContent(
+      'nie jest modelowany',
+    );
+    // Bez kontekstu siły sieci: uczciwy powód PL.
+    expect(screen.getByTestId('mvd-frt-sekw-kontekst-powod')).toHaveTextContent(
+      'kontekst siły sieci',
+    );
+  });
+
+  it('werdykt sekwencji niezaliczonej → odznaka błędu i kontekst siły sieci (SCR)', async () => {
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiNiezaliczonaFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
+    const werdykt = await screen.findByTestId('mvd-frt-sekw-werdykt');
+    expect(werdykt.className).toContain('mvd-frt-sekw-odznaka--err');
+    expect(werdykt).toHaveTextContent('zapad 2');
+    const kontekst = screen.getByTestId('mvd-frt-sekw-kontekst-dane');
+    expect(kontekst).toHaveTextContent('2,250');
+    expect(kontekst).toHaveTextContent('sieć słaba');
+  });
+
+  it('błąd końcówki sekwencji → jawny stan błędu z komunikatem PL', async () => {
+    pobierzSekwencja.mockRejectedValue(
+      new Error('Sekwencja zawiera 11 zapadów; dozwolone maksimum to 10.'),
+    );
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
+    expect(await screen.findByTestId('mvd-frt-sekw-blad')).toHaveTextContent(
+      'dozwolone maksimum',
+    );
   });
 });

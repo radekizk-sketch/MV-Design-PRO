@@ -184,3 +184,81 @@
   line-height: 1.5;
   color: var(--mvd-ink);
 }
+
+/* ---- sekcja migotania: nagłówki podsekcji, moduły, ślad WHITE BOX ---- */
+.mvd-jakosc-szczegol-sekcja-tytul {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-mig-moduly {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-jakosc-mig-modul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+}
+.mvd-jakosc-mig-modul-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mvd-jakosc-mig-modul-info {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-slad-blok {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-jakosc-slad-btn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-jakosc-slad-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-jakosc-slad-tytul {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-slad {
+  list-style: decimal;
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-jakosc-slad-krok {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-jakosc-slad-etyk {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}

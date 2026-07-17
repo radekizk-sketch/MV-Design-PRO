@@ -88,14 +88,83 @@ export const JAKOSC_STRINGS = {
   zalProgStratOstrz: 'Próg ostrzeżenia budżetu strat',
   zalProgStratPrzekr: 'Próg przekroczenia budżetu strat',
 
+  // --- Sekcja „Migotanie i szybkie zmiany napięcia" (P37) ---
+  sekcjaMigotanie: 'Migotanie i szybkie zmiany napięcia',
+  brakMigotanie: 'Brak zakończonego przebiegu zwarciowego',
+  brakMigotanieOpis:
+    'Uruchom i zakończ obliczenie zwarciowe (SC), aby ocenić migotanie źródeł '
+    + 'falownikowych (Pst/Plt) i szybkie zmiany napięcia.',
+  kolWezelMig: 'Węzeł',
+  kolSk: 'Moc zwarciowa Sk″',
+  kolPst: 'Migotanie krótkookresowe Pst',
+  kolPlt: 'Migotanie długookresowe Plt',
+  kolDpercent: 'Szybka zmiana napięcia d',
+  kolWerdyktMig: 'Werdykt',
+  podsumOcenione: 'Ocenione',
+  podsumNieocenione: 'Nieocenione',
+  // Założenia — migotanie (z konfiguracji normatywnej backendu)
+  zalMigM: 'Wykładnik sumowania emisji m',
+  zalMigPst: 'Poziom planowania Pst (SN)',
+  zalMigPlt: 'Poziom planowania Plt (SN)',
+  zalMigKmax: 'Współczynnik kształtu kmax',
+  zalMigUwaga:
+    'Poziomy planowania to wartości orientacyjne wg IEC/TR 61000-3-7:2008, Tablica 1; '
+    + 'wiążące wymaganie ustala OSD.',
+  // Szczegół węzła migotania
+  szczegolLimitPst: 'Poziom planowania Pst',
+  szczegolLimitPlt: 'Poziom planowania Plt',
+  szczegolModuly: 'Moduły falownikowe w węźle',
+  szczegolBrakModulow: 'Brak modułów falownikowych w węźle.',
+  modulWspolczynnikC: 'Współczynnik emisji migotania c',
+  modulSn: 'Moc znamionowa Sn',
+  modulPstI: 'Wkład Pst',
+  modulPominiety: 'Pominięty w sumowaniu',
+  modulWliczony: 'Wliczony do sumowania',
+  // Ślad WHITE BOX
+  sladTytul: 'Ślad obliczeń (WHITE BOX)',
+  sladPokaz: 'Pokaż ślad obliczeń',
+  sladUkryj: 'Ukryj ślad obliczeń',
+  sladWzor: 'Wzór',
+  sladPodstawienie: 'Podstawienie',
+  sladWynik: 'Wynik',
+
   // Jednostki
   jednKA: 'kA',
   jednKV: 'kV',
+  jednMva: 'MVA',
   jednProcent: '%',
 
   // Wartość pusta
   kreska: '—',
 } as const;
+
+/**
+ * Werdykty migotania — tekst polski JEST wprost z backendu
+ * (`application/analyses/migotanie.py`). Tu utrwalone, aby wyznaczyć istotność
+ * tagu bez powielania literałów.
+ */
+export const WERDYKT_MIGOTANIA = {
+  wGranicach: 'w granicach planowania',
+  przekroczenie: 'przekroczenie poziomu planowania',
+  nieoceniono: 'ocena niemożliwa — brak współczynnika/limitu',
+} as const;
+
+/** Istotność werdyktu migotania (dobór koloru tagu) — na bazie tekstu z backendu. */
+export function istotnoscMigotania(verdict: string): IstotnoscStatusu {
+  if (verdict === WERDYKT_MIGOTANIA.wGranicach) return 'ok';
+  if (verdict === WERDYKT_MIGOTANIA.przekroczenie) return 'err';
+  return 'neutral';
+}
+
+/** Moc [MVA] — 2 miejsca po przecinku. */
+export function fmtMva(n: number): string {
+  return fmtLiczba(n, 2);
+}
+
+/** Wskaźnik migotania Pst/Plt — 3 miejsca po przecinku. */
+export function fmtPst(n: number): string {
+  return fmtLiczba(n, 3);
+}
 
 /**
  * Słownik polskich nazw rodzajów kontroli energetycznej. Klucze = pełny zbiór

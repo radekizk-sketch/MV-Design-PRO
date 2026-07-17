@@ -260,3 +260,159 @@
   font-family: var(--mvd-font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+/* --- Sekcja „Sekwencja zapadów" (P43) --- */
+.mvd-frt-sekwencja {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 16px;
+  background: var(--mvd-panel);
+}
+
+.mvd-frt-sekw-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-frt-sekw-tytul {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.mvd-frt-sekw-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+.mvd-frt-sekw-edytor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mvd-frt-sekw-edytor-tytul {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mvd-frt-sekw-wiersz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.mvd-frt-sekw-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.mvd-frt-sekw-pole label {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.mvd-frt-sekw-pole input {
+  padding: 6px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+}
+
+.mvd-frt-sekw-usun {
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  cursor: pointer;
+}
+
+.mvd-frt-sekw-usun:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mvd-frt-sekw-akcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.mvd-frt-sekw-dodaj {
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  cursor: pointer;
+}
+
+.mvd-frt-sekw-odznaka {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 4px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.mvd-frt-sekw-odznaka--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+
+.mvd-frt-sekw-odznaka--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+
+.mvd-frt-sekw-zalozenia {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.mvd-frt-sekw-kontekst {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: var(--mvd-panel-2);
+}
+
+.mvd-frt-sekw-kontekst-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mvd-frt-sekw-kontekst-powod {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+.mvd-frt-sekw-kontekst-dane {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}

@@ -8,7 +8,12 @@
  * `ui2/wyniki/index.ts` robi `export *` z obu modułów (kolizja TS2308).
  */
 
-export { EkranJakosci, SekcjaWiarygodnosci, SekcjaWalidacji } from './EkranJakosci';
+export {
+  EkranJakosci,
+  SekcjaWiarygodnosci,
+  SekcjaWalidacji,
+  SekcjaMigotania,
+} from './EkranJakosci';
 export type { EkranJakosciProps } from './EkranJakosci';
 
 export {
@@ -21,12 +26,17 @@ export {
   KOLUMNY_WALIDACJI,
   KLUCZ_WALIDACJI_OBIEKT,
   KLUCZ_WIERSZA_WALIDACJI,
+  KOLUMNY_MIGOTANIE,
+  KLUCZ_WIERSZA_MIGOTANIE,
   mapujWierszWiarygodnosci,
   naWierszeWiarygodnosci,
   naZalozeniaWiarygodnosci,
   mapujWierszWalidacji,
   naWierszeWalidacji,
   naZalozeniaWalidacji,
+  mapujWierszMigotania,
+  naWierszeMigotania,
+  naZalozeniaMigotania,
 } from './jakoscModel';
 
 export {
@@ -34,16 +44,19 @@ export {
   RODZAJ_KONTROLI_PL,
   STATUS_WALIDACJI_PL,
   STATUS_WIARYGODNOSCI,
+  WERDYKT_MIGOTANIA,
   rodzajKontroliPL,
   statusWalidacjiPL,
   istotnoscWalidacji,
   istotnoscWiarygodnosci,
+  istotnoscMigotania,
 } from './strings';
 export type { IstotnoscStatusu } from './strings';
 
 export {
   fetchWiarygodnoscZwarciowa,
   fetchWalidacjaEnergetyczna,
+  fetchMigotanie,
 } from './api';
 export type {
   KontekstJakosci,
@@ -56,4 +69,10 @@ export type {
   WalidacjaConfig,
   WalidacjaSummary,
   WalidacjaResponse,
+  KrokMigotania,
+  ModulMigotania,
+  WezelMigotania,
+  KonfiguracjaMigotania,
+  PodsumowanieMigotania,
+  MigotanieResponse,
 } from './api';

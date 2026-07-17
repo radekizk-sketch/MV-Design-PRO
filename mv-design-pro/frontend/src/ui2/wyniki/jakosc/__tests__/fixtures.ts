@@ -9,7 +9,7 @@
 import type {
   ExecutionRun,
 } from '../../../../ui/study-cases/types';
-import type { WalidacjaResponse, WiarygodnoscResponse } from '../api';
+import type { MigotanieResponse, WalidacjaResponse, WiarygodnoscResponse } from '../api';
 
 export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
   analysis_id: '11111111-1111-1111-1111-111111111111',
@@ -159,6 +159,109 @@ export const WALIDACJA_FIXTURE: WalidacjaResponse = {
     worst_item_target_id: 'bus-B',
     worst_item_margin_pct: -2.0,
   },
+};
+
+export const MIGOTANIE_FIXTURE: MigotanieResponse = {
+  analysis_id: '44444444-4444-4444-4444-444444444444',
+  context: {
+    project_name: 'Sieć testowa',
+    case_name: '22222222-2222-2222-2222-222222222222',
+    run_timestamp: '2026-07-16T10:10:00+00:00',
+    snapshot_id: 'snap-ghi',
+    trace_id: '44444444-4444-4444-4444-444444444444',
+  },
+  config: {
+    flicker_summation_exponent_m: 3,
+    planning_level_pst: 0.9,
+    planning_level_plt: 0.7,
+    rvc_kmax: 1.0,
+  },
+  buses: [
+    {
+      bus_ref: 'bus-oze-1',
+      nominal_kv: 15.0,
+      sk_mva: 325.0,
+      modules: [
+        {
+          gen_ref: 'gen-pv-1',
+          sn_mva: 1.0,
+          flicker_c: 0.05,
+          pst_i: 0.4,
+          included: true,
+          info_pl: null,
+          white_box: [
+            {
+              symbol: 'P_{st,i}',
+              formula_latex: "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
+              substitution_pl: 'P_st_i = 0.05 · 1 / 325 MVA',
+              result_pl: 'P_st_i = 0.4',
+            },
+          ],
+        },
+        {
+          gen_ref: 'gen-pv-2',
+          sn_mva: 0.5,
+          flicker_c: null,
+          pst_i: null,
+          included: false,
+          info_pl:
+            'brak współczynnika emisji migotania w katalogu — moduł pominięty w sumowaniu',
+          white_box: [],
+        },
+      ],
+      pst: 0.4,
+      plt: 0.4,
+      d_percent: 10.0,
+      pst_limit: 0.9,
+      plt_limit: 0.7,
+      verdict_pl: 'w granicach planowania',
+      zalozenia_pl: [
+        'Emisja pojedynczego źródła: Pst_i = c · Sn / Sk″ (c z certyfikatu urządzenia).',
+        'Poziomy planowania dla SN: Pst = 0.9, Plt = 0.7 — wartości orientacyjne.',
+      ],
+      white_box: [
+        {
+          symbol: 'P_{st}',
+          formula_latex: 'P_{st} = \\left( \\sum_i P_{st,i}^{\\,m} \\right)^{1/m}, \\quad m = 3',
+          substitution_pl: 'P_st = (0.4^3)^(1/3)',
+          result_pl: 'P_st = 0.4',
+        },
+      ],
+    },
+    {
+      bus_ref: 'bus-oze-2',
+      nominal_kv: 15.0,
+      sk_mva: 45.0,
+      modules: [
+        {
+          gen_ref: 'gen-fw-1',
+          sn_mva: 8.0,
+          flicker_c: 0.06,
+          pst_i: 1.2,
+          included: true,
+          info_pl: null,
+          white_box: [],
+        },
+      ],
+      pst: 1.2,
+      plt: 1.2,
+      d_percent: 30.0,
+      pst_limit: 0.9,
+      plt_limit: 0.7,
+      verdict_pl: 'przekroczenie poziomu planowania',
+      zalozenia_pl: [
+        'Sumowanie emisji wielu źródeł: Pst = (Σ Pst_i^m)^(1/m), m = 3.',
+      ],
+      white_box: [],
+    },
+  ],
+  summary: {
+    total_buses: 2,
+    assessed_count: 2,
+    exceeded_count: 1,
+    not_assessed_count: 0,
+  },
+  input_hash: 'mig-hash-xyz',
 };
 
 /** Buduje przebieg wykonawczy (rejestr) o zadanym rodzaju/statusie. */

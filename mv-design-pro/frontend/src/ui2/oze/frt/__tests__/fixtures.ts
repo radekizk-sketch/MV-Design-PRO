@@ -11,7 +11,11 @@
  * zakłóceniu; trajektoria skrócona do reprezentatywnych punktów (pola 1:1 z solverem).
  */
 
-import type { OdpowiedzKatalogNcRfg, WidokTrajektoriiFrt } from '../../api';
+import type {
+  OdpowiedzKatalogNcRfg,
+  WidokSekwencjiFrt,
+  WidokTrajektoriiFrt,
+} from '../../api';
 
 /** Katalog NC RfG: dwóch operatorów (progi klas nieistotne dla okna FRT). */
 export function katalogNcRfgFixture(): OdpowiedzKatalogNcRfg {
@@ -215,5 +219,131 @@ export function widokHvrtWObwiedniFixture(): WidokTrajektoriiFrt {
         trajektoria,
       },
     ],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Sekwencja zapadów (P43) — kształty 1:1 z `build_frt_sekwencja_view`
+// ---------------------------------------------------------------------------
+
+/** Wejście solvera pojedynczego zapadu (ślad WHITE BOX). */
+function wejscieSekwencji(depth: number, czas: number) {
+  return {
+    test_kind: 'lvrt',
+    voltage_dip_depth_pu: depth,
+    fault_duration_s: czas,
+    target_der_ref: 'conv-pv-1mw-15kv',
+  };
+}
+
+/**
+ * Sekwencja ZALICZONA: dwa zapady, oba „w obwiedni"; werdykt sekwencji
+ * „sekwencja w obwiedni". Bez kontekstu siły sieci (powód PL uczciwie podany).
+ */
+export function widokSekwencjiZaliczonaFixture(): WidokSekwencjiFrt {
+  return {
+    modul_der: modulPv1Mw(),
+    operator: operatorPse(),
+    status_solvera: 'ok',
+    obwiednia_profilu: obwiedniaLvrtPse(),
+    liczba_zapadow: 2,
+    zapady: [
+      {
+        scenario_id: 'seq_0_conv-pv-1mw-15kv',
+        glebokosc_pu: 0.05,
+        czas_s: 0.15,
+        status: 'ok',
+        stayed_connected: true,
+        margin_to_curve_pu: 0.0,
+        margin_to_curve_s: null,
+        p_recovery_time_s: 0.31,
+        werdykt_pl: 'w obwiedni',
+        wejscie_solvera: wejscieSekwencji(0.05, 0.15),
+      },
+      {
+        scenario_id: 'seq_1_conv-pv-1mw-15kv',
+        glebokosc_pu: 0.3,
+        czas_s: 0.2,
+        status: 'ok',
+        stayed_connected: true,
+        margin_to_curve_pu: 0.05,
+        margin_to_curve_s: null,
+        p_recovery_time_s: 0.28,
+        werdykt_pl: 'w obwiedni',
+        wejscie_solvera: wejscieSekwencji(0.3, 0.2),
+      },
+    ],
+    werdykt_sekwencji_pl: 'sekwencja w obwiedni',
+    zalozenia_pl:
+      'Stan modułu MIĘDZY zapadami (nagrzewanie, niepełny odzysk) nie jest modelowany: '
+      + 'każdy zapad liczony od stanu ustalonego i oceniany niezależnie. Werdykt sekwencji '
+      + 'to koniunkcja werdyktów poszczególnych zapadów — kompozycja wyników solvera, '
+      + 'nie nowa fizyka.',
+    kontekst_sily_sieci: null,
+    kontekst_sily_sieci_powod_pl:
+      'Nie wskazano przebiegu zwarciowego (run_id) ani węzła przyłączenia (bus_ref); '
+      + 'kontekst siły sieci (SCR/WSCR) pominięty.',
+    input_hash: 'seq-hash-zaliczona',
+  };
+}
+
+/**
+ * Sekwencja NIEZALICZONA: drugi zapad wychodzi poza obwiednię (moduł wypadł);
+ * werdykt sekwencji „sekwencja niezaliczona — zapad 2". Z kontekstem siły sieci
+ * (słaba sieć — wiersz SCR/WSCR z widoku D1).
+ */
+export function widokSekwencjiNiezaliczonaFixture(): WidokSekwencjiFrt {
+  return {
+    modul_der: modulPv1Mw(),
+    operator: operatorPse(),
+    status_solvera: 'der_dropped',
+    obwiednia_profilu: obwiedniaLvrtPse(),
+    liczba_zapadow: 2,
+    zapady: [
+      {
+        scenario_id: 'seq_0_conv-pv-1mw-15kv',
+        glebokosc_pu: 0.05,
+        czas_s: 0.15,
+        status: 'ok',
+        stayed_connected: true,
+        margin_to_curve_pu: 0.0,
+        margin_to_curve_s: null,
+        p_recovery_time_s: 0.31,
+        werdykt_pl: 'w obwiedni',
+        wejscie_solvera: wejscieSekwencji(0.05, 0.15),
+      },
+      {
+        scenario_id: 'seq_1_conv-pv-1mw-15kv',
+        glebokosc_pu: 0.02,
+        czas_s: 0.5,
+        status: 'der_dropped',
+        stayed_connected: false,
+        margin_to_curve_pu: -0.05,
+        margin_to_curve_s: null,
+        p_recovery_time_s: null,
+        werdykt_pl: 'moduł wypadł',
+        wejscie_solvera: wejscieSekwencji(0.02, 0.5),
+      },
+    ],
+    werdykt_sekwencji_pl: 'sekwencja niezaliczona — zapad 2',
+    zalozenia_pl:
+      'Stan modułu MIĘDZY zapadami (nagrzewanie, niepełny odzysk) nie jest modelowany: '
+      + 'każdy zapad liczony od stanu ustalonego i oceniany niezależnie. Werdykt sekwencji '
+      + 'to koniunkcja werdyktów poszczególnych zapadów — kompozycja wyników solvera, '
+      + 'nie nowa fizyka.',
+    kontekst_sily_sieci: {
+      bus_ref: 'bus-oze-1',
+      nominal_kv: 15.0,
+      s_sc_mva: 45.0,
+      s_installed_mva: 20.0,
+      scr: 2.25,
+      verdict: 'sieć słaba',
+      is_weak: true,
+      why_pl: 'SCR = 2,25 poniżej progu sieci słabej (3,0).',
+      missing_data: [],
+      white_box: [],
+    },
+    kontekst_sily_sieci_powod_pl: null,
+    input_hash: 'seq-hash-niezaliczona',
   };
 }

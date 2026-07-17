@@ -27,6 +27,7 @@ import {
   type ZapytanieTrajektoriiFrt,
 } from '../api';
 import { WykresTrajektoriiChart } from './WykresTrajektoriiChart';
+import { SekcjaSekwencjiZapadow } from './SekcjaSekwencjiZapadow';
 import {
   kolumnyTabeliFrt,
   opcjeModulowFrt,
@@ -384,6 +385,12 @@ export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
           ) : (
             <WynikTrajektorii dane={stan.dane} trybZaawansowania={trybZaawansowania} />
           )}
+
+          <SekcjaSekwencjiZapadow
+            derRef={derRef}
+            operatorId={wybranyOperator}
+            trybZaawansowania={trybZaawansowania}
+          />
         </>
       ) : null}
     </div>

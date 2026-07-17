@@ -152,3 +152,83 @@ export function fetchWalidacjaEnergetyczna(runId: string): Promise<WalidacjaResp
     `/api/quality/energy-validation?run_id=${encodeURIComponent(runId)}`,
   );
 }
+
+// ---------------------------------------------------------------------------
+// Migotanie i szybkie zmiany napięcia (flicker) — P37
+// ---------------------------------------------------------------------------
+// `GET /api/quality/flicker?run_id=`:
+//   `backend/src/api/quality_analysis_runs.py:66` →
+//   `application/analyses/migotanie.py:build_migotanie_view` (kształt
+//   `analysis_id`/`context`/`config`/`buses`/`summary`/`input_hash`). Wskaźniki
+//   Pst/Plt/d(%), werdykt PL i ślad WHITE BOX pochodzą WYŁĄCZNIE z backendu
+//   (Sk″ z solvera IEC 60909; c i Sn z katalogu) — ZERO fizyki w UI.
+
+/** Krok wywodu WHITE BOX oceny migotania (Wzór → Podstawienie → Wynik). */
+export interface KrokMigotania {
+  readonly symbol: string;
+  readonly formula_latex: string;
+  readonly substitution_pl: string;
+  readonly result_pl: string;
+}
+
+/**
+ * Moduł falownikowy w węźle (wkład Pst_i lub jawne pominięcie). `included=false`
+ * ⇒ moduł pominięty w sumowaniu; `info_pl` niesie uczciwy powód (np. brak
+ * współczynnika emisji migotania w katalogu).
+ */
+export interface ModulMigotania {
+  readonly gen_ref: string;
+  readonly sn_mva: number | null;
+  readonly flicker_c: number | null;
+  readonly pst_i: number | null;
+  readonly included: boolean;
+  readonly info_pl: string | null;
+  readonly white_box: readonly KrokMigotania[];
+}
+
+/** Ocena migotania i szybkiej zmiany napięcia w pojedynczym węźle przyłączenia. */
+export interface WezelMigotania {
+  readonly bus_ref: string;
+  readonly nominal_kv: number | null;
+  readonly sk_mva: number | null;
+  readonly modules: readonly ModulMigotania[];
+  readonly pst: number | null;
+  readonly plt: number | null;
+  readonly d_percent: number | null;
+  readonly pst_limit: number;
+  readonly plt_limit: number;
+  readonly verdict_pl: string;
+  readonly zalozenia_pl: readonly string[];
+  readonly white_box: readonly KrokMigotania[];
+}
+
+/** Konfiguracja normatywna oceny migotania (część ZAŁOŻEŃ). */
+export interface KonfiguracjaMigotania {
+  readonly flicker_summation_exponent_m: number;
+  readonly planning_level_pst: number;
+  readonly planning_level_plt: number;
+  readonly rvc_kmax: number;
+}
+
+/** Podsumowanie liczbowe sekcji migotania. */
+export interface PodsumowanieMigotania {
+  readonly total_buses: number;
+  readonly assessed_count: number;
+  readonly exceeded_count: number;
+  readonly not_assessed_count: number;
+}
+
+/** Pełna odpowiedź `GET /api/quality/flicker`. */
+export interface MigotanieResponse {
+  readonly analysis_id: string;
+  readonly context: KontekstJakosci | null;
+  readonly config: KonfiguracjaMigotania;
+  readonly buses: readonly WezelMigotania[];
+  readonly summary: PodsumowanieMigotania;
+  readonly input_hash: string;
+}
+
+/** Pobiera ocenę migotania (Pst/Plt) dla przebiegu zwarciowego (SC/DONE). */
+export function fetchMigotanie(runId: string): Promise<MigotanieResponse> {
+  return getJson<MigotanieResponse>(`/api/quality/flicker?run_id=${encodeURIComponent(runId)}`);
+}

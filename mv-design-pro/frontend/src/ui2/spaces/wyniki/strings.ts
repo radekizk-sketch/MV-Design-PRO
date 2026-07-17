@@ -17,6 +17,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaStudium: 'Studium przyłączenia',
   zakladkaFrt: 'Walidacja falownika',
   zakladkaOsd: 'Polecenia OSD',
+  zakladkaLom: 'Praca wyspowa',
   zakladkaPorownanie: 'Porównanie A/B',
   porownanieBezProjektu: 'Otwórz projekt, aby porównywać przebiegi obliczeń.',
   zakladkaPozostale: 'Pozostałe analizy',
