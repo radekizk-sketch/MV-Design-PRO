@@ -747,6 +747,32 @@ Progress:
         E-26 pełne wygaszenie = TODO wątku SLD (U5_E14_SLD_KOORD_E26).
         POZOSTAJE (D6): W5b-2 AnalysisSurface (Opcja 1, sprawdzić wejścia
         SLD przed usunięciem trasy).
+        POTWIERDZENIE #42 (2026-07-17): pełny vitest 8690 passed, 0 failed
+        — bazy 6126/8690 (W5b-1 + dark-SCADA potwierdzone).
+        SCALENIE #43 / W5b-2 (5a0116d → cherry-pick): stub „Analiza
+        wrażliwości" usunięty (przycisk + widok + komponent + test stubu
+        z intencją D2); STOP-guard zweryfikowany NEGATYWNIE ('sensitivity'
+        nie figuruje w kanonie ani jego testach — czyste usunięcie); trasa
+        E-35 i fixActions zachowane wg karty; kanon nietknięty,
+        v12xx_canon_guard exit 0. Wykonawca: pełny vitest 8689 pass,
+        0 failed. Zarządca: 177 celowanych + canon + dead_click + push.
+        ZGŁOSZONE OSIEROCENIE: SensitivityPanel.tsx + sensitivityAnalyzer.ts
+        (ui/sensitivity) bez konsumenta w UI po wygaszeniu taba (mention,
+        nie delete — decyzja właściciela o pełnym usunięciu osobno).
+        EPIKA WYGASZANIA: D1+D2 wykonane (Opcja 1); D3/D4 zostają; W5
+        route-retirement E-26 czeka na wątek SLD. KONFIRMACJA #43 ODROCZONA
+        świadomie do scaleń REF-A/REF-B (dwóch wykonawców w pełnych suitach
+        — jedna konfirmacja łączna zamiast serializowania trzech).
+        INTEGRACJA REFERENCE ENGINE V1 (zlecenie właściciela 2026-07-17,
+        HANDOFF z wątku SLD): Faza 0 — kontrakty skonsumowane BAJTOWO
+        z gałęzi SLD (types/api enm-inspector + mirrory ui/sld/reference,
+        parity zweryfikowany diffem); Faza 0.5 — wspólny klient
+        ui2/referencje/api.ts (reeksport + packs wg §1.1, 5 testów mock
+        fetch); pkt 2.5 słownik IA (SLOWNIK_IA_2026-07.md) + pkt 2.6
+        rezerwa RenderProfileId w useShellStore — GOTOWE. Pkt 2.1+2.2
+        (REF-A: Gotowość) i 2.3+2.4+2.7 (REF-B: inspektor+kreator) —
+        wykonawcy w toku. Backend nie istnieje na tej gałęzi — testy
+        mockiem fetch wg wymogu HANDOFF §3.4 (uczciwie w raporcie).
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
