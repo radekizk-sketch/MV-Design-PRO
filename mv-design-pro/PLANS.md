@@ -368,6 +368,14 @@ Progress:
         zielone; zintegrowane `232c062`). Scalenie #17: zakładka „Polecenia OSD"
         (`518802d`). PROCEDURA WZMOCNIONA: po każdym powiadomieniu wykonawcy
         sprawdzać żywotność procesu (ps) i przejmować bez czekania na monitor.
+        Pełny vitest po #17: 8473 pass. D8 dobór kompensacji (Opus; 27 testów;
+        pełny pytest u wykonawcy 5910 pass ZERO failed; zintegrowane `47fbeb5`).
+        ESKALACJA D8 (2026-07-17): podejrzenie konwencji znaku shunt/przepływów
+        gałęzi (kompensacja „pogarsza" cosφ odbioru indukcyjnego w odczycie
+        q_from) — okno P42 WSTRZYMANE do rozstrzygnięcia; karta diagnostyczna
+        K1 (read-only, przypadek minimalny z rachunkiem ręcznym WHITE BOX)
+        delegowana. Zmiana solvera/enm — jeśli potwierdzona — poza programem
+        UI/UX (decyzja właściciela/wątku 10x).
         PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
         przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
         w imieniu wykonawcy (bez oczekiwania na raport).
