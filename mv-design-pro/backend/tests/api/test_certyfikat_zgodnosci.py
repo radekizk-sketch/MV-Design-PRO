@@ -18,6 +18,7 @@ from application.analyses.certyfikat_zgodnosci import (
     CertyfikatBrakiError,
     build_certyfikat_view,
     render_certyfikat_docx,
+    render_certyfikat_pdf,
     zbierz_braki,
 )
 from docx import Document
@@ -75,6 +76,18 @@ def _docx_text(data: bytes) -> str:
         for row in table.rows:
             parts.extend(cell.text for cell in row.cells)
     return "\n".join(parts)
+
+
+def _pdf_text(data: bytes) -> str:
+    """Wyciągnij tekst z operatorów PDF (Tj/TJ) — PDF bez kompresji strony.
+
+    Renderer używa ``pageCompression=0``, więc operandy tekstowe są dostępne
+    literalnie; napisy ASCII (etykiety PL bez znaków diakrytycznych) odtwarzają
+    się wiernie.
+    """
+    parts = [m.group(0) for m in re.finditer(rb"\((?:[^()\\]|\\.)*\)\s*Tj", data)]
+    parts += [m.group(1) for m in re.finditer(rb"\[(.*?)\]\s*TJ", data, re.DOTALL)]
+    return b" ".join(parts).decode("latin-1", "replace")
 
 
 @pytest.fixture
@@ -245,3 +258,70 @@ def test_endpoint_docx_braki_422(client: TestClient) -> None:
     )
     assert response.status_code == 422
     assert "braki" in response.json()["detail"]
+
+
+# --------------------------------------------------------------------------- #
+# Wariant PDF (D16)
+# --------------------------------------------------------------------------- #
+def test_pdf_powstaje_naglowek_i_niepusty() -> None:
+    view = build_certyfikat_view(_run_result(_module()), nazwa_projektu="Projekt A")
+    data = render_certyfikat_pdf(view)
+    assert data[:4] == b"%PDF"
+    assert len(data) > 0
+
+
+def test_pdf_determinizm_bajtowy() -> None:
+    view = build_certyfikat_view(_run_result(_module()), nazwa_projektu="Projekt A")
+    assert render_certyfikat_pdf(view) == render_certyfikat_pdf(view)
+
+
+def test_pdf_etykiety_pl() -> None:
+    view = build_certyfikat_view(
+        _run_result(_module()),
+        nazwa_projektu="Farma PV",
+        nazwa_przypadku="Wariant bazowy",
+    )
+    text = _pdf_text(render_certyfikat_pdf(view))
+    assert "Werdykt zbiorczy" in text
+    assert "Operator:" in text
+    assert "Status:" in text
+    assert "Test" in text
+
+
+def test_pdf_dokument_bez_kodow_projektowych() -> None:
+    view = build_certyfikat_view(_run_result(_module()), nazwa_projektu="Projekt A")
+    text = _pdf_text(render_certyfikat_pdf(view))
+    for pattern in (r"\bP\d{2}\b", r"\bE\d{2}\b", r"\bW-\d{3}\b"):
+        assert re.search(pattern, text) is None, pattern
+
+
+def test_endpoint_pdf_content_type(client: TestClient) -> None:
+    response = client.post("/api/oze-analysis/compliance-certificate.pdf", json=_payload(_module()))
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert "attachment" in response.headers["content-disposition"]
+    assert response.content[:4] == b"%PDF"
+
+
+def test_endpoint_pdf_determinizm(client: TestClient) -> None:
+    first = client.post("/api/oze-analysis/compliance-certificate.pdf", json=_payload(_module()))
+    second = client.post("/api/oze-analysis/compliance-certificate.pdf", json=_payload(_module()))
+    assert first.status_code == 200
+    assert first.content == second.content
+
+
+def test_endpoint_pdf_braki_422(client: TestClient) -> None:
+    response = client.post(
+        "/api/oze-analysis/compliance-certificate.pdf",
+        json=_payload(_module(p_recovery_time_s=None, reactive_current_gain=None)),
+    )
+    assert response.status_code == 422
+    assert "braki" in response.json()["detail"]
+
+
+def test_endpoint_pdf_nieznany_operator_404(client: TestClient) -> None:
+    response = client.post(
+        "/api/oze-analysis/compliance-certificate.pdf",
+        json=_payload(_module(operator_id="nieistniejacy")),
+    )
+    assert response.status_code == 404

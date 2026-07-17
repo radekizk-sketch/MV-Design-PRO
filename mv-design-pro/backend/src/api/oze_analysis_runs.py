@@ -32,6 +32,7 @@ from application.analyses.certyfikat_zgodnosci import (
     CertyfikatZgodnosciRequest,
     build_certyfikat_view,
     render_certyfikat_docx,
+    render_certyfikat_pdf,
 )
 from application.analyses.dobor_kompensacji import build_compensation_sizing_view
 from application.analyses.frt_sekwencja import build_frt_sekwencja_view
@@ -62,6 +63,7 @@ from application.analyses.wniosek_osd import (
     WniosekOsdIdentyfikacja,
     build_wniosek_osd_view,
     render_wniosek_osd_docx,
+    render_wniosek_pdf,
 )
 from catalog.profiles.nc_rfg.loader import load_nc_rfg_profile
 from enm.canonical_analysis import CanonicalRun
@@ -398,6 +400,17 @@ def post_compliance_certificate_docx(request: CertyfikatZgodnosciRequest) -> Res
     )
 
 
+@router.post("/api/oze-analysis/compliance-certificate.pdf")
+def post_compliance_certificate_pdf(request: CertyfikatZgodnosciRequest) -> Response:
+    view = _certyfikat_view(request)
+    pdf_bytes = render_certyfikat_pdf(view)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="certyfikat_zgodnosci_ncrfg.pdf"'},
+    )
+
+
 class WniosekOsdRequest(BaseModel):
     """Wejście generatora wniosku OSD: identyfikacja + odwołania do przebiegów."""
 
@@ -465,6 +478,17 @@ def post_osd_application_docx(request: WniosekOsdRequest) -> Response:
         content=docx_bytes,
         media_type=("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
         headers={"Content-Disposition": 'attachment; filename="wniosek_osd.docx"'},
+    )
+
+
+@router.post("/api/oze-analysis/osd-application.pdf")
+def post_osd_application_pdf(request: WniosekOsdRequest) -> Response:
+    view = _wniosek_osd_view(request)
+    pdf_bytes = render_wniosek_pdf(view)
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="wniosek_osd.pdf"'},
     )
 
 

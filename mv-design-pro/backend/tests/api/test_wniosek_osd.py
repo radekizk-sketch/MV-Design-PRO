@@ -22,6 +22,7 @@ from application.analyses.wniosek_osd import (
     WniosekOsdIdentyfikacja,
     build_wniosek_osd_view,
     render_wniosek_osd_docx,
+    render_wniosek_pdf,
     zbierz_braki_wniosku,
 )
 from docx import Document
@@ -43,6 +44,7 @@ from tests.cgmes.golden_enm import build_golden_enm
 
 OSD_JSON = "/api/oze-analysis/osd-application"
 OSD_DOCX = "/api/oze-analysis/osd-application.docx"
+OSD_PDF = "/api/oze-analysis/osd-application.pdf"
 
 _MODULE_FULL: dict = {
     "der_ref": "pv-1",
@@ -156,6 +158,13 @@ def _docx_text(data: bytes) -> str:
         for row in table.rows:
             parts.extend(cell.text for cell in row.cells)
     return "\n".join(parts)
+
+
+def _pdf_text(data: bytes) -> str:
+    """Wyciągnij tekst z operatorów PDF (Tj/TJ) — PDF bez kompresji strony."""
+    parts = [m.group(0) for m in re.finditer(rb"\((?:[^()\\]|\\.)*\)\s*Tj", data)]
+    parts += [m.group(1) for m in re.finditer(rb"\[(.*?)\]\s*TJ", data, re.DOTALL)]
+    return b" ".join(parts).decode("latin-1", "replace")
 
 
 def _payload(**extra) -> dict:
@@ -380,3 +389,66 @@ def test_endpoint_walidacja_422_pusta_nazwa(app_client) -> None:
         json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id), nazwa_projektu=""),
     )
     assert resp.status_code == 422
+
+
+# --------------------------------------------------------------------------- #
+# Wariant PDF (D16)
+# --------------------------------------------------------------------------- #
+def test_pdf_powstaje_naglowek_i_niepusty() -> None:
+    data = render_wniosek_pdf(_view())
+    assert data[:4] == b"%PDF"
+    assert len(data) > 0
+
+
+def test_pdf_determinizm_bajtowy() -> None:
+    view = _view()
+    assert render_wniosek_pdf(view) == render_wniosek_pdf(view)
+
+
+def test_pdf_etykiety_pl() -> None:
+    text = _pdf_text(render_wniosek_pdf(_view()))
+    assert "Bilans mocy" in text
+    assert "Moc zwarciowa" in text
+    assert "Rodzaj zwarcia" in text
+    assert "Werdykt zbiorczy" in text
+
+
+def test_pdf_dokument_bez_kodow_projektowych() -> None:
+    text = _pdf_text(render_wniosek_pdf(_view()))
+    for pattern in (r"\bP\d{2}\b", r"\bE\d{2}\b", r"\bW-\d{3}\b"):
+        assert re.search(pattern, text) is None, pattern
+
+
+def test_endpoint_pdf_content_type(app_client) -> None:
+    pf, sc = _pf_run(), _sc_run()
+    resp = app_client.post(OSD_PDF, json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id)))
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "application/pdf"
+    assert "attachment" in resp.headers["content-disposition"]
+    assert resp.content[:4] == b"%PDF"
+
+
+def test_endpoint_pdf_determinizm(app_client) -> None:
+    pf, sc = _pf_run(), _sc_run()
+    payload = _payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id))
+    first = app_client.post(OSD_PDF, json=payload)
+    second = app_client.post(OSD_PDF, json=payload)
+    assert first.status_code == 200
+    assert first.content == second.content
+
+
+def test_endpoint_pdf_braki_422(app_client) -> None:
+    pf, sc = _pf_run(), _sc_run()
+    resp = app_client.post(
+        OSD_PDF,
+        json=_payload(pf_run_id=str(pf.id), sc_run_id=str(sc.id), bus_ref="bus_nieznany"),
+    )
+    assert resp.status_code == 422
+    detail = resp.json()["detail"]
+    assert any("nie występuje w wynikach zwarciowych" in b for b in detail["braki"])
+
+
+def test_endpoint_pdf_nieznany_przebieg_404(app_client) -> None:
+    sc = _sc_run()
+    resp = app_client.post(OSD_PDF, json=_payload(pf_run_id=str(uuid4()), sc_run_id=str(sc.id)))
+    assert resp.status_code == 404

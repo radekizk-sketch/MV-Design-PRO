@@ -39,6 +39,16 @@ try:  # pragma: no cover - zależy od środowiska
 except ImportError:  # pragma: no cover
     _DOCX_AVAILABLE = False
 
+try:  # pragma: no cover - zależy od środowiska
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib.utils import simpleSplit
+    from reportlab.pdfgen import canvas
+
+    _PDF_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _PDF_AVAILABLE = False
+
 CERTYFIKAT_CONTRACT = "CertyfikatZgodnosciNcRfgV1"
 CERTYFIKAT_TYTUL = "Certyfikat zgodności projektu z wymaganiami NC RfG"
 
@@ -275,3 +285,140 @@ def render_certyfikat_docx(view: dict) -> bytes:
     buffer = BytesIO()
     doc.save(buffer)
     return make_docx_bytes_deterministic(buffer.getvalue())
+
+
+def render_certyfikat_pdf(view: dict) -> bytes:
+    """Zrenderuj deterministyczny PDF certyfikatu z widoku JSON (układ 1:1 z DOCX).
+
+    Determinizm bajtowy: canvas z ``invariant=1`` (stały ``CreationDate`` i ``ID``
+    dokumentu) oraz ``pageCompression=0`` — dwa wywołania na tym samym widoku dają
+    identyczne bajty. Fonty Helvetica jak istniejące raporty PDF (bez nowych zasobów).
+    """
+    if not _PDF_AVAILABLE:  # pragma: no cover
+        raise ImportError("Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab")
+
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
+    page_width, page_height = A4
+    left_margin = 25 * mm
+    right_edge = page_width - 25 * mm
+    top_margin = page_height - 25 * mm
+    bottom_margin = 25 * mm
+    line_height = 5 * mm
+    content_width = right_edge - left_margin
+
+    y = top_margin
+
+    def new_page() -> None:
+        nonlocal y
+        c.showPage()
+        y = top_margin
+
+    def ensure(needed: float) -> None:
+        nonlocal y
+        if y - needed < bottom_margin:
+            new_page()
+
+    def para(text: str, *, size: int = 10, bold: bool = False, indent: float = 0.0) -> None:
+        nonlocal y
+        font = "Helvetica-Bold" if bold else "Helvetica"
+        for line in simpleSplit(text, font, size, content_width - indent):
+            ensure(line_height)
+            c.setFont(font, size)
+            c.setFillColorRGB(0, 0, 0)
+            c.drawString(left_margin + indent, y, line)
+            y -= line_height
+
+    # 1) Tytuł (wyśrodkowany).
+    title = str(view["tytul"])
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(page_width / 2, y, title)
+    y -= 10 * mm
+
+    # 2) Identyfikacja.
+    identyfikacja = view["identyfikacja"]
+    id_line = f"Projekt: {identyfikacja['projekt']}"
+    if identyfikacja.get("przypadek"):
+        id_line += f"  |  Przypadek: {identyfikacja['przypadek']}"
+    para(id_line)
+    para(
+        f"Procedura: {identyfikacja['procedura']}  |  "
+        f"Narzędzie: {identyfikacja['wersja_narzedzia']}"
+    )
+    y -= line_height
+
+    # 3) Werdykt zbiorczy (kolor zależny od statusu).
+    werdykt = view["werdykt_zbiorczy"]
+    ensure(line_height * 2)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(left_margin, y, "Werdykt zbiorczy: ")
+    prefix_width = c.stringWidth("Werdykt zbiorczy: ", "Helvetica-Bold", 12)
+    if werdykt["status"] == "zgodny":
+        c.setFillColorRGB(22 / 255, 163 / 255, 74 / 255)
+    else:
+        c.setFillColorRGB(220 / 255, 38 / 255, 38 / 255)
+    c.drawString(left_margin + prefix_width, y, str(werdykt["etykieta_pl"]))
+    c.setFillColorRGB(0, 0, 0)
+    y -= line_height
+    para(
+        f"Moduły: {werdykt['liczba_modulow']} "
+        f"(zgodnych: {werdykt['modulow_zgodnych']}, "
+        f"niezgodnych: {werdykt['modulow_niezgodnych']})"
+    )
+    y -= line_height
+
+    # 4) Moduły — nagłówek, meta i tabela testów.
+    module_cols = [22 * mm, 55 * mm, 25 * mm, content_width - 102 * mm]
+    for module in view["moduly"]:
+        ensure(line_height * 4)
+        naglowek = module["der_name"] or module["der_ref"]
+        para(f"Moduł: {naglowek} (klasa {module['klasa']})", size=12, bold=True)
+        para(
+            f"Operator: {module['operator_pl']}  |  "
+            f"Pmax: {module['p_max_kw']} kW  |  "
+            f"Napięcie: {module['voltage_kv']} kV  |  "
+            f"Status: {module['status_pl']}"
+        )
+        header = ["Test", "Zdolność", "Werdykt", "Wartości"]
+        ensure(line_height)
+        c.setFont("Helvetica-Bold", 9)
+        col_x = left_margin
+        for i, label in enumerate(header):
+            c.drawString(col_x, y, label)
+            col_x += module_cols[i]
+        y -= line_height
+        for test in module["testy"]:
+            cells = [
+                str(test["test_id"]),
+                str(test["nazwa_pl"]),
+                str(test["werdykt_pl"]),
+                str(test["wartosci_pl"]),
+            ]
+            wrapped = [
+                simpleSplit(cell, "Helvetica", 9, module_cols[i] - 2 * mm)
+                for i, cell in enumerate(cells)
+            ]
+            row_lines = max(len(w) for w in wrapped)
+            ensure(line_height * row_lines)
+            c.setFont("Helvetica", 9)
+            col_x = left_margin
+            for i, lines in enumerate(wrapped):
+                for j, line in enumerate(lines):
+                    c.drawString(col_x, y - j * line_height, line)
+                col_x += module_cols[i]
+            y -= line_height * row_lines
+        y -= line_height
+
+    # 5) Założenia i źródła.
+    ensure(line_height * 2)
+    para("Założenia i źródła", size=12, bold=True)
+    for pozycja in view["zalozenia_i_zrodla"]:
+        para(f"• {pozycja}", indent=4 * mm)
+
+    # 6) Stopka — odcisk wejścia.
+    y -= line_height
+    para(f"Odcisk SHA-256 wejścia: {view['odcisk_wejscia_sha256']}", size=8)
+
+    c.showPage()
+    c.save()
+    return buffer.getvalue()

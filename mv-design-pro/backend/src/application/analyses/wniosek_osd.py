@@ -59,6 +59,16 @@ try:  # pragma: no cover - zależy od środowiska
 except ImportError:  # pragma: no cover
     _DOCX_AVAILABLE = False
 
+try:  # pragma: no cover - zależy od środowiska
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import mm
+    from reportlab.lib.utils import simpleSplit
+    from reportlab.pdfgen import canvas
+
+    _PDF_AVAILABLE = True
+except ImportError:  # pragma: no cover
+    _PDF_AVAILABLE = False
+
 WNIOSEK_OSD_CONTRACT = "WniosekOkresleniaWarunkowPrzylaczeniaV1"
 WNIOSEK_OSD_TYTUL = "Wniosek o określenie warunków przyłączenia do sieci OSD"
 
@@ -437,3 +447,137 @@ def render_wniosek_osd_docx(view: dict) -> bytes:
     buffer = BytesIO()
     doc.save(buffer)
     return make_docx_bytes_deterministic(buffer.getvalue())
+
+
+def render_wniosek_pdf(view: dict) -> bytes:
+    """Zrenderuj deterministyczny PDF wniosku OSD z widoku JSON (układ 1:1 z DOCX).
+
+    Determinizm bajtowy: canvas z ``invariant=1`` (stały ``CreationDate`` i ``ID``
+    dokumentu) oraz ``pageCompression=0`` — dwa wywołania na tym samym widoku dają
+    identyczne bajty. Fonty Helvetica jak istniejące raporty PDF (bez nowych zasobów).
+    """
+    if not _PDF_AVAILABLE:  # pragma: no cover
+        raise ImportError("Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab")
+
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
+    page_width, page_height = A4
+    left_margin = 25 * mm
+    right_edge = page_width - 25 * mm
+    top_margin = page_height - 25 * mm
+    bottom_margin = 25 * mm
+    line_height = 5 * mm
+    content_width = right_edge - left_margin
+
+    y = top_margin
+
+    def new_page() -> None:
+        nonlocal y
+        c.showPage()
+        y = top_margin
+
+    def ensure(needed: float) -> None:
+        nonlocal y
+        if y - needed < bottom_margin:
+            new_page()
+
+    def para(text: str, *, size: int = 10, bold: bool = False, indent: float = 0.0) -> None:
+        nonlocal y
+        font = "Helvetica-Bold" if bold else "Helvetica"
+        for line in simpleSplit(text, font, size, content_width - indent):
+            ensure(line_height)
+            c.setFont(font, size)
+            c.setFillColorRGB(0, 0, 0)
+            c.drawString(left_margin + indent, y, line)
+            y -= line_height
+
+    # Tytuł (wyśrodkowany).
+    c.setFont("Helvetica-Bold", 16)
+    c.drawCentredString(page_width / 2, y, str(view["tytul"]))
+    y -= 10 * mm
+
+    # Identyfikacja.
+    identyfikacja = view["identyfikacja"]
+    id_line = f"Projekt: {identyfikacja['projekt']}"
+    if identyfikacja.get("przypadek"):
+        id_line += f"  |  Przypadek: {identyfikacja['przypadek']}"
+    para(id_line)
+    if identyfikacja.get("wnioskodawca"):
+        para(f"Wnioskodawca: {identyfikacja['wnioskodawca']}")
+    if identyfikacja.get("adres_przylaczenia"):
+        para(f"Adres przyłączenia: {identyfikacja['adres_przylaczenia']}")
+    para(f"Węzeł przyłączenia: {identyfikacja['wezel_przylaczenia']}")
+    y -= line_height
+
+    # Sekcja 1 — bilans mocy.
+    bilans = view["bilans_mocy"]
+    para("1. Bilans mocy", size=12, bold=True)
+    para(
+        "Moc zainstalowana źródeł: "
+        f"{_fmt(bilans['moc_zainstalowana_zrodel_mva'], 'MVA')}"
+        "  (w węźle przyłączenia: "
+        f"{_fmt(bilans['moc_zainstalowana_w_punkcie_mva'], 'MVA')})"
+    )
+    para(
+        "Najwyższe obciążenie elementu: "
+        f"{_fmt(bilans['obciazenie_najwyzsze_pct'], '%')}"
+        f" ({bilans['obciazenie_element'] or '—'})"
+    )
+    para(
+        "Współczynnik mocy w punkcie bilansowym: "
+        f"{_fmt(bilans['wspolczynnik_mocy_slack'])}"
+        f" — {_status_pl(bilans['bilans_q_status'])}"
+    )
+    para(
+        f"Straty sieciowe: {_fmt(bilans['straty_pct'], '%')}"
+        f" — {_status_pl(bilans['straty_status'])}"
+    )
+    y -= line_height
+
+    # Sekcja 2 — zwarcia w punkcie przyłączenia (tabela).
+    zwarcia = view["zwarcia_punkt_przylaczenia"]
+    para("2. Zwarcia w punkcie przyłączenia", size=12, bold=True)
+    wiersze = [
+        ("Węzeł", zwarcia["nazwa_wezla"]),
+        ("Początkowy prąd zwarciowy Ik'' [kA]", _fmt(zwarcia["ik_ss_ka"])),
+        ("Moc zwarciowa S_k'' [MVA]", _fmt(zwarcia["sk_mva"])),
+        ("Prąd udarowy ip [kA]", _fmt(zwarcia["ip_ka"])),
+        ("Prąd cieplny Ith [kA]", _fmt(zwarcia["ith_ka"])),
+        ("Rodzaj zwarcia", zwarcia["rodzaj_zwarcia"] or "—"),
+    ]
+    label_col = content_width * 0.6
+    for etykieta, wartosc in wiersze:
+        ensure(line_height)
+        c.setFont("Helvetica", 10)
+        c.setFillColorRGB(0, 0, 0)
+        c.drawString(left_margin, y, str(etykieta))
+        c.drawString(left_margin + label_col, y, str(wartosc))
+        y -= line_height
+    y -= line_height
+
+    # Sekcja 3 — zgodność NC RfG.
+    zgodnosc = view["zgodnosc_nc_rfg"]
+    para("3. Zgodność z wymaganiami NC RfG", size=12, bold=True)
+    para(f"Werdykt zbiorczy: {zgodnosc['etykieta_pl']}", bold=True)
+    para(
+        f"Moduły: {zgodnosc['liczba_modulow']} "
+        f"(zgodnych: {zgodnosc['modulow_zgodnych']}, "
+        f"niezgodnych: {zgodnosc['modulow_niezgodnych']})"
+    )
+    para(str(zgodnosc["odeslanie_pl"]))
+    y -= line_height
+
+    # Założenia i źródła.
+    para("Założenia i źródła", size=12, bold=True)
+    for pozycja in view["zalozenia_pl"]:
+        para(f"• {pozycja}", indent=4 * mm)
+
+    # Stopka — odciski źródeł.
+    y -= line_height
+    para(f"Odcisk SHA-256 wejścia wniosku: {view['input_hash']}", size=8)
+    for nazwa, odcisk in view["odciski_sekcji_sha256"].items():
+        para(f"Odcisk sekcji {nazwa}: {odcisk}", size=8)
+
+    c.showPage()
+    c.save()
+    return buffer.getvalue()
