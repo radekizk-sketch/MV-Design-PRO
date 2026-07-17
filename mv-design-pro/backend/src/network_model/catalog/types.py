@@ -1096,6 +1096,13 @@ class ConverterType:
     # __post_init__. None => no curve declared (published types round-trip
     # byte-identically). Consumed only by pq_coverage (application, zero physics).
     pq_curve: tuple[tuple[float, float, float], ...] | None = None
+    # Optional flicker emission coefficient c(psi_k) from the converter's grid-
+    # compliance certificate (methodology IEC 61400-21-1; assessment per
+    # IEC/TR 61000-3-7). Dimensionless, strictly > 0. Consumed only by the
+    # flicker-assessment service (application layer, zero physics) as
+    # Pst_i = c * Sn / Ssc. None => not declared, so published converter types
+    # round-trip byte-identically. NOT a solver field.
+    flicker_c: float | None = None
     # Per-card data-quality override ("karta falownika" provenance). A serialized
     # {field_name -> CardFieldStatus.to_dict()} map declaring, per field, how
     # trustworthy each value is (DATASHEET / ESTIMATED / SYSTEM_DEFAULT). Stored as
@@ -1119,9 +1126,14 @@ class ConverterType:
     verification_note: str | None = None
 
     def __post_init__(self) -> None:
-        """Validate the optional P-Q capability curve when present."""
+        """Validate optional additive fields (P-Q curve, flicker coefficient)."""
         if self.pq_curve is not None:
             _validate_pq_curve(self.pq_curve)
+        if self.flicker_c is not None and self.flicker_c <= 0:
+            raise ValueError(
+                "Wspolczynnik emisji migotania flicker_c musi byc > 0, "
+                f"otrzymano flicker_c={self.flicker_c}."
+            )
 
     def validate_power_hierarchy(self) -> None:
         """Assert Pzainst >= Pn,AC >= Pprzylacz >= Posiagl for the fields present.
@@ -1172,6 +1184,9 @@ class ConverterType:
             # P-Q capability curve: emitted only when declared so converters
             # without a curve (pq_curve=None) stay byte-identical.
             **({"pq_curve": _pq_curve_to_list(self.pq_curve)} if self.pq_curve else {}),
+            # Flicker emission coefficient: emitted only when declared so converters
+            # without it (flicker_c=None) round-trip byte-identically.
+            **({"flicker_c": self.flicker_c} if self.flicker_c is not None else {}),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -1228,6 +1243,7 @@ class ConverterType:
                 else None
             ),
             pq_curve=_pq_curve_from_raw(data.get("pq_curve")),
+            flicker_c=(float(data["flicker_c"]) if data.get("flicker_c") is not None else None),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),

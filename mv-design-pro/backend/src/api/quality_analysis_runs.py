@@ -4,7 +4,10 @@
   bazie przebiegu zwarciowego (``short_circuit_sn``),
 - ``GET /api/quality/energy-validation?run_id=`` — walidacja energetyczna
   (obciążenia, odchylenia napięć, budżet strat, bilans Q) na bazie przebiegu
-  rozpływu (``PF``).
+  rozpływu (``PF``),
+- ``GET /api/quality/flicker?run_id=`` — ocena migotania (Pst/Plt) i szybkich
+  zmian napięcia źródeł falownikowych wg IEC/TR 61000-3-7 na bazie przebiegu
+  zwarciowego (``short_circuit_sn``).
 
 Warstwa PREZENTACJI/API: ładuje przebieg (404 gdy brak), deleguje mapowanie i
 serializację do serwisów aplikacyjnych (ZERO fizyki) i zwraca zserializowany
@@ -17,6 +20,7 @@ from typing import Any
 from uuid import UUID
 
 from application.analyses.energy_validation.service import build_energy_validation_view
+from application.analyses.migotanie import build_migotanie_view
 from application.analyses.sanity_bounds import build_sanity_bounds_view
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
@@ -52,6 +56,18 @@ def get_energy_validation(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
         return build_energy_validation_view(run)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/api/quality/flicker")
+def get_flicker(run_id: UUID = Query(...)) -> dict[str, Any]:
+    run = _require_run(run_id)
+    try:
+        return build_migotanie_view(run)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

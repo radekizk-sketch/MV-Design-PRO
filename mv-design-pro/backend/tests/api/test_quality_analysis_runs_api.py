@@ -16,6 +16,7 @@ from tests.cgmes.golden_enm import build_golden_enm
 
 SANITY_BOUNDS = "/api/quality/sanity-bounds"
 ENERGY_VALIDATION = "/api/quality/energy-validation"
+FLICKER = "/api/quality/flicker"
 
 
 @pytest.fixture(autouse=True)
@@ -106,3 +107,40 @@ def test_energy_validation_wrong_analysis_type_returns_422(app_client) -> None:
     resp = app_client.get(ENERGY_VALIDATION, params={"run_id": str(run_id)})
     assert resp.status_code == 422
     assert "przebiegu rozpływu" in resp.json()["detail"]
+
+
+# --------------------------------------------------------------------------
+# Ocena migotania (Pst/Plt) i szybkich zmian napięcia
+# --------------------------------------------------------------------------
+
+
+def test_flicker_endpoint_returns_view(app_client) -> None:
+    run_id = _sc_run_id()
+    resp = app_client.get(FLICKER, params={"run_id": str(run_id)})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "buses" in data and "summary" in data and "config" in data
+    assert data["analysis_id"] == str(run_id)
+    assert data["config"]["flicker_summation_exponent_m"] == 3
+    assert data["config"]["planning_level_pst"] == 0.9
+    assert len(data["input_hash"]) == 64
+
+
+def test_flicker_endpoint_is_deterministic(app_client) -> None:
+    run_id = _sc_run_id()
+    first = app_client.get(FLICKER, params={"run_id": str(run_id)}).json()
+    second = app_client.get(FLICKER, params={"run_id": str(run_id)}).json()
+    assert first == second
+
+
+def test_flicker_unknown_run_returns_404(app_client) -> None:
+    resp = app_client.get(FLICKER, params={"run_id": str(uuid4())})
+    assert resp.status_code == 404
+    assert "nie istnieje" in resp.json()["detail"]
+
+
+def test_flicker_wrong_analysis_type_returns_422(app_client) -> None:
+    run_id = _pf_run_id()  # rozpływ, nie zwarcie
+    resp = app_client.get(FLICKER, params={"run_id": str(run_id)})
+    assert resp.status_code == 422
+    assert "przebiegu zwarciowego" in resp.json()["detail"]
