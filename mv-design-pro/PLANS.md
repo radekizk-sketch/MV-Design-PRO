@@ -123,7 +123,11 @@ konfiguracji celek z oficjalnych katalogów (SafeRing/8DJH/SM6/UniGear) +
 family.cell_match + test kreator↔celki; e²ALPHA uczciwie bez celek
 (producent nie publikuje składu per typ pola). Dług pozostały: wzorniki
 GRAFICZNE producentów (zlokalizowane legendy symboli w katalogach — punkt
-startu). Szczegóły: execplan runda 8/8b.
+startu). Szczegóły: execplan runda 8/8b. PRZEKAZANIE do wątku UI/UX
+(zlecenie właściciela 2026-07-17): kontrakt koordynacyjny
+`docs/sld/REFERENCE_ENGINE_UI_HANDOFF_2026-07.md` — prezentacja Reference
+Score/ostrzeżeń/✓✗ per element/pickera rodzin w nowej powłoce; kontrakty
+API + reguły twarde + potwierdzenia (wzorzec kontraktu 2026-07-15).
 
 Runda 7 (2026-07-17, „zaprojektuj i wykonaj end-to-end" — 7 pozycji PLAN
 recenzji NO-GO): szablony technologiczne pól (RMU-liniowe rozłącznik+ES+
