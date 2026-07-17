@@ -667,6 +667,25 @@ Progress:
         punkty decyzyjne: V12K-027 (→P42), W5b/W4 (trasy mostu:
         E-26 gotowe, stub wrażliwości, akcje audit2, V126Academic),
         P44 (po P27).
+        V12K-027 ROZSTRZYGNIĘTE — OPCJA B (2026-07-17, decyzja właściciela
+        po dowodzie liczbowym zarządcy na rzeczywistym solverze). Dowód:
+        LF spójny (Slack_Q≡Q_from, bilans I²X), napięcie rośnie z baterią,
+        defekt w interpretacji surowego q_to jako zapotrzebowania (linia
+        dobor_kompensacji.py:246/250, cosφ:257); adapter (interpretacja)
+        naprawia bez zmiany FROZEN API. SCALENIE #39 / K2 (f44d90e →
+        cherry-pick): adapter `konwencja_mocy.py` (czysta interpretacja,
+        ZERO mutacji PowerFlowResult), rozdział DWÓCH wielkości w DTO D8
+        (cosfi_przekroju vs cosfi_punktu — dobór na punkcie), trwały test
+        diagnostyczny `test_dowod_v12k027.py` (produkcyjna ścieżka
+        execute_run; Wymóg 3: bus/branch/summary identyczne przed/po
+        adapterze), 7 testów kontraktowych. K1 read-only zachowany (twarda
+        prawda solvera 0,666624/0,496668/0,312428 pod cosfi_przekroju).
+        PRZEJĘCIE po restarcie kontenera (wykonawca zabity na 83% pytest;
+        dorobek przeżył): zarządca zweryfikował diff K1 + adapter, commit
+        w imieniu wykonawcy, 45 celowanych + full 6126 pass + 4 guardy.
+        Trzy warunki scalenia właściciela SPEŁNIONE. Następny krok:
+        okno P42 (frontend) z rozdziałem obu cosφ w UI. Konfirmacja #39
+        w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
