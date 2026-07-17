@@ -48,7 +48,7 @@ describe('routerExtensionSurfaces', () => {
   });
 });
 
-describe('AnalysisSurfaceComparisonWizard / SensitivityTab (component-level)', () => {
+describe('AnalysisSurfaceComparisonWizard (component-level)', () => {
   it('AnalysisSurfaceComparisonWizard pokazuje empty state gdy <2 runs', async () => {
     const { AnalysisSurfaceComparisonWizard } = await import('../routerExtensionSurfaces');
     const { render } = await import('@testing-library/react');
@@ -56,11 +56,6 @@ describe('AnalysisSurfaceComparisonWizard / SensitivityTab (component-level)', (
     expect(container.textContent).toMatch(/Brak dostępnych przebiegów/i);
   });
 
-  it('AnalysisSurfaceSensitivityTab renderuje SensitivityPanel z empty state', async () => {
-    const { AnalysisSurfaceSensitivityTab } = await import('../routerExtensionSurfaces');
-    const { render } = await import('@testing-library/react');
-    const { container } = render(<AnalysisSurfaceSensitivityTab />);
-    // SensitivityPanel always renders status header
-    expect(container.textContent).toMatch(/Czułość|sensitivity|wrażliwość/i);
-  });
+  // Test AnalysisSurfaceSensitivityTab usunięty w W5b-2: stub niedostarczony,
+  // decyzja właściciela D2 2026-07-17 (tab "sensitivity" wygaszony w E-35).
 });

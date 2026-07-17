@@ -61,7 +61,6 @@ import { V126AcademicSurface } from './surfaces/V126AcademicSurface';
 import { NcRfgTestsTab } from './surfaces/NcRfgTestsTab';
 import {
   AnalysisSurfaceComparisonWizard,
-  AnalysisSurfaceSensitivityTab,
   AuditTrailSurface,
   ReportSurfaceOsdAndProfileActions,
 } from './routerExtensionSurfaces';
@@ -417,8 +416,6 @@ function displayAnalysisTabLabel(tabId: string | null | undefined): string {
       return 'Porównanie przebiegów';
     case 'ncrfg-tests':
       return 'Testy NC RfG';
-    case 'sensitivity':
-      return 'Analiza wrażliwości';
     case 'comparison_wizard':
       return 'Porównanie A/B';
     default:
@@ -1023,15 +1020,6 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Analiza wrażliwości"
-            onClick={() =>
-              openChildSurface('analysis', {
-                screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
-                tabId: 'sensitivity',
-              })
-            }
-          />
-          <SurfaceActionButton
             label="Porównaj przebiegi (A/B)"
             onClick={() =>
               openChildSurface('analysis', {
@@ -1050,8 +1038,6 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       <SectionCard title="Bieżący widok analityki" eyebrow="Wyniki">
         {activeAnalysisTab === 'compare' ? (
           <ResultsComparisonPage runHistory={comparisonRunHistory} />
-        ) : activeAnalysisTab === 'sensitivity' ? (
-          <AnalysisSurfaceSensitivityTab />
         ) : activeAnalysisTab === 'comparison_wizard' ? (
           <AnalysisSurfaceComparisonWizard />
         ) : activeAnalysisTab === 'ncrfg-tests' ? (

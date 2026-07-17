@@ -16,7 +16,6 @@ import { AuditTrailPanel } from '../audit/AuditTrailPanel';
 import { OsdDataForm } from '../reports/OsdDataForm';
 import { ReportProfileSelector } from '../reports/ReportProfileSelector';
 import type { ReportProfileConfig } from '../reports/ReportProfileSelector';
-import { SensitivityPanel, type SensitivityEntry } from '../sensitivity/SensitivityPanel';
 import {
   ComparisonWizard,
   type ComparisonRun,
@@ -101,23 +100,10 @@ export function AnalysisSurfaceComparisonWizard({
   );
 }
 
-/**
- * AnalysisSurfaceSensitivityTab — tab "sensitivity" w E-35 AnalysisSurface.
- * Renderuje SensitivityPanel (Etap 10 dostawy).
- */
-export function AnalysisSurfaceSensitivityTab(): JSX.Element {
-  const selectElement = useSelectionStore((state) => state.selectElement);
-  const [status, setStatus] = useState<'idle' | 'computing' | 'ready' | 'error'>('idle');
-  const entries = useMemo<readonly SensitivityEntry[]>(() => [], []);
-  return (
-    <SensitivityPanel
-      entries={entries}
-      status={status}
-      onCompute={() => setStatus('computing')}
-      onSelectElement={(ref) => selectElementByRef(selectElement, ref)}
-    />
-  );
-}
+// Stub niedostarczony, decyzja właściciela D2 2026-07-17: tab "sensitivity"
+// (Analiza wrażliwości) w E-35 AnalysisSurface wygaszony w kroku W5b-2 —
+// funkcja NIEDOSTARCZONA (entries=[], onCompute nic nie liczył). Trasa E-35
+// pozostaje (kanoniczny rodzic dzieci E-2x).
 
 interface ReportSurfaceOsdAndProfileActionsProps {
   readonly projectName: string;

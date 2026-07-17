@@ -227,3 +227,34 @@ generuje dług i ryzyko regresji kanonu.
   vitest ZERO failed (wszystkie testy kanonu zielone), guard:codenames,
   forbidden_ui_terms, ui_terminology, utf8_mojibake, dead_click_guard,
   v12xx_canon_guard. E2E: patrz raport wykonawcy (infra Playwright w worktree).
+- **W5b-2** (2026-07-17, commit lokalny `feat(ui2): wygaszenie stubu analizy
+  wrażliwości w AnalysisSurface (W5b-2)`): Opcja 1, decyzja właściciela D2=A
+  (§3b) — funkcja „Analiza wrażliwości" uznana za NIEDOSTARCZONĄ (stub:
+  `entries=[]`, `onCompute` nic nie liczył). **Usunięto:** (1) przycisk
+  nawigacyjny „Analiza wrażliwości" z AnalysisSurface (`WorkspaceSurfaceRouter.tsx`,
+  dawne :1025-1033); (2) gałąź widoku `activeAnalysisTab === 'sensitivity' →
+  <AnalysisSurfaceSensitivityTab />` (dawne :1053-1054); (3) etykietę taba
+  `case 'sensitivity'` w `displayAnalysisTabLabel` (dawne :420-421); (4) komponent
+  `AnalysisSurfaceSensitivityTab` (`routerExtensionSurfaces.tsx`, dawne :104-120)
+  wraz z martwym importem `SensitivityPanel`/`SensitivityEntry` (dawne :19) i
+  importem `AnalysisSurfaceSensitivityTab` w routerze (dawne :64); (5) test stubu
+  `AnalysisSurfaceSensitivityTab renderuje SensitivityPanel z empty state`
+  (`__tests__/routerExtensionSurfaces.test.tsx`, dawne :59-65) — zamieniony na
+  komentarz intencji („stub niedostarczony, decyzja właściciela D2 2026-07-17").
+  **STOP-GUARD kanonu (§1.2): NIE zadziałał** — `'sensitivity'` NIE figuruje
+  w kanonicznej liście tabów `ANALYSIS_ROUTE_TAB_IDS` (`types.ts:72-79`: results,
+  trace, protection, power-flow, compare, ncrfg-tests) ANI w żadnej asercji testów
+  kanonu (screen-canon/coverage); usunięcie taba nie wymusiło żadnej zmiany kanonu
+  ani jego testów. Kanon i jego testy NIETKNIĘTE. **Trasa E-35 ZOSTAJE** —
+  `case ANALYSIS_SURFACE_SCREEN_CODE` w routerze i hub nawigacyjny do Grupy B
+  pozostają: E-35 jest kanonicznym RODZICEM dzieci E-26/E-27/E-30/E-31/E-34
+  (`types.ts:808`), a nawigacja „w górę" z tych ekranów wymaga trasy. FixActions
+  „Otwórz wyniki"/„Pokaż wyniki" NIETKNIĘTE (działające akcje). Komponenty
+  `SensitivityPanel`/`sensitivityAnalyzer` (`ui/sensitivity/`) — NIE usunięte
+  (poza zakresem karty: to samodzielne, przetestowane moduły, nie „stub"); po
+  wygaszeniu taba nie mają już konsumenta w UI (tylko własne testy) — zgłoszone
+  jako osierocone-z-UI (mention, nie delete). Bramki: type-check OK, lint 0
+  ostrzeżeń, pełny vitest 8689 passed / 1 skipped / 1 todo / ZERO failed
+  (baza 8690 − 1 usunięty test stubu = 8689, wszystkie testy kanonu zielone),
+  guard:codenames, v12xx_canon_guard (exit 0, pozostał zielony), forbidden_ui_terms,
+  ui_terminology, utf8_mojibake, dead_click_guard — wszystkie exit 0. SLD nietknięty.
