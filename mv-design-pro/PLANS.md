@@ -905,6 +905,24 @@ solver i mapping nietknięte; dowód topologiczny w
 `test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct`; asercje bezwzględne
 dodane tam, gdzie testy były samo-spójne z błędem. Szczegóły i liczby przed/po: § F9.8 execplanu.
 
+**NASTĘPSTWA W WĄTKU UI — REKALIBRACJA K3 (konsolidacja gałęzi, 2026-07-17,
+karta `docs/uiux/karty/U4_K3_REKALIBRACJA_PO_F98.md`):** F9.8 był pierwotną
+przyczyną anomalii V12K-040 (cosφ z przepływu gałęzi malał po dodaniu baterii)
+— po scaleniu wątku SLD do gałęzi UI 22 testy diagnostyczne K1/K2/D8/D7
+wymagały rekalibracji do nowej (fizycznie poprawnej) prawdy liczbowej.
+Wykonano: (1) adapter `konwencja_mocy.py` — reguła odwzorowania tożsamość →
+NEGACJA końca incydentnego; (2) `dobor_kompensacji.py` — odzysk zapotrzebowania
+`Q_load = Q_przekroju + Q_cap_eff` (po F9.8 przepływ zawiera efekt baterii;
+anomalia shuntu ZNIKŁA); (3) wartości odniesienia w testach przemierzone
+(m.in. `v_load=0,989299<1`, `slack_q=+0,509650`, kompensacja PODNOSI cosφ
+przekroju 0,894427→0,999976); (4) wykryty i naprawiony DEFEKT NASTĘPCZY F9.8:
+`canonical_analysis.py:1256` montował `p_injected_mw` szyn PQ w konwencji
+poboru wbrew FROZEN kontraktowi („ujemna = pobór", `power_flow_result.py:35`)
+— negacja przy montażu wyniku; dowód: 3 testy D7 (`test_odpowiedz_osd_service`)
+kodujące udokumentowaną konwencję przechodzą bez zmian asercji. Decyzja
+właściciela V12K-040 (opcja B: adapter + rozdział cosφ przekroju/punktu)
+pozostaje w mocy; adnotacje w `REJESTR_KONFLIKTOW.md` (V12K-040) i karcie K2.
+
 ### 3.0.0 V12.6 academic end-to-end closure (completed)
 
 Status:

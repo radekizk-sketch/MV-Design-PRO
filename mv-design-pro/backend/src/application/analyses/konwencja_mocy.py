@@ -1,4 +1,4 @@
-"""Adapter konwencji znaku mocy biernej (rozstrzygnięcie V12K-027, opcja B).
+"""Adapter konwencji znaku mocy biernej (rozstrzygnięcie V12K-040, opcja B).
 
 Warstwa APPLICATION — CZYSTE przekształcenie znaku, ZERO fizyki, ZERO heurystyk.
 Nie liczy rozpływu, nie modyfikuje solvera ani ENM (``PowerFlowResult`` pozostaje
@@ -18,38 +18,44 @@ KONWENCJA SOLVERA (``PowerFlowResult`` — plik:linia)
 ``branch_results`` niesie na obu końcach gałęzi pola ``p_from_mw``/``q_from_mvar``
 oraz ``p_to_mw``/``q_to_mvar`` (``network_model/solvers/power_flow_result.py:60-91``),
 przy czym straty gałęzi = ``s_from + s_to`` (``power_flow_result.py:237-239``), więc
-``q_from_mvar + q_to_mvar`` = STRATY bierne gałęzi.
+``q_from_mvar + q_to_mvar`` = STRATY bierne gałęzi. Każdy koniec jest INJEKCJĄ
+węzła DO gałęzi: węzeł zasilający ma przepływ dodatni, węzeł pobierający — ujemny.
 
-ODWZOROWANIE NA KONWENCJĘ KANONICZNĄ — TOŻSAMOŚĆ (bez odwracania znaku)
-----------------------------------------------------------------------
-Przepływ odczytany na KOŃCU INCYDENTNYM z punktem jest już wprost mocą NETTO
-pobieraną przez ten punkt w konwencji kanonicznej:
+Konwencję tę przywróciła naprawa **F9.8** (commit ``6508c12f``, 2026-07-15):
+wcześniej canonical PF pipeline niósł podwójną negację (obciążenia wchodziły do
+solvera jako generacja), przez co znaki końców gałęzi były ODWRÓCONE, a napięcie
+za obciążeniem rosło. Po F9.8 (pomiar K3, sieć minimalna slack → linia 5 km →
+odbiór 1,0+j0,5): ``v_load=0,989299`` (<1 — fizyczny spadek), ``p_to=−1,000000``,
+``q_to=−0,500000``, ``slack_q=+0,509650``.
 
-    - punkt = koniec ``to`` gałęzi  →  ``(p_to_mw,  q_to_mvar)``
-    - punkt = koniec ``from`` gałęzi →  ``(p_from_mw, q_from_mvar)``
+ODWZOROWANIE NA KONWENCJĘ KANONICZNĄ — NEGACJA końca incydentnego
+-----------------------------------------------------------------
+Przepływ odczytany na KOŃCU INCYDENTNYM z punktem to injekcja punktu DO gałęzi,
+więc moc NETTO pobierana przez punkt w konwencji kanonicznej to jej NEGACJA:
 
-DOWÓD (twarda prawda liczbowa K1, ``tests/application/analyses/
-test_diagnostyka_znaku_shunt.py``):
-- ``test_znaki_przeplywu_galezi_bez_i_z_shuntem`` (:222-244): odbiór indukcyjny
-  1,0 + j0,5 MVA → na końcu przy odbiorze ``q_to = +0,500000`` (== moc bierna
-  odbioru), ``p_to ≈ +1,0`` → ``P > 0`` pobór, ``Q > 0`` indukcyjny. Zgodnie z
-  bilansem węzła ``q_to = -q_injected`` (pomiar), więc przepływ końca incydentnego
-  jest NETTO zapotrzebowaniem punktu. Przy przepływie ODWROTNYM (generacja lokalna
-  > pobór) znak zmienia się spójnie: ``p_to`` staje się ujemne (punkt eksportuje
-  moc czynną) — patrz scenariusz OZE/BESS w testach kontraktowych K2.
+    - punkt = koniec ``to`` gałęzi  →  ``(−p_to_mw,  −q_to_mvar)``
+    - punkt = koniec ``from`` gałęzi →  ``(−p_from_mw, −q_from_mvar)``
 
-ANOMALIA ZNAKU SHUNTU (dlaczego kompensacji NIE czyta się z przepływu gałęzi)
-----------------------------------------------------------------------------
-``ShuntCapacitor`` (+jB) księguje się w przepływie gałęzi ze ZNAKIEM PRZECIWNYM
-niż odbiór pojemnościowy tej samej wielkości (K1
-``test_shunt_przeciwny_znakowo_do_odbioru_wyprzedzajacego`` :203-214). Skutek
-(pomiar, K1 :236-241): dopisanie kondensatora do odbioru INDUKCYJNEGO ZWIĘKSZA
-``q_to`` (``q_to = Q_odb + B·V²``) zamiast je zmniejszać. Dlatego mocy biernej
-kompensacji NIE wolno odczytywać z przepływu gałęzi po wstawieniu shuntu do
-modelu; kompensację uwzględnia się jako znamionową moc bierną baterii
-(pojemnościowa → ``Q < 0`` kanonicznie), ODEJMOWANĄ od zapotrzebowania biernego
-punktu (``q_netto_po_kompensacji``). To nie korekta wyniku solvera, lecz
-poprawne KSIĘGOWANIE elementu kompensującego w konwencji kanonicznej.
+DOWÓD (pomiar K3 po F9.8, ``tests/application/analyses/
+test_diagnostyka_znaku_shunt.py`` + ``test_dowod_v12k040.py``):
+- odbiór indukcyjny 1,0 + j0,5 → na końcu przy odbiorze ``q_to = −0,500000``,
+  ``p_to = −1,000000`` → po negacji ``P = +1,0`` (pobór), ``Q = +0,5``
+  (indukcyjny) — dokładnie moc odbioru;
+- przepływ ODWROTNY (generacja lokalna 2,0 MW > pobór 1,0 MW): ``p_to = +1,0``
+  → po negacji ``P = −1,0`` (punkt eksportuje moc czynną) — znak spójny.
+
+NOTA HISTORYCZNA — „anomalia znaku shuntu" (usunięta przez F9.8)
+----------------------------------------------------------------
+Przed F9.8 dopisanie kondensatora do odbioru indukcyjnego ZWIĘKSZAŁO ``|q_to|``
+gałęzi zasilającej (objaw odwróconego znaku pipeline — pierwotna przyczyna
+eskalacji V12K-040). Po F9.8 anomalia ZNIKŁA: przepływ bierny gałęzi MALEJE po
+kompensacji (pomiar: ``q_to`` 0,500000 → 0,006904 przy baterii 0,5 Mvar), bo
+solver księguje shunt jako ``rated·V²`` odejmowane od zapotrzebowania punktu.
+Kompensację w DOBORZE nadal księguje się jako znamionową moc bierną baterii
+(``Q_cap_eff = rated·V²``, pojemnościowa → ``Q < 0`` kanonicznie) ODEJMOWANĄ od
+zapotrzebowania biernego punktu (``q_netto_po_kompensacji``) — to wielkość
+STEROWNIKA doboru (Wymóg 2 właściciela: rozdział cosφ przekroju vs punktu),
+a nie korekta wyniku solvera.
 """
 
 from __future__ import annotations
@@ -61,12 +67,13 @@ from typing import Any
 def q_bierna_kanoniczna(q_koniec_incydentny_mvar: float) -> float:
     """Moc bierna gałęzi na końcu incydentnym z punktem → znak kanoniczny.
 
-    Odwzorowanie jest TOŻSAMOŚCIĄ: przepływ na końcu przy punkcie jest już mocą
-    bierną NETTO pobieraną przez punkt (``Q > 0`` indukcyjny pobór, ``Q < 0``
+    Odwzorowanie jest NEGACJĄ: przepływ na końcu przy punkcie to injekcja punktu
+    DO gałęzi (konwencja solvera po F9.8), więc moc bierna NETTO pobierana przez
+    punkt = ``−q_koniec_incydentny`` (``Q > 0`` indukcyjny pobór, ``Q < 0``
     pojemnościowy). Funkcja istnieje dla jednoznacznego, audytowalnego punktu
     styku z konwencją solvera (WHITE BOX) — nie liczy fizyki.
     """
-    return float(q_koniec_incydentny_mvar)
+    return -float(q_koniec_incydentny_mvar)
 
 
 def moc_kanoniczna_punktu(
@@ -77,10 +84,10 @@ def moc_kanoniczna_punktu(
 ) -> dict[str, Any]:
     """Wypadkowa moc NETTO punktu z przepływów gałęzi incydentnych (kanoniczna).
 
-    Sumuje przepływ na końcu incydentnym z ``point_node`` po wszystkich gałęziach
-    dotykających punktu (przy jednej gałęzi zasilającej = przepływ tej gałęzi).
-    Wynik jest w konwencji kanonicznej: ``p_mw > 0`` pobór czynnej, ``q_mvar > 0``
-    pobór indukcyjnej, ``q_mvar < 0`` pojemnościowa.
+    Sumuje ZANEGOWANY przepływ na końcu incydentnym z ``point_node`` po wszystkich
+    gałęziach dotykających punktu (przy jednej gałęzi zasilającej = negacja
+    przepływu tej gałęzi). Wynik jest w konwencji kanonicznej: ``p_mw > 0`` pobór
+    czynnej, ``q_mvar > 0`` pobór indukcyjnej, ``q_mvar < 0`` pojemnościowa.
 
     Args:
         branch_results: lista rekordów ``branch_results`` z ``result_v1``.
@@ -104,11 +111,11 @@ def moc_kanoniczna_punktu(
         from_node, to_node = ends
         if to_node == point_node:
             koniec = "to"
-            p = float(br.get("p_to_mw") or 0.0)
+            p = -float(br.get("p_to_mw") or 0.0)
             q = q_bierna_kanoniczna(float(br.get("q_to_mvar") or 0.0))
         elif from_node == point_node:
             koniec = "from"
-            p = float(br.get("p_from_mw") or 0.0)
+            p = -float(br.get("p_from_mw") or 0.0)
             q = q_bierna_kanoniczna(float(br.get("q_from_mvar") or 0.0))
         else:
             continue
@@ -140,9 +147,8 @@ def q_netto_po_kompensacji(
 
     Kompensacja odbioru indukcyjnego (``Q_zapotrzebowania > 0``) OBNIŻA ``|Q_netto|``
     aż do zera (pełna kompensacja), a dalej przechodzi w zakres pojemnościowy
-    (``Q_netto < 0`` — przekompensowanie). To księgowanie znamionowej mocy baterii,
-    a NIE odczyt z przepływu gałęzi (patrz „ANOMALIA ZNAKU SHUNTU" w docstringu
-    modułu) i NIE fizyka rozpływu — ``q_kompensacji_mvar`` to dana znamionowa z
-    katalogu.
+    (``Q_netto < 0`` — przekompensowanie). To księgowanie znamionowej mocy baterii
+    (wielkość STEROWNIKA doboru — Wymóg 2 właściciela) i NIE fizyka rozpływu —
+    ``q_kompensacji_mvar`` to dana znamionowa z katalogu.
     """
     return float(q_zapotrzebowania_mvar) - float(q_kompensacji_mvar)

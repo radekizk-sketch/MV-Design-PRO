@@ -1,4 +1,4 @@
-"""Diagnostyka K1 (READ-ONLY): konwencja znaku shuntu / przepływów gałęzi.
+"""Diagnostyka K1: konwencja znaku shuntu / przepływów gałęzi.
 
 Karta ``docs/uiux/karty/U4_K1_DIAGNOSTYKA_ZNAKU_SHUNT.md`` — eskalacja z D8.
 Testy DOKUMENTUJĄ STAN FAKTYCZNY istniejącego solvera (przez istniejącą ścieżkę
@@ -7,22 +7,22 @@ jedna gałąź o znanej impedancji. NIE liczą fizyki i NIE zmieniają solvera/e
 asertują wartości ZMIERZONE, z komentarzem interpretacyjnym. Pass NIEZALEŻNIE od
 werdyktu (wartości są cechą aktualnej implementacji, nie oceną „poprawności").
 
-WERDYKT (dowód liczbowy w komentarzach poniżej):
-  (a) błąd znaku susceptancji shunt ENM→solver — ODRZUCONY. ``ShuntCapacitor``
-      (b_pu = +Q/S_base → +jB) PODNOSI napięcie węzła (cecha pojemnościowa) i jest
-      ZGODNY ZNAKOWO z ładownością linii (``b_siemens`` — ustalony, zaufany model
-      kondensatora w solverze): oba podnoszą napięcie i oba przesuwają ``slack_q``
-      w tę samą stronę. Gdyby znak był błędny, shunt obniżałby napięcie względem
-      ładowności linii — nie obniża.
-  (b)+(c) Defekt leży w INTERPRETACJI znaków w D8, u podłoża której jest KONWENCJA
-      znaku mocy biernej w ``PowerFlowResult`` (``branch_results``/``slack_q``): nie
-      zachowuje się jak „obciążenie bierne widziane przez sieć", którego oczekiwał
-      D8. Dodanie POPRAWNIE ZNAKOWANEGO kondensatora do odbioru INDUKCYJNEGO
-      zwiększa |q gałęzi| i |slack_q| → cosφ liczony z przepływu gałęzi POGARSZA
-      się z rosnącą baterią (dowód: ``test_d8_cosphi_pogarsza_sie_na_punkcie_...``).
-      Dlatego fikstura D8 używa punktu WYPRZEDZAJĄCEGO (load_q_mvar=-2.0), by dobór
-      „działał". Poprawna reformułacja miary cosφ zależy od decyzji o konwencji
-      znaku Q w solverze/enm (poza warstwą aplikacji) → eskalacja, bez zmian tutaj.
+AKTUALIZACJA K3 (2026-07-17, karta ``U4_K3_REKALIBRACJA_PO_F98.md``): wartości
+przemierzone po naprawie **F9.8** (commit ``6508c12f``, wątek SLD, 2026-07-15) —
+canonical PF pipeline niósł podwójną negację znaku mocy (obciążenia wchodziły do
+solvera jako generacja). To był PIERWOTNY defekt, którego objawem była „anomalia
+znaku shuntu" dokumentowana pierwotnie przez ten plik.
+
+WERDYKT (po F9.8; dowód liczbowy w komentarzach poniżej):
+  (a) błąd znaku susceptancji shunt ENM→solver — ODRZUCONY (bez zmian).
+      ``ShuntCapacitor`` (b_pu = +Q/S_base → +jB) PODNOSI napięcie węzła (cecha
+      pojemnościowa) i jest ZGODNY ZNAKOWO z ładownością linii.
+  (b)+(c) Dawna anomalia („kondensator zwiększa |q gałęzi| i |slack_q|") ZNIKŁA
+      wraz z F9.8: po naprawie przepływ bierny gałęzi zasilającej MALEJE po
+      kompensacji, a shunt księguje się ZGODNIE znakowo z odbiorem wyprzedzającym.
+      Konwencja końców gałęzi po F9.8: przepływ końca = injekcja węzła DO gałęzi
+      (odbiór ma ``p_to``/``q_to`` ujemne). Odwzorowanie kanoniczne w adapterze
+      (``konwencja_mocy``) = NEGACJA końca incydentnego (rekalibracja K3).
 """
 
 from __future__ import annotations
@@ -177,8 +177,9 @@ def test_kondensator_podnosi_napiecie_wezla() -> None:
     cecha POJEMNOŚCIOWA (odrzuca hipotezę o odwróconym znaku susceptancji)."""
     bez = _measure(_minimal_net(load_q_mvar=0.5))
     z_bat = _measure(_minimal_net(load_q_mvar=0.5, cap_mvar=0.5))
-    assert bez["v_load"] == pytest.approx(1.010460, abs=1e-5)
-    assert z_bat["v_load"] == pytest.approx(1.014260, abs=1e-5)
+    # Wartości po naprawie F9.8 (K3): v<1 — fizyczny spadek napięcia za odbiorem.
+    assert bez["v_load"] == pytest.approx(0.989299, abs=1e-5)
+    assert z_bat["v_load"] == pytest.approx(0.993071, abs=1e-5)
     # Napięcie ROŚNIE po dodaniu baterii → shunt jest pojemnościowy.
     assert z_bat["v_load"] > bez["v_load"]
 
@@ -186,32 +187,34 @@ def test_kondensator_podnosi_napiecie_wezla() -> None:
 def test_shunt_zgodny_znakowo_z_ladownoscia_linii() -> None:
     """Dowód na (a)=ODRZUCONE: ShuntCapacitor zachowuje się jak ładowność linii
     (ustalony, zaufany model kondensatora solvera) — OBA podnoszą napięcie względem
-    braku kompensacji i OBA przesuwają ``slack_q`` w tę samą stronę (bardziej
-    ujemne). Znak susceptancji shuntu jest więc spójny z kondensatorem solvera."""
+    braku kompensacji i OBA przesuwają ``slack_q`` w tę samą stronę (w dół —
+    zmniejszają indukcyjny pobór z systemu; wartości po F9.8, K3). Znak
+    susceptancji shuntu jest więc spójny z kondensatorem solvera."""
     bez = _measure(_minimal_net(load_q_mvar=0.5))
     shunt = _measure(_minimal_net(load_q_mvar=0.5, cap_mvar=0.5))
     ladownosc = _measure(_minimal_net(load_q_mvar=0.5, line_b_siemens_per_km=8e-5))
     # Oba elementy pojemnościowe podnoszą napięcie względem braku kompensacji.
     assert shunt["v_load"] > bez["v_load"]
     assert ladownosc["v_load"] > bez["v_load"]
-    # Oba przesuwają slack_q w TĘ SAMĄ stronę (bardziej ujemne) — zgodność znaku.
+    # Oba przesuwają slack_q w TĘ SAMĄ stronę (w dół) — zgodność znaku.
     assert shunt["slack_q"] < bez["slack_q"]
     assert ladownosc["slack_q"] < bez["slack_q"]
-    assert ladownosc["slack_q"] == pytest.approx(-0.58138, abs=1e-4)
+    assert ladownosc["slack_q"] == pytest.approx(+0.420246, abs=1e-4)
 
 
-def test_shunt_przeciwny_znakowo_do_odbioru_wyprzedzajacego() -> None:
-    """Konwencja (c): moc bierna wstrzykiwana jako STAŁA MOC (odbiór wyprzedzający
-    Q=-0,5) księguje się PRZECIWNYM znakiem ``slack_q`` niż shunt +jB tej samej
-    wielkości. To źródło pomyłki interpretacyjnej — ``slack_q`` nie jest wprost
-    „mocą bierną pobieraną przez sieć"."""
+def test_shunt_zgodny_znakowo_z_odbiorem_wyprzedzajacym() -> None:
+    """Konwencja (c) PO F9.8 (K3): moc bierna wstrzykiwana jako STAŁA MOC (odbiór
+    wyprzedzający Q=-0,5) księguje się TYM SAMYM znakiem ``slack_q`` co shunt +jB
+    tej samej wielkości — oba pojemnościowe → ``slack_q < 0`` (system ODBIERA moc
+    bierną). Przed F9.8 znaki były przeciwne (objaw podwójnej negacji pipeline);
+    sprzeczność interpretacyjna ZNIKŁA wraz z naprawą."""
     cap = _measure(_minimal_net(load_q_mvar=0.0, cap_mvar=0.5))
     leading_load = _measure(_minimal_net(load_q_mvar=-0.5))
-    # Ten sam „kierunek pojemnościowy", a znaki slack_q PRZECIWNE.
+    # Ten sam „kierunek pojemnościowy" i te same znaki slack_q (ujemne).
     assert cap["slack_q"] < 0.0
-    assert leading_load["slack_q"] > 0.0
-    assert cap["slack_q"] == pytest.approx(-0.501266, abs=1e-5)
-    assert leading_load["slack_q"] == pytest.approx(+0.509389, abs=1e-5)
+    assert leading_load["slack_q"] < 0.0
+    assert cap["slack_q"] == pytest.approx(-0.487410, abs=1e-5)
+    assert leading_load["slack_q"] == pytest.approx(-0.490497, abs=1e-5)
 
 
 # ---------------------------------------------------------------------------
@@ -221,67 +224,64 @@ def test_shunt_przeciwny_znakowo_do_odbioru_wyprzedzajacego() -> None:
 
 def test_znaki_przeplywu_galezi_bez_i_z_shuntem() -> None:
     """Zmierzone przepływy gałęzi zasilającej (koniec przy odbiorze) i ``slack_q``
-    dla odbioru indukcyjnego 1,0 + j0,5, BEZ i Z baterią 0,5 Mvar.
+    dla odbioru indukcyjnego 1,0 + j0,5, BEZ i Z baterią 0,5 Mvar (po F9.8, K3).
 
-    Obserwacja kluczowa: po dodaniu kondensatora |q_to| oraz |slack_q| ROSNĄ
-    (0,5 → 1,01 i 0,49 → 1,00) — przepływ mocy biernej mierzony na gałęzi NIE maleje
-    (mimo lokalnej kompensacji), bo konwencja znaku Q w ``branch_results`` nie
-    odpowiada intuicji „kompensacja zmniejsza Q w gałęzi zasilającej"."""
+    Konwencja końców po F9.8: przepływ końca = injekcja węzła DO gałęzi, więc
+    odbiór ma ``p_to``/``q_to`` UJEMNE, a slack ``q_from`` dodatnie (dostarcza
+    moc bierną indukcyjną). Obserwacja kluczowa: po dodaniu kondensatora |q_to|
+    oraz |slack_q| MALEJĄ (0,50 → 0,007 i 0,51 → 0,015) — kompensacja lokalna
+    poprawnie zmniejsza przepływ bierny gałęzi zasilającej (dawna anomalia
+    przed-F9.8 pokazywała wzrost — objaw odwróconego znaku pipeline)."""
     bez = _measure(_minimal_net(load_q_mvar=0.5))
     z_bat = _measure(_minimal_net(load_q_mvar=0.5, cap_mvar=0.5))
-    # BEZ shuntu — q_to (koniec przy odbiorze) dodatnie ≈ Q odbioru; q_from ujemne.
-    assert bez["q_to"] == pytest.approx(0.500000, abs=1e-5)
-    assert bez["q_from"] == pytest.approx(-0.490750, abs=1e-5)
-    assert bez["slack_q"] == pytest.approx(-0.490750, abs=1e-5)
-    # Z baterią — |q_to| i |slack_q| ROSNĄ (nie maleją).
-    assert z_bat["q_to"] == pytest.approx(1.014362, abs=1e-5)
-    assert z_bat["q_from"] == pytest.approx(-0.999461, abs=1e-5)
-    assert z_bat["slack_q"] == pytest.approx(-0.999461, abs=1e-5)
-    assert abs(z_bat["q_to"]) > abs(bez["q_to"])
-    assert abs(z_bat["slack_q"]) > abs(bez["slack_q"])
-    # Moc czynna gałęzi bez zmian jakościowych (p_to ≈ obciążenie 1 MW).
-    assert bez["p_to"] == pytest.approx(1.0, abs=1e-3)
-    assert z_bat["p_to"] == pytest.approx(1.0, abs=1e-3)
+    # BEZ shuntu — q_to (koniec przy odbiorze) ujemne = −Q odbioru; q_from dodatnie.
+    assert bez["q_to"] == pytest.approx(-0.500000, abs=1e-5)
+    assert bez["q_from"] == pytest.approx(+0.509650, abs=1e-5)
+    assert bez["slack_q"] == pytest.approx(+0.509650, abs=1e-5)
+    # Z baterią — |q_to| i |slack_q| MALEJĄ (kompensacja widoczna w przepływie).
+    assert z_bat["q_to"] == pytest.approx(-0.006904, abs=1e-5)
+    assert z_bat["q_from"] == pytest.approx(+0.014566, abs=1e-5)
+    assert z_bat["slack_q"] == pytest.approx(+0.014566, abs=1e-5)
+    assert abs(z_bat["q_to"]) < abs(bez["q_to"])
+    assert abs(z_bat["slack_q"]) < abs(bez["slack_q"])
+    # Moc czynna gałęzi bez zmian jakościowych (p_to ≈ −1 MW = pobór 1 MW).
+    assert bez["p_to"] == pytest.approx(-1.0, abs=1e-3)
+    assert z_bat["p_to"] == pytest.approx(-1.0, abs=1e-3)
 
 
 # ---------------------------------------------------------------------------
-# 3. Defekt na poziomie usługi D8 — cosφ z przepływu gałęzi POGARSZA się.
+# 3. Usługa D8 — rozdział cosφ przekroju/punktu, dobór sterowany cosφ punktu.
 # ---------------------------------------------------------------------------
 
 
-def test_d8_cosphi_przekroj_maleje_ale_punkt_rosnie_naprawa_v12k027() -> None:
-    """NAPRAWA V12K-027 (opcja B) — rozdział DWÓCH wielkości w ``build_compensation_sizing_view``.
+def test_d8_dobor_sterowany_cosfi_punktu_wartosci_po_f98() -> None:
+    """V12K-040 (opcja B) + rekalibracja K3 — rozdział DWÓCH wielkości w
+    ``build_compensation_sizing_view`` na wartościach po naprawie F9.8.
 
-    Wcześniej ten test dokumentował DEFEKT: cosφ liczony WPROST z przepływu gałęzi
-    (``branch_results``) dla punktu INDUKCYJNEGO (1,0 + j0,5) MALEJE z rosnącą
-    baterią, więc dobór = ``None`` (stąd dawna fikstura D8 z punktem wyprzedzającym).
-    Po naprawie (adapter konwencji + rozdział cosφ przekroju vs cosφ punktu) obie
-    wielkości są jawne:
+    Po F9.8 przepływ gałęzi POPRAWNIE odzwierciedla kompensację, więc obie
+    wielkości zachowują się fizycznie (rosną do pełnej kompensacji, spadają po
+    przekompensowaniu) i w punkcie zasilanym JEDNĄ gałęzią pokrywają się liczbowo
+    (solver księguje shunt jako rated·V²) — pozostają ROZDZIELONE pojęciowo i w DTO
+    (Wymóg 2 właściciela): dobór jest sterowany WYŁĄCZNIE ``cosfi_punktu``.
 
-    - ``cosfi_przekroju_dzien`` (przekrój sieci) — NADAL maleje monotonicznie: to
-      TWARDA PRAWDA LICZBOWA solvera (0,666624 / 0,496668 / 0,312428), niezmieniona;
-    - ``cosfi_punktu_dzien`` (Q_netto = Q_load − Q_cap_eff) — ROŚNIE do ~1 przy
-      pełnej kompensacji, potem spada po przekompensowaniu — DOBÓR opiera się na tym.
-
-    Wynik: dla odbioru indukcyjnego bateria 0,6 Mvar spełnia cosφ ≥ 0,95 (dobór ≠ None)
-    — kierunek fizycznie poprawny (naprawiany błąd)."""
+    Wartości odniesienia (pomiar K3): baseline 0,894427; kandydaci 0,6 / 1,2 / 2,4
+    Mvar → cosφ 0,995738 / 0,820726 / 0,458843 (0,6 lekko przekompensowuje
+    Q_netto=−0,093, ale spełnia próg 0,95; większe baterie przekompensowują mocno).
+    """
     run = _run(_minimal_net(load_q_mvar=0.5))
     view = build_compensation_sizing_view(run, bus_ref="bus_load", cos_phi_min=0.95)
-    # (1) cosφ PRZEKROJU sieciowego — twarda prawda solvera, MALEJE (bez zmian wartości).
+    # (1) cosφ PRZEKROJU sieciowego — wartości po F9.8.
     assert view["baseline"]["cosfi_przekroju_dzien"] == pytest.approx(0.894427, abs=1e-5)
     przekroj_by_size = [(c["rated_mvar"], c["cosfi_przekroju_dzien"]) for c in view["candidates"]]
     assert przekroj_by_size == [
-        (0.6, pytest.approx(0.666624, abs=1e-5)),
-        (1.2, pytest.approx(0.496668, abs=1e-5)),
-        (2.4, pytest.approx(0.312428, abs=1e-5)),
+        (0.6, pytest.approx(0.995738, abs=1e-5)),
+        (1.2, pytest.approx(0.820726, abs=1e-5)),
+        (2.4, pytest.approx(0.458843, abs=1e-5)),
     ]
-    przekroj_values = [c["cosfi_przekroju_dzien"] for c in view["candidates"]]
-    assert przekroj_values == sorted(przekroj_values, reverse=True)
-    assert przekroj_values[-1] < view["baseline"]["cosfi_przekroju_dzien"]
-    # (2) cosφ PUNKTU kompensowanego — ROŚNIE względem baseline przy częściowej/pełnej
-    # kompensacji (naprawa V12K-027); pierwsza bateria (0,6) spełnia cosφ ≥ 0,95.
-    assert view["candidates"][0]["cosfi_punktu_dzien"] == pytest.approx(0.993091, abs=1e-5)
+    # (2) cosφ PUNKTU kompensowanego — podstawa doboru; 0,6 Mvar spełnia cosφ ≥ 0,95.
+    assert view["candidates"][0]["cosfi_punktu_dzien"] == pytest.approx(0.995738, abs=1e-5)
     assert view["candidates"][0]["cosfi_punktu_dzien"] > view["baseline"]["cosfi_punktu_dzien"]
     assert view["candidates"][0]["spelnia"] is True
+    assert view["candidates"][1]["spelnia"] is False  # 1,2 Mvar przekompensowuje
     assert view["dobor"] is not None
     assert view["dobor"]["rated_mvar"] == 0.6

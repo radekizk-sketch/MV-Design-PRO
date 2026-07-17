@@ -1,10 +1,10 @@
-# KARTA ZADANIA K2 — ADAPTER KONWENCJI ZNAKU Q (rozstrzygnięcie V12K-027, opcja B)
+# KARTA ZADANIA K2 — ADAPTER KONWENCJI ZNAKU Q (rozstrzygnięcie V12K-040, opcja B)
 
 **Typ:** delta backendowa (application) · **Wykonawca:** Opus · **Warstwa:**
 application (ZERO zmian w `network_model/solvers/**`, `enm/**` — `PowerFlowResult`
 pozostaje FROZEN) · **Wiążące:** CLAUDE.md (NOT-A-SOLVER; No-Heuristics — adapter
 to deterministyczne przekształcenie znaku, nie korekta wyniku; WHITE BOX),
-DECYZJA WŁAŚCICIELA V12K-027 = **opcja B** (2026-07-17).
+DECYZJA WŁAŚCICIELA V12K-040 = **opcja B** (2026-07-17).
 
 ## 0. Decyzja właściciela (WIĄŻĄCA — cytat)
 `PowerFlowResult` FROZEN, bez zmian. Solver liczy poprawnie (dowód K1). Źródłem
@@ -54,6 +54,13 @@ wzorzec z K1 — slack + odbiór + gałąź o znanej impedancji, rachunek w kome
 7. zgodność z bilansem mocy biernej całego układu (suma Q netto punktów vs
    `slack_q` + generacja, w granicach strat — tolerancja jawna).
 
+> **NOTA K3 (konsolidacja 2026-07-17, karta `U4_K3_REKALIBRACJA_PO_F98.md`):**
+> wartości odniesienia w §2a poniżej pochodzą z pomiaru PRZED naprawą F9.8
+> (commit `6508c12f`, wątek SLD) — pierwotną przyczyną anomalii był odwrócony
+> znak canonical PF pipeline. Obowiązujące wartości po F9.8 niesie
+> `tests/application/analyses/test_dowod_v12k040.py` (rekalibracja K3);
+> struktura decyzji (opcja B, adapter, rozdział dwóch cosφ) bez zmian.
+
 ## 2a. WIĄŻĄCE UZUPEŁNIENIA WŁAŚCICIELA (2026-07-17, po dowodzie liczbowym)
 Dowód liczbowy zarządcy (rzeczywisty solver, `enm.canonical_analysis.execute_run`)
 POTWIERDZIŁ opcję B. Wartości odniesienia (odbiór 1,0 MW + j0,5 Mvar, linia 5 km):
@@ -66,7 +73,7 @@ Defekt: `dobor_kompensacji.py:246` (`q_sum += q_to_mvar`) i 250 (`q_from_mvar`),
 konsumowane przez cosφ w linii 257.
 
 **Wymóg 1 — trwały test diagnostyczny** `tests/application/analyses/
-test_dowod_v12k027.py` (produkcyjna ścieżka `execute_run`), weryfikujący:
+test_dowod_v12k040.py` (produkcyjna ścieżka `execute_run`), weryfikujący:
 brak kompensacji · częściowa · bliska pełnej · przekompensowanie · BRAK zmian
 wyników solvera przed/po adapterze (te same bus_results/branch_results/summary) ·
 wzrost cosφ kanonicznego z kompensacją + spadek po przekompensowaniu · poprawność
@@ -96,9 +103,9 @@ NIGDY na goły potok; przed pełnym biegiem `until ! ps aux | grep -E
 NATYCHMIAST commit. Celowane (7 kontraktowych + D8) + PEŁNY pytest ZERO failed
 (istniejące testy D8 i K1 muszą przejść — K1 jest READ-ONLY dowodem, NIE zmieniaj
 jego asercji; jeśli test D8 asertował dziś błędny kierunek cosφ, popraw go
-Z INTENCJĄ i komentarzem, że to naprawa V12K-027). ruff/black/mypy na twoich
+Z INTENCJĄ i komentarzem, że to naprawa V12K-040). ruff/black/mypy na twoich
 plikach; guardy: arch, solver_boundary, pcc_zero, load_flow_no_heuristics
 (venv główny). ZERO zmian w `network_model/solvers/**`, `enm/**`. Commit
 `feat(application): adapter konwencji znaku Q + naprawa cosφ w doborze
-kompensacji (K2, V12K-027 opcja B)` BEZ push. Raport standardowy (plik:linia;
+kompensacji (K2, V12K-040 opcja B)` BEZ push. Raport standardowy (plik:linia;
 wyprowadzenie reguły znaku z K1; potwierdzenie że cosφ rośnie z kompensacją).

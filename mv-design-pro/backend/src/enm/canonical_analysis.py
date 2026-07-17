@@ -1250,11 +1250,17 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     reporting_status = "reportable" if solution.converged else "not_reportable"
     proof_status = "complete" if solution.converged else "partial"
 
+    # WHITE BOX (K3, następstwo F9.8): PQSpec niesie konwencję OBCIĄŻENIOWĄ
+    # (p_mw > 0 = pobór — jedyny punkt konwersji gen→load powyżej), a kontrakt
+    # FROZEN ``BusResult.p_injected_mw`` to INJEKCJA (ujemna = pobór,
+    # ``power_flow_result.py:35``) — jak moc slacka niżej. Stąd negacja przy
+    # montażu wyniku; bez niej szyny PQ miałyby znak odwrotny do slacka i do
+    # udokumentowanego kontraktu (defekt ujawniony rekalibracją K3).
     node_p_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
     node_q_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
     for pq in pf_input.pq:
-        node_p_injected_pu[pq.node_id] = pq.p_mw / base_mva
-        node_q_injected_pu[pq.node_id] = pq.q_mvar / base_mva
+        node_p_injected_pu[pq.node_id] = -pq.p_mw / base_mva
+        node_q_injected_pu[pq.node_id] = -pq.q_mvar / base_mva
     node_p_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.real)
     node_q_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.imag)
 

@@ -1,4 +1,4 @@
-"""Testy kontraktowe adaptera konwencji znaku mocy biernej (K2, V12K-027 opcja B).
+"""Testy kontraktowe adaptera konwencji znaku mocy biernej (K2, V12K-040 opcja B).
 
 WYMÓG WŁAŚCICIELA — 7 scenariuszy (§2 karty ``U4_K2_ADAPTER_KONWENCJI_Q.md``).
 Przypadki MINIMALNE wzorowane na K1 (``test_diagnostyka_znaku_shunt.py``): slack +
@@ -7,13 +7,15 @@ RZECZYWISTY solver przez produkcyjną ścieżkę ``enm.canonical_analysis.execut
 testy stosują adapter (``application/analyses/konwencja_mocy.py``) do wyniku i
 asertują KANONICZNĄ konwencję (P>0 pobór czynnej, Q>0 indukcyjny, Q<0 pojemnościowy).
 
-Reguła znaku wyprowadzona z fixtur K1 (twarda prawda liczbowa):
+Reguła znaku wyprowadzona z fixtur K1 (twarda prawda liczbowa; rekalibracja K3
+po naprawie F9.8 — commit ``6508c12f``, karta ``U4_K3_REKALIBRACJA_PO_F98.md``):
 - ``test_znaki_przeplywu_galezi_bez_i_z_shuntem`` — odbiór indukcyjny 1,0 + j0,5 →
-  na końcu przy punkcie ``q_to = +0,5`` = moc bierna odbioru (znak kanoniczny),
-- ``test_shunt_przeciwny_znakowo_do_odbioru_wyprzedzajacego`` — kondensator (+jB)
-  księguje się w przepływie ze znakiem PRZECIWNYM do odbioru pojemnościowego, więc
-  kompensacja uwzględniana jest jako znamionowa moc baterii (Q_cap_eff = rated·V²)
-  ODEJMOWANA od zapotrzebowania, a NIE odczytywana z przepływu gałęzi po shuncie.
+  na końcu przy punkcie ``q_to = −0,5`` (injekcja punktu DO gałęzi), więc
+  odwzorowanie kanoniczne = NEGACJA końca incydentnego (``Q = +0,5`` pobór),
+- po F9.8 przepływ gałęzi ZAWIERA efekt baterii (``Q_przekroju = Q_load −
+  rated·V²``), więc zapotrzebowanie odbioru odzyskuje się jako ``Q_load =
+  Q_przekroju + Q_cap_eff``, a wielkość STEROWNIKA doboru pozostaje
+  ``Q_netto = Q_load − Q_cap_eff`` (Wymóg 2 właściciela — rozdział pojęciowy).
 """
 
 from __future__ import annotations
@@ -169,9 +171,10 @@ def _cosfi(p: float, q: float) -> float:
 def _metryki_punktu(load_q_mvar: float, cap_mvar: float | None) -> dict[str, float]:
     """Kanoniczne wielkości punktu odbioru po adapterze + model baterii rated·V².
 
-    Q_przekroju = kanoniczny przepływ gałęzi na końcu przy punkcie (adapter),
+    Q_przekroju = kanoniczny przepływ gałęzi na końcu przy punkcie (adapter, negacja),
     Q_cap_eff   = rated·V² (nameplate skalowany napięciem),
-    Q_load      = Q_przekroju − Q_cap_eff (odbiór bez anomalnego wkładu shuntu),
+    Q_load      = Q_przekroju + Q_cap_eff (odzysk zapotrzebowania odbioru — po F9.8
+                  przepływ zawiera efekt baterii, K3),
     Q_netto     = Q_load − Q_cap_eff (kompensacja pojemnościowa, Q<0 = przekompensowanie).
     """
     rv = _result_v1(_minimal_net(load_q_mvar=load_q_mvar, cap_mvar=cap_mvar))
@@ -182,7 +185,7 @@ def _metryki_punktu(load_q_mvar: float, cap_mvar: float | None) -> dict[str, flo
     q_przekroju = kanon["q_mvar"]
     v = _v_pu(rv, _NODE_LOAD)
     q_cap_eff = (cap_mvar or 0.0) * v**2
-    q_load = q_przekroju - q_cap_eff
+    q_load = q_przekroju + q_cap_eff
     q_netto = q_netto_po_kompensacji(q_load, q_cap_eff)
     return {
         "p": p,
@@ -219,16 +222,16 @@ def test_1_odbior_indukcyjny_bez_kompensacji() -> None:
 
 
 def test_2_kompensacja_czesciowa_podnosi_cosfi() -> None:
-    """Bateria 0,3 Mvar na odbiorze indukcyjnym 0,5. Q_cap_eff = 0,3·V² ≈ 0,3077,
-    Q_netto = 0,5 − 0,3077 ≈ +0,1923 (wciąż indukcyjny, ale mniejszy). cosφ punktu
-    ≈ 0,98201 > 0,894427 (bez kompensacji). To NAPRAWA V12K-027: kondensator na
-    odbiorze indukcyjnym PODNOSI cosφ punktu (dawniej z surowego q_to — obniżał)."""
+    """Bateria 0,3 Mvar na odbiorze indukcyjnym 0,5. Q_cap_eff = 0,3·V² ≈ 0,2950,
+    Q_netto = 0,5 − 0,2950 ≈ +0,2050 (wciąż indukcyjny, ale mniejszy). cosφ punktu
+    ≈ 0,97962 > 0,894427 (bez kompensacji). To NAPRAWA V12K-040: kondensator na
+    odbiorze indukcyjnym PODNOSI cosφ punktu (wartości po F9.8, K3)."""
     bez = _metryki_punktu(load_q_mvar=0.5, cap_mvar=None)
     czesc = _metryki_punktu(load_q_mvar=0.5, cap_mvar=0.3)
     assert czesc["q_netto"] > 0.0  # nadal indukcyjny (niedokompensowanie)
     assert czesc["q_netto"] < bez["q_netto"]  # |Q netto| MALEJE
     assert czesc["cosfi_punktu"] > bez["cosfi_punktu"]  # KLUCZOWA asercja kierunku
-    assert czesc["cosfi_punktu"] == pytest.approx(0.98201, abs=1e-4)
+    assert czesc["cosfi_punktu"] == pytest.approx(0.97962, abs=1e-4)
 
 
 # ---------------------------------------------------------------------------
@@ -237,11 +240,11 @@ def test_2_kompensacja_czesciowa_podnosi_cosfi() -> None:
 
 
 def test_3_kompensacja_pelna_cosfi_blisko_jeden() -> None:
-    """Bateria 0,5 Mvar ≈ dopasowana do odbioru 0,5. Q_cap_eff = 0,5·V² ≈ 0,5144,
-    Q_netto = 0,5 − 0,5144 ≈ −0,0144 ≈ 0. cosφ punktu ≈ 0,99990 ≈ 1."""
+    """Bateria 0,5 Mvar ≈ dopasowana do odbioru 0,5. Q_cap_eff = 0,5·V² ≈ 0,4931,
+    Q_netto = 0,5 − 0,4931 ≈ +0,0069 ≈ 0. cosφ punktu ≈ 0,99998 ≈ 1 (po F9.8, K3)."""
     pelna = _metryki_punktu(load_q_mvar=0.5, cap_mvar=0.5)
     assert abs(pelna["q_netto"]) < 0.02  # Q netto ≈ 0
-    assert pelna["cosfi_punktu"] == pytest.approx(0.99990, abs=1e-4)
+    assert pelna["cosfi_punktu"] == pytest.approx(0.99998, abs=1e-4)
     assert pelna["cosfi_punktu"] > 0.999
 
 
@@ -251,15 +254,15 @@ def test_3_kompensacja_pelna_cosfi_blisko_jeden() -> None:
 
 
 def test_4_przekompensowanie_q_netto_pojemnosciowy() -> None:
-    """Bateria 0,6 Mvar > odbiór 0,5. Q_cap_eff = 0,6·V² ≈ 0,6182,
-    Q_netto = 0,5 − 0,6182 ≈ −0,1182 < 0 (POJEMNOŚCIOWY). cosφ punktu ≈ 0,99309 < 1
-    — spadek z DRUGIEJ strony jedynki (nadmiar kompensacji)."""
+    """Bateria 0,6 Mvar > odbiór 0,5. Q_cap_eff = 0,6·V² ≈ 0,5926,
+    Q_netto = 0,5 − 0,5926 ≈ −0,0926 < 0 (POJEMNOŚCIOWY). cosφ punktu ≈ 0,99574 < 1
+    — spadek z DRUGIEJ strony jedynki (nadmiar kompensacji; wartości po F9.8, K3)."""
     pelna = _metryki_punktu(load_q_mvar=0.5, cap_mvar=0.5)
     nad = _metryki_punktu(load_q_mvar=0.5, cap_mvar=0.6)
     assert nad["q_netto"] < 0.0  # kanonicznie pojemnościowy
     assert nad["cosfi_punktu"] < 1.0
     assert nad["cosfi_punktu"] < pelna["cosfi_punktu"]  # spadek po przekroczeniu pełnej
-    assert nad["cosfi_punktu"] == pytest.approx(0.99309, abs=1e-4)
+    assert nad["cosfi_punktu"] == pytest.approx(0.99574, abs=1e-4)
 
 
 # ---------------------------------------------------------------------------
@@ -288,10 +291,12 @@ def test_5_przeplyw_odwrotny_oze_bess() -> None:
 
 
 def test_6_bilans_galezi_oba_konce() -> None:
-    """Ta sama gałąź czytana z obu stron: punkt=to (bus_load) → q_to=+0,5;
-    punkt=from (bus_slack) → q_from=−0,490750. Suma q_from+q_to = strata bierna I²X
-    gałęzi (``losses_q``, ``power_flow_result.py:239``) ≈ +0,00925. Adapter dobiera
-    właściwy koniec dla każdego punktu incydentnego."""
+    """Ta sama gałąź czytana z obu stron (po F9.8, K3): punkt=to (bus_load) →
+    kanonicznie +0,5 (negacja q_to=−0,5); punkt=from (bus_slack) → kanonicznie
+    −0,509650 (negacja q_from=+0,509650; slack ODDAJE moc bierną indukcyjną).
+    Suma q_from+q_to (surowe) = strata bierna I²X gałęzi (``losses_q``,
+    ``power_flow_result.py:239``) ≈ +0,00965, więc suma wielkości KANONICZNYCH obu
+    punktów = −strata. Adapter dobiera właściwy koniec dla każdego punktu."""
     rv = _result_v1(_minimal_net(load_q_mvar=0.5, cap_mvar=None))
     k_load = moc_kanoniczna_punktu(
         branch_results=rv["branch_results"], endpoints=_ENDPOINTS, point_node=_NODE_LOAD
@@ -299,16 +304,16 @@ def test_6_bilans_galezi_oba_konce() -> None:
     k_slack = moc_kanoniczna_punktu(
         branch_results=rv["branch_results"], endpoints=_ENDPOINTS, point_node=_NODE_SLACK
     )
-    assert k_load["q_mvar"] == pytest.approx(0.5, abs=1e-5)  # koniec to
-    assert k_slack["q_mvar"] == pytest.approx(-0.490750, abs=1e-5)  # koniec from
+    assert k_load["q_mvar"] == pytest.approx(0.5, abs=1e-5)  # koniec to (pobór indukcyjny)
+    assert k_slack["q_mvar"] == pytest.approx(-0.509650, abs=1e-5)  # koniec from (oddawanie)
     # Ślad WHITE BOX: właściwy koniec per punkt.
     assert k_load["slad"][0]["koniec"] == "to"
     assert k_slack["slad"][0]["koniec"] == "from"
-    # Suma obu końców = strata bierna gałęzi (z branch_results — spójność).
+    # Suma kanonicznych obu końców = −strata bierna gałęzi (z branch_results — spójność).
     feeder = next(b for b in rv["branch_results"] if abs(float(b["q_to_mvar"])) > 0.1)
     strata_q = float(feeder["losses_q_mvar"])
-    assert k_load["q_mvar"] + k_slack["q_mvar"] == pytest.approx(strata_q, abs=1e-9)
-    assert strata_q == pytest.approx(0.009250, abs=1e-5)
+    assert k_load["q_mvar"] + k_slack["q_mvar"] == pytest.approx(-strata_q, abs=1e-9)
+    assert strata_q == pytest.approx(0.009650, abs=1e-5)
 
 
 # ---------------------------------------------------------------------------
@@ -335,11 +340,12 @@ def test_7_bilans_ukladu_z_generacja() -> None:
         branch_results=rv["branch_results"], endpoints=_ENDPOINTS, point_node=_NODE_SLACK
     )
     slack_q = float(rv["summary"]["slack_q_mvar"])
-    # Tożsamość karty §2a: slack_q ≡ Q_from (koniec gałęzi przy slack) — 6 miejsc.
-    assert k_slack["q_mvar"] == pytest.approx(slack_q, abs=1e-6)
-    # Bilans: Σ Q_netto(nie-slack) + slack_q = strata bierna (mała). Tolerancja jawna.
+    # Tożsamość karty §2a: slack_q ≡ Q_from (surowy koniec gałęzi przy slack) — więc
+    # wielkość KANONICZNA slacka (negacja, K3) = −slack_q, 6 miejsc.
+    assert k_slack["q_mvar"] == pytest.approx(-slack_q, abs=1e-6)
+    # Bilans kanoniczny: Σ Q_netto(punkty) = −strata bierna (mała). Tolerancja jawna.
     feeder = next(b for b in rv["branch_results"] if abs(float(b["q_to_mvar"])) > 0.05)
     strata_q = abs(float(feeder["losses_q_mvar"]))
-    niebilans = k_load["q_mvar"] + slack_q
+    niebilans = k_load["q_mvar"] + k_slack["q_mvar"]
     assert abs(niebilans) == pytest.approx(strata_q, abs=1e-6)
     assert abs(niebilans) <= strata_q + 0.02  # w granicach strat (tolerancja jawna)

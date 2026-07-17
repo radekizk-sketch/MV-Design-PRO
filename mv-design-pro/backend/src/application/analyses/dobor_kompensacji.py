@@ -15,7 +15,7 @@ OSD (D7, ``odpowiedz_osd.py``):
    kanoniczny przebieg PF; ZERO nowej fizyki, ZERO wołania klas solvera na skróty),
 3. odczytuje P/Q wymieniane z siecią w punkcie przyłączenia Z WYNIKU solvera,
    przekłada je na KANONICZNĄ konwencję znaku przez adapter
-   (``application/analyses/konwencja_mocy.py``, rozstrzygnięcie V12K-027, opcja B)
+   (``application/analyses/konwencja_mocy.py``, rozstrzygnięcie V12K-040, opcja B)
    i wyznacza DWIE ROZDZIELNE wielkości (patrz RECON „dwa cosφ" niżej):
    (1) cosφ przepływu w przekroju sieciowym, (2) cosφ punktu kompensowanego —
    podstawę doboru. Obie jako projekcja ``cosφ = |P| / √(P² + Q²)`` (bez fizyki).
@@ -42,23 +42,27 @@ RECON WIĄŻĄCY (plik:linia):
   (``enm/mapping.py:45,262``), więc końce gałęzi odtwarzamy ze snapshotu tą samą
   funkcją (``_graph_id_from_ref``).
 
-RECON „dwa cosφ" (V12K-027, opcja B — dowód liczbowy K1 i ``test_dowod_v12k027``):
-  Dopisanie baterii ``ShuntCapacitor`` (+jB) ZWIĘKSZA moc bierną przepływu gałęzi
-  (``q_to = Q_load + rated·V²`` — anomalia znaku shuntu, patrz docstring
-  ``konwencja_mocy``), więc cosφ liczony WPROST z przepływu gałęzi po wstawieniu
-  baterii MALEJE — to opisuje przekrój sieci, a NIE stopień skompensowania odbioru.
-  Rozdzielamy dwie wielkości:
+RECON „dwa cosφ" (V12K-040, opcja B; rekalibracja K3 po naprawie F9.8 pipeline —
+``test_dowod_v12k040``):
+  Po F9.8 (commit ``6508c12f``) przepływ gałęzi POPRAWNIE odzwierciedla efekt
+  baterii (dawna „anomalia znaku shuntu" była objawem odwróconego znaku pipeline
+  — patrz nota historyczna w docstringu ``konwencja_mocy``). Solver księguje
+  shunt jako ``rated·V²`` odejmowane od zapotrzebowania punktu, więc kanoniczny
+  przepływ ``Q_przekroju = Q_load − Q_cap_eff``. Rozdzielamy dwie wielkości
+  (Wymóg 2 właściciela — pojęciowo różne, mimo że w punkcie zasilanym jedną
+  gałęzią liczbowo się pokrywają):
     (1) ``cosfi_przekroju`` = |P| / √(P² + Q_przekroju²), gdzie ``Q_przekroju`` to
-        kanoniczny przepływ gałęzi (z ewentualną anomalią shuntu) — wielkość
-        PRZEKROJOWA sieci,
+        kanoniczny przepływ gałęzi (zawiera efekt zainstalowanej baterii) —
+        wielkość PRZEKROJOWA sieci,
     (2) ``cosfi_punktu``    = |P| / √(P² + Q_netto²), gdzie
         ``Q_cap_eff = (Σ znamionowych Mvar baterii w punkcie) · V²`` (model
         kondensatora z katalogu — dana znamionowa skalowana napięciem, NIE fizyka
-        pola), ``Q_load = Q_przekroju − Q_cap_eff`` (zapotrzebowanie odbioru bez
-        anomalnego wkładu shuntu), ``Q_netto = Q_load − Q_cap_eff`` — wielkość
-        STEROWNIKA doboru. Dodanie kondensatora do odbioru INDUKCYJNEGO obniża
-        ``|Q_netto|`` → ``cosfi_punktu`` ROŚNIE (do ~1 przy pełnej kompensacji),
-        a po przekompensowaniu ``Q_netto<0`` i cosφ spada z drugiej strony.
+        pola), ``Q_load = Q_przekroju + Q_cap_eff`` (odzysk zapotrzebowania odbioru
+        z przepływu zawierającego efekt baterii), ``Q_netto = Q_load − Q_cap_eff``
+        — wielkość STEROWNIKA doboru z lokalnego bilansu odbioru i baterii.
+        Dodanie kondensatora do odbioru INDUKCYJNEGO obniża ``|Q_netto|`` →
+        ``cosfi_punktu`` ROŚNIE (do ~1 przy pełnej kompensacji), a po
+        przekompensowaniu ``Q_netto<0`` i cosφ spada z drugiej strony.
   DOBÓR opiera się na (2). (1) pozostaje dostępne z jawną etykietą przekrojową.
 
 Wiązanie katalogowe: kandydaci dobierani są dla NAPIĘCIA ZNAMIONOWEGO szyny punktu
@@ -274,18 +278,19 @@ def _point_cos_phi(
     bus_ref: str,
     night: bool,
 ) -> dict[str, Any]:
-    """Uruchom rozpływ scenariusza i zwróć DWA cosφ w punkcie (V12K-027, opcja B).
+    """Uruchom rozpływ scenariusza i zwróć DWA cosφ w punkcie (V12K-040, opcja B).
 
     Przepływ gałęzi incydentnych z punktem odczytany na końcu przy punkcie i
     przełożony na znak kanoniczny przez adapter ``moc_kanoniczna_punktu``
     (``Q>0`` indukcyjny pobór, ``Q<0`` pojemnościowy). Z tego wyznaczamy:
 
     (1) ``cosfi_przekroju`` — cosφ przepływu w przekroju sieciowym (z ``Q_przekroju``,
-        zawiera anomalny wkład dopisanej baterii; opisuje przekrój sieci),
+        zawiera efekt dopisanej baterii; opisuje przekrój sieci),
     (2) ``cosfi_punktu`` — cosφ punktu kompensowanego z ``Q_netto = Q_load − Q_cap_eff``,
         gdzie ``Q_cap_eff = (Σ znamionowych Mvar baterii w punkcie) · V²`` (model
-        kondensatora z katalogu) i ``Q_load = Q_przekroju − Q_cap_eff`` (odbiór bez
-        anomalnego wkładu shuntu). To (2) jest podstawą doboru.
+        kondensatora z katalogu) i ``Q_load = Q_przekroju + Q_cap_eff`` (odzysk
+        zapotrzebowania odbioru z przepływu zawierającego efekt baterii — po F9.8
+        solver księguje shunt w przepływie, K3). To (2) jest podstawą doboru.
 
     Niezbieżność / punkt poza topologią → ``converged=False`` i cosφ=``None`` (bez
     zgadywania).
@@ -320,8 +325,9 @@ def _point_cos_phi(
     v_pu = _v_pu_punktu(result_v1, point_node)
     q_kompensacji = _q_kompensacji_znamionowa_mvar(snapshot, bus_ref)
     q_cap_eff = q_kompensacji * (v_pu**2) if v_pu is not None else 0.0
-    # Q_load = zapotrzebowanie bierne odbioru (bez anomalnego wkładu shuntu z przepływu).
-    q_load = q_przekroju - q_cap_eff
+    # Q_load = zapotrzebowanie bierne odbioru (przepływ po F9.8 zawiera efekt baterii,
+    # więc odzysk wymaga DODANIA Q_cap_eff — rekalibracja K3).
+    q_load = q_przekroju + q_cap_eff
     # Q_netto = Q_load − Q_cap_eff (kompensacja pojemnościowa; Q_netto<0 = przekompensowanie).
     q_netto = q_netto_po_kompensacji(q_load, q_cap_eff)
 
@@ -525,7 +531,7 @@ def build_compensation_sizing_view(
                 "(model kondensatora z katalogu, nie fizyka pola); PODSTAWA DOBORU"
             ),
             "konwencja_kanoniczna": "P>0 pobór czynnej, Q>0 pobór indukcyjnej, Q<0 pojemnościowa",
-            "decyzja": "V12K-027 opcja B — PowerFlowResult FROZEN, adapter interpretacyjny",
+            "decyzja": "V12K-040 opcja B — PowerFlowResult FROZEN, adapter interpretacyjny",
             "candidate_count": len(candidates),
             "night_scenario": (
                 "moc czynna generatorów = 0 (moc bierna bez zmian)" if uwzglednij_noc else None
