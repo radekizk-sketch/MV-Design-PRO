@@ -557,6 +557,16 @@ Progress:
         Konfirmacja w tle.
         POTWIERDZENIE #30 (2026-07-17): pełny pytest 6082 passed, 0 failed
         (695 s) — BAZY: backend 6082, frontend 8622.
+        SCALENIE #31 (2026-07-17): P47b mapowanie moduł→węzeł (e303880 →
+        cherry-pick) — addytywna lista modułów per węzeł w widoku siły
+        sieci (analysis/grid_strength builder+serializer+modele) + klik
+        modułu w pulpicie podświetla wiersze węzła w sekcjach SilySieci/
+        AdekwatnosciQ (odznaczenie, adnotacja PL dla modułu bez węzła).
+        PRZEJĘCIE po zatrzymaniu wykonawcy w trakcie pełnego pytest
+        (bieg do pliku przeżył; 6089 pass) — zarządca dokończył: pełny
+        vitest w worktree 8634 pass, 0 failed, bramki, commit w imieniu
+        wykonawcy. Zarządca po scaleniu: 19+74 celowanych + type-check +
+        7 guardów OK, push. Konfirmacje sekwencyjne w tle.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
