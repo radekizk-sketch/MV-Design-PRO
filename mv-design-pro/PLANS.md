@@ -555,6 +555,8 @@ Progress:
         commit/przejęcie rozstrzygnięty na korzyść wykonawcy (77be560,
         bez utraty danych). Zarządca: 55 celowanych + 4 guardy OK, push.
         Konfirmacja w tle.
+        POTWIERDZENIE #30 (2026-07-17): pełny pytest 6082 passed, 0 failed
+        (695 s) — BAZY: backend 6082, frontend 8622.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
