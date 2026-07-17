@@ -483,6 +483,9 @@ Progress:
         6043 pass, 0 failed. Zarządca: 16 celowanych + 5 guardów OK, push.
         Konfirmacja w tle. TODO-KARTA: przycisk certyfikatu w macierzy
         NC RfG (frontend) + PDF certyfikatu.
+        POTWIERDZENIE #24 (2026-07-17): pełny pytest 6043 passed, 0 failed
+        (603 s) — nowa baza backendu 6043. Karta P39c (przycisk certyfikatu
+        w macierzy) delegowana.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
