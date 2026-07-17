@@ -24,6 +24,7 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import {
   EkranFrt,
+  EkranKompensacji,
   EkranLom,
   EkranOsd,
   EkranWniosku,
@@ -59,6 +60,7 @@ const ZAKLADKI = [
   { id: 'studium', etykieta: T.zakladkaStudium },
   { id: 'frt', etykieta: T.zakladkaFrt },
   { id: 'osd', etykieta: T.zakladkaOsd },
+  { id: 'kompensacja', etykieta: T.zakladkaKompensacja },
   { id: 'wniosek', etykieta: T.zakladkaWniosek },
   { id: 'lom', etykieta: T.zakladkaLom },
   { id: 'pozostale', etykieta: T.zakladkaPozostale },
@@ -83,6 +85,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
       'studium',
       'frt',
       'osd',
+      'kompensacja',
       'wniosek',
       'lom',
     ],
@@ -209,6 +212,7 @@ export function WynikiWarsztat({
         {zakladka === 'studium' && <KreatorStudium trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'frt' && <EkranFrt trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'osd' && <EkranOsd trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'kompensacja' && <EkranKompensacji trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'wniosek' && <EkranWniosku trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'lom' && <EkranLom trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'pulpit-oze' && (

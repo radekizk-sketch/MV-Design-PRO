@@ -1577,3 +1577,136 @@ export async function pobierzDokumentStudiumPdf(
   if (!response.ok) throw await bladDokumentuStudium(response);
   return response.blob();
 }
+
+// =============================================================================
+// Dobór kompensacji mocy biernej — application/analyses/dobor_kompensacji.py (P42, D8)
+// =============================================================================
+
+/**
+ * Stan wyjściowy punktu (bez baterii) — 1:1 z `build_compensation_sizing_view["baseline"]`.
+ * Bez baterii `Q_cap_eff = 0`, więc cosφ przekroju == cosφ punktu; oba pola wystawione
+ * JAWNIE (rozdział V12K-027, opcja B). Wartości pochodzą WYŁĄCZNIE z backendu.
+ */
+export interface BaselineKompensacji {
+  readonly cosfi_przekroju_dzien: number | null;
+  readonly cosfi_przekroju_noc: number | null;
+  readonly cosfi_punktu_dzien: number | null;
+  readonly cosfi_punktu_noc: number | null;
+}
+
+/**
+ * Kandydat doboru (rekord katalogu baterii) — 1:1 z `_candidate_verdict`.
+ *
+ * ROZDZIAŁ DWÓCH cosφ (wymóg właściciela, V12K-027 opcja B):
+ * - `cosfi_punktu_*` (Q_netto = Q_load − Q_cap_eff) — PODSTAWA DOBORU (`spelnia`),
+ * - `cosfi_przekroju_*` (przepływ gałęzi z anomalią shuntu) — wielkość INFORMACYJNA
+ *   przekroju sieci; NIE jest miarą skompensowania odbioru i NIE steruje doborem.
+ */
+export interface KandydatKompensacji {
+  readonly catalog_ref: string;
+  readonly name: string;
+  readonly rated_mvar: number | null;
+  readonly rated_kv: number | null;
+  readonly cosfi_przekroju_dzien: number | null;
+  readonly cosfi_przekroju_noc: number | null;
+  readonly cosfi_punktu_dzien: number | null;
+  readonly cosfi_punktu_noc: number | null;
+  readonly p_point_day_mw: number | null;
+  readonly q_przekroju_dzien_mvar: number | null;
+  readonly q_cap_eff_dzien_mvar: number | null;
+  readonly q_netto_punktu_dzien_mvar: number | null;
+  readonly p_point_night_mw: number | null;
+  readonly q_przekroju_noc_mvar: number | null;
+  readonly q_cap_eff_noc_mvar: number | null;
+  readonly q_netto_punktu_noc_mvar: number | null;
+  readonly spelnia_dzien: boolean;
+  readonly spelnia_noc: boolean | null;
+  readonly spelnia: boolean;
+}
+
+/**
+ * Werdykt doboru (pierwszy kandydat spełniający) — 1:1 z `build_...["dobor"]`.
+ * Dobór to wielkość PUNKTU KOMPENSOWANEGO (2); cosφ przekroju (1) dostępny obok.
+ */
+export interface DoborKompensacji {
+  readonly catalog_ref: string;
+  readonly name: string;
+  readonly rated_mvar: number | null;
+  readonly rated_kv: number | null;
+  readonly cosfi_punktu_dzien: number | null;
+  readonly cosfi_punktu_noc: number | null;
+  readonly cosfi_przekroju_dzien: number | null;
+  readonly cosfi_przekroju_noc: number | null;
+}
+
+/** Kontekst przebiegu, na którym oparto dobór. */
+export interface KontekstKompensacji {
+  readonly trace_id: string;
+  readonly snapshot_id: string | null;
+  readonly case_name: string | null;
+}
+
+/** Echo parametrów wejścia doboru (bus + wymagany cosφ + scenariusz nocny). */
+export interface ParametryKompensacji {
+  readonly bus_ref: string;
+  readonly bus_name: string | null;
+  readonly bus_voltage_kv: number | null;
+  readonly cos_phi_min: number;
+  readonly uwzglednij_noc: boolean;
+}
+
+/** Ślad WHITE BOX doboru (opisy tekstowe źródła P/Q, obu cosφ, konwencji). */
+export interface WhiteboxKompensacji {
+  readonly pq_source: string;
+  readonly cosfi_przekroju: string;
+  readonly cosfi_punktu: string;
+  readonly konwencja_kanoniczna: string;
+  readonly decyzja: string;
+  readonly candidate_count: number;
+  readonly night_scenario: string | null;
+}
+
+/**
+ * Widok doboru kompensacji (odpowiedź compensation-sizing, 1:1 z
+ * `build_compensation_sizing_view`). `dobor` = pierwszy kandydat spełniający lub
+ * `null` z uczciwym `powod_braku` (PL).
+ */
+export interface WidokDoboruKompensacji {
+  readonly analysis: string;
+  readonly context: KontekstKompensacji;
+  readonly parameters: ParametryKompensacji;
+  readonly input_hash: string;
+  readonly baseline: BaselineKompensacji;
+  readonly candidates: readonly KandydatKompensacji[];
+  readonly dobor: DoborKompensacji | null;
+  readonly powod_braku: string | null;
+  readonly whitebox: WhiteboxKompensacji;
+}
+
+/** Parametry jawnego biegu doboru kompensacji (węzeł + przebieg + wymagany cosφ). */
+export interface ZapytanieDoboruKompensacji {
+  readonly runId: string;
+  readonly busRef: string;
+  readonly cosPhiMin: number;
+  readonly uwzglednijNoc: boolean;
+}
+
+/**
+ * Dobór baterii kompensacji dla wskazanego węzła i przebiegu rozpływu.
+ * `run_id`, `bus_ref`, `cos_phi_min` obowiązkowe (kontrakt FastAPI); `uwzglednij_noc`
+ * opcjonalny (domyślnie false). Zwraca uczciwy komunikat PL z końcówki (404 brak
+ * przebiegu, 422 zły rodzaj analizy / nieznana szyna / cosφ poza (0, 1]).
+ */
+export function pobierzDoborKompensacji(
+  zapytanie: ZapytanieDoboruKompensacji,
+): Promise<WidokDoboruKompensacji> {
+  const czesci = [
+    `run_id=${encodeURIComponent(zapytanie.runId)}`,
+    `bus_ref=${encodeURIComponent(zapytanie.busRef)}`,
+    `cos_phi_min=${encodeURIComponent(String(zapytanie.cosPhiMin))}`,
+    `uwzglednij_noc=${encodeURIComponent(String(zapytanie.uwzglednijNoc))}`,
+  ];
+  return getJsonZDetalem<WidokDoboruKompensacji>(
+    `/api/oze-analysis/compensation-sizing?${czesci.join('&')}`,
+  );
+}

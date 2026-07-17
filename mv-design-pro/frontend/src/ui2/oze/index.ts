@@ -13,6 +13,7 @@ export * from './obszar';
 export * from './studium';
 export * from './frt';
 export * from './osd';
+export * from './kompensacja';
 export * from './lom';
 export * from './wniosek';
 export * from './api';

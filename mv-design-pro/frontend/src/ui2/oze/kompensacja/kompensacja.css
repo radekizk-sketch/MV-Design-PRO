@@ -1,0 +1,278 @@
+/*
+ * Style okna „Dobór kompensacji" (karta P42). Kolory WYŁĄCZNIE przez tokeny
+ * --mvd-* (theme/tokens.css) — zero literałów hex. Determinizm prezentacji: stałe
+ * wymiary, brak animacji zależnych od czasu.
+ */
+
+.mvd-komp {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--mvd-ink);
+}
+
+.mvd-komp-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-komp-tytul {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+.mvd-komp-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- stany (brak przebiegu / brak węzłów / idle / ładowanie / błąd) ---- */
+.mvd-komp-stan {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 12px;
+}
+.mvd-komp-stan--blad {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-komp-stan-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+.mvd-komp-stan-desc {
+  margin: 4px 0 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- parametry doboru ---- */
+.mvd-komp-parametry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 12px;
+}
+.mvd-komp-param {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 220px;
+}
+.mvd-komp-param label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.mvd-komp-param select,
+.mvd-komp-param input[type='number'] {
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  padding: 6px 8px;
+  font-size: 13px;
+}
+.mvd-komp-param-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 11px;
+  max-width: 320px;
+}
+.mvd-komp-param-przelacznik {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 220px;
+}
+.mvd-komp-param-przelacznik input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+}
+.mvd-komp-oblicz {
+  border: 1px solid var(--mvd-accent);
+  border-radius: 4px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-komp-oblicz:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- nota rozdziału dwóch cosφ + konwencja kanoniczna ---- */
+.mvd-komp-nota {
+  border: 1px solid var(--mvd-line);
+  border-left: 3px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-komp-nota-tytul {
+  font-size: 12px;
+  font-weight: 600;
+}
+.mvd-komp-nota-wiersz {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-komp-nota-wiersz--punktu {
+  color: var(--mvd-ink);
+}
+.mvd-komp-nota-konwencja {
+  margin: 0;
+  font-size: 12px;
+}
+.mvd-komp-nota-konwencja code {
+  color: var(--mvd-ink);
+}
+
+/* ---- założenia (dl) ---- */
+.mvd-komp-zalozenia {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 12px;
+}
+.mvd-komp-zal-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-komp-zal-para dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-komp-zal-para dd {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- stan wyjściowy (baseline) ---- */
+.mvd-komp-baseline {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-komp-sekcja-tytul {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+.mvd-komp-baseline-siatka {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+.mvd-komp-baseline-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-komp-baseline-para dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-komp-baseline-para--decyzja dt {
+  color: var(--mvd-ink);
+  font-weight: 600;
+}
+.mvd-komp-baseline-para dd {
+  margin: 0;
+  font-size: 13px;
+}
+.mvd-komp-komentarz {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+
+/* ---- werdykt doboru ---- */
+.mvd-komp-dobor {
+  border: 1px solid var(--mvd-ok);
+  border-radius: 6px;
+  background: var(--mvd-ok-bg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-komp-dobor--brak {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-komp-dobor-naglowek {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+}
+.mvd-komp-dobor-siatka {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+.mvd-komp-dobor-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-komp-dobor-para dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-komp-dobor-para dd {
+  margin: 0;
+  font-size: 13px;
+}
+.mvd-komp-dobor-powod {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- ślad WHITE BOX ---- */
+.mvd-komp-slad-blok {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-komp-slad-btn {
+  align-self: flex-start;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-komp-slad-tytul {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}

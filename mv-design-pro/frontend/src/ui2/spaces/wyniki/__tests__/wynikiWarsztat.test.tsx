@@ -121,6 +121,10 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.getByTestId('mvd-frt-ekran')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-osd'));
     expect(screen.getByTestId('mvd-osd-ekran')).toBeInTheDocument();
+    // Zakładka „Dobór kompensacji" (P42): bez przebiegu rozpływu — uczciwy stan pusty.
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-kompensacja'));
+    expect(screen.getByTestId('mvd-komp-ekran')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-komp-brak-przebiegu')).toBeInTheDocument();
     // Zakładka „Praca wyspowa" (LoM): bez aktywnego przypadku — uczciwy stan pusty.
     fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-lom'));
     expect(screen.getByTestId('mvd-lom-ekran')).toBeInTheDocument();

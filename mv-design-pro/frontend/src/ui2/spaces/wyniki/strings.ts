@@ -17,6 +17,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaStudium: 'Studium przyłączenia',
   zakladkaFrt: 'Walidacja falownika',
   zakladkaOsd: 'Polecenia OSD',
+  zakladkaKompensacja: 'Dobór kompensacji',
   zakladkaLom: 'Praca wyspowa',
   zakladkaWniosek: 'Wniosek OSD',
   zakladkaPorownanie: 'Porównanie A/B',
