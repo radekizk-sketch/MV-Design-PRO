@@ -544,6 +544,8 @@ Progress:
         poniżej progu DOM 1:1). Wykonawca: pełny vitest 8622 pass,
         0 failed (+12). Zarządca: 90 celowanych + type-check + lint +
         4 guardy OK, push. Konfirmacja w tle.
+        POTWIERDZENIE #29 (2026-07-17): pełny vitest 8622 passed, 0 failed
+        — BAZY: backend 6066, frontend 8622.
   - [ ] U3 dalsze / U4–U5 wg programu
 
 Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
