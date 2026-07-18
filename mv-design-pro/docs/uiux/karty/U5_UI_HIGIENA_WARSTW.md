@@ -91,3 +91,18 @@ Commit (BEZ push): `chore(ui): usuniecie sieroty FrtHvrtCurves + guard zero-fizy
 w UI (U5-UI-HIGIENA)`. Raport standardowy: plik:linia, potwierdzenie braku
 konsumenta FRT, wynik guarda na HEAD, lista ewentualnych allowlist z uzasadnieniem,
 wyniki pełnego vitest i testu guarda.
+
+## 3. ZAMKNIĘCIE (2026-07-18, tryb orkiestracji: wykonawca Opus + zarządca Fable)
+- **Część A** (`24ab180e`, cherry-pick z `73542c1b`): sierota `FrtHvrtCurves` +
+  test usunięte (297 linii). Weryfikacja zarządcy: brak konsumenta (grep pusty),
+  type-check 0, pełny vitest 663 plików / 8900 passed / 0 failed.
+- **Eskalacja wykonawcy** → decyzja zarządcy §0.5 + inwentarz długu
+  `DLUG_FIZYKA_W_UI_2026-07.md` (`2c29e174`).
+- **Część B** (`6d51be37`, cherry-pick z `4e5fafb0`): `ui_no_physics_guard.py`
+  (zakres `ui2/**`, anty-false-positive `current`, wykrywa √3/impedancję/dUdP·dUdQ/
+  deltaU), wpięcie do CLAUDE.md, test `tests/ci/test_ui_no_physics_guard.py`
+  (5 passed). Niezależna weryfikacja zarządcy: guard exit 0 na HEAD; **potwierdzone
+  że NIE jest ślepy** — wykrywa realną fizykę w `ui/**` (`cableSelectionContract.ts`
+  4 trafienia, `earthingFaultCurrent.ts` 1), zielony na ui2 bo ui2 jest czysty;
+  regresja 6 guardów exit 0. **KARTA ZAMKNIĘTA.** Dług fizyki w `ui/**` = osobna
+  epika relokacji (inwentarz), egzekwowana przy migracji ui/**→ui2.
