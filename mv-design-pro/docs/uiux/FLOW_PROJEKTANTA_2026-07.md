@@ -128,7 +128,7 @@ podpowiadać) → **pokrycie** (dzisiejszy dostawca) → **luka/plan**.
 |---|---|---|
 | (wzorzec) EkranAnalizTechnicznych | E5-hub | ✅ 2026-07-18 (`75c156cb`) |
 | R1 ΔU/prąd kabla → backend | E2/E6 | ✅ 2026-07-18 (`2057b47a`) |
-| R2 Ik3/prądy znamionowe → backend | E2 | karta w przygotowaniu |
+| R2 Ik3/prądy znamionowe → backend | E2 | ✅ 2026-07-18 (martwy łańcuch Ik3 usunięty — zdolność = solver IEC 60909 przez grid-source-preview; I1/I2 transformatora → `transformer-rated-currents-preview`, parytet ≤1e-6; 100/√3 = stała katalogowa IEC 61869-3) |
 | F-E3 „następny krok" po zielonej bramce | E3 | do zlecenia |
 | F-E4 „następny krok" po DONE | E4 | do zlecenia |
 | F-E5 ekrany analiz od flow | E5 | do zlecenia (po R2) |
