@@ -34,5 +34,32 @@ rejestrze planu wygaszania §4).
 ## 3. Uwaga
 To samo dotyczy przyszłego W5b-2 (AnalysisSurface): przed usunięciem jego
 tras sprawdzić wejścia z wątku SLD (analogiczny STOP-GUARD).
-Karta pozostaje OTWARTA do podjęcia przez sesję SLD; Program UI/UX jej nie
-realizuje (granica wątków).
+
+## 4. DOMKNIĘCIE (2026-07-18, po konsolidacji wątków — W5b-3)
+Konsolidacja gałęzi (merge `75a70d3f`) zniosła granicę wątków — pliki SLD
+są teraz na gałęzi UI, więc kartę zrealizowano w tej samej sesji. Wykonano
+metodą OPCJA 1 (plan wygaszania §3c):
+- **Dostawca E-26 przełączony na `EkranFrt`**: `WorkspaceSurfaceRouter.tsx`
+  `case 'E-26'` renderuje teraz `EkranFrt` (ui2, superset — dobór modułu+
+  operatora z katalogu NC RfG, realny bieg trajektorii z backendu, werdykt)
+  zamiast statycznego `ComplianceSurface` z zaślepką `no_module`. Tryb
+  zaawansowania z `useShellStore` (globalny store powłoki).
+- **`ComplianceSurface` (legacy) usunięty** wraz z importem `FrtHvrtCurves`/
+  `NcRfgProfileId`. Akcje kontekstowe SLD `show-frt-hvrt`/`show-ncrfg`
+  (`sldActionExecutor.ts` `ACTION_TO_SCREEN`) nadal celują w E-26 — który
+  teraz pokazuje `EkranFrt` (rdzeń FRT = to samo, co dawniej, tylko z realnego
+  backendu; brak regresji, „lepiej niż teraz").
+- **Kanon E-26 NIETKNIĘTY co do zdolności**: `labelFull`/`areaId`/`testId`/
+  `canonicalRoute`/transitions bez zmian; jedynie `componentKey` zaktualizowany
+  `'ComplianceSurface' → 'EkranFrt'` (metadana dostawcy, NIE klucz dyspozytora
+  routera; `v12xx_canon_guard` exit 0, testy kanonu zielone).
+- **Osierocony-z-UI (mention, nie delete — wzorzec W5b-2)**: `FrtHvrtCurves`
+  (`ui/protection-curves/FrtHvrtCurves.tsx`) + jego test — po usunięciu
+  `ComplianceSurface` bez konsumenta w UI; samodzielny, przetestowany komponent
+  wizualizacji, zostawiony do ew. przyszłego użycia.
+Bramki: type-check OK, lint 0 ostrzeżeń, celowany vitest (workspace + wyniki +
+FrtHvrtCurves) 215/215, guardy (codenames, forbidden_ui_terms, ui_terminology,
+utf8_mojibake, dead_click, v12xx_canon) exit 0. **KARTA ZAMKNIĘTA.**
+Możliwe dalsze „lepiej niż teraz" (poza tą kartą): rozdzielić `show-ncrfg`
+→ macierz NC RfG (`ui2/oze/macierz`) od `show-frt-hvrt` → E-26/EkranFrt,
+gdy macierz otrzyma własny kanoniczny ekran osiągalny przez `openRouteSurface`.

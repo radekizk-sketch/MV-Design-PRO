@@ -35,8 +35,9 @@ import {
 } from '../network-build/station-der';
 import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
-import { FrtHvrtCurves, type NcRfgProfileId } from '../protection-curves/FrtHvrtCurves';
 import { TimeCurrentChart } from '../protection-curves/TimeCurrentChart';
+import { EkranFrt } from '../../ui2/oze/frt';
+import { useShellStore } from '../../ui2/shell/useShellStore';
 import type { ProtectionCurve, FaultMarker } from '../protection-curves/types';
 import {
   exportReport,
@@ -1837,60 +1838,17 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   );
 }
 
-function ComplianceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  // Iteracja 13: wybór profilu NC RfG + wykres FRT/HVRT (Recharts).
-  const [profileId, setProfileId] = useState<NcRfgProfileId>('PSE');
+function ComplianceSurface() {
+  // Wygaszenie E-26 (Opcja 1, karta U5_E14 / plan wygaszania §3c): ekran
+  // kanoniczny E-26 „Charakterystyki FRT/LVRT/HVRT" ZOSTAJE, dostawcą UI jest
+  // teraz `EkranFrt` (ui2, superset — dobór modułu+operatora, realny bieg
+  // trajektorii z backendu, werdykt), zamiast dawnego statycznego widoku
+  // krzywych z zaślepką `no_module`. Tryb zaawansowania ze wspólnego store'a
+  // powłoki (Zustand globalny; identycznie jak zakładka `frt` warsztatu wyników).
+  const trybZaawansowania = useShellStore((state) => state.advancementMode);
   return (
     <div data-testid="compliance-surface" className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <SectionCard
-        title="Krzywe FRT/LVRT/HVRT — profil operatora"
-        eyebrow="E-26 · Zgodność przyłączeniowa NC RfG"
-      >
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-500">Profil:</span>
-          {(['PSE', 'Energa', 'Tauron', 'Enea', 'PGE'] as const).map((id) => (
-            <button
-              key={id}
-              type="button"
-              data-testid={`compliance-profile-${id}`}
-              data-active={profileId === id}
-              onClick={() => setProfileId(id)}
-              className={
-                'rounded-full border px-3 py-1 text-xs font-medium '
-                + (profileId === id
-                  ? 'border-slate-900 bg-slate-900 text-white'
-                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100')
-              }
-            >
-              {id}
-            </button>
-          ))}
-        </div>
-        <FrtHvrtCurves profileId={profileId} />
-        <p className="mt-3 text-xs text-slate-500">
-          Krzywe NC RfG Annex II: dolna obwiednia LVRT (czerwony) — DER musi
-          pozostać dołączone, jeśli przebieg napięcia jest powyżej krzywej.
-          Górna obwiednia HVRT (niebieski) — analogicznie. Trajektoria U(t)
-          z solvera FRT/HVRT renderowana po uruchomieniu obliczeń (status
-          backendu: <code>no_module</code> do czasu pełnego wdrożenia
-          numerycznego solvera RMS).
-        </p>
-      </SectionCard>
-      <AnalysisContractPanel
-        surface={surface}
-        title="Kontrakt zgodności przyłączeniowej"
-        eyebrow="Pochodzenie danych"
-        focusTitle="Kontrakt FRT"
-        focusRowsBuilder={(contract) => [
-          { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
-          { label: 'Wariant', value: formatContractValue(contract.analysisCaseContext?.variantRef) },
-          { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-          { label: 'Model IBG / OZE', value: formatContractValue(contract.analysisCaseContext?.assumptions['ibg_assumptions_ref']) },
-          { label: 'Założenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
-          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
-        ]}
-      />
+      <EkranFrt trybZaawansowania={trybZaawansowania} />
     </div>
   );
 }
@@ -3086,7 +3044,7 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-29':
       return <SymmetricalComponentsSurface surface={surface} />;
     case 'E-26':
-      return <ComplianceSurface surface={surface} />;
+      return <ComplianceSurface />;
     case 'E-27':
       return <ProtectionCoordinationSurface surface={surface} />;
     case 'E-30':

@@ -760,7 +760,21 @@ Progress:
         (ui/sensitivity) bez konsumenta w UI po wygaszeniu taba (mention,
         nie delete — decyzja właściciela o pełnym usunięciu osobno).
         EPIKA WYGASZANIA: D1+D2 wykonane (Opcja 1); D3/D4 zostają; W5
-        route-retirement E-26 czeka na wątek SLD. KONFIRMACJA #43 ODROCZONA
+        route-retirement E-26 czeka na wątek SLD.
+        W5b-3 / PEŁNE WYGASZENIE E-26 + USUNIĘCIE SIEROT (2026-07-18, po
+        konsolidacji wątków — dyrektywa „działaj jak architekt, usuwaj dług"):
+        konsolidacja (merge 75a70d3f) zniosła granicę wątków, więc domknięto
+        E-26 w tej sesji. `WorkspaceSurfaceRouter` `case 'E-26'` → `EkranFrt`
+        (ui2 superset) zamiast `ComplianceSurface`; komponent + import
+        FrtHvrtCurves/NcRfgProfileId usunięte; componentKey kanonu
+        'ComplianceSurface'→'EkranFrt' (metadana dostawcy, nie klucz routera);
+        kanon E-26 (label/area/testId/transitions) nietknięty, v12xx_canon
+        exit 0. Akcje SLD show-frt-hvrt/show-ncrfg celują w E-26 (=EkranFrt,
+        realny backend — bez regresji). USUNIĘTO cały katalog ui/sensitivity/
+        (Zero-Debt + D2=A): bez konsumenta ORAZ sensitivityAnalyzer liczył
+        FIZYKĘ w prezentacji (linearyzacja deltaU=dUdP·P+dUdQ·Q) — naruszenie
+        granicy warstw. Karta U5_E14 ZAMKNIĘTA. Bramki: type-check, lint 0,
+        celowany 215/215, guardy exit 0; pełny vitest w konfirmacji. KONFIRMACJA #43 ODROCZONA
         świadomie do scaleń REF-A/REF-B (dwóch wykonawców w pełnych suitach
         — jedna konfirmacja łączna zamiast serializowania trzech).
         INTEGRACJA REFERENCE ENGINE V1 (zlecenie właściciela 2026-07-17,

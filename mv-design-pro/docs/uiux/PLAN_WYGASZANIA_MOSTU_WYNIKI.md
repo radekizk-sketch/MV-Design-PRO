@@ -227,6 +227,23 @@ generuje dług i ryzyko regresji kanonu.
   vitest ZERO failed (wszystkie testy kanonu zielone), guard:codenames,
   forbidden_ui_terms, ui_terminology, utf8_mojibake, dead_click_guard,
   v12xx_canon_guard. E2E: patrz raport wykonawcy (infra Playwright w worktree).
+- **W5b-3** (2026-07-18, po konsolidacji wątków — `feat(ui2): pełne wygaszenie
+  E-26, dostawca = EkranFrt; usunięcie ComplianceSurface (W5b-3)`): DOMKNIĘCIE
+  E-26 zablokowane w W5b-1 przez STOP-GUARD wątku SLD. Konsolidacja gałęzi
+  (merge `75a70d3f`) zniosła granicę wątków (pliki SLD na gałęzi UI), więc
+  wykonano ostatni krok Opcji 1: `WorkspaceSurfaceRouter.tsx` `case 'E-26'` →
+  `EkranFrt` (ui2, superset) zamiast `ComplianceSurface`; komponent
+  `ComplianceSurface` + import `FrtHvrtCurves`/`NcRfgProfileId` USUNIĘTE;
+  `componentKey` kanonu E-26 `'ComplianceSurface'→'EkranFrt'` (metadana
+  dostawcy, nie klucz routera). Akcje SLD `show-frt-hvrt`/`show-ncrfg`
+  (`sldActionExecutor.ts`) celują w E-26 → teraz EkranFrt (rdzeń FRT
+  zachowany, realny backend — brak regresji). Kanon E-26 (label/area/testId/
+  transitions) NIETKNIĘTY; `v12xx_canon_guard` exit 0, testy kanonu zielone.
+  Osierocony-z-UI (mention): `FrtHvrtCurves` (bez konsumenta po usunięciu
+  ComplianceSurface; wzorzec W5b-2, nie usuwany). Bramki: type-check,
+  lint 0, celowany vitest 215/215 (workspace+wyniki+FrtHvrtCurves) + pełny
+  vitest, guardy exit 0. Karta `U5_E14_SLD_KOORD_E26.md` ZAMKNIĘTA. Epika
+  E-26 (D1=A) w PEŁNI wygaszona.
 - **W5b-2** (2026-07-17, commit lokalny `feat(ui2): wygaszenie stubu analizy
   wrażliwości w AnalysisSurface (W5b-2)`): Opcja 1, decyzja właściciela D2=A
   (§3b) — funkcja „Analiza wrażliwości" uznana za NIEDOSTARCZONĄ (stub:
@@ -250,10 +267,12 @@ generuje dług i ryzyko regresji kanonu.
   pozostają: E-35 jest kanonicznym RODZICEM dzieci E-26/E-27/E-30/E-31/E-34
   (`types.ts:808`), a nawigacja „w górę" z tych ekranów wymaga trasy. FixActions
   „Otwórz wyniki"/„Pokaż wyniki" NIETKNIĘTE (działające akcje). Komponenty
-  `SensitivityPanel`/`sensitivityAnalyzer` (`ui/sensitivity/`) — NIE usunięte
-  (poza zakresem karty: to samodzielne, przetestowane moduły, nie „stub"); po
-  wygaszeniu taba nie mają już konsumenta w UI (tylko własne testy) — zgłoszone
-  jako osierocone-z-UI (mention, nie delete). Bramki: type-check OK, lint 0
+  `SensitivityPanel`/`sensitivityAnalyzer` (`ui/sensitivity/`) — wtedy zgłoszone
+  jako osierocone-z-UI (mention, nie delete). **USUNIĘTE w W5b-3 (2026-07-18)**
+  na mocy Zero-Debt + D2=A: bez konsumenta w UI ORAZ `sensitivityAnalyzer.ts`
+  liczył FIZYKĘ w prezentacji (linearyzacja `deltaUpu = dUdP·P + dUdQ·Q`,
+  `findCompensationCandidates` z dU/dQ) — naruszenie granicy warstw. Usunięto
+  cały katalog `ui/sensitivity/`. Bramki: type-check OK, lint 0
   ostrzeżeń, pełny vitest 8689 passed / 1 skipped / 1 todo / ZERO failed
   (baza 8690 − 1 usunięty test stubu = 8689, wszystkie testy kanonu zielone),
   guard:codenames, v12xx_canon_guard (exit 0, pozostał zielony), forbidden_ui_terms,
