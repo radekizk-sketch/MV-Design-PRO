@@ -21,9 +21,10 @@ WHITE BOX, ryzyko rozjazdu z solverem, luka audytu/determinizmu.
 | ~~`ui/network-build/station-wizard-v2/shortCircuitNetworkContract.ts`~~ | ~~Ik3 = c·U/(√3·Z_total)~~ **USUNIĘTE (R2, 2026-07-18)** — martwa fizyka bez konsumentów LIVE (grep poza testami = 0); zdolność podglądu Ik3 dostarcza realny solver `POST /api/solver/grid-source-preview` (IEC 60909) | — (usunięte z testami) |
 | ~~`ui/network-build/station-wizard-v2/transformerContract.ts`~~ | ~~przeliczenia √3 (transformator)~~ **ZRELOKOWANE (R2, 2026-07-18)** → `network_model/solvers/transformer_rated_currents.py` + `POST /api/solver/transformer-rated-currents-preview`; parytet I1/I2 ≤1e-6 | kreator stacji (woła API) |
 | `ui/network-build/station-wizard-v2/vtMultiWindingContract.ts` | ~~przeliczenia √3 (przekładnik VT)~~ **ROZSTRZYGNIĘTE (R2, 2026-07-18)** — `100/√3 V` to stała katalogowa (znamionowe napięcie wtórne, IEC 61869-3), nie fizyka przepływu: zamieniona na literał `57.735026919`; guard zielony | kreator stacji |
-| `ui/topology/earthingFaultCurrent.ts` | prąd doziemny PN-EN 50522 (Solid/Resistor/Petersen/IT, napięcie dotykowe) | UI topologii |
-| `ui/protection-coordination/tccCurveGenerator.ts` | krzywe IEC 60255 (I/pickup) | koordynacja zabezpieczeń |
-| `ui/protection-coordination/tmsCoordination.ts` | matematyka TMS IEC 60255 | koordynacja zabezpieczeń |
+| ~~`ui/topology/earthingFaultCurrent.ts`~~ | ~~prąd doziemny PN-EN 50522 (Solid/Resistor/Petersen/IT, napięcie dotykowe)~~ **USUNIĘTE (R3, 2026-07-18)** — martwa fizyka bez konsumentów LIVE (grep poza własnym testem = 0); zdolność w backendzie: pętla zwarcia IEC 60364 (`api/fault_loop.py`) + pack dowodowy Earthing/Ground Fault SN (`application/proof_engine/packs/earthing_ground_fault_sn.py`) | — (usunięte z testem) |
+| ~~`ui/protection-coordination/tccCurveGenerator.ts`~~ | ~~krzywe IEC 60255 (I/pickup)~~ **USUNIĘTE (R3, 2026-07-18)** — martwa fizyka bez konsumentów LIVE (grep poza własnym testem = 0); zdolność: `api/protection_coordination.py` zwraca `TCCCurveResponse` (`GET /protection-coordination/{run_id}/tcc`, krzywe z `run_coordination_analysis`), rendering TCC w UI pozostaje prezentacją danych z API | — (usunięte z testem) |
+| ~~`ui/protection-coordination/tmsCoordination.ts`~~ | ~~matematyka TMS IEC 60255 (werdykt selektywności par + rekomendacja korekty TMS)~~ **USUNIĘTE (R3, 2026-07-18)** — jedyny konsument `CoordinationHintCard.tsx` sam NIE ma konsumenta produkcyjnego (nie eksportowany w `index.ts`, nie użyty w `ProtectionCoordinationPage`, grep = tylko własny test) → całe poddrzewo `tmsCoordination → CoordinationHintCard` to martwa fizyka (sierota); usunięte razem z `CoordinationHintCard.tsx` + testami. Zdolność w backendzie: `api/protection_coordination.py` — kontrola selektywności par (`SelectivityCheck`: `verdict` PASS/MARGINAL/FAIL, `margin_s` = Δt/CTI rzeczywiste, `required_margin_s` = CTI_min, `notes_pl`) via `POST /protection-coordination/projects/{id}/run` + `GET /protection-coordination/{run_id}/checks/selectivity` | — (usunięte z `CoordinationHintCard` + testami) |
+| ~~`ui/topology/earthingSystemHelper.ts`~~ | ~~prąd doziemny PN-EN 50522 (`faultCurrentA` = U_faz/R_n dla Resistor, U_faz/Z_0 dla Solid; U_faz = U_n/√3)~~ **USUNIĘTE (R3, 2026-07-18 — WYKRYTE mandatorycznym `scan_file` §0.5, spoza pierwotnej listy §2)** — martwa fizyka bez konsumentów produkcyjnych (grep `validateEarthingConfig`/`describeEarthingType`/`EarthingType` = tylko własny test; `EarthingSystemSelector.tsx` używa własnych typów `MvEarthingType`/`LvEarthingType`, NIE tego helpera). Ta sama klasa co usunięty `earthingFaultCurrent.ts`; zdolność w backendzie jw. (`api/fault_loop.py` + pack Earthing/Ground Fault SN). Usunięte z testem. Pozostawiono nietkniętym `EarthingSystemSelector.tsx` (czysta prezentacja, bez fizyki) | — (usunięte z testem) |
 
 (Lista bazowa z rekonesansu wykonawcy; przed relokacją zweryfikować pełny zakres
 grepem wzorców fizyki — może być więcej.)
@@ -50,3 +51,32 @@ BOX; UI konsumuje gotowe wartości z API.
 `ui/**` NIE jest allowlistowane jako „to nie fizyka" (byłoby nieuczciwe) —
 pozostaje w tym inwentarzu jako dług do relokacji; egzekwowany przy migracji
 `ui/**` → `ui2` (fizyka trafia do backendu, guard łapie ją w ui2).
+
+## 5. EPIKA DOMKNIĘTA (R1–R3) — 2026-07-18
+Wszystkie wiersze inwentarza z §2 są ZRELOKOWANE / USUNIĘTE / ROZSTRZYGNIĘTE:
+- **R1** (`2057b47a`): `voltageDropValidator.ts`, `cableSelectionContract.ts` →
+  ZRELOKOWANE do solverów backendu (ΔU, prąd znamionowy) + końcówki podglądu;
+  UI woła API i tylko prezentuje.
+- **R2** (`d7928b8c`): `shortCircuitNetworkContract.ts` USUNIĘTE (martwa fizyka
+  Ik3, zdolność w `grid-source-preview`); `transformerContract.ts` ZRELOKOWANE
+  (√3 transformatora → solver); `vtMultiWindingContract.ts` ROZSTRZYGNIĘTE
+  (`100/√3` = stała katalogowa IEC 61869-3, nie fizyka przepływu).
+- **R3** (ta karta, 2026-07-18): `earthingFaultCurrent.ts`, `tccCurveGenerator.ts`,
+  `tmsCoordination.ts` (+ martwy konsument `CoordinationHintCard.tsx`) USUNIĘTE —
+  martwa fizyka bez konsumentów produkcyjnych; zdolności dostarcza backend
+  (`api/fault_loop.py` + pack Earthing SN; `TCCCurveResponse` i `SelectivityCheck`
+  w `api/protection_coordination.py`). Mandatoryczny `scan_file` (§0.5) ujawnił
+  dodatkowo `earthingSystemHelper.ts` — martwą sierotę tej samej klasy fizyki
+  (prąd doziemny PN-EN 50522), również USUNIĘTĄ w R3 (patrz §2). Inwentarz §2
+  z góry zakładał „może być więcej" — wykryto i domknięto u źródła.
+
+**Wynik:** w `frontend/src/ui/**` nie pozostała żadna z zewidencjonowanych ani
+scanem wykrytych klas fizyki sieci. Prezentacja konsumuje gotowe wielkości z
+API/solverów (WHITE BOX w backendzie). `scan_file` guarda po dotkniętych
+katalogach (`ui/topology`, `ui/protection-coordination`) = 0 trafień.
+
+**Zalecenie (osobna karta — NIE wykonywać w tej karcie):** rozszerzyć zakres
+`scripts/ui_no_physics_guard.py` z `ui2/**` na całe `ui/**`, aby guard stał się
+bramką całej warstwy prezentacji. Wymaga uprzedniego przemiarowania
+false-positives (np. formatowanie/skalowanie osi, stałe katalogowe typu
+`100/√3`), dlatego nie jest częścią R3 (nie rozszerzać bez pomiaru).
