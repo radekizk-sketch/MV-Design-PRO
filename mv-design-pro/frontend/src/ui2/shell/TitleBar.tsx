@@ -60,6 +60,8 @@ export function TitleBar({
         type="button"
         className="mvd-btn"
         onClick={onThemeToggle}
+        title={SHELL_STRINGS.themeToggleHint}
+        aria-pressed={themeMode === 'dark_scada'}
         data-testid="mvd-theme-toggle"
       >
         {SHELL_STRINGS.themeGroup}: {themeLabel(themeMode)}

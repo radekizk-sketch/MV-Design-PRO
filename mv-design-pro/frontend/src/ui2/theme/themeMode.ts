@@ -31,6 +31,11 @@ export function themeLabel(mode: ThemeMode): string {
  * Rozstrzyga tryb na podstawie preferencji systemowej.
  * Gdy `matchMedia` jest niedostępne (np. środowisko testowe), zwraca
  * `dark_scada` — tryb dyspozytorski jest podstawowym trybem ekranowym.
+ *
+ * UWAGA: funkcja NIE jest już źródłem stanu początkowego store'a (kanon:
+ * „the application shell owns the screen theme" — start ZAWSZE od `dark_scada`,
+ * §0.4 karty TM1). Zachowana jako narzędzie dla ewentualnych konsumentów
+ * chcących odczytać preferencję systemową jawnie.
  */
 export function resolveSystemTheme(): ThemeMode {
   if (typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
@@ -60,7 +65,10 @@ interface ThemeState {
 export const useThemeModeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      mode: resolveSystemTheme(),
+      // Domyślny tryb ZAWSZE dyspozytorski (dark_scada) — podstawowy tryb
+      // ekranowy stacji przemysłowej. Preferencja systemowa NIE steruje startem;
+      // wybór użytkownika jest persystowany przez middleware `persist`.
+      mode: 'dark_scada',
       setMode: (mode) => set({ mode }),
       toggle: () =>
         set({ mode: get().mode === 'dark_scada' ? 'light_technical' : 'dark_scada' }),

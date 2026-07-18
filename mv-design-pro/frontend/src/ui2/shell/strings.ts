@@ -34,6 +34,7 @@ export const SHELL_STRINGS = {
   toggleLeft: 'Nawigacja',
   toggleRight: 'Zwiń lub rozwiń panel inspektora',
   themeGroup: 'Motyw',
+  themeToggleHint: 'Przełącz motyw ekranu: ciemny (dyspozytorski) / jasny (techniczny)',
 
   inspectorHeading: 'Inspektor',
   inspectorEmpty: 'Zaznacz obiekt, aby zobaczyć szczegóły',

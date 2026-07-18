@@ -1,11 +1,19 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { render, screen, cleanup } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AppShell } from '../AppShell';
 import { useShellStore } from '../useShellStore';
 import { SHELL_STRINGS } from '../strings';
+import { App } from '../../../App';
+import { useThemeModeStore } from '../../theme/themeMode';
+
+// Kanwa SLD (ciężki komponent canvas) jest atrapowana — ten test sprawdza
+// sterownik motywu (wrapper App + html[data-theme]), nie silnik SLD.
+vi.mock('../../../ui/sld/v3/canvas/SldCanvasV3Workspace', () => ({
+  SldCanvasV3Workspace: () => null,
+}));
 
 function resetShell() {
   localStorage.clear();
@@ -67,6 +75,38 @@ describe('Powłoka — ścieżka klawiatury', () => {
     for (const id of ['mvd-calculate', 'mvd-save', 'mvd-theme-toggle', 'mvd-reconnect']) {
       expect(screen.getByTestId(id).getAttribute('tabindex')).not.toBe('-1');
     }
+  });
+});
+
+describe('Powłoka — przełącznik motywu (jeden sterownik)', () => {
+  beforeEach(() => {
+    resetShell();
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true } as Response));
+    useThemeModeStore.setState({ mode: 'dark_scada' });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    useThemeModeStore.setState({ mode: 'dark_scada' });
+  });
+
+  it('natywny klik w przełącznik zmienia html[data-theme] i wrapper App RAZEM', async () => {
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+
+    // Start: tryb dyspozytorski — html[data-theme] i wrapper zgodne.
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark_scada');
+    expect(container.querySelector('.mv-dark-scada')).not.toBeNull();
+    expect(container.querySelector('.mv-light-technical')).toBeNull();
+
+    // Realna ścieżka użytkownika: natywny klik w przycisk paska tytułowego.
+    await user.click(screen.getByTestId('mvd-theme-toggle'));
+
+    // Po przełączeniu OBA sterowniki idą razem (brak mieszanki motywów).
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light_technical');
+    expect(container.querySelector('.mv-light-technical')).not.toBeNull();
+    expect(container.querySelector('.mv-dark-scada')).toBeNull();
   });
 });
 

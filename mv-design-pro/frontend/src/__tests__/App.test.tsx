@@ -1,9 +1,11 @@
 /**
- * Test korzenia motywu dark-SCADA (karta U4 §4).
+ * Test korzenia motywu (karta U4 §4 + TM1 §0.2).
  *
- * App to cienki wrapper aktywujący kanoniczny motyw ekranowy: renderuje AppRoot
- * wewnątrz elementu z markerami `mv-dark-scada` + `data-ui-theme="dark-scada"`.
- * Sprawdzamy obecność markerów oraz brak regresji montażu AppRoot.
+ * App to cienki wrapper aktywujący kanoniczny motyw ekranowy. JEDEN STEROWNIK:
+ * wrapper renderuje się WARUNKOWO od `useThemeModeStore`:
+ *   dark_scada       → markery `mv-dark-scada` + `data-ui-theme="dark-scada"`,
+ *   light_technical  → markery `mv-light-technical` + `data-ui-theme="light-technical"`.
+ * Sprawdzamy obie gałęzie, przełączanie store→wrapper oraz brak regresji montażu.
  */
 import { render, screen, cleanup, act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -11,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../App';
 import type { EnergyNetworkModel } from '../types/enm';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
+import { useThemeModeStore } from '../ui2/theme/themeMode';
 
 // Kanwa SLD (ciężki komponent canvas) jest atrapowana — test korzenia motywu
 // sprawdza kontrakt markerów i montaż powłoki, nie silnik SLD.
@@ -45,12 +48,14 @@ function snapshotZRewizja(revision: number): EnergyNetworkModel {
   } as unknown as EnergyNetworkModel;
 }
 
-describe('U4 — korzeń motywu dark-SCADA', () => {
+describe('U4/TM1 — korzeń motywu (jeden sterownik)', () => {
   beforeEach(() => {
     window.history.replaceState(null, '', '/');
     window.location.hash = '';
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true } as Response));
+    localStorage.clear();
     act(() => {
+      useThemeModeStore.setState({ mode: 'dark_scada' });
       useSnapshotStore.setState({ snapshot: snapshotZRewizja(5) });
     });
   });
@@ -59,19 +64,51 @@ describe('U4 — korzeń motywu dark-SCADA', () => {
     cleanup();
     vi.unstubAllGlobals();
     act(() => {
+      useThemeModeStore.setState({ mode: 'dark_scada' });
       useSnapshotStore.setState({ snapshot: null });
     });
   });
 
-  it('renderuje AppRoot wewnątrz korzenia z markerami motywu', () => {
+  it('gałąź dark_scada — markery mv-dark-scada + data-ui-theme="dark-scada"', () => {
     const { container } = render(<App />);
     const korzen = container.querySelector('.mv-dark-scada');
     expect(korzen).not.toBeNull();
     expect(korzen?.getAttribute('data-ui-theme')).toBe('dark-scada');
+    // Druga gałąź nie jest zamontowana jednocześnie (jeden wrapper = jeden motyw).
+    expect(container.querySelector('.mv-light-technical')).toBeNull();
     // AppRoot montuje się bez regresji — jego korzeń (canonical-layout) jest
     // dzieckiem wrappera motywu.
     const powloka = screen.getByTestId('canonical-layout');
     expect(powloka).toBeTruthy();
     expect(korzen?.contains(powloka)).toBe(true);
+  });
+
+  it('gałąź light_technical — markery mv-light-technical + data-ui-theme="light-technical"', () => {
+    act(() => {
+      useThemeModeStore.setState({ mode: 'light_technical' });
+    });
+    const { container } = render(<App />);
+    const korzen = container.querySelector('.mv-light-technical');
+    expect(korzen).not.toBeNull();
+    expect(korzen?.getAttribute('data-ui-theme')).toBe('light-technical');
+    expect(container.querySelector('.mv-dark-scada')).toBeNull();
+    const powloka = screen.getByTestId('canonical-layout');
+    expect(korzen?.contains(powloka)).toBe(true);
+  });
+
+  it('zmiana store przełącza wrapper (jeden sterownik: store → wrapper)', () => {
+    const { container } = render(<App />);
+    expect(container.querySelector('.mv-dark-scada')).not.toBeNull();
+    expect(container.querySelector('.mv-light-technical')).toBeNull();
+
+    act(() => {
+      useThemeModeStore.getState().toggle();
+    });
+
+    expect(container.querySelector('.mv-light-technical')).not.toBeNull();
+    expect(container.querySelector('.mv-dark-scada')).toBeNull();
+    expect(container.querySelector('.mv-light-technical')?.getAttribute('data-ui-theme')).toBe(
+      'light-technical',
+    );
   });
 });
