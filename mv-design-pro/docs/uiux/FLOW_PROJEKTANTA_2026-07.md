@@ -31,6 +31,12 @@ konflikt z interpretacją kanonu zarejestrowany jako **V12K-041**.
 4. **System wizualny:** wyłącznie tokeny `--mvd-*`, jedna skala promieni
    (10 px sekcja / 8 px karta / 999 px chip), etykiety mono, oba motywy.
 5. Fizyka i werdykty wyłącznie z backendu (bez zmian — CLAUDE.md).
+6. **Zdolność bez realnego dostawcy = defekt uzupełniany NATYCHMIAST end-to-end**
+   (dyrektywa właściciela 2026-07-18: „tego typu braki zawsze uzupełniasz
+   end-to-end, nigdy nic na potem"). Wykrycie phantoma (componentKey bez
+   komponentu, ekran-atrapa, martwa zdolność) ⇒ karta realnego dostawcy
+   w TEJ samej kolejce, przed nowymi funkcjami; rejestr „do zlecenia" nie
+   jest poczekalnią — pozycje schodzą na bieżąco.
 
 ## 1. Etapy pracy inżyniera (globalna mapa)
 
