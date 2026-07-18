@@ -794,7 +794,7 @@ def run_protection_coordination(
 
     return ProtectionCoordinationResult(
         solver_version=PROTECTION_IEC60255_SOLVER_VERSION,
-        relay_pairs=tuple(tuple(p) for p in pair_ids),
+        relay_pairs=tuple(pair_ids),
         selectivity_results=tuple(all_selectivity),
         i2t_results=tuple(unique_i2t),
         overall_verdict=overall,

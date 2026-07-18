@@ -51,9 +51,6 @@ import {
   computeInrushCurrent,
 } from '../transformerContract';
 import {
-  analyzeFullShortCircuit,
-} from '../shortCircuitNetworkContract';
-import {
   computeEarthingRequirement,
   permittedFaultVoltageVfromDurationS,
   computeEarthingFaultCurrent,
@@ -73,6 +70,15 @@ import {
 // odwzorowuje kontrakt 1:1 (kształt jak `CableVoltageDropResponse` /
 // `CableRatedCurrentResponse`).
 function cableSolverResponse(url: string, body: Record<string, number>) {
+  if (url.endsWith('/api/solver/transformer-rated-currents-preview')) {
+    const apparentVa = body.rated_power_kva * 1000;
+    return {
+      primary_current_a: apparentVa / (Math.sqrt(3) * body.primary_voltage_kv * 1000),
+      secondary_current_a: apparentVa / (Math.sqrt(3) * body.secondary_voltage_kv * 1000),
+      formula_ref: 'I = S_n / (√3·U_n)',
+      assumptions: ['Uklad 3-fazowy symetryczny; wspolczynnik linii √3.'],
+    };
+  }
   if (url.endsWith('/api/solver/cable-rated-current-preview')) {
     const apparentVa = (body.active_power_kw * 1000) / body.cos_phi;
     return {
@@ -208,12 +214,12 @@ describe('Designer Flow End-to-End — naturalny flow projektanta', () => {
     expect(burden.ok).toBe(true);
   });
 
-  it('FLOW 8 (Transformator): TR 630 kVA + inrush + protection', () => {
+  it('FLOW 8 (Transformator): TR 630 kVA + inrush + protection', async () => {
     const t = TRANSFORMER_REFERENCE_CATALOG[0];
     expect(t.ratedPowerKva).toBe(630);
-    const { primaryNominalA } = computeTransformerNominalCurrents(t);
+    const { primaryNominalA } = await computeTransformerNominalCurrents(t);
     expect(primaryNominalA).toBeCloseTo(24.25, 1);
-    const inrush = computeInrushCurrent(t);
+    const inrush = await computeInrushCurrent(t);
     expect(inrush).toBeGreaterThan(200); // 10× In ≈ 242 A
   });
 
@@ -248,27 +254,10 @@ describe('Designer Flow End-to-End — naturalny flow projektanta', () => {
     expect(moduleB.some((r) => r.article === 'Art. 15.2')).toBe(true);
   });
 
-  it('FLOW 16 (Analiza sieciowa): IEC 60909-0 SC + Ith/Idyn', () => {
-    const analysis = analyzeFullShortCircuit({
-      system: {
-        shortCircuitPowerMva: 270.43,
-        nominalVoltageKv: 15,
-        rxRatio: 0.1,
-        voltageFactor: 1.10,
-      },
-      cable: {
-        r0_ohm_per_km: 0.125, x0_ohm_per_km: 0.115, lengthKm: 4.55,
-      },
-      faultDurationSec: 0.36,
-      nFactor: 1.0,
-    });
-    // Excel MT880 v3: Ik3 ≈ 6.04 kA w PCC.
-    expect(analysis.currents.ik3_ka).toBeGreaterThan(5.5);
-    expect(analysis.currents.ik3_ka).toBeLessThan(6.5);
-    // κ ≈ 1.27 dla R/X = 0.46.
-    expect(analysis.kappa).toBeGreaterThan(1.1);
-    expect(analysis.kappa).toBeLessThan(1.5);
-  });
+  // Analiza sieciowa (Ik3 IEC 60909-0) NIE liczy się w UI — zdolność podglądu
+  // zwarcia dostarcza realny solver backendu `POST /api/solver/grid-source-preview`
+  // (relokacja martwego łańcucha Ik3 z kreatora, karta R2). Parytet i walidacja
+  // pokryte testami backendu solvera zwarciowego.
 
   it('FLOW 17 (Readiness): 29-osiowa macierz + can-run flags', () => {
     const matrix = buildReadinessMatrix();

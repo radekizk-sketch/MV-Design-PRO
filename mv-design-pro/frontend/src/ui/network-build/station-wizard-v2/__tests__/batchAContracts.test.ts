@@ -4,7 +4,7 @@
  *   Krok 8 — Transformator (OLTC + chłodzenie + inrush)
  *   Krok 13 — Zabezpieczenia (TCC + LoM + backup per pole)
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   APPARATUS_REFERENCE_CATALOG,
@@ -12,6 +12,7 @@ import {
   getApparatusByType,
   getApparatusByManufacturer,
 } from '../apparatusCatalogContract';
+import type { TransformerRatedCurrentsRequest } from '../../forms/transformerRatedCurrentsApi';
 import {
   TRANSFORMER_REFERENCE_CATALOG,
   computeTransformerNominalCurrents,
@@ -133,42 +134,99 @@ describe('TRANSFORMER_REFERENCE_CATALOG — typowe TR 15/0.4 kV', () => {
   });
 });
 
+// Fizyka prądów znamionowych (In = Sn/(√3·Un)) liczy się w backendzie; mock
+// końcówki `/api/solver/transformer-rated-currents-preview` odwzorowuje kontrakt
+// 1:1 (kształt jak `TransformerRatedCurrentsResponse`). Parytet liczbowy wzoru
+// jest osobno pokryty testem backendu (`test_transformer_rated_currents.py`).
+function transformerSolverResponse(body: TransformerRatedCurrentsRequest) {
+  const apparentVa = body.rated_power_kva * 1000;
+  return {
+    primary_current_a: apparentVa / (Math.sqrt(3) * body.primary_voltage_kv * 1000),
+    secondary_current_a: apparentVa / (Math.sqrt(3) * body.secondary_voltage_kv * 1000),
+    formula_ref: 'I = S_n / (√3·U_n)',
+    assumptions: ['Uklad 3-fazowy symetryczny; wspolczynnik linii √3.'],
+  };
+}
+
 describe('computeTransformerNominalCurrents — In = Sn/(√3·Un)', () => {
-  it('TR 630 kVA 15/0.4 kV → I1=24.25A, I2=909.3A', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        expect(String(input)).toBe('/api/solver/transformer-rated-currents-preview');
+        const body = JSON.parse(String(init?.body ?? '{}')) as TransformerRatedCurrentsRequest;
+        return { ok: true, json: async () => transformerSolverResponse(body) } as Response;
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('TR 630 kVA 15/0.4 kV → I1=24.25A, I2=909.3A', async () => {
     const t = TRANSFORMER_REFERENCE_CATALOG[0];
-    const { primaryNominalA, secondaryNominalA } = computeTransformerNominalCurrents(t);
+    const { primaryNominalA, secondaryNominalA } = await computeTransformerNominalCurrents(t);
     // I1 = 630_000 / (√3 × 15_000) = 630000/25981 = 24.25 A.
     expect(primaryNominalA).toBeCloseTo(24.25, 1);
     // I2 = 630_000 / (√3 × 400) = 909.3 A.
     expect(secondaryNominalA).toBeCloseTo(909.3, 0);
   });
 
-  it('TR 1000 kVA → I1 ≈ 38.5 A', () => {
+  it('TR 1000 kVA → I1 ≈ 38.5 A', async () => {
     const t = TRANSFORMER_REFERENCE_CATALOG[2]; // 1000 kVA
-    const { primaryNominalA } = computeTransformerNominalCurrents(t);
+    const { primaryNominalA } = await computeTransformerNominalCurrents(t);
     expect(primaryNominalA).toBeCloseTo(38.5, 1);
   });
 });
 
 describe('computeInrushCurrent — Iinrush = factor × In', () => {
-  it('TR ABB 630 (factor=10) → Iinrush ≈ 242 A', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as TransformerRatedCurrentsRequest;
+        return { ok: true, json: async () => transformerSolverResponse(body) } as Response;
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('TR ABB 630 (factor=10) → Iinrush ≈ 242 A', async () => {
     const t = TRANSFORMER_REFERENCE_CATALOG[0];
-    const inrush = computeInrushCurrent(t);
+    const inrush = await computeInrushCurrent(t);
     // 10 × 24.25 = 242.5 A.
     expect(inrush).toBeCloseTo(242.5, 0);
   });
 
-  it('TR Siemens dry-type (factor=12) ma wyższy inrush', () => {
+  it('TR Siemens dry-type (factor=12) ma wyższy inrush', async () => {
     const tABB = TRANSFORMER_REFERENCE_CATALOG[0];
     const tSiemens = TRANSFORMER_REFERENCE_CATALOG[1];
-    expect(computeInrushCurrent(tSiemens)).toBeGreaterThan(computeInrushCurrent(tABB));
+    expect(await computeInrushCurrent(tSiemens)).toBeGreaterThan(await computeInrushCurrent(tABB));
   });
 });
 
 describe('evaluateTransformerProtection — bezpiecznik HRC + CT primary', () => {
-  it('TR 630 + fuse 63A + CT 200A → fuseInrushOk + fuseSelectiveOk + ctOk', () => {
+  beforeEach(() => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+        const body = JSON.parse(String(init?.body ?? '{}')) as TransformerRatedCurrentsRequest;
+        return { ok: true, json: async () => transformerSolverResponse(body) } as Response;
+      }),
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('TR 630 + fuse 63A + CT 200A → fuseInrushOk + fuseSelectiveOk + ctOk', async () => {
     const t = TRANSFORMER_REFERENCE_CATALOG[0];
-    const result = evaluateTransformerProtection({
+    const result = await evaluateTransformerProtection({
       transformer: t,
       fuseRatingA: 63,
       ctPrimaryRatingA: 50,  // 50A — typical for SN side of small TR
@@ -181,9 +239,9 @@ describe('evaluateTransformerProtection — bezpiecznik HRC + CT primary', () =>
     expect(result.ctRatingOk).toBe(false);
   });
 
-  it('Bezpiecznik za mały (≤ 2 × In) → fuseInrushOk = false', () => {
+  it('Bezpiecznik za mały (≤ 2 × In) → fuseInrushOk = false', async () => {
     const t = TRANSFORMER_REFERENCE_CATALOG[0];
-    const result = evaluateTransformerProtection({
+    const result = await evaluateTransformerProtection({
       transformer: t, fuseRatingA: 40, ctPrimaryRatingA: 50,
     });
     // 2 × 24.25 = 48.5; 40 < 48.5 → fail.

@@ -5,7 +5,7 @@
  * inżynierskim z odpowiedniego modułu. Pełne formularze formularzowe to
  * praca dla kolejnych iteracji — tutaj prezentujemy strukturę.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { clsx } from 'clsx';
 
 import type { StationWizardStepId } from './stationWizardContract';
@@ -16,7 +16,11 @@ import { ReadinessMatrixGrid } from './ReadinessMatrixGrid';
 import { VENDOR_SWITCHGEAR_CATALOG, type VendorSwitchgearTemplate } from './vendorSwitchgearCatalog';
 import { INTERLOCKING_RULES, buildInterlockMatrix } from './interlockingRules';
 import { APPARATUS_REFERENCE_CATALOG } from './apparatusCatalogContract';
-import { TRANSFORMER_REFERENCE_CATALOG, computeTransformerNominalCurrents } from './transformerContract';
+import {
+  TRANSFORMER_REFERENCE_CATALOG,
+  computeTransformerNominalCurrents,
+  type TransformerNominalCurrents,
+} from './transformerContract';
 import { CT_REFERENCE_200_3CORE } from './ctMultiCoreContract';
 import { VT_REFERENCE_4WINDING } from './vtMultiWindingContract';
 import { METER_REFERENCE_CATALOG } from './metersContract';
@@ -423,7 +427,31 @@ function StepMeters() {
 // ============================================================================
 function StepTrafo() {
   const t = TRANSFORMER_REFERENCE_CATALOG[0];
-  const { primaryNominalA, secondaryNominalA } = computeTransformerNominalCurrents(t);
+  const [currents, setCurrents] = useState<TransformerNominalCurrents | null>(null);
+  const [currentsError, setCurrentsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    computeTransformerNominalCurrents(t, { signal: controller.signal })
+      .then((result) => {
+        setCurrents(result);
+        setCurrentsError(null);
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setCurrentsError(error instanceof Error ? error.message : String(error));
+      });
+    return () => controller.abort();
+  }, [t]);
+
+  // Warstwa prezentacji tylko prezentuje wartości z backendu — brak lokalnego
+  // liczenia. Do czasu odpowiedzi: „Obliczanie…"; błąd: uczciwy komunikat PL.
+  const formatCurrent = (value: number | undefined): string => {
+    if (currentsError) return 'Niedostępne (backend solvera)';
+    if (value === undefined) return 'Obliczanie…';
+    return `${value.toFixed(2)} A`;
+  };
+
   return (
     <CardSection label="Transformator SN/nN" testId="step-body-trafo">
       <DataGrid rows={[
@@ -436,8 +464,8 @@ function StepTrafo() {
         { k: 'Straty obciążeniowe', v: `${t.loadLossW} W` },
         { k: 'Chłodzenie', v: t.cooling },
         { k: 'Inrush factor', v: `${t.inrushFactor} × In` },
-        { k: 'I1n (15 kV)', v: `${primaryNominalA.toFixed(2)} A` },
-        { k: 'I2n (0.4 kV)', v: `${secondaryNominalA.toFixed(2)} A` },
+        { k: 'I1n (15 kV)', v: formatCurrent(currents?.primaryNominalA) },
+        { k: 'I2n (0.4 kV)', v: formatCurrent(currents?.secondaryNominalA) },
       ]} />
     </CardSection>
   );

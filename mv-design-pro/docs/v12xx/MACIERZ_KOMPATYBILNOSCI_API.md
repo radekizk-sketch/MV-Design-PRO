@@ -235,6 +235,7 @@ Data wejscia statusow: 2026-05-24.
 | `POST /api/solver/cable-rated-current-preview` | v12xx | aktywny | 2026-07-18 | - | Podglad pradu znamionowego kabla z mocy przylaczeniowej bez mutacji modelu. | cable voltage drop preview tests | Architekt solverow |
 | `POST /api/solver/cable-voltage-drop-preview` | v12xx | aktywny | 2026-07-18 | - | Podglad spadku napiecia na kablu SN bez mutacji modelu. | cable voltage drop preview tests | Architekt solverow |
 | `POST /api/solver/grid-source-preview` | v12xx | aktywny | 2026-05-24 | - | Podglad parametrow zrodla GPZ bez mutacji modelu. | grid source preview tests | Architekt solverow |
+| `POST /api/solver/transformer-rated-currents-preview` | v12xx | aktywny | 2026-07-18 | - | Podglad pradow znamionowych transformatora (I1/I2 z mocy znamionowej) bez mutacji modelu. | transformer rated currents preview tests | Architekt solverow |
 | `POST /api/station-templates/{template_id}/apply` | v12xx | aktywny | 2026-05-24 | - | Zastosowanie szablonu stacji przez operacje domenowe. | station template tests | Architekt stacji |
 | `POST /api/station-templates/{template_id}/preview` | v12xx | aktywny | 2026-05-24 | - | Podglad skutkow szablonu stacji bez zapisu. | station template tests | Architekt stacji |
 | `POST /api/v1/catalog/audit2/build-station-payload` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Budowa payloadu konfiguracji stacji audit2. | audit2 catalog tests | Architekt stacji |

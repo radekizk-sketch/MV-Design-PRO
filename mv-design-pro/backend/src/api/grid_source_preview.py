@@ -13,6 +13,10 @@ from network_model.solvers.grid_source_preview import (
     GridSourcePreviewInput,
     compute_grid_source_preview,
 )
+from network_model.solvers.transformer_rated_currents import (
+    TransformerRatedCurrentsInput,
+    compute_transformer_rated_currents,
+)
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["grid-source-preview"])
@@ -178,6 +182,45 @@ def preview_cable_rated_current(
     return CableRatedCurrentResponse(
         rated_current_a=result.rated_current_a,
         apparent_power_kva=result.apparent_power_kva,
+        formula_ref=result.formula_ref,
+        assumptions=list(result.assumptions),
+    )
+
+
+class TransformerRatedCurrentsRequest(BaseModel):
+    rated_power_kva: float
+    primary_voltage_kv: float
+    secondary_voltage_kv: float
+
+
+class TransformerRatedCurrentsResponse(BaseModel):
+    primary_current_a: float
+    secondary_current_a: float
+    formula_ref: str
+    assumptions: list[str]
+
+
+@router.post(
+    "/api/solver/transformer-rated-currents-preview",
+    response_model=TransformerRatedCurrentsResponse,
+)
+def preview_transformer_rated_currents(
+    request: TransformerRatedCurrentsRequest,
+) -> TransformerRatedCurrentsResponse:
+    try:
+        result = compute_transformer_rated_currents(
+            TransformerRatedCurrentsInput(
+                rated_power_kva=request.rated_power_kva,
+                primary_voltage_kv=request.primary_voltage_kv,
+                secondary_voltage_kv=request.secondary_voltage_kv,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return TransformerRatedCurrentsResponse(
+        primary_current_a=result.primary_current_a,
+        secondary_current_a=result.secondary_current_a,
         formula_ref=result.formula_ref,
         assumptions=list(result.assumptions),
     )

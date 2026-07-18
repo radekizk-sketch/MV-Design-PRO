@@ -18,9 +18,9 @@ WHITE BOX, ryzyko rozjazdu z solverem, luka audytu/determinizmu.
 |---|---|---|
 | ~~`ui/network-build/forms/voltageDropValidator.ts`~~ | ~~ΔU~~ **ZRELOKOWANE (R1, 2026-07-18, commit `2057b47a`)** → `network_model/solvers/cable_voltage_drop.py` + `POST /api/solver/cable-voltage-drop-preview`; parytet 8 przypadków ≤1e-9 | walidacja formularza (woła API) |
 | ~~`ui/network-build/station-wizard-v2/cableSelectionContract.ts`~~ | ~~ΔU + prąd znamionowy I=S/(√3·U)~~ **ZRELOKOWANE (R1)** → jw. + `POST /api/solver/cable-rated-current-preview` | kreator stacji (woła API) |
-| `ui/network-build/station-wizard-v2/shortCircuitNetworkContract.ts` | Ik3 = c·U/(√3·Z_total) | kreator stacji |
-| `ui/network-build/station-wizard-v2/transformerContract.ts` | przeliczenia √3 (transformator) | kreator stacji |
-| `ui/network-build/station-wizard-v2/vtMultiWindingContract.ts` | przeliczenia √3 (przekładnik VT) | kreator stacji |
+| ~~`ui/network-build/station-wizard-v2/shortCircuitNetworkContract.ts`~~ | ~~Ik3 = c·U/(√3·Z_total)~~ **USUNIĘTE (R2, 2026-07-18)** — martwa fizyka bez konsumentów LIVE (grep poza testami = 0); zdolność podglądu Ik3 dostarcza realny solver `POST /api/solver/grid-source-preview` (IEC 60909) | — (usunięte z testami) |
+| ~~`ui/network-build/station-wizard-v2/transformerContract.ts`~~ | ~~przeliczenia √3 (transformator)~~ **ZRELOKOWANE (R2, 2026-07-18)** → `network_model/solvers/transformer_rated_currents.py` + `POST /api/solver/transformer-rated-currents-preview`; parytet I1/I2 ≤1e-6 | kreator stacji (woła API) |
+| `ui/network-build/station-wizard-v2/vtMultiWindingContract.ts` | ~~przeliczenia √3 (przekładnik VT)~~ **ROZSTRZYGNIĘTE (R2, 2026-07-18)** — `100/√3 V` to stała katalogowa (znamionowe napięcie wtórne, IEC 61869-3), nie fizyka przepływu: zamieniona na literał `57.735026919`; guard zielony | kreator stacji |
 | `ui/topology/earthingFaultCurrent.ts` | prąd doziemny PN-EN 50522 (Solid/Resistor/Petersen/IT, napięcie dotykowe) | UI topologii |
 | `ui/protection-coordination/tccCurveGenerator.ts` | krzywe IEC 60255 (I/pickup) | koordynacja zabezpieczeń |
 | `ui/protection-coordination/tmsCoordination.ts` | matematyka TMS IEC 60255 | koordynacja zabezpieczeń |

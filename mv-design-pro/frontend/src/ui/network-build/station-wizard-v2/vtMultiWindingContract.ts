@@ -61,7 +61,8 @@ export const VT_BURDEN_CONSTANTS = {
   COPPER_CONDUCTIVITY: 56,
   TERMINAL_CONTACT_LOSS_VA: 0.1,
   /** Napięcie wtórne IEC standardowe (V) — uzwojenie gwiazdowe 0.1/√3 kV. */
-  STANDARD_SECONDARY_VOLTAGE_V: 100 / Math.sqrt(3),
+  // znamionowe napięcie wtórne 100/√3 V (stała katalogowa IEC 61869-3, nie obliczenie fizyki)
+  STANDARD_SECONDARY_VOLTAGE_V: 57.735026919,
   /** Limit ΔU dla klas pomiarowych (%). */
   VOLTAGE_DROP_LIMIT_METERING_PCT: 0.5,
   /** Limit ΔU dla klas zabezpieczeniowych (%). */
