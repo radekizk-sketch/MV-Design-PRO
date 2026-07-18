@@ -129,6 +129,8 @@ podpowiadać) → **pokrycie** (dzisiejszy dostawca) → **luka/plan**.
 | (wzorzec) EkranAnalizTechnicznych | E5-hub | ✅ 2026-07-18 (`75c156cb`) |
 | R1 ΔU/prąd kabla → backend | E2/E6 | ✅ 2026-07-18 (`2057b47a`) |
 | R2 Ik3/prądy znamionowe → backend | E2 | ✅ 2026-07-18 (martwy łańcuch Ik3 usunięty — zdolność = solver IEC 60909 przez grid-source-preview; I1/I2 transformatora → `transformer-rated-currents-preview`, parytet ≤1e-6; 100/√3 = stała katalogowa IEC 61869-3) |
-| F-E3 „następny krok" po zielonej bramce | E3 | do zlecenia |
-| F-E4 „następny krok" po DONE | E4 | do zlecenia |
-| F-E5 ekrany analiz od flow | E5 | do zlecenia (po R2) |
+| F-E3 „następny krok" po zielonej bramce | E3 | ✅ 2026-07-18 (PanelGotowosci: sekcja przy zielonej bramce → Obliczenia) |
+| F-E4 „następny krok" po DONE | E4 | ✅ 2026-07-18 (SzczegolyPrzebiegu: DONE → Wyniki, zdanie per rodzaj) |
+| R3 uziemienie + koordynacja IEC 60255 | E5/E6 | ✅ 2026-07-18 — **EPIKA FIZYKI W UI DOMKNIĘTA** (5 sierot fizyki usuniętych; zdolności backendu: fault_loop/pack Earthing, SelectivityCheck, TCCCurveResponse) |
+| F-E5 ekrany analiz od flow | E5 | do zlecenia |
+| Rozszerzenie ui_no_physics_guard na ui/** | higiena | do zlecenia (przemiarowanie false-positives po domknięciu epiki) |
