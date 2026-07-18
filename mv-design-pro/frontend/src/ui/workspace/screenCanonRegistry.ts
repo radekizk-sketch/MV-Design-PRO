@@ -686,7 +686,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-zabezpieczenia-automatyka',
     canonicalRoute: '/workspace/protection-automation',
     legacyAliases: ['protection_automation'],
-    componentKey: 'ProtectionAutomationSurface',
+    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5b; E-27 ≠ E-28, patrz router)
     testId: 'screen-E-27-protection-automation',
     implemented: true,
     requiresProject: true,
@@ -709,7 +709,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-koordynacja-zabezpieczen',
     canonicalRoute: '/workspace/protection-coordination',
     legacyAliases: ['protection_coordination', 'old:E-28'],
-    componentKey: 'ProtectionCoordinationSurface',
+    componentKey: 'EkranKoordynacji', // dostawca ui2 (metadana, F-E5b; realna strona zamiast atrapy)
     testId: 'screen-E-28-protection-coordination',
     implemented: true,
     requiresProject: true,

@@ -35,11 +35,10 @@ import {
 } from '../network-build/station-der';
 import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
-import { TimeCurrentChart } from '../protection-curves/TimeCurrentChart';
 import { EkranFrt } from '../../ui2/oze/frt';
 import { EkranKontraktuAnalizy } from '../../ui2/wyniki/kontrakt-analizy';
+import { EkranKoordynacji } from '../../ui2/wyniki/koordynacja';
 import { useShellStore } from '../../ui2/shell/useShellStore';
-import type { ProtectionCurve, FaultMarker } from '../protection-curves/types';
 import {
   exportReport,
   exportProofPack,
@@ -112,7 +111,6 @@ import {
 import {
   auditProofPackStatus,
   resolveLatestCompletedRun,
-  generateIec60255SiCurvePoints,
   displayScopeLabel,
   resolveRunLabel,
 } from './routerPureHelpers';
@@ -2192,100 +2190,10 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
 // Funkcja jest pure (deterministyczna) — używana wyłącznie do podglądu UI;
 // rzeczywiste punkty krzywej z solvera protection_iec60255 (backend) zastępują
 // tę tablicę gdy są dostępne.
-// generateIec60255SiCurvePoints moved to routerPureHelpers.ts
-
-function ProtectionCoordinationSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  // Iteracja 14: TCC chart preview z 2 demonstracyjnymi krzywymi
-  // (nadrzędna 51 + podrzędna 50/51) zgodnie z IEC 60255 SI.
-  const sampleCurves: ProtectionCurve[] = useMemo(
-    () => [
-      {
-        id: 'demo-upstream-51',
-        name_pl: 'Nadrzędne 51 (sekcja GPZ)',
-        standard: 'IEC',
-        curve_type: 'SI',
-        pickup_current_a: 600,
-        time_multiplier: 0.5,
-        color: '#dc2626',
-        enabled: true,
-        points: generateIec60255SiCurvePoints(600, 0.5),
-      },
-      {
-        id: 'demo-downstream-51',
-        name_pl: 'Podrzędne 51 (pole liniowe)',
-        standard: 'IEC',
-        curve_type: 'SI',
-        pickup_current_a: 250,
-        time_multiplier: 0.2,
-        color: '#2563eb',
-        enabled: true,
-        points: generateIec60255SiCurvePoints(250, 0.2),
-      },
-    ],
-    [],
-  );
-  const sampleFaults: FaultMarker[] = useMemo(
-    () => [
-      {
-        id: 'sc3f-bus-end',
-        label_pl: 'Zwarcie 3F na końcu ciągu (Ik" = 4,8 kA)',
-        current_a: 4800,
-        fault_type: '3F',
-        location: 'Stacja końcowa',
-      },
-      {
-        id: 'sc1f-bus-end',
-        label_pl: 'Zwarcie 1F doziemne (Ik1 = 1,2 kA)',
-        current_a: 1200,
-        fault_type: '1F',
-        location: 'Stacja końcowa',
-      },
-    ],
-    [],
-  );
-
-  return (
-    <div data-testid="protection-coordination-surface" className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <AnalysisContractPanel
-        surface={surface}
-        title="Koordynacja zabezpieczeń"
-        eyebrow="E-28 · Zabezpieczenia"
-        focusTitle="Kontrakt koordynacji"
-        focusRowsBuilder={(contract) => [
-          { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
-          { label: 'Uziemienie', value: formatContractValue(contract.analysisCaseContext?.assumptions['grounding_assumptions_ref']) },
-          { label: 'Temperatura', value: formatContractValue(contract.analysisCaseContext?.assumptions['temperature_assumptions_ref']) },
-          { label: 'Kompletność zgodności przejściowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
-        ]}
-      />
-      <SectionCard title="Wykres TCC (czasowo-prądowy)" eyebrow="Krzywe IEC 60255">
-        <div data-testid="protection-coordination-tcc" className="space-y-2">
-          <TimeCurrentChart curves={sampleCurves} faultMarkers={sampleFaults} />
-          <p className="text-xs text-slate-500">
-            Krzywe referencyjne (IEC 60255 SI) pokazują oś i skalę log-log.
-            Punkty krzywej (CurvePoint[]) są prezentowane jako dane wejściowe
-            modułu zabezpieczeń, a tabela jest widokiem tylko do odczytu.
-          </p>
-          <p className="text-xs text-slate-500">
-            Markery zwarciowe (Ik″ 3F i Ik 1F) ilustrują typowe punkty pracy.
-            Aktywne obliczenie:{' '}
-            {surface.routeState.payload?.runId ? 'wybrane obliczenie aktywne.' : 'nie wybrano obliczenia.'}
-          </p>
-        </div>
-      </SectionCard>
-      <SectionCard title="Selektywność i marginesy" eyebrow="Wynik">
-        <p className="text-sm text-slate-600">
-          Selektywność zabezpieczeń jest mierzona w marginesach numerycznych
-          (Δt, Δprąd) — zgodnie z PROTECTION_CANONICAL_ARCHITECTURE bez
-          werdyktów OK/FAIL. Pełna analiza par nadrzędne ↔ podrzędne wymaga
-          uzgodnienia w E-27 (Ustawienia zabezpieczeń).
-        </p>
-      </SectionCard>
-    </div>
-  );
-}
+// ProtectionCoordinationSurface (atrapa z demonstracyjnymi krzywymi IEC 60255
+// liczonymi w UI) USUNIĘTA w karcie F-E5b. Dostawcą E-28 jest realna strona
+// `ProtectionCoordinationPage` opakowana ramą prowadzącą ui2 `EkranKoordynacji`
+// (renderowana w `renderSurfaceBody`, case 'E-28').
 
 function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const isPublicCatalogScreen = surface.screenCode === 'E-38';
@@ -2911,13 +2819,18 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-04':
       return <ModelGapsSurface surface={surface} />;
     case 'E-28':
-      return <ProtectionCoordinationSurface surface={surface} />;
+      return <EkranKoordynacji />;
     case 'E-29':
       return <EkranKontraktuAnalizy surface={surface} />;
     case 'E-26':
       return <ComplianceSurface />;
     case 'E-27':
-      return <ProtectionCoordinationSurface surface={surface} />;
+      // E-27 „Zabezpieczenia i automatyka" to INNA zdolność niż E-28 „Koordynacja
+      // zabezpieczeń" (rejestr: odrębny componentKey / trasa / etykieta). Po
+      // usunięciu wspólnej atrapy (F-E5b) E-27 nie może jej dziedziczyć ani być
+      // scalony z koordynacją — otrzymuje uczciwego dostawcę kontraktu analizy
+      // ui2 (precedens F-E5a), bez fabrykacji danych.
+      return <EkranKontraktuAnalizy surface={surface} />;
     case 'E-30':
       return <EkranKontraktuAnalizy surface={surface} />;
     case 'E-31':

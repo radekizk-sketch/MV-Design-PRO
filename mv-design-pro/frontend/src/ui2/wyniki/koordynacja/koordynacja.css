@@ -1,0 +1,89 @@
+/*
+ * Ekran „Koordynacja zabezpieczeń" (rama prowadząca F-E5b) — wyłącznie tokeny
+ * powłoki (--mvd-*), oba motywy z automatu. Jedna skala promieni: 10px sekcja.
+ * Rama otacza realną stronę `ProtectionCoordinationPage` bez ingerencji w jej wnętrze.
+ */
+
+.mvd-koordynacja {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-koordynacja-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-koordynacja-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--mvd-accent);
+}
+
+.mvd-koordynacja-cel {
+  margin: 0;
+  max-width: 82ch;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+/* --- Uczciwy stan zerowy --------------------------------------------------- */
+
+.mvd-koordynacja-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.mvd-koordynacja-stan h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--mvd-ink);
+}
+
+.mvd-koordynacja-stan p {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+.mvd-koordynacja-akcja {
+  margin-top: 4px;
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 6px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent-ink);
+  cursor: pointer;
+}
+
+.mvd-koordynacja-akcja:hover {
+  filter: brightness(1.08);
+}
+
+.mvd-koordynacja-akcja:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* --- Osadzenie realnej strony --------------------------------------------- */
+
+.mvd-koordynacja-strona {
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  overflow: hidden;
+}

@@ -58,30 +58,6 @@ export function resolveLatestCompletedRun(runs: ExecutionRun[]): ExecutionRun | 
     })[0] ?? null;
 }
 
-export interface CurvePoint {
-  current_a: number;
-  current_multiple: number;
-  time_s: number;
-}
-
-/**
- * IEC 60255-151 Standard Inverse: t = TMS × 0.14 / (M^0.02 - 1)
- *
- * Stałe per krzywa SI: k=0.14, α=0.02. Wartość czasu cap'owana na 60 s
- * dla bardzo niskich krotności.
- */
-export function generateIec60255SiCurvePoints(
-  pickupCurrentA: number,
-  tms: number,
-): CurvePoint[] {
-  const ratios = [1.05, 1.5, 2, 3, 5, 10, 20, 50, 100];
-  return ratios.map((m) => {
-    const denom = Math.pow(m, 0.02) - 1;
-    const time = denom > 0 ? (tms * 0.14) / denom : 60;
-    return {
-      current_a: pickupCurrentA * m,
-      current_multiple: m,
-      time_s: Math.min(time, 60),
-    };
-  });
-}
+// generateIec60255SiCurvePoints + CurvePoint USUNIĘTE w karcie F-E5b:
+// fizyka krzywej IEC 60255 (t = TMS·0,14/(M^0,02−1)) nie należy do warstwy
+// prezentacji. Krzywe TCC dostarcza backend przez `protection-coordination/api.ts`.
