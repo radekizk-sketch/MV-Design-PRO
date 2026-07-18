@@ -36,11 +36,33 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     });
   });
 
-  it('generuje sekcje GPZ z polami liniowymi wg liczników', () => {
-    const payload = zbudujPayloadZrodla(daneKompletne({ sections_count: 2, line_fields_per_section: 3 }));
-    const sekcje = payload.gpz_sections as Array<{ line_field_names: string[] }>;
+  it('generuje sekcje GPZ z per-sekcyjną liczbą pól liniowych', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      sections_count: 2,
+      sekcje: [
+        { nazwa: 'Sekcja A', liczbaPol: 3 },
+        { nazwa: 'Sekcja B', liczbaPol: 1 },
+      ],
+    }));
+    const sekcje = payload.gpz_sections as Array<{ name: string; line_field_names: string[] }>;
     expect(sekcje).toHaveLength(2);
+    expect(sekcje[0].name).toBe('Sekcja A');
     expect(sekcje[0].line_field_names).toHaveLength(3);
+    expect(sekcje[1].line_field_names).toHaveLength(1);
+  });
+
+  it('tryb ręczny (110 kV) buduje manual_equivalent i sk3_hv_mva zamiast katalogu', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      manual_mode: true,
+      short_circuit_input_side: 'HV_110',
+      hv_voltage_kv: 110,
+      sk3_hv_mva: 2500,
+      rx_ratio: 0.1,
+    }));
+    expect(payload.catalog_binding).toBeUndefined();
+    expect(payload.sk3_hv_mva).toBe(2500);
+    expect(payload.source_mode).toBe('EKSPERCKI_RECZNY');
+    expect(payload.manual_equivalent).toMatchObject({ short_circuit_input_side: 'HV_110', sk3_hv_mva: 2500 });
   });
 
   it('mapuje uziemienie bezpośrednie solid_grounded → directly_grounded', () => {
@@ -83,6 +105,31 @@ describe('walidujFormularz', () => {
     expect(bledy.some((b) => b.field === 'gpz_line_field_apparatus_catalog_ref')).toBe(true);
   });
 
+  it('tryb ręczny 110 kV wymaga Sk″ i napięcia strony WN (nie katalogu)', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      short_circuit_input_side: 'HV_110',
+      hv_voltage_kv: null,
+      sk3_hv_mva: null,
+    }));
+    expect(bledy.some((b) => b.field === 'catalog_ref')).toBe(false);
+    expect(bledy.some((b) => b.field === 'hv_voltage_kv')).toBe(true);
+    expect(bledy.some((b) => b.field === 'sk3_hv_mva')).toBe(true);
+  });
+
+  it('tryb ręczny impedancja wymaga dodatniej reaktancji X', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      manual_mode: true,
+      catalog_ref: null,
+      short_circuit_input_side: 'SN',
+      short_circuit_mode: 'IMPEDANCE',
+      r_ohm: 0.1,
+      x_ohm: null,
+    }));
+    expect(bledy.some((b) => b.field === 'x_ohm')).toBe(true);
+  });
+
   it('odrzuca liczbę sekcji spoza zakresu 1-4', () => {
     expect(walidujFormularz(daneKompletne({ sections_count: 5 })).some((b) => b.field === 'sections_count')).toBe(true);
     expect(walidujFormularz(daneKompletne({ sections_count: 0 })).some((b) => b.field === 'sections_count')).toBe(true);
@@ -118,11 +165,14 @@ describe('wierszeGotowosci', () => {
 });
 
 describe('scalDanePoczatkowe / oznaczenie', () => {
-  it('wymusza tryb katalogowy i ogranicza liczniki', () => {
+  it('ogranicza liczniki i synchronizuje sekcje; zachowuje tryb ekspercki', () => {
     const dane = scalDanePoczatkowe({ manual_mode: true, sections_count: 9, line_fields_per_section: 99 });
-    expect(dane.manual_mode).toBe(false);
+    // Tryb ręczny (ekspercki) NIE jest wymuszany na katalogowy (poprawka po v1).
+    expect(dane.manual_mode).toBe(true);
     expect(dane.sections_count).toBe(4);
     expect(dane.line_fields_per_section).toBe(12);
+    // Tablica sekcji zsynchronizowana z liczbą sekcji.
+    expect(dane.sekcje).toHaveLength(4);
   });
 
   it('buduje czytelne oznaczenie GPZ', () => {

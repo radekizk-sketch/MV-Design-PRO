@@ -175,10 +175,10 @@ describe('workspace shell V12.5 surfaces', () => {
     useReadinessLiveStore.getState().clear();
   });
 
-  it('renderuje formularz operacji GPZ zamiast statycznego edytora E-10', () => {
+  it('renderuje formularz operacji GPZ w regionie głównym (pełna szerokość) zamiast statycznego edytora E-10', () => {
     useNetworkBuildStore.getState().openOperationForm('add_grid_source_sn');
 
-    render(<WorkspaceSurfaceRouter region="panel" />);
+    render(<WorkspaceSurfaceRouter region="main" />);
 
     expect(screen.getByRole('heading', { level: 2, name: 'Dodaj źródło zasilania GPZ' })).toBeInTheDocument();
     expect(screen.getByTestId('add-grid-source-form')).toBeInTheDocument();

@@ -34,6 +34,15 @@ export interface KreatorRamaProps {
   akcjaAnuluj: AkcjaKreatora;
   children: ReactNode;
   testid?: string;
+  /** Wariant pełnoekranowy: układ dwukolumnowy (kroki+pola | stała kolumna boczna). */
+  pelny?: boolean;
+  /** Stała kolumna boczna (podsumowanie + gotowość) — tylko w wariancie pełnym. */
+  aside?: ReactNode;
+  /** Nawigacja kroków w stopce (wstecz/dalej). */
+  krokWstecz?: AkcjaKreatora;
+  krokDalej?: AkcjaKreatora;
+  /** Etykieta licznika kroków, np. „Krok 2 z 7". */
+  licznikKrokow?: string;
 }
 
 export function KreatorRama({
@@ -50,9 +59,14 @@ export function KreatorRama({
   akcjaAnuluj,
   children,
   testid,
+  pelny,
+  aside,
+  krokWstecz,
+  krokDalej,
+  licznikKrokow,
 }: KreatorRamaProps) {
   return (
-    <div className="mvd-kreator" data-testid={testid}>
+    <div className={pelny ? 'mvd-kreator mvd-kreator--pelny' : 'mvd-kreator'} data-testid={testid}>
       <header className="mvd-kreator-head">
         <div className="mvd-kreator-head-gora">
           <div>
@@ -86,16 +100,59 @@ export function KreatorRama({
         ) : null}
       </header>
 
-      <div className="mvd-kreator-cialo">
-        {bladGlobalny ? (
-          <p className="mvd-kreator-blad" role="alert" data-testid="mvd-kreator-blad">
-            {bladGlobalny}
-          </p>
-        ) : null}
-        {children}
-      </div>
+      {pelny ? (
+        <div className="mvd-kreator-plansza">
+          <div className="mvd-kreator-plansza-wnetrze">
+            <div className="mvd-kreator-glowna">
+              {bladGlobalny ? (
+                <p className="mvd-kreator-blad" role="alert" data-testid="mvd-kreator-blad">
+                  {bladGlobalny}
+                </p>
+              ) : null}
+              {children}
+            </div>
+            {aside ? <aside className="mvd-kreator-aside" data-testid="mvd-kreator-aside">{aside}</aside> : null}
+          </div>
+        </div>
+      ) : (
+        <div className="mvd-kreator-cialo">
+          {bladGlobalny ? (
+            <p className="mvd-kreator-blad" role="alert" data-testid="mvd-kreator-blad">
+              {bladGlobalny}
+            </p>
+          ) : null}
+          {children}
+        </div>
+      )}
 
       <footer className="mvd-kreator-stopka">
+        {krokWstecz || krokDalej || licznikKrokow ? (
+          <div className="mvd-kreator-stopka-nawigacja">
+            {krokWstecz ? (
+              <button
+                type="button"
+                className="mvd-kreator-btn"
+                disabled={krokWstecz.zablokowana}
+                data-testid={krokWstecz.testid}
+                onClick={krokWstecz.onClick}
+              >
+                {krokWstecz.etykieta}
+              </button>
+            ) : null}
+            {licznikKrokow ? <span className="mvd-kreator-stopka-licznik">{licznikKrokow}</span> : null}
+            {krokDalej ? (
+              <button
+                type="button"
+                className="mvd-kreator-btn"
+                disabled={krokDalej.zablokowana}
+                data-testid={krokDalej.testid}
+                onClick={krokDalej.onClick}
+              >
+                {krokDalej.etykieta}
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {walidacja ? (
           <span className="mvd-kreator-stopka-walidacja" data-testid="mvd-kreator-walidacja">
             {walidacja}

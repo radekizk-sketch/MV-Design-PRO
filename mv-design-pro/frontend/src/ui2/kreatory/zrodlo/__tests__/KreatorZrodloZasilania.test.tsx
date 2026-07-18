@@ -89,27 +89,37 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
 
   afterEach(cleanup);
 
-  it('renderuje ramę prowadzącą z celem i sekcjami', async () => {
+  it('renderuje pełnoekranową ramę: cel, pasek kroków i stałą kolumnę podsumowania', () => {
     render(<KreatorZrodloZasilania />);
     expect(screen.getByTestId('mvd-kreator-zrodlo')).toBeTruthy();
     expect(screen.getByText(/Dodaj Główny Punkt Zasilający/)).toBeTruthy();
-    expect(screen.getByTestId('mvd-kreator-zrodlo-katalog')).toBeTruthy();
-    await waitFor(() =>
-      expect((screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement).value).toBe('GPZ-001'),
-    );
+    expect(screen.getByTestId('mvd-kreator-kroki')).toBeTruthy();
+    expect(screen.getByTestId('mvd-kreator-aside')).toBeTruthy();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-podsumowanie')).toBeTruthy();
+    // Krok 1: identyfikacja widoczna, sekcje dalszych kroków jeszcze nie.
+    expect(screen.getByTestId('mvd-kreator-zrodlo-id')).toBeTruthy();
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-katalog')).toBeNull();
   });
 
-  it('inicjalizuje nazwę z kontekstu operacji', () => {
+  it('inicjalizuje nazwę z kontekstu operacji (krok 1)', () => {
     render(<KreatorZrodloZasilania />);
     expect((screen.getByTestId('mvd-kreator-zrodlo-nazwa') as HTMLInputElement).value).toBe('GPZ Wschód');
   });
 
-  it('zapisuje GPZ operacją domenową add_grid_source_sn (klik natywny)', async () => {
+  it('nawigacja kroków: „Dalej” odsłania krok Źródło z auto-wybranym katalogiem (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
     await waitFor(() =>
       expect((screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement).value).toBe('GPZ-001'),
     );
+  });
+
+  it('zapisuje GPZ operacją domenową add_grid_source_sn z dowolnego kroku (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    // auto-wybór katalogu + aparatu następuje po montażu (efekty), niezależnie od kroku.
+    await waitFor(() => expect(navigateToSldMock).toHaveBeenCalledTimes(0));
     await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
     await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
     const [caseId, op, payload] = executeDomainOperationMock.mock.calls[0];
@@ -135,6 +145,7 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     const user = userEvent.setup();
     appState.activeCaseId = null;
     render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
     await waitFor(() =>
       expect((screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement).value).toBe('GPZ-001'),
     );
@@ -143,12 +154,22 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 
-  it('przełącza zakres na GPZ WN/SN i pokazuje sekcje zaawansowane (klik natywny)', async () => {
+  it('tryb ręczny na kroku Źródło odsłania stronę WN i pola Sk″ (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<KreatorZrodloZasilania />);
-    expect(screen.queryByTestId('mvd-kreator-zrodlo-sekcje')).toBeNull();
-    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zakres-advanced'));
-    expect(screen.getByTestId('mvd-kreator-zrodlo-sekcje')).toBeTruthy();
-    expect(screen.getByTestId('mvd-kreator-zrodlo-zero')).toBeTruthy();
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-tryb-przel-reczny'));
+    expect(screen.getByTestId('mvd-kreator-zrodlo-strona')).toBeTruthy();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-sk3')).toBeTruthy();
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-katalog-select')).toBeNull();
+  });
+
+  it('krok Sekcje i pola pozwala edytować per sekcję (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-sekcje"]') as HTMLElement);
+    expect(screen.getByTestId('mvd-kreator-zrodlo-sekcja-nazwa-0')).toBeTruthy();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-sekcja-nazwa-1')).toBeTruthy();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-aparat-rodzaj')).toBeTruthy();
   });
 });

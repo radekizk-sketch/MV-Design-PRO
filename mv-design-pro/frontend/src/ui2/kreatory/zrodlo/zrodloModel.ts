@@ -24,6 +24,16 @@ import type {
 export type ShortCircuitInputSide = 'SN' | 'HV_110';
 export type GpzLineFieldApparatusKind = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH';
 
+export const MAX_SEKCJI = 4;
+export const MAX_POL_NA_SEKCJE = 12;
+export const MAX_TRANSFORMATOROW = 4;
+
+/** Konfiguracja pojedynczej sekcji szyn GPZ (edycja per sekcja). */
+export interface SekcjaGpz {
+  nazwa: string;
+  liczbaPol: number;
+}
+
 export interface GridSourceFormData {
   source_name: string;
   sn_voltage_kv: number | null;
@@ -44,6 +54,8 @@ export interface GridSourceFormData {
   sections_count: number;
   transformer_count: number;
   line_fields_per_section: number;
+  /** Per-sekcyjna konfiguracja (nazwa + liczba pól); długość synchronizowana z sections_count. */
+  sekcje: SekcjaGpz[];
   manual_mode: boolean;
   zero_sequence_enabled: boolean;
   r0_ohm: number | null;
@@ -82,6 +94,10 @@ export const DANE_DOMYSLNE: GridSourceFormData = {
   sections_count: 2,
   transformer_count: 2,
   line_fields_per_section: 2,
+  sekcje: [
+    { nazwa: 'Sekcja 1', liczbaPol: 2 },
+    { nazwa: 'Sekcja 2', liczbaPol: 2 },
+  ],
   manual_mode: false,
   zero_sequence_enabled: true,
   r0_ohm: null,
@@ -100,20 +116,43 @@ function isBlankValue(value: unknown): boolean {
     || (typeof value === 'string' && value.trim().length === 0);
 }
 
+/** Synchronizuje tablicę sekcji z liczbą sekcji (dopełnia/przycina, zachowuje istniejące). */
+export function normalizujSekcje(
+  sekcje: readonly SekcjaGpz[] | undefined,
+  sectionsCount: number,
+  domyslnaLiczbaPol: number,
+): SekcjaGpz[] {
+  const count = Math.max(1, Math.min(MAX_SEKCJI, Math.trunc(sectionsCount || 1)));
+  const baza = sekcje ?? [];
+  return Array.from({ length: count }, (_unused, index) => {
+    const istn = baza[index];
+    return {
+      nazwa: istn?.nazwa?.trim() ? istn.nazwa : `Sekcja ${index + 1}`,
+      liczbaPol: Math.max(
+        1,
+        Math.min(MAX_POL_NA_SEKCJE, Math.trunc(istn?.liczbaPol || domyslnaLiczbaPol || 1)),
+      ),
+    };
+  });
+}
+
 export function scalDanePoczatkowe(initialData?: Partial<GridSourceFormData>): GridSourceFormData {
   const merged: GridSourceFormData = { ...DANE_DOMYSLNE };
   for (const [key, value] of Object.entries(initialData ?? {})) {
     if (isBlankValue(value)) continue;
     (merged as unknown as Record<string, unknown>)[key] = value;
   }
+  const sectionsCount = Math.max(1, Math.min(MAX_SEKCJI, Math.trunc(merged.sections_count || 1)));
+  const lineFieldsPerSection = Math.max(
+    1,
+    Math.min(MAX_POL_NA_SEKCJE, Math.trunc(merged.line_fields_per_section || 1)),
+  );
   return {
     ...merged,
-    manual_mode: false,
-    short_circuit_input_side: 'SN',
-    short_circuit_mode: 'SHORT_CIRCUIT_POWER',
-    sections_count: Math.max(1, Math.min(4, Math.trunc(merged.sections_count || 1))),
-    transformer_count: Math.max(1, Math.min(4, Math.trunc(merged.transformer_count || 1))),
-    line_fields_per_section: Math.max(1, Math.min(12, Math.trunc(merged.line_fields_per_section || 1))),
+    sections_count: sectionsCount,
+    transformer_count: Math.max(1, Math.min(MAX_TRANSFORMATOROW, Math.trunc(merged.transformer_count || 1))),
+    line_fields_per_section: lineFieldsPerSection,
+    sekcje: normalizujSekcje(merged.sekcje, sectionsCount, lineFieldsPerSection),
   };
 }
 
@@ -160,11 +199,40 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
     errors.push({ field: 'gpz_line_field_apparatus_catalog_ref', message: 'Dobierz aparat SN dla pól liniowych GPZ.' });
   }
 
-  if (!isPositive(data.sk3_mva)) {
-    errors.push({ field: 'sk3_mva', message: `Moc zwarciowa Sk3 musi pochodzić z ${sourceDescriptor}.` });
-  }
-  if (data.rx_ratio === null || data.rx_ratio < 0) {
-    errors.push({ field: 'rx_ratio', message: `Stosunek R/X musi pochodzić z ${sourceDescriptor}.` });
+  if (data.manual_mode) {
+    // Tryb ekspercki: ręczny ekwiwalent zwarciowy (strona SN / 110 kV / impedancja).
+    if (data.short_circuit_input_side === 'HV_110') {
+      if (!isPositive(data.hv_voltage_kv)) {
+        errors.push({ field: 'hv_voltage_kv', message: 'Tryb WN/SN wymaga dodatniego napięcia strony 110 kV.' });
+      }
+      if (!isPositive(data.sk3_hv_mva)) {
+        errors.push({ field: 'sk3_hv_mva', message: 'Podaj moc zwarciową Sk″ na szynie 110 kV.' });
+      }
+      if (data.rx_ratio === null || data.rx_ratio < 0) {
+        errors.push({ field: 'rx_ratio', message: 'Stosunek R/X musi być nieujemny.' });
+      }
+    } else if (data.short_circuit_mode === 'IMPEDANCE') {
+      if (data.r_ohm === null || data.r_ohm < 0) {
+        errors.push({ field: 'r_ohm', message: 'W trybie impedancyjnym rezystancja R musi być nieujemna.' });
+      }
+      if (!isPositive(data.x_ohm)) {
+        errors.push({ field: 'x_ohm', message: 'W trybie impedancyjnym reaktancja X musi być dodatnia.' });
+      }
+    } else {
+      if (!isPositive(data.sk3_mva)) {
+        errors.push({ field: 'sk3_mva', message: 'Moc zwarciowa Sk″ musi być dodatnia.' });
+      }
+      if (data.rx_ratio === null || data.rx_ratio < 0) {
+        errors.push({ field: 'rx_ratio', message: 'Stosunek R/X musi być nieujemny.' });
+      }
+    }
+  } else {
+    if (!isPositive(data.sk3_mva)) {
+      errors.push({ field: 'sk3_mva', message: `Moc zwarciowa Sk″ musi pochodzić z ${sourceDescriptor}.` });
+    }
+    if (data.rx_ratio === null || data.rx_ratio < 0) {
+      errors.push({ field: 'rx_ratio', message: `Stosunek R/X musi pochodzić z ${sourceDescriptor}.` });
+    }
   }
 
   if (data.zero_sequence_enabled) {
@@ -191,13 +259,18 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
 // ------------------------------------------------------ Żądanie podglądu
 
 export function zbudujZadaniePodgladu(data: GridSourceFormData): GridSourcePreviewRequest | null {
-  const previewVoltageKv = data.sn_voltage_kv;
-  const previewSk3Mva = data.sk3_mva;
+  const hv = data.manual_mode && data.short_circuit_input_side === 'HV_110';
+  const previewVoltageKv = hv ? data.hv_voltage_kv : data.sn_voltage_kv;
+  const previewSk3Mva = hv ? data.sk3_hv_mva : data.sk3_mva;
 
   if (!isPositive(previewVoltageKv) || !Number.isFinite(data.thermal_time_s) || data.thermal_time_s <= 0) {
     return null;
   }
-  if (!isPositive(previewSk3Mva) || data.rx_ratio === null || data.rx_ratio < 0) {
+  if (data.manual_mode && data.short_circuit_mode === 'IMPEDANCE') {
+    if (data.r_ohm === null || data.r_ohm < 0 || !isPositive(data.x_ohm)) {
+      return null;
+    }
+  } else if (!isPositive(previewSk3Mva) || data.rx_ratio === null || data.rx_ratio < 0) {
     return null;
   }
   if (
@@ -240,17 +313,21 @@ interface GpzSection {
 }
 
 function buildGpzSections(data: GridSourceFormData): GpzSection[] {
-  const count = Math.max(1, Math.trunc(data.sections_count || 1));
-  const lineFieldsPerSection = Math.max(1, Math.min(12, Math.trunc(data.line_fields_per_section || 1)));
-  return Array.from({ length: count }, (_, index) => ({
-    order: index,
-    name: withIndexedSuffix(data.gpz_section_name, index, count, 'Sekcja GPZ'),
-    line_field_name: data.gpz_line_field_name.trim() || 'Pole liniowe GPZ',
-    line_fields_count: lineFieldsPerSection,
-    line_field_names: Array.from({ length: lineFieldsPerSection }, (_u, fieldIndex) =>
-      withIndexedSuffix(data.gpz_line_field_name, fieldIndex, lineFieldsPerSection, 'Pole liniowe GPZ'),
-    ),
-  }));
+  const count = Math.max(1, Math.min(MAX_SEKCJI, Math.trunc(data.sections_count || 1)));
+  const sekcje = normalizujSekcje(data.sekcje, count, data.line_fields_per_section);
+  const bazaPola = data.gpz_line_field_name.trim() || 'Pole liniowe GPZ';
+  return sekcje.map((sekcja, index) => {
+    const liczbaPol = Math.max(1, Math.min(MAX_POL_NA_SEKCJE, Math.trunc(sekcja.liczbaPol || 1)));
+    return {
+      order: index,
+      name: sekcja.nazwa.trim() || `Sekcja GPZ ${index + 1}`,
+      line_field_name: bazaPola,
+      line_fields_count: liczbaPol,
+      line_field_names: Array.from({ length: liczbaPol }, (_u, fieldIndex) =>
+        withIndexedSuffix(bazaPola, fieldIndex, liczbaPol, 'Pole liniowe GPZ'),
+      ),
+    };
+  });
 }
 
 function buildZeroSequence(data: GridSourceFormData) {
@@ -272,17 +349,44 @@ function buildGrounding(data: GridSourceFormData) {
   return grounding;
 }
 
+function buildManualEquivalent(data: GridSourceFormData): Record<string, unknown> {
+  const common = {
+    voltage_kv: data.sn_voltage_kv,
+    sn_voltage_kv: data.sn_voltage_kv,
+    hv_voltage_kv: data.hv_voltage_kv,
+    short_circuit_input_side: data.short_circuit_input_side,
+    short_circuit_mode: data.short_circuit_mode,
+  };
+  if (data.short_circuit_mode === 'IMPEDANCE') {
+    return {
+      ...common,
+      r_ohm: data.r_ohm,
+      x_ohm: data.x_ohm,
+      ...(data.zero_sequence_enabled
+        ? { r0_ohm: data.r0_ohm, x0_ohm: data.x0_ohm, z0_z1_ratio: data.z0_z1_ratio }
+        : {}),
+    };
+  }
+  return {
+    ...common,
+    ...(data.short_circuit_input_side === 'HV_110'
+      ? { sk3_hv_mva: data.sk3_hv_mva }
+      : { sk3_mva: data.sk3_mva }),
+    rx_ratio: data.rx_ratio,
+  };
+}
+
 export function zbudujPayloadZrodla(data: GridSourceFormData): Record<string, unknown> {
   const catalogBinding = data.manual_mode ? undefined : normalizeCatalogBinding(data.catalog_ref, 'ZRODLO_SN');
 
   const payload: Record<string, unknown> = {
     source_name: data.source_name,
     voltage_kv: data.sn_voltage_kv,
-    sections_count: Math.max(1, Math.trunc(data.sections_count || 1)),
+    sections_count: Math.max(1, Math.min(MAX_SEKCJI, Math.trunc(data.sections_count || 1))),
     hv_voltage_kv: data.hv_voltage_kv,
     short_circuit_input_side: data.short_circuit_input_side,
-    transformer_count: Math.max(1, Math.min(4, Math.trunc(data.transformer_count || 1))),
-    line_fields_per_section: Math.max(1, Math.min(12, Math.trunc(data.line_fields_per_section || 1))),
+    transformer_count: Math.max(1, Math.min(MAX_TRANSFORMATOROW, Math.trunc(data.transformer_count || 1))),
+    line_fields_per_section: Math.max(1, Math.min(MAX_POL_NA_SEKCJE, Math.trunc(data.line_fields_per_section || 1))),
     short_circuit_mode: data.short_circuit_mode,
     gpz_sections: buildGpzSections(data),
     zero_sequence: buildZeroSequence(data),
@@ -296,8 +400,23 @@ export function zbudujPayloadZrodla(data: GridSourceFormData): Record<string, un
       : undefined,
   };
 
-  payload.sk3_mva = data.sk3_mva;
-  payload.rx_ratio = data.rx_ratio;
+  if (data.manual_mode && data.short_circuit_mode === 'IMPEDANCE') {
+    payload.r_ohm = data.r_ohm;
+    payload.x_ohm = data.x_ohm;
+  } else if (data.manual_mode && data.short_circuit_input_side === 'HV_110') {
+    payload.sk3_hv_mva = data.sk3_hv_mva;
+    payload.rx_ratio = data.rx_ratio;
+  } else {
+    payload.sk3_mva = data.sk3_mva;
+    payload.rx_ratio = data.rx_ratio;
+  }
+
+  if (data.manual_mode) {
+    payload.manual_equivalent = buildManualEquivalent(data);
+    payload.source_mode = 'EKSPERCKI_RECZNY';
+    payload.parameter_source = 'MANUAL_EQUIVALENT';
+    payload.catalog_binding = undefined;
+  }
 
   return payload;
 }

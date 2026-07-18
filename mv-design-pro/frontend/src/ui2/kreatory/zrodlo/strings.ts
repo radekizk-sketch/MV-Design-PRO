@@ -101,6 +101,61 @@ export const ZRODLO_STRINGS = {
   nastepnyOpis:
     'Po zapisie GPZ dodaj pola odpływowe, stacje SN/nN i źródła OZE, a następnie uruchom obliczenia zwarciowe i rozpływowe.',
 
+  // Kroki (tor pracy).
+  krokIdentyfikacja: 'Identyfikacja',
+  krokZrodlo: 'Źródło i strona WN',
+  krokTransformatory: 'Transformatory',
+  krokRozdzielnia: 'Rozdzielnia SN',
+  krokSekcje: 'Sekcje i pola',
+  krokNormy: 'Parametry normowe',
+  krokZapis: 'Podsumowanie i zapis',
+  wstecz: '← Wstecz',
+  dalej: 'Dalej →',
+  licznik: (n: number, z: number) => `Krok ${n} z ${z}`,
+
+  // Tryb źródła.
+  trybZrodlaTytul: 'Tryb doboru źródła',
+  trybKatalog: 'Z katalogu',
+  trybReczny: 'Ręczny ekwiwalent (ekspercki)',
+  trybRecznyInfo:
+    'Tryb ekspercki: wpisujesz ekwiwalent zwarciowy ręcznie (bez pakietu katalogowego). '
+    + 'Używaj, gdy dysponujesz danymi OSD/PSE dla konkretnego węzła.',
+  stronaTytul: 'Strona odniesienia parametrów',
+  stronaSn: 'Strona SN',
+  stronaHv: 'Strona 110 kV',
+  trybParamTytul: 'Postać parametru zwarciowego',
+  trybMoc: 'Moc zwarciowa Sk″',
+  trybImpedancja: 'Impedancja R + jX',
+  napiecieHv: 'Napięcie szyny 110 kV',
+  sk3Hv: 'Moc zwarciowa Sk″ (110 kV)',
+  rOhm: 'Rezystancja R',
+  xOhm: 'Reaktancja X',
+
+  // Transformatory.
+  transformatoryOpis:
+    'Liczba transformatorów 110/SN zasilających szyny GPZ. Szczegółowe typy (Sn, uk, grupa '
+    + 'połączeń, przełącznik zaczepów) dobierasz osobno akcją „Dodaj transformator SN/nN” z katalogu.',
+
+  // Rozdzielnia.
+  rozdzielniaOpis:
+    'Liczba sekcji szyn SN i sposób uziemienia punktu neutralnego. Sprzęgło powstaje '
+    + 'automatycznie między sekcjami (dla ≥ 2 sekcji).',
+  sprzegloNota: 'Sprzęgło sekcyjne: powstaje automatycznie dla 2+ sekcji.',
+
+  // Sekcje i pola (per sekcja).
+  sekcjeOpis:
+    'Konfiguracja per sekcja: nazwa sekcji i liczba pól liniowych odpływowych. Każde pole '
+    + 'dostaje ten sam typ aparatu dobrany poniżej.',
+  sekcjaNazwaPol: 'Nazwa sekcji',
+  sekcjaLiczbaPol: 'Pola liniowe',
+  aparatSekcja: 'Aparat pól liniowych',
+
+  // K7.
+  przegladTytul: 'Sprawdź konfigurację',
+  przegladOpis:
+    'Sprawdź podsumowanie obliczone (kolumna z prawej) i kontrolę gotowości. '
+    + 'Zapis tworzy szyny SN, sekcje, sprzęgło i pola odpływowe.',
+
   // Akcje / błędy.
   zapisz: 'Zapisz GPZ',
   anuluj: 'Anuluj',
