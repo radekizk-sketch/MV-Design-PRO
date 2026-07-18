@@ -41,6 +41,33 @@ obliczeń, konteksty dozwolone, kody wyjścia 0/1/2).
    walidujący w `backend/tests/ci/` (wzorzec istniejących testów guardów
    w `tests/ci/` — guard zielony na repo + wykrywa sztuczny przykład fizyki).
 
+## 0.5 AKTUALIZACJA ZARZĄDCY (2026-07-18, po eskalacji wykonawcy — WIĄŻĄCA)
+Wykonawca słusznie wykazał, że przesłanka Rozstrzygnięcia 3 („po usunięciu
+`ui/sensitivity/` brak fizyki w UI") jest NIEPRAWDZIWA: w `ui/**` istnieje realna
+fizyka sieci w warstwie prezentacji (ΔU, Ik3, prąd doziemny PN-EN 50522, krzywe
+IEC 60255) — spis w `docs/uiux/DLUG_FIZYKA_W_UI_2026-07.md`. Wymóg „guard zielony
+na HEAD dla `ui/**` bez maskowania" jest wewnętrznie sprzeczny przy tym stanie.
+Rozstrzygnięcie zarządcy (synteza opcji 3 + 1 z raportu wykonawcy):
+- **CZĘŚĆ A pozostaje** jak w karcie (sierota FrtHvrtCurves) — DOSTARCZONA,
+  zintegrowana przez zarządcę (cherry-pick).
+- **CZĘŚĆ B — ZAKRES GUARDA ZAWĘŻONY do `frontend/src/ui2/**`** (warstwa docelowa
+  clean-room; tam toczy się rozwój i tam trafiłby nowy defekt klasy
+  `sensitivityAnalyzer`). Guard MUSI dać exit 0 na `ui2/**` HEAD. Dostrojenie
+  anty-false-positive: USUŃ z detekcji goły token `current` (wszechobecny
+  nie-fizycznie: `aria-current`, Tailwind `*-current`, `data-testid`, setter
+  Reacta `(current) => …`); wykrywaj SILNE sygnały fizyki sieci: `Math.sqrt(3)`/
+  `√3` przy zmiennych elektrycznych, arytmetyka na impedance/admittance/reactance/
+  susceptance, `dUdP`/`dUdQ`/`deltaU`, wzory zwarciowe (`Ik3`/`Ik`/`Sk`), wzór
+  spadku napięcia. Docstring guarda: jawnie „zakres = ui2 (greenfield); `ui/**`
+  ma śledzony dług relokacji fizyki — patrz DLUG_FIZYKA_W_UI_2026-07.md; zakres
+  rozszerzy się na `ui/**` po zamknięciu epiki relokacji".
+- **`ui/**` — NIE allowlistować jako „to nie fizyka" (byłoby kłamstwem).**
+  Dług spisany w inwentarzu (Zero-Debt pkt 4: tracked, z przyczyną i planem);
+  egzekwowany przy migracji `ui/**` → `ui2` (fizyka idzie do backendu, wtedy
+  guard łapie ją w ui2). Osobna epika „relokacja fizyki UI → backend" — do
+  zaplanowania po epice wygaszania (nie mieszać z bieżącym refaktorem).
+- Wpięcie do bramek + test guarda (`tests/ci/`) — jak w karcie, dla zakresu ui2.
+
 ## 1. Zakres plików
 - USUŃ: `frontend/src/ui/protection-curves/FrtHvrtCurves.tsx`,
   `frontend/src/ui/protection-curves/__tests__/FrtHvrtCurves.test.tsx`.
