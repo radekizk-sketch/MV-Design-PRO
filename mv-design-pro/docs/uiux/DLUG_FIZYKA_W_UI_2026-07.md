@@ -16,8 +16,8 @@ WHITE BOX, ryzyko rozjazdu z solverem, luka audytu/determinizmu.
 ## 2. Inwentarz naruszeń (plik → co liczy)
 | Plik (`frontend/src/`) | Fizyka liczona w UI | Konsument LIVE |
 |---|---|---|
-| `ui/network-build/forms/voltageDropValidator.ts` | ΔU = √3·I·L·(R·cosφ + X·sinφ) | walidacja formularza |
-| `ui/network-build/station-wizard-v2/cableSelectionContract.ts` | `computeCableVoltageDrop` (ΔU) | `StationWizardStepContent.tsx` (LIVE) |
+| ~~`ui/network-build/forms/voltageDropValidator.ts`~~ | ~~ΔU~~ **ZRELOKOWANE (R1, 2026-07-18, commit `2057b47a`)** → `network_model/solvers/cable_voltage_drop.py` + `POST /api/solver/cable-voltage-drop-preview`; parytet 8 przypadków ≤1e-9 | walidacja formularza (woła API) |
+| ~~`ui/network-build/station-wizard-v2/cableSelectionContract.ts`~~ | ~~ΔU + prąd znamionowy I=S/(√3·U)~~ **ZRELOKOWANE (R1)** → jw. + `POST /api/solver/cable-rated-current-preview` | kreator stacji (woła API) |
 | `ui/network-build/station-wizard-v2/shortCircuitNetworkContract.ts` | Ik3 = c·U/(√3·Z_total) | kreator stacji |
 | `ui/network-build/station-wizard-v2/transformerContract.ts` | przeliczenia √3 (transformator) | kreator stacji |
 | `ui/network-build/station-wizard-v2/vtMultiWindingContract.ts` | przeliczenia √3 (przekładnik VT) | kreator stacji |
