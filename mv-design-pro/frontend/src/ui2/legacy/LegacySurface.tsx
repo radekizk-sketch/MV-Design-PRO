@@ -19,6 +19,7 @@ import './legacy.css';
 import { SldCanvasV3Workspace } from '../../ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
 import type { SpaceId } from '../shell/spaces';
+import { MostAnalizTechnicznych } from '../wyniki/analizy';
 import { REJESTR_LEGACY } from './legacyRegistry';
 
 /** Źródło selekcji emitowanej z mostu gotowości (magistrala E15.1). */
@@ -75,6 +76,11 @@ export function LegacySurface({ space }: LegacySurfaceProps) {
         </OprawaWarsztatu>
       );
     case 'wyniki':
+      // Przebudowa huba „Analizy techniczne" (audyt właściciela 2026-07-18,
+      // AUDYT_EKRAN_ANALIZY_TECHNICZNE_2026-07.md): widok DOMYŚLNY zakładki
+      // dostarcza ui2 (EkranAnalizTechnicznych); powierzchnie-dzieci mostu
+      // nadal renderuje WorkspaceSurfaceRouter z paskiem powrotu.
+      return <MostAnalizTechnicznych />;
     case 'dokumentacja':
       return <LegacyPowierzchniaTrasowa />;
     default:
