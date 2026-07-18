@@ -244,6 +244,30 @@ generuje dług i ryzyko regresji kanonu.
   lint 0, celowany vitest 215/215 (workspace+wyniki+FrtHvrtCurves) + pełny
   vitest, guardy exit 0. Karta `U5_E14_SLD_KOORD_E26.md` ZAMKNIĘTA. Epika
   E-26 (D1=A) w PEŁNI wygaszona.
+- **W5b-4 / GRUPA B — konsolidacja cienkich paneli kontraktu** (2026-07-18,
+  `refactor(ui): konsolidacja 6 cienkich paneli kontraktu Grupy B w jeden
+  komponent data-driven (W5b-4)`): rekonesans potwierdził, że E-29/E-30/E-31/
+  E-32/E-33/E-34 to warianty JEDNEGO wzorca (`MiniSldCard` +
+  `AnalysisContractPanel`, dane wyłącznie z `useAnalysisRunContract`, zero
+  fizyki/akcji), a ich treść jest już pokryta 1:1 w ui2 „Kontrakt analizy"
+  (`SzczegolyPrzebiegu.tsx`, W1–W3). Grupa B NIE ma pracy „nowe okno ui2":
+  pełne powierzchnie albo zostają (V126Academic, D4), albo są Grupą C (model:
+  Zksn/Fw/Bess/Der), a status/nawigacja (Variants/CaseContext) pokryta powłoką
+  ui2. Wykonano bezpieczną konsolidację: 6 niemal identycznych funkcji
+  (`SymmetricalComponentsSurface`, `ConvergenceSurface`, `ThermalDynamicSurface`,
+  `PhaseStateSurface`, `DynamicStabilitySurface`, `SourceContributionsSurface`)
+  → JEDEN komponent `ThinContractSurface` + tabela konfiguracji
+  `THIN_CONTRACT_SURFACES` (tytuł/eyebrow/focusTitle/wiersze/flagi per ekran).
+  Router `case E-29/30/31/32/33/34` → `ThinContractSurface`. ZERO zmiany
+  renderu (te same tytuły/wiersze/flagi), tras, kanonu i nawigacji — czysta
+  redukcja duplikacji (~130 linii) + JEDEN punkt przyszłego przełączenia na
+  dostawcę ui2. Bramki: type-check, lint 0, celowany vitest workspace 178/178
+  + pełny vitest, guardy (forbidden_ui_terms, ui_terminology, utf8_mojibake,
+  dead_click, v12xx_canon) exit 0. NASTĘPNY KROK route-retirement E-29..E-34
+  (Opcja 1: przekierowanie nawigacji huba/`networkBuildStore`/`MoContextPanel`
+  do przestrzeni ui2 `obliczenia`/przebiegi + usunięcie tras) wymaga mostu
+  nawigacji między-powłokowej (`useShellStore.setActiveSpace`) i E2E z backendem
+  — osobna, kontrolowana karta.
 - **W5b-2** (2026-07-17, commit lokalny `feat(ui2): wygaszenie stubu analizy
   wrażliwości w AnalysisSurface (W5b-2)`): Opcja 1, decyzja właściciela D2=A
   (§3b) — funkcja „Analiza wrażliwości" uznana za NIEDOSTARCZONĄ (stub:
