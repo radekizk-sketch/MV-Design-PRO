@@ -133,5 +133,6 @@ podpowiadać) → **pokrycie** (dzisiejszy dostawca) → **luka/plan**.
 | F-E4 „następny krok" po DONE | E4 | ✅ 2026-07-18 (SzczegolyPrzebiegu: DONE → Wyniki, zdanie per rodzaj) |
 | R3 uziemienie + koordynacja IEC 60255 | E5/E6 | ✅ 2026-07-18 — **EPIKA FIZYKI W UI DOMKNIĘTA** (5 sierot fizyki usuniętych; zdolności backendu: fault_loop/pack Earthing, SelectivityCheck, TCCCurveResponse) |
 | F-E5a ekran kontraktu analizy (dostawca E-29…E-34) | E5 | ✅ 2026-07-18 (`5077ba2a` — EkranKontraktuAnalizy ui2: cel inżynierski per obszar, uczciwy stan zerowy z akcją, parytet wierszy 1:1, componentKey=metadana) |
-| F-E5b koordynacja zabezpieczeń E-28 od flow (SelectivityCheck + TCC z API) | E5/E6 | do zlecenia |
+| F-E5b koordynacja zabezpieczeń E-28 od flow (SelectivityCheck + TCC z API) | E5/E6 | w realizacji (karta `7fa0d408`) |
+| F-E5c hub zostaje w środku, gdy dziecko otwiera się w prawym panelu (znalezisko z oględzin F-E5a) | E5 | do zlecenia |
 | Rozszerzenie ui_no_physics_guard na ui/** | higiena | do zlecenia (przemiarowanie false-positives po domknięciu epiki) |

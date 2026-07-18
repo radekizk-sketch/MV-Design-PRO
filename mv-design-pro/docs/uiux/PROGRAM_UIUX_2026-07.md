@@ -71,6 +71,10 @@ Interpretacja kanonu zarejestrowana jako V12K-041. Skrót zasad twardych:
    z akcjami naprawczymi (wzorzec „Tor pracy" z `EkranAnalizTechnicznych`) · uczciwe stany
    zerowe · jawny następny krok · język inżynierski (po co / z czego / co daje).
 4. Priorytety przebudów wg bólu inżyniera na etapach E1–E8 (FLOW §2), nie wg wieku kodu.
+5. **Ocena wizualna per etap (dyrektywa właściciela 2026-07-18):** po KAŻDYM scaleniu
+   etapu zmieniającego UI zarządca wykonuje zrzuty żywej aplikacji (oba motywy tam,
+   gdzie dotyczy) i publikuje właścicielowi stronę „Ocena etapów" (stały link);
+   znaleziska z oględzin trafiają do rejestru FLOW jako karty poprawek.
 
 ### 2.2 Relacja do programu 10x
 Program 10x (F0–F4) właśnie zabezpiecza fundament (bramki CI, auth, współbieżność, god-file).
