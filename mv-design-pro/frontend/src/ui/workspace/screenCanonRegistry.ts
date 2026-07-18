@@ -686,7 +686,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-zabezpieczenia-automatyka',
     canonicalRoute: '/workspace/protection-automation',
     legacyAliases: ['protection_automation'],
-    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5b; E-27 ≠ E-28, patrz router)
+    componentKey: 'EkranZabezpieczenAutomatyki', // dostawca ui2 (metadana, karta E-27; realny ekran zamiast phantoma)
     testId: 'screen-E-27-protection-automation',
     implemented: true,
     requiresProject: true,

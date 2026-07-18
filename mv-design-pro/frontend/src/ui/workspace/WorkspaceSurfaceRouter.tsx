@@ -36,6 +36,7 @@ import {
 import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { EkranFrt } from '../../ui2/oze/frt';
+import { EkranZabezpieczenAutomatyki } from '../../ui2/model/zabezpieczenia-automatyka';
 import { EkranKontraktuAnalizy } from '../../ui2/wyniki/kontrakt-analizy';
 import { EkranKoordynacji } from '../../ui2/wyniki/koordynacja';
 import { useShellStore } from '../../ui2/shell/useShellStore';
@@ -2826,11 +2827,10 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       return <ComplianceSurface />;
     case 'E-27':
       // E-27 „Zabezpieczenia i automatyka" to INNA zdolność niż E-28 „Koordynacja
-      // zabezpieczeń" (rejestr: odrębny componentKey / trasa / etykieta). Po
-      // usunięciu wspólnej atrapy (F-E5b) E-27 nie może jej dziedziczyć ani być
-      // scalony z koordynacją — otrzymuje uczciwego dostawcę kontraktu analizy
-      // ui2 (precedens F-E5a), bez fabrykacji danych.
-      return <EkranKontraktuAnalizy surface={surface} />;
+      // zabezpieczeń" (rejestr: odrębny componentKey / trasa / etykieta). Karta
+      // E-27 dostarcza REALNY ekran przeglądowy oparty na read-modelu pola
+      // (koniec phantoma i tymczasowego dostawcy kontraktu analizy z F-E5b).
+      return <EkranZabezpieczenAutomatyki />;
     case 'E-30':
       return <EkranKontraktuAnalizy surface={surface} />;
     case 'E-31':

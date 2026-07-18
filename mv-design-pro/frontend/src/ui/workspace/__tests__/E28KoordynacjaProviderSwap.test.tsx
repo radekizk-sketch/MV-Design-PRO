@@ -2,8 +2,9 @@
  * Podmiana dostawcy w routerze (karta F-E5b): E-28 renderuje ramę prowadzącą
  * `EkranKoordynacji` (realna strona koordynacji), a NIE atrapę
  * `ProtectionCoordinationSurface` z demonstracyjnymi krzywymi IEC 60255.
- * E-27 („Zabezpieczenia i automatyka" — INNA zdolność) renderuje uczciwego
- * dostawcę kontraktu analizy, również nie atrapę.
+ * E-27 („Zabezpieczenia i automatyka" — INNA zdolność) renderuje własny realny
+ * ekran `EkranZabezpieczenAutomatyki` (karta E-27 — koniec phantoma), nie atrapę
+ * ani tymczasowego dostawcę kontraktu analizy z F-E5b.
  *
  * Intencja: dawny plik Iteracja14TCC.test.tsx ćwiczył wnętrze atrapy (TCC z
  * fizyką liczoną w UI). Po usunięciu atrapy asercje sprawdzają, że dostawca
@@ -66,13 +67,14 @@ describe('F-E5b — podmiana dostawcy E-28/E-27 w routerze', () => {
     expect(screen.queryByTestId('protection-coordination-page')).not.toBeInTheDocument();
   });
 
-  it('E-27 (inna zdolność) renderuje dostawcę kontraktu analizy, nie atrapę', () => {
+  it('E-27 (inna zdolność) renderuje realny ekran zabezpieczeń i automatyki, nie atrapę', () => {
     useNetworkBuildStore.setState({ activeSurface: surfaceForScreen('E-27', 'e27-test') });
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    const kontrakt = screen.getByTestId('mvd-kontrakt-analizy');
-    expect(kontrakt).toBeInTheDocument();
-    expect(kontrakt.getAttribute('data-ekran')).toBe('E-27');
+    // Realny dostawca E-27 (koniec phantoma): własny ekran, nie dostawca kontraktu
+    // analizy (F-E5b) ani atrapa koordynacji.
+    expect(screen.getByTestId('mvd-za')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-kontrakt-analizy')).not.toBeInTheDocument();
     expect(screen.queryByTestId('protection-coordination-surface')).not.toBeInTheDocument();
   });
 });

@@ -23,11 +23,11 @@ import type { EnergyNetworkModel } from '../../../types/enm';
 
 /**
  * Kody ekranów obsługiwanych przez dostawcę kontraktu analizy.
- * E-29…E-34 z karty F-E5a; E-27 („Zabezpieczenia i automatyka") dołączony w
- * karcie F-E5b jako uczciwy dostawca po usunięciu wspólnej atrapy koordynacji
- * (E-27 to INNA zdolność niż E-28 — nie może być scalony z EkranKoordynacji).
+ * E-29…E-34 z karty F-E5a. E-27 („Zabezpieczenia i automatyka") był tu tymczasowo
+ * (F-E5b) po usunięciu wspólnej atrapy koordynacji; karta E-27 dostarczyła mu
+ * realny ekran (`EkranZabezpieczenAutomatyki`), więc wpis został stąd usunięty.
  */
-export type KodEkranuKontraktu = 'E-27' | 'E-29' | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34';
+export type KodEkranuKontraktu = 'E-29' | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34';
 
 /** Kontekst potrzebny do zbudowania wiersza „Obiekt" (tylko E-29). */
 export interface KontekstWierszy {
@@ -79,21 +79,6 @@ export const ETYKIETY_POCHODZENIA: Record<string, string> = {
  * 1:1 z `THIN_CONTRACT_SURFACES` (W5b-4); zdania celu dopisane per obszar.
  */
 export const KONTRAKTY_EKRANOW: Record<KodEkranuKontraktu, KonfiguracjaEkranu> = {
-  'E-27': {
-    eyebrow: 'Automatyka',
-    tytul: 'Zabezpieczenia i automatyka',
-    cel: 'Prześledź kontrakt nastaw zabezpieczeń i automatyki dla zamrożonego przebiegu: '
-      + 'stan łączników, wersję układu i zakres stosowalności — bez podstawiania wartości '
-      + 'bez wskazanego obliczenia.',
-    tytulWierszy: 'Kontrakt zabezpieczeń',
-    buildWiersze: (contract) => [
-      { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
-      { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
-      { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-      { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-      { label: 'Kompletność zgodności przejściowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
-    ],
-  },
   'E-29': {
     eyebrow: 'Składowe',
     tytul: 'Składowe symetryczne i sieć zerowa',
