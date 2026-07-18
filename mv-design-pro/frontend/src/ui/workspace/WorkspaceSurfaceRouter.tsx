@@ -37,6 +37,7 @@ import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { TimeCurrentChart } from '../protection-curves/TimeCurrentChart';
 import { EkranFrt } from '../../ui2/oze/frt';
+import { EkranKontraktuAnalizy } from '../../ui2/wyniki/kontrakt-analizy';
 import { useShellStore } from '../../ui2/shell/useShellStore';
 import type { ProtectionCurve, FaultMarker } from '../protection-curves/types';
 import {
@@ -72,7 +73,6 @@ import {
   buildRecordRows,
   buildSummaryRows,
   buildTraceSummaryRows,
-  formatCompletenessStatus,
   formatContractValue,
   resolveSurfaceRunId,
   useAnalysisRunContract,
@@ -1853,145 +1853,11 @@ function ComplianceSurface() {
   );
 }
 
-/**
- * Cienkie powierzchnie kontraktu analizy mostu (Grupa B, plan wygaszania §2/§3):
- * E-29/E-30/E-31/E-32/E-33/E-34 to warianty JEDNEGO wzorca — `MiniSldCard` +
- * `AnalysisContractPanel` z listą wierszy kontraktu (dane wyłącznie z
- * `useAnalysisRunContract`, zero fizyki/akcji). Treść pokryta 1:1 w ui2
- * „Kontrakt analizy" (`ui2/spaces/obliczenia/przebiegi/SzczegolyPrzebiegu.tsx`,
- * fale W1–W3). Konsolidacja 6 niemal identycznych funkcji w JEDEN komponent
- * data-driven (redukcja duplikacji + JEDEN punkt przyszłego przełączenia na
- * dostawcę ui2). ZERO zmiany renderu, tras, kanonu i nawigacji.
- */
-type ThinContractFocusContext = {
-  readonly surface: WorkspaceSurfaceDescriptor;
-  readonly selectedElement: Parameters<typeof resolveSurfaceObjectLabel>[2];
-  readonly snapshot: EnergyNetworkModel | null;
-};
-
-interface ThinContractSurfaceConfig {
-  readonly eyebrow: string;
-  readonly title: string;
-  readonly focusTitle: string;
-  readonly buildFocusRows: (
-    contract: AnalysisRunContract,
-    ctx: ThinContractFocusContext,
-  ) => LabeledValueRow[];
-  readonly showAssumptions?: boolean;
-  readonly showLineage?: boolean;
-  readonly showReproducibility?: boolean;
-  readonly showSummary?: boolean;
-  readonly showTraceSummary?: boolean;
-}
-
-type ThinContractScreenCode = 'E-29' | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34';
-
-const THIN_CONTRACT_SURFACES: Record<ThinContractScreenCode, ThinContractSurfaceConfig> = {
-  'E-29': {
-    title: 'Skladowe symetryczne i siec zerowa',
-    eyebrow: 'Skladowe',
-    focusTitle: 'Kontekst Z0',
-    buildFocusRows: (contract, { surface, selectedElement, snapshot }) => [
-      { label: 'Obiekt', value: resolveSurfaceObjectLabel(surface, snapshot, selectedElement) },
-      { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-      { label: 'Uziemienie', value: formatContractValue(contract.analysisCaseContext?.assumptions['grounding_assumptions_ref']) },
-      { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
-      { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-    ],
-  },
-  'E-30': {
-    title: 'Zbieżność rozpływu i sterowanie zaczepami',
-    eyebrow: 'Rozpływ mocy',
-    focusTitle: 'Kontrakt solvera',
-    buildFocusRows: (contract) => [
-      { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
-      { label: 'Ważność wyniku', value: formatContractValue(contract.resultsValid) },
-      { label: 'Założenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
-      { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-      { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-    ],
-  },
-  'E-31': {
-    title: 'Stan fazowy SN',
-    eyebrow: 'Analiza fazowa',
-    focusTitle: 'Kontrakt stanu fazowego',
-    buildFocusRows: (contract) => [
-      { label: 'Identyfikator przypadku', value: formatContractValue(contract.analysisCaseContext?.caseRef) },
-      { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
-      { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-      { label: 'Brama jakości', value: formatContractValue(contract.analysisCaseContext?.qualityGate) },
-      { label: 'Kompletność zgodności przejściowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
-    ],
-    showAssumptions: true,
-    showLineage: true,
-    showReproducibility: true,
-    showSummary: false,
-    showTraceSummary: false,
-  },
-  'E-32': {
-    title: 'Stabilność dynamiczna',
-    eyebrow: 'Dynamika',
-    focusTitle: 'Kontrakt stabilności',
-    buildFocusRows: (contract) => [
-      { label: 'Scenariusz zakłócenia', value: formatContractValue(contract.analysisCaseContext?.assumptions['fault_scenario_ref']) },
-      { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
-      { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
-      { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-      { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-    ],
-  },
-  'E-33': {
-    title: 'Wkłady źródeł rozszerzone',
-    eyebrow: 'Wkłady źródeł',
-    focusTitle: 'Kontrakt źródeł',
-    buildFocusRows: (contract) => [
-      { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
-      { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
-      { label: 'Założenia obciążeń', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
-      { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-      { label: 'Projekt', value: formatContractValue(contract.analysisCaseContext?.lineage['project_ref']) },
-    ],
-  },
-  'E-34': {
-    title: 'Weryfikacja cieplna i dynamiczna toru',
-    eyebrow: 'Ocena toru',
-    focusTitle: 'Kontrakt toru',
-    buildFocusRows: (contract) => [
-      { label: 'Temperatura', value: formatContractValue(contract.analysisCaseContext?.assumptions['temperature_assumptions_ref']) },
-      { label: 'Założenia obciążeń', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
-      { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
-      { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-      { label: 'Kompletność', value: formatCompletenessStatus(contract.analysisCaseContext?.completeness ?? null) },
-    ],
-  },
-};
-
-function ThinContractSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
-  const snapshot = useSnapshotStore((state) => state.snapshot);
-  const config = THIN_CONTRACT_SURFACES[surface.screenCode as ThinContractScreenCode];
-  if (!config) {
-    return null;
-  }
-  return (
-    <div className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <AnalysisContractPanel
-        surface={surface}
-        title={config.title}
-        eyebrow={config.eyebrow}
-        focusTitle={config.focusTitle}
-        focusRowsBuilder={(contract) => config.buildFocusRows(contract, { surface, selectedElement, snapshot })}
-        showAssumptions={config.showAssumptions}
-        showLineage={config.showLineage}
-        showReproducibility={config.showReproducibility}
-        showSummary={config.showSummary}
-        showTraceSummary={config.showTraceSummary}
-      />
-    </div>
-  );
-}
-
+// Dostawca sześciu ekranów kontraktu analizy E-29…E-34 przeniesiony do modułu
+// ui2 `wyniki/kontrakt-analizy/EkranKontraktuAnalizy` (karta F-E5a). Router
+// renderuje go bezpośrednio w `renderSurfaceBody` (case 'E-29'…'E-34');
+// konfiguracja wierszy fokusowych i flag sekcji (dawne THIN_CONTRACT_SURFACES)
+// jest teraz źródłem danych w `wyniki/kontrakt-analizy/model.ts`.
 
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const readiness = useSnapshotStore((state) => state.readiness);
@@ -3047,21 +2913,21 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-28':
       return <ProtectionCoordinationSurface surface={surface} />;
     case 'E-29':
-      return <ThinContractSurface surface={surface} />;
+      return <EkranKontraktuAnalizy surface={surface} />;
     case 'E-26':
       return <ComplianceSurface />;
     case 'E-27':
       return <ProtectionCoordinationSurface surface={surface} />;
     case 'E-30':
-      return <ThinContractSurface surface={surface} />;
+      return <EkranKontraktuAnalizy surface={surface} />;
     case 'E-31':
-      return <ThinContractSurface surface={surface} />;
+      return <EkranKontraktuAnalizy surface={surface} />;
     case 'E-32':
-      return <ThinContractSurface surface={surface} />;
+      return <EkranKontraktuAnalizy surface={surface} />;
     case 'E-33':
-      return <ThinContractSurface surface={surface} />;
+      return <EkranKontraktuAnalizy surface={surface} />;
     case 'E-34':
-      return <ThinContractSurface surface={surface} />;
+      return <EkranKontraktuAnalizy surface={surface} />;
     case 'E-36':
       return <ProofSurface surface={surface} />;
     case 'E-01':

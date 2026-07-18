@@ -732,7 +732,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-siec-zerowa',
     canonicalRoute: '/workspace/results/zero-sequence',
     legacyAliases: ['symmetrical_components', 'zero_sequence', 'old:E-29'],
-    componentKey: 'SymmetricalComponentsSurface',
+    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
     testId: 'screen-E-29-zero-sequence',
     implemented: true,
     requiresProject: true,
@@ -755,7 +755,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-rozplyw-mocy',
     canonicalRoute: '/workspace/results/load-flow',
     legacyAliases: ['load_flow', 'power_flow', 'convergence', 'old:E-34'],
-    componentKey: 'ConvergenceOltcSurface',
+    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
     testId: 'screen-E-30-load-flow',
     implemented: true,
     requiresProject: true,
@@ -778,7 +778,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-stan-fazowy',
     canonicalRoute: '/workspace/results/phase-state-sn',
     legacyAliases: ['phase_state_sn', 'assumptions_quality', 'old:E-31'],
-    componentKey: 'AssumptionsQualitySurface',
+    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
     testId: 'screen-E-31-phase-state-sn',
     implemented: true,
     requiresProject: true,
@@ -801,7 +801,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-stabilnosc-dynamiczna',
     canonicalRoute: '/workspace/results/dynamic-stability',
     legacyAliases: ['dynamic_stability'],
-    componentKey: 'DynamicStabilitySurface',
+    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
     testId: 'screen-E-32-dynamic-stability',
     implemented: true,
     requiresProject: true,
@@ -824,7 +824,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-wklady-zrodel',
     canonicalRoute: '/workspace/results/source-contributions',
     legacyAliases: ['source_contributions', 'old:E-32'],
-    componentKey: 'SourceContributionsSurface',
+    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
     testId: 'screen-E-33-source-contributions',
     implemented: true,
     requiresProject: true,
@@ -847,7 +847,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-weryfikacja-cieplna-dynamiczna',
     canonicalRoute: '/workspace/results/thermal-dynamic',
     legacyAliases: ['thermal_dynamic', 'old:E-33'],
-    componentKey: 'ThermalDynamicSurface',
+    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
     testId: 'screen-E-34-thermal-dynamic',
     implemented: true,
     requiresProject: true,

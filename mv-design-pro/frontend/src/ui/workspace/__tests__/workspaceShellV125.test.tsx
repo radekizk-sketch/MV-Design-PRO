@@ -195,10 +195,16 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
+    // W5b-4 → F-E5a: E-30 renderuje teraz dostawcę ui2 `EkranKontraktuAnalizy`
+    // (podmiana jak E-26 → EkranFrt). Zachowana intencja testu: nagłówek
+    // kanoniczny (SurfaceHeader, h2 z titlePl) + nagłówek obszaru ekranu (h3),
+    // bez surowych kodów E-\d+ ani placeholderów. MiniSldCard świadomie NIE
+    // przeniesiony do ekranu kontraktu (karta §0.3) — asercja mini-sld usunięta.
     expect(
       screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-30'].titlePl }),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-kontrakt-analizy')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-mini-sld')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: /Zbieżność rozpływu/i })).toBeInTheDocument();
     expect(screen.queryByText(/^E-\d+/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Powierzchnia pomocnicza/i)).not.toBeInTheDocument();
@@ -218,7 +224,13 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="panel" />);
 
+    // W5b-4 → F-E5a: E-31 renderuje dostawcę ui2 `EkranKontraktuAnalizy`. Intencja
+    // testu zachowana: kontekst obliczeniowy aktywnego runu jest czytany z tego
+    // samego hooka (`useAnalysisRunContract`) i formatowany tymi samymi formaterami
+    // (założenie źródeł „pf source nominal", surowe identyfikatory zamaskowane jako
+    // „Zapisane w śladzie audytu", brak surowego proof-pack-1).
     expect(screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-31'].titlePl })).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-kontrakt-analizy')).toBeInTheDocument();
     expect(await screen.findByText('pf source nominal')).toBeInTheDocument();
     expect(screen.queryByText('proof-pack-1')).not.toBeInTheDocument();
     expect(screen.getAllByText('Zapisane w śladzie audytu').length).toBeGreaterThan(0);
