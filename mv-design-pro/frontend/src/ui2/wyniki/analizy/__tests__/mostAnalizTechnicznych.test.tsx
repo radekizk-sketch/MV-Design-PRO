@@ -71,4 +71,40 @@ describe('MostAnalizTechnicznych — dostawca zakładki po przebudowie', () => {
     await user.click(screen.getByRole('button', { name: '← Analizy techniczne' }));
     expect(screen.getByTestId('mvd-analizy-techniczne')).toBeTruthy();
   });
+
+  it('powierzchnia klasy B (E-31, panel prawy) pokazuje HUB w środku, nie router (F-E5c)', () => {
+    useNetworkBuildStore.getState().openRouteSurface('E-31');
+    expect(useNetworkBuildStore.getState().activeSurface?.openMode).toBe('replace_right_panel');
+    render(<MostAnalizTechnicznych />);
+    // Środek zakładki: hub widoczny, brak dublowania routera panelu.
+    expect(screen.getByTestId('mvd-analizy-most-panel')).toBeTruthy();
+    expect(screen.getByTestId('mvd-analizy-techniczne')).toBeTruthy();
+    expect(screen.queryByTestId('mvd-analizy-most-dziecko')).toBeNull();
+  });
+
+  it('powierzchnia klasy B ma pasek „Zamknij panel analizy", a powierzchnia dalej żyje w panelu', () => {
+    useNetworkBuildStore.getState().openRouteSurface('E-31');
+    render(<MostAnalizTechnicznych />);
+    expect(screen.getByRole('button', { name: 'Zamknij panel analizy' })).toBeTruthy();
+    // Powierzchnia pozostaje aktywna (renderuje ją prawy panel powłoki), mimo huba w środku.
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-31');
+  });
+
+  it('przycisk „Zamknij panel analizy" czyści powierzchnię panelu i wraca do huba (klik natywny)', async () => {
+    const user = userEvent.setup();
+    useNetworkBuildStore.getState().openRouteSurface('E-31');
+    render(<MostAnalizTechnicznych />);
+    await user.click(screen.getByRole('button', { name: 'Zamknij panel analizy' }));
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+    expect(screen.getByTestId('mvd-analizy-techniczne')).toBeTruthy();
+    expect(screen.queryByTestId('mvd-analizy-most-panel')).toBeNull();
+  });
+
+  it('powierzchnia klasy C (E-28) nadal renderuje router w środku, nie gałąź panelu (regresja)', () => {
+    useNetworkBuildStore.getState().openRouteSurface('E-28');
+    expect(useNetworkBuildStore.getState().activeSurface?.openMode).toBe('expand_workspace');
+    render(<MostAnalizTechnicznych />);
+    expect(screen.getByTestId('mvd-analizy-most-dziecko')).toBeTruthy();
+    expect(screen.queryByTestId('mvd-analizy-most-panel')).toBeNull();
+  });
 });

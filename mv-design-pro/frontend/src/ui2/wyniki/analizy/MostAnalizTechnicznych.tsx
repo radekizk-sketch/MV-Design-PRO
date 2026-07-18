@@ -7,9 +7,16 @@
  *  - HUB (EkranAnalizTechnicznych) — gdy brak aktywnej powierzchni trasowej
  *    ALBO aktywna jest domyślna powierzchnia analiz E-35 z domyślną zakładką
  *    „results" (dawny hub — dokładnie ten widok zastępujemy),
- *  - ROUTER (WorkspaceSurfaceRouter) + pasek powrotu — dla powierzchni-dzieci
- *    (E-28…E-34, taby compare/trace/ncrfg-tests i inne trasy mostu); powrót
- *    czyści powierzchnię trasową (clearRouteManagedSurface) → wraca hub.
+ *  - ROUTER (WorkspaceSurfaceRouter region="main") + pasek powrotu — dla
+ *    powierzchni klasy C (openMode 'expand_workspace', np. E-28, taby
+ *    compare/trace/ncrfg-tests); powrót czyści powierzchnię trasową
+ *    (clearRouteManagedSurface) → wraca hub,
+ *  - HUB + pasek „Zamknij panel analizy" — dla powierzchni klasy B (openMode
+ *    'replace_right_panel', np. E-31 kontrakt analizy). Taka powierzchnia żyje
+ *    w PRAWYM panelu powłoki (AppRoot → LegacyInspektor renderuje
+ *    WorkspaceSurfaceRouter region="panel"), więc ŚRODEK zakładki NIE dubluje
+ *    routera panelu — pokazuje hub, aby nie zostawiać pustej przestrzeni
+ *    (znalezisko z oględzin F-E5a, karta F-E5c §0).
  *
  * Deep-linki (#analysis?tab=trace itd.) działają bez zmian — orkiestrator
  * otwiera powierzchnię z jawnym tabId, więc router ją renderuje.
@@ -46,6 +53,23 @@ export function MostAnalizTechnicznych() {
     );
   }
 
+  // Powierzchnia klasy B (panel prawy) — środek pokazuje hub, nie router.
+  if (activeSurface?.openMode === 'replace_right_panel') {
+    return (
+      <div className="mvd-legacy-host" data-testid="mvd-analizy-most-panel">
+        <div className="mvd-analizy-powrot">
+          <button type="button" onClick={clearRouteManagedSurface} title={T.zamknijPanelOpis}>
+            {T.zamknijPanel}
+          </button>
+        </div>
+        <div data-testid="workspace-surface-main">
+          <EkranAnalizTechnicznych />
+        </div>
+      </div>
+    );
+  }
+
+  // Powierzchnia klasy C (rozszerzenie warsztatu) — router w środku.
   return (
     <div className="mvd-legacy-host" data-testid="mvd-analizy-most-dziecko">
       <div className="mvd-analizy-powrot">

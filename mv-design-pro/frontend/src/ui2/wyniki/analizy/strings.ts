@@ -50,4 +50,6 @@ export const ANALIZY_STRINGS = {
 
   powrot: '← Analizy techniczne',
   powrotOpis: 'Wróć do przeglądu analiz technicznych',
+  zamknijPanel: 'Zamknij panel analizy',
+  zamknijPanelOpis: 'Zamknij panel analizy otwarty z prawej strony i wróć do przeglądu',
 } as const;
