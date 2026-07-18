@@ -193,6 +193,51 @@
   justify-content: flex-end;
 }
 
+/* ---- sekcja „Następny krok" (F-E4: przebieg DONE → przejście do Wyników) ---- */
+.mvd-przebieg-nastepny {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-przebieg-nastepny-tresc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.mvd-przebieg-nastepny-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mvd-accent);
+}
+.mvd-przebieg-nastepny-opis {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mvd-ink);
+}
+.mvd-przebieg-nastepny-akcja {
+  flex-shrink: 0;
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 6px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-accent-ink);
+  cursor: pointer;
+}
+.mvd-przebieg-nastepny-akcja:hover {
+  filter: brightness(1.08);
+}
+
 /* ---- prymitywy współdzielone ---- */
 .mvd-sr-only {
   position: absolute;

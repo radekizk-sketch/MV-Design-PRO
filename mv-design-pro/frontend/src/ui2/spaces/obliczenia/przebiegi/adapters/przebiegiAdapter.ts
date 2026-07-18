@@ -38,7 +38,11 @@
  */
 
 import { useState } from 'react';
-import type { ExecutionRun, RunStatus } from '../../../../../ui/study-cases/types';
+import type {
+  ExecutionAnalysisType,
+  ExecutionRun,
+  RunStatus,
+} from '../../../../../ui/study-cases/types';
 import { useExecutionRunsStore } from '../../../../../ui/study-cases/runStore';
 import { useBusEvent } from '../../../../events';
 import { etykietaAnalizy, etykietaStatusu, formatCzasTrwania, PRZEBIEGI_STRINGS } from '../strings';
@@ -50,11 +54,27 @@ import { etykietaAnalizy, etykietaStatusu, formatCzasTrwania, PRZEBIEGI_STRINGS 
 /** Stan okna (karta §3): brak aktywnego przypadku / ładowanie / błąd / lista. */
 export type StanPrzebiegow = 'brak-przypadku' | 'ladowanie' | 'blad' | 'lista';
 
+/**
+ * Rodzaj przebiegu — wskazuje właściwą zakładkę wyników w „Następnym kroku"
+ * (F-E4). Klasyfikacja 1:1 z `useWpiecieWynikow` (`ui2/spaces/wyniki/
+ * useWpiecieWynikow.ts:28-33`): rozpływ dla „LOAD_FLOW", zwarcie dla „SC_*",
+ * pozostałe rodzaje → „inny" (brak dedykowanej zakładki wyników).
+ */
+export type RodzajPrzebiegu = 'rozplyw' | 'zwarcie' | 'inny';
+
+/** Klasyfikuje typ analizy na rodzaj wyniku (bez zgadywania — parytet z warsztatem wyników). */
+export function rodzajPrzebiegu(analysisType: ExecutionAnalysisType): RodzajPrzebiegu {
+  if (analysisType === 'LOAD_FLOW') return 'rozplyw';
+  if (analysisType.startsWith('SC_')) return 'zwarcie';
+  return 'inny';
+}
+
 /** Wiersz listy przebiegów — projekcja `ExecutionRun` na etykiety PL. */
 export interface PrzebiegWiersz {
   id: string;
   przypadekId: string;
   analiza: string;
+  rodzaj: RodzajPrzebiegu;
   status: RunStatus;
   statusLabel: string;
   poczatekISO: string | null;
@@ -74,6 +94,7 @@ export function mapujWiersze(runs: ExecutionRun[]): PrzebiegWiersz[] {
     id: r.id,
     przypadekId: r.study_case_id,
     analiza: etykietaAnalizy(r.analysis_type),
+    rodzaj: rodzajPrzebiegu(r.analysis_type),
     status: r.status,
     statusLabel: etykietaStatusu(r.status),
     poczatekISO: r.started_at,

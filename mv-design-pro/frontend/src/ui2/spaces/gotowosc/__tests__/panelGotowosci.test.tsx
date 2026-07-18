@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { PanelGotowosci } from '../PanelGotowosci';
 import { GOTOWOSC_STRINGS } from '../strings';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { useShellStore } from '../../../shell/useShellStore';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { emituj } from '../../../events/bus';
 import { enmFixActionFixture, readinessInfoFixture, readinessInfoZBlokadami } from './fixtures';
@@ -185,6 +187,56 @@ describe('PanelGotowosci — zwijanie sekcji', () => {
     fireEvent.click(naglowek);
     expect(naglowek).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByText('GPZ-1')).not.toBeInTheDocument();
+  });
+});
+
+describe('PanelGotowosci — „Następny krok" przy zielonej bramce (F-E3)', () => {
+  beforeEach(() => {
+    useShellStore.setState({ activeSpace: 'gotowosc' });
+  });
+
+  it('bramka zielona (brak braków) → sekcja „Następny krok" widoczna z opisem PL', () => {
+    useSnapshotStore.setState({ snapshot: snapshotFixture(), readiness: readinessInfoFixture() });
+    render(<PanelGotowosci {...props()} />);
+    const sekcja = screen.getByTestId('mvd-gotowosc-nastepny');
+    expect(within(sekcja).getByText(GOTOWOSC_STRINGS.nastepnyKrokTytul)).toBeInTheDocument();
+    expect(within(sekcja).getByText(GOTOWOSC_STRINGS.nastepnyKrokOpis)).toBeInTheDocument();
+  });
+
+  it('klik natywny „Przejdź do obliczeń" → przełącza aktywną przestrzeń na „obliczenia"', async () => {
+    const user = userEvent.setup();
+    useSnapshotStore.setState({ snapshot: snapshotFixture(), readiness: readinessInfoFixture() });
+    render(<PanelGotowosci {...props()} />);
+    expect(useShellStore.getState().activeSpace).toBe('gotowosc');
+    await user.click(screen.getByTestId('mvd-gotowosc-nastepny-akcja'));
+    expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+  });
+
+  it('bramka zielona z samymi ostrzeżeniami (brak blokerów) → sekcja nadal widoczna', () => {
+    useSnapshotStore.setState({
+      snapshot: snapshotFixture(),
+      readiness: {
+        ready: false,
+        blockers: [],
+        warnings: [
+          {
+            code: 'protection.settings_incomplete',
+            message_pl: 'Nastawy przekaźnika niekompletne.',
+            element_ref: 'REL-2',
+            severity: 'OSTRZEZENIE',
+          },
+        ],
+      },
+    });
+    render(<PanelGotowosci {...props()} />);
+    expect(screen.getByTestId('mvd-gotowosc-blokady-calkowite')).toHaveTextContent('0');
+    expect(screen.getByTestId('mvd-gotowosc-nastepny')).toBeInTheDocument();
+  });
+
+  it('bramka czerwona (są blokery) → sekcji „Następny krok" nie ma', () => {
+    ustawZBlokadami();
+    render(<PanelGotowosci {...props()} />);
+    expect(screen.queryByTestId('mvd-gotowosc-nastepny')).not.toBeInTheDocument();
   });
 });
 

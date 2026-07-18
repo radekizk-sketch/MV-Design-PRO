@@ -1,7 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { SzczegolyPrzebiegu } from '../SzczegolyPrzebiegu';
 import { mapujWiersze } from '../adapters/przebiegiAdapter';
+import { useShellStore } from '../../../../shell/useShellStore';
 import { PRZEBIEGI_STRINGS as T, formatOdcisk } from '../strings';
 import {
   formatContractValue,
@@ -112,6 +114,79 @@ describe('SzczegolyPrzebiegu — akcja „Pokaż wyniki" (karta §3 kryterium 3)
     expect(przycisk).toBeDisabled();
     fireEvent.click(przycisk);
     expect(onPokazWyniki).not.toHaveBeenCalled();
+  });
+});
+
+describe('SzczegolyPrzebiegu — „Następny krok" po zakończonym obliczeniu (F-E4)', () => {
+  beforeEach(() => {
+    useShellStore.setState({ activeSpace: 'obliczenia' });
+  });
+
+  it('DONE, rozpływ (LOAD_FLOW) → sekcja z przyciskiem i zdaniem o zakładce Rozpływ mocy', () => {
+    render(
+      <SzczegolyPrzebiegu
+        przebieg={wiersz({ analysis_type: 'LOAD_FLOW' })}
+        trybEkspercki={false}
+        onPokazWyniki={() => {}}
+      />,
+    );
+    const sekcja = screen.getByTestId('mvd-przebieg-nastepny');
+    expect(within(sekcja).getByTestId('mvd-przebieg-nastepny-akcja')).toHaveTextContent(
+      T.nastepnyKrokAkcja,
+    );
+    expect(screen.getByTestId('mvd-przebieg-nastepny-opis')).toHaveTextContent(T.nastepnyKrokRozplyw);
+  });
+
+  it('DONE, zwarcie (SC_3F) → zdanie o zakładce Zwarcia', () => {
+    render(
+      <SzczegolyPrzebiegu
+        przebieg={wiersz({ analysis_type: 'SC_3F' })}
+        trybEkspercki={false}
+        onPokazWyniki={() => {}}
+      />,
+    );
+    expect(screen.getByTestId('mvd-przebieg-nastepny-opis')).toHaveTextContent(T.nastepnyKrokZwarcie);
+  });
+
+  it('DONE, rodzaj inny (PHASE_STATE_SN) → zdanie ogólne o przestrzeni Wyniki', () => {
+    render(
+      <SzczegolyPrzebiegu
+        przebieg={wiersz({ analysis_type: 'PHASE_STATE_SN' })}
+        trybEkspercki={false}
+        onPokazWyniki={() => {}}
+      />,
+    );
+    expect(screen.getByTestId('mvd-przebieg-nastepny-opis')).toHaveTextContent(T.nastepnyKrokInny);
+  });
+
+  it('klik natywny „Zobacz wyniki" → przełącza aktywną przestrzeń na „wyniki"', async () => {
+    const user = userEvent.setup();
+    render(<SzczegolyPrzebiegu przebieg={wiersz()} trybEkspercki={false} onPokazWyniki={() => {}} />);
+    expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+    await user.click(screen.getByTestId('mvd-przebieg-nastepny-akcja'));
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+  });
+
+  it('przebieg w toku (RUNNING) → sekcji „Następny krok" nie ma', () => {
+    render(
+      <SzczegolyPrzebiegu
+        przebieg={wiersz({ status: 'RUNNING', finished_at: null })}
+        trybEkspercki={false}
+        onPokazWyniki={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId('mvd-przebieg-nastepny')).not.toBeInTheDocument();
+  });
+
+  it('przebieg z błędem (FAILED) → sekcji „Następny krok" nie ma', () => {
+    render(
+      <SzczegolyPrzebiegu
+        przebieg={wiersz({ status: 'FAILED', error_message: 'Solver przerwany' })}
+        trybEkspercki={false}
+        onPokazWyniki={() => {}}
+      />,
+    );
+    expect(screen.queryByTestId('mvd-przebieg-nastepny')).not.toBeInTheDocument();
   });
 });
 

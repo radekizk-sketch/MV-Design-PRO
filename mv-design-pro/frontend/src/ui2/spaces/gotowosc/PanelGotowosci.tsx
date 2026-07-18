@@ -28,6 +28,7 @@
 import { useMemo, useState } from 'react';
 import './gotowosc.css';
 import type { AdvancementMode } from '../../shell/modeModel';
+import { useShellStore } from '../../shell/useShellStore';
 import { useBusEvent } from '../../events';
 import {
   KOLEJNOSC_CELOW,
@@ -58,6 +59,7 @@ export function PanelGotowosci({
 }: PanelGotowosciProps) {
   const stan = useStanGotowosci();
   const issues = useProblemyGotowosci();
+  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const trybEkspercki = trybZaawansowania === 'expert';
 
   const grupyPelne = useMemo(() => grupujProblemyWgCelu(issues), [issues]);
@@ -164,6 +166,23 @@ export function PanelGotowosci({
             ))}
           </div>
         </>
+      )}
+
+      {blokadyCalkowite === 0 && (
+        <section className="mvd-gotowosc-nastepny" data-testid="mvd-gotowosc-nastepny">
+          <div className="mvd-gotowosc-nastepny-tresc">
+            <span className="mvd-gotowosc-nastepny-lbl">{GOTOWOSC_STRINGS.nastepnyKrokTytul}</span>
+            <p className="mvd-gotowosc-nastepny-opis">{GOTOWOSC_STRINGS.nastepnyKrokOpis}</p>
+          </div>
+          <button
+            type="button"
+            className="mvd-gotowosc-nastepny-akcja"
+            onClick={() => setActiveSpace('obliczenia')}
+            data-testid="mvd-gotowosc-nastepny-akcja"
+          >
+            {GOTOWOSC_STRINGS.nastepnyKrokAkcja}
+          </button>
+        </section>
       )}
 
       <SekcjaZgodnosciReferencyjnej />

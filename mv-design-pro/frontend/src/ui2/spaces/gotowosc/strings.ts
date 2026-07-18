@@ -25,6 +25,12 @@ export const GOTOWOSC_STRINGS = {
   wszystkoGotoweOpis:
     'Kontrola techniczna układu nie wskazuje braków — można uruchomić obliczenia.',
 
+  // Sekcja „Następny krok" (F-E3: bramka zielona → przejście do obliczeń)
+  nastepnyKrokTytul: 'Następny krok',
+  nastepnyKrokOpis:
+    'Model przeszedł bramkę gotowości — skonfiguruj wariant i uruchom obliczenie.',
+  nastepnyKrokAkcja: 'Przejdź do obliczeń',
+
   // Podsumowanie nagłówka
   podsumowanieBlokady: 'Blokady',
   podsumowanieOstrzezenia: 'Ostrzeżenia',

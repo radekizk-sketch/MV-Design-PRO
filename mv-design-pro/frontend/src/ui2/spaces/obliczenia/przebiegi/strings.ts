@@ -93,6 +93,15 @@ export const PRZEBIEGI_STRINGS = {
   przyciskPokazWyniki: 'Pokaż wyniki',
   przyciskPokazWynikiOpis: 'Dostępne po zakończeniu przebiegu (status: Zakończony).',
 
+  // Sekcja „Następny krok" (F-E4: przebieg zakończony → przejście do Wyników)
+  nastepnyKrokTytul: 'Następny krok',
+  nastepnyKrokAkcja: 'Zobacz wyniki',
+  nastepnyKrokRozplyw:
+    'Obliczenie zakończone — wyniki rozpływu znajdziesz w przestrzeni „Wyniki", w zakładce Rozpływ mocy.',
+  nastepnyKrokZwarcie:
+    'Obliczenie zakończone — wyniki zwarciowe znajdziesz w przestrzeni „Wyniki", w zakładce Zwarcia.',
+  nastepnyKrokInny: 'Obliczenie zakończone — wyniki znajdziesz w przestrzeni „Wyniki".',
+
   // ARIA — ogłoszenie na żywo (magistrala, karta §3 kryterium 2)
   ariaWynikiGotowe: 'Lista przebiegów odświeżona — nowe wyniki są gotowe.',
   ariaWynikiNiewazne: (rev: number): string =>

@@ -22,6 +22,7 @@ import {
   formatContractValue,
   useAnalysisRunContract,
 } from '../../../../ui/workspace/analysisRunContract';
+import { useShellStore } from '../../../shell/useShellStore';
 import type { PrzebiegWiersz } from './adapters/przebiegiAdapter';
 import { formatCzas, formatOdcisk, PRZEBIEGI_STRINGS as T } from './strings';
 
@@ -259,11 +260,22 @@ function SekcjaKontraktAnalizy({
   );
 }
 
+/** Zdanie „Następny krok" zależne od rodzaju przebiegu (F-E4) — etykiety zakładek
+ * warsztatu wyników; nawigację do zakładki wykonuje sam warsztat wg rodzaju
+ * aktywnego przebiegu (`useWpiecieWynikow`). */
+function zdanieNastepnyKrok(rodzaj: PrzebiegWiersz['rodzaj']): string {
+  if (rodzaj === 'rozplyw') return T.nastepnyKrokRozplyw;
+  if (rodzaj === 'zwarcie') return T.nastepnyKrokZwarcie;
+  return T.nastepnyKrokInny;
+}
+
 export function SzczegolyPrzebiegu({
   przebieg,
   trybEkspercki,
   onPokazWyniki,
 }: SzczegolyPrzebieguProps) {
+  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
+
   if (!przebieg) {
     return (
       <div className="mvd-przebiegi-pusto" data-testid="mvd-przebieg-brak-wyboru">
@@ -346,6 +358,29 @@ export function SzczegolyPrzebiegu({
               <WierszParametru etykieta={T.etykietaPrzypadekId} wartosc={przebieg.przypadekId} />
             </tbody>
           </table>
+        </section>
+      )}
+
+      {zakonczony && (
+        <section
+          className="mvd-przebieg-nastepny"
+          aria-label={T.nastepnyKrokTytul}
+          data-testid="mvd-przebieg-nastepny"
+        >
+          <div className="mvd-przebieg-nastepny-tresc">
+            <span className="mvd-przebieg-nastepny-lbl">{T.nastepnyKrokTytul}</span>
+            <p className="mvd-przebieg-nastepny-opis" data-testid="mvd-przebieg-nastepny-opis">
+              {zdanieNastepnyKrok(przebieg.rodzaj)}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="mvd-przebieg-nastepny-akcja"
+            onClick={() => setActiveSpace('wyniki')}
+            data-testid="mvd-przebieg-nastepny-akcja"
+          >
+            {T.nastepnyKrokAkcja}
+          </button>
         </section>
       )}
 
