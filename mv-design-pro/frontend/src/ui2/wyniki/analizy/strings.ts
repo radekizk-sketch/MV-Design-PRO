@@ -38,6 +38,7 @@ export const ANALIZY_STRINGS = {
   otworz: 'Otwórz',
   wymagaZwarcia: 'wymaga przebiegu zwarciowego',
   wymagaRozplywu: 'wymaga przebiegu rozpływu',
+  wymagaDowolnego: 'wymaga zakończonego przebiegu',
   daneDostepne: 'dane dostępne',
 
   klasyczneEyebrow: 'WIDOKI KLASYCZNE (MOST)',

@@ -137,10 +137,13 @@ export function EkranAnalizTechnicznych() {
     if (maZakonczonyPrzebieg(przebiegi, karta.wymaga)) {
       return { etykieta: T.daneDostepne, ok: true };
     }
-    return {
-      etykieta: karta.wymaga === 'rozplywowy' ? T.wymagaRozplywu : T.wymagaZwarcia,
-      ok: false,
-    };
+    const etykieta =
+      karta.wymaga === 'rozplywowy'
+        ? T.wymagaRozplywu
+        : karta.wymaga === 'zwarciowy'
+          ? T.wymagaZwarcia
+          : T.wymagaDowolnego;
+    return { etykieta, ok: false };
   };
 
   return (

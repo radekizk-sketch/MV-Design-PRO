@@ -186,3 +186,13 @@ describe('model — czyste selektory przebiegów', () => {
     expect(ostatniZakonczonyPrzebieg([])).toBeNull();
   });
 });
+
+describe('chip wymagań — rodzaj „dowolny"', () => {
+  it('bez żadnego przebiegu karta stanu fazowego mówi „wymaga zakończonego przebiegu"', () => {
+    useExecutionRunsStore.setState({ runs: [] });
+    render(<EkranAnalizTechnicznych />);
+    expect(
+      within(screen.getByTestId('mvd-analizy-karta-fazowy')).getByText('wymaga zakończonego przebiegu'),
+    ).toBeTruthy();
+  });
+});
