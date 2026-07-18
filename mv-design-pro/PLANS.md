@@ -937,6 +937,17 @@ kodujące udokumentowaną konwencję przechodzą bez zmian asercji. Decyzja
 właściciela V12K-040 (opcja B: adapter + rozdział cosφ przekroju/punktu)
 pozostaje w mocy; adnotacje w `REJESTR_KONFLIKTOW.md` (V12K-040) i karcie K2.
 
+**ZASADA FLOW PROJEKTANTA (dyrektywa właściciela 2026-07-18 — OSTRA):**
+stare ekrany (`ui/**`, most) NIE są wzorcem docelowym ani „kanonicznymi
+dostawcami" — kanon V12.xx to rejestr ZDOLNOŚCI (rozstrzygnięcie V12K-041);
+każdy nowy ekran projektowany OD ETAPU FLOW projektanta (E1–E8) wg kontraktu
+ekranu prowadzącego (cel · tor pracy z akcjami naprawczymi · uczciwe stany
+zerowe · następny krok · język inżynierski). Specyfikacja WIĄŻĄCA:
+`docs/uiux/FLOW_PROJEKTANTA_2026-07.md`; program §2.4; priorytety przebudów
+wg bólu inżyniera na etapach (F-E5 analizy → F-E8 dokumentacja → F-E6 pętla
+decyzji → F-E1 pulpit projektu → F-E3/E4 następny krok → F-E7 wejścia SLD).
+Wzorce referencyjne: EkranAnalizTechnicznych (hub E5), EkranFrt (E-26).
+
 ### 3.0.0 V12.6 academic end-to-end closure (completed)
 
 Status:

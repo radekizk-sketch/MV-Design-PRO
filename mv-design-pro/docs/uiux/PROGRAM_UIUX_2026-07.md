@@ -59,6 +59,19 @@ Program NIE zmienia kanonu V12.xx, warstw architektury, FROZEN Result API ani za
 codenames). Program projektuje wyłącznie warstwę prezentacji i aplikacyjne kontrakty UI.
 Konflikt z kanonem → wpis do `docs/v12xx/REJESTR_KONFLIKTOW.md` + STOP na danym zadaniu.
 
+### 2.4 Zasada FLOW PROJEKTANTA (dyrektywa właściciela 2026-07-18 — OSTRA, nadrzędna dla UX)
+Pełna specyfikacja: [`FLOW_PROJEKTANTA_2026-07.md`](FLOW_PROJEKTANTA_2026-07.md) (WIĄŻĄCA).
+Interpretacja kanonu zarejestrowana jako V12K-041. Skrót zasad twardych:
+1. **Kanon V12.xx = rejestr ZDOLNOŚCI, nie ekranów.** Stare ekrany (`ui/**`, most) NIE są
+   wzorcem docelowym ani „kanonicznymi dostawcami" — są tymczasowymi dostawcami zdolności
+   z terminem wygaszenia. Bramka Parytetu dotyczy zdolności, nigdy układu/stylu starego ekranu.
+2. **Projektujemy od etapu flow, nie od starego ekranu.** Pytanie wyjściowe każdej karty UI:
+   „na którym etapie pracy (E1–E8) jest inżynier i czego potrzebuje, żeby przejść dalej?"
+3. **Kontrakt ekranu prowadzącego** (obowiązkowy): cel jednym zdaniem · stan łańcucha pracy
+   z akcjami naprawczymi (wzorzec „Tor pracy" z `EkranAnalizTechnicznych`) · uczciwe stany
+   zerowe · jawny następny krok · język inżynierski (po co / z czego / co daje).
+4. Priorytety przebudów wg bólu inżyniera na etapach E1–E8 (FLOW §2), nie wg wieku kodu.
+
 ### 2.2 Relacja do programu 10x
 Program 10x (F0–F4) właśnie zabezpiecza fundament (bramki CI, auth, współbieżność, god-file).
 Program UI/UX nie dubluje jego zadań: auth, sekrety, offload event-loopu, mypy — poza zakresem.
