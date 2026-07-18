@@ -232,6 +232,8 @@ Data wejscia statusow: 2026-05-24.
 | `POST /api/runs/power-flow` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Przejsciowe uruchomienie rozplywu przez unified runs. | unified run tests | Architekt API |
 | `POST /api/runs/protection` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Przejsciowe uruchomienie zabezpieczen przez unified runs. | unified run tests | Projektant zabezpieczen |
 | `POST /api/runs/short-circuit` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Przejsciowe uruchomienie zwarc przez unified runs. | unified run tests | Architekt API |
+| `POST /api/solver/cable-rated-current-preview` | v12xx | aktywny | 2026-07-18 | - | Podglad pradu znamionowego kabla z mocy przylaczeniowej bez mutacji modelu. | cable voltage drop preview tests | Architekt solverow |
+| `POST /api/solver/cable-voltage-drop-preview` | v12xx | aktywny | 2026-07-18 | - | Podglad spadku napiecia na kablu SN bez mutacji modelu. | cable voltage drop preview tests | Architekt solverow |
 | `POST /api/solver/grid-source-preview` | v12xx | aktywny | 2026-05-24 | - | Podglad parametrow zrodla GPZ bez mutacji modelu. | grid source preview tests | Architekt solverow |
 | `POST /api/station-templates/{template_id}/apply` | v12xx | aktywny | 2026-05-24 | - | Zastosowanie szablonu stacji przez operacje domenowe. | station template tests | Architekt stacji |
 | `POST /api/station-templates/{template_id}/preview` | v12xx | aktywny | 2026-05-24 | - | Podglad skutkow szablonu stacji bez zapisu. | station template tests | Architekt stacji |

@@ -3,13 +3,17 @@
  *
  * Łączy:
  * - validateCableAmpacity (obciążalność termiczna + zwarciowa)
- * - calculateVoltageDrop (spadek napięcia)
+ * - calculateVoltageDrop (spadek napięcia — fizyka ΔU liczona w backendzie)
  *
- * Wyświetla worst-case verdict + listę violations + rekomendacje.
+ * Wyświetla worst-case verdict + listę violations + rekomendacje. Spadek
+ * napięcia pochodzi z końcówki solvera (asynchronicznie), z jawnym stanem
+ * ładowania i uczciwym komunikatem błędu PL przy braku backendu.
  */
 
+import { useEffect, useState } from 'react';
+
 import { validateCableAmpacity, type CableType, type AmpacityVerdict } from './cableAmpacityValidator';
-import { calculateVoltageDrop, type DropVerdict } from './voltageDropValidator';
+import { calculateVoltageDrop, type DropVerdict, type VoltageDropResult } from './voltageDropValidator';
 
 interface CableValidationBannerProps {
   cableType: CableType;
@@ -53,16 +57,54 @@ export function CableValidationBanner({
     voltageLevel,
   });
 
-  const dropResult = calculateVoltageDrop({
+  const [dropResult, setDropResult] = useState<VoltageDropResult | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setDropResult(null);
+
+    void calculateVoltageDrop(
+      {
+        loadCurrentA,
+        cableLengthKm: lengthKm,
+        cableResistanceOhmPerKm,
+        cableReactanceOhmPerKm,
+        cosPhi,
+        systemVoltageKv,
+      },
+      { signal: controller.signal },
+    )
+      .then((result) => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setDropResult(result);
+      })
+      .catch(() => {
+        if (controller.signal.aborted) {
+          return;
+        }
+        setDropResult({
+          verdict: 'error',
+          voltageDropV: 0,
+          voltageDropPercent: 0,
+          message: 'Podgląd spadku napięcia niedostępny — backend solvera nie odpowiedział.',
+        });
+      });
+
+    return () => controller.abort();
+  }, [
     loadCurrentA,
-    cableLengthKm: lengthKm,
+    lengthKm,
     cableResistanceOhmPerKm,
     cableReactanceOhmPerKm,
     cosPhi,
     systemVoltageKv,
-  });
+  ]);
 
-  const worstVerdict = worstOf(ampResult.verdict, dropResult.verdict);
+  const worstVerdict: AmpacityVerdict | DropVerdict = dropResult
+    ? worstOf(ampResult.verdict, dropResult.verdict)
+    : ampResult.verdict;
 
   return (
     <div
@@ -83,9 +125,20 @@ export function CableValidationBanner({
           )}
         </li>
         <li data-testid="cable-voltage-drop-check">
-          Spadek napięcia: <strong>{dropResult.voltageDropPercent.toFixed(2)}%</strong>
-          {' — '}
-          {dropResult.message.replace(`Spadek napięcia ${dropResult.voltageDropPercent.toFixed(2)}% `, '')}
+          {dropResult ? (
+            <>
+              Spadek napięcia: <strong>{dropResult.voltageDropPercent.toFixed(2)}%</strong>
+              {' — '}
+              {dropResult.message.replace(
+                `Spadek napięcia ${dropResult.voltageDropPercent.toFixed(2)}% `,
+                '',
+              )}
+            </>
+          ) : (
+            <>
+              Spadek napięcia: <strong>obliczanie…</strong>
+            </>
+          )}
         </li>
       </ul>
       {ampResult.issues.length > 0 && (
@@ -95,9 +148,9 @@ export function CableValidationBanner({
           ))}
         </ul>
       )}
-      {(ampResult.recommendation || dropResult.recommendation) && (
+      {(ampResult.recommendation || dropResult?.recommendation) && (
         <p className="mt-1 text-xs italic">
-          {ampResult.recommendation ?? dropResult.recommendation}
+          {ampResult.recommendation ?? dropResult?.recommendation}
         </p>
       )}
     </div>

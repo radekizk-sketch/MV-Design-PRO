@@ -9,7 +9,7 @@
  *   - Earthing: ICs=280.50 A + IAWSCz=40 A → IK1=48.85 A (Excel uses partial),
  *     tF=3.1 s → UF=87 V → RB ≤ 1.78 Ω
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CABLE_REFERENCE_XRUHAKXS_120,
@@ -19,6 +19,52 @@ import {
   checkCableShortCircuit,
   computeRatedCurrentFromPower,
 } from '../cableSelectionContract';
+
+// Fizyka ΔU / prądu znamionowego liczy się w backendzie; mock końcówek solvera
+// odwzorowuje kontrakt 1:1 (kształt jak `CableVoltageDropResponse` /
+// `CableRatedCurrentResponse`).
+function cableSolverResponse(url: string, body: Record<string, number>) {
+  if (url.endsWith('/api/solver/cable-rated-current-preview')) {
+    const apparentVa = (body.active_power_kw * 1000) / body.cos_phi;
+    return {
+      rated_current_a: apparentVa / (Math.sqrt(3) * body.line_voltage_v),
+      apparent_power_kva: apparentVa / 1000,
+      formula_ref: 'I = S_n / (√3·U);  S_n = P / cosφ',
+      assumptions: ['Uklad 3-fazowy symetryczny; wspolczynnik linii √3.'],
+    };
+  }
+  const sinPhi = Math.sqrt(1 - body.cos_phi ** 2);
+  const rTotal = body.r_ohm_per_km * body.length_km;
+  const xTotal = body.x_ohm_per_km * body.length_km;
+  const resistive = Math.sqrt(3) * body.current_a * rTotal * body.cos_phi;
+  const reactive = Math.sqrt(3) * body.current_a * xTotal * sinPhi;
+  const deltaU = resistive + reactive;
+  return {
+    delta_u_v: deltaU,
+    delta_u_pct: (deltaU / body.line_voltage_v) * 100,
+    r_total_ohm: rTotal,
+    x_total_ohm: xTotal,
+    delta_u_resistive_v: resistive,
+    delta_u_reactive_v: reactive,
+    formula_ref: 'ΔU = √3·I·(R·cosφ + X·sinφ)',
+    assumptions: ['Uklad 3-fazowy symetryczny; wspolczynnik linii √3.'],
+  };
+}
+
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, number>;
+      return { ok: true, json: async () => cableSolverResponse(url, body) } as Response;
+    }),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 import {
   computeEarthingFaultCurrent,
   computeFaultDuration,
@@ -50,8 +96,8 @@ describe('CABLE_REFERENCE_XRUHAKXS_120 — referencja MT880', () => {
 });
 
 describe('computeRatedCurrentFromPower — In z mocy', () => {
-  it('P=4000kW, cosφ=0.93, U=15000V → I≈165.5 A (zbliżone do 162.06 Excel)', () => {
-    const i = computeRatedCurrentFromPower({
+  it('P=4000kW, cosφ=0.93, U=15000V → I≈165.5 A (zbliżone do 162.06 Excel)', async () => {
+    const i = await computeRatedCurrentFromPower({
       activePowerKw: 4000,
       cosPhi: 0.93,
       lineVoltageV: 15000,
@@ -62,8 +108,8 @@ describe('computeRatedCurrentFromPower — In z mocy', () => {
     expect(i).toBeLessThan(170);
   });
 
-  it('Excel exact: cosφ=0.95 → In ≈ 162.06 A', () => {
-    const i = computeRatedCurrentFromPower({
+  it('Excel exact: cosφ=0.95 → In ≈ 162.06 A', async () => {
+    const i = await computeRatedCurrentFromPower({
       activePowerKw: 4000,
       cosPhi: 0.95,
       lineVoltageV: 15000,
@@ -101,8 +147,8 @@ describe('checkCableAmpacity — I\'dd = Idd × f1 × f2 × kg5', () => {
 });
 
 describe('computeCableVoltageDrop — ΔU%', () => {
-  it('Dla 162.06A · 0.520km · cosφ=0.95 · 15kV → ΔU% < 2.0% (OK)', () => {
-    const result = computeCableVoltageDrop({
+  it('Dla 162.06A · 0.520km · cosφ=0.95 · 15kV → ΔU% < 2.0% (OK)', async () => {
+    const result = await computeCableVoltageDrop({
       cable: CABLE_REFERENCE_XRUHAKXS_120,
       lengthKm: 0.520,
       currentA: 162.06,
@@ -114,8 +160,8 @@ describe('computeCableVoltageDrop — ΔU%', () => {
     expect(result.voltageDropPct).toBeLessThan(2.0);
   });
 
-  it('Linia bardzo długa lub mały przekrój → ΔU% może przekroczyć limit', () => {
-    const result = computeCableVoltageDrop({
+  it('Linia bardzo długa lub mały przekrój → ΔU% może przekroczyć limit', async () => {
+    const result = await computeCableVoltageDrop({
       cable: CABLE_REFERENCE_XRUHAKXS_120,
       lengthKm: 30,
       currentA: 280,
@@ -126,12 +172,12 @@ describe('computeCableVoltageDrop — ΔU%', () => {
     expect(result.ok).toBe(false);
   });
 
-  it('Voltage drop wzrasta liniowo z długością', () => {
-    const r1 = computeCableVoltageDrop({
+  it('Voltage drop wzrasta liniowo z długością', async () => {
+    const r1 = await computeCableVoltageDrop({
       cable: CABLE_REFERENCE_XRUHAKXS_120, lengthKm: 1, currentA: 100,
       cosPhi: 0.95, lineVoltageV: 15000, limitPct: 2.0,
     });
-    const r2 = computeCableVoltageDrop({
+    const r2 = await computeCableVoltageDrop({
       cable: CABLE_REFERENCE_XRUHAKXS_120, lengthKm: 2, currentA: 100,
       cosPhi: 0.95, lineVoltageV: 15000, limitPct: 2.0,
     });
