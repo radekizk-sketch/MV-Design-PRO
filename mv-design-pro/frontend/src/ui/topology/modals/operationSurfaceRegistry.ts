@@ -201,7 +201,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'add_grid_source_sn',
-    'AddGridSourceForm',
+    'KreatorZrodloZasilania',
     'Dodaj źródło zasilania GPZ',
     'E-10',
     'B',

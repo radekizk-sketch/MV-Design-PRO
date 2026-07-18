@@ -4,7 +4,6 @@
  * Formularze operacji domenowych renderowane inline w panelu inspektora.
  */
 
-export { AddGridSourceForm } from './AddGridSourceForm';
 export { AddSnBayForm } from './AddSnBayForm';
 export { ContinueTrunkForm } from './ContinueTrunkForm';
 export { InsertStationForm } from './InsertStationForm';

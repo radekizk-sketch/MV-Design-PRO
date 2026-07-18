@@ -13,9 +13,9 @@
 
 import type { ComponentType, ReactNode } from 'react';
 import type { CanonicalOpName } from '../../types/domainOps';
+import { KreatorZrodloZasilania } from '../../ui2/kreatory/zrodlo';
 import { AddConverterSourceForm } from '../network-build/forms/AddConverterSourceForm';
 import { AddDispatchableSourceForm } from '../network-build/forms/AddDispatchableSourceForm';
-import { AddGridSourceForm } from '../network-build/forms/AddGridSourceForm';
 import { AddMeasurementForm } from '../network-build/forms/AddMeasurementForm';
 import { AddNnLoadForm } from '../network-build/forms/AddNnLoadForm';
 import { AddNnOutgoingFieldForm } from '../network-build/forms/AddNnOutgoingFieldForm';
@@ -37,7 +37,7 @@ import { UpdateElementParametersForm } from '../network-build/forms/UpdateElemen
  * `null` znaczy "operacja nie ma formularza" (np. delete_element, refresh_snapshot).
  */
 export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, ComponentType | null>> = {
-  add_grid_source_sn: AddGridSourceForm,
+  add_grid_source_sn: KreatorZrodloZasilania,
   add_sn_bay: AddSnBayForm,
   continue_trunk_segment_sn: ContinueTrunkForm,
   insert_station_on_segment_sn: InsertStationForm,

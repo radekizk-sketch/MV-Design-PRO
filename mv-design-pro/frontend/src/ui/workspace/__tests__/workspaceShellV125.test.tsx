@@ -158,8 +158,8 @@ vi.mock('../../comparison/ResultsComparisonPage', () => ({
   ResultsComparisonPage: () => <div data-testid="results-comparison-page">CMP</div>,
 }));
 
-vi.mock('../../network-build/forms/AddGridSourceForm', () => ({
-  AddGridSourceForm: () => (
+vi.mock('../../../ui2/kreatory/zrodlo', () => ({
+  KreatorZrodloZasilania: () => (
     <div data-testid="add-grid-source-form">Formularz dodania GPZ do modelu sieci</div>
   ),
 }));

@@ -1,0 +1,133 @@
+/**
+ * Teksty PL kreatora „Dodaj źródło zasilania" (GPZ / rozdzielnia SN).
+ * Język inżynierski (FLOW §0.3): po co / z czego / co daje.
+ */
+
+export const ZRODLO_STRINGS = {
+  eyebrow: 'MODEL SIECI · ŹRÓDŁO ZASILANIA',
+  celTworzenie:
+    'Dodaj Główny Punkt Zasilający (GPZ) — źródło systemowe SN dla obliczeń. '
+    + 'Dane zwarciowe i normowe czyta backend (IEC 60909); zapis tworzy szyny, sekcje i pola odpływowe.',
+  odznakaNowy: 'Nowy GPZ',
+  odznakaEdycja: 'Edycja GPZ',
+
+  // Zakres wariantu.
+  zakresTytul: 'Zakres wariantu GPZ',
+  zakresZrodloSn: 'Źródło SN',
+  zakresWnSn: 'GPZ WN/SN',
+  zakresInfo:
+    'Wariant „Źródło SN": parametry zwarciowe, uziemienie i pola odpływowe pochodzą z pakietu '
+    + 'katalogowego GPZ. Pełny układ WN/SN (sekcje 110 kV, transformatory, składowa zerowa) '
+    + 'konfigurujesz w wariancie „GPZ WN/SN".',
+
+  // Katalog.
+  katalogTytul: 'Źródło danych i katalog',
+  katalogPole: 'Typ źródła z katalogu',
+  katalogPlaceholder: '— wybierz źródło systemowe GPZ —',
+  katalogLadowanie: 'Ładowanie katalogu źródeł…',
+  katalogBlad: 'Nie udało się pobrać katalogu źródeł systemowych SN.',
+  katalogPomoc:
+    'Pakiet katalogowy GPZ wnosi napięcie SN, moc zwarciową Sk″ i stosunek R/X. '
+    + 'Wartości liczbowe zawsze pochodzą z katalogu — nie z ręcznego wpisu.',
+  zrodloParametrow: 'Źródło parametrów',
+  powiazanieKatalogowe: 'Powiązanie katalogowe',
+  powiazanieBrak: 'wybierz wariant katalogowy',
+
+  // Identyfikacja.
+  idTytul: 'Identyfikacja GPZ',
+  nazwa: 'Nazwa GPZ',
+  nazwaPlaceholder: 'np. GPZ Wschód albo nazwa stacji',
+  oznaczenie: 'Oznaczenie ruchowe',
+  napiecieSn: 'Napięcie SN',
+  napiecieSnPomoc: 'Napięcie nominalne szyn SN. Wpływa na dobór katalogu transformatorów i kabli.',
+  uziemienie: 'Uziemienie punktu neutralnego',
+  uziemienieR: 'R uziemienia',
+  uziemienieX: 'X cewki',
+
+  // Parametry zwarciowe.
+  zwarcieTytul: 'Parametry zwarciowe na szynach SN',
+  sk3: 'Moc zwarciowa Sk″',
+  sk3Pomoc: 'Początkowa symetryczna moc zwarciowa 3-faz (IEC 60909). Wpływa na dobór aparatury i zabezpieczeń.',
+  rx: 'Stosunek R/X',
+  rxPomoc: 'Stosunek rezystancji do reaktancji źródła (IEC 60909). Wpływa na prąd udarowy ip.',
+  czasCieplny: 'Czas cieplny tk',
+
+  // Parametry normowe.
+  normyTytul: 'Parametry normowe',
+  norma: 'Norma obliczeniowa',
+  czestotliwosc: 'Częstotliwość',
+  cMax: 'Współczynnik napięcia c (maks.)',
+  cMin: 'Współczynnik napięcia c (min.)',
+
+  // Sekcje (advanced).
+  sekcjeTytul: 'Sekcje szyn GPZ',
+  liczbaSekcji: 'Liczba sekcji szyn SN',
+  liczbaTrafo: 'Transformatory 110/SN',
+  polNaSekcje: 'Pola liniowe na sekcję',
+  nazwaSekcji: 'Nazwa sekcji',
+  nazwaPola: 'Nazwa pola liniowego',
+  aparatRodzaj: 'Aparat pola liniowego',
+  aparatKatalog: 'Typ aparatu z katalogu',
+  aparatPlaceholder: '— wybierz aparat SN —',
+  aparatBlad: 'Nie udało się pobrać katalogu aparatury SN.',
+
+  // Składowa zerowa (advanced).
+  zeroTytul: 'Składowa zerowa',
+  zeroToggle: 'Definiuj R0/X0 dla obliczeń doziemnych',
+  r0: 'R0',
+  x0: 'X0',
+  z0z1: 'Z0/Z1',
+
+  // Podsumowanie.
+  podsumTytul: 'Podsumowanie obliczone (backend)',
+  podsumSk: 'Sk″ (SN)',
+  podsumIk3: 'Ik″ (3-faz. maks.)',
+  podsumIk1: 'Ik″ (1-faz. maks.)',
+  podsumKappa: 'κ (IEC 60909)',
+  podsumIp: 'ip (3-faz. maks.)',
+  podsumIth: 'Ith (3-faz., tk)',
+  podsumZ1: 'Z1 źródła',
+  podsumZ0: 'Z0 źródła',
+  podsumZrodlo: 'Źródło wyników',
+  podsumZrodloWartosc: 'Obliczenie IEC 60909 po stronie serwera',
+  podsumBrak: 'nie wyznaczono',
+  podsumBladDomyslny: 'Nie udało się wyznaczyć podsumowania GPZ.',
+  podsumBrakZero: 'Backend nie zwrócił składowej zerowej — wynik zwarcia doziemnego pozostaje niedostępny.',
+
+  // Kontrola / gotowość.
+  kontrolaTytul: 'Kontrola GPZ',
+
+  // Następny krok.
+  nastepnyOpis:
+    'Po zapisie GPZ dodaj pola odpływowe, stacje SN/nN i źródła OZE, a następnie uruchom obliczenia zwarciowe i rozpływowe.',
+
+  // Akcje / błędy.
+  zapisz: 'Zapisz GPZ',
+  anuluj: 'Anuluj',
+  brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem GPZ.',
+  walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać GPZ.',
+
+  // Opcje.
+  rodzajeAparatu: [
+    { id: 'BREAKER', etykieta: 'Wyłącznik' },
+    { id: 'DISCONNECTOR', etykieta: 'Odłącznik' },
+    { id: 'LOAD_SWITCH', etykieta: 'Rozłącznik' },
+  ],
+  napieciaSn: [
+    { id: '15', etykieta: '15 kV' },
+    { id: '20', etykieta: '20 kV' },
+    { id: '30', etykieta: '30 kV' },
+  ],
+  typyUziemienia: [
+    { id: 'resistor_grounded', etykieta: 'Rezystorowe (R w punkcie 0)' },
+    { id: 'isolated', etykieta: 'Izolowane (IT)' },
+    { id: 'petersen_coil', etykieta: 'Cewka Petersena (kompensacja)' },
+    { id: 'solid_grounded', etykieta: 'Bezpośrednie (TN)' },
+  ],
+  liczby1do4: [
+    { id: '1', etykieta: '1' },
+    { id: '2', etykieta: '2' },
+    { id: '3', etykieta: '3' },
+    { id: '4', etykieta: '4' },
+  ],
+} as const;

@@ -1,0 +1,426 @@
+/*
+ * Framework kreatorów ui2 — wspólny język wizualny dla WSZYSTKICH kreatorów
+ * budowy sieci (źródło zasilania, stacja, transformator, pole, obciążenie,
+ * zabezpieczenie itd.). Wyłącznie tokeny --mvd-* → oba motywy z automatu.
+ *
+ * Kontrakt ekranu prowadzącego (FLOW §0.3): cel jednym zdaniem, tor pracy,
+ * uczciwe stany zerowe, jawny następny krok, język inżynierski. Ten plik
+ * definiuje warstwę prezentacji tych zasad; logika i teksty są w modułach.
+ *
+ * Skala promieni: 10px (rama/sekcja) · 8px (karta/pole) · 999px (chip).
+ */
+
+.mvd-kreator {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  font: 13px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+/* ---------------------------------------------------------------- Nagłówek */
+
+.mvd-kreator-head {
+  flex-shrink: 0;
+  padding: 16px 18px 14px;
+  border-bottom: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+}
+.mvd-kreator-head-gora {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.mvd-kreator-eyebrow {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--mvd-accent);
+}
+.mvd-kreator-tytul {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--mvd-ink);
+  text-wrap: balance;
+}
+.mvd-kreator-cel {
+  margin: 6px 0 0;
+  max-width: 62ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+.mvd-kreator-odznaka {
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding: 4px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 999px;
+  background: var(--mvd-chip);
+  font: 600 10px/1 var(--mvd-font-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mvd-accent);
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------- Pasek kroków */
+
+.mvd-kreator-kroki {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.mvd-kreator-krok {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px 6px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 999px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-muted);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+.mvd-kreator-krok:hover { color: var(--mvd-ink); border-color: var(--mvd-accent); }
+.mvd-kreator-krok.mvd-on {
+  border-color: var(--mvd-accent);
+  background: var(--mvd-sel);
+  color: var(--mvd-ink);
+}
+.mvd-kreator-krok-numer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--mvd-chip);
+  font: 700 10px/1 var(--mvd-font-mono);
+  color: var(--mvd-accent);
+}
+.mvd-kreator-krok.mvd-on .mvd-kreator-krok-numer {
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+}
+
+/* --------------------------------------------------------------- Ciało */
+
+.mvd-kreator-cialo {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Baner błędu globalnego (nad ciałem). */
+.mvd-kreator-blad {
+  padding: 10px 14px;
+  border: 1px solid var(--mvd-err);
+  border-left-width: 3px;
+  border-radius: 8px;
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+/* ------------------------------------------------------------- Sekcja */
+
+.mvd-kreator-sekcja {
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  background: var(--mvd-panel);
+  overflow: hidden;
+}
+.mvd-kreator-sekcja-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+.mvd-kreator-sekcja-tytul {
+  font: 600 11px/1.2 var(--mvd-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mvd-muted);
+}
+.mvd-kreator-sekcja-nota {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-kreator-sekcja-cialo {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mvd-kreator-sekcja--info {
+  padding: 10px 14px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-muted);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+/* Siatka pól — responsywna, min 200px na kolumnę. */
+.mvd-kreator-siatka {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 560px) {
+  .mvd-kreator-siatka.mvd-kol-2 { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 780px) {
+  .mvd-kreator-siatka.mvd-kol-3 { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* --------------------------------------------------------------- Pola */
+
+.mvd-pole { display: flex; flex-direction: column; gap: 5px; }
+.mvd-pole-etykieta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font: 600 11px/1.3 var(--mvd-font-mono);
+  color: var(--mvd-muted);
+}
+.mvd-pole-jednostka { color: var(--mvd-muted); font-weight: 500; }
+.mvd-pole-gwiazdka { color: var(--mvd-err); }
+.mvd-pole-pomoc {
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--mvd-muted);
+}
+.mvd-pole-blad {
+  font: 500 10.5px/1.35 var(--mvd-font-mono);
+  color: var(--mvd-err);
+}
+
+.mvd-pole-input,
+.mvd-pole-select {
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  font: 600 12.5px/1 var(--mvd-font-mono);
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.mvd-pole-input::placeholder { color: var(--mvd-muted); font-weight: 500; }
+.mvd-pole-input:focus,
+.mvd-pole-select:focus {
+  border-color: var(--mvd-focus);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--mvd-focus) 28%, transparent);
+}
+.mvd-pole-input:disabled,
+.mvd-pole-select:disabled {
+  background: var(--mvd-panel-2);
+  color: var(--mvd-muted);
+  cursor: not-allowed;
+}
+.mvd-pole-input[aria-invalid="true"],
+.mvd-pole-select[aria-invalid="true"] {
+  border-color: var(--mvd-err);
+}
+.mvd-pole-select { cursor: pointer; }
+
+/* Przełącznik segmentowy (np. Źródło SN / GPZ WN/SN). */
+.mvd-przelacznik {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mvd-przelacznik-opcja {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: var(--mvd-bg);
+  color: var(--mvd-muted);
+  font: 700 11.5px/1.2 var(--mvd-font-mono);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.mvd-przelacznik-opcja + .mvd-przelacznik-opcja { border-left: 1px solid var(--mvd-line); }
+.mvd-przelacznik-opcja:hover { color: var(--mvd-ink); }
+.mvd-przelacznik-opcja.mvd-on { background: var(--mvd-sel); color: var(--mvd-ink); }
+
+/* Przełącznik binarny (checkbox z opisem). */
+.mvd-przelacznik-bin {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-panel-2);
+  cursor: pointer;
+}
+.mvd-przelacznik-bin input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--mvd-accent); }
+.mvd-przelacznik-bin-tekst { display: flex; flex-direction: column; gap: 2px; }
+.mvd-przelacznik-bin-etykieta { font-size: 12.5px; font-weight: 600; color: var(--mvd-ink); }
+.mvd-przelacznik-bin-opis { font-size: 11px; color: var(--mvd-muted); line-height: 1.4; }
+
+/* ------------------------------------------------- Wartość tylko do odczytu */
+
+.mvd-rzad {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-rzad:last-child { border-bottom: none; }
+.mvd-rzad-etykieta { font-size: 12px; color: var(--mvd-muted); }
+.mvd-rzad-wartosc {
+  font: 700 12.5px/1 var(--mvd-font-mono);
+  color: var(--mvd-ink);
+  text-align: right;
+}
+.mvd-rzad-wartosc[data-ton="ok"] { color: var(--mvd-ok); }
+.mvd-rzad-wartosc[data-ton="warn"] { color: var(--mvd-warn); }
+
+/* ------------------------------------------------------------- Podsumowanie */
+
+.mvd-podsum {
+  border: 1px solid var(--mvd-accent);
+  border-radius: 10px;
+  background: var(--mvd-sel);
+  overflow: hidden;
+}
+.mvd-podsum-head {
+  padding: 8px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--mvd-accent) 40%, var(--mvd-line));
+  font: 600 11px/1.2 var(--mvd-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mvd-accent);
+}
+.mvd-podsum-cialo { padding: 6px 14px 10px; }
+.mvd-podsum-komunikat {
+  padding: 8px 0;
+  font-size: 11.5px;
+  color: var(--mvd-muted);
+}
+.mvd-podsum-komunikat[data-ton="warn"] { color: var(--mvd-warn); }
+
+/* ------------------------------------------------------------- Gotowość */
+
+.mvd-gotowosc { border: 1px solid var(--mvd-line); border-radius: 10px; overflow: hidden; }
+.mvd-gotowosc-head {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--mvd-line);
+  background: var(--mvd-panel-2);
+  font: 600 11px/1.2 var(--mvd-font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mvd-muted);
+}
+.mvd-gotowosc-wiersz {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-gotowosc-wiersz:last-child { border-bottom: none; }
+.mvd-gotowosc-etykieta { font-size: 12px; color: var(--mvd-ink); }
+.mvd-gotowosc-stan {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 11px/1 var(--mvd-font-mono);
+}
+.mvd-gotowosc-kropka { width: 8px; height: 8px; border-radius: 999px; background: var(--mvd-muted); }
+.mvd-gotowosc-stan[data-stan="kompletne"] { color: var(--mvd-ok); }
+.mvd-gotowosc-stan[data-stan="kompletne"] .mvd-gotowosc-kropka { background: var(--mvd-ok); }
+.mvd-gotowosc-stan[data-stan="ostrzezenie"] { color: var(--mvd-warn); }
+.mvd-gotowosc-stan[data-stan="ostrzezenie"] .mvd-gotowosc-kropka { background: var(--mvd-warn); }
+.mvd-gotowosc-stan[data-stan="brak"] { color: var(--mvd-err); }
+.mvd-gotowosc-stan[data-stan="brak"] .mvd-gotowosc-kropka { background: var(--mvd-err); }
+
+/* ------------------------------------------------------ Następny krok (flow) */
+
+.mvd-kreator-nastepny {
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  background: var(--mvd-panel-2);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-kreator-nastepny-eyebrow {
+  font: 600 10px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mvd-accent);
+}
+.mvd-kreator-nastepny p { margin: 0; font-size: 12px; color: var(--mvd-muted); line-height: 1.5; }
+
+/* --------------------------------------------------------------- Stopka */
+
+.mvd-kreator-stopka {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+}
+.mvd-kreator-stopka-walidacja {
+  margin-right: auto;
+  font-size: 11.5px;
+  color: var(--mvd-warn);
+}
+.mvd-kreator-btn {
+  height: 36px;
+  padding: 0 18px;
+  border-radius: 8px;
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, color 0.12s;
+}
+.mvd-kreator-btn:hover { border-color: var(--mvd-accent); }
+.mvd-kreator-btn--glowna {
+  border-color: var(--mvd-accent);
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  padding: 0 24px;
+}
+.mvd-kreator-btn--glowna:hover { filter: brightness(1.06); }
+.mvd-kreator-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.mvd-kreator-btn--glowna:disabled { filter: none; }
