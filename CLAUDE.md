@@ -484,6 +484,7 @@ python scripts/dialog_completeness_guard.py       # Dialog contract completeness
 python scripts/nn_source_menu_guard.py            # Source menu guard
 python scripts/guard_ux_flow_v1.py                # UX flow v1 compliance
 python scripts/interaction_matrix_guard.py        # Interaction matrix validation
+python scripts/ui_no_physics_guard.py             # No network physics in ui2/** presentation layer
 
 # Physics separation guards
 python scripts/overlay_no_physics_guard.py        # Overlay layer physics prohibition
