@@ -141,16 +141,16 @@ export function BayWindowSchematic({ item }: BayWindowSchematicProps) {
   return (
     <section
       aria-label="Schemat kanoniczny pola SN"
-      className="mx-4 mb-4 rounded-lg border border-slate-700 bg-slate-950/70 p-3 text-slate-100"
+      className="mx-4 mb-4 rounded-lg border border-slate-200 bg-white p-3 text-slate-900"
     >
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <h4 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-200">
+          <h4 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-700">
             Schemat Kanoniczny
           </h4>
-          <p className="mt-1 text-xs text-slate-300">{item.bay_name}</p>
+          <p className="mt-1 text-xs text-slate-600">{item.bay_name}</p>
         </div>
-        <span className="rounded border border-slate-600 px-2 py-1 text-[11px] text-slate-300">
+        <span className="rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-600">
           {role}
         </span>
       </div>
@@ -158,7 +158,7 @@ export function BayWindowSchematic({ item }: BayWindowSchematicProps) {
       <svg
         data-testid="bay-svg-renderer"
         viewBox="0 0 188 220"
-        className="h-64 w-full rounded border border-slate-800 bg-[#05080d]"
+        className="h-64 w-full rounded border border-slate-200 bg-[#05080d]"
         role="img"
         aria-label={`Schemat pola ${item.bay_name}`}
       >

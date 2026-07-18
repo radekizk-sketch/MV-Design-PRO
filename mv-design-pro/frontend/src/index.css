@@ -101,6 +101,13 @@
     border-color: var(--scada-border) !important;
   }
 
+  /* TM2: divide-slate-200 remap — Tailwind koloruje separatory na dzieciach
+     (> * + *), więc grupa border-* powyżej ich nie łapie. Utrzymuje subtelne
+     ciemne separatory w motywie ciemnym (zero regresji dark). */
+  .mv-dark-scada :where(.divide-slate-100, .divide-slate-200, .divide-slate-300):not([data-sld-export-theme] *) > :not([hidden]) ~ :not([hidden]) {
+    border-color: var(--scada-border) !important;
+  }
+
   .mv-dark-scada :where(.shadow-sm, .shadow, .shadow-lg, .shadow-xl, .shadow-2xl):not([data-sld-export-theme] *) {
     box-shadow: 0 14px 30px rgba(0, 0, 0, 0.35) !important;
   }

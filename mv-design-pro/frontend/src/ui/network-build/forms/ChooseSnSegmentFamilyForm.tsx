@@ -55,21 +55,21 @@ export function ChooseSnSegmentFamilyForm() {
 
   return (
     <div
-      className="h-full overflow-y-auto bg-[#07141f] text-slate-100"
+      className="h-full overflow-y-auto bg-white text-slate-900"
       data-testid="choose-sn-segment-family-form"
     >
-      <div className="border-b border-cyan-950/80 bg-[#081b2c] px-4 py-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-400/80">
+      <div className="border-b border-slate-200 bg-slate-50 px-4 py-4">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-cyan-700">
           E-06
         </div>
-        <h3 className="mt-1 text-sm font-semibold text-white">Wybierz rodzine odcinka SN</h3>
-        <p className="mt-1 text-xs text-slate-300">
+        <h3 className="mt-1 text-sm font-semibold text-slate-900">Wybierz rodzine odcinka SN</h3>
+        <p className="mt-1 text-xs text-slate-600">
           Ten krok jest obowiazkowy. Bez wyboru rodziny odcinka nie powstaje segment.
         </p>
       </div>
 
       <div className="space-y-4 p-4">
-        <div className="rounded-2xl border border-cyan-950/80 bg-[#0b1b29] p-4 text-xs text-slate-300">
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600">
           Start odcinka wychodzi z aktywnego pola SN. Po wyborze rodziny system otworzy
           jedyny aktywny formularz techniczny tworzenia odcinka.
         </div>
@@ -80,19 +80,19 @@ export function ChooseSnSegmentFamilyForm() {
               key={option.value}
               type="button"
               onClick={() => handleChooseFamily(option.value, option.tabId)}
-              className="rounded-2xl border border-cyan-950/80 bg-[#0b1b29] px-4 py-4 text-left transition hover:border-cyan-500/60 hover:bg-cyan-500/10"
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-left transition hover:border-cyan-500/60 hover:bg-cyan-50"
             >
-              <div className="text-sm font-semibold text-cyan-50">{option.label}</div>
-              <div className="mt-1 text-xs text-slate-300">{option.description}</div>
+              <div className="text-sm font-semibold text-cyan-800">{option.label}</div>
+              <div className="mt-1 text-xs text-slate-600">{option.description}</div>
             </button>
           ))}
         </div>
 
-        <div className="flex items-center gap-2 border-t border-cyan-950/80 pt-3">
+        <div className="flex items-center gap-2 border-t border-slate-200 pt-3">
           <button
             type="button"
             onClick={closeOperationForm}
-            className="rounded-xl border border-cyan-950/80 bg-[#07141f] px-4 py-2 text-sm text-slate-300 transition hover:border-cyan-800 hover:text-white"
+            className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 transition hover:border-cyan-400 hover:text-cyan-700"
           >
             Zamknij
           </button>

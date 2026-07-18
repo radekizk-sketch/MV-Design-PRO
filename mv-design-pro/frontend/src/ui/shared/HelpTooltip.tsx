@@ -50,12 +50,12 @@ export function HelpTooltip({ text, norm, inline }: HelpTooltipProps) {
         id={tooltipId}
         role="tooltip"
         aria-hidden={!open}
-        className={`absolute z-50 mt-6 max-w-xs rounded bg-slate-900 px-3 py-2 text-xs text-slate-100 shadow-lg ${open ? '' : 'hidden'}`}
+        className={`absolute z-50 mt-6 max-w-xs rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-900 shadow-lg ${open ? '' : 'hidden'}`}
         title={text}
       >
         {text}
         {norm ? (
-          <span className="mt-1 block text-amber-300">
+          <span className="mt-1 block text-amber-700">
             {norm}
           </span>
         ) : null}

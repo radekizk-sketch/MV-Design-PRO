@@ -826,32 +826,32 @@ function AnalysisDataTable({
   return (
     <div className="space-y-3" data-testid="analysis-results-table-view">
       <div>
-        <h4 className="text-sm font-semibold text-slate-100">{title}</h4>
-        <p className="mt-1 text-xs text-slate-400">{description}</p>
+        <h4 className="text-sm font-semibold text-slate-900">{title}</h4>
+        <p className="mt-1 text-xs text-slate-500">{description}</p>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-slate-700/80">
+      <div className="overflow-x-auto rounded-lg border border-slate-200">
         <table className="min-w-full border-collapse text-left text-xs" data-testid="analysis-results-table">
-          <thead className="bg-slate-900/80 text-[11px] uppercase tracking-[0.12em] text-slate-300">
+          <thead className="bg-slate-100 text-[11px] uppercase tracking-[0.12em] text-slate-600">
             <tr>
-              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Typ</th>
-              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Obiekt</th>
-              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">U_n / wariant</th>
-              <th className="min-w-[260px] border-b border-slate-700 px-3 py-2">Dane wejściowe</th>
-              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Wynik 1</th>
-              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Wynik 2</th>
-              <th className="min-w-[210px] border-b border-slate-700 px-3 py-2">Status</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Typ</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Obiekt</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">U_n / wariant</th>
+              <th className="min-w-[260px] border-b border-slate-200 px-3 py-2">Dane wejściowe</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Wynik 1</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Wynik 2</th>
+              <th className="min-w-[210px] border-b border-slate-200 px-3 py-2">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800 text-slate-200">
+          <tbody className="divide-y divide-slate-200 text-slate-700">
             {rows.map((row) => (
-              <tr key={row.key} className="hover:bg-slate-900/60">
-                <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-100">{row.type}</td>
+              <tr key={row.key} className="hover:bg-slate-50">
+                <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-900">{row.type}</td>
                 <td className="px-3 py-2">{row.name}</td>
                 <td className="whitespace-nowrap px-3 py-2">{row.voltage}</td>
-                <td className="px-3 py-2 text-slate-300">{row.input}</td>
+                <td className="px-3 py-2 text-slate-600">{row.input}</td>
                 <td className="whitespace-nowrap px-3 py-2">{row.resultA}</td>
                 <td className="whitespace-nowrap px-3 py-2">{row.resultB}</td>
-                <td className="px-3 py-2 text-amber-100">{row.status}</td>
+                <td className="px-3 py-2 text-amber-700">{row.status}</td>
               </tr>
             ))}
           </tbody>
@@ -880,15 +880,15 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
   ];
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-700/80" data-testid="analysis-context-table">
+    <div className="overflow-x-auto rounded-lg border border-slate-200" data-testid="analysis-context-table">
       <table className="min-w-full border-collapse text-left text-xs">
-        <tbody className="divide-y divide-slate-800">
+        <tbody className="divide-y divide-slate-200">
           {rows.map((row) => (
             <tr key={row.label}>
-              <th className="w-52 bg-slate-900/70 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+              <th className="w-52 bg-slate-100 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-slate-500">
                 {row.label}
               </th>
-              <td className="px-3 py-2 text-slate-100">{row.value}</td>
+              <td className="px-3 py-2 text-slate-900">{row.value}</td>
             </tr>
           ))}
         </tbody>
@@ -1049,7 +1049,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               runId={effectiveRunId}
               selectedElement={selectedElement}
               candidateRefs={proofCandidateRefs}
-              className="rounded-lg border border-slate-700/80 bg-white p-4"
+              className="rounded-lg border border-slate-200 bg-white p-4"
             />
             <ProofLatexPanel runId={effectiveRunId} />
           </div>
@@ -2132,7 +2132,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
 
       {!readiness && (
         <SectionCard title="Przegląd techniczny do odświeżenia" eyebrow="Wymagana operacja">
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-slate-600">
             Wykonaj operację projektową albo odśwież widok, aby system
             odtworzył przegląd techniczny układu.
           </p>
@@ -2410,7 +2410,7 @@ function ProtectionCoordinationSurface({ surface }: { surface: WorkspaceSurfaceD
         </div>
       </SectionCard>
       <SectionCard title="Selektywność i marginesy" eyebrow="Wynik">
-        <p className="text-sm text-slate-300">
+        <p className="text-sm text-slate-600">
           Selektywność zabezpieczeń jest mierzona w marginesach numerycznych
           (Δt, Δprąd) — zgodnie z PROTECTION_CANONICAL_ARCHITECTURE bez
           werdyktów OK/FAIL. Pełna analiza par nadrzędne ↔ podrzędne wymaga
@@ -2567,7 +2567,7 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         runId={activeRunId}
         selectedElement={selectedElement}
         candidateRefs={proofCandidateRefs}
-        className="rounded-lg border border-slate-700/80 bg-white p-4"
+        className="rounded-lg border border-slate-200 bg-white p-4"
       />
       <ProofLatexPanel runId={activeRunId} />
       {allDers.length > 0 && (

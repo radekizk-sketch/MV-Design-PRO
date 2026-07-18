@@ -2707,9 +2707,9 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
       {selectedConverterRole && (
         <div
           data-testid="pv-inverter-engineering-actions"
-          className="border-b border-cyan-900/60 bg-slate-950 px-4 py-3 text-[11px] text-cyan-100"
+          className="border-b border-slate-200 bg-white px-4 py-3 text-[11px] text-slate-700"
         >
-          <div className="mb-2 font-semibold text-white">
+          <div className="mb-2 font-semibold text-slate-900">
             {converterSurfaceTitle(selectedConverterRole)}
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -2717,7 +2717,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
               type="button"
               data-testid="open-pv-inverter-config"
               onClick={handleOpenConverterSurface}
-              className="rounded border border-cyan-700 bg-cyan-950/60 px-2 py-1.5 text-left font-medium text-cyan-50 hover:border-cyan-300"
+              className="rounded border border-cyan-300 bg-cyan-50 px-2 py-1.5 text-left font-medium text-cyan-800 hover:border-cyan-500"
             >
               Otwórz konfigurację falownika
             </button>
@@ -2729,12 +2729,12 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
                 op: 'update_element_parameters',
                 context: { element_ref: selectedConverterRef },
               })}
-              className="rounded border border-cyan-900 px-2 py-1.5 text-left font-medium text-cyan-100 hover:border-cyan-300"
+              className="rounded border border-cyan-200 px-2 py-1.5 text-left font-medium text-cyan-800 hover:border-cyan-500"
             >
               Uzupełnij dane wejściowe
             </button>
           </div>
-          <div className="mt-2 text-[10px] leading-4 text-cyan-200/80">
+          <div className="mt-2 text-[10px] leading-4 text-cyan-700">
             Karta obejmuje falownik z katalogu, PCC, tor SN/nN, NC RfG, Q(U), P(f),
             FRT/HVRT, rozpływ mocy, wkład zwarciowy i zabezpieczenia nN.
           </div>

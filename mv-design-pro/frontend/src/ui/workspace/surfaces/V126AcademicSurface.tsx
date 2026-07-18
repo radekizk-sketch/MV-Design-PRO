@@ -216,18 +216,18 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
 
   return (
     <div className="space-y-4" data-testid={`v126-surface-${surface.screenCode}`}>
-      <section className="rounded border border-slate-700 bg-slate-900 p-4 text-slate-100">
-        <div className="text-xs font-semibold uppercase tracking-wide text-cyan-300">V12.6</div>
+      <section className="rounded border border-slate-200 bg-white p-4 text-slate-900">
+        <div className="text-xs font-semibold uppercase tracking-wide text-cyan-700">V12.6</div>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-semibold">{ANALYSIS_LABELS[analysis]}</h2>
-            <div className="mt-1 text-xs text-slate-300">
+            <div className="mt-1 text-xs text-slate-600">
               Wejście: committed ENM aktywnego przypadku. Wynik: AcademicAnalysisResultV1 z trace, proof, raportem i hashem.
             </div>
           </div>
           <button
             type="button"
-            className="rounded border border-cyan-400 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded border border-cyan-400 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-700 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
             onClick={() => void runAnalysis()}
             disabled={status === 'running'}
           >
@@ -235,30 +235,30 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
           </button>
         </div>
         {!activeCaseId ? (
-          <div className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-100">
+          <div className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700">
             Aktywuj przypadek obliczeniowy przed uruchomieniem V12.6.
           </div>
         ) : null}
         {error ? (
-          <div className="mt-3 rounded border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-100">
+          <div className="mt-3 rounded border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-700">
             {error}
           </div>
         ) : null}
       </section>
 
       {run ? (
-        <section className="rounded border border-slate-700 bg-slate-950 p-4 text-slate-100">
+        <section className="rounded border border-slate-200 bg-white p-4 text-slate-900">
           <div className="grid gap-3 md:grid-cols-3">
             <div>
-              <div className="text-[11px] uppercase text-slate-400">Identyfikator przebiegu</div>
+              <div className="text-[11px] uppercase text-slate-500">Identyfikator przebiegu</div>
               <div className="break-all text-xs">{run.run_id}</div>
             </div>
             <div>
-              <div className="text-[11px] uppercase text-slate-400">Status</div>
+              <div className="text-[11px] uppercase text-slate-500">Status</div>
               <div className="text-xs">{run.status}</div>
             </div>
             <div>
-              <div className="text-[11px] uppercase text-slate-400">Hash deterministyczny</div>
+              <div className="text-[11px] uppercase text-slate-500">Hash deterministyczny</div>
               <div className="break-all text-xs">{run.deterministic_hash}</div>
             </div>
           </div>
@@ -267,26 +267,26 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
 
       {result ? (
         <div className="grid gap-4 xl:grid-cols-[1fr_420px]">
-          <section className="rounded border border-slate-700 bg-slate-950 p-4 text-slate-100">
+          <section className="rounded border border-slate-200 bg-white p-4 text-slate-900">
             <h3 className="text-sm font-semibold">Wynik</h3>
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               {summaryRows.map((row) => (
-                <div key={`${row.label}:${row.value}`} className="rounded border border-slate-800 bg-slate-900 p-2">
-                  <div className="text-[11px] uppercase text-slate-400">{row.label}</div>
-                  <div className="mt-1 break-words text-xs text-slate-100">{row.value}</div>
+                <div key={`${row.label}:${row.value}`} className="rounded border border-slate-200 bg-slate-50 p-2">
+                  <div className="text-[11px] uppercase text-slate-500">{row.label}</div>
+                  <div className="mt-1 break-words text-xs text-slate-900">{row.value}</div>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="rounded border border-slate-700 bg-slate-950 p-4 text-slate-100">
+          <section className="rounded border border-slate-200 bg-white p-4 text-slate-900">
             <h3 className="text-sm font-semibold">White Box</h3>
             <div className="mt-3 space-y-2">
               {traceRows.slice(0, 8).map((step) => (
-                <div key={String(step.proof_ref)} className="rounded border border-slate-800 bg-slate-900 p-2">
-                  <div className="text-xs font-semibold text-cyan-200">{String(step.key ?? '-')}</div>
-                  <div className="mt-1 text-[11px] text-slate-300">{String(step.formula ?? '-')}</div>
-                  <div className="mt-1 text-[11px] text-slate-400">{String(step.unit_check ?? '-')}</div>
+                <div key={String(step.proof_ref)} className="rounded border border-slate-200 bg-slate-50 p-2">
+                  <div className="text-xs font-semibold text-cyan-700">{String(step.key ?? '-')}</div>
+                  <div className="mt-1 text-[11px] text-slate-600">{String(step.formula ?? '-')}</div>
+                  <div className="mt-1 text-[11px] text-slate-500">{String(step.unit_check ?? '-')}</div>
                 </div>
               ))}
             </div>
@@ -296,39 +296,39 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
 
       {proof && report ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          <section className="rounded border border-slate-700 bg-slate-950 p-4 text-slate-100">
+          <section className="rounded border border-slate-200 bg-white p-4 text-slate-900">
             <h3 className="text-sm font-semibold">Dowód</h3>
             <div className="mt-3 grid gap-3 md:grid-cols-2">
-              <div className="rounded border border-slate-800 bg-slate-900 p-2">
-                <div className="text-[11px] uppercase text-slate-400">Identyfikator dowodu</div>
+              <div className="rounded border border-slate-200 bg-slate-50 p-2">
+                <div className="text-[11px] uppercase text-slate-500">Identyfikator dowodu</div>
                 <div className="mt-1 break-all text-xs">{proof.proof_id}</div>
               </div>
-              <div className="rounded border border-slate-800 bg-slate-900 p-2">
-                <div className="text-[11px] uppercase text-slate-400">Hash dowodu</div>
+              <div className="rounded border border-slate-200 bg-slate-50 p-2">
+                <div className="text-[11px] uppercase text-slate-500">Hash dowodu</div>
                 <div className="mt-1 break-all text-xs">{proof.proof_hash}</div>
               </div>
-              <div className="rounded border border-slate-800 bg-slate-900 p-2">
-                <div className="text-[11px] uppercase text-slate-400">Kroki</div>
+              <div className="rounded border border-slate-200 bg-slate-50 p-2">
+                <div className="text-[11px] uppercase text-slate-500">Kroki</div>
                 <div className="mt-1 text-xs">{proof.trace_step_count}</div>
               </div>
             </div>
           </section>
 
-          <section className="rounded border border-slate-700 bg-slate-950 p-4 text-slate-100">
+          <section className="rounded border border-slate-200 bg-white p-4 text-slate-900">
             <h3 className="text-sm font-semibold">Raport</h3>
             <div className="mt-3 space-y-2">
-              <div className="rounded border border-slate-800 bg-slate-900 p-2">
-                <div className="text-[11px] uppercase text-slate-400">Raport</div>
+              <div className="rounded border border-slate-200 bg-slate-50 p-2">
+                <div className="text-[11px] uppercase text-slate-500">Raport</div>
                 <div className="mt-1 break-all text-xs">{report.report_id}</div>
               </div>
-              <div className="rounded border border-slate-800 bg-slate-900 p-2">
-                <div className="text-[11px] uppercase text-slate-400">Polityka eksportu</div>
+              <div className="rounded border border-slate-200 bg-slate-50 p-2">
+                <div className="text-[11px] uppercase text-slate-500">Polityka eksportu</div>
                 <div className="mt-1 text-xs">{report.export_policy}</div>
               </div>
               {report.sections.slice(0, 3).map((section) => (
-                <div key={section.section_id} className="rounded border border-slate-800 bg-slate-900 p-2">
-                  <div className="text-xs font-semibold text-cyan-200">{section.title}</div>
-                  <div className="mt-1 text-[11px] text-slate-300">{section.metrics.length} metryk</div>
+                <div key={section.section_id} className="rounded border border-slate-200 bg-slate-50 p-2">
+                  <div className="text-xs font-semibold text-cyan-700">{section.title}</div>
+                  <div className="mt-1 text-[11px] text-slate-600">{section.metrics.length} metryk</div>
                 </div>
               ))}
             </div>
