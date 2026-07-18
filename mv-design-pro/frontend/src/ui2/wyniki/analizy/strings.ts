@@ -39,6 +39,7 @@ export const ANALIZY_STRINGS = {
   wymagaZwarcia: 'wymaga przebiegu zwarciowego',
   wymagaRozplywu: 'wymaga przebiegu rozpływu',
   wymagaDowolnego: 'wymaga zakończonego przebiegu',
+  wymagaModelu: 'wymaga modelu sieci',
   daneDostepne: 'dane dostępne',
 
   klasyczneEyebrow: 'WIDOKI KLASYCZNE (MOST)',

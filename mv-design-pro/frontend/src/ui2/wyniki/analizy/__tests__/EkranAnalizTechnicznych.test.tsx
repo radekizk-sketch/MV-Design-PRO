@@ -149,9 +149,32 @@ describe('EkranAnalizTechnicznych — hub po przebudowie', () => {
     expect(surface?.tabId).toBe('trace');
   });
 
-  it('wszystkie karty parytetu huba są obecne (E-28…E-34)', () => {
+  it('karta „Zabezpieczenia i automatyka" (E-27) jest w grupie zabezpieczeń i otwiera ekran (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<EkranAnalizTechnicznych />);
+    const karta = screen.getByTestId('mvd-analizy-karta-zabezpieczenia');
+    expect(within(karta).getByText(/SPZ\/SZR\/SCO\/FDIR/)).toBeTruthy();
+    await user.click(within(karta).getByRole('button', { name: 'Otwórz' }));
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-27');
+  });
+
+  it('chip wymagań E-27: bez modelu „wymaga modelu sieci", z modelem „dane dostępne" (bez przebiegów)', () => {
+    const { unmount } = render(<EkranAnalizTechnicznych />);
+    expect(
+      within(screen.getByTestId('mvd-analizy-karta-zabezpieczenia')).getByText('wymaga modelu sieci'),
+    ).toBeTruthy();
+    unmount();
+    useSnapshotStore.setState({ snapshot: snapshotTestowy() });
+    render(<EkranAnalizTechnicznych />);
+    expect(
+      within(screen.getByTestId('mvd-analizy-karta-zabezpieczenia')).getByText('dane dostępne'),
+    ).toBeTruthy();
+  });
+
+  it('wszystkie karty parytetu huba są obecne (E-27…E-34)', () => {
     render(<EkranAnalizTechnicznych />);
     for (const testid of [
+      'mvd-analizy-karta-zabezpieczenia',
       'mvd-analizy-karta-koordynacja',
       'mvd-analizy-karta-zbieznosc',
       'mvd-analizy-karta-fazowy',
@@ -174,6 +197,8 @@ describe('model — czyste selektory przebiegów', () => {
     expect(maZakonczonyPrzebieg(runs, 'zwarciowy')).toBe(false);
     expect(maZakonczonyPrzebieg(runs, 'rozplywowy')).toBe(true);
     expect(maZakonczonyPrzebieg(runs, 'dowolny')).toBe(true);
+    // 'model' nie wymaga przebiegu — dostępność ocenia widok po snapshotcie.
+    expect(maZakonczonyPrzebieg([], 'model')).toBe(true);
   });
 
   it('ostatniZakonczonyPrzebieg wybiera najnowszy po dacie zakończenia', () => {

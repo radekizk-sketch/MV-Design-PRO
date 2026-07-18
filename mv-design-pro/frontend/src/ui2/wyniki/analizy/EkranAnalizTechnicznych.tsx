@@ -134,6 +134,11 @@ export function EkranAnalizTechnicznych() {
     : T.brakWersji;
 
   const chipKarty = (karta: KartaAnalizy): { etykieta: string; ok: boolean } => {
+    if (karta.wymaga === 'model') {
+      return snapshot
+        ? { etykieta: T.daneDostepne, ok: true }
+        : { etykieta: T.wymagaModelu, ok: false };
+    }
     if (maZakonczonyPrzebieg(przebiegi, karta.wymaga)) {
       return { etykieta: T.daneDostepne, ok: true };
     }

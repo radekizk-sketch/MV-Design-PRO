@@ -8,8 +8,12 @@
 
 import type { WorkspaceSurfaceCode } from '../../../ui/workspace/types';
 
-/** Rodzaj przebiegu wymaganego przez analizę do pełnych danych. */
-export type WymaganyPrzebieg = 'zwarciowy' | 'rozplywowy' | 'dowolny';
+/**
+ * Rodzaj danych wymaganych przez analizę do pełnych danych:
+ * przebieg obliczeń ('zwarciowy'/'rozplywowy'/'dowolny') albo sam model
+ * sieci ('model' — przeglądy konfiguracji, np. zabezpieczenia i automatyka).
+ */
+export type WymaganyPrzebieg = 'zwarciowy' | 'rozplywowy' | 'dowolny' | 'model';
 
 export interface KartaAnalizy {
   /** Kanoniczny kod ekranu docelowego (trasa mostu). */
@@ -32,6 +36,14 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
   {
     tytul: 'Zabezpieczenia i zgodność',
     karty: [
+      {
+        ekran: 'E-27',
+        tytul: 'Zabezpieczenia i automatyka',
+        opis: 'Przegląd zabezpieczeń pól i automatyki sieciowej (SPZ/SZR/SCO/FDIR): co jest skonfigurowane, gdzie są braki i gdzie się to edytuje.',
+        zrodlo: 'model sieci (przypisania zabezpieczeń i sterowniki polowe)',
+        wymaga: 'model',
+        testid: 'mvd-analizy-karta-zabezpieczenia',
+      },
       {
         ekran: 'E-28',
         tytul: 'Koordynacja zabezpieczeń',
@@ -126,6 +138,8 @@ export function maZakonczonyPrzebieg(
   przebiegi: readonly PrzebiegLekki[],
   wymaga: WymaganyPrzebieg,
 ): boolean {
+  // Wymóg 'model' nie dotyczy przebiegów — dostępność ocenia widok po snapshotcie.
+  if (wymaga === 'model') return true;
   return przebiegi.some((r) => {
     if (r.status !== STATUS_ZAKONCZONY) return false;
     if (wymaga === 'dowolny') return true;
