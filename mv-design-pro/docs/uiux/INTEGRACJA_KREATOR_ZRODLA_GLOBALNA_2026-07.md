@@ -97,6 +97,35 @@ KREATOR ŹRÓDŁA (GPZ)
 zmiana czyta pakiety referencyjne READ-ONLY (bez modyfikacji pakietów); wpis
 koordynacyjny w rejestrze. Bez zmian `ui/sld/**`.
 
-## 5. Realizacja
-Zadanie zarządcy (opcja max, globalne). Implementacja end-to-end w kolejnej fazie
-z pełną regresją backendu (zmiana domenowa) — bez fabrykacji dekoracyjnych pól.
+## 5. Stan wdrożenia (ZWERYFIKOWANY do ostatniego klika, 2026-07-19)
+
+Prześledzono realną konsumpcję każdego pola (dyrektywa: „gdzie to dalej").
+
+**ZROBIONE i skonsumowane:**
+- Payload `add_grid_source_sn` przyjmuje `switchgear_family_ref`/`manufacturer_ref`
+  (top-level) oraz per-sekcja `bays[]`/`bay_template_ref` (kompat. wstecz,
+  determinizm/seed bez zmian). Testy: `tests/enm/test_gpz_multisection_domain.py`.
+- Pola zapisywane jako `field_specs` z kluczami TOP-LEVEL `bay_template_ref`,
+  `switchgear_family_ref`, `manufacturer_ref`, `protection_ref` (konwencja
+  `_build_field_spec` = kreator stacji `append_station_on_endpoint`).
+- **`protection_ref`** — konsumowany przez read-model pola (`buildProtectionConfig`)
+  → E-27/E-11 (jeżeli istnieje jednostka zabezpieczeniowa).
+- Frontend K5: wybór rodziny + per-sekcja szablon, payload `gpz_sections[].bays[]`.
+
+**POZOSTAŁE ogniwa łańcucha (zweryfikowany brak konsumenta — do domknięcia, nie
+„na potem": zaplanowane poniżej):**
+1. **Widok pola / E-27 (display).** `field-view` API (`application/field_read_model.py`)
+   i frontendowy `useFieldReadModel` NIE mapują jeszcze `bay_template_ref`/
+   `switchgear_family_ref` — trzeba je przenieść do kanonicznego modelu pola i pokazać
+   kolumnę „Szablon/rodzina" w E-27 oraz karcie pola E-11. (frontend + drobny backend
+   field-view; niskie ryzyko).
+2. **SLD internal_layout + Reference Engine compliance.** Czytają
+   `bay.bay_template_ref` z obiektów ENM `Bay`; kreator GPZ tworzy `field_specs`,
+   nie `bays` (`snapshot.bays == []`). Wymaga PROJEKCJI `field_spec → Bay`
+   (bay_template_ref/switchgear_family_ref/ports) albo rozszerzenia konsumentów o
+   `field_specs`. To domena wątku Reference Engine/SLD (V12K-060) — KOORDYNACJA
+   międzywątkowa (pakiety read-only), osobna karta.
+
+Zasada: dane są już poprawnie ukształtowane u źródła (top-level, jak stacja),
+więc domknięcie konsumentów jest addytywne i bezpieczne. Kolejne kroki wykonuję
+tym samym łańcuchem (kontrakt → backend → read-model → UI → SLD/ocena).

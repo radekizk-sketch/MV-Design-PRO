@@ -308,10 +308,11 @@ def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
     specs = substation["meta"]["field_specs"]
     assert len(specs) == 2  # bays[] wyznacza liczbę pól
     first, second = specs
-    # Szablon producenta + rodzina na polu (spływa do SLD/compliance).
-    assert first["meta"]["bay_template_ref"] == "ABB__SAFERING__LINE_OUT"
-    assert first["meta"]["switchgear_family_ref"] == "ABB__SAFERING"
-    assert first["meta"]["manufacturer_ref"] == "ABB"
+    # Szablon producenta + rodzina jako klucze TOP-LEVEL field_spec (konwencja
+    # kreatora stacji) — spójne źródło dla read-modelu pola i projekcji do Bay.
+    assert first["bay_template_ref"] == "ABB__SAFERING__LINE_OUT"
+    assert first["switchgear_family_ref"] == "ABB__SAFERING"
+    assert first["manufacturer_ref"] == "ABB"
     assert first["bay_role"] == "LINIA_ODG"
     # Powiązanie z zabezpieczeniem polowym.
     assert first["protection_ref"] == "prot/pole/1"
@@ -337,5 +338,5 @@ def test_add_grid_source_sn_bez_rodziny_zachowuje_dotychczasowy_kontrakt():
     substation = result["snapshot"]["substations"][0]
     assert "switchgear_family_ref" not in substation["meta"]
     spec = substation["meta"]["field_specs"][0]
-    assert "bay_template_ref" not in spec["meta"]
-    assert "switchgear_family_ref" not in spec["meta"]
+    assert "bay_template_ref" not in spec
+    assert "switchgear_family_ref" not in spec

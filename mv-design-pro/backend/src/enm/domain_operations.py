@@ -724,6 +724,9 @@ def _build_field_spec(
     gpz_section_id: str | None = None,
     equipment_refs: list[str] | None = None,
     protection_ref: str | None = None,
+    bay_template_ref: str | None = None,
+    switchgear_family_ref: str | None = None,
+    manufacturer_ref: str | None = None,
     tags: list[str] | None = None,
     meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -739,6 +742,15 @@ def _build_field_spec(
     }
     if gpz_section_id:
         spec["gpz_section_id"] = gpz_section_id
+    # Powiązania producenckie jako klucze TOP-LEVEL field_spec (konwencja kreatora
+    # stacji, `append_station_on_endpoint`) — spójne źródło dla read-modelu pola
+    # i przyszłej projekcji do Bay. exclude_none: bez rodziny brak kluczy.
+    if bay_template_ref:
+        spec["bay_template_ref"] = bay_template_ref
+    if switchgear_family_ref:
+        spec["switchgear_family_ref"] = switchgear_family_ref
+    if manufacturer_ref:
+        spec["manufacturer_ref"] = manufacturer_ref
     return spec
 
 
@@ -3179,14 +3191,6 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "source_field_kind": "FEEDER",
                 "field_status": "READY_FOR_TRUNK",
             }
-            # Powiązania producenckie (Reference Engine) — tylko gdy podane
-            # (exclude_none, determinizm zachowany). Spływają do SLD + oceny zgodności.
-            if bay_template_ref:
-                field_meta["bay_template_ref"] = bay_template_ref
-            if gpz_switchgear_family_ref:
-                field_meta["switchgear_family_ref"] = gpz_switchgear_family_ref
-            if gpz_manufacturer_ref:
-                field_meta["manufacturer_ref"] = gpz_manufacturer_ref
 
             if line_field_apparatus is not None:
                 result = create_node(
@@ -3293,6 +3297,9 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                     gpz_section_id=section["section_id"],
                     equipment_refs=equipment_refs,
                     protection_ref=bay_protection_ref,
+                    bay_template_ref=bay_template_ref,
+                    switchgear_family_ref=gpz_switchgear_family_ref,
+                    manufacturer_ref=gpz_manufacturer_ref,
                     tags=["gpz_line_field"],
                     meta=field_meta,
                 )
