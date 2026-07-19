@@ -15,12 +15,12 @@ import type { ComponentType, ReactNode } from 'react';
 import type { CanonicalOpName } from '../../types/domainOps';
 import { KreatorKompensatoraSn } from '../../ui2/kreatory/kompensator';
 import { KreatorMagistralaSn } from '../../ui2/kreatory/magistrala';
+import { KreatorOdbioruNn } from '../../ui2/kreatory/odbior';
 import { KreatorTransformatoraSnNn } from '../../ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from '../../ui2/kreatory/zrodlo';
 import { AddConverterSourceForm } from '../network-build/forms/AddConverterSourceForm';
 import { AddDispatchableSourceForm } from '../network-build/forms/AddDispatchableSourceForm';
 import { AddMeasurementForm } from '../network-build/forms/AddMeasurementForm';
-import { AddNnLoadForm } from '../network-build/forms/AddNnLoadForm';
 import { AddNnOutgoingFieldForm } from '../network-build/forms/AddNnOutgoingFieldForm';
 import { AddRelayForm } from '../network-build/forms/AddRelayForm';
 import { AddSnBayForm } from '../network-build/forms/AddSnBayForm';
@@ -57,7 +57,7 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_genset_nn: AddDispatchableSourceForm,
   add_ups_nn: AddDispatchableSourceForm,
   add_shunt_compensator_sn: KreatorKompensatoraSn,
-  add_nn_load: AddNnLoadForm,
+  add_nn_load: KreatorOdbioruNn,
   add_ct: AddMeasurementForm,
   add_vt: AddMeasurementForm,
   add_relay: AddRelayForm,

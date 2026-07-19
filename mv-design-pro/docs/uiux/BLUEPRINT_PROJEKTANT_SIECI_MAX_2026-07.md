@@ -67,7 +67,7 @@ Legenda statusu dostawcy UI: ✅ kreator ui2 · ▲ legacy = do przebudowy · �
 | `insert_zksn_on_segment_sn` | ROZDZIELNIA_SN/ZKSN | — | topologia, SLD | ▲ `InsertZksnForm` | G-ZKSN |
 | `start_branch_segment_sn` | KABEL_SN/LINIA_SN | cable ΔU + Iz (R1) | PF, SC, voltage_profile, SLD | ▲ `StartBranchForm` | G-ODG |
 | `add_nn_outgoing_field` | KABEL_NN, APARAT_NN | cable ΔU + Iz (R1) | PF nN, losses, ΔU, SLD | ▲ `AddNnOutgoingFieldForm` | G-NN |
-| `add_nn_load` | (typ odbioru) | Iznam z P/Q | PF, losses, energy_validation, coverage | ▲ `AddNnLoadForm` | G-NN |
+| `add_nn_load` | OBCIAZENIE (opc.) | prąd/S z P·cosφ (R1) | PF, losses, energy, arc_flash, boundary | ✅ `KreatorOdbioruNn` | done (G-NN) |
 | `add_converter_source` | CONVERTER_PV/BESS/WIND_NN, block-trafo | — | machine SC, inverter PF, NC RfG/FRT, grid_strength, SSCI | ▲ `AddConverterSourceForm` | G-OZE |
 | `add_genset_nn` | (genset) | — | machine SC, PF, RMS stability | ▲ `AddDispatchableSourceForm` | G-NN |
 | `add_ups_nn` | (UPS) | — | PF, ciągłość zasilania | ▲ `AddDispatchableSourceForm` | G-NN |
@@ -92,10 +92,24 @@ Legenda statusu dostawcy UI: ✅ kreator ui2 · ▲ legacy = do przebudowy · �
   (bus_ref, rated_mvar, rated_kv, status, catalog_binding), rejestr op, kreator ui2
   `KreatorKompensatoraSn` (katalog-first, podgląd ΔQ/ΔU z backendu), wiring SLD/raport.
 
-### GAP-2 — Ogranicznik przepięć SN: katalog + materializacja bez operacji/wejścia
-- **Stan:** `OGRANICZNIK_SN` + `get_surge_arrester_type` istnieją; brak operacji i kreatora.
-- **Uzupełnienie:** op `add_surge_arrester_sn` (element ochrony przepięciowej na szynie/polu),
-  kreator `KreatorOgranicznikaSn`, wiring raport ochrony przepięciowej + zgodność.
+### GAP-2 — Ogranicznik przepięć SN: WSTRZYMANE (ryzyko wyspy, brak konsumenta downstream)
+- **Stan:** `OGRANICZNIK_SN` + `get_surge_arrester_type` + picker (`fetchSurgeArresterTypes`)
+  istnieją. Głębszy recon (2026-07-19) ustalił, że **żaden solver/analiza NIE konsumuje
+  POSTAWIONEGO ogranicznika** — v126_academic koordynację izolacji liczy z odrębnej
+  kolekcji `model.insulation` (nie z elementów `surge_arrester`); brak kolekcji
+  `surge_arresters` czytanej w `canonical_analysis`/`solver_input`.
+- **Decyzja:** NIE budować op+kreatora jako WYSPY (dyrektywa: „buduj ogniwo łańcucha, nie
+  wyspę"). Najpierw trzeba dostawić realnego konsumenta postawionego ogranicznika
+  (sekcja raportu ochrony przepięciowej / wpięcie w koordynację izolacji), potem wejście.
+  Do czasu ustalenia konsumenta faza pozostaje w rejestrze długu, nie w kolejce wdrożeń.
+
+### GAP-5 — Odbiór nN: cosφ jako phantom (control ignorowany przez fizykę)
+- **Stan:** `add_nn_load` zapisywał `cos_phi` do `meta`, ale `q_mvar` liczył wyłącznie z
+  jawnego `reactive_power_kvar` → odbiór z P + cosφ (bez jawnego Q) miał Q=0, a rozpływ
+  mocy ignorował cosφ. Odbiory (`loads`) mają realny łańcuch: PF, arc_flash, boundary, energy.
+- **Uzupełnienie (G-NN):** op wyprowadza `q_mvar = P·tan(arccos cosφ)` z tabliczki, gdy Q
+  nie podano jawnie (dobór mocy biernej odbioru; input-prep w domenie, nie fizyka sieci);
+  kreator ui2 `KreatorOdbioruNn` z podglądem prądu (R1) i sekcją downstream.
 
 ### GAP-3 — 16 operacji budowy na legacy formularzach
 - Przebudowa na kreatory ui2 wg kontraktu §4; retire legacy po podmianie.

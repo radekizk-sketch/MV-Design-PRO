@@ -65,7 +65,7 @@ OPERATION_TO_MODAL: dict[str, list[str]] = {
     "add_transformer_sn_nn": ["TransformerStation", "Transformer", "KreatorTransformatora", "Transformatora"],
     "assign_catalog_to_element": ["CatalogPicker", "Catalog"],
     "add_nn_outgoing_field": ["NodeModal", "OutgoingField", "NNField"],
-    "add_nn_load": ["LoadDER", "LoadModal", "NNLoad"],
+    "add_nn_load": ["LoadDER", "LoadModal", "NNLoad", "KreatorOdbioru", "Odbior"],
     "add_converter_source": ["LoadDER", "PVInverter", "BESSInverter", "Converter"],
     "add_genset_nn": ["Genset", "GensetModal"],
     "add_ups_nn": ["UPS", "UPSModal"],

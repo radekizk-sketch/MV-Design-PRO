@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 from typing import Any
 
 from network_model.catalog.materialization import materialize_catalog_binding
@@ -1851,6 +1852,22 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     catalog_binding = _catalog_binding_from_payload(payload, "OBCIAZENIE")
     catalog_ref = _catalog_item_id(catalog_binding)
 
+    # Dobór mocy biernej odbioru z tabliczki: gdy Q nie podano jawnie, wyprowadź
+    # z cosφ (Q = P·tan(arccos cosφ)). Wcześniej cosφ trafiał tylko do meta i był
+    # ignorowany przez rozpływ mocy (Q=0) — phantom. Input-prep w domenie (nie
+    # fizyka sieci): arytmetyka tabliczkowa elementu.
+    reactive_power_kvar = payload.get("reactive_power_kvar")
+    cos_phi = payload.get("cos_phi")
+    if reactive_power_kvar is None and cos_phi is not None:
+        try:
+            cp = float(cos_phi)
+            p_kw = float(active_power_kw)
+        except (TypeError, ValueError):
+            cp = 0.0
+            p_kw = 0.0
+        if 0.0 < cp <= 1.0:
+            reactive_power_kvar = p_kw * math.tan(math.acos(cp))
+
     if not feeder_ref:
         return _error_response("Brak identyfikatora odpływu (feeder_ref).", "nn.feeder_missing")
     if not isinstance(feeder_ref, str) or not _field_ref_exists(enm, feeder_ref):
@@ -1875,7 +1892,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "name": payload.get("load_name") or "Odbiór nN",
             "bus_ref": feeder_bus_ref,
             "p_mw": active_power_kw / 1000.0,
-            "q_mvar": (payload.get("reactive_power_kvar") or 0) / 1000.0,
+            "q_mvar": (reactive_power_kvar or 0) / 1000.0,
             # Load.model akceptuje 'pq' | 'zip' — 'pq' = constant power (klasyczny PQ).
             "model": "pq",
             "catalog_ref": catalog_ref,
