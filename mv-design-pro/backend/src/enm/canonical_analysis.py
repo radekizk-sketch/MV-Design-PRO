@@ -1052,6 +1052,79 @@ def _solve_power_flow_with_method(
     raise ValueError(f"Nieznany tryb rozpływu mocy: {solver_method}")
 
 
+def _first_oltc_branch_id(pf_input: PowerFlowInput) -> str | None:
+    """First transformer with a tap changer (stable order by branch id)."""
+    from network_model.core.branch import TransformerBranch
+
+    graph = pf_input.typed_graph()
+    ids = sorted(
+        b.id
+        for b in graph.branches.values()
+        if isinstance(b, TransformerBranch) and b.tap_changer is not None
+    )
+    return ids[0] if ids else None
+
+
+def _run_oltc_study(
+    study: str,
+    pf_input: PowerFlowInput,
+    solve_once,
+    run_options: dict[str, Any],
+) -> tuple[str, dict[str, Any]] | None:
+    """Dispatch an opt-in OLTC study (V12K-046) on the current pf_input.
+
+    Returns ``(raw_result_key, payload_dict)`` or None when not applicable.
+    """
+    from network_model.solvers.power_flow_oltc_studies import (
+        ProfilePoint,
+        optimize_tap_positions,
+        run_annual_oltc_profile,
+        sweep_tap_positions,
+    )
+
+    branch_id = run_options.get("oltc_branch_id") or _first_oltc_branch_id(pf_input)
+
+    if study == "annual_profile":
+        raw_profile = run_options.get("oltc_load_profile") or []
+        profile = [
+            ProfilePoint(
+                label=str(p.get("label", f"t{i}")),
+                load_scale=float(p.get("load_scale", 1.0)),
+            )
+            for i, p in enumerate(raw_profile)
+        ]
+        if not profile:
+            return None
+        result = run_annual_oltc_profile(pf_input, solve_once, profile)
+        return ("oltc_annual_profile", result.to_dict())
+
+    if branch_id is None:
+        return None
+
+    if study == "sweep":
+        positions = run_options.get("oltc_sweep_positions")
+        result = sweep_tap_positions(
+            pf_input,
+            solve_once,
+            branch_id=branch_id,
+            positions=positions,
+        )
+        return ("oltc_sweep", result.to_dict())
+
+    if study == "optimize":
+        result = optimize_tap_positions(
+            pf_input,
+            solve_once,
+            branch_id=branch_id,
+            objective=str(run_options.get("oltc_objective", "minimize_losses")),
+            target_kv=run_options.get("oltc_target_kv"),
+            switch_penalty_mw_per_step=float(run_options.get("oltc_switch_penalty_mw", 0.0)),
+        )
+        return ("oltc_optimization", result.to_dict())
+
+    return None
+
+
 def _maybe_load_audit2_extensions(
     *, project_id_str: str | None, station_id: str | None
 ) -> dict[str, object] | None:
@@ -1348,6 +1421,15 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     # OLTC control loop actually ran (additive — non-OLTC runs unchanged).
     if oltc_trace is not None:
         run.raw_result["oltc_control"] = oltc_trace
+
+    # V12K-046 (OLTC G1/G2/G3): opt-in OLTC studies computed on the same pf_input
+    # (reuse — no duplicated input builder). Additive: only when requested via
+    # run.options["oltc_study"]; the engines restore the tap state they mutate.
+    oltc_study = run.options.get("oltc_study")
+    if oltc_study:
+        study_result = _run_oltc_study(oltc_study, pf_input, _solve_once, run.options)
+        if study_result is not None:
+            run.raw_result[study_result[0]] = study_result[1]
 
     run.white_box_trace = _build_power_flow_trace_steps(solution)
     run.power_flow_trace = {

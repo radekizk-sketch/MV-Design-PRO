@@ -203,6 +203,68 @@ def test_oltc_regulates_sn_bus_through_analysis():
     assert "oltc_control" not in run_off.raw_result
 
 
+def test_oltc_sweep_study_surfaced_on_run():
+    set_enm("oltc-sweep", EnergyNetworkModel.model_validate(_payload("sweep", with_oltc=True)))
+    run = execute_run(
+        create_run(case_id="oltc-sweep", analysis_type="PF", options={"oltc_study": "sweep"}).id
+    )
+    assert run.status == "FINISHED", run.error_message
+    sweep = run.raw_result["oltc_sweep"]
+    assert len(sweep["points"]) == 19  # full -9..+9 range
+    positions = [p["position"] for p in sweep["points"]]
+    assert positions == list(range(-9, 10))
+    # Controlled-bus voltage decreases monotonically as the position increases.
+    vs = [p["controlled_bus_kv"] for p in sweep["points"]]
+    assert all(a >= b - 1e-9 for a, b in zip(vs, vs[1:], strict=False))
+
+
+def test_oltc_optimize_study_surfaced_on_run():
+    set_enm("oltc-opt", EnergyNetworkModel.model_validate(_payload("opt", with_oltc=True)))
+    run = execute_run(
+        create_run(
+            case_id="oltc-opt",
+            analysis_type="PF",
+            options={"oltc_study": "optimize", "oltc_objective": "minimize_losses"},
+        ).id
+    )
+    assert run.status == "FINISHED", run.error_message
+    opt = run.raw_result["oltc_optimization"]
+    assert opt["objective"] == "minimize_losses"
+    assert opt["best_position"] is not None
+    assert len(opt["candidates"]) == 19
+
+
+def test_oltc_annual_profile_study_surfaced_on_run():
+    set_enm("oltc-prof", EnergyNetworkModel.model_validate(_payload("prof", with_oltc=True)))
+    run = execute_run(
+        create_run(
+            case_id="oltc-prof",
+            analysis_type="PF",
+            options={
+                "oltc_study": "annual_profile",
+                "oltc_load_profile": [
+                    {"label": "noc", "load_scale": 0.3},
+                    {"label": "szczyt", "load_scale": 1.6},
+                ],
+            },
+        ).id
+    )
+    assert run.status == "FINISHED", run.error_message
+    prof = run.raw_result["oltc_annual_profile"]
+    assert len(prof["steps"]) == 2
+    assert prof["steps"][0]["label"] == "noc"
+    assert "total_switch_count" in prof
+
+
+def test_pf_run_without_study_option_has_no_study_keys():
+    set_enm("oltc-nostudy", EnergyNetworkModel.model_validate(_payload("nostudy", with_oltc=True)))
+    run = execute_run(create_run(case_id="oltc-nostudy", analysis_type="PF").id)
+    assert run.status == "FINISHED", run.error_message
+    assert "oltc_sweep" not in run.raw_result
+    assert "oltc_optimization" not in run.raw_result
+    assert "oltc_annual_profile" not in run.raw_result
+
+
 def test_oltc_analysis_is_deterministic():
     set_enm("oltc-d1", EnergyNetworkModel.model_validate(_payload("det1", with_oltc=True)))
     set_enm("oltc-d2", EnergyNetworkModel.model_validate(_payload("det2", with_oltc=True)))
