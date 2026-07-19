@@ -69,6 +69,7 @@ OPERATION_TO_MODAL: dict[str, list[str]] = {
     "add_converter_source": ["LoadDER", "PVInverter", "BESSInverter", "Converter"],
     "add_genset_nn": ["Genset", "GensetModal"],
     "add_ups_nn": ["UPS", "UPSModal"],
+    "add_shunt_compensator_sn": ["KreatorKompensatora", "Kompensator", "ShuntCompensator"],
     "add_ct": ["Measurement", "CTModal"],
     "add_vt": ["Measurement", "VTModal"],
     "add_relay": ["Protection", "RelayModal"],

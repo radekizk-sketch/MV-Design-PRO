@@ -134,6 +134,17 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     'obciazenie',
   ),
   entry(
+    'add_shunt_compensator_sn',
+    'KreatorKompensatoraSn',
+    'Dodaj baterię kondensatorów SN',
+    'E-20',
+    'C',
+    'manual',
+    'expand_workspace',
+    false,
+    'typ',
+  ),
+  entry(
     'add_converter_source',
     'AddConverterSourceForm',
     'Dodaj źródło PV/BESS/FW z katalogu',

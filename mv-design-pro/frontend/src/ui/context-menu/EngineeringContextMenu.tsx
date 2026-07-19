@@ -314,6 +314,8 @@ export function handlerNameToActionId(handlerName: string): string {
       return 'set_normal_open_point';
     case 'onAddProtection':
       return 'add_relay';
+    case 'onAddShuntCompensator':
+      return 'add_shunt_compensator_sn';
     default:
       break;
   }

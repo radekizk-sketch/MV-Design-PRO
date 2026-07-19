@@ -20,6 +20,7 @@ import type {
   ProtectionDeviceType,
   SourceSystemCatalogType,
   SwitchEquipmentType,
+  ShuntCapacitorCatalogType,
   SurgeArresterCatalogType,
   TapChangerCatalogType,
   TransformerType,
@@ -78,6 +79,7 @@ export type CatalogListItem =
   | SourceSystemCatalogType
   | BranchPointCatalogType
   | SurgeArresterCatalogType
+  | ShuntCapacitorCatalogType
   | PtpireeGeneratorCertificateCatalogType;
 
 const DECATALOGING_BLOCKED_MESSAGE =
@@ -220,6 +222,10 @@ export async function fetchVtTypes(): Promise<VTCatalogType[]> {
 
 export async function fetchSurgeArresterTypes(): Promise<SurgeArresterCatalogType[]> {
   return fetchCatalogJson<SurgeArresterCatalogType[]>('/api/catalog/surge-arrester-types');
+}
+
+export async function fetchShuntCapacitorTypes(): Promise<ShuntCapacitorCatalogType[]> {
+  return fetchCatalogJson<ShuntCapacitorCatalogType[]>('/api/catalog/shunt-capacitor-types');
 }
 
 export async function fetchPtpireeGeneratorCertificates(): Promise<PtpireeGeneratorCertificateCatalogType[]> {
@@ -460,6 +466,9 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
       break;
     case 'SURGE_ARRESTER':
       types = await fetchSurgeArresterTypes();
+      break;
+    case 'SHUNT_CAPACITOR':
+      types = await fetchShuntCapacitorTypes();
       break;
     case 'PTPIREE_CERTIFICATE':
       types = await fetchPtpireeGeneratorCertificates();

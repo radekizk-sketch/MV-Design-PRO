@@ -2638,6 +2638,100 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Dodaj baterię kondensatorów SN (stały kompensator mocy biernej) na szynę SN.
+
+    Domyka istniejący łańcuch: katalog KOMPENSATOR_SN + materializacja +
+    solver PF (b_pu = Q_rated/S_base, +jB) + analiza reactive_adequacy istnieją;
+    ta operacja jest brakującym punktem wejścia. Element trafia do kolekcji
+    ENM `shunt_capacitors`, którą solver PF czyta bezpośrednio
+    (`_build_shunt_specs_from_snapshot`). Katalog-first: rated_mvar/rated_kv
+    pochodzą z pozycji katalogowej (nie z payloadu UI) — zero fizyki w UI.
+    """
+    bus_ref = payload.get("bus_ref") or payload.get("bus_nn_ref")
+    if not isinstance(bus_ref, str) or not bus_ref.strip():
+        return _error_response(
+            "Bateria kondensatorów SN wymaga wskazania szyny SN (bus_ref).",
+            "shunt.bus_missing",
+        )
+    bus_ref = bus_ref.strip()
+
+    bus_voltage_kv = _bus_voltage_kv(enm, bus_ref)
+    if bus_voltage_kv is None:
+        return _error_response(
+            "Wskazana szyna SN nie istnieje w modelu albo nie ma napięcia znamionowego.",
+            "shunt.bus_not_found",
+        )
+
+    binding = _catalog_binding_from_payload(payload, "KOMPENSATOR_SN")
+    catalog_ref = _catalog_item_id(binding)
+    if not catalog_ref:
+        return _error_response(
+            "Wybierz typ baterii kondensatorów z katalogu (KOMPENSATOR_SN).",
+            "shunt.catalog_required",
+        )
+
+    catalog = get_default_mv_catalog()
+    catalog_type = catalog.get_shunt_capacitor_type(catalog_ref)
+    if catalog_type is None:
+        return _error_response(
+            f"Typ baterii kondensatorów '{catalog_ref}' nie istnieje w katalogu.",
+            "shunt.catalog_not_found",
+        )
+
+    rated_mvar = float(catalog_type.rated_mvar)
+    rated_kv = float(catalog_type.rated_kv)
+    if rated_mvar <= 0.0 or rated_kv <= 0.0:
+        return _error_response(
+            "Pozycja katalogowa baterii kondensatorów nie ma dodatniej mocy/napięcia znamionowego.",
+            "shunt.catalog_invalid",
+        )
+    if not _same_nominal_voltage(rated_kv, bus_voltage_kv, tolerance_kv=0.5):
+        return _error_response(
+            f"Napięcie baterii ({rated_kv:g} kV) nie pasuje do szyny SN "
+            f"({bus_voltage_kv:g} kV). Dobierz typ dla właściwego napięcia.",
+            "shunt.voltage_mismatch",
+        )
+
+    status = "open" if str(payload.get("status") or "closed").lower() == "open" else "closed"
+
+    seed = _compute_seed(
+        {"op": "shunt_compensator_sn", "bus": bus_ref, "cat": catalog_ref}
+    )
+    shunt_ref = _make_id("shunt", seed, "cap")
+
+    new_enm = copy.deepcopy(enm)
+    new_enm.setdefault("shunt_capacitors", []).append(
+        {
+            "ref_id": shunt_ref,
+            "name": payload.get("name") or catalog_type.name,
+            "bus_ref": bus_ref,
+            "rated_mvar": rated_mvar,
+            "rated_kv": rated_kv,
+            "status": status,
+            "catalog_ref": catalog_ref,
+            "catalog_namespace": _catalog_namespace(binding, "KOMPENSATOR_SN"),
+            "source_mode": "KATALOG",
+            "parameter_source": "CATALOG",
+            "tags": [],
+            "meta": {
+                "catalog_binding": copy.deepcopy(binding) if binding else None,
+                "loss_kw": catalog_type.loss_kw,
+            },
+        }
+    )
+
+    return _response(
+        new_enm,
+        created=[shunt_ref],
+        selection_id=shunt_ref,
+        selection_type="shunt_capacitor",
+        events=[
+            {"event_seq": 1, "event_type": "SHUNT_COMPENSATOR_CREATED", "element_id": shunt_ref}
+        ],
+    )
+
+
 def set_source_operating_mode(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Ustaw tryb pracy źródła nN."""
     source_ref = payload.get("source_ref") or payload.get("element_ref")
@@ -2777,6 +2871,7 @@ V2_CANONICAL_OPS = frozenset(
         "add_nn_load",
         "add_genset_nn",
         "add_ups_nn",
+        "add_shunt_compensator_sn",
         "set_source_operating_mode",
         "set_dynamic_profile",
         # Universal
@@ -2808,6 +2903,7 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "add_nn_load": add_nn_load,
     "add_genset_nn": add_genset_nn,
     "add_ups_nn": add_ups_nn,
+    "add_shunt_compensator_sn": add_shunt_compensator_sn,
     "set_source_operating_mode": set_source_operating_mode,
     "set_dynamic_profile": set_dynamic_profile,
     "rename_element": rename_element,

@@ -346,6 +346,16 @@ export interface SurgeArresterCatalogType extends CatalogType {
 }
 
 /**
+ * Shunt capacitor bank type (KOMPENSATOR_SN).
+ * Source: backend ShuntCapacitorType dataclass.
+ */
+export interface ShuntCapacitorCatalogType extends CatalogType {
+  rated_mvar: number;
+  rated_kv: number;
+  loss_kw?: number | null;
+}
+
+/**
  * PTPiREE certificate snapshot record.
  * Source: backend PtpireeGeneratorCertificate dataclass.
  */
@@ -433,6 +443,7 @@ export type CatalogNamespace =
   | 'CT'
   | 'VT'
   | 'OGRANICZNIK_SN'
+  | 'KOMPENSATOR_SN'
   | 'OBCIAZENIE'
   | 'ZRODLO_NN_PV'
   | 'ZRODLO_NN_BESS'
@@ -450,7 +461,7 @@ export type TypeCategory = 'LINE' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
   | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS'
   | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
-  | 'SURGE_ARRESTER' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
+  | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
 
 /**
  * Type reference in element (points to catalog).

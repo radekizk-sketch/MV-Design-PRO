@@ -288,6 +288,12 @@ def list_surge_arrester_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_surge_arrester_types()]
 
 
+@router.get("/shunt-capacitor-types")
+def list_shunt_capacitor_types() -> list[dict[str, Any]]:
+    """List all MV shunt capacitor bank types (KOMPENSATOR_SN) from the canonical MV catalog."""
+    return [item.to_dict() for item in get_default_mv_catalog().list_shunt_capacitor_types()]
+
+
 @router.get("/pv-inverter-types")
 def list_pv_inverter_types() -> list[dict[str, Any]]:
     """List all PV inverter types from the canonical MV catalog."""

@@ -13,6 +13,10 @@ from network_model.solvers.grid_source_preview import (
     GridSourcePreviewInput,
     compute_grid_source_preview,
 )
+from network_model.solvers.shunt_compensator_preview import (
+    ShuntCompensatorPreviewInput,
+    compute_shunt_compensator_preview,
+)
 from network_model.solvers.transformer_rated_currents import (
     TransformerRatedCurrentsInput,
     compute_transformer_rated_currents,
@@ -223,4 +227,45 @@ def preview_transformer_rated_currents(
         secondary_current_a=result.secondary_current_a,
         formula_ref=result.formula_ref,
         assumptions=list(result.assumptions),
+    )
+
+
+class ShuntCompensatorPreviewRequest(BaseModel):
+    rated_mvar: float = Field(gt=0)
+    rated_kv: float = Field(gt=0)
+
+
+class ShuntCompensatorPreviewResponse(BaseModel):
+    rated_mvar: float
+    rated_kv: float
+    reactive_power_var: float
+    susceptance_siemens: float
+    rated_current_a: float
+    formula_ref: str
+
+
+@router.post(
+    "/api/solver/shunt-compensator-preview",
+    response_model=ShuntCompensatorPreviewResponse,
+)
+def preview_shunt_compensator(
+    request: ShuntCompensatorPreviewRequest,
+) -> ShuntCompensatorPreviewResponse:
+    try:
+        result = compute_shunt_compensator_preview(
+            ShuntCompensatorPreviewInput(
+                rated_mvar=request.rated_mvar,
+                rated_kv=request.rated_kv,
+            )
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return ShuntCompensatorPreviewResponse(
+        rated_mvar=result.rated_mvar,
+        rated_kv=result.rated_kv,
+        reactive_power_var=result.reactive_power_var,
+        susceptance_siemens=result.susceptance_siemens,
+        rated_current_a=result.rated_current_a,
+        formula_ref=result.formula_ref,
     )

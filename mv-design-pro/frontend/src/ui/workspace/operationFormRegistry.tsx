@@ -13,6 +13,7 @@
 
 import type { ComponentType, ReactNode } from 'react';
 import type { CanonicalOpName } from '../../types/domainOps';
+import { KreatorKompensatoraSn } from '../../ui2/kreatory/kompensator';
 import { KreatorMagistralaSn } from '../../ui2/kreatory/magistrala';
 import { KreatorZrodloZasilania } from '../../ui2/kreatory/zrodlo';
 import { AddConverterSourceForm } from '../network-build/forms/AddConverterSourceForm';
@@ -55,6 +56,7 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_converter_source: AddConverterSourceForm,
   add_genset_nn: AddDispatchableSourceForm,
   add_ups_nn: AddDispatchableSourceForm,
+  add_shunt_compensator_sn: KreatorKompensatoraSn,
   add_nn_load: AddNnLoadForm,
   add_ct: AddMeasurementForm,
   add_vt: AddMeasurementForm,
