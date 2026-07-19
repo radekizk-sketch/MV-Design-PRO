@@ -15,6 +15,7 @@ import type { ComponentType, ReactNode } from 'react';
 import type { CanonicalOpName } from '../../types/domainOps';
 import { KreatorKompensatoraSn } from '../../ui2/kreatory/kompensator';
 import { KreatorMagistralaSn } from '../../ui2/kreatory/magistrala';
+import { KreatorTransformatoraSnNn } from '../../ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from '../../ui2/kreatory/zrodlo';
 import { AddConverterSourceForm } from '../network-build/forms/AddConverterSourceForm';
 import { AddDispatchableSourceForm } from '../network-build/forms/AddDispatchableSourceForm';
@@ -23,7 +24,6 @@ import { AddNnLoadForm } from '../network-build/forms/AddNnLoadForm';
 import { AddNnOutgoingFieldForm } from '../network-build/forms/AddNnOutgoingFieldForm';
 import { AddRelayForm } from '../network-build/forms/AddRelayForm';
 import { AddSnBayForm } from '../network-build/forms/AddSnBayForm';
-import { AddTransformerForm } from '../network-build/forms/AddTransformerForm';
 import { AssignCatalogForm } from '../network-build/forms/AssignCatalogForm';
 import { ConnectRingForm } from '../network-build/forms/ConnectRingForm';
 import { InsertBranchPoleForm } from '../network-build/forms/InsertBranchPoleForm';
@@ -49,7 +49,7 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   insert_section_switch_sn: InsertSectionSwitchForm,
   connect_secondary_ring_sn: ConnectRingForm,
   set_normal_open_point: ConnectRingForm,
-  add_transformer_sn_nn: AddTransformerForm,
+  add_transformer_sn_nn: KreatorTransformatoraSnNn,
   assign_catalog_to_element: AssignCatalogForm,
   update_element_parameters: UpdateElementParametersForm,
   add_nn_outgoing_field: AddNnOutgoingFieldForm,

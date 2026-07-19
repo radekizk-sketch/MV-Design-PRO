@@ -52,14 +52,14 @@ model↔schemat pozostaje wspólna).
 
 ## 2. Pełna macierz: operacja → łańcuch → status → faza
 
-Legenda statusu dostawcy UI: ✅ kreator ui2 · �legacy = do przebudowy · ✗ = brak (gap).
+Legenda statusu dostawcy UI: ✅ kreator ui2 · ▲ legacy = do przebudowy · ✗ = brak (gap).
 
 | Operacja domenowa | Katalog | Podgląd backend | Kluczowi odbiorcy downstream | UI | Faza |
 |-------------------|---------|-----------------|------------------------------|----|----|
 | `add_grid_source_sn` | ZRODLO_SN, TRANSFORMER_WN_SN, tap_changer, switchgear, bay_template | grid-source (Ik″/κ/ip/Ith) | SC IEC 60909, PF slack, OLTC, grid_strength, NC RfG | ✅ `KreatorZrodloZasilania` | done |
 | `continue_trunk_segment_sn` | KABEL_SN/LINIA_SN | cable ΔU + Iz (R1) | PF, SC, voltage_profile, losses, SLD | ✅ `KreatorMagistralaSn` | done (G-MAG) |
-| `insert_station_on_segment_sn` / `append_station_on_endpoint` | STATION_TEMPLATE, ROZDZIELNIA_SN | — | topologia, SLD blok stacji | �legacy `InsertStationForm` | **G-STA** |
-| `add_transformer_sn_nn` | TRAFO_SN_NN, tap_changer (DETC/OLTC) | transformer rated I₁/I₂ (R2) | PF, SC, OLTC studies, losses, raport | ▲ `AddTransformerForm` | **G-TRF** |
+| `insert_station_on_segment_sn` / `append_station_on_endpoint` | STATION_TEMPLATE, ROZDZIELNIA_SN | — | topologia, SLD blok stacji | ▲ legacy `InsertStationForm` | **G-STA** |
+| `add_transformer_sn_nn` | TRAFO_SN_NN, tap_changer (DETC/OLTC) | transformer rated I₁/I₂ (R2) | PF, SC, OLTC studies, losses, raport | ✅ `KreatorTransformatoraSnNn` | done (G-TRF) |
 | `add_sn_bay` | switchgear, bay_template, APARAT_SN | — | topologia pola, SLD, zabezpieczenia | ▲ `AddSnBayForm` | G-POLE |
 | `insert_section_switch_sn` | APARAT_SN | — | topologia, stany łączników (case), PF | ▲ `InsertSectionSwitchForm` | G-SEK |
 | `connect_secondary_ring_sn` / `set_normal_open_point` | — | — | topologia pierścienia, PF (NOP), pewność zasilania | ▲ `ConnectRingForm` | G-RING |
@@ -144,7 +144,7 @@ downstream — „do ostatniego klika"):
    (WHITE BOX) + endpoint, kreator `KreatorKompensatoraSn` (podgląd B/I_c z backendu,
    uczciwy stan zerowy, sekcja downstream), launch z menu szyny SN. Domknął najdłuższy
    istniejący, głodny łańcuch (katalog+PF+jB+reactive_adequacy czekały bez wejścia).
-2. **G-STA + G-TRF** — stacja + transformator (R2), następne ogniwo po G-MAG.
+2. ✅ **G-TRF** — WDROŻONE (`KreatorTransformatoraSnNn`): katalog-first + R2 (I₁/I₂) + PEŁNA regulacja DETC/OLTC (backend `add_transformer_sn_nn` rozszerzony o materializację TapChanger — domknął łańcuch OLTC dla transformatora spoza GPZ). G-STA (stacja) — kolejny krok.
 3. **G-NN + G-OZE** — odpływy/odbiory nN + źródła OZE (machine SC / inverter / NC RfG).
 4. **G-SEK/G-RING/G-ODG/G-ZKSN** — sekcjonowanie, pierścienie, odgałęzienia, ZKSN.
 5. **G-POLE/G-POM/G-ZAB** — pola SN, CT/VT, przekaźniki + nastawy (TCC/koordynacja).

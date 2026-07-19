@@ -5733,6 +5733,14 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
         default_namespace="TRAFO_SN_NN",
     )
     _apply_materialized_transformer_fields(tr_data, materialized_params)
+
+    # OLTC/DETC (V12K-048, G-TRF): materializuj kanoniczny TapChanger, gdy operator
+    # zażądał regulacji. Reużycie proven helpera GPZ — każde pole mapuje na realne
+    # pole TapChanger (zero fabrykacji). Strona regulowana domyślnie = szyna nN (LV).
+    tap_changer = _build_gpz_tap_changer(payload, controlled_bus_ref=lv_bus_ref)
+    if tap_changer is not None:
+        tr_data["tap_changer"] = tap_changer
+
     if payload.get("station_ref"):
         for sub in new_enm.get("substations", []):
             if sub.get("ref_id") == payload["station_ref"]:

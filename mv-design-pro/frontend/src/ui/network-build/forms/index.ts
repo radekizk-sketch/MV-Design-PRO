@@ -11,7 +11,6 @@ export { InsertZksnForm } from './InsertZksnForm';
 export { StartBranchForm } from './StartBranchForm';
 export { ConnectRingForm } from './ConnectRingForm';
 export { InsertSectionSwitchForm } from './InsertSectionSwitchForm';
-export { AddTransformerForm } from './AddTransformerForm';
 export { AddConverterSourceForm } from './AddConverterSourceForm';
 
 export { AssignCatalogForm } from './AssignCatalogForm';

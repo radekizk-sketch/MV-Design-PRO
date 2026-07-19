@@ -460,6 +460,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "tap_min",
             "tap_max",
             "tap_step_percent",
+            "tap_changer",
             "catalog_ref",
             "catalog_namespace",
             "source_mode",
