@@ -55,10 +55,10 @@ w `mv_converter_catalog.get_wind_types`), krzywe/konfiguracje w `audit2_catalogs
 | catalog_binding (falownik) | ✅ | materializacja | ✅ |
 | quantity | ✅ | agregacja | ✅ |
 | un_kv, pmax_mw, sn_mva | ✅ (z katalogu) | PF, SC, grid_strength | odczyt |
-| **control_mode (Q(U)/cosφ/fixedQ)** | ✅ (payload/katalog) | power_flow_inverter | **✗ BRAK — phantom-inverse** |
-| **q_min_mvar / q_max_mvar** | ✅ (payload/katalog) | inverter PF, reactive_adequacy | **✗ BRAK** |
-| **power_setpoint_mw (FW/BESS)** | ✅ | PF | **✗ BRAK** |
-| **bess_mode / operation_mode** | ✅ | PF/energia | częściowo |
+| control_mode (STALY_COS_PHI/Q_OD_U/P_OD_U/WYLACZONE) | ✅ (payload/katalog) | ⚠ patrz KOREKTA | ✅ (select — legacy JEST) |
+| q_min_mvar / q_max_mvar | ✅ (payload/katalog) | reactive_adequacy | ✅ (legacy JEST) |
+| power_setpoint_mw (FW/BESS) | ✅ | PF | ✅ (legacy JEST) |
+| bess_mode / operation_mode | ✅ | PF/energia | ✅ (legacy JEST) |
 | **pf_curve_ref → P(f) droop/deadband** | spec DER (ref) | ncrfg, stability_rms, IEC 60255 | **✗ BRAK** |
 | **has_qu_curve (Q(U))** | konfiguracja krzywej | ncrfg | **✗ BRAK** |
 | **has_hvrt_curve / FRT (ride-through)** | konfiguracja krzywej | ncrfg, stability_rms | **✗ BRAK** |
@@ -69,11 +69,23 @@ w `mv_converter_catalog.get_wind_types`), krzywe/konfiguracje w `audit2_catalogs
 
 ## 3. Rejestr braków (odpowiedź na „czego brakuje")
 
-- **GAP-OZE-1 (phantom-inverse, natychmiastowe):** `add_converter_source` UTRWALA
-  `control_mode`, `q_min_mvar`, `q_max_mvar`, `power_setpoint_mw`, `bess_mode`, ale
-  legacy UI ich NIE eksponuje — inżynier nie ustawi trybu regulacji falownika ani
-  zdolności Q, choć solver PF falownika je czyta. Kreator MAX musi je wystawić
-  (mapowanie 1:1, zero fabrykacji). **Bez rozbudowy backendu.**
+> **KOREKTA PO AUDYCIE EKSPERTÓW (2026-07-19).** Pierwotny GAP-OZE-1 (twierdzenie:
+> „legacy UI nie eksponuje control_mode/Q") był **BŁĘDNY**. Weryfikacja empiryczna:
+> `AddConverterSourceForm` MA edytowalny select „Tryb sterowania"
+> (STALY_COS_PHI/Q_OD_U/P_OD_U/WYLACZONE), pola Q min/max, moc roboczą P i tryb BESS
+> (linie ~1239, 279–282, 501–506). Ten dokument został skorygowany; poniżej realne braki.
+
+- **GAP-OZE-1 (SKORYGOWANE → FORWARD PHANTOM, wysoki priorytet):** control_mode jest
+  ustawiany w UI i utrwalany na generatorze, ALE **główny rozpływ mocy go ignoruje**.
+  Fakty: (a) `power_flow_inverter.py` ma bogaty model regulacji falownika (Q_U volt-var,
+  COSPHI_P, P(f)/LFSM, klamry Q) — ale (b) `canonical_analysis._execute_power_flow`
+  buduje pętlę OLTC i NIE buduje tabeli regulacji falownika; (c) ciągi
+  `STALY_COS_PHI/Q_OD_U/…` występują wyłącznie w katalogu i formularzu — BRAK mapowania
+  na `InverterMode` w `canonical_analysis`/`solver_input`. Wniosek: wybór trybu
+  regulacji OZE **nie wpływa na wynik domyślnego load-flow** (może być konsumowany w
+  wybranych ścieżkach analiz — do potwierdzenia per analysis_type). To defekt do naprawy
+  U ŹRÓDŁA (wpięcie InverterControl w kanoniczny PF), nie zadanie UI. **Wymaga rozbudowy
+  backendu + pełnej regresji + determinizmu — osobna, ostrożna faza (G-OZE-PF).**
 - **GAP-OZE-2 (krzywe regulacji, rozbudowa spec DER):** P(f) droop (`pf_curve_ref`),
   Q(U) (`has_qu_curve`), FRT/HVRT (`has_hvrt_curve`) są czytane przez NC RfG / RMS /
   inverter, ale przez warstwę krzywych/konfiguracji (`audit2_der_payload`,
@@ -114,14 +126,26 @@ po podmianie. Determinizm/kontrakty FROZEN — pola addytywne.
 
 ---
 
-## 5. Kolejność wdrożenia (fazy G-OZE) + DoD
+## 5. Kolejność wdrożenia (fazy G-OZE) — SKORYGOWANA po audycie + DoD
 
-1. **G-OZE-A** — kreator z krokami 1–3 (technologia/przyłącze/katalog/moc + regulacja
-   GAP-OZE-1). Mapuje wyłącznie na pola, które op JUŻ utrwala (zero fabrykacji).
-   Retire legacy, testy realnej ścieżki, regresje, zrzut. ⇐ pierwszy build.
-2. **G-OZE-B** — rozszerzenie op o `pf_curve_ref` / flagi NC RfG (jeśli recon potwierdzi
-   brak utrwalania), krok 4 kreatora, wpięcie w NC RfG (E-28). Backend + pełne regresje.
+Priorytet wg realnej wartości inżynierskiej (nie kosmetyki). Legacy `AddConverterSourceForm`
+jest FUNKCJONALNIE bogaty (tryb regulacji, Q, block-trafo, BESS mode) — sama migracja
+na kreatory/rama ma niską wartość i wysokie ryzyko regresji, więc NIE jest pierwsza.
+
+1. **G-OZE-PF (najwyższy priorytet, backend) — naprawa forward-phantomu GAP-OZE-1.**
+   Wpięcie `power_flow_inverter` (Q_U/COSPHI_P/P(f)) w kanoniczny rozpływ mocy: mapowanie
+   `control_mode` (STALY_COS_PHI/Q_OD_U/P_OD_U/WYLACZONE) → `InverterMode`, budowa tabeli
+   regulacji z generatorów, iteracyjny volt-var (analogicznie do pętli OLTC). WHITE BOX,
+   determinizm, pola wyniku addytywne, SC nietknięte. Pełna regresja backendu. Dopiero
+   po tym wybór trybu OZE realnie wpływa na wynik — warunek „do ostatniego klika".
+2. **G-OZE-B** — brakujące realne kontrolki NC RfG: P(f) droop (`pf_curve_ref`), Q(U),
+   FRT/HVRT, flagi wymagań (island/black_start/POD) → mapują na spec DER +
+   `NcRfgPtpireeModuleInput`; wpięcie w E-28. Rozszerzenie op/spec + pełne regresje.
 3. **G-OZE-C** — katalog krzywych P(f)/Q(U)/FRT (rozbudowa Reference Engine), pickery.
+4. **G-OZE-UI (najniższy priorytet)** — migracja `AddConverterSourceForm` → kreator ui2
+   `KreatorZrodlaOze` na frameworku kreatory/rama, DOPIERO gdy backend (PF + NC RfG) daje
+   realne wejścia dla nowych kontrolek. Superset istniejącej funkcjonalności + nowe
+   kontrolki z G-OZE-B. Retire legacy po podmianie.
 
 **DoD każdej fazy:** mapowanie 1:1 na realne pola (zero phantomów), katalog-first,
 podgląd z backendu gdzie dostępny, sekcja downstream, uczciwe stany zerowe, retire
