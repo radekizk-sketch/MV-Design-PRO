@@ -287,18 +287,29 @@ def _collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
             ):
                 continue
 
+            spec_meta = dict(spec.get("meta") or {})
+            # Powiązania producenckie z field_spec (konwencja kreatora stacji) —
+            # dostępne w read-modelu pola (E-27/E-11) i przez Bay.bay_template_ref
+            # dla dalszych konsumentów (SLD internal_layout, Reference Engine).
+            switchgear_family_ref = spec.get("switchgear_family_ref")
+            manufacturer_ref = spec.get("manufacturer_ref")
+            if switchgear_family_ref and "switchgear_family_ref" not in spec_meta:
+                spec_meta["switchgear_family_ref"] = switchgear_family_ref
+            if manufacturer_ref and "manufacturer_ref" not in spec_meta:
+                spec_meta["manufacturer_ref"] = manufacturer_ref
             bays_by_ref[field_ref] = Bay(
                 id=uuid5(NAMESPACE_URL, field_ref),
                 ref_id=field_ref,
                 name=spec.get("name") or field_ref,
                 tags=list(spec.get("tags") or []),
-                meta=dict(spec.get("meta") or {}),
+                meta=spec_meta,
                 bay_role=bay_role,
                 substation_ref=substation.ref_id,
                 bus_ref=bus_ref,
                 gpz_section_id=spec.get("gpz_section_id"),
                 equipment_refs=list(spec.get("equipment_refs") or []),
                 protection_ref=spec.get("protection_ref"),
+                bay_template_ref=spec.get("bay_template_ref"),
             )
 
     return sorted(bays_by_ref.values(), key=lambda item: (item.substation_ref, item.ref_id))
