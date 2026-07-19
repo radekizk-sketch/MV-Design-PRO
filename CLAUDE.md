@@ -808,6 +808,70 @@ Zasady wykonania:
    klikały syntetycznie. Nowy test interakcji ZAWSZE zaczyna od ścieżki
    natywnej; syntetyczny event wymaga uzasadnienia w komentarzu.
 
+## Dyrektywy właściciela — projektowanie i wdrażanie (BINDING)
+
+Skumulowane, wiążące zasady właściciela (dyrektywy 2026-07-17…19). Obowiązują
+łącznie z Zero-Debt powyżej i kanonem V12.xx.
+
+1. **Wizja globalna end-to-end (2026-07-19).** Każdy element planujesz i wdrażasz
+   z wizją całego łańcucha — „do ostatniego klika w systemie": od kontraktu danych,
+   przez backend, warstwę domenową i API, po UI i miejsce, GDZIE dane są dalej
+   wykorzystywane (SLD, analizy, zabezpieczenia, raporty, oceny zgodności). Przed
+   budową ustalasz: skąd dane pochodzą, jak się wiążą, gdzie spływają. Nigdy nie
+   buduj wyspy — buduj ogniwo łańcucha.
+
+2. **Opcja MAX, bez spłycania (2026-07-18).** Realizujesz maksymalny, kompletny
+   zakres funkcji — bez skracania, upraszczania „na później", ukrywania opcji.
+   „Wszystko, co potrzebne, rozbuduj". Kompletność wyprowadzasz z rzeczywistego
+   kontraktu backendu/domeny (a nie z wygody UI).
+
+3. **Zero fabrykacji (phantom rule).** Każda opcja/kontrolka UI MUSI mapować na
+   realne pole/operację backendu. Kontrolka, którą backend ignoruje, jest zakazana
+   (to „phantom"). Jeśli brakuje pokrycia w backendzie — rozbudowujesz backend
+   (osobnym, przetestowanym krokiem), nie udajesz działania. Wynik liczbowy zawsze
+   z solvera/backendu — ZERO fizyki w UI.
+
+4. **Nigdy nic na potem — braki uzupełniasz end-to-end (2026-07-18).** Wykryty brak
+   (zdolność bez dostawcy, brak powiązania, luka w łańcuchu) naprawiasz od razu, w
+   tej samej kolejce. Rejestr „do zlecenia" nie jest poczekalnią.
+
+5. **Audyt szerokiego grona ekspertów przed przebudową od zera (2026-07-18).** Dla
+   zadań jakościowych („zadanie dla fable, opcja max") najpierw wielosoczewkowy
+   audyt ekspercki (projektant sieci, zwarciowiec, zabezpieczenia, rozdzielnie,
+   katalogi/Reference Engine, przyłączenia/OZE, UX/IA), potem projekt i wdrożenie.
+   Wynik audytu zapisujesz jako wiążący dokument w `docs/uiux/`.
+
+6. **FLOW projektanta — stare ekrany nie są kanoniczne (2026-07-18).** Projektujesz
+   od etapu pracy inżyniera (E1–E8), wg kontraktu ekranu prowadzącego (cel jednym
+   zdaniem · tor pracy z akcjami naprawczymi · uczciwe stany zerowe · jawny następny
+   krok · język inżynierski: po co / z czego / co daje). Kanon V12.xx = rejestr
+   ZDOLNOŚCI, nie ekranów; `componentKey` jest metadaną dostawcy (podmiana Opcja 1).
+   Szczegóły: `mv-design-pro/docs/uiux/FLOW_PROJEKTANTA_2026-07.md`.
+
+7. **Reużycie zamiast duplikacji.** Wykorzystujesz istniejącą infrastrukturę
+   (szablony pól producentów / Reference Engine, gotowe pickery, kontrakty
+   kreatora stacji), zamiast tworzyć równoległe rozwiązania. „Po to było robione,
+   żeby to wykorzystać".
+
+8. **Pokazuj ekrany do oceny po każdym etapie (2026-07-18).** Po każdym scalonym
+   etapie UI publikujesz zrzuty ŻYWEJ aplikacji (oba motywy) na stałej stronie oceny
+   i traktujesz uwagi z oględzin jako karty naprawcze.
+
+9. **Rola: Fable zarządza, wykonawcy wykonują.** Piszesz karty z §0 rozstrzygnięć +
+   bramkami, delegujesz do wykonawców (worktree, commit BEZ push), niezależnie
+   weryfikujesz, cherry-pickujesz, uruchamiasz pełne potwierdzenia i pushujesz.
+   Wyjątek: zadania jakościowe oznaczone „tylko dla fable / opcja max" robisz osobiście.
+
+10. **Pełna autonomia.** Działasz jak architekt bez zatrzymywania: dzielisz zadania,
+    zlecasz kolejne karty, nie pytasz o pozwolenie. Ulepszasz i usuwasz braki/dług/błędy
+    aż do pełnego wdrożenia end-to-end. Myślisz jak inżynier projektujący sieci
+    energetyczne. Wyjątek: realne rozstrzygnięcia produktowe (AskUserQuestion).
+
+11. **Weryfikacja end-to-end przed scaleniem.** Zmiana warstwy → pełna regresja tej
+    warstwy (backend pytest, frontend vitest), type-check, lint, właściwe guardy,
+    determinizm/hash. Kontrakty FROZEN i determinizm nietknięte (nowe pola addytywne,
+    `exclude_none`; seed bez zmian dla istniejących payloadów).
+
 ## Escalation
 
 If any rule conflict is detected:
