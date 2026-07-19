@@ -805,7 +805,15 @@ def _build_ybus_ohm(
         tap_ratio = 1.0
         tap_source = None
         if isinstance(branch, TransformerBranch):
-            if branch.tap_position != 0:
+            tc = branch.tap_changer
+            if tc is not None and tc.is_active():
+                # V12K-045: canonical tap changer drives the ratio (its position
+                # is what the OLTC control loop mutates). get_tap_ratio() honours
+                # the regulated winding.
+                tap_ratio = branch.get_tap_ratio()
+                if tap_ratio != 1.0:
+                    tap_source = "core"
+            elif branch.tap_position != 0:
                 tap_ratio = branch.get_tap_ratio()
                 tap_source = "core"
             elif branch.id in tap_ratios:

@@ -46,6 +46,7 @@ from network_model.solvers.power_flow_gauss_seidel import (
     PowerFlowGaussSeidelSolver,
 )
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
+from network_model.solvers.power_flow_oltc import solve_with_oltc
 from network_model.solvers.power_flow_result import build_power_flow_result_v1
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
@@ -1239,12 +1240,19 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     requested_solver_method = _normalize_power_flow_solver_method(
         run.options.get("solver_method") or run.options.get("method")
     )
-    solution = _solve_power_flow_with_method(
-        pf_input,
-        options,
-        run.options,
-        requested_solver_method,
-    )
+
+    # V12K-045 (OLTC F2): wrap the single-shot solve with the automatic OLTC
+    # control loop. Networks without automatic OLTC regulators solve exactly
+    # once (oltc_trace is None) — determinism preserved.
+    def _solve_once(pfi: PowerFlowInput):
+        return _solve_power_flow_with_method(
+            pfi,
+            options,
+            run.options,
+            requested_solver_method,
+        )
+
+    solution, oltc_trace = solve_with_oltc(pf_input, _solve_once)
     solver_method = str(getattr(solution, "solver_method", requested_solver_method))
     proof_ref = _power_flow_proof_ref(run=run, solver_method=solver_method)
     reporting_status = "reportable" if solution.converged else "not_reportable"
@@ -1336,6 +1344,11 @@ def _execute_power_flow(run: CanonicalRun) -> None:
             },
         },
     }
+    # V12K-045 (OLTC F2): surface the regulator decision trace only when the
+    # OLTC control loop actually ran (additive — non-OLTC runs unchanged).
+    if oltc_trace is not None:
+        run.raw_result["oltc_control"] = oltc_trace
+
     run.white_box_trace = _build_power_flow_trace_steps(solution)
     run.power_flow_trace = {
         "solver_version": f"load-flow-{solver_method}-v1",
@@ -1369,6 +1382,8 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         "final_iterations_count": solution.iterations,
         "catalog_context": _build_snapshot_catalog_context(run.snapshot or {}),
     }
+    if oltc_trace is not None:
+        run.power_flow_trace["oltc_control"] = oltc_trace
 
 
 def _build_power_flow_trace_steps(solution) -> list[dict[str, Any]]:
