@@ -32,6 +32,8 @@ export const MAX_TRANSFORMATOROW = 4;
 export interface SekcjaGpz {
   nazwa: string;
   liczbaPol: number;
+  /** Szablon pola odpływowego producenta (bay_template_ref z rodziny rozdzielnicy). */
+  bayTemplateRef?: string | null;
 }
 
 export interface GridSourceFormData {
@@ -65,6 +67,9 @@ export interface GridSourceFormData {
   grounding_r_ohm: number | null;
   grounding_x_ohm: number | null;
   thermal_time_s: number;
+  /** Rodzina rozdzielnicy producenta (Reference Engine) — kompozycja pól ze szablonów. */
+  switchgear_family_ref: string | null;
+  manufacturer_ref: string | null;
   /** UI-only: zakres wariantu ('simplified' = źródło SN, 'advanced' = pełny WN/SN). */
   complexity_mode: 'simplified' | 'advanced';
 }
@@ -107,6 +112,8 @@ export const DANE_DOMYSLNE: GridSourceFormData = {
   grounding_r_ohm: 12,
   grounding_x_ohm: null,
   thermal_time_s: 1,
+  switchgear_family_ref: null,
+  manufacturer_ref: null,
   complexity_mode: 'simplified',
 };
 
@@ -132,6 +139,7 @@ export function normalizujSekcje(
         1,
         Math.min(MAX_POL_NA_SEKCJE, Math.trunc(istn?.liczbaPol || domyslnaLiczbaPol || 1)),
       ),
+      bayTemplateRef: istn?.bayTemplateRef ?? null,
     };
   });
 }
@@ -304,29 +312,50 @@ function withIndexedSuffix(base: string, index: number, total: number, fallback:
   return total <= 1 ? normalized : `${normalized} ${index + 1}`;
 }
 
+interface GpzBay {
+  name: string;
+  bay_role: 'LINIA_ODG';
+  bay_template_ref: string | null;
+}
+
 interface GpzSection {
   order: number;
   name: string;
   line_field_name: string;
   line_fields_count: number;
   line_field_names: string[];
+  bay_template_ref?: string | null;
+  bays?: GpzBay[];
 }
 
 function buildGpzSections(data: GridSourceFormData): GpzSection[] {
   const count = Math.max(1, Math.min(MAX_SEKCJI, Math.trunc(data.sections_count || 1)));
   const sekcje = normalizujSekcje(data.sekcje, count, data.line_fields_per_section);
   const bazaPola = data.gpz_line_field_name.trim() || 'Pole liniowe GPZ';
+  const zRodzina = Boolean(data.switchgear_family_ref);
   return sekcje.map((sekcja, index) => {
     const liczbaPol = Math.max(1, Math.min(MAX_POL_NA_SEKCJE, Math.trunc(sekcja.liczbaPol || 1)));
-    return {
+    const nazwyPol = Array.from({ length: liczbaPol }, (_u, fieldIndex) =>
+      withIndexedSuffix(bazaPola, fieldIndex, liczbaPol, 'Pole liniowe GPZ'),
+    );
+    const base: GpzSection = {
       order: index,
       name: sekcja.nazwa.trim() || `Sekcja GPZ ${index + 1}`,
       line_field_name: bazaPola,
       line_fields_count: liczbaPol,
-      line_field_names: Array.from({ length: liczbaPol }, (_u, fieldIndex) =>
-        withIndexedSuffix(bazaPola, fieldIndex, liczbaPol, 'Pole liniowe GPZ'),
-      ),
+      line_field_names: nazwyPol,
     };
+    // Kompozycja pól ze szablonu producenta — tylko gdy wybrano rodzinę rozdzielnicy.
+    if (zRodzina) {
+      const templateRef = sekcja.bayTemplateRef ?? null;
+      base.bay_template_ref = templateRef;
+      base.bays = nazwyPol.map((nazwa) => ({
+        name: nazwa,
+        bay_role: 'LINIA_ODG',
+        bay_template_ref: templateRef,
+      }));
+    }
+    return base;
   });
 }
 
@@ -398,6 +427,9 @@ export function zbudujPayloadZrodla(data: GridSourceFormData): Record<string, un
           catalog_binding: normalizeCatalogBinding(data.gpz_line_field_apparatus_catalog_ref, 'APARAT_SN'),
         }
       : undefined,
+    // Rodzina rozdzielnicy producenta (Reference Engine) — spływa do SLD + oceny zgodności.
+    switchgear_family_ref: data.switchgear_family_ref ?? undefined,
+    manufacturer_ref: data.manufacturer_ref ?? undefined,
   };
 
   if (data.manual_mode && data.short_circuit_mode === 'IMPEDANCE') {

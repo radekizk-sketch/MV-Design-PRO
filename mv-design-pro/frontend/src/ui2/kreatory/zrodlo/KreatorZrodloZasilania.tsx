@@ -15,7 +15,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
-import { fetchMvApparatusTypes, fetchSourceSystemTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
+import {
+  fetchCompleteBayTemplates,
+  fetchMvApparatusTypes,
+  fetchSourceSystemTypes,
+  fetchSwitchgearFamilies,
+  getCatalogErrorMessage,
+} from '../../../ui/catalog/api';
+import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
+import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { MVApparatusType, SourceSystemCatalogType } from '../../../ui/catalog/types';
 import { navigateToSld } from '../../../ui/navigation/routes';
 import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFirstRules';
@@ -125,6 +133,10 @@ export function KreatorZrodloZasilania() {
   const [aparaty, setAparaty] = useState<MVApparatusType[]>([]);
   const [bladAparatow, setBladAparatow] = useState<string | null>(null);
 
+  const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
+  const [bladRodzin, setBladRodzin] = useState<string | null>(null);
+  const [szablonyPol, setSzablonyPol] = useState<CompleteMvBayTemplateSummary[]>([]);
+
   const [podglad, setPodglad] = useState<GridSourcePreviewResponse | null>(null);
   const [statusPodgladu, setStatusPodgladu] = useState<StatusPobrania>('idle');
   const [bladPodgladu, setBladPodgladu] = useState<string | null>(null);
@@ -176,10 +188,69 @@ export function KreatorZrodloZasilania() {
     return () => { cancelled = true; };
   }, []);
 
+  // Rodziny rozdzielnic producentów (Reference Engine).
+  useEffect(() => {
+    let cancelled = false;
+    setBladRodzin(null);
+    fetchSwitchgearFamilies()
+      .then((items) => {
+        if (cancelled) return;
+        setRodziny(Array.isArray(items) ? items : []);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setRodziny([]);
+        setBladRodzin(getCatalogErrorMessage(error));
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Szablony pól odpływowych dla wybranej rodziny/producenta.
+  useEffect(() => {
+    if (!dane.manufacturer_ref) {
+      setSzablonyPol([]);
+      return undefined;
+    }
+    let cancelled = false;
+    fetchCompleteBayTemplates(dane.manufacturer_ref, 'liniowe_odplywowe')
+      .then((items) => {
+        if (cancelled) return;
+        setSzablonyPol(Array.isArray(items) ? items : []);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setSzablonyPol([]);
+      });
+    return () => { cancelled = true; };
+  }, [dane.manufacturer_ref]);
+
   const filtrowaneAparaty = useMemo(
     () => aparaty.filter((item) => pasujeRodzajAparatu(item, dane.gpz_line_field_apparatus_kind)),
     [aparaty, dane.gpz_line_field_apparatus_kind],
   );
+
+  const napiecieSn = dane.sn_voltage_kv ?? 0;
+  const opcjeRodzin = useMemo(
+    () => rodziny
+      .filter((r) => !napiecieSn || r.voltage_levels.length === 0 || r.voltage_levels.some((v) => Math.abs(v - napiecieSn) <= 6))
+      .map((r) => ({ id: r.switchgear_family_ref, etykieta: `${r.family_name} · ${r.manufacturer_ref}` })),
+    [rodziny, napiecieSn],
+  );
+  const opcjeSzablonow = useMemo(
+    () => szablonyPol.map((t) => ({ id: t.template_ref, etykieta: t.template_ref })),
+    [szablonyPol],
+  );
+
+  const wybierzRodzine = useCallback((familyRef: string | null) => {
+    const family = rodziny.find((r) => r.switchgear_family_ref === familyRef) ?? null;
+    setDane((p) => ({
+      ...p,
+      switchgear_family_ref: family?.switchgear_family_ref ?? null,
+      manufacturer_ref: family?.manufacturer_ref ?? null,
+      // zmiana rodziny czyści szablony sekcji (inny producent → inne szablony)
+      sekcje: p.sekcje.map((s) => ({ ...s, bayTemplateRef: null })),
+    }));
+  }, [rodziny]);
 
   useEffect(() => {
     if (dane.gpz_line_field_apparatus_catalog_ref || filtrowaneAparaty.length === 0) return;
@@ -525,51 +596,81 @@ export function KreatorZrodloZasilania() {
       ) : null}
 
       {krok === 'sekcje' ? (
-        <KreatorSekcja tytul={T.krokSekcje} testid="mvd-kreator-zrodlo-sekcje">
-          <KreatorInfo>{T.sekcjeOpis}</KreatorInfo>
-          {normalizujSekcje(dane.sekcje, dane.sections_count, dane.line_fields_per_section).map((sekcja, index) => (
-            <KreatorSiatka kolumny={2} key={index}>
-              <PoleTekstowe
-                etykieta={`${T.sekcjaNazwaPol} ${index + 1}`}
-                wartosc={sekcja.nazwa}
-                onZmiana={(v) => zmienSekcje(index, { nazwa: v })}
-                testid={`mvd-kreator-zrodlo-sekcja-nazwa-${index}`}
+        <>
+          <KreatorSekcja tytul={T.rodzinaTytul} testid="mvd-kreator-zrodlo-rodzina">
+            <KreatorInfo>{T.rodzinaOpis}</KreatorInfo>
+            <PoleWyboru
+              etykieta={T.rodzinaPole}
+              wartosc={dane.switchgear_family_ref ?? ''}
+              onZmiana={(v) => wybierzRodzine(v || null)}
+              opcje={[{ id: '', etykieta: T.rodzinaPlaceholder }, ...opcjeRodzin]}
+              blad={bladRodzin ?? undefined}
+              testid="mvd-kreator-zrodlo-rodzina-select"
+            />
+          </KreatorSekcja>
+
+          <KreatorSekcja tytul={T.krokSekcje} testid="mvd-kreator-zrodlo-sekcje">
+            <KreatorInfo>{T.sekcjeOpis}</KreatorInfo>
+            {normalizujSekcje(dane.sekcje, dane.sections_count, dane.line_fields_per_section).map((sekcja, index) => (
+              <div key={index}>
+                <KreatorSiatka kolumny={2}>
+                  <PoleTekstowe
+                    etykieta={`${T.sekcjaNazwaPol} ${index + 1}`}
+                    wartosc={sekcja.nazwa}
+                    onZmiana={(v) => zmienSekcje(index, { nazwa: v })}
+                    testid={`mvd-kreator-zrodlo-sekcja-nazwa-${index}`}
+                  />
+                  <PoleLiczbowe
+                    etykieta={T.sekcjaLiczbaPol}
+                    wartosc={sekcja.liczbaPol}
+                    onZmiana={(v) => zmienSekcje(index, { liczbaPol: Math.max(1, Math.min(MAX_POL_NA_SEKCJE, v ?? 1)) })}
+                    min={1}
+                    krok={1}
+                    testid={`mvd-kreator-zrodlo-sekcja-pola-${index}`}
+                  />
+                </KreatorSiatka>
+                {dane.switchgear_family_ref ? (
+                  <PoleWyboru
+                    etykieta={T.sekcjaSzablon}
+                    wartosc={sekcja.bayTemplateRef ?? ''}
+                    onZmiana={(v) => zmienSekcje(index, { bayTemplateRef: v || null })}
+                    opcje={[{ id: '', etykieta: T.sekcjaSzablonPlaceholder }, ...opcjeSzablonow]}
+                    pomoc={T.sekcjaSzablonPomoc}
+                    testid={`mvd-kreator-zrodlo-sekcja-szablon-${index}`}
+                  />
+                ) : null}
+              </div>
+            ))}
+            <KreatorSiatka kolumny={2}>
+              <PoleWyboru
+                etykieta={T.aparatRodzaj}
+                wartosc={dane.gpz_line_field_apparatus_kind}
+                onZmiana={(v) => {
+                  zmien('gpz_line_field_apparatus_kind', v as GpzLineFieldApparatusKind);
+                  zmien('gpz_line_field_apparatus_catalog_ref', null);
+                }}
+                opcje={T.rodzajeAparatu}
+                testid="mvd-kreator-zrodlo-aparat-rodzaj"
               />
-              <PoleLiczbowe
-                etykieta={T.sekcjaLiczbaPol}
-                wartosc={sekcja.liczbaPol}
-                onZmiana={(v) => zmienSekcje(index, { liczbaPol: Math.max(1, Math.min(MAX_POL_NA_SEKCJE, v ?? 1)) })}
-                min={1}
-                krok={1}
-                testid={`mvd-kreator-zrodlo-sekcja-pola-${index}`}
+              <PoleKatalogu
+                etykieta={T.aparatSekcja}
+                wartosc={dane.gpz_line_field_apparatus_catalog_ref}
+                onZmiana={(v) => zmien('gpz_line_field_apparatus_catalog_ref', v)}
+                opcje={opcjeAparatow}
+                status={bladAparatow ? 'error' : 'ready'}
+                placeholder={T.aparatPlaceholder}
+                komunikatBledu={bladAparatow ?? T.aparatBlad}
+                wymagane
+                blad={bladDlaPola('gpz_line_field_apparatus_catalog_ref')}
+                testid="mvd-kreator-zrodlo-aparat-katalog"
               />
             </KreatorSiatka>
-          ))}
-          <KreatorSiatka kolumny={2}>
-            <PoleWyboru
-              etykieta={T.aparatRodzaj}
-              wartosc={dane.gpz_line_field_apparatus_kind}
-              onZmiana={(v) => {
-                zmien('gpz_line_field_apparatus_kind', v as GpzLineFieldApparatusKind);
-                zmien('gpz_line_field_apparatus_catalog_ref', null);
-              }}
-              opcje={T.rodzajeAparatu}
-              testid="mvd-kreator-zrodlo-aparat-rodzaj"
-            />
-            <PoleKatalogu
-              etykieta={T.aparatSekcja}
-              wartosc={dane.gpz_line_field_apparatus_catalog_ref}
-              onZmiana={(v) => zmien('gpz_line_field_apparatus_catalog_ref', v)}
-              opcje={opcjeAparatow}
-              status={bladAparatow ? 'error' : 'ready'}
-              placeholder={T.aparatPlaceholder}
-              komunikatBledu={bladAparatow ?? T.aparatBlad}
-              wymagane
-              blad={bladDlaPola('gpz_line_field_apparatus_catalog_ref')}
-              testid="mvd-kreator-zrodlo-aparat-katalog"
-            />
-          </KreatorSiatka>
-        </KreatorSekcja>
+          </KreatorSekcja>
+
+          <KreatorSekcja tytul={T.zabezpieczenieTytul} testid="mvd-kreator-zrodlo-zabezpieczenie">
+            <KreatorInfo>{T.zabezpieczenieOpis}</KreatorInfo>
+          </KreatorSekcja>
+        </>
       ) : null}
 
       {krok === 'normy' ? (

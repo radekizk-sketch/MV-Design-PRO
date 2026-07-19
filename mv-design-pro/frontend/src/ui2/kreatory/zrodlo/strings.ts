@@ -150,6 +150,25 @@ export const ZRODLO_STRINGS = {
   sekcjaLiczbaPol: 'Pola liniowe',
   aparatSekcja: 'Aparat pól liniowych',
 
+  // Rodzina rozdzielnicy producenta (Reference Engine).
+  rodzinaTytul: 'Rozdzielnica producenta (referencje)',
+  rodzinaOpis:
+    'Wybór rodziny rozdzielnicy producenta dobiera szablony pól (skład aparatury, sekwencja) '
+    + 'wg katalogu producenta i norm. Zasila układ pola na schemacie (SLD) i ocenę zgodności.',
+  rodzinaPole: 'Rodzina rozdzielnicy',
+  rodzinaPlaceholder: '— rozdzielnica uniwersalna (bez producenta) —',
+  rodzinaBlad: 'Nie udało się pobrać rodzin rozdzielnic.',
+  sekcjaSzablon: 'Szablon pola (producent)',
+  sekcjaSzablonPlaceholder: '— szablon domyślny —',
+  sekcjaSzablonPomoc: 'Szablon pola odpływowego z wybranej rodziny — determinuje skład aparatury pola.',
+
+  // Zabezpieczenie polowe (powiązanie globalne).
+  zabezpieczenieTytul: 'Zabezpieczenie polowe',
+  zabezpieczenieOpis:
+    'Pola odpływowe wymagają zabezpieczenia (przekaźnik + nastawy). Po utworzeniu GPZ '
+    + 'nastawy i automatykę (SPZ/SZR) konfigurujesz w ekranie „Zabezpieczenia i automatyka”, '
+    + 'a selektywność w „Koordynacji zabezpieczeń”.',
+
   // K7.
   przegladTytul: 'Sprawdź konfigurację',
   przegladOpis:

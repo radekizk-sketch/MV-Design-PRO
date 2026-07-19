@@ -60,6 +60,14 @@ vi.mock('../../../../ui/catalog/api', () => ({
     Promise.resolve([
       { id: 'APP-001', name: 'Wyłącznik SN', device_kind: 'WYLACZNIK', u_n_kv: 17.5, i_n_a: 630 },
     ]),
+  fetchSwitchgearFamilies: () =>
+    Promise.resolve([
+      { switchgear_family_ref: 'ABB__SAFERING', manufacturer_ref: 'ABB', family_name: 'SafeRing', series_name: 'SafeRing', voltage_levels: [15, 17.5], insulation_type: 'sf6', construction_type: 'RMU', status: 'verified', source_refs: [] },
+    ]),
+  fetchCompleteBayTemplates: () =>
+    Promise.resolve([
+      { template_ref: 'ABB__SAFERING__LINE_OUT', manufacturer_ref: 'ABB', switchgear_family_ref: 'ABB__SAFERING', bay_kind: 'liniowe_odplywowe', bay_role: 'OUT', source_status: 'catalog_solution', source_refs: [], version: '1', hash: 'x', notes_pl: null },
+    ]),
 }));
 
 vi.mock('../../../../ui/network-build/forms/gridSourcePreviewApi', () => ({

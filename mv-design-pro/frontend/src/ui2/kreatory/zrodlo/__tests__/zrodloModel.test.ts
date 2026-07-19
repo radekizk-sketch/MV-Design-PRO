@@ -83,6 +83,28 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     const payload = zbudujPayloadZrodla(daneKompletne({ transformer_count: 9 }));
     expect(payload.transformer_count).toBe(4);
   });
+
+  it('rodzina rozdzielnicy → pola komponowane ze szablonu producenta (bays[] + refy)', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      switchgear_family_ref: 'ABB__SAFERING',
+      manufacturer_ref: 'ABB',
+      sections_count: 1,
+      sekcje: [{ nazwa: 'Sekcja A', liczbaPol: 2, bayTemplateRef: 'ABB__SAFERING__LINE_OUT' }],
+    }));
+    expect(payload.switchgear_family_ref).toBe('ABB__SAFERING');
+    expect(payload.manufacturer_ref).toBe('ABB');
+    const sekcje = payload.gpz_sections as Array<{ bay_template_ref?: string; bays?: Array<{ bay_role: string; bay_template_ref: string }> }>;
+    expect(sekcje[0].bay_template_ref).toBe('ABB__SAFERING__LINE_OUT');
+    expect(sekcje[0].bays).toHaveLength(2);
+    expect(sekcje[0].bays?.[0]).toMatchObject({ bay_role: 'LINIA_ODG', bay_template_ref: 'ABB__SAFERING__LINE_OUT' });
+  });
+
+  it('bez rodziny rozdzielnicy payload nie niesie bays ani refów producenta (kompat.)', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne());
+    expect(payload.switchgear_family_ref).toBeUndefined();
+    const sekcje = payload.gpz_sections as Array<{ bays?: unknown }>;
+    expect(sekcje[0].bays).toBeUndefined();
+  });
 });
 
 describe('walidujFormularz', () => {

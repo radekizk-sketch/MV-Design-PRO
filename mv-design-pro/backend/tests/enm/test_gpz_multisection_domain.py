@@ -260,3 +260,82 @@ def test_add_sn_bay_updates_existing_gpz_field_instead_of_appending_new_field():
     assert fields[0]["meta"]["field_status"] == "CONFIGURED_FOR_TRUNK"
     assert len(updated["branches"]) == 1
     assert updated["branches"][0]["meta"]["field_ref"] == field_ref
+
+
+def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
+    """Globalna integracja: rodzina rozdzielnicy + szablon pola + zabezpieczenie
+    spływają na field_specs (widok pola / SLD / ocena zgodności / E-27)."""
+    result = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ Referencyjny",
+            "voltage_kv": 15.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "sections_count": 1,
+            "switchgear_family_ref": "ABB__SAFERING",
+            "manufacturer_ref": "ABB",
+            "gpz_sections": [
+                {
+                    "order": 0,
+                    "name": "Sekcja A",
+                    "bays": [
+                        {
+                            "name": "Pole odpływowe 1",
+                            "bay_role": "LINIA_ODG",
+                            "bay_template_ref": "ABB__SAFERING__LINE_OUT",
+                            "protection_ref": "prot/pole/1",
+                        },
+                        {
+                            "name": "Pole odpływowe 2",
+                            "bay_role": "LINIA_ODG",
+                            "bay_template_ref": "ABB__SAFERING__LINE_OUT",
+                        },
+                    ],
+                },
+            ],
+            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+        },
+    )
+
+    assert result.get("error") in (None, "")
+    snapshot = result["snapshot"]
+    substation = snapshot["substations"][0]
+    # Rodzina/producent na stacji.
+    assert substation["meta"]["switchgear_family_ref"] == "ABB__SAFERING"
+    assert substation["meta"]["manufacturer_ref"] == "ABB"
+
+    specs = substation["meta"]["field_specs"]
+    assert len(specs) == 2  # bays[] wyznacza liczbę pól
+    first, second = specs
+    # Szablon producenta + rodzina na polu (spływa do SLD/compliance).
+    assert first["meta"]["bay_template_ref"] == "ABB__SAFERING__LINE_OUT"
+    assert first["meta"]["switchgear_family_ref"] == "ABB__SAFERING"
+    assert first["meta"]["manufacturer_ref"] == "ABB"
+    assert first["bay_role"] == "LINIA_ODG"
+    # Powiązanie z zabezpieczeniem polowym.
+    assert first["protection_ref"] == "prot/pole/1"
+    assert second["protection_ref"] is None
+
+
+def test_add_grid_source_sn_bez_rodziny_zachowuje_dotychczasowy_kontrakt():
+    """Kompatybilność wsteczna: bez rodziny/szablonu field_specs nie niosą kluczy
+    producenckich (exclude_none — determinizm istniejących payloadów zachowany)."""
+    result = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ Klasyczny",
+            "voltage_kv": 15.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "sections_count": 1,
+            "gpz_sections": [{"order": 0, "name": "Sekcja A", "line_fields_count": 1}],
+            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+        },
+    )
+    assert result.get("error") in (None, "")
+    substation = result["snapshot"]["substations"][0]
+    assert "switchgear_family_ref" not in substation["meta"]
+    spec = substation["meta"]["field_specs"][0]
+    assert "bay_template_ref" not in spec["meta"]
+    assert "switchgear_family_ref" not in spec["meta"]

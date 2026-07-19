@@ -475,6 +475,33 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
 
         line_fields_count = _read_gpz_line_fields_count(entry, payload)
 
+        # Kompozycja pól z szablonów producenta (opcjonalna, addytywna): jeżeli
+        # payload niesie `bays[]` per sekcja, każde pole ma własną rolę, szablon
+        # (bay_template_ref) i referencję zabezpieczenia (protection_ref). Bez
+        # `bays[]` zachowane jest dotychczasowe zachowanie (kompatybilność wsteczna).
+        bays: list[dict[str, Any]] = []
+        raw_bays = entry.get("bays")
+        if isinstance(raw_bays, list):
+            for bay in raw_bays:
+                if not isinstance(bay, dict):
+                    continue
+                bays.append(
+                    {
+                        "name": (str(bay["name"]).strip() if isinstance(bay.get("name"), str) and bay["name"].strip() else None),
+                        "bay_role": (str(bay["bay_role"]).strip() if isinstance(bay.get("bay_role"), str) and bay["bay_role"].strip() else None),
+                        "bay_template_ref": (str(bay["bay_template_ref"]).strip() if isinstance(bay.get("bay_template_ref"), str) and bay["bay_template_ref"].strip() else None),
+                        "protection_ref": (str(bay["protection_ref"]).strip() if isinstance(bay.get("protection_ref"), str) and bay["protection_ref"].strip() else None),
+                    }
+                )
+        if bays:
+            line_fields_count = len(bays)
+
+        section_template_ref = (
+            str(entry["bay_template_ref"]).strip()
+            if isinstance(entry.get("bay_template_ref"), str) and entry["bay_template_ref"].strip()
+            else None
+        )
+
         normalized.append(
             {
                 "order": order,
@@ -483,6 +510,8 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
                 "line_field_name": line_field_name,
                 "line_field_names": line_field_names,
                 "line_fields_count": line_fields_count,
+                "bay_template_ref": section_template_ref,
+                "bays": bays,
             }
         )
 
@@ -2804,6 +2833,16 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         )
     line_field_apparatus = _normalize_gpz_line_field_apparatus(payload)
 
+    # Rodzina rozdzielnicy producenta (Reference Engine) — opcjonalna, addytywna.
+    # Wiąże pola GPZ ze szablonami producenta; spływa do SLD (internal_layout),
+    # oceny zgodności (Reference Engine) i widoku pola. Nie wchodzi do seeda
+    # (determinizm istniejących payloadów zachowany).
+    def _opt_str(value: Any) -> str | None:
+        return value.strip() if isinstance(value, str) and value.strip() else None
+
+    gpz_switchgear_family_ref = _opt_str(payload.get("switchgear_family_ref"))
+    gpz_manufacturer_ref = _opt_str(payload.get("manufacturer_ref"))
+
     seed = _compute_seed(
         {
             "op": "add_grid_source_sn",
@@ -2844,6 +2883,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "incoming_source_ref": source_ref if idx == 0 else None,
                 "left_coupler_ref": None,
                 "right_coupler_ref": None,
+                "bay_template_ref": entry.get("bay_template_ref"),
+                "bays": entry.get("bays") or [],
             }
         )
         gpz_section_bus_refs.append(section_bus_ref)
@@ -3106,7 +3147,9 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         line_field_names = section.get("line_field_names")
         if not isinstance(line_field_names, list):
             line_field_names = []
+        section_bays = section.get("bays") if isinstance(section.get("bays"), list) else []
         for field_index in range(int(section.get("line_fields_count") or 1)):
+            bay_spec = section_bays[field_index] if field_index < len(section_bays) else {}
             bay_ref = _make_id("gpz", seed, f"bay/{idx + 1:03d}/{field_index + 1:03d}")
             terminal_bus_ref = _make_id(
                 "gpz",
@@ -3119,10 +3162,13 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 f"bay/{idx + 1:03d}/{field_index + 1:03d}/apparatus",
             )
             bay_name = (
-                line_field_names[field_index]
-                if field_index < len(line_field_names)
-                else f"Pole liniowe GPZ {idx + 1}.{field_index + 1}"
+                bay_spec.get("name")
+                or (line_field_names[field_index] if field_index < len(line_field_names) else None)
+                or f"Pole liniowe GPZ {idx + 1}.{field_index + 1}"
             )
+            # Szablon pola producenta: preferuj per-pole, potem sekcyjny.
+            bay_template_ref = bay_spec.get("bay_template_ref") or section.get("bay_template_ref")
+            bay_protection_ref = bay_spec.get("protection_ref")
             section["line_field_refs"].append(bay_ref)
             equipment_refs: list[str] = []
             field_meta: dict[str, Any] = {
@@ -3133,6 +3179,14 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 "source_field_kind": "FEEDER",
                 "field_status": "READY_FOR_TRUNK",
             }
+            # Powiązania producenckie (Reference Engine) — tylko gdy podane
+            # (exclude_none, determinizm zachowany). Spływają do SLD + oceny zgodności.
+            if bay_template_ref:
+                field_meta["bay_template_ref"] = bay_template_ref
+            if gpz_switchgear_family_ref:
+                field_meta["switchgear_family_ref"] = gpz_switchgear_family_ref
+            if gpz_manufacturer_ref:
+                field_meta["manufacturer_ref"] = gpz_manufacturer_ref
 
             if line_field_apparatus is not None:
                 result = create_node(
@@ -3229,14 +3283,16 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                     }
                 )
 
+            default_bay_role = "OUT" if line_field_apparatus is not None else "FEEDER"
             field_specs.append(
                 _build_field_spec(
                     field_ref=bay_ref,
                     name=bay_name,
-                    bay_role="OUT" if line_field_apparatus is not None else "FEEDER",
+                    bay_role=bay_spec.get("bay_role") or default_bay_role,
                     bus_ref=section["bus_ref"],
                     gpz_section_id=section["section_id"],
                     equipment_refs=equipment_refs,
+                    protection_ref=bay_protection_ref,
                     tags=["gpz_line_field"],
                     meta=field_meta,
                 )
@@ -3264,6 +3320,8 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 ),
                 "gpz_hv_bus_refs": gpz_hv_bus_refs,
                 "field_specs": field_specs,
+                **({"switchgear_family_ref": gpz_switchgear_family_ref} if gpz_switchgear_family_ref else {}),
+                **({"manufacturer_ref": gpz_manufacturer_ref} if gpz_manufacturer_ref else {}),
             },
         }
     )
