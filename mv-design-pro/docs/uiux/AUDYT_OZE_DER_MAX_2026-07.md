@@ -86,6 +86,33 @@ w `mv_converter_catalog.get_wind_types`), krzywe/konfiguracje w `audit2_catalogs
   wybranych ścieżkach analiz — do potwierdzenia per analysis_type). To defekt do naprawy
   U ŹRÓDŁA (wpięcie InverterControl w kanoniczny PF), nie zadanie UI. **Wymaga rozbudowy
   backendu + pełnej regresji + determinizmu — osobna, ostrożna faza (G-OZE-PF).**
+
+  **ROOT CAUSE (potwierdzony, plik:linia) — defekt DWUWARSTWOWY:**
+  1. **Kanoniczny PF gubi inverter_control.** `canonical_analysis._execute_power_flow`
+     (`canonical_analysis.py:1256`) buduje `PQSpec(node_id, p_mw, q_mvar, zip_coeffs)`
+     BEZ pola `inverter_control` → `build_inverter_table` (Newton/FD) widzi None →
+     wszystkie węzły OZE pasywne (Q_CONST). Legacy ścieżki aplikacyjne
+     (`application/power_flow_input_builder.py:46`, `analysis_run/service.py:638`,
+     `network_wizard/service.py`) USTAWIAJĄ `inverter_control` — kanoniczny run (nowe
+     UI via `/api/execution`) NIE. To rozbieżność ścieżek: solver ma zdolność, kanon jej
+     nie karmi.
+  2. **Niezgodność języka enumów (głębszy phantom).** Domena: `generator.ControlMode`
+     = Polish (`generator.py:52` STALY_COS_PHI/Q_OD_U/P_OD_U); katalog też Polish
+     (`mv_converter_catalog.py`). Mapper `inverter_control_from_params`
+     (`power_flow_inverter.py:250`) ma `mode_map` WYŁĄCZNIE angielski
+     (Q_CONST/COSPHI_CONST/COSPHI_P/Q_U) i domyśla nieznane → Q_CONST (pasywne).
+     Efekt: nawet ścieżki legacy, które wołają mapper z Polish control_mode,
+     dostają pasywne źródło. Dodatkowo **P_OD_U (P(U)) NIE MA odpowiednika w
+     `InverterMode`** — luka enuma solvera.
+
+  **Zakres G-OZE-PF (jedna spójna zmiana fizyki, pełna regresja + przegląd golden):**
+  (a) mostek języka: STALY_COS_PHI→COSPHI_CONST, Q_OD_U→Q_U, WYLACZONE→pasywne;
+  decyzja o P_OD_U (dodać InverterMode P(U) albo świadomie odrzucić z komunikatem);
+  (b) kanoniczne wpięcie: `_execute_power_flow` ustawia `inverter_control` na PQSpec
+  dla węzłów OZE z parametrów generatora (reużycie `inverter_control_from_params`);
+  (c) determinizm: sieci bez OZE albo z pasywnymi źródłami — wynik bez zmian; golden z
+  aktywną regulacją — przeliczyć z zachowaniem intencji, udokumentować. WHITE BOX,
+  Frozen Result API tylko addytywnie, SC nietknięte.
 - **GAP-OZE-2 (krzywe regulacji, rozbudowa spec DER):** P(f) droop (`pf_curve_ref`),
   Q(U) (`has_qu_curve`), FRT/HVRT (`has_hvrt_curve`) są czytane przez NC RfG / RMS /
   inverter, ale przez warstwę krzywych/konfiguracji (`audit2_der_payload`,
