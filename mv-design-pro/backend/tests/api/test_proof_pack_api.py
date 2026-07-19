@@ -184,3 +184,82 @@ def test_sc_asymmetrical_pack_api_returns_bundle_zip(tmp_path):
                 nested_entries = set(nested.namelist())
                 assert "proof_pack/proof.json" in nested_entries
                 assert "proof_pack/proof.tex" in nested_entries
+
+
+def test_sc3f_pack_api_returns_zip(tmp_path):
+    """G-SCM F2: SC3F proof pack endpoint builds a ZIP from an ENM snapshot
+    (physics server-side; machine breakdown for rotating machines)."""
+    from enm.mapping import map_enm_to_network_graph
+    from enm.models import (
+        Bus,
+        EnergyNetworkModel,
+        ENMHeader,
+        Generator,
+        OverheadLine,
+        Source,
+    )
+
+    enm = EnergyNetworkModel(
+        header=ENMHeader(name="Test SC3F API"),
+        buses=[
+            Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15),
+            Bus(ref_id="bus_oze", name="Szyna OZE", voltage_kv=15),
+        ],
+        sources=[
+            Source(
+                ref_id="src",
+                name="Sieć",
+                bus_ref="bus_sn",
+                model="short_circuit_power",
+                sk3_mva=220,
+                rx_ratio=0.1,
+            )
+        ],
+        branches=[
+            OverheadLine(
+                ref_id="ln1",
+                name="L1",
+                from_bus_ref="bus_sn",
+                to_bus_ref="bus_oze",
+                length_km=2.0,
+                r_ohm_per_km=0.25,
+                x_ohm_per_km=0.32,
+            )
+        ],
+        generators=[
+            Generator(
+                ref_id="gen1",
+                name="Agregat",
+                bus_ref="bus_oze",
+                p_mw=1.0,
+                gen_type="synchronous",
+                materialized_params={"un_kv": 15.0, "sn_mva": 1.25},
+            )
+        ],
+    )
+    graph = map_enm_to_network_graph(enm)
+    fault_node_id = next(n.id for n in graph.nodes.values() if n.name == "Szyna OZE")
+
+    client, data = _prepare_api_client(tmp_path)
+    payload = {
+        "project_id": str(data["project_id"]),
+        "case_id": str(data["case_id"]),
+        "run_id": str(data["run_id"]),
+        "snapshot_id": "snapshot-123",
+        "project_name": "Projekt testowy",
+        "case_name": "Przypadek SC3F",
+        "fault_node_id": fault_node_id,
+        "run_timestamp": "2026-02-06T10:00:00",
+        "solver_version": "1.0.0-test",
+        "snapshot": enm.model_dump(mode="json"),
+        "c_factor": 1.1,
+        "tk_s": 1.0,
+    }
+    response = client.post("/api/proof/sc3f/pack", json=payload)
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/zip"
+
+    with zipfile.ZipFile(io.BytesIO(response.content)) as pack:
+        entries = set(pack.namelist())
+        assert "proof_pack/proof.json" in entries
+        assert "proof_pack/proof.tex" in entries

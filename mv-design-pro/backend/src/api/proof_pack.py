@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 import io
 import zipfile
+from collections.abc import Callable
 from datetime import datetime
+from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
@@ -13,8 +12,10 @@ from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackInput,
     SCAsymmetricalProofPack,
 )
+from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FProofPack
 from application.proof_engine.proof_pack import ProofPackContext, resolve_mv_design_pro_version
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel
 
 _FIXED_ZIP_TIMESTAMP = (1980, 1, 1, 0, 0, 0)
@@ -106,6 +107,62 @@ def download_sc_asymmetrical_pack(payload: SCAsymmetricalPackRequest) -> Respons
     headers = {
         "Content-Disposition": (
             f'attachment; filename="pakiet_dowodowy_sc_asymetryczne__{payload.run_id}.zip"'
+        )
+    }
+    return Response(content=content, media_type="application/zip", headers=headers)
+
+
+class SC3FPackRequest(BaseModel):
+    project_id: str
+    case_id: str
+    run_id: str
+    snapshot_id: str
+    project_name: str
+    case_name: str
+    fault_node_id: str
+    run_timestamp: datetime
+    solver_version: str
+    # Kanoniczny snapshot ENM — fizyka (I″k + rozbicie maszynowe μ/q/i_b) liczona
+    # po stronie serwera, ZERO fizyki w UI (G-SCM F2, V12K-054).
+    snapshot: dict[str, Any]
+    c_factor: float = 1.10
+    tk_s: float = 1.0
+
+
+@router.post("/sc3f/pack")
+def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
+    """Pakiet dowodowy zwarcia trójfazowego (IEC 60909) z rozbiciem maszynowym.
+
+    Domyka lukę: 3F nie miało pakietu dowodowego. Rozbicie per-maszyna (μ/q/i_b)
+    dołączane, gdy sieć zawiera maszyny wirujące / DER (G-SCM F1/F2).
+    """
+    context = ProofPackContext(
+        project_id=payload.project_id,
+        case_id=payload.case_id,
+        run_id=payload.run_id,
+        snapshot_id=payload.snapshot_id,
+        mv_design_pro_version=resolve_mv_design_pro_version(),
+    )
+    pack_input = SC3FPackInput(
+        project_name=payload.project_name,
+        case_name=payload.case_name,
+        snapshot=payload.snapshot,
+        fault_node_id=payload.fault_node_id,
+        run_timestamp=payload.run_timestamp,
+        solver_version=payload.solver_version,
+        c_factor=payload.c_factor,
+        tk_s=payload.tk_s,
+    )
+    try:
+        content = SC3FProofPack.generate_zip(pack_input, context)
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Nie udało się zbudować pakietu dowodowego SC3F: {exc}",
+        ) from exc
+    headers = {
+        "Content-Disposition": (
+            f'attachment; filename="pakiet_dowodowy_sc3f__{payload.run_id}.zip"'
         )
     }
     return Response(content=content, media_type="application/zip", headers=headers)

@@ -13,6 +13,7 @@ Pakiety dowodowe:
 - P19: Earthing / Ground Fault SN — standalone pack: earthing_ground_fault_sn.py
        (2026-05, V12K-015)
 - SC Asymmetrical: 1F-Z, 2F, 2F-Z (§4.1 blocker resolution)
+- SC3F (symmetrical): zwarcie trójfazowe + rozbicie maszynowe μ/q/i_b (G-SCM F2, V12K-054)
 - Protection Settings: I>/I>> (Hoppel method, IRiESD)
 - Q(U) Regulation: NC RfG compliance
 """
@@ -46,6 +47,11 @@ from application.proof_engine.packs.sc_asymmetrical import (
     SCAsymmetricalPackResult,
     SCAsymmetricalProofPack,
 )
+from application.proof_engine.packs.sc_symmetrical import (
+    SC3FPackInput,
+    SC3FPackResult,
+    SC3FProofPack,
+)
 from application.proof_engine.packs.vdrop import (
     VDROPPackInput,
     VDROPPackSegment,
@@ -61,6 +67,9 @@ __all__ = [
     "SCAsymmetricalPackInput",
     "SCAsymmetricalPackResult",
     "SCAsymmetricalProofPack",
+    "SC3FPackInput",
+    "SC3FPackResult",
+    "SC3FProofPack",
     "ProtectionSettingsProofInput",
     "ProtectionSettingsProofPack",
     "ProtectionSettingsProofResult",

@@ -156,7 +156,24 @@ defekt normalizacji `gen_type` → F-follow). `Generator` nie ma pola `in_servic
 - Pomiar + aktualizacja golden/testów kanonicznych z intencją.
 - Bramki: pełna regresja backendu, ruff/black/mypy, guardy solver/determinizm.
 
-### F2 — Wpięcie rozbicia maszynowego (μ/q, §6.6) do KONSUMENTA — NIE wyspa
+### F2 — Pakiet dowodowy SC3F + endpoint (WDROŻONE, decyzja właściciela: Opcja A)
+**Status: WDROŻONE.** Zbudowano `packs/sc_symmetrical.py::SC3FProofPack` (+ endpoint
+`POST /api/proof/sc3f/pack`) — pierwszy pakiet dowodowy zwarcia trójfazowego (domyka
+lukę: 3F, najczęstsze, nie miało pakietu). Pakiet liczy fizykę SERWEROWO z kanonicznego
+snapshotu ENM (`map_enm_to_network_graph` → `compute_3ph_short_circuit` →
+`compute_machine_contributions`), wpina osierocone `generate_sc3f_proof` w produkcję.
+Rozbicie per-maszyna (μ/q/i_b, §6.6) dołączane WYŁĄCZNIE dla maszyn wirujących
+(synchronous/fw_dfig/fw_scig); konwertery (InverterSource) zasilają całkowite I″k (F1),
+ale nie sekcję μ/q (nie są maszynami wirującymi — poprawne wg §6.6). Brak maszyn → dowód
+bez sekcji maszynowej (determinizm). Testy: `test_sc3f_pack` (4) + `test_proof_pack_api`
+(SC3F endpoint). ZERO fizyki w UI (snapshot→proof serwerowo).
+
+Uwaga: rozbicie μ/q aktywuje się realnie dopiero gdy w ENM są maszyny wirujące — dziś
+kreatory dają tylko konwertery (InverterSource); agregaty (synchronous) po F-follow
+(normalizacja gen_type GENSET→synchronous). Pakiet SC3F jest jednak żywy i użyteczny dla
+KAŻDEJ sieci (dowód Z_th/I″k/κ/i_p/I_dyn/I_th/S_k, z wkładem DER w I″k z F1).
+
+#### Kontekst pierwotny (recon):
 Recon konsumentów (weryfikacja przed budową): rozbicie per-maszyna **nie ma dziś
 konsumenta prezentacji** — brak w `frontend/` i w przeglądarce wyników kanonicznych;
 ścieżka `analysis_run/service.py:360` zapisuje `short_circuit_machine_contribution`, ale
