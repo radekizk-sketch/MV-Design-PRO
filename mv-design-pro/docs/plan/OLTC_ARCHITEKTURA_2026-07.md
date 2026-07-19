@@ -226,3 +226,23 @@ Zero-Debt §4 — nie ukryte, z przyczyną i planem):
 Dane dla wszystkich powyższych są już produkowane przez pętlę OLTC
 (`oltc_control`: pozycje początkowe/końcowe, liczniki przełączeń, ślad decyzji,
 V przed/po per iteracja) — pozostaje warstwa prezentacji/orkiestracji.
+
+---
+
+## 8. Funkcje dedykowane G1–G5 (2026-07-19) — ZREALIZOWANE
+
+Na polecenie właściciela („wykonaj każdą to osobna funkcja dedykowana") rejestr
+długu z §7 został domknięty. Silniki liczące działają na warstwie solvera
+(orkiestracja wokół FROZEN solvera, ZERO własnej fizyki), są deterministyczne i
+WHITE BOX (zwracają wszystkie ocenione punkty), a badania przywracają stan zaczepu.
+
+| Karta | Sekcja | Dostawca | Co dostarcza |
+|-------|--------|----------|--------------|
+| **G1** | §9 wrażliwość | `power_flow_oltc_studies.sweep_tap_positions` | LF przy każdej stałej pozycji (min..max/pełny zakres); per pozycja: przekładnia, U sterowanej szyny, min/max U, straty [MW]; przywraca stan |
+| **G2** | §8 profile roczne | `power_flow_oltc_studies.run_annual_oltc_profile` | Pętla OLTC per krok czasowy (skalowanie obciążeń); per krok: pozycje, liczba przełączeń, U szyny, czy w paśmie nieczułości; sumy przełączeń i kroków poza deadband |
+| **G3** | §17 optymalizacja | `power_flow_oltc_studies.optimize_tap_positions` | OLTC jako całkowitoliczbowa zmienna decyzyjna — enumeracja EXACT po zakresie (przestrzeń mała), cele: `minimize_losses` / `maintain_voltage` / `minimize_switching`; deterministyczne rozstrzyganie remisów; brak solvera zewnętrznego nie jest potrzebny |
+| **G4** | §14 raporty | `analysis/reporting/oltc_report.py` | Sekcja OLTC raportu PF (JSON/tekst PL/LaTeX) READ-ONLY z `oltc_control`: pozycje pocz./końc., przełączenia, U przed/po |
+| **G5** | §13 glif SLD | `docs/uiux/KARTA_KOORDYNACJI_SLD_02_OLTC_GLIF.md` | Karta koordynacyjna do wątku SLD (V12K-060) — kontrakt danych READ-ONLY + specyfikacja glifu; BEZ edycji `ui/sld/**` (kolizja plików zabroniona) |
+
+Testy: `tests/network_model/solvers/test_power_flow_oltc_studies.py` (9),
+`tests/analysis/test_oltc_report.py` (5). Wszystkie deterministyczne.
