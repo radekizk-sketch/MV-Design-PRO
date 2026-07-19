@@ -5,7 +5,6 @@
  */
 
 export { AddSnBayForm } from './AddSnBayForm';
-export { ContinueTrunkForm } from './ContinueTrunkForm';
 export { InsertStationForm } from './InsertStationForm';
 export { InsertBranchPoleForm } from './InsertBranchPoleForm';
 export { InsertZksnForm } from './InsertZksnForm';

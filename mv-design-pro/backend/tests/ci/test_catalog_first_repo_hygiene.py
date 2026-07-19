@@ -106,7 +106,9 @@ def test_no_todo_fixme_in_catalog_first_critical_paths() -> None:
 def test_catalog_optional_language_is_absent_in_active_modals() -> None:
     targets = [
         REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "GridSourceModal.tsx",
-        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "TrunkContinueModal.tsx",
+        # Ciąg SN: kanoniczny kreator ui2 (retirowany TrunkContinueModal/ContinueTrunkForm).
+        REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory" / "magistrala" / "KreatorMagistralaSn.tsx",
+        REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory" / "magistrala" / "strings.ts",
         REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "SectionSwitchModal.tsx",
         REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "RingCloseModal.tsx",
     ]

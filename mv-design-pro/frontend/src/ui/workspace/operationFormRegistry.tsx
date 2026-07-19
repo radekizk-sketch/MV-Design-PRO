@@ -13,6 +13,7 @@
 
 import type { ComponentType, ReactNode } from 'react';
 import type { CanonicalOpName } from '../../types/domainOps';
+import { KreatorMagistralaSn } from '../../ui2/kreatory/magistrala';
 import { KreatorZrodloZasilania } from '../../ui2/kreatory/zrodlo';
 import { AddConverterSourceForm } from '../network-build/forms/AddConverterSourceForm';
 import { AddDispatchableSourceForm } from '../network-build/forms/AddDispatchableSourceForm';
@@ -24,7 +25,6 @@ import { AddSnBayForm } from '../network-build/forms/AddSnBayForm';
 import { AddTransformerForm } from '../network-build/forms/AddTransformerForm';
 import { AssignCatalogForm } from '../network-build/forms/AssignCatalogForm';
 import { ConnectRingForm } from '../network-build/forms/ConnectRingForm';
-import { ContinueTrunkForm } from '../network-build/forms/ContinueTrunkForm';
 import { InsertBranchPoleForm } from '../network-build/forms/InsertBranchPoleForm';
 import { InsertSectionSwitchForm } from '../network-build/forms/InsertSectionSwitchForm';
 import { InsertStationForm } from '../network-build/forms/InsertStationForm';
@@ -39,7 +39,7 @@ import { UpdateElementParametersForm } from '../network-build/forms/UpdateElemen
 export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, ComponentType | null>> = {
   add_grid_source_sn: KreatorZrodloZasilania,
   add_sn_bay: AddSnBayForm,
-  continue_trunk_segment_sn: ContinueTrunkForm,
+  continue_trunk_segment_sn: KreatorMagistralaSn,
   insert_station_on_segment_sn: InsertStationForm,
   append_station_on_endpoint: InsertStationForm,
   insert_branch_pole_on_segment_sn: InsertBranchPoleForm,

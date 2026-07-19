@@ -47,14 +47,14 @@ function entry(
 export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   entry(
     'continue_trunk_segment_sn',
-    'ContinueTrunkForm',
-    'Wyprowadź ciąg główny SN',
+    'KreatorMagistralaSn',
+    'Wyprowadź magistralę SN',
     'E-12',
-    'A',
+    'C',
     'manual',
-    'replace_right_panel',
+    'expand_workspace',
     false,
-    'kabel-sn',
+    'typ',
   ),
   entry(
     'insert_station_on_segment_sn',

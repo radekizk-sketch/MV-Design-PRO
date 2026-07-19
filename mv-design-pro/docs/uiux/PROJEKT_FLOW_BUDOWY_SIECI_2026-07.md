@@ -34,7 +34,7 @@ GPZ ─▶ magistrala SN ─▶ [ZKSN / słup rozgałęźny] ─▶ stacja SN/nN
 | Krok (ekran prowadzący) | Realna operacja domenowa | Wejście (katalog/pola) | Podgląd z backendu | Stan |
 |-------------------------|--------------------------|------------------------|--------------------|------|
 | Źródło GPZ (110/SN + OLTC) | `add_grid_source_sn` | ZRODLO_SN, TRAFO, TapChanger, rozdzielnica/szablony | Ik″/κ/ip/Ith (IEC 60909) | ✅ `KreatorZrodloZasilania` |
-| **Wyprowadź magistralę SN** | `continue_trunk_segment_sn` | KABEL_SN/LINIA_SN, długość, rodzaj | ΔU, prąd (R1) | **G-MAG (ten projekt)** |
+| **Wyprowadź magistralę SN** | `continue_trunk_segment_sn` | KABEL_SN/LINIA_SN, długość, rodzaj | ΔU, prąd (R1) | ✅ `KreatorMagistralaSn` (G-MAG) |
 | Rozpocznij odgałęzienie | `start_branch_segment_sn` | j.w. + punkt startu | ΔU, prąd | G-ODG |
 | Słup rozgałęźny na odcinku | `insert_branch_pole_on_segment_sn` | punkt na odcinku | — | G-ODG |
 | ZKSN na odcinku | `insert_zksn_on_segment_sn` | ZKSN katalog, punkt | — | G-ZKSN |
@@ -91,7 +91,13 @@ ale kanwa należy do V12K-060).
 
 ## 3. Kolejność wdrożenia (fazy G, priorytet wg bólu inżyniera)
 
-1. **G-MAG** — Wyprowadź magistralę SN (`continue_trunk_segment_sn`) — wybór właściciela; bez niej nie ma na czym zawiesić sieci.
+1. ✅ **G-MAG** — Wyprowadź magistralę SN (`continue_trunk_segment_sn`) — WDROŻONE.
+   Kreator `KreatorMagistralaSn` na `kreatory/rama` jest supersetem retirowanego
+   `ContinueTrunkForm`+`TrunkContinueModal`: katalog-first (kabel/linia), podgląd ΔU
+   z backendu (R1), rozwiązywanie startu ciągu z selekcji, uczciwy stan zerowy,
+   walidacja semantyczna pochodzenia odcinka oraz REALNE łańcuchowanie następnego
+   kroku (stacja/ZK SN/słup/kolejny odcinek) — nie dekoracyjny tekst. Logika
+   łańcuchowania wydzielona do `ui/network-build/trunkContinuation.ts` (testowalna).
 2. **G-STA** — Stacja SN/nN (`insert_station_on_segment_sn` / `append_station_on_endpoint`) + **G-TRF** transformator (`add_transformer_sn_nn`).
 3. **G-NN** — odpływy nN + odbiory (`add_nn_outgoing_field`, `add_nn_load`) + **G-OZE** (`add_converter_source`).
 4. **G-SEK/G-RING** — sekcjonowanie, pierścienie, NOP.

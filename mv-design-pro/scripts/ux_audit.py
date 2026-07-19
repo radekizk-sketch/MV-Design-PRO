@@ -70,9 +70,8 @@ STAGES: list[Stage] = [
         "Segmenty (kabel/napowietrzne)",
         "continue_trunk_segment_sn",
         [
-            # ContinueTrunkForm deleguje render do TrunkContinueModal (tam żyje katalog+search).
-            FE / "ui/network-build/forms/ContinueTrunkForm.tsx",
-            FE / "ui/topology/modals/TrunkContinueModal.tsx",
+            # Kanoniczny kreator ui2 (retirowany ContinueTrunkForm/TrunkContinueModal).
+            FE / "ui2/kreatory/magistrala/KreatorMagistralaSn.tsx",
             FE / "ui/network-build/forms/StartBranchForm.tsx",
         ],
         uses_catalog=True,

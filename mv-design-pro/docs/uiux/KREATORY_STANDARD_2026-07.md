@@ -72,7 +72,7 @@ Każdy kreator MUSI (FLOW §0.3):
 | `add_genset_nn` / `add_ups_nn` | `AddDispatchableSourceForm` (legacy) | do przebudowy |
 | `add_relay` | `AddRelayForm` (legacy) | do przebudowy |
 | `add_ct` / `add_vt` | `AddMeasurementForm` (legacy) | do przebudowy |
-| `continue_trunk_segment_sn` | `ContinueTrunkForm` (legacy) | do przebudowy |
+| `continue_trunk_segment_sn` | `KreatorMagistralaSn` (ui2, kreatory/rama) | ✅ przebudowane (V12K-047, G-MAG) |
 | `insert_station_on_segment_sn` | `InsertStationForm` (legacy, 1884 w.) | do przebudowy |
 | `start_branch_segment_sn` | `StartBranchForm` (legacy) | do przebudowy |
 | `insert_section_switch_sn` | `InsertSectionSwitchForm` (legacy) | do przebudowy |

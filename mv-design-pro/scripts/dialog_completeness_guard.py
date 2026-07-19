@@ -16,8 +16,8 @@ CHECKS:
   3. Dialog files use Polish labels (no English UI strings)
 
 MAPPING: operation -> expected modal
-  add_grid_source_sn      -> GridSourceModal
-  continue_trunk_segment_sn -> TrunkContinueModal
+  add_grid_source_sn      -> KreatorZrodloZasilania (ui2) / GridSourceModal (legacy)
+  continue_trunk_segment_sn -> KreatorMagistralaSn (ui2)
   insert_station_on_segment_sn -> TransformerStationModal (existing)
   start_branch_segment_sn -> BranchModal (existing)
   insert_section_switch_sn -> NodeModal or SwitchModal
@@ -50,11 +50,14 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 MODALS_DIR = REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals"
 INDEX_FILE = MODALS_DIR / "index.ts"
+# Kanoniczne kreatory ui2 (nowa IA) — dostawcy dialogów operacji domenowych
+# poza legacy modals/ (np. KreatorZrodloZasilania, KreatorMagistralaSn).
+CREATORS_DIR = REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory"
 
 # Mapping: canonical operation -> list of acceptable modal names (partial match)
 OPERATION_TO_MODAL: dict[str, list[str]] = {
-    "add_grid_source_sn": ["GridSource", "SourceModal", "GPZModal"],
-    "continue_trunk_segment_sn": ["TrunkContinue", "TrunkModal", "SegmentModal"],
+    "add_grid_source_sn": ["GridSource", "SourceModal", "GPZModal", "KreatorZrodlo"],
+    "continue_trunk_segment_sn": ["TrunkContinue", "TrunkModal", "SegmentModal", "KreatorMagistrala", "Magistrala"],
     "insert_station_on_segment_sn": ["TransformerStation", "StationModal", "InsertStation"],
     "start_branch_segment_sn": ["BranchModal", "Branch"],
     "insert_section_switch_sn": ["SwitchModal", "NodeModal", "SectionSwitch"],
@@ -108,6 +111,22 @@ def find_modal_files() -> set[str]:
     return names
 
 
+def find_creator_files() -> set[str]:
+    """Find canonical ui2 creator component names (KreatorZrodloZasilania, KreatorMagistralaSn, ...).
+
+    Nowa IA przenosi dialogi operacji do kreatorów ui2 (kreatory/rama); są one
+    równoprawnymi dostawcami dialogu dla pokrycia operacji, obok legacy modals/.
+    """
+    if not CREATORS_DIR.exists():
+        return set()
+    names = set()
+    for f in CREATORS_DIR.glob("**/*.tsx"):
+        if f.name.endswith(".test.tsx"):
+            continue
+        names.add(f.stem)
+    return names
+
+
 def check_index_exports(modal_names: set[str]) -> list[str]:
     """Check that all modal files are exported from index.ts."""
     if not INDEX_FILE.exists():
@@ -128,11 +147,14 @@ def main() -> int:
         print("WARNING: No modal files found in %s" % MODALS_DIR)
         return 0
 
-    # Check each operation has a modal
+    # Dostawcy dialogu = legacy modals/ + kanoniczne kreatory ui2.
+    provider_names = modal_names | find_creator_files()
+
+    # Check each operation has a modal/creator
     for op_name, expected_modals in OPERATION_TO_MODAL.items():
         found = False
         for modal_pattern in expected_modals:
-            for modal_name in modal_names:
+            for modal_name in provider_names:
                 if modal_pattern.lower() in modal_name.lower():
                     found = True
                     break
