@@ -110,7 +110,14 @@ producenta — ujęte w F-follow, nie blokuje F1.
 
 ## 5. Plan fazowy + DoD
 
-### F1 — Most mapowania (sedno, autonomiczne, bez decyzji produktowej)
+### F1 — Most mapowania ✅ WDROŻONE (V12K-054, commit G-SCM F1)
+Zrealizowane: `_add_generator_sc_sources` w `enm/mapping.py` buduje źródła SC z
+`enm.generators` wg `gen_type`; solver/ybus/analiza już je konsumują (I″k całkowity
+zawiera teraz wkład DER/maszyn). Testy `TestGeneratorShortCircuitSources` (6, realna
+ścieżka ENM→graf→SC). Pełna regresja backendu **6321 passed / 0 failed** — determinizm
+golden zachowany (brak sieci golden z generatorami zależnych od wyniku SC; sieci
+maszynowo-wolne bajt-identyczne). Szczegóły recon poniżej.
+
 Empiryczne ustalenie recon (weryfikacja przed implementacją): model `Generator.gen_type`
 akceptuje `synchronous`, `pv_inverter`, `wind_inverter`, `fw_pmsg`, `fw_dfig`, `fw_scig`,
 `bess` (`enm/models.py:388`). **`GENSET`/`UPS` (wielkie litery — tak zapisuje
@@ -135,11 +142,23 @@ defekt normalizacji `gen_type` → F-follow). `Generator` nie ma pola `in_servic
 - Pomiar + aktualizacja golden/testów kanonicznych z intencją.
 - Bramki: pełna regresja backendu, ruff/black/mypy, guardy solver/determinizm.
 
-### F2 — Wpięcie interpretacji maszynowej w kanoniczny wynik
-- `_execute_short_circuit`: po policzeniu wiersza SC dołącz `interpret_machine_contributions`
-  (osobny artefakt wyniku, jak w `analysis_run/service.py:360`), gdy `has_machines`.
-- Testy: kanoniczny SC z genset/OZE → artefakt wkładu maszynowego obecny; sieć bez maszyn
-  → brak artefaktu (determinizm).
+### F2 — Wpięcie rozbicia maszynowego (μ/q, §6.6) do KONSUMENTA — NIE wyspa
+Recon konsumentów (weryfikacja przed budową): rozbicie per-maszyna **nie ma dziś
+konsumenta prezentacji** — brak w `frontend/` i w przeglądarce wyników kanonicznych;
+ścieżka `analysis_run/service.py:360` zapisuje `short_circuit_machine_contribution`, ale
+NIC go nie wyświetla. **Jest za to realny konsument w proof:** `proof_generator.py:628-656`
+generuje kroki SC3F μ/q/i_b z `ProofGeneratorData.machine_result` (`MachineShortCircuitResult`).
+Wniosek: sam „artefakt w wyniku" byłby WYSPĄ (zakaz właściciela). F2 = doprowadzić
+`machine_result` do **proof kanonicznego** (SC3F krok maszynowy) + ewentualnie sekcja
+w przeglądarce wyników — dopiero z konsumentem.
+- `_execute_short_circuit` / kanoniczna generacja proof: policz `compute_machine_contributions`
+  (solver, orkiestracja) i przekaż `machine_result` do `ProofGeneratorData` SC3F; gdy brak
+  maszyn → `None` (bez zmiany proof — determinizm).
+- Testy: kanoniczny proof SC3F z OZE/agregatem → kroki i_b maszynowe obecne; sieć bez
+  maszyn → proof bajt-identyczny.
+- **Uwaga (F1 już wystarcza dla bezpieczeństwa):** całkowity I″k (z wkładem DER) jest już
+  poprawny po F1 i konsumowany wszędzie (wynik, proof zwarciowy, dobór aparatury). F2 to
+  pogłębienie (rozbicie per-maszyna), nie korekta liczby głównej.
 
 ### F3 — Warstwa downstream w kreatorach (do ostatniego klika)
 - `KreatorZrodlaOze` (G-OZE-UI) i kreator agregatu: sekcja „Co to uruchamia" wymienia
