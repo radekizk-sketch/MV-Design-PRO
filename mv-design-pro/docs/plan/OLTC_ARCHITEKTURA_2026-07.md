@@ -246,3 +246,33 @@ WHITE BOX (zwracają wszystkie ocenione punkty), a badania przywracają stan zac
 
 Testy: `tests/network_model/solvers/test_power_flow_oltc_studies.py` (9),
 `tests/analysis/test_oltc_report.py` (5). Wszystkie deterministyczne.
+
+### 8.1 H1 — osiągalność silników przez run API (2026-07-19)
+
+Silniki G1–G3 są osiągalne end-to-end przez istniejący pipeline analiz, bez
+duplikacji budowniczego `pf_input`: `canonical_analysis._execute_power_flow`
+uruchamia badanie na tym samym `pf_input`, gdy `run.options["oltc_study"]`
+jest ustawione (`_run_oltc_study`), i dopina wynik do `raw_result`.
+
+**Kontrakt osiągalności z frontendu** (gotowy, potwierdzony reconem
+`api/execution_runs.py` — `request.solver_input` → canonical `options`):
+
+```
+createRun(caseId, { analysis_type: "load_flow", solver_input: {
+    oltc_study: "sweep" | "annual_profile" | "optimize",
+    // opcjonalnie:
+    oltc_branch_id, oltc_sweep_positions,          // sweep
+    oltc_load_profile: [{label, load_scale}, ...],  // annual_profile
+    oltc_objective, oltc_target_kv, oltc_switch_penalty_mw  // optimize
+}}) → executeRun(runId) → run.raw_result.oltc_sweep | oltc_annual_profile | oltc_optimization
+```
+
+Bez `oltc_study` przebieg jest bez zmian (determinizm zachowany).
+
+### 8.2 H2 — ekran UI badań (następny krok prezentacji)
+
+Do zbudowania (opcja max, standard kreatora ui2): ekran „Badania regulacji OLTC"
+— picker badania + parametry + uruchomienie (kontrakt 8.1) + wykresy (Recharts):
+sweep (U sterowanej szyny / straty vs pozycja), profil roczny (pozycja i U vs
+krok czasowy), optymalizacja (tabela kandydatów, pozycja wybrana). Dane w 100%
+z backendu (zero fizyki w UI). Karta zadania: OLTC H2.
