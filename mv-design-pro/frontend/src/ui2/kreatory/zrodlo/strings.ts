@@ -142,6 +142,48 @@ export const ZRODLO_STRINGS = {
   transformatorUk: 'Napięcie zwarcia uk',
   transformatorGrupa: 'Grupa połączeń',
 
+  // Regulacja zaczepów (OLTC/DETC) — V12K-045.
+  oltcTytul: 'Regulacja napięcia (przełącznik zaczepów)',
+  oltcOpis:
+    'Regulacja przekładni transformatora 110/SN. OLTC (pod obciążeniem) reguluje '
+    + 'napięcie szyny SN automatycznie; DETC ustawia stały zaczep bez obciążenia. '
+    + 'Wynik regulacji liczy rozpływ (pętla OLTC), nie UI.',
+  oltcTyp: 'Rodzaj regulacji',
+  oltcKatalog: 'Przełącznik zaczepów z katalogu',
+  oltcKatalogPlaceholder: '— dobór ręczny (bez katalogu) —',
+  oltcKatalogBlad: 'Nie udało się pobrać katalogu przełączników zaczepów.',
+  oltcUzwojenie: 'Regulowane uzwojenie',
+  oltcNeutral: 'Pozycja neutralna',
+  oltcBiezaca: 'Pozycja bieżąca',
+  oltcMin: 'Pozycja min.',
+  oltcMax: 'Pozycja maks.',
+  oltcKrok: 'Wielkość kroku',
+  oltcTryb: 'Tryb sterowania',
+  oltcSetpoint: 'Napięcie zadane',
+  oltcDeadband: 'Pasmo nieczułości',
+  oltcOpoznienie: 'Opóźnienie zadziałania',
+  oltcLdc: 'Kompensacja spadku na linii (LDC)',
+  oltcLdcR: 'LDC — rezystancja R',
+  oltcLdcX: 'LDC — reaktancja X',
+  oltcTrybAutoInfo:
+    'W trybie automatycznym pętla rozpływu przesuwa jeden zaczep na krok, aż napięcie '
+    + 'szyny SN znajdzie się w paśmie nieczułości wokół wartości zadanej.',
+  oltcTypy: [
+    { id: 'NONE', etykieta: 'Brak regulacji' },
+    { id: 'DETC', etykieta: 'DETC (bez obciążenia)' },
+    { id: 'OLTC', etykieta: 'OLTC (pod obciążeniem)' },
+  ],
+  oltcUzwojenia: [
+    { id: 'HV', etykieta: 'Górne (110 kV)' },
+    { id: 'LV', etykieta: 'Dolne (SN)' },
+  ],
+  oltcTryby: [
+    { id: 'MANUAL', etykieta: 'Ręczny' },
+    { id: 'AUTOMATIC', etykieta: 'Automatyczny (AVR)' },
+    { id: 'PROFILE', etykieta: 'Profil dobowy' },
+    { id: 'REMOTE', etykieta: 'Zdalny (SCADA)' },
+  ],
+
   // Rozdzielnia.
   rozdzielniaOpis:
     'Liczba sekcji szyn SN i sposób uziemienia punktu neutralnego. Sprzęgło powstaje '

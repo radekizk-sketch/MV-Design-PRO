@@ -79,6 +79,27 @@ export interface TransformerType extends CatalogType {
 }
 
 /**
+ * Tap-changer catalog type (OLTC/DETC).
+ * Source: backend TapChangerItem dataclass (audit2 catalog, eng.13).
+ */
+export interface TapChangerCatalogType {
+  id: string;
+  catalog_namespace: string;
+  catalog_version: string;
+  label_pl: string;
+  type: 'oltc' | 'detc';
+  neutral_position: number;
+  tap_count: number;
+  step_percent: number;
+  range_percent: number;
+  regulated_side: 'hv' | 'lv';
+  switching_time_s: number;
+  operations_before_maintenance_thousand: number;
+  supports_avr: boolean;
+  applicable_to: string[];
+}
+
+/**
  * Switch Equipment Type.
  * Source: backend SwitchEquipmentType dataclass.
  */

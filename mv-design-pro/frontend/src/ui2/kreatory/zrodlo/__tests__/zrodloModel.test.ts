@@ -119,6 +119,100 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     expect(payload.transformer_uk_percent).toBe(12.5);
     expect(payload.transformer_vector_group).toBe('YNd11');
   });
+
+  it('bez regulacji payload nie niesie kluczy OLTC (kompat./determinizm)', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne());
+    expect(payload.transformer_regulation_type).toBeUndefined();
+    expect(payload.transformer_voltage_setpoint_kv).toBeUndefined();
+    expect(payload.transformer_ldc_enabled).toBeUndefined();
+  });
+
+  it('OLTC automatyczny mapuje pełny kontrakt TapChanger na klucze transformer_*', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      oltc_regulation_type: 'OLTC',
+      oltc_tap_changer_catalog_ref: 'tc_oltc_110sn_19_125',
+      oltc_regulated_winding: 'HV',
+      oltc_neutral_position: 0,
+      oltc_current_position: 1,
+      oltc_min_position: -9,
+      oltc_max_position: 9,
+      oltc_step_percent: 1.25,
+      oltc_control_mode: 'AUTOMATIC',
+      oltc_voltage_setpoint_kv: 15.3,
+      oltc_deadband_kv: 0.2,
+      oltc_delay_seconds: 30,
+      oltc_ldc_enabled: true,
+      oltc_ldc_r_ohm: 0.5,
+      oltc_ldc_x_ohm: 1.2,
+    }));
+    expect(payload.transformer_regulation_type).toBe('OLTC');
+    expect(payload.transformer_tap_changer_catalog_ref).toBe('tc_oltc_110sn_19_125');
+    expect(payload.transformer_regulated_winding).toBe('HV');
+    expect(payload.transformer_tap_min_position).toBe(-9);
+    expect(payload.transformer_tap_max_position).toBe(9);
+    expect(payload.transformer_tap_step_percent).toBe(1.25);
+    expect(payload.transformer_control_mode).toBe('AUTOMATIC');
+    expect(payload.transformer_voltage_setpoint_kv).toBe(15.3);
+    expect(payload.transformer_deadband_kv).toBe(0.2);
+    expect(payload.transformer_delay_seconds).toBe(30);
+    expect(payload.transformer_ldc_enabled).toBe(true);
+    expect(payload.transformer_ldc_r_ohm).toBe(0.5);
+    expect(payload.transformer_ldc_x_ohm).toBe(1.2);
+  });
+
+  it('DETC nie niesie kluczy specyficznych dla OLTC (setpoint/deadband/LDC)', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      oltc_regulation_type: 'DETC',
+      oltc_step_percent: 2.5,
+      oltc_min_position: -2,
+      oltc_max_position: 2,
+    }));
+    expect(payload.transformer_regulation_type).toBe('DETC');
+    expect(payload.transformer_voltage_setpoint_kv).toBeUndefined();
+    expect(payload.transformer_ldc_enabled).toBeUndefined();
+  });
+});
+
+describe('walidujFormularz — regulacja zaczepów (OLTC)', () => {
+  it('OLTC automatyczny bez napięcia zadanego → błąd', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      oltc_regulation_type: 'OLTC',
+      oltc_control_mode: 'AUTOMATIC',
+      oltc_voltage_setpoint_kv: null,
+    }));
+    expect(bledy.some((b) => b.field === 'oltc_voltage_setpoint_kv')).toBe(true);
+  });
+
+  it('krok zaczepu = 0 jest blokowany', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      oltc_regulation_type: 'OLTC',
+      oltc_step_percent: 0,
+    }));
+    expect(bledy.some((b) => b.field === 'oltc_step_percent')).toBe(true);
+  });
+
+  it('zły zakres (min >= max) jest blokowany', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      oltc_regulation_type: 'DETC',
+      oltc_min_position: 5,
+      oltc_max_position: 3,
+    }));
+    expect(bledy.some((b) => b.field === 'oltc_max_position')).toBe(true);
+  });
+
+  it('pozycja bieżąca poza zakresem jest blokowana', () => {
+    const bledy = walidujFormularz(daneKompletne({
+      oltc_regulation_type: 'OLTC',
+      oltc_min_position: -9,
+      oltc_max_position: 9,
+      oltc_current_position: 15,
+    }));
+    expect(bledy.some((b) => b.field === 'oltc_current_position')).toBe(true);
+  });
+
+  it('bez regulacji (NONE) nie zgłasza błędów OLTC', () => {
+    expect(walidujFormularz(daneKompletne()).some((b) => b.field.startsWith('oltc_'))).toBe(false);
+  });
 });
 
 describe('walidujFormularz', () => {

@@ -24,6 +24,11 @@ import type {
 export type ShortCircuitInputSide = 'SN' | 'HV_110';
 export type GpzLineFieldApparatusKind = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH';
 
+/** Rodzaj regulacji zaczepów transformatora 110/SN (V12K-045). */
+export type OltcRegulationType = 'NONE' | 'DETC' | 'OLTC';
+export type OltcRegulatedWinding = 'HV' | 'LV';
+export type OltcControlMode = 'MANUAL' | 'AUTOMATIC' | 'PROFILE' | 'REMOTE';
+
 export const MAX_SEKCJI = 4;
 export const MAX_POL_NA_SEKCJE = 12;
 export const MAX_TRANSFORMATOROW = 4;
@@ -75,6 +80,22 @@ export interface GridSourceFormData {
   transformer_sn_mva: number | null;
   transformer_uk_percent: number | null;
   transformer_vector_group: string | null;
+  /** Regulacja zaczepów (OLTC/DETC) — mapuje na kanoniczny TapChanger (V12K-045). */
+  oltc_regulation_type: OltcRegulationType;
+  oltc_tap_changer_catalog_ref: string | null;
+  oltc_regulated_winding: OltcRegulatedWinding;
+  oltc_neutral_position: number | null;
+  oltc_current_position: number | null;
+  oltc_min_position: number | null;
+  oltc_max_position: number | null;
+  oltc_step_percent: number | null;
+  oltc_control_mode: OltcControlMode;
+  oltc_voltage_setpoint_kv: number | null;
+  oltc_deadband_kv: number | null;
+  oltc_delay_seconds: number | null;
+  oltc_ldc_enabled: boolean;
+  oltc_ldc_r_ohm: number | null;
+  oltc_ldc_x_ohm: number | null;
   /** UI-only: zakres wariantu ('simplified' = źródło SN, 'advanced' = pełny WN/SN). */
   complexity_mode: 'simplified' | 'advanced';
 }
@@ -123,6 +144,21 @@ export const DANE_DOMYSLNE: GridSourceFormData = {
   transformer_sn_mva: null,
   transformer_uk_percent: null,
   transformer_vector_group: null,
+  oltc_regulation_type: 'NONE',
+  oltc_tap_changer_catalog_ref: null,
+  oltc_regulated_winding: 'HV',
+  oltc_neutral_position: 0,
+  oltc_current_position: 0,
+  oltc_min_position: -9,
+  oltc_max_position: 9,
+  oltc_step_percent: 1.25,
+  oltc_control_mode: 'AUTOMATIC',
+  oltc_voltage_setpoint_kv: 15,
+  oltc_deadband_kv: 0.2,
+  oltc_delay_seconds: 30,
+  oltc_ldc_enabled: false,
+  oltc_ldc_r_ohm: null,
+  oltc_ldc_x_ohm: null,
   complexity_mode: 'simplified',
 };
 
@@ -270,6 +306,51 @@ export function walidujFormularz(data: GridSourceFormData): BladPolaZrodla[] {
     errors.push({ field: 'grounding_x_ohm', message: 'Cewka Petersena wymaga dodatniej reaktancji X.' });
   }
 
+  errors.push(...walidujOltc(data));
+
+  return errors;
+}
+
+/** Walidacja regulacji zaczepów (V12K-045 §12): blokuje niespójne nastawy. */
+export function walidujOltc(data: GridSourceFormData): BladPolaZrodla[] {
+  const errors: BladPolaZrodla[] = [];
+  if (data.oltc_regulation_type === 'NONE') return errors;
+
+  const neutral = data.oltc_neutral_position;
+  const current = data.oltc_current_position;
+  const min = data.oltc_min_position;
+  const max = data.oltc_max_position;
+
+  if (!isPositive(data.oltc_step_percent)) {
+    errors.push({ field: 'oltc_step_percent', message: 'Wielkość kroku zaczepu musi być dodatnia (step ≠ 0).' });
+  }
+  if (min === null || max === null || min >= max) {
+    errors.push({ field: 'oltc_max_position', message: 'Zakres zaczepów jest nieprawidłowy (min < max).' });
+  } else {
+    if (neutral === null || neutral < min || neutral > max) {
+      errors.push({ field: 'oltc_neutral_position', message: 'Pozycja neutralna musi mieścić się w zakresie zaczepów.' });
+    }
+    if (current === null || current < min || current > max) {
+      errors.push({ field: 'oltc_current_position', message: 'Pozycja bieżąca musi mieścić się w zakresie zaczepów.' });
+    }
+  }
+  // OLTC w trybie automatycznym wymaga napięcia zadanego (regulator bez celu = phantom).
+  const automatic = data.oltc_regulation_type === 'OLTC'
+    && (data.oltc_control_mode === 'AUTOMATIC' || data.oltc_control_mode === 'PROFILE' || data.oltc_control_mode === 'REMOTE');
+  if (automatic && !isPositive(data.oltc_voltage_setpoint_kv)) {
+    errors.push({ field: 'oltc_voltage_setpoint_kv', message: 'Tryb automatyczny wymaga dodatniego napięcia zadanego.' });
+  }
+  if (automatic && (data.oltc_deadband_kv === null || data.oltc_deadband_kv < 0)) {
+    errors.push({ field: 'oltc_deadband_kv', message: 'Pasmo nieczułości musi być nieujemne.' });
+  }
+  if (data.oltc_ldc_enabled) {
+    if (data.oltc_ldc_r_ohm === null || data.oltc_ldc_r_ohm < 0) {
+      errors.push({ field: 'oltc_ldc_r_ohm', message: 'Kompensacja LDC wymaga nieujemnej rezystancji R.' });
+    }
+    if (data.oltc_ldc_x_ohm === null || data.oltc_ldc_x_ohm < 0) {
+      errors.push({ field: 'oltc_ldc_x_ohm', message: 'Kompensacja LDC wymaga nieujemnej reaktancji X.' });
+    }
+  }
   return errors;
 }
 
@@ -445,6 +526,33 @@ export function zbudujPayloadZrodla(data: GridSourceFormData): Record<string, un
     transformer_uk_percent: data.transformer_catalog_ref ? data.transformer_uk_percent ?? undefined : undefined,
     transformer_vector_group: data.transformer_catalog_ref ? data.transformer_vector_group ?? undefined : undefined,
   };
+
+  // Regulacja zaczepów (OLTC/DETC) → klucze transformer_* czytane przez
+  // _build_gpz_tap_changer. Dodawane WYŁĄCZNIE gdy regulacja włączona
+  // (bez regulacji payload bez zmian — determinizm istniejących zapisów).
+  if (data.oltc_regulation_type !== 'NONE') {
+    payload.transformer_regulation_type = data.oltc_regulation_type;
+    payload.transformer_regulated_winding = data.oltc_regulated_winding;
+    payload.transformer_tap_neutral_position = data.oltc_neutral_position;
+    payload.transformer_tap_current_position = data.oltc_current_position;
+    payload.transformer_tap_min_position = data.oltc_min_position;
+    payload.transformer_tap_max_position = data.oltc_max_position;
+    payload.transformer_tap_step_percent = data.oltc_step_percent;
+    payload.transformer_control_mode = data.oltc_control_mode;
+    if (data.oltc_tap_changer_catalog_ref) {
+      payload.transformer_tap_changer_catalog_ref = data.oltc_tap_changer_catalog_ref;
+    }
+    if (data.oltc_regulation_type === 'OLTC') {
+      payload.transformer_voltage_setpoint_kv = data.oltc_voltage_setpoint_kv ?? undefined;
+      payload.transformer_deadband_kv = data.oltc_deadband_kv ?? undefined;
+      payload.transformer_delay_seconds = data.oltc_delay_seconds ?? undefined;
+      if (data.oltc_ldc_enabled) {
+        payload.transformer_ldc_enabled = true;
+        payload.transformer_ldc_r_ohm = data.oltc_ldc_r_ohm ?? 0;
+        payload.transformer_ldc_x_ohm = data.oltc_ldc_x_ohm ?? 0;
+      }
+    }
+  }
 
   if (data.manual_mode && data.short_circuit_mode === 'IMPEDANCE') {
     payload.r_ohm = data.r_ohm;

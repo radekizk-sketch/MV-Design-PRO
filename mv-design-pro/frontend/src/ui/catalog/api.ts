@@ -21,6 +21,7 @@ import type {
   SourceSystemCatalogType,
   SwitchEquipmentType,
   SurgeArresterCatalogType,
+  TapChangerCatalogType,
   TransformerType,
   TypeCategory,
   VTCatalogType,
@@ -183,6 +184,10 @@ export async function fetchCableTypes(): Promise<CableType[]> {
 
 export async function fetchTransformerTypes(): Promise<TransformerType[]> {
   return fetchCatalogJson<TransformerType[]>('/api/catalog/transformer-types');
+}
+
+export async function fetchTapChangers(): Promise<TapChangerCatalogType[]> {
+  return fetchCatalogJson<TapChangerCatalogType[]>('/api/v1/catalog/audit2/tap-changers');
 }
 
 export async function fetchSwitchEquipmentTypes(): Promise<SwitchEquipmentType[]> {

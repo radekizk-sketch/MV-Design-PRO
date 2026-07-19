@@ -17,6 +17,10 @@ import math
 import re
 from typing import Any
 
+from network_model.catalog.audit2_catalogs import (
+    get_tap_changer,
+    tap_changer_fields_from_catalog,
+)
 from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.types import CatalogBinding
@@ -487,10 +491,28 @@ def _normalize_gpz_section_entries(payload: dict[str, Any]) -> list[dict[str, An
                     continue
                 bays.append(
                     {
-                        "name": (str(bay["name"]).strip() if isinstance(bay.get("name"), str) and bay["name"].strip() else None),
-                        "bay_role": (str(bay["bay_role"]).strip() if isinstance(bay.get("bay_role"), str) and bay["bay_role"].strip() else None),
-                        "bay_template_ref": (str(bay["bay_template_ref"]).strip() if isinstance(bay.get("bay_template_ref"), str) and bay["bay_template_ref"].strip() else None),
-                        "protection_ref": (str(bay["protection_ref"]).strip() if isinstance(bay.get("protection_ref"), str) and bay["protection_ref"].strip() else None),
+                        "name": (
+                            str(bay["name"]).strip()
+                            if isinstance(bay.get("name"), str) and bay["name"].strip()
+                            else None
+                        ),
+                        "bay_role": (
+                            str(bay["bay_role"]).strip()
+                            if isinstance(bay.get("bay_role"), str) and bay["bay_role"].strip()
+                            else None
+                        ),
+                        "bay_template_ref": (
+                            str(bay["bay_template_ref"]).strip()
+                            if isinstance(bay.get("bay_template_ref"), str)
+                            and bay["bay_template_ref"].strip()
+                            else None
+                        ),
+                        "protection_ref": (
+                            str(bay["protection_ref"]).strip()
+                            if isinstance(bay.get("protection_ref"), str)
+                            and bay["protection_ref"].strip()
+                            else None
+                        ),
                     }
                 )
         if bays:
@@ -2181,6 +2203,112 @@ def _as_positive_float(value: object) -> float | None:
     return parsed if parsed > 0 else None
 
 
+def _opt_int(value: object) -> int | None:
+    try:
+        return int(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _opt_float_any(value: object) -> float | None:
+    try:
+        return float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+
+
+def _build_gpz_tap_changer(
+    payload: dict[str, Any],
+    *,
+    controlled_bus_ref: str,
+) -> dict[str, Any] | None:
+    """Build the canonical tap-changer dict for a GPZ 110/SN transformer (V12K-045).
+
+    Every field maps to a real ``TapChanger`` field (zero fabrication). When a
+    catalog reference is given it seeds the object (reuse of ``TapChangerItem``);
+    explicit payload fields override the seed. Returns None when the operator did
+    not request regulation (regulation_type NONE/absent) — backward compatible.
+    """
+    regulation_type = str(payload.get("transformer_regulation_type") or "NONE").upper()
+    catalog_ref = payload.get("transformer_tap_changer_catalog_ref")
+
+    if regulation_type == "NONE" and not catalog_ref:
+        return None
+
+    seed: dict[str, Any] = {}
+    if catalog_ref:
+        item = get_tap_changer(str(catalog_ref))
+        if item is not None:
+            seed = tap_changer_fields_from_catalog(item)
+            regulation_type = str(
+                payload.get("transformer_regulation_type") or seed["regulation_type"]
+            ).upper()
+
+    if regulation_type == "NONE":
+        return None
+
+    tc: dict[str, Any] = {
+        "regulation_type": regulation_type,
+        "regulated_winding": str(
+            payload.get("transformer_regulated_winding") or seed.get("regulated_winding") or "HV"
+        ).upper(),
+        "neutral_position": (
+            _opt_int(payload.get("transformer_tap_neutral_position"))
+            if payload.get("transformer_tap_neutral_position") is not None
+            else int(seed.get("neutral_position", 0))
+        ),
+        "current_position": (
+            _opt_int(payload.get("transformer_tap_current_position"))
+            if payload.get("transformer_tap_current_position") is not None
+            else int(seed.get("current_position", seed.get("neutral_position", 0)))
+        ),
+        "min_position": (
+            _opt_int(payload.get("transformer_tap_min_position"))
+            if payload.get("transformer_tap_min_position") is not None
+            else int(seed.get("min_position", 0))
+        ),
+        "max_position": (
+            _opt_int(payload.get("transformer_tap_max_position"))
+            if payload.get("transformer_tap_max_position") is not None
+            else int(seed.get("max_position", 0))
+        ),
+        "step_percent": (
+            _opt_float_any(payload.get("transformer_tap_step_percent"))
+            if payload.get("transformer_tap_step_percent") is not None
+            else float(seed.get("step_percent", 0.0))
+        ),
+        "control_mode": str(
+            payload.get("transformer_control_mode") or seed.get("control_mode") or "MANUAL"
+        ).upper(),
+    }
+
+    setpoint = _opt_float_any(payload.get("transformer_voltage_setpoint_kv"))
+    if setpoint is not None:
+        tc["voltage_setpoint_kv"] = setpoint
+    deadband = _opt_float_any(payload.get("transformer_deadband_kv"))
+    if deadband is not None:
+        tc["deadband_kv"] = deadband
+    delay = _opt_float_any(payload.get("transformer_delay_seconds"))
+    if delay is not None:
+        tc["delay_seconds"] = delay
+
+    controlled_ref = payload.get("transformer_controlled_bus_ref") or controlled_bus_ref
+    if controlled_ref:
+        tc["controlled_bus_ref"] = str(controlled_ref)
+
+    if payload.get("transformer_ldc_enabled"):
+        tc["line_drop_compensation"] = {
+            "enabled": True,
+            "r_ohm": _opt_float_any(payload.get("transformer_ldc_r_ohm")) or 0.0,
+            "x_ohm": _opt_float_any(payload.get("transformer_ldc_x_ohm")) or 0.0,
+        }
+
+    if catalog_ref:
+        tc["catalog_ref"] = str(catalog_ref)
+
+    return tc
+
+
 def _validate_transformer_voltage_compatibility(
     *,
     transformer_data: dict[str, Any],
@@ -3031,6 +3159,11 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         )
         _apply_materialized_transformer_fields(transformer, transformer_materialized_params)
         transformer["meta"]["catalog_role"] = "TRANSFORMATOR_WN_SN"
+        # V12K-045 (OLTC F3): canonical tap changer materialized from the payload
+        # (regulated per its own SN busbar). Absent when regulation not requested.
+        gpz_tap_changer = _build_gpz_tap_changer(payload, controlled_bus_ref=section["bus_ref"])
+        if gpz_tap_changer is not None:
+            transformer["tap_changer"] = gpz_tap_changer
         new_enm.setdefault("transformers", []).append(transformer)
         gpz_transformer_refs.append(transformer_ref)
         created.append(transformer_ref)
@@ -3327,7 +3460,11 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 ),
                 "gpz_hv_bus_refs": gpz_hv_bus_refs,
                 "field_specs": field_specs,
-                **({"switchgear_family_ref": gpz_switchgear_family_ref} if gpz_switchgear_family_ref else {}),
+                **(
+                    {"switchgear_family_ref": gpz_switchgear_family_ref}
+                    if gpz_switchgear_family_ref
+                    else {}
+                ),
                 **({"manufacturer_ref": gpz_manufacturer_ref} if gpz_manufacturer_ref else {}),
             },
         }

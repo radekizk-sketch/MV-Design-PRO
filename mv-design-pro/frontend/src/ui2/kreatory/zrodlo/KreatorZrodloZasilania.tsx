@@ -20,12 +20,18 @@ import {
   fetchMvApparatusTypes,
   fetchSourceSystemTypes,
   fetchSwitchgearFamilies,
+  fetchTapChangers,
   fetchTransformerTypes,
   getCatalogErrorMessage,
 } from '../../../ui/catalog/api';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
-import type { MVApparatusType, SourceSystemCatalogType, TransformerType } from '../../../ui/catalog/types';
+import type {
+  MVApparatusType,
+  SourceSystemCatalogType,
+  TapChangerCatalogType,
+  TransformerType,
+} from '../../../ui/catalog/types';
 import { navigateToSld } from '../../../ui/navigation/routes';
 import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFirstRules';
 import { catalogRefFromInput, type GpzGroundingType } from '../../../ui/network-build/forms/catalogPayload';
@@ -141,6 +147,9 @@ export function KreatorZrodloZasilania() {
   const [transformatory, setTransformatory] = useState<TransformerType[]>([]);
   const [bladTransformatorow, setBladTransformatorow] = useState<string | null>(null);
 
+  const [tapChangery, setTapChangery] = useState<TapChangerCatalogType[]>([]);
+  const [bladTapChangerow, setBladTapChangerow] = useState<string | null>(null);
+
   const [podglad, setPodglad] = useState<GridSourcePreviewResponse | null>(null);
   const [statusPodgladu, setStatusPodgladu] = useState<StatusPobrania>('idle');
   const [bladPodgladu, setBladPodgladu] = useState<string | null>(null);
@@ -245,6 +254,23 @@ export function KreatorZrodloZasilania() {
     return () => { cancelled = true; };
   }, []);
 
+  // Katalog przełączników zaczepów (OLTC/DETC) — V12K-045.
+  useEffect(() => {
+    let cancelled = false;
+    setBladTapChangerow(null);
+    fetchTapChangers()
+      .then((items) => {
+        if (cancelled) return;
+        setTapChangery(Array.isArray(items) ? items : []);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setTapChangery([]);
+        setBladTapChangerow(getCatalogErrorMessage(error));
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   const filtrowaneAparaty = useMemo(
     () => aparaty.filter((item) => pasujeRodzajAparatu(item, dane.gpz_line_field_apparatus_kind)),
     [aparaty, dane.gpz_line_field_apparatus_kind],
@@ -274,6 +300,31 @@ export function KreatorZrodloZasilania() {
       transformer_vector_group: t?.vector_group ?? null,
     }));
   }, [transformatory]);
+
+  const opcjeTapChangerow = useMemo(
+    () => tapChangery.map((tc) => ({ id: tc.id, etykieta: tc.label_pl })),
+    [tapChangery],
+  );
+  // Wybór przełącznika z katalogu zasiewa nastawy (reużycie TapChangerItem).
+  const wybierzTapChanger = useCallback((catalogRef: string | null) => {
+    const tc = tapChangery.find((item) => item.id === catalogRef) ?? null;
+    setDane((p) => {
+      if (!tc) return { ...p, oltc_tap_changer_catalog_ref: catalogRef };
+      const half = Math.floor((tc.tap_count - 1) / 2);
+      return {
+        ...p,
+        oltc_tap_changer_catalog_ref: catalogRef,
+        oltc_regulation_type: tc.type === 'oltc' ? 'OLTC' : 'DETC',
+        oltc_regulated_winding: tc.regulated_side === 'hv' ? 'HV' : 'LV',
+        oltc_neutral_position: tc.neutral_position,
+        oltc_current_position: tc.neutral_position,
+        oltc_min_position: tc.neutral_position - half,
+        oltc_max_position: tc.neutral_position + half,
+        oltc_step_percent: tc.step_percent,
+        oltc_control_mode: tc.type === 'oltc' && tc.supports_avr ? 'AUTOMATIC' : 'MANUAL',
+      };
+    });
+  }, [tapChangery]);
   const opcjeRodzin = useMemo(
     () => rodziny
       .filter((r) => !napiecieSn || r.voltage_levels.length === 0 || r.voltage_levels.some((v) => Math.abs(v - napiecieSn) <= 6))
@@ -592,6 +643,7 @@ export function KreatorZrodloZasilania() {
       ) : null}
 
       {krok === 'transformatory' ? (
+        <>
         <KreatorSekcja tytul={T.krokTransformatory} testid="mvd-kreator-zrodlo-transformatory">
           <KreatorInfo>{T.transformatoryOpis}</KreatorInfo>
           <PoleWyboru
@@ -620,6 +672,81 @@ export function KreatorZrodloZasilania() {
             </KreatorSiatka>
           ) : null}
         </KreatorSekcja>
+
+        <KreatorSekcja tytul={T.oltcTytul} testid="mvd-kreator-zrodlo-oltc">
+          <KreatorInfo>{T.oltcOpis}</KreatorInfo>
+          <KreatorSiatka kolumny={2}>
+            <PoleWyboru
+              etykieta={T.oltcTyp}
+              wartosc={dane.oltc_regulation_type}
+              onZmiana={(v) => zmien('oltc_regulation_type', v as GridSourceFormData['oltc_regulation_type'])}
+              opcje={T.oltcTypy}
+              testid="mvd-kreator-zrodlo-oltc-typ"
+            />
+            {dane.oltc_regulation_type !== 'NONE' ? (
+              <PoleKatalogu
+                etykieta={T.oltcKatalog}
+                wartosc={dane.oltc_tap_changer_catalog_ref}
+                onZmiana={wybierzTapChanger}
+                opcje={opcjeTapChangerow}
+                status={bladTapChangerow ? 'error' : 'ready'}
+                placeholder={T.oltcKatalogPlaceholder}
+                komunikatBledu={bladTapChangerow ?? T.oltcKatalogBlad}
+                testid="mvd-kreator-zrodlo-oltc-katalog"
+              />
+            ) : null}
+          </KreatorSiatka>
+
+          {dane.oltc_regulation_type !== 'NONE' ? (
+            <>
+              <KreatorSiatka kolumny={3}>
+                <PoleWyboru
+                  etykieta={T.oltcUzwojenie}
+                  wartosc={dane.oltc_regulated_winding}
+                  onZmiana={(v) => zmien('oltc_regulated_winding', v as GridSourceFormData['oltc_regulated_winding'])}
+                  opcje={T.oltcUzwojenia}
+                  testid="mvd-kreator-zrodlo-oltc-uzwojenie"
+                />
+                <PoleLiczbowe etykieta={T.oltcKrok} jednostka="%" wartosc={dane.oltc_step_percent} onZmiana={(v) => zmien('oltc_step_percent', v)} krok={0.05} wymagane blad={bladDlaPola('oltc_step_percent')} testid="mvd-kreator-zrodlo-oltc-krok" />
+                <PoleLiczbowe etykieta={T.oltcNeutral} wartosc={dane.oltc_neutral_position} onZmiana={(v) => zmien('oltc_neutral_position', v)} blad={bladDlaPola('oltc_neutral_position')} testid="mvd-kreator-zrodlo-oltc-neutral" />
+                <PoleLiczbowe etykieta={T.oltcMin} wartosc={dane.oltc_min_position} onZmiana={(v) => zmien('oltc_min_position', v)} blad={bladDlaPola('oltc_min_position')} testid="mvd-kreator-zrodlo-oltc-min" />
+                <PoleLiczbowe etykieta={T.oltcBiezaca} wartosc={dane.oltc_current_position} onZmiana={(v) => zmien('oltc_current_position', v)} blad={bladDlaPola('oltc_current_position')} testid="mvd-kreator-zrodlo-oltc-biezaca" />
+                <PoleLiczbowe etykieta={T.oltcMax} wartosc={dane.oltc_max_position} onZmiana={(v) => zmien('oltc_max_position', v)} blad={bladDlaPola('oltc_max_position')} testid="mvd-kreator-zrodlo-oltc-max" />
+              </KreatorSiatka>
+
+              {dane.oltc_regulation_type === 'OLTC' ? (
+                <>
+                  <PoleWyboru
+                    etykieta={T.oltcTryb}
+                    wartosc={dane.oltc_control_mode}
+                    onZmiana={(v) => zmien('oltc_control_mode', v as GridSourceFormData['oltc_control_mode'])}
+                    opcje={T.oltcTryby}
+                    pomoc={T.oltcTrybAutoInfo}
+                    testid="mvd-kreator-zrodlo-oltc-tryb"
+                  />
+                  <KreatorSiatka kolumny={3}>
+                    <PoleLiczbowe etykieta={T.oltcSetpoint} jednostka="kV" wartosc={dane.oltc_voltage_setpoint_kv} onZmiana={(v) => zmien('oltc_voltage_setpoint_kv', v)} krok={0.1} wymagane blad={bladDlaPola('oltc_voltage_setpoint_kv')} testid="mvd-kreator-zrodlo-oltc-setpoint" />
+                    <PoleLiczbowe etykieta={T.oltcDeadband} jednostka="kV" wartosc={dane.oltc_deadband_kv} onZmiana={(v) => zmien('oltc_deadband_kv', v)} krok={0.05} blad={bladDlaPola('oltc_deadband_kv')} testid="mvd-kreator-zrodlo-oltc-deadband" />
+                    <PoleLiczbowe etykieta={T.oltcOpoznienie} jednostka="s" wartosc={dane.oltc_delay_seconds} onZmiana={(v) => zmien('oltc_delay_seconds', v)} krok={1} testid="mvd-kreator-zrodlo-oltc-opoznienie" />
+                  </KreatorSiatka>
+                  <PolePrzelacznikBinarny
+                    etykieta={T.oltcLdc}
+                    wlaczone={dane.oltc_ldc_enabled}
+                    onZmiana={(v) => zmien('oltc_ldc_enabled', v)}
+                    testid="mvd-kreator-zrodlo-oltc-ldc"
+                  />
+                  {dane.oltc_ldc_enabled ? (
+                    <KreatorSiatka kolumny={2}>
+                      <PoleLiczbowe etykieta={T.oltcLdcR} jednostka="Ω" wartosc={dane.oltc_ldc_r_ohm} onZmiana={(v) => zmien('oltc_ldc_r_ohm', v)} krok={0.1} blad={bladDlaPola('oltc_ldc_r_ohm')} testid="mvd-kreator-zrodlo-oltc-ldc-r" />
+                      <PoleLiczbowe etykieta={T.oltcLdcX} jednostka="Ω" wartosc={dane.oltc_ldc_x_ohm} onZmiana={(v) => zmien('oltc_ldc_x_ohm', v)} krok={0.1} blad={bladDlaPola('oltc_ldc_x_ohm')} testid="mvd-kreator-zrodlo-oltc-ldc-x" />
+                    </KreatorSiatka>
+                  ) : null}
+                </>
+              ) : null}
+            </>
+          ) : null}
+        </KreatorSekcja>
+        </>
       ) : null}
 
       {krok === 'rozdzielnia' ? (

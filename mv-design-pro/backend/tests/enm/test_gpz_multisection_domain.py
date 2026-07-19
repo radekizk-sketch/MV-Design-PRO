@@ -340,3 +340,92 @@ def test_add_grid_source_sn_bez_rodziny_zachowuje_dotychczasowy_kontrakt():
     spec = substation["meta"]["field_specs"][0]
     assert "bay_template_ref" not in spec
     assert "switchgear_family_ref" not in spec
+
+
+def test_add_grid_source_sn_bez_oltc_nie_niesie_tap_changer():
+    """Bez żądania regulacji transformatory GPZ nie mają tap_changer (kompat.)."""
+    result = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ Bez OLTC",
+            "voltage_kv": 15.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "sections_count": 1,
+            "gpz_sections": [{"order": 0, "name": "Sekcja A", "line_fields_count": 1}],
+            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+        },
+    )
+    assert result.get("error") in (None, "")
+    trafo = result["snapshot"]["transformers"][0]
+    assert trafo.get("tap_changer") in (None, {}) or "tap_changer" not in trafo
+
+
+def test_add_grid_source_sn_materializuje_oltc_na_kazdym_transformatorze():
+    """OLTC z kreatora GPZ → kanoniczny tap_changer per transformator, regulujący
+    własną szynę SN, mapowany na model domenowy i widoczny dla pętli OLTC."""
+    result = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ z OLTC",
+            "voltage_kv": 15.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "sections_count": 2,
+            "gpz_sections": [
+                {"order": 0, "name": "Sekcja A", "line_fields_count": 1},
+                {"order": 1, "name": "Sekcja B", "line_fields_count": 1},
+            ],
+            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+            "transformer_count": 2,
+            # OLTC z katalogu + jawne nastawy (zero fabrykacji — każde pole realne).
+            "transformer_regulation_type": "OLTC",
+            "transformer_tap_changer_catalog_ref": "tc_oltc_110sn_19_125",
+            "transformer_control_mode": "AUTOMATIC",
+            "transformer_voltage_setpoint_kv": 15.3,
+            "transformer_deadband_kv": 0.2,
+            "transformer_delay_seconds": 30.0,
+            "transformer_ldc_enabled": True,
+            "transformer_ldc_r_ohm": 0.5,
+            "transformer_ldc_x_ohm": 1.2,
+        },
+    )
+    assert result.get("error") in (None, "")
+    snapshot = result["snapshot"]
+    transformers = snapshot["transformers"]
+    assert len(transformers) == 2
+
+    sections = snapshot["substations"][0]["gpz_sections"]
+    section_bus_by_id = {s["section_id"]: s["bus_ref"] for s in sections}
+
+    for trafo in transformers:
+        tc = trafo["tap_changer"]
+        assert tc["regulation_type"] == "OLTC"
+        assert tc["regulated_winding"] == "HV"
+        assert tc["control_mode"] == "AUTOMATIC"
+        assert tc["min_position"] == -9
+        assert tc["max_position"] == 9
+        assert tc["step_percent"] == 1.25
+        assert tc["voltage_setpoint_kv"] == 15.3
+        assert tc["deadband_kv"] == 0.2
+        assert tc["delay_seconds"] == 30.0
+        assert tc["line_drop_compensation"]["enabled"] is True
+        assert tc["catalog_ref"] == "tc_oltc_110sn_19_125"
+        # Each transformer regulates its own SN busbar (section LV bus).
+        assert tc["controlled_bus_ref"] == section_bus_by_id[trafo["meta"]["gpz_section_id"]]
+
+    # Flows end-to-end: ENM -> domain graph -> canonical TapChanger visible.
+    from enm.mapping import map_enm_to_network_graph
+    from enm.models import EnergyNetworkModel
+    from network_model.core.branch import TransformerBranch
+
+    graph = map_enm_to_network_graph(EnergyNetworkModel.model_validate(snapshot))
+    regs = [
+        b
+        for b in graph.branches.values()
+        if isinstance(b, TransformerBranch) and b.tap_changer is not None
+    ]
+    assert len(regs) == 2
+    for reg in regs:
+        assert reg.tap_changer.is_automatic()
+        assert reg.tap_changer.controlled_bus_id is not None

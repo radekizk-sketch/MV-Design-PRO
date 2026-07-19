@@ -72,6 +72,10 @@ vi.mock('../../../../ui/catalog/api', () => ({
     Promise.resolve([
       { id: 'TR-110-15-25', name: 'TR 110/15 25 MVA', rated_power_mva: 25, voltage_hv_kv: 110, voltage_lv_kv: 15, uk_percent: 12.5, pk_kw: 120, i0_percent: 0.2, p0_kw: 25, vector_group: 'YNd11', tap_min: -9, tap_max: 9 },
     ]),
+  fetchTapChangers: () =>
+    Promise.resolve([
+      { id: 'tc_oltc_110sn_19_125', catalog_namespace: 'tap_changer', catalog_version: '2024.1', label_pl: 'OLTC 110/SN 19 zaczepow', type: 'oltc', neutral_position: 0, tap_count: 19, step_percent: 1.25, range_percent: 11.25, regulated_side: 'hv', switching_time_s: 5, operations_before_maintenance_thousand: 100, supports_avr: true, applicable_to: [] },
+    ]),
 }));
 
 vi.mock('../../../../ui/network-build/forms/gridSourcePreviewApi', () => ({
@@ -183,5 +187,41 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-zrodlo-sekcja-nazwa-0')).toBeTruthy();
     expect(screen.getByTestId('mvd-kreator-zrodlo-sekcja-nazwa-1')).toBeTruthy();
     expect(screen.getByTestId('mvd-kreator-zrodlo-aparat-rodzaj')).toBeTruthy();
+  });
+
+  it('krok Transformatory: wybór OLTC odsłania nastawy regulatora (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-transformatory"]') as HTMLElement,
+    );
+    // Domyślnie brak regulacji → brak nastaw OLTC.
+    expect(screen.queryByTestId('mvd-kreator-zrodlo-oltc-setpoint')).toBeNull();
+    await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-oltc-typ'), 'OLTC');
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-setpoint')).toBeTruthy();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-uzwojenie')).toBeTruthy();
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-katalog')).toBeTruthy();
+  });
+
+  it('OLTC z kreatora trafia do operacji domenowej add_grid_source_sn (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    // Auto-wybór katalogu (efekt po montażu) — potrzebny do przejścia walidacji zapisu.
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await waitFor(() =>
+      expect((screen.getByTestId('mvd-kreator-zrodlo-katalog-select') as HTMLSelectElement).value).toBe('GPZ-001'),
+    );
+    await user.click(
+      screen.getByTestId('mvd-kreator-kroki').querySelector('[data-testid="mvd-kreator-krok-transformatory"]') as HTMLElement,
+    );
+    await user.selectOptions(screen.getByTestId('mvd-kreator-zrodlo-oltc-typ'), 'OLTC');
+    expect(screen.getByTestId('mvd-kreator-zrodlo-oltc-setpoint')).toBeTruthy();
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    const [, , payload] = executeDomainOperationMock.mock.calls[0];
+    expect(payload).toMatchObject({
+      transformer_regulation_type: 'OLTC',
+      transformer_control_mode: 'AUTOMATIC',
+    });
   });
 });
