@@ -25,6 +25,10 @@ export interface WierszZabezpieczenia {
   /** Kody funkcji zabezpieczeniowych (ANSI/IEC), np. 50, 51, 50N. */
   readonly funkcje: readonly string[];
   readonly maZabezpieczenie: boolean;
+  /** Szablon pola producenta (Reference Engine) — null gdy pole uniwersalne. */
+  readonly szablon: string | null;
+  /** Rodzina rozdzielnicy producenta — null gdy bez producenta. */
+  readonly rodzina: string | null;
 }
 
 /** Cecha automatyki z `automation_features` (chip on/off). */
@@ -86,12 +90,15 @@ export function buildWierszeZabezpieczen(
             .map((fn) => fn.code)
             .filter((code): code is string => typeof code === 'string' && code.trim() !== '')
         : [];
+      const base = item.canonical_model.base_model;
       return {
         bayRef: item.bay_ref,
         bayName: item.bay_name || item.bay_ref,
         urzadzenie: config?.model ?? null,
         funkcje,
         maZabezpieczenie: config !== null,
+        szablon: base.bay_template_ref ?? null,
+        rodzina: base.switchgear_family_ref ?? null,
       };
     })
     .sort((a, b) => a.bayRef.localeCompare(b.bayRef));

@@ -29,8 +29,10 @@ export const ZABEZPIECZENIA_STRINGS = {
     + 'w karcie pola.',
   kolPole: 'Pole',
   kolUrzadzenie: 'Urządzenie',
+  kolSzablon: 'Szablon / rodzina',
   kolFunkcje: 'Funkcje',
   kolAkcja: 'Edycja',
+  szablonBrak: 'uniwersalne',
   otworzKartePola: 'Otwórz kartę pola',
   otworzKartePolaOpis: 'Otwórz kartę pola z nastawami zabezpieczeń (panel pola)',
 

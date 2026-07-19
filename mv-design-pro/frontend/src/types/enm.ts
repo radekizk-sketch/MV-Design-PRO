@@ -712,6 +712,10 @@ export interface BayBaseModel {
   source_endpoint?: BaySourceEndpoint | null;
   /** ABB UniSwitch cell type (catalog §4 "Rodzaje pól"). Optional/additive. */
   cell_type?: AbbCellTypeSN | null;
+  /** Szablon pola producenta (Reference Engine). Optional/additive. */
+  bay_template_ref?: string | null;
+  /** Rodzina rozdzielnicy producenta (Reference Engine). Optional/additive. */
+  switchgear_family_ref?: string | null;
 }
 
 export interface BayShortCircuitSourceContribution {

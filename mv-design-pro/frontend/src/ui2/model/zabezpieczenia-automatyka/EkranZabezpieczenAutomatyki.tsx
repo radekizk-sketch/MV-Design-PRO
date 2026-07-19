@@ -172,6 +172,7 @@ export function EkranZabezpieczenAutomatyki() {
                   <tr>
                     <th>{T.kolPole}</th>
                     <th>{T.kolUrzadzenie}</th>
+                    <th>{T.kolSzablon}</th>
                     <th>{T.kolFunkcje}</th>
                     <th>{T.kolAkcja}</th>
                   </tr>
@@ -192,6 +193,11 @@ export function EkranZabezpieczenAutomatyki() {
                             {T.spzNieSkonfigurowano}
                           </span>
                         )}
+                      </td>
+                      <td data-testid={`mvd-za-szablon-${wiersz.bayRef}`}>
+                        {wiersz.szablon
+                          ? `${wiersz.szablon}${wiersz.rodzina ? ` · ${wiersz.rodzina}` : ''}`
+                          : T.szablonBrak}
                       </td>
                       <td>{wiersz.funkcje.length > 0 ? wiersz.funkcje.join(', ') : '—'}</td>
                       <td>

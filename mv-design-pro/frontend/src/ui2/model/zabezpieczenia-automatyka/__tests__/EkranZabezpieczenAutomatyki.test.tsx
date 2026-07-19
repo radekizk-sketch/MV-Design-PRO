@@ -142,6 +142,28 @@ describe('model.ts — mapowanie ENM → UI (bez fabrykacji)', () => {
     expect(wiersze[0].urzadzenie).toBeNull();
     expect(wiersze[0].funkcje).toEqual([]);
     expect(wiersze[0].maZabezpieczenie).toBe(false);
+    // Pole bez rodziny producenta → szablon/rodzina null (uczciwie „uniwersalne").
+    expect(wiersze[0].szablon).toBeNull();
+    expect(wiersze[0].rodzina).toBeNull();
+  });
+
+  it('buildWierszeZabezpieczen: surfacing szablonu pola + rodziny producenta (Reference Engine)', () => {
+    const pole = {
+      bay_id: 'bay-t',
+      bay_ref: 'bay-t',
+      bay_name: 'Pole odpływowe T',
+      canonical_model: {
+        base_model: {
+          bay_ref: 'bay-t',
+          protection_config: null,
+          bay_template_ref: 'ABB__SAFERING__LINE_OUT',
+          switchgear_family_ref: 'ABB__SAFERING',
+        },
+      },
+    } as unknown as FieldReadModelItem;
+    const [wiersz] = buildWierszeZabezpieczen([pole]);
+    expect(wiersz.szablon).toBe('ABB__SAFERING__LINE_OUT');
+    expect(wiersz.rodzina).toBe('ABB__SAFERING');
   });
 
   it('buildSterowniki: tylko pola ze sterownikiem, cechy z etykietami PL', () => {

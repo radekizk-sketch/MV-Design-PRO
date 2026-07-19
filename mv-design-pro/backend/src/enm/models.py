@@ -1139,6 +1139,11 @@ class BayBaseModel(BaseModel):
         ]
         | None
     ) = None
+    # Powiązania producenckie pola (Reference Engine): szablon pola i rodzina
+    # rozdzielnicy. Opcjonalne i addytywne — None wykluczane z odcisku ENM
+    # (exclude_none). Nie wypełniać na istniejących fixture'ach.
+    bay_template_ref: str | None = None
+    switchgear_family_ref: str | None = None
 
 
 class BayShortCircuitSourceContribution(BaseModel):

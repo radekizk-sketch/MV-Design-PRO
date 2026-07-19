@@ -185,6 +185,8 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             source_endpoint=source_endpoint,
         )
 
+        bay_meta = bay.meta if isinstance(bay.meta, dict) else {}
+        switchgear_family_ref = bay_meta.get("switchgear_family_ref")
         base_model = BayBaseModel(
             bay_ref=bay.ref_id,
             bay_role=canonical_role,
@@ -199,6 +201,8 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             control_surface=control_surface,
             interlocks=interlocks,
             source_endpoint=source_endpoint,
+            bay_template_ref=bay.bay_template_ref,
+            switchgear_family_ref=switchgear_family_ref if isinstance(switchgear_family_ref, str) else None,
         )
 
         project_results = _build_project_results(
