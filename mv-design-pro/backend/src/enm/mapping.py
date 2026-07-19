@@ -20,6 +20,7 @@ import math
 import uuid
 
 import numpy as np
+from network_model.catalog.types import ConverterKind
 from network_model.core.branch import (
     BranchType,
     LineBranch,
@@ -28,6 +29,8 @@ from network_model.core.branch import (
     TransformerBranch,
 )
 from network_model.core.graph import NetworkGraph
+from network_model.core.inverter import InverterSource
+from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
 from network_model.core.ybus import AdmittanceMatrixBuilder
@@ -41,6 +44,7 @@ from .models import (
     Cable,
     EnergyNetworkModel,
     FuseBranch,
+    Generator,
     OverheadLine,
     SwitchBranch,
 )
@@ -208,6 +212,151 @@ def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np
         return np.linalg.inv(y0_bus)
     except np.linalg.LinAlgError as exc:
         raise ValueError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
+
+
+# G-SCM (V12K-054): classification of enm.generators.gen_type onto the IEC 60909
+# short-circuit source model. Full converters (§6.7 bounded current source) →
+# InverterSource; rotating machines → voltage-behind-Z″ (§6.3 synchronous / §6.7
+# asynchronous, incl. DFIG Type 3 crowbar).
+_INVERTER_GEN_TYPES: dict[str, ConverterKind] = {
+    "pv_inverter": ConverterKind.PV,
+    "bess": ConverterKind.BESS,
+    "wind_inverter": ConverterKind.WIND,
+    "fw_pmsg": ConverterKind.WIND,  # full-converter (Type 4) PMSG wind
+}
+# gen_type → wind_type_3 flag (DFIG crowbar relabelling; §6.7 math unchanged).
+_ASYNC_GEN_TYPES: dict[str, bool] = {
+    "fw_dfig": True,  # Type 3 DFIG: crowbar → induction machine
+    "fw_scig": False,  # squirrel-cage induction generator
+}
+
+
+def _gen_quantity(gen: Generator) -> int:
+    """Number of parallel units the generator element represents (≥ 1)."""
+    q = gen.quantity or gen.n_parallel or 1
+    return q if q >= 1 else 1
+
+
+def _gen_rated_apparent_mva(
+    gen: Generator, mp: dict, *, cos_phi_fallback: float = 1.0
+) -> float | None:
+    """Total rated apparent power S_r [MVA] of the installation for SC.
+
+    Prefers the catalog per-unit ``sn_mva`` × parallel count; otherwise falls back
+    to |p_mw|/cosφ (|p_mw| is already the installation total). Returns None when no
+    positive rating can be established (→ the source is skipped, never fabricated).
+    """
+    sn = mp.get("sn_mva")
+    if isinstance(sn, int | float) and sn > 0:
+        return float(sn) * _gen_quantity(gen)
+    p = abs(gen.p_mw)
+    if p <= 0:
+        return None
+    cf = cos_phi_fallback if cos_phi_fallback and cos_phi_fallback > 0 else 1.0
+    return p / cf
+
+
+def _gen_rated_voltage_kv(
+    gen: Generator, mp: dict, bus_voltage_by_ref: dict[str, float]
+) -> float | None:
+    """Rated voltage U_r [kV]: catalog ``un_kv`` if present, else the bus voltage."""
+    un = mp.get("un_kv")
+    if isinstance(un, int | float) and un > 0:
+        return float(un)
+    v = bus_voltage_by_ref.get(gen.bus_ref)
+    return v if v and v > 0 else None
+
+
+def _add_generator_sc_sources(
+    enm: EnergyNetworkModel,
+    graph: NetworkGraph,
+    ref_to_node_id: dict[str, str],
+) -> None:
+    """G-SCM (V12K-054): wire ``enm.generators`` as IEC 60909 short-circuit sources.
+
+    Closes the forward-phantom where DER/machines placed by the designer contributed
+    ZERO fault current: the mapping injected only their P/Q into the load-flow graph
+    and never added an SC source, so ``ShortCircuitIEC60909Solver`` (which reads
+    ``graph.get_inverter_sources()`` and the machine shunts) saw nothing. Each
+    generator becomes the IEC-correct SC source for its ``gen_type``.
+
+    Zero fabrication: a source is built ONLY from a real nameplate (rated power +
+    voltage). The decay/reactance factors (x″d, k_sc, I_LR) use the domain models'
+    documented IEC-typical defaults (``core/machine.py`` / ``core/inverter.py``) —
+    WHITE BOX, the same defaulting pattern as the external-source ``rx`` ratio.
+    Deterministic: iteration is id-sorted and each source id is the generator ref_id.
+    A no-op when there are no generators, so machine-free networks keep a
+    byte-identical SC Y-bus (the ybus machine shunt / inverter superposition are
+    themselves no-ops without sources).
+    """
+    bus_voltage_by_ref = {b.ref_id: b.voltage_kv for b in enm.buses}
+    for gen in sorted(enm.generators, key=lambda g: g.ref_id):
+        gen_type = gen.gen_type
+        if gen_type is None:
+            continue
+        node_id = ref_to_node_id.get(gen.bus_ref)
+        if node_id is None:
+            continue
+        mp = gen.materialized_params or {}
+        un_kv = _gen_rated_voltage_kv(gen, mp, bus_voltage_by_ref)
+        if un_kv is None:
+            continue
+
+        if gen_type in _INVERTER_GEN_TYPES:
+            sr_mva = _gen_rated_apparent_mva(gen, mp)
+            if sr_mva is None:
+                continue
+            in_rated_a = sr_mva * 1.0e6 / (math.sqrt(3.0) * un_kv * 1.0e3)
+            k_sc = mp.get("k_sc")
+            graph.add_inverter_source(
+                InverterSource(
+                    id=gen.ref_id,
+                    name=gen.name,
+                    node_id=node_id,
+                    type_ref=gen.catalog_ref,
+                    converter_kind=_INVERTER_GEN_TYPES[gen_type],
+                    in_rated_a=in_rated_a,
+                    k_sc=float(k_sc) if isinstance(k_sc, int | float) and k_sc > 0 else 1.1,
+                    contributes_negative_sequence=True,
+                    contributes_zero_sequence=False,
+                )
+            )
+        elif gen_type == "synchronous":
+            cos_phi = mp.get("cos_phi") or mp.get("cos_phi_r")
+            cos_phi_r = (
+                float(cos_phi) if isinstance(cos_phi, int | float) and 0 < cos_phi <= 1 else 0.8
+            )
+            sr_mva = _gen_rated_apparent_mva(gen, mp, cos_phi_fallback=cos_phi_r)
+            if sr_mva is None or sr_mva <= 0:
+                continue
+            xd = mp.get("xd_subtransient_pu")
+            sync_kwargs: dict = {
+                "id": gen.ref_id,
+                "name": gen.name,
+                "node_id": node_id,
+                "sr_mva": sr_mva,
+                "ur_kv": un_kv,
+                "cos_phi_r": cos_phi_r,
+            }
+            if isinstance(xd, int | float) and xd > 0:
+                sync_kwargs["xd_subtransient_pu"] = float(xd)
+            graph.add_synchronous_machine_source(SynchronousMachineSource(**sync_kwargs))
+        elif gen_type in _ASYNC_GEN_TYPES:
+            pr_mw = abs(gen.p_mw)
+            if pr_mw <= 0:
+                continue
+            i_lr = mp.get("i_lr_ratio")
+            async_kwargs: dict = {
+                "id": gen.ref_id,
+                "name": gen.name,
+                "node_id": node_id,
+                "pr_mw": pr_mw,
+                "ur_kv": un_kv,
+                "wind_type_3": _ASYNC_GEN_TYPES[gen_type],
+            }
+            if isinstance(i_lr, int | float) and i_lr > 0:
+                async_kwargs["i_lr_ratio"] = float(i_lr)
+            graph.add_asynchronous_machine_source(AsynchronousMachineSource(**async_kwargs))
 
 
 def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
@@ -437,5 +586,10 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             rated_current_a=1.0,
         )
         graph.add_branch(src_branch)
+
+    # 5. Generators (DER / rotating machines) → IEC 60909 SC sources (G-SCM, V12K-054).
+    #    Without this the designer's PV/BESS/wind/synchronous sources contributed only
+    #    P/Q to the load flow and ZERO fault current to the short circuit.
+    _add_generator_sc_sources(enm, graph, ref_to_node_id)
 
     return graph

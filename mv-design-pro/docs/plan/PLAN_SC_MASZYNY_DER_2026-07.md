@@ -111,14 +111,27 @@ producenta — ujęte w F-follow, nie blokuje F1.
 ## 5. Plan fazowy + DoD
 
 ### F1 — Most mapowania (sedno, autonomiczne, bez decyzji produktowej)
-- `map_enm_to_network_graph`: dla `enm.generators` (in_service) rozgałęź po `gen_type`:
-  - `pv_inverter`/`bess`/`wind_inverter` → `InverterSource(in_rated_a z sn_mva/un_kv, k_sc domyślne)` + `graph.add_inverter_source`.
-  - `GENSET` → `SynchronousMachineSource(sr_mva=P/cosφ, ur_kv=napięcie szyny, x″d domyślne)` + `graph.add_synchronous_machine_source`.
-  - `UPS` → F-follow (pominięcie z jawnym komentarzem w F1, żeby nie zmyślać modelu).
-- Deterministyczna kolejność (sort po ref_id), guard „brak danych → pomiń z logiem".
-- Testy: jednostkowe mapy (genset→sync source z Z″; PV/BESS/FW→inverter z I_k=k_sc·I_n;
-  brak generatorów→graf bez źródeł maszynowych = determinizm), integracyjny kanoniczny
-  SC (I″k z generatorem > I″k bez).
+Empiryczne ustalenie recon (weryfikacja przed implementacją): model `Generator.gen_type`
+akceptuje `synchronous`, `pv_inverter`, `wind_inverter`, `fw_pmsg`, `fw_dfig`, `fw_scig`,
+`bess` (`enm/models.py:388`). **`GENSET`/`UPS` (wielkie litery — tak zapisuje
+`add_genset_nn`/`add_ups_nn`) są ODRZUCANE przez model** → gensety/UPS dziś w ogóle nie
+przechodzą `EnergyNetworkModel.model_validate` w kanonicznym biegu (osobny, wcześniejszy
+defekt normalizacji `gen_type` → F-follow). `Generator` nie ma pola `in_service`
+(wszystkie generatory listy traktowane jako czynne — tak jak już robi mapa dla P/Q).
+
+- `map_enm_to_network_graph`: dla `enm.generators` (sort po ref_id) rozgałęź po `gen_type`:
+  - `pv_inverter` → `InverterSource(ConverterKind.PV)`; `bess` → `InverterSource(BESS)`;
+    `wind_inverter`/`fw_pmsg` → `InverterSource(WIND)` (pełny przekształtnik §6.7,
+    `in_rated_a = S_tot/(√3·U_n)`, `k_sc` domyślne 1.1) + `graph.add_inverter_source`.
+  - `synchronous` → `SynchronousMachineSource(sr_mva, ur_kv, x″d domyślne)` (§6.3).
+  - `fw_dfig` → `AsynchronousMachineSource(wind_type_3=True)`; `fw_scig` →
+    `AsynchronousMachineSource` (§6.7).
+- Zero fabrykacji: źródło powstaje TYLKO gdy jest realna tabliczka (moc znamionowa +
+  napięcie); brak → pomiń (nie zmyślamy źródła). `S_tot = sn_mva·quantity` (materialized
+  per-unit × liczba równoległych) albo |p_mw| jako proxy S. Deterministyczne id = ref_id.
+- Testy: jednostkowe mapy (PV/BESS/FW→inverter z I_k=k_sc·I_n; synchronous→sync source z
+  Z″; brak generatorów→graf bez źródeł SC = determinizm), integracyjny kanoniczny SC
+  (I″k z OZE > I″k bez).
 - Pomiar + aktualizacja golden/testów kanonicznych z intencją.
 - Bramki: pełna regresja backendu, ruff/black/mypy, guardy solver/determinizm.
 
@@ -133,6 +146,11 @@ producenta — ujęte w F-follow, nie blokuje F1.
   wpływ na zwarcie (I″k, dobór aparatury). Zero fizyki w UI — tekst kierunkowy.
 
 ### F-follow (dług jawny, wymaga danych/decyzji — nie blokuje F1/F2)
+- **Normalizacja gen_type GENSET/UPS (defekt walidacji):** `add_genset_nn`/`add_ups_nn`
+  zapisują `gen_type="GENSET"`/`"UPS"` (wielkie litery), których model `Generator` NIE
+  akceptuje → agregat/UPS dziś nie przechodzą walidacji ENM. Naprawa: agregat →
+  `gen_type="synchronous"` (+ tabliczka sr/x″d/cosφ), UPS → decyzja modelowa niżej. Po
+  normalizacji F1 automatycznie obejmie agregaty (synchronous).
 - **Katalog x″d/k_sc:** gensety bez wiązania katalogowego → rozbudowa katalogu agregatów
   (sr_mva, x″d, cosφ) i przekształtników (k_sc producenta) — opcja-max katalog-first.
 - **DFIG Typ 3 vs Typ 4:** utrwalanie typu farmy w `add_converter_source` → wybór
@@ -155,6 +173,16 @@ producenta — ujęte w F-follow, nie blokuje F1.
 | UX/IA | Gdzie inżynier to zobaczy? | Wynik SC (I″k) + osobny artefakt wkładu maszynowego (F2) + sekcja downstream kreatora (F3). |
 
 ---
+
+## 6a. Ustalenia uboczne (Zero-Debt „nigdy cicho")
+
+- **`solver_diff_guard` czerwony na HEAD (pre-existing, nie-CI, nie z G-SCM):**
+  `network_model/solvers/power_flow_newton_internal.py` ma nieaktualny hash odniesienia
+  w guardzie (legalna zmiana z wątku OLTC F2 — pętla LF OLTC, zadanie zamknięte —
+  nie odświeżyła baseline). Guard NIE jest wpięty w żaden workflow CI (dormant),
+  więc nie bramkuje. Odświeżenie baseline należy do właściciela zmiany solvera
+  (wątek OLTC/10x), nie do G-SCM. Zweryfikowane: identyczny FAIL na czystym HEAD po
+  odłożeniu zmian G-SCM. `trace_determinism_guard` w środowisku poetry = PASS.
 
 ## 7. Powiązania
 

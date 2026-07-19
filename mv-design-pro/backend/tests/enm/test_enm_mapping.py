@@ -6,6 +6,7 @@ from enm.models import (
     Bus,
     EnergyNetworkModel,
     ENMHeader,
+    Generator,
     Load,
     OverheadLine,
     Source,
@@ -365,3 +366,187 @@ class TestSolverRoundtrip:
         )
         assert result_2fg.ikss_a > 0
         assert result_2fg.short_circuit_type.value == "2F+G"
+
+
+class TestGeneratorShortCircuitSources:
+    """G-SCM (V12K-054): enm.generators become IEC 60909 SC sources in the graph.
+
+    Closes the forward-phantom where DER/machines placed by the designer
+    contributed only P/Q to the load flow and ZERO fault current to the SC.
+    """
+
+    def _enm_with_generator(self, **gen_fields) -> EnergyNetworkModel:
+        return _make_enm(
+            buses=[
+                Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15),
+                Bus(ref_id="bus_oze", name="Szyna OZE", voltage_kv=15),
+            ],
+            sources=[
+                Source(
+                    ref_id="src_grid",
+                    name="Sieć",
+                    bus_ref="bus_sn",
+                    model="short_circuit_power",
+                    sk3_mva=220,
+                    rx_ratio=0.1,
+                ),
+            ],
+            branches=[
+                OverheadLine(
+                    ref_id="ln_1",
+                    name="L1",
+                    from_bus_ref="bus_sn",
+                    to_bus_ref="bus_oze",
+                    length_km=2.0,
+                    r_ohm_per_km=0.25,
+                    x_ohm_per_km=0.32,
+                ),
+            ],
+            generators=[Generator(bus_ref="bus_oze", **gen_fields)],
+        )
+
+    def test_pv_inverter_becomes_bounded_current_source(self):
+        enm = self._enm_with_generator(
+            ref_id="pv1",
+            name="Blok PV",
+            p_mw=2.0,
+            gen_type="pv_inverter",
+            materialized_params={"un_kv": 15.0, "sn_mva": 2.5},
+        )
+        graph = map_enm_to_network_graph(enm)
+        inverters = graph.get_inverter_sources()
+        assert len(inverters) == 1
+        src = inverters[0]
+        assert src.id == "pv1"
+        # In = S/(√3·U); Ik = k_sc·In (default 1.1)
+        expected_in = 2.5 * 1.0e6 / (3.0**0.5 * 15.0 * 1.0e3)
+        assert src.in_rated_a == pytest.approx(expected_in, rel=1e-6)
+        assert src.ik_sc_a == pytest.approx(1.1 * expected_in, rel=1e-6)
+        # No rotating-machine sources for a converter.
+        assert len(graph.get_synchronous_machine_sources()) == 0
+
+    def test_synchronous_becomes_machine_source(self):
+        enm = self._enm_with_generator(
+            ref_id="gen1",
+            name="Agregat",
+            p_mw=1.0,
+            gen_type="synchronous",
+            materialized_params={"un_kv": 15.0, "sn_mva": 1.25},
+        )
+        graph = map_enm_to_network_graph(enm)
+        machines = graph.get_synchronous_machine_sources()
+        assert len(machines) == 1
+        assert machines[0].id == "gen1"
+        assert machines[0].sr_mva == pytest.approx(1.25)
+        assert machines[0].ur_kv == pytest.approx(15.0)
+        # Voltage-behind-Z″ has a positive internal impedance.
+        assert abs(machines[0].z_internal_ohm) > 0
+        assert len(graph.get_inverter_sources()) == 0
+
+    def test_dfig_becomes_asynchronous_source_with_wind_flag(self):
+        enm = self._enm_with_generator(
+            ref_id="fw1",
+            name="Farma FW (DFIG)",
+            p_mw=3.0,
+            gen_type="fw_dfig",
+            materialized_params={"un_kv": 15.0},
+        )
+        graph = map_enm_to_network_graph(enm)
+        machines = graph.get_asynchronous_machine_sources()
+        assert len(machines) == 1
+        assert machines[0].id == "fw1"
+        assert machines[0].wind_type_3 is True
+
+    def test_no_generators_no_sc_sources(self):
+        """Determinism guard: a machine-free network gets no SC sources at all."""
+        enm = _make_enm(
+            buses=[Bus(ref_id="b1", name="B1", voltage_kv=15)],
+            sources=[
+                Source(
+                    ref_id="s1",
+                    name="Grid",
+                    bus_ref="b1",
+                    model="short_circuit_power",
+                    sk3_mva=200,
+                )
+            ],
+        )
+        graph = map_enm_to_network_graph(enm)
+        assert graph.get_inverter_sources() == []
+        assert graph.get_synchronous_machine_sources() == []
+        assert graph.get_asynchronous_machine_sources() == []
+
+    def test_generator_without_nameplate_is_skipped(self):
+        """Zero fabrication: no rated power ⇒ no fabricated SC source."""
+        enm = self._enm_with_generator(
+            ref_id="pv0",
+            name="PV bez tabliczki",
+            p_mw=0.0,
+            gen_type="pv_inverter",
+            materialized_params={"un_kv": 15.0},
+        )
+        graph = map_enm_to_network_graph(enm)
+        assert graph.get_inverter_sources() == []
+
+    def test_converter_contributes_to_short_circuit(self):
+        """Integration: the converter raises the total fault current (ik_total)."""
+        from network_model.solvers.short_circuit_iec60909 import (
+            ShortCircuitIEC60909Solver,
+        )
+
+        def _ikss_at_oze(with_pv: bool) -> tuple[float, float]:
+            if with_pv:
+                enm = self._enm_with_generator(
+                    ref_id="pv1",
+                    name="Blok PV",
+                    p_mw=2.0,
+                    gen_type="pv_inverter",
+                    materialized_params={"un_kv": 15.0, "sn_mva": 2.5},
+                )
+            else:
+                enm = _make_enm(
+                    buses=[
+                        Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15),
+                        Bus(ref_id="bus_oze", name="Szyna OZE", voltage_kv=15),
+                    ],
+                    sources=[
+                        Source(
+                            ref_id="src_grid",
+                            name="Sieć",
+                            bus_ref="bus_sn",
+                            model="short_circuit_power",
+                            sk3_mva=220,
+                            rx_ratio=0.1,
+                        ),
+                    ],
+                    branches=[
+                        OverheadLine(
+                            ref_id="ln_1",
+                            name="L1",
+                            from_bus_ref="bus_sn",
+                            to_bus_ref="bus_oze",
+                            length_km=2.0,
+                            r_ohm_per_km=0.25,
+                            x_ohm_per_km=0.32,
+                        ),
+                    ],
+                )
+            graph = map_enm_to_network_graph(enm)
+            fault_node_id = next(
+                node.id for node in graph.nodes.values() if node.name == "Szyna OZE"
+            )
+            result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+                graph=graph,
+                fault_node_id=fault_node_id,
+                c_factor=1.1,
+                tk_s=1.0,
+            )
+            return result.ikss_a, result.ik_inverters_a
+
+        ikss_grid_only, inv_grid_only = _ikss_at_oze(with_pv=False)
+        ikss_with_pv, inv_with_pv = _ikss_at_oze(with_pv=True)
+
+        assert inv_grid_only == 0.0
+        assert inv_with_pv > 0.0
+        # Total fault current strictly increases with the converter's contribution.
+        assert ikss_with_pv > ikss_grid_only
