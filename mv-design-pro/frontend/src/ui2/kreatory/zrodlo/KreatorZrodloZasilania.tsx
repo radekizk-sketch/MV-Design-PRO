@@ -20,11 +20,12 @@ import {
   fetchMvApparatusTypes,
   fetchSourceSystemTypes,
   fetchSwitchgearFamilies,
+  fetchTransformerTypes,
   getCatalogErrorMessage,
 } from '../../../ui/catalog/api';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
-import type { MVApparatusType, SourceSystemCatalogType } from '../../../ui/catalog/types';
+import type { MVApparatusType, SourceSystemCatalogType, TransformerType } from '../../../ui/catalog/types';
 import { navigateToSld } from '../../../ui/navigation/routes';
 import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFirstRules';
 import { catalogRefFromInput, type GpzGroundingType } from '../../../ui/network-build/forms/catalogPayload';
@@ -137,6 +138,9 @@ export function KreatorZrodloZasilania() {
   const [bladRodzin, setBladRodzin] = useState<string | null>(null);
   const [szablonyPol, setSzablonyPol] = useState<CompleteMvBayTemplateSummary[]>([]);
 
+  const [transformatory, setTransformatory] = useState<TransformerType[]>([]);
+  const [bladTransformatorow, setBladTransformatorow] = useState<string | null>(null);
+
   const [podglad, setPodglad] = useState<GridSourcePreviewResponse | null>(null);
   const [statusPodgladu, setStatusPodgladu] = useState<StatusPobrania>('idle');
   const [bladPodgladu, setBladPodgladu] = useState<string | null>(null);
@@ -224,12 +228,52 @@ export function KreatorZrodloZasilania() {
     return () => { cancelled = true; };
   }, [dane.manufacturer_ref]);
 
+  // Katalog transformatorów 110/SN.
+  useEffect(() => {
+    let cancelled = false;
+    setBladTransformatorow(null);
+    fetchTransformerTypes()
+      .then((items) => {
+        if (cancelled) return;
+        setTransformatory(Array.isArray(items) ? items : []);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        setTransformatory([]);
+        setBladTransformatorow(getCatalogErrorMessage(error));
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   const filtrowaneAparaty = useMemo(
     () => aparaty.filter((item) => pasujeRodzajAparatu(item, dane.gpz_line_field_apparatus_kind)),
     [aparaty, dane.gpz_line_field_apparatus_kind],
   );
 
   const napiecieSn = dane.sn_voltage_kv ?? 0;
+  const filtrowaneTransformatory = useMemo(
+    () => transformatory.filter((t) =>
+      (!napiecieSn || Math.abs(t.voltage_lv_kv - napiecieSn) <= 6)
+      && t.voltage_hv_kv >= 60),
+    [transformatory, napiecieSn],
+  );
+  const opcjeTransformatorow = useMemo(
+    () => filtrowaneTransformatory.map((t) => ({
+      id: t.id,
+      etykieta: `${t.name} · ${t.rated_power_mva} MVA · ${t.voltage_hv_kv}/${t.voltage_lv_kv} kV · ${t.vector_group}`,
+    })),
+    [filtrowaneTransformatory],
+  );
+  const wybierzTransformator = useCallback((catalogRef: string | null) => {
+    const t = transformatory.find((item) => item.id === catalogRef) ?? null;
+    setDane((p) => ({
+      ...p,
+      transformer_catalog_ref: catalogRef,
+      transformer_sn_mva: t?.rated_power_mva ?? null,
+      transformer_uk_percent: t?.uk_percent ?? null,
+      transformer_vector_group: t?.vector_group ?? null,
+    }));
+  }, [transformatory]);
   const opcjeRodzin = useMemo(
     () => rodziny
       .filter((r) => !napiecieSn || r.voltage_levels.length === 0 || r.voltage_levels.some((v) => Math.abs(v - napiecieSn) <= 6))
@@ -549,6 +593,7 @@ export function KreatorZrodloZasilania() {
 
       {krok === 'transformatory' ? (
         <KreatorSekcja tytul={T.krokTransformatory} testid="mvd-kreator-zrodlo-transformatory">
+          <KreatorInfo>{T.transformatoryOpis}</KreatorInfo>
           <PoleWyboru
             etykieta={T.liczbaTrafo}
             wartosc={String(dane.transformer_count)}
@@ -557,7 +602,23 @@ export function KreatorZrodloZasilania() {
             blad={bladDlaPola('transformer_count')}
             testid="mvd-kreator-zrodlo-liczba-trafo"
           />
-          <KreatorInfo>{T.transformatoryOpis}</KreatorInfo>
+          <PoleKatalogu
+            etykieta={T.transformatorKatalog}
+            wartosc={dane.transformer_catalog_ref}
+            onZmiana={wybierzTransformator}
+            opcje={opcjeTransformatorow}
+            status={bladTransformatorow ? 'error' : 'ready'}
+            placeholder={T.transformatorPlaceholder}
+            komunikatBledu={bladTransformatorow ?? T.transformatorBlad}
+            testid="mvd-kreator-zrodlo-transformator-katalog"
+          />
+          {dane.transformer_catalog_ref ? (
+            <KreatorSiatka kolumny={3}>
+              <RzadWartosci etykieta={T.transformatorSn} wartosc={dane.transformer_sn_mva != null ? `${dane.transformer_sn_mva} MVA` : '—'} />
+              <RzadWartosci etykieta={T.transformatorUk} wartosc={dane.transformer_uk_percent != null ? `${dane.transformer_uk_percent} %` : '—'} />
+              <RzadWartosci etykieta={T.transformatorGrupa} wartosc={dane.transformer_vector_group ?? '—'} />
+            </KreatorSiatka>
+          ) : null}
         </KreatorSekcja>
       ) : null}
 

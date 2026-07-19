@@ -70,6 +70,11 @@ export interface GridSourceFormData {
   /** Rodzina rozdzielnicy producenta (Reference Engine) — kompozycja pól ze szablonów. */
   switchgear_family_ref: string | null;
   manufacturer_ref: string | null;
+  /** Transformator 110/SN z katalogu (opcja max K3) — mapuje na payload op. */
+  transformer_catalog_ref: string | null;
+  transformer_sn_mva: number | null;
+  transformer_uk_percent: number | null;
+  transformer_vector_group: string | null;
   /** UI-only: zakres wariantu ('simplified' = źródło SN, 'advanced' = pełny WN/SN). */
   complexity_mode: 'simplified' | 'advanced';
 }
@@ -114,6 +119,10 @@ export const DANE_DOMYSLNE: GridSourceFormData = {
   thermal_time_s: 1,
   switchgear_family_ref: null,
   manufacturer_ref: null,
+  transformer_catalog_ref: null,
+  transformer_sn_mva: null,
+  transformer_uk_percent: null,
+  transformer_vector_group: null,
   complexity_mode: 'simplified',
 };
 
@@ -430,6 +439,11 @@ export function zbudujPayloadZrodla(data: GridSourceFormData): Record<string, un
     // Rodzina rozdzielnicy producenta (Reference Engine) — spływa do SLD + oceny zgodności.
     switchgear_family_ref: data.switchgear_family_ref ?? undefined,
     manufacturer_ref: data.manufacturer_ref ?? undefined,
+    // Transformator 110/SN z katalogu (op czyta transformer_catalog_ref + parametry).
+    transformer_catalog_ref: data.transformer_catalog_ref ?? undefined,
+    transformer_sn_mva: data.transformer_catalog_ref ? data.transformer_sn_mva ?? undefined : undefined,
+    transformer_uk_percent: data.transformer_catalog_ref ? data.transformer_uk_percent ?? undefined : undefined,
+    transformer_vector_group: data.transformer_catalog_ref ? data.transformer_vector_group ?? undefined : undefined,
   };
 
   if (data.manual_mode && data.short_circuit_mode === 'IMPEDANCE') {

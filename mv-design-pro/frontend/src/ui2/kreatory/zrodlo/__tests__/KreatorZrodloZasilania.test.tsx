@@ -68,6 +68,10 @@ vi.mock('../../../../ui/catalog/api', () => ({
     Promise.resolve([
       { template_ref: 'ABB__SAFERING__LINE_OUT', manufacturer_ref: 'ABB', switchgear_family_ref: 'ABB__SAFERING', bay_kind: 'liniowe_odplywowe', bay_role: 'OUT', source_status: 'catalog_solution', source_refs: [], version: '1', hash: 'x', notes_pl: null },
     ]),
+  fetchTransformerTypes: () =>
+    Promise.resolve([
+      { id: 'TR-110-15-25', name: 'TR 110/15 25 MVA', rated_power_mva: 25, voltage_hv_kv: 110, voltage_lv_kv: 15, uk_percent: 12.5, pk_kw: 120, i0_percent: 0.2, p0_kw: 25, vector_group: 'YNd11', tap_min: -9, tap_max: 9 },
+    ]),
 }));
 
 vi.mock('../../../../ui/network-build/forms/gridSourcePreviewApi', () => ({

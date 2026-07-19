@@ -104,6 +104,20 @@ describe('zbudujPayloadZrodla — kontrakt operacji add_grid_source_sn', () => {
     expect(payload.switchgear_family_ref).toBeUndefined();
     const sekcje = payload.gpz_sections as Array<{ bays?: unknown }>;
     expect(sekcje[0].bays).toBeUndefined();
+    expect(payload.transformer_catalog_ref).toBeUndefined();
+  });
+
+  it('wybrany transformator 110/SN z katalogu trafia do payloadu (Sn/uk/grupa)', () => {
+    const payload = zbudujPayloadZrodla(daneKompletne({
+      transformer_catalog_ref: 'TR-110-15-25',
+      transformer_sn_mva: 25,
+      transformer_uk_percent: 12.5,
+      transformer_vector_group: 'YNd11',
+    }));
+    expect(payload.transformer_catalog_ref).toBe('TR-110-15-25');
+    expect(payload.transformer_sn_mva).toBe(25);
+    expect(payload.transformer_uk_percent).toBe(12.5);
+    expect(payload.transformer_vector_group).toBe('YNd11');
   });
 });
 

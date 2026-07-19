@@ -133,8 +133,14 @@ export const ZRODLO_STRINGS = {
 
   // Transformatory.
   transformatoryOpis:
-    'Liczba transformatorów 110/SN zasilających szyny GPZ. Szczegółowe typy (Sn, uk, grupa '
-    + 'połączeń, przełącznik zaczepów) dobierasz osobno akcją „Dodaj transformator SN/nN” z katalogu.',
+    'Liczba i typ transformatorów 110/SN zasilających szyny GPZ. Parametry (Sn, uk, grupa '
+    + 'połączeń) pochodzą z katalogu — wynik zwarciowy liczy backend.',
+  transformatorKatalog: 'Typ transformatora 110/SN z katalogu',
+  transformatorPlaceholder: '— transformator domyślny (dobór automatyczny) —',
+  transformatorBlad: 'Nie udało się pobrać katalogu transformatorów.',
+  transformatorSn: 'Moc znamionowa Sn',
+  transformatorUk: 'Napięcie zwarcia uk',
+  transformatorGrupa: 'Grupa połączeń',
 
   // Rozdzielnia.
   rozdzielniaOpis:
