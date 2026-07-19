@@ -1,39 +1,40 @@
 /** Teksty PL ekranu „Badania regulacji OLTC" (V12K-046, H2). Język inżynierski. */
 
 export const OLTC_BADANIA_STRINGS = {
-  tytul: 'Badania regulacji OLTC',
+  tytul: 'Regulacja napięcia zaczepami (OLTC)',
   cel:
-    'Analizy przełącznika zaczepów pod obciążeniem na aktywnym przypadku: wrażliwość na '
-    + 'pozycję, profil dobowy i dobór optymalny. Wszystkie wartości liczy backend (rozpływ).',
+    'Sprawdź, jak zaczepy transformatora wpływają na napięcie w sieci: jak napięcie zmienia się '
+    + 'przy różnych pozycjach, jak regulacja radzi sobie w ciągu doby i którą pozycję najlepiej '
+    + 'ustawić. Liczby wylicza program (rozpływ mocy) — tu tylko je oglądasz.',
 
-  rodzajBadania: 'Rodzaj badania',
+  rodzajBadania: 'Co chcesz sprawdzić',
   rodzaje: [
-    { id: 'sweep', etykieta: 'Wrażliwość — przemiatanie pozycji' },
-    { id: 'annual_profile', etykieta: 'Profil dobowy — szereg czasowy' },
-    { id: 'optimize', etykieta: 'Optymalizacja — dobór pozycji' },
+    { id: 'sweep', etykieta: 'Jak pozycja zaczepu zmienia napięcie' },
+    { id: 'annual_profile', etykieta: 'Jak regulacja pracuje w ciągu doby' },
+    { id: 'optimize', etykieta: 'Która pozycja jest najlepsza' },
   ],
 
-  celOptymalizacji: 'Cel optymalizacji',
+  celOptymalizacji: 'Do czego dążymy',
   cele: [
-    { id: 'minimize_losses', etykieta: 'Minimalizacja strat' },
-    { id: 'maintain_voltage', etykieta: 'Utrzymanie napięcia' },
-    { id: 'minimize_switching', etykieta: 'Minimalizacja przełączeń' },
+    { id: 'minimize_losses', etykieta: 'Najmniejsze straty' },
+    { id: 'maintain_voltage', etykieta: 'Trzymaj zadane napięcie' },
+    { id: 'minimize_switching', etykieta: 'Jak najmniej przełączeń' },
   ],
-  napiecieCel: 'Napięcie docelowe',
+  napiecieCel: 'Napięcie, które chcemy utrzymać',
 
   opisSweep:
-    'Rozpływ przy każdej stałej pozycji zaczepu (pełny zakres). Pokazuje napięcie sterowanej '
-    + 'szyny i straty w funkcji pozycji.',
+    'Program liczy sieć po kolei dla każdej pozycji zaczepu i pokazuje, jak zmienia się napięcie '
+    + 'wybranej szyny oraz straty. Widać, w którą stronę i o ile ruszać zaczepem.',
   opisProfil:
-    'Pętla regulacji OLTC uruchamiana dla kolejnych kroków profilu obciążeń. Pokazuje pozycję '
-    + 'i napięcie szyny w czasie oraz liczbę przełączeń.',
+    'Dla kolejnych pór doby (różne obciążenie) regulacja sama dobiera zaczep. Zobaczysz, jak '
+    + 'zmienia się pozycja i napięcie szyny oraz ile razy zaczep się przełączył.',
   opisOptim:
-    'Dobór pozycji zaczepu jako zmiennej decyzyjnej (enumeracja pełnego zakresu). Wskazuje '
-    + 'pozycję optymalną wg wybranego celu.',
+    'Program sprawdza wszystkie pozycje zaczepu i wskazuje najlepszą dla wybranego celu — '
+    + 'najmniejsze straty, trzymanie napięcia albo jak najmniej przełączeń.',
 
-  profilTytul: 'Kroki profilu obciążeń',
-  profilKrok: 'Etykieta',
-  profilSkala: 'Mnożnik obciążenia',
+  profilTytul: 'Pory doby i obciążenie',
+  profilKrok: 'Nazwa pory',
+  profilSkala: 'Obciążenie (1 = pełne)',
   profilDodaj: '+ Dodaj krok',
   profilUsun: 'Usuń',
 
@@ -42,7 +43,7 @@ export const OLTC_BADANIA_STRINGS = {
   brakZakresu: 'Wybierz aktywny przypadek obliczeniowy przed uruchomieniem badania.',
 
   // Wyniki.
-  sweepTytul: 'Wrażliwość na pozycję zaczepu',
+  sweepTytul: 'Napięcie i straty przy różnych pozycjach',
   sweepOsX: 'Pozycja zaczepu',
   sweepNapiecie: 'U sterowanej szyny',
   sweepStraty: 'Straty czynne',
@@ -53,7 +54,7 @@ export const OLTC_BADANIA_STRINGS = {
   sweepTabelaUmin: 'U min w sieci',
   sweepTabelaUmax: 'U max w sieci',
 
-  profilWykresTytul: 'Profil dobowy pozycji i napięcia',
+  profilWykresTytul: 'Pozycja zaczepu i napięcie w ciągu doby',
   profilOsX: 'Krok',
   profilPozycja: 'Pozycja zaczepu',
   profilNapiecie: 'U sterowanej szyny',
@@ -66,7 +67,7 @@ export const OLTC_BADANIA_STRINGS = {
   profilTabelaPrzel: 'Przełączenia',
   profilTabelaPasmo: 'W paśmie',
 
-  optimTytul: 'Dobór optymalny pozycji',
+  optimTytul: 'Najlepsza pozycja zaczepu',
   optimNajlepsza: 'Pozycja optymalna',
   optimStart: 'Pozycja startowa',
   optimPrzelaczenia: 'Wymagane przełączenia',
