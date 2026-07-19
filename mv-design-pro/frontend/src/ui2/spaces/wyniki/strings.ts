@@ -5,6 +5,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   grupaAnalizy: 'Analizy sieci',
   grupaOze: 'OZE i przyłączenia',
   zakladkaRozplyw: 'Rozpływ mocy',
+  zakladkaRegulacjaOltc: 'Regulacja OLTC',
   zakladkaZwarcia: 'Zwarcia',
   zakladkaDowod: 'Dowód obliczeń',
   zakladkaNcRfg: 'Zgodność NC RfG',

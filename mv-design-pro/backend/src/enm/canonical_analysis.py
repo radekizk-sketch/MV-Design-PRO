@@ -2317,6 +2317,17 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
             "applicability_status": raw_result.get("applicability_status"),
             "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", False),
         }
+        # V12K-045/046 (OLTC H2): surface the regulator trace and study results so
+        # the UI can read them from the run result set. Additive — each key is
+        # present only when the corresponding feature ran (determinism preserved).
+        for oltc_key in (
+            "oltc_control",
+            "oltc_sweep",
+            "oltc_annual_profile",
+            "oltc_optimization",
+        ):
+            if raw_result.get(oltc_key) is not None:
+                global_results[oltc_key] = raw_result[oltc_key]
     elif run.analysis_type == "phase_state_sn":
         phase_rows = build_phase_state_results(run).get("rows", [])
         for row in phase_rows:

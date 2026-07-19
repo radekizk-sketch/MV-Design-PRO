@@ -256,6 +256,22 @@ def test_oltc_annual_profile_study_surfaced_on_run():
     assert "total_switch_count" in prof
 
 
+def test_oltc_study_surfaced_in_execution_result_set():
+    from enm.canonical_analysis import build_execution_result_set, get_run
+
+    set_enm("oltc-rs", EnergyNetworkModel.model_validate(_payload("rs", with_oltc=True)))
+    run = execute_run(
+        create_run(case_id="oltc-rs", analysis_type="PF", options={"oltc_study": "sweep"}).id
+    )
+    assert run.status == "FINISHED", run.error_message
+    result_set = build_execution_result_set(get_run(run.id))
+    gr = result_set["global_results"]
+    # The regulator trace and the sweep study are both surfaced for the UI.
+    assert "oltc_control" in gr
+    assert "oltc_sweep" in gr
+    assert len(gr["oltc_sweep"]["points"]) == 19
+
+
 def test_pf_run_without_study_option_has_no_study_keys():
     set_enm("oltc-nostudy", EnergyNetworkModel.model_validate(_payload("nostudy", with_oltc=True)))
     run = execute_run(create_run(case_id="oltc-nostudy", analysis_type="PF").id)

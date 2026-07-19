@@ -17,6 +17,7 @@
 import { useState, type ReactNode } from 'react';
 
 import type { AdvancementMode } from '../../shell/modeModel';
+import { EkranBadanOltc } from '../../wyniki/oltc';
 import { EkranRozplywu } from '../../wyniki/rozplyw';
 import { EkranZwarc } from '../../wyniki/zwarcia';
 import { useAppStateStore } from '../../../ui/app-state';
@@ -46,6 +47,7 @@ import './wynikiWarsztat.css';
 
 const ZAKLADKI = [
   { id: 'rozplyw', etykieta: T.zakladkaRozplyw },
+  { id: 'regulacja-oltc', etykieta: T.zakladkaRegulacjaOltc },
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
   { id: 'dowod', etykieta: T.zakladkaDowod },
   { id: 'jakosc', etykieta: T.zakladkaJakosc },
@@ -71,7 +73,16 @@ const ZAKLADKI = [
 const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId[] }[] = [
   {
     etykieta: T.grupaAnalizy,
-    zakladki: ['rozplyw', 'zwarcia', 'dowod', 'jakosc', 'porownanie', 'odbior', 'pozostale'],
+    zakladki: [
+      'rozplyw',
+      'regulacja-oltc',
+      'zwarcia',
+      'dowod',
+      'jakosc',
+      'porownanie',
+      'odbior',
+      'pozostale',
+    ],
   },
   {
     etykieta: T.grupaOze,
@@ -190,6 +201,7 @@ export function WynikiWarsztat({
         {zakladka === 'rozplyw' && (
           <EkranRozplywu trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
+        {zakladka === 'regulacja-oltc' && <EkranBadanOltc />}
         {zakladka === 'zwarcia' && (
           <EkranZwarc
             trybZaawansowania={trybZaawansowania}

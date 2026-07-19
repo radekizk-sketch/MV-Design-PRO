@@ -269,10 +269,24 @@ createRun(caseId, { analysis_type: "load_flow", solver_input: {
 
 Bez `oltc_study` przebieg jest bez zmian (determinizm zachowany).
 
-### 8.2 H2 — ekran UI badań (następny krok prezentacji)
+### 8.2 H2 — ekran UI badań — ZREALIZOWANE (2026-07-19)
 
-Do zbudowania (opcja max, standard kreatora ui2): ekran „Badania regulacji OLTC"
-— picker badania + parametry + uruchomienie (kontrakt 8.1) + wykresy (Recharts):
-sweep (U sterowanej szyny / straty vs pozycja), profil roczny (pozycja i U vs
-krok czasowy), optymalizacja (tabela kandydatów, pozycja wybrana). Dane w 100%
-z backendu (zero fizyki w UI). Karta zadania: OLTC H2.
+Ekran „Badania regulacji OLTC" (`frontend/src/ui2/wyniki/oltc/`), zakładka
+„Regulacja OLTC" w warsztacie Wyniki:
+- picker badania (wrażliwość / profil dobowy / optymalizacja) + parametry
+  (cel + napięcie docelowe dla optymalizacji; edytor kroków profilu),
+- uruchomienie na aktywnym przypadku wg kontraktu 8.1 (`createRun` z
+  `solver_input:{oltc_study,...}` → `executeRun` → `getRunResults` →
+  `global_results.oltc_*`); ZERO fizyki w UI,
+- wizualizacje Recharts: sweep (U sterowanej szyny / straty vs pozycja, dwie
+  osie Y) + tabela; profil dobowy (pozycja step-after + U vs krok) + tabela +
+  liczniki przełączeń; optymalizacja (KPI pozycja optymalna/startowa/przełączenia
+  + tabela kandydatów z podświetleniem wybranej),
+- tokeny `--mvd-*` (oba motywy), uczciwe stany zerowe/ładowania/błędu.
+
+Backend: `build_execution_result_set` (PF) dopina `oltc_control`/`oltc_sweep`/
+`oltc_annual_profile`/`oltc_optimization` do `global_results` (addytywnie).
+
+Testy: `oltcBadaniaModel.test.ts` (7) + `EkranBadanOltc.test.tsx` (6, realna
+ścieżka: klik natywny → run API → render wyniku) + backend
+`test_oltc_analysis_integration` (result-set surfacing).

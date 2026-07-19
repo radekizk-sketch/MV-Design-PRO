@@ -1,0 +1,1 @@
+export { EkranBadanOltc } from './EkranBadanOltc';
