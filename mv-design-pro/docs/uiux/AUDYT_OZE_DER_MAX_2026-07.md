@@ -1,0 +1,129 @@
+# AUDYT + PROJEKT MAX: Źródła OZE/DER (add_converter_source) — G-OZE, do ostatniego klika
+
+**Status:** BINDING (audyt wielosoczewkowy + projekt od zera; dyrektywa właściciela
+2026-07-19: „przystąp z maksymalną opcją przebudowy, wielowarstwowo, myśl do ostatniego
+klika w całym flow, przeprojektuj maksymalnie od zera, bądź 100× lepszy, weź audyt,
+rozbuduj katalogi i wszystko inne, zadaj pytania czego brakuje i rozbuduj").
+**Rejestr:** V12K-051 (podrzędny wobec blueprintu V12K-048; faza G-OZE).
+**Zakres:** kanoniczna operacja `add_converter_source` (PV/BESS/FW) + pełny łańcuch DER.
+Bez edycji `ui/sld/**` (glif OZE = wątek SLD V12K-060).
+
+---
+
+## 0. Metoda — soczewki eksperckie
+
+Projektant OZE · przyłączeniowiec (NC RfG / PTPiREE) · zwarciowiec (machine SC) ·
+stabilność (RMS) · rozdzielnie/przyłącze (block transformer) · katalogi/Reference
+Engine · UX/IA. Każda soczewka pyta: „jakich pól potrzebuje mój solver/analiza i czy
+inżynier może je ustawić w UI?".
+
+---
+
+## 1. Łańcuch warstw DER (recon 2026-07-19, ścieżki realne)
+
+```
+add_converter_source (enm/domain_operations_v2.py)
+   → generator element (gen_type, sn_mva, pmax_mw, un_kv, control_mode,
+     q_min_mvar, q_max_mvar, catalog_binding, connection_variant,
+     blocking_transformer_ref, bus_nn_ref, operation_mode/BESS, pf_curve_ref)
+   → solver_input/audit2_der_payload.py  (build_der_audit2_payload: rozwija pf_curve
+     P(f) droop/deadband; bess_operation_mode_refs; block_transformer_catalog_ref)
+   → SOLVERY:
+       • power_flow_inverter.py         (tryby regulacji Q, Q(U), cosφ)
+       • ncrfg_ptpiree/engine.py        (has_hvrt_curve, has_pf_droop, has_qu_curve,
+                                         droop_percent, island/black_start/POD)
+       • stability_rms/engine.py        (droop, FRT/HVRT, ride-through)
+       • short_circuit machine SC       (wkład zwarciowy falownika)
+       • v126_academic.py               (akademicki)
+   → ANALIZY: grid_strength, reactive_adequacy
+   → ZGODNOŚĆ: NC RfG / PTPiREE (werdykty pass/fail/required)
+```
+
+Katalogi DER: CONVERTER_PV/BESS/WIND (`ZRODLO_NN_PV`, `ZRODLO_NN_BESS`, wind inline
+w `mv_converter_catalog.get_wind_types`), krzywe/konfiguracje w `audit2_catalogs.py`
+(pf_curve/qu_curve/FRT), block-transformers (`/api/catalog/block-transformers`).
+
+---
+
+## 2. Kontrakt pól — co op utrwala vs co solver czyta vs co UI legacy pokazuje
+
+| Pole | Op utrwala? | Konsument | Legacy UI (`AddConverterSourceForm`) |
+|------|-------------|-----------|--------------------------------------|
+| source_technology (PV/BESS/FW) | ✅ | wszystkie | ✅ |
+| connection_variant (nn_side/block_transformer) | ✅ (+aliasy) | topologia, block tr | ✅ |
+| blocking_transformer_ref (auto-resolve) | ✅ | topologia | ✅ (picker) |
+| catalog_binding (falownik) | ✅ | materializacja | ✅ |
+| quantity | ✅ | agregacja | ✅ |
+| un_kv, pmax_mw, sn_mva | ✅ (z katalogu) | PF, SC, grid_strength | odczyt |
+| **control_mode (Q(U)/cosφ/fixedQ)** | ✅ (payload/katalog) | power_flow_inverter | **✗ BRAK — phantom-inverse** |
+| **q_min_mvar / q_max_mvar** | ✅ (payload/katalog) | inverter PF, reactive_adequacy | **✗ BRAK** |
+| **power_setpoint_mw (FW/BESS)** | ✅ | PF | **✗ BRAK** |
+| **bess_mode / operation_mode** | ✅ | PF/energia | częściowo |
+| **pf_curve_ref → P(f) droop/deadband** | spec DER (ref) | ncrfg, stability_rms, IEC 60255 | **✗ BRAK** |
+| **has_qu_curve (Q(U))** | konfiguracja krzywej | ncrfg | **✗ BRAK** |
+| **has_hvrt_curve / FRT (ride-through)** | konfiguracja krzywej | ncrfg, stability_rms | **✗ BRAK** |
+| **droop_percent** | spec/krzywa | ncrfg (has_pf_droop) | **✗ BRAK** |
+| island/black_start/POD required | spec zgodności | ncrfg | **✗ BRAK** |
+
+---
+
+## 3. Rejestr braków (odpowiedź na „czego brakuje")
+
+- **GAP-OZE-1 (phantom-inverse, natychmiastowe):** `add_converter_source` UTRWALA
+  `control_mode`, `q_min_mvar`, `q_max_mvar`, `power_setpoint_mw`, `bess_mode`, ale
+  legacy UI ich NIE eksponuje — inżynier nie ustawi trybu regulacji falownika ani
+  zdolności Q, choć solver PF falownika je czyta. Kreator MAX musi je wystawić
+  (mapowanie 1:1, zero fabrykacji). **Bez rozbudowy backendu.**
+- **GAP-OZE-2 (krzywe regulacji, rozbudowa spec DER):** P(f) droop (`pf_curve_ref`),
+  Q(U) (`has_qu_curve`), FRT/HVRT (`has_hvrt_curve`) są czytane przez NC RfG / RMS /
+  inverter, ale przez warstwę krzywych/konfiguracji (`audit2_der_payload`,
+  `audit2_catalogs`). Trzeba ustalić, czy `add_converter_source` utrwala `pf_curve_ref`
+  na generatorze (recon: pole obecne w DER spec) i wystawić picker krzywych; jeśli op
+  nie utrwala — addytywne rozszerzenie op (osobny, przetestowany krok), potem UI.
+- **GAP-OZE-3 (zgodność NC RfG, wielowarstwowe):** flagi wymagań (island_operation,
+  black_start, POD) sterują werdyktami NC RfG. Kreator powinien pozwolić je zadeklarować
+  (mapują na `NcRfgPtpireeModuleInput`), aby ekran zgodności E-28 dostał realne wejścia.
+- **GAP-OZE-4 (katalog):** zweryfikować namespace krzywych P(f)/Q(U)/FRT i block-trafo;
+  uzupełnić Reference Engine, jeśli picker nie ma pokrycia (reużycie, nie duplikacja).
+
+---
+
+## 4. Projekt kreatora MAX (`KreatorZrodlaOze`, kreatory/rama, fazowo)
+
+Ekran prowadzący (cel jednym zdaniem · tor pracy · uczciwy stan zerowy · jawny następny
+krok · język inżynierski). Kroki:
+
+1. **Technologia i przyłączenie** — PV/BESS/FW; wariant `nn_side` vs `block_transformer`
+   (+ picker transformatora blokowego, auto-resolve gdy 1 TR na stacji). Uczciwy stan
+   zerowy: brak szyny/stacji.
+2. **Katalog falownika + moc** — picker (ZRODLO_NN_PV/BESS/wind), liczba jednostek,
+   moc zagregowana; odczyt un_kv/pmax/sn z katalogu.
+3. **Regulacja (GAP-OZE-1)** — control_mode: `Q(U)` / `cosφ(P)` / stała Q; zakres
+   Q (q_min/q_max_mvar), power_setpoint (FW/BESS), bess_mode. Podgląd zdolności Q z
+   backendu (nowy `/api/solver/*` albo z katalogu — bez fizyki w UI).
+4. **NC RfG / ride-through (GAP-OZE-2/3)** — P(f) droop (pf_curve_ref/droop_percent),
+   Q(U) on/off, FRT/HVRT on/off, wymagania (island/black_start/POD). Mapuje na spec DER
+   + `NcRfgPtpireeModuleInput`. (Wymaga potwierdzenia utrwalania na op → jeśli nie,
+   rozszerzenie op jako pierwszy krok fazy.)
+5. **Podsumowanie + downstream** — sekcja „co to uruchamia": machine SC (wkład
+   zwarciowy), inverter PF (tryb Q), NC RfG/PTPiREE (werdykty E-28), grid_strength,
+   reactive_adequacy.
+
+Zapis = `add_converter_source` (payload zgodny 1:1), retire `AddConverterSourceForm`
+po podmianie. Determinizm/kontrakty FROZEN — pola addytywne.
+
+---
+
+## 5. Kolejność wdrożenia (fazy G-OZE) + DoD
+
+1. **G-OZE-A** — kreator z krokami 1–3 (technologia/przyłącze/katalog/moc + regulacja
+   GAP-OZE-1). Mapuje wyłącznie na pola, które op JUŻ utrwala (zero fabrykacji).
+   Retire legacy, testy realnej ścieżki, regresje, zrzut. ⇐ pierwszy build.
+2. **G-OZE-B** — rozszerzenie op o `pf_curve_ref` / flagi NC RfG (jeśli recon potwierdzi
+   brak utrwalania), krok 4 kreatora, wpięcie w NC RfG (E-28). Backend + pełne regresje.
+3. **G-OZE-C** — katalog krzywych P(f)/Q(U)/FRT (rozbudowa Reference Engine), pickery.
+
+**DoD każdej fazy:** mapowanie 1:1 na realne pola (zero phantomów), katalog-first,
+podgląd z backendu gdzie dostępny, sekcja downstream, uczciwe stany zerowe, retire
+legacy, testy natywnej ścieżki, guardy/lint/type-check, pełne regresje obu stosów,
+determinizm, zrzut żywej aplikacji.

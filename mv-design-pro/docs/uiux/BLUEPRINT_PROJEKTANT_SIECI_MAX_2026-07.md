@@ -68,7 +68,7 @@ Legenda statusu dostawcy UI: ✅ kreator ui2 · ▲ legacy = do przebudowy · �
 | `start_branch_segment_sn` | KABEL_SN/LINIA_SN | cable ΔU + Iz (R1) | PF, SC, voltage_profile, SLD | ▲ `StartBranchForm` | G-ODG |
 | `add_nn_outgoing_field` | KABEL_NN, APARAT_NN | cable ΔU + Iz (R1) | PF nN, losses, ΔU, SLD | ▲ `AddNnOutgoingFieldForm` | G-NN |
 | `add_nn_load` | OBCIAZENIE (opc.) | prąd/S z P·cosφ (R1) | PF, losses, energy, arc_flash, boundary | ✅ `KreatorOdbioruNn` | done (G-NN) |
-| `add_converter_source` | CONVERTER_PV/BESS/WIND_NN, block-trafo | — | machine SC, inverter PF, NC RfG/FRT, grid_strength, SSCI | ▲ `AddConverterSourceForm` | G-OZE |
+| `add_converter_source` | CONVERTER_PV/BESS/WIND_NN, block-trafo | — | machine SC, inverter PF, NC RfG/FRT, grid_strength, SSCI | ▲ `AddConverterSourceForm` → audyt V12K-051 | **G-OZE (audyt gotowy)** |
 | `add_genset_nn` | (genset) | — | machine SC, PF, RMS stability | ▲ `AddDispatchableSourceForm` | G-NN |
 | `add_ups_nn` | (UPS) | — | PF, ciągłość zasilania | ▲ `AddDispatchableSourceForm` | G-NN |
 | `add_ct` | CT_VERSION | — | zabezpieczenia (przełożenie), TCC | ▲ `AddMeasurementForm` | G-POM |
