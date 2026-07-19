@@ -45,6 +45,10 @@ from network_model.solvers.power_flow_gauss_seidel import (
     GaussSeidelOptions,
     PowerFlowGaussSeidelSolver,
 )
+from network_model.solvers.power_flow_inverter import (
+    InverterControl,
+    inverter_control_from_params,
+)
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
 from network_model.solvers.power_flow_oltc import solve_with_oltc
 from network_model.solvers.power_flow_result import build_power_flow_result_v1
@@ -1240,6 +1244,66 @@ def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) 
     return specs
 
 
+def _oze_opt_float(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value)
+    return None
+
+
+def _build_converter_control_by_node(
+    snapshot: dict[str, Any], base_mva: float
+) -> dict[str, InverterControl]:
+    """G-OZE-PF (V12K-051): mapuje węzły OZE → InverterControl dla kanonicznego PF.
+
+    Domyka forward-phantom: dotąd kanoniczny run budował PQSpec bez inverter_control,
+    więc wybór trybu regulacji (Q(U)/cosφ) nie wpływał na rozpływ mocy. Reużycie
+    `inverter_control_from_params` (most języka Polish→InverterMode już w mapperze).
+
+    Determinizm: dołączamy WYŁĄCZNIE realnie aktywne regulacje (cosφ≠1 albo nachylenie
+    Q(U)≠0). Źródła pasywne / unity / bez nowych pól → brak wpisu → PQSpec bez
+    inverter_control → wynik bajt-w-bajt jak dotąd (istniejące snapshoty nietknięte).
+    """
+    out: dict[str, InverterControl] = {}
+    for gen in snapshot.get("generators") or []:
+        if not isinstance(gen, dict):
+            continue
+        bus_ref = gen.get("bus_ref")
+        if not isinstance(bus_ref, str) or not bus_ref.strip():
+            continue
+        meta = gen.get("meta") if isinstance(gen.get("meta"), dict) else {}
+        mode = str(meta.get("control_mode") or gen.get("control_mode") or "").upper()
+        cosphi = _oze_opt_float(meta.get("cos_phi"))
+        qu_slope = _oze_opt_float(meta.get("qu_slope_pu_per_pu"))
+        active = False
+        if mode in ("STALY_COS_PHI", "COSPHI_CONST", "COSPHI_P", "COSPHI(P)"):
+            active = cosphi is not None and abs(cosphi - 1.0) > 1e-9
+        elif mode in ("Q_OD_U", "Q_U", "Q(U)"):
+            active = qu_slope is not None and abs(qu_slope) > 1e-12
+        if not active:
+            continue
+        params: dict[str, Any] = {"control_mode": mode}
+        if cosphi is not None:
+            params["cosphi"] = cosphi
+        if qu_slope is not None:
+            params["qu_slope_pu_per_pu"] = qu_slope
+        qmin = _oze_opt_float(meta.get("q_min_mvar"))
+        qmax = _oze_opt_float(meta.get("q_max_mvar"))
+        if qmin is not None:
+            params["qmin_mvar"] = qmin
+        if qmax is not None:
+            params["qmax_mvar"] = qmax
+        pmax = _oze_opt_float(gen.get("p_mw"))
+        if pmax is not None:
+            params["pmax_mw"] = abs(pmax)
+        sn = _oze_opt_float(gen.get("sn_mva")) or _oze_opt_float(meta.get("sn_mva"))
+        control = inverter_control_from_params(params, base_mva, sn)
+        if control is not None:
+            out[_graph_id_from_ref(bus_ref.strip())] = control
+    return out
+
+
 def _execute_power_flow(run: CanonicalRun) -> None:
     graph = _load_graph(run)
     graph_element_context = _build_snapshot_graph_element_context(run.snapshot or {})
@@ -1253,9 +1317,15 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         raise ValueError("Brak wezla bilansujacego SLACK w kanonicznym snapshotcie ENM")
     slack_node_id = slack_nodes[0]
 
+    # G-OZE-PF (V12K-051): regulacja falownika OZE dla kanonicznego PF (Q(U)/cosφ).
+    # base_mva potrzebne przed budową PQSpec, aby przeliczyć limity/nachylenie na pu.
+    base_mva = float(run.options.get("base_mva", 100.0))
+    converter_control_by_node = _build_converter_control_by_node(run.snapshot or {}, base_mva)
+
     pq_specs = [
         PQSpec(
             node_id=node_id,
+            inverter_control=converter_control_by_node.get(node_id),
             # F9.8 WHITE BOX: `node.active_power`/`node.reactive_power` (built by
             # `enm.mapping`) use the GENERATION convention (positive = injection
             # into the bus; a pure load is negative — see mapping.py, pinned by
@@ -1281,7 +1351,7 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         max_iter=int(run.options.get("max_iterations", run.options.get("max_iter", 30))),
         trace_level=str(run.options.get("trace_level", "full")),
     )
-    base_mva = float(run.options.get("base_mva", 100.0))
+    # base_mva obliczone wyżej (przed PQSpec — potrzebne dla regulacji falownika OZE).
     # Phase 41: opt-in integracja audit2 z istniejacym pipeline'em.
     # Jesli run.options zawiera audit2_project_id + audit2_station_id, ladujemy
     # config z DB i aplikujemy adjustments do graph PRZED solverem.

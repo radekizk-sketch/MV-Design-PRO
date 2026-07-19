@@ -153,6 +153,10 @@ po podmianie. Determinizm/kontrakty FROZEN — pola addytywne.
 
 ---
 
+> **STATUS 2026-07-19:** ✅ **G-OZE-PF WDROŻONE** — most języka Polish→InverterMode
+> + kanoniczne wpięcie `inverter_control` na PQSpec (aktywne tylko dla cosφ≠1 / Q(U)
+> slope≠0; determinizm zachowany, regresja backendu 6315/0). Pozostają G-OZE-B/C/UI.
+
 ## 5. Kolejność wdrożenia (fazy G-OZE) — SKORYGOWANA po audycie + DoD
 
 Priorytet wg realnej wartości inżynierskiej (nie kosmetyki). Legacy `AddConverterSourceForm`
