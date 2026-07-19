@@ -111,6 +111,18 @@ Legenda statusu dostawcy UI: ✅ kreator ui2 · ▲ legacy = do przebudowy · �
   nie podano jawnie (dobór mocy biernej odbioru; input-prep w domenie, nie fizyka sieci);
   kreator ui2 `KreatorOdbioruNn` z podglądem prądu (R1) i sekcją downstream.
 
+### GAP-6 — Wkład zwarciowy maszyn/DER: łańcuch zbudowany, brak mostu (forward-phantom, bezpieczeństwo)
+- **Stan:** kanoniczny bieg zwarciowy NIE uwzględnia wkładu prądu zwarciowego od
+  `enm.generators` (gensety §6.3, PV/BESS/FW §6.7, UPS) — I″k/ip/Ith zaniżone o cały
+  udział maszynowy/DER. Solver, Y-bus (bocznik maszyny + superpozycja falownika),
+  modele źródeł i analiza μ/q (§6.6) istnieją i są testowane na sieciach referencyjnych;
+  brak wyłącznie mostu `map_enm_to_network_graph` (`enm/mapping.py` nie buduje
+  `Synchronous/Asynchronous/InverterSource` z `enm.generators`).
+- **Uzupełnienie:** program **G-SCM** (`docs/plan/PLAN_SC_MASZYNY_DER_2026-07.md`, V12K-054):
+  F1 most mapowania, F2 wpięcie interpretacji w kanoniczny wynik, F3 sekcja downstream
+  w kreatorach; F-follow katalog x″d/k_sc + DFIG Typ3/4 + UPS. Domyka łańcuch „machine SC"
+  z §2 macierzy dla źródeł DER (po G-OZE-PF, które domknęło regulację PF).
+
 ### GAP-3 — 16 operacji budowy na legacy formularzach
 - Przebudowa na kreatory ui2 wg kontraktu §4; retire legacy po podmianie.
 
