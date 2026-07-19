@@ -151,6 +151,15 @@ class TestRegulationLoop:
                 delta = abs(decision["position_after"] - decision["position_before"])
                 assert delta <= 1
 
+    def test_switch_count_matches_position_travel(self):
+        pf_input = _build_input(_oltc())
+        _solution, trace = solve_with_oltc(pf_input, _solve_once)
+        final = trace["final_positions"]["TR1"]
+        initial = trace["initial_positions"]["TR1"]
+        # Monotone descent -> switch count equals the position travel.
+        assert trace["switch_counts"]["TR1"] == abs(final - initial)
+        assert trace["total_switch_count"] == trace["switch_counts"]["TR1"]
+
     def test_deterministic(self):
         s1, t1 = solve_with_oltc(_build_input(_oltc()), _solve_once)
         s2, t2 = solve_with_oltc(_build_input(_oltc()), _solve_once)

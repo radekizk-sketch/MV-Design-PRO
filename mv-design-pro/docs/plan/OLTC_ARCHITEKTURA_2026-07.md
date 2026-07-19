@@ -186,3 +186,43 @@ katalogu `TapChangerItem` przez picker (reużycie).
 
 Każda faza: pełna regresja właściwej warstwy, type-check/lint, właściwe guardy,
 determinizm/hash, commit z opisem, push na `claude/power-network-design-ui-ir91mv`.
+
+---
+
+## 7. Status realizacji (2026-07-19)
+
+**Zrealizowane i zweryfikowane (regresje obu stosów zielone):**
+
+- **F0** — ten dokument + rejestr V12K-045.
+- **F1** — kanoniczny `TapChanger` (domena + ENM), helper przekładni efektywnej,
+  fabryka z katalogu, projekcja ENM→domena. 17 testów.
+- **F2** — pętla OLTC w LF (jeden zaczep/krok, deterministyczna, WHITE BOX),
+  addytywne pola wyniku (`white_box_trace`/`raw_result.oltc_control`),
+  liczniki przełączeń (`switch_counts`/`total_switch_count`). 10 testów.
+- **F3** — kreator GPZ (krok Transformatory): pełny zestaw kontrolek OLTC/DETC
+  mapujących 1:1 na backend (`_build_gpz_tap_changer`), API katalogu
+  przełączników, walidacja §12. Testy backend + frontend (model + realna ścieżka).
+- **F4 (część automatyczna)** — konsumpcja przez warstwę analizy:
+  - test integracyjny na poziomie `canonical_analysis` (ENM→mapping→pętla→wynik).
+  - **B/D/G/O**: analiza napięć, scenariusze (własny stan OLTC per run: pozycje
+    końcowe + liczniki przełączeń), współpraca z OZE (Q(U)/cosφ(P) współzbieżne
+    w tej samej pętli LF), White Box — spełnione, bo konsumenci czytają wynik LF
+    po zbieżności pętli OLTC.
+  - **C (IEC 60909)**: K_T znamionowe (tap-niezależne, §3.3.3) — bez zmian w
+    solverze SC (WATCHED), brak podwójnego liczenia.
+  - **M (API)**: `oltc_control` w `raw_result`/`power_flow_trace` spływa przez API.
+
+**Do zlecenia — funkcje dedykowane wykraczające poza fundament** (rejestr długu,
+Zero-Debt §4 — nie ukryte, z przyczyną i planem):
+
+| Sekcja | Zakres | Przyczyna odłożenia | Plan |
+|--------|--------|---------------------|------|
+| §8 (E) | Profile roczne per krok czasowy (czas/pozycja/V/licznik/czas poza deadband, wykres pozycja vs czas) | Wymaga dedykowanej analizy szeregów czasowych (iteracja LF po profilu obciążeń) — osobny moduł | Nowa analiza `oltc_annual_profile` czytająca profil obciążeń + pętlę OLTC per krok |
+| §9 (F) | Wrażliwość: przemiatanie OLTC (min/neutral/max/pełny zakres) | Feature analizy wrażliwości (sweep pozycji) | Rozszerzenie modułu sensitivity o zmienną `tap_position` |
+| §17 (N) | Optymalizacja: OLTC jako zmienna decyzyjna (min. strat / utrzymanie V / min. przełączeń) | Wymaga solvera optymalizacyjnego (brak w repo) | Nowy moduł optymalizacji z OLTC jako zmienną całkowitoliczbową |
+| §13 (J) | SLD: znacznik OLTC/pozycja/AUTO-MAN/setpoint, odświeżenie po obliczeniu | Pliki `ui/sld/**` należą do wątku SLD (V12K-060) — kolizja plików zabroniona | Karta do wątku SLD: glif OLTC czytający `tap_changer` + `oltc_control` |
+| §14 (K) | Raporty PDF/HTML/Excel: pozycje, ślad regulatora, V przed/po | Rozszerzenie generatora raportu PF (moduł raportowy) | Sekcja OLTC w proof/raporcie PF czytająca `oltc_control` (READ-ONLY) |
+
+Dane dla wszystkich powyższych są już produkowane przez pętlę OLTC
+(`oltc_control`: pozycje początkowe/końcowe, liczniki przełączeń, ślad decyzji,
+V przed/po per iteracja) — pozostaje warstwa prezentacji/orkiestracji.

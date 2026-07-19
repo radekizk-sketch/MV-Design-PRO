@@ -198,6 +198,20 @@ def solve_with_oltc(
 
         solution = solve_once(pf_input)
 
+    # Switch count per regulator = number of tap moves across the loop (owner §7/§8).
+    switch_counts: dict[str, int] = {reg.id: 0 for reg in regulators}
+    for it in trace["iterations"]:
+        for decision in it["decisions"]:
+            if decision["reason"] in ("step_up", "step_down"):
+                switch_counts[decision["branch_id"]] = (
+                    switch_counts.get(decision["branch_id"], 0) + 1
+                )
+
     trace["iterations_count"] = len(trace["iterations"])
+    trace["switch_counts"] = switch_counts
+    trace["total_switch_count"] = sum(switch_counts.values())
     trace["final_positions"] = {reg.id: reg.tap_changer.current_position for reg in regulators}
+    trace["initial_positions"] = {
+        entry["branch_id"]: entry["initial_position"] for entry in trace["regulators"]
+    }
     return solution, trace
