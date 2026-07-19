@@ -206,6 +206,15 @@ w przeglądarce wyników — dopiero z konsumentem.
   F2 dołącza rozbicie μ/q/i_b dla agregatów. Test realnej ścieżki: `test_genset_ups_sc`
   (operacja → walidacja ENM → graf → źródło SC). Pozostaje: katalog x″d/k_sc (niżej),
   dedykowana klasyfikacja UPS w raportach (jeśli właściciel zechce inną semantykę).
+- **Ostatni klik agregatu — POTWIERDZONE (V12K-055):** `GensetModal.tsx` (wątek UI/UX,
+  `ui/topology/modals/`) już zbiera `power_factor` + `rated_voltage_kv` i wysyła w
+  `genset_spec`; F-follow-1 domknął phantom (backend je teraz KONSUMUJE do tabliczki SC).
+  Łańcuch agregatu kompletny: GensetModal → add_genset_nn → SynchronousMachineSource →
+  I″k + rozbicie μ/q/i_b w pakiecie SC3F.
+- **Ostatni klik pakietu SC3F (F2) — wątek SLD:** endpoint `POST /api/proof/sc3f/pack`
+  gotowy; kafelek SC3F istnieje w `ui/sld/v2/proof/ProofPacksPanel.tsx` (wątek V12K-060).
+  Wpięcie callbacku pobierania = `docs/uiux/KARTA_KOORDYNACJI_SLD_03_SC3F_POBIERANIE.md`
+  (granica programu — wątek UI/UX nie edytuje `ui/sld/**`).
 - **Katalog x″d/k_sc:** gensety bez wiązania katalogowego → rozbudowa katalogu agregatów
   (sr_mva, x″d, cosφ) i przekształtników (k_sc producenta) — opcja-max katalog-first.
 - **DFIG Typ 3 vs Typ 4:** utrwalanie typu farmy w `add_converter_source` → wybór
