@@ -248,6 +248,10 @@ def _gen_rated_apparent_mva(
     """
     sn = mp.get("sn_mva")
     if isinstance(sn, int | float) and sn > 0:
+        # CONVENTION: materialized ``sn_mva`` is PER-UNIT (catalog nameplate) and the
+        # installation total is sn_mva × parallel count — matching how ``p_mw`` is
+        # stored (per-unit power × quantity). A producer that ever stores a TOTAL
+        # ``sn_mva`` would double-count here; keep sn_mva per-unit at the source.
         return float(sn) * _gen_quantity(gen)
     p = abs(gen.p_mw)
     if p <= 0:
@@ -342,6 +346,10 @@ def _add_generator_sc_sources(
                 sync_kwargs["xd_subtransient_pu"] = float(xd)
             graph.add_synchronous_machine_source(SynchronousMachineSource(**sync_kwargs))
         elif gen_type in _ASYNC_GEN_TYPES:
+            # Rated mechanical power P_rM is approximated by the electrical |p_mw|
+            # (they differ by η·cosφ). Acceptable for F1 with IEC-typical model
+            # defaults; a dedicated catalog nameplate (P_rM, I_LR, pole pairs) is
+            # F-follow. AsynchronousMachineSource derives S_rM = P_rM/(η·cosφ).
             pr_mw = abs(gen.p_mw)
             if pr_mw <= 0:
                 continue

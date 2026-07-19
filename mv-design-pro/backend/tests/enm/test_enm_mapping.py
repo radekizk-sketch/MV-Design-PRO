@@ -550,3 +550,30 @@ class TestGeneratorShortCircuitSources:
         assert inv_with_pv > 0.0
         # Total fault current strictly increases with the converter's contribution.
         assert ikss_with_pv > ikss_grid_only
+
+    def test_converter_graph_snapshot_is_deterministic(self):
+        """Hardening (review #1): the SC sources are now in the graph, so consumers
+        beyond the SC solver (here the snapshot serializer) see the ENM-derived
+        converter. Verify it serializes and fingerprints deterministically."""
+        from network_model.core.snapshot import create_network_snapshot
+
+        def _snapshot():
+            enm = self._enm_with_generator(
+                ref_id="pv1",
+                name="Blok PV",
+                p_mw=2.0,
+                gen_type="pv_inverter",
+                materialized_params={"un_kv": 15.0, "sn_mva": 2.5},
+            )
+            graph = map_enm_to_network_graph(enm)
+            graph.network_model_id = "nm-test"
+            return create_network_snapshot(
+                graph, snapshot_id="s1", created_at="2026-01-01T00:00:00Z"
+            )
+
+        snap_a = _snapshot()
+        snap_b = _snapshot()
+        # The ENM-derived inverter source reaches the snapshot consumer.
+        assert any(s.id == "pv1" for s in snap_a.graph.get_inverter_sources())
+        # Deterministic fingerprint: same input → identical hash.
+        assert snap_a.meta.fingerprint == snap_b.meta.fingerprint

@@ -101,6 +101,20 @@ producenta — ujęte w F-follow, nie blokuje F1.
    `ShortCircuitResult`. Pola wyniku (`ik_inverters_a` itd.) już istnieją.
 4. **PF nietknięty:** bocznik maszyn wpinany wyłącznie w kontekście SC
    (`ground_slack_buses=True`, `ybus.py:130-136`) — rozpływ mocy bez zmian.
+5. **Rzeczywisty zakres oddziaływania (ustalenie z code review #1):** F1 zapełnia
+   `graph.inverter_sources`/`*_machine_sources` w `map_enm_to_network_graph`
+   bezwarunkowo, więc czytają je NIE tylko solver SC, ale też wtórni konsumenci
+   grafu: `solver_input/builder.py`, `validation/validator.py`,
+   `catalog/readiness_checker.py`, `network_model/sld_projection.py`,
+   `core/snapshot.py` (serializacja+fingerprint), `diagnostics/rules.py`.
+   Zweryfikowano, że ścieżka kanoniczna pozostaje bezpieczna: PF nie czyta tych
+   kolekcji; kanoniczny `enm_hash` liczony z ENM snapshotu (nie z grafu);
+   `sld_projection` nie jest wołany grafem z `map_enm` w biegu kanonicznym.
+   Wszyscy konsumenci obsługują źródła poprawnie (pisani dla grafów substratu,
+   które je mają) — zmiana jest pożądana (konwerter widoczny w walidacji/
+   diagnostyce), a pełna regresja 6321/0 jest zielona. Test twardnienia:
+   `test_converter_graph_snapshot_is_deterministic` (serializacja + determinizm
+   fingerprintu dla sieci z konwerterem).
 
 **Pomiar churnu (do wykonania w F1):** kandydaci — `tests/test_canonical_analysis_api.py`,
 `tests/enm/test_canonical_analysis_draft_isolation.py`, `tests/test_fault_scenarios_run_integration.py`,
