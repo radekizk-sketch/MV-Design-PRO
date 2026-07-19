@@ -196,11 +196,16 @@ w przeglądarce wyników — dopiero z konsumentem.
   wpływ na zwarcie (I″k, dobór aparatury). Zero fizyki w UI — tekst kierunkowy.
 
 ### F-follow (dług jawny, wymaga danych/decyzji — nie blokuje F1/F2)
-- **Normalizacja gen_type GENSET/UPS (defekt walidacji):** `add_genset_nn`/`add_ups_nn`
-  zapisują `gen_type="GENSET"`/`"UPS"` (wielkie litery), których model `Generator` NIE
-  akceptuje → agregat/UPS dziś nie przechodzą walidacji ENM. Naprawa: agregat →
-  `gen_type="synchronous"` (+ tabliczka sr/x″d/cosφ), UPS → decyzja modelowa niżej. Po
-  normalizacji F1 automatycznie obejmie agregaty (synchronous).
+- **Normalizacja gen_type GENSET/UPS (defekt walidacji) — WDROŻONE (V12K-055, F-follow-1):**
+  `add_genset_nn`/`add_ups_nn` zapisywały `gen_type="GENSET"`/`"UPS"`, które model
+  `Generator` ODRZUCAŁ → agregat/UPS nie przechodziły walidacji ENM. Naprawa: agregat →
+  `gen_type="synchronous"` + tabliczka `materialized_params` (sn_mva=P/cosφ, un_kv, cos_phi;
+  x″d = domyślne IEC modelu); UPS → `gen_type="bess"` (falownik, InverterSource §6.7 —
+  fizycznie poprawne dla double-conversion UPS), tożsamość w `name`+`meta.source_kind`.
+  F1 automatycznie obejmuje teraz agregaty (SynchronousMachineSource) i UPS (InverterSource);
+  F2 dołącza rozbicie μ/q/i_b dla agregatów. Test realnej ścieżki: `test_genset_ups_sc`
+  (operacja → walidacja ENM → graf → źródło SC). Pozostaje: katalog x″d/k_sc (niżej),
+  dedykowana klasyfikacja UPS w raportach (jeśli właściciel zechce inną semantykę).
 - **Katalog x″d/k_sc:** gensety bez wiązania katalogowego → rozbudowa katalogu agregatów
   (sr_mva, x″d, cosφ) i przekształtników (k_sc producenta) — opcja-max katalog-first.
 - **DFIG Typ 3 vs Typ 4:** utrwalanie typu farmy w `add_converter_source` → wybór

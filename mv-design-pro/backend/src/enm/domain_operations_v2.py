@@ -1168,9 +1168,7 @@ def _has_transformer_in_path(enm: dict[str, Any], station: dict[str, Any]) -> bo
         return True
 
     transformer_refs = {
-        ref
-        for ref in station.get("transformer_refs", [])
-        if isinstance(ref, str) and ref.strip()
+        ref for ref in station.get("transformer_refs", []) if isinstance(ref, str) and ref.strip()
     }
     station_bus_refs = {
         ref for ref in station.get("bus_refs", []) if isinstance(ref, str) and ref.strip()
@@ -1200,9 +1198,7 @@ def _station_transformers_for_bus(
     transformer_ref: str | None = None,
 ) -> list[dict[str, Any]]:
     station_transformer_refs = {
-        ref
-        for ref in station.get("transformer_refs", [])
-        if isinstance(ref, str) and ref.strip()
+        ref for ref in station.get("transformer_refs", []) if isinstance(ref, str) and ref.strip()
     }
     station_bus_refs = {
         ref for ref in station.get("bus_refs", []) if isinstance(ref, str) and ref.strip()
@@ -2101,9 +2097,7 @@ def _resolve_converter_defaults(
                 ),
                 # V12K-051 (G-OZE-PF): docelowy cosφ (STALY_COS_PHI) i nachylenie Q(U);
                 # brak → unity/0 → brak wpływu na PF (determinizm zachowany).
-                "cos_phi": _first_number(
-                    payload.get("cos_phi"), materialized_params.get("cosphi")
-                ),
+                "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
                 "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
                 "quantity": quantity,
             },
@@ -2600,18 +2594,35 @@ def add_genset_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any
     )
     gen_ref = _make_id("gen", seed, "genset")
 
+    # G-SCM F-follow-1 (V12K-055): agregat = maszyna synchroniczna. `gen_type="synchronous"`
+    # (kanoniczny enum modelu Generator — „GENSET" był ODRZUCANY przez walidację ENM).
+    # Tabliczka SC do materialized_params (sr=P/cosφ, un=napięcie znamionowe/szyny, cosφ);
+    # x″d = domyślne IEC modelu SynchronousMachineSource (§6.3). Wpina agregat w łańcuch
+    # zwarciowy maszyn wirujących (F1 → SynchronousMachineSource, F2 → rozbicie μ/q/i_b).
+    p_mw = (genset_spec.get("rated_power_kw") or 0) / 1000.0
+    cos_phi = genset_spec.get("power_factor")
+    cos_phi = float(cos_phi) if isinstance(cos_phi, int | float) and 0 < cos_phi <= 1 else 0.8
+    un_kv = genset_spec.get("rated_voltage_kv") or _bus_voltage_kv(enm, bus_nn_ref)
+    sn_mva = (p_mw / cos_phi) if p_mw > 0 else 0.0
+    genset_meta: dict[str, Any] = {
+        "sn_mva": sn_mva,
+        "cos_phi": cos_phi,
+    }
+    if un_kv:
+        genset_meta["un_kv"] = float(un_kv)
+
     new_enm = copy.deepcopy(enm)
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": gen_ref,
             "name": genset_spec.get("source_name") or "Agregat",
             "bus_ref": bus_nn_ref,
-            "gen_type": "GENSET",
-            "p_mw": (genset_spec.get("rated_power_kw") or 0) / 1000.0,
+            "gen_type": "synchronous",
+            "p_mw": p_mw,
             "q_mvar": 0.0,
-            "in_service": True,
             "tags": [],
-            "meta": {"operation_mode": genset_spec.get("operation_mode")},
+            "materialized_params": genset_meta,
+            "meta": {"operation_mode": genset_spec.get("operation_mode"), "source_kind": "GENSET"},
         }
     )
 
@@ -2637,20 +2648,32 @@ def add_ups_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     )
     ups_ref = _make_id("ups", seed, "ups")
 
+    # G-SCM F-follow-1 (V12K-055): UPS = źródło przekształtnikowe (bateria + falownik).
+    # `gen_type="bess"` (kanoniczny enum inwerterowy — „UPS" był ODRZUCANY przez walidację
+    # ENM); zwarciowo modelowany jako ograniczone źródło prądowe (InverterSource, §6.7),
+    # co jest fizycznie poprawne dla double-conversion UPS. Tożsamość zachowana w `name`
+    # + `meta.source_kind="UPS"`. Tabliczka: sn_mva=P, un=napięcie szyny nN.
+    p_mw = (ups_spec.get("rated_power_kw") or 0) / 1000.0
+    un_kv = _bus_voltage_kv(enm, bus_nn_ref)
+    ups_meta: dict[str, Any] = {"sn_mva": p_mw}
+    if un_kv:
+        ups_meta["un_kv"] = float(un_kv)
+
     new_enm = copy.deepcopy(enm)
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": ups_ref,
             "name": ups_spec.get("source_name") or "UPS",
             "bus_ref": bus_nn_ref,
-            "gen_type": "UPS",
-            "p_mw": (ups_spec.get("rated_power_kw") or 0) / 1000.0,
+            "gen_type": "bess",
+            "p_mw": p_mw,
             "q_mvar": 0.0,
-            "in_service": True,
             "tags": [],
+            "materialized_params": ups_meta,
             "meta": {
                 "backup_time_min": ups_spec.get("backup_time_min"),
                 "operation_mode": ups_spec.get("operation_mode"),
+                "source_kind": "UPS",
             },
         }
     )
@@ -2721,9 +2744,7 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
 
     status = "open" if str(payload.get("status") or "closed").lower() == "open" else "closed"
 
-    seed = _compute_seed(
-        {"op": "shunt_compensator_sn", "bus": bus_ref, "cat": catalog_ref}
-    )
+    seed = _compute_seed({"op": "shunt_compensator_sn", "bus": bus_ref, "cat": catalog_ref})
     shunt_ref = _make_id("shunt", seed, "cap")
 
     new_enm = copy.deepcopy(enm)
