@@ -61,7 +61,7 @@ Legenda statusu dostawcy UI: ✅ kreator ui2 · ▲ legacy = do przebudowy · �
 | `insert_station_on_segment_sn` / `append_station_on_endpoint` | STATION_TEMPLATE, ROZDZIELNIA_SN | — | topologia, SLD blok stacji | ▲ legacy `InsertStationForm` | **G-STA** |
 | `add_transformer_sn_nn` | TRAFO_SN_NN, tap_changer (DETC/OLTC) | transformer rated I₁/I₂ (R2) | PF, SC, OLTC studies, losses, raport | ✅ `KreatorTransformatoraSnNn` | done (G-TRF) |
 | `add_sn_bay` | switchgear, bay_template, APARAT_SN | — | topologia pola, SLD, zabezpieczenia | ▲ `AddSnBayForm` | G-POLE |
-| `insert_section_switch_sn` | APARAT_SN | — | topologia, stany łączników (case), PF | ▲ `InsertSectionSwitchForm` | G-SEK |
+| `insert_section_switch_sn` | APARAT_SN | — | topologia, stany łączników (case), PF | ✅ `KreatorLacznikaSekcyjnego` | done (G-SEK) |
 | `connect_secondary_ring_sn` / `set_normal_open_point` | — | — | topologia pierścienia, PF (NOP), pewność zasilania | ▲ `ConnectRingForm` | G-RING |
 | `insert_branch_pole_on_segment_sn` | — | — | topologia odgałęzień, SLD | ▲ `InsertBranchPoleForm` | G-ODG |
 | `insert_zksn_on_segment_sn` | ROZDZIELNIA_SN/ZKSN | — | topologia, SLD | ▲ `InsertZksnForm` | G-ZKSN |

@@ -10,7 +10,6 @@ export { InsertBranchPoleForm } from './InsertBranchPoleForm';
 export { InsertZksnForm } from './InsertZksnForm';
 export { StartBranchForm } from './StartBranchForm';
 export { ConnectRingForm } from './ConnectRingForm';
-export { InsertSectionSwitchForm } from './InsertSectionSwitchForm';
 export { AddConverterSourceForm } from './AddConverterSourceForm';
 
 export { AssignCatalogForm } from './AssignCatalogForm';
