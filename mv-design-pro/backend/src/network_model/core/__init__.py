@@ -22,7 +22,14 @@ from .action_envelope import (
     ParentSnapshotId,
     validate_action_envelope,
 )
-from .branch import Branch, BranchType, LineBranch, TransformerBranch
+from .branch import (
+    Branch,
+    BranchType,
+    LineBranch,
+    LineDropCompensation,
+    TapChanger,
+    TransformerBranch,
+)
 from .bus import Bus
 from .canonical_hash import (
     canonical_json,
@@ -49,6 +56,8 @@ __all__ = [
     "Branch",
     "LineBranch",
     "TransformerBranch",
+    "TapChanger",
+    "LineDropCompensation",
     # Switching apparatus (no impedance)
     "Switch",
     "SwitchType",

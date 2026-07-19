@@ -469,6 +469,151 @@ class LineBranch(Branch):
         )
 
 
+@dataclass(frozen=True)
+class LineDropCompensation:
+    """Line-drop compensation (LDC) settings for an OLTC regulator.
+
+    The regulator compensates the estimated voltage drop from the transformer
+    to a remote load center using R + jX of the feeder [Ω].
+    """
+
+    enabled: bool = False
+    r_ohm: float = 0.0
+    x_ohm: float = 0.0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"enabled": self.enabled, "r_ohm": self.r_ohm, "x_ohm": self.x_ohm}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "LineDropCompensation":
+        return cls(
+            enabled=bool(data.get("enabled", False)),
+            r_ohm=float(data.get("r_ohm", 0.0)),
+            x_ohm=float(data.get("x_ohm", 0.0)),
+        )
+
+
+@dataclass(frozen=True)
+class TapChanger:
+    """Canonical tap-changer state — single source of truth on a transformer.
+
+    Holds the full regulation contract (regulated winding, position range,
+    control mode, AVR setpoint/deadband/delay, line-drop compensation,
+    controlled bus). No module keeps a local copy; every consumer reads this.
+
+    Backward compatibility: a transformer without a TapChanger (``None``) keeps
+    the legacy behaviour driven by ``tap_position``/``tap_step_percent``.
+
+    Sign convention (matches the LF Y-bus, which puts the off-nominal tap on the
+    HV/from side):
+        tau = 1 + (current_position - neutral_position) * step_percent / 100
+        regulated_winding == "HV"  -> from-side factor t = tau
+        regulated_winding == "LV"  -> from-side factor t = 1 / tau
+    """
+
+    regulation_type: str = "NONE"  # NONE | DETC | OLTC
+    regulated_winding: str = "HV"  # HV | LV
+    neutral_position: int = 0
+    current_position: int = 0
+    min_position: int = 0
+    max_position: int = 0
+    step_percent: float = 0.0
+    control_mode: str = "MANUAL"  # MANUAL | AUTOMATIC | PROFILE | REMOTE
+    voltage_setpoint_kv: float | None = None
+    deadband_kv: float | None = None
+    delay_seconds: float | None = None
+    controlled_bus_id: str | None = None
+    line_drop_compensation: LineDropCompensation | None = None
+    catalog_ref: str | None = None
+
+    def is_active(self) -> bool:
+        """True when the regulator represents a real tap changer (not NONE)."""
+        return self.regulation_type in ("DETC", "OLTC")
+
+    def is_automatic(self) -> bool:
+        """True when an OLTC actively regulates (AUTOMATIC/PROFILE/REMOTE)."""
+        return self.regulation_type == "OLTC" and self.control_mode in (
+            "AUTOMATIC",
+            "PROFILE",
+            "REMOTE",
+        )
+
+    def tau(self, position: int | None = None) -> float:
+        """Off-nominal turns factor at ``position`` (default current position)."""
+        pos = self.current_position if position is None else position
+        return 1.0 + (pos - self.neutral_position) * self.step_percent / 100.0
+
+    def from_side_tap_factor(self, position: int | None = None) -> float:
+        """Off-nominal ratio referred to the HV/from side (Y-bus convention)."""
+        tau = self.tau(position)
+        if tau == 0:
+            raise ValueError("Tap factor tau must be non-zero")
+        return tau if self.regulated_winding == "HV" else 1.0 / tau
+
+    def clamp_position(self, position: int) -> int:
+        """Clamp a candidate position to [min_position, max_position]."""
+        return max(self.min_position, min(self.max_position, position))
+
+    def with_position(self, position: int) -> "TapChanger":
+        """Return a copy at ``position`` (clamped to the valid range)."""
+        return replace(self, current_position=self.clamp_position(position))
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "regulation_type": self.regulation_type,
+            "regulated_winding": self.regulated_winding,
+            "neutral_position": self.neutral_position,
+            "current_position": self.current_position,
+            "min_position": self.min_position,
+            "max_position": self.max_position,
+            "step_percent": self.step_percent,
+            "control_mode": self.control_mode,
+        }
+        if self.voltage_setpoint_kv is not None:
+            result["voltage_setpoint_kv"] = self.voltage_setpoint_kv
+        if self.deadband_kv is not None:
+            result["deadband_kv"] = self.deadband_kv
+        if self.delay_seconds is not None:
+            result["delay_seconds"] = self.delay_seconds
+        if self.controlled_bus_id is not None:
+            result["controlled_bus_id"] = self.controlled_bus_id
+        if self.line_drop_compensation is not None:
+            result["line_drop_compensation"] = self.line_drop_compensation.to_dict()
+        if self.catalog_ref is not None:
+            result["catalog_ref"] = self.catalog_ref
+        return result
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "TapChanger":
+        ldc_raw = data.get("line_drop_compensation")
+        return cls(
+            regulation_type=str(data.get("regulation_type", "NONE")),
+            regulated_winding=str(data.get("regulated_winding", "HV")),
+            neutral_position=int(data.get("neutral_position", 0)),
+            current_position=int(data.get("current_position", 0)),
+            min_position=int(data.get("min_position", 0)),
+            max_position=int(data.get("max_position", 0)),
+            step_percent=float(data.get("step_percent", 0.0)),
+            control_mode=str(data.get("control_mode", "MANUAL")),
+            voltage_setpoint_kv=_opt_float(data.get("voltage_setpoint_kv")),
+            deadband_kv=_opt_float(data.get("deadband_kv")),
+            delay_seconds=_opt_float(data.get("delay_seconds")),
+            controlled_bus_id=(
+                str(data["controlled_bus_id"])
+                if data.get("controlled_bus_id") is not None
+                else None
+            ),
+            line_drop_compensation=(
+                LineDropCompensation.from_dict(ldc_raw) if isinstance(ldc_raw, dict) else None
+            ),
+            catalog_ref=(str(data["catalog_ref"]) if data.get("catalog_ref") is not None else None),
+        )
+
+
+def _opt_float(value: Any) -> float | None:
+    return None if value is None else float(value)
+
+
 @dataclass
 class TransformerBranch(Branch):
     """
@@ -512,6 +657,9 @@ class TransformerBranch(Branch):
     tap_position: int = 0
     tap_step_percent: float = 2.5
     type_ref: str | None = None
+    # V12K-045: canonical tap-changer state (single source of truth). None keeps
+    # the legacy tap_position/tap_step_percent behaviour byte-for-byte.
+    tap_changer: TapChanger | None = None
 
     @classmethod
     def _from_dict(cls, data: dict[str, Any]) -> "TransformerBranch":
@@ -550,6 +698,11 @@ class TransformerBranch(Branch):
             tap_position=int(data.get("tap_position", 0)),
             tap_step_percent=float(data.get("tap_step_percent", 2.5)),
             type_ref=_parse_type_ref(data),
+            tap_changer=(
+                TapChanger.from_dict(data["tap_changer"])
+                if isinstance(data.get("tap_changer"), dict)
+                else None
+            ),
         )
 
     def validate(self) -> bool:
@@ -771,6 +924,10 @@ class TransformerBranch(Branch):
                 "type_ref": self.type_ref,
             }
         )
+        # exclude_none: only emit tap_changer when set, so existing transformer
+        # serialization stays byte-identical (determinism preserved).
+        if self.tap_changer is not None:
+            result["tap_changer"] = self.tap_changer.to_dict()
         return result
 
     def get_impedance_pu(self, base_mva: float = 100.0) -> complex:
@@ -831,14 +988,32 @@ class TransformerBranch(Branch):
 
     def get_tap_ratio(self) -> float:
         """
-        Calculate the tap ratio based on current tap position.
+        Off-nominal tap ratio referred to the HV/from side (Y-bus convention).
 
-        Formula: t = 1 + tap_position * tap_step_percent / 100
+        When a canonical ``tap_changer`` is present and active, the factor is
+        derived from it (honouring the regulated winding). Otherwise the legacy
+        formula ``t = 1 + tap_position * tap_step_percent / 100`` is used, so
+        transformers without a tap changer behave byte-for-byte as before.
 
         Returns:
-            Tap ratio (dimensionless).
+            Off-nominal tap ratio (dimensionless).
         """
+        if self.tap_changer is not None and self.tap_changer.is_active():
+            return self.tap_changer.from_side_tap_factor()
         return 1.0 + self.tap_position * self.tap_step_percent / 100.0
+
+    def effective_ratio(self) -> float:
+        """
+        Physical HV:LV turns ratio including the current tap position.
+
+        ``effective_ratio = turns_ratio * off_nominal_tap_factor``. This is the
+        single ratio consumers (reports, SLD display, CGMES) should read; the LF
+        Y-bus uses only the off-nominal factor (:meth:`get_tap_ratio`).
+
+        Returns:
+            Effective turns ratio (dimensionless).
+        """
+        return self.get_turns_ratio() * self.get_tap_ratio()
 
     def resolve_nameplate(self, catalog: CatalogRepository | None = None) -> TransformerType:
         """

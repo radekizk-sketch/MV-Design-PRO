@@ -20,7 +20,13 @@ import math
 import uuid
 
 import numpy as np
-from network_model.core.branch import BranchType, LineBranch, TransformerBranch
+from network_model.core.branch import (
+    BranchType,
+    LineBranch,
+    LineDropCompensation,
+    TapChanger,
+    TransformerBranch,
+)
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
@@ -43,6 +49,42 @@ from .models import (
 def _ref_to_uuid(ref_id: str) -> str:
     """Deterministic UUID-like string from ref_id (for mapping stability)."""
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, ref_id))
+
+
+def _map_tap_changer(tap_changer, ref_to_node_id: dict[str, str]) -> TapChanger | None:
+    """Project an ENM TapChanger onto the domain TapChanger (V12K-045).
+
+    Resolves ``controlled_bus_ref`` (a bus ref_id) to the domain node id so the
+    LF OLTC loop can read the controlled bus voltage. Returns None when absent
+    (legacy behaviour preserved).
+    """
+    if tap_changer is None:
+        return None
+    ldc = tap_changer.line_drop_compensation
+    return TapChanger(
+        regulation_type=tap_changer.regulation_type,
+        regulated_winding=tap_changer.regulated_winding,
+        neutral_position=tap_changer.neutral_position,
+        current_position=tap_changer.current_position,
+        min_position=tap_changer.min_position,
+        max_position=tap_changer.max_position,
+        step_percent=tap_changer.step_percent,
+        control_mode=tap_changer.control_mode,
+        voltage_setpoint_kv=tap_changer.voltage_setpoint_kv,
+        deadband_kv=tap_changer.deadband_kv,
+        delay_seconds=tap_changer.delay_seconds,
+        controlled_bus_id=(
+            ref_to_node_id.get(tap_changer.controlled_bus_ref)
+            if tap_changer.controlled_bus_ref is not None
+            else None
+        ),
+        line_drop_compensation=(
+            LineDropCompensation(enabled=ldc.enabled, r_ohm=ldc.r_ohm, x_ohm=ldc.x_ohm)
+            if ldc is not None
+            else None
+        ),
+        catalog_ref=tap_changer.catalog_ref,
+    )
 
 
 def _source_positive_impedance_ohm(source, bus_voltage_kv: float) -> complex | None:
@@ -312,6 +354,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         if hv_id is None or lv_id is None:
             continue
 
+        tap_changer = _map_tap_changer(trafo.tap_changer, ref_to_node_id)
         tb = TransformerBranch(
             id=_ref_to_uuid(trafo.ref_id),
             name=trafo.name,
@@ -329,6 +372,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             vector_group=trafo.vector_group or "Dyn11",
             tap_position=trafo.tap_position or 0,
             tap_step_percent=trafo.tap_step_percent or 2.5,
+            tap_changer=tap_changer,
         )
         graph.add_branch(tb)
 

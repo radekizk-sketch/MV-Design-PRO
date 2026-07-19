@@ -231,8 +231,40 @@ Branch = Annotated[
 
 
 # ---------------------------------------------------------------------------
-# Transformer
+# Transformer + tap changer (V12K-045)
 # ---------------------------------------------------------------------------
+
+
+class LineDropCompensation(BaseModel):
+    """Line-drop compensation (LDC) for an OLTC regulator [Ω]."""
+
+    enabled: bool = False
+    r_ohm: float = 0.0
+    x_ohm: float = 0.0
+
+
+class TapChanger(BaseModel):
+    """Canonical tap-changer state on a transformer — single source of truth.
+
+    Additive/optional: a transformer without a tap_changer keeps the legacy
+    tap_position/tap_step_percent behaviour. None is excluded from the ENM
+    fingerprint (model_dump exclude_none), so existing fixtures are unchanged.
+    """
+
+    regulation_type: Literal["NONE", "DETC", "OLTC"] = "NONE"
+    regulated_winding: Literal["HV", "LV"] = "HV"
+    neutral_position: int = 0
+    current_position: int = 0
+    min_position: int = 0
+    max_position: int = 0
+    step_percent: float = 0.0
+    control_mode: Literal["MANUAL", "AUTOMATIC", "PROFILE", "REMOTE"] = "MANUAL"
+    voltage_setpoint_kv: float | None = None
+    deadband_kv: float | None = None
+    delay_seconds: float | None = None
+    controlled_bus_ref: str | None = None
+    line_drop_compensation: LineDropCompensation | None = None
+    catalog_ref: str | None = None
 
 
 class Transformer(ENMElement):
@@ -252,6 +284,10 @@ class Transformer(ENMElement):
     tap_min: int | None = None
     tap_max: int | None = None
     tap_step_percent: float | None = None
+    # V12K-045: canonical tap-changer (single source of truth). Additive/optional;
+    # None excluded from ENM fingerprint (exclude_none). The legacy tap_* fields
+    # above remain for backward compatibility.
+    tap_changer: TapChanger | None = None
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
     parameter_source: Literal["CATALOG", "OVERRIDE"] | None = None

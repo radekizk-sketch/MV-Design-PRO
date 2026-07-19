@@ -343,6 +343,33 @@ def get_tap_changer(tc_id: str) -> TapChangerItem | None:
     return next((tc for tc in TAP_CHANGER_CATALOG if tc.id == tc_id), None)
 
 
+def tap_changer_fields_from_catalog(
+    item: TapChangerItem, *, current_position: int | None = None
+) -> dict:
+    """Materialize canonical TapChanger fields from a catalog type (V12K-045).
+
+    Returns a plain dict compatible with both the ENM and domain ``TapChanger``
+    constructors (reuse, no duplication). Positions are symmetric around the
+    neutral position: ``+/-(tap_count - 1) // 2`` steps.
+
+    Returns a pure dict (no import of the model layer) to avoid an import cycle.
+    """
+    half_span = (item.tap_count - 1) // 2
+    neutral = item.neutral_position
+    is_oltc = item.type == "oltc"
+    return {
+        "regulation_type": "OLTC" if is_oltc else "DETC",
+        "regulated_winding": "HV" if item.regulated_side == "hv" else "LV",
+        "neutral_position": neutral,
+        "current_position": neutral if current_position is None else current_position,
+        "min_position": neutral - half_span,
+        "max_position": neutral + half_span,
+        "step_percent": item.step_percent,
+        "control_mode": "AUTOMATIC" if (is_oltc and item.supports_avr) else "MANUAL",
+        "catalog_ref": item.id,
+    }
+
+
 # =============================================================================
 # 3. HV Fuse Catalog (eng.17)
 # =============================================================================
