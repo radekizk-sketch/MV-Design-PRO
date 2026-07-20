@@ -35,6 +35,12 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from protection.curves.iec_curves import (
+    IEC_CURVE_LABELS_PL,
+    IECCurveParams,
+    IECCurveType,
+    generate_iec_curve_points,
+)
 
 DEVICE_KIND_MAP = {
     "overcurrent": "RELAY_OVERCURRENT",
@@ -52,6 +58,12 @@ CURVE_TYPE_MAP = {
     "IEC_EI": "EI",
     "IEC_LI": "LTI",
 }
+
+# Próbkowanie krzywej I-t dla charakterystyki niezależnej (DT):
+# charakterystyka jest płaska, więc dwa punkty krańcowe w pełni ją opisują.
+_IT_CURVE_DEFINITE_NUM_POINTS = 2
+# Zakres prądu jako wielokrotność progu (In>) dla generatora punktów solvera.
+_IT_CURVE_CURRENT_RANGE = (1.1, 20.0)
 
 FUNCTION_META = {
     "overcurrent_50": {
@@ -484,18 +496,21 @@ def _build_functions(
 
         setpoint = _build_setpoint(setting, base_values)
         computed = compute_from_setpoint(setpoint, base_values)
-        frontend_functions.append(
-            {
-                "code": meta["code"],
-                "ansi": list(meta["ansi"]),
-                "label_pl": meta["label_pl"],
-                "setpoint": setpoint.to_dict(),
-                "computed": computed.to_dict() if computed is not None else None,
-                "time_delay_s": setting.time_delay_s,
-                "curve_type": setting.curve_type,
-                "notes_pl": "Funkcja kierunkowa" if setting.is_directional else None,
-            }
-        )
+        it_curve, it_curve_missing = _build_it_curve(setting)
+        function_payload: dict[str, Any] = {
+            "code": meta["code"],
+            "ansi": list(meta["ansi"]),
+            "label_pl": meta["label_pl"],
+            "setpoint": setpoint.to_dict(),
+            "computed": computed.to_dict() if computed is not None else None,
+            "time_delay_s": setting.time_delay_s,
+            "curve_type": setting.curve_type,
+            "it_curve": it_curve,
+            "notes_pl": "Funkcja kierunkowa" if setting.is_directional else None,
+        }
+        if it_curve_missing:
+            function_payload["it_curve_missing_data"] = it_curve_missing
+        frontend_functions.append(function_payload)
         sanity_functions.append(
             SanityProtectionFunctionSummary(
                 code=meta["code"],
@@ -509,6 +524,75 @@ def _build_functions(
         )
 
     return frontend_functions, sanity_functions
+
+
+def _build_it_curve(
+    setting: ProtectionSetting,
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """Zbuduj krzywą czasowo-prądową (I-t) dla nastawy z solvera IEC 60255.
+
+    Wartości czasu (t_s) pochodzą WYŁĄCZNIE z solvera
+    (``protection.curves.iec_curves``) — read model niczego nie liczy sam.
+
+    - Charakterystyka niezależna (DT) jest w pełni wyznaczona przez próg (In>)
+      i zwłokę czasową → zwracamy płaską krzywą.
+    - Charakterystyki odwrotne (SI/VI/EI/LTI) wymagają nastawy TMS, której
+      model ENM ``ProtectionSetting`` nie przechowuje — zwracamy brak danych
+      (``time_multiplier``) zamiast fabrykować mnożnik czasowy.
+
+    Zwraca krotkę ``(krzywa | None, lista_brakujących_danych)``.
+    """
+    missing: list[str] = []
+
+    pickup_a = setting.threshold_a
+    if pickup_a is None or pickup_a <= 0:
+        missing.append("pickup_current")
+
+    curve_type = setting.curve_type
+    if curve_type:
+        solver_code = CURVE_TYPE_MAP.get(str(curve_type), "DT")
+    else:
+        solver_code = "DT"
+
+    if solver_code == "DT":
+        curve_kind = "DEFINITE"
+        if setting.time_delay_s is None:
+            missing.append("definite_time")
+    else:
+        curve_kind = "INVERSE"
+        # TMS nie istnieje w modelu ENM ProtectionSetting — brak danych, nie fabrykujemy.
+        missing.append("time_multiplier")
+
+    if missing:
+        return None, missing
+
+    assert pickup_a is not None  # zapewnione przez powyższą walidację missing
+
+    params = IECCurveParams.get_standard_params(IECCurveType(solver_code))
+    raw_points = generate_iec_curve_points(
+        curve_params=params,
+        pickup_current_a=pickup_a,
+        time_multiplier=1.0,
+        current_range=_IT_CURVE_CURRENT_RANGE,
+        num_points=_IT_CURVE_DEFINITE_NUM_POINTS,
+        definite_time_s=setting.time_delay_s,
+    )
+    points = [{"i_a": point["current_a"], "t_s": point["time_s"]} for point in raw_points]
+    if not points:
+        return None, ["it_curve_points"]
+
+    return (
+        {
+            "standard": "IEC_60255",
+            "curve_kind": curve_kind,
+            "curve_code": solver_code,
+            "curve_label_pl": IEC_CURVE_LABELS_PL.get(solver_code, solver_code),
+            "pickup_a": pickup_a,
+            "time_multiplier": None,
+            "points": points,
+        },
+        [],
+    )
 
 
 def _build_setpoint(setting: ProtectionSetting, base_values: Any) -> ProtectionSetpoint:

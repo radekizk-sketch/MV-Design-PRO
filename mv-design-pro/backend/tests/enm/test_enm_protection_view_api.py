@@ -264,3 +264,37 @@ def test_get_protection_view_with_assignments_and_diagnostics(client):
     line_summary = next(item for item in data["summaries"] if item["element_id"] == "line_1")
     assert line_summary["ct"]["label"] == "200/1"
     assert line_summary["overcurrent"]["time_overcurrent"]["pickup_a"] == pytest.approx(240.0)
+
+
+def test_protection_view_serializes_it_curve_from_iec60255_solver(client):
+    """protection_ref → funkcje z krzywą I-t (punkty t_s z solvera IEC 60255).
+
+    - Funkcja niezależna (DT, 50 I>>) ma płaską krzywę I-t z solvera.
+    - Funkcja odwrotna (IEC_SI, 51 I>) bez TMS w modelu ENM → brak krzywej,
+      brak danych ``time_multiplier`` (zero fabrykacji mnożnika czasowego).
+    """
+    _seed_enm("protection-it", _enm_with_protection())
+
+    response = client.get("/api/cases/protection-it/enm/protection-view")
+    assert response.status_code == 200
+    data = response.json()
+
+    assignment = next(item for item in data["assignments"] if item["device_id"] == "prot_oc_1")
+    functions = assignment["settings_summary"]["functions"]
+
+    inst = next(fn for fn in functions if fn["code"] == "OVERCURRENT_INST")  # 50 I>>, DT
+    it_curve = inst["it_curve"]
+    assert it_curve is not None
+    assert it_curve["standard"] == "IEC_60255"
+    assert it_curve["curve_kind"] == "DEFINITE"
+    assert it_curve["curve_code"] == "DT"
+    assert it_curve["pickup_a"] == pytest.approx(800.0)
+    assert len(it_curve["points"]) >= 2
+    # Charakterystyka niezależna: czas zadziałania stały = zwłoka (0,05 s) z solvera.
+    assert all(point["t_s"] == pytest.approx(0.05) for point in it_curve["points"])
+    assert all(point["i_a"] > 800.0 for point in it_curve["points"])
+    assert "it_curve_missing_data" not in inst
+
+    time_fn = next(fn for fn in functions if fn["code"] == "OVERCURRENT_TIME")  # 51 I>, IEC_SI
+    assert time_fn["it_curve"] is None
+    assert time_fn["it_curve_missing_data"] == ["time_multiplier"]
