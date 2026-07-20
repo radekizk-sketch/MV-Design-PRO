@@ -746,6 +746,7 @@ def _build_field_spec(
     gpz_section_id: str | None = None,
     equipment_refs: list[str] | None = None,
     protection_ref: str | None = None,
+    protection_codes: list[str] | None = None,
     bay_template_ref: str | None = None,
     switchgear_family_ref: str | None = None,
     manufacturer_ref: str | None = None,
@@ -764,6 +765,11 @@ def _build_field_spec(
     }
     if gpz_section_id:
         spec["gpz_section_id"] = gpz_section_id
+    # Wymagane funkcje zabezpieczeniowe pola (ANSI/IEC, np. 50/51/67, 87T) — projekcja
+    # na Bay.protection_codes (read-model + glify SLD). Wyprowadzane z szablonu pola
+    # producenta (protection_requirements) albo z roli pola. exclude puste.
+    if protection_codes:
+        spec["protection_codes"] = list(protection_codes)
     # Powiązania producenckie jako klucze TOP-LEVEL field_spec (konwencja kreatora
     # stacji, `append_station_on_endpoint`) — spójne źródło dla read-modelu pola
     # i przyszłej projekcji do Bay. exclude_none: bez rodziny brak kluczy.

@@ -1424,6 +1424,46 @@ def _default_sn_bay_name(role: str) -> str:
     }.get(role, "Pole SN")
 
 
+def _resolve_bay_template_protection_codes(
+    manufacturer_ref: str | None, bay_template_ref: str | None, bay_role: str
+) -> list[str]:
+    """Wymagane funkcje zabezpieczeniowe (ANSI/IEC) pola → Bay.protection_codes.
+
+    Kolejność (zero fabrykacji — tylko realne dane kanonu, żadnych zmyślonych kodów):
+    1. `CompleteMvBayTemplate.protection_requirements` z wybranego szablonu producenta
+       (reużycie kanonicznego resolvera Reference Engine — bez równoległej ścieżki);
+    2. dla roli TR — kanoniczny zestaw `TRANSFORMER_BAY_PROTECTION_CODES` (istniejący
+       kanon, ten sam, którego używa kreator transformatora);
+    3. w innym wypadku pusto (kanoniczna tablica per-rola dla pól liniowych/sprzęgła/
+       pomiaru wymaga przeglądu zabezpieczeniowca — karta audytu V12K-059 poz. B2).
+    """
+    from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
+
+    if bay_template_ref:
+        from network_model.catalog.switchgear.canonical_fallback import (
+            list_canonical_fallback_templates,
+            list_switchgear_solution_templates_for_manufacturer,
+        )
+
+        candidates = list_switchgear_solution_templates_for_manufacturer(manufacturer_ref)
+        template = next((t for t in candidates if t.template_ref == bay_template_ref), None)
+        if template is None:
+            template = next(
+                (
+                    t
+                    for t in list_canonical_fallback_templates()
+                    if t.template_ref == bay_template_ref
+                ),
+                None,
+            )
+        if template is not None and template.protection_requirements:
+            return list(template.protection_requirements)
+
+    if bay_role == "TR":
+        return list(TRANSFORMER_BAY_PROTECTION_CODES)
+    return []
+
+
 def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj pole SN do istniejącej rozdzielnicy bez zapisu do legacy bays."""
     existing_field_ref = payload.get("existing_field_ref") or payload.get("field_ref")
@@ -1529,6 +1569,15 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         }.items()
         if value
     }
+    # V12K-059 (audyt B): materializacja wymaganych funkcji zabezpieczeniowych pola z
+    # wybranego szablonu producenta (protection_requirements) → Bay.protection_codes.
+    # Domyka ogniwo „szablon pola → koordynacja/LoM/glify SLD" (G-POLE-R związał tylko
+    # refy danych). Bez szablonu: brak kodów (wsteczna zgodność).
+    protection_codes = _resolve_bay_template_protection_codes(
+        manufacturer_ref, bay_template_ref, bay_role
+    )
+    if protection_codes:
+        producer_refs["protection_codes"] = protection_codes
 
     new_enm = copy.deepcopy(enm)
     existing_equipment_refs = (
@@ -1705,6 +1754,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
             equipment_refs=[apparatus_ref],
             protection_ref=protection_ref,
+            protection_codes=protection_codes,
             bay_template_ref=bay_template_ref,
             switchgear_family_ref=switchgear_family_ref,
             manufacturer_ref=manufacturer_ref,

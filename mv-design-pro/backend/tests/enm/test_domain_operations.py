@@ -623,6 +623,50 @@ class TestNnFieldAdapters:
         ][-1]
         assert "bay_template_ref" not in spec
         assert "switchgear_family_ref" not in spec
+        assert "protection_codes" not in spec
+
+    def test_add_sn_bay_tr_materializes_protection_codes(self):
+        """Audyt V12K-059 (B): pole transformatorowe materializuje wymagane funkcje
+        zabezpieczeniowe (Bay.protection_codes) z kanonu — domyka ogniwo szablon/rola →
+        koordynacja/LoM/glify SLD (G-POLE-R związał tylko refy danych).
+        """
+        from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
+
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "TR",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert spec["protection_codes"] == list(TRANSFORMER_BAY_PROTECTION_CODES)
+
+    def test_add_sn_bay_line_role_no_fabricated_protection_codes(self):
+        """Zero fabrykacji: rola liniowa bez szablonu z wymaganiami → brak zmyślonych kodów."""
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "OUT",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert "protection_codes" not in spec
 
     def test_add_nn_outgoing_field_uses_station_meta_instead_of_legacy_bays(self):
         _, snapshot = _build_gpz_plus_segments(1)

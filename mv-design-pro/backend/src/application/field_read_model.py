@@ -202,7 +202,9 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             interlocks=interlocks,
             source_endpoint=source_endpoint,
             bay_template_ref=bay.bay_template_ref,
-            switchgear_family_ref=switchgear_family_ref if isinstance(switchgear_family_ref, str) else None,
+            switchgear_family_ref=(
+                switchgear_family_ref if isinstance(switchgear_family_ref, str) else None
+            ),
         )
 
         project_results = _build_project_results(
@@ -313,6 +315,7 @@ def _collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
                 gpz_section_id=spec.get("gpz_section_id"),
                 equipment_refs=list(spec.get("equipment_refs") or []),
                 protection_ref=spec.get("protection_ref"),
+                protection_codes=list(spec.get("protection_codes") or []),
                 bay_template_ref=spec.get("bay_template_ref"),
             )
 
