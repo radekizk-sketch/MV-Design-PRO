@@ -12,15 +12,24 @@ raporty/zgodność.
 
 ## 1. Reguła: stacja/odbiór na KOŃCU odcinka (nie w środku)
 
-**Zasada (wiążąca).** Element dołączany do magistrali (stacja SN/nN, ZK, słup
-rozgałęźny, odbiór) wstawiamy zawsze na **KOŃCU** ostatniego odcinka ciągu —
-budowa węzeł po węźle. **Wstawianie w środku odcinka jest zakazane** — jest
-niefizyczne z punktu widzenia budowy realnej sieci (odcinek to fizyczny kabel/
-linia między dwoma węzłami; „rozcinanie" go elementem to sztuczny podział bez
-odpowiednika w projekcie).
+**Zasada (wiążąca).** **Odbiornik terminalny — stacja SN/nN oraz odbiór — dołączamy
+zawsze na KOŃCU odcinka** (budowa węzeł po węźle: koniec ostatniego odcinka staje
+się węzłem, do którego pnie się stacja/odbiór). **Wstawianie STACJI/ODBIORU w środku
+odcinka jest zakazane** — jest niefizyczne (stacja „rozcinająca" fizyczny kabel/linię
+w połowie to sztuczny podział bez odpowiednika w projekcie).
 
 Korekta wcześniejszej propozycji: rozważane „wstawianie stacji/odbioru w środku
 ciągu" zostaje **odrzucone** i NIE jest budowane.
+
+**Wyjątek — węzły rozgałęźne (ZKSN, słup rozgałęźny) NIE podlegają regule końca.**
+Punkt rozgałęźny z definicji **odczepia się od odcinka w wybranym miejscu** (RATIO
+0..1), bo tam właśnie fizycznie odgałęzia się magistrala — operacje
+`insert_zksn_on_segment_sn` / `insert_branch_pole_on_segment_sn` przyjmują
+`insert_at: { mode: 'RATIO', value }`. Odbiornik terminalny (stacja/odbiór) ląduje
+wtedy na KOŃCU odgałęzienia wyprowadzonego z tego węzła, nie „w środku". Łańcuch:
+magistrala → (opcjonalnie) węzeł rozgałęźny na odcinku → odgałęzienie → stacja/odbiór
+na końcu odgałęzienia. To rozróżnienie jest spójne fizycznie i z kodem (ZKSN tylko
+w torze kablowym, słup w napowietrznym).
 
 **Stan wdrożenia (już zgodny).** Łańcuchowanie magistrali realizuje
 `buildNextContext` (`frontend/src/ui/network-build/trunkContinuation.ts`):
@@ -32,9 +41,17 @@ ciągu" zostaje **odrzucone** i NIE jest budowane.
 odcinka ustawia koniec ciągu jako start następnego kroku — element zawsze ląduje
 na końcu.
 
-**Kryterium odbioru reguły:** żaden kreator ani flow nie oferuje wstawienia
-elementu w środku odcinka (`position_on_segment` różne od końca / tryb „split");
-język UI mówi „na końcu odcinka" (`magistrala/strings.ts`).
+**Kryterium odbioru reguły:** główny flow budowy (kontynuacja magistrali →
+`ENDPOINT_APPEND`) stawia stację/odbiór wyłącznie na końcu; język UI mówi „na końcu
+odcinka" (`magistrala/strings.ts`). Węzły rozgałęźne zachowują RATIO (poprawnie).
+
+**Dług zarejestrowany (do naprawy w migracji Audyt D):** legacy `InsertStationForm`
+(1884 w., god-file) w wariancie standalone domyśla `position_on_segment = 0.5` i
+pokazuje „podział odcinka w 0.50" — czyli **dopuszcza wstawienie STACJI w środku
+odcinka wbrew regule**. Nie naprawiamy w god-file (ryzyko); zamykamy przy migracji
+`InsertStationForm → ui2 KreatorStacji` (Audyt D): kreator stacji ma wymuszać
+`ENDPOINT_APPEND` (koniec odcinka/odgałęzienia), a odczep mid-segment realizować
+wyłącznie przez węzeł rozgałęźny (ZKSN/słup) + odgałęzienie.
 
 ---
 
