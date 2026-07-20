@@ -63,4 +63,58 @@ test.describe('kreatory:screenshot', () => {
       });
     }
   }
+
+  // Wszystkie 4 ekrany konfiguracji kreatora OZE (technologia → falownik →
+  // regulacja → podsumowanie), z wypełnionymi danymi, w obu motywach.
+  for (const theme of THEMES) {
+    test(`oze — 4 kroki konfiguracji (${theme})`, async ({ page }) => {
+      const errs: string[] = [];
+      const isNoise = (t: string): boolean =>
+        /favicon|Download the React DevTools|Failed to load resource/i.test(t);
+      page.on('console', (m) => {
+        if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
+      });
+      page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+
+      await page.setViewportSize({ width: 1220, height: 900 });
+      await page.goto(`${HARNESS_URL}?creator=oze&theme=${theme}`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 40000,
+      });
+      const root = page.locator('[data-testid="creator-harness-root"]').first();
+      await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
+
+      const shot = async (krok: number) => {
+        await page.waitForTimeout(300);
+        await root.screenshot({ path: path.join(OUTPUT_DIR, `kreator_oze_krok${krok}_${theme}.png`) });
+      };
+
+      // Krok 1 — technologia i przyłączenie.
+      await page.getByTestId('mvd-kreator-oze-nazwa').fill('Farma PV Wschód');
+      await shot(1);
+
+      // Krok 2 — falownik i moc (wybór z katalogu + liczba → tabliczka).
+      await page.getByTestId('mvd-kreator-oze-dalej').click();
+      await expect(page.getByTestId('mvd-kreator-oze-konwerter')).toBeVisible();
+      await page.getByTestId('mvd-kreator-oze-konwerter').selectOption('pv-1');
+      await page.getByTestId('mvd-kreator-oze-liczba').fill('12');
+      await shot(2);
+
+      // Krok 3 — regulacja mocy biernej.
+      await page.getByTestId('mvd-kreator-oze-dalej').click();
+      await expect(page.getByTestId('mvd-kreator-oze-tryb')).toBeVisible();
+      await page.getByTestId('mvd-kreator-oze-tryb').selectOption('Q_OD_U');
+      await page.getByTestId('mvd-kreator-oze-qmin').fill('-3');
+      await page.getByTestId('mvd-kreator-oze-qmax').fill('3');
+      await shot(3);
+
+      // Krok 4 — podsumowanie i zapis.
+      await page.getByTestId('mvd-kreator-oze-dalej').click();
+      await expect(page.getByTestId('mvd-kreator-oze-zapis')).toBeVisible();
+      await shot(4);
+
+      if (errs.length > 0) console.log(`[oze/${theme}] errors:\n${errs.join('\n')}`);
+      expect(errs, `no console/page errors for oze kroki/${theme}`).toEqual([]);
+    });
+  }
 });

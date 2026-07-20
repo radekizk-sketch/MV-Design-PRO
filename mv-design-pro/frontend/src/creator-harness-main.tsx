@@ -41,10 +41,10 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
     { id: 'lv-1', name: 'Wyłącznik nN 630A', u_n_kv: 0.4, i_n_a: 630 },
   ],
   '/api/catalog/pv-inverter-types': [
-    { id: 'pv-1', name: 'Falownik PV 900 kVA', manufacturer: 'SMA', kind: 'PV', un_kv: 0.4, sn_mva: 1.0, pmax_mw: 0.9, qmin_mvar: -0.3, qmax_mvar: 0.3, cosphi_min: 0.9, cosphi_max: 1.0, ptpiree_certificate_ref: 'CERT-PV-1' },
+    { id: 'pv-1', name: 'Falownik PV 900 kVA', manufacturer: 'SMA', un_kv: 0.4, s_n_kva: 1000, p_max_kw: 900, cos_phi_min: 0.9, cos_phi_max: 1.0, ptpiree_status: 'POWIAZANY', ptpiree_certificate_ref: 'WOŚ/2024/PV-900', ptpiree_document_number: 'DOC-PV-900', ptpiree_wos_version: '2.1', ptpiree_source_url: 'https://ptpiree.pl' },
   ],
   '/api/catalog/bess-inverter-types': [
-    { id: 'bess-1', name: 'Magazyn 1 MW / 2 MWh', manufacturer: 'Tesla', kind: 'BESS', un_kv: 0.4, sn_mva: 1.1, pmax_mw: 1.0, qmin_mvar: -0.4, qmax_mvar: 0.4, e_kwh: 2000, ptpiree_certificate_ref: 'CERT-BESS-1' },
+    { id: 'bess-1', name: 'Magazyn 1 MW / 2 MWh', manufacturer: 'Tesla', un_kv: 0.4, s_n_kva: 1100, p_charge_kw: 1000, p_discharge_kw: 1000, e_kwh: 2000, ptpiree_status: 'POWIAZANY', ptpiree_certificate_ref: 'WOŚ/2024/BESS-1M' },
   ],
   '/api/catalog/wind-inverter-types': [
     { id: 'fw-1', name: 'Turbina wiatrowa 2 MW', manufacturer: 'Vestas', kind: 'WIND', un_kv: 0.69, sn_mva: 2.2, pmax_mw: 2.0, qmin_mvar: -0.7, qmax_mvar: 0.7 },

@@ -283,6 +283,13 @@ export async function fetchConverterTypes(): Promise<ConverterType[]> {
       pmax_mw: item.p_max_kw / 1000,
       cosphi_min: item.cos_phi_min,
       cosphi_max: item.cos_phi_max,
+      // Certyfikat PTPiREE — z rekordu katalogowego (backend annotate_with_ptpiree_status)
+      // → materialized_params + ocena zgodności NC RfG. Bez tego link certyfikatu ginął.
+      ptpiree_status: item.ptpiree_status,
+      ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
+      ptpiree_document_number: item.ptpiree_document_number ?? null,
+      ptpiree_wos_version: item.ptpiree_wos_version ?? null,
+      ptpiree_source_url: item.ptpiree_source_url ?? null,
     }];
   });
   const bessConverters: ConverterType[] = bessTypes.flatMap((item) => {
@@ -297,6 +304,11 @@ export async function fetchConverterTypes(): Promise<ConverterType[]> {
       sn_mva: (item.s_n_kva ?? Math.max(item.p_charge_kw, item.p_discharge_kw)) / 1000,
       pmax_mw: item.p_discharge_kw / 1000,
       e_kwh: item.e_kwh,
+      ptpiree_status: item.ptpiree_status,
+      ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
+      ptpiree_document_number: item.ptpiree_document_number ?? null,
+      ptpiree_wos_version: item.ptpiree_wos_version ?? null,
+      ptpiree_source_url: item.ptpiree_source_url ?? null,
     }];
   });
 
