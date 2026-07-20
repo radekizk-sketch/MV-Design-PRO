@@ -43,6 +43,7 @@ import {
   KreatorRama,
   KreatorSekcja,
   KreatorSiatka,
+  PanelTeorii,
   PoleKatalogu,
   PoleLiczbowe,
   PoleTekstowe,
@@ -524,6 +525,13 @@ export function KreatorMagistralaSn() {
             />
           </KreatorSiatka>
           {paramReadout}
+          <PanelTeorii
+            tytul={T.teoriaTytul}
+            opis={T.teoriaOpis}
+            wymog={T.teoriaWymog}
+            podstawa={T.teoriaPodstawa}
+            testid="mvd-kreator-magistrala-teoria"
+          />
         </KreatorSekcja>
       ) : null}
 

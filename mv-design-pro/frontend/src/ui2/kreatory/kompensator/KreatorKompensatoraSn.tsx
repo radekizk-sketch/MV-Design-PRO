@@ -30,6 +30,7 @@ import {
   KreatorSiatka,
   PoleKatalogu,
   PoleTekstowe,
+  PanelTeorii,
   PoleWyboru,
   RzadWartosci,
   type KrokKreatora,
@@ -333,6 +334,13 @@ export function KreatorKompensatoraSn() {
             />
           </KreatorSiatka>
           {paramReadout}
+          <PanelTeorii
+            tytul={T.teoriaTytul}
+            opis={T.teoriaOpis}
+            wymog={T.teoriaWymog}
+            podstawa={T.teoriaPodstawa}
+            testid="mvd-kreator-kompensator-teoria"
+          />
         </KreatorSekcja>
       ) : null}
 

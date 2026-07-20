@@ -223,6 +223,21 @@ export const ZRODLO_STRINGS = {
     'Sprawdź podsumowanie obliczone (kolumna z prawej) i kontrolę gotowości. '
     + 'Zapis tworzy szyny SN, sekcje, sprzęgło i pola odpływowe.',
 
+  // Panel teorii (V12K-066: standard „must-have")
+  teoriaTytul: 'Teoria: GPZ jako źródło systemowe i moc zwarciowa',
+  teoriaOpis:
+    'Główny Punkt Zasilający (GPZ) jest w modelu źródłem systemowym (slack) — reprezentuje sieć '
+    + 'nadrzędną o zadanej mocy zwarciowej Sk″ i stosunku R/X. Moc zwarciowa określa „sztywność" '
+    + 'sieci: im wyższe Sk″, tym mniejsza impedancja źródła (Z = c·U²/Sk″), wyższe prądy zwarciowe '
+    + 'i mniejsze wahania napięcia przy zmianach obciążenia. Stosunek R/X wpływa na prąd udarowy ip '
+    + '(współczynnik κ) i na charakter spadków napięcia. Wszystkie prądy zwarciowe (Ik″, ip, Ith) '
+    + 'liczy backend wg IEC 60909 — GPZ wnosi tylko parametry źródła; z nich wynika dobór aparatury '
+    + 'i nastaw zabezpieczeń w całej sieci SN.',
+  teoriaWymog:
+    'Aparatura i pola muszą wytrzymać prąd zwarciowy wynikający z Sk″ (zdolność łączeniowa, '
+    + 'wytrzymałość cieplna i dynamiczna); dane zwarciowe pobiera się od OSD/PSE dla danego węzła.',
+  teoriaPodstawa: 'Podstawa: IEC 60909 (prądy zwarciowe), PN-EN 62271 (aparatura), dane OSD/PSE.',
+
   // Akcje / błędy.
   zapisz: 'Zapisz GPZ',
   anuluj: 'Anuluj',

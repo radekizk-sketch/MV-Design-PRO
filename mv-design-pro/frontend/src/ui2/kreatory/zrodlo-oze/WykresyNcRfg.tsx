@@ -8,6 +8,7 @@
  * --mvd-*; deterministyczne (stałe wymiary, brak animacji, brak losowości).
  */
 
+import { PanelTeorii } from '../rama';
 import { SUGEROWANE, type TrybRegulacji } from './zrodloOzeModel';
 import { NCRFG_TEORIA as TT, OZE_STRINGS as T } from './strings';
 import './wykresyNcRfg.css';
@@ -251,30 +252,28 @@ export function CharakterystykaNcRfg(props: CharakterystykaNcRfgProps) {
     ) : null;
 
   return (
-    <details className="mvd-ncrfg" data-testid="mvd-kreator-oze-teoria">
-      <summary className="mvd-ncrfg-summary">{T.teoriaTytul}</summary>
-      <div className="mvd-ncrfg-body">
-        <p className="mvd-ncrfg-opis">{teoria.opis}</p>
-        {wykres ? (
-          <figure className="mvd-ncrfg-fig">
-            {wykres}
-            <figcaption className="mvd-ncrfg-cap">{teoria.jakCzytac}</figcaption>
-          </figure>
-        ) : (
-          <p className="mvd-ncrfg-opis">{TT.brakCharakterystyki}</p>
-        )}
-        {pfWykres ? (
-          <figure className="mvd-ncrfg-fig">
-            {pfWykres}
-            <figcaption className="mvd-ncrfg-cap">{TT.pf.jakCzytac}</figcaption>
-          </figure>
-        ) : null}
-        <p className="mvd-ncrfg-wymog">
-          <strong>{TT.wymogPrefix}</strong>
-          {teoria.wymog}
-        </p>
-        <p className="mvd-ncrfg-podstawa">{T.teoriaPodstawa}</p>
-      </div>
-    </details>
+    <PanelTeorii
+      tytul={T.teoriaTytul}
+      opis={teoria.opis}
+      wymog={teoria.wymog}
+      wymogPrefix={TT.wymogPrefix}
+      podstawa={T.teoriaPodstawa}
+      testid="mvd-kreator-oze-teoria"
+    >
+      {wykres ? (
+        <figure className="mvd-ncrfg-fig">
+          {wykres}
+          <figcaption className="mvd-ncrfg-cap">{teoria.jakCzytac}</figcaption>
+        </figure>
+      ) : (
+        <p className="mvd-ncrfg-opis">{TT.brakCharakterystyki}</p>
+      )}
+      {pfWykres ? (
+        <figure className="mvd-ncrfg-fig">
+          {pfWykres}
+          <figcaption className="mvd-ncrfg-cap">{TT.pf.jakCzytac}</figcaption>
+        </figure>
+      ) : null}
+    </PanelTeorii>
   );
 }

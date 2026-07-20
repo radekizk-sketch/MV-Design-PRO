@@ -26,6 +26,7 @@ import {
   KreatorRama,
   KreatorSekcja,
   KreatorSiatka,
+  PanelTeorii,
   PoleKatalogu,
   PoleLiczbowe,
   PoleTekstowe,
@@ -390,6 +391,13 @@ export function KreatorZrodlaOze() {
               ) : null}
             </>
           )}
+          <PanelTeorii
+            tytul={T.teoriaTechTytul}
+            opis={T.teoriaTechOpis}
+            wymog={T.teoriaTechWymog}
+            podstawa={T.teoriaTechPodstawa}
+            testid="mvd-kreator-oze-teoria-tech"
+          />
         </KreatorSekcja>
       ) : null}
 
@@ -422,6 +430,13 @@ export function KreatorZrodlaOze() {
           {wybranyKonwerter && !wybranyKonwerter.ptpiree_certificate_ref ? (
             <KreatorInfo>{T.ptpireeBrak}</KreatorInfo>
           ) : null}
+          <PanelTeorii
+            tytul={T.teoriaKatalogTytul}
+            opis={T.teoriaKatalogOpis}
+            wymog={T.teoriaKatalogWymog}
+            podstawa={T.teoriaKatalogPodstawa}
+            testid="mvd-kreator-oze-teoria-katalog"
+          />
         </KreatorSekcja>
       ) : null}
 

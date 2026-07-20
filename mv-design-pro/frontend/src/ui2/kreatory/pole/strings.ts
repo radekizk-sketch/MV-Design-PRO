@@ -66,4 +66,18 @@ export const POLE_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem pola.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać pole SN.',
+
+  // Panel teorii (V12K-066: standard „must-have")
+  teoriaTytul: 'Teoria: pole rozdzielnicy SN i skład aparatury',
+  teoriaOpis:
+    'Pole (cela) rozdzielnicy SN to zestandaryzowana jednostka funkcjonalna: pole liniowe (odpływ), '
+    + 'zasilające (dopływ), transformatorowe, pomiarowe czy sprzęgło. Rola pola wyznacza wymagany '
+    + 'skład aparatury (wyłącznik / rozłącznik, przekładniki prądowe i napięciowe, uziemnik) oraz '
+    + 'komplet zabezpieczeń polowych. Wybór rodziny rozdzielnicy producenta i szablonu pola wiąże '
+    + 'dane referencyjne (Reference Engine): sekwencję aparatów wg IEC 62271 i kody zabezpieczeń wg '
+    + 'roli — skąd spływają do schematu SLD, oceny zgodności i koordynacji zabezpieczeń.',
+  teoriaWymog:
+    'Skład pola i zabezpieczenia muszą odpowiadać roli oraz normie IEC 62271; przekładniki dobiera '
+    + 'się do prądu i klasy dokładności wymaganej przez zabezpieczenia i pomiary.',
+  teoriaPodstawa: 'Podstawa: PN-EN 62271-200 (rozdzielnice SN), wzorce producentów, IRiESD.',
 } as const;

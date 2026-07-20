@@ -1,30 +1,9 @@
-/* Panel teorii + charakterystyki NC RfG (G-OZE-B5). Kolory wyłącznie przez tokeny
-   --mvd-* (theme-aware light/dark); brak jednostek fizycznych — czysta prezentacja. */
+/* Wykresy charakterystyk NC RfG (G-OZE-B5) — style ELEMENTÓW SVG. Kontener panelu
+   (rozwijany + opis/wymóg/podstawa) dostarcza wspólny PanelTeorii (rama/panelTeorii.css).
+   Kolory wyłącznie przez tokeny --mvd-* (theme-aware light/dark). */
 
-.mvd-ncrfg {
-  border: 1px solid var(--mvd-line);
-  border-radius: 8px;
-  background: var(--mvd-panel);
-  margin-top: 8px;
-}
-
-.mvd-ncrfg-summary {
-  cursor: pointer;
-  padding: 10px 12px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--mvd-accent);
-  user-select: none;
-}
-
-.mvd-ncrfg-summary:focus-visible {
-  outline: 2px solid var(--mvd-focus);
-  outline-offset: 2px;
-}
-
-.mvd-ncrfg-body {
-  padding: 4px 12px 14px;
-  border-top: 1px solid var(--mvd-line);
+.mvd-ncrfg-fig {
+  margin: 8px 0 4px;
 }
 
 .mvd-ncrfg-opis {
@@ -32,10 +11,6 @@
   line-height: 1.55;
   color: var(--mvd-ink);
   margin: 10px 0;
-}
-
-.mvd-ncrfg-fig {
-  margin: 8px 0 4px;
 }
 
 .mvd-ncrfg-svg {
@@ -50,24 +25,6 @@
 
 .mvd-ncrfg-cap {
   font-size: 11.5px;
-  line-height: 1.5;
-  color: var(--mvd-muted);
-  margin: 6px 0 0;
-}
-
-.mvd-ncrfg-wymog {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--mvd-ink);
-  background: var(--mvd-chip);
-  border-left: 3px solid var(--mvd-accent);
-  border-radius: 4px;
-  padding: 8px 10px;
-  margin: 10px 0 6px;
-}
-
-.mvd-ncrfg-podstawa {
-  font-size: 11px;
   line-height: 1.5;
   color: var(--mvd-muted);
   margin: 6px 0 0;

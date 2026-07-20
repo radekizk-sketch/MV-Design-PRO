@@ -59,4 +59,18 @@ export const LACZNIK_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem łącznika.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać łącznik.',
+
+  // Panel teorii (V12K-066: standard „must-have")
+  teoriaTytul: 'Teoria: łącznik sekcyjny i punkt podziału sieci',
+  teoriaOpis:
+    'Łącznik sekcyjny dzieli magistralę SN na sekcje. Jego stan normalny decyduje o topologii '
+    + 'pracy: zamknięty łączy sekcje (zasilanie ciągłe), otwarty tworzy punkt podziału (NOP) — '
+    + 'sieć pracuje wtedy promieniowo, a łącznik stanowi rezerwę do przełączeń awaryjnych. '
+    + 'Rozłącznik przełącza prąd roboczy, wyłącznik dodatkowo wyłącza prąd zwarciowy. Stan łącznika '
+    + 'jest honorowany przez rozpływ mocy (gałąź otwarta = brak przepływu) — wybór realnie zmienia '
+    + 'rozkład obciążeń, straty i pewność zasilania.',
+  teoriaWymog:
+    'Aparat dobiera się do prądu roboczego i zwarciowego sekcji; punkt podziału planuje się tak, '
+    + 'by po przełączeniu żaden odcinek nie był przeciążony ani nie spadł poniżej dopuszczalnego napięcia.',
+  teoriaPodstawa: 'Podstawa: PN-EN 62271 (aparatura rozdzielcza), IRiESD (praca sieci SN).',
 } as const;

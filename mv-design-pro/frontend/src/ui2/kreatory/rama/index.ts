@@ -36,6 +36,9 @@ export type {
   KreatorNastepnyKrokProps,
 } from './gotowosc';
 
+export { PanelTeorii, PANEL_TEORII_WYMOG_PREFIX } from './panelTeorii';
+export type { PanelTeoriiProps } from './panelTeorii';
+
 export { bladPola } from './model';
 export type {
   OpcjaWyboru,

@@ -68,4 +68,18 @@ export const ODBIOR_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem odbioru.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać odbiór.',
+
+  // Panel teorii (V12K-066: standard „must-have")
+  teoriaTytul: 'Teoria: odbiór nN — moc, współczynnik mocy i model obciążenia',
+  teoriaOpis:
+    'Odbiór reprezentuje pobór mocy czynnej P i biernej Q na szynie nN. Współczynnik mocy cosφ '
+    + 'wiąże je: Q = P·tan(arccos cosφ) — im niższy cosφ, tym większy pobór Q i większe obciążenie '
+    + 'sieci oraz straty. Model obciążenia (stała moc / stały prąd / stała impedancja, tzw. ZIP) '
+    + 'określa, jak pobór zmienia się z napięciem: odbiory stałomocowe pobierają tę samą P niezależnie '
+    + 'od napięcia, impedancyjne — malejącą przy spadku napięcia. Sposób przyłączenia (1‑/3‑fazowe) '
+    + 'wpływa na niesymetrię. Rozkład napięć i prądów od tego odbioru liczy solver rozpływu mocy.',
+  teoriaWymog:
+    'cosφ w punkcie przyłączenia powinien spełniać wymagania OSD (zwykle ≥ 0,93 tgφ ≤ 0,4); '
+    + 'moc przyłączeniowa i model obciążenia muszą odpowiadać rzeczywistemu charakterowi odbioru.',
+  teoriaPodstawa: 'Podstawa: PN-EN 50160, IRiESD (tgφ), model ZIP obciążenia.',
 } as const;

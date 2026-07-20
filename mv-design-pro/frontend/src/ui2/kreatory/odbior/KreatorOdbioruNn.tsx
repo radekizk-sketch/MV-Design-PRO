@@ -26,6 +26,7 @@ import {
   KreatorRama,
   KreatorSekcja,
   KreatorSiatka,
+  PanelTeorii,
   PoleKatalogu,
   PoleLiczbowe,
   PoleTekstowe,
@@ -315,6 +316,13 @@ export function KreatorOdbioruNn() {
               testid="mvd-kreator-odbior-przylacze"
             />
           </KreatorSiatka>
+          <PanelTeorii
+            tytul={T.teoriaTytul}
+            opis={T.teoriaOpis}
+            wymog={T.teoriaWymog}
+            podstawa={T.teoriaPodstawa}
+            testid="mvd-kreator-odbior-teoria"
+          />
         </KreatorSekcja>
       ) : null}
 

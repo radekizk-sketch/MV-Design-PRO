@@ -89,4 +89,20 @@ export const TRANSFORMATOR_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem transformatora.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać transformator.',
+
+  // Panel teorii (V12K-066: standard „must-have")
+  teoriaRegTytul: 'Teoria: regulacja napięcia i przełącznik zaczepów',
+  teoriaRegOpis:
+    'Transformator zmienia napięcie w stosunku przekładni; przełącznik zaczepów pozwala tę '
+    + 'przekładnię korygować w krokach. DETC (przełączanie beznapięciowe) ustawia się raz przy '
+    + 'wyłączonym transformatorze — kompensuje stały poziom napięcia sieci. OLTC (przełączanie '
+    + 'pod obciążeniem) reguluje napięcie w trakcie pracy: w trybie automatycznym (AVR) regulator '
+    + 'utrzymuje napięcie zadane na wskazanej szynie w paśmie nieczułości — przy odchyłce większej '
+    + 'niż pasmo zmienia zaczep. Uzwojenie regulowane, zakres i krok zaczepów oraz nastawy AVR '
+    + '(napięcie zadane, pasmo) decydują o profilu napięć w całej sieci zasilanej z tego transformatora.',
+  teoriaRegWymog:
+    'Pasmo nieczułości AVR powinno być szersze niż skok napięcia jednego zaczepu (inaczej regulator '
+    + '„poluje"). Napięcie zadane dobiera się do wymagań odbiorów i dopuszczalnych odchyleń napięcia.',
+  teoriaRegPodstawa:
+    'Podstawa: PN-EN 60076 (transformatory), PN-EN 50160 (parametry napięcia), IRiESD.',
 } as const;

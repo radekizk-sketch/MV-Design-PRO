@@ -49,6 +49,7 @@ import {
   KreatorRama,
   KreatorSekcja,
   KreatorSiatka,
+  PanelTeorii,
   PoleKatalogu,
   PoleLiczbowe,
   PolePrzelacznik,
@@ -639,6 +640,13 @@ export function KreatorZrodloZasilania() {
               <PoleLiczbowe etykieta={T.z0z1} wartosc={dane.z0_z1_ratio} onZmiana={(v) => zmien('z0_z1_ratio', v)} krok={0.1} wylaczone={!dane.zero_sequence_enabled} blad={bladDlaPola('z0_z1_ratio')} />
             </KreatorSiatka>
           </KreatorSekcja>
+          <PanelTeorii
+            tytul={T.teoriaTytul}
+            opis={T.teoriaOpis}
+            wymog={T.teoriaWymog}
+            podstawa={T.teoriaPodstawa}
+            testid="mvd-kreator-zrodlo-teoria"
+          />
         </>
       ) : null}
 

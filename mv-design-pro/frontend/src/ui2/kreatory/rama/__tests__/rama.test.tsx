@@ -8,6 +8,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { KreatorRama, KreatorSekcja } from '../KreatorRama';
+import { PanelTeorii } from '../panelTeorii';
 import {
   PoleKatalogu,
   PoleLiczbowe,
@@ -140,6 +141,40 @@ describe('Pola kreatora — interakcje natywne', () => {
     render(<PolePrzelacznikBinarny etykieta="Zero" wlaczone={false} onZmiana={onZmiana} testid="pb" />);
     await user.click(screen.getByTestId('pb'));
     expect(onZmiana).toHaveBeenCalledWith(true);
+  });
+
+  it('PanelTeorii renderuje teorię, wymóg, podstawę i dzieci (wykres) — rozwijany', async () => {
+    const user = userEvent.setup();
+    render(
+      <PanelTeorii
+        tytul="Teoria: test"
+        opis="Wyjaśnienie teorii."
+        wymog="Wymaganie normy."
+        podstawa="Podstawa: norma X."
+        testid="pt"
+      >
+        <svg data-testid="pt-wykres" />
+      </PanelTeorii>,
+    );
+    const panel = screen.getByTestId('pt');
+    // Treść jest w DOM (details) — dostępna także zwinięta.
+    expect(panel.textContent).toContain('Wyjaśnienie teorii.');
+    expect(panel.textContent).toContain('Wymaganie normy.');
+    expect(panel.textContent).toContain('Podstawa: norma X.');
+    expect(screen.getByTestId('pt-wykres')).toBeInTheDocument();
+    // Rozwijalny natywnie (summary).
+    expect((panel as HTMLDetailsElement).open).toBe(false);
+    await user.click(panel.querySelector('summary') as HTMLElement);
+    expect((panel as HTMLDetailsElement).open).toBe(true);
+  });
+
+  it('PanelTeorii domyślnieOtwarty startuje rozwinięty; pomija puste bloki', () => {
+    render(<PanelTeorii tytul="T" opis="O." domyslnieOtwarty testid="pt2" />);
+    const panel = screen.getByTestId('pt2') as HTMLDetailsElement;
+    expect(panel.open).toBe(true);
+    // Bez wymog/podstawa nie ma tych bloków.
+    expect(panel.querySelector('.mvd-teoria-wymog')).toBeNull();
+    expect(panel.querySelector('.mvd-teoria-podstawa')).toBeNull();
   });
 
   it('PoleKatalogu pokazuje uczciwy błąd katalogu', () => {

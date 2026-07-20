@@ -29,6 +29,7 @@ import {
   KreatorRama,
   KreatorSekcja,
   KreatorSiatka,
+  PanelTeorii,
   PoleKatalogu,
   PoleTekstowe,
   PoleWyboru,
@@ -329,6 +330,13 @@ export function KreatorPolaSn() {
             {dane.switchgear_family_ref && opcjeSzablonow.length === 0 ? (
               <KreatorInfo>{T.szablonBrak}</KreatorInfo>
             ) : null}
+            <PanelTeorii
+              tytul={T.teoriaTytul}
+              opis={T.teoriaOpis}
+              wymog={T.teoriaWymog}
+              podstawa={T.teoriaPodstawa}
+              testid="mvd-kreator-pole-teoria"
+            />
           </KreatorSekcja>
 
           <KreatorSekcja tytul={T.aparatSekcja} testid="mvd-kreator-pole-aparat-sekcja">

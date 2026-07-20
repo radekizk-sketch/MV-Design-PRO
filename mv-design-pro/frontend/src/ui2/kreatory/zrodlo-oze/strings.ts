@@ -130,6 +130,34 @@ export const OZE_STRINGS = {
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem źródła.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać źródło OZE.',
 
+  // Panele teorii kroków 1–2 (V12K-066: standard „must-have")
+  teoriaTechTytul: 'Teoria: technologia i sposób przyłączenia',
+  teoriaTechOpis:
+    'Technologia (PV / magazyn / elektrownia wiatrowa) wyznacza katalog falowników, model '
+    + 'zwarciowy (źródło przekształtnikowe ma ograniczony, sterowany prąd zwarciowy — inny niż '
+    + 'maszyna synchroniczna) oraz wymagania przyłączeniowe NC RfG/PTPiREE. Sposób przyłączenia: '
+    + 'bezpośrednio do szyny nN (falownik nN, brak transformatora blokowego) albo przez '
+    + 'transformator blokowy SN/nN, gdy napięcie falownika różni się od napięcia rozdzielni — '
+    + 'transformator wnosi wtedy własną impedancję i grupę połączeń do modelu.',
+  teoriaTechWymog:
+    'Dobór pola i aparatu nN musi odpowiadać prądowi znamionowemu i zwarciowemu źródła; '
+    + 'przyłączenie przez transformator blokowy wymaga zgodności napięć uzwojeń z szyną.',
+  teoriaTechPodstawa:
+    'Podstawa: NC RfG (typ modułu wg mocy i napięcia), IRiESD OSD, PN-EN 62271 (aparatura).',
+  teoriaKatalogTytul: 'Teoria: falownik z katalogu i moc zagregowana',
+  teoriaKatalogOpis:
+    'Falownik dobierany jest z katalogu (zasada „catalog-first"): tabliczka wnosi napięcie '
+    + 'znamionowe, moc pozorną S, zakres mocy biernej Q i certyfikat PTPiREE — bez ręcznego '
+    + 'wpisywania parametrów fizycznych w UI (zero fizyki w UI). Moc zagregowana źródła = liczba '
+    + 'jednostek × Pmax jednostki; agregację i wszystkie wyniki liczy backend. Certyfikat PTPiREE '
+    + '(WOŚ — Warunki Ogólne Świadczenia) potwierdza zgodność falownika z wymaganiami NC RfG i jest '
+    + 'niezbędny do oceny zgodności w punkcie przyłączenia.',
+  teoriaKatalogWymog:
+    'Do oceny zgodności NC RfG falownik musi mieć powiązany certyfikat PTPiREE (WOŚ). '
+    + 'Brak certyfikatu = niekompletne dane do badań przyłączeniowych.',
+  teoriaKatalogPodstawa:
+    'Podstawa: NC RfG (2016/631), procedura PTPiREE WOŚ, karty katalogowe producentów falowników.',
+
   // Panel teorii + charakterystyki NC RfG (G-OZE-B5)
   teoriaTytul: 'Teoria i charakterystyka NC RfG',
   teoriaRozwin: 'Pokaż teorię i wykres charakterystyki',

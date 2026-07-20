@@ -59,4 +59,18 @@ export const PIERSCIEN_STRINGS = {
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem pierścienia.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby domknąć pierścień.',
   pierscienDomkniety: 'Pierścień domknięty — wskaż teraz punkt normalnie otwarty.',
+
+  // Panel teorii (V12K-066: standard „must-have")
+  teoriaTytul: 'Teoria: pierścień SN i punkt normalnie otwarty (NOP)',
+  teoriaOpis:
+    'Sieć pierścieniowa łączy dwa ciągi zasilania, dając dwustronne zasilanie i rezerwę — awaria '
+    + 'jednego odcinka nie pozbawia odbiorów napięcia po przełączeniu. W normalnej pracy pierścień '
+    + 'pozostaje jednak rozcięty w jednym miejscu — punkcie normalnie otwartym (NOP) — więc sieć '
+    + 'pracuje promieniowo (prostszy rozpływ, selektywna ochrona, brak prądów wyrównawczych). '
+    + 'Położenie NOP decyduje o podziale obciążeń między ciągi i o profilu napięć; przy awarii NOP '
+    + 'przenosi się, przywracając zasilanie. Rozpływ mocy honoruje otwarty NOP (brak przepływu tą gałęzią).',
+  teoriaWymog:
+    'NOP dobiera się tak, by w pracy normalnej i po przełączeniach awaryjnych żaden odcinek nie był '
+    + 'przeciążony ani nie spadł poniżej dopuszczalnego napięcia; koordynacja zabezpieczeń zależy od pracy promieniowej.',
+  teoriaPodstawa: 'Podstawa: IRiESD (praca i rezerwowanie sieci SN), dobra praktyka projektowa OSD.',
 } as const;

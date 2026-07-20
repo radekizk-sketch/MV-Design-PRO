@@ -90,4 +90,18 @@ export const MAGISTRALA_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem odcinka.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać odcinek.',
+
+  // Panel teorii (V12K-066: standard „must-have")
+  teoriaTytul: 'Teoria: magistrala SN — odcinek linii/kabla i spadek napięcia',
+  teoriaOpis:
+    'Odcinek magistrali (linia napowietrzna lub kabel) ma rezystancję R i reaktancję X na jednostkę '
+    + 'długości (z katalogu przewodu/kabla). Przy przepływie mocy P i Q powstaje spadek napięcia '
+    + '≈ (R·P + X·Q)/U oraz straty mocy ∝ I²·R rosnące z kwadratem prądu. Dłuższy odcinek i większe '
+    + 'obciążenie → większy spadek napięcia na końcu magistrali. Przekrój przewodu dobiera się do '
+    + 'obciążalności prądowej (nagrzewanie) i do dopuszczalnego spadku napięcia. Wszystkie wartości '
+    + 'liczbowe (ΔU, straty, prądy) wyznacza solver — katalog wnosi tylko parametry jednostkowe.',
+  teoriaWymog:
+    'Przekrój musi wytrzymać prąd obciążenia długotrwale i prąd zwarciowy cieplnie; spadek napięcia '
+    + 'na całej magistrali powinien mieścić się w dopuszczalnym zakresie (typowo kilka %).',
+  teoriaPodstawa: 'Podstawa: PN-EN 50160 (napięcie), N SEP-E-004 (linie i kable), IRiESD.',
 } as const;

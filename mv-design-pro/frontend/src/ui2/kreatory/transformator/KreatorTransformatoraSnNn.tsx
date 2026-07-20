@@ -26,6 +26,7 @@ import {
   KreatorRama,
   KreatorSekcja,
   KreatorSiatka,
+  PanelTeorii,
   PoleKatalogu,
   PoleLiczbowe,
   PoleTekstowe,
@@ -388,6 +389,13 @@ export function KreatorTransformatoraSnNn() {
               ) : null}
             </>
           )}
+          <PanelTeorii
+            tytul={T.teoriaRegTytul}
+            opis={T.teoriaRegOpis}
+            wymog={T.teoriaRegWymog}
+            podstawa={T.teoriaRegPodstawa}
+            testid="mvd-kreator-transformator-teoria"
+          />
         </KreatorSekcja>
       ) : null}
 

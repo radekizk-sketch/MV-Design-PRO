@@ -21,6 +21,7 @@ import {
   KreatorRama,
   KreatorSekcja,
   KreatorSiatka,
+  PanelTeorii,
   PoleKatalogu,
   PoleLiczbowe,
   PoleWyboru,
@@ -326,6 +327,13 @@ export function KreatorPierscienia() {
             <KreatorInfo>{T.nopBrakKandydatow}</KreatorInfo>
           )}
           {bladDlaPola('nop_ref') ? <p className="mvd-pole-blad">{bladDlaPola('nop_ref')}</p> : null}
+          <PanelTeorii
+            tytul={T.teoriaTytul}
+            opis={T.teoriaOpis}
+            wymog={T.teoriaWymog}
+            podstawa={T.teoriaPodstawa}
+            testid="mvd-kreator-pierscien-teoria"
+          />
         </KreatorSekcja>
       ) : null}
     </KreatorRama>

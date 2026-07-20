@@ -66,4 +66,19 @@ export const KOMPENSATOR_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem baterii.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać baterię.',
+
+  // Panel teorii (V12K-066: standard „must-have")
+  teoriaTytul: 'Teoria: kompensacja mocy biernej baterią kondensatorów',
+  teoriaOpis:
+    'Bateria kondensatorów SN oddaje moc bierną pojemnościową Q = U²·2πf·C, podpierając napięcie '
+    + 'i odciążając sieć oraz transformatory z przesyłu Q. Moc baterii silnie zależy od napięcia '
+    + '(Q ∝ U²), dlatego katalog podaje Q przy napięciu znamionowym, a rzeczywistą wartość w punkcie '
+    + 'pracy liczy solver dla napięcia z rozpływu. Bateria zmniejsza pobór Q z sieci nadrzędnej, '
+    + 'poprawia współczynnik mocy i redukuje straty (mniejszy prąd w gałęziach). Zbyt duża '
+    + 'kompensacja przy małym obciążeniu grozi jednak przepięciem i przekompensowaniem.',
+  teoriaWymog:
+    'Moc baterii dobiera się do deficytu mocy biernej i profilu obciążenia; przy bateriach '
+    + 'stopniowanych/dławikach istotne są prądy załączania i rezonans z indukcyjnością sieci.',
+  teoriaPodstawa:
+    'Podstawa: PN-EN 60871 (baterie kondensatorów SN), IRiESD (współczynnik mocy tgφ).',
 } as const;
