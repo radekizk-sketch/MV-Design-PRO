@@ -112,6 +112,8 @@ test.describe('kreatory:screenshot', () => {
       await page.getByTestId('mvd-kreator-oze-statyzm').fill('5');
       await expect(page.getByTestId('mvd-kreator-oze-deadband')).toBeVisible();
       await page.getByTestId('mvd-kreator-oze-deadband').fill('0.2');
+      // Rozwiń panel teorii + charakterystyki NC RfG (G-OZE-B5), by zrzut pokazał wykresy.
+      await page.getByTestId('mvd-kreator-oze-teoria').locator('summary').click();
       await shot(3);
 
       // Krok 4 — podsumowanie i zapis.

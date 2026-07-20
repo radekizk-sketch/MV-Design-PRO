@@ -129,4 +129,79 @@ export const OZE_STRINGS = {
   anuluj: 'Anuluj',
   brakZakresu: 'Wybierz aktywny zakres obliczeń przed zapisem źródła.',
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać źródło OZE.',
+
+  // Panel teorii + charakterystyki NC RfG (G-OZE-B5)
+  teoriaTytul: 'Teoria i charakterystyka NC RfG',
+  teoriaRozwin: 'Pokaż teorię i wykres charakterystyki',
+  teoriaZwin: 'Ukryj teorię i wykres',
+  teoriaPodstawa:
+    'Podstawa: Rozporządzenie Komisji (UE) 2016/631 (NC RfG) + wymagania ogólnego stosowania '
+    + 'PTPiREE/OSD. Wykres jest poglądowy — pokazuje kształt prawa regulacji wynikający z Twoich '
+    + 'nastaw. Rzeczywiste Q i redukcję P w punkcie pracy liczy solver (rozpływ mocy).',
+} as const;
+
+/** Teoria + opis osi wykresów charakterystyk NC RfG (poglądowych). */
+export const NCRFG_TEORIA = {
+  cosPhi: {
+    tytul: 'Stały współczynnik mocy cosφ',
+    opis:
+      'Falownik utrzymuje zadany cosφ niezależnie od punktu pracy — moc bierna jest '
+      + 'proporcjonalna do czynnej: Q = P · tan(arccos cosφ). Przy cosφ = 0,95 daje to '
+      + '|Q| ≈ 0,3287 · P. Tryb prosty, nie reaguje na napięcie sieci — nadaje się, gdy OSD '
+      + 'zadaje stałą wartość cosφ w punkcie przyłączenia (PPP).',
+    wymog:
+      'NC RfG typ B/C: moduł musi mieć zdolność pracy w zakresie co najmniej cosφ 0,95 '
+      + 'indukcyjnie–pojemnościowo (±0,3287·Pn) przy mocy znamionowej.',
+    jakCzytac:
+      'Linia robocza wychodzi z początku pod kątem φ = arccos(cosφ). Im niższy cosφ, tym '
+      + 'stromsza linia (więcej Q na jednostkę P). Szary klin = wymagane pasmo zdolności ±0,95.',
+  },
+  qu: {
+    tytul: 'Regulacja Q(U) — napięciowo-jałowa (volt-var)',
+    opis:
+      'Moc bierna zależy od napięcia w PPP: w paśmie nieczułości (martwej strefie) wokół '
+      + 'napięcia znamionowego Q = 0; poza pasmem Q rośnie liniowo ze statyzmem. Przy napięciu '
+      + 'wyższym od górnej granicy pasma źródło POBIERA Q (rozładowuje sieć), przy niższym od '
+      + 'dolnej — ODDAJE Q (podpiera napięcie). Zakres ograniczają Qmin/Qmax. To podstawowy '
+      + 'tryb wsparcia napięcia lokalnego w sieciach z dużym nasyceniem OZE.',
+    wymog:
+      'NC RfG: charakterystyka Q(U) z nastawialnym pasmem nieczułości i nachyleniem; typowe '
+      + 'pasmo 0,95–1,05 pu, statyzm dobierany przez OSD. Reakcja tylko poza pasmem.',
+    jakCzytac:
+      'Płaski odcinek na środku = pasmo nieczułości (Q = 0). Nachylenie ramion = statyzm '
+      + '(większy = ostrzejsza reakcja). Poziome plateau = ograniczenie Qmin/Qmax.',
+  },
+  pf: {
+    tytul: 'Statyzm P(f) / LFSM — ograniczanie mocy od częstotliwości',
+    opis:
+      'Przy wzroście częstotliwości powyżej pasma nieczułości (LFSM-O, np. od 50,2 Hz) źródło '
+      + 'liniowo redukuje moc czynną — stabilizuje system przy nadmiarze generacji. Magazyny i '
+      + 'źródła z rezerwą mogą też PODNOSIĆ moc przy spadku częstotliwości (LFSM-U, np. poniżej '
+      + '49,8 Hz). Statyzm s [%] = (ΔP/Pn)/(Δf/fn): mniejszy statyzm = ostrzejsza reakcja. '
+      + 'Przy częstotliwości znamionowej (50 Hz) tryb nie zmienia mocy.',
+    wymog:
+      'NC RfG: LFSM-O obowiązkowy dla typów B/C/D — próg zwykle 50,2 Hz, statyzm 2–12% '
+      + '(typ. 5%). LFSM-U wymagany dla źródeł ze zdolnością zwiększania mocy.',
+    jakCzytac:
+      'Płaski odcinek = pasmo nieczułości (P = 100%). Opadające ramię w prawo = redukcja '
+      + 'przy nadczęstotliwości (LFSM-O); rosnące ramię w lewo (jeśli aktywne) = LFSM-U.',
+  },
+  wylaczone: {
+    tytul: 'Bez regulacji (źródło pasywne)',
+    opis:
+      'Źródło pracuje ze stałą mocą bierną Q = 0 — nie wspiera napięcia ani częstotliwości. '
+      + 'Dopuszczalne tylko dla najmniejszych modułów (typ A) lub gdy OSD nie wymaga regulacji.',
+    wymog: 'Dla typów B/C/D NC RfG wymaga aktywnych trybów regulacji Q i P(f).',
+    jakCzytac: 'Brak charakterystyki — moc bierna stała (Q = 0) niezależnie od napięcia i częstotliwości.',
+  },
+  osU: 'Napięcie U [pu]',
+  osQ: 'Moc bierna Q',
+  osF: 'Częstotliwość f [Hz]',
+  osP: 'Moc czynna P/Pn [%]',
+  osPn: 'Moc czynna P [pu]',
+  qOddawanie: '+ oddawanie',
+  qPobor: '− pobór',
+  pasmoNieczulosci: 'pasmo nieczułości',
+  brakCharakterystyki: 'Wybierz tryb regulacji, aby zobaczyć charakterystykę.',
+  wymogPrefix: 'Wymóg NC RfG: ',
 } as const;

@@ -62,6 +62,7 @@ import {
   type WariantPrzylaczenia,
 } from './zrodloOzeModel';
 import { OZE_STRINGS as T } from './strings';
+import { CharakterystykaNcRfg } from './WykresyNcRfg';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'tech', tytul: T.krokTechnologia },
@@ -541,6 +542,16 @@ export function KreatorZrodlaOze() {
                 />
               ) : null}
             </KreatorSiatka>
+            <CharakterystykaNcRfg
+              mode={dane.control_mode}
+              cosPhi={dane.cos_phi_target}
+              quSlope={dane.qu_slope_pu_per_pu}
+              quDbLow={dane.qu_deadband_low_pu}
+              quDbHigh={dane.qu_deadband_high_pu}
+              droopPct={dane.frequency_droop_percent}
+              pfDbHz={dane.lfsm_deadband_hz}
+              allowIncrease={dane.source_technology === 'BESS'}
+            />
           </KreatorSekcja>
 
           {dane.source_technology === 'BESS' ? (

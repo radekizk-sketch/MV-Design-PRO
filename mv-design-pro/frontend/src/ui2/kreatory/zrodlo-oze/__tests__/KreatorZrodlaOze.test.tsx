@@ -135,6 +135,11 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     expect(screen.queryByTestId('mvd-kreator-oze-deadband')).not.toBeInTheDocument();
     await userEvent.type(screen.getByTestId('mvd-kreator-oze-statyzm'), '5');
     expect(screen.getByTestId('mvd-kreator-oze-deadband')).toBeInTheDocument();
+
+    // Panel teorii + charakterystyki NC RfG (G-OZE-B5) obecny, z żywym wykresem SVG.
+    const teoria = screen.getByTestId('mvd-kreator-oze-teoria');
+    expect(teoria).toBeInTheDocument();
+    expect(teoria.querySelector('svg')).not.toBeNull();
   });
 
   it('uczciwy stan zerowy: bez rozdzielni zapis zablokowany', async () => {
