@@ -41,17 +41,28 @@ w torze kablowym, słup w napowietrznym).
 odcinka ustawia koniec ciągu jako start następnego kroku — element zawsze ląduje
 na końcu.
 
-**Kryterium odbioru reguły:** główny flow budowy (kontynuacja magistrali →
-`ENDPOINT_APPEND`) stawia stację/odbiór wyłącznie na końcu; język UI mówi „na końcu
-odcinka" (`magistrala/strings.ts`). Węzły rozgałęźne zachowują RATIO (poprawnie).
+**Kryterium odbioru reguły:** kanoniczny flow budowy JEST już zgodny —
+`SnSegmentSurface.openEndpointOperation` (Etap 6, narzędzie wstawiania) i
+kontynuacja magistrali (`buildNextContext`) przekazują dla stacji
+`placement_mode: 'ENDPOINT_APPEND'`, `position_on_segment: 1` (koniec odcinka);
+język UI mówi „na końcu odcinka". Węzły rozgałęźne (ZKSN/słup) zachowują RATIO
+(poprawnie — patrz wyjątek wyżej).
 
-**Dług zarejestrowany (do naprawy w migracji Audyt D):** legacy `InsertStationForm`
-(1884 w., god-file) w wariancie standalone domyśla `position_on_segment = 0.5` i
-pokazuje „podział odcinka w 0.50" — czyli **dopuszcza wstawienie STACJI w środku
-odcinka wbrew regule**. Nie naprawiamy w god-file (ryzyko); zamykamy przy migracji
-`InsertStationForm → ui2 KreatorStacji` (Audyt D): kreator stacji ma wymuszać
-`ENDPOINT_APPEND` (koniec odcinka/odgałęzienia), a odczep mid-segment realizować
-wyłącznie przez węzeł rozgałęźny (ZKSN/słup) + odgałęzienie.
+**Dług zarejestrowany (do naprawy w migracji Audyt D):** rule wycieka wyłącznie
+przez ŚCIEŻKI LEGACY, nie przez kanoniczny flow:
+- `InsertStationForm` (1884 w., god-file) w wariancie standalone domyśla
+  `position_on_segment = 0.5` i pokazuje „podział odcinka w 0.50";
+- wejścia legacy do tej operacji: menu kontekstowe segmentu
+  (`ui/context-menu/actionMenuBuilders.ts` „Wstaw stację SN/nN…") oraz
+  `ui/sld/shared/sldActionExecutor.ts` mapowanie `conscious-split-on-segment`
+  (to ostatnie = terytorium wątku SLD).
+
+Czyli **dopuszczenie STACJI w środku odcinka istnieje tylko na ścieżkach legacy/SLD
+wbrew regule**. Nie naprawiamy w god-file (ryzyko) ani cross-thread w `ui/sld/**`;
+zamykamy przy migracji `InsertStationForm → ui2 KreatorStacji` (Audyt D): kreator
+stacji wymusza `ENDPOINT_APPEND`, a odczep mid-segment realizuje wyłącznie przez
+węzeł rozgałęźny (ZKSN/słup) + odgałęzienie. Karta do wątku SLD: wygaszenie
+`conscious-split-on-segment` dla stacji.
 
 ---
 
