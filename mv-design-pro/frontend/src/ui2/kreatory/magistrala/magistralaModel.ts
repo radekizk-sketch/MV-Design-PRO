@@ -205,7 +205,54 @@ export function zbudujPayload(
   return payload;
 }
 
+// --------------------------------------------------- Builder realnej sieci (M2, V12K-071)
+
+/** Odcinek dodany do magistrali w bieżącej sesji budowy (podsumowanie do listy). */
+export interface OdcinekBudowy {
+  rodzaj: RodzajOdcinka;
+  typLabel: string;
+  cross_section_mm2: number | null;
+  dlugosc_m: number;
+}
+
+/** Podsumuj właśnie dodany odcinek na podstawie formularza i parametrów katalogowych. */
+export function podsumujOdcinek(
+  data: MagistralaFormData,
+  params: ParametryOdcinka | null,
+  typLabel: string,
+): OdcinekBudowy {
+  return {
+    rodzaj: data.rodzaj,
+    typLabel,
+    cross_section_mm2: params?.cross_section_mm2 ?? null,
+    dlugosc_m: isPositive(data.dlugosc_m) ? data.dlugosc_m : 0,
+  };
+}
+
+/** Łączna długość magistrali [m] z listy odcinków. */
+export function lacznaDlugosc(odcinki: readonly OdcinekBudowy[]): number {
+  return odcinki.reduce((sum, o) => sum + o.dlugosc_m, 0);
+}
+
+/** Kontekst kontynuacji ciągu z końca właśnie dodanego odcinka (builder trzyma to w stanie). */
+export function kontekstKontynuacji(
+  endpointBusRef: string,
+  trunkId: string | undefined,
+  voltageLabel: string | undefined,
+): KontekstMagistrali {
+  return {
+    trunk_id: trunkId || undefined,
+    from_terminal_id: endpointBusRef || undefined,
+    terminal_voltage_label: voltageLabel || undefined,
+  };
+}
+
 // ------------------------------------------------------------- Formatery
+
+/** Długość w metrach lub km (dla większych). */
+export function fmtDlugosc(m: number): string {
+  return m >= 1000 ? `${(m / 1000).toFixed(2)} km` : `${m.toFixed(0)} m`;
+}
 
 export function fmtV(v: number | null | undefined): string {
   return typeof v === 'number' && Number.isFinite(v) ? `${v.toFixed(1)} V` : '—';

@@ -5,11 +5,15 @@ import {
   branchKindZRodzaju,
   DANE_DOMYSLNE,
   fmtA,
+  fmtDlugosc,
   fmtPct,
   fmtV,
+  kontekstKontynuacji,
+  lacznaDlugosc,
   maStartCiagu,
   nextStepDozwolony,
   parametryZKatalogu,
+  podsumujOdcinek,
   segmentKindZRodzaju,
   walidujFormularz,
   zbudujPayload,
@@ -214,5 +218,37 @@ describe('magistralaModel — formatery', () => {
     expect(fmtA(254.6)).toBe('255 A');
     expect(fmtV(null)).toBe('—');
     expect(fmtPct(undefined)).toBe('—');
+  });
+});
+
+describe('magistralaModel — builder realnej sieci (M2, V12K-071)', () => {
+  it('podsumowuje dodany odcinek (rodzaj/typ/przekrój/długość)', () => {
+    const p = parametryZKatalogu('KABEL', 'kab-1', [kabel], [linia]);
+    const o = podsumujOdcinek(dane({ dlugosc_m: 1200 }), p, 'XRUHAKXS 1×120');
+    expect(o).toMatchObject({ rodzaj: 'KABEL', typLabel: 'XRUHAKXS 1×120', cross_section_mm2: 120, dlugosc_m: 1200 });
+  });
+
+  it('sumuje łączną długość magistrali', () => {
+    expect(
+      lacznaDlugosc([
+        { rodzaj: 'KABEL', typLabel: 'a', cross_section_mm2: 120, dlugosc_m: 500 },
+        { rodzaj: 'LINIA', typLabel: 'b', cross_section_mm2: 70, dlugosc_m: 1500 },
+      ]),
+    ).toBe(2000);
+  });
+
+  it('formatuje długość w m/km', () => {
+    expect(fmtDlugosc(500)).toBe('500 m');
+    expect(fmtDlugosc(2500)).toBe('2.50 km');
+  });
+
+  it('buduje kontekst kontynuacji z końca odcinka (start kolejnego)', () => {
+    expect(kontekstKontynuacji('bus/end-1', 'trunk-1', '15 kV')).toMatchObject({
+      trunk_id: 'trunk-1',
+      from_terminal_id: 'bus/end-1',
+      terminal_voltage_label: '15 kV',
+    });
+    // Start ciągu z tego kontekstu jest ważny (builder może kontynuować).
+    expect(maStartCiagu(kontekstKontynuacji('bus/end-1', undefined, undefined))).toBe(true);
   });
 });

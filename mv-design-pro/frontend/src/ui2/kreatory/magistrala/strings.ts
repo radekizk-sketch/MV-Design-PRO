@@ -84,6 +84,17 @@ export const MAGISTRALA_STRINGS = {
   nextBranchPoleBlokada:
     'Słup rozgałęźny można wstawić tylko na odcinku napowietrznym SN. Dla kabla wybierz ZK SN.',
 
+  // Builder realnej sieci (M2, V12K-071).
+  builderTytul: 'Magistrala w budowie',
+  builderPusto: 'Dodaj pierwszy odcinek — kolejne dołączysz do jego końca, budując cały ciąg.',
+  builderLicznik: (n: number) => (n === 1 ? '1 odcinek' : `${n} odcinków`),
+  builderLaczna: 'Łączna długość',
+  builderKoniec: 'Koniec ciągu (start kolejnego odcinka)',
+  builderDodajKolejny: 'Wybierz „Kolejny odcinek", aby przedłużyć magistralę, albo postaw stację/ZK/odbiór na końcu.',
+  builderZakoncz: 'Zakończ budowę',
+  builderZakonczTitle: 'Zakończ budowę magistrali i wróć do schematu',
+  builderDodaj: 'Dodaj odcinek',
+
   // Uczciwy stan zerowy: brak startu ciągu.
   brakStartuTytul: 'Brak miejsca startu ciągu',
   brakStartuStacja:

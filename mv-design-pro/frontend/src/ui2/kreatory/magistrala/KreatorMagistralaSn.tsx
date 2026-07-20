@@ -56,17 +56,22 @@ import {
   branchKindZRodzaju,
   DANE_DOMYSLNE,
   fmtA,
+  fmtDlugosc,
   fmtPct,
   fmtV,
+  kontekstKontynuacji,
+  lacznaDlugosc,
   maStartCiagu,
   nextStepDozwolony,
   parametryZKatalogu,
+  podsumujOdcinek,
   walidujFormularz,
   zbudujPayload,
   zbudujZapytaniePodgladu,
   type BladPola,
   type KontekstMagistrali,
   type MagistralaFormData,
+  type OdcinekBudowy,
   type RodzajOdcinka,
 } from './magistralaModel';
 import { MAGISTRALA_STRINGS as T } from './strings';
@@ -156,7 +161,7 @@ export function KreatorMagistralaSn() {
     trimmed(context?.field_ref)
     || (elementRef && canUseElementRefAsFieldRef(elementType) ? elementRef : '');
 
-  const kontekst: KontekstMagistrali = useMemo(
+  const kontekstBazowy: KontekstMagistrali = useMemo(
     () => ({
       trunk_id: trunkId || undefined,
       from_terminal_id: terminalId || undefined,
@@ -165,6 +170,12 @@ export function KreatorMagistralaSn() {
     }),
     [fieldRef, terminalId, terminalVoltageLabel, trunkId],
   );
+
+  // Builder realnej sieci (M2): po dodaniu odcinka trzymamy koniec ciągu jako start
+  // kolejnego (bez zamykania okna) + rosnącą listę odcinków magistrali.
+  const [zbudowane, setZbudowane] = useState<OdcinekBudowy[]>([]);
+  const [nadpisanyKontekst, setNadpisanyKontekst] = useState<KontekstMagistrali | null>(null);
+  const kontekst = nadpisanyKontekst ?? kontekstBazowy;
 
   const hasStart = maStartCiagu(kontekst);
   const brakStartuReason = !hasStart
@@ -213,6 +224,11 @@ export function KreatorMagistralaSn() {
     () => parametryZKatalogu(dane.rodzaj, dane.catalog_ref, kable, linie),
     [dane.rodzaj, dane.catalog_ref, kable, linie],
   );
+
+  const typLabel = useMemo(() => {
+    const items = dane.rodzaj === 'KABEL' ? kable : linie;
+    return items.find((it) => it.id === dane.catalog_ref)?.name ?? '';
+  }, [dane.rodzaj, dane.catalog_ref, kable, linie]);
 
   // Podgląd ΔU (R1) — liczy backend; debounce przez sekwencję.
   useEffect(() => {
@@ -319,12 +335,37 @@ export function KreatorMagistralaSn() {
       );
       const nextTrunkId = nextTerminal?.trunk_id ?? trunkId;
       const nextOperation = nextOperationForStep(dane.next_step);
+
+      // Odcinek dodany realnie do modelu → dopisz do listy magistrali w budowie (M2).
+      setZbudowane((prev) => [...prev, podsumujOdcinek(dane, params, typLabel)]);
+
       if (!nextSegmentRef || !nextEndpointBusRef) {
         // Odcinek utworzony; brak wskazania końca → wróć na schemat, nie fabrykuj kroku.
         closeForm();
         navigateToSld();
         return;
       }
+
+      // „Kolejny odcinek" → builder ZOSTAJE OTWARTY: koniec ciągu staje się startem
+      // następnego odcinka; formularz resetuje długość/nazwę (typ zostaje), krok = parametry.
+      if (dane.next_step === 'continue') {
+        setNadpisanyKontekst(
+          kontekstKontynuacji(nextEndpointBusRef, nextTrunkId, terminalVoltageLabel),
+        );
+        setDane((p) => ({
+          ...DANE_DOMYSLNE,
+          rodzaj: p.rodzaj,
+          catalog_ref: p.catalog_ref,
+          napiecie_kv: p.napiecie_kv,
+          next_step: 'continue',
+        }));
+        setBledy([]);
+        setKrok('parametry');
+        selectElement({ id: nextSegmentRef, type: 'LineBranch', name: 'Nowy odcinek SN' });
+        return;
+      }
+
+      // Element na końcu (stacja/ZK/słup) → zamknij i otwórz realną operację na końcu ciągu.
       const nextContext = buildNextContext({
         nextOperation,
         nextSegmentRef,
@@ -350,12 +391,19 @@ export function KreatorMagistralaSn() {
     hasStart,
     kontekst,
     openOperationForm,
+    params,
     selectElement,
     snapshot,
     terminalId,
     terminalVoltageLabel,
     trunkId,
+    typLabel,
   ]);
+
+  const onZakonczBudowe = useCallback(() => {
+    closeForm();
+    navigateToSld();
+  }, [closeForm]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {
@@ -380,8 +428,29 @@ export function KreatorMagistralaSn() {
     },
   ];
 
+  const builderPanel = (
+    <KreatorPodsumowanie tytul={T.builderTytul} testid="mvd-kreator-magistrala-builder">
+      {zbudowane.length === 0 ? (
+        <p className="mvd-podsum-komunikat">{T.builderPusto}</p>
+      ) : (
+        <>
+          {zbudowane.map((o, i) => (
+            <RzadWartosci
+              key={`${i}-${o.typLabel}-${o.dlugosc_m}`}
+              etykieta={`${i + 1}. ${o.rodzaj === 'KABEL' ? 'Kabel' : 'Linia'} ${o.typLabel}`.trim()}
+              wartosc={`${o.cross_section_mm2 ?? '—'} mm² · ${fmtDlugosc(o.dlugosc_m)}`}
+            />
+          ))}
+          <RzadWartosci etykieta={T.builderLaczna} wartosc={fmtDlugosc(lacznaDlugosc(zbudowane))} />
+          <RzadWartosci etykieta={T.builderKoniec} wartosc={dane.next_step === 'continue' ? 'gotowe' : '—'} />
+        </>
+      )}
+    </KreatorPodsumowanie>
+  );
+
   const aside = (
     <>
+      {builderPanel}
       <KreatorPodsumowanie
         tytul={T.podgladTytul}
         komunikat={iznamPrzekroczony ? T.podgladOstrzezenieIznam : bladPodgladu}
@@ -401,7 +470,7 @@ export function KreatorMagistralaSn() {
         )}
       </KreatorPodsumowanie>
       <KreatorGotowosc tytul={T.kontrolaTytul} wiersze={wierszeGotowosci} testid="mvd-kreator-magistrala-gotowosc" />
-      <KreatorNastepnyKrok opis={T.nastepnyOpis} />
+      <KreatorNastepnyKrok opis={zbudowane.length > 0 ? T.builderDodajKolejny : T.nastepnyOpis} />
     </>
   );
 
@@ -456,12 +525,16 @@ export function KreatorMagistralaSn() {
       bladGlobalny={bladGlobalny}
       walidacja={bledy.length > 0 ? T.walidacjaStopka : !hasStart ? brakStartuReason : null}
       akcjaGlowna={{
-        etykieta: T.zapisz,
+        etykieta: zbudowane.length > 0 ? T.builderDodaj : T.zapisz,
         onClick: onZapisz,
         zablokowana: zapisZablokowany,
         testid: 'mvd-kreator-magistrala-zapisz',
       }}
-      akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-magistrala-anuluj' }}
+      akcjaAnuluj={
+        zbudowane.length > 0
+          ? { etykieta: T.builderZakoncz, onClick: onZakonczBudowe, testid: 'mvd-kreator-magistrala-zakoncz' }
+          : { etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-magistrala-anuluj' }
+      }
       krokWstecz={
         krokIndex > 0
           ? { etykieta: T.wstecz, onClick: () => setKrok(KROKI[krokIndex - 1].id), testid: 'mvd-kreator-magistrala-wstecz' }

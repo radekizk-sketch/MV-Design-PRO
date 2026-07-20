@@ -209,6 +209,48 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     expect(Array.from(nextSelectLinia.options).some((o) => o.value === 'branch_pole')).toBe(true);
   });
 
+  it('builder (M2): „Kolejny odcinek" NIE zamyka okna, dopisuje odcinek do listy i pozwala budować dalej', async () => {
+    executeDomainOperationMock.mockResolvedValue(successResponse);
+    render(<KreatorMagistralaSn />);
+    await pickCable();
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-magistrala-next'), 'continue');
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
+
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(1));
+    // Okno buildera ZOSTAJE otwarte (nie ma zamknięcia, nie ma łańcuchowania obcej operacji).
+    expect(closeFormMock).not.toHaveBeenCalled();
+    expect(openOperationFormMock).not.toHaveBeenCalled();
+    // Lista magistrali w budowie zawiera dodany odcinek.
+    const builder = screen.getByTestId('mvd-kreator-magistrala-builder');
+    expect(builder.textContent).toContain('XRUHAKXS 1x120');
+    // Pojawia się akcja „Zakończ budowę".
+    expect(screen.getByTestId('mvd-kreator-magistrala-zakoncz')).toBeInTheDocument();
+
+    // Drugi odcinek: kontynuacja z końca poprzedniego (from_terminal_id = koniec ciągu).
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalledTimes(2));
+    const drugi = executeDomainOperationMock.mock.calls[1]?.[2] as Record<string, unknown>;
+    expect(drugi.from_terminal_id).toBe('bus-created-end');
+  });
+
+  it('builder: „Zakończ budowę" zamyka okno i wraca do schematu', async () => {
+    executeDomainOperationMock.mockResolvedValue(successResponse);
+    render(<KreatorMagistralaSn />);
+    await pickCable();
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-magistrala-next'), 'continue');
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zapisz'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-magistrala-zakoncz')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-zakoncz'));
+    expect(closeFormMock).toHaveBeenCalled();
+    expect(navigateToSldMock).toHaveBeenCalled();
+  });
+
   it('uczciwy stan zerowy: bez startu ciągu zapis jest zablokowany', async () => {
     context = {};
     render(<KreatorMagistralaSn />);

@@ -60,11 +60,13 @@ brak żyły powrotnej). Wartości liczbowe ZAWSZE z katalogu; wynik z solvera (Z
   R/X/C/Iz/temp/materiał/izolacja/Ith żyły powrotnej; linia: przekrój/R/X/B/Iz/temp/materiał).
   Panel teorii rozbudowany o różnice kabel↔napowietrzna. Testy modelu potwierdzają ekstrakcję
   per typ. **(ta runda)**
-- **M2 — Builder realnej sieci.** Kreator nie zamyka się po odcinku; utrzymuje sesję budowy
-  ciągu: dodaj kolejny odcinek, wstaw stację/ZK/rozgałęzienie/odbiór na końcu — z bieżącym
-  podglądem narastającej magistrali (lista odcinków + skumulowana długość/ΔU). Mapuje na
-  istniejące operacje (`continue_trunk_segment_sn`, `insert_station_on_segment_sn`,
-  `add_nn_load`, `insert_section_switch_sn`, rozgałęzienia) bez zmiany kontraktów.
+- **M2 — Builder realnej sieci. ✅ WDROŻONE (V12K-071).** Wybór „Kolejny odcinek" NIE zamyka
+  okna: koniec właśnie dodanego odcinka staje się startem następnego (`kontekstKontynuacji`),
+  formularz resetuje długość/nazwę (typ zostaje), a panel „Magistrala w budowie" pokazuje rosnącą
+  listę odcinków (rodzaj · typ · przekrój · długość) + łączną długość. Akcja główna „Dodaj
+  odcinek"; „Anuluj" po pierwszym odcinku zmienia się w „Zakończ budowę" (zamyka + wraca do SLD).
+  Elementy na końcu (stacja/ZK/słup) nadal łańcuchują realną operację. Każdy odcinek = realna
+  `continue_trunk_segment_sn` w modelu (bez shadow-modelu, bez zmiany kontraktów).
 - **M3 — Dobór przekroju (asystent).** Podpowiedź/walidacja: obciążalność Iz ≥ prąd roboczy,
   ΔU ≤ limit, wytrzymałość cieplna Ith ≥ Ik·√tk (backend liczy; UI interpretuje). Ostrzeżenia
   gdy przekrój niedobrany.
