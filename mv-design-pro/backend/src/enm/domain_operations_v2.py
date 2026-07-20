@@ -1431,13 +1431,13 @@ def _resolve_bay_template_protection_codes(
 
     Kolejność (zero fabrykacji — tylko realne dane kanonu, żadnych zmyślonych kodów):
     1. `CompleteMvBayTemplate.protection_requirements` z wybranego szablonu producenta
-       (reużycie kanonicznego resolvera Reference Engine — bez równoległej ścieżki);
-    2. dla roli TR — kanoniczny zestaw `TRANSFORMER_BAY_PROTECTION_CODES` (istniejący
-       kanon, ten sam, którego używa kreator transformatora);
-    3. w innym wypadku pusto (kanoniczna tablica per-rola dla pól liniowych/sprzęgła/
-       pomiaru wymaga przeglądu zabezpieczeniowca — karta audytu V12K-059 poz. B2).
+       (reużycie kanonicznego resolvera Reference Engine — bez równoległej ścieżki), gdy
+       paczka producenta je dostarcza — mają pierwszeństwo (dane producenckie);
+    2. kanoniczna tablica wymaganych funkcji per rola pola (`BAY_PROTECTION_CODES_BY_ROLE`,
+       PTPiREE/IRiESD + IEC 60255): IN/OUT/FEEDER/TR/COUPLER/OZE; pole pomiarowe = puste
+       (uczciwy brak, nie fabrykacja).
     """
-    from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
+    from network_model.catalog.bay_templates import protection_codes_for_bay_role
 
     if bay_template_ref:
         from network_model.catalog.switchgear.canonical_fallback import (
@@ -1459,9 +1459,7 @@ def _resolve_bay_template_protection_codes(
         if template is not None and template.protection_requirements:
             return list(template.protection_requirements)
 
-    if bay_role == "TR":
-        return list(TRANSFORMER_BAY_PROTECTION_CODES)
-    return []
+    return protection_codes_for_bay_role(bay_role)
 
 
 def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:

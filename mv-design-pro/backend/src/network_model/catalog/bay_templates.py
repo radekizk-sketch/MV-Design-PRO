@@ -129,6 +129,51 @@ TRANSFORMER_BAY_PROTECTION_CODES: list[str] = [
     "ciśnienie",
 ]
 
+# Kanoniczny interfejs przyłączeniowy źródła OZE/DER (NC RfG / PTPiREE) — zestaw pola
+# źródłowego SN. Kierunkowe nadprądowe (67/67N), napięciowe (27/59), częstotliwościowe
+# (81U/81O), ROCOF (df/dt) i ochrona przed pracą wyspową (anti-islanding). PEŁNA ochrona
+# maszyny (87G, 40, 32, 64, 46, 21/25) mieszka na source.protection, NIE na polu interfejsu.
+# Lustro `_PROTECTION_BY_MACHINE["IBG"]` z reference_networks (jedno źródło kanonu interfejsu).
+OZE_INTERFACE_BAY_PROTECTION_CODES: list[str] = [
+    "67",
+    "67N",
+    "27",
+    "59",
+    "81U",
+    "81O",
+    "df/dt",
+    "anti-islanding",
+]
+
+# Kanoniczne wymagane funkcje zabezpieczeniowe (ANSI/IEC 60255) per rola pola SN — wg
+# praktyki krajowej (PTPiREE/IRiESD) i norm. Deterministyczne stringi (NIE enum), lustro
+# mechanizmu `TRANSFORMER_BAY_PROTECTION_CODES`. Wyprowadzane na `Bay.protection_codes`
+# (glify SLD + read-model pola + wejście dla LoM/koordynacji), gdy szablon producenta nie
+# dostarcza własnych `protection_requirements` (te mają pierwszeństwo). Pole pomiarowe nie
+# wyzwala — puste (uczciwy brak, nie fabrykacja). Zero heurystyk: to WYMAGANIA funkcji, nie
+# obliczenia fizyczne (te pozostają w solverach/koordynacji).
+BAY_PROTECTION_CODES_BY_ROLE: dict[str, list[str]] = {
+    # Pole dopływowe/zasilające (incomer): nadprądowe zwłoczne+bezzwłoczne + ziemnozwarciowe.
+    "IN": ["51", "50", "51N"],
+    # Pole odpływowe (feeder): + kierunkowe ziemnozwarciowe (sieci skompensowane/izolowane).
+    "OUT": ["51", "50", "51N", "67N"],
+    # Pole liniowe/odgałęźne — jak odpływowe.
+    "FEEDER": ["51", "50", "51N", "67N"],
+    # Pole transformatorowe — reużycie istniejącego kanonu (różnicowe + nadprądowe + mech.).
+    "TR": list(TRANSFORMER_BAY_PROTECTION_CODES),
+    # Pole sprzęgła sekcji: nadprądowe.
+    "COUPLER": ["51", "50"],
+    # Pole pomiarowe: brak funkcji wyzwalających (tor VT) — uczciwie puste.
+    "MEASUREMENT": [],
+    # Pole źródłowe OZE/DER: interfejs przyłączeniowy NC RfG.
+    "OZE": list(OZE_INTERFACE_BAY_PROTECTION_CODES),
+}
+
+
+def protection_codes_for_bay_role(bay_role: str) -> list[str]:
+    """Kanoniczne wymagane funkcje zabezpieczeniowe dla roli pola (pusta gdy brak w kanonie)."""
+    return list(BAY_PROTECTION_CODES_BY_ROLE.get(bay_role, []))
+
 
 BAY_TEMPLATE_TRANSFORMER = BayTemplate(
     template_id="bay_template_transformer",

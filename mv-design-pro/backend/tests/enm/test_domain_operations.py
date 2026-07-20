@@ -605,7 +605,10 @@ class TestNnFieldAdapters:
         assert spec["protection_ref"] == "rel_50_51_67"
 
     def test_add_sn_bay_without_producer_refs_stays_backward_compatible(self):
-        """Bez refów producenta field_spec nie zyskuje kluczy producenckich (determinizm)."""
+        """Bez refów producenta field_spec nie zyskuje kluczy producenckich (determinizm).
+
+        Rola pomiarowa nie ma wymaganych funkcji zabezpieczeniowych → brak protection_codes.
+        """
         gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
         substation = gpz_snapshot["substations"][0]
         result = execute_domain_operation(
@@ -614,8 +617,8 @@ class TestNnFieldAdapters:
             payload={
                 "bus_ref": substation["bus_refs"][0],
                 "station_ref": substation["ref_id"],
-                "bay_role": "OUT",
-                "apparatus_kind": "BREAKER",
+                "bay_role": "MEASUREMENT",
+                "apparatus_kind": "MEASUREMENT",
             },
         )
         spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
@@ -649,8 +652,12 @@ class TestNnFieldAdapters:
         ][-1]
         assert spec["protection_codes"] == list(TRANSFORMER_BAY_PROTECTION_CODES)
 
-    def test_add_sn_bay_line_role_no_fabricated_protection_codes(self):
-        """Zero fabrykacji: rola liniowa bez szablonu z wymaganiami → brak zmyślonych kodów."""
+    def test_add_sn_bay_feeder_role_materializes_canonical_protection_codes(self):
+        """Rola odpływowa materializuje kanoniczny zestaw feeder (PTPiREE/IEC 60255):
+        nadprądowe 51/50, ziemnozwarciowe 51N, kierunkowe ziemnozwarciowe 67N.
+        """
+        from network_model.catalog.bay_templates import BAY_PROTECTION_CODES_BY_ROLE
+
         gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
         substation = gpz_snapshot["substations"][0]
         result = execute_domain_operation(
@@ -666,7 +673,28 @@ class TestNnFieldAdapters:
         spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
             "field_specs"
         ][-1]
-        assert "protection_codes" not in spec
+        assert spec["protection_codes"] == BAY_PROTECTION_CODES_BY_ROLE["OUT"]
+
+    def test_add_sn_bay_oze_role_materializes_nc_rfg_interface(self):
+        """Rola źródłowa OZE materializuje interfejs przyłączeniowy NC RfG (67/67N/27/59/81/df/dt)."""
+        from network_model.catalog.bay_templates import OZE_INTERFACE_BAY_PROTECTION_CODES
+
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "OZE",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert spec["protection_codes"] == list(OZE_INTERFACE_BAY_PROTECTION_CODES)
 
     def test_add_nn_outgoing_field_uses_station_meta_instead_of_legacy_bays(self):
         _, snapshot = _build_gpz_plus_segments(1)

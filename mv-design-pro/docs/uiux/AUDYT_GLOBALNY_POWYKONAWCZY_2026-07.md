@@ -135,16 +135,19 @@ Pozycje 3–6 rejestrowane jako karty (nie odkładane cicho).
 
 ### Status realizacji
 
-- **B — ZREALIZOWANA (2026-07-20).** `_resolve_bay_template_protection_codes` (reużycie
-  resolvera Reference Engine) → `add_sn_bay` zapisuje `protection_codes` na field_spec →
-  `field_read_model` projektuje na `Bay.protection_codes` → glify SLD v2 (już konsumują
-  `bay.protectionCodes`). Kolejność zero-fabrykacja: `template.protection_requirements` →
-  TR: kanoniczny `TRANSFORMER_BAY_PROTECTION_CODES` → puste. Testy: 6/6 sn_bay.
-  - **B2 (pozostałe) — KARTA:** kanoniczna tablica wymaganych funkcji zabezpieczeniowych
-    per rola dla pól liniowych / sprzęgłowych / pomiarowych / OZE wymaga przeglądu
-    zabezpieczeniowca (obecnie tylko TR ma kanon). Do czasu przeglądu — brak kodów (zero
-    fabrykacji). Uzupełnienie `protection_requirements` w paczkach producenckich (Reference
-    Engine) automatycznie zasili łańcuch bez zmiany kodu.
+- **B — ZREALIZOWANA W PEŁNI (2026-07-20, rozbudowa na żądanie właściciela).**
+  `_resolve_bay_template_protection_codes` (reużycie resolvera Reference Engine) →
+  `add_sn_bay` zapisuje `protection_codes` na field_spec → `field_read_model` projektuje na
+  `Bay.protection_codes` → glify SLD v2 (już konsumują `bay.protectionCodes`). Kolejność
+  zero-fabrykacja: `template.protection_requirements` (dane producenckie, pierwszeństwo) →
+  kanoniczna tablica per rola `BAY_PROTECTION_CODES_BY_ROLE` (PTPiREE/IRiESD + IEC 60255).
+  - **B2 (per-rola) — ZREALIZOWANA (nie karta).** Kanon dla WSZYSTKICH ról: IN `51/50/51N`,
+    OUT/FEEDER `51/50/51N/67N`, TR (reużycie `TRANSFORMER_BAY_PROTECTION_CODES`), COUPLER
+    `51/50`, OZE (reużycie interfejsu NC RfG `OZE_INTERFACE_BAY_PROTECTION_CODES`),
+    MEASUREMENT = puste (uczciwy brak — pole pomiarowe nie wyzwala). Deterministyczne stringi,
+    lustro istniejącego mechanizmu TR. Uzupełnienie `protection_requirements` w paczkach
+    producenckich nadpisuje kanon per rola bez zmiany kodu. Testy: 7/7 sn_bay (IN pominięty
+    w asercjach — pokryty przez tablicę + OUT/OZE/TR/MEASUREMENT jawnie).
 - **A — KARTA (następna runda):** wpięcie Arc Flash end-to-end.
 - **C — KARTA:** migracja kreatora OZE do ui2.
 - **D — KARTA:** pozostałe legacy → ui2.
