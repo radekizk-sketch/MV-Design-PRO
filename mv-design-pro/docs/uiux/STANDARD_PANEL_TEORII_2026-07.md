@@ -55,10 +55,10 @@ Legenda: ✅ pokryty · 🟡 częściowo (kluczowe kroki) · ⬜ do zrobienia.
 | `kompensator` (bateria SN) | **typ** | ✅ | ✅ Q(U): parabola Q∝U² (żywy) |
 | `lacznik` (sekcyjny) | **aparat** | ✅ | — |
 | `magistrala` (odcinek SN) | **parametry** | ✅ | ✅ profil U(x) wg cosφ (żywy) |
-| `odbior` (nN) | **dane** | ✅ | — (plan: ZIP/cosφ) |
+| `odbior` (nN) | **dane** | ✅ | ✅ trójkąt mocy wg cosφ (żywy) |
 | `pierscien` (NOP) | **nop** | ✅ | — |
 | `pole` (pole SN) | **pole** | ✅ | — |
-| `zrodlo` (GPZ WN/SN) | identyfikacja, **źródło**, transformatory, rozdzielnia, sekcje, normy | 🟡 (źródło) | — (plan: Z=cU²/Sk″) |
+| `zrodlo` (GPZ WN/SN) | identyfikacja, **źródło**, transformatory, rozdzielnia, sekcje, normy | 🟡 (źródło) | ✅ sztywność Z∝1/Sk″ (test jedn.; zrzut — patrz backlog) |
 
 ### Wspólna baza wykresów (V12K-067)
 `rama/wykresPomoc.tsx` (VBW/VBH/PAD/px/py/`RamkaWykresu`) + `rama/wykresy.css`
@@ -69,8 +69,12 @@ korzystają z tej bazy; kolejne wykresy budujesz na niej (reuse, nie duplikacja)
 ### Depth backlog (kolejne rundy, NIE odkładane cicho)
 - `zrodlo` (GPZ): panele teorii dla pozostałych kroków (rozdzielnia/uziemienie,
   transformatory 110/SN, parametry normowe c/f, sekcje/pola).
-- Wykresy tam, gdzie oznaczono „(plan)": ZIP (odbiór), Z=cU²/Sk″ (GPZ) — na wspólnej
-  bazie `rama/wykresPomoc`.
+- Zrzut GPZ w harnessie: 7-krokowy kreator wymaga pełniejszego zaszczepienia kontekstu
+  (`creator-harness-main.tsx`) — komponent renderuje się w apce, ale nie w minimalnym
+  harnessie. Wykres `WykresSztywnosci` pokryty testem jednostkowym; zrzut do dołożenia.
+- Wykresy zrealizowane: OZE (Q(U)/P(f)/cosφ), transformator (AVR), kompensator (Q∝U²),
+  magistrala (profil U), odbiór (trójkąt mocy), GPZ (Z∝1/Sk″). Kolejne charakterystyki
+  buduj na wspólnej bazie `rama/wykresPomoc`.
 
 ## 5. Egzekwowanie
 

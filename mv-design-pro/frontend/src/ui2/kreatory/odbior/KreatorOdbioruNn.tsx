@@ -52,6 +52,7 @@ import {
   type OdbiorFormData,
 } from './odbiorModel';
 import { ODBIOR_STRINGS as T } from './strings';
+import { WykresTrojkatMocy } from './WykresTrojkatMocy';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'dane', tytul: T.krokDane },
@@ -322,7 +323,12 @@ export function KreatorOdbioruNn() {
             wymog={T.teoriaWymog}
             podstawa={T.teoriaPodstawa}
             testid="mvd-kreator-odbior-teoria"
-          />
+          >
+            <figure className="mvd-wykres-fig">
+              <WykresTrojkatMocy cosPhi={dane.cos_phi} />
+              <figcaption className="mvd-wykres-cap">{T.teoriaJakCzytac}</figcaption>
+            </figure>
+          </PanelTeorii>
         </KreatorSekcja>
       ) : null}
 

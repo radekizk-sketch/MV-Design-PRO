@@ -197,4 +197,39 @@ test.describe('kreatory:screenshot', () => {
       });
     }
   }
+
+  // Wykres teorii odbioru (trójkąt mocy) (V12K-069). GPZ (WykresSztywnosci) pokryty
+  // testem jednostkowym; zrzut w harnessie wymaga pełniejszego zaszczepienia kontekstu
+  // 7-krokowego kreatora GPZ (depth backlog standardu).
+  for (const c of ['odbior'] as const) {
+    for (const theme of THEMES) {
+      test(`${c} — teoria z wykresem (${theme})`, async ({ page }) => {
+        const errs: string[] = [];
+        const isNoise = (t: string): boolean =>
+          /favicon|Download the React DevTools|Failed to load resource/i.test(t);
+        page.on('console', (m) => {
+          if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
+        });
+        page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+
+        await page.setViewportSize({ width: 1220, height: 900 });
+        await page.goto(`${HARNESS_URL}?creator=${c}&theme=${theme}`, {
+          waitUntil: 'domcontentloaded',
+          timeout: 40000,
+        });
+        const root = page.locator('[data-testid="creator-harness-root"]').first();
+        await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
+
+        // GPZ: panel teorii jest na kroku „źródło i strona WN" (2); odbiór na „dane" (1).
+        if (c === 'zrodlo') await page.getByTestId('mvd-kreator-zrodlo-dalej').click();
+
+        await page.getByTestId(`mvd-kreator-${c}-teoria`).locator('summary').click();
+        await page.waitForTimeout(300);
+        await root.screenshot({ path: path.join(OUTPUT_DIR, `kreator_${c}_teoria_${theme}.png`) });
+
+        if (errs.length > 0) console.log(`[${c}/${theme}] errors:\n${errs.join('\n')}`);
+        expect(errs, `no console/page errors for ${c}/${theme}`).toEqual([]);
+      });
+    }
+  }
 });

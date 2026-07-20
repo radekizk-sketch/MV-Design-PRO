@@ -83,6 +83,7 @@ import {
   type GridSourceFormData,
 } from './zrodloModel';
 import { ZRODLO_STRINGS as T } from './strings';
+import { WykresSztywnosci } from './WykresSztywnosci';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'identyfikacja', tytul: T.krokIdentyfikacja },
@@ -646,7 +647,12 @@ export function KreatorZrodloZasilania() {
             wymog={T.teoriaWymog}
             podstawa={T.teoriaPodstawa}
             testid="mvd-kreator-zrodlo-teoria"
-          />
+          >
+            <figure className="mvd-wykres-fig">
+              <WykresSztywnosci />
+              <figcaption className="mvd-wykres-cap">{T.teoriaJakCzytac}</figcaption>
+            </figure>
+          </PanelTeorii>
         </>
       ) : null}
 

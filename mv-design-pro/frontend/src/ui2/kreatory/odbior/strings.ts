@@ -82,4 +82,14 @@ export const ODBIOR_STRINGS = {
     'cosφ w punkcie przyłączenia powinien spełniać wymagania OSD (zwykle ≥ 0,93 tgφ ≤ 0,4); '
     + 'moc przyłączeniowa i model obciążenia muszą odpowiadać rzeczywistemu charakterowi odbioru.',
   teoriaPodstawa: 'Podstawa: PN-EN 50160, IRiESD (tgφ), model ZIP obciążenia.',
+  teoriaJakCzytac:
+    'Trójkąt mocy: przyprostokątna pozioma = moc czynna P, pionowa = moc bierna Q, '
+    + 'przeciwprostokątna = moc pozorna S. Kąt między P a S rośnie, gdy cosφ maleje — im niższy '
+    + 'cosφ, tym więcej Q na tę samą P (Q = P·tan(arccos cosφ)). Rzeczywisty pobór liczy rozpływ.',
+  wykresAria: 'Trójkąt mocy odbioru w funkcji cosφ (P, Q, S)',
+  wykresOsP: 'Moc czynna P [pu]',
+  wykresOsQ: 'Moc bierna Q [pu]',
+  wykresP: 'P (czynna)',
+  wykresQ: 'Q (bierna)',
+  wykresS: 'S (pozorna)',
 } as const;

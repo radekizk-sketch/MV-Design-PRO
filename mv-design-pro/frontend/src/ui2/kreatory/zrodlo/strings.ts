@@ -237,6 +237,14 @@ export const ZRODLO_STRINGS = {
     'Aparatura i pola muszą wytrzymać prąd zwarciowy wynikający z Sk″ (zdolność łączeniowa, '
     + 'wytrzymałość cieplna i dynamiczna); dane zwarciowe pobiera się od OSD/PSE dla danego węzła.',
   teoriaPodstawa: 'Podstawa: IEC 60909 (prądy zwarciowe), PN-EN 62271 (aparatura), dane OSD/PSE.',
+  teoriaJakCzytac:
+    'Krzywa = impedancja źródła w funkcji mocy zwarciowej (Z maleje z 1/Sk″). Punkt (1;1) = '
+    + 'odniesienie; podwojenie Sk″ o połowę zmniejsza Z (sieć sztywniejsza: wyższe prądy zwarciowe, '
+    + 'mniejsze wahania napięcia). Rzeczywiste Ik″/Z liczy backend wg IEC 60909.',
+  wykresAria: 'Sztywność sieci: impedancja źródła w funkcji mocy zwarciowej (Z proporcjonalne do 1/Sk″)',
+  wykresOsSk: 'Moc zwarciowa Sk″/Skn',
+  wykresOsZ: 'Impedancja Z/Zn',
+  wykresPunkt: 'odniesienie',
 
   // Akcje / błędy.
   zapisz: 'Zapisz GPZ',
