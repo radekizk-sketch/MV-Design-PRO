@@ -28,6 +28,7 @@ export const OZE_STRINGS = {
   umiejscowienie: 'Umiejscowienie pola',
   umiejscowienieNowe: 'Nowe pole źródłowe',
   umiejscowienieIstniejace: 'Istniejące pole odpływowe',
+  nazwaNowegoPola: 'Nazwa nowego pola',
   aparatNowegoPola: 'Aparat nowego pola nN',
   aparatPlaceholder: '— wybierz aparat nN —',
   nazwa: 'Nazwa źródła',

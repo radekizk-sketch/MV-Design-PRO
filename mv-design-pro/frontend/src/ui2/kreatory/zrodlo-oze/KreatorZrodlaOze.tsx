@@ -362,7 +362,7 @@ export function KreatorZrodlaOze() {
               {dane.placement === 'NEW_FIELD' ? (
                 <>
                   <PoleTekstowe
-                    etykieta={T.aparatNowegoPola}
+                    etykieta={T.nazwaNowegoPola}
                     wartosc={dane.new_field_name}
                     onZmiana={(v) => zmien('new_field_name', v)}
                     placeholder={tech.defaultName}
