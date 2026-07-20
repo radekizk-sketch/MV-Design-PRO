@@ -23,6 +23,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from application.analyses.arc_flash_view import build_arc_flash_view
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.migotanie import build_migotanie_view
 from application.analyses.sanity_bounds import build_sanity_bounds_view
@@ -61,6 +62,21 @@ class ZgodnoscZadanie(BaseModel):
     pomiary: list[PomiarWejscie] | None = None
     csv: str | None = None
     tolerancje: TolerancjeWejscie | None = None
+
+
+class ArcFlashZadanie(BaseModel):
+    """Żądanie analizy Arc Flash (IEEE 1584-2018) dla gotowego przebiegu zwarciowego.
+
+    Ik'' i napięcie węzła pochodzą z przebiegu; parametry projektowe (odległość robocza,
+    odstęp elektrod, czas wyłączenia, konfiguracja elektrod, typ obudowy) — z żądania.
+    """
+
+    run_id: UUID
+    working_distance_mm: float | None = None
+    conductor_gap_mm: float | None = None
+    arc_time_s: float | None = None
+    electrode_config: str = "VCB"
+    enclosure_type: str = "Typical"
 
 
 def _require_run(run_id: UUID) -> CanonicalRun:
@@ -121,6 +137,25 @@ def post_as_built_compliance(zadanie: ZgodnoscZadanie) -> dict[str, Any]:
             raise ValueError("Brak pomiarów: podaj listę 'pomiary' albo tekst 'csv' w żądaniu.")
         tolerancje = zadanie.tolerancje.model_dump() if zadanie.tolerancje else {}
         return build_zgodnosc_powykonawcza_view(run, pomiary, tolerancje)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post("/api/quality/arc-flash")
+def post_arc_flash(zadanie: ArcFlashZadanie) -> dict[str, Any]:
+    run = _require_run(zadanie.run_id)
+    try:
+        return build_arc_flash_view(
+            run,
+            working_distance_mm=zadanie.working_distance_mm,
+            conductor_gap_mm=zadanie.conductor_gap_mm,
+            arc_time_s=zadanie.arc_time_s,
+            electrode_config=zadanie.electrode_config,
+            enclosure_type=zadanie.enclosure_type,
+        )
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

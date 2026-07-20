@@ -23,25 +23,35 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { EkranAnalizy } from '../wzorzec';
 import {
+  fetchArcFlash,
   fetchMigotanie,
   fetchWalidacjaEnergetyczna,
   fetchWiarygodnoscZwarciowa,
+  type ArcFlashResponse,
+  type KonfiguracjaElektrod,
+  type KrokArcFlash,
   type KrokMigotania,
   type MigotanieResponse,
+  type ParametryArcFlash,
+  type TypObudowy,
   type WalidacjaItem,
   type WalidacjaResponse,
   type WezelMigotania,
   type WiarygodnoscItem,
   type WiarygodnoscResponse,
+  type WynikArcFlash,
 } from './api';
 import {
   KLUCZ_WIARYGODNOSCI_WEZEL,
+  KLUCZ_WIERSZA_ARC_FLASH,
   KLUCZ_WIERSZA_MIGOTANIE,
   KLUCZ_WIERSZA_WALIDACJI,
+  KOLUMNY_ARC_FLASH,
   KOLUMNY_MIGOTANIE,
   KOLUMNY_WALIDACJI,
   KOLUMNY_WIARYGODNOSCI,
   kluczWalidacji,
+  naWierszeArcFlash,
   naWierszeMigotania,
   naWierszeWalidacji,
   naWierszeWiarygodnosci,
@@ -53,12 +63,15 @@ import {
 } from './jakoscModel';
 import {
   JAKOSC_STRINGS,
+  fmtCal,
   fmtKA,
   fmtKV,
+  fmtMm,
   fmtMva,
   fmtProcent,
   fmtPst,
   fmtWartosc,
+  istotnoscArcFlash,
   istotnoscMigotania,
   istotnoscWalidacji,
   istotnoscWiarygodnosci,
@@ -658,7 +671,314 @@ export function SekcjaMigotania({
 }
 
 // ---------------------------------------------------------------------------
-// Okno „Jakość wyników" — kompozycja trzech sekcji z niezależnym doborem przebiegu
+// Sekcja 4 — Arc Flash (IEEE 1584-2018), audyt V12K-059 poz. A
+// ---------------------------------------------------------------------------
+
+const ELEKTRODY: readonly KonfiguracjaElektrod[] = ['VCB', 'VCBB', 'HCB', 'VOA', 'HOA'];
+const OBUDOWY: readonly TypObudowy[] = ['Typical', 'Shallow'];
+
+function SladArcFlash({ kroki }: { kroki: readonly KrokArcFlash[] }) {
+  if (kroki.length === 0) return null;
+  return (
+    <ol className="mvd-jakosc-slad" data-testid="mvd-jakosc-af-slad">
+      {kroki.map((krok) => (
+        <li key={krok.symbol} className="mvd-jakosc-slad-krok">
+          <span className="mvd-jakosc-slad-etyk">
+            {JAKOSC_STRINGS.sladWzor} ({krok.symbol})
+          </span>
+          <code className="mvd-num">{krok.formula_latex}</code>
+          {krok.substitution_pl && (
+            <>
+              <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladPodstawienie}</span>
+              <code className="mvd-num">{krok.substitution_pl}</code>
+            </>
+          )}
+          <span className="mvd-jakosc-slad-etyk">{JAKOSC_STRINGS.sladWynik}</span>
+          <code className="mvd-num">{krok.result_pl}</code>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function SzczegolArcFlash({
+  wynik,
+  trybZaawansowania,
+}: {
+  wynik: WynikArcFlash | null;
+  trybZaawansowania: AdvancementMode;
+}) {
+  const [sladWidoczny, setSladWidoczny] = useState(false);
+  if (!wynik) {
+    return (
+      <section
+        className="mvd-jakosc-szczegol mvd-jakosc-szczegol--pusty"
+        data-testid="mvd-jakosc-af-szczegol-pusty"
+      >
+        <p className="mvd-jakosc-szczegol-brak">{JAKOSC_STRINGS.szczegolBrakWyboru}</p>
+      </section>
+    );
+  }
+  const trybEkspercki = trybZaawansowania === 'expert';
+  const wartoscCal = (v: number | null): string =>
+    v !== null ? `${fmtCal(v)} ${JAKOSC_STRINGS.jednCal}` : JAKOSC_STRINGS.kreska;
+  const wartoscMm = (v: number | null): string =>
+    v !== null ? `${fmtMm(v)} ${JAKOSC_STRINGS.jednMm}` : JAKOSC_STRINGS.kreska;
+  return (
+    <section className="mvd-jakosc-szczegol" data-testid="mvd-jakosc-af-szczegol">
+      <header className="mvd-jakosc-szczegol-head">
+        <h3 className="mvd-jakosc-szczegol-tytul">{wynik.bus_ref}</h3>
+        <TagStatusu tekst={wynik.status_label_pl} istotnosc={istotnoscArcFlash(wynik.status)} />
+      </header>
+      <dl className="mvd-jakosc-szczegol-dane">
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.kolEnergia}</dt>
+          <dd className="mvd-num">{wartoscCal(wynik.incident_energy_cal_cm2)}</dd>
+        </div>
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.kolGranica}</dt>
+          <dd className="mvd-num">{wartoscMm(wynik.arc_flash_boundary_mm)}</dd>
+        </div>
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.kolPpe}</dt>
+          <dd className="mvd-num">{wynik.ppe_category ?? JAKOSC_STRINGS.kreska}</dd>
+        </div>
+        <div className="mvd-jakosc-szczegol-para">
+          <dt>{JAKOSC_STRINGS.kolIbf}</dt>
+          <dd className="mvd-num">
+            {wynik.i_bf_ka !== null
+              ? `${fmtKA(wynik.i_bf_ka)} ${JAKOSC_STRINGS.jednKA}`
+              : JAKOSC_STRINGS.kreska}
+          </dd>
+        </div>
+      </dl>
+      <p className="mvd-jakosc-szczegol-why">{wynik.why_pl}</p>
+      {wynik.missing_data.length > 0 && (
+        <p className="mvd-jakosc-szczegol-brak" data-testid="mvd-jakosc-af-braki">
+          {JAKOSC_STRINGS.szczegolBrakDanych}: {wynik.missing_data.join(', ')}
+        </p>
+      )}
+      {wynik.provenance_caveat_pl && (
+        <p className="mvd-jakosc-szczegol-uwaga" data-testid="mvd-jakosc-af-proweniencja">
+          {wynik.provenance_caveat_pl}
+        </p>
+      )}
+      {trybEkspercki && wynik.white_box.length > 0 && (
+        <div className="mvd-jakosc-slad-blok">
+          <button
+            type="button"
+            className="mvd-jakosc-slad-btn"
+            aria-expanded={sladWidoczny}
+            onClick={() => setSladWidoczny((s) => !s)}
+            data-testid="mvd-jakosc-af-slad-otworz"
+          >
+            {sladWidoczny ? JAKOSC_STRINGS.sladUkryj : JAKOSC_STRINGS.sladPokaz}
+          </button>
+          {sladWidoczny && (
+            <div data-testid="mvd-jakosc-af-slad-blok">
+              <span className="mvd-jakosc-slad-tytul">{JAKOSC_STRINGS.sladTytul}</span>
+              <SladArcFlash kroki={wynik.white_box} />
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Puste = null (bez zmyślania wejść); tekst liczbowy → number. */
+function liczbaLubNull(tekst: string): number | null {
+  const t = tekst.trim();
+  if (!t) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function SekcjaArcFlash({
+  przebieg,
+  trybZaawansowania,
+  onOtworzDowod,
+  onEksport,
+}: SekcjaProps) {
+  const runId = przebieg?.id ?? null;
+  const [odlegloscRobocza, setOdlegloscRobocza] = useState('');
+  const [odstepElektrod, setOdstepElektrod] = useState('');
+  const [czasWylaczenia, setCzasWylaczenia] = useState('');
+  const [elektroda, setElektroda] = useState<KonfiguracjaElektrod>('VCB');
+  const [obudowa, setObudowa] = useState<TypObudowy>('Typical');
+  const [stan, setStan] = useState<'bezliczenia' | 'ladowanie' | 'blad' | 'gotowe'>('bezliczenia');
+  const [dane, setDane] = useState<ArcFlashResponse | null>(null);
+  const [wybrany, setWybrany] = useState<string | null>(null);
+
+  const przelicz = useCallback(() => {
+    if (!runId) return;
+    const parametry: ParametryArcFlash = {
+      working_distance_mm: liczbaLubNull(odlegloscRobocza),
+      conductor_gap_mm: liczbaLubNull(odstepElektrod),
+      arc_time_s: liczbaLubNull(czasWylaczenia),
+      electrode_config: elektroda,
+      enclosure_type: obudowa,
+    };
+    let anulowane = false;
+    setStan('ladowanie');
+    setDane(null);
+    setWybrany(null);
+    fetchArcFlash(runId, parametry)
+      .then((wynik) => {
+        if (!anulowane) {
+          setDane(wynik);
+          setStan('gotowe');
+        }
+      })
+      .catch(() => {
+        if (!anulowane) {
+          setDane(null);
+          setStan('blad');
+        }
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, [runId, odlegloscRobocza, odstepElektrod, czasWylaczenia, elektroda, obudowa]);
+
+  const wyniki = dane?.results ?? [];
+  const selektor = useMemo(
+    () => new Map<string, WynikArcFlash>(wyniki.map((w) => [w.bus_ref, w])),
+    [wyniki],
+  );
+  const wybranyWynik = wybrany ? selektor.get(wybrany) ?? null : null;
+
+  if (!runId) {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaArcFlash}
+        komunikat={JAKOSC_STRINGS.brakArcFlash}
+        opis={JAKOSC_STRINGS.brakArcFlashOpis}
+        wariant="info"
+        testid="mvd-jakosc-arcflash-brak"
+      />
+    );
+  }
+
+  return (
+    <section data-testid="mvd-jakosc-arcflash">
+      <h2 className="mvd-jakosc-sekcja-tytul">{JAKOSC_STRINGS.sekcjaArcFlash}</h2>
+      <div className="mvd-jakosc-af-form" data-testid="mvd-jakosc-af-form">
+        <p className="mvd-jakosc-af-form-opis">{JAKOSC_STRINGS.parametryOpis}</p>
+        <div className="mvd-jakosc-af-form-pola">
+          <label className="mvd-jakosc-af-pole">
+            <span>
+              {JAKOSC_STRINGS.paramOdlegloscRobocza} ({JAKOSC_STRINGS.jednMm})
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={odlegloscRobocza}
+              onChange={(e) => setOdlegloscRobocza(e.target.value)}
+              data-testid="mvd-jakosc-af-odleglosc"
+            />
+          </label>
+          <label className="mvd-jakosc-af-pole">
+            <span>
+              {JAKOSC_STRINGS.paramOdstepElektrod} ({JAKOSC_STRINGS.jednMm})
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={odstepElektrod}
+              onChange={(e) => setOdstepElektrod(e.target.value)}
+              data-testid="mvd-jakosc-af-odstep"
+            />
+          </label>
+          <label className="mvd-jakosc-af-pole">
+            <span>
+              {JAKOSC_STRINGS.paramCzasWylaczenia} ({JAKOSC_STRINGS.jednS})
+            </span>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={czasWylaczenia}
+              onChange={(e) => setCzasWylaczenia(e.target.value)}
+              data-testid="mvd-jakosc-af-czas"
+            />
+          </label>
+          <label className="mvd-jakosc-af-pole">
+            <span>{JAKOSC_STRINGS.paramKonfElektrod}</span>
+            <select
+              value={elektroda}
+              onChange={(e) => setElektroda(e.target.value as KonfiguracjaElektrod)}
+              data-testid="mvd-jakosc-af-elektroda"
+            >
+              {ELEKTRODY.map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="mvd-jakosc-af-pole">
+            <span>{JAKOSC_STRINGS.paramTypObudowy}</span>
+            <select
+              value={obudowa}
+              onChange={(e) => setObudowa(e.target.value as TypObudowy)}
+              data-testid="mvd-jakosc-af-obudowa"
+            >
+              {OBUDOWY.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <button
+          type="button"
+          className="mvd-jakosc-af-licz"
+          onClick={przelicz}
+          data-testid="mvd-jakosc-af-licz"
+        >
+          {JAKOSC_STRINGS.arcFlashLicz}
+        </button>
+      </div>
+
+      {stan === 'ladowanie' && (
+        <p className="mvd-jakosc-stan-title" data-testid="mvd-jakosc-af-ladowanie">
+          {JAKOSC_STRINGS.ladowanie}
+        </p>
+      )}
+      {stan === 'blad' && (
+        <p className="mvd-jakosc-stan-title" data-testid="mvd-jakosc-af-blad">
+          {JAKOSC_STRINGS.blad}
+        </p>
+      )}
+      {stan === 'bezliczenia' && (
+        <p className="mvd-jakosc-stan-desc" data-testid="mvd-jakosc-af-czeka">
+          {JAKOSC_STRINGS.arcFlashCzekaNaParametry}
+        </p>
+      )}
+      {stan === 'gotowe' && dane && (
+        <>
+          <EkranAnalizy
+            naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaArcFlash, runId: runId ?? undefined }}
+            zalozenia={[]}
+            kolumny={KOLUMNY_ARC_FLASH}
+            wiersze={naWierszeArcFlash(wyniki)}
+            onOtworzDowod={onOtworzDowod}
+            onEksport={onEksport}
+            trybZaawansowania={trybZaawansowania}
+            kluczWiersza={KLUCZ_WIERSZA_ARC_FLASH}
+            onWybierzWiersz={setWybrany}
+            wybranyWiersz={wybrany}
+          />
+          <SzczegolArcFlash wynik={wybranyWynik} trybZaawansowania={trybZaawansowania} />
+        </>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Okno „Jakość wyników" — kompozycja sekcji z niezależnym doborem przebiegu
 // ---------------------------------------------------------------------------
 
 export interface EkranJakosciProps {
@@ -692,6 +1012,12 @@ export function EkranJakosci({ trybZaawansowania, onOtworzDowod, onEksport }: Ek
         onEksport={onEksport ? eksport : undefined}
       />
       <SekcjaMigotania
+        przebieg={przebiegSC}
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={onOtworzDowod}
+        onEksport={onEksport ? eksport : undefined}
+      />
+      <SekcjaArcFlash
         przebieg={przebiegSC}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}

@@ -232,3 +232,102 @@ export interface MigotanieResponse {
 export function fetchMigotanie(runId: string): Promise<MigotanieResponse> {
   return getJson<MigotanieResponse>(`/api/quality/flicker?run_id=${encodeURIComponent(runId)}`);
 }
+
+// ---------------------------------------------------------------------------
+// Arc Flash (IEEE 1584-2018) — audyt V12K-059 poz. A
+// ---------------------------------------------------------------------------
+// `POST /api/quality/arc-flash`:
+//   `backend/src/api/quality_analysis_runs.py` →
+//   `application/analyses/arc_flash_view.py:build_arc_flash_view` →
+//   `analysis/arc_flash` (builder IEEE 1584-2018). Ik'' i napięcie węzła z przebiegu
+//   zwarciowego; parametry projektowe (odległość robocza, odstęp elektrod, czas
+//   wyłączenia, konfiguracja elektrod, typ obudowy) z żądania. Energia incydentu,
+//   granica łuku i kategoria PPE liczone WYŁĄCZNIE w backendzie — ZERO fizyki w UI.
+
+/** Konfiguracja elektrod IEEE 1584-2018 (kontrakt kodów backendu). */
+export type KonfiguracjaElektrod = 'VCB' | 'VCBB' | 'HCB' | 'VOA' | 'HOA';
+
+/** Typ obudowy dla korekcji rozmiaru (kontrakt kodów backendu). */
+export type TypObudowy = 'Typical' | 'Shallow';
+
+/** Parametry projektowe analizy Arc Flash (wejścia z żądania POST). */
+export interface ParametryArcFlash {
+  readonly working_distance_mm: number | null;
+  readonly conductor_gap_mm: number | null;
+  readonly arc_time_s: number | null;
+  readonly electrode_config: KonfiguracjaElektrod;
+  readonly enclosure_type: TypObudowy;
+}
+
+/** Krok wywodu WHITE BOX Arc Flash. */
+export interface KrokArcFlash {
+  readonly symbol: string;
+  readonly formula_latex: string;
+  readonly substitution_pl: string;
+  readonly result_pl: string;
+  readonly unit_check_pl: string;
+  readonly table_ref: string | null;
+}
+
+/** Wynik Arc Flash dla jednego punktu (szyny/rozdzielnicy). */
+export interface WynikArcFlash {
+  readonly bus_ref: string;
+  /** Kod statusu (COMPUTED_IEEE_1584_OPEN_SOURCE / INCOMPLETE_INPUT / …). */
+  readonly status: string;
+  /** Gotowa polska etykieta statusu wprost z backendu. */
+  readonly status_label_pl: string;
+  readonly method: string;
+  readonly electrode_config: string;
+  readonly i_bf_ka: number | null;
+  readonly voltage_kv: number | null;
+  readonly arc_time_s: number | null;
+  readonly conductor_gap_mm: number | null;
+  readonly working_distance_mm: number | null;
+  readonly i_arc_ka: number | null;
+  readonly incident_energy_cal_cm2: number | null;
+  readonly incident_energy_joule_cm2: number | null;
+  readonly arc_flash_boundary_mm: number | null;
+  readonly ppe_category: string | null;
+  readonly ppe_table_provenance: string | null;
+  readonly provenance: string | null;
+  readonly provenance_caveat_pl: string | null;
+  readonly why_pl: string;
+  readonly missing_data: readonly string[];
+  readonly white_box: readonly KrokArcFlash[];
+}
+
+/** Pełna odpowiedź `POST /api/quality/arc-flash`. */
+export interface ArcFlashResponse {
+  readonly analysis_id: string;
+  readonly context: KontekstJakosci | null;
+  readonly status: string;
+  readonly status_label_pl: string;
+  readonly results: readonly WynikArcFlash[];
+}
+
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!response.ok) {
+    throw new Error(`Request ${url} failed: ${response.status} ${response.statusText}`);
+  }
+  return response.json() as Promise<T>;
+}
+
+/** Liczy Arc Flash (IEEE 1584-2018) dla przebiegu zwarciowego + parametrów projektowych. */
+export function fetchArcFlash(
+  runId: string,
+  parametry: ParametryArcFlash,
+): Promise<ArcFlashResponse> {
+  return postJson<ArcFlashResponse>('/api/quality/arc-flash', {
+    run_id: runId,
+    working_distance_mm: parametry.working_distance_mm,
+    conductor_gap_mm: parametry.conductor_gap_mm,
+    arc_time_s: parametry.arc_time_s,
+    electrode_config: parametry.electrode_config,
+    enclosure_type: parametry.enclosure_type,
+  });
+}

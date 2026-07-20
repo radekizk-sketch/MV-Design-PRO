@@ -17,6 +17,7 @@ from tests.cgmes.golden_enm import build_golden_enm
 SANITY_BOUNDS = "/api/quality/sanity-bounds"
 ENERGY_VALIDATION = "/api/quality/energy-validation"
 FLICKER = "/api/quality/flicker"
+ARC_FLASH = "/api/quality/arc-flash"
 
 
 @pytest.fixture(autouse=True)
@@ -107,6 +108,81 @@ def test_energy_validation_wrong_analysis_type_returns_422(app_client) -> None:
     resp = app_client.get(ENERGY_VALIDATION, params={"run_id": str(run_id)})
     assert resp.status_code == 422
     assert "przebiegu rozpływu" in resp.json()["detail"]
+
+
+# --------------------------------------------------------------------------
+# Arc Flash (IEEE 1584-2018) — audyt V12K-059 poz. A
+# --------------------------------------------------------------------------
+
+
+def test_arc_flash_endpoint_returns_view_with_complete_inputs(app_client) -> None:
+    run_id = _sc_run_id()
+    resp = app_client.post(
+        ARC_FLASH,
+        json={
+            "run_id": str(run_id),
+            "working_distance_mm": 455.0,
+            "conductor_gap_mm": 152.0,
+            "arc_time_s": 0.2,
+            "electrode_config": "VCB",
+        },
+    )
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["analysis_id"]
+    assert "results" in data and len(data["results"]) >= 5
+    # Wejścia projektowe faktycznie użyte (nie zmyślone domyślne).
+    for row in data["results"]:
+        assert row["working_distance_mm"] == 455.0
+        assert row["conductor_gap_mm"] == 152.0
+        assert row["arc_time_s"] == 0.2
+    # Przy kompletnych wejściach wynik nie jest „dane niekompletne (wejście)".
+    statuses = {row["status"] for row in data["results"]}
+    assert statuses != {"INCOMPLETE_INPUT"}
+
+
+def test_arc_flash_incomplete_inputs_are_honest_not_fabricated(app_client) -> None:
+    run_id = _sc_run_id()
+    # Bez odległości roboczej i odstępu elektrod → builder zgłasza brak danych (nie zmyśla).
+    resp = app_client.post(ARC_FLASH, json={"run_id": str(run_id), "arc_time_s": 0.2})
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    for row in data["results"]:
+        assert row["incident_energy_cal_cm2"] is None
+        assert "working_distance_mm" in row["missing_data"]
+        assert "conductor_gap_mm" in row["missing_data"]
+
+
+def test_arc_flash_is_deterministic(app_client) -> None:
+    run_id = _sc_run_id()
+    body = {
+        "run_id": str(run_id),
+        "working_distance_mm": 455.0,
+        "conductor_gap_mm": 152.0,
+        "arc_time_s": 0.2,
+    }
+    first = app_client.post(ARC_FLASH, json=body).json()
+    second = app_client.post(ARC_FLASH, json=body).json()
+    assert first == second
+
+
+def test_arc_flash_unknown_run_returns_404(app_client) -> None:
+    resp = app_client.post(ARC_FLASH, json={"run_id": str(uuid4())})
+    assert resp.status_code == 404
+
+
+def test_arc_flash_wrong_analysis_type_returns_422(app_client) -> None:
+    run_id = _pf_run_id()  # rozpływ, nie zwarcie
+    resp = app_client.post(ARC_FLASH, json={"run_id": str(run_id)})
+    assert resp.status_code == 422
+    assert "przebiegu zwarciowego" in resp.json()["detail"]
+
+
+def test_arc_flash_unknown_electrode_config_returns_422(app_client) -> None:
+    run_id = _sc_run_id()
+    resp = app_client.post(ARC_FLASH, json={"run_id": str(run_id), "electrode_config": "XYZ"})
+    assert resp.status_code == 422
+    assert "konfiguracja elektrod" in resp.json()["detail"]
 
 
 # --------------------------------------------------------------------------

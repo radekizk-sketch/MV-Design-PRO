@@ -189,6 +189,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/quality/energy-validation` | v12xx | aktywny | 2026-07-17 | - | Walidacja energetyczna rozplywu (D2). | quality analysis tests | Architekt jakosci |
 | `GET /api/quality/flicker` | v12xx | aktywny | 2026-07-17 | - | Migotanie i szybkie zmiany napiecia IEC 61000-3-7 (D11). | migotanie tests | Architekt jakosci |
 | `POST /api/quality/as-built-compliance` | v12xx | aktywny | 2026-07-17 | - | Raport zgodnosci powykonawczej z pomiarow (D12). | zgodnosc powykonawcza tests | Architekt jakosci |
+| `POST /api/quality/arc-flash` | v12xx | aktywny | 2026-07-20 | - | Arc Flash IEEE 1584-2018 (energia incydentu, granica luku, kategoria PPE) per wezel z przebiegu zwarciowego; Ik''/U z przebiegu, parametry projektowe z zadania. Audyt V12K-059 poz. A. | arc flash view/API tests | Architekt jakosci |
 
 ## Blokada wdrozeniowa
 

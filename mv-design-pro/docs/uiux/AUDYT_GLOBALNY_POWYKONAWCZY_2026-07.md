@@ -148,7 +148,16 @@ Pozycje 3–6 rejestrowane jako karty (nie odkładane cicho).
     lustro istniejącego mechanizmu TR. Uzupełnienie `protection_requirements` w paczkach
     producenckich nadpisuje kanon per rola bez zmiany kodu. Testy: 7/7 sn_bay (IN pominięty
     w asercjach — pokryty przez tablicę + OUT/OZE/TR/MEASUREMENT jawnie).
-- **A — KARTA (następna runda):** wpięcie Arc Flash end-to-end.
+- **A — ZREALIZOWANA (2026-07-20).** Wyspa Arc Flash (IEEE 1584-2018) wpięta end-to-end:
+  `application/analyses/arc_flash_view.py::build_arc_flash_view` (mapowanie SC run → ArcFlashInput,
+  ZERO fizyki) → `POST /api/quality/arc-flash` → sekcja UI `SekcjaArcFlash` w oknie „Jakość
+  wyników" (formularz parametrów projektowych → przelicz → tabela energii/AFB/PPE + szczegół z
+  proweniencją + ślad WHITE BOX w trybie eksperckim). Ik″/napięcie z przebiegu zwarciowego;
+  parametry projektowe (odległość robocza, odstęp elektrod, czas wyłączenia, konfiguracja
+  elektrod, obudowa) z żądania — brak wejścia ⇒ uczciwe „dane niekompletne" (bez zmyślania).
+  Testy: backend 6 (API), frontend 5 (sekcja, realna ścieżka).
+  - **A2 (raport) — KARTA:** sekcja Arc Flash w raporcie PDF/DOCX (generacja raportu to osobny
+    podsystem; analiza jest w pełni używalna w UI bez niej).
 - **C — KARTA:** migracja kreatora OZE do ui2.
 - **D — KARTA:** pozostałe legacy → ui2.
 - **E — KARTA:** weryfikacja + ewentualne wpięcie protection_ref do koordynacji I-t.

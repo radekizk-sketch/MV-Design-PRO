@@ -262,3 +262,67 @@
   font-size: 11px;
   color: var(--mvd-muted);
 }
+
+/* --- Sekcja Arc Flash (IEEE 1584-2018) — audyt V12K-059 poz. A --- */
+.mvd-jakosc-af-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--mvd-border);
+  border-radius: 8px;
+  background: var(--mvd-surface);
+}
+.mvd-jakosc-af-form-opis {
+  font-size: 12px;
+  color: var(--mvd-muted);
+  margin: 0;
+}
+.mvd-jakosc-af-form-pola {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.mvd-jakosc-af-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--mvd-ink);
+  min-width: 150px;
+}
+.mvd-jakosc-af-pole input,
+.mvd-jakosc-af-pole select {
+  padding: 6px 8px;
+  border: 1px solid var(--mvd-border);
+  border-radius: 6px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  font-size: 13px;
+}
+.mvd-jakosc-af-pole input:focus-visible,
+.mvd-jakosc-af-pole select:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-jakosc-af-licz {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-accent);
+  color: var(--mvd-on-accent, #fff);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-jakosc-af-licz:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-jakosc-szczegol-uwaga {
+  font-size: 12px;
+  color: var(--mvd-warn, var(--mvd-muted));
+  margin: 6px 0 0;
+}

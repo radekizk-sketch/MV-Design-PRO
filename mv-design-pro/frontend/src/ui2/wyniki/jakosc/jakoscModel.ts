@@ -22,11 +22,14 @@ import type {
   WalidacjaItem,
   WezelMigotania,
   WiarygodnoscItem,
+  WynikArcFlash,
 } from './api';
 import {
   JAKOSC_STRINGS,
+  fmtCal,
   fmtKA,
   fmtKV,
+  fmtMm,
   fmtMva,
   fmtProcent,
   fmtPst,
@@ -283,4 +286,46 @@ export function naZalozeniaMigotania(config: KonfiguracjaMigotania): WierszZaloz
     },
     { etykieta: JAKOSC_STRINGS.zalMigKmax, wartosc: fmtPst(config.rvc_kmax) },
   ];
+}
+
+// ---------------------------------------------------------------------------
+// Sekcja 4 — Arc Flash (IEEE 1584-2018), audyt V12K-059 poz. A
+// ---------------------------------------------------------------------------
+
+export const KLUCZ_WIERSZA_ARC_FLASH = 'punkt';
+
+export const KOLUMNY_ARC_FLASH: DefinicjaKolumny[] = [
+  { klucz: 'punkt', etykieta: JAKOSC_STRINGS.kolWezelAf, wyrownanie: 'lewo' },
+  { klucz: 'ibf', etykieta: JAKOSC_STRINGS.kolIbf, jednostka: JAKOSC_STRINGS.jednKA, mono: true },
+  {
+    klucz: 'energia',
+    etykieta: JAKOSC_STRINGS.kolEnergia,
+    jednostka: JAKOSC_STRINGS.jednCal,
+    mono: true,
+  },
+  {
+    klucz: 'granica',
+    etykieta: JAKOSC_STRINGS.kolGranica,
+    jednostka: JAKOSC_STRINGS.jednMm,
+    mono: true,
+  },
+  { klucz: 'ppe', etykieta: JAKOSC_STRINGS.kolPpe, wyrownanie: 'lewo', sortowalna: false },
+  { klucz: 'status', etykieta: JAKOSC_STRINGS.kolStatusAf, wyrownanie: 'lewo', sortowalna: false },
+];
+
+/** Adapter: wynik Arc Flash → wiersz tabeli wzorca (wartości WYŁĄCZNIE z backendu). */
+export function mapujWierszArcFlash(wynik: WynikArcFlash): WierszTabeli {
+  return {
+    punkt: { wartosc: wynik.bus_ref },
+    ibf: komorkaLiczba(wynik.i_bf_ka, fmtKA),
+    energia: komorkaLiczba(wynik.incident_energy_cal_cm2, fmtCal),
+    granica: komorkaLiczba(wynik.arc_flash_boundary_mm, fmtMm),
+    ppe: { wartosc: wynik.ppe_category ?? JAKOSC_STRINGS.kreska },
+    status: { wartosc: wynik.status_label_pl },
+  };
+}
+
+/** Mapuje wyniki Arc Flash na wiersze tabeli wzorca (kolejność źródłowa). */
+export function naWierszeArcFlash(wyniki: readonly WynikArcFlash[]): WierszTabeli[] {
+  return wyniki.map(mapujWierszArcFlash);
 }

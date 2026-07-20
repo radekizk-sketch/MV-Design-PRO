@@ -128,15 +128,63 @@ export const JAKOSC_STRINGS = {
   sladPodstawienie: 'Podstawienie',
   sladWynik: 'Wynik',
 
+  // --- Sekcja „Arc Flash (energia łuku)" — IEEE 1584-2018, audyt V12K-059 poz. A ---
+  sekcjaArcFlash: 'Arc Flash — energia łuku i kategoria PPE',
+  brakArcFlash: 'Brak zakończonego przebiegu zwarciowego',
+  brakArcFlashOpis:
+    'Uruchom i zakończ obliczenie zwarciowe (SC), aby ocenić energię incydentu łuku, '
+    + 'granicę łuku i kategorię środków ochrony (PPE) wg IEEE 1584-2018.',
+  // Parametry projektowe (formularz — wejścia projektanta, nie ze zwarcia)
+  parametryTytul: 'Parametry projektowe',
+  parametryOpis:
+    'Ik″ i napięcie węzła pochodzą z przebiegu zwarciowego. Poniższe parametry to decyzje '
+    + 'projektowe — bez nich wynik jest „dane niekompletne" (bez zmyślania wejść).',
+  paramOdlegloscRobocza: 'Odległość robocza',
+  paramOdstepElektrod: 'Odstęp elektrod',
+  paramCzasWylaczenia: 'Czas wyłączenia łuku',
+  paramKonfElektrod: 'Konfiguracja elektrod',
+  paramTypObudowy: 'Typ obudowy',
+  arcFlashLicz: 'Przelicz Arc Flash',
+  arcFlashCzekaNaParametry: 'Uzupełnij parametry projektowe i przelicz analizę.',
+  // Kolumny wyników
+  kolWezelAf: 'Punkt (szyna)',
+  kolIbf: 'Prąd zwarcia bolted Ik″',
+  kolEnergia: 'Energia incydentu E',
+  kolGranica: 'Granica łuku AFB',
+  kolPpe: 'Kategoria PPE',
+  kolStatusAf: 'Status',
+  // Szczegół
+  szczegolProweniencja: 'Proweniencja tablic współczynników',
+  szczegolBrakDanych: 'Brakujące dane wejściowe',
   // Jednostki
   jednKA: 'kA',
   jednKV: 'kV',
   jednMva: 'MVA',
   jednProcent: '%',
+  jednCal: 'cal/cm²',
+  jednMm: 'mm',
+  jednS: 's',
 
   // Wartość pusta
   kreska: '—',
 } as const;
+
+/** Istotność statusu Arc Flash (kod z backendu) — dobór koloru tagu. */
+export function istotnoscArcFlash(status: string): IstotnoscStatusu {
+  if (status === 'COMPUTED_IEEE_1584' || status === 'COMPUTED_IEEE_1584_OPEN_SOURCE') return 'ok';
+  if (status === 'COMPUTED_RALPH_LEE') return 'warn';
+  return 'neutral'; // INCOMPLETE_INPUT / INCOMPLETE_TABLE — dane niekompletne
+}
+
+/** Energia incydentu [cal/cm²] — 2 miejsca. */
+export function fmtCal(n: number): string {
+  return fmtLiczba(n, 2);
+}
+
+/** Odległość [mm] — bez miejsc dziesiętnych. */
+export function fmtMm(n: number): string {
+  return fmtLiczba(n, 0);
+}
 
 /**
  * Werdykty migotania — tekst polski JEST wprost z backendu
