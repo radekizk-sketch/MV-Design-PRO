@@ -185,8 +185,12 @@ test.describe('kreatory:screenshot', () => {
         const root = page.locator('[data-testid="creator-harness-root"]').first();
         await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
 
-        // Magistrala: panel teorii jest na kroku „parametry" (2), kompensator na „typ" (1).
-        if (c === 'magistrala') await page.getByTestId('mvd-kreator-magistrala-dalej').click();
+        // Magistrala: wybierz kabel z katalogu (krok „typ", 1) → parametry normowe;
+        // panel teorii jest na kroku „parametry" (2). Kompensator: teoria na „typ" (1).
+        if (c === 'magistrala') {
+          await page.getByTestId('mvd-kreator-magistrala-katalog').selectOption('kab-120');
+          await page.getByTestId('mvd-kreator-magistrala-dalej').click();
+        }
 
         await page.getByTestId(`mvd-kreator-${c}-teoria`).locator('summary').click();
         await page.waitForTimeout(300);

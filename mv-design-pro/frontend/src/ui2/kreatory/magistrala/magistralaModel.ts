@@ -86,12 +86,29 @@ export function walidujFormularz(data: MagistralaFormData): BladPola[] {
   return errors;
 }
 
-/** Parametry R/X/Iznam wybranej pozycji katalogowej (kabel lub linia). */
+/**
+ * Parametry normowe wybranej pozycji katalogowej (V12K-070, M1). Zestaw zależy od rodzaju:
+ * kabel niesie pojemność C i żyłę powrotną (Ith — zwarcie doziemne) + izolację; linia
+ * napowietrzna niesie susceptancję B i nie ma żyły powrotnej. Wartości z katalogu — wynik
+ * (ΔU/straty/Ik) liczy solver.
+ */
 export interface ParametryOdcinka {
   r_ohm_per_km: number;
   x_ohm_per_km: number;
   rated_current_a: number;
   voltage_rating_kv: number | null;
+  cross_section_mm2: number | null;
+  conductor_material: string | null;
+  standard: string | null;
+  max_temperature_c: number | null;
+  /** Kabel: pojemność doziemna [nF/km] (prąd ładowania). */
+  c_nf_per_km: number | null;
+  /** Linia: susceptancja poprzeczna [µS/km]. */
+  b_us_per_km: number | null;
+  /** Kabel: izolacja (XLPE/PVC/EPR) — wyznacza temperaturę dopuszczalną. */
+  insulation_type: string | null;
+  /** Kabel: prąd cieplny 1 s żyły powrotnej [A] — zwarcie doziemne (ekran). */
+  return_conductor_ith_1s_a: number | null;
 }
 
 export function parametryZKatalogu(
@@ -109,6 +126,14 @@ export function parametryZKatalogu(
       x_ohm_per_km: it.x_ohm_per_km,
       rated_current_a: it.rated_current_a,
       voltage_rating_kv: it.voltage_rating_kv ?? null,
+      cross_section_mm2: it.cross_section_mm2 ?? null,
+      conductor_material: it.conductor_material ?? null,
+      standard: it.standard ?? null,
+      max_temperature_c: it.max_temperature_c ?? null,
+      c_nf_per_km: it.c_nf_per_km ?? null,
+      b_us_per_km: null,
+      insulation_type: it.insulation_type ?? null,
+      return_conductor_ith_1s_a: it.return_conductor_ith_1s_a ?? null,
     };
   }
   const it = linie.find((l) => l.id === catalogRef);
@@ -118,6 +143,14 @@ export function parametryZKatalogu(
     x_ohm_per_km: it.x_ohm_per_km,
     rated_current_a: it.rated_current_a,
     voltage_rating_kv: it.voltage_rating_kv ?? null,
+    cross_section_mm2: it.cross_section_mm2 ?? null,
+    conductor_material: it.conductor_material ?? null,
+    standard: it.standard ?? null,
+    max_temperature_c: it.max_temperature_c ?? null,
+    c_nf_per_km: null,
+    b_us_per_km: it.b_us_per_km ?? null,
+    insulation_type: null,
+    return_conductor_ith_1s_a: null,
   };
 }
 

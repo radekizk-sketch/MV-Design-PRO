@@ -22,9 +22,15 @@ const kabel = {
   name: 'XRUHAKXS 1x120',
   r_ohm_per_km: 0.253,
   x_ohm_per_km: 0.118,
+  c_nf_per_km: 230,
   rated_current_a: 255,
   voltage_rating_kv: 15,
   cross_section_mm2: 120,
+  conductor_material: 'AL',
+  insulation_type: 'XLPE',
+  standard: 'HD 620',
+  max_temperature_c: 90,
+  return_conductor_ith_1s_a: 12000,
 } as unknown as CableType;
 
 const linia = {
@@ -32,9 +38,13 @@ const linia = {
   name: 'AFL-6 70',
   r_ohm_per_km: 0.443,
   x_ohm_per_km: 0.36,
+  b_us_per_km: 2.7,
   rated_current_a: 230,
   voltage_rating_kv: 15,
   cross_section_mm2: 70,
+  conductor_material: 'AL',
+  standard: 'PN-EN 50182',
+  max_temperature_c: 80,
 } as unknown as LineType;
 
 function dane(over: Partial<MagistralaFormData> = {}): MagistralaFormData {
@@ -143,6 +153,36 @@ describe('magistralaModel — katalog i podgląd', () => {
       rated_current_a: 230,
     });
     expect(parametryZKatalogu('KABEL', null, [kabel], [linia])).toBeNull();
+  });
+
+  it('kabel niesie parametry normowe kabla (C, izolacja, Ith żyły powrotnej), bez B (V12K-070)', () => {
+    const p = parametryZKatalogu('KABEL', 'kab-1', [kabel], [linia]);
+    expect(p).toMatchObject({
+      cross_section_mm2: 120,
+      conductor_material: 'AL',
+      standard: 'HD 620',
+      max_temperature_c: 90,
+      c_nf_per_km: 230,
+      insulation_type: 'XLPE',
+      return_conductor_ith_1s_a: 12000,
+    });
+    // Kabel nie ma susceptancji B linii.
+    expect(p?.b_us_per_km).toBeNull();
+  });
+
+  it('linia napowietrzna niesie susceptancję B, bez C/izolacji/żyły powrotnej (V12K-070)', () => {
+    const p = parametryZKatalogu('LINIA', 'lin-1', [kabel], [linia]);
+    expect(p).toMatchObject({
+      cross_section_mm2: 70,
+      conductor_material: 'AL',
+      standard: 'PN-EN 50182',
+      max_temperature_c: 80,
+      b_us_per_km: 2.7,
+    });
+    // Linia nie ma pojemności kabla, izolacji ani żyły powrotnej.
+    expect(p?.c_nf_per_km).toBeNull();
+    expect(p?.insulation_type).toBeNull();
+    expect(p?.return_conductor_ith_1s_a).toBeNull();
   });
 
   it('buduje żądanie podglądu ΔU z prądem znamionowym gdy brak obciążenia', () => {

@@ -34,7 +34,17 @@ export const MAGISTRALA_STRINGS = {
   // Parametry katalogu (odczyt).
   paramR: 'Rezystancja R',
   paramX: 'Reaktancja X',
-  paramIznam: 'Prąd znamionowy',
+  paramIznam: 'Obciążalność Iz',
+  // Parametry normowe (V12K-070, M1) — zestaw zależny od rodzaju odcinka.
+  paramPrzekroj: 'Przekrój żyły',
+  paramMaterial: 'Materiał żyły',
+  paramNorma: 'Norma',
+  paramTempMax: 'Temperatura dopuszczalna',
+  paramC: 'Pojemność C',
+  paramB: 'Susceptancja B',
+  paramIzolacja: 'Izolacja',
+  paramIthPowrot: 'Ith żyły powrotnej (1 s)',
+  paramSekcjaNormowa: 'Parametry normowe do obliczeń',
 
   // Podgląd (backend R1).
   podgladTytul: 'Podgląd doboru (backend)',
@@ -100,10 +110,18 @@ export const MAGISTRALA_STRINGS = {
     + 'obciążenie → większy spadek napięcia na końcu magistrali. Przekrój przewodu dobiera się do '
     + 'obciążalności prądowej (nagrzewanie) i do dopuszczalnego spadku napięcia. Wszystkie wartości '
     + 'liczbowe (ΔU, straty, prądy) wyznacza solver — katalog wnosi tylko parametry jednostkowe.',
+  teoriaOpisKabelLinia:
+    'Kabel a linia napowietrzna różnią się parametrami normowymi do obliczeń: kabel ma większą '
+    + 'pojemność doziemną C (prąd ładowania, model π), niższą reaktancję X, żyłę powrotną/ekran '
+    + '(wytrzymałość cieplna Ith przy zwarciu doziemnym) oraz izolację wyznaczającą temperaturę '
+    + 'dopuszczalną (XLPE 90°C / PVC 70°C). Linia napowietrzna ma susceptancję B (małą), wyższą '
+    + 'reaktancję X, brak żyły powrotnej i wyższą obciążalność (chłodzenie powietrzem). Dlatego '
+    + 'zestaw parametrów pokazany poniżej zależy od rodzaju odcinka.',
   teoriaWymog:
-    'Przekrój musi wytrzymać prąd obciążenia długotrwale i prąd zwarciowy cieplnie; spadek napięcia '
-    + 'na całej magistrali powinien mieścić się w dopuszczalnym zakresie (typowo kilka %).',
-  teoriaPodstawa: 'Podstawa: PN-EN 50160 (napięcie), N SEP-E-004 (linie i kable), IRiESD.',
+    'Przekrój musi wytrzymać prąd obciążenia długotrwale (Iz ≥ prąd roboczy) i prąd zwarciowy '
+    + 'cieplnie (Ith ≥ Ik·√tk); spadek napięcia na całej magistrali powinien mieścić się w '
+    + 'dopuszczalnym zakresie (typowo kilka %).',
+  teoriaPodstawa: 'Podstawa: PN-EN 50160 (napięcie), N SEP-E-004 (linie i kable), IEC 60909 (zwarcia), IRiESD.',
   teoriaJakCzytac:
     'Linia = napięcie wzdłuż magistrali od źródła (1,0 pu) do końca odcinka. Nachylenie zależy '
     + 'poglądowo od cosφ (niższy cosφ → stromszy spadek: większy udział składowej biernej na '

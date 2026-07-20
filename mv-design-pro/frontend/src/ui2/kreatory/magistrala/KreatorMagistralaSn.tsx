@@ -405,12 +405,38 @@ export function KreatorMagistralaSn() {
     </>
   );
 
+  const jednOhmKm = (v: number | null): string => (typeof v === 'number' ? `${v} Ω/km` : '—');
+  const jednTemp = (v: number | null): string => (typeof v === 'number' ? `${v} °C` : '—');
+  const jednPrzekroj = (v: number | null): string => (typeof v === 'number' ? `${v} mm²` : '—');
+  const tekst = (v: string | null): string => v ?? '—';
   const paramReadout = params ? (
-    <KreatorSiatka kolumny={3}>
-      <RzadWartosci etykieta={T.paramR} wartosc={`${params.r_ohm_per_km} Ω/km`} />
-      <RzadWartosci etykieta={T.paramX} wartosc={`${params.x_ohm_per_km} Ω/km`} />
-      <RzadWartosci etykieta={T.paramIznam} wartosc={fmtA(params.rated_current_a)} />
-    </KreatorSiatka>
+    <>
+      <KreatorInfo>{T.paramSekcjaNormowa}</KreatorInfo>
+      <KreatorSiatka kolumny={3}>
+        <RzadWartosci etykieta={T.paramPrzekroj} wartosc={jednPrzekroj(params.cross_section_mm2)} />
+        <RzadWartosci etykieta={T.paramR} wartosc={jednOhmKm(params.r_ohm_per_km)} />
+        <RzadWartosci etykieta={T.paramX} wartosc={jednOhmKm(params.x_ohm_per_km)} />
+        <RzadWartosci etykieta={T.paramIznam} wartosc={fmtA(params.rated_current_a)} />
+        <RzadWartosci etykieta={T.paramMaterial} wartosc={tekst(params.conductor_material)} />
+        <RzadWartosci etykieta={T.paramTempMax} wartosc={jednTemp(params.max_temperature_c)} />
+        {dane.rodzaj === 'KABEL' ? (
+          <>
+            <RzadWartosci
+              etykieta={T.paramC}
+              wartosc={typeof params.c_nf_per_km === 'number' ? `${params.c_nf_per_km} nF/km` : '—'}
+            />
+            <RzadWartosci etykieta={T.paramIzolacja} wartosc={tekst(params.insulation_type)} />
+            <RzadWartosci etykieta={T.paramIthPowrot} wartosc={fmtA(params.return_conductor_ith_1s_a)} />
+          </>
+        ) : (
+          <RzadWartosci
+            etykieta={T.paramB}
+            wartosc={typeof params.b_us_per_km === 'number' ? `${params.b_us_per_km} µS/km` : '—'}
+          />
+        )}
+        <RzadWartosci etykieta={T.paramNorma} wartosc={tekst(params.standard)} />
+      </KreatorSiatka>
+    </>
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
@@ -533,6 +559,7 @@ export function KreatorMagistralaSn() {
             podstawa={T.teoriaPodstawa}
             testid="mvd-kreator-magistrala-teoria"
           >
+            <p className="mvd-teoria-opis">{T.teoriaOpisKabelLinia}</p>
             <figure className="mvd-wykres-fig">
               <WykresSpadku cosPhi={dane.cos_phi} />
               <figcaption className="mvd-wykres-cap">{T.teoriaJakCzytac}</figcaption>
