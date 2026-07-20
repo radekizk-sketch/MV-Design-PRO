@@ -15,7 +15,6 @@ import {
   fetchCableRatedCurrent,
   type CableRatedCurrentResponse,
 } from '../../../ui/network-build/forms/cableVoltageDropApi';
-import { navigateToSld } from '../../../ui/navigation/routes';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
@@ -32,6 +31,7 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  useSelekcjaPoOperacji,
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
@@ -78,6 +78,7 @@ export function KreatorOdbioruNn() {
   const context = useActiveOperationContext() as Record<string, unknown> | null;
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   const kontekst = useMemo(() => kontekstZOperacji(context), [context]);
@@ -176,11 +177,11 @@ export function KreatorOdbioruNn() {
         return;
       }
       closeForm();
-      navigateToSld();
+      selekcjaPoOperacji(response, { type: 'LoadNN', name: dane.nazwa.trim() || 'Odbiór nN' });
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdplyw, kontekst]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdplyw, kontekst, selekcjaPoOperacji]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {

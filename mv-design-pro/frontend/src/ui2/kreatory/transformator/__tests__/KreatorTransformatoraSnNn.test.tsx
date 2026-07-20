@@ -13,6 +13,8 @@ import { KreatorTransformatoraSnNn } from '../KreatorTransformatoraSnNn';
 const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
 const navigateToSldMock = vi.fn();
+const selectElementMock = vi.fn();
+const centerSldOnElementMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 let context: Record<string, unknown> = {
@@ -54,6 +56,15 @@ vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
 
 vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
+}));
+
+vi.mock('../../../../ui/selection', () => ({
+  useSelectionStore: (
+    selector: (s: {
+      selectElement: typeof selectElementMock;
+      centerSldOnElement: typeof centerSldOnElementMock;
+    }) => unknown,
+  ) => selector({ selectElement: selectElementMock, centerSldOnElement: centerSldOnElementMock }),
 }));
 
 vi.mock('../../../../ui/catalog/api', () => ({
@@ -104,12 +115,17 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
+    selectElementMock.mockReset();
+    centerSldOnElementMock.mockReset();
   });
 
   afterEach(() => cleanup());
 
-  it('tworzy transformator z kontekstem stacji (bez regulacji)', async () => {
-    executeDomainOperationMock.mockResolvedValue({ error: null });
+  it('tworzy transformator z kontekstem stacji (bez regulacji) i wiąże ze schematem', async () => {
+    executeDomainOperationMock.mockResolvedValue({
+      error: null,
+      selection_hint: { element_id: 'tr-created', element_type: 'transformer', zoom_to: true },
+    });
     render(<KreatorTransformatoraSnNn />);
     await pickType();
 
@@ -130,6 +146,15 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
     expect(payload).not.toHaveProperty('transformer_regulation_type');
     expect(closeFormMock).toHaveBeenCalled();
+    // Wielokierunkowe wiązanie (V12K-073): nowy transformator zaznaczony,
+    // SLD wycentrowany, przejście na schemat.
+    await waitFor(() => {
+      expect(selectElementMock).toHaveBeenCalledWith(
+        expect.objectContaining({ id: 'tr-created', type: 'TransformerBranch' }),
+      );
+    });
+    expect(centerSldOnElementMock).toHaveBeenCalledWith('tr-created');
+    expect(navigateToSldMock).toHaveBeenCalled();
   });
 
   it('konfiguruje OLTC AUTO i wysyła pola TapChanger', async () => {

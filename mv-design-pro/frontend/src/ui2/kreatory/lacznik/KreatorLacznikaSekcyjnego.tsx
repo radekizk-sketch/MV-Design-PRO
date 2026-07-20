@@ -11,7 +11,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../../../ui/app-state';
 import { fetchMvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
 import type { MVApparatusCatalogType } from '../../../ui/catalog/types';
-import { navigateToSld } from '../../../ui/navigation/routes';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
@@ -27,6 +26,7 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  useSelekcjaPoOperacji,
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
@@ -66,6 +66,7 @@ export function KreatorLacznikaSekcyjnego() {
   const context = useActiveOperationContext() as Record<string, unknown> | null;
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   const kontekst = useMemo(() => kontekstZOperacji(context), [context]);
@@ -136,11 +137,11 @@ export function KreatorLacznikaSekcyjnego() {
         return;
       }
       closeForm();
-      navigateToSld();
+      selekcjaPoOperacji(response, { type: 'Switch', name: dane.nazwa.trim() || 'Łącznik sekcyjny SN' });
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdcinek, kontekst]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasOdcinek, kontekst, selekcjaPoOperacji]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {

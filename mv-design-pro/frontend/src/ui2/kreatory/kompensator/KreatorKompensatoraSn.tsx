@@ -16,7 +16,6 @@ import {
   fetchShuntCompensatorPreview,
   type ShuntCompensatorPreviewResponse,
 } from '../../../ui/network-build/forms/shuntCompensatorPreviewApi';
-import { navigateToSld } from '../../../ui/navigation/routes';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../../ui/selection';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -33,6 +32,7 @@ import {
   PanelTeorii,
   PoleWyboru,
   RzadWartosci,
+  useSelekcjaPoOperacji,
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
@@ -85,6 +85,7 @@ export function KreatorKompensatoraSn() {
   const context = useActiveOperationContext() as Record<string, unknown> | null;
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const selectedElement = useSelectionStore((s) => s.selectedElements[0] ?? null);
 
@@ -201,11 +202,11 @@ export function KreatorKompensatoraSn() {
         return;
       }
       closeForm();
-      navigateToSld();
+      selekcjaPoOperacji(response, { type: 'Load', name: dane.nazwa.trim() || 'Kompensator SN' });
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasSzyna, kontekst]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasSzyna, kontekst, selekcjaPoOperacji]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {

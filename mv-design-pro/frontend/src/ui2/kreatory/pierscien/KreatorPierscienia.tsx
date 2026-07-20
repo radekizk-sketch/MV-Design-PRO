@@ -11,7 +11,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../../../ui/app-state';
 import { fetchCableTypes, fetchLineTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
 import type { CableType, LineType } from '../../../ui/catalog/types';
-import { navigateToSld } from '../../../ui/navigation/routes';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
@@ -26,6 +25,7 @@ import {
   PoleLiczbowe,
   PoleWyboru,
   RzadWartosci,
+  useSelekcjaPoOperacji,
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
@@ -79,6 +79,7 @@ export function KreatorPierscienia() {
   const context = useActiveOperationContext() as Record<string, unknown> | null;
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   const kontekst = useMemo(() => kontekstZOperacji(context), [context]);
@@ -185,11 +186,11 @@ export function KreatorPierscienia() {
         return;
       }
       closeForm();
-      navigateToSld();
+      selekcjaPoOperacji(response, { type: 'NOP', name: 'Punkt normalnie otwarty (NOP)' });
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, selekcjaPoOperacji]);
 
   const params = useMemo(
     () =>

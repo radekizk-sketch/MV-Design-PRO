@@ -16,7 +16,6 @@ import {
   resolveStationRef,
   stationLabel,
 } from '../../../ui/network-build/forms/enmResolvers';
-import { navigateToSld } from '../../../ui/navigation/routes';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
@@ -32,6 +31,7 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  useSelekcjaPoOperacji,
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
@@ -90,6 +90,7 @@ export function KreatorZrodlaOze() {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   const kontekst = useMemo<KontekstOze>(() => {
@@ -226,11 +227,11 @@ export function KreatorZrodlaOze() {
         return;
       }
       closeForm();
-      navigateToSld();
+      selekcjaPoOperacji(response, { type: 'Generator', name: dane.source_name.trim() || 'Źródło OZE' });
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasKontekst, kontekst, wybranyKonwerter, wybranyTransformator]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasKontekst, kontekst, selekcjaPoOperacji, wybranyKonwerter, wybranyTransformator]);
 
   const isBlock = dane.connection_variant === 'block_transformer';
   const przylaczenieWartosc = isBlock

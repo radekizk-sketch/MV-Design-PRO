@@ -32,7 +32,6 @@ import type {
   TapChangerCatalogType,
   TransformerType,
 } from '../../../ui/catalog/types';
-import { navigateToSld } from '../../../ui/navigation/routes';
 import { validateCatalogFirst } from '../../../ui/network-build/forms/catalogFirstRules';
 import { catalogRefFromInput, type GpzGroundingType } from '../../../ui/network-build/forms/catalogPayload';
 import {
@@ -57,6 +56,7 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  useSelekcjaPoOperacji,
   type KrokKreatora,
   type StatusPobrania,
 } from '../rama';
@@ -125,6 +125,7 @@ export function KreatorZrodloZasilania() {
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const collapseSurfaceStackTo = useNetworkBuildStore((s) => s.collapseSurfaceStackTo);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   const [dane, setDane] = useState<GridSourceFormData>(() =>
@@ -445,8 +446,11 @@ export function KreatorZrodloZasilania() {
     }
     collapseSurfaceStackTo(null);
     closeForm();
-    navigateToSld();
-  }, [dane, activeCaseId, executeDomainOperation, collapseSurfaceStackTo, closeForm]);
+    selekcjaPoOperacji(result, {
+      type: 'Station',
+      name: dane.source_name.trim() || 'Źródło zasilania (GPZ)',
+    });
+  }, [dane, activeCaseId, executeDomainOperation, collapseSurfaceStackTo, closeForm, selekcjaPoOperacji]);
 
   const bladDlaPola = (pole: string): string | undefined => {
     if (!dotkniete.has(pole) && bledy.length === 0) return undefined;

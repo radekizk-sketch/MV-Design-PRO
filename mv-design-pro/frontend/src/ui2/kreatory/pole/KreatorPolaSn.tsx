@@ -19,7 +19,6 @@ import {
 } from '../../../ui/catalog/api';
 import type { MVApparatusCatalogType } from '../../../ui/catalog/types';
 import { resolveBusSnRef, resolveStationRef, stationLabel } from '../../../ui/network-build/forms/enmResolvers';
-import { navigateToSld } from '../../../ui/navigation/routes';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import {
@@ -34,6 +33,7 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  useSelekcjaPoOperacji,
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
@@ -75,6 +75,7 @@ export function KreatorPolaSn() {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const closeForm = useNetworkBuildStore((s) => s.closeOperationForm);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
+  const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
 
   const kontekst = useMemo<KontekstPola>(() => {
@@ -211,11 +212,11 @@ export function KreatorPolaSn() {
         return;
       }
       closeForm();
-      navigateToSld();
+      selekcjaPoOperacji(response, { type: 'BaySN', name: dane.field_name.trim() || 'Pole SN' });
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasSzyne, kontekst]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasSzyne, kontekst, selekcjaPoOperacji]);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     {

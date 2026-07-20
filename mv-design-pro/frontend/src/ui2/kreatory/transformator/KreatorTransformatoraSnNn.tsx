@@ -11,7 +11,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAppStateStore } from '../../../ui/app-state';
 import { fetchTransformerTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
 import type { TransformerType } from '../../../ui/catalog/types';
-import { navigateToSld } from '../../../ui/navigation/routes';
 import { useActiveOperationContext, useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import {
   fetchTransformerRatedCurrents,
@@ -32,6 +31,7 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  useSelekcjaPoOperacji,
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
@@ -86,6 +86,7 @@ export function KreatorTransformatoraSnNn() {
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
+  const selekcjaPoOperacji = useSelekcjaPoOperacji();
 
   const kontekst = useMemo(() => kontekstZOperacji(context), [context]);
   const busOptions = useMemo(() => selectBusOptions(snapshot), [snapshot]);
@@ -202,11 +203,14 @@ export function KreatorTransformatoraSnNn() {
         return;
       }
       closeForm();
-      navigateToSld();
+      selekcjaPoOperacji(response, {
+        type: 'TransformerBranch',
+        name: dane.nazwa.trim() || 'Transformator SN/nN',
+      });
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, kontekst]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, kontekst, selekcjaPoOperacji]);
 
   const regulacjaLabel =
     dane.regulation_type === 'NONE'
