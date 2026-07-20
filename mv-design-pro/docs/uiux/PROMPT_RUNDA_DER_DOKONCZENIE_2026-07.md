@@ -73,6 +73,32 @@
 - Recon PRZED budową: kontrakt operacji + konsumenci downstream + czy istnieje phantom.
 - Kreator ui2 wg `KREATORY_STANDARD_2026-07.md`; retire legacy; testy realnej ścieżki.
 
+#### Stan wykonania KROK 3 (2026-07-19)
+- ✅ **G-RING (V12K-056)** wdrożone: `KreatorPierscienia` zastąpił `ConnectRingForm`
+  (2 kroki: connect_secondary_ring_sn → set_normal_open_point). Retire + regresja 9013/0.
+
+#### Kolejka pozostałych kreatorów (recon rozmiarów + sprzężeń — dla następnej rundy)
+Legacy self-contained (pełne pola inline, NIE cienkie wrappery) — port = reimplementacja
+pól na `kreatory/rama` + wierne odwzorowanie logiki. **Uwaga: kreatory branch-point mają
+sprzężenie z nawigacją SLD** (`branchPointSelectionFromMaterialization`,
+`centerSldOnElement`, `openRouteSurface` E-14) — port wymaga wiernego odwzorowania tej
+integracji (osobna, staranna jednostka, nie pośpiech na końcu maratonu):
+
+| Kreator legacy | w. | Operacja | Uwagi portu |
+|---|---|---|---|
+| `InsertZksnForm` | 368 | `insert_zksn_on_segment_sn` | katalog `mv_branch_points`, wariant 1/2-port, cable-only, ratio; **sprzężenie SLD-nav** |
+| `InsertBranchPoleForm` | 360 | `insert_branch_pole_on_segment_sn` | słup rozgałęźny (linia napow.); **sprzężenie SLD-nav** |
+| `StartBranchForm` | 529 | `start_branch_segment_sn` | start odgałęzienia, segment-katalog jak G-MAG |
+| `AddSnBayForm` | 491 | `add_sn_bay` | pole SN, switchgear/bay_template (G-POLE, wysoka częstość) |
+| `AddNnOutgoingFieldForm` | 321 | `add_nn_outgoing_field` | odpływ nN, R1 ΔU |
+| `AddDispatchableSourceForm` | 267 | `add_genset_nn`/`add_ups_nn` | **wrapper nad GensetModal/UPSModal** (reużywane); backend już naprawiony (F-follow-1) — dostarczy F3 downstream SC |
+| `AddConverterSourceForm` | 1365 | `add_converter_source` | **flagowy OZE** (G-OZE-UI); audyt V12K-051 gotowy; dostarcza F3 downstream SC |
+| `InsertStationForm` | 1884 | `insert_station_on_segment_sn` | **flagowy** (G-STA) |
+| `AddRelayForm`/`AddMeasurementForm` | 348/396 | relay/CT/VT | G-ZAB/G-POM |
+
+**F-follow-2 (dług DER, jawny):** katalog x″d/k_sc (agregat/przekształtnik) zamiast
+domyślnych IEC; DFIG Typ3 vs Typ4; klasyfikacja UPS w raportach; silniki-odbiory §6.7.
+
 **DoD każdej fazy:** kod + testy realnej ścieżki; type-check/lint; właściwe guardy;
 pełna regresja warstwy; determinizm/hash; rejestr V12K + aktualizacja planu; commit + push.
 
