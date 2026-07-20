@@ -10,59 +10,45 @@ raporty/zgodność.
 
 ---
 
-## 1. Reguła: stacja/odbiór na KOŃCU odcinka (nie w środku)
+## 1. Reguła: stacja/odbiór zawsze na WĘŹLE (końcu odcinka) — nigdy „pływająco"
 
-**Zasada (wiążąca).** **Odbiornik terminalny — stacja SN/nN oraz odbiór — dołączamy
-zawsze na KOŃCU odcinka** (budowa węzeł po węźle: koniec ostatniego odcinka staje
-się węzłem, do którego pnie się stacja/odbiór). **Wstawianie STACJI/ODBIORU w środku
-odcinka jest zakazane** — jest niefizyczne (stacja „rozcinająca" fizyczny kabel/linię
-w połowie to sztuczny podział bez odpowiednika w projekcie).
+**Zasada (wiążąca).** Odbiornik terminalny — **stacja SN/nN oraz odbiór** — jest
+zawsze przyłączony do **WĘZŁA** sieci, tj. do KOŃCA odcinka. Nie istnieje pojęcie
+„stacji pływającej w środku nienaruszonego kabla/linii". Dwie realizacje, obie
+zgodne z regułą:
 
-Korekta wcześniejszej propozycji: rozważane „wstawianie stacji/odbioru w środku
-ciągu" zostaje **odrzucone** i NIE jest budowane.
+1. **Dołączenie na końcu istniejącego zacisku** (`append_station_on_endpoint`,
+   `ENDPOINT_APPEND`) — stacja na wolnym końcu ostatniego odcinka. Tak działa
+   kontynuacja magistrali (`buildNextContext`: `position_on_segment: 1`) i narzędzie
+   Etap 6 (`SnSegmentSurface.openEndpointOperation`).
+2. **Świadomy podział odcinka** (`insert_station_on_segment_sn`, `insert_at: RATIO`)
+   — backend **rozdziela odcinek na dwa** ("Rozdzielenie segmentu na dwa", Phase 0A/0C
+   „Conscious split with preview") i stawia stację w NOWYM węźle podziału. Stacja
+   ląduje więc na KOŃCU pierwszego z powstałych odcinków — to również „na końcu
+   odcinka", nie „w środku nienaruszonego toru".
 
-**Wyjątek — węzły rozgałęźne (ZKSN, słup rozgałęźny) NIE podlegają regule końca.**
-Punkt rozgałęźny z definicji **odczepia się od odcinka w wybranym miejscu** (RATIO
-0..1), bo tam właśnie fizycznie odgałęzia się magistrala — operacje
-`insert_zksn_on_segment_sn` / `insert_branch_pole_on_segment_sn` przyjmują
-`insert_at: { mode: 'RATIO', value }`. Odbiornik terminalny (stacja/odbiór) ląduje
-wtedy na KOŃCU odgałęzienia wyprowadzonego z tego węzła, nie „w środku". Łańcuch:
-magistrala → (opcjonalnie) węzeł rozgałęźny na odcinku → odgałęzienie → stacja/odbiór
-na końcu odgałęzienia. To rozróżnienie jest spójne fizycznie i z kodem (ZKSN tylko
-w torze kablowym, słup w napowietrznym).
+**Co jest zakazane (phantom):** dorabianie ODRĘBNEGO pojęcia „wstaw stację w środku
+odcinka BEZ podziału" (stacja wisząca na nienaruszonym przewodzie). Taki koncept nie
+istnieje w modelu i NIE jest budowany. Odrzucona wcześniejsza propozycja dotyczyła
+właśnie tego pseudo-trybu — świadomy podział (pkt 2) już realizuje intencję poprawnie.
 
-**Stan wdrożenia (już zgodny).** Łańcuchowanie magistrali realizuje
-`buildNextContext` (`frontend/src/ui/network-build/trunkContinuation.ts`):
-`placement_mode: 'ENDPOINT_APPEND'`, `endpoint_role: 'TO_BUS'`,
-`position_on_segment: 1` (koniec odcinka). Operacja domenowa
-`insert_station_on_segment_sn` (`backend/src/enm/domain_operations.py`) przyjmuje
-`placement_mode`/`position_on_segment` i dokłada element do zacisku końcowego
-świeżo utworzonego odcinka. Kreator magistrali (`KreatorMagistralaSn`) po dodaniu
-odcinka ustawia koniec ciągu jako start następnego kroku — element zawsze ląduje
-na końcu.
+**Węzły rozgałęźne (ZKSN, słup rozgałęźny)** analogicznie: `insert_at: RATIO` dzieli
+odcinek i tworzy węzeł odgałęzienia (ZKSN tylko w torze kablowym, słup w napowietrznym);
+stacja/odbiór ląduje na KOŃCU odgałęzienia. Łańcuch: magistrala → (opcjonalnie) węzeł
+rozgałęźny na odcinku → odgałęzienie → stacja/odbiór na jego końcu.
 
-**Kryterium odbioru reguły:** kanoniczny flow budowy JEST już zgodny —
-`SnSegmentSurface.openEndpointOperation` (Etap 6, narzędzie wstawiania) i
-kontynuacja magistrali (`buildNextContext`) przekazują dla stacji
-`placement_mode: 'ENDPOINT_APPEND'`, `position_on_segment: 1` (koniec odcinka);
-język UI mówi „na końcu odcinka". Węzły rozgałęźne (ZKSN/słup) zachowują RATIO
-(poprawnie — patrz wyjątek wyżej).
+**Stan wdrożenia:** ZGODNY we wszystkich ścieżkach. `append_station_on_endpoint` i
+`insert_station_on_segment_sn` (świadomy podział) obie kończą stację na węźle. Standalone
+`position_on_segment = 0.5` = podział odcinka w połowie (stacja w węźle środkowym =
+koniec pierwszej połowy) — poprawne, NIE jest defektem. Menu kontekstowe / SLD
+`conscious-split-on-segment` uruchamiają dokładnie ten audytowany podział — zostają.
 
-**Dług zarejestrowany (do naprawy w migracji Audyt D):** rule wycieka wyłącznie
-przez ŚCIEŻKI LEGACY, nie przez kanoniczny flow:
-- `InsertStationForm` (1884 w., god-file) w wariancie standalone domyśla
-  `position_on_segment = 0.5` i pokazuje „podział odcinka w 0.50";
-- wejścia legacy do tej operacji: menu kontekstowe segmentu
-  (`ui/context-menu/actionMenuBuilders.ts` „Wstaw stację SN/nN…") oraz
-  `ui/sld/shared/sldActionExecutor.ts` mapowanie `conscious-split-on-segment`
-  (to ostatnie = terytorium wątku SLD).
-
-Czyli **dopuszczenie STACJI w środku odcinka istnieje tylko na ścieżkach legacy/SLD
-wbrew regule**. Nie naprawiamy w god-file (ryzyko) ani cross-thread w `ui/sld/**`;
-zamykamy przy migracji `InsertStationForm → ui2 KreatorStacji` (Audyt D): kreator
-stacji wymusza `ENDPOINT_APPEND`, a odczep mid-segment realizuje wyłącznie przez
-węzeł rozgałęźny (ZKSN/słup) + odgałęzienie. Karta do wątku SLD: wygaszenie
-`conscious-split-on-segment` dla stacji.
+**Retrakcja (Zero-Debt, uczciwość diagnozy):** wcześniejszy wpis „dług: stacja
+mid-segment na ścieżkach legacy" był **błędną diagnozą** — świadomy podział to
+poprawny, audytowany mechanizm (heavy-tested: `InsertStationForm.test.tsx`), a nie
+wyciek. NIE zmieniamy tego zachowania. Do Audytu D pozostaje wyłącznie migracja UI
+`InsertStationForm → ui2` (god-file → rama + panel teorii + wiązanie V12K-073),
+BEZ zmiany semantyki podziału.
 
 ---
 
