@@ -21,7 +21,7 @@ import { KreatorPierscienia } from '../../ui2/kreatory/pierscien';
 import { KreatorPolaSn } from '../../ui2/kreatory/pole';
 import { KreatorTransformatoraSnNn } from '../../ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from '../../ui2/kreatory/zrodlo';
-import { AddConverterSourceForm } from '../network-build/forms/AddConverterSourceForm';
+import { KreatorZrodlaOze } from '../../ui2/kreatory/zrodlo-oze';
 import { AddDispatchableSourceForm } from '../network-build/forms/AddDispatchableSourceForm';
 import { AddMeasurementForm } from '../network-build/forms/AddMeasurementForm';
 import { AddNnOutgoingFieldForm } from '../network-build/forms/AddNnOutgoingFieldForm';
@@ -53,7 +53,7 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   assign_catalog_to_element: AssignCatalogForm,
   update_element_parameters: UpdateElementParametersForm,
   add_nn_outgoing_field: AddNnOutgoingFieldForm,
-  add_converter_source: AddConverterSourceForm,
+  add_converter_source: KreatorZrodlaOze,
   add_genset_nn: AddDispatchableSourceForm,
   add_ups_nn: AddDispatchableSourceForm,
   add_shunt_compensator_sn: KreatorKompensatoraSn,

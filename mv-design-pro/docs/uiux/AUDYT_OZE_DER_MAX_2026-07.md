@@ -182,3 +182,25 @@ na kreatory/rama ma niską wartość i wysokie ryzyko regresji, więc NIE jest p
 podgląd z backendu gdzie dostępny, sekcja downstream, uczciwe stany zerowe, retire
 legacy, testy natywnej ścieżki, guardy/lint/type-check, pełne regresje obu stosów,
 determinizm, zrzut żywej aplikacji.
+
+---
+
+> **STATUS 2026-07-20:** ✅ **G-OZE-UI WDROŻONE** (V12K-061). Kreator ui2 `KreatorZrodlaOze`
+> (kreatory/rama, 4 kroki: technologia+przyłączenie → falownik+moc → regulacja Q → podsumowanie)
+> zastąpił legacy `AddConverterSourceForm` (1365 w.). Pokrycie WSZYSTKICH realnie utrwalanych
+> pól `AddConverterSourcePayload` (kontrakt 1:1): technologia PV/BESS/FW, wariant nn_side/
+> block_transformer (+ picker transformatora blokowego ze snapshotu), umiejscowienie NEW/EXISTING
+> pola + aparat nN, katalog falownika (ZRODLO_NN_PV/BESS/CONVERTER) + liczba jednostek + tabliczka,
+> tryb regulacji (STALY_COS_PHI/Q_OD_U/P_OD_U/WYLACZONE — realnie konsumowany przez PF po G-OZE-PF),
+> zakres Q min/max, moc robocza P, tryb BESS + SOC min/max, certyfikat PTPiREE z katalogu →
+> materialized_params. Sekcja downstream (machine SC, inverter PF, NC RfG, grid strength,
+> reactive adequacy). Retire legacy + jego test (intencja payloadu w `zrodloOzeModel.test`).
+> Testy: `zrodloOzeModel` (13) + `KreatorZrodlaOze` (3, realna ścieżka). Zero-fabrykacja: pola
+> NC RfG NIE utrwalane przez op → **G-OZE-B (karta)**, nie phantom.
+>
+> **POZOSTAJE G-OZE-B (karta):** rozszerzenie `add_converter_source` o utrwalanie flag/krzywych
+> NC RfG (pf_curve_ref, has_qu/has_hvrt_curve, droop_percent, island/black_start/POD) na
+> generatorze ORAZ wpięcie ich jako domyślnych wejść runnera NC RfG (`NcRfgPtpireeModuleInput`
+> obecnie z body żądania, nie z modelu). To łańcuch backendowy (op + konsument), nie kontrolka UI
+> — dodanie kontrolek bez konsumenta byłoby wyspą. Dopiero po G-OZE-B krok „NC RfG / ride-through"
+> wchodzi do kreatora. G-OZE-C (katalog krzywych) po G-OZE-B.
