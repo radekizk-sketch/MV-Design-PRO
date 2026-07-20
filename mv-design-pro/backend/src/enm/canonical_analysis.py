@@ -1296,6 +1296,9 @@ def _build_converter_control_by_node(
             params["qu_slope_pu_per_pu"] = qu_slope
         if lfsm_droop is not None:
             params["lfsm_droop_pct"] = lfsm_droop
+            lfsm_deadband = _oze_opt_float(meta.get("lfsm_deadband_hz"))
+            if lfsm_deadband is not None:
+                params["lfsm_deadband_hz"] = lfsm_deadband
             if bool(meta.get("lfsm_allow_increase")):
                 params["lfsm_allow_increase"] = True
         qmin = _oze_opt_float(meta.get("q_min_mvar"))

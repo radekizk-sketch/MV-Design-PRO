@@ -38,6 +38,7 @@ import {
   BESS_OPCJE,
   DANE_DOMYSLNE,
   REGULACJA_OPCJE,
+  SUGEROWANE,
   TECHNOLOGIA_OPCJE,
   TECHNOLOGIE,
   WARIANT_OPCJE,
@@ -47,6 +48,7 @@ import {
   regulacjaLabel,
   technologiaLabel,
   transformatoryBlokowe,
+  trybQWymagaWartosci,
   walidujFormularz,
   wariantLabel,
   zbudujPayload,
@@ -433,6 +435,33 @@ export function KreatorZrodlaOze() {
               opcje={OPCJE_REGULACJA}
               testid="mvd-kreator-oze-tryb"
             />
+            {dane.control_mode === 'STALY_COS_PHI' ? (
+              <PoleLiczbowe
+                etykieta={T.cosPhiCel}
+                wartosc={dane.cos_phi_target}
+                onZmiana={(v) => zmien('cos_phi_target', v)}
+                krok={0.01}
+                min={0}
+                placeholder={`Sugerowane: ${SUGEROWANE.cosPhi}`}
+                pomoc={T.cosPhiCelPomoc}
+                testid="mvd-kreator-oze-cosphi"
+              />
+            ) : null}
+            {dane.control_mode === 'Q_OD_U' ? (
+              <PoleLiczbowe
+                etykieta={T.quNachylenie}
+                wartosc={dane.qu_slope_pu_per_pu}
+                onZmiana={(v) => zmien('qu_slope_pu_per_pu', v)}
+                krok={0.5}
+                min={0}
+                placeholder={`Sugerowane: ${SUGEROWANE.quSlopePuPerPu}`}
+                pomoc={T.quNachyleniePomoc}
+                testid="mvd-kreator-oze-qu-slope"
+              />
+            ) : null}
+            {trybQWymagaWartosci(dane) ? (
+              <KreatorInfo>{T.regulacjaPasywnaOstrzezenie}</KreatorInfo>
+            ) : null}
             <KreatorSiatka kolumny={2}>
               <PoleLiczbowe
                 etykieta={T.qMin}
@@ -459,15 +488,31 @@ export function KreatorZrodlaOze() {
               pomoc={T.mocRoboczaPomoc}
               testid="mvd-kreator-oze-moc"
             />
-            <PoleLiczbowe
-              etykieta={T.statyzmPf}
-              jednostka="%"
-              wartosc={dane.frequency_droop_percent}
-              onZmiana={(v) => zmien('frequency_droop_percent', v)}
-              min={0}
-              pomoc={T.statyzmPfPomoc}
-              testid="mvd-kreator-oze-statyzm"
-            />
+            <KreatorSiatka kolumny={2}>
+              <PoleLiczbowe
+                etykieta={T.statyzmPf}
+                jednostka="%"
+                wartosc={dane.frequency_droop_percent}
+                onZmiana={(v) => zmien('frequency_droop_percent', v)}
+                min={0}
+                placeholder={`Sugerowane: ${SUGEROWANE.pfDroopPercent}`}
+                pomoc={T.statyzmPfPomoc}
+                testid="mvd-kreator-oze-statyzm"
+              />
+              {dane.frequency_droop_percent !== null ? (
+                <PoleLiczbowe
+                  etykieta={T.pfDeadband}
+                  jednostka="Hz"
+                  wartosc={dane.lfsm_deadband_hz}
+                  onZmiana={(v) => zmien('lfsm_deadband_hz', v)}
+                  krok={0.05}
+                  min={0}
+                  placeholder={`Sugerowane: ${SUGEROWANE.pfDeadbandHz}`}
+                  pomoc={T.pfDeadbandPomoc}
+                  testid="mvd-kreator-oze-deadband"
+                />
+              ) : null}
+            </KreatorSiatka>
           </KreatorSekcja>
 
           {dane.source_technology === 'BESS' ? (

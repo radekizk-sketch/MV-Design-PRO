@@ -49,21 +49,47 @@ export const OZE_STRINGS = {
   ptpireeBrak: 'Falownik bez powiązanego certyfikatu PTPiREE — ocena zgodności NC RfG wymaga uzupełnienia.',
 
   // Krok 3
-  sekcjaRegulacja: 'Tryb regulacji mocy biernej',
-  regulacja: 'Tryb regulacji',
+  sekcjaRegulacja: 'Tryb regulacji mocy biernej i czynnej',
+  regulacja: 'Tryb regulacji mocy biernej',
   regulacjaPomoc:
-    'Q(U) i cosφ realnie wpływają na rozpływ mocy (kanoniczny PF falownika). '
-    + '„Bez regulacji" = źródło pasywne (Q = 0).',
-  qMin: 'Q min',
-  qMax: 'Q max',
-  qPomoc: 'Zakres mocy biernej falownika [Mvar]; puste = zakres z tabliczki katalogowej.',
-  mocRobocza: 'Moc robocza P',
-  mocRoboczaPomoc: 'Zadana moc czynna [MW]; puste = moc znamionowa agregatu.',
+    'Po co: falownik OZE utrzymuje napięcie i współczynnik mocy w punkcie przyłączenia. '
+    + 'Tryb wyznacza, jak źródło oddaje/pobiera moc bierną Q. Wybór realnie wpływa na wynik '
+    + 'rozpływu mocy (kanoniczny model falownika). Stały cosφ — Q proporcjonalna do P wg '
+    + 'zadanego cosφ; Q(U) (napięciowo-jałowa) — Q zależna od napięcia szyny (statyzm); '
+    + 'P(U) — ograniczanie mocy czynnej od napięcia (nie modelowane w rozpływie ustalonym); '
+    + '„Bez regulacji" — źródło pasywne (Q = 0).',
+  cosPhiCel: 'Docelowy współczynnik mocy cosφ',
+  cosPhiCelPomoc:
+    'Wartość rządząca trybem stałego cosφ. cosφ < 1 → falownik oddaje/pobiera Q '
+    + '(Q/|P| = tan(arccos cosφ)). Sugerowane: 0,95 (NC RfG typ B/C zwykle wymaga zdolności '
+    + '±0,95, tj. ±0,3287·Pn). cosφ = 1 → brak Q (tryb pasywny).',
+  quNachylenie: 'Nachylenie Q(U) (statyzm)',
+  quNachyleniePomoc:
+    'Wartość rządząca trybem Q(U) [pu Q na pu U]: o ile zmienia się Q na jednostkę zmiany '
+    + 'napięcia względem pasma nieczułości. Sugerowane: 2–5 (typ. 4). 0 → tryb pasywny.',
+  qMin: 'Q min (pobór, podwzbudzenie)',
+  qMax: 'Q max (oddawanie, nadwzbudzenie)',
+  qPomoc:
+    'Zakres mocy biernej falownika [Mvar] — klamra dla trybu regulacji. Puste = zakres z '
+    + 'tabliczki katalogowej. NC RfG (typ B/C): zdolność co najmniej ±0,3287·Pn (cosφ 0,95).',
+  mocRobocza: 'Moc robocza P (nastawa)',
+  mocRoboczaPomoc:
+    'Zadana moc czynna [MW] w punkcie pracy studium. Puste = moc znamionowa agregatu '
+    + '(liczba × Pmax). Dla magazynu: dodatnia = rozładowanie, ujemna = ładowanie.',
   statyzmPf: 'Statyzm P(f) / LFSM',
   statyzmPfPomoc:
-    'Statyzm regulacji mocy czynnej od częstotliwości [%Pn na %f]. Realnie zmienia moc '
-    + 'czynną w rozpływie przy odchyłce częstotliwości studium (przy 50 Hz brak wpływu). '
+    'Po co: ograniczanie mocy czynnej przy wzroście częstotliwości (LFSM-O), a dla magazynu '
+    + 'także jej podnoszenie przy spadku (LFSM-U). Statyzm [%Pn na %f]: mniejsza wartość = '
+    + 'ostrzejsza reakcja. Realnie zmienia moc czynną w rozpływie przy odchyłce częstotliwości '
+    + 'studium (przy 50 Hz brak wpływu). Sugerowane: 5% (typ. 2–12% wg operatora). '
     + 'Puste = bez regulacji P(f).',
+  pfDeadband: 'Pasmo nieczułości P(f)',
+  pfDeadbandPomoc:
+    'Zakres wokół 50 Hz bez reakcji [Hz]. Sugerowane: 0,2 Hz (LFSM-O aktywne od 50,2 Hz wg '
+    + 'NC RfG). Aktywne tylko, gdy podano statyzm P(f).',
+  regulacjaPasywnaOstrzezenie:
+    'Wybrany tryb regulacji jest nieaktywny — uzupełnij wartość rządzącą (cosφ albo nachylenie '
+    + 'Q(U)), inaczej źródło pracuje pasywnie (Q = 0) i wybór trybu nie wpływa na rozpływ.',
   sekcjaBess: 'Praca magazynu (BESS)',
   bessTryb: 'Tryb pracy magazynu',
   socMin: 'SOC min',

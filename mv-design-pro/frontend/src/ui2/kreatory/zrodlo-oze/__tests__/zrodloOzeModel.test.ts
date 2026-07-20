@@ -12,6 +12,7 @@ import {
   materializedParams,
   regulacjaLabel,
   technologiaLabel,
+  trybQWymagaWartosci,
   walidujFormularz,
   wariantLabel,
   zbudujPayload,
@@ -159,6 +160,60 @@ describe('zrodloOzeModel — payload add_converter_source (kontrakt 1:1)', () =>
     expect(zDroop.frequency_droop_percent).toBe(5);
     const bezDroop = zbudujPayload(dane(), KONTEKST, KONWERTER, null);
     expect(bezDroop.frequency_droop_percent).toBeUndefined();
+  });
+
+  it('pasmo nieczułości P(f) trafia do payloadu tylko przy zadanym statyzmie (G-OZE-B3)', () => {
+    const zDeadband = zbudujPayload(
+      dane({ frequency_droop_percent: 5, lfsm_deadband_hz: 0.2 }),
+      KONTEKST,
+      KONWERTER,
+      null,
+    );
+    expect(zDeadband.lfsm_deadband_hz).toBe(0.2);
+    // Bez statyzmu pasmo jest ignorowane (zero fabrykacji: LFSM nieaktywne).
+    const bezStatyzmu = zbudujPayload(dane({ lfsm_deadband_hz: 0.2 }), KONTEKST, KONWERTER, null);
+    expect(bezStatyzmu.lfsm_deadband_hz).toBeUndefined();
+  });
+
+  it('cosφ wysyłany tylko w trybie STALY_COS_PHI; nachylenie Q(U) tylko w Q_OD_U (G-OZE-B3)', () => {
+    const cosPhi = zbudujPayload(
+      dane({ control_mode: 'STALY_COS_PHI', cos_phi_target: 0.95, qu_slope_pu_per_pu: 4 }),
+      KONTEKST,
+      KONWERTER,
+      null,
+    );
+    expect(cosPhi.cos_phi).toBe(0.95);
+    expect(cosPhi.qu_slope_pu_per_pu).toBeUndefined();
+
+    const qu = zbudujPayload(
+      dane({ control_mode: 'Q_OD_U', cos_phi_target: 0.95, qu_slope_pu_per_pu: 4 }),
+      KONTEKST,
+      KONWERTER,
+      null,
+    );
+    expect(qu.qu_slope_pu_per_pu).toBe(4);
+    expect(qu.cos_phi).toBeUndefined();
+
+    // Tryb pasywny: żadna wartość rządząca nie jest wysyłana.
+    const pasywny = zbudujPayload(
+      dane({ control_mode: 'WYLACZONE', cos_phi_target: 0.95, qu_slope_pu_per_pu: 4 }),
+      KONTEKST,
+      KONWERTER,
+      null,
+    );
+    expect(pasywny.cos_phi).toBeUndefined();
+    expect(pasywny.qu_slope_pu_per_pu).toBeUndefined();
+  });
+
+  it('trybQWymagaWartosci: tryb Q wybrany bez wartości rządzącej = regulacja pasywna', () => {
+    // Domyślnie STALY_COS_PHI bez cos_phi_target → wymaga wartości.
+    expect(trybQWymagaWartosci(dane())).toBe(true);
+    expect(trybQWymagaWartosci(dane({ cos_phi_target: 0.95 }))).toBe(false);
+    expect(trybQWymagaWartosci(dane({ control_mode: 'Q_OD_U' }))).toBe(true);
+    expect(trybQWymagaWartosci(dane({ control_mode: 'Q_OD_U', qu_slope_pu_per_pu: 4 }))).toBe(false);
+    // Tryby bez wartości rządzącej (P(U), wyłączone) nie są „pasywne z brakiem".
+    expect(trybQWymagaWartosci(dane({ control_mode: 'WYLACZONE' }))).toBe(false);
+    expect(trybQWymagaWartosci(dane({ control_mode: 'P_OD_U' }))).toBe(false);
   });
 
   it('materialized_params niesie tabliczkę + certyfikat PTPiREE z katalogu', () => {

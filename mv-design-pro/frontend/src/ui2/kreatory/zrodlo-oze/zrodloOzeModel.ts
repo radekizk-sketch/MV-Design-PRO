@@ -115,11 +115,17 @@ export interface OzeFormData {
   apparatus_catalog_ref: string | null;
   blocking_transformer_ref: string | null;
   control_mode: TrybRegulacji;
+  // V12K-063 (G-OZE-B3): wartości rządzące trybem regulacji Q — bez nich wybór trybu był
+  // pasywny (phantom). cos_phi dla STALY_COS_PHI; nachylenie Q(U) dla Q_OD_U.
+  cos_phi_target: number | null;
+  qu_slope_pu_per_pu: number | null;
   power_setpoint_mw: number | null;
   q_min_mvar: number | null;
   q_max_mvar: number | null;
   // V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn/%f] — realnie konsumowany przez kanoniczny PF.
   frequency_droop_percent: number | null;
+  // V12K-063: pasmo nieczułości P(f)/LFSM [Hz].
+  lfsm_deadband_hz: number | null;
   bess_mode: TrybBess;
   soc_min_percent: number | null;
   soc_max_percent: number | null;
@@ -141,10 +147,13 @@ export const DANE_DOMYSLNE: OzeFormData = {
   apparatus_catalog_ref: null,
   blocking_transformer_ref: null,
   control_mode: 'STALY_COS_PHI',
+  cos_phi_target: null,
+  qu_slope_pu_per_pu: null,
   power_setpoint_mw: null,
   q_min_mvar: null,
   q_max_mvar: null,
   frequency_droop_percent: null,
+  lfsm_deadband_hz: null,
   bess_mode: 'PEAK_SHAVING',
   soc_min_percent: null,
   soc_max_percent: null,
@@ -262,10 +271,17 @@ export function zbudujPayload(
     source_name: data.source_name.trim() || tech.defaultName,
     quantity,
     control_mode: data.control_mode,
+    // Wartości rządzące trybem Q wysyłane TYLKO dla właściwego trybu (zero fabrykacji:
+    // cosφ dla STALY_COS_PHI, nachylenie Q(U) dla Q_OD_U). Backend czyta cos_phi/qu_slope.
+    cos_phi:
+      data.control_mode === 'STALY_COS_PHI' ? data.cos_phi_target ?? undefined : undefined,
+    qu_slope_pu_per_pu:
+      data.control_mode === 'Q_OD_U' ? data.qu_slope_pu_per_pu ?? undefined : undefined,
     power_setpoint_mw: pSetpoint,
     q_min_mvar: qMin,
     q_max_mvar: qMax,
     frequency_droop_percent: data.frequency_droop_percent ?? undefined,
+    lfsm_deadband_hz: data.frequency_droop_percent ? data.lfsm_deadband_hz ?? undefined : undefined,
     bess_mode: data.source_technology === 'BESS' ? data.bess_mode : undefined,
     soc_min_percent:
       data.source_technology === 'BESS' ? data.soc_min_percent ?? undefined : undefined,
@@ -277,6 +293,24 @@ export function zbudujPayload(
       undefined,
     materialized_params: materializedParams(converter, pSetpoint),
   };
+}
+
+/** Sugerowane nastawy (NC RfG / PTPiREE) — podpowiedź, NIE wypełniane automatycznie
+ * (uczciwy stan zerowy; wartość wybiera projektant). */
+export const SUGEROWANE = {
+  cosPhi: 0.95, // ±0.95 typowe wymaganie NC RfG dla modułów typu B/C
+  quSlopePuPerPu: 4.0, // nachylenie Q(U) ~2–5 (statyzm napięciowo-jałowy)
+  pfDroopPercent: 5.0, // statyzm P(f) 5% (typ. 2–12% wg operatora)
+  pfDeadbandHz: 0.2, // LFSM-O od 50.2 Hz (pasmo 200 mHz)
+  socMinPercent: 10,
+  socMaxPercent: 90,
+} as const;
+
+/** Tryb Q wybrany, ale bez wartości rządzącej → regulacja pasywna (ostrzeżenie gotowości). */
+export function trybQWymagaWartosci(data: OzeFormData): boolean {
+  if (data.control_mode === 'STALY_COS_PHI') return data.cos_phi_target === null;
+  if (data.control_mode === 'Q_OD_U') return data.qu_slope_pu_per_pu === null;
+  return false;
 }
 
 /** Etykieta pozycji katalogu falownika. */

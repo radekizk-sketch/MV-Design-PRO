@@ -112,6 +112,29 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
+  it('krok regulacji: cosφ dla stałego cosφ, nachylenie Q(U) po zmianie trybu (G-OZE-B3)', async () => {
+    render(<KreatorZrodlaOze />);
+    // Przejdź do kroku 3 (regulacja): tech → katalog → regulacja.
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-tryb')).toBeInTheDocument());
+
+    // Domyślnie STALY_COS_PHI → pole cosφ widoczne, brak pola nachylenia Q(U).
+    expect(screen.getByTestId('mvd-kreator-oze-cosphi')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-kreator-oze-qu-slope')).not.toBeInTheDocument();
+
+    // Zmiana trybu na Q(U) → pole nachylenia, znika pole cosφ.
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-tryb'), 'Q_OD_U');
+    expect(screen.getByTestId('mvd-kreator-oze-qu-slope')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-kreator-oze-cosphi')).not.toBeInTheDocument();
+
+    // Pasmo nieczułości P(f) pojawia się dopiero po podaniu statyzmu.
+    expect(screen.queryByTestId('mvd-kreator-oze-deadband')).not.toBeInTheDocument();
+    await userEvent.type(screen.getByTestId('mvd-kreator-oze-statyzm'), '5');
+    expect(screen.getByTestId('mvd-kreator-oze-deadband')).toBeInTheDocument();
+  });
+
   it('uczciwy stan zerowy: bez rozdzielni zapis zablokowany', async () => {
     resolved.station = null;
     resolved.bus = null;

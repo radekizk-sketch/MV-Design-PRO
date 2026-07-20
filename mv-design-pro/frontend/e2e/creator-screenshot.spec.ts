@@ -100,12 +100,16 @@ test.describe('kreatory:screenshot', () => {
       await page.getByTestId('mvd-kreator-oze-liczba').fill('12');
       await shot(2);
 
-      // Krok 3 — regulacja mocy biernej.
+      // Krok 3 — regulacja mocy biernej i czynnej (wartości rządzące + P(f)/LFSM).
       await page.getByTestId('mvd-kreator-oze-dalej').click();
       await expect(page.getByTestId('mvd-kreator-oze-tryb')).toBeVisible();
       await page.getByTestId('mvd-kreator-oze-tryb').selectOption('Q_OD_U');
+      await page.getByTestId('mvd-kreator-oze-qu-slope').fill('4');
       await page.getByTestId('mvd-kreator-oze-qmin').fill('-3');
       await page.getByTestId('mvd-kreator-oze-qmax').fill('3');
+      await page.getByTestId('mvd-kreator-oze-statyzm').fill('5');
+      await expect(page.getByTestId('mvd-kreator-oze-deadband')).toBeVisible();
+      await page.getByTestId('mvd-kreator-oze-deadband').fill('0.2');
       await shot(3);
 
       // Krok 4 — podsumowanie i zapis.

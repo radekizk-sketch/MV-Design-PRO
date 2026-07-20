@@ -2178,6 +2178,7 @@ def _resolve_converter_defaults(
                 # V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn/%f]; brak/0 → brak wpływu na PF
                 # (aktywuje się przy odchyłce częstotliwości studium; determinizm przy 50 Hz).
                 "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
+                "lfsm_deadband_hz": _as_float(payload.get("lfsm_deadband_hz")),
                 "quantity": quantity,
             },
             (
@@ -2211,6 +2212,7 @@ def _resolve_converter_defaults(
                 # V12K-062 (G-OZE-B): statyzm P(f)/LFSM; magazyn może podnosić P poniżej f0
                 # (LFSM-U) — allow_increase. Brak/0 → brak wpływu na PF.
                 "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
+                "lfsm_deadband_hz": _as_float(payload.get("lfsm_deadband_hz")),
                 "lfsm_allow_increase": True,
                 "quantity": quantity,
             },
@@ -2243,6 +2245,7 @@ def _resolve_converter_defaults(
             "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
             # V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn/%f]; brak/0 → brak wpływu na PF.
             "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
+            "lfsm_deadband_hz": _as_float(payload.get("lfsm_deadband_hz")),
             "quantity": quantity,
         },
         explicit_power_mw if explicit_power_mw is not None else (default_power or 0.0) * quantity,
