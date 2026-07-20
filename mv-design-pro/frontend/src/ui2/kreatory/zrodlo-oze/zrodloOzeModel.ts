@@ -118,6 +118,8 @@ export interface OzeFormData {
   power_setpoint_mw: number | null;
   q_min_mvar: number | null;
   q_max_mvar: number | null;
+  // V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn/%f] — realnie konsumowany przez kanoniczny PF.
+  frequency_droop_percent: number | null;
   bess_mode: TrybBess;
   soc_min_percent: number | null;
   soc_max_percent: number | null;
@@ -142,6 +144,7 @@ export const DANE_DOMYSLNE: OzeFormData = {
   power_setpoint_mw: null,
   q_min_mvar: null,
   q_max_mvar: null,
+  frequency_droop_percent: null,
   bess_mode: 'PEAK_SHAVING',
   soc_min_percent: null,
   soc_max_percent: null,
@@ -262,6 +265,7 @@ export function zbudujPayload(
     power_setpoint_mw: pSetpoint,
     q_min_mvar: qMin,
     q_max_mvar: qMax,
+    frequency_droop_percent: data.frequency_droop_percent ?? undefined,
     bess_mode: data.source_technology === 'BESS' ? data.bess_mode : undefined,
     soc_min_percent:
       data.source_technology === 'BESS' ? data.soc_min_percent ?? undefined : undefined,

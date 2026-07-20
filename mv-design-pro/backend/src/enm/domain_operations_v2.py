@@ -2175,6 +2175,9 @@ def _resolve_converter_defaults(
                 # brak → unity/0 → brak wpływu na PF (determinizm zachowany).
                 "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
                 "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+                # V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn/%f]; brak/0 → brak wpływu na PF
+                # (aktywuje się przy odchyłce częstotliwości studium; determinizm przy 50 Hz).
+                "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
                 "quantity": quantity,
             },
             (
@@ -2203,6 +2206,12 @@ def _resolve_converter_defaults(
                 "usable_capacity_kwh": _first_number(
                     materialized_params.get("usable_capacity_kwh"),
                 ),
+                "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
+                "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+                # V12K-062 (G-OZE-B): statyzm P(f)/LFSM; magazyn może podnosić P poniżej f0
+                # (LFSM-U) — allow_increase. Brak/0 → brak wpływu na PF.
+                "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
+                "lfsm_allow_increase": True,
                 "quantity": quantity,
             },
             (
@@ -2232,6 +2241,8 @@ def _resolve_converter_defaults(
             # V12K-051 (G-OZE-PF): docelowy cosφ + nachylenie Q(U); brak → brak wpływu.
             "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
             "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+            # V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn/%f]; brak/0 → brak wpływu na PF.
+            "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
             "quantity": quantity,
         },
         explicit_power_mw if explicit_power_mw is not None else (default_power or 0.0) * quantity,

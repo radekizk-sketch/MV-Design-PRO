@@ -459,6 +459,15 @@ export function KreatorZrodlaOze() {
               pomoc={T.mocRoboczaPomoc}
               testid="mvd-kreator-oze-moc"
             />
+            <PoleLiczbowe
+              etykieta={T.statyzmPf}
+              jednostka="%"
+              wartosc={dane.frequency_droop_percent}
+              onZmiana={(v) => zmien('frequency_droop_percent', v)}
+              min={0}
+              pomoc={T.statyzmPfPomoc}
+              testid="mvd-kreator-oze-statyzm"
+            />
           </KreatorSekcja>
 
           {dane.source_technology === 'BESS' ? (

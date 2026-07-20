@@ -12,10 +12,12 @@ from enm.canonical_analysis import _build_converter_control_by_node, _graph_id_f
 from network_model.solvers.power_flow_inverter import (
     InverterMode,
     inverter_control_from_params,
+    lfsm_factor,
 )
 
 
 # --------------------------------------------------------- most języka (Part A)
+
 
 def test_polish_stary_cosphi_maps_to_cosphi_const_and_injects_q() -> None:
     ctrl = inverter_control_from_params(
@@ -53,6 +55,7 @@ def test_wylaczone_and_p_od_u_are_passive() -> None:
 
 # ------------------------------------------ kanoniczne wpięcie (Part B) + determinizm
 
+
 def _snapshot(meta: dict) -> dict:
     return {"generators": [{"ref_id": "g1", "bus_ref": "bus-oze", "p_mw": 1.0, "meta": meta}]}
 
@@ -75,14 +78,77 @@ def test_active_qu_slope_attaches_control() -> None:
 
 def test_unity_or_missing_is_not_attached_determinism() -> None:
     # cosφ=1 → brak wpisu (wynik PF bajt-w-bajt jak dotąd).
-    assert _build_converter_control_by_node(
-        _snapshot({"control_mode": "STALY_COS_PHI", "cos_phi": 1.0}), base_mva=100.0
-    ) == {}
+    assert (
+        _build_converter_control_by_node(
+            _snapshot({"control_mode": "STALY_COS_PHI", "cos_phi": 1.0}), base_mva=100.0
+        )
+        == {}
+    )
     # Brak nowych pól (istniejące snapshoty) → brak wpisu.
-    assert _build_converter_control_by_node(
-        _snapshot({"control_mode": "STALY_COS_PHI"}), base_mva=100.0
-    ) == {}
+    assert (
+        _build_converter_control_by_node(
+            _snapshot({"control_mode": "STALY_COS_PHI"}), base_mva=100.0
+        )
+        == {}
+    )
     # Q(U) bez nachylenia → brak wpisu.
-    assert _build_converter_control_by_node(
-        _snapshot({"control_mode": "Q_OD_U"}), base_mva=100.0
-    ) == {}
+    assert (
+        _build_converter_control_by_node(_snapshot({"control_mode": "Q_OD_U"}), base_mva=100.0)
+        == {}
+    )
+
+
+# ------------------------------------------ P(f)/LFSM (G-OZE-B, V12K-062)
+
+
+def test_pf_droop_attaches_control_with_lfsm() -> None:
+    # Statyzm P(f) z generatora → InverterControl z lfsm_droop_pct (zależność częstotliwościowa).
+    out = _build_converter_control_by_node(
+        _snapshot({"control_mode": "STALY_COS_PHI", "frequency_droop_percent": 5.0}),
+        base_mva=100.0,
+    )
+    node_id = _graph_id_from_ref("bus-oze")
+    assert node_id in out
+    assert out[node_id].lfsm_droop_pct == 5.0
+    assert out[node_id].has_frequency_dependence()
+
+
+def test_pf_droop_active_regardless_of_q_mode() -> None:
+    # Źródło bez aktywnej regulacji Q, ale z P(f) droop → nadal dołączone (statyzm f).
+    out = _build_converter_control_by_node(
+        _snapshot({"control_mode": "WYLACZONE", "frequency_droop_percent": 4.0}),
+        base_mva=100.0,
+    )
+    assert _graph_id_from_ref("bus-oze") in out
+
+
+def test_bess_lfsm_allow_increase_from_meta() -> None:
+    # Magazyn (LFSM-U) może podnosić P poniżej f0 — flaga z meta.
+    out = _build_converter_control_by_node(
+        _snapshot({"frequency_droop_percent": 5.0, "lfsm_allow_increase": True}),
+        base_mva=100.0,
+    )
+    assert out[_graph_id_from_ref("bus-oze")].lfsm_allow_increase is True
+
+
+def test_lfsm_factor_reduces_p_at_overfrequency() -> None:
+    ctrl = _build_converter_control_by_node(
+        _snapshot({"control_mode": "STALY_COS_PHI", "frequency_droop_percent": 5.0}),
+        base_mva=100.0,
+    )[_graph_id_from_ref("bus-oze")]
+    # Nadczęstotliwość 50.5 Hz (LFSM-O) → redukcja mocy czynnej (< 1.0); przy 50 Hz brak zmiany.
+    assert lfsm_factor(ctrl, 50.5) < 1.0
+    assert lfsm_factor(ctrl, 50.0) == 1.0
+
+
+def test_pf_droop_absent_is_deterministic() -> None:
+    # Brak statyzmu P(f) → brak wpisu (determinizm istniejących snapshotów).
+    assert (
+        _build_converter_control_by_node(
+            _snapshot(
+                {"control_mode": "STALY_COS_PHI", "cos_phi": 1.0, "frequency_droop_percent": 0.0}
+            ),
+            base_mva=100.0,
+        )
+        == {}
+    )

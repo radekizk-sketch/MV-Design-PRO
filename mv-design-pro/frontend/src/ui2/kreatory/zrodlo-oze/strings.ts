@@ -59,6 +59,11 @@ export const OZE_STRINGS = {
   qPomoc: 'Zakres mocy biernej falownika [Mvar]; puste = zakres z tabliczki katalogowej.',
   mocRobocza: 'Moc robocza P',
   mocRoboczaPomoc: 'Zadana moc czynna [MW]; puste = moc znamionowa agregatu.',
+  statyzmPf: 'Statyzm P(f) / LFSM',
+  statyzmPfPomoc:
+    'Statyzm regulacji mocy czynnej od częstotliwości [%Pn na %f]. Realnie zmienia moc '
+    + 'czynną w rozpływie przy odchyłce częstotliwości studium (przy 50 Hz brak wpływu). '
+    + 'Puste = bez regulacji P(f).',
   sekcjaBess: 'Praca magazynu (BESS)',
   bessTryb: 'Tryb pracy magazynu',
   socMin: 'SOC min',

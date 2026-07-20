@@ -154,6 +154,13 @@ describe('zrodloOzeModel — payload add_converter_source (kontrakt 1:1)', () =>
     expect(pv.soc_min_percent).toBeUndefined();
   });
 
+  it('statyzm P(f)/LFSM trafia do payloadu (G-OZE-B); puste = pominięte', () => {
+    const zDroop = zbudujPayload(dane({ frequency_droop_percent: 5 }), KONTEKST, KONWERTER, null);
+    expect(zDroop.frequency_droop_percent).toBe(5);
+    const bezDroop = zbudujPayload(dane(), KONTEKST, KONWERTER, null);
+    expect(bezDroop.frequency_droop_percent).toBeUndefined();
+  });
+
   it('materialized_params niesie tabliczkę + certyfikat PTPiREE z katalogu', () => {
     const mp = materializedParams(KONWERTER, 0.9);
     expect(mp).toMatchObject({

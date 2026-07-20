@@ -1276,11 +1276,17 @@ def _build_converter_control_by_node(
         mode = str(meta.get("control_mode") or gen.get("control_mode") or "").upper()
         cosphi = _oze_opt_float(meta.get("cos_phi"))
         qu_slope = _oze_opt_float(meta.get("qu_slope_pu_per_pu"))
+        # V12K-062 (G-OZE-B): statyzm P(f)/LFSM z generatora → lfsm_droop_pct. Realnie
+        # aktywny przy odchyłce częstotliwości studium (przy 50 Hz brak wpływu → determinizm).
+        lfsm_droop = _oze_opt_float(meta.get("frequency_droop_percent"))
         active = False
         if mode in ("STALY_COS_PHI", "COSPHI_CONST", "COSPHI_P", "COSPHI(P)"):
             active = cosphi is not None and abs(cosphi - 1.0) > 1e-9
         elif mode in ("Q_OD_U", "Q_U", "Q(U)"):
             active = qu_slope is not None and abs(qu_slope) > 1e-12
+        # P(f)/LFSM droop aktywuje węzeł niezależnie od trybu Q (statyzm częstotliwościowy).
+        if lfsm_droop is not None and abs(lfsm_droop) > 1e-12:
+            active = True
         if not active:
             continue
         params: dict[str, Any] = {"control_mode": mode}
@@ -1288,6 +1294,10 @@ def _build_converter_control_by_node(
             params["cosphi"] = cosphi
         if qu_slope is not None:
             params["qu_slope_pu_per_pu"] = qu_slope
+        if lfsm_droop is not None:
+            params["lfsm_droop_pct"] = lfsm_droop
+            if bool(meta.get("lfsm_allow_increase")):
+                params["lfsm_allow_increase"] = True
         qmin = _oze_opt_float(meta.get("q_min_mvar"))
         qmax = _oze_opt_float(meta.get("q_max_mvar"))
         if qmin is not None:

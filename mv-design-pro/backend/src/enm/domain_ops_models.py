@@ -994,6 +994,9 @@ class AddConverterSourcePayload(_FrozenBase):
     power_setpoint_mw: float | None = None
     q_min_mvar: float | None = None
     q_max_mvar: float | None = None
+    # V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn na %f] — regulacja mocy czynnej od
+    # częstotliwości; realnie konsumowany przez kanoniczny PF falownika (lfsm_droop_pct).
+    frequency_droop_percent: float | None = None
     bess_mode: str | None = None
     soc_min_percent: float | None = None
     soc_max_percent: float | None = None
