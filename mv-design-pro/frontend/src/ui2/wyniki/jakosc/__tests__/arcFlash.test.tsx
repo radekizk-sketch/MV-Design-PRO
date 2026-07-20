@@ -116,6 +116,10 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     expect(tabela).toHaveTextContent('bus-1');
     expect(tabela).toHaveTextContent('8,42'); // energia cal/cm² z przecinkiem PL
     expect(tabela).toHaveTextContent('1320'); // granica łuku mm
+    // Nagłówek ryzyka: najgorszy przypadek (max energia + szyna) z policzonych wartości.
+    const podsum = screen.getByTestId('mvd-jakosc-af-podsum');
+    expect(within(podsum).getByTestId('mvd-jakosc-af-podsum-max')).toHaveTextContent('8,42');
+    expect(podsum).toHaveTextContent('bus-1');
   });
 
   it('puste parametry → wysyłka null (bez zmyślania wejść)', async () => {

@@ -146,6 +146,11 @@ export const JAKOSC_STRINGS = {
   paramTypObudowy: 'Typ obudowy',
   arcFlashLicz: 'Przelicz Arc Flash',
   arcFlashCzekaNaParametry: 'Uzupełnij parametry projektowe i przelicz analizę.',
+  // Podsumowanie najgorszego przypadku (nagłówek ryzyka)
+  afPodsumNajwyzsza: 'Najwyższa energia incydentu',
+  afPodsumSzyna: 'szyna',
+  afPodsumBraki: 'szyny z brakami danych',
+  afPodsumBrakDanych: 'Brak policzonych energii — uzupełnij parametry projektowe.',
   // Raport (eksport)
   arcFlashRaportTytul: 'Raport analizy',
   arcFlashRaportPdf: 'Pobierz raport PDF',

@@ -327,6 +327,28 @@
   margin: 6px 0 0;
 }
 
+/* Nagłówek ryzyka Arc Flash (najgorszy przypadek) */
+.mvd-jakosc-af-podsum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--mvd-line);
+  border-left: 3px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-jakosc-af-podsum-glowna {
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-af-podsum-braki {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
 /* Eksport raportu Arc Flash (PDF/DOCX) */
 .mvd-jakosc-af-raport {
   display: flex;

@@ -796,6 +796,28 @@ function liczbaLubNull(tekst: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/**
+ * Nagłówek ryzyka arc flash: najgorszy przypadek (max energia incydentu + szyna)
+ * i liczba szyn z brakami danych. Agregacja prezentacyjna wartości POLICZONYCH przez
+ * solver (max/count) — bez fizyki w UI. Zwraca null, gdy żadna szyna nie ma energii.
+ */
+function podsumowanieArcFlash(
+  wyniki: readonly WynikArcFlash[],
+): { najwyzsza: number; szyna: string; braki: number } | null {
+  let najwyzsza = -Infinity;
+  let szyna = '';
+  let braki = 0;
+  for (const w of wyniki) {
+    if (w.missing_data.length > 0) braki += 1;
+    if (typeof w.incident_energy_cal_cm2 === 'number' && w.incident_energy_cal_cm2 > najwyzsza) {
+      najwyzsza = w.incident_energy_cal_cm2;
+      szyna = w.bus_ref;
+    }
+  }
+  if (najwyzsza === -Infinity) return null;
+  return { najwyzsza, szyna, braki };
+}
+
 /** Zapisz blob jako plik do pobrania (mechanika przeglądarkowa). */
 function zapiszBlob(blob: Blob, nazwa: string): void {
   const url = URL.createObjectURL(blob);
@@ -867,6 +889,7 @@ export function SekcjaArcFlash({
     [wyniki],
   );
   const wybranyWynik = wybrany ? selektor.get(wybrany) ?? null : null;
+  const podsum = useMemo(() => podsumowanieArcFlash(wyniki), [wyniki]);
 
   const pobierzRaport = useCallback(
     async (format: FormatRaportuArcFlash) => {
@@ -993,6 +1016,28 @@ export function SekcjaArcFlash({
       )}
       {stan === 'gotowe' && dane && (
         <>
+          <div className="mvd-jakosc-af-podsum" data-testid="mvd-jakosc-af-podsum">
+            {podsum ? (
+              <>
+                <span className="mvd-jakosc-af-podsum-glowna">
+                  {JAKOSC_STRINGS.afPodsumNajwyzsza}:{' '}
+                  <strong data-testid="mvd-jakosc-af-podsum-max">
+                    {fmtCal(podsum.najwyzsza)} cal/cm²
+                  </strong>{' '}
+                  ({JAKOSC_STRINGS.afPodsumSzyna} {podsum.szyna})
+                </span>
+                {podsum.braki > 0 && (
+                  <span className="mvd-jakosc-af-podsum-braki">
+                    {podsum.braki} {JAKOSC_STRINGS.afPodsumBraki}
+                  </span>
+                )}
+              </>
+            ) : (
+              <span className="mvd-jakosc-af-podsum-braki">
+                {JAKOSC_STRINGS.afPodsumBrakDanych}
+              </span>
+            )}
+          </div>
           <EkranAnalizy
             naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaArcFlash, runId: runId ?? undefined }}
             zalozenia={[]}
