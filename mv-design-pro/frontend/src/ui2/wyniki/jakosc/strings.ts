@@ -146,6 +146,12 @@ export const JAKOSC_STRINGS = {
   paramTypObudowy: 'Typ obudowy',
   arcFlashLicz: 'Przelicz Arc Flash',
   arcFlashCzekaNaParametry: 'Uzupełnij parametry projektowe i przelicz analizę.',
+  // Raport (eksport)
+  arcFlashRaportTytul: 'Raport analizy',
+  arcFlashRaportPdf: 'Pobierz raport PDF',
+  arcFlashRaportDocx: 'Pobierz raport DOCX',
+  arcFlashRaportPobieranie: 'Generuję raport…',
+  arcFlashRaportBlad: 'Nie udało się pobrać raportu. Spróbuj ponownie.',
   // Kolumny wyników
   kolWezelAf: 'Punkt (szyna)',
   kolIbf: 'Prąd zwarcia bolted Ik″',

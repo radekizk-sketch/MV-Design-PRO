@@ -19,11 +19,13 @@ vi.mock('../api', () => ({
   fetchWalidacjaEnergetyczna: vi.fn(),
   fetchMigotanie: vi.fn(),
   fetchArcFlash: vi.fn(),
+  pobierzRaportArcFlash: vi.fn(),
 }));
 
-import { fetchArcFlash } from '../api';
+import { fetchArcFlash, pobierzRaportArcFlash } from '../api';
 
 const mockedArcFlash = vi.mocked(fetchArcFlash);
+const mockedRaport = vi.mocked(pobierzRaportArcFlash);
 
 const AF_FIXTURE: ArcFlashResponse = {
   analysis_id: 'af-1',
@@ -77,6 +79,7 @@ function props(over = {}) {
 
 beforeEach(() => {
   mockedArcFlash.mockReset();
+  mockedRaport.mockReset();
 });
 
 describe('SekcjaArcFlash — realna ścieżka', () => {
@@ -127,6 +130,48 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
       electrode_config: 'VCB',
       enclosure_type: 'Typical',
     });
+  });
+
+  it('po przeliczeniu → eksport raportu PDF woła backend z UŻYTYMI parametrami i pobiera plik', async () => {
+    mockedArcFlash.mockResolvedValue(AF_FIXTURE);
+    mockedRaport.mockResolvedValue(new Blob(['%PDF'], { type: 'application/pdf' }));
+    const createUrl = vi.fn(() => 'blob:af');
+    const revokeUrl = vi.fn();
+    const origCreate = URL.createObjectURL;
+    const origRevoke = URL.revokeObjectURL;
+    URL.createObjectURL = createUrl as unknown as typeof URL.createObjectURL;
+    URL.revokeObjectURL = revokeUrl as unknown as typeof URL.revokeObjectURL;
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    try {
+      render(<SekcjaArcFlash {...props()} />);
+      fireEvent.change(screen.getByTestId('mvd-jakosc-af-odleglosc'), { target: { value: '455' } });
+      fireEvent.change(screen.getByTestId('mvd-jakosc-af-odstep'), { target: { value: '152' } });
+      fireEvent.change(screen.getByTestId('mvd-jakosc-af-czas'), { target: { value: '0.2' } });
+      fireEvent.click(screen.getByTestId('mvd-jakosc-af-licz'));
+      await waitFor(() => expect(screen.getByTestId('mvd-jakosc-af-raport')).toBeTruthy());
+
+      fireEvent.click(screen.getByTestId('mvd-jakosc-af-raport-pdf'));
+      await waitFor(() => expect(mockedRaport).toHaveBeenCalled());
+      expect(mockedRaport).toHaveBeenCalledWith('pdf', 'sc-1', {
+        working_distance_mm: 455,
+        conductor_gap_mm: 152,
+        arc_time_s: 0.2,
+        electrode_config: 'VCB',
+        enclosure_type: 'Typical',
+      });
+      await waitFor(() => expect(clickSpy).toHaveBeenCalled());
+    } finally {
+      clickSpy.mockRestore();
+      URL.createObjectURL = origCreate;
+      URL.revokeObjectURL = origRevoke;
+    }
+  });
+
+  it('brak eksportu przed przeliczeniem (pasek raportu pojawia się dopiero z wynikami)', () => {
+    render(<SekcjaArcFlash {...props()} />);
+    expect(screen.queryByTestId('mvd-jakosc-af-raport')).toBeNull();
   });
 
   it('wybór wiersza → szczegół z proweniencją; ślad WHITE BOX tylko w trybie eksperckim', async () => {

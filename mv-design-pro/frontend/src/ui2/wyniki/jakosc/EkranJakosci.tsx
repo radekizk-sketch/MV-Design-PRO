@@ -27,7 +27,9 @@ import {
   fetchMigotanie,
   fetchWalidacjaEnergetyczna,
   fetchWiarygodnoscZwarciowa,
+  pobierzRaportArcFlash,
   type ArcFlashResponse,
+  type FormatRaportuArcFlash,
   type KonfiguracjaElektrod,
   type KrokArcFlash,
   type KrokMigotania,
@@ -794,6 +796,18 @@ function liczbaLubNull(tekst: string): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+/** Zapisz blob jako plik do pobrania (mechanika przeglądarkowa). */
+function zapiszBlob(blob: Blob, nazwa: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nazwa;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export function SekcjaArcFlash({
   przebieg,
   trybZaawansowania,
@@ -809,6 +823,10 @@ export function SekcjaArcFlash({
   const [stan, setStan] = useState<'bezliczenia' | 'ladowanie' | 'blad' | 'gotowe'>('bezliczenia');
   const [dane, setDane] = useState<ArcFlashResponse | null>(null);
   const [wybrany, setWybrany] = useState<string | null>(null);
+  // Parametry faktycznie użyte do policzenia widoku — raport MUSI ich użyć,
+  // aby dokument był spójny z pokazaną tabelą (nawet po zmianie pól formularza).
+  const [uzyteParametry, setUzyteParametry] = useState<ParametryArcFlash | null>(null);
+  const [raportStan, setRaportStan] = useState<'idle' | 'pobieranie' | 'blad'>('idle');
 
   const przelicz = useCallback(() => {
     if (!runId) return;
@@ -823,6 +841,8 @@ export function SekcjaArcFlash({
     setStan('ladowanie');
     setDane(null);
     setWybrany(null);
+    setUzyteParametry(parametry);
+    setRaportStan('idle');
     fetchArcFlash(runId, parametry)
       .then((wynik) => {
         if (!anulowane) {
@@ -847,6 +867,21 @@ export function SekcjaArcFlash({
     [wyniki],
   );
   const wybranyWynik = wybrany ? selektor.get(wybrany) ?? null : null;
+
+  const pobierzRaport = useCallback(
+    async (format: FormatRaportuArcFlash) => {
+      if (!runId || !uzyteParametry) return;
+      setRaportStan('pobieranie');
+      try {
+        const blob = await pobierzRaportArcFlash(format, runId, uzyteParametry);
+        zapiszBlob(blob, `raport_arc_flash.${format}`);
+        setRaportStan('idle');
+      } catch {
+        setRaportStan('blad');
+      }
+    },
+    [runId, uzyteParametry],
+  );
 
   if (!runId) {
     return (
@@ -971,6 +1006,42 @@ export function SekcjaArcFlash({
             wybranyWiersz={wybrany}
           />
           <SzczegolArcFlash wynik={wybranyWynik} trybZaawansowania={trybZaawansowania} />
+          <div className="mvd-jakosc-af-raport" data-testid="mvd-jakosc-af-raport">
+            <span className="mvd-jakosc-af-raport-tytul">
+              {JAKOSC_STRINGS.arcFlashRaportTytul}
+            </span>
+            <button
+              type="button"
+              className="mvd-jakosc-af-raport-btn"
+              onClick={() => void pobierzRaport('pdf')}
+              disabled={raportStan === 'pobieranie'}
+              data-testid="mvd-jakosc-af-raport-pdf"
+            >
+              {JAKOSC_STRINGS.arcFlashRaportPdf}
+            </button>
+            <button
+              type="button"
+              className="mvd-jakosc-af-raport-btn"
+              onClick={() => void pobierzRaport('docx')}
+              disabled={raportStan === 'pobieranie'}
+              data-testid="mvd-jakosc-af-raport-docx"
+            >
+              {JAKOSC_STRINGS.arcFlashRaportDocx}
+            </button>
+            {raportStan === 'pobieranie' && (
+              <span className="mvd-jakosc-af-raport-stan" data-testid="mvd-jakosc-af-raport-pobieranie">
+                {JAKOSC_STRINGS.arcFlashRaportPobieranie}
+              </span>
+            )}
+            {raportStan === 'blad' && (
+              <span
+                className="mvd-jakosc-af-raport-stan mvd-jakosc-af-raport-blad"
+                data-testid="mvd-jakosc-af-raport-blad"
+              >
+                {JAKOSC_STRINGS.arcFlashRaportBlad}
+              </span>
+            )}
+          </div>
         </>
       )}
     </section>

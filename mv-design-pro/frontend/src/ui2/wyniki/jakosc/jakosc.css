@@ -326,3 +326,47 @@
   color: var(--mvd-warn, var(--mvd-muted));
   margin: 6px 0 0;
 }
+
+/* Eksport raportu Arc Flash (PDF/DOCX) */
+.mvd-jakosc-af-raport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-jakosc-af-raport-tytul {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-af-raport-btn {
+  padding: 7px 14px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-jakosc-af-raport-btn:hover:not(:disabled) {
+  border-color: var(--mvd-accent);
+}
+.mvd-jakosc-af-raport-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-jakosc-af-raport-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.mvd-jakosc-af-raport-stan {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-af-raport-blad {
+  color: var(--mvd-err);
+}

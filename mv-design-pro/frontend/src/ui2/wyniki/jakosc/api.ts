@@ -331,3 +331,48 @@ export function fetchArcFlash(
     enclosure_type: parametry.enclosure_type,
   });
 }
+
+/** Format eksportowalnego raportu Arc Flash. */
+export type FormatRaportuArcFlash = 'pdf' | 'docx';
+
+/** Metadane nagłówka raportu (projekt/stacja/operator) — opcjonalne. */
+export interface MetaRaportuArcFlash {
+  readonly project_name?: string;
+  readonly station_id?: string;
+  readonly operator_pl?: string;
+}
+
+/**
+ * Pobiera raport Arc Flash (PDF/DOCX) jako blob dla przebiegu + tych samych
+ * parametrów projektowych, których użyto do policzenia widoku. Raport generuje
+ * backend (`/api/quality/arc-flash/report.{pdf,docx}`) — ZERO fizyki po stronie UI.
+ */
+export async function pobierzRaportArcFlash(
+  format: FormatRaportuArcFlash,
+  runId: string,
+  parametry: ParametryArcFlash,
+  meta?: MetaRaportuArcFlash,
+): Promise<Blob> {
+  const response = await fetch(`/api/quality/arc-flash/report.${format}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      run_id: runId,
+      working_distance_mm: parametry.working_distance_mm,
+      conductor_gap_mm: parametry.conductor_gap_mm,
+      arc_time_s: parametry.arc_time_s,
+      electrode_config: parametry.electrode_config,
+      enclosure_type: parametry.enclosure_type,
+      project_name: meta?.project_name ?? '',
+      station_id: meta?.station_id ?? '',
+      operator_pl: meta?.operator_pl ?? '',
+      generated_at_iso: new Date().toISOString(),
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(
+      `Raport Arc Flash (${format}) nie powiódł się: ${response.status} ${response.statusText}`,
+    );
+  }
+  return response.blob();
+}
