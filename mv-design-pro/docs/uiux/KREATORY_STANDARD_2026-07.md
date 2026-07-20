@@ -76,7 +76,7 @@ Każdy kreator MUSI (FLOW §0.3):
 | `insert_station_on_segment_sn` | `InsertStationForm` (legacy, 1884 w.) | do przebudowy |
 | `start_branch_segment_sn` | `StartBranchForm` (legacy) | do przebudowy |
 | `insert_section_switch_sn` | `KreatorLacznikaSekcyjnego` (ui2, kreatory/rama) | ✅ przebudowane (V12K-053, G-SEK) |
-| `connect_secondary_ring_sn` / `set_normal_open_point` | `ConnectRingForm` (legacy) | do przebudowy |
+| `connect_secondary_ring_sn` / `set_normal_open_point` | `KreatorPierscienia` (ui2, kreatory/rama) | ✅ przebudowane (V12K-055, G-RING) |
 | `insert_branch_pole_on_segment_sn` | `InsertBranchPoleForm` (legacy) | do przebudowy |
 | `insert_zksn_on_segment_sn` | `InsertZksnForm` (legacy) | do przebudowy |
 | `assign_catalog_to_element` | `AssignCatalogForm` (legacy) | do przebudowy |

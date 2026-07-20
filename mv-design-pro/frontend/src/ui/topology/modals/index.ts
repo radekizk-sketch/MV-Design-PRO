@@ -32,11 +32,7 @@ export type { UPSFormData } from './UPSModal';
 
 // Modale wizarda SN
 export { GridSourceModal } from './GridSourceModal';
-export { RingCloseModal } from './RingCloseModal';
 export { SectionSwitchModal } from './SectionSwitchModal';
-export { NOPModal } from './NOPModal';
 
 export type { GridSourceFormData } from './GridSourceModal';
-export type { RingCloseFormData, RingSegmentKind } from './RingCloseModal';
 export type { SectionSwitchFormData, SwitchKind, SwitchState } from './SectionSwitchModal';
-export type { NOPFormData, NOPCandidate, NOPType } from './NOPModal';

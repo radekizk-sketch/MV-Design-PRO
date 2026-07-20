@@ -44,7 +44,7 @@ describe('Operation surface registry', () => {
       'KreatorLacznikaSekcyjnego',
     );
     expect(getOperationSurfaceByOp('set_normal_open_point')?.componentName).toBe(
-      'ConnectRingForm',
+      'KreatorPierscienia',
     );
     expect(getOperationSurfaceByOp('add_sn_bay')?.componentName).toBe(
       'AddSnBayForm',

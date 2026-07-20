@@ -17,6 +17,7 @@ import { KreatorKompensatoraSn } from '../../ui2/kreatory/kompensator';
 import { KreatorLacznikaSekcyjnego } from '../../ui2/kreatory/lacznik';
 import { KreatorMagistralaSn } from '../../ui2/kreatory/magistrala';
 import { KreatorOdbioruNn } from '../../ui2/kreatory/odbior';
+import { KreatorPierscienia } from '../../ui2/kreatory/pierscien';
 import { KreatorTransformatoraSnNn } from '../../ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from '../../ui2/kreatory/zrodlo';
 import { AddConverterSourceForm } from '../network-build/forms/AddConverterSourceForm';
@@ -26,7 +27,6 @@ import { AddNnOutgoingFieldForm } from '../network-build/forms/AddNnOutgoingFiel
 import { AddRelayForm } from '../network-build/forms/AddRelayForm';
 import { AddSnBayForm } from '../network-build/forms/AddSnBayForm';
 import { AssignCatalogForm } from '../network-build/forms/AssignCatalogForm';
-import { ConnectRingForm } from '../network-build/forms/ConnectRingForm';
 import { InsertBranchPoleForm } from '../network-build/forms/InsertBranchPoleForm';
 import { InsertStationForm } from '../network-build/forms/InsertStationForm';
 import { InsertZksnForm } from '../network-build/forms/InsertZksnForm';
@@ -47,8 +47,8 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   insert_zksn_on_segment_sn: InsertZksnForm,
   start_branch_segment_sn: StartBranchForm,
   insert_section_switch_sn: KreatorLacznikaSekcyjnego,
-  connect_secondary_ring_sn: ConnectRingForm,
-  set_normal_open_point: ConnectRingForm,
+  connect_secondary_ring_sn: KreatorPierscienia,
+  set_normal_open_point: KreatorPierscienia,
   add_transformer_sn_nn: KreatorTransformatoraSnNn,
   assign_catalog_to_element: AssignCatalogForm,
   update_element_parameters: UpdateElementParametersForm,

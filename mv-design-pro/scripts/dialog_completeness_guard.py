@@ -61,7 +61,7 @@ OPERATION_TO_MODAL: dict[str, list[str]] = {
     "insert_station_on_segment_sn": ["TransformerStation", "StationModal", "InsertStation"],
     "start_branch_segment_sn": ["BranchModal", "Branch"],
     "insert_section_switch_sn": ["SwitchModal", "NodeModal", "SectionSwitch", "KreatorLacznika", "Lacznik"],
-    "connect_secondary_ring_sn": ["RingClose", "RingModal"],
+    "connect_secondary_ring_sn": ["RingClose", "RingModal", "KreatorPierscienia", "Pierscien"],
     "add_transformer_sn_nn": ["TransformerStation", "Transformer", "KreatorTransformatora", "Transformatora"],
     "assign_catalog_to_element": ["CatalogPicker", "Catalog"],
     "add_nn_outgoing_field": ["NodeModal", "OutgoingField", "NNField"],
