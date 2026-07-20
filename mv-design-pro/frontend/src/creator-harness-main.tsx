@@ -4,13 +4,15 @@
  * oceny). Renderuje REALNE komponenty kreatorów z zaszczepionym kontekstem/stanem
  * i podmienionym `fetch` (dane katalogowe), w motywie jasnym/ciemnym.
  *
- * Query: `?creator=pole|oze|transformator|arcflash&theme=light|dark`.
+ * Query: `?creator=pole|oze|transformator|kompensator|magistrala|arcflash&theme=light|dark`.
  * Używany wyłącznie przez: e2e/creator-screenshot.spec.ts (nie część bundla aplikacji).
  */
 
 import { createRoot } from 'react-dom/client';
 import './ui2/theme/tokens.css';
 
+import { KreatorKompensatoraSn } from './ui2/kreatory/kompensator';
+import { KreatorMagistralaSn } from './ui2/kreatory/magistrala';
 import { KreatorPolaSn } from './ui2/kreatory/pole';
 import { KreatorTransformatoraSnNn } from './ui2/kreatory/transformator';
 import { KreatorZrodlaOze } from './ui2/kreatory/zrodlo-oze';
@@ -124,11 +126,21 @@ if (creator === 'arcflash') {
       ? 'add_converter_source'
       : creator === 'transformator'
       ? 'add_transformer_sn_nn'
+      : creator === 'kompensator'
+      ? 'add_shunt_compensator_sn'
+      : creator === 'magistrala'
+      ? 'continue_trunk_segment_sn'
       : 'add_sn_bay';
   useNetworkBuildStore.getState().openOperationForm(op as never, {
     station_ref: 'st-demo',
     bus_ref: 'bus-sn-demo',
     bus_nn_ref: 'bus-nn-demo',
+    bus_name: 'Szyna SN',
+    voltage_kv: 15,
+    length_m: 2500,
+    from_terminal_id: 'term-demo',
+    terminalId: 'term-demo',
+    terminal_voltage_label: '15 kV',
     station_label: 'Rozdzielnia GPZ-01',
   });
 }
@@ -137,6 +149,8 @@ function Harness() {
   let node: React.ReactNode;
   if (creator === 'oze') node = <KreatorZrodlaOze />;
   else if (creator === 'transformator') node = <KreatorTransformatoraSnNn />;
+  else if (creator === 'kompensator') node = <KreatorKompensatoraSn />;
+  else if (creator === 'magistrala') node = <KreatorMagistralaSn />;
   else if (creator === 'arcflash') {
     node = (
       <SekcjaArcFlash

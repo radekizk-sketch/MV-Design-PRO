@@ -104,4 +104,14 @@ export const MAGISTRALA_STRINGS = {
     'Przekrój musi wytrzymać prąd obciążenia długotrwale i prąd zwarciowy cieplnie; spadek napięcia '
     + 'na całej magistrali powinien mieścić się w dopuszczalnym zakresie (typowo kilka %).',
   teoriaPodstawa: 'Podstawa: PN-EN 50160 (napięcie), N SEP-E-004 (linie i kable), IRiESD.',
+  teoriaJakCzytac:
+    'Linia = napięcie wzdłuż magistrali od źródła (1,0 pu) do końca odcinka. Nachylenie zależy '
+    + 'poglądowo od cosφ (niższy cosφ → stromszy spadek: większy udział składowej biernej na '
+    + 'reaktancji). Pasmo poniżej limitu = poza dopuszczalnym zakresem napięcia. Rzeczywisty ΔU '
+    + '(z katalogowego R/X, długości i obciążenia) liczy rozpływ mocy.',
+  wykresAria: 'Poglądowy profil napięcia wzdłuż magistrali w funkcji cosφ',
+  wykresOsX: 'Pozycja wzdłuż magistrali',
+  wykresOsU: 'Napięcie U [pu]',
+  wykresLimit: 'dopuszczalny limit',
+  wykresZrodlo: 'źródło',
 } as const;

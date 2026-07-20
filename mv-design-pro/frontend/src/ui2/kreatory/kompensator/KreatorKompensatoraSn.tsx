@@ -55,6 +55,7 @@ import {
   type StatusBaterii,
 } from './kompensatorModel';
 import { KOMPENSATOR_STRINGS as T } from './strings';
+import { WykresQU } from './WykresQU';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'typ', tytul: T.krokTyp },
@@ -340,7 +341,12 @@ export function KreatorKompensatoraSn() {
             wymog={T.teoriaWymog}
             podstawa={T.teoriaPodstawa}
             testid="mvd-kreator-kompensator-teoria"
-          />
+          >
+            <figure className="mvd-wykres-fig">
+              <WykresQU />
+              <figcaption className="mvd-wykres-cap">{T.teoriaJakCzytac}</figcaption>
+            </figure>
+          </PanelTeorii>
         </KreatorSekcja>
       ) : null}
 

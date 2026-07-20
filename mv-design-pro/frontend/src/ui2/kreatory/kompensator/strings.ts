@@ -81,4 +81,12 @@ export const KOMPENSATOR_STRINGS = {
     + 'stopniowanych/dławikach istotne są prądy załączania i rezonans z indukcyjnością sieci.',
   teoriaPodstawa:
     'Podstawa: PN-EN 60871 (baterie kondensatorów SN), IRiESD (współczynnik mocy tgφ).',
+  teoriaJakCzytac:
+    'Krzywa = moc bierna baterii w funkcji napięcia (Q rośnie z kwadratem U). Punkt znamionowy '
+    + '(1,0; 1,0) = wartość katalogowa; przy napięciu 0,9 pu bateria oddaje tylko ~0,81 Qn, przy '
+    + '1,05 pu ~1,10 Qn. Rzeczywistą moc bierną w punkcie pracy liczy rozpływ dla napięcia z sieci.',
+  wykresQuAria: 'Charakterystyka Q(U) baterii kondensatorów (Q proporcjonalne do kwadratu napięcia)',
+  wykresQuOsU: 'Napięcie U/Un [pu]',
+  wykresQuOsQ: 'Moc bierna Q/Qn',
+  wykresQuPunkt: 'znamionowy',
 } as const;

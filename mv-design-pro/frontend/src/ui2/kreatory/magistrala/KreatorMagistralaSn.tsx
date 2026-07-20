@@ -70,6 +70,7 @@ import {
   type RodzajOdcinka,
 } from './magistralaModel';
 import { MAGISTRALA_STRINGS as T } from './strings';
+import { WykresSpadku } from './WykresSpadku';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'typ', tytul: T.krokTyp },
@@ -531,7 +532,12 @@ export function KreatorMagistralaSn() {
             wymog={T.teoriaWymog}
             podstawa={T.teoriaPodstawa}
             testid="mvd-kreator-magistrala-teoria"
-          />
+          >
+            <figure className="mvd-wykres-fig">
+              <WykresSpadku cosPhi={dane.cos_phi} />
+              <figcaption className="mvd-wykres-cap">{T.teoriaJakCzytac}</figcaption>
+            </figure>
+          </PanelTeorii>
         </KreatorSekcja>
       ) : null}
 

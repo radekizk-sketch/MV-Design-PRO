@@ -163,4 +163,38 @@ test.describe('kreatory:screenshot', () => {
       expect(errs, `no console/page errors for transformator/${theme}`).toEqual([]);
     });
   }
+
+  // Wykresy teorii kompensatora (Q∝U²) i magistrali (profil napięcia) — krok 1, panel
+  // teorii rozwinięty (V12K-068).
+  for (const c of ['kompensator', 'magistrala'] as const) {
+    for (const theme of THEMES) {
+      test(`${c} — teoria z wykresem (${theme})`, async ({ page }) => {
+        const errs: string[] = [];
+        const isNoise = (t: string): boolean =>
+          /favicon|Download the React DevTools|Failed to load resource/i.test(t);
+        page.on('console', (m) => {
+          if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
+        });
+        page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+
+        await page.setViewportSize({ width: 1220, height: 900 });
+        await page.goto(`${HARNESS_URL}?creator=${c}&theme=${theme}`, {
+          waitUntil: 'domcontentloaded',
+          timeout: 40000,
+        });
+        const root = page.locator('[data-testid="creator-harness-root"]').first();
+        await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
+
+        // Magistrala: panel teorii jest na kroku „parametry" (2), kompensator na „typ" (1).
+        if (c === 'magistrala') await page.getByTestId('mvd-kreator-magistrala-dalej').click();
+
+        await page.getByTestId(`mvd-kreator-${c}-teoria`).locator('summary').click();
+        await page.waitForTimeout(300);
+        await root.screenshot({ path: path.join(OUTPUT_DIR, `kreator_${c}_teoria_${theme}.png`) });
+
+        if (errs.length > 0) console.log(`[${c}/${theme}] errors:\n${errs.join('\n')}`);
+        expect(errs, `no console/page errors for ${c}/${theme}`).toEqual([]);
+      });
+    }
+  }
 });

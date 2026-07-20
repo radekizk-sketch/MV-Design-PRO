@@ -52,9 +52,9 @@ Legenda: ✅ pokryty · 🟡 częściowo (kluczowe kroki) · ⬜ do zrobienia.
 |---------|--------------------|--------------|--------|
 | `zrodlo-oze` (OZE/DER) | technologia, falownik, **regulacja** | ✅ (3 panele) | ✅ Q(U)/P(f)/cosφ (żywe) |
 | `transformator` (SN/nN + OLTC) | **szyny**, **regulacja** | ✅ (2 panele) | ✅ AVR: zaczep↔napięcie z pasmem (żywy) |
-| `kompensator` (bateria SN) | **typ** | ✅ | — (plan: Q∝U²) |
+| `kompensator` (bateria SN) | **typ** | ✅ | ✅ Q(U): parabola Q∝U² (żywy) |
 | `lacznik` (sekcyjny) | **aparat** | ✅ | — |
-| `magistrala` (odcinek SN) | **parametry** | ✅ | — (plan: ΔU/straty) |
+| `magistrala` (odcinek SN) | **parametry** | ✅ | ✅ profil U(x) wg cosφ (żywy) |
 | `odbior` (nN) | **dane** | ✅ | — (plan: ZIP/cosφ) |
 | `pierscien` (NOP) | **nop** | ✅ | — |
 | `pole` (pole SN) | **pole** | ✅ | — |
@@ -69,8 +69,8 @@ korzystają z tej bazy; kolejne wykresy budujesz na niej (reuse, nie duplikacja)
 ### Depth backlog (kolejne rundy, NIE odkładane cicho)
 - `zrodlo` (GPZ): panele teorii dla pozostałych kroków (rozdzielnia/uziemienie,
   transformatory 110/SN, parametry normowe c/f, sekcje/pola).
-- Wykresy tam, gdzie oznaczono „(plan)": Q∝U² (kompensator), ΔU/straty (magistrala),
-  ZIP (odbiór), Z=cU²/Sk″ (GPZ) — na wspólnej bazie `rama/wykresPomoc`.
+- Wykresy tam, gdzie oznaczono „(plan)": ZIP (odbiór), Z=cU²/Sk″ (GPZ) — na wspólnej
+  bazie `rama/wykresPomoc`.
 
 ## 5. Egzekwowanie
 
