@@ -21,7 +21,10 @@ SKIP_PARTS = ("__tests__", ".test.", ".spec.", ".snap")
 UI_PROP_PATTERN = re.compile(
     r"""
     (?:
-        \b(?:label|labelPl|title|titlePl|description|message|placeholder|eyebrow)\b
+        # `etykieta` = polski odpowiednik `label` w ramie kreatorow ui2 (kreatory/rama).
+        # Skanujemy go, aby opcje wyboru (PoleWyboru) nie przemycaly surowych kodow
+        # (np. angielskich kodow roli pola) jako terminologii UI.
+        \b(?:label|labelPl|title|titlePl|description|message|placeholder|eyebrow|etykieta)\b
         \s*:\s*
     )
     (?P<quote>['"`])
@@ -82,6 +85,12 @@ BANNED_UI_TERMS: dict[str, re.Pattern[str]] = {
     "ES": re.compile(r"\bES\b"),
     "BRANCH": re.compile(r"\bBRANCH\b"),
     "COUPLER": re.compile(r"\bCOUPLER\b"),
+    # Kody roli pola SN (kontrakt add_sn_bay) — zakazane jako terminologia UI;
+    # w warstwie prezentacji uzywamy polskich nazw (odplywowe/doplywowe/…).
+    # (Decyzja watku SLD 2026-07-19: „IN/OUT zabronione"; V12K-057 popr.)
+    "IN (kod roli)": re.compile(r"\bIN\b"),
+    "OUT (kod roli)": re.compile(r"\bOUT\b"),
+    "FEEDER": re.compile(r"\bFEEDER\b"),
     "Stacja A": re.compile(r"\bStacja A\b"),
     "Stacja B": re.compile(r"\bStacja B\b"),
     "Stacja C": re.compile(r"\bStacja C\b"),
@@ -124,7 +133,9 @@ def normalize_path(path: Path) -> str:
 
 
 def extract_ui_strings(line: str) -> list[str]:
-    fragments = [match.group("content").strip() for match in UI_PROP_PATTERN.finditer(line)]
+    fragments = [
+        match.group("content").strip() for match in UI_PROP_PATTERN.finditer(line)
+    ]
     fragments.extend(
         match.group("content").strip()
         for match in JSX_TEXT_PATTERN.finditer(line)
@@ -170,6 +181,15 @@ def scan_file(path: Path) -> list[Violation]:
             # (np. `${branch.name}` w error message — `branch` to nazwa zmiennej,
             # nie token UI). Dotyczy WYŁĄCZNIE technicznych error/log messages.
             cleaned = PROGRAMMATIC_REF_PATTERN.sub("", fragment)
+            # Interpolacje `${...}` w template literalach to KOD (dostęp do pól obiektu,
+            # np. `${t.u_n_kv}` → liczba z katalogu), nie tekst prezentacji. Usuwamy je
+            # przed kontrolą, aby snake_case pól katalogowych nie dawał fałszywych trafień;
+            # literalne surowe identyfikatory (np. 'earthing.resistance_missing') pozostają.
+            cleaned = re.sub(r"\$\{[^}]*\}", "", cleaned)
+            # Zagnieżdżone template literals (backtick w `${...}`) mogą pozostawić
+            # niedomknięte `${...` po przycięciu fragmentu na wewnętrznym backticku —
+            # to również kod interpolacji, nie tekst prezentacji, więc usuwamy.
+            cleaned = re.sub(r"\$\{[^}]*$", "", cleaned)
             is_new_ia = NEW_IA_PATH_MARKER in path.as_posix()
             if is_new_ia and NEW_IA_CODE_IDENT.search(cleaned):
                 violations.append(

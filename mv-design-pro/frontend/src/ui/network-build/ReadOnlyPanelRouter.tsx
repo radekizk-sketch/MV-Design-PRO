@@ -398,8 +398,8 @@ export function ReadOnlyPanelRouter() {
     if (branchPoint) {
       rows.push(
         { label: 'Typ punktu rozgaleznego', value: branchPoint.branch_point_type },
-        { label: 'Port glowny IN', value: branchPoint.ports.MAIN_IN },
-        { label: 'Port glowny OUT', value: branchPoint.ports.MAIN_OUT },
+        { label: 'Port glowny wejsciowy', value: branchPoint.ports.MAIN_IN },
+        { label: 'Port glowny wyjsciowy', value: branchPoint.ports.MAIN_OUT },
         { label: 'Porty boczne', value: formatList(branchPoint.ports.BRANCH ?? []) },
       );
     }

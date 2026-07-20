@@ -1,0 +1,88 @@
+import { describe, expect, it } from 'vitest';
+
+import {
+  APARAT_OPCJE,
+  DANE_DOMYSLNE,
+  ROLE_OPCJE,
+  aparatLabel,
+  maSzyne,
+  rolaLabel,
+  walidujFormularz,
+  zbudujPayload,
+  type PolaSnFormData,
+} from '../polaSnModel';
+
+function dane(over: Partial<PolaSnFormData> = {}): PolaSnFormData {
+  return { ...DANE_DOMYSLNE, catalog_ref: 'app-1', ...over };
+}
+
+const KONTEKST = { bus_ref: 'bus-1', station_ref: 'st-1', station_label: 'ST-1' };
+
+describe('polaSnModel — szyna/stacja', () => {
+  it('wykrywa obecność szyny i stacji', () => {
+    expect(maSzyne({})).toBe(false);
+    expect(maSzyne({ bus_ref: 'b' })).toBe(false);
+    expect(maSzyne(KONTEKST)).toBe(true);
+  });
+});
+
+describe('polaSnModel — walidacja', () => {
+  it('wymaga aparatu z katalogu', () => {
+    expect(walidujFormularz(dane({ catalog_ref: null })).some((e) => e.field === 'catalog_ref')).toBe(true);
+    expect(walidujFormularz(dane()).length).toBe(0);
+  });
+});
+
+describe('polaSnModel — nazewnictwo (kod backendu vs polska etykieta)', () => {
+  it('każda opcja roli/aparatu ma polską etykietę (bez surowych kodów w UI)', () => {
+    // Etykiety = warstwa prezentacji: polskie, nie angielskie kody kontraktu.
+    for (const { value, label } of [...ROLE_OPCJE, ...APARAT_OPCJE]) {
+      expect(label.length).toBeGreaterThan(0);
+      expect(label).not.toBe(value); // etykieta ≠ kod backendu
+      expect(/^[A-Z_]+$/.test(label)).toBe(false); // etykieta nie jest surowym kodem (IN/OUT/FEEDER…)
+    }
+  });
+  it('rolaLabel/aparatLabel mapują totalnie na polskie nazwy (bez wycieku kodu)', () => {
+    expect(rolaLabel('OUT')).toBe('Pole liniowe odpływowe');
+    expect(rolaLabel('IN')).toBe('Pole liniowe dopływowe');
+    expect(rolaLabel('TR')).toBe('Pole transformatorowe');
+    expect(aparatLabel('BREAKER')).toBe('Wyłącznik mocy');
+    // Mapowanie totalne — dla każdej wartości kontraktu istnieje polska etykieta.
+    for (const { value } of ROLE_OPCJE) expect(rolaLabel(value)).not.toBe('');
+    for (const { value } of APARAT_OPCJE) expect(aparatLabel(value)).not.toBe('');
+  });
+});
+
+describe('polaSnModel — payload', () => {
+  it('buduje payload add_sn_bay z rolą, aparatem i katalogiem APARAT_SN', () => {
+    const payload = zbudujPayload(
+      dane({ bay_role: 'TR', apparatus_kind: 'BREAKER', field_name: 'Pole TR-1' }),
+      KONTEKST,
+    );
+    expect(payload).toMatchObject({
+      bus_ref: 'bus-1',
+      station_ref: 'st-1',
+      bay_role: 'TR',
+      apparatus_kind: 'BREAKER',
+      field_name: 'Pole TR-1',
+      catalog_binding: expect.objectContaining({ catalog_namespace: 'APARAT_SN', catalog_item_id: 'app-1' }),
+    });
+  });
+
+  it('pomija puste pola opcjonalne (nazwa, existing_field_ref, gpz_section_id)', () => {
+    const payload = zbudujPayload(dane({ field_name: '   ' }), { bus_ref: 'b', station_ref: 's' });
+    expect(payload.field_name).toBeUndefined();
+    expect(payload.existing_field_ref).toBeUndefined();
+    expect(payload.gpz_section_id).toBeUndefined();
+  });
+
+  it('przekazuje existing_field_ref i gpz_section_id z kontekstu', () => {
+    const payload = zbudujPayload(dane(), {
+      ...KONTEKST,
+      existing_field_ref: 'field-9',
+      gpz_section_id: 'sec-2',
+    });
+    expect(payload.existing_field_ref).toBe('field-9');
+    expect(payload.gpz_section_id).toBe('sec-2');
+  });
+});

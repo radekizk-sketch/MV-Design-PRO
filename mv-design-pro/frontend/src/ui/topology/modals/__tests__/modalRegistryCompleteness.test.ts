@@ -47,7 +47,7 @@ describe('Operation surface registry', () => {
       'KreatorPierscienia',
     );
     expect(getOperationSurfaceByOp('add_sn_bay')?.componentName).toBe(
-      'AddSnBayForm',
+      'KreatorPolaSn',
     );
   });
 

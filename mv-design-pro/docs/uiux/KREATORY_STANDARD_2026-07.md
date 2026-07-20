@@ -43,6 +43,16 @@ Każdy kreator MUSI (FLOW §0.3):
 5. **Jawny następny krok** — co inżynier robi po zapisaniu (kolejny etap flow).
 6. **Język inżynierski PL** — bez surowych identyfikatorów kodowych w strefie
    pierwszoplanowej (guard `ui_terminology_guard` na `ui2/**`).
+7. **Kody kontraktu ≠ terminologia UI (KANON, V12K-057).** Enumy/kody operacji
+   domenowej (np. `bay_role` = IN/OUT/FEEDER/TR/COUPLER…, `apparatus_kind` =
+   BREAKER/…) to **kontrakt danych** — mieszkają w module modelu kreatora
+   (`<nazwa>Model.ts`, jako `value` opcji + mapowanie na polskie etykiety), a payload
+   nadal wysyła surowy kod backendu (zero fabrykacji). W UI pokazujemy **wyłącznie
+   polskie etykiety** (mapowanie totalne, bez fallbacku do surowego kodu). Zakaz
+   angielskich kodów roli (IN/OUT/FEEDER…) w warstwie prezentacji — wątek SLD ustalił
+   to 2026-07-19. Egzekwuje `ui_terminology_guard`: skanuje `etykieta:` (rama ui2) i
+   banuje IN/OUT/FEEDER/BRANCH/COUPLER w tekstach użytkowych (interpolacje `${…}` są
+   kodem, nie tekstem — pomijane).
 
 ## 3. Procedura przebudowy pojedynczego kreatora (Opcja 1)
 
@@ -64,7 +74,7 @@ Każdy kreator MUSI (FLOW §0.3):
 | Operacja domenowa | Kreator ui2 | Status |
 |---|---|---|
 | `add_grid_source_sn` | `KreatorZrodloZasilania` (`ui2/kreatory/zrodlo`) | ✅ flagowy — framework + retirement `AddGridSourceForm`/`GridSourceEditor` |
-| `add_sn_bay` | `AddSnBayForm` (legacy) | do przebudowy |
+| `add_sn_bay` | `KreatorPolaSn` (ui2, kreatory/rama) | ✅ przebudowane (V12K-057, G-POLE) |
 | `add_transformer_sn_nn` | `AddTransformerForm` (legacy) | do przebudowy |
 | `add_converter_source` | `AddConverterSourceForm` (legacy, 1365 w.) | do przebudowy |
 | `add_nn_load` | `AddNnLoadForm` (legacy) | do przebudowy |
