@@ -33,7 +33,7 @@ from application.analyses.zgodnosc_powykonawcza import (
 )
 from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import BaseModel
 
 router = APIRouter(tags=["quality-analysis"])
@@ -161,3 +161,105 @@ def post_arc_flash(zadanie: ArcFlashZadanie) -> dict[str, Any]:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
         ) from exc
+
+
+class ArcFlashReportZadanie(ArcFlashZadanie):
+    """Żądanie raportu Arc Flash: parametry analizy + metadane raportu.
+
+    Raport TYLKO interpretuje policzony widok arc flash (ZERO fizyki w warstwie
+    raportu) — solver liczy energię incydentu / AFB / kategorię ŚOI.
+    """
+
+    project_name: str = ""
+    station_id: str = ""
+    operator_pl: str = ""
+    generated_at_iso: str = "1970-01-01T00:00:00Z"
+    formats: list[str] = ["json", "text_pl", "latex"]
+
+
+def _arc_flash_report_context(zadanie: ArcFlashReportZadanie):
+    from analysis.reporting.arc_flash_report import ArcFlashReportContext
+
+    run = _require_run(zadanie.run_id)
+    view = build_arc_flash_view(
+        run,
+        working_distance_mm=zadanie.working_distance_mm,
+        conductor_gap_mm=zadanie.conductor_gap_mm,
+        arc_time_s=zadanie.arc_time_s,
+        electrode_config=zadanie.electrode_config,
+        enclosure_type=zadanie.enclosure_type,
+    )
+    station_id = zadanie.station_id or str(view.get("analysis_id") or zadanie.run_id)
+    return ArcFlashReportContext(
+        project_name=zadanie.project_name or str(zadanie.run_id),
+        station_id=station_id,
+        arc_flash_view_dict=view,
+        operator_pl=zadanie.operator_pl,
+        generated_at_iso=zadanie.generated_at_iso,
+    )
+
+
+@router.post("/api/quality/arc-flash/report")
+def post_arc_flash_report(zadanie: ArcFlashReportZadanie) -> dict[str, Any]:
+    """Raport arc flash w wybranych formatach strukturalnych (json/text_pl/latex).
+
+    PDF i DOCX dostępne przez `/api/quality/arc-flash/report.pdf` i `.docx`.
+    """
+    from analysis.reporting.arc_flash_report import (
+        render_arc_flash_report_json,
+        render_arc_flash_report_latex,
+        render_arc_flash_report_text,
+    )
+
+    try:
+        ctx = _arc_flash_report_context(zadanie)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+    out: dict[str, Any] = {}
+    if "json" in zadanie.formats:
+        out["json"] = render_arc_flash_report_json(ctx)
+    if "text_pl" in zadanie.formats:
+        out["text_pl"] = render_arc_flash_report_text(ctx)
+    if "latex" in zadanie.formats:
+        out["latex"] = render_arc_flash_report_latex(ctx)
+    return out
+
+
+@router.post("/api/quality/arc-flash/report.pdf")
+def post_arc_flash_report_pdf(zadanie: ArcFlashReportZadanie) -> Response:
+    from analysis.reporting.arc_flash_report import render_arc_flash_report_pdf
+
+    try:
+        ctx = _arc_flash_report_context(zadanie)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return Response(
+        content=render_arc_flash_report_pdf(ctx),
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="raport_arc_flash.pdf"'},
+    )
+
+
+@router.post("/api/quality/arc-flash/report.docx")
+def post_arc_flash_report_docx(zadanie: ArcFlashReportZadanie) -> Response:
+    from analysis.reporting.arc_flash_report import render_arc_flash_report_docx
+
+    try:
+        ctx = _arc_flash_report_context(zadanie)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    return Response(
+        content=render_arc_flash_report_docx(ctx),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": 'attachment; filename="raport_arc_flash.docx"'},
+    )

@@ -18,6 +18,7 @@ SANITY_BOUNDS = "/api/quality/sanity-bounds"
 ENERGY_VALIDATION = "/api/quality/energy-validation"
 FLICKER = "/api/quality/flicker"
 ARC_FLASH = "/api/quality/arc-flash"
+ARC_FLASH_REPORT = "/api/quality/arc-flash/report"
 
 
 @pytest.fixture(autouse=True)
@@ -176,6 +177,65 @@ def test_arc_flash_wrong_analysis_type_returns_422(app_client) -> None:
     resp = app_client.post(ARC_FLASH, json={"run_id": str(run_id)})
     assert resp.status_code == 422
     assert "przebiegu zwarciowego" in resp.json()["detail"]
+
+
+# --- Raport arc flash (Audyt A2) ---------------------------------------------
+
+
+def _report_body(run_id) -> dict:
+    return {
+        "run_id": str(run_id),
+        "working_distance_mm": 455.0,
+        "conductor_gap_mm": 152.0,
+        "arc_time_s": 0.2,
+        "project_name": "Projekt Test",
+        "station_id": "ST-01",
+        "operator_pl": "PSE",
+        "generated_at_iso": "2026-04-01T00:00:00Z",
+    }
+
+
+def test_arc_flash_report_json_returns_summary_and_results(app_client) -> None:
+    run_id = _sc_run_id()
+    resp = app_client.post(ARC_FLASH_REPORT, json=_report_body(run_id))
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    report = data["json"]
+    assert report["report_kind"] == "arc_flash_report"
+    assert report["project_name"] == "Projekt Test"
+    assert report["station_id"] == "ST-01"
+    assert report["summary"]["bus_count"] >= 5
+    assert "text_pl" in data
+    assert "RAPORT ZAGROŻENIA ŁUKIEM ELEKTRYCZNYM" in data["text_pl"]
+
+
+def test_arc_flash_report_pdf_returns_pdf_bytes(app_client) -> None:
+    run_id = _sc_run_id()
+    resp = app_client.post(f"{ARC_FLASH_REPORT}.pdf", json=_report_body(run_id))
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"] == "application/pdf"
+    assert len(resp.content) > 0
+
+
+def test_arc_flash_report_docx_returns_docx_bytes(app_client) -> None:
+    run_id = _sc_run_id()
+    resp = app_client.post(f"{ARC_FLASH_REPORT}.docx", json=_report_body(run_id))
+    assert resp.status_code == 200, resp.text
+    assert "wordprocessingml" in resp.headers["content-type"]
+    assert len(resp.content) > 0
+
+
+def test_arc_flash_report_is_deterministic(app_client) -> None:
+    run_id = _sc_run_id()
+    body = _report_body(run_id)
+    first = app_client.post(ARC_FLASH_REPORT, json=body).json()
+    second = app_client.post(ARC_FLASH_REPORT, json=body).json()
+    assert first == second
+
+
+def test_arc_flash_report_unknown_run_returns_404(app_client) -> None:
+    resp = app_client.post(ARC_FLASH_REPORT, json={"run_id": str(uuid4())})
+    assert resp.status_code == 404
 
 
 def test_arc_flash_unknown_electrode_config_returns_422(app_client) -> None:

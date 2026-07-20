@@ -190,6 +190,9 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/quality/flicker` | v12xx | aktywny | 2026-07-17 | - | Migotanie i szybkie zmiany napiecia IEC 61000-3-7 (D11). | migotanie tests | Architekt jakosci |
 | `POST /api/quality/as-built-compliance` | v12xx | aktywny | 2026-07-17 | - | Raport zgodnosci powykonawczej z pomiarow (D12). | zgodnosc powykonawcza tests | Architekt jakosci |
 | `POST /api/quality/arc-flash` | v12xx | aktywny | 2026-07-20 | - | Arc Flash IEEE 1584-2018 (energia incydentu, granica luku, kategoria PPE) per wezel z przebiegu zwarciowego; Ik''/U z przebiegu, parametry projektowe z zadania. Audyt V12K-059 poz. A. | arc flash view/API tests | Architekt jakosci |
+| `POST /api/quality/arc-flash/report` | v12xx | aktywny | 2026-07-20 | - | Raport arc flash (json/text_pl/latex) z widoku IEEE 1584; podsumowanie najgorszego przypadku + rozklad SOI. ZERO fizyki (interpretacja widoku). V12K-074. | arc flash report/API tests | Architekt jakosci |
+| `POST /api/quality/arc-flash/report.pdf` | v12xx | aktywny | 2026-07-20 | - | Raport arc flash PDF (reportlab, deterministyczny) do pobrania. V12K-074. | arc flash report/API tests | Architekt jakosci |
+| `POST /api/quality/arc-flash/report.docx` | v12xx | aktywny | 2026-07-20 | - | Raport arc flash DOCX (python-docx, deterministyczny) do pobrania. V12K-074. | arc flash report/API tests | Architekt jakosci |
 
 ## Blokada wdrozeniowa
 
