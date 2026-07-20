@@ -204,3 +204,19 @@ determinizm, zrzut żywej aplikacji.
 > obecnie z body żądania, nie z modelu). To łańcuch backendowy (op + konsument), nie kontrolka UI
 > — dodanie kontrolek bez konsumenta byłoby wyspą. Dopiero po G-OZE-B krok „NC RfG / ride-through"
 > wchodzi do kreatora. G-OZE-C (katalog krzywych) po G-OZE-B.
+>
+> **G-OZE-B WDROŻONE (V12K-062, 2026-07-20):** kanoniczny konsument statyzmu P(f)/LFSM —
+> `add_converter_source` utrwala `frequency_droop_percent` (+ `lfsm_allow_increase` dla BESS)
+> na meta generatora; `_build_converter_control_by_node` czyta je → `lfsm_droop_pct`; kanoniczny
+> PF stosuje `lfsm_factor` przy odchyłce f studium. Odnoga NC RfG macierz (audit2 station-config)
+> = karta G-OZE-B2 (cross-thread), nie tworzymy równoległej ścieżki.
+>
+> **G-OZE-B3 WDROŻONE (V12K-063, 2026-07-20, dyrektywa „rozbuduj opisy + sugerowane nastawy +
+> pomyśl czego brakuje"):** rozbudowa opisów ujawniła phantom — model frontendu nigdy nie wysyłał
+> `cos_phi`/`qu_slope_pu_per_pu`, więc tryb regulacji Q działał pasywnie (Q=0). Naprawa: wartości
+> rządzące wystawione warunkowo (cosφ dla stałego cosφ, nachylenie Q(U) dla Q(U)) + pasmo
+> nieczułości P(f) (`lfsm_deadband_hz`) + ostrzeżenie „tryb pasywny" + sugerowane nastawy
+> (cosφ 0,95, Q(U) 4, statyzm 5%, pasmo 0,2 Hz) + opisy inżynierskie (po co/z czego/co daje,
+> odwołania NC RfG). Backend: payload + meta (PV/BESS/FW) utrwalają qu_slope + lfsm_deadband;
+> control-by-node wpina deadband do LFSM. Testy: zrodloOzeModel +3, KreatorZrodlaOze +1,
+> backend persist. Ekrany oceny (4 kroki, oba motywy): `docs/audit/visual/kreatory/`.
