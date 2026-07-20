@@ -61,8 +61,11 @@ import {
   fmtV,
   kontekstKontynuacji,
   lacznaDlugosc,
+  lacznySpadekPct,
+  LIMIT_SPADKU_PCT,
   maStartCiagu,
   nextStepDozwolony,
+  ocenaDoboru,
   parametryZKatalogu,
   podsumujOdcinek,
   walidujFormularz,
@@ -73,6 +76,7 @@ import {
   type MagistralaFormData,
   type OdcinekBudowy,
   type RodzajOdcinka,
+  type StanOceny,
 } from './magistralaModel';
 import { MAGISTRALA_STRINGS as T } from './strings';
 import { WykresSpadku } from './WykresSpadku';
@@ -281,6 +285,9 @@ export function KreatorMagistralaSn() {
     params && dane.prad_a && dane.prad_a > params.rated_current_a,
   );
 
+  // Asystent doboru przekroju (M3): interpretuje ΔU (backend) i Iz (katalog) vs kryteria.
+  const ocena = ocenaDoboru(params, podglad?.delta_u_pct ?? null, dane.prad_a ?? null);
+
   const onZapisz = useCallback(async () => {
     if (!hasStart) {
       setBladGlobalny(brakStartuReason);
@@ -336,8 +343,9 @@ export function KreatorMagistralaSn() {
       const nextTrunkId = nextTerminal?.trunk_id ?? trunkId;
       const nextOperation = nextOperationForStep(dane.next_step);
 
-      // Odcinek dodany realnie do modelu → dopisz do listy magistrali w budowie (M2).
-      setZbudowane((prev) => [...prev, podsumujOdcinek(dane, params, typLabel)]);
+      // Odcinek dodany realnie do modelu → dopisz do listy magistrali w budowie (M2),
+      // z zapamiętanym spadkiem ΔU odcinka (skumulowana ocena ciągu, M3).
+      setZbudowane((prev) => [...prev, podsumujOdcinek(dane, params, typLabel, podglad?.delta_u_pct ?? null)]);
 
       if (!nextSegmentRef || !nextEndpointBusRef) {
         // Odcinek utworzony; brak wskazania końca → wróć na schemat, nie fabrykuj kroku.
@@ -392,6 +400,7 @@ export function KreatorMagistralaSn() {
     kontekst,
     openOperationForm,
     params,
+    podglad,
     selectElement,
     snapshot,
     terminalId,
@@ -428,8 +437,14 @@ export function KreatorMagistralaSn() {
     },
   ];
 
+  const skumulowanySpadek = lacznySpadekPct(zbudowane);
   const builderPanel = (
-    <KreatorPodsumowanie tytul={T.builderTytul} testid="mvd-kreator-magistrala-builder">
+    <KreatorPodsumowanie
+      tytul={T.builderTytul}
+      komunikat={skumulowanySpadek > LIMIT_SPADKU_PCT ? T.builderSkumulowanyOstrzezenie(LIMIT_SPADKU_PCT) : null}
+      komunikatTon="warn"
+      testid="mvd-kreator-magistrala-builder"
+    >
       {zbudowane.length === 0 ? (
         <p className="mvd-podsum-komunikat">{T.builderPusto}</p>
       ) : (
@@ -442,9 +457,30 @@ export function KreatorMagistralaSn() {
             />
           ))}
           <RzadWartosci etykieta={T.builderLaczna} wartosc={fmtDlugosc(lacznaDlugosc(zbudowane))} />
-          <RzadWartosci etykieta={T.builderKoniec} wartosc={dane.next_step === 'continue' ? 'gotowe' : '—'} />
+          <RzadWartosci etykieta={T.builderSkumulowany} wartosc={fmtPct(skumulowanySpadek)} />
         </>
       )}
+    </KreatorPodsumowanie>
+  );
+
+  const stanLabel = (s: StanOceny): string =>
+    s === 'ok' ? T.ocenaOK : s === 'ostrzezenie' ? T.ocenaOstrzezenie : T.ocenaBrak;
+  const ocenaKomunikat =
+    ocena.obciazalnosc === 'ostrzezenie' && ocena.obciazenieA != null && ocena.izA != null
+      ? T.ocenaObciazalnoscZle(ocena.obciazenieA, ocena.izA)
+      : ocena.spadek === 'ostrzezenie' && ocena.spadekPct != null
+        ? T.ocenaSpadekZle(ocena.spadekPct, ocena.limitPct)
+        : null;
+  const ocenaPanel = (
+    <KreatorPodsumowanie
+      tytul={T.ocenaTytul}
+      komunikat={ocenaKomunikat}
+      komunikatTon="warn"
+      testid="mvd-kreator-magistrala-ocena"
+    >
+      <RzadWartosci etykieta={T.ocenaObciazalnosc} wartosc={stanLabel(ocena.obciazalnosc)} />
+      <RzadWartosci etykieta={T.ocenaSpadek} wartosc={stanLabel(ocena.spadek)} />
+      <p className="mvd-podsum-komunikat">{T.ocenaIthPomoc}</p>
     </KreatorPodsumowanie>
   );
 
@@ -469,6 +505,7 @@ export function KreatorMagistralaSn() {
           <p className="mvd-podsum-komunikat">{T.podgladBrak}</p>
         )}
       </KreatorPodsumowanie>
+      {ocenaPanel}
       <KreatorGotowosc tytul={T.kontrolaTytul} wiersze={wierszeGotowosci} testid="mvd-kreator-magistrala-gotowosc" />
       <KreatorNastepnyKrok opis={zbudowane.length > 0 ? T.builderDodajKolejny : T.nastepnyOpis} />
     </>

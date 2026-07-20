@@ -67,9 +67,15 @@ brak żyły powrotnej). Wartości liczbowe ZAWSZE z katalogu; wynik z solvera (Z
   odcinek"; „Anuluj" po pierwszym odcinku zmienia się w „Zakończ budowę" (zamyka + wraca do SLD).
   Elementy na końcu (stacja/ZK/słup) nadal łańcuchują realną operację. Każdy odcinek = realna
   `continue_trunk_segment_sn` w modelu (bez shadow-modelu, bez zmiany kontraktów).
-- **M3 — Dobór przekroju (asystent).** Podpowiedź/walidacja: obciążalność Iz ≥ prąd roboczy,
-  ΔU ≤ limit, wytrzymałość cieplna Ith ≥ Ik·√tk (backend liczy; UI interpretuje). Ostrzeżenia
-  gdy przekrój niedobrany.
+- **M3 — Dobór przekroju (asystent). ✅ WDROŻONE (V12K-072).** Panel „Ocena doboru przekroju"
+  interpretuje wartości backendu/katalogu: obciążalność (prąd roboczy ≤ Iz), spadek napięcia
+  (ΔU ≤ limit 5%) — ze stanami OK / „Do sprawdzenia" / „Podaj prąd i długość" i konkretnym
+  komunikatem naprawczym. Skumulowany spadek ΔU całego ciągu w panelu „Magistrala w budowie"
+  (suma odcinków) z ostrzeżeniem po przekroczeniu limitu. Wytrzymałość cieplna Ith ≥ Ik·√tk —
+  wskazówka (pełne sprawdzenie po biegu zwarciowym; katalog podaje Ith żyły powrotnej). ZERO
+  fizyki: UI porównuje policzone przez solver ΔU i katalogowe Iz z kryteriami, nic nie liczy.
+
+**Program zamknięty: M1 ✅ M2 ✅ M3 ✅** (wszystkie 3 dyrektywy z IMG_8271 zrealizowane).
 
 ## 4. Reguły (spójne z kanonem)
 - ZERO fizyki w UI; wartości z katalogu, wynik z solvera. FROZEN Result API, ui/sld/**,

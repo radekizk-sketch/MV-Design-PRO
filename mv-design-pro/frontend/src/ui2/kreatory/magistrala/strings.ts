@@ -94,6 +94,22 @@ export const MAGISTRALA_STRINGS = {
   builderZakoncz: 'Zakończ budowę',
   builderZakonczTitle: 'Zakończ budowę magistrali i wróć do schematu',
   builderDodaj: 'Dodaj odcinek',
+  builderSkumulowany: 'Skumulowany spadek ΔU',
+  builderSkumulowanyOstrzezenie: (limit: number) => `Skumulowany spadek przekracza ${limit}% — rozważ większy przekrój lub krótszy ciąg.`,
+
+  // Asystent doboru przekroju (M3, V12K-072).
+  ocenaTytul: 'Ocena doboru przekroju',
+  ocenaObciazalnosc: 'Obciążalność (Iz ≥ prąd)',
+  ocenaSpadek: 'Spadek napięcia (≤ limit)',
+  ocenaOK: 'OK',
+  ocenaOstrzezenie: 'Do sprawdzenia',
+  ocenaBrak: 'Podaj prąd i długość',
+  ocenaObciazalnoscZle: (prad: number, iz: number) =>
+    `Prąd roboczy ${prad.toFixed(0)} A przekracza obciążalność ${iz.toFixed(0)} A — dobierz większy przekrój.`,
+  ocenaSpadekZle: (pct: number, limit: number) =>
+    `Spadek ${pct.toFixed(2)}% przekracza limit ${limit}% — większy przekrój lub krótszy odcinek.`,
+  ocenaIthPomoc:
+    'Wytrzymałość cieplna zwarciowa (Ith ≥ Ik·√tk) — sprawdzana po biegu zwarciowym; katalog podaje Ith żyły powrotnej.',
 
   // Uczciwy stan zerowy: brak startu ciągu.
   brakStartuTytul: 'Brak miejsca startu ciągu',

@@ -213,6 +213,8 @@ export interface OdcinekBudowy {
   typLabel: string;
   cross_section_mm2: number | null;
   dlugosc_m: number;
+  /** Spadek napięcia odcinka [%] z podglądu backendu w chwili dodania (null = brak podglądu). */
+  delta_u_pct: number | null;
 }
 
 /** Podsumuj właśnie dodany odcinek na podstawie formularza i parametrów katalogowych. */
@@ -220,18 +222,68 @@ export function podsumujOdcinek(
   data: MagistralaFormData,
   params: ParametryOdcinka | null,
   typLabel: string,
+  deltaUPct: number | null = null,
 ): OdcinekBudowy {
   return {
     rodzaj: data.rodzaj,
     typLabel,
     cross_section_mm2: params?.cross_section_mm2 ?? null,
     dlugosc_m: isPositive(data.dlugosc_m) ? data.dlugosc_m : 0,
+    delta_u_pct: typeof deltaUPct === 'number' && Number.isFinite(deltaUPct) ? deltaUPct : null,
   };
 }
 
 /** Łączna długość magistrali [m] z listy odcinków. */
 export function lacznaDlugosc(odcinki: readonly OdcinekBudowy[]): number {
   return odcinki.reduce((sum, o) => sum + o.dlugosc_m, 0);
+}
+
+/** Skumulowany spadek napięcia magistrali [%] — suma spadków odcinków (radialny ciąg). */
+export function lacznySpadekPct(odcinki: readonly OdcinekBudowy[]): number {
+  return odcinki.reduce((sum, o) => sum + (o.delta_u_pct ?? 0), 0);
+}
+
+// --------------------------------------------------- Asystent doboru przekroju (M3, V12K-072)
+
+/** Typowy dopuszczalny spadek napięcia na magistrali SN [%] (dobra praktyka OSD). */
+export const LIMIT_SPADKU_PCT = 5;
+
+export type StanOceny = 'ok' | 'ostrzezenie' | 'brak';
+
+export interface OcenaDoboru {
+  /** Obciążalność: prąd roboczy ≤ obciążalność Iz. */
+  obciazalnosc: StanOceny;
+  /** Spadek napięcia ≤ limit. */
+  spadek: StanOceny;
+  obciazenieA: number | null;
+  izA: number | null;
+  spadekPct: number | null;
+  limitPct: number;
+}
+
+/**
+ * Interpretacja doboru przekroju z wartości policzonych przez backend (ΔU) i katalogu (Iz).
+ * ZERO fizyki: nie liczy prądu ani ΔU — porównuje wartości backendu/katalogu z kryteriami.
+ */
+export function ocenaDoboru(
+  params: ParametryOdcinka | null,
+  deltaUPct: number | null,
+  pradRoboczy: number | null,
+  limitPct: number = LIMIT_SPADKU_PCT,
+): OcenaDoboru {
+  const izA = params?.rated_current_a ?? null;
+  const obciazalnosc: StanOceny =
+    izA == null || pradRoboczy == null ? 'brak' : pradRoboczy > izA ? 'ostrzezenie' : 'ok';
+  const spadek: StanOceny =
+    deltaUPct == null ? 'brak' : deltaUPct > limitPct ? 'ostrzezenie' : 'ok';
+  return {
+    obciazalnosc,
+    spadek,
+    obciazenieA: pradRoboczy,
+    izA,
+    spadekPct: deltaUPct,
+    limitPct,
+  };
 }
 
 /** Kontekst kontynuacji ciągu z końca właśnie dodanego odcinka (builder trzyma to w stanie). */

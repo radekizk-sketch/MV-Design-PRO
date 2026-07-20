@@ -10,7 +10,10 @@ import {
   fmtV,
   kontekstKontynuacji,
   lacznaDlugosc,
+  lacznySpadekPct,
+  LIMIT_SPADKU_PCT,
   maStartCiagu,
+  ocenaDoboru,
   nextStepDozwolony,
   parametryZKatalogu,
   podsumujOdcinek,
@@ -250,5 +253,41 @@ describe('magistralaModel — builder realnej sieci (M2, V12K-071)', () => {
     });
     // Start ciągu z tego kontekstu jest ważny (builder może kontynuować).
     expect(maStartCiagu(kontekstKontynuacji('bus/end-1', undefined, undefined))).toBe(true);
+  });
+
+  it('skumulowany spadek = suma spadków odcinków (pomija null)', () => {
+    expect(
+      lacznySpadekPct([
+        { rodzaj: 'KABEL', typLabel: 'a', cross_section_mm2: 120, dlugosc_m: 500, delta_u_pct: 1.2 },
+        { rodzaj: 'KABEL', typLabel: 'b', cross_section_mm2: 120, dlugosc_m: 800, delta_u_pct: 2.1 },
+        { rodzaj: 'LINIA', typLabel: 'c', cross_section_mm2: 70, dlugosc_m: 300, delta_u_pct: null },
+      ]),
+    ).toBeCloseTo(3.3, 5);
+  });
+});
+
+describe('magistralaModel — asystent doboru przekroju (M3, V12K-072)', () => {
+  const p = parametryZKatalogu('KABEL', 'kab-1', [kabel], [linia]); // Iz 255 A
+
+  it('obciążalność OK gdy prąd ≤ Iz, ostrzeżenie gdy prąd > Iz', () => {
+    expect(ocenaDoboru(p, 1.0, 200).obciazalnosc).toBe('ok');
+    expect(ocenaDoboru(p, 1.0, 300).obciazalnosc).toBe('ostrzezenie');
+    // Bez prądu roboczego → brak oceny obciążalności.
+    expect(ocenaDoboru(p, 1.0, null).obciazalnosc).toBe('brak');
+  });
+
+  it('spadek OK gdy ΔU ≤ limit, ostrzeżenie powyżej', () => {
+    expect(ocenaDoboru(p, 3.0, 200).spadek).toBe('ok');
+    expect(ocenaDoboru(p, LIMIT_SPADKU_PCT + 0.5, 200).spadek).toBe('ostrzezenie');
+    expect(ocenaDoboru(p, null, 200).spadek).toBe('brak');
+  });
+
+  it('zwraca prąd/Iz/ΔU/limit do interpretacji', () => {
+    expect(ocenaDoboru(p, 2.5, 240)).toMatchObject({
+      obciazenieA: 240,
+      izA: 255,
+      spadekPct: 2.5,
+      limitPct: LIMIT_SPADKU_PCT,
+    });
   });
 });

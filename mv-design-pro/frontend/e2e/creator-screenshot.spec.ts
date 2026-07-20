@@ -190,6 +190,8 @@ test.describe('kreatory:screenshot', () => {
         if (c === 'magistrala') {
           await page.getByTestId('mvd-kreator-magistrala-katalog').selectOption('kab-120');
           await page.getByTestId('mvd-kreator-magistrala-dalej').click();
+          // Prąd roboczy > obciążalności → asystent doboru pokazuje ostrzeżenie (M3).
+          await page.getByTestId('mvd-kreator-magistrala-prad').fill('300');
         }
 
         await page.getByTestId(`mvd-kreator-${c}-teoria`).locator('summary').click();
