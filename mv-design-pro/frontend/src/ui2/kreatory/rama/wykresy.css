@@ -1,19 +1,11 @@
-/* Wykresy charakterystyk NC RfG (G-OZE-B5) — style ELEMENTÓW SVG. Kontener panelu
-   (rozwijany + opis/wymóg/podstawa) dostarcza wspólny PanelTeorii (rama/panelTeorii.css).
-   Kolory wyłącznie przez tokeny --mvd-* (theme-aware light/dark). */
+/* Wspólne style wykresów charakterystyk kreatorów (V12K-067). Kolory wyłącznie przez
+   tokeny --mvd-* (theme-aware light/dark). Współdzielą to wszystkie wykresy w kreatorach. */
 
-.mvd-ncrfg-fig {
+.mvd-wykres-fig {
   margin: 8px 0 4px;
 }
 
-.mvd-ncrfg-opis {
-  font-size: 12.5px;
-  line-height: 1.55;
-  color: var(--mvd-ink);
-  margin: 10px 0;
-}
-
-.mvd-ncrfg-svg {
+.mvd-wykres-svg {
   display: block;
   width: 100%;
   max-width: 440px;
@@ -23,36 +15,43 @@
   border-radius: 6px;
 }
 
-.mvd-ncrfg-cap {
+.mvd-wykres-cap {
   font-size: 11.5px;
   line-height: 1.5;
   color: var(--mvd-muted);
   margin: 6px 0 0;
 }
 
+.mvd-wykres-info {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-ink);
+  margin: 10px 0;
+}
+
 /* ---- elementy SVG ---- */
-.mvd-ncrfg-os {
+.mvd-wykres-os {
   stroke: var(--mvd-line);
   stroke-width: 1.2;
 }
 
-.mvd-ncrfg-siatka {
+.mvd-wykres-siatka {
   stroke: var(--mvd-line);
   stroke-width: 1;
   stroke-dasharray: 3 3;
 }
 
-.mvd-ncrfg-pasmo {
+.mvd-wykres-pasmo {
   fill: var(--mvd-accent);
   opacity: 0.12;
 }
 
-.mvd-ncrfg-pasmo-txt {
+.mvd-wykres-pasmo-txt {
   fill: var(--mvd-muted);
   font-size: 9px;
 }
 
-.mvd-ncrfg-krzywa {
+.mvd-wykres-krzywa {
   fill: none;
   stroke: var(--mvd-accent);
   stroke-width: 2;
@@ -60,7 +59,7 @@
   stroke-linecap: round;
 }
 
-.mvd-ncrfg-krzywa-przyklad {
+.mvd-wykres-krzywa-przyklad {
   fill: none;
   stroke: var(--mvd-accent);
   stroke-width: 2;
@@ -70,7 +69,7 @@
   stroke-linecap: round;
 }
 
-.mvd-ncrfg-krzywa-lustro {
+.mvd-wykres-krzywa-lustro {
   fill: none;
   stroke: var(--mvd-muted);
   stroke-width: 1.2;
@@ -78,19 +77,23 @@
   opacity: 0.55;
 }
 
-.mvd-ncrfg-prog {
+.mvd-wykres-prog {
   stroke: var(--mvd-err);
   stroke-width: 1.2;
   stroke-dasharray: 4 3;
   opacity: 0.7;
 }
 
-.mvd-ncrfg-etyk {
+.mvd-wykres-punkt {
+  fill: var(--mvd-accent);
+}
+
+.mvd-wykres-etyk {
   fill: var(--mvd-muted);
   font-size: 10px;
 }
 
-.mvd-ncrfg-znak {
+.mvd-wykres-znak {
   fill: var(--mvd-muted);
   font-size: 9.5px;
 }

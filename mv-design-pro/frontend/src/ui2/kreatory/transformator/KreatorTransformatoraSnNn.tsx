@@ -54,6 +54,7 @@ import {
   type TransformatorFormData,
 } from './transformatorModel';
 import { TRANSFORMATOR_STRINGS as T } from './strings';
+import { WykresAvr } from './WykresAvr';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'szyny', tytul: T.krokSzyny },
@@ -338,6 +339,13 @@ export function KreatorTransformatoraSnNn() {
             testid="mvd-kreator-transformator-nazwa"
           />
           {paramReadout}
+          <PanelTeorii
+            tytul={T.teoriaSzynyTytul}
+            opis={T.teoriaSzynyOpis}
+            wymog={T.teoriaSzynyWymog}
+            podstawa={T.teoriaSzynyPodstawa}
+            testid="mvd-kreator-transformator-teoria-szyny"
+          />
         </KreatorSekcja>
       ) : null}
 
@@ -395,7 +403,28 @@ export function KreatorTransformatoraSnNn() {
             wymog={T.teoriaRegWymog}
             podstawa={T.teoriaRegPodstawa}
             testid="mvd-kreator-transformator-teoria"
-          />
+          >
+            {dane.regulation_type !== 'NONE' ? (
+              <figure className="mvd-wykres-fig">
+                <WykresAvr
+                  tapMin={dane.tap_min_position}
+                  tapMax={dane.tap_max_position}
+                  tapNeutral={dane.tap_neutral_position}
+                  stepPct={dane.tap_step_percent}
+                  dbFrac={
+                    dane.regulation_type === 'OLTC' &&
+                    dane.control_mode === 'AUTO' &&
+                    dane.voltage_setpoint_kv &&
+                    dane.voltage_setpoint_kv > 0 &&
+                    dane.deadband_kv
+                      ? dane.deadband_kv / dane.voltage_setpoint_kv
+                      : null
+                  }
+                />
+                <figcaption className="mvd-wykres-cap">{T.teoriaRegJakCzytac}</figcaption>
+              </figure>
+            ) : null}
+          </PanelTeorii>
         </KreatorSekcja>
       ) : null}
 

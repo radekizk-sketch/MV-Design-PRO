@@ -125,4 +125,42 @@ test.describe('kreatory:screenshot', () => {
       expect(errs, `no console/page errors for oze kroki/${theme}`).toEqual([]);
     });
   }
+
+  // Krok „Regulacja" kreatora transformatora z żywym wykresem charakterystyki AVR
+  // (V12K-067): OLTC + AVR + napięcie zadane/pasmo → wykres zaczep↔napięcie.
+  for (const theme of THEMES) {
+    test(`transformator — regulacja AVR (${theme})`, async ({ page }) => {
+      const errs: string[] = [];
+      const isNoise = (t: string): boolean =>
+        /favicon|Download the React DevTools|Failed to load resource/i.test(t);
+      page.on('console', (m) => {
+        if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
+      });
+      page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+
+      await page.setViewportSize({ width: 1220, height: 900 });
+      await page.goto(`${HARNESS_URL}?creator=transformator&theme=${theme}`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 40000,
+      });
+      const root = page.locator('[data-testid="creator-harness-root"]').first();
+      await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
+
+      // Krok 1 (szyny) → krok 2 (regulacja).
+      await page.getByTestId('mvd-kreator-transformator-dalej').click();
+      await expect(page.getByTestId('mvd-kreator-transformator-regtyp')).toBeVisible();
+      await page.getByTestId('mvd-kreator-transformator-regtyp').selectOption('OLTC');
+      await page.getByTestId('mvd-kreator-transformator-control').selectOption('AUTO');
+      await page.getByTestId('mvd-kreator-transformator-setpoint').fill('15.75');
+      await page.getByTestId('mvd-kreator-transformator-deadband').fill('0.3');
+      await page.getByTestId('mvd-kreator-transformator-teoria').locator('summary').click();
+      await page.waitForTimeout(300);
+      await root.screenshot({
+        path: path.join(OUTPUT_DIR, `kreator_transformator_regulacja_${theme}.png`),
+      });
+
+      if (errs.length > 0) console.log(`[transformator/${theme}] errors:\n${errs.join('\n')}`);
+      expect(errs, `no console/page errors for transformator/${theme}`).toEqual([]);
+    });
+  }
 });

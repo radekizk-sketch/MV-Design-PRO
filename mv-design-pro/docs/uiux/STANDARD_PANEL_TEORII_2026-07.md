@@ -51,7 +51,7 @@ Legenda: ✅ pokryty · 🟡 częściowo (kluczowe kroki) · ⬜ do zrobienia.
 | Kreator | Kroki konfiguracji | Panel teorii | Wykres |
 |---------|--------------------|--------------|--------|
 | `zrodlo-oze` (OZE/DER) | technologia, falownik, **regulacja** | ✅ (3 panele) | ✅ Q(U)/P(f)/cosφ (żywe) |
-| `transformator` (SN/nN + OLTC) | katalog, szyny, **regulacja** | ✅ (regulacja) | — (plan: krzywa AVR) |
+| `transformator` (SN/nN + OLTC) | **szyny**, **regulacja** | ✅ (2 panele) | ✅ AVR: zaczep↔napięcie z pasmem (żywy) |
 | `kompensator` (bateria SN) | **typ** | ✅ | — (plan: Q∝U²) |
 | `lacznik` (sekcyjny) | **aparat** | ✅ | — |
 | `magistrala` (odcinek SN) | **parametry** | ✅ | — (plan: ΔU/straty) |
@@ -60,12 +60,17 @@ Legenda: ✅ pokryty · 🟡 częściowo (kluczowe kroki) · ⬜ do zrobienia.
 | `pole` (pole SN) | **pole** | ✅ | — |
 | `zrodlo` (GPZ WN/SN) | identyfikacja, **źródło**, transformatory, rozdzielnia, sekcje, normy | 🟡 (źródło) | — (plan: Z=cU²/Sk″) |
 
+### Wspólna baza wykresów (V12K-067)
+`rama/wykresPomoc.tsx` (VBW/VBH/PAD/px/py/`RamkaWykresu`) + `rama/wykresy.css`
+(`mvd-wykres-*`) — jeden układ współrzędnych, jedna rama, jeden arkusz stylów dla
+WSZYSTKICH wykresów kreatorów. OZE (`WykresyNcRfg`) i transformator (`WykresAvr`)
+korzystają z tej bazy; kolejne wykresy budujesz na niej (reuse, nie duplikacja).
+
 ### Depth backlog (kolejne rundy, NIE odkładane cicho)
 - `zrodlo` (GPZ): panele teorii dla pozostałych kroków (rozdzielnia/uziemienie,
   transformatory 110/SN, parametry normowe c/f, sekcje/pola).
-- `transformator`: panele dla kroków katalog + szyny.
-- Wykresy tam, gdzie oznaczono „(plan)": AVR (transformator), Q∝U² (kompensator),
-  ΔU/straty (magistrala), ZIP (odbiór), Z=cU²/Sk″ (GPZ).
+- Wykresy tam, gdzie oznaczono „(plan)": Q∝U² (kompensator), ΔU/straty (magistrala),
+  ZIP (odbiór), Z=cU²/Sk″ (GPZ) — na wspólnej bazie `rama/wykresPomoc`.
 
 ## 5. Egzekwowanie
 

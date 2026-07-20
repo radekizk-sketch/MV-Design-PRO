@@ -91,6 +91,18 @@ export const TRANSFORMATOR_STRINGS = {
   walidacjaStopka: 'Uzupełnij wymagane pola, aby zapisać transformator.',
 
   // Panel teorii (V12K-066: standard „must-have")
+  teoriaSzynyTytul: 'Teoria: transformator SN/nN — przekładnia i impedancja zwarcia',
+  teoriaSzynyOpis:
+    'Transformator łączy szynę górnego napięcia (strona zasilania) z dolnym przez przekładnię '
+    + 'napięciową. Moc znamionowa Sn ogranicza obciążalność, a napięcie zwarcia uk [%] wyznacza '
+    + 'impedancję szeregową (Z ≈ uk·U²/Sn) — decyduje o spadku napięcia pod obciążeniem i o prądzie '
+    + 'zwarciowym po stronie dolnej (im wyższe uk, tym mniejszy prąd zwarciowy, ale większy spadek '
+    + 'napięcia). Grupa połączeń (np. Dyn11) określa przesunięcie fazowe i drogę składowej zerowej '
+    + 'dla zwarć doziemnych. Wszystkie parametry pochodzą z katalogu; prądy i spadki liczy solver.',
+  teoriaSzynyWymog:
+    'Sn dobiera się do mocy szczytowej z zapasem; uk i grupa połączeń muszą być zgodne z układem '
+    + 'sieci (praca równoległa transformatorów wymaga tej samej grupy i zbliżonego uk).',
+  teoriaSzynyPodstawa: 'Podstawa: PN-EN 60076, IEC 60909 (udział transformatora w zwarciu).',
   teoriaRegTytul: 'Teoria: regulacja napięcia i przełącznik zaczepów',
   teoriaRegOpis:
     'Transformator zmienia napięcie w stosunku przekładni; przełącznik zaczepów pozwala tę '
@@ -105,4 +117,11 @@ export const TRANSFORMATOR_STRINGS = {
     + '„poluje"). Napięcie zadane dobiera się do wymagań odbiorów i dopuszczalnych odchyleń napięcia.',
   teoriaRegPodstawa:
     'Podstawa: PN-EN 60076 (transformatory), PN-EN 50160 (parametry napięcia), IRiESD.',
+  teoriaRegJakCzytac:
+    'Kropki = napięcie szyny osiągalne na kolejnych zaczepach (odstęp = krok zaczepu). Pasmo = '
+    + 'zakres nieczułości wokół napięcia zadanego; regulator wybiera zaczep, którego napięcie trafia '
+    + 'w pasmo. Gdy pasmo jest węższe niż skok jednego zaczepu — regulator „poluje" (brak stabilnej pozycji).',
+  avrOsTap: 'Pozycja zaczepu',
+  avrOsU: 'Napięcie szyny [pu]',
+  avrZadane: 'napięcie zadane',
 } as const;

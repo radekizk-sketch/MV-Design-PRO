@@ -8,42 +8,9 @@
  * --mvd-*; deterministyczne (stałe wymiary, brak animacji, brak losowości).
  */
 
-import { PanelTeorii } from '../rama';
+import { PAD, PLH, PanelTeorii, RamkaWykresu, VBH, VBW, px, py } from '../rama';
 import { SUGEROWANE, type TrybRegulacji } from './zrodloOzeModel';
 import { NCRFG_TEORIA as TT, OZE_STRINGS as T } from './strings';
-import './wykresyNcRfg.css';
-
-const VBW = 440;
-const VBH = 210;
-const PAD = { l: 48, r: 18, t: 16, b: 34 };
-const PLW = VBW - PAD.l - PAD.r;
-const PLH = VBH - PAD.t - PAD.b;
-
-/** Mapowanie znormalizowanej wartości t∈[0,1] na piksel osi (X rośnie w prawo). */
-const px = (t: number): number => PAD.l + t * PLW;
-/** Mapowanie t∈[0,1] na piksel osi Y (rośnie w górę → odwracamy). */
-const py = (t: number): number => PAD.t + (1 - t) * PLH;
-
-interface Ramka {
-  osX: string;
-  osY: string;
-}
-
-/** Wspólna ramka wykresu (osie, etykiety). */
-function Ramka({ osX, osY }: Ramka) {
-  return (
-    <>
-      <line x1={PAD.l} y1={py(0)} x2={px(1)} y2={py(0)} className="mvd-ncrfg-os" />
-      <line x1={PAD.l} y1={PAD.t} x2={PAD.l} y2={py(0)} className="mvd-ncrfg-os" />
-      <text x={px(1)} y={VBH - 8} textAnchor="end" className="mvd-ncrfg-etyk">
-        {osX}
-      </text>
-      <text x={6} y={PAD.t + 4} className="mvd-ncrfg-etyk">
-        {osY}
-      </text>
-    </>
-  );
-}
 
 // ------------------------------------------------------------------ Q(U)
 
@@ -77,27 +44,27 @@ export function WykresQU({
     pts.push(`${px(nx(u)).toFixed(1)},${py(ny(qOf(u))).toFixed(1)}`);
   }
   return (
-    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-ncrfg-svg" role="img" aria-label={TT.qu.tytul}>
+    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={TT.qu.tytul}>
       {/* pasmo nieczułości */}
       <rect
         x={px(nx(dbLow))}
         y={PAD.t}
         width={Math.max(0, px(nx(dbHigh)) - px(nx(dbLow)))}
         height={PLH}
-        className="mvd-ncrfg-pasmo"
+        className="mvd-wykres-pasmo"
       />
       {/* linia Q=0 i napięcie znamionowe 1.0 pu */}
-      <line x1={PAD.l} y1={py(ny(0))} x2={px(1)} y2={py(ny(0))} className="mvd-ncrfg-siatka" />
-      <line x1={px(nx(1.0))} y1={PAD.t} x2={px(nx(1.0))} y2={py(0)} className="mvd-ncrfg-siatka" />
-      <Ramka osX={TT.osU} osY={TT.osQ} />
-      <polyline points={pts.join(' ')} className={isExample ? 'mvd-ncrfg-krzywa-przyklad' : 'mvd-ncrfg-krzywa'} />
-      <text x={PAD.l + 4} y={PAD.t + 12} className="mvd-ncrfg-znak">
+      <line x1={PAD.l} y1={py(ny(0))} x2={px(1)} y2={py(ny(0))} className="mvd-wykres-siatka" />
+      <line x1={px(nx(1.0))} y1={PAD.t} x2={px(nx(1.0))} y2={py(0)} className="mvd-wykres-siatka" />
+      <RamkaWykresu osX={TT.osU} osY={TT.osQ} />
+      <polyline points={pts.join(' ')} className={isExample ? 'mvd-wykres-krzywa-przyklad' : 'mvd-wykres-krzywa'} />
+      <text x={PAD.l + 4} y={PAD.t + 12} className="mvd-wykres-znak">
         {TT.qOddawanie}
       </text>
-      <text x={PAD.l + 4} y={py(0) - 6} className="mvd-ncrfg-znak">
+      <text x={PAD.l + 4} y={py(0) - 6} className="mvd-wykres-znak">
         {TT.qPobor}
       </text>
-      <text x={(px(nx(dbLow)) + px(nx(dbHigh))) / 2} y={PAD.t + 12} textAnchor="middle" className="mvd-ncrfg-pasmo-txt">
+      <text x={(px(nx(dbLow)) + px(nx(dbHigh))) / 2} y={PAD.t + 12} textAnchor="middle" className="mvd-wykres-pasmo-txt">
         {TT.pasmoNieczulosci}
       </text>
     </svg>
@@ -141,21 +108,21 @@ export function WykresPf({
   }
   const fProg = f0 + dbHz;
   return (
-    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-ncrfg-svg" role="img" aria-label={TT.pf.tytul}>
+    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={TT.pf.tytul}>
       <rect
         x={px(nx(f0 - dbHz))}
         y={PAD.t}
         width={Math.max(0, px(nx(f0 + dbHz)) - px(nx(f0 - dbHz)))}
         height={PLH}
-        className="mvd-ncrfg-pasmo"
+        className="mvd-wykres-pasmo"
       />
-      <line x1={PAD.l} y1={py(ny(100))} x2={px(1)} y2={py(ny(100))} className="mvd-ncrfg-siatka" />
-      <line x1={px(nx(f0))} y1={PAD.t} x2={px(nx(f0))} y2={py(0)} className="mvd-ncrfg-siatka" />
-      <Ramka osX={TT.osF} osY={TT.osP} />
-      <polyline points={pts.join(' ')} className={isExample ? 'mvd-ncrfg-krzywa-przyklad' : 'mvd-ncrfg-krzywa'} />
+      <line x1={PAD.l} y1={py(ny(100))} x2={px(1)} y2={py(ny(100))} className="mvd-wykres-siatka" />
+      <line x1={px(nx(f0))} y1={PAD.t} x2={px(nx(f0))} y2={py(0)} className="mvd-wykres-siatka" />
+      <RamkaWykresu osX={TT.osF} osY={TT.osP} />
+      <polyline points={pts.join(' ')} className={isExample ? 'mvd-wykres-krzywa-przyklad' : 'mvd-wykres-krzywa'} />
       {/* próg LFSM-O */}
-      <line x1={px(nx(fProg))} y1={PAD.t} x2={px(nx(fProg))} y2={py(0)} className="mvd-ncrfg-prog" />
-      <text x={px(nx(fProg))} y={py(0) + 14} textAnchor="middle" className="mvd-ncrfg-znak">
+      <line x1={px(nx(fProg))} y1={PAD.t} x2={px(nx(fProg))} y2={py(0)} className="mvd-wykres-prog" />
+      <text x={px(nx(fProg))} y={py(0) + 14} textAnchor="middle" className="mvd-wykres-znak">
         {`${fProg.toFixed(1)} Hz`}
       </text>
     </svg>
@@ -173,27 +140,27 @@ export function WykresCosPhi({ cosPhi, isExample }: { cosPhi: number; isExample:
   const qAt1 = Math.max(-qClamp, Math.min(qClamp, tan(cosPhi))); // Q przy P=Pn
   const band = Math.min(qClamp, tan(0.95)); // ±0,3287 przy cosφ 0,95
   return (
-    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-ncrfg-svg" role="img" aria-label={TT.cosPhi.tytul}>
+    <svg viewBox={`0 0 ${VBW} ${VBH}`} className="mvd-wykres-svg" role="img" aria-label={TT.cosPhi.tytul}>
       {/* klin wymaganej zdolności ±0,95 */}
       <polygon
         points={`${px(nx(0))},${py(ny(0))} ${px(nx(1))},${py(ny(band))} ${px(nx(1))},${py(ny(-band))}`}
-        className="mvd-ncrfg-pasmo"
+        className="mvd-wykres-pasmo"
       />
-      <line x1={PAD.l} y1={py(ny(0))} x2={px(1)} y2={py(ny(0))} className="mvd-ncrfg-siatka" />
-      <Ramka osX={TT.osPn} osY={TT.osQ} />
+      <line x1={PAD.l} y1={py(ny(0))} x2={px(1)} y2={py(ny(0))} className="mvd-wykres-siatka" />
+      <RamkaWykresu osX={TT.osPn} osY={TT.osQ} />
       {/* linia robocza (oddawanie) + lustro (pobór) */}
       <line
         x1={px(nx(0))}
         y1={py(ny(0))}
         x2={px(nx(1))}
         y2={py(ny(qAt1))}
-        className={isExample ? 'mvd-ncrfg-krzywa-przyklad' : 'mvd-ncrfg-krzywa'}
+        className={isExample ? 'mvd-wykres-krzywa-przyklad' : 'mvd-wykres-krzywa'}
       />
-      <line x1={px(nx(0))} y1={py(ny(0))} x2={px(nx(1))} y2={py(ny(-qAt1))} className="mvd-ncrfg-krzywa-lustro" />
-      <text x={PAD.l + 4} y={PAD.t + 12} className="mvd-ncrfg-znak">
+      <line x1={px(nx(0))} y1={py(ny(0))} x2={px(nx(1))} y2={py(ny(-qAt1))} className="mvd-wykres-krzywa-lustro" />
+      <text x={PAD.l + 4} y={PAD.t + 12} className="mvd-wykres-znak">
         {TT.qOddawanie}
       </text>
-      <text x={PAD.l + 4} y={py(0) - 6} className="mvd-ncrfg-znak">
+      <text x={PAD.l + 4} y={py(0) - 6} className="mvd-wykres-znak">
         {TT.qPobor}
       </text>
     </svg>
@@ -261,17 +228,17 @@ export function CharakterystykaNcRfg(props: CharakterystykaNcRfgProps) {
       testid="mvd-kreator-oze-teoria"
     >
       {wykres ? (
-        <figure className="mvd-ncrfg-fig">
+        <figure className="mvd-wykres-fig">
           {wykres}
-          <figcaption className="mvd-ncrfg-cap">{teoria.jakCzytac}</figcaption>
+          <figcaption className="mvd-wykres-cap">{teoria.jakCzytac}</figcaption>
         </figure>
       ) : (
-        <p className="mvd-ncrfg-opis">{TT.brakCharakterystyki}</p>
+        <p className="mvd-wykres-info">{TT.brakCharakterystyki}</p>
       )}
       {pfWykres ? (
-        <figure className="mvd-ncrfg-fig">
+        <figure className="mvd-wykres-fig">
           {pfWykres}
-          <figcaption className="mvd-ncrfg-cap">{TT.pf.jakCzytac}</figcaption>
+          <figcaption className="mvd-wykres-cap">{TT.pf.jakCzytac}</figcaption>
         </figure>
       ) : null}
     </PanelTeorii>

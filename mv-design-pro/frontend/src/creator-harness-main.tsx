@@ -4,7 +4,7 @@
  * oceny). Renderuje REALNE komponenty kreatorów z zaszczepionym kontekstem/stanem
  * i podmienionym `fetch` (dane katalogowe), w motywie jasnym/ciemnym.
  *
- * Query: `?creator=pole|oze|arcflash&theme=light|dark`.
+ * Query: `?creator=pole|oze|transformator|arcflash&theme=light|dark`.
  * Używany wyłącznie przez: e2e/creator-screenshot.spec.ts (nie część bundla aplikacji).
  */
 
@@ -12,6 +12,7 @@ import { createRoot } from 'react-dom/client';
 import './ui2/theme/tokens.css';
 
 import { KreatorPolaSn } from './ui2/kreatory/pole';
+import { KreatorTransformatoraSnNn } from './ui2/kreatory/transformator';
 import { KreatorZrodlaOze } from './ui2/kreatory/zrodlo-oze';
 import { SekcjaArcFlash } from './ui2/wyniki/jakosc/EkranJakosci';
 import { useAppStateStore } from './ui/app-state';
@@ -97,7 +98,18 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 // --- Zaszczepienie stanu store ------------------------------------------
 useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
 useSnapshotStore.setState({
-  snapshot: { header: { name: 'Projekt demonstracyjny' }, substations: [], transformers: [], buses: [], sources: [], loads: [], bays: [] },
+  snapshot: {
+    header: { name: 'Projekt demonstracyjny' },
+    substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
+    transformers: [],
+    buses: [
+      { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
+      { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
+    ],
+    sources: [],
+    loads: [],
+    bays: [],
+  },
 } as never);
 
 const creator = new URLSearchParams(window.location.search).get('creator') ?? 'pole';
@@ -106,8 +118,13 @@ if (creator === 'arcflash') {
   const run: ExecutionRun = { id: 'run-sc-1', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [run], activeRunId: 'run-sc-1' } as never);
 } else {
-  // Kontekst operacji (szyna/stacja) dla kreatorów pole/OZE.
-  const op = creator === 'oze' ? 'add_converter_source' : 'add_sn_bay';
+  // Kontekst operacji (szyna/stacja) dla kreatorów pole/OZE/transformator.
+  const op =
+    creator === 'oze'
+      ? 'add_converter_source'
+      : creator === 'transformator'
+      ? 'add_transformer_sn_nn'
+      : 'add_sn_bay';
   useNetworkBuildStore.getState().openOperationForm(op as never, {
     station_ref: 'st-demo',
     bus_ref: 'bus-sn-demo',
@@ -119,6 +136,7 @@ if (creator === 'arcflash') {
 function Harness() {
   let node: React.ReactNode;
   if (creator === 'oze') node = <KreatorZrodlaOze />;
+  else if (creator === 'transformator') node = <KreatorTransformatoraSnNn />;
   else if (creator === 'arcflash') {
     node = (
       <SekcjaArcFlash
