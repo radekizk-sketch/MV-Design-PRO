@@ -9,7 +9,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
-import { fetchMvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
+import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
+import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
+import {
+  fetchCompleteBayTemplates,
+  fetchMvApparatusTypes,
+  fetchSwitchgearFamilies,
+  getCatalogErrorMessage,
+} from '../../../ui/catalog/api';
 import type { MVApparatusCatalogType } from '../../../ui/catalog/types';
 import { resolveBusSnRef, resolveStationRef, stationLabel } from '../../../ui/network-build/forms/enmResolvers';
 import { navigateToSld } from '../../../ui/navigation/routes';
@@ -34,6 +41,8 @@ import {
   DANE_DOMYSLNE,
   ROLE_OPCJE,
   aparatLabel,
+  bayKindZRoli,
+  maSzablonProducenta,
   maSzyne,
   rolaLabel,
   walidujFormularz,
@@ -88,17 +97,22 @@ export function KreatorPolaSn() {
 
   const [typy, setTypy] = useState<MVApparatusCatalogType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+  const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
+  const [szablony, setSzablony] = useState<CompleteMvBayTemplateSummary[]>([]);
 
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
-    fetchMvApparatusTypes()
-      .then((t) => {
-        if (!cancelled) setTypy(Array.isArray(t) ? t : []);
+    Promise.all([fetchMvApparatusTypes(), fetchSwitchgearFamilies()])
+      .then(([apar, fam]) => {
+        if (cancelled) return;
+        setTypy(Array.isArray(apar) ? apar : []);
+        setRodziny(Array.isArray(fam) ? fam : []);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         setTypy([]);
+        setRodziny([]);
         setBladKatalogu(getCatalogErrorMessage(e));
       });
     return () => {
@@ -116,9 +130,59 @@ export function KreatorPolaSn() {
     [typy],
   );
 
+  // Szablony pola producenta dla wybranej rodziny (producent) + roli (BayKind).
+  // Reużycie Reference Engine (fetchCompleteBayTemplates) — jak kreator GPZ (K5).
+  useEffect(() => {
+    let cancelled = false;
+    if (!dane.manufacturer_ref) {
+      setSzablony([]);
+      return undefined;
+    }
+    fetchCompleteBayTemplates(dane.manufacturer_ref, bayKindZRoli(dane.bay_role))
+      .then((t) => {
+        if (!cancelled) setSzablony(Array.isArray(t) ? t : []);
+      })
+      .catch(() => {
+        if (!cancelled) setSzablony([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dane.manufacturer_ref, dane.bay_role]);
+
+  const opcjeRodzin = useMemo(
+    () =>
+      rodziny.map((r) => ({
+        id: r.switchgear_family_ref,
+        etykieta: `${r.family_name} · ${r.manufacturer_ref}`,
+      })),
+    [rodziny],
+  );
+
+  const opcjeSzablonow = useMemo(
+    () =>
+      szablony
+        .filter((t) => t.switchgear_family_ref === dane.switchgear_family_ref)
+        .map((t) => ({ id: t.template_ref, etykieta: t.notes_pl ?? `Szablon · ${t.manufacturer_ref}` })),
+    [szablony, dane.switchgear_family_ref],
+  );
+
   const zmien = useCallback(<K extends keyof PolaSnFormData>(pole: K, wartosc: PolaSnFormData[K]) => {
     setDane((p) => ({ ...p, [pole]: wartosc }));
   }, []);
+
+  const wybierzRodzine = useCallback(
+    (familyRef: string) => {
+      const family = rodziny.find((r) => r.switchgear_family_ref === familyRef) ?? null;
+      setDane((p) => ({
+        ...p,
+        switchgear_family_ref: family?.switchgear_family_ref ?? null,
+        manufacturer_ref: family?.manufacturer_ref ?? null,
+        bay_template_ref: null, // zmiana rodziny/producenta → inne szablony
+      }));
+    },
+    [rodziny],
+  );
 
   const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
 
@@ -159,6 +223,11 @@ export function KreatorPolaSn() {
       wartosc: kontekst.station_label || (hasSzyne ? 'Wskazana' : 'Brak'),
     },
     { etykieta: T.wierszRola, stan: 'kompletne', wartosc: rolaLabel(dane.bay_role) },
+    {
+      etykieta: T.wierszSzablon,
+      stan: maSzablonProducenta(dane) ? 'kompletne' : 'ostrzezenie',
+      wartosc: maSzablonProducenta(dane) ? 'Powiązany' : 'Zalecany',
+    },
     {
       etykieta: T.wierszAparat,
       stan: dane.catalog_ref ? 'kompletne' : 'brak',
@@ -221,16 +290,49 @@ export function KreatorPolaSn() {
       ) : null}
 
       {krok === 'pole' ? (
-        <KreatorSekcja tytul={T.krokPole} testid="mvd-kreator-pole-konfiguracja">
-          <KreatorInfo>{T.rolaPomoc}</KreatorInfo>
-          <KreatorSiatka kolumny={2}>
-            <PoleWyboru
-              etykieta={T.rola}
-              wartosc={dane.bay_role}
-              onZmiana={(v) => zmien('bay_role', v as RolaPola)}
-              opcje={OPCJE_ROL}
-              testid="mvd-kreator-pole-rola"
-            />
+        <>
+          <KreatorSekcja tytul={T.szablonTytul} testid="mvd-kreator-pole-szablon">
+            <KreatorInfo>{T.rolaPomoc}</KreatorInfo>
+            <KreatorSiatka kolumny={2}>
+              <PoleWyboru
+                etykieta={T.rola}
+                wartosc={dane.bay_role}
+                onZmiana={(v) => zmien('bay_role', v as RolaPola)}
+                opcje={OPCJE_ROL}
+                testid="mvd-kreator-pole-rola"
+              />
+              <PoleTekstowe
+                etykieta={T.nazwa}
+                wartosc={dane.field_name}
+                onZmiana={(v) => zmien('field_name', v)}
+                placeholder={T.nazwaPlaceholder}
+                testid="mvd-kreator-pole-nazwa"
+              />
+            </KreatorSiatka>
+            <KreatorInfo>{T.szablonPomoc}</KreatorInfo>
+            <KreatorSiatka kolumny={2}>
+              <PoleWyboru
+                etykieta={T.rodzina}
+                wartosc={dane.switchgear_family_ref ?? ''}
+                onZmiana={(v) => wybierzRodzine(v)}
+                opcje={[{ id: '', etykieta: T.rodzinaPlaceholder }, ...opcjeRodzin]}
+                testid="mvd-kreator-pole-rodzina"
+              />
+              <PoleWyboru
+                etykieta={T.szablon}
+                wartosc={dane.bay_template_ref ?? ''}
+                onZmiana={(v) => zmien('bay_template_ref', v || null)}
+                opcje={[{ id: '', etykieta: T.szablonPlaceholder }, ...opcjeSzablonow]}
+                testid="mvd-kreator-pole-szablon-wybor"
+              />
+            </KreatorSiatka>
+            {dane.switchgear_family_ref && opcjeSzablonow.length === 0 ? (
+              <KreatorInfo>{T.szablonBrak}</KreatorInfo>
+            ) : null}
+          </KreatorSekcja>
+
+          <KreatorSekcja tytul={T.aparatSekcja} testid="mvd-kreator-pole-aparat-sekcja">
+            <KreatorInfo>{T.typPomoc}</KreatorInfo>
             <PoleWyboru
               etykieta={T.aparat}
               wartosc={dane.apparatus_kind}
@@ -238,28 +340,20 @@ export function KreatorPolaSn() {
               opcje={OPCJE_APARAT}
               testid="mvd-kreator-pole-aparat"
             />
-          </KreatorSiatka>
-          <KreatorInfo>{T.typPomoc}</KreatorInfo>
-          <PoleKatalogu
-            etykieta={T.typKatalog}
-            wartosc={dane.catalog_ref}
-            onZmiana={(v) => zmien('catalog_ref', v)}
-            opcje={opcjeTypow}
-            status={bladKatalogu ? 'error' : 'ready'}
-            placeholder={T.typKatalogPlaceholder}
-            komunikatBledu={bladKatalogu ?? T.typBlad}
-            testid="mvd-kreator-pole-katalog"
-          />
-          {bladDlaPola('catalog_ref') ? <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p> : null}
-          <PoleTekstowe
-            etykieta={T.nazwa}
-            wartosc={dane.field_name}
-            onZmiana={(v) => zmien('field_name', v)}
-            placeholder={T.nazwaPlaceholder}
-            testid="mvd-kreator-pole-nazwa"
-          />
-          {paramReadout}
-        </KreatorSekcja>
+            <PoleKatalogu
+              etykieta={T.typKatalog}
+              wartosc={dane.catalog_ref}
+              onZmiana={(v) => zmien('catalog_ref', v)}
+              opcje={opcjeTypow}
+              status={bladKatalogu ? 'error' : 'ready'}
+              placeholder={T.typKatalogPlaceholder}
+              komunikatBledu={bladKatalogu ?? T.typBlad}
+              testid="mvd-kreator-pole-katalog"
+            />
+            {bladDlaPola('catalog_ref') ? <p className="mvd-pole-blad">{bladDlaPola('catalog_ref')}</p> : null}
+            {paramReadout}
+          </KreatorSekcja>
+        </>
       ) : null}
 
       {krok === 'zapis' ? (

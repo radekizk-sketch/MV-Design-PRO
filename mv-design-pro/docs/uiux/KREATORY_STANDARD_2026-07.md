@@ -53,6 +53,16 @@ Każdy kreator MUSI (FLOW §0.3):
    to 2026-07-19. Egzekwuje `ui_terminology_guard`: skanuje `etykieta:` (rama ui2) i
    banuje IN/OUT/FEEDER/BRANCH/COUPLER w tekstach użytkowych (interpolacje `${…}` są
    kodem, nie tekstem — pomijane).
+8. **Reużycie infrastruktury zamiast równoległej ścieżki (KANON, V12K-058).** Zanim
+   dodasz „surową" konfigurację elementu, sprawdź, czy istnieje wspólna warstwa dostawcy
+   (Reference Engine: szablony pól producentów `SwitchgearFamily`/`CompleteMvBayTemplate`,
+   pickery, `_build_field_spec` z `switchgear_family_ref`/`bay_template_ref`/
+   `manufacturer_ref`/`protection_ref`) używana już przez inne kreatory (GPZ, stacja).
+   Kreator MUSI się do niej podpiąć (mapowanie roli → BayKind → szablon), a strefa
+   ekspercka „surowego" aparatu jest tylko fallbackiem przy braku szablonu. Backend-capability
+   bez punktu wejścia w UI = defekt („no islands”) — uzupełniasz powiązanie, nie budujesz
+   drugiej ścieżki. Precedens: `add_sn_bay` już wołał `_build_field_spec`, ale operacja
+   nie przenosiła referencji producenckich → powiązanie było martwe (G-POLE-R).
 
 ## 3. Procedura przebudowy pojedynczego kreatora (Opcja 1)
 

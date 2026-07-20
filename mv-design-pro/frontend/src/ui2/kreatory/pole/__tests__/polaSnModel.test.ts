@@ -5,6 +5,8 @@ import {
   DANE_DOMYSLNE,
   ROLE_OPCJE,
   aparatLabel,
+  bayKindZRoli,
+  maSzablonProducenta,
   maSzyne,
   rolaLabel,
   walidujFormularz,
@@ -84,5 +86,45 @@ describe('polaSnModel — payload', () => {
     });
     expect(payload.existing_field_ref).toBe('field-9');
     expect(payload.gpz_section_id).toBe('sec-2');
+  });
+
+  it('dołącza powiązanie z szablonem producenta addytywnie (Reference Engine)', () => {
+    const payload = zbudujPayload(
+      dane({
+        switchgear_family_ref: 'fam-1',
+        bay_template_ref: 'tmpl-tr-1',
+        manufacturer_ref: 'ZPUE',
+      }),
+      KONTEKST,
+    );
+    expect(payload).toMatchObject({
+      switchgear_family_ref: 'fam-1',
+      bay_template_ref: 'tmpl-tr-1',
+      manufacturer_ref: 'ZPUE',
+    });
+  });
+
+  it('pomija puste referencje producenckie (exclude_none)', () => {
+    const payload = zbudujPayload(dane(), KONTEKST);
+    expect(payload.switchgear_family_ref).toBeUndefined();
+    expect(payload.bay_template_ref).toBeUndefined();
+    expect(payload.manufacturer_ref).toBeUndefined();
+  });
+});
+
+describe('polaSnModel — szablon producenta (Reference Engine)', () => {
+  it('mapuje rolę pola na BayKind szablonu producenta', () => {
+    expect(bayKindZRoli('IN')).toBe('liniowe_doplywowe');
+    expect(bayKindZRoli('TR')).toBe('transformatorowe');
+    expect(bayKindZRoli('MEASUREMENT')).toBe('pomiarowe');
+    expect(bayKindZRoli('COUPLER')).toBe('sprzeglowe_podluzne');
+    expect(bayKindZRoli('OUT')).toBe('liniowe_odplywowe');
+    expect(bayKindZRoli('FEEDER')).toBe('liniowe_odplywowe');
+    expect(bayKindZRoli('OZE')).toBe('liniowe_odplywowe');
+  });
+
+  it('wykrywa powiązanie z szablonem po bay_template_ref', () => {
+    expect(maSzablonProducenta(dane())).toBe(false);
+    expect(maSzablonProducenta(dane({ bay_template_ref: 'tmpl-1' }))).toBe(true);
   });
 });

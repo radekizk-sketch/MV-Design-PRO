@@ -484,6 +484,10 @@ export interface AddSnBayPayload {
   apparatus_kind?: 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT' | null;
   gpz_section_id?: string | null;
   catalog_binding?: CatalogBindingPayload | null;
+  // V12K-058 (G-POLE-R): powiązanie z szablonem pola producenta (Reference Engine).
+  switchgear_family_ref?: string | null;
+  bay_template_ref?: string | null;
+  manufacturer_ref?: string | null;
 }
 
 export interface ContinueTrunkSegmentSNPayload {

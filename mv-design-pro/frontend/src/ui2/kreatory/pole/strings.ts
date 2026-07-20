@@ -19,6 +19,19 @@ export const POLE_STRINGS = {
   aparat: 'Rodzaj aparatu',
   aparatPomoc: 'Wyłącznik łączy przy zwarciu (pola z 50/51/67); rozłącznik/odłącznik bez zwarcia.',
 
+  szablonTytul: 'Szablon pola producenta',
+  szablonPomoc:
+    'Powiąż pole z gotowym szablonem producenta (rodzina rozdzielnicy → szablon pola). '
+    + 'Szablon wnosi zabezpieczenia i konfigurację zgodnie z kartą producenta — spójnie ze '
+    + 'schematem i koordynacją. Zalecane; przy braku szablonu skonfiguruj aparat ekspercko.',
+  rodzina: 'Rodzina rozdzielnicy',
+  rodzinaPlaceholder: '— wybierz rodzinę producenta —',
+  szablon: 'Szablon pola',
+  szablonPlaceholder: '— wybierz szablon pola —',
+  szablonBrak: 'Brak szablonu dla tej rodziny i roli — skonfiguruj aparat ekspercko poniżej.',
+  aparatSekcja: 'Aparat główny (konfiguracja ekspercka)',
+  wierszSzablon: 'Szablon',
+
   typKatalog: 'Aparat pola z katalogu',
   typKatalogPlaceholder: '— wybierz aparat SN —',
   typBlad: 'Nie udało się pobrać katalogu aparatów SN.',

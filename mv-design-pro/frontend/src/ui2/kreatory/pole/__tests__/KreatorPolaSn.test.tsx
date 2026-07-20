@@ -46,12 +46,20 @@ vi.mock('../../../../ui/navigation/routes', () => ({
   navigateToSld: () => navigateToSldMock(),
 }));
 
+const fetchBayTemplatesMock = vi.fn();
+
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
   fetchMvApparatusTypes: () =>
     Promise.resolve([
       { id: 'app-1', name: 'Wyłącznik SN', device_kind: 'BREAKER', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
     ]),
+  fetchSwitchgearFamilies: () =>
+    Promise.resolve([
+      { switchgear_family_ref: 'fam-1', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE' },
+    ]),
+  fetchCompleteBayTemplates: (manufacturerRef?: string | null, bayKind?: string | null) =>
+    fetchBayTemplatesMock(manufacturerRef, bayKind),
 }));
 
 async function pick() {
@@ -70,6 +78,8 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
+    fetchBayTemplatesMock.mockReset();
+    fetchBayTemplatesMock.mockResolvedValue([]);
   });
 
   afterEach(() => cleanup());
@@ -95,6 +105,46 @@ describe('KreatorPolaSn — realna ścieżka', () => {
       );
     });
     expect(closeFormMock).toHaveBeenCalled();
+  });
+
+  it('wiąże pole z szablonem producenta (rodzina → BayKind roli → szablon)', async () => {
+    fetchBayTemplatesMock.mockResolvedValue([
+      {
+        template_ref: 'tmpl-tr-1',
+        manufacturer_ref: 'ZPUE',
+        switchgear_family_ref: 'fam-1',
+        notes_pl: 'Pole transformatorowe 630A',
+      },
+    ]);
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorPolaSn />);
+    await pick();
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rola'), 'TR');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-rodzina'), 'fam-1');
+
+    // BayKind wyprowadzony z roli TR = transformatorowe.
+    await waitFor(() => {
+      expect(fetchBayTemplatesMock).toHaveBeenCalledWith('ZPUE', 'transformatorowe');
+    });
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-pole-szablon-wybor')).toBeInTheDocument();
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-pole-szablon-wybor'), 'tmpl-tr-1');
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-pole-zapisz'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'add_sn_bay',
+        expect.objectContaining({
+          bay_role: 'TR',
+          switchgear_family_ref: 'fam-1',
+          manufacturer_ref: 'ZPUE',
+          bay_template_ref: 'tmpl-tr-1',
+        }),
+      );
+    });
   });
 
   it('uczciwy stan zerowy: bez szyny/stacji zapis zablokowany', async () => {

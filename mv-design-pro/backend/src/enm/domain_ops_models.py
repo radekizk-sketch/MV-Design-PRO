@@ -952,7 +952,22 @@ class AddSnBayPayload(_FrozenBase):
     """Sekcja GPZ, jeśli pole dotyczy konkretnej sekcji."""
 
     catalog_binding: dict[str, Any] | None = None
-    """Kanoniczne powiązanie katalogowe aparatu SN."""
+    """Kanoniczne powiązanie katalogowe aparatu SN (fallback ekspercki)."""
+
+    # V12K-058 (G-POLE-R): powiązanie pola z szablonem producenta — parytet z kreatorem
+    # stacji/GPZ (append_station_on_endpoint, add_grid_source_sn). Refy trafiają na
+    # field_spec przez _build_field_spec; protection wywodzi backend z szablonu.
+    switchgear_family_ref: str | None = None
+    """Rodzina rozdzielnicy producenta (Reference Engine)."""
+
+    bay_template_ref: str | None = None
+    """Szablon pola producenta (CompleteMvBayTemplate) dla roli/BayKind."""
+
+    manufacturer_ref: str | None = None
+    """Producent (metadana szablonu/rodziny)."""
+
+    protection_ref: str | None = None
+    """Referencja zabezpieczenia polowego (gdy jawnie wskazana)."""
 
 
 class ConverterSourceFieldPayload(_FrozenBase):

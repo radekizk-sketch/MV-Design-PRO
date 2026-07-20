@@ -1508,6 +1508,28 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     catalog_ref = _catalog_item_id(catalog_binding)
     branch_type = _sn_bay_branch_type(apparatus_kind)
 
+    # V12K-058 (G-POLE-R): powiązania producenckie pola (szablon/rodzina/producent/
+    # zabezpieczenie) — trafiają na field_spec przez _build_field_spec (parytet ze stacją/
+    # GPZ). Reużycie infrastruktury Reference Engine zamiast równoległej ścieżki.
+    def _clean_ref(value: object) -> str | None:
+        return value.strip() if isinstance(value, str) and value.strip() else None
+
+    switchgear_family_ref = _clean_ref(payload.get("switchgear_family_ref"))
+    bay_template_ref = _clean_ref(payload.get("bay_template_ref"))
+    manufacturer_ref = _clean_ref(payload.get("manufacturer_ref"))
+    protection_ref = _clean_ref(payload.get("protection_ref"))
+    # Tylko podane refy (bez clobber istniejących wartości na None przy re-konfiguracji).
+    producer_refs = {
+        key: value
+        for key, value in {
+            "protection_ref": protection_ref,
+            "bay_template_ref": bay_template_ref,
+            "switchgear_family_ref": switchgear_family_ref,
+            "manufacturer_ref": manufacturer_ref,
+        }.items()
+        if value
+    }
+
     new_enm = copy.deepcopy(enm)
     existing_equipment_refs = (
         _field_equipment_refs(new_enm, field_ref) if existing_field_ref else []
@@ -1554,6 +1576,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                     "bay_role": bay_role,
                     "equipment_refs": existing_equipment_refs,
                     "gpz_section_id": gpz_section_id if isinstance(gpz_section_id, str) else None,
+                    **producer_refs,
                     "meta": {
                         **(
                             existing_field.get("meta")
@@ -1662,6 +1685,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                 "gpz_section_id": gpz_section_id if isinstance(gpz_section_id, str) else None,
                 "equipment_refs": [apparatus_ref],
                 "tags": list(existing_tags) if isinstance(existing_tags, list) else [],
+                **producer_refs,
                 "meta": {
                     **(existing_meta if isinstance(existing_meta, dict) else {}),
                     "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,
@@ -1680,6 +1704,10 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             bus_ref=bus_ref,
             gpz_section_id=gpz_section_id if isinstance(gpz_section_id, str) else None,
             equipment_refs=[apparatus_ref],
+            protection_ref=protection_ref,
+            bay_template_ref=bay_template_ref,
+            switchgear_family_ref=switchgear_family_ref,
+            manufacturer_ref=manufacturer_ref,
             tags=list(payload.get("tags") or []),
             meta={
                 "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,

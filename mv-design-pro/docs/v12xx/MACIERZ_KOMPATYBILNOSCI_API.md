@@ -147,10 +147,12 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `POST /api/import/xlsx` | v12xx | aktywny | 2026-04-24 | - | Import XLSX do modelu. | xlsx import tests | Architekt migracji |
 | `POST /api/projects` | v12xx | aktywny | 2026-04-24 | - | Utworzenie projektu. | project API tests | Architekt API |
 | `POST /api/proof/sc-asymmetrical/pack` | v12xx | aktywny | 2026-04-24 | - | Proof-pack dla zwarc asymetrycznych. | asym proof tests | Architekt proof |
+| `POST /api/proof/sc3f/pack` | v12xx | aktywny | 2026-07-19 | - | Proof-pack dla zwarcia symetrycznego 3F z fizyka serwerowa ze snapshotu ENM i rozbiciem maszynowym mu/q/i_b dla maszyn wirujacych. | sc3f pack tests, proof pack API tests | Architekt proof |
 | `POST /api/protection-engine/v1/curve-time` | legacy | usuniety | 2026-04-24 | 2026-04-25 | Stary endpoint czasu krzywej zabezpieczenia zostal odciety z `api.main`; obliczenia zabezpieczeniowe pozostaja w domenie i raportach kanonicznych. | canonical only API tests | Projektant zabezpieczen |
 | `POST /api/protection-engine/v1/execute` | legacy | usuniety | 2026-04-24 | 2026-04-25 | Stary endpoint wykonania silnika zabezpieczen zostal odciety z `api.main`; publiczny tor nie moze tworzyc drugiej prawdy wynikow EAZ. | canonical only API tests | Projektant zabezpieczen |
 | `POST /api/protection-engine/v1/validate` | legacy | usuniety | 2026-04-24 | 2026-04-25 | Stary endpoint walidacji silnika zabezpieczen zostal odciety z `api.main`; walidacje publiczne ida przez wspolny kontrakt severity i gotowosc. | canonical only API tests | Projektant zabezpieczen |
 | `POST /api/reference-patterns/run` | v12xx | aktywny | 2026-04-24 | - | Uruchomienie wzorca referencyjnego. | reference pattern tests | Architekt testow |
+| `POST /api/solver/shunt-compensator-preview` | v12xx | aktywny | 2026-07-18 | - | Podglad baterii kondensatorow SN (Q, prad, moc) z backendu bez zmiany frozen result; zasila kreator kompensacji. | shunt compensator preview tests | Architekt solverow |
 | `POST /api/study-cases` | v12xx | aktywny | 2026-04-24 | - | Utworzenie przypadku. | study case tests | Architekt domeny |
 | `POST /api/study-cases/activate` | v12xx | aktywny | 2026-04-24 | - | Aktywacja przypadku. | study case tests | Architekt domeny |
 | `POST /api/study-cases/compare` | v12xx | aktywny | 2026-04-24 | - | Porownanie przypadkow. | comparison tests | Architekt wynikow |

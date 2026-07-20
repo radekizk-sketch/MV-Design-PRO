@@ -230,10 +230,12 @@ class TestAddGridSourceSNDuplicate:
         assert not result2.get("error"), result2.get("error")
         snapshot2 = result2["snapshot"]
         assert _count(snapshot2, "sources") == 2
-        assert len([s for s in snapshot2.get("substations", []) if s.get("station_type") == "gpz"]) == 2
+        assert (
+            len([s for s in snapshot2.get("substations", []) if s.get("station_type") == "gpz"])
+            == 2
+        )
         source_ids = {
-            (source.get("meta") or {}).get("source_id")
-            for source in snapshot2.get("sources", [])
+            (source.get("meta") or {}).get("source_id") for source in snapshot2.get("sources", [])
         }
         assert source_ids == {"gpz-a", "gpz-b"}
 
@@ -528,7 +530,9 @@ class TestInsertStationCreatesStructure:
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         inserted_station = next(
-            sub for sub in result["snapshot"].get("substations", []) if sub.get("ref_id", "").startswith("stn/")
+            sub
+            for sub in result["snapshot"].get("substations", [])
+            if sub.get("ref_id", "").startswith("stn/")
         )
         assert inserted_station["name"] == "Stacja S17 K PV+cos phi reg"
 
@@ -567,6 +571,58 @@ class TestNnFieldAdapters:
         assert field_specs_after[-1]["field_ref"] == result["changes"]["created_element_ids"][0]
         assert field_specs_after[-1]["bay_role"] == "OUT"
         assert field_specs_after[-1]["meta"]["apparatus_kind"] == "BREAKER"
+
+    def test_add_sn_bay_binds_producer_bay_template(self):
+        """G-POLE-R (V12K-058): pole SN wiąże szablon pola producenta (parytet ze stacją/GPZ).
+
+        Refy producenta trafiają na field_spec (nie tylko surowy aparat) — koniec
+        równoległej, płytkiej ścieżki.
+        """
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        bus_ref = substation["bus_refs"][0]
+
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": bus_ref,
+                "station_ref": substation["ref_id"],
+                "bay_role": "OUT",
+                "field_name": "Pole odpływowe (szablon producenta)",
+                "switchgear_family_ref": "abb_unigear_zs1",
+                "bay_template_ref": "abb_unigear_zs1__liniowe_odplywowe",
+                "manufacturer_ref": "abb",
+                "protection_ref": "rel_50_51_67",
+            },
+        )
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        substation_after = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])
+        spec = substation_after["meta"]["field_specs"][-1]
+        assert spec["bay_template_ref"] == "abb_unigear_zs1__liniowe_odplywowe"
+        assert spec["switchgear_family_ref"] == "abb_unigear_zs1"
+        assert spec["manufacturer_ref"] == "abb"
+        assert spec["protection_ref"] == "rel_50_51_67"
+
+    def test_add_sn_bay_without_producer_refs_stays_backward_compatible(self):
+        """Bez refów producenta field_spec nie zyskuje kluczy producenckich (determinizm)."""
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "OUT",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert "bay_template_ref" not in spec
+        assert "switchgear_family_ref" not in spec
 
     def test_add_nn_outgoing_field_uses_station_meta_instead_of_legacy_bays(self):
         _, snapshot = _build_gpz_plus_segments(1)
@@ -879,9 +935,9 @@ class TestNnFieldAdapters:
         err = result.get("error_code")
         # Auto-resolve dziala gdy NIE jest block_transformer_missing.
         # Mozliwe inne errors (catalog, voltage_mismatch) sa OK.
-        assert err != "generator.block_transformer_missing", (
-            f"V12K-022 auto-resolve nie zadzialal: {err}"
-        )
+        assert (
+            err != "generator.block_transformer_missing"
+        ), f"V12K-022 auto-resolve nie zadzialal: {err}"
 
     def test_v12k_022_block_transformer_ambiguous_with_multiple_trs(self):
         """V12K-022: station with multiple transformers -> ambiguous error."""
@@ -1242,10 +1298,7 @@ class TestPVBESSTransformerGate:
         )
         assert result_station.get("snapshot") is not None, f"Error: {result_station.get('error')}"
         s = result_station["snapshot"]
-        voltage_by_bus = {
-            bus["ref_id"]: bus.get("voltage_kv", 999)
-            for bus in s.get("buses", [])
-        }
+        voltage_by_bus = {bus["ref_id"]: bus.get("voltage_kv", 999) for bus in s.get("buses", [])}
         station = next(
             candidate
             for candidate in s["substations"]
@@ -1255,9 +1308,7 @@ class TestPVBESSTransformerGate:
         assert station.get("transformer_refs"), "Fixture musi mieć transformator stacyjny"
 
         nn_bus_refs = [
-            ref
-            for ref in station.get("bus_refs", [])
-            if voltage_by_bus.get(ref, 999) < 1
+            ref for ref in station.get("bus_refs", []) if voltage_by_bus.get(ref, 999) < 1
         ]
         assert nn_bus_refs, "Fixture musi mieć szynę nN stacji"
 

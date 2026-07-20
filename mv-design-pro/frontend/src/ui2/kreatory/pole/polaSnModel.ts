@@ -11,11 +11,39 @@ import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalog
 export type RolaPola = 'IN' | 'OUT' | 'FEEDER' | 'TR' | 'COUPLER' | 'MEASUREMENT' | 'OZE';
 export type RodzajAparatu = 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT';
 
+/** Rodzaj pola szablonu producenta (BayKind) — filtruje szablony pól. */
+export type RodzajPolaSzablonu =
+  | 'liniowe_doplywowe'
+  | 'liniowe_odplywowe'
+  | 'transformatorowe'
+  | 'pomiarowe'
+  | 'sprzeglowe_podluzne';
+
+/** Rola pola → BayKind szablonu producenta (Reference Engine). */
+export function bayKindZRoli(role: RolaPola): RodzajPolaSzablonu {
+  switch (role) {
+    case 'IN':
+      return 'liniowe_doplywowe';
+    case 'TR':
+      return 'transformatorowe';
+    case 'MEASUREMENT':
+      return 'pomiarowe';
+    case 'COUPLER':
+      return 'sprzeglowe_podluzne';
+    default:
+      return 'liniowe_odplywowe'; // OUT / FEEDER / OZE
+  }
+}
+
 export interface PolaSnFormData {
   bay_role: RolaPola;
   apparatus_kind: RodzajAparatu;
   catalog_ref: string | null;
   field_name: string;
+  // V12K-058 (G-POLE-R): powiązanie z szablonem pola producenta (Reference Engine).
+  switchgear_family_ref: string | null;
+  bay_template_ref: string | null;
+  manufacturer_ref: string | null;
 }
 
 export interface BladPola {
@@ -36,6 +64,9 @@ export const DANE_DOMYSLNE: PolaSnFormData = {
   apparatus_kind: 'BREAKER',
   catalog_ref: null,
   field_name: '',
+  switchgear_family_ref: null,
+  bay_template_ref: null,
+  manufacturer_ref: null,
 };
 
 /**
@@ -99,5 +130,14 @@ export function zbudujPayload(
     apparatus_kind: data.apparatus_kind,
     gpz_section_id: kontekst.gpz_section_id?.trim() || undefined,
     catalog_binding: normalizeCatalogBinding(data.catalog_ref, 'APARAT_SN') ?? undefined,
+    // Powiązanie z szablonem producenta (Reference Engine) — addytywnie (exclude_none).
+    switchgear_family_ref: data.switchgear_family_ref?.trim() || undefined,
+    bay_template_ref: data.bay_template_ref?.trim() || undefined,
+    manufacturer_ref: data.manufacturer_ref?.trim() || undefined,
   };
+}
+
+/** Kompletność powiązania producenckiego (szablon pola). */
+export function maSzablonProducenta(data: PolaSnFormData): boolean {
+  return Boolean(data.bay_template_ref?.trim());
 }
