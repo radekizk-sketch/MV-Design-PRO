@@ -15,7 +15,6 @@ from network_model.solvers.power_flow_inverter import (
     lfsm_factor,
 )
 
-
 # --------------------------------------------------------- most języka (Part A)
 
 
@@ -74,6 +73,34 @@ def test_active_qu_slope_attaches_control() -> None:
         _snapshot({"control_mode": "Q_OD_U", "qu_slope_pu_per_pu": 2.0}), base_mva=100.0
     )
     assert _graph_id_from_ref("bus-oze") in out
+
+
+def test_qu_deadband_reaches_control_from_meta() -> None:
+    # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) z meta → InverterControl.
+    out = _build_converter_control_by_node(
+        _snapshot(
+            {
+                "control_mode": "Q_OD_U",
+                "qu_slope_pu_per_pu": 4.0,
+                "qu_deadband_low_pu": 0.95,
+                "qu_deadband_high_pu": 1.05,
+            }
+        ),
+        base_mva=100.0,
+    )
+    ctrl = out[_graph_id_from_ref("bus-oze")]
+    assert ctrl.mode is InverterMode.Q_U
+    assert ctrl.qu_deadband_low_pu == 0.95
+    assert ctrl.qu_deadband_high_pu == 1.05
+
+
+def test_qu_deadband_defaults_to_point_without_meta() -> None:
+    # Bez pasma → domyślny punkt 1.0/1.0 (reakcja natychmiastowa; determinizm).
+    ctrl = _build_converter_control_by_node(
+        _snapshot({"control_mode": "Q_OD_U", "qu_slope_pu_per_pu": 4.0}), base_mva=100.0
+    )[_graph_id_from_ref("bus-oze")]
+    assert ctrl.qu_deadband_low_pu == 1.0
+    assert ctrl.qu_deadband_high_pu == 1.0
 
 
 def test_unity_or_missing_is_not_attached_determinism() -> None:

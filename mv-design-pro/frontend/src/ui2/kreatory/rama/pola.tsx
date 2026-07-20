@@ -95,6 +95,7 @@ export interface PoleLiczboweProps {
   onZmiana: (wartosc: number | null) => void;
   krok?: number;
   min?: number;
+  max?: number;
   placeholder?: string;
   wymagane?: boolean;
   blad?: string;
@@ -110,6 +111,7 @@ export function PoleLiczbowe({
   onZmiana,
   krok,
   min,
+  max,
   placeholder,
   wymagane,
   blad,
@@ -125,6 +127,7 @@ export function PoleLiczbowe({
         value={wartosc === null ? '' : wartosc}
         step={krok}
         min={min}
+        max={max}
         placeholder={placeholder ?? 'Wprowadź wartość'}
         disabled={wylaczone}
         aria-invalid={blad ? 'true' : undefined}

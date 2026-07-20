@@ -119,6 +119,10 @@ export interface OzeFormData {
   // pasywny (phantom). cos_phi dla STALY_COS_PHI; nachylenie Q(U) dla Q_OD_U.
   cos_phi_target: number | null;
   qu_slope_pu_per_pu: number | null;
+  // V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U] — zakres, w którym Q=0.
+  // Bez niego charakterystyka Q(U) reagowała natychmiast (punkt 1.0/1.0) — forward-phantom.
+  qu_deadband_low_pu: number | null;
+  qu_deadband_high_pu: number | null;
   power_setpoint_mw: number | null;
   q_min_mvar: number | null;
   q_max_mvar: number | null;
@@ -149,6 +153,8 @@ export const DANE_DOMYSLNE: OzeFormData = {
   control_mode: 'STALY_COS_PHI',
   cos_phi_target: null,
   qu_slope_pu_per_pu: null,
+  qu_deadband_low_pu: null,
+  qu_deadband_high_pu: null,
   power_setpoint_mw: null,
   q_min_mvar: null,
   q_max_mvar: null,
@@ -196,6 +202,22 @@ export function walidujFormularz(data: OzeFormData, kontekst: KontekstOze): Blad
   const qMax = data.q_max_mvar;
   if (qMin !== null && qMax !== null && qMin > qMax) {
     errors.push({ field: 'q_max_mvar', message: 'Zakres mocy biernej: Q min nie może przekraczać Q max.' });
+  }
+  // V12K-063 (kontrola po code-review): cosφ musi mieścić się w (0; 1] — poza tym zakresem
+  // solver zaokrągla wartość (cosφ>1 → 1 = tryb pasywny), więc kontrolka byłaby phantomem.
+  if (data.control_mode === 'STALY_COS_PHI' && data.cos_phi_target !== null) {
+    if (data.cos_phi_target <= 0 || data.cos_phi_target > 1) {
+      errors.push({ field: 'cos_phi_target', message: 'Współczynnik mocy cosφ musi mieścić się w zakresie (0; 1].' });
+    }
+  }
+  // V12K-064: napięciowe pasmo nieczułości Q(U) — dolna granica nie może przekraczać górnej
+  // (solver odrzuca low>high). Puste pola przyjmują domyślne 1,0 pu.
+  if (data.control_mode === 'Q_OD_U') {
+    const dbLow = data.qu_deadband_low_pu ?? 1.0;
+    const dbHigh = data.qu_deadband_high_pu ?? 1.0;
+    if (dbLow > dbHigh) {
+      errors.push({ field: 'qu_deadband_high_pu', message: 'Pasmo Q(U): napięcie dolne nie może przekraczać górnego.' });
+    }
   }
   if (data.source_technology === 'BESS') {
     const socMin = data.soc_min_percent;
@@ -277,6 +299,10 @@ export function zbudujPayload(
       data.control_mode === 'STALY_COS_PHI' ? data.cos_phi_target ?? undefined : undefined,
     qu_slope_pu_per_pu:
       data.control_mode === 'Q_OD_U' ? data.qu_slope_pu_per_pu ?? undefined : undefined,
+    qu_deadband_low_pu:
+      data.control_mode === 'Q_OD_U' ? data.qu_deadband_low_pu ?? undefined : undefined,
+    qu_deadband_high_pu:
+      data.control_mode === 'Q_OD_U' ? data.qu_deadband_high_pu ?? undefined : undefined,
     power_setpoint_mw: pSetpoint,
     q_min_mvar: qMin,
     q_max_mvar: qMax,
@@ -300,6 +326,8 @@ export function zbudujPayload(
 export const SUGEROWANE = {
   cosPhi: 0.95, // ±0.95 typowe wymaganie NC RfG dla modułów typu B/C
   quSlopePuPerPu: 4.0, // nachylenie Q(U) ~2–5 (statyzm napięciowo-jałowy)
+  quDeadbandLowPu: 0.95, // dolna granica napięciowego pasma nieczułości Q(U)
+  quDeadbandHighPu: 1.05, // górna granica napięciowego pasma nieczułości Q(U)
   pfDroopPercent: 5.0, // statyzm P(f) 5% (typ. 2–12% wg operatora)
   pfDeadbandHz: 0.2, // LFSM-O od 50.2 Hz (pasmo 200 mHz)
   socMinPercent: 10,

@@ -163,6 +163,8 @@ def test_add_converter_source_persists_reactive_regulation_on_generator_meta() -
             "control_mode": "STALY_COS_PHI",
             "cos_phi": 0.95,
             "qu_slope_pu_per_pu": 4.0,
+            "qu_deadband_low_pu": 0.95,
+            "qu_deadband_high_pu": 1.05,
             "frequency_droop_percent": 5.0,
             "lfsm_deadband_hz": 0.2,
             "power_setpoint_mw": 0.5,
@@ -187,6 +189,8 @@ def test_add_converter_source_persists_reactive_regulation_on_generator_meta() -
     meta = result["snapshot"]["generators"][0]["meta"]
     assert meta["cos_phi"] == 0.95
     assert meta["qu_slope_pu_per_pu"] == 4.0
+    assert meta["qu_deadband_low_pu"] == 0.95
+    assert meta["qu_deadband_high_pu"] == 1.05
     assert meta["frequency_droop_percent"] == 5.0
     assert meta["lfsm_deadband_hz"] == 0.2
     EnergyNetworkModel.model_validate(result["snapshot"])

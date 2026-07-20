@@ -997,6 +997,11 @@ class AddConverterSourcePayload(_FrozenBase):
     # V12K-063 (G-OZE-B3): nachylenie Q(U) [pu Q na pu U] — wartość rządząca trybem Q_OD_U;
     # bez niej wybór trybu Q(U) był pasywny (phantom). Konsumowany przez kanoniczny PF.
     qu_slope_pu_per_pu: float | None = None
+    # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości charakterystyki Q(U) [pu U] —
+    # zakres napięcia, w którym Q=0 (NC RfG). Brak → domyślnie punkt 1.0/1.0 (reakcja
+    # natychmiastowa). Konsumowany przez kanoniczny PF falownika (q_from_voltage).
+    qu_deadband_low_pu: float | None = None
+    qu_deadband_high_pu: float | None = None
     # V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn na %f] — regulacja mocy czynnej od
     # częstotliwości; realnie konsumowany przez kanoniczny PF falownika (lfsm_droop_pct).
     frequency_droop_percent: float | None = None

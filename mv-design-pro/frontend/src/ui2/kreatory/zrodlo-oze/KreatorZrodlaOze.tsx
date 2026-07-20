@@ -442,22 +442,50 @@ export function KreatorZrodlaOze() {
                 onZmiana={(v) => zmien('cos_phi_target', v)}
                 krok={0.01}
                 min={0}
+                max={1}
                 placeholder={`Sugerowane: ${SUGEROWANE.cosPhi}`}
                 pomoc={T.cosPhiCelPomoc}
+                blad={bladDlaPola('cos_phi_target')}
                 testid="mvd-kreator-oze-cosphi"
               />
             ) : null}
             {dane.control_mode === 'Q_OD_U' ? (
-              <PoleLiczbowe
-                etykieta={T.quNachylenie}
-                wartosc={dane.qu_slope_pu_per_pu}
-                onZmiana={(v) => zmien('qu_slope_pu_per_pu', v)}
-                krok={0.5}
-                min={0}
-                placeholder={`Sugerowane: ${SUGEROWANE.quSlopePuPerPu}`}
-                pomoc={T.quNachyleniePomoc}
-                testid="mvd-kreator-oze-qu-slope"
-              />
+              <>
+                <PoleLiczbowe
+                  etykieta={T.quNachylenie}
+                  wartosc={dane.qu_slope_pu_per_pu}
+                  onZmiana={(v) => zmien('qu_slope_pu_per_pu', v)}
+                  krok={0.5}
+                  min={0}
+                  placeholder={`Sugerowane: ${SUGEROWANE.quSlopePuPerPu}`}
+                  pomoc={T.quNachyleniePomoc}
+                  testid="mvd-kreator-oze-qu-slope"
+                />
+                <KreatorSiatka kolumny={2}>
+                  <PoleLiczbowe
+                    etykieta={T.quPasmoDol}
+                    jednostka="pu"
+                    wartosc={dane.qu_deadband_low_pu}
+                    onZmiana={(v) => zmien('qu_deadband_low_pu', v)}
+                    krok={0.01}
+                    min={0}
+                    placeholder={`Sugerowane: ${SUGEROWANE.quDeadbandLowPu}`}
+                    pomoc={T.quPasmoPomoc}
+                    testid="mvd-kreator-oze-qu-db-low"
+                  />
+                  <PoleLiczbowe
+                    etykieta={T.quPasmoGora}
+                    jednostka="pu"
+                    wartosc={dane.qu_deadband_high_pu}
+                    onZmiana={(v) => zmien('qu_deadband_high_pu', v)}
+                    krok={0.01}
+                    min={0}
+                    placeholder={`Sugerowane: ${SUGEROWANE.quDeadbandHighPu}`}
+                    blad={bladDlaPola('qu_deadband_high_pu')}
+                    testid="mvd-kreator-oze-qu-db-high"
+                  />
+                </KreatorSiatka>
+              </>
             ) : null}
             {trybQWymagaWartosci(dane) ? (
               <KreatorInfo>{T.regulacjaPasywnaOstrzezenie}</KreatorInfo>
@@ -499,7 +527,7 @@ export function KreatorZrodlaOze() {
                 pomoc={T.statyzmPfPomoc}
                 testid="mvd-kreator-oze-statyzm"
               />
-              {dane.frequency_droop_percent !== null ? (
+              {dane.frequency_droop_percent ? (
                 <PoleLiczbowe
                   etykieta={T.pfDeadband}
                   jednostka="Hz"

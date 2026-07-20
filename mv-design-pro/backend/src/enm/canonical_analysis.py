@@ -1294,6 +1294,14 @@ def _build_converter_control_by_node(
             params["cosphi"] = cosphi
         if qu_slope is not None:
             params["qu_slope_pu_per_pu"] = qu_slope
+            # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U] — zakres, w którym
+            # Q=0 (NC RfG). Brak → domyślny punkt 1.0/1.0 (reakcja natychmiastowa).
+            qu_db_low = _oze_opt_float(meta.get("qu_deadband_low_pu"))
+            qu_db_high = _oze_opt_float(meta.get("qu_deadband_high_pu"))
+            if qu_db_low is not None:
+                params["qu_deadband_low_pu"] = qu_db_low
+            if qu_db_high is not None:
+                params["qu_deadband_high_pu"] = qu_db_high
         if lfsm_droop is not None:
             params["lfsm_droop_pct"] = lfsm_droop
             lfsm_deadband = _oze_opt_float(meta.get("lfsm_deadband_hz"))

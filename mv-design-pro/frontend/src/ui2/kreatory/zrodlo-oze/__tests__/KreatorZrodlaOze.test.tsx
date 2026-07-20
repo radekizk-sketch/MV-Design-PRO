@@ -124,9 +124,11 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     expect(screen.getByTestId('mvd-kreator-oze-cosphi')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-kreator-oze-qu-slope')).not.toBeInTheDocument();
 
-    // Zmiana trybu na Q(U) → pole nachylenia, znika pole cosφ.
+    // Zmiana trybu na Q(U) → pole nachylenia + napięciowe pasmo nieczułości, znika pole cosφ.
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-tryb'), 'Q_OD_U');
     expect(screen.getByTestId('mvd-kreator-oze-qu-slope')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-kreator-oze-qu-db-low')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-kreator-oze-qu-db-high')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-kreator-oze-cosphi')).not.toBeInTheDocument();
 
     // Pasmo nieczułości P(f) pojawia się dopiero po podaniu statyzmu.

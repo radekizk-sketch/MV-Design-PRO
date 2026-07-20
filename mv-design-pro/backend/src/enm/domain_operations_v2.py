@@ -2175,6 +2175,9 @@ def _resolve_converter_defaults(
                 # brak → unity/0 → brak wpływu na PF (determinizm zachowany).
                 "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
                 "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+                # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U]; brak → 1.0/1.0.
+                "qu_deadband_low_pu": _as_float(payload.get("qu_deadband_low_pu")),
+                "qu_deadband_high_pu": _as_float(payload.get("qu_deadband_high_pu")),
                 # V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn/%f]; brak/0 → brak wpływu na PF
                 # (aktywuje się przy odchyłce częstotliwości studium; determinizm przy 50 Hz).
                 "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
@@ -2209,6 +2212,9 @@ def _resolve_converter_defaults(
                 ),
                 "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
                 "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+                # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U]; brak → 1.0/1.0.
+                "qu_deadband_low_pu": _as_float(payload.get("qu_deadband_low_pu")),
+                "qu_deadband_high_pu": _as_float(payload.get("qu_deadband_high_pu")),
                 # V12K-062 (G-OZE-B): statyzm P(f)/LFSM; magazyn może podnosić P poniżej f0
                 # (LFSM-U) — allow_increase. Brak/0 → brak wpływu na PF.
                 "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
@@ -2243,6 +2249,9 @@ def _resolve_converter_defaults(
             # V12K-051 (G-OZE-PF): docelowy cosφ + nachylenie Q(U); brak → brak wpływu.
             "cos_phi": _first_number(payload.get("cos_phi"), materialized_params.get("cosphi")),
             "qu_slope_pu_per_pu": _as_float(payload.get("qu_slope_pu_per_pu")),
+            # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U]; brak → 1.0/1.0.
+            "qu_deadband_low_pu": _as_float(payload.get("qu_deadband_low_pu")),
+            "qu_deadband_high_pu": _as_float(payload.get("qu_deadband_high_pu")),
             # V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn/%f]; brak/0 → brak wpływu na PF.
             "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
             "lfsm_deadband_hz": _as_float(payload.get("lfsm_deadband_hz")),

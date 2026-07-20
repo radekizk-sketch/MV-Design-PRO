@@ -94,6 +94,43 @@ describe('zrodloOzeModel — walidacja', () => {
     const errs = walidujFormularz(dane({ q_min_mvar: 0.5, q_max_mvar: 0.1 }), KONTEKST);
     expect(errs.some((e) => e.field === 'q_max_mvar')).toBe(true);
   });
+  it('cosφ poza (0;1] = błąd (tylko dla trybu stałego cosφ)', () => {
+    expect(
+      walidujFormularz(dane({ control_mode: 'STALY_COS_PHI', cos_phi_target: 1.5 }), KONTEKST).some(
+        (e) => e.field === 'cos_phi_target',
+      ),
+    ).toBe(true);
+    expect(
+      walidujFormularz(dane({ control_mode: 'STALY_COS_PHI', cos_phi_target: 0 }), KONTEKST).some(
+        (e) => e.field === 'cos_phi_target',
+      ),
+    ).toBe(true);
+    // cosφ w zakresie = OK; inny tryb nie waliduje cosφ.
+    expect(
+      walidujFormularz(dane({ control_mode: 'STALY_COS_PHI', cos_phi_target: 0.95 }), KONTEKST).some(
+        (e) => e.field === 'cos_phi_target',
+      ),
+    ).toBe(false);
+    expect(
+      walidujFormularz(dane({ control_mode: 'Q_OD_U', cos_phi_target: 1.5, qu_slope_pu_per_pu: 4 }), KONTEKST).some(
+        (e) => e.field === 'cos_phi_target',
+      ),
+    ).toBe(false);
+  });
+  it('pasmo Q(U): napięcie dolne > górne = błąd (tylko dla trybu Q(U))', () => {
+    expect(
+      walidujFormularz(
+        dane({ control_mode: 'Q_OD_U', qu_slope_pu_per_pu: 4, qu_deadband_low_pu: 1.05, qu_deadband_high_pu: 0.95 }),
+        KONTEKST,
+      ).some((e) => e.field === 'qu_deadband_high_pu'),
+    ).toBe(true);
+    expect(
+      walidujFormularz(
+        dane({ control_mode: 'Q_OD_U', qu_slope_pu_per_pu: 4, qu_deadband_low_pu: 0.95, qu_deadband_high_pu: 1.05 }),
+        KONTEKST,
+      ).some((e) => e.field === 'qu_deadband_high_pu'),
+    ).toBe(false);
+  });
   it('BESS SOC poza 0–100 lub min>max = błąd', () => {
     const errs = walidujFormularz(
       dane({ source_technology: 'BESS', soc_min_percent: 80, soc_max_percent: 20 }),
@@ -186,13 +223,31 @@ describe('zrodloOzeModel — payload add_converter_source (kontrakt 1:1)', () =>
     expect(cosPhi.qu_slope_pu_per_pu).toBeUndefined();
 
     const qu = zbudujPayload(
-      dane({ control_mode: 'Q_OD_U', cos_phi_target: 0.95, qu_slope_pu_per_pu: 4 }),
+      dane({
+        control_mode: 'Q_OD_U',
+        cos_phi_target: 0.95,
+        qu_slope_pu_per_pu: 4,
+        qu_deadband_low_pu: 0.95,
+        qu_deadband_high_pu: 1.05,
+      }),
       KONTEKST,
       KONWERTER,
       null,
     );
     expect(qu.qu_slope_pu_per_pu).toBe(4);
+    expect(qu.qu_deadband_low_pu).toBe(0.95);
+    expect(qu.qu_deadband_high_pu).toBe(1.05);
     expect(qu.cos_phi).toBeUndefined();
+
+    // Pasmo Q(U) pomijane poza trybem Q(U) (zero fabrykacji).
+    const cosPhiNoDb = zbudujPayload(
+      dane({ control_mode: 'STALY_COS_PHI', cos_phi_target: 0.95, qu_deadband_low_pu: 0.95, qu_deadband_high_pu: 1.05 }),
+      KONTEKST,
+      KONWERTER,
+      null,
+    );
+    expect(cosPhiNoDb.qu_deadband_low_pu).toBeUndefined();
+    expect(cosPhiNoDb.qu_deadband_high_pu).toBeUndefined();
 
     // Tryb pasywny: żadna wartość rządząca nie jest wysyłana.
     const pasywny = zbudujPayload(

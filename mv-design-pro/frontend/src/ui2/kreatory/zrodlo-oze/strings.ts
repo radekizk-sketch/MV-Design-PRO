@@ -67,6 +67,12 @@ export const OZE_STRINGS = {
   quNachyleniePomoc:
     'Wartość rządząca trybem Q(U) [pu Q na pu U]: o ile zmienia się Q na jednostkę zmiany '
     + 'napięcia względem pasma nieczułości. Sugerowane: 2–5 (typ. 4). 0 → tryb pasywny.',
+  quPasmoDol: 'Pasmo Q(U) — napięcie dolne',
+  quPasmoGora: 'Pasmo Q(U) — napięcie górne',
+  quPasmoPomoc:
+    'Napięciowe pasmo nieczułości charakterystyki Q(U) [pu U]: w zakresie dolne–górne źródło '
+    + 'nie oddaje/pobiera Q (Q = 0), reakcja włącza się dopiero poza pasmem. Sugerowane: '
+    + '0,95–1,05 pu (NC RfG). Puste = punkt 1,0/1,0 (reakcja natychmiastowa przy dowolnej odchyłce).',
   qMin: 'Q min (pobór, podwzbudzenie)',
   qMax: 'Q max (oddawanie, nadwzbudzenie)',
   qPomoc:
