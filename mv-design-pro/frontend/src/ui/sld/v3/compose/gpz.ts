@@ -1464,6 +1464,13 @@ export function composeGpz(
     const shortCircuitParts: string[] = [];
     if (transformer.ukPercent != null) shortCircuitParts.push(`uk ${formatGpzSystemNumberPl(transformer.ukPercent)}%`);
     if (transformer.pkKw != null) shortCircuitParts.push(`Pk ${formatGpzSystemNumberPl(transformer.pkKw)} kW`);
+    // SLD-02 (V12K-091): wiersz regulacji zaczepów z modelu (`tap_changer`
+    // → oltc). WYŁĄCZNIE gdy regulacja obecna (uczciwy brak: bez wiersza).
+    // Domyka komentarz „Zaczepy → plan (dane null)" wyżej. READ-ONLY.
+    const oltcRowText = transformer.oltc
+      ? `${transformer.oltc.kind} ${transformer.oltc.positionLabel} · ${transformer.oltc.modeLabel}`
+        + (transformer.oltc.setpointLabel ? ` · ${transformer.oltc.setpointLabel}` : '')
+      : null;
     const trRows: StationNameBandRow[] = [
       { text: transformer.designation, labelClass: 't1' },
       { text: ratingRowText, labelClass: 't2' },
@@ -1471,7 +1478,9 @@ export function composeGpz(
       ...(shortCircuitParts.length > 0
         ? [{ text: shortCircuitParts.join(' · '), labelClass: 't3' } as StationNameBandRow]
         : []),
+      ...(oltcRowText ? [{ text: oltcRowText, labelClass: 't3' } as StationNameBandRow] : []),
     ];
+    if (transformer.oltc) parityKeys.add('gpz.transformer.oltc');
     transformerLabels.push({
       ownerRef: `${transformer.transformerRef}#label`,
       nameSlot: {

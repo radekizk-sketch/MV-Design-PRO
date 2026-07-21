@@ -62,6 +62,7 @@ import type {
   BayProtectionMarkingView,
   CtRatingAnnotationView,
 } from './MiniBlockRmuRenderer';
+import type { OltcGlyphAnnotation } from './GpzSwitchgearTypes';
 
 /* =============================================================================
    Domain types (z ENM, projected to canonical SLD)
@@ -225,6 +226,10 @@ export interface CanonicalGpzTransformer {
   readonly lvSectionId?: string | null;
   /** Ref szyny HV (110 kV) — do oznaczenia kierunku zasilania. */
   readonly hvBusRef?: string | null;
+  /** Adnotacja regulacji zaczepów (OLTC/DETC, pozycja, tryb, U_zad) z modelu
+   *  `Transformer.tap_changer` (karta SLD-02, V12K-091). null/undefined =
+   *  brak regulacji (tabliczka bez wiersza OLTC). READ-ONLY, zero fizyki. */
+  readonly oltc?: OltcGlyphAnnotation | null;
 }
 
 export interface CanonicalGpzHvSection {

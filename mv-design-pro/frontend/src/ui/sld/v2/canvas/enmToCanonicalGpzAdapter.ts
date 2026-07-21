@@ -51,6 +51,7 @@ import {
   resolveBayCtRatingAnnotations,
   resolveBayProtectionMarking,
 } from './enmToSldAdapter';
+import { buildOltcAnnotation } from './oltcGlyph';
 
 /* =============================================================================
    Public API
@@ -345,6 +346,9 @@ function buildTransformers(
       pkKw: tr.pk_kw ?? null,
       lvSectionId: sectionIdByLvBusRef.get(tr.lv_bus_ref) ?? null,
       hvBusRef: tr.hv_bus_ref ?? null,
+      // SLD-02 (V12K-091): adnotacja OLTC/DETC z kanonicznego tap_changer
+      // (reuse buildOltcAnnotation; null gdy brak regulacji).
+      oltc: buildOltcAnnotation(tr.tap_changer),
     }));
 }
 

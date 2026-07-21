@@ -355,4 +355,32 @@ System SLD osiąga „klasa przemysłowa" (9/10) gdy wszystkie poniższe są ✅
 
 ---
 
+## 11. Przebiegi dedykowane (poza fazami F1–F5)
+
+### 11.1 Wizual OLTC w v3 compose — ✅ WYKONANE (2026-07-21, V12K-091)
+
+**Kontekst:** dyrektywa właściciela „OLTC v3 jako osobny, dedykowany przebieg SLD
+rework". Domknięcie znaleziska V12K-090 (glif OLTC z V12K-086 żył tylko w martwym
+v2 GpzSwitchgearRenderer, nierenderowany w produkcyjnym SLD v3).
+
+**Zakres (addytywny, READ-ONLY, ZERO fizyki):**
+- `CanonicalGpzTransformer.oltc?: OltcGlyphAnnotation | null` (typ transformatora sceny v3).
+- Populacja `oltc: buildOltcAnnotation(tr.tap_changer)` w `enmToCanonicalGpzAdapter.buildTransformers`
+  (reuse czystej funkcji V12K-086, dane z modelu `tap_changer`).
+- `compose/gpz.ts`: wiersz tabliczki TR `"${kind} ${positionLabel} · ${modeLabel}"`
+  (+ `U_zad` gdy AUTO z nastawą), `labelClass t3`, dokładany WYŁĄCZNIE gdy `oltc`
+  obecny (uczciwy brak regulacji → brak wiersza) + klucz parytetu `gpz.transformer.oltc`.
+
+**Pliki:** `ui/sld/v2/renderer/GpzCanonicalRenderer.tsx`,
+`ui/sld/v2/canvas/enmToCanonicalGpzAdapter.ts`, `ui/sld/v3/compose/gpz.ts`.
+
+**DoD:** ✅ type-check czysty · ✅ `compose/__tests__/gpz.test.ts` +3 (AUTO+U_zad,
+DETC MAN, brak regulacji) · ✅ regresja SLD v3 compose + v2 (124 pliki, 2308 passed) ·
+✅ guardy `sld_determinism_guards`/`overlay_no_physics`/`no_codenames` zielone ·
+✅ FROZEN/determinizm nietknięte (fixtury bez OLTC bez zmian). Overlay wynikowy OLTC
+(badge post-calc) — dane produkcyjne gotowe (V12K-089, raw store czytany przez v3);
+badge wizualny do domknięcia w F4 (overlay results).
+
+---
+
 **KONIEC PLANU SLD REWORK**

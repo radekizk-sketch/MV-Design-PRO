@@ -795,6 +795,63 @@ describe('V3 compose/gpz — determinizm', () => {
 });
 
 // ---------------------------------------------------------------------------
+// (e') SLD-02 (V12K-091): wiersz regulacji zaczepów OLTC/DETC na tabliczce
+// transformatora — reużycie `buildOltcAnnotation` (dane z modelu `tap_changer`).
+// Addytywny/parytetowy: wiersz i klucz parytetu WYŁĄCZNIE gdy `oltc` obecny;
+// bez regulacji fixtury pozostają nietknięte (uczciwy brak = brak wiersza).
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/gpz — SLD-02 wiersz regulacji zaczepów OLTC', () => {
+  function trLabelRowsOf(composition: GpzComposition, transformerRef: string): readonly string[] {
+    const label = composition.labels.transformerLabels.find(
+      (l) => l.ownerRef === `${transformerRef}#label`,
+    );
+    expect(label).toBeDefined();
+    return label!.rows.map((r) => r.text);
+  }
+
+  it('transformator z regulacją OLTC (AUTO + U_zad) ⇒ wiersz tabliczki + klucz parytetu', () => {
+    const composition = composeGpz(
+      baseProps({
+        transformers: [
+          {
+            ...TR1,
+            oltc: {
+              kind: 'OLTC',
+              positionLabel: 'poz. +3',
+              modeLabel: 'AUTO',
+              setpointLabel: 'U_zad 15.5 kV',
+            },
+          },
+        ],
+      }),
+      ORIGIN,
+    );
+    expect(trLabelRowsOf(composition, 'tr-1')).toContain('OLTC poz. +3 · AUTO · U_zad 15.5 kV');
+    expect(composition.parityKeys.has('gpz.transformer.oltc')).toBe(true);
+  });
+
+  it('regulacja DETC bez nastawy (MAN) ⇒ wiersz bez U_zad (uczciwy brak)', () => {
+    const composition = composeGpz(
+      baseProps({
+        transformers: [
+          { ...TR1, oltc: { kind: 'DETC', positionLabel: 'poz. −2', modeLabel: 'MAN' } },
+        ],
+      }),
+      ORIGIN,
+    );
+    expect(trLabelRowsOf(composition, 'tr-1')).toContain('DETC poz. −2 · MAN');
+  });
+
+  it('transformator bez regulacji (fixtura bazowa) ⇒ ZERO wierszy OLTC, brak klucza parytetu', () => {
+    const composition = composeGpz(baseProps(), ORIGIN);
+    const rows = trLabelRowsOf(composition, 'tr-1');
+    expect(rows.some((t) => t.startsWith('OLTC') || t.startsWith('DETC'))).toBe(false);
+    expect(composition.parityKeys.has('gpz.transformer.oltc')).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // (f) F9.9 R-1 (spec §17.1-§17.4, rozstrzygnięcie architekta 2026-07-15) —
 // wyjątek „okrąg bez toru w GPZ NIE jest missingData" ZNIESIONY w F11.1
 // (spec §17.6 doprecyzowanie, rejestr device-ref w GPZ, parytet ze
