@@ -16,15 +16,48 @@ import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { HubDokumentacji } from '../HubDokumentacji';
-import { dokumentDostepny, maZakonczonyPrzebieg, ostatniZakonczonyPrzebieg } from '../model';
+import {
+  dokumentDostepny,
+  maZakonczonyPrzebieg,
+  ostatniZakonczonyPrzebieg,
+  podsumowanieModelu,
+  wykonaneObliczenia,
+  zawartoscZPrzebiegow,
+} from '../model';
 
 function snapshotTestowy(): EnergyNetworkModel {
   return {
     header: { name: 'Sieć testowa', revision: 4, hash_sha256: 'deadbeef1234' },
     buses: [],
     branches: [],
+    transformers: [],
     sources: [],
+    generators: [],
     loads: [],
+    stations: [],
+    junctions: [],
+    branch_points: [],
+    corridors: [],
+    measurements: [],
+    protection_assignments: [],
+  } as unknown as EnergyNetworkModel;
+}
+
+/** Snapshot z realnymi obiektami — do testu panelu „Analizowany model". */
+function snapshotZObiektami(): EnergyNetworkModel {
+  return {
+    header: { name: 'Sieć testowa', revision: 4, hash_sha256: 'deadbeef1234' },
+    buses: [
+      { ref_id: 'b1', name: 'SN-1', voltage_kv: 15 },
+      { ref_id: 'b2', name: 'SN-2', voltage_kv: 15 },
+      { ref_id: 'b3', name: 'WN-1', voltage_kv: 110 },
+      { ref_id: 'b4', name: 'nN-1', voltage_kv: 0.4 },
+    ],
+    branches: [{ ref_id: 'l1' }, { ref_id: 'l2' }, { ref_id: 'l3' }],
+    transformers: [{ ref_id: 't1' }, { ref_id: 't2' }],
+    sources: [{ ref_id: 's1' }],
+    generators: [{ ref_id: 'g1' }],
+    loads: [{ ref_id: 'o1' }, { ref_id: 'o2' }],
     stations: [],
     junctions: [],
     branch_points: [],
@@ -92,53 +125,90 @@ describe('HubDokumentacji — ekran prowadzący przestrzeni „Dokumentacja"', (
     expect(useShellStore.getState().activeSpace).toBe('projekt');
   });
 
-  it('karta raportu niesie opis inżynierski i uczciwe źródło danych', () => {
+  it('karta raportu niesie opis inżynierski, formaty i uczciwe źródło danych', () => {
     render(<HubDokumentacji />);
     const karta = screen.getByTestId('mvd-dok-karta-raport');
-    expect(within(karta).getByText(/Eksport PDF\/DOCX z odciskiem determinizmu/)).toBeTruthy();
+    expect(within(karta).getByText(/odciskiem determinizmu/)).toBeTruthy();
     expect(within(karta).getByText(/ŹRÓDŁO DANYCH:/)).toBeTruthy();
     expect(within(karta).getByText(/generator raportu backendu/)).toBeTruthy();
+    // Formaty (recenzja pkt 6, realne): PDF/DOCX/JSON.
+    for (const f of ['PDF', 'DOCX', 'JSON']) expect(within(karta).getByText(f)).toBeTruthy();
   });
 
-  it('chip wymagań: dokument z obliczeń wymaga zakończonego przebiegu; z przebiegiem odblokowany', () => {
+  it('status (recenzja pkt 4): „Wymaga: zakończony przebieg" bez przebiegu; „Do wygenerowania" z przebiegiem', () => {
     render(<HubDokumentacji />);
-    expect(within(screen.getByTestId('mvd-dok-karta-raport')).getByText('wymaga zakończonego przebiegu')).toBeTruthy();
-    expect(within(screen.getByTestId('mvd-dok-karta-dowod')).getByText('wymaga zakończonego przebiegu')).toBeTruthy();
+    expect(within(screen.getByTestId('mvd-dok-karta-raport-status')).getByText('Wymaga: zakończony przebieg')).toBeTruthy();
+    expect(within(screen.getByTestId('mvd-dok-karta-dowod-status')).getByText('Wymaga: zakończony przebieg')).toBeTruthy();
     cleanup();
     useExecutionRunsStore.setState({ runs: [przebiegZakonczony('SC_3F', '2026-07-21T09:00:00Z')] });
     render(<HubDokumentacji />);
-    expect(within(screen.getByTestId('mvd-dok-karta-raport')).getByText('można wytworzyć')).toBeTruthy();
-    expect(within(screen.getByTestId('mvd-dok-karta-dowod')).getByText('można wytworzyć')).toBeTruthy();
+    expect(within(screen.getByTestId('mvd-dok-karta-raport-status')).getByText('Do wygenerowania')).toBeTruthy();
+    expect(within(screen.getByTestId('mvd-dok-karta-dowod-status')).getByText('Do wygenerowania')).toBeTruthy();
   });
 
-  it('chip wymagań: archiwum projektu wymaga otwartego projektu; z projektem odblokowane', () => {
+  it('status: archiwum „Wymaga: otwarty projekt"; z projektem „Do wygenerowania"', () => {
     render(<HubDokumentacji />);
-    expect(within(screen.getByTestId('mvd-dok-karta-archiwum')).getByText('wymaga otwartego projektu')).toBeTruthy();
+    expect(within(screen.getByTestId('mvd-dok-karta-archiwum-status')).getByText('Wymaga: otwarty projekt')).toBeTruthy();
     cleanup();
     useAppStateStore.setState({ activeProjectName: 'Projekt X' });
     render(<HubDokumentacji />);
-    expect(within(screen.getByTestId('mvd-dok-karta-archiwum')).getByText('można wytworzyć')).toBeTruthy();
+    expect(within(screen.getByTestId('mvd-dok-karta-archiwum-status')).getByText('Do wygenerowania')).toBeTruthy();
   });
 
-  it('„Otwórz" na karcie raportu otwiera realny generator raportu E-37 (klik natywny)', async () => {
+  it('pakiet dowodowy jest wyróżniony jako dowód formalny (recenzja pkt 7)', () => {
+    render(<HubDokumentacji />);
+    const dowod = screen.getByTestId('mvd-dok-karta-dowod');
+    expect(dowod.getAttribute('data-wyroznione')).toBe('true');
+    expect(within(dowod).getByText('DOWÓD FORMALNY')).toBeTruthy();
+  });
+
+  it('akcje nazywają CO SIĘ WYDARZY (recenzja pkt 3) i otwierają realnych dostawców', async () => {
     const user = userEvent.setup();
     render(<HubDokumentacji />);
-    await user.click(within(screen.getByTestId('mvd-dok-karta-raport')).getByRole('button', { name: 'Otwórz' }));
+    await user.click(within(screen.getByTestId('mvd-dok-karta-raport')).getByRole('button', { name: 'Otwórz generator' }));
     expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-37');
-  });
-
-  it('„Otwórz" na karcie pakietu dowodowego otwiera realny ekran dowodu E-36 (klik natywny)', async () => {
-    const user = userEvent.setup();
+    cleanup();
+    useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
     render(<HubDokumentacji />);
-    await user.click(within(screen.getByTestId('mvd-dok-karta-dowod')).getByRole('button', { name: 'Otwórz' }));
+    await user.click(within(screen.getByTestId('mvd-dok-karta-dowod')).getByRole('button', { name: 'Otwórz dowód' }));
     expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-36');
+    cleanup();
+    render(<HubDokumentacji />);
+    await user.click(within(screen.getByTestId('mvd-dok-karta-archiwum')).getByRole('button', { name: 'Otwórz archiwum' }));
+    expect(useShellStore.getState().activeSpace).toBe('projekt');
   });
 
-  it('„Otwórz" na karcie archiwum przechodzi do przestrzeni „Projekt" (klik natywny)', async () => {
-    const user = userEvent.setup();
+  it('panel „Analizowany model" (recenzja pkt 5): realne liczniki ze snapshotu', () => {
+    useSnapshotStore.setState({ snapshot: snapshotZObiektami() });
     render(<HubDokumentacji />);
-    await user.click(within(screen.getByTestId('mvd-dok-karta-archiwum')).getByRole('button', { name: 'Otwórz' }));
-    expect(useShellStore.getState().activeSpace).toBe('projekt');
+    const model = screen.getByTestId('mvd-dok-model');
+    expect(within(model).getByText('110 / 15 / 0,4 kV')).toBeTruthy(); // poziomy napięć
+    expect(within(model).getByText('Węzły (szyny)')).toBeTruthy();
+    expect(within(model).getByText('Transformatory')).toBeTruthy();
+    expect(within(model).getByText('Generacja / DER')).toBeTruthy();
+  });
+
+  it('panel modelu: uczciwy stan zerowy bez modelu', () => {
+    useSnapshotStore.setState({ snapshot: null });
+    render(<HubDokumentacji />);
+    expect(within(screen.getByTestId('mvd-dok-model')).getByText(/Brak modelu sieci/)).toBeTruthy();
+  });
+
+  it('zawartość dokumentu (recenzja pkt 8) z REALNYCH przebiegów: rozpływ → sekcje', () => {
+    useExecutionRunsStore.setState({ runs: [przebiegZakonczony('LOAD_FLOW', '2026-07-21T12:00:00Z')] });
+    render(<HubDokumentacji />);
+    const zaw = screen.getByTestId('mvd-dok-karta-raport-zawartosc');
+    for (const s of ['Rozpływ mocy', 'Spadki napięć', 'Bilans mocy']) {
+      expect(within(zaw).getByText(s)).toBeTruthy();
+    }
+  });
+
+  it('pasek procesu (recenzja pkt 9): Dokumentacja jest etapem aktywnym', () => {
+    render(<HubDokumentacji />);
+    const proces = screen.getByTestId('mvd-dok-proces');
+    for (const e of ['Projekt', 'Obliczenia', 'Dokumentacja', 'Eksport', 'Wniosek OSD']) {
+      expect(within(proces).getByText(e)).toBeTruthy();
+    }
   });
 
   it('sekcja NASTĘPNY KROK domyka łańcuch (kontrakt d)', () => {
@@ -170,5 +240,43 @@ describe('model dokumentacji — czyste selektory', () => {
     ];
     expect(ostatniZakonczonyPrzebieg(runs)?.analysis_type).toBe('LOAD_FLOW');
     expect(ostatniZakonczonyPrzebieg([])).toBeNull();
+  });
+
+  it('podsumowanieModelu: realne liczniki i distinct poziomy napięć malejąco', () => {
+    expect(podsumowanieModelu(null)).toBeNull();
+    const snap = {
+      header: { revision: 1, hash_sha256: 'x' },
+      buses: [{ voltage_kv: 15 }, { voltage_kv: 15 }, { voltage_kv: 110 }, { voltage_kv: 0.4 }],
+      branches: [{}, {}, {}],
+      transformers: [{}, {}],
+      sources: [{}],
+      generators: [{}],
+      loads: [{}, {}],
+    } as unknown as EnergyNetworkModel;
+    const p = podsumowanieModelu(snap)!;
+    expect(p.poziomyNapiecKv).toEqual([110, 15, 0.4]);
+    expect(p.wezly).toBe(4);
+    expect(p.galezie).toBe(3);
+    expect(p.transformatory).toBe(2);
+    expect(p.zrodla).toBe(1);
+    expect(p.generacja).toBe(1);
+    expect(p.odbiory).toBe(2);
+  });
+
+  it('wykonaneObliczenia: distinct etykiety wyłącznie zakończonych przebiegów', () => {
+    const runs = [
+      { analysis_type: 'LOAD_FLOW', status: 'DONE' },
+      { analysis_type: 'LOAD_FLOW', status: 'DONE' },
+      { analysis_type: 'SC_3F', status: 'RUNNING' },
+    ];
+    expect(wykonaneObliczenia(runs)).toEqual(['Rozpływ mocy']);
+  });
+
+  it('zawartoscZPrzebiegow: rozpływ → 3 sekcje, zwarcie → sekcja IEC, tylko zakończone', () => {
+    expect(zawartoscZPrzebiegow([{ analysis_type: 'LOAD_FLOW', status: 'DONE' }])).toEqual([
+      'Rozpływ mocy', 'Spadki napięć', 'Bilans mocy',
+    ]);
+    expect(zawartoscZPrzebiegow([{ analysis_type: 'SC_3F', status: 'DONE' }])).toEqual(['Zwarcia (IEC 60909)']);
+    expect(zawartoscZPrzebiegow([{ analysis_type: 'LOAD_FLOW', status: 'RUNNING' }])).toEqual([]);
   });
 });

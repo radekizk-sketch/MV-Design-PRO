@@ -138,14 +138,18 @@ if (creator === 'arcflash') {
     activeProjectName: 'Przyłączenie farmy PV 8 MW',
     activeCaseName: 'Wariant zimowy',
   } as never);
+  const szyna = (v: number, i: number) => ({ ref_id: `bus-${v}-${i}`, name: `Szyna ${v} kV`, voltage_kv: v });
   useSnapshotStore.setState({
     snapshot: {
       header: { name: 'Projekt demonstracyjny', revision: 7, hash_sha256: 'a1b2c3d4e5f60718' },
-      substations: [],
-      transformers: [],
-      buses: [],
-      sources: [],
-      loads: [],
+      substations: [{ ref_id: 'st-demo', name: 'GPZ-01', bus_refs: ['bus-110-0', 'bus-15-0'] }],
+      // Realistyczna mała sieć SN — panel „Analizowany model" pokazuje realne liczby.
+      buses: [szyna(110, 0), szyna(15, 0), szyna(15, 1), szyna(15, 2), szyna(0.4, 0), szyna(0.4, 1)],
+      branches: [{ ref_id: 'l1' }, { ref_id: 'l2' }, { ref_id: 'l3' }, { ref_id: 'l4' }, { ref_id: 'l5' }, { ref_id: 'l6' }, { ref_id: 'l7' }, { ref_id: 'l8' }],
+      transformers: [{ ref_id: 't1' }, { ref_id: 't2' }],
+      sources: [{ ref_id: 's1' }],
+      generators: [{ ref_id: 'g1' }, { ref_id: 'g2' }],
+      loads: [{ ref_id: 'o1' }, { ref_id: 'o2' }, { ref_id: 'o3' }, { ref_id: 'o4' }, { ref_id: 'o5' }],
       bays: [],
     },
   } as never);

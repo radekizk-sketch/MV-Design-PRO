@@ -242,6 +242,234 @@
   outline-offset: 2px;
 }
 
+/* --- Liczby (mono, tabular) ----------------------------------------------- */
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Pasek procesu (recenzja pkt 9) --------------------------------------- */
+
+.mvd-dok-proces {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.mvd-dok-proces-tor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 8px;
+}
+
+.mvd-dok-proces-el {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mvd-dok-proces-str {
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+.mvd-dok-proces-krok {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel-2);
+  font-size: 12.5px;
+  color: var(--mvd-muted);
+  white-space: nowrap;
+}
+
+.mvd-dok-proces-kropka {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mvd-line);
+  flex: none;
+}
+
+.mvd-dok-proces-krok[data-stan='zrobiony'] {
+  color: var(--mvd-ok);
+  border-color: transparent;
+  background: var(--mvd-ok-bg);
+}
+.mvd-dok-proces-krok[data-stan='zrobiony'] .mvd-dok-proces-kropka { background: var(--mvd-ok); }
+
+.mvd-dok-proces-krok[data-stan='aktywny'] {
+  color: var(--mvd-accent);
+  border-color: var(--mvd-accent);
+  background: var(--mvd-sel);
+  font-weight: 650;
+}
+.mvd-dok-proces-krok[data-stan='aktywny'] .mvd-dok-proces-kropka { background: var(--mvd-accent); }
+
+/* --- Analizowany model (recenzja pkt 5) ----------------------------------- */
+
+.mvd-dok-staty {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 10px;
+}
+
+.mvd-dok-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.mvd-dok-stat-n {
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--mvd-ink);
+  letter-spacing: -0.01em;
+}
+
+.mvd-dok-stat-l {
+  font-size: 11.5px;
+  color: var(--mvd-muted);
+}
+
+.mvd-dok-model-obl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--mvd-line);
+}
+
+.mvd-dok-model-obl > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mvd-dok-model-data {
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-model-brak {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--mvd-muted);
+}
+
+.mvd-dok-meta-k {
+  font: 600 10px/1.4 var(--mvd-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--mvd-muted);
+}
+
+/* --- Karta: tożsamość per typ (recenzja pkt 2/7) -------------------------- */
+
+.mvd-dok-karta {
+  border-left-width: 3px;
+}
+.mvd-dok-karta[data-akcent='accent'] { border-left-color: var(--mvd-accent); }
+.mvd-dok-karta[data-akcent='formalny'] { border-left-color: var(--mvd-warn); }
+.mvd-dok-karta[data-akcent='neutralny'] { border-left-color: var(--mvd-muted); }
+
+.mvd-dok-karta[data-wyroznione='true'] {
+  background: linear-gradient(180deg, var(--mvd-warn-bg) 0%, var(--mvd-panel-2) 42%);
+  border-color: var(--mvd-warn);
+}
+
+.mvd-dok-karta-glowa {
+  align-items: center;
+}
+
+.mvd-dok-karta-ikona {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--mvd-line);
+}
+.mvd-dok-karta-ikona[data-akcent='accent'] { color: var(--mvd-accent); background: var(--mvd-sel); border-color: transparent; }
+.mvd-dok-karta-ikona[data-akcent='formalny'] { color: var(--mvd-warn); background: var(--mvd-warn-bg); border-color: transparent; }
+.mvd-dok-karta-ikona[data-akcent='neutralny'] { color: var(--mvd-muted); background: var(--mvd-chip); }
+
+.mvd-dok-karta-tytul {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mvd-dok-karta-formalny {
+  font: 700 9.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--mvd-warn);
+}
+
+/* --- Karta: formaty + zawartość (recenzja pkt 6/8) ------------------------ */
+
+.mvd-dok-karta-meta,
+.mvd-dok-karta-zawartosc {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mvd-dok-formaty,
+.mvd-dok-sekcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.mvd-dok-format {
+  font: 600 10.5px/1.5 var(--mvd-font-mono);
+  padding: 2px 8px;
+  border-radius: 5px;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  letter-spacing: 0.02em;
+}
+
+.mvd-dok-tag {
+  font-size: 11.5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-zawartosc-brak {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--mvd-muted);
+}
+
+/* --- Karta: akcja per akcent ---------------------------------------------- */
+
+.mvd-dok-otworz[data-akcent='formalny'] { background: var(--mvd-warn); border-color: var(--mvd-warn); }
+.mvd-dok-otworz[data-akcent='neutralny'] {
+  background: none;
+  border-color: var(--mvd-accent);
+  color: var(--mvd-accent);
+}
+
 /* --- Pasek powrotu (widok dostawcy dokumentu) ----------------------------- */
 
 .mvd-dok-powrot {
