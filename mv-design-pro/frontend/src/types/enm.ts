@@ -46,6 +46,8 @@ export interface ProtectionSetting {
   threshold_a?: number | null;
   time_delay_s?: number | null;
   curve_type?: 'DT' | 'IEC_SI' | 'IEC_VI' | 'IEC_EI' | 'IEC_LI' | null;
+  /** Mnożnik czasowy (TMS) dla charakterystyk odwrotnych IEC 60255; null/undefined dla DT. */
+  time_multiplier?: number | null;
   is_directional?: boolean;
 }
 

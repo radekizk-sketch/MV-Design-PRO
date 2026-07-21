@@ -120,17 +120,53 @@ dostępnymi wynikami SC — API zwraca marginesy czasowe (Δt, wymagany CTI, wer
 per para urządzeń; wartości identyczne z `OvercurrentCoordinationAnalyzer`;
 determinizm i WHITE BOX trace zachowane.
 
-### E-3. TMS dla krzywych odwrotnych w torze `protection_ref`
-Powód: `ProtectionSetting` nie ma pola TMS; ustawienie go wymaga rozszerzenia
-modelu ENM oraz UI kreatora/eksperta (wątek Programu UI/UX — kolizja plików).
+### E-3. TMS dla krzywych odwrotnych w torze `protection_ref` — WDROŻONE (2026-07-21)
+Powód (luka): `ProtectionSetting` nie przechowywał mnożnika czasowego (TMS),
+więc `_build_it_curve` dla charakterystyk odwrotnych (IEC SI/VI/EI/LTI) zawsze
+zwracał `it_curve = null` + `it_curve_missing_data = ["time_multiplier"]` —
+krzywe odwrotne nie były liczone przez solver ani renderowane w inspektorze.
 
-Plan: addytywne pole `time_multiplier: float | None = None` w `ProtectionSetting`
-(migracja addytywna, `exclude_none`), materializacja z katalogu przekaźników,
-kontrolka w kreatorze pola, a następnie rozszerzenie `_build_it_curve` o gałąź
-INVERSE (solver już gotowy). Do skoordynowania między wątkami (model ENM + kreator).
+Wdrożenie (addytywne, FROZEN-safe):
+- Model ENM `enm/models.py` — `ProtectionSetting` rozszerzony **addytywnie** o
+  `time_multiplier: float | None = None` (TMS). Pole opcjonalne z defaultem
+  `None`: dokumenty ENM bez TMS walidują się bez zmian. Determinizm hashy ENM
+  (`input_hash`/`semantic_hash`) niezmieniony — zweryfikowane pełną regresją
+  `tests/enm/` + `tests/e2e/` (809 passed), zgodnie z ustalonym wzorcem
+  addytywnych pól opcjonalnych (por. `TapChanger`, `Transformer.tap_changer`).
+- Read model `application/protection_read_model.py` — `_build_it_curve`:
+  dla gałęzi INVERSE, gdy `setting.time_multiplier` jest podane i dodatnie →
+  krzywa liczona solverem IEC 60255 z tym TMS (gęste, logarytmiczne próbkowanie
+  `_IT_CURVE_INVERSE_NUM_POINTS = 64`), a `it_curve.time_multiplier` = realny TMS;
+  gdy TMS brak → nadal jawny `it_curve_missing_data = ["time_multiplier"]`
+  (ZERO fabrykacji mnożnika). Wartości `t_s` WYŁĄCZNIE z solvera.
+- Typ frontendu `types/enm.ts` — `ProtectionSetting` rozszerzony addytywnie o
+  `time_multiplier?: number | null` (parytet kontraktu; ZERO fizyki w UI).
 
-Kryteria odbioru: funkcja z `curve_type = IEC_*` i ustawionym TMS zwraca pełną
-krzywą odwrotną I-t z solvera; brak TMS nadal daje jawny `it_curve_missing_data`.
+Decyzja UI (bez fabrykacji): w UI **nie ma** edytora nastaw ENM
+`ProtectionSetting` — nastawy pochodzą z fixture/backendu (`protection-view` jest
+read-only; `ProtectionSection.tsx` tylko wyświetla `curve_type`). Osobny
+`protection-coordination/ProtectionSettingsEditor.tsx` operuje na własnym modelu
+koordynacji (`curve_settings.time_multiplier`) i NIE zapisuje do ENM. Tor
+prezentacyjny krzywej odwrotnej był już gotowy z E-4: `ProtectionFunctionItCurve`
+modeluje `curve_kind: 'INVERSE'` i `time_multiplier`, a `itCurveAdapter` przenosi
+TMS z backendu — po E-3 panel `ItCurvePanel` renderuje realne krzywe odwrotne bez
+zmian w rendererze. Kontrolki TMS w UI nie tworzono „na siłę" (brak dostawcy
+zapisu do ENM = brak phantomu).
+
+Testy (realna ścieżka):
+- Backend `tests/enm/test_enm_protection_view_api.py` —
+  `test_protection_view_inverse_it_curve_with_tms_from_solver`: pełny tor
+  HTTP → read model → solver dla funkcji 51 (IEC_SI) z TMS = 0,2 zwraca
+  `it_curve` z punktami (curve_kind INVERSE, monotonicznie opadający czas,
+  `time_multiplier == 0.2`, bez `it_curve_missing_data`); dotychczasowy przypadek
+  bez TMS nadal daje `["time_multiplier"]`.
+- Frontend `ui/protection-curves/__tests__/ItCurvePanel.test.tsx` — render
+  natywny krzywej INVERSE (SI) z TMS: wykres + podsumowanie, oraz adapter
+  przenoszący TMS i typ krzywej.
+
+Kryteria odbioru (spełnione): funkcja z `curve_type = IEC_*` i ustawionym TMS
+zwraca pełną krzywą odwrotną I-t z solvera; brak TMS nadal daje jawny
+`it_curve_missing_data`.
 
 ### E-4. Wpięcie krzywej I-t z protection-view do wykresu w inspektorze — WDROŻONE (2026-07-21)
 Solver i serializacja (E-1) gotowe; ogniwo prezentacyjne domknięte w wątku

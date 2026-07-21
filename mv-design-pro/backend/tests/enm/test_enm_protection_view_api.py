@@ -298,3 +298,40 @@ def test_protection_view_serializes_it_curve_from_iec60255_solver(client):
     time_fn = next(fn for fn in functions if fn["code"] == "OVERCURRENT_TIME")  # 51 I>, IEC_SI
     assert time_fn["it_curve"] is None
     assert time_fn["it_curve_missing_data"] == ["time_multiplier"]
+
+
+def test_protection_view_inverse_it_curve_with_tms_from_solver(client):
+    """Charakterystyka odwrotna (IEC_SI, 51 I>) Z nastawą TMS → krzywa I-t z solvera.
+
+    Gdy ``ProtectionSetting.time_multiplier`` jest podane, read model liczy krzywą
+    solverem IEC 60255 (charakterystyka odwrotna, opadająca) — brak fabrykacji.
+    """
+    import copy
+
+    payload = copy.deepcopy(_enm_with_protection())
+    device = next(d for d in payload["protection_assignments"] if d["ref_id"] == "prot_oc_1")
+    inverse_setting = next(s for s in device["settings"] if s["curve_type"] == "IEC_SI")
+    inverse_setting["time_multiplier"] = 0.2  # TMS
+    _seed_enm("protection-it-tms", payload)
+
+    response = client.get("/api/cases/protection-it-tms/enm/protection-view")
+    assert response.status_code == 200
+    data = response.json()
+
+    assignment = next(item for item in data["assignments"] if item["device_id"] == "prot_oc_1")
+    functions = assignment["settings_summary"]["functions"]
+
+    time_fn = next(fn for fn in functions if fn["code"] == "OVERCURRENT_TIME")  # 51 I>, IEC_SI
+    it_curve = time_fn["it_curve"]
+    assert it_curve is not None
+    assert "it_curve_missing_data" not in time_fn
+    assert it_curve["standard"] == "IEC_60255"
+    assert it_curve["curve_kind"] == "INVERSE"
+    assert it_curve["curve_code"] == "SI"
+    assert it_curve["pickup_a"] == pytest.approx(240.0)
+    assert it_curve["time_multiplier"] == pytest.approx(0.2)
+    assert len(it_curve["points"]) > 2
+    # Charakterystyka odwrotna: czas maleje monotonicznie ze wzrostem prądu (solver).
+    times = [point["t_s"] for point in it_curve["points"]]
+    assert all(earlier > later for earlier, later in zip(times, times[1:], strict=False))
+    assert all(point["i_a"] > 240.0 for point in it_curve["points"])

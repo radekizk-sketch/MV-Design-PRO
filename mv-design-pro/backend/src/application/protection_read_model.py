@@ -62,6 +62,9 @@ CURVE_TYPE_MAP = {
 # Próbkowanie krzywej I-t dla charakterystyki niezależnej (DT):
 # charakterystyka jest płaska, więc dwa punkty krańcowe w pełni ją opisują.
 _IT_CURVE_DEFINITE_NUM_POINTS = 2
+# Charakterystyki odwrotne (SI/VI/EI/LTI) są krzywoliniowe — do wiernego
+# odwzorowania w inspektorze potrzeba gęstego, logarytmicznego próbkowania.
+_IT_CURVE_INVERSE_NUM_POINTS = 64
 # Zakres prądu jako wielokrotność progu (In>) dla generatora punktów solvera.
 _IT_CURVE_CURRENT_RANGE = (1.1, 20.0)
 
@@ -535,9 +538,10 @@ def _build_it_curve(
     (``protection.curves.iec_curves``) — read model niczego nie liczy sam.
 
     - Charakterystyka niezależna (DT) jest w pełni wyznaczona przez próg (In>)
-      i zwłokę czasową → zwracamy płaską krzywą.
-    - Charakterystyki odwrotne (SI/VI/EI/LTI) wymagają nastawy TMS, której
-      model ENM ``ProtectionSetting`` nie przechowuje — zwracamy brak danych
+      i zwłokę czasową → zwracamy płaską krzywą (TMS nie dotyczy).
+    - Charakterystyki odwrotne (SI/VI/EI/LTI) wymagają nastawy TMS
+      (``ProtectionSetting.time_multiplier``): gdy jest podana → liczymy krzywą
+      solverem z tym mnożnikiem; gdy jej brak → zwracamy brak danych
       (``time_multiplier``) zamiast fabrykować mnożnik czasowy.
 
     Zwraca krotkę ``(krzywa | None, lista_brakujących_danych)``.
@@ -554,14 +558,21 @@ def _build_it_curve(
     else:
         solver_code = "DT"
 
+    time_multiplier: float | None = None
     if solver_code == "DT":
         curve_kind = "DEFINITE"
+        num_points = _IT_CURVE_DEFINITE_NUM_POINTS
         if setting.time_delay_s is None:
             missing.append("definite_time")
     else:
         curve_kind = "INVERSE"
-        # TMS nie istnieje w modelu ENM ProtectionSetting — brak danych, nie fabrykujemy.
-        missing.append("time_multiplier")
+        num_points = _IT_CURVE_INVERSE_NUM_POINTS
+        tms = setting.time_multiplier
+        if tms is None or tms <= 0:
+            # TMS wymagany dla charakterystyki odwrotnej — brak danych, nie fabrykujemy.
+            missing.append("time_multiplier")
+        else:
+            time_multiplier = tms
 
     if missing:
         return None, missing
@@ -572,9 +583,11 @@ def _build_it_curve(
     raw_points = generate_iec_curve_points(
         curve_params=params,
         pickup_current_a=pickup_a,
-        time_multiplier=1.0,
+        # TMS (mnożnik czasowy) tylko dla krzywych odwrotnych; DT ignoruje ten
+        # parametr, więc przekazujemy neutralne 1.0 dla spójności wywołania.
+        time_multiplier=time_multiplier if time_multiplier is not None else 1.0,
         current_range=_IT_CURVE_CURRENT_RANGE,
-        num_points=_IT_CURVE_DEFINITE_NUM_POINTS,
+        num_points=num_points,
         definite_time_s=setting.time_delay_s,
     )
     points = [{"i_a": point["current_a"], "t_s": point["time_s"]} for point in raw_points]
@@ -588,7 +601,7 @@ def _build_it_curve(
             "curve_code": solver_code,
             "curve_label_pl": IEC_CURVE_LABELS_PL.get(solver_code, solver_code),
             "pickup_a": pickup_a,
-            "time_multiplier": None,
+            "time_multiplier": time_multiplier,
             "points": points,
         },
         [],

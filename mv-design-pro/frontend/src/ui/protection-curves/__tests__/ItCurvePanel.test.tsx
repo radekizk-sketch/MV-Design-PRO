@@ -61,6 +61,51 @@ describe('ItCurvePanel — krzywa DEFINITE z solvera', () => {
   });
 });
 
+// Krzywa INVERSE (IEC SI) z nastawą TMS — kształt serializowany przez backend
+// (protection_read_model._build_it_curve dla charakterystyki odwrotnej).
+const inverseItCurve: ProtectionFunctionItCurve = {
+  standard: 'IEC_60255',
+  curve_kind: 'INVERSE',
+  curve_code: 'SI',
+  curve_label_pl: 'Charakterystyka odwrotna (SI)',
+  pickup_a: 240,
+  time_multiplier: 0.2,
+  points: [
+    { i_a: 264, t_s: 4.98 },
+    { i_a: 480, t_s: 0.6 },
+    { i_a: 1200, t_s: 0.19 },
+    { i_a: 4800, t_s: 0.07 },
+  ],
+};
+
+describe('ItCurvePanel — krzywa INVERSE (TMS) z solvera', () => {
+  it('renderuje wykres odwrotnej charakterystyki z punktów backendu', () => {
+    render(<ItCurvePanel itCurve={inverseItCurve} curveId="OVERCURRENT_TIME-51" />);
+
+    expect(screen.getByTestId('it-curve-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('it-curve-chart')).toBeInTheDocument();
+    expect(screen.queryByTestId('it-curve-missing')).not.toBeInTheDocument();
+
+    const summary = screen.getByTestId('it-curve-summary');
+    expect(summary).toHaveTextContent('Charakterystyka odwrotna (SI)');
+    expect(summary).toHaveTextContent('Ip = 240 A');
+  });
+
+  it('adapter przenosi TMS i typ krzywej odwrotnej z backendu', () => {
+    const curve = itCurveToProtectionCurve(inverseItCurve, 'inv-id');
+
+    expect(curve.curve_type).toBe('SI');
+    expect(curve.time_multiplier).toBe(0.2);
+    expect(curve.pickup_current_a).toBe(240);
+    expect(curve.points).toHaveLength(4);
+    // Czas opada monotonicznie ze wzrostem prądu (charakterystyka odwrotna).
+    const times = curve.points.map((p) => p.time_s);
+    for (let i = 1; i < times.length; i += 1) {
+      expect(times[i]).toBeLessThan(times[i - 1]);
+    }
+  });
+});
+
 describe('ItCurvePanel — brak danych krzywej', () => {
   it('pokazuje uczciwy stan zerowy z przyczyna TMS', () => {
     render(
