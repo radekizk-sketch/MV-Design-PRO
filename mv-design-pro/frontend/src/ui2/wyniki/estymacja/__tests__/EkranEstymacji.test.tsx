@@ -108,10 +108,27 @@ describe('EkranEstymacji — estymacja i wynik', () => {
     expect(tabele[0]).toHaveTextContent('0,9912');
     // Tabela rezyduów pomiarów zawiera flagę podejrzenia.
     expect(tabele[1]).toHaveTextContent('podejrzany');
-    // Panel detekcji wskazuje podejrzany pomiar.
-    expect(screen.getByTestId('mvd-est-podejrzany')).toHaveTextContent('BUS-1');
+    // Panel detekcji wskazuje podejrzany pomiar — etykietą PL, nie surowym enumem (WLS-D1).
+    const podejrzany = screen.getByTestId('mvd-est-podejrzany');
+    expect(podejrzany).toHaveTextContent('BUS-1');
+    expect(podejrzany).toHaveTextContent('Moduł napięcia węzła |V|');
+    expect(podejrzany.textContent).not.toContain('V_MAGNITUDE');
     // Uczciwy brak: węzeł bez pomiaru.
     expect(screen.getByTestId('mvd-est-braki')).toHaveTextContent('BUS-3');
+  });
+
+  it('walidacja SYNTETYCZNA → baner ostrzegawczy widoczny także w trybie podstawowym (WLS-S3)', async () => {
+    ustawPrzebieg();
+    post.mockResolvedValue(widokEstymacjiFixture());
+    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await screen.findByTestId('mvd-est-edytor');
+    wpiszPomiarV();
+    fireEvent.click(screen.getByTestId('mvd-est-estymuj'));
+    await screen.findByTestId('mvd-est-wynik');
+    // Baner niezależny od trybu (nie ukryty w trybie eksperckim).
+    const baner = screen.getByTestId('mvd-est-baner-syntetyczny');
+    expect(baner).toHaveTextContent('Walidacja syntetyczna');
+    expect(baner).toHaveTextContent('nie SCADA/PMU');
   });
 
   it('render jest deterministyczny dla tego samego wejścia', async () => {

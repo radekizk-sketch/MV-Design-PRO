@@ -200,6 +200,10 @@ class StateEstimationResult:
     m_measurements: int
     validation_status: str
     estimate_id: str
+    # Rezydua końcowe r̂ = z − h(x̂) przy estymacie (m). Liczone z TEGO SAMEGO
+    # wektora, z którego pochodzą znormalizowane rezydua (bad_data), więc r i r_N
+    # są spójne (ten sam iterat). Zawsze obecne — niezależnie od śladu WHITE BOX.
+    final_residuals: tuple[float, ...] = ()
     solver_version: str = STATE_ESTIMATION_WLS_VERSION
     note: str = ""
 
@@ -211,6 +215,7 @@ class StateEstimationResult:
             "v_angles_rad": list(self.v_angles_rad),
             "objective_j": self.objective_j,
             "bad_data": self.bad_data.to_dict(),
+            "final_residuals": list(self.final_residuals),
             "n_states": self.n_states,
             "m_measurements": self.m_measurements,
             "validation_status": self.validation_status,
@@ -831,6 +836,7 @@ def estimate_wls(
         m_measurements=m,
         validation_status=status,
         estimate_id=estimate_id,
+        final_residuals=tuple(round(float(x), 12) for x in final_residual),
         note=note,
     )
 

@@ -156,6 +156,30 @@ def test_state_estimation_returns_view(app_client) -> None:
     assert "SYNTETYCZNY" in data["validation_status"]
 
 
+def test_state_estimation_residual_present_without_trace(app_client) -> None:
+    """Rezyduum r per pomiar obecne BEZ śladu WHITE BOX (WLS-S1/S2).
+
+    Kolumna „Rezyduum r" nie może zależeć od włączenia śladu — pochodzi z pola
+    wyniku ``final_residuals`` (ten sam wektor co znormalizowane rezydua bad_data).
+    """
+    run_id = _pf_run_id()
+    body = {
+        "run_id": str(run_id),
+        "pomiary": _flat_measurements(run_id),
+        "include_trace": False,
+    }
+    resp = app_client.post(STATE_ESTIMATION, json=body)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert not data.get("white_box"), "Ślad wyłączony (include_trace=False)"
+    # Mimo braku śladu każdy pomiar ma liczbowe rezyduum r (nie None).
+    assert data["measurements"]
+    for m in data["measurements"]:
+        assert m["residual"] is not None
+        assert isinstance(m["residual"], (int, float))
+        assert m["normalized_residual"] is not None
+
+
 def test_state_estimation_is_deterministic(app_client) -> None:
     run_id = _pf_run_id()
     body = {"run_id": str(run_id), "pomiary": _flat_measurements(run_id)}

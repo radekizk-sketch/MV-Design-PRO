@@ -397,6 +397,32 @@
   color: var(--mvd-ink);
 }
 
+/* ---- baner walidacji syntetycznej (WLS-S3, niezależny od trybu) ---- */
+.mvd-est-baner {
+  margin-top: 12px;
+  padding: 14px 16px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-est-baner--warn {
+  border: 1px solid var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-est-baner-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-est-baner-opis {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mvd-ink-2);
+}
+
 /* ---- ślad WHITE BOX ---- */
 .mvd-est-slad-blok {
   margin-top: 12px;

@@ -310,16 +310,16 @@ def _serialize_result(
     bad_data = result.bad_data
     normalized = bad_data.normalized_residuals
     measurements: list[dict[str, Any]] = []
-    # Rezydua końcowe z solvera: r = z − h(x̂). Bierzemy z ostatniej iteracji śladu
-    # (jeśli jest); w innym razie rezydua nie są per-pomiar dostępne poza znormaliz.
-    final_residuals: list[float] | None = None
-    if result.white_box:
-        final_residuals = list(result.white_box[-1].residual_r)
+    # Rezydua końcowe z solvera: r̂ = z − h(x̂), z pola wyniku `final_residuals`
+    # (zawsze obecne, niezależnie od śladu WHITE BOX — WLS-S1). Pochodzą z tego
+    # samego wektora co znormalizowane rezydua bad_data, więc r i r_N są spójne
+    # (ten sam iterat — WLS-S2).
+    final_residuals = list(result.final_residuals)
     for idx, descriptor in enumerate(descriptors):
         row = dict(descriptor)
         row["index"] = idx
         row["normalized_residual"] = normalized[idx] if idx < len(normalized) else None
-        if final_residuals is not None and idx < len(final_residuals):
+        if idx < len(final_residuals):
             row["residual"] = final_residuals[idx]
         else:
             row["residual"] = None

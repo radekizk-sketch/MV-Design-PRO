@@ -43,12 +43,15 @@ import {
   naWierszePomiarow,
   naWierszeWezlow,
   naZalozeniaEstymacji,
+  przebiegRozplywuEstymacji,
+  typPomiaruPL,
   wymagaWezlaJ,
   zbudujZadanie,
   type WierszEdytora,
 } from './model';
 import {
   ESTYMACJA_STRINGS as S,
+  ZNACZNIK_SYNTETYCZNY,
   fmtDokladny,
   fmtKV,
   fmtRezyduum,
@@ -380,7 +383,13 @@ function Edytor({
 // Panel detekcji złych danych (test χ² + LNR)
 // ---------------------------------------------------------------------------
 
-function PanelZlychDanych({ dane }: { dane: WidokEstymacji }) {
+function PanelZlychDanych({
+  dane,
+  typy,
+}: {
+  dane: WidokEstymacji;
+  typy: readonly MetaTypuPomiaru[];
+}) {
   const bad = dane.bad_data;
   const chiIstotnosc: IstotnoscStanu = bad.chi_square_flag ? 'err' : 'ok';
   const lnrIstotnosc: IstotnoscStanu = bad.lnr_flag ? 'err' : 'ok';
@@ -411,7 +420,8 @@ function PanelZlychDanych({ dane }: { dane: WidokEstymacji }) {
       </div>
       {bad.lnr_measurement ? (
         <p className="mvd-est-bad-podejrzany" data-testid="mvd-est-podejrzany">
-          {S.badPodejrzany}: {bad.lnr_measurement.meas_type} · {bad.lnr_measurement.bus_ref}
+          {S.badPodejrzany}: {typPomiaruPL(bad.lnr_measurement.meas_type, typy)} ·{' '}
+          {bad.lnr_measurement.bus_ref}
           {bad.lnr_measurement.bus_j_ref ? ` → ${bad.lnr_measurement.bus_j_ref}` : ''}
         </p>
       ) : (
@@ -514,7 +524,18 @@ function WynikEstymacji({
         <Chip etykieta={S.podsumStany} wartosc={dane.n_states} istotnosc="neutral" />
       </div>
 
-      <PanelZlychDanych dane={dane} />
+      {dane.validation_status.includes(ZNACZNIK_SYNTETYCZNY) && (
+        <section
+          className="mvd-est-baner mvd-est-baner--warn"
+          data-testid="mvd-est-baner-syntetyczny"
+          role="note"
+        >
+          <h3 className="mvd-est-baner-tytul">{S.banerSyntetycznyTytul}</h3>
+          <p className="mvd-est-baner-opis">{S.banerSyntetycznyOpis}</p>
+        </section>
+      )}
+
+      <PanelZlychDanych dane={dane} typy={typy} />
 
       <EkranAnalizy
         naglowek={{ analizaPL: S.wezlyTytul, runId }}
@@ -596,11 +617,13 @@ export interface EkranEstymacjiProps {
 export function EkranEstymacji({ trybZaawansowania, onOtworzDowod }: EkranEstymacjiProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
-  const przebieg = useMemo(() => {
-    const kandydaci = runs.filter((r) => r.analysis_type === 'LOAD_FLOW' && r.status === 'DONE');
-    if (kandydaci.length === 0) return null;
-    return kandydaci.find((r) => r.id === activeRunId) ?? kandydaci[kandydaci.length - 1];
-  }, [runs, activeRunId]);
+  // Wybór przebiegu rozpływu (źródło Y-bus) — wspólny helper `model.ts`, nie
+  // duplikat inline (Zero-Debt §5: inline dryfujący od helpera byłby niewidoczny
+  // dla testu helpera).
+  const przebieg = useMemo(
+    () => przebiegRozplywuEstymacji(runs, activeRunId),
+    [runs, activeRunId],
+  );
   const runId = przebieg?.id ?? null;
   const trybEkspercki = trybZaawansowania === 'expert';
 

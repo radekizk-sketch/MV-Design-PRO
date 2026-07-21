@@ -158,6 +158,14 @@ export const ESTYMACJA_STRINGS = {
   ekspWersjaSolvera: 'Wersja solvera',
   ekspWalidacja: 'Status walidacji',
 
+  // Baner walidacji syntetycznej (widoczny niezależnie od trybu — WLS-S3)
+  banerSyntetycznyTytul: 'Walidacja syntetyczna (nie SCADA/PMU)',
+  banerSyntetycznyOpis:
+    'Backend zwrócił status walidacji SYNTETYCZNY — estymata została sprawdzona '
+    + 'względem płaskiego stanu odniesienia, a nie względem rzeczywistej telemetrii '
+    + 'SCADA/PMU. Wynik nadaje się do analizy metody i topologii, nie do rozliczeń '
+    + 'ani decyzji ruchowych opartych na realnym stanie sieci.',
+
   // Założenia
   zalMetoda: 'Metoda',
   zalMetodaWartosc: 'Ważone najmniejsze kwadraty (WLS), IEC/PowerFactory',
