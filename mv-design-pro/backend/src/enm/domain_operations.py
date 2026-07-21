@@ -7048,6 +7048,9 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         "TRANSFORMATOROWE": "TR",
         "SPRZEGLO": "COUPLER",
     }
+    # PS-4: wspólny resolver kodów zabezpieczeń pól (parytet z insert/add_sn_bay).
+    from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
+
     field_role_counts: dict[str, int] = {}
     field_specs: list[dict[str, Any]] = []
     for index, field in enumerate(sn_fields, start=1):
@@ -7063,6 +7066,8 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             bay_ref = bay_tr_ref
         else:
             bay_ref = f"bay/{seed}/{field_role.lower()}_{role_index}"
+        field_manufacturer_ref = field.get("manufacturer_ref")
+        field_bay_template_ref = field.get("bay_template_ref")
         field_specs.append(
             {
                 "field_ref": f"field/{seed}/{index}",
@@ -7071,9 +7076,12 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 "bay_role": bay_role,
                 "bus_ref": endpoint_bus_ref,
                 "bay_kind": field.get("bay_kind"),
-                "manufacturer_ref": field.get("manufacturer_ref"),
+                "manufacturer_ref": field_manufacturer_ref,
                 "switchgear_family_ref": field.get("switchgear_family_ref"),
-                "bay_template_ref": field.get("bay_template_ref"),
+                "bay_template_ref": field_bay_template_ref,
+                "protection_codes": _resolve_bay_template_protection_codes(
+                    field_manufacturer_ref, field_bay_template_ref, bay_role
+                ),
                 "source_status": field.get("source_status"),
                 "source_refs": list(field.get("source_refs") or []),
                 "catalog_bindings": field.get("catalog_bindings"),

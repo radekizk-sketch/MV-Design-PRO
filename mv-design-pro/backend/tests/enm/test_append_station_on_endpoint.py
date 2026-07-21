@@ -386,6 +386,10 @@ def test_endpoint_append_materializes_requested_station_sn_fields_without_splitt
     }
     assert all(spec.get("bus_ref") == endpoint for spec in field_specs)
     assert all(spec.get("equipment_refs") for spec in field_specs)
+    # PS-4: append materializuje protection_codes wspólnym resolverem (parytet z insert).
+    by_role = {spec["field_role"]: spec for spec in field_specs}
+    assert by_role["LINIA_IN"].get("protection_codes") == ["51", "50", "51N"]
+    assert "87T" in (by_role["TRANSFORMATOROWE"].get("protection_codes") or [])
     station_bays = [
         bay for bay in new_snap.get("bays", []) if bay.get("substation_ref") == sub["ref_id"]
     ]
