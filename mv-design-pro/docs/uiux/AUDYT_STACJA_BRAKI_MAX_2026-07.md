@@ -17,7 +17,7 @@ Kontrolka bez konsumenta = phantom (zakazane).
 |----------|----------------|----------------------------|--------------|
 | **Uziemienie punktu neutralnego** | ✅ `GroundingConfig` (isolated/petersen_coil/directly_grounded/resistor_grounded + r_ohm/x_ohm) na `Transformer.hv_neutral`/`lv_neutral` (`enm/models.py:21,289`) | ✅ `eligibility_service.py:546` (`has_grounding` gate) · `proof_engine/packs/earthing_ground_fault_sn.py` (pakiet dowodowy uziemienia) · `field_read_model.py:1269` (`_map_grounding_type`) | **NISKIE** — konsumenci istnieją, brakuje tylko konfiguracji w kreatorze |
 | **Pętla zwarcia nN (IEC 60364)** | — (parametry jawne) | ✅ `fault_loop_iec60364.py` + `fault_loop_builder.py` + `api/fault_loop.py` (TN-S/TN-C-S/TN-C; TT/IT deferred) + `analysis_run/service.py` | ŚREDNIE — endpoint bierze składowe R/X ręcznie, nie z modelu |
-| **Ograniczniki przepięć (SPD)** | ✅ apparatus `SURGE_ARRESTER` + `earthing_role: surge_ground` (`enm/models.py:893,912`); kolekcja `insulation` (v126) | ⚠ SLD rysuje z danych; koordynacja izolacji — konsument w v126 `insulation` (osobna kolekcja) | **WYSOKIE** — konsument liczbowy niepewny (V12K-050 „GAP-2 wstrzymane") |
+| **Ograniczniki przepięć (SPD)** | ✅ apparatus `SURGE_ARRESTER` + `earthing_role: surge_ground` (`enm/models.py:893,912`); kolekcja `insulation` (v126) | ✅ **WDROŻONE (V12K-083)** — most `build_v126_insulation_from_enm` (model → IEC 60071 `_insulation`); SLD rysuje I koordynacja izolacji liczy z tego samego elementu | **ZAMKNIĘTE** — GAP-2 domknięty, konsument liczbowy = `_insulation` |
 | **Układ pomiarowy CT/VT + licznik** | ✅ `Measurement` (CT/VT) + `MeasurementRating` (`models.py:45,516`) + `BayMeasurements` | ✅ zabezpieczenia (`ProtectionAssignment.ct_ref/vt_ref`, `requires_ct_vt`) | NISKIE dla CT/VT ochronnych; ŚREDNIE dla licznika rozliczeniowego (konsument = raport/zgodność) |
 | **Sekcjonowanie nN / dwie sekcje** | częściowe (GPZ sekcje: `Sekcja GPZ`, `add_bus_section`); stacja `sectional` = sprzęgło bez II sekcji | PF (open switch → radialny) | ŚREDNIE — operacja domenowa II sekcji do dobudowy |
 | **Praca równoległa transformatorów** | ⚠ `generators.n_parallel` istnieje; `transformers` — BRAK `n_parallel` w allowliście (`domain_operations.py:6066`) | PF (Y-bus per gałąź) | ŚREDNIE — model transformatora bez krotności; wymaga rozbudowy |
@@ -41,8 +41,13 @@ Kontrolka bez konsumenta = phantom (zakazane).
   między sekcjami.
 - **G-STK-6 — Praca równoległa transformatorów.** `n_parallel` na modelu transformatora +
   konsumpcja w PF (równoległe gałęzie).
-- **G-STK-7 — SPD (ograniczniki).** DOPIERO po ustaleniu konsumenta liczbowego koordynacji
-  izolacji (cross-thread do v126 `insulation`) — inaczej phantom. KARTA warunkowa.
+- **G-STK-7 — SPD (ograniczniki). ✅ WDROŻONE (V12K-083).** Konsument USTALONY: `_insulation`
+  (IEC 60071, margines BIL) w v126_academic. Most `build_v126_insulation_from_enm` czyta
+  aparaty `SURGE_ARRESTER` z pól modelu → `V126InsulationInput` (MCOV/U_res/TOV/energia z
+  `mv_surge_arrester_catalog` po `catalog_ref`; `network_neutral` z uziemienia punktu
+  neutralnego), wpięty w `build_v126_input_from_enm`. UI `V126AcademicSurface` przestaje
+  wysyłać fabrykowany ogranicznik (model napędza; pusty model = uczciwy stan zerowy). Element
+  modelu już NIE jest wyspą — rysowany na SLD I liczony w koordynacji izolacji.
 
 ## Uzasadnienie kolejności
 Flagship G-STK-1 ma najwyższą wartość normatywną (układ uziemienia determinuje prądy zwarcia

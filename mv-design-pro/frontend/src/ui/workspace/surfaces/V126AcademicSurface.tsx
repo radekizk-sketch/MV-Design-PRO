@@ -99,16 +99,10 @@ function defaultParameters(analysis: V126AnalysisType): Record<string, unknown> 
     };
   }
   if (analysis === 'insulation_coordination') {
-    return {
-      insulation: [
-        {
-          location_bus_ref: 'BUS_SN',
-          u_m_kv: 17.5,
-          network_neutral: 'isolated',
-          arrester_residual_10ka_kv: 70,
-        },
-      ],
-    };
+    // G-STK-7: ograniczniki przepięć pochodzą z MODELU (aparaty pierwotne pól
+    // kind=SURGE_ARRESTER → build_v126_insulation_from_enm). Brak fabrykowanych
+    // parametrów — pusty model = uczciwy stan zerowy „brak ograniczników".
+    return {};
   }
   if (analysis === 'motor_starting') {
     return {
