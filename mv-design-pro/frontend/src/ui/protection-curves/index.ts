@@ -14,6 +14,14 @@
 // (protection/curves modules); the frontend only renders them — single truth (Z15).
 export { TimeCurrentChart } from './TimeCurrentChart';
 
+// Panel krzywej I-t (Audyt E, E-4): wpina it_curve z widoku zabezpieczeń
+// do wykresu; uczciwy stan zerowy przy braku danych.
+export { ItCurvePanel } from './ItCurvePanel';
+export {
+  itCurveToProtectionCurve,
+  itCurveMissingReasonsPl,
+} from './itCurveAdapter';
+
 // Types
 export type {
   CurveStandard,

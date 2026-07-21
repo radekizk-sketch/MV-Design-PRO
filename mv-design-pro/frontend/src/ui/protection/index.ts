@@ -41,6 +41,8 @@ export type {
   ProtectionComputedValue,
   ProtectionFunctionCode,
   ProtectionFunctionSummary,
+  ProtectionFunctionItCurve,
+  ProtectionItCurvePoint,
   ProtectionSetpointBasis,
   ProtectionSetpoint,
   ProtectionSetpointOperator,

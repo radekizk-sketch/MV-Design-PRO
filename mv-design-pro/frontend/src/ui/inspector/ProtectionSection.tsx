@@ -30,6 +30,7 @@ import {
   PROTECTION_STATUS_COLORS,
 } from '../protection';
 import { formatProtectionFunction, formatNumberPl } from './formatProtection';
+import { ItCurvePanel } from '../protection-curves';
 
 // =============================================================================
 // Types
@@ -279,6 +280,17 @@ function FunctionSummaryRow({ func }: FunctionSummaryRowProps) {
       {/* Notatki (np. dla SPZ) */}
       {formatted.notes && (
         <div className="text-gray-500 italic mt-0.5">{formatted.notes}</div>
+      )}
+
+      {/* Krzywa I-t z solvera IEC 60255 (Audyt E, E-4).
+          Renderowana tylko gdy backend dostarczył krzywą LUB jawnie
+          zgłosił brak danych — inaczej panel się nie pokazuje. */}
+      {(func.it_curve != null || func.it_curve_missing_data != null) && (
+        <ItCurvePanel
+          itCurve={func.it_curve}
+          itCurveMissingData={func.it_curve_missing_data}
+          curveId={`${func.code}-${func.ansi.join('')}`}
+        />
       )}
     </div>
   );

@@ -132,14 +132,40 @@ INVERSE (solver już gotowy). Do skoordynowania między wątkami (model ENM + kr
 Kryteria odbioru: funkcja z `curve_type = IEC_*` i ustawionym TMS zwraca pełną
 krzywą odwrotną I-t z solvera; brak TMS nadal daje jawny `it_curve_missing_data`.
 
-### E-4. Wpięcie krzywej I-t z protection-view do wykresu w inspektorze
-Powód: `ProtectionSection.tsx` używa danych fixture; realne wpięcie należy do
-wątku Programu UI/UX (granice plików). Solver i serializacja (E-1) gotowe —
-`TimeCurrentChart` konsumuje `points` bez zmian.
+### E-4. Wpięcie krzywej I-t z protection-view do wykresu w inspektorze — WDROŻONE (2026-07-21)
+Solver i serializacja (E-1) gotowe; ogniwo prezentacyjne domknięte w wątku
+Programu UI/UX.
 
-Kryteria odbioru: inspektor renderuje krzywą I-t z pola `it_curve` przebiegu
-(ZERO fizyki w UI), a przy `it_curve_missing_data` pokazuje uczciwy stan zerowy
-z przyczyną.
+Wdrożenie (frontend, obszar zabezpieczeń):
+- Model widoku `ProtectionFunctionSummary` (`ui/protection/settings-model.ts`)
+  rozszerzony **addytywnie** o `it_curve` (`ProtectionFunctionItCurve`, punkty
+  `{ i_a, t_s }`) oraz `it_curve_missing_data: string[]` — czysty widok danych
+  z backendu, ZERO fizyki.
+- Adapter `ui/protection-curves/itCurveAdapter.ts`:
+  `itCurveToProtectionCurve()` przenosi punkty `{ i_a, t_s }` → `CurvePoint`
+  (`{ current_a, current_multiple, time_s }`) bez interpolacji i bez obliczeń
+  czasu; `itCurveMissingReasonsPl()` mapuje kody braku danych (`time_multiplier`,
+  `pickup_current`, `definite_time`, `it_curve_points`) na przyczyny po polsku.
+- Komponent `ui/protection-curves/ItCurvePanel.tsx` — panel „Krzywa I-t":
+  gdy `it_curve` z punktami → mini-wykres `TimeCurrentChart` (log-log) +
+  podsumowanie (etykieta · liczba punktów · Ip); gdy `it_curve === null` →
+  uczciwy stan zerowy z listą przyczyn (np. „Brak mnożnika czasowego (TMS) —
+  krzywa odwrotna niedostępna" dla `["time_multiplier"]`).
+- `ui/inspector/ProtectionSection.tsx` — panel wpięty w wiersz funkcji
+  (`FunctionSummaryRow`); renderowany tylko gdy backend dostarczył `it_curve`
+  LUB jawnie zgłosił brak danych.
+
+Testy: `ui/protection-curves/__tests__/ItCurvePanel.test.tsx` — realna ścieżka
+renderu funkcji z krzywą DEFINITE (punkty na wykresie + podsumowanie) oraz z
+`it_curve = null` + `["time_multiplier"]` (uczciwy stan braku), plus mapowanie
+punktów i przyczyn w adapterze.
+
+Dług resztkowy (poza granicą wątku, nie blokuje E-4): inspektorowy hook
+`useProtectionAssignment` zwraca dziś pustą listę (endpoint
+`GET /api/projects/{id}/protection-assignments` w publicznej warstwie API jeszcze
+nieudostępniony). Panel jest wpięty i przetestowany na realnym kształcie danych;
+zacznie renderować krzywe automatycznie po podłączeniu hooka do
+`protection-view` / endpointu przypisań (karta w wątku Programu UI/UX).
 
 ---
 
