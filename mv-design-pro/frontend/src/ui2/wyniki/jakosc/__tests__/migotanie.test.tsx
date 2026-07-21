@@ -13,6 +13,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { SekcjaMigotania } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
 import { MIGOTANIE_FIXTURE, przebiegTestowy } from './fixtures';
+import { useSelectionStore } from '../../../../ui/selection/store';
+import { useShellStore } from '../../../shell/useShellStore';
 
 vi.mock('../api', () => ({
   fetchWiarygodnoscZwarciowa: vi.fn(),
@@ -114,5 +116,20 @@ describe('SekcjaMigotania — stany', () => {
     fireEvent.click(screen.getByText('bus-oze-1').closest('tr')!);
     fireEvent.click(screen.getByTestId('mvd-jakosc-mig-slad-otworz'));
     expect(screen.getByTestId('mvd-jakosc-mig-slad')).toBeTruthy();
+  });
+
+  it('przekroczenie migotania → „Popraw" zaznacza węzeł (Bus) i przechodzi do „Schemat" (F-E6.2)', async () => {
+    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useShellStore.setState({ activeSpace: 'wyniki' });
+    mockedMigotanie.mockResolvedValue(MIGOTANIE_FIXTURE);
+    render(<SekcjaMigotania {...propsMigotanie()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-migotanie')).toBeTruthy());
+    // Fixtura: bus-oze-2 przekracza poziom planowania (pst/plt) → jedyny wiersz z przyciskiem.
+    const wiersz = screen.getByText('bus-oze-2').closest('tr')!;
+    fireEvent.click(within(wiersz).getByTestId('mvd-wyn-popraw'));
+    const sel = useSelectionStore.getState();
+    expect(sel.selectedElement).toMatchObject({ id: 'bus-oze-2', type: 'Bus' });
+    expect(sel.sldCenterOnElement).toBe('bus-oze-2');
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 });

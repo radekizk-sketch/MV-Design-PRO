@@ -40,7 +40,7 @@ zabezpieczeń, audytor WHITE BOX, projektant sieci end-to-end, UX/IA.
 | # | Persona | Brak (co boli) | Dowód | Priorytet | Dyspozycja |
 |---|---|---|---|---|---|
 | **A1** | IA | **Brak skonsolidowanego „Co wymaga uwagi"** — przekroczenia są rozproszone per zakładka (rozpływ osobno, zwarcia osobno…). Inżynier nie widzi WSZYSTKICH problemów sieci w jednym miejscu z akcją naprawczą. | Werdykty `WartoscKomorki.ostrzezenie` liczone per adapter, brak agregatora | **KRYTYCZNY** | Rejestr przekroczeń „Co wymaga uwagi" w przestrzeni Wyniki: zbiera ostrzeżenia ze wszystkich zakończonych analiz + „Popraw w modelu" per pozycja (rozszerza F-E6.1). **← UZUPEŁNIONE (patrz §4)** |
-| **A2** | IA | Pętla decyzji wpięta tylko w rozpływ (F-E6.1); zwarcia/jakość/koordynacja nie prowadzą z werdyktu do modelu. | `TabelaSzyn/Galezi` mają `onPoprawWModelu`, reszta nie | wysoki | F-E6.2: wpiąć `onPoprawWModelu` w zwarcia + pozostałe ekrany wzorca. |
+| **A2** | IA | Pętla decyzji wpięta tylko w rozpływ (F-E6.1); jakość/zgodność nie prowadzą z werdyktu do modelu. | `TabelaSzyn/Galezi` mają `onPoprawWModelu`, reszta nie | wysoki | **← UZUPEŁNIONE (F-E6.2, V12K-099).** Wpięte w Jakość (walidacja energetyczna — typ z `check_type`; migotanie — Bus) i Zgodność powykonawczą (pomiar U → Bus). Zwarcia BEZ pętli (kontrakt SC nie niesie werdyktu przekroczenia — brak `ostrzezenie`, byłby phantom). Wzorzec `TabelaWynikow` +predykat `wierszDecyzyjny` (agregat systemowy `target_id=network` bez elementu → brak martwego przycisku). |
 | **A3** | IA/PS | Akcja pętli jest OGÓLNA („przejdź do modelu"); nie prowadzi do WŁAŚCIWEGO konfiguratora (ΔU→dobór odcinka, przeciążenie→dobór kabla, miskoordynacja→nastawy). | `usePoprawWModelu` robi tylko selekcję+nawigację do „Schemat" | średni | F-E6.3: akcja kontekstowa per rodzaj przekroczenia (mapowanie werdykt→operacja). |
 | **B1** | PS | E1: warunki przyłączenia i dane OSD (Sk″, U, wymagany cosφ, tryb pracy) nie mają jawnego kroku wejściowego — kafel „wkrótce". | `KafelWkrotce.tsx` (Bilans przyłączeniowy / Postęp wg celu) | wysoki | F-E1: krok „Warunki przyłączenia" na pulpicie (wymaga pola danych OSD w modelu/nagłówku — recon backendu). |
 | **B2** | PS | Bilans mocy przyłączeniowej (moc przyłączeniowa vs zainstalowana OZE) brak — kluczowy dla wniosku OSD. | `KafelWkrotce` „Bilans przyłączeniowy" | wysoki | F-E1/E7: bilans z realnego backendu (moc źródeł/odbiorów + limit OSD). Recon: czy backend liczy? jeśli nie — rozbudowa (osobny krok). |
@@ -81,9 +81,9 @@ nie wyspa). Testy: `co-wymaga-uwagi/__tests__/{model,EkranCoWymagaUwagi}.test.ts
 
 ## 5. Kolejka uzupełnień (pozostałe — zarejestrowane, nie ciche)
 
-1. **A2** F-E6.2 — pętla decyzji w zwarciach + pozostałych ekranach wzorca.
+1. ~~**A2** F-E6.2 — pętla decyzji w pozostałych ekranach wzorca.~~ **✅ UZUPEŁNIONE (V12K-099).**
 2. **B1/B2** F-E1 — warunki przyłączenia + bilans mocy (recon backendu → rozbudowa jeśli brak).
-3. **A3** F-E6.3 — akcje kontekstowe per rodzaj przekroczenia.
+3. **A3** F-E6.3 — akcje kontekstowe per rodzaj przekroczenia (ΔU→dobór odcinka, przeciążenie→dobór kabla, miskoordynacja→nastawy).
 4. **C1/D1** — domknięcie `dowodRef` + znacznik świeżości w pasku przypadku.
 
-Priorytet realizacji wg bólu: A1 (✅) → A2 → B1/B2 → A3 → C1/D1.
+Priorytet realizacji wg bólu: A1 (✅) → A2 (✅) → B1/B2 → A3 → C1/D1.

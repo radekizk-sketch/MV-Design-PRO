@@ -60,6 +60,25 @@ describe('TabelaWynikow — pętla decyzji (F-E6.1: „Popraw w modelu")', () =>
     expect(onPopraw).toHaveBeenCalledWith('Szyna A');
     expect(onWybierz).not.toHaveBeenCalled();
   });
+
+  it('wierszDecyzyjny=false: przycisk ukryty mimo ostrzeżenia (agregat bez elementu — F-E6.2)', () => {
+    render(
+      <TabelaWynikow {...props({ onPoprawWModelu: vi.fn(), wierszDecyzyjny: () => false })} />,
+    );
+    // Kolumna decyzji nadal jest (nagłówek), ale żaden wiersz nie dostaje przycisku.
+    expect(screen.getByTestId('mvd-wyn-th-decyzja')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-wyn-popraw')).toBeNull();
+  });
+
+  it('wierszDecyzyjny selektywne: przycisk tylko na wierszu spełniającym predykat', () => {
+    render(
+      <TabelaWynikow
+        {...props({ onPoprawWModelu: vi.fn(), wierszDecyzyjny: (k) => k === 'Szyna A' })}
+      />,
+    );
+    // „Szyna A" ma ostrzeżenie i spełnia predykat → dokładnie jeden przycisk.
+    expect(screen.getAllByTestId('mvd-wyn-popraw')).toHaveLength(1);
+  });
 });
 
 describe('TabelaWynikow — nagłówki i komórki', () => {

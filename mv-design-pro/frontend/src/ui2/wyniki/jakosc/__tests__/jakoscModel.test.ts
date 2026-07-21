@@ -12,6 +12,7 @@ import {
   naZalozeniaWiarygodnosci,
   przebiegRozplywu,
   przebiegZwarciowy,
+  typElementuWalidacji,
 } from '../jakoscModel';
 import { WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE, przebiegTestowy } from './fixtures';
 
@@ -159,5 +160,21 @@ describe('adapter walidacji energetycznej', () => {
     expect(zal[0].wartosc).toBe('80,0');
     expect(zal[0].jednostka).toBe('%');
     expect(zal[3].wartosc).toBe('10,0');
+  });
+});
+
+describe('typElementuWalidacji — mapowanie rodzaju kontroli na typ elementu (F-E6.2)', () => {
+  it('napięcie i bilans mocy biernej → węzeł (Bus)', () => {
+    expect(typElementuWalidacji('VOLTAGE_DEVIATION')).toBe('Bus');
+    expect(typElementuWalidacji('REACTIVE_BALANCE')).toBe('Bus');
+  });
+
+  it('obciążalność gałęzi → LineBranch, transformatora → TransformerBranch', () => {
+    expect(typElementuWalidacji('BRANCH_LOADING')).toBe('LineBranch');
+    expect(typElementuWalidacji('TRANSFORMER_LOADING')).toBe('TransformerBranch');
+  });
+
+  it('bilans strat (agregat systemowy target_id=network) → null (brak elementu, brak martwej akcji)', () => {
+    expect(typElementuWalidacji('LOSS_BUDGET')).toBeNull();
   });
 });

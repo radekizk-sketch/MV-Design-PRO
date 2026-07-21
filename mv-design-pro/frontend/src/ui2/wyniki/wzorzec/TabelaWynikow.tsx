@@ -61,6 +61,8 @@ interface TabelaWynikowProps {
   wybranyWiersz?: string | null;
   /** Pętla decyzji (F-E6.1): akcja „Popraw w modelu" na wierszach z ostrzeżeniem. */
   onPoprawWModelu?: (klucz: string) => void;
+  /** Predykat naprawialności wiersza (F-E6.2) — brak = każdy wiersz z ostrzeżeniem. */
+  wierszDecyzyjny?: (klucz: string) => boolean;
 }
 
 /** Czy wiersz niesie jakiekolwiek przekroczenie (dowolna komórka `ostrzezenie`). */
@@ -114,6 +116,7 @@ export function TabelaWynikow({
   onWybierzWiersz,
   wybranyWiersz,
   onPoprawWModelu,
+  wierszDecyzyjny,
 }: TabelaWynikowProps) {
   const [sort, setSort] = useState<StanSortowania | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -212,7 +215,8 @@ export function TabelaWynikow({
         ))}
         {kolumnaDecyzji && (
           <td className="mvd-wyn-td-decyzja">
-            {wierszMaOstrzezenie(wiersz) && (
+            {wierszMaOstrzezenie(wiersz) &&
+              (wierszDecyzyjny == null || wierszDecyzyjny(rowKey)) && (
               <button
                 type="button"
                 className="mvd-wyn-popraw-btn"

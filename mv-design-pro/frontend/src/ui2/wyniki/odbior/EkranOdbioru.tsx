@@ -18,7 +18,7 @@ import { useEffect, useMemo, useState } from 'react';
 import './odbior.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
-import { EkranAnalizy } from '../wzorzec';
+import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
 import { przebiegRozplywu } from '../jakosc';
 import {
   postZgodnoscPowykonawcza,
@@ -218,6 +218,7 @@ function WynikZgodnosci({
   trybZaawansowania: AdvancementMode;
 }) {
   const [wybrany, setWybrany] = useState<string | null>(null);
+  const poprawWModelu = usePoprawWModelu();
   const wierszeSelektora = useMemo(
     () =>
       new Map<string, WierszZgodnosci>(
@@ -250,6 +251,13 @@ function WynikZgodnosci({
         kluczWiersza={KLUCZ_WIERSZA_ZGODNOSCI}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
+        onPoprawWModelu={(klucz) => {
+          const w = wierszeSelektora.get(klucz);
+          // Tylko napięcie (U) mapuje jednoznacznie na węzeł (Bus). Pomiar P/Q
+          // nie niesie jednoznacznego typu elementu w kontrakcie → nie zgadujemy.
+          if (w && w.wielkosc === 'U') poprawWModelu(w.element_ref, 'Bus', w.element_ref);
+        }}
+        wierszDecyzyjny={(klucz) => wierszeSelektora.get(klucz)?.wielkosc === 'U'}
       />
 
       <div className="mvd-odbior-podsumowanie" data-testid="mvd-odbior-podsumowanie">

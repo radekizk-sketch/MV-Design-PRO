@@ -119,4 +119,13 @@ export interface EkranAnalizyProps {
    * dzisiejszego zachowania ekranów nie-konsumujących).
    */
   onPoprawWModelu?: (klucz: string) => void;
+  /**
+   * Predykat decydujący, czy DANY wiersz z przekroczeniem jest „naprawialny
+   * w modelu" (F-E6.2). Domyślnie (brak predykatu) przycisk pokazuje się na
+   * KAŻDYM wierszu z ostrzeżeniem. Screeny, w których część przekroczeń dotyczy
+   * agregatów systemowych bez elementu modelu (np. bilans strat `target_id=network`),
+   * podają predykat, by NIE renderować martwego przycisku na tych wierszach.
+   * Wołany z kluczem wiersza (tą samą wartością co `onPoprawWModelu`).
+   */
+  wierszDecyzyjny?: (klucz: string) => boolean;
 }

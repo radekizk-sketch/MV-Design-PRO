@@ -33,6 +33,7 @@ export function EkranAnalizy({
   onWybierzWiersz,
   wybranyWiersz,
   onPoprawWModelu,
+  wierszDecyzyjny,
 }: EkranAnalizyProps) {
   const { analizaPL, runId, rewizjaModelu, rewizjaDanych } = naglowek;
   const maSwiezosc = rewizjaModelu !== undefined && rewizjaDanych !== undefined;
@@ -83,6 +84,7 @@ export function EkranAnalizy({
         onWybierzWiersz={onWybierzWiersz}
         wybranyWiersz={wybranyWiersz}
         onPoprawWModelu={onPoprawWModelu}
+        wierszDecyzyjny={wierszDecyzyjny}
       />
 
       {wykres && (

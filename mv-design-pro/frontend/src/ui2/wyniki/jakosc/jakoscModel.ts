@@ -10,6 +10,7 @@
  */
 
 import type { ExecutionRun } from '../../../ui/study-cases/types';
+import type { ElementType } from '../../../ui/types';
 import type {
   DefinicjaKolumny,
   WartoscKomorki,
@@ -18,6 +19,7 @@ import type {
 } from '../wzorzec';
 import type {
   KonfiguracjaMigotania,
+  RodzajKontroli,
   WalidacjaConfig,
   WalidacjaItem,
   WezelMigotania,
@@ -196,6 +198,30 @@ export const KOLUMNY_WALIDACJI: DefinicjaKolumny[] = [
     tylkoEkspercki: true,
   },
 ];
+
+/**
+ * Typ elementu modelu dla przekroczenia walidacji (pętla decyzji F-E6.2). Mapowanie
+ * gruntowane realnym backendem (`analysis/energy_validation/builder.py`): jaki
+ * identyfikator siada w `target_id` per rodzaj kontroli:
+ * - VOLTAGE_DEVIATION / REACTIVE_BALANCE → węzeł (`node_id`/`slack_node_id`) = Bus
+ * - BRANCH_LOADING → `branch_id` gałęzi = LineBranch
+ * - TRANSFORMER_LOADING → `branch_id` transformatora = TransformerBranch
+ * - LOSS_BUDGET → `target_id="network"` = AGREGAT SYSTEMOWY (brak elementu modelu → null)
+ * Zwraca `null`, gdy przekroczenie nie mapuje na wybieralny element (brak martwej akcji).
+ */
+export function typElementuWalidacji(checkType: RodzajKontroli): ElementType | null {
+  switch (checkType) {
+    case 'VOLTAGE_DEVIATION':
+    case 'REACTIVE_BALANCE':
+      return 'Bus';
+    case 'BRANCH_LOADING':
+      return 'LineBranch';
+    case 'TRANSFORMER_LOADING':
+      return 'TransformerBranch';
+    case 'LOSS_BUDGET':
+      return null;
+  }
+}
 
 /** Adapter: pozycja walidacji → wiersz tabeli wzorca (statusy wyłącznie z backendu). */
 export function mapujWierszWalidacji(item: WalidacjaItem, index: number): WierszTabeli {

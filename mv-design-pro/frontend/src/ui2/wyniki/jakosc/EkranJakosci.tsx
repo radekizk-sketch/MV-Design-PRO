@@ -21,7 +21,7 @@ import './jakosc.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
-import { EkranAnalizy } from '../wzorzec';
+import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
 import {
   fetchArcFlash,
   fetchMigotanie,
@@ -60,6 +60,7 @@ import {
   naZalozeniaMigotania,
   naZalozeniaWalidacji,
   naZalozeniaWiarygodnosci,
+  typElementuWalidacji,
   przebiegRozplywu,
   przebiegZwarciowy,
 } from './jakoscModel';
@@ -329,6 +330,7 @@ export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, on
   const runId = przebieg?.id ?? null;
   const { stan, dane } = useZasobJakosci<WalidacjaResponse>(runId, fetchWalidacjaEnergetyczna);
   const [wybrany, setWybrany] = useState<string | null>(null);
+  const poprawWModelu = usePoprawWModelu();
 
   const items = dane?.items ?? [];
   const wierszeSelektora = useMemo(
@@ -384,6 +386,15 @@ export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, on
         kluczWiersza={KLUCZ_WIERSZA_WALIDACJI}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
+        onPoprawWModelu={(klucz) => {
+          const it = wierszeSelektora.get(klucz);
+          const typ = it ? typElementuWalidacji(it.check_type) : null;
+          if (it && typ) poprawWModelu(it.target_id, typ, it.target_name ?? it.target_id);
+        }}
+        wierszDecyzyjny={(klucz) => {
+          const it = wierszeSelektora.get(klucz);
+          return it != null && typElementuWalidacji(it.check_type) != null;
+        }}
       />
       <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-walidacja-podsumowanie">
         <Chip etykieta={JAKOSC_STRINGS.podsumZgodne} wartosc={summary.pass_count} istotnosc="ok" />
@@ -606,6 +617,7 @@ export function SekcjaMigotania({
   const runId = przebieg?.id ?? null;
   const { stan, dane } = useZasobJakosci<MigotanieResponse>(runId, fetchMigotanie);
   const [wybrany, setWybrany] = useState<string | null>(null);
+  const poprawWModelu = usePoprawWModelu();
 
   const buses = dane?.buses ?? [];
   const wierszeSelektora = useMemo(
@@ -661,6 +673,7 @@ export function SekcjaMigotania({
         kluczWiersza={KLUCZ_WIERSZA_MIGOTANIE}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
+        onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', ref)}
       />
       <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-migotanie-podsumowanie">
         <Chip etykieta={JAKOSC_STRINGS.podsumOcenione} wartosc={summary.assessed_count} istotnosc="ok" />

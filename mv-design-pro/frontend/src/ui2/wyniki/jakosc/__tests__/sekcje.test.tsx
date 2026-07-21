@@ -3,6 +3,9 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { SekcjaWalidacji, SekcjaWiarygodnosci } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
 import { WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE, przebiegTestowy } from './fixtures';
+import { useSelectionStore } from '../../../../ui/selection/store';
+import { useShellStore } from '../../../shell/useShellStore';
+import type { WalidacjaResponse } from '../api';
 
 vi.mock('../api', () => ({
   fetchWiarygodnoscZwarciowa: vi.fn(),
@@ -152,5 +155,49 @@ describe('SekcjaWalidacji — stany', () => {
     const szczegol = screen.getByTestId('mvd-jakosc-walidacja-szczegol');
     expect(within(szczegol).getByText(WALIDACJA_FIXTURE.items[2].why_pl)).toBeTruthy();
     expect(within(szczegol).getByText('Przekroczenie')).toBeTruthy();
+  });
+});
+
+describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () => {
+  beforeEach(() => {
+    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useShellStore.setState({ activeSpace: 'wyniki' });
+  });
+
+  it('przycisk decyzji tylko na wierszach z przekroczeniem mapującym na element (WARNING/FAIL element-level)', async () => {
+    mockedWalidacja.mockResolvedValue(WALIDACJA_FIXTURE);
+    render(<SekcjaWalidacji {...propsWalidacja()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());
+    // Fixtura: WARNING (transformator) + FAIL (napięcie) = 2 wiersze z ostrzeżeniem, oba element-level.
+    expect(screen.getAllByTestId('mvd-wyn-popraw')).toHaveLength(2);
+  });
+
+  it('przekroczenie napięcia → „Popraw" zaznacza węzeł (Bus) i przechodzi do „Schemat"', async () => {
+    mockedWalidacja.mockResolvedValue(WALIDACJA_FIXTURE);
+    render(<SekcjaWalidacji {...propsWalidacja()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());
+    // Wiersz napięcia (bus-B) — znajdź przycisk w jego wierszu.
+    const wierszNapiecia = screen.getByText('Odchylenie napięcia').closest('tr')!;
+    fireEvent.click(within(wierszNapiecia).getByTestId('mvd-wyn-popraw'));
+    const sel = useSelectionStore.getState();
+    expect(sel.selectedElement).toMatchObject({ id: 'bus-B', type: 'Bus' });
+    expect(sel.sldCenterOnElement).toBe('bus-B');
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+  });
+
+  it('bilans strat (target_id=network) z przekroczeniem NIE dostaje przycisku (agregat systemowy, brak martwej akcji)', async () => {
+    // Wariant fixtury: LOSS_BUDGET z werdyktem FAIL (agregat „siec", nie element modelu).
+    const fixtura: WalidacjaResponse = {
+      ...WALIDACJA_FIXTURE,
+      items: [
+        { ...WALIDACJA_FIXTURE.items[2] }, // VOLTAGE_DEVIATION / FAIL / bus-B (element-level)
+        { ...WALIDACJA_FIXTURE.items[3], status: 'FAIL' }, // LOSS_BUDGET / target_id="siec"
+      ],
+    };
+    mockedWalidacja.mockResolvedValue(fixtura);
+    render(<SekcjaWalidacji {...propsWalidacja()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());
+    // Oba wiersze mają ostrzeżenie, ale tylko element-level (napięcie) dostaje przycisk.
+    expect(screen.getAllByTestId('mvd-wyn-popraw')).toHaveLength(1);
   });
 });

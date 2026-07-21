@@ -13,6 +13,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
+import { useSelectionStore } from '../../../../ui/selection/store';
+import { useShellStore } from '../../../shell/useShellStore';
 import { EkranOdbioru } from '../EkranOdbioru';
 import { widokZgodnosciFixture } from './fixtures';
 
@@ -103,6 +105,40 @@ describe('EkranOdbioru — serializacja i raport', () => {
     // Największa odchyłka z podsumowania (przecinek PL).
     expect(screen.getByTestId('mvd-odbior-najwieksza')).toHaveTextContent('12,50');
     expect(screen.getByTestId('mvd-odbior-najwieksza')).toHaveTextContent('LINE-2');
+  });
+
+  it('pomiar P poza tolerancją NIE dostaje przycisku „Popraw" (typ elementu niejednoznaczny — F-E6.2)', async () => {
+    ustawPrzebieg();
+    // Domyślna fixtura: jedyne przekroczenie to LINE-2 / P (moc). Typ elementu dla
+    // P/Q nie jest jednoznaczny w kontrakcie → uczciwie brak akcji (zero zgadywania).
+    post.mockResolvedValue(widokZgodnosciFixture());
+    render(<EkranOdbioru trybZaawansowania="basic" />);
+    wypelnijPomiarU();
+    fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
+    await screen.findByTestId('mvd-odbior-wynik');
+    expect(screen.queryByTestId('mvd-wyn-popraw')).toBeNull();
+  });
+
+  it('pomiar U poza tolerancją → „Popraw" zaznacza węzeł (Bus) i przechodzi do „Schemat"', async () => {
+    ustawPrzebieg();
+    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useShellStore.setState({ activeSpace: 'wyniki' });
+    const bazowy = widokZgodnosciFixture();
+    // Wariant: napięcie na BUS-1 poza tolerancją (werdykt steruje ostrzeżeniem adaptera).
+    post.mockResolvedValue({
+      ...bazowy,
+      wiersze: [{ ...bazowy.wiersze[0], werdykt: 'poza tolerancją' }],
+    });
+    render(<EkranOdbioru trybZaawansowania="basic" />);
+    wypelnijPomiarU();
+    fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
+    await screen.findByTestId('mvd-odbior-wynik');
+
+    fireEvent.click(screen.getByTestId('mvd-wyn-popraw'));
+    const sel = useSelectionStore.getState();
+    expect(sel.selectedElement).toMatchObject({ id: 'BUS-1', type: 'Bus' });
+    expect(sel.sldCenterOnElement).toBe('BUS-1');
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 
   it('werdykt prezentowany kolorem tokenów w panelu szczegółu (wybór wiersza)', async () => {
