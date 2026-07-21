@@ -19,6 +19,7 @@ import { KreatorTransformatoraSnNn } from './ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from './ui2/kreatory/zrodlo';
 import { KreatorZrodlaOze } from './ui2/kreatory/zrodlo-oze';
 import { SekcjaArcFlash } from './ui2/wyniki/jakosc/EkranJakosci';
+import { HubDokumentacji } from './ui2/spaces/dokumentacja';
 import { useAppStateStore } from './ui/app-state';
 import { useSnapshotStore } from './ui/topology/snapshotStore';
 import { useNetworkBuildStore } from './ui/network-build/networkBuildStore';
@@ -129,6 +130,30 @@ const creator = new URLSearchParams(window.location.search).get('creator') ?? 'p
 if (creator === 'arcflash') {
   const run: ExecutionRun = { id: 'run-sc-1', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [run], activeRunId: 'run-sc-1' } as never);
+} else if (creator === 'dokumentacja') {
+  // Hub „Dokumentacja" (F-E8.1): pełny kontekst toru pracy — projekt, wariant,
+  // wersja układu (rewizja + hash) i ZAKOŃCZONY przebieg → karty odblokowane
+  // („można wytworzyć"), tabliczka pokazuje realne wartości (nie stan zerowy).
+  useAppStateStore.setState({
+    activeProjectName: 'Przyłączenie farmy PV 8 MW',
+    activeCaseName: 'Wariant zimowy',
+  } as never);
+  useSnapshotStore.setState({
+    snapshot: {
+      header: { name: 'Projekt demonstracyjny', revision: 7, hash_sha256: 'a1b2c3d4e5f60718' },
+      substations: [],
+      transformers: [],
+      buses: [],
+      sources: [],
+      loads: [],
+      bays: [],
+    },
+  } as never);
+  const run: ExecutionRun = {
+    id: 'run-lf-1', analysis_type: 'LOAD_FLOW', status: 'DONE',
+    started_at: '2026-07-21T10:30:00Z', finished_at: '2026-07-21T10:30:00Z',
+  } as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({ runs: [run], activeRunId: 'run-lf-1' } as never);
 } else {
   // Kontekst operacji (szyna/stacja) dla kreatorów pole/OZE/transformator.
   const op =
@@ -163,7 +188,8 @@ if (creator === 'arcflash') {
 
 function Harness() {
   let node: React.ReactNode;
-  if (creator === 'oze') node = <KreatorZrodlaOze />;
+  if (creator === 'dokumentacja') node = <HubDokumentacji />;
+  else if (creator === 'oze') node = <KreatorZrodlaOze />;
   else if (creator === 'transformator') node = <KreatorTransformatoraSnNn />;
   else if (creator === 'kompensator') node = <KreatorKompensatoraSn />;
   else if (creator === 'magistrala') node = <KreatorMagistralaSn />;

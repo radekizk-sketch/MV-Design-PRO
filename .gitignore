@@ -63,3 +63,4 @@ mv-design-pro/artifacts/
 
 # Zrzuty ekranów kreatorów (artefakty regenerowalne przez e2e/creator-screenshot.spec)
 mv-design-pro/docs/audit/visual/kreatory/*.png
+mv-design-pro/docs/audit/visual/dokumentacja/*.png
