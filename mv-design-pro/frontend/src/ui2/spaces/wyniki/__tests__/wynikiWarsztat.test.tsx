@@ -10,6 +10,7 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
+import { useShellStore } from '../../../shell/useShellStore';
 import type { ShortCircuitResults } from '../../../../ui/results-inspector/types';
 import { WZORZEC_STRINGS } from '../../../wyniki/wzorzec';
 import { WynikiWarsztat } from '../WynikiWarsztat';
@@ -30,6 +31,7 @@ beforeEach(() => {
   });
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
   useAppStateStore.setState({ activeRunId: null, activeProjectId: null });
+  useShellStore.setState({ wynikiTab: null });
 });
 
 /** Wynik zwarciowy 1:1 z kontraktem `ShortCircuitResults` (types.ts:172-176). */
@@ -81,6 +83,22 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.getByTestId('mvd-wyniki-zakladka-pozostale')).toHaveTextContent(
       T.zakladkaPozostale,
     );
+  });
+
+  it('deep-link ze shell store (F-E8.2): wynikiTab=„studium" otwiera zakładkę studium i czyści żądanie', () => {
+    useShellStore.setState({ wynikiTab: 'studium' });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-studium').getAttribute('aria-selected')).toBe('true');
+    // Żądanie skonsumowane (jednorazowe) — nie „przykleja" zakładki na stałe.
+    expect(useShellStore.getState().wynikiTab).toBeNull();
+  });
+
+  it('deep-link: nieznane id zakładki jest ignorowane (walidacja), żądanie wyczyszczone', () => {
+    useShellStore.setState({ wynikiTab: 'nieistniejaca-zakladka' });
+    render(<WynikiWarsztat {...props()} />);
+    // Zakładka startowa bez zmian (domyślna wg rodzaju przebiegu = „pozostałe" bez przebiegu).
+    expect(screen.getByTestId('mvd-wyniki-zakladka-pozostale').getAttribute('aria-selected')).toBe('true');
+    expect(useShellStore.getState().wynikiTab).toBeNull();
   });
 
   it('zakładka „Porównanie A/B": bez aktywnego projektu — uczciwy stan pusty', () => {

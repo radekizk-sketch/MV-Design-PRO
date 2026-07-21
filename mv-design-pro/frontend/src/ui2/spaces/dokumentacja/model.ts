@@ -17,10 +17,15 @@ import { ANALYSIS_TYPE_LABELS } from '../../../ui/study-cases/types';
 /** Czego wymaga dokument, by dało się go wytworzyć (uczciwy warunek). */
 export type WymogDokumentu = 'przebieg' | 'projekt';
 
-/** Cel karty: ekran-dostawca mostu (openRouteSurface) albo przestrzeń powłoki. */
+/**
+ * Cel karty: ekran-dostawca mostu (openRouteSurface), przestrzeń powłoki
+ * (setActiveSpace) albo konkretna zakładka przestrzeni „Wyniki" (deep-link do
+ * istniejącego generatora, np. studium OZE — F-E8.2). Wszystkie REALNE.
+ */
 export type CelDokumentu =
   | { readonly rodzaj: 'ekran'; readonly ekran: WorkspaceSurfaceCode }
-  | { readonly rodzaj: 'przestrzen'; readonly przestrzen: SpaceId };
+  | { readonly rodzaj: 'przestrzen'; readonly przestrzen: SpaceId }
+  | { readonly rodzaj: 'wyniki-zakladka'; readonly zakladka: string };
 
 /** Rodzina wizualna karty (ikona + akcent) — recenzja pkt 2/7. */
 export type IkonaDokumentu = 'raport' | 'dowod' | 'archiwum';
@@ -81,6 +86,24 @@ export const GRUPY_DOKUMENTOW: readonly GrupaDokumentow[] = [
         pokazZawartosc: true,
         wyroznione: true,
         testid: 'mvd-dok-karta-dowod',
+      },
+    ],
+  },
+  {
+    tytul: 'Dokumenty przyłączeniowe (OZE)',
+    karty: [
+      {
+        id: 'studium-oze',
+        tytul: 'Studium przyłączeniowe OZE',
+        opis: 'Dokument przyłączeniowy do OSD dla źródeł PV/BESS/FW.',
+        wymaga: 'projekt',
+        cel: { rodzaj: 'wyniki-zakladka', zakladka: 'studium' },
+        ikona: 'raport',
+        akcent: 'accent',
+        formaty: ['PDF', 'DOCX'],
+        akcjaEtykieta: 'Otwórz kreator',
+        pokazZawartosc: false,
+        testid: 'mvd-dok-karta-studium',
       },
     ],
   },

@@ -14,9 +14,10 @@
  * z konfiguracji AKTYWNEGO przypadku obliczeniowego — przekazywane tylko, gdy
  * aktywny przebieg należy do aktywnego przypadku (inaczej „—", zero zgadywania).
  */
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
 import type { AdvancementMode } from '../../shell/modeModel';
+import { useShellStore } from '../../shell/useShellStore';
 import { EkranBadanOltc } from '../../wyniki/oltc';
 import { EkranRozplywu } from '../../wyniki/rozplyw';
 import { EkranZwarc } from '../../wyniki/zwarcia';
@@ -158,6 +159,15 @@ export function WynikiWarsztat({
   const [zakladka, setZakladka] = useState<ZakladkaId>(
     aktywnyRodzaj === 'rozplyw' ? 'rozplyw' : aktywnyRodzaj === 'zwarcie' ? 'zwarcia' : 'pozostale',
   );
+  // Deep-link między-przestrzenny (np. hub Dokumentacji → generator studium OZE):
+  // jednorazowe żądanie ze shell store; walidujemy id i czyścimy po konsumpcji.
+  const wynikiTab = useShellStore((s) => s.wynikiTab);
+  const setWynikiTab = useShellStore((s) => s.setWynikiTab);
+  useEffect(() => {
+    if (!wynikiTab) return;
+    if (ZAKLADKI.some((z) => z.id === wynikiTab)) setZakladka(wynikiTab as ZakladkaId);
+    setWynikiTab(null);
+  }, [wynikiTab, setWynikiTab]);
   const zalozeniaZwarciowe = useZalozeniaZwarcioweAktywnegoPrzypadku();
 
   // 2×klik na wartości z dowodem → zakładka „Dowód obliczeń" (okno E9.1).

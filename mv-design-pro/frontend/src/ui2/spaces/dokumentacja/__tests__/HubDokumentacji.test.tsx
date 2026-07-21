@@ -42,7 +42,7 @@ describe('HubDokumentacji — ekran prowadzący (R2: 3 pytania inżyniera)', () 
     useSnapshotStore.setState({ snapshot: null });
     useExecutionRunsStore.setState({ runs: [] });
     useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
-    useShellStore.setState({ activeSpace: 'dokumentacja' });
+    useShellStore.setState({ activeSpace: 'dokumentacja', wynikiTab: null });
   });
 
   afterEach(() => {
@@ -120,6 +120,16 @@ describe('HubDokumentacji — ekran prowadzący (R2: 3 pytania inżyniera)', () 
     render(<HubDokumentacji />);
     await user.click(within(screen.getByTestId('mvd-dok-karta-archiwum')).getByRole('button', { name: 'Otwórz archiwum' }));
     expect(useShellStore.getState().activeSpace).toBe('projekt');
+  });
+
+  it('Q2 karta studium OZE (F-E8.2): deep-link do istniejącego generatora Wyniki→studium (klik natywny)', async () => {
+    const user = userEvent.setup();
+    render(<HubDokumentacji />);
+    const studium = screen.getByTestId('mvd-dok-karta-studium');
+    expect(within(studium).getByText('Studium przyłączeniowe OZE')).toBeTruthy();
+    await user.click(within(studium).getByRole('button', { name: 'Otwórz kreator' }));
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(useShellStore.getState().wynikiTab).toBe('studium');
   });
 
   it('Q2 formaty są drugorzędne (drobny druk obok akcji, nie chipy)', () => {

@@ -155,6 +155,7 @@ export function HubDokumentacji() {
   const przebiegi = useExecutionRunsStore((s) => s.runs);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
+  const setWynikiTab = useShellStore((s) => s.setWynikiTab);
 
   const maProjekt = Boolean(activeProjectName);
   const ostatni = ostatniZakonczonyPrzebieg(przebiegi);
@@ -177,6 +178,10 @@ export function HubDokumentacji() {
   const otworzCel = (cel: CelDokumentu) => {
     if (cel.rodzaj === 'ekran') {
       openRouteSurface(cel.ekran);
+    } else if (cel.rodzaj === 'wyniki-zakladka') {
+      // Deep-link do istniejącego generatora w przestrzeni „Wyniki" (studium OZE).
+      setWynikiTab(cel.zakladka);
+      setActiveSpace('wyniki');
     } else {
       setActiveSpace(cel.przestrzen);
     }

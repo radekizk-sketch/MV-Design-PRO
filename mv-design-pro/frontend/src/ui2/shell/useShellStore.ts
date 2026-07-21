@@ -64,9 +64,16 @@ interface ShellState {
   bottomPanelOpen: boolean;
   bottomPanelTab: BottomPanelTab;
   layoutBySpace: Partial<Record<SpaceId, PanelLayoutState>>;
+  /**
+   * Jednorazowe żądanie otwarcia konkretnej zakładki przestrzeni „Wyniki"
+   * (deep-link między-przestrzenny, np. z huba Dokumentacji do generatora
+   * studium OZE). `WynikiWarsztat` konsumuje i czyści (null). NIE persystowane.
+   */
+  wynikiTab: string | null;
 
   setActiveSpace: (space: SpaceId) => void;
   setAdvancementMode: (mode: AdvancementMode) => void;
+  setWynikiTab: (tab: string | null) => void;
 
   getLayout: (space: SpaceId) => PanelLayoutState;
   setLeftWidth: (space: SpaceId, width: number) => void;
@@ -102,9 +109,11 @@ export const useShellStore = create<ShellState>()(
       bottomPanelOpen: false,
       bottomPanelTab: 'problemy',
       layoutBySpace: {},
+      wynikiTab: null,
 
       setActiveSpace: (space) => set({ activeSpace: space }),
       setAdvancementMode: (mode) => set({ advancementMode: mode }),
+      setWynikiTab: (tab) => set({ wynikiTab: tab }),
 
       getLayout: (space) => layoutFor(get(), space),
 
