@@ -193,6 +193,8 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `POST /api/quality/arc-flash/report` | v12xx | aktywny | 2026-07-20 | - | Raport arc flash (json/text_pl/latex) z widoku IEEE 1584; podsumowanie najgorszego przypadku + rozklad SOI. ZERO fizyki (interpretacja widoku). V12K-074. | arc flash report/API tests | Architekt jakosci |
 | `POST /api/quality/arc-flash/report.pdf` | v12xx | aktywny | 2026-07-20 | - | Raport arc flash PDF (reportlab, deterministyczny) do pobrania. V12K-074. | arc flash report/API tests | Architekt jakosci |
 | `POST /api/quality/arc-flash/report.docx` | v12xx | aktywny | 2026-07-20 | - | Raport arc flash DOCX (python-docx, deterministyczny) do pobrania. V12K-074. | arc flash report/API tests | Architekt jakosci |
+| `GET /api/quality/state-estimation/requirements` | v12xx | aktywny | 2026-07-21 | - | Wymagane wejscia estymacji stanu WLS: mapa wezel->indeks Y-bus, slack, minimalna liczba pomiarow. ZERO fizyki. Domkniecie wyspy z inwentarza (solver WLS bez punktu wejscia). | quality state estimation API tests | Architekt jakosci |
+| `POST /api/quality/state-estimation` | v12xx | aktywny | 2026-07-21 | - | Estymacja stanu WLS (IEEE/Abur-Exposito) na bazie przebiegu rozplywu (PF): Y-bus z grafu + pomiary telemetrii (SCADA/PMU) w zadaniu -> estymowany stan (moduly napiec i katy), rezydua, chi2, detekcja zlych danych (LNR). Solver liczy fizyke; API mapuje/serializuje. Brak pomiarow -> 422 (bez fabrykacji). WHITE BOX (H/G/rezydua). | quality state estimation API tests | Architekt jakosci |
 
 ## Blokada wdrozeniowa
 

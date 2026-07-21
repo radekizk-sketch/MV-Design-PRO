@@ -11,7 +11,14 @@
 - ``POST /api/quality/as-built-compliance`` — raport zgodności powykonawczej:
   porównanie pomiarów z obiektu (lista JSON lub tekst CSV w body) z wynikiem
   FROZEN rozpływu (``PF``) i jawnymi tolerancjami (POST — jedyna końcówka rodziny
-  z body, uzasadnione rozmiarem danych pomiarowych).
+  z body, uzasadnione rozmiarem danych pomiarowych),
+- ``GET /api/quality/state-estimation/requirements?run_id=`` — wymagane wejścia
+  estymacji stanu WLS (mapa węzeł→indeks, slack, minimalna liczba pomiarów),
+- ``POST /api/quality/state-estimation`` — estymacja stanu metodą ważonych
+  najmniejszych kwadratów (WLS) na bazie przebiegu rozpływu (``PF``): Y-bus z
+  grafu + pomiary telemetryczne (SCADA/PMU) w body → estymowany stan (|V|, kąty),
+  rezydua, χ² oraz detekcja złych danych. Solver liczy fizykę; API mapuje i
+  serializuje. Bez pomiarów estymacja jest niemożliwa (422 — nie zmyślamy).
 
 Warstwa PREZENTACJI/API: ładuje przebieg (404 gdy brak), deleguje mapowanie i
 serializację do serwisów aplikacyjnych (ZERO fizyki) i zwraca zserializowany
@@ -20,13 +27,17 @@ widok. Zły rodzaj przebiegu / błąd danych → 422 z komunikatem w języku pol
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from application.analyses.arc_flash_view import build_arc_flash_view
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.migotanie import build_migotanie_view
 from application.analyses.sanity_bounds import build_sanity_bounds_view
+from application.analyses.state_estimation import (
+    build_state_estimation_requirements,
+    build_state_estimation_view,
+)
 from application.analyses.zgodnosc_powykonawcza import (
     build_zgodnosc_powykonawcza_view,
     parse_measurements_csv,
@@ -35,6 +46,9 @@ from enm.canonical_analysis import CanonicalRun
 from enm.canonical_analysis import get_run as get_canonical_run
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from analysis.reporting.arc_flash_report import ArcFlashReportContext
 
 router = APIRouter(tags=["quality-analysis"])
 
@@ -77,6 +91,32 @@ class ArcFlashZadanie(BaseModel):
     arc_time_s: float | None = None
     electrode_config: str = "VCB"
     enclosure_type: str = "Typical"
+
+
+class PomiarWLS(BaseModel):
+    """Pojedynczy pomiar telemetryczny dla estymatora stanu WLS.
+
+    Wartości w jednostkach względnych (pu) na tej samej bazie mocy co Y-bus.
+    ``bus_ref``/``bus_j_ref`` to identyfikatory węzłów grafu (patrz końcówka
+    ``/api/quality/state-estimation/requirements``).
+    """
+
+    meas_type: str
+    bus_ref: str
+    value: float
+    sigma: float
+    bus_j_ref: str | None = None
+    label: str | None = None
+
+
+class StanWLSZadanie(BaseModel):
+    """Żądanie estymacji stanu WLS dla gotowego przebiegu rozpływu (PF)."""
+
+    run_id: UUID
+    pomiary: list[PomiarWLS] | None = None
+    alpha: float = 0.01
+    lnr_threshold: float = 3.0
+    include_trace: bool = True
 
 
 def _require_run(run_id: UUID) -> CanonicalRun:
@@ -144,6 +184,49 @@ def post_as_built_compliance(zadanie: ZgodnoscZadanie) -> dict[str, Any]:
         ) from exc
 
 
+@router.get("/api/quality/state-estimation/requirements")
+def get_state_estimation_requirements(run_id: UUID = Query(...)) -> dict[str, Any]:
+    """Wymagane wejścia estymacji stanu WLS: mapa węzeł→indeks, slack, min. pomiarów.
+
+    Publikuje identyfikatory węzłów (``bus_ref``), którymi muszą posługiwać się
+    pomiary, oraz minimalną liczbę pomiarów dla obserwowalności. ZERO fizyki.
+    """
+    run = _require_run(run_id)
+    try:
+        return build_state_estimation_requirements(run)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.post("/api/quality/state-estimation")
+def post_state_estimation(zadanie: StanWLSZadanie) -> dict[str, Any]:
+    """Estymacja stanu WLS na gotowym przebiegu rozpływu (PF) z pomiarów telemetrii.
+
+    Solver WLS liczy estymowany stan (|V|, kąty), rezydua, χ² i detekcję złych
+    danych. Warstwa API tylko ładuje przebieg (404 gdy brak), deleguje mapowanie i
+    serializację (ZERO fizyki). Brak pomiarów / zły przebieg / nieznany węzeł /
+    układ nieobserwowalny → 422 z komunikatem po polsku.
+    """
+    run = _require_run(zadanie.run_id)
+    try:
+        pomiary = [pomiar.model_dump() for pomiar in (zadanie.pomiary or [])]
+        return build_state_estimation_view(
+            run,
+            pomiary,
+            alpha=zadanie.alpha,
+            lnr_threshold=zadanie.lnr_threshold,
+            include_trace=zadanie.include_trace,
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
 @router.post("/api/quality/arc-flash")
 def post_arc_flash(zadanie: ArcFlashZadanie) -> dict[str, Any]:
     run = _require_run(zadanie.run_id)
@@ -177,7 +260,7 @@ class ArcFlashReportZadanie(ArcFlashZadanie):
     formats: list[str] = ["json", "text_pl", "latex"]
 
 
-def _arc_flash_report_context(zadanie: ArcFlashReportZadanie):
+def _arc_flash_report_context(zadanie: ArcFlashReportZadanie) -> ArcFlashReportContext:
     from analysis.reporting.arc_flash_report import ArcFlashReportContext
 
     run = _require_run(zadanie.run_id)
