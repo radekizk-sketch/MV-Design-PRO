@@ -835,3 +835,45 @@ class TestComputeDeterministicSignature:
         d1 = {"a": 1, "deterministic_signature": "abc"}
         d2 = {"a": 1, "deterministic_signature": "xyz"}
         assert compute_deterministic_signature(d1) == compute_deterministic_signature(d2)
+
+
+class TestOltcOverlayMetrics:
+    """V12K-089: metryki overlay OLTC (pozycja końcowa + liczba przełączeń)
+    surfacowane w resultset_v1 z element values (additive, tylko dla regulacji)."""
+
+    def test_tap_metrics_surface_when_present(self):
+        rs = build_resultset_v1(
+            run_id=str(uuid4()),
+            analysis_type="LOAD_FLOW",
+            solver_input_hash="h",
+            element_results_raw=[
+                {
+                    "element_ref": "TR1",
+                    "element_type": "Branch",
+                    "values": {"p_from_mw": 1.0, "tap_position": 3, "tap_switch_count": 4},
+                }
+            ],
+        )
+        codes = {m.code for m in rs.overlay_payload.elements["TR1"].metrics.values()}
+        assert "TAP_POSITION" in codes
+        assert "TAP_SWITCH_COUNT" in codes
+        tap = rs.overlay_payload.elements["TR1"].metrics["TAP_POSITION"]
+        assert tap.value == 3
+        assert rs.overlay_payload.elements["TR1"].metrics["TAP_SWITCH_COUNT"].value == 4
+
+    def test_no_tap_metrics_for_branch_without_oltc(self):
+        rs = build_resultset_v1(
+            run_id=str(uuid4()),
+            analysis_type="LOAD_FLOW",
+            solver_input_hash="h",
+            element_results_raw=[
+                {
+                    "element_ref": "LINE1",
+                    "element_type": "Branch",
+                    "values": {"p_from_mw": 1.0},
+                }
+            ],
+        )
+        codes = {m.code for m in rs.overlay_payload.elements["LINE1"].metrics.values()}
+        assert "TAP_POSITION" not in codes
+        assert "TAP_SWITCH_COUNT" not in codes

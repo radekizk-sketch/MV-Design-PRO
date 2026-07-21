@@ -267,6 +267,11 @@ def _extract_element_metrics(
         "loading_pct": ("LOADING_PCT", "%", "fixed1"),
         "i_a": ("I_A", "A", "fixed1"),
         "s_mva": ("S_MVA", "MVA", "fixed2"),
+        # V12K-089: metryki overlay OLTC (pozycja koncowa zaczepu + liczba
+        # przelaczen) z `oltc_control`. Obecne tylko na transformatorach z
+        # regulacja — reszta bez zmian (determinizm).
+        "tap_position": ("TAP_POSITION", "", "int"),
+        "tap_switch_count": ("TAP_SWITCH_COUNT", "", "int"),
     }
 
     for key, val in values.items():

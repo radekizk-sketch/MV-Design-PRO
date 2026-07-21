@@ -2381,17 +2381,32 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
         # metryk (juz istniejacych tam dla p_injected_mw/p_from_mw), bez
         # zmiany build_branch_results ani PowerFlowResult (Frozen Result API,
         # rule 6 - to jest wylacznie interpretacja istniejacego wyniku).
+        # V12K-089 (OLTC overlay wynikowy): pozycja koncowa zaczepu i liczba
+        # przelaczen z `oltc_control` na gałęzi transformatora — dane overlay
+        # (glif OLTC odswiezony po obliczeniu). Additive/exclude_none: tylko dla
+        # transformatorow z realna regulacja (final_positions), reszta bez zmian
+        # (determinizm zachowany). Interpretacja istniejacego wyniku solvera —
+        # PowerFlowResult FROZEN nietkniety.
+        _oltc_ctrl = raw_result.get("oltc_control") or {}
+        _oltc_final = _oltc_ctrl.get("final_positions") or {}
+        _oltc_switches = _oltc_ctrl.get("switch_counts") or {}
         for branch_row in build_branch_results(run).get("rows", []):
+            _branch_id = branch_row.get("branch_id")
+            _values: dict[str, Any] = {
+                **branch_row,
+                "p_from_mw": branch_row.get("p_mw"),
+                "q_from_mvar": branch_row.get("q_mvar"),
+            }
+            if _branch_id in _oltc_final:
+                _values["tap_position"] = _oltc_final[_branch_id]
+                if _branch_id in _oltc_switches:
+                    _values["tap_switch_count"] = _oltc_switches[_branch_id]
             element_results.append(
                 {
                     "element_ref": branch_row.get("element_id") or branch_row.get("branch_id"),
                     "element_type": "Branch",
                     "solver_ref": branch_row.get("branch_id"),
-                    "values": {
-                        **branch_row,
-                        "p_from_mw": branch_row.get("p_mw"),
-                        "q_from_mvar": branch_row.get("q_mvar"),
-                    },
+                    "values": _values,
                     "proof_ref": raw_result.get("proof_ref"),
                     "proof_status": raw_result.get("proof_status"),
                     "reporting_status": raw_result.get("reporting_status"),
