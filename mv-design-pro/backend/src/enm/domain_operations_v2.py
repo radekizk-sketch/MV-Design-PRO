@@ -2878,6 +2878,116 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     )
 
 
+def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """G-STK-8: postaw ogranicznik przepięć (SPD) w polu SN.
+
+    Domyka stronę KONFIGURACYJNĄ GAP-2: materializuje aparat
+    ``kind=SURGE_ARRESTER`` na field_spec wskazanego pola. Ten sam kanał czytają
+    OBAJ konsumenci — read-model pola projektuje go na ``Bay.primary_devices``
+    (glif SLD, `surge_arrester_10ka`), a most ``build_v126_insulation_from_enm``
+    wciąga go do koordynacji izolacji IEC 60071 (margines BIL). Katalog-first:
+    parametry ogranicznika z ``mv_surge_arrester_catalog`` po ``catalog_ref``
+    (walidacja istnienia typu; zero fizyki/fabrykacji w tej operacji).
+    """
+    field_ref_raw = payload.get("field_ref") or payload.get("bay_ref")
+    field_ref = (
+        field_ref_raw.strip() if isinstance(field_ref_raw, str) and field_ref_raw.strip() else None
+    )
+    bus_ref = payload.get("bus_ref")
+    if field_ref and (not isinstance(bus_ref, str) or not bus_ref.strip()):
+        bus_ref = _field_bus_ref(enm, field_ref)
+    if not isinstance(bus_ref, str) or not bus_ref.strip():
+        return _error_response(
+            "Ogranicznik przepięć wymaga wskazania pola SN (field_ref) lub szyny SN (bus_ref).",
+            "spd.bus_missing",
+        )
+    bus_ref = bus_ref.strip()
+
+    station = _resolve_station_for_field_write(
+        enm, station_ref=payload.get("station_ref"), bus_ref=bus_ref
+    )
+    if station is None:
+        return _error_response("Nie znaleziono stacji dla pola SN.", "spd.station_not_found")
+
+    binding = _catalog_binding_from_payload(payload, "OGRANICZNIK_SN")
+    catalog_ref = _catalog_item_id(binding)
+    if not catalog_ref:
+        return _error_response(
+            "Wybierz typ ogranicznika przepięć z katalogu (OGRANICZNIK_SN).",
+            "spd.catalog_required",
+        )
+    catalog_type = get_default_mv_catalog().get_surge_arrester_type(catalog_ref)
+    if catalog_type is None:
+        return _error_response(
+            f"Typ ogranicznika '{catalog_ref}' nie istnieje w katalogu ograniczników SN.",
+            "spd.catalog_not_found",
+        )
+
+    raw_specs = _substation_meta_specs(station, "field_specs")
+    if field_ref is not None:
+        target_spec = next((s for s in raw_specs if s.get("field_ref") == field_ref), None)
+    else:
+        target_spec = next((s for s in raw_specs if s.get("bus_ref") == bus_ref), None)
+    if not isinstance(target_spec, dict):
+        return _error_response(
+            "Brak pola SN na wskazanej szynie do umieszczenia ogranicznika. "
+            "Najpierw dodaj pole (np. liniowe lub transformatorowe).",
+            "spd.field_not_found",
+        )
+
+    target_field_ref = str(target_spec.get("field_ref"))
+    existing = target_spec.get("surge_arresters")
+    existing_refs = (
+        {
+            str(item.get("catalog_ref"))
+            for item in existing
+            if isinstance(item, dict) and item.get("catalog_ref")
+        }
+        if isinstance(existing, list)
+        else set()
+    )
+    if catalog_ref in existing_refs:
+        return _error_response(
+            "Ten typ ogranicznika jest już przypisany do wybranego pola.",
+            "spd.already_present",
+        )
+
+    seed = _compute_seed(
+        {
+            "op": "surge_arrester_sn",
+            "station": station.get("ref_id"),
+            "field": target_field_ref,
+            "cat": catalog_ref,
+        }
+    )
+    device_ref = _make_id("spd", seed, "arrester")
+
+    new_enm = copy.deepcopy(enm)
+    new_station = _resolve_station_for_field_write(
+        new_enm, station_ref=station.get("ref_id"), bus_ref=bus_ref
+    )
+    assert new_station is not None  # deepcopy zachowuje strukturę
+    new_specs = _substation_meta_specs(new_station, "field_specs")
+    new_target = next((s for s in new_specs if s.get("field_ref") == target_field_ref), None)
+    assert isinstance(new_target, dict)
+    arresters = new_target.setdefault("surge_arresters", [])
+    arresters.append(
+        {
+            "device_ref": device_ref,
+            "catalog_ref": catalog_ref,
+            "catalog_namespace": _catalog_namespace(binding, "OGRANICZNIK_SN"),
+        }
+    )
+
+    return _response(
+        new_enm,
+        created=[device_ref],
+        selection_id=target_field_ref,
+        selection_type="bay",
+        events=[{"event_seq": 1, "event_type": "SURGE_ARRESTER_CREATED", "element_id": device_ref}],
+    )
+
+
 def set_source_operating_mode(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Ustaw tryb pracy źródła nN."""
     source_ref = payload.get("source_ref") or payload.get("element_ref")
@@ -3018,6 +3128,7 @@ V2_CANONICAL_OPS = frozenset(
         "add_genset_nn",
         "add_ups_nn",
         "add_shunt_compensator_sn",
+        "add_surge_arrester_sn",
         "set_source_operating_mode",
         "set_dynamic_profile",
         # Universal
@@ -3050,6 +3161,7 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "add_genset_nn": add_genset_nn,
     "add_ups_nn": add_ups_nn,
     "add_shunt_compensator_sn": add_shunt_compensator_sn,
+    "add_surge_arrester_sn": add_surge_arrester_sn,
     "set_source_operating_mode": set_source_operating_mode,
     "set_dynamic_profile": set_dynamic_profile,
     "rename_element": rename_element,

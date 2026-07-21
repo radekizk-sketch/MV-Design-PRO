@@ -303,6 +303,12 @@ def _collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
                 spec_meta["switchgear_family_ref"] = switchgear_family_ref
             if manufacturer_ref and "manufacturer_ref" not in spec_meta:
                 spec_meta["manufacturer_ref"] = manufacturer_ref
+            # G-STK-8: ograniczniki przepięć pola (add_surge_arrester_sn) — kanał
+            # field_spec. Przenieś na Bay.meta, aby _build_primary_devices
+            # zaprojektował je na aparaty SURGE_ARRESTER (glif SLD).
+            spec_arresters = spec.get("surge_arresters")
+            if isinstance(spec_arresters, list) and "surge_arresters" not in spec_meta:
+                spec_meta["surge_arresters"] = spec_arresters
             bays_by_ref[field_ref] = Bay(
                 id=uuid5(NAMESPACE_URL, field_ref),
                 ref_id=field_ref,
@@ -489,6 +495,33 @@ def _build_primary_devices(
                 render_variant="kanoniczny",
             )
         )
+
+    # G-STK-8: ograniczniki przepięć z field_spec (Bay.meta["surge_arresters"]).
+    # Aparat gałęzi uziemiającej (GROUND_BRANCH, earthing_role=surge_ground) —
+    # rysowany na SLD (glif surge_arrester_10ka) i czytany przez most koordynacji
+    # izolacji IEC 60071. Zero domysłu: tylko gdy dane obecne.
+    bay_meta = bay.meta if isinstance(bay.meta, dict) else {}
+    raw_arresters = bay_meta.get("surge_arresters")
+    if isinstance(raw_arresters, list):
+        for item in raw_arresters:
+            if not isinstance(item, dict):
+                continue
+            device_ref = item.get("device_ref")
+            if not isinstance(device_ref, str) or not device_ref:
+                continue
+            catalog_ref = item.get("catalog_ref")
+            devices.append(
+                BayPrimaryDevice(
+                    device_ref=device_ref,
+                    catalog_ref=catalog_ref if isinstance(catalog_ref, str) else None,
+                    symbol_ref="symbol:surge_arrester_10ka",
+                    kind="SURGE_ARRESTER",
+                    placement="GROUND_BRANCH",
+                    is_controllable=False,
+                    render_variant="kanoniczny",
+                    earthing_role="surge_ground",
+                )
+            )
 
     devices.sort(key=lambda item: (item.placement, item.device_ref))
 

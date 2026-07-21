@@ -236,45 +236,67 @@ def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126Insulati
 
     rows: list[V126InsulationInput] = []
     seen: set[tuple[str, str | None]] = set()
+
+    def _emit(bus_ref: str, catalog_ref: str | None) -> None:
+        bus = bus_by_ref.get(bus_ref)
+        if bus is None:
+            return
+        dedup_key = (bus_ref, catalog_ref)
+        if dedup_key in seen:
+            return
+        params = catalog.get(catalog_ref) if catalog_ref else None
+        if params is None and bus.voltage_kv < 1.0:
+            # Ogranicznik nN bez karty katalogowej — poza zakresem koordynacji
+            # izolacji SN (IEC 60071 SN). Pomiń, aby nie fabrykować U_m SN.
+            return
+        seen.add(dedup_key)
+        neutral = _resolve_network_neutral(bus_ref)
+        if params is not None:
+            rows.append(
+                V126InsulationInput(
+                    location_bus_ref=bus_ref,
+                    u_m_kv=float(params["u_m_kv"]),
+                    network_neutral=neutral or "isolated",
+                    arrester_mcov_kv=float(params["mcov_kv"]),
+                    arrester_residual_10ka_kv=float(params["u_residual_at_10ka_kv"]),
+                    predicted_tov_kv=float(params["tov_10s_kv"]),
+                    predicted_energy_kj_per_kv=float(params["energy_absorption_kj_per_kv"]),
+                )
+            )
+        else:
+            rows.append(
+                V126InsulationInput(
+                    location_bus_ref=bus_ref,
+                    u_m_kv=_nearest_standard_um_kv(bus.voltage_kv),
+                    network_neutral=neutral or "isolated",
+                )
+            )
+
+    # Kanał 1: aparaty pierwotne na Bay (bezpośrednia serializacja / read-model).
     for bay in enm.bays:
         for device in bay.primary_devices:
-            if device.kind != "SURGE_ARRESTER":
+            if device.kind == "SURGE_ARRESTER":
+                _emit(bay.bus_ref, device.catalog_ref)
+
+    # Kanał 2: field_specs stacji (kanoniczna ścieżka operacji add_surge_arrester_sn,
+    # G-STK-8). Ograniczniki żyją na field_spec — ten sam kanał czyta read-model pola
+    # (glif SLD). Parytet: most widzi ograniczniki z obu kanałów, deduplikacja wspólna.
+    for substation in enm.substations:
+        field_specs = substation.meta.get("field_specs")
+        if not isinstance(field_specs, list):
+            continue
+        for spec in field_specs:
+            if not isinstance(spec, dict):
                 continue
-            bus_ref = bay.bus_ref
-            bus = bus_by_ref.get(bus_ref)
-            if bus is None:
+            spec_bus_ref = spec.get("bus_ref")
+            arresters = spec.get("surge_arresters")
+            if not isinstance(spec_bus_ref, str) or not isinstance(arresters, list):
                 continue
-            catalog_ref = device.catalog_ref
-            dedup_key = (bus_ref, catalog_ref)
-            if dedup_key in seen:
-                continue
-            params = catalog.get(catalog_ref) if catalog_ref else None
-            if params is None and bus.voltage_kv < 1.0:
-                # Ogranicznik nN bez karty katalogowej — poza zakresem koordynacji
-                # izolacji SN (IEC 60071 SN). Pomiń, aby nie fabrykować U_m SN.
-                continue
-            seen.add(dedup_key)
-            neutral = _resolve_network_neutral(bus_ref)
-            if params is not None:
-                rows.append(
-                    V126InsulationInput(
-                        location_bus_ref=bus_ref,
-                        u_m_kv=float(params["u_m_kv"]),
-                        network_neutral=neutral or "isolated",
-                        arrester_mcov_kv=float(params["mcov_kv"]),
-                        arrester_residual_10ka_kv=float(params["u_residual_at_10ka_kv"]),
-                        predicted_tov_kv=float(params["tov_10s_kv"]),
-                        predicted_energy_kj_per_kv=float(params["energy_absorption_kj_per_kv"]),
-                    )
-                )
-            else:
-                rows.append(
-                    V126InsulationInput(
-                        location_bus_ref=bus_ref,
-                        u_m_kv=_nearest_standard_um_kv(bus.voltage_kv),
-                        network_neutral=neutral or "isolated",
-                    )
-                )
+            for item in arresters:
+                if isinstance(item, dict):
+                    ref = item.get("catalog_ref")
+                    _emit(spec_bus_ref, ref if isinstance(ref, str) else None)
+
     return rows
 
 
