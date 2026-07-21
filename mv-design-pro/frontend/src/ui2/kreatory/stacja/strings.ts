@@ -9,8 +9,9 @@ export const STACJA_STRINGS = {
   odznaka: 'Nowa stacja',
 
   krokRodzaj: 'Rodzaj i umiejscowienie',
-  krokTransformator: 'Transformator',
+  krokTransformator: 'Transformator i strona nN',
   krokRozdzielnica: 'Rozdzielnica SN',
+  krokNn: 'Blok nN',
   krokZapis: 'Podsumowanie i zapis',
 
   // Krok 1 — rodzaj.
@@ -45,7 +46,27 @@ export const STACJA_STRINGS = {
     'Wskaż na schemacie koniec odcinka (do zakończenia stacją) lub odcinek magistrali (do podziału), '
     + 'a następnie ponów operację dodania stacji.',
 
-  // Krok 2 — transformator.
+  // Krok 2 — transformator i strona nN.
+  konfiguracjaNn: 'Konfiguracja strony nN',
+  konfiguracjaNnOpcje: [
+    { id: 'LOAD_NN', etykieta: 'Rozdzielnia nN odbiorcza' },
+    { id: 'PV_INVERTER', etykieta: 'PV przez falownik (za transformatorem)' },
+  ],
+  konfiguracjaNnPomoc:
+    'Odbiorcza: stacja zasila odbiory nN (napięcie wybierasz z listy). PV: za transformatorem '
+    + 'pracuje źródło PV przez falownik — napięcie strony nN wynika z katalogu falownika, '
+    + 'a transformator dobiera się do jego strony nN i mocy.',
+  falownik: 'Falownik PV z katalogu',
+  falownikPlaceholder: '— wybierz falownik PV —',
+  falownikPomoc:
+    'Pozycja katalogowa falownika wyznacza napięcie strony nN (un) i moc źródła — '
+    + 'transformator dobiera się do tych wartości. Brak wyboru blokuje dobór transformatora.',
+  falownikBlad: 'Nie udało się pobrać katalogu falowników.',
+  falownikBrak:
+    'Brak w katalogu falowników PV zdatnych na źródło nN stacji (napięcie strony nN ≤ 1 kV). '
+    + 'Uzupełnij katalog falowników PV.',
+  wymNnOdczyt: 'Wymagane napięcie strony nN',
+  wymNnOczekuje: 'oczekuje na wybór falownika',
   nnVoltage: 'Napięcie nN odbioru',
   nnVoltageOpcje: [
     { id: '0.4', etykieta: '0,4 kV (400 V)' },
@@ -62,8 +83,10 @@ export const STACJA_STRINGS = {
   brakDoboru:
     'Brak w katalogu transformatora zgodnego z napięciem SN szyny i wybranym napięciem nN. '
     + 'Zmień napięcie nN lub uzupełnij katalog.',
-  liczbaOdplywow: 'Liczba odpływów nN',
-  liczbaOdplywowPomoc: 'Minimalny blok nN: szyna nN, wyłącznik główny i odpływy odbiorcze (LOAD_NN).',
+  liczbaOdplywow: 'Liczba odpływów nN odbiorczych',
+  liczbaOdplywowPomoc:
+    'Blok nN: szyna nN, wyłącznik główny i odpływy odbiorcze. Dla PV dochodzi osobne '
+    + 'pole źródłowe falownika (poza tą liczbą).',
 
   // Parametry katalogu (odczyt).
   paramMoc: 'Moc znamionowa',
@@ -92,12 +115,47 @@ export const STACJA_STRINGS = {
   rozdzielnicaBlad: 'Nie udało się pobrać katalogu rozdzielnic SN.',
   wierszRozdzielnica: 'Rozdzielnica',
 
-  // Krok 4 — zapis.
+  // Krok 4 — blok nN.
+  nnBlokKonfiguracja: 'Konfiguracja strony nN',
+  nnBlokNapiecie: 'Napięcie strony nN',
+  nnBlokOdplywy: 'Odpływy odbiorcze nN',
+  nnBlokZrodloTytul: 'Źródło PV za transformatorem',
+  nnBlokZrodloFalownik: 'Falownik',
+  nnBlokZrodloUn: 'Napięcie strony nN falownika',
+  nnBlokZrodloMoc: 'Moc źródła',
+  nnBlokZrodloPmax: 'Moc czynna maks.',
+  nnBlokZrodloBrak: 'Wybierz falownik PV z katalogu w kroku „Transformator i strona nN".',
+  nnBlokLabelPvPole: 'Pole źródłowe nN',
+  nnBlokLabelPvPoleWartosc: 'ZRODLO_NN_PV (falownik) + odpływy odbiorcze',
+
+  // Zabezpieczenie źródła nN (intencja — dobór aparatu w edycji stacji).
+  ochronaTytul: 'Zabezpieczenie źródła nN (intencja)',
+  ochronaOpis:
+    'Źródło PV wymaga wyłącznika nN i zabezpieczenia (nadprądowe, ziemnozwarciowe, koordynacja '
+    + 'z wyłącznikiem głównym nN). Poniższa intencja trafia do modelu jako wymaganie — dobór '
+    + 'CT/VT i nastaw uzupełnisz w edycji stacji.',
+  ochronaAparat: 'Aparat zabezpieczający',
+  ochronaChroniony: 'Obiekt chroniony',
+  ochronaZakres: 'Zakres analizy',
+
+  // Krok 5 — zapis.
   podsumTyp: 'Rodzaj stacji',
   podsumUmiejscowienie: 'Umiejscowienie',
   podsumTransformator: 'Transformator',
   podsumRozdzielnica: 'Rozdzielnica SN',
-  podsumNn: 'Napięcie nN / odpływy',
+  podsumNn: 'Blok nN',
+  podsumNnKonfiguracja: 'Konfiguracja nN',
+  podsumZrodlo: 'Źródło nN',
+
+  // Szybka ścieżka — stacja rekomendowana (skrót katalogowy).
+  szybkaTytul: 'Gotowa stacja z katalogu',
+  szybkaOpis:
+    'Zapisuje kompletną stację z rekomendowanym transformatorem, pakietem rozdzielnicy SN '
+    + 'i blokiem nN wynikającymi z bieżącej konfiguracji — bez ręcznego doboru pól.',
+  szybkaZapisz: 'Zapisz gotową stację z katalogu',
+  szybkaNiedostepna:
+    'Skrót dostępny po wczytaniu katalogu i skompletowaniu konfiguracji (miejsce, transformator, '
+    + 'rozdzielnica; dla PV — falownik).',
 
   // Kontrola.
   kontrolaTytul: 'Kontrola stacji',
@@ -108,9 +166,10 @@ export const STACJA_STRINGS = {
 
   downstreamTytul: 'Co to uruchamia',
   downstreamOpis:
-    'Rozdzielnica SN i pola stacji, transformator SN/nN oraz szyna nN z odpływami trafią do modelu. '
-    + 'Rozpływ mocy, zwarcia i dobór zabezpieczeń uwzględnią nową stację; rozbudowę rozdzielnicy '
-    + 'i bloku nN (w tym źródła PV) wykonasz w kolejnych krokach edycji stacji.',
+    'Rozdzielnica SN i pola stacji, transformator SN/nN oraz szyna nN z odpływami (a dla PV — '
+    + 'pole źródłowe falownika z intencją zabezpieczenia) trafią do modelu. Rozpływ mocy, zwarcia '
+    + 'i dobór zabezpieczeń uwzględnią nową stację; dobór CT/VT i nastaw zabezpieczeń źródła '
+    + 'uzupełnisz w edycji stacji.',
 
   wstecz: '← Wstecz',
   dalej: 'Dalej →',
@@ -157,4 +216,20 @@ export const STACJA_STRINGS = {
     'Każde pole musi mieć kompletny szablon katalogowy (pakiet producenta). Pola liniowe konfiguruj wg '
     + 'kierunku zasilania, pole TR wg mocy transformatora, sprzęgło wg schematu sekcjonowania.',
   teoriaRozdzielnicaPodstawa: 'Podstawa: PN-EN 62271-200 (rozdzielnice SN), N SEP-E-001, IRiESD.',
+  teoriaNnTytul: 'Teoria: blok nN — rozdzielnia odbiorcza a źródło PV za transformatorem',
+  teoriaNnOpis:
+    'Blok nN obejmuje szynę nN, wyłącznik główny i pola odpływowe. W wariancie odbiorczym '
+    + 'stacja zasila odbiory: liczba odpływów odpowiada obwodom odbiorczym, a napięcie nN wybierasz '
+    + 'z listy (0,4 kV to typowa rozdzielnia odbiorcza). W wariancie PV za transformatorem pracuje '
+    + 'generacja: falownik PV przyłącza się do szyny nN osobnym polem źródłowym (ZRODLO_NN_PV), a '
+    + 'napięcie strony nN i moc źródła pochodzą z katalogu falownika — dlatego transformator dobiera '
+    + 'się do jego strony nN i mocy (blokada, gdy brak zgodnego typu). Źródło PV wymaga własnego '
+    + 'wyłącznika nN i zabezpieczenia skoordynowanego z wyłącznikiem głównym nN; intencja tego '
+    + 'zabezpieczenia trafia do modelu jako wymaganie, a dobór aparatu i nastaw następuje w edycji stacji.',
+  teoriaNnWymog:
+    'Napięcie nN i moc transformatora dobieraj do rzeczywistego odbioru lub źródła (dla PV — do '
+    + 'strony nN i mocy falownika). Źródło PV zawsze z polem źródłowym i zabezpieczeniem — nie mieszaj '
+    + 'go z odpływami odbiorczymi.',
+  teoriaNnPodstawa:
+    'Podstawa: N SEP-E-001, IRiESD, PN-EN 62271 (aparatura nN/SN), wymagania przyłączeniowe OZE (NC RfG/PTPiREE).',
 } as const;

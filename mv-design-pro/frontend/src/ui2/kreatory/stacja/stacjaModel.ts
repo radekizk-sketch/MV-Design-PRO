@@ -17,29 +17,46 @@ import {
   SN_FIELD_ROLE_TO_BAY_KIND,
   buildDefaultSnFields,
   buildStationSnFields as buildStationSnFieldsHelper,
+  compareStationNnSourceConverters,
+  compareTransformersForSourcePower,
   findTemplateForRole,
   isCompleteSourceStatus,
+  isStationNnSourceConverter,
   isUsableManufacturer,
   isUsableSwitchgearFamily,
   orderManufacturers,
+  sourceFeederRole,
+  sourceProtectionIntent,
   templateOptionsForRole,
   voltageMatches,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import type {
   SnFieldRole,
+  SourceProtectionIntent,
   StationSnFieldTemplate,
   StationSwitchgearChoice,
   TopologicalStationKind,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
+import type { ConverterType } from '../../../ui/catalog/types';
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { TransformerType } from '../../../ui/catalog/types';
 
 export type { SnFieldRole, StationSnFieldTemplate } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 
+export type { SourceProtectionIntent } from '../../../ui/network-build/forms/InsertStationFormHelpers';
+export type { ConverterType } from '../../../ui/catalog/types';
+
 /** Typ stacji SN/nN (semantyczny — backend akceptuje 1:1). */
 export type TypStacji = 'branch' | 'inline' | 'sectional';
+
+/**
+ * Konfiguracja strony nN stacji. Parytet z kontraktem operacji (D4):
+ * `LOAD_NN` — rozdzielnia nN odbiorcza; `PV_INVERTER` — źródło PV za
+ * transformatorem (falownik z katalogu, napięcie nN z jego strony nN).
+ */
+export type NnConfiguration = 'LOAD_NN' | 'PV_INVERTER';
 
 /** Tryb umiejscowienia stacji względem topologii magistrali. */
 export type TrybUmiejscowienia = 'ENDPOINT_APPEND' | 'SPLIT';
@@ -56,10 +73,14 @@ export const DOMYSLNA_LICZBA_ODPLYWOW_NN = 2;
 export interface StacjaFormData {
   station_type: TypStacji;
   station_name: string;
-  /** Napięcie nN odbioru [kV] — steruje doborem transformatora. */
+  /** Konfiguracja strony nN (odbiorcza vs źródło PV za transformatorem). */
+  nn_configuration: NnConfiguration;
+  /** Napięcie nN odbioru [kV] — steruje doborem transformatora (LOAD_NN). */
   nn_voltage_kv: number;
+  /** Referencja katalogowa falownika PV (tylko dla PV_INVERTER). */
+  source_converter_ref: string | null;
   catalog_ref: string | null;
-  /** Liczba odpływów nN (minimalny blok nN). */
+  /** Liczba odpływów nN odbiorczych (minimalny blok nN). */
   outgoing_feeders_nn_count: number;
   /** Producent rozdzielnicy SN (referencja katalogowa). */
   manufacturer_ref: string;
@@ -77,7 +98,9 @@ export interface BladPola {
 export const DANE_DOMYSLNE: StacjaFormData = {
   station_type: 'branch',
   station_name: '',
+  nn_configuration: 'LOAD_NN',
   nn_voltage_kv: DOMYSLNE_NAPIECIE_NN_KV,
+  source_converter_ref: null,
   catalog_ref: null,
   outgoing_feeders_nn_count: DOMYSLNA_LICZBA_ODPLYWOW_NN,
   manufacturer_ref: '',
@@ -172,6 +195,15 @@ export function walidujFormularz(
       message: 'Stacja wymaga co najmniej jednego odpływu nN.',
     });
   }
+  if (
+    data.nn_configuration === 'PV_INVERTER'
+    && !data.source_converter_ref?.trim()
+  ) {
+    errors.push({
+      field: 'source_converter_ref',
+      message: 'Wybierz falownik PV z katalogu — napięcie strony nN wynika z jego strony nN.',
+    });
+  }
   if (!data.manufacturer_ref?.trim()) {
     errors.push({ field: 'manufacturer_ref', message: 'Wybierz producenta rozdzielnicy SN.' });
   }
@@ -185,22 +217,78 @@ export function walidujFormularz(
 }
 
 /**
- * Dobór transformatorów zgodnych z napięciem SN szyny i napięciem nN odbioru.
- * Wyłącznie porównanie napięć katalogowych — ZERO fizyki. Sort rosnąco po mocy
- * znamionowej (stabilny, deterministyczny porządek doboru).
+ * Dobór transformatorów zgodnych z napięciem SN szyny i wymaganym napięciem
+ * strony nN. Wyłącznie porównanie napięć katalogowych — ZERO fizyki. Gdy podano
+ * moc źródła nN (PV), sort preferuje typy o wystarczającej mocy (parytet legacy,
+ * reużycie `compareTransformersForSourcePower`); w przeciwnym razie sort rosnąco
+ * po mocy znamionowej (stabilny, deterministyczny porządek doboru).
  */
 export function doborTransformatorow(
   typy: readonly TransformerType[],
   snVoltageKv: number,
   nnVoltageKv: number,
+  sourcePowerMva: number | null = null,
 ): TransformerType[] {
-  return typy
-    .filter(
-      (t) =>
-        voltageMatches(t.voltage_hv_kv, snVoltageKv, SN_VOLTAGE_TOLERANCE_KV)
-        && voltageMatches(t.voltage_lv_kv, nnVoltageKv, NN_VOLTAGE_TOLERANCE_KV),
-    )
-    .sort((a, b) => a.rated_power_mva - b.rated_power_mva || a.id.localeCompare(b.id));
+  const zgodne = typy.filter(
+    (t) =>
+      voltageMatches(t.voltage_hv_kv, snVoltageKv, SN_VOLTAGE_TOLERANCE_KV)
+      && voltageMatches(t.voltage_lv_kv, nnVoltageKv, NN_VOLTAGE_TOLERANCE_KV),
+  );
+  if (sourcePowerMva != null) {
+    return zgodne.sort(compareTransformersForSourcePower(sourcePowerMva));
+  }
+  return zgodne.sort((a, b) => a.rated_power_mva - b.rated_power_mva || a.id.localeCompare(b.id));
+}
+
+// ------------------------------------------------------ Blok nN / źródło PV
+
+/**
+ * Falowniki PV zdatne na źródło nN stacji: filtr napięcia strony nN (≤ 1 kV,
+ * reużycie `isStationNnSourceConverter`) i sort deterministyczny wg bliskości do
+ * napięcia odbioru (reużycie `compareStationNnSourceConverters`). ZERO fizyki.
+ */
+export function falownikiPv(converters: readonly ConverterType[]): ConverterType[] {
+  return converters
+    .filter((c) => c.kind === 'PV' && isStationNnSourceConverter(c))
+    .sort(compareStationNnSourceConverters);
+}
+
+/** Wybrany falownik z listy zdatnych (odczyt katalogu). */
+export function konwerterZKatalogu(
+  ref: string | null,
+  converters: readonly ConverterType[],
+): ConverterType | null {
+  if (!ref) return null;
+  return converters.find((c) => c.id === ref) ?? null;
+}
+
+/**
+ * Wymagane napięcie strony nN stacji: dla PV z katalogu falownika (bez domysłu —
+ * `null`, gdy brak wyboru), dla odbioru z wyboru napięcia nN.
+ */
+export function wymaganeNapiecieNn(
+  data: StacjaFormData,
+  konwerter: ConverterType | null,
+): number | null {
+  if (data.nn_configuration === 'PV_INVERTER') {
+    return konwerter?.un_kv ?? null;
+  }
+  return data.nn_voltage_kv;
+}
+
+/** Moc źródła nN [MVA] do doboru transformatora (PV: z katalogu falownika). */
+export function mocZrodlaNnMva(
+  data: StacjaFormData,
+  konwerter: ConverterType | null,
+): number | null {
+  return data.nn_configuration === 'PV_INVERTER' ? konwerter?.sn_mva ?? null : null;
+}
+
+/** Intencja zabezpieczenia źródła nN (reużycie legacy) — tylko dla PV. */
+export function zabezpieczenieZrodla(
+  data: StacjaFormData,
+): SourceProtectionIntent | undefined {
+  return sourceProtectionIntent(data.nn_configuration);
 }
 
 /** Parametry wybranego typu (odczyt z katalogu). */
@@ -346,11 +434,47 @@ export function zbudujPayload(
   data: StacjaFormData,
   kontekst: KontekstStacji,
   rozdzielnica: WyborRozdzielnicy,
+  konwerter: ConverterType | null = null,
 ): Record<string, unknown> {
   const nazwa = data.station_name.trim() || kontekst.stationName.trim();
   const transformerBinding = normalizeCatalogBinding(data.catalog_ref, 'TRAFO_SN_NN');
   const catalogItemId = data.catalog_ref?.trim() ?? '';
   const feederCount = ogranicznikOdplywow(data.outgoing_feeders_nn_count);
+  const isPv = data.nn_configuration === 'PV_INVERTER';
+  const nnVoltage = isPv ? konwerter?.un_kv ?? data.nn_voltage_kv : data.nn_voltage_kv;
+  const protection = zabezpieczenieZrodla(data);
+
+  // Lista odpływów nN: odpływy odbiorcze + (dla PV) pole źródłowe falownika.
+  const feeders: Record<string, unknown>[] = Array.from({ length: feederCount }, () => ({
+    feeder_role: 'ODPLYW_NN',
+    catalog_bindings: null,
+  }));
+  if (isPv && konwerter) {
+    feeders.push({
+      feeder_role: sourceFeederRole('PV_INVERTER'),
+      catalog_bindings: {
+        source_converter: normalizeCatalogBinding(konwerter.id, 'ZRODLO_NN_PV'),
+      },
+      ...(protection ? { protection } : {}),
+    });
+  }
+
+  const nnBlock: Record<string, unknown> = {
+    create_nn_bus: true,
+    main_breaker_nn: true,
+    nn_configuration: data.nn_configuration,
+    outgoing_feeders_nn_count: feeders.length,
+    outgoing_feeders_nn: feeders,
+  };
+  if (isPv && konwerter) {
+    nnBlock.source_converter_catalog_ref = konwerter.id;
+    nnBlock.source_converter_name = konwerter.name;
+    nnBlock.source_converter_kind = konwerter.kind;
+    nnBlock.source_converter_un_kv = konwerter.un_kv;
+    nnBlock.source_converter_sn_mva = konwerter.sn_mva;
+    nnBlock.source_converter_pmax_mw = konwerter.pmax_mw;
+    if (protection) nnBlock.source_protection = protection;
+  }
 
   const commonPayload: Record<string, unknown> = {
     ...(nazwa ? { name: nazwa } : {}),
@@ -360,7 +484,7 @@ export function zbudujPayload(
       station_role: 'STACJA_SN_NN',
       ...(nazwa ? { station_name: nazwa } : {}),
       sn_voltage_kv: kontekst.snVoltageKv,
-      nn_voltage_kv: data.nn_voltage_kv,
+      nn_voltage_kv: nnVoltage,
       switchgear: {
         manufacturer_ref: rozdzielnica.manufacturerRef,
         manufacturer_name: rozdzielnica.manufacturerName,
@@ -375,12 +499,7 @@ export function zbudujPayload(
       ...(transformerBinding ? { catalog_binding: transformerBinding } : {}),
       model_type: 'DWU_UZWOJENIOWY',
     },
-    nn_block: {
-      create_nn_bus: true,
-      main_breaker_nn: true,
-      nn_configuration: 'LOAD_NN',
-      outgoing_feeders_nn_count: feederCount,
-    },
+    nn_block: nnBlock,
     options: {
       create_transformer_field: true,
       create_default_fields: true,

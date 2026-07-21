@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../../../ui/app-state';
 import {
   fetchCompleteBayTemplates,
+  fetchConverterTypes,
   fetchManufacturers,
   fetchSwitchgearFamilies,
   fetchTransformerTypes,
@@ -22,7 +23,7 @@ import {
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
-import type { TransformerType } from '../../../ui/catalog/types';
+import type { ConverterType, TransformerType } from '../../../ui/catalog/types';
 import {
   FIELD_ROLE_LABELS,
   contextString,
@@ -57,11 +58,14 @@ import {
   czyKoniecOdcinka,
   czyRozdzielnicaKompletna,
   doborTransformatorow,
+  falownikiPv,
   fmtKv,
   fmtMva,
   fmtPct,
   fmtRatio,
   kontekstKompletny,
+  konwerterZKatalogu,
+  mocZrodlaNnMva,
   nazwaOperacji,
   normalizujTypStacji,
   ogranicznikOdplywow,
@@ -73,11 +77,14 @@ import {
   szablonyDlaWyboru,
   szablonyPerRola,
   walidujFormularz,
+  wymaganeNapiecieNn,
   wyznaczTryb,
+  zabezpieczenieZrodla,
   zbudujPayload,
   zbudujPolaSn,
   type BladPola,
   type KontekstStacji,
+  type NnConfiguration,
   type SnFieldRole,
   type StacjaFormData,
   type TypStacji,
@@ -90,6 +97,7 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'rodzaj', tytul: T.krokRodzaj },
   { id: 'transformator', tytul: T.krokTransformator },
   { id: 'rozdzielnica', tytul: T.krokRozdzielnica },
+  { id: 'nn', tytul: T.krokNn },
   { id: 'zapis', tytul: T.krokZapis },
 ];
 
@@ -141,6 +149,7 @@ export function KreatorStacjiSnNn() {
   const [krok, setKrok] = useState<string>('rodzaj');
 
   const [typy, setTypy] = useState<TransformerType[]>([]);
+  const [konwertery, setKonwertery] = useState<ConverterType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
 
   const [producenci, setProducenci] = useState<Manufacturer[]>([]);
@@ -156,13 +165,16 @@ export function KreatorStacjiSnNn() {
   useEffect(() => {
     let cancelled = false;
     setBladKatalogu(null);
-    fetchTransformerTypes()
-      .then((t) => {
-        if (!cancelled) setTypy(Array.isArray(t) ? t : []);
+    Promise.all([fetchTransformerTypes(), fetchConverterTypes()])
+      .then(([t, c]) => {
+        if (cancelled) return;
+        setTypy(Array.isArray(t) ? t : []);
+        setKonwertery(Array.isArray(c) ? c : []);
       })
       .catch((e: unknown) => {
         if (cancelled) return;
         setTypy([]);
+        setKonwertery([]);
         setBladKatalogu(getCatalogErrorMessage(e));
       });
     return () => {
@@ -170,10 +182,36 @@ export function KreatorStacjiSnNn() {
     };
   }, []);
 
-  const dobrane = useMemo(
-    () => doborTransformatorow(typy, kontekst.snVoltageKv, dane.nn_voltage_kv),
-    [dane.nn_voltage_kv, kontekst.snVoltageKv, typy],
+  const isPv = dane.nn_configuration === 'PV_INVERTER';
+  const falowniki = useMemo(() => falownikiPv(konwertery), [konwertery]);
+  const konwerter = useMemo(
+    () => konwerterZKatalogu(dane.source_converter_ref, falowniki),
+    [dane.source_converter_ref, falowniki],
   );
+  const wymNn = useMemo(() => wymaganeNapiecieNn(dane, konwerter), [dane, konwerter]);
+  const mocZrodla = useMemo(() => mocZrodlaNnMva(dane, konwerter), [dane, konwerter]);
+
+  const dobrane = useMemo(
+    () =>
+      wymNn && wymNn > 0
+        ? doborTransformatorow(typy, kontekst.snVoltageKv, wymNn, mocZrodla)
+        : [],
+    [kontekst.snVoltageKv, mocZrodla, typy, wymNn],
+  );
+
+  // PV: auto-wybór pierwszego zdatnego falownika, gdy brak wyboru (parytet legacy).
+  useEffect(() => {
+    if (!isPv || falowniki.length === 0) return;
+    if (falowniki.some((c) => c.id === dane.source_converter_ref)) return;
+    setDane((p) => ({ ...p, source_converter_ref: falowniki[0].id }));
+  }, [dane.source_converter_ref, falowniki, isPv]);
+
+  // Powrót do odbiorczej → wyczyść referencję falownika (spójność payloadu).
+  useEffect(() => {
+    if (!isPv && dane.source_converter_ref) {
+      setDane((p) => ({ ...p, source_converter_ref: null }));
+    }
+  }, [dane.source_converter_ref, isPv]);
 
   // Gdy wybrany typ wypada z doboru (zmiana napięcia nN) — wyczyść wybór.
   useEffect(() => {
@@ -296,8 +334,12 @@ export function KreatorStacjiSnNn() {
     bledy.find((b) => b.field === pole)?.message;
 
   const kontekstOk = kontekstKompletny(kontekst);
+  const brakFalownikowKomunikat =
+    !bladKatalogu && isPv && konwertery.length > 0 && falowniki.length === 0 ? T.falownikBrak : null;
   const brakDoboruKomunikat =
-    !bladKatalogu && typy.length > 0 && dobrane.length === 0 ? T.brakDoboru : null;
+    !bladKatalogu && typy.length > 0 && wymNn != null && wymNn > 0 && dobrane.length === 0
+      ? T.brakDoboru
+      : null;
 
   const rozdzielnica = useMemo<WyborRozdzielnicy>(
     () => ({
@@ -310,47 +352,76 @@ export function KreatorStacjiSnNn() {
     [dane.manufacturer_ref, dane.switchgear_family_ref, selectedFamily, selectedManufacturer, snFields],
   );
 
-  const onZapisz = useCallback(async () => {
-    const walid = walidujFormularz(dane, snFields);
-    setBledy(walid);
-    if (walid.length > 0) return;
-    if (!kontekstOk) {
-      setBladGlobalny(T.umiejscowienieBrakOpis);
-      return;
-    }
-    if (!activeCaseId) {
-      setBladGlobalny(T.brakZakresu);
-      return;
-    }
-    setBladGlobalny(null);
-    try {
-      const response = await executeDomainOperation(
-        activeCaseId,
-        nazwaOperacji(kontekst),
-        zbudujPayload(dane, kontekst, rozdzielnica),
-      );
-      if (!response) {
-        setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+  const zapiszStacje = useCallback(
+    async (daneEff: StacjaFormData, konwerterEff: ConverterType | null) => {
+      const walid = walidujFormularz(daneEff, snFields);
+      setBledy(walid);
+      if (walid.length > 0) return;
+      if (!kontekstOk) {
+        setBladGlobalny(T.umiejscowienieBrakOpis);
         return;
       }
-      if (response.error) {
-        setBladGlobalny(response.error);
+      if (!activeCaseId) {
+        setBladGlobalny(T.brakZakresu);
         return;
       }
-      closeForm();
-      selekcjaPoOperacji(response, {
-        type: 'Station',
-        name: dane.station_name.trim() || kontekst.stationName.trim() || 'Stacja SN/nN',
-      });
-    } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
-    }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, kontekst, kontekstOk, rozdzielnica, selekcjaPoOperacji, snFields]);
+      setBladGlobalny(null);
+      try {
+        const response = await executeDomainOperation(
+          activeCaseId,
+          nazwaOperacji(kontekst),
+          zbudujPayload(daneEff, kontekst, rozdzielnica, konwerterEff),
+        );
+        if (!response) {
+          setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
+          return;
+        }
+        if (response.error) {
+          setBladGlobalny(response.error);
+          return;
+        }
+        closeForm();
+        selekcjaPoOperacji(response, {
+          type: 'Station',
+          name: daneEff.station_name.trim() || kontekst.stationName.trim() || 'Stacja SN/nN',
+        });
+      } catch (e) {
+        setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      }
+    },
+    [activeCaseId, closeForm, executeDomainOperation, kontekst, kontekstOk, rozdzielnica, selekcjaPoOperacji, snFields],
+  );
+
+  const onZapisz = useCallback(() => {
+    void zapiszStacje(dane, konwerter);
+  }, [dane, konwerter, zapiszStacje]);
+
+  // Szybka ścieżka „stacja rekomendowana" (parytet legacy): auto-dobór
+  // rekomendowanego transformatora i (dla PV) pierwszego falownika, zapis skrótem.
+  const onZapiszRekomendowana = useCallback(() => {
+    const trafoRef = dane.catalog_ref ?? dobrane[0]?.id ?? null;
+    const konwerterEff = isPv ? konwerter ?? falowniki[0] ?? null : null;
+    const daneEff: StacjaFormData = {
+      ...dane,
+      catalog_ref: trafoRef,
+      source_converter_ref: konwerterEff?.id ?? dane.source_converter_ref,
+    };
+    void zapiszStacje(daneEff, konwerterEff);
+  }, [dane, dobrane, falowniki, isPv, konwerter, zapiszStacje]);
 
   const koniec = czyKoniecOdcinka(kontekst);
   const typLabel =
     T.typStacjiOpcje.find((o) => o.id === dane.station_type)?.etykieta ?? dane.station_type;
   const umiejscowienieLabel = koniec ? T.umiejscowienieKoniec : T.umiejscowieniePodzial;
+  const konfiguracjaNnLabel =
+    T.konfiguracjaNnOpcje.find((o) => o.id === dane.nn_configuration)?.etykieta ?? dane.nn_configuration;
+  const nnVoltageLabel = isPv
+    ? konwerter
+      ? fmtKv(konwerter.un_kv)
+      : T.wymNnOczekuje
+    : fmtKv(dane.nn_voltage_kv);
+  const nnBlokKompletny = !isPv || Boolean(konwerter);
+  const protekcja = zabezpieczenieZrodla(dane);
 
   const wierszeGotowosci: WierszGotowosci[] = [
     { etykieta: T.wierszTyp, stan: 'kompletne', wartosc: typLabel },
@@ -373,8 +444,10 @@ export function KreatorStacjiSnNn() {
     },
     {
       etykieta: T.wierszNn,
-      stan: 'kompletne',
-      wartosc: `${fmtKv(dane.nn_voltage_kv)} · ${ogranicznikOdplywow(dane.outgoing_feeders_nn_count)} odpł.`,
+      stan: nnBlokKompletny ? 'kompletne' : 'brak',
+      wartosc: isPv
+        ? `${konfiguracjaNnLabel} · ${nnVoltageLabel}`
+        : `${nnVoltageLabel} · ${ogranicznikOdplywow(dane.outgoing_feeders_nn_count)} odpł.`,
     },
   ];
 
@@ -386,7 +459,15 @@ export function KreatorStacjiSnNn() {
   );
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  const zapisZablokowany = !kontekstOk || !activeCaseId || !rozdzielnicaKompletna;
+  const rekomendowanyTrafoRef = dane.catalog_ref ?? dobrane[0]?.id ?? null;
+  const zapisZablokowany =
+    !kontekstOk || !activeCaseId || !rozdzielnicaKompletna || !dane.catalog_ref || (isPv && !konwerter);
+  const szybkaZablokowana =
+    !kontekstOk
+    || !activeCaseId
+    || !rozdzielnicaKompletna
+    || !rekomendowanyTrafoRef
+    || (isPv && falowniki.length === 0);
   const brakSzablonowKomunikat =
     !bladRozdzielnicy && Boolean(dane.manufacturer_ref) && szablonyWyboru.length === 0
       ? T.brakSzablonow
@@ -395,7 +476,9 @@ export function KreatorStacjiSnNn() {
     ? null
     : bladRozdzielnicy ?? (dane.manufacturer_ref ? T.brakSzablonow : T.brakProducenta);
   const walidacjaStopka =
-    bledy.length > 0 ? T.walidacjaStopka : brakDoboruKomunikat ?? rozdzielnicaBladStopka;
+    bledy.length > 0
+      ? T.walidacjaStopka
+      : brakFalownikowKomunikat ?? brakDoboruKomunikat ?? rozdzielnicaBladStopka;
 
   return (
     <KreatorRama
@@ -478,18 +561,53 @@ export function KreatorStacjiSnNn() {
 
       {krok === 'transformator' ? (
         <KreatorSekcja tytul={T.krokTransformator} testid="mvd-kreator-stacja-transformator">
+          <PoleWyboru
+            etykieta={T.konfiguracjaNn}
+            wartosc={dane.nn_configuration}
+            onZmiana={(v) => zmien('nn_configuration', v as NnConfiguration)}
+            opcje={T.konfiguracjaNnOpcje}
+            pomoc={T.konfiguracjaNnPomoc}
+            testid="mvd-kreator-stacja-konfiguracja-nn"
+          />
           <KreatorSiatka kolumny={2}>
-            <PoleWyboru
-              etykieta={T.nnVoltage}
-              wartosc={String(dane.nn_voltage_kv)}
-              onZmiana={(v) => zmien('nn_voltage_kv', Number(v))}
-              opcje={T.nnVoltageOpcje}
-              pomoc={T.nnVoltagePomoc}
-              blad={bladDlaPola('nn_voltage_kv')}
-              testid="mvd-kreator-stacja-nn"
-            />
+            {isPv ? (
+              <RzadWartosci etykieta={T.wymNnOdczyt} wartosc={nnVoltageLabel} />
+            ) : (
+              <PoleWyboru
+                etykieta={T.nnVoltage}
+                wartosc={String(dane.nn_voltage_kv)}
+                onZmiana={(v) => zmien('nn_voltage_kv', Number(v))}
+                opcje={T.nnVoltageOpcje}
+                pomoc={T.nnVoltagePomoc}
+                blad={bladDlaPola('nn_voltage_kv')}
+                testid="mvd-kreator-stacja-nn"
+              />
+            )}
             <RzadWartosci etykieta={T.snVoltageOdczyt} wartosc={fmtKv(kontekst.snVoltageKv)} />
           </KreatorSiatka>
+          {isPv ? (
+            <>
+              <PoleKatalogu
+                etykieta={T.falownik}
+                wartosc={dane.source_converter_ref}
+                onZmiana={(v) => zmien('source_converter_ref', v)}
+                opcje={falowniki.map((c) => ({
+                  id: c.id,
+                  etykieta: `${c.name} · ${fmtMva(c.sn_mva)} · ${fmtKv(c.un_kv)}`,
+                }))}
+                status={bladKatalogu ? 'error' : 'ready'}
+                placeholder={T.falownikPlaceholder}
+                pomoc={T.falownikPomoc}
+                komunikatBledu={bladKatalogu ?? T.falownikBlad}
+                blad={bladDlaPola('source_converter_ref')}
+                wymagane
+                testid="mvd-kreator-stacja-falownik"
+              />
+              {brakFalownikowKomunikat ? (
+                <KreatorInfo testid="mvd-kreator-stacja-brak-falownikow">{brakFalownikowKomunikat}</KreatorInfo>
+              ) : null}
+            </>
+          ) : null}
           <PoleKatalogu
             etykieta={T.typKatalog}
             wartosc={dane.catalog_ref}
@@ -515,17 +633,6 @@ export function KreatorStacjiSnNn() {
               <RzadWartosci etykieta={T.paramUk} wartosc={fmtPct(params.uk_percent)} />
             </KreatorSiatka>
           ) : null}
-          <PoleLiczbowe
-            etykieta={T.liczbaOdplywow}
-            wartosc={dane.outgoing_feeders_nn_count}
-            onZmiana={(v) => zmien('outgoing_feeders_nn_count', v ?? 1)}
-            krok={1}
-            min={1}
-            max={8}
-            pomoc={T.liczbaOdplywowPomoc}
-            blad={bladDlaPola('outgoing_feeders_nn_count')}
-            testid="mvd-kreator-stacja-odplywy"
-          />
           <PanelTeorii
             tytul={T.teoriaTrafoTytul}
             opis={T.teoriaTrafoOpis}
@@ -614,6 +721,62 @@ export function KreatorStacjiSnNn() {
         </KreatorSekcja>
       ) : null}
 
+      {krok === 'nn' ? (
+        <KreatorSekcja tytul={T.krokNn} testid="mvd-kreator-stacja-nn-blok">
+          <KreatorSiatka kolumny={2}>
+            <RzadWartosci etykieta={T.nnBlokKonfiguracja} wartosc={konfiguracjaNnLabel} />
+            <RzadWartosci etykieta={T.nnBlokNapiecie} wartosc={nnVoltageLabel} />
+          </KreatorSiatka>
+          <PoleLiczbowe
+            etykieta={T.liczbaOdplywow}
+            wartosc={dane.outgoing_feeders_nn_count}
+            onZmiana={(v) => zmien('outgoing_feeders_nn_count', v ?? 1)}
+            krok={1}
+            min={1}
+            max={8}
+            pomoc={T.liczbaOdplywowPomoc}
+            blad={bladDlaPola('outgoing_feeders_nn_count')}
+            testid="mvd-kreator-stacja-odplywy"
+          />
+
+          {isPv ? (
+            <KreatorSekcja tytul={T.nnBlokZrodloTytul} testid="mvd-kreator-stacja-zrodlo-pv">
+              {konwerter ? (
+                <>
+                  <KreatorSiatka kolumny={2}>
+                    <RzadWartosci etykieta={T.nnBlokZrodloFalownik} wartosc={konwerter.name} />
+                    <RzadWartosci etykieta={T.nnBlokZrodloUn} wartosc={fmtKv(konwerter.un_kv)} />
+                    <RzadWartosci etykieta={T.nnBlokZrodloMoc} wartosc={fmtMva(konwerter.sn_mva)} />
+                    <RzadWartosci etykieta={T.nnBlokZrodloPmax} wartosc={fmtMva(konwerter.pmax_mw)} />
+                    <RzadWartosci etykieta={T.nnBlokLabelPvPole} wartosc={T.nnBlokLabelPvPoleWartosc} />
+                  </KreatorSiatka>
+                  {protekcja ? (
+                    <KreatorSekcja tytul={T.ochronaTytul} testid="mvd-kreator-stacja-ochrona">
+                      <KreatorInfo>{T.ochronaOpis}</KreatorInfo>
+                      <KreatorSiatka kolumny={2}>
+                        <RzadWartosci etykieta={T.ochronaAparat} wartosc={protekcja.device_label} />
+                        <RzadWartosci etykieta={T.ochronaChroniony} wartosc={protekcja.protected_object} />
+                        <RzadWartosci etykieta={T.ochronaZakres} wartosc={protekcja.analysis_scope} />
+                      </KreatorSiatka>
+                    </KreatorSekcja>
+                  ) : null}
+                </>
+              ) : (
+                <KreatorInfo testid="mvd-kreator-stacja-zrodlo-brak">{T.nnBlokZrodloBrak}</KreatorInfo>
+              )}
+            </KreatorSekcja>
+          ) : null}
+
+          <PanelTeorii
+            tytul={T.teoriaNnTytul}
+            opis={T.teoriaNnOpis}
+            wymog={T.teoriaNnWymog}
+            podstawa={T.teoriaNnPodstawa}
+            testid="mvd-kreator-stacja-teoria-nn"
+          />
+        </KreatorSekcja>
+      ) : null}
+
       {krok === 'zapis' ? (
         <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-stacja-zapis">
           <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
@@ -629,11 +792,34 @@ export function KreatorStacjiSnNn() {
                   : 'Do doboru'
               }
             />
+            <RzadWartosci etykieta={T.podsumNnKonfiguracja} wartosc={konfiguracjaNnLabel} />
             <RzadWartosci
               etykieta={T.podsumNn}
-              wartosc={`${fmtKv(dane.nn_voltage_kv)} · ${ogranicznikOdplywow(dane.outgoing_feeders_nn_count)} odpł.`}
+              wartosc={`${nnVoltageLabel} · ${ogranicznikOdplywow(dane.outgoing_feeders_nn_count)} odpł.`}
             />
+            {isPv ? (
+              <RzadWartosci
+                etykieta={T.podsumZrodlo}
+                wartosc={konwerter ? `${konwerter.name} · ${fmtMva(konwerter.sn_mva)}` : T.nnBlokZrodloBrak}
+              />
+            ) : null}
           </KreatorSiatka>
+
+          <KreatorSekcja tytul={T.szybkaTytul} testid="mvd-kreator-stacja-szybka">
+            <KreatorInfo>{T.szybkaOpis}</KreatorInfo>
+            <button
+              type="button"
+              className="mvd-kreator-btn mvd-kreator-btn--glowna"
+              disabled={szybkaZablokowana}
+              onClick={onZapiszRekomendowana}
+              data-testid="mvd-kreator-stacja-szybka-zapisz"
+            >
+              {T.szybkaZapisz}
+            </button>
+            {szybkaZablokowana ? (
+              <KreatorInfo testid="mvd-kreator-stacja-szybka-niedostepna">{T.szybkaNiedostepna}</KreatorInfo>
+            ) : null}
+          </KreatorSekcja>
         </KreatorSekcja>
       ) : null}
     </KreatorRama>

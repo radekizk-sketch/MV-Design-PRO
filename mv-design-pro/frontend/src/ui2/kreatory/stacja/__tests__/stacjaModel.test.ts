@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
 import type { CompleteMvBayTemplateSummary } from '../../../../ui/catalog/BayTemplatePicker';
-import type { TransformerType } from '../../../../ui/catalog/types';
+import type { ConverterType, TransformerType } from '../../../../ui/catalog/types';
 import {
   DANE_DOMYSLNE,
   czyKoniecOdcinka,
   czyRozdzielnicaKompletna,
   doborTransformatorow,
+  falownikiPv,
   fmtKv,
   fmtMva,
+  konwerterZKatalogu,
   kontekstKompletny,
+  mocZrodlaNnMva,
   nazwaOperacji,
   normalizujTypStacji,
   ogranicznikOdplywow,
@@ -18,7 +21,9 @@ import {
   szablonyDlaWyboru,
   szablonyPerRola,
   walidujFormularz,
+  wymaganeNapiecieNn,
   wyznaczTryb,
+  zabezpieczenieZrodla,
   zbudujPayload,
   zbudujPolaSn,
   type KontekstStacji,
@@ -110,6 +115,15 @@ const typy = [
     tap_step_percent: 2.5,
   },
 ] as unknown as TransformerType[];
+
+const falowniki = [
+  { id: 'pv-500-04', name: 'PV 500 0,4kV', kind: 'PV', un_kv: 0.4, sn_mva: 0.55, pmax_mw: 0.5 },
+  { id: 'pv-800-069', name: 'PV 800 0,69kV', kind: 'PV', un_kv: 0.69, sn_mva: 0.9, pmax_mw: 0.8 },
+  // Napięcie strony nN > 1 kV — niezdatny na źródło nN stacji (filtr legacy).
+  { id: 'pv-sn-3', name: 'PV 3kV', kind: 'PV', un_kv: 3, sn_mva: 2, pmax_mw: 1.8 },
+  // Inny rodzaj (BESS) — poza zakresem D4 (LOAD_NN vs PV_INVERTER).
+  { id: 'bess-04', name: 'BESS 0,4kV', kind: 'BESS', un_kv: 0.4, sn_mva: 0.5, pmax_mw: 0.4 },
+] as unknown as ConverterType[];
 
 function dane(over: Partial<StacjaFormData> = {}): StacjaFormData {
   return {
@@ -335,6 +349,93 @@ describe('stacjaModel — rozdzielnica SN', () => {
       switchgearFamilyRef: 'ZPUE_ROTOBLOK',
     });
     expect(czyRozdzielnicaKompletna(snFields)).toBe(false);
+  });
+});
+
+describe('stacjaModel — blok nN / PV', () => {
+  it('falownikiPv: filtruje PV zdatne na źródło nN (un ≤ 1 kV) i sortuje deterministycznie', () => {
+    const wynik = falownikiPv(falowniki);
+    // BESS odpada (rodzaj), PV 3 kV odpada (napięcie strony nN > 1 kV).
+    expect(wynik.map((c) => c.id)).toEqual(['pv-500-04', 'pv-800-069']);
+  });
+
+  it('wymaganeNapiecieNn: dla PV z katalogu falownika, dla odbioru z wyboru', () => {
+    const konw = konwerterZKatalogu('pv-800-069', falowniki);
+    expect(wymaganeNapiecieNn(dane({ nn_configuration: 'PV_INVERTER', source_converter_ref: 'pv-800-069' }), konw)).toBe(0.69);
+    // Brak wyboru falownika → null (bez domysłu).
+    expect(wymaganeNapiecieNn(dane({ nn_configuration: 'PV_INVERTER', source_converter_ref: null }), null)).toBeNull();
+    // Odbiorcza → napięcie z wyboru.
+    expect(wymaganeNapiecieNn(dane({ nn_configuration: 'LOAD_NN', nn_voltage_kv: 0.4 }), null)).toBe(0.4);
+  });
+
+  it('mocZrodlaNnMva: moc źródła tylko dla PV', () => {
+    const konw = konwerterZKatalogu('pv-500-04', falowniki);
+    expect(mocZrodlaNnMva(dane({ nn_configuration: 'PV_INVERTER' }), konw)).toBe(0.55);
+    expect(mocZrodlaNnMva(dane({ nn_configuration: 'LOAD_NN' }), konw)).toBeNull();
+  });
+
+  it('dobór transformatora dla PV: wymaga typu zgodnego ze stroną nN falownika (blokada, gdy brak)', () => {
+    const konw = konwerterZKatalogu('pv-800-069', falowniki);
+    const wymNn = wymaganeNapiecieNn(dane({ nn_configuration: 'PV_INVERTER', source_converter_ref: 'pv-800-069' }), konw);
+    const moc = mocZrodlaNnMva(dane({ nn_configuration: 'PV_INVERTER' }), konw);
+    // Falownik 0,69 kV → tylko transformator SN 15 / nN 0,69 kV.
+    expect(doborTransformatorow(typy, 15, wymNn as number, moc).map((t) => t.id)).toEqual(['trafo-1000-15-069']);
+    // Brak zgodnego transformatora (np. falownik 0,69 kV a szyna 20 kV) → pusto = blokada.
+    expect(doborTransformatorow(typy, 20, 0.69, moc)).toEqual([]);
+  });
+
+  it('walidacja PV: wymaga wybranego falownika', () => {
+    const bezFalownika = dane({ nn_configuration: 'PV_INVERTER', source_converter_ref: null });
+    expect(walidujFormularz(bezFalownika).some((e) => e.field === 'source_converter_ref')).toBe(true);
+    const zFalownikiem = dane({ nn_configuration: 'PV_INVERTER', source_converter_ref: 'pv-800-069' });
+    expect(walidujFormularz(zFalownikiem).some((e) => e.field === 'source_converter_ref')).toBe(false);
+  });
+
+  it('zabezpieczenieZrodla: intencja tylko dla PV', () => {
+    expect(zabezpieczenieZrodla(dane({ nn_configuration: 'PV_INVERTER' }))).toBeTruthy();
+    expect(zabezpieczenieZrodla(dane({ nn_configuration: 'LOAD_NN' }))).toBeUndefined();
+  });
+
+  it('payload PV: nn_block niesie źródło, napięcie z falownika, feeder ZRODLO_NN_PV i zabezpieczenie', () => {
+    const konw = konwerterZKatalogu('pv-800-069', falowniki);
+    const payload = zbudujPayload(
+      dane({
+        nn_configuration: 'PV_INVERTER',
+        source_converter_ref: 'pv-800-069',
+        catalog_ref: 'trafo-1000-15-069',
+        outgoing_feeders_nn_count: 2,
+      }),
+      kontekst({ snVoltageKv: 15 }),
+      rozdzielnica('branch'),
+      konw,
+    );
+    const nnBlock = payload.nn_block as Record<string, unknown>;
+    expect(nnBlock).toMatchObject({
+      nn_configuration: 'PV_INVERTER',
+      source_converter_catalog_ref: 'pv-800-069',
+      source_converter_kind: 'PV',
+      source_converter_un_kv: 0.69,
+      source_converter_sn_mva: 0.9,
+      source_converter_pmax_mw: 0.8,
+    });
+    expect(nnBlock.source_protection).toBeTruthy();
+    // Napięcie nN stacji z falownika, nie z pola odbioru.
+    expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(0.69);
+    // Odpływy: 2 odbiorcze + pole źródłowe PV → count 3.
+    const feeders = nnBlock.outgoing_feeders_nn as Array<{ feeder_role: string }>;
+    expect(feeders.map((f) => f.feeder_role)).toEqual(['ODPLYW_NN', 'ODPLYW_NN', 'ZRODLO_NN_PV']);
+    expect(nnBlock.outgoing_feeders_nn_count).toBe(3);
+  });
+
+  it('payload LOAD_NN: brak pól/źródła PV, sam odpływ odbiorczy', () => {
+    const payload = zbudujPayload(dane({ nn_configuration: 'LOAD_NN' }), kontekst(), rozdzielnica('branch'));
+    const nnBlock = payload.nn_block as Record<string, unknown>;
+    expect(nnBlock.nn_configuration).toBe('LOAD_NN');
+    expect(nnBlock).not.toHaveProperty('source_converter_catalog_ref');
+    expect(nnBlock).not.toHaveProperty('source_protection');
+    const feeders = nnBlock.outgoing_feeders_nn as Array<{ feeder_role: string }>;
+    expect(feeders.every((f) => f.feeder_role === 'ODPLYW_NN')).toBe(true);
+    expect(nnBlock.outgoing_feeders_nn_count).toBe(2);
   });
 });
 

@@ -7,7 +7,7 @@
  * z poprawnym payloadem i wiąże nowy element ze schematem (V12K-073).
  */
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -102,6 +102,22 @@ vi.mock('../../../../ui/catalog/api', () => ({
         tap_max: 2,
         tap_step_percent: 2.5,
       },
+      {
+        id: 'trafo-1000-15-069',
+        name: 'TR 1000 690V',
+        rated_power_mva: 1.0,
+        voltage_hv_kv: 15,
+        voltage_lv_kv: 0.69,
+        uk_percent: 6,
+        tap_min: -2,
+        tap_max: 2,
+        tap_step_percent: 2.5,
+      },
+    ]),
+  fetchConverterTypes: () =>
+    Promise.resolve([
+      { id: 'pv-800-069', name: 'PV 800 0,69kV', kind: 'PV', un_kv: 0.69, sn_mva: 0.9, pmax_mw: 0.8 },
+      { id: 'pv-500-04', name: 'PV 500 0,4kV', kind: 'PV', un_kv: 0.4, sn_mva: 0.55, pmax_mw: 0.5 },
     ]),
   fetchManufacturers: () =>
     Promise.resolve([
@@ -288,6 +304,97 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
         }),
       );
     });
+  });
+
+  it('PV za transformatorem: wybór falownika natywnie → nn_block PV w payloadzie', async () => {
+    executeDomainOperationMock.mockResolvedValue({
+      error: null,
+      selection_hint: { element_id: 'st-pv', element_type: 'substation', zoom_to: true },
+    });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    // Konfiguracja nN → PV (natywny wybór).
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-konfiguracja-nn'),
+      'PV_INVERTER',
+    );
+    // Falownik z katalogu — natywny wybór pozycji 0,69 kV.
+    await waitFor(() => {
+      const falownik = screen.getByTestId('mvd-kreator-stacja-falownik') as HTMLSelectElement;
+      expect(falownik.querySelector('option[value="pv-800-069"]')).not.toBeNull();
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-falownik'), 'pv-800-069');
+    // Transformator zawężony do strony nN falownika (0,69 kV).
+    await waitFor(() => {
+      const katalog = screen.getByTestId('mvd-kreator-stacja-katalog') as HTMLSelectElement;
+      expect(katalog.querySelector('option[value="trafo-1000-15-069"]')).not.toBeNull();
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-katalog'), 'trafo-1000-15-069');
+    await przejdzIWybierzRozdzielnice();
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'insert_station_on_segment_sn',
+        expect.objectContaining({
+          nn_block: expect.objectContaining({
+            nn_configuration: 'PV_INVERTER',
+            source_converter_catalog_ref: 'pv-800-069',
+            source_converter_un_kv: 0.69,
+            source_converter_sn_mva: 0.9,
+          }),
+        }),
+      );
+    });
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    const nnBlock = payload.nn_block as Record<string, unknown>;
+    expect(nnBlock.source_protection).toBeTruthy();
+    const feeders = nnBlock.outgoing_feeders_nn as Array<{ feeder_role: string }>;
+    expect(feeders.map((f) => f.feeder_role)).toContain('ZRODLO_NN_PV');
+    // Napięcie nN stacji z katalogu falownika, nie z pola odbioru.
+    expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(0.69);
+  });
+
+  it('LOAD_NN: zmiana liczby odpływów w kroku Blok nN → payload z odpływami odbiorczymi', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    // rozdzielnica → Blok nN (natywny klik „Dalej").
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-dalej'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-stacja-odplywy')).toBeInTheDocument();
+    });
+    // fireEvent.change zamiast userEvent.type: pole liczbowe ma min=1, więc
+    // clear zeruje do 1, a doklepanie „4" dałoby 14 → clamp 8. Zmiana wartości
+    // wprost napędza realny handler onChange komponentu (nie omija store'a ani
+    // walidacji) i wiernie oddaje ustawienie liczby odpływów przez użytkownika.
+    const odplywy = screen.getByTestId('mvd-kreator-stacja-odplywy');
+    fireEvent.change(odplywy, { target: { value: '4' } });
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'insert_station_on_segment_sn',
+        expect.objectContaining({
+          nn_block: expect.objectContaining({
+            nn_configuration: 'LOAD_NN',
+            outgoing_feeders_nn_count: 4,
+          }),
+        }),
+      );
+    });
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    const feeders = (payload.nn_block as Record<string, unknown>).outgoing_feeders_nn as Array<{
+      feeder_role: string;
+    }>;
+    expect(feeders).toHaveLength(4);
+    expect(feeders.every((f) => f.feeder_role === 'ODPLYW_NN')).toBe(true);
   });
 
   it('uczciwy stan zerowy: brak miejsca osadzenia → blokada zapisu', async () => {
