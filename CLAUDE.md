@@ -792,6 +792,13 @@ Zasady wykonania:
 1. **Wykluczenie ≠ naprawa.** Nie wolno maskować długu (exclude w konfigu
    testów, `continue-on-error`, skip, komentarz „do naprawy później").
    Nowe wykluczenie wymaga uzasadnienia w commicie i wpisu długu w execplanie.
+   **Każdy NAPOTKANY błąd naprawiasz — także pre-existing, nie tylko własny
+   (dyrektywa właściciela 2026-07-21: „masz naprawiać wszystkie napotkane
+   błędy").** Błąd typów/lint/test/guard, który zobaczyłeś przy swojej pracy
+   (nawet jeśli był w repo przed Twoją zmianą), naprawiasz u źródła w tej samej
+   kolejce — nie wolno go pominąć argumentem „był wcześniej" ani „poza moim
+   zakresem". Jedyny wyjątek to dług nienaprawialny w bieżącej sesji (pkt 4) —
+   wtedy wpis do execplanu z pomiarem i planem, nigdy cicho.
 2. **Naprawa u źródła.** Test czerwony z powodu regresji komponentu ⇒ napraw
    komponent, nie asercję. Test czerwony z powodu zmiany kanonu ⇒ przepisz
    test do obecnego kanonu z zachowaniem intencji (i zapisz intencję w

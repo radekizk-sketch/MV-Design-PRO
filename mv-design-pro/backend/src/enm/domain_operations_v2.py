@@ -63,7 +63,7 @@ def _compute_tcc_curve(
     ipickup_a: float, tms: float, curve_type: str, i_max_a: float = 0.0
 ) -> list[dict[str, float]]:
     """Wylicz deterministyczną krzywą TCC (punkty I vs t)."""
-    points = []
+    points: list[dict[str, float]] = []
     if ipickup_a <= 0:
         return points
     max_ratio = max(20.0, (i_max_a / ipickup_a) if i_max_a > 0 else 20.0)
@@ -339,12 +339,14 @@ def _resolve_station_for_field_write(
     enm: dict[str, Any],
     *,
     station_ref: str | None,
-    bus_ref: str,
+    bus_ref: str | None = None,
 ) -> dict[str, Any] | None:
     if station_ref:
         for sub in enm.get("substations", []):
             if sub.get("ref_id") == station_ref or sub.get("id") == station_ref:
                 return sub
+        return None
+    if not bus_ref:
         return None
     return _find_station_for_bus(enm, bus_ref)
 
@@ -1525,14 +1527,11 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             )
     apparatus_kind = payload.get("apparatus_kind")
     field_name_raw = payload.get("field_name")
-    field_name = (
+    existing_name = existing_field.get("name") if isinstance(existing_field, dict) else None
+    field_name: str = (
         field_name_raw.strip()
         if isinstance(field_name_raw, str) and field_name_raw.strip()
-        else (
-            existing_field.get("name")
-            if isinstance(existing_field, dict) and isinstance(existing_field.get("name"), str)
-            else _default_sn_bay_name(bay_role)
-        )
+        else (existing_name if isinstance(existing_name, str) else _default_sn_bay_name(bay_role))
     )
     terminal_bus_ref = _make_id("sn", seed, "bay_terminal")
     apparatus_ref = _make_id("sn", seed, "bay_device")
@@ -1557,7 +1556,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     manufacturer_ref = _clean_ref(payload.get("manufacturer_ref"))
     protection_ref = _clean_ref(payload.get("protection_ref"))
     # Tylko podane refy (bez clobber istniejących wartości na None przy re-konfiguracji).
-    producer_refs = {
+    producer_refs: dict[str, Any] = {
         key: value
         for key, value in {
             "protection_ref": protection_ref,
@@ -1615,6 +1614,11 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                         ),
                     }
                 )
+            existing_field_meta = (
+                existing_field.get("meta") if isinstance(existing_field, dict) else None
+            )
+            if not isinstance(existing_field_meta, dict):
+                existing_field_meta = {}
             _update_field_spec(
                 new_enm,
                 field_ref,
@@ -1625,11 +1629,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                     "gpz_section_id": gpz_section_id if isinstance(gpz_section_id, str) else None,
                     **producer_refs,
                     "meta": {
-                        **(
-                            existing_field.get("meta")
-                            if isinstance(existing_field.get("meta"), dict)
-                            else {}
-                        ),
+                        **existing_field_meta,
                         "apparatus_kind": (
                             apparatus_kind if isinstance(apparatus_kind, str) else None
                         ),
@@ -2127,7 +2127,7 @@ def _build_converter_materialized_params(
         return {
             "catalog_item_id": catalog_ref,
             "catalog_item_version": "2024.1",
-            "un_kv": float(params.get("un_kv")),
+            "un_kv": float(params.get("un_kv") or 0.0),
             "pmax_mw": float(params.get("pmax_mw") or 0.0),
             "sn_mva": float(params.get("sn_mva") or params.get("pmax_mw") or 0.0),
             "qmin_mvar": params.get("qmin_mvar"),
@@ -2387,7 +2387,11 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         "DEDICATED_MV_CONNECTION": "block_transformer",
     }
     connection_variant_raw = payload.get("connection_variant")
-    connection_variant = _VARIANT_ALIASES.get(connection_variant_raw, connection_variant_raw)
+    connection_variant = (
+        _VARIANT_ALIASES.get(connection_variant_raw, connection_variant_raw)
+        if isinstance(connection_variant_raw, str)
+        else connection_variant_raw
+    )
     if not isinstance(connection_variant, str) or connection_variant not in {
         "nn_side",
         "block_transformer",
@@ -2567,7 +2571,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         catalog_ref=catalog_ref,
         name=name,
     )
-    seed_payload = {
+    seed_payload: dict[str, Any] = {
         "op": "converter_source",
         "station_ref": station_ref,
         "bus": bus_nn_ref,
