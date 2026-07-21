@@ -23,8 +23,16 @@ warstwy, czy zostały luki.
 |----|--------|-----------|
 | **PS-1** | `insert_station_on_segment_sn` gubi wiązanie szablonu producenta pól (`bay_template_ref`/`switchgear_family_ref`/`manufacturer_ref`) — dotyczy WSZYSTKICH pól (IN/OUT/TR/**SPRZĘGŁO**/FEEDER). Kreator wybiera szablon, backend go wyrzuca → read-model/SLD bez wiązania (phantom w drugą stronę: wybór UI ignorowany przez backend). | **NAPRAWA** — parytet z `append`/`add_sn_bay`: przenieś refy na field_spec. |
 | **PS-2** | `insert_station_on_segment_sn` NIE materializuje `protection_codes` pól (COUPLER→["51","50"], TR→transformatorowe, OZE→NC RfG). Read-model konsumuje `protection_codes`, ale insert daje puste → brak glifów/koordynacji zabezpieczeń pola. | **NAPRAWA** — `_resolve_bay_template_protection_codes(manufacturer, template, bay_role)` per pole (reużycie, zero fabrykacji). |
-| **PS-3** | Rendering SLD dwusekcyjnej stacji (2 szyny SN + glif sprzęgła między sekcjami) — `SectionRenderer` jest GPZ-only. | **KARTA cross-thread (wątek SLD)** — read-model już daje COUPLER-boki; rendering sekcji stacji to warstwa SLD. |
-| **PS-4** | `append` materializuje TR protection_codes twardo (nie przez wspólny resolver) — niespójność z insert po naprawie. | **NAPRAWA (przy okazji)** — ujednolicić `append` na wspólny resolver ról (opcjonalnie), min. zapewnić COUPLER/role codes. |
+| **PS-3** | ~~Rendering SLD dwusekcyjnej stacji~~ — **WERYFIKACJA: NIE była luką.** `SectionRenderer` jest GPZ-only, ale STACJA renderuje się przez `MiniBlockRmuRenderer`, który JEST w pełni sekcyjno-świadomy: `deriveFootprintType('sectional')→'mv_lv_sectional'` (l.168) → szyna „cellular" (2 równoległe linie, IEC 60617 segregated busbars, K30-127) + pole sprzęgła jako kolumna „SPR" (`FIELD_ROLE.COUPLER→'SPR'`, l.1544) + `sectionSide`. Napędzane `substation.station_type='sectional'` z G-STK-5. | **BEZ ZMIAN** — potwierdzone 89 testami SLD (miniBlockRmu 70 + footprints 19). Błędna wcześniejsza diagnoza „cross-thread" skorygowana. |
+| **PS-4** | `append` materializuje TR protection_codes twardo (nie przez wspólny resolver) — niespójność z insert po naprawie. | ✅ **NAPRAWIONE** — petla pol append liczy `protection_codes` wspólnym `_resolve_bay_template_protection_codes` dla wszystkich rol (LINIA_IN→51/50/51N, TR→87T/…). |
+
+## Weryfikacja SLD „do ostatniego klika" (2026-07-21)
+Głęboki rekonesans SLD potwierdził: pełny łańcuch stacji sekcyjnej JUŻ renderuje się poprawnie —
+`ENM substation.station_type='sectional'` (G-STK-5) → `deriveFootprintType→mv_lv_sectional` →
+`MiniBlockRmuRenderer`: szyna cellular (segregated) + kolumna pola sprzęgła „SPR" + `sectionSide`.
+Pole sprzęgła (bay_role COUPLER) trafia do kolumn SLD z read-modelu (`_assign_coupler_sides`).
+Testy: 89 SLD (miniBlockRmu + footprints) zielone. **Zero luki rendering** — jedyne realne braki to
+PS-1/PS-2 (insert szablon+kody, NAPRAWIONE) i PS-4 (append spójność, NAPRAWIONE).
 
 ## Zasada
 Kontrolka kreatora (wybór szablonu pola, w tym SPRZĘGŁA) MUSI mapować na realne, konsumowane
