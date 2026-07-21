@@ -810,15 +810,19 @@ function podsumowanieArcFlash(
   const soiMap = new Map<string, number>();
   for (const w of wyniki) {
     if (w.missing_data.length > 0) braki += 1;
-    if (w.ppe_category) soiMap.set(w.ppe_category, (soiMap.get(w.ppe_category) ?? 0) + 1);
+    // Spójnie z raportem backendu (`arc_flash_report._summary`): każda szyna liczona,
+    // brak kategorii → klucz „—" (nie pomijamy null).
+    const kat = w.ppe_category ?? '—';
+    soiMap.set(kat, (soiMap.get(kat) ?? 0) + 1);
     if (typeof w.incident_energy_cal_cm2 === 'number' && w.incident_energy_cal_cm2 > najwyzsza) {
       najwyzsza = w.incident_energy_cal_cm2;
       szyna = w.bus_ref;
     }
   }
   if (najwyzsza === -Infinity) return null;
-  // Rozkład kategorii ŚOI, deterministycznie posortowany po kategorii.
-  const soi = [...soiMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  // Rozkład ŚOI, sort po punktach kodowych (jak backendowy `sorted(...)`) — determinizm
+  // niezależny od locale (nie `localeCompare`).
+  const soi = [...soiMap.entries()].sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
   return { najwyzsza, szyna, braki, soi };
 }
 
