@@ -1866,6 +1866,36 @@ class TestStationTypeDSectional:
             len(bus_refs) >= 2
         ), f"Type D station should have >= 2 section buses, got {len(bus_refs)}: {bus_refs}"
 
+        # G-STK-5: REALNE dwie sekcje szyny SN + sprzęgło (nie „sprzęgło w powietrzu").
+        voltage_by_bus = {b["ref_id"]: b.get("voltage_kv") for b in s.get("buses", [])}
+        sn_sections = [ref for ref in bus_refs if voltage_by_bus.get(ref) == 15.0]  # obie sekcje SN
+        assert len(sn_sections) == 2, f"Sekcyjna musi mieć 2 sekcje szyny SN, jest {sn_sections}"
+        # Sprzęgło (bus_coupler, zamknięte) łączy obie sekcje SN.
+        couplers = [
+            br
+            for br in s.get("branches", [])
+            if br.get("type") == "bus_coupler"
+            and {br.get("from_bus_ref"), br.get("to_bus_ref")} == set(sn_sections)
+        ]
+        assert len(couplers) == 1, "Brak sprzęgła między sekcjami SN"
+        assert couplers[0]["status"] == "closed", "Sprzęgło normalnie zamknięte (ciągłość)"
+        # Prawy odcinek magistrali wychodzi z sekcji B (nie z sekcji A).
+        coupler = couplers[0]
+        section_b = coupler["to_bus_ref"]
+        right_segments = [
+            br
+            for br in s.get("branches", [])
+            if br.get("from_bus_ref") == section_b and br.get("type") in ("cable", "line_overhead")
+        ]
+        assert right_segments, "Prawy odcinek musi wychodzić z sekcji B"
+        # Pole SPRZEGLO powiązane z realnym sprzęgłem (nie zdublowany aparat).
+        specs = station.get("meta", {}).get("field_specs", [])
+        coupler_spec = next(
+            (sp for sp in specs if (sp.get("meta") or {}).get("field_role") == "SPRZEGLO"), None
+        )
+        assert coupler_spec is not None
+        assert coupler["ref_id"] in coupler_spec.get("equipment_refs", [])
+
 
 # ===========================================================================
 # TEST 16: test_insert_station_on_nonexistent_segment

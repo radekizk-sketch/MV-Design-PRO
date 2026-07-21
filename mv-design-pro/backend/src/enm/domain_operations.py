@@ -4296,6 +4296,15 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     tr_id = _make_id("stn", station_seed, "transformer")
     seg_left_id = f"{segment_id}_L"
     seg_right_id = f"{segment_id}_R"
+    # Stacja sekcyjna (typ D): DWIE sekcje szyny SN + sprzęgło (G-STK-5). Sekcja A =
+    # sn_bus_id (WE + transformator), sekcja B = sn_bus_b_id (WY). Sprzęgło (bus_coupler,
+    # normalnie zamknięte) łączy sekcje → ciągłość magistrali. Dla pozostałych typów
+    # jedna szyna (sn_bus_id), sekcja B nietworzona.
+    is_sectional = station_type == "D"
+    sn_bus_b_id = _make_id("stn", station_seed, "sn_bus_b")
+    coupler_id = _make_id("stn", station_seed, "sn_coupler")
+    # Szyna, z której wychodzi prawy odcinek (WY): sekcja B dla sekcyjnej, inaczej A.
+    right_from_bus_id = sn_bus_b_id if is_sectional else sn_bus_id
 
     new_enm = copy.deepcopy(enm)
     created = []
@@ -4346,6 +4355,51 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     ev_seq += 1
     events.append({"event_seq": ev_seq, "event_type": "CUT_NODE_CREATED", "element_id": sn_bus_id})
 
+    # Stacja sekcyjna: druga sekcja szyny SN + sprzęgło międzysekcyjne (G-STK-5).
+    if is_sectional:
+        result = create_node(
+            new_enm,
+            {
+                "ref_id": sn_bus_b_id,
+                "name": f"{station_display_name} — sekcja B",
+                "voltage_kv": sn_voltage_kv,
+            },
+        )
+        if not result.success:
+            return _error_response(
+                "Nie udało się utworzyć drugiej sekcji szyny SN.",
+                "station.insert.sn_bus_b_failed",
+            )
+        new_enm = result.enm
+        created.append(sn_bus_b_id)
+        ev_seq += 1
+        events.append(
+            {"event_seq": ev_seq, "event_type": "CUT_NODE_CREATED", "element_id": sn_bus_b_id}
+        )
+        # Sprzęgło (bus_coupler, normalnie zamknięte) — łączy sekcję A z B.
+        coupler_result = create_branch(
+            new_enm,
+            {
+                "ref_id": coupler_id,
+                "name": f"Sprzęgło sekcyjne {station_display_name}",
+                "type": "bus_coupler",
+                "from_bus_ref": sn_bus_id,
+                "to_bus_ref": sn_bus_b_id,
+                "status": "closed",
+            },
+        )
+        if not coupler_result.success:
+            return _error_response(
+                "Nie udało się utworzyć sprzęgła sekcyjnego.",
+                "station.insert.coupler_failed",
+            )
+        new_enm = coupler_result.enm
+        created.append(coupler_id)
+        ev_seq += 1
+        events.append(
+            {"event_seq": ev_seq, "event_type": "BRANCH_CREATED", "element_id": coupler_id}
+        )
+
     # Create left segment
     left_data: dict[str, Any] = {
         "ref_id": seg_left_id,
@@ -4389,7 +4443,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         "ref_id": seg_right_id,
         "name": f"Odcinek {seg_right_id}",
         "type": seg_type,
-        "from_bus_ref": sn_bus_id,
+        "from_bus_ref": right_from_bus_id,
         "to_bus_ref": to_bus_ref,
         "length_km": right_length,
         "r_ohm_per_km": segment.get("r_ohm_per_km", 0.0),
@@ -4524,6 +4578,24 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             )
         )
 
+    # Stacja sekcyjna: powiąż pola prezentacji z realną topologią dwusekcyjną
+    # (G-STK-5). Pole SPRZEGLO → realne sprzęgło (bus_coupler), nie zdublowany
+    # aparat; pole WY (LINIA_OUT) → sekcja B (skąd wychodzi prawy odcinek).
+    if is_sectional:
+        for spec in field_specs:
+            role = str((spec.get("meta") or {}).get("field_role") or "")
+            if role == "SPRZEGLO":
+                equip = [r for r in spec.get("equipment_refs", []) if isinstance(r, str)]
+                if coupler_id not in equip:
+                    equip.append(coupler_id)
+                spec["equipment_refs"] = equip
+                spec["bus_ref"] = sn_bus_b_id
+                spec.setdefault("meta", {})["coupler_ref"] = coupler_id
+                spec["meta"]["section_a_bus_ref"] = sn_bus_id
+                spec["meta"]["section_b_bus_ref"] = sn_bus_b_id
+            elif role == "LINIA_OUT":
+                spec["bus_ref"] = sn_bus_b_id
+
     nn_field_specs = _build_nn_field_specs(
         nn_block=nn_block,
         nn_bus_id=nn_bus_id,
@@ -4536,7 +4608,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             "ref_id": stn_id,
             "name": station_display_name,
             "station_type": substation_semantic_type,
-            "bus_refs": [sn_bus_id],
+            "bus_refs": [sn_bus_id, sn_bus_b_id] if is_sectional else [sn_bus_id],
             "transformer_refs": [],
             "tags": [],
             "meta": {
