@@ -660,16 +660,22 @@ The system is fully functional with:
 - Project import/export (ZIP, deterministic, versioned), CAD geometry editing in SLD,
   PDF/DOCX report generation, ENM v1.0 (EnergyNetworkModel)
 
-### Active programs (2026-07) — three parallel threads, hard boundaries
+### Active programs (2026-07) — three programs, unified thread (2026-07-21)
 1. **Program UI/UX klasy przemysłowej** (`mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md`,
    phases U0–U5; orchestration: `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md`).
-   Branch: `claude/power-network-design-ui-ir91mv`. Does NOT touch SLD internals.
-2. **SLD rework F1–F5** (`mv-design-pro/docs/plan/PLAN_SLD_REWORK.md`) — SEPARATE session/thread.
-   Owns `frontend/src/ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**`.
+   Branch: `claude/power-network-design-ui-ir91mv`.
+2. **SLD rework F1–F5** (`mv-design-pro/docs/plan/PLAN_SLD_REWORK.md`) —
+   `frontend/src/ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**`.
 3. **Engineering 10x program F0–F4** (`mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md`) —
    CI gates, auth/perimeter, concurrency, god-file containment.
 
-Cross-thread file collisions are forbidden; coordination only via cards recorded in the programs.
+**Twarda granica wątków ZNIESIONA (dyrektywa właściciela 2026-07-21: „twarda granica
+wątków usunięta … działaj enduro end").** Jeden wątek prowadzi wszystkie trzy programy
+end-to-end — wolno edytować `ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**` oraz
+warstwy 10x w tej samej sesji/PR. Nie ma już zakazu kolizji cross-thread ani obowiązku
+kart koordynacyjnych między wątkami; łańcuch domykamy do ostatniego klika bez odkładania
+zmian SLD/10x do „osobnego wątku". Rygor jakości bez zmian: pełna regresja właściwej
+warstwy + guardy + determinizm + FROZEN/golden nietknięte przed scaleniem.
 Historical K30 handoff: `mv-design-pro/docs/audit/K30_SESSION_HANDOFF_2026-05-16.md`.
 
 ## Common Tasks

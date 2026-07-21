@@ -789,8 +789,13 @@ Progress:
         mockiem fetch wg wymogu HANDOFF §3.4 (uczciwie w raporcie).
   - [ ] U3 dalsze / U4–U5 wg programu
 
-Rozgraniczenie: rework SLD (`docs/plan/PLAN_SLD_REWORK.md`) biegnie w OSOBNEJ sesji —
-program UI/UX nie modyfikuje plików SLD (granica w Programie §2.3).
+Rozgraniczenie ZNIESIONE (dyrektywa właściciela 2026-07-21 „twarda granica wątków usunięta …
+działaj enduro end", rejestr V12K-084): jeden wątek prowadzi UI/UX + rework SLD
+(`docs/plan/PLAN_SLD_REWORK.md`) + Engineering 10x end-to-end w tej samej sesji/PR. Wolno
+edytować `ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**` oraz warstwy 10x; klauzule
+„wątek SLD V12K-060 / karta cross-thread" w starszych rejestrach są bezprzedmiotowe —
+łańcuch domykamy do ostatniego klika (w tym glify/rendering SLD) bez odkładania. Rygor
+jakości bez zmian (pełna regresja warstwy + guardy + determinizm + FROZEN/golden nietknięte).
 
 ### 3.-2 SLD v3 CAD/SCADA — program ZAMKNIĘTY + likwidacja długów repo (2026-07-17)
 
