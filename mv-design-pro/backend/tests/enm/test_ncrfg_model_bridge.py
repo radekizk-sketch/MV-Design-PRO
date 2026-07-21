@@ -143,3 +143,64 @@ def test_bridge_is_deterministic() -> None:
     first = build_der_compliance_from_generator(gen, voltage_kv=15.0)
     second = build_der_compliance_from_generator(gen, voltage_kv=15.0)
     assert first.model_dump() == second.model_dump()
+
+
+def _model_with_der() -> EnergyNetworkModel:
+    return EnergyNetworkModel.model_validate(
+        {
+            "header": ENMHeader(name="ncrfg-api").model_dump(),
+            "buses": [{"ref_id": "BUS_SN", "name": "Szyna", "voltage_kv": 15.0}],
+            "generators": [
+                {
+                    "ref_id": "DER1",
+                    "name": "PV",
+                    "bus_ref": "BUS_SN",
+                    "p_mw": 1.0,
+                    "gen_type": "pv_inverter",
+                    "meta": {"has_lvrt_curve": True, "frequency_droop_percent": 4.0},
+                }
+            ],
+        }
+    )
+
+
+def test_compliance_endpoint_runs_from_model() -> None:
+    from uuid import UUID
+
+    from api.main import app
+    from catalog.profiles.nc_rfg import list_available_operators
+    from enm.store import reset_enm_store, set_enm
+    from fastapi.testclient import TestClient
+
+    reset_enm_store()
+    case_id = UUID("33333333-3333-3333-3333-333333333333")
+    set_enm(str(case_id), _model_with_der())
+    operator_id = list_available_operators()[0]
+
+    client = TestClient(app)
+    resp = client.get(
+        f"/api/ncrfg-tests/cases/{case_id}/compliance", params={"operator_id": operator_id}
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["der_count"] == 1
+    assert body["reports"][0]["der_ref"] == "DER1"
+    assert "overall_pass" in body["reports"][0]
+
+
+def test_compliance_endpoint_rejects_unknown_operator() -> None:
+    from uuid import UUID
+
+    from api.main import app
+    from enm.store import reset_enm_store, set_enm
+    from fastapi.testclient import TestClient
+
+    reset_enm_store()
+    case_id = UUID("44444444-4444-4444-4444-444444444444")
+    set_enm(str(case_id), _model_with_der())
+
+    client = TestClient(app)
+    resp = client.get(
+        f"/api/ncrfg-tests/cases/{case_id}/compliance", params={"operator_id": "nieistnieje"}
+    )
+    assert resp.status_code == 404
