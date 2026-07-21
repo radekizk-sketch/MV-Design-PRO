@@ -1,8 +1,8 @@
 /**
- * Model huba „Dokumentacja" (karta F-E8.1 + runda poprawek recenzji inżyniera
- * 2026-07-21). Czyste dane + czyste selektory: ZERO fizyki, ZERO pobrań —
- * interpretacja stanu store'ów do prezentacji i nawigacja do REALNYCH dostawców
- * dokumentów (zero phantomów).
+ * Model huba „Dokumentacja" (karta F-E8.1; runda R2 recenzji inżyniera
+ * 2026-07-21 — uproszczenie, „minimum informacji – maksimum decyzji"). Czyste
+ * dane + czyste selektory: ZERO fizyki, ZERO pobrań — interpretacja stanu
+ * store'ów do prezentacji i nawigacja do REALNYCH dostawców (zero phantomów).
  *
  * Każda karta mapuje na istniejącą zdolność backendu:
  *  - Raport analizy → E-37 (`/analysis-runs/{run_id}/export/report/{pdf,docx,json}`),
@@ -12,7 +12,6 @@
 
 import type { WorkspaceSurfaceCode } from '../../../ui/workspace/types';
 import type { SpaceId } from '../../shell/spaces';
-import type { EnergyNetworkModel } from '../../../types/enm';
 import { ANALYSIS_TYPE_LABELS } from '../../../ui/study-cases/types';
 
 /** Czego wymaga dokument, by dało się go wytworzyć (uczciwy warunek). */
@@ -23,22 +22,20 @@ export type CelDokumentu =
   | { readonly rodzaj: 'ekran'; readonly ekran: WorkspaceSurfaceCode }
   | { readonly rodzaj: 'przestrzen'; readonly przestrzen: SpaceId };
 
-/** Rodzina wizualna karty (ikona + akcent) — recenzja inżyniera pkt 2/7. */
+/** Rodzina wizualna karty (ikona + akcent) — recenzja pkt 2/7. */
 export type IkonaDokumentu = 'raport' | 'dowod' | 'archiwum';
 export type AkcentDokumentu = 'accent' | 'formalny' | 'neutralny';
 
 export interface KartaDokumentu {
   readonly id: string;
   readonly tytul: string;
-  /** Jedno zdanie inżynierskie: po co ten dokument. */
+  /** Jedno KRÓTKIE zdanie: po co ten dokument (recenzja R2 pkt 3/7). */
   readonly opis: string;
-  /** Skąd bierze dane (uczciwe źródło = realny endpoint/format backendu). */
-  readonly zrodlo: string;
   readonly wymaga: WymogDokumentu;
   readonly cel: CelDokumentu;
   readonly ikona: IkonaDokumentu;
   readonly akcent: AkcentDokumentu;
-  /** Realne formaty eksportu backendu (metadana — recenzja pkt 6, część realna). */
+  /** Realne formaty eksportu backendu (drugorzędne — recenzja R2 pkt 4). */
   readonly formaty: readonly string[];
   /** Etykieta akcji nazywająca CO SIĘ WYDARZY (recenzja pkt 3). */
   readonly akcjaEtykieta: string;
@@ -61,9 +58,7 @@ export const GRUPY_DOKUMENTOW: readonly GrupaDokumentow[] = [
       {
         id: 'raport-analizy',
         tytul: 'Raport analizy technicznej',
-        opis: 'Raport z zakończonego przebiegu: założenia, wyniki per obiekt i werdykty. '
-          + 'Eksport z odciskiem determinizmu.',
-        zrodlo: 'zakończony przebieg obliczeń (generator raportu backendu)',
+        opis: 'Wyniki i werdykty z zakończonego przebiegu, gotowe do wydruku.',
         wymaga: 'przebieg',
         cel: { rodzaj: 'ekran', ekran: 'E-37' },
         ikona: 'raport',
@@ -76,9 +71,7 @@ export const GRUPY_DOKUMENTOW: readonly GrupaDokumentow[] = [
       {
         id: 'pakiet-dowodowy',
         tytul: 'Pakiet dowodowy WHITE BOX',
-        opis: 'Formalny dowód obliczeń: liczba → wzór → podstawienie → wynik (LaTeX). '
-          + 'Reprodukowalny z tego samego przebiegu.',
-        zrodlo: 'ślad WHITE BOX zakończonego przebiegu (pakiet dowodowy backendu)',
+        opis: 'Formalny dowód obliczeń: liczba → wzór → wynik.',
         wymaga: 'przebieg',
         cel: { rodzaj: 'ekran', ekran: 'E-36' },
         ikona: 'dowod',
@@ -97,9 +90,7 @@ export const GRUPY_DOKUMENTOW: readonly GrupaDokumentow[] = [
       {
         id: 'archiwum-projektu',
         tytul: 'Archiwum projektu (ZIP)',
-        opis: 'Kompletny, wersjonowany zrzut projektu: model sieci, przypadki i wyniki. '
-          + 'Deterministyczny ZIP do przekazania lub archiwizacji.',
-        zrodlo: 'model sieci + przypadki (eksport ZIP projektu, deterministyczny)',
+        opis: 'Wersjonowany zrzut całego projektu do przekazania lub archiwizacji.',
         wymaga: 'projekt',
         cel: { rodzaj: 'przestrzen', przestrzen: 'projekt' },
         ikona: 'archiwum',
@@ -132,7 +123,7 @@ export function maZakonczonyPrzebieg(przebiegi: readonly PrzebiegLekki[]): boole
   return przebiegi.some((r) => r.status === STATUS_ZAKONCZONY);
 }
 
-/** Ostatni zakończony przebieg (krok 4 toru pracy). */
+/** Ostatni zakończony przebieg (pasek statusu). */
 export function ostatniZakonczonyPrzebieg<T extends PrzebiegLekki>(
   przebiegi: readonly T[],
 ): T | null {
@@ -152,67 +143,16 @@ export function dokumentDostepny(
   return wymaga === 'projekt' ? maProjekt : maZakonczonyPrzebieg(przebiegi);
 }
 
-// ---------------------------------------------------------------------------
-// Recenzja inżyniera pkt 5 — podsumowanie analizowanego modelu (realne liczniki
-// ze snapshotu ENM; ZERO fabrykacji). Pozwala natychmiast zweryfikować, że
-// dokumentacja dotyczy właściwego modelu sieci.
-// ---------------------------------------------------------------------------
-
-export interface PodsumowanieModelu {
-  /** Poziomy napięć [kV] malejąco (distinct z szyn). */
-  readonly poziomyNapiecKv: readonly number[];
-  readonly wezly: number;
-  readonly galezie: number;
-  readonly transformatory: number;
-  readonly zrodla: number;
-  readonly generacja: number;
-  readonly odbiory: number;
-}
-
-/** Realne liczniki modelu ze snapshotu ENM (czysta funkcja). */
-export function podsumowanieModelu(snapshot: EnergyNetworkModel | null): PodsumowanieModelu | null {
-  if (!snapshot) return null;
-  const napiecia = Array.from(
-    new Set((snapshot.buses ?? []).map((b) => b.voltage_kv).filter((v): v is number => typeof v === 'number')),
-  ).sort((a, b) => b - a);
-  return {
-    poziomyNapiecKv: napiecia,
-    wezly: (snapshot.buses ?? []).length,
-    galezie: (snapshot.branches ?? []).length,
-    transformatory: (snapshot.transformers ?? []).length,
-    zrodla: (snapshot.sources ?? []).length,
-    generacja: (snapshot.generators ?? []).length,
-    odbiory: (snapshot.loads ?? []).length,
-  };
-}
-
 /** Etykieta PL rodzaju przebiegu (fallback: surowy kod). */
 function etykietaPrzebiegu(analysisType: string): string {
   return ANALYSIS_TYPE_LABELS[analysisType as keyof typeof ANALYSIS_TYPE_LABELS] ?? analysisType;
 }
 
 /**
- * Recenzja pkt 5 — rodzaje WYKONANYCH obliczeń (distinct etykiety zakończonych
- * przebiegów, kolejność stabilna). Realne — z runStore, nie z założeń.
- */
-export function wykonaneObliczenia(przebiegi: readonly PrzebiegLekki[]): readonly string[] {
-  const widoczne = new Set<string>();
-  const out: string[] = [];
-  for (const r of przebiegi) {
-    if (r.status !== STATUS_ZAKONCZONY) continue;
-    const label = etykietaPrzebiegu(r.analysis_type);
-    if (!widoczne.has(label)) {
-      widoczne.add(label);
-      out.push(label);
-    }
-  }
-  return out;
-}
-
-/**
- * Recenzja pkt 8 — zawartość dokumentu wyprowadzona z REALNIE zakończonych
- * przebiegów (sekcje, które raport/dowód faktycznie obejmie). Zero obietnic
- * sekcji bez pokrycia w przebiegu.
+ * Recenzja pkt 8 / R2 pkt 4 — zawartość dokumentu wyprowadzona z REALNIE
+ * zakończonych przebiegów (sekcje, które raport/dowód faktycznie obejmie).
+ * Zero obietnic sekcji bez pokrycia w przebiegu (dobór kabli/zabezpieczeń
+ * pojawią się dopiero, gdy powstanie odpowiedni przebieg — nie fabrykujemy).
  */
 export function zawartoscZPrzebiegow(przebiegi: readonly PrzebiegLekki[]): readonly string[] {
   const sekcje = new Set<string>();
@@ -228,6 +168,7 @@ export function zawartoscZPrzebiegow(przebiegi: readonly PrzebiegLekki[]): reado
     if (r.analysis_type === TYP_ROZPLYWU) {
       dodaj('Rozpływ mocy');
       dodaj('Spadki napięć');
+      dodaj('Obciążalność linii');
       dodaj('Bilans mocy');
     } else if (TYPY_ZWARCIOWE.has(r.analysis_type)) {
       dodaj('Zwarcia (IEC 60909)');
