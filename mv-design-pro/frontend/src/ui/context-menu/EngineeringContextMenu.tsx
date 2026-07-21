@@ -316,6 +316,8 @@ export function handlerNameToActionId(handlerName: string): string {
       return 'add_relay';
     case 'onAddShuntCompensator':
       return 'add_shunt_compensator_sn';
+    case 'onAddSurgeArrester':
+      return 'add_surge_arrester_sn';
     default:
       break;
   }

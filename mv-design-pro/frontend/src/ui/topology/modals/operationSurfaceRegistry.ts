@@ -145,6 +145,17 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
     'typ',
   ),
   entry(
+    'add_surge_arrester_sn',
+    'KreatorOgranicznikaSn',
+    'Dodaj ogranicznik przepięć SN',
+    'E-20',
+    'C',
+    'manual',
+    'expand_workspace',
+    false,
+    'typ',
+  ),
+  entry(
     'add_converter_source',
     'KreatorZrodlaOze',
     'Dodaj źródło PV/BESS/FW z katalogu',

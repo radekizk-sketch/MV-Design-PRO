@@ -14,6 +14,7 @@
 import type { ComponentType, ReactNode } from 'react';
 import type { CanonicalOpName } from '../../types/domainOps';
 import { KreatorKompensatoraSn } from '../../ui2/kreatory/kompensator';
+import { KreatorOgranicznikaSn } from '../../ui2/kreatory/ogranicznik';
 import { KreatorLacznikaSekcyjnego } from '../../ui2/kreatory/lacznik';
 import { KreatorMagistralaSn } from '../../ui2/kreatory/magistrala';
 import { KreatorOdbioruNn } from '../../ui2/kreatory/odbior';
@@ -57,6 +58,7 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_genset_nn: AddDispatchableSourceForm,
   add_ups_nn: AddDispatchableSourceForm,
   add_shunt_compensator_sn: KreatorKompensatoraSn,
+  add_surge_arrester_sn: KreatorOgranicznikaSn,
   add_nn_load: KreatorOdbioruNn,
   add_ct: AddMeasurementForm,
   add_vt: AddMeasurementForm,

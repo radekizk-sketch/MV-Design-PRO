@@ -211,6 +211,11 @@ export function buildBusSNContextMenu(
       handler: handlers.onAddShuntCompensator,
       actionKey: 'bus_sn_add_shunt_compensator',
     }),
+    action('add_surge_arrester_sn', 'Dodaj ogranicznik przepięć SN...', {
+      enabled: edit,
+      handler: handlers.onAddSurgeArrester,
+      actionKey: 'bus_sn_add_surge_arrester',
+    }),
     sep('s2'),
     action('edit_voltage', 'Zmień napięcie szyny (kV)...', { enabled: edit, handler: handlers.onEditVoltage }),
     action('assign_catalog', 'Przypisz katalog szyny...', { enabled: edit, handler: handlers.onAssignCatalog }),

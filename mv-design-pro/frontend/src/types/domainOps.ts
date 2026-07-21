@@ -38,6 +38,7 @@ export type CanonicalOpName =
   | 'add_genset_nn'
   | 'add_ups_nn'
   | 'add_shunt_compensator_sn'
+  | 'add_surge_arrester_sn'
   | 'add_nn_load'
   | 'add_ct'
   | 'add_vt'

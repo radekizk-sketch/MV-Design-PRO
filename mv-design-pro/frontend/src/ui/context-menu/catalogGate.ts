@@ -22,7 +22,8 @@ export type CatalogNamespace =
   | 'CT'
   | 'VT'
   | 'OBCIAZENIE'
-  | 'KOMPENSATOR_SN';
+  | 'KOMPENSATOR_SN'
+  | 'OGRANICZNIK_SN';
 
 export type CatalogGateMode = 'required' | 'topology_allowed_without_catalog';
 
@@ -42,6 +43,7 @@ const CATALOG_REQUIRED_OPERATIONS: Record<string, CatalogNamespace> = {
   add_ct: 'CT',
   add_vt: 'VT',
   add_shunt_compensator_sn: 'KOMPENSATOR_SN',
+  add_surge_arrester_sn: 'OGRANICZNIK_SN',
 };
 
 function resolveCanonicalOperationName(operationId: string): CanonicalOpName | null {
@@ -76,6 +78,7 @@ export function catalogGateMode(operationId: string): CatalogGateMode | undefine
     // Kreator ui2 obsługuje wybór katalogu wewnętrznie (jak GPZ) — otwórz kreator,
     // nie CatalogPicker; katalog-first wymusza sam kreator i backend.
     || canonicalOp === 'add_shunt_compensator_sn'
+    || canonicalOp === 'add_surge_arrester_sn'
   ) {
     return 'topology_allowed_without_catalog';
   }
@@ -99,6 +102,7 @@ export function catalogNamespaceLabel(ns: CatalogNamespace): string {
     VT: 'Przekladnik napieciowy',
     OBCIAZENIE: 'Obciazenie',
     KOMPENSATOR_SN: 'Bateria kondensatorów SN',
+    OGRANICZNIK_SN: 'Ogranicznik przepięć SN',
   };
   return labels[ns];
 }
