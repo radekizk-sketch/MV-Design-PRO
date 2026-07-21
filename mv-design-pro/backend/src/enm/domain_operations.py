@@ -4490,11 +4490,28 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         "SPRZEGLO": "COUPLER",
     }
     field_specs: list[dict[str, Any]] = []
+    # Wiązanie szablonu producenta + kody zabezpieczeń pola — PARYTET z add_sn_bay
+    # i append (PS-1/PS-2). Wspólny resolver (reużycie, zero fabrykacji).
+    from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
+
+    station_switchgear = station.get("switchgear") or {}
     sn_field_specs_sorted = sorted(sn_fields, key=lambda f: f.get("field_role", ""))
     for idx, field_spec in enumerate(sn_field_specs_sorted):
         field_role = str(field_spec.get("field_role", ""))
         field_ref = _make_id("stn", station_seed, f"sn_field/{idx:03d}")
         bay_role = role_map.get(field_role, "FEEDER")
+        # Refy producenta z pola (fallback na wybór rozdzielnicy stacji).
+        field_manufacturer_ref = field_spec.get("manufacturer_ref") or station_switchgear.get(
+            "manufacturer_ref"
+        )
+        field_family_ref = field_spec.get("switchgear_family_ref") or station_switchgear.get(
+            "switchgear_family_ref"
+        )
+        field_bay_template_ref = field_spec.get("bay_template_ref")
+        field_protection_ref = field_spec.get("protection_ref")
+        field_protection_codes = _resolve_bay_template_protection_codes(
+            field_manufacturer_ref, field_bay_template_ref, bay_role
+        )
         terminal_bus_ref = _make_id("stn", station_seed, f"sn_field_terminal/{idx:03d}")
         breaker_ref = _make_id("stn", station_seed, f"sn_field_breaker/{idx:03d}")
         breaker_catalog_ref = (
@@ -4568,6 +4585,11 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 bay_role=bay_role,
                 bus_ref=sn_bus_id,
                 equipment_refs=[breaker_ref],
+                protection_ref=field_protection_ref,
+                protection_codes=field_protection_codes,
+                bay_template_ref=field_bay_template_ref,
+                switchgear_family_ref=field_family_ref,
+                manufacturer_ref=field_manufacturer_ref,
                 tags=["station_sn_field"],
                 meta={
                     "field_role": field_role,

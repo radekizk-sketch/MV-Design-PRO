@@ -1897,6 +1897,84 @@ class TestStationTypeDSectional:
         assert coupler["ref_id"] in coupler_spec.get("equipment_refs", [])
 
 
+class TestInsertStationFieldTemplateBinding:
+    """PS-1/PS-2: insert propaguje szablon producenta + materializuje protection_codes."""
+
+    def test_insert_fields_bind_template_and_protection_codes(self):
+        from network_model.catalog.bay_templates import (
+            BAY_PROTECTION_CODES_BY_ROLE,
+            TRANSFORMER_BAY_PROTECTION_CODES,
+        )
+
+        _, snapshot = _build_gpz_plus_segments(1)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        result = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "sectional",
+                "insert_at": {"value": 0.5},
+                "station": {
+                    "sn_voltage_kv": 15.0,
+                    "nn_voltage_kv": 0.4,
+                    "switchgear": {
+                        "manufacturer_ref": "abb",
+                        "switchgear_family_ref": "abb_unigear_zs1",
+                    },
+                },
+                # Pola z wyborem szablonu producenta (jak z kreatora ui2).
+                "sn_fields": [
+                    {
+                        "field_role": "LINIA_IN",
+                        "manufacturer_ref": "abb",
+                        "switchgear_family_ref": "abb_unigear_zs1",
+                        "bay_template_ref": "abb_unigear_zs1__liniowe_doplywowe",
+                    },
+                    {
+                        "field_role": "LINIA_OUT",
+                        "manufacturer_ref": "abb",
+                        "bay_template_ref": "abb_unigear_zs1__liniowe_odplywowe",
+                    },
+                    {
+                        "field_role": "SPRZEGLO",
+                        "manufacturer_ref": "abb",
+                        "bay_template_ref": "abb_unigear_zs1__sprzeglowe",
+                    },
+                    {"field_role": "TRANSFORMATOROWE", "manufacturer_ref": "abb"},
+                ],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        station = next(
+            sub
+            for sub in result["snapshot"]["substations"]
+            if sub.get("ref_id", "").startswith("stn/")
+        )
+        specs = {
+            (sp.get("meta") or {}).get("field_role"): sp for sp in station["meta"]["field_specs"]
+        }
+
+        # PS-2: pole SPRZĘGŁO materializuje kody zabezpieczeń COUPLER (51/50).
+        coupler = specs["SPRZEGLO"]
+        assert coupler["protection_codes"] == BAY_PROTECTION_CODES_BY_ROLE["COUPLER"]
+        # PS-1: szablon producenta + refy przeniesione na field_spec (nie zgubione).
+        assert coupler["bay_template_ref"] == "abb_unigear_zs1__sprzeglowe"
+        assert coupler["manufacturer_ref"] == "abb"
+
+        # TR: kody transformatorowe (87T/51/50/...) z kanonu.
+        tr = specs["TRANSFORMATOROWE"]
+        assert tr["protection_codes"] == list(TRANSFORMER_BAY_PROTECTION_CODES)
+
+        # IN: kody liniowe (51/50/51N).
+        assert specs["LINIA_IN"]["protection_codes"] == BAY_PROTECTION_CODES_BY_ROLE["IN"]
+
+
 # ===========================================================================
 # TEST 16: test_insert_station_on_nonexistent_segment
 # ===========================================================================
