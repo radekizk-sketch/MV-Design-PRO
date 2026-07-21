@@ -151,7 +151,7 @@ Dowód dla ❌/◐: `grep -ril <termin> frontend/src` z 2026-07-15.
 | Funkcja | Solver/Analiza | API | UI (stan zastany) | Status |
 |---|---|---|---|---|
 | Zwarcia IEC 60909 | S1 | fault_scenarios, execution_runs, unified_runs | results, results-inspector, sld-overlay, proof | ✅ |
-| Zwarcia maszyn | S2 + A7 | ✅ analysis_run/service.py + proof engine (zweryfikowane U0.3) | brak (`machine_sc`: 0 plików) | ❌ UI |
+| Zwarcia maszyn | S2 + A7 | ✅ analysis_run/service.py + proof engine (zweryfikowane U0.3) | rozbicie maszynowe (μ/q/i_b) w pakiecie dowodowym SC3F (G-SCM F2, `backend/src/api/proof_pack.py`) renderowanym przez proof-inspector; brak DEDYKOWANEGO modułu `machine_sc` | ◐ (widoczne przez ProofPack SC3F; dedykowany ekran = opcjonalny) |
 | Rozpływ NR/GS/FD | S3–S5 | power_flow_runs, power_flow_comparisons | power-flow-results, power-flow-comparison, power-distribution | ✅ |
 | Rozpływ niesymetryczny | S6 | ◐ solver poza rejestrem zdolności (PF = tylko NR/GS/FD); wzmianka w reference_networks | częściowe (`unbalanced`: 6 plików) | ◐ |
 | Falowniki OZE w LF | S7 | generators, grid_source_preview | designer/wizard, ncrfg-tests | ◐ |
@@ -196,9 +196,11 @@ Dowód dla ❌/◐: `grep -ril <termin> frontend/src` z 2026-07-15.
 | Przypadki obliczeniowe | — | study_cases, case_runs, batch_execution | study-cases (dawny `ui/active-case-bar` USUNIĘTY 2026-07) | ◐ |
 | SLD + nakładki wyników | — | sld, sld_overrides | sld, sld-editor, sld-overlay | ◐ (OSOBNY WĄTEK — patrz Program §2.3) |
 
-**Bilans (rewizja 2026-07-21):** 2 funkcje ❌ (zero UI: Zwarcia maszyn, Stabilność SSCI),
-reszta ◐/✅. Estymacja stanu WLS (S14) 2026-07-21 wyszła z ❌ dzięki wpięciu backendu
-(`POST /api/quality/state-estimation` + `/requirements`); UI (ekran wyników) = następna faza.
+**Bilans (rewizja 2026-07-21b):** 1 funkcja ❌ zero-UI: **Stabilność SSCI** (`analysis/ssci_stability`
+niewpięte — brak API i UI). Estymacja stanu WLS (S14) wyszła z ❌ dzięki wpięciu backendu
+(`POST /api/quality/state-estimation` + `/requirements`); UI = następna faza (◐). Zwarcia maszyn
+(S2+A7) skorygowane ❌→◐: rozbicie maszynowe (μ/q/i_b) widoczne przez pakiet dowodowy SC3F
+(G-SCM F2, `proof_pack.py`) w proof-inspectorze — dedykowany ekran opcjonalny, nie zero-UI.
 Względem 2026-07-15 pięć zdolności (Arc flash, Siła sieci,
 Adekwatność mocy biernej, Sanity bounds, Walidacja energetyczna) wyszło z ❌ dzięki wpięciu
 routerów `oze_analysis_runs` i `quality_analysis_runs` oraz powierzchni `ui2/`. Dodano też do
@@ -264,7 +266,8 @@ Synchronizacja inwentarza z rzeczywistą powierzchnią kodu na HEAD `b30249d` (g
   batch_execution, case_runs, cloud_backup, design_synth, domain_operations, incremental_archive,
   protection_coordination, protection_engine_v1, snapshots, topology_links) — żaden nie jest
   zamontowany w `api/main.py` na HEAD `b30249d`.
-- ❌ pozostające: Zwarcia maszyn (brak UI), Stabilność SSCI (analysis/ssci_stability nadal
-  NIEWPIĘTE poza v126).
+- ❌ pozostające (rewizja 2026-07-21b): TYLKO Stabilność SSCI (analysis/ssci_stability nadal
+  NIEWPIĘTE poza v126 — brak API i UI). Zwarcia maszyn skorygowane ❌→◐ (widoczne przez ProofPack
+  SC3F, G-SCM F2 — patrz macierz §6).
 - ◐ Estymacja stanu WLS: backend wpięty 2026-07-21 (`quality_analysis_runs.py` +
   `application/analyses/state_estimation`); UI (ekran wyników |V|/kąt/χ²) = następna faza.
