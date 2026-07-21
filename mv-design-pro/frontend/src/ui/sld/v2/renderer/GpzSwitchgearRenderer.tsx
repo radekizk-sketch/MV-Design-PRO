@@ -1817,7 +1817,7 @@ function BayColumn(props: BayColumnProps): JSX.Element {
       {/* TRANSFORMER — symbol trafa NA OSI pola TR (kanon: pole TR kończy się
        * portem do trafa, nie głowicą kablową). */}
       {showTransformer && (
-        <ApparatusTransformerSymbol cx={apparatusCx} cy={triangleY} />
+        <ApparatusTransformerSymbol cx={apparatusCx} cy={triangleY} oltc={bay.oltc} />
       )}
 
       {/* LV_BREAKER — wyłącznik nN za trafem (poniżej TRANSFORMER symbolu). */}

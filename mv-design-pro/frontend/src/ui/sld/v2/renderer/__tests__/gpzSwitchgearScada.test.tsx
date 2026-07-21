@@ -2089,6 +2089,44 @@ describe('GpzSwitchgearRenderer — commit 9: BAY_DEVICE_ORDER_POLICY pełna ite
     expect(container.querySelector('[data-testid="sld-v2-gpz-bay-transformer-tap-changer"]')).not.toBeNull();
   });
 
+  it('SLD-02: ApparatusTransformerSymbol z adnotacją OLTC (etykieta+pozycja+tryb+U_zad)', async () => {
+    const { ApparatusTransformerSymbol } = await import('../GpzApparatusSymbols');
+    const { container } = render(
+      <svg>
+        <ApparatusTransformerSymbol
+          cx={50}
+          cy={50}
+          oltc={{
+            kind: 'OLTC',
+            positionLabel: 'poz. +3',
+            modeLabel: 'AUTO',
+            setpointLabel: 'U_zad 15.5 kV',
+          }}
+        />
+      </svg>,
+    );
+    const glyph = container.querySelector('[data-testid="sld-v2-gpz-bay-transformer-oltc"]');
+    expect(glyph).not.toBeNull();
+    expect(glyph?.getAttribute('data-oltc-kind')).toBe('OLTC');
+    expect(glyph?.getAttribute('data-oltc-mode')).toBe('AUTO');
+    expect(glyph?.textContent).toContain('OLTC poz. +3');
+    expect(glyph?.textContent).toContain('U_zad 15.5 kV');
+    // Adnotacja implikuje strzałkę zaczepu (bez jawnego hasTapChanger).
+    expect(
+      container.querySelector('[data-testid="sld-v2-gpz-bay-transformer-tap-changer"]'),
+    ).not.toBeNull();
+  });
+
+  it('SLD-02: ApparatusTransformerSymbol bez oltc → brak adnotacji regulacji', async () => {
+    const { ApparatusTransformerSymbol } = await import('../GpzApparatusSymbols');
+    const { container } = render(
+      <svg>
+        <ApparatusTransformerSymbol cx={50} cy={50} />
+      </svg>,
+    );
+    expect(container.querySelector('[data-testid="sld-v2-gpz-bay-transformer-oltc"]')).toBeNull();
+  });
+
   it('K30-104: ApparatusTransformerSymbol bez tap changer (default) → brak strzałki OLTC', async () => {
     const { ApparatusTransformerSymbol } = await import('../GpzApparatusSymbols');
     const { container } = render(

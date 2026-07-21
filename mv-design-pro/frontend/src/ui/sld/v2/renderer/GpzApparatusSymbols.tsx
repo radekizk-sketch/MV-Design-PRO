@@ -22,7 +22,11 @@ import {
   FONT_SIZES,
   GPZ_GEOMETRY,
 } from '../theme/tokens';
-import type { EarthingSwitchState, GpzApparatusSwitchState } from './GpzSwitchgearTypes';
+import type {
+  EarthingSwitchState,
+  GpzApparatusSwitchState,
+  OltcGlyphAnnotation,
+} from './GpzSwitchgearTypes';
 
 const CT_RADIUS = GPZ_GEOMETRY.ctRadius;
 const CB_SIZE = GPZ_GEOMETRY.cbSize;
@@ -739,6 +743,10 @@ interface ApparatusTransformerSymbolProps {
    *  Per IEC 60617-2 + PN-EN 62271-102: strzałka diagonalna przez górne
    *  uzwojenie (strona SN). */
   readonly hasTapChanger?: boolean;
+  /** SLD-02 (V12K-045): adnotacja regulacji zaczepów (OLTC/DETC, pozycja,
+   *  tryb AUTO/MAN, U_zad) — READ-ONLY z modelu `tap_changer`. Obecność
+   *  implikuje strzałkę zaczepu. Brak → symbol bez adnotacji regulacji. */
+  readonly oltc?: OltcGlyphAnnotation;
 }
 
 /**
@@ -746,7 +754,8 @@ interface ApparatusTransformerSymbolProps {
  * Renderowany NA OSI POLA (NIE jako separate column) — końcówka pola TR.
  */
 export function ApparatusTransformerSymbol(props: ApparatusTransformerSymbolProps): JSX.Element {
-  const { cx, cy, neutralEarthed = true, vectorGroup, hasTapChanger = false } = props;
+  const { cx, cy, neutralEarthed = true, vectorGroup, oltc } = props;
+  const hasTapChanger = props.hasTapChanger === true || oltc != null;
   const r = 5;
   const gap = r;
   return (
@@ -820,6 +829,39 @@ export function ApparatusTransformerSymbol(props: ApparatusTransformerSymbolProp
         >
           {vectorGroup}
         </text>
+      )}
+      {/* SLD-02 (V12K-045): adnotacja OLTC/DETC (READ-ONLY z tap_changer).
+          Po lewej stronie symbolu, aby nie kolidować z vector group (prawo)
+          i uziemieniem (dół). ZERO fizyki — same etykiety z modelu. */}
+      {oltc && (
+        <g
+          data-testid="sld-v2-gpz-bay-transformer-oltc"
+          data-oltc-kind={oltc.kind}
+          data-oltc-mode={oltc.modeLabel}
+        >
+          <text
+            x={cx - r - 4}
+            y={cy - 2}
+            textAnchor="end"
+            fill={COLOR_LINE_PRIMARY}
+            fontFamily="monospace"
+            fontSize={7}
+            fontWeight={800}
+          >
+            {`${oltc.kind} ${oltc.positionLabel}`}
+          </text>
+          <text
+            x={cx - r - 4}
+            y={cy + 7}
+            textAnchor="end"
+            fill={COLOR_LINE_PRIMARY}
+            fontFamily="monospace"
+            fontSize={7}
+            fontWeight={600}
+          >
+            {oltc.setpointLabel ? `${oltc.modeLabel} · ${oltc.setpointLabel}` : oltc.modeLabel}
+          </text>
+        </g>
       )}
     </g>
   );

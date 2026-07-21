@@ -216,6 +216,28 @@ export interface GpzBayDescriptor {
     /** Typ katalogowy kabla/linii, np. "XRUHAKXS 120/25". */
     readonly catalogLabel?: string;
   };
+  /**
+   * Adnotacja glifu OLTC/DETC na symbolu transformatora (karta SLD-02,
+   * V12K-045). READ-ONLY z modelu `Transformer.tap_changer` — glif niczego
+   * nie liczy (ZERO fizyki w SLD). Brak → brak adnotacji (pole bez regulacji).
+   */
+  readonly oltc?: OltcGlyphAnnotation;
+}
+
+/**
+ * Adnotacja regulacji zaczepów do wyświetlenia przy symbolu transformatora
+ * (karta koordynacyjna SLD-02). Wszystkie wartości pochodzą z modelu
+ * (`Transformer.tap_changer`) — prezentacja, nie obliczenie.
+ */
+export interface OltcGlyphAnnotation {
+  /** "OLTC" lub "DETC" (regulation_type != NONE). */
+  readonly kind: 'OLTC' | 'DETC';
+  /** Pozycja zaczepu jako etykieta, np. "poz. +3", "poz. −4", "poz. 0". */
+  readonly positionLabel: string;
+  /** Tryb sterowania jako badge: "AUTO" (AUTOMATIC/PROFILE/REMOTE) lub "MAN". */
+  readonly modeLabel: 'AUTO' | 'MAN';
+  /** Napięcie zadane, np. "U_zad 15.5 kV" (tylko tryb automatyczny). */
+  readonly setpointLabel?: string;
 }
 
 /**

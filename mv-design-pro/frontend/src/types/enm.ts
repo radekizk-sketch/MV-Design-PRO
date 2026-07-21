@@ -191,6 +191,24 @@ export type Branch = OverheadLine | Cable | SwitchBranch | FuseBranch;
 // Transformer
 // ---------------------------------------------------------------------------
 
+/**
+ * Kanoniczny przełącznik zaczepów (ENM TapChanger). Jedyne źródło prawdy o
+ * regulacji transformatora — konsumuje go glif OLTC na SLD (karta SLD-02).
+ * None/undefined = brak regulacji (zachowanie jak dla pola bez zaczepów).
+ */
+export interface TapChanger {
+  regulation_type: 'NONE' | 'DETC' | 'OLTC';
+  regulated_winding: 'HV' | 'LV';
+  neutral_position: number;
+  current_position: number;
+  min_position: number;
+  max_position: number;
+  step_percent: number;
+  control_mode: 'MANUAL' | 'AUTOMATIC' | 'PROFILE' | 'REMOTE';
+  voltage_setpoint_kv?: number | null;
+  deadband_kv?: number | null;
+}
+
 export interface Transformer extends ENMElement {
   hv_bus_ref: string;
   lv_bus_ref: string;
@@ -208,6 +226,7 @@ export interface Transformer extends ENMElement {
   tap_min?: number | null;
   tap_max?: number | null;
   tap_step_percent?: number | null;
+  tap_changer?: TapChanger | null;
   catalog_ref?: string | null;
   catalog_namespace?: string | null;
   parameter_source?: ParameterSource | null;

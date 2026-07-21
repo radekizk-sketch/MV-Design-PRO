@@ -40,6 +40,7 @@ import type {
   ProtectionAssignment,
   Measurement,
 } from '../../../../types/enm';
+import { buildOltcAnnotation } from './oltcGlyph';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
@@ -2340,6 +2341,8 @@ function synthesizeHvSections(args: SynthesizeHvArgs): GpzSectionDescriptor[] {
     feederName: `TR${idx + 1}`,
     bayNumber: `${(idx + 1) * 2}`,
     hasMissingRequiredDevice: false,
+    /* SLD-02: glif OLTC/DETC z kanonicznego tap_changer (READ-ONLY). */
+    oltc: buildOltcAnnotation(tr.tap_changer) ?? undefined,
     /* energization/cbState/dsState undefined — patrz wyżej. */
   }));
 
