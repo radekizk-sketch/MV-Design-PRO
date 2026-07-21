@@ -1,0 +1,274 @@
+/*
+ * Hub „Dokumentacja" — wyłącznie tokeny powłoki (--mvd-*), oba motywy z
+ * automatu. Jedna skala promieni: 10px sekcja / 8px karta / 999px chip.
+ * Siatka odstępów: 4 / 8 / 12 / 16. Struktura klas zgodna z hubem analiz.
+ */
+
+.mvd-dok {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-head h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-head p {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+.mvd-dok-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--mvd-accent);
+}
+
+.mvd-dok-sekcja {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.mvd-dok-sekcja > h3 {
+  margin: 6px 0 2px;
+  font-size: 15px;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-nota {
+  margin: 6px 0 12px;
+  max-width: 82ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+/* --- Tor pracy (łańcuch 4 kroków) --------------------------------------- */
+
+.mvd-dok-tor {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+}
+
+.mvd-dok-krok {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.mvd-dok-krok-glowa {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mvd-dok-krok-nr {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--mvd-muted);
+}
+
+.mvd-dok-krok-nazwa {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-krok-wartosc {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--mvd-ink);
+  overflow-wrap: anywhere;
+}
+
+.mvd-dok-krok-wartosc[data-brak='true'] {
+  color: var(--mvd-muted);
+  font-style: italic;
+}
+
+.mvd-dok-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font: 600 10.5px/1.6 var(--mvd-font-mono);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.mvd-dok-chip--ok {
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+
+.mvd-dok-chip--brak {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+
+.mvd-dok-akcja {
+  align-self: flex-start;
+  margin-top: 2px;
+  background: none;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+
+.mvd-dok-akcja:hover {
+  background: var(--mvd-sel);
+}
+
+.mvd-dok-akcja:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* --- Karty dokumentów ----------------------------------------------------- */
+
+.mvd-dok-grupa {
+  margin: 0 0 4px;
+}
+
+.mvd-dok-grupa > h4 {
+  margin: 12px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-grupa:first-of-type > h4 {
+  margin-top: 8px;
+}
+
+.mvd-dok-karty {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+}
+
+.mvd-dok-karta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.mvd-dok-karta-glowa {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mvd-dok-karta-glowa h5 {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.35;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-karta-opis {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-dok-karta-zrodlo {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-dok-karta-zrodlo b {
+  font: 600 10px/1 var(--mvd-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--mvd-muted);
+}
+
+.mvd-dok-karta-stopka {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 6px;
+}
+
+.mvd-dok-otworz {
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-accent-ink);
+  cursor: pointer;
+}
+
+.mvd-dok-otworz:hover {
+  filter: brightness(1.08);
+}
+
+.mvd-dok-otworz:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* --- Pasek powrotu (widok dostawcy dokumentu) ----------------------------- */
+
+.mvd-dok-powrot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+}
+
+.mvd-dok-powrot button {
+  background: none;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+
+.mvd-dok-powrot button:hover {
+  background: var(--mvd-sel);
+}
+
+.mvd-dok-powrot button:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}

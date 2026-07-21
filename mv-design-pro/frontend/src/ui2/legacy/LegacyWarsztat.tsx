@@ -62,9 +62,11 @@ export interface LegacyWarsztatProps {
   obliczenia: ReactNode;
   /** Zawartość przestrzeni „Wyniki" (warsztat z zakładkami: rozpływ E8.1 + most — scalenie U3 #1). */
   wyniki: ReactNode;
+  /** Zawartość przestrzeni „Dokumentacja" (hub F-E8.1 + dostawcy raportu/dowodu). */
+  dokumentacja: ReactNode;
 }
 
-function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia, wyniki }: LegacyWarsztatProps) {
+function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia, wyniki, dokumentacja }: LegacyWarsztatProps) {
   // Trasy dedykowane starego wejścia (przeniesiony przełącznik App.tsx).
   if (route === '#enm-inspector' && featureFlags.ENM_INSPECTOR_VISIBLE) {
     return <EnmInspectorPage />;
@@ -127,6 +129,12 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
     // (WorkspaceSurfaceRouter w zakładce „Pozostałe analizy").
     return <>{wyniki}</>;
   }
+  if (space === 'dokumentacja') {
+    // F-E8.1: przestrzeń „Dokumentacja" ma własny hub prowadzący (MostDokumentacji);
+    // powierzchnie raportu/dowodu (E-37/E-36) renderują się WEWNĄTRZ mostu z
+    // paskiem powrotu, więc — jak „wyniki" — jest wyłączona z mainSurfaceExpanded.
+    return <>{dokumentacja}</>;
+  }
   return <LegacySurface space={space} />;
 }
 
@@ -139,7 +147,9 @@ export function LegacyWarsztat(props: LegacyWarsztatProps) {
   // warsztatu wyników (slot `wyniki`), aby zakładka „Rozpływ mocy" (nowe okno
   // E8.1) pozostała osiągalna. Pozostałe przestrzenie: zachowanie bez zmian.
   const mainSurfaceExpanded =
-    activeSurface?.openMode === 'expand_workspace' && props.space !== 'wyniki';
+    activeSurface?.openMode === 'expand_workspace'
+    && props.space !== 'wyniki'
+    && props.space !== 'dokumentacja';
 
   return (
     <div className="mvd-legacy-host">

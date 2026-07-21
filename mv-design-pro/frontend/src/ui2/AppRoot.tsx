@@ -31,6 +31,7 @@ import { ModelWarsztat } from './spaces/model';
 import { MenedzerPrzypadkow } from './spaces/obliczenia';
 import { PrzebiegiPanel } from './spaces/obliczenia/przebiegi';
 import { WynikiWarsztat } from './spaces/wyniki';
+import { MostDokumentacji } from './spaces/dokumentacja';
 import { LegacySurface } from './legacy/LegacySurface';
 import { LegacyWarsztat } from './legacy/LegacyWarsztat';
 import { LegacyInspektor } from './legacy/LegacyInspektor';
@@ -45,7 +46,6 @@ import {
   navigateToAnalysis,
   navigateToCaseConfig,
   navigateToNetworkBuild,
-  navigateToReport,
 } from '../ui/navigation';
 import { AreaContextPanel } from '../ui/shell/context-panels';
 
@@ -182,11 +182,12 @@ export function AppRoot() {
         navigateToAnalysis({ runId });
         break;
       case 'dokumentacja':
-        navigateToReport({ runId });
-        break;
       case 'gotowosc':
       case 'projekt':
         // Zawartość sterowana store'ami/przestrzenią — bez zmiany trasy.
+        // F-E8.1: „Dokumentacja" ląduje na hubie prowadzącym (MostDokumentacji);
+        // dostawcy raportu/dowodu (E-37/E-36) otwierają karty huba przez
+        // openRouteSurface, nie auto-nawigacja do legacy generatora.
         break;
     }
   };
@@ -261,6 +262,7 @@ export function AppRoot() {
               onOtworzDokumentacje={() => wybierzPrzestrzen('dokumentacja')}
             />
           }
+          dokumentacja={<MostDokumentacji />}
           pulpit={
             <PulpitProjektu
               onNawiguj={wybierzPrzestrzen}
