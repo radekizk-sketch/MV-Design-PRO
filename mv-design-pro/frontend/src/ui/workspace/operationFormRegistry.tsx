@@ -19,6 +19,7 @@ import { KreatorMagistralaSn } from '../../ui2/kreatory/magistrala';
 import { KreatorOdbioruNn } from '../../ui2/kreatory/odbior';
 import { KreatorPierscienia } from '../../ui2/kreatory/pierscien';
 import { KreatorPolaSn } from '../../ui2/kreatory/pole';
+import { KreatorStacjiSnNn } from '../../ui2/kreatory/stacja';
 import { KreatorTransformatoraSnNn } from '../../ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from '../../ui2/kreatory/zrodlo';
 import { KreatorZrodlaOze } from '../../ui2/kreatory/zrodlo-oze';
@@ -28,7 +29,6 @@ import { AddNnOutgoingFieldForm } from '../network-build/forms/AddNnOutgoingFiel
 import { AddRelayForm } from '../network-build/forms/AddRelayForm';
 import { AssignCatalogForm } from '../network-build/forms/AssignCatalogForm';
 import { InsertBranchPoleForm } from '../network-build/forms/InsertBranchPoleForm';
-import { InsertStationForm } from '../network-build/forms/InsertStationForm';
 import { InsertZksnForm } from '../network-build/forms/InsertZksnForm';
 import { StartBranchForm } from '../network-build/forms/StartBranchForm';
 import { UpdateElementParametersForm } from '../network-build/forms/UpdateElementParametersForm';
@@ -41,8 +41,8 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_grid_source_sn: KreatorZrodloZasilania,
   add_sn_bay: KreatorPolaSn,
   continue_trunk_segment_sn: KreatorMagistralaSn,
-  insert_station_on_segment_sn: InsertStationForm,
-  append_station_on_endpoint: InsertStationForm,
+  insert_station_on_segment_sn: KreatorStacjiSnNn,
+  append_station_on_endpoint: KreatorStacjiSnNn,
   insert_branch_pole_on_segment_sn: InsertBranchPoleForm,
   insert_zksn_on_segment_sn: InsertZksnForm,
   start_branch_segment_sn: StartBranchForm,

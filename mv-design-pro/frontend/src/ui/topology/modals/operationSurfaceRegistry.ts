@@ -58,7 +58,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'insert_station_on_segment_sn',
-    'InsertStationForm',
+    'KreatorStacjiSnNn',
     'Wstaw stację SN/nN',
     'E-13',
     'B',

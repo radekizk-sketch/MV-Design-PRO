@@ -61,8 +61,16 @@ Katalog `ui2/kreatory/stacja/`: `stacjaModel.ts` (typy/walidacja/payload — bez
   niekompletnych. PanelTeorii pól. Testy.
 - **D4 — blok nN + PV:** konfiguracja PV_INVERTER (dobór falownika/transformatora LV bez zgadywania),
   odpływy, napięcia, zabezpieczenie źródła, szybka ścieżka „stacja rekomendowana". Testy.
-- **D5 — cutover:** przełączenie `operationFormRegistry`/`operationSurfaceRegistry` na KreatorStacji,
-  retire `InsertStationForm`, migracja intencji testów legacy do ui2, zrzuty obu motywów.
+- **D5 — cutover. ✅ WDROŻONE.** `operationFormRegistry` (`insert_station_on_segment_sn` +
+  `append_station_on_endpoint`) i `operationSurfaceRegistry` przełączone na `KreatorStacjiSnNn`;
+  komponent `InsertStationForm.tsx` (1884 w.) i jego test USUNIĘTE; moduły-helpery
+  (`InsertStationFormHelpers`, `catalogPayload`) ZACHOWANE (reużywa je KreatorStacji);
+  intencja testów legacy pokryta w `KreatorStacjiSnNn.test.tsx` (49). Registry-completeness,
+  operationFormRegistry i coverage-matrix zielone; pełna regresja frontendu.
+
+**Program zamknięty: D1 ✅ D2 ✅ D3 ✅ D4 ✅ D4.1 ✅ D5 ✅** — god-file 1884 w. zastąpiony
+kreatorem `ui2/kreatory/stacja` z pełnym parytetem (5/5 konfiguracji nN, transformator + dobór,
+rozdzielnica producencka + SVG, umiejscowienie koniec/podział), PanelTeorii i wiązaniem V12K-073.
 
 ## 4. Kryteria odbioru (całość)
 1. Pełna parytetowość funkcji z legacy (typy/nN/transformator/rozdzielnica/umiejscowienie/odpływy) —

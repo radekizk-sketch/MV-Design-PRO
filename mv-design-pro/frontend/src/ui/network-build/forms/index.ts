@@ -4,7 +4,6 @@
  * Formularze operacji domenowych renderowane inline w panelu inspektora.
  */
 
-export { InsertStationForm } from './InsertStationForm';
 export { InsertBranchPoleForm } from './InsertBranchPoleForm';
 export { InsertZksnForm } from './InsertZksnForm';
 export { StartBranchForm } from './StartBranchForm';
