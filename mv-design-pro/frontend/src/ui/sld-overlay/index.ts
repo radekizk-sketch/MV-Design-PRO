@@ -63,3 +63,5 @@ export type {
   ZeroSequenceResultV1,
   ZeroSequenceSeverity,
 } from './ZeroSequenceOverlayAdapter';
+export { adaptOltcControlToOverlay, formatOltcPositionLabel } from './OltcOverlayAdapter';
+export type { OltcControlResultV1 } from './OltcOverlayAdapter';
