@@ -55,6 +55,32 @@ SPD SN/nN, układ pomiarowo-rozliczeniowy (przekładniki + licznik — obowiązk
 sekcjonowanie nN, prawdziwa dwusekcyjna stacja sekcyjna, potrzeby własne stacji, praca
 równoległa transformatorów.
 
+## Status realizacji (2026-07-21, po batchach naprawczych)
+
+Wszystkie dyspozycje **NAPRAWA** wdrożone end-to-end (kod + testy realnej ścieżki + bramki + push):
+
+| ID | Status | Commit / zakres |
+|----|--------|-----------------|
+| K1/K2 | ✅ NAPRAWIONE | Parytet append↔insert dla `nn_block` (ekstrakcja `_build_nn_field_specs`/`_materialize_nn_source`); test reprodukujący PV+LOAD. |
+| W-1 | ✅ NAPRAWIONE | `MAX_TRIPPING_TIME_S` udokumentowany + `unclamped_tripping_time_s`/`clamp_applied` w śladzie. |
+| P1 | ✅ NAPRAWIONE | Typ `terminal` w kreatorze ui2 + domyślny terminal w append + etykiety. |
+| P2/P3 | ✅ NAPRAWIONE | `deriveSnVoltageKv` z rzeczywistej szyny (odcinek/terminal); nieznane → pominięcie `sn_voltage_kv`; usunięto fallback 15 kV. |
+| S-1 | ✅ NAPRAWIONE | Bezzwłoczna = podłoga czasowa solvera, nie „brak danych"/t_s=0. |
+| S-3 | ✅ NAPRAWIONE (batch 1) | TMS w podsumowaniu nadprądowym z `it_curve`. |
+| S-4 | ✅ NAPRAWIONE (batch 1) | Ujednolicenie rozkładu ŚOI ekran↔raport (null→„—", sort codepoint). |
+| WLS-S1/S2 | ✅ NAPRAWIONE | Addytywne `final_residuals` w wyniku (r i r_N z tego samego iteratu, niezależne od śladu). |
+| WLS-S3 | ✅ NAPRAWIONE | Baner „walidacja syntetyczna" niezależny od trybu. |
+| WLS-S4 | ✅ NAPRAWIONE | Reużycie `przebiegRozplywuEstymacji`. |
+| WLS-D1 | ✅ NAPRAWIONE | Etykieta PL podejrzanego pomiaru (`typPomiaruPL`). |
+| B1 | ✅ NAPRAWIONE | Ekran werdyktu SSCI `ui2/wyniki/ssci` (endpoint v126). |
+| D-1 | ✅ NAPRAWIONE | Jawny guard dodatniości argumentów `log10` w energii incydentu. |
+
+Pozostają **KARTA** (backlog z uzasadnieniem): S-2 (setpointy częstotliwościowe LoM),
+S-5 (`I_arc_min` + sprzężenie t(prąd) z TCC), P4 (zabezpieczenie BESS/FW + dobór z katalogu),
+P5 (model dwusekcyjny), D-2/D-3 (drobne prezentacyjne) oraz REALNE BRAKI FUNKCJI stacji
+(sekcja E: uziemienie/punkt neutralny, SPD, układ pomiarowo-rozliczeniowy, sekcjonowanie nN,
+praca równoległa transformatorów).
+
 ## Ocena panelu
 Warstwa fizyki (IEC 60255, IEEE 1584, WLS, SSCI) rzetelna i uczciwie oznacza proweniencję/braki.
 Defekty dotyczą głównie warstwy interpretacji/prezentacji, przypadków brzegowych oraz — krytycznie
