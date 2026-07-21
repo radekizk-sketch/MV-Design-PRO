@@ -17,8 +17,11 @@ import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { buildSceneV3 } from '../../scene/buildScene';
 import {
   buildFlowOverlayFromScene,
+  buildOltcOverlayFromScene,
   flowOverlayValuesTraceToPayload,
   isFlowOverlayEmpty,
+  isOltcOverlayEmpty,
+  oltcOverlayTracesToPayload,
   singleHopSegmentRefs,
 } from '../overlay';
 
@@ -58,6 +61,17 @@ const realSegmentOwnerRefs = scene.segments
 function elementWithMetrics(refId: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
   return { ref_id: refId, kind: 'branch', badges: [], metrics, severity: 'INFO' };
 }
+
+/** Realne `ownerRef` symboli transformatora (`elementKind==='transformer'`,
+ *  `meta.ownerRef` = `transformerRef` = ENM `ref_id`) z PRAWDZIWEJ sceny —
+ *  zero fabrykacji refów w danych testowych (wzorzec `realSegmentOwnerRefs`). */
+const realTransformerOwnerRefs = Array.from(
+  new Set(
+    scene.symbols
+      .filter((s) => s.meta?.elementKind === 'transformer' && s.meta.ownerRef)
+      .map((s) => s.meta!.ownerRef!),
+  ),
+);
 
 function payloadOf(elements: Record<string, RawOverlayElement>, analysisType = 'load_flow'): RawOverlayPayload {
   return { run_id: 'run-test', analysis_type: analysisType, elements };
@@ -201,6 +215,78 @@ describe('overlay.ts — flowOverlayValuesTraceToPayload (wyrocznia flow_overlay
       [ref]: { ownerRef: ref, forward: true, p: { value: 1, unit: 'MW' } },
     };
     expect(flowOverlayValuesTraceToPayload(staleOverlay, emptyPayload)).toBe(false);
+  });
+});
+
+describe('overlay.ts — buildOltcOverlayFromScene (V12K-092, badge wynikowy OLTC, spec §14.2/§3.5)', () => {
+  it('fixtura zawiera ≥1 symbol transformatora (bramka testu nie jest martwa)', () => {
+    expect(realTransformerOwnerRefs.length).toBeGreaterThan(0);
+  });
+
+  it('§14.2 „overlay wyłączony bez wyniku": payload=null ⇒ badge pusty', () => {
+    expect(isOltcOverlayEmpty(buildOltcOverlayFromScene(scene, null))).toBe(true);
+  });
+
+  it('TAP_POSITION + TAP_SWITCH_COUNT w wyniku ⇒ badge z pozycją i liczbą przełączeń (wartości BAJT-RÓWNE)', () => {
+    const ref = realTransformerOwnerRefs[0];
+    const payload = payloadOf({
+      [ref]: elementWithMetrics(ref, {
+        TAP_POSITION: { code: 'TAP_POSITION', value: 3, unit: '' },
+        TAP_SWITCH_COUNT: { code: 'TAP_SWITCH_COUNT', value: 4, unit: '' },
+      }),
+    });
+    const overlay = buildOltcOverlayFromScene(scene, payload);
+    expect(overlay[ref]).toEqual({ ownerRef: ref, tapPosition: 3, switchCount: 4 });
+    expect(oltcOverlayTracesToPayload(overlay, payload)).toBe(true);
+  });
+
+  it('pozycja ujemna, brak TAP_SWITCH_COUNT ⇒ badge tylko z pozycją (bez fabrykacji 0)', () => {
+    const ref = realTransformerOwnerRefs[0];
+    const payload = payloadOf({
+      [ref]: elementWithMetrics(ref, { TAP_POSITION: { code: 'TAP_POSITION', value: -2, unit: '' } }),
+    });
+    const overlay = buildOltcOverlayFromScene(scene, payload);
+    expect(overlay[ref]).toEqual({ ownerRef: ref, tapPosition: -2 });
+    expect('switchCount' in overlay[ref]).toBe(false);
+  });
+
+  it('transformator bez TAP_POSITION (brak regulacji, resultset addytywny) ⇒ brak badge (nie 0)', () => {
+    const ref = realTransformerOwnerRefs[0];
+    const payload = payloadOf({
+      [ref]: elementWithMetrics(ref, { P_MW: { code: 'P_MW', value: 5, unit: 'MW' } }),
+    });
+    expect(isOltcOverlayEmpty(buildOltcOverlayFromScene(scene, payload))).toBe(true);
+  });
+
+  it('przebieg NIE-rozpływowy (short_circuit) ⇒ badge pusty (allowlista LOAD_FLOW)', () => {
+    const ref = realTransformerOwnerRefs[0];
+    const payload = payloadOf(
+      { [ref]: elementWithMetrics(ref, { TAP_POSITION: { code: 'TAP_POSITION', value: 1, unit: '' } }) },
+      'short_circuit_sn',
+    );
+    expect(isOltcOverlayEmpty(buildOltcOverlayFromScene(scene, payload))).toBe(true);
+  });
+
+  it('determinizm: to samo wejście dwukrotnie ⇒ identyczny JSON.stringify', () => {
+    const ref = realTransformerOwnerRefs[0];
+    const payload = payloadOf({
+      [ref]: elementWithMetrics(ref, {
+        TAP_POSITION: { code: 'TAP_POSITION', value: 2, unit: '' },
+        TAP_SWITCH_COUNT: { code: 'TAP_SWITCH_COUNT', value: 1, unit: '' },
+      }),
+    });
+    expect(JSON.stringify(buildOltcOverlayFromScene(scene, payload))).toBe(
+      JSON.stringify(buildOltcOverlayFromScene(scene, payload)),
+    );
+  });
+
+  it('TEST NEGATYWNY (wyrocznia gryzie): wartość badge NIE zgadzająca się z payload ⇒ FAIL', () => {
+    const ref = realTransformerOwnerRefs[0];
+    const payload = payloadOf({
+      [ref]: elementWithMetrics(ref, { TAP_POSITION: { code: 'TAP_POSITION', value: 3, unit: '' } }),
+    });
+    const fabricated = { [ref]: { ownerRef: ref, tapPosition: 99 } };
+    expect(oltcOverlayTracesToPayload(fabricated, payload)).toBe(false);
   });
 });
 

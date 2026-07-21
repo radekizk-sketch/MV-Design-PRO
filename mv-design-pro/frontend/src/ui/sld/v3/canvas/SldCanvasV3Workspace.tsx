@@ -130,7 +130,14 @@ import type { ViewportTransform } from './camera';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
-import { buildFlowOverlayFromScene, singleHopSegmentRefs, type SegmentFlowOverlay, type SldV3Overlay } from './overlay';
+import {
+  buildFlowOverlayFromScene,
+  buildOltcOverlayFromScene,
+  singleHopSegmentRefs,
+  type SegmentFlowOverlay,
+  type SldV3Overlay,
+  type TransformerOltcOverlay,
+} from './overlay';
 
 const MIN_CANVAS_WIDTH_PX = 320;
 const MIN_CANVAS_HEIGHT_PX = 240;
@@ -536,6 +543,35 @@ function useFlowOverlay(
   );
 }
 
+/**
+ * F4/SLD (V12K-092): badge wynikowy OLTC ze WSZYSTKICH trzech LOD — TEN SAM
+ * wzorzec co `buildFlowOverlayForSnapshot` (ownerRef = tożsamość
+ * LOD-niezależna). Źródło `payload`: `useRawResultOverlayStore` (produkcyjnie
+ * zasilany przez `App.tsx`, ten sam kanał co flow overlay). Przebieg nie-LF /
+ * brak metryk OLTC ⇒ `{}` (badge wyłączony, §14.2).
+ */
+export function buildOltcOverlayForSnapshot(
+  snapshot: EnergyNetworkModel,
+  payload: RawOverlayPayload | null,
+): Readonly<Record<string, TransformerOltcOverlay>> {
+  if (!payload) return {};
+  const merged: Record<string, TransformerOltcOverlay> = {};
+  for (const lod of ALL_SCENE_LODS) {
+    Object.assign(merged, buildOltcOverlayFromScene(buildSceneV3(snapshot, lod), payload));
+  }
+  return merged;
+}
+
+function useOltcOverlay(
+  snapshot: EnergyNetworkModel | null,
+  payload: RawOverlayPayload | null,
+): Readonly<Record<string, TransformerOltcOverlay>> {
+  return useMemo(
+    () => (snapshot ? buildOltcOverlayForSnapshot(snapshot, payload) : {}),
+    [snapshot, payload],
+  );
+}
+
 // ---------------------------------------------------------------------------
 // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector — selekcja obszarem"):
 // hit-test PURE funkcja — v2 `LassoSelector.pointInLasso` jest wołany
@@ -679,9 +715,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // uzasadnienia i udokumentowanej luki backendu).
   const rawOverlayPayload = useRawResultOverlayStore((state) => state.payload);
   const flowByOwnerRef = useFlowOverlay(snapshot, rawOverlayPayload);
+  const oltcByOwnerRef = useOltcOverlay(snapshot, rawOverlayPayload);
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef }),
-    [energizationOverlay, flowByOwnerRef],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef],
   );
 
   // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,

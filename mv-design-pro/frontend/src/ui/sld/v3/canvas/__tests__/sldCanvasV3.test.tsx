@@ -22,8 +22,20 @@ import { afterEach } from 'vitest';
 
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
-import { SldCanvasV3, computeFlowOverlayPlacements, flowOverlayGeometry, formatFlowLabelPl } from '../SldCanvasV3';
-import { singleHopSegmentRefs, type SegmentFlowOverlay, type SldV3Overlay } from '../overlay';
+import {
+  SldCanvasV3,
+  computeFlowOverlayPlacements,
+  computeOltcBadgePlacements,
+  flowOverlayGeometry,
+  formatFlowLabelPl,
+  formatOltcBadgeLabel,
+} from '../SldCanvasV3';
+import {
+  singleHopSegmentRefs,
+  type SegmentFlowOverlay,
+  type SldV3Overlay,
+  type TransformerOltcOverlay,
+} from '../overlay';
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState } from '../camera';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 
@@ -468,6 +480,73 @@ describe('SldCanvasV3 — F9.5: nakładka przepływu mocy (spec §14.2, warstwa 
       ),
     ).not.toThrow();
     expect(index).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('SldCanvasV3 — V12K-092: badge wynikowy OLTC (spec §14.2/§3.5, warstwa sld-v3-oltc-overlay)', () => {
+  /** Realny transformator (symbol `elementKind==='transformer'`) sceny danego
+   *  LOD + jego `meta.ownerRef` = `transformerRef`. */
+  function transformerRefOnScene(lod: SceneLod): string {
+    const scene = buildSceneV3(enm, lod);
+    const sym = scene.symbols.find((s) => s.meta?.elementKind === 'transformer' && s.meta.ownerRef);
+    expect(sym).toBeTruthy();
+    return sym!.meta!.ownerRef!;
+  }
+
+  function overlayWithOltc(entries: Record<string, TransformerOltcOverlay>): SldV3Overlay {
+    return { energizedByTestId: {}, oltcByOwnerRef: entries };
+  }
+
+  it('(a) transformator z wpisem oltcByOwnerRef → badge (rect + tekst "poz. +N · M×") w warstwie sld-v3-oltc-overlay', () => {
+    const ref = transformerRefOnScene(2);
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        overlay={overlayWithOltc({ [ref]: { ownerRef: ref, tapPosition: 3, switchCount: 4 } })}
+      />,
+    );
+    const badge = container.querySelector(`[data-oltc-owner-ref="${ref}"]`);
+    expect(badge).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v3-oltc-label-0"]')?.textContent).toBe('poz. +3 · 4×');
+  });
+
+  it('(b) bez overlay OLTC → warstwa pusta (zero atrap)', () => {
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    expect(container.querySelector('[data-testid="sld-v3-oltc-overlay"]')!.children.length).toBe(0);
+  });
+
+  it('(c) determinizm renderu: dwa rendery tych samych propsów → identyczny innerHTML warstwy OLTC', () => {
+    const ref = transformerRefOnScene(2);
+    const overlay = overlayWithOltc({ [ref]: { ownerRef: ref, tapPosition: -2 } });
+    const { container: a } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    const { container: b } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    expect(a.querySelector('[data-testid="sld-v3-oltc-overlay"]')!.innerHTML).toBe(
+      b.querySelector('[data-testid="sld-v3-oltc-overlay"]')!.innerHTML,
+    );
+  });
+
+  it('formatOltcBadgeLabel: pozycja ze znakiem (minus typograficzny); człon "M×" TYLKO gdy switchCount niesiony', () => {
+    expect(formatOltcBadgeLabel({ ownerRef: 'x', tapPosition: 0 })).toBe('poz. 0');
+    expect(formatOltcBadgeLabel({ ownerRef: 'x', tapPosition: 3, switchCount: 4 })).toBe('poz. +3 · 4×');
+    expect(formatOltcBadgeLabel({ ownerRef: 'x', tapPosition: -2 })).toBe('poz. −2');
+  });
+
+  it('computeOltcBadgePlacements: brak overlay ⇒ zero placementów; wpis dla nie-transformatora ⇒ ignorowany', () => {
+    const scene = buildSceneV3(enm, 2);
+    expect(computeOltcBadgePlacements(scene, undefined)).toEqual([]);
+    // Ref spoza zbioru transformatorów sceny ⇒ brak placementu (nie fabrykuje).
+    expect(
+      computeOltcBadgePlacements(scene, { 'nieznany-ref': { ownerRef: 'nieznany-ref', tapPosition: 1 } }),
+    ).toEqual([]);
   });
 });
 

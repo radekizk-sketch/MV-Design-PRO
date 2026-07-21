@@ -50,7 +50,8 @@ import {
   type BoundingBox,
   type ViewportTransform,
 } from './camera';
-import type { SegmentFlowOverlay, SldV3Overlay } from './overlay';
+import type { SegmentFlowOverlay, SldV3Overlay, TransformerOltcOverlay } from './overlay';
+import { formatTapPositionLabel } from '../../v2/canvas/oltcGlyph';
 import { isLayerVisible, layerIdForElementMeta, type CanvasLayerVisibility } from './layers';
 import {
   bridgePointsForPolyline,
@@ -84,6 +85,10 @@ const SEGMENT_HIT_STROKE_WIDTH = 12;
  *  poziomych / na prawo dla pionów), spec §14.2 czytelność. */
 const FLOW_LABEL_OFFSET_BELOW = 16;
 const FLOW_LABEL_OFFSET_RIGHT = 12;
+/** F4/SLD (V12K-092): kolor badge wynikowego OLTC — bursztyn, ODRĘBNY od
+ *  energizacji (zielony) i przepływu (cyjan): trzeci wymiar nakładki
+ *  (stan regulacji zaczepów po obliczeniu), operator nie myli warstw. */
+const OLTC_OVERLAY_COLOR = '#FFB300';
 /** Wrażliwość zoomu kółkiem — kalibracja wizualna (spec nie podaje liczby;
  *  jeden „tick" typowej myszy, deltaY≈100, daje ~16% zmiany skali). */
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
@@ -690,6 +695,99 @@ function SceneFlowPlacementNode(props: { readonly placement: FlowPlacement }): J
   );
 }
 
+// ---------------------------------------------------------------------------
+// F4/SLD (V12K-092, karta SLD-02 §3.5): badge wynikowy OLTC — pozycja
+// końcowa zaczepu + liczba przełączeń NA glifie transformatora, PO obliczeniu
+// (dane z `overlay.oltcByOwnerRef`, budowane w `overlay.ts::buildOltcOverlay
+// FromScene` z resultset_v1). Uzupełnia glif design-state z tabliczki
+// (V12K-091: nastawa z modelu) — badge = WYNIK po load-flow. Element NAKŁADKI
+// (jak grot przepływu), NIE symbol sceny — `symbols/defs.ts` nietknięte.
+// ---------------------------------------------------------------------------
+
+export interface OltcBadgePlacement {
+  readonly ownerRef: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly label: string;
+}
+
+/** Etykieta badge: "poz. +3" (sama pozycja) lub "poz. +3 · 4×" (z liczbą
+ *  przełączeń, gdy niesiona w wyniku). Reużywa `formatTapPositionLabel`
+ *  (v2 `oltcGlyph.ts`, ta sama funkcja co glif tabliczki — spójny format
+ *  minusa typograficznego). */
+export function formatOltcBadgeLabel(entry: TransformerOltcOverlay): string {
+  const pos = formatTapPositionLabel(entry.tapPosition);
+  return entry.switchCount !== undefined ? `${pos} · ${entry.switchCount}×` : pos;
+}
+
+/**
+ * Rozmieszczenie badge OLTC dla sceny — dla KAŻDEGO symbolu `transformer2W`
+ * z wpisem w `oltcByOwnerRef` (klucz = `meta.ownerRef` = `transformerRef`)
+ * kładzie badge NA PRAWO od symbolu, wyśrodkowany pionowo. Brak wpisu ⇒ brak
+ * badge (§14.2 „overlay wyłączony bez wyniku" — zero atrap). Deterministyczne:
+ * kolejność = kolejność symboli sceny.
+ */
+export function computeOltcBadgePlacements(
+  scene: SceneV3,
+  oltcByOwnerRef: Readonly<Record<string, TransformerOltcOverlay>> | undefined,
+): readonly OltcBadgePlacement[] {
+  if (!oltcByOwnerRef) return [];
+  const placements: OltcBadgePlacement[] = [];
+  for (const symbol of scene.symbols) {
+    const ownerRef = symbol.meta?.ownerRef;
+    if (!ownerRef || symbol.meta?.elementKind !== 'transformer') continue;
+    const entry = oltcByOwnerRef[ownerRef];
+    if (!entry) continue;
+    const def = SYMBOL_DEFS[symbol.symbolId];
+    const label = formatOltcBadgeLabel(entry);
+    const width = measureLabelWidth(label, 't4') + GRID;
+    const height = labelLineHeight('t4') + GRID / 2;
+    placements.push({
+      ownerRef,
+      x: symbol.x + def.width + GRID / 2,
+      y: symbol.y + def.height / 2 - height / 2,
+      width,
+      height,
+      label,
+    });
+  }
+  return placements;
+}
+
+function SceneOltcBadgeNode(props: { readonly placement: OltcBadgePlacement; readonly index: number }): JSX.Element {
+  const { placement, index } = props;
+  const typo = LABEL_TYPOGRAPHY.t4;
+  return (
+    <g data-testid={`sld-v3-oltc-badge-${index}`} data-oltc-owner-ref={placement.ownerRef}>
+      <rect
+        x={placement.x}
+        y={placement.y}
+        width={placement.width}
+        height={placement.height}
+        rx={2}
+        fill={SLD_V3_BACKGROUND}
+        stroke={OLTC_OVERLAY_COLOR}
+        strokeWidth={1}
+      />
+      <text
+        data-testid={`sld-v3-oltc-label-${index}`}
+        x={placement.x + placement.width / 2}
+        y={placement.y + placement.height / 2}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill={OLTC_OVERLAY_COLOR}
+        fontFamily="sans-serif"
+        fontSize={typo.fontSize}
+        fontWeight={typo.fontWeight}
+      >
+        {placement.label}
+      </text>
+    </g>
+  );
+}
+
 function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: number }): JSX.Element {
   const { label, index } = props;
   const typo = LABEL_TYPOGRAPHY[label.labelClass];
@@ -873,6 +971,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const flowPlacements = useMemo(
     () => computeFlowOverlayPlacements(scene, flowByOwnerRef, flowLabelDetail),
     [scene, flowByOwnerRef, flowLabelDetail],
+  );
+  // F4/SLD (V12K-092): badge wynikowy OLTC — ta sama warstwa „nakładki
+  // wyników" co przepływ (filtr `effectiveOverlay` przez `resultOverlays`).
+  const oltcBadgePlacements = useMemo(
+    () => computeOltcBadgePlacements(scene, effectiveOverlay?.oltcByOwnerRef),
+    [scene, effectiveOverlay],
   );
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
@@ -1066,6 +1170,16 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <g data-testid="sld-v3-flow-overlay">
           {flowPlacements.map((placement) => (
             <SceneFlowPlacementNode key={`flow-${placement.segmentIndex}`} placement={placement} />
+          ))}
+        </g>
+        {/* F4/SLD (V12K-092, karta SLD-02 §3.5): badge wynikowy OLTC NAD
+         * warstwami bazowymi — pozycja końcowa zaczepu + liczba przełączeń
+         * po load-flow. Warstwa pusta (zero węzłów), gdy `oltcByOwnerRef`
+         * bez wpisu lub warstwa „nakładki wyników" ukryta (`effectiveOverlay`
+         * undefined). Dane WYŁĄCZNIE z wyniku solvera (resultset_v1). */}
+        <g data-testid="sld-v3-oltc-overlay">
+          {oltcBadgePlacements.map((placement, index) => (
+            <SceneOltcBadgeNode key={`oltc-${placement.ownerRef}`} placement={placement} index={index} />
           ))}
         </g>
         {/* Program P-A (spec §14.2 „overlay wyłącznie z wyniku"): deklaracja

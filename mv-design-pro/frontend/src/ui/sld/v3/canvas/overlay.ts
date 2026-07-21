@@ -170,6 +170,21 @@ export interface SldV3Overlay {
    */
   readonly flowByOwnerRef?: Readonly<Record<string, SegmentFlowOverlay>>;
   /**
+   * F4/SLD (V12K-092, karta SLD-02 §3.5 „badge wynikowy OLTC"): pozycja
+   * końcowa zaczepu + liczba przełączeń per TRANSFORMATOR (`meta.ownerRef`
+   * symbolu `transformer2W` sceny = `transformerRef` = ENM `ref_id`, TA SAMA
+   * przestrzeń co `element_ref` gałęzi transformatora w resultset_v1 —
+   * `build_execution_result_set` kluczuje `element_id or branch_id` gałęzi,
+   * którym dla transformatora jest jego `ref_id`, IDENTYCZNIE jak flow overlay
+   * dla odcinków). WYŁĄCZNIE post-calc z wyniku solvera (`oltc_control` →
+   * resultset_v1 metryki `TAP_POSITION`/`TAP_SWITCH_COUNT`, V12K-089) — ZERO
+   * fizyki w UI, ZERO fabrykacji. Brak wpisu = brak wyniku regulacji dla tego
+   * transformatora (§14.2 „overlay wyłączony bez wyniku") — kanwa NIE rysuje
+   * badge. Uzupełnia glif design-state OLTC z tabliczki (V12K-091): tabliczka
+   * pokazuje NASTAWĘ z modelu, badge pokazuje WYNIK po obliczeniu.
+   */
+  readonly oltcByOwnerRef?: Readonly<Record<string, TransformerOltcOverlay>>;
+  /**
    * Deklaracja POCHODZENIA nakładki (spec §14.2 „overlay wyłącznie z
    * wyniku", program P-A): z którego przypadku obliczeniowego pochodzą
    * wartości i czy solver zbiegł. Kanwa renderuje badge
@@ -217,6 +232,19 @@ export interface SegmentFlowOverlay {
   readonly p?: FlowMetricReading;
   readonly q?: FlowMetricReading;
   readonly i?: FlowMetricReading;
+}
+
+/**
+ * F4/SLD (V12K-092) — badge wynikowy OLTC jednego transformatora. `tapPosition`
+ * = pozycja końcowa zaczepu z regulacji load-flow (`TAP_POSITION`, całkowita);
+ * `switchCount` = liczba przełączeń (`TAP_SWITCH_COUNT`, opcjonalna — brak w
+ * wyniku ⇒ nieobecna, NIE fabrykowana jako 0). WYŁĄCZNIE odczyt z metryk
+ * resultset_v1 (§10: formatowanie dozwolone, fizyka nie).
+ */
+export interface TransformerOltcOverlay {
+  readonly ownerRef: string;
+  readonly tapPosition: number;
+  readonly switchCount?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -339,6 +367,80 @@ export function buildFlowOverlayFromScene(
     };
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// F4/SLD (V12K-092) — budowniczy CZYSTY badge wynikowego OLTC (§14.2/§3.5):
+// scena + wynik solvera (lub `null`) → `oltcByOwnerRef`. Ten SAM wzorzec co
+// `buildFlowOverlayFromScene`: allowlista LOAD_FLOW, klucz `ownerRef` symbolu
+// `transformer2W` (= `transformerRef` = `element_ref` gałęzi), zero DOM/Date.
+// ---------------------------------------------------------------------------
+
+/** Kody metryk OLTC (`result_builder_v1.py` `_METRIC_MAP`, V12K-089):
+ *  `TAP_POSITION`/`TAP_SWITCH_COUNT` (całkowite, `format_hint="fixed0"`). */
+const OLTC_METRIC_CODE_POSITION = 'TAP_POSITION';
+const OLTC_METRIC_CODE_SWITCHES = 'TAP_SWITCH_COUNT';
+
+/**
+ * Badge wynikowy OLTC DLA JEDNEJ sceny (jeden LOD) — WOŁAJĄCY
+ * (`SldCanvasV3Workspace.tsx`) łączy WSZYSTKIE trzy LOD-y w jeden słownik
+ * (`ownerRef` = tożsamość LOD-niezależna, ten sam `transformerRef` na każdym
+ * LOD). `payload==null` lub przebieg NIE-rozpływowy (allowlista
+ * `isLoadFlowPayload`) ⇒ `{}` (badge WYŁĄCZONY, §14.2 „overlay wyłączony bez
+ * wyniku"). Wpis powstaje WYŁĄCZNIE dla symbolu klasy `transformer` z
+ * mierzalną `TAP_POSITION` w `payload.elements[ownerRef]` — transformator bez
+ * regulacji (brak metryki, resultset addytywny V12K-089) ⇒ brak badge, nie 0.
+ */
+export function buildOltcOverlayFromScene(
+  scene: SceneV3,
+  payload: RawOverlayPayload | null,
+): Readonly<Record<string, TransformerOltcOverlay>> {
+  if (!payload || !isLoadFlowPayload(payload)) return {};
+  const out: Record<string, TransformerOltcOverlay> = {};
+  for (const symbol of scene.symbols) {
+    const ownerRef = symbol.meta?.ownerRef;
+    if (!ownerRef || symbol.meta?.elementKind !== 'transformer') continue;
+    if (ownerRef in out) continue; // deterministyczny: pierwszy symbol wygrywa
+    const posMetric = getMetric(payload, ownerRef, OLTC_METRIC_CODE_POSITION);
+    if (!posMetric || posMetric.value === null || posMetric.value === undefined) continue;
+    const switchMetric = getMetric(payload, ownerRef, OLTC_METRIC_CODE_SWITCHES);
+    out[ownerRef] =
+      switchMetric && switchMetric.value !== null && switchMetric.value !== undefined
+        ? { ownerRef, tapPosition: posMetric.value, switchCount: switchMetric.value }
+        : { ownerRef, tapPosition: posMetric.value };
+  }
+  return out;
+}
+
+/** §14.2 „overlay wyłączony bez wyniku": brak wpisu OLTC ⇒ badge pusty. */
+export function isOltcOverlayEmpty(
+  oltcByOwnerRef: Readonly<Record<string, TransformerOltcOverlay>> | undefined,
+): boolean {
+  return !oltcByOwnerRef || Object.keys(oltcByOwnerRef).length === 0;
+}
+
+/**
+ * Wyrocznia (dowód, nie założenie): każda wartość badge OLTC musi być
+ * BAJT-RÓWNA wartości pod tym samym kodem metryki w `payload.elements[
+ * ownerRef]`. Zwraca `false` przy pierwszym rozjeździe (fabrykacja/
+ * nieaktualność) — test negatywny dowodzi, że wyrocznia gryzie.
+ */
+export function oltcOverlayTracesToPayload(
+  oltcByOwnerRef: Readonly<Record<string, TransformerOltcOverlay>> | undefined,
+  payload: RawOverlayPayload | null,
+): boolean {
+  if (!oltcByOwnerRef) return true;
+  for (const [ownerRef, entry] of Object.entries(oltcByOwnerRef)) {
+    const el = payload?.elements[ownerRef];
+    if (!el) return false;
+    const pos = el.metrics?.[OLTC_METRIC_CODE_POSITION];
+    if (!pos || pos.value !== entry.tapPosition) return false;
+    if (entry.switchCount !== undefined) {
+      const sw = el.metrics?.[OLTC_METRIC_CODE_SWITCHES];
+      if (!sw || sw.value !== entry.switchCount) return false;
+    }
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------

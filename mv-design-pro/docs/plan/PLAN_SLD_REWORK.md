@@ -378,8 +378,34 @@ v2 GpzSwitchgearRenderer, nierenderowany w produkcyjnym SLD v3).
 DETC MAN, brak regulacji) · ✅ regresja SLD v3 compose + v2 (124 pliki, 2308 passed) ·
 ✅ guardy `sld_determinism_guards`/`overlay_no_physics`/`no_codenames` zielone ·
 ✅ FROZEN/determinizm nietknięte (fixtury bez OLTC bez zmian). Overlay wynikowy OLTC
-(badge post-calc) — dane produkcyjne gotowe (V12K-089, raw store czytany przez v3);
-badge wizualny do domknięcia w F4 (overlay results).
+(badge post-calc) → §11.2 niżej.
+
+### 11.2 Badge wynikowy OLTC na SLD v3 (F4) — ✅ WYKONANE (2026-07-21, V12K-092)
+
+**Kontekst:** dyrektywa właściciela „F4" — domknięcie łańcucha OLTC „do ostatniego
+klika". Tabliczka (V12K-091) pokazuje NASTAWĘ z modelu; badge = WYNIK po load-flow
+(pozycja końcowa zaczepu + liczba przełączeń). Rozwiązanie mismatchu bayRef↔branch_id
+(V12K-090): symbol `transformer2W` sceny v3 ma `meta.ownerRef = transformerRef =
+ENM ref_id = element_ref` gałęzi w resultset_v1 — tożsamość zgodna (mismatch dotyczył
+aparatów POLA TR, nie symbolu transformatora).
+
+**Zakres (READ-ONLY, ZERO fizyki, addytywny — ten sam wzorzec co flow overlay):**
+- `overlay.ts`: `TransformerOltcOverlay` + `buildOltcOverlayFromScene` (allowlista
+  LOAD_FLOW, metryki `TAP_POSITION`/`TAP_SWITCH_COUNT`, brak → brak badge) + wyrocznia
+  `oltcOverlayTracesToPayload`.
+- `SldCanvasV3Workspace.tsx`: `buildOltcOverlayForSnapshot` (3 LOD, `useRaw
+  ResultOverlayStore`) + `oltcByOwnerRef` w overlay.
+- `SldCanvasV3.tsx`: `computeOltcBadgePlacements` + `SceneOltcBadgeNode` (warstwa
+  `sld-v3-oltc-overlay`, filtr `resultOverlays`).
+
+Dane: solver `oltc_control` → resultset_v1 (V12K-089) → raw store → v3 canvas.
+PowerFlowResult FROZEN nietknięty.
+
+**DoD:** ✅ type-check czysty · ✅ `overlay.test.ts` +7 · `sldCanvasV3.test.tsx` +5 ·
+✅ regresja SLD v3 + sld-overlay · ✅ guardy `sld_determinism`/`overlay_no_physics`/
+`trace_ui_leak`/`no_codenames` zielone · ✅ FROZEN/determinizm nietknięte. Tożsamość
+backend↔frontend zweryfikowana u źródła (`_build_snapshot_graph_element_context`:
+`element_id = trafo.ref_id`). Domyka łańcuch OLTC: model→solver→resultset→SLD wynik.
 
 ---
 
