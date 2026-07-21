@@ -7,7 +7,9 @@
  * + okno „Jakość wyników" (`jakosc`, karta E8.4 / W-607 — wiarygodność zwarciowa
  *   + walidacja energetyczna)
  * + okno „Zgodność powykonawcza" (`odbior`, karta U4 P45 — porównanie pomiarów
- *   z obiektu z wynikiem rozpływu i jawnymi tolerancjami).
+ *   z obiektu z wynikiem rozpływu i jawnymi tolerancjami)
+ * + okno „Estymacja stanu (WLS)" (`estymacja` — estymacja stanu metodą ważonych
+ *   najmniejszych kwadratów z pomiarów telemetrycznych na przebiegu rozpływu).
  */
 
 export * from './wzorzec';
@@ -17,3 +19,4 @@ export * from './dowod';
 export * from './porownanie';
 export * from './jakosc';
 export * from './odbior';
+export * from './estymacja';

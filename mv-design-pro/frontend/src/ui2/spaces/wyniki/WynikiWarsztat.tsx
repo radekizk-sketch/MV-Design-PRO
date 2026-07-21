@@ -38,6 +38,7 @@ import {
   PulpitOze,
 } from '../../oze';
 import { EkranJakosci } from '../../wyniki/jakosc';
+import { EkranEstymacji } from '../../wyniki/estymacja';
 import { EkranOdbioru } from '../../wyniki/odbior';
 import { EkranPorownania } from '../../wyniki/porownanie';
 import { DowodPrzebiegu } from './DowodPrzebiegu';
@@ -53,6 +54,7 @@ const ZAKLADKI = [
   { id: 'jakosc', etykieta: T.zakladkaJakosc },
   { id: 'porownanie', etykieta: T.zakladkaPorownanie },
   { id: 'odbior', etykieta: T.zakladkaOdbior },
+  { id: 'estymacja', etykieta: T.zakladkaEstymacja },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
   { id: 'pulpit-oze', etykieta: T.zakladkaPulpitOze },
   { id: 'zdolnosc', etykieta: T.zakladkaZdolnosc },
@@ -81,6 +83,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
       'jakosc',
       'porownanie',
       'odbior',
+      'estymacja',
       'pozostale',
     ],
   },
@@ -216,6 +219,9 @@ export function WynikiWarsztat({
         )}
         {zakladka === 'porownanie' && <PorownanieAktywnegoProjektu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'odbior' && <EkranOdbioru trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'estymacja' && (
+          <EkranEstymacji trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+        )}
         {zakladka === 'ncrfg' && <MacierzNcRfg trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'zdolnosc' && <EkranZdolnosci trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ranking' && <EkranRankingu trybZaawansowania={trybZaawansowania} />}

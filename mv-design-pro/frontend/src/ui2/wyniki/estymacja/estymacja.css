@@ -1,0 +1,469 @@
+/*
+ * Style okna „Estymacja stanu (WLS)" (ui2/wyniki/estymacja). Kolory WYŁĄCZNIE
+ * przez tokeny --mvd-* — zero literałów hex (zgodność z guardem tokenów i trybem
+ * jasny/ciemny). Uzupełnia wzorzec (`wzorzec.css`) o: panel wymaganych wejść,
+ * edytor pomiarów (typ/węzeł/wartość/σ/węzeł „do"), pola parametrów detekcji,
+ * listę błędów walidacji, panele stanu, chipy podsumowania, kolorowane tagi,
+ * panel detekcji złych danych, sekcję braków i ślad WHITE BOX. Warstwa
+ * prezentacji — bez wpływu na dane.
+ */
+
+.mvd-est {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-est-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-est-tytul {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.mvd-est-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+.mvd-est-run {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-est-sekcja-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+
+/* ---- panele stanu (brak przebiegu / ładowanie / błąd) ---- */
+.mvd-est-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-muted);
+}
+.mvd-est-stan--blad {
+  border-style: solid;
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-est-stan-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-est-stan-desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- panel wymaganych wejść ---- */
+.mvd-est-wymagania {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-est-wym-dane {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+.mvd-est-wym-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-est-wym-para dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-est-wym-para dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+.mvd-est-wym-note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-est-wym-wezly summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-est-wym-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.mvd-est-wym-tabela th,
+.mvd-est-wym-tabela td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--mvd-line);
+  text-align: left;
+  color: var(--mvd-ink);
+}
+.mvd-est-th-prawo {
+  text-align: right;
+}
+.mvd-est-td-prawo {
+  text-align: right;
+}
+
+/* ---- formularz / edytor pomiarów ---- */
+.mvd-est-formularz {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.mvd-est-sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-est-pole-opis {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-est-edytor {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-est-wiersz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+}
+.mvd-est-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 140px;
+}
+.mvd-est-pole label {
+  font-size: 12px;
+  color: var(--mvd-ink);
+}
+.mvd-est-pole input,
+.mvd-est-pole select {
+  padding: 6px 8px;
+  border: 1px solid var(--mvd-border);
+  border-radius: 6px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  font-size: 13px;
+}
+.mvd-est-pole input:focus-visible,
+.mvd-est-pole select:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-est-pole select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.mvd-est-usun {
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-est-usun:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mvd-est-usun:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-est-dodaj {
+  align-self: flex-start;
+  padding: 7px 14px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-size: 13px;
+  cursor: pointer;
+}
+.mvd-est-dodaj:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-est-parametry {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* ---- akcja główna ---- */
+.mvd-est-akcje {
+  display: flex;
+}
+.mvd-est-oblicz {
+  padding: 8px 16px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-est-oblicz:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* ---- błędy walidacji ---- */
+.mvd-est-bledy {
+  padding: 12px 16px;
+  border: 1px solid var(--mvd-warn);
+  border-radius: 6px;
+  background: var(--mvd-warn-bg);
+}
+.mvd-est-bledy-tytul {
+  margin: 0 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-est-bledy-lista {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+
+/* ---- chipy podsumowania ---- */
+.mvd-est-podsumowanie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+.mvd-est-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 999px;
+  background: var(--mvd-panel);
+}
+.mvd-est-chip-liczba {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mvd-ink);
+}
+.mvd-est-chip-etykieta {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-est-chip--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-est-chip--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-est-chip--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-est-chip--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+
+/* ---- tag statusu ---- */
+.mvd-est-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid var(--mvd-line);
+  color: var(--mvd-ink);
+  background: var(--mvd-panel-2);
+}
+.mvd-est-tag--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-est-tag--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-est-tag--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-est-tag--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+
+/* ---- panel detekcji złych danych ---- */
+.mvd-est-bad {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--mvd-line);
+  border-left: 3px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-est-bad-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+.mvd-est-bad-etyk {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-est-bad-liczby {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-est-bad-podejrzany {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+.mvd-est-bad-podejrzany--brak {
+  color: var(--mvd-muted);
+}
+
+/* ---- sekcje wyników (tabela pomiarów, braki) ---- */
+.mvd-est-pomiary-wynik,
+.mvd-est-braki {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.mvd-est-braki {
+  padding: 14px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+}
+.mvd-est-braki-lista {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+
+/* ---- ślad WHITE BOX ---- */
+.mvd-est-slad-blok {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-est-slad-btn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-est-slad-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-est-slad-tytul {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  margin-bottom: 6px;
+}
+.mvd-est-slad-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.mvd-est-slad-tabela th,
+.mvd-est-slad-tabela td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--mvd-line);
+  text-align: left;
+  color: var(--mvd-ink);
+}
+.mvd-est-slad-nota {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+/* ---- tryb ekspercki (metadane) ---- */
+.mvd-est-eksp {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px 16px;
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-est-eksp-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-est-eksp-para dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-est-eksp-para dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-ink);
+  word-break: break-all;
+}
