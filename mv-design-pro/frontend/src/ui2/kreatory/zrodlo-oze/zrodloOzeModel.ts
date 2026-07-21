@@ -130,6 +130,11 @@ export interface OzeFormData {
   frequency_droop_percent: number | null;
   // V12K-063: pasmo nieczułości P(f)/LFSM [Hz].
   lfsm_deadband_hz: number | null;
+  // V12K-087 (G-OZE-B2): jawne zdolności FRT (NC RfG) — przejście przez zanik (LVRT)
+  // i przepięcie (HVRT). Deklaracja projektanta (nie z karty katalogowej). Konsumowane
+  // przez most zgodności NC RfG (DerDataForCompliance → NcRfgComplianceChecker).
+  has_lvrt_curve: boolean;
+  has_hvrt_curve: boolean;
   bess_mode: TrybBess;
   soc_min_percent: number | null;
   soc_max_percent: number | null;
@@ -160,6 +165,8 @@ export const DANE_DOMYSLNE: OzeFormData = {
   q_max_mvar: null,
   frequency_droop_percent: null,
   lfsm_deadband_hz: null,
+  has_lvrt_curve: false,
+  has_hvrt_curve: false,
   bess_mode: 'PEAK_SHAVING',
   soc_min_percent: null,
   soc_max_percent: null,
@@ -308,6 +315,10 @@ export function zbudujPayload(
     q_max_mvar: qMax,
     frequency_droop_percent: data.frequency_droop_percent ?? undefined,
     lfsm_deadband_hz: data.frequency_droop_percent ? data.lfsm_deadband_hz ?? undefined : undefined,
+    // V12K-087 (G-OZE-B2): jawne zdolności FRT — wysyłane tylko gdy zadeklarowane
+    // (zero fabrykacji: false → undefined, brak flagi w payloadzie).
+    has_lvrt_curve: data.has_lvrt_curve ? true : undefined,
+    has_hvrt_curve: data.has_hvrt_curve ? true : undefined,
     bess_mode: data.source_technology === 'BESS' ? data.bess_mode : undefined,
     soc_min_percent:
       data.source_technology === 'BESS' ? data.soc_min_percent ?? undefined : undefined,

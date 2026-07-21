@@ -1998,6 +1998,13 @@ def _as_float(value: object) -> float | None:
     return None
 
 
+def _as_bool(value: object) -> bool | None:
+    """Zdeklarowana flaga zdolności (NC RfG FRT). None = niedostarczona (bez fabrykacji)."""
+    if isinstance(value, bool):
+        return value
+    return None
+
+
 def _kw_to_mw(value: object) -> float | None:
     numeric = _as_float(value)
     if numeric is None:
@@ -2182,6 +2189,9 @@ def _resolve_converter_defaults(
                 # (aktywuje się przy odchyłce częstotliwości studium; determinizm przy 50 Hz).
                 "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
                 "lfsm_deadband_hz": _as_float(payload.get("lfsm_deadband_hz")),
+                # V12K-087 (G-OZE-B2): jawne zdolności FRT (LVRT/HVRT) — most zgodności NC RfG.
+                "has_lvrt_curve": _as_bool(payload.get("has_lvrt_curve")),
+                "has_hvrt_curve": _as_bool(payload.get("has_hvrt_curve")),
                 "quantity": quantity,
             },
             (
@@ -2219,6 +2229,9 @@ def _resolve_converter_defaults(
                 # (LFSM-U) — allow_increase. Brak/0 → brak wpływu na PF.
                 "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
                 "lfsm_deadband_hz": _as_float(payload.get("lfsm_deadband_hz")),
+                # V12K-087 (G-OZE-B2): jawne zdolności FRT (LVRT/HVRT) — most zgodności NC RfG.
+                "has_lvrt_curve": _as_bool(payload.get("has_lvrt_curve")),
+                "has_hvrt_curve": _as_bool(payload.get("has_hvrt_curve")),
                 "lfsm_allow_increase": True,
                 "quantity": quantity,
             },
@@ -2255,6 +2268,9 @@ def _resolve_converter_defaults(
             # V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn/%f]; brak/0 → brak wpływu na PF.
             "frequency_droop_percent": _as_float(payload.get("frequency_droop_percent")),
             "lfsm_deadband_hz": _as_float(payload.get("lfsm_deadband_hz")),
+            # V12K-087 (G-OZE-B2): jawne zdolności FRT (LVRT/HVRT) — most zgodności NC RfG.
+            "has_lvrt_curve": _as_bool(payload.get("has_lvrt_curve")),
+            "has_hvrt_curve": _as_bool(payload.get("has_hvrt_curve")),
             "quantity": quantity,
         },
         explicit_power_mw if explicit_power_mw is not None else (default_power or 0.0) * quantity,

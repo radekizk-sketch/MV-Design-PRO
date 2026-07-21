@@ -568,6 +568,23 @@ export function KreatorZrodlaOze() {
               pfDbHz={dane.lfsm_deadband_hz}
               allowIncrease={dane.source_technology === 'BESS'}
             />
+            <KreatorInfo>{T.frtOpis}</KreatorInfo>
+            <KreatorSiatka kolumny={2}>
+              <PoleWyboru
+                etykieta={T.frtLvrt}
+                wartosc={dane.has_lvrt_curve ? 'tak' : 'nie'}
+                onZmiana={(v) => zmien('has_lvrt_curve', v === 'tak')}
+                opcje={T.frtOpcje}
+                testid="mvd-kreator-oze-lvrt"
+              />
+              <PoleWyboru
+                etykieta={T.frtHvrt}
+                wartosc={dane.has_hvrt_curve ? 'tak' : 'nie'}
+                onZmiana={(v) => zmien('has_hvrt_curve', v === 'tak')}
+                opcje={T.frtOpcje}
+                testid="mvd-kreator-oze-hvrt"
+              />
+            </KreatorSiatka>
           </KreatorSekcja>
 
           {dane.source_technology === 'BESS' ? (

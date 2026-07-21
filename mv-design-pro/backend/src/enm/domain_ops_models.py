@@ -1007,6 +1007,13 @@ class AddConverterSourcePayload(_FrozenBase):
     frequency_droop_percent: float | None = None
     # V12K-063: pasmo nieczułości P(f)/LFSM [Hz] (np. 0.2 Hz → LFSM-O od 50.2 Hz).
     lfsm_deadband_hz: float | None = None
+    # V12K-087 (G-OZE-B2): jawne deklaracje zdolności FRT (NC RfG) — czy jednostka
+    # ma zaprogramowaną charakterystykę przejścia przez zanik (LVRT) i przepięcie
+    # (HVRT). Nie da się wyprowadzić z karty katalogowej (envelope Q tylko), więc
+    # deklaruje je projektant. Konsumowane przez most zgodności NC RfG
+    # (build_der_compliance_from_generator → NcRfgComplianceChecker). Brak → False.
+    has_lvrt_curve: bool | None = None
+    has_hvrt_curve: bool | None = None
     bess_mode: str | None = None
     soc_min_percent: float | None = None
     soc_max_percent: float | None = None

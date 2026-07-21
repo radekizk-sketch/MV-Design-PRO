@@ -93,6 +93,17 @@ export const OZE_STRINGS = {
   pfDeadbandPomoc:
     'Zakres wokół 50 Hz bez reakcji [Hz]. Sugerowane: 0,2 Hz (LFSM-O aktywne od 50,2 Hz wg '
     + 'NC RfG). Aktywne tylko, gdy podano statyzm P(f).',
+  frtTytul: 'Przejście przez zakłócenie (FRT)',
+  frtOpis:
+    'Deklaracja zdolności jednostki do przetrwania zaniku napięcia (LVRT) i przepięcia (HVRT) '
+    + 'wg charakterystyk NC RfG. Zasila ocenę zgodności NC RfG (margines badań FRT). '
+    + 'Deklaracja projektanta — nie wynika z karty katalogowej.',
+  frtLvrt: 'Charakterystyka LVRT (zanik napięcia)',
+  frtHvrt: 'Charakterystyka HVRT (przepięcie)',
+  frtOpcje: [
+    { id: 'nie', etykieta: 'Nie / brak danych' },
+    { id: 'tak', etykieta: 'Tak — zaprogramowana' },
+  ],
   regulacjaPasywnaOstrzezenie:
     'Wybrany tryb regulacji jest nieaktywny — uzupełnij wartość rządzącą (cosφ albo nachylenie '
     + 'Q(U)), inaczej źródło pracuje pasywnie (Q = 0) i wybór trybu nie wpływa na rozpływ.',

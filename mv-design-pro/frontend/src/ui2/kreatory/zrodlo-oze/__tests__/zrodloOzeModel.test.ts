@@ -260,6 +260,21 @@ describe('zrodloOzeModel — payload add_converter_source (kontrakt 1:1)', () =>
     expect(pasywny.qu_slope_pu_per_pu).toBeUndefined();
   });
 
+  it('flagi FRT (LVRT/HVRT) wysyłane tylko gdy zadeklarowane (G-OZE-B2)', () => {
+    const zadeklarowane = zbudujPayload(
+      dane({ has_lvrt_curve: true, has_hvrt_curve: true }),
+      KONTEKST,
+      KONWERTER,
+      null,
+    );
+    expect(zadeklarowane.has_lvrt_curve).toBe(true);
+    expect(zadeklarowane.has_hvrt_curve).toBe(true);
+
+    const domyslne = zbudujPayload(dane({}), KONTEKST, KONWERTER, null);
+    expect(domyslne.has_lvrt_curve).toBeUndefined();
+    expect(domyslne.has_hvrt_curve).toBeUndefined();
+  });
+
   it('trybQWymagaWartosci: tryb Q wybrany bez wartości rządzącej = regulacja pasywna', () => {
     // Domyślnie STALY_COS_PHI bez cos_phi_target → wymaga wartości.
     expect(trybQWymagaWartosci(dane())).toBe(true);
