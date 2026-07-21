@@ -322,3 +322,51 @@
   color: var(--mvd-muted);
   font-size: 11px;
 }
+
+/* ---- sekcja pętli zwarcia u źródła stacji (G-STK-4) ---- */
+.mvd-insp-petla {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-insp-petla-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-insp-petla-uklad {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-ink-2);
+}
+.mvd-insp-petla-dl {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-insp-petla-para {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.mvd-insp-petla-para dt {
+  color: var(--mvd-ink-2);
+}
+.mvd-insp-petla-para dd {
+  margin: 0;
+  color: var(--mvd-ink);
+}
+.mvd-insp-petla-info {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mvd-ink-2);
+}

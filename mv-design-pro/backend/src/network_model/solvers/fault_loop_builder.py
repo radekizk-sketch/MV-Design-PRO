@@ -28,6 +28,7 @@ INVARIANTS:
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 from network_model.solvers.fault_loop_iec60364 import (
@@ -123,3 +124,38 @@ def build_fault_loop_input(request: FaultLoopBuildRequest) -> FaultLoopInput:
         network_type=request.network_type,
         protection_arrangement=request.protection_arrangement,
     )
+
+
+@dataclass(frozen=True)
+class TransformerLoopImpedance:
+    """Impedancja transformatora sprowadzona do strony nN (R+jX) [Ω]."""
+
+    r_ohm: float
+    x_ohm: float
+
+
+def transformer_lv_impedance_ohm(
+    *, sn_mva: float, uk_percent: float, ulv_kv: float, pk_kw: float | None
+) -> TransformerLoopImpedance:
+    """Impedancja transformatora sprowadzona do strony nN (G-STK-4).
+
+    IEC 60909 / model transformatora dwuuzwojeniowego:
+        Z_base = U_lv² / S_n            [Ω]  (U_lv w kV, S_n w MVA)
+        z_pu = uk% / 100
+        r_pu = P_k / (S_n · 1000)       (P_k w kW, S_n·1000 = S_n w kVA)
+        x_pu = sqrt(max(z_pu² − r_pu², 0))
+        R = r_pu · Z_base ; X = x_pu · Z_base
+
+    Gdy ``pk_kw`` brak/0 → przyjmujemy R=0, X=Z (transformator czysto reaktancyjny —
+    jawny, bez zgadywania stratności). Funkcja czysta (warstwa solvera, WHITE BOX).
+    """
+    if sn_mva <= 0 or ulv_kv <= 0 or uk_percent <= 0:
+        raise ValueError(
+            "sn_mva, ulv_kv i uk_percent muszą być dodatnie do wyznaczenia Z transformatora."
+        )
+    z_base = (ulv_kv**2) / sn_mva
+    z_pu = uk_percent / 100.0
+    r_pu = (pk_kw / (sn_mva * 1000.0)) if pk_kw and pk_kw > 0 else 0.0
+    r_pu = min(r_pu, z_pu)  # R nie może przekroczyć |Z|
+    x_pu = math.sqrt(max(z_pu**2 - r_pu**2, 0.0))
+    return TransformerLoopImpedance(r_ohm=r_pu * z_base, x_ohm=x_pu * z_base)

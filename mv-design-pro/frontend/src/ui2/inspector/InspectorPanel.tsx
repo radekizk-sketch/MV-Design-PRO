@@ -32,6 +32,7 @@ import { InspectorTabs } from './InspectorTabs';
 import { PropertySection } from './PropertySection';
 import { LinksTab } from './LinksTab';
 import { FreshnessBadge } from './FreshnessBadge';
+import { SekcjaPetlaZwarcia } from './SekcjaPetlaZwarcia';
 
 export function InspectorPanel({
   obiekt,
@@ -303,7 +304,8 @@ function TabWyniki({
   onOtworzDowod: (ref: string) => void;
   onPrzelicz: () => void;
 }) {
-  if (obiekt.wyniki.length === 0) {
+  const jestStacja = obiekt.typ === 'stacja';
+  if (obiekt.wyniki.length === 0 && !jestStacja) {
     return (
       <p className="mvd-insp-empty" data-testid="mvd-inspector-wyniki-empty">
         {INSPECTOR_STRINGS.brakWynikow}
@@ -316,6 +318,7 @@ function TabWyniki({
 
   return (
     <>
+      {jestStacja ? <SekcjaPetlaZwarcia stationRef={obiekt.id} /> : null}
       {nieaktualne && (
         <div className="mvd-insp-results-freshness" data-testid="mvd-inspector-wyniki-freshness">
           <FreshnessBadge
