@@ -21,6 +21,7 @@ import { KafelGotowosci } from './KafelGotowosci';
 import { KafelOstatniegoPrzebiegu } from './KafelOstatniegoPrzebiegu';
 import { KafelSpojnosci } from './KafelSpojnosci';
 import { KafelWkrotce } from './KafelWkrotce';
+import { KafelPrzylaczenia } from './KafelPrzylaczenia';
 import { ListaPrzypadkow } from './ListaPrzypadkow';
 import {
   usePulpitStan,
@@ -28,6 +29,7 @@ import {
   useGotowoscKafel,
   useOstatniPrzebiegKafel,
   useSpojnoscKafel,
+  usePrzylaczenieKafel,
   usePrzypadkiWiersze,
 } from './pulpitAdapter';
 
@@ -53,6 +55,7 @@ export function PulpitProjektu({
   const gotowosc = useGotowoscKafel();
   const ostatniPrzebieg = useOstatniPrzebiegKafel();
   const spojnosc = useSpojnoscKafel();
+  const przylaczenie = usePrzylaczenieKafel();
   const wiersze = usePrzypadkiWiersze();
   const [zaznaczonyId, setZaznaczonyId] = useState<string | null>(null);
 
@@ -100,8 +103,10 @@ export function PulpitProjektu({
           onKlik={() => onNawiguj('wyniki')}
         />
         <KafelSpojnosci dane={spojnosc} onKlik={() => onNawiguj('wyniki')} />
+        {przylaczenie && (
+          <KafelPrzylaczenia dane={przylaczenie} onKlik={() => onNawiguj('model')} />
+        )}
         <KafelWkrotce tytul={PULPIT_STRINGS.celTytul} />
-        <KafelWkrotce tytul={PULPIT_STRINGS.bilansTytul} />
       </div>
 
       <ListaPrzypadkow

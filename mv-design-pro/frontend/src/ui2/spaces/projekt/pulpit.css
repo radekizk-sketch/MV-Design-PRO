@@ -132,6 +132,33 @@ button.mvd-kafel:hover {
   margin: 0;
 }
 
+/* Kafel „Warunki przyłączenia i bilans mocy" (E1 — B1/B2) */
+.mvd-kafel-kv-sep {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-kafel-uwaga {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  margin: 2px 0 0;
+}
+.mvd-kafel-pusty {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mvd-kafel-pusty-glowny {
+  margin: 0;
+  font-weight: 600;
+  font-size: 13px;
+}
+.mvd-kafel-pusty-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
 /* ---- tagi statusu ---- */
 .mvd-tag {
   display: inline-block;

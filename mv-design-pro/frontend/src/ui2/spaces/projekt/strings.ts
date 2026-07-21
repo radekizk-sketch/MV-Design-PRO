@@ -63,7 +63,29 @@ export const PULPIT_STRINGS = {
   wkrotce: 'Wkrótce — wymaga danych z kolejnych faz programu',
   celTytul: 'Postęp wg celu',
   bilansTytul: 'Bilans przyłączeniowy',
+
+  // Kafel „Warunki przyłączenia i bilans mocy" (E1 — B1/B2)
+  przylaczenieTytul: 'Warunki przyłączenia',
+  przylaczenieBrakZrodla: 'Brak źródła sieciowego w modelu',
+  przylaczenieBrakZrodlaOpis: 'Dodaj punkt przyłączenia (GPZ / sieć zewnętrzna), aby ustalić warunki.',
+  przylaczenieNapiecie: 'Napięcie przyłączenia',
+  przylaczenieSk: 'Moc zwarciowa Sk″',
+  przylaczenieIk: 'Prąd zwarciowy Ik″',
+  przylaczenieWieleZrodel: (n: number) => `+${n - 1} kolejne źródło sieciowe`,
+  przylaczenieGeneracja: 'Generacja zainstalowana',
+  przylaczenieOdbiory: 'Obciążenie zainstalowane',
+  przylaczenieNetto: 'Bilans netto (gen. − odb.)',
+  jednMva: 'MVA',
+  jednKa: 'kA',
+  jednKv: 'kV',
+  jednMw: 'MW',
 } as const;
+
+/** Liczba w formacie PL (przecinek dziesiętny) z zadaną liczbą miejsc; null → „—". */
+export function fmtLiczbaPL(wartosc: number | null | undefined, miejsca: number): string {
+  if (wartosc === null || wartosc === undefined || Number.isNaN(wartosc)) return '—';
+  return wartosc.toFixed(miejsca).replace('.', ',');
+}
 
 /** Etykieta PL statusu wyników przypadku (tag). */
 export const STATUS_WYNIKOW_LABEL: Record<StudyCaseResultStatus, string> = {

@@ -99,11 +99,43 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
     expect(within(badge).getByText(INSPECTOR_STRINGS.aktualne)).toBeInTheDocument();
   });
 
-  it('kafle „wkrótce": „Postęp wg celu" i „Bilans przyłączeniowy"', () => {
+  it('kafel „wkrótce": tylko „Postęp wg celu" (bilans zastąpiony realnym kaflem)', () => {
     render(<PulpitProjektu {...props()} />);
     expect(screen.getByText(PULPIT_STRINGS.celTytul)).toBeInTheDocument();
-    expect(screen.getByText(PULPIT_STRINGS.bilansTytul)).toBeInTheDocument();
-    expect(screen.getAllByText(PULPIT_STRINGS.wkrotce)).toHaveLength(2);
+    expect(screen.getAllByText(PULPIT_STRINGS.wkrotce)).toHaveLength(1);
+  });
+
+  it('KafelPrzylaczenia: warunki przyłączenia (U/Sk″) + bilans mocy z realnego snapshotu', () => {
+    useSnapshotStore.setState({
+      snapshot: snapshotFixture({
+        buses: [{ ref_id: 'B-GPZ', id: 'B-GPZ', voltage_kv: 15 }] as never,
+        sources: [
+          { ref_id: 'S', id: 'S', name: 'GPZ', bus_ref: 'B-GPZ', sk3_mva: 250, ik3_ka: 9.6 },
+        ] as never,
+        generators: [{ ref_id: 'G', id: 'G', bus_ref: 'B-GPZ', p_mw: 3.7 }] as never,
+        loads: [{ ref_id: 'L', id: 'L', bus_ref: 'B-GPZ', p_mw: 2.3 }] as never,
+      }),
+    });
+    render(<PulpitProjektu {...props()} />);
+    expect(screen.getByText(PULPIT_STRINGS.przylaczenieTytul)).toBeInTheDocument();
+    expect(screen.getByTestId('pulpit-przylaczenie-sk')).toHaveTextContent('250');
+    expect(screen.getByTestId('pulpit-przylaczenie-generacja')).toHaveTextContent('3,70');
+    expect(screen.getByTestId('pulpit-przylaczenie-netto')).toHaveTextContent('1,40');
+  });
+
+  it('KafelPrzylaczenia: brak źródła sieciowego → uczciwy stan zerowy', () => {
+    useSnapshotStore.setState({
+      snapshot: snapshotFixture({ sources: [] as never }),
+    });
+    render(<PulpitProjektu {...props()} />);
+    expect(screen.getByTestId('pulpit-przylaczenie-brak')).toBeInTheDocument();
+  });
+
+  it('klik kafla „Warunki przyłączenia" → onNawiguj(„model")', () => {
+    const p = props();
+    render(<PulpitProjektu {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: PULPIT_STRINGS.przylaczenieTytul }));
+    expect(p.onNawiguj).toHaveBeenCalledWith('model');
   });
 
   it('lista przypadków: wiersze ze study-cases', () => {

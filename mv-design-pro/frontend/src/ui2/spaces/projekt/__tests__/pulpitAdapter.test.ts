@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
+import type { EnergyNetworkModel } from '../../../../types/enm';
 import {
   mapujModel,
   mapujGotowosc,
   mapujOstatniPrzebieg,
+  mapujPrzylaczenie,
   mapujSpojnosc,
   mapujPrzypadki,
 } from '../pulpitAdapter';
@@ -110,5 +112,77 @@ describe('pulpitAdapter — mapowania store → model kafli', () => {
     expect(wiersze[0].ostatniPrzebiegISO).toBeNull();
     expect(wiersze[1].ostatniPrzebiegISO).toBe('2026-07-15T14:32:00Z');
     expect(wiersze[1].aktywny).toBe(true);
+  });
+});
+
+/** Snapshot z realnymi polami przyłączenia (źródła/szyny/generacja/odbiory). */
+function snapshotPrzylaczenie(over: Partial<EnergyNetworkModel> = {}): EnergyNetworkModel {
+  return snapshotFixture({
+    buses: [
+      { ref_id: 'B-GPZ', id: 'B-GPZ', voltage_kv: 15 },
+      { ref_id: 'B-2', id: 'B-2', voltage_kv: 15 },
+    ] as never,
+    sources: [
+      { ref_id: 'S-GPZ', id: 'S-GPZ', name: 'GPZ 110/15', bus_ref: 'B-GPZ', sk3_mva: 250, ik3_ka: 9.6 },
+    ] as never,
+    generators: [
+      { ref_id: 'G-1', id: 'G-1', bus_ref: 'B-2', p_mw: 2.5 },
+      { ref_id: 'G-2', id: 'G-2', bus_ref: 'B-2', p_mw: 1.2 },
+    ] as never,
+    loads: [
+      { ref_id: 'L-1', id: 'L-1', bus_ref: 'B-2', p_mw: 0.8 },
+      { ref_id: 'L-2', id: 'L-2', bus_ref: 'B-2', p_mw: 1.5 },
+    ] as never,
+    ...over,
+  });
+}
+
+describe('mapujPrzylaczenie — warunki przyłączenia + bilans mocy (E1, B1/B2)', () => {
+  it('źródło sieciowe: napięcie z połączonej szyny, Sk″/Ik″ z pól źródła', () => {
+    const p = mapujPrzylaczenie(snapshotPrzylaczenie());
+    expect(p.zrodlaSieciowe).toHaveLength(1);
+    expect(p.zrodlaSieciowe[0]).toEqual({
+      nazwa: 'GPZ 110/15',
+      napiecieKv: 15,
+      sk3Mva: 250,
+      ik3Ka: 9.6,
+    });
+  });
+
+  it('bilans mocy: suma znamionowa p_mw generatorów i odbiorów + netto', () => {
+    const p = mapujPrzylaczenie(snapshotPrzylaczenie());
+    expect(p.generacjaMw).toBeCloseTo(3.7, 6); // 2,5 + 1,2
+    expect(p.odbioryMw).toBeCloseTo(2.3, 6); // 0,8 + 1,5
+    expect(p.nettoMw).toBeCloseTo(1.4, 6); // 3,7 − 2,3
+    expect(p.liczbaGeneratorow).toBe(2);
+    expect(p.liczbaOdbiorow).toBe(2);
+  });
+
+  it('brak źródła sieciowego → pusta lista (uczciwy stan zerowy, bez zgadywania)', () => {
+    const p = mapujPrzylaczenie(snapshotPrzylaczenie({ sources: [] as never }));
+    expect(p.zrodlaSieciowe).toEqual([]);
+  });
+
+  it('brak Sk″/Ik″ w źródle → null (nie fabrykujemy wartości)', () => {
+    const p = mapujPrzylaczenie(
+      snapshotPrzylaczenie({
+        sources: [{ ref_id: 'S', id: 'S', name: 'Sieć', bus_ref: 'B-GPZ' }] as never,
+      }),
+    );
+    expect(p.zrodlaSieciowe[0]).toMatchObject({ sk3Mva: null, ik3Ka: null, napiecieKv: 15 });
+  });
+
+  it('szyna źródła nieznana → napięcie null (brak dopasowania bus_ref)', () => {
+    const p = mapujPrzylaczenie(
+      snapshotPrzylaczenie({
+        sources: [{ ref_id: 'S', id: 'S', name: 'Sieć', bus_ref: 'B-NIEZNANA', sk3_mva: 100 }] as never,
+      }),
+    );
+    expect(p.zrodlaSieciowe[0].napiecieKv).toBeNull();
+  });
+
+  it('jest deterministyczne i czyste: to samo wejście → identyczny wynik', () => {
+    const snap = snapshotPrzylaczenie();
+    expect(mapujPrzylaczenie(snap)).toEqual(mapujPrzylaczenie(snap));
   });
 });

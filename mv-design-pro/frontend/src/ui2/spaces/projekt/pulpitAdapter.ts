@@ -23,10 +23,14 @@
  *   `ANALYSIS_TYPE_LABELS`/`RUN_STATUS_LABELS` — `types.ts:270-289`.
  *
  * TODO-KARTA (ograniczenia danych — brak źródła w store'ach, karta §2/§4):
- * 1. Kafle „Postęp wg celu" i „Bilans przyłączeniowy" (audyt W-101) NIE MAJĄ
- *    źródła w store'ach read-only (brak modelu celu projektu i bilansu mocy
- *    przyłączeniowej) → renderowane jako kafle „wkrótce" (`KafelWkrotce`),
- *    bez zgadywania wartości.
+ * 1. Kafel „Postęp wg celu" (audyt W-101) NIE MA źródła w store'ach read-only
+ *    (brak modelu celu projektu) → renderowany jako kafel „wkrótce"
+ *    (`KafelWkrotce`), bez zgadywania wartości. Kafel „Warunki przyłączenia
+ *    i bilans mocy" (E1 — B1/B2) MA źródło: `sources` (Sk″/Ik″/U przyłączenia)
+ *    + rollup mocy znamionowej `generators`/`loads` (patrz `mapujPrzylaczenie`).
+ *    GAP backendu (zarejestrowany, nie fabrykowany): „moc przyłączeniowa" (limit
+ *    OSD) oraz cosφ/tryb pracy przyłącza nie mają pola w modelu → nie pokazywane;
+ *    dynamiczna zdolność przyłączeniowa żyje w analizie E5/E7 (hosting_capacity).
  * 2. Rewizja WYNIKÓW (liczbowa) dla stanu „nieaktualne" nie jest wystawiana przez
  *    store'y (jest wyłącznie `result_status` FRESH/OUTDATED/NONE, bez numeru
  *    rewizji modelu w chwili liczenia) → `FreshnessBadge` w `KafelSpojnosci`
@@ -95,6 +99,30 @@ export interface SpojnoscKafel {
   aktualnosc: AktualnoscWynikow;
 }
 
+/** Źródło sieciowe (punkt przyłączenia) — warunki od strony OSD. */
+export interface ZrodloSieciowe {
+  nazwa: string;
+  napiecieKv: number | null;
+  sk3Mva: number | null;
+  ik3Ka: number | null;
+}
+
+/**
+ * Kafel „Warunki przyłączenia i bilans mocy" (E1 — B1/B2). Warunki przyłączenia
+ * = źródła sieciowe (Sk″/Ik″/U). Bilans = rollup mocy ZNAMIONOWEJ (nameplate)
+ * z modelu — NIE fizyka (analogicznie do `_existing_generation_mw` backendu,
+ * które sumuje surowe `p_mw`; `p_mw` już zawiera krotność, patrz
+ * `domain_operations_v2.py`).
+ */
+export interface PrzylaczenieKafel {
+  zrodlaSieciowe: ZrodloSieciowe[];
+  generacjaMw: number;
+  odbioryMw: number;
+  nettoMw: number;
+  liczbaGeneratorow: number;
+  liczbaOdbiorow: number;
+}
+
 /** Wiersz listy przypadków obliczeniowych. */
 export interface PrzypadekWiersz {
   id: string;
@@ -138,6 +166,36 @@ export function mapujModel(snapshot: EnergyNetworkModel): ModelKafel {
     elementow: liczbaElementow(snapshot),
     stacje: snapshot.substations.length,
     zrodla: snapshot.sources.length + snapshot.generators.length,
+  };
+}
+
+/**
+ * Kafel „Warunki przyłączenia i bilans mocy" (E1 — B1/B2). Źródła sieciowe z
+ * `sources` (napięcie z połączonej szyny), bilans z sumy `p_mw` generatorów i
+ * odbiorów. Suma znamionowa (rollup danych wejściowych, spójna z backendem —
+ * `_existing_generation_mw`), NIE wynik fizyki; zero wywołań solvera.
+ */
+export function mapujPrzylaczenie(snapshot: EnergyNetworkModel): PrzylaczenieKafel {
+  const napiecieSzyny = new Map<string, number>();
+  for (const bus of snapshot.buses) napiecieSzyny.set(bus.ref_id, bus.voltage_kv);
+
+  const zrodlaSieciowe: ZrodloSieciowe[] = snapshot.sources.map((s) => ({
+    nazwa: s.name,
+    napiecieKv: napiecieSzyny.get(s.bus_ref) ?? null,
+    sk3Mva: s.sk3_mva ?? null,
+    ik3Ka: s.ik3_ka ?? null,
+  }));
+
+  const generacjaMw = snapshot.generators.reduce((acc, g) => acc + g.p_mw, 0);
+  const odbioryMw = snapshot.loads.reduce((acc, l) => acc + l.p_mw, 0);
+
+  return {
+    zrodlaSieciowe,
+    generacjaMw,
+    odbioryMw,
+    nettoMw: generacjaMw - odbioryMw,
+    liczbaGeneratorow: snapshot.generators.length,
+    liczbaOdbiorow: snapshot.loads.length,
   };
 }
 
@@ -229,6 +287,11 @@ export function useModelKafel(): ModelKafel | null {
 export function useGotowoscKafel(): GotowoscKafel {
   const readiness = useSnapshotStore((s) => s.readiness);
   return useMemo(() => mapujGotowosc(readiness), [readiness]);
+}
+
+export function usePrzylaczenieKafel(): PrzylaczenieKafel | null {
+  const snapshot = useSnapshotStore((s) => s.snapshot);
+  return useMemo(() => (snapshot ? mapujPrzylaczenie(snapshot) : null), [snapshot]);
 }
 
 export function useOstatniPrzebiegKafel(): OstatniPrzebiegKafel | null {

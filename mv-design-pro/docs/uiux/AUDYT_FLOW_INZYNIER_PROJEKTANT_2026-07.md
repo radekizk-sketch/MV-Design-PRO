@@ -42,8 +42,8 @@ zabezpieczeń, audytor WHITE BOX, projektant sieci end-to-end, UX/IA.
 | **A1** | IA | **Brak skonsolidowanego „Co wymaga uwagi"** — przekroczenia są rozproszone per zakładka (rozpływ osobno, zwarcia osobno…). Inżynier nie widzi WSZYSTKICH problemów sieci w jednym miejscu z akcją naprawczą. | Werdykty `WartoscKomorki.ostrzezenie` liczone per adapter, brak agregatora | **KRYTYCZNY** | Rejestr przekroczeń „Co wymaga uwagi" w przestrzeni Wyniki: zbiera ostrzeżenia ze wszystkich zakończonych analiz + „Popraw w modelu" per pozycja (rozszerza F-E6.1). **← UZUPEŁNIONE (patrz §4)** |
 | **A2** | IA | Pętla decyzji wpięta tylko w rozpływ (F-E6.1); jakość/zgodność nie prowadzą z werdyktu do modelu. | `TabelaSzyn/Galezi` mają `onPoprawWModelu`, reszta nie | wysoki | **← UZUPEŁNIONE (F-E6.2, V12K-099).** Wpięte w Jakość (walidacja energetyczna — typ z `check_type`; migotanie — Bus) i Zgodność powykonawczą (pomiar U → Bus). Zwarcia BEZ pętli (kontrakt SC nie niesie werdyktu przekroczenia — brak `ostrzezenie`, byłby phantom). Wzorzec `TabelaWynikow` +predykat `wierszDecyzyjny` (agregat systemowy `target_id=network` bez elementu → brak martwego przycisku). |
 | **A3** | IA/PS | Akcja pętli jest OGÓLNA („przejdź do modelu"); nie prowadzi do WŁAŚCIWEGO konfiguratora (ΔU→dobór odcinka, przeciążenie→dobór kabla, miskoordynacja→nastawy). | `usePoprawWModelu` robi tylko selekcję+nawigację do „Schemat" | średni | F-E6.3: akcja kontekstowa per rodzaj przekroczenia (mapowanie werdykt→operacja). |
-| **B1** | PS | E1: warunki przyłączenia i dane OSD (Sk″, U, wymagany cosφ, tryb pracy) nie mają jawnego kroku wejściowego — kafel „wkrótce". | `KafelWkrotce.tsx` (Bilans przyłączeniowy / Postęp wg celu) | wysoki | F-E1: krok „Warunki przyłączenia" na pulpicie (wymaga pola danych OSD w modelu/nagłówku — recon backendu). |
-| **B2** | PS | Bilans mocy przyłączeniowej (moc przyłączeniowa vs zainstalowana OZE) brak — kluczowy dla wniosku OSD. | `KafelWkrotce` „Bilans przyłączeniowy" | wysoki | F-E1/E7: bilans z realnego backendu (moc źródeł/odbiorów + limit OSD). Recon: czy backend liczy? jeśli nie — rozbudowa (osobny krok). |
+| **B1** | PS | E1: warunki przyłączenia i dane OSD (Sk″, U, wymagany cosφ, tryb pracy) nie mają jawnego kroku wejściowego — kafel „wkrótce". | `KafelWkrotce.tsx` (Bilans przyłączeniowy / Postęp wg celu) | wysoki | **← UZUPEŁNIONE (V12K-100).** Kafel „Warunki przyłączenia" na pulpicie: U przyłączenia (z szyny), Sk″/Ik″ ze źródła sieciowego. **GAP backendu (zarejestrowany, NIE fabrykowany):** cosφ wymagany i „tryb pracy" nie mają pola w modelu → nie pokazywane (rozbudowa modelu = osobna karta). |
+| **B2** | PS | Bilans mocy przyłączeniowej (moc przyłączeniowa vs zainstalowana OZE) brak — kluczowy dla wniosku OSD. | `KafelWkrotce` „Bilans przyłączeniowy" | wysoki | **← UZUPEŁNIONE (V12K-100).** Bilans mocy znamionowej: Σ generacja (OZE) vs Σ obciążenie + netto (rollup `p_mw`, spójny z backendem `_existing_generation_mw`). **GAP backendu:** „moc przyłączeniowa" (limit OSD) nie ma pola w modelu → porównanie „vs limit" pominięte; dynamiczna zdolność w analizie E5/E7 (hosting_capacity). |
 | **C1** | IA | Dowód WHITE BOX osiągalny z zakładki „Dowód", ale nie ZAWSZE 1 klik z konkretnej liczby wyniku na wielu ekranach. | `WartoscKomorki.dowodRef` + 2×klik (wzorzec) — zależny od adaptera | niski | Domknąć `dowodRef` w adapterach bez pokrycia (przemiar). |
 | **D1** | PS | Brak jawnej informacji o unieważnieniu wyników PO zmianie modelu w miejscu zmiany (jest FreshnessBadge na ekranie wyniku, ale nie na kanwie/modelu). | `freshness/` na ekranach wyników | niski | Rozważyć znacznik świeżości w pasku aktywnego przypadku (poza tą turą). |
 
@@ -82,8 +82,18 @@ nie wyspa). Testy: `co-wymaga-uwagi/__tests__/{model,EkranCoWymagaUwagi}.test.ts
 ## 5. Kolejka uzupełnień (pozostałe — zarejestrowane, nie ciche)
 
 1. ~~**A2** F-E6.2 — pętla decyzji w pozostałych ekranach wzorca.~~ **✅ UZUPEŁNIONE (V12K-099).**
-2. **B1/B2** F-E1 — warunki przyłączenia + bilans mocy (recon backendu → rozbudowa jeśli brak).
+2. ~~**B1/B2** F-E1 — warunki przyłączenia + bilans mocy.~~ **✅ UZUPEŁNIONE (V12K-100)** (z realnych pól modelu; cosφ/tryb pracy/limit OSD = GAP-y backendu zarejestrowane niżej).
 3. **A3** F-E6.3 — akcje kontekstowe per rodzaj przekroczenia (ΔU→dobór odcinka, przeciążenie→dobór kabla, miskoordynacja→nastawy).
 4. **C1/D1** — domknięcie `dowodRef` + znacznik świeżości w pasku przypadku.
 
-Priorytet realizacji wg bólu: A1 (✅) → A2 (✅) → B1/B2 → A3 → C1/D1.
+Priorytet realizacji wg bólu: A1 (✅) → A2 (✅) → B1/B2 (✅) → A3 → C1/D1.
+
+## 6. GAP-y backendu zarejestrowane przy B1/B2 (dyrektywa #4 — nie ciche)
+
+Braki pól w modelu wykryte przy E1 (do rozbudowy backendu/domeny osobną kartą,
+NIE fabrykowane w UI):
+- **cosφ wymagany + tryb pracy przyłącza** (B1) — brak pola na `Source`/nagłówku ENM.
+- **„Moc przyłączeniowa" (limit mocy z warunków OSD)** (B2) — brak pola; potrzebny
+  do porównania „zainstalowana OZE vs limit OSD" i do wniosku OSD. Dynamiczna
+  zdolność liczona jest w E5/E7 (`hosting_capacity`), ale statyczny limit z umowy
+  przyłączeniowej to osobna dana wejściowa.
