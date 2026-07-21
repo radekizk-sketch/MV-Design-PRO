@@ -803,19 +803,23 @@ function liczbaLubNull(tekst: string): number | null {
  */
 function podsumowanieArcFlash(
   wyniki: readonly WynikArcFlash[],
-): { najwyzsza: number; szyna: string; braki: number } | null {
+): { najwyzsza: number; szyna: string; braki: number; soi: [string, number][] } | null {
   let najwyzsza = -Infinity;
   let szyna = '';
   let braki = 0;
+  const soiMap = new Map<string, number>();
   for (const w of wyniki) {
     if (w.missing_data.length > 0) braki += 1;
+    if (w.ppe_category) soiMap.set(w.ppe_category, (soiMap.get(w.ppe_category) ?? 0) + 1);
     if (typeof w.incident_energy_cal_cm2 === 'number' && w.incident_energy_cal_cm2 > najwyzsza) {
       najwyzsza = w.incident_energy_cal_cm2;
       szyna = w.bus_ref;
     }
   }
   if (najwyzsza === -Infinity) return null;
-  return { najwyzsza, szyna, braki };
+  // Rozkład kategorii ŚOI, deterministycznie posortowany po kategorii.
+  const soi = [...soiMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  return { najwyzsza, szyna, braki, soi };
 }
 
 /** Zapisz blob jako plik do pobrania (mechanika przeglądarkowa). */
@@ -1026,6 +1030,16 @@ export function SekcjaArcFlash({
                   </strong>{' '}
                   ({JAKOSC_STRINGS.afPodsumSzyna} {podsum.szyna})
                 </span>
+                {podsum.soi.length > 0 && (
+                  <span className="mvd-jakosc-af-podsum-soi" data-testid="mvd-jakosc-af-podsum-soi">
+                    {JAKOSC_STRINGS.afPodsumSoi}:{' '}
+                    {podsum.soi.map(([kat, ile]) => (
+                      <span key={kat} className="mvd-jakosc-af-podsum-soi-chip">
+                        {JAKOSC_STRINGS.afPodsumSoiKat} {kat}: {ile}
+                      </span>
+                    ))}
+                  </span>
+                )}
                 {podsum.braki > 0 && (
                   <span className="mvd-jakosc-af-podsum-braki">
                     {podsum.braki} {JAKOSC_STRINGS.afPodsumBraki}

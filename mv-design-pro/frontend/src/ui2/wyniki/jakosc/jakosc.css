@@ -348,6 +348,20 @@
   font-size: 12px;
   color: var(--mvd-muted);
 }
+.mvd-jakosc-af-podsum-soi {
+  font-size: 12px;
+  color: var(--mvd-ink);
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+.mvd-jakosc-af-podsum-soi-chip {
+  padding: 1px 7px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  background: var(--mvd-panel);
+}
 
 /* Eksport raportu Arc Flash (PDF/DOCX) */
 .mvd-jakosc-af-raport {

@@ -150,6 +150,8 @@ export const JAKOSC_STRINGS = {
   afPodsumNajwyzsza: 'Najwyższa energia incydentu',
   afPodsumSzyna: 'szyna',
   afPodsumBraki: 'szyny z brakami danych',
+  afPodsumSoi: 'Rozkład kategorii ŚOI',
+  afPodsumSoiKat: 'kat.',
   afPodsumBrakDanych: 'Brak policzonych energii — uzupełnij parametry projektowe.',
   // Raport (eksport)
   arcFlashRaportTytul: 'Raport analizy',

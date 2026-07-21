@@ -120,6 +120,8 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     const podsum = screen.getByTestId('mvd-jakosc-af-podsum');
     expect(within(podsum).getByTestId('mvd-jakosc-af-podsum-max')).toHaveTextContent('8,42');
     expect(podsum).toHaveTextContent('bus-1');
+    // Rozkład kategorii ŚOI z policzonych wyników (kat. 2: 1).
+    expect(within(podsum).getByTestId('mvd-jakosc-af-podsum-soi')).toHaveTextContent('kat. 2: 1');
   });
 
   it('puste parametry → wysyłka null (bez zmyślania wejść)', async () => {
