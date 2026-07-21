@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import type { CompleteMvBayTemplateSummary } from '../../../../ui/catalog/BayTemplatePicker';
 import type { TransformerType } from '../../../../ui/catalog/types';
 import {
   DANE_DOMYSLNE,
   czyKoniecOdcinka,
+  czyRozdzielnicaKompletna,
   doborTransformatorow,
   fmtKv,
   fmtMva,
@@ -12,12 +14,55 @@ import {
   normalizujTypStacji,
   ogranicznikOdplywow,
   parametryZKatalogu,
+  rolePolaStacji,
+  szablonyDlaWyboru,
+  szablonyPerRola,
   walidujFormularz,
   wyznaczTryb,
   zbudujPayload,
+  zbudujPolaSn,
   type KontekstStacji,
   type StacjaFormData,
+  type WyborRozdzielnicy,
 } from '../stacjaModel';
+
+function szablon(over: Partial<CompleteMvBayTemplateSummary> = {}): CompleteMvBayTemplateSummary {
+  return {
+    template_ref: 'tpl-in',
+    manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+    switchgear_family_ref: 'ZPUE_ROTOBLOK',
+    bay_kind: 'liniowe_doplywowe',
+    bay_role: 'IN',
+    source_status: 'repo_verified',
+    source_refs: ['kat/zpue'],
+    version: '1',
+    hash: 'h',
+    notes_pl: null,
+    ...over,
+  };
+}
+
+/** Komplet szablonów dla stacji odbiorczej (WE/WY/ODG/TR). */
+const SZABLONY_KOMPLET: CompleteMvBayTemplateSummary[] = [
+  szablon({ template_ref: 'tpl-in', bay_kind: 'liniowe_doplywowe', bay_role: 'IN' }),
+  szablon({ template_ref: 'tpl-out', bay_kind: 'liniowe_odplywowe', bay_role: 'OUT' }),
+  szablon({ template_ref: 'tpl-tr', bay_kind: 'transformatorowe', bay_role: 'TR' }),
+  szablon({ template_ref: 'tpl-coupler', bay_kind: 'sprzeglowe_poprzeczne', bay_role: 'COUPLER' }),
+];
+
+function rozdzielnica(stationType: StacjaFormData['station_type'] = 'branch'): WyborRozdzielnicy {
+  const byRole = szablonyPerRola(SZABLONY_KOMPLET, stationType, {});
+  return {
+    manufacturerRef: 'ZPUE_WLOSZCZOWA',
+    manufacturerName: 'ZPUE Włoszczowa',
+    familyRef: 'ZPUE_ROTOBLOK',
+    familyName: 'Rotoblok',
+    snFields: zbudujPolaSn(stationType, byRole, {
+      manufacturerRef: 'ZPUE_WLOSZCZOWA',
+      switchgearFamilyRef: 'ZPUE_ROTOBLOK',
+    }),
+  };
+}
 
 const typy = [
   {
@@ -67,7 +112,12 @@ const typy = [
 ] as unknown as TransformerType[];
 
 function dane(over: Partial<StacjaFormData> = {}): StacjaFormData {
-  return { ...DANE_DOMYSLNE, catalog_ref: 'trafo-630-15-04', ...over };
+  return {
+    ...DANE_DOMYSLNE,
+    catalog_ref: 'trafo-630-15-04',
+    manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+    ...over,
+  };
 }
 
 function kontekst(over: Partial<KontekstStacji> = {}): KontekstStacji {
@@ -130,6 +180,21 @@ describe('stacjaModel — walidacja', () => {
     expect(walidujFormularz(dane()).length).toBe(0);
   });
 
+  it('wymaga producenta rozdzielnicy SN', () => {
+    expect(
+      walidujFormularz(dane({ manufacturer_ref: '' })).some((e) => e.field === 'manufacturer_ref'),
+    ).toBe(true);
+  });
+
+  it('blokuje zapis, gdy pola rozdzielnicy niekompletne', () => {
+    // Pusty zestaw pól SN → walidacja z snFields zgłasza brak.
+    expect(walidujFormularz(dane(), []).some((e) => e.field === 'sn_fields')).toBe(true);
+    // Komplet szablonów → brak błędu sn_fields.
+    expect(
+      walidujFormularz(dane(), rozdzielnica('branch').snFields).some((e) => e.field === 'sn_fields'),
+    ).toBe(false);
+  });
+
   it('ogranicza liczbę odpływów do zakresu', () => {
     expect(ogranicznikOdplywow(0)).toBe(1);
     expect(ogranicznikOdplywow(99)).toBe(8);
@@ -165,6 +230,7 @@ describe('stacjaModel — payload', () => {
     const payload = zbudujPayload(
       dane({ station_name: 'ST-3' }),
       kontekst({ tryb: 'ENDPOINT_APPEND', endpointBusRef: 'bus-end', runRef: 'run-1' }),
+      rozdzielnica('branch'),
     );
     expect(payload).toMatchObject({
       name: 'ST-3',
@@ -191,6 +257,7 @@ describe('stacjaModel — payload', () => {
     const payload = zbudujPayload(
       dane(),
       kontekst({ tryb: 'SPLIT', segmentId: 'seg-7', positionOnSegment: 0.25 }),
+      rozdzielnica('branch'),
     );
     expect(payload).toMatchObject({
       segment_id: 'seg-7',
@@ -202,8 +269,72 @@ describe('stacjaModel — payload', () => {
   });
 
   it('napięcie SN w payloadzie pochodzi z kontekstu (szyny), nie z UI', () => {
-    const payload = zbudujPayload(dane(), kontekst({ snVoltageKv: 20 }));
+    const payload = zbudujPayload(dane(), kontekst({ snVoltageKv: 20 }), rozdzielnica('branch'));
     expect((payload.station as Record<string, unknown>).sn_voltage_kv).toBe(20);
+  });
+
+  it('payload niesie sn_fields i station.switchgear z wyboru rozdzielnicy', () => {
+    const payload = zbudujPayload(dane(), kontekst(), rozdzielnica('branch'));
+    const snFields = payload.sn_fields as Array<{ field_role: string; bay_template_ref: string | null }>;
+    expect(snFields.map((f) => f.field_role)).toEqual([
+      'LINIA_IN',
+      'LINIA_OUT',
+      'LINIA_ODG',
+      'TRANSFORMATOROWE',
+    ]);
+    expect(snFields.every((f) => Boolean(f.bay_template_ref))).toBe(true);
+    expect((payload.station as Record<string, unknown>).switchgear).toMatchObject({
+      manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+      switchgear_family_ref: 'ZPUE_ROTOBLOK',
+    });
+  });
+});
+
+describe('stacjaModel — rozdzielnica SN', () => {
+  it('role pól zależą od typu stacji (sekcyjna ma sprzęgło)', () => {
+    expect(rolePolaStacji('branch')).toEqual([
+      'LINIA_IN',
+      'LINIA_OUT',
+      'LINIA_ODG',
+      'TRANSFORMATOROWE',
+    ]);
+    expect(rolePolaStacji('inline')).toEqual(['LINIA_IN', 'LINIA_OUT', 'TRANSFORMATOROWE']);
+    expect(rolePolaStacji('sectional')).toEqual([
+      'LINIA_IN',
+      'LINIA_OUT',
+      'SPRZEGLO',
+      'TRANSFORMATOROWE',
+    ]);
+  });
+
+  it('filtruje szablony niekompletne (tylko kompletne/repo_verified przechodzą)', () => {
+    const mieszane: CompleteMvBayTemplateSummary[] = [
+      szablon({ template_ref: 'ok', source_status: 'repo_verified' }),
+      szablon({ template_ref: 'niekompletny', source_status: 'incomplete_requires_review' }),
+      szablon({ template_ref: 'poza', source_status: 'requires_catalog' }),
+    ];
+    const wynik = szablonyDlaWyboru(mieszane, 'ZPUE_WLOSZCZOWA', null);
+    expect(wynik.map((t) => t.template_ref)).toEqual(['ok']);
+  });
+
+  it('sekcyjna dobiera pole sprzęgłowe; kompletność wykrywana', () => {
+    const byRole = szablonyPerRola(SZABLONY_KOMPLET, 'sectional', {});
+    const snFields = zbudujPolaSn('sectional', byRole, {
+      manufacturerRef: 'ZPUE_WLOSZCZOWA',
+      switchgearFamilyRef: 'ZPUE_ROTOBLOK',
+    });
+    expect(snFields.map((f) => f.field_role)).toContain('SPRZEGLO');
+    expect(czyRozdzielnicaKompletna(snFields)).toBe(true);
+  });
+
+  it('brak szablonu dla roli → rozdzielnica niekompletna', () => {
+    const bezTr = SZABLONY_KOMPLET.filter((t) => t.bay_kind !== 'transformatorowe');
+    const byRole = szablonyPerRola(bezTr, 'branch', {});
+    const snFields = zbudujPolaSn('branch', byRole, {
+      manufacturerRef: 'ZPUE_WLOSZCZOWA',
+      switchgearFamilyRef: 'ZPUE_ROTOBLOK',
+    });
+    expect(czyRozdzielnicaKompletna(snFields)).toBe(false);
   });
 });
 

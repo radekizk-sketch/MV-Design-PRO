@@ -66,6 +66,27 @@ vi.mock('../../../../ui/selection', () => ({
   ) => selector({ selectElement: selectElementMock, centerSldOnElement: centerSldOnElementMock }),
 }));
 
+const szablon = (over: Record<string, unknown>) => ({
+  template_ref: 'tpl',
+  manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+  switchgear_family_ref: 'ZPUE_ROTOBLOK',
+  bay_kind: 'liniowe_doplywowe',
+  bay_role: 'IN',
+  source_status: 'repo_verified',
+  source_refs: ['kat/zpue'],
+  version: '1',
+  hash: 'h',
+  notes_pl: null,
+  ...over,
+});
+
+const SZABLONY = [
+  szablon({ template_ref: 'tpl-in', bay_kind: 'liniowe_doplywowe', bay_role: 'IN' }),
+  szablon({ template_ref: 'tpl-out', bay_kind: 'liniowe_odplywowe', bay_role: 'OUT' }),
+  szablon({ template_ref: 'tpl-tr', bay_kind: 'transformatorowe', bay_role: 'TR' }),
+  szablon({ template_ref: 'tpl-coupler', bay_kind: 'sprzeglowe_poprzeczne', bay_role: 'COUPLER' }),
+];
+
 vi.mock('../../../../ui/catalog/api', () => ({
   getCatalogErrorMessage: () => 'błąd katalogu',
   fetchTransformerTypes: () =>
@@ -82,6 +103,34 @@ vi.mock('../../../../ui/catalog/api', () => ({
         tap_step_percent: 2.5,
       },
     ]),
+  fetchManufacturers: () =>
+    Promise.resolve([
+      {
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        name: 'ZPUE Włoszczowa',
+        normalized_code: 'zpue',
+        country: 'PL',
+        status: 'verified',
+        source_refs: ['kat'],
+        notes_pl: null,
+      },
+    ]),
+  fetchSwitchgearFamilies: () =>
+    Promise.resolve([
+      {
+        switchgear_family_ref: 'ZPUE_ROTOBLOK',
+        manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+        family_name: 'Rotoblok',
+        series_name: null,
+        voltage_levels: [15],
+        insulation_type: 'sf6',
+        construction_type: 'RMU',
+        status: 'verified',
+        source_refs: ['kat'],
+        notes_pl: null,
+      },
+    ]),
+  fetchCompleteBayTemplates: () => Promise.resolve(SZABLONY),
 }));
 
 async function przejdzDoTransformatora() {
@@ -97,6 +146,25 @@ async function wybierzTyp() {
     expect(select.querySelector('option[value="trafo-630-15-04"]')).not.toBeNull();
   });
   await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-katalog'), 'trafo-630-15-04');
+}
+
+async function przejdzIWybierzRozdzielnice() {
+  // transformator → rozdzielnica (natywny klik „Dalej").
+  await userEvent.click(screen.getByTestId('mvd-kreator-stacja-dalej'));
+  await waitFor(() => {
+    const producent = screen.getByTestId('mvd-kreator-stacja-producent') as HTMLSelectElement;
+    expect(producent.querySelector('option[value="ZPUE_WLOSZCZOWA"]')).not.toBeNull();
+  });
+  // Producent i rodzina wybrane natywnie.
+  await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-producent'), 'ZPUE_WLOSZCZOWA');
+  await waitFor(() => {
+    const rodzina = screen.getByTestId('mvd-kreator-stacja-rodzina') as HTMLSelectElement;
+    expect(rodzina.querySelector('option[value="ZPUE_ROTOBLOK"]')).not.toBeNull();
+  });
+  await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-rodzina'), 'ZPUE_ROTOBLOK');
+  await waitFor(() => {
+    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).not.toBeDisabled();
+  });
 }
 
 describe('KreatorStacjiSnNn — realna ścieżka', () => {
@@ -122,6 +190,7 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
 
     await przejdzDoTransformatora();
     await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
     await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
 
     await waitFor(() => {
@@ -144,6 +213,19 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
     expect(payload).not.toHaveProperty('endpoint_bus_ref');
     expect((payload.station as Record<string, unknown>).sn_voltage_kv).toBe(15);
+    // sn_fields kompletne (WE/WY/ODG/TR) i wiązanie rozdzielnicy w station.switchgear.
+    const snFields = payload.sn_fields as Array<{ field_role: string; bay_template_ref: string | null }>;
+    expect(snFields.map((f) => f.field_role)).toEqual([
+      'LINIA_IN',
+      'LINIA_OUT',
+      'LINIA_ODG',
+      'TRANSFORMATOROWE',
+    ]);
+    expect(snFields.every((f) => Boolean(f.bay_template_ref))).toBe(true);
+    expect((payload.station as Record<string, unknown>).switchgear).toMatchObject({
+      manufacturer_ref: 'ZPUE_WLOSZCZOWA',
+      switchgear_family_ref: 'ZPUE_ROTOBLOK',
+    });
 
     expect(closeFormMock).toHaveBeenCalled();
     await waitFor(() => {
@@ -162,6 +244,7 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
 
     await przejdzDoTransformatora();
     await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
     await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
 
     await waitFor(() => {
@@ -172,6 +255,9 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
           endpoint_bus_ref: 'bus-end',
           run_ref: 'run-1',
           transformer: expect.objectContaining({ transformer_catalog_ref: 'trafo-630-15-04' }),
+          sn_fields: expect.arrayContaining([
+            expect.objectContaining({ field_role: 'LINIA_IN', bay_template_ref: expect.any(String) }),
+          ]),
         }),
       );
     });
@@ -186,13 +272,20 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-typ'), 'sectional');
     await przejdzDoTransformatora();
     await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
     await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
 
     await waitFor(() => {
       expect(executeDomainOperationMock).toHaveBeenCalledWith(
         'case-1',
         'insert_station_on_segment_sn',
-        expect.objectContaining({ station_type: 'sectional' }),
+        expect.objectContaining({
+          station_type: 'sectional',
+          // Sekcyjna → pole sprzęgłowe w sn_fields.
+          sn_fields: expect.arrayContaining([
+            expect.objectContaining({ field_role: 'SPRZEGLO', bay_template_ref: expect.any(String) }),
+          ]),
+        }),
       );
     });
   });
@@ -201,13 +294,14 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     context = {};
     render(<KreatorStacjiSnNn />);
     expect(screen.getByTestId('mvd-kreator-stacja-brak')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled();
+    // waitFor domyka efekty katalogu (producenci/rodziny/szablony) w act.
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());
   });
 
   it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
     appState.activeCaseId = null;
     render(<KreatorStacjiSnNn />);
-    expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled();
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });
 });

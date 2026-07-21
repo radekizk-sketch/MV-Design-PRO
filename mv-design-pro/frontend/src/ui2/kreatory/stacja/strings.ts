@@ -10,6 +10,7 @@ export const STACJA_STRINGS = {
 
   krokRodzaj: 'Rodzaj i umiejscowienie',
   krokTransformator: 'Transformator',
+  krokRozdzielnica: 'Rozdzielnica SN',
   krokZapis: 'Podsumowanie i zapis',
 
   // Krok 1 — rodzaj.
@@ -69,10 +70,33 @@ export const STACJA_STRINGS = {
   paramNapiecia: 'Napięcia SN/nN',
   paramUk: 'Napięcie zwarcia uk',
 
-  // Krok 3 — zapis.
+  // Krok 3 — rozdzielnica SN.
+  producent: 'Producent rozdzielnicy SN',
+  producentPomoc:
+    'Pakiet katalogowy producenta rozdzielnicy SN wyznacza dostępne rodziny i kompletne '
+    + 'szablony pól. Lista obejmuje wyłącznie producentów z konfiguracją katalogową.',
+  producentPlaceholder: '— wybierz producenta —',
+  rodzina: 'Rodzina rozdzielnicy',
+  rodzinaPomoc:
+    'Rodzina zawęża szablony pól do serii konstrukcyjnej zgodnej z napięciem SN szyny. '
+    + 'Puste — pakiet standardowy producenta.',
+  rodzinaPlaceholder: '— rodzina standardowa producenta —',
+  poleRoliPomoc: 'Kompletny szablon pola z katalogu producenta (rozłącznik, przekładniki, zabezpieczenia).',
+  polePlaceholder: '— dobór automatyczny —',
+  podgladTytul: 'Podgląd pól rozdzielnicy SN',
+  brakProducenta: 'Wybierz producenta rozdzielnicy SN, aby dobrać pola stacji.',
+  brakRodzin: 'Producent nie udostępnia rodzin dla napięcia SN szyny — użyty pakiet standardowy.',
+  brakSzablonow:
+    'Brak kompletnych szablonów pól dla wybranego producenta/rodziny. Wybierz inny pakiet katalogowy '
+    + 'lub uzupełnij katalog rozdzielnic SN.',
+  rozdzielnicaBlad: 'Nie udało się pobrać katalogu rozdzielnic SN.',
+  wierszRozdzielnica: 'Rozdzielnica',
+
+  // Krok 4 — zapis.
   podsumTyp: 'Rodzaj stacji',
   podsumUmiejscowienie: 'Umiejscowienie',
   podsumTransformator: 'Transformator',
+  podsumRozdzielnica: 'Rozdzielnica SN',
   podsumNn: 'Napięcie nN / odpływy',
 
   // Kontrola.
@@ -121,4 +145,16 @@ export const STACJA_STRINGS = {
     'Sn z zapasem nad mocą szczytową; napięcia i grupa połączeń zgodne z układem sieci (praca równoległa '
     + 'transformatorów wymaga tej samej grupy i zbliżonego uk).',
   teoriaTrafoPodstawa: 'Podstawa: PN-EN 60076, IEC 60909 (udział transformatora w zwarciu).',
+  teoriaRozdzielnicaTytul: 'Teoria: pola rozdzielnicy SN i ich role',
+  teoriaRozdzielnicaOpis:
+    'Rozdzielnica SN grupuje pola przyłączone do wspólnej szyny. Pole liniowe wejściowe (WE) doprowadza '
+    + 'zasilanie z magistrali, pole liniowe wyjściowe (WY) prowadzi je dalej wzdłuż ciągu, pole odgałęźne '
+    + '(ODG) zasila odgałęzienie, a pole transformatorowe (TR) łączy szynę SN z transformatorem stacji. '
+    + 'W stacji sekcyjnej pole sprzęgłowe (sprzęgło) łączy sekcje szyny, umożliwiając rezerwowanie i '
+    + 'sekcjonowanie. Zestaw pól wynika z rodzaju stacji, a każde pole nosi kompletny szablon katalogowy '
+    + '(rozłącznik/wyłącznik, przekładniki, zabezpieczenia) — parametry pochodzą z katalogu producenta.',
+  teoriaRozdzielnicaWymog:
+    'Każde pole musi mieć kompletny szablon katalogowy (pakiet producenta). Pola liniowe konfiguruj wg '
+    + 'kierunku zasilania, pole TR wg mocy transformatora, sprzęgło wg schematu sekcjonowania.',
+  teoriaRozdzielnicaPodstawa: 'Podstawa: PN-EN 62271-200 (rozdzielnice SN), N SEP-E-001, IRiESD.',
 } as const;

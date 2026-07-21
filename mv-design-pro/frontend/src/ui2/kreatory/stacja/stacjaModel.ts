@@ -13,8 +13,30 @@
  */
 
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
-import { voltageMatches } from '../../../ui/network-build/forms/InsertStationFormHelpers';
+import {
+  SN_FIELD_ROLE_TO_BAY_KIND,
+  buildDefaultSnFields,
+  buildStationSnFields as buildStationSnFieldsHelper,
+  findTemplateForRole,
+  isCompleteSourceStatus,
+  isUsableManufacturer,
+  isUsableSwitchgearFamily,
+  orderManufacturers,
+  templateOptionsForRole,
+  voltageMatches,
+} from '../../../ui/network-build/forms/InsertStationFormHelpers';
+import type {
+  SnFieldRole,
+  StationSnFieldTemplate,
+  StationSwitchgearChoice,
+  TopologicalStationKind,
+} from '../../../ui/network-build/forms/InsertStationFormHelpers';
+import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
+import type { Manufacturer } from '../../../ui/catalog/manufacturer';
+import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { TransformerType } from '../../../ui/catalog/types';
+
+export type { SnFieldRole, StationSnFieldTemplate } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 
 /** Typ stacji SN/nN (semantyczny — backend akceptuje 1:1). */
 export type TypStacji = 'branch' | 'inline' | 'sectional';
@@ -39,6 +61,12 @@ export interface StacjaFormData {
   catalog_ref: string | null;
   /** Liczba odpływów nN (minimalny blok nN). */
   outgoing_feeders_nn_count: number;
+  /** Producent rozdzielnicy SN (referencja katalogowa). */
+  manufacturer_ref: string;
+  /** Rodzina rozdzielnicy SN wybranego producenta (opcjonalna). */
+  switchgear_family_ref: string | null;
+  /** Ręczny wybór szablonu pola per rola (nadpisuje dobór automatyczny). */
+  bay_template_refs: Partial<Record<SnFieldRole, string>>;
 }
 
 export interface BladPola {
@@ -52,6 +80,9 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   nn_voltage_kv: DOMYSLNE_NAPIECIE_NN_KV,
   catalog_ref: null,
   outgoing_feeders_nn_count: DOMYSLNA_LICZBA_ODPLYWOW_NN,
+  manufacturer_ref: '',
+  switchgear_family_ref: null,
+  bay_template_refs: {},
 };
 
 /**
@@ -124,7 +155,10 @@ export function ogranicznikOdplywow(value: number): number {
   return Math.max(1, Math.min(8, Math.trunc(value)));
 }
 
-export function walidujFormularz(data: StacjaFormData): BladPola[] {
+export function walidujFormularz(
+  data: StacjaFormData,
+  snFields?: readonly StationSnFieldTemplate[],
+): BladPola[] {
   const errors: BladPola[] = [];
   if (!data.catalog_ref?.trim()) {
     errors.push({ field: 'catalog_ref', message: 'Wybierz typ transformatora z katalogu.' });
@@ -136,6 +170,15 @@ export function walidujFormularz(data: StacjaFormData): BladPola[] {
     errors.push({
       field: 'outgoing_feeders_nn_count',
       message: 'Stacja wymaga co najmniej jednego odpływu nN.',
+    });
+  }
+  if (!data.manufacturer_ref?.trim()) {
+    errors.push({ field: 'manufacturer_ref', message: 'Wybierz producenta rozdzielnicy SN.' });
+  }
+  if (snFields !== undefined && !czyRozdzielnicaKompletna(snFields)) {
+    errors.push({
+      field: 'sn_fields',
+      message: 'Dobierz kompletny szablon rozdzielnicy SN dla każdego pola stacji.',
     });
   }
   return errors;
@@ -183,6 +226,116 @@ export function parametryZKatalogu(
   };
 }
 
+// ------------------------------------------------------ Rozdzielnica SN
+
+/**
+ * Role pól rozdzielnicy SN dla danego typu stacji — reużycie definicji legacy
+ * (`buildDefaultSnFields`), bez duplikacji. Odbiorcza: WE + WY + ODG + TR;
+ * przelotowa: WE + WY + TR; sekcyjna: WE + WY + SPRZĘGŁO + TR.
+ */
+export function rolePolaStacji(stationType: TypStacji): SnFieldRole[] {
+  return buildDefaultSnFields(stationType as TopologicalStationKind).map((f) => f.field_role);
+}
+
+/** Kompletne szablony pól SN dla wybranego producenta/rodziny (filtr niekompletnych). */
+export function szablonyDlaWyboru(
+  templates: readonly CompleteMvBayTemplateSummary[],
+  manufacturerRef: string,
+  familyRef: string | null,
+): CompleteMvBayTemplateSummary[] {
+  return templates.filter((t) => {
+    const producentZgodny = t.manufacturer_ref == null || t.manufacturer_ref === manufacturerRef;
+    const rodzinaZgodna =
+      !familyRef || t.switchgear_family_ref == null || t.switchgear_family_ref === familyRef;
+    return producentZgodny && rodzinaZgodna && isCompleteSourceStatus(t.source_status);
+  });
+}
+
+/** Kompletne opcje szablonów pola dla roli (posortowane, tylko repo_verified/kompletne). */
+export function opcjeSzablonowRoli(
+  templates: readonly CompleteMvBayTemplateSummary[],
+  role: SnFieldRole,
+): CompleteMvBayTemplateSummary[] {
+  return templateOptionsForRole([...templates], role, SN_FIELD_ROLE_TO_BAY_KIND);
+}
+
+/**
+ * Dobiera szablon per rola: ręczny wybór (jeśli nadal dostępny) albo najlepszy
+ * kompletny szablon dla roli. Reużycie `templateOptionsForRole`/`findTemplateForRole`.
+ */
+export function szablonyPerRola(
+  templatesForSwitchgear: readonly CompleteMvBayTemplateSummary[],
+  stationType: TypStacji,
+  selectedRefs: Partial<Record<SnFieldRole, string>>,
+): Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>> {
+  const arr = [...templatesForSwitchgear];
+  const byRole: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>> = {};
+  for (const role of rolePolaStacji(stationType)) {
+    const opcje = templateOptionsForRole(arr, role, SN_FIELD_ROLE_TO_BAY_KIND);
+    const wybrany = opcje.find((t) => t.template_ref === selectedRefs[role]);
+    const chosen = wybrany ?? findTemplateForRole(arr, role, SN_FIELD_ROLE_TO_BAY_KIND) ?? undefined;
+    if (chosen) byRole[role] = chosen;
+  }
+  return byRole;
+}
+
+/** Buduje szablony pól SN stacji (reużycie helpera legacy, bez duplikacji logiki). */
+export function zbudujPolaSn(
+  stationType: TypStacji,
+  templatesByRole: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>>,
+  choice: StationSwitchgearChoice,
+): StationSnFieldTemplate[] {
+  return buildStationSnFieldsHelper(
+    stationType as TopologicalStationKind,
+    templatesByRole,
+    choice,
+    SN_FIELD_ROLE_TO_BAY_KIND,
+  );
+}
+
+/** Czy rozdzielnica kompletna: każde pole ma kompletny szablon katalogowy. */
+export function czyRozdzielnicaKompletna(snFields: readonly StationSnFieldTemplate[]): boolean {
+  return (
+    snFields.length > 0
+    && snFields.every((f) => Boolean(f.bay_template_ref) && isCompleteSourceStatus(f.source_status))
+  );
+}
+
+/** Producenci używalni w konfiguratorze (kolejność katalogowa, tylko kompletni). */
+export function producenciUzywalni(manufacturers: readonly Manufacturer[]): Manufacturer[] {
+  return orderManufacturers([...manufacturers]).filter(isUsableManufacturer);
+}
+
+/** Rodziny rozdzielnicy zgodne z producentem i napięciem SN szyny (parytet legacy). */
+export function rodzinyDlaProducenta(
+  families: readonly SwitchgearFamily[],
+  manufacturerRef: string,
+  snVoltageKv: number,
+): SwitchgearFamily[] {
+  return families
+    .filter((f) => f.manufacturer_ref === manufacturerRef)
+    .filter(isUsableSwitchgearFamily)
+    .filter(
+      (f) =>
+        f.voltage_levels.length === 0
+        || f.voltage_levels.some((v) => voltageMatches(v, snVoltageKv, 0.5)),
+    )
+    .sort(
+      (a, b) =>
+        a.family_name.localeCompare(b.family_name, 'pl-PL')
+        || a.switchgear_family_ref.localeCompare(b.switchgear_family_ref),
+    );
+}
+
+/** Wybór rozdzielnicy przekazywany do payloadu (referencje + nazwy + pola). */
+export interface WyborRozdzielnicy {
+  manufacturerRef: string;
+  manufacturerName: string | null;
+  familyRef: string | null;
+  familyName: string | null;
+  snFields: readonly StationSnFieldTemplate[];
+}
+
 /**
  * Buduje payload realnej operacji domenowej. Wspólny blok (stacja/transformator/
  * blok nN/opcje) + warianty umiejscowienia. Mapuje wyłącznie pola realnie
@@ -192,6 +345,7 @@ export function parametryZKatalogu(
 export function zbudujPayload(
   data: StacjaFormData,
   kontekst: KontekstStacji,
+  rozdzielnica: WyborRozdzielnicy,
 ): Record<string, unknown> {
   const nazwa = data.station_name.trim() || kontekst.stationName.trim();
   const transformerBinding = normalizeCatalogBinding(data.catalog_ref, 'TRAFO_SN_NN');
@@ -207,7 +361,14 @@ export function zbudujPayload(
       ...(nazwa ? { station_name: nazwa } : {}),
       sn_voltage_kv: kontekst.snVoltageKv,
       nn_voltage_kv: data.nn_voltage_kv,
+      switchgear: {
+        manufacturer_ref: rozdzielnica.manufacturerRef,
+        manufacturer_name: rozdzielnica.manufacturerName,
+        switchgear_family_ref: rozdzielnica.familyRef,
+        switchgear_family_name: rozdzielnica.familyName,
+      },
     },
+    sn_fields: rozdzielnica.snFields,
     transformer: {
       create: true,
       transformer_catalog_ref: catalogItemId,

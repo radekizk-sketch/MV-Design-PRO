@@ -12,12 +12,23 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
-import { fetchTransformerTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
+import {
+  fetchCompleteBayTemplates,
+  fetchManufacturers,
+  fetchSwitchgearFamilies,
+  fetchTransformerTypes,
+  getCatalogErrorMessage,
+} from '../../../ui/catalog/api';
+import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
+import type { Manufacturer } from '../../../ui/catalog/manufacturer';
+import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { TransformerType } from '../../../ui/catalog/types';
 import {
+  FIELD_ROLE_LABELS,
   contextString,
   deriveSnVoltageKv,
   resolveSegmentIdFromContext,
+  templateOptionLabel,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import {
   useActiveOperationContext,
@@ -44,6 +55,7 @@ import {
 import {
   DANE_DOMYSLNE,
   czyKoniecOdcinka,
+  czyRozdzielnicaKompletna,
   doborTransformatorow,
   fmtKv,
   fmtMva,
@@ -53,20 +65,31 @@ import {
   nazwaOperacji,
   normalizujTypStacji,
   ogranicznikOdplywow,
+  opcjeSzablonowRoli,
   parametryZKatalogu,
+  producenciUzywalni,
+  rodzinyDlaProducenta,
+  rolePolaStacji,
+  szablonyDlaWyboru,
+  szablonyPerRola,
   walidujFormularz,
   wyznaczTryb,
   zbudujPayload,
+  zbudujPolaSn,
   type BladPola,
   type KontekstStacji,
+  type SnFieldRole,
   type StacjaFormData,
   type TypStacji,
+  type WyborRozdzielnicy,
 } from './stacjaModel';
+import { PodgladRozdzielnicySn } from './PodgladRozdzielnicySn';
 import { STACJA_STRINGS as T } from './strings';
 
 const KROKI: readonly KrokKreatora[] = [
   { id: 'rodzaj', tytul: T.krokRodzaj },
   { id: 'transformator', tytul: T.krokTransformator },
+  { id: 'rozdzielnica', tytul: T.krokRozdzielnica },
   { id: 'zapis', tytul: T.krokZapis },
 ];
 
@@ -120,6 +143,11 @@ export function KreatorStacjiSnNn() {
   const [typy, setTypy] = useState<TransformerType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
 
+  const [producenci, setProducenci] = useState<Manufacturer[]>([]);
+  const [rodziny, setRodziny] = useState<SwitchgearFamily[]>([]);
+  const [szablony, setSzablony] = useState<CompleteMvBayTemplateSummary[]>([]);
+  const [bladRozdzielnicy, setBladRozdzielnicy] = useState<string | null>(null);
+
   // Typ stacji podpowiedziany z kontekstu operacji.
   useEffect(() => {
     setDane((p) => ({ ...p, station_type: kontekst.stationKind }));
@@ -159,6 +187,95 @@ export function KreatorStacjiSnNn() {
     [dane.catalog_ref, typy],
   );
 
+  // Katalog rozdzielnic SN: producenci + rodziny (raz).
+  useEffect(() => {
+    let cancelled = false;
+    setBladRozdzielnicy(null);
+    Promise.all([fetchManufacturers(), fetchSwitchgearFamilies()])
+      .then(([m, f]) => {
+        if (cancelled) return;
+        setProducenci(Array.isArray(m) ? m : []);
+        setRodziny(Array.isArray(f) ? f : []);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setProducenci([]);
+        setRodziny([]);
+        setBladRozdzielnicy(getCatalogErrorMessage(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const producenciDobrani = useMemo(() => producenciUzywalni(producenci), [producenci]);
+  const rodzinyDobrane = useMemo(
+    () => rodzinyDlaProducenta(rodziny, dane.manufacturer_ref, kontekst.snVoltageKv),
+    [dane.manufacturer_ref, kontekst.snVoltageKv, rodziny],
+  );
+
+  // Kompletne szablony pól per producent (filtr niekompletnych przez API + model).
+  useEffect(() => {
+    if (!dane.manufacturer_ref) {
+      setSzablony([]);
+      return;
+    }
+    let cancelled = false;
+    fetchCompleteBayTemplates(dane.manufacturer_ref)
+      .then((t) => {
+        if (!cancelled) setSzablony(Array.isArray(t) ? t : []);
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        setSzablony([]);
+        setBladRozdzielnicy(getCatalogErrorMessage(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [dane.manufacturer_ref]);
+
+  // Domyślny producent = pierwszy używalny (parytet legacy), gdy brak wyboru.
+  useEffect(() => {
+    if (producenciDobrani.length === 0) return;
+    if (producenciDobrani.some((m) => m.manufacturer_ref === dane.manufacturer_ref)) return;
+    setDane((p) => ({ ...p, manufacturer_ref: producenciDobrani[0].manufacturer_ref }));
+  }, [dane.manufacturer_ref, producenciDobrani]);
+
+  // Rodzina spoza zawężonej listy → reset do standardowej (pierwszej dostępnej).
+  useEffect(() => {
+    if (!dane.switchgear_family_ref) return;
+    if (rodzinyDobrane.some((f) => f.switchgear_family_ref === dane.switchgear_family_ref)) return;
+    setDane((p) => ({ ...p, switchgear_family_ref: null }));
+  }, [dane.switchgear_family_ref, rodzinyDobrane]);
+
+  const szablonyWyboru = useMemo(
+    () => szablonyDlaWyboru(szablony, dane.manufacturer_ref, dane.switchgear_family_ref),
+    [dane.manufacturer_ref, dane.switchgear_family_ref, szablony],
+  );
+  const rolePol = useMemo(() => rolePolaStacji(dane.station_type), [dane.station_type]);
+  const szablonyRola = useMemo(
+    () => szablonyPerRola(szablonyWyboru, dane.station_type, dane.bay_template_refs),
+    [dane.bay_template_refs, dane.station_type, szablonyWyboru],
+  );
+  const selectedManufacturer = useMemo(
+    () => producenciDobrani.find((m) => m.manufacturer_ref === dane.manufacturer_ref) ?? null,
+    [dane.manufacturer_ref, producenciDobrani],
+  );
+  const selectedFamily = useMemo(
+    () => rodzinyDobrane.find((f) => f.switchgear_family_ref === dane.switchgear_family_ref) ?? null,
+    [dane.switchgear_family_ref, rodzinyDobrane],
+  );
+  const snFields = useMemo(
+    () =>
+      zbudujPolaSn(dane.station_type, szablonyRola, {
+        manufacturerRef: dane.manufacturer_ref,
+        switchgearFamilyRef: dane.switchgear_family_ref,
+      }),
+    [dane.manufacturer_ref, dane.station_type, dane.switchgear_family_ref, szablonyRola],
+  );
+  const rozdzielnicaKompletna = czyRozdzielnicaKompletna(snFields);
+
   const opcjeTypow = useMemo(
     () =>
       dobrane.map((t) => ({
@@ -182,8 +299,19 @@ export function KreatorStacjiSnNn() {
   const brakDoboruKomunikat =
     !bladKatalogu && typy.length > 0 && dobrane.length === 0 ? T.brakDoboru : null;
 
+  const rozdzielnica = useMemo<WyborRozdzielnicy>(
+    () => ({
+      manufacturerRef: dane.manufacturer_ref,
+      manufacturerName: selectedManufacturer?.name ?? null,
+      familyRef: dane.switchgear_family_ref,
+      familyName: selectedFamily?.family_name ?? null,
+      snFields,
+    }),
+    [dane.manufacturer_ref, dane.switchgear_family_ref, selectedFamily, selectedManufacturer, snFields],
+  );
+
   const onZapisz = useCallback(async () => {
-    const walid = walidujFormularz(dane);
+    const walid = walidujFormularz(dane, snFields);
     setBledy(walid);
     if (walid.length > 0) return;
     if (!kontekstOk) {
@@ -199,7 +327,7 @@ export function KreatorStacjiSnNn() {
       const response = await executeDomainOperation(
         activeCaseId,
         nazwaOperacji(kontekst),
-        zbudujPayload(dane, kontekst),
+        zbudujPayload(dane, kontekst, rozdzielnica),
       );
       if (!response) {
         setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
@@ -217,7 +345,7 @@ export function KreatorStacjiSnNn() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, kontekst, kontekstOk, selekcjaPoOperacji]);
+  }, [activeCaseId, closeForm, dane, executeDomainOperation, kontekst, kontekstOk, rozdzielnica, selekcjaPoOperacji, snFields]);
 
   const koniec = czyKoniecOdcinka(kontekst);
   const typLabel =
@@ -237,6 +365,13 @@ export function KreatorStacjiSnNn() {
       wartosc: dane.catalog_ref ? fmtMva(params?.rated_power_mva) : 'Do doboru',
     },
     {
+      etykieta: T.wierszRozdzielnica,
+      stan: rozdzielnicaKompletna ? 'kompletne' : 'brak',
+      wartosc: rozdzielnicaKompletna
+        ? `${snFields.length} pól · ${selectedManufacturer?.name ?? dane.manufacturer_ref}`
+        : 'Do doboru',
+    },
+    {
       etykieta: T.wierszNn,
       stan: 'kompletne',
       wartosc: `${fmtKv(dane.nn_voltage_kv)} · ${ogranicznikOdplywow(dane.outgoing_feeders_nn_count)} odpł.`,
@@ -251,7 +386,16 @@ export function KreatorStacjiSnNn() {
   );
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
-  const zapisZablokowany = !kontekstOk || !activeCaseId;
+  const zapisZablokowany = !kontekstOk || !activeCaseId || !rozdzielnicaKompletna;
+  const brakSzablonowKomunikat =
+    !bladRozdzielnicy && Boolean(dane.manufacturer_ref) && szablonyWyboru.length === 0
+      ? T.brakSzablonow
+      : null;
+  const rozdzielnicaBladStopka = rozdzielnicaKompletna
+    ? null
+    : bladRozdzielnicy ?? (dane.manufacturer_ref ? T.brakSzablonow : T.brakProducenta);
+  const walidacjaStopka =
+    bledy.length > 0 ? T.walidacjaStopka : brakDoboruKomunikat ?? rozdzielnicaBladStopka;
 
   return (
     <KreatorRama
@@ -265,7 +409,7 @@ export function KreatorStacjiSnNn() {
       pelny
       aside={aside}
       bladGlobalny={bladGlobalny}
-      walidacja={bledy.length > 0 ? T.walidacjaStopka : brakDoboruKomunikat}
+      walidacja={walidacjaStopka}
       akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: zapisZablokowany, testid: 'mvd-kreator-stacja-zapisz' }}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-stacja-anuluj' }}
       krokWstecz={
@@ -392,6 +536,84 @@ export function KreatorStacjiSnNn() {
         </KreatorSekcja>
       ) : null}
 
+      {krok === 'rozdzielnica' ? (
+        <KreatorSekcja tytul={T.krokRozdzielnica} testid="mvd-kreator-stacja-rozdzielnica">
+          <KreatorSiatka kolumny={2}>
+            <PoleKatalogu
+              etykieta={T.producent}
+              wartosc={dane.manufacturer_ref || null}
+              onZmiana={(v) => zmien('manufacturer_ref', v ?? '')}
+              opcje={producenciDobrani.map((m) => ({ id: m.manufacturer_ref, etykieta: m.name }))}
+              status={bladRozdzielnicy ? 'error' : 'ready'}
+              placeholder={T.producentPlaceholder}
+              pomoc={T.producentPomoc}
+              komunikatBledu={bladRozdzielnicy ?? T.rozdzielnicaBlad}
+              blad={bladDlaPola('manufacturer_ref')}
+              wymagane
+              testid="mvd-kreator-stacja-producent"
+            />
+            <PoleWyboru
+              etykieta={T.rodzina}
+              wartosc={dane.switchgear_family_ref ?? ''}
+              onZmiana={(v) => zmien('switchgear_family_ref', v || null)}
+              opcje={[
+                { id: '', etykieta: T.rodzinaPlaceholder },
+                ...rodzinyDobrane.map((f) => ({ id: f.switchgear_family_ref, etykieta: f.family_name })),
+              ]}
+              pomoc={T.rodzinaPomoc}
+              wylaczone={!dane.manufacturer_ref}
+              testid="mvd-kreator-stacja-rodzina"
+            />
+          </KreatorSiatka>
+
+          {dane.manufacturer_ref && rodzinyDobrane.length === 0 ? (
+            <KreatorInfo testid="mvd-kreator-stacja-brak-rodzin">{T.brakRodzin}</KreatorInfo>
+          ) : null}
+
+          {brakSzablonowKomunikat ? (
+            <KreatorInfo testid="mvd-kreator-stacja-brak-szablonow">{brakSzablonowKomunikat}</KreatorInfo>
+          ) : (
+            <>
+              {rolePol.map((role: SnFieldRole) => {
+                const opcje = opcjeSzablonowRoli(szablonyWyboru, role);
+                const wartosc = dane.bay_template_refs[role] ?? szablonyRola[role]?.template_ref ?? null;
+                return (
+                  <PoleKatalogu
+                    key={role}
+                    etykieta={FIELD_ROLE_LABELS[role] ?? role}
+                    wartosc={wartosc}
+                    onZmiana={(v) =>
+                      setDane((p) => ({
+                        ...p,
+                        bay_template_refs: { ...p.bay_template_refs, [role]: v ?? undefined },
+                      }))
+                    }
+                    opcje={opcje.map((t) => ({ id: t.template_ref, etykieta: templateOptionLabel(t, role) }))}
+                    status={bladRozdzielnicy ? 'error' : 'ready'}
+                    placeholder={T.polePlaceholder}
+                    pomoc={T.poleRoliPomoc}
+                    komunikatBledu={bladRozdzielnicy ?? T.rozdzielnicaBlad}
+                    testid={`mvd-kreator-stacja-pole-${role}`}
+                  />
+                );
+              })}
+              <div>
+                <div className="mvd-pole-etykieta">{T.podgladTytul}</div>
+                <PodgladRozdzielnicySn snFields={snFields} testid="mvd-kreator-stacja-podglad" />
+              </div>
+            </>
+          )}
+
+          <PanelTeorii
+            tytul={T.teoriaRozdzielnicaTytul}
+            opis={T.teoriaRozdzielnicaOpis}
+            wymog={T.teoriaRozdzielnicaWymog}
+            podstawa={T.teoriaRozdzielnicaPodstawa}
+            testid="mvd-kreator-stacja-teoria-rozdzielnica"
+          />
+        </KreatorSekcja>
+      ) : null}
+
       {krok === 'zapis' ? (
         <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-stacja-zapis">
           <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
@@ -399,6 +621,14 @@ export function KreatorStacjiSnNn() {
             <RzadWartosci etykieta={T.podsumTyp} wartosc={typLabel} />
             <RzadWartosci etykieta={T.podsumUmiejscowienie} wartosc={kontekstOk ? umiejscowienieLabel : 'Do wskazania'} />
             <RzadWartosci etykieta={T.podsumTransformator} wartosc={fmtMva(params?.rated_power_mva)} />
+            <RzadWartosci
+              etykieta={T.podsumRozdzielnica}
+              wartosc={
+                rozdzielnicaKompletna
+                  ? `${selectedManufacturer?.name ?? dane.manufacturer_ref} · ${snFields.length} pól`
+                  : 'Do doboru'
+              }
+            />
             <RzadWartosci
               etykieta={T.podsumNn}
               wartosc={`${fmtKv(dane.nn_voltage_kv)} · ${ogranicznikOdplywow(dane.outgoing_feeders_nn_count)} odpł.`}
