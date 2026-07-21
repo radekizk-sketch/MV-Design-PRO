@@ -536,6 +536,44 @@ class TestInsertStationCreatesStructure:
         )
         assert inserted_station["name"] == "Stacja S17 K PV+cos phi reg"
 
+    def test_insert_station_nn_earthing_feeds_grounding_consumer(self):
+        """G-STK-1: nn_earthing → GroundingConfig na transformatorze → konsument has_grounding.
+
+        Dowód „do ostatniego klika": uziemienie punktu neutralnego skonfigurowane w
+        operacji spływa do transformatora, waliduje się przez `EnergyNetworkModel`
+        (Pydantic `GroundingConfig`) i jest widoczne dla bramki eligibility
+        (`any(trafo.lv_neutral is not None ...)`) — zero wyspy.
+        """
+        _, snapshot = _build_gpz_plus_segments(1)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        result = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "nn_earthing": {"lv_system": "TN-C-S", "neutral_point": "directly_grounded"},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        # Waliduje się przez model (GroundingConfig) i konsument widzi uziemienie.
+        enm = EnergyNetworkModel.model_validate(result["snapshot"])
+        has_grounding = any(
+            trafo.lv_neutral is not None or trafo.hv_neutral is not None
+            for trafo in enm.transformers
+        )
+        assert has_grounding, "Uziemienie neutralne niewidoczne dla konsumenta (wyspa)"
+        grounded = next(t for t in enm.transformers if t.lv_neutral is not None)
+        assert grounded.lv_neutral.type == "directly_grounded"
+
 
 class TestNnFieldAdapters:
     def test_add_sn_bay_uses_station_meta_instead_of_legacy_bays(self):

@@ -3798,6 +3798,75 @@ def _unique_default_station_name(enm: dict[str, Any], station_type_label: str) -
     return f"Stacja S{highest + 1:02d} (typ {station_type_label})"
 
 
+# Dozwolone typy pracy punktu neutralnego (kontrakt `enm.models.GroundingConfig`).
+_NEUTRAL_POINT_TYPES = frozenset(
+    {"isolated", "petersen_coil", "directly_grounded", "resistor_grounded"}
+)
+# Dozwolone układy sieci nN (etykieta interpretacyjna dla pętli zwarcia / raportu).
+_NN_EARTHING_SYSTEMS = frozenset({"TN-S", "TN-C-S", "TN-C", "TT", "IT"})
+
+
+def _build_neutral_grounding(earthing_block: dict[str, Any], *, side: str) -> dict[str, Any] | None:
+    """Zbuduj `GroundingConfig` punktu neutralnego z bloku uziemienia (G-STK-1).
+
+    ``side`` = "lv" (nN) lub "hv" (SN). Odczytuje typ pracy punktu neutralnego
+    (`neutral_point` / `{side}_neutral_point`) oraz impedancję uziemienia (R/X)
+    i zwraca słownik zgodny 1:1 z `enm.models.GroundingConfig` (typ + r_ohm/x_ohm)
+    albo ``None`` gdy strona nie ma skonfigurowanego uziemienia. Funkcja czysta,
+    ZERO fabrykacji: gdy typ nieprawidłowy/pusty → ``None`` (backend/model waliduje).
+    """
+    key = f"{side}_neutral_point"
+    raw_type = earthing_block.get(key) or (
+        earthing_block.get("neutral_point") if side == "lv" else None
+    )
+    grounding_type = str(raw_type or "").strip()
+    if grounding_type not in _NEUTRAL_POINT_TYPES:
+        return None
+    config: dict[str, Any] = {"type": grounding_type}
+    # R/X istotne tylko dla uziemienia przez rezystor/cewkę (impedancyjne).
+    r_ohm = _as_positive_float(earthing_block.get(f"{side}_r_ohm"))
+    x_ohm = _as_positive_float(earthing_block.get(f"{side}_x_ohm"))
+    if r_ohm is not None:
+        config["r_ohm"] = r_ohm
+    if x_ohm is not None:
+        config["x_ohm"] = x_ohm
+    return config
+
+
+def _apply_station_neutral_grounding(
+    tr_data: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    station: str,
+    new_enm: dict[str, Any],
+) -> None:
+    """Materializuj uziemienie punktu neutralnego transformatora stacji (G-STK-1).
+
+    Odczytuje blok ``nn_earthing`` (z ``payload`` lub ``payload["station"]``) i
+    ustawia ``GroundingConfig`` na ``lv_neutral`` (nN) oraz opcjonalnie
+    ``hv_neutral`` (SN). Układ sieci nN (TN-S/TT/IT…) zapisuje na
+    ``substation.meta.nn_earthing_system`` jako etykietę interpretacyjną dla
+    pętli zwarcia / raportu (G-STK-4). Addytywne: brak bloku → transformator bez
+    zmian. ZERO fizyki — konfiguracja spływa do istniejących konsumentów
+    (eligibility ``has_grounding``, pakiet dowodowy earthing, field read model).
+    """
+    earthing = payload.get("nn_earthing") or payload.get("station", {}).get("nn_earthing")
+    if not isinstance(earthing, dict) or not earthing:
+        return
+    lv_grounding = _build_neutral_grounding(earthing, side="lv")
+    hv_grounding = _build_neutral_grounding(earthing, side="hv")
+    if lv_grounding is not None:
+        tr_data["lv_neutral"] = lv_grounding
+    if hv_grounding is not None:
+        tr_data["hv_neutral"] = hv_grounding
+    system = str(earthing.get("lv_system") or "").strip()
+    if system in _NN_EARTHING_SYSTEMS:
+        for sub in new_enm.get("substations", []):
+            if sub.get("ref_id") == station:
+                sub.setdefault("meta", {})["nn_earthing_system"] = system
+                break
+
+
 def _build_nn_field_specs(
     *,
     nn_block: dict[str, Any],
@@ -4466,6 +4535,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             "uk_percent": 0.01,  # Wartosc inicjalna — materializacja z katalogu
             "pk_kw": 0.0,
         }
+        _apply_station_neutral_grounding(tr_data, payload, station=stn_id, new_enm=new_enm)
         materialization = _materialize_catalog_payload(
             catalog_ref=tr_catalog,
             catalog_binding=transformer_catalog_binding,
@@ -7130,6 +7200,10 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             binding_payload, materialized_params = materialization
             _apply_catalog_metadata(transformer, binding_payload, default_namespace="TRAFO_SN_NN")
             _apply_materialized_transformer_fields(transformer, materialized_params)
+        # Uziemienie punktu neutralnego — PARYTET z insert (G-STK-1).
+        _apply_station_neutral_grounding(
+            transformer, payload, station=substation_ref, new_enm=new_enm
+        )
         new_enm.setdefault("transformers", []).append(transformer)
         new_substation["transformer_refs"].append(transformer_ref)
         created.append(transformer_ref)

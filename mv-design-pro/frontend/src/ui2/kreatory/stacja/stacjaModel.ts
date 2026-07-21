@@ -80,11 +80,26 @@ export const NAPIECIA_NN_CUSTOM_KV = [0.4, 0.5, 0.69, 0.8, 1, 3.15, 6, 6.3] as c
 export const DOMYSLNE_NAPIECIE_NN_KV = 0.4;
 export const DOMYSLNA_LICZBA_ODPLYWOW_NN = 2;
 
+/** Układ sieci nN (uziemienie) — kontrakt operacji `nn_earthing.lv_system`. */
+export type UkladSieciNn = 'TN-S' | 'TN-C-S' | 'TN-C' | 'TT' | 'IT';
+/** Typ pracy punktu neutralnego — kontrakt `enm.models.GroundingConfig.type`. */
+export type PunktNeutralny =
+  | 'directly_grounded'
+  | 'resistor_grounded'
+  | 'petersen_coil'
+  | 'isolated';
+
 export interface StacjaFormData {
   station_type: TypStacji;
   station_name: string;
   /** Konfiguracja strony nN (odbiorcza vs źródło PV za transformatorem). */
   nn_configuration: NnConfiguration;
+  /** Układ sieci nN (uziemienie) — G-STK-1. */
+  nn_earthing_system: UkladSieciNn;
+  /** Typ pracy punktu neutralnego transformatora (strona nN) — G-STK-1. */
+  neutral_point: PunktNeutralny;
+  /** Rezystancja uziemienia punktu neutralnego [Ω] — tekst PL (przecinek). */
+  neutral_r_ohm: string;
   /** Napięcie nN odbioru [kV] — steruje doborem transformatora (LOAD_NN). */
   nn_voltage_kv: number;
   /** Referencja katalogowa falownika PV (tylko dla PV_INVERTER). */
@@ -109,6 +124,11 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   station_type: 'branch',
   station_name: '',
   nn_configuration: 'LOAD_NN',
+  // Domyślnie TN-C-S z bezpośrednio uziemionym punktem neutralnym — typowy układ
+  // dystrybucyjny nN (PN-HD 60364). Projektant zmienia świadomie.
+  nn_earthing_system: 'TN-C-S',
+  neutral_point: 'directly_grounded',
+  neutral_r_ohm: '',
   nn_voltage_kv: DOMYSLNE_NAPIECIE_NN_KV,
   source_converter_ref: null,
   catalog_ref: null,
@@ -481,6 +501,38 @@ export interface WyborRozdzielnicy {
   snFields: readonly StationSnFieldTemplate[];
 }
 
+/** Punkty neutralne impedancyjne — dla nich R jest istotne (rezystor/cewka). */
+const PUNKTY_IMPEDANCYJNE: ReadonlySet<PunktNeutralny> = new Set([
+  'resistor_grounded',
+  'petersen_coil',
+]);
+
+/** Parsuje dodatnią liczbę z przecinkiem PL; `null` gdy puste/nieliczbowe/≤0. */
+function liczbaDodatniaPL(surowy: string): number | null {
+  const tekst = surowy.trim();
+  if (tekst === '') return null;
+  const liczba = Number(tekst.replace(',', '.'));
+  return Number.isFinite(liczba) && liczba > 0 ? liczba : null;
+}
+
+/**
+ * Buduje blok `nn_earthing` (G-STK-1): układ sieci nN + typ pracy punktu
+ * neutralnego + opcjonalna rezystancja uziemienia (tylko dla wariantów
+ * impedancyjnych). Mapuje 1:1 na kontrakt operacji (`GroundingConfig.type` +
+ * `lv_system`); R spływa jako `lv_r_ohm`. ZERO fabrykacji: R tylko gdy podane.
+ */
+function blokUziemienia(data: StacjaFormData): Record<string, unknown> | null {
+  const blok: Record<string, unknown> = {
+    lv_system: data.nn_earthing_system,
+    neutral_point: data.neutral_point,
+  };
+  if (PUNKTY_IMPEDANCYJNE.has(data.neutral_point)) {
+    const r = liczbaDodatniaPL(data.neutral_r_ohm);
+    if (r !== null) blok.lv_r_ohm = r;
+  }
+  return blok;
+}
+
 /**
  * Buduje payload realnej operacji domenowej. Wspólny blok (stacja/transformator/
  * blok nN/opcje) + warianty umiejscowienia. Mapuje wyłącznie pola realnie
@@ -537,9 +589,12 @@ export function zbudujPayload(
     if (protection) nnBlock.source_protection = protection;
   }
 
+  const nnEarthing = blokUziemienia(data);
+
   const commonPayload: Record<string, unknown> = {
     ...(nazwa ? { name: nazwa } : {}),
     station_type: data.station_type,
+    ...(nnEarthing ? { nn_earthing: nnEarthing } : {}),
     station: {
       station_type: data.station_type,
       station_role: 'STACJA_SN_NN',

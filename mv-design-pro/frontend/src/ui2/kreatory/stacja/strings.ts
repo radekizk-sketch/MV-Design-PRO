@@ -12,6 +12,7 @@ export const STACJA_STRINGS = {
   krokTransformator: 'Transformator i strona nN',
   krokRozdzielnica: 'Rozdzielnica SN',
   krokNn: 'Blok nN',
+  krokUziemienie: 'Uziemienie i punkt neutralny',
   krokZapis: 'Podsumowanie i zapis',
 
   // Krok 1 — rodzaj.
@@ -280,4 +281,51 @@ export const STACJA_STRINGS = {
     + 'mieszaj go z odpływami odbiorczymi.',
   teoriaNnPodstawa:
     'Podstawa: N SEP-E-001, IRiESD, PN-EN 62271 (aparatura nN/SN), wymagania przyłączeniowe OZE (NC RfG/PTPiREE).',
+
+  // Krok — uziemienie i punkt neutralny (G-STK-1).
+  uziemienieOpis:
+    'Układ uziemienia sieci nN i sposób pracy punktu neutralnego transformatora decydują '
+    + 'o prądzie zwarcia doziemnego, napięciach dotyku i doborze zabezpieczeń ziemnozwarciowych. '
+    + 'Konfiguracja spływa do analiz (kwalifikacja do oceny uziemienia, pakiet dowodowy zwarcia doziemnego).',
+  uziemienieUklad: 'Układ sieci nN',
+  uziemienieUkladOpcje: [
+    { id: 'TN-S', etykieta: 'TN-S (oddzielny PE i N)' },
+    { id: 'TN-C-S', etykieta: 'TN-C-S (PEN + rozdział na PE/N)' },
+    { id: 'TN-C', etykieta: 'TN-C (wspólny PEN)' },
+    { id: 'TT', etykieta: 'TT (oddzielne uziemienia)' },
+    { id: 'IT', etykieta: 'IT (izolowany / uziemiony przez impedancję)' },
+  ],
+  uziemienieUkladPomoc:
+    'TN-C-S to typowy układ dystrybucyjny nN. IT stosuje się tam, gdzie wymagana jest ciągłość '
+    + 'zasilania przy pierwszym doziemieniu (z kontrolą stanu izolacji).',
+  uziemieniePunkt: 'Punkt neutralny transformatora (nN)',
+  uziemieniePunktOpcje: [
+    { id: 'directly_grounded', etykieta: 'Bezpośrednio uziemiony' },
+    { id: 'resistor_grounded', etykieta: 'Uziemiony przez rezystor' },
+    { id: 'petersen_coil', etykieta: 'Cewka Petersena (kompensacja)' },
+    { id: 'isolated', etykieta: 'Izolowany (bez uziemienia)' },
+  ],
+  uziemieniePunktPomoc:
+    'Bezpośrednio uziemiony ⇒ duży prąd zwarcia doziemnego (układy TN). Rezystor/cewka '
+    + 'ograniczają prąd doziemny. Izolowany ⇒ mały prąd pojemnościowy (układ IT).',
+  uziemienieRezystancja: 'Rezystancja uziemienia punktu neutralnego [Ω]',
+  uziemienieRezystancjaPlaceholder: 'np. 10',
+  uziemienieRezystancjaPomoc:
+    'Podaj tylko dla uziemienia impedancyjnego (rezystor / cewka). Puste — backend przyjmuje '
+    + 'model bez jawnej impedancji (nie zgadujemy wartości).',
+  teoriaUziemienieTytul: 'Teoria: uziemienie punktu neutralnego a zwarcie doziemne',
+  teoriaUziemienieOpis:
+    'Sposób pracy punktu neutralnego wyznacza charakter zwarcia doziemnego: sieć bezpośrednio '
+    + 'uziemiona daje duży prąd zwarcia doziemnego (szybkie wyłączenie, ochrona przeciwporażeniowa '
+    + 'przez samoczynne wyłączenie), sieć izolowana lub kompensowana (cewka Petersena) ogranicza prąd '
+    + 'do wartości pojemnościowych/resztkowych (ciągłość zasilania, kontrola stanu izolacji). Rezystor '
+    + 'uziemiający ustala prąd doziemny na projektowanym poziomie. Wybór wpływa na dobór zabezpieczeń '
+    + 'ziemnozwarciowych (51N/67N) i na napięcia dotyku.',
+  teoriaUziemienieWymog:
+    'Dobierz układ uziemienia i punkt neutralny do wymagań ochrony przeciwporażeniowej (czas wyłączenia '
+    + 'pętli zwarcia) oraz ciągłości zasilania. Wartość rezystancji podawaj tylko wtedy, gdy jest znana '
+    + 'z projektu — inaczej pozostaw pole puste.',
+  teoriaUziemieniePodstawa:
+    'Podstawa: PN-HD 60364-4-41 (ochrona przeciwporażeniowa), IEC 60364-4-41 (pętla zwarcia), '
+    + 'N SEP-E-001, IRiESD.',
 } as const;

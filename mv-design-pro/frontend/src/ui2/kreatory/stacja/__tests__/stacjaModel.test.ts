@@ -193,14 +193,14 @@ describe('stacjaModel — typ stacji', () => {
     expect(normalizujTypStacji(undefined)).toBe('branch');
   });
 
-  it('rozpoznaje typ końcowy (terminal) — semantyczny, legacy A i mv_lv (P1)', () => {
+  it('rozpoznaje typ końcowy (terminal) — semantyczny, legacy A i mv_lv', () => {
     expect(normalizujTypStacji('terminal')).toBe('terminal');
     expect(normalizujTypStacji('A')).toBe('terminal');
     expect(normalizujTypStacji('mv_lv')).toBe('terminal');
     expect(normalizujTypStacji('C')).toBe('branch');
   });
 
-  it('stacja końcowa ma pola WE + transformator (bez WY/ODG) — P1', () => {
+  it('stacja końcowa ma pola WE + transformator (bez WY/ODG)', () => {
     expect(rolePolaStacji('terminal')).toEqual(['LINIA_IN', 'TRANSFORMATOROWE']);
     // Odgałęźna nadal z pełnym zestawem (kontrast — dead-end nie dostaje nadmiaru).
     expect(rolePolaStacji('branch')).toContain('LINIA_OUT');
@@ -307,10 +307,41 @@ describe('stacjaModel — payload', () => {
     expect((payload.station as Record<string, unknown>).sn_voltage_kv).toBe(20);
   });
 
-  it('napięcie SN nieznane (0) → pominięte w payloadzie (backend ustala z szyny — P2/P3)', () => {
+  it('napięcie SN nieznane (0) → pominięte w payloadzie (backend ustala z szyny)', () => {
     const payload = zbudujPayload(dane(), kontekst({ snVoltageKv: 0 }), rozdzielnica('branch'));
     // Zero fabrykacji: brak sn_voltage_kv zamiast zgadywanej wartości.
     expect(payload.station as Record<string, unknown>).not.toHaveProperty('sn_voltage_kv');
+  });
+
+  it('blok nn_earthing niesie układ sieci nN + typ punktu neutralnego (G-STK-1)', () => {
+    const payload = zbudujPayload(
+      dane({ nn_earthing_system: 'IT', neutral_point: 'isolated' }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    const earthing = payload.nn_earthing as Record<string, unknown>;
+    expect(earthing.lv_system).toBe('IT');
+    expect(earthing.neutral_point).toBe('isolated');
+    // Izolowany → brak rezystancji (nie dotyczy).
+    expect(earthing).not.toHaveProperty('lv_r_ohm');
+  });
+
+  it('rezystancja uziemienia tylko dla wariantu impedancyjnego (rezystor/cewka)', () => {
+    // Rezystor + R podane → lv_r_ohm w payloadzie (przecinek PL → liczba).
+    const zRezystorem = zbudujPayload(
+      dane({ neutral_point: 'resistor_grounded', neutral_r_ohm: '12,5' }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    expect((zRezystorem.nn_earthing as Record<string, unknown>).lv_r_ohm).toBe(12.5);
+
+    // Bezpośrednio uziemiony + R w polu → R IGNOROWANE (nie dotyczy tego wariantu).
+    const bezposredni = zbudujPayload(
+      dane({ neutral_point: 'directly_grounded', neutral_r_ohm: '12,5' }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    expect(bezposredni.nn_earthing as Record<string, unknown>).not.toHaveProperty('lv_r_ohm');
   });
 
   it('payload niesie sn_fields i station.switchgear z wyboru rozdzielnicy', () => {

@@ -743,6 +743,58 @@ def test_endpoint_append_pv_nn_block_materializes_source_and_nn_fields() -> None
     assert len(feeders) == 2, "Zgubione odpływy nN"
 
 
+def test_endpoint_append_nn_earthing_materializes_neutral_grounding() -> None:
+    """nn_earthing → GroundingConfig na lv_neutral transformatora + układ nN w meta (G-STK-1).
+
+    Uziemienie punktu neutralnego spływa do istniejących konsumentów (eligibility
+    has_grounding, pakiet dowodowy earthing, field read model) — zero wyspy.
+    """
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "station": {"name": "Stacja uziem append", "station_type": "terminal"},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+            "nn_earthing": {
+                "lv_system": "TN-S",
+                "neutral_point": "resistor_grounded",
+                "lv_r_ohm": 10.0,
+            },
+        },
+    )
+    assert response.get("error") is None
+    new_snap = response["snapshot"]
+    sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja uziem append")
+    tr = next(t for t in new_snap["transformers"] if t["ref_id"] in sub["transformer_refs"])
+    # GroundingConfig zmaterializowany na neutralnym nN.
+    assert tr["lv_neutral"] == {"type": "resistor_grounded", "r_ohm": 10.0}
+    assert "hv_neutral" not in tr  # SN nie konfigurowany → brak
+    # Układ sieci nN zapisany jako etykieta interpretacyjna.
+    assert sub["meta"]["nn_earthing_system"] == "TN-S"
+
+
+def test_endpoint_append_without_nn_earthing_leaves_transformer_neutral_unset() -> None:
+    """Brak bloku nn_earthing → transformator bez neutralnych (addytywność G-STK-1)."""
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "station": {"name": "Stacja bez uziem", "station_type": "terminal"},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+        },
+    )
+    assert response.get("error") is None
+    new_snap = response["snapshot"]
+    sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja bez uziem")
+    tr = next(t for t in new_snap["transformers"] if t["ref_id"] in sub["transformer_refs"])
+    assert tr.get("lv_neutral") is None
+    assert tr.get("hv_neutral") is None
+
+
 def test_endpoint_append_load_nn_block_creates_fields_without_generator() -> None:
     """LOAD nN przez nn_block → wyłącznik główny + odpływy, BEZ generatora.
 

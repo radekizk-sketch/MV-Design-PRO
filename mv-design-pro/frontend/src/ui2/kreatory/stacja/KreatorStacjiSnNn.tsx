@@ -99,6 +99,7 @@ const KROKI: readonly KrokKreatora[] = [
   { id: 'transformator', tytul: T.krokTransformator },
   { id: 'rozdzielnica', tytul: T.krokRozdzielnica },
   { id: 'nn', tytul: T.krokNn },
+  { id: 'uziemienie', tytul: T.krokUziemienie },
   { id: 'zapis', tytul: T.krokZapis },
 ];
 
@@ -193,6 +194,9 @@ export function KreatorStacjiSnNn() {
   }, []);
 
   const isZrodlo = czyZrodloNn(dane.nn_configuration);
+  // Rezystancja uziemienia istotna tylko dla wariantów impedancyjnych (G-STK-1).
+  const punktImpedancyjny =
+    dane.neutral_point === 'resistor_grounded' || dane.neutral_point === 'petersen_coil';
   const isCustomNn = dane.nn_configuration === 'CUSTOM_NN';
   const zrodloTeksty =
     dane.nn_configuration === 'PV_INVERTER'
@@ -801,6 +805,45 @@ export function KreatorStacjiSnNn() {
             wymog={T.teoriaNnWymog}
             podstawa={T.teoriaNnPodstawa}
             testid="mvd-kreator-stacja-teoria-nn"
+          />
+        </KreatorSekcja>
+      ) : null}
+
+      {krok === 'uziemienie' ? (
+        <KreatorSekcja tytul={T.krokUziemienie} testid="mvd-kreator-stacja-uziemienie">
+          <KreatorInfo>{T.uziemienieOpis}</KreatorInfo>
+          <PoleWyboru
+            etykieta={T.uziemienieUklad}
+            wartosc={dane.nn_earthing_system}
+            opcje={T.uziemienieUkladOpcje}
+            onZmiana={(v) => zmien('nn_earthing_system', v as StacjaFormData['nn_earthing_system'])}
+            pomoc={T.uziemienieUkladPomoc}
+            testid="mvd-kreator-stacja-uklad-nn"
+          />
+          <PoleWyboru
+            etykieta={T.uziemieniePunkt}
+            wartosc={dane.neutral_point}
+            opcje={T.uziemieniePunktOpcje}
+            onZmiana={(v) => zmien('neutral_point', v as StacjaFormData['neutral_point'])}
+            pomoc={T.uziemieniePunktPomoc}
+            testid="mvd-kreator-stacja-punkt-neutralny"
+          />
+          {punktImpedancyjny ? (
+            <PoleTekstowe
+              etykieta={T.uziemienieRezystancja}
+              wartosc={dane.neutral_r_ohm}
+              onZmiana={(v) => zmien('neutral_r_ohm', v)}
+              placeholder={T.uziemienieRezystancjaPlaceholder}
+              pomoc={T.uziemienieRezystancjaPomoc}
+              testid="mvd-kreator-stacja-rezystancja-uziemienia"
+            />
+          ) : null}
+          <PanelTeorii
+            tytul={T.teoriaUziemienieTytul}
+            opis={T.teoriaUziemienieOpis}
+            wymog={T.teoriaUziemienieWymog}
+            podstawa={T.teoriaUziemieniePodstawa}
+            testid="mvd-kreator-stacja-teoria-uziemienie"
           />
         </KreatorSekcja>
       ) : null}

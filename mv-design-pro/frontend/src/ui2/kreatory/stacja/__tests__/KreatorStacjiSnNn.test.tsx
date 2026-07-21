@@ -287,6 +287,32 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     expect(snFields.map((f) => f.field_role)).toEqual(['LINIA_IN', 'TRANSFORMATOROWE']);
   });
 
+  it('krok uziemienia: natywny wybór układu IT + punktu izolowanego → nn_earthing w payloadzie (G-STK-1)', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+    // rozdzielnica → nn → uziemienie (natywne kliki „Dalej").
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-dalej'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-dalej'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-stacja-uklad-nn')).toBeInTheDocument();
+    });
+    // Natywny wybór układu sieci nN i typu punktu neutralnego.
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-uklad-nn'), 'IT');
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-punkt-neutralny'),
+      'isolated',
+    );
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    expect(payload.nn_earthing).toEqual({ lv_system: 'IT', neutral_point: 'isolated' });
+  });
+
   it('honoruje wybór typu stacji zmieniony natywnie w kroku 1', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorStacjiSnNn />);
