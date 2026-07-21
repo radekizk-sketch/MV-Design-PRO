@@ -24,6 +24,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaPorownanie: 'Porównanie A/B',
   zakladkaOdbior: 'Zgodność powykonawcza',
   zakladkaEstymacja: 'Estymacja stanu',
+  zakladkaSsci: 'Stabilność SSCI',
   porownanieBezProjektu: 'Otwórz projekt, aby porównywać przebiegi obliczeń.',
   zakladkaPozostale: 'Pozostałe analizy',
   dowodBezPrzebiegu: 'Analiza',

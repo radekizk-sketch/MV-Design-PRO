@@ -39,6 +39,7 @@ import {
 } from '../../oze';
 import { EkranJakosci } from '../../wyniki/jakosc';
 import { EkranEstymacji } from '../../wyniki/estymacja';
+import { EkranSsci } from '../../wyniki/ssci';
 import { EkranOdbioru } from '../../wyniki/odbior';
 import { EkranPorownania } from '../../wyniki/porownanie';
 import { DowodPrzebiegu } from './DowodPrzebiegu';
@@ -55,6 +56,7 @@ const ZAKLADKI = [
   { id: 'porownanie', etykieta: T.zakladkaPorownanie },
   { id: 'odbior', etykieta: T.zakladkaOdbior },
   { id: 'estymacja', etykieta: T.zakladkaEstymacja },
+  { id: 'ssci', etykieta: T.zakladkaSsci },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
   { id: 'pulpit-oze', etykieta: T.zakladkaPulpitOze },
   { id: 'zdolnosc', etykieta: T.zakladkaZdolnosc },
@@ -84,6 +86,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
       'porownanie',
       'odbior',
       'estymacja',
+      'ssci',
       'pozostale',
     ],
   },
@@ -222,6 +225,7 @@ export function WynikiWarsztat({
         {zakladka === 'estymacja' && (
           <EkranEstymacji trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
+        {zakladka === 'ssci' && <EkranSsci trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ncrfg' && <MacierzNcRfg trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'zdolnosc' && <EkranZdolnosci trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ranking' && <EkranRankingu trybZaawansowania={trybZaawansowania} />}
