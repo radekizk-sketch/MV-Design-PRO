@@ -300,6 +300,39 @@ def test_protection_view_serializes_it_curve_from_iec60255_solver(client):
     assert time_fn["it_curve_missing_data"] == ["time_multiplier"]
 
 
+def test_protection_view_instant_without_delay_is_not_missing_data(client):
+    """Bezzwłoczna (50 I>>) BEZ zwłoki → krzywa przy t≈0, NIE „brak danych" (S-1).
+
+    Funkcja bezzwłoczna z natury nie ma zwłoki zamierzonej. Read model używa
+    podłogi czasowej solvera zamiast fałszywie raportować brak ``definite_time``
+    i zamiast generować nieprzedstawialne t_s=0 na osi log-log.
+    """
+    import copy
+
+    payload = copy.deepcopy(_enm_with_protection())
+    device = next(d for d in payload["protection_assignments"] if d["ref_id"] == "prot_oc_1")
+    inst_setting = next(s for s in device["settings"] if s["function_type"] == "overcurrent_50")
+    del inst_setting["time_delay_s"]  # bezzwłoczna bez skonfigurowanej zwłoki
+    _seed_enm("protection-it-instant", payload)
+
+    response = client.get("/api/cases/protection-it-instant/enm/protection-view")
+    assert response.status_code == 200
+    data = response.json()
+
+    assignment = next(item for item in data["assignments"] if item["device_id"] == "prot_oc_1")
+    functions = assignment["settings_summary"]["functions"]
+    inst = next(fn for fn in functions if fn["code"] == "OVERCURRENT_INST")
+
+    assert "it_curve_missing_data" not in inst, "Bezzwłoczna nie może być 'brak danych'"
+    it_curve = inst["it_curve"]
+    assert it_curve is not None
+    assert it_curve["curve_kind"] == "DEFINITE"
+    assert len(it_curve["points"]) >= 2
+    # Podłoga czasowa solvera (0,001 s) — dodatnia, nie literalne t_s=0.
+    assert all(point["t_s"] == pytest.approx(0.001) for point in it_curve["points"])
+    assert all(point["t_s"] > 0.0 for point in it_curve["points"])
+
+
 def test_protection_view_inverse_it_curve_with_tms_from_solver(client):
     """Charakterystyka odwrotna (IEC_SI, 51 I>) Z nastawą TMS → krzywa I-t z solvera.
 

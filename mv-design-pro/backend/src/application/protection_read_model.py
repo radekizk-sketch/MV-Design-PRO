@@ -37,6 +37,7 @@ from enm.models import (
 )
 from protection.curves.iec_curves import (
     IEC_CURVE_LABELS_PL,
+    MIN_TRIPPING_TIME_S,
     IECCurveParams,
     IECCurveType,
     generate_iec_curve_points,
@@ -499,7 +500,10 @@ def _build_functions(
 
         setpoint = _build_setpoint(setting, base_values)
         computed = compute_from_setpoint(setpoint, base_values)
-        it_curve, it_curve_missing = _build_it_curve(setting)
+        # Funkcje bezzwłoczne (I>>/Io>>) rozpoznajemy po kodzie meta — dla nich
+        # brak zwłoki jest cechą, nie brakiem danych (S-1).
+        instantaneous = meta["code"] in {"OVERCURRENT_INST", "EARTH_FAULT_INST"}
+        it_curve, it_curve_missing = _build_it_curve(setting, instantaneous=instantaneous)
         function_payload: dict[str, Any] = {
             "code": meta["code"],
             "ansi": list(meta["ansi"]),
@@ -531,6 +535,8 @@ def _build_functions(
 
 def _build_it_curve(
     setting: ProtectionSetting,
+    *,
+    instantaneous: bool = False,
 ) -> tuple[dict[str, Any] | None, list[str]]:
     """Zbuduj krzywą czasowo-prądową (I-t) dla nastawy z solvera IEC 60255.
 
@@ -539,6 +545,11 @@ def _build_it_curve(
 
     - Charakterystyka niezależna (DT) jest w pełni wyznaczona przez próg (In>)
       i zwłokę czasową → zwracamy płaską krzywą (TMS nie dotyczy).
+    - Funkcja bezzwłoczna (I>>/Io>>, ANSI 50/50N) z natury NIE ma zwłoki
+      zamierzonej: działa w minimalnym czasie własnym przekaźnika. Brak
+      ``time_delay_s`` NIE jest wtedy „brakiem danych" — używamy podłogi
+      czasowej solvera (``MIN_TRIPPING_TIME_S``), by krzywa była płaska przy
+      t≈0, a nie przy literalnym t_s=0 (nieprzedstawialnym na osi log-log).
     - Charakterystyki odwrotne (SI/VI/EI/LTI) wymagają nastawy TMS
       (``ProtectionSetting.time_multiplier``): gdy jest podana → liczymy krzywą
       solverem z tym mnożnikiem; gdy jej brak → zwracamy brak danych
@@ -559,11 +570,20 @@ def _build_it_curve(
         solver_code = "DT"
 
     time_multiplier: float | None = None
+    # Zwłoka niezależna przekazywana do solvera (DT). Dla funkcji bezzwłocznej
+    # bez skonfigurowanej zwłoki = minimalny czas własny (podłoga solvera).
+    definite_time_s = setting.time_delay_s
     if solver_code == "DT":
         curve_kind = "DEFINITE"
         num_points = _IT_CURVE_DEFINITE_NUM_POINTS
         if setting.time_delay_s is None:
-            missing.append("definite_time")
+            if instantaneous:
+                definite_time_s = MIN_TRIPPING_TIME_S
+            else:
+                missing.append("definite_time")
+        elif instantaneous and setting.time_delay_s <= 0:
+            # Bezzwłoczna z zerową zwłoką → podłoga (nie generujemy t_s=0).
+            definite_time_s = MIN_TRIPPING_TIME_S
     else:
         curve_kind = "INVERSE"
         num_points = _IT_CURVE_INVERSE_NUM_POINTS
@@ -588,7 +608,7 @@ def _build_it_curve(
         time_multiplier=time_multiplier if time_multiplier is not None else 1.0,
         current_range=_IT_CURVE_CURRENT_RANGE,
         num_points=num_points,
-        definite_time_s=setting.time_delay_s,
+        definite_time_s=definite_time_s,
     )
     points = [{"i_a": point["current_a"], "t_s": point["time_s"]} for point in raw_points]
     if not points:

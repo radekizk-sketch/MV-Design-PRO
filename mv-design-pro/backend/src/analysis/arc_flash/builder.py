@@ -676,6 +676,12 @@ class ArcFlashBuilder:
         Współczynniki ``c.k`` = k1..k13 z TABLICY (t w ms, D w mm).
         """
         assert c.k is not None and len(c.k) == 13
+        # Guard dodatniości argumentów log10 (obronny): I_bf i D są zapewnione
+        # dodatnie przez _missing_inputs; I_arc jest wielkością obliczoną, a CF
+        # mnożnikiem — w modelu IEEE 1584 (w zakresie ważności) obie są dodatnie.
+        # Jawny guard zamienia ewentualną domenę log10 na czytelny warunek.
+        assert i_arc_ka > 0.0, "I_arc musi być dodatni dla log10 (model IEEE 1584)"
+        assert cf > 0.0, "CF musi być dodatni dla log10(1/CF)"
         k = c.k
         x1 = INCIDENT_ENERGY_TIME_FACTOR * arc_time_ms
         x2 = k[0] + k[1] * math.log10(gap_mm)

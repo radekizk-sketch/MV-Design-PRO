@@ -20,6 +20,15 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
+# Numeric guard for inverse-time results, NOT a protection setting.
+# The IEC 60255 inverse curves diverge as M -> 1 (e.g. LTI at M=1.1, TMS=1 gives
+# t = 120/(0.1) = 1200 s). To keep results finite and JSON-safe we cap the
+# reported trip time at this documented ceiling. WHITE BOX: whenever the cap is
+# applied, the raw (uncapped) value and a ``clamp_applied`` flag are exposed in
+# the trace so the correction is auditable, never silent.
+MAX_TRIPPING_TIME_S = 100_000.0
+MIN_TRIPPING_TIME_S = 0.001
+
 
 class IECCurveType(str, Enum):
     """
@@ -114,6 +123,11 @@ class IECTrippingResult:
     numerator: float  # A
     base_time_s: float  # A / (M^B - 1) before TMS scaling
     will_trip: bool  # True if M > 1.0
+    # Numeric-guard audit (WHITE BOX): raw value before the finite-range cap and
+    # whether the cap actually changed the reported time. Additive fields with
+    # defaults so existing callers/serializers stay compatible.
+    unclamped_tripping_time_s: float = 0.0  # TMS * base_time_s + C, before cap
+    clamp_applied: bool = False  # True when the cap altered tripping_time_s
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for WHITE BOX trace."""
@@ -132,6 +146,8 @@ class IECTrippingResult:
                 "base_time_s": self.base_time_s,
             },
             "will_trip": self.will_trip,
+            "unclamped_tripping_time_s": self.unclamped_tripping_time_s,
+            "clamp_applied": self.clamp_applied,
             "formula": "t = TMS * (A / (M^B - 1)) + C",
         }
 
@@ -182,6 +198,8 @@ def calculate_iec_tripping_time(
             numerator=0.0,
             base_time_s=dt,
             will_trip=will_trip,
+            unclamped_tripping_time_s=trip_time,
+            clamp_applied=False,
         )
 
     # Inverse-time curves
@@ -196,6 +214,8 @@ def calculate_iec_tripping_time(
             numerator=curve_params.a,
             base_time_s=float("inf"),
             will_trip=False,
+            unclamped_tripping_time_s=float("inf"),
+            clamp_applied=False,
         )
 
     # Calculate intermediate values (WHITE BOX)
@@ -214,10 +234,13 @@ def calculate_iec_tripping_time(
 
     numerator = A
     base_time_s = numerator / denominator
-    trip_time = TMS * base_time_s + C
+    unclamped_trip_time = TMS * base_time_s + C
 
-    # Clamp to reasonable range
-    trip_time = max(0.001, min(trip_time, 1000.0))
+    # Numeric guard to a finite, JSON-safe range. WHITE BOX: keep the raw value
+    # and flag when the cap actually altered the result, so the correction is
+    # auditable instead of silently flattening the LTI tail.
+    trip_time = max(MIN_TRIPPING_TIME_S, min(unclamped_trip_time, MAX_TRIPPING_TIME_S))
+    clamp_applied = trip_time != unclamped_trip_time
 
     return IECTrippingResult(
         tripping_time_s=trip_time,
@@ -229,6 +252,8 @@ def calculate_iec_tripping_time(
         numerator=numerator,
         base_time_s=base_time_s,
         will_trip=True,
+        unclamped_tripping_time_s=unclamped_trip_time,
+        clamp_applied=clamp_applied,
     )
 
 
