@@ -326,6 +326,20 @@ describe('stacjaModel — payload', () => {
     expect(earthing).not.toHaveProperty('lv_r_ohm');
   });
 
+  it('potrzeby własne w payloadzie tylko gdy moc > 0; cosφ opcjonalny (G-STK-3)', () => {
+    // Domyślnie moc pusta → brak bloku.
+    const bez = zbudujPayload(dane(), kontekst(), rozdzielnica('branch'));
+    expect(bez).not.toHaveProperty('station_auxiliary');
+
+    // Moc + cosφ (przecinek PL) → blok z active_power_kw + cos_phi.
+    const zPw = zbudujPayload(
+      dane({ station_auxiliary_kw: '5', station_auxiliary_cosphi: '0,9' }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    expect(zPw.station_auxiliary).toEqual({ active_power_kw: 5, cos_phi: 0.9 });
+  });
+
   it('rezystancja uziemienia tylko dla wariantu impedancyjnego (rezystor/cewka)', () => {
     // Rezystor + R podane → lv_r_ohm w payloadzie (przecinek PL → liczba).
     const zRezystorem = zbudujPayload(

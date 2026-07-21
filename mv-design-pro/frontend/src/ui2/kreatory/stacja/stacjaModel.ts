@@ -113,6 +113,10 @@ export interface StacjaFormData {
   switchgear_family_ref: string | null;
   /** Ręczny wybór szablonu pola per rola (nadpisuje dobór automatyczny). */
   bay_template_refs: Partial<Record<SnFieldRole, string>>;
+  /** Moc potrzeb własnych stacji [kW] — tekst PL; puste = brak odbioru (G-STK-3). */
+  station_auxiliary_kw: string;
+  /** cosφ potrzeb własnych — tekst PL; steruje mocą bierną odbioru. */
+  station_auxiliary_cosphi: string;
 }
 
 export interface BladPola {
@@ -136,6 +140,8 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   manufacturer_ref: '',
   switchgear_family_ref: null,
   bay_template_refs: {},
+  station_auxiliary_kw: '',
+  station_auxiliary_cosphi: '0,95',
 };
 
 /**
@@ -516,6 +522,20 @@ function liczbaDodatniaPL(surowy: string): number | null {
 }
 
 /**
+ * Buduje blok `station_auxiliary` (G-STK-3): odbiór potrzeb własnych stacji.
+ * Tylko gdy moc > 0. cosφ opcjonalny (backend wyprowadza Q). ZERO fizyki w UI —
+ * moc bierną liczy backend z cosφ (parytet add_nn_load).
+ */
+function blokPotrzebWlasnych(data: StacjaFormData): Record<string, unknown> | null {
+  const p = liczbaDodatniaPL(data.station_auxiliary_kw);
+  if (p === null) return null;
+  const blok: Record<string, unknown> = { active_power_kw: p };
+  const cosphi = liczbaDodatniaPL(data.station_auxiliary_cosphi);
+  if (cosphi !== null && cosphi <= 1) blok.cos_phi = cosphi;
+  return blok;
+}
+
+/**
  * Buduje blok `nn_earthing` (G-STK-1): układ sieci nN + typ pracy punktu
  * neutralnego + opcjonalna rezystancja uziemienia (tylko dla wariantów
  * impedancyjnych). Mapuje 1:1 na kontrakt operacji (`GroundingConfig.type` +
@@ -590,11 +610,13 @@ export function zbudujPayload(
   }
 
   const nnEarthing = blokUziemienia(data);
+  const auxiliary = blokPotrzebWlasnych(data);
 
   const commonPayload: Record<string, unknown> = {
     ...(nazwa ? { name: nazwa } : {}),
     station_type: data.station_type,
     ...(nnEarthing ? { nn_earthing: nnEarthing } : {}),
+    ...(auxiliary ? { station_auxiliary: auxiliary } : {}),
     station: {
       station_type: data.station_type,
       station_role: 'STACJA_SN_NN',

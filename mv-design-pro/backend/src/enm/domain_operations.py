@@ -3867,6 +3867,60 @@ def _apply_station_neutral_grounding(
                 break
 
 
+def _materialize_station_auxiliary_load(
+    new_enm: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    nn_bus_id: str,
+    station_id: str,
+    station_seed: str,
+    created: list[str],
+) -> str | None:
+    """Zmaterializuj odbiór potrzeb własnych stacji (G-STK-3).
+
+    Reużywa wzorzec `add_nn_load`: mały odbiór nN na szynie nN stacji, z mocą
+    bierną wyprowadzoną z cosφ (Q = P·tan(arccos cosφ)) gdy Q nie podano jawnie.
+    Konsument: kanoniczny rozpływ mocy (kolekcja ``loads``). Addytywne: brak bloku
+    ``station_auxiliary`` lub P≤0 → brak odbioru. Zwraca ref odbioru albo ``None``.
+    """
+    aux = payload.get("station_auxiliary") or payload.get("station", {}).get("station_auxiliary")
+    if not isinstance(aux, dict) or not aux:
+        return None
+    p_kw = _as_positive_float(aux.get("active_power_kw"))
+    if p_kw is None:
+        return None
+
+    q_kvar = aux.get("reactive_power_kvar")
+    cos_phi = aux.get("cos_phi")
+    if q_kvar is None and cos_phi is not None:
+        cp = _as_positive_float(cos_phi)
+        if cp is not None and cp <= 1.0:
+            q_kvar = p_kw * math.tan(math.acos(cp))
+
+    load_ref = _make_id("stn", station_seed, "aux_load")
+    new_enm.setdefault("loads", []).append(
+        {
+            "ref_id": load_ref,
+            "name": aux.get("name") or "Potrzeby własne stacji",
+            "bus_ref": nn_bus_id,
+            "p_mw": p_kw / 1000.0,
+            "q_mvar": (q_kvar or 0.0) / 1000.0,
+            "model": "pq",
+            "source_mode": "EKSPERCKI_RECZNY",
+            "parameter_source": "OVERRIDE",
+            "tags": ["station_auxiliary"],
+            "meta": {
+                "station_ref": station_id,
+                "load_role": "STACJA_POTRZEBY_WLASNE",
+                "connection_type": "TROJFAZOWY",
+                "cos_phi": cos_phi,
+            },
+        }
+    )
+    created.append(load_ref)
+    return load_ref
+
+
 def _build_nn_field_specs(
     *,
     nn_block: dict[str, Any],
@@ -4600,6 +4654,21 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         generator_ref, event_type = source_event
         ev_seq += 1
         events.append({"event_seq": ev_seq, "event_type": event_type, "element_id": generator_ref})
+
+    # Potrzeby własne stacji (G-STK-3) — mały odbiór nN, PF konsumuje.
+    aux_load_ref = _materialize_station_auxiliary_load(
+        new_enm,
+        payload,
+        nn_bus_id=nn_bus_id,
+        station_id=stn_id,
+        station_seed=station_seed,
+        created=created,
+    )
+    if aux_load_ref is not None:
+        ev_seq += 1
+        events.append(
+            {"event_seq": ev_seq, "event_type": "AUX_LOAD_CREATED", "element_id": aux_load_ref}
+        )
 
     # --- nN Feeders ---
     ev_seq += 1
@@ -7362,6 +7431,21 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             ev_seq += 1
             events.append(
                 {"event_seq": ev_seq, "event_type": event_type, "element_id": generator_ref}
+            )
+
+        # Potrzeby własne stacji (G-STK-3) — PARYTET z insert.
+        aux_load_ref = _materialize_station_auxiliary_load(
+            new_enm,
+            payload,
+            nn_bus_id=bus_nn_ref,
+            station_id=substation_ref,
+            station_seed=seed,
+            created=created,
+        )
+        if aux_load_ref is not None:
+            ev_seq += 1
+            events.append(
+                {"event_seq": ev_seq, "event_type": "AUX_LOAD_CREATED", "element_id": aux_load_ref}
             )
 
     # Step 5: re-tag endpoint_bus jako część stacji

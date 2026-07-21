@@ -282,6 +282,18 @@ export const STACJA_STRINGS = {
   teoriaNnPodstawa:
     'Podstawa: N SEP-E-001, IRiESD, PN-EN 62271 (aparatura nN/SN), wymagania przyłączeniowe OZE (NC RfG/PTPiREE).',
 
+  // Potrzeby własne stacji (G-STK-3) — sekcja w kroku bloku nN.
+  potrzebyWlasneTytul: 'Potrzeby własne stacji (opcjonalnie)',
+  potrzebyWlasneOpis:
+    'Mały odbiór nN zasilający potrzeby własne stacji (oświetlenie, ogrzewanie, zasilanie '
+    + 'obwodów zabezpieczeń/automatyki). Uwzględniany w rozpływie mocy jako odbiór na szynie nN.',
+  potrzebyWlasneMoc: 'Moc potrzeb własnych [kW]',
+  potrzebyWlasneMocPlaceholder: 'np. 5',
+  potrzebyWlasneMocPomoc: 'Puste — stacja bez odrębnego odbioru potrzeb własnych.',
+  potrzebyWlasneCosphi: 'cosφ potrzeb własnych',
+  potrzebyWlasneCosphiPomoc:
+    'Współczynnik mocy odbioru — moc bierną (Q) wylicza backend (Q = P·tan(arccos cosφ)).',
+
   // Krok — uziemienie i punkt neutralny (G-STK-1).
   uziemienieOpis:
     'Układ uziemienia sieci nN i sposób pracy punktu neutralnego transformatora decydują '

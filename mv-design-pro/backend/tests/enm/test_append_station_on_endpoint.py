@@ -775,6 +775,37 @@ def test_endpoint_append_nn_earthing_materializes_neutral_grounding() -> None:
     assert sub["meta"]["nn_earthing_system"] == "TN-S"
 
 
+def test_endpoint_append_station_auxiliary_materializes_nn_load() -> None:
+    """station_auxiliary → odbiór nN „potrzeby własne" z Q z cosφ (G-STK-3).
+
+    Konsument: kanoniczny rozpływ mocy (kolekcja loads). Q wyprowadzone z cosφ
+    (reużycie wzorca add_nn_load) — nie phantom (Q≠0).
+    """
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "station": {"name": "Stacja PW append", "station_type": "terminal"},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+            "nn_block": {"nn_configuration": "LOAD_NN", "outgoing_feeders_nn_count": 1},
+            "station_auxiliary": {"active_power_kw": 10.0, "cos_phi": 0.8},
+        },
+    )
+    assert response.get("error") is None
+    new_snap = response["snapshot"]
+    sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja PW append")
+    aux = [ld for ld in new_snap.get("loads", []) if "station_auxiliary" in (ld.get("tags") or [])]
+    assert len(aux) == 1, "Brak odbioru potrzeb własnych"
+    load = aux[0]
+    assert load["meta"]["station_ref"] == sub["ref_id"]
+    assert load["meta"]["load_role"] == "STACJA_POTRZEBY_WLASNE"
+    assert abs(load["p_mw"] - 0.01) < 1e-9  # 10 kW
+    # Q z cosφ: Q = P·tan(arccos 0,8) = 10·0,75 = 7,5 kvar = 0,0075 MVAr (nie 0).
+    assert abs(load["q_mvar"] - 0.0075) < 1e-6
+
+
 def test_endpoint_append_without_nn_earthing_leaves_transformer_neutral_unset() -> None:
     """Brak bloku nn_earthing → transformator bez neutralnych (addytywność G-STK-1)."""
     snap, endpoint = _build_gpz_with_endpoint()

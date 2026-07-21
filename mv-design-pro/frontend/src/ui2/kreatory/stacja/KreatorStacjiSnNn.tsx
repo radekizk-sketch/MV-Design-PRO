@@ -771,6 +771,28 @@ export function KreatorStacjiSnNn() {
             testid="mvd-kreator-stacja-odplywy"
           />
 
+          <KreatorSekcja tytul={T.potrzebyWlasneTytul} testid="mvd-kreator-stacja-potrzeby-wlasne">
+            <KreatorInfo>{T.potrzebyWlasneOpis}</KreatorInfo>
+            <KreatorSiatka kolumny={2}>
+              <PoleTekstowe
+                etykieta={T.potrzebyWlasneMoc}
+                wartosc={dane.station_auxiliary_kw}
+                onZmiana={(v) => zmien('station_auxiliary_kw', v)}
+                placeholder={T.potrzebyWlasneMocPlaceholder}
+                pomoc={T.potrzebyWlasneMocPomoc}
+                testid="mvd-kreator-stacja-pw-moc"
+              />
+              <PoleTekstowe
+                etykieta={T.potrzebyWlasneCosphi}
+                wartosc={dane.station_auxiliary_cosphi}
+                onZmiana={(v) => zmien('station_auxiliary_cosphi', v)}
+                placeholder="0,95"
+                pomoc={T.potrzebyWlasneCosphiPomoc}
+                testid="mvd-kreator-stacja-pw-cosphi"
+              />
+            </KreatorSiatka>
+          </KreatorSekcja>
+
           {isZrodlo && zrodloTeksty ? (
             <KreatorSekcja tytul={zrodloTeksty.sekcja} testid="mvd-kreator-stacja-zrodlo">
               {konwerter ? (
