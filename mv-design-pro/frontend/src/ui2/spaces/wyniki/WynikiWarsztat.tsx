@@ -19,6 +19,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import { EkranBadanOltc } from '../../wyniki/oltc';
+import { EkranCoWymagaUwagi } from '../../wyniki/co-wymaga-uwagi';
 import { EkranRozplywu } from '../../wyniki/rozplyw';
 import { EkranZwarc } from '../../wyniki/zwarcia';
 import { useAppStateStore } from '../../../ui/app-state';
@@ -49,6 +50,7 @@ import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
 import './wynikiWarsztat.css';
 
 const ZAKLADKI = [
+  { id: 'co-wymaga-uwagi', etykieta: T.zakladkaCoWymagaUwagi },
   { id: 'rozplyw', etykieta: T.zakladkaRozplyw },
   { id: 'regulacja-oltc', etykieta: T.zakladkaRegulacjaOltc },
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
@@ -79,6 +81,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
   {
     etykieta: T.grupaAnalizy,
     zakladki: [
+      'co-wymaga-uwagi',
       'rozplyw',
       'regulacja-oltc',
       'zwarcia',
@@ -214,6 +217,7 @@ export function WynikiWarsztat({
         ))}
       </div>
       <div role="tabpanel" className="mvd-wyniki-tresc">
+        {zakladka === 'co-wymaga-uwagi' && <EkranCoWymagaUwagi />}
         {zakladka === 'rozplyw' && (
           <EkranRozplywu trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
