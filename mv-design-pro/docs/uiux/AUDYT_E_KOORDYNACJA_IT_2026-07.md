@@ -167,6 +167,40 @@ nieudostępniony). Panel jest wpięty i przetestowany na realnym kształcie dany
 zacznie renderować krzywe automatycznie po podłączeniu hooka do
 `protection-view` / endpointu przypisań (karta w wątku Programu UI/UX).
 
+### E-5. Ożywienie inspektora zabezpieczeń realnym `protection-view` — WDROŻONE (2026-07-21)
+Domknięcie długu resztkowego z E-4: inspektor zabezpieczeń (w tym krzywa I-t)
+renderuje się z realnego read modelu zamiast zwracać pustą listę.
+
+Źródło danych: istniejący endpoint `GET /api/cases/{caseId}/enm/protection-view`
+(backend `application/protection_read_model.build_protection_read_model`) —
+dedykowany endpoint `.../protection-assignments` okazał się zbędny, read model
+`protection-view` już serializuje `assignments[]` z `settings_summary.functions[].it_curve`.
+
+Wdrożenie (frontend, obszar `ui/protection*` + `ui/inspector`):
+- `ui/protection/protection-view.ts` — klient HTTP (`fetchProtectionView`) +
+  adapter `assignmentsForElement(response, elementId)` mapujący `assignments[]`
+  read modelu na `ElementProtectionAssignment[]` (przepisanie kształtu, ZERO
+  obliczeń; filtr po `element_id`).
+- `ui/protection/useProtectionView.ts` — hook pobierający widok dla aktywnego
+  case'u (`useAppStateStore.activeCaseId`), z cache kluczowanym przez
+  `(caseId, revision snapshotu)` i deduplikacją zapytań (wzorzec
+  `field/useFieldReadModel`).
+- `ui/protection/useProtectionAssignment.ts` — zamiast pustej tablicy filtruje
+  realny widok po `elementId`; przekazuje `isLoading`/`error` z hooka.
+- `ui/inspector/ProtectionSection.tsx` — usunięto notkę „Dane demonstracyjne
+  (fixture)"; dodano uczciwe stany: ładowanie, błąd oraz „Brak przypisanych
+  zabezpieczeń dla tego elementu" (sekcja chowa się, gdy brak danych i brak
+  sygnału ładowania/błędu).
+
+Testy: `ui/inspector/__tests__/ProtectionSection.realData.test.tsx` — realna
+ścieżka (fetch mockowany na granicy API): element z zabezpieczeniem renderuje
+funkcje + krzywą I-t z solvera; natywny (userEvent) klik w nagłówek zwija/rozwija
+panel; element bez zabezpieczenia → uczciwy stan pusty (brak sekcji).
+
+Dług resztkowy (bez zmian, poza granicą wątku): bulk hook
+`useProtectionAssignments` (nakładka SLD, sygnatura `projectId`/`diagramId`)
+nadal czeka na dedykowany endpoint zbiorczy — nie dotykany (granica: `ui/sld/**`).
+
 ---
 
 ## 5. Referencje

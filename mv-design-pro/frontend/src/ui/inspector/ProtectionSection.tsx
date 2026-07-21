@@ -14,7 +14,9 @@
  * - Read-only: brak edycji
  * - Zwijalna sekcja
  *
- * STATUS: PLACEHOLDER (uzywa fixture data przez useProtectionAssignment)
+ * ŹRÓDŁO DANYCH (Audyt E, E-5): realny read model `protection-view`
+ * (przez useProtectionAssignment → useProtectionView). Brak przypisania
+ * dla elementu ⇒ uczciwy stan zerowy. ZERO fizyki w UI.
  *
  * 100% POLISH UI
  */
@@ -68,14 +70,15 @@ export function ProtectionSection({
   className = '',
 }: ProtectionSectionProps) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
-  const { assignments, hasProtection, isLoading } = useProtectionAssignment(elementId);
+  const { assignments, hasProtection, isLoading, error } = useProtectionAssignment(elementId);
 
   const toggleCollapse = useCallback(() => {
     setCollapsed((prev) => !prev);
   }, []);
 
-  // Nie renderuj jeśli brak elementu lub zabezpieczeń
-  if (!elementId || (!hasProtection && !isLoading)) {
+  // Nie renderuj jeśli brak elementu, brak zabezpieczeń i brak sygnału
+  // ładowania/błędu (uczciwy stan zerowy = sekcja się nie pokazuje).
+  if (!elementId || (!hasProtection && !isLoading && !error)) {
     return null;
   }
 
@@ -108,24 +111,22 @@ export function ProtectionSection({
       {!collapsed && (
         <div className="px-4 py-3 bg-amber-50/50 space-y-3">
           {isLoading ? (
-            <div className="text-xs text-gray-500 italic">Ladowanie...</div>
+            <div className="text-xs text-gray-500 italic" data-testid="protection-section-loading">
+              Ladowanie...
+            </div>
+          ) : error ? (
+            <div className="text-xs text-red-600 italic" data-testid="protection-section-error">
+              Nie udalo sie pobrac zabezpieczen: {error}
+            </div>
           ) : hasProtection ? (
             assignments.map((assignment) => (
               <ProtectionAssignmentCard key={assignment.device_id} assignment={assignment} />
             ))
           ) : (
-            <div className="text-xs text-gray-500 italic">
-              Zabezpieczenia do konfiguracji
+            <div className="text-xs text-gray-500 italic" data-testid="protection-section-empty">
+              Brak przypisanych zabezpieczen dla tego elementu
             </div>
           )}
-
-          {/* Placeholder notice */}
-          <div className="mt-2 pt-2 border-t border-amber-200">
-            <div className="text-xs text-amber-700 italic flex items-center gap-1">
-              <span>*</span>
-              <span>Dane demonstracyjne (fixture)</span>
-            </div>
-          </div>
         </div>
       )}
     </div>
