@@ -8,6 +8,7 @@ export { EkranAnalizy } from './EkranAnalizy';
 export { TabelaWynikow } from './TabelaWynikow';
 export { SekcjaZalozen } from './SekcjaZalozen';
 export { WZORZEC_STRINGS } from './strings';
+export { usePoprawWModelu } from './usePoprawWModelu';
 export type {
   EkranAnalizyProps,
   NaglowekAnalizy,

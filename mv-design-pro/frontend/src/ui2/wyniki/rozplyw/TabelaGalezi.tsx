@@ -14,7 +14,7 @@
 
 import './rozplyw.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy } from '../wzorzec';
+import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
 import { ROZPLYW_STRINGS } from './strings';
 import {
   KLUCZ_GALAZ,
@@ -33,6 +33,7 @@ export interface TabelaGaleziProps {
 
 export function TabelaGalezi({ trybZaawansowania, onOtworzDowod, onEksport }: TabelaGaleziProps) {
   const { wynik, runId } = useWynikRozplywu();
+  const poprawWModelu = usePoprawWModelu();
 
   if (!wynik) {
     return (
@@ -59,6 +60,7 @@ export function TabelaGalezi({ trybZaawansowania, onOtworzDowod, onEksport }: Ta
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_GALAZ}
+        onPoprawWModelu={(ref) => poprawWModelu(ref, 'LineBranch', ref)}
       />
       {suma && (
         <div className="mvd-rozplyw-suma-strat" data-testid="mvd-rozplyw-suma-strat">

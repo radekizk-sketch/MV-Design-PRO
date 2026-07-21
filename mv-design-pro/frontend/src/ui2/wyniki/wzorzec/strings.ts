@@ -25,6 +25,9 @@ export const WZORZEC_STRINGS = {
   tagOstrzezenie: 'Poza zakresem',
   pokazDowod: 'Pokaż dowód (podwójne kliknięcie)',
   sortujKolumne: 'Sortuj wg kolumny',
+  kolumnaDecyzja: 'Decyzja',
+  poprawWModelu: 'Popraw w modelu',
+  poprawWModeluOpis: 'Zaznacz element na schemacie i przejdź do modelu, aby dostosować dobór',
 
   // Wykres
   wykresTytul: 'Wykres',

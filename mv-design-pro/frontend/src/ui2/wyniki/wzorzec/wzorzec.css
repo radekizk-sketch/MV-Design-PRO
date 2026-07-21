@@ -240,6 +240,32 @@
   white-space: nowrap;
 }
 
+/* ---- kolumna decyzji (F-E6.1: pętla wynik→model) ---- */
+.mvd-wyn-td-decyzja {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mvd-wyn-popraw-btn {
+  background: none;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 2px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+
+.mvd-wyn-popraw-btn:hover {
+  background: var(--mvd-sel);
+}
+
+.mvd-wyn-popraw-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
 /* ---- wykres (slot) ---- */
 .mvd-wyn-wykres {
   border: 1px solid var(--mvd-line);

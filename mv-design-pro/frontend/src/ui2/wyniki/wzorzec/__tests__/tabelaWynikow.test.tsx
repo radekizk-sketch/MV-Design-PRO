@@ -28,6 +28,40 @@ function kolejnoscNazw(): string[] {
     .map((tr) => within(tr).getAllByRole('cell')[0].textContent ?? '');
 }
 
+describe('TabelaWynikow — pętla decyzji (F-E6.1: „Popraw w modelu")', () => {
+  it('bez onPoprawWModelu: brak kolumny decyzji i przycisków (zero zmiany dla nie-konsumentów)', () => {
+    render(<TabelaWynikow {...props()} />);
+    expect(screen.queryByTestId('mvd-wyn-th-decyzja')).toBeNull();
+    expect(screen.queryByTestId('mvd-wyn-popraw')).toBeNull();
+  });
+
+  it('z onPoprawWModelu: kolumna decyzji + przycisk WYŁĄCZNIE na wierszu z ostrzeżeniem', () => {
+    render(<TabelaWynikow {...props({ onPoprawWModelu: vi.fn() })} />);
+    expect(screen.getByTestId('mvd-wyn-th-decyzja')).toBeInTheDocument();
+    // Fixtura: dokładnie jeden wiersz z ostrzeżeniem („Szyna A").
+    const przyciski = screen.getAllByTestId('mvd-wyn-popraw');
+    expect(przyciski).toHaveLength(1);
+    expect(przyciski[0]).toHaveTextContent(WZORZEC_STRINGS.poprawWModelu);
+  });
+
+  it('klik „Popraw w modelu" woła callback z kluczem wiersza (ref elementu) — klik natywny', () => {
+    const onPopraw = vi.fn();
+    render(<TabelaWynikow {...props({ onPoprawWModelu: onPopraw })} />);
+    fireEvent.click(screen.getByTestId('mvd-wyn-popraw'));
+    // Klucz wiersza = wartość pierwszej kolumny („nazwa") wiersza z ostrzeżeniem.
+    expect(onPopraw).toHaveBeenCalledWith('Szyna A');
+  });
+
+  it('przycisk decyzji NIE propaguje do wyboru wiersza (stopPropagation)', () => {
+    const onWybierz = vi.fn();
+    const onPopraw = vi.fn();
+    render(<TabelaWynikow {...props({ onWybierzWiersz: onWybierz, onPoprawWModelu: onPopraw })} />);
+    fireEvent.click(screen.getByTestId('mvd-wyn-popraw'));
+    expect(onPopraw).toHaveBeenCalledWith('Szyna A');
+    expect(onWybierz).not.toHaveBeenCalled();
+  });
+});
+
 describe('TabelaWynikow — nagłówki i komórki', () => {
   it('renderuje nagłówki kolumn z etykietą i jednostką', () => {
     render(<TabelaWynikow {...props()} />);

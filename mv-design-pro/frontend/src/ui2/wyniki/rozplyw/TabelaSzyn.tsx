@@ -9,7 +9,7 @@
 
 import './rozplyw.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy } from '../wzorzec';
+import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
 import { ProfilNapiecChart } from './ProfilNapiecChart';
 import { ROZPLYW_STRINGS } from './strings';
 import {
@@ -29,6 +29,7 @@ export interface TabelaSzynProps {
 
 export function TabelaSzyn({ trybZaawansowania, onOtworzDowod, onEksport }: TabelaSzynProps) {
   const { wynik, runId } = useWynikRozplywu();
+  const poprawWModelu = usePoprawWModelu();
 
   if (!wynik) {
     return (
@@ -53,6 +54,7 @@ export function TabelaSzyn({ trybZaawansowania, onOtworzDowod, onEksport }: Tabe
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_SZYNA}
+        onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', ref)}
       />
     </div>
   );

@@ -59,6 +59,13 @@ interface TabelaWynikowProps {
   onWybierzWiersz?: (klucz: string) => void;
   /** Wartość klucza wybranego wiersza (podświetlenie + aria-selected). */
   wybranyWiersz?: string | null;
+  /** Pętla decyzji (F-E6.1): akcja „Popraw w modelu" na wierszach z ostrzeżeniem. */
+  onPoprawWModelu?: (klucz: string) => void;
+}
+
+/** Czy wiersz niesie jakiekolwiek przekroczenie (dowolna komórka `ostrzezenie`). */
+function wierszMaOstrzezenie(wiersz: WierszTabeli): boolean {
+  return Object.values(wiersz).some((k) => k?.ostrzezenie === true);
 }
 
 /** Wyrównanie efektywne kolumny (mono → prawo, tekst → lewo — chyba że nadpisane). */
@@ -106,6 +113,7 @@ export function TabelaWynikow({
   kluczWiersza,
   onWybierzWiersz,
   wybranyWiersz,
+  onPoprawWModelu,
 }: TabelaWynikowProps) {
   const [sort, setSort] = useState<StanSortowania | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -114,6 +122,9 @@ export function TabelaWynikow({
     () => kolumny.filter((k) => !k.tylkoEkspercki || trybZaawansowania === 'expert'),
     [kolumny, trybZaawansowania],
   );
+  // F-E6.1: kolumna decyzji dokłada się WYŁĄCZNIE gdy wołający ją obsłuży.
+  const kolumnaDecyzji = onPoprawWModelu != null;
+  const liczbaKolumn = kolumnyWidoczne.length + (kolumnaDecyzji ? 1 : 0);
 
   const kluczId = kluczWiersza ?? kolumny[0]?.klucz;
 
@@ -199,6 +210,25 @@ export function TabelaWynikow({
             onOtworzDowod={onOtworzDowod}
           />
         ))}
+        {kolumnaDecyzji && (
+          <td className="mvd-wyn-td-decyzja">
+            {wierszMaOstrzezenie(wiersz) && (
+              <button
+                type="button"
+                className="mvd-wyn-popraw-btn"
+                data-testid="mvd-wyn-popraw"
+                title={WZORZEC_STRINGS.poprawWModeluOpis}
+                onClick={(e) => {
+                  // Wiersz bywa wybieralny (onClick na tr) — nie propaguj do wyboru.
+                  e.stopPropagation();
+                  onPoprawWModelu!(rowKey);
+                }}
+              >
+                {WZORZEC_STRINGS.poprawWModelu}
+              </button>
+            )}
+          </td>
+        )}
       </tr>
     );
   };
@@ -258,13 +288,18 @@ export function TabelaWynikow({
                 </th>
               );
             })}
+            {kolumnaDecyzji && (
+              <th className="mvd-wyn-th-prawo" data-testid="mvd-wyn-th-decyzja">
+                <span className="mvd-wyn-th-static">{WZORZEC_STRINGS.kolumnaDecyzja}</span>
+              </th>
+            )}
           </tr>
         </thead>
         <tbody>
           {wirtualizacja && okno.wysGora > 0 && (
             <tr aria-hidden="true" data-testid="mvd-wyn-spacer-gora">
               <td
-                colSpan={kolumnyWidoczne.length}
+                colSpan={liczbaKolumn}
                 style={{ height: okno.wysGora, padding: 0, border: 0 }}
               />
             </tr>
@@ -275,7 +310,7 @@ export function TabelaWynikow({
           {wirtualizacja && okno.wysDol > 0 && (
             <tr aria-hidden="true" data-testid="mvd-wyn-spacer-dol">
               <td
-                colSpan={kolumnyWidoczne.length}
+                colSpan={liczbaKolumn}
                 style={{ height: okno.wysDol, padding: 0, border: 0 }}
               />
             </tr>

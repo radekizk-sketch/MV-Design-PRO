@@ -112,4 +112,11 @@ export interface EkranAnalizyProps {
   onWybierzWiersz?: (klucz: string) => void;
   /** Wartość klucza aktualnie wybranego wiersza (podświetlenie + aria-selected). */
   wybranyWiersz?: string | null;
+  /**
+   * Pętla decyzji (F-E6.1): akcja „Popraw w modelu" na wierszach z
+   * przekroczeniem (dowolna komórka `ostrzezenie`). Wołana z kluczem wiersza
+   * (= ref elementu). Brak = kolumna decyzji niepokazywana (zero zmiany
+   * dzisiejszego zachowania ekranów nie-konsumujących).
+   */
+  onPoprawWModelu?: (klucz: string) => void;
 }
