@@ -81,8 +81,10 @@ export function adaptOltcControlToOverlay(result: OltcControlResultV1): OverlayP
   );
 
   return {
+    // Spójnie z produkcyjnym payloadem overlay (RawToTypedOverlayAdapter przekazuje
+    // `analysis_type` backendu = 'LOAD_FLOW'); audyt F1 2026-07-21.
     run_id: result.run_id,
-    analysis_type: 'PF',
+    analysis_type: 'LOAD_FLOW',
     elements,
     legend: [
       {

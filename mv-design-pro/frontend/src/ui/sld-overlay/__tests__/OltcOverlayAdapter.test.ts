@@ -25,7 +25,7 @@ describe('adaptOltcControlToOverlay', () => {
   it('tworzy element overlay per transformator z badge pozycji i przełączeń', () => {
     const payload = adaptOltcControlToOverlay(base);
     expect(payload.run_id).toBe('run-1');
-    expect(payload.analysis_type).toBe('PF');
+    expect(payload.analysis_type).toBe('LOAD_FLOW');
     expect(payload.elements).toHaveLength(2);
     const trB = payload.elements.find((e) => e.element_ref === 'TR-B');
     expect(trB?.numeric_badges.tap_position).toBe(3);

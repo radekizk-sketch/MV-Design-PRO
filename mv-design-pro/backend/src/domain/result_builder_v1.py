@@ -269,9 +269,11 @@ def _extract_element_metrics(
         "s_mva": ("S_MVA", "MVA", "fixed2"),
         # V12K-089: metryki overlay OLTC (pozycja koncowa zaczepu + liczba
         # przelaczen) z `oltc_control`. Obecne tylko na transformatorach z
-        # regulacja — reszta bez zmian (determinizm).
-        "tap_position": ("TAP_POSITION", "", "int"),
-        "tap_switch_count": ("TAP_SWITCH_COUNT", "", "int"),
+        # regulacja — reszta bez zmian (determinizm). format_hint "fixed0"
+        # (calkowite) — z udokumentowanego slownika, obslugiwane przez
+        # frontendowy formatMetric (audyt F2 2026-07-21).
+        "tap_position": ("TAP_POSITION", "", "fixed0"),
+        "tap_switch_count": ("TAP_SWITCH_COUNT", "", "fixed0"),
     }
 
     for key, val in values.items():
