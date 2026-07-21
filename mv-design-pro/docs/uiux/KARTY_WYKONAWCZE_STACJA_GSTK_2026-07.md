@@ -62,6 +62,23 @@ deferowana (wpis), przechodzimy do następnej.
 
 ### G-STK-7 — SPD (ograniczniki przepięć) — WARUNKOWA
 - **Cel:** ograniczniki SPD SN/nN w stacji.
-- **Recon (bramka GO/NO-GO):** czy istnieje KONSUMENT LICZBOWY koordynacji izolacji dla
-  postawionego SPD (v126 `insulation`)? Jeśli NIE → faza DEFEROWANA (karta cross-thread),
-  nie budujemy phantomu (precedens V12K-050 GAP-2 wstrzymane).
+- **Recon (bramka GO/NO-GO) — WYNIK:** konsument liczbowy ISTNIEJE — solver
+  `v126_academic._insulation` (V126 INSULATION_COORDINATION, IEC 60071: margines BIL,
+  MCOV/U_rated/U_residual, TOV, verification_status). ALE wejście `insulation`
+  (`V126InsulationInput`) pochodzi z `parameters` żądania (`api/v126_academic._with_parameter_payloads`),
+  NIE z apparatus `SURGE_ARRESTER` modelu — brak mostu model→solver.
+- **Werdykt: GO z mostem** (nie phantom, nie deferujemy jak GAP-2). Wymaga budowy mostu:
+  apparatus/element SPD w modelu stacji → builder `V126InsulationInput` z modelu
+  (location_bus_ref, u_m_kv, network_neutral z G-STK-1, arrester_*) → run INSULATION_COORDINATION.
+  Dedykowana runda (analogia do G-OZE-B mostu przez profile).
+
+## STATUS REALIZACJI (2026-07-21)
+- **G-STK-1** ✅ WDROŻONE (uziemienie punktu neutralnego, V12K-078).
+- **G-STK-3** ✅ WDROŻONE (potrzeby własne stacji — odbiór nN, konsument PF).
+- **G-STK-6** ✅ WDROŻONE (praca równoległa transformatorów — n_parallel, agregacja Sn×n
+  w mapperze, golden-safe, konsument rozpływ/zwarcie).
+- **G-STK-2** ⏳ KARTA (pomiary rozliczeniowe; CT/VT ochronne już są, licznik = raport/meta).
+- **G-STK-4** ⏳ KARTA (pętla zwarcia z modelu — adapter `FaultLoopInput` z ENM; domyka G-STK-1).
+- **G-STK-5** ⏳ KARTA (dwusekcyjna: potwierdzony realny brak — `sectional` ma pole SPRZĘGŁO,
+  ale JEDNĄ szynę SN; sprzęgło „w powietrzu". Wymaga operacji II sekcji + realnego łącznika).
+- **G-STK-7** ⏳ KARTA GO-z-mostem (SPD→V126InsulationInput→_insulation, konsument istnieje).
