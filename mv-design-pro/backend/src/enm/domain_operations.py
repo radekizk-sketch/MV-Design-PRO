@@ -3798,6 +3798,178 @@ def _unique_default_station_name(enm: dict[str, Any], station_type_label: str) -
     return f"Stacja S{highest + 1:02d} (typ {station_type_label})"
 
 
+def _build_nn_field_specs(
+    *,
+    nn_block: dict[str, Any],
+    nn_bus_id: str,
+    station_seed: str,
+) -> list[dict[str, Any]]:
+    """Zbuduj specyfikacje pól nN (wyłącznik główny + odpływy) z ``nn_block``.
+
+    Wspólny builder dla ``insert_station_on_segment_sn`` i
+    ``append_station_on_endpoint`` — determinizm wynika ze ``station_seed``
+    (te same ``field_ref`` dla identycznego seedu). Funkcja czysta: nie mutuje
+    ENM, zwraca listę specyfikacji do zapisania w ``substation.meta.nn_field_specs``.
+    """
+    nn_main_ref = _make_id("stn", station_seed, "nn_main_breaker")
+    feeders = nn_block.get("outgoing_feeders_nn", [])
+    feeder_count = nn_block.get("outgoing_feeders_nn_count", max(1, len(feeders)))
+    nn_field_specs = [
+        _build_field_spec(
+            field_ref=nn_main_ref,
+            name="Wyłącznik główny nN",
+            bay_role="IN",
+            bus_ref=nn_bus_id,
+            tags=["nn_main_breaker"],
+        )
+    ]
+    for idx in range(max(feeder_count, len(feeders))):
+        feeder_ref = _make_id("stn", station_seed, f"nn_feeder/{idx:03d}")
+        feeder_spec = feeders[idx] if idx < len(feeders) else {}
+        feeder_meta: dict[str, Any] = {
+            "feeder_role": feeder_spec.get("feeder_role", "ODPLYW_NN"),
+        }
+        if isinstance(feeder_spec.get("catalog_bindings"), dict):
+            feeder_meta["catalog_bindings"] = feeder_spec.get("catalog_bindings")
+        if isinstance(feeder_spec.get("protection"), dict):
+            feeder_meta["protection_intent"] = feeder_spec.get("protection")
+        nn_field_specs.append(
+            _build_field_spec(
+                field_ref=feeder_ref,
+                name=f"Odpływ nN {idx + 1}",
+                bay_role="FEEDER",
+                bus_ref=nn_bus_id,
+                meta=feeder_meta,
+            )
+        )
+    return nn_field_specs
+
+
+def _materialize_nn_source(
+    *,
+    new_enm: dict[str, Any],
+    nn_block: dict[str, Any],
+    station_seed: str,
+    nn_bus_id: str,
+    station_id: str,
+    transformer_ref: str,
+    transformer_created: bool,
+    created: list[str],
+) -> tuple[str, str] | None:
+    """Zmaterializuj źródło nN (PV/BESS/FW) z ``nn_block`` do ENM.
+
+    Wspólny materializator dla ``insert_station_on_segment_sn`` i
+    ``append_station_on_endpoint``. Tworzy generator źródłowy w ``generators``,
+    wpis w ``substation.meta.source_specs`` oraz — gdy podano ``source_protection``
+    — ``protection_assignment``. Determinizm wynika ze ``station_seed``.
+
+    Zwraca ``(generator_ref, event_type)`` gdy źródło utworzono (do emisji
+    zdarzenia przez wywołującego), w przeciwnym razie ``None``.
+    """
+    nn_configuration = str(nn_block.get("nn_configuration") or "")
+    source_converter_ref = nn_block.get("source_converter_catalog_ref")
+    source_converter_kind = str(nn_block.get("source_converter_kind") or "")
+    source_protection = nn_block.get("source_protection")
+    source_kind_map = {
+        "PV_INVERTER": ("PV", "pv_inverter", "ZRODLO_NN_PV", "PV_INVERTER_CREATED"),
+        "BESS_INVERTER": ("BESS", "bess", "ZRODLO_NN_BESS", "BESS_SOURCE_CREATED"),
+        "FW_INVERTER": ("WIND", "wind_inverter", "ZRODLO_NN_FW", "FW_SOURCE_CREATED"),
+    }
+    source_spec = source_kind_map.get(nn_configuration)
+    if not (source_spec and source_converter_ref):
+        return None
+
+    _technology, gen_type, catalog_namespace, event_type = source_spec
+    generator_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}")
+    station_transformer_ref = transformer_ref if transformer_created else None
+    p_mw = (
+        _as_positive_float(nn_block.get("source_converter_pmax_mw"))
+        or _as_positive_float(nn_block.get("source_converter_sn_mva"))
+        or 0.0
+    )
+    materialized_source_params = {
+        "catalog_item_id": source_converter_ref,
+        "catalog_item_version": "2024.1",
+        "un_kv": nn_block.get("source_converter_un_kv"),
+        "pmax_mw": p_mw,
+        "sn_mva": nn_block.get("source_converter_sn_mva"),
+        "station_transformer_ref": station_transformer_ref,
+        "protection_intent": source_protection if isinstance(source_protection, dict) else None,
+    }
+    new_enm.setdefault("generators", []).append(
+        {
+            "ref_id": generator_ref,
+            "name": nn_block.get("source_converter_name") or "Źródło nN stacji",
+            "bus_ref": nn_bus_id,
+            "p_mw": p_mw,
+            "q_mvar": 0.0,
+            "gen_type": gen_type,
+            "station_ref": station_id,
+            "catalog_ref": source_converter_ref,
+            "catalog_namespace": catalog_namespace,
+            "parameter_source": "CATALOG",
+            "source_mode": "KATALOG",
+            "connection_variant": "nn_side",
+            "materialized_params": materialized_source_params,
+            "meta": {
+                "station_ref": station_id,
+                "connection_point_ref": nn_bus_id,
+                "station_transformer_ref": station_transformer_ref,
+                "protection_intent": (
+                    source_protection if isinstance(source_protection, dict) else None
+                ),
+                "render_as_station_internal_source": True,
+            },
+        }
+    )
+    for sub in new_enm.get("substations", []):
+        if sub.get("ref_id") == station_id:
+            sub_meta = sub.setdefault("meta", {})
+            sub_meta.setdefault("source_specs", []).append(
+                {
+                    "technology": _technology,
+                    "catalog_ref": source_converter_ref,
+                    "catalog_namespace": catalog_namespace,
+                    "connection_variant": "nn_side",
+                    "connection_point_ref": nn_bus_id,
+                    "generator_ref": generator_ref,
+                    "converter_name": nn_block.get("source_converter_name"),
+                    "converter_kind": source_converter_kind or _technology,
+                    "protection_intent": (
+                        source_protection if isinstance(source_protection, dict) else None
+                    ),
+                }
+            )
+            break
+    created.append(generator_ref)
+    if isinstance(source_protection, dict):
+        protection_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}/protection")
+        breaker_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}/breaker")
+        new_enm.setdefault("protection_assignments", []).append(
+            {
+                "ref_id": protection_ref,
+                "name": source_protection.get("device_label") or "Zabezpieczenie źródła nN",
+                "breaker_ref": breaker_ref,
+                "ct_ref": None,
+                "vt_ref": None,
+                "device_type": "overcurrent",
+                "catalog_ref": source_protection.get("device_catalog_ref"),
+                "settings": [],
+                "is_enabled": True,
+                "tags": ["station_nn_source_protection", "requires_ct_vt"],
+                "meta": {
+                    "station_ref": station_id,
+                    "protected_object_ref": generator_ref,
+                    "protected_object": source_protection.get("protected_object"),
+                    "analysis_scope": source_protection.get("analysis_scope"),
+                    "blocker_reason": "Dobierz CT/VT i nastawy zabezpieczenia źródła nN.",
+                },
+            }
+        )
+        created.append(protection_ref)
+    return generator_ref, event_type
+
+
 def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Wstaw stację SN/nN w odcinek — operacja krytyczna.
 
@@ -3983,7 +4155,6 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     sn_bus_id = _make_id("stn", station_seed, "sn_bus")
     nn_bus_id = _make_id("stn", station_seed, "nn_bus")
     tr_id = _make_id("stn", station_seed, "transformer")
-    nn_main_id = _make_id("stn", station_seed, "nn_main_breaker")
     seg_left_id = f"{segment_id}_L"
     seg_right_id = f"{segment_id}_R"
 
@@ -4214,36 +4385,11 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             )
         )
 
-    feeders = nn_block.get("outgoing_feeders_nn", [])
-    feeder_count = nn_block.get("outgoing_feeders_nn_count", max(1, len(feeders)))
-    nn_field_specs = [
-        _build_field_spec(
-            field_ref=nn_main_id,
-            name="Wyłącznik główny nN",
-            bay_role="IN",
-            bus_ref=nn_bus_id,
-            tags=["nn_main_breaker"],
-        )
-    ]
-    for idx in range(max(feeder_count, len(feeders))):
-        feeder_ref = _make_id("stn", station_seed, f"nn_feeder/{idx:03d}")
-        feeder_spec = feeders[idx] if idx < len(feeders) else {}
-        feeder_meta: dict[str, Any] = {
-            "feeder_role": feeder_spec.get("feeder_role", "ODPLYW_NN"),
-        }
-        if isinstance(feeder_spec.get("catalog_bindings"), dict):
-            feeder_meta["catalog_bindings"] = feeder_spec.get("catalog_bindings")
-        if isinstance(feeder_spec.get("protection"), dict):
-            feeder_meta["protection_intent"] = feeder_spec.get("protection")
-        nn_field_specs.append(
-            _build_field_spec(
-                field_ref=feeder_ref,
-                name=f"Odpływ nN {idx + 1}",
-                bay_role="FEEDER",
-                bus_ref=nn_bus_id,
-                meta=feeder_meta,
-            )
-        )
+    nn_field_specs = _build_nn_field_specs(
+        nn_block=nn_block,
+        nn_bus_id=nn_bus_id,
+        station_seed=station_seed,
+    )
 
     # Create Substation — use semantic type (inline/branch/terminal/sectional/mv_lv)
     new_enm.setdefault("substations", []).append(
@@ -4370,105 +4516,18 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         ev_seq += 1
         events.append({"event_seq": ev_seq, "event_type": "TR_CREATED", "element_id": tr_id})
 
-    nn_configuration = str(nn_block.get("nn_configuration") or "")
-    source_converter_ref = nn_block.get("source_converter_catalog_ref")
-    source_converter_kind = str(nn_block.get("source_converter_kind") or "")
-    source_protection = nn_block.get("source_protection")
-    source_kind_map = {
-        "PV_INVERTER": ("PV", "pv_inverter", "ZRODLO_NN_PV", "PV_INVERTER_CREATED"),
-        "BESS_INVERTER": ("BESS", "bess", "ZRODLO_NN_BESS", "BESS_SOURCE_CREATED"),
-        "FW_INVERTER": ("WIND", "wind_inverter", "ZRODLO_NN_FW", "FW_SOURCE_CREATED"),
-    }
-    source_spec = source_kind_map.get(nn_configuration)
-
-    if source_spec and source_converter_ref:
-        _technology, gen_type, catalog_namespace, event_type = source_spec
-        generator_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}")
-        p_mw = (
-            _as_positive_float(nn_block.get("source_converter_pmax_mw"))
-            or _as_positive_float(nn_block.get("source_converter_sn_mva"))
-            or 0.0
-        )
-        materialized_source_params = {
-            "catalog_item_id": source_converter_ref,
-            "catalog_item_version": "2024.1",
-            "un_kv": nn_block.get("source_converter_un_kv"),
-            "pmax_mw": p_mw,
-            "sn_mva": nn_block.get("source_converter_sn_mva"),
-            "station_transformer_ref": tr_id if transformer.get("create", True) else None,
-            "protection_intent": source_protection if isinstance(source_protection, dict) else None,
-        }
-        new_enm.setdefault("generators", []).append(
-            {
-                "ref_id": generator_ref,
-                "name": nn_block.get("source_converter_name") or "Źródło nN stacji",
-                "bus_ref": nn_bus_id,
-                "p_mw": p_mw,
-                "q_mvar": 0.0,
-                "gen_type": gen_type,
-                "station_ref": stn_id,
-                "catalog_ref": source_converter_ref,
-                "catalog_namespace": catalog_namespace,
-                "parameter_source": "CATALOG",
-                "source_mode": "KATALOG",
-                "connection_variant": "nn_side",
-                "materialized_params": materialized_source_params,
-                "meta": {
-                    "station_ref": stn_id,
-                    "connection_point_ref": nn_bus_id,
-                    "station_transformer_ref": tr_id if transformer.get("create", True) else None,
-                    "protection_intent": (
-                        source_protection if isinstance(source_protection, dict) else None
-                    ),
-                    "render_as_station_internal_source": True,
-                },
-            }
-        )
-        for sub in new_enm.get("substations", []):
-            if sub.get("ref_id") == stn_id:
-                sub_meta = sub.setdefault("meta", {})
-                sub_meta.setdefault("source_specs", []).append(
-                    {
-                        "technology": _technology,
-                        "catalog_ref": source_converter_ref,
-                        "catalog_namespace": catalog_namespace,
-                        "connection_variant": "nn_side",
-                        "connection_point_ref": nn_bus_id,
-                        "generator_ref": generator_ref,
-                        "converter_name": nn_block.get("source_converter_name"),
-                        "converter_kind": source_converter_kind or _technology,
-                        "protection_intent": (
-                            source_protection if isinstance(source_protection, dict) else None
-                        ),
-                    }
-                )
-                break
-        created.append(generator_ref)
-        if isinstance(source_protection, dict):
-            protection_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}/protection")
-            breaker_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}/breaker")
-            new_enm.setdefault("protection_assignments", []).append(
-                {
-                    "ref_id": protection_ref,
-                    "name": source_protection.get("device_label") or "Zabezpieczenie źródła nN",
-                    "breaker_ref": breaker_ref,
-                    "ct_ref": None,
-                    "vt_ref": None,
-                    "device_type": "overcurrent",
-                    "catalog_ref": source_protection.get("device_catalog_ref"),
-                    "settings": [],
-                    "is_enabled": True,
-                    "tags": ["station_nn_source_protection", "requires_ct_vt"],
-                    "meta": {
-                        "station_ref": stn_id,
-                        "protected_object_ref": generator_ref,
-                        "protected_object": source_protection.get("protected_object"),
-                        "analysis_scope": source_protection.get("analysis_scope"),
-                        "blocker_reason": "Dobierz CT/VT i nastawy zabezpieczenia źródła nN.",
-                    },
-                }
-            )
-            created.append(protection_ref)
+    source_event = _materialize_nn_source(
+        new_enm=new_enm,
+        nn_block=nn_block,
+        station_seed=station_seed,
+        nn_bus_id=nn_bus_id,
+        station_id=stn_id,
+        transformer_ref=tr_id,
+        transformer_created=bool(transformer.get("create", True)),
+        created=created,
+    )
+    if source_event is not None:
+        generator_ref, event_type = source_event
         ev_seq += 1
         events.append({"event_seq": ev_seq, "event_type": event_type, "element_id": generator_ref})
 
@@ -7167,6 +7226,69 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         if substation.get("ref_id") == substation_ref:
             _substation_meta(substation)["field_specs"] = copy.deepcopy(field_specs)
             break
+
+    # Step 4C: materializacja bloku nN — PARYTET z insert_station_on_segment_sn.
+    # Bez tego kroku tryb „koniec odcinka" cicho gubił wyłącznik główny nN,
+    # odpływy nN oraz źródło OZE (PV/BESS/FW) — cichy błąd danych w rdzeniu
+    # integracji OZE (audyt ekspercki K1/K2). Reużywamy tych samych builderów,
+    # co insert (_build_nn_field_specs, _materialize_nn_source).
+    nn_block = payload.get("nn_block") or {}
+    if isinstance(nn_block, dict) and nn_block:
+        target_sub = next(
+            (s for s in new_enm.get("substations", []) if s.get("ref_id") == substation_ref),
+            None,
+        )
+        # nN bus musi istnieć, aby podpiąć pola i źródło nN. Gdy podano
+        # transformer_catalog_ref — została utworzona w Step 4; w przeciwnym
+        # razie tworzymy ją tu (insert tworzy szynę nN bezwarunkowo).
+        nn_bus_exists = any(b.get("ref_id") == bus_nn_ref for b in new_enm.get("buses", []))
+        if not nn_bus_exists:
+            new_enm.setdefault("buses", []).append(
+                {
+                    "ref_id": bus_nn_ref,
+                    "name": f"Szyna nN {station_name}",
+                    "voltage_kv": nn_voltage_kv,
+                    "phase_system": "3ph",
+                    "tags": [],
+                    "meta": {"substation_ref": substation_ref},
+                }
+            )
+            if target_sub is not None and bus_nn_ref not in target_sub.get("bus_refs", []):
+                target_sub.setdefault("bus_refs", []).append(bus_nn_ref)
+            created.append(bus_nn_ref)
+            ev_seq += 1
+            events.append(
+                {"event_seq": ev_seq, "event_type": "BUS_NN_CREATED", "element_id": bus_nn_ref}
+            )
+
+        nn_field_specs = _build_nn_field_specs(
+            nn_block=nn_block,
+            nn_bus_id=bus_nn_ref,
+            station_seed=seed,
+        )
+        if target_sub is not None:
+            _substation_meta(target_sub)["nn_field_specs"] = nn_field_specs
+        ev_seq += 1
+        events.append(
+            {"event_seq": ev_seq, "event_type": "FIELDS_CREATED_NN", "element_id": bus_nn_ref}
+        )
+
+        source_event = _materialize_nn_source(
+            new_enm=new_enm,
+            nn_block=nn_block,
+            station_seed=seed,
+            nn_bus_id=bus_nn_ref,
+            station_id=substation_ref,
+            transformer_ref=transformer_ref,
+            transformer_created=bool(transformer_catalog_ref),
+            created=created,
+        )
+        if source_event is not None:
+            generator_ref, event_type = source_event
+            ev_seq += 1
+            events.append(
+                {"event_seq": ev_seq, "event_type": event_type, "element_id": generator_ref}
+            )
 
     # Step 5: re-tag endpoint_bus jako część stacji
     for b in new_enm.get("buses", []):
