@@ -161,7 +161,7 @@ Dowód dla ❌/◐: `grep -ril <termin> frontend/src` z 2026-07-15.
 | NC RfG / PTPiREE | S11 | ncrfg_ptpiree_tests | ncrfg-tests | ✅ |
 | FRT / HVRT | S12 | ncrfg_ptpiree_tests | pokryte (`frt`: 62, `hvrt`: 52 pliki) | ✅ |
 | Stabilność RMS | S13 | ✅ v126 (dynamic_stability, voltage_stability) + solver_capabilities | częściowe (`stability`: 20 plików, gł. FRT/NC RfG) | ◐ |
-| Estymacja stanu WLS | S14 | ✅ `POST /api/quality/state-estimation` (+ `/requirements`) — quality_analysis_runs.py (faza 1: backend, 2026-07-21) | brak (UI = następna faza) | ◐ API wpięte; UI (ekran wyników) = następna faza |
+| Estymacja stanu WLS | S14 | ✅ `POST /api/quality/state-estimation` (+ `/requirements`) — quality_analysis_runs.py | ✅ `ui2/wyniki/estymacja` (EkranEstymacji: wejście pomiarów → \|V\|/kąt/rezydua/χ²/LNR + WHITE BOX), zakładka „Estymacja stanu" w WynikiWarsztat | ✅ (backend + UI, 2026-07-21) |
 | Stan fazowy SN | S15 | ✅ analysis_runs + execution_runs | częściowe (`phase_state`: 9 plików) | ◐ |
 | Podgląd źródła sieciowego | S16 | grid_source_preview | wizard (GridSourceEditor) | ✅ |
 | Pakiet akademicki V12.6 | S17 | v126_academic | ekrany E-40..E-50 (workspace) | ✅ |
