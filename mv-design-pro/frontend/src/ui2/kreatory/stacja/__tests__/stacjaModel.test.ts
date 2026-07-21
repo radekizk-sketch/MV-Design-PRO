@@ -192,6 +192,19 @@ describe('stacjaModel — typ stacji', () => {
     expect(normalizujTypStacji('gpz')).toBe('branch');
     expect(normalizujTypStacji(undefined)).toBe('branch');
   });
+
+  it('rozpoznaje typ końcowy (terminal) — semantyczny, legacy A i mv_lv (P1)', () => {
+    expect(normalizujTypStacji('terminal')).toBe('terminal');
+    expect(normalizujTypStacji('A')).toBe('terminal');
+    expect(normalizujTypStacji('mv_lv')).toBe('terminal');
+    expect(normalizujTypStacji('C')).toBe('branch');
+  });
+
+  it('stacja końcowa ma pola WE + transformator (bez WY/ODG) — P1', () => {
+    expect(rolePolaStacji('terminal')).toEqual(['LINIA_IN', 'TRANSFORMATOROWE']);
+    // Odgałęźna nadal z pełnym zestawem (kontrast — dead-end nie dostaje nadmiaru).
+    expect(rolePolaStacji('branch')).toContain('LINIA_OUT');
+  });
 });
 
 describe('stacjaModel — walidacja', () => {
@@ -292,6 +305,12 @@ describe('stacjaModel — payload', () => {
   it('napięcie SN w payloadzie pochodzi z kontekstu (szyny), nie z UI', () => {
     const payload = zbudujPayload(dane(), kontekst({ snVoltageKv: 20 }), rozdzielnica('branch'));
     expect((payload.station as Record<string, unknown>).sn_voltage_kv).toBe(20);
+  });
+
+  it('napięcie SN nieznane (0) → pominięte w payloadzie (backend ustala z szyny — P2/P3)', () => {
+    const payload = zbudujPayload(dane(), kontekst({ snVoltageKv: 0 }), rozdzielnica('branch'));
+    // Zero fabrykacji: brak sn_voltage_kv zamiast zgadywanej wartości.
+    expect(payload.station as Record<string, unknown>).not.toHaveProperty('sn_voltage_kv');
   });
 
   it('payload niesie sn_fields i station.switchgear z wyboru rozdzielnicy', () => {

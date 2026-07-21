@@ -125,12 +125,21 @@ export function KreatorStacjiSnNn() {
     const rawPos = context?.position_on_segment;
     const positionOnSegment = typeof rawPos === 'number' && Number.isFinite(rawPos) ? rawPos : 0.5;
     const segmentId = resolveSegmentIdFromContext(context, snapshot);
-    const snVoltageKv = deriveSnVoltageKv(snapshot, busOptions, segmentId);
-    const stationKind = normalizujTypStacji(
-      (context?.station as Record<string, unknown> | undefined)?.station_type ?? context?.station_type,
-    );
+    // Napięcie SN z rzeczywistej szyny: odcinka (insert) lub terminala (append).
+    // 0 = nieznane → serializacja pomija sn_voltage_kv, backend ustala z szyny.
+    const snVoltageKv = deriveSnVoltageKv(snapshot, busOptions, segmentId, endpointBusRef);
+    const tryb = wyznaczTryb(placementMode, endpointBusRef, positionOnSegment);
+    const rawStationType =
+      (context?.station as Record<string, unknown> | undefined)?.station_type
+      ?? context?.station_type;
+    // Dopięcie na końcu odcinka bez jawnego typu → stacja końcowa (WE+TR),
+    // nie odgałęźna (P1: dead-end nie dostaje nadmiarowych pól WY/ODG).
+    const stationKind =
+      rawStationType == null && tryb === 'ENDPOINT_APPEND'
+        ? 'terminal'
+        : normalizujTypStacji(rawStationType);
     return {
-      tryb: wyznaczTryb(placementMode, endpointBusRef, positionOnSegment),
+      tryb,
       endpointBusRef,
       runRef,
       segmentId,

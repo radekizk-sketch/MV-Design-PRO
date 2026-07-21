@@ -17,13 +17,16 @@ export const STACJA_STRINGS = {
   // Krok 1 — rodzaj.
   typStacji: 'Rodzaj stacji',
   typStacjiOpcje: [
-    { id: 'branch', etykieta: 'Odbiorcza (odgałęźna)' },
-    { id: 'inline', etykieta: 'Przelotowa (wcinka)' },
+    { id: 'terminal', etykieta: 'Końcowa (wejście + transformator)' },
+    { id: 'branch', etykieta: 'Odgałęźna (wejście + wyjście + odgałęzienie)' },
+    { id: 'inline', etykieta: 'Przelotowa (wejście + wyjście)' },
     { id: 'sectional', etykieta: 'Sekcyjna (ze sprzęgłem)' },
   ],
   typStacjiPomoc:
-    'Odbiorcza kończy odgałęzienie odbiorem; przelotowa wcina się w ciąg (wejście + wyjście); '
-    + 'sekcyjna dzieli szynę sprzęgłem. Rodzaj decyduje o polach rozdzielnicy SN.',
+    'Końcowa zamyka ciąg jednym polem zasilającym (bez pól wyjściowych/odgałęźnych); '
+    + 'odgałęźna oddaje odczep w bok (wejście + wyjście + odgałęzienie); przelotowa wcina się '
+    + 'w ciąg (wejście + wyjście); sekcyjna dzieli szynę sprzęgłem. '
+    + 'Rodzaj decyduje o polach rozdzielnicy SN.',
   nazwa: 'Nazwa stacji',
   nazwaPlaceholder: 'np. Stacja ST-3',
   nazwaPomoc: 'Puste — backend nada unikatową nazwę domyślną (kod stacji).',

@@ -423,12 +423,20 @@ export function resolveSegmentIdFromContext(
 }
 
 // SN voltage derivation
-export const DEFAULT_SN_VOLTAGE_KV = 15;
-
+/**
+ * Napięcie SN [kV] wyprowadzone z RZECZYWISTEJ szyny operacji — nigdy zgadywane.
+ *
+ * Tryb wstawienia na odcinek: z szyny odcinka (`segmentId`). Tryb dopięcia na
+ * końcu (append): z szyny terminala (`endpointBusRef`), a nie z odcinka.
+ * Gdy żadna nie da napięcia dodatniego → zwraca 0 (nieznane): wywołujący POMIJA
+ * `sn_voltage_kv` w żądaniu, a napięcie ustala backend z szyny (jedno źródło
+ * prawdy). ZERO fabrykacji (dawniej fallback 15 kV nadpisywał guard backendu).
+ */
 export function deriveSnVoltageKv(
   snapshot: unknown,
   busOptions: Array<{ ref_id: string; name: string; voltage_kv: number }>,
   segmentId: string,
+  endpointBusRef?: string | null,
 ): number {
   const model = snapshot as {
     branches?: Array<{
@@ -438,21 +446,19 @@ export function deriveSnVoltageKv(
       to_bus_ref?: string | null;
     }>;
   } | null;
+  const napiecieSzyny = (busRef: string | null | undefined): number | null => {
+    if (!busRef) return null;
+    const v = busOptions.find((bus) => bus.ref_id === busRef)?.voltage_kv;
+    return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
+  };
+
   const segment = model?.branches?.find(
     (branch) => branch.ref_id === segmentId || branch.id === segmentId,
   );
   const segmentBusRef = segment?.from_bus_ref ?? segment?.to_bus_ref ?? null;
-  const segmentBusVoltage = busOptions.find((bus) => bus.ref_id === segmentBusRef)?.voltage_kv;
-  if (
-    typeof segmentBusVoltage === 'number'
-    && Number.isFinite(segmentBusVoltage)
-    && segmentBusVoltage > 0
-  ) {
-    return segmentBusVoltage;
-  }
 
-  const firstMvBus = busOptions.find((bus) => bus.voltage_kv >= 1 && bus.voltage_kv < 60);
-  return firstMvBus?.voltage_kv ?? DEFAULT_SN_VOLTAGE_KV;
+  // Tryb wstawienia: szyna odcinka; tryb append: szyna terminala. Bez zgadywania.
+  return napiecieSzyny(segmentBusRef) ?? napiecieSzyny(endpointBusRef) ?? 0;
 }
 
 // Engineering segment label resolution

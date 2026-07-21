@@ -281,6 +281,10 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     });
     const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
     expect(payload).not.toHaveProperty('segment_id');
+    // P1: dopięcie na końcu bez jawnego typu → stacja końcowa (WE+TR), nie odgałęźna.
+    expect(payload.station_type).toBe('terminal');
+    const snFields = payload.sn_fields as Array<{ field_role: string }>;
+    expect(snFields.map((f) => f.field_role)).toEqual(['LINIA_IN', 'TRANSFORMATOROWE']);
   });
 
   it('honoruje wybór typu stacji zmieniony natywnie w kroku 1', async () => {

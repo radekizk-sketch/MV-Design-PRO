@@ -50,7 +50,7 @@ export type { SourceProtectionIntent } from '../../../ui/network-build/forms/Ins
 export type { ConverterType } from '../../../ui/catalog/types';
 
 /** Typ stacji SN/nN (semantyczny — backend akceptuje 1:1). */
-export type TypStacji = 'branch' | 'inline' | 'sectional';
+export type TypStacji = 'terminal' | 'branch' | 'inline' | 'sectional';
 
 /**
  * Konfiguracja strony nN stacji — PEŁNY parytet z legacy `InsertStationForm`
@@ -134,7 +134,7 @@ export interface KontekstStacji {
   stationKind: TypStacji;
 }
 
-const TYPY_STACJI: readonly TypStacji[] = ['branch', 'inline', 'sectional'];
+const TYPY_STACJI: readonly TypStacji[] = ['terminal', 'branch', 'inline', 'sectional'];
 
 /** Normalizuje typ stacji z kontekstu do wariantu obsługiwanego przez D2. */
 export function normalizujTypStacji(raw: unknown): TypStacji {
@@ -142,9 +142,11 @@ export function normalizujTypStacji(raw: unknown): TypStacji {
   if ((TYPY_STACJI as readonly string[]).includes(value)) {
     return value as TypStacji;
   }
-  // Mapowanie legacy A/B/C/D → semantyczny wariant.
+  // Mapowanie legacy A/B/C/D + mv_lv → semantyczny wariant.
+  if (value === 'a' || value === 'mv_lv') return 'terminal';
   if (value === 'b') return 'inline';
   if (value === 'd') return 'sectional';
+  if (value === 'c') return 'branch';
   return 'branch';
 }
 
@@ -542,7 +544,10 @@ export function zbudujPayload(
       station_type: data.station_type,
       station_role: 'STACJA_SN_NN',
       ...(nazwa ? { station_name: nazwa } : {}),
-      sn_voltage_kv: kontekst.snVoltageKv,
+      // Napięcie SN tylko gdy znane z rzeczywistej szyny (>0). Nieznane →
+      // pomijamy, backend ustala z szyny odcinka/terminala (jedno źródło prawdy,
+      // zero fabrykacji — P2/P3).
+      ...(kontekst.snVoltageKv > 0 ? { sn_voltage_kv: kontekst.snVoltageKv } : {}),
       nn_voltage_kv: nnVoltage,
       switchgear: {
         manufacturer_ref: rozdzielnica.manufacturerRef,
