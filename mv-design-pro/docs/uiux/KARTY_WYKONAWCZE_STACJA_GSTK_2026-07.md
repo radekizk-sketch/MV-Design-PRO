@@ -81,6 +81,7 @@ deferowana (wpis), przechodzimy do następnej.
 - **G-STK-4** ✅ WDROŻONE (pętla zwarcia u źródła z modelu — Z transformatora z uk%/Sn/Ulv/Pk
   → `compute_fault_loop` → Ik/Z_s u źródła; sekcja inspektora „Pętla zwarcia u źródła (nN)";
   TT/IT uczciwie „nie dotyczy"; domyka łańcuch uziemienia G-STK-1).
-- **G-STK-5** ⏳ KARTA (dwusekcyjna: potwierdzony realny brak — `sectional` ma pole SPRZĘGŁO,
-  ale JEDNĄ szynę SN; sprzęgło „w powietrzu". Wymaga operacji II sekcji + realnego łącznika).
+- **G-STK-5** ✅ WDROŻONE (dwusekcyjna: 2 sekcje szyny SN + realne sprzęgło `bus_coupler`
+  zamknięte; prawy odcinek z sekcji B; pole SPRZĘGŁO wiązane z realnym sprzęgłem; gated na
+  typ D — determinizm/golden nietknięte).
 - **G-STK-7** ⏳ KARTA GO-z-mostem (SPD→V126InsulationInput→_insulation, konsument istnieje).
