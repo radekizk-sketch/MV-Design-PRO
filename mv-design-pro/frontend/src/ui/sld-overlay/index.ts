@@ -65,3 +65,4 @@ export type {
 } from './ZeroSequenceOverlayAdapter';
 export { adaptOltcControlToOverlay, formatOltcPositionLabel } from './OltcOverlayAdapter';
 export type { OltcControlResultV1 } from './OltcOverlayAdapter';
+export { adaptRawOverlayToTyped } from './RawToTypedOverlayAdapter';

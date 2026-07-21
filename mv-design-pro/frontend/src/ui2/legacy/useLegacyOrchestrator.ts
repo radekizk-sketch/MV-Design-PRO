@@ -27,7 +27,7 @@ import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useExecutionRunsStore } from '../../ui/study-cases/runStore';
 import { getStudyCase } from '../../ui/study-cases/api';
 import { getProject } from '../../ui/projects/api';
-import { useOverlayStore } from '../../ui/sld-overlay';
+import { adaptRawOverlayToTyped, useOverlayStore } from '../../ui/sld-overlay';
 import { useRawResultOverlayStore } from '../../ui/sld-overlay/rawResultOverlayStore';
 import type { ExecutionAnalysisType, ExecutionRun } from '../../ui/study-cases/types';
 import {
@@ -777,9 +777,14 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
   // z /api/execution/runs/{run_id}/results/v1 i load do useRawResultOverlayStore.
   // Adresuje user feedback "nie widać wyników obliczeń" — bez tego v2 canvas
   // nie pokazuje LOAD_FLOW/SC_3F overlay.
-  // UWAGA: backend ResultsContractV1.overlay_payload ma OTHER schema niż typed
-  // OverlayPayloadV1 (`elements` dict, nie array). Używamy raw store.
-  void useOverlayStore; // unused but kept for future PR-16 integration
+  // V12K-088 (Opcja 2): backend `overlay_payload` ma `elements` jako dict; typowana
+  // rodzina OverlayPayloadV1 (useOverlayStore + V12OverlayModeController + runtime)
+  // oczekuje tablicy. Adapter `adaptRawOverlayToTyped` rekoncyliuje oba kontrakty —
+  // dotąd `loadOverlay` nie był wołany w produkcji (stub „future PR-16"), więc
+  // typowana warstwa nie miała producenta. Teraz karmimy OBIE ścieżki tym samym
+  // wynikiem backendu (raw store dla v2/v3 canvas; typed store dla trybu overlay).
+  const loadTypedOverlay = useOverlayStore((state) => state.loadOverlay);
+  const clearTypedOverlay = useOverlayStore((state) => state.clearOverlay);
   const setRawOverlay = useRawResultOverlayStore((state) => state.setPayload);
   const clearRawOverlay = useRawResultOverlayStore((state) => state.clear);
   const activeRawRunId = useRawResultOverlayStore((state) => state.payload?.run_id ?? null);
@@ -792,7 +797,10 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
       ? resolveRouteRunId(params, activeRunId ?? executionActiveRunId, activeCaseId)
       : null;
     if (!routeRunId) {
-      if (activeRawRunId) clearRawOverlay();
+      if (activeRawRunId) {
+        clearRawOverlay();
+        clearTypedOverlay();
+      }
       return;
     }
     if (routeRunId === activeRawRunId) return;
@@ -800,7 +808,10 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
       try {
         const runHealth = await fetchAnalysisRunHealth(routeRunId);
         if (!hasRenderableRunResults(runHealth)) {
-          if (activeRawRunId) clearRawOverlay();
+          if (activeRawRunId) {
+        clearRawOverlay();
+        clearTypedOverlay();
+      }
           return;
         }
         const res = await fetch(`/api/execution/runs/${routeRunId}/results/v1`);
@@ -808,13 +819,18 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
         const data = await res.json();
         const payload = data?.overlay_payload;
         if (payload && payload.elements && typeof payload.elements === 'object') {
-          setRawOverlay({
+          const rawPayload = {
             run_id: payload.run_id ?? routeRunId,
             analysis_type: payload.analysis_type ?? data?.analysis_type ?? 'LOAD_FLOW',
             elements: payload.elements,
             quality_status: data?.global_results?.quality_status ?? null,
             proof_status: data?.global_results?.proof_status ?? null,
-          });
+          };
+          setRawOverlay(rawPayload);
+          // V12K-088: karmimy typowaną warstwę tym samym wynikiem (rekoncyliacja).
+          const typed = adaptRawOverlayToTyped(rawPayload);
+          if (typed) loadTypedOverlay(typed);
+          else clearTypedOverlay();
         }
       } catch {
         // network errors silently — overlay just won't be shown
@@ -825,8 +841,10 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     activeRawRunId,
     activeRunId,
     clearRawOverlay,
+    clearTypedOverlay,
     executionActiveRunId,
     hashVersion,
+    loadTypedOverlay,
     route,
     setRawOverlay,
   ]);
