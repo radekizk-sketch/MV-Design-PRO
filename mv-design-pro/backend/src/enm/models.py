@@ -288,6 +288,10 @@ class Transformer(ENMElement):
     vector_group: str | None = None
     hv_neutral: GroundingConfig | None = None
     lv_neutral: GroundingConfig | None = None
+    # G-STK-6: liczba identycznych jednostek pracujących równolegle w polu
+    # transformatorowym. None/1 = pojedynczy transformator (bez zmiany fizyki).
+    # Agregacja: n jednostek → impedancja zastępcza Z/n (mapper skaluje Sn×n).
+    n_parallel: int | None = None
     tap_position: int | None = None
     tap_min: int | None = None
     tap_max: int | None = None

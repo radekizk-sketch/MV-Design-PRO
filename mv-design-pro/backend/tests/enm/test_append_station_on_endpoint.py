@@ -806,6 +806,40 @@ def test_endpoint_append_station_auxiliary_materializes_nn_load() -> None:
     assert abs(load["q_mvar"] - 0.0075) < 1e-6
 
 
+def test_endpoint_append_parallel_transformers_aggregate_impedance() -> None:
+    """transformer.n_parallel=2 → n_parallel na modelu + agregacja Sn×2 w grafie (G-STK-6).
+
+    Konsument realny: mapper ENM→NetworkGraph (rozpływ/zwarcie). n identycznych
+    jednostek równoległych ⇒ impedancja zastępcza Z/n (Sn×n, bo Z ∝ 1/Sn).
+    """
+    from enm.mapping import _ref_to_uuid, map_enm_to_network_graph
+    from enm.models import EnergyNetworkModel
+
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "station": {"name": "Stacja 2xTR append", "station_type": "terminal"},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630, "n_parallel": 2},
+            "nn_voltage_kv": 0.4,
+        },
+    )
+    assert response.get("error") is None
+    new_snap = response["snapshot"]
+    sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja 2xTR append")
+    tr = next(t for t in new_snap["transformers"] if t["ref_id"] in sub["transformer_refs"])
+    assert tr["n_parallel"] == 2
+    sn_unit = tr["sn_mva"]
+
+    # Konsument: graf agreguje moc (Sn×n) → impedancja zastępcza Z/n. Selekcja
+    # gałęzi po ref_id transformatora STACYJNEGO (nie GPZ).
+    enm = EnergyNetworkModel.model_validate(new_snap)
+    graph = map_enm_to_network_graph(enm)
+    tr_branch = graph.branches[_ref_to_uuid(tr["ref_id"])]
+    assert abs(tr_branch.rated_power_mva - sn_unit * 2) < 1e-9
+
+
 def test_endpoint_append_without_nn_earthing_leaves_transformer_neutral_unset() -> None:
     """Brak bloku nn_earthing → transformator bez neutralnych (addytywność G-STK-1)."""
     snap, endpoint = _build_gpz_with_endpoint()

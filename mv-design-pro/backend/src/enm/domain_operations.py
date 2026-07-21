@@ -3867,6 +3867,22 @@ def _apply_station_neutral_grounding(
                 break
 
 
+def _apply_transformer_parallelism(
+    tr_data: dict[str, Any], transformer_block: dict[str, Any]
+) -> None:
+    """Ustaw liczbę równoległych transformatorów z bloku transformatora (G-STK-6).
+
+    Czyta ``n_parallel`` (liczba identycznych jednostek w polu transformatorowym).
+    Ustawia tylko dla n≥2 (n=1 = pojedynczy → bez zmiany fizyki/determinizmu).
+    Mapper agreguje impedancję (Sn×n → Z/n). ZERO fabrykacji: brak/niepoprawny →
+    pomijamy.
+    """
+    raw = transformer_block.get("n_parallel")
+    n = _opt_int(raw) if raw is not None else None
+    if n is not None and n >= 2:
+        tr_data["n_parallel"] = n
+
+
 def _materialize_station_auxiliary_load(
     new_enm: dict[str, Any],
     payload: dict[str, Any],
@@ -4589,6 +4605,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             "uk_percent": 0.01,  # Wartosc inicjalna — materializacja z katalogu
             "pk_kw": 0.0,
         }
+        _apply_transformer_parallelism(tr_data, transformer)
         _apply_station_neutral_grounding(tr_data, payload, station=stn_id, new_enm=new_enm)
         materialization = _materialize_catalog_payload(
             catalog_ref=tr_catalog,
@@ -6214,6 +6231,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "vector_group",
                 "hv_neutral",
                 "lv_neutral",
+                "n_parallel",
                 "tap_position",
                 "tap_min",
                 "tap_max",
@@ -7273,6 +7291,8 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         _apply_station_neutral_grounding(
             transformer, payload, station=substation_ref, new_enm=new_enm
         )
+        # Praca równoległa transformatorów — PARYTET z insert (G-STK-6).
+        _apply_transformer_parallelism(transformer, transformer_payload)
         new_enm.setdefault("transformers", []).append(transformer)
         new_substation["transformer_refs"].append(transformer_ref)
         created.append(transformer_ref)

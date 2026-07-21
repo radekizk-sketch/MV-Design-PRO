@@ -665,6 +665,16 @@ export function KreatorStacjiSnNn() {
               <RzadWartosci etykieta={T.paramUk} wartosc={fmtPct(params.uk_percent)} />
             </KreatorSiatka>
           ) : null}
+          <PoleLiczbowe
+            etykieta={T.liczbaTransformatorow}
+            wartosc={dane.transformer_units}
+            onZmiana={(v) => zmien('transformer_units', v ?? 1)}
+            krok={1}
+            min={1}
+            max={4}
+            pomoc={T.liczbaTransformatorowPomoc}
+            testid="mvd-kreator-stacja-liczba-trafo"
+          />
           <PanelTeorii
             tytul={T.teoriaTrafoTytul}
             opis={T.teoriaTrafoOpis}

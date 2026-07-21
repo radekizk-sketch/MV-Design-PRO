@@ -326,6 +326,16 @@ describe('stacjaModel — payload', () => {
     expect(earthing).not.toHaveProperty('lv_r_ohm');
   });
 
+  it('liczba równoległych transformatorów → transformer.n_parallel tylko dla ≥2 (G-STK-6)', () => {
+    // Pojedynczy (domyślnie 1) → brak n_parallel w payloadzie.
+    const poj = zbudujPayload(dane(), kontekst(), rozdzielnica('branch'));
+    expect(poj.transformer as Record<string, unknown>).not.toHaveProperty('n_parallel');
+
+    // 2 jednostki → n_parallel=2.
+    const dwie = zbudujPayload(dane({ transformer_units: 2 }), kontekst(), rozdzielnica('branch'));
+    expect((dwie.transformer as Record<string, unknown>).n_parallel).toBe(2);
+  });
+
   it('potrzeby własne w payloadzie tylko gdy moc > 0; cosφ opcjonalny (G-STK-3)', () => {
     // Domyślnie moc pusta → brak bloku.
     const bez = zbudujPayload(dane(), kontekst(), rozdzielnica('branch'));

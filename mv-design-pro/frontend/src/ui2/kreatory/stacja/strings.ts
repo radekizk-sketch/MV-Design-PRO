@@ -282,6 +282,13 @@ export const STACJA_STRINGS = {
   teoriaNnPodstawa:
     'Podstawa: N SEP-E-001, IRiESD, PN-EN 62271 (aparatura nN/SN), wymagania przyłączeniowe OZE (NC RfG/PTPiREE).',
 
+  // Praca równoległa transformatorów (G-STK-6) — krok transformatora.
+  liczbaTransformatorow: 'Liczba równoległych transformatorów',
+  liczbaTransformatorowPomoc:
+    'Identyczne jednostki pracujące równolegle w polu transformatorowym (rezerwa/moc). '
+    + 'Dla n jednostek impedancja zastępcza maleje n-krotnie (Z/n) — rozpływ i zwarcie liczy '
+    + 'backend na agregacie. 1 = pojedynczy transformator.',
+
   // Potrzeby własne stacji (G-STK-3) — sekcja w kroku bloku nN.
   potrzebyWlasneTytul: 'Potrzeby własne stacji (opcjonalnie)',
   potrzebyWlasneOpis:

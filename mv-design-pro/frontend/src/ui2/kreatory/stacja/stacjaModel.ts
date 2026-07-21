@@ -117,6 +117,8 @@ export interface StacjaFormData {
   station_auxiliary_kw: string;
   /** cosφ potrzeb własnych — tekst PL; steruje mocą bierną odbioru. */
   station_auxiliary_cosphi: string;
+  /** Liczba równoległych transformatorów w polu (1 = pojedynczy) — G-STK-6. */
+  transformer_units: number;
 }
 
 export interface BladPola {
@@ -142,6 +144,7 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   bay_template_refs: {},
   station_auxiliary_kw: '',
   station_auxiliary_cosphi: '0,95',
+  transformer_units: 1,
 };
 
 /**
@@ -639,6 +642,8 @@ export function zbudujPayload(
       transformer_catalog_ref: catalogItemId,
       ...(transformerBinding ? { catalog_binding: transformerBinding } : {}),
       model_type: 'DWU_UZWOJENIOWY',
+      // Praca równoległa: n_parallel tylko dla ≥2 (pojedynczy → pominięte, G-STK-6).
+      ...(data.transformer_units > 1 ? { n_parallel: data.transformer_units } : {}),
     },
     nn_block: nnBlock,
     options: {

@@ -456,6 +456,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "vector_group",
             "hv_neutral",
             "lv_neutral",
+            "n_parallel",
             "tap_position",
             "tap_min",
             "tap_max",

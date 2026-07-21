@@ -512,6 +512,10 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             continue
 
         tap_changer = _map_tap_changer(trafo.tap_changer, ref_to_node_id)
+        # G-STK-6: n identycznych jednostek równoległych → impedancja zastępcza
+        # Z/n. Solver liczy Z z Sn i uk (Z = uk%·Un²/Sn), więc agregat = Sn×n daje
+        # dokładnie Z/n. Domyślnie n=1 (bez zmiany dla istniejących modeli).
+        n_parallel = trafo.n_parallel or 1
         tb = TransformerBranch(
             id=_ref_to_uuid(trafo.ref_id),
             name=trafo.name,
@@ -519,7 +523,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             from_node_id=hv_id,
             to_node_id=lv_id,
             in_service=True,
-            rated_power_mva=trafo.sn_mva,
+            rated_power_mva=trafo.sn_mva * n_parallel,
             voltage_hv_kv=trafo.uhv_kv,
             voltage_lv_kv=trafo.ulv_kv,
             uk_percent=trafo.uk_percent,
