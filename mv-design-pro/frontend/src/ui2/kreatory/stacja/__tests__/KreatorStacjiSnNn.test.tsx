@@ -118,6 +118,8 @@ vi.mock('../../../../ui/catalog/api', () => ({
     Promise.resolve([
       { id: 'pv-800-069', name: 'PV 800 0,69kV', kind: 'PV', un_kv: 0.69, sn_mva: 0.9, pmax_mw: 0.8 },
       { id: 'pv-500-04', name: 'PV 500 0,4kV', kind: 'PV', un_kv: 0.4, sn_mva: 0.55, pmax_mw: 0.5 },
+      { id: 'bess-069', name: 'BESS 0,69kV', kind: 'BESS', un_kv: 0.69, sn_mva: 0.8, pmax_mw: 0.7 },
+      { id: 'wind-04', name: 'FW 0,4kV', kind: 'WIND', un_kv: 0.4, sn_mva: 0.6, pmax_mw: 0.5 },
     ]),
   fetchManufacturers: () =>
     Promise.resolve([
@@ -355,6 +357,137 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     expect(feeders.map((f) => f.feeder_role)).toContain('ZRODLO_NN_PV');
     // Napięcie nN stacji z katalogu falownika, nie z pola odbioru.
     expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(0.69);
+  });
+
+  it('BESS za transformatorem: wybór falownika BESS natywnie → nn_block BESS + feeder ZRODLO_NN_BESS', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-konfiguracja-nn'),
+      'BESS_INVERTER',
+    );
+    // Falownik z katalogu zawężony do rodzaju BESS (0,69 kV).
+    await waitFor(() => {
+      const falownik = screen.getByTestId('mvd-kreator-stacja-falownik') as HTMLSelectElement;
+      expect(falownik.querySelector('option[value="bess-069"]')).not.toBeNull();
+      // Falowniki PV nie należą do listy BESS.
+      expect(falownik.querySelector('option[value="pv-800-069"]')).toBeNull();
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-falownik'), 'bess-069');
+    await waitFor(() => {
+      const katalog = screen.getByTestId('mvd-kreator-stacja-katalog') as HTMLSelectElement;
+      expect(katalog.querySelector('option[value="trafo-1000-15-069"]')).not.toBeNull();
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-katalog'), 'trafo-1000-15-069');
+    await przejdzIWybierzRozdzielnice();
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'insert_station_on_segment_sn',
+        expect.objectContaining({
+          nn_block: expect.objectContaining({
+            nn_configuration: 'BESS_INVERTER',
+            source_converter_catalog_ref: 'bess-069',
+            source_converter_kind: 'BESS',
+            source_converter_un_kv: 0.69,
+          }),
+        }),
+      );
+    });
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    const nnBlock = payload.nn_block as Record<string, unknown>;
+    // Legacy: intencja zabezpieczenia tylko dla PV → BESS bez source_protection.
+    expect(nnBlock).not.toHaveProperty('source_protection');
+    const feeders = nnBlock.outgoing_feeders_nn as Array<{ feeder_role: string }>;
+    expect(feeders.map((f) => f.feeder_role)).toContain('ZRODLO_NN_BESS');
+    expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(0.69);
+  });
+
+  it('FW za transformatorem: wybór falownika WIND natywnie → nn_block FW + feeder ZRODLO_NN_FW', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-konfiguracja-nn'),
+      'FW_INVERTER',
+    );
+    await waitFor(() => {
+      const falownik = screen.getByTestId('mvd-kreator-stacja-falownik') as HTMLSelectElement;
+      expect(falownik.querySelector('option[value="wind-04"]')).not.toBeNull();
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-falownik'), 'wind-04');
+    // Falownik 0,4 kV → transformator SN 15 / nN 0,4 kV.
+    await waitFor(() => {
+      const katalog = screen.getByTestId('mvd-kreator-stacja-katalog') as HTMLSelectElement;
+      expect(katalog.querySelector('option[value="trafo-630-15-04"]')).not.toBeNull();
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-katalog'), 'trafo-630-15-04');
+    await przejdzIWybierzRozdzielnice();
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'insert_station_on_segment_sn',
+        expect.objectContaining({
+          nn_block: expect.objectContaining({
+            nn_configuration: 'FW_INVERTER',
+            source_converter_catalog_ref: 'wind-04',
+            source_converter_kind: 'WIND',
+          }),
+        }),
+      );
+    });
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    const feeders = (payload.nn_block as Record<string, unknown>).outgoing_feeders_nn as Array<{
+      feeder_role: string;
+    }>;
+    expect(feeders.map((f) => f.feeder_role)).toContain('ZRODLO_NN_FW');
+  });
+
+  it('CUSTOM_NN: własne napięcie strony nN wybrane natywnie → nn_configuration CUSTOM_NN z tym napięciem', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await userEvent.selectOptions(
+      screen.getByTestId('mvd-kreator-stacja-konfiguracja-nn'),
+      'CUSTOM_NN',
+    );
+    // Rozszerzona lista napięć strony nN — wybór 0,69 kV (poza domyślnym 0,4 kV).
+    await waitFor(() => {
+      const napiecie = screen.getByTestId('mvd-kreator-stacja-nn') as HTMLSelectElement;
+      expect(napiecie.querySelector('option[value="6.3"]')).not.toBeNull();
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-nn'), '0.69');
+    await waitFor(() => {
+      const katalog = screen.getByTestId('mvd-kreator-stacja-katalog') as HTMLSelectElement;
+      expect(katalog.querySelector('option[value="trafo-1000-15-069"]')).not.toBeNull();
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-katalog'), 'trafo-1000-15-069');
+    await przejdzIWybierzRozdzielnice();
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+    await waitFor(() => {
+      expect(executeDomainOperationMock).toHaveBeenCalledWith(
+        'case-1',
+        'insert_station_on_segment_sn',
+        expect.objectContaining({
+          nn_block: expect.objectContaining({ nn_configuration: 'CUSTOM_NN' }),
+        }),
+      );
+    });
+    const payload = executeDomainOperationMock.mock.calls[0]?.[2] as Record<string, unknown>;
+    const nnBlock = payload.nn_block as Record<string, unknown>;
+    expect(nnBlock).not.toHaveProperty('source_converter_catalog_ref');
+    expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(0.69);
+    const feeders = nnBlock.outgoing_feeders_nn as Array<{ feeder_role: string }>;
+    expect(feeders.every((f) => f.feeder_role === 'ODPLYW_NN')).toBe(true);
   });
 
   it('LOAD_NN: zmiana liczby odpływów w kroku Blok nN → payload z odpływami odbiorczymi', async () => {

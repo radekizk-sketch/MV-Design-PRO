@@ -50,21 +50,23 @@ export const STACJA_STRINGS = {
   konfiguracjaNn: 'Konfiguracja strony nN',
   konfiguracjaNnOpcje: [
     { id: 'LOAD_NN', etykieta: 'Rozdzielnia nN odbiorcza' },
+    { id: 'CUSTOM_NN', etykieta: 'Własne napięcie strony nN' },
     { id: 'PV_INVERTER', etykieta: 'PV przez falownik (za transformatorem)' },
+    { id: 'BESS_INVERTER', etykieta: 'Magazyn energii BESS przez falownik' },
+    { id: 'FW_INVERTER', etykieta: 'Elektrownia wiatrowa przez falownik' },
   ],
   konfiguracjaNnPomoc:
-    'Odbiorcza: stacja zasila odbiory nN (napięcie wybierasz z listy). PV: za transformatorem '
-    + 'pracuje źródło PV przez falownik — napięcie strony nN wynika z katalogu falownika, '
-    + 'a transformator dobiera się do jego strony nN i mocy.',
-  falownik: 'Falownik PV z katalogu',
-  falownikPlaceholder: '— wybierz falownik PV —',
+    'Odbiorcza: stacja zasila odbiory nN (0,4 kV — typowa rozdzielnia). Własne napięcie: '
+    + 'wybierasz jawnie napięcie strony nN z rozszerzonej listy (do 6,3 kV). Warianty źródłowe '
+    + '(PV / magazyn BESS / elektrownia wiatrowa): za transformatorem pracuje źródło przez falownik — '
+    + 'napięcie strony nN i moc wynikają z katalogu falownika właściwego rodzaju, a transformator '
+    + 'dobiera się do tych wartości.',
+  falownikPlaceholder: '— wybierz falownik z katalogu —',
   falownikPomoc:
-    'Pozycja katalogowa falownika wyznacza napięcie strony nN (un) i moc źródła — '
-    + 'transformator dobiera się do tych wartości. Brak wyboru blokuje dobór transformatora.',
+    'Pozycja katalogowa falownika (rodzaj wynika z wybranego wariantu źródła) wyznacza napięcie '
+    + 'strony nN (un) i moc źródła — transformator dobiera się do tych wartości. Brak wyboru '
+    + 'blokuje dobór transformatora.',
   falownikBlad: 'Nie udało się pobrać katalogu falowników.',
-  falownikBrak:
-    'Brak w katalogu falowników PV zdatnych na źródło nN stacji (napięcie strony nN ≤ 1 kV). '
-    + 'Uzupełnij katalog falowników PV.',
   wymNnOdczyt: 'Wymagane napięcie strony nN',
   wymNnOczekuje: 'oczekuje na wybór falownika',
   nnVoltage: 'Napięcie nN odbioru',
@@ -72,7 +74,51 @@ export const STACJA_STRINGS = {
     { id: '0.4', etykieta: '0,4 kV (400 V)' },
     { id: '0.69', etykieta: '0,69 kV (690 V)' },
   ],
+  nnVoltageCustom: 'Napięcie strony nN (własne)',
+  nnVoltageCustomOpcje: [
+    { id: '0.4', etykieta: '0,4 kV (400 V)' },
+    { id: '0.5', etykieta: '0,5 kV (500 V)' },
+    { id: '0.69', etykieta: '0,69 kV (690 V)' },
+    { id: '0.8', etykieta: '0,8 kV (800 V)' },
+    { id: '1', etykieta: '1 kV (1000 V)' },
+    { id: '3.15', etykieta: '3,15 kV' },
+    { id: '6', etykieta: '6 kV' },
+    { id: '6.3', etykieta: '6,3 kV' },
+  ],
+  nnVoltageCustomPomoc:
+    'Jawnie wybrane napięcie strony nN dla nietypowej rozdzielni — transformator dobiera się '
+    + 'z katalogu do tej przekładni (blokada, gdy brak zgodnego typu).',
   nnVoltagePomoc: 'Napięcie strony dolnej dobiera transformator z katalogu (przekładnia SN/nN).',
+  // Etykiety per wariant źródła (falownik / sekcja / pole źródłowe / stany zerowe).
+  zrodloEtykiety: {
+    PV_INVERTER: {
+      falownik: 'Falownik PV z katalogu',
+      sekcja: 'Źródło PV za transformatorem',
+      poleWartosc: 'ZRODLO_NN_PV (falownik) + odpływy odbiorcze',
+      wyborBrak: 'Wybierz falownik PV z katalogu w kroku „Transformator i strona nN".',
+      katalogBrak:
+        'Brak w katalogu falowników PV zdatnych na źródło nN stacji (napięcie strony nN ≤ 1 kV). '
+        + 'Uzupełnij katalog falowników PV.',
+    },
+    BESS_INVERTER: {
+      falownik: 'Falownik magazynu BESS z katalogu',
+      sekcja: 'Magazyn energii BESS za transformatorem',
+      poleWartosc: 'ZRODLO_NN_BESS (falownik) + odpływy odbiorcze',
+      wyborBrak: 'Wybierz falownik magazynu BESS z katalogu w kroku „Transformator i strona nN".',
+      katalogBrak:
+        'Brak w katalogu falowników magazynu BESS zdatnych na źródło nN stacji (napięcie strony nN ≤ 1 kV). '
+        + 'Uzupełnij katalog falowników BESS.',
+    },
+    FW_INVERTER: {
+      falownik: 'Falownik elektrowni wiatrowej z katalogu',
+      sekcja: 'Elektrownia wiatrowa za transformatorem',
+      poleWartosc: 'ZRODLO_NN_FW (falownik) + odpływy odbiorcze',
+      wyborBrak: 'Wybierz falownik elektrowni wiatrowej z katalogu w kroku „Transformator i strona nN".',
+      katalogBrak:
+        'Brak w katalogu falowników elektrowni wiatrowej zdatnych na źródło nN stacji (napięcie strony nN ≤ 1 kV). '
+        + 'Uzupełnij katalog falowników.',
+    },
+  },
   snVoltageOdczyt: 'Napięcie SN szyny',
   typKatalog: 'Typ transformatora z katalogu',
   typKatalogPlaceholder: '— wybierz typ transformatora —',
@@ -119,14 +165,11 @@ export const STACJA_STRINGS = {
   nnBlokKonfiguracja: 'Konfiguracja strony nN',
   nnBlokNapiecie: 'Napięcie strony nN',
   nnBlokOdplywy: 'Odpływy odbiorcze nN',
-  nnBlokZrodloTytul: 'Źródło PV za transformatorem',
   nnBlokZrodloFalownik: 'Falownik',
   nnBlokZrodloUn: 'Napięcie strony nN falownika',
   nnBlokZrodloMoc: 'Moc źródła',
   nnBlokZrodloPmax: 'Moc czynna maks.',
-  nnBlokZrodloBrak: 'Wybierz falownik PV z katalogu w kroku „Transformator i strona nN".',
   nnBlokLabelPvPole: 'Pole źródłowe nN',
-  nnBlokLabelPvPoleWartosc: 'ZRODLO_NN_PV (falownik) + odpływy odbiorcze',
 
   // Zabezpieczenie źródła nN (intencja — dobór aparatu w edycji stacji).
   ochronaTytul: 'Zabezpieczenie źródła nN (intencja)',
@@ -216,20 +259,22 @@ export const STACJA_STRINGS = {
     'Każde pole musi mieć kompletny szablon katalogowy (pakiet producenta). Pola liniowe konfiguruj wg '
     + 'kierunku zasilania, pole TR wg mocy transformatora, sprzęgło wg schematu sekcjonowania.',
   teoriaRozdzielnicaPodstawa: 'Podstawa: PN-EN 62271-200 (rozdzielnice SN), N SEP-E-001, IRiESD.',
-  teoriaNnTytul: 'Teoria: blok nN — rozdzielnia odbiorcza a źródło PV za transformatorem',
+  teoriaNnTytul: 'Teoria: blok nN — rozdzielnia odbiorcza a źródła (PV / BESS / wiatr) za transformatorem',
   teoriaNnOpis:
     'Blok nN obejmuje szynę nN, wyłącznik główny i pola odpływowe. W wariancie odbiorczym '
     + 'stacja zasila odbiory: liczba odpływów odpowiada obwodom odbiorczym, a napięcie nN wybierasz '
-    + 'z listy (0,4 kV to typowa rozdzielnia odbiorcza). W wariancie PV za transformatorem pracuje '
-    + 'generacja: falownik PV przyłącza się do szyny nN osobnym polem źródłowym (ZRODLO_NN_PV), a '
+    + 'z listy (0,4 kV to typowa rozdzielnia odbiorcza) — w wariancie „własne napięcie" z rozszerzonej '
+    + 'listy (do 6,3 kV) dla nietypowej strony nN. W wariantach źródłowych za transformatorem pracuje '
+    + 'generacja: falownik właściwego rodzaju (PV, magazyn energii BESS lub elektrownia wiatrowa) '
+    + 'przyłącza się do szyny nN osobnym polem źródłowym (ZRODLO_NN_PV / ZRODLO_NN_BESS / ZRODLO_NN_FW), a '
     + 'napięcie strony nN i moc źródła pochodzą z katalogu falownika — dlatego transformator dobiera '
     + 'się do jego strony nN i mocy (blokada, gdy brak zgodnego typu). Źródło PV wymaga własnego '
     + 'wyłącznika nN i zabezpieczenia skoordynowanego z wyłącznikiem głównym nN; intencja tego '
     + 'zabezpieczenia trafia do modelu jako wymaganie, a dobór aparatu i nastaw następuje w edycji stacji.',
   teoriaNnWymog:
-    'Napięcie nN i moc transformatora dobieraj do rzeczywistego odbioru lub źródła (dla PV — do '
-    + 'strony nN i mocy falownika). Źródło PV zawsze z polem źródłowym i zabezpieczeniem — nie mieszaj '
-    + 'go z odpływami odbiorczymi.',
+    'Napięcie nN i moc transformatora dobieraj do rzeczywistego odbioru lub źródła (dla PV / BESS / '
+    + 'wiatru — do strony nN i mocy falownika). Źródło zawsze z polem źródłowym właściwej roli — nie '
+    + 'mieszaj go z odpływami odbiorczymi.',
   teoriaNnPodstawa:
     'Podstawa: N SEP-E-001, IRiESD, PN-EN 62271 (aparatura nN/SN), wymagania przyłączeniowe OZE (NC RfG/PTPiREE).',
 } as const;

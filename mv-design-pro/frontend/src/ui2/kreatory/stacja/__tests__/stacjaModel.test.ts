@@ -6,17 +6,21 @@ import {
   DANE_DOMYSLNE,
   czyKoniecOdcinka,
   czyRozdzielnicaKompletna,
+  czyZrodloNn,
   doborTransformatorow,
   falownikiPv,
+  falownikiZrodla,
   fmtKv,
   fmtMva,
   konwerterZKatalogu,
   kontekstKompletny,
   mocZrodlaNnMva,
+  namespaceZrodlaNn,
   nazwaOperacji,
   normalizujTypStacji,
   ogranicznikOdplywow,
   parametryZKatalogu,
+  rodzajFalownika,
   rolePolaStacji,
   szablonyDlaWyboru,
   szablonyPerRola,
@@ -121,8 +125,11 @@ const falowniki = [
   { id: 'pv-800-069', name: 'PV 800 0,69kV', kind: 'PV', un_kv: 0.69, sn_mva: 0.9, pmax_mw: 0.8 },
   // Napięcie strony nN > 1 kV — niezdatny na źródło nN stacji (filtr legacy).
   { id: 'pv-sn-3', name: 'PV 3kV', kind: 'PV', un_kv: 3, sn_mva: 2, pmax_mw: 1.8 },
-  // Inny rodzaj (BESS) — poza zakresem D4 (LOAD_NN vs PV_INVERTER).
+  // Magazyn energii BESS (rodzaj BESS) — wariant BESS_INVERTER.
   { id: 'bess-04', name: 'BESS 0,4kV', kind: 'BESS', un_kv: 0.4, sn_mva: 0.5, pmax_mw: 0.4 },
+  { id: 'bess-069', name: 'BESS 0,69kV', kind: 'BESS', un_kv: 0.69, sn_mva: 0.8, pmax_mw: 0.7 },
+  // Elektrownia wiatrowa (rodzaj WIND) — wariant FW_INVERTER.
+  { id: 'wind-04', name: 'FW 0,4kV', kind: 'WIND', un_kv: 0.4, sn_mva: 0.6, pmax_mw: 0.5 },
 ] as unknown as ConverterType[];
 
 function dane(over: Partial<StacjaFormData> = {}): StacjaFormData {
@@ -436,6 +443,137 @@ describe('stacjaModel — blok nN / PV', () => {
     const feeders = nnBlock.outgoing_feeders_nn as Array<{ feeder_role: string }>;
     expect(feeders.every((f) => f.feeder_role === 'ODPLYW_NN')).toBe(true);
     expect(nnBlock.outgoing_feeders_nn_count).toBe(2);
+  });
+});
+
+describe('stacjaModel — pełny parytet nN (5 wariantów vs legacy)', () => {
+  it('rodzajFalownika + czyZrodloNn: mapowanie wariantów źródłowych', () => {
+    expect(rodzajFalownika('PV_INVERTER')).toBe('PV');
+    expect(rodzajFalownika('BESS_INVERTER')).toBe('BESS');
+    expect(rodzajFalownika('FW_INVERTER')).toBe('WIND');
+    expect(rodzajFalownika('LOAD_NN')).toBeNull();
+    expect(rodzajFalownika('CUSTOM_NN')).toBeNull();
+    expect(czyZrodloNn('PV_INVERTER')).toBe(true);
+    expect(czyZrodloNn('BESS_INVERTER')).toBe(true);
+    expect(czyZrodloNn('FW_INVERTER')).toBe(true);
+    expect(czyZrodloNn('LOAD_NN')).toBe(false);
+    expect(czyZrodloNn('CUSTOM_NN')).toBe(false);
+  });
+
+  it('falownikiZrodla: zawęża do rodzaju (PV/BESS/WIND) i filtruje un > 1 kV', () => {
+    expect(falownikiZrodla(falowniki, 'PV_INVERTER').map((c) => c.id)).toEqual(['pv-500-04', 'pv-800-069']);
+    expect(falownikiZrodla(falowniki, 'BESS_INVERTER').map((c) => c.id)).toEqual(['bess-04', 'bess-069']);
+    expect(falownikiZrodla(falowniki, 'FW_INVERTER').map((c) => c.id)).toEqual(['wind-04']);
+    // Warianty odbiorcze nie mają falownika.
+    expect(falownikiZrodla(falowniki, 'LOAD_NN')).toEqual([]);
+    expect(falownikiZrodla(falowniki, 'CUSTOM_NN')).toEqual([]);
+    // falownikiPv = wariant PV (reużycie).
+    expect(falownikiPv(falowniki).map((c) => c.id)).toEqual(['pv-500-04', 'pv-800-069']);
+  });
+
+  it('namespaceZrodlaNn: parytet 1:1 z legacy (PV/BESS/CONVERTER)', () => {
+    expect(namespaceZrodlaNn('PV_INVERTER')).toBe('ZRODLO_NN_PV');
+    expect(namespaceZrodlaNn('BESS_INVERTER')).toBe('ZRODLO_NN_BESS');
+    expect(namespaceZrodlaNn('FW_INVERTER')).toBe('CONVERTER');
+  });
+
+  it('wymaganeNapiecieNn/mocZrodlaNnMva: BESS i FW czytają z katalogu falownika', () => {
+    const bess = konwerterZKatalogu('bess-069', falownikiZrodla(falowniki, 'BESS_INVERTER'));
+    expect(wymaganeNapiecieNn(dane({ nn_configuration: 'BESS_INVERTER', source_converter_ref: 'bess-069' }), bess)).toBe(0.69);
+    expect(mocZrodlaNnMva(dane({ nn_configuration: 'BESS_INVERTER' }), bess)).toBe(0.8);
+    const wind = konwerterZKatalogu('wind-04', falownikiZrodla(falowniki, 'FW_INVERTER'));
+    expect(wymaganeNapiecieNn(dane({ nn_configuration: 'FW_INVERTER', source_converter_ref: 'wind-04' }), wind)).toBe(0.4);
+    expect(mocZrodlaNnMva(dane({ nn_configuration: 'FW_INVERTER' }), wind)).toBe(0.6);
+  });
+
+  it('walidacja: warianty źródłowe wymagają falownika (BESS/FW)', () => {
+    expect(
+      walidujFormularz(dane({ nn_configuration: 'BESS_INVERTER', source_converter_ref: null })).some(
+        (e) => e.field === 'source_converter_ref',
+      ),
+    ).toBe(true);
+    expect(
+      walidujFormularz(dane({ nn_configuration: 'FW_INVERTER', source_converter_ref: null })).some(
+        (e) => e.field === 'source_converter_ref',
+      ),
+    ).toBe(true);
+  });
+
+  it('payload BESS: nn_block z BESS, feeder ZRODLO_NN_BESS, napięcie z falownika, bez zabezpieczenia', () => {
+    const bess = konwerterZKatalogu('bess-069', falownikiZrodla(falowniki, 'BESS_INVERTER'));
+    const payload = zbudujPayload(
+      dane({
+        nn_configuration: 'BESS_INVERTER',
+        source_converter_ref: 'bess-069',
+        catalog_ref: 'trafo-1000-15-069',
+        outgoing_feeders_nn_count: 2,
+      }),
+      kontekst({ snVoltageKv: 15 }),
+      rozdzielnica('branch'),
+      bess,
+    );
+    const nnBlock = payload.nn_block as Record<string, unknown>;
+    expect(nnBlock).toMatchObject({
+      nn_configuration: 'BESS_INVERTER',
+      source_converter_catalog_ref: 'bess-069',
+      source_converter_kind: 'BESS',
+      source_converter_un_kv: 0.69,
+      source_converter_sn_mva: 0.8,
+      source_converter_pmax_mw: 0.7,
+    });
+    // Legacy: intencja zabezpieczenia tylko dla PV → BESS bez source_protection.
+    expect(nnBlock).not.toHaveProperty('source_protection');
+    expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(0.69);
+    const feeders = nnBlock.outgoing_feeders_nn as Array<{
+      feeder_role: string;
+      catalog_bindings: { source_converter?: { catalog_namespace?: string } } | null;
+    }>;
+    expect(feeders.map((f) => f.feeder_role)).toEqual(['ODPLYW_NN', 'ODPLYW_NN', 'ZRODLO_NN_BESS']);
+    expect(feeders[2].catalog_bindings?.source_converter?.catalog_namespace).toBe('ZRODLO_NN_BESS');
+    expect(nnBlock.outgoing_feeders_nn_count).toBe(3);
+  });
+
+  it('payload FW: feeder ZRODLO_NN_FW, wiązanie falownika w przestrzeni CONVERTER (parytet legacy)', () => {
+    const wind = konwerterZKatalogu('wind-04', falownikiZrodla(falowniki, 'FW_INVERTER'));
+    const payload = zbudujPayload(
+      dane({
+        nn_configuration: 'FW_INVERTER',
+        source_converter_ref: 'wind-04',
+        catalog_ref: 'trafo-630-15-04',
+      }),
+      kontekst({ snVoltageKv: 15 }),
+      rozdzielnica('branch'),
+      wind,
+    );
+    const nnBlock = payload.nn_block as Record<string, unknown>;
+    expect(nnBlock).toMatchObject({
+      nn_configuration: 'FW_INVERTER',
+      source_converter_catalog_ref: 'wind-04',
+      source_converter_kind: 'WIND',
+      source_converter_un_kv: 0.4,
+    });
+    const feeders = nnBlock.outgoing_feeders_nn as Array<{
+      feeder_role: string;
+      catalog_bindings: { source_converter?: { catalog_namespace?: string } } | null;
+    }>;
+    expect(feeders.at(-1)?.feeder_role).toBe('ZRODLO_NN_FW');
+    expect(feeders.at(-1)?.catalog_bindings?.source_converter?.catalog_namespace).toBe('CONVERTER');
+  });
+
+  it('payload CUSTOM_NN: własne napięcie nN w payloadzie, bez źródła i pola źródłowego', () => {
+    const payload = zbudujPayload(
+      dane({ nn_configuration: 'CUSTOM_NN', nn_voltage_kv: 6.3, catalog_ref: 'trafo-630-15-04' }),
+      kontekst({ snVoltageKv: 15 }),
+      rozdzielnica('branch'),
+    );
+    const nnBlock = payload.nn_block as Record<string, unknown>;
+    expect(nnBlock.nn_configuration).toBe('CUSTOM_NN');
+    expect(nnBlock).not.toHaveProperty('source_converter_catalog_ref');
+    expect(nnBlock).not.toHaveProperty('source_protection');
+    // Własne napięcie strony nN spływa do station.nn_voltage_kv (nie z falownika).
+    expect((payload.station as Record<string, unknown>).nn_voltage_kv).toBe(6.3);
+    const feeders = nnBlock.outgoing_feeders_nn as Array<{ feeder_role: string }>;
+    expect(feeders.every((f) => f.feeder_role === 'ODPLYW_NN')).toBe(true);
   });
 });
 

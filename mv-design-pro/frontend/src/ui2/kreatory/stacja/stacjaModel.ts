@@ -31,6 +31,7 @@ import {
   voltageMatches,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import type {
+  NnConfiguration,
   SnFieldRole,
   SourceProtectionIntent,
   StationSnFieldTemplate,
@@ -38,7 +39,7 @@ import type {
   TopologicalStationKind,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
-import type { ConverterType } from '../../../ui/catalog/types';
+import type { CatalogNamespace, ConverterType } from '../../../ui/catalog/types';
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { TransformerType } from '../../../ui/catalog/types';
@@ -52,11 +53,15 @@ export type { ConverterType } from '../../../ui/catalog/types';
 export type TypStacji = 'branch' | 'inline' | 'sectional';
 
 /**
- * Konfiguracja strony nN stacji. Parytet z kontraktem operacji (D4):
- * `LOAD_NN` — rozdzielnia nN odbiorcza; `PV_INVERTER` — źródło PV za
- * transformatorem (falownik z katalogu, napięcie nN z jego strony nN).
+ * Konfiguracja strony nN stacji — PEŁNY parytet z legacy `InsertStationForm`
+ * i kontraktem operacji (`domain_operations.py` blok nN + `source_kind_map`):
+ * `LOAD_NN` — rozdzielnia nN odbiorcza; `CUSTOM_NN` — odbiorcza z jawnie
+ * wybranym napięciem strony nN; `PV_INVERTER`/`BESS_INVERTER`/`FW_INVERTER` —
+ * źródło (PV / magazyn BESS / elektrownia wiatrowa) za transformatorem, gdzie
+ * falownik z katalogu wyznacza napięcie strony nN i moc źródła. Typ reużyty z
+ * helperów legacy (jedno źródło prawdy dla wariantów).
  */
-export type NnConfiguration = 'LOAD_NN' | 'PV_INVERTER';
+export type { NnConfiguration } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 
 /** Tryb umiejscowienia stacji względem topologii magistrali. */
 export type TrybUmiejscowienia = 'ENDPOINT_APPEND' | 'SPLIT';
@@ -65,8 +70,13 @@ export type TrybUmiejscowienia = 'ENDPOINT_APPEND' | 'SPLIT';
 const SN_VOLTAGE_TOLERANCE_KV = 0.01;
 const NN_VOLTAGE_TOLERANCE_KV = 0.001;
 
-/** Standardowe napięcia nN odbioru [kV]. */
+/** Standardowe napięcia nN odbioru [kV] (wariant LOAD_NN). */
 export const NAPIECIA_NN_KV = [0.4, 0.69] as const;
+/**
+ * Rozszerzona lista napięć strony nN [kV] dla wariantu CUSTOM_NN — parytet z
+ * legacy `NN_VOLTAGE_OPTIONS_KV` (0,4–6,3 kV). Projektant wybiera jawnie.
+ */
+export const NAPIECIA_NN_CUSTOM_KV = [0.4, 0.5, 0.69, 0.8, 1, 3.15, 6, 6.3] as const;
 export const DOMYSLNE_NAPIECIE_NN_KV = 0.4;
 export const DOMYSLNA_LICZBA_ODPLYWOW_NN = 2;
 
@@ -195,13 +205,10 @@ export function walidujFormularz(
       message: 'Stacja wymaga co najmniej jednego odpływu nN.',
     });
   }
-  if (
-    data.nn_configuration === 'PV_INVERTER'
-    && !data.source_converter_ref?.trim()
-  ) {
+  if (czyZrodloNn(data.nn_configuration) && !data.source_converter_ref?.trim()) {
     errors.push({
       field: 'source_converter_ref',
-      message: 'Wybierz falownik PV z katalogu — napięcie strony nN wynika z jego strony nN.',
+      message: 'Wybierz falownik źródła z katalogu — napięcie strony nN wynika z jego strony nN.',
     });
   }
   if (!data.manufacturer_ref?.trim()) {
@@ -240,17 +247,53 @@ export function doborTransformatorow(
   return zgodne.sort((a, b) => a.rated_power_mva - b.rated_power_mva || a.id.localeCompare(b.id));
 }
 
-// ------------------------------------------------------ Blok nN / źródło PV
+// ------------------------------------------------------ Blok nN / źródło za trafo
 
 /**
- * Falowniki PV zdatne na źródło nN stacji: filtr napięcia strony nN (≤ 1 kV,
- * reużycie `isStationNnSourceConverter`) i sort deterministyczny wg bliskości do
- * napięcia odbioru (reużycie `compareStationNnSourceConverters`). ZERO fizyki.
+ * Rodzaj falownika (katalog) wymagany przez wariant źródłowy nN — parytet z
+ * legacy `NN_CONFIGURATION_OPTIONS.converterKind`: PV→`PV`, BESS→`BESS`,
+ * FW→`WIND`. Warianty odbiorcze (LOAD_NN/CUSTOM_NN) nie mają falownika (`null`).
  */
-export function falownikiPv(converters: readonly ConverterType[]): ConverterType[] {
+export function rodzajFalownika(config: NnConfiguration): ConverterType['kind'] | null {
+  switch (config) {
+    case 'PV_INVERTER':
+      return 'PV';
+    case 'BESS_INVERTER':
+      return 'BESS';
+    case 'FW_INVERTER':
+      return 'WIND';
+    case 'LOAD_NN':
+    case 'CUSTOM_NN':
+    default:
+      return null;
+  }
+}
+
+/** Czy wariant nN to źródło za transformatorem (falownik z katalogu). */
+export function czyZrodloNn(config: NnConfiguration): boolean {
+  return rodzajFalownika(config) !== null;
+}
+
+/**
+ * Falowniki zdatne na źródło nN stacji dla danego wariantu: filtr rodzaju
+ * (PV/BESS/WIND wg `rodzajFalownika`) i napięcia strony nN (≤ 1 kV, reużycie
+ * `isStationNnSourceConverter`), sort deterministyczny wg bliskości do napięcia
+ * odbioru (reużycie `compareStationNnSourceConverters`). ZERO fizyki.
+ */
+export function falownikiZrodla(
+  converters: readonly ConverterType[],
+  config: NnConfiguration,
+): ConverterType[] {
+  const kind = rodzajFalownika(config);
+  if (!kind) return [];
   return converters
-    .filter((c) => c.kind === 'PV' && isStationNnSourceConverter(c))
+    .filter((c) => c.kind === kind && isStationNnSourceConverter(c))
     .sort(compareStationNnSourceConverters);
+}
+
+/** Falowniki PV — wariant źródłowy PV (reużycie `falownikiZrodla`). */
+export function falownikiPv(converters: readonly ConverterType[]): ConverterType[] {
+  return falownikiZrodla(converters, 'PV_INVERTER');
 }
 
 /** Wybrany falownik z listy zdatnych (odczyt katalogu). */
@@ -263,32 +306,44 @@ export function konwerterZKatalogu(
 }
 
 /**
- * Wymagane napięcie strony nN stacji: dla PV z katalogu falownika (bez domysłu —
- * `null`, gdy brak wyboru), dla odbioru z wyboru napięcia nN.
+ * Wymagane napięcie strony nN stacji: dla wariantów źródłowych (PV/BESS/FW) z
+ * katalogu falownika (bez domysłu — `null`, gdy brak wyboru), dla odbioru
+ * (LOAD_NN/CUSTOM_NN) z wyboru napięcia nN.
  */
 export function wymaganeNapiecieNn(
   data: StacjaFormData,
   konwerter: ConverterType | null,
 ): number | null {
-  if (data.nn_configuration === 'PV_INVERTER') {
+  if (czyZrodloNn(data.nn_configuration)) {
     return konwerter?.un_kv ?? null;
   }
   return data.nn_voltage_kv;
 }
 
-/** Moc źródła nN [MVA] do doboru transformatora (PV: z katalogu falownika). */
+/** Moc źródła nN [MVA] do doboru transformatora (PV/BESS/FW: z katalogu falownika). */
 export function mocZrodlaNnMva(
   data: StacjaFormData,
   konwerter: ConverterType | null,
 ): number | null {
-  return data.nn_configuration === 'PV_INVERTER' ? konwerter?.sn_mva ?? null : null;
+  return czyZrodloNn(data.nn_configuration) ? konwerter?.sn_mva ?? null : null;
 }
 
-/** Intencja zabezpieczenia źródła nN (reużycie legacy) — tylko dla PV. */
+/** Intencja zabezpieczenia źródła nN (reużycie legacy) — obecnie tylko dla PV. */
 export function zabezpieczenieZrodla(
   data: StacjaFormData,
 ): SourceProtectionIntent | undefined {
   return sourceProtectionIntent(data.nn_configuration);
+}
+
+/**
+ * Przestrzeń nazw wiązania katalogowego falownika w polu źródłowym nN — parytet
+ * 1:1 z legacy `InsertStationForm`: PV→`ZRODLO_NN_PV`, BESS→`ZRODLO_NN_BESS`,
+ * pozostałe źródła (FW)→`CONVERTER`.
+ */
+export function namespaceZrodlaNn(config: NnConfiguration): CatalogNamespace {
+  if (config === 'PV_INVERTER') return 'ZRODLO_NN_PV';
+  if (config === 'BESS_INVERTER') return 'ZRODLO_NN_BESS';
+  return 'CONVERTER';
 }
 
 /** Parametry wybranego typu (odczyt z katalogu). */
@@ -440,20 +495,24 @@ export function zbudujPayload(
   const transformerBinding = normalizeCatalogBinding(data.catalog_ref, 'TRAFO_SN_NN');
   const catalogItemId = data.catalog_ref?.trim() ?? '';
   const feederCount = ogranicznikOdplywow(data.outgoing_feeders_nn_count);
-  const isPv = data.nn_configuration === 'PV_INVERTER';
-  const nnVoltage = isPv ? konwerter?.un_kv ?? data.nn_voltage_kv : data.nn_voltage_kv;
+  const isZrodlo = czyZrodloNn(data.nn_configuration);
+  const nnVoltage = isZrodlo ? konwerter?.un_kv ?? data.nn_voltage_kv : data.nn_voltage_kv;
   const protection = zabezpieczenieZrodla(data);
 
-  // Lista odpływów nN: odpływy odbiorcze + (dla PV) pole źródłowe falownika.
+  // Lista odpływów nN: odpływy odbiorcze + (dla źródła) pole źródłowe falownika.
   const feeders: Record<string, unknown>[] = Array.from({ length: feederCount }, () => ({
     feeder_role: 'ODPLYW_NN',
     catalog_bindings: null,
   }));
-  if (isPv && konwerter) {
+  if (isZrodlo && konwerter) {
+    const feederRole = sourceFeederRole(data.nn_configuration);
     feeders.push({
-      feeder_role: sourceFeederRole('PV_INVERTER'),
+      feeder_role: feederRole,
       catalog_bindings: {
-        source_converter: normalizeCatalogBinding(konwerter.id, 'ZRODLO_NN_PV'),
+        source_converter: normalizeCatalogBinding(
+          konwerter.id,
+          namespaceZrodlaNn(data.nn_configuration),
+        ),
       },
       ...(protection ? { protection } : {}),
     });
@@ -466,7 +525,7 @@ export function zbudujPayload(
     outgoing_feeders_nn_count: feeders.length,
     outgoing_feeders_nn: feeders,
   };
-  if (isPv && konwerter) {
+  if (isZrodlo && konwerter) {
     nnBlock.source_converter_catalog_ref = konwerter.id;
     nnBlock.source_converter_name = konwerter.name;
     nnBlock.source_converter_kind = konwerter.kind;
