@@ -168,7 +168,7 @@ Dowód dla ❌/◐: `grep -ril <termin> frontend/src` z 2026-07-15.
 | Arc flash | A1 | ✅ `/api/quality/arc-flash` (+ `/report.pdf/.docx`) — quality_analysis_runs.py | ui2/wyniki/jakosc (`arcFlash`: 5 plików w ui2) | ◐ (wpięte 2026-07, do potwierdzenia jakościowego) |
 | Siła sieci (SCR) | A5 | ✅ `/api/oze-analysis/grid-strength` — oze_analysis_runs.py | ui2/oze/pulpit/SekcjaSilySieci.tsx | ◐ (wpięte 2026-07) |
 | Adekwatność mocy biernej | A12 | ✅ `/api/oze-analysis/reactive-adequacy` — oze_analysis_runs.py | ui2/oze/pulpit/SekcjaAdekwatnosciQ.tsx | ◐ (wpięte 2026-07) |
-| Stabilność SSCI | A18 | ◐ v126 ssci_impedance wpięte; analysis/ssci_stability NIEWPIĘTE | brak (`ssci`: 0 plików w ui/) | ❌ UI |
+| Stabilność SSCI | A18 | ✅ `GET /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability` — v126_academic.py (werdykt Nyquista z `analysis/ssci_stability` na bazie przebiegu v126 ssci_impedance) | brak (`ssci`: 0 plików w ui/) | ◐ (backend wpięty 2026-07-21; UI = następna faza) |
 | Sanity bounds | A15 | ✅ `/api/quality/sanity-bounds` — quality_analysis_runs.py (+ pośrednio SC→ResultSet v1) | ui2/wyniki/jakosc (`sanity`: 4 pliki w ui2) | ◐ (wpięte 2026-07) |
 | Walidacja energetyczna | A4 | ✅ `/api/quality/energy-validation` — quality_analysis_runs.py | ui2/wyniki/jakosc (`energy-validation` w ui2) | ◐ (wpięte 2026-07) |
 | Profil napięciowy | A19 | analysis_runs | voltage-profile | ✅ |
@@ -196,8 +196,10 @@ Dowód dla ❌/◐: `grep -ril <termin> frontend/src` z 2026-07-15.
 | Przypadki obliczeniowe | — | study_cases, case_runs, batch_execution | study-cases (dawny `ui/active-case-bar` USUNIĘTY 2026-07) | ◐ |
 | SLD + nakładki wyników | — | sld, sld_overrides | sld, sld-editor, sld-overlay | ◐ (OSOBNY WĄTEK — patrz Program §2.3) |
 
-**Bilans (rewizja 2026-07-21b):** 1 funkcja ❌ zero-UI: **Stabilność SSCI** (`analysis/ssci_stability`
-niewpięte — brak API i UI). Estymacja stanu WLS (S14) wyszła z ❌ dzięki wpięciu backendu
+**Bilans (rewizja 2026-07-21c):** 0 funkcji ❌ zero-UI. Ostatnia luka — **Stabilność SSCI**
+(`analysis/ssci_stability`) — domknięta backendowo (`GET /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability`
+wystawia werdykt Nyquista z gotowego przebiegu v126 ssci_impedance); UI = następna faza (◐).
+Estymacja stanu WLS (S14) wyszła z ❌ dzięki wpięciu backendu
 (`POST /api/quality/state-estimation` + `/requirements`); UI = następna faza (◐). Zwarcia maszyn
 (S2+A7) skorygowane ❌→◐: rozbicie maszynowe (μ/q/i_b) widoczne przez pakiet dowodowy SC3F
 (G-SCM F2, `proof_pack.py`) w proof-inspectorze — dedykowany ekran opcjonalny, nie zero-UI.
@@ -266,8 +268,10 @@ Synchronizacja inwentarza z rzeczywistą powierzchnią kodu na HEAD `b30249d` (g
   batch_execution, case_runs, cloud_backup, design_synth, domain_operations, incremental_archive,
   protection_coordination, protection_engine_v1, snapshots, topology_links) — żaden nie jest
   zamontowany w `api/main.py` na HEAD `b30249d`.
-- ❌ pozostające (rewizja 2026-07-21b): TYLKO Stabilność SSCI (analysis/ssci_stability nadal
-  NIEWPIĘTE poza v126 — brak API i UI). Zwarcia maszyn skorygowane ❌→◐ (widoczne przez ProofPack
-  SC3F, G-SCM F2 — patrz macierz §6).
+- ❌ pozostające (rewizja 2026-07-21c): BRAK — zero funkcji ❌ zero-UI. Zwarcia maszyn skorygowane
+  ❌→◐ (widoczne przez ProofPack SC3F, G-SCM F2 — patrz macierz §6).
+- ◐ Stabilność SSCI: backend wpięty 2026-07-21 (`api/v126_academic.py` +
+  `application/analyses/ssci_stability` na bazie `analysis/ssci_stability`); werdykt Nyquista
+  (Sun 2011 / Wen 2016) z gotowego przebiegu v126 ssci_impedance; UI (ekran werdyktu/metryk/flag) = następna faza.
 - ◐ Estymacja stanu WLS: backend wpięty 2026-07-21 (`quality_analysis_runs.py` +
   `application/analyses/state_estimation`); UI (ekran wyników |V|/kąt/χ²) = następna faza.
