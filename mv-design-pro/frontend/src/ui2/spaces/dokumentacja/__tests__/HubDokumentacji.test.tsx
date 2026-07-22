@@ -130,6 +130,8 @@ describe('HubDokumentacji — ekran prowadzący (R2: 3 pytania inżyniera)', () 
     await user.click(within(studium).getByRole('button', { name: 'Otwórz kreator' }));
     expect(useShellStore.getState().activeSpace).toBe('wyniki');
     expect(useShellStore.getState().wynikiTab).toBe('studium');
+    // R2-B: wywołanie deep-linku bez elementu działa 1:1 — kontekst pusty.
+    expect(useShellStore.getState().wynikiTabElement).toBeNull();
   });
 
   it('Q2 formaty są drugorzędne (drobny druk obok akcji, nie chipy)', () => {

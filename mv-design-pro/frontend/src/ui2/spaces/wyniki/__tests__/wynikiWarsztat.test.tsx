@@ -1,7 +1,9 @@
 /**
  * Testy warsztatu przestrzeni „Wyniki" (scalenia U3 #1–#2): zakładki
  * rozpływ/zwarcia/pozostałe, zakładka startowa wg rodzaju aktywnego
- * przebiegu, slot mostu.
+ * przebiegu, slot mostu. R2-B: deep-link z kontekstem elementu — konsumpcja
+ * i czyszczenie OBU pól żądania, pre-selekcja węzła w oknie kompensacji,
+ * izolacja kontekstu między zakładkami.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
@@ -10,12 +12,13 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import type { ShortCircuitResults } from '../../../../ui/results-inspector/types';
 import { WZORZEC_STRINGS } from '../../../wyniki/wzorzec';
 import { WynikiWarsztat } from '../WynikiWarsztat';
 import { WYNIKI_WARSZTAT_STRINGS as T } from '../strings';
-import { przebiegFixture } from './fixtures';
+import { przebiegFixture, snapshotFixture } from './fixtures';
 
 beforeEach(() => {
   usePowerFlowResultsStore.getState().reset();
@@ -31,7 +34,8 @@ beforeEach(() => {
   });
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
   useAppStateStore.setState({ activeRunId: null, activeProjectId: null });
-  useShellStore.setState({ wynikiTab: null });
+  useSnapshotStore.getState().reset();
+  useShellStore.setState({ wynikiTab: null, wynikiTabElement: null });
 });
 
 /** Wynik zwarciowy 1:1 z kontraktem `ShortCircuitResults` (types.ts:172-176). */
@@ -91,14 +95,50 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.getByTestId('mvd-wyniki-zakladka-studium').getAttribute('aria-selected')).toBe('true');
     // Żądanie skonsumowane (jednorazowe) — nie „przykleja" zakładki na stałe.
     expect(useShellStore.getState().wynikiTab).toBeNull();
+    // Wywołanie bez elementu (sprzed R2-B) działa 1:1 — kontekst pozostaje pusty.
+    expect(useShellStore.getState().wynikiTabElement).toBeNull();
   });
 
-  it('deep-link: nieznane id zakładki jest ignorowane (walidacja), żądanie wyczyszczone', () => {
-    useShellStore.setState({ wynikiTab: 'nieistniejaca-zakladka' });
+  it('deep-link: nieznane id zakładki jest ignorowane (walidacja), żądanie wyczyszczone (OBA pola)', () => {
+    useShellStore.setState({ wynikiTab: 'nieistniejaca-zakladka', wynikiTabElement: 'bus-a' });
     render(<WynikiWarsztat {...props()} />);
     // Zakładka startowa bez zmian (domyślna wg rodzaju przebiegu = „pozostałe" bez przebiegu).
     expect(screen.getByTestId('mvd-wyniki-zakladka-pozostale').getAttribute('aria-selected')).toBe('true');
     expect(useShellStore.getState().wynikiTab).toBeNull();
+    expect(useShellStore.getState().wynikiTabElement).toBeNull();
+  });
+
+  it('deep-link „kompensacja" z elementem (R2-B): zakładka otwarta, węzeł pre-selekcjonowany, OBA pola wyczyszczone', () => {
+    // Pełny łańcuch okna: zakończony rozpływ (rejestr przebiegów) + snapshot z węzłami.
+    useExecutionRunsStore.setState({
+      runs: [przebiegFixture({ id: 'run-lf-1' })],
+      activeRunId: 'run-lf-1',
+    });
+    useSnapshotStore.setState({ snapshot: snapshotFixture() });
+    useShellStore.setState({ wynikiTab: 'kompensacja', wynikiTabElement: 'bus-a' });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-kompensacja').getAttribute('aria-selected')).toBe('true');
+    // Węzeł przekroczenia wybrany bez ręcznego wyboru; bieg od razu możliwy.
+    expect(screen.getByTestId('mvd-komp-wezel')).toHaveValue('bus-a');
+    expect(screen.getByTestId('mvd-komp-oblicz')).toBeEnabled();
+    // Żądanie skonsumowane w całości (tab + element).
+    expect(useShellStore.getState().wynikiTab).toBeNull();
+    expect(useShellStore.getState().wynikiTabElement).toBeNull();
+  });
+
+  it('deep-link z elementem do INNEJ zakładki nie przecieka do okna kompensacji', () => {
+    useExecutionRunsStore.setState({
+      runs: [przebiegFixture({ id: 'run-lf-1' })],
+      activeRunId: 'run-lf-1',
+    });
+    useSnapshotStore.setState({ snapshot: snapshotFixture() });
+    // Element przy zakładce „studium" — kompensacja NIE jest celem żądania.
+    useShellStore.setState({ wynikiTab: 'studium', wynikiTabElement: 'bus-a' });
+    render(<WynikiWarsztat {...props()} />);
+    expect(useShellStore.getState().wynikiTabElement).toBeNull();
+    // Ręczne wejście na kompensację: bez pre-selekcji (zero zalegających refów).
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-kompensacja'));
+    expect(screen.getByTestId('mvd-komp-wezel')).toHaveValue('');
   });
 
   it('zakładka „Porównanie A/B": bez aktywnego projektu — uczciwy stan pusty', () => {

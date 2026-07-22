@@ -14,7 +14,7 @@ describe('usePoprawWModelu — od wyniku do decyzji', () => {
   beforeEach(() => {
     useSelectionStore.getState().clearSelection?.();
     useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
-    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null });
+    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
   });
 
   it('zaznacza element (property-grid), centruje SLD i przechodzi do przestrzeni „Schemat"', () => {
@@ -43,9 +43,10 @@ describe('usePoprawWModelu — od wyniku do decyzji', () => {
     expect(sel.sldCenterOnElement).toBe('szyna-1');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
     expect(useShellStore.getState().wynikiTab).toBeNull();
+    expect(useShellStore.getState().wynikiTabElement).toBeNull();
   });
 
-  it('rodzaj „bilans-biernej": akcja kontekstowa — selekcja + zakładka „kompensacja" przestrzeni „Wyniki" (bez zoomu SLD)', () => {
+  it('rodzaj „bilans-biernej": akcja kontekstowa — selekcja + zakładka „kompensacja" przestrzeni „Wyniki" z refem elementu (bez zoomu SLD)', () => {
     const { result } = renderHook(() => usePoprawWModelu());
     act(() => result.current('slack', 'Bus', 'Szyna bilansująca', 'bilans-biernej'));
 
@@ -55,5 +56,8 @@ describe('usePoprawWModelu — od wyniku do decyzji', () => {
     expect(sel.sldCenterOnElement).toBeNull();
     expect(useShellStore.getState().activeSpace).toBe('wyniki');
     expect(useShellStore.getState().wynikiTab).toBe('kompensacja');
+    // R2-B: deep-link niesie ref węzła przekroczenia → pre-selekcja w oknie
+    // „Dobór kompensacji" (inżynier nie wybiera węzła ponownie ręcznie).
+    expect(useShellStore.getState().wynikiTabElement).toBe('slack');
   });
 });

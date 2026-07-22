@@ -52,7 +52,12 @@ export type RodzajPrzekroczenia =
 export type CelAkcjiNaprawczej =
   /** Selekcja + zoom SLD + przestrzeń „Schemat" (akcja generyczna, F-E6.1). */
   | { readonly rodzaj: 'schemat' }
-  /** Selekcja + zakładka przestrzeni „Wyniki" (deep-link `setWynikiTab`). */
+  /**
+   * Selekcja + zakładka przestrzeni „Wyniki" (deep-link `setWynikiTab`).
+   * R2-B: hook `usePoprawWModelu` przekazuje deep-linkiem także ref elementu
+   * przekroczenia (`wynikiTabElement`) — okno docelowe (np. „Dobór
+   * kompensacji") pre-selekcjonuje węzeł, zamiast wymagać ręcznego wyboru.
+   */
   | { readonly rodzaj: 'wyniki-zakladka'; readonly zakladka: string };
 
 /** Opis akcji naprawczej: etykieta przycisku (PL) + opis (title) + cel nawigacji. */

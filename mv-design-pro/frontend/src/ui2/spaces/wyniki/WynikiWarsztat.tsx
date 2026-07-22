@@ -164,13 +164,24 @@ export function WynikiWarsztat({
   );
   // Deep-link między-przestrzenny (np. hub Dokumentacji → generator studium OZE):
   // jednorazowe żądanie ze shell store; walidujemy id i czyścimy po konsumpcji.
+  // R2-B: żądanie może nieść kontekst elementu (`wynikiTabElement`) — dziś
+  // konsumuje go wyłącznie okno „Dobór kompensacji" (pre-selekcja węzła
+  // przekroczenia bilansu mocy biernej); dla innych zakładek kontekst nie jest
+  // przechwytywany (zero zalegających refów między zakładkami).
   const wynikiTab = useShellStore((s) => s.wynikiTab);
+  const wynikiTabElement = useShellStore((s) => s.wynikiTabElement);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
+  const [elementKompensacji, setElementKompensacji] = useState<string | null>(null);
   useEffect(() => {
     if (!wynikiTab) return;
-    if (ZAKLADKI.some((z) => z.id === wynikiTab)) setZakladka(wynikiTab as ZakladkaId);
-    setWynikiTab(null);
-  }, [wynikiTab, setWynikiTab]);
+    if (ZAKLADKI.some((z) => z.id === wynikiTab)) {
+      setZakladka(wynikiTab as ZakladkaId);
+      if (wynikiTab === 'kompensacja' && wynikiTabElement) {
+        setElementKompensacji(wynikiTabElement);
+      }
+    }
+    setWynikiTab(null); // czyści OBA pola żądania (tab + element)
+  }, [wynikiTab, wynikiTabElement, setWynikiTab]);
   const zalozeniaZwarciowe = useZalozeniaZwarcioweAktywnegoPrzypadku();
 
   // 2×klik na wartości z dowodem → zakładka „Dowód obliczeń" (okno E9.1).
@@ -250,7 +261,13 @@ export function WynikiWarsztat({
         {zakladka === 'studium' && <KreatorStudium trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'frt' && <EkranFrt trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'osd' && <EkranOsd trybZaawansowania={trybZaawansowania} />}
-        {zakladka === 'kompensacja' && <EkranKompensacji trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'kompensacja' && (
+          <EkranKompensacji
+            trybZaawansowania={trybZaawansowania}
+            preselekcjaWezla={elementKompensacji}
+            onPreselekcjaSkonsumowana={() => setElementKompensacji(null)}
+          />
+        )}
         {zakladka === 'wniosek' && <EkranWniosku trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'lom' && <EkranLom trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'pulpit-oze' && (

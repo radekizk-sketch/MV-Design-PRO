@@ -15,12 +15,16 @@
  * z backendu. Identyfikatory (bus_ref, input_hash, trace_id) wyłącznie w trybie
  * eksperckim.
  *
+ * R2-B: opcjonalna pre-selekcja węzła z deep-linku akcji naprawczej „bilans
+ * mocy biernej" (`preselekcjaWezla`) — żądanie jednorazowe, ref walidowany
+ * przeciw liście węzłów snapshotu (nieznany ref ignorowany, zero zgadywania).
+ *
  * WIĄŻĄCY WYMÓG WŁAŚCICIELA (V12K-040, opcja B): „cosφ punktu kompensowanego" (dobór)
  * i „cosφ przekroju sieciowego" (informacyjne) prezentowane pod jednoznacznie różnymi
  * nazwami; dobór sterowany WYŁĄCZNIE cosφ punktu.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import './kompensacja.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
@@ -287,9 +291,22 @@ function WynikKompensacji({
 
 export interface EkranKompensacjiProps {
   trybZaawansowania: AdvancementMode;
+  /**
+   * Pre-selekcja węzła z deep-linku akcji naprawczej (R2-B): ref węzła
+   * przekroczenia bilansu mocy biernej. Stosowana WYŁĄCZNIE, gdy ref istnieje
+   * na liście węzłów snapshotu (nieznany ref ignorowany — zero zgadywania).
+   * Prop addytywny — brak = zachowanie 1:1 (ręczny wybór węzła).
+   */
+  preselekcjaWezla?: string | null;
+  /** Sygnał konsumpcji pre-selekcji (żądanie jednorazowe — rodzic czyści). */
+  onPreselekcjaSkonsumowana?: () => void;
 }
 
-export function EkranKompensacji({ trybZaawansowania }: EkranKompensacjiProps) {
+export function EkranKompensacji({
+  trybZaawansowania,
+  preselekcjaWezla = null,
+  onPreselekcjaSkonsumowana,
+}: EkranKompensacjiProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   const runId = useMemo(() => wybierzPrzebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
@@ -309,6 +326,30 @@ export function EkranKompensacji({ trybZaawansowania }: EkranKompensacjiProps) {
     setZapytanie(null);
     setStan({ rodzaj: 'idle' });
   }, [runId]);
+
+  // Pre-selekcja węzła z deep-linku (R2-B): stosowana dopiero, gdy snapshot
+  // dostarczy listę węzłów; ref spoza listy jest ignorowany (zero zgadywania),
+  // ale żądanie i tak jest konsumowane — nie zalega na kolejne wejścia.
+  // Jednorazowość także lokalnie (znacznik skonsumowanego refu): po konsumpcji
+  // ręczny wybór węzła nie jest nigdy nadpisywany tym samym żądaniem.
+  // Ustawienie węzła unieważnia poprzedni wynik jak ręczna zmiana w polu wyboru.
+  const skonsumowanaPreselekcja = useRef<string | null>(null);
+  useEffect(() => {
+    if (preselekcjaWezla === null || preselekcjaWezla === '') {
+      skonsumowanaPreselekcja.current = null; // rodzic wyczyścił — gotowość na kolejne żądanie
+      return;
+    }
+    if (preselekcjaWezla === skonsumowanaPreselekcja.current) return; // już skonsumowane
+    if (opcjeWezlow.length === 0) return; // snapshot jeszcze nie dostarczył węzłów
+    const znany = opcjeWezlow.some((o) => o.ref_id === preselekcjaWezla);
+    if (znany) {
+      setWybranyWezel(preselekcjaWezla);
+      setZapytanie(null);
+      setStan({ rodzaj: 'idle' });
+    }
+    skonsumowanaPreselekcja.current = preselekcjaWezla;
+    onPreselekcjaSkonsumowana?.();
+  }, [preselekcjaWezla, opcjeWezlow, onPreselekcjaSkonsumowana]);
 
   // Jawny bieg doboru.
   useEffect(() => {

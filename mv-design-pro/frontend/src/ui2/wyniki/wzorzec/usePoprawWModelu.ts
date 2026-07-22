@@ -40,7 +40,10 @@ export function usePoprawWModelu(): (
       if (cel.rodzaj === 'wyniki-zakladka') {
         // Akcja kontekstowa: zakładka przestrzeni „Wyniki" (bez zoomu SLD —
         // schemat nie jest celem, odroczony zoom byłby zaskoczeniem).
-        setWynikiTab(cel.zakladka);
+        // R2-B: deep-link niesie ref elementu przekroczenia — okno docelowe
+        // (np. „Dobór kompensacji") pre-selekcjonuje węzeł zamiast kazać
+        // inżynierowi wybierać go ponownie ręcznie.
+        setWynikiTab(cel.zakladka, ref);
         setActiveSpace('wyniki');
       } else {
         centerSldOnElement(ref);

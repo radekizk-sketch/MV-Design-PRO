@@ -241,6 +241,11 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
     expect(sel.sldCenterOnElement).toBeNull();
     expect(useShellStore.getState().activeSpace).toBe('wyniki');
     expect(useShellStore.getState().wynikiTab).toBe('kompensacja');
+    // R2-B: deep-link niesie ref węzła przekroczenia — okno „Dobór kompensacji"
+    // pre-selekcjonuje węzeł zamiast wymagać ponownego ręcznego wyboru.
+    expect(useShellStore.getState().wynikiTabElement).toBe(
+      WALIDACJA_FIXTURE.items[4].target_id,
+    );
   });
 
   it('bilans strat (target_id=network) z przekroczeniem NIE dostaje przycisku (agregat systemowy, brak martwej akcji)', async () => {

@@ -6,6 +6,8 @@
  * KOLUMNĘ DECYZYJNĄ = cosφ punktu (dobór NIE sterowany cosφ przekroju), werdykt
  * doboru i brak doboru, scenariusz nocny, błąd API PL, tryb ekspercki, formaty PL
  * oraz rozwijany ślad WHITE BOX. API i store'y mockowane; fixtures 1:1 z backendem.
+ * R2-B: pre-selekcja węzła z deep-linku (znany ref, nieznany ref ignorowany,
+ * jednorazowość żądania) — realny render i natywne zdarzenia.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -257,5 +259,62 @@ describe('EkranKompensacji — tryb ekspercki i ślad', () => {
     const slad = screen.getByTestId('mvd-komp-slad');
     expect(slad).toHaveTextContent('PODSTAWA DOBORU');
     expect(slad).toHaveTextContent('NIE stopień skompensowania odbioru');
+  });
+});
+
+describe('EkranKompensacji — pre-selekcja węzła z deep-linku (R2-B)', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  it('znany ref: węzeł pre-selekcjonowany, żądanie skonsumowane, bieg od razu możliwy', async () => {
+    pobierzDobor.mockResolvedValue(widokKompensacjiFixture());
+    const skonsumowano = vi.fn();
+    render(
+      <EkranKompensacji
+        trybZaawansowania="basic"
+        preselekcjaWezla="bus-b"
+        onPreselekcjaSkonsumowana={skonsumowano}
+      />,
+    );
+    // Węzeł z deep-linku wybrany bez ręcznego wyboru; żądanie skonsumowane.
+    expect(screen.getByTestId('mvd-komp-wezel')).toHaveValue('bus-b');
+    expect(skonsumowano).toHaveBeenCalledTimes(1);
+    // Realna ścieżka dalej: przycisk odblokowany, natywny klik woła API z tym węzłem.
+    expect(screen.getByTestId('mvd-komp-oblicz')).toBeEnabled();
+    fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
+    expect(await screen.findByTestId('mvd-komp-wynik')).toBeInTheDocument();
+    expect(pobierzDobor).toHaveBeenCalledWith({
+      runId: 'lf-run',
+      busRef: 'bus-b',
+      cosPhiMin: 0.95,
+      uwzglednijNoc: false,
+    });
+  });
+
+  it('nieznany ref: ignorowany (zero zgadywania), ale skonsumowany — wybór pozostaje ręczny', () => {
+    const skonsumowano = vi.fn();
+    render(
+      <EkranKompensacji
+        trybZaawansowania="basic"
+        preselekcjaWezla="bus-x"
+        onPreselekcjaSkonsumowana={skonsumowano}
+      />,
+    );
+    expect(screen.getByTestId('mvd-komp-wezel')).toHaveValue('');
+    expect(screen.getByTestId('mvd-komp-oblicz')).toBeDisabled();
+    // Żądanie skonsumowane mimo ignorowania — nie zalega na kolejne wejścia.
+    expect(skonsumowano).toHaveBeenCalledTimes(1);
+    expect(pobierzDobor).not.toHaveBeenCalled();
+  });
+
+  it('żądanie jednorazowe: po konsumpcji ręczna zmiana węzła nie jest nadpisywana', () => {
+    const { rerender } = render(
+      <EkranKompensacji trybZaawansowania="basic" preselekcjaWezla="bus-b" />,
+    );
+    expect(screen.getByTestId('mvd-komp-wezel')).toHaveValue('bus-b');
+    // Inżynier zmienia węzeł natywnie; ponowny render z TYM SAMYM (nieczyszczonym)
+    // żądaniem nie może cofnąć ręcznego wyboru.
+    fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
+    rerender(<EkranKompensacji trybZaawansowania="basic" preselekcjaWezla="bus-b" />);
+    expect(screen.getByTestId('mvd-komp-wezel')).toHaveValue('bus-a');
   });
 });

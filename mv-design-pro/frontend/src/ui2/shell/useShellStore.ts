@@ -70,10 +70,18 @@ interface ShellState {
    * studium OZE). `WynikiWarsztat` konsumuje i czyści (null). NIE persystowane.
    */
   wynikiTab: string | null;
+  /**
+   * Kontekst elementu jednorazowego żądania (R2-B): ref elementu modelu,
+   * którego dotyczyła akcja prowadząca deep-linkiem (np. węzeł przekroczenia
+   * bilansu mocy biernej → pre-selekcja w oknie „Dobór kompensacji").
+   * Ustawiany i czyszczony RAZEM z `wynikiTab`; wywołanie bez elementu zeruje
+   * kontekst (żadnych zalegających refów). NIE persystowany.
+   */
+  wynikiTabElement: string | null;
 
   setActiveSpace: (space: SpaceId) => void;
   setAdvancementMode: (mode: AdvancementMode) => void;
-  setWynikiTab: (tab: string | null) => void;
+  setWynikiTab: (tab: string | null, element?: string | null) => void;
 
   getLayout: (space: SpaceId) => PanelLayoutState;
   setLeftWidth: (space: SpaceId, width: number) => void;
@@ -110,10 +118,13 @@ export const useShellStore = create<ShellState>()(
       bottomPanelTab: 'problemy',
       layoutBySpace: {},
       wynikiTab: null,
+      wynikiTabElement: null,
 
       setActiveSpace: (space) => set({ activeSpace: space }),
       setAdvancementMode: (mode) => set({ advancementMode: mode }),
-      setWynikiTab: (tab) => set({ wynikiTab: tab }),
+      // Kontekst elementu żyje i gaśnie razem z żądaniem zakładki (element
+      // domyślnie null — istniejące wywołania `setWynikiTab(tab)` działają 1:1).
+      setWynikiTab: (tab, element = null) => set({ wynikiTab: tab, wynikiTabElement: element }),
 
       getLayout: (space) => layoutFor(get(), space),
 
