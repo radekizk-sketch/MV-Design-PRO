@@ -114,6 +114,10 @@ export interface SheetFrameProps {
   readonly height: number;
   /** Etykieta skali (spec §10, np. „1:1000"). */
   readonly scaleLabel: string;
+  /** SCHEMAT-10 S1 (V12K-135, macierz LOD §3): nazwa aktywnego poziomu
+   *  szczegółu z JEDNEGO słownika (`SCENE_LOD_LABELS_PL`) — pasek statusu
+   *  arkusza. Brak = pasek LOD nie renderowany (zgodność wstecz). */
+  readonly lodLabel?: string;
   /** Slot na title block (K30-38, `SldTitleBlock` z v2) — Frame NIE
    *  duplikuje jego zawartości, tylko pozycjonuje jako blok w rogu arkusza. */
   readonly titleBlock?: ReactNode;
@@ -334,7 +338,7 @@ const DEFAULT_TITLE_BLOCK_FOOTPRINT = { width: 360, height: 220 };
  * wynikiem pomiaru DOM).
  */
 export function SheetFrame(props: SheetFrameProps): JSX.Element {
-  const { width, height, scaleLabel, titleBlock, children } = props;
+  const { width, height, scaleLabel, lodLabel, titleBlock, children } = props;
   const legend = props.legend ?? buildDefaultLegend();
   const titleBlockOrigin = props.titleBlockOrigin ?? {
     x: Math.max(width - DEFAULT_TITLE_BLOCK_FOOTPRINT.width, 0),
@@ -379,6 +383,21 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
         >
           {`Skala ${scaleLabel}`}
         </text>
+        {lodLabel ? (
+          <text
+            data-testid="sld-sheet-lod-label"
+            data-parity-key="sheet-lod-label"
+            x={0}
+            y={height + 20}
+            textAnchor="start"
+            fontFamily="sans-serif"
+            fontSize={LABEL_TYPOGRAPHY.t2.fontSize}
+            fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
+            fill={SHEET_STROKE}
+          >
+            {`Widok: ${lodLabel}`}
+          </text>
+        ) : null}
         <SheetLegend entries={legend} sheetHeight={height} />
         <g data-testid="sld-sheet-content" data-parity-key="sheet-content">
           {children}

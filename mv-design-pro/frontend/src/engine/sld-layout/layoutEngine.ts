@@ -44,6 +44,22 @@ const APPARATUS_GAP_Y = 8;
 const FIELD_PAD = 10;
 const FIELD_GAP_X = 14;
 const FIELD_MIN_H = APPARATUS_H + 2 * FIELD_PAD;
+/** Szerokość pojedynczego pola (L1/L2) — aparat + padding z obu stron. Jedna
+ *  prawda z `buildStationGeometry` (tam `fieldW = APPARATUS_W + 2*FIELD_PAD`). */
+const FIELD_W = APPARATUS_W + 2 * FIELD_PAD;
+
+/**
+ * SCHEMAT-10 S1 (V12K-135, D12): szerokość TREŚCI stacji na L1/L2 (rząd pól) —
+ * ta sama formuła co `contentW` w `buildStationGeometry`. Krok kolumny musi
+ * być wymiarowany pod TĘ szerokość (najgęstszy poziom), nie pod stały footprint
+ * bloku L0 — inaczej pola sąsiednich stacji nachodzą na siebie na L1/L2
+ * (kolumny rezerwowane pod najmniejszy rysunek). Zwraca 0 dla stacji bez pól.
+ */
+function stationContentWidth(station: TopologyStationV1 | null): number {
+  const n = station?.fieldSpecs?.length ?? 0;
+  if (n <= 0) return 0;
+  return n * FIELD_W + Math.max(0, n - 1) * FIELD_GAP_X;
+}
 /**
  * Footprint bloku stacji na L0 — STAŁY, z jednej prawdy (`L0_STATION_BLOCK`).
  * To DOKŁADNIE rozmiar, który renderer rysuje na L0; layout MUSI użyć tego samego
@@ -135,10 +151,22 @@ function positionStations(
   // rodzeństwo lateralne (ten sam rodzic) dostaje rozłączne podzakresy.
   // Komórka = (kolumna całkowita, poziom całkowity); rozłączne komórki ⇒ M-02.
 
-  // Krok kolumny = STAŁY footprint bloku L0 + gap (ta sama stała co render).
-  // L0 to przegląd: bloki mają stały rozmiar, więc odstęp środek-środek liczymy
-  // ze STAŁEGO rozmiaru — nie z treści (która rządzi tylko detalem L1/L2).
-  const colStepX = STATION_BLOCK_W + L0_BLOCK_GAP_X;
+  // SCHEMAT-10 S1 (V12K-135, D12 „martwe kadry"): krok kolumny wymiarowany pod
+  // NAJGĘSTSZY poziom (L1/L2 — rząd pól), nie pod stały footprint bloku L0.
+  // Jedna prawda geometrii projektuje LOD (L0 → bbox dzieci, L1 → pola, L2 →
+  // aparaty) — więc odstęp środek-środek musi mieścić NAJSZERSZĄ treść, jaka
+  // pojawi się przy zbliżeniu (pola L1/L2 mogą wykraczać poza blok L0). Stary
+  // krok = STAŁY blok L0 + gap rezerwował kolumny pod najmniejszy rysunek:
+  // przy zbliżeniu pola sąsiadów nachodziły (kolizja), a na L0 (małe bloki)
+  // zostawały martwe pola. `max(blok L0, maxTreść) + gap` gwarantuje: brak
+  // nachodzenia na L1/L2 (dowód: colStep ≥ maxTreść) ORAZ minimalne martwe
+  // pole w modelu jednolitej kolumny (krok = DOKŁADNIE najgęstsza treść + gap,
+  // nie arbitralnie większa stała). L0/L2 mieszczą się z konstrukcji.
+  const maxContentW = [...stationById.values()].reduce(
+    (m, st) => Math.max(m, stationContentWidth(st)),
+    0,
+  );
+  const colStepX = Math.max(STATION_BLOCK_W, maxContentW) + L0_BLOCK_GAP_X;
 
   interface Placed {
     ref: string;

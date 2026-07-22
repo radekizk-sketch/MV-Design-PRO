@@ -6,6 +6,7 @@ import { render } from '@testing-library/react';
 
 import { rectsOverlap, type V3Rect } from '../../core/grid';
 import { computeLegendRowLayout, SheetFrame, type SheetLegendEntry } from '../Frame';
+import { SCENE_LOD_LABELS_PL, type SceneLod } from '../../scene/buildScene';
 
 describe('V3 sheet — SheetFrame (spec §2: strefy referencyjne co 400px)', () => {
   it('1600×800 (4 kolumny × 2 wiersze) ⇒ znaczniki stref 1..4 i A..B obecne', () => {
@@ -43,6 +44,31 @@ describe('V3 sheet — SheetFrame (etykieta skali)', () => {
     const { container } = render(<SheetFrame width={800} height={400} scaleLabel="1:250" />);
     const label = container.querySelector('[data-testid="sld-sheet-scale-label"]');
     expect(label?.textContent).toBe('Skala 1:250');
+  });
+});
+
+describe('SCHEMAT-10 S1 (V12K-135) — JEDEN słownik LOD (pasek statusu arkusza)', () => {
+  it('SCENE_LOD_LABELS_PL ma DOKŁADNIE 3 poziomy z nazwami macierzy prawdy LOD §3', () => {
+    // Koniec rozjazdu D1/D9 „dwa słowniki LOD" — v3 ma JEDEN słownik 3-poziomowy.
+    expect(SCENE_LOD_LABELS_PL[0]).toBe('Przegląd sieci');
+    expect(SCENE_LOD_LABELS_PL[1]).toBe('Widok operatorski');
+    expect(SCENE_LOD_LABELS_PL[2]).toBe('Stacje i aparatura');
+    expect(Object.keys(SCENE_LOD_LABELS_PL)).toHaveLength(3);
+  });
+
+  it('pasek statusu arkusza renderuje nazwę poziomu z JEDNEGO słownika (każdy LOD)', () => {
+    for (const lod of [0, 1, 2] as SceneLod[]) {
+      const { container } = render(
+        <SheetFrame width={800} height={400} scaleLabel="wg kamery" lodLabel={SCENE_LOD_LABELS_PL[lod]} />,
+      );
+      const label = container.querySelector('[data-testid="sld-sheet-lod-label"]');
+      expect(label?.textContent).toBe(`Widok: ${SCENE_LOD_LABELS_PL[lod]}`);
+    }
+  });
+
+  it('bez lodLabel: pasek LOD nieobecny (zgodność wstecz)', () => {
+    const { container } = render(<SheetFrame width={800} height={400} scaleLabel="1:1000" />);
+    expect(container.querySelector('[data-testid="sld-sheet-lod-label"]')).toBeFalsy();
   });
 });
 

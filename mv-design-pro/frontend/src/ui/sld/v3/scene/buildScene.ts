@@ -185,6 +185,22 @@ type SldTopologyRun = SldDataPayload['topologyRuns'][number];
 
 export type SceneLod = 0 | 1 | 2;
 
+/**
+ * SCHEMAT-10 S1 (V12K-135, macierz prawdy LOD §3): JEDEN słownik nazw poziomów
+ * szczegółu — źródło prawdy dla paska statusu i polityki zoomu kanwy v3. Kończy
+ * rozjazd D1/D9 („dwa równoległe słowniki LOD": v2 `LodPolicy` 5 poziomów vs v3
+ * `SceneLod` 3 poziomy — pasek mówił co innego, niż renderowała scena). Nazwy
+ * WPROST z macierzy prawdy LOD (`AUDYT_SCHEMATOW_OD_ZERA_2026-07.md` §3):
+ *   L0 „Przegląd sieci" · L1 „Widok operatorski" · L2 „Stacje i aparatura".
+ * v2 `LOD_LEVEL_LABELS_PL`/`lodLabel` (5→4) są ZDEPRECJONOWANE (patrz
+ * `ui/sld/v2/lod/LodPolicy.ts`) — nie zasilają już żadnej treści widocznej w v3.
+ */
+export const SCENE_LOD_LABELS_PL: Readonly<Record<SceneLod, string>> = {
+  0: 'Przegląd sieci',
+  1: 'Widok operatorski',
+  2: 'Stacje i aparatura',
+};
+
 export interface SceneV3Meta {
   readonly lod: SceneLod;
   readonly stationCount: number;
@@ -556,7 +572,12 @@ function findLineBayIndices(snBays: readonly MiniBlockBayDescriptor[]): LineBayI
 // ---------------------------------------------------------------------------
 
 interface RowLayout {
+  /** Treść per-LOD (rysowana). */
   readonly measureInputs: readonly StationMeasureInput[];
+  /** SCHEMAT-10 S1 (V12K-135): pełny szczegół (L2), indeksowo zgodny z
+   *  `measureInputs` — źródło PORTÓW (wejście/wyjście/odgałęzienie) na L0, żeby
+   *  symbol zbiorczy miał głowice w TYCH SAMYCH X co L1/L2 (jedna kotwica). */
+  readonly geometryInputs: readonly StationMeasureInput[];
   readonly bandsResult: BandsResult;
   readonly columnsResult: ColumnsResult;
   readonly busAxisY: number;
@@ -652,56 +673,74 @@ function buildRowLayout(
 ): RowLayout {
   const stationCodeOf = (ref: string): string | null => stationById.get(ref)?.stationCode ?? null;
 
-  const measureInputs = stationIds.map((id, idx) => {
-    const props = stationById.get(id);
-    if (!props) {
-      stopNotes.push(
-        `Stacja „${id}" wskazana przez topologyRuns nieobecna w sldData.stations — pominięta (niespójność adaptera).`,
-      );
-      return null;
+  // SCHEMAT-10 S1 (V12K-135, macierz LOD §3 „jedna kotwica"): buduje zestaw
+  // wejść pomiarowych dla ZADANEGO poziomu szczegółu. Wywoływany dwukrotnie:
+  // raz dla RENDERU (poziom `lod` — treść faktycznie rysowana), raz dla
+  // GEOMETRII (zawsze L2 — kolumny/pasma/kotwice liczone przy pełnym szczególe,
+  // patrz niżej). Determinizm: te same `stationIds` w tej samej kolejności ⇒
+  // oba zestawy są indeksowo zgodne (`composeRowStation` zipuje kolumny z
+  // renderInputs po indeksie, sekcja 5/6).
+  const buildInputs = (measureLod: SceneLod, notes: string[]): StationMeasureInput[] => {
+    const arr = stationIds.map((id, idx) => {
+      const props = stationById.get(id);
+      if (!props) {
+        notes.push(
+          `Stacja „${id}" wskazana przez topologyRuns nieobecna w sldData.stations — pominięta (niespójność adaptera).`,
+        );
+        return null;
+      }
+      const context = resolveStationDirectionContext({ lineRuns, stationId: id, gpzNodeCode, stationCodeOf });
+      const captions = stationBayCaptions(props.snBays ?? [], context);
+      // pkt 7 (recenzja NO-GO 2026-07-17): ostatnia stacja ciągu = terminalna
+      // (za nią żadna stacja; ewentualny ogon ENM to wiszący koniec §16-v3).
+      return buildMeasureInput(props, measureLod, captions, derSourcesByStationId, notes, idx === stationIds.length - 1);
+    });
+    let valid = arr.filter((m): m is StationMeasureInput => m != null);
+    // F6e: stacja 0 lateralu przyjmuje Z GÓRY pion zejścia w polu „poprzednik"
+    // (§9) — pole to rezerwuje dodatkową szerokość na podpis kierunku PO
+    // PRAWEJ pionu (`entryDescentBayIndex` → `bayColumnRequiredWidth` +
+    // `compose/station.ts`, ta sama stała `entryDescentCaptionInset`). Gdy
+    // pola „poprzednik" brak, composeRowStation i tak spadnie na tap środka
+    // bloku (stopNote tam) — wtedy inset nieznany, flagi nie ustawiamy
+    // (kolizja podpisu możliwa tylko na sieciach bez pola liniowego wejścia).
+    if (firstStationEntryDescent && valid.length > 0) {
+      const entryIndex = findLineBayIndices(valid[0].snBays).previousIndex;
+      if (entryIndex != null) {
+        valid = [{ ...valid[0], entryDescentBayIndex: entryIndex }, ...valid.slice(1)];
+      }
     }
-    const context = resolveStationDirectionContext({ lineRuns, stationId: id, gpzNodeCode, stationCodeOf });
-    const captions = stationBayCaptions(props.snBays ?? [], context);
-    // pkt 7 (recenzja NO-GO 2026-07-17): ostatnia stacja ciągu = terminalna
-    // (za nią żadna stacja; ewentualny ogon ENM to wiszący koniec §16-v3).
-    return buildMeasureInput(props, lod, captions, derSourcesByStationId, stopNotes, idx === stationIds.length - 1);
-  });
-  let validInputs = measureInputs.filter((m): m is StationMeasureInput => m != null);
+    return valid;
+  };
 
-  // F6e: stacja 0 lateralu przyjmuje Z GÓRY pion zejścia w polu „poprzednik"
-  // (§9) — pole to rezerwuje dodatkową szerokość na podpis kierunku PO
-  // PRAWEJ pionu (`entryDescentBayIndex` → `bayColumnRequiredWidth` +
-  // `compose/station.ts`, ta sama stała `entryDescentCaptionInset`). Gdy
-  // pola „poprzednik" brak, composeRowStation i tak spadnie na tap środka
-  // bloku (stopNote tam) — wtedy inset nieznany, flagi nie ustawiamy
-  // (kolizja podpisu możliwa tylko na sieciach bez pola liniowego wejścia).
-  if (firstStationEntryDescent && validInputs.length > 0) {
-    const entryIndex = findLineBayIndices(validInputs[0].snBays).previousIndex;
-    if (entryIndex != null) {
-      validInputs = [{ ...validInputs[0], entryDescentBayIndex: entryIndex }, ...validInputs.slice(1)];
-    }
-  }
+  // Render: treść per-LOD (stopNotes prawdziwe — ostrzeżenia typologiczne itd.).
+  const renderInputs = buildInputs(lod, stopNotes);
+  // SCHEMAT-10 S1 (V12K-135): GEOMETRIA zawsze przy pełnym szczególe (L2),
+  // niezależnie od poziomu renderu — jedna oś magistrali, jedna kolumna, jedna
+  // kotwica na L0/L1/L2 (macierz §3: „zoom = skala szczegółu, nie
+  // przemeblowanie"). Likwiduje D1 „trzy światy" na poziomie geometrii (L0
+  // liczyło kolumny z pustych pól — węższe; L1 bez podpisów/incoming — inne niż
+  // L2). stopNotes geometrii to throwaway (te same ostrzeżenia raportuje już
+  // przebieg renderu; L2==render gdy lod===2, zero podwójnej pracy).
+  const geometryInputs = lod === 2 ? renderInputs : buildInputs(2, []);
 
   // pkt 13 (recenzja NO-GO 2026-07-17): pomiar slotów liczy TEN SAM tekst,
   // który zostanie narysowany (para końców „A ↔ B — …") — inaczej etykieta
   // przepełniłaby zarezerwowany slot (rozjazd measure↔draw, wzór F6b-1).
-  // Koniec „od": stacja poprzednia w wierszu; dla indeksu 0 — kod węzła GPZ
-  // (wiersz główny/feeder; dla lateralu slot 0 nie niesie etykiety poziomej,
-  // nadmiarowa rezerwacja jest nieszkodliwa).
-  const incomingTexts: (string | null)[] =
-    lod === 2
-      ? validInputs.map((m, i) =>
-          segmentSpanTextWithEndpoints(
-            incomingLabelText(cableRun, m.id),
-            i === 0 ? gpzNodeCode : stationCodeOf(validInputs[i - 1].id),
-            stationCodeOf(m.id),
-          ),
-        )
-      : validInputs.map(() => null);
+  // Koniec „od": stacja poprzednia w wierszu; dla indeksu 0 — kod węzła GPZ.
+  // SCHEMAT-10 S1: liczone dla GEOMETRII (L2) zawsze — rezerwacja slotu jest
+  // jednakowa na wszystkich LOD (etykieta incoming rysowana tylko na L2,
+  // bramka `lod === 2` przy emisji w sekcji 5/6 — rezerwa nieszkodliwa na L0/L1).
+  const incomingTexts: (string | null)[] = geometryInputs.map((m, i) =>
+    segmentSpanTextWithEndpoints(
+      incomingLabelText(cableRun, m.id),
+      i === 0 ? gpzNodeCode : stationCodeOf(geometryInputs[i - 1].id),
+      stationCodeOf(m.id),
+    ),
+  );
 
-  const slotXs = computeSegmentLabelSlotX(validInputs, incomingTexts);
+  const slotXs = computeSegmentLabelSlotX(geometryInputs, incomingTexts);
   const rows = colorSegmentLabelRows(slotXs);
-  const stationBandHeights: StationBandHeights[] = validInputs.map((m, i) => ({
+  const stationBandHeights: StationBandHeights[] = geometryInputs.map((m, i) => ({
     incomingSegmentLabelText: incomingTexts[i],
     // F10.3 (spec §18.4): etykieta szyny SN — WŁASNY wiersz B2, NAD podpisem
     // kierunku pola (`stationPortCaptionHeight`) — `bands.ts` (nietykalny,
@@ -716,14 +755,18 @@ function buildRowLayout(
   }));
   const bandsResult = computeBands(stationBandHeights, rows.rowCount);
   const columnsResult = computeColumns({
-    stations: validInputs,
+    stations: geometryInputs,
     incomingSegmentLabelTexts: incomingTexts,
     nameSlotBand: bandsResult.bands.B5,
     segmentSlotBand: bandsResult.bands.B1,
   });
   const busAxisY = bandsResult.bands.B2.y + bandsResult.bands.B2.height - BUS_AXIS_BAND_HEIGHT;
   const blockTopY = bandsResult.bands.B4.y;
-  return { measureInputs: validInputs, bandsResult, columnsResult, busAxisY, blockTopY };
+  // SCHEMAT-10 S1: geometria (kolumny/pasma/kotwice) z L2, ale `measureInputs`
+  // zwracane to renderInputs (treść per-LOD) — composeRowStation rysuje detal
+  // poziomu w kolumnie wymiarowanej pod pełny szczegół (jedna kotwica).
+  // `geometryInputs` (pełny szczegół) wystawione dla portów L0 (patrz interfejs).
+  return { measureInputs: renderInputs, geometryInputs, bandsResult, columnsResult, busAxisY, blockTopY };
 }
 
 /** Przesunięcie WHOLE wiersza (x,y) po zbudowaniu geometrii lokalnej (0,0) —
@@ -1120,7 +1163,15 @@ function trunkCorridorYOf(layout: RowLayout): number {
 /** L0 (stacja zbiorczy symbol) nie ma realnych głowic — port POŁĄCZENIA
  *  leży NA osi magistrali z konstrukcji (`composeRowStation` L0), więc jog
  *  degeneruje się do prostej linii: korytarz = `busAxisY` tego wiersza. L1/L2
- *  używają sub-poziomu międzystacyjnego strefy B4/B5 (patrz wyżej). */
+ *  używają sub-poziomu międzystacyjnego strefy B4/B5 (patrz wyżej).
+ *
+ *  SCHEMAT-10 S1 (V12K-135) — GAP do S2/S3 (D1(b) „jedna geometria korytarza"):
+ *  pełne ujednolicenie korytarza na `trunkCorridorYOf` dla WSZYSTKICH LOD
+ *  wymaga, by symbol zbiorczy stacji L0 wystawiał głowice na sub-poziomie
+ *  (jak L1/L2), a nie port na osi — inaczej jog L0 do sub-poziomu przecina
+ *  szyny (regresja `bus_band_clearance_probe`/`interiorCrossings`). Geometria
+ *  KOLUMN/PASM/KOTWIC jest już jednolita (buildRowLayout @ L2); domknięcie
+ *  korytarza L0 = zakres kolejnej fazy (wymaga glifu L0 z głowicami). */
 function interStationCorridorY(layout: RowLayout, lod: SceneLod): number {
   return lod === 0 ? layout.busAxisY : trunkCorridorYOf(layout);
 }
@@ -1651,15 +1702,28 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // adnotacja NIE zmienia portu zaczepu, ale spójność wywołań jest tańsza
     // niż dowód, że nie zmieni go nigdy).
     const annotationDetail = protectionAnnotationDetailForLod(lod);
-    const pass1 = composeGpz(gpzData, { x: 0, y: 0 }, [], annotationDetail);
+    // SCHEMAT-10 S1 (V12K-135, macierz LOD §3 „jedna kotwica"): wyrównanie
+    // magistrali do GPZ (originY = przesunięcie pionowe, mainRowDx/mainRowDy =
+    // przesunięcie CAŁEGO świata) liczone przy PEŁNYM szczególe adnotacji,
+    // niezależnie od poziomu renderu. Inaczej strefa/adnotacja GPZ ma inny bbox
+    // per LOD → magistrala (a więc WSZYSTKIE stacje) dryfuje pionowo i poziomo
+    // przy zoomie (D1 „przemeblowanie"). GPZ RENDEROWANY dalej wg render-LOD
+    // (`annotationDetail`): adnotacja jest addytywna i NIE przesuwa portu
+    // zaczepu ani szyn, więc render przy niższym LOD (mniejszy bbox) mieści się
+    // z zapasem w rezerwie policzonej z pełnego szczegołu (zero kolizji z
+    // magistralą). L2: render==layout, więc offsety BEZ zmian względem sprzed S1.
+    const layoutDetail = 'full' as const;
+    const pass1 = composeGpz(gpzData, { x: 0, y: 0 }, [], layoutDetail);
     const port1 = findGpzTrunkPort(pass1, gpzData, []);
     const targetBusAxisY = mainLayout ? mainLayout.busAxisY : 0;
     const originY = snapToGrid(targetBusAxisY - port1.y);
-    gpzComposition = composeGpz(
+    // Kompozycja WYRÓWNUJĄCA (pełny szczegół) — WYŁĄCZNIE źródło bbox/rightEdge/
+    // overhang do offsetów świata (nie renderowana).
+    let gpzLayout = composeGpz(
       gpzData,
       { x: 0, y: originY },
       externalGridSources.map((s) => ({ id: s.id })),
-      annotationDetail,
+      layoutDetail,
     );
     // F13.1 (§21, D3-2): kolumna WN + strefa GPZ sięgają PONAD szynę SN, więc
     // przy ujemnym `originY` (wyrównanie dwuprzebiegowe do busAxisY magistrali)
@@ -1667,20 +1731,26 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // chrom arkusza (`SheetFrame` maluje margines nieprzezroczyście; arkusz NIE
     // zna ujemnego originu i znać nie musi — kontrakt k5b/D2: treść sceny jest
     // nieujemna). Naprawa u ŹRÓDŁA: cały świat (GPZ + magistrala + laterale,
-    // które pozycjonują się od `mainLayout`) schodzi w dół o nawis. Trzecia
-    // kompozycja zamiast translacji ad-hoc — `composeGpz` jest niezmiennicza
-    // translacyjnie względem originu (ten sam argument co pass1→pass2).
-    mainRowDy = snapUp(Math.max(0, -gpzComposition.bbox.y));
+    // które pozycjonują się od `mainLayout`) schodzi w dół o nawis. `composeGpz`
+    // jest niezmiennicza translacyjnie względem originu.
+    mainRowDy = snapUp(Math.max(0, -gpzLayout.bbox.y));
     if (mainRowDy > 0) {
-      gpzComposition = composeGpz(
+      gpzLayout = composeGpz(
         gpzData,
         { x: 0, y: originY + mainRowDy },
         externalGridSources.map((s) => ({ id: s.id })),
-        annotationDetail,
+        layoutDetail,
       );
     }
-    gpzRightEdgeX = gpzComposition.bbox.x + gpzComposition.bbox.width;
+    gpzRightEdgeX = gpzLayout.bbox.x + gpzLayout.bbox.width;
     mainRowDx = snapUp(gpzRightEdgeX) + GPZ_TRUNK_GAP;
+    // Kompozycja RENDEROWANA (render-LOD) — na TYM SAMYM originie co wyrównanie.
+    gpzComposition = composeGpz(
+      gpzData,
+      { x: 0, y: originY + mainRowDy },
+      externalGridSources.map((s) => ({ id: s.id })),
+      annotationDetail,
+    );
   }
 
   // -- 3. Przesuń magistralę o (bbox GPZ + GAP) w prawo i o nawis strefy GPZ
@@ -2350,7 +2420,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // entryPort.x stacji 0 → przesuń → pass2 finalny).
     const firstCol0 = layout.columnsResult.columns[0];
     const firstProps0 = stationById.get(layout.measureInputs[0].id)!;
-    const provisional = composeRowStation(layout.measureInputs[0], firstProps0, firstCol0, layout.busAxisY, layout.blockTopY, lod, []);
+    // SCHEMAT-10 S1 (V12K-135, „jedna kotwica"): wyrównanie X lateralu (`dx`)
+    // liczone z portu wejścia PEŁNEJ geometrii (głowica pola, `geometryInputs`
+    // @ L2), nie z portu renderu-LOD — inaczej na L0 (symbol zbiorczy: port na
+    // ŚRODKU bloku, tapX) `dx` różni się od L1/L2 (port na głowicy pola) i cała
+    // gałąź lateralna przesuwa się poziomo przy zoomie (D1). Provisional służy
+    // WYŁĄCZNIE do odczytu `entryPort.x` (patrz niżej — jedyne użycie), więc
+    // liczymy je zawsze przy pełnym szczególe; L1/L2 mają identyczny port pola,
+    // więc `dx` bez zmian, zmienia się tylko L0 (dosuwa laterale do L1/L2).
+    const provisional = composeRowStation(layout.geometryInputs[0], firstProps0, firstCol0, layout.busAxisY, layout.blockTopY, 2, []);
     const dx = snapToGrid(channelX - provisional.entryPort.x);
     // Korytarz między-wierszowy musi zmieścić etykietę segmentu-lateralu
     // (spec §4, `layout/labels.ts` `resolveSegmentLateralLabel`, `fitsLength`)
@@ -2369,13 +2447,18 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     const priorContentBottom = nextRowTopY - ROW_VERTICAL_GAP;
     // pkt 13 (recenzja NO-GO 2026-07-17): korytarz mierzony na TYM SAMYM
     // tekście, który zostanie narysowany (para końców origin↔stacja0).
-    const incomingText = lod === 2
-      ? segmentSpanTextWithEndpoints(
-          incomingLabelText(cableRun, layout.measureInputs[0].id),
-          stationCodeOfId(originOwnerRef ?? ''),
-          stationCodeOfId(layout.measureInputs[0].id),
-        )
-      : null;
+    // SCHEMAT-10 S1 (V12K-135, „jedna kotwica"): REZERWACJA wysokości korytarza
+    // lateralu liczona ZAWSZE (jak sloty kolumn — pełny szczegół), niezależnie
+    // od LOD; inaczej laterale stają NIŻEJ na L2 (etykieta wjazdowa rezerwuje
+    // pas) niż na L0/L1 → cała gałąź lateralna dryfuje pionowo przy zoomie
+    // (D1 „przemeblowanie"). Sama ETYKIETA jest emitowana dalej WYŁĄCZNIE na L2
+    // (bramka `lod === 2` przy `segmentLaterals`/emisji niżej) — rezerwa pustego
+    // pasa na L0/L1 jest nieszkodliwa i utrzymuje wspólną kotwicę.
+    const incomingText = segmentSpanTextWithEndpoints(
+      incomingLabelText(cableRun, layout.measureInputs[0].id),
+      stationCodeOfId(originOwnerRef ?? ''),
+      stationCodeOfId(layout.measureInputs[0].id),
+    );
     const requiredCorridorHeight = incomingText != null ? measureLabelWidth(incomingText, 't2') + 2 * GRID : 0;
     const minDy = snapUp(priorContentBottom + requiredCorridorHeight);
     const dy = Math.max(nextRowTopY, minDy);

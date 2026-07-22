@@ -281,18 +281,62 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
   });
 
   it('L1 i L2 mają IDENTYCZNĄ liczbę symboli/segmentów (aparaty się nie zmieniają — TYLKO etykiety)', () => {
-    // UWAGA: same WSPÓŁRZĘDNE symboli/segmentów mogą się różnić między L1/L2
-    // (spec §7: „KAŻDY LOD liczy WŁASNĄ rezerwację" — pasmo podpisów
-    // kierunku pól na L2 poszerza bandsResult, co przesuwa busAxisY, a wraz
-    // z nim GPZ i wiersze — potwierdzone empirycznie na tej fixturze). Ten
-    // test sprawdza WYŁĄCZNIE, że zestaw aparatów jest taki sam (żaden
-    // aparat nie jest dodawany/usuwany w zależności od LOD), nie ich
-    // dokładną geometrię.
+    // UWAGA: same WSPÓŁRZĘDNE aparatów mogą się różnić między L1/L2 (composeStation
+    // liczy centerX pola z rezerwacji ZALEŻNEJ od treści renderu — podpisy
+    // kierunku pól są na L2, nie na L1 — więc stos aparatów pola bywa inaczej
+    // wyśrodkowany w TEJ SAMEJ kolumnie). SCHEMAT-10 S1 (V12K-135): KOTWICE
+    // stacji (kolumny/oś magistrali/pasmo nazw) są już IDENTYCZNE na L1/L2 (i L0)
+    // — patrz test „JEDNA KOTWICA"; różni się tylko rozkład detalu WEWNĄTRZ
+    // kolumny. Ten test sprawdza WYŁĄCZNIE, że zestaw aparatów jest taki sam
+    // (żaden aparat nie jest dodawany/usuwany w zależności od LOD).
     const sceneL1 = buildSceneV3(enm, 1);
     const sceneL2 = buildSceneV3(enm, 2);
     expect(sceneL1.symbols.length).toBe(sceneL2.symbols.length);
     expect(sceneL1.segments.length).toBe(sceneL2.segments.length);
     expect(sceneL1.symbols.map((s) => s.symbolId)).toEqual(sceneL2.symbols.map((s) => s.symbolId));
+  });
+
+  it('SCHEMAT-10 S1 (V12K-135): JEDNA KOTWICA — środek glifu stacji IDENTYCZNY na L0/L1/L2 (nazwa stacji i symbol zbiorczy)', () => {
+    // Macierz prawdy LOD §3: „środek glifu stacji i oś magistrali IDENTYCZNE na
+    // L0/L1/L2 — zoom = skala szczegółu, nie przemeblowanie". Dowód na REALNEJ
+    // fixturze: kotwica = wiersz nazwy stacji (pasmo B5, `ownerKind:
+    // 'station-name'`, kotwiczony do `nameSlot` KOLUMNY) — po unifikacji
+    // geometrii (buildRowLayout @ pełny szczegół) `nameSlot` jest ten sam na
+    // wszystkich LOD, więc etykieta nazwy każdej stacji ma IDENTYCZNE (x,y) na
+    // L0/L1/L2. Przed S1 (D1 „trzy światy") kolumny L0/L1/L2 różniły się
+    // szerokością → nazwa dryfowała między poziomami.
+    // Kotwica = PIERWSZY wiersz pasma nazw (`#name-row-0`) — jego `rect` bierze
+    // się WPROST z `nameSlot` kolumny (`layout/labels.ts` `resolveStationNameBand`:
+    // `x = nameSlot.x`, `y = nameSlot.y`, niezależnie od TREŚCI wiersza), więc
+    // jest tekstowo-niezależną kotwicą stacji. Na L0 pasmo ma 1 wiersz (S-id),
+    // na L1/L2 więcej (nazwa/kVA/typ/nN) — porównujemy wspólny wiersz 0.
+    const nameAnchors = (lod: 0 | 1 | 2): Map<string, string> => {
+      const scene = buildSceneV3(enm, lod);
+      const m = new Map<string, string>();
+      for (const label of scene.labels) {
+        if (label.ownerKind === 'station-name' && label.ownerRef.endsWith('#name-row-0')) {
+          const stationRef = label.ownerRef.slice(0, -'#name-row-0'.length);
+          m.set(stationRef, `${label.rect.x},${label.rect.y},${label.rect.width}`);
+        }
+      }
+      return m;
+    };
+    const a0 = nameAnchors(0);
+    const a1 = nameAnchors(1);
+    const a2 = nameAnchors(2);
+    // Zbiór stacji z nazwą jest niepusty i wspólny (nic nie ginie między LOD).
+    expect(a0.size).toBeGreaterThan(EXPECTED_STATION_COUNT / 2);
+    expect(a1.size).toBe(a0.size);
+    expect(a2.size).toBe(a0.size);
+    const drift: string[] = [];
+    for (const [ref, pos0] of a0) {
+      const pos1 = a1.get(ref);
+      const pos2 = a2.get(ref);
+      if (pos1 !== pos0 || pos2 !== pos0) {
+        drift.push(`${ref}: L0=${pos0} L1=${pos1} L2=${pos2}`);
+      }
+    }
+    expect(drift, `kotwice stacji dryfują między LOD:\n${drift.slice(0, 8).join('\n')}`).toEqual([]);
   });
 
   it('liczba stacji w meta jest stała i zgodna z realną fixturą, niezależnie od LOD', () => {
@@ -803,8 +847,25 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // obróconego tekstu) głębsze; (c) pkt 5: szablony RMU skracają stosy
     // pól (mniej aparatów), co CZĘŚCIOWO oddaje koszt (a)/(b). Zero nowych
     // kolizji (symbolWireCollisions/k6/overlap — twarde zera niżej/wyżej).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(12472);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(47240);
+    // → SCHEMAT-10 S1 (V12K-135, macierz LOD §3 „jedna kotwica"): L0 12472→50264,
+    // L1 47240→67208, L2 BEZ zmian (67208 — L1 zrównało się z L2). Świadoma
+    // WYMIANA WZORCA: GEOMETRIA (kolumny/pasma/kotwice/rezerwy korytarzy)
+    // liczona teraz zawsze przy PEŁNYM szczególe (L2), niezależnie od poziomu
+    // renderu — koniec D1 „trzy światy" na poziomie geometrii (L0 liczyło
+    // kolumny z pustych pól; L1 bez podpisów/incoming; wyrównanie do GPZ i
+    // rezerwa korytarzy lateralnych zależne od LOD — każdy poziom miał INNĄ oś
+    // magistrali, INNE kolumny i INNE Y gałęzi → zoom przemeblowywał układ).
+    // Po S1 środek glifu KAŻDEJ stacji (X i Y) i oś magistrali są IDENTYCZNE na
+    // L0/L1/L2 — dowód: test „JEDNA KOTWICA" wyżej (porównanie kotwic wszystkich
+    // stacji między scenami). Poziom steruje WYŁĄCZNIE szczegółem RYSOWANYM w tej
+    // samej geometrii. Wzrost pionów wynika z tego, że L0/L1 renderują teraz w
+    // pełnej rezerwie L2 (wyższe pasma B2/B5, korytarze lateralne, wyrównanie GPZ
+    // przy pełnej adnotacji). §15.1 „redukcja pionów jest ograniczeniem MIĘKKIM"
+    // — spójność LOD (jedna kotwica) ma pierwszeństwo (precedens F9.10/F10.3).
+    // L2 bez zmian potwierdza brak regresji przy pełnym szczególe. Zero nowych
+    // kolizji (twarde zera symbolWireCollisions/k6/overlap wyżej/niżej).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(50264);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(67208);
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(67208);
   });
 });

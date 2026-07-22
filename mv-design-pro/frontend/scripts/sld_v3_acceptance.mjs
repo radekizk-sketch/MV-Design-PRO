@@ -196,7 +196,15 @@ const EXPECTED_STATION_COUNT = 53;
 // strony nN per stacja (pkt 6) + szersze etykiety przęseł z parą końców
 // (pkt 13) minus krótsze stosy RMU (pkt 5); uzasadnienie liczbowe:
 // buildScene.test.ts vertical_length_probe.
-const VERTICAL_LENGTH_BASELINE = { 0: 12472, 1: 47240, 2: 67208 };
+// SCHEMAT-10 S1 (V12K-135, „jedna kotwica"): L0 12472→50264, L1 47240→67208,
+// L2 BEZ zmian (67208 — L1 zrównało się z L2). Świadoma WYMIANA WZORCA:
+// geometria (kolumny/pasma/kotwice/rezerwy korytarzy/wyrównanie GPZ) liczona
+// zawsze przy pełnym szczególe (L2) niezależnie od poziomu renderu → środek
+// glifu KAŻDEJ stacji i oś magistrali IDENTYCZNE na L0/L1/L2 (koniec D1 „trzy
+// światy"). L0/L1 renderują teraz w pełnej rezerwie L2 (stąd wzrost pionów);
+// §15.1 „redukcja jest ograniczeniem MIĘKKIM" — spójność LOD ma pierwszeństwo.
+// Uzasadnienie i dowód: buildScene.test.ts vertical_length_probe + „JEDNA KOTWICA".
+const VERTICAL_LENGTH_BASELINE = { 0: 50264, 1: 67208, 2: 67208 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —

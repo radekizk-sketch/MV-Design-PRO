@@ -23,7 +23,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
-import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
+import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import { SYMBOL_DEFS } from '../symbols/defs';
 import { SYMBOL_GLYPHS, V3_STROKE_BASE } from '../symbols/glyphs';
 import { SOURCE_STATE_OVERLAY_COLOR } from '../compose/sourceKind';
@@ -1345,7 +1345,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           : undefined
       }
     >
-      <SheetFrame width={sheetSize.width} height={sheetSize.height} scaleLabel="wg kamery">
+      <SheetFrame
+        width={sheetSize.width}
+        height={sheetSize.height}
+        scaleLabel="wg kamery"
+        lodLabel={SCENE_LOD_LABELS_PL[effectiveLod]}
+      >
         {/* F13.1 (spec §21.2, D3-2/D3-12): rama strefy GPZ — DEKORACJA z meta
          *  sceny (nie segment toru mocy — zero udziału w wyroczniach §11/
          *  §15.1/§16), rysowana POD warstwami treści; styl: cienka linia
