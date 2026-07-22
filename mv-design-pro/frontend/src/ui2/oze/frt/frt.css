@@ -416,3 +416,40 @@
   gap: 8px 16px;
   margin: 0;
 }
+
+/* Uzasadnienie oceny siły sieci (why_pl z backendu). */
+.mvd-frt-sekw-kontekst-why {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Ślad WHITE BOX kontekstu siły sieci — na żądanie (domyślnie zwinięty). */
+.mvd-frt-sekw-slad-blok {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mvd-frt-sekw-slad-btn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  cursor: pointer;
+}
+
+.mvd-frt-sekw-slad-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+.mvd-frt-sekw-slad-tytul {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  font-size: 13px;
+}

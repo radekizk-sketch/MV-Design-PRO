@@ -14,7 +14,7 @@
   min-height: 0;
   height: 100%;
   color: var(--mvd-ink);
-  font-family: 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  font-family: var(--mvd-font-sans);
   font-size: 13px;
   line-height: 1.5;
   padding: 4px;

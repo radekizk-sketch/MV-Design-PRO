@@ -46,8 +46,8 @@
   --mvd-sel: #DDEBF5;
   --mvd-shadow: 0 1px 3px rgba(20, 30, 40, 0.10);
   --mvd-focus: #1F7FB5;
-  --mvd-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
   --mvd-font-sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --mvd-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
 }
 
 /* Motyw ciemny (dyspozytorski). */
@@ -70,8 +70,8 @@
   --mvd-sel: #173142;
   --mvd-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
   --mvd-focus: #41A8DE;
-  --mvd-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
   --mvd-font-sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --mvd-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
 }
 
 /* Preferencja systemowa (ciemny) gdy użytkownik nie wybrał motywu jawnie. */
@@ -95,7 +95,7 @@
     --mvd-sel: #173142;
     --mvd-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
     --mvd-focus: #41A8DE;
-    --mvd-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
     --mvd-font-sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    --mvd-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
   }
 }

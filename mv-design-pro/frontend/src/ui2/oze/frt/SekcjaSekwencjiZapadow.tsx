@@ -6,7 +6,9 @@
  *   1. odznaka werdyktu sekwencji (koniunkcja werdyktów zapadów — z backendu),
  *   2. założenia ZAWSZE widoczne (brak modelu stanu między zapadami — uczciwość),
  *   3. tabela zapadów na wzorcu `TabelaWynikow` (parametry, marginesy, werdykt),
- *   4. kontekst siły sieci (SCR/WSCR węzła) albo uczciwy powód jego braku.
+ *   4. kontekst siły sieci (SCR/WSCR węzła) albo uczciwy powód jego braku;
+ *      uzasadnienie `why_pl` + rozwijany ślad WHITE BOX (`white_box` z backendu,
+ *      reużyty `SladAnalizy` z pulpitu — kroki tekstowe, zero LaTeX-a doklejanego w UI).
  *
  * Zero fizyki, zero ocen lokalnych — werdykty, marginesy i kontekst pochodzą
  * WYŁĄCZNIE z backendu. Serializacja (kropka dziesiętna) należy do klienta;
@@ -17,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { isModeAtLeast } from '../../shell/modeModel';
 import { TabelaWynikow } from '../../wyniki/wzorzec';
+import { SladAnalizy } from '../pulpit';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { ANALYSIS_TYPE_LABELS, type ExecutionRun } from '../../../ui/study-cases/types';
 import {
@@ -80,6 +83,8 @@ function WynikSekwencji({
   trybZaawansowania: AdvancementMode;
 }) {
   const trybEkspercki = isModeAtLeast(trybZaawansowania, 'expert');
+  // Ślad WHITE BOX kontekstu siły sieci — NA ŻĄDANIE (domyślnie zwinięty).
+  const [sladWidoczny, setSladWidoczny] = useState(false);
   const werdykt = useMemo(() => werdyktSekwencji(dane), [dane]);
   const kolumny = useMemo(() => kolumnyTabeliSekwencji(), []);
   const wiersze = useMemo(() => wierszeTabeliSekwencji(dane), [dane]);
@@ -113,7 +118,8 @@ function WynikSekwencji({
             {dane.kontekst_sily_sieci_powod_pl ?? FRT_STRINGS.kreska}
           </p>
         ) : (
-          <dl className="mvd-frt-sekw-kontekst-dane" data-testid="mvd-frt-sekw-kontekst-dane">
+          <>
+            <dl className="mvd-frt-sekw-kontekst-dane" data-testid="mvd-frt-sekw-kontekst-dane">
             <div className="mvd-frt-zal-para">
               <dt>{FRT_STRINGS.sekwKontekstWezel}</dt>
               <dd>{kontekst.bus_ref}</dd>
@@ -144,7 +150,34 @@ function WynikSekwencji({
               <dt>{FRT_STRINGS.sekwKontekstWerdykt}</dt>
               <dd>{kontekst.verdict}</dd>
             </div>
-          </dl>
+            </dl>
+            <p className="mvd-frt-sekw-kontekst-why" data-testid="mvd-frt-sekw-kontekst-why">
+              {kontekst.why_pl}
+            </p>
+            {kontekst.white_box.length > 0 && (
+              <div className="mvd-frt-sekw-slad-blok">
+                <button
+                  type="button"
+                  className="mvd-frt-sekw-slad-btn"
+                  aria-expanded={sladWidoczny}
+                  onClick={() => setSladWidoczny((s) => !s)}
+                  data-testid="mvd-frt-sekw-slad-otworz"
+                >
+                  {sladWidoczny
+                    ? FRT_STRINGS.sekwKontekstSladUkryj
+                    : FRT_STRINGS.sekwKontekstSladPokaz}
+                </button>
+                {sladWidoczny && (
+                  <div className="mvd-oze" data-testid="mvd-frt-sekw-slad">
+                    <span className="mvd-frt-sekw-slad-tytul">
+                      {FRT_STRINGS.sekwKontekstSladTytul}
+                    </span>
+                    <SladAnalizy kroki={kontekst.white_box} />
+                  </div>
+                )}
+              </div>
+            )}
+          </>
         )}
       </section>
 

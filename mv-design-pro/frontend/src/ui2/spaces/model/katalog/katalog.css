@@ -12,7 +12,6 @@
   --mvd-katalog-tekst-drugorzedny: #5a6675;
   --mvd-katalog-akcent: #1f5fa8;
   --mvd-katalog-akcent-tlo: #e8f0fb;
-  --mvd-katalog-mono: ui-monospace, "SFMono-Regular", "Menlo", "Consolas", monospace;
   --mvd-katalog-odstep: 12px;
   --mvd-katalog-promien: 8px;
 
@@ -99,7 +98,7 @@
 }
 
 .mvd-katalog__param-symbol {
-  font-family: var(--mvd-katalog-mono);
+  font-family: var(--mvd-font-mono);
   color: var(--mvd-katalog-akcent);
   margin-right: 6px;
 }
@@ -111,7 +110,7 @@
 }
 
 .mvd-katalog__param-wartosc {
-  font-family: var(--mvd-katalog-mono);
+  font-family: var(--mvd-font-mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }

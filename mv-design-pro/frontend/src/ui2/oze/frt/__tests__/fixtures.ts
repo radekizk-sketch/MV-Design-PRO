@@ -341,7 +341,16 @@ export function widokSekwencjiNiezaliczonaFixture(): WidokSekwencjiFrt {
       is_weak: true,
       why_pl: 'SCR = 2,25 poniżej progu sieci słabej (3,0).',
       missing_data: [],
-      white_box: [],
+      // Kroki śladu 1:1 z backendem (widok siły sieci D1): zapis symboliczny
+      // ASCII + podstawienie i wynik zbudowane po stronie backendu.
+      white_box: [
+        {
+          symbol: 'SCR',
+          formula_latex: 'SCR = S_sc / S_n',
+          substitution_pl: 'SCR = 45,0 / 20,0',
+          result_pl: 'SCR = 2,25',
+        },
+      ],
       modules: [{ ref: 'gen-oze-1', name: 'Farma wiatrowa 1', sn_mva: 20.0 }],
     },
     kontekst_sily_sieci_powod_pl: null,

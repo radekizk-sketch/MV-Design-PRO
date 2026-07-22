@@ -10,7 +10,7 @@
   gap: 12px;
   min-height: 0;
   color: var(--mvd-ink);
-  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  font-family: var(--mvd-font-sans);
   font-size: 13px;
   line-height: 1.5;
   padding: 4px;
@@ -89,7 +89,7 @@ button.mvd-kafel:hover {
   font-variant-numeric: tabular-nums;
 }
 .mvd-kafel-kpi-txt {
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: var(--mvd-font-sans);
   font-weight: 600;
   font-size: 20px;
 }
@@ -97,7 +97,7 @@ button.mvd-kafel:hover {
   font-size: 13px;
   font-weight: 400;
   color: var(--mvd-muted);
-  font-family: "Segoe UI", system-ui, sans-serif;
+  font-family: var(--mvd-font-sans);
 }
 
 /* ---- siatka klucz–wartość w kaflu ---- */

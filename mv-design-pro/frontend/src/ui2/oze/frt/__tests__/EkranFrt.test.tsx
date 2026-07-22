@@ -305,6 +305,43 @@ describe('EkranFrt — sekcja „Sekwencja zapadów"', () => {
     expect(kontekst).toHaveTextContent('sieć słaba');
   });
 
+  it('ślad WHITE BOX kontekstu siły sieci — domyślnie zwinięty, klik odsłania kroki wywodu', async () => {
+    pobierzSekwencja.mockResolvedValue(widokSekwencjiNiezaliczonaFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
+    await screen.findByTestId('mvd-frt-sekw-wynik');
+    // Uzasadnienie oceny (why_pl) widoczne od razu; ślad NA ŻĄDANIE.
+    expect(screen.getByTestId('mvd-frt-sekw-kontekst-why')).toHaveTextContent(
+      'poniżej progu sieci słabej',
+    );
+    const przycisk = screen.getByTestId('mvd-frt-sekw-slad-otworz');
+    expect(przycisk).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('mvd-frt-sekw-slad')).not.toBeInTheDocument();
+    // Realna ścieżka: natywny klik w przycisk odsłania listę kroków z backendu.
+    fireEvent.click(przycisk);
+    expect(przycisk).toHaveAttribute('aria-expanded', 'true');
+    const slad = screen.getByTestId('mvd-frt-sekw-slad');
+    expect(within(slad).getByTestId('mvd-oze-slad-kroki')).toHaveTextContent('SCR = 45,0 / 20,0');
+    expect(within(slad).getByTestId('mvd-oze-slad-kroki')).toHaveTextContent('SCR = 2,25');
+    // Ponowny klik zwija ślad.
+    fireEvent.click(przycisk);
+    expect(screen.queryByTestId('mvd-frt-sekw-slad')).not.toBeInTheDocument();
+  });
+
+  it('kontekst bez kroków śladu → brak przycisku (zero fabrykacji wywodu w UI)', async () => {
+    const widok = widokSekwencjiNiezaliczonaFixture();
+    pobierzSekwencja.mockResolvedValue({
+      ...widok,
+      kontekst_sily_sieci: widok.kontekst_sily_sieci
+        ? { ...widok.kontekst_sily_sieci, white_box: [] }
+        : null,
+    });
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-frt-sekw-oblicz'));
+    await screen.findByTestId('mvd-frt-sekw-wynik');
+    expect(screen.queryByTestId('mvd-frt-sekw-slad-otworz')).not.toBeInTheDocument();
+  });
+
   it('błąd końcówki sekwencji → jawny stan błędu z komunikatem PL', async () => {
     pobierzSekwencja.mockRejectedValue(
       new Error('Sekwencja zawiera 11 zapadów; dozwolone maksimum to 10.'),
