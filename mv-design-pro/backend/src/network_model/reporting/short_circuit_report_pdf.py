@@ -63,7 +63,7 @@ def _format_value(value: Any) -> str:
     if isinstance(value, bool):
         return "Tak" if value else "Nie"
     if isinstance(value, list):
-        return f"[{len(value)} elementĂłw]"
+        return f"[{len(value)} elementów]"
     return str(value)
 
 
@@ -183,7 +183,7 @@ def export_short_circuit_result_to_pdf(
     c.setFont("Helvetica", 10)
     params = [
         f"Typ zwarcia: {data.get('short_circuit_type', '—')}",
-        f"WęzeĹ‚: {data.get('fault_node_id', '—')}",
+        f"Węzeł: {data.get('fault_node_id', '—')}",
         f"Un: {_format_value(data.get('un_v'))} V",
         f"c: {_format_value(data.get('c_factor'))}",
         f"tk: {_format_value(data.get('tk_s'))} s",
@@ -208,15 +208,20 @@ def export_short_circuit_result_to_pdf(
     draw_text("Wyniki", left_margin, font_size=14, bold=True)
     y -= 3 * mm
 
+    # Pola FROZEN Result API 1:1; rozbicie Ik na skladowe Thevenin/falowniki —
+    # addytywnie, ZWARCIA-PRO F5 pkt 13.
     result_fields = [
         ("Ik'' [A]", "ikss_a"),
         ("Ip [A]", "ip_a"),
         ("Ib [A]", "ib_a"),
         ("Ith [A]", "ith_a"),
         ("Sk [MVA]", "sk_mva"),
-        ("Îş [-]", "kappa"),
+        ("κ [-]", "kappa"),
         ("R/X [-]", "rx_ratio"),
         ("Zk [Ω]", "zkk_ohm"),
+        ("Ik Thevenin [A]", "ik_thevenin_a"),
+        ("Ik falowniki [A]", "ik_inverters_a"),
+        ("Ik suma [A]", "ik_total_a"),
     ]
 
     # Draw results as a simple table
@@ -243,7 +248,7 @@ def export_short_circuit_result_to_pdf(
         if not white_box_trace:
             y = check_page_break(line_height)
             c.setFont("Helvetica-Oblique", 10)
-            c.drawString(left_margin, y, "Brak Ĺ›ladu obliczeĹ„.")
+            c.drawString(left_margin, y, "Brak śladu obliczeń.")
             y -= line_height
         else:
             for step in white_box_trace:
@@ -341,7 +346,7 @@ def _add_white_box_step(
     if inputs and isinstance(inputs, dict):
         y = check_page_break(line_height * (len(inputs) + 2))
         c.setFont("Helvetica-Bold", 10)
-        c.drawString(left_margin, y, "Dane wejĹ›ciowe:")
+        c.drawString(left_margin, y, "Dane wejściowe:")
         y -= line_height
         c.setFont("Helvetica", 9)
         for k, v in inputs.items():

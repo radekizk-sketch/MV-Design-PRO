@@ -112,6 +112,7 @@ def sc_result_set():
                     "ikss_a": 5000.0,
                     "ip_a": 12000.0,
                     "ith_a": 5500.0,
+                    "ib_a": 4200.0,
                     "ik_total_a": 5000.0,
                     "sk_mva": 130.0,
                 },
@@ -123,6 +124,7 @@ def sc_result_set():
                     "ikss_a": 3000.0,
                     "ip_a": 7200.0,
                     "ith_a": 3300.0,
+                    "ib_a": 2800.0,
                     "ik_total_a": 3000.0,
                     "sk_mva": 78.0,
                 },
@@ -261,10 +263,13 @@ class TestSCResultMode:
 
     def test_different_quantities(self, resolver, sc_result_set):
         """Different SC quantities produce different currents."""
+        # ZWARCIA-PRO F5: "ib_a" (prad wylaczeniowy IEC 60909) dopuszczony
+        # addytywnie w ALLOWED_QUANTITIES — czytany 1:1 z ResultSet SC.
         for qty, expected_a in [
             ("ikss_a", 5000.0),
             ("ip_a", 12000.0),
             ("ith_a", 5500.0),
+            ("ib_a", 4200.0),
         ]:
             source = ProtectionCurrentSource(
                 source_type=CurrentSourceType.SC_RESULT,

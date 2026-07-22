@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
+    from docx.document import Document as DocumentObject
     from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 
 # Check for python-docx availability at import time
@@ -67,7 +68,7 @@ def _format_value(value: Any) -> str:
     if isinstance(value, bool):
         return "Tak" if value else "Nie"
     if isinstance(value, list):
-        return f"[{len(value)} elementĂłw]"
+        return f"[{len(value)} elementów]"
     return str(value)
 
 
@@ -140,7 +141,7 @@ def export_short_circuit_result_to_docx(
     # Subtitle with fault parameters
     subtitle_parts = [
         f"Typ zwarcia: {data.get('short_circuit_type', '—')}",
-        f"WęzeĹ‚: {data.get('fault_node_id', '—')}",
+        f"Węzeł: {data.get('fault_node_id', '—')}",
         f"Un: {_format_value(data.get('un_v'))} V",
         f"c: {_format_value(data.get('c_factor'))}",
         f"tk: {_format_value(data.get('tk_s'))} s",
@@ -161,7 +162,7 @@ def export_short_circuit_result_to_docx(
     # Header row
     hdr_cells = results_table.rows[0].cells
     hdr_cells[0].text = "Nazwa"
-    hdr_cells[1].text = "WartoĹ›ć"
+    hdr_cells[1].text = "Wartość"
 
     # Make header bold
     for cell in hdr_cells:
@@ -169,16 +170,20 @@ def export_short_circuit_result_to_docx(
             for run in paragraph.runs:
                 run.bold = True
 
-    # Result fields to display
+    # Result fields to display (pola FROZEN Result API 1:1; rozbicie Ik na
+    # skladowe Thevenin/falowniki — addytywnie, ZWARCIA-PRO F5 pkt 13)
     result_fields = [
         ("Ik'' [A]", "ikss_a"),
         ("Ip [A]", "ip_a"),
         ("Ib [A]", "ib_a"),
         ("Ith [A]", "ith_a"),
         ("Sk [MVA]", "sk_mva"),
-        ("Îş [-]", "kappa"),
+        ("κ [-]", "kappa"),
         ("R/X [-]", "rx_ratio"),
-        ("Zk [Î©]", "zkk_ohm"),
+        ("Zk [Ω]", "zkk_ohm"),
+        ("Ik Thevenin [A]", "ik_thevenin_a"),
+        ("Ik falowniki [A]", "ik_inverters_a"),
+        ("Ik suma [A]", "ik_total_a"),
     ]
 
     for label, key in result_fields:
@@ -195,7 +200,7 @@ def export_short_circuit_result_to_docx(
         white_box_trace = data.get("white_box_trace", [])
 
         if not white_box_trace:
-            doc.add_paragraph("Brak Ĺ›ladu obliczeĹ„.")
+            doc.add_paragraph("Brak śladu obliczeń.")
         else:
             for step in white_box_trace:
                 _add_white_box_step(doc, step)
@@ -209,7 +214,7 @@ def export_short_circuit_result_to_docx(
     return output_path
 
 
-def _add_white_box_step(doc: Document, step: dict) -> None:
+def _add_white_box_step(doc: DocumentObject, step: dict) -> None:
     """
     Add a single white box step to the document.
 
@@ -229,19 +234,19 @@ def _add_white_box_step(doc: Document, step: dict) -> None:
     formula = step.get("formula_latex", "")
     if formula:
         p = doc.add_paragraph()
-        p.add_run("WzĂłr: ").bold = True
+        p.add_run("Wzór: ").bold = True
         p.add_run(formula)
 
     # Inputs table
     inputs = step.get("inputs", {})
     if inputs and isinstance(inputs, dict):
-        doc.add_paragraph().add_run("Dane wejĹ›ciowe:").bold = True
+        doc.add_paragraph().add_run("Dane wejściowe:").bold = True
         inputs_table = doc.add_table(rows=1, cols=2)
         inputs_table.style = "Table Grid"
 
         hdr = inputs_table.rows[0].cells
         hdr[0].text = "Parametr"
-        hdr[1].text = "WartoĹ›ć"
+        hdr[1].text = "Wartość"
 
         for k, v in inputs.items():
             row = inputs_table.add_row().cells
@@ -264,7 +269,7 @@ def _add_white_box_step(doc: Document, step: dict) -> None:
 
         hdr = result_table.rows[0].cells
         hdr[0].text = "Parametr"
-        hdr[1].text = "WartoĹ›ć"
+        hdr[1].text = "Wartość"
 
         for k, v in result_data.items():
             row = result_table.add_row().cells

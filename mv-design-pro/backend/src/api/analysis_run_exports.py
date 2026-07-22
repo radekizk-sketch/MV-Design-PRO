@@ -3,7 +3,7 @@ from __future__ import annotations
 import io
 import json
 import textwrap
-from typing import Any, Literal
+from typing import Any, Literal, cast
 
 from api.analysis_case_context import build_analysis_case_context
 from api.canonical_run_views import (
@@ -81,13 +81,19 @@ def normalize_report_options(
     sections: list[str] | tuple[str, ...] | None = None,
     focus_table: str | None = None,
 ) -> dict[str, Any]:
-    normalized_profile: ReportProfile = profile if profile in REPORT_PROFILE_LABELS else "osd"
-    normalized_detail: ReportDetailLevel = (
-        detail_level if detail_level in DEFAULT_REPORT_SECTIONS_BY_DETAIL else "standardowy"
+    normalized_profile: ReportProfile = (
+        cast(ReportProfile, profile) if profile in REPORT_PROFILE_LABELS else "osd"
     )
-    normalized_scope: ReportScope = scope if scope in REPORT_SCOPE_LABELS else "whole_run"
+    normalized_detail: ReportDetailLevel = (
+        cast(ReportDetailLevel, detail_level)
+        if detail_level in DEFAULT_REPORT_SECTIONS_BY_DETAIL
+        else "standardowy"
+    )
+    normalized_scope: ReportScope = (
+        cast(ReportScope, scope) if scope in REPORT_SCOPE_LABELS else "whole_run"
+    )
     normalized_focus_table: ReportFocusTable = (
-        focus_table
+        cast(ReportFocusTable, focus_table)
         if focus_table
         in {
             "buses",
@@ -104,8 +110,9 @@ def normalize_report_options(
 
     default_sections = list(DEFAULT_REPORT_SECTIONS_BY_DETAIL[normalized_detail])
     raw_sections = list(sections or [])
-    normalized_sections = [
-        section for section in ("summary", "results", "catalog", "trace") if section in raw_sections
+    all_sections: tuple[ReportSection, ...] = ("summary", "results", "catalog", "trace")
+    normalized_sections: list[ReportSection] = [
+        section for section in all_sections if section in raw_sections
     ]
     if not normalized_sections:
         normalized_sections = default_sections
@@ -462,6 +469,93 @@ def _amps_to_ka(value: Any) -> float | None:
         return float(value) / 1000.0
     except (TypeError, ValueError):
         return None
+
+
+def _fmt_liczba(value: Any) -> str:
+    """Deterministyczny format liczby do raportu: None -> em-dash, liczba -> %.6g.
+
+    Uzywany zamiast wzorca ``value or "—"`` (ktory falszywie maskowal 0.0,
+    np. kat 0.0 deg wezla bilansujacego) — uczciwe braki tylko dla None.
+    """
+    if value is None:
+        return "—"
+    if isinstance(value, int | float):
+        return f"{float(value):.6g}"
+    return str(value)
+
+
+# Pelny bilans IEC 60909 punktu zwarcia w raportach PDF/DOCX — TEN SAM zakres co
+# panel "Bilans IEC 60909" w UI (ZWARCIA-PRO F5, pkt 13 karty wlasciciela).
+# Pola czytane 1:1 z wierszy kanonicznych `build_short_circuit_results`
+# (enm/canonical_analysis) — zero fizyki w warstwie raportowej.
+_SC_BILANS_POLA: tuple[tuple[str, str, str], ...] = (
+    ("Rk", "rk_ohm", "Ohm"),
+    ("Xk", "xk_ohm", "Ohm"),
+    ("|Zk|", "zk_ohm", "Ohm"),
+    ("X/R", "xr_ratio", ""),
+    ("kappa", "kappa", ""),
+    ("c", "c_factor", ""),
+    ("Un", "un_kv", "kV"),
+    ("tk", "tk_s", "s"),
+    ("tb", "tb_s", "s"),
+    ("I2t", "i2t_ka2s", "kA2s"),
+)
+
+
+def _krok_wywodu_linie(step: dict[str, Any], index: int) -> list[str]:
+    """Krok wywodu jako linie tekstu (wzor LaTeX/podstawienie/wynik/uwagi).
+
+    ZWARCIA-PRO F5 pkt 13: sekcja wywodu w raportach PDF/DOCX prezentuje kroki
+    czytelnie (tekst kroku; LaTeX jako tekst wzoru — generator canvas/docx nie
+    renderuje LaTeX), zamiast surowego zrzutu JSON. Format deterministyczny.
+    """
+    title = step.get("title") or step.get("key") or f"Krok {index}"
+    lines = [f"{index}. {title}"]
+    if step.get("formula_latex"):
+        lines.append(f"Wzór: {step.get('formula_latex')}")
+    substitution = step.get("substitution_latex") or step.get("substitution")
+    if substitution:
+        lines.append(f"Podstawienie: {substitution}")
+    if step.get("result") is not None:
+        lines.append(f"Wynik: {json.dumps(step.get('result'), ensure_ascii=False, sort_keys=True)}")
+    if step.get("notes"):
+        lines.append(f"Uwagi: {step.get('notes')}")
+    return lines
+
+
+def _sc_row_glowne_linia(row_data: dict[str, Any]) -> str:
+    """Glowna linia wiersza zwarciowego: prady i moc zwarciowa (kanoniczne kA/MVA)."""
+    return " | ".join(
+        [
+            str(row_data.get("target_name") or row_data.get("target_id") or "—"),
+            f"Ik''={_fmt_liczba(row_data.get('ikss_ka'))} kA",
+            f"ip={_fmt_liczba(row_data.get('ip_ka'))} kA",
+            f"Ith={_fmt_liczba(row_data.get('ith_ka'))} kA",
+            f"Ib={_fmt_liczba(row_data.get('ib_ka'))} kA",
+            f"Ik={_fmt_liczba(row_data.get('ik_ka'))} kA",
+            f"Sk''={_fmt_liczba(row_data.get('sk_mva'))} MVA",
+        ]
+    )
+
+
+def _sc_row_bilans_linie(row_data: dict[str, Any]) -> tuple[str, str]:
+    """Dwie linie pelnego bilansu IEC 60909 wiersza zwarciowego (kolumny addytywne).
+
+    Podzial staly (impedancje / wielkosci normowe), zeby linia PDF nie przekraczala
+    limitu szerokosci strony — format deterministyczny.
+    """
+
+    def _czesc(pola: tuple[tuple[str, str, str], ...]) -> str:
+        parts = []
+        for label, key, unit in pola:
+            value = _fmt_liczba(row_data.get(key))
+            parts.append(f"{label}={value} {unit}".rstrip())
+        return " | ".join(parts)
+
+    return (
+        "Bilans IEC 60909: " + _czesc(_SC_BILANS_POLA[:5]),
+        _czesc(_SC_BILANS_POLA[5:]),
+    )
 
 
 def _build_short_circuit_proof_currents(run: CanonicalRun) -> dict[str, Any] | None:
@@ -1003,8 +1097,8 @@ def export_run_report_docx_response(
                         " | ".join(
                             [
                                 str(row_data.get("name") or row_data.get("bus_id") or "—"),
-                                f"U={row_data.get('u_pu') or '—'} pu",
-                                f"kąt={row_data.get('angle_deg') or '—'} deg",
+                                f"U={_fmt_liczba(row_data.get('u_pu'))} pu",
+                                f"kąt={_fmt_liczba(row_data.get('angle_deg'))} deg",
                             ]
                         )
                     )
@@ -1026,18 +1120,12 @@ def export_run_report_docx_response(
                     : limits["rows"]
                 ]
                 for row_data in rows:
-                    doc.add_paragraph(
-                        " | ".join(
-                            [
-                                str(
-                                    row_data.get("target_name") or row_data.get("target_id") or "—"
-                                ),
-                                f"Ik''={row_data.get('ikss_ka') or '—'} kA",
-                                f"ip={row_data.get('ip_ka') or '—'} kA",
-                                f"Ith={row_data.get('ith_ka') or '—'} kA",
-                            ]
-                        )
-                    )
+                    # ZWARCIA-PRO F5: pelny bilans IEC 60909 1:1 z wierszy
+                    # kanonicznych (TEN SAM zakres co UI) — trzy linie na punkt.
+                    doc.add_paragraph(_sc_row_glowne_linia(row_data))
+                    bilans_1, bilans_2 = _sc_row_bilans_linie(row_data)
+                    doc.add_paragraph(bilans_1)
+                    doc.add_paragraph(bilans_2)
             elif table_id == "phase_state":
                 rows = (results_section.get("phase_state", {}) or {}).get("rows", [])[
                     : limits["rows"]
@@ -1133,11 +1221,9 @@ def export_run_report_docx_response(
         doc.add_heading("Wywód szczegółowy", level=1)
         white_box_trace = (payload.get("trace", {}) or {}).get("white_box_trace", [])
         if white_box_trace:
-            for step in white_box_trace[: limits["trace_steps"]]:
-                title = step.get("title") or step.get("key") or "Krok"
-                doc.add_paragraph(
-                    f"{title}: {json.dumps(step, ensure_ascii=False, sort_keys=True)}"
-                )
+            for index, step in enumerate(white_box_trace[: limits["trace_steps"]], start=1):
+                for line in _krok_wywodu_linie(step, index):
+                    doc.add_paragraph(line)
         else:
             doc.add_paragraph("Brak jawnego śladu obliczeń.")
 
@@ -1232,7 +1318,7 @@ def export_run_report_pdf_response(
                     : limits["rows"]
                 ]:
                     draw_line(
-                        f"{row_data.get('name') or row_data.get('bus_id')}: U={row_data.get('u_pu') or '—'} pu, kąt={row_data.get('angle_deg') or '—'} deg"
+                        f"{row_data.get('name') or row_data.get('bus_id')}: U={_fmt_liczba(row_data.get('u_pu'))} pu, kąt={_fmt_liczba(row_data.get('angle_deg'))} deg"
                     )
             elif table.get("table_id") == "branches":
                 for row_data in (results_section.get("branches", {}) or {}).get("rows", [])[
@@ -1245,9 +1331,12 @@ def export_run_report_pdf_response(
                 for row_data in (results_section.get("short_circuit", {}) or {}).get("rows", [])[
                     : limits["rows"]
                 ]:
-                    draw_line(
-                        f"{row_data.get('target_name') or row_data.get('target_id')}: Ik''={row_data.get('ikss_ka') or '—'} kA, ip={row_data.get('ip_ka') or '—'} kA"
-                    )
+                    # ZWARCIA-PRO F5: pelny bilans IEC 60909 1:1 z wierszy
+                    # kanonicznych (TEN SAM zakres co UI) — trzy linie na punkt.
+                    draw_line(_sc_row_glowne_linia(row_data))
+                    bilans_1, bilans_2 = _sc_row_bilans_linie(row_data)
+                    draw_line(bilans_1, size=8)
+                    draw_line(bilans_2, size=8)
             elif table.get("table_id") == "phase_state":
                 for row_data in (results_section.get("phase_state", {}) or {}).get("rows", [])[
                     : limits["rows"]
@@ -1305,12 +1394,9 @@ def export_run_report_pdf_response(
         y -= line_height
         white_box_trace = (payload.get("trace", {}) or {}).get("white_box_trace", [])
         if white_box_trace:
-            for step in white_box_trace[: limits["trace_steps"]]:
-                title = step.get("title") or step.get("key") or "Krok"
-                draw_line(
-                    f"{title}: {json.dumps(step, ensure_ascii=False, sort_keys=True)[:120]}",
-                    size=8,
-                )
+            for index, step in enumerate(white_box_trace[: limits["trace_steps"]], start=1):
+                for line in _krok_wywodu_linie(step, index):
+                    draw_line(line, size=8)
         else:
             draw_line("Brak jawnego śladu obliczeń.")
 

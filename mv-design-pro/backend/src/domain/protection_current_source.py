@@ -73,7 +73,7 @@ class SCCurrentSelection:
 
     Attributes:
         run_id: SC Run UUID (binding reference)
-        quantity: SC field to extract ("ikss_a", "ip_a", "ith_a", "ik_total_a")
+        quantity: SC field to extract ("ikss_a", "ip_a", "ith_a", "ib_a", "ik_total_a")
         target_ref_mapping: Explicit relay → SC element mapping
     """
 
@@ -81,7 +81,10 @@ class SCCurrentSelection:
     quantity: str
     target_ref_mapping: tuple[TargetRefMapping, ...]
 
-    ALLOWED_QUANTITIES = frozenset({"ikss_a", "ip_a", "ith_a", "ik_total_a"})
+    # ZWARCIA-PRO F5 (parytet konsumentow): "ib_a" addytywnie — prad wylaczeniowy
+    # I_b (IEC 60909) jest w ResultSet SC od zawsze (short_circuit_to_resultset_v1),
+    # a dobor nastaw/koordynacja przy czasie t_b wymaga tej wielkosci 1:1 z solvera.
+    ALLOWED_QUANTITIES = frozenset({"ikss_a", "ip_a", "ith_a", "ib_a", "ik_total_a"})
 
     def to_dict(self) -> dict[str, Any]:
         return {
