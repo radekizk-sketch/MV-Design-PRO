@@ -36,7 +36,9 @@ import {
 
 const mockKontrakt = vi.mocked(useAnalysisRunContract);
 
-const KODY: readonly KodEkranuKontraktu[] = ['E-29', 'E-30', 'E-31', 'E-32'];
+// Po kartach P-1/P-2 kontrakt obsluguje tylko E-29 i E-32 (E-30/E-31 maja
+// realne ekrany, E-33/E-34 prowadza do zakladki zwarc warsztatu Wynikow).
+const KODY: readonly KodEkranuKontraktu[] = ['E-29', 'E-32'];
 
 function kontraktFixture(over: Partial<AnalysisRunContract> = {}): AnalysisRunContract {
   return {
@@ -136,7 +138,7 @@ describe('EkranKontraktuAnalizy — nagłówek per kod ekranu (FLOW §0.3)', () 
 describe('EkranKontraktuAnalizy — uczciwy stan zerowy bez przebiegu', () => {
   it('brak aktywnego przebiegu → stan zerowy z akcją, bez tabeli wierszy', () => {
     // activeRunId=null (po reset) + brak subjectRef → resolveSurfaceRunId zwraca null.
-    const surface = otworzPowierzchnie('E-30');
+    const surface = otworzPowierzchnie('E-32');
     render(<EkranKontraktuAnalizy surface={surface} />);
 
     expect(screen.getByTestId('mvd-kontrakt-zero')).toBeInTheDocument();
@@ -145,7 +147,7 @@ describe('EkranKontraktuAnalizy — uczciwy stan zerowy bez przebiegu', () => {
 
   it('akcja „Przejdź do obliczeń" (natywny klik) przełącza przestrzeń na obliczenia', async () => {
     const user = userEvent.setup();
-    const surface = otworzPowierzchnie('E-30');
+    const surface = otworzPowierzchnie('E-32');
     render(<EkranKontraktuAnalizy surface={surface} />);
 
     expect(useShellStore.getState().activeSpace).toBe('wyniki');
@@ -155,14 +157,14 @@ describe('EkranKontraktuAnalizy — uczciwy stan zerowy bez przebiegu', () => {
 });
 
 describe('EkranKontraktuAnalizy — wiersze fokusowe 1:1 z konfiguracją (parytet W5b-4)', () => {
-  it('E-30: wiersze solvera odpowiadają buildWiersze (formatery rzeczywiste)', () => {
+  it('E-32: wiersze stabilności odpowiadają buildWiersze (formatery rzeczywiste)', () => {
     useAppStateStore.getState().setActiveRun('run-1');
-    const surface = otworzPowierzchnie('E-30');
+    const surface = otworzPowierzchnie('E-32');
     const contract = kontraktFixture();
     render(<EkranKontraktuAnalizy surface={surface} />);
 
     const siatka = screen.getByTestId('mvd-kontrakt-wiersze');
-    const oczekiwane = KONTRAKTY_EKRANOW['E-30'].buildWiersze(contract, {
+    const oczekiwane = KONTRAKTY_EKRANOW['E-32'].buildWiersze(contract, {
       surface,
       selectedElement: null,
       snapshot: null,
@@ -170,8 +172,8 @@ describe('EkranKontraktuAnalizy — wiersze fokusowe 1:1 z konfiguracją (paryte
     for (const wiersz of oczekiwane) {
       expect(within(siatka).getByText(wiersz.label)).toBeInTheDocument();
     }
-    // Typ analizy „rozpływ mocy" (formatContractValue z load_flow) jest widoczny.
-    expect(within(siatka).getByText(formatContractValue('load_flow'))).toBeInTheDocument();
+    // Scenariusz zakłócenia (formatContractValue z sc_3f) jest widoczny.
+    expect(within(siatka).getByText(formatContractValue('sc_3f'))).toBeInTheDocument();
   });
 
   // Intencja dawnego testu E-34 (wiersze toru: temperatura, kompletność)
@@ -208,7 +210,7 @@ describe('EkranKontraktuAnalizy — wiersze fokusowe 1:1 z konfiguracją (paryte
       isLoading: false,
       error: null,
     });
-    const surface = otworzPowierzchnie('E-30');
+    const surface = otworzPowierzchnie('E-32');
     render(<EkranKontraktuAnalizy surface={surface} />);
 
     const siatka = screen.getByTestId('mvd-kontrakt-wiersze');
@@ -217,21 +219,13 @@ describe('EkranKontraktuAnalizy — wiersze fokusowe 1:1 z konfiguracją (paryte
 });
 
 describe('EkranKontraktuAnalizy — sekcje warunkowe per flagi ekranu', () => {
-  it('E-31: pokazuje założenia, pochodzenie i reprodukowalność (flagi true)', () => {
+  // Intencja: sekcje warunkowe (założenia/pochodzenie/reprodukowalność) są
+  // sterowane flagami konfiguracji per ekran. Jedyny ekran z flagami true (E-31)
+  // dostał realny ekran (karta P-2) — pozostałe kody flag nie ustawiają, więc
+  // sekcje NIE mogą się renderować (regresja = przypadkowe włączenie sekcji).
+  it.each(KODY)('%s: NIE pokazuje sekcji warunkowych (flagi nieustawione)', (kod) => {
     useAppStateStore.getState().setActiveRun('run-1');
-    const surface = otworzPowierzchnie('E-31');
-    render(<EkranKontraktuAnalizy surface={surface} />);
-
-    expect(screen.getByTestId('mvd-kontrakt-zalozenia')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kontrakt-pochodzenie')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kontrakt-reprodukowalnosc')).toBeInTheDocument();
-    // Założenie źródeł z kontraktu (formatContractValue) jest widoczne.
-    expect(screen.getAllByText(formatContractValue('sc_source_max')).length).toBeGreaterThan(0);
-  });
-
-  it('E-30: NIE pokazuje sekcji warunkowych (flagi false)', () => {
-    useAppStateStore.getState().setActiveRun('run-1');
-    const surface = otworzPowierzchnie('E-30');
+    const surface = otworzPowierzchnie(kod);
     render(<EkranKontraktuAnalizy surface={surface} />);
 
     expect(screen.queryByTestId('mvd-kontrakt-zalozenia')).not.toBeInTheDocument();
@@ -244,7 +238,7 @@ describe('EkranKontraktuAnalizy — powrót do huba (wzorzec MostAnalizTechniczn
   it('natywny klik „Wróć do analiz" czyści powierzchnię trasową', async () => {
     const user = userEvent.setup();
     useAppStateStore.getState().setActiveRun('run-1');
-    const surface = otworzPowierzchnie('E-30');
+    const surface = otworzPowierzchnie('E-32');
     expect(useNetworkBuildStore.getState().activeSurface).not.toBeNull();
     render(<EkranKontraktuAnalizy surface={surface} />);
 
@@ -262,7 +256,7 @@ describe('EkranKontraktuAnalizy — brak kontekstu obliczeniowego', () => {
       isLoading: false,
       error: null,
     });
-    const surface = otworzPowierzchnie('E-30');
+    const surface = otworzPowierzchnie('E-32');
     render(<EkranKontraktuAnalizy surface={surface} />);
 
     expect(screen.getByTestId('mvd-kontrakt-brak-kontekstu')).toBeInTheDocument();

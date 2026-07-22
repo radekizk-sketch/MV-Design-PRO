@@ -10,10 +10,10 @@ import type { WorkspaceSurfaceCode } from '../../../ui/workspace/types';
 
 /**
  * Rodzaj danych wymaganych przez analizę do pełnych danych:
- * przebieg obliczeń ('zwarciowy'/'rozplywowy'/'dowolny') albo sam model
- * sieci ('model' — przeglądy konfiguracji, np. zabezpieczenia i automatyka).
+ * przebieg obliczeń ('zwarciowy'/'rozplywowy'/'fazowy'/'dowolny') albo sam
+ * model sieci ('model' — przeglądy konfiguracji, np. zabezpieczenia i automatyka).
  */
-export type WymaganyPrzebieg = 'zwarciowy' | 'rozplywowy' | 'dowolny' | 'model';
+export type WymaganyPrzebieg = 'zwarciowy' | 'rozplywowy' | 'fazowy' | 'dowolny' | 'model';
 
 export interface KartaAnalizy {
   /** Kanoniczny kod zdolności (rejestr V12.xx) — klucz karty. */
@@ -67,17 +67,17 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
       {
         ekran: 'E-30',
         tytul: 'Zbieżność rozpływu i zaczepy',
-        opis: 'Diagnostyka zbieżności solvera (NR/GS/FD) oraz założeń przełącznika zaczepów transformatorów.',
-        zrodlo: 'kontrakt przebiegu rozpływu mocy',
+        opis: 'Werdykt zbieżności solvera (NR/GS/FD), bilans przebiegu i stan pętli regulacji zaczepów transformatorów (OLTC).',
+        zrodlo: 'zakończony przebieg rozpływu mocy (wynik i ślad solvera)',
         wymaga: 'rozplywowy',
         testid: 'mvd-analizy-karta-zbieznosc',
       },
       {
         ekran: 'E-31',
         tytul: 'Stan fazowy SN',
-        opis: 'Kontrakt analizy stanu fazowego sieci SN: przypadek, brama jakości, kompletność danych.',
-        zrodlo: 'kontrakt przebiegu analizy stanu fazowego',
-        wymaga: 'dowolny',
+        opis: 'Napięcia i prądy fazowe celu analizy oraz asymetrie U/I/strat z werdyktem z flag solvera.',
+        zrodlo: 'zakończony przebieg analizy stanu fazowego SN',
+        wymaga: 'fazowy',
         testid: 'mvd-analizy-karta-fazowy',
       },
       {
@@ -136,6 +136,7 @@ const STATUS_ZAKONCZONY = 'DONE';
 /** Typy przebiegów zwarciowych (kontrakt ExecutionAnalysisType). */
 const TYPY_ZWARCIOWE = new Set(['SC_3F', 'SC_1F', 'SC_2F', 'SC_2F_G']);
 const TYP_ROZPLYWU = 'LOAD_FLOW';
+const TYP_FAZOWY = 'PHASE_STATE_SN';
 
 export interface PrzebiegLekki {
   readonly analysis_type: string;
@@ -153,6 +154,7 @@ export function maZakonczonyPrzebieg(
     if (r.status !== STATUS_ZAKONCZONY) return false;
     if (wymaga === 'dowolny') return true;
     if (wymaga === 'zwarciowy') return TYPY_ZWARCIOWE.has(r.analysis_type);
+    if (wymaga === 'fazowy') return r.analysis_type === TYP_FAZOWY;
     return r.analysis_type === TYP_ROZPLYWU;
   });
 }

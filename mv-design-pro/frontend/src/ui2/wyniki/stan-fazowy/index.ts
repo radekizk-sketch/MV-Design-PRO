@@ -1,0 +1,1 @@
+export { EkranStanuFazowego } from './EkranStanuFazowego';

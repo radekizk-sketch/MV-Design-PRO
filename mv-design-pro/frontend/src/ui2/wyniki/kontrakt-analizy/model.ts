@@ -1,6 +1,7 @@
 /**
- * Model ekranu „Kontrakt analizy" — konfiguracja czterech ekranów kanonicznych
- * E-29/E-30/E-31/E-32 (dostawca ui2, karta F-E5a).
+ * Model ekranu „Kontrakt analizy” — konfiguracja dwoch pozostalych ekranow
+ * kanonicznych E-29/E-32 (dostawca ui2, karta F-E5a; E-30/E-31 maja realne
+ * ekrany od karty P-2, E-33/E-34 prowadza do realnych dostawcow od karty P-1).
  *
  * ZERO fizyki, ZERO pobrań: buduje wyłącznie wiersze klucz→wartość z gotowego
  * kontraktu przebiegu (`AnalysisRunContract`). Wiersze fokusowe i flagi sekcji
@@ -30,8 +31,11 @@ import type { EnergyNetworkModel } from '../../../types/enm';
  * (sekcja „Wkłady do zwarcia" + panel „Bilans IEC 60909"); karta P-1 usunęła
  * ich wpisy kontraktowe (zdolności zostają w rejestrze kanonu, prowadzą tam
  * deep-linki `setWynikiTab('zwarcia')`).
+ * E-30 („Zbieżność rozpływu i zaczepy") i E-31 („Stan fazowy SN") dostały
+ * realne ekrany kartą P-2 (`wyniki/zbieznosc/EkranZbieznosci`,
+ * `wyniki/stan-fazowy/EkranStanuFazowego`) — wpisy usunięte.
  */
-export type KodEkranuKontraktu = 'E-29' | 'E-30' | 'E-31' | 'E-32';
+export type KodEkranuKontraktu = 'E-29' | 'E-32';
 
 /** Kontekst potrzebny do zbudowania wiersza „Obiekt" (tylko E-29). */
 export interface KontekstWierszy {
@@ -79,7 +83,7 @@ export const ETYKIETY_POCHODZENIA: Record<string, string> = {
 };
 
 /**
- * Konfiguracja czterech ekranów. Wiersze fokusowe i flagi sekcji przeniesione
+ * Konfiguracja ekranów kontraktu. Wiersze fokusowe i flagi sekcji przeniesione
  * 1:1 z `THIN_CONTRACT_SURFACES` (W5b-4); zdania celu dopisane per obszar.
  */
 export const KONTRAKTY_EKRANOW: Record<KodEkranuKontraktu, KonfiguracjaEkranu> = {
@@ -96,37 +100,6 @@ export const KONTRAKTY_EKRANOW: Record<KodEkranuKontraktu, KonfiguracjaEkranu> =
       { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
       { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
     ],
-  },
-  'E-30': {
-    eyebrow: 'Rozpływ mocy',
-    tytul: 'Zbieżność rozpływu i sterowanie zaczepami',
-    cel: 'Oceń zbieżność solvera rozpływu (NR/GS/FD) i założenia regulacji zaczepowej '
-      + 'transformatorów — na podstawie kontraktu zakończonego przebiegu rozpływu mocy.',
-    tytulWierszy: 'Kontrakt solvera',
-    buildWiersze: (contract) => [
-      { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
-      { label: 'Ważność wyniku', value: formatContractValue(contract.resultsValid) },
-      { label: 'Założenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
-      { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-      { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-    ],
-  },
-  'E-31': {
-    eyebrow: 'Analiza fazowa',
-    tytul: 'Stan fazowy SN',
-    cel: 'Zweryfikuj kontrakt analizy stanu fazowego sieci SN: rodzaj przypadku, bramę '
-      + 'jakości i kompletność danych wejściowych — na podstawie kontekstu obliczeniowego przebiegu.',
-    tytulWierszy: 'Kontrakt stanu fazowego',
-    buildWiersze: (contract) => [
-      { label: 'Identyfikator przypadku', value: formatContractValue(contract.analysisCaseContext?.caseRef) },
-      { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
-      { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-      { label: 'Brama jakości', value: formatContractValue(contract.analysisCaseContext?.qualityGate) },
-      { label: 'Kompletność zgodności przejściowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
-    ],
-    pokazZalozenia: true,
-    pokazPochodzenie: true,
-    pokazReprodukowalnosc: true,
   },
   'E-32': {
     eyebrow: 'Dynamika',

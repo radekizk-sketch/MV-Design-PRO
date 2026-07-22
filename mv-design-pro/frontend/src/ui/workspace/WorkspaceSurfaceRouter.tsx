@@ -39,6 +39,8 @@ import { EkranFrt } from '../../ui2/oze/frt';
 import { EkranZabezpieczenAutomatyki } from '../../ui2/model/zabezpieczenia-automatyka';
 import { EkranKontraktuAnalizy } from '../../ui2/wyniki/kontrakt-analizy';
 import { EkranKoordynacji } from '../../ui2/wyniki/koordynacja';
+import { EkranStanuFazowego } from '../../ui2/wyniki/stan-fazowy';
+import { EkranZbieznosci } from '../../ui2/wyniki/zbieznosc';
 import { useShellStore } from '../../ui2/shell/useShellStore';
 import {
   exportReport,
@@ -1854,12 +1856,14 @@ function ComplianceSurface() {
   );
 }
 
-// Dostawca czterech ekranów kontraktu analizy E-29…E-32 przeniesiony do modułu
-// ui2 `wyniki/kontrakt-analizy/EkranKontraktuAnalizy` (karta F-E5a). Router
-// renderuje go bezpośrednio w `renderSurfaceBody` (case 'E-29'…'E-32');
-// konfiguracja wierszy fokusowych i flag sekcji (dawne THIN_CONTRACT_SURFACES)
-// jest teraz źródłem danych w `wyniki/kontrakt-analizy/model.ts`.
-// E-33/E-34 (P-1): realny dostawca = zakładka zwarć warsztatu Wyników.
+// Dostawca ekranów kontraktu analizy przeniesiony do modułu ui2
+// `wyniki/kontrakt-analizy/EkranKontraktuAnalizy` (karta F-E5a). Router
+// renderuje go bezpośrednio w `renderSurfaceBody`; konfiguracja wierszy
+// fokusowych (dawne THIN_CONTRACT_SURFACES) jest źródłem danych w
+// `wyniki/kontrakt-analizy/model.ts`. Po kartach P-1/P-2 kontrakt obejmuje
+// TYLKO E-29 i E-32: E-30/E-31 mają realne ekrany (`wyniki/zbieznosc`,
+// `wyniki/stan-fazowy`), a E-33/E-34 prowadzą do realnego dostawcy —
+// zakładki zwarć warsztatu Wyników (deep-link).
 
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const readiness = useSnapshotStore((state) => state.readiness);
@@ -2835,9 +2839,15 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       // (koniec phantoma i tymczasowego dostawcy kontraktu analizy z F-E5b).
       return <EkranZabezpieczenAutomatyki />;
     case 'E-30':
-      return <EkranKontraktuAnalizy surface={surface} />;
+      // E-30 „Zbieżność rozpływu i zaczepy" — REALNY ekran (karta P-2):
+      // werdykt zbieżności + bilans przebiegu + ślad pętli OLTC + założenia
+      // zaczepów modelu (koniec zastępczego dostawcy kontraktu analizy).
+      return <EkranZbieznosci />;
     case 'E-31':
-      return <EkranKontraktuAnalizy surface={surface} />;
+      // E-31 „Stan fazowy SN" — REALNY ekran (karta P-2): napięcia/prądy
+      // fazowe celu + asymetrie z werdyktem z flag solvera (koniec
+      // zastępczego dostawcy kontraktu analizy).
+      return <EkranStanuFazowego />;
     case 'E-32':
       return <EkranKontraktuAnalizy surface={surface} />;
     // E-33/E-34 (P-1): zdolności prowadzą do realnego dostawcy — zakładki

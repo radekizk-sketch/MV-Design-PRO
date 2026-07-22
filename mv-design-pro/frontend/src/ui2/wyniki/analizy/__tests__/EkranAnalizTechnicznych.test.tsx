@@ -238,12 +238,29 @@ describe('model — czyste selektory przebiegów', () => {
   });
 });
 
-describe('chip wymagań — rodzaj „dowolny"', () => {
-  it('bez żadnego przebiegu karta stanu fazowego mówi „wymaga zakończonego przebiegu"', () => {
+describe('chip wymagań — rodzaje „dowolny" i „fazowy"', () => {
+  // Intencja: karta z wymogiem 'dowolny' (stabilność) uczciwie zapowiada brak
+  // JAKIEGOKOLWIEK przebiegu; karta stanu fazowego (P-2: wymaga 'fazowy')
+  // wymaga przebiegu stanu fazowego — rozpływ jej nie odblokowuje.
+  it('bez żadnego przebiegu karta stabilności mówi „wymaga zakończonego przebiegu"', () => {
     useExecutionRunsStore.setState({ runs: [] });
     render(<EkranAnalizTechnicznych />);
     expect(
-      within(screen.getByTestId('mvd-analizy-karta-fazowy')).getByText('wymaga zakończonego przebiegu'),
+      within(screen.getByTestId('mvd-analizy-karta-stabilnosc')).getByText('wymaga zakończonego przebiegu'),
+    ).toBeTruthy();
+  });
+
+  it('rozpływ NIE odblokowuje karty stanu fazowego; przebieg fazowy — tak', () => {
+    useExecutionRunsStore.setState({ runs: [przebiegZakonczony('LOAD_FLOW', '2026-07-18T10:30:00Z')] });
+    const { unmount } = render(<EkranAnalizTechnicznych />);
+    expect(
+      within(screen.getByTestId('mvd-analizy-karta-fazowy')).getByText('wymaga przebiegu stanu fazowego'),
+    ).toBeTruthy();
+    unmount();
+    useExecutionRunsStore.setState({ runs: [przebiegZakonczony('PHASE_STATE_SN', '2026-07-18T11:00:00Z')] });
+    render(<EkranAnalizTechnicznych />);
+    expect(
+      within(screen.getByTestId('mvd-analizy-karta-fazowy')).getByText('dane dostępne'),
     ).toBeTruthy();
   });
 });

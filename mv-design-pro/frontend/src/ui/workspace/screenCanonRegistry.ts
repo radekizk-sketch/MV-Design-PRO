@@ -755,7 +755,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-rozplyw-mocy',
     canonicalRoute: '/workspace/results/load-flow',
     legacyAliases: ['load_flow', 'power_flow', 'convergence', 'old:E-34'],
-    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
+    componentKey: 'EkranZbieznosci', // dostawca ui2 (metadana, karta P-2; realny ekran zbieżności)
     testId: 'screen-E-30-load-flow',
     implemented: true,
     requiresProject: true,
@@ -778,7 +778,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-stan-fazowy',
     canonicalRoute: '/workspace/results/phase-state-sn',
     legacyAliases: ['phase_state_sn', 'assumptions_quality', 'old:E-31'],
-    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
+    componentKey: 'EkranStanuFazowego', // dostawca ui2 (metadana, karta P-2; realny ekran stanu fazowego)
     testId: 'screen-E-31-phase-state-sn',
     implemented: true,
     requiresProject: true,

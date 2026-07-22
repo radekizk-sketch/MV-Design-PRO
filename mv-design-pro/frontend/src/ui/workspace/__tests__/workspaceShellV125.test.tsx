@@ -197,22 +197,23 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
-    // W5b-4 → F-E5a: E-30 renderuje teraz dostawcę ui2 `EkranKontraktuAnalizy`
-    // (podmiana jak E-26 → EkranFrt). Zachowana intencja testu: nagłówek
-    // kanoniczny (SurfaceHeader, h2 z titlePl) + nagłówek obszaru ekranu (h3),
-    // bez surowych kodów E-\d+ ani placeholderów. MiniSldCard świadomie NIE
-    // przeniesiony do ekranu kontraktu (karta §0.3) — asercja mini-sld usunięta.
+    // F-E5a → P-2: E-30 renderuje REALNY ekran ui2 `EkranZbieznosci`
+    // (koniec zastępczego dostawcy kontraktu analizy). Zachowana intencja
+    // testu: nagłówek kanoniczny (SurfaceHeader, h2 z titlePl) + nagłówek
+    // obszaru ekranu (h3), bez surowych kodów E-\d+ ani placeholderów.
+    // Bez aktywnego projektu ekran pokazuje UCZCIWY stan zerowy z akcją.
     expect(
       screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-30'].titlePl }),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kontrakt-analizy')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-zbieznosc')).toBeInTheDocument();
     expect(screen.queryByTestId('workspace-mini-sld')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: /Zbieżność rozpływu/i })).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-zbieznosc-brak-projektu')).toBeInTheDocument();
     expect(screen.queryByText(/^E-\d+/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Powierzchnia pomocnicza/i)).not.toBeInTheDocument();
   });
 
-  it('renderuje panelowy surface E-31 z analysis_case_context aktywnego runu', async () => {
+  it('renderuje panelowy surface E-31 jako realny ekran stanu fazowego', () => {
     useAppStateStore.getState().setActiveRun('run-1');
     useNetworkBuildStore.getState().openRouteSurface('E-31', {
       titlePl: SURFACE_REGISTRY['E-31'].titlePl,
@@ -226,19 +227,15 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="panel" />);
 
-    // W5b-4 → F-E5a: E-31 renderuje dostawcę ui2 `EkranKontraktuAnalizy`. Intencja
-    // testu zachowana: kontekst obliczeniowy aktywnego runu jest czytany z tego
-    // samego hooka (`useAnalysisRunContract`) i formatowany tymi samymi formaterami
-    // (założenie źródeł „pf source nominal", surowe identyfikatory zamaskowane jako
-    // „Zapisane w śladzie audytu", brak surowego proof-pack-1).
+    // F-E5a → P-2: E-31 renderuje REALNY ekran ui2 `EkranStanuFazowego`
+    // (koniec zastępczego dostawcy kontraktu analizy). Intencja testu:
+    // nagłówek kanoniczny (h2 z titlePl) + realny ekran; bez aktywnego
+    // projektu — UCZCIWY stan zerowy z akcją naprawczą, bez surowych kodów.
     expect(screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-31'].titlePl })).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-kontrakt-analizy')).toBeInTheDocument();
-    expect(await screen.findByText('pf source nominal')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-stan-fazowy')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-fazowy-brak-projektu')).toBeInTheDocument();
     expect(screen.queryByText('proof-pack-1')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Zapisane w śladzie audytu').length).toBeGreaterThan(0);
-    expect(
-      screen.queryByText(/Kontrakt przypadku musi wskazywac aktywne zalozenia zrodlowe/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/^E-\d+/)).not.toBeInTheDocument();
   });
 
   it('renderuje surface E-37 z kontraktem eksportu dla aktywnego runu', async () => {

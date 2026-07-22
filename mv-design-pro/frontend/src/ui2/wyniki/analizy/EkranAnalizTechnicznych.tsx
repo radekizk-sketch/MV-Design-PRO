@@ -160,7 +160,9 @@ export function EkranAnalizTechnicznych() {
         ? T.wymagaRozplywu
         : karta.wymaga === 'zwarciowy'
           ? T.wymagaZwarcia
-          : T.wymagaDowolnego;
+          : karta.wymaga === 'fazowy'
+            ? T.wymagaFazowego
+            : T.wymagaDowolnego;
     return { etykieta, ok: false };
   };
 
