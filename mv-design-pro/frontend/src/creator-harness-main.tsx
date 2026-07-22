@@ -20,7 +20,8 @@ import { KreatorPolaSn } from './ui2/kreatory/pole';
 import { KreatorTransformatoraSnNn } from './ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from './ui2/kreatory/zrodlo';
 import { KreatorZrodlaOze } from './ui2/kreatory/zrodlo-oze';
-import { SekcjaArcFlash } from './ui2/wyniki/jakosc/EkranJakosci';
+import { SekcjaArcFlash, SekcjaWalidacji } from './ui2/wyniki/jakosc/EkranJakosci';
+import { EkranKompensacji } from './ui2/oze';
 import { HubDokumentacji } from './ui2/spaces/dokumentacja';
 import { PulpitProjektu } from './ui2/spaces/projekt';
 import { EkranCoWymagaUwagi } from './ui2/wyniki/co-wymaga-uwagi';
@@ -80,6 +81,44 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.includes(key)) {
       return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
+  }
+  if (url.includes('/api/quality/energy-validation')) {
+    // Scena „walidacja" (R2-D): odpowiedz 1:1 z kontraktem backendu, w tym
+    // slad WHITE BOX per pozycja (R2-A) — ksztalt jak builder energy_validation.
+    return new Response(
+      JSON.stringify({
+        context: null,
+        config: { loading_warn_pct: 80, loading_fail_pct: 100, voltage_warn_pct: 5, voltage_fail_pct: 10, loss_warn_pct: 5, loss_fail_pct: 10 },
+        items: [
+          {
+            check_type: 'VOLTAGE_DEVIATION', target_id: 'SZ-ST7', target_name: 'Szyna ST-7',
+            observed_value: 12.0, unit: '%', limit_warn: 5.0, limit_fail: 10.0, margin_pct: 2.0,
+            status: 'FAIL', why_pl: 'Odchylenie napieciowe 12.00 % przekracza limit 10.0 %.',
+            white_box: [
+              'Wzor: odchylenie = |U - U_n| / U_n * 100%',
+              'Dane: U = 13.2000 kV (wynik PF), U_n = 15.0000 kV',
+              'Wynik: odchylenie = 12.00 %',
+              'Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %',
+              'Werdykt: PRZEKROCZENIE',
+            ],
+          },
+          {
+            check_type: 'BRANCH_LOADING', target_id: 'L-14', target_name: 'Odcinek L-14',
+            observed_value: 90.0, unit: '%', limit_warn: 80.0, limit_fail: 100.0, margin_pct: -10.0,
+            status: 'WARNING', why_pl: 'Obciazenie 90.00 % powyzej progu ostrzegawczego 80.0 %.',
+            white_box: [
+              'Wzor: obciazenie = |I| / I_n * 100%',
+              'Dane: |I| = 0.2295 kA (wynik PF), I_n = 0.2550 kA (dane galezi)',
+              'Wynik: obciazenie = 90.00 %',
+              'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %',
+              'Werdykt: OSTRZEZENIE',
+            ],
+          },
+        ],
+        summary: { pass_count: 6, warning_count: 1, fail_count: 1, not_computed_count: 0, worst_item_target_id: 'SZ-ST7', worst_item_margin_pct: 2.0 },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
   }
   if (url.includes('/api/catalog/complete-bay-templates')) {
     return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -220,6 +259,29 @@ if (creator === 'arcflash') {
     },
     runHeader: { id: 'run-lf-2' },
   } as never);
+} else if (creator === 'walidacja') {
+  // Walidacja energetyczna ze sladem WHITE BOX per pozycja (R2-A/V12K-105);
+  // dane z podmienionego fetch (ksztalt 1:1 z builderem backendu).
+} else if (creator === 'kompensacja') {
+  // „Dobor kompensacji" z pre-selekcja wezla z deep-linku (R2-B/V12K-106):
+  // wezly z realnego snapshot store, preselekcja przez props ekranu.
+  // Ekran wymaga zakonczonego przebiegu rozplywu (uczciwa blokada) — zasiew.
+  const runKomp: ExecutionRun = {
+    id: 'run-lf-3', analysis_type: 'LOAD_FLOW', status: 'DONE',
+    started_at: '2026-07-22T08:00:00Z', finished_at: '2026-07-22T08:00:04Z',
+  } as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({ runs: [runKomp], activeRunId: 'run-lf-3' } as never);
+  useSnapshotStore.setState({
+    snapshot: {
+      header: { name: 'Projekt demonstracyjny' },
+      substations: [], transformers: [], sources: [], loads: [], bays: [],
+      buses: [
+        { ref_id: 'SZ-GPZ', name: 'Szyna GPZ 15 kV', voltage_kv: 15 },
+        { ref_id: 'SZ-ST7', name: 'Szyna ST-7', voltage_kv: 15 },
+        { ref_id: 'SZ-PV2', name: 'Szyna PV-2', voltage_kv: 15 },
+      ],
+    },
+  } as never);
 } else if (creator === 'swiezosc') {
   // Pasek aktywnego przypadku (K4/V12K-102): wyniki NIEAKTUALNE → klikalny znacznik.
   // Chip wyników renderuje się wyłącznie przy obecnym projekcie (projectPresent).
@@ -284,6 +346,22 @@ function Harness() {
     );
   else if (creator === 'uwaga') node = <EkranCoWymagaUwagi />;
   else if (creator === 'swiezosc') node = <SwiezoscScena />;
+  else if (creator === 'walidacja')
+    node = (
+      <SekcjaWalidacji
+        przebieg={{ id: 'run-lf-1', analysis_type: 'LOAD_FLOW', status: 'DONE' } as unknown as ExecutionRun}
+        trybZaawansowania="expert"
+        onOtworzDowod={() => undefined}
+      />
+    );
+  else if (creator === 'kompensacja')
+    node = (
+      <EkranKompensacji
+        trybZaawansowania="expert"
+        preselekcjaWezla="SZ-ST7"
+        onPreselekcjaSkonsumowana={() => undefined}
+      />
+    );
   else if (creator === 'oze') node = <KreatorZrodlaOze />;
   else if (creator === 'transformator') node = <KreatorTransformatoraSnNn />;
   else if (creator === 'kompensator') node = <KreatorKompensatoraSn />;

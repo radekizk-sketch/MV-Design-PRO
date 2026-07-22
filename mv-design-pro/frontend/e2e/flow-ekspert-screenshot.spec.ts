@@ -17,7 +17,7 @@ const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = 'http://127.0.0.1:5173/creator-harness.html';
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
 
-const SCENY = ['pulpit', 'uwaga', 'swiezosc'] as const;
+const SCENY = ['pulpit', 'uwaga', 'swiezosc', 'walidacja', 'kompensacja'] as const;
 const THEMES = ['light', 'dark'] as const;
 
 test.describe('flow-ekspert:screenshot', () => {
@@ -52,9 +52,19 @@ test.describe('flow-ekspert:screenshot', () => {
         } else if (scena === 'uwaga') {
           await expect(page.getByTestId('mvd-cwu-lista')).toBeVisible();
           await expect(page.getByTestId('mvd-cwu-podsumowanie')).toContainText('2');
-        } else {
+        } else if (scena === 'swiezosc') {
           await expect(page.getByTestId('mvd-casebar')).toBeVisible();
           await expect(page.getByTestId('mvd-casebar-results')).toContainText('nieaktualne');
+        } else if (scena === 'walidacja') {
+          // R2-A: wybor pozycji z wywodem (klik wiersza tabeli po etykiecie
+          // rodzaju kontroli) -> rozwiniety slad WHITE BOX.
+          await expect(page.getByTestId('mvd-jakosc-walidacja')).toBeVisible();
+          await page.getByRole('row').filter({ hasText: 'Odchylenie napięcia' }).click();
+          await page.getByTestId('mvd-jakosc-wal-slad-otworz').click();
+          await expect(page.getByTestId('mvd-jakosc-wal-slad')).toContainText('Werdykt: PRZEKROCZENIE');
+        } else {
+          // R2-B: pre-selekcja wezla z deep-linku widoczna w polu wyboru.
+          await expect(page.getByTestId('mvd-komp-wezel')).toHaveValue('SZ-ST7');
         }
 
         await page.waitForTimeout(400);
