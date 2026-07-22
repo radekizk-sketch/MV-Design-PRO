@@ -108,6 +108,7 @@ import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRende
 
 import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
+import { FORBIDDEN_RAW_ENUM_RE } from '../core/enumLabelsPl';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import {
   classifyRouteNodes,
@@ -136,6 +137,7 @@ import {
   type PortCaptionOwnerInput,
   type SimpleAnchoredOwnerInput,
 } from '../layout/labels';
+import { declutterLabels } from '../layout/declutter';
 import { composeStation, type StationComposition } from '../compose/station';
 import {
   composeGpz,
@@ -2814,7 +2816,27 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       });
     }
   }
-  const labels: readonly OwnedLabel[] = [...resolvedLabels, ...terminationLabels, ...openTerminalLabels];
+  const rawLabels: readonly OwnedLabel[] = [...resolvedLabels, ...terminationLabels, ...openTerminalLabels];
+
+  // -- 7c. SCHEMAT-10 S2 (V12K-135, audyt §1 D2/§3): SILNIK ETYKIET — ---------
+  // rozstrzygnięcie kolizji na PEŁNYM zbiorze etykiet + bboxach symboli
+  // (`layout/declutter.ts`). Przegrany (niższy priorytet) NIE renderuje się na
+  // tym LOD zamiast nachodzić (audyt §3); symbol zawsze wygrywa („tor
+  // elektryczny nie znika"). Na scenie z rozłącznymi rezerwacjami (fixtura
+  // odniesienia: 0 kolizji na L0/L1/L2) declutter jest TOŻSAMOŚCIĄ — nie
+  // zmienia renderu/goldenów; działa dopiero przy faktycznej kolizji.
+  // Odrzucenia trafiają do `stopNotes` (audytowalne, nie ciche) — po
+  // poprawnym S2 zbiór jest pusty na fixturze; niepusty = sygnał gęstości do
+  // rozstrzygnięcia rezerwacją w kolejnej iteracji, nie cichy dług.
+  const declutter = declutterLabels(rawLabels, allSymbols.map(symbolRect));
+  const labels: readonly OwnedLabel[] = declutter.kept;
+  if (declutter.dropped.length > 0) {
+    stopNotes.push(
+      `label.declutter: ${declutter.dropped.length} etykiet(y) odrzucono na LOD ${lod} z powodu kolizji ` +
+        `(silnik etykiet, priorytet S-id>nazwa>moc>parametry): ` +
+        `${declutter.dropped.map((l) => `${l.ownerKind}:${l.ownerRef}`).join(', ')} (audyt §3 D2).`,
+    );
+  }
 
   // -- 8. Węzły routingu (junctions/crossings) — WYŁĄCZNIE trasy `route.ts` -
   const { junctions, crossings } = classifyRouteNodes(allRouteGeoms);
@@ -3990,6 +4012,104 @@ export function labelWireCollisions(scene: SceneV3): readonly LabelWireCollision
 
 export function noLabelWireCollisions(scene: SceneV3): boolean {
   return labelWireCollisions(scene).length === 0;
+}
+
+// ---------------------------------------------------------------------------
+// SCHEMAT-10 S2 (V12K-135, audyt §1 D2 + §3 wiersz „Etykiety"): WYROCZNIA
+// ZERO-KOLIZJI tekst↔tekst i tekst↔symbol na CAŁEJ scenie. `overlapProbe`
+// (`layout/labels.ts`, F4) sprawdzał to samo, ale WYŁĄCZNIE na etykietach
+// rozwiązanych przez `resolveLabels` i BEZ symboli sceny — nie widział
+// `terminationLabels`/`openTerminalLabels` (umieszczanych geometrią stałą,
+// z komentarzem „kolizje wykryte wyrocznią") ani realnych bboxów symboli
+// całej sceny. Tu jest wyrocznia SCENOWA: pełny zbiór `scene.labels`
+// (wszystkie źródła) × pełny zbiór `scene.symbols` (bboxy `SYMBOL_DEFS`).
+// To jest BRAMKA fazy S2 (audyt §3 „ZERO kolizji mierzone automatycznie") i
+// zostaje w suicie na zawsze. Rozstrzygnięcie kolizji robi silnik
+// `declutterLabels` (`layout/declutter.ts`) PRZED zbudowaniem `scene.labels`,
+// więc na poprawnie zbudowanej scenie ta wyrocznia jest z KONSTRUKCJI zielona
+// — pełni rolę siatki bezpieczeństwa wykrywającej regresje declutteru.
+// ---------------------------------------------------------------------------
+
+export interface LabelCollision {
+  /** Para w kolizji: dwie etykiety (`etykieta-etykieta`) lub etykieta↔symbol. */
+  readonly kind: 'etykieta-etykieta' | 'etykieta-symbol';
+  readonly aRef: string;
+  readonly bRef: string;
+}
+
+/**
+ * label_collision_probe (audyt §3, D2): pary bboxów etykieta↔etykieta oraz
+ * etykieta↔symbol, które się przecinają (tolerancja 0, `rectsOverlap`
+ * `core/grid.ts`). Czysta geometria — bez znajomości typów domenowych.
+ */
+export function labelCollisions(scene: SceneV3): readonly LabelCollision[] {
+  const hits: LabelCollision[] = [];
+  const labels = scene.labels;
+  for (let i = 0; i < labels.length; i++) {
+    for (let j = i + 1; j < labels.length; j++) {
+      if (rectsOverlap(labels[i].rect, labels[j].rect)) {
+        hits.push({ kind: 'etykieta-etykieta', aRef: labels[i].ownerRef, bRef: labels[j].ownerRef });
+      }
+    }
+  }
+  const symbolRects = scene.symbols.map(symbolRect);
+  for (const label of labels) {
+    for (let s = 0; s < symbolRects.length; s++) {
+      if (rectsOverlap(label.rect, symbolRects[s])) {
+        hits.push({ kind: 'etykieta-symbol', aRef: label.ownerRef, bRef: `symbol#${s}` });
+      }
+    }
+  }
+  return hits;
+}
+
+/** BRAMKA S2: zero kolizji etykieta↔etykieta i etykieta↔symbol na scenie. */
+export function noLabelCollisions(scene: SceneV3): boolean {
+  return labelCollisions(scene).length === 0;
+}
+
+/**
+ * SCHEMAT-10 S2 (audyt §1 D4): ŻADNA etykieta sceny nie zawiera surowego
+ * IDENTYFIKATORA enuma (`OVERHEAD`/`LINE_OVERHEAD`/`UNKNOWN`/… —
+ * `FORBIDDEN_RAW_ENUM_TOKENS`, `core/enumLabelsPl.ts`). Treść MUSI przechodzić
+ * przez słownik PL. Oznaczenia materiałów (XLPE/Al/Cu…) są poza listą — to
+ * kanoniczne oznaczenia inżynierskie, nie surowe enumy.
+ */
+export function rawEnumTokenLabels(scene: SceneV3): readonly OwnedLabel[] {
+  return scene.labels.filter((l) => FORBIDDEN_RAW_ENUM_RE.test(l.text));
+}
+
+/** BRAMKA S2 (D4): zero surowych enumów w treści etykiet. */
+export function noRawEnumTokensInLabels(scene: SceneV3): boolean {
+  return rawEnumTokenLabels(scene).length === 0;
+}
+
+/**
+ * SCHEMAT-10 S2 (audyt §1 D5, „ukośne linie przez arkusz"): KAŻDY pododcinek
+ * KAŻDego segmentu sceny jest ortogonalny (poziomy LUB pionowy) — zero
+ * przekątnych. Manhattanizacja dołączeń DER/odczepów spójna z resztą
+ * geometrii (§5.4). Zwraca indeksy segmentów z co najmniej jednym pododcinkiem
+ * ukośnym.
+ */
+export function nonOrthogonalSegmentIndices(scene: SceneV3): readonly number[] {
+  const out: number[] = [];
+  for (let si = 0; si < scene.segments.length; si++) {
+    const pts = scene.segments[si].points;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      if (a.x !== b.x && a.y !== b.y) {
+        out.push(si);
+        break;
+      }
+    }
+  }
+  return out;
+}
+
+/** BRAMKA S2 (D5): wszystkie segmenty ortogonalne (brak ukośnych). */
+export function allSegmentsOrthogonal(scene: SceneV3): boolean {
+  return nonOrthogonalSegmentIndices(scene).length === 0;
 }
 
 // ---------------------------------------------------------------------------

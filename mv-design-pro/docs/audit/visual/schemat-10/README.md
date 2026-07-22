@@ -1,4 +1,27 @@
-# SCHEMAT-10 S1 — dowód wizualny (V12K-135)
+# SCHEMAT-10 — dowód wizualny (V12K-135)
+
+## S2 — silnik etykiet z wyrocznią zero-kolizji
+
+`s2-l0.png` / `s2-l1.png` / `s2-l2.png` — REALNA sieć referencyjna
+(`sldSubstrate52s`, 53 stacje SN + GPZ) renderowana PRODUKCYJNYM torem v3
+PO declutterze (silnik etykiet, `layout/declutter.ts`) na L0/L1/L2. Skrypt
+przerywa render, jeśli `labelCollisions(scene) !== 0`, więc zrzut z definicji
+pokazuje DOKŁADNIE to, co waliduje wyrocznia `noLabelCollisions` — zero kolizji
+tekst↔tekst i tekst↔symbol (tolerancja 0). Regeneracja (deterministyczna):
+
+```
+cd mv-design-pro/frontend
+CANON_OUT=<abs-dir> npx vite-node scripts/render_schemat10_s2.tsx   # SVG per LOD (capped 2600px, viewBox świata)
+CANON_OUT=<abs-dir> node scripts/rasterize.mjs                       # SVG→PNG (playwright chromium)
+```
+
+Co dowodzą (S2): zero kolizji etykiet mierzone maszynowo (`buildScene.schemat10s2.test.ts`,
+`noLabelCollisions`/`noRawEnumTokensInLabels`/`allSegmentsOrthogonal` na L0/L1/L2);
+brak surowych enumów w treści (D4, słownik `core/enumLabelsPl.ts`); manhattanizacja
+— zero ukośnych odcinków (D5); pełne podpisy przęseł tylko na L2 (D3). Zrzut
+ŻYWEJ aplikacji (przegląd właściciela) generuje orchestrator po scaleniu (D8).
+
+## S1 — jedna gramatyka stacji i jedna kotwica LOD
 
 Zrzuty REALNEJ sieci referencyjnej (`sldSubstrate52s`, 53 stacje SN + GPZ)
 renderowanej PRODUKCYJNYM torem v3 (`buildSceneV3` → `CompositionPreview`) na
