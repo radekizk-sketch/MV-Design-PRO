@@ -32,8 +32,8 @@ Rozszerzenie 2026-07-22 (recenzja ekspercka layoutu — `docs/sld/RECENZJA_EKSPE
 
 | Faza | Zakres (mapowanie pkt recenzji) | Zależy od | Status |
 |---|---|---|---|
-| S6 Silnik layoutu P0 | compact tree layout (pkt 11) + piony proporcjonalne (2) + minimalizacja długości/załamań (3) + global tree balancing (9) + odstępy górnego pasa +20–35% (1) + stałe światło (7) + eliminacja pustych przestrzeni z miarą (10) + rytm wg szerokości poddrzewa (8) | S1–S3 | karta wykonawcy (w locie) |
-| S7 Layout P1 | globalne rozmieszczanie opisów — przemieszczanie zamiast tylko odrzucania (15); klastry podobnych gałęzi (6); optymalizacja wydruku A0/A1 (12, po S4) | S6, S4 | do zlecenia |
+| S6 Silnik layoutu P0 | compact tree layout (pkt 11) + piony proporcjonalne (2) + minimalizacja długości/załamań (3) + global tree balancing (9) + odstępy górnego pasa +20–35% (1) + stałe światło (7) + eliminacja pustych przestrzeni z miarą (10) + rytm wg szerokości poddrzewa (8) | S1–S3 | ✅ 2026-07-22 CZĘŚCIOWO (scalony FUNDAMENT POMIAROWY: 18 metryk z realnej geometrii, bramki layout_cost_probe/sheet_fill_probe w accept, testy, dowód wizualny s6-l*; geometria bajt-identyczna, 0 goldenów; diagnoza: inkDensity 0,7–1,2%, crossings 13/24 — dźwignia w S7. WARUNKI ODBIORU z redukcją metryk (koszt↓, Σpionów↓, arkusz↑, crossings=0) OBOWIĄZUJĄ S7; plan S7.1–S7.6 w docs/sld/S6_METRYKI_LAYOUT_2026-07.md §5) |
+| S7 Layout P1 | globalne rozmieszczanie opisów — przemieszczanie zamiast tylko odrzucania (15); klastry podobnych gałęzi (6); optymalizacja wydruku A0/A1 (12, po S4) + PEŁNY silnik footprint-driven S7.1–S7.6 (compact comb, piony proporcjonalne, balancing, funkcja kosztu, migracja LayoutResult, rozdzielone światła) — WARUNKI_ODBIORU_S6 w całości | S6, S4 | karta wykonawcy (w locie) |
 | S8 Płynność LOD P2 | płynne przejścia między L0/L1/L2 (13; kotwice STAŁE — rozstrzygnięcie w recenzji: adaptacyjny jest detal, nie layout) | S6 | do zlecenia |
 
 Rygor per faza: pełna regresja `ui/sld`+`sld-overlay`, sld_determinism,
