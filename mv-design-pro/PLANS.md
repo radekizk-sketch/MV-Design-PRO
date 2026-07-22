@@ -81,6 +81,29 @@ MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system 
 
 ## 3. Active Work
 
+### 3.-2 Sesja 2026-07-22 — ZWARCIA-PRO + zasada wywodów KaTeX (zamknięte programy)
+
+Pełny zapis: `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-098…V12K-120; dokumenty BINDING:
+`docs/uiux/ZASADA_WYWODOW_KATEX_I_TYPOGRAFII_2026-07.md`, `docs/uiux/PROGRAM_ZWARCIA_PRO_2026-07.md`,
+`docs/uiux/PROMPT_FABLE_FLOW_EKSPERT_2026-07.md`.
+
+- [x] FLOW EKSPERT+ rundy 1–3 (V12K-101…112): akcje kontekstowe, świeżość, warunki OSD,
+      dowodyRef, ślady WHITE BOX, kompensacja deep-link, obciążalność w rozpływie,
+      wkłady zwarciowe, dowody porównań A/B, LaTeX/KaTeX w śladach
+- [x] Zasada wywodów KaTeX + typografii (BINDING, V12K-113/114): wywód dyplomowy
+      (wzór→podstawienie→wynik) budowany w warstwie liczącej; 2 kroje + font matematyczny;
+      rollout T-A (36 wzorów w kreatorach), T-B (audyt 15 ekranów, fonty 16→0),
+      T-C (wywody OLTC/LoM/FRT)
+- [x] Program ZWARCIA-PRO F1–F5 (V12K-115…118, 120): pełny bilans IEC 60909 end-to-end,
+      wkłady PRO, White Box sekcyjny + panel walidacji IEC, sync SLD + rozpływ prądu
+      (+ FIX pre-existing solvera dla scalonych węzłów), parytet raportów PDF/DOCX/JSON
+- [x] Runda dowodowa (V12K-119): 12 ekranów z otwartym wywodem akademickim,
+      stała strona `docs/audit/visual/dowody/` (24 PNG, spec-y z twardymi asercjami)
+- [ ] W toku (karty S-A/S-B/S-C): likwidacja duplikacji fizyki w dowodzie SC1,
+      strzałki kierunku przepływu na SLD, trzy delty zatwierdzone przez właściciela
+      (kroki Ib/I²t w dowodzie SC3F, porównanie I²t w doborze aparatów, delty bilansu
+      w porównaniach A/B)
+
 ### 3.-1 Program UI/UX klasy przemysłowej 2026-07 (ACTIVE)
 
 Objective: przebudowa całego UI/UX do klasy ETAP/PowerFactory wg
