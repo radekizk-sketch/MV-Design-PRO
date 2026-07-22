@@ -126,6 +126,16 @@ test.describe('zwarcia-schemat:screenshot', () => {
       await expect(overlayLayer.getByTestId('sld-v3-fault-point-marker-dot')).toBeVisible();
       await expect(overlayLayer.getByTestId('sld-v3-fault-point-marker-pulse')).toBeVisible();
 
+      // Etykiety UCZCIWE: tor Thevenina „5,6 kA", tor maszyny w amperach
+      // („24 A" — zaokrąglenie do „0,0 kA" fałszowałoby realny wkład).
+      await expect(overlayLayer).toContainText('5,6 kA');
+      await expect(overlayLayer).toContainText('24 A');
+
+      // Kadr do oceny właściciela bez legendy symboli arkusza (nakładała się
+      // na tor rozpływu w małej fixturze) — ukrycie CZYSTO prezentacyjne,
+      // wyłącznie na czas zrzutu (bez zmiany produkcyjnego renderu).
+      await page.addStyleTag({ content: '[data-testid="sld-sheet-legend"]{display:none}' });
+
       await page.waitForTimeout(200);
       expect(consoleErrors, `konsola bez błędów (${theme}): ${consoleErrors.join('; ')}`).toEqual([]);
 

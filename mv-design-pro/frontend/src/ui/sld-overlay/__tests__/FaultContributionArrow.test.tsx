@@ -62,6 +62,12 @@ describe('formatMagnitudeKa — polskie formatowanie', () => {
     expect(formatMagnitudeKa(NaN)).toBe('—');
   });
 
+  it('wkłady < 0,1 kA w amperach — zaokrąglenie do „0,0 kA" fałszowałoby realny wkład', () => {
+    expect(formatMagnitudeKa(0.024)).toBe('24 A');
+    expect(formatMagnitudeKa(0.0995)).toBe('0,1 kA');
+    expect(formatMagnitudeKa(0.099)).toBe('99 A');
+  });
+
   it('determinizm — same input → same output', () => {
     expect(formatMagnitudeKa(7.123)).toBe(formatMagnitudeKa(7.123));
   });

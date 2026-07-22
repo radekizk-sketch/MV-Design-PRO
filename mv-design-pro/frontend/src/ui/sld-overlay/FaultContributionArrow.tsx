@@ -75,9 +75,15 @@ export function computeStrokeWidth(
 
 /**
  * Format magnitude per V12.xx canon (polskie jednostki, 1 miejsce po przecinku).
+ * Wkłady poniżej 0,1 kA (np. pojedynczy falownik 24 A) prezentowane w amperach —
+ * zaokrąglenie do „0,0 kA" fałszowałoby istnienie realnego wkładu (formatowanie
+ * dozwolone spec §10, wartość źródłowa bez zmian).
  */
 export function formatMagnitudeKa(magnitudeKa: number): string {
   if (!Number.isFinite(magnitudeKa)) return '—';
+  if (Math.abs(magnitudeKa) < 0.0995) {
+    return `${Math.round(magnitudeKa * 1000)} A`;
+  }
   return `${magnitudeKa.toFixed(1).replace('.', ',')} kA`;
 }
 
