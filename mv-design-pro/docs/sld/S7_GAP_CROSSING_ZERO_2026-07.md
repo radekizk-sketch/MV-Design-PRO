@@ -95,6 +95,59 @@ Kryterium wyjścia S7 = pełna lista „WARUNKI ODBIORU" spełniona jednocześni
 13/24/24; labelCollision/subtreeIntersection/nonOrthogonal/ambiguous = 0). Geometria
 niezmieniona — dokument nie dotyka warstwy źródłowej.
 
+## 6. Ustalenie wykonawcze S7-P1.1 (2026-07-22) — pomiar kompromisu reorder↔kompaktyzacja
+
+Zrealizowano **S7-P1.1** (kompaktyzacja pionowa Rodziny B + piony proporcjonalne):
+kursor sekwencyjny `nextRowTopY` w `buildScene.ts` sekcja 6 zastąpiony pakowaniem
+interwałowym pasami Y (`createLateralShelfPacker`; laterale rozłączne w X dzielą
+pas, `dy` niemalejące w kolejności komponowania — niezmiennik rezerwacji
+`insertColumnChannels` zachowany). Pomiar (fixtura `sldSubstrate52s`, per LOD):
+
+| Metryka | Baza | Po S7-P1.1 |
+|---|---|---|
+| verticalLength | 50264/67208/67208 | **28072/45016/45016** (L0 −44%, L1/L2 −33%) |
+| inkDensity | 0.0069/0.0115/0.0117 | **0.0098/0.0181/0.0185** (↑) |
+| contentBBox h | 8043/8121/8121 | **4379/4457/4457** (~2× niżej) |
+| crossingCount | 13/24/24 | 13/24/24 (bez zmian) |
+| kolizje/M-02/nieortog/niejedn | 0 | 0 |
+
+**Kluczowe ustalenie (dowód, że redukcja przecięć NIE należy do P1):** czyste
+pakowanie Y jest **topologicznie neutralne dla `crossingCount`**. Przecięcie
+Rodziny B = pion GŁĘBSZEGO lateralu × poziomy kabel-wiersz PŁYTSZEGO; zachodzi
+wtw. footprinty X obu lateralów NACHODZĄ (`channelX` głębszego wpada w przedział
+wiersza płytszego). Gdy nachodzą — nie mogą dzielić pasa (rozłączność X jest
+warunkiem pakowania), więc przesunięcie w Y nie usuwa ani nie dodaje przecięcia.
+
+**Reorder eliminuje Rodzinę B, ale ŁAMIE bramkę `sheet_fill_probe` (mierzone):**
+kolejność komponowania warstwowa (covers-DAG: lateral nakrywający cudzy `channelX`
+komponowany GŁĘBIEJ) daje `crossingCount` 13/24 → **0/11** (pozostałe 11 = Rodzina
+A, pion × magistrala — zgodnie z podziałem „Rodzina A do P2"). ALE na tej fixturze
+laterale tworzą GŁĘBOKI łańcuch nakryć (każdy origin na magistrali, wiersz 3–4
+stacji nakrywa 2–3 kolejne), więc bez-przecięciowe warstwowanie wymusza układ
+≈ sekwencyjny: `verticalLength` 66648 (ledwo < baza), a `inkDensity` spada do
+0.0065/0.0111/0.0114 — **PONIŻEJ podłogi `SHEET_FILL_FLOOR` bazowej
+(0.0069/0.0114/0.0117)** → `sheet_fill_probe` FAIL. Pakowanie pośrednie (cap
+głębokości warstw) niemonotoniczne: cap=1 dał `crossingCount` 21/32 (GORZEJ od
+bazy). Wniosek: na komb-reprezentacji z lateralami schodzącymi PONIŻEJ siebie
+redukcja Rodziny B jest sprzężona z UTRATĄ kompaktyzacji (kompromis fundamentalny,
+nie parametr). „Wykorzystanie arkusza po > przed" (§6) i „Rodzina B → 0" są
+wzajemnie wykluczające się w tej reprezentacji.
+
+**Konsekwencja dla P2 (potwierdzenie kierunku):** `crossingCount=0` bez utraty
+kompaktyzacji wymaga ZMIANY REPREZENTACJI (węzeł T — lateral kończy się NA
+magistrali/rodzicu kropką §22.1, styk końcem zamiast przecięcia interioru), nie
+zmiany kolejności ani reroutingu w komb. To dokładnie mechanizm S7-P2 z
+rozstrzygnięcia poniżej. Analogicznie do Rodziny A (lateral↔magistrala), Rodzina B
+(lateral↔lateral zagnieżdżony) domyka się węzłem T na rodzicu-lateralu. Kod pakera
+interwałowego (S7-P1.1) jest bazą pod footprint-driven layout P2/S7.5.
+
+Bramki S7-P1.1: `type-check`=0, `lint`=0, vitest (`src/ui/sld`, `sld-overlay`,
+`engine/sld-layout`) zielone, `accept:sld-v3` 190/0 ALL PASS, guardy
+`sld_determinism`/`overlay_no_physics`/`no_codenames`/`forbidden_ui_terms`=0.
+Goldeny wymienione per plik (`buildScene.test.ts` vertical_length; acceptance
+`VERTICAL_LENGTH_BASELINE` zaciśnięty + `SHEET_FILL_FLOOR` podniesiony). Testy §11
+a/c/e/g w `buildScene.schemat10s7p1.test.ts`.
+
 ## ROZSTRZYGNIĘCIE ZARZĄDCY (Fable, 2026-07-22)
 Wariant 2 z modyfikacją: S7-P2 NIE wymaga osobnej decyzji właściciela — węzeł T
 z kropką (lateral kończy się NA magistrali) to wykonanie recenzji eksperckiej
