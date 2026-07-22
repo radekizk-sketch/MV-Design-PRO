@@ -174,7 +174,7 @@ K5 (Fable, runda wizualna + strona oceny)              → zamknięcie programu
 ## §6. RUNDA 2 (dyrektywa właściciela 2026-07-22: „Kontynuuj bez zatrzymywania
 kolejne ekrany") — domknięcie GAP-ów rundy 1
 
-- **R2-A (K3-G1) [FABLE OSOBIŚCIE]** — ślad WHITE BOX per pozycja walidacji
+- **R2-A (K3-G1) [FABLE, SCALONE — V12K-105]** — ślad WHITE BOX per pozycja walidacji
   energetycznej: delta backendowa (builder `analysis/energy_validation` emituje
   wywód per pozycja: wzór → dane → próg → werdykt, addytywnie w kontrakcie) +
   UI „ślad na miejscu" w szczególe pozycji (wzorzec `slad_pl` z odbioru,

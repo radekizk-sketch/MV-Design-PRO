@@ -158,6 +158,28 @@ describe('SekcjaWalidacji — stany', () => {
   });
 });
 
+describe('SekcjaWalidacji — ślad WHITE BOX per pozycja (R2-A / K3-G1)', () => {
+  it('tryb ekspercki: wybór pozycji z wywodem → przycisk śladu → pełny wywód', async () => {
+    mockedWalidacja.mockResolvedValue(WALIDACJA_FIXTURE);
+    render(<SekcjaWalidacji {...propsWalidacja({ trybZaawansowania: 'expert' })} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());
+    fireEvent.click(screen.getByText('Odchylenie napięcia').closest('tr')!);
+    fireEvent.click(screen.getByTestId('mvd-jakosc-wal-slad-otworz'));
+    const slad = screen.getByTestId('mvd-jakosc-wal-slad');
+    expect(within(slad).getByText(/Wzor: odchylenie/)).toBeTruthy();
+    expect(within(slad).getByText(/U = 13.2000 kV \(wynik PF\)/)).toBeTruthy();
+    expect(within(slad).getByText('Werdykt: PRZEKROCZENIE')).toBeTruthy();
+  });
+
+  it('tryb podstawowy: ślad niedostępny; pozycja bez wywodu bez przycisku', async () => {
+    mockedWalidacja.mockResolvedValue(WALIDACJA_FIXTURE);
+    render(<SekcjaWalidacji {...propsWalidacja()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());
+    fireEvent.click(screen.getByText('Odchylenie napięcia').closest('tr')!);
+    expect(screen.queryByTestId('mvd-jakosc-wal-slad-otworz')).toBeNull();
+  });
+});
+
 describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () => {
   beforeEach(() => {
     useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);

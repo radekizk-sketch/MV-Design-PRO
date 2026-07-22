@@ -428,6 +428,8 @@ function SzczegolWalidacji({
   item: WalidacjaItem | null;
   trybZaawansowania: AdvancementMode;
 }) {
+  // Ślad WHITE BOX per pozycja (R2-A / K3-G1) — zwijany, tryb ekspercki.
+  const [sladWidoczny, setSladWidoczny] = useState(false);
   if (!item) {
     return (
       <section className="mvd-jakosc-szczegol mvd-jakosc-szczegol--pusty" data-testid="mvd-jakosc-walidacja-szczegol-pusty">
@@ -476,6 +478,30 @@ function SzczegolWalidacji({
         </div>
       </dl>
       <p className="mvd-jakosc-szczegol-why">{item.why_pl}</p>
+      {trybEkspercki && (item.white_box?.length ?? 0) > 0 && (
+        <div className="mvd-jakosc-slad-blok">
+          <button
+            type="button"
+            className="mvd-jakosc-slad-btn"
+            onClick={() => setSladWidoczny((w) => !w)}
+            data-testid="mvd-jakosc-wal-slad-otworz"
+          >
+            {sladWidoczny ? JAKOSC_STRINGS.sladUkryj : JAKOSC_STRINGS.sladPokaz}
+          </button>
+          {sladWidoczny && (
+            <div data-testid="mvd-jakosc-wal-slad-blok">
+              <span className="mvd-jakosc-slad-tytul">{JAKOSC_STRINGS.sladTytul}</span>
+              <ol className="mvd-jakosc-slad" data-testid="mvd-jakosc-wal-slad">
+                {(item.white_box ?? []).map((linia) => (
+                  <li key={linia} className="mvd-jakosc-slad-krok">
+                    <code className="mvd-num">{linia}</code>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }

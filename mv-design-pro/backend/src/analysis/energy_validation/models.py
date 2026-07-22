@@ -47,6 +47,10 @@ class EnergyValidationItem:
     margin_pct: float | None
     status: EnergyValidationStatus
     why_pl: str
+    # Slad WHITE BOX per pozycja (R2-A / K3-G1): wywod wartosci obserwowanej
+    # (wzor -> dane -> wynik -> progi -> werdykt). Addytywnie, domyslnie pusty
+    # (pozycje NOT_COMPUTED bez wywodu - powod niesie why_pl).
+    white_box: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)

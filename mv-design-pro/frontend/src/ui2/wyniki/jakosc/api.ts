@@ -97,6 +97,9 @@ export interface WalidacjaItem {
   readonly margin_pct: number | null;
   readonly status: StatusWalidacji;
   readonly why_pl: string;
+  /** Ślad WHITE BOX per pozycja (R2-A / K3-G1): wzór → dane → wynik → progi →
+   * werdykt. Opcjonalny (starsze odpowiedzi bez pola); pusty dla NOT_COMPUTED. */
+  readonly white_box?: readonly string[];
 }
 
 /** Konfiguracja progów walidacji (część ZAŁOŻEŃ). */

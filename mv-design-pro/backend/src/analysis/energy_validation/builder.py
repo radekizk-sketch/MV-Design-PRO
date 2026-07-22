@@ -126,6 +126,15 @@ class EnergyValidationBuilder:
                     margin_pct=margin,
                     status=status,
                     why_pl=why,
+                    white_box=_white_box_progowe(
+                        "obciazenie = |I| / I_n * 100%",
+                        f"|I| = {abs(i_ka):.4f} kA (wynik PF), I_n = {rated_ka:.4f} kA (dane galezi)",
+                        f"obciazenie = {loading_pct:.2f} %",
+                        config.loading_warn_pct,
+                        config.loading_fail_pct,
+                        "%",
+                        status,
+                    ),
                 )
             )
         return items
@@ -208,6 +217,15 @@ class EnergyValidationBuilder:
                     margin_pct=margin,
                     status=status,
                     why_pl=why,
+                    white_box=_white_box_progowe(
+                        "obciazenie = max(|S_gora|, |S_dol|) / S_n * 100%",
+                        f"S = {s_mva:.4f} MVA (wynik PF), S_n = {branch.rated_power_mva:.4f} MVA",
+                        f"obciazenie = {loading_pct:.2f} %",
+                        config.loading_warn_pct,
+                        config.loading_fail_pct,
+                        "%",
+                        status,
+                    ),
                 )
             )
         return items
@@ -263,6 +281,15 @@ class EnergyValidationBuilder:
                     margin_pct=margin,
                     status=status,
                     why_pl=why,
+                    white_box=_white_box_progowe(
+                        "odchylenie = |U - U_n| / U_n * 100%",
+                        f"U = {u_kv:.4f} kV (wynik PF), U_n = {u_nom_kv:.4f} kV",
+                        f"odchylenie = {delta_pct:.2f} %",
+                        config.voltage_warn_pct,
+                        config.voltage_fail_pct,
+                        "%",
+                        status,
+                    ),
                 )
             )
         return items
@@ -314,6 +341,15 @@ class EnergyValidationBuilder:
                 margin_pct=margin,
                 status=status,
                 why_pl=why,
+                white_box=_white_box_progowe(
+                    "straty = |P_strat / P_slack| * 100%",
+                    f"P_strat = {p_loss_pu:.6f} p.u., P_slack = {p_slack_pu:.6f} p.u. (wynik PF)",
+                    f"straty = {loss_pct:.2f} %",
+                    config.loss_warn_pct,
+                    config.loss_fail_pct,
+                    "%",
+                    status,
+                ),
             )
         ]
 
@@ -366,8 +402,44 @@ class EnergyValidationBuilder:
                 margin_pct=None,
                 status=status,
                 why_pl=why,
+                white_box=(
+                    "Wzor: tan(phi) = |Q_slack / P_slack|; cos(phi) = cos(arctan(tan(phi)))",
+                    f"Dane: Q_slack = {q_slack_pu:.6f} p.u., P_slack = {p_slack_pu:.6f} p.u. (wynik PF)",
+                    f"Wynik: tan(phi) = {tan_phi:.4f}, cos(phi) = {cos_phi:.3f}",
+                    "Progi: ostrzezenie cos(phi) < 0.9, przekroczenie cos(phi) < 0.8",
+                    f"Werdykt: {_WERDYKT_PL[status]}",
+                ),
             )
         ]
+
+
+_WERDYKT_PL: dict[EnergyValidationStatus, str] = {
+    EnergyValidationStatus.PASS: "ZGODNY",
+    EnergyValidationStatus.WARNING: "OSTRZEZENIE",
+    EnergyValidationStatus.FAIL: "PRZEKROCZENIE",
+    EnergyValidationStatus.NOT_COMPUTED: "NIE OBLICZONO",
+}
+
+
+def _white_box_progowe(
+    wzor: str,
+    dane: str,
+    wynik: str,
+    warn: float,
+    fail: float,
+    unit: str,
+    status: EnergyValidationStatus,
+) -> tuple[str, ...]:
+    """Wywod WHITE BOX pozycji progowej (R2-A / K3-G1): wzor -> dane -> wynik ->
+    progi -> werdykt. Ciagi deterministyczne (stale formaty), konwencja ASCII-PL
+    jak why_pl."""
+    return (
+        f"Wzor: {wzor}",
+        f"Dane: {dane}",
+        f"Wynik: {wynik}",
+        f"Progi: ostrzezenie {warn:.1f} {unit}, przekroczenie {fail:.1f} {unit}",
+        f"Werdykt: {_WERDYKT_PL[status]}",
+    )
 
 
 def _threshold_check(

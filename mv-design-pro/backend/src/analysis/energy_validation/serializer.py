@@ -32,6 +32,7 @@ def item_to_dict(item: EnergyValidationItem) -> dict[str, Any]:
         "margin_pct": (float(item.margin_pct) if item.margin_pct is not None else None),
         "status": item.status.value,
         "why_pl": item.why_pl,
+        "white_box": list(item.white_box),
     }
 
 
