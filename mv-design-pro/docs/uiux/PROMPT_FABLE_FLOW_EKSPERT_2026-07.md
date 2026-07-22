@@ -209,3 +209,34 @@ GAP-y z raportów wykonawców (zarejestrowane, nie ciche):
   wpięty i czeka na werdykt.
 - K4-G1: ostrzeżenia `act(...)` w `ui2/__tests__/integracja.test.tsx`
   (pre-existing, zmierzone 9=9) — naprawa w orkiestratorze AppRoot, osobna karta.
+
+## §7. RUNDA 3 — ALL IN (dyrektywa właściciela 2026-07-22: „All in")
+
+Wszystkie trzy pozostałe pozycje rejestru naraz:
+
+- **R3-A (K1-G2) [WYKONAWCA]** — werdykt obciążalności gałęzi w tabeli rozpływu.
+  Rozstrzygnięcie architektoniczne (nie do dyskusji): ZERO fizyki w UI i ZERO
+  zmian FROZEN — tabela gałęzi KONSUMUJE istniejący endpoint walidacji
+  energetycznej (`GET /api/quality/energy-validation?run_id=`, pozycje
+  BRANCH_LOADING/TRANSFORMER_LOADING kluczowane target_id=branch_id): nowa
+  kolumna „Obciążenie [%]" z `observed_value`, `ostrzezenie` z werdyktu
+  backendu (WARNING/FAIL), ślad WHITE BOX pozycji dostępny (white_box z R2-A).
+  Wpięcie werdyktu odblokowuje przycisk „Popraw w modelu" na gałęziach
+  (rodzaj obciazalnosc-galezi/transformatora już czeka w rejestrze akcji).
+  Uczciwe stany: brak odpowiedzi walidacji → kolumna „—" bez werdyktu.
+- **R3-B (K3-G3) [FABLE OSOBIŚCIE, opcja max]** — wkłady zwarciowe: recon
+  dostawcy danych (G-SCM dostarczył rozbicie maszynowe w pakiecie dowodowym
+  SC3F i source_contributions_sc na polach) → wystawienie realnych wkładów
+  per punkt zwarcia do sekcji „Wkłady" ekranu zwarć (dziś pass-through bez
+  dostawcy). Backend pierwszy, przetestowany osobno.
+- **R3-C (K3-G2) [WYKONAWCA]** — dowody porównania A/B: rozstrzygnięcie
+  inżynierskie zamiast forka produktowego — wartość z kolumny A otwiera dowód
+  przebiegu A, z kolumny B dowód przebiegu B (żadnego zgadywania „którego").
+  Wymaga: zakładka „Dowód obliczeń" przyjmuje KONKRETNY przebieg przez
+  istniejący deep-link z kontekstem (`setWynikiTab('dowod', runId)` — reuse
+  mechanizmu R2-B), `DowodPrzebiegu` pobiera ślad wskazanego przebiegu
+  (recon: jak dziś pobiera ślad aktywnego; jeśli endpoint wymaga wyłącznie
+  run_id — wystarczy parametr). Porównanie: `dowodRef` per komórka = ref
+  z runem zakodowanym w kontekście kolumny. Jeżeli recon wykaże, że ślad
+  da się pobrać WYŁĄCZNIE dla aktywnego przebiegu — STOP tej części,
+  uczciwy raport (delta backendu do R3-B2), bez fabrykacji.
