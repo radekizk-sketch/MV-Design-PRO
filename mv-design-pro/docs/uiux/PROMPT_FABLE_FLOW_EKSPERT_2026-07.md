@@ -160,8 +160,18 @@ K5 (Fable, runda wizualna + strona oceny)              → zamknięcie programu
 
 ## §5. Stan kolejki (żywy — aktualizuje Fable)
 
-- K1: ZLECONE (wykonawca-1, worktree) — 2026-07-21
-- K4: ZLECONE (wykonawca-2, worktree) — 2026-07-21
-- K2: W KOLEJCE (Fable)
-- K3: W KOLEJCE (po K1)
-- K5: W KOLEJCE (po scaleniu K1+K4)
+- K1: **SCALONE** (V12K-101) — wykonawca-1, zweryfikowane niezależnie, cherry-pick 2026-07-22
+- K4: **SCALONE** (V12K-102) — wykonawca-2, zweryfikowane niezależnie, cherry-pick 2026-07-22
+- K2: W TOKU (Fable) — recon gotowy (ENMHeader models.py:126, ALL_V2_HANDLERS)
+- K3: ZLECONE (wykonawca-3, worktree) — 2026-07-22
+- K5: W KOLEJCE (po K2/K3)
+
+GAP-y z raportów wykonawców (zarejestrowane, nie ciche):
+- K1-G1: deep-link „Dobór kompensacji" bez pre-selekcji węzła (`wynikiTab` niesie
+  tylko id zakładki) — rozszerzenie payloadu deep-linku = osobna karta.
+- K1-G2: wiersze gałęzi rozpływu bez werdyktu obciążalności (kontrakt
+  `PowerFlowBranchResult` nie niesie obciążalności) — dostawa werdyktu wymaga
+  karty interpretacyjnej (backend/analiza); rodzaj `obciazalnosc-galezi`
+  wpięty i czeka na werdykt.
+- K4-G1: ostrzeżenia `act(...)` w `ui2/__tests__/integracja.test.tsx`
+  (pre-existing, zmierzone 9=9) — naprawa w orkiestratorze AppRoot, osobna karta.
