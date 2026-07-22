@@ -2069,6 +2069,49 @@ if (creator === 'arcflash') {
     },
     selectedRunId: 'run-sc-2',
   } as never);
+} else if (creator === 'zwarcia-rozplyw') {
+  // Karta Z-3 (dowody wizualne pkt 7 karty właściciela): sekcja „Rozpływ
+  // prądu zwarciowego" (RozplywZwarciowy) — tor Thevenina (sieć nadrzędna)
+  // + tor maszyny (falownik) RAZEM w `branch_contributions`, liczby [kA]
+  // przepisane 1:1 z realnego wyniku IEC 60909 solvera na fixturze testu
+  // TH-1 (`build_slack_radial_graph` + falownik `INV-B`, fault_node_id="C",
+  // `backend/tests/test_short_circuit_iec60909.py::
+  // test_thevenin_addition_preserves_inverter_entries_byte_for_byte`).
+  // Spójność liczb: suma wpisów Thevenina WCHODZĄCYCH do węzła zwarcia
+  // (jedyny wpis — gałąź L1) = ik_thevenin_ka (5,552132022553349 ≈
+  // 5,552132022553348 — różnica 1e-15, KCL do precyzji maszynowej solvera,
+  // jak w asercji backendu `pytest.approx(rel=1e-9, abs=1e-6)`).
+  useResultsInspectorStore.setState({
+    shortCircuitResults: {
+      run_id: 'run-sc-th1-demo',
+      rows: [
+        {
+          target_id: 'BUS-OZE', element_id: 'EL-OZE', target_name: 'Szyna OZE 20 kV',
+          ikss_ka: 5.648132022553348, ip_ka: 11.440063189333824, ith_ka: 5.648132022553348,
+          sk_mva: 195.65703261838325, fault_type: '3F', flags: [],
+          rk_ohm: 0.5768040000000003, xk_ohm: 1.9981557370919767, zk_ohm: 2.079742581207968,
+          rx_ratio: 0.28866819001778815, xr_ratio: 3.4641849520668644, kappa: 1.4322162134453085,
+          c_factor: 1.0, un_kv: 20.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 5.64813202955557,
+          ik_thevenin_ka: 5.552132022553348, ik_inverters_ka: 0.096, i2t_ka2s: 31.901395344192572,
+          branch_contributions: [
+            {
+              branch_id: 'BR-L1', branch_name: 'Linia OZE', source_id: 'THEVENIN_GRID',
+              from_node_id: 'BUS-GPZ', from_node_name: 'Szyna GPZ 20 kV',
+              to_node_id: 'BUS-OZE', to_node_name: 'Szyna OZE 20 kV',
+              i_ka: 5.552132022553349, direction: 'from_to',
+            },
+            {
+              branch_id: 'BR-L1', branch_name: 'Linia OZE', source_id: 'INV-B',
+              from_node_id: 'BUS-GPZ', from_node_name: 'Szyna GPZ 20 kV',
+              to_node_id: 'BUS-OZE', to_node_name: 'Szyna OZE 20 kV',
+              i_ka: 0.024, direction: 'to_from',
+            },
+          ],
+        },
+      ],
+    },
+    selectedRunId: 'run-sc-th1-demo',
+  } as never);
 } else if (creator === 'sila-sieci') {
   // Runda dowodowa V-B: sekcja sily sieci (SCR/WSCR) pulpitu OZE — wymaga
   // zakonczonego przebiegu zwarciowego; wywod white_box z grid-strength.
@@ -2411,6 +2454,17 @@ function Harness() {
         trybZaawansowania="expert"
         onOtworzDowod={() => undefined}
         wspolczynnikC={1.1}
+        czasCieplnyS={1.0}
+      />
+    );
+  else if (creator === 'zwarcia-rozplyw')
+    // Karta Z-3: tryb ekspercki — kolumna „źródło" widoczna (rozróżnienie
+    // „sieć nadrzędna" vs identyfikator falownika w sekcji RozplywZwarciowy).
+    node = (
+      <EkranZwarc
+        trybZaawansowania="expert"
+        onOtworzDowod={() => undefined}
+        wspolczynnikC={1.0}
         czasCieplnyS={1.0}
       />
     );
