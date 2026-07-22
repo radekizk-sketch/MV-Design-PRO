@@ -178,7 +178,7 @@ export interface SkladoweSladu {
   readonly substitutionLatex: string | null;
 }
 
-function naZespolona(wartosc: unknown): Zespolona | null {
+export function naZespolona(wartosc: unknown): Zespolona | null {
   if (typeof wartosc !== 'object' || wartosc === null) return null;
   const re = (wartosc as Record<string, unknown>)['re'];
   const im = (wartosc as Record<string, unknown>)['im'];
@@ -213,6 +213,30 @@ export function skladoweZeSladu(
           ? String((krok as Record<string, unknown>)['substitution_latex'])
           : null,
   };
+}
+
+/**
+ * Składowe wybranego punktu — RESULT-FIRST (delta FROZEN V12K-128): najpierw
+ * pola wyniku kanonicznego (`z1_ohm`/`z2_ohm`/`z0_ohm` z solvera FROZEN), a ślad
+ * WHITE BOX ("Zk") jako FALLBACK dla starszych biegów bez tych pól oraz jako
+ * źródło wzoru/podstawienia KaTeX (te są wyłącznie w śladzie). Zero fizyki,
+ * zero fabrykacji: gdy ani wynik, ani ślad nie niosą składowych → null.
+ */
+export function skladowePunktu(
+  row: ShortCircuitRow | null,
+  slad: ExtendedTrace | null,
+  targetId: string | null,
+): SkladoweSladu | null {
+  const zeSladu = skladoweZeSladu(slad, targetId);
+  const z1 = naZespolona(row?.z1_ohm ?? null) ?? zeSladu?.z1 ?? null;
+  const z2 = naZespolona(row?.z2_ohm ?? null) ?? zeSladu?.z2 ?? null;
+  const z0 = naZespolona(row?.z0_ohm ?? null) ?? zeSladu?.z0 ?? null;
+  const formulaLatex = zeSladu?.formulaLatex ?? null;
+  const substitutionLatex = zeSladu?.substitutionLatex ?? null;
+  if (z1 === null && z2 === null && z0 === null && formulaLatex === null && substitutionLatex === null) {
+    return null;
+  }
+  return { z1, z2, z0, formulaLatex, substitutionLatex };
 }
 
 /**

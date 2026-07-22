@@ -957,6 +957,11 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
                 "proof_binding": reportability,
                 "dopuszczalnosc_raportowa": True,
                 "reporting_limitations": reportability["reporting_limitations"],
+                # GAP passthrough (V12K-128): domknięcie kontraktu read-only —
+                # wymóg i źródło Z0 na poziomie pozycji wyniku (dotąd wyłącznie
+                # w `proof_binding`, gubione w wierszu kanonicznym).
+                "requires_z0": reportability["requires_z0"],
+                "z0_source": reportability["z0_source"],
             }
         )
         rows.append(payload)
@@ -1903,6 +1908,14 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
         "ik_thevenin_ka": _amps_to_ka(item.get("ik_thevenin_a")),
         "ik_inverters_ka": _amps_to_ka(item.get("ik_inverters_a")),
         "i2t_ka2s": i2t_ka2s,
+        # Delta FROZEN V12K-128 (addytywnie): składowe symetryczne impedancji
+        # zastępczej WPROST z solvera (`ShortCircuitResult.to_dict` → z1/z2/z0_ohm
+        # jako complex {re, im}). Z1/Z2 dla wszystkich typów, Z0 tylko dla zwarć
+        # doziemnych (1F/2F+G). Zero fizyki — czysta projekcja pass-through.
+        # Starsze wyniki bez pól → None (uczciwy brak, kontrakt addytywny).
+        "z1_ohm": item.get("z1_ohm"),
+        "z2_ohm": item.get("z2_ohm"),
+        "z0_ohm": item.get("z0_ohm"),
     }
 
 
@@ -1969,6 +1982,11 @@ def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
                 # (pole addytywne — starsze wyniki bez pola → None).
                 "branch_contributions": _sc_rozplyw_galeziowy(item, graph_nodes, graph_branches),
                 "fault_type": item.get("short_circuit_type"),
+                # GAP passthrough (V12K-128): wymóg/źródło sieci zerowej Z0 przenoszone
+                # do wiersza kanonicznego (konsument read-only wie, czy Z0 dotyczy i
+                # skąd pochodzi). Starszy wynik bez pól → None (uczciwy brak).
+                "requires_z0": item.get("requires_z0"),
+                "z0_source": item.get("z0_source"),
                 "analysis_type": item.get("analysis_type")
                 or (run.raw_result or {}).get("analysis_type"),
                 "reporting_status": item.get("reporting_status")

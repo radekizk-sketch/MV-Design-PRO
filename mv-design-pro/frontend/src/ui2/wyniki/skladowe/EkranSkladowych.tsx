@@ -38,7 +38,7 @@ import {
   KOLUMNY_SKLADOWYCH,
   naWierszeSkladowych,
   naZalozeniaSkladowych,
-  skladoweZeSladu,
+  skladowePunktu,
   uziemieniaSieci,
   uziemieniePunktu,
   werdyktPL,
@@ -117,7 +117,9 @@ export function EkranSkladowych() {
   }, [rows, wybranyPunkt]);
 
   const wierszAktywny = rows.find((r) => r.target_id === aktywnyPunkt) ?? null;
-  const skladowe = skladoweZeSladu(dane?.slad ?? null, aktywnyPunkt);
+  // RESULT-FIRST (delta FROZEN V12K-128): składowe z wiersza wyniku, ślad WHITE
+  // BOX jako fallback (starsze biegi) i źródło wzoru/podstawienia KaTeX.
+  const skladowe = skladowePunktu(wierszAktywny, dane?.slad ?? null, aktywnyPunkt);
   const uziemieniePkt = uziemieniePunktu(
     dane?.snapshotPrzebiegu ?? null,
     wierszAktywny?.element_id ?? wierszAktywny?.target_id ?? null,
@@ -177,14 +179,19 @@ export function EkranSkladowych() {
           <section className="mvd-skladowe-sekcja" data-testid="mvd-skladowe-skladowe">
             <h4>{T.skladoweTytul}</h4>
             <p className="mvd-skladowe-nota">{T.skladoweOpis}</p>
-            {!dane?.slad ? (
-              <p className="mvd-skladowe-brak" data-testid="mvd-skladowe-slad-niedostepny">
-                {T.skladoweSladNiedostepny}
-              </p>
-            ) : !skladowe ? (
-              <p className="mvd-skladowe-brak" data-testid="mvd-skladowe-brak-kroku">
-                {T.skladoweBrak}
-              </p>
+            {!skladowe ? (
+              // RESULT-FIRST: brak składowych i w wyniku, i w śladzie. Rozróżnij
+              // uczciwie: starszy bieg bez śladu (jedyne źródło zniknęło) vs
+              // ślad dostępny lecz bez kroku „Zk" dla punktu.
+              !dane?.slad ? (
+                <p className="mvd-skladowe-brak" data-testid="mvd-skladowe-slad-niedostepny">
+                  {T.skladoweSladNiedostepny}
+                </p>
+              ) : (
+                <p className="mvd-skladowe-brak" data-testid="mvd-skladowe-brak-kroku">
+                  {T.skladoweBrak}
+                </p>
+              )
             ) : (
               <>
                 <dl className="mvd-skladowe-siatka" data-testid="mvd-skladowe-wartosci">

@@ -186,6 +186,13 @@ def export_short_circuit_result_to_docx(
         ("Ik suma [A]", "ik_total_a"),
     ]
 
+    # Delta FROZEN V12K-128 (addytywnie): składowe symetryczne Z1/Z2/Z0 — wiersz
+    # tylko gdy wynik je niesie (Z1/Z2 dla wszystkich typów, Z0 dla zwarć
+    # doziemnych). Starsze wyniki bez pól → brak sekcji (uczciwy brak).
+    for seq_label, seq_key in (("Z1 [Ω]", "z1_ohm"), ("Z2 [Ω]", "z2_ohm"), ("Z0 [Ω]", "z0_ohm")):
+        if data.get(seq_key) is not None:
+            result_fields.append((seq_label, seq_key))
+
     for label, key in result_fields:
         row_cells = results_table.add_row().cells
         row_cells[0].text = label

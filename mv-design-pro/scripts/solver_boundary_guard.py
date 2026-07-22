@@ -24,7 +24,9 @@ SANCTIONED_CHANGES = {
     "backend/src/network_model/solvers/short_circuit_iec60909.py": (
         "V12K-120: FIX pre-existing (wymiar wektora iniekcji w "
         "_build_branch_contributions_for_inverters dla scalonych wezlow) "
-        "+ test regresyjny; dowod addytywnosci to_dict testem."
+        "+ test regresyjny; dowod addytywnosci to_dict testem. "
+        "V12K-128: delta FROZEN zatwierdzona przez wlasciciela - z1/z2/z0 "
+        "addytywnie (wpis do usuniecia po scaleniu do main)."
     ),
 }
 

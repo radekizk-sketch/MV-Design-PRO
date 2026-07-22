@@ -211,11 +211,26 @@ def test_execute_run_supports_1f_when_z0_is_committed_in_enm():
     assert result.raw_result["results"][0]["proof_ref"].startswith("proof:short-circuit:")
     assert result.raw_result["results"][0]["proof_binding"]["z0_source"] == "ENM_COMMITTED"
     assert "z0_ohm" in result.raw_result["results"][0]["white_box_trace"][0]["inputs"]
+    # Delta FROZEN V12K-128 (addytywnie): składowe symetryczne w pozycji wyniku
+    # (nie tylko w śladzie). Bieg doziemny 1F → pełen komplet Z1/Z2/Z0.
+    item0 = result.raw_result["results"][0]
+    for pole in ("z1_ohm", "z2_ohm", "z0_ohm"):
+        assert isinstance(item0[pole], dict), pole
+        assert "re" in item0[pole] and "im" in item0[pole], pole
+    # GAP passthrough (V12K-128): wymóg/źródło Z0 na poziomie pozycji wyniku.
+    assert item0["requires_z0"] is True
+    assert item0["z0_source"] == "ENM_COMMITTED"
 
     rows = build_short_circuit_results(result)["rows"]
     assert rows[0]["reporting_status"] == "reportable"
     assert rows[0]["proof_status"] == "complete"
     assert rows[0]["dopuszczalnosc_raportowa"] is True
+    # Delta FROZEN V12K-128: składowe Z1/Z2/Z0 + GAP passthrough w wierszu
+    # kanonicznym (konsument read-only ma komplet bilansu i wymóg Z0).
+    for pole in ("z1_ohm", "z2_ohm", "z0_ohm"):
+        assert isinstance(rows[0][pole], dict), pole
+    assert rows[0]["requires_z0"] is True
+    assert rows[0]["z0_source"] == "ENM_COMMITTED"
 
     execution_set = build_execution_result_set(result)
     assert execution_set["analysis_type"] == "SC_1F"
@@ -252,8 +267,13 @@ def test_execute_run_supports_2fg_when_z0_is_committed_in_enm():
 
 
 def test_short_circuit_type_accepts_sc2fg_alias_from_ui():
-    assert _short_circuit_type_from_options({"fault_type": "2FG"}) is ShortCircuitType.TWO_PHASE_GROUND
-    assert _short_circuit_type_from_options({"fault_type": "SC2FG"}) is ShortCircuitType.TWO_PHASE_GROUND
+    assert (
+        _short_circuit_type_from_options({"fault_type": "2FG"}) is ShortCircuitType.TWO_PHASE_GROUND
+    )
+    assert (
+        _short_circuit_type_from_options({"fault_type": "SC2FG"})
+        is ShortCircuitType.TWO_PHASE_GROUND
+    )
 
 
 def test_create_1f_run_blocks_without_committed_z0():

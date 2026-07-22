@@ -52,6 +52,20 @@ EXPECTED_SHORT_CIRCUIT_RESULT_KEYS: list[str] = [
     "white_box_trace",
 ]
 
+# -----------------------------------------------------------------------------
+# Delta FROZEN V12K-128 (zatwierdzona przez właściciela 2026-07-22) — składowe
+# symetryczne Z1/Z2/Z0 jako pola ADDYTYWNE wyniku. Obecne w to_dict() WYŁĄCZNIE
+# gdy solver je policzył: z1_ohm/z2_ohm dla wszystkich typów zwarcia, z0_ohm
+# tylko dla zwarć doziemnych (1F, 2F+G). Starsze wyniki odtworzone bez tych pól
+# (domyślnie None) serializują się BAJT-W-BAJT identycznie z kontraktem sprzed
+# delty — patrz testy additywności w tests/test_result_api_contract.py.
+# -----------------------------------------------------------------------------
+OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS: list[str] = [
+    "z1_ohm",
+    "z2_ohm",
+    "z0_ohm",
+]
+
 
 @dataclass(frozen=True)
 class ShortCircuitResult:
@@ -108,6 +122,12 @@ class ShortCircuitResult:
     contributions: list[ShortCircuitSourceContribution] = field(default_factory=list)
     branch_contributions: list[ShortCircuitBranchContribution] | None = None
     white_box_trace: list[dict] = field(default_factory=list)
+    # Delta FROZEN V12K-128 (addytywna): składowe symetryczne impedancji
+    # zastępczej wyliczone przez solver (Z1/Z2 zawsze; Z0 dla zwarć doziemnych).
+    # None = wielkość nieobliczana dla tego typu / wynik sprzed delty.
+    z1_ohm: complex | None = None
+    z2_ohm: complex | None = None
+    z0_ohm: complex | None = None
 
     # -------------------------------------------------------------------------
     # Aliasy dla kompatybilności wstecznej (preferuj canonical: ikss_a, ip_a, ...)
@@ -173,7 +193,7 @@ class ShortCircuitResult:
                 return [serialize_value(v) for v in val]
             return val
 
-        return {
+        data: dict = {
             "short_circuit_type": self.short_circuit_type.value,
             "fault_node_id": self.fault_node_id,
             "c_factor": float(self.c_factor),
@@ -199,6 +219,16 @@ class ShortCircuitResult:
             ),
             "white_box_trace": serialize_value(list(self.white_box_trace)),
         }
+        # Delta FROZEN V12K-128 (addytywna): składowe symetryczne dołączane tylko
+        # gdy solver je policzył. Pominięcie None gwarantuje bajt-w-bajt zgodność
+        # payloadu wyników odtworzonych bez tych pól z kontraktem sprzed delty.
+        if self.z1_ohm is not None:
+            data["z1_ohm"] = serialize_complex(self.z1_ohm)
+        if self.z2_ohm is not None:
+            data["z2_ohm"] = serialize_complex(self.z2_ohm)
+        if self.z0_ohm is not None:
+            data["z0_ohm"] = serialize_complex(self.z0_ohm)
+        return data
 
 
 class ShortCircuitIEC60909Solver:
@@ -217,6 +247,9 @@ class ShortCircuitIEC60909Solver:
         contributions: list[ShortCircuitSourceContribution],
         branch_contributions: list[ShortCircuitBranchContribution] | None,
         white_box_trace: list[dict],
+        z1: complex | None = None,
+        z2: complex | None = None,
+        z0: complex | None = None,
     ) -> ShortCircuitResult:
         ik_total = ikss_thevenin + ik_inverters
         post = compute_post_fault_quantities(
@@ -248,6 +281,9 @@ class ShortCircuitIEC60909Solver:
             contributions=contributions,
             branch_contributions=branch_contributions,
             white_box_trace=white_box_trace,
+            z1_ohm=z1,
+            z2_ohm=z2,
+            z0_ohm=z0,
         )
 
     @staticmethod
@@ -720,6 +756,9 @@ class ShortCircuitIEC60909Solver:
             contributions=contributions,
             branch_contributions=branch_contributions,
             white_box_trace=white_box_trace,
+            z1=core.z1,
+            z2=core.z2,
+            z0=core.z0,
         )
 
     @staticmethod
@@ -854,6 +893,9 @@ class ShortCircuitIEC60909Solver:
             contributions=contributions,
             branch_contributions=branch_contributions,
             white_box_trace=white_box_trace,
+            z1=core.z1,
+            z2=core.z2,
+            z0=core.z0,
         )
 
     @staticmethod
@@ -947,6 +989,9 @@ class ShortCircuitIEC60909Solver:
             contributions=contributions,
             branch_contributions=branch_contributions,
             white_box_trace=white_box_trace,
+            z1=core.z1,
+            z2=core.z2,
+            z0=core.z0,
         )
 
     @staticmethod
@@ -1044,6 +1089,9 @@ class ShortCircuitIEC60909Solver:
             contributions=contributions,
             branch_contributions=branch_contributions,
             white_box_trace=white_box_trace,
+            z1=core.z1,
+            z2=core.z2,
+            z0=core.z0,
         )
 
 

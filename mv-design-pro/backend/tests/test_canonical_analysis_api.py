@@ -248,6 +248,16 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     for row in short_circuit_payload["rows"]:
         assert "branch_contributions" in row
         assert isinstance(row["branch_contributions"], list)
+    # Delta FROZEN V12K-128 (addytywnie): składowe symetryczne Z1/Z2/Z0 wprost
+    # z solvera. Bieg 3F → Z1/Z2 obecne jako complex {re, im}, Z0 nie dotyczy.
+    for pole in ("z1_ohm", "z2_ohm"):
+        assert isinstance(wiersz[pole], dict), pole
+        assert "re" in wiersz[pole] and "im" in wiersz[pole], pole
+    assert wiersz["z0_ohm"] is None
+    # GAP passthrough (V12K-128): wymóg/źródło sieci zerowej Z0 w wierszu
+    # kanonicznym. 3F → Z0 nie dotyczy.
+    assert wiersz["requires_z0"] is False
+    assert wiersz["z0_source"] == "NOT_APPLICABLE"
 
     trace_details = client.get(f"/api/analysis-runs/{run_id}/results/trace")
     assert trace_details.status_code == 200

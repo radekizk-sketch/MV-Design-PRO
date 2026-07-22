@@ -14,6 +14,7 @@ import {
   fmtZespolona,
   naWierszeSkladowych,
   naZalozeniaSkladowych,
+  skladowePunktu,
   skladoweZeSladu,
   uziemieniaSieci,
   uziemieniePunktu,
@@ -147,6 +148,41 @@ describe('skladoweZeSladu — krok "Zk" śladu WHITE BOX (read-only)', () => {
     const skladowe = skladoweZeSladu(slad2f, 'node-1');
     expect(skladowe?.z0).toBeNull();
     expect(skladowe?.z1).toEqual({ re: 0.1, im: 0.4 });
+  });
+});
+
+describe('skladowePunktu — RESULT-FIRST (delta FROZEN V12K-128) z fallbackiem śladu', () => {
+  const WIERSZ_ZE_SKLADOWYMI: ShortCircuitRow = {
+    ...WIERSZ,
+    z1_ohm: { re: 0.11, im: 0.42 },
+    z2_ohm: { re: 0.11, im: 0.42 },
+    z0_ohm: { re: 0.33, im: 0.95 },
+  };
+
+  it('preferuje składowe z wiersza wyniku (Z1/Z2/Z0) nad śladem', () => {
+    const skladowe = skladowePunktu(WIERSZ_ZE_SKLADOWYMI, SLAD, 'node-1');
+    expect(skladowe?.z1).toEqual({ re: 0.11, im: 0.42 });
+    expect(skladowe?.z0).toEqual({ re: 0.33, im: 0.95 });
+    // Wzór/podstawienie nadal wyłącznie ze śladu (nie ma ich w wyniku).
+    expect(skladowe?.formulaLatex).toBe('Z_k = Z_1 + Z_2 + Z_0');
+  });
+
+  it('bieg z wynikiem, ale BEZ śladu → składowe z wyniku (result-first), wzór null', () => {
+    const skladowe = skladowePunktu(WIERSZ_ZE_SKLADOWYMI, null, 'node-1');
+    expect(skladowe?.z1).toEqual({ re: 0.11, im: 0.42 });
+    expect(skladowe?.z0).toEqual({ re: 0.33, im: 0.95 });
+    expect(skladowe?.formulaLatex).toBeNull();
+  });
+
+  it('starszy bieg bez składowych w wyniku → fallback na ślad WHITE BOX', () => {
+    const skladowe = skladowePunktu(WIERSZ, SLAD, 'node-1');
+    expect(skladowe?.z1).toEqual({ re: 0.1, im: 0.4 });
+    expect(skladowe?.formulaLatex).toBe('Z_k = Z_1 + Z_2 + Z_0');
+  });
+
+  it('brak składowych i w wyniku, i w śladzie → null (zero fabrykacji)', () => {
+    expect(skladowePunktu(WIERSZ, null, 'node-1')).toBeNull();
+    expect(skladowePunktu(null, null, 'node-1')).toBeNull();
   });
 });
 

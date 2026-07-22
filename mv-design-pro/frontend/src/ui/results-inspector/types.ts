@@ -200,6 +200,18 @@ export interface ShortCircuitRow {
   ik_thevenin_ka?: number | null;
   ik_inverters_ka?: number | null;
   i2t_ka2s?: number | null;
+  // Delta FROZEN V12K-128 (addytywnie): składowe symetryczne impedancji
+  // zastępczej WPROST z solvera (`ShortCircuitResult.to_dict` → z1/z2/z0_ohm),
+  // przeniesione do wiersza kanonicznego w `_sc_pelny_bilans`. Z1/Z2 dla
+  // wszystkich typów, Z0 tylko dla zwarć doziemnych (1F/2F+G). Complex {re, im}.
+  // Starszy wynik bez pól → null (uczciwy brak; ekran spada na ślad WHITE BOX).
+  z1_ohm?: { re: number; im: number } | null;
+  z2_ohm?: { re: number; im: number } | null;
+  z0_ohm?: { re: number; im: number } | null;
+  // GAP passthrough (V12K-128): wymóg i źródło sieci zerowej Z0 przeniesione do
+  // wiersza kanonicznego (dotąd tylko w proof_binding). Starszy wynik → brak/null.
+  requires_z0?: boolean | null;
+  z0_source?: string | null;
   /**
    * Rozpływ prądu zwarciowego w gałęziach (ZWARCIA-PRO F4, addytywnie):
    * lista wpisów per (źródło, gałąź); pusta lista = policzono, brak wkładów

@@ -22,8 +22,10 @@ from network_model.solvers.short_circuit_contributions import (
     ShortCircuitBranchContribution,
     ShortCircuitSourceContribution,
 )
+from network_model.solvers.short_circuit_core import ShortCircuitType
 from network_model.solvers.short_circuit_iec60909 import (
     EXPECTED_SHORT_CIRCUIT_RESULT_KEYS,
+    OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS,
     ShortCircuitIEC60909Solver,
     ShortCircuitResult,
 )
@@ -515,8 +517,11 @@ class TestContractConstant:
 
         dataclass_fields = {f.name for f in fields(ShortCircuitResult)}
 
-        # Klucze kontraktu powinny być podzbiorem pól dataclass
-        contract_keys = set(EXPECTED_SHORT_CIRCUIT_RESULT_KEYS)
+        # Klucze kontraktu (bazowe + addytywne opcjonalne z delty FROZEN V12K-128)
+        # powinny objąć wszystkie pola dataclass.
+        contract_keys = set(EXPECTED_SHORT_CIRCUIT_RESULT_KEYS) | set(
+            OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS
+        )
         missing_in_contract = dataclass_fields - contract_keys
 
         # Nie powinno być brakujących pól (chyba że są wewnętrzne)
@@ -568,7 +573,13 @@ class TestAllFaultTypesContract:
         )
         d = result.to_dict()
         assert d["short_circuit_type"] == "3F"
-        assert set(d.keys()) == set(EXPECTED_SHORT_CIRCUIT_RESULT_KEYS)
+        # Kontrakt bazowy FROZEN niezmieniony (delta V12K-128 jest ADDYTYWNA).
+        assert set(d.keys()) - set(OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS) == set(
+            EXPECTED_SHORT_CIRCUIT_RESULT_KEYS
+        )
+        # 3F: składowe zgodne (Z1/Z2 obecne, Z0 nie dotyczy → pominięte).
+        assert "z1_ohm" in d and "z2_ohm" in d
+        assert "z0_ohm" not in d
 
     def test_2ph_contract(self):
         """2F wynik spełnia kontrakt."""
@@ -578,7 +589,13 @@ class TestAllFaultTypesContract:
         )
         d = result.to_dict()
         assert d["short_circuit_type"] == "2F"
-        assert set(d.keys()) == set(EXPECTED_SHORT_CIRCUIT_RESULT_KEYS)
+        # Kontrakt bazowy FROZEN niezmieniony (delta V12K-128 jest ADDYTYWNA).
+        assert set(d.keys()) - set(OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS) == set(
+            EXPECTED_SHORT_CIRCUIT_RESULT_KEYS
+        )
+        # 2F: Z1/Z2 obecne, Z0 nie dotyczy → pominięte.
+        assert "z1_ohm" in d and "z2_ohm" in d
+        assert "z0_ohm" not in d
 
     def test_1ph_contract(self, graph_with_z0):
         """1F wynik spełnia kontrakt."""
@@ -588,7 +605,12 @@ class TestAllFaultTypesContract:
         )
         d = result.to_dict()
         assert d["short_circuit_type"] == "1F"
-        assert set(d.keys()) == set(EXPECTED_SHORT_CIRCUIT_RESULT_KEYS)
+        # Kontrakt bazowy FROZEN niezmieniony (delta V12K-128 jest ADDYTYWNA).
+        assert set(d.keys()) - set(OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS) == set(
+            EXPECTED_SHORT_CIRCUIT_RESULT_KEYS
+        )
+        # 1F (doziemne): pełny komplet składowych Z1/Z2/Z0 obecny.
+        assert "z1_ohm" in d and "z2_ohm" in d and "z0_ohm" in d
 
     def test_2ph_ground_contract(self, graph_with_z0):
         """2F+G wynik spełnia kontrakt."""
@@ -598,4 +620,69 @@ class TestAllFaultTypesContract:
         )
         d = result.to_dict()
         assert d["short_circuit_type"] == "2F+G"
+        # Kontrakt bazowy FROZEN niezmieniony (delta V12K-128 jest ADDYTYWNA).
+        assert set(d.keys()) - set(OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS) == set(
+            EXPECTED_SHORT_CIRCUIT_RESULT_KEYS
+        )
+        # 2F+G (doziemne): pełny komplet składowych Z1/Z2/Z0 obecny.
+        assert "z1_ohm" in d and "z2_ohm" in d and "z0_ohm" in d
+
+
+# -----------------------------------------------------------------------------
+# Delta FROZEN V12K-128: dowód ADDYTYWNOŚCI składowych Z1/Z2/Z0
+# -----------------------------------------------------------------------------
+class TestSequenceComponentsAdditive:
+    """Składowe Z1/Z2/Z0 są ściśle addytywne — payload sprzed delty (pola None)
+    serializuje się BAJT-W-BAJT identycznie, a obecność składowych nie zmienia
+    żadnego istniejącego klucza ani wartości."""
+
+    @staticmethod
+    def _base_result() -> ShortCircuitResult:
+        return ShortCircuitResult(
+            short_circuit_type=ShortCircuitType.SINGLE_PHASE_GROUND,
+            fault_node_id="B",
+            c_factor=1.1,
+            un_v=15000.0,
+            zkk_ohm=complex(0.5, 1.7),
+            ikss_a=1234.5,
+            ip_a=2469.0,
+            ith_a=1234.5,
+            sk_mva=32.0,
+            rx_ratio=0.294,
+            kappa=1.6,
+            tk_s=1.0,
+            ib_a=1234.5,
+            tb_s=0.1,
+        )
+
+    def test_legacy_result_omits_sequence_keys_byte_for_byte(self) -> None:
+        """Wynik odtworzony BEZ składowych (domyślne None) — to_dict pomija
+        wszystkie klucze addytywne i jest bajt-w-bajt jak kontrakt bazowy."""
+        legacy = self._base_result()
+        d = legacy.to_dict()
+        assert set(OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS).isdisjoint(d.keys())
+        # Wyłącznie klucze bazowe FROZEN.
         assert set(d.keys()) == set(EXPECTED_SHORT_CIRCUIT_RESULT_KEYS)
+
+    def test_sequence_presence_does_not_mutate_base_payload(self) -> None:
+        """Dołożenie Z1/Z2/Z0 nie zmienia żadnego istniejącego klucza/wartości —
+        usunięcie kluczy addytywnych z nowego payloadu daje payload bajt-w-bajt
+        identyczny z payloadem sprzed delty."""
+        from dataclasses import replace
+
+        legacy = self._base_result()
+        with_seq = replace(
+            legacy,
+            z1_ohm=complex(0.1, 0.4),
+            z2_ohm=complex(0.1, 0.4),
+            z0_ohm=complex(0.3, 0.9),
+        )
+        d_legacy = legacy.to_dict()
+        d_new = with_seq.to_dict()
+        d_new_stripped = {
+            k: v for k, v in d_new.items() if k not in OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS
+        }
+        assert json.dumps(d_legacy, sort_keys=True) == json.dumps(d_new_stripped, sort_keys=True)
+        # Wartości addytywne to LUSTRO wejść solvera (complex → {re, im}).
+        assert d_new["z1_ohm"] == {"re": 0.1, "im": 0.4}
+        assert d_new["z0_ohm"] == {"re": 0.3, "im": 0.9}

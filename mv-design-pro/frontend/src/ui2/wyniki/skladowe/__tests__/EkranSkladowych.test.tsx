@@ -233,6 +233,43 @@ describe('EkranSkladowych — uczciwe braki danych opcjonalnych', () => {
     expect(screen.queryByTestId('mvd-skladowe-wartosci')).not.toBeInTheDocument();
   });
 
+  it('RESULT-FIRST (V12K-128): wynik niesie Z1/Z2/Z0 → składowe mimo braku śladu', async () => {
+    // Wiersz kanoniczny z addytywnymi składowymi (delta FROZEN), ślad 503.
+    const wynikZeSkladowymi = {
+      ...WYNIK,
+      rows: [
+        {
+          ...WYNIK.rows[0],
+          z1_ohm: { re: 0.12, im: 0.45 },
+          z2_ohm: { re: 0.12, im: 0.45 },
+          z0_ohm: { re: 0.34, im: 0.96 },
+          requires_z0: true,
+          z0_source: 'ENM_COMMITTED',
+        },
+      ],
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/results/short-circuit')) {
+          return { ok: true, status: 200, json: async () => wynikZeSkladowymi } as Response;
+        }
+        // Ślad i snapshot niedostępne — result-first musi wystarczyć.
+        return { ok: false, status: 503, json: async () => ({}) } as Response;
+      }),
+    );
+    useExecutionRunsStore.setState({ runs: [RUN_1F] });
+    render(<EkranSkladowych />);
+
+    expect(await screen.findByTestId('mvd-skladowe-wartosci')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-skladowe-z1')).toHaveTextContent('0,1200 + j 0,4500');
+    expect(screen.getByTestId('mvd-skladowe-z0')).toHaveTextContent('0,3400 + j 0,9600');
+    // Wzór KaTeX tylko ze śladu — przy jego braku nie renderujemy (uczciwie).
+    expect(screen.queryByTestId('mvd-skladowe-wzor')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-skladowe-slad-niedostepny')).not.toBeInTheDocument();
+  });
+
   it('błąd wierszy kanonicznych → stan błędu z akcją naprawczą', async () => {
     vi.stubGlobal(
       'fetch',
