@@ -19,21 +19,20 @@
  *    per źródło (machine_type, Ir, Ik"/Ir, μ, q, Ib, wywód dyplomowy) renderuje
  *    sekcja `WkladyZwarciowe` (karta W-A F2). Props `wklady` pozostaje jako
  *    nadpisanie testowe (pierwszeństwo przed dostawcą).
- * 1a. GAP — WKŁADY GAŁĘZIOWE (`branch_contributions`, karta W-A F2 pkt 3):
- *    solver je liczy (`network_model/solvers/short_circuit_iec60909.py:552`
- *    `_build_branch_contributions_for_inverters`, wynik w
- *    `ShortCircuitResult.to_dict`:195), ale NIE są osiągalne w kontrakcie
- *    read-only frontu, bo: (a) kanoniczny wykonawca
- *    `backend/src/enm/canonical_analysis.py:878-909` (`_execute_short_circuit`)
- *    woła solver BEZ `include_branch_contributions` — pole w raw_result jest
- *    zawsze None; (b) `backend/src/enm/canonical_analysis.py:1902-1941`
- *    (`build_short_circuit_results`) nie przenosi `branch_contributions`
- *    z `raw_result.results[i]` do wierszy kanonicznych; (c) kontrakt frontu
- *    `ShortCircuitRow` (`ui/results-inspector/types.ts:157-184`) nie niesie pola.
- *    Opcja `include_branch_contributions` istnieje dziś wyłącznie w torze
- *    scenariuszy zwarciowych (`backend/src/api/fault_scenarios.py:77`), nie w
- *    przebiegach kanonicznych. Sekcja „Rozpływ prądu zwarciowego w gałęziach"
- *    wymaga delty backendowej (a)+(b) + pola kontraktu (c) — bez fabrykacji.
+ * 1a. WKŁADY GAŁĘZIOWE: DOMKNIĘTE (karta W-C, ZWARCIA-PRO F4) — delta backendu
+ *    (a)+(b) wykonana: kanoniczny wykonawca (`enm/canonical_analysis.py`
+ *    `_execute_short_circuit`) woła FROZEN solver z
+ *    `include_branch_contributions=True` (opcja czysto addytywna — test
+ *    `test_branch_contributions_option_does_not_change_existing_fields`), a
+ *    `build_short_circuit_results` przenosi wkłady przez `_sc_rozplyw_galeziowy`
+ *    (projekcja A→kA + nazwy z grafu przebiegu). Kontrakt frontu (c):
+ *    `ShortCircuitRow.branch_contributions?: ShortCircuitBranchFlow[] | null`
+ *    (`ui/results-inspector/types.ts`). Sekcję renderuje `RozplywZwarciowy`.
+ *    GAP POZOSTAŁY (zero fabrykacji): kontrakt solvera niesie WYŁĄCZNIE wkłady
+ *    źródeł falownikowych (`_build_branch_contributions_for_inverters` —
+ *    superpozycja); rozpływ prądu od sieci zewnętrznej (Thevenin) w gałęziach
+ *    NIE jest liczony przez solver — sekcja i overlay prezentują uczciwie
+ *    tylko to, co kontrakt niesie (komunikat `rozplywBrakWkladowOpis`).
  * 2. ŚWIEŻOŚĆ (FreshnessBadge): kontrakt wyników zwarciowych nie niesie LICZBOWEJ
  *    rewizji modelu z chwili liczenia → nagłówek nie podaje rewizji (badge
  *    pominięty, jak w oknie rozpływu). Numeryczną świeżość dostarczy karta
@@ -47,6 +46,7 @@
  */
 
 import type {
+  ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
 } from '../../../ui/results-inspector/types';
@@ -444,6 +444,74 @@ export function naPozycjeSzczegoluWkladu(szczegol: SzczegolWkladu): PozycjaSzcze
     poz(S.wkladQ, szczegol.q, fmtKappa, null),
     poz(S.wkladIb, szczegol.ibKA, fmtKA, S.jednKA),
   ];
+}
+
+// ---------------------------------------------------------------------------
+// Rozpływ prądu zwarciowego w gałęziach (karta W-C, F4) — projekcja read-only
+// wiersza kanonicznego (`ShortCircuitRow.branch_contributions`), zero fizyki.
+// ---------------------------------------------------------------------------
+
+/** Kolumny tabeli rozpływu gałęziowego (deklaratywne — jednostka w nagłówku). */
+export const KLUCZ_ROZPLYW = 'identyfikator';
+
+export const KOLUMNY_ROZPLYWU: DefinicjaKolumny[] = [
+  { klucz: 'galaz', etykieta: ZWARCIA_STRINGS.rozplywKolGalaz, wyrownanie: 'lewo' },
+  { klucz: 'kierunek', etykieta: ZWARCIA_STRINGS.rozplywKolKierunek, wyrownanie: 'lewo' },
+  {
+    klucz: 'prad',
+    etykieta: ZWARCIA_STRINGS.rozplywKolPrad,
+    jednostka: ZWARCIA_STRINGS.jednKA,
+    mono: true,
+  },
+  {
+    klucz: 'zrodlo',
+    etykieta: ZWARCIA_STRINGS.rozplywKolZrodlo,
+    mono: true,
+    wyrownanie: 'lewo',
+    tylkoEkspercki: true,
+  },
+  {
+    klucz: KLUCZ_ROZPLYW,
+    etykieta: ZWARCIA_STRINGS.rozplywKolIdentyfikator,
+    mono: true,
+    wyrownanie: 'lewo',
+    tylkoEkspercki: true,
+  },
+];
+
+/**
+ * Kierunek przepływu jako tekst prezentacyjny: token solvera ("from_to" /
+ * "to_from") obraca parę nazw węzłów gałęzi — czysta prezentacja danych,
+ * zero interpretacji. Token nieznany → para bez strzałki (uczciwy brak).
+ */
+export function kierunekPrzeplywuPL(flow: ShortCircuitBranchFlow): string {
+  if (flow.direction === 'from_to') return `${flow.from_node_name} → ${flow.to_node_name}`;
+  if (flow.direction === 'to_from') return `${flow.to_node_name} → ${flow.from_node_name}`;
+  return `${flow.from_node_name} – ${flow.to_node_name}`;
+}
+
+/**
+ * Mapuje wpisy rozpływu (per źródło × gałąź, kolejność backendu: branch_id,
+ * source_id) na wiersze tabeli wzorca. `dowodRef` = branch_id (2× klik →
+ * dowód gałęzi). Klucz wiersza = `branch_id::source_id` (unikalny wpis).
+ */
+export function naWierszeRozplywu(flows: ShortCircuitBranchFlow[]): WierszTabeli[] {
+  return flows.map((flow) => ({
+    galaz: { wartosc: flow.branch_name },
+    kierunek: { wartosc: kierunekPrzeplywuPL(flow) },
+    prad: komorkaWielkosci(flow.i_ka, fmtKA, flow.branch_id),
+    zrodlo: { wartosc: flow.source_id },
+    [KLUCZ_ROZPLYW]: { wartosc: `${flow.branch_id}::${flow.source_id}` },
+  }));
+}
+
+/**
+ * Rozpływ dla wiersza kanonicznego: lista wpisów (może być pusta — policzono,
+ * brak wkładów falownikowych) albo `null` (starszy wynik bez pola — uczciwa
+ * kreska; kontrakt addytywny).
+ */
+export function rozplywDlaWiersza(row: ShortCircuitRow): ShortCircuitBranchFlow[] | null {
+  return row.branch_contributions ?? null;
 }
 
 // ---------------------------------------------------------------------------

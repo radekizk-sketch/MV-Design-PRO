@@ -8,6 +8,7 @@
  */
 
 import type {
+  ShortCircuitBranchFlow,
   ShortCircuitResults,
   ShortCircuitRow,
 } from '../../../../ui/results-inspector/types';
@@ -41,8 +42,43 @@ export function shortCircuitRowFixture(over: Partial<ShortCircuitRow> = {}): Sho
     ik_thevenin_ka: 12.1,
     ik_inverters_ka: 0.245,
     i2t_ka2s: 156.25,
+    // Rozpływ gałęziowy (karta W-C, F4): domyślnie policzono, brak wkładów
+    // falownikowych (pusta lista); wpisy dodaje `rozplywFixture` per test.
+    branch_contributions: [],
     ...over,
   };
+}
+
+/**
+ * Wpisy rozpływu gałęziowego (karta W-C) — kształt 1:1 z projekcji
+ * `_sc_rozplyw_galeziowy` (`enm/canonical_analysis.py`): per (źródło, gałąź),
+ * A→kA w backendzie, kierunek z solvera.
+ */
+export function rozplywFixture(): ShortCircuitBranchFlow[] {
+  return [
+    {
+      branch_id: 'BR-KABEL-1',
+      branch_name: 'Kabel OZE',
+      source_id: 'GEN-PV',
+      from_node_id: 'BUS-GPZ',
+      from_node_name: 'Szyna GPZ 15 kV',
+      to_node_id: 'BUS-OZE',
+      to_node_name: 'Szyna OZE',
+      i_ka: 0.245,
+      direction: 'to_from',
+    },
+    {
+      branch_id: 'BR-LINIA-2',
+      branch_name: 'Linia ST1',
+      source_id: 'GEN-PV',
+      from_node_id: 'BUS-ST1',
+      from_node_name: 'Szyna ST1 15 kV',
+      to_node_id: 'BUS-GPZ',
+      to_node_name: 'Szyna GPZ 15 kV',
+      i_ka: 0.061,
+      direction: 'from_to',
+    },
+  ];
 }
 
 export function shortCircuitResultsFixture(
@@ -89,6 +125,7 @@ export function shortCircuitResultsFixture(
         ik_thevenin_ka: null,
         ik_inverters_ka: null,
         i2t_ka2s: null,
+        branch_contributions: null,
       }),
     ],
     ...over,

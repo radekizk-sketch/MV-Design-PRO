@@ -580,7 +580,14 @@ class ShortCircuitIEC60909Solver:
             if source_index is None or source_index == fault_index:
                 continue
 
-            i_inj = np.zeros(len(builder.node_id_to_index), dtype=complex)
+            # FIX (karta W-C, Zero-Debt): wektor iniekcji MUSI mieć wymiar macierzy
+            # Z-bus (liczba węzłów REPREZENTATYWNYCH po scaleniu zamkniętych
+            # łączników), nie liczbę wszystkich węzłów — `node_id_to_index` mapuje
+            # KAŻDY węzeł na indeks reprezentanta, więc przy scaleniach
+            # len(node_id_to_index) > z_bus.shape[0] i mnożenie pękało (matmul
+            # mismatch) dla każdej sieci z zamkniętym łącznikiem. Defekt
+            # pre-existing toru `include_branch_contributions` (scenariusze).
+            i_inj = np.zeros(z_bus.shape[0], dtype=complex)
             i_inj[source_index] = complex(i_contrib, 0.0)
             i_inj[fault_index] = complex(-i_contrib, 0.0)
             v_nodes = z_bus @ i_inj

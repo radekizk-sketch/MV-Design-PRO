@@ -794,3 +794,64 @@ def test_branch_contributions_basic():
 
     assert result.branch_contributions is not None
     assert len(result.branch_contributions) > 0
+
+
+def test_branch_contributions_option_does_not_change_existing_fields():
+    """ZWARCIA-PRO F4 (karta W-C): opcja wkładów gałęziowych jest CZYSTO addytywna.
+
+    Włączenie include_branch_contributions nie może zmienić ŻADNEJ istniejącej
+    wielkości wyniku ani śladu White Box (determinizm istniejących pól) —
+    inaczej tor kanoniczny nie mógłby jej włączyć bez naruszenia FROZEN.
+    """
+    graph_off = build_transformer_only_graph()
+    graph_on = build_transformer_only_graph()
+    for graph in (graph_off, graph_on):
+        graph.add_inverter_source(create_inverter_source("INV-BC", "A", in_rated_a=50.0, k_sc=1.1))
+
+    base = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph_off,
+        fault_node_id="B",
+        c_factor=1.0,
+        tk_s=1.0,
+    ).to_dict()
+    with_bc = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph_on,
+        fault_node_id="B",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    ).to_dict()
+
+    assert base.pop("branch_contributions") is None
+    assert with_bc.pop("branch_contributions"), "opcja włączona → niepusta lista wkładów"
+    assert with_bc == base
+
+
+def test_branch_contributions_with_closed_switch_merged_nodes():
+    """Regresja (karta W-C, Zero-Debt): zamknięty łącznik scala węzły — wektor
+    iniekcji wkładów gałęziowych MUSI mieć wymiar macierzy Z-bus (liczba
+    reprezentantów), nie liczbę wszystkich węzłów. Przed naprawą: matmul
+    mismatch dla KAŻDEJ sieci z zamkniętym łącznikiem przy
+    include_branch_contributions=True.
+    """
+    from network_model.core.switch import Switch, SwitchState
+
+    graph = build_transformer_only_graph()
+    # Węzeł scalony z "B" zamkniętym łącznikiem: len(node_id_to_index) > wymiar Z-bus.
+    graph.add_node(create_pq_node("B2", 20.0))
+    graph.add_switch(
+        Switch(id="SW1", name="Łącznik B-B2", from_node_id="B", to_node_id="B2",
+               state=SwitchState.CLOSED)
+    )
+    graph.add_inverter_source(create_inverter_source("INV-SW", "A", in_rated_a=50.0, k_sc=1.1))
+
+    result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph,
+        fault_node_id="B",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+
+    assert result.branch_contributions is not None
+    assert len(result.branch_contributions) > 0

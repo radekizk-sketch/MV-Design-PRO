@@ -24,6 +24,23 @@
   font-size: 13px;
 }
 
+/* ---- pasek akcji wybranego punktu (karta W-C pkt 6) ---- */
+.mvd-zwarcia-akcje {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+  padding: 0 4px;
+}
+
+/* ---- sekcja rozpływu prądu zwarciowego (karta W-C pkt 2) ---- */
+.mvd-zwarcia-rozplyw {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 4px;
+}
+
 /* ---- sekcja wkładów ---- */
 .mvd-zwarcia-wklady {
   display: flex;

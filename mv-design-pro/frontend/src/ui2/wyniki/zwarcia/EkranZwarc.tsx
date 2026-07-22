@@ -19,6 +19,8 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy } from '../wzorzec';
 import { useWkladyZwarciowe } from './api';
 import { BilansIEC } from './BilansIEC';
+import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
+import { RozplywZwarciowy } from './RozplywZwarciowy';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresZwarc } from './WykresZwarc';
 import { ZWARCIA_STRINGS } from './strings';
@@ -27,6 +29,7 @@ import {
   KOLUMNY_ZWARC,
   naWierszeZwarc,
   naZalozeniaZwarc,
+  rozplywDlaWiersza,
   useWynikZwarciowy,
   type WkladZwarciowy,
 } from './zwarciaModel';
@@ -58,6 +61,9 @@ export function EkranZwarc({
   const { wynik, runId } = useWynikZwarciowy();
   const rows = wynik?.rows ?? [];
   const [wybranyPunkt, setWybranyPunkt] = useState<string | null>(null);
+  // Karta W-C pkt 6: selekcja + centrowanie + nawigacja + overlay rozpływu
+  // (reużycie wzorca V12K-073 — wspólny store selekcji, produkcyjny store overlay).
+  const pokazNaSchemacie = usePokazZwarcieNaSchemacie();
 
   // Domyślnie wybrany pierwszy punkt (deterministycznie, kolejność źródłowa).
   const aktywnyPunkt = useMemo(() => {
@@ -110,7 +116,25 @@ export function EkranZwarc({
         wybranyWiersz={aktywnyPunkt}
       />
 
+      <div className="mvd-zwarcia-akcje" data-testid="mvd-zwarcia-akcje">
+        <button
+          type="button"
+          className="mvd-zwarcia-wykres-btn"
+          data-testid="mvd-zwarcia-pokaz-sld"
+          onClick={() => pokazNaSchemacie(wierszAktywny, runId)}
+        >
+          {ZWARCIA_STRINGS.pokazNaSchemacie}
+        </button>
+      </div>
+
       <BilansIEC row={wierszAktywny} punktNazwa={nazwaAktywnego} />
+
+      <RozplywZwarciowy
+        punktNazwa={nazwaAktywnego}
+        flows={rozplywDlaWiersza(wierszAktywny)}
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={onOtworzDowod}
+      />
 
       <WkladyZwarciowe
         punktNazwa={nazwaAktywnego}

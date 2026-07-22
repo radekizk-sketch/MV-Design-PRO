@@ -88,6 +88,25 @@ export const ZWARCIA_STRINGS = {
   wkladSzczegolBrakOpis:
     'Rozbicie maszynowe tego przebiegu nie zawiera parametrów IEC 60909 (Ir, μ, q, Ib) dla tego źródła.',
 
+  // Sekcja rozpływu prądu zwarciowego w gałęziach (karta W-C, F4)
+  rozplywTytul: 'Rozpływ prądu zwarciowego',
+  rozplywOpis:
+    'Wkłady źródeł falownikowych do prądów w gałęziach dla wybranego punktu zwarcia — wartości z solvera IEC 60909 (superpozycja), zero obliczeń w interfejsie.',
+  rozplywKolGalaz: 'Gałąź',
+  rozplywKolKierunek: 'Kierunek przepływu',
+  rozplywKolPrad: 'Prąd wkładu |I|',
+  rozplywKolZrodlo: 'Źródło',
+  rozplywKolIdentyfikator: 'Identyfikator gałęzi',
+  rozplywNiedostepny: 'Rozpływ gałęziowy niedostępny w tym przebiegu.',
+  rozplywNiedostepnyOpis:
+    'Starszy wynik nie niesie wkładów gałęziowych. Uruchom ponownie obliczenie zwarciowe, aby je uzyskać.',
+  rozplywBrakWkladow: 'Brak wkładów gałęziowych dla tego punktu zwarcia.',
+  rozplywBrakWkladowOpis:
+    'Kontrakt solvera niesie rozpływ wkładów źródeł falownikowych (superpozycja). Sieć bez falowników albo punkt bez toru wkładu → brak pozycji; rozpływ prądu od sieci zewnętrznej (Thevenin) nie jest niesiony przez kontrakt wyników.',
+
+  // Akcja synchronizacji ze schematem (karta W-C, pkt 6)
+  pokazNaSchemacie: 'Pokaż na schemacie',
+
   // Wykres
   wykresTytul: 'Prądy zwarciowe Ik" w punktach zwarcia',
   wykresOsY: 'Prąd zwarciowy początkowy Ik"',

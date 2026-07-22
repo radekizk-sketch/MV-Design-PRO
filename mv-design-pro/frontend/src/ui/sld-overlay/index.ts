@@ -65,4 +65,13 @@ export type {
 } from './ZeroSequenceOverlayAdapter';
 export { adaptOltcControlToOverlay, formatOltcPositionLabel } from './OltcOverlayAdapter';
 export type { OltcControlResultV1 } from './OltcOverlayAdapter';
+export {
+  adaptShortCircuitFlowToOverlay,
+  faultTypeToOverlayAnalysisType,
+  relativeFlowWeight,
+} from './ShortCircuitFlowOverlayAdapter';
+export type {
+  ShortCircuitBranchFlowV1,
+  ShortCircuitFlowOverlayInput,
+} from './ShortCircuitFlowOverlayAdapter';
 export { adaptRawOverlayToTyped } from './RawToTypedOverlayAdapter';

@@ -242,6 +242,12 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     assert wiersz["i2t_ka2s"] == pytest.approx(wiersz["ith_ka"] ** 2 * wiersz["tk_s"], rel=1e-9)
     assert wiersz["kappa"] > 1.0
     assert wiersz["c_factor"] == pytest.approx(1.10, abs=0.01)
+    # ZWARCIA-PRO F4 (karta W-C): pole addytywne rozpływu gałęziowego obecne w
+    # każdym wierszu; sieć bez falowników → pusta lista (policzono, brak wkładów
+    # falownikowych — kontrakt solvera, zero fabrykacji).
+    for row in short_circuit_payload["rows"]:
+        assert "branch_contributions" in row
+        assert isinstance(row["branch_contributions"], list)
 
     trace_details = client.get(f"/api/analysis-runs/{run_id}/results/trace")
     assert trace_details.status_code == 200
@@ -370,6 +376,177 @@ def test_analysis_run_snapshot_completes_legacy_station_catalog_loads(
     assert {load["bus_ref"] for load in loads} == {nn_bus_ref}
     assert {load["catalog_namespace"] for load in loads} == {"OBCIAZENIE"}
     assert {load["parameter_source"] for load in loads} == {"CATALOG"}
+
+
+def _seed_short_circuit_enm_with_inverter(case_id: str) -> None:
+    """ENM: GPZ na szynie głównej + falownik PV na szynie odbioru (kabel między).
+
+    Zwarcie na szynie głównej → wkład falownika płynie kablem (branch flow),
+    więc wiersz kanoniczny tego punktu niesie niepusty rozpływ gałęziowy.
+    """
+    from enm.models import EnergyNetworkModel
+    from enm.store import set_enm
+
+    set_enm(
+        case_id,
+        EnergyNetworkModel.model_validate(
+            {
+                "header": {
+                    "name": "SC rozplyw galeziowy",
+                    "enm_version": "1.0",
+                    "defaults": {"frequency_hz": 50, "unit_system": "SI"},
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "updated_at": "2024-01-01T00:00:00Z",
+                    "revision": 1,
+                    "hash_sha256": "",
+                },
+                "buses": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000401",
+                        "ref_id": "bus-main",
+                        "name": "Szyna glowna",
+                        "tags": [],
+                        "meta": {},
+                        "voltage_kv": 15.0,
+                        "phase_system": "3ph",
+                    },
+                    {
+                        "id": "00000000-0000-0000-0000-000000000402",
+                        "ref_id": "bus-oze",
+                        "name": "Szyna OZE",
+                        "tags": [],
+                        "meta": {},
+                        "voltage_kv": 15.0,
+                        "phase_system": "3ph",
+                    },
+                ],
+                "branches": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000403",
+                        "ref_id": "branch-oze",
+                        "name": "Kabel OZE",
+                        "tags": [],
+                        "meta": {},
+                        "type": "cable",
+                        "from_bus_ref": "bus-main",
+                        "to_bus_ref": "bus-oze",
+                        "status": "closed",
+                        "catalog_ref": "KABEL_SN_TEST",
+                        "parameter_source": "CATALOG",
+                        "length_km": 0.5,
+                        "r_ohm_per_km": 0.253,
+                        "x_ohm_per_km": 0.073,
+                        "b_siemens_per_km": 2.6e-07,
+                        "rating": {"in_a": 270.0},
+                    }
+                ],
+                "sources": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000404",
+                        "tags": [],
+                        "meta": {},
+                        **gpz_source_record(
+                            ref_id="src-grid",
+                            name="Zasilanie GPZ",
+                            bus_ref="bus-main",
+                            voltage_kv=15.0,
+                            sk3_mva=250.0,
+                            rx_ratio=0.10,
+                        ),
+                    }
+                ],
+                "loads": [],
+                "transformers": [],
+                "generators": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000405",
+                        "ref_id": "gen-pv",
+                        "name": "Falownik PV",
+                        "tags": [],
+                        "meta": {},
+                        "bus_ref": "bus-oze",
+                        "p_mw": 1.0,
+                        "q_mvar": 0.0,
+                        "gen_type": "pv_inverter",
+                        # Wariant z trafem w torze (Decision #14) — walidator E028/E029
+                        # dopuszcza przyłącze SN; mapowanie SC czyta nameplate (p_mw).
+                        "connection_variant": "DEDICATED_MV_CONNECTION",
+                    }
+                ],
+                "substations": [],
+                "bays": [],
+                "junctions": [],
+                "corridors": [],
+                "measurements": [],
+                "protection_assignments": [],
+                "branch_points": [],
+            }
+        ),
+    )
+
+
+def test_short_circuit_rows_carry_branch_flow_contributions(client: TestClient) -> None:
+    """ZWARCIA-PRO F4 (karta W-C): rozpływ prądu zwarciowego w gałęziach.
+
+    Tor kanoniczny woła FROZEN solver z include_branch_contributions=True, a
+    `build_short_circuit_results` przenosi wkłady gałęziowe ADDYTYWNIE do
+    wierszy (projekcja A→kA + nazwy z grafu przebiegu, kierunek z solvera).
+    Determinizm: ponowny odczyt daje bajtowo identyczne wiersze.
+    """
+    case_id = str(uuid4())
+    _seed_short_circuit_enm_with_inverter(case_id)
+
+    create_run = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": "SC_3F", "solver_input": {}},
+    )
+    assert create_run.status_code == 201
+    run_id = create_run.json()["id"]
+    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert execute_run.status_code == 200
+    assert execute_run.json()["status"] == "DONE"
+
+    response = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit")
+    assert response.status_code == 200
+    rows = response.json()["rows"]
+    assert rows
+
+    # Pole addytywne obecne w KAŻDYM wierszu (lista — opcja policzona).
+    for row in rows:
+        assert "branch_contributions" in row
+        assert isinstance(row["branch_contributions"], list)
+
+    # Punkt zwarcia na szynie głównej: wkład falownika z szyny OZE płynie kablem.
+    row_main = next(row for row in rows if row["target_name"] == "Szyna glowna")
+    flows = row_main["branch_contributions"]
+    assert flows, "wkład falownika musi płynąć kablem do punktu zwarcia"
+    for flow in flows:
+        for pole in (
+            "branch_id",
+            "branch_name",
+            "source_id",
+            "from_node_id",
+            "from_node_name",
+            "to_node_id",
+            "to_node_name",
+            "i_ka",
+            "direction",
+        ):
+            assert pole in flow, pole
+        assert flow["i_ka"] > 0
+        assert flow["direction"] in {"from_to", "to_from"}
+    assert any(flow["branch_name"] == "Kabel OZE" for flow in flows)
+    assert any(flow["source_id"] == "gen-pv" for flow in flows)
+
+    # Istniejące wielkości punktu (FROZEN + bilans F1) nietknięte — obecne i dodatnie.
+    assert row_main["ikss_ka"] is not None and row_main["ikss_ka"] > 0
+    assert row_main["ip_ka"] is not None and row_main["ip_ka"] > 0
+    assert row_main["zk_ohm"] is not None and row_main["zk_ohm"] > 0
+
+    # Determinizm odczytu: drugi odczyt → identyczny payload wierszy.
+    response2 = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit")
+    assert response2.status_code == 200
+    assert response2.json()["rows"] == rows
 
 
 def test_analysis_creation_requires_canonical_enm_snapshot(client: TestClient) -> None:

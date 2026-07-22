@@ -876,12 +876,16 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
     ]
 
     for node_id in reportable_fault_node_ids:
+        # ZWARCIA-PRO F4 (karta W-C): wkłady gałęziowe FROZEN solvera są liczone
+        # ZAWSZE w torze kanonicznym (opcja addytywna solvera — nie zmienia
+        # żadnej istniejącej wielkości ani śladu White Box; osobna superpozycja).
         if short_circuit_type == ShortCircuitType.THREE_PHASE:
             result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
                 graph=graph,
                 fault_node_id=node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
+                include_branch_contributions=True,
             )
         elif short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
             result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
@@ -890,6 +894,7 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
                 c_factor=c_factor,
                 tk_s=tk_s,
                 z0_bus=z0_bus,
+                include_branch_contributions=True,
             )
         elif short_circuit_type == ShortCircuitType.TWO_PHASE:
             result = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
@@ -897,6 +902,7 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
                 fault_node_id=node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
+                include_branch_contributions=True,
             )
         else:
             result = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
@@ -905,6 +911,7 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
                 c_factor=c_factor,
                 tk_s=tk_s,
                 z0_bus=z0_bus,
+                include_branch_contributions=True,
             )
         payload = result.to_dict()
         node_trace_step_refs: list[int] = []
@@ -1899,10 +1906,51 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _sc_rozplyw_galeziowy(
+    item: dict[str, Any],
+    graph_nodes: dict[str, Any],
+    graph_branches: dict[str, Any],
+) -> list[dict[str, Any]] | None:
+    """Rozpływ prądu zwarciowego w gałęziach (ZWARCIA-PRO F4, karta W-C, addytywnie).
+
+    Przenosi `branch_contributions` FROZEN solvera (superpozycja wkładów źródeł
+    falownikowych per gałąź — `_build_branch_contributions_for_inverters`) do
+    wiersza kanonicznego. WYŁĄCZNIE projekcje prezentacyjne (A→kA, nazwy z grafu
+    przebiegu) — zero fizyki. Kierunek ("from_to"/"to_from") wprost z solvera.
+    Starsze wyniki bez pola → None (uczciwy brak); pusta lista = policzono,
+    brak wkładów falownikowych (kontrakt solvera nie niesie rozpływu Thevenina).
+    """
+    raw = item.get("branch_contributions")
+    if raw is None:
+        return None
+    flows: list[dict[str, Any]] = []
+    for entry in raw:
+        branch_id = entry.get("branch_id")
+        branch = graph_branches.get(branch_id, {})
+        from_id = entry.get("from_node_id")
+        to_id = entry.get("to_node_id")
+        flows.append(
+            {
+                "branch_id": branch_id,
+                "branch_name": branch.get("name") or branch_id,
+                "source_id": entry.get("source_id"),
+                "from_node_id": from_id,
+                "from_node_name": graph_nodes.get(from_id, {}).get("name") or from_id,
+                "to_node_id": to_id,
+                "to_node_name": graph_nodes.get(to_id, {}).get("name") or to_id,
+                "i_ka": _amps_to_ka(entry.get("i_contrib_a")),
+                "direction": entry.get("direction"),
+            }
+        )
+    flows.sort(key=lambda flow: (flow["branch_id"] or "", flow["source_id"] or ""))
+    return flows
+
+
 def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         return {"run_id": str(run.id), "rows": []}
     graph_nodes = ((run.raw_result or {}).get("graph") or {}).get("nodes", {})
+    graph_branches = ((run.raw_result or {}).get("graph") or {}).get("branches", {})
     rows = []
     for item in (run.raw_result or {}).get("results", []):
         target_id = item.get("fault_node_id")
@@ -1917,6 +1965,9 @@ def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
                 "ith_ka": _amps_to_ka(item.get("ith_a")),
                 "sk_mva": item.get("sk_mva"),
                 **_sc_pelny_bilans(item),
+                # ZWARCIA-PRO F4 (karta W-C): rozpływ prądu zwarciowego w gałęziach
+                # (pole addytywne — starsze wyniki bez pola → None).
+                "branch_contributions": _sc_rozplyw_galeziowy(item, graph_nodes, graph_branches),
                 "fault_type": item.get("short_circuit_type"),
                 "analysis_type": item.get("analysis_type")
                 or (run.raw_result or {}).get("analysis_type"),
