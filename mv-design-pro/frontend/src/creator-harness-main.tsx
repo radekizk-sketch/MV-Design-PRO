@@ -37,6 +37,11 @@ import { EkranPorownania } from './ui2/wyniki/porownanie';
 import { useResultsInspectorStore } from './ui/results-inspector/store';
 import { EkranFrt, EkranKompensacji, EkranLom, MacierzNcRfg } from './ui2/oze';
 import { EkranBadanOltc } from './ui2/wyniki/oltc';
+import { EkranSkladowych } from './ui2/wyniki/skladowe';
+import { EkranZbieznosci } from './ui2/wyniki/zbieznosc';
+import { EkranStanuFazowego } from './ui2/wyniki/stan-fazowy';
+import { EkranStabilnosci } from './ui2/wyniki/stabilnosc';
+import { useShellStore } from './ui2/shell/useShellStore';
 import {
   EMPTY_DER_CATALOGS,
   EMPTY_DER_PROFILES,
@@ -96,9 +101,310 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
   ],
 };
 
+// --- Fixture'y scen dowodowych E-29..E-32 (karta Z-1) ----------------------
+// Wartości przepisane 1:1 z kontraktów backendu (te same kształty, co w testach
+// jednostkowych modułów). ZERO fizyki w harnessie — liczby pochodzą z solvera/
+// śladu/snapshotu; harness jedynie serwuje odpowiedzi zamiast żywego backendu.
+
+// E-29 „Składowe symetryczne i sieć zerowa" (ui2/wyniki/skladowe):
+//  short-circuit (bilans F1 + werdykt), trace (krok „Zk" ze składowymi Z1/Z2/Z0),
+//  snapshot (uziemienie punktu neutralnego).
+const SKLADOWE_WYNIK = {
+  run_id: 'run-1f',
+  rows: [
+    {
+      target_id: 'node-1',
+      element_id: 'bus/gpz/sn',
+      target_name: 'Szyna GPZ',
+      ikss_ka: 12.503,
+      ip_ka: 31.2,
+      ith_ka: 12.9,
+      sk_mva: 325.1,
+      fault_type: '1F',
+      flags: [],
+      rk_ohm: 0.5121,
+      xk_ohm: 1.2345,
+      zk_ohm: 1.3365,
+      xr_ratio: 2.41,
+      kappa: 1.602,
+      c_factor: 1.1,
+      tk_s: 1.0,
+      reporting_status: 'reportable',
+      reporting_status_pl: 'raportowalny',
+      proof_status_pl: 'pelny',
+      reporting_limitations: [],
+    },
+  ],
+};
+
+const SKLADOWE_SLAD = {
+  run_id: 'run-1f',
+  snapshot_id: 'snap-1',
+  input_hash: 'hash-1',
+  catalog_context: [],
+  white_box_trace: [
+    {
+      key: 'Zk',
+      step: 1,
+      target_id: 'node-1',
+      title: 'Impedancja zastępcza w punkcie zwarcia',
+      formula_latex: 'Z_k = Z_1 + Z_2 + Z_0',
+      substitution: '\\left(0.1 + j 0.4\\right)',
+      inputs: {
+        z1_ohm: { re: 0.1, im: 0.4 },
+        z2_ohm: { re: 0.1, im: 0.4 },
+        z0_ohm: { re: 0.3, im: 0.9 },
+      },
+    },
+  ],
+};
+
+const SKLADOWE_SNAPSHOT = {
+  run_id: 'run-1f',
+  snapshot_id: 'snap-1',
+  snapshot: {
+    buses: [
+      {
+        id: 'b1',
+        ref_id: 'bus/gpz/sn',
+        name: 'Szyna GPZ',
+        tags: [],
+        meta: {},
+        voltage_kv: 15,
+        phase_system: '3ph',
+        grounding: { type: 'petersen_coil', x_ohm: 120 },
+      },
+    ],
+    transformers: [],
+  },
+};
+
+// E-30 „Zbieżność rozpływu i zaczepy" (ui2/wyniki/zbieznosc): header + wynik
+// rozpływu (summary) + ślad (iteracje + pętla OLTC).
+const ZBIEZNOSC_HEADER = {
+  id: 'run-lf-1',
+  project_id: 'proj-demo',
+  study_case_id: 'case-1',
+  status: 'FINISHED',
+  result_status: 'VALID',
+  created_at: '2026-07-20T09:59:00Z',
+  finished_at: '2026-07-20T10:00:00Z',
+  input_hash: 'hash-1',
+  converged: true,
+  iterations: 4,
+};
+
+const ZBIEZNOSC_WYNIK = {
+  result_version: '1.0',
+  converged: true,
+  iterations_count: 4,
+  tolerance_used: 1e-6,
+  base_mva: 100,
+  slack_bus_id: 'BUS-GPZ',
+  bus_results: [],
+  branch_results: [],
+  summary: {
+    total_losses_p_mw: 0.1234,
+    total_losses_q_mvar: 0.0456,
+    min_v_pu: 0.978,
+    max_v_pu: 1.012,
+    slack_p_mw: 5.4321,
+    slack_q_mvar: 1.2345,
+  },
+};
+
+const ZBIEZNOSC_SLAD = {
+  solver_version: 'load-flow-newton-raphson-v1',
+  solver_method: 'newton-raphson',
+  input_hash: 'hash-1',
+  snapshot_id: 'snap-1',
+  case_id: 'case-1',
+  run_id: 'run-lf-1',
+  init_state: {},
+  init_method: 'flat_start',
+  tolerance: 1e-6,
+  max_iterations: 50,
+  base_mva: 100,
+  slack_bus_id: 'BUS-GPZ',
+  pq_bus_ids: [],
+  pv_bus_ids: [],
+  iterations: [
+    { k: 1, norm_mismatch: 0.5, max_mismatch_pu: 0.2 },
+    { k: 2, norm_mismatch: 0.001, max_mismatch_pu: 0.0005 },
+  ],
+  converged: true,
+  final_iterations_count: 4,
+  oltc_control: {
+    regulators: [
+      {
+        branch_id: 'uuid-tr-1',
+        regulated_winding: 'HV',
+        controlled_bus_id: 'BUS-SN',
+        setpoint_kv: 15.2,
+        deadband_kv: 0.2,
+        initial_position: 0,
+        min_position: -9,
+        max_position: 9,
+      },
+    ],
+    converged: true,
+    iterations_count: 2,
+    switch_counts: { 'uuid-tr-1': 2 },
+    total_switch_count: 2,
+    final_positions: { 'uuid-tr-1': -2 },
+    initial_positions: { 'uuid-tr-1': 0 },
+  },
+};
+
+const ZBIEZNOSC_SNAPSHOT = {
+  header: { revision: 7, hash_sha256: 'abcdef1234567890' },
+  buses: [],
+  branches: [],
+  transformers: [
+    {
+      ref_id: 'TR-1',
+      name: 'TR 110/15',
+      hv_bus_ref: 'B1',
+      lv_bus_ref: 'B2',
+      sn_mva: 16,
+      uhv_kv: 110,
+      ulv_kv: 15,
+      uk_percent: 10,
+      pk_kw: 80,
+      tap_changer: {
+        regulation_type: 'OLTC',
+        regulated_winding: 'HV',
+        neutral_position: 0,
+        current_position: -1,
+        min_position: -9,
+        max_position: 9,
+        step_percent: 1.25,
+        control_mode: 'AUTOMATIC',
+        voltage_setpoint_kv: 15.2,
+        deadband_kv: 0.2,
+      },
+    },
+  ],
+  sources: [],
+  loads: [],
+  generators: [],
+  substations: [],
+  bays: [],
+  junctions: [],
+  corridors: [],
+  measurements: [],
+  protection_assignments: [],
+};
+
+// E-31 „Stan fazowy SN" (ui2/wyniki/stan-fazowy): wiersz kanoniczny (napięcia/
+// prądy/straty per faza, asymetrie + flagi solvera).
+const STAN_FAZOWY_WYNIK = {
+  run_id: 'run-ps-1',
+  rows: [
+    {
+      target_id: 'bus-1',
+      element_id: 'BUS-SN-01',
+      target_name: 'BUS-SN-01',
+      ua_kv: 8.66,
+      ub_kv: 8.61,
+      uc_kv: 8.6,
+      ia_a: 101.5,
+      ib_a: 99.8,
+      ic_a: 100.2,
+      phase_losses_kw: { A: 1.031, B: 0.996, C: 1.004 },
+      voltage_unbalance_percent: 0.42,
+      current_unbalance_percent: 12.7,
+      losses_unbalance_percent: 2.1,
+      flags: {
+        has_fault: false,
+        has_open_phase: false,
+        faulted_phases: [],
+        open_phases: [],
+        voltage_unbalance_alert: false,
+        current_unbalance_alert: true,
+        losses_unbalance_alert: false,
+      },
+      proof_ref: 'proof-ps-1',
+      proof_status: 'complete',
+      proof_status_pl: 'pełny',
+      reporting_status: 'reportable',
+      reporting_status_pl: 'raportowalny',
+      dopuszczalnosc_raportowa: true,
+      reporting_limitations: [],
+    },
+  ],
+};
+
+// E-32 „Stabilność dynamiczna" (ui2/wyniki/stabilnosc): werdykt STABLE ze
+// statusami kryteriów (checks) + ślad automatyki (zdarzenia + efekt topologii).
+const STABILNOSC_WYNIK = {
+  run_id: 'run-dyn',
+  rows: [
+    {
+      scenario_id: 'dyn-1',
+      source_id: 'src/pv/1',
+      faulted_element_id: 'line/gpz/1',
+      cleared_by_element_ids: ['cb-main'],
+      stable: true,
+      status: 'STABLE',
+      criteria_version: 'dynamic_stability_fault_clear_v1',
+      stability_index: 0.812,
+      clearing_time_ms: 120,
+      max_clearing_time_ms: 150,
+      clearing_margin_ms: 30,
+      angle_swing_deg: 65,
+      post_fault_voltage_pu: 0.97,
+      post_fault_frequency_pu: 0.99,
+      limiting_factor: 'angle_swing',
+      violated_checks: [],
+      checks: {
+        clearing_time: true,
+        angle_swing: true,
+        voltage_recovery: true,
+        frequency_recovery: true,
+      },
+      reporting_status_pl: 'raportowalny',
+      proof_status_pl: 'pelny',
+      reporting_limitations: [],
+    },
+  ],
+};
+
+const STABILNOSC_SLAD = {
+  run_id: 'run-dyn',
+  topology_effect: { network_state: 'ISLANDED_SECTION', outage_scope: 'SECTION' },
+  rows: [
+    { event_seq: 2, event_type: 'FAULT_APPLIED', element_id: 'line/gpz/1', detail: 'Fault applied' },
+    { event_seq: 1, event_type: 'AUTOMATION_STARTED', element_id: null, detail: 'Start' },
+  ],
+};
+
 const originalFetch = window.fetch.bind(window);
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+
+  // --- Sceny dowodowe E-29..E-32 (karta Z-1) ---------------------------------
+  // Kształty odpowiedzi 1:1 z kontraktami backendu (te same fixture'y, których
+  // używają testy jednostkowe modułów). Gate po `creator`, bo endpointy
+  // rozpływu kolidują z szeroką regułą `/power-flow-runs` sceny „porownanie".
+  const jsonOK = (body: unknown): Response =>
+    new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
+
+  if (creator === 'wyniki-skladowe') {
+    if (url.endsWith('/results/short-circuit')) return jsonOK(SKLADOWE_WYNIK);
+    if (url.endsWith('/results/trace')) return jsonOK(SKLADOWE_SLAD);
+    if (url.endsWith('/snapshot')) return jsonOK(SKLADOWE_SNAPSHOT);
+  } else if (creator === 'wyniki-zbieznosc') {
+    if (url.includes('/power-flow-runs/') && url.endsWith('/results')) return jsonOK(ZBIEZNOSC_WYNIK);
+    if (url.includes('/power-flow-runs/') && url.endsWith('/trace')) return jsonOK(ZBIEZNOSC_SLAD);
+    if (url.includes('/power-flow-runs/')) return jsonOK(ZBIEZNOSC_HEADER);
+  } else if (creator === 'wyniki-stan-fazowy') {
+    if (url.includes('/results/phase-state')) return jsonOK(STAN_FAZOWY_WYNIK);
+  } else if (creator === 'wyniki-stabilnosc') {
+    if (url.endsWith('/results/dynamic-stability')) return jsonOK(STABILNOSC_WYNIK);
+    if (url.endsWith('/results/automation-trace')) return jsonOK(STABILNOSC_SLAD);
+  }
+
   for (const [key, body] of Object.entries(CATALOG_FIXTURES)) {
     if (url.includes(key)) {
       return new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } });
@@ -1830,6 +2136,67 @@ if (creator === 'arcflash') {
 } else if (creator === 'oltc') {
   // Scena „oltc" (V-A): aktywny przypadek `case-demo` z zasiewu globalnego
   // (useAppStateStore) — bieg badania przez podmienione końcówki execution.
+} else if (creator === 'wyniki-skladowe') {
+  // Scena E-29 (karta Z-1): przebieg zwarcia NIESYMETRYCZNEGO (SC_1F) → ekran
+  // wybiera go automatycznie; dane spływają z podmienionych końcówek wyników.
+  useShellStore.setState({ advancementMode: 'expert' });
+  useExecutionRunsStore.setState({
+    runs: [
+      {
+        id: 'run-1f',
+        analysis_type: 'SC_1F',
+        status: 'DONE',
+        finished_at: '2026-07-21T10:00:00Z',
+        started_at: '2026-07-21T09:59:00Z',
+      } as unknown as ExecutionRun,
+    ],
+  } as never);
+} else if (creator === 'wyniki-zbieznosc') {
+  // Scena E-30 (karta Z-1): zakończony rozpływ (LOAD_FLOW) + snapshot z
+  // transformatorem OLTC (założenia zaczepów modelu).
+  useShellStore.setState({ advancementMode: 'expert' });
+  useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
+  useSnapshotStore.setState({ snapshot: ZBIEZNOSC_SNAPSHOT } as never);
+  useExecutionRunsStore.setState({
+    runs: [
+      {
+        id: 'run-lf-1',
+        analysis_type: 'LOAD_FLOW',
+        status: 'DONE',
+        finished_at: '2026-07-20T10:00:00Z',
+        started_at: '2026-07-20T09:59:00Z',
+      } as unknown as ExecutionRun,
+    ],
+  } as never);
+} else if (creator === 'wyniki-stan-fazowy') {
+  // Scena E-31 (karta Z-1): zakończony przebieg stanu fazowego (PHASE_STATE_SN).
+  useShellStore.setState({ advancementMode: 'expert' });
+  useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
+  useExecutionRunsStore.setState({
+    runs: [
+      {
+        id: 'run-ps-1',
+        analysis_type: 'PHASE_STATE_SN',
+        status: 'DONE',
+        finished_at: '2026-07-20T11:00:00Z',
+        started_at: '2026-07-20T10:59:00Z',
+      } as unknown as ExecutionRun,
+    ],
+  } as never);
+} else if (creator === 'wyniki-stabilnosc') {
+  // Scena E-32 (karta Z-1): zakończony przebieg stabilności (DYNAMIC_STABILITY).
+  useShellStore.setState({ advancementMode: 'expert' });
+  useExecutionRunsStore.setState({
+    runs: [
+      {
+        id: 'run-dyn',
+        analysis_type: 'DYNAMIC_STABILITY',
+        status: 'DONE',
+        finished_at: '2026-07-21T10:00:00Z',
+        started_at: '2026-07-21T09:59:00Z',
+      } as unknown as ExecutionRun,
+    ],
+  } as never);
 } else {
   // Kontekst operacji (szyna/stacja) dla kreatorów pole/OZE/transformator.
   const op =
@@ -1915,6 +2282,10 @@ function Harness() {
   else if (creator === 'frt') node = <EkranFrt trybZaawansowania="expert" />;
   else if (creator === 'oltc') node = <EkranBadanOltc />;
   else if (creator === 'macierz') node = <MacierzNcRfg trybZaawansowania="expert" />;
+  else if (creator === 'wyniki-skladowe') node = <EkranSkladowych />;
+  else if (creator === 'wyniki-zbieznosc') node = <EkranZbieznosci />;
+  else if (creator === 'wyniki-stan-fazowy') node = <EkranStanuFazowego />;
+  else if (creator === 'wyniki-stabilnosc') node = <EkranStabilnosci />;
   else if (creator === 'kompensacja-wynik')
     // V-B: bez preselekcji — spec wybiera wezel i klika „Oblicz" natywnie.
     node = <EkranKompensacji trybZaawansowania="expert" />;
@@ -1957,7 +2328,10 @@ function Harness() {
       style={{
         // Sceny rundy dowodowej V-B mają szerokie tabele (kolumny decyzyjne +
         // informacyjne + werdykt) — szerszy kadr eliminuje przycięcie z prawej.
-        width: ['kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie'].includes(creator)
+        width: [
+          'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie',
+          'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-stabilnosc',
+        ].includes(creator)
           ? 1400
           : 1180,
         minHeight: 800,
