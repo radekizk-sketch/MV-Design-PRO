@@ -118,3 +118,65 @@ CANON_OUT=<dir> node scripts/rasterize_s3_host.mjs               # SVG→PNG (ho
   §3) wymaga zmian geometrii `compose/gpz.ts` (dziś GPZ renderuje pełny
   szczegół na WSZYSTKICH LOD) — poza zakresem S3 (minimum: tokeny+typografia+
   paleta, zrealizowane), GAP do S5.
+
+---
+
+# SCHEMAT-10 S4 — dowód wizualny (V12K-135/136)
+
+Ta sama sieć referencyjna, TEN SAM LOD (L1 „Widok operatorski"), dwa renderу
+jeden obok drugiego — ekran (produkcyjna kanwa `SldCanvasV3`, dark SCADA) i
+eksport (`SldCanvasV3Workspace.handleExportSvg` → `applyContentFitFrame` +
+`toLightTechnicalExportSvg`, TA SAMA funkcja co tor produkcyjny). Regeneracja
+(deterministyczna):
+
+```
+cd mv-design-pro/frontend
+CANON_OUT=<dir> npx vite-node scripts/render_schemat10_s4.tsx   # SVG: s4-ekran-l1 + s4-eksport-l1
+CANON_OUT=<dir> node scripts/rasterize_s4_host.mjs              # SVG→PNG (host HTML, proof-scale wrapper)
+```
+
+| Plik | Motyw | Co pokazuje |
+|------|-------|-------------|
+| `s4-ekran-l1.png` | SCADA-dark (ekran) | Kadr = viewBox kamery (fit-to-viewport 1800×1100, padding domyślny) — DUŻO martwego tła po prawej/dole, bo aspekt sieci (14272×8185) nie pasuje do aspektu kontenera. To jest OK na ekranie (kamera interaktywna, R1 decyzja: dark zostaje na ekranie ZAWSZE). |
+| `s4-eksport-l1.png` | light_technical (eksport) | Kadr = `computeContentFitFrame(scene)` — DOKŁADNIE bbox treści + `FRAME_MARGIN`×2 (ta sama formuła co `SheetFrame` własny rozmiar); treść wypełnia kadr brzeg-do-brzegu, tło białe, tory czarne (WN)/zielone (SN)/granatowe (nN), NOP czerwony. Plik PNG jest przeskalowany (proof-scale, prezentacyjnie) — realny plik `.svg` eksportu ma naturalną rozdzielczość treści (`width`/`height` = kadr w px świata). |
+
+## Co dowodzi (S4)
+
+- **D11 (motyw eksportu):** paleta jasna (`v3/export/exportPalette.ts`,
+  `LIGHT_TECHNICAL_V3` — te same klucze co `theme/colorTokens.ts`) wybierana
+  WYŁĄCZNIE w torze eksportu (string-substytucja markupu SERIALIZOWANEGO —
+  `SldCanvasV3.tsx`/`sheet/Frame.tsx` NIETKNIĘTE, zero importu palety eksportu
+  z renderu ekranowego). Dowód maszynowy: `export/__tests__/exportPalette.test.tsx`
+  (zero wartości ciemnych po transformacji, na realnym markupie L0/L1/L2).
+- **D12 „reszta" (kadr fit-do-treści):** `computeContentFitFrame` = TA SAMA
+  formuła co `SheetFrame` (`sheetSizeFor(scene) + 2×FRAME_MARGIN`) — kadr
+  eksportu IGNORUJE kamerę/viewport ekranu. Dowód maszynowy:
+  `export/__tests__/exportFrame.test.ts` `contentFitRatio(scene) ≥ 0,8` na
+  L0/L1 sieci referencyjnej 52+ stacji (martwe pola ≤20% kadru).
+- **Parytet eksportu:** liczności segmentów/symboli/etykiet (dzieci grup
+  `sld-v3-segments`/`sld-v3-symbols`/`sld-v3-labels`) identyczne przed/po
+  transformacji palety, na L0/L1/L2 (`exportPalette.test.tsx` „parytet
+  elementów").
+- **Goldeny ekranowe nietknięte:** zmiana WYŁĄCZNIE w
+  `ui/sld/v3/export/**` (nowy katalog) + dwie linie `export` dodane do
+  istniejących funkcji (`sheetSizeFor`/`FRAME_MARGIN`, zero zmiany
+  zachowania) + okablowanie `SldCanvasV3Workspace.handleExportSvg` (funkcja
+  WOŁANA wyłącznie po serializacji, nie w torze renderu) — pełna suita
+  `src/ui/sld src/ui/sld-overlay` (173 pliki, 3299 testów) zielona bez
+  regeneracji ŻADNEGO goldenu.
+
+## GAP-y (poza zakresem S4 — patrz raport)
+
+- **PNG/PDF real-eksport**: dziś jedyny DZIAŁAJĄCY kanał eksportu v3 to SVG
+  (`handleExportSvg` + `SldExportFormatMenu` format `svg`); formaty `pdf`/`png`
+  w `SldExportFormatMenu` zwracają dziś komunikat „eksportowany przez
+  dedykowany kanał" (nigdy niezaimplementowany dla v3 — `v2/export/exportPdf.ts`
+  jest SCAFFOLDING bez wiązania PDFKit, nawet dla v2). Budowa realnej
+  rasteryzacji PNG/wektorowego PDF to osobna, większa karta (nowa zdolność,
+  nie „motyw + kadr" tej karty) — wpis do `PLAN_SLD_REWORK.md` §0 potrzebny
+  przed startem.
+- **Konsolidacja UI eksportu**: dok eksportu v3 ma DWA przyciski SVG (button
+  „↓ SVG" + dropdown „SVG (light_technical)") — teraz OBA wołają tę samą,
+  poprawną funkcję (`handleExportSvg`/`onExportSvgOverride`), więc zachowanie
+  jest spójne, ale redundancja UI (dwa przyciski, jeden efekt) zostaje —
+  konsolidacja layoutu doku poza zakresem tej karty (nie „motyw + kadr").

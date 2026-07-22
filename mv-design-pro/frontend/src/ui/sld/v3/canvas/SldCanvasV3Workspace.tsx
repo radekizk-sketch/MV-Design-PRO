@@ -136,6 +136,10 @@ import type { ViewportTransform } from './camera';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
+// SCHEMAT-10 S4 (V12K-135/136): paleta jasna + kadr fit-do-treści WYŁĄCZNIE
+// dla toru eksportu — patrz nagłówki `export/exportPalette.ts`/`exportFrame.ts`.
+import { applyContentFitFrame } from '../export/exportFrame';
+import { toLightTechnicalExportSvg } from '../export/exportPalette';
 import {
   buildFaultFlowOverlayFromScene,
   buildFlowOverlayFromScene,
@@ -989,23 +993,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   }, []);
   const handleResetLayers = useCallback(() => setLayerVisibility({}), []);
 
-  // F12-B pkt 1 (spec §10.1 ARCH-4, „SldExportFormatMenu — eksport SVG/PNG"):
-  // TEN SAM wzorzec co v2 `handleExportSvg` (`SldWorkspaceContainer.tsx`),
-  // selektor kanwy v3 (`sld-canvas-v3` zamiast `sld-canvas-v2`).
-  const handleExportSvg = useCallback(() => {
-    const svgEl = containerRef.current?.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]');
-    if (!svgEl) return;
-    const serializer = new XMLSerializer();
-    const svgStr = serializer.serializeToString(svgEl);
-    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'schemat_sld.svg';
-    link.click();
-    URL.revokeObjectURL(url);
-  }, []);
-
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): stan kamery (transform+
   // LOD) zgłaszany przez `SldCanvasV3.onCameraChange` — jedyny sposób, w jaki
   // ten workspace może poznać AKTUALNY `ViewportTransform` (kamera jest
@@ -1015,6 +1002,45 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const handleCameraChange = useCallback((transform: ViewportTransform, lod: SceneLod) => {
     setCameraState((prev) => (prev && prev.transform === transform && prev.lod === lod ? prev : { transform, lod }));
   }, []);
+
+  // F12-B pkt 1 (spec §10.1 ARCH-4, „SldExportFormatMenu — eksport SVG/PNG"):
+  // TEN SAM wzorzec co v2 `handleExportSvg` (`SldWorkspaceContainer.tsx`),
+  // selektor kanwy v3 (`sld-canvas-v3` zamiast `sld-canvas-v2`).
+  //
+  // SCHEMAT-10 S4 (V12K-135/136, D11/D12): dawniej — surowa serializacja
+  // ekranu (dark, kadr kamery) BEZ normalizacji, mimo że `SldExportFormatMenu`
+  // reklamuje ten sam kanał jako „SVG (light_technical)" (V12K-007 invariant
+  // v2 `exportSvg.ts` NIE obejmuje v3 — v3 koduje kolor jako hex konkretny,
+  // nie `currentColor`, patrz `export/exportPalette.ts` nagłówek) — DWA
+  // przyciski eksportu SVG (ten button + dropdown niżej) dawały DWA różne
+  // (i oba niepełne) wyniki. Teraz: JEDNA funkcja, poprawna end-to-end —
+  // (1) klon węzła ekranu (NIE żywy — kadr/paleta eksportu nie mogą zmieniać
+  // widoku użytkownika), (2) kadr fit-do-treści z bboxa sceny AKTUALNEGO LOD
+  // (`applyContentFitFrame`, D12 „reszta" — ignoruje kamerę/aspekt
+  // kontenera), (3) paleta jasna (`toLightTechnicalExportSvg`, D11) na
+  // zserializowanym markupie. Zwraca nazwę pliku (jak `downloadSldSvg`) albo
+  // `null`, gdy nie ma czego eksportować — ten sam kontrakt zwrotny co
+  // `SldExportFormatMenu.onExportSvgOverride`, więc JEDNA implementacja
+  // zasila OBA punkty wejścia (button + dropdown) bez duplikacji.
+  const handleExportSvg = useCallback((): string | null => {
+    const svgEl = containerRef.current?.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]');
+    if (!svgEl || !snapshot) return null;
+    const lod = lodOverride ?? cameraState?.lod ?? 2;
+    const scene = buildSceneV3(snapshot, lod);
+    const clone = svgEl.cloneNode(true) as SVGSVGElement;
+    applyContentFitFrame(clone, scene);
+    const serializer = new XMLSerializer();
+    const svgStr = toLightTechnicalExportSvg(serializer.serializeToString(clone));
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const filename = 'schemat_sld.svg';
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+    return filename;
+  }, [snapshot, lodOverride, cameraState]);
 
   // F12-B pkt 5: lasso — nakładka screen-space AKTYWNA (pointer-events: auto)
   // WYŁĄCZNIE gdy Shift wciśnięty (albo trwa przeciągnięcie rozpoczęte pod
@@ -1378,6 +1404,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           svgSelector='svg[data-testid="sld-canvas-v3"]'
           projectName={undefined}
           caseLabel={undefined}
+          onExportSvgOverride={handleExportSvg}
         />
       </div>
 

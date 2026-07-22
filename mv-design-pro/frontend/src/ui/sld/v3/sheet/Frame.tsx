@@ -29,8 +29,12 @@ const SHEET_BACKGROUND = CANVAS_BACKGROUND;
 
 /** Strefy referencyjne co 400px (spec §2). */
 const ZONE_STEP = 400;
-/** Margines ramki na oznaczenia stref (litery/cyfry) NA ZEWNĄTRZ obszaru rysunku. */
-const FRAME_MARGIN = 32;
+/** Margines ramki na oznaczenia stref (litery/cyfry) NA ZEWNĄTRZ obszaru rysunku.
+ *  SCHEMAT-10 S4 (V12K-135/136, D12 reszta): eksportowany (dawniej lokalny) —
+ *  `v3/export/exportFrame.ts` reużywa TĘ SAMĄ stałą dla kadru fit-do-treści
+ *  eksportu (kadr eksportu = DOKŁADNIE ta sama formuła co ta ramka, 0 nowego
+ *  marginesu do kalibracji). */
+export const FRAME_MARGIN = 32;
 
 export interface SheetLegendEntry {
   readonly kind: 'symbol' | 'line';

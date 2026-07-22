@@ -1086,8 +1086,11 @@ function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: num
 }
 
 /** Rozmiar arkusza (spec §2/§10) obejmujący cały bbox sceny — margines GRID
- *  jak w F4/F5 (przestrzeń z treści, nie stała, P1). */
-function sheetSizeFor(scene: SceneV3): { readonly width: number; readonly height: number } {
+ *  jak w F4/F5 (przestrzeń z treści, nie stała, P1).
+ *  SCHEMAT-10 S4 (V12K-135/136, D12 reszta): eksportowana (dawniej lokalna)
+ *  — `v3/export/exportFrame.ts` reużywa DOKŁADNIE tę samą formułę dla kadru
+ *  fit-do-treści eksportu (0 duplikacji marginesu treści). */
+export function sheetSizeFor(scene: SceneV3): { readonly width: number; readonly height: number } {
   return {
     width: Math.max(scene.bbox.x + scene.bbox.width, 0),
     height: Math.max(scene.bbox.y + scene.bbox.height, 0),
