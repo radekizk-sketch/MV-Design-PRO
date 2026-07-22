@@ -32,6 +32,7 @@ describe('przekroczeniaRozplywu — konsolidacja przekroczeń napięć szyn', ()
       elementTyp: 'Bus',
       elementNazwa: 'SZ-ST2',
       opis: T.opisNapiecieNiskie,
+      rodzaj: 'napiecie',
     });
     expect(p.wartosc).toContain('0,9410');
     expect(p.klucz).toBe('rozplyw::napiecie::SZ-ST2');

@@ -54,7 +54,8 @@ export function TabelaSzyn({ trybZaawansowania, onOtworzDowod, onEksport }: Tabe
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_SZYNA}
-        onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', ref)}
+        // K1 / F-E6.3: werdykt tej tabeli = napięcie poza zakresem → rodzaj 'napiecie'.
+        onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', ref, 'napiecie')}
       />
     </div>
   );

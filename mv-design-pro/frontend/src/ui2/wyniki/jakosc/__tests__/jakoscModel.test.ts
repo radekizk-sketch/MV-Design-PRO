@@ -12,6 +12,7 @@ import {
   naZalozeniaWiarygodnosci,
   przebiegRozplywu,
   przebiegZwarciowy,
+  rodzajPrzekroczeniaWalidacji,
   typElementuWalidacji,
 } from '../jakoscModel';
 import { WALIDACJA_FIXTURE, WIARYGODNOSC_FIXTURE, przebiegTestowy } from './fixtures';
@@ -176,5 +177,18 @@ describe('typElementuWalidacji — mapowanie rodzaju kontroli na typ elementu (F
 
   it('bilans strat (agregat systemowy target_id=network) → null (brak elementu, brak martwej akcji)', () => {
     expect(typElementuWalidacji('LOSS_BUDGET')).toBeNull();
+  });
+});
+
+describe('rodzajPrzekroczeniaWalidacji — mapowanie check_type na rodzaj akcji naprawczej (K1 / F-E6.3)', () => {
+  it('mapowanie 1:1 z realnych kodów backendu', () => {
+    expect(rodzajPrzekroczeniaWalidacji('VOLTAGE_DEVIATION')).toBe('napiecie');
+    expect(rodzajPrzekroczeniaWalidacji('BRANCH_LOADING')).toBe('obciazalnosc-galezi');
+    expect(rodzajPrzekroczeniaWalidacji('TRANSFORMER_LOADING')).toBe('obciazalnosc-transformatora');
+    expect(rodzajPrzekroczeniaWalidacji('REACTIVE_BALANCE')).toBe('bilans-biernej');
+  });
+
+  it('bilans strat → null (agregat systemowy — spójnie z typElementuWalidacji)', () => {
+    expect(rodzajPrzekroczeniaWalidacji('LOSS_BUDGET')).toBeNull();
   });
 });

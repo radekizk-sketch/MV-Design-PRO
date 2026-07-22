@@ -128,4 +128,11 @@ export interface EkranAnalizyProps {
    * Wołany z kluczem wiersza (tą samą wartością co `onPoprawWModelu`).
    */
   wierszDecyzyjny?: (klucz: string) => boolean;
+  /**
+   * Rodzaj przekroczenia DANEGO wiersza (K1 / F-E6.3): steruje etykietą i opisem
+   * przycisku decyzji przez rejestr `akcjeNaprawcze.ts` (etykieta kontekstowa
+   * wyłącznie tam, gdzie akcja różni się od generycznej — §0.5). Brak propsa
+   * lub `undefined` dla wiersza = etykieta generyczna (zachowanie 1:1).
+   */
+  rodzajWiersza?: (klucz: string) => import('./akcjeNaprawcze').RodzajPrzekroczenia | undefined;
 }

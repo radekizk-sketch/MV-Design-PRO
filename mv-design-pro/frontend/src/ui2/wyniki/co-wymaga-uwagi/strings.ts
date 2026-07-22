@@ -9,8 +9,8 @@ export const CO_WYMAGA_UWAGI_STRINGS = {
   kolOpis: 'Przekroczenie',
   kolWartosc: 'Wartość',
   kolDecyzja: 'Decyzja',
-  poprawWModelu: 'Popraw w modelu',
-  poprawWModeluOpis: 'Zaznacz element na schemacie i przejdź do konfiguracji.',
+  // Etykieta/opis akcji „Popraw w modelu" pochodzą z rejestru akcji naprawczych
+  // (`wzorzec/akcjeNaprawcze.ts`, K1 / F-E6.3) — kontekstowe per rodzaj.
   // Podsumowanie
   podsumowanie: (n: number) => `Przekroczeń do rozpatrzenia: ${n}`,
   // Stany zerowe (uczciwe rozróżnienie źródła)

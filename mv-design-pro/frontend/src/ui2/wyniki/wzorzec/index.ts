@@ -9,6 +9,8 @@ export { TabelaWynikow } from './TabelaWynikow';
 export { SekcjaZalozen } from './SekcjaZalozen';
 export { WZORZEC_STRINGS } from './strings';
 export { usePoprawWModelu } from './usePoprawWModelu';
+export { akcjaNaprawcza, AKCJA_GENERYCZNA } from './akcjeNaprawcze';
+export type { RodzajPrzekroczenia, AkcjaNaprawcza, CelAkcjiNaprawczej } from './akcjeNaprawcze';
 export type {
   EkranAnalizyProps,
   NaglowekAnalizy,

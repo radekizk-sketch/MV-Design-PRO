@@ -13,6 +13,7 @@ import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type { ElementType } from '../../../ui/types';
 import type {
   DefinicjaKolumny,
+  RodzajPrzekroczenia,
   WartoscKomorki,
   WierszTabeli,
   WierszZalozenia,
@@ -218,6 +219,30 @@ export function typElementuWalidacji(checkType: RodzajKontroli): ElementType | n
       return 'LineBranch';
     case 'TRANSFORMER_LOADING':
       return 'TransformerBranch';
+    case 'LOSS_BUDGET':
+      return null;
+  }
+}
+
+/**
+ * Rodzaj przekroczenia dla akcji naprawczej (K1 / F-E6.3) — mapowanie 1:1
+ * z realnych kodów `check_type` backendu (`analysis/energy_validation`):
+ * napięcie / obciążalność gałęzi / obciążalność transformatora / bilans biernej.
+ * LOSS_BUDGET → null (agregat systemowy — przycisk decyzji się nie renderuje,
+ * spójnie z `typElementuWalidacji`).
+ */
+export function rodzajPrzekroczeniaWalidacji(
+  checkType: RodzajKontroli,
+): RodzajPrzekroczenia | null {
+  switch (checkType) {
+    case 'VOLTAGE_DEVIATION':
+      return 'napiecie';
+    case 'BRANCH_LOADING':
+      return 'obciazalnosc-galezi';
+    case 'TRANSFORMER_LOADING':
+      return 'obciazalnosc-transformatora';
+    case 'REACTIVE_BALANCE':
+      return 'bilans-biernej';
     case 'LOSS_BUDGET':
       return null;
   }

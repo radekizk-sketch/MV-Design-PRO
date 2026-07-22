@@ -11,7 +11,7 @@
  */
 
 import { useRejestrPrzekroczen } from './model';
-import { usePoprawWModelu } from '../wzorzec';
+import { akcjaNaprawcza, usePoprawWModelu } from '../wzorzec';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from './strings';
 import './coWymagaUwagi.css';
 
@@ -52,14 +52,16 @@ export function EkranCoWymagaUwagi() {
                 <span className="mvd-cwu-element mvd-num">{p.elementNazwa}</span>
                 <span className="mvd-cwu-opis">{p.opis}</span>
                 <span className="mvd-cwu-wartosc mvd-num">{p.wartosc}</span>
+                {/* K1 / F-E6.3: etykieta i akcja z rejestru akcji naprawczych —
+                    kontekstowe per rodzaj przekroczenia pozycji rejestru. */}
                 <button
                   type="button"
                   className="mvd-cwu-popraw"
                   data-testid="mvd-cwu-popraw"
-                  title={T.poprawWModeluOpis}
-                  onClick={() => poprawWModelu(p.elementRef, p.elementTyp, p.elementNazwa)}
+                  title={akcjaNaprawcza(p.rodzaj).opis}
+                  onClick={() => poprawWModelu(p.elementRef, p.elementTyp, p.elementNazwa, p.rodzaj)}
                 >
-                  {T.poprawWModelu}
+                  {akcjaNaprawcza(p.rodzaj).etykieta}
                 </button>
               </li>
             ))}

@@ -255,7 +255,8 @@ function WynikZgodnosci({
           const w = wierszeSelektora.get(klucz);
           // Tylko napięcie (U) mapuje jednoznacznie na węzeł (Bus). Pomiar P/Q
           // nie niesie jednoznacznego typu elementu w kontrakcie → nie zgadujemy.
-          if (w && w.wielkosc === 'U') poprawWModelu(w.element_ref, 'Bus', w.element_ref);
+          // K1 / F-E6.3: pomiar U = przekroczenie rodzaju 'napiecie'.
+          if (w && w.wielkosc === 'U') poprawWModelu(w.element_ref, 'Bus', w.element_ref, 'napiecie');
         }}
         wierszDecyzyjny={(klucz) => wierszeSelektora.get(klucz)?.wielkosc === 'U'}
       />

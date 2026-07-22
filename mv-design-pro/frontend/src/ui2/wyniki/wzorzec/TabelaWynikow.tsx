@@ -21,6 +21,7 @@ import type {
   WierszTabeli,
 } from './wzorzecModel';
 import { WZORZEC_STRINGS } from './strings';
+import { akcjaNaprawcza, type RodzajPrzekroczenia } from './akcjeNaprawcze';
 
 /**
  * Próg aktywacji wirtualizacji okienkowej (liczba wierszy). Powyżej — renderujemy
@@ -63,6 +64,9 @@ interface TabelaWynikowProps {
   onPoprawWModelu?: (klucz: string) => void;
   /** Predykat naprawialności wiersza (F-E6.2) — brak = każdy wiersz z ostrzeżeniem. */
   wierszDecyzyjny?: (klucz: string) => boolean;
+  /** Rodzaj przekroczenia wiersza (K1 / F-E6.3) — etykieta/opis przycisku z rejestru
+   * `akcjeNaprawcze.ts`; brak = etykieta generyczna (1:1). */
+  rodzajWiersza?: (klucz: string) => RodzajPrzekroczenia | undefined;
 }
 
 /** Czy wiersz niesie jakiekolwiek przekroczenie (dowolna komórka `ostrzezenie`). */
@@ -117,6 +121,7 @@ export function TabelaWynikow({
   wybranyWiersz,
   onPoprawWModelu,
   wierszDecyzyjny,
+  rodzajWiersza,
 }: TabelaWynikowProps) {
   const [sort, setSort] = useState<StanSortowania | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -221,14 +226,16 @@ export function TabelaWynikow({
                 type="button"
                 className="mvd-wyn-popraw-btn"
                 data-testid="mvd-wyn-popraw"
-                title={WZORZEC_STRINGS.poprawWModeluOpis}
+                // K1 / F-E6.3: etykieta i opis z rejestru akcji naprawczych —
+                // kontekstowe wyłącznie, gdy akcja różni się od generycznej.
+                title={akcjaNaprawcza(rodzajWiersza?.(rowKey)).opis}
                 onClick={(e) => {
                   // Wiersz bywa wybieralny (onClick na tr) — nie propaguj do wyboru.
                   e.stopPropagation();
                   onPoprawWModelu!(rowKey);
                 }}
               >
-                {WZORZEC_STRINGS.poprawWModelu}
+                {akcjaNaprawcza(rodzajWiersza?.(rowKey)).etykieta}
               </button>
             )}
           </td>

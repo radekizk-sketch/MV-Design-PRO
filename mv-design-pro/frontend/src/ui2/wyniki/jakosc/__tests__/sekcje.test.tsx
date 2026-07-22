@@ -161,7 +161,7 @@ describe('SekcjaWalidacji — stany', () => {
 describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () => {
   beforeEach(() => {
     useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
-    useShellStore.setState({ activeSpace: 'wyniki' });
+    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null });
   });
 
   it('przycisk decyzji tylko na wierszach z przekroczeniem mapującym na element (WARNING/FAIL element-level)', async () => {
@@ -183,6 +183,42 @@ describe('SekcjaWalidacji — pętla decyzji „Popraw w modelu" (F-E6.2)', () =
     expect(sel.selectedElement).toMatchObject({ id: 'bus-B', type: 'Bus' });
     expect(sel.sldCenterOnElement).toBe('bus-B');
     expect(useShellStore.getState().activeSpace).toBe('schemat');
+  });
+
+  it('bilans mocy biernej (FAIL) → akcja KONTEKSTOWA (K1/F-E6.3): etykieta „dobór kompensacji", klik prowadzi do zakładki „kompensacja" przestrzeni „Wyniki"', async () => {
+    // Wariant fixtury: REACTIVE_BALANCE z werdyktem FAIL (element = węzeł
+    // bilansujący). Wartość liczbowa konieczna — tag przekroczenia (ostrzezenie)
+    // siada na komórce wartości, jak w realnej odpowiedzi backendu dla FAIL.
+    const fixtura: WalidacjaResponse = {
+      ...WALIDACJA_FIXTURE,
+      items: [
+        {
+          ...WALIDACJA_FIXTURE.items[4],
+          observed_value: 0.82,
+          limit_fail: 0.95,
+          status: 'FAIL',
+        },
+      ],
+    };
+    mockedWalidacja.mockResolvedValue(fixtura);
+    render(<SekcjaWalidacji {...propsWalidacja()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-walidacja')).toBeTruthy());
+
+    // Etykieta kontekstowa (§0.5 karty K1 — akcja różni się od generycznej).
+    const przycisk = screen.getByTestId('mvd-wyn-popraw');
+    expect(przycisk.textContent).toBe('Popraw w modelu — dobór kompensacji');
+
+    // Realna ścieżka: natywny klik → realne store'y (selekcja + deep-link zakładki).
+    fireEvent.click(przycisk);
+    const sel = useSelectionStore.getState();
+    expect(sel.selectedElement).toMatchObject({
+      id: WALIDACJA_FIXTURE.items[4].target_id,
+      type: 'Bus',
+    });
+    // Schemat nie jest celem tej akcji — bez odroczonego zoomu SLD.
+    expect(sel.sldCenterOnElement).toBeNull();
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(useShellStore.getState().wynikiTab).toBe('kompensacja');
   });
 
   it('bilans strat (target_id=network) z przekroczeniem NIE dostaje przycisku (agregat systemowy, brak martwej akcji)', async () => {

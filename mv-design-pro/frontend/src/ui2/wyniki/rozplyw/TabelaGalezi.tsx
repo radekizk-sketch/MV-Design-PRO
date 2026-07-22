@@ -60,7 +60,9 @@ export function TabelaGalezi({ trybZaawansowania, onOtworzDowod, onEksport }: Ta
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_GALAZ}
-        onPoprawWModelu={(ref) => poprawWModelu(ref, 'LineBranch', ref)}
+        // K1 / F-E6.3: wiersz gałęzi → rodzaj 'obciazalnosc-galezi' (akcja generyczna;
+        // przycisk renderuje się tylko na wierszu z werdyktem `ostrzezenie` adaptera).
+        onPoprawWModelu={(ref) => poprawWModelu(ref, 'LineBranch', ref, 'obciazalnosc-galezi')}
       />
       {suma && (
         <div className="mvd-rozplyw-suma-strat" data-testid="mvd-rozplyw-suma-strat">

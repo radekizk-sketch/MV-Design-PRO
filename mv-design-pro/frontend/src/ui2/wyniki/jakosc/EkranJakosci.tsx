@@ -53,6 +53,7 @@ import {
   KOLUMNY_WALIDACJI,
   KOLUMNY_WIARYGODNOSCI,
   kluczWalidacji,
+  rodzajPrzekroczeniaWalidacji,
   naWierszeArcFlash,
   naWierszeMigotania,
   naWierszeWalidacji,
@@ -389,11 +390,24 @@ export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, on
         onPoprawWModelu={(klucz) => {
           const it = wierszeSelektora.get(klucz);
           const typ = it ? typElementuWalidacji(it.check_type) : null;
-          if (it && typ) poprawWModelu(it.target_id, typ, it.target_name ?? it.target_id);
+          // K1 / F-E6.3: rodzaj z realnego `check_type` → akcja kontekstowa
+          // (np. REACTIVE_BALANCE → okno „Dobór kompensacji").
+          if (it && typ) {
+            poprawWModelu(
+              it.target_id,
+              typ,
+              it.target_name ?? it.target_id,
+              rodzajPrzekroczeniaWalidacji(it.check_type) ?? undefined,
+            );
+          }
         }}
         wierszDecyzyjny={(klucz) => {
           const it = wierszeSelektora.get(klucz);
           return it != null && typElementuWalidacji(it.check_type) != null;
+        }}
+        rodzajWiersza={(klucz) => {
+          const it = wierszeSelektora.get(klucz);
+          return it ? rodzajPrzekroczeniaWalidacji(it.check_type) ?? undefined : undefined;
         }}
       />
       <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-walidacja-podsumowanie">
@@ -673,7 +687,8 @@ export function SekcjaMigotania({
         kluczWiersza={KLUCZ_WIERSZA_MIGOTANIE}
         onWybierzWiersz={setWybrany}
         wybranyWiersz={wybrany}
-        onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', ref)}
+        // K1 / F-E6.3: werdykt tej sekcji = migotanie (Pst/Plt/d%) → rodzaj 'migotanie'.
+        onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', ref, 'migotanie')}
       />
       <div className="mvd-jakosc-podsumowanie" data-testid="mvd-jakosc-migotanie-podsumowanie">
         <Chip etykieta={JAKOSC_STRINGS.podsumOcenione} wartosc={summary.assessed_count} istotnosc="ok" />

@@ -26,6 +26,7 @@ import { useMemo } from 'react';
 import type { PowerFlowResultV1 } from '../../../ui/power-flow-results/types';
 import { usePowerFlowResultsStore } from '../../../ui/power-flow-results/store';
 import type { ElementType } from '../../../ui/types';
+import type { RodzajPrzekroczenia } from '../wzorzec';
 import { fmtPU, napiecePozaZakresem, NAPIECIE_MAX_PU } from '../rozplyw/strings';
 import { CO_WYMAGA_UWAGI_STRINGS as T } from './strings';
 
@@ -45,6 +46,8 @@ export interface Przekroczenie {
   opis: string;
   /** Sformatowana wartość z jednostką. */
   wartosc: string;
+  /** Rodzaj przekroczenia (K1 / F-E6.3) — akcja kontekstowa `usePoprawWModelu`. */
+  rodzaj: RodzajPrzekroczenia;
 }
 
 /**
@@ -64,6 +67,7 @@ export function przekroczeniaRozplywu(wynik: PowerFlowResultV1 | null): Przekroc
       elementNazwa: r.bus_id,
       opis: r.v_pu > NAPIECIE_MAX_PU ? T.opisNapiecieWysokie : T.opisNapiecieNiskie,
       wartosc: `${fmtPU(r.v_pu)} ${T.jednPU}`,
+      rodzaj: 'napiecie' as RodzajPrzekroczenia,
     }));
 }
 
