@@ -100,6 +100,10 @@ from network_model.solvers.machine_sc_iec60909 import (
     MachinePartialContribution,
     MachineShortCircuitResult,
 )
+from network_model.solvers.short_circuit_asymmetrical_quantities import (
+    SC1AsymmetricalQuantities,
+    normalize_sc1_fault_type,
+)
 
 if TYPE_CHECKING:
     from network_model.catalog import CatalogRepository
@@ -283,6 +287,13 @@ class SC1Input:
     tk_s: float = 1.0
     m_factor: float = 1.0
     n_factor: float = 0.0
+
+    # Wielkości POLICZONE w warstwie solverów (V12K-118, NOT-A-SOLVER):
+    # komplet Z_ekw / prądów składowych i fazowych / I″k / κ / i_p / I_dyn / I_th
+    # z compute_sc1_asymmetrical_quantities. Pole addytywne (default None dla
+    # zgodności konstruktora), ale WYMAGANE przez generate_sc1_proof —
+    # proof engine nie liczy fizyki, wyłącznie formatuje kroki dowodu.
+    quantities: SC1AsymmetricalQuantities | None = None
 
 
 class ProofGenerator:
@@ -693,13 +704,18 @@ class ProofGenerator:
         artifact_id: UUID | None = None,
     ) -> ProofDocument:
         """
-        Generuje dowód SC1 (zwarcia asymetryczne) — FULL MATH.
+        Generuje dowód SC1 (zwarcia asymetryczne) — czysty formatter (§4.1).
 
         Zawiera OBOWIĄZKOWE wyniki (§4.1):
         - I″k (początkowy prąd zwarciowy)
         - ip (prąd udarowy)
         - I_th (prąd cieplny równoważny)
         - I_dyn (prąd dynamiczny)
+
+        NOT-A-SOLVER (V12K-118): wszystkie wielkości fizyczne pochodzą z
+        ``data.quantities`` policzonych w warstwie solverów
+        (``network_model/solvers/short_circuit_asymmetrical_quantities``);
+        generator wyłącznie buduje kroki dowodu (wzór → podstawienie → wynik).
         """
         if artifact_id is None:
             artifact_id = uuid4()
@@ -708,44 +724,29 @@ class ProofGenerator:
         proof_type = cls._map_sc1_proof_type(fault_type)
         step_order = EquationRegistry.get_sc1_step_order(fault_type)
 
-        z_equiv = cls._compute_sc1_equiv_impedance(
-            fault_type=fault_type,
-            z1=data.z1_ohm,
-            z2=data.z2_ohm,
-            z0=data.z0_ohm,
-        )
+        if data.quantities is None:
+            raise ValueError(
+                "SC1Input.quantities jest wymagane — proof engine nie liczy fizyki "
+                "(NOT-A-SOLVER); wielkości zwarciowe SC1 liczy solver "
+                "network_model/solvers/short_circuit_asymmetrical_quantities."
+            )
+        quantities = data.quantities
+        if quantities.fault_type != fault_type:
+            raise ValueError(
+                f"SC1Input.quantities policzone dla typu {quantities.fault_type}, "
+                f"a dowód dotyczy typu {fault_type}"
+            )
 
-        i1, i2, i0 = cls._compute_sc1_sequence_currents(
-            fault_type=fault_type,
-            u_prefault_kv=data.u_prefault_kv,
-            z_equiv=z_equiv,
-            z2=data.z2_ohm,
-            z0=data.z0_ohm,
-        )
-
-        ia, ib, ic = cls._compute_sc1_phase_currents(
-            a_operator=data.a_operator,
-            i0=i0,
-            i1=i1,
-            i2=i2,
-        )
-
-        # Post-fault quantities (§4.1 MANDATORY: I″k, ip, I_th, I_dyn)
-        ikss_ka = cls._compute_sc1_ikss(
-            fault_type=fault_type,
-            c_factor=data.c_factor,
-            u_n_kv=data.u_n_kv,
-            z_equiv=z_equiv,
-        )
-
-        r_equiv = z_equiv.real
-        x_equiv = z_equiv.imag
-        rx_ratio = r_equiv / x_equiv if x_equiv != 0 else 0.0
-        kappa = 1.02 + 0.98 * math.exp(-3.0 * rx_ratio)
-        ip_ka = kappa * math.sqrt(2.0) * ikss_ka
-        idyn_ka = ip_ka
-        sqrt_mn = math.sqrt(data.m_factor + data.n_factor)
-        ith_ka = ikss_ka * sqrt_mn
+        z_equiv = quantities.z_equiv_ohm
+        i1, i2, i0 = quantities.i1_ka, quantities.i2_ka, quantities.i0_ka
+        ia, ib, ic = quantities.ia_ka, quantities.ib_ka, quantities.ic_ka
+        ikss_ka = quantities.ikss_ka
+        r_equiv = quantities.r_equiv_ohm
+        x_equiv = quantities.x_equiv_ohm
+        kappa = quantities.kappa
+        ip_ka = quantities.ip_ka
+        idyn_ka = quantities.idyn_ka
+        ith_ka = quantities.ith_ka
 
         steps: list[ProofStep] = []
         step_number = 0
@@ -895,98 +896,8 @@ class ProofGenerator:
 
     @staticmethod
     def _normalize_sc1_fault_type(fault_type: str) -> str:
-        mapping = {
-            "ONE_PHASE_TO_GROUND": "SC1FZ",
-            "TWO_PHASE": "SC2F",
-            "TWO_PHASE_TO_GROUND": "SC2FZ",
-            "SC1FZ": "SC1FZ",
-            "SC2F": "SC2F",
-            "SC2FZ": "SC2FZ",
-        }
-        if fault_type not in mapping:
-            raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
-        return mapping[fault_type]
-
-    @staticmethod
-    def _compute_sc1_equiv_impedance(
-        *,
-        fault_type: str,
-        z1: complex,
-        z2: complex,
-        z0: complex,
-    ) -> complex:
-        if fault_type == "SC1FZ":
-            return z1 + z2 + z0
-        if fault_type == "SC2F":
-            return z1 + z2
-        if fault_type == "SC2FZ":
-            denominator = z2 + z0
-            if denominator == 0:
-                raise ValueError("Z2 + Z0 = 0; cannot compute 2F–Z equivalent impedance")
-            return z1 + (z2 * z0) / denominator
-        raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
-
-    @staticmethod
-    def _compute_sc1_sequence_currents(
-        *,
-        fault_type: str,
-        u_prefault_kv: float,
-        z_equiv: complex,
-        z2: complex,
-        z0: complex,
-    ) -> tuple[complex, complex, complex]:
-        if z_equiv == 0:
-            raise ValueError("Z_k = 0; cannot compute sequence currents")
-        i1 = u_prefault_kv / z_equiv
-        if fault_type == "SC1FZ":
-            return i1, i1, i1
-        if fault_type == "SC2F":
-            return i1, -i1, 0.0
-        if fault_type == "SC2FZ":
-            denominator = z2 + z0
-            if denominator == 0:
-                raise ValueError("Z2 + Z0 = 0; cannot compute 2F–Z sequence currents")
-            i2 = -(z0 / denominator) * i1
-            i0 = -(z2 / denominator) * i1
-            return i1, i2, i0
-        raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
-
-    @staticmethod
-    def _compute_sc1_phase_currents(
-        *,
-        a_operator: complex,
-        i0: complex,
-        i1: complex,
-        i2: complex,
-    ) -> tuple[complex, complex, complex]:
-        a = a_operator
-        a2 = a**2
-        ia = i0 + i1 + i2
-        ib = i0 + a2 * i1 + a * i2
-        ic = i0 + a * i1 + a2 * i2
-        return ia, ib, ic
-
-    @staticmethod
-    def _compute_sc1_ikss(
-        *,
-        fault_type: str,
-        c_factor: float,
-        u_n_kv: float,
-        z_equiv: complex,
-    ) -> float:
-        """
-        I″k for asymmetrical faults per IEC 60909-0:2016.
-
-        - 1F-Z: I″k1 = √3·c·Un / |Z_k|  (eq. 29)
-        - 2F:   I″k2 = c·Un / |Z_k|       (eq. 23)
-        - 2F-Z: I″k2E = c·Un / |Z_k|
-        """
-        z_abs = abs(z_equiv)
-        if z_abs == 0:
-            raise ValueError("Z_k = 0; cannot compute I″k")
-        if fault_type == "SC1FZ":
-            return math.sqrt(3.0) * c_factor * u_n_kv / z_abs
-        return c_factor * u_n_kv / z_abs
+        # Mapowanie nazw (nie fizyka) — jedno źródło w module solverowym SC1.
+        return normalize_sc1_fault_type(fault_type)
 
     # =========================================================================
     # SC1 Post-Fault Step Builders (§4.1 — MANDATORY)
@@ -1328,6 +1239,7 @@ class ProofGenerator:
         if equation is None:
             raise ValueError(f"Missing equation definition for {equation_id}")
 
+        input_values: tuple[ProofValue, ...]
         if equation_id == "EQ_SC1_003":
             substitution = (
                 f"Z_k = {cls._format_complex_latex(z1, 'Ω')} + "
@@ -3831,7 +3743,7 @@ class ProofGenerator:
         key_results: dict[str, ProofValue] = {}
         counterfactual_diff: dict[str, ProofValue] = {}
 
-        def _add_pair(key: str, symbol: str):
+        def _add_pair(key: str, symbol: str) -> None:
             val_a = proof_a.summary.key_results.get(key)
             val_b = proof_b.summary.key_results.get(key)
             if not val_a or not val_b:

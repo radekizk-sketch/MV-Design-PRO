@@ -70,15 +70,24 @@ contributions: `wywod`, `wywod_sekcje`, `walidacja_iec`).
 | Analizy pochodne (grid_strength, migotanie, sanity_bounds, arc_flash_view, wniosek_osd) | wiersze kanoniczne (`build_short_circuit_results`): sk_mva/ikss_ka | nic | **OK** (wzorzec kanoniczny) |
 | Eksport projektu ZIP (`application/project_archive`) | nie serializuje wyników SC (eksport modelu/projektu) | — | n/d |
 
-**GAP (duplikacja fizyki u konsumenta — naprawa u źródła = osobna karta, solvery
-nietknięte w W-D):**
+**GAP (duplikacja fizyki u konsumenta) — NAPRAWIONY U ŹRÓDŁA (karta S-A,
+2026-07-22):**
 
-- `backend/src/application/proof_engine/proof_generator.py:711–748`
+- ~~`backend/src/application/proof_engine/proof_generator.py:711–748`
   (`generate_sc1_proof`): ścieżka SC1 liczy w warstwie proof engine Z_ekw ze
-  składowych, prądy składowe/fazowe, Ik″, κ = 1.02+0.98·e^(−3R/X), ip = κ·√2·Ik″,
-  I_th = Ik″·√(m+n) — zamiast czytać wynik solvera SC (solver liczy 1F/2F).
-  Duplikacja fizyki poza `network_model/solvers/**`; do przeniesienia na odczyt
-  z FROZEN result osobną kartą (zmiana dotyka fingerprintów dowodów SC1).
+  składowych, prądy składowe/fazowe, Ik″, κ, ip, I_th~~ → fizyka przeniesiona
+  VERBATIM (bit-w-bit) do warstwy solverów:
+  `network_model/solvers/short_circuit_asymmetrical_quantities.py`
+  (`compute_sc1_asymmetrical_quantities`). Generator dowodu SC1 = czysty
+  formatter (wymaga `SC1Input.quantities` z solvera; brak → ValueError);
+  pakiet `packs/sc_asymmetrical.py` woła solver i przekazuje wynik (wzorzec
+  1:1 z pakietem SC3F). Fingerprinty dowodów SC1 BEZ ZMIAN — goldeny
+  `tests/golden/sc_asymmetrical/**` nietknięte (dowód bajt-w-bajt); nowy test
+  `tests/proof_engine/test_sc1_not_a_solver.py` pilnuje, by proof engine nie
+  liczył fizyki SC1. Solver FROZEN (`compute_1ph_short_circuit`) nietknięty —
+  liczy inne wielkości brzegowe (I_th = Ik″·√tk vs normowe √(m+n) w dowodzie),
+  więc odczyt z FROZEN result zmieniałby liczby dowodu (delta produktowa,
+  świadomie NIE wykonana).
 
 Excel: system nie ma eksportu wyników do XLSX (`xlsx_import` to import danych) —
 zgodnie z zasadą zero fabrykacji nie tworzono nowego kanału w W-D; pozycja

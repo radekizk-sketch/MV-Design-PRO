@@ -369,16 +369,24 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
     };
   }, []);
 
-  // Prefill typu katalogowego: pierwszy rekord pasujący do rodzaju (zero pustych pól).
+  // Prefill typu katalogowego: STAN POCHODNY (zero pustych pól, jeden commit).
+  // Jawny wybór użytkownika obowiązuje, dopóki pasuje do rodzaju; inaczej
+  // pierwszy rekord rodzaju. Dawny useEffect ustawiał prefill w DRUGIM commicie
+  // po dojściu katalogu — przez jedną klatkę select pokazywał pierwszą opcję
+  // (domyślność przeglądarki), a stan był pusty: brak panelu danych typu i
+  // zablokowany bieg mimo widocznego typu (stan ≠ widok; flake testu kroku 2).
   const rekordyRodzaju = useMemo(() => konwerteryRodzaju(rekordy, rodzaj), [rekordy, rodzaj]);
-  useEffect(() => {
-    const domyslny = domyslnyKonwerter(rekordy, rodzaj);
-    setWybranyTyp(domyslny?.id ?? '');
-  }, [rekordy, rodzaj]);
+  const efektywnyTyp = useMemo(
+    () =>
+      rekordyRodzaju.some((r) => r.id === wybranyTyp)
+        ? wybranyTyp
+        : (domyslnyKonwerter(rekordy, rodzaj)?.id ?? ''),
+    [rekordyRodzaju, wybranyTyp, rekordy, rodzaj],
+  );
 
   const rekordTypu = useMemo(
-    () => rekordyRodzaju.find((r) => r.id === wybranyTyp) ?? null,
-    [rekordyRodzaju, wybranyTyp],
+    () => rekordyRodzaju.find((r) => r.id === efektywnyTyp) ?? null,
+    [rekordyRodzaju, efektywnyTyp],
   );
 
   const klasy = useMemo(() => klasyOperatora(katalog, operatorId), [katalog, operatorId]);
@@ -392,18 +400,18 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
   const mozeUruchomic =
     runId !== null
     && wybraneWezly.length > 0
-    && wybranyTyp !== ''
+    && efektywnyTyp !== ''
     && operatorId !== ''
     && !trwaBieg;
 
   const uruchomAnalizy = async () => {
-    if (runId === null || wybraneWezly.length === 0 || wybranyTyp === '' || operatorId === '') {
+    if (runId === null || wybraneWezly.length === 0 || efektywnyTyp === '' || operatorId === '') {
       return;
     }
     // Snapshot parametrów biegu — dokument buduje żądanie 1:1 z nich, nie z formularza.
     const parametry: ParametryZakonczonegoBiegu = {
       runId,
-      catalogItemId: wybranyTyp,
+      catalogItemId: efektywnyTyp,
       operatorId,
       warianty: [...wybraneWezly],
     };
@@ -599,7 +607,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
             ) : (
               <select
                 id="mvd-studium-typ"
-                value={wybranyTyp}
+                value={efektywnyTyp}
                 onChange={(e) => setWybranyTyp(e.target.value)}
                 data-testid="mvd-studium-typ"
               >

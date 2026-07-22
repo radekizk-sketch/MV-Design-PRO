@@ -35,6 +35,9 @@ from application.proof_engine.types import (
     QUInput,
 )
 from application.proof_engine.unit_verifier import UnitVerifier
+from network_model.solvers.short_circuit_asymmetrical_quantities import (
+    compute_sc1_asymmetrical_quantities,
+)
 
 # =============================================================================
 # Fixtures
@@ -104,7 +107,21 @@ def vdrop_test_input() -> VDROPInput:
 
 @pytest.fixture
 def sc1_test_input() -> SC1Input:
-    """Fixture: minimalne dane SC1 dla testów."""
+    """Fixture: minimalne dane SC1 dla testów.
+
+    Wielkości fizyczne liczy solver (NOT-A-SOLVER, V12K-118) —
+    generator dowodu jest czystym formatterem.
+    """
+    quantities = compute_sc1_asymmetrical_quantities(
+        fault_type="ONE_PHASE_TO_GROUND",
+        u_n_kv=15.0,
+        c_factor=1.10,
+        u_prefault_kv=8.660,
+        z1_ohm=complex(0.5, 1.2),
+        z2_ohm=complex(0.5, 1.2),
+        z0_ohm=complex(0.8, 2.4),
+        a_operator=complex(-0.5, 0.8660),
+    )
     return SC1Input(
         project_name="Test Project",
         case_name="Test Case SC1",
@@ -119,6 +136,7 @@ def sc1_test_input() -> SC1Input:
         z2_ohm=complex(0.5, 1.2),
         z0_ohm=complex(0.8, 2.4),
         a_operator=complex(-0.5, 0.8660),
+        quantities=quantities,
     )
 
 

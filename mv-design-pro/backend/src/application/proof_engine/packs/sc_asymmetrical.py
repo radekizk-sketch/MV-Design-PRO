@@ -17,7 +17,9 @@ Każdy dowód zawiera OBOWIĄZKOWE wyniki:
 - I_dyn (prąd dynamiczny)
 
 INVARIANTS:
-- Solver untouched (read-only mapping from results)
+- Fizyka WYŁĄCZNIE w warstwie solverów (V12K-118): wielkości zwarciowe liczy
+  ``compute_sc1_asymmetrical_quantities`` (network_model/solvers), a generator
+  dowodu dostaje gotowy wynik i wyłącznie formatuje kroki (NOT-A-SOLVER)
 - Deterministic (same input → identical output)
 - Anti-double-counting c (c appears ONLY in EQ_SC1_008)
 - LaTeX-only math (all formulas in block LaTeX)
@@ -33,6 +35,9 @@ from uuid import UUID, uuid4
 from application.proof_engine.proof_generator import ProofGenerator, SC1Input
 from application.proof_engine.proof_pack import ProofPackBuilder, ProofPackContext
 from application.proof_engine.types import ProofDocument
+from network_model.solvers.short_circuit_asymmetrical_quantities import (
+    compute_sc1_asymmetrical_quantities,
+)
 
 
 @dataclass
@@ -126,6 +131,20 @@ class SCAsymmetricalProofPack:
 
         proofs: dict[str, ProofDocument] = {}
         for fault_type in cls.FAULT_TYPES:
+            # Fizyka w warstwie solverów (NOT-A-SOLVER): komplet wielkości
+            # zwarciowych liczy solver, generator dowodu tylko formatuje.
+            quantities = compute_sc1_asymmetrical_quantities(
+                fault_type=fault_type,
+                u_n_kv=data.u_n_kv,
+                c_factor=data.c_factor,
+                u_prefault_kv=data.u_prefault_kv,
+                z1_ohm=data.z1_ohm,
+                z2_ohm=data.z2_ohm,
+                z0_ohm=data.z0_ohm,
+                a_operator=data.a_operator,
+                m_factor=data.m_factor,
+                n_factor=data.n_factor,
+            )
             sc1_input = SC1Input(
                 project_name=data.project_name,
                 case_name=f"{data.case_name} — {fault_type}",
@@ -143,6 +162,7 @@ class SCAsymmetricalProofPack:
                 tk_s=data.tk_s,
                 m_factor=data.m_factor,
                 n_factor=data.n_factor,
+                quantities=quantities,
             )
             proofs[fault_type] = ProofGenerator.generate_sc1_proof(sc1_input, artifact_id)
 

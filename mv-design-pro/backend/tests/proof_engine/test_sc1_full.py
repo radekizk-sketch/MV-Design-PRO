@@ -17,9 +17,24 @@ from uuid import uuid4
 import pytest
 from application.proof_engine.equation_registry import EquationRegistry
 from application.proof_engine.proof_generator import ProofGenerator, SC1Input
+from network_model.solvers.short_circuit_asymmetrical_quantities import (
+    compute_sc1_asymmetrical_quantities,
+)
 
 
 def _base_sc1_input(fault_type: str) -> SC1Input:
+    # Wielkości fizyczne liczy solver (NOT-A-SOLVER, V12K-118) —
+    # generator dowodu jest czystym formatterem.
+    quantities = compute_sc1_asymmetrical_quantities(
+        fault_type=fault_type,
+        u_n_kv=15.0,
+        c_factor=1.10,
+        u_prefault_kv=8.660,
+        z1_ohm=complex(0.5, 1.2),
+        z2_ohm=complex(0.6, 1.1),
+        z0_ohm=complex(0.8, 2.4),
+        a_operator=complex(-0.5, math.sqrt(3) / 2),
+    )
     return SC1Input(
         project_name="Test Project",
         case_name=f"Test Case {fault_type}",
@@ -34,6 +49,7 @@ def _base_sc1_input(fault_type: str) -> SC1Input:
         z2_ohm=complex(0.6, 1.1),
         z0_ohm=complex(0.8, 2.4),
         a_operator=complex(-0.5, math.sqrt(3) / 2),
+        quantities=quantities,
     )
 
 
