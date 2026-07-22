@@ -9,13 +9,25 @@
  * ten komponent jest NOWĄ nadrzędną kompozycją — decyzja wykonawcy karty §3
  * („najlepiej nowy komponent nadrzędny”). Domyślna podzakładka: Szyny (bez
  * zaskakującego przełączania względem zachowania sprzed karty E8.3).
+ *
+ * PRESELEKCJA ELEMENTU (karta D-2, decyzja właściciela): akcja menu SLD
+ * „Pokaż wyniki" niesie deep-linkiem ref elementu klikniętego na schemacie
+ * (`useShellStore.wynikiTabElement`, wzorzec P-1 `show-ncrfg`). Dopasowanie
+ * jest LITERALNE do realnego identyfikatora wyniku rozpływu — `bus_id` →
+ * podzakładka Szyny, `branch_id` → podzakładka Gałęzie — zero tabeli
+ * mapowań „rodzaj elementu SLD → zakładka" (zero fabrykacji: nie zgadujemy,
+ * po prostu sprawdzamy, czy ref występuje w realnym wyniku). Brak dopasowania
+ * w żadnej z tabel = zostajemy na aktualnej podzakładce bez podświetlenia
+ * (uczciwy stan — element bez własnego wiersza w wyniku rozpływu, np. pole/
+ * aparat/stacja/ZK SN/słup, patrz `sldActionExecutor.ts`).
  */
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { TabelaGalezi } from './TabelaGalezi';
 import { TabelaSzyn } from './TabelaSzyn';
 import { ROZPLYW_STRINGS } from './strings';
+import { useWynikRozplywu } from './adapters/rozplywAdapter';
 import './rozplyw.css';
 
 const PODZAKLADKI = [
@@ -29,10 +41,58 @@ export interface EkranRozplywuProps {
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
   onEksport?: () => void;
+  /**
+   * Preselekcja elementu z deep-linku SLD (karta D-2): `bus_id` albo
+   * `branch_id` klikniętego elementu. Prop addytywny — brak = zachowanie 1:1
+   * (ręczny wybór podzakładki/wiersza, jak przed kartą D-2).
+   */
+  preselekcjaElementu?: string | null;
+  /** Sygnał konsumpcji pre-selekcji (żądanie jednorazowe — rodzic czyści,
+   *  wzorzec `EkranKompensacji.onPreselekcjaSkonsumowana`). */
+  onPreselekcjaSkonsumowana?: () => void;
 }
 
-export function EkranRozplywu({ trybZaawansowania, onOtworzDowod, onEksport }: EkranRozplywuProps) {
+export function EkranRozplywu({
+  trybZaawansowania,
+  onOtworzDowod,
+  onEksport,
+  preselekcjaElementu = null,
+  onPreselekcjaSkonsumowana,
+}: EkranRozplywuProps) {
   const [podzakladka, setPodzakladka] = useState<PodzakladkaId>('szyny');
+  const [wybranaSzyna, setWybranaSzyna] = useState<string | null>(null);
+  const [wybranaGalaz, setWybranaGalaz] = useState<string | null>(null);
+  const { wynik } = useWynikRozplywu();
+
+  // Pre-selekcja z deep-linku (D-2) — konsumowana dopiero, gdy wynik rozpływu
+  // jest dostępny (analogicznie `EkranKompensacji`: czekamy na dane zamiast
+  // odrzucać żądanie przedwcześnie). Jednorazowość lokalna (ref) — po
+  // konsumpcji ten sam ref nie nadpisuje ponownie ręcznego wyboru wiersza.
+  const skonsumowanaPreselekcja = useRef<string | null>(null);
+  useEffect(() => {
+    if (preselekcjaElementu === null || preselekcjaElementu === '') {
+      skonsumowanaPreselekcja.current = null; // rodzic wyczyścił — gotowość na kolejne żądanie
+      return;
+    }
+    if (preselekcjaElementu === skonsumowanaPreselekcja.current) return; // już skonsumowane
+    if (!wynik) return; // wynik jeszcze niedostępny — czekamy (nie tracimy żądania)
+
+    const wBusach = wynik.bus_results.some((r) => r.bus_id === preselekcjaElementu);
+    if (wBusach) {
+      setPodzakladka('szyny');
+      setWybranaSzyna(preselekcjaElementu);
+    } else {
+      const wGaleziach = wynik.branch_results.some((r) => r.branch_id === preselekcjaElementu);
+      if (wGaleziach) {
+        setPodzakladka('galezie');
+        setWybranaGalaz(preselekcjaElementu);
+      }
+      // Brak dopasowania w żadnej tabeli: zero fabrykacji — zostajemy bez
+      // podświetlenia (np. pole/aparat/stacja/ZK SN/słup bez własnego wiersza).
+    }
+    skonsumowanaPreselekcja.current = preselekcjaElementu;
+    onPreselekcjaSkonsumowana?.();
+  }, [preselekcjaElementu, wynik, onPreselekcjaSkonsumowana]);
 
   return (
     <div className="mvd-rozplyw-ekran" data-testid="mvd-rozplyw-ekran">
@@ -74,6 +134,8 @@ export function EkranRozplywu({ trybZaawansowania, onOtworzDowod, onEksport }: E
             trybZaawansowania={trybZaawansowania}
             onOtworzDowod={onOtworzDowod}
             onEksport={onEksport}
+            wybranyWiersz={wybranaSzyna}
+            onWybierzWiersz={setWybranaSzyna}
           />
         )}
         {podzakladka === 'galezie' && (
@@ -81,6 +143,8 @@ export function EkranRozplywu({ trybZaawansowania, onOtworzDowod, onEksport }: E
             trybZaawansowania={trybZaawansowania}
             onOtworzDowod={onOtworzDowod}
             onEksport={onEksport}
+            wybranyWiersz={wybranaGalaz}
+            onWybierzWiersz={setWybranaGalaz}
           />
         )}
       </div>

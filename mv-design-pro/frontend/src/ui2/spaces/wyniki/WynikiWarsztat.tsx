@@ -166,8 +166,10 @@ export function WynikiWarsztat({
   // jednorazowe żądanie ze shell store; walidujemy id i czyścimy po konsumpcji.
   // R2-B: żądanie może nieść kontekst elementu (`wynikiTabElement`) —
   // konsumują go okno „Dobór kompensacji" (pre-selekcja węzła przekroczenia
-  // bilansu mocy biernej) oraz zakładka „Dowód obliczeń" (R3-C: kontekst =
-  // KONKRETNY run_id, np. przebieg kolumny A/B porównania); dla innych zakładek
+  // bilansu mocy biernej), zakładka „Dowód obliczeń" (R3-C: kontekst =
+  // KONKRETNY run_id, np. przebieg kolumny A/B porównania) oraz — od karty
+  // D-2 — zakładka „Rozpływ" (pre-selekcja wiersza elementu klikniętego w
+  // menu SLD „Pokaż wyniki", wzorzec P-1 `show-ncrfg`); dla innych zakładek
   // kontekst nie jest przechwytywany (zero zalegających refów między zakładkami).
   const wynikiTab = useShellStore((s) => s.wynikiTab);
   const wynikiTabElement = useShellStore((s) => s.wynikiTabElement);
@@ -175,6 +177,7 @@ export function WynikiWarsztat({
   const [elementKompensacji, setElementKompensacji] = useState<string | null>(null);
   const [przebiegDowodu, setPrzebiegDowodu] = useState<string | null>(null);
   const [modulNcRfg, setModulNcRfg] = useState<string | null>(null);
+  const [elementRozplywu, setElementRozplywu] = useState<string | null>(null);
   useEffect(() => {
     if (!wynikiTab) return;
     if (ZAKLADKI.some((z) => z.id === wynikiTab)) {
@@ -190,6 +193,11 @@ export function WynikiWarsztat({
         // P-1 (akcja SLD „Pokaż zgodność przyłączeniową"): kontekst modułu
         // wytwórczego — macierz pre-selekcjonuje kolumnę wskazanego DER.
         setModulNcRfg(wynikiTabElement);
+      }
+      if (wynikiTab === 'rozplyw' && wynikiTabElement) {
+        // D-2 (akcja SLD „Pokaż wyniki"): kontekst elementu klikniętego na
+        // schemacie — okno rozpływu pre-selekcjonuje wiersz (bus_id/branch_id).
+        setElementRozplywu(wynikiTabElement);
       }
     }
     setWynikiTab(null); // czyści OBA pola żądania (tab + element)
@@ -250,7 +258,12 @@ export function WynikiWarsztat({
       <div role="tabpanel" className="mvd-wyniki-tresc">
         {zakladka === 'co-wymaga-uwagi' && <EkranCoWymagaUwagi />}
         {zakladka === 'rozplyw' && (
-          <EkranRozplywu trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+          <EkranRozplywu
+            trybZaawansowania={trybZaawansowania}
+            onOtworzDowod={otworzDowod}
+            preselekcjaElementu={elementRozplywu}
+            onPreselekcjaSkonsumowana={() => setElementRozplywu(null)}
+          />
         )}
         {zakladka === 'regulacja-oltc' && <EkranBadanOltc />}
         {zakladka === 'zwarcia' && (

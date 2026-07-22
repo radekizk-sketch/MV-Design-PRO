@@ -72,9 +72,20 @@ export interface TabelaGaleziProps {
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
   onEksport?: () => void;
+  /** Preselekcja wiersza (karta D-2, deep-link SLD „Pokaż wyniki"): `branch_id`
+   * podświetlanej gałęzi. Prop addytywny — brak = zachowanie 1:1. */
+  wybranyWiersz?: string | null;
+  /** Wybór wiersza klikiem/klawiaturą (wzorzec `TabelaWynikow.onWybierzWiersz`). */
+  onWybierzWiersz?: (klucz: string) => void;
 }
 
-export function TabelaGalezi({ trybZaawansowania, onOtworzDowod, onEksport }: TabelaGaleziProps) {
+export function TabelaGalezi({
+  trybZaawansowania,
+  onOtworzDowod,
+  onEksport,
+  wybranyWiersz,
+  onWybierzWiersz,
+}: TabelaGaleziProps) {
   const { wynik, runId } = useWynikRozplywu();
   const poprawWModelu = usePoprawWModelu();
   const obciazenia = useWalidacjaObciazen(runId);
@@ -104,6 +115,8 @@ export function TabelaGalezi({ trybZaawansowania, onOtworzDowod, onEksport }: Ta
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_GALAZ}
+        wybranyWiersz={wybranyWiersz}
+        onWybierzWiersz={onWybierzWiersz}
         // K1 / F-E6.3 + R3-A: rodzaj i typ elementu z REALNEGO `check_type`
         // pozycji walidacji (reuse mapowań `jakosc/jakoscModel.ts`):
         // BRANCH_LOADING → LineBranch/'obciazalnosc-galezi',

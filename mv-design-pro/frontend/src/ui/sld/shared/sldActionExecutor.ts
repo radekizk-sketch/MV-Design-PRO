@@ -54,7 +54,6 @@ import { useShellStore } from '../../../ui2/shell/useShellStore';
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'show-readiness': 'E-04',
-  'show-results': 'E-24',
   'show-rationale': 'E-36',
   'open-catalogs': 'E-38',
   // Etap 3:
@@ -80,6 +79,10 @@ export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   // 'show-ncrfg' NIE jest tu mapowane (luka F-E7 zamknięta, karta P-1):
   // realny dostawca zgodności NC RfG to macierz wymogów ui2 (zakładka „ncrfg"
   // warsztatu Wyników) — dedykowana gałąź deep-linku w useSldActionExecutor.
+  // 'show-results' NIE jest tu mapowane (karta D-2, decyzja właściciela):
+  // realny dostawca wyników to zakładka „Rozpływ" warsztatu Wyników ui2 —
+  // dedykowana gałąź deep-linku w useSldActionExecutor (koniec celowania
+  // w legacy powierzchnię E-24).
 };
 
 export function routeSurfaceLabelPl(screenCode: string): string {
@@ -432,6 +435,28 @@ export function useSldActionExecutor(
         setWynikiTab('ncrfg', generator?.name ?? elementId ?? null);
         setActiveSpace('wyniki');
         toastBus.publish('info', 'Otworzono macierz wymogów NC RfG w przestrzeni Wyniki.');
+        return;
+      }
+
+      // 0b) Wyniki elementu (karta D-2, decyzja właściciela AskUserQuestion
+      //     2026-07-22): realny dostawca to warsztat Wyników, zakładka
+      //     „Rozpływ" — deep-link międzypowłokowy (wzorzec P-1 `show-ncrfg`:
+      //     `setWynikiTab` + zmiana przestrzeni), z kontekstem = ref elementu
+      //     klikniętego na schemacie. `EkranRozplywu` dopasowuje ref
+      //     LITERALNIE do `bus_id`/`branch_id` realnego wyniku rozpływu (zero
+      //     fabrykacji tabeli mapowań rodzaj elementu → zakładka); apparatus
+      //     bez własnej tożsamości fizycznej przenosi ref pola macierzystego
+      //     (jak w gałęzi nawigacyjnej niżej). Koniec celowania w legacy
+      //     powierzchnię E-24 („Profile operatora i źródeł" w rejestrze
+      //     ekranów — realny dostawca INNEGO ekranu, nie wyników obliczeń).
+      if (actionId === 'show-results') {
+        const apparatusSelection = kind === 'apparatus' && elementId
+          ? parseGpzApparatusSelectionId(elementId)
+          : null;
+        const navigationElementId = apparatusSelection?.bayRef ?? elementId;
+        setWynikiTab('rozplyw', navigationElementId ?? null);
+        setActiveSpace('wyniki');
+        toastBus.publish('info', 'Otworzono wyniki rozpływu w przestrzeni Wyniki.');
         return;
       }
 

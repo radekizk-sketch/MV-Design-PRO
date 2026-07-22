@@ -267,7 +267,9 @@ def check_sld_v2_menu_path() -> list[str]:
     #  - 'add-source': skrot do E-13 karty DER (Faza G),
     #  - 'show-ncrfg': deep-link do macierzy wymogow NC RfG ui2 (zakladka
     #    'ncrfg' warsztatu Wynikow, karta P-1 — luka F-E7 zamknieta).
-    special_ids = {"add-source", "show-ncrfg"}
+    #  - 'show-results': deep-link do zakladki 'rozplyw' warsztatu Wynikow ui2
+    #    (karta D-2, decyzja wlasciciela — koniec celowania w legacy E-24).
+    special_ids = {"add-source", "show-ncrfg", "show-results"}
     covered = op_ids | screen_ids | hint_ids | delete_ids | special_ids
 
     # SLD actions that are rendered but have neither navigation, operation, hint,

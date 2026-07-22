@@ -12,7 +12,7 @@
  * BEZ zmiany kontraktu propsów — sortowanie i mapowanie pozostają czyste.
  */
 
-import { useMemo, useState, type KeyboardEvent, type UIEvent } from 'react';
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type UIEvent } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
 import type {
   DefinicjaKolumny,
@@ -125,6 +125,10 @@ export function TabelaWynikow({
 }: TabelaWynikowProps) {
   const [sort, setSort] = useState<StanSortowania | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
+  // D-2 (deep-link SLD → preselekcja wiersza): mapa klucz wiersza → węzeł DOM,
+  // do przewinięcia widoku na wybrany wiersz. Ref (nie state) — nie wywołuje
+  // dodatkowych renderów, wyłącznie odczyt w efekcie poniżej.
+  const wierszeDom = useRef<Map<string, HTMLTableRowElement>>(new Map());
 
   const kolumnyWidoczne = useMemo(
     () => kolumny.filter((k) => !k.tylkoEkspercki || trybZaawansowania === 'expert'),
@@ -164,6 +168,20 @@ export function TabelaWynikow({
     setScrollTop(e.currentTarget.scrollTop);
   };
 
+  // D-2: podświetlenie wiersza (`wybrany`, wyżej) niesie sam komponent od
+  // dawna (karta E8.2) — dopełnienie to przewinięcie widoku na preselekcjonowany
+  // wiersz, WYŁĄCZNIE gdy jego węzeł DOM jest już wyrenderowany (poza oknem
+  // wirtualizacji — brak węzła, brak przewinięcia; zero fabrykacji pozycji).
+  // Guard `typeof ….scrollIntoView === 'function'`: jsdom (środowisko testów)
+  // nie implementuje tej metody — wywołanie non-optional rzuciłoby wyjątkiem.
+  useEffect(() => {
+    if (!wybranyWiersz) return;
+    const wezel = wierszeDom.current.get(wybranyWiersz);
+    if (wezel && typeof wezel.scrollIntoView === 'function') {
+      wezel.scrollIntoView({ block: 'center' });
+    }
+  }, [wybranyWiersz]);
+
   const przelaczSort = (klucz: string) => {
     setSort((poprz) => {
       if (!poprz || poprz.klucz !== klucz) return { klucz, kierunek: 'rosnaco' };
@@ -188,6 +206,10 @@ export function TabelaWynikow({
     return (
       <tr
         key={rowKey}
+        ref={(el) => {
+          if (el) wierszeDom.current.set(rowKey, el);
+          else wierszeDom.current.delete(rowKey);
+        }}
         data-testid="mvd-wyn-wiersz"
         className={
           wybieralny

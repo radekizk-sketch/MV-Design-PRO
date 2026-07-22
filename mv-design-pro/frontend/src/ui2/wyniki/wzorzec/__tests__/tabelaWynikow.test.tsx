@@ -81,6 +81,45 @@ describe('TabelaWynikow — pętla decyzji (F-E6.1: „Popraw w modelu")', () =>
   });
 });
 
+describe('TabelaWynikow — preselekcja: przewinięcie do wybranego wiersza (D-2)', () => {
+  it('wybranyWiersz obecny w DOM przy montażu: scrollIntoView wołane na jego węźle', () => {
+    const scrollSpy = vi.fn();
+    // jsdom nie implementuje scrollIntoView (rzuca wyjątkiem) — komponent
+    // sprawdza `typeof … === 'function'` przed wywołaniem; podstawiamy spy,
+    // żeby dowieść realnego wywołania (nie tylko braku wyjątku).
+    HTMLElement.prototype.scrollIntoView = scrollSpy;
+    render(
+      <TabelaWynikow
+        {...props({ onWybierzWiersz: vi.fn(), wybranyWiersz: 'Szyna B' })}
+      />,
+    );
+    expect(scrollSpy).toHaveBeenCalledTimes(1);
+    const wiersz = screen.getByText('Szyna B').closest('tr');
+    expect(scrollSpy.mock.instances[0]).toBe(wiersz);
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+  });
+
+  it('brak wybranyWiersz: scrollIntoView nie jest wołane', () => {
+    const scrollSpy = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollSpy;
+    render(<TabelaWynikow {...props({ onWybierzWiersz: vi.fn() })} />);
+    expect(scrollSpy).not.toHaveBeenCalled();
+    Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+  });
+
+  it('środowisko bez scrollIntoView (jsdom realny): brak wyjątku przy renderze', () => {
+    // Zero mocka — dowód, że guard `typeof` naprawdę chroni przed wyjątkiem
+    // jsdom (`HTMLElement.prototype.scrollIntoView` nie jest zaimplementowane).
+    expect(() =>
+      render(
+        <TabelaWynikow
+          {...props({ onWybierzWiersz: vi.fn(), wybranyWiersz: 'Szyna B' })}
+        />,
+      ),
+    ).not.toThrow();
+  });
+});
+
 describe('TabelaWynikow — nagłówki i komórki', () => {
   it('renderuje nagłówki kolumn z etykietą i jednostką', () => {
     render(<TabelaWynikow {...props()} />);

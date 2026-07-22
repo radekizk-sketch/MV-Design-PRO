@@ -25,9 +25,20 @@ export interface TabelaSzynProps {
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
   onEksport?: () => void;
+  /** Preselekcja wiersza (karta D-2, deep-link SLD „Pokaż wyniki"): `bus_id`
+   * podświetlanej szyny. Prop addytywny — brak = zachowanie 1:1. */
+  wybranyWiersz?: string | null;
+  /** Wybór wiersza klikiem/klawiaturą (wzorzec `TabelaWynikow.onWybierzWiersz`). */
+  onWybierzWiersz?: (klucz: string) => void;
 }
 
-export function TabelaSzyn({ trybZaawansowania, onOtworzDowod, onEksport }: TabelaSzynProps) {
+export function TabelaSzyn({
+  trybZaawansowania,
+  onOtworzDowod,
+  onEksport,
+  wybranyWiersz,
+  onWybierzWiersz,
+}: TabelaSzynProps) {
   const { wynik, runId } = useWynikRozplywu();
   const poprawWModelu = usePoprawWModelu();
 
@@ -54,6 +65,8 @@ export function TabelaSzyn({ trybZaawansowania, onOtworzDowod, onEksport }: Tabe
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_SZYNA}
+        wybranyWiersz={wybranyWiersz}
+        onWybierzWiersz={onWybierzWiersz}
         // K1 / F-E6.3: werdykt tej tabeli = napięcie poza zakresem → rodzaj 'napiecie'.
         onPoprawWModelu={(ref) => poprawWModelu(ref, 'Bus', ref, 'napiecie')}
       />
