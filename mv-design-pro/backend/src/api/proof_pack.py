@@ -129,6 +129,54 @@ class SC3FPackRequest(BaseModel):
     tk_s: float = 1.0
 
 
+class SCContributionsRequest(BaseModel):
+    """Zadanie wkladow zwarciowych per punkt (R3-B / K3-G3, FLOW EKSPERT+).
+
+    Kanoniczny snapshot ENM + punkt zwarcia — fizyka (rozbicie maszynowe
+    mu/q/i_b, IEC 60909-0:2016 §6.6) liczona po stronie serwera przez ten sam
+    solver co pakiet dowodowy SC3F (`compute_machine_contributions`).
+    ZERO fizyki w UI; odpowiedz JSON zawiera slad WHITE BOX solvera.
+    """
+
+    snapshot: dict[str, Any]
+    fault_node_id: str
+    c_factor: float = 1.10
+    t_min_s: float = 0.10
+
+
+@router.post("/sc3f/contributions")
+def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
+    """Wklady zwarciowe zrodel (maszyny/DER) w punkcie zwarcia — JSON.
+
+    Dostawca danych sekcji „Wklady" ekranu zwarc (dotad pass-through bez
+    dostawcy). Deterministyczny: siec bez maszyn → pusta lista wkladow.
+    """
+    from enm.mapping import _ref_to_uuid, map_enm_to_network_graph
+    from enm.models import EnergyNetworkModel
+    from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
+
+    try:
+        enm = EnergyNetworkModel.model_validate(payload.snapshot)
+        graph = map_enm_to_network_graph(enm)
+        # Tozsamosc punktu: UI zna ref ENM szyny (target_id wyniku SC), solver
+        # id wezla grafu (= deterministyczny UUID z ref). Przyjmujemy oba.
+        fault_node_id = payload.fault_node_id
+        if fault_node_id not in graph.nodes:
+            fault_node_id = _ref_to_uuid(payload.fault_node_id)
+        result = compute_machine_contributions(
+            graph,
+            fault_node_id,
+            c_factor=payload.c_factor,
+            t_min_s=payload.t_min_s,
+        )
+    except (KeyError, ValueError) as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Nie udalo sie wyznaczyc wkladow zwarciowych: {exc}",
+        ) from exc
+    return result.to_dict()
+
+
 @router.post("/sc3f/pack")
 def download_sc3f_pack(payload: SC3FPackRequest) -> Response:
     """Pakiet dowodowy zwarcia trójfazowego (IEC 60909) z rozbiciem maszynowym.

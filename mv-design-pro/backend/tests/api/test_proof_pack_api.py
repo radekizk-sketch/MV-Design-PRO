@@ -263,3 +263,114 @@ def test_sc3f_pack_api_returns_zip(tmp_path):
         entries = set(pack.namelist())
         assert "proof_pack/proof.json" in entries
         assert "proof_pack/proof.tex" in entries
+
+
+def _enm_z_maszyna():
+    """ENM z maszyną synchroniczną — wspólny kształt z testem SC3F pack (R3-B)."""
+    from enm.models import (
+        Bus,
+        EnergyNetworkModel,
+        ENMHeader,
+        Generator,
+        OverheadLine,
+        Source,
+    )
+
+    return EnergyNetworkModel(
+        header=ENMHeader(name="Test wkladow SC"),
+        buses=[
+            Bus(ref_id="bus_sn", name="Szyna SN", voltage_kv=15),
+            Bus(ref_id="bus_oze", name="Szyna OZE", voltage_kv=15),
+        ],
+        sources=[
+            Source(
+                ref_id="src",
+                name="Siec",
+                bus_ref="bus_sn",
+                model="short_circuit_power",
+                sk3_mva=220,
+                rx_ratio=0.1,
+            )
+        ],
+        branches=[
+            OverheadLine(
+                ref_id="ln1",
+                name="L1",
+                from_bus_ref="bus_sn",
+                to_bus_ref="bus_oze",
+                length_km=2.0,
+                r_ohm_per_km=0.25,
+                x_ohm_per_km=0.32,
+            )
+        ],
+        generators=[
+            Generator(
+                ref_id="gen1",
+                name="Agregat",
+                bus_ref="bus_oze",
+                p_mw=1.0,
+                gen_type="synchronous",
+                materialized_params={"un_kv": 15.0, "sn_mva": 1.25},
+            )
+        ],
+    )
+
+
+def test_sc3f_contributions_returns_machine_breakdown(tmp_path):
+    """R3-B (K3-G3): endpoint wkladow zwraca rozbicie maszynowe z WHITE BOX."""
+    from enm.mapping import map_enm_to_network_graph
+
+    enm = _enm_z_maszyna()
+    graph = map_enm_to_network_graph(enm)
+    fault_node_id = next(n.id for n in graph.nodes.values() if n.name == "Szyna OZE")
+
+    client, _ = _prepare_api_client(tmp_path)
+    payload = {
+        "snapshot": enm.model_dump(mode="json"),
+        "fault_node_id": fault_node_id,
+        "c_factor": 1.1,
+        "t_min_s": 0.10,
+    }
+    response = client.post("/api/proof/sc3f/contributions", json=payload)
+    assert response.status_code == 200
+    dane = response.json()
+    assert dane["standard"] == "IEC 60909-0:2016 §6.6"
+    assert len(dane["contributions"]) == 1
+    wklad = dane["contributions"][0]
+    assert wklad["source_name"] == "Agregat"
+    assert wklad["ikss_partial_a"] > 0
+    assert 0 < wklad["mu"] <= 1.0
+    assert dane["white_box"]  # slad solvera obecny
+
+    # Determinizm: to samo wejscie -> identyczna odpowiedz.
+    response2 = client.post("/api/proof/sc3f/contributions", json=payload)
+    assert response2.json() == dane
+
+
+def test_sc3f_contributions_empty_without_machines(tmp_path):
+    """Siec bez maszyn wirujacych -> deterministycznie pusta lista wkladow."""
+    from enm.mapping import map_enm_to_network_graph
+
+    enm = _enm_z_maszyna().model_copy(update={"generators": []})
+    graph = map_enm_to_network_graph(enm)
+    fault_node_id = next(n.id for n in graph.nodes.values() if n.name == "Szyna OZE")
+
+    client, _ = _prepare_api_client(tmp_path)
+    response = client.post(
+        "/api/proof/sc3f/contributions",
+        json={"snapshot": enm.model_dump(mode="json"), "fault_node_id": fault_node_id},
+    )
+    assert response.status_code == 200
+    assert response.json()["contributions"] == []
+
+
+def test_sc3f_contributions_accepts_enm_bus_ref(tmp_path):
+    """UI zna ref ENM szyny (target_id wyniku SC) - endpoint rozwiazuje go sam."""
+    enm = _enm_z_maszyna()
+    client, _ = _prepare_api_client(tmp_path)
+    response = client.post(
+        "/api/proof/sc3f/contributions",
+        json={"snapshot": enm.model_dump(mode="json"), "fault_node_id": "bus_oze"},
+    )
+    assert response.status_code == 200
+    assert len(response.json()["contributions"]) == 1

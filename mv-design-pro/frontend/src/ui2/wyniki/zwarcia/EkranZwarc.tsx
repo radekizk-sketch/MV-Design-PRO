@@ -16,6 +16,7 @@ import { useMemo, useState } from 'react';
 import './zwarcia.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy } from '../wzorzec';
+import { useWkladyZwarciowe } from './api';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresIkssChart } from './WykresIkssChart';
 import { ZWARCIA_STRINGS } from './strings';
@@ -64,6 +65,11 @@ export function EkranZwarc({
     return rows[0].target_id;
   }, [rows, wybranyPunkt]);
 
+  // R3-B (K3-G3): realny dostawca wkładów — rozbicie maszynowe z backendu
+  // (endpoint SC3F contributions). Props `wklady` (test/nadpisanie) ma
+  // pierwszeństwo — wtedy hook nie pobiera (punkt=null).
+  const wkladyPobrane = useWkladyZwarciowe(wklady ? null : aktywnyPunkt);
+
   if (!wynik || rows.length === 0) {
     return (
       <div className="mvd-wyn" data-testid="mvd-zwarcia-ekran-pusty">
@@ -77,7 +83,8 @@ export function EkranZwarc({
 
   const wierszAktywny = rows.find((r) => r.target_id === aktywnyPunkt) ?? rows[0];
   const nazwaAktywnego = wierszAktywny.target_name ?? wierszAktywny.target_id;
-  const wkladyAktywne = aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : null;
+  const wkladyAktywne =
+    aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : wkladyPobrane;
 
   return (
     <div data-testid="mvd-zwarcia-ekran">

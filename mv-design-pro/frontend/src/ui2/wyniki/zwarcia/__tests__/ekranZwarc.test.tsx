@@ -4,6 +4,7 @@ import { EkranZwarc } from '../EkranZwarc';
 import { ZWARCIA_STRINGS } from '../strings';
 import { WZORZEC_STRINGS } from '../../wzorzec';
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
+import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { shortCircuitResultsFixture, wkladyFixture } from './fixtures';
 
 function props(over: Partial<Parameters<typeof EkranZwarc>[0]> = {}) {
@@ -154,3 +155,57 @@ describe('EkranZwarc — wybór punktu i sekcja wkładów', () => {
     expect(wiersze[1]).toHaveAttribute('aria-selected', 'true');
   });
 });
+
+describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
+  beforeEach(() => {
+    ustawWynik();
+    useSnapshotStore.setState({
+      snapshot: { header: { name: 'Siec testowa' }, buses: [], branches: [], transformers: [], sources: [], loads: [], generators: [], substations: [], bays: [] },
+    } as never);
+  });
+
+  it('bez props wklady: pobiera rozbicie z backendu i pokazuje zrodlo z pradem', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        contributions: [
+          { source_id: 'gen1', source_name: 'Agregat', ikss_partial_a: 1234.5 },
+        ],
+      }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
+    expect(await within(sekcja).findByText('Agregat')).toBeInTheDocument();
+    // A -> kA (skalowanie prezentacji): 1234,5 A = 1,235 kA (format PL, 3 miejsca).
+    expect(within(sekcja).getByText('1,234')).toBeInTheDocument();
+    // Endpoint dostal ref ENM aktywnego punktu (target_id pierwszego wiersza).
+    const [, init] = fetchMock.mock.calls[0];
+    expect(JSON.parse((init as RequestInit).body as string).fault_node_id).toBe(
+      shortCircuitResultsFixture().rows[0].target_id,
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it('blad pobrania -> uczciwy stan "dane niedostepne" (bez fabrykacji)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    expect(await screen.findByTestId('mvd-zwarcia-wklady-brak')).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('props wklady ma pierwszenstwo - dostawca nie pobiera (1:1 dla testow)', () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    render(
+      <EkranZwarc
+        trybZaawansowania="basic"
+        onOtworzDowod={() => undefined}
+        wklady={wkladyFixture()}
+      />,
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+});
+
