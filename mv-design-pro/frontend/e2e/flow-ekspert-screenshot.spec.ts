@@ -85,12 +85,27 @@ test.describe('flow-ekspert:screenshot', () => {
           await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText('0,7777 Ω');
           await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText('1,728');
           await expect(page.getByTestId('mvd-wyn-th-kappa')).toBeVisible();
-          // Zasada KaTeX (2026-07-22): slad obliczen na zadanie — klik przycisku
-          // rozwija wywod z wzorami renderowanymi matematycznie.
+          // F2: rozwiniecie wkladu maszyny (klik wiersza tabeli wkladow -> mu/q/Ib).
+          await page
+            .getByTestId('mvd-zwarcia-wklady')
+            .getByTestId('mvd-wyn-tabela')
+            .getByText('Falownik PV 4 MW')
+            .click();
+          await expect(page.getByTestId('mvd-zwarcia-wklad-szczegol')).toContainText('0,756');
+          // F3: wywod SEKCYJNY na zadanie — akordeon z norma; klik sekcji wkladu
+          // -> kroki KaTeX; checklista walidacji IEC.
           await page.getByTestId('mvd-zwarcia-wklady-slad-btn').click();
+          await page.getByTestId('mvd-zwarcia-wklady-slad-sekcja-btn-1').click();
           await expect(
-            page.getByTestId('mvd-zwarcia-wklady-slad').locator('[data-testid="math-rendered"]').first(),
+            page
+              .getByTestId('mvd-zwarcia-wklady-slad-sekcja-kroki-1')
+              .locator('[data-testid="math-rendered"]')
+              .first(),
           ).toBeVisible();
+          await page.getByTestId('mvd-zwarcia-wklady-slad-walidacja-btn').click();
+          await expect(page.getByTestId('mvd-zwarcia-wklady-slad-walidacja')).toContainText(
+            'IEC 60909-0:2016',
+          );
         } else if (scena === 'porownanie') {
           // R3-C: wybor pary A/B + jawne "Porownaj przebiegi" -> wynik z tabela
           // szyn (kolumny A i B z dowodami wlasciwego przebiegu).

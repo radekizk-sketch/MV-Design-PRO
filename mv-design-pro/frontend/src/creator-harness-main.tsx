@@ -162,7 +162,20 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       JSON.stringify({
         contributions: [
           { source_id: 'src-gpz', source_name: 'System (GPZ 110/15)', ikss_partial_a: 9620 },
-          { source_id: 'gen-pv-1', source_name: 'Falownik PV 4 MW', ikss_partial_a: 1730 },
+          {
+            source_id: 'gen-pv-1', source_name: 'Falownik PV 4 MW', ikss_partial_a: 1730,
+            machine_type: 'ASYNCHRONOUS', ir_a: 333, ratio_ik_ir: 5.2, mu: 0.756, q: 0.65, ib_a: 850,
+            wywod: [
+              {
+                tekst: 'Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.756',
+                latex: "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 5.20} = 0.756",
+              },
+              {
+                tekst: 'Prad wylaczeniowy symetryczny: Ib = 0.850 kA',
+                latex: "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.756 \\cdot 0.650 \\cdot 1.730\\;\\mathrm{kA} = 0.850\\;\\mathrm{kA}",
+              },
+            ],
+          },
           { source_id: 'gen-bess-1', source_name: 'Magazyn BESS 2 MW', ikss_partial_a: 1130 },
         ],
         // Wywod DYPLOMOWY {tekst, latex} — ksztalt 1:1 z `_wywod_wkladow`
@@ -206,6 +219,57 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
             tekst: "Regula malych silnikow (par. 6.6): pomijalne gdy suma I''k,M <= 0.05 * I''k — NIESPELNIONA",
             latex: null,
           },
+        ],
+        // ZWARCIA-PRO F3: wywod sekcyjny (akordeon z norma) + checklista walidacji IEC.
+        wywod_sekcje: [
+          {
+            tytul: 'Dane wejsciowe i model',
+            norma: 'IEC 60909-0:2016',
+            kroki: [
+              { tekst: 'Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)', latex: null },
+              { tekst: "Punkt zwarcia: I''k (calkowity, z Z-bus) = 12.480 kA, c = 1.10, t_min = 0.10 s", latex: null },
+            ],
+          },
+          {
+            tytul: 'Wklad: Falownik PV 4 MW',
+            norma: 'IEC 60909-0:2016 §6.6',
+            kroki: [
+              {
+                tekst: 'Prad czesciowy maszyny (superpozycja Z-bus)',
+                latex: "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0086}{0.0402 \\cdot 0.5102} \\cdot 3849\\;\\mathrm{A} = 1.730\\;\\mathrm{kA}",
+              },
+              {
+                tekst: 'Wspolczynnik zaniku mu (krzywa t_min = 0.10 s): mu = 0.756',
+                latex: "\\mu = 0.62 + 0.72\\,e^{-0.32 \\cdot 5.20} = 0.756",
+              },
+              {
+                tekst: 'Prad wylaczeniowy symetryczny: Ib = 0.850 kA',
+                latex: "I_b = 0.756 \\cdot 0.650 \\cdot 1.730\\;\\mathrm{kA} = 0.850\\;\\mathrm{kA}",
+              },
+            ],
+          },
+          {
+            tytul: 'Suma wkladow i reguly',
+            norma: 'IEC 60909-0:2016 §6.6',
+            kroki: [
+              {
+                tekst: "Suma wkladow maszyn: I''k,M = 2.860 kA, I_b,M = 2.107 kA",
+                latex: "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}",
+              },
+              {
+                tekst: "Regula malych silnikow (par. 6.6): wymaganie suma I''k,M <= 0.05 * I''k; prog 0.624 kA; obliczone 2.860 kA -> NIESPELNIONA (silniki niepomijalne w Ib)",
+                latex: "\\sum_m I''_{k,M} = 2.860\\;\\mathrm{kA} \\; > \\; 0.05 \\cdot 12.480\\;\\mathrm{kA} = 0.624\\;\\mathrm{kA} \\Rightarrow \\text{NIESPELNIONA}",
+              },
+            ],
+          },
+        ],
+        walidacja_iec: [
+          { pozycja_pl: 'Norma bazowa metody', wartosc_pl: 'IEC 60909-0:2016', status: 'INFO' },
+          { pozycja_pl: 'Wspolczynnik napieciowy c', wartosc_pl: 'c = 1.10 (z tego przebiegu)', status: 'INFO' },
+          { pozycja_pl: 'Metoda obliczenia wkladow', wartosc_pl: 'superpozycja Z-bus (prady czesciowe maszyn)', status: 'INFO' },
+          { pozycja_pl: 'Maszyny asynchroniczne', wartosc_pl: 'uwzglednione: 1 szt.', status: 'PASS' },
+          { pozycja_pl: 'Regula malych silnikow (5%)', wartosc_pl: 'NIESPELNIONA — silniki niepomijalne w Ib (2.860 > 0.624 kA)', status: 'FAIL' },
+          { pozycja_pl: 'Determinizm kontraktu (input_hash)', wartosc_pl: 'obecny: a1b2c3d4e5f6...', status: 'PASS' },
         ],
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
