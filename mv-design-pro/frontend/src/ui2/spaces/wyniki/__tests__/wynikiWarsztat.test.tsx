@@ -6,7 +6,7 @@
  * izolacja kontekstu między zakładkami.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
@@ -89,9 +89,15 @@ describe('WynikiWarsztat — zakładki', () => {
     );
   });
 
-  it('deep-link ze shell store (F-E8.2): wynikiTab=„studium" otwiera zakładkę studium i czyści żądanie', () => {
+  it('deep-link ze shell store (F-E8.2): wynikiTab=„studium" otwiera zakładkę studium i czyści żądanie', async () => {
     useShellStore.setState({ wynikiTab: 'studium' });
     render(<WynikiWarsztat {...props()} />);
+    // Montaż kreatora studium pobiera katalogi (konwertery + klasy NC RfG) —
+    // realny efekt mikrotaskowy, którego skutek (prefill kroku 2) nie ma
+    // reprezentacji w UI kroku 1, więc nie ma na co czekać przez findBy*/waitFor.
+    // Puste act(async) domyka te mikrotaski w act — bez niego React zgłasza
+    // „An update to KreatorStudium was not wrapped in act(...)".
+    await act(async () => {});
     expect(screen.getByTestId('mvd-wyniki-zakladka-studium').getAttribute('aria-selected')).toBe('true');
     // Żądanie skonsumowane (jednorazowe) — nie „przykleja" zakładki na stałe.
     expect(useShellStore.getState().wynikiTab).toBeNull();
@@ -189,10 +195,15 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.getByTestId('mvd-lom-brak-przypadku')).toBeInTheDocument();
   });
 
-  it('zakładka „Zgodność NC RfG": bez modułów wytwórczych — uczciwy stan pusty macierzy', () => {
+  it('zakładka „Zgodność NC RfG": bez modułów wytwórczych — uczciwy stan pusty macierzy', async () => {
     render(<WynikiWarsztat {...props()} />);
     fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-ncrfg'));
     expect(screen.getByTestId('mvd-oze-pusty')).toBeInTheDocument();
+    // Montaż macierzy pobiera katalog wymogów (zaladujKatalog); w tym środowisku
+    // (brak backendu) kończy się jawnym komunikatem błędu katalogu. Czekamy na ten
+    // stan końcowy, żeby aktualizacja store'a domknęła się w act — bez tego React
+    // zgłasza „An update to MacierzNcRfg was not wrapped in act(...)".
+    expect(await screen.findByTestId('mvd-oze-blad-katalogu')).toBeInTheDocument();
   });
 
   it('zakładka „Wniosek OSD": bez biegów — okno renderuje się, generacja nieaktywna', () => {

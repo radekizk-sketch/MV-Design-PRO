@@ -67,6 +67,20 @@ function summaryZGpz(): TopologyGraphSummary {
   };
 }
 
+/**
+ * Renderuje powłokę i czeka na znacznik gotowości `app-ready` — jak realny
+ * użytkownik (i spec Playwright). Montaż AppRoot planuje dwie asynchroniczne
+ * aktualizacje stanu: znacznik gotowości po klatce rAF oraz status zdrowia
+ * backendu po mikrotasku fetch /api/health. Oczekiwanie na stan końcowy
+ * domyka je w act() — bez tego React zgłasza
+ * „An update to AppRoot inside a test was not wrapped in act(...)".
+ */
+async function renderujPowloke() {
+  const wynik = render(<AppRoot />);
+  await screen.findByTestId('app-ready');
+  return wynik;
+}
+
 describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () => {
   beforeEach(() => {
     // E1.7c: trasa hash jest częścią stanu powłoki (LegacyWarsztat) — testy
@@ -93,10 +107,10 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     });
   });
 
-  it('klik w drzewie emituje selekcję ze źródłem okna i wypełnia inspektor obiektem ze snapshotu', () => {
+  it('klik w drzewie emituje selekcję ze źródłem okna i wypełnia inspektor obiektem ze snapshotu', async () => {
     const odebrane: ZdarzenieSelekcja[] = [];
     const stop = subskrybuj('selekcja', (z) => odebrane.push(z));
-    render(<AppRoot />);
+    await renderujPowloke();
 
     // Grupy startują zwinięte — rozwiń „Magistrala (od GPZ)" chevronem, potem kliknij węzeł.
     fireEvent.click(screen.getByTestId('mvd-tree-chevron-magistrala'));
@@ -110,8 +124,8 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     stop();
   });
 
-  it('zmiana rewizji modelu aktualizuje pasek stanu bez przeładowania', () => {
-    render(<AppRoot />);
+  it('zmiana rewizji modelu aktualizuje pasek stanu bez przeładowania', async () => {
+    await renderujPowloke();
     expect(screen.getByText('Model: rew. 5')).toBeTruthy();
     act(() => {
       useSnapshotStore.setState({ snapshot: snapshotZRewizja(6) });
@@ -119,29 +133,29 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     expect(screen.getByText('Model: rew. 6')).toBeTruthy();
   });
 
-  it('selektor trybów drzewa jest ukryty w U1 (decyzja E1.4 §2.2 — zero martwego UI)', () => {
-    render(<AppRoot />);
+  it('selektor trybów drzewa jest ukryty w U1 (decyzja E1.4 §2.2 — zero martwego UI)', async () => {
+    await renderujPowloke();
     expect(screen.queryByTestId('mvd-tree-mode')).toBeNull();
   });
 
-  it('przestrzeń „Projekt" renderuje pulpit projektu (E2.1) w warsztacie', () => {
+  it('przestrzeń „Projekt" renderuje pulpit projektu (E2.1) w warsztacie', async () => {
     act(() => {
       useShellStore.setState({ activeSpace: 'projekt' });
     });
-    render(<AppRoot />);
+    await renderujPowloke();
     expect(screen.getByText('Pulpit projektu')).toBeTruthy();
     expect(screen.getByText('Przypadki obliczeniowe')).toBeTruthy();
   });
 
-  it('Ctrl+K otwiera pełną wyszukiwarkę poleceń (E1.5) zamiast szkieletu', () => {
-    render(<AppRoot />);
+  it('Ctrl+K otwiera pełną wyszukiwarkę poleceń (E1.5) zamiast szkieletu', async () => {
+    await renderujPowloke();
     fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
     expect(screen.getByPlaceholderText('Szukaj poleceń, obiektów, okien…')).toBeTruthy();
     expect(screen.queryByTestId('mvd-search-scrim')).toBeNull();
   });
 
-  it('drzewo kontekstowe jest ukryte przy zwiniętym lewym panelu (listwa ikon)', () => {
-    render(<AppRoot />);
+  it('drzewo kontekstowe jest ukryte przy zwiniętym lewym panelu (listwa ikon)', async () => {
+    await renderujPowloke();
     expect(screen.getByTestId('mvd-left-context')).toBeTruthy();
     act(() => {
       useShellStore.getState().toggleLeftCollapsed('model');
@@ -160,22 +174,22 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     expect(screen.getByTestId('canonical-layout').getAttribute('data-ready')).toBe('true');
   });
 
-  it('kontrakt e2e: pasek aktywnego przypadku i środkowy panel noszą testidy starej powłoki', () => {
-    render(<AppRoot />);
+  it('kontrakt e2e: pasek aktywnego przypadku i środkowy panel noszą testidy starej powłoki', async () => {
+    await renderujPowloke();
     expect(screen.getByTestId('active-case-bar')).toBeTruthy();
     expect(screen.getByTestId('main-content')).toBeTruthy();
   });
 
-  it('kontrakt e2e: przestrzeń legacy (model) montuje LegacySurface z workspace-surface-main', () => {
-    render(<AppRoot />);
+  it('kontrakt e2e: przestrzeń legacy (model) montuje LegacySurface z workspace-surface-main', async () => {
+    await renderujPowloke();
     expect(screen.getByTestId('workspace-surface-main')).toBeTruthy();
   });
 
-  it('kontrakt e2e: przestrzeń z nową zawartością (projekt) też wystawia workspace-surface-main', () => {
+  it('kontrakt e2e: przestrzeń z nową zawartością (projekt) też wystawia workspace-surface-main', async () => {
     act(() => {
       useShellStore.setState({ activeSpace: 'projekt' });
     });
-    render(<AppRoot />);
+    await renderujPowloke();
     const warsztat = screen.getByTestId('workspace-surface-main');
     expect(warsztat.textContent).toContain('Pulpit projektu');
   });
