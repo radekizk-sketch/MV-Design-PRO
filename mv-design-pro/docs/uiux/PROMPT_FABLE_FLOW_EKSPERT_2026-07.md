@@ -180,16 +180,16 @@ kolejne ekrany") — domknięcie GAP-ów rundy 1
   UI „ślad na miejscu" w szczególe pozycji (wzorzec `slad_pl` z odbioru,
   tryb ekspercki). Zgodnie z regułą K3: dowód wielkości buildera renderowany
   NA MIEJSCU, nie ref do śladu innego przebiegu.
-- **R2-B (K1-G1) [WYKONAWCA]** — deep-link „Dobór kompensacji" z pre-selekcją
+- **R2-B (K1-G1) [SCALONE — V12K-106]** — deep-link „Dobór kompensacji" z pre-selekcją
   węzła: rozszerzenie jednorazowego żądania shell store o kontekst elementu,
   konsument w oknie kompensacji (recon obowiązkowy: czy okno ma wybór węzła —
   jeśli nie ma, uczciwy raport zamiast fabrykacji), wpięcie w akcję
   `bilans-biernej` rejestru akcji naprawczych.
-- **R2-C (K4-G1) [WYKONAWCA]** — usunięcie ostrzeżeń `act(...)` w
+- **R2-C (K4-G1) [SCALONE — V12K-107]** — usunięcie ostrzeżeń `act(...)` w
   `ui2/__tests__/integracja.test.tsx` U ŹRÓDŁA (bez maskowania; pomiar 9→0).
 - **R2-D** — runda zrzutów nowych ekranów po scaleniu (kontynuacja K5).
 
-Poza rundą (rejestr, nie ciche): K1-G2 (werdykt obciążalności gałęzi — karta
+Poza rundą (rejestr, nie ciche): R2-E zbiorcza higiena act() w 17 plikach oze/**+kreatory/** (30 ostrzeżeń, wzorce z R2-C przenośne); K1-G2 (werdykt obciążalności gałęzi — karta
 interpretacyjna backendu), K3-G2 (dowody porównania A/B — wymaga rozstrzygnięcia
 produktowego wyboru przebiegu), K3-G3 (wkłady zwarciowe — brak dostawcy danych).
 
