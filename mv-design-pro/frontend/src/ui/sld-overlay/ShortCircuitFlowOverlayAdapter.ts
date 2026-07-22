@@ -20,9 +20,13 @@
  * - Tokeny semantyczne, bez hex; badge = pary {źródło: wkład [kA]} z danych.
  * - KIERUNEK: kontrakt danych NIESIE kierunek per wpis ("from_to"/"to_from"),
  *   ale kontrakt `OverlayPayloadV1` (lustro backendu 1:1) nie ma kanału
- *   kierunku — strzałki kierunkowe wymagają renderu w kanwie (prymityw
- *   `FaultContributionArrow` istnieje; wpięcie w kanwę v3 = zakres pozostały
- *   karty W-C, patrz raport). Adapter NIE fabrykuje animacji kierunkowej.
+ *   kierunku — Adapter NIE fabrykuje animacji kierunkowej. DOMKNIĘTE kartą
+ *   S-B (ZWARCIA-PRO pkt 7): kierunek płynie OSOBNYM, czysto frontowym
+ *   kanałem `useOverlayStore.faultFlow` (`ShortCircuitFlowOverlayInput`) do
+ *   kanwy v3 — `v3/canvas/overlay.ts::buildFaultFlowOverlayFromScene` buduje
+ *   wpisy per gałąź, `SldCanvasV3` rysuje strzałki prymitywem
+ *   `FaultContributionArrow` (skala/kolor tercylowe TEJ SAMEJ klasy co niżej,
+ *   jedna prawda: `faultFlowColorTokenForWeight`).
  */
 
 import type { OverlayElement, OverlayPayloadV1, OverlayVisualState } from './overlayTypes';
@@ -85,10 +89,21 @@ export function relativeFlowWeight(branchMaxKa: number, payloadMaxKa: number): n
 const WEIGHT_HIGH = 2 / 3;
 const WEIGHT_MID = 1 / 3;
 
+/** Token koloru rozpływu zwarciowego wg tercyli skali względnej — JEDNA
+ *  prawda klasyfikacji dla payloadu overlay (niżej) ORAZ strzałek kanwy v3
+ *  (karta S-B: `buildFaultFlowOverlayFromScene`). Czysta funkcja progowa —
+ *  dobór tokenu prezentacji, zero fizyki. */
+export type FaultFlowColorToken = 'ok' | 'warning' | 'critical';
+
+export function faultFlowColorTokenForWeight(weight: number): FaultFlowColorToken {
+  if (weight >= WEIGHT_HIGH) return 'critical';
+  if (weight >= WEIGHT_MID) return 'warning';
+  return 'ok';
+}
+
 function weightToVisualState(weight: number): OverlayVisualState {
-  if (weight >= WEIGHT_HIGH) return 'CRITICAL';
-  if (weight >= WEIGHT_MID) return 'WARNING';
-  return 'OK';
+  const token = faultFlowColorTokenForWeight(weight);
+  return token === 'critical' ? 'CRITICAL' : token === 'warning' ? 'WARNING' : 'OK';
 }
 
 const VISUAL_STATE_TO_COLOR_TOKEN: Readonly<Record<OverlayVisualState, string>> = Object.freeze({

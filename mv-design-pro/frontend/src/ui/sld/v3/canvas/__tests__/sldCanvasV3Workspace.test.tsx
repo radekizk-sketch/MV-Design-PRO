@@ -14,13 +14,25 @@ import { useSnapshotStore } from '../../../../topology/snapshotStore';
 import { useSelectionStore } from '../../../../selection';
 import {
   buildEnergizationOverlay as buildEnergizationOverlayForTest,
+  buildFaultFlowOverlayForSnapshot,
   buildFlowOverlayForSnapshot,
   SldCanvasV3Workspace,
   elementTypeForKind,
 } from '../SldCanvasV3Workspace';
 import { buildSupplyPathHighlight, isElementEnergized } from '../../../v2/canvas/SupplyPathHighlighter';
-import { isFlowOverlayEmpty, flowOverlayValuesTraceToPayload, singleHopSegmentRefs } from '../overlay';
+import {
+  buildFaultFlowOverlayFromScene,
+  faultFlowOverlayTracesToInput,
+  isFlowOverlayEmpty,
+  flowOverlayValuesTraceToPayload,
+  singleHopSegmentRefs,
+} from '../overlay';
 import { useRawResultOverlayStore, type RawOverlayElement, type RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
+import { useOverlayStore } from '../../../../sld-overlay/overlayStore';
+import type {
+  ShortCircuitBranchFlowV1,
+  ShortCircuitFlowOverlayInput,
+} from '../../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 
 afterEach(() => {
   cleanup();
@@ -29,6 +41,9 @@ afterEach(() => {
   // ustawiony w jednym teście przecieka do kolejnych (kolejność testów w
   // pliku wpływałaby na wynik — naruszenie determinizmu testów).
   useRawResultOverlayStore.getState().clear();
+  // Karta S-B: ten sam wymóg dla globalnego `useOverlayStore` (kanał
+  // kierunku `faultFlow` zasilany przez ekran zwarć).
+  useOverlayStore.getState().clearOverlay();
 });
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -49,6 +64,7 @@ beforeEach(() => {
   useSnapshotStore.getState().reset();
   useSelectionStore.getState().clearSelection();
   useRawResultOverlayStore.getState().clear();
+  useOverlayStore.getState().clearOverlay();
 });
 
 function rawElement(refId: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
@@ -248,5 +264,67 @@ describe('SldCanvasV3Workspace — F9.5: nakładka przepływu mocy (spec §14.2,
 
   it('buildFlowOverlayForSnapshot(snapshot, null) ⇒ {} (kontrakt „overlay wyłączony bez wyniku" na poziomie funkcji wołanej przez hook produkcyjny)', () => {
     expect(buildFlowOverlayForSnapshot(enm, null)).toEqual({});
+  });
+});
+
+describe('SldCanvasV3Workspace — karta S-B: strzałki rozpływu prądu zwarciowego (kanał useOverlayStore.faultFlow)', () => {
+  // F-1: ref z bramki jednokawałkowej (kierunek geometrycznie udowodniony) —
+  // ten sam dobór celu co blok F9.5 wyżej.
+  const singleHop = singleHopSegmentRefs(enm);
+  const realSegmentOwnerRef = buildSceneV3(enm, 2).segments.find(
+    (s) =>
+      s.meta?.elementKind === 'segment' &&
+      s.meta.ownerRef &&
+      !s.meta.ownerRef.includes('#') &&
+      singleHop.has(s.meta.ownerRef),
+  )!.meta!.ownerRef!;
+
+  function faultInput(direction = 'from_to'): ShortCircuitFlowOverlayInput {
+    const flow: ShortCircuitBranchFlowV1 = {
+      branch_id: realSegmentOwnerRef,
+      branch_name: 'Odcinek magistrali',
+      source_id: 'ZR-PV',
+      from_node_id: 'W-A',
+      from_node_name: 'Węzeł A',
+      to_node_id: 'W-B',
+      to_node_name: 'Węzeł B',
+      i_ka: 0.245,
+      direction,
+    };
+    return { run_id: 'run-sc', fault_type: '3F', fault_element_ref: 'EL-ZWARCIE', flows: [flow] };
+  }
+
+  it('ŚCIEŻKA PRODUKCYJNA: snapshot + loadFaultFlow (ekran zwarć „Pokaż na schemacie") ⇒ strzałka w DOM kanwy v3', () => {
+    useSnapshotStore.setState({ snapshot: enm });
+    useOverlayStore.getState().loadFaultFlow(faultInput());
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const layer = container.querySelector('[data-testid="sld-v3-fault-flow-overlay"]');
+    expect(layer).toBeTruthy();
+    expect(layer!.children.length).toBe(1);
+    expect(layer!.firstElementChild!.getAttribute('data-fault-owner-ref')).toBe(realSegmentOwnerRef);
+    expect(layer!.firstElementChild!.getAttribute('data-fault-forward')).toBe('true');
+  });
+
+  it('bez kanału kierunku (faultFlow=null — stan domyślny): warstwa strzałek PUSTA (zero atrap)', () => {
+    useSnapshotStore.setState({ snapshot: enm });
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    expect(container.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.children.length).toBe(0);
+  });
+
+  it('buildFaultFlowOverlayForSnapshot niesie wpis identyczny z buildFaultFlowOverlayFromScene wołanym wprost (zero rozjazdu wołający↔budowniczy) + wyrocznia PASS', () => {
+    const input = faultInput('to_from');
+    const merged = buildFaultFlowOverlayForSnapshot(enm, input);
+    const direct = buildFaultFlowOverlayFromScene(buildSceneV3(enm, 2), input, singleHop);
+    expect(merged[realSegmentOwnerRef]).toEqual(direct[realSegmentOwnerRef]);
+    expect(merged[realSegmentOwnerRef]?.forward).toBe(false);
+    expect(faultFlowOverlayTracesToInput(merged, input)).toBe(true);
+  });
+
+  it('determinizm: buildFaultFlowOverlayForSnapshot(enm, input) dwukrotnie ⇒ identyczny JSON.stringify; input=null ⇒ {}', () => {
+    const input = faultInput();
+    expect(JSON.stringify(buildFaultFlowOverlayForSnapshot(enm, input))).toBe(
+      JSON.stringify(buildFaultFlowOverlayForSnapshot(enm, input)),
+    );
+    expect(buildFaultFlowOverlayForSnapshot(enm, null)).toEqual({});
   });
 });

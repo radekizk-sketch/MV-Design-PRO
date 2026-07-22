@@ -82,6 +82,12 @@ import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { buildSupplyPathHighlight, isElementEnergized, type SupplyPathHighlight } from '../../v2/canvas/SupplyPathHighlighter';
 import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
+// Karta S-B (ZWARCIA-PRO pkt 7): kanał KIERUNKU rozpływu prądu zwarciowego —
+// zasilany przez ekran zwarć (`ui2/wyniki/zwarcia/pokazNaSchemacie.ts`,
+// `loadFaultFlow` PO `loadOverlay`), czyszczony automatycznie przy podmianie
+// overlay (loadOverlay zeruje faultFlow — invariant store'a).
+import { useOverlayStore } from '../../../sld-overlay/overlayStore';
+import type { ShortCircuitFlowOverlayInput } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { buildSldDataFromSnapshot, type SldDataPayload } from '../../v2/canvas/enmToSldAdapter';
 import { SldDetailDrawer, type SldDetailDrawerAction, type SldDetailDrawerData, type SldDetailDrawerSavePayload } from '../../v2/canvas/SldDetailDrawer';
 import { DerPersistenceApiError, postDerGeneratorConfig } from '../../v2/canvas/derPersistenceApi';
@@ -131,9 +137,11 @@ import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
 import {
+  buildFaultFlowOverlayFromScene,
   buildFlowOverlayFromScene,
   buildOltcOverlayFromScene,
   singleHopSegmentRefs,
+  type SegmentFaultFlowOverlay,
   type SegmentFlowOverlay,
   type SldV3Overlay,
   type TransformerOltcOverlay,
@@ -572,6 +580,38 @@ function useOltcOverlay(
   );
 }
 
+/**
+ * Karta S-B (ZWARCIA-PRO pkt 7): strzałki kierunku rozpływu prądu zwarciowego
+ * ze WSZYSTKICH trzech LOD — TEN SAM wzorzec co `buildFlowOverlayForSnapshot`
+ * (ownerRef = tożsamość LOD-niezależna; bramka F-1 `singleHopSegmentRefs` —
+ * kierunek emitowany wyłącznie dla przęseł o udowodnionej orientacji
+ * geometrycznej). Źródło `input`: kanał `useOverlayStore.faultFlow`
+ * (wiersz kanoniczny `branch_contributions`, ekran zwarć „Pokaż na
+ * schemacie"). Brak kanału ⇒ `{}` (strzałki wyłączone, §14.2).
+ */
+export function buildFaultFlowOverlayForSnapshot(
+  snapshot: EnergyNetworkModel,
+  input: ShortCircuitFlowOverlayInput | null,
+): Readonly<Record<string, SegmentFaultFlowOverlay>> {
+  if (!input) return {};
+  const trustedRefs = singleHopSegmentRefs(snapshot);
+  const merged: Record<string, SegmentFaultFlowOverlay> = {};
+  for (const lod of ALL_SCENE_LODS) {
+    Object.assign(merged, buildFaultFlowOverlayFromScene(buildSceneV3(snapshot, lod), input, trustedRefs));
+  }
+  return merged;
+}
+
+function useFaultFlowOverlay(
+  snapshot: EnergyNetworkModel | null,
+  input: ShortCircuitFlowOverlayInput | null,
+): Readonly<Record<string, SegmentFaultFlowOverlay>> {
+  return useMemo(
+    () => (snapshot ? buildFaultFlowOverlayForSnapshot(snapshot, input) : {}),
+    [snapshot, input],
+  );
+}
+
 // ---------------------------------------------------------------------------
 // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector — selekcja obszarem"):
 // hit-test PURE funkcja — v2 `LassoSelector.pointInLasso` jest wołany
@@ -716,9 +756,14 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const rawOverlayPayload = useRawResultOverlayStore((state) => state.payload);
   const flowByOwnerRef = useFlowOverlay(snapshot, rawOverlayPayload);
   const oltcByOwnerRef = useOltcOverlay(snapshot, rawOverlayPayload);
+  // Karta S-B: kanał kierunku rozpływu zwarciowego (ekran zwarć „Pokaż na
+  // schemacie" → `loadFaultFlow`; podmiana overlay innego przebiegu zeruje
+  // kanał w store — strzałki SC nie przeżywają cudzego wyniku).
+  const faultFlowInput = useOverlayStore((state) => state.faultFlow);
+  const faultFlowByOwnerRef = useFaultFlowOverlay(snapshot, faultFlowInput);
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef }),
-    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef],
   );
 
   // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,

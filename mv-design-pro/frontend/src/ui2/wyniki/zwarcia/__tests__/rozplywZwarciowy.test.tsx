@@ -162,6 +162,16 @@ describe('EkranZwarc — „Pokaż na schemacie" (pkt 6) + overlay rozpływu (pk
       'BR-LINIA-2',
     ]);
 
+    // Karta S-B: kanał KIERUNKU dla strzałek kanwy v3 — TE SAME wpisy wiersza
+    // (direction "from_to"/"to_from" wprost z solvera), ten sam przebieg.
+    const faultFlow = useOverlayStore.getState().faultFlow;
+    expect(faultFlow?.run_id).toBe('sc-run-1');
+    expect(faultFlow?.fault_element_ref).toBe('EL-GPZ');
+    expect(faultFlow?.flows.map((f) => [f.branch_id, f.direction])).toEqual([
+      ['BR-KABEL-1', 'to_from'],
+      ['BR-LINIA-2', 'from_to'],
+    ]);
+
     expect(navigateToSldMock).toHaveBeenCalledTimes(1);
   });
 
@@ -175,5 +185,12 @@ describe('EkranZwarc — „Pokaż na schemacie" (pkt 6) + overlay rozpływu (pk
     expect(useOverlayStore.getState().overlay?.elements.map((el) => el.element_ref)).toEqual([
       'EL-ST1',
     ]);
+    // Karta S-B: kanał kierunku PODMIENIONY na nowy punkt (pusta lista wpisów
+    // — budowniczy strzałek da uczciwie pustą nakładkę, zero atrap).
+    expect(useOverlayStore.getState().faultFlow).toMatchObject({
+      run_id: 'sc-run-1',
+      fault_element_ref: 'EL-ST1',
+      flows: [],
+    });
   });
 });

@@ -50,7 +50,9 @@ import {
   type BoundingBox,
   type ViewportTransform,
 } from './camera';
-import type { SegmentFlowOverlay, SldV3Overlay, TransformerOltcOverlay } from './overlay';
+import type { SegmentFaultFlowOverlay, SegmentFlowOverlay, SldV3Overlay, TransformerOltcOverlay } from './overlay';
+import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
+import { FaultContributionArrow } from '../../../sld-overlay/FaultContributionArrow';
 import { formatTapPositionLabel } from '../../v2/canvas/oltcGlyph';
 import { isLayerVisible, layerIdForElementMeta, type CanvasLayerVisibility } from './layers';
 import {
@@ -89,6 +91,20 @@ const FLOW_LABEL_OFFSET_RIGHT = 12;
  *  energizacji (zielony) i przepływu (cyjan): trzeci wymiar nakładki
  *  (stan regulacji zaczepów po obliczeniu), operator nie myli warstw. */
 const OLTC_OVERLAY_COLOR = '#FFB300';
+/** Karta S-B (ZWARCIA-PRO pkt 7): kolory strzałek rozpływu prądu zwarciowego
+ *  per token tercylowy adaptera W-C (`faultFlowColorTokenForWeight` — jedna
+ *  prawda klasyfikacji; tu wyłącznie mapowanie token→barwa dla ciemnego tła
+ *  SCADA). Rodzina czerwieni — semantyka zwarcia, ODRĘBNA od energizacji
+ *  (zielony) i przepływu mocy (cyjan); kolizja z nakładkami LF niemożliwa
+ *  (allowlisty LOAD_FLOW wyłączają flow/OLTC dla przebiegu SC). */
+const FAULT_FLOW_TOKEN_COLOR: Readonly<Record<FaultFlowColorToken, string>> = {
+  critical: '#E74C3C',
+  warning: '#F5A623',
+  ok: '#F9E79F',
+};
+/** Minimalna długość biegu dla strzałki zwarciowej [px świata] — grot
+ *  prymitywu (`8 + strokeWidth`, max ~13) nie może dominować nad biegiem. */
+const FAULT_ARROW_MIN_RUN = 2 * FLOW_ARROW_LENGTH;
 /** Wrażliwość zoomu kółkiem — kalibracja wizualna (spec nie podaje liczby;
  *  jeden „tick" typowej myszy, deltaY≈100, daje ~16% zmiany skali). */
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
@@ -696,6 +712,103 @@ function SceneFlowPlacementNode(props: { readonly placement: FlowPlacement }): J
 }
 
 // ---------------------------------------------------------------------------
+// Karta S-B (ZWARCIA-PRO pkt 7): strzałki kierunku rozpływu prądu zwarciowego
+// na odcinkach z wpisem w `overlay.faultFlowByOwnerRef`. Element NAKŁADKI
+// (jak grot przepływu F9.5), NIE symbol sceny — geometria sceny NIETKNIĘTA
+// (warstwa overlay, zero zmiany layoutu/goldenów). Rysuje ISTNIEJĄCY prymityw
+// `FaultContributionArrow` (`ui/sld-overlay/`): trzon + grot + etykieta
+// „x,x kA", grubość ∝ wadze względnej (maxMagnitudeKa = największy wkład
+// wejścia — ta sama baza skali co tercyle adaptera W-C), kolor przez
+// `currentColor` z tokenu tercylowego. Brak wpisu = brak strzałki (§14.2
+// „overlay wyłączony bez wyniku", zero atrap).
+// ---------------------------------------------------------------------------
+
+export interface FaultFlowPlacement {
+  /** Indeks odcinka w `scene.segments` renderowanego LOD — spójny z testId. */
+  readonly segmentIndex: number;
+  readonly ownerRef: string;
+  readonly forward: boolean;
+  /** Początek strzałki [x, y] — strona, OD której płynie prąd wg kierunku
+   *  solvera (`forward=true` ⇒ strona `points[bestIndex]` = strona „from"
+   *  gałęzi, kontrakt F-1 `overlay.ts`). */
+  readonly fromXy: readonly [number, number];
+  /** Koniec strzałki (grot) [x, y]. */
+  readonly toXy: readonly [number, number];
+  readonly iKa: number;
+  readonly payloadMaxKa: number;
+  readonly colorToken: FaultFlowColorToken;
+}
+
+/**
+ * Rozmieszczenie strzałek zwarciowych dla sceny — dla KAŻDEGO odcinka z wpisem
+ * w `faultFlowByOwnerRef` strzałka wzdłuż NAJDŁUŻSZEGO biegu polilinii (ta
+ * sama selekcja biegu co `flowOverlayGeometry` — orientacja osi z geometrii,
+ * ZWROT z `forward` = tokenu kierunku solvera). Bieg krótszy niż
+ * `FAULT_ARROW_MIN_RUN` ⇒ brak strzałki (grot nie może dominować nad biegiem —
+ * pominięcie, nie deformacja). Czysta funkcja (zero DOM/Date) — determinizm
+ * renderu sprowadza się do determinizmu tej arytmetyki.
+ */
+export function computeFaultFlowPlacements(
+  scene: SceneV3,
+  faultFlowByOwnerRef: Readonly<Record<string, SegmentFaultFlowOverlay>> | undefined,
+): readonly FaultFlowPlacement[] {
+  if (!faultFlowByOwnerRef) return [];
+  const placements: FaultFlowPlacement[] = [];
+  scene.segments.forEach((segment, segmentIndex) => {
+    const ownerRef = segment.meta?.ownerRef;
+    const entry = ownerRef != null ? faultFlowByOwnerRef[ownerRef] : undefined;
+    if (!entry) return;
+    const points = segment.points;
+    let bestIndex = -1;
+    let bestLength = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      const length = Math.abs(points[i + 1].x - points[i].x) + Math.abs(points[i + 1].y - points[i].y);
+      if (length > bestLength) {
+        bestLength = length;
+        bestIndex = i;
+      }
+    }
+    if (bestIndex < 0 || bestLength < FAULT_ARROW_MIN_RUN) return;
+    const a = points[bestIndex];
+    const b = points[bestIndex + 1];
+    const from = entry.forward ? a : b;
+    const to = entry.forward ? b : a;
+    placements.push({
+      segmentIndex,
+      ownerRef: entry.ownerRef,
+      forward: entry.forward,
+      fromXy: [from.x, from.y],
+      toXy: [to.x, to.y],
+      iKa: entry.iKa,
+      payloadMaxKa: entry.payloadMaxKa,
+      colorToken: entry.colorToken,
+    });
+  });
+  return placements;
+}
+
+function SceneFaultFlowNode(props: { readonly placement: FaultFlowPlacement }): JSX.Element {
+  const { placement } = props;
+  return (
+    <g
+      data-testid={`sld-v3-fault-flow-${placement.segmentIndex}`}
+      data-fault-owner-ref={placement.ownerRef}
+      data-fault-forward={placement.forward ? 'true' : 'false'}
+      data-fault-color-token={placement.colorToken}
+      style={{ color: FAULT_FLOW_TOKEN_COLOR[placement.colorToken] }}
+    >
+      <FaultContributionArrow
+        fromXy={placement.fromXy}
+        toXy={placement.toXy}
+        magnitudeKa={placement.iKa}
+        maxMagnitudeKa={placement.payloadMaxKa}
+        testId={`sld-v3-fault-flow-arrow-${placement.segmentIndex}`}
+      />
+    </g>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // F4/SLD (V12K-092, karta SLD-02 §3.5): badge wynikowy OLTC — pozycja
 // końcowa zaczepu + liczba przełączeń NA glifie transformatora, PO obliczeniu
 // (dane z `overlay.oltcByOwnerRef`, budowane w `overlay.ts::buildOltcOverlay
@@ -978,6 +1091,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     () => computeOltcBadgePlacements(scene, effectiveOverlay?.oltcByOwnerRef),
     [scene, effectiveOverlay],
   );
+  // Karta S-B (ZWARCIA-PRO pkt 7): strzałki rozpływu prądu zwarciowego — ta
+  // sama warstwa „nakładki wyników" (filtr `effectiveOverlay`).
+  const faultFlowPlacements = useMemo(
+    () => computeFaultFlowPlacements(scene, effectiveOverlay?.faultFlowByOwnerRef),
+    [scene, effectiveOverlay],
+  );
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): informuje wołającego o
@@ -1170,6 +1289,19 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <g data-testid="sld-v3-flow-overlay">
           {flowPlacements.map((placement) => (
             <SceneFlowPlacementNode key={`flow-${placement.segmentIndex}`} placement={placement} />
+          ))}
+        </g>
+        {/* Karta S-B (ZWARCIA-PRO pkt 7): strzałki kierunku rozpływu prądu
+         * zwarciowego NAD warstwami bazowymi — prymityw
+         * `FaultContributionArrow` per odcinek z wpisem w
+         * `faultFlowByOwnerRef` (kierunek "from_to"/"to_from" z FROZEN
+         * solvera, wartości [kA] z wiersza kanonicznego). Warstwa pusta
+         * (zero węzłów DOM), gdy brak kanału kierunku lub warstwa „nakładki
+         * wyników" ukryta (`effectiveOverlay` undefined) — „overlay wyłączony
+         * bez wyniku", zero atrap. */}
+        <g data-testid="sld-v3-fault-flow-overlay">
+          {faultFlowPlacements.map((placement) => (
+            <SceneFaultFlowNode key={`fault-flow-${placement.segmentIndex}`} placement={placement} />
           ))}
         </g>
         {/* F4/SLD (V12K-092, karta SLD-02 §3.5): badge wynikowy OLTC NAD

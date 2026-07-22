@@ -67,10 +67,12 @@ export { adaptOltcControlToOverlay, formatOltcPositionLabel } from './OltcOverla
 export type { OltcControlResultV1 } from './OltcOverlayAdapter';
 export {
   adaptShortCircuitFlowToOverlay,
+  faultFlowColorTokenForWeight,
   faultTypeToOverlayAnalysisType,
   relativeFlowWeight,
 } from './ShortCircuitFlowOverlayAdapter';
 export type {
+  FaultFlowColorToken,
   ShortCircuitBranchFlowV1,
   ShortCircuitFlowOverlayInput,
 } from './ShortCircuitFlowOverlayAdapter';

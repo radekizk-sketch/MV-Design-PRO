@@ -24,6 +24,7 @@ import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
 import {
   SldCanvasV3,
+  computeFaultFlowPlacements,
   computeFlowOverlayPlacements,
   computeOltcBadgePlacements,
   flowOverlayGeometry,
@@ -32,10 +33,12 @@ import {
 } from '../SldCanvasV3';
 import {
   singleHopSegmentRefs,
+  type SegmentFaultFlowOverlay,
   type SegmentFlowOverlay,
   type SldV3Overlay,
   type TransformerOltcOverlay,
 } from '../overlay';
+import { formatMagnitudeKa } from '../../../../sld-overlay/FaultContributionArrow';
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState } from '../camera';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 
@@ -661,5 +664,161 @@ describe('SldCanvasV3 — F8a k3: refit PEŁNY na zmianę snapshot; resize (widt
     // resize (zachowanie pan/zoom), nie świeży fit (który wycentrowałby bbox).
     expect(worldCenterAfterResize.x).toBeCloseTo(worldCenterBeforeResize.x, 6);
     expect(worldCenterAfterResize.y).toBeCloseTo(worldCenterBeforeResize.y, 6);
+  });
+});
+
+describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (warstwa sld-v3-fault-flow-overlay)', () => {
+  /** Najdłuższy bieg polilinii (ta sama selekcja co placement) — do doboru
+   *  celu testu (bieg ≥ 24 px świata, próg `FAULT_ARROW_MIN_RUN`). */
+  function longestRunOf(points: readonly { x: number; y: number }[]): number {
+    let best = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      const len = Math.abs(points[i + 1].x - points[i].x) + Math.abs(points[i + 1].y - points[i].y);
+      if (len > best) best = len;
+    }
+    return best;
+  }
+
+  /** Realny odcinek (segmentRef bez `#`) z biegiem wystarczającym na strzałkę
+   *  + jego indeks w scenie danego LOD (testId nakładki jest indeksowy). */
+  function faultTargetOnScene(lod: SceneLod): { readonly ownerRef: string; readonly index: number } {
+    const scene = buildSceneV3(enm, lod);
+    const index = scene.segments.findIndex(
+      (s) =>
+        s.meta?.elementKind === 'segment' &&
+        s.meta.ownerRef &&
+        !s.meta.ownerRef.includes('#') &&
+        longestRunOf(s.points) >= 24,
+    );
+    expect(index).toBeGreaterThanOrEqual(0);
+    return { ownerRef: scene.segments[index].meta!.ownerRef!, index };
+  }
+
+  function overlayWithFault(entries: Record<string, SegmentFaultFlowOverlay>): SldV3Overlay {
+    return { energizedByTestId: {}, faultFlowByOwnerRef: entries };
+  }
+
+  const FAULT_ENTRY = (ownerRef: string, forward = true): SegmentFaultFlowOverlay => ({
+    ownerRef,
+    forward,
+    iKa: 0.245,
+    payloadMaxKa: 0.245,
+    colorToken: 'critical',
+  });
+
+  it('(a) odcinek z wpisem w faultFlowByOwnerRef → prymityw FaultContributionArrow (trzon+grot+etykieta kA) w warstwie', () => {
+    const { ownerRef, index } = faultTargetOnScene(2);
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        overlay={overlayWithFault({ [ownerRef]: FAULT_ENTRY(ownerRef) })}
+      />,
+    );
+    const group = container.querySelector(`[data-testid="sld-v3-fault-flow-${index}"]`);
+    expect(group).toBeTruthy();
+    expect(group!.getAttribute('data-fault-owner-ref')).toBe(ownerRef);
+    expect(group!.getAttribute('data-fault-forward')).toBe('true');
+    expect(group!.getAttribute('data-fault-color-token')).toBe('critical');
+    // Części prymitywu (kontrakt `FaultContributionArrow` — testId wewnętrzne).
+    expect(container.querySelector(`[data-testid="sld-v3-fault-flow-arrow-${index}-line"]`)).toBeTruthy();
+    expect(container.querySelector(`[data-testid="sld-v3-fault-flow-arrow-${index}-head"]`)).toBeTruthy();
+    const label = container.querySelector(`[data-testid="sld-v3-fault-flow-arrow-${index}-label"]`);
+    expect(label?.textContent).toBe(formatMagnitudeKa(0.245)); // „0,2 kA" — format PL prymitywu
+  });
+
+  it('(b) bez wpisów / bez overlay → warstwa pusta (zero atrap — „overlay wyłączony bez wyniku")', () => {
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    expect(container.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.children.length).toBe(0);
+
+    const { ownerRef } = faultTargetOnScene(2);
+    const { container: withEntry } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        overlay={overlayWithFault({ [ownerRef]: FAULT_ENTRY(ownerRef) })}
+      />,
+    );
+    // Dokładnie JEDEN wpis → dokładnie JEDNA grupa strzałki w warstwie.
+    expect(withEntry.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.children.length).toBe(1);
+  });
+
+  it('(c) orientacja: forward=false ⇒ końce strzałki ZAMIENIONE względem forward=true (zwrot z tokenu kierunku solvera)', () => {
+    const { ownerRef, index } = faultTargetOnScene(2);
+    const scene = buildSceneV3(enm, 2);
+    const placementForward = computeFaultFlowPlacements(scene, { [ownerRef]: FAULT_ENTRY(ownerRef, true) });
+    const placementReversed = computeFaultFlowPlacements(scene, { [ownerRef]: FAULT_ENTRY(ownerRef, false) });
+    expect(placementForward.length).toBeGreaterThanOrEqual(1);
+    const pf = placementForward.find((p) => p.segmentIndex === index)!;
+    const pr = placementReversed.find((p) => p.segmentIndex === index)!;
+    expect(pf.fromXy).toEqual(pr.toXy);
+    expect(pf.toXy).toEqual(pr.fromXy);
+
+    // DOM: trzon zaczyna się od strony `fromXy` placementu (x1/y1 linii).
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        overlay={overlayWithFault({ [ownerRef]: FAULT_ENTRY(ownerRef, false) })}
+      />,
+    );
+    const line = container.querySelector(`[data-testid="sld-v3-fault-flow-arrow-${index}-line"]`)!;
+    expect(Number(line.getAttribute('x1'))).toBe(pr.fromXy[0]);
+    expect(Number(line.getAttribute('y1'))).toBe(pr.fromXy[1]);
+    expect(
+      container.querySelector(`[data-testid="sld-v3-fault-flow-${index}"]`)!.getAttribute('data-fault-forward'),
+    ).toBe('false');
+  });
+
+  it('(d) strzałki są WARSTWĄ nakładki, nie zmianą layoutu: geometria segmentów/symboli IDENTYCZNA z i bez wpisów', () => {
+    const { ownerRef } = faultTargetOnScene(2);
+    const { container: without } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    const { container: withFault } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        overlay={overlayWithFault({ [ownerRef]: FAULT_ENTRY(ownerRef) })}
+      />,
+    );
+    expect(withFault.querySelector('[data-testid="sld-v3-segments"]')!.innerHTML).toBe(
+      without.querySelector('[data-testid="sld-v3-segments"]')!.innerHTML,
+    );
+    expect(withFault.querySelector('[data-testid="sld-v3-symbols"]')!.innerHTML).toBe(
+      without.querySelector('[data-testid="sld-v3-symbols"]')!.innerHTML,
+    );
+  });
+
+  it('(e) determinizm renderu: dwa rendery tych samych propsów → identyczny innerHTML warstwy strzałek', () => {
+    const { ownerRef } = faultTargetOnScene(2);
+    const overlay = overlayWithFault({ [ownerRef]: FAULT_ENTRY(ownerRef) });
+    const { container: a } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    const { container: b } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    expect(a.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.innerHTML).toBe(
+      b.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.innerHTML,
+    );
+  });
+
+  it('computeFaultFlowPlacements: brak overlay ⇒ zero placementów; ref spoza sceny ⇒ ignorowany (nie fabrykuje)', () => {
+    const scene = buildSceneV3(enm, 2);
+    expect(computeFaultFlowPlacements(scene, undefined)).toEqual([]);
+    expect(
+      computeFaultFlowPlacements(scene, { 'nieznany-ref': FAULT_ENTRY('nieznany-ref') }),
+    ).toEqual([]);
   });
 });

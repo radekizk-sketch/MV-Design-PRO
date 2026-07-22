@@ -124,6 +124,12 @@
  */
 import type { RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
+import {
+  faultFlowColorTokenForWeight,
+  relativeFlowWeight,
+  type FaultFlowColorToken,
+  type ShortCircuitFlowOverlayInput,
+} from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { buildSldDataFromSnapshot } from '../../v2/canvas/enmToSldAdapter';
 import type { SceneV3 } from '../scene/buildScene';
@@ -169,6 +175,20 @@ export interface SldV3Overlay {
    * nie crashuje).
    */
   readonly flowByOwnerRef?: Readonly<Record<string, SegmentFlowOverlay>>;
+  /**
+   * Karta S-B (ZWARCIA-PRO pkt 7, domknięcie GAP V12K-120): strzałki kierunku
+   * rozpływu PRĄDU ZWARCIOWEGO per ODCINEK (`meta.ownerRef` — TA SAMA
+   * tożsamość LOD-niezależna i TA SAMA przestrzeń refów co `flowByOwnerRef`:
+   * `branch_id` wiersza kanonicznego == realny `segmentRef` adaptera, dowód:
+   * adapter W-C `ShortCircuitFlowOverlayAdapter` kluczuje elementy gałęzi
+   * `branch_id`/'LineBranch' — ta sama przestrzeń co `RawOverlayPayload.
+   * elements[ref_id]`, patrz nagłówek pliku). Źródło danych: kanał
+   * `useOverlayStore.faultFlow` (wiersz kanoniczny `branch_contributions`,
+   * kierunek "from_to"/"to_from" WPROST z FROZEN solvera). Brak wpisu = brak
+   * danych rozpływu dla odcinka (§14.2 „overlay wyłączony bez wyniku") —
+   * kanwa NIE rysuje strzałki (nie fabrykuje, nie crashuje).
+   */
+  readonly faultFlowByOwnerRef?: Readonly<Record<string, SegmentFaultFlowOverlay>>;
   /**
    * F4/SLD (V12K-092, karta SLD-02 §3.5 „badge wynikowy OLTC"): pozycja
    * końcowa zaczepu + liczba przełączeń per TRANSFORMATOR (`meta.ownerRef`
@@ -367,6 +387,148 @@ export function buildFlowOverlayFromScene(
     };
   }
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// Karta S-B (ZWARCIA-PRO pkt 7) — budowniczy CZYSTY strzałek kierunku rozpływu
+// prądu zwarciowego: scena + wejście kanału kierunku (lub `null`) →
+// `faultFlowByOwnerRef`. TEN SAM wzorzec co `buildFlowOverlayFromScene`
+// (bramka F-1 `trustedSingleHopRefs`, zero DOM/Date, determinizm) i TA SAMA
+// klasyfikacja tercylowa co adapter W-C (`faultFlowColorTokenForWeight` —
+// jedna prawda skali/koloru). Zero fizyki: kierunek i wartości WYŁĄCZNIE z
+// danych solvera (wiersz kanoniczny `branch_contributions`).
+// ---------------------------------------------------------------------------
+
+/** Tokeny kierunku FROZEN solvera (`ShortCircuitBranchContribution.direction`,
+ *  `short_circuit_iec60909.py`) — kierunek względem pary from/to GAŁĘZI. */
+const FAULT_DIRECTION_FROM_TO = 'from_to';
+const FAULT_DIRECTION_TO_FROM = 'to_from';
+
+/**
+ * Strzałka rozpływu zwarciowego jednego odcinka — kierunek + największy wkład.
+ * `forward`: `true` gdy kierunek solvera to "from_to" — geometrycznie TA SAMA
+ * konwencja co `SegmentFlowOverlay.forward` (`points[0]` = strona
+ * `fromTerminal` = strona „from" gałęzi dla przęseł jednokawałkowych, patrz
+ * kontrakt F-1 wyżej i test kontraktu w `overlay.test.ts`). `iKa` = NAJWIĘKSZY
+ * wkład tej gałęzi [kA] (ta sama wielkość, którą adapter W-C waży tercylowo —
+ * `maxKa` grupy; superpozycja per źródło nie sumuje się prezentacyjnie bez
+ * fazy, więc max jest jedyną uczciwą pojedynczą liczbą). `payloadMaxKa` =
+ * największy wkład CAŁEGO wejścia — baza skali względnej grubości strzałki
+ * (prymityw `FaultContributionArrow.computeStrokeWidth` z `maxMagnitudeKa` =
+ * ta wartość ⇒ grubość ∝ waga względna, spójnie z adapterem W-C).
+ */
+export interface SegmentFaultFlowOverlay {
+  readonly ownerRef: string;
+  readonly forward: boolean;
+  readonly iKa: number;
+  readonly payloadMaxKa: number;
+  readonly colorToken: FaultFlowColorToken;
+}
+
+/** Wpis rozpływu po bramce mierzalności: znany token kierunku + skończone
+ *  `i_ka > 0` (wpis bez prądu mierzalnego nie niesie podstawy strzałki). */
+interface MeasurableFaultEntry {
+  readonly direction: string;
+  readonly iKa: number;
+}
+
+/**
+ * Nakładka strzałek zwarciowych DLA JEDNEJ sceny (jeden LOD) — WOŁAJĄCY
+ * (`SldCanvasV3Workspace.tsx`, wzorzec `buildFlowOverlayForSnapshot`) łączy
+ * trzy LOD-y w jeden słownik (ownerRef = tożsamość LOD-niezależna).
+ * `input==null` (brak kanału kierunku w `useOverlayStore.faultFlow`) ⇒ `{}`
+ * (strzałki WYŁĄCZONE — §14.2 „overlay wyłączony bez wyniku", zero atrap).
+ * Bramki uczciwości (każda = brak wpisu, nigdy błędna strzałka):
+ *  - ref poza `trustedSingleHopRefs` (F-1: kierunek geometrycznie
+ *    nieudowodniony dla przęseł wielokawałkowych/refów rysunkowych);
+ *  - wpisy gałęzi o MIESZANYCH kierunkach (różne źródła pchają w przeciwne
+ *    strony — jedna strzałka byłaby fabrykacją wypadkowej bez fazy);
+ *  - brak wpisu z mierzalnym `i_ka` (kierunek bez wartości nie ma skali).
+ */
+export function buildFaultFlowOverlayFromScene(
+  scene: SceneV3,
+  input: ShortCircuitFlowOverlayInput | null,
+  trustedSingleHopRefs: ReadonlySet<string>,
+): Readonly<Record<string, SegmentFaultFlowOverlay>> {
+  if (!input) return {};
+  const byBranch = new Map<string, MeasurableFaultEntry[]>();
+  for (const flow of input.flows) {
+    if (flow.direction !== FAULT_DIRECTION_FROM_TO && flow.direction !== FAULT_DIRECTION_TO_FROM) continue;
+    if (flow.i_ka === null || !Number.isFinite(flow.i_ka) || flow.i_ka <= 0) continue;
+    const list = byBranch.get(flow.branch_id) ?? [];
+    list.push({ direction: flow.direction, iKa: flow.i_ka });
+    byBranch.set(flow.branch_id, list);
+  }
+  if (byBranch.size === 0) return {};
+  let payloadMaxKa = 0;
+  for (const entries of byBranch.values()) {
+    for (const entry of entries) {
+      if (entry.iKa > payloadMaxKa) payloadMaxKa = entry.iKa;
+    }
+  }
+  const out: Record<string, SegmentFaultFlowOverlay> = {};
+  for (const segment of scene.segments) {
+    const ownerRef = segment.meta?.ownerRef;
+    if (!ownerRef || segment.meta?.elementKind !== 'segment') continue;
+    if (ownerRef in out) continue; // deterministyczny: pierwszy odcinek wygrywa (ten sam ownerRef ⇒ ten sam wpis)
+    if (!trustedSingleHopRefs.has(ownerRef)) continue;
+    const entries = byBranch.get(ownerRef);
+    if (!entries) continue;
+    const direction = entries[0].direction;
+    if (entries.some((entry) => entry.direction !== direction)) continue;
+    let iKa = 0;
+    for (const entry of entries) {
+      if (entry.iKa > iKa) iKa = entry.iKa;
+    }
+    out[ownerRef] = {
+      ownerRef,
+      forward: direction === FAULT_DIRECTION_FROM_TO,
+      iKa,
+      payloadMaxKa,
+      colorToken: faultFlowColorTokenForWeight(relativeFlowWeight(iKa, payloadMaxKa)),
+    };
+  }
+  return out;
+}
+
+/** §14.2 „overlay wyłączony bez wyniku": brak wpisów ⇒ zero strzałek. */
+export function isFaultFlowOverlayEmpty(
+  faultFlowByOwnerRef: Readonly<Record<string, SegmentFaultFlowOverlay>> | undefined,
+): boolean {
+  return !faultFlowByOwnerRef || Object.keys(faultFlowByOwnerRef).length === 0;
+}
+
+/**
+ * Wyrocznia (dowód, nie założenie — wzorzec `flowOverlayValuesTraceToPayload`):
+ * każdy wpis strzałki musi wywodzić się z wejścia kanału kierunku — `forward`
+ * zgodne z JEDNOLITYM tokenem kierunku mierzalnych wpisów tej gałęzi, `iKa`
+ * BAJT-RÓWNE największemu mierzalnemu `i_ka` gałęzi. `false` przy pierwszym
+ * rozjeździe (fabrykacja/nieaktualność) — test negatywny dowodzi, że gryzie.
+ */
+export function faultFlowOverlayTracesToInput(
+  faultFlowByOwnerRef: Readonly<Record<string, SegmentFaultFlowOverlay>> | undefined,
+  input: ShortCircuitFlowOverlayInput | null,
+): boolean {
+  if (!faultFlowByOwnerRef) return true;
+  for (const [ownerRef, entry] of Object.entries(faultFlowByOwnerRef)) {
+    const measurable = (input?.flows ?? []).filter(
+      (flow) =>
+        flow.branch_id === ownerRef &&
+        (flow.direction === FAULT_DIRECTION_FROM_TO || flow.direction === FAULT_DIRECTION_TO_FROM) &&
+        flow.i_ka !== null &&
+        Number.isFinite(flow.i_ka) &&
+        flow.i_ka > 0,
+    );
+    if (measurable.length === 0) return false;
+    const expectedDirection = entry.forward ? FAULT_DIRECTION_FROM_TO : FAULT_DIRECTION_TO_FROM;
+    if (measurable.some((flow) => flow.direction !== expectedDirection)) return false;
+    let maxKa = 0;
+    for (const flow of measurable) {
+      if ((flow.i_ka as number) > maxKa) maxKa = flow.i_ka as number;
+    }
+    if (entry.iKa !== maxKa) return false;
+  }
+  return true;
 }
 
 // ---------------------------------------------------------------------------

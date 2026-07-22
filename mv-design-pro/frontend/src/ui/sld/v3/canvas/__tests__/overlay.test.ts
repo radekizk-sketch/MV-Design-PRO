@@ -16,14 +16,21 @@ import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overl
 import { buildSldDataFromSnapshot } from '../../../v2/canvas/enmToSldAdapter';
 import { buildSceneV3 } from '../../scene/buildScene';
 import {
+  buildFaultFlowOverlayFromScene,
   buildFlowOverlayFromScene,
   buildOltcOverlayFromScene,
+  faultFlowOverlayTracesToInput,
   flowOverlayValuesTraceToPayload,
+  isFaultFlowOverlayEmpty,
   isFlowOverlayEmpty,
   isOltcOverlayEmpty,
   oltcOverlayTracesToPayload,
   singleHopSegmentRefs,
 } from '../overlay';
+import type {
+  ShortCircuitBranchFlowV1,
+  ShortCircuitFlowOverlayInput,
+} from '../../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -391,5 +398,155 @@ describe('overlay.ts — F-1 (recenzja Opusa): kontrakt kierunku forward ↔ geo
     const overlay = buildFlowOverlayFromScene(scene, payload, singleHop);
     expect(overlay[multiHopRef!]).toBeUndefined();
     expect(isFlowOverlayEmpty(overlay)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Karta S-B (ZWARCIA-PRO pkt 7) — budowniczy strzałek kierunku rozpływu prądu
+// zwarciowego + wyrocznia. Realne `ownerRef` ze sceny (wzorzec F9.5 wyżej).
+// ---------------------------------------------------------------------------
+
+/** Unikalne refy jednokawałkowe (deduplikacja — ten sam ownerRef może nieść
+ *  wiele odcinków sceny; budowniczy i tak emituje jeden wpis per ref). */
+const uniqueSingleHopRefs = Array.from(new Set(realSegmentOwnerRefs));
+
+function faultEntry(
+  over: Partial<ShortCircuitBranchFlowV1> & { branch_id: string },
+): ShortCircuitBranchFlowV1 {
+  return {
+    branch_name: 'Odcinek testowy',
+    source_id: 'ZR-1',
+    from_node_id: 'W-A',
+    from_node_name: 'Węzeł A',
+    to_node_id: 'W-B',
+    to_node_name: 'Węzeł B',
+    i_ka: 0.245,
+    direction: 'from_to',
+    ...over,
+  };
+}
+
+function faultInputOf(flows: readonly ShortCircuitBranchFlowV1[]): ShortCircuitFlowOverlayInput {
+  return { run_id: 'run-sc-test', fault_type: '3F', fault_element_ref: 'EL-ZWARCIE', flows };
+}
+
+describe('overlay.ts — buildFaultFlowOverlayFromScene (karta S-B, strzałki rozpływu zwarciowego)', () => {
+  it('input=null ⇒ nakładka pusta (strzałki wyłączone bez kanału kierunku, zero atrap)', () => {
+    const overlay = buildFaultFlowOverlayFromScene(scene, null, singleHop);
+    expect(isFaultFlowOverlayEmpty(overlay)).toBe(true);
+  });
+
+  it('pusta lista wpisów (policzono, brak wkładów falownikowych) ⇒ nakładka pusta', () => {
+    const overlay = buildFaultFlowOverlayFromScene(scene, faultInputOf([]), singleHop);
+    expect(isFaultFlowOverlayEmpty(overlay)).toBe(true);
+  });
+
+  it('direction="from_to" ⇒ forward=true; iKa = największy wkład gałęzi; jedna gałąź ⇒ waga 1 ⇒ token critical', () => {
+    const ref = uniqueSingleHopRefs[0];
+    const input = faultInputOf([
+      faultEntry({ branch_id: ref, source_id: 'ZR-1', i_ka: 0.1, direction: 'from_to' }),
+      faultEntry({ branch_id: ref, source_id: 'ZR-2', i_ka: 0.245, direction: 'from_to' }),
+    ]);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    expect(overlay[ref]).toEqual({
+      ownerRef: ref,
+      forward: true,
+      iKa: 0.245,
+      payloadMaxKa: 0.245,
+      colorToken: 'critical',
+    });
+    expect(faultFlowOverlayTracesToInput(overlay, input)).toBe(true);
+  });
+
+  it('direction="to_from" ⇒ forward=false — zwrot WPROST z tokenu solvera, nie z heurystyki', () => {
+    const ref = uniqueSingleHopRefs[0];
+    const input = faultInputOf([faultEntry({ branch_id: ref, direction: 'to_from' })]);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    expect(overlay[ref]?.forward).toBe(false);
+    expect(faultFlowOverlayTracesToInput(overlay, input)).toBe(true);
+  });
+
+  it('MIESZANE kierunki na tej samej gałęzi ⇒ brak wpisu (uczciwe „nie wiem" zamiast fabrykacji wypadkowej)', () => {
+    const ref = uniqueSingleHopRefs[0];
+    const input = faultInputOf([
+      faultEntry({ branch_id: ref, source_id: 'ZR-1', direction: 'from_to' }),
+      faultEntry({ branch_id: ref, source_id: 'ZR-2', direction: 'to_from' }),
+    ]);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    expect(overlay[ref]).toBeUndefined();
+    expect(isFaultFlowOverlayEmpty(overlay)).toBe(true);
+  });
+
+  it('wpisy bez podstawy strzałki (i_ka null/0, nieznany token kierunku) ⇒ brak wpisu', () => {
+    const ref = uniqueSingleHopRefs[0];
+    const input = faultInputOf([
+      faultEntry({ branch_id: ref, i_ka: null }),
+      faultEntry({ branch_id: ref, i_ka: 0 }),
+      faultEntry({ branch_id: ref, direction: 'nieznany' }),
+    ]);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    expect(isFaultFlowOverlayEmpty(overlay)).toBe(true);
+  });
+
+  it('bramka F-1: ref POZA zbiorem singleHop ⇒ ZERO wpisu (kierunek geometrycznie nieudowodniony)', () => {
+    const ref = uniqueSingleHopRefs[0];
+    const input = faultInputOf([faultEntry({ branch_id: ref })]);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, new Set<string>());
+    expect(isFaultFlowOverlayEmpty(overlay)).toBe(true);
+  });
+
+  it('tercyle skali względnej SPÓJNE z adapterem W-C: waga 1 ⇒ critical, 0,4 ⇒ warning, 0,1 ⇒ ok', () => {
+    expect(uniqueSingleHopRefs.length).toBeGreaterThanOrEqual(3);
+    const [refA, refB, refC] = uniqueSingleHopRefs;
+    const input = faultInputOf([
+      faultEntry({ branch_id: refA, i_ka: 3.0 }),
+      faultEntry({ branch_id: refB, i_ka: 1.2 }),
+      faultEntry({ branch_id: refC, i_ka: 0.3 }),
+    ]);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    expect(overlay[refA]?.colorToken).toBe('critical');
+    expect(overlay[refB]?.colorToken).toBe('warning');
+    expect(overlay[refC]?.colorToken).toBe('ok');
+    // Baza skali wspólna dla całego payloadu (największy wkład wejścia).
+    expect(overlay[refB]?.payloadMaxKa).toBe(3.0);
+  });
+
+  it('determinizm: to samo wejście dwukrotnie ⇒ identyczny JSON.stringify (zero Date/losowości)', () => {
+    const input = faultInputOf([
+      faultEntry({ branch_id: uniqueSingleHopRefs[0], i_ka: 1.5 }),
+      faultEntry({ branch_id: uniqueSingleHopRefs[1], i_ka: 0.5, direction: 'to_from' }),
+    ]);
+    const a = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const b = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+});
+
+describe('overlay.ts — faultFlowOverlayTracesToInput (wyrocznia, karta S-B)', () => {
+  it('nakładka pusta (undefined) ⇒ wyrocznia PASS trywialnie', () => {
+    expect(faultFlowOverlayTracesToInput(undefined, null)).toBe(true);
+  });
+
+  it('TEST NEGATYWNY (wyrocznia gryzie): iKa niezgodne z największym wkładem gałęzi ⇒ FAIL', () => {
+    const ref = uniqueSingleHopRefs[0];
+    const input = faultInputOf([faultEntry({ branch_id: ref, i_ka: 0.245 })]);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const sfalszowana = { [ref]: { ...overlay[ref], iKa: 9.99 } };
+    expect(faultFlowOverlayTracesToInput(sfalszowana, input)).toBe(false);
+  });
+
+  it('TEST NEGATYWNY: forward przeciwny do tokenu kierunku wejścia ⇒ FAIL', () => {
+    const ref = uniqueSingleHopRefs[0];
+    const input = faultInputOf([faultEntry({ branch_id: ref, direction: 'from_to' })]);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    const odwrocona = { [ref]: { ...overlay[ref], forward: false } };
+    expect(faultFlowOverlayTracesToInput(odwrocona, input)).toBe(false);
+  });
+
+  it('TEST NEGATYWNY: wpis nakładki bez ODPOWIADAJĄCYCH mierzalnych wpisów wejścia ⇒ FAIL (nakładka nieaktualna)', () => {
+    const ref = uniqueSingleHopRefs[0];
+    const input = faultInputOf([faultEntry({ branch_id: ref })]);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    expect(faultFlowOverlayTracesToInput(overlay, faultInputOf([]))).toBe(false);
   });
 });

@@ -11,6 +11,13 @@
  * `loadOverlay`), zbudowany czystym adapterem rodziny overlay
  * (`adaptShortCircuitFlowToOverlay`) z danych wiersza. Zero fizyki, zero
  * mutacji modelu.
+ *
+ * Karta S-B (pkt 7 — domknięcie strzałek kierunku): TE SAME dane wiersza idą
+ * dodatkowo do kanału kierunku `loadFaultFlow` (`useOverlayStore.faultFlow`) —
+ * `OverlayPayloadV1` (lustro backendu 1:1) nie niesie kierunku, a strzałki na
+ * kanwie v3 potrzebują "from_to"/"to_from" per wpis. Kolejność ISTOTNA:
+ * `loadFaultFlow` PO `loadOverlay` (loadOverlay zeruje faultFlow — invariant
+ * „replaces ALL previous state").
  */
 import { useCallback } from 'react';
 
@@ -33,6 +40,7 @@ export function usePokazZwarcieNaSchemacie(): (
   const selectElement = useSelectionStore((s) => s.selectElement);
   const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
   const loadOverlay = useOverlayStore((s) => s.loadOverlay);
+  const loadFaultFlow = useOverlayStore((s) => s.loadFaultFlow);
 
   return useCallback(
     (row: ShortCircuitRow, runId: string | null) => {
@@ -42,17 +50,19 @@ export function usePokazZwarcieNaSchemacie(): (
       if (runId) {
         // Overlay rozpływu: wpisy wiersza (lub sam znacznik punktu zwarcia,
         // gdy starszy wynik nie niesie rozpływu — uczciwie bez gałęzi).
-        loadOverlay(
-          adaptShortCircuitFlowToOverlay({
-            run_id: runId,
-            fault_type: row.fault_type,
-            fault_element_ref: ref,
-            flows: row.branch_contributions ?? [],
-          }),
-        );
+        const wejscie = {
+          run_id: runId,
+          fault_type: row.fault_type,
+          fault_element_ref: ref,
+          flows: row.branch_contributions ?? [],
+        };
+        loadOverlay(adaptShortCircuitFlowToOverlay(wejscie));
+        // Karta S-B: kanał KIERUNKU dla strzałek kanwy v3 (loadOverlay wyżej
+        // zeruje faultFlow — kolejność istotna, patrz nagłówek pliku).
+        loadFaultFlow(wejscie);
       }
       navigateToSld();
     },
-    [centerSldOnElement, loadOverlay, selectElement],
+    [centerSldOnElement, loadFaultFlow, loadOverlay, selectElement],
   );
 }
