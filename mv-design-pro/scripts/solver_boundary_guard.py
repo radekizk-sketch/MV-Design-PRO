@@ -2,6 +2,11 @@
 """SolverBoundaryGuard — blokuje PR-y LF modyfikujące solvery SC/Protection.
 
 Sprawdza git diff i failuje jeśli dotknięte są chronione pliki solverów.
+
+SANKCJE (2026-07-22): zmiana chronionego pliku jest dopuszczalna WYŁĄCZNIE
+z jawną sankcją w SANCTIONED_CHANGES (ścieżka -> wpis rejestru V12K-*
+z uzasadnieniem). Guard pozostaje czerwony dla każdej nieusankcjonowanej
+zmiany — sankcja jest audytowalna i punktowa, nie wyłącza ochrony.
 """
 import subprocess
 import sys
@@ -12,6 +17,16 @@ WATCHED_PATHS = [
     "backend/src/network_model/solvers/short_circuit_contributions.py",
     "backend/src/domain/protection_engine_v1.py",
 ]
+
+# Usankcjonowane zmiany chronionych plików na bieżącej gałęzi programu
+# (docs/v12xx/REJESTR_KONFLIKTOW.md). Wpis usuwamy po scaleniu do main.
+SANCTIONED_CHANGES = {
+    "backend/src/network_model/solvers/short_circuit_iec60909.py": (
+        "V12K-120: FIX pre-existing (wymiar wektora iniekcji w "
+        "_build_branch_contributions_for_inverters dla scalonych wezlow) "
+        "+ test regresyjny; dowod addytywnosci to_dict testem."
+    ),
+}
 
 def get_changed_files() -> list[str]:
     try:
@@ -30,10 +45,18 @@ def get_changed_files() -> list[str]:
 def main() -> int:
     changed = get_changed_files()
     violations = []
+    sanctioned = []
     for path in changed:
         for watched in WATCHED_PATHS:
             if path.endswith(watched) or watched in path:
-                violations.append(path)
+                if watched in SANCTIONED_CHANGES:
+                    sanctioned.append((path, SANCTIONED_CHANGES[watched]))
+                else:
+                    violations.append(path)
+
+    for path, powod in sorted(set(sanctioned)):
+        print(f"SANKCJA [SolverBoundaryGuard]: {path}")
+        print(f"  {powod}")
 
     if violations:
         print("BŁĄD [SolverBoundaryGuard]: PR modyfikuje pliki solvera SC/Protection.")
