@@ -86,10 +86,19 @@ export function przebiegRozplywu(
 // Komórki liczbowe (null → „—", bez sortowania na dół; wartość → PL + sortKey)
 // ---------------------------------------------------------------------------
 
+/**
+ * `dowodRef` (K3/C1) ustawiany WYŁĄCZNIE dla wielkości pochodzących WPROST
+ * z wyników przebiegu obliczeniowego (Ik", Sk" z solvera) — ich wywód niesie
+ * ślad przebiegu w zakładce „Dowód obliczeń". Wielkości liczone przez buildery
+ * analizy on-demand (Pst/Plt/d, energia łuku, marginesy) mają ślad WHITE BOX
+ * w odpowiedzi backendu renderowany NA MIEJSCU w sekcji ekranu — kierowanie ich
+ * do śladu innego przebiegu byłoby fałszywym dowodem (zero fabrykacji).
+ * Komórka `null` → „—" bez dowodu (nie ma liczby, nie ma wywodu).
+ */
 function komorkaLiczba(
   wartosc: number | null,
   format: (n: number) => string,
-  opcje?: { jednostka?: string; ostrzezenie?: boolean },
+  opcje?: { jednostka?: string; ostrzezenie?: boolean; dowodRef?: string },
 ): WartoscKomorki {
   if (wartosc === null) {
     return { wartosc: JAKOSC_STRINGS.kreska, sortKey: Number.NEGATIVE_INFINITY };
@@ -99,6 +108,7 @@ function komorkaLiczba(
     sortKey: wartosc,
     jednostka: opcje?.jednostka,
     ostrzezenie: opcje?.ostrzezenie,
+    dowodRef: opcje?.dowodRef,
   };
 }
 
@@ -126,14 +136,20 @@ export const KOLUMNY_WIARYGODNOSCI: DefinicjaKolumny[] = [
   },
 ];
 
-/** Adapter: pozycja wiarygodności → wiersz tabeli wzorca (bez ocen lokalnych). */
+/** Adapter: pozycja wiarygodności → wiersz tabeli wzorca (bez ocen lokalnych).
+ * `dowodRef` na Ik" (K3/C1): wartość pochodzi wprost z przebiegu zwarciowego —
+ * ref = `element_id ?? target_id` (wzorzec `zwarciaModel.ts`). Napięcie (dana
+ * modelu) i granice pasm (konfiguracja normatywna) to WEJŚCIA oceny — bez dowodu. */
 export function mapujWierszWiarygodnosci(item: WiarygodnoscItem): WierszTabeli {
   return {
     wezel: { wartosc: item.target_name ?? item.target_id },
     napiecie: komorkaLiczba(item.voltage_kv, fmtKV),
     pasmo: { wartosc: item.voltage_band ?? JAKOSC_STRINGS.kreska },
     // Tag „poza zakresem" mapowany na wartość Ik" wprost z flagi backendu (in_range).
-    ikss: komorkaLiczba(item.ikss_ka, fmtKA, { ostrzezenie: !item.in_range }),
+    ikss: komorkaLiczba(item.ikss_ka, fmtKA, {
+      ostrzezenie: !item.in_range,
+      dowodRef: item.element_id ?? item.target_id,
+    }),
     dolna: komorkaLiczba(item.lower_ka, fmtKA),
     gorna: komorkaLiczba(item.upper_ka, fmtKA),
     status: { wartosc: item.status },
@@ -300,11 +316,14 @@ export const KOLUMNY_MIGOTANIE: DefinicjaKolumny[] = [
   { klucz: 'werdykt', etykieta: JAKOSC_STRINGS.kolWerdyktMig, wyrownanie: 'lewo', sortowalna: false },
 ];
 
-/** Adapter: węzeł migotania → wiersz tabeli wzorca (limity/werdykt z backendu). */
+/** Adapter: węzeł migotania → wiersz tabeli wzorca (limity/werdykt z backendu).
+ * `dowodRef` na Sk" (K3/C1): wartość wprost z przebiegu zwarciowego (ref = `bus_ref`).
+ * Pst/Plt/d(%) liczy builder migotania — ich ślad WHITE BOX renderuje sekcja
+ * ekranu (`SladMigotania`), nie zakładka dowodu przebiegu (bez ref). */
 export function mapujWierszMigotania(wezel: WezelMigotania): WierszTabeli {
   return {
     wezel: { wartosc: wezel.bus_ref },
-    sk: komorkaLiczba(wezel.sk_mva, fmtMva),
+    sk: komorkaLiczba(wezel.sk_mva, fmtMva, { dowodRef: wezel.bus_ref }),
     pst: komorkaLiczba(wezel.pst, fmtPst, {
       ostrzezenie: wezel.pst !== null && wezel.pst > wezel.pst_limit,
     }),
@@ -364,11 +383,14 @@ export const KOLUMNY_ARC_FLASH: DefinicjaKolumny[] = [
   { klucz: 'status', etykieta: JAKOSC_STRINGS.kolStatusAf, wyrownanie: 'lewo', sortowalna: false },
 ];
 
-/** Adapter: wynik Arc Flash → wiersz tabeli wzorca (wartości WYŁĄCZNIE z backendu). */
+/** Adapter: wynik Arc Flash → wiersz tabeli wzorca (wartości WYŁĄCZNIE z backendu).
+ * `dowodRef` na I_bf (K3/C1): prąd zwarcia trójfazowego wprost z przebiegu
+ * zwarciowego (ref = `bus_ref`). Energia incydentu i granica łuku to wyniki
+ * buildera IEEE 1584 — ich ślad WHITE BOX renderuje sekcja ekranu (bez ref). */
 export function mapujWierszArcFlash(wynik: WynikArcFlash): WierszTabeli {
   return {
     punkt: { wartosc: wynik.bus_ref },
-    ibf: komorkaLiczba(wynik.i_bf_ka, fmtKA),
+    ibf: komorkaLiczba(wynik.i_bf_ka, fmtKA, { dowodRef: wynik.bus_ref }),
     energia: komorkaLiczba(wynik.incident_energy_cal_cm2, fmtCal),
     granica: komorkaLiczba(wynik.arc_flash_boundary_mm, fmtMm),
     ppe: { wartosc: wynik.ppe_category ?? JAKOSC_STRINGS.kreska },

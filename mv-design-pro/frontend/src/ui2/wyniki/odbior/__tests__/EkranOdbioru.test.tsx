@@ -55,7 +55,7 @@ afterEach(() => vi.clearAllMocks());
 
 describe('EkranOdbioru — stany wejściowe', () => {
   it('bez przebiegu rozpływu → uczciwa instrukcja, bez wołań API', () => {
-    render(<EkranOdbioru trybZaawansowania="basic" />);
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     expect(screen.getByTestId('mvd-odbior-brak-przebiegu')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-odbior-oblicz')).not.toBeInTheDocument();
     expect(post).not.toHaveBeenCalled();
@@ -63,7 +63,7 @@ describe('EkranOdbioru — stany wejściowe', () => {
 
   it('walidacja tolerancji przed wysłaniem → błędy PL, bez POST', () => {
     ustawPrzebieg();
-    render(<EkranOdbioru trybZaawansowania="basic" />);
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     // Wiersz z napięciem U bez tolerancji napięcia.
     fireEvent.change(screen.getByTestId('mvd-odbior-element-0'), { target: { value: 'BUS-1' } });
     fireEvent.change(screen.getByTestId('mvd-odbior-wartosc-0'), { target: { value: '15,3' } });
@@ -77,7 +77,7 @@ describe('EkranOdbioru — serializacja i raport', () => {
   it('serializuje wiersze do JSON pomiary i wywołuje POST', () => {
     ustawPrzebieg();
     post.mockReturnValue(new Promise(() => {})); // bieg trwa — asercja tylko na wywołaniu
-    render(<EkranOdbioru trybZaawansowania="basic" />);
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     wypelnijPomiarU();
     fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
     expect(post).toHaveBeenCalledTimes(1);
@@ -91,7 +91,7 @@ describe('EkranOdbioru — serializacja i raport', () => {
   it('render raportu: chipy, werdykty w tabeli, założenia zawsze widoczne', async () => {
     ustawPrzebieg();
     post.mockResolvedValue(widokZgodnosciFixture());
-    render(<EkranOdbioru trybZaawansowania="basic" />);
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     wypelnijPomiarU();
     fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
 
@@ -112,7 +112,7 @@ describe('EkranOdbioru — serializacja i raport', () => {
     // Domyślna fixtura: jedyne przekroczenie to LINE-2 / P (moc). Typ elementu dla
     // P/Q nie jest jednoznaczny w kontrakcie → uczciwie brak akcji (zero zgadywania).
     post.mockResolvedValue(widokZgodnosciFixture());
-    render(<EkranOdbioru trybZaawansowania="basic" />);
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     wypelnijPomiarU();
     fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
     await screen.findByTestId('mvd-odbior-wynik');
@@ -129,7 +129,7 @@ describe('EkranOdbioru — serializacja i raport', () => {
       ...bazowy,
       wiersze: [{ ...bazowy.wiersze[0], werdykt: 'poza tolerancją' }],
     });
-    render(<EkranOdbioru trybZaawansowania="basic" />);
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     wypelnijPomiarU();
     fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
     await screen.findByTestId('mvd-odbior-wynik');
@@ -144,7 +144,7 @@ describe('EkranOdbioru — serializacja i raport', () => {
   it('werdykt prezentowany kolorem tokenów w panelu szczegółu (wybór wiersza)', async () => {
     ustawPrzebieg();
     post.mockResolvedValue(widokZgodnosciFixture());
-    render(<EkranOdbioru trybZaawansowania="basic" />);
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     wypelnijPomiarU();
     fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
     await screen.findByTestId('mvd-odbior-wynik');
@@ -159,7 +159,7 @@ describe('EkranOdbioru — serializacja i raport', () => {
   it('ślad WHITE BOX per wiersz tylko w trybie eksperckim', async () => {
     ustawPrzebieg();
     post.mockResolvedValue(widokZgodnosciFixture());
-    render(<EkranOdbioru trybZaawansowania="expert" />);
+    render(<EkranOdbioru trybZaawansowania="expert" onOtworzDowod={() => undefined} />);
     wypelnijPomiarU();
     fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
     await screen.findByTestId('mvd-odbior-wynik');
@@ -171,12 +171,28 @@ describe('EkranOdbioru — serializacja i raport', () => {
     expect(screen.getByTestId('mvd-odbior-eksp')).toHaveTextContent('zgodnosc-hash-abc');
   });
 
+  it('K3/C1 realna ścieżka: 2× klik na wartości z modelu → onOtworzDowod(element_ref)', async () => {
+    ustawPrzebieg();
+    post.mockResolvedValue(widokZgodnosciFixture());
+    const onOtworzDowod = vi.fn();
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={onOtworzDowod} />);
+    wypelnijPomiarU();
+    fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
+    await screen.findByTestId('mvd-odbior-wynik');
+
+    // Wartość z modelu BUS-1 (15,150 kV) renderuje się jako przycisk dowodu wzorca.
+    const przycisk = screen.getByText('15,150').closest('button');
+    expect(przycisk).not.toBeNull();
+    fireEvent.doubleClick(przycisk!);
+    expect(onOtworzDowod).toHaveBeenCalledWith('BUS-1');
+  });
+
   it('błąd 422 z backendu → jawny stan błędu z komunikatem PL (detail)', async () => {
     ustawPrzebieg();
     post.mockRejectedValue(
       new Error('Brak jawnej tolerancji napięcia (tolerancje.napiecie_pct).'),
     );
-    render(<EkranOdbioru trybZaawansowania="basic" />);
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     wypelnijPomiarU();
     fireEvent.click(screen.getByTestId('mvd-odbior-oblicz'));
     expect(await screen.findByTestId('mvd-odbior-blad')).toHaveTextContent(
@@ -188,7 +204,7 @@ describe('EkranOdbioru — serializacja i raport', () => {
 describe('EkranOdbioru — edytor wierszy i tryb CSV', () => {
   it('dodaje i usuwa wiersze edytora', () => {
     ustawPrzebieg();
-    render(<EkranOdbioru trybZaawansowania="basic" />);
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     expect(screen.getAllByTestId('mvd-odbior-wiersz')).toHaveLength(1);
     fireEvent.click(screen.getByTestId('mvd-odbior-dodaj'));
     expect(screen.getAllByTestId('mvd-odbior-wiersz')).toHaveLength(2);
@@ -199,7 +215,7 @@ describe('EkranOdbioru — edytor wierszy i tryb CSV', () => {
   it('tryb CSV: pole tekstowe przekazuje surowe dane, POST z polem csv', () => {
     ustawPrzebieg();
     post.mockReturnValue(new Promise(() => {})); // bieg trwa — asercja tylko na wywołaniu
-    render(<EkranOdbioru trybZaawansowania="basic" />);
+    render(<EkranOdbioru trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     fireEvent.click(screen.getByTestId('mvd-odbior-tryb-csv'));
     fireEvent.change(screen.getByTestId('mvd-odbior-csv'), {
       target: { value: 'element_ref;wielkosc;wartosc;jednostka\nBUS-1;U;15,3;kV' },

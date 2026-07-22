@@ -19,15 +19,18 @@
  *    (`types.ts:34`). Mapowanie enum→liczba byłoby zgadywaniem → nagłówek TabelaSzyn
  *    NIE podaje rewizji (badge pominięty). Numeryczną świeżość dostarczy karta
  *    integracyjna (spięcie ze snapshot store'em modelu).
- * 2. Dowód per-wartość (2× klik → dowodRef): `bus_results` NIE niosą odwołania do
- *    dowodu; `evidence_ref` istnieje wyłącznie w warstwie interpretacji
- *    (`VoltageFinding.evidence_ref`, `types.ts:250`), a `proof_pack_ref` na
- *    nagłówku (`types.ts:40`) dotyczy CAŁEGO przebiegu, nie pojedynczej szyny →
- *    komórki napięć bez `dowodRef` (semantyka 2× klik pozostaje w kontrakcie wzorca,
- *    zademonstrowana w testach wzorca). Per-szynowy dowód = osobna karta (warstwa
- *    interpretacji rozpływu).
- * 3. Populacja store'u (`selectRun`/`loadResults`, `store.ts:109-184`) należy do
+ * 2. Populacja store'u (`selectRun`/`loadResults`, `store.ts:109-184`) należy do
  *    okna inspektora rozpływu; ten adapter wyłącznie CZYTA `results` (read-only).
+ *
+ * DOWÓD PER-WARTOŚĆ (karta K3 / C1 — domknięcie `dowodRef`): wielkości tabel
+ * (napięcia, kąty, moce, straty) pochodzą WPROST z wyników przebiegu rozpływu,
+ * a ich wywód WHITE BOX niesie ślad tego przebiegu (zakładka „Dowód obliczeń").
+ * Ref dowodu = identyfikator elementu z kontraktu (`bus_id`/`branch_id`) — jak we
+ * wzorcu zwarciowym (`zwarciaModel.ts`: `element_id ?? target_id`); przygotowany
+ * pod fokus kroku po `TraceStep.element_id` (TODO E9.x w `DowodPrzebiegu`).
+ * Wcześniejsza decyzja E8.1 (komórki bez `dowodRef`, bo brak `evidence_ref`
+ * per szyna) została nadpisana kartą K3: kryterium jest realne odwołanie
+ * elementowe w kontrakcie, nie osobne pole dowodowe.
  *
  * DOPEŁNIENIE E8.3 (tabela GAŁĘZI): wiersze z `branch_results: PowerFlowBranchResult[]`
  * (`types.ts:75-83` → branch_id, p_from_mw, q_from_mvar, p_to_mw, q_to_mvar,
@@ -84,7 +87,9 @@ export interface PunktProfilu {
   napiecie: number;
 }
 
-/** Mapuje wiersze szyn na wiersze tabeli wzorca (kolejność ze źródła zachowana). */
+/** Mapuje wiersze szyn na wiersze tabeli wzorca (kolejność ze źródła zachowana).
+ * `dowodRef` = `bus_id` (K3/C1): 2× klik na wielkości wynikowej otwiera dowód
+ * WHITE BOX przebiegu rozpływu — realne odwołanie z kontraktu, zero fabrykacji. */
 export function naWierszeSzyn(busResults: PowerFlowBusResult[]): WierszTabeli[] {
   return busResults.map((r) => ({
     [KLUCZ_SZYNA]: { wartosc: r.bus_id },
@@ -92,10 +97,11 @@ export function naWierszeSzyn(busResults: PowerFlowBusResult[]): WierszTabeli[] 
       wartosc: fmtPU(r.v_pu),
       sortKey: r.v_pu,
       ostrzezenie: napiecePozaZakresem(r.v_pu),
+      dowodRef: r.bus_id,
     },
-    kat: { wartosc: fmtKat(r.angle_deg), sortKey: r.angle_deg },
-    pCzynna: { wartosc: fmtMoc(r.p_injected_mw), sortKey: r.p_injected_mw },
-    pBierna: { wartosc: fmtMoc(r.q_injected_mvar), sortKey: r.q_injected_mvar },
+    kat: { wartosc: fmtKat(r.angle_deg), sortKey: r.angle_deg, dowodRef: r.bus_id },
+    pCzynna: { wartosc: fmtMoc(r.p_injected_mw), sortKey: r.p_injected_mw, dowodRef: r.bus_id },
+    pBierna: { wartosc: fmtMoc(r.q_injected_mvar), sortKey: r.q_injected_mvar, dowodRef: r.bus_id },
   }));
 }
 
@@ -144,16 +150,24 @@ export const KOLUMNY_GALEZI: DefinicjaKolumny[] = [
  * Straty (MW/Mvar w kontrakcie) prezentowane w kW/kvar — skalowanie jednostki
  * prezentacji, patrz `fmtStrataKw`/`fmtStrataKvar` w `strings.ts`; `sortKey`
  * niesie tę samą (skalowaną) wartość liczbową, więc sortowanie i wyświetlana
- * jednostka są spójne. */
+ * jednostka są spójne. `dowodRef` = `branch_id` (K3/C1) — jak `naWierszeSzyn`. */
 export function naWierszeGalezi(branchResults: PowerFlowBranchResult[]): WierszTabeli[] {
   return branchResults.map((r) => ({
     [KLUCZ_GALAZ]: { wartosc: r.branch_id },
-    pPoczatek: { wartosc: fmtMoc(r.p_from_mw), sortKey: r.p_from_mw },
-    qPoczatek: { wartosc: fmtMoc(r.q_from_mvar), sortKey: r.q_from_mvar },
-    pKoniec: { wartosc: fmtMoc(r.p_to_mw), sortKey: r.p_to_mw },
-    qKoniec: { wartosc: fmtMoc(r.q_to_mvar), sortKey: r.q_to_mvar },
-    stratyP: { wartosc: fmtStrataKw(r.losses_p_mw), sortKey: r.losses_p_mw * 1000 },
-    stratyQ: { wartosc: fmtStrataKvar(r.losses_q_mvar), sortKey: r.losses_q_mvar * 1000 },
+    pPoczatek: { wartosc: fmtMoc(r.p_from_mw), sortKey: r.p_from_mw, dowodRef: r.branch_id },
+    qPoczatek: { wartosc: fmtMoc(r.q_from_mvar), sortKey: r.q_from_mvar, dowodRef: r.branch_id },
+    pKoniec: { wartosc: fmtMoc(r.p_to_mw), sortKey: r.p_to_mw, dowodRef: r.branch_id },
+    qKoniec: { wartosc: fmtMoc(r.q_to_mvar), sortKey: r.q_to_mvar, dowodRef: r.branch_id },
+    stratyP: {
+      wartosc: fmtStrataKw(r.losses_p_mw),
+      sortKey: r.losses_p_mw * 1000,
+      dowodRef: r.branch_id,
+    },
+    stratyQ: {
+      wartosc: fmtStrataKvar(r.losses_q_mvar),
+      sortKey: r.losses_q_mvar * 1000,
+      dowodRef: r.branch_id,
+    },
   }));
 }
 

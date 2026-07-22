@@ -212,10 +212,12 @@ function WynikZgodnosci({
   dane,
   runId,
   trybZaawansowania,
+  onOtworzDowod,
 }: {
   dane: WidokZgodnosci;
   runId: string;
   trybZaawansowania: AdvancementMode;
+  onOtworzDowod: (ref: string) => void;
 }) {
   const [wybrany, setWybrany] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
@@ -246,7 +248,9 @@ function WynikZgodnosci({
         zalozenia={naZalozeniaZgodnosci(dane)}
         kolumny={KOLUMNY_ZGODNOSCI}
         wiersze={naWierszeZgodnosci(dane.wiersze)}
-        onOtworzDowod={() => undefined}
+        // K3/C1: 2× klik na wartości z modelu → dowód przebiegu rozpływu
+        // (ref = element_ref z kontraktu; odbiorca: zakładka „Dowód obliczeń").
+        onOtworzDowod={onOtworzDowod}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_WIERSZA_ZGODNOSCI}
         onWybierzWiersz={setWybrany}
@@ -495,9 +499,12 @@ function Formularz({
 
 export interface EkranOdbioruProps {
   trybZaawansowania: AdvancementMode;
+  /** Dowód WHITE BOX (K3/C1): 2× klik na wartości z modelu — jak w siostrzanych
+   * ekranach wyników; odbiorcę (zakładka „Dowód obliczeń") wpina warsztat. */
+  onOtworzDowod: (ref: string) => void;
 }
 
-export function EkranOdbioru({ trybZaawansowania }: EkranOdbioruProps) {
+export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   const przebieg = useMemo(() => przebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
@@ -650,7 +657,12 @@ export function EkranOdbioru({ trybZaawansowania }: EkranOdbioruProps) {
         />
       )}
       {stan.rodzaj === 'gotowe' && (
-        <WynikZgodnosci dane={stan.dane} runId={przebieg.id} trybZaawansowania={trybZaawansowania} />
+        <WynikZgodnosci
+          dane={stan.dane}
+          runId={przebieg.id}
+          trybZaawansowania={trybZaawansowania}
+          onOtworzDowod={onOtworzDowod}
+        />
       )}
     </div>
   );

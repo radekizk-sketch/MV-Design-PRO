@@ -25,9 +25,18 @@ describe('naWierszeSzyn — projekcja PowerFlowBusResult → wiersze wzorca (fix
     const [w] = naWierszeSzyn([busResultFixture()]);
     expect(w[KLUCZ_SZYNA]).toEqual({ wartosc: 'SZ-GPZ' });
     expect(w.napiecie).toMatchObject({ wartosc: '1,0000', sortKey: 1.0, ostrzezenie: false });
-    expect(w.kat).toEqual({ wartosc: '0,00', sortKey: 0.0 });
-    expect(w.pCzynna).toEqual({ wartosc: '12,345', sortKey: 12.345 });
-    expect(w.pBierna).toEqual({ wartosc: '3,210', sortKey: 3.21 });
+    expect(w.kat).toEqual({ wartosc: '0,00', sortKey: 0.0, dowodRef: 'SZ-GPZ' });
+    expect(w.pCzynna).toEqual({ wartosc: '12,345', sortKey: 12.345, dowodRef: 'SZ-GPZ' });
+    expect(w.pBierna).toEqual({ wartosc: '3,210', sortKey: 3.21, dowodRef: 'SZ-GPZ' });
+  });
+
+  it('K3/C1: każda wielkość wynikowa szyny niesie dowodRef = bus_id (2× klik → dowód WHITE BOX)', () => {
+    const [w] = naWierszeSzyn([busResultFixture({ bus_id: 'SZ-ST7' })]);
+    for (const klucz of ['napiecie', 'kat', 'pCzynna', 'pBierna'] as const) {
+      expect(w[klucz].dowodRef).toBe('SZ-ST7');
+    }
+    // Kolumna identyfikacyjna (nazwa szyny) nie jest liczbą wyniku — bez dowodu.
+    expect(w[KLUCZ_SZYNA].dowodRef).toBeUndefined();
   });
 
   it('napięcie poniżej 0,95 p.u. → ostrzeżenie (tag), sortKey liczbowy zachowany', () => {
@@ -116,16 +125,25 @@ describe('naWierszeGalezi — projekcja PowerFlowBranchResult → wiersze wzorca
   it('mapuje wszystkie pola wiersza gałęzi z formatem PL (przecinek dziesiętny)', () => {
     const [w] = naWierszeGalezi([branchResultFixture()]);
     expect(w[KLUCZ_GALAZ]).toEqual({ wartosc: 'L-1' });
-    expect(w.pPoczatek).toEqual({ wartosc: '10,500', sortKey: 10.5 });
-    expect(w.qPoczatek).toEqual({ wartosc: '2,400', sortKey: 2.4 });
-    expect(w.pKoniec).toEqual({ wartosc: '-10,400', sortKey: -10.4 });
-    expect(w.qKoniec).toEqual({ wartosc: '-2,300', sortKey: -2.3 });
+    expect(w.pPoczatek).toEqual({ wartosc: '10,500', sortKey: 10.5, dowodRef: 'L-1' });
+    expect(w.qPoczatek).toEqual({ wartosc: '2,400', sortKey: 2.4, dowodRef: 'L-1' });
+    expect(w.pKoniec).toEqual({ wartosc: '-10,400', sortKey: -10.4, dowodRef: 'L-1' });
+    expect(w.qKoniec).toEqual({ wartosc: '-2,300', sortKey: -2.3, dowodRef: 'L-1' });
   });
 
   it('straty prezentowane w kW/kvar (skalowanie MW/Mvar ×1000, nie fizyka)', () => {
     const [w] = naWierszeGalezi([branchResultFixture({ losses_p_mw: 0.1, losses_q_mvar: 0.1 })]);
-    expect(w.stratyP).toEqual({ wartosc: '100,00', sortKey: 100 });
-    expect(w.stratyQ).toEqual({ wartosc: '100,00', sortKey: 100 });
+    expect(w.stratyP).toEqual({ wartosc: '100,00', sortKey: 100, dowodRef: 'L-1' });
+    expect(w.stratyQ).toEqual({ wartosc: '100,00', sortKey: 100, dowodRef: 'L-1' });
+  });
+
+  it('K3/C1: każda wielkość wynikowa gałęzi niesie dowodRef = branch_id (2× klik → dowód WHITE BOX)', () => {
+    const [w] = naWierszeGalezi([branchResultFixture({ branch_id: 'CBL-SN-09' })]);
+    const liczbowe = ['pPoczatek', 'qPoczatek', 'pKoniec', 'qKoniec', 'stratyP', 'stratyQ'] as const;
+    for (const klucz of liczbowe) {
+      expect(w[klucz].dowodRef).toBe('CBL-SN-09');
+    }
+    expect(w[KLUCZ_GALAZ].dowodRef).toBeUndefined();
   });
 
   it('branch_id jako oznaczenie elementu sieci — bez tłumaczenia, wprost z kontraktu', () => {

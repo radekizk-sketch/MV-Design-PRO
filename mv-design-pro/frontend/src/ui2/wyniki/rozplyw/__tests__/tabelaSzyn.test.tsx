@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { TabelaSzyn } from '../TabelaSzyn';
 import { ROZPLYW_STRINGS } from '../strings';
 import { WZORZEC_STRINGS } from '../../wzorzec';
@@ -79,6 +79,16 @@ describe('TabelaSzyn — konkretyzacja wzorca na realnym kształcie danych', () 
     expect(screen.queryByTestId('mvd-wyn-run-id')).not.toBeInTheDocument();
     rerender(<TabelaSzyn {...props({ trybZaawansowania: 'expert' })} />);
     expect(screen.getByTestId('mvd-wyn-run-id')).toHaveTextContent('pf-run-1');
+  });
+
+  it('K3/C1 realna ścieżka: 2× klik na napięciu szyny → onOtworzDowod(bus_id)', () => {
+    const onOtworzDowod = vi.fn();
+    render(<TabelaSzyn {...props({ onOtworzDowod })} />);
+    // Natywna ścieżka użytkownika: dwuklik na przycisku wartości (semantyka wzorca).
+    const przycisk = screen.getByText('0,9820').closest('button');
+    expect(przycisk).not.toBeNull();
+    fireEvent.doubleClick(przycisk!);
+    expect(onOtworzDowod).toHaveBeenCalledWith('SZ-ST1');
   });
 
   it('onEksport przekazany do stopki wzorca', () => {

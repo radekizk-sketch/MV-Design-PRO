@@ -235,7 +235,9 @@ export function WynikiWarsztat({
           <EkranJakosci trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'porownanie' && <PorownanieAktywnegoProjektu trybZaawansowania={trybZaawansowania} />}
-        {zakladka === 'odbior' && <EkranOdbioru trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'odbior' && (
+          <EkranOdbioru trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
+        )}
         {zakladka === 'estymacja' && (
           <EkranEstymacji trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}

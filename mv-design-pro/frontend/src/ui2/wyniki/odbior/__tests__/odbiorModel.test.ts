@@ -201,6 +201,20 @@ describe('adaptery tabeli i formatery', () => {
     expect(brak.odchylka.wartosc).toBe(ODBIOR_STRINGS.kreska);
   });
 
+  it('K3/C1: wartość Z MODELU niesie dowodRef = element_ref; pomiar/tolerancja (wejścia) i odchyłki (ślad na miejscu) bez ref', () => {
+    const dane = widokZgodnosciFixture();
+    const w = mapujWierszZgodnosci(dane.wiersze[0]); // BUS-1 / U — model z przebiegu rozpływu
+    expect(w.model.dowodRef).toBe('BUS-1');
+    expect(w.pomiar.dowodRef).toBeUndefined();
+    expect(w.tolerancja.dowodRef).toBeUndefined();
+    expect(w.odchylka.dowodRef).toBeUndefined();
+    expect(w.odchylkaPct.dowodRef).toBeUndefined();
+
+    // Brak wartości z modelu (null) → komórka „—" bez dowodu (nie ma liczby, nie ma wywodu).
+    const brak = mapujWierszZgodnosci(dane.wiersze[2]); // NIEZNANY-3
+    expect(brak.model.dowodRef).toBeUndefined();
+  });
+
   it('naWierszeZgodnosci zachowuje kolejność źródłową backendu', () => {
     const dane = widokZgodnosciFixture();
     const wiersze = naWierszeZgodnosci(dane.wiersze);

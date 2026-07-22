@@ -235,7 +235,7 @@ export const KOLUMNY_ZGODNOSCI: DefinicjaKolumny[] = [
 function komorkaLiczba(
   wartosc: number | null,
   format: (n: number) => string,
-  opcje?: { jednostka?: string; ostrzezenie?: boolean },
+  opcje?: { jednostka?: string; ostrzezenie?: boolean; dowodRef?: string },
 ): WartoscKomorki {
   if (wartosc === null) {
     return { wartosc: ODBIOR_STRINGS.kreska, sortKey: Number.NEGATIVE_INFINITY };
@@ -245,17 +245,25 @@ function komorkaLiczba(
     sortKey: wartosc,
     jednostka: opcje?.jednostka,
     ostrzezenie: opcje?.ostrzezenie,
+    dowodRef: opcje?.dowodRef,
   };
 }
 
-/** Adapter: wiersz raportu → wiersz tabeli wzorca (werdykty wyłącznie z backendu). */
+/** Adapter: wiersz raportu → wiersz tabeli wzorca (werdykty wyłącznie z backendu).
+ * `dowodRef` na wartości Z MODELU (K3/C1): pochodzi wprost z wyników przebiegu
+ * rozpływu — ref = `element_ref` z kontraktu. Pomiar i tolerancje to WEJŚCIA
+ * użytkownika (bez dowodu); odchyłki i werdykt wywodzi backend w `slad_pl`
+ * renderowanym NA MIEJSCU w wierszu (tryb zaawansowany) — bez ref. */
 export function mapujWierszZgodnosci(w: WierszZgodnosci): WierszTabeli {
   const poza = w.werdykt === 'poza tolerancją';
   return {
     element: { wartosc: w.element_ref },
     wielkosc: { wartosc: wielkoscPL(w.wielkosc) },
     pomiar: komorkaLiczba(w.wartosc_pomiar, fmtWartosc, { jednostka: w.jednostka }),
-    model: komorkaLiczba(w.wartosc_model, fmtWartosc, { jednostka: w.jednostka }),
+    model: komorkaLiczba(w.wartosc_model, fmtWartosc, {
+      jednostka: w.jednostka,
+      dowodRef: w.element_ref,
+    }),
     odchylka: komorkaLiczba(w.odchylka_bezwzgledna, fmtWartosc, {
       jednostka: w.jednostka,
       ostrzezenie: poza,
