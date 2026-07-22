@@ -30,8 +30,8 @@ FROZEN Result API (rozszerzenia WYŁĄCZNIE addytywne), zero fizyki w UI.
 | Faza | Zakres | Punkty karty | Wykonanie |
 |---|---|---|---|
 | **F1** | Pełny bilans end-to-end: ENM rows + typ frontu + kolumny eksperckie + panel „Bilans IEC 60909" + API tables meta | 1, 2, 3, 4, 11 (kontrakt) | Fable osobiście — WYKONANE (V12K-115) |
-| **F2** | Wkłady PRO: sortowanie/filtr (reuse TabelaWynikow), wykres udziałów + słupki przełączalne (Ik″/Ip/Ith/Sk″/I²t), rozwinięcie wkładu per źródło (μ, q, Ib, wywód dyplomowy per maszyna — dane z contributions), wkłady gałęziowe (branch_contributions) | 5, 12 | karta W-A (wykonawca) |
-| **F3** | White Box sekcyjny: kroki trace grupowane w rozwijane sekcje (dane wejściowe → Zbus → Zk → Ik″ → κ → ip → Ith → wkłady → korekty → wynik) z odwołaniem do punktu normy per krok; reguły normowe z wartościami (treść, próg, wartość, PASS/FAIL, wpływ); panel walidacji IEC (checklista metody) | 8, 9, 10 | karta W-B (wykonawca) |
+| **F2** | Wkłady PRO: sortowanie/filtr (reuse TabelaWynikow), wykres udziałów + słupki przełączalne (Ik″/Ip/Ith/Sk″/I²t), rozwinięcie wkładu per źródło (μ, q, Ib, wywód dyplomowy per maszyna — dane z contributions) | 5, 12 | **SCALONE (V12K-116)**; GAP wkładów gałęziowych → delta w F4/F5 |
+| **F3** | White Box sekcyjny (`SladSekcyjny`, sekcje z normą per tytuł); reguła 5% z wartościami (treść, próg, wartość, PASS/FAIL, wpływ); panel walidacji IEC (6 pozycji, budowany w backendzie) | 8, 9, 10 | **SCALONE (V12K-117)** |
 | **F4** | Synchronizacja SLD: klik punktu → centrowanie + podświetlenie na schemacie (reuse selekcjaPoOperacji/centerSldOnElement), overlay wkładów: grubość/kolor ∝ prąd, kierunek, miejsce zwarcia (rodzina adapterów overlay z OLTC — reuse) | 6, 7 | karta W-C (po F1–F3) |
 | **F5** | Parytet raportów/eksportów: PDF/DOCX/Excel + pakiet dowodowy SC3F zawierają pełny bilans i sekcje White Box 1:1 z UI; analiza zabezpieczeń/dobór aparatów/termika czytają NOWE pola z tego samego kontraktu | 13 | karta W-D (po F1) |
 | Bramy | Normy (IEC 60909/-0/-4, 60076, 60255, PN-EN, IRiESD) = odwołania per krok w F3; kryteria odbioru pkt 15 = bramki każdej fazy | 14, 15 | każda karta |
