@@ -44,7 +44,7 @@ zabezpieczeń, audytor WHITE BOX, projektant sieci end-to-end, UX/IA.
 | **A3** | IA/PS | Akcja pętli jest OGÓLNA („przejdź do modelu"); nie prowadzi do WŁAŚCIWEGO konfiguratora (ΔU→dobór odcinka, przeciążenie→dobór kabla, miskoordynacja→nastawy). | `usePoprawWModelu` robi tylko selekcję+nawigację do „Schemat" | średni | **← UZUPEŁNIONE (K1, V12K-101).** Rejestr `akcjeNaprawcze.ts` + addytywny parametr `rodzaj` w pętli. Akcja kontekstowa tam, gdzie istnieje realna powierzchnia: `bilans-biernej` → okno „Dobór kompensacji" (deep-link Wyniki/kompensacja). Dobór odcinka/kabla/transformatora odbywa się w property-gridzie po selekcji — generyczna akcja JUŻ prowadzi do miejsca decyzji (brak programowego wejścia w konfigurator = brak fabrykacji). Miskoordynacja: żaden konsument pętli nie niesie tego werdyktu — mapowanie byłoby phantomem. |
 | **B1** | PS | E1: warunki przyłączenia i dane OSD (Sk″, U, wymagany cosφ, tryb pracy) nie mają jawnego kroku wejściowego — kafel „wkrótce". | `KafelWkrotce.tsx` (Bilans przyłączeniowy / Postęp wg celu) | wysoki | **← UZUPEŁNIONE (V12K-100).** Kafel „Warunki przyłączenia" na pulpicie: U przyłączenia (z szyny), Sk″/Ik″ ze źródła sieciowego. **GAP backendu (zarejestrowany, NIE fabrykowany):** cosφ wymagany i „tryb pracy" nie mają pola w modelu → nie pokazywane (rozbudowa modelu = osobna karta). |
 | **B2** | PS | Bilans mocy przyłączeniowej (moc przyłączeniowa vs zainstalowana OZE) brak — kluczowy dla wniosku OSD. | `KafelWkrotce` „Bilans przyłączeniowy" | wysoki | **← UZUPEŁNIONE (V12K-100).** Bilans mocy znamionowej: Σ generacja (OZE) vs Σ obciążenie + netto (rollup `p_mw`, spójny z backendem `_existing_generation_mw`). **GAP backendu:** „moc przyłączeniowa" (limit OSD) nie ma pola w modelu → porównanie „vs limit" pominięte; dynamiczna zdolność w analizie E5/E7 (hosting_capacity). |
-| **C1** | IA | Dowód WHITE BOX osiągalny z zakładki „Dowód", ale nie ZAWSZE 1 klik z konkretnej liczby wyniku na wielu ekranach. | `WartoscKomorki.dowodRef` + 2×klik (wzorzec) — zależny od adaptera | niski | Domknąć `dowodRef` w adapterach bez pokrycia (przemiar). |
+| **C1** | IA | Dowód WHITE BOX osiągalny z zakładki „Dowód", ale nie ZAWSZE 1 klik z konkretnej liczby wyniku na wielu ekranach. | `WartoscKomorki.dowodRef` + 2×klik (wzorzec) — zależny od adaptera | niski | **← UZUPEŁNIONE (K3, V12K-104).** Przemiar wszystkich adapterów + domknięcie wg reguły: `dowodRef` dostaje WYŁĄCZNIE liczba pochodząca wprost z wyników przebiegu (jej wywód jest w śladzie otwieranej zakładki). Domknięte: rozpływ (szyny+gałęzie), jakość (Ik″ wiarygodności, Sk″ migotania, I_bf Arc Flash), odbiór (kolumna „model" + usunięty martwy handler). Wielkości liczone builderami on-demand mają ślad WHITE BOX na miejscu w ekranie — ref do śladu innego przebiegu byłby fałszywym dowodem. GAP-y K3-G1..G3 w programie §5. |
 | **D1** | PS | Brak jawnej informacji o unieważnieniu wyników PO zmianie modelu w miejscu zmiany (jest FreshnessBadge na ekranie wyniku, ale nie na kanwie/modelu). | `freshness/` na ekranach wyników | niski | **← UZUPEŁNIONE (K4, V12K-102).** Znacznik świeżości w pasku aktywnego przypadku (ui2 `CaseBar`): źródło prawdy `useStudyCasesStore.activeCase` (`result_status`+`results_valid`), „nieaktualne" klikalne → przestrzeń „Obliczenia". Bez numeru rewizji (store go nie niesie — zero fabrykacji). |
 
 ## 3. Werdykty soczewek (sign-off stanu)
@@ -85,9 +85,11 @@ nie wyspa). Testy: `co-wymaga-uwagi/__tests__/{model,EkranCoWymagaUwagi}.test.ts
 2. ~~**B1/B2** F-E1 — warunki przyłączenia + bilans mocy.~~ **✅ UZUPEŁNIONE (V12K-100)** (z realnych pól modelu; cosφ/tryb pracy/limit OSD = GAP-y backendu zarejestrowane niżej).
 3. ~~**A3** F-E6.3 — akcje kontekstowe per rodzaj przekroczenia.~~ **✅ UZUPEŁNIONE (K1, V12K-101).**
 4. ~~**D1** — znacznik świeżości w pasku przypadku.~~ **✅ UZUPEŁNIONE (K4, V12K-102).**
-5. **C1** — przemiar i domknięcie `dowodRef` (karta K3 programu FLOW EKSPERT+).
+5. ~~**C1** — przemiar i domknięcie `dowodRef`.~~ **✅ UZUPEŁNIONE (K3, V12K-104).**
 
-Priorytet realizacji wg bólu: A1 (✅) → A2 (✅) → B1/B2 (✅) → A3 (✅) → D1 (✅) → C1 (K3 w toku).
+**Rejestr braków audytu DOMKNIĘTY W CAŁOŚCI:** A1 (✅) → A2 (✅) → B1/B2 (✅,
+GAP-y backendu domknięte K2) → A3 (✅) → D1 (✅) → C1 (✅). Pozostałe GAP-y
+odkryte po drodze żyją w `PROMPT_FABLE_FLOW_EKSPERT_2026-07.md` §5.
 
 ## 6. GAP-y backendu zarejestrowane przy B1/B2 — **DOMKNIĘTE (K2, V12K-103)**
 

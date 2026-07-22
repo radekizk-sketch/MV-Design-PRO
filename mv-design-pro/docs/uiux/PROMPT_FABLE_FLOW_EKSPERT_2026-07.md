@@ -163,10 +163,17 @@ K5 (Fable, runda wizualna + strona oceny)              → zamknięcie programu
 - K1: **SCALONE** (V12K-101) — wykonawca-1, zweryfikowane niezależnie, cherry-pick 2026-07-22
 - K4: **SCALONE** (V12K-102) — wykonawca-2, zweryfikowane niezależnie, cherry-pick 2026-07-22
 - K2: **SCALONE** (V12K-103) — Fable osobiście, backend+UI end-to-end, 2026-07-22
-- K3: ZLECONE (wykonawca-3, worktree) — 2026-07-22
-- K5: W KOLEJCE (po K2/K3)
+- K3: **SCALONE** (V12K-104) — wykonawca-3, zweryfikowane niezależnie, cherry-pick 2026-07-22
+- K5: W TOKU (Fable — runda wizualna)
 
 GAP-y z raportów wykonawców (zarejestrowane, nie ciche):
+- K3-G1: walidacja energetyczna bez śladu WHITE BOX per pozycja (`WalidacjaItem`
+  nie niesie wywodu; `observed_value` liczy builder) — domknięcie wymaga delty
+  backendowej (ślad per pozycja walidacji).
+- K3-G2: porównanie A/B bez dowodów per komórka (wartości z DWÓCH przebiegów,
+  odbiorca pokazuje ślad JEDNEGO) — osobna karta (wybór przebiegu docelowego).
+- K3-G3: wkłady zwarciowe — pass-through `dowodRef` istnieje, brak dostawcy
+  danych wkładów (GAP backendu pre-existing).
 - K1-G1: deep-link „Dobór kompensacji" bez pre-selekcji węzła (`wynikiTab` niesie
   tylko id zakładki) — rozszerzenie payloadu deep-linku = osobna karta.
 - K1-G2: wiersze gałęzi rozpływu bez werdyktu obciążalności (kontrakt
