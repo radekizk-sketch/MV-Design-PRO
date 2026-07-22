@@ -46,9 +46,12 @@ export const SHELL_STRINGS = {
   modelValidated: 'Model: zwalidowany',
   modelPending: 'Model: w budowie',
 
+  // Statusy wyników — spójne ze STATUS_WYNIKOW_LABEL (brak/aktualne/nieaktualne;
+  // karta K4/D1). Spójność pilnowana testem znacznikSwiezosci.test.ts.
   resultsFresh: 'Wyniki: aktualne',
   resultsOutdated: 'Wyniki: nieaktualne',
-  resultsNone: 'Wyniki: do obliczenia',
+  resultsNone: 'Wyniki: brak',
+  resultsOutdatedHint: 'Przejdź do przestrzeni Obliczenia, aby przeliczyć wyniki',
 
   searchPlaceholder: 'Szukaj poleceń, obiektów, okien…',
   searchHint: 'Wyszukiwarka poleceń — pełna wersja w kolejnym kroku (W-105).',

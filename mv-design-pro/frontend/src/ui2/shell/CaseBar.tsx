@@ -2,9 +2,13 @@
  * Pasek aktywnego przypadku (zawsze widoczny). Prezentacyjny — dane pochodzą
  * z istniejących store'ów przez adapter (shellStatus). Stany: brak projektu
  * („—" + „Otwórz projekt") oraz komplet chipów model/gotowość/wyniki (karta §4).
+ *
+ * Znacznik świeżości wyników (karta K4/D1): „nieaktualne" jest klikalne i
+ * prowadzi do przestrzeni „Obliczenia"; „aktualne"/„brak" pozostają statyczne.
  */
 
-import type { ShellCaseInfo, ResultFreshness } from './shellStatus';
+import type { StudyCaseResultStatus } from '../../ui/study-cases/types';
+import type { ShellCaseInfo } from './shellStatus';
 import { SHELL_STRINGS, caseCountLabel, readinessLabel } from './strings';
 
 interface CaseBarProps {
@@ -12,20 +16,11 @@ interface CaseBarProps {
   onOpenProject?: () => void;
   /** Otwiera stan wariantów/przebiegów aktywnego zakresu (parytet E1.7c). */
   onOpenVariants?: () => void;
+  /** Przejście do przestrzeni „Obliczenia" ze znacznika „wyniki nieaktualne" (K4/D1). */
+  onPrzejdzDoObliczen?: () => void;
 }
 
-function resultsText(status: ResultFreshness): string {
-  switch (status) {
-    case 'FRESH':
-      return SHELL_STRINGS.resultsFresh;
-    case 'OUTDATED':
-      return SHELL_STRINGS.resultsOutdated;
-    case 'NONE':
-      return SHELL_STRINGS.resultsNone;
-  }
-}
-
-function resultsDotClass(status: ResultFreshness): string {
+function resultsDotClass(status: StudyCaseResultStatus): string {
   switch (status) {
     case 'FRESH':
       return 'mvd-dot mvd-dot-ok';
@@ -36,7 +31,7 @@ function resultsDotClass(status: ResultFreshness): string {
   }
 }
 
-export function CaseBar({ info, onOpenProject, onOpenVariants }: CaseBarProps) {
+export function CaseBar({ info, onOpenProject, onOpenVariants, onPrzejdzDoObliczen }: CaseBarProps) {
   const readinessOk = info.readinessBlockers === 0 && info.readinessWarnings === 0;
   const nazwaZakresu = info.projectPresent
     ? (info.caseName ?? SHELL_STRINGS.emptyValue)
@@ -80,10 +75,23 @@ export function CaseBar({ info, onOpenProject, onOpenVariants }: CaseBarProps) {
             {readinessLabel(info.readinessWarnings, info.readinessBlockers)}
           </span>
 
-          <span className="mvd-chip" data-testid="mvd-casebar-results">
-            <span className={resultsDotClass(info.resultStatus)} />
-            {resultsText(info.resultStatus)}
-          </span>
+          {info.znacznikWynikow.klikalny && onPrzejdzDoObliczen ? (
+            <button
+              type="button"
+              className="mvd-chip mvd-chip-klik"
+              data-testid="mvd-casebar-results"
+              onClick={onPrzejdzDoObliczen}
+              title={SHELL_STRINGS.resultsOutdatedHint}
+            >
+              <span className={resultsDotClass(info.znacznikWynikow.status)} />
+              {info.znacznikWynikow.etykieta}
+            </button>
+          ) : (
+            <span className="mvd-chip" data-testid="mvd-casebar-results">
+              <span className={resultsDotClass(info.znacznikWynikow.status)} />
+              {info.znacznikWynikow.etykieta}
+            </span>
+          )}
 
           <span className="mvd-grow" />
 

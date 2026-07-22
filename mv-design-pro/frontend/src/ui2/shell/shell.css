@@ -156,6 +156,16 @@
 .mvd-dot-none {
   background: var(--mvd-muted);
 }
+/* Klikalny znacznik świeżości wyników (K4/D1) — chip-przycisk, kolory tokenami. */
+.mvd-chip-klik {
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  cursor: pointer;
+}
+.mvd-chip-klik:hover {
+  background: var(--mvd-sel);
+}
 
 /* ---- korpus: lewy / środkowy / prawy ---- */
 .mvd-body {

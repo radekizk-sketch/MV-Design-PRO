@@ -14,13 +14,12 @@ import {
   useActiveProjectId,
   useAppStateStore,
 } from '../../ui/app-state';
-import { useCasesCount } from '../../ui/study-cases/store';
+import { useCasesCount, useStudyCasesStore } from '../../ui/study-cases/store';
 import { calculationScopeDisplayName } from '../../ui/shell/publicNames';
 import { useReadinessLiveStore } from '../../ui/engineering-readiness/readinessLiveStore';
+import { znacznikSwiezosci, type ZnacznikSwiezosci } from './znacznikSwiezosci';
 
 export type BackendStatus = 'connected' | 'connecting' | 'error';
-
-export type ResultFreshness = 'NONE' | 'FRESH' | 'OUTDATED';
 
 export interface ShellCaseInfo {
   projectPresent: boolean;
@@ -28,7 +27,11 @@ export interface ShellCaseInfo {
   projectName: string | null;
   caseName: string | null;
   caseCount: number;
-  resultStatus: ResultFreshness;
+  /**
+   * Znacznik świeżości wyników aktywnego przypadku (karta K4/D1). Źródło
+   * prawdy: `useStudyCasesStore.activeCase` (result_status + results_valid).
+   */
+  znacznikWynikow: ZnacznikSwiezosci;
   modelValidated: boolean;
   readinessWarnings: number;
   readinessBlockers: number;
@@ -57,7 +60,7 @@ export function useShellCaseInfo(): ShellCaseInfo {
   // Publiczna nazwa zakresu obliczeń (sanitizer nazw z dawnej ramy — E1.7c).
   const caseName = rawCaseName ? calculationScopeDisplayName(rawCaseName, caseId) : null;
   const caseCount = useCasesCount();
-  const resultStatus = useAppStateStore((state) => state.activeCaseResultStatus);
+  const activeCase = useStudyCasesStore((state) => state.activeCase);
   const ready = useReadinessLiveStore((state) => state.ready);
   const blockers = useReadinessLiveStore((state) => state.bySeverity.BLOCKER);
   const warnings = useReadinessLiveStore((state) => state.bySeverity.IMPORTANT);
@@ -69,7 +72,7 @@ export function useShellCaseInfo(): ShellCaseInfo {
     projectName: projectName ?? null,
     caseName,
     caseCount,
-    resultStatus,
+    znacznikWynikow: znacznikSwiezosci(activeCase),
     modelValidated: projectPresent && ready,
     readinessWarnings: warnings,
     readinessBlockers: blockers,

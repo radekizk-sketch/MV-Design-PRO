@@ -231,7 +231,13 @@ export function AppShell({
 
       {/* Kontrakt e2e (E1.7b): pasek aktywnego przypadku nosi testid starej powłoki. */}
       <div data-testid="active-case-bar">
-        <CaseBar info={caseInfo} onOpenProject={onOpenProject} onOpenVariants={onOpenVariants} />
+        <CaseBar
+          info={caseInfo}
+          onOpenProject={onOpenProject}
+          onOpenVariants={onOpenVariants}
+          /* Znacznik „wyniki nieaktualne" prowadzi do przestrzeni „Obliczenia" (K4/D1). */
+          onPrzejdzDoObliczen={() => selectSpace('obliczenia')}
+        />
       </div>
 
       <div className="mvd-main-region">
