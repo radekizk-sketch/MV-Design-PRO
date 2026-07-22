@@ -1,15 +1,16 @@
 /*
- * Sekcja „Rozpływ prądu zwarciowego" (karta W-C, ZWARCIA-PRO F4 pkt 2) —
- * wkłady źródeł falownikowych do prądów w gałęziach dla wybranego punktu
- * zwarcia. Dane WPROST z wiersza kanonicznego
- * (`ShortCircuitRow.branch_contributions` — delta backendu pkt 1 karty W-C:
+ * Sekcja „Rozpływ prądu zwarciowego" (karta W-C, ZWARCIA-PRO F4 pkt 2;
+ * V12K-132 pkt 7) — prądy zwarciowe w gałęziach dla wybranego punktu zwarcia
+ * od źródła zastępczego (Thevenin / sieć nadrzędna) ORAZ źródeł falownikowych.
+ * Dane WPROST z wiersza kanonicznego (`ShortCircuitRow.branch_contributions` —
  * FROZEN solver z opcją addytywną + projekcja `_sc_rozplyw_galeziowy`).
- * Reużywa tabelę wspólnego wzorca (`TabelaWynikow`).
+ * Reużywa tabelę wspólnego wzorca (`TabelaWynikow`); rozróżnienie źródła PL
+ * („sieć nadrzędna" vs identyfikator maszyny) w `zrodloRozplywuPL`.
  *
  * Uczciwe stany (zero fabrykacji):
  * - `flows === null` → starszy wynik bez pola (kontrakt addytywny) — komunikat,
- * - `flows.length === 0` → policzono, brak wkładów falownikowych; kontrakt
- *   solvera nie niesie rozpływu Thevenina (GAP zapisany w `zwarciaModel.ts` 1a).
+ * - `flows.length === 0` → policzono, brak prądu w gałęziach (sieć bez źródła
+ *   zastępczego i bez falowników zasilających zwarcie).
  * Zero fizyki, zero mutacji, zero wołań API.
  */
 

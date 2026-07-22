@@ -824,6 +824,11 @@ def test_branch_contributions_option_does_not_change_existing_fields():
 
     assert base.pop("branch_contributions") is None
     assert with_bc.pop("branch_contributions"), "opcja włączona → niepusta lista wkładów"
+    # V12K-132 (pkt 7): ślad WHITE BOX rozpływu Thevenina jest SPRZĘŻONY z opcją
+    # wkładów gałęziowych (obecny WYŁĄCZNIE gdy je liczymy) — addytywny, jak
+    # branch_contributions. Poza tą parą payload musi być bajt-w-bajt identyczny.
+    assert "branch_flow_trace" not in base
+    assert with_bc.pop("branch_flow_trace"), "opcja włączona → niepusty ślad rozpływu"
     assert with_bc == base
 
 
@@ -840,8 +845,13 @@ def test_branch_contributions_with_closed_switch_merged_nodes():
     # Węzeł scalony z "B" zamkniętym łącznikiem: len(node_id_to_index) > wymiar Z-bus.
     graph.add_node(create_pq_node("B2", 20.0))
     graph.add_switch(
-        Switch(id="SW1", name="Łącznik B-B2", from_node_id="B", to_node_id="B2",
-               state=SwitchState.CLOSED)
+        Switch(
+            id="SW1",
+            name="Łącznik B-B2",
+            from_node_id="B",
+            to_node_id="B2",
+            state=SwitchState.CLOSED,
+        )
     )
     graph.add_inverter_source(create_inverter_source("INV-SW", "A", in_rated_a=50.0, k_sc=1.1))
 
@@ -855,3 +865,297 @@ def test_branch_contributions_with_closed_switch_merged_nodes():
 
     assert result.branch_contributions is not None
     assert len(result.branch_contributions) > 0
+
+
+# -----------------------------------------------------------------------------
+# V12K-132 (pkt 7 karty właściciela): rozpływ prądu zwarciowego od źródła
+# zastępczego (Thevenin / sieć nadrzędna) w gałęziach — WHITE BOX.
+# -----------------------------------------------------------------------------
+
+THEVENIN_GRID_SOURCE_ID = "THEVENIN_GRID"
+
+
+def create_slack_node(node_id: str, voltage_level: float) -> Node:
+    return Node(
+        id=node_id,
+        name=f"Slack {node_id}",
+        node_type=NodeType.SLACK,
+        voltage_level=voltage_level,
+        active_power=0.0,
+        reactive_power=0.0,
+        voltage_magnitude=1.0,
+        voltage_angle=0.0,
+    )
+
+
+def create_line_branch(
+    branch_id: str,
+    from_node_id: str,
+    to_node_id: str,
+    r_ohm_per_km: float,
+    x_ohm_per_km: float,
+    length_km: float = 1.0,
+) -> LineBranch:
+    return LineBranch(
+        id=branch_id,
+        name=f"Line {branch_id}",
+        branch_type=BranchType.LINE,
+        from_node_id=from_node_id,
+        to_node_id=to_node_id,
+        r_ohm_per_km=r_ohm_per_km,
+        x_ohm_per_km=x_ohm_per_km,
+        b_us_per_km=0.0,
+        length_km=length_km,
+        rated_current_a=0.0,
+    )
+
+
+def build_slack_radial_graph() -> NetworkGraph:
+    """Sieć promieniowa z realnym źródłem zastępczym (SLACK): A(110) → TX → B(20)
+    → linia → C(20). Węzeł zwarcia C jest zwykłą szyną (bez bocznika) — bilans
+    rozpływu Thevenina domyka się dokładnie."""
+    graph = NetworkGraph()
+    graph.add_node(create_slack_node("A", 110.0))
+    graph.add_node(create_pq_node("B", 20.0))
+    graph.add_node(create_pq_node("C", 20.0))
+    graph.add_branch(
+        create_transformer_branch(
+            "T1",
+            "A",
+            "B",
+            rated_power_mva=25.0,
+            voltage_hv_kv=110.0,
+            voltage_lv_kv=20.0,
+            uk_percent=10.0,
+            pk_kw=120.0,
+        )
+    )
+    graph.add_branch(create_line_branch("L1", "B", "C", r_ohm_per_km=0.5, x_ohm_per_km=0.4))
+    return graph
+
+
+def build_z_bus_local(graph: NetworkGraph) -> np.ndarray:
+    builder = AdmittanceMatrixBuilder(graph)
+    y_bus = builder.build()
+    return np.linalg.inv(y_bus)
+
+
+def _thevenin_entries(result):
+    return [
+        bc for bc in (result.branch_contributions or []) if bc.source_id == THEVENIN_GRID_SOURCE_ID
+    ]
+
+
+def _net_inflow_to_fault(result, fault_node_id: str) -> float:
+    """Suma (netto) prądów gałęziowych Thevenina WCHODZĄCYCH do węzła zwarcia."""
+    total = 0.0
+    for bc in _thevenin_entries(result):
+        into_fault = (bc.to_node_id == fault_node_id and bc.direction == "from_to") or (
+            bc.from_node_id == fault_node_id and bc.direction == "to_from"
+        )
+        out_of_fault = (bc.from_node_id == fault_node_id and bc.direction == "from_to") or (
+            bc.to_node_id == fault_node_id and bc.direction == "to_from"
+        )
+        if into_fault:
+            total += bc.i_contrib_a
+        elif out_of_fault:
+            total -= bc.i_contrib_a
+    return total
+
+
+def test_thevenin_branch_flow_present_for_grid_source():
+    """Sieć z realnym źródłem zastępczym → rozpływ Thevenina obecny w gałęziach."""
+    graph = build_slack_radial_graph()
+    result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph,
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+    thev = _thevenin_entries(result)
+    assert thev, "sieć ze SLACK musi nieść rozpływ prądu zastępczego (Thevenin)"
+    # Kierunek fizyczny: prąd płynie DO węzła zwarcia (L1: B→C).
+    l1 = next(bc for bc in thev if bc.branch_id == "L1")
+    assert l1.direction == "from_to"
+
+
+@pytest.mark.parametrize("fault_node_id", ["B", "C"])
+def test_thevenin_branch_flow_balances_with_ik_thevenin(fault_node_id):
+    """SUMA KONTROLNA (§0): rozpływ Thevenina bilansuje się z Ik''(Thevenin) w
+    punkcie zwarcia — Σ prądów gałęziowych wchodzących do węzła = ik_thevenin_a.
+    Tolerancja numeryczna jawna (KCL domyka się do precyzji maszynowej)."""
+    graph = build_slack_radial_graph()
+    result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph,
+        fault_node_id=fault_node_id,
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+    assert result.ik_thevenin_a > 0
+    inflow = _net_inflow_to_fault(result, fault_node_id)
+    assert inflow == pytest.approx(result.ik_thevenin_a, rel=1e-9, abs=1e-6)
+
+
+@pytest.mark.parametrize(
+    "compute",
+    [
+        lambda g, n: ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+            graph=g,
+            fault_node_id=n,
+            c_factor=1.0,
+            tk_s=1.0,
+            include_branch_contributions=True,
+        ),
+        lambda g, n: ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
+            graph=g,
+            fault_node_id=n,
+            c_factor=1.0,
+            tk_s=1.0,
+            include_branch_contributions=True,
+        ),
+        lambda g, n: ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
+            graph=g,
+            fault_node_id=n,
+            c_factor=1.0,
+            tk_s=1.0,
+            z0_bus=build_z_bus_local(g) * 3.0,
+            include_branch_contributions=True,
+        ),
+        lambda g, n: ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
+            graph=g,
+            fault_node_id=n,
+            c_factor=1.0,
+            tk_s=1.0,
+            z0_bus=build_z_bus_local(g) * 3.0,
+            include_branch_contributions=True,
+        ),
+    ],
+)
+def test_thevenin_branch_flow_all_fault_types_balance(compute):
+    """Wszystkie 4 typy zwarcia obsługiwane w torze kanonicznym niosą rozpływ
+    Thevenina bilansujący się z Ik''(Thevenin) danego typu."""
+    graph = build_slack_radial_graph()
+    result = compute(graph, "C")
+    assert result.ik_thevenin_a > 0
+    assert _thevenin_entries(result), "każdy typ zwarcia musi nieść rozpływ Thevenina"
+    inflow = _net_inflow_to_fault(result, "C")
+    assert inflow == pytest.approx(result.ik_thevenin_a, rel=1e-9, abs=1e-6)
+
+
+def test_thevenin_branch_flow_deterministic():
+    """Determinizm (§0): dwa biegi na identycznym wejściu → identyczne rozpływy
+    Thevenina i ślad WHITE BOX (bajt-w-bajt po serializacji)."""
+    r1 = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=build_slack_radial_graph(),
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    ).to_dict()
+    r2 = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=build_slack_radial_graph(),
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    ).to_dict()
+    assert r1["branch_contributions"] == r2["branch_contributions"]
+    assert r1["branch_flow_trace"] == r2["branch_flow_trace"]
+
+
+def test_thevenin_addition_preserves_inverter_entries_byte_for_byte():
+    """ADDYTYWNOŚĆ (§0): dodanie toru Thevenina NIE zmienia wkładów falownikowych
+    — wpisy source_id != THEVENIN_GRID są BAJT-W-BAJT identyczne z wynikiem
+    dotychczasowej metody `_build_branch_contributions_for_inverters`."""
+    graph = build_slack_radial_graph()
+    # Falownik w węźle B (≠ węzeł zwarcia C) — jego superpozycja niesie prąd
+    # w gałęzi L1 (B→C); zwarcie na C.
+    graph.add_inverter_source(create_inverter_source("INV-B", "B", in_rated_a=80.0, k_sc=1.2))
+
+    result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph,
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+    inverter_entries = [
+        bc.to_dict()
+        for bc in (result.branch_contributions or [])
+        if bc.source_id != THEVENIN_GRID_SOURCE_ID
+    ]
+    expected = [
+        bc.to_dict()
+        for bc in ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
+            graph, "C", ShortCircuitType.THREE_PHASE
+        )
+    ]
+    assert inverter_entries == expected
+    # Oba tory obecne: falownikowy ORAZ Thevenina.
+    assert inverter_entries, "wkłady falownikowe obecne"
+    assert _thevenin_entries(result), "wkłady Thevenina obecne"
+
+
+def test_thevenin_branch_flow_with_closed_switch_balances():
+    """Regresja V12K-120 (rozszerzona na tor Thevenina): zamknięty łącznik scala
+    węzły — rozpływ Thevenina MUSI liczyć się (wektor iniekcji o wymiarze Z-bus
+    reprezentantów) i wciąż bilansować z Ik''(Thevenin)."""
+    from network_model.core.switch import Switch, SwitchState
+
+    graph = build_slack_radial_graph()
+    graph.add_node(create_pq_node("C2", 20.0))
+    graph.add_switch(
+        Switch(
+            id="SW1",
+            name="Łącznik C-C2",
+            from_node_id="C",
+            to_node_id="C2",
+            state=SwitchState.CLOSED,
+        )
+    )
+    result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph,
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+    assert _thevenin_entries(result), "sieć z zamkniętym łącznikiem: rozpływ Thevenina obecny"
+    inflow = _net_inflow_to_fault(result, "C")
+    assert inflow == pytest.approx(result.ik_thevenin_a, rel=1e-9, abs=1e-6)
+
+
+def test_branch_flow_trace_is_whitebox():
+    """WHITE BOX (§0): ślad rozpływu Thevenina zawiera krok iniekcji, krok per
+    gałąź (z napięciami węzłowymi i współczynnikiem podziału) oraz sumę
+    kontrolną bilansu (KCL). Obecny WYŁĄCZNIE gdy liczono wkłady gałęziowe."""
+    off = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=build_slack_radial_graph(),
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+    )
+    assert off.branch_flow_trace is None
+    assert "branch_flow_trace" not in off.to_dict()
+
+    on = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=build_slack_radial_graph(),
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+    trace = on.to_dict()["branch_flow_trace"]
+    keys = {step["key"] for step in trace}
+    assert "thevenin_flow_setup" in keys
+    assert "thevenin_flow_balance" in keys
+    assert any(k.startswith("thevenin_flow_L1") for k in keys)
+    setup = next(s for s in trace if s["key"] == "thevenin_flow_setup")
+    v_nodes = setup["result"]["v_nodes_pu"]
+    assert isinstance(v_nodes, list) and all("re" in v and "im" in v for v in v_nodes)
+    balance = next(s for s in trace if s["key"] == "thevenin_flow_balance")
+    assert balance["result"]["sum_into_fault_a"] == pytest.approx(
+        on.ik_thevenin_a, rel=1e-9, abs=1e-6
+    )

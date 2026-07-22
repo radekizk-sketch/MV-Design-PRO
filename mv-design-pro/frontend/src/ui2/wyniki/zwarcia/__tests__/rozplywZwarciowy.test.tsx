@@ -78,6 +78,39 @@ describe('zwarciaModel — projekcje rozpływu (czyste)', () => {
       rozplywDlaWiersza(shortCircuitRowFixture({ branch_contributions: null })),
     ).toBeNull();
   });
+
+  it('V12K-132: kolumna źródła rozróżnia „sieć nadrzędna" (Thevenin) od maszyny', () => {
+    const flows = [
+      {
+        branch_id: 'BR-TX-1',
+        branch_name: 'Transformator GPZ',
+        source_id: 'THEVENIN_GRID',
+        from_node_id: 'BUS-110',
+        from_node_name: 'Szyna 110 kV',
+        to_node_id: 'BUS-GPZ',
+        to_node_name: 'Szyna GPZ 15 kV',
+        i_ka: 8.4,
+        direction: 'from_to',
+      },
+      {
+        branch_id: 'BR-KABEL-1',
+        branch_name: 'Kabel OZE',
+        source_id: 'GEN-PV',
+        from_node_id: 'BUS-GPZ',
+        from_node_name: 'Szyna GPZ 15 kV',
+        to_node_id: 'BUS-OZE',
+        to_node_name: 'Szyna OZE',
+        i_ka: 0.245,
+        direction: 'to_from',
+      },
+    ];
+    const wiersze = naWierszeRozplywu(flows);
+    // Źródło zastępcze → etykieta PL „sieć nadrzędna"; falownik → identyfikator.
+    expect(wiersze[0].zrodlo.wartosc).toBe('sieć nadrzędna');
+    expect(wiersze[1].zrodlo.wartosc).toBe('GEN-PV');
+    // Klucz wiersza (unikalny) nadal używa surowego source_id.
+    expect(wiersze[0].identyfikator.wartosc).toBe('BR-TX-1::THEVENIN_GRID');
+  });
 });
 
 describe('EkranZwarc — sekcja „Rozpływ prądu zwarciowego" (pkt 2)', () => {

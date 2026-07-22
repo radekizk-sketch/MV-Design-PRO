@@ -88,13 +88,13 @@ export const ZWARCIA_STRINGS = {
   wkladSzczegolBrakOpis:
     'Rozbicie maszynowe tego przebiegu nie zawiera parametrów IEC 60909 (Ir, μ, q, Ib) dla tego źródła.',
 
-  // Sekcja rozpływu prądu zwarciowego w gałęziach (karta W-C, F4)
+  // Sekcja rozpływu prądu zwarciowego w gałęziach (karta W-C, F4; V12K-132)
   rozplywTytul: 'Rozpływ prądu zwarciowego',
   rozplywOpis:
-    'Wkłady źródeł falownikowych do prądów w gałęziach dla wybranego punktu zwarcia — wartości z solvera IEC 60909 (superpozycja), zero obliczeń w interfejsie.',
+    'Prądy zwarciowe w gałęziach dla wybranego punktu zwarcia — od źródła zastępczego (sieć nadrzędna, Thevenin) i od źródeł falownikowych. Wartości z solvera IEC 60909 (podział prądu z macierzy Z-bus / superpozycja), zero obliczeń w interfejsie.',
   rozplywKolGalaz: 'Gałąź',
   rozplywKolKierunek: 'Kierunek przepływu',
-  rozplywKolPrad: 'Prąd wkładu |I|',
+  rozplywKolPrad: 'Prąd |I|',
   rozplywKolZrodlo: 'Źródło',
   rozplywKolIdentyfikator: 'Identyfikator gałęzi',
   rozplywNiedostepny: 'Rozpływ gałęziowy niedostępny w tym przebiegu.',
@@ -102,7 +102,7 @@ export const ZWARCIA_STRINGS = {
     'Starszy wynik nie niesie wkładów gałęziowych. Uruchom ponownie obliczenie zwarciowe, aby je uzyskać.',
   rozplywBrakWkladow: 'Brak wkładów gałęziowych dla tego punktu zwarcia.',
   rozplywBrakWkladowOpis:
-    'Kontrakt solvera niesie rozpływ wkładów źródeł falownikowych (superpozycja). Sieć bez falowników albo punkt bez toru wkładu → brak pozycji; rozpływ prądu od sieci zewnętrznej (Thevenin) nie jest niesiony przez kontrakt wyników.',
+    'Policzono rozpływ, ale żadna gałąź nie niesie prądu zwarciowego dla tego punktu — sieć bez źródła zastępczego (nieskończonej szyny / sieci nadrzędnej) i bez falowników zasilających to zwarcie.',
 
   // Akcja synchronizacji ze schematem (karta W-C, pkt 6)
   pokazNaSchemacie: 'Pokaż na schemacie',
@@ -244,4 +244,19 @@ const TYP_MASZYNY_PL: Record<string, string> = {
 /** Mapuje token typu maszyny na polską nazwę (read-only, bez fizyki). */
 export function typMaszynyPL(token: string): string {
   return TYP_MASZYNY_PL[token.trim().toUpperCase()] ?? token;
+}
+
+/**
+ * Słownik polskich etykiet źródła wkładu rozpływu gałęziowego (V12K-132, pkt 7).
+ * Klucz "THEVENIN_GRID" (source_id z solvera, `_build_branch_contributions_for_thevenin`)
+ * → „sieć nadrzędna" (źródło zastępcze Thevenina). Pozostałe źródła (falowniki /
+ * maszyny) pokazywane po ich identyfikatorze — read-only, bez fizyki.
+ */
+const ZRODLO_ROZPLYWU_PL: Record<string, string> = {
+  THEVENIN_GRID: 'sieć nadrzędna',
+};
+
+/** Mapuje source_id wpisu rozpływu na etykietę PL (sieć nadrzędna vs źródło). */
+export function zrodloRozplywuPL(sourceId: string): string {
+  return ZRODLO_ROZPLYWU_PL[sourceId] ?? sourceId;
 }

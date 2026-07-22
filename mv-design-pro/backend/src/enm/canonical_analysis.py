@@ -1953,12 +1953,16 @@ def _sc_rozplyw_galeziowy(
 ) -> list[dict[str, Any]] | None:
     """Rozpływ prądu zwarciowego w gałęziach (ZWARCIA-PRO F4, karta W-C, addytywnie).
 
-    Przenosi `branch_contributions` FROZEN solvera (superpozycja wkładów źródeł
-    falownikowych per gałąź — `_build_branch_contributions_for_inverters`) do
-    wiersza kanonicznego. WYŁĄCZNIE projekcje prezentacyjne (A→kA, nazwy z grafu
-    przebiegu) — zero fizyki. Kierunek ("from_to"/"to_from") wprost z solvera.
-    Starsze wyniki bez pola → None (uczciwy brak); pusta lista = policzono,
-    brak wkładów falownikowych (kontrakt solvera nie niesie rozpływu Thevenina).
+    Przenosi `branch_contributions` FROZEN solvera do wiersza kanonicznego. Od
+    V12K-132 (pkt 7 karty właściciela) lista niesie wkłady OBU rodzin źródeł:
+    superpozycja falownikowa (`_build_branch_contributions_for_inverters`) ORAZ
+    rozpływ prądu od źródła zastępczego (Thevenin / sieć nadrzędna,
+    `_build_branch_contributions_for_thevenin`, source_id="THEVENIN_GRID").
+    WYŁĄCZNIE projekcje prezentacyjne (A→kA, nazwy z grafu przebiegu) — zero
+    fizyki. Kierunek ("from_to"/"to_from") wprost z solvera. Sort deterministyczny
+    (branch_id, source_id). Starsze wyniki bez pola → None (uczciwy brak);
+    pusta lista = policzono, brak wkładów w żadnej gałęzi (sieć bez źródła
+    zastępczego i bez falowników niosących prąd).
     """
     raw = item.get("branch_contributions")
     if raw is None:

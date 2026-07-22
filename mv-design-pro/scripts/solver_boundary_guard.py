@@ -26,7 +26,11 @@ SANCTIONED_CHANGES = {
         "_build_branch_contributions_for_inverters dla scalonych wezlow) "
         "+ test regresyjny; dowod addytywnosci to_dict testem. "
         "V12K-128: delta FROZEN zatwierdzona przez wlasciciela - z1/z2/z0 "
-        "addytywnie (wpis do usuniecia po scaleniu do main)."
+        "addytywnie. "
+        "V12K-132: rozszerzenie WHITE BOX wkladow galeziowych o tor Thevenina "
+        "(rozplyw pradu od zrodla zastepczego po galeziach) - pkt 7 karty "
+        "wlasciciela; addytywnie (branch_flow_trace + wpisy source_id="
+        "'THEVENIN_GRID'), wpis do usuniecia po scaleniu do main."
     ),
 }
 

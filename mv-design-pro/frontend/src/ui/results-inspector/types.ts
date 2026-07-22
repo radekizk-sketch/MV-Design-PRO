@@ -152,9 +152,10 @@ export interface BranchResults {
 // =============================================================================
 
 /**
- * Wkład gałęziowy prądu zwarciowego (ZWARCIA-PRO F4, karta W-C) — jeden wpis
- * per (źródło, gałąź) z FROZEN solvera (`ShortCircuitBranchContribution`,
- * superpozycja wkładów źródeł falownikowych), przeniesiony ADDYTYWNIE przez
+ * Wkład gałęziowy prądu zwarciowego (ZWARCIA-PRO F4, karta W-C; V12K-132) —
+ * jeden wpis per (źródło, gałąź) z FROZEN solvera (`ShortCircuitBranchContribution`):
+ * superpozycja falownikowa ORAZ rozpływ od źródła zastępczego (Thevenin / sieć
+ * nadrzędna, source_id="THEVENIN_GRID"), przeniesiony ADDYTYWNIE przez
  * `build_short_circuit_results` (`_sc_rozplyw_galeziowy`: projekcja A→kA +
  * nazwy z grafu przebiegu). Kierunek wprost z solvera: "from_to" | "to_from".
  */
@@ -213,10 +214,11 @@ export interface ShortCircuitRow {
   requires_z0?: boolean | null;
   z0_source?: string | null;
   /**
-   * Rozpływ prądu zwarciowego w gałęziach (ZWARCIA-PRO F4, addytywnie):
-   * lista wpisów per (źródło, gałąź); pusta lista = policzono, brak wkładów
-   * falownikowych (kontrakt solvera nie niesie rozpływu Thevenina — GAP);
-   * brak pola / null = starszy wynik (uczciwa kreska).
+   * Rozpływ prądu zwarciowego w gałęziach (ZWARCIA-PRO F4, addytywnie;
+   * V12K-132): lista wpisów per (źródło, gałąź) — źródło zastępcze (Thevenin /
+   * sieć nadrzędna) ORAZ źródła falownikowe; pusta lista = policzono, brak
+   * prądu w gałęziach (sieć bez źródła zastępczego i bez falowników zasilających
+   * zwarcie); brak pola / null = starszy wynik (uczciwa kreska).
    */
   branch_contributions?: ShortCircuitBranchFlow[] | null;
   // Werdykt raportowalności i wiązanie dowodu per punkt (karta P-3, addytywne

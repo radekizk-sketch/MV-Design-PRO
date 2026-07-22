@@ -24,6 +24,10 @@ from network_model.whitebox.tracer import WhiteBoxTracer
 C_MIN: float = 0.95
 C_MAX: float = 1.10
 
+# Identyfikator źródła zastępczego (Thevenin / sieć nadrzędna) w wkładach.
+# LUSTRO konwencji `_build_source_contributions` (source_id="THEVENIN_GRID").
+THEVENIN_GRID_SOURCE_ID: str = "THEVENIN_GRID"
+
 
 # -----------------------------------------------------------------------------
 # Result API Contract - Stabilne pola wyniku IEC 60909
@@ -64,6 +68,13 @@ OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS: list[str] = [
     "z1_ohm",
     "z2_ohm",
     "z0_ohm",
+    # V12K-132 (pkt 7 karty właściciela): ślad WHITE BOX rozpływu prądu
+    # zwarciowego od źródła zastępczego (Thevenin) w gałęziach. Obecny w
+    # to_dict() WYŁĄCZNIE gdy policzono wkłady gałęziowe
+    # (include_branch_contributions=True), sprzężony z `branch_contributions`.
+    # None (opcja wyłączona / starszy wynik) → pominięty, payload bajt-w-bajt
+    # jak sprzed delty (dowód: testy addytywności).
+    "branch_flow_trace",
 ]
 
 
@@ -128,6 +139,11 @@ class ShortCircuitResult:
     z1_ohm: complex | None = None
     z2_ohm: complex | None = None
     z0_ohm: complex | None = None
+    # V12K-132 (pkt 7 karty właściciela, addytywnie): ślad WHITE BOX rozpływu
+    # prądu zwarciowego od źródła zastępczego (Thevenin/sieć nadrzędna) po
+    # gałęziach — kroki i wartości pośrednie podziału prądu z macierzy Z-bus.
+    # None = wkłady gałęziowe nieliczone (opcja wyłączona) / wynik sprzed delty.
+    branch_flow_trace: list[dict] | None = None
 
     # -------------------------------------------------------------------------
     # Aliasy dla kompatybilności wstecznej (preferuj canonical: ikss_a, ip_a, ...)
@@ -228,6 +244,12 @@ class ShortCircuitResult:
             data["z2_ohm"] = serialize_complex(self.z2_ohm)
         if self.z0_ohm is not None:
             data["z0_ohm"] = serialize_complex(self.z0_ohm)
+        # V12K-132 (addytywnie, exclude-None): ślad WHITE BOX rozpływu Thevenina
+        # dołączany WYŁĄCZNIE gdy policzony (wielkości zespolone pośrednie →
+        # {re, im} przez serialize_value). Pominięcie None gwarantuje bajt-w-bajt
+        # zgodność payloadu wyników bez tego pola z kontraktem sprzed delty.
+        if self.branch_flow_trace is not None:
+            data["branch_flow_trace"] = serialize_value(list(self.branch_flow_trace))
         return data
 
 
@@ -250,6 +272,7 @@ class ShortCircuitIEC60909Solver:
         z1: complex | None = None,
         z2: complex | None = None,
         z0: complex | None = None,
+        branch_flow_trace: list[dict] | None = None,
     ) -> ShortCircuitResult:
         ik_total = ikss_thevenin + ik_inverters
         post = compute_post_fault_quantities(
@@ -284,6 +307,7 @@ class ShortCircuitIEC60909Solver:
             z1_ohm=z1,
             z2_ohm=z2,
             z0_ohm=z0,
+            branch_flow_trace=branch_flow_trace,
         )
 
     @staticmethod
@@ -660,6 +684,213 @@ class ShortCircuitIEC60909Solver:
         return contributions
 
     @staticmethod
+    def _series_admittance_pu(builder: object, branch: object) -> complex | None:
+        """Admitancja szeregowa gałęzi w per-unit — SPÓJNA z macierzą Y-bus.
+
+        Reużywa `AdmittanceMatrixBuilder._get_branch_admittances_pu` (ten sam
+        buider co `build_zbus`), dzięki czemu prawo Kirchhoffa (KCL) domyka się
+        w napięciach węzłowych z Z-bus — warunek konieczny dokładnego bilansu
+        rozpływu Thevenina z Ik'' w węźle zwarcia. Gałąź o nieobsługiwanym typie
+        albo zerowej impedancji → None (pomijana, jak w torze superpozycji).
+        """
+        getter = getattr(builder, "_get_branch_admittances_pu", None)
+        if getter is None:
+            return None
+        try:
+            y_series_pu, _ = getter(branch)
+        except (ValueError, ZeroDivisionError):
+            return None
+        return y_series_pu
+
+    @staticmethod
+    def _build_branch_contributions_for_thevenin(
+        graph: NetworkGraph,
+        fault_node_id: str,
+        ik_thevenin_a: float,
+    ) -> tuple[list[ShortCircuitBranchContribution], list[dict]]:
+        """Rozpływ prądu zwarciowego źródła zastępczego (Thevenin / sieć
+        nadrzędna) po gałęziach — WHITE BOX (V12K-132, pkt 7 karty właściciela).
+
+        Metoda (ZERO heurystyk, wyłącznie algebra Z-bus — standardowy podział
+        prądów): iniekcja jednostkowa -1 (pu) w węźle zwarcia daje napięcia
+        węzłowe ze zwarcia ``V = Z_bus · i_inj``. Współczynnik podziału gałęzi
+        ``f = (V_i − V_j) · y_ij`` (admitancja szeregowa pu SPÓJNA z Y-bus), a
+        prąd gałęzi ``I = |f| · Ik''(Thevenin)``. Z KCL suma modułów
+        współczynników gałęzi wchodzących do węzła zwarcia = 1, więc
+        ``Σ I_gałęzi(→ węzeł) = Ik''(Thevenin)`` — bilans dokładny (dowód
+        testem). Topologia podziału z sieci zgodnej (``build_zbus`` — TA SAMA
+        macierz co istniejący tor superpozycji falownikowej); moduł prądu z
+        ``Ik''(Thevenin)`` zależnego od typu zwarcia (spójnie z torem
+        superpozycji, który też skaluje jeden podział pu wielkością per typ).
+
+        Zwraca (wkłady per gałąź, ślad WHITE BOX). ``ik_thevenin_a <= 0`` (brak
+        źródła zastępczego) → ([], []) — uczciwy brak, jak tor superpozycji dla
+        sieci bez falowników.
+        """
+        if ik_thevenin_a <= 0:
+            return [], []
+
+        from network_model.solvers.short_circuit_core import build_zbus
+
+        builder, z_bus = build_zbus(graph)
+        fault_index = builder.node_id_to_index.get(fault_node_id)
+        if fault_index is None:
+            return [], []
+
+        # Iniekcja jednostkowa w węźle zwarcia (współczynniki podziału prądu).
+        i_inj = np.zeros(z_bus.shape[0], dtype=complex)
+        i_inj[fault_index] = complex(-1.0, 0.0)
+        v_nodes = z_bus @ i_inj
+
+        contributions: list[ShortCircuitBranchContribution] = []
+        tracer = WhiteBoxTracer()
+        tracer.add(
+            key="thevenin_flow_setup",
+            title="Podział prądu Thevenina — iniekcja jednostkowa w węźle zwarcia",
+            formula_latex=(
+                r"\underline{V} = \underline{Z}_{bus} \cdot \underline{i}_{inj},"
+                r"\quad \underline{i}_{inj,k} = -1"
+            ),
+            inputs={
+                "fault_node_id": fault_node_id,
+                "fault_index": fault_index,
+                "ik_thevenin_a": ik_thevenin_a,
+                "n_nodes": int(z_bus.shape[0]),
+            },
+            substitution=f"i_inj[{fault_index}] = -1 (pu); V = Z_bus @ i_inj",
+            substitution_latex=f"\\underline{{i}}_{{inj,{fault_index}}} = -1",
+            result={"v_nodes_pu": [complex(v) for v in v_nodes]},
+            notes=(
+                "Napięcia węzłowe ze zwarcia z macierzy Z-bus sieci zgodnej "
+                "(build_zbus, ta sama macierz co tor superpozycji falownikowej)."
+            ),
+        )
+
+        fraction_sum_into_fault = 0.0
+        for branch_id, branch in graph.branches.items():
+            if not getattr(branch, "in_service", True):
+                continue
+            y_series_pu = ShortCircuitIEC60909Solver._series_admittance_pu(builder, branch)
+            if y_series_pu is None:
+                continue
+            from_index = builder.node_id_to_index.get(branch.from_node_id)
+            to_index = builder.node_id_to_index.get(branch.to_node_id)
+            if from_index is None or to_index is None or from_index == to_index:
+                continue
+            v_from = v_nodes[from_index]
+            v_to = v_nodes[to_index]
+            fraction = (v_from - v_to) * y_series_pu
+            f_mag = float(abs(fraction))
+            i_a = f_mag * ik_thevenin_a
+            if i_a <= 0:
+                continue
+            # Kierunek: prąd zwarciowy płynie DO węzła zwarcia. W iniekcji
+            # jednostkowej |V| rośnie w stronę zwarcia (największe |V| = węzeł
+            # zwarcia), więc prąd płynie do węzła o większym |V|: "from_to" gdy
+            # koniec "to" jest bliżej zwarcia (|V_to| >= |V_from|).
+            direction = "from_to" if abs(v_to) >= abs(v_from) else "to_from"
+            # Bilans KCL: licz udział gałęzi WCHODZĄCEJ do węzła zwarcia.
+            if branch.to_node_id == fault_node_id and direction == "from_to":
+                fraction_sum_into_fault += f_mag
+            elif branch.from_node_id == fault_node_id and direction == "to_from":
+                fraction_sum_into_fault += f_mag
+            contributions.append(
+                ShortCircuitBranchContribution(
+                    source_id=THEVENIN_GRID_SOURCE_ID,
+                    branch_id=branch_id,
+                    from_node_id=branch.from_node_id,
+                    to_node_id=branch.to_node_id,
+                    i_contrib_a=i_a,
+                    direction=direction,
+                )
+            )
+            tracer.add(
+                key=f"thevenin_flow_{branch_id}",
+                title=f"Prąd zwarciowy Thevenina w gałęzi {branch_id}",
+                formula_latex=(
+                    r"I_{ga\l} = \left| (\underline{V}_i - \underline{V}_j)\,"
+                    r"\underline{y}_{ij} \right| \cdot I_k''^{(Th)}"
+                ),
+                inputs={
+                    "branch_id": branch_id,
+                    "from_node_id": branch.from_node_id,
+                    "to_node_id": branch.to_node_id,
+                    "v_from_pu": complex(v_from),
+                    "v_to_pu": complex(v_to),
+                    "y_series_pu": complex(y_series_pu),
+                    "ik_thevenin_a": ik_thevenin_a,
+                },
+                substitution=(
+                    f"|({ShortCircuitIEC60909Solver._format_complex(complex(v_from))} - "
+                    f"{ShortCircuitIEC60909Solver._format_complex(complex(v_to))}) * "
+                    f"{ShortCircuitIEC60909Solver._format_complex(complex(y_series_pu))}| * "
+                    f"{ShortCircuitIEC60909Solver._format_float(ik_thevenin_a)}"
+                ),
+                substitution_latex=(
+                    f"\\left| \\left("
+                    f"{ShortCircuitIEC60909Solver._format_complex_latex(complex(v_from))}"
+                    f" - {ShortCircuitIEC60909Solver._format_complex_latex(complex(v_to))}"
+                    f"\\right) \\cdot "
+                    f"{ShortCircuitIEC60909Solver._format_complex_latex(complex(y_series_pu))}"
+                    f"\\right| \\cdot "
+                    f"{ShortCircuitIEC60909Solver._format_float(ik_thevenin_a)}"
+                ),
+                result={
+                    "fraction": f_mag,
+                    "i_contrib_a": i_a,
+                    "direction": direction,
+                },
+            )
+
+        contributions.sort(key=lambda item: (item.source_id, item.branch_id))
+        tracer.add(
+            key="thevenin_flow_balance",
+            title="Suma kontrolna bilansu prądu w węźle zwarcia (KCL)",
+            formula_latex=r"\sum_{ga\l \to k} I_{ga\l} = I_k''^{(Th)}",
+            inputs={
+                "fault_node_id": fault_node_id,
+                "ik_thevenin_a": ik_thevenin_a,
+            },
+            substitution=(
+                f"Σ = {ShortCircuitIEC60909Solver._format_float(fraction_sum_into_fault * ik_thevenin_a)}"
+                f" ≈ {ShortCircuitIEC60909Solver._format_float(ik_thevenin_a)}"
+            ),
+            substitution_latex=(
+                f"\\sum = {ShortCircuitIEC60909Solver._format_float(fraction_sum_into_fault * ik_thevenin_a)}"
+                f" \\approx {ShortCircuitIEC60909Solver._format_float(ik_thevenin_a)}"
+            ),
+            result={
+                "sum_into_fault_a": fraction_sum_into_fault * ik_thevenin_a,
+                "fraction_sum": fraction_sum_into_fault,
+            },
+            notes=(
+                "KCL: suma modułów współczynników gałęzi wchodzących do węzła "
+                "zwarcia = 1, więc Σ prądów gałęziowych = Ik''(Thevenin)."
+            ),
+        )
+        return contributions, tracer.to_list()
+
+    @staticmethod
+    def _build_branch_contributions(
+        graph: NetworkGraph,
+        fault_node_id: str,
+        short_circuit_type: ShortCircuitType,
+        ik_thevenin_a: float,
+    ) -> tuple[list[ShortCircuitBranchContribution], list[dict]]:
+        """Łączy wkłady gałęziowe: superpozycja falownikowa (istniejąca,
+        BEZ ZMIAN) + rozpływ Thevenina (V12K-132, addytywnie). Deterministyczny
+        sort ``(source_id, branch_id)`` — wpisy falownikowe zachowują swoje
+        wartości bajt-w-bajt (source_id inwertera vs "THEVENIN_GRID")."""
+        inverter = ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
+            graph, fault_node_id, short_circuit_type
+        )
+        thevenin, trace = ShortCircuitIEC60909Solver._build_branch_contributions_for_thevenin(
+            graph, fault_node_id, ik_thevenin_a
+        )
+        combined = sorted(inverter + thevenin, key=lambda item: (item.source_id, item.branch_id))
+        return combined, trace
+
+    @staticmethod
     def compute_3ph_short_circuit(
         graph: NetworkGraph,
         fault_node_id: str,
@@ -734,14 +965,15 @@ class ShortCircuitIEC60909Solver:
             ik_thevenin_a=ikss,
             ik_total_a=ik_total,
         )
-        branch_contributions = (
-            ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
+        branch_contributions, branch_flow_trace = (
+            ShortCircuitIEC60909Solver._build_branch_contributions(
                 graph=graph,
                 fault_node_id=fault_node_id,
                 short_circuit_type=ShortCircuitType.THREE_PHASE,
+                ik_thevenin_a=ikss,
             )
             if include_branch_contributions
-            else None
+            else (None, None)
         )
         return ShortCircuitIEC60909Solver._compute_fault_result(
             short_circuit_type=ShortCircuitType.THREE_PHASE,
@@ -759,6 +991,7 @@ class ShortCircuitIEC60909Solver:
             z1=core.z1,
             z2=core.z2,
             z0=core.z0,
+            branch_flow_trace=branch_flow_trace,
         )
 
     @staticmethod
@@ -871,14 +1104,15 @@ class ShortCircuitIEC60909Solver:
             ik_thevenin_a=ikss,
             ik_total_a=ik_total,
         )
-        branch_contributions = (
-            ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
+        branch_contributions, branch_flow_trace = (
+            ShortCircuitIEC60909Solver._build_branch_contributions(
                 graph=graph,
                 fault_node_id=fault_node_id,
                 short_circuit_type=ShortCircuitType.SINGLE_PHASE_GROUND,
+                ik_thevenin_a=ikss,
             )
             if include_branch_contributions
-            else None
+            else (None, None)
         )
         return ShortCircuitIEC60909Solver._compute_fault_result(
             short_circuit_type=ShortCircuitType.SINGLE_PHASE_GROUND,
@@ -896,6 +1130,7 @@ class ShortCircuitIEC60909Solver:
             z1=core.z1,
             z2=core.z2,
             z0=core.z0,
+            branch_flow_trace=branch_flow_trace,
         )
 
     @staticmethod
@@ -967,14 +1202,15 @@ class ShortCircuitIEC60909Solver:
             ik_thevenin_a=ikss,
             ik_total_a=ik_total,
         )
-        branch_contributions = (
-            ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
+        branch_contributions, branch_flow_trace = (
+            ShortCircuitIEC60909Solver._build_branch_contributions(
                 graph=graph,
                 fault_node_id=fault_node_id,
                 short_circuit_type=ShortCircuitType.TWO_PHASE,
+                ik_thevenin_a=ikss,
             )
             if include_branch_contributions
-            else None
+            else (None, None)
         )
         return ShortCircuitIEC60909Solver._compute_fault_result(
             short_circuit_type=ShortCircuitType.TWO_PHASE,
@@ -992,6 +1228,7 @@ class ShortCircuitIEC60909Solver:
             z1=core.z1,
             z2=core.z2,
             z0=core.z0,
+            branch_flow_trace=branch_flow_trace,
         )
 
     @staticmethod
@@ -1067,14 +1304,15 @@ class ShortCircuitIEC60909Solver:
             ik_thevenin_a=ikss,
             ik_total_a=ik_total,
         )
-        branch_contributions = (
-            ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
+        branch_contributions, branch_flow_trace = (
+            ShortCircuitIEC60909Solver._build_branch_contributions(
                 graph=graph,
                 fault_node_id=fault_node_id,
                 short_circuit_type=ShortCircuitType.TWO_PHASE_GROUND,
+                ik_thevenin_a=ikss,
             )
             if include_branch_contributions
-            else None
+            else (None, None)
         )
         return ShortCircuitIEC60909Solver._compute_fault_result(
             short_circuit_type=ShortCircuitType.TWO_PHASE_GROUND,
@@ -1092,6 +1330,7 @@ class ShortCircuitIEC60909Solver:
             z1=core.z1,
             z2=core.z2,
             z0=core.z0,
+            branch_flow_trace=branch_flow_trace,
         )
 
 

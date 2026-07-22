@@ -4,9 +4,12 @@
  * LoadFlow/ZeroSequence/OLTC).
  *
  * Wejście = wiersz kanoniczny wyniku zwarciowego (ZWARCIA-PRO F4 pkt 1):
- * `ShortCircuitRow.branch_contributions` — wkłady źródeł falownikowych do
- * prądów gałęzi z FROZEN solvera (`_build_branch_contributions_for_inverters`,
- * superpozycja) + punkt zwarcia (element_id wiersza). Overlay NIGDY nie
+ * `ShortCircuitRow.branch_contributions` — prądy gałęziowe z FROZEN solvera:
+ * superpozycja falownikowa (`_build_branch_contributions_for_inverters`) ORAZ
+ * rozpływ od źródła zastępczego (Thevenin / sieć nadrzędna,
+ * `_build_branch_contributions_for_thevenin`, V12K-132) + punkt zwarcia
+ * (element_id wiersza). Adapter jest AGNOSTYCZNY na rodzaj źródła (grupuje po
+ * gałęzi, badge per source_id). Overlay NIGDY nie
  * modyfikuje modelu (sld_rules §B) i NICZEGO nie liczy poza względną skalą
  * PREZENTACYJNĄ grubości/koloru (proporcja wartości backendu do największej
  * wartości payloadu — klasa przekształceń prezentacyjnych, zero fizyki).
@@ -194,17 +197,18 @@ export function adaptShortCircuitFlowToOverlay(
     legend: [
       { label: 'Miejsce zwarcia (wybrany punkt)', color_token: 'critical', description: null },
       {
-        label: 'Wkład falownikowy duży (≥ 66% największego wkładu)',
+        label: 'Prąd zwarciowy duży (≥ 66% największego wkładu)',
         color_token: 'critical',
-        description: 'Skala względna prezentacji — wartości [kA] z solvera IEC 60909.',
+        description:
+          'Skala względna prezentacji — wartości [kA] z solvera IEC 60909 (sieć nadrzędna / Thevenin oraz źródła falownikowe).',
       },
       {
-        label: 'Wkład falownikowy średni (33–66%)',
+        label: 'Prąd zwarciowy średni (33–66%)',
         color_token: 'warning',
         description: null,
       },
       {
-        label: 'Wkład falownikowy mały (< 33%)',
+        label: 'Prąd zwarciowy mały (< 33%)',
         color_token: 'ok',
         description: null,
       },

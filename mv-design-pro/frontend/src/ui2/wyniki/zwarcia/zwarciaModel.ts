@@ -28,11 +28,16 @@
  *    (projekcja A→kA + nazwy z grafu przebiegu). Kontrakt frontu (c):
  *    `ShortCircuitRow.branch_contributions?: ShortCircuitBranchFlow[] | null`
  *    (`ui/results-inspector/types.ts`). Sekcję renderuje `RozplywZwarciowy`.
- *    GAP POZOSTAŁY (zero fabrykacji): kontrakt solvera niesie WYŁĄCZNIE wkłady
- *    źródeł falownikowych (`_build_branch_contributions_for_inverters` —
- *    superpozycja); rozpływ prądu od sieci zewnętrznej (Thevenin) w gałęziach
- *    NIE jest liczony przez solver — sekcja i overlay prezentują uczciwie
- *    tylko to, co kontrakt niesie (komunikat `rozplywBrakWkladowOpis`).
+ *    GAP DOMKNIĘTY (V12K-132, pkt 7 karty właściciela): kontrakt solvera niesie
+ *    teraz OBIE rodziny wkładów — superpozycję falownikową
+ *    (`_build_branch_contributions_for_inverters`) ORAZ rozpływ prądu od źródła
+ *    zastępczego (Thevenin / sieć nadrzędna,
+ *    `_build_branch_contributions_for_thevenin`, source_id="THEVENIN_GRID",
+ *    podział prądu z macierzy Z-bus, WHITE BOX `branch_flow_trace`). Sekcja
+ *    rozróżnia źródło PL („sieć nadrzędna" vs identyfikator maszyny,
+ *    `zrodloRozplywuPL`); strzałki v3 dostają pełny rozpływ. Pusta lista =
+ *    policzono, brak prądu w gałęziach (sieć bez źródła zastępczego i bez
+ *    falowników zasilających zwarcie).
  * 2. ŚWIEŻOŚĆ (FreshnessBadge): kontrakt wyników zwarciowych nie niesie LICZBOWEJ
  *    rewizji modelu z chwili liczenia → nagłówek nie podaje rewizji (badge
  *    pominięty, jak w oknie rozpływu). Numeryczną świeżość dostarczy karta
@@ -70,6 +75,7 @@ import {
   rodzajZwarciaPL,
   typMaszynyPL,
   uwagiZwarciaPL,
+  zrodloRozplywuPL,
 } from './strings';
 
 // ---------------------------------------------------------------------------
@@ -500,7 +506,9 @@ export function naWierszeRozplywu(flows: ShortCircuitBranchFlow[]): WierszTabeli
     galaz: { wartosc: flow.branch_name },
     kierunek: { wartosc: kierunekPrzeplywuPL(flow) },
     prad: komorkaWielkosci(flow.i_ka, fmtKA, flow.branch_id),
-    zrodlo: { wartosc: flow.source_id },
+    // V12K-132 (pkt 7): rozróżnienie źródła wkładu PL — „sieć nadrzędna"
+    // (Thevenin, source_id="THEVENIN_GRID") vs identyfikator falownika/maszyny.
+    zrodlo: { wartosc: zrodloRozplywuPL(flow.source_id) },
     [KLUCZ_ROZPLYW]: { wartosc: `${flow.branch_id}::${flow.source_id}` },
   }));
 }
