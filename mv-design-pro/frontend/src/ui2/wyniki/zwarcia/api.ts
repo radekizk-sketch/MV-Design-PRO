@@ -22,6 +22,17 @@ export interface WkladZrodlaOdpowiedz {
   readonly source_id: string;
   readonly source_name: string;
   readonly ikss_partial_a: number;
+  // Szczegół maszynowy IEC 60909 §6.6 (karta W-A F2, addytywnie) — endpoint
+  // zwraca komplet od V12K-114 (machine_sc_iec60909.py:115-131); pola opcjonalne
+  // dla starszych odpowiedzi (uczciwy brak zamiast fabrykacji).
+  readonly machine_type?: string;
+  readonly ir_a?: number;
+  readonly ratio_ik_ir?: number;
+  readonly mu?: number;
+  readonly q?: number;
+  readonly ib_a?: number;
+  /** Wywód dyplomowy TEJ maszyny ({tekst, latex} budowane w solverze). */
+  readonly wywod?: readonly KrokWywodu[];
 }
 
 /** Kształt 1:1 odpowiedzi (`MachineShortCircuitResult.to_dict`, pola konsumowane). */
@@ -63,6 +74,20 @@ export function naWklady(odpowiedz: WkladyOdpowiedz): WkladZwarciowy[] {
     id: c.source_id,
     zrodlo: c.source_name,
     pradKA: c.ikss_partial_a / 1000,
+    // Szczegół maszynowy (karta W-A F2): wyłącznie z pól odpowiedzi (zero
+    // fabrykacji) — starsza odpowiedź bez machine_type → szczegół nieobecny.
+    szczegol:
+      c.machine_type === undefined
+        ? undefined
+        : {
+            typMaszyny: c.machine_type,
+            irKA: c.ir_a !== undefined ? c.ir_a / 1000 : null,
+            stosunekIkIr: c.ratio_ik_ir ?? null,
+            mu: c.mu ?? null,
+            q: c.q ?? null,
+            ibKA: c.ib_a !== undefined ? c.ib_a / 1000 : null,
+            wywod: c.wywod ?? [],
+          },
   }));
 }
 

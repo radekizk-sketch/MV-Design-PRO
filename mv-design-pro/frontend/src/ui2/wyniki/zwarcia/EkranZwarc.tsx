@@ -3,8 +3,9 @@
  * okno „Wyniki zwarciowe" (W-604). Mapuje REALNY kształt `ShortCircuitResults`
  * (adapter `zwarciaModel`) → propsy wzorca `EkranAnalizy`: nagłówek → ZAŁOŻENIA
  * (metoda IEC 60909, współczynnik c, czas cieplny) → TABELA punktów zwarciowych
- * (Ik", ip, Ith, Sk" zawsze razem) → WYKRES słupkowy Ik". Pod ekranem — wybór
- * punktu zwarcia i sekcja WKŁADÓW dla wybranego punktu.
+ * (Ik", ip, Ith, Sk" zawsze razem) → WYKRES słupkowy z przełącznikiem wielkości
+ * (Ik"/ip/Ith/Sk"/I²t — karta W-A F2). Pod ekranem — wybór punktu zwarcia
+ * i sekcja WKŁADÓW dla wybranego punktu.
  *
  * Zero fizyki, zero mutacji; store czytany wyłącznie do odczytu
  * (`useWynikZwarciowy`). Wybór punktu zwarcia: NATYWNY wybór wiersza tabeli
@@ -19,12 +20,11 @@ import { EkranAnalizy } from '../wzorzec';
 import { useWkladyZwarciowe } from './api';
 import { BilansIEC } from './BilansIEC';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
-import { WykresIkssChart } from './WykresIkssChart';
+import { WykresZwarc } from './WykresZwarc';
 import { ZWARCIA_STRINGS } from './strings';
 import {
   KLUCZ_PUNKT,
   KOLUMNY_ZWARC,
-  naSlupkiIkss,
   naWierszeZwarc,
   naZalozeniaZwarc,
   useWynikZwarciowy,
@@ -101,7 +101,7 @@ export function EkranZwarc({
         zalozenia={naZalozeniaZwarc(wspolczynnikC, czasCieplnyS)}
         kolumny={KOLUMNY_ZWARC}
         wiersze={naWierszeZwarc(rows)}
-        wykres={<WykresIkssChart slupki={naSlupkiIkss(rows)} />}
+        wykres={<WykresZwarc rows={rows} />}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}

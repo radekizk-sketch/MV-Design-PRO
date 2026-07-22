@@ -68,12 +68,44 @@ export const ZWARCIA_STRINGS = {
   wkladyNiedostepne: 'Dane wkładów niedostępne w tym przebiegu.',
   walidacjaTytul: 'Walidacja metody IEC 60909',
   wkladyNiedostepneOpis:
-    'Kontrakt wyników zwarciowych (read-only) nie niesie wkładów źródeł. Wkłady pojawią się po rozszerzeniu przebiegu o dane gałęziowe (patrz TODO-KARTA).',
+    'Nie udało się pobrać rozbicia maszynowego dla tego punktu (brak migawki modelu albo błąd pobierania). Rozbicie dostarcza backend — wartości nie są liczone w interfejsie.',
   wkladyBrakPunktow: 'Brak punktów zwarcia do wyboru.',
+
+  // Sekcja wkładów — filtr, wykres udziałów, szczegół źródła (karta W-A F2)
+  wkladyFiltr: 'Filtruj źródła',
+  wkladyFiltrBrak: 'Żadne źródło nie pasuje do filtru.',
+  wkladyWykresTytul: 'Udziały procentowe wkładów źródeł',
+  wkladSzczegolTytul: 'Szczegóły wkładu źródła',
+  wkladSzczegolOpis:
+    'Parametry maszyny z rozbicia maszynowego IEC 60909 (backend) — klik wiersza wkładu zwija/rozwija.',
+  wkladTypMaszyny: 'Typ maszyny',
+  wkladIr: 'Prąd znamionowy Ir',
+  wkladIkIr: 'Stosunek Ik"/Ir',
+  wkladMu: 'Współczynnik zaniku μ',
+  wkladQ: 'Współczynnik q',
+  wkladIb: 'Prąd wyłączeniowy symetryczny Ib',
+  wkladSzczegolBrak: 'Szczegóły maszyny niedostępne dla tego źródła.',
+  wkladSzczegolBrakOpis:
+    'Rozbicie maszynowe tego przebiegu nie zawiera parametrów IEC 60909 (Ir, μ, q, Ib) dla tego źródła.',
 
   // Wykres
   wykresTytul: 'Prądy zwarciowe Ik" w punktach zwarcia',
   wykresOsY: 'Prąd zwarciowy początkowy Ik"',
+
+  // Przełącznik wielkości wykresu (karta W-A F2)
+  wykresPrzelacznik: 'Wielkość wykresu',
+  wykresPrzyciskIkss: 'Ik"',
+  wykresPrzyciskIp: 'ip',
+  wykresPrzyciskIth: 'Ith',
+  wykresPrzyciskSk: 'Sk"',
+  wykresPrzyciskI2t: 'I²t',
+  wykresTytulIp: 'Prądy udarowe ip w punktach zwarcia',
+  wykresTytulIth: 'Prądy cieplne Ith w punktach zwarcia',
+  wykresTytulSk: 'Moce zwarciowe Sk" w punktach zwarcia',
+  wykresTytulI2t: 'Energia cieplna I²t w punktach zwarcia',
+  wykresBrakDanych: 'Wielkość niedostępna w tym przebiegu.',
+  wykresBrakDanychOpis:
+    'Starszy wynik nie niesie tej wielkości. Uruchom ponownie obliczenie zwarciowe, aby ją uzyskać.',
 
   // Rodzaje zwarcia — nieznany token
   rodzajNieznany: 'zwarcie (nieokreślone)',
@@ -175,4 +207,22 @@ export function fmtOhm(n: number): string {
 /** Współczynnik udaru κ / stosunek X/R — 3 miejsca. */
 export function fmtKappa(n: number): string {
   return fmtLiczba(n, 3);
+}
+
+/**
+ * Słownik polskich nazw typów maszyn rozbicia maszynowego (karta W-A F2).
+ * Klucze = tokeny `machine_type` z odpowiedzi backendu
+ * (`MachinePartialContribution.to_dict`, machine_sc_iec60909.py:99:
+ * SYNCHRONOUS | ASYNCHRONOUS | DFIG). Token nierozpoznany pokazywany jest
+ * dosłownie (dane, nie literał UI).
+ */
+const TYP_MASZYNY_PL: Record<string, string> = {
+  SYNCHRONOUS: 'maszyna synchroniczna',
+  ASYNCHRONOUS: 'maszyna asynchroniczna',
+  DFIG: 'generator asynchroniczny dwustronnie zasilany (DFIG)',
+};
+
+/** Mapuje token typu maszyny na polską nazwę (read-only, bez fizyki). */
+export function typMaszynyPL(token: string): string {
+  return TYP_MASZYNY_PL[token.trim().toUpperCase()] ?? token;
 }

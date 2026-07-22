@@ -1,14 +1,23 @@
 /*
- * Sekcja „Wkłady do zwarcia" (karta E8.2) — wkłady źródeł do prądu w wybranym
- * punkcie zwarcia. Reużywa tabelę wspólnego wzorca (`TabelaWynikow`): źródło (PL),
- * prąd wkładu [kA], udział [%] (liczony PREZENTACYJNIE — patrz `naWierszeWkladow`).
+ * Sekcja „Wkłady do zwarcia" (karta E8.2; W-A F2 — wkłady PRO) — wkłady źródeł
+ * do prądu w wybranym punkcie zwarcia. Reużywa tabelę wspólnego wzorca
+ * (`TabelaWynikow`): źródło (PL), prąd wkładu [kA], udział [%] (liczony
+ * PREZENTACYJNIE — patrz `naWierszeWkladow`), sortowanie po kolumnach (sortKey).
  *
- * Dane wkładów NIE są dziś w kontrakcie wyników zwarciowych (read-only) — sekcja
- * przyjmuje je PRZEZ PROPS. Gdy `wklady` brak (`null`) → widoczny stan „dane
- * wkładów niedostępne w tym przebiegu" (TODO-KARTA delty backendowej w
- * `zwarciaModel.ts`). Zero fizyki, zero mutacji.
+ * Karta W-A F2 (punkt 5 karty właściciela):
+ * - filtr tekstowy po nazwie źródła (czysta operacja prezentacyjna; udziały [%]
+ *   liczone PRZED filtrem — filtrowanie ich nie zmienia),
+ * - wykres udziałów procentowych (`WykresUdzialowChart`, poziome słupki),
+ * - rozwinięcie wkładu: klik wiersza zwija/rozwija szczegół maszyny
+ *   (typ PL, Ir, Ik"/Ir, μ, q, Ib — IEC 60909 §6.6) + wywód dyplomowy TEJ
+ *   maszyny (`SladWywodu`, kroki {tekst, latex} z backendu). Wkład bez
+ *   szczegółu → uczciwy stan „szczegóły niedostępne" (zero fabrykacji).
+ *
+ * Dane dostarcza endpoint rozbicia maszynowego (`zwarcia/api.ts`); `wklady`
+ * przez props = nadpisanie testowe. Zero fizyki, zero mutacji.
  */
 
+import { useState } from 'react';
 import type { AdvancementMode } from '../../shell/modeModel';
 import {
   SladSekcyjny,
@@ -19,9 +28,13 @@ import {
   type SekcjaWywodu,
 } from '../wzorzec';
 import { ZWARCIA_STRINGS } from './strings';
+import { WykresUdzialowChart } from './WykresUdzialowChart';
 import {
   KLUCZ_WKLAD,
   KOLUMNY_WKLADOW,
+  filtrujWierszeWkladow,
+  naPozycjeSzczegoluWkladu,
+  naSlupkiUdzialow,
   naWierszeWkladow,
   type WkladZwarciowy,
 } from './zwarciaModel';
@@ -48,6 +61,47 @@ export interface WkladyZwarcioweProps {
   onOtworzDowod: (ref: string) => void;
 }
 
+/** Panel szczegółu maszynowego wybranego wkładu (karta W-A F2). */
+function SzczegolWkladuPanel({ wklad }: { wklad: WkladZwarciowy }) {
+  const szczegol = wklad.szczegol;
+  return (
+    <div className="mvd-zwarcia-wklad-szczegol" data-testid="mvd-zwarcia-wklad-szczegol">
+      <h4 className="mvd-zwarcia-wklad-szczegol-tytul">
+        {ZWARCIA_STRINGS.wkladSzczegolTytul}
+        {': '}
+        <span className="mvd-zwarcia-wklady-punkt">{wklad.zrodlo}</span>
+      </h4>
+      {!szczegol ? (
+        <div
+          className="mvd-zwarcia-wklady-brak"
+          data-testid="mvd-zwarcia-wklad-szczegol-brak"
+        >
+          <p className="mvd-zwarcia-wklady-brak-title">{ZWARCIA_STRINGS.wkladSzczegolBrak}</p>
+          <p className="mvd-zwarcia-wklady-brak-desc">
+            {ZWARCIA_STRINGS.wkladSzczegolBrakOpis}
+          </p>
+        </div>
+      ) : (
+        <>
+          <p className="mvd-zwarcia-wklad-szczegol-opis">{ZWARCIA_STRINGS.wkladSzczegolOpis}</p>
+          <dl className="mvd-zwarcia-bilans-siatka">
+            {naPozycjeSzczegoluWkladu(szczegol).map((p) => (
+              <div key={p.etykieta} className="mvd-zwarcia-bilans-poz">
+                <dt>{p.etykieta}</dt>
+                <dd className="mvd-num">
+                  {p.wartosc}
+                  {p.jednostka && p.wartosc !== ZWARCIA_STRINGS.kreska ? ` ${p.jednostka}` : ''}
+                </dd>
+              </div>
+            ))}
+          </dl>
+          <SladWywodu kroki={szczegol.wywod} testIdPrefix="mvd-zwarcia-wklad-szczegol-slad" />
+        </>
+      )}
+    </div>
+  );
+}
+
 export function WkladyZwarciowe({
   punktNazwa,
   wklady,
@@ -57,6 +111,19 @@ export function WkladyZwarciowe({
   trybZaawansowania,
   onOtworzDowod,
 }: WkladyZwarcioweProps) {
+  const [filtr, setFiltr] = useState('');
+  const [wybranyWklad, setWybranyWklad] = useState<string | null>(null);
+
+  // Klik wiersza wkładu: ten sam wiersz → zwiń (toggle), inny → rozwiń.
+  const przelaczWklad = (klucz: string) =>
+    setWybranyWklad((poprzedni) => (poprzedni === klucz ? null : klucz));
+
+  // Udział [%] liczony na PEŁNYM zbiorze (przed filtrem) — filtr nie zmienia udziałów.
+  const wierszeWszystkie = wklady ? naWierszeWkladow(wklady) : [];
+  const wiersze = filtrujWierszeWkladow(wierszeWszystkie, filtr);
+  const filtrBezTrafien = wierszeWszystkie.length > 0 && wiersze.length === 0;
+  const wybrany = wklady?.find((w) => w.id === wybranyWklad) ?? null;
+
   return (
     <section className="mvd-zwarcia-wklady" data-testid="mvd-zwarcia-wklady" aria-label={ZWARCIA_STRINGS.wkladyTytul}>
       <h3 className="mvd-zwarcia-wklady-tytul">
@@ -71,13 +138,42 @@ export function WkladyZwarciowe({
         </div>
       ) : (
         <>
-          <TabelaWynikow
-            kolumny={KOLUMNY_WKLADOW}
-            wiersze={naWierszeWkladow(wklady)}
-            onOtworzDowod={onOtworzDowod}
-            trybZaawansowania={trybZaawansowania}
-            kluczWiersza={KLUCZ_WKLAD}
-          />
+          {wklady.length > 0 && (
+            <div className="mvd-zwarcia-wklady-filtr">
+              <label htmlFor="mvd-zwarcia-wklady-filtr-input">
+                {ZWARCIA_STRINGS.wkladyFiltr}
+              </label>
+              <input
+                id="mvd-zwarcia-wklady-filtr-input"
+                data-testid="mvd-zwarcia-wklady-filtr"
+                type="text"
+                value={filtr}
+                onChange={(e) => setFiltr(e.target.value)}
+              />
+            </div>
+          )}
+          {filtrBezTrafien ? (
+            <p
+              className="mvd-zwarcia-wklady-filtr-brak"
+              data-testid="mvd-zwarcia-wklady-filtr-brak"
+            >
+              {ZWARCIA_STRINGS.wkladyFiltrBrak}
+            </p>
+          ) : (
+            <TabelaWynikow
+              kolumny={KOLUMNY_WKLADOW}
+              wiersze={wiersze}
+              onOtworzDowod={onOtworzDowod}
+              trybZaawansowania={trybZaawansowania}
+              kluczWiersza={KLUCZ_WKLAD}
+              onWybierzWiersz={przelaczWklad}
+              wybranyWiersz={wybranyWklad}
+            />
+          )}
+          {wybrany && <SzczegolWkladuPanel wklad={wybrany} />}
+          <WykresUdzialowChart slupki={naSlupkiUdzialow(wklady)} />
+          {/* Scalenie F2+F3: wywod sekcyjny (z checklista walidacji IEC) ma
+              pierwszenstwo; plaski SladWywodu = fallback starszych odpowiedzi. */}
           {wywodSekcje.length > 0 ? (
             <SladSekcyjny
               sekcje={wywodSekcje}

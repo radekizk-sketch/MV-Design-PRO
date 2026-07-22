@@ -151,6 +151,14 @@ describe('EkranZwarc — konkretyzacja wzorca na realnym kształcie danych', () 
     expect(within(slot).getByText(ZWARCIA_STRINGS.wykresTytul)).toBeInTheDocument();
   });
 
+  it('przełącznik wielkości w slocie wykresu — klik Sk" zmienia podpis (karta W-A F2)', () => {
+    render(<EkranZwarc {...props()} />);
+    const slot = screen.getByTestId('mvd-wyn-wykres');
+    fireEvent.click(within(slot).getByTestId('mvd-zwarcia-wykres-btn-sk'));
+    expect(within(slot).getByText(ZWARCIA_STRINGS.wykresTytulSk)).toBeInTheDocument();
+    expect(within(slot).queryByText(ZWARCIA_STRINGS.wykresTytul)).not.toBeInTheDocument();
+  });
+
   it('onEksport przekazany do stopki wzorca', () => {
     const onEksport = vi.fn();
     render(<EkranZwarc {...props({ onEksport })} />);
@@ -165,8 +173,11 @@ describe('EkranZwarc — wybór punktu i sekcja wkładów', () => {
   it('domyślnie wybrany pierwszy punkt; wkłady z propsów renderowane w tabeli', () => {
     render(<EkranZwarc {...props({ wklady: { 'BUS-GPZ': wkladyFixture() } })} />);
     const wklady = screen.getByTestId('mvd-zwarcia-wklady');
-    expect(within(wklady).getByText('Sieć zasilająca 110 kV')).toBeInTheDocument();
-    expect(within(wklady).getByText('75,0')).toBeInTheDocument();
+    // Zapytania w zakresie TABELI wkładów — te same etykiety niesie także wykres
+    // udziałów (karta W-A F2); intencja testu bez zmian.
+    const tabela = within(within(wklady).getByTestId('mvd-wyn-tabela'));
+    expect(tabela.getByText('Sieć zasilająca 110 kV')).toBeInTheDocument();
+    expect(tabela.getByText('75,0')).toBeInTheDocument();
     expect(within(wklady).queryByTestId('mvd-zwarcia-wklady-brak')).not.toBeInTheDocument();
   });
 
@@ -217,9 +228,11 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     vi.stubGlobal('fetch', fetchMock);
     render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
     const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
-    expect(await within(sekcja).findByText('Agregat')).toBeInTheDocument();
+    // Zakres TABELI wkładów — nazwę źródła niesie także wykres udziałów (W-A F2).
+    const tabela = within(await within(sekcja).findByTestId('mvd-wyn-tabela'));
+    expect(await tabela.findByText('Agregat')).toBeInTheDocument();
     // A -> kA (skalowanie prezentacji): 1234,5 A = 1,235 kA (format PL, 3 miejsca).
-    expect(within(sekcja).getByText('1,234')).toBeInTheDocument();
+    expect(tabela.getByText('1,234')).toBeInTheDocument();
     // Endpoint dostal ref ENM aktywnego punktu (target_id pierwszego wiersza).
     const [, init] = fetchMock.mock.calls[0];
     expect(JSON.parse((init as RequestInit).body as string).fault_node_id).toBe(
@@ -357,6 +370,54 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     expect(
       within(sekcja).queryByTestId('mvd-zwarcia-wklady-slad-sekcja-btn-0'),
     ).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('szczegol maszyny z odpowiedzi endpointu: klik wiersza -> mu/q/Ib + wywod maszyny (W-A F2)', async () => {
+    // Realna sciezka dostawcy: pola maszynowe 1:1 z MachinePartialContribution.to_dict.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          contributions: [
+            {
+              source_id: 'gen1',
+              source_name: 'Agregat',
+              ikss_partial_a: 1234.5,
+              machine_type: 'SYNCHRONOUS',
+              ir_a: 412.0,
+              ratio_ik_ir: 2.995,
+              mu: 0.813,
+              q: 1.0,
+              ib_a: 1003.6,
+              wywod: [
+                {
+                  tekst: 'I_b = mu * q * Ik',
+                  latex: "I_b = \\mu \\cdot q \\cdot I''_k",
+                },
+              ],
+            },
+          ],
+        }),
+      }),
+    );
+    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
+    // Natywny klik komórki wiersza wkladu rozwija szczegol maszyny (zakres tabeli —
+    // nazwa źródła występuje też na wykresie udziałów).
+    const tabela = within(await within(sekcja).findByTestId('mvd-wyn-tabela'));
+    fireEvent.click(await tabela.findByText('Agregat'));
+    const panel = within(sekcja).getByTestId('mvd-zwarcia-wklad-szczegol');
+    expect(within(panel).getByText('maszyna synchroniczna')).toBeInTheDocument();
+    expect(within(panel).getByText('0,412 kA')).toBeInTheDocument(); // Ir (A -> kA)
+    expect(within(panel).getByText('0,813')).toBeInTheDocument(); // mu
+    expect(within(panel).getByText('1,000')).toBeInTheDocument(); // q
+    expect(within(panel).getByText('1,004 kA')).toBeInTheDocument(); // Ib (A -> kA)
+    // Wywod dyplomowy TEJ maszyny — na zadanie, wzor przez KaTeX.
+    fireEvent.click(within(panel).getByTestId('mvd-zwarcia-wklad-szczegol-slad-btn'));
+    const wzory = within(panel).getAllByTestId('math-rendered');
+    expect(wzory[0].getAttribute('data-latex')).toContain('I_b = \\mu');
     vi.unstubAllGlobals();
   });
 

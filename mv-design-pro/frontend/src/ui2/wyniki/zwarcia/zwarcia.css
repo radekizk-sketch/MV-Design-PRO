@@ -63,6 +63,98 @@
   font-size: 12px;
 }
 
+/* ---- filtr źródeł w sekcji wkładów (karta W-A F2) ---- */
+.mvd-zwarcia-wklady-filtr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mvd-zwarcia-wklady-filtr label {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-zwarcia-wklady-filtr input {
+  padding: 4px 8px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-size: 13px;
+}
+.mvd-zwarcia-wklady-filtr input:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-zwarcia-wklady-filtr-brak {
+  margin: 0;
+  padding: 8px 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+/* ---- szczegół wkładu źródła (rozwinięcie wiersza, karta W-A F2) ---- */
+.mvd-zwarcia-wklad-szczegol {
+  padding: 12px 14px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-panel);
+}
+.mvd-zwarcia-wklad-szczegol-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-zwarcia-wklad-szczegol-opis {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+/* ---- przełącznik wielkości wykresu (karta W-A F2) ---- */
+.mvd-zwarcia-wykres-przelacznik {
+  display: inline-flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.mvd-zwarcia-wykres-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-zwarcia-wykres-btn.mvd-on {
+  border-color: var(--mvd-accent);
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+}
+.mvd-zwarcia-wykres-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-zwarcia-wykres-brak {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-muted);
+}
+.mvd-zwarcia-wykres-brak-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-zwarcia-wykres-brak-desc {
+  margin: 0;
+  font-size: 12px;
+}
+
 /* --- Panel „Bilans IEC 60909" (ZWARCIA-PRO F1) --- */
 .mvd-zwarcia-bilans {
   margin-top: 14px;

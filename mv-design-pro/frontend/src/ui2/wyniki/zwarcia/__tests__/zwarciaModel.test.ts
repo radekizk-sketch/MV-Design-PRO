@@ -2,8 +2,14 @@ import { describe, it, expect } from 'vitest';
 import {
   KLUCZ_PUNKT,
   KOLUMNY_ZWARC,
+  KONFIG_WYKRESU_ZWARC,
+  WIELKOSCI_WYKRESU,
+  filtrujWierszeWkladow,
   mapujWierszZwarcia,
+  naPozycjeSzczegoluWkladu,
   naSlupkiIkss,
+  naSlupkiUdzialow,
+  naSlupkiWielkosci,
   naWierszeWkladow,
   naWierszeZwarc,
   naZalozeniaZwarc,
@@ -15,12 +21,14 @@ import {
   fmtMVA,
   fmtWspolczynnik,
   rodzajZwarciaPL,
+  typMaszynyPL,
   uwagiZwarciaPL,
 } from '../strings';
 import {
   shortCircuitResultsFixture,
   shortCircuitRowFixture,
   wkladyFixture,
+  wkladyZeSzczegolemFixture,
 } from './fixtures';
 
 describe('mapujWierszZwarcia — projekcja ShortCircuitRow → wiersz wzorca (fixture 1:1)', () => {
@@ -137,6 +145,123 @@ describe('naSlupkiIkss — punkty wykresu Ik" (zero losowości)', () => {
       { punkt: 'Szyna GPZ 15 kV', ikss: 12.345 },
       { punkt: 'Szyna ST1 15 kV', ikss: 8.4 },
     ]);
+  });
+});
+
+describe('naSlupkiWielkosci — przełącznik wielkości wykresu (karta W-A F2)', () => {
+  it('wybiera pole wiersza wg wielkości i pomija wiersze bez wartości', () => {
+    const rows = shortCircuitResultsFixture().rows;
+    expect(naSlupkiWielkosci(rows, 'sk')).toEqual([
+      { punkt: 'Szyna GPZ 15 kV', ikss: 320.75 },
+      { punkt: 'Szyna ST1 15 kV', ikss: 218.1 },
+    ]);
+    expect(naSlupkiWielkosci(rows, 'ip')).toEqual([
+      { punkt: 'Szyna GPZ 15 kV', ikss: 31.2 },
+      { punkt: 'Szyna ST1 15 kV', ikss: 21.0 },
+    ]);
+  });
+
+  it("wielkość 'ikss' daje wynik identyczny z naSlupkiIkss (kontrakt 1:1)", () => {
+    const rows = shortCircuitResultsFixture().rows;
+    expect(naSlupkiWielkosci(rows, 'ikss')).toEqual(naSlupkiIkss(rows));
+  });
+
+  it('starszy wynik bez pola addytywnego (I²t) → pusta lista (uczciwy stan)', () => {
+    const rows = [
+      shortCircuitRowFixture({ i2t_ka2s: null }),
+      shortCircuitRowFixture({ target_id: 'BUS-X', i2t_ka2s: undefined }),
+    ];
+    expect(naSlupkiWielkosci(rows, 'i2t')).toEqual([]);
+  });
+});
+
+describe('KONFIG_WYKRESU_ZWARC — deklaratywna konfiguracja wielkości', () => {
+  it('każda wielkość ma przycisk, tytuł, nazwę, jednostkę i format', () => {
+    expect(WIELKOSCI_WYKRESU).toEqual(['ikss', 'ip', 'ith', 'sk', 'i2t']);
+    for (const wielkosc of WIELKOSCI_WYKRESU) {
+      const konfig = KONFIG_WYKRESU_ZWARC[wielkosc];
+      expect(konfig.przycisk).toBeTruthy();
+      expect(konfig.tytul).toBeTruthy();
+      expect(konfig.nazwaWielkosci).toBeTruthy();
+      expect(konfig.jednostka).toBeTruthy();
+      expect(typeof konfig.format(1.5)).toBe('string');
+    }
+    // Domyślna wielkość zachowuje dzisiejszy podpis wykresu (kontrakt 1:1).
+    expect(KONFIG_WYKRESU_ZWARC.ikss.tytul).toBe(ZWARCIA_STRINGS.wykresTytul);
+  });
+});
+
+describe('filtrujWierszeWkladow — filtr tekstowy po źródle (karta W-A F2)', () => {
+  const wiersze = naWierszeWkladow(wkladyFixture());
+
+  it('filtruje po nazwie źródła bez rozróżniania wielkości liter', () => {
+    const wynik = filtrujWierszeWkladow(wiersze, 'falownik');
+    expect(wynik).toHaveLength(1);
+    expect(wynik[0].zrodlo.wartosc).toBe('Falownik PV');
+  });
+
+  it('fraza pusta / białe znaki → wejście 1:1; brak trafień → pusta lista', () => {
+    expect(filtrujWierszeWkladow(wiersze, '')).toEqual(wiersze);
+    expect(filtrujWierszeWkladow(wiersze, '   ')).toEqual(wiersze);
+    expect(filtrujWierszeWkladow(wiersze, 'nie-ma-takiego')).toEqual([]);
+  });
+
+  it('udział [%] liczony PRZED filtrem — filtrowanie nie zmienia udziałów', () => {
+    const wynik = filtrujWierszeWkladow(wiersze, 'falownik');
+    expect(wynik[0].udzial.wartosc).toBe('25,0'); // 3/12 z pełnego zbioru, nie 100
+  });
+});
+
+describe('naSlupkiUdzialow — udziały procentowe wkładów (karta W-A F2)', () => {
+  it('ta sama arytmetyka prezentacji co kolumna Udział (suma = 100)', () => {
+    const slupki = naSlupkiUdzialow(wkladyFixture());
+    expect(slupki).toEqual([
+      { zrodlo: 'Sieć zasilająca 110 kV', udzial: 75 },
+      { zrodlo: 'Falownik PV', udzial: 25 },
+    ]);
+  });
+
+  it('suma zerowa → pusta lista (bez dzielenia przez zero)', () => {
+    expect(naSlupkiUdzialow([{ id: 'S', zrodlo: 'Źródło', pradKA: 0 }])).toEqual([]);
+  });
+});
+
+describe('naPozycjeSzczegoluWkladu — szczegół maszynowy wkładu (karta W-A F2)', () => {
+  it('mapuje typ PL, Ir, Ik"/Ir, μ, q, Ib z formatami PL', () => {
+    const szczegol = wkladyZeSzczegolemFixture()[0].szczegol!;
+    const pozycje = naPozycjeSzczegoluWkladu(szczegol);
+    expect(pozycje).toEqual([
+      { etykieta: ZWARCIA_STRINGS.wkladTypMaszyny, wartosc: 'maszyna synchroniczna', jednostka: null },
+      { etykieta: ZWARCIA_STRINGS.wkladIr, wartosc: '0,412', jednostka: ZWARCIA_STRINGS.jednKA },
+      { etykieta: ZWARCIA_STRINGS.wkladIkIr, wartosc: '2,995', jednostka: null },
+      { etykieta: ZWARCIA_STRINGS.wkladMu, wartosc: '0,813', jednostka: null },
+      { etykieta: ZWARCIA_STRINGS.wkladQ, wartosc: '1,000', jednostka: null },
+      { etykieta: ZWARCIA_STRINGS.wkladIb, wartosc: '1,003', jednostka: ZWARCIA_STRINGS.jednKA },
+    ]);
+  });
+
+  it('wartości null → uczciwa kreska (zero fabrykacji)', () => {
+    const pozycje = naPozycjeSzczegoluWkladu({
+      typMaszyny: 'DFIG',
+      irKA: null,
+      stosunekIkIr: null,
+      mu: null,
+      q: null,
+      ibKA: null,
+      wywod: [],
+    });
+    for (const p of pozycje.slice(1)) {
+      expect(p.wartosc).toBe(ZWARCIA_STRINGS.kreska);
+    }
+  });
+});
+
+describe('typMaszynyPL — słownik typów maszyn', () => {
+  it('mapuje tokeny backendu; nieznany token pokazywany dosłownie (dane)', () => {
+    expect(typMaszynyPL('SYNCHRONOUS')).toBe('maszyna synchroniczna');
+    expect(typMaszynyPL('ASYNCHRONOUS')).toBe('maszyna asynchroniczna');
+    expect(typMaszynyPL('DFIG')).toBe('generator asynchroniczny dwustronnie zasilany (DFIG)');
+    expect(typMaszynyPL('NOWY_TYP')).toBe('NOWY_TYP');
   });
 });
 

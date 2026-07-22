@@ -102,3 +102,32 @@ export function wkladyFixture(): WkladZwarciowy[] {
     { id: 'SRC-INV', zrodlo: 'Falownik PV', pradKA: 3.0 },
   ];
 }
+
+/**
+ * Wkłady ze szczegółem maszynowym (karta W-A F2) — kształt 1:1 z projekcji
+ * `naWklady` odpowiedzi endpointu rozbicia maszynowego (machine_type, Ir,
+ * Ik"/Ir, μ, q, Ib + wywód dyplomowy maszyny).
+ */
+export function wkladyZeSzczegolemFixture(): WkladZwarciowy[] {
+  return [
+    {
+      id: 'GEN-1',
+      zrodlo: 'Agregat biogazowni',
+      pradKA: 1.234,
+      szczegol: {
+        typMaszyny: 'SYNCHRONOUS',
+        irKA: 0.412,
+        stosunekIkIr: 2.995,
+        mu: 0.813,
+        q: 1.0,
+        ibKA: 1.003,
+        wywod: [
+          { tekst: 'Wzor pradu czesciowego maszyny', latex: "I''_{k,m} = \\frac{c \\cdot U_n}{\\sqrt{3} \\cdot Z''_m}" },
+          { tekst: 'I_b = mu * q * Ik = 1,003 kA', latex: "I_b = \\mu \\cdot q \\cdot I''_k" },
+        ],
+      },
+    },
+    // Wkład bez szczegółu (starsza odpowiedź) — uczciwy stan po rozwinięciu.
+    { id: 'SRC-GRID', zrodlo: 'Sieć zasilająca 110 kV', pradKA: 9.0 },
+  ];
+}

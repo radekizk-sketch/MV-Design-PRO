@@ -14,16 +14,26 @@
  * - Etykiety wielkości PL: `TRACE_VALUE_LABELS` (`types.ts:306-333`).
  *
  * TODO-KARTA (ograniczenia — brak źródła w kontrakcie read-only, karta §2 „NIE zgaduj"):
- * 1. WKŁADY ZWARCIOWE: solver liczy wkłady źródeł/gałęzi
- *    (`network_model/solvers/short_circuit_contributions.py`:
- *    ShortCircuitSourceContribution/ShortCircuitBranchContribution), a backend
- *    przyjmuje opcję `include_branch_contributions`
- *    (`api/fault_scenarios.py:77`). Kontrakt frontu `ShortCircuitRow`/`ShortCircuitResults`
- *    NIE niesie jednak wkładów — fronton ich dziś nie renderuje. Sekcja
- *    `WkladyZwarciowe` przyjmuje wkłady PRZEZ PROPS (`WkladZwarciowy[]`), a przy
- *    braku pokazuje stan „dane wkładów niedostępne w tym przebiegu". DELTA
- *    BACKENDOWA: dołączyć wkłady źródeł do payloadu `/results/short-circuit`
- *    (per punkt zwarcia), aby okno mogło je czytać read-only ze store'u.
+ * 1. WKŁADY ŹRÓDEŁ: DOMKNIĘTE (R3-B / K3-G3) — realny dostawca to endpoint
+ *    `POST /api/proof/sc3f/contributions` (`zwarcia/api.ts`), rozbicie maszynowe
+ *    per źródło (machine_type, Ir, Ik"/Ir, μ, q, Ib, wywód dyplomowy) renderuje
+ *    sekcja `WkladyZwarciowe` (karta W-A F2). Props `wklady` pozostaje jako
+ *    nadpisanie testowe (pierwszeństwo przed dostawcą).
+ * 1a. GAP — WKŁADY GAŁĘZIOWE (`branch_contributions`, karta W-A F2 pkt 3):
+ *    solver je liczy (`network_model/solvers/short_circuit_iec60909.py:552`
+ *    `_build_branch_contributions_for_inverters`, wynik w
+ *    `ShortCircuitResult.to_dict`:195), ale NIE są osiągalne w kontrakcie
+ *    read-only frontu, bo: (a) kanoniczny wykonawca
+ *    `backend/src/enm/canonical_analysis.py:878-909` (`_execute_short_circuit`)
+ *    woła solver BEZ `include_branch_contributions` — pole w raw_result jest
+ *    zawsze None; (b) `backend/src/enm/canonical_analysis.py:1902-1941`
+ *    (`build_short_circuit_results`) nie przenosi `branch_contributions`
+ *    z `raw_result.results[i]` do wierszy kanonicznych; (c) kontrakt frontu
+ *    `ShortCircuitRow` (`ui/results-inspector/types.ts:157-184`) nie niesie pola.
+ *    Opcja `include_branch_contributions` istnieje dziś wyłącznie w torze
+ *    scenariuszy zwarciowych (`backend/src/api/fault_scenarios.py:77`), nie w
+ *    przebiegach kanonicznych. Sekcja „Rozpływ prądu zwarciowego w gałęziach"
+ *    wymaga delty backendowej (a)+(b) + pola kontraktu (c) — bez fabrykacji.
  * 2. ŚWIEŻOŚĆ (FreshnessBadge): kontrakt wyników zwarciowych nie niesie LICZBOWEJ
  *    rewizji modelu z chwili liczenia → nagłówek nie podaje rewizji (badge
  *    pominięty, jak w oknie rozpływu). Numeryczną świeżość dostarczy karta
@@ -41,7 +51,13 @@ import type {
   ShortCircuitRow,
 } from '../../../ui/results-inspector/types';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
-import type { DefinicjaKolumny, WartoscKomorki, WierszTabeli, WierszZalozenia } from '../wzorzec';
+import type {
+  DefinicjaKolumny,
+  KrokWywodu,
+  WartoscKomorki,
+  WierszTabeli,
+  WierszZalozenia,
+} from '../wzorzec';
 import {
   ZWARCIA_STRINGS,
   fmtCzas,
@@ -52,6 +68,7 @@ import {
   fmtProcent,
   fmtWspolczynnik,
   rodzajZwarciaPL,
+  typMaszynyPL,
   uwagiZwarciaPL,
 } from './strings';
 
@@ -179,28 +196,135 @@ export function naZalozeniaZwarc(
 }
 
 // ---------------------------------------------------------------------------
-// Wykres — słupki Ik" per punkt zwarcia (dane wprost z wyniku, zero losowości)
+// Wykres — słupki wielkości per punkt zwarcia (dane wprost z wyniku, zero
+// losowości). Przełącznik wielkości Ik"/ip/Ith/Sk"/I²t — karta W-A F2 (pkt 12).
 // ---------------------------------------------------------------------------
 
-/** Punkt słupka wykresu Ik" (jeden punkt zwarcia). */
+/**
+ * Punkt słupka wykresu (jeden punkt zwarcia). Pole `ikss` to STAŁY dataKey
+ * wspólnego wykresu słupkowego — od karty W-A F2 niesie wartość AKTUALNIE
+ * prezentowanej wielkości (Ik"/ip/Ith/Sk"/I²t); nazwa pola pozostaje historyczna
+ * (kontrakt addytywny — bez zmiany istniejących konsumentów).
+ */
 export interface SlupekIkss {
   punkt: string;
   ikss: number;
 }
 
+/** Wielkości przełącznika wykresu punktów zwarcia (kolejność prezentacji). */
+export const WIELKOSCI_WYKRESU = ['ikss', 'ip', 'ith', 'sk', 'i2t'] as const;
+
+export type WielkoscWykresu = (typeof WIELKOSCI_WYKRESU)[number];
+
+/** Deklaratywna konfiguracja jednej wielkości wykresu (bez fizyki — sam wybór pola). */
+export interface KonfigWykresuZwarc {
+  /** Krótka etykieta przycisku przełącznika. */
+  przycisk: string;
+  /** Tytuł wykresu dla tej wielkości. */
+  tytul: string;
+  /** Pełna nazwa wielkości (dymek/seria). */
+  nazwaWielkosci: string;
+  /** Jednostka prezentacji. */
+  jednostka: string;
+  /** Deterministyczny formatera wartości (przecinek PL). */
+  format: (n: number) => string;
+  /** Odczyt pola wiersza kanonicznego (read-only). */
+  wartosc: (row: ShortCircuitRow) => number | null | undefined;
+}
+
+export const KONFIG_WYKRESU_ZWARC: Record<WielkoscWykresu, KonfigWykresuZwarc> = {
+  ikss: {
+    przycisk: ZWARCIA_STRINGS.wykresPrzyciskIkss,
+    tytul: ZWARCIA_STRINGS.wykresTytul,
+    nazwaWielkosci: ZWARCIA_STRINGS.wykresOsY,
+    jednostka: ZWARCIA_STRINGS.jednKA,
+    format: fmtKA,
+    wartosc: (row) => row.ikss_ka,
+  },
+  ip: {
+    przycisk: ZWARCIA_STRINGS.wykresPrzyciskIp,
+    tytul: ZWARCIA_STRINGS.wykresTytulIp,
+    nazwaWielkosci: ZWARCIA_STRINGS.kolIp,
+    jednostka: ZWARCIA_STRINGS.jednKA,
+    format: fmtKA,
+    wartosc: (row) => row.ip_ka,
+  },
+  ith: {
+    przycisk: ZWARCIA_STRINGS.wykresPrzyciskIth,
+    tytul: ZWARCIA_STRINGS.wykresTytulIth,
+    nazwaWielkosci: ZWARCIA_STRINGS.kolIth,
+    jednostka: ZWARCIA_STRINGS.jednKA,
+    format: fmtKA,
+    wartosc: (row) => row.ith_ka,
+  },
+  sk: {
+    przycisk: ZWARCIA_STRINGS.wykresPrzyciskSk,
+    tytul: ZWARCIA_STRINGS.wykresTytulSk,
+    nazwaWielkosci: ZWARCIA_STRINGS.kolSk,
+    jednostka: ZWARCIA_STRINGS.jednMVA,
+    format: fmtMVA,
+    wartosc: (row) => row.sk_mva,
+  },
+  i2t: {
+    przycisk: ZWARCIA_STRINGS.wykresPrzyciskI2t,
+    tytul: ZWARCIA_STRINGS.wykresTytulI2t,
+    nazwaWielkosci: ZWARCIA_STRINGS.bilansI2t,
+    jednostka: ZWARCIA_STRINGS.jednKA2s,
+    format: fmtKappa,
+    wartosc: (row) => row.i2t_ka2s,
+  },
+};
+
 /**
- * Punkty wykresu Ik" — tylko wiersze z niepustym `ikss_ka` (kolejność źródłowa).
- * Etykieta słupka = nazwa punktu (target_name) lub target_id, gdy brak nazwy.
+ * Punkty wykresu wybranej wielkości — tylko wiersze z niepustą wartością
+ * (kolejność źródłowa). Etykieta słupka = nazwa punktu (target_name) lub
+ * target_id, gdy brak nazwy. Pusta lista = wielkość nieobecna w przebiegu
+ * (starszy wynik) — wołający pokazuje uczciwy komunikat zamiast pustych słupków.
  */
+export function naSlupkiWielkosci(
+  rows: ShortCircuitRow[],
+  wielkosc: WielkoscWykresu,
+): SlupekIkss[] {
+  const odczyt = KONFIG_WYKRESU_ZWARC[wielkosc].wartosc;
+  return rows.flatMap((r) => {
+    const wartosc = odczyt(r);
+    if (wartosc === null || wartosc === undefined) return [];
+    return [{ punkt: r.target_name ?? r.target_id, ikss: wartosc }];
+  });
+}
+
+/** Punkty wykresu Ik" (kontrakt 1:1 sprzed karty W-A F2 — deleguje do wielkości). */
 export function naSlupkiIkss(rows: ShortCircuitRow[]): SlupekIkss[] {
-  return rows
-    .filter((r) => r.ikss_ka !== null)
-    .map((r) => ({ punkt: r.target_name ?? r.target_id, ikss: r.ikss_ka as number }));
+  return naSlupkiWielkosci(rows, 'ikss');
 }
 
 // ---------------------------------------------------------------------------
 // Wkłady zwarciowe — projekcja prezentacyjna (dane przez props, patrz TODO-KARTA 1)
 // ---------------------------------------------------------------------------
+
+/**
+ * Szczegół maszynowy wkładu źródła (karta W-A F2) — projekcja prezentacyjna pól
+ * `MachinePartialContribution.to_dict` (machine_sc_iec60909.py:115-131, IEC 60909
+ * §6.6): typ maszyny, Ir, Ik"/Ir, μ, q, Ib oraz wywód dyplomowy TEJ maszyny
+ * ({tekst, latex} budowane w solverze). Wartości nieobecne w odpowiedzi → null
+ * (uczciwa kreska, zero fabrykacji).
+ */
+export interface SzczegolWkladu {
+  /** Token typu maszyny z backendu (SYNCHRONOUS/ASYNCHRONOUS/DFIG). */
+  typMaszyny: string;
+  /** Prąd znamionowy Ir [kA] (skalowanie prezentacji A → kA). */
+  irKA: number | null;
+  /** Stosunek Ik"/Ir (bezwymiarowy). */
+  stosunekIkIr: number | null;
+  /** Współczynnik zaniku μ (IEC 60909 §6.6.1). */
+  mu: number | null;
+  /** Współczynnik q (IEC 60909 §6.6.3; 1 dla maszyn synchronicznych). */
+  q: number | null;
+  /** Prąd wyłączeniowy symetryczny Ib [kA]. */
+  ibKA: number | null;
+  /** Wywód dyplomowy tej maszyny (kroki {tekst, latex} z backendu). */
+  wywod: readonly KrokWywodu[];
+}
 
 /**
  * Wkład pojedynczego źródła do prądu w punkcie zwarcia — projekcja prezentacyjna
@@ -216,6 +340,11 @@ export interface WkladZwarciowy {
   pradKA: number;
   /** Odwołanie do dowodu (2× klik → onOtworzDowod), opcjonalne. */
   dowodRef?: string;
+  /**
+   * Szczegół maszynowy (karta W-A F2) — obecny, gdy odpowiedź backendu niesie
+   * pola maszyny; brak = uczciwy stan „szczegóły niedostępne" po rozwinięciu.
+   */
+  szczegol?: SzczegolWkladu;
 }
 
 /** Kolumny tabeli wkładów (deklaratywne — jednostka w nagłówku). */
@@ -250,6 +379,71 @@ export function naWierszeWkladow(wklady: WkladZwarciowy[]): WierszTabeli[] {
         : { wartosc: ZWARCIA_STRINGS.kreska, sortKey: Number.NEGATIVE_INFINITY },
     [KLUCZ_WKLAD]: { wartosc: w.id },
   }));
+}
+
+/**
+ * Filtr tekstowy wierszy wkładów po nazwie źródła (karta W-A F2) — czysta
+ * operacja prezentacyjna na PEŁNYM zbiorze wierszy (udział [%] liczony przed
+ * filtrem, więc filtrowanie NIE zmienia udziałów). Fraza pusta → wejście 1:1.
+ */
+export function filtrujWierszeWkladow(wiersze: WierszTabeli[], fraza: string): WierszTabeli[] {
+  const szukana = fraza.trim().toLocaleLowerCase('pl');
+  if (!szukana) return wiersze;
+  return wiersze.filter((w) =>
+    String(w.zrodlo?.wartosc ?? '')
+      .toLocaleLowerCase('pl')
+      .includes(szukana),
+  );
+}
+
+/** Słupek wykresu udziałów procentowych wkładów (jedno źródło). */
+export interface SlupekUdzialu {
+  zrodlo: string;
+  udzial: number;
+}
+
+/**
+ * Udziały procentowe wkładów źródeł — ta sama arytmetyka prezentacji co kolumna
+ * „Udział" tabeli (`naWierszeWkladow`): prąd wkładu / suma prądów × 100.
+ * Suma zerowa → pusta lista (wykres nie renderuje się — bez dzielenia przez zero).
+ */
+export function naSlupkiUdzialow(wklady: WkladZwarciowy[]): SlupekUdzialu[] {
+  const suma = wklady.reduce((acc, w) => acc + w.pradKA, 0);
+  if (suma <= 0) return [];
+  return wklady.map((w) => ({ zrodlo: w.zrodlo, udzial: (w.pradKA / suma) * 100 }));
+}
+
+/** Pozycja panelu szczegółu wkładu (etykieta PL + sformatowana wartość). */
+export interface PozycjaSzczegoluWkladu {
+  etykieta: string;
+  wartosc: string;
+  jednostka: string | null;
+}
+
+/**
+ * Czysty adapter: szczegół maszynowy wkładu → pozycje panelu (kolejność normowa
+ * IEC 60909 §6.6). Wartości null → uczciwa kreska; formaty PL jak w bilansie.
+ */
+export function naPozycjeSzczegoluWkladu(szczegol: SzczegolWkladu): PozycjaSzczegoluWkladu[] {
+  const S = ZWARCIA_STRINGS;
+  const poz = (
+    etykieta: string,
+    wartosc: number | null,
+    format: (n: number) => string,
+    jednostka: string | null,
+  ): PozycjaSzczegoluWkladu => ({
+    etykieta,
+    wartosc: wartosc === null ? S.kreska : format(wartosc),
+    jednostka,
+  });
+  return [
+    { etykieta: S.wkladTypMaszyny, wartosc: typMaszynyPL(szczegol.typMaszyny), jednostka: null },
+    poz(S.wkladIr, szczegol.irKA, fmtKA, S.jednKA),
+    poz(S.wkladIkIr, szczegol.stosunekIkIr, fmtKappa, null),
+    poz(S.wkladMu, szczegol.mu, fmtKappa, null),
+    poz(S.wkladQ, szczegol.q, fmtKappa, null),
+    poz(S.wkladIb, szczegol.ibKA, fmtKA, S.jednKA),
+  ];
 }
 
 // ---------------------------------------------------------------------------
