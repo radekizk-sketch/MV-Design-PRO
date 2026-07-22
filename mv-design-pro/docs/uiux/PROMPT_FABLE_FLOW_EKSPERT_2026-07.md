@@ -189,7 +189,7 @@ kolejne ekrany") — domknięcie GAP-ów rundy 1
   `ui2/__tests__/integracja.test.tsx` U ŹRÓDŁA (bez maskowania; pomiar 9→0).
 - **R2-D** — runda zrzutów nowych ekranów po scaleniu (kontynuacja K5).
 
-Poza rundą (rejestr, nie ciche): R2-E zbiorcza higiena act() w 17 plikach oze/**+kreatory/** (30 ostrzeżeń, wzorce z R2-C przenośne); K1-G2 (werdykt obciążalności gałęzi — karta
+Poza rundą (rejestr, nie ciche): ~~R2-E zbiorcza higiena act()~~ **SCALONE (V12K-108: 30->0 testów / 65->0 linii, + naprawiony wyścig disabled-klik w studium)**; K1-G2 (werdykt obciążalności gałęzi — karta
 interpretacyjna backendu), K3-G2 (dowody porównania A/B — wymaga rozstrzygnięcia
 produktowego wyboru przebiegu), K3-G3 (wkłady zwarciowe — brak dostawcy danych).
 
