@@ -64,6 +64,13 @@ export interface ShortCircuitComparison {
   zth_delta: ComplexDelta;
   ip_delta: NumericDelta;
   ith_delta: NumericDelta;
+  /**
+   * Addytywne delty pełnego bilansu IEC 60909 (karta S-C, 2026-07-22):
+   * X/R oraz I²t [kA²s]; null dla starszych wyników bez pól źródłowych
+   * (uczciwy brak — delty Rk/Xk/|Zk| niesie zth_delta).
+   */
+  xr_ratio_delta?: NumericDelta | null;
+  i2t_delta?: NumericDelta | null;
 }
 
 // =============================================================================

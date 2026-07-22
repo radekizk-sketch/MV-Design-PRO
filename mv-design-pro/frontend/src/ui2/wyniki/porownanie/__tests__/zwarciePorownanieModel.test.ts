@@ -144,10 +144,76 @@ describe('zwarciePorownanieModel — tabela delt per punkt (prezentacyjna różn
     ]);
   });
 
-  it('komplet kolumn: punkt + A/B/Δ dla Ik", ip, Ith, Sk (13 kolumn)', () => {
-    expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH).toHaveLength(13);
+  it('komplet kolumn: punkt + A/B/Δ dla Ik", ip, Ith, Sk + pełny bilans ekspercki (28 kolumn)', () => {
+    // 1 (punkt) + 4×3 (podstawowe) + 5×3 (bilans: Rk, Xk, |Zk|, X/R, I²t — karta S-C)
+    expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH).toHaveLength(28);
     expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH[0].klucz).toBe('punkt');
     expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH.map((k) => k.klucz)).toContain('ikssD');
     expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH.map((k) => k.klucz)).toContain('skD');
+    expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH.map((k) => k.klucz)).toContain('rkD');
+    expect(KOLUMNY_PUNKTOW_ZWARCIOWYCH.map((k) => k.klucz)).toContain('i2tD');
+  });
+
+  it('kolumny pełnego bilansu są WYŁĄCZNIE eksperckie; podstawowe bez flagi', () => {
+    const bilansowe = KOLUMNY_PUNKTOW_ZWARCIOWYCH.filter((k) =>
+      /^(rk|xk|zk|xr|i2t)[ABD]$/.test(k.klucz),
+    );
+    expect(bilansowe).toHaveLength(15);
+    for (const kol of bilansowe) expect(kol.tylkoEkspercki).toBe(true);
+    const podstawowe = KOLUMNY_PUNKTOW_ZWARCIOWYCH.filter(
+      (k) => !/^(rk|xk|zk|xr|i2t)[ABD]$/.test(k.klucz),
+    );
+    for (const kol of podstawowe) expect(kol.tylkoEkspercki).toBeUndefined();
+  });
+});
+
+describe('zwarciePorownanieModel — pełny bilans IEC 60909 (karta S-C, tryb ekspercki)', () => {
+  const bilansA = {
+    rk_ohm: 0.3,
+    xk_ohm: 0.4,
+    zk_ohm: 0.5,
+    xr_ratio: 4,
+    i2t_ka2s: 121,
+  };
+  const bilansB = {
+    rk_ohm: 0.6,
+    xk_ohm: 0.8,
+    zk_ohm: 1.0,
+    xr_ratio: 2,
+    i2t_ka2s: 484,
+  };
+
+  it('oba przebiegi z bilansem → trójki A · B · Δ (format PL, jednostki wg kolumn)', () => {
+    const w = naWierszePunktowZwarciowych(
+      [wierszSc({ target_id: 'B1', ...bilansA })],
+      [wierszSc({ target_id: 'B1', ...bilansB })],
+    )[0];
+    expect(w.rkA.wartosc).toBe('0,3000');
+    expect(w.rkB.wartosc).toBe('0,6000');
+    expect(w.rkD.wartosc).toBe('+0,3000 (+100,0%)');
+    expect(w.xkD.wartosc).toBe('+0,4000 (+100,0%)');
+    expect(w.zkD.wartosc).toBe('+0,5000 (+100,0%)');
+    expect(w.xrD.wartosc).toBe('-2,000 (-50,0%)');
+    expect(w.i2tA.wartosc).toBe('121,000');
+    expect(w.i2tD.wartosc).toBe('+363,000 (+300,0%)');
+    // Delta bez dowodu (różnica nie ma pojedynczego wywodu WHITE BOX).
+    expect(w.rkD.dowodRef).toBeUndefined();
+    expect(w.i2tD.dowodRef).toBeUndefined();
+    // Wartości A/B niosą dowód właściwego przebiegu (R3-C).
+    expect(w.rkA.dowodRef).toBe('A:B1');
+    expect(w.i2tB.dowodRef).toBe('B:B1');
+  });
+
+  it('starszy wynik bez pól bilansu → uczciwe kreski bez Δ (kontrakt addytywny)', () => {
+    const w = naWierszePunktowZwarciowych(
+      [wierszSc({ target_id: 'B1' })], // fixture bez pól bilansu (starszy wynik)
+      [wierszSc({ target_id: 'B1', ...bilansB })],
+    )[0];
+    expect(w.rkA.wartosc).toBe(SZ.kreska);
+    expect(w.rkB.wartosc).toBe('0,6000');
+    expect(w.rkD.wartosc).toBe(SZ.kreska);
+    expect(w.xrD.wartosc).toBe(SZ.kreska);
+    expect(w.i2tD.wartosc).toBe(SZ.kreska);
+    expect(w.rkA.dowodRef).toBeUndefined();
   });
 });

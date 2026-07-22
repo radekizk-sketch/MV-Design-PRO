@@ -74,6 +74,9 @@ def sc3f_test_input() -> SC3FInput:
         tk_s=1.0,
         m_factor=1.0,
         n_factor=0.0,
+        # Karta S-C (2026-07-22): pełny bilans — I_b(t_b) z FROZEN wyniku solvera.
+        ib_ka=2.722,
+        tb_s=0.1,
     )
 
 
@@ -239,7 +242,8 @@ class TestInspectorReadOnly:
 
         assert isinstance(view, InspectorView)
         assert view.proof_type == ProofType.SC3F_IEC60909.value
-        assert len(view.steps) == 7
+        # 9 kroków po karcie S-C (2026-07-22): + I_b(t_b), + I²t.
+        assert len(view.steps) == 9
 
     def test_inspector_preserves_document_reference(self, sc3f_proof: ProofDocument):
         """Inspector zachowuje referencje do dokumentu."""

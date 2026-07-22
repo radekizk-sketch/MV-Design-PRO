@@ -10,6 +10,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID
 
+import pytest
 from application.proof_engine.packs.sc_symmetrical import SC3FPackInput, SC3FProofPack
 from enm.mapping import map_enm_to_network_graph
 from enm.models import (
@@ -92,11 +93,15 @@ def test_base_sc3f_proof_without_machines():
     result = SC3FProofPack.generate(data, _ARTIFACT)
 
     assert result.has_machines is False
-    # Mandatory SC3F results present; no machine-breakdown key.
+    # Mandatory SC3F results present (karta S-C: + I_b, I²t); no machine-breakdown key.
     keys = result.proof_sc3f.summary.key_results
-    assert {"ikss_ka", "ip_ka", "idyn_ka", "ith_ka"} <= set(keys)
+    assert {"ikss_ka", "ip_ka", "idyn_ka", "ith_ka", "ib_ka", "i2t_ka2s"} <= set(keys)
     assert "ib_machines_ka" not in keys
     assert SC3FProofPack.validate_completeness(result) == []
+    # Kroki pełnego bilansu obecne w dowodzie (I_b z FROZEN wyniku, I²t = Ith²·tk).
+    eq_ids = {s.equation.equation_id for s in result.proof_sc3f.steps}
+    assert {"EQ_SC3F_014", "EQ_SC3F_015"} <= eq_ids
+    assert keys["i2t_ka2s"].value == pytest.approx(keys["ith_ka"].value ** 2 * 1.0)
 
 
 def test_synchronous_machine_adds_breakdown():

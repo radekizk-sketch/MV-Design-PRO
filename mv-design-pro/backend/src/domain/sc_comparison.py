@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
@@ -169,6 +170,76 @@ SC_GLOBAL_DELTA_KEYS = (
     "zkk_ohm",
 )
 
+# Karta S-C (2026-07-22): addytywne delty pełnego bilansu IEC 60909 — wielkości
+# pochodne liczone tą samą klasą przekształceń co kanoniczny pełny bilans wierszy
+# (enm/canonical_analysis._sc_pelny_bilans): |Zk| = hypot(Rk, Xk), X/R = 1/(R/X),
+# I²t = (Ith/1000)²·tk. Kolejność stała (determinizm), FROZEN nietknięte.
+SC_DERIVED_DELTA_KEYS = (
+    "i2t_ka2s",
+    "rk_ohm",
+    "xk_ohm",
+    "xr_ratio",
+    "zk_ohm",
+)
+
+
+def _global_numeric(value: Any) -> float | None:
+    """Wartość liczbowa klucza globalnego ResultSetu.
+
+    Kontrakt niesie dwie postacie zkk_ohm: skalar (|Zk|) w starszych/prostych
+    payloadach oraz dict {"re","im"} z mapowania resultset_v1 — dict rzutujemy
+    na moduł (ta sama klasa przekształceń co pełny bilans). Inne kształty →
+    None (uczciwy brak delty, zero zgadywania).
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value)
+    if isinstance(value, dict):
+        re = value.get("re")
+        im = value.get("im")
+        if isinstance(re, int | float) and isinstance(im, int | float):
+            return math.hypot(float(re), float(im))
+        return None
+    return None
+
+
+def _derive_sc_globals(global_results: dict[str, Any]) -> dict[str, float]:
+    """Pochodne pełnego bilansu z global_results (addytywnie, deterministycznie).
+
+    Zwraca wyłącznie wielkości wyliczalne z obecnych kluczy; brak klucza źródła
+    → brak pochodnej (starsze wyniki: uczciwy brak delty).
+    """
+    derived: dict[str, float] = {}
+
+    zkk = global_results.get("zkk_ohm")
+    if isinstance(zkk, dict):
+        re = zkk.get("re")
+        im = zkk.get("im")
+        if isinstance(re, int | float) and isinstance(im, int | float):
+            derived["rk_ohm"] = float(re)
+            derived["xk_ohm"] = float(im)
+            derived["zk_ohm"] = math.hypot(float(re), float(im))
+    elif isinstance(zkk, int | float) and not isinstance(zkk, bool):
+        # Skalar niesie wyłącznie moduł |Zk| — składowych Rk/Xk uczciwie brak.
+        derived["zk_ohm"] = float(zkk)
+
+    rx = global_results.get("rx_ratio")
+    if isinstance(rx, int | float) and not isinstance(rx, bool) and rx != 0.0:
+        derived["xr_ratio"] = 1.0 / float(rx)
+
+    ith_a = global_results.get("ith_a")
+    tk_s = global_results.get("tk_s")
+    if (
+        isinstance(ith_a, int | float)
+        and not isinstance(ith_a, bool)
+        and isinstance(tk_s, int | float)
+        and not isinstance(tk_s, bool)
+    ):
+        derived["i2t_ka2s"] = (float(ith_a) / 1000.0) ** 2 * float(tk_s)
+
+    return derived
+
 
 def build_comparison(
     *,
@@ -208,9 +279,21 @@ def build_comparison(
     other_globals = other_result_set.global_results
     for key in SC_GLOBAL_DELTA_KEYS:
         if key in base_globals and key in other_globals:
-            base_val = float(base_globals[key])
-            other_val = float(other_globals[key])
+            # zkk_ohm bywa dictem {"re","im"} (mapowanie resultset_v1) — rzut na
+            # moduł zamiast TypeError (naprawa u źródła, Zero-Debt).
+            base_val = _global_numeric(base_globals[key])
+            other_val = _global_numeric(other_globals[key])
+            if base_val is None or other_val is None:
+                continue
             deltas_global[key] = compute_numeric_delta(base_val, other_val)
+
+    # Addytywne delty pełnego bilansu (karta S-C): liczone wyłącznie gdy obie
+    # strony niosą wielkość źródłową; kolejność kluczy stała (determinizm).
+    base_derived = _derive_sc_globals(base_globals)
+    other_derived = _derive_sc_globals(other_globals)
+    for key in SC_DERIVED_DELTA_KEYS:
+        if key in base_derived and key in other_derived:
+            deltas_global[key] = compute_numeric_delta(base_derived[key], other_derived[key])
 
     # Per-element deltas (sources and branches)
     base_by_ref = {er.element_ref: er for er in base_result_set.element_results}

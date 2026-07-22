@@ -9,7 +9,6 @@ from __future__ import annotations
 from uuid import UUID
 
 from application.proof_engine.packs.audit2_validation import (
-    Audit2ProofResult,
     generate_bess_modes_proof,
     generate_device_withstand_proof,
     generate_hosting_capacity_export_proof,

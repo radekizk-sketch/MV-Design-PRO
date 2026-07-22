@@ -40,7 +40,11 @@ class PhaseStateSNProofPack:
         data: PhaseStateSNProofPackInput,
         solver_result: PhaseStateSNResult | None = None,
     ) -> dict[str, Any]:
-        result = solver_result if solver_result is not None else PhaseStateSNSolver.solve(data.solver_input)
+        result = (
+            solver_result
+            if solver_result is not None
+            else PhaseStateSNSolver.solve(data.solver_input)
+        )
         voltage_drop = _compute_voltage_drop(data.solver_input, result)
 
         return {

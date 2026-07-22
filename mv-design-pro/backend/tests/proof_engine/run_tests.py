@@ -48,6 +48,9 @@ def create_test_sc3f_input() -> SC3FInput:
         tk_s=1.0,
         m_factor=1.0,
         n_factor=0.0,
+        # Karta S-C (2026-07-22): pełny bilans — I_b(t_b) z FROZEN wyniku solvera.
+        ib_ka=2.722,
+        tb_s=0.1,
     )
 
 
@@ -88,7 +91,8 @@ def test_sc3f_generation():
 
     assert proof is not None, "Proof should not be None"
     assert proof.proof_type == ProofType.SC3F_IEC60909, "Wrong proof type"
-    assert len(proof.steps) == 7, f"Expected 7 steps, got {len(proof.steps)}"
+    # 9 kroków po karcie S-C (2026-07-22): + I_b(t_b), + I²t.
+    assert len(proof.steps) == 9, f"Expected 9 steps, got {len(proof.steps)}"
 
     print(f"✓ Generated proof with {len(proof.steps)} steps")
     print(f"✓ Proof type: {proof.proof_type.value}")

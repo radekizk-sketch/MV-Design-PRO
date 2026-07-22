@@ -32,6 +32,8 @@ Pełna lista równań SC3F z audytem c:
 | EQ_SC3F_007   | NIE         | Moc S_k'' (√3·U_n·I_k'')                 |
 | EQ_SC3F_008   | NIE         | Prąd cieplny (I_k''·√(m+n))              |
 | EQ_SC3F_008a  | NIE         | Prąd dynamiczny (= i_p)                  |
+| EQ_SC3F_014   | NIE         | Prąd wyłączeniowy I_b(t_b) (model DC)    |
+| EQ_SC3F_015   | NIE         | Energia cieplna I²t (I_th²·t_k)          |
 
 Równania pomocnicze (NIE używane bezpośrednio w dowodzie):
 | Equation ID   | c występuje | Uwagi                                    |
@@ -45,6 +47,9 @@ Równania pomocnicze (NIE używane bezpośrednio w dowodzie):
 """
 
 from __future__ import annotations
+
+from collections.abc import ValuesView
+from typing import ClassVar
 
 from application.proof_engine.registries.ls_equations import LS_EQUATIONS
 from application.proof_engine.types import EquationDefinition, SymbolDefinition
@@ -508,6 +513,76 @@ EQ_SC3F_013 = EquationDefinition(
     unit_derivation="— · — · kA = kA",
     notes="Prąd wyłączeniowy maszyny do doboru zdolności łączeniowej aparatury. "
     "AUDIT: c NIE występuje (I_k'' już zawiera c).",
+)
+
+# --- Pełny bilans punktu zwarcia: I_b(t_b) oraz I²t (karta S-C, 2026-07-22) ------
+EQ_SC3F_014 = EquationDefinition(
+    equation_id="EQ_SC3F_014",
+    name_pl="Prąd wyłączeniowy I_b przy czasie t_b",
+    standard_ref="IEC 60909-0:2016 § 8 (składowa DC: i_{DC} ~ e^{-t/t_a})",
+    latex=r"I_b = I_k'' \cdot \sqrt{1 + \left((\kappa - 1) \cdot e^{-t_b/t_a}\right)^2}",
+    symbols=(
+        SymbolDefinition(
+            symbol="I_b",
+            unit="kA",
+            description_pl="Prąd wyłączeniowy przy czasie t_b (z zanikiem składowej DC)",
+            mapping_key="ib_ka",
+        ),
+        SymbolDefinition(
+            symbol="I_k''",
+            unit="kA",
+            description_pl="Początkowy prąd zwarciowy symetryczny",
+            mapping_key="ikss_ka",
+        ),
+        SymbolDefinition(
+            symbol="\\kappa",
+            unit="—",
+            description_pl="Współczynnik udaru",
+            mapping_key="kappa",
+        ),
+        SymbolDefinition(
+            symbol="t_b",
+            unit="s",
+            description_pl="Czas wyznaczenia prądu wyłączeniowego",
+            mapping_key="tb_s",
+        ),
+    ),
+    unit_derivation="kA · — = kA",
+    notes="Model solvera (WHITE BOX trace, klucz Ib): z dala od generatora składowa AC "
+    "nie zanika (I_b(AC) = I_k''), zanika składowa DC ze stałą czasową t_a = X_th/(ω·R_th), "
+    "ω = 2π·50 Hz. Wartość I_b czytana z FROZEN wyniku solvera (ib_a) — proof engine nie "
+    "liczy fizyki. AUDIT: c NIE występuje (I_k'' już zawiera c).",
+)
+
+EQ_SC3F_015 = EquationDefinition(
+    equation_id="EQ_SC3F_015",
+    name_pl="Energia cieplna zwarcia I²t",
+    standard_ref="IEC 60909-0:2016 § 12 (prąd zastępczy cieplny)",
+    latex=r"I^2t = I_{th}^2 \cdot t_k",
+    symbols=(
+        SymbolDefinition(
+            symbol="I^2t",
+            unit="kA²s",
+            description_pl="Energia cieplna zwarcia (całka Joule'a z definicji I_th)",
+            mapping_key="i2t_ka2s",
+        ),
+        SymbolDefinition(
+            symbol="I_{th}",
+            unit="kA",
+            description_pl="Prąd cieplny równoważny",
+            mapping_key="ith_ka",
+        ),
+        SymbolDefinition(
+            symbol="t_k",
+            unit="s",
+            description_pl="Czas trwania zwarcia",
+            mapping_key="tk_s",
+        ),
+    ),
+    unit_derivation="kA² · s = kA²s",
+    notes="Krok formatujący wielkości już obecne w dowodzie (I_th, t_k) — definicja prądu "
+    "zastępczego cieplnego (IEC 60909-0 § 12). Spójny z projekcją kanoniczną wierszy "
+    "wyników (i2t_ka2s w pełnym bilansie F1). AUDIT: c NIE występuje.",
 )
 
 
@@ -2401,6 +2476,8 @@ class AntiDoubleCountingAudit:
         "EQ_SC3F_011": False,  # Współczynnik μ — c NIE występuje
         "EQ_SC3F_012": False,  # Współczynnik q — c NIE występuje
         "EQ_SC3F_013": False,  # Prąd wyłączeniowy maszyny i_b — c NIE występuje (I_k'' zawiera c)
+        "EQ_SC3F_014": False,  # Prąd wyłączeniowy I_b(t_b) — c NIE występuje (I_k'' zawiera c)
+        "EQ_SC3F_015": False,  # Energia cieplna I²t — c NIE występuje (I_th zawiera c)
     }
 
     # Równania pomocnicze (solver-only)
@@ -2520,7 +2597,7 @@ class _EquationRegistryStore:
     def get(self, equation_id: str) -> EquationDefinition | None:
         return self._equations.get(equation_id)
 
-    def values(self):
+    def values(self) -> ValuesView[EquationDefinition]:
         return self._equations.values()
 
     def all(self) -> dict[str, EquationDefinition]:
@@ -2543,6 +2620,8 @@ SC3F_EQUATIONS: dict[str, EquationDefinition] = {
     "EQ_SC3F_011": EQ_SC3F_011,
     "EQ_SC3F_012": EQ_SC3F_012,
     "EQ_SC3F_013": EQ_SC3F_013,
+    "EQ_SC3F_014": EQ_SC3F_014,
+    "EQ_SC3F_015": EQ_SC3F_015,
 }
 
 # VDROP equations registry
@@ -2643,13 +2722,17 @@ SC1_EQUATIONS: dict[str, EquationDefinition] = {
 }
 
 # Step order for SC3F proof (BINDING) — tylko równania dowodowe
+# Karta S-C (2026-07-22, zgoda właściciela): kroki I_b(t_b) i I²t dołączone do
+# kanonu dowodu — fingerprint dowodu SC3F zmienił się w wersjonowanej zmianie.
 SC3F_PROOF_STEP_ORDER: list[str] = [
     "EQ_SC3F_003",  # Impedancja Thevenina
     "EQ_SC3F_004",  # Prąd zwarciowy I_k'' (c TUTAJ)
     "EQ_SC3F_005",  # Współczynnik udaru κ
     "EQ_SC3F_006",  # Prąd udarowy i_p
     "EQ_SC3F_008a",  # Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
+    "EQ_SC3F_014",  # Prąd wyłączeniowy I_b(t_b) — gdy wynik niesie ib/tb
     "EQ_SC3F_008",  # Prąd cieplny I_th (OBOWIĄZKOWY)
+    "EQ_SC3F_015",  # Energia cieplna I²t = I_th²·t_k
     "EQ_SC3F_007",  # Moc zwarciowa S_k''
 ]
 
@@ -2799,6 +2882,8 @@ FROZEN_IDS: dict[str, list[str]] = {
         "x_thevenin_ohm",
         "c_factor",
         "u_n_kv",
+        "tk_s",
+        "tb_s",
         # VDROP
         "r_ohm",
         "x_ohm",
@@ -2914,6 +2999,30 @@ class EquationRegistry:
     Rejestr jest JEDYNYM źródłem prawdy dla wszystkich równań używanych w dowodach.
     Wszystkie equation_id są STABILNE i NIE MOGĄ się zmienić między wersjami.
     """
+
+    # Aliasowe atrybuty klasowe (przypisywane na końcu modułu — zachowanie bez
+    # zmian; deklaracje ClassVar dla mypy strict, naprawa u źródła Zero-Debt).
+    SC3F_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
+    VDROP_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
+    LF_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
+    LC_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
+    LE_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
+    PR_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
+    EARTH_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
+    QU_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
+    SC1_EQUATIONS: ClassVar[dict[str, EquationDefinition]]
+    SC3F_PROOF_STEP_ORDER: ClassVar[list[str]]
+    VDROP_STEP_ORDER: ClassVar[list[str]]
+    LF_STEP_ORDER: ClassVar[list[str]]
+    LC_STEP_ORDER: ClassVar[list[str]]
+    LE_STEP_ORDER: ClassVar[list[str]]
+    PR_STEP_ORDER: ClassVar[list[str]]
+    EARTH_STEP_ORDER: ClassVar[list[str]]
+    QU_STEP_ORDER: ClassVar[list[str]]
+    SC1FZ_STEP_ORDER: ClassVar[list[str]]
+    SC2F_STEP_ORDER: ClassVar[list[str]]
+    SC2FZ_STEP_ORDER: ClassVar[list[str]]
+    FROZEN_IDS: ClassVar[dict[str, list[str]]]
 
     @classmethod
     def get_equation(cls, equation_id: str) -> EquationDefinition | None:

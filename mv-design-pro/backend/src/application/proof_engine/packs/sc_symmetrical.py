@@ -123,6 +123,10 @@ class SC3FProofPack:
             rx_ratio=result.rx_ratio,
             tk_s=result.tk_s,
             machine_result=machine_result if has_machines else None,
+            # Karta S-C (2026-07-22): kroki I_b(t_b) i I²t w dowodzie — wartości
+            # z FROZEN wyniku solvera (ib_a/tb_s), zero fizyki w proof engine.
+            ib_ka=result.ib_a / 1000.0,
+            tb_s=result.tb_s,
         )
         proof = ProofGenerator.generate_sc3f_proof(sc3f_input, artifact_id)
         return SC3FPackResult(
@@ -144,7 +148,11 @@ class SC3FProofPack:
 
     @classmethod
     def validate_completeness(cls, result: SC3FPackResult) -> list[str]:
-        """Weryfikuje obecność OBOWIĄZKOWYCH wyników SC3F (§4.1)."""
-        required_keys = {"ikss_ka", "ip_ka", "ith_ka", "idyn_ka"}
+        """Weryfikuje obecność OBOWIĄZKOWYCH wyników SC3F (§4.1 + karta S-C).
+
+        Pakiet liczy z FROZEN wyniku solvera, który zawsze niesie ib_a/tb_s —
+        pełny bilans (I_b, I²t) jest więc obowiązkowy w dowodzie pakietu.
+        """
+        required_keys = {"ikss_ka", "ip_ka", "ith_ka", "idyn_ka", "ib_ka", "i2t_ka2s"}
         key_results = result.proof_sc3f.summary.key_results
         return [key for key in sorted(required_keys) if key not in key_results]

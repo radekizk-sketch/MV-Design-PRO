@@ -20,11 +20,14 @@
  *   WNIOSEK (karta §2.1, klauzula STOP): korzystamy z DOPUSZCZONEJ prezentacyjnej
  *   różnicy dwóch wartości JUŻ zwróconych przez backend dla tych samych punktów.
  *   Źródło A i B to per-punktowe wyniki zwarciowe każdego przebiegu
- *   (`ShortCircuitRow`: `ui/results-inspector/types.ts:157-167` — ikss_ka, ip_ka,
- *   ith_ka, sk_mva; endpoint `/analysis-runs/{runId}/results/short-circuit`,
- *   `ui/results-inspector/api.ts:107`). Delta B−A liczona WYŁĄCZNIE do prezentacji
- *   w `trio()` — jedyne dozwolone działanie liczbowe w UI (No-Physics), opisane
- *   komentarzem. Punkty bez odpowiednika: sufiks „(tylko A)"/„(tylko B)", brak Δ.
+ *   (`ShortCircuitRow`: `ui/results-inspector/types.ts` — ikss_ka, ip_ka,
+ *   ith_ka, sk_mva oraz addytywny pełny bilans F1: rk/xk/zk_ohm, xr_ratio,
+ *   i2t_ka2s — karta S-C, tryb ekspercki; endpoint
+ *   `/analysis-runs/{runId}/results/short-circuit`, `ui/results-inspector/api.ts:107`).
+ *   Delta B−A liczona WYŁĄCZNIE do prezentacji w `trio()` — jedyne dozwolone
+ *   działanie liczbowe w UI (No-Physics), opisane komentarzem. Punkty bez
+ *   odpowiednika: sufiks „(tylko A)"/„(tylko B)", brak Δ. Starsze wyniki bez pól
+ *   bilansu → uczciwe kreski.
  */
 
 import type { ShortCircuitRow } from '../../../ui/results-inspector/types';
@@ -36,10 +39,16 @@ import {
   ZWARCIA_POROWNANIE_STRINGS as SZ,
   fmtData,
   fmtDeltaKA,
+  fmtDeltaKA2s,
   fmtDeltaMVA,
+  fmtDeltaOhm,
   fmtDeltaProcent,
+  fmtDeltaXR,
   fmtKA,
+  fmtKA2s,
   fmtMVA,
+  fmtOhm,
+  fmtXR,
 } from './strings';
 
 // ---------------------------------------------------------------------------
@@ -60,6 +69,24 @@ export const KOLUMNY_PUNKTOW_ZWARCIOWYCH: DefinicjaKolumny[] = [
   { klucz: 'skA', etykieta: SZ.kolSkA, jednostka: SZ.jednMVA, mono: true },
   { klucz: 'skB', etykieta: SZ.kolSkB, jednostka: SZ.jednMVA, mono: true },
   { klucz: 'skD', etykieta: SZ.kolSkD, jednostka: SZ.jednMVA, mono: true },
+  // Pełny bilans IEC 60909 (karta S-C, addytywnie): delty Rk/Xk/|Zk|/X/R/I²t
+  // z pól kanonicznych wierszy (ZWARCIA-PRO F1) — tryb ekspercki; starsze
+  // wyniki bez pól → uczciwe kreski.
+  { klucz: 'rkA', etykieta: SZ.kolRkA, jednostka: SZ.jednOhm, mono: true, tylkoEkspercki: true },
+  { klucz: 'rkB', etykieta: SZ.kolRkB, jednostka: SZ.jednOhm, mono: true, tylkoEkspercki: true },
+  { klucz: 'rkD', etykieta: SZ.kolRkD, jednostka: SZ.jednOhm, mono: true, tylkoEkspercki: true },
+  { klucz: 'xkA', etykieta: SZ.kolXkA, jednostka: SZ.jednOhm, mono: true, tylkoEkspercki: true },
+  { klucz: 'xkB', etykieta: SZ.kolXkB, jednostka: SZ.jednOhm, mono: true, tylkoEkspercki: true },
+  { klucz: 'xkD', etykieta: SZ.kolXkD, jednostka: SZ.jednOhm, mono: true, tylkoEkspercki: true },
+  { klucz: 'zkA', etykieta: SZ.kolZkA, jednostka: SZ.jednOhm, mono: true, tylkoEkspercki: true },
+  { klucz: 'zkB', etykieta: SZ.kolZkB, jednostka: SZ.jednOhm, mono: true, tylkoEkspercki: true },
+  { klucz: 'zkD', etykieta: SZ.kolZkD, jednostka: SZ.jednOhm, mono: true, tylkoEkspercki: true },
+  { klucz: 'xrA', etykieta: SZ.kolXrA, mono: true, tylkoEkspercki: true },
+  { klucz: 'xrB', etykieta: SZ.kolXrB, mono: true, tylkoEkspercki: true },
+  { klucz: 'xrD', etykieta: SZ.kolXrD, mono: true, tylkoEkspercki: true },
+  { klucz: 'i2tA', etykieta: SZ.kolI2tA, jednostka: SZ.jednKA2s, mono: true, tylkoEkspercki: true },
+  { klucz: 'i2tB', etykieta: SZ.kolI2tB, jednostka: SZ.jednKA2s, mono: true, tylkoEkspercki: true },
+  { klucz: 'i2tD', etykieta: SZ.kolI2tD, jednostka: SZ.jednKA2s, mono: true, tylkoEkspercki: true },
 ];
 
 // ---------------------------------------------------------------------------
@@ -188,6 +215,20 @@ export function naWierszePunktowZwarciowych(
     const ip = trio(ra?.ip_ka ?? null, rb?.ip_ka ?? null, fmtKA, fmtDeltaKA, refA, refB);
     const ith = trio(ra?.ith_ka ?? null, rb?.ith_ka ?? null, fmtKA, fmtDeltaKA, refA, refB);
     const sk = trio(ra?.sk_mva ?? null, rb?.sk_mva ?? null, fmtMVA, fmtDeltaMVA, refA, refB);
+    // Pełny bilans IEC 60909 (karta S-C): pola addytywne wierszy kanonicznych
+    // (ZWARCIA-PRO F1); starszy wynik bez pól → null → uczciwa kreska bez Δ.
+    const rk = trio(ra?.rk_ohm ?? null, rb?.rk_ohm ?? null, fmtOhm, fmtDeltaOhm, refA, refB);
+    const xk = trio(ra?.xk_ohm ?? null, rb?.xk_ohm ?? null, fmtOhm, fmtDeltaOhm, refA, refB);
+    const zk = trio(ra?.zk_ohm ?? null, rb?.zk_ohm ?? null, fmtOhm, fmtDeltaOhm, refA, refB);
+    const xr = trio(ra?.xr_ratio ?? null, rb?.xr_ratio ?? null, fmtXR, fmtDeltaXR, refA, refB);
+    const i2t = trio(
+      ra?.i2t_ka2s ?? null,
+      rb?.i2t_ka2s ?? null,
+      fmtKA2s,
+      fmtDeltaKA2s,
+      refA,
+      refB,
+    );
 
     return {
       punkt: { wartosc: `${nazwa}${sufiks}` },
@@ -203,6 +244,21 @@ export function naWierszePunktowZwarciowych(
       skA: sk.a,
       skB: sk.b,
       skD: sk.d,
+      rkA: rk.a,
+      rkB: rk.b,
+      rkD: rk.d,
+      xkA: xk.a,
+      xkB: xk.b,
+      xkD: xk.d,
+      zkA: zk.a,
+      zkB: zk.b,
+      zkD: zk.d,
+      xrA: xr.a,
+      xrB: xr.b,
+      xrD: xr.d,
+      i2tA: i2t.a,
+      i2tB: i2t.b,
+      i2tD: i2t.d,
     };
   });
 }

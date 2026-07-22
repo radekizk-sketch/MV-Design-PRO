@@ -13,8 +13,6 @@ CANONICAL ALIGNMENT:
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 from uuid import UUID
 
@@ -27,6 +25,7 @@ from domain.results import (
     RunNotFoundError,
 )
 from fastapi import APIRouter, Depends, HTTPException, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/comparison", tags=["comparison"])
@@ -77,6 +76,10 @@ class ShortCircuitComparisonResponse(BaseModel):
     zth_delta: ComplexDeltaResponse
     ip_delta: NumericDeltaResponse
     ith_delta: NumericDeltaResponse
+    # Karta S-C (2026-07-22): addytywne delty pełnego bilansu IEC 60909;
+    # None dla starszych wyników bez rx_ratio / ith_a+tk_s (uczciwy brak).
+    xr_ratio_delta: NumericDeltaResponse | None = None
+    i2t_delta: NumericDeltaResponse | None = None
 
 
 class BusVoltageComparisonResponse(BaseModel):

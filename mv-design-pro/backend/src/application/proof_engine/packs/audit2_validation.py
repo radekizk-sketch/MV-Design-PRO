@@ -17,16 +17,11 @@ INVARIANTS:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any
 from uuid import UUID, uuid4
 
 from network_model.catalog.audit2_catalogs import (
     get_bess_operation_mode,
-    get_block_transformer,
-    get_device_withstand,
-    get_mv_neutral_grounding,
-    get_pf_curve,
     get_tap_changer,
     is_vt_voltage_factor_valid_for_grounding,
     validate_device_withstand,
@@ -292,7 +287,12 @@ def generate_vt_grounding_validation_proof(
 ) -> Audit2ProofResult:
     """Dowod zgodnosci VT U_th z typem uziemienia neutralnego (IEC 61869-3)."""
     proof_id = proof_id or uuid4()
-    if grounding_type not in {"isolated", "petersen_coil", "resistor_grounded", "directly_grounded"}:
+    if grounding_type not in {
+        "isolated",
+        "petersen_coil",
+        "resistor_grounded",
+        "directly_grounded",
+    }:
         return Audit2ProofResult(
             proof_id=proof_id,
             proof_type="AUDIT2_VT_GROUNDING_VALIDATION",
@@ -307,8 +307,7 @@ def generate_vt_grounding_validation_proof(
         proof_id=proof_id,
         proof_type="AUDIT2_VT_GROUNDING_VALIDATION",
         pass_status=ok,
-        summary_pl=message
-        or f"OK: VT U_th={vt_voltage_factor} pasuje do sieci {grounding_type}.",
+        summary_pl=message or f"OK: VT U_th={vt_voltage_factor} pasuje do sieci {grounding_type}.",
         details={
             "bay_designation": bay_designation,
             "vt_voltage_factor": vt_voltage_factor,

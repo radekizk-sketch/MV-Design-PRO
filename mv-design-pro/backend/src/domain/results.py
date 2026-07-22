@@ -181,9 +181,14 @@ class ShortCircuitComparison:
     CANONICAL FIELDS:
     - ikss_delta: Initial short-circuit current Ik'' [A]
     - sk_delta: Short-circuit power Sk'' [MVA]
-    - zth_delta: Thevenin impedance Zth [Ohm] (complex)
+    - zth_delta: Thevenin impedance Zth [Ohm] (complex; delta_re/delta_im/
+      delta_magnitude niosą delty Rk/Xk/|Zk| pełnego bilansu)
     - ip_delta: Peak current Ip [A]
     - ith_delta: Thermal equivalent current Ith [A]
+
+    ADDITIVE FIELDS (karta S-C, 2026-07-22 — pełny bilans IEC 60909):
+    - xr_ratio_delta: X/R ratio [—] (None dla starszych wyników bez rx_ratio)
+    - i2t_delta: Thermal energy I²t [kA²s] (None bez ith_a+tk_s)
 
     INVARIANT: No normative interpretation, no limits/thresholds.
     """
@@ -193,6 +198,8 @@ class ShortCircuitComparison:
     zth_delta: ComplexDelta  # Zth [Ohm]
     ip_delta: NumericDelta  # Ip [A]
     ith_delta: NumericDelta  # Ith [A]
+    xr_ratio_delta: NumericDelta | None = None  # X/R [—] (addytywne)
+    i2t_delta: NumericDelta | None = None  # I²t [kA²s] (addytywne)
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -202,6 +209,10 @@ class ShortCircuitComparison:
             "zth_delta": self.zth_delta.to_dict(),
             "ip_delta": self.ip_delta.to_dict(),
             "ith_delta": self.ith_delta.to_dict(),
+            "xr_ratio_delta": (
+                self.xr_ratio_delta.to_dict() if self.xr_ratio_delta is not None else None
+            ),
+            "i2t_delta": self.i2t_delta.to_dict() if self.i2t_delta is not None else None,
         }
 
 
@@ -323,7 +334,7 @@ class ProtectionEvaluationComparison:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
-        result = {
+        result: dict[str, Any] = {
             "element_id": self.element_id,
             "trip_state_a": self.trip_state_a,
             "trip_state_b": self.trip_state_b,
@@ -398,7 +409,7 @@ class RunComparisonResult:
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary for API responses."""
-        result = {
+        result: dict[str, Any] = {
             "run_a_id": str(self.run_a_id),
             "run_b_id": str(self.run_b_id),
             "project_id": str(self.project_id),

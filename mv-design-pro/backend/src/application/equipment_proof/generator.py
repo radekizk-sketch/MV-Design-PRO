@@ -172,15 +172,26 @@ class EquipmentProofGenerator:
                 message_pl="P12 MVP: brak wartości i_th_ka/t_th_s lub ith_ka/tk_s.",
             )
         if device_time != required_time:
+            # Karta S-C (2026-07-22, zgoda właściciela): przy różnych czasach
+            # odniesienia porównanie energii cieplnej I²t (kryterialne, bez
+            # fizyki): Ith_req²·tk ≤ Ithr²·t_thr. Wielkości z kontraktu:
+            # ith_ka+tk_s z wyniku, i_th_ka+t_th_s z katalogu aparatu.
+            required_i2t = required_val**2 * required_time
+            device_i2t = device_val**2 * device_time
+            status = STATUS_PASS if device_i2t >= required_i2t else STATUS_FAIL
             return EquipmentProofCheckResult(
                 name="Ith",
-                status=STATUS_FAIL,
+                status=status,
                 required_value=required_val,
                 device_value=device_val,
                 required_source_key="ith_ka",
                 device_source_key="device.i_th_ka",
-                message_pl="P12 MVP: brak przeskalowania czasowego (future).",
-                notes=(f"t_th_s={device_time} s, tk_s={required_time} s",),
+                message_pl=(f"P12: I²t {required_i2t:.4f} <= {device_i2t:.4f} kA²s → {status}."),
+                notes=(
+                    f"t_th_s={device_time} s, tk_s={required_time} s",
+                    f"I²t wymagane = Ith_req²·tk = {required_i2t:.4f} kA²s",
+                    f"I²t aparatu = Ith²·t_th = {device_i2t:.4f} kA²s",
+                ),
             )
         status = STATUS_PASS if device_val >= required_val else STATUS_FAIL
         return EquipmentProofCheckResult(
@@ -450,25 +461,60 @@ class EquipmentProofGenerator:
         device: DeviceRating,
         required: dict[str, Any],
     ) -> ProofStep:
-        equation = _equation(
-            "EQ_P12_006",
-            r"I_{th}(t_{th}) \ge I_{th,req}(t_k)",
-            "Sprawdzenie wytrzymałości cieplnej",
-            "PN-EN 60909 (P12)",
-            (
-                _symbol("I_{th}", "kA", "Wytrzymałość cieplna", "device.i_th_ka"),
-                _symbol("t_{th}", "s", "Czas odniesienia urządzenia", "device.t_th_s"),
-                _symbol("I_{th,req}", "kA", "Prąd cieplny wymagany", "ith_ka"),
-                _symbol("t_k", "s", "Czas zwarcia", "tk_s"),
-            ),
-        )
+        required_val = _as_float(required.get("ith_ka"))
+        required_time = _as_float(required.get("tk_s"))
+        device_val = device.i_th_ka
+        device_time = device.t_th_s
         input_values = (
-            _value_or_missing("I_{th}", device.i_th_ka, "kA", "device.i_th_ka"),
-            _value_or_missing("t_{th}", device.t_th_s, "s", "device.t_th_s"),
-            _value_or_missing("I_{th,req}", _as_float(required.get("ith_ka")), "kA", "ith_ka"),
-            _value_or_missing("t_k", _as_float(required.get("tk_s")), "s", "tk_s"),
+            _value_or_missing("I_{th}", device_val, "kA", "device.i_th_ka"),
+            _value_or_missing("t_{th}", device_time, "s", "device.t_th_s"),
+            _value_or_missing("I_{th,req}", required_val, "kA", "ith_ka"),
+            _value_or_missing("t_k", required_time, "s", "tk_s"),
         )
-        substitution = _substitution_from_values(input_values)
+
+        # Karta S-C (2026-07-22): różne czasy odniesienia ⇒ porównanie energii
+        # I²t (Ith_req²·tk ≤ Ithr²·t_thr) z jawnym podstawieniem w wywodzie.
+        if (
+            device_val is not None
+            and device_time is not None
+            and required_val is not None
+            and required_time is not None
+            and device_time != required_time
+        ):
+            equation = _equation(
+                "EQ_P12_006b",
+                r"I_{th,req}^2 \cdot t_k \le I_{th}^2 \cdot t_{th}",
+                "Sprawdzenie wytrzymałości cieplnej (porównanie energii I²t)",
+                "PN-EN 60909 (P12)",
+                (
+                    _symbol("I_{th}", "kA", "Wytrzymałość cieplna", "device.i_th_ka"),
+                    _symbol("t_{th}", "s", "Czas odniesienia urządzenia", "device.t_th_s"),
+                    _symbol("I_{th,req}", "kA", "Prąd cieplny wymagany", "ith_ka"),
+                    _symbol("t_k", "s", "Czas zwarcia", "tk_s"),
+                ),
+            )
+            required_i2t = required_val**2 * required_time
+            device_i2t = device_val**2 * device_time
+            substitution = (
+                f"I_{{th,req}}^2 \\cdot t_k = {required_val:.4f}^2 \\cdot {required_time:.4f} = "
+                f"{required_i2t:.4f}\\,\\text{{kA}}^2\\text{{s}} "
+                f"\\le I_{{th}}^2 \\cdot t_{{th}} = {device_val:.4f}^2 \\cdot {device_time:.4f} = "
+                f"{device_i2t:.4f}\\,\\text{{kA}}^2\\text{{s}}"
+            )
+        else:
+            equation = _equation(
+                "EQ_P12_006",
+                r"I_{th}(t_{th}) \ge I_{th,req}(t_k)",
+                "Sprawdzenie wytrzymałości cieplnej",
+                "PN-EN 60909 (P12)",
+                (
+                    _symbol("I_{th}", "kA", "Wytrzymałość cieplna", "device.i_th_ka"),
+                    _symbol("t_{th}", "s", "Czas odniesienia urządzenia", "device.t_th_s"),
+                    _symbol("I_{th,req}", "kA", "Prąd cieplny wymagany", "ith_ka"),
+                    _symbol("t_k", "s", "Czas zwarcia", "tk_s"),
+                ),
+            )
+            substitution = _substitution_from_values(input_values)
         return _check_step(
             step_number=6,
             title_pl="Check Ith",

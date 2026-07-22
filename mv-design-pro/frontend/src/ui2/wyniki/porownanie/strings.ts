@@ -209,7 +209,7 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
 
   // Nagłówek analizy (tryb zwarciowy)
   podtytul:
-    'Porównanie A/B wyników zwarciowych — wielkości Ik", ip, Ith, Sk pochodzą z backendu (tylko do odczytu).',
+    'Porównanie A/B wyników zwarciowych — wielkości Ik", ip, Ith, Sk (oraz pełny bilans IEC 60909 w trybie eksperckim) pochodzą z backendu (tylko do odczytu).',
 
   // Wybór A/B
   wyborTytul: 'Wybór przebiegów zwarciowych do porównania',
@@ -246,6 +246,23 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
   kolSkB: 'Sk B',
   kolSkD: 'Δ Sk',
 
+  // Kolumny pełnego bilansu IEC 60909 (karta S-C — tryb ekspercki, addytywnie)
+  kolRkA: 'Rk A',
+  kolRkB: 'Rk B',
+  kolRkD: 'Δ Rk',
+  kolXkA: 'Xk A',
+  kolXkB: 'Xk B',
+  kolXkD: 'Δ Xk',
+  kolZkA: '|Zk| A',
+  kolZkB: '|Zk| B',
+  kolZkD: 'Δ |Zk|',
+  kolXrA: 'X/R A',
+  kolXrB: 'X/R B',
+  kolXrD: 'Δ X/R',
+  kolI2tA: 'I²t A',
+  kolI2tB: 'I²t B',
+  kolI2tD: 'Δ I²t',
+
   // Stan pusty tabeli
   brakPunktow: 'Brak punktów zwarcia w wybranych przebiegach.',
 
@@ -256,6 +273,8 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
   // Jednostki
   jednKA: 'kA',
   jednMVA: 'MVA',
+  jednOhm: 'Ω',
+  jednKA2s: 'kA²·s',
 
   // Wartość pusta
   kreska: '—',
@@ -279,6 +298,36 @@ export function fmtMVA(n: number): string {
 /** Delta mocy zwarciowej [MVA] — 1 miejsce po przecinku, ze znakiem. */
 export function fmtDeltaMVA(n: number): string {
   return fmtDelta(n, 1);
+}
+
+/** Impedancja [Ω] — 4 miejsca (spójnie z oknem „Wyniki zwarciowe"). */
+export function fmtOhm(n: number): string {
+  return fmtLiczba(n, 4);
+}
+
+/** Delta impedancji [Ω] — 4 miejsca, ze znakiem. */
+export function fmtDeltaOhm(n: number): string {
+  return fmtDelta(n, 4);
+}
+
+/** Stosunek X/R — 3 miejsca (spójnie z oknem „Wyniki zwarciowe"). */
+export function fmtXR(n: number): string {
+  return fmtLiczba(n, 3);
+}
+
+/** Delta stosunku X/R — 3 miejsca, ze znakiem. */
+export function fmtDeltaXR(n: number): string {
+  return fmtDelta(n, 3);
+}
+
+/** Energia cieplna I²t [kA²·s] — 3 miejsca. */
+export function fmtKA2s(n: number): string {
+  return fmtLiczba(n, 3);
+}
+
+/** Delta energii cieplnej I²t [kA²·s] — 3 miejsca, ze znakiem. */
+export function fmtDeltaKA2s(n: number): string {
+  return fmtDelta(n, 3);
 }
 
 /**

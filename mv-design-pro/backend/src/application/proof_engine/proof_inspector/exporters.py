@@ -239,9 +239,7 @@ class InspectorExporter:
             # Steps — każdy krok jako sekcja
             docx_obj.add_heading("Kroki dowodowe", level=1)
             for step in doc.steps:
-                docx_obj.add_heading(
-                    f"Krok {step.step_number}: {step.title_pl}", level=2
-                )
+                docx_obj.add_heading(f"Krok {step.step_number}: {step.title_pl}", level=2)
 
                 # Formula (LaTeX, monospace)
                 eq_para = docx_obj.add_paragraph()
@@ -262,9 +260,7 @@ class InspectorExporter:
                 result_para = docx_obj.add_paragraph()
                 result_label = result_para.add_run("Wynik: ")
                 result_label.bold = True
-                result_value = result_para.add_run(
-                    f"{step.result.value} {step.result.unit}"
-                )
+                result_para.add_run(f"{step.result.value} {step.result.unit}")
 
                 # Unit check
                 if step.unit_check:
@@ -278,9 +274,7 @@ class InspectorExporter:
             docx_obj.add_paragraph()
             docx_obj.add_heading("Podsumowanie", level=1)
             summary_para = docx_obj.add_paragraph()
-            summary_para.add_run(
-                f"Łączna liczba kroków: {doc.summary.total_steps}"
-            )
+            summary_para.add_run(f"Łączna liczba kroków: {doc.summary.total_steps}")
 
             # Zapisz do bytes (deterministyczne — bez modyfikacji core_properties)
             buf = BytesIO()
