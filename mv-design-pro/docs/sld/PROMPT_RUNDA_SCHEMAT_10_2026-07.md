@@ -35,6 +35,29 @@ właściciela na zrzutach żywej aplikacji.
 
 ---
 
+## §0bis Rozjazd międzywątkowy — ZNALEZIONY i przyjęty (2026-07-22)
+
+Na pytanie właściciela „czy przyjęto w tym wątku prace z wątku sld schema redesign":
+
+1. **Wątek SLD** (`claude/sld-schema-cad-scada-rqvz73`, program SPEC V3, fazy F1…F13.5,
+   audyt D3, kasacja renderu v2 F12-C) — **przyjęty w CAŁOŚCI** (0 commitów przed tą
+   gałęzią; przekazanie kontraktem 2026-07-17).
+2. **ROZJAZD**: gałąź `claude/redesign-electrical-schema-e6v42` (2026-05-03) zawierała
+   NIGDY nieprzyjęty, 788-liniowy prompt wykonawczy
+   `docs/prompts/REDESIGN_SLD_SCADA_CAD_FULL.md` — model mentalny inżyniera MV jako
+   HIERARCHIA OBIEKTÓW RENDERINGU (GPZBlock / SwitchgearPanel / FeederSpine /
+   SubstationBlock / OZEConnectionBlock), gramatyka wizualna eTango (paleta, grubości,
+   typografia), domenowy algorytm layoutu (5 deterministycznych kroków). SPEC V3
+   przejął kontrakt LOD (§7, §15.2, lod_path_probe), ale NIE przejął hierarchii
+   obiektów domenowych i jednej gramatyki wizualnej między poziomami — dokładnie
+   tego, czego brak manifestuje się dziś jako D1/D6/D8/D9.
+   **Artefakt przyjęty do gałęzi (cherry-pick 643e15dd)** i staje się WEJŚCIEM
+   audytu §3.1 oraz benchmarkiem soczewki §2.5 — do rozstrzygnięcia per wymaganie:
+   przejąć / zastąpić nowszym kanonem / odrzucić z uzasadnieniem (tabela w audycie).
+3. Stare lutowe gałęzie (`etap-geometry`, `layout-aesthetics`, ~700 commitów za nami)
+   to historyczne odnogi sprzed kanonu — bez wartości do przejęcia wprost; ich idee
+   (geometria ETAP) żyją w SPEC V3.
+
 ## §1 Cel rundy (jedno zdanie)
 
 System LOD schematu ma być **JEDNYM językiem wizualnym o rosnącej gęstości szczegółu**:
