@@ -340,3 +340,76 @@
   flex-direction: column;
   gap: 2px;
 }
+
+/* --- Ślad sekcyjny (SladSekcyjny — ZWARCIA-PRO F3) --- */
+.mvd-wyn-slad-sekcja {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  margin-top: 6px;
+  overflow: hidden;
+}
+.mvd-wyn-slad-sekcja-btn {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.mvd-wyn-slad-sekcja-btn:hover {
+  background: var(--mvd-sel);
+}
+.mvd-wyn-slad-sekcja-tytul {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+}
+.mvd-wyn-slad-norma {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.mvd-wyn-slad-sekcja .mvd-wyn-slad {
+  margin: 0;
+  padding: 4px 12px 10px 32px;
+  border-top: 1px solid var(--mvd-line);
+}
+
+/* Checklista walidacji metody (statusy wyłącznie z backendu) */
+.mvd-wyn-walid {
+  list-style: none;
+  margin: 0;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--mvd-line);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-wyn-walid-poz {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.mvd-wyn-walid-ok {
+  color: var(--mvd-ok);
+  font-weight: 700;
+}
+.mvd-wyn-walid-err {
+  color: var(--mvd-err);
+  font-weight: 700;
+}
+.mvd-wyn-walid-info {
+  color: var(--mvd-muted);
+  font-weight: 700;
+  font-family: var(--mvd-font-mono);
+}
+.mvd-wyn-walid-etykieta {
+  flex: 1;
+  min-width: 0;
+}

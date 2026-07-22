@@ -10,7 +10,14 @@
  */
 
 import type { AdvancementMode } from '../../shell/modeModel';
-import { SladWywodu, TabelaWynikow, type KrokWywodu } from '../wzorzec';
+import {
+  SladSekcyjny,
+  SladWywodu,
+  TabelaWynikow,
+  type KrokWywodu,
+  type PozycjaWalidacji,
+  type SekcjaWywodu,
+} from '../wzorzec';
 import { ZWARCIA_STRINGS } from './strings';
 import {
   KLUCZ_WKLAD,
@@ -29,6 +36,14 @@ export interface WkladyZwarcioweProps {
    * na żądanie pod tabelą wkładów. Pusta lista → przycisk śladu nie renderuje się.
    */
   wywod?: readonly KrokWywodu[];
+  /**
+   * Wywód SEKCYJNY z backendu (ZWARCIA-PRO F3 pkt 8) — ta sama treść co `wywod`,
+   * pogrupowana w rozwijane sekcje z odwołaniem normowym. Gdy obecny (niepusty),
+   * renderowany jest `SladSekcyjny`; inaczej płaski `SladWywodu` (starsze odpowiedzi).
+   */
+  wywodSekcje?: readonly SekcjaWywodu[];
+  /** Checklista walidacji metody IEC (pkt 10) — sekcja na końcu wywodu sekcyjnego. */
+  walidacjaIec?: readonly PozycjaWalidacji[];
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
 }
@@ -37,6 +52,8 @@ export function WkladyZwarciowe({
   punktNazwa,
   wklady,
   wywod = [],
+  wywodSekcje = [],
+  walidacjaIec = [],
   trybZaawansowania,
   onOtworzDowod,
 }: WkladyZwarcioweProps) {
@@ -61,7 +78,19 @@ export function WkladyZwarciowe({
             trybZaawansowania={trybZaawansowania}
             kluczWiersza={KLUCZ_WKLAD}
           />
-          <SladWywodu kroki={wywod} testIdPrefix="mvd-zwarcia-wklady-slad" />
+          {wywodSekcje.length > 0 ? (
+            <SladSekcyjny
+              sekcje={wywodSekcje}
+              walidacja={
+                walidacjaIec.length > 0
+                  ? { tytul: ZWARCIA_STRINGS.walidacjaTytul, pozycje: walidacjaIec }
+                  : undefined
+              }
+              testIdPrefix="mvd-zwarcia-wklady-slad"
+            />
+          ) : (
+            <SladWywodu kroki={wywod} testIdPrefix="mvd-zwarcia-wklady-slad" />
+          )}
         </>
       )}
     </section>

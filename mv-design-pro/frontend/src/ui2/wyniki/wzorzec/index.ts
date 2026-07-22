@@ -9,6 +9,13 @@ export { TabelaWynikow } from './TabelaWynikow';
 export { SekcjaZalozen } from './SekcjaZalozen';
 export { SladWywodu } from './SladWywodu';
 export type { KrokWywodu } from './SladWywodu';
+export { SladSekcyjny } from './SladSekcyjny';
+export type {
+  SekcjaWywodu,
+  PozycjaWalidacji,
+  StatusPozycjiWalidacji,
+  WalidacjaWywodu,
+} from './SladSekcyjny';
 export { WZORZEC_STRINGS } from './strings';
 export { usePoprawWModelu } from './usePoprawWModelu';
 export { akcjaNaprawcza, AKCJA_GENERYCZNA } from './akcjeNaprawcze';

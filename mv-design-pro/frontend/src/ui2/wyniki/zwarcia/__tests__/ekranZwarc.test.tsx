@@ -265,6 +265,101 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     vi.unstubAllGlobals();
   });
 
+  it('wywod_sekcje z backendu -> slad SEKCYJNY: akordeon zwiniety, klik sekcji -> kroki + KaTeX, norma przy tytule, checklista walidacji (ZWARCIA-PRO F3)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          contributions: [
+            { source_id: 'gen1', source_name: 'Agregat', ikss_partial_a: 1234.5 },
+          ],
+          wywod: [{ tekst: 'Model: IEC 60909-0:2016 par. 6.6', latex: null }],
+          wywod_sekcje: [
+            {
+              tytul: 'Dane wejściowe i model',
+              kroki: [{ tekst: 'Model: IEC 60909-0:2016 par. 6.6', latex: null }],
+              norma: 'IEC 60909-0:2016',
+            },
+            {
+              tytul: 'Wkład: Agregat',
+              kroki: [
+                {
+                  tekst: 'Prad wylaczeniowy symetryczny: Ib = 1.003 kA',
+                  latex:
+                    "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.813 \\cdot 1.000 \\cdot 1.234\\;\\mathrm{kA} = 1.003\\;\\mathrm{kA}",
+                },
+              ],
+              norma: 'IEC 60909-0:2016 §6.6',
+            },
+          ],
+          walidacja_iec: [
+            {
+              pozycja_pl: 'Reguła małych silników (5%)',
+              wartosc_pl: 'SPELNIONA — silniki pomijalne w Ib',
+              status: 'PASS',
+            },
+          ],
+        }),
+      }),
+    );
+    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
+    // Slad na zadanie: zwiniety przed klikiem.
+    expect(within(sekcja).queryByTestId('mvd-zwarcia-wklady-slad')).not.toBeInTheDocument();
+    fireEvent.click(await within(sekcja).findByTestId('mvd-zwarcia-wklady-slad-btn'));
+    // Akordeon sekcji zamiast plaskiej listy: sekcje zwiniete (aria-expanded=false).
+    const btnSekcji = within(sekcja).getByTestId('mvd-zwarcia-wklady-slad-sekcja-btn-1');
+    expect(btnSekcji).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      within(sekcja).queryByTestId('mvd-zwarcia-wklady-slad-sekcja-kroki-1'),
+    ).not.toBeInTheDocument();
+    // Odwolanie normowe przy tytule sekcji.
+    expect(within(btnSekcji).getByText('Wkład: Agregat')).toBeInTheDocument();
+    expect(within(btnSekcji).getByText('IEC 60909-0:2016 §6.6')).toBeInTheDocument();
+    // Klik sekcji -> kroki z wzorem KaTeX (math-rendered).
+    fireEvent.click(btnSekcji);
+    const kroki = within(sekcja).getByTestId('mvd-zwarcia-wklady-slad-sekcja-kroki-1');
+    expect(within(kroki).getByTestId('math-rendered').getAttribute('data-latex')).toContain(
+      'I_b = \\mu',
+    );
+    // Checklista walidacji metody IEC na koncu wywodu sekcyjnego.
+    fireEvent.click(within(sekcja).getByTestId('mvd-zwarcia-wklady-slad-walidacja-btn'));
+    const walidacja = within(sekcja).getByTestId('mvd-zwarcia-wklady-slad-walidacja');
+    expect(within(walidacja).getByText('Reguła małych silników (5%)')).toBeInTheDocument();
+    expect(
+      within(walidacja).getByText('SPELNIONA — silniki pomijalne w Ib'),
+    ).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
+  it('odpowiedz BEZ wywod_sekcje (starszy backend) -> plaski SladWywodu, bez akordeonu', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          contributions: [
+            { source_id: 'gen1', source_name: 'Agregat', ikss_partial_a: 1234.5 },
+          ],
+          wywod: [{ tekst: 'Model: IEC 60909-0:2016 par. 6.6', latex: null }],
+        }),
+      }),
+    );
+    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
+    fireEvent.click(await within(sekcja).findByTestId('mvd-zwarcia-wklady-slad-btn'));
+    // Plaska lista krokow (kompatybilnosc), zero przyciskow sekcji.
+    expect(within(sekcja).getByTestId('mvd-zwarcia-wklady-slad')).toBeInTheDocument();
+    expect(
+      within(sekcja).getByText('Model: IEC 60909-0:2016 par. 6.6'),
+    ).toBeInTheDocument();
+    expect(
+      within(sekcja).queryByTestId('mvd-zwarcia-wklady-slad-sekcja-btn-0'),
+    ).not.toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it('blad pobrania -> uczciwy stan "dane niedostepne" (bez fabrykacji)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
     render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);

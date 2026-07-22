@@ -14,7 +14,7 @@ import { useEffect, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import type { KrokWywodu } from '../wzorzec';
+import type { KrokWywodu, PozycjaWalidacji, SekcjaWywodu } from '../wzorzec';
 import type { WkladZwarciowy } from './zwarciaModel';
 
 /** Kształt 1:1 pozycji odpowiedzi backendu (`MachinePartialContribution.to_dict`). */
@@ -29,12 +29,18 @@ export interface WkladyOdpowiedz {
   readonly contributions: readonly WkladZrodlaOdpowiedz[];
   /** Wywód prezentacyjny {tekst, latex} z backendu (zasada KaTeX; addytywny). */
   readonly wywod?: readonly KrokWywodu[];
+  /** Wywód SEKCYJNY (ZWARCIA-PRO F3 pkt 8; addytywny) — ta sama treść pogrupowana. */
+  readonly wywod_sekcje?: readonly SekcjaWywodu[];
+  /** Checklista walidacji metody IEC 60909 (pkt 10; addytywna). */
+  readonly walidacja_iec?: readonly PozycjaWalidacji[];
 }
 
 /** Wkłady + wywód dla punktu — para zwracana przez hooka dostawcy. */
 export interface WkladyZWywodem {
   readonly wklady: WkladZwarciowy[];
   readonly wywod: readonly KrokWywodu[];
+  readonly wywodSekcje: readonly SekcjaWywodu[];
+  readonly walidacjaIec: readonly PozycjaWalidacji[];
 }
 
 /** Pobiera wkłady zwarciowe źródeł dla punktu (ref ENM szyny). */
@@ -81,7 +87,12 @@ export function useWkladyZwarciowe(punkt: string | null): WkladyZWywodem | null 
         if (!anulowane)
           setCache((c) => ({
             ...c,
-            [punkt]: { wklady: naWklady(odpowiedz), wywod: odpowiedz.wywod ?? [] },
+            [punkt]: {
+              wklady: naWklady(odpowiedz),
+              wywod: odpowiedz.wywod ?? [],
+              wywodSekcje: odpowiedz.wywod_sekcje ?? [],
+              walidacjaIec: odpowiedz.walidacja_iec ?? [],
+            },
           }));
       })
       .catch(() => {

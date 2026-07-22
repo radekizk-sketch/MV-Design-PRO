@@ -270,6 +270,32 @@ def test_small_motor_negligible():
     assert res.motors_negligible is True  # ≤ 5 % of total I″k
 
 
+# ── WHITE BOX: liczby reguly malych silnikow (ZWARCIA-PRO F3 pkt 9, addytywne) ─
+def test_white_box_exposes_small_motor_rule_values():
+    """white_box eksponuje wartosc obliczona (suma I''k,M async) i prog 0.05*I''k
+    uzyte w werdykcie `motors_negligible` — audyt 1:1, bez zmiany istniejacych pol."""
+    g = _slack_line_bus()
+    g.add_synchronous_machine_source(_sync())
+    g.add_asynchronous_machine_source(_async())
+    res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+    wb = res.white_box
+    async_partial = sum(c.ikss_partial_a for c in res.contributions if not c.is_synchronous_machine)
+    assert wb["ikss_async_machines_a"] == pytest.approx(async_partial, rel=1e-12)
+    assert wb["small_motor_limit_a"] == pytest.approx(0.05 * wb["ikss_total_a"], rel=1e-12)
+    assert res.motors_negligible == (wb["ikss_async_machines_a"] <= wb["small_motor_limit_a"])
+
+
+def test_white_box_small_motor_values_only_synchronous():
+    """Siec bez silnikow asynchronicznych: wartosc obliczona = 0, prog > 0, regula
+    spelniona (silniki pomijalne) — uczciwe zera, nie brak pol."""
+    g = _slack_line_bus()
+    g.add_synchronous_machine_source(_sync())
+    res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+    assert res.white_box["ikss_async_machines_a"] == 0.0
+    assert res.white_box["small_motor_limit_a"] > 0.0
+    assert res.motors_negligible is True
+
+
 # ── Determinism of the module ────────────────────────────────────────────────
 def test_module_deterministic():
     g = _slack_line_bus()

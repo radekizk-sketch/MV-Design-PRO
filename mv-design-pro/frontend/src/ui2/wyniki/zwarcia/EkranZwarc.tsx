@@ -89,6 +89,10 @@ export function EkranZwarc({
   // Wywod {tekst, latex} z backendu (zasada KaTeX) — tylko od realnego dostawcy;
   // przy wkladach z props (testy/nadpisanie) wywodu brak (zero fabrykacji).
   const wywodWkladow = wklady ? [] : wkladyPobrane?.wywod ?? [];
+  // ZWARCIA-PRO F3: wywod sekcyjny + checklista walidacji IEC (addytywne pola
+  // odpowiedzi contributions) — takze wylacznie od realnego dostawcy.
+  const wywodSekcjeWkladow = wklady ? [] : wkladyPobrane?.wywodSekcje ?? [];
+  const walidacjaIecWkladow = wklady ? [] : wkladyPobrane?.walidacjaIec ?? [];
 
   return (
     <div data-testid="mvd-zwarcia-ekran">
@@ -112,6 +116,8 @@ export function EkranZwarc({
         punktNazwa={nazwaAktywnego}
         wklady={wkladyAktywne}
         wywod={wywodWkladow}
+        wywodSekcje={wywodSekcjeWkladow}
+        walidacjaIec={walidacjaIecWkladow}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
       />

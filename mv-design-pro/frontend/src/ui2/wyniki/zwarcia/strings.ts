@@ -66,6 +66,7 @@ export const ZWARCIA_STRINGS = {
   wkladyKolUdzial: 'Udział',
   wkladyKolIdentyfikator: 'Identyfikator źródła',
   wkladyNiedostepne: 'Dane wkładów niedostępne w tym przebiegu.',
+  walidacjaTytul: 'Walidacja metody IEC 60909',
   wkladyNiedostepneOpis:
     'Kontrakt wyników zwarciowych (read-only) nie niesie wkładów źródeł. Wkłady pojawią się po rozszerzeniu przebiegu o dane gałęziowe (patrz TODO-KARTA).',
   wkladyBrakPunktow: 'Brak punktów zwarcia do wyboru.',

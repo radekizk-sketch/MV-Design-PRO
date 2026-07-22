@@ -37,6 +37,11 @@ export const WZORZEC_STRINGS = {
   sladPokaz: 'Pokaż ślad obliczeń',
   sladUkryj: 'Ukryj ślad obliczeń',
 
+  // Checklista walidacji w śladzie sekcyjnym (ZWARCIA-PRO F3) — opisy statusów (aria)
+  walidacjaSpelnione: 'spełnione',
+  walidacjaNiespelnione: 'niespełnione',
+  walidacjaInformacja: 'informacja',
+
   // Dostępny opis kierunku sortowania (aria)
   opisSortowania: (etykieta: string, kierunek: KierunekSortowania): string =>
     `Sortowanie wg „${etykieta}": ${kierunek === 'rosnaco' ? 'rosnąco' : 'malejąco'}.`,

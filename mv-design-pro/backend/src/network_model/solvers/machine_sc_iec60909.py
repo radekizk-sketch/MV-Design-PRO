@@ -440,6 +440,11 @@ def compute_machine_contributions(
         "n_asynchronous": len(asyn),
         "n_dfig": sum(1 for m in asyn if getattr(m, "wind_type_3", False)),
         "small_motor_rule": "silniki pomijalne gdy ΣI″k,M ≤ 0.05·I″k (§6.6)",
+        # WHITE BOX (ZWARCIA-PRO F3 pkt 9, addytywnie): liczby reguły małych
+        # silników — wartość obliczona ΣI″k,M (asynchroniczne) i próg 0.05·I″k,
+        # użyte w werdykcie `motors_negligible` powyżej (audyt 1:1).
+        "ikss_async_machines_a": async_partial,
+        "small_motor_limit_a": 0.05 * ikss_total_a,
         "dfig_assumption": (
             "DFIG (Typ 3): założono zadziałanie crowbar (rotor zwarty) → model maszyny "
             "asynchronicznej za Z_M (§6.7); udział przekształtnika pominięty (zachowawczo dla I″k,max)."
