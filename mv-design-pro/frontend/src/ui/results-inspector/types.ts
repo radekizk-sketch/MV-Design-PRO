@@ -207,6 +207,16 @@ export interface ShortCircuitRow {
    * brak pola / null = starszy wynik (uczciwa kreska).
    */
   branch_contributions?: ShortCircuitBranchFlow[] | null;
+  // Werdykt raportowalności i wiązanie dowodu per punkt (karta P-3, addytywne
+  // lustro pól, które backend już wysyła w `build_short_circuit_results`,
+  // enm/canonical_analysis.py:1974-1985). Starsze zapisy typu bez pól → optional.
+  reporting_status?: string | null;
+  reporting_status_pl?: string | null;
+  proof_status?: string | null;
+  proof_status_pl?: string | null;
+  proof_ref?: string | null;
+  dopuszczalnosc_raportowa?: boolean;
+  reporting_limitations?: string[];
 }
 
 /**

@@ -83,8 +83,8 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
       {
         ekran: 'E-32',
         tytul: 'Stabilność dynamiczna',
-        opis: 'Kontrakt analizy stabilności RMS: scenariusz zakłócenia, stan łączników, założenia źródeł.',
-        zrodlo: 'kontrakt przebiegu analizy stabilności',
+        opis: 'Werdykt stabilności po wyłączeniu zwarcia: scenariusz zakłócenia, marginesy kryteriów i ślad automatyki zabezpieczeniowej.',
+        zrodlo: 'zakończony przebieg analizy stabilności dynamicznej (scenariusz „wyłączenie zwarcia")',
         wymaga: 'dowolny',
         testid: 'mvd-analizy-karta-stabilnosc',
       },
@@ -96,8 +96,8 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
       {
         ekran: 'E-29',
         tytul: 'Składowe symetryczne i sieć zerowa',
-        opis: 'Kontekst składowych zgodnej, przeciwnej i zerowej oraz sposobu uziemienia punktu neutralnego.',
-        zrodlo: 'kontrakt przebiegu zwarciowego (założenia uziemienia i stanu łączników)',
+        opis: 'Impedancje składowych Z1/Z2/Z0 ze śladu obliczeń zwarcia niesymetrycznego (1F/2F/2F+Z) i sposób uziemienia punktu neutralnego z wersji układu.',
+        zrodlo: 'zakończony przebieg zwarcia niesymetrycznego (IEC 60909) — wiersze, ślad WHITE BOX i wersja układu',
         wymaga: 'zwarciowy',
         testid: 'mvd-analizy-karta-skladowe',
       },

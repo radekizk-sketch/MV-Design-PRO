@@ -732,7 +732,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-siec-zerowa',
     canonicalRoute: '/workspace/results/zero-sequence',
     legacyAliases: ['symmetrical_components', 'zero_sequence', 'old:E-29'],
-    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
+    componentKey: 'EkranSkladowych', // realny dostawca ui2 (karta P-3; podmiana Opcja 1)
     testId: 'screen-E-29-zero-sequence',
     implemented: true,
     requiresProject: true,
@@ -801,7 +801,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-stabilnosc-dynamiczna',
     canonicalRoute: '/workspace/results/dynamic-stability',
     legacyAliases: ['dynamic_stability'],
-    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
+    componentKey: 'EkranStabilnosci', // realny dostawca ui2 (karta P-3; podmiana Opcja 1)
     testId: 'screen-E-32-dynamic-stability',
     implemented: true,
     requiresProject: true,
@@ -824,7 +824,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-wklady-zrodel',
     canonicalRoute: '/workspace/results/source-contributions',
     legacyAliases: ['source_contributions', 'old:E-32'],
-    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
+    componentKey: 'EkranZwarc', // dostawca ui2 — zakładka zwarć warsztatu Wyników, deep-link (karta P-1)
     testId: 'screen-E-33-source-contributions',
     implemented: true,
     requiresProject: true,
@@ -847,7 +847,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-weryfikacja-cieplna-dynamiczna',
     canonicalRoute: '/workspace/results/thermal-dynamic',
     legacyAliases: ['thermal_dynamic', 'old:E-33'],
-    componentKey: 'EkranKontraktuAnalizy', // dostawca ui2 (metadana, F-E5a; precedens E-26/V12K-041)
+    componentKey: 'EkranZwarc', // dostawca ui2 — zakładka zwarć warsztatu Wyników, deep-link (karta P-1)
     testId: 'screen-E-34-thermal-dynamic',
     implemented: true,
     requiresProject: true,

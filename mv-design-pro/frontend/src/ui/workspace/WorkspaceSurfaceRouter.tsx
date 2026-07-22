@@ -37,8 +37,9 @@ import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
 import { EkranFrt } from '../../ui2/oze/frt';
 import { EkranZabezpieczenAutomatyki } from '../../ui2/model/zabezpieczenia-automatyka';
-import { EkranKontraktuAnalizy } from '../../ui2/wyniki/kontrakt-analizy';
 import { EkranKoordynacji } from '../../ui2/wyniki/koordynacja';
+import { EkranSkladowych } from '../../ui2/wyniki/skladowe';
+import { EkranStabilnosci } from '../../ui2/wyniki/stabilnosc';
 import { EkranStanuFazowego } from '../../ui2/wyniki/stan-fazowy';
 import { EkranZbieznosci } from '../../ui2/wyniki/zbieznosc';
 import { useShellStore } from '../../ui2/shell/useShellStore';
@@ -1856,14 +1857,11 @@ function ComplianceSurface() {
   );
 }
 
-// Dostawca ekranów kontraktu analizy przeniesiony do modułu ui2
-// `wyniki/kontrakt-analizy/EkranKontraktuAnalizy` (karta F-E5a). Router
-// renderuje go bezpośrednio w `renderSurfaceBody`; konfiguracja wierszy
-// fokusowych (dawne THIN_CONTRACT_SURFACES) jest źródłem danych w
-// `wyniki/kontrakt-analizy/model.ts`. Po kartach P-1/P-2 kontrakt obejmuje
-// TYLKO E-29 i E-32: E-30/E-31 mają realne ekrany (`wyniki/zbieznosc`,
-// `wyniki/stan-fazowy`), a E-33/E-34 prowadzą do realnego dostawcy —
-// zakładki zwarć warsztatu Wyników (deep-link).
+// Moduł kontraktu analizy (`wyniki/kontrakt-analizy`, karta F-E5a) WYGASZONY
+// po fali P-1…P-3: wszystkie dawne kody kontraktu mają realnych dostawców —
+// E-29 `wyniki/skladowe`, E-30 `wyniki/zbieznosc`, E-31 `wyniki/stan-fazowy`,
+// E-32 `wyniki/stabilnosc`, a E-33/E-34 prowadzą deep-linkiem do zakładki
+// zwarć warsztatu Wyników (brak powierzchni trasowej).
 
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const readiness = useSnapshotStore((state) => state.readiness);
@@ -2829,7 +2827,10 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-28':
       return <EkranKoordynacji />;
     case 'E-29':
-      return <EkranKontraktuAnalizy surface={surface} />;
+      // E-29 „Składowe symetryczne i sieć zerowa" — REALNY ekran ui2 (karta P-3):
+      // bilans FROZEN solvera + składowe Z1/Z2/Z0 ze śladu WHITE BOX + uziemienie
+      // punktu neutralnego z zamrożonej wersji układu (koniec dostawcy zastępczego).
+      return <EkranSkladowych />;
     case 'E-26':
       return <ComplianceSurface />;
     case 'E-27':
@@ -2849,7 +2850,9 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       // zastępczego dostawcy kontraktu analizy).
       return <EkranStanuFazowego />;
     case 'E-32':
-      return <EkranKontraktuAnalizy surface={surface} />;
+      // E-32 „Stabilność dynamiczna" — REALNY ekran ui2 (karta P-3): scenariusz
+      // zakłócenia → werdykt backendu → wielkości z kryteriami → ślad automatyki.
+      return <EkranStabilnosci />;
     // E-33/E-34 (P-1): zdolności prowadzą do realnego dostawcy — zakładki
     // zwarć warsztatu Wyników (deep-link `setWynikiTab('zwarcia')` z huba
     // analiz, nawigacji analitycznej i raportu) — brak powierzchni trasowej.
