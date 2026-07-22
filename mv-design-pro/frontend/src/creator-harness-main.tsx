@@ -26,6 +26,16 @@ import { KreatorPolaSn } from './ui2/kreatory/pole';
 import { KreatorTransformatoraSnNn } from './ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from './ui2/kreatory/zrodlo';
 import { KreatorZrodlaOze } from './ui2/kreatory/zrodlo-oze';
+// Fala P-4/P-5 — 9 kreatorów ui2 (karta Z-2, dowody wizualne).
+import { KreatorZrodloDyspozycyjne } from './ui2/kreatory/zrodlo-dyspozycyjne';
+import { KreatorOdgalezienia } from './ui2/kreatory/odgalezienie';
+import { KreatorSlupaOdgaleznego } from './ui2/kreatory/slup-odgalezny';
+import { KreatorZksn } from './ui2/kreatory/zksn';
+import { KreatorPrzekaznika } from './ui2/kreatory/przekaznik';
+import { KreatorPomiaru } from './ui2/kreatory/pomiar';
+import { KreatorPolaNn } from './ui2/kreatory/pole-nn';
+import { KreatorPrzypisaniaKatalogu } from './ui2/kreatory/przypisanie-katalogu';
+import { KreatorEdycjiParametrow } from './ui2/kreatory/edycja-parametrow';
 import { SekcjaArcFlash, SekcjaMigotania, SekcjaWalidacji } from './ui2/wyniki/jakosc/EkranJakosci';
 import { EkranOdbioru } from './ui2/wyniki/odbior';
 import { EkranEstymacji } from './ui2/wyniki/estymacja';
@@ -98,6 +108,23 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
   '/api/catalog/line-types': [
     { id: 'lin-70', name: 'AFL-6 70', r_ohm_per_km: 0.443, x_ohm_per_km: 0.36, b_us_per_km: 2.7, rated_current_a: 290, voltage_rating_kv: 15, cross_section_mm2: 70, conductor_material: 'AFL', standard: 'PN-EN 50182', max_temperature_c: 80 },
     { id: 'lin-120', name: 'AFL-6 120', r_ohm_per_km: 0.258, x_ohm_per_km: 0.35, b_us_per_km: 2.8, rated_current_a: 410, voltage_rating_kv: 15, cross_section_mm2: 120, conductor_material: 'AFL', standard: 'PN-EN 50182', max_temperature_c: 80 },
+  ],
+  // Fala P-4/P-5 (karta Z-2) — katalogi dla 9 nowych kreatorów ui2.
+  '/api/catalog/source-system-types': [
+    { id: 'sys-agr-1', name: 'Agregat prądotwórczy 200 kVA', manufacturer: 'SDMO', voltage_rating_kv: 0.4, sk3_mva: 1.2, ik3_ka: 1.73 },
+  ],
+  '/api/catalog/branch-point-types': [
+    { id: 'bp-slup-1', name: 'Słup rozgałęźny SN z rozłącznikiem', kind: 'BRANCH_POLE', medium: 'LINE_OVERHEAD', switch_device_kind: 'ROZLACZNIK', switch_rated_current_a: 400, branch_ports_count: 2 },
+    { id: 'bp-zksn-1', name: 'ZKSN 2-polowe', kind: 'ZKSN', medium: 'CABLE', switch_device_kind: 'ROZLACZNIK', switch_rated_current_a: 630, branch_ports_count: 2 },
+  ],
+  '/api/catalog/protection/device-types': [
+    { id: 'rel-1', name_pl: 'Zabezpieczenie nadprądowe uniwersalne', vendor: 'SEL', model: '751A', rated_current_a: 5 },
+  ],
+  '/api/catalog/ct-types': [
+    { id: 'ct-1', name: 'CT 300/5', ratio_primary_a: 300, ratio_secondary_a: 5, accuracy_class: '5P20', burden_va: 15 },
+  ],
+  '/api/catalog/vt-types': [
+    { id: 'vt-1', name: 'VT 15/0,1 kV', ratio_primary_v: 15000, ratio_secondary_v: 100, accuracy_class: '0.5' },
   ],
 };
 
@@ -1814,6 +1841,26 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
+  if (url.includes('/enm/field-view')) {
+    // Sceny "przekaznik"/"pomiar" (karta Z-2): pusty widok pola z backendu —
+    // useFieldReadModel spada wtedy na syntezę z bays snapshotu (fallback
+    // udokumentowany w useFieldReadModel.ts), więc pole zasiane w snapshot
+    // store staje się źródłem opcji formularza. Zero fabrykacji: kształt
+    // odpowiedzi 1:1 z `FieldReadModelResponse` (pusty widok = uczciwy stan).
+    return new Response(
+      JSON.stringify({
+        case_id: 'case-demo',
+        enm_revision: 1,
+        view_status: { data_source: 'ENM_FIELD_READ_MODEL', result_state: 'NONE', has_field_data: false },
+        summary: {
+          total_fields: 0, migrated_count: 0, requires_completion_count: 0,
+          source_fields_count: 0, coupler_fields_count: 0, fields_with_results_count: 0,
+        },
+        fields: [],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
   return originalFetch(input as RequestInfo, init);
 }) as typeof window.fetch;
 
@@ -2197,6 +2244,95 @@ if (creator === 'arcflash') {
       } as unknown as ExecutionRun,
     ],
   } as never);
+} else if (creator === 'zrodlo-dyspozycyjne') {
+  // Karta Z-2 (fala P-4/P-5): kreator agregatu/UPS nN — kontekst szyny nN
+  // stacji demo (op=add_genset_nn wybiera wariant „agregat"; snapshot globalny
+  // z zasiewu wyżej ma już szynę nN stacji demo).
+  useNetworkBuildStore.getState().openOperationForm('add_genset_nn' as never, {
+    station_ref: 'st-demo',
+    bus_nn_ref: 'bus-nn-demo',
+    bus_name: 'Szyna nN',
+    voltage_kv: 0.4,
+    station_label: 'Rozdzielnia GPZ-01',
+  });
+} else if (creator === 'odgalezienie') {
+  // Karta Z-2: kreator odgałęzienia SN startuje nowy ciąg od jawnego zacisku
+  // źródła (szyna SN stacji demo) — kontekst z jawnymi etykietami źródła.
+  useNetworkBuildStore.getState().openOperationForm('start_branch_segment_sn' as never, {
+    from_ref: 'bus-sn-demo',
+    source_type_label: 'Szyna SN',
+    source_name: 'Szyna GPZ SN',
+  });
+} else if (creator === 'slup-odgalezny' || creator === 'zksn') {
+  // Karta Z-2: słup rozgałęźny / ZKSN wstawiają węzeł na ISTNIEJĄCYM odcinku —
+  // snapshot z jawnym odcinkiem SN właściwego toru (linia napowietrzna / kabel).
+  const segmentType = creator === 'slup-odgalezny' ? 'line_overhead' : 'cable';
+  const segmentId = creator === 'slup-odgalezny' ? 'odc-linia-7' : 'odc-kabel-3';
+  const segmentName = creator === 'slup-odgalezny' ? 'Linia napowietrzna L-7' : 'Kabel SN K-3';
+  useSnapshotStore.setState({
+    snapshot: {
+      header: { name: 'Projekt demonstracyjny' },
+      substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
+      buses: [
+        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
+        { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
+      ],
+      transformers: [], sources: [], loads: [], generators: [], bays: [],
+      branches: [{ id: segmentId, ref_id: segmentId, name: segmentName, type: segmentType, tags: [], meta: {} }],
+      junctions: [], corridors: [], measurements: [], protection_assignments: [],
+    },
+  } as never);
+  useNetworkBuildStore.getState().openOperationForm(
+    (creator === 'slup-odgalezny' ? 'insert_branch_pole_on_segment_sn' : 'insert_zksn_on_segment_sn') as never,
+    { segment_id: segmentId },
+  );
+} else if (creator === 'przekaznik' || creator === 'pomiar') {
+  // Karta Z-2: kreatory zabezpieczenia/pomiaru pola SN czytają opcje pola z
+  // useFieldReadModel — endpoint field-view zwraca pusty widok (zasiew wyżej),
+  // więc hak spada na syntezę z `snapshot.bays` (fallback udokumentowany w
+  // useFieldReadModel.ts): pole odpływowe SN stacji demo z pełnym kontraktem Bay.
+  useSnapshotStore.setState({
+    snapshot: {
+      header: { name: 'Projekt demonstracyjny' },
+      substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
+      buses: [
+        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
+        { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
+      ],
+      transformers: [], sources: [], loads: [], generators: [],
+      bays: [{
+        id: 'bay-odplyw-1', ref_id: 'bay-odplyw-1', name: 'Pole odpływowe L-1',
+        tags: [], meta: {}, bay_role: 'OUT', substation_ref: 'st-demo', bus_ref: 'bus-sn-demo',
+        gpz_section_id: null, equipment_refs: [], protection_ref: null,
+      }],
+      branches: [], junctions: [], corridors: [], measurements: [], protection_assignments: [],
+    },
+  } as never);
+  useNetworkBuildStore.getState().openOperationForm(
+    (creator === 'przekaznik' ? 'add_relay' : 'add_ct') as never,
+    {},
+  );
+} else if (creator === 'pole-nn') {
+  // Karta Z-2: pole odpływowe nN — jedyny publiczny write-path pola nN.
+  useNetworkBuildStore.getState().openOperationForm('add_nn_outgoing_field' as never, {
+    station_ref: 'st-demo',
+    bus_nn_ref: 'bus-nn-demo',
+  });
+} else if (creator === 'przypisanie-katalogu') {
+  // Karta Z-2: przypisanie typu katalogowego do istniejącego elementu (transformator demo).
+  useNetworkBuildStore.getState().openOperationForm('assign_catalog_to_element' as never, {
+    element_ref: 'TR-1',
+    catalog_namespace: 'TRAFO_SN_NN',
+    catalog_item_id: 'trafo-630-15-04',
+  });
+} else if (creator === 'edycja-parametrow') {
+  // Karta Z-2: ekspercki override parametru istniejącego elementu (transformator demo).
+  useNetworkBuildStore.getState().openOperationForm('update_element_parameters' as never, {
+    element_ref: 'TR-1',
+    parameter_source: 'KATALOG',
+    field: 'r_pct',
+    value: '0.55',
+  });
 } else {
   // Kontekst operacji (szyna/stacja) dla kreatorów pole/OZE/transformator.
   const op =
@@ -2317,7 +2453,18 @@ function Harness() {
         onOtworzDowod={() => undefined}
       />
     );
-  } else node = <KreatorPolaSn />;
+  }
+  // Karta Z-2 (fala P-4/P-5): 9 kreatorów ui2 nowe w tej fali.
+  else if (creator === 'zrodlo-dyspozycyjne') node = <KreatorZrodloDyspozycyjne />;
+  else if (creator === 'odgalezienie') node = <KreatorOdgalezienia />;
+  else if (creator === 'slup-odgalezny') node = <KreatorSlupaOdgaleznego />;
+  else if (creator === 'zksn') node = <KreatorZksn />;
+  else if (creator === 'przekaznik') node = <KreatorPrzekaznika />;
+  else if (creator === 'pomiar') node = <KreatorPomiaru />;
+  else if (creator === 'pole-nn') node = <KreatorPolaNn />;
+  else if (creator === 'przypisanie-katalogu') node = <KreatorPrzypisaniaKatalogu />;
+  else if (creator === 'edycja-parametrow') node = <KreatorEdycjiParametrow />;
+  else node = <KreatorPolaSn />;
 
   return (
     <div
