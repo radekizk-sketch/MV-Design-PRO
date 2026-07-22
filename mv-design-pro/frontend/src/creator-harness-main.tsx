@@ -143,17 +143,20 @@ const SKLADOWE_WYNIK = {
       target_id: 'node-1',
       element_id: 'bus/gpz/sn',
       target_name: 'Szyna GPZ',
-      ikss_ka: 12.503,
-      ip_ka: 31.2,
-      ith_ka: 12.9,
-      sk_mva: 325.1,
+      // Liczby SPÓJNE ze składowymi śladu (Z1=Z2=0,1+j0,4; Z0=0,3+j0,9):
+      // ΣZ = 0,5+j1,7 → |Zk|=1,7720 Ω; Ik1″=√3·c·Un/|ΣZ|=√3·1,1·15000/1,7720=16,128 kA;
+      // X/R=1,7/0,5=3,400; κ=1,02+0,98·e^(−3·0,5/1,7)=1,4255; ip=κ·√2·Ik″=32,51 kA.
+      ikss_ka: 16.128,
+      ip_ka: 32.51,
+      ith_ka: 16.2,
+      sk_mva: 419.0,
       fault_type: '1F',
       flags: [],
-      rk_ohm: 0.5121,
-      xk_ohm: 1.2345,
-      zk_ohm: 1.3365,
-      xr_ratio: 2.41,
-      kappa: 1.602,
+      rk_ohm: 0.5,
+      xk_ohm: 1.7,
+      zk_ohm: 1.772,
+      xr_ratio: 3.4,
+      kappa: 1.4255,
       c_factor: 1.1,
       tk_s: 1.0,
       reporting_status: 'reportable',
@@ -176,7 +179,10 @@ const SKLADOWE_SLAD = {
       target_id: 'node-1',
       title: 'Impedancja zastępcza w punkcie zwarcia',
       formula_latex: 'Z_k = Z_1 + Z_2 + Z_0',
-      substitution: '\\left(0.1 + j 0.4\\right)',
+      // Pełne podstawienie dyplomowe (wzór → liczby → wynik z jednostką),
+      // spójne z wierszem bilansu (|Zk|=1,7720 Ω).
+      substitution:
+        'Z_k = (0{,}1 + j\\,0{,}4) + (0{,}1 + j\\,0{,}4) + (0{,}3 + j\\,0{,}9) = 0{,}5 + j\\,1{,}7\\ \\Omega,\\quad |Z_k| = 1{,}7720\\ \\Omega',
       inputs: {
         z1_ohm: { re: 0.1, im: 0.4 },
         z2_ohm: { re: 0.1, im: 0.4 },
@@ -255,9 +261,13 @@ const ZBIEZNOSC_SLAD = {
   slack_bus_id: 'BUS-GPZ',
   pq_bus_ids: [],
   pv_bus_ids: [],
+  // 4 iteracje SPÓJNE z werdyktem („zbieżny w 4 iteracjach") i tolerancją 1e-6
+  // (ostatnia norma poniżej tolerancji).
   iterations: [
     { k: 1, norm_mismatch: 0.5, max_mismatch_pu: 0.2 },
-    { k: 2, norm_mismatch: 0.001, max_mismatch_pu: 0.0005 },
+    { k: 2, norm_mismatch: 0.012, max_mismatch_pu: 0.005 },
+    { k: 3, norm_mismatch: 0.00035, max_mismatch_pu: 0.00011 },
+    { k: 4, norm_mismatch: 8.7e-7, max_mismatch_pu: 2.9e-7 },
   ],
   converged: true,
   final_iterations_count: 4,

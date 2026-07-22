@@ -50,6 +50,18 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     const wzor = page.getByTestId('mvd-skladowe-wzor').locator('[data-testid="math-rendered"]').first();
     expect(await wzor.getAttribute('data-latex')).toContain('Z_k');
     await expect(page.locator('.katex').first()).toBeVisible();
+    // Wywód DYPLOMOWY, nie zdegenerowany: podstawienie zawiera pełną sumę
+    // składowych ORAZ wynik z jednostką, a |Zk| podstawienia == |Zk| wiersza
+    // bilansu (spójność liczb między sekcjami tego samego ekranu).
+    const podstawienie = page
+      .getByTestId('mvd-skladowe-podstawienie')
+      .locator('[data-testid="math-rendered"]')
+      .first();
+    const latexPodstawienia = (await podstawienie.getAttribute('data-latex')) ?? '';
+    expect(latexPodstawienia).toContain('0{,}5 + j');
+    expect(latexPodstawienia).toContain('1{,}7720');
+    expect(latexPodstawienia).toContain('\\Omega');
+    await expect(page.getByTestId('mvd-skladowe-tabela')).toContainText('1,7720');
     await expect(page.getByTestId('mvd-skladowe-uziemienie-siec')).toContainText('Szyna GPZ');
   } else if (creator === 'wyniki-zbieznosc') {
     // Werdykt zbieżności (liczba iteracji) + bilans + pętla OLTC → ślad iteracji
@@ -61,7 +73,12 @@ async function prowadzScene(page: Page, creator: string): Promise<void> {
     await expect(page.getByTestId('mvd-zbieznosc-bilans')).toContainText('0,1234');
     await expect(page.getByTestId('mvd-zbieznosc-oltc-tabela')).toContainText('uuid-tr-1');
     await page.getByTestId('mvd-zbieznosc-slad-przelacznik').click();
-    await expect(page.getByTestId('mvd-zbieznosc-slad-tabela')).toBeVisible();
+    const sladTabela = page.getByTestId('mvd-zbieznosc-slad-tabela');
+    await expect(sladTabela).toBeVisible();
+    // Spójność: liczba wierszy śladu iteracji == liczba iteracji z werdyktu (4),
+    // a ostatnia norma jest poniżej tolerancji 1e-6 (uczciwy dowód zbieżności).
+    await expect(sladTabela.locator('tbody tr')).toHaveCount(4);
+    await expect(sladTabela).toContainText('8,700e-7');
   } else if (creator === 'wyniki-stan-fazowy') {
     // Tabela faz A/B/C (napięcia/prądy) + asymetrie z werdyktem z flagi solvera
     // (prądowa PRZEKROCZENIE); werdykty renderowane domyślnie.
