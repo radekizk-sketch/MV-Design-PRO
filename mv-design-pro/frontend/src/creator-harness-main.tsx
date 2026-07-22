@@ -21,6 +21,10 @@ import { KreatorTransformatoraSnNn } from './ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from './ui2/kreatory/zrodlo';
 import { KreatorZrodlaOze } from './ui2/kreatory/zrodlo-oze';
 import { SekcjaArcFlash, SekcjaWalidacji } from './ui2/wyniki/jakosc/EkranJakosci';
+import { EkranRozplywu } from './ui2/wyniki/rozplyw';
+import { EkranZwarc } from './ui2/wyniki/zwarcia';
+import { EkranPorownania } from './ui2/wyniki/porownanie';
+import { useResultsInspectorStore } from './ui/results-inspector/store';
 import { EkranKompensacji } from './ui2/oze';
 import { HubDokumentacji } from './ui2/spaces/dokumentacja';
 import { PulpitProjektu } from './ui2/spaces/projekt';
@@ -109,6 +113,25 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
             ],
           },
           {
+            // Scena "rozplyw" (R3-A): werdykt FAIL transformatora w kolumnie obciazalnosci.
+            check_type: 'TRANSFORMER_LOADING', target_id: 'TR-1', target_name: 'Transformator TR-1',
+            observed_value: 104.0, unit: '%', limit_warn: 80.0, limit_fail: 100.0, margin_pct: -4.0,
+            status: 'FAIL', why_pl: 'Obciazenie transformatora 104.00 % przekracza limit 100.0 %.',
+            white_box: [
+              {
+                tekst: 'Wzor: obciazenie = max(|S_gora|, |S_dol|) / S_n * 100%',
+                latex: '\\varepsilon = \\frac{\\max(|S_{\\text{gora}}|, |S_{\\text{dol}}|)}{S_n} \\cdot 100\\%',
+              },
+              { tekst: 'Dane: |S_gora| = 1.6640 MVA, |S_dol| = 1.6380 MVA (wynik PF), S_n = 1.6000 MVA', latex: null },
+              {
+                tekst: 'Wynik: obciazenie = 104.00 %',
+                latex: '\\varepsilon = \\frac{1.6640}{1.6000} \\cdot 100\\% = 104.00\\%',
+              },
+              { tekst: 'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %', latex: null },
+              { tekst: 'Werdykt: PRZEKROCZENIE', latex: null },
+            ],
+          },
+          {
             check_type: 'BRANCH_LOADING', target_id: 'L-14', target_name: 'Odcinek L-14',
             observed_value: 90.0, unit: '%', limit_warn: 80.0, limit_fail: 100.0, margin_pct: -10.0,
             status: 'WARNING', why_pl: 'Obciazenie 90.00 % powyzej progu ostrzegawczego 80.0 %.',
@@ -127,7 +150,58 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
             ],
           },
         ],
-        summary: { pass_count: 6, warning_count: 1, fail_count: 1, not_computed_count: 0, worst_item_target_id: 'SZ-ST7', worst_item_margin_pct: 2.0 },
+        summary: { pass_count: 5, warning_count: 1, fail_count: 2, not_computed_count: 0, worst_item_target_id: 'SZ-ST7', worst_item_margin_pct: 2.0 },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/proof/sc3f/contributions')) {
+    // Scena "zwarcia" (R3-B): rozbicie maszynowe — ksztalt 1:1 z
+    // `MachineShortCircuitResult.to_dict()` (pola konsumowane przez `naWklady`).
+    return new Response(
+      JSON.stringify({
+        contributions: [
+          { source_id: 'src-gpz', source_name: 'System (GPZ 110/15)', ikss_partial_a: 9620 },
+          { source_id: 'gen-pv-1', source_name: 'Falownik PV 4 MW', ikss_partial_a: 1730 },
+          { source_id: 'gen-bess-1', source_name: 'Magazyn BESS 2 MW', ikss_partial_a: 1130 },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/power-flow-runs')) {
+    // Scena "porownanie": lista zakonczonych przebiegow rozplywu projektu.
+    return new Response(
+      JSON.stringify({
+        runs: [
+          { id: 'run-a', project_id: 'proj-demo', study_case_id: 'K1', status: 'FINISHED', result_status: 'FRESH', created_at: '2026-07-21T10:00:00Z', finished_at: '2026-07-21T10:00:04Z', input_hash: 'hash-a', converged: true, iterations: 5 },
+          { id: 'run-b', project_id: 'proj-demo', study_case_id: 'K2', status: 'FINISHED', result_status: 'FRESH', created_at: '2026-07-21T11:00:00Z', finished_at: '2026-07-21T11:00:05Z', input_hash: 'hash-b', converged: true, iterations: 6 },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/power-flow-comparisons')) {
+    // Scena "porownanie" (R3-C): wynik porownania A/B — ksztalt 1:1 z
+    // `PowerFlowComparisonResult` (delty i ranking WYLACZNIE z backendu).
+    return new Response(
+      JSON.stringify({
+        comparison_id: 'cmp-demo-1', run_a_id: 'run-a', run_b_id: 'run-b', project_id: 'proj-demo',
+        bus_diffs: [
+          { bus_id: 'SZ-GPZ', v_pu_a: 1.0, v_pu_b: 1.0, angle_deg_a: 0, angle_deg_b: 0, p_injected_mw_a: 6.4, p_injected_mw_b: 5.1, q_injected_mvar_a: 1.9, q_injected_mvar_b: 1.4, delta_v_pu: 0, delta_angle_deg: 0, delta_p_mw: -1.3, delta_q_mvar: -0.5 },
+          { bus_id: 'SZ-ST7', v_pu_a: 0.941, v_pu_b: 0.972, angle_deg_a: -2.9, angle_deg_b: -2.1, p_injected_mw_a: -1.2, p_injected_mw_b: -1.2, q_injected_mvar_a: -0.4, q_injected_mvar_b: -0.1, delta_v_pu: 0.031, delta_angle_deg: 0.8, delta_p_mw: 0, delta_q_mvar: 0.3 },
+          { bus_id: 'SZ-PV2', v_pu_a: 1.062, v_pu_b: 1.038, angle_deg_a: 1.4, angle_deg_b: 1.1, p_injected_mw_a: 3.9, p_injected_mw_b: 2.6, q_injected_mvar_a: 0.2, q_injected_mvar_b: 0.4, delta_v_pu: -0.024, delta_angle_deg: -0.3, delta_p_mw: -1.3, delta_q_mvar: 0.2 },
+        ],
+        branch_diffs: [
+          { branch_id: 'L-14', p_from_mw_a: 2.31, p_from_mw_b: 1.62, q_from_mvar_a: 0.72, q_from_mvar_b: 0.48, p_to_mw_a: -2.28, p_to_mw_b: -1.6, q_to_mvar_a: -0.7, q_to_mvar_b: -0.47, losses_p_mw_a: 0.031, losses_p_mw_b: 0.015, losses_q_mvar_a: 0.018, losses_q_mvar_b: 0.009, delta_p_from_mw: -0.69, delta_q_from_mvar: -0.24, delta_p_to_mw: 0.68, delta_q_to_mvar: 0.23, delta_losses_p_mw: -0.016, delta_losses_q_mvar: -0.009 },
+          { branch_id: 'TR-1', p_from_mw_a: 1.66, p_from_mw_b: 1.31, q_from_mvar_a: 0.5, q_from_mvar_b: 0.38, p_to_mw_a: -1.64, p_to_mw_b: -1.3, q_to_mvar_a: -0.48, q_to_mvar_b: -0.37, losses_p_mw_a: 0.021, losses_p_mw_b: 0.013, losses_q_mvar_a: 0.02, losses_q_mvar_b: 0.012, delta_p_from_mw: -0.35, delta_q_from_mvar: -0.12, delta_p_to_mw: 0.34, delta_q_to_mvar: 0.11, delta_losses_p_mw: -0.008, delta_losses_q_mvar: -0.008 },
+        ],
+        ranking: [
+          { issue_code: 'VOLTAGE_DELTA_HIGH', severity: 4, element_ref: 'SZ-ST7', description_pl: 'Napiecie na szynie ST-7 rosnie o 0.031 pu po zalaczeniu kompensacji.', evidence_ref: 1 },
+          { issue_code: 'LOSSES_DECREASED', severity: 2, element_ref: 'L-14', description_pl: 'Straty czynne odcinka L-14 spadaja o 16 kW.', evidence_ref: 2 },
+        ],
+        summary: { total_buses: 3, total_branches: 2, converged_a: true, converged_b: true, total_losses_p_mw_a: 0.052, total_losses_p_mw_b: 0.028, delta_total_losses_p_mw: -0.024, max_delta_v_pu: 0.031, max_delta_angle_deg: 0.8, total_issues: 2, critical_issues: 0, major_issues: 1, moderate_issues: 0, minor_issues: 1 },
+        input_hash: 'hash-cmp-demo', created_at: '2026-07-22T09:00:00Z',
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
@@ -294,6 +368,50 @@ if (creator === 'arcflash') {
       ],
     },
   } as never);
+} else if (creator === 'rozplyw') {
+  // Rozplyw z kolumna obciazalnosci (R3-A/V12K-110): wynik PF read-only +
+  // werdykty z podmienionego endpointu walidacji (target_id = branch_id).
+  usePowerFlowResultsStore.setState({
+    results: {
+      result_version: '1.0', converged: true, iterations_count: 5, tolerance_used: 1e-6,
+      base_mva: 100, slack_bus_id: 'SZ-GPZ',
+      bus_results: [
+        { bus_id: 'SZ-GPZ', v_pu: 1.0, angle_deg: 0, p_injected_mw: 6.4, q_injected_mvar: 1.9 },
+        { bus_id: 'SZ-ST7', v_pu: 0.941, angle_deg: -2.9, p_injected_mw: -1.2, q_injected_mvar: -0.4 },
+        { bus_id: 'SZ-PV2', v_pu: 1.062, angle_deg: 1.4, p_injected_mw: 3.9, q_injected_mvar: 0.2 },
+      ],
+      branch_results: [
+        { branch_id: 'L-14', from_bus_id: 'SZ-GPZ', to_bus_id: 'SZ-ST7', p_from_mw: 2.31, q_from_mvar: 0.72, p_to_mw: -2.28, q_to_mvar: -0.7, losses_p_mw: 0.031, losses_q_mvar: 0.018 },
+        { branch_id: 'TR-1', from_bus_id: 'SZ-ST7', to_bus_id: 'SZ-NN1', p_from_mw: 1.66, q_from_mvar: 0.5, p_to_mw: -1.64, q_to_mvar: -0.48, losses_p_mw: 0.021, losses_q_mvar: 0.02 },
+        { branch_id: 'L-2', from_bus_id: 'SZ-GPZ', to_bus_id: 'SZ-PV2', p_from_mw: -3.88, q_from_mvar: -0.19, p_to_mw: 3.9, q_to_mvar: 0.2, losses_p_mw: 0.019, losses_q_mvar: 0.011 },
+      ],
+      summary: { total_losses_p_mw: 0.071, total_losses_q_mvar: 0.049, min_v_pu: 0.941, max_v_pu: 1.062, slack_p_mw: 6.4, slack_q_mvar: 1.9 },
+    },
+    runHeader: { id: 'run-lf-1' },
+  } as never);
+} else if (creator === 'zwarcia') {
+  // Wyniki zwarciowe z wkladami zrodel (R3-B/V12K-109): tabela punktow ze
+  // store'u read-only, wklady z podmienionego endpointu SC3F contributions.
+  useResultsInspectorStore.setState({
+    shortCircuitResults: {
+      run_id: 'run-sc-2',
+      rows: [
+        { target_id: 'SZ-GPZ', element_id: 'SZ-GPZ', target_name: 'Szyna GPZ 15 kV', ikss_ka: 12.48, ip_ka: 31.2, ith_ka: 12.9, sk_mva: 324.2, fault_type: '3F', flags: [] },
+        { target_id: 'SZ-ST7', element_id: 'SZ-ST7', target_name: 'Szyna ST-7', ikss_ka: 6.05, ip_ka: 13.9, ith_ka: 6.2, sk_mva: 157.2, fault_type: '3F', flags: [] },
+        { target_id: 'SZ-PV2', element_id: 'SZ-PV2', target_name: 'Szyna PV-2', ikss_ka: 7.31, ip_ka: 17.4, ith_ka: 7.5, sk_mva: 189.9, fault_type: '3F', flags: [] },
+      ],
+    },
+    selectedRunId: 'run-sc-2',
+  } as never);
+} else if (creator === 'porownanie') {
+  // Porownanie przebiegow A/B (R3-C/V12K-111): lista przebiegow i wynik
+  // porownania z podmienionego fetch; nazwy przypadkow ze store'u.
+  useStudyCasesStore.setState({
+    cases: [
+      { id: 'K1', name: 'Stan normalny' },
+      { id: 'K2', name: 'Wariant z kompensacja' },
+    ],
+  } as never);
 } else if (creator === 'swiezosc') {
   // Pasek aktywnego przypadku (K4/V12K-102): wyniki NIEAKTUALNE → klikalny znacznik.
   // Chip wyników renderuje się wyłącznie przy obecnym projekcie (projectPresent).
@@ -366,6 +484,19 @@ function Harness() {
         onOtworzDowod={() => undefined}
       />
     );
+  else if (creator === 'rozplyw')
+    node = <EkranRozplywu trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+  else if (creator === 'zwarcia')
+    node = (
+      <EkranZwarc
+        trybZaawansowania="expert"
+        onOtworzDowod={() => undefined}
+        wspolczynnikC={1.1}
+        czasCieplnyS={1.0}
+      />
+    );
+  else if (creator === 'porownanie')
+    node = <EkranPorownania projektId="proj-demo" trybZaawansowania="expert" />;
   else if (creator === 'kompensacja')
     node = (
       <EkranKompensacji

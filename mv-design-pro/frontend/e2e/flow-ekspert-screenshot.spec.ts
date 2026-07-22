@@ -17,7 +17,16 @@ const _dirname = path.dirname(fileURLToPath(import.meta.url));
 const HARNESS_URL = 'http://127.0.0.1:5173/creator-harness.html';
 const OUTPUT_DIR = path.resolve(_dirname, '../../docs/audit/visual/flow-ekspert');
 
-const SCENY = ['pulpit', 'uwaga', 'swiezosc', 'walidacja', 'kompensacja'] as const;
+const SCENY = [
+  'pulpit',
+  'uwaga',
+  'swiezosc',
+  'walidacja',
+  'kompensacja',
+  'rozplyw',
+  'zwarcia',
+  'porownanie',
+] as const;
 const THEMES = ['light', 'dark'] as const;
 
 test.describe('flow-ekspert:screenshot', () => {
@@ -62,6 +71,24 @@ test.describe('flow-ekspert:screenshot', () => {
           await page.getByRole('row').filter({ hasText: 'Odchylenie napięcia' }).click();
           await page.getByTestId('mvd-jakosc-wal-slad-otworz').click();
           await expect(page.getByTestId('mvd-jakosc-wal-slad')).toContainText('Werdykt: PRZEKROCZENIE');
+        } else if (scena === 'rozplyw') {
+          // R3-A: podzakladka Galezie -> kolumna "Obciazenie [%]" z werdyktem
+          // backendu (TR-1 FAIL 104 %, L-14 WARNING 90 %).
+          await page.getByTestId('mvd-rozplyw-podzakladka-galezie').click();
+          await expect(page.getByTestId('mvd-wyn-th-obciazenie')).toBeVisible();
+          await expect(page.getByTestId('mvd-wyn-tabela')).toContainText('104,0');
+        } else if (scena === 'zwarcia') {
+          // R3-B: sekcja wkladow dla domyslnego punktu z realnego dostawcy
+          // (endpoint SC3F contributions, podmieniony fetch).
+          await expect(page.getByTestId('mvd-zwarcia-wklady')).toContainText('Falownik PV 4 MW');
+        } else if (scena === 'porownanie') {
+          // R3-C: wybor pary A/B + jawne "Porownaj przebiegi" -> wynik z tabela
+          // szyn (kolumny A i B z dowodami wlasciwego przebiegu).
+          await page.getByTestId('mvd-por-select-a').selectOption('run-a');
+          await page.getByTestId('mvd-por-select-b').selectOption('run-b');
+          await page.getByTestId('mvd-por-przycisk').click();
+          await expect(page.getByTestId('mvd-por-wynik')).toBeVisible();
+          await expect(page.getByTestId('mvd-por-wynik')).toContainText('SZ-ST7');
         } else {
           // R2-B: pre-selekcja wezla z deep-linku widoczna w polu wyboru.
           await expect(page.getByTestId('mvd-komp-wezel')).toHaveValue('SZ-ST7');
