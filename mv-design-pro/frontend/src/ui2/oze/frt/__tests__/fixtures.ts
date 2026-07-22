@@ -136,9 +136,10 @@ export function widokLvrtWObwiedniFixture(): WidokTrajektoriiFrt {
             latex: 'm_{U} = \\min_{t \\ge t_{z}}\\bigl(u(t) - u_{kr}(t)\\bigr)',
           },
           {
+            // Spojnosc danych: backend liczy N z len(trajectory) — tu 10 punktow.
             tekst:
               'Dane: margines z solvera m_U = 0.000000 p.u. '
-              + '(FrtScenarioResult.margin_to_curve_pu), liczba punktow trajektorii: 11.',
+              + '(FrtScenarioResult.margin_to_curve_pu), liczba punktow trajektorii: 10.',
             latex: null,
           },
           {

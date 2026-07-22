@@ -97,7 +97,8 @@ export function WykresObszaruChart({
           }}
         />
         <Tooltip content={<DymekObszaru />} />
-        <Legend wrapperStyle={{ fontSize: 11, color: 'var(--mvd-muted)' }} />
+        {/* Legenda u góry — dolna kolidowała z podpisem osi X (insideBottom). */}
+        <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11, color: 'var(--mvd-muted)' }} />
         <Line
           type="monotone"
           dataKey="qMax"

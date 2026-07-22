@@ -5,6 +5,8 @@
  * i podmienionym `fetch` (dane katalogowe), w motywie jasnym/ciemnym.
  *
  * Query: `?creator=pole|oze|transformator|kompensator|magistrala|odbior|zrodlo|arcflash&theme=light|dark`.
+ * Sceny dowodowe OZE (karta V-A): `?creator=lom|frt|oltc|macierz` — ekrany z pełnym
+ * wywodem akademickim (WHITE BOX/KaTeX) na realnych komponentach.
  * Używany wyłącznie przez: e2e/creator-screenshot.spec.ts (nie część bundla aplikacji).
  */
 
@@ -25,7 +27,15 @@ import { EkranRozplywu } from './ui2/wyniki/rozplyw';
 import { EkranZwarc } from './ui2/wyniki/zwarcia';
 import { EkranPorownania } from './ui2/wyniki/porownanie';
 import { useResultsInspectorStore } from './ui/results-inspector/store';
-import { EkranKompensacji } from './ui2/oze';
+import { EkranFrt, EkranKompensacji, EkranLom, MacierzNcRfg } from './ui2/oze';
+import { EkranBadanOltc } from './ui2/wyniki/oltc';
+import {
+  EMPTY_DER_CATALOGS,
+  EMPTY_DER_PROFILES,
+  EMPTY_DER_READINESS,
+  useStationDerStore,
+  type StationDerConnection,
+} from './ui/network-build/station-der';
 import { HubDokumentacji } from './ui2/spaces/dokumentacja';
 import { PulpitProjektu } from './ui2/spaces/projekt';
 import { EkranCoWymagaUwagi } from './ui2/wyniki/co-wymaga-uwagi';
@@ -344,6 +354,513 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
+  if (url.includes('/api/ncrfg-tests/catalog')) {
+    // Sceny "frt"/"macierz": katalog wymogow NC RfG — ksztalt 1:1 z
+    // `api/ncrfg_ptpiree_tests.py::get_ncrfg_test_catalog` (operators z progami
+    // klas `NcRfgModuleType` + testy z `TEST_CATALOG` silnika ncrfg_ptpiree).
+    const modulTypy = [
+      { id: 'A', threshold_kw_min: 0.8, threshold_kw_max: 200, voltage_kv_max: 110, description_pl: 'Modul typu A (0,8 kW - 200 kW)' },
+      { id: 'B', threshold_kw_min: 200, threshold_kw_max: 10000, voltage_kv_max: 110, description_pl: 'Modul typu B (200 kW - 10 MW)' },
+      { id: 'C', threshold_kw_min: 10000, threshold_kw_max: 75000, voltage_kv_max: 110, description_pl: 'Modul typu C (10 MW - 75 MW)' },
+      { id: 'D', threshold_kw_min: 75000, threshold_kw_max: null, voltage_kv_max: null, description_pl: 'Modul typu D (>= 75 MW lub >= 110 kV)' },
+    ];
+    return new Response(
+      JSON.stringify({
+        procedure_version: 'PTPiREE Procedura testowania v3.0',
+        source_ref: 'https://ptpiree.pl/kodeksy-sieci/procedura-testowania/',
+        operators: [
+          { operator_id: 'enea', operator_name_pl: 'Enea Operator', last_revision: '2024-01', module_types: modulTypy },
+          { operator_id: 'pse', operator_name_pl: 'PSE — Polskie Sieci Elektroenergetyczne', last_revision: '2024-03', module_types: modulTypy },
+        ],
+        tests: [
+          { test_id: 'T05', ability_pl: 'Możliwość regulacji mocy czynnej', procedure_basis_pl: 'Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
+          { test_id: 'T09', ability_pl: 'Zdolność do generacji mocy biernej', procedure_basis_pl: 'Zakres testów zgodności PPM typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
+          { test_id: 'T10', ability_pl: 'Potwierdzenie mocy maksymalnej PMAX', procedure_basis_pl: 'Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
+          { test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia', procedure_basis_pl: 'Test FRT dla modułów B/C/D oraz profili operatora.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
+          { test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', procedure_basis_pl: 'Wymaganie profilu operatora dla modułów B/C/D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/ncrfg-tests/run')) {
+    // Scena "macierz": wynik biegu zgodnosci — ksztalt 1:1 z
+    // `NcRfgPtpireeSolver.run` (engine.py): moduly (kolejnosc = selectAllDers,
+    // sort po id: bess-1, pv-1), werdykty z `_ok_fail`/`_missing`, slad
+    // `TraceBuilder.add` (Wzor -> Dane -> Podstawienie -> Wynik -> jednostki).
+    // Liczby spojne miedzy krokami: T16 BESS 1.800 s > 1.000 s -> fail.
+    // Podsumowania testow 1:1 z formatami silnika: `_active_power_control`,
+    // `_reactive_voltage_test`, `_pmax_pmin_test`, `_p_recovery_test` — liczby
+    // wyliczone z mocy modulu (Pn 500/800 kW, ramp 10 %/min, zakres Q ±33% Pn).
+    const testyBazowe = (pMaxKw: number) => [
+      { test_id: 'T05', ability_pl: 'Możliwość regulacji mocy czynnej', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: 'Regulacja P do 50% PMAX: czas ustalenia 5.0 min.', metrics: { settling_time_min: 5.0 }, trace_refs: [], fix_actions: [] },
+      { test_id: 'T09', ability_pl: 'Zdolność do generacji mocy biernej', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: `Zakres Q: ${(-0.33 * pMaxKw).toFixed(1)} do ${(0.33 * pMaxKw).toFixed(1)} kvar.`, metrics: { q_min_kvar: -0.33 * pMaxKw, q_max_kvar: 0.33 * pMaxKw }, trace_refs: [], fix_actions: [] },
+      { test_id: 'T10', ability_pl: 'Potwierdzenie mocy maksymalnej PMAX', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: `PMAX potwierdzone z danych katalogowych/deklaracji: ${pMaxKw.toFixed(1)} kW.`, metrics: { pmax_kw: pMaxKw }, trace_refs: [], fix_actions: [] },
+    ];
+    return new Response(
+      JSON.stringify({
+        contract: 'NcRfgPtpireeTestResultV1',
+        procedure_version: 'PTPiREE Procedura testowania v3.0',
+        solver_version: 'ncrfg-ptpiree-1.0.0',
+        input_hash: 'ncrfg-in-4f2a9c1d',
+        deterministic_hash: 'ncrfg-det-7b3e5a90',
+        modules: [
+          {
+            der_ref: 'bess-1', der_name: 'Magazyn energii 0,8 MW', operator_id: 'enea',
+            operator_name_pl: 'Enea Operator', module_type: 'B', module_family: 'PPM',
+            p_max_kw: 800, voltage_kv: 0.4,
+            required_count: 5, pass_count: 3, fail_count: 1, no_data_count: 1,
+            not_required_count: 0, overall_status: 'niezgodny',
+            tests: [
+              ...testyBazowe(800),
+              {
+                test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia',
+                required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'no_data',
+                summary_pl: 'Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.',
+                metrics: {}, trace_refs: [],
+                fix_actions: ['Brak krzywej FRT/HVRT, profilu operatora albo modelu dynamicznego.'],
+              },
+              {
+                test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', required: true,
+                required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'fail',
+                summary_pl: 'Odbudowa P po zakłóceniu: 1.800s.',
+                metrics: { p_recovery_time_s: 1.8 },
+                trace_refs: ['proof:ncrfg-ptpiree:T16:active_power_recovery:2'],
+                fix_actions: ['Uzupełnij nastawy odbudowy P po FRT lub model dynamiczny.'],
+              },
+            ],
+          },
+          {
+            der_ref: 'pv-1', der_name: 'Instalacja PV 0,5 MW', operator_id: 'enea',
+            operator_name_pl: 'Enea Operator', module_type: 'B', module_family: 'PPM',
+            p_max_kw: 500, voltage_kv: 0.4,
+            required_count: 5, pass_count: 5, fail_count: 0, no_data_count: 0,
+            not_required_count: 0, overall_status: 'zgodny',
+            tests: [
+              ...testyBazowe(500),
+              { test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia', required: true, required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass', summary_pl: 'LVRT: margines 0.0 p.u. w punkcie 0.15s.', metrics: { margin_pu: 0.0, critical_time_s: 0.15 }, trace_refs: [], fix_actions: [] },
+              {
+                test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', required: true,
+                required_reason_pl: 'Wymagany dla modułu typu B.', verdict: 'pass',
+                summary_pl: 'Odbudowa P po zakłóceniu: 0.310s.',
+                metrics: { p_recovery_time_s: 0.31 },
+                trace_refs: ['proof:ncrfg-ptpiree:T16:active_power_recovery:1'], fix_actions: [],
+              },
+            ],
+          },
+        ],
+        test_catalog: [
+          { test_id: 'T05', ability_pl: 'Możliwość regulacji mocy czynnej', procedure_basis_pl: 'Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
+          { test_id: 'T09', ability_pl: 'Zdolność do generacji mocy biernej', procedure_basis_pl: 'Zakres testów zgodności PPM typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
+          { test_id: 'T10', ability_pl: 'Potwierdzenie mocy maksymalnej PMAX', procedure_basis_pl: 'Sprawdzenia dodatkowe procedury PTPiREE dla typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
+          { test_id: 'T14', ability_pl: 'LVRT - pozostanie w pracy przy zapadzie napięcia', procedure_basis_pl: 'Test FRT dla modułów B/C/D oraz profili operatora.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
+          { test_id: 'T16', ability_pl: 'Odbudowa mocy czynnej po zakłóceniu', procedure_basis_pl: 'Wymaganie profilu operatora dla modułów B/C/D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
+        ],
+        // Slad WHITE BOX 1:1 z `TraceBuilder.add` (`_p_recovery_test`):
+        // formula ASCII, dane, podstawienie, wynik, weryfikacja jednostek.
+        white_box_trace: [
+          {
+            step: 1, test_id: 'T16', key: 'active_power_recovery',
+            formula: 't_recovery,module <= t_recovery,profile',
+            data: { module_s: 0.31, profile_s: 1.0 },
+            substitution: '0.310 <= 1.000',
+            result: { ok: true, margin_s: 0.69 },
+            unit_check: 's - s = s.',
+            proof_ref: 'proof:ncrfg-ptpiree:T16:active_power_recovery:1',
+          },
+          {
+            step: 2, test_id: 'T16', key: 'active_power_recovery',
+            formula: 't_recovery,module <= t_recovery,profile',
+            data: { module_s: 1.8, profile_s: 1.0 },
+            substitution: '1.800 <= 1.000',
+            result: { ok: false, margin_s: -0.8 },
+            unit_check: 's - s = s.',
+            proof_ref: 'proof:ncrfg-ptpiree:T16:active_power_recovery:2',
+          },
+        ],
+        report_pl: 'Raport zgodności NC RfG (PTPiREE Procedura testowania v3.0): 1 moduł zgodny, 1 moduł niezgodny.',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/oze-analysis/lom-protection')) {
+    // Scena "lom": ocena ochrony od pracy wyspowej — ksztalt 1:1 z
+    // `application/analyses/ochrona_lom.py::build_ochrona_lom_view`; wywody
+    // per porownanie 1:1 z `_wywod_okna` (kroki {tekst, latex}, zasada KaTeX).
+    const zrodloRocof =
+      'Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. b '
+      + '(zdolność pracy przy zmianach częstotliwości — ROCOF withstand); wartość krajowa PTPiREE 2 Hz/s';
+    const zrodloFreq =
+      'Rozporządzenie Komisji (UE) 2016/631 (NC RfG), Art. 13 ust. 1 lit. a '
+      + '(pasmo częstotliwości pracy Europy kontynentalnej 47,5–51,5 Hz)';
+    const zrodloSpz = 'SpzState.fast_time_s / slow_time_s jednostek nadrzędnych (BayProtectionControlUnit)';
+    const komunikat81R =
+      'Nastawa df/dt (1.0 Hz/s) poniżej dolnego okna (2.0 Hz/s) — ryzyko zbędnych '
+      + 'wyłączeń (fałszywe wykrycie wyspy).';
+    const komunikat81U = 'Próg 81U (47.5 Hz) w oknie normatywnym (≤ 47.5 Hz).';
+    const komunikatSpz =
+      'Brak danych o przerwie SPZ jednostek nadrzędnych (SpzState nieosiągalny w ENM) '
+      + '— porównanie niemożliwe.';
+    return new Response(
+      JSON.stringify({
+        analysis: 'ochrona_lom',
+        context: { enm_name: 'Przyłączenie farmy PV 8 MW', enm_hash: 'enm-3c1d9f7b52a80e46' },
+        input_hash: 'lom-9a4b7c2e6d1f0835',
+        zalozenia_pl: [
+          'Ocena LoM to interpretacja normatywna (porównania), nie symulacja fizyki wyspy.',
+          'Moduł wytwórczy = generator w ENM; pole przyłączeniowe = pole (bay) na szynie '
+          + 'modułu lub o roli OZE z przypisaniem zabezpieczeń.',
+          'Okna normatywne pochodzą wyłącznie z cytowanych źródeł (NC RfG / PTPiREE); '
+          + 'brak źródła → okno None + INFO, bez zmyślonych liczb.',
+          'Czasy przerwy SPZ pochodzą z SpzState jednostek nadrzędnych; gdy nieosiągalne '
+          + 'w ENM — uczciwy INFO.',
+        ],
+        normative_sources: {
+          rocof_81R: { window_pl: 'df/dt ≥ 2.0 Hz/s', source_pl: zrodloRocof },
+          vector_shift_78: { window_pl: null, source_pl: null },
+          underfrequency_81U: { window_pl: 'próg f ≤ 47.5 Hz', source_pl: zrodloFreq },
+          overfrequency_81O: { window_pl: 'próg f ≥ 51.5 Hz', source_pl: zrodloFreq },
+        },
+        fields: [
+          {
+            bay_ref: 'bay-pv-a', bay_name: 'Pole PV A', substation_ref: 'gpz-1',
+            bus_ref: 'bus-oze-1', generating_module_refs: ['gen-pv-1'], status: 'ERROR',
+            checks: [
+              {
+                kind: 'obecnosc', function_ansi: null, function_label_pl: null, severity: 'ERROR',
+                message_pl:
+                  'Pole modułu wytwórczego bez jakiejkolwiek funkcji ochrony od pracy '
+                  + 'wyspowej (LoM: 81R / 78 / 81U / 81O).',
+                value: null, unit: null, window: null, source_pl: null, wywod: [],
+              },
+            ],
+          },
+          {
+            bay_ref: 'bay-bess-b', bay_name: 'Pole BESS B', substation_ref: 'gpz-1',
+            bus_ref: 'bus-oze-2', generating_module_refs: ['gen-bess-1'], status: 'WARN',
+            checks: [
+              {
+                kind: 'okno_normatywne', function_ansi: '81R',
+                function_label_pl: 'Szybkość zmian częstotliwości (df/dt)', severity: 'WARN',
+                message_pl: komunikat81R,
+                value: 1.0, unit: 'Hz/s', window: 'df/dt ≥ 2.0 Hz/s', source_pl: zrodloRocof,
+                // Wywod 1:1 z `_wywod_okna('rocof_81R', 1.0, WARN)`.
+                wywod: [
+                  {
+                    tekst: 'Wzor: warunek okna normatywnego funkcji 81R (nastawa nie nizsza niz krawedz okna)',
+                    latex: '\\left(\\tfrac{df}{dt}\\right)_{nast} \\ge 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}',
+                  },
+                  {
+                    tekst: 'Dane: nastawa = 1.0000 (przekaznik pola), krawedz okna = 2.0 — dolna krawedz okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s).',
+                    latex: null,
+                  },
+                  {
+                    tekst: 'Podstawienie: 1.0000 >= 2.0 NIESPELNIONE',
+                    latex: '1.0000 < 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}',
+                  },
+                  { tekst: `Werdykt: WARN — ${komunikat81R}`, latex: null },
+                ],
+              },
+              {
+                kind: 'koordynacja_spz', function_ansi: null,
+                function_label_pl: 'Koordynacja czasowa z SPZ', severity: 'INFO',
+                message_pl: komunikatSpz,
+                value: 0.3, unit: 's',
+                window: { spz_fast_time_s: null, spz_slow_time_s: null }, source_pl: zrodloSpz,
+                wywod: [],
+              },
+            ],
+          },
+          {
+            bay_ref: 'bay-fw-c', bay_name: 'Pole FW C', substation_ref: 'gpz-2',
+            bus_ref: 'bus-oze-3', generating_module_refs: ['gen-fw-1', 'gen-fw-2'], status: 'INFO',
+            checks: [
+              {
+                kind: 'okno_normatywne', function_ansi: '81U',
+                function_label_pl: 'Podczęstotliwościowa (f<)', severity: 'OK',
+                message_pl: komunikat81U,
+                value: 47.5, unit: 'Hz', window: 'próg f ≤ 47.5 Hz', source_pl: zrodloFreq,
+                // Wywod 1:1 z `_wywod_okna('underfrequency_81U', 47.5, OK)`.
+                wywod: [
+                  {
+                    tekst: 'Wzor: warunek okna normatywnego funkcji 81U (nastawa nie wyzsza niz krawedz okna)',
+                    latex: 'f_{81U} \\le 47.5\\ \\text{Hz}',
+                  },
+                  {
+                    tekst: 'Dane: nastawa = 47.5000 (przekaznik pola), krawedz okna = 47.5 — gorna krawedz okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz).',
+                    latex: null,
+                  },
+                  {
+                    tekst: 'Podstawienie: 47.5000 <= 47.5 SPELNIONE',
+                    latex: '47.5000 \\le 47.5\\ \\text{Hz}',
+                  },
+                  { tekst: `Werdykt: OK — ${komunikat81U}`, latex: null },
+                ],
+              },
+              {
+                kind: 'koordynacja_spz', function_ansi: null,
+                function_label_pl: 'Koordynacja czasowa z SPZ', severity: 'INFO',
+                message_pl: komunikatSpz,
+                value: null, unit: 's',
+                window: { spz_fast_time_s: null, spz_slow_time_s: null }, source_pl: zrodloSpz,
+                wywod: [],
+              },
+            ],
+          },
+        ],
+        modules_without_field: ['gen-pv-4'],
+        summary: {
+          fields_total: 3,
+          generating_modules_total: 5,
+          by_status: { OK: 0, INFO: 1, WARN: 1, ERROR: 1 },
+          overall_status: 'ERROR',
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/oze-analysis/frt-trajectories')) {
+    // Scena "frt" (T-C): trajektorie LVRT z wywodem marginesu — ksztalt 1:1 z
+    // `application/analyses/frt_trajektorie.py::build_frt_trajectories_view`
+    // (wywod z `_wywod_scenariusza`: wzor -> dane -> podstawienie -> werdykt).
+    const trajektoria = [
+      { czas_s: 0.0, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 1.0 },
+      { czas_s: 0.3, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 1.0 },
+      { czas_s: 0.5, napiecie_pu: 0.05, iq_bierny_pu: 0.153, p_czynna_pu: 0.95 },
+      { czas_s: 0.6, napiecie_pu: 0.05, iq_bierny_pu: 0.982, p_czynna_pu: 0.104 },
+      { czas_s: 0.65, napiecie_pu: 0.05, iq_bierny_pu: 1.0, p_czynna_pu: 0.05 },
+      { czas_s: 0.7, napiecie_pu: 0.525, iq_bierny_pu: 0.612, p_czynna_pu: 0.352 },
+      { czas_s: 0.75, napiecie_pu: 1.0, iq_bierny_pu: 0.048, p_czynna_pu: 0.601 },
+      { czas_s: 1.0, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 0.907 },
+      { czas_s: 1.5, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 0.982 },
+      { czas_s: 2.0, napiecie_pu: 1.0, iq_bierny_pu: 0.0, p_czynna_pu: 1.0 },
+    ];
+    return new Response(
+      JSON.stringify({
+        modul_der: { id: 'conv-pv-1mw-15kv', nazwa: 'Farma PV 1 MW / 15 kV', kind: 'PV', pmax_mw: 1.0, un_kv: 15.0 },
+        operator: { id: 'pse', nazwa: 'PSE — Polskie Sieci Elektroenergetyczne' },
+        test_kind: 'lvrt',
+        status_solvera: 'ok',
+        obwiednia_profilu: {
+          rodzaj: 'lvrt',
+          opis: 'Krzywa LVRT operatora: dozwolony przebieg napięcia (czas→napięcie) wg profilu NC RfG.',
+          punkty: [
+            { czas_s: 0.0, napiecie_pu: 0.05 },
+            { czas_s: 0.15, napiecie_pu: 0.05 },
+            { czas_s: 0.7, napiecie_pu: 0.5 },
+            { czas_s: 1.5, napiecie_pu: 0.85 },
+            { czas_s: 3.0, napiecie_pu: 0.9 },
+          ],
+        },
+        scenariusze: [
+          {
+            scenario_id: 'lvrt_conv-pv-1mw-15kv',
+            status: 'ok',
+            stayed_connected: true,
+            margin_to_curve_s: null,
+            margin_to_curve_pu: 0.0,
+            p_recovery_time_s: 0.31,
+            werdykt_pl: 'w obwiedni',
+            liczba_punktow_trajektorii: 10,
+            // Wywod 1:1 z `_wywod_scenariusza` (liczby spojne: m_U = 0.000000,
+            // 10 punktow trajektorii, t_odz = 0.310000 s).
+            wywod: [
+              {
+                tekst:
+                  'Scenariusz lvrt_conv-pv-1mw-15kv (LVRT): napiecie zaklocenia 0.0500 p.u. '
+                  + 'przez 0.1500 s (wejscie solvera FROZEN frt_hvrt).',
+                latex: null,
+              },
+              {
+                tekst:
+                  'Wzor: margines napieciowy trajektorii wzgledem krzywej minimalnej '
+                  + '(minimum roznicy napiecia trajektorii i krzywej od poczatku zaklocenia)',
+                latex: 'm_{U} = \\min_{t \\ge t_{z}}\\bigl(u(t) - u_{kr}(t)\\bigr)',
+              },
+              {
+                tekst:
+                  'Dane: margines z solvera m_U = 0.000000 p.u. '
+                  + '(FrtScenarioResult.margin_to_curve_pu), liczba punktow trajektorii: 10.',
+                latex: null,
+              },
+              {
+                tekst: 'Podstawienie: warunek utrzymania w obwiedni m_U >= 0: 0.000000 >= 0 SPELNIONE',
+                latex: 'm_{U} = 0.000000\\ \\text{p.u.} \\ge 0',
+              },
+              {
+                tekst: 'Dane: czas odzysku mocy czynnej po zakloceniu t_odz = 0.310000 s (pole wyniku solvera).',
+                latex: null,
+              },
+              { tekst: 'Werdykt: w obwiedni.', latex: null },
+            ],
+            trajektoria,
+          },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/oze-analysis/frt-sequence')) {
+    // Scena "frt" (T-B): sekwencja zapadow z kontekstem sily sieci — ksztalt 1:1
+    // z `application/analyses/frt_sekwencja.py::build_frt_sekwencja_view`;
+    // `kontekst_sily_sieci` = wiersz SCR z widoku sily sieci (D1) ze sladem
+    // WHITE BOX (`KrokSladuSily`). Liczby spojne: SCR = 45,0 / 20,0 = 2,25.
+    const wejscie = (glebokosc: number, czas: number) => ({
+      test_kind: 'lvrt',
+      voltage_dip_depth_pu: glebokosc,
+      fault_duration_s: czas,
+      target_der_ref: 'conv-pv-1mw-15kv',
+    });
+    return new Response(
+      JSON.stringify({
+        modul_der: { id: 'conv-pv-1mw-15kv', nazwa: 'Farma PV 1 MW / 15 kV', kind: 'PV', pmax_mw: 1.0, un_kv: 15.0 },
+        operator: { id: 'pse', nazwa: 'PSE — Polskie Sieci Elektroenergetyczne' },
+        status_solvera: 'der_dropped',
+        obwiednia_profilu: {
+          rodzaj: 'lvrt',
+          opis: 'Krzywa LVRT operatora: dozwolony przebieg napięcia (czas→napięcie) wg profilu NC RfG.',
+          punkty: [
+            { czas_s: 0.0, napiecie_pu: 0.05 },
+            { czas_s: 0.15, napiecie_pu: 0.05 },
+            { czas_s: 0.7, napiecie_pu: 0.5 },
+            { czas_s: 1.5, napiecie_pu: 0.85 },
+            { czas_s: 3.0, napiecie_pu: 0.9 },
+          ],
+        },
+        liczba_zapadow: 2,
+        zapady: [
+          {
+            scenario_id: 'seq_0_conv-pv-1mw-15kv', glebokosc_pu: 0.05, czas_s: 0.15,
+            status: 'ok', stayed_connected: true, margin_to_curve_pu: 0.0,
+            margin_to_curve_s: null, p_recovery_time_s: 0.31, werdykt_pl: 'w obwiedni',
+            wejscie_solvera: wejscie(0.05, 0.15),
+          },
+          {
+            scenario_id: 'seq_1_conv-pv-1mw-15kv', glebokosc_pu: 0.02, czas_s: 0.5,
+            status: 'der_dropped', stayed_connected: false, margin_to_curve_pu: -0.03,
+            margin_to_curve_s: null, p_recovery_time_s: null, werdykt_pl: 'moduł wypadł',
+            wejscie_solvera: wejscie(0.02, 0.5),
+          },
+        ],
+        werdykt_sekwencji_pl: 'sekwencja niezaliczona — zapad 2',
+        zalozenia_pl:
+          'Stan modułu MIĘDZY zapadami (nagrzewanie, niepełny odzysk) nie jest modelowany: '
+          + 'każdy zapad liczony od stanu ustalonego i oceniany niezależnie. Werdykt sekwencji '
+          + 'to koniunkcja werdyktów poszczególnych zapadów — kompozycja wyników solvera, '
+          + 'nie nowa fizyka.',
+        kontekst_sily_sieci: {
+          bus_ref: 'bus-oze-1',
+          nominal_kv: 15.0,
+          s_sc_mva: 45.0,
+          s_installed_mva: 20.0,
+          scr: 2.25,
+          verdict: 'sieć słaba',
+          is_weak: true,
+          why_pl: 'SCR = 2,25 poniżej progu sieci słabej (3,0).',
+          missing_data: [],
+          white_box: [
+            {
+              symbol: 'SCR',
+              formula_latex: 'SCR = S_sc / S_n',
+              substitution_pl: 'SCR = 45,0 / 20,0',
+              result_pl: 'SCR = 2,25',
+            },
+          ],
+          modules: [
+            { ref: 'gen-fw-karnice', name: 'Farma wiatrowa Karnice', sn_mva: 18.9 },
+            { ref: 'der-pv-1', name: 'Farma PV 1 MW', sn_mva: 1.1 },
+          ],
+        },
+        kontekst_sily_sieci_powod_pl: null,
+        input_hash: 'frt-seq-2b8d4e6f9a1c0357',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/execution/study-cases/') && url.endsWith('/runs')) {
+    // Scena "oltc": utworzenie przebiegu LF z opcja badania OLTC (kontrakt H1).
+    return new Response(
+      JSON.stringify({
+        id: 'run-oltc-1', study_case_id: 'case-demo', analysis_type: 'LOAD_FLOW',
+        solver_input_hash: 'oltc-in-5d7f2a91', status: 'PENDING',
+        started_at: null, finished_at: null, error_message: null,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/execution/runs/') && url.endsWith('/execute')) {
+    return new Response(
+      JSON.stringify({
+        id: 'run-oltc-1', study_case_id: 'case-demo', analysis_type: 'LOAD_FLOW',
+        solver_input_hash: 'oltc-in-5d7f2a91', status: 'DONE',
+        started_at: '2026-07-22T10:00:00Z', finished_at: '2026-07-22T10:00:03Z',
+        error_message: null,
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/execution/runs/') && url.endsWith('/results')) {
+    // Scena "oltc": wynik badania sweep — ksztalt 1:1 z
+    // `power_flow_oltc_studies.py::TapSweepResult.to_dict()` w
+    // `global_results.oltc_sweep`; wywod 1:1 z `_wywod_sweep` (liczby spojne
+    // miedzy tabela punktow a krokami: t(n) = 1 + (n - 0) * 1.2500 / 100).
+    const punkty = [
+      { position: -2, tap_ratio: 0.975, controlled_bus_kv: 15.303, losses_mw: 0.2131, min_bus_kv: 14.883, max_bus_kv: 15.303 },
+      { position: -1, tap_ratio: 0.9875, controlled_bus_kv: 15.109, losses_mw: 0.2094, min_bus_kv: 14.689, max_bus_kv: 15.109 },
+      { position: 0, tap_ratio: 1.0, controlled_bus_kv: 14.92, losses_mw: 0.2067, min_bus_kv: 14.5, max_bus_kv: 14.92 },
+      { position: 1, tap_ratio: 1.0125, controlled_bus_kv: 14.736, losses_mw: 0.2052, min_bus_kv: 14.316, max_bus_kv: 14.736 },
+      { position: 2, tap_ratio: 1.025, controlled_bus_kv: 14.556, losses_mw: 0.2049, min_bus_kv: 14.136, max_bus_kv: 14.556 },
+    ];
+    return new Response(
+      JSON.stringify({
+        run_id: 'run-oltc-1', analysis_type: 'LOAD_FLOW',
+        validation_snapshot: {}, readiness_snapshot: {}, element_results: [],
+        global_results: {
+          oltc_sweep: {
+            branch_id: 'TR-1',
+            controlled_bus_id: 'SZ-SN',
+            points: punkty.map((p) => ({ ...p, converged: true })),
+            wywod: [
+              {
+                tekst:
+                  'Badanie: przeglad pozycji zaczepow (sweep) — rozplyw liczony solverem '
+                  + 'FROZEN dla kazdej ustalonej pozycji zaczepu.',
+                latex: null,
+              },
+              {
+                tekst:
+                  'Zakres pozycji: n = -2..2 (liczba punktow: 5); transformator TR-1, '
+                  + 'szyna regulowana: SZ-SN.',
+                latex: null,
+              },
+              {
+                tekst: 'Wzor: przekladnia zaczepu t(n) = 1 + (n - n0) * du / 100',
+                latex: 't(n) = 1 + \\frac{(n - n_{0}) \\cdot \\Delta u}{100}',
+              },
+              { tekst: 'Dane: krok zaczepu du = 1.2500 %, pozycja neutralna n0 = 0.', latex: null },
+              ...punkty.map((p) => ({
+                tekst:
+                  `Pozycja n = ${p.position}: t = ${p.tap_ratio.toFixed(6)}, `
+                  + `U szyny regulowanej = ${p.controlled_bus_kv.toFixed(3)} kV, `
+                  + `straty = ${p.losses_mw.toFixed(6)} MW, zbiezny = TAK.`,
+                latex:
+                  `t(${p.position}) = 1 + \\frac{(${p.position} - 0) \\cdot 1.2500}{100}`
+                  + ` = ${p.tap_ratio.toFixed(6)}`,
+              })),
+              {
+                tekst:
+                  'Kryterium odczytu: napiecie szyny regulowanej i straty czynne '
+                  + 'pochodza z rozwiazania rozplywu (bez ocen w tej warstwie).',
+                latex: null,
+              },
+            ],
+          },
+        },
+        deterministic_signature: 'oltc-sweep-sig-8c3e1f5a',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
   return originalFetch(input as RequestInfo, init);
 }) as typeof window.fetch;
 
@@ -365,6 +882,36 @@ useSnapshotStore.setState({
 } as never);
 
 const creator = new URLSearchParams(window.location.search).get('creator') ?? 'pole';
+
+/**
+ * Rekord przyłączenia DER do zasiewu `useStationDerStore` (sceny dowodowe OZE:
+ * frt/macierz). Pełny kształt `StationDerConnection` — wartości domyślne to
+ * kompletne przyłączenie nN 0,4 kV w stacji demo (nadpisywane per scena).
+ */
+function derDemo(
+  over: Partial<StationDerConnection> & Pick<StationDerConnection, 'id' | 'der_kind' | 'name'>,
+): StationDerConnection {
+  return {
+    project_id: 'proj-demo',
+    station_id: 'st-demo',
+    connection_side: 'nN',
+    pcc_ref: 'st-demo__szyna-nn__0.4',
+    bay_ref: null,
+    transformer_ref: null,
+    lv_busbar_ref: 'szyna-nn',
+    connection_node_ref: null,
+    internal_cable_ref: null,
+    voltage_level_ref: 'lv_0_4kV',
+    catalogs: EMPTY_DER_CATALOGS,
+    profiles: EMPTY_DER_PROFILES,
+    nominal_power_kw: null,
+    completeness: 'complete',
+    readiness: EMPTY_DER_READINESS,
+    created_at: '2026-07-01T00:00:00Z',
+    updated_at: '2026-07-01T00:00:00Z',
+    ...over,
+  };
+}
 
 if (creator === 'arcflash') {
   const run: ExecutionRun = { id: 'run-sc-1', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun;
@@ -531,6 +1078,84 @@ if (creator === 'arcflash') {
   useStudyCasesStore.setState({
     activeCase: { id: 'K1', name: 'Stan normalny', result_status: 'OUTDATED', results_valid: false } as never,
   } as never);
+} else if (creator === 'lom') {
+  // Scena „lom" (V-A): EkranLom czyta case_id z AKTYWNEGO przypadku (store
+  // study-cases) — zasiew; ocena z podmienionego endpointu lom-protection.
+  useStudyCasesStore.setState({
+    activeCase: { id: 'case-demo', name: 'Stan normalny', result_status: 'FRESH', results_valid: true } as never,
+  } as never);
+} else if (creator === 'frt') {
+  // Scena „frt" (V-A): moduł DER z typem przekształtnika (selectAllDers) +
+  // zakończony przebieg zwarciowy do doboru kontekstu siły sieci (T-B).
+  useStationDerStore.setState({
+    ders: {
+      'der-pv-1': derDemo({
+        id: 'der-pv-1',
+        der_kind: 'PV',
+        name: 'Farma PV 1 MW',
+        connection_side: 'SN',
+        pcc_ref: 'st-demo__szyna-sn__15',
+        lv_busbar_ref: null,
+        voltage_level_ref: null,
+        nominal_power_kw: 1000,
+        catalogs: {
+          ...EMPTY_DER_CATALOGS,
+          device_catalog_ref: 'conv-pv-1mw-15kv',
+          dynamic_model_ref: 'dyn-grid-following-pv',
+        },
+        profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'pse', lvrt_curve_ref: 'lvrt-pse' },
+      }),
+    },
+  } as never);
+  const runSc: ExecutionRun = {
+    id: 'run-sc-9', analysis_type: 'SC_3F', status: 'DONE',
+    started_at: '2026-07-22T09:15:00Z', finished_at: '2026-07-22T09:15:04Z',
+  } as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({ runs: [runSc] } as never);
+} else if (creator === 'macierz') {
+  // Scena „macierz" (V-A): dwa moduły DER (kolejność selectAllDers: bess-1,
+  // pv-1) z mocą katalogową i poziomem napięcia — gotowe do biegu NC RfG.
+  useAppStateStore.setState({
+    activeProjectName: 'Przyłączenie farmy PV 8 MW',
+    activeCaseName: 'Stan normalny',
+  } as never);
+  useStationDerStore.setState({
+    ders: {
+      'bess-1': derDemo({
+        id: 'bess-1',
+        der_kind: 'BESS',
+        name: 'Magazyn energii 0,8 MW',
+        nominal_power_kw: 800,
+        catalogs: {
+          ...EMPTY_DER_CATALOGS,
+          device_catalog_ref: 'bess-pcs-800',
+          battery_catalog_ref: 'bess-bat-1600',
+        },
+        profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'enea' },
+      }),
+      'pv-1': derDemo({
+        id: 'pv-1',
+        der_kind: 'PV',
+        name: 'Instalacja PV 0,5 MW',
+        nominal_power_kw: 500,
+        catalogs: {
+          ...EMPTY_DER_CATALOGS,
+          device_catalog_ref: 'pv-falownik-500-ptpiree',
+          ptpiree_certificate_ref: 'WOŚ/2024/PV-500',
+          dynamic_model_ref: 'dyn-grid-following-pv',
+        },
+        profiles: {
+          ...EMPTY_DER_PROFILES,
+          nc_rfg_profile_ref: 'enea',
+          lvrt_curve_ref: 'lvrt-enea',
+          regulation_profile_ref: 'qu-enea',
+        },
+      }),
+    },
+  } as never);
+} else if (creator === 'oltc') {
+  // Scena „oltc" (V-A): aktywny przypadek `case-demo` z zasiewu globalnego
+  // (useAppStateStore) — bieg badania przez podmienione końcówki execution.
 } else {
   // Kontekst operacji (szyna/stacja) dla kreatorów pole/OZE/transformator.
   const op =
@@ -612,6 +1237,10 @@ function Harness() {
         onPreselekcjaSkonsumowana={() => undefined}
       />
     );
+  else if (creator === 'lom') node = <EkranLom trybZaawansowania="expert" />;
+  else if (creator === 'frt') node = <EkranFrt trybZaawansowania="expert" />;
+  else if (creator === 'oltc') node = <EkranBadanOltc />;
+  else if (creator === 'macierz') node = <MacierzNcRfg trybZaawansowania="expert" />;
   else if (creator === 'oze') node = <KreatorZrodlaOze />;
   else if (creator === 'transformator') node = <KreatorTransformatoraSnNn />;
   else if (creator === 'kompensator') node = <KreatorKompensatoraSn />;

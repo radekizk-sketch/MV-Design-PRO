@@ -59,7 +59,8 @@ export function WykresSweepChart({ punkty, szerokosc = 720, wysokosc = 280 }: Wy
         <Tooltip
           contentStyle={{ background: 'var(--mvd-panel)', border: '1px solid var(--mvd-line)', color: 'var(--mvd-ink)' }}
         />
-        <Legend wrapperStyle={{ color: 'var(--mvd-muted)', fontSize: 11 }} />
+        {/* Legenda u góry — dolna kolidowała z podpisem osi X (insideBottom). */}
+        <Legend verticalAlign="top" wrapperStyle={{ color: 'var(--mvd-muted)', fontSize: 11 }} />
         <Line
           yAxisId="u"
           type="monotone"
