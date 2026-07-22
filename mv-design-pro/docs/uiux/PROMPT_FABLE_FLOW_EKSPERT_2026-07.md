@@ -169,8 +169,29 @@ K5 (Fable, runda wizualna + strona oceny)              → zamknięcie programu
   spec `e2e/flow-ekspert-screenshot.spec.ts` 6/6 zielony, zrzuty w
   `docs/audit/visual/flow-ekspert/` + dostarczone właścicielowi wprost
   (publikacja strony oceny wstrzymana decyzją właściciela w tej rundzie).
-  **PROGRAM FLOW EKSPERT+ ZAMKNIĘTY** — pozostałe GAP-y (K1-G1/G2, K4-G1,
-  K3-G1/G2/G3) czekają w rejestrze powyżej na kolejne dyspozycje.
+  **RUNDA 1 ZAMKNIĘTA** (K1–K5, V12K-101..104).
+
+## §6. RUNDA 2 (dyrektywa właściciela 2026-07-22: „Kontynuuj bez zatrzymywania
+kolejne ekrany") — domknięcie GAP-ów rundy 1
+
+- **R2-A (K3-G1) [FABLE OSOBIŚCIE]** — ślad WHITE BOX per pozycja walidacji
+  energetycznej: delta backendowa (builder `analysis/energy_validation` emituje
+  wywód per pozycja: wzór → dane → próg → werdykt, addytywnie w kontrakcie) +
+  UI „ślad na miejscu" w szczególe pozycji (wzorzec `slad_pl` z odbioru,
+  tryb ekspercki). Zgodnie z regułą K3: dowód wielkości buildera renderowany
+  NA MIEJSCU, nie ref do śladu innego przebiegu.
+- **R2-B (K1-G1) [WYKONAWCA]** — deep-link „Dobór kompensacji" z pre-selekcją
+  węzła: rozszerzenie jednorazowego żądania shell store o kontekst elementu,
+  konsument w oknie kompensacji (recon obowiązkowy: czy okno ma wybór węzła —
+  jeśli nie ma, uczciwy raport zamiast fabrykacji), wpięcie w akcję
+  `bilans-biernej` rejestru akcji naprawczych.
+- **R2-C (K4-G1) [WYKONAWCA]** — usunięcie ostrzeżeń `act(...)` w
+  `ui2/__tests__/integracja.test.tsx` U ŹRÓDŁA (bez maskowania; pomiar 9→0).
+- **R2-D** — runda zrzutów nowych ekranów po scaleniu (kontynuacja K5).
+
+Poza rundą (rejestr, nie ciche): K1-G2 (werdykt obciążalności gałęzi — karta
+interpretacyjna backendu), K3-G2 (dowody porównania A/B — wymaga rozstrzygnięcia
+produktowego wyboru przebiegu), K3-G3 (wkłady zwarciowe — brak dostawcy danych).
 
 GAP-y z raportów wykonawców (zarejestrowane, nie ciche):
 - K3-G1: walidacja energetyczna bez śladu WHITE BOX per pozycja (`WalidacjaItem`
