@@ -22,13 +22,118 @@ def _load_script(module_name: str):
 ui_no_physics_guard = _load_script("ui_no_physics_guard")
 
 
-def test_guard_is_green_on_repo_ui2():
-    """ui2/** is a clean-room layer and must contain no network physics."""
+def test_guard_is_green_on_repo_ui_and_ui2():
+    """ui/** and ui2/** must contain no non-allowlisted network physics.
+
+    H-1 (2026-07-22): scope extended from ui2/** only to ui/**+ui2/** after the
+    R1-R3 "relocate UI physics -> backend" epic closed. Remaining raw hits in
+    ui/** are covered by the reasoned ALLOWLIST (see module docstring).
+    """
     assert ui_no_physics_guard.scan_tree(ui_no_physics_guard.SCAN_DIRS) == []
+
+
+def test_scan_dirs_covers_ui_and_ui2():
+    """H-1 scope extension: default SCAN_DIRS must include both layers."""
+    scan_dirs = set(ui_no_physics_guard.SCAN_DIRS)
+    repo_root = ui_no_physics_guard.REPO_ROOT
+    assert repo_root / "frontend" / "src" / "ui" in scan_dirs
+    assert repo_root / "frontend" / "src" / "ui2" in scan_dirs
 
 
 def test_guard_main_returns_zero_on_repo():
     assert ui_no_physics_guard.main() == 0
+
+
+def test_ui_allowlist_matches_measured_baseline():
+    """H-1 baseline (2026-07-22): exactly 22 raw physics-pattern hits in
+    frontend/src/ui/** (pre-allowlist, via scan_file which the allowlist never
+    touches), all classified 0 class-a (real physics) / 9 class-b (false
+    positive) / 9 class-c (justified catalog-constant exception, 18 distinct
+    lines). If this count changes, a new hit appeared and MUST be
+    re-classified explicitly (allowlisted with a reason, or fixed as a real
+    physics defect) -- never silently absorbed by a broader allowlist entry.
+    """
+    scan_dir = ui_no_physics_guard.REPO_ROOT / "frontend" / "src" / "ui"
+    raw = 0
+    for path in sorted(scan_dir.rglob("*")):
+        if not path.is_file() or path.suffix not in ui_no_physics_guard.SCAN_EXTENSIONS:
+            continue
+        if ui_no_physics_guard._should_exclude_file(path):
+            continue
+        raw += len(ui_no_physics_guard.scan_file(path))
+    assert raw == 22
+
+
+def test_ui_allowlist_entries_are_not_stale():
+    """Every ALLOWLIST entry must correspond to an actual current raw hit at
+    that exact (path, line) -- a stale entry would mean the underlying code
+    moved/changed and the exception is no longer verified against real code.
+    """
+    for (rel_path, line_no), reason in ui_no_physics_guard.ALLOWLIST.items():
+        assert reason, f"allowlist entry {rel_path}:{line_no} must have a reason"
+        full_path = ui_no_physics_guard.REPO_ROOT / rel_path
+        assert full_path.is_file(), f"allowlisted path does not exist: {rel_path}"
+        hit_lines = {ln for ln, _content, _pattern in ui_no_physics_guard.scan_file(full_path)}
+        assert line_no in hit_lines, (
+            f"allowlist entry {rel_path}:{line_no} is stale (no longer a raw hit)"
+        )
+
+
+def test_allowlist_is_scoped_to_exact_line_not_whole_file(tmp_path: Path, monkeypatch):
+    """A new violation on a DIFFERENT line of an allowlisted file must still be
+    flagged -- the allowlist must not degrade into a whole-file exemption.
+    """
+    fake_root = tmp_path
+    ui_dir = fake_root / "frontend" / "src" / "ui" / "network-build" / "station-der"
+    ui_dir.mkdir(parents=True, exist_ok=True)
+    target = ui_dir / "protection-catalogs.ts"
+    target.write_text(
+        "export const ALLOWED = 15 / Math.sqrt(3); // pretend allowlisted line 1\n"
+        "export function newBug(reactanceOhm: number, lengthKm: number) {\n"
+        "  return reactanceOhm * lengthKm; // NEW physics, not allowlisted\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    monkeypatch.setattr(ui_no_physics_guard, "REPO_ROOT", fake_root)
+    monkeypatch.setattr(
+        ui_no_physics_guard,
+        "ALLOWLIST",
+        {
+            (
+                "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
+                1,
+            ): "c: test fixture, pretend catalog constant",
+        },
+    )
+
+    violations = ui_no_physics_guard.scan_tree([ui_dir])
+    flagged_lines = {line_no for _path, line_no, _line, _pattern in violations}
+
+    assert 1 not in flagged_lines, "allowlisted line 1 must be filtered out"
+    assert 3 in flagged_lines, "new physics on line 3 must still be caught"
+
+
+def test_guard_detects_synthetic_physics_in_ui_legacy_layer(tmp_path: Path):
+    """A sensitivityAnalyzer-class defect landing in the legacy ui/** layer
+    (not just ui2/**) must be caught after the H-1 scope extension."""
+    physics_file = tmp_path / "frontend" / "src" / "ui" / "oze" / "badAnalyzer.ts"
+    physics_file.parent.mkdir(parents=True, exist_ok=True)
+    physics_file.write_text(
+        "export function estimate(dUdP: number, dUdQ: number, p: number, q: number) {\n"
+        "  const deltaU = dUdP * p + dUdQ * q;\n"
+        "  const ik3a = (1.1 * uV) / (Math.sqrt(3) * zTotalOhm);\n"
+        "  const x = reactanceOhmPerKm * lengthKm;\n"
+        "  return { deltaU, ik3a, x };\n"
+        "}\n",
+        encoding="utf-8",
+    )
+
+    violations = ui_no_physics_guard.scan_tree([physics_file.parent])
+
+    assert violations, "guard must flag physics computation in a ui/** module"
+    flagged_lines = {line_no for _path, line_no, _line, _pattern in violations}
+    assert {2, 3, 4}.issubset(flagged_lines)
 
 
 def test_guard_detects_synthetic_physics_in_ui2(tmp_path: Path):

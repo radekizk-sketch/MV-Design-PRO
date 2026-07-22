@@ -80,3 +80,35 @@ katalogach (`ui/topology`, `ui/protection-coordination`) = 0 trafień.
 bramką całej warstwy prezentacji. Wymaga uprzedniego przemiarowania
 false-positives (np. formatowanie/skalowanie osi, stałe katalogowe typu
 `100/√3`), dlatego nie jest częścią R3 (nie rozszerzać bez pomiaru).
+
+## 6. H-1 — rozszerzenie guarda na ui/** WYKONANE (2026-07-22)
+
+Karta higieniczna H-1 wykonała zalecenie z §5. Pomiar mechanizmem guarda na
+`frontend/src/ui/**` (bez zmiany wzorców detekcji): **22 surowe trafienia
+regex / 18 unikalnych linii**, sklasyfikowane:
+- **0 klasy (a)** — realna fizyka sieci. Epika R1–R3 rzeczywiście domknęła
+  wszystkie takie przypadki; ponowny scan potwierdza zero pozostałości.
+- **9 klasy (b)** — false-positive: string etykiety (`label_pl`, JSX `label`,
+  szablon tekstowy) lub komentarz na końcu linii (poza zasięgiem
+  `SKIP_LINE_PATTERNS`, który łapie tylko całe linie komentarza).
+- **9 klasy (c)** — wyjątek uzasadniony: stałe katalogowe VT per IEC 61869-3
+  w `protection-catalogs.ts` (`ratio_primary_kv`/`ratio_secondary_v` =
+  `15|20|100 / √3`) oraz helper dopasowania katalogowego
+  `selectVtForVoltage()` (dzieli napięcie znamionowe przez stały współczynnik
+  IEC, bez udziału impedancji/prądu/rozpływu sieci) — ta sama klasa co
+  precedens R2 (`vtMultiWindingContract.ts` `STANDARD_SECONDARY_VOLTAGE_V`,
+  „100/√3 V = stała katalogowa IEC 61869-3, nie obliczenie fizyki").
+
+Guard rozszerzony na `SCAN_DIRS = [ui, ui2]` z jawną, imienną allowlistą
+`(plik, linia) → uzasadnienie` w `scripts/ui_no_physics_guard.py` — każdy z 18
+wpisów niesie własne uzasadnienie klasy; brak wpisów maskujących klasę (a).
+Guard zielony na HEAD (`python scripts/ui_no_physics_guard.py` → PASS, 0
+naruszeń w `ui/**`+`ui2/**`). Testy: `backend/tests/ci/test_ui_no_physics_guard.py`
+rozszerzony (10 testów) — zieloność na repo, pokrycie `SCAN_DIRS`, baseline
+pomiaru (22 surowe trafienia), brak martwych wpisów allowlisty, allowlist
+per-linia (nie cały plik — nowa fizyka gdzie indziej w tym samym pliku dalej
+łapana), oraz czerwony wynik na wstrzykniętej próbce fizyki w `ui/**` (nie
+tylko `ui2/**`).
+
+**Wynik:** dług z §5 zamknięty. `ui_no_physics_guard.py` jest teraz bramką
+całej warstwy prezentacji (`ui/**` + `ui2/**`).
