@@ -342,16 +342,24 @@ def test_sc3f_contributions_returns_machine_breakdown(tmp_path):
     assert 0 < wklad["mu"] <= 1.0
     assert dane["white_box"]  # slad solvera obecny
 
-    # Wywod prezentacyjny {tekst, latex} (zasada KaTeX): wzor normy, krok
-    # maszyny z podstawieniem liczbowym z wyniku solvera, suma i regula 5%.
+    # Wywod dyplomowy (zasada KaTeX 2026-07-22): kazdy krok wzor ogolny ->
+    # podstawienie liczbowe -> wynik; kroki maszyny budowane W SOLVERZE.
     wywod = dane["wywod"]
     assert wywod[0]["tekst"].startswith("Model: IEC 60909")
     assert wywod[0]["latex"] is None
-    assert r"\frac{c \cdot U_n}{\sqrt{3} \cdot Z''_m}" in wywod[1]["latex"]
-    krok_maszyny = wywod[2]
-    assert krok_maszyny["tekst"].startswith("Agregat:")
-    assert rf"{wklad['mu']:.3f}" in krok_maszyny["latex"]
-    assert rf"= {wklad['ib_a'] / 1000.0:.3f}" in krok_maszyny["latex"]
+    assert wywod[1]["tekst"].startswith("Punkt zwarcia: I''k")
+    assert wywod[2]["tekst"] == "— Agregat (SYNCHRONOUS) —"
+    latexy = " ".join(k["latex"] for k in wywod if k["latex"])
+    # Wzor ogolny pradu czesciowego (superpozycja Z-bus) + podstawienie z c.
+    assert r"I''_{k,m} = \frac{c\,|Z_{mk}|}{|Z_{kk}|\,|Z_m|}" in latexy
+    assert r"\frac{1.10 \cdot" in latexy
+    # Impedancja maszyny z modulem; krotnosc; wspolczynnik zaniku; Ib z podstawieniem.
+    assert r"|Z''_m| =" in latexy
+    assert rf"= {wklad['ratio_ik_ir']:.2f}" in latexy
+    assert rf"{wklad['mu']:.3f} \cdot {wklad['q']:.3f} \cdot" in latexy
+    assert rf"= {wklad['ib_a'] / 1000.0:.3f}\;\mathrm{{kA}}" in latexy
+    # Kroki wywodu takze w samym wkladzie (WHITE BOX solvera, per maszyna).
+    assert len(wklad["wywod"]) >= 4
     assert any(k["tekst"].startswith("Suma wkladow maszyn") for k in wywod)
     assert any("Regula malych silnikow" in k["tekst"] for k in wywod)
 

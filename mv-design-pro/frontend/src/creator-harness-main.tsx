@@ -165,18 +165,38 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
           { source_id: 'gen-pv-1', source_name: 'Falownik PV 4 MW', ikss_partial_a: 1730 },
           { source_id: 'gen-bess-1', source_name: 'Magazyn BESS 2 MW', ikss_partial_a: 1130 },
         ],
-        // Wywod prezentacyjny {tekst, latex} — ksztalt 1:1 z `_wywod_wkladow`
-        // (api/proof_pack.py, zasada KaTeX 2026-07-22).
+        // Wywod DYPLOMOWY {tekst, latex} — ksztalt 1:1 z `_wywod_wkladow`
+        // (api/proof_pack.py) + `wywod_maszyny` solvera (kazdy krok: wzor
+        // ogolny -> podstawienie liczbowe -> wynik; zasada KaTeX 2026-07-22).
         wywod: [
           { tekst: 'Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)', latex: null },
+          { tekst: "Punkt zwarcia: I''k (calkowity, z Z-bus) = 12.480 kA, c = 1.10, t_min = 0.10 s", latex: null },
+          { tekst: '— Falownik PV 4 MW (ASYNCHRONOUS) —', latex: null },
           {
-            tekst: 'Wzor pradu czesciowego maszyny (zwarcie na zaciskach)',
-            latex: "I''_{k,m} = \\frac{c \\cdot U_n}{\\sqrt{3} \\cdot Z''_m}",
+            tekst: "Impedancja zastepcza maszyny: Z''m = 0.1150 + j1.1420 ohm",
+            latex: "Z''_m = 0.1150 + j\\,1.1420\\;\\Omega,\\qquad |Z''_m| = 1.1478\\;\\Omega",
           },
           {
-            tekst: "Falownik PV 4 MW: I''k = 1.730 kA, I''k/Ir = 5.20, mu = 0.813, q = 0.870",
+            tekst: 'Prad czesciowy maszyny (superpozycja Z-bus; przy zwarciu na zaciskach rownowazne c*Un/(sqrt(3)*Z\'\'))',
             latex:
-              "I_b = \\mu \\cdot q \\cdot I''_k = 0.813 \\cdot 0.870 \\cdot 1.730\\,\\text{kA} = 1.224\\,\\text{kA}",
+              "I''_{k,m} = \\frac{c\\,|Z_{mk}|}{|Z_{kk}|\\,|Z_m|}\\,I_{\\mathrm{base}} = \\frac{1.10 \\cdot 0.0086}{0.0402 \\cdot 0.5102} \\cdot 3849\\;\\mathrm{A} = 1.730\\;\\mathrm{kA}",
+          },
+          {
+            tekst: "Krotnosc pradu znamionowego: I''k/Ir = 5.20",
+            latex: "\\frac{I''_{k,m}}{I_{r,m}} = \\frac{1.730}{0.333} = 5.20",
+          },
+          {
+            tekst: 'Wspolczynnik zaniku mu (krzywa t_min = 0.10 s, par. 6.6.1): mu = 0.756',
+            latex: "\\mu = 0.62 + 0.72\\,e^{-0.32\\,I''_k/I_r} = 0.62 + 0.72\\,e^{-0.32 \\cdot 5.20} = 0.756",
+          },
+          {
+            tekst: 'Wspolczynnik q silnika asynchronicznego (m = 1.950 MW/pare biegunow, par. 6.6.3): q = 0.650',
+            latex: 'q = 0.57 + 0.12\\,\\ln m = 0.57 + 0.12\\,\\ln(1.950) = 0.650',
+          },
+          {
+            tekst: 'Prad wylaczeniowy symetryczny: Ib = 0.850 kA',
+            latex:
+              "I_b = \\mu \\cdot q \\cdot I''_{k,m} = 0.756 \\cdot 0.650 \\cdot 1.730\\;\\mathrm{kA} = 0.850\\;\\mathrm{kA}",
           },
           {
             tekst: "Suma wkladow maszyn: I''k,M = 2.860 kA, I_b,M = 2.107 kA",

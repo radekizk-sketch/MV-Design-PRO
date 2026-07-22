@@ -157,27 +157,24 @@ def _wywod_wkladow(result: Any) -> list[dict[str, Any]]:
             "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
             "latex": None,
         },
-        {
-            "tekst": "Wzor pradu czesciowego maszyny (zwarcie na zaciskach)",
-            "latex": r"I''_{k,m} = \frac{c \cdot U_n}{\sqrt{3} \cdot Z''_m}",
-        },
     ]
-    for c in result.contributions:
-        ikss_ka = c.ikss_partial_a / 1000.0
-        ib_ka = c.ib_a / 1000.0
+    ikss_total_a = result.white_box.get("ikss_total_a")
+    if ikss_total_a is not None:
         kroki.append(
             {
                 "tekst": (
-                    f"{c.source_name}: I''k = {ikss_ka:.3f} kA, "
-                    f"I''k/Ir = {c.ratio_ik_ir:.2f}, mu = {c.mu:.3f}, q = {c.q:.3f}"
+                    f"Punkt zwarcia: I''k (calkowity, z Z-bus) = "
+                    f"{ikss_total_a / 1000.0:.3f} kA, c = {result.c_factor:.2f}, "
+                    f"t_min = {result.t_min_s:.2f} s"
                 ),
-                "latex": (
-                    rf"I_b = \mu \cdot q \cdot I''_k = "
-                    rf"{c.mu:.3f} \cdot {c.q:.3f} \cdot {ikss_ka:.3f}\,\text{{kA}}"
-                    rf" = {ib_ka:.3f}\,\text{{kA}}"
-                ),
+                "latex": None,
             }
         )
+    # Pelny wywod dyplomowy per maszyna — kroki budowane W SOLVERZE (WHITE BOX,
+    # zasada 2026-07-22: wzor ogolny -> podstawienie liczbowe -> wynik).
+    for c in result.contributions:
+        kroki.append({"tekst": f"— {c.source_name} ({c.machine_type}) —", "latex": None})
+        kroki.extend(dict(krok) for krok in c.wywod)
     kroki.append(
         {
             "tekst": (

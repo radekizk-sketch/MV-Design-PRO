@@ -21,6 +21,14 @@ ekranu, obliczenia dostępne na żądanie/klik; usystematyzuj rodzaj czcionek".
 4. **Zero fizyki w UI bez zmian**: LaTeX z liczbami podstawionymi buduje
    WYŁĄCZNIE backend (solver/analiza/serializer API) z wartości już policzonych.
    Frontend nie skleja podstawień z liczb.
+5. **Wywód PEŁNY — standard pracy dyplomowej (dyrektywa 2026-07-22 II):**
+   dla KAŻDEJ wielkości liczbowej wywód ma trzy ogniwa w LaTeX:
+   wzór ogólny w symbolach → podstawienie liczbowe (wartości z tego biegu)
+   → wynik z jednostką. Skróty typu „I_b = μ·q·I″k = wynik" bez wywodu
+   składników (skąd μ? skąd I″k?) są NIEWYSTARCZAJĄCE. Wywód wielkości
+   pośrednich buduje ta warstwa, która je liczy (solver — WHITE BOX rule;
+   analiza — builder). Wzorce kanoniczne: `wywod_maszyny`
+   (machine_sc_iec60909.py) i `_white_box_progowe` (energy_validation).
 
 ## §2. Zasada śladu obliczeń na żądanie
 
