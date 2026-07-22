@@ -9,10 +9,14 @@
  * Kontrakt (V12K-066): każdy krok konfiguracji kreatora ui2 udostępnia PanelTeorii
  * (po co / z czego / co daje + norma/wymóg + podstawa), aby projektant rozumiał, co i
  * dlaczego ustawia. Rozwinięty na żądanie (nie przytłacza ekranu prowadzącego).
+ *
+ * Zasada wywodów KaTeX (2026-07-22): fragmenty `$...$` w `opis`/`wymog` renderują
+ * się przez KaTeX (TekstZWzorami → MathInline) — surowe wzory tekstowe są zakazane.
  */
 
 import type { ReactNode } from 'react';
 import './panelTeorii.css';
+import { TekstZWzorami } from './tekstZWzorami';
 
 export interface PanelTeoriiProps {
   /** Tytuł panelu (widoczny w nagłówku rozwijanym). */
@@ -50,12 +54,14 @@ export function PanelTeorii({
     <details className="mvd-teoria" data-testid={testid} open={domyslnieOtwarty || undefined}>
       <summary className="mvd-teoria-summary">{tytul}</summary>
       <div className="mvd-teoria-body">
-        <p className="mvd-teoria-opis">{opis}</p>
+        <p className="mvd-teoria-opis">
+          <TekstZWzorami tekst={opis} />
+        </p>
         {children}
         {wymog ? (
           <p className="mvd-teoria-wymog">
             <strong>{wymogPrefix}</strong>
-            {wymog}
+            <TekstZWzorami tekst={wymog} />
           </p>
         ) : null}
         {podstawa ? <p className="mvd-teoria-podstawa">{podstawa}</p> : null}

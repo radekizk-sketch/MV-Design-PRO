@@ -21,6 +21,8 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { TabelaWynikow } from '../../wyniki/wzorzec';
+// Zasada wywodów KaTeX: wzory w opisach parametrów renderuje TekstZWzorami (MathInline).
+import { TekstZWzorami } from '../../kreatory/rama';
 import { SladAnalizy } from '../pulpit';
 import {
   pobierzOdpowiedzOsd,
@@ -406,7 +408,7 @@ export function EkranOsd({ trybZaawansowania }: EkranOsdProps) {
                     data-testid="mvd-osd-cosfi"
                   />
                 </div>
-                <p className="mvd-osd-param-opis">{OSD_STRINGS.paramCosfiOpis}</p>
+                <p className="mvd-osd-param-opis"><TekstZWzorami tekst={OSD_STRINGS.paramCosfiOpis} /></p>
               </div>
             )}
 

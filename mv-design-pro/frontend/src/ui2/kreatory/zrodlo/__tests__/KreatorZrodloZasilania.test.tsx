@@ -156,6 +156,21 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     );
   });
 
+  it('krok Źródło: panel teorii renderuje wzór impedancji źródła przez KaTeX (math-rendered, klik natywny)', async () => {
+    // Zasada wywodów KaTeX (2026-07-22): Z = c·U²/Sk″ (teoria) i Z ∝ 1/Sk″ (podpis
+    // wykresu sztywności) renderuje KaTeX, nie surowy tekst.
+    const user = userEvent.setup();
+    render(<KreatorZrodloZasilania />);
+    await user.click(screen.getByTestId('mvd-kreator-zrodlo-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-zrodlo-teoria')).toBeTruthy());
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThanOrEqual(2);
+    const latexy = wzory.map((w) => w.getAttribute('data-latex') ?? '');
+    expect(latexy.some((l) => l.includes("c \\cdot U^2 / S_k''"))).toBe(true);
+    expect(latexy.some((l) => l.includes("\\propto 1/S_k''"))).toBe(true);
+    expect(screen.queryByTestId('math-fallback')).toBeNull();
+  });
+
   it('zapisuje GPZ operacją domenową add_grid_source_sn z dowolnego kroku (klik natywny)', async () => {
     const user = userEvent.setup();
     render(<KreatorZrodloZasilania />);

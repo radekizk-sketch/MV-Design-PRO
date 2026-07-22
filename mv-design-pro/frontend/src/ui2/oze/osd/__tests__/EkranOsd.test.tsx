@@ -109,6 +109,14 @@ describe('EkranOsd — jawny bieg i parametry polecenia (kryterium 1)', () => {
     expect(screen.getByTestId('mvd-osd-cosfi')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-osd-charakter')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-osd-limit-p')).not.toBeInTheDocument();
+    // Zasada wywodów KaTeX (2026-07-22): konsekwencja Q = ±|P|·tan(arccos cosφ)
+    // w opisie parametru renderuje KaTeX (math-rendered), nie surowy tekst.
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThanOrEqual(1);
+    expect(
+      wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('\\pm|P| \\cdot \\tan')),
+    ).toBe(true);
+    expect(screen.queryByTestId('math-fallback')).toBeNull();
     fireEvent.click(screen.getByTestId('mvd-osd-oblicz'));
     await screen.findByTestId('mvd-osd-wynik');
     expect(pobierzOsd.mock.calls[0][0]).toMatchObject({

@@ -31,6 +31,7 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  TekstZWzorami,
   useSelekcjaPoOperacji,
   type KrokKreatora,
   type WierszGotowosci,
@@ -444,7 +445,7 @@ export function KreatorZrodlaOze() {
       {krok === 'regulacja' ? (
         <>
           <KreatorSekcja tytul={T.sekcjaRegulacja} testid="mvd-kreator-oze-regulacja">
-            <KreatorInfo>{T.regulacjaPomoc}</KreatorInfo>
+            <KreatorInfo><TekstZWzorami tekst={T.regulacjaPomoc} /></KreatorInfo>
             <PoleWyboru
               etykieta={T.regulacja}
               wartosc={dane.control_mode}
@@ -505,7 +506,7 @@ export function KreatorZrodlaOze() {
               </>
             ) : null}
             {trybQWymagaWartosci(dane) ? (
-              <KreatorInfo>{T.regulacjaPasywnaOstrzezenie}</KreatorInfo>
+              <KreatorInfo><TekstZWzorami tekst={T.regulacjaPasywnaOstrzezenie} /></KreatorInfo>
             ) : null}
             <KreatorSiatka kolumny={2}>
               <PoleLiczbowe

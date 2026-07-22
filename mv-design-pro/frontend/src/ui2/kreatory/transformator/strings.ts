@@ -95,7 +95,7 @@ export const TRANSFORMATOR_STRINGS = {
   teoriaSzynyOpis:
     'Transformator łączy szynę górnego napięcia (strona zasilania) z dolnym przez przekładnię '
     + 'napięciową. Moc znamionowa Sn ogranicza obciążalność, a napięcie zwarcia uk [%] wyznacza '
-    + 'impedancję szeregową (Z ≈ uk·U²/Sn) — decyduje o spadku napięcia pod obciążeniem i o prądzie '
+    + 'impedancję szeregową ($Z \\approx u_k \\cdot U^2 / S_n$) — decyduje o spadku napięcia pod obciążeniem i o prądzie '
     + 'zwarciowym po stronie dolnej (im wyższe uk, tym mniejszy prąd zwarciowy, ale większy spadek '
     + 'napięcia). Grupa połączeń (np. Dyn11) określa przesunięcie fazowe i drogę składowej zerowej '
     + 'dla zwarć doziemnych. Wszystkie parametry pochodzą z katalogu; prądy i spadki liczy solver.',

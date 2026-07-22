@@ -4,11 +4,15 @@
  *
  * Zasada FLOW §0.3 (język inżynierski): każde pole może nieść widoczną pomoc
  * (po co / z czego / co daje) zamiast ukrytego tooltipa.
+ *
+ * Zasada wywodów KaTeX (2026-07-22): fragmenty `$...$` w `pomoc` renderują się
+ * przez KaTeX (TekstZWzorami → MathInline) — surowe wzory tekstowe są zakazane.
  */
 
 import type { ReactNode } from 'react';
 
 import type { OpcjaWyboru, StatusPobrania } from './model';
+import { TekstZWzorami } from './tekstZWzorami';
 
 interface PolakoszulkaProps {
   etykieta: string;
@@ -38,7 +42,7 @@ function Polakoszulka({
         {wymagane ? <span className="mvd-pole-gwiazdka" aria-hidden="true">*</span> : null}
       </label>
       {children}
-      {pomoc ? <p className="mvd-pole-pomoc">{pomoc}</p> : null}
+      {pomoc ? <p className="mvd-pole-pomoc"><TekstZWzorami tekst={pomoc} /></p> : null}
       {blad ? <p className="mvd-pole-blad" role="alert">{blad}</p> : null}
     </div>
   );

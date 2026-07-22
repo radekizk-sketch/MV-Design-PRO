@@ -31,6 +31,7 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  TekstZWzorami,
   useSelekcjaPoOperacji,
   type KrokKreatora,
   type WierszGotowosci,
@@ -327,7 +328,7 @@ export function KreatorOdbioruNn() {
           >
             <figure className="mvd-wykres-fig">
               <WykresTrojkatMocy cosPhi={dane.cos_phi} />
-              <figcaption className="mvd-wykres-cap">{T.teoriaJakCzytac}</figcaption>
+              <figcaption className="mvd-wykres-cap"><TekstZWzorami tekst={T.teoriaJakCzytac} /></figcaption>
             </figure>
           </PanelTeorii>
         </KreatorSekcja>

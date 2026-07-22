@@ -140,6 +140,13 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     const teoria = screen.getByTestId('mvd-kreator-oze-teoria');
     expect(teoria).toBeInTheDocument();
     expect(teoria.querySelector('svg')).not.toBeNull();
+
+    // Zasada wywodów KaTeX (2026-07-22): wzory teorii Q(U) (Q = 0 w paśmie) i pomocy
+    // pól renderuje KaTeX (math-rendered), nie surowy tekst.
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThanOrEqual(2);
+    expect(wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('Q = 0'))).toBe(true);
+    expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
 
   it('uczciwy stan zerowy: bez rozdzielni zapis zablokowany', async () => {

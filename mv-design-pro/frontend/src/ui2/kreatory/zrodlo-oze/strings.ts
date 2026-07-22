@@ -57,12 +57,12 @@ export const OZE_STRINGS = {
     + 'rozpływu mocy (kanoniczny model falownika). Stały cosφ — Q proporcjonalna do P wg '
     + 'zadanego cosφ; Q(U) (napięciowo-jałowa) — Q zależna od napięcia szyny (statyzm); '
     + 'P(U) — ograniczanie mocy czynnej od napięcia (nie modelowane w rozpływie ustalonym); '
-    + '„Bez regulacji" — źródło pasywne (Q = 0).',
+    + '„Bez regulacji" — źródło pasywne ($Q = 0$).',
   cosPhiCel: 'Docelowy współczynnik mocy cosφ',
   cosPhiCelPomoc:
-    'Wartość rządząca trybem stałego cosφ. cosφ < 1 → falownik oddaje/pobiera Q '
-    + '(Q/|P| = tan(arccos cosφ)). Sugerowane: 0,95 (NC RfG typ B/C zwykle wymaga zdolności '
-    + '±0,95, tj. ±0,3287·Pn). cosφ = 1 → brak Q (tryb pasywny).',
+    'Wartość rządząca trybem stałego cosφ. $\\cos\\varphi < 1$ → falownik oddaje/pobiera Q '
+    + '($Q/|P| = \\tan(\\arccos\\cos\\varphi)$). Sugerowane: 0,95 (NC RfG typ B/C zwykle wymaga zdolności '
+    + '±0,95, tj. $\\pm 0{,}3287 \\cdot P_n$). $\\cos\\varphi = 1$ → brak Q (tryb pasywny).',
   quNachylenie: 'Nachylenie Q(U) (statyzm)',
   quNachyleniePomoc:
     'Wartość rządząca trybem Q(U) [pu Q na pu U]: o ile zmienia się Q na jednostkę zmiany '
@@ -71,13 +71,13 @@ export const OZE_STRINGS = {
   quPasmoGora: 'Pasmo Q(U) — napięcie górne',
   quPasmoPomoc:
     'Napięciowe pasmo nieczułości charakterystyki Q(U) [pu U]: w zakresie dolne–górne źródło '
-    + 'nie oddaje/pobiera Q (Q = 0), reakcja włącza się dopiero poza pasmem. Sugerowane: '
+    + 'nie oddaje/pobiera Q ($Q = 0$), reakcja włącza się dopiero poza pasmem. Sugerowane: '
     + '0,95–1,05 pu (NC RfG). Puste = punkt 1,0/1,0 (reakcja natychmiastowa przy dowolnej odchyłce).',
   qMin: 'Q min (pobór, podwzbudzenie)',
   qMax: 'Q max (oddawanie, nadwzbudzenie)',
   qPomoc:
     'Zakres mocy biernej falownika [Mvar] — klamra dla trybu regulacji. Puste = zakres z '
-    + 'tabliczki katalogowej. NC RfG (typ B/C): zdolność co najmniej ±0,3287·Pn (cosφ 0,95).',
+    + 'tabliczki katalogowej. NC RfG (typ B/C): zdolność co najmniej $\\pm 0{,}3287 \\cdot P_n$ (cosφ 0,95).',
   mocRobocza: 'Moc robocza P (nastawa)',
   mocRoboczaPomoc:
     'Zadana moc czynna [MW] w punkcie pracy studium. Puste = moc znamionowa agregatu '
@@ -106,7 +106,7 @@ export const OZE_STRINGS = {
   ],
   regulacjaPasywnaOstrzezenie:
     'Wybrany tryb regulacji jest nieaktywny — uzupełnij wartość rządzącą (cosφ albo nachylenie '
-    + 'Q(U)), inaczej źródło pracuje pasywnie (Q = 0) i wybór trybu nie wpływa na rozpływ.',
+    + 'Q(U)), inaczej źródło pracuje pasywnie ($Q = 0$) i wybór trybu nie wpływa na rozpływ.',
   sekcjaBess: 'Praca magazynu (BESS)',
   bessTryb: 'Tryb pracy magazynu',
   socMin: 'SOC min',
@@ -185,21 +185,21 @@ export const NCRFG_TEORIA = {
     tytul: 'Stały współczynnik mocy cosφ',
     opis:
       'Falownik utrzymuje zadany cosφ niezależnie od punktu pracy — moc bierna jest '
-      + 'proporcjonalna do czynnej: Q = P · tan(arccos cosφ). Przy cosφ = 0,95 daje to '
-      + '|Q| ≈ 0,3287 · P. Tryb prosty, nie reaguje na napięcie sieci — nadaje się, gdy OSD '
+      + 'proporcjonalna do czynnej: $Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$. Przy cosφ = 0,95 daje to '
+      + '$|Q| \\approx 0{,}3287 \\cdot P$. Tryb prosty, nie reaguje na napięcie sieci — nadaje się, gdy OSD '
       + 'zadaje stałą wartość cosφ w punkcie przyłączenia (PPP).',
     wymog:
       'NC RfG typ B/C: moduł musi mieć zdolność pracy w zakresie co najmniej cosφ 0,95 '
-      + 'indukcyjnie–pojemnościowo (±0,3287·Pn) przy mocy znamionowej.',
+      + 'indukcyjnie–pojemnościowo ($\\pm 0{,}3287 \\cdot P_n$) przy mocy znamionowej.',
     jakCzytac:
-      'Linia robocza wychodzi z początku pod kątem φ = arccos(cosφ). Im niższy cosφ, tym '
+      'Linia robocza wychodzi z początku pod kątem $\\varphi = \\arccos(\\cos\\varphi)$. Im niższy cosφ, tym '
       + 'stromsza linia (więcej Q na jednostkę P). Szary klin = wymagane pasmo zdolności ±0,95.',
   },
   qu: {
     tytul: 'Regulacja Q(U) — napięciowo-jałowa (volt-var)',
     opis:
       'Moc bierna zależy od napięcia w PPP: w paśmie nieczułości (martwej strefie) wokół '
-      + 'napięcia znamionowego Q = 0; poza pasmem Q rośnie liniowo ze statyzmem. Przy napięciu '
+      + 'napięcia znamionowego $Q = 0$; poza pasmem Q rośnie liniowo ze statyzmem. Przy napięciu '
       + 'wyższym od górnej granicy pasma źródło POBIERA Q (rozładowuje sieć), przy niższym od '
       + 'dolnej — ODDAJE Q (podpiera napięcie). Zakres ograniczają Qmin/Qmax. To podstawowy '
       + 'tryb wsparcia napięcia lokalnego w sieciach z dużym nasyceniem OZE.',
@@ -207,7 +207,7 @@ export const NCRFG_TEORIA = {
       'NC RfG: charakterystyka Q(U) z nastawialnym pasmem nieczułości i nachyleniem; typowe '
       + 'pasmo 0,95–1,05 pu, statyzm dobierany przez OSD. Reakcja tylko poza pasmem.',
     jakCzytac:
-      'Płaski odcinek na środku = pasmo nieczułości (Q = 0). Nachylenie ramion = statyzm '
+      'Płaski odcinek na środku = pasmo nieczułości ($Q = 0$). Nachylenie ramion = statyzm '
       + '(większy = ostrzejsza reakcja). Poziome plateau = ograniczenie Qmin/Qmax.',
   },
   pf: {
@@ -216,22 +216,22 @@ export const NCRFG_TEORIA = {
       'Przy wzroście częstotliwości powyżej pasma nieczułości (LFSM-O, np. od 50,2 Hz) źródło '
       + 'liniowo redukuje moc czynną — stabilizuje system przy nadmiarze generacji. Magazyny i '
       + 'źródła z rezerwą mogą też PODNOSIĆ moc przy spadku częstotliwości (LFSM-U, np. poniżej '
-      + '49,8 Hz). Statyzm s [%] = (ΔP/Pn)/(Δf/fn): mniejszy statyzm = ostrzejsza reakcja. '
+      + '49,8 Hz). Statyzm $s = \\frac{\\Delta P / P_n}{\\Delta f / f_n}$ [%]: mniejszy statyzm = ostrzejsza reakcja. '
       + 'Przy częstotliwości znamionowej (50 Hz) tryb nie zmienia mocy.',
     wymog:
       'NC RfG: LFSM-O obowiązkowy dla typów B/C/D — próg zwykle 50,2 Hz, statyzm 2–12% '
       + '(typ. 5%). LFSM-U wymagany dla źródeł ze zdolnością zwiększania mocy.',
     jakCzytac:
-      'Płaski odcinek = pasmo nieczułości (P = 100%). Opadające ramię w prawo = redukcja '
+      'Płaski odcinek = pasmo nieczułości ($P = 100\\ \\%$). Opadające ramię w prawo = redukcja '
       + 'przy nadczęstotliwości (LFSM-O); rosnące ramię w lewo (jeśli aktywne) = LFSM-U.',
   },
   wylaczone: {
     tytul: 'Bez regulacji (źródło pasywne)',
     opis:
-      'Źródło pracuje ze stałą mocą bierną Q = 0 — nie wspiera napięcia ani częstotliwości. '
+      'Źródło pracuje ze stałą mocą bierną $Q = 0$ — nie wspiera napięcia ani częstotliwości. '
       + 'Dopuszczalne tylko dla najmniejszych modułów (typ A) lub gdy OSD nie wymaga regulacji.',
     wymog: 'Dla typów B/C/D NC RfG wymaga aktywnych trybów regulacji Q i P(f).',
-    jakCzytac: 'Brak charakterystyki — moc bierna stała (Q = 0) niezależnie od napięcia i częstotliwości.',
+    jakCzytac: 'Brak charakterystyki — moc bierna stała ($Q = 0$) niezależnie od napięcia i częstotliwości.',
   },
   osU: 'Napięcie U [pu]',
   osQ: 'Moc bierna Q',

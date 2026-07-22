@@ -56,6 +56,7 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  TekstZWzorami,
   useSelekcjaPoOperacji,
   type KrokKreatora,
   type StatusPobrania,
@@ -654,7 +655,7 @@ export function KreatorZrodloZasilania() {
           >
             <figure className="mvd-wykres-fig">
               <WykresSztywnosci />
-              <figcaption className="mvd-wykres-cap">{T.teoriaJakCzytac}</figcaption>
+              <figcaption className="mvd-wykres-cap"><TekstZWzorami tekst={T.teoriaJakCzytac} /></figcaption>
             </figure>
           </PanelTeorii>
         </>

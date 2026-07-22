@@ -61,7 +61,7 @@ export const KOMPENSACJA_STRINGS = {
   // Nota rozdziału dwóch cosφ (wymóg właściciela) + konwencja kanoniczna
   notaCosfiTytul: 'Dwie odrębne wielkości cosφ',
   notaCosfiPunktu:
-    'cosφ punktu kompensowanego — z lokalnego bilansu Q_netto = Q_load − Q_cap_eff. '
+    'cosφ punktu kompensowanego — z lokalnego bilansu $Q_{\\mathrm{netto}} = Q_{\\mathrm{load}} - Q_{\\mathrm{cap\\,eff}}$. '
     + 'To NA NIM opiera się dobór baterii (kolumna decyzyjna, werdykt „spełnia").',
   notaCosfiPrzekroju:
     'cosφ przekroju sieciowego — cosφ przepływu mocy w przekroju sieci. Wielkość '
@@ -71,7 +71,7 @@ export const KOMPENSACJA_STRINGS = {
   // Sekcja stanu wyjściowego (baseline)
   baselineTytul: 'Stan wyjściowy punktu (bez baterii)',
   baselineKomentarz:
-    'Bez baterii Q_cap_eff = 0, więc cosφ punktu i cosφ przekroju są równe; obie '
+    'Bez baterii $Q_{\\mathrm{cap\\,eff}} = 0$, więc cosφ punktu i cosφ przekroju są równe; obie '
     + 'wielkości pokazano jawnie, aby były rozróżnialne również w tabeli kandydatów.',
   baselineCosfiPunktuDzien: 'cosφ punktu kompensowanego (dzień)',
   baselineCosfiPunktuNoc: 'cosφ punktu kompensowanego (noc)',

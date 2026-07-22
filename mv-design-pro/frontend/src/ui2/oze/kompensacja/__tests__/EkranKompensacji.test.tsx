@@ -124,6 +124,14 @@ describe('EkranKompensacji — rozdział dwóch cosφ + baseline (wymóg właśc
     expect(screen.getByTestId('mvd-komp-nota-konwencja')).toHaveTextContent(
       'P>0 pobór czynnej, Q>0 pobór indukcyjnej, Q<0 pojemnościowa',
     );
+    // Zasada wywodów KaTeX (2026-07-22): bilans Q_netto = Q_load − Q_cap_eff w nocie
+    // oraz Q_cap_eff = 0 w komentarzu baseline renderuje KaTeX, nie surowy tekst.
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThanOrEqual(2);
+    expect(
+      wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('Q_{\\mathrm{netto}}')),
+    ).toBe(true);
+    expect(screen.queryByTestId('math-fallback')).toBeNull();
   });
 
   it('stan wyjściowy (baseline) pokazuje OBA cosφ pod różnymi etykietami (dzień)', async () => {

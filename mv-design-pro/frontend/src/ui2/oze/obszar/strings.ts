@@ -25,7 +25,7 @@ export const OBSZAR_STRINGS = {
   paramStepP: 'Krok mocy czynnej',
   paramStepPOpis: 'Przyrost mocy czynnej P między wierszami siatki.',
   paramStepQ: 'Krok mocy biernej',
-  paramStepQOpis: 'Przyrost mocy biernej Q skanowanej od środka (Q = 0) na zewnątrz.',
+  paramStepQOpis: 'Przyrost mocy biernej Q skanowanej od środka ($Q = 0$) na zewnątrz.',
   paramMaxP: 'Maksymalna liczba kroków P',
   paramMaxPOpis: 'Górny limit wierszy siatki (zakres P = krok × liczba kroków).',
   paramMaxQ: 'Maksymalna liczba kroków Q',

@@ -21,6 +21,8 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import { TabelaWynikow } from '../../wyniki/wzorzec';
+// Zasada wywodów KaTeX: wzory w opisach parametrów renderuje TekstZWzorami (MathInline).
+import { TekstZWzorami } from '../../kreatory/rama';
 import { SladAnalizy } from '../pulpit';
 import { opcjeTypowPQ, type OpcjaTypuPQ } from '../krzywe/krzyweModel';
 import {
@@ -350,7 +352,7 @@ export function EkranObszaruPQ({ trybZaawansowania }: EkranObszaruPQProps) {
                 />
                 <span className="mvd-obszar-param-jedn">{OBSZAR_STRINGS.jednMvar}</span>
               </div>
-              <p className="mvd-obszar-param-opis">{OBSZAR_STRINGS.paramStepQOpis}</p>
+              <p className="mvd-obszar-param-opis"><TekstZWzorami tekst={OBSZAR_STRINGS.paramStepQOpis} /></p>
             </div>
 
             <div className="mvd-obszar-param">

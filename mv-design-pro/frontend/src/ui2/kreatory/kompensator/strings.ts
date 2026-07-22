@@ -70,9 +70,9 @@ export const KOMPENSATOR_STRINGS = {
   // Panel teorii (V12K-066: standard „must-have")
   teoriaTytul: 'Teoria: kompensacja mocy biernej baterią kondensatorów',
   teoriaOpis:
-    'Bateria kondensatorów SN oddaje moc bierną pojemnościową Q = U²·2πf·C, podpierając napięcie '
+    'Bateria kondensatorów SN oddaje moc bierną pojemnościową $Q = U^2 \\cdot 2\\pi f \\cdot C$, podpierając napięcie '
     + 'i odciążając sieć oraz transformatory z przesyłu Q. Moc baterii silnie zależy od napięcia '
-    + '(Q ∝ U²), dlatego katalog podaje Q przy napięciu znamionowym, a rzeczywistą wartość w punkcie '
+    + '($Q \\propto U^2$), dlatego katalog podaje Q przy napięciu znamionowym, a rzeczywistą wartość w punkcie '
     + 'pracy liczy solver dla napięcia z rozpływu. Bateria zmniejsza pobór Q z sieci nadrzędnej, '
     + 'poprawia współczynnik mocy i redukuje straty (mniejszy prąd w gałęziach). Zbyt duża '
     + 'kompensacja przy małym obciążeniu grozi jednak przepięciem i przekompensowaniem.',

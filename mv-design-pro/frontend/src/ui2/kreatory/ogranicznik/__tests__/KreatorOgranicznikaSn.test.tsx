@@ -108,6 +108,19 @@ describe('KreatorOgranicznikaSn — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
+  it('panel teorii renderuje margines koordynacji BIL ≥ U_res przez KaTeX (math-rendered)', async () => {
+    // Zasada wywodów KaTeX (2026-07-22): relacja symboliczna w wymogu teorii
+    // renderuje KaTeX, nie surowy tekst.
+    render(<KreatorOgranicznikaSn />);
+    await pickType();
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThanOrEqual(1);
+    expect(
+      wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('\\mathrm{BIL} \\ge U_{\\mathrm{res}}')),
+    ).toBe(true);
+    expect(screen.queryByTestId('math-fallback')).toBeNull();
+  });
+
   it('uczciwy stan zerowy: bez pola/szyny zapis jest zablokowany', async () => {
     context = {};
     render(<KreatorOgranicznikaSn />);

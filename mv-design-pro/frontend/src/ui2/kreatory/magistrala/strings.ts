@@ -109,7 +109,7 @@ export const MAGISTRALA_STRINGS = {
   ocenaSpadekZle: (pct: number, limit: number) =>
     `Spadek ${pct.toFixed(2)}% przekracza limit ${limit}% — większy przekrój lub krótszy odcinek.`,
   ocenaIthPomoc:
-    'Wytrzymałość cieplna zwarciowa (Ith ≥ Ik·√tk) — sprawdzana po biegu zwarciowym; katalog podaje Ith żyły powrotnej.',
+    'Wytrzymałość cieplna zwarciowa ($I_{th} \\ge I_k \\cdot \\sqrt{t_k}$) — sprawdzana po biegu zwarciowym; katalog podaje Ith żyły powrotnej.',
 
   // Uczciwy stan zerowy: brak startu ciągu.
   brakStartuTytul: 'Brak miejsca startu ciągu',
@@ -133,7 +133,7 @@ export const MAGISTRALA_STRINGS = {
   teoriaOpis:
     'Odcinek magistrali (linia napowietrzna lub kabel) ma rezystancję R i reaktancję X na jednostkę '
     + 'długości (z katalogu przewodu/kabla). Przy przepływie mocy P i Q powstaje spadek napięcia '
-    + '≈ (R·P + X·Q)/U oraz straty mocy ∝ I²·R rosnące z kwadratem prądu. Dłuższy odcinek i większe '
+    + '$\\Delta U \\approx (R \\cdot P + X \\cdot Q)/U$ oraz straty mocy $\\propto I^2 \\cdot R$ rosnące z kwadratem prądu. Dłuższy odcinek i większe '
     + 'obciążenie → większy spadek napięcia na końcu magistrali. Przekrój przewodu dobiera się do '
     + 'obciążalności prądowej (nagrzewanie) i do dopuszczalnego spadku napięcia. Wszystkie wartości '
     + 'liczbowe (ΔU, straty, prądy) wyznacza solver — katalog wnosi tylko parametry jednostkowe.',
@@ -146,7 +146,7 @@ export const MAGISTRALA_STRINGS = {
     + 'zestaw parametrów pokazany poniżej zależy od rodzaju odcinka.',
   teoriaWymog:
     'Przekrój musi wytrzymać prąd obciążenia długotrwale (Iz ≥ prąd roboczy) i prąd zwarciowy '
-    + 'cieplnie (Ith ≥ Ik·√tk); spadek napięcia na całej magistrali powinien mieścić się w '
+    + 'cieplnie ($I_{th} \\ge I_k \\cdot \\sqrt{t_k}$); spadek napięcia na całej magistrali powinien mieścić się w '
     + 'dopuszczalnym zakresie (typowo kilka %).',
   teoriaPodstawa: 'Podstawa: PN-EN 50160 (napięcie), N SEP-E-004 (linie i kable), IEC 60909 (zwarcia), IRiESD.',
   teoriaJakCzytac:

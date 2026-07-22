@@ -170,6 +170,20 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
     });
   });
 
+  it('krok parametrów: panel teorii renderuje wzory ΔU i Ith przez KaTeX (math-rendered, klik natywny)', async () => {
+    // Zasada wywodów KaTeX (2026-07-22): ΔU ≈ (R·P+X·Q)/U, straty ∝ I²·R oraz
+    // Ith ≥ Ik·√tk renderuje KaTeX, nie surowy tekst.
+    render(<KreatorMagistralaSn />);
+    await pickCable();
+    await userEvent.click(screen.getByTestId('mvd-kreator-magistrala-dalej'));
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThanOrEqual(3);
+    const latexy = wzory.map((w) => w.getAttribute('data-latex') ?? '');
+    expect(latexy.some((l) => l.includes('\\Delta U \\approx'))).toBe(true);
+    expect(latexy.some((l) => l.includes('\\sqrt{t_k}'))).toBe(true);
+    expect(screen.queryByTestId('math-fallback')).toBeNull();
+  });
+
   it('następny krok „ZK SN" jest realną akcją i łańcuchuje wstawienie ZK SN', async () => {
     executeDomainOperationMock.mockResolvedValue(successResponse);
     render(<KreatorMagistralaSn />);

@@ -69,7 +69,7 @@ export const OGRANICZNIK_STRINGS = {
     + 'obniżone U_res przy prądzie znamionowym) a poziomem BIL izolacji — margines BIL. '
     + 'Zbyt niskie MCOV grozi przyspieszonym starzeniem, zbyt wysokie — słabą ochroną.',
   teoriaWymog:
-    'Margines koordynacji: BIL ≥ U_res z zapasem (IEC 60071 zaleca ~20%). MCOV dobiera się do '
+    'Margines koordynacji: $\\mathrm{BIL} \\ge U_{\\mathrm{res}}$ z zapasem (IEC 60071 zaleca ~20%). MCOV dobiera się do '
     + 'układu punktu neutralnego (izolowany/skompensowany/uziemiony) i przewidywanego TOV.',
   teoriaPodstawa:
     'Podstawa: PN-EN 60071 (koordynacja izolacji), PN-EN 60099-4 (ograniczniki MO).',

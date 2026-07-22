@@ -73,7 +73,7 @@ export const ODBIOR_STRINGS = {
   teoriaTytul: 'Teoria: odbiór nN — moc, współczynnik mocy i model obciążenia',
   teoriaOpis:
     'Odbiór reprezentuje pobór mocy czynnej P i biernej Q na szynie nN. Współczynnik mocy cosφ '
-    + 'wiąże je: Q = P·tan(arccos cosφ) — im niższy cosφ, tym większy pobór Q i większe obciążenie '
+    + 'wiąże je: $Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$ — im niższy cosφ, tym większy pobór Q i większe obciążenie '
     + 'sieci oraz straty. Model obciążenia (stała moc / stały prąd / stała impedancja, tzw. ZIP) '
     + 'określa, jak pobór zmienia się z napięciem: odbiory stałomocowe pobierają tę samą P niezależnie '
     + 'od napięcia, impedancyjne — malejącą przy spadku napięcia. Sposób przyłączenia (1‑/3‑fazowe) '
@@ -85,7 +85,7 @@ export const ODBIOR_STRINGS = {
   teoriaJakCzytac:
     'Trójkąt mocy: przyprostokątna pozioma = moc czynna P, pionowa = moc bierna Q, '
     + 'przeciwprostokątna = moc pozorna S. Kąt między P a S rośnie, gdy cosφ maleje — im niższy '
-    + 'cosφ, tym więcej Q na tę samą P (Q = P·tan(arccos cosφ)). Rzeczywisty pobór liczy rozpływ.',
+    + 'cosφ, tym więcej Q na tę samą P ($Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$). Rzeczywisty pobór liczy rozpływ.',
   wykresAria: 'Trójkąt mocy odbioru w funkcji cosφ (P, Q, S)',
   wykresOsP: 'Moc czynna P [pu]',
   wykresOsQ: 'Moc bierna Q [pu]',

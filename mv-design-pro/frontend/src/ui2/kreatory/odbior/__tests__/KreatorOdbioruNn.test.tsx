@@ -93,6 +93,19 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
+  it('panel teorii renderuje wzory przez KaTeX (math-rendered), bez surowego tekstu', async () => {
+    // Zasada wywodów KaTeX (2026-07-22): Q = P·tan(arccos cosφ) w teorii i pod
+    // wykresem trójkąta mocy musi renderować KaTeX, nie surowy string.
+    render(<KreatorOdbioruNn />);
+    await fill();
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThanOrEqual(2);
+    expect(
+      wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('\\tan(\\arccos\\cos\\varphi)')),
+    ).toBe(true);
+    expect(screen.queryByTestId('math-fallback')).toBeNull();
+  });
+
   it('uczciwy stan zerowy: bez odpływu zapis zablokowany', async () => {
     context = {};
     render(<KreatorOdbioruNn />);

@@ -30,6 +30,8 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import { TabelaWynikow } from '../../wyniki/wzorzec';
+// Zasada wywodów KaTeX: wzory w notach/komentarzach renderuje TekstZWzorami (MathInline).
+import { TekstZWzorami } from '../../kreatory/rama';
 import { SladAnalizy } from '../pulpit';
 import {
   pobierzDoborKompensacji,
@@ -87,7 +89,7 @@ function NotaCosfi({ konwencja }: { konwencja: string }) {
     <section className="mvd-komp-nota" data-testid="mvd-komp-nota">
       <span className="mvd-komp-nota-tytul">{T.notaCosfiTytul}</span>
       <p className="mvd-komp-nota-wiersz mvd-komp-nota-wiersz--punktu" data-testid="mvd-komp-nota-punktu">
-        {T.notaCosfiPunktu}
+        <TekstZWzorami tekst={T.notaCosfiPunktu} />
       </p>
       <p className="mvd-komp-nota-wiersz" data-testid="mvd-komp-nota-przekroju">
         {T.notaCosfiPrzekroju}
@@ -197,7 +199,7 @@ function WynikKompensacji({
             </div>
           )}
         </dl>
-        <p className="mvd-komp-komentarz">{T.baselineKomentarz}</p>
+        <p className="mvd-komp-komentarz"><TekstZWzorami tekst={T.baselineKomentarz} /></p>
       </section>
 
       <p className="mvd-komp-sekcja-tytul">{T.tabelaTytul}</p>

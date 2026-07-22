@@ -228,7 +228,7 @@ export const ZRODLO_STRINGS = {
   teoriaOpis:
     'Główny Punkt Zasilający (GPZ) jest w modelu źródłem systemowym (slack) — reprezentuje sieć '
     + 'nadrzędną o zadanej mocy zwarciowej Sk″ i stosunku R/X. Moc zwarciowa określa „sztywność" '
-    + 'sieci: im wyższe Sk″, tym mniejsza impedancja źródła (Z = c·U²/Sk″), wyższe prądy zwarciowe '
+    + 'sieci: im wyższe Sk″, tym mniejsza impedancja źródła ($Z = c \\cdot U^2 / S_k\'\'$), wyższe prądy zwarciowe '
     + 'i mniejsze wahania napięcia przy zmianach obciążenia. Stosunek R/X wpływa na prąd udarowy ip '
     + '(współczynnik κ) i na charakter spadków napięcia. Wszystkie prądy zwarciowe (Ik″, ip, Ith) '
     + 'liczy backend wg IEC 60909 — GPZ wnosi tylko parametry źródła; z nich wynika dobór aparatury '
@@ -238,7 +238,7 @@ export const ZRODLO_STRINGS = {
     + 'wytrzymałość cieplna i dynamiczna); dane zwarciowe pobiera się od OSD/PSE dla danego węzła.',
   teoriaPodstawa: 'Podstawa: IEC 60909 (prądy zwarciowe), PN-EN 62271 (aparatura), dane OSD/PSE.',
   teoriaJakCzytac:
-    'Krzywa = impedancja źródła w funkcji mocy zwarciowej (Z maleje z 1/Sk″). Punkt (1;1) = '
+    'Krzywa = impedancja źródła w funkcji mocy zwarciowej ($Z \\propto 1/S_k\'\'$). Punkt (1;1) = '
     + 'odniesienie; podwojenie Sk″ o połowę zmniejsza Z (sieć sztywniejsza: wyższe prądy zwarciowe, '
     + 'mniejsze wahania napięcia). Rzeczywiste Ik″/Z liczy backend wg IEC 60909.',
   wykresAria: 'Sztywność sieci: impedancja źródła w funkcji mocy zwarciowej (Z proporcjonalne do 1/Sk″)',

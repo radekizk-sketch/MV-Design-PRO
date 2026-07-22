@@ -8,7 +8,7 @@
  * --mvd-*; deterministyczne (stałe wymiary, brak animacji, brak losowości).
  */
 
-import { PAD, PLH, PanelTeorii, RamkaWykresu, VBH, VBW, px, py } from '../rama';
+import { PAD, PLH, PanelTeorii, RamkaWykresu, TekstZWzorami, VBH, VBW, px, py } from '../rama';
 import { SUGEROWANE, type TrybRegulacji } from './zrodloOzeModel';
 import { NCRFG_TEORIA as TT, OZE_STRINGS as T } from './strings';
 
@@ -230,7 +230,7 @@ export function CharakterystykaNcRfg(props: CharakterystykaNcRfgProps) {
       {wykres ? (
         <figure className="mvd-wykres-fig">
           {wykres}
-          <figcaption className="mvd-wykres-cap">{teoria.jakCzytac}</figcaption>
+          <figcaption className="mvd-wykres-cap"><TekstZWzorami tekst={teoria.jakCzytac} /></figcaption>
         </figure>
       ) : (
         <p className="mvd-wykres-info">{TT.brakCharakterystyki}</p>
@@ -238,7 +238,7 @@ export function CharakterystykaNcRfg(props: CharakterystykaNcRfgProps) {
       {pfWykres ? (
         <figure className="mvd-wykres-fig">
           {pfWykres}
-          <figcaption className="mvd-wykres-cap">{TT.pf.jakCzytac}</figcaption>
+          <figcaption className="mvd-wykres-cap"><TekstZWzorami tekst={TT.pf.jakCzytac} /></figcaption>
         </figure>
       ) : null}
     </PanelTeorii>

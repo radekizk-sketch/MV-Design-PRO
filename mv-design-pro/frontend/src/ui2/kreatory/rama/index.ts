@@ -39,6 +39,9 @@ export type {
 export { PanelTeorii, PANEL_TEORII_WYMOG_PREFIX } from './panelTeorii';
 export type { PanelTeoriiProps } from './panelTeorii';
 
+export { TekstZWzorami } from './tekstZWzorami';
+export type { TekstZWzoramiProps } from './tekstZWzorami';
+
 export { VBW, VBH, PAD, PLW, PLH, px, py, RamkaWykresu } from './wykresPomoc';
 
 export { useSelekcjaPoOperacji, mapujTypElementu, refZOperacji } from './selekcjaPoOperacji';

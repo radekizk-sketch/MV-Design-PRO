@@ -111,6 +111,17 @@ describe('KreatorKompensatoraSn — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
+  it('panel teorii renderuje wzory Q(U) przez KaTeX (math-rendered)', async () => {
+    // Zasada wywodów KaTeX (2026-07-22): Q = U²·2πf·C oraz Q ∝ U² w teorii
+    // renderuje KaTeX, nie surowy tekst.
+    render(<KreatorKompensatoraSn />);
+    await pickType();
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThanOrEqual(2);
+    expect(wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('\\propto U^2'))).toBe(true);
+    expect(screen.queryByTestId('math-fallback')).toBeNull();
+  });
+
   it('uczciwy stan zerowy: bez szyny zapis jest zablokowany', async () => {
     context = {};
     render(<KreatorKompensatoraSn />);

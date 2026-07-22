@@ -49,6 +49,7 @@ import {
   PoleTekstowe,
   PoleWyboru,
   RzadWartosci,
+  TekstZWzorami,
   type KrokKreatora,
   type WierszGotowosci,
 } from '../rama';
@@ -480,7 +481,7 @@ export function KreatorMagistralaSn() {
     >
       <RzadWartosci etykieta={T.ocenaObciazalnosc} wartosc={stanLabel(ocena.obciazalnosc)} />
       <RzadWartosci etykieta={T.ocenaSpadek} wartosc={stanLabel(ocena.spadek)} />
-      <p className="mvd-podsum-komunikat">{T.ocenaIthPomoc}</p>
+      <p className="mvd-podsum-komunikat"><TekstZWzorami tekst={T.ocenaIthPomoc} /></p>
     </KreatorPodsumowanie>
   );
 

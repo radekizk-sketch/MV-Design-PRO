@@ -58,7 +58,7 @@ export const OSD_STRINGS = {
   paramCosfi: 'Współczynnik mocy cosφ',
   paramCosfiOpis:
     'Co to jest: docelowy współczynnik mocy źródła. Zakres typowy: 0,90–1,00. Skąd '
-    + 'domyślna: typowy wymóg regulacji napięcia. Konsekwencja: Q = ±|P|·tan(arccos cosφ).',
+    + 'domyślna: typowy wymóg regulacji napięcia. Konsekwencja: $Q = \\pm|P| \\cdot \\tan(\\arccos\\cos\\varphi)$.',
   paramCharakter: 'Charakter mocy biernej',
   paramCharakterOpis:
     'Co to jest: znak mocy biernej przy zadanym cosφ. Nadwzbudny: generacja Q (znak +); '

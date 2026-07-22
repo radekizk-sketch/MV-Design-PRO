@@ -286,7 +286,7 @@ export const STACJA_STRINGS = {
   liczbaTransformatorow: 'Liczba równoległych transformatorów',
   liczbaTransformatorowPomoc:
     'Identyczne jednostki pracujące równolegle w polu transformatorowym (rezerwa/moc). '
-    + 'Dla n jednostek impedancja zastępcza maleje n-krotnie (Z/n) — rozpływ i zwarcie liczy '
+    + 'Dla n jednostek impedancja zastępcza maleje n-krotnie ($Z/n$) — rozpływ i zwarcie liczy '
     + 'backend na agregacie. 1 = pojedynczy transformator.',
 
   // Potrzeby własne stacji (G-STK-3) — sekcja w kroku bloku nN.
@@ -299,7 +299,7 @@ export const STACJA_STRINGS = {
   potrzebyWlasneMocPomoc: 'Puste — stacja bez odrębnego odbioru potrzeb własnych.',
   potrzebyWlasneCosphi: 'cosφ potrzeb własnych',
   potrzebyWlasneCosphiPomoc:
-    'Współczynnik mocy odbioru — moc bierną (Q) wylicza backend (Q = P·tan(arccos cosφ)).',
+    'Współczynnik mocy odbioru — moc bierną (Q) wylicza backend ($Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$).',
 
   // Krok — uziemienie i punkt neutralny (G-STK-1).
   uziemienieOpis:

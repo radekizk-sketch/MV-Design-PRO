@@ -183,6 +183,18 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     });
   });
 
+  it('panel teorii kroku szyn renderuje wzór impedancji przez KaTeX (math-rendered)', async () => {
+    // Zasada wywodów KaTeX (2026-07-22): Z ≈ uk·U²/Sn renderuje KaTeX, nie surowy tekst.
+    render(<KreatorTransformatoraSnNn />);
+    await pickType();
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThanOrEqual(1);
+    expect(
+      wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('u_k \\cdot U^2 / S_n')),
+    ).toBe(true);
+    expect(screen.queryByTestId('math-fallback')).toBeNull();
+  });
+
   it('uczciwa blokada dla kontekstu bez pary szyn (GPZ)', async () => {
     context = {
       station_ref: 'gpz-1',

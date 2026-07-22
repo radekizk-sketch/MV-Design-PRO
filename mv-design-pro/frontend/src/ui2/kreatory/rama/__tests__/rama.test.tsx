@@ -168,6 +168,39 @@ describe('Pola kreatora — interakcje natywne', () => {
     expect((panel as HTMLDetailsElement).open).toBe(true);
   });
 
+  it('PanelTeorii renderuje wzory $...$ z opisu i wymogu przez KaTeX (math-rendered)', () => {
+    // Zasada wywodów KaTeX (2026-07-22): wzór w tekście teorii NIE może być surowym
+    // tekstem — TekstZWzorami renderuje segmenty $...$ przez MathInline.
+    render(
+      <PanelTeorii
+        tytul="Teoria: wzory"
+        opis={'Moc bierną wiąże $Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$ z mocą czynną.'}
+        wymog={'Wytrzymałość cieplna $I_{th} \\ge I_k \\cdot \\sqrt{t_k}$.'}
+        testid="pt-wzory"
+      />,
+    );
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory).toHaveLength(2);
+    expect(wzory[0].getAttribute('data-latex')).toContain('\\tan(\\arccos\\cos\\varphi)');
+    expect(wzory[1].getAttribute('data-latex')).toContain('\\sqrt{t_k}');
+    // Surowy zapis LaTeX nie wycieka do tekstu (brak fallbacku <code>).
+    expect(screen.queryByTestId('math-fallback')).toBeNull();
+  });
+
+  it('pomoc pola renderuje wzory $...$ przez KaTeX (math-rendered)', () => {
+    render(
+      <PoleLiczbowe
+        etykieta="cosφ"
+        wartosc={0.95}
+        pomoc={'Q wylicza backend ($Q = P \\cdot \\tan(\\arccos\\cos\\varphi)$).'}
+        testid="pl-pomoc"
+      />,
+    );
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory).toHaveLength(1);
+    expect(wzory[0].getAttribute('data-latex')).toContain('\\arccos');
+  });
+
   it('PanelTeorii domyślnieOtwarty startuje rozwinięty; pomija puste bloki', () => {
     render(<PanelTeorii tytul="T" opis="O." domyslnieOtwarty testid="pt2" />);
     const panel = screen.getByTestId('pt2') as HTMLDetailsElement;

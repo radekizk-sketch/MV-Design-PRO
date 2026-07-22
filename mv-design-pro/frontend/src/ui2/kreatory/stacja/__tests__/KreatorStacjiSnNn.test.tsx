@@ -560,6 +560,17 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     expect(feeders.every((f) => f.feeder_role === 'ODPLYW_NN')).toBe(true);
   });
 
+  it('krok transformatora: pomoc pola liczby jednostek renderuje wzór Z/n przez KaTeX (klik natywny)', async () => {
+    // Zasada wywodów KaTeX (2026-07-22): impedancja zastępcza Z/n w pomocy pola
+    // renderuje KaTeX (math-rendered), nie surowy tekst.
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    const wzory = screen.getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThanOrEqual(1);
+    expect(wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('Z/n'))).toBe(true);
+    expect(screen.queryByTestId('math-fallback')).toBeNull();
+  });
+
   it('uczciwy stan zerowy: brak miejsca osadzenia → blokada zapisu', async () => {
     context = {};
     render(<KreatorStacjiSnNn />);
