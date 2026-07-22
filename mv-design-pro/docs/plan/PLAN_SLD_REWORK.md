@@ -11,6 +11,28 @@
 
 ---
 
+## 0. PROGRAM „SCHEMAT-10" (2026-07-22 — AKTYWNY, nadrzędny nad dalszymi sekcjami)
+
+Dyrektywa właściciela 2026-07-22 (ocena stanu: **2/10**, niespójne LOD). Kanon rundy:
+`docs/sld/PROMPT_RUNDA_SCHEMAT_10_2026-07.md` (12 defektów D1–D12 + §0bis rozjazd);
+audyt wiążący z macierzą prawdy LOD i przyczynami źródłowymi:
+`docs/sld/AUDYT_SCHEMATOW_OD_ZERA_2026-07.md`. Historyczne fazy F1–F5 poniżej
+pozostają referencją (F1 symbole — wykonane w v3; F2/F3 zrealizowane inaczej
+przez SPEC V3); wykonawczo obowiązują fazy S1–S5:
+
+| Faza | Zakres (skrót — pełny w audycie §5) | Zależy od | Status |
+|---|---|---|---|
+| S1 Gramatyka stacji | jedna rodzina glifów stacji/GPZ z kotwicą L0→L1→L2; likwidacja osobnych gałęzi świata w buildScene (jedna geometria korytarzy); JEDEN słownik LOD (koniec mapowania v2 5→3); footprint kolumny per LOD (D12) | — | karta wykonawcy (w locie) |
+| S2 Silnik etykiet | rezerwacja miejsca + detekcja kolizji (wyrocznia testowa „zero kolizji"); hierarchia typografii (D10); gęstość (D3); słownik PL enumów (D4); manhattanizacja dołączeń (D5) | S1 | do zlecenia |
+| S3 Kolor + sekcje | tabela semantyki koloru jako tokeny kanwy (D8); znaczniki sekcji/NOP kotwiczone do renderu szyny per LOD (D7); GPZ w gramatyce stacji (D6) | S1 | do zlecenia |
+| S4 Motyw + kadr | D11 (decyzja właściciela: SCADA-dark + jasny wariant w eksporcie — AskUserQuestion przed startem); fit-do-treści | S1–S3 | do zlecenia |
+| S5 Goldeny + dowód | wymiana goldenów jednym commitem; sekwencja zoom ≥3 kroki; macierz parytetu funkcji (overlaye, strzałki, znacznik, menu, edycja, kreatory, deep-linki) | S1–S4 | Fable osobiście |
+
+Rygor per faza: pełna regresja `ui/sld`+`sld-overlay`, sld_determinism,
+overlay_no_physics, forbidden_ui_terms, zrzuty żywej aplikacji do oceny właściciela.
+
+---
+
 ## 1. Cel
 
 Doprowadzić SLD z aktualnego stanu **5/10 (proof-of-concept)** do **9/10 (klasa przemysłowa)**. Eliminacja wyglądu „atrapy z klocków" przez 5 fazowanych przebudów (F1–F5).
