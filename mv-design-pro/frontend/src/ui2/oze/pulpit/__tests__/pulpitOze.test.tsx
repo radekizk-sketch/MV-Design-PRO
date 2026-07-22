@@ -67,9 +67,13 @@ describe('PulpitOze — lista modułów (kryterium 1)', () => {
     );
   });
 
-  it('brak modułów → komunikat zamiast pulpitu', () => {
+  it('brak modułów → komunikat zamiast pulpitu', async () => {
     useStationDerStore.setState({ ders: {} });
     render(<PulpitOze trybZaawansowania="basic" onNawiguj={noop} />);
+    // Montaż pobiera katalog wymogów (mikrotaski). Czekamy na realny stan
+    // końcowy UI — pole „wersja procedury" w nagłówku pojawia się dopiero po
+    // załadowaniu katalogu — żeby aktualizacja store'a domknęła się w act.
+    expect(await screen.findByText('PTPiREE Procedura testowania v3.0')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-oze-pulpit-pusty')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-oze-pulpit-lista')).not.toBeInTheDocument();
   });
@@ -139,6 +143,11 @@ describe('PulpitOze — wyróżnienie moduł→węzeł (P47b)', () => {
     fireEvent.click(pozBess);
     expect(pozBess).toHaveAttribute('data-wyrozniony', 'true');
     expect(pozPv).not.toHaveAttribute('data-wyrozniony');
+    // Powrót karty na BESS montuje sekcję magazynu od nowa — jej fetch katalogu
+    // BESS (mock: pusta lista) kończy się realnym stanem „pozycja katalogowa
+    // nieodnaleziona". Czekamy na ten stan końcowy, żeby aktualizacja
+    // SekcjaMagazynu domknęła się w act.
+    expect(await screen.findByTestId('mvd-oze-magazyn-nieodnaleziona')).toBeInTheDocument();
   });
 });
 

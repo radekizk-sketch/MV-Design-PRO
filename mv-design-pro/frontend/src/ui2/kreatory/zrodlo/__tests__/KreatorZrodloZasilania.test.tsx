@@ -4,7 +4,7 @@
  * z Zero-Debt §5. Mockowane są tylko store'y i końcówki API (nie sam ekran).
  */
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -78,20 +78,44 @@ vi.mock('../../../../ui/catalog/api', () => ({
     ]),
 }));
 
+// Podgląd IEC 60909 jako vi.fn — liczba wywołań jest realnym sygnałem
+// zakończenia łańcucha montażu (patrz renderujKreator poniżej).
+const fetchGridSourcePreviewMock = vi.fn(() =>
+  Promise.resolve({
+    sk_mva: 310,
+    ik3_ka: 11.93,
+    ik1_ka: 8.1,
+    ip_ka: 30.2,
+    ith_ka: 11.9,
+    kappa: 1.79,
+    z1_ohm: { r_ohm: 0.09, x_ohm: 0.72 },
+    z0_ohm: { r_ohm: 0.28, x_ohm: 2.3 },
+    formula_ref: 'IEC60909',
+  }),
+);
+
 vi.mock('../../../../ui/network-build/forms/gridSourcePreviewApi', () => ({
-  fetchGridSourcePreview: () =>
-    Promise.resolve({
-      sk_mva: 310,
-      ik3_ka: 11.93,
-      ik1_ka: 8.1,
-      ip_ka: 30.2,
-      ith_ka: 11.9,
-      kappa: 1.79,
-      z1_ohm: { r_ohm: 0.09, x_ohm: 0.72 },
-      z0_ohm: { r_ohm: 0.28, x_ohm: 2.3 },
-      formula_ref: 'IEC60909',
-    }),
+  fetchGridSourcePreview: () => fetchGridSourcePreviewMock(),
 }));
+
+/**
+ * Renderuje kreator i czeka na realny stan końcowy montażu. Montaż pobiera
+ * 5 katalogów, po nich efekty auto-wybierają pozycję katalogu źródła i aparat,
+ * co przelicza podgląd IEC 60909 po stronie serwera DRUGI raz (pierwszy bieg
+ * rusza od danych domyślnych jeszcze przed katalogami). Czekamy na drugie
+ * wywołanie podglądu, a ogon (wynik drugiego biegu to mikrotask bez
+ * rozróżnialnego sygnału UI — treść podsumowania jest identyczna po obu
+ * biegach) domykamy jawnym act(async) — bez tego React zgłasza
+ * „An update to KreatorZrodloZasilania was not wrapped in act(...)".
+ */
+async function renderujKreator() {
+  const wynik = render(<KreatorZrodloZasilania />);
+  await waitFor(() => expect(fetchGridSourcePreviewMock).toHaveBeenCalledTimes(2));
+  await act(async () => {});
+  // Stan końcowy widoczny dla użytkownika: podsumowanie z wynikiem backendu.
+  expect(screen.getByText('Obliczenie IEC 60909 po stronie serwera')).toBeTruthy();
+  return wynik;
+}
 
 describe('KreatorZrodloZasilania — realna ścieżka', () => {
   beforeEach(() => {
@@ -100,13 +124,14 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     executeDomainOperationMock.mockReset();
     executeDomainOperationMock.mockResolvedValue({});
     navigateToSldMock.mockReset();
+    fetchGridSourcePreviewMock.mockClear();
     appState.activeCaseId = 'case-1';
   });
 
   afterEach(cleanup);
 
-  it('renderuje pełnoekranową ramę: cel, pasek kroków i stałą kolumnę podsumowania', () => {
-    render(<KreatorZrodloZasilania />);
+  it('renderuje pełnoekranową ramę: cel, pasek kroków i stałą kolumnę podsumowania', async () => {
+    await renderujKreator();
     expect(screen.getByTestId('mvd-kreator-zrodlo')).toBeTruthy();
     expect(screen.getByText(/Dodaj Główny Punkt Zasilający/)).toBeTruthy();
     expect(screen.getByTestId('mvd-kreator-kroki')).toBeTruthy();
@@ -117,8 +142,8 @@ describe('KreatorZrodloZasilania — realna ścieżka', () => {
     expect(screen.queryByTestId('mvd-kreator-zrodlo-katalog')).toBeNull();
   });
 
-  it('inicjalizuje nazwę z kontekstu operacji (krok 1)', () => {
-    render(<KreatorZrodloZasilania />);
+  it('inicjalizuje nazwę z kontekstu operacji (krok 1)', async () => {
+    await renderujKreator();
     expect((screen.getByTestId('mvd-kreator-zrodlo-nazwa') as HTMLInputElement).value).toBe('GPZ Wschód');
   });
 

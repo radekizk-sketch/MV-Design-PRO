@@ -8,7 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
@@ -64,18 +64,27 @@ afterEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('KreatorStudium — krok 1 (warianty)', () => {
-  it('pokazuje hint inżynierski i listę węzłów; „Dalej" zablokowane bez wyboru', () => {
+  it('pokazuje hint inżynierski i listę węzłów; „Dalej" zablokowane bez wyboru', async () => {
     ustawGotowyRozplyw();
     render(<KreatorStudium trybZaawansowania="basic" />);
+    // Montaż kreatora pobiera katalogi (konwertery + klasy NC RfG) — realny
+    // efekt mikrotaskowy, którego skutek (prefill kroku 2) nie ma reprezentacji
+    // w UI kroku 1, więc nie ma na co czekać przez findBy*/waitFor. Puste
+    // act(async) domyka te mikrotaski w act — bez niego React zgłasza
+    // „An update to KreatorStudium was not wrapped in act(...)".
+    await act(async () => {});
     expect(screen.getByTestId('mvd-studium-krok1')).toBeInTheDocument();
     expect(screen.getByText(/Zakres typowy: 2–5 wariantów/)).toBeInTheDocument();
     expect(screen.getByTestId('mvd-studium-wybor-bus-a')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-studium-dalej')).toBeDisabled();
   });
 
-  it('wybór węzła odblokowuje przejście dalej', () => {
+  it('wybór węzła odblokowuje przejście dalej', async () => {
     ustawGotowyRozplyw();
     render(<KreatorStudium trybZaawansowania="basic" />);
+    // Jak wyżej: skutek pobrania katalogów jest niewidoczny w kroku 1 —
+    // domknięcie mikrotasków montażu jawnym act(async).
+    await act(async () => {});
     fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
     expect(screen.getByTestId('mvd-studium-dalej')).not.toBeDisabled();
   });
@@ -132,7 +141,10 @@ describe('KreatorStudium — krok 3 (analizy)', () => {
     fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
     fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
 
+    // Przycisk biegu odblokowuje się dopiero po prefillu typu z katalogu
+    // (asynchroniczny montaż) — jak realny użytkownik klikamy AKTYWNY przycisk.
     const uruchom = await screen.findByTestId('mvd-studium-uruchom');
+    await waitFor(() => expect(uruchom).toBeEnabled());
     fireEvent.click(uruchom);
 
     // Po zakończeniu biegu kreator pokazuje przegląd (krok 4).
@@ -153,7 +165,10 @@ describe('KreatorStudium — krok 3 (analizy)', () => {
     fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
     fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-b'));
     fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
-    fireEvent.click(await screen.findByTestId('mvd-studium-uruchom'));
+    // Jak wyżej: klik w AKTYWNY przycisk (po prefillu typu z katalogu).
+    const uruchom = await screen.findByTestId('mvd-studium-uruchom');
+    await waitFor(() => expect(uruchom).toBeEnabled());
+    fireEvent.click(uruchom);
 
     await screen.findByTestId('mvd-studium-przeglad');
     // Wróć do kroku analiz, aby sprawdzić stany faz.
@@ -172,7 +187,11 @@ async function przeprowadzIWejdzDoPrzegladu(tryb: 'basic' | 'expert') {
   render(<KreatorStudium trybZaawansowania={tryb} />);
   fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
   fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
-  fireEvent.click(await screen.findByTestId('mvd-studium-uruchom'));
+  // Przycisk biegu odblokowuje się dopiero po prefillu typu z katalogu
+  // (asynchroniczny montaż) — jak realny użytkownik klikamy AKTYWNY przycisk.
+  const uruchom = await screen.findByTestId('mvd-studium-uruchom');
+  await waitFor(() => expect(uruchom).toBeEnabled());
+  fireEvent.click(uruchom);
   await screen.findByTestId('mvd-studium-przeglad');
 }
 

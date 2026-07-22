@@ -112,6 +112,10 @@ describe('KreatorPierscienia — realna ścieżka', () => {
   it('uczciwy stan zerowy: bez zacisków domknięcie zablokowane', async () => {
     context = { nop_candidates: [] };
     render(<KreatorPierscienia />);
+    // Montaż pobiera katalogi (kable + linie) — czekamy na realny stan końcowy
+    // UI (opcja kabla w selekcie katalogu), żeby aktualizacje stanu domknęły
+    // się w act.
+    await screen.findByRole('option', { name: /Kabel 3x120/ });
     expect(screen.getByTestId('mvd-kreator-pierscien-brak')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-pierscien-domknij')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();

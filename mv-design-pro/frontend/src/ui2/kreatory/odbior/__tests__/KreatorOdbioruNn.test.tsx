@@ -96,6 +96,10 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
   it('uczciwy stan zerowy: bez odpływu zapis zablokowany', async () => {
     context = {};
     render(<KreatorOdbioruNn />);
+    // Montaż pobiera katalog typów odbioru (mikrotaski) — czekamy na realny
+    // stan końcowy UI (opcja typu w selekcie katalogu), żeby aktualizacja
+    // stanu domknęła się w act.
+    await screen.findByRole('option', { name: /Odbiór biurowy/ });
     expect(screen.getByTestId('mvd-kreator-odbior-brak')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-odbior-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();

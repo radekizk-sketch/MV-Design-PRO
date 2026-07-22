@@ -7,7 +7,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
@@ -95,14 +95,25 @@ async function przeprowadzBieg() {
   render(<KreatorStudium trybZaawansowania="basic" />);
   fireEvent.click(screen.getByTestId('mvd-studium-wybor-bus-a'));
   fireEvent.click(screen.getByTestId('mvd-studium-krok-3'));
-  fireEvent.click(await screen.findByTestId('mvd-studium-uruchom'));
+  // Przycisk biegu odblokowuje się dopiero po prefillu typu z katalogu
+  // (asynchroniczny montaż) — jak realny użytkownik klikamy AKTYWNY przycisk;
+  // klik w zablokowany nie uruchamia biegu i przegląd nigdy by nie nadszedł.
+  const uruchom = await screen.findByTestId('mvd-studium-uruchom');
+  await waitFor(() => expect(uruchom).toBeEnabled());
+  fireEvent.click(uruchom);
   await screen.findByTestId('mvd-studium-przeglad');
 }
 
 describe('KreatorStudium — dokument studium (przycisk i dostępność)', () => {
-  it('przycisk nieaktywny bez zakończonego biegu, z tytułem PL', () => {
+  it('przycisk nieaktywny bez zakończonego biegu, z tytułem PL', async () => {
     ustawGotowyRozplyw();
     render(<KreatorStudium trybZaawansowania="basic" />);
+    // Montaż kreatora pobiera katalogi (konwertery + klasy NC RfG) — realny
+    // efekt mikrotaskowy, którego skutek (prefill kroku 2) nie ma reprezentacji
+    // w UI kroku 4, więc nie ma na co czekać przez findBy*/waitFor. Puste
+    // act(async) domyka te mikrotaski w act — bez niego React zgłasza
+    // „An update to KreatorStudium was not wrapped in act(...)".
+    await act(async () => {});
     fireEvent.click(screen.getByTestId('mvd-studium-krok-4'));
     const przycisk = screen.getByTestId('mvd-studium-dok-przycisk');
     expect(przycisk).toBeDisabled();

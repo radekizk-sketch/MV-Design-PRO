@@ -111,6 +111,10 @@ describe('KreatorOgranicznikaSn — realna ścieżka', () => {
   it('uczciwy stan zerowy: bez pola/szyny zapis jest zablokowany', async () => {
     context = {};
     render(<KreatorOgranicznikaSn />);
+    // Montaż pobiera katalog ograniczników (mikrotaski) — czekamy na realny
+    // stan końcowy UI (opcja typu w selekcie katalogu), żeby aktualizacja
+    // stanu domknęła się w act.
+    await screen.findByRole('option', { name: /ABB POLIM-D/ });
     expect(screen.getByTestId('mvd-kreator-ogranicznik-brak-miejsca')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-ogranicznik-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();

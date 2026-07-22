@@ -8,7 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
@@ -48,8 +48,14 @@ afterEach(() => {
 });
 
 describe('EkranObszaruPQ — brak przebiegu rozpływu (kryterium 1)', () => {
-  it('bez zakończonego rozpływu pokazuje instrukcję, bez formularza i bez wywołania API', () => {
+  it('bez zakończonego rozpływu pokazuje instrukcję, bez formularza i bez wywołania API', async () => {
     render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    // Montaż pobiera katalog konwerterów (mikrotaski), ale bez przebiegu
+    // formularz (a z nim select typów) nie jest renderowany — skutek fetchu nie
+    // ma reprezentacji w UI, więc nie ma na co czekać przez findBy*/waitFor.
+    // Puste act(async) domyka te mikrotaski w act — bez niego React zgłasza
+    // „An update to EkranObszaruPQ was not wrapped in act(...)".
+    await act(async () => {});
     expect(screen.getByTestId('mvd-obszar-brak-przebiegu')).toHaveTextContent(
       'Brak zakończonego przebiegu rozpływu mocy',
     );
@@ -61,15 +67,20 @@ describe('EkranObszaruPQ — brak przebiegu rozpływu (kryterium 1)', () => {
 describe('EkranObszaruPQ — jawny bieg (kryterium 1)', () => {
   beforeEach(ustawGotowyRozplyw);
 
-  it('z przebiegiem pokazuje formularz i stan „uruchom", nie woła API przed kliknięciem', () => {
+  it('z przebiegiem pokazuje formularz i stan „uruchom", nie woła API przed kliknięciem', async () => {
     render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    // Realny stan końcowy montażu: katalog konwerterów wczytany → opcja typu
+    // falownika w selekcie nakładki (domyka aktualizację stanu w act).
+    await screen.findByRole('option', { name: /Sungrow/ });
     expect(screen.getByTestId('mvd-obszar-parametry')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-obszar-idle')).toBeInTheDocument();
     expect(pobierzObszar).not.toHaveBeenCalled();
   });
 
-  it('przycisk biegu jest zablokowany bez wyboru węzła', () => {
+  it('przycisk biegu jest zablokowany bez wyboru węzła', async () => {
     render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    // Realny stan końcowy montażu: opcja typu z katalogu (jak wyżej).
+    await screen.findByRole('option', { name: /Sungrow/ });
     expect(screen.getByTestId('mvd-obszar-oblicz')).toBeDisabled();
     fireEvent.click(screen.getByTestId('mvd-obszar-oblicz'));
     expect(pobierzObszar).not.toHaveBeenCalled();

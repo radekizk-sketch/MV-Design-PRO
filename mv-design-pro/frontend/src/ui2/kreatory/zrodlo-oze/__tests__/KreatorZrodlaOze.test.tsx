@@ -146,6 +146,10 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     resolved.station = null;
     resolved.bus = null;
     render(<KreatorZrodlaOze />);
+    // Montaż pobiera katalogi (konwertery + aparaty nN) — czekamy na realny
+    // stan końcowy UI (opcja aparatu w selekcie nowego pola), żeby aktualizacje
+    // stanu domknęły się w act.
+    await screen.findByRole('option', { name: /Wyłącznik nN/ });
     expect(screen.getByTestId('mvd-kreator-oze-brak')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-oze-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
@@ -154,6 +158,8 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
   it('blokuje zapis bez aktywnego zakresu obliczeń', async () => {
     appState.activeCaseId = null;
     render(<KreatorZrodlaOze />);
+    // Realny stan końcowy montażu: opcja aparatu z katalogu (jak wyżej).
+    await screen.findByRole('option', { name: /Wyłącznik nN/ });
     expect(screen.getByTestId('mvd-kreator-oze-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
   });

@@ -254,6 +254,10 @@ describe('KreatorMagistralaSn — realna ścieżka', () => {
   it('uczciwy stan zerowy: bez startu ciągu zapis jest zablokowany', async () => {
     context = {};
     render(<KreatorMagistralaSn />);
+    // Montaż pobiera katalogi (kable + linie) — czekamy na realny stan końcowy
+    // UI (opcja kabla w selekcie katalogu), żeby aktualizacje stanu domknęły
+    // się w act.
+    await screen.findByRole('option', { name: /XRUHAKXS 1x120/ });
 
     expect(screen.getByTestId('mvd-kreator-magistrala-brak-startu')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-magistrala-zapisz')).toBeDisabled();

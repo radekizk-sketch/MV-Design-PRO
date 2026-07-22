@@ -8,7 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
@@ -49,8 +49,14 @@ afterEach(() => {
 });
 
 describe('EkranRankingu — brak przebiegu rozpływu (kryterium 1)', () => {
-  it('bez zakończonego rozpływu pokazuje instrukcję, bez formularza i bez wywołania API', () => {
+  it('bez zakończonego rozpływu pokazuje instrukcję, bez formularza i bez wywołania API', async () => {
     render(<EkranRankingu trybZaawansowania="basic" />);
+    // Montaż pobiera katalog klas NC RfG (mikrotaski), ale bez przebiegu
+    // formularz (a z nim select operatora) nie jest renderowany — skutek fetchu
+    // nie ma reprezentacji w UI, więc nie ma na co czekać przez findBy*/waitFor.
+    // Puste act(async) domyka te mikrotaski w act — bez niego React zgłasza
+    // „An update to EkranRankingu was not wrapped in act(...)".
+    await act(async () => {});
     expect(screen.getByTestId('mvd-rank-brak-przebiegu')).toHaveTextContent(
       'Brak zakończonego przebiegu rozpływu mocy',
     );
@@ -62,8 +68,11 @@ describe('EkranRankingu — brak przebiegu rozpływu (kryterium 1)', () => {
 describe('EkranRankingu — jawny bieg (kryterium 1)', () => {
   beforeEach(ustawGotowyRozplyw);
 
-  it('z przebiegiem pokazuje formularz i stan „uruchom", nie woła zdolności przed kliknięciem', () => {
+  it('z przebiegiem pokazuje formularz i stan „uruchom", nie woła zdolności przed kliknięciem', async () => {
     render(<EkranRankingu trybZaawansowania="basic" />);
+    // Realny stan końcowy montażu: katalog klas NC RfG wczytany → opcja
+    // operatora w selekcie formularza (domyka aktualizację stanu w act).
+    await screen.findByRole('option', { name: 'ENEA Operator' });
     expect(screen.getByTestId('mvd-rank-parametry')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-rank-idle')).toBeInTheDocument();
     expect(pobierz).not.toHaveBeenCalled();

@@ -151,6 +151,10 @@ describe('KreatorPolaSn — realna ścieżka', () => {
     resolved.station = null;
     resolved.bus = null;
     render(<KreatorPolaSn />);
+    // Montaż pobiera katalogi (aparaty + rodziny rozdzielnic) — czekamy na
+    // realny stan końcowy UI (opcja aparatu w selekcie katalogu), żeby
+    // aktualizacje stanu domknęły się w act.
+    await screen.findByRole('option', { name: /Wyłącznik SN/ });
     expect(screen.getByTestId('mvd-kreator-pole-brak')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-pole-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();

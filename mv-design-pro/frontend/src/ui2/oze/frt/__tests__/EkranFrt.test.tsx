@@ -9,7 +9,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 
 import { useStationDerStore } from '../../../../ui/network-build/station-der';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
@@ -80,8 +80,14 @@ async function wczytajISkonfiguruj(tryb: 'basic' | 'expert' = 'basic') {
 }
 
 describe('EkranFrt — stany wejściowe', () => {
-  it('brak modułów DER → uczciwy stan, bez pobierania biegu', () => {
+  it('brak modułów DER → uczciwy stan, bez pobierania biegu', async () => {
     render(<EkranFrt trybZaawansowania="basic" />);
+    // Montaż pobiera katalog operatorów (mikrotaski), ale bez modułów DER
+    // formularz doboru (a z nim select operatora) nie jest renderowany — skutek
+    // fetchu nie ma reprezentacji w UI, więc nie ma na co czekać przez
+    // findBy*/waitFor. Puste act(async) domyka te mikrotaski w act — bez niego
+    // React zgłasza „An update to EkranFrt was not wrapped in act(...)".
+    await act(async () => {});
     expect(screen.getByTestId('mvd-frt-brak-modulow')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-frt-dobor')).not.toBeInTheDocument();
     expect(pobierzTrajektorie).not.toHaveBeenCalled();

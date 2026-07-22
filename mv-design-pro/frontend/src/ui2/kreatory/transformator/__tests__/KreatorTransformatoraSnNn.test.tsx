@@ -191,6 +191,10 @@ describe('KreatorTransformatoraSnNn — realna ścieżka', () => {
     };
     snapshotState.snapshot = { buses: [] };
     render(<KreatorTransformatoraSnNn />);
+    // Montaż pobiera katalog transformatorów (mikrotaski) — czekamy na realny
+    // stan końcowy UI (opcja typu w selekcie katalogu), żeby aktualizacja
+    // stanu domknęła się w act.
+    await screen.findByRole('option', { name: /TONR 1000/ });
     expect(screen.getByTestId('mvd-kreator-transformator-brak')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-transformator-zapisz')).toBeDisabled();
     // przywróć snapshot dla kolejnych testów

@@ -104,6 +104,10 @@ describe('KreatorLacznikaSekcyjnego — realna ścieżka', () => {
   it('uczciwy stan zerowy: bez odcinka zapis zablokowany', async () => {
     context = {};
     render(<KreatorLacznikaSekcyjnego />);
+    // Montaż pobiera katalog aparatów SN (mikrotaski) — czekamy na realny stan
+    // końcowy UI (opcja aparatu w selekcie katalogu), żeby aktualizacja stanu
+    // domknęła się w act.
+    await screen.findByRole('option', { name: /Rozłącznik SN/ });
     expect(screen.getByTestId('mvd-kreator-lacznik-brak')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-lacznik-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();

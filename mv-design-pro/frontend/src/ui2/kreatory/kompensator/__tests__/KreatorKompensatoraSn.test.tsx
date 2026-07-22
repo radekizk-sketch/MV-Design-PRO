@@ -114,6 +114,10 @@ describe('KreatorKompensatoraSn — realna ścieżka', () => {
   it('uczciwy stan zerowy: bez szyny zapis jest zablokowany', async () => {
     context = {};
     render(<KreatorKompensatoraSn />);
+    // Montaż pobiera katalog baterii (mikrotaski) — czekamy na realny stan
+    // końcowy UI (opcja typu w selekcie katalogu), żeby aktualizacja stanu
+    // domknęła się w act.
+    await screen.findByRole('option', { name: /Bateria 1,2 Mvar 15 kV/ });
     expect(screen.getByTestId('mvd-kreator-kompensator-brak-szyny')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-kreator-kompensator-zapisz')).toBeDisabled();
     expect(executeDomainOperationMock).not.toHaveBeenCalled();

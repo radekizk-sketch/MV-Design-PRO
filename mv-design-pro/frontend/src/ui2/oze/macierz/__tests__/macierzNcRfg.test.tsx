@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { cleanup, render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useStationDerStore } from '../../../../ui/network-build/station-der';
@@ -173,9 +173,13 @@ describe('MacierzNcRfg — odcisk deterministyczny (§2.7)', () => {
 });
 
 describe('MacierzNcRfg — stan pusty', () => {
-  it('brak modułów → komunikat zamiast macierzy', () => {
+  it('brak modułów → komunikat zamiast macierzy', async () => {
     useStationDerStore.setState({ ders: {} });
     render(<MacierzNcRfg trybZaawansowania="basic" />);
+    // Montaż pobiera katalog wymogów (mikrotaski). Czekamy na realny stan
+    // końcowy UI — pole „wersja procedury" w nagłówku pojawia się dopiero po
+    // załadowaniu katalogu — żeby aktualizacja store'a domknęła się w act.
+    expect(await screen.findByText('PTPiREE Procedura testowania v3.0')).toBeInTheDocument();
     expect(screen.getByTestId('mvd-oze-pusty')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-oze-macierz-tabela')).not.toBeInTheDocument();
   });
@@ -186,6 +190,11 @@ describe('MacierzNcRfg — certyfikat zgodności (karta P39c)', () => {
     useAppStateStore.setState({ activeProjectName: 'Sieć testowa', activeCaseName: 'Wariant bazowy' });
   });
   afterEach(() => {
+    // Odmontuj komponent PRZED czyszczeniem store'a: macierz subskrybuje
+    // nazwę projektu/przypadku, więc reset przy zamontowanym komponencie
+    // planuje aktualizacje Reacta poza act (dokładnie 2 ostrzeżenia per test).
+    // cleanup() jest idempotentny — automatyczne sprzątanie RTL po nim nic nie robi.
+    cleanup();
     useAppStateStore.setState({ activeProjectName: null, activeCaseName: null });
   });
 
