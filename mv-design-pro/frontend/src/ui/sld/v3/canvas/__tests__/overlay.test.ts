@@ -24,6 +24,7 @@ import {
   isFaultFlowOverlayEmpty,
   isFlowOverlayEmpty,
   isOltcOverlayEmpty,
+  multiHopFaultFlowSegmentRefs,
   oltcOverlayTracesToPayload,
   singleHopSegmentRefs,
 } from '../overlay';
@@ -430,6 +431,11 @@ function faultInputOf(flows: readonly ShortCircuitBranchFlowV1[]): ShortCircuitF
   return { run_id: 'run-sc-test', fault_type: '3F', fault_element_ref: 'EL-ZWARCIE', flows };
 }
 
+/** Głęboki klon (mutacje testowe poniżej nie mogą dotknąć fixtury bazowej). */
+function deepClone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
 describe('overlay.ts — buildFaultFlowOverlayFromScene (karta S-B, strzałki rozpływu zwarciowego)', () => {
   it('input=null ⇒ nakładka pusta (strzałki wyłączone bez kanału kierunku, zero atrap)', () => {
     const overlay = buildFaultFlowOverlayFromScene(scene, null, singleHop);
@@ -548,5 +554,166 @@ describe('overlay.ts — faultFlowOverlayTracesToInput (wyrocznia, karta S-B)', 
     const input = faultInputOf([faultEntry({ branch_id: ref })]);
     const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
     expect(faultFlowOverlayTracesToInput(overlay, faultInputOf([]))).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// GAP V12K-121 (karta SLD-W): rozszerzenie bramki F-1 o przęsła WIELOKAWAŁKOWE
+// (`multiHopFaultFlowSegmentRefs`) — WYŁĄCZNIE dla strzałek zwarciowych.
+// Fixtura `openTrunkChain.enm.json` (§16-v3, ta sama co
+// `buildScene.openTerminal.test.ts`): GPZ→S0 przęsło 2-członowe (F2 +
+// segment_L, złączone mufą `bus/2eb90.../downstream`) — REALNY łańcuch
+// wielokawałkowy, zero fabrykacji. Mutacje niżej (branching/reversed) są
+// głębokimi klonami TEJ SAMEJ realnej fixtury ze strukturalnie poprawną,
+// minimalną zmianą (ten sam wzorzec obiektu gałęzi/szyny co istniejące
+// odcinki) — precyzyjna kontrola przypadków odmowy bez fabrykowania sieci
+// od zera.
+// ---------------------------------------------------------------------------
+
+describe('overlay.ts — multiHopFaultFlowSegmentRefs (GAP V12K-121, karta SLD-W)', () => {
+  const chainFixturePath = resolve(here, '..', '..', 'scene', '__tests__', 'fixtures', 'openTrunkChain.enm.json');
+  const chainEnm = (JSON.parse(readFileSync(chainFixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
+  const F2 = 'seg/2eb903289ceccfe33d015b843cc0a839/segment';
+  const SEGMENT_L = 'seg/fffe06fde7d5aca09fa6e904e942ad63/segment_L';
+  const SEGMENT_R = 'seg/fffe06fde7d5aca09fa6e904e942ad63/segment_R';
+  const SPLICE_BUS = 'bus/2eb903289ceccfe33d015b843cc0a839/downstream';
+  const LODS = [0, 1, 2] as const;
+
+  it('kontrola wejścia: przęsło GPZ→S0 tej fixtury jest wielokawałkowe (poza singleHop)', () => {
+    expect(singleHopSegmentRefs(chainEnm).size).toBe(0);
+  });
+
+  it('łańcuch prosty 2 kawałki: przedstawicielem zostaje JEDEN człon (F2) — nie CAŁA grupa (jedna strzałka, nie jedna na kawałek)', () => {
+    for (const lod of LODS) {
+      const refs = multiHopFaultFlowSegmentRefs(buildSceneV3(chainEnm, lod), chainEnm);
+      expect(refs.size).toBe(1);
+      expect(refs.has(F2)).toBe(true);
+      expect(refs.has(SEGMENT_L)).toBe(false);
+    }
+  });
+
+  it('przedstawiciel dostaje strzałkę: direction="from_to" ⇒ forward=true, wartości WPROST z wejścia', () => {
+    const chainScene = buildSceneV3(chainEnm, 2);
+    const trusted = new Set([...singleHopSegmentRefs(chainEnm), ...multiHopFaultFlowSegmentRefs(chainScene, chainEnm)]);
+    const input = faultInputOf([faultEntry({ branch_id: F2, direction: 'from_to', i_ka: 1.2 })]);
+    const overlay = buildFaultFlowOverlayFromScene(chainScene, input, trusted);
+    expect(overlay[F2]).toEqual({ ownerRef: F2, forward: true, iKa: 1.2, payloadMaxKa: 1.2, colorToken: 'critical' });
+    expect(faultFlowOverlayTracesToInput(overlay, input)).toBe(true);
+  });
+
+  it('orientacja odwrotna: direction="to_from" ⇒ forward=false (oba kierunki poprawne, zwrot WPROST z tokenu solvera)', () => {
+    const chainScene = buildSceneV3(chainEnm, 2);
+    const trusted = new Set([...singleHopSegmentRefs(chainEnm), ...multiHopFaultFlowSegmentRefs(chainScene, chainEnm)]);
+    const input = faultInputOf([faultEntry({ branch_id: F2, direction: 'to_from', i_ka: 0.8 })]);
+    const overlay = buildFaultFlowOverlayFromScene(chainScene, input, trusted);
+    expect(overlay[F2]?.forward).toBe(false);
+    expect(faultFlowOverlayTracesToInput(overlay, input)).toBe(true);
+  });
+
+  it('człon NIEWYBRANY łańcucha (segment_L) NIE dostaje własnego wpisu, mimo mierzalnych danych pod jego branch_id — jedna strzałka na przęsło, nie jedna na każdy realny człon', () => {
+    const chainScene = buildSceneV3(chainEnm, 2);
+    const trusted = new Set([...singleHopSegmentRefs(chainEnm), ...multiHopFaultFlowSegmentRefs(chainScene, chainEnm)]);
+    const input = faultInputOf([
+      faultEntry({ branch_id: F2, direction: 'from_to', i_ka: 1.2 }),
+      faultEntry({ branch_id: SEGMENT_L, direction: 'from_to', i_ka: 1.2 }),
+    ]);
+    const overlay = buildFaultFlowOverlayFromScene(chainScene, input, trusted);
+    expect(overlay[F2]).toBeDefined();
+    expect(overlay[SEGMENT_L]).toBeUndefined();
+  });
+
+  it('NEGATYW — łańcuch ROZGAŁĘZIONY (T-węzeł): trzeci odcinek (segment_R) dołączony do TEJ SAMEJ mufy ⇒ grupa odrzucona całkowicie (zero przedstawiciela, uczciwe „nie wiem")', () => {
+    const branched = deepClone(chainEnm);
+    const segR = (branched.branches as Array<{ ref_id: string; from_bus_ref: string }>).find(
+      (b) => b.ref_id === SEGMENT_R,
+    );
+    if (!segR) throw new Error('kontrola pomiaru: fixtura musi nieść segment_R');
+    segR.from_bus_ref = SPLICE_BUS; // rozgałęzienie: 3 odcinki dotykają tej samej mufy
+    for (const lod of LODS) {
+      expect(multiHopFaultFlowSegmentRefs(buildSceneV3(branched, lod), branched).size).toBe(0);
+    }
+  });
+
+  it('NEGATYW — kierunki MIESZANE (człon zadeklarowany odwrotnie): segment_L z zamienionymi from/to ⇒ dopasowanie końców się nie zgadza, grupa odrzucona', () => {
+    const reversed = deepClone(chainEnm);
+    const segL = (reversed.branches as Array<{ ref_id: string; from_bus_ref: string; to_bus_ref: string }>).find(
+      (b) => b.ref_id === SEGMENT_L,
+    );
+    if (!segL) throw new Error('kontrola pomiaru: fixtura musi nieść segment_L');
+    const tmp = segL.from_bus_ref;
+    segL.from_bus_ref = segL.to_bus_ref;
+    segL.to_bus_ref = tmp;
+    for (const lod of LODS) {
+      expect(multiHopFaultFlowSegmentRefs(buildSceneV3(reversed, lod), reversed).size).toBe(0);
+    }
+  });
+
+  it('determinizm: dwa wywołania na tej samej scenie ⇒ identyczny zbiór przedstawicieli', () => {
+    const chainScene = buildSceneV3(chainEnm, 2);
+    const a = multiHopFaultFlowSegmentRefs(chainScene, chainEnm);
+    const b = multiHopFaultFlowSegmentRefs(chainScene, chainEnm);
+    expect([...a].sort()).toEqual([...b].sort());
+  });
+});
+
+describe('overlay.ts — łańcuch 4-członowy na realnej fixturze substrate (GAP V12K-121, generalizacja poza 2 kawałki)', () => {
+  // Grupa 4-członowa NIEZALEŻNIE potwierdzona sondą na fixturze `sldSubstrate52s`:
+  // dwa środkowe człony ('segment'/'segment') mają OBIE strony bez właściciela
+  // (mufa-mufa) — prawdziwy dowód, że bramka generalizuje się poza 2 kawałki,
+  // nie tylko na parę granica-mufa.
+  const GROUP = [
+    'seg/3ccf71246d63661d1ff5562f39064f98/segment_R',
+    'seg/8a7bb2f6ec9bf783133b1817611a5bf2/segment',
+    'seg/5fb7f3221c666db9aa8925d6f3e7c4ca/segment',
+    'seg/2ef31c8e5a13ad9a42afd95f4ec41763/segment_L_L',
+  ] as const;
+
+  it('kontrola wejścia: WSZYSTKIE 4 człony grupy są poza singleHop (prawdziwe wielokawałkowe)', () => {
+    for (const ref of GROUP) expect(singleHop.has(ref)).toBe(false);
+  });
+
+  it('DOKŁADNIE jeden przedstawiciel z tej grupy 4-członowej trafia do zbioru, na każdym LOD', () => {
+    for (const lod of [0, 1, 2] as const) {
+      const refs = multiHopFaultFlowSegmentRefs(buildSceneV3(enm, lod), enm);
+      const chosenFromGroup = GROUP.filter((ref) => refs.has(ref));
+      expect(chosenFromGroup.length).toBe(1);
+    }
+  });
+
+  it('przedstawiciel grupy 4-członowej dostaje strzałkę spójną z direction="from_to"; pozostałe 3 człony — zero wpisu', () => {
+    const sceneLod2 = buildSceneV3(enm, 2);
+    const refs = multiHopFaultFlowSegmentRefs(sceneLod2, enm);
+    const chosen = GROUP.find((ref) => refs.has(ref));
+    expect(chosen).toBeDefined();
+    const trusted = new Set([...singleHop, ...refs]);
+    const input = faultInputOf(GROUP.map((ref) => faultEntry({ branch_id: ref, direction: 'from_to', i_ka: 0.9 })));
+    const overlay = buildFaultFlowOverlayFromScene(sceneLod2, input, trusted);
+    expect(overlay[chosen!]).toBeDefined();
+    expect(overlay[chosen!]?.forward).toBe(true);
+    for (const ref of GROUP) {
+      if (ref !== chosen) expect(overlay[ref]).toBeUndefined();
+    }
+  });
+});
+
+describe('overlay.ts — GAP V12K-121 nie zmienia bramkę F-1 jednoprzeskokową (regresja)', () => {
+  it('singleHopSegmentRefs(52s) niezmienione: 45 (ta sama liczba co przed rozszerzeniem)', () => {
+    expect(singleHop.size).toBe(45);
+  });
+
+  it('buildFlowOverlayFromScene (przepływ MOCY) niezmieniony: dalej działa WYŁĄCZNIE z bramką singleHop, GAP V12K-121 dotyczy tylko strzałek zwarciowych (buildFaultFlowOverlayForSnapshot, funkcja ta nie jest przez ten GAP wołana z inną bramką)', () => {
+    const ref = uniqueSingleHopRefs[0];
+    const payload = payloadOf({
+      [ref]: elementWithMetrics(ref, { P_MW: { code: 'P_MW', value: 3, unit: 'MW' } }),
+    });
+    const overlay = buildFlowOverlayFromScene(scene, payload, singleHop);
+    expect(overlay[ref]).toEqual({ ownerRef: ref, forward: true, p: { value: 3, unit: 'MW' } });
+  });
+
+  it('strzałka zwarciowa na przęśle jednokawałkowym: zachowanie identyczne jak przed GAP V12K-121 (regresja)', () => {
+    const ref = uniqueSingleHopRefs[0];
+    const input = faultInputOf([faultEntry({ branch_id: ref, direction: 'from_to', i_ka: 0.5 })]);
+    const overlay = buildFaultFlowOverlayFromScene(scene, input, singleHop);
+    expect(overlay[ref]).toEqual({ ownerRef: ref, forward: true, iKa: 0.5, payloadMaxKa: 0.5, colorToken: 'critical' });
   });
 });

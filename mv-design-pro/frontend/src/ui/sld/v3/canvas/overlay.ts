@@ -338,6 +338,13 @@ function isLoadFlowPayload(payload: RawOverlayPayload): boolean {
  * RYSUNKOWE o refach kompozytowych (`…#der-row-trunk`, `…#lv-drop-…`) nigdy
  * nie są w tym zbiorze — nie są gałęziami solvera, więc nie dostają strzałek
  * ani etykiet (koniec podwójnych etykiet na wierszu DER).
+ *
+ * GAP V12K-121 (karta SLD-W, „strzałki kierunku zwarcia na przęsłach
+ * wielokawałkowych"): ten zbiór (jednokawałkowe) POZOSTAJE bez zmian — nadal
+ * jedyna bramka używana przez przepływ MOCY (`buildFlowOverlayForSnapshot`).
+ * Dla strzałek ZWARCIOWYCH wołający dodatkowo łączy ten zbiór z
+ * `multiHopFaultFlowSegmentRefs` (niżej) — rozszerzenie bramki F-1 o przęsła
+ * wielokawałkowe z UDOWODNIONYM łańcuchem, zero zmiany tej funkcji.
  */
 export function singleHopSegmentRefs(snapshot: EnergyNetworkModel): ReadonlySet<string> {
   const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
@@ -348,6 +355,148 @@ export function singleHopSegmentRefs(snapshot: EnergyNetworkModel): ReadonlySet<
     }
   }
   return refs;
+}
+
+/**
+ * GAP V12K-121 (karta SLD-W): rozszerzenie bramki F-1 na przęsła
+ * WIELOKAWAŁKOWE (≥2 gałęzie ENM łączone węzłem BEZ stacji — mufa) — DLA
+ * STRZAŁEK ZWARCIOWYCH WYŁĄCZNIE (`buildFaultFlowOverlayForSnapshot`, nie
+ * `buildFlowOverlayForSnapshot`/przepływ mocy — zakres karty). Zwraca zbiór
+ * `segmentRef` — po JEDNYM na przęsło wielokawałkowe (przedstawiciel do
+ * jednej strzałki, patrz niżej), do UNII z `singleHopSegmentRefs` w
+ * wywołaniu bramki.
+ *
+ * DOWÓD (nie zgadywanie — kryteria odmowy zwracają po prostu mniej/nic):
+ * 1. Łańcuch = maksymalny ciąg KOLEJNYCH wpisów `cableRun.segmentPaths`
+ *    (kolejność elektryczna z konstrukcji adaptera, `buildCorridorRunGeometry`
+ *    w `enmToSldAdapter.ts`), gdzie KAŻDE przejście i→i+1 jest dowiedzione
+ *    TOŻSAMOŚCIĄ WĘZŁA (`toTerminal(i).busRef === fromTerminal(i+1).busRef`
+ *    — busRef, nie ownerRef/stacja, bo węzeł pośredni nie ma właściciela).
+ *    Dowolna gałąź zadeklarowana ODWROTNIE (from/to zamienione względem
+ *    kierunku łańcucha) NIGDY nie przejdzie tego dopasowania w SWOIM
+ *    slocie (jej `to`/`from` wskazywałyby fizycznie inny węzeł) — „kierunki
+ *    mieszane" przerywają łańcuch W TYM MIEJSCU, uczciwe „nie wiem" dla
+ *    reszty.
+ * 2. Węzeł łączący (mufa) MUSI być użyty DOKŁADNIE 2 razy w CAŁYM modelu
+ *    (policzone ze WSZYSTKICH `cableRuns`) — inaczej to węzeł rozgałęziony
+ *    (T-złącze), a kierunek przestaje być jednoznaczny (odmowa, nie zgadywanie
+ *    które ramię jest „dalej").
+ * 3. Węzeł łączący MUSI być bez właściciela stacji (`ownerRef` null) — jeśli
+ *    pośredni wpis jest jednak realną stacją, to DWA osobne przęsła
+ *    jednokawałkowe (już obsłużone przez `singleHopSegmentRefs`), nie jedno
+ *    wielokawałkowe — pomijamy scalanie.
+ * 4. Granice łańcucha (pierwszy `fromTerminal`, ostatni `toTerminal`) MUSZĄ
+ *    rozwiązywać się do realnej stacji — dowiedziona granica przęsła
+ *    (identycznie jak `singleHopSegmentRefs`).
+ * Łańcuch krótszy niż 2 gałęzie (pojedynczy człon) pomijamy — to już
+ * `singleHopSegmentRefs`, nie duplikujemy.
+ *
+ * PRZEDSTAWICIEL (jedna strzałka na przęsło, nie jedna na człon): spośród
+ * członów łańcucha WIDOCZNYCH jako własny odcinek sceny w TEJ scenie/LOD
+ * (§16-v3 dzieli geometrię proporcjonalnie do długości — degeneracja przy
+ * krótkiej trasie zostawia widoczny WYŁĄCZNIE ostatni człon, patrz
+ * `buildScene.ts::connectRowStations`), wybieramy NAJDŁUŻSZY kawałek
+ * (`scene.segments[...].points`, suma długości Manhattan) — TYLKO jego
+ * `segmentRef` trafia do zwracanego zbioru. Orientacja tego przedstawiciela
+ * jest UDOWODNIONA identycznie jak w F-1 (jego WŁASNY `fromTerminal`/
+ * `toTerminal` odpowiada `points[0]`/`points[last]` JEGO WŁASNEGO kawałka —
+ * dowód pkt 1: skoro CAŁY łańcuch jest niedowrócony i uporządkowany zgodnie
+ * z kolejnością tablicy `segmentPaths` [= kolejność geometrii
+ * `buildCorridorRunGeometry`/podziału `splitPolylineIntoPieces`], każdy człon,
+ * łącznie z przedstawicielem, ma `fromTerminal`=strona bliższa początkowi
+ * przęsła, `toTerminal`=strona bliższa końcowi — TA SAMA konwencja co
+ * pojedynczy człon jednokawałkowy). Remis długości: wygrywa pierwszy w
+ * kolejności `scene.segments` (deterministyczne, stabilna kolejność budowy
+ * sceny). Człon niewidoczny w TEJ scenie (zdegenerowany podział) po prostu
+ * nie bierze udziału w wyborze — jeśli JEDYNY widoczny człon łańcucha to
+ * ostatni (fallback), to on automatycznie zostaje przedstawicielem.
+ */
+export function multiHopFaultFlowSegmentRefs(
+  scene: SceneV3,
+  snapshot: EnergyNetworkModel,
+): ReadonlySet<string> {
+  const sldData = buildSldDataFromSnapshot(snapshot, snapshot.logical_views ?? null, null);
+  const runs = sldData.cableRuns ?? [];
+
+  // Użycie KAŻDEGO busRef jako końcówki (`fromTerminal`/`toTerminal`) w CAŁYM
+  // modelu — węzeł pośredni łańcucha musi wystąpić DOKŁADNIE 2 razy (kryterium
+  // odmowy 2 wyżej: rozgałęzienie).
+  const busUsage = new Map<string, number>();
+  const bump = (busRef: string | null | undefined): void => {
+    if (!busRef) return;
+    busUsage.set(busRef, (busUsage.get(busRef) ?? 0) + 1);
+  };
+  for (const run of runs) {
+    for (const sp of run.segmentPaths ?? []) {
+      bump(sp.fromTerminal?.busRef);
+      bump(sp.toTerminal?.busRef);
+    }
+  }
+
+  const groups: Array<ReadonlySet<string>> = [];
+  for (const run of runs) {
+    const paths = run.segmentPaths ?? [];
+    let i = 0;
+    while (i < paths.length) {
+      if (!paths[i].fromTerminal?.busRef || !paths[i].toTerminal?.busRef) {
+        i += 1;
+        continue;
+      }
+      let j = i;
+      while (j + 1 < paths.length) {
+        const joinBusRef = paths[j].toTerminal?.busRef;
+        const nextFrom = paths[j + 1].fromTerminal;
+        if (
+          !joinBusRef ||
+          !nextFrom?.busRef ||
+          nextFrom.busRef !== joinBusRef ||
+          nextFrom.ownerRef || // węzeł pośredni musi być mufą, nie stacją (kryterium 3)
+          (busUsage.get(joinBusRef) ?? 0) !== 2 // rozgałęzienie (kryterium 2)
+        ) {
+          break;
+        }
+        j += 1;
+      }
+      if (j > i && paths[i].fromTerminal?.ownerRef && paths[j].toTerminal?.ownerRef) {
+        groups.push(new Set(paths.slice(i, j + 1).map((p) => p.segmentRef)));
+      }
+      i = j + 1;
+    }
+  }
+  if (groups.length === 0) return new Set();
+
+  // Wybór przedstawiciela — najdłuższy kawałek WIDOCZNY w tej scenie/LOD.
+  const lengthByRef = new Map<string, number>();
+  const orderByRef = new Map<string, number>();
+  scene.segments.forEach((segment, index) => {
+    const ref = segment.meta?.ownerRef;
+    if (!ref || segment.meta?.elementKind !== 'segment' || lengthByRef.has(ref)) return;
+    let length = 0;
+    for (let p = 0; p + 1 < segment.points.length; p += 1) {
+      length += Math.abs(segment.points[p + 1].x - segment.points[p].x) + Math.abs(segment.points[p + 1].y - segment.points[p].y);
+    }
+    lengthByRef.set(ref, length);
+    orderByRef.set(ref, index);
+  });
+
+  const chosen = new Set<string>();
+  for (const group of groups) {
+    let bestRef: string | null = null;
+    let bestLength = -1;
+    let bestOrder = Number.POSITIVE_INFINITY;
+    for (const ref of group) {
+      const length = lengthByRef.get(ref);
+      if (length === undefined) continue; // człon niewidoczny w tej scenie — poza wyborem
+      const order = orderByRef.get(ref) ?? Number.POSITIVE_INFINITY;
+      if (length > bestLength || (length === bestLength && order < bestOrder)) {
+        bestRef = ref;
+        bestLength = length;
+        bestOrder = order;
+      }
+    }
+    if (bestRef) chosen.add(bestRef);
+  }
+  return chosen;
 }
 
 function readMetricReading(
@@ -458,6 +607,12 @@ interface MeasurableFaultEntry {
  *  - wpisy gałęzi o MIESZANYCH kierunkach (różne źródła pchają w przeciwne
  *    strony — jedna strzałka byłaby fabrykacją wypadkowej bez fazy);
  *  - brak wpisu z mierzalnym `i_ka` (kierunek bez wartości nie ma skali).
+ *
+ * GAP V12K-121 (karta SLD-W): `trustedSingleHopRefs` może nieść UNIĘ
+ * `singleHopSegmentRefs(snapshot)` ∪ `multiHopFaultFlowSegmentRefs(scene,
+ * snapshot)` — wołający (`buildFaultFlowOverlayForSnapshot`) dokłada
+ * przedstawicieli przęseł wielokawałkowych do tego samego zbioru; ta funkcja
+ * nie rozróżnia pochodzenia refu, bramka i logika niżej są NIETKNIĘTE.
  */
 export function buildFaultFlowOverlayFromScene(
   scene: SceneV3,

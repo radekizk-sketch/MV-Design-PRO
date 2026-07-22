@@ -140,6 +140,7 @@ import {
   buildFaultFlowOverlayFromScene,
   buildFlowOverlayFromScene,
   buildOltcOverlayFromScene,
+  multiHopFaultFlowSegmentRefs,
   singleHopSegmentRefs,
   type SegmentFaultFlowOverlay,
   type SegmentFlowOverlay,
@@ -594,6 +595,20 @@ function useOltcOverlay(
  * geometrycznej). Źródło `input`: kanał `useOverlayStore.faultFlow`
  * (wiersz kanoniczny `branch_contributions`, ekran zwarć „Pokaż na
  * schemacie"). Brak kanału ⇒ `{}` (strzałki wyłączone, §14.2).
+ *
+ * GAP V12K-121 (karta SLD-W): bramka rozszerzona o `multiHopFaultFlowSegmentRefs`
+ * — przedstawiciel przęsła wielokawałkowego liczony RAZ, na scenie
+ * NAJPEŁNIEJSZEGO LOD (`ALL_SCENE_LODS` ostatni = 2, najdrobniejsza geometria
+ * — §16-v3 dzieli tam kawałki na WSZYSTKIE człony łańcucha, `connectRowStations`
+ * „lod === 2" = etykiety/szczegół pełny), NIE per LOD w pętli niżej: `ownerRef`
+ * MUSI pozostać tożsamością LOD-niezależną (kontrakt tego pliku) — licząc
+ * przedstawiciela osobno na każdym LOD, różne LOD-y mogłyby wybrać RÓŻNYCH
+ * członów tej samej grupy (podział §16-v3 jest proporcjonalny do długości
+ * TRASY TEGO LOD, nie do realnej elektrycznej długości członu), a scalony
+ * słownik niósłby WIĘCEJ niż jeden wpis na przęsło — dwie strzałki zamiast
+ * jednej. Ten sam, RAZ wybrany zbiór jest dokładany do `trustedRefs` na
+ * WSZYSTKICH trzech przebiegach pętli — przepływ mocy (`buildFlowOverlayForSnapshot`
+ * wyżej) NIETKNIĘTY.
  */
 export function buildFaultFlowOverlayForSnapshot(
   snapshot: EnergyNetworkModel,
@@ -601,9 +616,12 @@ export function buildFaultFlowOverlayForSnapshot(
 ): Readonly<Record<string, SegmentFaultFlowOverlay>> {
   if (!input) return {};
   const trustedRefs = singleHopSegmentRefs(snapshot);
+  const richestLod = ALL_SCENE_LODS[ALL_SCENE_LODS.length - 1];
+  const chainRefs = multiHopFaultFlowSegmentRefs(buildSceneV3(snapshot, richestLod), snapshot);
+  const trusted = chainRefs.size === 0 ? trustedRefs : new Set([...trustedRefs, ...chainRefs]);
   const merged: Record<string, SegmentFaultFlowOverlay> = {};
   for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildFaultFlowOverlayFromScene(buildSceneV3(snapshot, lod), input, trustedRefs));
+    Object.assign(merged, buildFaultFlowOverlayFromScene(buildSceneV3(snapshot, lod), input, trusted));
   }
   return merged;
 }
