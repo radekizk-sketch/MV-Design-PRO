@@ -121,6 +121,32 @@ export function widokLvrtWObwiedniFixture(): WidokTrajektoriiFrt {
         p_recovery_time_s: 0.31,
         werdykt_pl: 'w obwiedni',
         liczba_punktow_trajektorii: trajektoria.length,
+        // Wywód dyplomowy {tekst, latex} — kształt 1:1 z `_wywod_scenariusza` backendu.
+        wywod: [
+          {
+            tekst:
+              'Scenariusz lvrt_conv-pv-1mw-15kv (LVRT): napiecie zaklocenia 0.0500 p.u. '
+              + 'przez 0.1500 s (wejscie solvera FROZEN frt_hvrt).',
+            latex: null,
+          },
+          {
+            tekst:
+              'Wzor: margines napieciowy trajektorii wzgledem krzywej minimalnej '
+              + '(minimum roznicy napiecia trajektorii i krzywej od poczatku zaklocenia)',
+            latex: 'm_{U} = \\min_{t \\ge t_{z}}\\bigl(u(t) - u_{kr}(t)\\bigr)',
+          },
+          {
+            tekst:
+              'Dane: margines z solvera m_U = 0.000000 p.u. '
+              + '(FrtScenarioResult.margin_to_curve_pu), liczba punktow trajektorii: 11.',
+            latex: null,
+          },
+          {
+            tekst: 'Podstawienie: warunek utrzymania w obwiedni m_U >= 0: 0.000000 >= 0 SPELNIONE',
+            latex: 'm_{U} = 0.000000\\ \\text{p.u.} \\ge 0',
+          },
+          { tekst: 'Werdykt: w obwiedni.', latex: null },
+        ],
         trajektoria,
       },
     ],

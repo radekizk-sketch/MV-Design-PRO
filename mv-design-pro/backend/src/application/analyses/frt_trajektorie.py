@@ -58,6 +58,90 @@ def _verdict_pl(scenario_result: FrtScenarioResult) -> str:
     return _WERDYKT_W_OBWIEDNI
 
 
+def _krok(tekst: str, latex: str | None = None) -> dict[str, Any]:
+    """Krok wywodu WHITE BOX: tekst (ASCII-PL, deterministyczny) + opcjonalny LaTeX.
+
+    Kontrakt kanoniczny ``{tekst, latex}`` — wzorzec 1:1 z
+    ``analysis.energy_validation.builder._krok`` (zasada wywodow KaTeX 2026-07-22).
+    """
+    return {"tekst": tekst, "latex": latex}
+
+
+def _wywod_scenariusza(
+    scenario_result: FrtScenarioResult,
+    scenario: FrtScenario | None,
+    werdykt: str,
+) -> list[dict[str, Any]]:
+    """Wywod dyplomowy scenariusza: wzor marginesu -> dane -> podstawienie -> werdykt.
+
+    Czysty formatter (ZERO fizyki): wszystkie liczby pochodza z pol JUZ policzonych
+    przez FROZEN solver (``margin_to_curve_pu``, ``stayed_connected``) i z echa
+    wejscia solvera (zapad, czas trwania). Formaty stale (determinizm), ASCII-PL.
+    """
+    kroki: list[dict[str, Any]] = []
+    if scenario is not None:
+        kroki.append(
+            _krok(
+                f"Scenariusz {scenario.scenario_id} ({scenario.test_kind.upper()}): "
+                f"napiecie zaklocenia {scenario.voltage_dip_depth_pu:.4f} p.u. "
+                f"przez {scenario.fault_duration_s:.4f} s (wejscie solvera FROZEN frt_hvrt)."
+            )
+        )
+    if not scenario_result.stayed_connected:
+        kroki.append(
+            _krok(
+                "Dane: modul nie utrzymal sie w pracy (stayed_connected = false, "
+                "pole wyniku solvera) — marginesy nie podlegaja ocenie."
+            )
+        )
+        kroki.append(_krok(f"Werdykt: {werdykt}."))
+        return kroki
+    kroki.append(
+        _krok(
+            "Wzor: margines napieciowy trajektorii wzgledem krzywej minimalnej "
+            "(minimum roznicy napiecia trajektorii i krzywej od poczatku zaklocenia)",
+            r"m_{U} = \min_{t \ge t_{z}}\bigl(u(t) - u_{kr}(t)\bigr)",
+        )
+    )
+    margin_pu = scenario_result.margin_to_curve_pu
+    if margin_pu is None:
+        kroki.append(
+            _krok(
+                "Dane: solver nie zwrocil marginesu do krzywej "
+                "(margin_to_curve_pu = null) — werdykt na podstawie stayed_connected."
+            )
+        )
+        kroki.append(_krok(f"Werdykt: {werdykt}."))
+        return kroki
+    kroki.append(
+        _krok(
+            f"Dane: margines z solvera m_U = {margin_pu:.6f} p.u. "
+            f"(FrtScenarioResult.margin_to_curve_pu), liczba punktow trajektorii: "
+            f"{len(scenario_result.trajectory)}."
+        )
+    )
+    spelnione = margin_pu >= 0
+    znak_latex = r"\ge" if spelnione else "<"
+    znak_ascii = ">=" if spelnione else "<"
+    kroki.append(
+        _krok(
+            f"Podstawienie: warunek utrzymania w obwiedni m_U >= 0: "
+            f"{margin_pu:.6f} {znak_ascii} 0 "
+            f"{'SPELNIONE' if spelnione else 'NIESPELNIONE'}",
+            rf"m_{{U}} = {margin_pu:.6f}\ \text{{p.u.}} {znak_latex} 0",
+        )
+    )
+    if scenario_result.p_recovery_time_s is not None:
+        kroki.append(
+            _krok(
+                f"Dane: czas odzysku mocy czynnej po zakloceniu t_odz = "
+                f"{scenario_result.p_recovery_time_s:.6f} s (pole wyniku solvera)."
+            )
+        )
+    kroki.append(_krok(f"Werdykt: {werdykt}."))
+    return kroki
+
+
 def _wejscie_solvera_echo(scenario: FrtScenario | None) -> dict[str, Any] | None:
     """Echo parametrów wejścia solvera dla scenariusza (ślad WHITE BOX).
 
@@ -122,6 +206,7 @@ def build_frt_trajectories_view(
             }
             for pt in sc.trajectory
         ]
+        werdykt = _verdict_pl(sc)
         scenariusze.append(
             {
                 "scenario_id": sc.scenario_id,
@@ -136,10 +221,13 @@ def build_frt_trajectories_view(
                 "p_recovery_time_s": (
                     None if sc.p_recovery_time_s is None else _round(sc.p_recovery_time_s)
                 ),
-                "werdykt_pl": _verdict_pl(sc),
+                "werdykt_pl": werdykt,
                 "liczba_punktow_trajektorii": len(trajektoria),
                 # Ślad WHITE BOX — parametry wejścia solvera dla tego scenariusza.
                 "wejscie_solvera": _wejscie_solvera_echo(scenarios_by_id.get(sc.scenario_id)),
+                # Addytywny wywod dyplomowy {tekst, latex} (zasada KaTeX 2026-07-22)
+                # — margines wzgledem obwiedni z pol JUZ policzonych przez solver.
+                "wywod": _wywod_scenariusza(sc, scenarios_by_id.get(sc.scenario_id), werdykt),
                 "trajektoria": trajektoria,
             }
         )

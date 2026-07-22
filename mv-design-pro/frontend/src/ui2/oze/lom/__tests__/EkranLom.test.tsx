@@ -85,6 +85,26 @@ describe('EkranLom — prezentacja wyniku', () => {
     expect(szczegol).toHaveTextContent('1,000 Hz/s');
   });
 
+  it('wywód z backendu → ślad obliczeń na żądanie z wzorami KaTeX (zasada 2026-07-22)', async () => {
+    await renderGotowe();
+    // Drugi wiersz = Pole BESS B; jego check ROCOF (indeks 0) niesie wywód.
+    fireEvent.click(screen.getAllByTestId('mvd-wyn-wiersz')[1]);
+    const szczegol = screen.getByTestId('mvd-lom-szczegol');
+    // Domyślnie zwinięty (bez przeładowania ekranu) — dostępny na klik.
+    expect(screen.queryByTestId('mvd-lom-check-slad-0')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-lom-check-slad-0-btn'));
+    const slad = screen.getByTestId('mvd-lom-check-slad-0');
+    const wzory = slad.querySelectorAll('[data-testid="math-rendered"]');
+    expect(wzory.length).toBe(2);
+    // Podstawienie liczbowe z realnej nastawy (LaTeX).
+    expect(wzory[1].getAttribute('data-latex')).toContain('1.0000 < 2.0');
+    // Kroki danych/werdyktu tekstowe (latex=null) pozostają monospace.
+    expect(slad).toHaveTextContent('Werdykt: WARN');
+    // Check SPZ (bez porównania) → uczciwy brak przycisku śladu.
+    expect(szczegol).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-lom-check-slad-1-btn')).not.toBeInTheDocument();
+  });
+
   it('chipy podsumowania odzwierciedlają by_status', async () => {
     await renderGotowe();
     const chipy = screen.getAllByTestId('mvd-lom-chip');

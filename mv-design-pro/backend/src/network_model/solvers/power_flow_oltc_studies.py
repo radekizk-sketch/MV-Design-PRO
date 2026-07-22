@@ -25,6 +25,22 @@ from network_model.solvers.power_flow_types import PowerFlowInput
 SolveOnce = Callable[[PowerFlowInput], Any]
 
 
+def _krok(tekst: str, latex: str | None = None) -> dict[str, Any]:
+    """Krok wywodu WHITE BOX: tekst (ASCII-PL, deterministyczny) + opcjonalny LaTeX.
+
+    Kontrakt kanoniczny ``{tekst, latex}`` (zasada wywodow KaTeX 2026-07-22);
+    wzorzec 1:1 z ``analysis.energy_validation.builder._krok``.
+    """
+    return {"tekst": tekst, "latex": latex}
+
+
+def _tap_step_and_neutral(trafo: TransformerBranch) -> tuple[float, int]:
+    """Krok zaczepu du [%] i pozycja neutralna n0 transformatora (dane wejsciowe)."""
+    if trafo.tap_changer is not None:
+        return trafo.tap_changer.step_percent, trafo.tap_changer.neutral_position
+    return trafo.tap_step_percent, 0
+
+
 def _find_transformer(graph: Any, branch_id: str) -> TransformerBranch:
     branch = graph.branches.get(branch_id)
     if not isinstance(branch, TransformerBranch):
@@ -83,12 +99,15 @@ class TapSweepResult:
     branch_id: str
     controlled_bus_id: str | None
     points: list[TapSweepPoint]
+    # Wywod dyplomowy {tekst, latex} — addytywny (zasada wywodow KaTeX 2026-07-22).
+    wywod: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "branch_id": self.branch_id,
             "controlled_bus_id": self.controlled_bus_id,
             "points": [p.to_dict() for p in self.points],
+            "wywod": list(self.wywod),
         }
 
 
@@ -120,6 +139,7 @@ def sweep_tap_positions(
         or trafo.to_node_id
     )
     sweep = list(positions) if positions is not None else default_sweep_positions(trafo)
+    du, n0 = _tap_step_and_neutral(trafo)
 
     original_tc = trafo.tap_changer
     original_pos = trafo.tap_position
@@ -145,7 +165,65 @@ def sweep_tap_positions(
         trafo.tap_changer = original_tc
         trafo.tap_position = original_pos
 
-    return TapSweepResult(branch_id=branch_id, controlled_bus_id=controlled, points=points)
+    return TapSweepResult(
+        branch_id=branch_id,
+        controlled_bus_id=controlled,
+        points=points,
+        wywod=_wywod_sweep(branch_id, controlled, du, n0, points),
+    )
+
+
+def _wywod_sweep(
+    branch_id: str,
+    controlled: str | None,
+    du: float,
+    n0: int,
+    points: list[TapSweepPoint],
+) -> list[dict[str, Any]]:
+    """Wywod dyplomowy przegladu pozycji: wzor przekladni -> podstawienie -> wynik.
+
+    Czysty formatter — WSZYSTKIE liczby pochodza z danych wejsciowych badania
+    (du, n0, zakres pozycji) i z wartosci juz policzonych (tap_ratio, U, straty).
+    Formaty stale (determinizm), tekst ASCII-PL.
+    """
+    if points:
+        zakres = (
+            f"Zakres pozycji: n = {points[0].position}..{points[-1].position} "
+            f"(liczba punktow: {len(points)}); transformator {branch_id}, "
+            f"szyna regulowana: {controlled if controlled is not None else 'brak'}."
+        )
+    else:
+        zakres = f"Zakres pozycji: pusty; transformator {branch_id}."
+    kroki = [
+        _krok(
+            "Badanie: przeglad pozycji zaczepow (sweep) — rozplyw liczony solverem "
+            "FROZEN dla kazdej ustalonej pozycji zaczepu."
+        ),
+        _krok(zakres),
+        _krok(
+            "Wzor: przekladnia zaczepu t(n) = 1 + (n - n0) * du / 100",
+            r"t(n) = 1 + \frac{(n - n_{0}) \cdot \Delta u}{100}",
+        ),
+        _krok(f"Dane: krok zaczepu du = {du:.4f} %, pozycja neutralna n0 = {n0}."),
+    ]
+    for p in points:
+        u_txt = f"{p.controlled_bus_kv:.3f} kV" if p.controlled_bus_kv is not None else "brak"
+        kroki.append(
+            _krok(
+                f"Pozycja n = {p.position}: t = {p.tap_ratio:.6f}, "
+                f"U szyny regulowanej = {u_txt}, straty = {p.losses_mw:.6f} MW, "
+                f"zbiezny = {'TAK' if p.converged else 'NIE'}.",
+                rf"t({p.position}) = 1 + \frac{{({p.position} - {n0}) \cdot {du:.4f}}}{{100}}"
+                rf" = {p.tap_ratio:.6f}",
+            )
+        )
+    kroki.append(
+        _krok(
+            "Kryterium odczytu: napiecie szyny regulowanej i straty czynne "
+            "pochodza z rozwiazania rozplywu (bez ocen w tej warstwie)."
+        )
+    )
+    return kroki
 
 
 # ---------------------------------------------------------------------------
@@ -180,12 +258,15 @@ class AnnualProfileResult:
     steps: list[AnnualProfileStep]
     total_switch_count: int
     steps_outside_deadband: int
+    # Wywod dyplomowy {tekst, latex} — addytywny (zasada wywodow KaTeX 2026-07-22).
+    wywod: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "steps": [s.to_dict() for s in self.steps],
             "total_switch_count": self.total_switch_count,
             "steps_outside_deadband": self.steps_outside_deadband,
+            "wywod": list(self.wywod),
         }
 
 
@@ -263,11 +344,73 @@ def run_annual_oltc_profile(
         for reg in regulators:
             reg.tap_changer = saved[reg.id]
 
+    nastawy = {
+        reg_id: (tc.voltage_setpoint_kv, tc.deadband_kv)
+        for reg_id, tc in saved.items()
+        if tc is not None
+    }
     return AnnualProfileResult(
         steps=steps,
         total_switch_count=total_switches,
         steps_outside_deadband=outside,
+        wywod=_wywod_profilu(steps, total_switches, outside, nastawy),
     )
+
+
+def _wywod_profilu(
+    steps: list[AnnualProfileStep],
+    total_switches: int,
+    outside: int,
+    nastawy: dict[str, tuple[float | None, float | None]],
+) -> list[dict[str, Any]]:
+    """Wywod dyplomowy profilu rocznego: skalowanie -> warunek pasma -> suma.
+
+    Czysty formatter — liczby WYLACZNIE z krokow badania (U regulowane, pozycje,
+    przelaczenia) i z nastaw regulatorow (U_zad, pasmo). Formaty stale, ASCII-PL.
+    """
+    kroki = [
+        _krok(
+            "Badanie: profil roczny OLTC — petla regulatora (solver FROZEN) "
+            "dla kazdego kroku profilu obciazenia; pozycje przenosza sie "
+            "miedzy krokami jak w rzeczywistym regulatorze."
+        ),
+        _krok(
+            "Wzor: skalowanie obciazen kroku profilu",
+            r"P_{i} = s_{i} \cdot P_{0},\qquad Q_{i} = s_{i} \cdot Q_{0}",
+        ),
+        _krok(
+            "Wzor: warunek pasma nieczulosci regulatora",
+            r"\left|U - U_{zad}\right| \le \frac{\Delta U_{db}}{2}",
+        ),
+    ]
+    for step in steps:
+        for reg_id in sorted(step.positions):
+            pos = step.positions[reg_id]
+            v = step.controlled_bus_kv.get(reg_id)
+            setpoint, deadband = nastawy.get(reg_id, (None, None))
+            tekst = (
+                f"Krok '{step.label}' (s = {step.load_scale:.2f}), transformator {reg_id}: "
+                f"pozycja koncowa n = {pos}, przelaczenia w kroku = {step.switch_count}."
+            )
+            latex: str | None = None
+            if v is not None and setpoint is not None:
+                half = (deadband or 0.0) / 2.0
+                dev = abs(v - setpoint)
+                znak = r"\le" if step.within_deadband.get(reg_id, False) else ">"
+                latex = (
+                    rf"\left|{v:.3f} - {setpoint:.3f}\right| = {dev:.3f}"
+                    rf" {znak} {half:.3f}\ \text{{kV}}"
+                )
+            kroki.append(_krok(tekst, latex))
+    suma_czlony = " + ".join(str(s.switch_count) for s in steps) if steps else "0"
+    kroki.append(
+        _krok(
+            f"Suma przelaczen zaczepow: N = {total_switches} "
+            f"(kroki poza pasmem nieczulosci: {outside} z {len(steps)}).",
+            rf"N_{{prz}} = \sum_{{i}} n_{{i}} = {suma_czlony} = {total_switches}",
+        )
+    )
+    return kroki
 
 
 # ---------------------------------------------------------------------------
@@ -305,6 +448,8 @@ class OptimizationResult:
     initial_position: int
     switch_count: int
     candidates: list[OptimizationCandidate] = field(default_factory=list)
+    # Wywod dyplomowy {tekst, latex} — addytywny (zasada wywodow KaTeX 2026-07-22).
+    wywod: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -314,6 +459,7 @@ class OptimizationResult:
             "initial_position": self.initial_position,
             "switch_count": self.switch_count,
             "candidates": [c.to_dict() for c in self.candidates],
+            "wywod": list(self.wywod),
         }
 
 
@@ -408,4 +554,102 @@ def optimize_tap_positions(
         initial_position=initial,
         switch_count=abs(best_pos - initial) if best_pos is not None else 0,
         candidates=candidates,
+        wywod=_wywod_optymalizacji(objective, initial, target_kv, switch_penalty_mw_per_step, best),
     )
+
+
+def _wywod_optymalizacji(
+    objective: str,
+    initial: int,
+    target_kv: float | None,
+    switch_penalty_mw_per_step: float,
+    best: OptimizationCandidate | None,
+) -> list[dict[str, Any]]:
+    """Wywod dyplomowy optymalizacji: funkcja celu -> podstawienie -> wynik.
+
+    Czysty formatter — liczby WYLACZNIE z parametrow badania i z najlepszego
+    kandydata (straty, odchylka, wartosc kryterium juz policzone w przegladzie).
+    Formaty stale (determinizm), tekst ASCII-PL.
+    """
+    kroki = [
+        _krok(
+            "Badanie: optymalizacja pozycji zaczepu przez pelny przeglad pozycji "
+            f"(enumeracja dokladna, bez heurystyk); cel: {objective}."
+        ),
+    ]
+    if objective == "maintain_voltage":
+        cel_txt = f"U_cel = {target_kv:.3f} kV" if target_kv is not None else "U_cel = brak"
+        kroki.append(
+            _krok(
+                f"Wzor: funkcja celu utrzymania napiecia; {cel_txt}.",
+                r"J(n) = \left|U(n) - U_{cel}\right|",
+            )
+        )
+        if best is not None and best.voltage_deviation_kv is not None and target_kv is not None:
+            u_ctrl = best.controlled_bus_kv
+            if u_ctrl is not None:
+                kroki.append(
+                    _krok(
+                        f"Podstawienie dla najlepszej pozycji n = {best.position}: "
+                        f"J = {best.objective_value:.6f} kV.",
+                        rf"J({best.position}) = \left|{u_ctrl:.3f} - {target_kv:.3f}\right|"
+                        rf" = {best.objective_value:.6f}\ \text{{kV}}",
+                    )
+                )
+    elif objective == "minimize_switching":
+        kroki.append(
+            _krok(
+                f"Wzor: funkcja celu minimalizacji przelaczen; pozycja poczatkowa n0 = {initial}.",
+                r"J(n) = \left|n - n_{0}\right|",
+            )
+        )
+        if best is not None:
+            kroki.append(
+                _krok(
+                    f"Podstawienie dla najlepszej pozycji n = {best.position}: "
+                    f"J = {best.objective_value:.0f}.",
+                    rf"J({best.position}) = \left|{best.position} - {initial}\right|"
+                    rf" = {best.objective_value:.0f}",
+                )
+            )
+    else:  # minimize_losses (default)
+        kroki.append(
+            _krok(
+                "Wzor: funkcja celu minimalizacji strat czynnych; kara za przelaczenie "
+                f"k_prz = {switch_penalty_mw_per_step:.4f} MW/krok, n0 = {initial}.",
+                r"J(n) = P_{str}(n) + k_{prz} \cdot \left|n - n_{0}\right|",
+            )
+        )
+        if best is not None:
+            kroki.append(
+                _krok(
+                    f"Podstawienie dla najlepszej pozycji n = {best.position}: "
+                    f"straty = {best.losses_mw:.6f} MW, J = {best.objective_value:.6f} MW.",
+                    rf"J({best.position}) = {best.losses_mw:.6f}"
+                    rf" + {switch_penalty_mw_per_step:.4f} \cdot"
+                    rf" \left|{best.position} - {initial}\right|"
+                    rf" = {best.objective_value:.6f}\ \text{{MW}}",
+                )
+            )
+    if best is not None:
+        kroki.append(
+            _krok(
+                f"Wynik: najlepsza pozycja n* = {best.position}; liczba przelaczen "
+                f"|n* - n0| = |{best.position} - {initial}| = {abs(best.position - initial)}.",
+                rf"n^{{*}} = \arg\min_{{n}} J(n) = {best.position}",
+            )
+        )
+    else:
+        kroki.append(
+            _krok(
+                "Wynik: brak pozycji dopuszczalnej i zbieznej — nie wybrano n* "
+                "(uczciwy brak, bez fabrykacji)."
+            )
+        )
+    kroki.append(
+        _krok(
+            "Remis rozstrzygany deterministycznie: najnizsze J(n), potem pozycja "
+            "najblizsza poczatkowej, potem najnizsza pozycja."
+        )
+    )
+    return kroki

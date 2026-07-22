@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from 'react';
 import './frt.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { isModeAtLeast } from '../../shell/modeModel';
-import { TabelaWynikow } from '../../wyniki/wzorzec';
+import { SladWywodu, TabelaWynikow } from '../../wyniki/wzorzec';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
 import {
   pobierzKatalogKlasNcRfg,
@@ -154,6 +154,16 @@ function WynikTrajektorii({
         onOtworzDowod={() => undefined}
         trybZaawansowania={trybZaawansowania}
       />
+
+      {/* Ślad obliczeń na żądanie per scenariusz — wywód {tekst, latex} z backendu
+          (zasada KaTeX 2026-07-22); pusta lista = uczciwy brak przycisku. */}
+      {dane.scenariusze.map((scenariusz, indeks) => (
+        <SladWywodu
+          key={scenariusz.scenario_id}
+          kroki={scenariusz.wywod ?? []}
+          testIdPrefix={`mvd-frt-slad-${indeks}`}
+        />
+      ))}
 
       {trybEkspercki && (
         <dl className="mvd-frt-eksp" data-testid="mvd-frt-eksp">

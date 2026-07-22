@@ -212,6 +212,32 @@ describe('EkranFrt — prezentacja wyniku (kryteria 2, 3, 4)', () => {
     const werdykt = await screen.findByTestId('mvd-frt-werdykt');
     expect(werdykt.className).toContain('mvd-frt-werdykt--err');
   });
+
+  it('wywód z backendu → ślad obliczeń na żądanie z wzorami KaTeX (zasada 2026-07-22)', async () => {
+    pobierzTrajektorie.mockResolvedValue(widokLvrtWObwiedniFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
+    await screen.findByTestId('mvd-frt-wynik');
+    // Domyślnie zwinięty (bez przeładowania ekranu) — dostępny na klik.
+    expect(screen.queryByTestId('mvd-frt-slad-0')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-frt-slad-0-btn'));
+    const slad = screen.getByTestId('mvd-frt-slad-0');
+    const wzory = slad.querySelectorAll('[data-testid="math-rendered"]');
+    expect(wzory.length).toBe(2);
+    // Wzór ogólny marginesu i podstawienie liczbowe z pól solvera (LaTeX).
+    expect(wzory[0].getAttribute('data-latex')).toContain('m_{U} = \\min_{t \\ge t_{z}}');
+    expect(wzory[1].getAttribute('data-latex')).toContain('m_{U} = 0.000000');
+    // Kroki danych/werdyktu tekstowe (latex=null).
+    expect(slad).toHaveTextContent('Werdykt: w obwiedni.');
+  });
+
+  it('brak wywodu w odpowiedzi → uczciwy brak przycisku śladu', async () => {
+    pobierzTrajektorie.mockResolvedValue(widokModulWypadlFixture());
+    await wczytajISkonfiguruj();
+    fireEvent.click(screen.getByTestId('mvd-frt-oblicz'));
+    await screen.findByTestId('mvd-frt-wynik');
+    expect(screen.queryByTestId('mvd-frt-slad-0-btn')).not.toBeInTheDocument();
+  });
 });
 
 describe('EkranFrt — tryb ekspercki (identyfikatory)', () => {

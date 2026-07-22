@@ -90,6 +90,22 @@ export function widokOchronyLomFixture(): WidokOchronyLom {
             unit: 'Hz/s',
             window: 'df/dt ≥ 2.0 Hz/s',
             source_pl: ROCOF_SOURCE,
+            // Wywód dyplomowy {tekst, latex} — kształt 1:1 z `_wywod_okna` backendu.
+            wywod: [
+              {
+                tekst: 'Wzor: warunek okna normatywnego funkcji 81R (nastawa nie nizsza niz krawedz okna)',
+                latex: '\\left(\\tfrac{df}{dt}\\right)_{nast} \\ge 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}',
+              },
+              {
+                tekst: 'Dane: nastawa = 1.0000 (przekaznik pola), krawedz okna = 2.0 — dolna krawedz okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s).',
+                latex: null,
+              },
+              {
+                tekst: 'Podstawienie: 1.0000 >= 2.0 NIESPELNIONE',
+                latex: '1.0000 < 2.0\\ \\tfrac{\\text{Hz}}{\\text{s}}',
+              },
+              { tekst: 'Werdykt: WARN — nastawa ponizej okna.', latex: null },
+            ],
           },
           {
             kind: 'koordynacja_spz',

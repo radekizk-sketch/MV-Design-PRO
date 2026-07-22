@@ -243,6 +243,115 @@ _WINDOW_EVALUATORS: dict[str, Any] = {
 
 
 # ---------------------------------------------------------------------------
+# Wywod dyplomowy per porownanie (zasada wywodow KaTeX 2026-07-22)
+# ---------------------------------------------------------------------------
+
+
+def _krok(tekst: str, latex: str | None = None) -> dict[str, Any]:
+    """Krok wywodu WHITE BOX: tekst (ASCII-PL, deterministyczny) + opcjonalny LaTeX.
+
+    Kontrakt kanoniczny ``{tekst, latex}`` — wzorzec 1:1 z
+    ``analysis.energy_validation.builder._krok``.
+    """
+    return {"tekst": tekst, "latex": latex}
+
+
+# Parametry wywodu okna normatywnego per function_type:
+# (symbol LaTeX nastawy, jednostka LaTeX, znak warunku, wartosc okna, opis okna ASCII).
+_WYWOD_OKNA: dict[str, tuple[str, str, str, float, str]] = {
+    "rocof_81R": (
+        r"\left(\tfrac{df}{dt}\right)_{nast}",
+        r"\tfrac{\text{Hz}}{\text{s}}",
+        r"\ge",
+        ROCOF_MIN_DF_DT_HZ_S,
+        "dolna krawedz okna (NC RfG Art. 13(1)(b), PTPiREE 2 Hz/s)",
+    ),
+    "underfrequency_81U": (
+        r"f_{81U}",
+        r"\text{Hz}",
+        r"\le",
+        FREQ_UNDER_MAX_HZ,
+        "gorna krawedz okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)",
+    ),
+    "overfrequency_81O": (
+        r"f_{81O}",
+        r"\text{Hz}",
+        r"\ge",
+        FREQ_OVER_MIN_HZ,
+        "dolna krawedz okna (NC RfG Art. 13(1)(a), pasmo 47,5-51,5 Hz)",
+    ),
+}
+
+_ZNAK_PRZECIWNY: dict[str, str] = {r"\ge": "<", r"\le": ">"}
+
+
+def _wywod_okna(function_type: str, value: float | None, verdict: Verdict) -> list[dict[str, Any]]:
+    """Wywod dyplomowy okna normatywnego: warunek (LaTeX) -> dane -> podstawienie
+    z realnej nastawy (LaTeX) -> werdykt. Czysty formatter — ZERO nowych liczb:
+    nastawa i krawedz okna sa juz czescia porownania. Pusta lista, gdy realne
+    porownanie nie zaszlo (brak nastawy lub brak okna) — uczciwy brak wywodu."""
+    params = _WYWOD_OKNA.get(function_type)
+    if params is None or value is None:
+        return []
+    symbol, jednostka, znak, okno, opis_okna = params
+    spelnione = verdict.severity == "OK"
+    znak_podstawienia = znak if spelnione else _ZNAK_PRZECIWNY[znak]
+    dolna_krawedz = znak == r"\ge"
+    kierunek = "nastawa nie nizsza niz" if dolna_krawedz else "nastawa nie wyzsza niz"
+    znak_ascii = ">=" if dolna_krawedz else "<="
+    wynik_ascii = "SPELNIONE" if spelnione else "NIESPELNIONE"
+    meta = LOM_FUNCTION_TYPES[function_type]
+    return [
+        _krok(
+            f"Wzor: warunek okna normatywnego funkcji {meta['ansi']} " f"({kierunek} krawedz okna)",
+            rf"{symbol} {znak} {okno:.1f}\ {jednostka}",
+        ),
+        _krok(
+            f"Dane: nastawa = {value:.4f} (przekaznik pola), "
+            f"krawedz okna = {okno:.1f} — {opis_okna}."
+        ),
+        _krok(
+            f"Podstawienie: {value:.4f} {znak_ascii} {okno:.1f} {wynik_ascii}",
+            rf"{value:.4f} {znak_podstawienia} {okno:.1f}\ {jednostka}",
+        ),
+        _krok(f"Werdykt: {verdict.severity} — {verdict.message_pl}"),
+    ]
+
+
+def _wywod_spz(
+    lom_time_s: float | None,
+    spz_fast_time_s: float | None,
+    spz_slow_time_s: float | None,
+    verdict: Verdict,
+) -> list[dict[str, Any]]:
+    """Wywod dyplomowy koordynacji LoM-SPZ: warunek -> dane -> podstawienie ->
+    werdykt. Pusta lista, gdy porownanie nie zaszlo (brak czasu LoM lub SPZ)."""
+    candidates = [t for t in (spz_fast_time_s, spz_slow_time_s) if t is not None]
+    if lom_time_s is None or not candidates:
+        return []
+    spz_interval = min(candidates)
+    spelnione = verdict.severity == "OK"
+    znak_ascii = "<" if spelnione else ">="
+    znak_latex = "<" if spelnione else r"\ge"
+    wynik_ascii = "SPELNIONE" if spelnione else "NIESPELNIONE"
+    return [
+        _krok(
+            "Wzor: warunek koordynacji czasowej — LoM wylacza przed ponownym " "zalaczeniem SPZ",
+            r"t_{LoM} < t_{SPZ}",
+        ),
+        _krok(
+            f"Dane: czas LoM = {lom_time_s:.4f} s (najkrotsza zwloka funkcji LoM), "
+            f"przerwa SPZ = {spz_interval:.4f} s (najkrotszy dostepny czas SPZ)."
+        ),
+        _krok(
+            f"Podstawienie: {lom_time_s:.4f} {znak_ascii} {spz_interval:.4f} s {wynik_ascii}",
+            rf"{lom_time_s:.4f} {znak_latex} {spz_interval:.4f}\ \text{{s}}",
+        ),
+        _krok(f"Werdykt: {verdict.severity} — {verdict.message_pl}"),
+    ]
+
+
+# ---------------------------------------------------------------------------
 # Pomocnicze — identyfikacja modułów wytwórczych i funkcji LoM
 # ---------------------------------------------------------------------------
 
@@ -322,6 +431,7 @@ def _evaluate_field(
                 "unit": None,
                 "window": None,
                 "source_pl": None,
+                "wywod": [],
             }
         )
     else:
@@ -351,6 +461,7 @@ def _evaluate_field(
                         "unit": None,
                         "window": window_pl,
                         "source_pl": source.get("source_pl"),
+                        "wywod": [],
                     }
                 )
                 continue
@@ -369,6 +480,9 @@ def _evaluate_field(
                     "unit": unit,
                     "window": window_pl,
                     "source_pl": source.get("source_pl"),
+                    # Addytywny wywod dyplomowy {tekst, latex} (zasada KaTeX 2026-07-22);
+                    # pusta lista = uczciwy brak (porownanie nie zaszlo).
+                    "wywod": _wywod_okna(function_type, value, verdict),
                 }
             )
 
@@ -393,6 +507,9 @@ def _evaluate_field(
                     "SpzState.fast_time_s / slow_time_s jednostek nadrzędnych "
                     "(BayProtectionControlUnit)"
                 ),
+                # Addytywny wywod dyplomowy — pusta lista, gdy porownanie z SPZ
+                # nie zaszlo (uczciwy brak, ZERO fabrykacji).
+                "wywod": _wywod_spz(lom_time, spz_fast, spz_slow, spz),
             }
         )
 

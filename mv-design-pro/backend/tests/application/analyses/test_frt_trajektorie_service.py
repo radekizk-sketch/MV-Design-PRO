@@ -149,3 +149,53 @@ def test_der_and_operator_metadata_present() -> None:
     assert view["modul_der"]["pmax_mw"] == pytest.approx(2.0)
     assert view["operator"]["id"] == "pse"
     assert view["operator"]["nazwa"] == _PROFILE.operator_name_pl
+
+
+# ---------------------------------------------------------------------------
+# Wywod dyplomowy per scenariusz (zasada wywodow KaTeX 2026-07-22)
+# ---------------------------------------------------------------------------
+
+
+def test_wywod_has_formula_data_substitution_and_verdict() -> None:
+    view = build_frt_trajectories_view(_converter(), _PROFILE, "lvrt")
+    sc = view["scenariusze"][0]
+    kroki = sc["wywod"]
+    assert kroki and all(set(k) == {"tekst", "latex"} for k in kroki)
+    # Wzor ogolny marginesu (LaTeX).
+    latexy = [k["latex"] for k in kroki if k["latex"]]
+    assert any(r"m_{U} = \min_{t \ge t_{z}}" in latex for latex in latexy)
+    # Podstawienie liczbowe z JUZ policzonego marginesu solvera.
+    margin = sc["margin_to_curve_pu"]
+    assert margin is not None
+    assert any(f"m_{{U}} = {margin:.6f}" in latex for latex in latexy)
+    # Kroki danych i werdyktu tekstowe (latex=None).
+    assert kroki[0]["latex"] is None and "wejscie solvera FROZEN" in kroki[0]["tekst"]
+    assert kroki[-1]["latex"] is None and kroki[-1]["tekst"].startswith("Werdykt:")
+    assert sc["werdykt_pl"] in kroki[-1]["tekst"]
+
+
+def test_wywod_module_dropped_is_honest_without_margin_math() -> None:
+    from application.analyses.frt_trajektorie import _wywod_scenariusza
+
+    kroki = _wywod_scenariusza(_scenario_result(False, 0.5), None, _WERDYKT_MODUL_WYPADL)
+    # Bez podstawien marginesu — uczciwy opis wypadniecia i werdykt tekstowy.
+    assert all(k["latex"] is None for k in kroki)
+    assert any("stayed_connected = false" in k["tekst"] for k in kroki)
+    assert kroki[-1]["tekst"] == f"Werdykt: {_WERDYKT_MODUL_WYPADL}."
+
+
+def test_wywod_margin_none_is_honest() -> None:
+    from application.analyses.frt_trajektorie import _wywod_scenariusza
+
+    kroki = _wywod_scenariusza(_scenario_result(True, None), None, _WERDYKT_W_OBWIEDNI)
+    assert any("margin_to_curve_pu = null" in k["tekst"] for k in kroki)
+    assert kroki[-1]["tekst"] == f"Werdykt: {_WERDYKT_W_OBWIEDNI}."
+
+
+def test_wywod_negative_margin_uses_strict_inequality() -> None:
+    from application.analyses.frt_trajektorie import _wywod_scenariusza
+
+    kroki = _wywod_scenariusza(_scenario_result(True, -0.1), None, _WERDYKT_POZA_OBWIEDNIA)
+    podstawienie = [k for k in kroki if k["latex"] and "p.u." in k["latex"]][0]
+    assert "< 0" in podstawienie["latex"]
+    assert "NIESPELNIONE" in podstawienie["tekst"]

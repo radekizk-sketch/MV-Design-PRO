@@ -68,7 +68,10 @@ ekranu, obliczenia dostępne na żądanie/klik; usystematyzuj rodzaj czcionek".
 | Rozpływ (szyny/gałęzie) | dowodRef → Dowód | n/d (dowód) | GOTOWE (K3) |
 | Porównanie A/B | dowodRef A/B → Dowód | n/d (dowód) | GOTOWE (R3-C) |
 | Kreatory — panele teorii | n/d | rollout | KARTA T-A (wykonawca) |
-| Kompensacja / odbiór nN / studium / OLTC | audyt | audyt | KARTA T-B (wykonawca) |
+| Kompensacja / odbiór nN / studium | TAK | TAK | GOTOWE (audyt T-B) |
+| Badania OLTC (sweep / profil / optymalizacja) | TAK (per zakładka) | TAK | GOTOWE (karta T-C — wywód w `to_dict()` silników badań) |
+| Ochrona LoM (praca wyspowa) | TAK (per porównanie) | TAK | GOTOWE (karta T-C — wywód per check; brak porównania = uczciwy brak) |
+| Trajektorie FRT/HVRT | TAK (per scenariusz) | TAK | GOTOWE (karta T-C — margines względem obwiedni z pól solvera) |
 | Typografia ui2 (tokeny sans/mono) | n/d | n/d | GOTOWE (tokeny + shell/inspector/search); sweep reszty = KARTA T-B |
 
 Braki wykryte w rolloutach → wpis GAP w karcie + uzupełnienie dostawcy

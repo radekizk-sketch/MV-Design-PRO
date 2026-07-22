@@ -10,6 +10,7 @@ import { useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { PoleLiczbowe, PoleTekstowe, PoleWyboru } from '../../kreatory/rama';
+import { SladWywodu } from '../wzorzec';
 import {
   fmtKv,
   fmtMw,
@@ -207,6 +208,8 @@ function WynikSweep({ wynik }: { wynik: NonNullable<WynikBadania['sweep']> }) {
           </tbody>
         </table>
       </div>
+      {/* Ślad obliczeń na żądanie — wywód {tekst, latex} z backendu (zasada KaTeX). */}
+      <SladWywodu kroki={wynik.wywod ?? []} testIdPrefix="mvd-oltc-sweep-slad" />
     </div>
   );
 }
@@ -245,6 +248,8 @@ function WynikProfilu({ wynik }: { wynik: NonNullable<WynikBadania['profil']> })
           </tbody>
         </table>
       </div>
+      {/* Ślad obliczeń na żądanie — wywód {tekst, latex} z backendu (zasada KaTeX). */}
+      <SladWywodu kroki={wynik.wywod ?? []} testIdPrefix="mvd-oltc-profil-slad" />
     </div>
   );
 }
@@ -294,6 +299,8 @@ function WynikOptymalizacji({ wynik }: { wynik: NonNullable<WynikBadania['optyma
           </tbody>
         </table>
       </div>
+      {/* Ślad obliczeń na żądanie — wywód {tekst, latex} z backendu (zasada KaTeX). */}
+      <SladWywodu kroki={wynik.wywod ?? []} testIdPrefix="mvd-oltc-optim-slad" />
     </div>
   );
 }

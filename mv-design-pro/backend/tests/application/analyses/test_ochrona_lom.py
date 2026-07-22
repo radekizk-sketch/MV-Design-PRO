@@ -339,3 +339,81 @@ def test_sanity_rocof_rule_unchanged() -> None:
     )
     results = check_rocof_rules([fn], base, ElementContext(element_id="e1", element_type="LINE"))
     assert any(r.code == SanityCheckCode.ROCOF_TOO_HIGH for r in results)
+
+
+# ---------------------------------------------------------------------------
+# Wywod dyplomowy per porownanie (zasada wywodow KaTeX 2026-07-22)
+# ---------------------------------------------------------------------------
+
+
+def test_rocof_wywod_has_formula_substitution_and_verdict() -> None:
+    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=2.5, time_delay_s=0.1)
+    enm = _enm(
+        bays=[_bay()],
+        generators=[_generator()],
+        protection_assignments=[_assignment([setting])],
+    )
+    view = build_ochrona_lom_view(enm)
+    rocof = [c for c in _checks(view) if c["function_ansi"] == "81R"][0]
+    kroki = rocof["wywod"]
+    # Struktura dyplomowa: wzor -> dane -> podstawienie -> werdykt.
+    assert len(kroki) == 4
+    assert all(set(k) == {"tekst", "latex"} for k in kroki)
+    # Wzor ogolny (LaTeX) z krawedzia okna.
+    assert kroki[0]["latex"] is not None and r"\ge 2.0" in kroki[0]["latex"]
+    # Krok danych tekstowy (latex=None).
+    assert kroki[1]["latex"] is None and "2.5000" in kroki[1]["tekst"]
+    # Podstawienie liczbowe (LaTeX) z realnej nastawy.
+    assert kroki[2]["latex"] is not None
+    assert "2.5000" in kroki[2]["latex"] and r"\ge 2.0" in kroki[2]["latex"]
+    # Werdykt tekstowy.
+    assert kroki[3]["latex"] is None and kroki[3]["tekst"].startswith("Werdykt: OK")
+
+
+def test_rocof_below_window_wywod_uses_opposite_sign() -> None:
+    setting = ProtectionSetting(function_type="rocof_81R", threshold_hz_s=1.0)
+    enm = _enm(
+        bays=[_bay()],
+        generators=[_generator()],
+        protection_assignments=[_assignment([setting])],
+    )
+    view = build_ochrona_lom_view(enm)
+    rocof = [c for c in _checks(view) if c["function_ansi"] == "81R"][0]
+    kroki = rocof["wywod"]
+    assert "1.0000 < 2.0" in kroki[2]["latex"]
+    assert "NIESPELNIONE" in kroki[2]["tekst"]
+    assert kroki[3]["tekst"].startswith("Werdykt: WARN")
+
+
+def test_wywod_empty_when_no_real_comparison() -> None:
+    # Pole bez funkcji (obecnosc), funkcja zadeklarowana bez nastaw, 78 bez okna,
+    # SPZ bez danych — wszystkie bez wywodu (uczciwy brak, ZERO fabrykacji).
+    setting = ProtectionSetting(function_type="vector_shift_78", threshold_deg=10.0)
+    enm = _enm(
+        bays=[_bay(protection_codes=["81U"])],
+        generators=[_generator()],
+        protection_assignments=[_assignment([setting])],
+    )
+    view = build_ochrona_lom_view(enm)
+    for check in _checks(view):
+        if check["kind"] == "okno_normatywne" and check["function_ansi"] == "78":
+            assert check["wywod"] == []
+        if check["kind"] in ("obecnosc", "koordynacja_spz"):
+            assert check["wywod"] == []
+
+
+def test_wywod_deterministic_two_builds_identical() -> None:
+    def _view() -> dict:
+        setting = ProtectionSetting(
+            function_type="underfrequency_81U", threshold_hz=47.0, time_delay_s=0.2
+        )
+        enm = _enm(
+            bays=[_bay()],
+            generators=[_generator()],
+            protection_assignments=[_assignment([setting])],
+        )
+        return build_ochrona_lom_view(enm)
+
+    w1 = [c["wywod"] for c in _checks(_view())]
+    w2 = [c["wywod"] for c in _checks(_view())]
+    assert json.dumps(w1, sort_keys=True) == json.dumps(w2, sort_keys=True)

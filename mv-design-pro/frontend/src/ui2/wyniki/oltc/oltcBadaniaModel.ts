@@ -9,6 +9,7 @@
  */
 
 import { createRun, executeRun, getRunResults } from '../../../ui/study-cases/api';
+import type { KrokWywodu } from '../wzorzec';
 
 export type RodzajBadania = 'sweep' | 'annual_profile' | 'optimize';
 export type CelOptymalizacji = 'minimize_losses' | 'maintain_voltage' | 'minimize_switching';
@@ -27,6 +28,8 @@ export interface WynikSweep {
   branch_id: string;
   controlled_bus_id: string | null;
   points: PunktSweep[];
+  /** Wywód dyplomowy {tekst, latex} z backendu (zasada KaTeX 2026-07-22); addytywny. */
+  wywod?: KrokWywodu[];
 }
 
 export interface KrokProfilu {
@@ -43,6 +46,8 @@ export interface WynikProfilu {
   steps: KrokProfilu[];
   total_switch_count: number;
   steps_outside_deadband: number;
+  /** Wywód dyplomowy {tekst, latex} z backendu (zasada KaTeX 2026-07-22); addytywny. */
+  wywod?: KrokWywodu[];
 }
 
 export interface KandydatOptymalizacji {
@@ -62,6 +67,8 @@ export interface WynikOptymalizacji {
   initial_position: number;
   switch_count: number;
   candidates: KandydatOptymalizacji[];
+  /** Wywód dyplomowy {tekst, latex} z backendu (zasada KaTeX 2026-07-22); addytywny. */
+  wywod?: KrokWywodu[];
 }
 
 export interface KrokProfiluWejscie {

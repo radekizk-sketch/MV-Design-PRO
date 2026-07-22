@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from 'react';
 import './lom.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useActiveCase } from '../../../ui/study-cases/store';
-import { EkranAnalizy } from '../../wyniki/wzorzec';
+import { EkranAnalizy, SladWywodu } from '../../wyniki/wzorzec';
 import { pobierzOchronaLom, type PoleLom, type WidokOchronyLom } from '../api';
 import { KLUCZ_WIERSZA_LOM, KOLUMNY_LOM, naWierszeLom, naZalozeniaLom } from './lomModel';
 import {
@@ -132,6 +132,9 @@ function SzczegolPola({ pole }: { pole: PoleLom | null }) {
               </div>
             </dl>
             <p className="mvd-lom-check-msg">{check.message_pl}</p>
+            {/* Ślad obliczeń na żądanie — wywód {tekst, latex} z backendu (zasada
+                KaTeX 2026-07-22); pusta lista = uczciwy brak przycisku. */}
+            <SladWywodu kroki={check.wywod ?? []} testIdPrefix={`mvd-lom-check-slad-${i}`} />
           </li>
         ))}
       </ul>

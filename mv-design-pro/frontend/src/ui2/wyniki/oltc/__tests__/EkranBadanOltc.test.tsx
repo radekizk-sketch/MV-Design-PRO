@@ -25,6 +25,19 @@ vi.mock('../../../../ui/study-cases/api', () => ({
   getRunResults: (...args: unknown[]) => getRunResultsMock(...args),
 }));
 
+/** Wywód dyplomowy {tekst, latex} — kształt 1:1 z `TapSweepResult.to_dict()["wywod"]`. */
+const WYWOD_SWEEP = [
+  { tekst: 'Badanie: przeglad pozycji zaczepow (sweep).', latex: null },
+  {
+    tekst: 'Wzor: przekladnia zaczepu t(n) = 1 + (n - n0) * du / 100',
+    latex: 't(n) = 1 + \\frac{(n - n_{0}) \\cdot \\Delta u}{100}',
+  },
+  {
+    tekst: 'Pozycja n = -1: t = 0.987500.',
+    latex: 't(-1) = 1 + \\frac{(-1 - 0) \\cdot 1.2500}{100} = 0.987500',
+  },
+];
+
 const SWEEP_RESULT = {
   global_results: {
     oltc_sweep: {
@@ -34,6 +47,7 @@ const SWEEP_RESULT = {
         { position: -1, tap_ratio: 0.9875, converged: true, controlled_bus_kv: 15.1, losses_mw: 0.21, min_bus_kv: 14.9, max_bus_kv: 15.1 },
         { position: 0, tap_ratio: 1.0, converged: true, controlled_bus_kv: 14.9, losses_mw: 0.2, min_bus_kv: 14.7, max_bus_kv: 14.9 },
       ],
+      wywod: WYWOD_SWEEP,
     },
   },
 };
@@ -79,6 +93,9 @@ describe('EkranBadanOltc — realna ścieżka', () => {
           switch_count: 2, candidates: [
             { position: -2, converged: true, losses_mw: 0.2, controlled_bus_kv: 15.0, voltage_deviation_kv: 0.0, objective_value: 0.0, feasible: true },
           ],
+          wywod: [
+            { tekst: 'Wzor: funkcja celu utrzymania napiecia.', latex: 'J(n) = \\left|U(n) - U_{cel}\\right|' },
+          ],
         },
       },
     });
@@ -92,6 +109,8 @@ describe('EkranBadanOltc — realna ścieżka', () => {
     expect(request.solver_input).toMatchObject({ oltc_study: 'optimize', oltc_objective: 'maintain_voltage', oltc_target_kv: 15 });
     await waitFor(() => expect(screen.getByTestId('mvd-oltc-wynik-optymalizacja')).toBeTruthy());
     expect(screen.getByTestId('mvd-oltc-najlepszy')).toBeTruthy();
+    // Ślad obliczeń dostępny na żądanie (wywód w odpowiedzi backendu).
+    expect(screen.getByTestId('mvd-oltc-optim-slad-btn')).toBeTruthy();
   });
 
   it('profil dobowy: edytor kroków i przekazanie profilu', async () => {
@@ -104,6 +123,9 @@ describe('EkranBadanOltc — realna ścieżka', () => {
           ],
           total_switch_count: 0,
           steps_outside_deadband: 0,
+          wywod: [
+            { tekst: 'Wzor: skalowanie obciazen kroku profilu', latex: 'P_{i} = s_{i} \\cdot P_{0}' },
+          ],
         },
       },
     });
@@ -116,6 +138,41 @@ describe('EkranBadanOltc — realna ścieżka', () => {
     expect(request.solver_input.oltc_study).toBe('annual_profile');
     expect(Array.isArray(request.solver_input.oltc_load_profile)).toBe(true);
     await waitFor(() => expect(screen.getByTestId('mvd-oltc-wynik-profil')).toBeTruthy());
+    // Ślad obliczeń dostępny na żądanie (wywód w odpowiedzi backendu).
+    expect(screen.getByTestId('mvd-oltc-profil-slad-btn')).toBeTruthy();
+  });
+
+  it('wywód z backendu → ślad obliczeń na żądanie z wzorami KaTeX (zasada 2026-07-22)', async () => {
+    const user = userEvent.setup();
+    render(<EkranBadanOltc />);
+    await user.click(screen.getByTestId('mvd-oltc-uruchom'));
+    await waitFor(() => expect(screen.getByTestId('mvd-oltc-wynik-sweep')).toBeTruthy());
+    // Domyślnie zwinięty (bez przeładowania ekranu) — dostępny na klik natywny.
+    expect(screen.queryByTestId('mvd-oltc-sweep-slad')).toBeNull();
+    await user.click(screen.getByTestId('mvd-oltc-sweep-slad-btn'));
+    const slad = screen.getByTestId('mvd-oltc-sweep-slad');
+    const wzory = slad.querySelectorAll('[data-testid="math-rendered"]');
+    expect(wzory.length).toBe(2);
+    expect(wzory[1].getAttribute('data-latex')).toContain('t(-1) = 1 +');
+    // Krok tekstowy (latex=null) pozostaje monospace.
+    expect(slad.textContent).toContain('Badanie: przeglad pozycji zaczepow (sweep).');
+  });
+
+  it('brak wywodu w odpowiedzi → uczciwy brak przycisku śladu', async () => {
+    const user = userEvent.setup();
+    getRunResultsMock.mockResolvedValue({
+      global_results: {
+        oltc_sweep: {
+          branch_id: 'TR1',
+          controlled_bus_id: 'b_sn',
+          points: SWEEP_RESULT.global_results.oltc_sweep.points,
+        },
+      },
+    });
+    render(<EkranBadanOltc />);
+    await user.click(screen.getByTestId('mvd-oltc-uruchom'));
+    await waitFor(() => expect(screen.getByTestId('mvd-oltc-wynik-sweep')).toBeTruthy());
+    expect(screen.queryByTestId('mvd-oltc-sweep-slad-btn')).toBeNull();
   });
 
   it('bez aktywnego przypadku pokazuje uczciwy błąd zamiast uruchomienia', async () => {

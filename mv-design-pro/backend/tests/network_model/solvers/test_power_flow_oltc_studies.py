@@ -139,3 +139,71 @@ class TestOptimization:
             pf2, _solve_once, branch_id=_trafo_id(pf2), objective="minimize_losses"
         )
         assert r1.best_position == r2.best_position
+
+
+class TestWywod:
+    """Wywod dyplomowy {tekst, latex} w to_dict() — addytywny (zasada KaTeX 2026-07-22)."""
+
+    def test_sweep_wywod_formula_and_per_point_substitution(self):
+        pf_input = _build_input(_oltc())
+        trafo_id = _trafo_id(pf_input)
+        result = sweep_tap_positions(
+            pf_input, _solve_once, branch_id=trafo_id, positions=[-1, 0, 1]
+        )
+        d = result.to_dict()
+        kroki = d["wywod"]
+        assert kroki and all(set(k) == {"tekst", "latex"} for k in kroki)
+        # Wzor ogolny przekladni (LaTeX).
+        wzor = [k for k in kroki if k["latex"] and "t(n) = 1 +" in k["latex"]]
+        assert wzor
+        # Podstawienie liczbowe per pozycja — wartosc t z JUZ policzonego tap_ratio.
+        podstawienia = [
+            k
+            for k in kroki
+            if k["latex"] and k["latex"].startswith("t(") and not k["latex"].startswith("t(n)")
+        ]
+        assert len(podstawienia) == len(result.points)
+        p0 = result.points[0]
+        assert f"= {p0.tap_ratio:.6f}" in podstawienia[0]["latex"]
+        assert f"t({p0.position})" in podstawienia[0]["latex"]
+
+    def test_profile_wywod_deadband_substitution_and_switch_sum(self):
+        pf_input = _build_input(_oltc())
+        profile = [
+            ProfilePoint(label="noc", load_scale=0.3),
+            ProfilePoint(label="szczyt", load_scale=1.6),
+        ]
+        result = run_annual_oltc_profile(pf_input, _solve_once, profile)
+        kroki = result.to_dict()["wywod"]
+        assert kroki and all(set(k) == {"tekst", "latex"} for k in kroki)
+        # Wzory ogolne: skalowanie obciazen i pasmo nieczulosci.
+        latexy = [k["latex"] for k in kroki if k["latex"]]
+        assert any("P_{i} = s_{i}" in latex for latex in latexy)
+        assert any("U_{zad}" in latex for latex in latexy)
+        # Suma przelaczen (podstawienie liczbowe).
+        assert any(
+            f"= {result.total_switch_count}" in latex and "N_{prz}" in latex for latex in latexy
+        )
+
+    def test_optimize_wywod_objective_substitution_for_best(self):
+        pf_input = _build_input(_oltc())
+        trafo_id = _trafo_id(pf_input)
+        result = optimize_tap_positions(
+            pf_input, _solve_once, branch_id=trafo_id, objective="minimize_losses"
+        )
+        kroki = result.to_dict()["wywod"]
+        latexy = [k["latex"] for k in kroki if k["latex"]]
+        assert any("J(n) = P_{str}(n)" in latex for latex in latexy)
+        best = next(c for c in result.candidates if c.position == result.best_position)
+        # Podstawienie z JUZ policzonych strat i wartosci kryterium.
+        assert any(f"{best.losses_mw:.6f}" in latex for latex in latexy)
+        assert any(f"= {result.best_position}" in latex and "arg" in latex for latex in latexy)
+
+    def test_wywod_deterministic_two_runs_identical(self):
+        def _run():
+            pf = _build_input(_oltc())
+            return sweep_tap_positions(
+                pf, _solve_once, branch_id=_trafo_id(pf), positions=[-2, 0, 2]
+            ).to_dict()["wywod"]
+
+        assert _run() == _run()

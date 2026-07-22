@@ -18,6 +18,16 @@ import type { NcRfgRunRequest } from '../../ui/ncrfg-tests/api';
 // Siła sieci (SCR/WSCR) — analysis/grid_strength/serializer.py
 // =============================================================================
 
+/**
+ * Krok wywodu dyplomowego {tekst, latex} — kontrakt kanoniczny zasady wywodów
+ * KaTeX (2026-07-22): `tekst` zawsze, `latex` dla kroków ze wzorem/podstawieniem.
+ * Kształt 1:1 z `SladWywodu.KrokWywodu` (wspólny komponent śladu obliczeń).
+ */
+export interface KrokWywoduKanoniczny {
+  readonly tekst: string;
+  readonly latex: string | null;
+}
+
 /** Krok wywodu WHITE BOX (A→B→C→D) — siła sieci. */
 export interface KrokSladuSily {
   readonly symbol: string;
@@ -649,6 +659,11 @@ export interface ScenariuszFrt {
   readonly p_recovery_time_s: number | null;
   readonly werdykt_pl: string;
   readonly liczba_punktow_trajektorii: number;
+  /**
+   * Wywód dyplomowy {tekst, latex} scenariusza (zasada KaTeX 2026-07-22):
+   * wzór marginesu → dane → podstawienie z pól solvera → werdykt. Addytywny.
+   */
+  readonly wywod?: readonly KrokWywoduKanoniczny[];
   readonly trajektoria: readonly PunktTrajektoriiFrt[];
 }
 
@@ -999,6 +1014,12 @@ export interface PorownanieLom {
   readonly unit: string | null;
   readonly window: OknoNormatywneLom;
   readonly source_pl: string | null;
+  /**
+   * Wywód dyplomowy {tekst, latex} porównania (zasada KaTeX 2026-07-22):
+   * warunek okna → dane → podstawienie z realnej nastawy → werdykt.
+   * Pusta lista/brak = porównanie nie zaszło (uczciwy brak przycisku śladu).
+   */
+  readonly wywod?: readonly KrokWywoduKanoniczny[];
 }
 
 /** Pole przyłączeniowe modułu wytwórczego z oceną ochrony LoM. */
