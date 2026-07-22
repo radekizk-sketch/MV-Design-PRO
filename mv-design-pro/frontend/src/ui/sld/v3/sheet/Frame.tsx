@@ -18,11 +18,14 @@ import { GRID } from '../core/grid';
 import { LABEL_TYPOGRAPHY } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
+import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
 
 /** Kolor bazowy rysunku w trybie SCADA (spec §2/§6) — nakładki koloru
- *  napięcia/energizacji są zakresem F6, nie ramki arkusza. */
-const SHEET_STROKE = '#E8EEF4';
-const SHEET_BACKGROUND = '#0B0F14';
+ *  napięcia/energizacji są zakresem F6 (`SldCanvasV3.tsx`), nie ramki arkusza.
+ *  SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
+ *  źródło prawdy, ta sama wartość co dotąd. */
+const SHEET_STROKE = BASE_STROKE;
+const SHEET_BACKGROUND = CANVAS_BACKGROUND;
 
 /** Strefy referencyjne co 400px (spec §2). */
 const ZONE_STEP = 400;

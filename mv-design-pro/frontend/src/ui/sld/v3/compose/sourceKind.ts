@@ -8,6 +8,7 @@
  */
 
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
+import { HIGHLIGHT_COLOR } from '../theme/colorTokens';
 
 /**
  * Podzbiór `SldSourceView['kind']` (v2 adapter) reprezentowany symbolem DER
@@ -50,20 +51,21 @@ export type SourceOperationalState = 'energized' | 'standby' | 'disconnected' | 
 /**
  * F11.3 (spec §13.3 „stan = kolor/nakładka, nie geometria", spec §6 P5) —
  * JEDYNA tabela stan→kolor nakładki. Deterministyczna z konstrukcji (czysty
- * słownik, zero warunków). Paleta spójna z nakładką energizacji
- * (`canvas/SldCanvasV3.tsx`): `energized` = TEN SAM zielony co
- * `OVERLAY_ENERGIZED_STROKE` (#2ECC71 — jedna semantyka „pod napięciem, w
- * pracy"), `disconnected` = TEN SAM szary co `OVERLAY_DEENERGIZED_STROKE`
- * (#5B6B76). Nakładka jest WYŁĄCZNIE kolorem kreski glifu + atrybutem DOM
- * `data-source-state` — NIE zmienia geometrii ani bboxu symbolu (§13.3
- * wyrocznia; dowód inwariancji: `sourceState.test.ts`).
+ * słownik, zero warunków). SCHEMAT-10 S3 (V12K-135): wartości TERAZ z
+ * `theme/colorTokens.ts` `HIGHLIGHT_COLOR` — JEDNO źródło prawdy (D8: przed
+ * S3 `#2ECC71`/`#5B6B76` istniały jako DWA osobne literały — tu I w
+ * `canvas/SldCanvasV3.tsx` `OVERLAY_ENERGIZED_STROKE`/`OVERLAY_DEENERGIZED_STROKE`
+ * — teraz oba miejsca czytają z tego samego stałej). Nakładka jest WYŁĄCZNIE
+ * kolorem kreski glifu + atrybutem DOM `data-source-state` — NIE zmienia
+ * geometrii ani bboxu symbolu (§13.3 wyrocznia; dowód inwariancji:
+ * `sourceState.test.ts`).
  */
 export const SOURCE_STATE_OVERLAY_COLOR: Readonly<Record<SourceOperationalState, string>> = {
-  energized: '#2ECC71',
-  standby: '#F1C40F',
-  disconnected: '#5B6B76',
-  maintenance: '#3498DB',
-  fault: '#E74C3C',
+  energized: HIGHLIGHT_COLOR.energized,
+  standby: HIGHLIGHT_COLOR.standby,
+  disconnected: HIGHLIGHT_COLOR.deenergized,
+  maintenance: HIGHLIGHT_COLOR.maintenance,
+  fault: HIGHLIGHT_COLOR.fault,
 };
 
 /** F11.3 (spec §9: zero enumów w UI) — polska etykieta stanu (inspektor/

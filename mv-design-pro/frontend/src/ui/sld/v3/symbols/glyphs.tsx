@@ -8,8 +8,12 @@
  */
 
 import { SYMBOL_DEFS, type SymbolId } from './defs';
+import { BASE_STROKE } from '../theme/colorTokens';
 
-export const V3_STROKE_BASE = '#E8EEF4';
+/** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
+ *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
+ *  zmiany zachowania. Re-eksport zachowuje istniejący import w `SldCanvasV3.tsx`. */
+export const V3_STROKE_BASE = BASE_STROKE;
 export const V3_STROKE_APPARATUS = 1.2;
 
 export type SwitchState = 'closed' | 'open' | 'unknown';

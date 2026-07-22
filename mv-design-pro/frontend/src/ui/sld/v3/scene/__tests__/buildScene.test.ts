@@ -485,6 +485,25 @@ describe('buildSceneV3 — ciągłość elektryczna ciągu głównego (spec §16
 describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji B i nakładki C)', () => {
   const scene2 = buildSceneV3(enm, 2);
 
+  /**
+   * SCHEMAT-10 S3 (V12K-135, D7): fixtura `sldSubstrate52s` ma WSZYSTKIE
+   * `line_runs[].nop_station_ref` na `null` (i `corridors[].no_point_ref` na
+   * ref łącznika, nie ref stacji — GAP osobny, patrz raport karty S3) — na
+   * fixturze bazowej `props.isNop` NIGDY nie jest `true`, więc testy NOP na
+   * `enm` surowym są puste (pętla po zerowym zbiorze). Ten helper zwraca
+   * GŁĘBOKI KLON fixtury z jednym polem nadpisanym: `nop_station_ref` ciągu
+   * głównego = REALNY ref pierwszej stacji ciągu głównego — dowód na
+   * FAKTYCZNIE wyrenderowanym markerze, nie na pustym zbiorze.
+   */
+  function enmWithSyntheticNop(): { readonly enm: EnergyNetworkModel; readonly targetStationRef: string } {
+    const targetStationRef = scene2.meta.mainTrunkStationIds[0];
+    const clone = structuredClone(enm);
+    const mainRun = clone.line_runs?.find((r) => r.run_kind === 'main_trunk');
+    if (!mainRun) throw new Error('fixtura bez ciągu main_trunk w line_runs — helper NOP wymaga go do testu');
+    (mainRun as { nop_station_ref: string | null }).nop_station_ref = targetStationRef;
+    return { enm: clone, targetStationRef };
+  }
+
   it('elementKind wg symbolId: TR2W→transformer, der*→der, gridSource→source (F9.4), stationCollapsed→station, reszta→apparatus', () => {
     const byKind = new Map(scene2.symbols.map((s) => [s.symbolId, s.meta?.elementKind]));
     expect(byKind.get('transformer2W')).toBe('transformer');
@@ -517,15 +536,61 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
   });
 
   it('L0/L1/L2: symbol noPoint (NO) niesie ownerRef=station id + elementKind=apparatus', () => {
+    const { enm: enmWithNop } = enmWithSyntheticNop();
     for (const lod of LODS) {
-      const scene = buildSceneV3(enm, lod);
+      const scene = buildSceneV3(enmWithNop, lod);
       const nopSymbols = scene.symbols.filter((s) => s.symbolId === 'noPoint');
+      // SCHEMAT-10 S3: dowód NIEPUSTY (fixtura bazowa nie miał żadnego NOP —
+      // patrz `enmWithSyntheticNop` — pętla po zerowym zbiorze byłaby
+      // zielona bez sprawdzenia niczego).
+      expect(nopSymbols.length).toBeGreaterThan(0);
       for (const s of nopSymbols) {
         expect(s.meta?.elementKind).toBe('apparatus');
         expect(s.meta?.ownerRef).toBeTruthy();
         expect(s.meta?.testId).toBe(`sld-v3-nop-${s.meta?.ownerRef}`);
       }
     }
+  });
+
+  it('SCHEMAT-10 S3 (V12K-135, D7): znacznik NOP KOTWICZONY do renderu szyny — pozycja (x,y) IDENTYCZNA na L0/L1/L2', () => {
+    // Macierz prawdy LOD §3, wiersz „Sekcje/NOP": „znacznik NA torze (kotwica
+    // = render szyny TEGO LOD)" — dowód na REALNEJ fixturze: `noPoint` jest
+    // zaczepiony do `busAxisY` wiersza (§S1 „JEDNA KOTWICA" ujednoliciła
+    // `busAxisY` między LOD), więc NIE dryfuje w treść przy zmianie poziomu —
+    // dokładnie ten defekt D7 opisywał („znacznik kotwiczony do współrzędnej
+    // szyny, nie do RENDEROWANEJ reprezentacji szyny na danym LOD").
+    //
+    // UWAGA (defekt boczny wykryty przy tej karcie, patrz `enmWithSyntheticNop`
+    // wyżej): rozjazd semantyki `no_point_ref` (switch-ref) vs `nop_station_ref`
+    // (station-ref) w adapterze v2 to osobny GAP — raport karty S3.
+    const { enm: enmWithNop, targetStationRef } = enmWithSyntheticNop();
+
+    const nopAnchors = (lod: SceneLod): Map<string, string> => {
+      const scene = buildSceneV3(enmWithNop, lod);
+      const m = new Map<string, string>();
+      for (const s of scene.symbols) {
+        if (s.symbolId === 'noPoint' && s.meta?.ownerRef) {
+          m.set(s.meta.ownerRef, `${s.x},${s.y}`);
+        }
+      }
+      return m;
+    };
+    const a0 = nopAnchors(0);
+    const a1 = nopAnchors(1);
+    const a2 = nopAnchors(2);
+    expect(a0.size).toBeGreaterThan(0);
+    expect(a0.has(targetStationRef)).toBe(true);
+    expect(a1.size).toBe(a0.size);
+    expect(a2.size).toBe(a0.size);
+    const drift: string[] = [];
+    for (const [ref, pos0] of a0) {
+      const pos1 = a1.get(ref);
+      const pos2 = a2.get(ref);
+      if (pos1 !== pos0 || pos2 !== pos0) {
+        drift.push(`${ref}: L0=${pos0} L1=${pos1} L2=${pos2}`);
+      }
+    }
+    expect(drift, `znaczniki NOP dryfują między LOD:\n${drift.join('\n')}`).toEqual([]);
   });
 
   it('aparatura stacji (L2): ownerRef === bayRef odczytany z testId (`${bayRef}#${symbolId}`)', () => {

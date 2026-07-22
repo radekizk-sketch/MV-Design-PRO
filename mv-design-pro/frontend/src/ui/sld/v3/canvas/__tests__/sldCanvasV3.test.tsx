@@ -42,6 +42,7 @@ import {
 import { formatMagnitudeKa } from '../../../../sld-overlay/FaultContributionArrow';
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState } from '../camera';
 import { SYMBOL_DEFS } from '../../symbols/defs';
+import { HIGHLIGHT_COLOR, STATE_COLOR, VOLTAGE_COLOR } from '../../theme/colorTokens';
 
 afterEach(() => cleanup());
 
@@ -962,5 +963,79 @@ describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-1
     ) || scene.symbols.some((s) => s.meta?.ownerRef === ownerRef);
     if (hasNonAnnotationMatch) return; // ref współdzielony z elementem realnym — test niejednoznaczny na tej fixturze.
     expect(computeFaultPointMarkerPlacement(scene, ownerRef)).toBeNull();
+  });
+});
+
+describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D8): kolor bazowy napięcia (tabela §3, BEZ nakładki wynikowej)', () => {
+  it('szyna SN stacji (#sn-bus) ma stroke = VOLTAGE_COLOR.sn; szyna nN (#lv-bus, gdy fixtura ją niesie) ma stroke = VOLTAGE_COLOR.nn — dwa RÓŻNE kolory, nie jednolity V3_STROKE_BASE jak przed S3', () => {
+    const scene = buildSceneV3(enm, 2);
+    const snBus = scene.segments.find((s) => s.meta?.ownerRef?.endsWith('#sn-bus'));
+    expect(snBus).toBeTruthy();
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    const snPath = container.querySelector(`[data-owner-ref="${snBus!.meta!.ownerRef}"]`);
+    expect(snPath?.getAttribute('stroke')).toBe(VOLTAGE_COLOR.sn);
+
+    const lvBus = scene.segments.find((s) => s.meta?.ownerRef?.endsWith('#lv-bus'));
+    if (lvBus) {
+      const lvPath = container.querySelector(`[data-owner-ref="${lvBus.meta!.ownerRef}"]`);
+      expect(lvPath?.getAttribute('stroke')).toBe(VOLTAGE_COLOR.nn);
+      expect(lvPath?.getAttribute('stroke')).not.toBe(snPath?.getAttribute('stroke'));
+    }
+  });
+
+  it('szyna WN GPZ (#hv-bus) ma stroke = VOLTAGE_COLOR.hv (matrix §3: „110 biały" = baza — zero zmiany wizualnej dla WN)', () => {
+    const scene = buildSceneV3(enm, 2);
+    const hvBus = scene.segments.find(
+      (s) => s.meta?.ownerRef != null && s.meta.ownerRef.includes('#hv-bus') && !s.meta.ownerRef.includes('label'),
+    );
+    if (!hvBus) return; // fixtura może nie mieć treści WN wprost jako odcinek na tym LOD — bez fabrykacji.
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    const path = container.querySelector(`[data-owner-ref="${hvBus.meta!.ownerRef}"]`);
+    expect(path?.getAttribute('stroke')).toBe(VOLTAGE_COLOR.hv);
+  });
+
+  it('nakładka energizacji WCIĄŻ WYGRYWA nad kolorem napięcia (precedencja niezmieniona: wyróżnienie > napięcie)', () => {
+    const scene = buildSceneV3(enm, 2);
+    const snBus = scene.segments.find((s) => s.meta?.ownerRef?.endsWith('#sn-bus'));
+    expect(snBus).toBeTruthy();
+    const ownerRef = snBus!.meta!.ownerRef!;
+    const overlay: SldV3Overlay = { energizedByTestId: {}, energizedByOwnerRef: { [ownerRef]: false } };
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    const path = container.querySelector(`[data-owner-ref="${ownerRef}"]`);
+    // De-energizacja (szary) nadpisuje kolor napięcia (zielony SN) — precedencja z nagłówka `theme/colorTokens.ts`.
+    expect(path?.getAttribute('stroke')).toBe(HIGHLIGHT_COLOR.deenergized);
+    expect(path?.getAttribute('stroke')).not.toBe(VOLTAGE_COLOR.sn);
+  });
+});
+
+describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D7): kolor NOP (wyróżniony wg tabeli stanów)', () => {
+  it('symbol noPoint dostaje STATE_COLOR.nop — RÓŻNY od bazy/napięcia — na L0/L1/L2', () => {
+    // Fixtura bazowa nie niesie żadnego NOP (patrz `buildScene.test.ts`
+    // `enmWithSyntheticNop` — ten sam GAP udokumentowany tam). Syntetyzujemy
+    // lokalnie: `nop_station_ref` ciągu głównego = ref pierwszej stacji ciągu.
+    const scene2 = buildSceneV3(enm, 2);
+    const targetStationRef = scene2.meta.mainTrunkStationIds[0];
+    const enmWithNop = structuredClone(enm);
+    const mainRun = enmWithNop.line_runs?.find((r) => r.run_kind === 'main_trunk');
+    expect(mainRun).toBeTruthy();
+    (mainRun as { nop_station_ref: string | null }).nop_station_ref = targetStationRef;
+
+    for (const lod of [0, 1, 2] as const) {
+      const scene = buildSceneV3(enmWithNop, lod);
+      const nopIndex = scene.symbols.findIndex((s) => s.symbolId === 'noPoint');
+      expect(nopIndex).toBeGreaterThanOrEqual(0);
+      const { container } = render(
+        <SldCanvasV3 snapshot={enmWithNop} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} />,
+      );
+      const nopGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[nopIndex];
+      const strokedDescendant = nopGroup?.children[1]?.querySelector('[stroke]');
+      expect(strokedDescendant?.getAttribute('stroke')).toBe(STATE_COLOR.nop);
+    }
   });
 });

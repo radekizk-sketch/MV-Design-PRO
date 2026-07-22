@@ -61,15 +61,24 @@ import {
   polylinePathWithBridges,
   type PowerPathCrossing,
 } from '../scene/crossings';
+import {
+  baseSegmentStrokeColor,
+  baseSymbolStrokeColor,
+  CANVAS_BACKGROUND,
+  HIGHLIGHT_COLOR,
+} from '../theme/colorTokens';
 
-const SLD_V3_BACKGROUND = '#0B0F14';
+/** SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
+ *  źródło prawdy (D8: te literały istniały zdublowane też w
+ *  `compose/sourceKind.ts` — patrz komentarze tam). Zero zmiany wartości. */
+const SLD_V3_BACKGROUND = CANVAS_BACKGROUND;
 /** Nakładka energizacji (spec §6 P5): kolor akcentu, NIE geometria. */
-const OVERLAY_ENERGIZED_STROKE = '#2ECC71';
-const OVERLAY_DEENERGIZED_STROKE = '#5B6B76';
+const OVERLAY_ENERGIZED_STROKE = HIGHLIGHT_COLOR.energized;
+const OVERLAY_DEENERGIZED_STROKE = HIGHLIGHT_COLOR.deenergized;
 /** F9.5 (spec §14.2): kolor nakładki przepływu mocy — ODRĘBNY od energizacji
  *  (zielony = „pod napięciem", cyjan = „kierunek/wartości przepływu"), żeby
  *  operator nie mylił dwóch wymiarów nakładki na tym samym odcinku. */
-const FLOW_OVERLAY_COLOR = '#4FC3F7';
+const FLOW_OVERLAY_COLOR = HIGHLIGHT_COLOR.flow;
 /** Gabaryt grota strzałki przepływu [px świata] — mniejszy niż GRID×2, żeby
  *  grot nie dominował nad symbolami toru (spec §6 hierarchia graficzna). */
 const FLOW_ARROW_LENGTH = 12;
@@ -90,7 +99,7 @@ const FLOW_LABEL_OFFSET_RIGHT = 12;
 /** F4/SLD (V12K-092): kolor badge wynikowego OLTC — bursztyn, ODRĘBNY od
  *  energizacji (zielony) i przepływu (cyjan): trzeci wymiar nakładki
  *  (stan regulacji zaczepów po obliczeniu), operator nie myli warstw. */
-const OLTC_OVERLAY_COLOR = '#FFB300';
+const OLTC_OVERLAY_COLOR = HIGHLIGHT_COLOR.oltc;
 /** Karta S-B (ZWARCIA-PRO pkt 7): kolory strzałek rozpływu prądu zwarciowego
  *  per token tercylowy adaptera W-C (`faultFlowColorTokenForWeight` — jedna
  *  prawda klasyfikacji; tu wyłącznie mapowanie token→barwa dla ciemnego tła
@@ -98,9 +107,9 @@ const OLTC_OVERLAY_COLOR = '#FFB300';
  *  (zielony) i przepływu mocy (cyjan); kolizja z nakładkami LF niemożliwa
  *  (allowlisty LOAD_FLOW wyłączają flow/OLTC dla przebiegu SC). */
 const FAULT_FLOW_TOKEN_COLOR: Readonly<Record<FaultFlowColorToken, string>> = {
-  critical: '#E74C3C',
-  warning: '#F5A623',
-  ok: '#F9E79F',
+  critical: HIGHLIGHT_COLOR.fault,
+  warning: HIGHLIGHT_COLOR.faultWarning,
+  ok: HIGHLIGHT_COLOR.faultOk,
 };
 /** Minimalna długość biegu dla strzałki zwarciowej [px świata] — grot
  *  prymitywu (`8 + strokeWidth`, max ~13) nie może dominować nad biegiem. */
@@ -237,10 +246,15 @@ function SceneSymbolNode(props: {
   // kanał `Generator.meta['operating_mode']`) jest bardziej szczegółowy niż
   // wywiedziona energizacja toru; oba `energized` dzielą zresztą TEN SAM
   // kolor (#2ECC71, patrz `compose/sourceKind.ts`). Geometria NIETKNIĘTA.
+  // SCHEMAT-10 S3 (V12K-135, D8): gdy ANI stan źródła ANI nakładka
+  // energizacji nie ustawiają koloru (brak wyniku solvera), symbol dostaje
+  // kolor BAZOWY z tabeli §3 (`baseSymbolStrokeColor` — napięcie/NOP), NIE
+  // uniformalny `V3_STROKE_BASE` jak przed S3 — precedencja: stan źródła >
+  // energizacja > NOP/napięcie (patrz nagłówek `theme/colorTokens.ts`).
   const sourceState = symbol.meta?.operationalState;
   const stroke = sourceState
     ? SOURCE_STATE_OVERLAY_COLOR[sourceState]
-    : strokeForEnergization(energizedSym);
+    : strokeForEnergization(energizedSym) ?? baseSymbolStrokeColor(symbol.symbolId, symbol.meta);
   const clickMeta: SldElementClickMeta = { ownerRef: symbol.meta?.ownerRef, elementKind: symbol.meta?.elementKind };
   return (
     <g
@@ -321,7 +335,10 @@ function SceneSegmentNode(props: {
   const energizedSeg = segment.meta?.ownerRef != null
     ? overlay?.energizedByOwnerRef?.[segment.meta.ownerRef] ?? overlay?.energizedByTestId[testId]
     : overlay?.energizedByTestId[testId];
-  const stroke = strokeForEnergization(energizedSeg) ?? V3_STROKE_BASE;
+  // SCHEMAT-10 S3 (V12K-135, D8): brak nakładki ⇒ kolor BAZOWY z tabeli §3
+  // (napięcie: 110 biały/SN zielony/nN niebieski — `baseSegmentStrokeColor`),
+  // NIE uniformalny `V3_STROKE_BASE` jak przed S3 (patrz `theme/colorTokens.ts`).
+  const stroke = strokeForEnergization(energizedSeg) ?? baseSegmentStrokeColor(segment.meta);
   // Program P-A (spec §14.2): atrybuty solverowe na odcinku — CZYSTY ODCZYT
   // nakładki (zero fizyki w kanwie), kanał diagnostyczny/E2E jak
   // `data-owner-ref`. Brak wpisu nakładki = brak atrybutu (uczciwe „nie
@@ -1481,14 +1498,14 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
               ) + 2 * GRID}
               height={2.5 * GRID}
               fill={SLD_V3_BACKGROUND}
-              stroke={effectiveOverlay.provenance.converged ? FLOW_OVERLAY_COLOR : '#E74C3C'}
+              stroke={effectiveOverlay.provenance.converged ? FLOW_OVERLAY_COLOR : HIGHLIGHT_COLOR.fault}
               strokeWidth={1}
               rx={2}
             />
             <text
               x={(scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : 0) + 3 * GRID}
               y={2.3 * GRID}
-              fill={effectiveOverlay.provenance.converged ? FLOW_OVERLAY_COLOR : '#E74C3C'}
+              fill={effectiveOverlay.provenance.converged ? FLOW_OVERLAY_COLOR : HIGHLIGHT_COLOR.fault}
               fontFamily="sans-serif"
               fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
               dominantBaseline="middle"

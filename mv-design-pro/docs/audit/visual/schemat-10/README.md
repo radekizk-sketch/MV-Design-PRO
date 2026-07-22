@@ -57,3 +57,64 @@ CANON_OUT=<dir> npx vite-node scripts/render_schemat10_s1.tsx   # SVG per LOD
   na `trunkCorridorYOf` wymaga głowic w symbolu zbiorczym L0).
 - Wspólny OBRYS sylwetki (RMU) rysowany jawnie na L1/L2 (dziś sylwetkę niesie
   szyna wewnętrzna + aparaty; jawny obrys = kolejna faza).
+
+---
+
+# SCHEMAT-10 S3 — dowód wizualny (V12K-135)
+
+Zrzuty TEJ SAMEJ sieci referencyjnej renderowanej PRODUKCYJNĄ kanwą v3
+(`SldCanvasV3`, nie `CompositionPreview` — harness debug zostaje „mono base",
+patrz `theme/colorTokens.ts`) na L0/L1/L2, z jednym SYNTETYCZNYM punktem NOP
+(fixtura bazowa nie niesie żadnego NOP — GAP osobny, patrz raport karty S3).
+Regeneracja (deterministyczna):
+
+```
+cd mv-design-pro/frontend
+CANON_OUT=<dir> npx vite-node scripts/render_schemat10_s3.tsx    # SVG per LOD
+CANON_OUT=<dir> node scripts/rasterize_s3_host.mjs               # SVG→PNG (host HTML — patrz nagłówek pliku)
+```
+
+| Plik | Poziom | Co pokazuje |
+|------|--------|-------------|
+| `s3-l0.png` | L0 „Przegląd sieci" | Magistrala zielona (SN), GPZ w tej samej palecie (WN biały/SN zielony), rama arkusza + legenda w tokenach kanwy |
+| `s3-l1.png` | L1 „Widok operatorski" | Ta sama topologia/kotwice + aparaty główne, kolor napięcia identyczny jak L0/L2 |
+| `s3-l2.png` | L2 „Stacje i aparatura" | Pełna aparatura; znacznik NOP (różowy `#FF006E`) widoczny NA torze SN (zielony), wyraźnie odróżnialny |
+
+## Co dowodzą (S3)
+
+- **Tokeny koloru:** WSZYSTKIE tory/szyny/glify czytają z `theme/colorTokens.ts`
+  (JEDNO źródło prawdy) — napięcie: 110 kV/WN biały (`VOLTAGE_COLOR.hv`), SN
+  zielony (`VOLTAGE_COLOR.sn`, `#13C45A`), nN niebieski (`VOLTAGE_COLOR.nn`,
+  `#0099CC`); identyczna tabela na L0/L1/L2 (funkcja czysta z meta sceny, zero
+  zależności od `lod`). Widoczne w zrzutach: magistrala/pola SN spójnie
+  zielone na wszystkich trzech poziomach.
+- **GPZ w gramatyce stacji:** szyna WN GPZ (`#hv-bus`) czyta `VOLTAGE_COLOR.hv`
+  (ta sama wartość co reszta kanwy), szyna sekcji SN GPZ czyta `VOLTAGE_COLOR.sn`
+  — koniec „białej ramki innego świata" (D6): GPZ nie ma już odrębnej palety.
+- **NOP wyróżniony:** znacznik NO dostaje `STATE_COLOR.nop` (`#FF006E`,
+  neon róż z `DARK_SCADA_NEON_THEME_SPEC.md`), wyraźnie odróżnialny od bazy/
+  napięcia na KAŻDYM LOD (widoczne w `s3-l2.png`, przybliżenie wokół pierwszej
+  stacji ciągu głównego).
+- **Sekcje/NOP kotwiczone:** pozycja (x,y) znacznika NOP identyczna na L0/L1/L2
+  (dowód maszynowy: `buildScene.test.ts` „znacznik NOP KOTWICZONY…").
+
+## GAP-y (poza zakresem S3 — raport karty)
+
+- Fixtura referencyjna `sldSubstrate52s` nie niesie żadnego realnego NOP
+  (`line_runs[].nop_station_ref` zawsze `null`, `corridors[].no_point_ref`
+  wskazuje ref ŁĄCZNIKA, nie stacji) — rozjazd semantyki `no_point_ref`
+  (switch-ref) vs `nop_station_ref` (station-ref) w adapterze v2
+  (`enmToSldAdapter.ts`) to defekt osobny, poza zakresem S3.
+- Klasyfikacja napięcia SYMBOLI (aparatura pól) jest pełna tylko dla
+  `gridSource`/`loadArrow`/`noPoint` (deterministyczne po `symbolId`) —
+  pozostała aparatura (breaker/disconnector/…) nie niesie dziś w `ownerRef`
+  znacznika napięcia pola i spada na fallback SN; pełne rozróżnienie wymaga
+  przeniesienia `voltage_kv` przez `compose/station.ts`/`compose/gpz.ts` do
+  `PreviewElementMeta` (zmiana kontraktu kompozycji, S4/S5).
+- Nakładka selekcji (`HIGHLIGHT_COLOR.selection`) jest tokenem rezerwowym —
+  `SldCanvasV3` nie ma dziś własnej nakładki stroke dla zaznaczenia na kanwie
+  (żyje w warstwie wyższej, `useSelectionStore`); podłączenie do kanwy to S4/S5.
+- Pełny LOD-owy „collapse" GPZ (sekcje A/B jako zwarty glif na L0, per matrix
+  §3) wymaga zmian geometrii `compose/gpz.ts` (dziś GPZ renderuje pełny
+  szczegół na WSZYSTKICH LOD) — poza zakresem S3 (minimum: tokeny+typografia+
+  paleta, zrealizowane), GAP do S5.

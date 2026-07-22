@@ -33,6 +33,7 @@ import { LABEL_TYPOGRAPHY } from '../core/text';
 import type { OwnedLabel } from '../layout/labels';
 import type { RouteVertex } from '../layout/route';
 import type { ProtectionTopologyGap } from './protectionTopologyValidation';
+import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
 
 /** Rodzaj odcinka → grubość (spec §6). `'bus'` obejmuje WSZYSTKIE szyny
  *  (WN/SN, primary/reserve/ring-closure) — spec nie różnicuje grubości szyn
@@ -225,8 +226,12 @@ export interface CompositionPreviewProps {
   readonly stroke?: string;
 }
 
-const DEFAULT_BACKGROUND = '#0B0F14';
-const DEFAULT_STROKE = '#E8EEF4';
+// SCHEMAT-10 S3 (V12K-135): wartości z `theme/colorTokens.ts` — JEDNO źródło
+// prawdy, ta sama wartość co dotąd. Ten harness ZOSTAJE „mono base" (spec §6
+// P5) — nakładanie napięcia/stanu tu byłoby zmianą POZA kontrakt harnessu
+// (patrz docstring `theme/colorTokens.ts`).
+const DEFAULT_BACKGROUND = CANVAS_BACKGROUND;
+const DEFAULT_STROKE = BASE_STROKE;
 
 function parityKeysOf(meta: PreviewElementMeta | undefined): string | undefined {
   if (!meta) return undefined;
