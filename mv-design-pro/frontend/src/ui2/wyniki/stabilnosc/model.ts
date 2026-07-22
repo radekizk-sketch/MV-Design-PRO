@@ -80,6 +80,34 @@ export interface OdpowiedzSladuAutomatyki {
 }
 
 // ---------------------------------------------------------------------------
+// Szereg czasowy przebiegu (U(t)/f(t)) — endpoint results/dynamic-stability/time-series
+// ---------------------------------------------------------------------------
+
+/** Metadana wielkości przebiegu (klucz pola w punkcie + jednostka z backendu). */
+export interface WielkoscPrzebiegu {
+  readonly key: string;
+  readonly label_pl?: string;
+  readonly unit: string;
+}
+
+/** Pojedynczy punkt przebiegu — mirror VoltageTrajectoryPoint.to_dict. */
+export interface PunktPrzebiegu {
+  readonly t_s: number;
+  readonly voltage_pu?: number;
+  readonly frequency_pu?: number;
+}
+
+/** Odpowiedź endpointu szeregu czasowego (na żądanie). */
+export interface OdpowiedzPrzebieguStabilnosci {
+  readonly run_id: string;
+  readonly has_time_series: boolean;
+  readonly time_unit: string;
+  readonly criteria_version?: string | null;
+  readonly quantities: readonly WielkoscPrzebiegu[];
+  readonly points: readonly PunktPrzebiegu[];
+}
+
+// ---------------------------------------------------------------------------
 // Wybór przebiegu stabilności
 // ---------------------------------------------------------------------------
 
@@ -127,6 +155,11 @@ function fmtLiczba(n: number, miejsca: number): string {
 /** Czas [ms] — 1 miejsce po przecinku. */
 export function fmtMs(n: number): string {
   return fmtLiczba(n, 1);
+}
+
+/** Czas [s] — 3 miejsca po przecinku (oś przebiegu). */
+export function fmtS(n: number): string {
+  return fmtLiczba(n, 3);
 }
 
 /** Kąt [°] — 1 miejsce po przecinku. */
@@ -236,4 +269,35 @@ export function naZdarzenia(rows: readonly ZdarzenieAutomatyki[]): ZdarzenieAuto
   return [...rows].sort(
     (a, b) => a.event_seq - b.event_seq || a.event_type.localeCompare(b.event_type),
   );
+}
+
+/** Jedna seria wykresu przebiegu (pole punktu → etykieta PL + jednostka). */
+export interface SeriaPrzebiegu {
+  readonly dataKey: 'voltage_pu' | 'frequency_pu';
+  readonly nazwa: string;
+  readonly jednostka: string;
+}
+
+/** Mapowanie kluczy backendu na etykiety PL serii przebiegu (read-only). */
+const SERIA_PL: Record<string, { readonly nazwa: string; readonly klucz: SeriaPrzebiegu['dataKey'] }> =
+  {
+    voltage_pu: { nazwa: T.przebiegSeriaNapiecie, klucz: 'voltage_pu' },
+    frequency_pu: { nazwa: T.przebiegSeriaCzestotliwosc, klucz: 'frequency_pu' },
+  };
+
+/**
+ * Buduje listę serii przebiegu z metadanych `quantities` backendu — WYŁĄCZNIE
+ * wielkości, które backend zadeklarował (zero fabrykacji). Kolejność stabilna
+ * wg deklaracji backendu; wielkość nierozpoznana pomijana (bez fizyki w UI).
+ */
+export function naSeriePrzebiegu(
+  quantities: readonly WielkoscPrzebiegu[],
+): SeriaPrzebiegu[] {
+  const serie: SeriaPrzebiegu[] = [];
+  for (const q of quantities) {
+    const mapa = SERIA_PL[q.key];
+    if (!mapa) continue;
+    serie.push({ dataKey: mapa.klucz, nazwa: mapa.nazwa, jednostka: q.unit });
+  }
+  return serie;
 }

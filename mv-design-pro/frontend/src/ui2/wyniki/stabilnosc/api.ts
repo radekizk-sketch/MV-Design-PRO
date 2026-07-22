@@ -10,6 +10,7 @@
 import { useEffect, useState } from 'react';
 
 import type {
+  OdpowiedzPrzebieguStabilnosci,
   OdpowiedzSladuAutomatyki,
   OdpowiedzStabilnosci,
   WierszStabilnosci,
@@ -29,6 +30,16 @@ export async function fetchSladAutomatyki(runId: string): Promise<OdpowiedzSladu
   const response = await fetch(`${API_BASE}/analysis-runs/${runId}/results/automation-trace`);
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   return (await response.json()) as OdpowiedzSladuAutomatyki;
+}
+
+export async function fetchPrzebiegStabilnosci(
+  runId: string,
+): Promise<OdpowiedzPrzebieguStabilnosci> {
+  const response = await fetch(
+    `${API_BASE}/analysis-runs/${runId}/results/dynamic-stability/time-series`,
+  );
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  return (await response.json()) as OdpowiedzPrzebieguStabilnosci;
 }
 
 export interface DaneStabilnosci {
@@ -82,4 +93,43 @@ export function useWynikStabilnosci(runId: string | null): DaneStabilnosci | nul
 
   if (!runId) return null;
   return cache[runId] ?? LADOWANIE;
+}
+
+export interface DanePrzebiegu {
+  readonly stan: 'laduje' | 'blad' | 'gotowe';
+  /** Przebieg z backendu; null gdy jeszcze nie pobrany (stan 'laduje') lub błąd. */
+  readonly przebieg: OdpowiedzPrzebieguStabilnosci | null;
+}
+
+/**
+ * Hook przebiegu czasowego NA ŻĄDANIE (zgodnie z zasadą śladu na żądanie):
+ * pobiera dopiero, gdy `aktywne=true` (klik „Pokaż przebieg"). Cache per runId
+ * na życie ekranu; `runId=null` lub `aktywne=false` → null (nic nie pobiera).
+ */
+export function usePrzebiegStabilnosci(
+  runId: string | null,
+  aktywne: boolean,
+): DanePrzebiegu | null {
+  const [cache, setCache] = useState<Record<string, DanePrzebiegu>>({});
+
+  useEffect(() => {
+    if (!runId || !aktywne || cache[runId]) return;
+    let anulowane = false;
+    void (async () => {
+      try {
+        const przebieg = await fetchPrzebiegStabilnosci(runId);
+        if (anulowane) return;
+        setCache((c) => ({ ...c, [runId]: { stan: 'gotowe', przebieg } }));
+      } catch {
+        if (anulowane) return;
+        setCache((c) => ({ ...c, [runId]: { stan: 'blad', przebieg: null } }));
+      }
+    })();
+    return () => {
+      anulowane = true;
+    };
+  }, [runId, aktywne, cache]);
+
+  if (!runId || !aktywne) return null;
+  return cache[runId] ?? { stan: 'laduje', przebieg: null };
 }

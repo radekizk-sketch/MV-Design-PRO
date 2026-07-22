@@ -31,11 +31,12 @@ import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStor
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
 import { SekcjaZalozen } from '../wzorzec';
-import { useWynikStabilnosci } from './api';
+import { usePrzebiegStabilnosci, useWynikStabilnosci } from './api';
 import {
   fmtMs,
   fmtWskaznik,
   naruszoneKryteriaPL,
+  naSeriePrzebiegu,
   naWielkosciStabilnosci,
   naZalozeniaStabilnosci,
   naZdarzenia,
@@ -43,6 +44,7 @@ import {
   wybierzPrzebiegStabilnosci,
 } from './model';
 import { kryteriumPL, STABILNOSC_STRINGS as T, zdarzeniePL } from './strings';
+import { WykresPrzebieguChart } from './WykresPrzebieguChart';
 
 function Stan({
   tytul,
@@ -89,6 +91,7 @@ export function EkranStabilnosci() {
   const activeRunId = useAppStateStore((s) => s.activeRunId);
   const przebiegi = useExecutionRunsStore((s) => s.runs);
   const [sladWidoczny, setSladWidoczny] = useState(false);
+  const [przebiegWidoczny, setPrzebiegWidoczny] = useState(false);
 
   const przebieg = useMemo(
     () => wybierzPrzebiegStabilnosci(przebiegi, activeRunId),
@@ -97,6 +100,15 @@ export function EkranStabilnosci() {
   const dane = useWynikStabilnosci(przebieg?.id ?? null);
   const wiersz = dane?.wiersz ?? null;
   const zdarzenia = dane?.zdarzenia ? naZdarzenia(dane.zdarzenia) : null;
+
+  // Przebieg czasowy — ładowany NA ŻĄDANIE (klik „Pokaż przebieg").
+  const przebiegDane = usePrzebiegStabilnosci(przebieg?.id ?? null, przebiegWidoczny);
+  const punktyPrzebiegu = przebiegDane?.przebieg?.points ?? [];
+  const seriePrzebiegu = naSeriePrzebiegu(przebiegDane?.przebieg?.quantities ?? []);
+  const maSzereg =
+    przebiegDane?.stan === 'gotowe' &&
+    przebiegDane.przebieg?.has_time_series === true &&
+    punktyPrzebiegu.length > 0;
 
   const otworzDowod = () => {
     if (przebieg) setWynikiTab('dowod', przebieg.id);
@@ -224,9 +236,47 @@ export function EkranStabilnosci() {
                 ))}
               </tbody>
             </table>
-            <p className="mvd-stabilnosc-nota" data-testid="mvd-stabilnosc-brak-szeregu">
-              {T.brakSzereguCzasowego}
-            </p>
+            {/* Nota o braku szeregu — TYLKO gdy bieg go nie ma (starszy zapis).
+                Dla biegów z szeregiem sekcja „Przebieg czasowy" niesie wykres. */}
+            {!maSzereg && (
+              <p className="mvd-stabilnosc-nota" data-testid="mvd-stabilnosc-brak-szeregu">
+                {T.brakSzereguCzasowego}
+              </p>
+            )}
+          </section>
+
+          <section className="mvd-stabilnosc-sekcja" data-testid="mvd-stabilnosc-przebieg">
+            <h4>{T.przebiegTytul}</h4>
+            <p className="mvd-stabilnosc-nota">{T.przebiegOpis}</p>
+            <button
+              type="button"
+              className="mvd-stabilnosc-dowod"
+              aria-expanded={przebiegWidoczny}
+              data-testid="mvd-stabilnosc-przebieg-btn"
+              onClick={() => setPrzebiegWidoczny((w) => !w)}
+            >
+              {przebiegWidoczny ? T.przebiegUkryj : T.przebiegPokaz}
+            </button>
+            {przebiegWidoczny &&
+              (przebiegDane?.stan === 'laduje' ? (
+                <p className="mvd-stabilnosc-nota" data-testid="mvd-stabilnosc-przebieg-ladowanie">
+                  {T.przebiegLadowanie}
+                </p>
+              ) : przebiegDane?.stan === 'blad' ? (
+                <p
+                  className="mvd-stabilnosc-nota"
+                  role="alert"
+                  data-testid="mvd-stabilnosc-przebieg-blad"
+                >
+                  {T.przebiegBlad}
+                </p>
+              ) : maSzereg ? (
+                <WykresPrzebieguChart punkty={punktyPrzebiegu} serie={seriePrzebiegu} />
+              ) : (
+                <p className="mvd-stabilnosc-nota" data-testid="mvd-stabilnosc-przebieg-brak">
+                  {T.przebiegBrak}
+                </p>
+              ))}
           </section>
 
           <section className="mvd-stabilnosc-sekcja" data-testid="mvd-stabilnosc-slad">

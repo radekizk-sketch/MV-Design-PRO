@@ -9,14 +9,18 @@ import { describe, expect, it } from 'vitest';
 import {
   fmtMs,
   fmtPu,
+  fmtS,
   naruszoneKryteriaPL,
+  naSeriePrzebiegu,
   naWielkosciStabilnosci,
   naZalozeniaStabilnosci,
   naZdarzenia,
   werdyktStabilnosciPL,
   wybierzPrzebiegStabilnosci,
+  type WielkoscPrzebiegu,
   type WierszStabilnosci,
 } from '../model';
+import { STABILNOSC_STRINGS as T } from '../strings';
 
 const WIERSZ: WierszStabilnosci = {
   scenario_id: 'dyn-1',
@@ -123,9 +127,36 @@ describe('naZdarzenia — deterministyczna kolejność śladu automatyki', () =>
   });
 });
 
+describe('naSeriePrzebiegu — serie wykresu z metadanych backendu (zero fabrykacji)', () => {
+  it('mapuje zadeklarowane wielkości na serie PL z jednostkami, w kolejności backendu', () => {
+    const quantities: WielkoscPrzebiegu[] = [
+      { key: 'voltage_pu', label_pl: 'Napięcie', unit: 'p.u.' },
+      { key: 'frequency_pu', label_pl: 'Częstotliwość', unit: 'p.u.' },
+    ];
+    const serie = naSeriePrzebiegu(quantities);
+    expect(serie).toEqual([
+      { dataKey: 'voltage_pu', nazwa: T.przebiegSeriaNapiecie, jednostka: 'p.u.' },
+      { dataKey: 'frequency_pu', nazwa: T.przebiegSeriaCzestotliwosc, jednostka: 'p.u.' },
+    ]);
+  });
+
+  it('pomija wielkość nierozpoznaną (bez fizyki/fabrykacji w UI)', () => {
+    const serie = naSeriePrzebiegu([
+      { key: 'rotor_angle_rad', unit: 'rad' },
+      { key: 'voltage_pu', unit: 'p.u.' },
+    ]);
+    expect(serie.map((s) => s.dataKey)).toEqual(['voltage_pu']);
+  });
+
+  it('brak wielkości → pusta lista serii', () => {
+    expect(naSeriePrzebiegu([])).toEqual([]);
+  });
+});
+
 describe('formaty deterministyczne (przecinek PL)', () => {
-  it('fmtMs / fmtPu', () => {
+  it('fmtMs / fmtPu / fmtS', () => {
     expect(fmtMs(120)).toBe('120,0');
     expect(fmtPu(0.9666)).toBe('0,967');
+    expect(fmtS(0.125)).toBe('0,125');
   });
 });

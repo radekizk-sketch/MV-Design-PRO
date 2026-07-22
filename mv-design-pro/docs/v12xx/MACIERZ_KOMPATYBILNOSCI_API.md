@@ -43,6 +43,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/analysis-runs/{run_id}/results/branches` | v12xx | aktywny | 2026-04-24 | - | Wyniki odcinkow dla SLD i tabel. | branch result tests | Architekt wynikow |
 | `GET /api/analysis-runs/{run_id}/results/buses` | v12xx | aktywny | 2026-04-24 | - | Wyniki wezlow dla SLD i tabel. | bus result tests | Architekt wynikow |
 | `GET /api/analysis-runs/{run_id}/results/dynamic-stability` | v12xx | aktywny | 2026-04-25 | - | Wyniki stabilnosci dynamicznej z proof i statusem raportowym. | canonical analysis API tests, report export tests | Architekt solverow |
+| `GET /api/analysis-runs/{run_id}/results/dynamic-stability/time-series` | v12xx | aktywny | 2026-07-22 | - | Przebieg czasowy U(t)/f(t) biegu stabilnosci (na zadanie, addytywnie; ST-1/V12K-130). | dynamic stability time-series API tests | Architekt solverow |
 | `GET /api/analysis-runs/{run_id}/results/index` | v12xx | aktywny | 2026-04-24 | - | Indeks wynikow dla UI. | result index tests | Architekt wynikow |
 | `GET /api/analysis-runs/{run_id}/results/phase-state` | v12xx | aktywny | 2026-04-25 | - | Wyniki stanu fazowego SN z proof i statusem raportowym. | canonical analysis API tests, report export tests | Architekt solverow |
 | `GET /api/analysis-runs/{run_id}/results/short-circuit` | v12xx | aktywny | 2026-04-24 | - | Wyniki zwarciowe dla raportu i SLD, razem z `proof_ref`, `proof_status` i `reporting_status` dla 1F/2F+Z. | short circuit result tests, report export tests | Architekt solverow |

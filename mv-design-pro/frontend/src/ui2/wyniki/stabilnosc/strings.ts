@@ -65,6 +65,23 @@ export const STABILNOSC_STRINGS = {
   brakSzereguCzasowego: 'Kontrakt wyniku nie niesie szeregu czasowego przebiegu (kąt/napięcie '
     + 'w funkcji czasu) — prezentowane są wartości skrajne i końcowe policzone przez backend.',
 
+  // Przebieg czasowy (szereg U(t)/f(t)) — na żądanie.
+  przebiegTytul: 'Przebieg czasowy',
+  przebiegOpis: 'Napięcie i częstotliwość w funkcji czasu (przebieg policzony przez backend '
+    + 'dla scenariusza wyłączenia zwarcia). Ładowany na żądanie — zgodnie z zasadą śladu.',
+  przebiegPokaz: 'Pokaż przebieg',
+  przebiegUkryj: 'Ukryj przebieg',
+  przebiegLadowanie: 'Ładowanie przebiegu czasowego…',
+  przebiegBlad: 'Nie udało się pobrać przebiegu czasowego dla tego biegu.',
+  przebiegBrak: 'Ten bieg nie zawiera szeregu czasowego przebiegu (starszy zapis bez przebiegu).',
+  przebiegWykresTytul: 'Napięcie i częstotliwość w funkcji czasu',
+  przebiegOsX: 'Czas',
+  przebiegOsY: 'Wielkość',
+  przebiegSerieTytul: 'Serie',
+  przebiegSeriaNapiecie: 'Napięcie U(t)',
+  przebiegSeriaCzestotliwosc: 'Częstotliwość f(t)',
+  jednS: 's',
+
   // Ślad automatyki (na żądanie).
   sladTytul: 'Ślad automatyki zabezpieczeniowej',
   sladPokaz: 'Pokaż ślad automatyki',

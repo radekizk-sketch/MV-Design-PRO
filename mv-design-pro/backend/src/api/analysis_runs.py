@@ -19,6 +19,7 @@ from api.canonical_run_views import (
     build_branch_results_response,
     build_bus_results_response,
     build_dynamic_stability_results_response,
+    build_dynamic_stability_time_series_response,
     build_extended_trace_response,
     build_phase_state_results_response,
     build_result_items,
@@ -399,6 +400,13 @@ def get_phase_state_results(run_id: UUID) -> dict[str, Any]:
 def get_dynamic_stability_results(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(
         build_dynamic_stability_results_response(_require_canonical_run(run_id))
+    )
+
+
+@router.get("/analysis-runs/{run_id}/results/dynamic-stability/time-series")
+def get_dynamic_stability_time_series(run_id: UUID) -> dict[str, Any]:
+    return canonicalize_json(
+        build_dynamic_stability_time_series_response(_require_canonical_run(run_id))
     )
 
 

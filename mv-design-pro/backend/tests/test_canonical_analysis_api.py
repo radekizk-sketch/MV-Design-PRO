@@ -924,6 +924,26 @@ def test_dynamic_stability_run_exposes_results_and_automation_trace(client: Test
     assert len(automation_payload["rows"]) == 5
     assert automation_payload["rows"][-1]["event_type"] == "DYNAMIC_STABILITY_EVALUATED"
 
+    # Domyślna odpowiedź wyników NIE niesie szeregu czasowego (na żądanie).
+    assert "time_series" not in stability_payload["rows"][0]
+
+    # Szereg czasowy przebiegu — osobny endpoint, na żądanie.
+    time_series = client.get(f"/api/analysis-runs/{run_id}/results/dynamic-stability/time-series")
+    assert time_series.status_code == 200
+    ts_payload = time_series.json()
+    assert ts_payload["has_time_series"] is True
+    assert ts_payload["time_unit"] == "s"
+    assert {q["key"] for q in ts_payload["quantities"]} == {"voltage_pu", "frequency_pu"}
+    assert {q["unit"] for q in ts_payload["quantities"]} == {"p.u."}
+    assert len(ts_payload["points"]) > 0
+    assert set(ts_payload["points"][0].keys()) == {"t_s", "voltage_pu", "frequency_pu"}
+
+    # Determinizm: powtórne pobranie daje bajt-w-bajt identyczny przebieg.
+    time_series_repeat = client.get(
+        f"/api/analysis-runs/{run_id}/results/dynamic-stability/time-series"
+    )
+    assert time_series_repeat.json()["points"] == ts_payload["points"]
+
 
 def test_source_compliance_run_exposes_reportable_statuses(client: TestClient) -> None:
     case_id = str(uuid4())

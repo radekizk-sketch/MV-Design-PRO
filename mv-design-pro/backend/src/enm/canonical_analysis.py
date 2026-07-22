@@ -22,6 +22,10 @@ from application.stability.dynamic_stability import (
     FaultClearSourceState,
     evaluate_fault_clear_dynamic_stability,
 )
+from application.stability.voltage_trajectory import (
+    TrajectoryGenerationParams,
+    generate_voltage_trajectory,
+)
 from enm.hash import compute_enm_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
@@ -740,10 +744,33 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
     proof_ref = _dynamic_stability_proof_ref(run=run, scenario_id=stability_result.scenario_id)
     result_payload = stability_result.to_dict()
     topology_payload = topology_effect.to_dict()
+    # Szereg czasowy U(t)/f(t) przebiegu — istniejący, deterministyczny generator
+    # trajektorii FRT (application/stability/voltage_trajectory.py) sparametryzowany
+    # scenariuszem wyłączenia zwarcia. ZERO nowej fizyki: równania modelu odbudowy
+    # napięcia/częstotliwości nietknięte, tu jedynie wystawiamy istniejący przebieg.
+    # Przechowywane addytywnie (klucz `time_series` obok `result`) — starsze biegi
+    # bez tego klucza; osobny endpoint wystawia go na żądanie (nie pompuje wyniku).
+    trajectory = generate_voltage_trajectory(
+        TrajectoryGenerationParams(
+            clearing_time_ms=scenario.clearing_time_ms,
+            post_fault_voltage_pu=scenario.source_state.post_fault_voltage_pu,
+            post_fault_frequency_pu=scenario.source_state.post_fault_frequency_pu,
+        )
+    )
+    time_series_payload = {
+        "time_unit": "s",
+        "criteria_version": stability_result.criteria_version,
+        "quantities": [
+            {"key": "voltage_pu", "label_pl": "Napięcie", "unit": "p.u."},
+            {"key": "frequency_pu", "label_pl": "Częstotliwość", "unit": "p.u."},
+        ],
+        "points": [point.to_dict() for point in trajectory],
+    }
     run.raw_result = {
         "analysis_type": "dynamic_stability",
         "scenario": scenario.to_dict(),
         "result": result_payload,
+        "time_series": time_series_payload,
         "automation_trace": automation_trace.to_dict(),
         "topology_effect": topology_payload,
         "proof_ref": proof_ref,
@@ -2074,6 +2101,36 @@ def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
                 "reporting_limitations": (run.raw_result or {}).get("reporting_limitations", []),
             }
         ],
+    }
+
+
+def build_dynamic_stability_time_series(run: CanonicalRun) -> dict[str, Any]:
+    """Szereg czasowy przebiegu stabilności (U(t)/f(t)) — na żądanie.
+
+    Zwraca przebieg zapisany w `raw_result.time_series` dla biegów, które go
+    posiadają. Starsze biegi (sprzed wystawienia szeregu) → `has_time_series=False`
+    z pustym przebiegiem (uczciwy stan zerowy w UI). Nie wchodzi do domyślnej
+    odpowiedzi wyników — endpoint dedykowany, by nie pompować rozmiaru payloadu.
+    """
+    empty: dict[str, Any] = {
+        "run_id": str(run.id),
+        "has_time_series": False,
+        "time_unit": "s",
+        "quantities": [],
+        "points": [],
+    }
+    if run.analysis_type != "dynamic_stability":
+        return empty
+    time_series = (run.raw_result or {}).get("time_series")
+    if not time_series or not time_series.get("points"):
+        return empty
+    return {
+        "run_id": str(run.id),
+        "has_time_series": True,
+        "time_unit": time_series.get("time_unit", "s"),
+        "criteria_version": time_series.get("criteria_version"),
+        "quantities": list(time_series.get("quantities") or []),
+        "points": list(time_series.get("points") or []),
     }
 
 

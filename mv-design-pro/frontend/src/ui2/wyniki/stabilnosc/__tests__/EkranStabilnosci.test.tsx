@@ -66,20 +66,47 @@ const SLAD = {
   ],
 };
 
-function mockFetchStabilnosci() {
-  vi.stubGlobal(
-    'fetch',
-    vi.fn(async (input: RequestInfo | URL) => {
-      const url = String(input);
-      const json = url.endsWith('/results/dynamic-stability')
+const PRZEBIEG = {
+  run_id: 'run-dyn',
+  has_time_series: true,
+  time_unit: 's',
+  criteria_version: 'dynamic_stability_fault_clear_v1',
+  quantities: [
+    { key: 'voltage_pu', label_pl: 'Napięcie', unit: 'p.u.' },
+    { key: 'frequency_pu', label_pl: 'Częstotliwość', unit: 'p.u.' },
+  ],
+  points: [
+    { t_s: -0.1, voltage_pu: 1.0, frequency_pu: 1.0 },
+    { t_s: 0.0, voltage_pu: 0.0, frequency_pu: 1.0 },
+    { t_s: 0.12, voltage_pu: 0.0, frequency_pu: 1.0 },
+    { t_s: 0.5, voltage_pu: 0.74, frequency_pu: 1.0 },
+    { t_s: 2.0, voltage_pu: 0.97, frequency_pu: 0.99 },
+  ],
+};
+
+const PRZEBIEG_BRAK = {
+  run_id: 'run-dyn',
+  has_time_series: false,
+  time_unit: 's',
+  quantities: [],
+  points: [],
+};
+
+function mockFetchStabilnosci(przebieg: unknown = PRZEBIEG) {
+  const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    const json = url.endsWith('/results/dynamic-stability/time-series')
+      ? przebieg
+      : url.endsWith('/results/dynamic-stability')
         ? WYNIK
         : url.endsWith('/results/automation-trace')
           ? SLAD
           : null;
-      if (json === null) throw new Error(`Nieoczekiwany URL w teście: ${url}`);
-      return { ok: true, status: 200, json: async () => json } as Response;
-    }),
-  );
+    if (json === null) throw new Error(`Nieoczekiwany URL w teście: ${url}`);
+    return { ok: true, status: 200, json: async () => json } as Response;
+  });
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
 }
 
 beforeEach(() => {
@@ -183,6 +210,85 @@ describe('EkranStabilnosci — dane przebiegu (fetch 1:1 z endpointami)', () => 
     );
     await user.click(screen.getByTestId('mvd-stabilnosc-powrot'));
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+});
+
+describe('EkranStabilnosci — przebieg czasowy na żądanie (ST-1)', () => {
+  it('nie pobiera przebiegu przed klikiem (na żądanie); klik ładuje wykres i chowa notę', async () => {
+    const user = userEvent.setup();
+    const fetchMock = mockFetchStabilnosci();
+    useExecutionRunsStore.setState({ runs: [RUN_DYN] });
+    render(<EkranStabilnosci />);
+    await screen.findByTestId('mvd-stabilnosc-werdykt');
+
+    // Na żądanie: endpoint szeregu NIE jest wołany przed klikiem.
+    const wolaniaPrzed = fetchMock.mock.calls.filter((c) =>
+      String(c[0]).endsWith('/time-series'),
+    );
+    expect(wolaniaPrzed).toHaveLength(0);
+    // Zanim pobierzemy szereg — nota o braku szeregu jest widoczna.
+    expect(screen.getByTestId('mvd-stabilnosc-brak-szeregu')).toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-stabilnosc-wykres')).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('mvd-stabilnosc-przebieg-btn'));
+
+    // Wykres pojawia się z danymi i seriami PL; nota o braku szeregu znika.
+    expect(await screen.findByTestId('mvd-stabilnosc-wykres')).toBeInTheDocument();
+    // Nazwa serii występuje w przełączniku i w legendzie wykresu.
+    expect(screen.getAllByText(T.przebiegSeriaNapiecie).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(T.przebiegSeriaCzestotliwosc).length).toBeGreaterThan(0);
+    expect(screen.getByTestId('mvd-stabilnosc-serie-voltage_pu')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.queryByTestId('mvd-stabilnosc-brak-szeregu')).not.toBeInTheDocument();
+    // Endpoint szeregu wołany dokładnie raz (po kliku).
+    expect(
+      fetchMock.mock.calls.filter((c) => String(c[0]).endsWith('/time-series')),
+    ).toHaveLength(1);
+  });
+
+  it('starszy bieg bez szeregu → uczciwy stan zerowy, nota o braku szeregu zostaje', async () => {
+    const user = userEvent.setup();
+    mockFetchStabilnosci(PRZEBIEG_BRAK);
+    useExecutionRunsStore.setState({ runs: [RUN_DYN] });
+    render(<EkranStabilnosci />);
+    await screen.findByTestId('mvd-stabilnosc-werdykt');
+
+    await user.click(screen.getByTestId('mvd-stabilnosc-przebieg-btn'));
+
+    expect(await screen.findByTestId('mvd-stabilnosc-przebieg-brak')).toHaveTextContent(
+      T.przebiegBrak,
+    );
+    expect(screen.queryByTestId('mvd-stabilnosc-wykres')).not.toBeInTheDocument();
+    // Bieg bez szeregu → nota o braku szeregu zostaje (usuwana TYLKO dla biegów z szeregiem).
+    expect(screen.getByTestId('mvd-stabilnosc-brak-szeregu')).toBeInTheDocument();
+  });
+
+  it('błąd endpointu przebiegu → uczciwy komunikat, bez wykresu', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url.endsWith('/results/dynamic-stability/time-series')) {
+          return { ok: false, status: 500, json: async () => ({}) } as Response;
+        }
+        const json = url.endsWith('/results/dynamic-stability')
+          ? WYNIK
+          : { run_id: 'run-dyn', rows: [], topology_effect: null };
+        return { ok: true, status: 200, json: async () => json } as Response;
+      }),
+    );
+    useExecutionRunsStore.setState({ runs: [RUN_DYN] });
+    render(<EkranStabilnosci />);
+    await screen.findByTestId('mvd-stabilnosc-werdykt');
+
+    await user.click(screen.getByTestId('mvd-stabilnosc-przebieg-btn'));
+    expect(await screen.findByTestId('mvd-stabilnosc-przebieg-blad')).toHaveTextContent(
+      T.przebiegBlad,
+    );
+    expect(screen.queryByTestId('mvd-stabilnosc-wykres')).not.toBeInTheDocument();
   });
 });
 
