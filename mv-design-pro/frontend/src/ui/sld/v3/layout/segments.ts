@@ -57,7 +57,21 @@ import {
  *  r7b: przeniesione tu z `columns.ts` (re-eksportowane stamtąd dla
  *  zachowania publicznego API) — potrzebne RÓWNIEŻ w `computeStationTaps`
  *  (prefix-sum), a `segments.ts` nie może importować z `columns.ts` (ten
- *  ostatni importuje Z `segments.ts` — cykl). */
+ *  ostatni importuje Z `segments.ts` — cykl).
+ *
+ *  SCHEMAT-10 S6 (V12K-137): WARUNKI_ODBIORU_S6 §5 wymaga, by światło pasa
+ *  górnego było NAJMNIEJSZĄ wartością z widełek +20–35%, która „usuwa kolizje,
+ *  zapewnia światło i NIE WYDŁUŻA MAGISTRALI NIEPOTRZEBNIE", ORAZ (§6) by
+ *  zmiana layoutu dawała JEDNOCZEŚNIE `bboxUtilization↑` i `verticalLength↓`.
+ *  Fixtura referencyjna ma JUŻ 0 kolizji pasa górnego przy `3×GRID`
+ *  (`accept:sld-v3` zielone), więc podniesienie tej stałej w izolacji to
+ *  „niepotrzebne wydłużenie magistrali" (szerszy trunk → `bboxUtilization↓`,
+ *  `horizontalLength↑`, `verticalLength` bez zmian — pomiar `scripts/
+ *  s6_measure.mjs`), czyli REGRESJA warunku §6. Stała pozostaje `3×GRID` do
+ *  czasu, gdy footprint-driven compact layout (S7, `layoutEngine.ts`) obniży
+ *  bbox na tyle, że rozdzielone światła (§5: MIN_GLYPH/LABEL/FIELD/SUBTREE/
+ *  ROUTE_CLEARANCE + TOP_LEVEL_FIELD_CLEARANCE) da się podnieść netto-dodatnio.
+ *  Kontrakt świateł i pomiar bazy: `docs/sld/S6_METRYKI_LAYOUT_2026-07.md`. */
 export const COLUMN_GAP = 3 * GRID;
 
 /** Pusty/whitespace/`null` = brak segmentu wejściowego — spójnie wszędzie (r3). */

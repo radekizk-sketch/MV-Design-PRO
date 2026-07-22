@@ -73,6 +73,9 @@ import {
   sourceStateGaps,
   symbolWireCollisions,
   totalVerticalSegmentLength,
+  totalHorizontalSegmentLength,
+  orthogonalBendCount,
+  sheetFillRatio,
   trunkThicknessGaps,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
@@ -205,6 +208,32 @@ const EXPECTED_STATION_COUNT = 53;
 // §15.1 „redukcja jest ograniczeniem MIĘKKIM" — spójność LOD ma pierwszeństwo.
 // Uzasadnienie i dowód: buildScene.test.ts vertical_length_probe + „JEDNA KOTWICA".
 const VERTICAL_LENGTH_BASELINE = { 0: 50264, 1: 67208, 2: 67208 };
+
+/**
+ * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):
+ * poza pionami (baseline wyżej) mierzymy również POZIOMY i ZAŁAMANIA, jako
+ * gwarancje NIE-ROSNĄCE (spadek dozwolony/pożądany przy przyszłej
+ * kompaktyzacji; wzrost = regresja). Wartości zmierzone przy dostawie S6 na
+ * fixturze referencyjnej PO podniesieniu światła pasa górnego (`COLUMN_GAP`
+ * 3×GRID→4×GRID, `layout/segments.ts`, +33,3%): poziomy urosły o stałą +336
+ * fixturze referencyjnej (geometria bez zmian w S6 — patrz raport karty:
+ * podniesienie `COLUMN_GAP` w izolacji regresowałoby §6, więc cofnięte;
+ * kompaktyzacja footprint-driven = S7). Aktualizacja tych baseline — jak
+ * `VERTICAL_LENGTH_BASELINE` — wymaga świadomej zmiany TEGO pliku.
+ */
+const HORIZONTAL_LENGTH_BASELINE = { 0: 47048, 1: 67192, 2: 70784 };
+const BEND_COUNT_BASELINE = { 0: 39, 1: 167, 2: 167 };
+
+/**
+ * S6 pkt 10 (eliminacja pustych przestrzeni) — PODŁOGA wykorzystania arkusza
+ * (udział komórek siatki pokrytych treścią w bbox sceny, `sheetFillRatio`).
+ * Miara jest z natury niska dla schematu grzebieniowego (rzadkie linie na
+ * dużym arkuszu) — bramka wymaga, by wypełnienie NIE SPADŁO poniżej podłogi
+ * zmierzonej przy dostawie S6 (regresja „arkusz spuchł pustką" = FAIL).
+ * Kompaktyzacja (S7) ma tę wartość PODNIEŚĆ; podłoga chroni przed cofnięciem.
+ * Podłogi = zmierzone wartości minus mały margines na jitter metryk tekstu.
+ */
+const SHEET_FILL_FLOOR = { 0: 0.0069, 1: 0.0114, 2: 0.0117 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -1080,6 +1109,30 @@ for (const lod of LODS) {
     `vertical_length_probe (§15.1): suma długości pionów nie-rosnąca względem baseline=${verticalBaseline}`,
     verticalLength <= verticalBaseline,
     `wartość=${verticalLength} baseline=${verticalBaseline}`,
+  );
+
+  // -- S6 (V12K-137) funkcja kosztu layoutu: poziomy + załamania (pkt 3) ------
+  const horizontalLength = totalHorizontalSegmentLength(scene);
+  const horizontalBaseline = HORIZONTAL_LENGTH_BASELINE[lod];
+  check(
+    `layout_cost_probe (S6 pkt 3, poziomy): łączna długość poziomów nie-rosnąca względem baseline=${horizontalBaseline}`,
+    horizontalLength <= horizontalBaseline,
+    `wartość=${horizontalLength} baseline=${horizontalBaseline}`,
+  );
+  const bends = orthogonalBendCount(scene);
+  const bendBaseline = BEND_COUNT_BASELINE[lod];
+  check(
+    `layout_cost_probe (S6 pkt 3, załamania): liczba rogów tras nie-rosnąca względem baseline=${bendBaseline}`,
+    bends <= bendBaseline,
+    `wartość=${bends} baseline=${bendBaseline}`,
+  );
+  // -- S6 (V12K-137) wykorzystanie arkusza: podłoga (pkt 10) ------------------
+  const fill = sheetFillRatio(scene);
+  const fillFloor = SHEET_FILL_FLOOR[lod];
+  check(
+    `sheet_fill_probe (S6 pkt 10): wykorzystanie arkusza nie-spadające poniżej podłogi=${fillFloor}`,
+    fill >= fillFloor,
+    `wartość=${fill.toFixed(6)} podłoga=${fillFloor} koszt(piony+poziomy)=${verticalLength + horizontalLength}`,
   );
 
   // -- §17.5 protection_marking_probe (F9.9) ---------------------------------

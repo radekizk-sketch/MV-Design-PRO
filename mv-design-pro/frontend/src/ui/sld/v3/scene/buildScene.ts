@@ -3935,6 +3935,272 @@ export function totalVerticalSegmentLength(scene: SceneV3): number {
   return total;
 }
 
+// ---------------------------------------------------------------------------
+// SCHEMAT-10 S6 (V12K-137) — instrumentacja funkcji kosztu layoutu (pkt 3
+// recenzji: „jawna funkcja kosztu = suma długości pionów + poziomów + liczba
+// załamań, liczona przed/po") oraz miara wykorzystania arkusza (pkt 10:
+// „eliminacja pustych przestrzeni — miara wykorzystania arkusza w teście").
+// Wszystko to CZYSTA geometria sceny (P7 determinizm) — RAPORTOWANE miary, nie
+// samodzielne wyrocznie kolizji; porównanie przed/po żyje w raporcie karty i
+// (dla pionów) w baseline `scripts/sld_v3_acceptance.mjs`.
+// ---------------------------------------------------------------------------
+
+/**
+ * S6 pkt 3 — łączna długość pododcinków POZIOMYCH (dwa kolejne wierzchołki o
+ * tym samym `y`) polilinii wszystkich odcinków sceny. Bliźniak
+ * `totalVerticalSegmentLength`; razem dają dwa z trzech członów funkcji
+ * kosztu (piony + poziomy).
+ */
+export function totalHorizontalSegmentLength(scene: SceneV3): number {
+  let total = 0;
+  for (const segment of scene.segments) {
+    const pts = segment.points;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      if (a.y === b.y) total += Math.abs(a.x - b.x);
+    }
+  }
+  return total;
+}
+
+/**
+ * S6 pkt 3 — liczba ZAŁAMAŃ (rogów) tras ortogonalnych: wierzchołek
+ * WEWNĘTRZNY polilinii, w którym kierunek wejścia różni się od kierunku
+ * wyjścia (pion→poziom lub poziom→pion). Wierzchołki współliniowe (kontynuacja
+ * kierunku) i zdegenerowane (zerowej długości) NIE liczą się jako załamanie.
+ * Trzeci człon funkcji kosztu (mniej rogów = czytelniejsza trasa).
+ */
+export function orthogonalBendCount(scene: SceneV3): number {
+  let bends = 0;
+  for (const segment of scene.segments) {
+    const pts = segment.points;
+    for (let i = 1; i + 1 < pts.length; i++) {
+      const prev = pts[i - 1];
+      const cur = pts[i];
+      const next = pts[i + 1];
+      const inVertical = prev.x === cur.x && prev.y !== cur.y;
+      const inHorizontal = prev.y === cur.y && prev.x !== cur.x;
+      const outVertical = next.x === cur.x && next.y !== cur.y;
+      const outHorizontal = next.y === cur.y && next.x !== cur.x;
+      // Róg = jedno ramię pionowe, drugie poziome (oba realne, niezdegenerowane).
+      if ((inVertical && outHorizontal) || (inHorizontal && outVertical)) bends += 1;
+    }
+  }
+  return bends;
+}
+
+/** S6 pkt 3 — trójskładnikowa funkcja kosztu layoutu (piony + poziomy +
+ *  załamania), RAPORTOWANA przed/po. Wartości surowe (bez wag) — porównanie
+ *  jest względne (ta sama fixtura, ten sam LOD). */
+export interface LayoutCostMetrics {
+  readonly verticalLength: number;
+  readonly horizontalLength: number;
+  readonly bends: number;
+}
+
+export function layoutCostMetrics(scene: SceneV3): LayoutCostMetrics {
+  return {
+    verticalLength: totalVerticalSegmentLength(scene),
+    horizontalLength: totalHorizontalSegmentLength(scene),
+    bends: orthogonalBendCount(scene),
+  };
+}
+
+/**
+ * S6 pkt 10 — wykorzystanie arkusza = udział KOMÓREK siatki (bok `GRID`)
+ * pokrytych treścią (symbole + trasy) w prostokącie `scene.bbox`. Uczciwa
+ * miara „martwych przestrzeni": rasteryzacja deterministyczna na siatce (cała
+ * geometria sceny jest na `GRID` z konstrukcji — `allSceneGeometryOnGrid`),
+ * bez losowości i bez `Date.now()`. 1.0 = arkusz w całości pokryty; niski
+ * ułamek = dużo pustego pola (grzebień z długimi pionami). Zwraca 0 dla pustej
+ * sceny (brak treści LUB zerowy bbox).
+ */
+export function sheetFillRatio(scene: SceneV3): number {
+  const { bbox } = scene;
+  const cols = Math.max(0, Math.ceil(bbox.width / GRID));
+  const rows = Math.max(0, Math.ceil(bbox.height / GRID));
+  const totalCells = cols * rows;
+  if (totalCells === 0) return 0;
+
+  const marked = new Set<string>();
+  const cellX = (x: number): number => Math.floor((x - bbox.x) / GRID);
+  const cellY = (y: number): number => Math.floor((y - bbox.y) / GRID);
+  const mark = (cx: number, cy: number): void => {
+    if (cx < 0 || cy < 0 || cx >= cols || cy >= rows) return;
+    marked.add(`${cx},${cy}`);
+  };
+
+  // Symbole: wszystkie komórki objęte prostokątem gabarytu symbolu.
+  for (const sym of scene.symbols) {
+    const r = symbolRect(sym);
+    const cx0 = cellX(r.x);
+    const cx1 = cellX(r.x + Math.max(0, r.width - 1));
+    const cy0 = cellY(r.y);
+    const cy1 = cellY(r.y + Math.max(0, r.height - 1));
+    for (let cx = cx0; cx <= cx1; cx++) for (let cy = cy0; cy <= cy1; cy++) mark(cx, cy);
+  }
+
+  // Trasy: komórki wzdłuż każdego pododcinka ortogonalnego (krok `GRID`).
+  for (const segment of scene.segments) {
+    const pts = segment.points;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      if (a.x === b.x) {
+        const cx = cellX(a.x);
+        const cyA = cellY(Math.min(a.y, b.y));
+        const cyB = cellY(Math.max(a.y, b.y));
+        for (let cy = cyA; cy <= cyB; cy++) mark(cx, cy);
+      } else if (a.y === b.y) {
+        const cy = cellY(a.y);
+        const cxA = cellX(Math.min(a.x, b.x));
+        const cxB = cellX(Math.max(a.x, b.x));
+        for (let cx = cxA; cx <= cxB; cx++) mark(cx, cy);
+      }
+    }
+  }
+
+  return marked.size / totalCells;
+}
+
+// ---------------------------------------------------------------------------
+// SCHEMAT-10 S6 (V12K-137) — KOMPLET 18 metryk layoutu (WARUNKI_ODBIORU_S6 §3
+// + §6), liczonych z REALNIE wygenerowanej geometrii sceny (nie z kotwic ani
+// przybliżeń). Miary FAIL-owe (kolizje/M-02/skrzyżowania/nieortogonalność/
+// niejednoznaczność) są tu ZLICZANE dla raportu przed/po; twardymi bramkami
+// pozostają istniejące wyrocznie `accept:sld-v3`. Wszystko czyste i
+// deterministyczne (P7).
+// ---------------------------------------------------------------------------
+
+/** L∞-odstęp (światło) między dwoma prostokątami; 0 gdy się nakładają/stykają. */
+function rectClearance(a: V3Rect, b: V3Rect): number {
+  const dx = Math.max(b.x - (a.x + a.width), a.x - (b.x + b.width), 0);
+  const dy = Math.max(b.y - (a.y + a.height), a.y - (b.y + b.height), 0);
+  return Math.max(dx, dy);
+}
+
+/** Occupancy per oś: udział kolumn/wierszy siatki `GRID` zawierających JAKĄKOLWIEK
+ *  treść (symbole+trasy) — składniki width/heightUtilization (§6). */
+function axisOccupancy(scene: SceneV3): { widthUtilization: number; heightUtilization: number } {
+  const { bbox } = scene;
+  const cols = Math.max(0, Math.ceil(bbox.width / GRID));
+  const rows = Math.max(0, Math.ceil(bbox.height / GRID));
+  if (cols === 0 || rows === 0) return { widthUtilization: 0, heightUtilization: 0 };
+  const occCols = new Set<number>();
+  const occRows = new Set<number>();
+  const cx = (x: number): number => Math.floor((x - bbox.x) / GRID);
+  const cy = (y: number): number => Math.floor((y - bbox.y) / GRID);
+  for (const sym of scene.symbols) {
+    const r = symbolRect(sym);
+    for (let x = cx(r.x); x <= cx(r.x + Math.max(0, r.width - 1)); x++) if (x >= 0 && x < cols) occCols.add(x);
+    for (let y = cy(r.y); y <= cy(r.y + Math.max(0, r.height - 1)); y++) if (y >= 0 && y < rows) occRows.add(y);
+  }
+  for (const seg of scene.segments) {
+    for (const p of seg.points) {
+      const x = cx(p.x);
+      const y = cy(p.y);
+      if (x >= 0 && x < cols) occCols.add(x);
+      if (y >= 0 && y < rows) occRows.add(y);
+    }
+  }
+  return { widthUtilization: occCols.size / cols, heightUtilization: occRows.size / rows };
+}
+
+/** §9: odcinek nie-ortogonalny = pododcinek o `x1≠x2 AND y1≠y2`. */
+export function nonOrthogonalSegmentCount(scene: SceneV3): number {
+  let count = 0;
+  for (const seg of scene.segments) {
+    const pts = seg.points;
+    let bad = false;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      if (pts[i].x !== pts[i + 1].x && pts[i].y !== pts[i + 1].y) bad = true;
+    }
+    if (bad) count += 1;
+  }
+  return count;
+}
+
+/** §3/M-02: liczba par nakładających się gabarytów symboli (proxy przecięcia
+ *  bbox poddrzew — na scenie rozłącznej z konstrukcji = 0). */
+export function subtreeIntersectionCount(scene: SceneV3): number {
+  const rects = scene.symbols.map(symbolRect);
+  let count = 0;
+  for (let i = 0; i < rects.length; i++)
+    for (let j = i + 1; j < rects.length; j++) if (rectsOverlap(rects[i], rects[j])) count += 1;
+  return count;
+}
+
+/** §3: minimalne światło między JAKIMIKOLWIEK dwoma gabarytami symboli (min po
+ *  parach nie-nakładających się). `Infinity`→0 gdy <2 symboli. */
+export function minimumClearance(scene: SceneV3): number {
+  const rects = scene.symbols.map(symbolRect);
+  let min = Infinity;
+  for (let i = 0; i < rects.length; i++)
+    for (let j = i + 1; j < rects.length; j++) {
+      const c = rectClearance(rects[i], rects[j]);
+      if (c > 0 && c < min) min = c;
+    }
+  return Number.isFinite(min) ? min : 0;
+}
+
+/** KOMPLET 18 metryk layoutu (WARUNKI_ODBIORU_S6 §3 + §6) — RAPORTOWANE
+ *  przed/po. Miary jakości (collision/subtree/nonOrtho/ambiguous/crossing) są
+ *  osobno twardymi bramkami wyroczni; tu służą jednej tabeli dowodowej. */
+export interface LayoutMetricsReport {
+  readonly verticalLength: number;
+  readonly horizontalLength: number;
+  readonly totalOrthogonalLength: number;
+  readonly bendCount: number;
+  readonly contentBBoxWidth: number;
+  readonly contentBBoxHeight: number;
+  readonly contentBBoxArea: number;
+  readonly widthUtilization: number;
+  readonly heightUtilization: number;
+  readonly bboxUtilization: number;
+  readonly inkDensity: number;
+  readonly minimumClearance: number;
+  readonly labelCollisionCount: number;
+  readonly subtreeIntersectionCount: number;
+  readonly nonOrthogonalSegmentCount: number;
+  readonly ambiguousConnectionCount: number;
+  readonly crossingCount: number;
+  readonly symbolCount: number;
+}
+
+export function layoutMetricsReport(scene: SceneV3): LayoutMetricsReport {
+  const verticalLength = totalVerticalSegmentLength(scene);
+  const horizontalLength = totalHorizontalSegmentLength(scene);
+  const { widthUtilization, heightUtilization } = axisOccupancy(scene);
+  const inkDensity = sheetFillRatio(scene);
+  const bbox = scene.bbox;
+  const bboxArea = Math.max(1, bbox.width * bbox.height);
+  const symbolArea = scene.symbols.reduce((s, sym) => {
+    const r = symbolRect(sym);
+    return s + r.width * r.height;
+  }, 0);
+  return {
+    verticalLength,
+    horizontalLength,
+    totalOrthogonalLength: verticalLength + horizontalLength,
+    bendCount: orthogonalBendCount(scene),
+    contentBBoxWidth: Math.round(bbox.width),
+    contentBBoxHeight: Math.round(bbox.height),
+    contentBBoxArea: Math.round(bbox.width * bbox.height),
+    widthUtilization,
+    heightUtilization,
+    bboxUtilization: symbolArea / bboxArea,
+    inkDensity,
+    minimumClearance: minimumClearance(scene),
+    labelCollisionCount: labelCollisions(scene).length,
+    subtreeIntersectionCount: subtreeIntersectionCount(scene),
+    nonOrthogonalSegmentCount: nonOrthogonalSegmentCount(scene),
+    ambiguousConnectionCount: sceneSegmentEndpointGaps(scene).length,
+    crossingCount: scene.crossings.length,
+    symbolCount: scene.symbols.length,
+  };
+}
+
 /** Grubość „prostokąta" odcinka w wyroczni etykieta↔przewód niżej: ±1px
  *  wokół osi linii (stroke bazowy 1.6-2px, patrz `compose/preview.tsx`
  *  `SEGMENT_STROKE_WIDTH`) — celowo ZANIŻONA względem realnego stroke, żeby
