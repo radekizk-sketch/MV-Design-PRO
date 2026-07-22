@@ -8,14 +8,23 @@
  * pochodzą z backendu (per-punktowe wyniki zwarciowe każdego przebiegu); jedyne
  * działanie liczbowe w UI to prezentacyjna różnica B−A (patrz `zwarciePorownanieModel`
  * — rozstrzygnięcie RECON i uzasadnienie). Zero automatyzmu: porównanie rusza
- * wyłącznie po kliknięciu. Brak dowodów per komórka w tym kontrakcie → pusta akcja.
+ * wyłącznie po kliknięciu.
+ *
+ * Dowody (R3-C / K3-G2): wartość z kolumny A otwiera dowód przebiegu A,
+ * z kolumny B — przebiegu B, przez deep-link z kontekstem
+ * `setWynikiTab('dowod', runId)` (mechanizm R2-B); strona koduje się w
+ * `dowodRef` komórki (`dowodPorownania.ts`), a para przebiegów pochodzi ze
+ * stanu UŻYTEGO w porównaniu (nie z selektorów — te mogły się zmienić).
+ * Kolumny Δ bez dowodu — różnica nie ma pojedynczego wywodu WHITE BOX.
  */
 
 import { useCallback, useMemo, useState } from 'react';
 
 import './porownanie.css';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
+import { useShellStore } from '../../shell/useShellStore';
 import { TabelaWynikow } from '../wzorzec';
+import { stronaDowodu } from './dowodPorownania';
 import { fetchShortCircuitResults } from '../../../ui/results-inspector/api';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
@@ -28,9 +37,6 @@ import {
   naWierszePunktowZwarciowych,
   przebiegiZwarciowe,
 } from './zwarciePorownanieModel';
-
-/** Brak dowodów per komórka w kontrakcie porównania — stabilna pusta akcja. */
-const BEZ_DOWODU = (): void => {};
 
 type StanPorownania = 'bezczynny' | 'wtrakcie' | 'blad';
 
@@ -58,6 +64,9 @@ export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
   const [runB, setRunB] = useState('');
 
   const [wiersze, setWiersze] = useState<WierszTabeli[] | null>(null);
+  // Para przebiegów UŻYTA w widocznym porównaniu (R3-C) — cel dowodów A/B.
+  // Trzymana osobno od selektorów, bo te można przestawić po porównaniu.
+  const [paraPorownana, setParaPorownana] = useState<{ a: string; b: string } | null>(null);
   const [stan, setStan] = useState<StanPorownania>('bezczynny');
   const [blad, setBlad] = useState<string | null>(null);
 
@@ -73,18 +82,33 @@ export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
     setStan('wtrakcie');
     setBlad(null);
     setWiersze(null);
+    setParaPorownana(null);
     try {
       const [wynikA, wynikB] = await Promise.all([
         fetchShortCircuitResults(runA),
         fetchShortCircuitResults(runB),
       ]);
       setWiersze(naWierszePunktowZwarciowych(wynikA.rows, wynikB.rows));
+      setParaPorownana({ a: runA, b: runB });
       setStan('bezczynny');
     } catch (err) {
       setBlad(err instanceof Error ? err.message : SZ.bladPorownania);
       setStan('blad');
     }
   }, [runA, runB]);
+
+  // R3-C: 2×klik na wartości kolumny A/B → dowód WŁAŚCIWEGO przebiegu przez
+  // deep-link z kontekstem (`setWynikiTab('dowod', runId)` — mechanizm R2-B).
+  const setWynikiTab = useShellStore((s) => s.setWynikiTab);
+  const otworzDowodPrzebiegu = useCallback(
+    (ref: string) => {
+      if (!paraPorownana) return;
+      const strona = stronaDowodu(ref);
+      if (strona === null) return;
+      setWynikiTab('dowod', strona === 'A' ? paraPorownana.a : paraPorownana.b);
+    },
+    [paraPorownana, setWynikiTab],
+  );
 
   const przyciskZablokowany = !runA || !runB || stan === 'wtrakcie';
 
@@ -163,7 +187,7 @@ export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
             <TabelaWynikow
               kolumny={KOLUMNY_PUNKTOW_ZWARCIOWYCH}
               wiersze={wiersze}
-              onOtworzDowod={BEZ_DOWODU}
+              onOtworzDowod={otworzDowodPrzebiegu}
               trybZaawansowania={trybZaawansowania}
             />
           )}

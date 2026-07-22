@@ -3,6 +3,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 
 import { EkranPorownania } from '../EkranPorownania';
 import { POROWNANIE_STRINGS } from '../strings';
+import { WZORZEC_STRINGS } from '../../wzorzec';
+import { useShellStore } from '../../../shell/useShellStore';
 import {
   createPowerFlowComparison,
   fetchPowerFlowRuns,
@@ -41,10 +43,13 @@ beforeEach(() => {
   mockCompare.mockResolvedValue(comparisonFixture());
   // Izolacja: store przypadków czytany read-only przez ekran — pusty domyślnie.
   useStudyCasesStore.setState({ cases: [] });
+  // Izolacja deep-linku dowodu (R3-C): żadne żądanie nie zalega między testami.
+  useShellStore.setState({ wynikiTab: null, wynikiTabElement: null });
 });
 
 afterEach(() => {
   useStudyCasesStore.setState({ cases: [] });
+  useShellStore.setState({ wynikiTab: null, wynikiTabElement: null });
   vi.clearAllMocks();
 });
 
@@ -224,5 +229,58 @@ describe('EkranPorownania — prezentacja wyniku backendu', () => {
     expect(screen.queryByTestId('mvd-por-id')).not.toBeInTheDocument();
     rerender(<EkranPorownania {...props({ trybZaawansowania: 'expert' })} />);
     expect(screen.getByTestId('mvd-por-id')).toHaveTextContent('cmp-001');
+  });
+});
+
+describe('EkranPorownania — dowody kolumn A/B (R3-C)', () => {
+  /** Przyciski dowodu pierwszego wiersza szyn: [vA, vB, katA, katB] (kolejność kolumn). */
+  function przyciskiPierwszegoWiersza() {
+    const wiersz = screen.getAllByTestId('mvd-wyn-wiersz')[0];
+    return within(wiersz).getAllByRole('button', { name: WZORZEC_STRINGS.pokazDowod });
+  }
+
+  it('2×klik na wartości kolumny A → deep-link dowodu z przebiegiem A (run_a_id z wyniku)', async () => {
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+    fireEvent.doubleClick(przyciskiPierwszegoWiersza()[0]); // vA
+    expect(useShellStore.getState().wynikiTab).toBe('dowod');
+    expect(useShellStore.getState().wynikiTabElement).toBe('run-a');
+  });
+
+  it('2×klik na wartości kolumny B → deep-link dowodu z przebiegiem B (run_b_id z wyniku)', async () => {
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+    fireEvent.doubleClick(przyciskiPierwszegoWiersza()[1]); // vB
+    expect(useShellStore.getState().wynikiTab).toBe('dowod');
+    expect(useShellStore.getState().wynikiTabElement).toBe('run-b');
+  });
+
+  it('kolumny Δ bez akcji dowodu (różnica nie ma pojedynczego wywodu WHITE BOX)', async () => {
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+    // W wierszu tylko 4 przyciski (vA, vB, katA, katB) — delty nie są przyciskami.
+    expect(przyciskiPierwszegoWiersza()).toHaveLength(4);
+    expect(screen.getByText('-0,0550').closest('button')).toBeNull();
+  });
+
+  it('zakładka Gałęzie: wartości A/B również otwierają dowód właściwego przebiegu', async () => {
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+    fireEvent.click(screen.getByTestId('mvd-por-tab-galezie'));
+    const wiersz = screen.getAllByTestId('mvd-wyn-wiersz')[0];
+    // Kolejność kolumn: [stratyA, stratyB, mocA, mocB].
+    const przyciski = within(wiersz).getAllByRole('button', { name: WZORZEC_STRINGS.pokazDowod });
+    expect(przyciski).toHaveLength(4);
+    fireEvent.doubleClick(przyciski[1]); // stratyB
+    expect(useShellStore.getState().wynikiTab).toBe('dowod');
+    expect(useShellStore.getState().wynikiTabElement).toBe('run-b');
+  });
+
+  it('zakładka Ranking bez przycisków dowodu (problem nie jest wartością jednego przebiegu)', async () => {
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+    fireEvent.click(screen.getByTestId('mvd-por-tab-ranking'));
+    const tabela = within(screen.getByTestId('mvd-wyn-tabela'));
+    expect(tabela.queryAllByRole('button', { name: WZORZEC_STRINGS.pokazDowod })).toHaveLength(0);
   });
 });

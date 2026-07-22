@@ -3,11 +3,26 @@
  * rozpływ/zwarcia/pozostałe, zakładka startowa wg rodzaju aktywnego
  * przebiegu, slot mostu. R2-B: deep-link z kontekstem elementu — konsumpcja
  * i czyszczenie OBU pól żądania, pre-selekcja węzła w oknie kompensacji,
- * izolacja kontekstu między zakładkami.
+ * izolacja kontekstu między zakładkami. R3-C: kontekst zakładki „Dowód
+ * obliczeń" = konkretny przebieg (dowód kolumny A/B porównania) + pełny
+ * łańcuch realną ścieżką (2×klik w komórkę porównania → dowód runu strony).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { act, render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
+// R3-C (pełny łańcuch przez okno porównania): lista przebiegów rozpływu i
+// per-przebiegowe wyniki zwarciowe mockowane na granicy klienta API (reszta
+// modułu inspektora wyników pozostaje realna — importOriginal).
+vi.mock('../../../../ui/power-flow-comparison/api', () => ({
+  fetchPowerFlowRuns: vi.fn(async () => []),
+  createPowerFlowComparison: vi.fn(),
+}));
+vi.mock('../../../../ui/results-inspector/api', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
+  fetchShortCircuitResults: vi.fn(),
+}));
+
+import { fetchShortCircuitResults } from '../../../../ui/results-inspector/api';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
@@ -301,5 +316,66 @@ describe('WynikiWarsztat — zakładki', () => {
       'aria-selected',
       'true',
     );
+  });
+});
+
+describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (R3-C)', () => {
+  it('deep-link „dowod" z kontekstem: zakładka otwarta, ślad WSKAZANEGO przebiegu, OBA pola wyczyszczone', async () => {
+    useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-1' })] });
+    useAppStateStore.setState({ activeRunId: 'run-lf-1' });
+    useShellStore.setState({ wynikiTab: 'dowod', wynikiTabElement: 'run-porownany' });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-dowod').getAttribute('aria-selected')).toBe('true');
+    // Kontener dowodu wybiera przebieg z kontekstu, NIE aktywny.
+    const selectRun = useResultsInspectorStore.getState().selectRun;
+    await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-porownany'));
+    expect(selectRun).not.toHaveBeenCalledWith('run-lf-1');
+    // Żądanie skonsumowane w całości (tab + element).
+    expect(useShellStore.getState().wynikiTab).toBeNull();
+    expect(useShellStore.getState().wynikiTabElement).toBeNull();
+  });
+
+  it('ręczne wejście na „Dowód obliczeń" po deep-linku wraca do aktywnego przebiegu (izolacja)', async () => {
+    useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-1' })] });
+    useAppStateStore.setState({ activeRunId: 'run-lf-1' });
+    useShellStore.setState({ wynikiTab: 'dowod', wynikiTabElement: 'run-porownany' });
+    render(<WynikiWarsztat {...props()} />);
+    const selectRun = useResultsInspectorStore.getState().selectRun;
+    await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-porownany'));
+    // Wyjście i ręczny powrót: wskazanie z porównania nie może zalegać.
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-rozplyw'));
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-dowod'));
+    await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-lf-1'));
+  });
+
+  it('pełny łańcuch realną ścieżką: 2×klik w komórkę A porównania zwarć → dowód przebiegu A', async () => {
+    useAppStateStore.setState({ activeRunId: null, activeProjectId: 'proj-1' });
+    useExecutionRunsStore.setState({
+      runs: [
+        przebiegFixture({ id: 'sc-run-a', analysis_type: 'SC_3F' }),
+        przebiegFixture({ id: 'sc-run-b', analysis_type: 'SC_3F', finished_at: '2026-07-16T08:00:01Z' }),
+      ],
+    });
+    vi.mocked(fetchShortCircuitResults).mockImplementation(async (runId: string) => ({
+      ...wynikZwarciowyFixture(),
+      run_id: runId,
+    }));
+    render(<WynikiWarsztat {...props()} />);
+    // Okno porównania → tryb zwarciowy → jawne porównanie A/B.
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-porownanie'));
+    await screen.findByTestId('mvd-por-host');
+    fireEvent.click(screen.getByTestId('mvd-por-tryb-zwarcia'));
+    fireEvent.change(screen.getByTestId('mvd-porz-select-a'), { target: { value: 'sc-run-a' } });
+    fireEvent.change(screen.getByTestId('mvd-porz-select-b'), { target: { value: 'sc-run-b' } });
+    fireEvent.click(screen.getByTestId('mvd-porz-przycisk'));
+    await screen.findByTestId('mvd-porz-wynik');
+    // Pierwszy przycisk dowodu wiersza = kolumna Ik" A (kolejność kolumn tabeli).
+    fireEvent.doubleClick(screen.getAllByRole('button', { name: WZORZEC_STRINGS.pokazDowod })[0]);
+    // Warsztat konsumuje deep-link: zakładka dowodu + ślad przebiegu A.
+    expect(screen.getByTestId('mvd-wyniki-zakladka-dowod')).toHaveAttribute('aria-selected', 'true');
+    const selectRun = useResultsInspectorStore.getState().selectRun;
+    await waitFor(() => expect(selectRun).toHaveBeenCalledWith('sc-run-a'));
+    expect(useShellStore.getState().wynikiTab).toBeNull();
+    expect(useShellStore.getState().wynikiTabElement).toBeNull();
   });
 });

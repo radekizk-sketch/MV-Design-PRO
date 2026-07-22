@@ -98,3 +98,41 @@ describe('DowodPrzebiegu — leniwe ładowanie śladu', () => {
     expect(screen.getByTestId('mvd-dowod-pusty')).toBeInTheDocument();
   });
 });
+
+describe('DowodPrzebiegu — wskazany przebieg (R3-C, dowód kolumny A/B porównania)', () => {
+  it('wskazanyRunId ma pierwszeństwo przed aktywnym: selectRun z KONKRETNYM przebiegiem', async () => {
+    useExecutionRunsStore.setState({
+      runs: [
+        przebiegFixture({ id: 'run-aktywny', analysis_type: 'LOAD_FLOW' }),
+        przebiegFixture({ id: 'run-b', analysis_type: 'SC_3F' }),
+      ],
+    });
+    useAppStateStore.setState({ activeRunId: 'run-aktywny' });
+    render(<DowodPrzebiegu trybZaawansowania="basic" wskazanyRunId="run-b" />);
+    await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-b'));
+    expect(selectRun).not.toHaveBeenCalledWith('run-aktywny');
+  });
+
+  it('kroki śladu wskazanego przebiegu trafiają do okna E9.1 (bramka po run_id)', () => {
+    useExecutionRunsStore.setState({
+      runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
+    });
+    useAppStateStore.setState({ activeRunId: 'run-inny-aktywny' });
+    useResultsInspectorStore.setState({ selectedRunId: 'run-sc-1', extendedTrace: sladFixture() });
+    render(<DowodPrzebiegu trybZaawansowania="basic" wskazanyRunId="run-sc-1" />);
+    expect(
+      screen.getAllByText('Impedancja zastępcza w punkcie zwarcia').length,
+    ).toBeGreaterThan(0);
+    // Nazwa analizy PL wskazanego przebiegu (z rejestru), nie aktywnego.
+    expect(screen.getByText('Zwarcie trójfazowe (3F)')).toBeInTheDocument();
+  });
+
+  it('brak wskazania (null) = dotychczasowe zachowanie 1:1 (aktywny przebieg)', async () => {
+    useExecutionRunsStore.setState({
+      runs: [przebiegFixture({ id: 'run-sc-1', analysis_type: 'SC_3F' })],
+    });
+    useAppStateStore.setState({ activeRunId: 'run-sc-1' });
+    render(<DowodPrzebiegu trybZaawansowania="basic" wskazanyRunId={null} />);
+    await waitFor(() => expect(selectRun).toHaveBeenCalledWith('run-sc-1'));
+  });
+});

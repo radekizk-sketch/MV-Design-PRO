@@ -31,6 +31,7 @@ import type { ShortCircuitRow } from '../../../ui/results-inspector/types';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { ANALYSIS_TYPE_LABELS } from '../../../ui/study-cases/types';
 import type { DefinicjaKolumny, WartoscKomorki, WierszTabeli } from '../wzorzec';
+import { refDowoduPorownania } from './dowodPorownania';
 import {
   ZWARCIA_POROWNANIE_STRINGS as SZ,
   fmtData,
@@ -119,11 +120,20 @@ interface Trojka {
   d: WartoscKomorki;
 }
 
-/** Komórka wartości źródłowej lub „—" przy braku danej (null w kontrakcie). */
-function komorka(wartosc: number | null, format: (n: number) => string): WartoscKomorki {
+/**
+ * Komórka wartości źródłowej lub „—" przy braku danej (null w kontrakcie).
+ * Wartość obecna dostaje `dowodRef` strony (R3-C: 2×klik → dowód WŁAŚCIWEGO
+ * przebiegu, patrz `dowodPorownania.ts`); kreska nie ma wartości, więc nie ma
+ * też dowodu (zero martwych klików).
+ */
+function komorka(
+  wartosc: number | null,
+  format: (n: number) => string,
+  dowodRef: string,
+): WartoscKomorki {
   return wartosc === null
     ? { wartosc: SZ.kreska }
-    : { wartosc: format(wartosc), sortKey: wartosc };
+    : { wartosc: format(wartosc), sortKey: wartosc, dowodRef };
 }
 
 /**
@@ -131,15 +141,19 @@ function komorka(wartosc: number | null, format: (n: number) => string): Wartosc
  * dozwolonym działaniem liczbowym w UI (karta E12.2 §2.1 — prezentacyjna różnica
  * dwóch wartości już zwróconych przez backend). Gdy brakuje którejkolwiek strony
  * (punkt bez odpowiednika lub null w kontrakcie) — Δ pozostaje „—" (bez zgadywania).
+ * Komórka Δ jest ZAWSZE bez `dowodRef` (R3-C): różnica nie ma pojedynczego
+ * wywodu WHITE BOX — nie istnieje ślad „przebiegu Δ".
  */
 function trio(
   va: number | null,
   vb: number | null,
   format: (n: number) => string,
   formatDelty: (n: number) => string,
+  refA: string,
+  refB: string,
 ): Trojka {
-  const a = komorka(va, format);
-  const b = komorka(vb, format);
+  const a = komorka(va, format, refA);
+  const b = komorka(vb, format, refB);
   if (va === null || vb === null) {
     return { a, b, d: { wartosc: SZ.kreska } };
   }
@@ -167,11 +181,13 @@ export function naWierszePunktowZwarciowych(
     const rb = mapaB.get(k) ?? null;
     const nazwa = ra?.target_name ?? rb?.target_name ?? k;
     const sufiks = ra && !rb ? SZ.tylkoA : !ra && rb ? SZ.tylkoB : '';
+    const refA = refDowoduPorownania('A', k);
+    const refB = refDowoduPorownania('B', k);
 
-    const ikss = trio(ra?.ikss_ka ?? null, rb?.ikss_ka ?? null, fmtKA, fmtDeltaKA);
-    const ip = trio(ra?.ip_ka ?? null, rb?.ip_ka ?? null, fmtKA, fmtDeltaKA);
-    const ith = trio(ra?.ith_ka ?? null, rb?.ith_ka ?? null, fmtKA, fmtDeltaKA);
-    const sk = trio(ra?.sk_mva ?? null, rb?.sk_mva ?? null, fmtMVA, fmtDeltaMVA);
+    const ikss = trio(ra?.ikss_ka ?? null, rb?.ikss_ka ?? null, fmtKA, fmtDeltaKA, refA, refB);
+    const ip = trio(ra?.ip_ka ?? null, rb?.ip_ka ?? null, fmtKA, fmtDeltaKA, refA, refB);
+    const ith = trio(ra?.ith_ka ?? null, rb?.ith_ka ?? null, fmtKA, fmtDeltaKA, refA, refB);
+    const sk = trio(ra?.sk_mva ?? null, rb?.sk_mva ?? null, fmtMVA, fmtDeltaMVA, refA, refB);
 
     return {
       punkt: { wartosc: `${nazwa}${sufiks}` },

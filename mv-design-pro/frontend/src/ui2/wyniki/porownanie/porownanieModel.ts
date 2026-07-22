@@ -41,6 +41,7 @@ import type {
   PowerFlowRunItem,
 } from '../../../ui/power-flow-comparison/types';
 import type { DefinicjaKolumny, WartoscKomorki, WierszTabeli, WierszZalozenia } from '../wzorzec';
+import { refDowoduPorownania } from './dowodPorownania';
 import {
   POROWNANIE_STRINGS,
   WAGA_PROG_TAG,
@@ -120,12 +121,24 @@ function poza(mapa: Map<string, number>, elementRef: string): boolean {
   return (mapa.get(elementRef) ?? 0) >= WAGA_PROG_TAG;
 }
 
-/** Komórka wartości źródłowej (A lub B): sformatowana + `sortKey` liczbowy. */
-function komorka(wartosc: number, format: (n: number) => string): WartoscKomorki {
-  return { wartosc: format(wartosc), sortKey: wartosc };
+/**
+ * Komórka wartości źródłowej (A lub B): sformatowana + `sortKey` liczbowy +
+ * `dowodRef` strony (R3-C: 2×klik otwiera dowód WŁAŚCIWEGO przebiegu — patrz
+ * `dowodPorownania.ts`).
+ */
+function komorka(
+  wartosc: number,
+  format: (n: number) => string,
+  dowodRef: string,
+): WartoscKomorki {
+  return { wartosc: format(wartosc), sortKey: wartosc, dowodRef };
 }
 
-/** Komórka delty: sformatowana ze znakiem + `sortKey` + tag przy wadze poważnej. */
+/**
+ * Komórka delty: sformatowana ze znakiem + `sortKey` + tag przy wadze poważnej.
+ * BEZ `dowodRef` (R3-C): różnica B−A nie ma pojedynczego wywodu WHITE BOX —
+ * nie istnieje ślad „przebiegu Δ", więc delta świadomie nie otwiera dowodu.
+ */
 function komorkaDelty(
   wartosc: number,
   format: (n: number) => string,
@@ -145,13 +158,15 @@ export function naWierszeSzynDiff(
 ): WierszTabeli[] {
   return rows.map((row) => {
     const flaga = poza(wagi, row.bus_id);
+    const refA = refDowoduPorownania('A', row.bus_id);
+    const refB = refDowoduPorownania('B', row.bus_id);
     return {
       szyna: { wartosc: row.bus_id },
-      vA: komorka(row.v_pu_a, fmtNapiecie),
-      vB: komorka(row.v_pu_b, fmtNapiecie),
+      vA: komorka(row.v_pu_a, fmtNapiecie, refA),
+      vB: komorka(row.v_pu_b, fmtNapiecie, refB),
       dV: komorkaDelty(row.delta_v_pu, fmtDeltaNapiecie, flaga),
-      katA: komorka(row.angle_deg_a, fmtKat),
-      katB: komorka(row.angle_deg_b, fmtKat),
+      katA: komorka(row.angle_deg_a, fmtKat, refA),
+      katB: komorka(row.angle_deg_b, fmtKat, refB),
       dKat: komorkaDelty(row.delta_angle_deg, fmtDeltaKat, flaga),
     };
   });
@@ -164,13 +179,15 @@ export function naWierszeGalezi(
 ): WierszTabeli[] {
   return rows.map((row) => {
     const flaga = poza(wagi, row.branch_id);
+    const refA = refDowoduPorownania('A', row.branch_id);
+    const refB = refDowoduPorownania('B', row.branch_id);
     return {
       galaz: { wartosc: row.branch_id },
-      stratyA: komorka(row.losses_p_mw_a, fmtMoc),
-      stratyB: komorka(row.losses_p_mw_b, fmtMoc),
+      stratyA: komorka(row.losses_p_mw_a, fmtMoc, refA),
+      stratyB: komorka(row.losses_p_mw_b, fmtMoc, refB),
       dStraty: komorkaDelty(row.delta_losses_p_mw, fmtDeltaMoc, flaga),
-      mocA: komorka(row.p_from_mw_a, fmtMoc),
-      mocB: komorka(row.p_from_mw_b, fmtMoc),
+      mocA: komorka(row.p_from_mw_a, fmtMoc, refA),
+      mocB: komorka(row.p_from_mw_b, fmtMoc, refB),
       dMoc: komorkaDelty(row.delta_p_from_mw, fmtDeltaMoc, flaga),
     };
   });

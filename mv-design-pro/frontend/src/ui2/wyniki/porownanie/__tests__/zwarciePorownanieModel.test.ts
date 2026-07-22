@@ -106,6 +106,32 @@ describe('zwarciePorownanieModel — tabela delt per punkt (prezentacyjna różn
     expect(wiersze[0].ikssD.wartosc).toBe('+5,000');
   });
 
+  it('R3-C: komórki A/B niosą dowodRef strony (A:punkt / B:punkt), Δ bez dowodu', () => {
+    const w = naWierszePunktowZwarciowych(
+      [wierszSc({ target_id: 'B1' })],
+      [wierszSc({ target_id: 'B1' })],
+    )[0];
+    expect(w.ikssA.dowodRef).toBe('A:B1');
+    expect(w.ikssB.dowodRef).toBe('B:B1');
+    expect(w.skA.dowodRef).toBe('A:B1');
+    expect(w.skB.dowodRef).toBe('B:B1');
+    // Różnica B−A nie ma pojedynczego wywodu WHITE BOX — delta bez dowodu.
+    expect(w.ikssD.dowodRef).toBeUndefined();
+    expect(w.skD.dowodRef).toBeUndefined();
+  });
+
+  it('R3-C: kreska (brak wartości / punkt bez odpowiednika) nie niesie dowodRef', () => {
+    const wiersze = naWierszePunktowZwarciowych(
+      [wierszSc({ target_id: 'B1', ip_ka: null })],
+      [wierszSc({ target_id: 'B1' }), wierszSc({ target_id: 'ONLYB' })],
+    );
+    const wspolny = wiersze.find((w) => String(w.punkt.wartosc) === 'Szyna GPZ');
+    expect(wspolny?.ipA.dowodRef).toBeUndefined(); // null w kontrakcie
+    const tylkoB = wiersze.find((w) => String(w.punkt.wartosc).includes(SZ.tylkoB));
+    expect(tylkoB?.ikssA.dowodRef).toBeUndefined(); // strona A bez danych
+    expect(tylkoB?.ikssB.dowodRef).toBe('B:ONLYB');
+  });
+
   it('kolejność wierszy deterministyczna — unia identyfikatorów sortowana', () => {
     const wiersze = naWierszePunktowZwarciowych(
       [wierszSc({ target_id: 'Z', target_name: 'Z' }), wierszSc({ target_id: 'A', target_name: 'A' })],

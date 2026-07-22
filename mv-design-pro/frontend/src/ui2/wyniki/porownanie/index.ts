@@ -27,6 +27,8 @@ export {
   etykietaPrzebieguZwarciowego,
   naWierszePunktowZwarciowych,
 } from './zwarciePorownanieModel';
+export { refDowoduPorownania, stronaDowodu } from './dowodPorownania';
+export type { StronaPorownania } from './dowodPorownania';
 export {
   POROWNANIE_STRINGS,
   WAGA_PL,

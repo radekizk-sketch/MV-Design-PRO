@@ -3,6 +3,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 
 import { EkranPorownania } from '../EkranPorownania';
 import { ZWARCIA_POROWNANIE_STRINGS as SZ } from '../strings';
+import { WZORZEC_STRINGS } from '../../wzorzec';
+import { useShellStore } from '../../../shell/useShellStore';
 import { fetchPowerFlowRuns } from '../../../../ui/power-flow-comparison/api';
 import { fetchShortCircuitResults } from '../../../../ui/results-inspector/api';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
@@ -69,11 +71,14 @@ beforeEach(() => {
   );
   ustawPrzebiegi();
   useStudyCasesStore.setState({ cases: [przypadek()] });
+  // Izolacja deep-linku dowodu (R3-C): żadne żądanie nie zalega między testami.
+  useShellStore.setState({ wynikiTab: null, wynikiTabElement: null });
 });
 
 afterEach(() => {
   useExecutionRunsStore.setState({ runs: [] });
   useStudyCasesStore.setState({ cases: [] });
+  useShellStore.setState({ wynikiTab: null, wynikiTabElement: null });
   vi.clearAllMocks();
 });
 
@@ -184,5 +189,70 @@ describe('Porównanie A/B zwarć — porównanie i tabela delt', () => {
     fireEvent.click(screen.getByTestId('mvd-porz-przycisk'));
     expect(screen.getByTestId('mvd-porz-blad')).toHaveTextContent(SZ.walidacjaTeSame);
     expect(mockScResults).not.toHaveBeenCalled();
+  });
+});
+
+describe('Porównanie A/B zwarć — dowody kolumn A/B (R3-C)', () => {
+  async function wykonaj() {
+    fireEvent.change(screen.getByTestId('mvd-porz-select-a'), { target: { value: 'sc-run-a' } });
+    fireEvent.change(screen.getByTestId('mvd-porz-select-b'), { target: { value: 'sc-run-b' } });
+    fireEvent.click(screen.getByTestId('mvd-porz-przycisk'));
+    await screen.findByTestId('mvd-porz-wynik');
+  }
+
+  /** Wiersz punktu po nazwie + jego przyciski dowodu (kolejność kolumn tabeli). */
+  function przyciskiWiersza(nazwa: string) {
+    const wiersz = screen
+      .getAllByTestId('mvd-wyn-wiersz')
+      .find((w) => w.textContent?.includes(nazwa));
+    expect(wiersz).toBeDefined();
+    return within(wiersz!).getAllByRole('button', { name: WZORZEC_STRINGS.pokazDowod });
+  }
+
+  it('2×klik na wartości kolumny A → deep-link dowodu z przebiegiem A', async () => {
+    render(<EkranPorownania {...props()} />);
+    await przejdzDoZwarc();
+    await wykonaj();
+    fireEvent.doubleClick(przyciskiWiersza('Szyna 1')[0]); // Ik" A
+    expect(useShellStore.getState().wynikiTab).toBe('dowod');
+    expect(useShellStore.getState().wynikiTabElement).toBe('sc-run-a');
+  });
+
+  it('2×klik na wartości kolumny B → deep-link dowodu z przebiegiem B', async () => {
+    render(<EkranPorownania {...props()} />);
+    await przejdzDoZwarc();
+    await wykonaj();
+    fireEvent.doubleClick(przyciskiWiersza('Szyna 1')[1]); // Ik" B
+    expect(useShellStore.getState().wynikiTab).toBe('dowod');
+    expect(useShellStore.getState().wynikiTabElement).toBe('sc-run-b');
+  });
+
+  it('kolumny Δ bez akcji dowodu (różnica nie ma pojedynczego wywodu WHITE BOX)', async () => {
+    render(<EkranPorownania {...props()} />);
+    await przejdzDoZwarc();
+    await wykonaj();
+    // Wspólny punkt: 8 przycisków (A i B dla Ik", ip, Ith, Sk) — delty bez przycisku.
+    expect(przyciskiWiersza('Szyna 1')).toHaveLength(8);
+    expect(screen.getByText('+2,000 (+20,0%)').closest('button')).toBeNull();
+  });
+
+  it('punkt „(tylko B)": kolumny A (kreski) bez akcji, kolumny B otwierają dowód B', async () => {
+    render(<EkranPorownania {...props()} />);
+    await przejdzDoZwarc();
+    await wykonaj();
+    const przyciski = przyciskiWiersza(`Szyna 2${SZ.tylkoB}`);
+    expect(przyciski).toHaveLength(4); // wyłącznie strony B
+    fireEvent.doubleClick(przyciski[0]);
+    expect(useShellStore.getState().wynikiTabElement).toBe('sc-run-b');
+  });
+
+  it('zmiana selektora PO porównaniu nie zmienia celu dowodu (para użyta w porównaniu)', async () => {
+    render(<EkranPorownania {...props()} />);
+    await przejdzDoZwarc();
+    await wykonaj();
+    // Przestawienie selektora A nie przelicza tabeli — dowód wciąż z pary A/B porównania.
+    fireEvent.change(screen.getByTestId('mvd-porz-select-a'), { target: { value: 'sc-run-b' } });
+    fireEvent.doubleClick(przyciskiWiersza('Szyna 1')[0]);
+    expect(useShellStore.getState().wynikiTabElement).toBe('sc-run-a');
   });
 });

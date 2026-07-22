@@ -76,6 +76,17 @@ describe('naWierszeSzynDiff — A · B · Δ z sortKey i tagiem wg wagi', () => 
     expect(wiersze[0].vA.sortKey).toBe(1.02);
     expect(wiersze[0].vB.sortKey).toBe(0.965);
   });
+
+  it('R3-C: komórki A/B niosą dowodRef strony, Δ bez dowodu (brak wywodu różnicy)', () => {
+    const w = naWierszeSzynDiff([busDiffFixture()], new Map())[0];
+    expect(w.vA.dowodRef).toBe('A:SZYNA-GPZ');
+    expect(w.vB.dowodRef).toBe('B:SZYNA-GPZ');
+    expect(w.katA.dowodRef).toBe('A:SZYNA-GPZ');
+    expect(w.katB.dowodRef).toBe('B:SZYNA-GPZ');
+    // Różnica B−A nie ma pojedynczego wywodu WHITE BOX — delta bez dowodu.
+    expect(w.dV.dowodRef).toBeUndefined();
+    expect(w.dKat.dowodRef).toBeUndefined();
+  });
 });
 
 describe('naWierszeGalezi — straty i moc A · B · Δ', () => {
@@ -94,6 +105,16 @@ describe('naWierszeGalezi — straty i moc A · B · Δ', () => {
     const wagi = mapaWagElementow(rankingFixture());
     const w = naWierszeGalezi([branchDiffFixture()], wagi)[0];
     expect(w.dStraty.ostrzezenie).toBe(false);
+  });
+
+  it('R3-C: komórki A/B gałęzi niosą dowodRef strony, Δ bez dowodu', () => {
+    const w = naWierszeGalezi([branchDiffFixture()], new Map())[0];
+    expect(w.stratyA.dowodRef).toBe('A:LINIA-GPZ-ST1');
+    expect(w.stratyB.dowodRef).toBe('B:LINIA-GPZ-ST1');
+    expect(w.mocA.dowodRef).toBe('A:LINIA-GPZ-ST1');
+    expect(w.mocB.dowodRef).toBe('B:LINIA-GPZ-ST1');
+    expect(w.dStraty.dowodRef).toBeUndefined();
+    expect(w.dMoc.dowodRef).toBeUndefined();
   });
 });
 

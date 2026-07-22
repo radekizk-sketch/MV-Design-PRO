@@ -164,14 +164,16 @@ export function WynikiWarsztat({
   );
   // Deep-link między-przestrzenny (np. hub Dokumentacji → generator studium OZE):
   // jednorazowe żądanie ze shell store; walidujemy id i czyścimy po konsumpcji.
-  // R2-B: żądanie może nieść kontekst elementu (`wynikiTabElement`) — dziś
-  // konsumuje go wyłącznie okno „Dobór kompensacji" (pre-selekcja węzła
-  // przekroczenia bilansu mocy biernej); dla innych zakładek kontekst nie jest
-  // przechwytywany (zero zalegających refów między zakładkami).
+  // R2-B: żądanie może nieść kontekst elementu (`wynikiTabElement`) —
+  // konsumują go okno „Dobór kompensacji" (pre-selekcja węzła przekroczenia
+  // bilansu mocy biernej) oraz zakładka „Dowód obliczeń" (R3-C: kontekst =
+  // KONKRETNY run_id, np. przebieg kolumny A/B porównania); dla innych zakładek
+  // kontekst nie jest przechwytywany (zero zalegających refów między zakładkami).
   const wynikiTab = useShellStore((s) => s.wynikiTab);
   const wynikiTabElement = useShellStore((s) => s.wynikiTabElement);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const [elementKompensacji, setElementKompensacji] = useState<string | null>(null);
+  const [przebiegDowodu, setPrzebiegDowodu] = useState<string | null>(null);
   useEffect(() => {
     if (!wynikiTab) return;
     if (ZAKLADKI.some((z) => z.id === wynikiTab)) {
@@ -179,14 +181,26 @@ export function WynikiWarsztat({
       if (wynikiTab === 'kompensacja' && wynikiTabElement) {
         setElementKompensacji(wynikiTabElement);
       }
+      if (wynikiTab === 'dowod') {
+        // Deep-link bez kontekstu = dowód aktywnego przebiegu (czyści wskazanie).
+        setPrzebiegDowodu(wynikiTabElement ?? null);
+      }
     }
     setWynikiTab(null); // czyści OBA pola żądania (tab + element)
   }, [wynikiTab, wynikiTabElement, setWynikiTab]);
   const zalozeniaZwarciowe = useZalozeniaZwarcioweAktywnegoPrzypadku();
 
+  // Nawigacja ręczna (klik/klawiatura/2×klik w ekranach jednego przebiegu):
+  // wejście na „Dowód obliczeń" bez deep-linku wraca do aktywnego przebiegu —
+  // wskazanie z porównania nie może zalegać (izolacja kontekstu, R3-C).
+  const przejdzDoZakladki = (id: ZakladkaId) => {
+    if (id === 'dowod') setPrzebiegDowodu(null);
+    setZakladka(id);
+  };
+
   // 2×klik na wartości z dowodem → zakładka „Dowód obliczeń" (okno E9.1).
   const otworzDowod = (_ref: string) => {
-    setZakladka('dowod');
+    przejdzDoZakladki('dowod');
   };
 
   return (
@@ -208,7 +222,7 @@ export function WynikiWarsztat({
                   tabIndex={zakladka === z.id ? 0 : -1}
                   className={zakladka === z.id ? 'mvd-wyniki-zakladka mvd-on' : 'mvd-wyniki-zakladka'}
                   data-testid={`mvd-wyniki-zakladka-${z.id}`}
-                  onClick={() => setZakladka(z.id)}
+                  onClick={() => przejdzDoZakladki(z.id)}
                   onKeyDown={(e) => {
                     if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
                       e.preventDefault();
@@ -216,7 +230,7 @@ export function WynikiWarsztat({
                       const kolejnosc = GRUPY_ZAKLADEK.flatMap((g) => g.zakladki);
                       const idx = kolejnosc.indexOf(zakladka);
                       const krok = e.key === 'ArrowRight' ? 1 : kolejnosc.length - 1;
-                      setZakladka(kolejnosc[(idx + krok) % kolejnosc.length]);
+                      przejdzDoZakladki(kolejnosc[(idx + krok) % kolejnosc.length]);
                     }
                   }}
                 >
@@ -241,7 +255,9 @@ export function WynikiWarsztat({
             czasCieplnyS={zalozeniaZwarciowe.czasCieplnyS}
           />
         )}
-        {zakladka === 'dowod' && <DowodPrzebiegu trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'dowod' && (
+          <DowodPrzebiegu trybZaawansowania={trybZaawansowania} wskazanyRunId={przebiegDowodu} />
+        )}
         {zakladka === 'jakosc' && (
           <EkranJakosci trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}

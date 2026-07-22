@@ -8,15 +8,23 @@
  * Granice (NOT-A-SOLVER / karta §4): fronton NICZEGO nie liczy — różnice, delty
  * i ranking pochodzą WYŁĄCZNIE z odpowiedzi backendu. Klient API reużyty
  * z `ui/power-flow-comparison/api` (bez własnego klienta). Zero automatyzmu:
- * porównanie rusza tylko po kliknięciu. Brak dowodów per komórka w kontrakcie
- * porównania → wzorzec dostaje pustą akcję dowodu.
+ * porównanie rusza tylko po kliknięciu.
+ *
+ * Dowody (R3-C / K3-G2): wartość z kolumny A otwiera dowód przebiegu A
+ * (`wynik.run_a_id`), z kolumny B — przebiegu B (`wynik.run_b_id`) przez
+ * deep-link z kontekstem `setWynikiTab('dowod', runId)` (mechanizm R2-B);
+ * strona koduje się w `dowodRef` komórki (`dowodPorownania.ts`). Kolumny Δ
+ * i ranking pozostają bez dowodu — różnica nie ma pojedynczego wywodu
+ * WHITE BOX, a problem rankingu nie jest wartością jednego przebiegu.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import './porownanie.css';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
+import { useShellStore } from '../../shell/useShellStore';
 import { SekcjaZalozen, TabelaWynikow } from '../wzorzec';
+import { stronaDowodu } from './dowodPorownania';
 import {
   createPowerFlowComparison,
   fetchPowerFlowRuns,
@@ -41,7 +49,11 @@ import {
   naZalozeniaPorownania,
 } from './porownanieModel';
 
-/** Brak dowodów per komórka w kontrakcie porównania — stabilna pusta akcja. */
+/**
+ * Ranking nie ma dowodu per komórka (problem nie jest wartością jednego
+ * przebiegu — R3-C) — stabilna pusta akcja; wiersze rankingu nie niosą
+ * `dowodRef`, więc wzorzec nie renderuje tam przycisków (zero martwych klików).
+ */
 const BEZ_DOWODU = (): void => {};
 
 type Zakladka = 'szyny' | 'galezie' | 'ranking';
@@ -178,6 +190,20 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
     }
   }, [runA, runB]);
 
+  // R3-C: 2×klik na wartości kolumny A/B otwiera dowód WŁAŚCIWEGO przebiegu —
+  // strona z `dowodRef`, przebieg z pary użytej w porównaniu (run_a_id/run_b_id
+  // Z WYNIKU backendu, nie z selektorów — te mogły się zmienić po porównaniu).
+  const setWynikiTab = useShellStore((s) => s.setWynikiTab);
+  const otworzDowodPrzebiegu = useCallback(
+    (ref: string) => {
+      if (!wynik) return;
+      const strona = stronaDowodu(ref);
+      if (strona === null) return;
+      setWynikiTab('dowod', strona === 'A' ? wynik.run_a_id : wynik.run_b_id);
+    },
+    [wynik, setWynikiTab],
+  );
+
   const wagi = useMemo(
     () => (wynik ? mapaWagElementow(wynik.ranking) : new Map<string, number>()),
     [wynik],
@@ -307,7 +333,7 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
               <TabelaWynikow
                 kolumny={KOLUMNY_SZYN_DIFF}
                 wiersze={wierszeSzyn}
-                onOtworzDowod={BEZ_DOWODU}
+                onOtworzDowod={otworzDowodPrzebiegu}
                 trybZaawansowania={trybZaawansowania}
               />
             ))}
@@ -321,7 +347,7 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
               <TabelaWynikow
                 kolumny={KOLUMNY_GALEZI}
                 wiersze={wierszeGalezi}
-                onOtworzDowod={BEZ_DOWODU}
+                onOtworzDowod={otworzDowodPrzebiegu}
                 trybZaawansowania={trybZaawansowania}
               />
             ))}
