@@ -28,6 +28,14 @@ przez SPEC V3); wykonawczo obowiązują fazy S1–S5:
 | S4 Motyw + kadr | D11 (decyzja właściciela: SCADA-dark + jasny wariant w eksporcie — AskUserQuestion przed startem); fit-do-treści | S1–S3 | do zlecenia |
 | S5 Goldeny + dowód | wymiana goldenów jednym commitem; sekwencja zoom ≥3 kroki; macierz parytetu funkcji (overlaye, strzałki, znacznik, menu, edycja, kreatory, deep-linki) | S1–S4 | Fable osobiście |
 
+Rozszerzenie 2026-07-22 (recenzja ekspercka layoutu — `docs/sld/RECENZJA_EKSPERCKA_LAYOUT_2026-07.md`, WIĄŻĄCA):
+
+| Faza | Zakres (mapowanie pkt recenzji) | Zależy od | Status |
+|---|---|---|---|
+| S6 Silnik layoutu P0 | compact tree layout (pkt 11) + piony proporcjonalne (2) + minimalizacja długości/załamań (3) + global tree balancing (9) + odstępy górnego pasa +20–35% (1) + stałe światło (7) + eliminacja pustych przestrzeni z miarą (10) + rytm wg szerokości poddrzewa (8) | S1–S3 | karta wykonawcy (w locie) |
+| S7 Layout P1 | globalne rozmieszczanie opisów — przemieszczanie zamiast tylko odrzucania (15); klastry podobnych gałęzi (6); optymalizacja wydruku A0/A1 (12, po S4) | S6, S4 | do zlecenia |
+| S8 Płynność LOD P2 | płynne przejścia między L0/L1/L2 (13; kotwice STAŁE — rozstrzygnięcie w recenzji: adaptacyjny jest detal, nie layout) | S6 | do zlecenia |
+
 Rygor per faza: pełna regresja `ui/sld`+`sld-overlay`, sld_determinism,
 overlay_no_physics, forbidden_ui_terms, zrzuty żywej aplikacji do oceny właściciela.
 
