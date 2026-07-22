@@ -1,8 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { PulpitProjektu } from '../PulpitProjektu';
 import { PULPIT_STRINGS } from '../strings';
 import { INSPECTOR_STRINGS } from '../../../inspector';
+import { useAppStateStore } from '../../../../ui/app-state';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useStudyCasesStore } from '../../../../ui/study-cases/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
@@ -131,11 +132,58 @@ describe('PulpitProjektu — kafle z danymi ze store read-only', () => {
     expect(screen.getByTestId('pulpit-przylaczenie-brak')).toBeInTheDocument();
   });
 
-  it('klik kafla „Warunki przyłączenia" → onNawiguj(„model")', () => {
-    const p = props();
-    render(<PulpitProjektu {...p} />);
-    fireEvent.click(screen.getByRole('button', { name: PULPIT_STRINGS.przylaczenieTytul }));
-    expect(p.onNawiguj).toHaveBeenCalledWith('model');
+  it('warunki OSD nie podane → uczciwa informacja + przycisk „Uzupełnij warunki OSD"', () => {
+    render(<PulpitProjektu {...props()} />);
+    expect(screen.getByTestId('pulpit-osd-nie-podano')).toBeInTheDocument();
+    expect(screen.getByTestId('pulpit-osd-uzupelnij')).toBeInTheDocument();
+    expect(screen.queryByTestId('pulpit-osd-werdykt')).not.toBeInTheDocument();
+  });
+
+  it('warunki OSD w nagłówku snapshotu → limit + werdykt bilansu (K2)', () => {
+    const snap = snapshotFixture({
+      generators: [{ ref_id: 'G', id: 'G', bus_ref: 'B', p_mw: 3.7 }] as never,
+      loads: [] as never,
+    });
+    snap.header.connection_conditions = { moc_przylaczeniowa_mw: 2.0 };
+    useSnapshotStore.setState({ snapshot: snap });
+    render(<PulpitProjektu {...props()} />);
+    expect(screen.getByTestId('pulpit-osd-limit')).toHaveTextContent('2,00');
+    expect(screen.getByTestId('pulpit-osd-werdykt')).toHaveTextContent('przekracza limit OSD');
+  });
+
+  it('formularz warunków OSD: realna ścieżka zapisu przez operację domenową', async () => {
+    const executeDomainOperation = vi
+      .fn()
+      .mockResolvedValue({ error: null, snapshot: snapshotFixture() });
+    useSnapshotStore.setState({ executeDomainOperation } as never);
+    useAppStateStore.setState({ activeCaseId: 'case-1' } as never);
+    render(<PulpitProjektu {...props()} />);
+
+    fireEvent.click(screen.getByTestId('pulpit-osd-uzupelnij'));
+    fireEvent.change(screen.getByTestId('pulpit-osd-moc'), { target: { value: '2,5' } });
+    fireEvent.change(screen.getByTestId('pulpit-osd-cosphi'), { target: { value: '0,95' } });
+    fireEvent.click(screen.getByTestId('pulpit-osd-zapisz'));
+
+    await waitFor(() =>
+      expect(executeDomainOperation).toHaveBeenCalledWith('case-1', 'set_connection_conditions', {
+        moc_przylaczeniowa_mw: 2.5,
+        wymagany_cos_phi: 0.95,
+      }),
+    );
+  });
+
+  it('formularz warunków OSD: walidacja PL przed wysłaniem (cosφ poza (0,1] → bez wołania)', () => {
+    const executeDomainOperation = vi.fn();
+    useSnapshotStore.setState({ executeDomainOperation } as never);
+    useAppStateStore.setState({ activeCaseId: 'case-1' } as never);
+    render(<PulpitProjektu {...props()} />);
+
+    fireEvent.click(screen.getByTestId('pulpit-osd-uzupelnij'));
+    fireEvent.change(screen.getByTestId('pulpit-osd-cosphi'), { target: { value: '1,5' } });
+    fireEvent.click(screen.getByTestId('pulpit-osd-zapisz'));
+
+    expect(screen.getByTestId('pulpit-osd-blad')).toHaveTextContent('cosφ');
+    expect(executeDomainOperation).not.toHaveBeenCalled();
   });
 
   it('lista przypadków: wiersze ze study-cases', () => {

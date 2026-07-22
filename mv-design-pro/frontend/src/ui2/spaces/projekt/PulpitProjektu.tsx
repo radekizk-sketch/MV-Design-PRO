@@ -103,9 +103,7 @@ export function PulpitProjektu({
           onKlik={() => onNawiguj('wyniki')}
         />
         <KafelSpojnosci dane={spojnosc} onKlik={() => onNawiguj('wyniki')} />
-        {przylaczenie && (
-          <KafelPrzylaczenia dane={przylaczenie} onKlik={() => onNawiguj('model')} />
-        )}
+        {przylaczenie && <KafelPrzylaczenia dane={przylaczenie} />}
         <KafelWkrotce tytul={PULPIT_STRINGS.celTytul} />
       </div>
 

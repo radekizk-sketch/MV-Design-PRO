@@ -108,11 +108,12 @@ export interface ZrodloSieciowe {
 }
 
 /**
- * Kafel „Warunki przyłączenia i bilans mocy" (E1 — B1/B2). Warunki przyłączenia
- * = źródła sieciowe (Sk″/Ik″/U). Bilans = rollup mocy ZNAMIONOWEJ (nameplate)
- * z modelu — NIE fizyka (analogicznie do `_existing_generation_mw` backendu,
- * które sumuje surowe `p_mw`; `p_mw` już zawiera krotność, patrz
- * `domain_operations_v2.py`).
+ * Kafel „Warunki przyłączenia i bilans mocy" (E1 — B1/B2 + K2). Warunki
+ * przyłączenia = źródła sieciowe (Sk″/Ik″/U) + blok warunków OSD z nagłówka
+ * modelu (`header.connection_conditions`, operacja `set_connection_conditions`).
+ * Bilans = rollup mocy ZNAMIONOWEJ (nameplate) z modelu — NIE fizyka
+ * (analogicznie do `_existing_generation_mw` backendu, które sumuje surowe
+ * `p_mw`; `p_mw` już zawiera krotność, patrz `domain_operations_v2.py`).
  */
 export interface PrzylaczenieKafel {
   zrodlaSieciowe: ZrodloSieciowe[];
@@ -121,6 +122,15 @@ export interface PrzylaczenieKafel {
   nettoMw: number;
   liczbaGeneratorow: number;
   liczbaOdbiorow: number;
+  /** Limit mocy z warunków przyłączenia OSD [MW]; null = nie podano. */
+  mocPrzylaczeniowaMw: number | null;
+  /** Wymagany cosφ z warunków OSD; null = nie podano. */
+  wymaganyCosPhi: number | null;
+  /** Tryb pracy przyłącza (tekst z dokumentu OSD); null = nie podano. */
+  trybPracy: string | null;
+  /** Werdykt bilansu: generacja znamionowa > limit OSD (porównanie dwóch
+   * danych WEJŚCIOWYCH — prezentacja, nie fizyka). null = brak limitu. */
+  przekroczonoLimit: boolean | null;
 }
 
 /** Wiersz listy przypadków obliczeniowych. */
@@ -189,6 +199,9 @@ export function mapujPrzylaczenie(snapshot: EnergyNetworkModel): PrzylaczenieKaf
   const generacjaMw = snapshot.generators.reduce((acc, g) => acc + g.p_mw, 0);
   const odbioryMw = snapshot.loads.reduce((acc, l) => acc + l.p_mw, 0);
 
+  const warunki = snapshot.header.connection_conditions ?? null;
+  const mocPrzylaczeniowaMw = warunki?.moc_przylaczeniowa_mw ?? null;
+
   return {
     zrodlaSieciowe,
     generacjaMw,
@@ -196,6 +209,11 @@ export function mapujPrzylaczenie(snapshot: EnergyNetworkModel): PrzylaczenieKaf
     nettoMw: generacjaMw - odbioryMw,
     liczbaGeneratorow: snapshot.generators.length,
     liczbaOdbiorow: snapshot.loads.length,
+    mocPrzylaczeniowaMw,
+    wymaganyCosPhi: warunki?.wymagany_cos_phi ?? null,
+    trybPracy: warunki?.tryb_pracy ?? null,
+    przekroczonoLimit:
+      mocPrzylaczeniowaMw === null ? null : generacjaMw > mocPrzylaczeniowaMw,
   };
 }
 

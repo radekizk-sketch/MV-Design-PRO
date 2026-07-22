@@ -185,4 +185,32 @@ describe('mapujPrzylaczenie — warunki przyłączenia + bilans mocy (E1, B1/B2)
     const snap = snapshotPrzylaczenie();
     expect(mapujPrzylaczenie(snap)).toEqual(mapujPrzylaczenie(snap));
   });
+
+  it('warunki OSD z nagłówka: limit/cosφ/tryb + werdykt „w limicie" (K2)', () => {
+    const snap = snapshotPrzylaczenie();
+    snap.header.connection_conditions = {
+      moc_przylaczeniowa_mw: 5.0,
+      wymagany_cos_phi: 0.95,
+      tryb_pracy: 'praca równoległa',
+    };
+    const p = mapujPrzylaczenie(snap);
+    expect(p.mocPrzylaczeniowaMw).toBe(5.0);
+    expect(p.wymaganyCosPhi).toBe(0.95);
+    expect(p.trybPracy).toBe('praca równoległa');
+    expect(p.przekroczonoLimit).toBe(false); // generacja 3,7 MW ≤ 5,0 MW
+  });
+
+  it('generacja znamionowa powyżej limitu OSD → werdykt przekroczenia', () => {
+    const snap = snapshotPrzylaczenie();
+    snap.header.connection_conditions = { moc_przylaczeniowa_mw: 2.0 };
+    expect(mapujPrzylaczenie(snap).przekroczonoLimit).toBe(true); // 3,7 > 2,0
+  });
+
+  it('brak bloku warunków OSD → pola null i werdykt null (nie fabrykujemy)', () => {
+    const p = mapujPrzylaczenie(snapshotPrzylaczenie());
+    expect(p.mocPrzylaczeniowaMw).toBeNull();
+    expect(p.wymaganyCosPhi).toBeNull();
+    expect(p.trybPracy).toBeNull();
+    expect(p.przekroczonoLimit).toBeNull();
+  });
 });

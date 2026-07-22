@@ -79,6 +79,24 @@ export const PULPIT_STRINGS = {
   jednKa: 'kA',
   jednKv: 'kV',
   jednMw: 'MW',
+
+  // Warunki przyłączenia OSD (K2 — blok `header.connection_conditions`)
+  osdLimit: 'Moc przyłączeniowa (OSD)',
+  osdCosPhi: 'Wymagany cosφ (OSD)',
+  osdTrybPracy: 'Tryb pracy przyłącza',
+  osdBrak: 'Warunków przyłączenia OSD nie podano.',
+  osdUzupelnij: 'Uzupełnij warunki OSD',
+  osdWerdyktOk: 'w limicie OSD',
+  osdWerdyktPrzekroczono: 'przekracza limit OSD',
+  osdFormMoc: 'Moc przyłączeniowa [MW]',
+  osdFormCosPhi: 'Wymagany cosφ',
+  osdFormTryb: 'Tryb pracy (z dokumentu OSD)',
+  osdFormZapisz: 'Zapisz warunki',
+  osdFormAnuluj: 'Anuluj',
+  osdFormBladMoc: 'Moc przyłączeniowa musi być liczbą dodatnią.',
+  osdFormBladCosPhi: 'Wymagany cosφ musi być w przedziale (0, 1].',
+  osdFormBladPuste: 'Podaj przynajmniej jedno pole warunków.',
+  osdFormBrakZakresu: 'Otwórz zakres obliczeń, aby zapisać warunki do modelu.',
 } as const;
 
 /** Liczba w formacie PL (przecinek dziesiętny) z zadaną liczbą miejsc; null → „—". */

@@ -162,7 +162,7 @@ K5 (Fable, runda wizualna + strona oceny)              → zamknięcie programu
 
 - K1: **SCALONE** (V12K-101) — wykonawca-1, zweryfikowane niezależnie, cherry-pick 2026-07-22
 - K4: **SCALONE** (V12K-102) — wykonawca-2, zweryfikowane niezależnie, cherry-pick 2026-07-22
-- K2: W TOKU (Fable) — recon gotowy (ENMHeader models.py:126, ALL_V2_HANDLERS)
+- K2: **SCALONE** (V12K-103) — Fable osobiście, backend+UI end-to-end, 2026-07-22
 - K3: ZLECONE (wykonawca-3, worktree) — 2026-07-22
 - K5: W KOLEJCE (po K2/K3)
 

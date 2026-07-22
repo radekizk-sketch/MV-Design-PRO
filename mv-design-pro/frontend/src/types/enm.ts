@@ -85,6 +85,13 @@ export interface ENMDefaults {
   unit_system: 'SI';
 }
 
+/** Warunki przyłączenia z dokumentu OSD (dane wejściowe projektu — karta K2). */
+export interface ConnectionConditions {
+  moc_przylaczeniowa_mw?: number | null;
+  wymagany_cos_phi?: number | null;
+  tryb_pracy?: string | null;
+}
+
 export interface ENMHeader {
   enm_version: '1.0';
   name: string;
@@ -94,6 +101,8 @@ export interface ENMHeader {
   revision: number;
   hash_sha256: string;
   defaults: ENMDefaults;
+  /** Blok addytywny (backend `set_connection_conditions`); brak = nie podano. */
+  connection_conditions?: ConnectionConditions | null;
 }
 
 // ---------------------------------------------------------------------------

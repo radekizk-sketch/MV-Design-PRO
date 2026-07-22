@@ -159,6 +159,52 @@ button.mvd-kafel:hover {
   font-size: 12px;
 }
 
+/* Warunki OSD + formularz (K2) */
+.mvd-kafel-werdykt {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 2px;
+}
+.mvd-kafel-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--mvd-line);
+}
+.mvd-kafel-form-pole {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-kafel-form-pole input {
+  width: 46%;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font: inherit;
+  font-family: var(--mvd-font-mono);
+  padding: 3px 6px;
+}
+.mvd-kafel-form-blad {
+  margin: 0;
+  color: var(--mvd-warn);
+  font-size: 12px;
+}
+.mvd-kafel-form-akcje {
+  display: flex;
+  gap: 8px;
+}
+.mvd-kafel-form-otworz {
+  margin-top: 8px;
+  align-self: flex-start;
+}
+
 /* ---- tagi statusu ---- */
 .mvd-tag {
   display: inline-block;

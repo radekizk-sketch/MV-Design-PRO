@@ -89,12 +89,15 @@ nie wyspa). Testy: `co-wymaga-uwagi/__tests__/{model,EkranCoWymagaUwagi}.test.ts
 
 Priorytet realizacji wg bólu: A1 (✅) → A2 (✅) → B1/B2 (✅) → A3 (✅) → D1 (✅) → C1 (K3 w toku).
 
-## 6. GAP-y backendu zarejestrowane przy B1/B2 (dyrektywa #4 — nie ciche)
+## 6. GAP-y backendu zarejestrowane przy B1/B2 — **DOMKNIĘTE (K2, V12K-103)**
 
-Braki pól w modelu wykryte przy E1 (do rozbudowy backendu/domeny osobną kartą,
-NIE fabrykowane w UI):
-- **cosφ wymagany + tryb pracy przyłącza** (B1) — brak pola na `Source`/nagłówku ENM.
-- **„Moc przyłączeniowa" (limit mocy z warunków OSD)** (B2) — brak pola; potrzebny
-  do porównania „zainstalowana OZE vs limit OSD" i do wniosku OSD. Dynamiczna
-  zdolność liczona jest w E5/E7 (`hosting_capacity`), ale statyczny limit z umowy
-  przyłączeniowej to osobna dana wejściowa.
+Braki pól w modelu wykryte przy E1 zostały domknięte end-to-end kartą K2
+programu FLOW EKSPERT+ (dyrektywa #4 — „nigdy nic na potem"):
+- ~~cosφ wymagany + tryb pracy przyłącza (B1)~~ → pola `wymagany_cos_phi` /
+  `tryb_pracy` w bloku `ENMHeader.connection_conditions` (backend
+  `enm/models.py`) + operacja kanoniczna `set_connection_conditions`.
+- ~~„Moc przyłączeniowa" (limit OSD) (B2)~~ → pole `moc_przylaczeniowa_mw`
+  tamże; kafel E1 pokazuje limit i werdykt „w limicie OSD / przekracza limit
+  OSD" (porównanie dwóch danych WEJŚCIOWYCH — prezentacja, nie fizyka);
+  formularz „Uzupełnij warunki OSD" w kaflu woła realną operację domenową.
+  Dynamiczna zdolność pozostaje w E5/E7 (`hosting_capacity`).
