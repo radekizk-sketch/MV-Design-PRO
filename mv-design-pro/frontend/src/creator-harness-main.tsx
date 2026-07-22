@@ -7,6 +7,10 @@
  * Query: `?creator=pole|oze|transformator|kompensator|magistrala|odbior|zrodlo|arcflash&theme=light|dark`.
  * Sceny dowodowe OZE (karta V-A): `?creator=lom|frt|oltc|macierz` — ekrany z pełnym
  * wywodem akademickim (WHITE BOX/KaTeX) na realnych komponentach.
+ * Sceny rundy dowodowej V-B (pełne wywody na żywych ekranach wyników):
+ * `kompensacja-wynik|sila-sieci|odbior-zgodnosc|estymacja|ssci|migotanie`
+ * (scena „odbior-zgodnosc" = ekran „Zgodność powykonawcza"; nazwa `odbior`
+ * pozostaje zajęta przez kreator odbioru nN — kolizja nazw scen).
  * Używany wyłącznie przez: e2e/creator-screenshot.spec.ts (nie część bundla aplikacji).
  */
 
@@ -22,7 +26,11 @@ import { KreatorPolaSn } from './ui2/kreatory/pole';
 import { KreatorTransformatoraSnNn } from './ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from './ui2/kreatory/zrodlo';
 import { KreatorZrodlaOze } from './ui2/kreatory/zrodlo-oze';
-import { SekcjaArcFlash, SekcjaWalidacji } from './ui2/wyniki/jakosc/EkranJakosci';
+import { SekcjaArcFlash, SekcjaMigotania, SekcjaWalidacji } from './ui2/wyniki/jakosc/EkranJakosci';
+import { EkranOdbioru } from './ui2/wyniki/odbior';
+import { EkranEstymacji } from './ui2/wyniki/estymacja';
+import { EkranSsci } from './ui2/wyniki/ssci';
+import { SekcjaSilySieci } from './ui2/oze/pulpit';
 import { EkranRozplywu } from './ui2/wyniki/rozplyw';
 import { EkranZwarc } from './ui2/wyniki/zwarcia';
 import { EkranPorownania } from './ui2/wyniki/porownanie';
@@ -322,10 +330,563 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );
   }
+  if (url.includes('/api/oze-analysis/grid-strength')) {
+    // Scena "sila-sieci" (V-B): sila sieci SCR/WSCR — ksztalt 1:1 z
+    // `analysis/grid_strength/serializer.py::view_to_dict`; kroki WHITE BOX
+    // DOKLADNIE jak builder (SCR -> werdykt; WSCR z licznikiem/mianownikiem),
+    // liczby spojne: 189.9/8.0=23.7375; 45.0/20.0=2.25; WSCR=2419.2/784=3.0857.
+    return new Response(
+      JSON.stringify({
+        analysis_id: 'gs-demo-1',
+        context: {
+          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
+          run_timestamp: '2026-07-22T08:30:00Z', snapshot_id: 'snap-demo', trace_id: 'run-sc-4',
+        },
+        weak_threshold: 3.0,
+        very_weak_threshold: 2.0,
+        entries: [
+          {
+            bus_ref: 'SZ-PV2', nominal_kv: 15.0, s_sc_mva: 189.9, s_installed_mva: 8.0,
+            scr: 23.7375, verdict: 'mocna', is_weak: false,
+            why_pl: 'SCR = 23.7375 ≥ 3.0 — sieć mocna w węźle; klasyczne założenia pracy źródła falownikowego pozostają ważne.',
+            missing_data: [],
+            white_box: [
+              {
+                symbol: 'SCR',
+                formula_latex: "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
+                substitution_pl: 'SCR = 189.9 MVA / 8.0 MVA',
+                result_pl: 'SCR = 23.7375 (–)',
+              },
+              {
+                symbol: 'werdykt',
+                formula_latex: '\\mathrm{SCR} \\; \\geq \\; 3.0',
+                substitution_pl: 'próg słaby = 3.0; próg bardzo słaby = 2.0',
+                result_pl: 'sieć mocna',
+              },
+            ],
+            modules: [{ ref: 'gen-pv-1', name: 'Farma PV 8 MW', sn_mva: 8.0 }],
+          },
+          {
+            bus_ref: 'SZ-FW1', nominal_kv: 15.0, s_sc_mva: 45.0, s_installed_mva: 20.0,
+            scr: 2.25, verdict: 'słaba', is_weak: true,
+            why_pl: 'SCR = 2.25 (przedział [2.0; 3.0)) — sieć słaba w węźle. Wymagana ostrożność: weryfikacja stabilności impedancyjnej i interakcji regulatorów.',
+            missing_data: [],
+            white_box: [
+              {
+                symbol: 'SCR',
+                formula_latex: "\\mathrm{SCR} = \\dfrac{S_{sc}''}{S_n}",
+                substitution_pl: 'SCR = 45.0 MVA / 20.0 MVA',
+                result_pl: 'SCR = 2.25 (–)',
+              },
+              {
+                symbol: 'werdykt',
+                formula_latex: '\\mathrm{SCR} \\; \\lt \\; 3.0',
+                substitution_pl: 'próg słaby = 3.0; próg bardzo słaby = 2.0',
+                result_pl: 'sieć słaba',
+              },
+            ],
+            modules: [{ ref: 'gen-fw-1', name: 'Park wiatrowy 20 MVA', sn_mva: 20.0 }],
+          },
+          {
+            bus_ref: 'SZ-BS1', nominal_kv: null, s_sc_mva: null, s_installed_mva: 2.2,
+            scr: null, verdict: 'brak danych', is_weak: false,
+            why_pl: 'Brak mocy zwarciowej — SCR nieobliczony.',
+            missing_data: ['s_sc_mva'], white_box: [],
+            modules: [{ ref: 'gen-bess-1', name: 'Magazyn BESS 2 MW', sn_mva: 2.2 }],
+          },
+        ],
+        summary: {
+          total_buses: 3, weak_bus_count: 1, not_computed_count: 1,
+          wscr: 3.0857, wscr_verdict: 'mocna',
+          wscr_why_pl: 'WSCR = 3.0857 dla 2 źródeł — sieć mocna. WSCR ujmuje wzajemne oddziaływanie źródeł falownikowych w pobliżu (metodyka ERCOT).',
+          wscr_white_box: [
+            {
+              symbol: 'WSCR',
+              formula_latex: "\\mathrm{WSCR} = \\dfrac{\\sum_i S_{sc,i}'' \\cdot S_{n,i}}{\\left(\\sum_i S_{n,i}\\right)^2}",
+              substitution_pl: 'licznik Σ(S_sc·S_n) = 2419.2 MVA²; (Σ S_n)² = 784.0 MVA²',
+              result_pl: 'WSCR = 3.0857 (–), n = 2',
+            },
+          ],
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/oze-analysis/compensation-sizing')) {
+    // Scena "kompensacja-wynik" (V-B): dobor kompensacji PO obliczeniu — ksztalt
+    // 1:1 z `application/analyses/dobor_kompensacji.py::build_compensation_sizing_view`.
+    // Liczby spojne (P=1.2 MW, Q_load=0.84 Mvar, V=0.98 pu -> V²=0.96):
+    // baseline cosφ = 1.2/√(1.44+0.7056) = 0.82; kandydat 0.6 Mvar: Q_cap_eff =
+    // 0.6·0.96 = 0.58 -> Q_netto = 0.26 -> cosφ punktu = 0.98 ≥ 0.95 (DOBOR).
+    return new Response(
+      JSON.stringify({
+        analysis: 'compensation_sizing',
+        context: { trace_id: 'run-lf-3', snapshot_id: 'snap-demo', case_name: 'Stan normalny' },
+        parameters: {
+          bus_ref: 'SZ-ST7', bus_name: 'Szyna ST-7', bus_voltage_kv: 15,
+          cos_phi_min: 0.95, uwzglednij_noc: false,
+        },
+        input_hash: 'komp-hash-a1b2c3',
+        baseline: {
+          cosfi_przekroju_dzien: 0.82, cosfi_przekroju_noc: null,
+          cosfi_punktu_dzien: 0.82, cosfi_punktu_noc: null,
+        },
+        candidates: [
+          {
+            catalog_ref: 'cap-0v3', name: 'Bateria SN 0,3 Mvar / 15 kV', rated_mvar: 0.3, rated_kv: 15,
+            cosfi_przekroju_dzien: 0.73, cosfi_przekroju_noc: null,
+            cosfi_punktu_dzien: 0.91, cosfi_punktu_noc: null,
+            p_point_day_mw: 1.2, q_przekroju_dzien_mvar: 1.13,
+            q_cap_eff_dzien_mvar: 0.29, q_netto_punktu_dzien_mvar: 0.55,
+            p_point_night_mw: null, q_przekroju_noc_mvar: null,
+            q_cap_eff_noc_mvar: null, q_netto_punktu_noc_mvar: null,
+            spelnia_dzien: false, spelnia_noc: null, spelnia: false,
+          },
+          {
+            catalog_ref: 'cap-0v6', name: 'Bateria SN 0,6 Mvar / 15 kV', rated_mvar: 0.6, rated_kv: 15,
+            // cosφ przekroju NISKIE (0.65 < 0.95), a kandydat SPELNIA — dobor
+            // sterowany cosφ PUNKTU (0.98 ≥ 0.95); wymog wlasciciela V12K-040 B.
+            cosfi_przekroju_dzien: 0.65, cosfi_przekroju_noc: null,
+            cosfi_punktu_dzien: 0.98, cosfi_punktu_noc: null,
+            p_point_day_mw: 1.2, q_przekroju_dzien_mvar: 1.42,
+            q_cap_eff_dzien_mvar: 0.58, q_netto_punktu_dzien_mvar: 0.26,
+            p_point_night_mw: null, q_przekroju_noc_mvar: null,
+            q_cap_eff_noc_mvar: null, q_netto_punktu_noc_mvar: null,
+            spelnia_dzien: true, spelnia_noc: null, spelnia: true,
+          },
+          {
+            catalog_ref: 'cap-0v9', name: 'Bateria SN 0,9 Mvar / 15 kV', rated_mvar: 0.9, rated_kv: 15,
+            cosfi_przekroju_dzien: 0.58, cosfi_przekroju_noc: null,
+            cosfi_punktu_dzien: 1.0, cosfi_punktu_noc: null,
+            p_point_day_mw: 1.2, q_przekroju_dzien_mvar: 1.7,
+            q_cap_eff_dzien_mvar: 0.86, q_netto_punktu_dzien_mvar: -0.02,
+            p_point_night_mw: null, q_przekroju_noc_mvar: null,
+            q_cap_eff_noc_mvar: null, q_netto_punktu_noc_mvar: null,
+            spelnia_dzien: true, spelnia_noc: null, spelnia: true,
+          },
+        ],
+        dobor: {
+          catalog_ref: 'cap-0v6', name: 'Bateria SN 0,6 Mvar / 15 kV', rated_mvar: 0.6, rated_kv: 15,
+          cosfi_punktu_dzien: 0.98, cosfi_punktu_noc: null,
+          cosfi_przekroju_dzien: 0.65, cosfi_przekroju_noc: null,
+        },
+        powod_braku: null,
+        whitebox: {
+          pq_source:
+            'wypadkowy przepływ gałęzi zasilających punkt z branch_results solvera '
+            + '(koniec przy punkcie, suma po gałęziach incydentnych) przełożony na znak '
+            + 'kanoniczny przez adapter konwencji (application/analyses/konwencja_mocy.py)',
+          cosfi_przekroju:
+            'cosφ przepływu w przekroju sieciowym = |P| / √(P² + Q_przekroju²); '
+            + 'opisuje przekrój sieci, NIE stopień skompensowania odbioru',
+          cosfi_punktu:
+            'cosφ punktu kompensowanego = |P| / √(P² + Q_netto²), Q_netto = Q_load − Q_cap_eff, '
+            + 'Q_cap_eff = Σ(rated_mvar) · V² (model kondensatora z katalogu, nie fizyka pola); '
+            + 'PODSTAWA DOBORU',
+          konwencja_kanoniczna: 'P>0 pobór czynnej, Q>0 pobór indukcyjnej, Q<0 pojemnościowa',
+          decyzja: 'V12K-040 opcja B — PowerFlowResult FROZEN, adapter interpretacyjny',
+          candidate_count: 3,
+          night_scenario: null,
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/quality/flicker')) {
+    // Scena "migotanie" (V-B): ocena Pst/Plt/d — ksztalt 1:1 z
+    // `application/analyses/migotanie.py::build_migotanie_view` (kroki `_step`
+    // z `formula_latex` KaTeX). Liczby spojne miedzy krokami:
+    //   SZ-PV2 (Sk″=189.9): 19.5·4/189.9=0.4107; 13·5/189.9=0.3423;
+    //     Pst=(0.4107³+0.3423³)^(1/3)=0.4782; d=1·9.5/189.9·100=5.0026 %.
+    //   SZ-FW1 (Sk″=45): 6.8·8/45=1.2089 > 0.9 -> przekroczenie.
+    return new Response(
+      JSON.stringify({
+        analysis_id: 'mig-demo-1',
+        context: {
+          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
+          run_timestamp: '2026-07-22T08:40:00Z', snapshot_id: 'snap-demo', trace_id: 'run-sc-5',
+        },
+        config: {
+          flicker_summation_exponent_m: 3,
+          planning_level_pst: 0.9,
+          planning_level_plt: 0.7,
+          rvc_kmax: 1.0,
+        },
+        buses: [
+          {
+            bus_ref: 'SZ-PV2', nominal_kv: 15.0, sk_mva: 189.9,
+            modules: [
+              {
+                gen_ref: 'gen-pv-1', sn_mva: 4.0, flicker_c: 19.5, pst_i: 0.4107,
+                included: true, info_pl: null,
+                white_box: [
+                  {
+                    symbol: 'P_{st,i}',
+                    formula_latex: "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
+                    substitution_pl: 'P_st_i = 19.5 · 4 / 189.9 MVA',
+                    result_pl: 'P_st_i = 0.4107',
+                  },
+                ],
+              },
+              {
+                gen_ref: 'gen-pv-2', sn_mva: 0.5, flicker_c: null, pst_i: null,
+                included: false,
+                info_pl: 'brak współczynnika emisji migotania w katalogu — moduł pominięty w sumowaniu',
+                white_box: [],
+              },
+              {
+                gen_ref: 'gen-fw-3', sn_mva: 5.0, flicker_c: 13.0, pst_i: 0.3423,
+                included: true, info_pl: null,
+                white_box: [
+                  {
+                    symbol: 'P_{st,i}',
+                    formula_latex: "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
+                    substitution_pl: 'P_st_i = 13 · 5 / 189.9 MVA',
+                    result_pl: 'P_st_i = 0.3423',
+                  },
+                ],
+              },
+            ],
+            pst: 0.4782, plt: 0.4782, d_percent: 5.0026,
+            pst_limit: 0.9, plt_limit: 0.7,
+            verdict_pl: 'w granicach planowania',
+            zalozenia_pl: [
+              "Emisja pojedynczego źródła: Pst_i = c · Sn / Sk'' (c — współczynnik emisji "
+              + 'migotania z certyfikatu urządzenia; metodyka IEC 61400-21-1).',
+              'Sumowanie emisji wielu źródeł w węźle: Pst = (Σ Pst_i^m)^(1/m), wykładnik '
+              + 'm = 3 (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).',
+              'Plt = Pst — założenie konserwatywne dla ciągłej, ustalonej emisji źródeł OZE '
+              + '(równe wartości Pst w oknie 2 h dają Plt = Pst z definicji Plt).',
+              'Poziomy planowania dla SN: Pst = 0.9, Plt = 0.7 — wartości orientacyjne wg '
+              + 'IEC/TR 61000-3-7:2008, Tablica 1. Wiążące wymaganie ustala OSD.',
+              'Szybka zmiana napięcia d = kmax · Sn / Sk\'\' · 100, kmax = 1 (założenie '
+              + 'konserwatywne — załączenie pełnej mocy zainstalowanej w węźle; '
+              + 'IEC/TR 61000-3-7:2008, §5.5).',
+            ],
+            white_box: [
+              {
+                symbol: 'P_{st}',
+                formula_latex: 'P_{st} = \\left( \\sum_i P_{st,i}^{\\,m} \\right)^{1/m}, \\quad m = 3',
+                substitution_pl: 'P_st = (0.4107^3 + 0.3423^3)^(1/3)',
+                result_pl: 'P_st = 0.4782',
+              },
+              {
+                symbol: 'P_{lt}',
+                formula_latex: 'P_{lt} = P_{st}',
+                substitution_pl: 'P_lt = P_st = 0.4782 (emisja ciągła, założenie konserwatywne)',
+                result_pl: 'P_lt = 0.4782',
+              },
+              {
+                symbol: 'd',
+                formula_latex: "d = k_{max} \\cdot \\dfrac{S_{n}}{S_{k}''} \\cdot 100\\%",
+                substitution_pl: 'd = 1 · 9.5 / 189.9 · 100 %',
+                result_pl: 'd = 5.0026 %',
+              },
+            ],
+          },
+          {
+            bus_ref: 'SZ-FW1', nominal_kv: 15.0, sk_mva: 45.0,
+            modules: [
+              {
+                gen_ref: 'gen-fw-1', sn_mva: 8.0, flicker_c: 6.8, pst_i: 1.2089,
+                included: true, info_pl: null,
+                white_box: [
+                  {
+                    symbol: 'P_{st,i}',
+                    formula_latex: "P_{st,i} = c_i \\cdot \\dfrac{S_{n,i}}{S_{k}''}",
+                    substitution_pl: 'P_st_i = 6.8 · 8 / 45 MVA',
+                    result_pl: 'P_st_i = 1.2089',
+                  },
+                ],
+              },
+            ],
+            pst: 1.2089, plt: 1.2089, d_percent: 17.7778,
+            pst_limit: 0.9, plt_limit: 0.7,
+            verdict_pl: 'przekroczenie poziomu planowania',
+            zalozenia_pl: [
+              'Sumowanie emisji wielu źródeł w węźle: Pst = (Σ Pst_i^m)^(1/m), wykładnik '
+              + 'm = 3 (sumowanie sześcienne wg IEC/TR 61000-3-7:2008, §5.2).',
+              'Poziomy planowania dla SN: Pst = 0.9, Plt = 0.7 — wartości orientacyjne wg '
+              + 'IEC/TR 61000-3-7:2008, Tablica 1. Wiążące wymaganie ustala OSD.',
+            ],
+            white_box: [
+              {
+                symbol: 'P_{st}',
+                formula_latex: 'P_{st} = \\left( \\sum_i P_{st,i}^{\\,m} \\right)^{1/m}, \\quad m = 3',
+                substitution_pl: 'P_st = (1.2089^3)^(1/3)',
+                result_pl: 'P_st = 1.2089',
+              },
+              {
+                symbol: 'P_{lt}',
+                formula_latex: 'P_{lt} = P_{st}',
+                substitution_pl: 'P_lt = P_st = 1.2089 (emisja ciągła, założenie konserwatywne)',
+                result_pl: 'P_lt = 1.2089',
+              },
+              {
+                symbol: 'd',
+                formula_latex: "d = k_{max} \\cdot \\dfrac{S_{n}}{S_{k}''} \\cdot 100\\%",
+                substitution_pl: 'd = 1 · 8 / 45 · 100 %',
+                result_pl: 'd = 17.7778 %',
+              },
+            ],
+          },
+        ],
+        summary: { total_buses: 2, assessed_count: 2, exceeded_count: 1, not_assessed_count: 0 },
+        input_hash: 'mig-hash-demo',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/quality/as-built-compliance')) {
+    // Scena "odbior-zgodnosc" (V-B): raport zgodnosci powykonawczej — ksztalt
+    // 1:1 z `application/analyses/zgodnosc_powykonawcza.py::build_zgodnosc_
+    // powykonawcza_view`; slad_pl per wiersz (model -> pomiar -> odchylka ->
+    // tolerancja -> werdykt); echo pomiarow wpisanych w edytorze speca.
+    return new Response(
+      JSON.stringify({
+        analysis_id: 'run-lf-5',
+        input_hash: 'zgodnosc-hash-demo',
+        tolerancje: { napiecie_pct: 5, moc_pct: 10 },
+        zrodlo_tolerancji: { napiecie_pct: 'jawna (żądanie)', moc_pct: 'jawna (żądanie)' },
+        zalozenia_pl: [
+          'Porównanie 1:1 pomiar–model (wynik rozpływu FROZEN); bez estymacji stanu '
+          + '(solver WLS istnieje, ale nie jest używany) i bez korekt modelu.',
+          'Napięcie U przeliczane na kV z u_pu przez napięcie znamionowe węzła (U = u_pu · U_n).',
+          'Moce P/Q odczytywane z gałęzi w kierunku „from" (p_from_mw / q_from_mvar).',
+          'Konwencja znaku Q nierozstrzygnięta (V12K-040): Q porównywane po wartości '
+          + 'bezwzględnej |Q|; znak odchyłki nie jest interpretowany.',
+          'Tolerancje wyłącznie jawne (z żądania); brak udokumentowanego źródła '
+          + 'normatywnego dla wartości domyślnych, więc domyślnych nie przyjęto.',
+        ],
+        podsumowanie: {
+          liczba_punktow: 4, w_tolerancji: 1, poza_tolerancja: 1,
+          brak_odpowiednika: 1, brak_wyniku: 1,
+          najwieksza_odchylka_pct: 12.5,
+          najwieksza_odchylka_element_ref: 'LINE-2',
+          najwieksza_odchylka_wielkosc: 'P',
+        },
+        wiersze: [
+          {
+            element_ref: 'BUS-1', wielkosc: 'U', jednostka: 'kV',
+            wartosc_pomiar: 15.3, wartosc_model: 15.15,
+            odchylka_bezwzgledna: 0.15, odchylka_pct: 0.99, tolerancja_pct: 5,
+            werdykt: 'w tolerancji',
+            slad_pl: [
+              'Model U = u_pu × U_n = 1.010000 × 15.000000 = 15.150000 kV',
+              'Pomiar U = 15.300000 kV',
+              'Odchyłka = pomiar − model = 0.150000 kV (0.990099%)',
+              'Tolerancja = ±5.000000%',
+              'Werdykt: w tolerancji',
+            ],
+          },
+          {
+            element_ref: 'LINE-2', wielkosc: 'P', jednostka: 'MW',
+            wartosc_pomiar: 4.5, wartosc_model: 4.0,
+            odchylka_bezwzgledna: 0.5, odchylka_pct: 12.5, tolerancja_pct: 10,
+            werdykt: 'poza tolerancją',
+            slad_pl: [
+              'Model P_from = 4.000000 MW',
+              'Pomiar P = 4.500000 MW',
+              'Odchyłka = pomiar − model = 0.500000 MW (12.500000%)',
+              'Tolerancja = ±10.000000%',
+              'Werdykt: poza tolerancją',
+            ],
+          },
+          {
+            element_ref: 'NIEZNANY-3', wielkosc: 'U', jednostka: 'kV',
+            wartosc_pomiar: 10.0, wartosc_model: null,
+            odchylka_bezwzgledna: null, odchylka_pct: null, tolerancja_pct: null,
+            werdykt: 'brak odpowiednika w modelu',
+            slad_pl: ['Element „NIEZNANY-3" nie występuje jako węzeł w wyniku rozpływu.'],
+          },
+          {
+            element_ref: 'TRAFO-4', wielkosc: 'Q', jednostka: 'Mvar',
+            wartosc_pomiar: 1.2, wartosc_model: null,
+            odchylka_bezwzgledna: null, odchylka_pct: null, tolerancja_pct: null,
+            werdykt: 'brak wyniku dla elementu',
+            slad_pl: ['Brak wyniku Q (kierunek „from") dla gałęzi „TRAFO-4".'],
+          },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/quality/state-estimation/requirements')) {
+    // Scena "estymacja" (V-B): wymagane wejscia WLS — ksztalt 1:1 z
+    // `application/analyses/state_estimation/service.py` (requirements).
+    return new Response(
+      JSON.stringify({
+        analysis_id: 'run-lf-6',
+        context: {
+          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
+          run_timestamp: '2026-07-22T08:50:00Z', snapshot_id: 'snap-demo', trace_id: 'run-lf-6',
+        },
+        base_mva: 100.0,
+        slack_bus_ref: 'BUS-1',
+        slack_index: 0,
+        n_buses: 3,
+        n_states: 5,
+        min_measurements: 5,
+        buses: [
+          { bus_ref: 'BUS-1', index: 0, name: 'Szyna GPZ', voltage_kv: 110.0, is_slack: true },
+          { bus_ref: 'BUS-2', index: 1, name: 'Szyna SN', voltage_kv: 15.0, is_slack: false },
+          { bus_ref: 'BUS-3', index: 2, name: null, voltage_kv: 15.0, is_slack: false },
+        ],
+        measurement_types: [
+          { code: 'V_MAGNITUDE', label_pl: 'Moduł napięcia węzła |V| [pu]', requires_bus_j: false },
+          { code: 'P_INJECTION', label_pl: 'Iniekcja mocy czynnej w węźle P [pu]', requires_bus_j: false },
+          { code: 'Q_INJECTION', label_pl: 'Iniekcja mocy biernej w węźle Q [pu]', requires_bus_j: false },
+          { code: 'P_FLOW', label_pl: 'Przepływ mocy czynnej w gałęzi P_ij [pu]', requires_bus_j: true },
+          { code: 'Q_FLOW', label_pl: 'Przepływ mocy biernej w gałęzi Q_ij [pu]', requires_bus_j: true },
+        ],
+        note_pl:
+          'Pomiary muszą być w jednostkach względnych (pu) na tej samej bazie mocy '
+          + '(base_mva) co macierz Y-bus.',
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/quality/state-estimation')) {
+    // Scena "estymacja" (V-B): wynik WLS — ksztalt 1:1 z `_serialize_result`.
+    // Liczby spojne: 6 pomiarow (echo edytora speca), n=5 stanow, dof=1;
+    // chi² = 27.8 > prog 6.635 (alfa 0.01, dof 1); LNR 5.2 > 3.0 na pomiarze
+    // |V| BUS-1 (pomiar 1.05 vs estymata 1.029 -> rezyduum 0.021 = 5.25·sigma).
+    return new Response(
+      JSON.stringify({
+        analysis_id: 'run-lf-6',
+        context: {
+          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
+          run_timestamp: '2026-07-22T08:50:00Z', snapshot_id: 'snap-demo', trace_id: 'run-lf-6',
+        },
+        status: 'OK',
+        status_pl: 'zbieżny',
+        missing_data: [{ code: 'wezly_bez_pomiaru', bus_refs: ['BUS-3'] }],
+        solver_version: 'state_estimation_wls@1.0.0',
+        validation_status: 'SYNTETYCZNY (walidacja płaskim stanem, nie SCADA/PMU)',
+        estimate_id: 'estymata-hash-demo',
+        base_mva: 100.0,
+        slack_bus_ref: 'BUS-1',
+        slack_index: 0,
+        converged: true,
+        iterations: 3,
+        n_states: 5,
+        m_measurements: 6,
+        degrees_of_freedom: 1,
+        objective_j: 27.8,
+        note: null,
+        buses: [
+          { bus_ref: 'BUS-1', index: 0, name: 'Szyna GPZ', voltage_kv: 110.0, is_slack: true, v_magnitude_pu: 1.029, v_angle_rad: 0.0, v_angle_deg: 0.0 },
+          { bus_ref: 'BUS-2', index: 1, name: 'Szyna SN', voltage_kv: 15.0, is_slack: false, v_magnitude_pu: 0.9912, v_angle_rad: -0.0262, v_angle_deg: -1.5 },
+          { bus_ref: 'BUS-3', index: 2, name: null, voltage_kv: 15.0, is_slack: false, v_magnitude_pu: 1.0103, v_angle_rad: 0.014, v_angle_deg: 0.8 },
+        ],
+        measurements: [
+          { meas_type: 'V_MAGNITUDE', bus_ref: 'BUS-1', bus_j_ref: null, value: 1.05, sigma: 0.004, label: null, index: 0, normalized_residual: 5.2, residual: 0.021, suspect: true },
+          { meas_type: 'V_MAGNITUDE', bus_ref: 'BUS-2', bus_j_ref: null, value: 0.99, sigma: 0.004, label: null, index: 1, normalized_residual: 0.3, residual: -0.0012, suspect: false },
+          { meas_type: 'P_INJECTION', bus_ref: 'BUS-2', bus_j_ref: null, value: -0.35, sigma: 0.008, label: null, index: 2, normalized_residual: 0.4, residual: 0.002, suspect: false },
+          { meas_type: 'Q_INJECTION', bus_ref: 'BUS-2', bus_j_ref: null, value: -0.12, sigma: 0.008, label: null, index: 3, normalized_residual: 0.2, residual: 0.001, suspect: false },
+          { meas_type: 'P_FLOW', bus_ref: 'BUS-1', bus_j_ref: 'BUS-2', value: 0.36, sigma: 0.008, label: null, index: 4, normalized_residual: 0.5, residual: 0.003, suspect: false },
+          { meas_type: 'Q_FLOW', bus_ref: 'BUS-1', bus_j_ref: 'BUS-2', value: 0.13, sigma: 0.008, label: null, index: 5, normalized_residual: 0.3, residual: -0.002, suspect: false },
+        ],
+        bad_data: {
+          chi_square_value: 27.8,
+          chi_square_threshold: 6.635,
+          degrees_of_freedom: 1,
+          alpha: 0.01,
+          chi_square_flag: true,
+          largest_normalized_residual: 5.2,
+          lnr_measurement_index: 0,
+          lnr_threshold: 3.0,
+          lnr_flag: true,
+          normalized_residuals: [5.2, 0.3, 0.4, 0.2, 0.5, 0.3],
+          lnr_measurement: { index: 0, meas_type: 'V_MAGNITUDE', bus_ref: 'BUS-1', bus_j_ref: null, label: null },
+        },
+        white_box: [
+          { iteration: 0, objective_j: 41.2, max_abs_residual: 0.062, step_norm: 0.031, h_jacobian: [[1, 0]], gain_matrix_g: [[2, 0]], residual_r: [0.062, 0.002], delta_x: [0.028, 0.001], state_x: [1.0, 0.0] },
+          { iteration: 1, objective_j: 27.9, max_abs_residual: 0.021, step_norm: 0.0009, h_jacobian: [[1, 0]], gain_matrix_g: [[2, 0]], residual_r: [0.021, 0.002], delta_x: [0.0009, 0.0], state_x: [1.029, -0.026] },
+          { iteration: 2, objective_j: 27.8, max_abs_residual: 0.021, step_norm: 0.00001, h_jacobian: [[1, 0]], gain_matrix_g: [[2, 0]], residual_r: [0.021, 0.002], delta_x: [0.0, 0.0], state_x: [1.029, -0.0262] },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/runs/v126/ssci_impedance')) {
+    // Scena "ssci" (V-B): utworzenie przebiegu SSCI (koperta V126RunResponse).
+    return new Response(
+      JSON.stringify({ run_id: 'run-ssci-1', status: 'DONE', deterministic_hash: 'ssci-hash-demo' }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/results/v126/ssci_impedance/stability')) {
+    // Scena "ssci" (V-B): werdykt stabilnosci SSCI — ksztalt 1:1 z
+    // `analysis/ssci_stability/serializer.py::view_to_dict` (kryterium
+    // impedancyjne Nyquista; white_box: max|L| i margines fazy).
+    return new Response(
+      JSON.stringify({
+        analysis_id: 'ssci-analysis-demo-01',
+        context: {
+          project_name: 'Przyłączenie farmy PV 8 MW', case_name: 'Stan normalny',
+          run_timestamp: '2026-07-22T09:00:00Z', snapshot_id: 'snap-demo', trace_id: 'run-ssci-1',
+        },
+        gain_crossover_mag: 1.0,
+        pm_risk_deg: 30.0,
+        pm_unstable_deg: 0.0,
+        verdict: {
+          converter_ref: 'INV1',
+          bus_ref: 'SZ-PV2',
+          verdict: 'niestabilny',
+          is_risk: true,
+          why_pl: 'Przebieg L(jω) okrąża punkt −1 w paśmie przecięcia modułów — niestabilność SSCI.',
+          max_minor_loop_gain: 1.42,
+          has_magnitude_crossover: true,
+          gain_crossover: { f_hz: 34.5, phase_l_deg: -178.0, phase_margin_deg: 2.0 },
+          worst_phase_margin_deg: -3.5,
+          worst_phase_margin_f_hz: 34.5,
+          offending_frequency_hz: 34.5,
+          nearest_to_minus_one: { f_hz: 34.5, mag: 1.42, phase_deg: -178.0, distance_to_minus_one: 0.42 },
+          encirclement_count: 1,
+          negative_resistance_present: true,
+          negative_resistance_f_hz: 28.0,
+          provenance: {
+            worst_quality: 'ESTIMATED',
+            worst_quality_label_pl: 'oszacowane',
+            is_estimated: true,
+            consumed_fields: ['current_loop_bandwidth_hz', 'pll_bandwidth_hz', 'filter_l_pu'],
+            tag_pl: 'Werdykt oparty na oszacowanych polach karty falownika.',
+          },
+          missing_data: [],
+          white_box: [
+            {
+              symbol: 'max|L|',
+              formula_latex: '\\max_f |L(j\\omega)|',
+              substitution_pl: 'maksimum modułu wzmocnienia pętli po częstotliwościach',
+              result_pl: '1,42',
+              unit_check_pl: '[-] (bezwymiarowe)',
+            },
+            {
+              symbol: 'Δφ',
+              formula_latex: '180^\\circ - |\\angle L|',
+              substitution_pl: '180° − |∠L| w paśmie |L| ≥ 1: 180° − 183,5°',
+              result_pl: '-3,50°',
+              unit_check_pl: '[°]',
+            },
+          ],
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
   if (url.includes('/api/catalog/complete-bay-templates')) {
     return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   if (url.includes('/api/quality/arc-flash')) {
+    // Scena "arcflash" (wzbogacona w rundzie dowodowej V-B): kroki WHITE BOX
+    // 1:1 z builderem `analysis/arc_flash/builder.py::_ieee_1584_result`
+    // (KrokArcFlash: symbol/formula_latex/substitution_pl/result_pl/
+    // unit_check_pl/table_ref). Liczby spojne z wynikami wierszy:
+    //   SN-1: I_bf=12.5 kA -> I_arc=11.8 kA; E=35.2 J/cm² = 8.413 cal/cm²
+    //         (35.2/4.184); AFB=1320 mm; SOI kat. 3 (8 < E ≤ 25 cal/cm²).
+    //   SN-2: I_bf=8.1 kA -> I_arc=7.7 kA; E=17.4 J/cm² = 4.1587 cal/cm²;
+    //         AFB=890 mm; SOI kat. 2 (4 < E ≤ 8 cal/cm²).
     return new Response(
       JSON.stringify({
         analysis_id: 'af-demo',
@@ -336,18 +897,104 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
           {
             bus_ref: 'Szyna SN-1', status: 'COMPUTED_IEEE_1584_OPEN_SOURCE', status_label_pl: 'obliczony (IEEE 1584 open-source)',
             method: 'IEEE_1584_2018', electrode_config: 'VCB', i_bf_ka: 12.5, voltage_kv: 15.0, arc_time_s: 0.2,
-            conductor_gap_mm: 152, working_distance_mm: 455, i_arc_ka: 11.8, incident_energy_cal_cm2: 8.42,
-            incident_energy_joule_cm2: 35.2, arc_flash_boundary_mm: 1320, ppe_category: '2', ppe_table_provenance: null,
+            conductor_gap_mm: 152, working_distance_mm: 455, i_arc_ka: 11.8, incident_energy_cal_cm2: 8.413,
+            incident_energy_joule_cm2: 35.2, arc_flash_boundary_mm: 1320, ppe_category: '3', ppe_table_provenance: 'norma_NFPA_70E',
             provenance: 'ARC_FLASH_OPEN_SOURCE_PROVENANCE', provenance_caveat_pl: 'Wynik na współczynnikach open-source — wymaga weryfikacji z licencjonowaną normą IEEE 1584.',
-            why_pl: 'Energia incydentu wyznaczona wg IEEE 1584-2018.', missing_data: [], white_box: [],
+            why_pl: 'Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 11.8 kA (I_arc_min ≈ 10.34 kA), energia incydentu E ≈ 8.41 cal/cm² na odległości roboczej, granica łuku AFB ≈ 1320.0 mm, kategoria ŚOI = 3.',
+            missing_data: [],
+            white_box: [
+              {
+                symbol: 'I_arc',
+                formula_latex: "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
+                substitution_pl: 'I_bf=12.5 kA, G=152.0 mm, U=15.0 kV [VCB]; kotwy: V14300=11.75 kA, V2700=10.9 kA, V600=8.7 kA; VarCf=0.247',
+                result_pl: 'I_arc = 11.8 kA, I_arc_min = 10.3427 kA (IEEE 1584-2018, współczynniki open-source)',
+                unit_check_pl: 'I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].',
+                table_ref: 'I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584',
+              },
+              {
+                symbol: 'CF',
+                formula_latex: 'CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})',
+                substitution_pl: 'konfiguracja VCB (w obudowie Typical)',
+                result_pl: 'CF = 1.0841',
+                unit_check_pl: 'CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.',
+                table_ref: 'CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584',
+              },
+              {
+                symbol: 'E',
+                formula_latex: "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
+                substitution_pl: 'I_bf=12.5 kA, G=152.0 mm, t=200.0 ms, D=455.0 mm, CF=1.0841; kotwy: V14300=35.05 J/cm², V2700=32.6 J/cm², V600=27.6 J/cm²',
+                result_pl: 'E = 35.2 J/cm² = 8.413 cal/cm² (IEEE 1584-2018, współczynniki open-source)',
+                unit_check_pl: 'E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.',
+                table_ref: 'E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584',
+              },
+              {
+                symbol: 'AFB',
+                formula_latex: "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
+                substitution_pl: 'E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm',
+                result_pl: 'AFB = 1320.0 mm (IEEE 1584-2018, współczynniki open-source)',
+                unit_check_pl: 'D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².',
+                table_ref: 'E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny',
+              },
+              {
+                symbol: 'ŚOI',
+                formula_latex: '\\text{kategoria} = f_{NFPA\\,70E}(E)',
+                substitution_pl: 'E = 8.413 cal/cm²; tablica progów NFPA 70E: wypełniona',
+                result_pl: 'kategoria ŚOI = 3',
+                unit_check_pl: 'E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).',
+                table_ref: 'progi ŚOI = norma_NFPA_70E',
+              },
+            ],
           },
           {
             bus_ref: 'Szyna SN-2', status: 'COMPUTED_IEEE_1584_OPEN_SOURCE', status_label_pl: 'obliczony (IEEE 1584 open-source)',
             method: 'IEEE_1584_2018', electrode_config: 'VCB', i_bf_ka: 8.1, voltage_kv: 15.0, arc_time_s: 0.2,
-            conductor_gap_mm: 152, working_distance_mm: 455, i_arc_ka: 7.7, incident_energy_cal_cm2: 4.15,
-            incident_energy_joule_cm2: 17.4, arc_flash_boundary_mm: 890, ppe_category: '1', ppe_table_provenance: null,
+            conductor_gap_mm: 152, working_distance_mm: 455, i_arc_ka: 7.7, incident_energy_cal_cm2: 4.1587,
+            incident_energy_joule_cm2: 17.4, arc_flash_boundary_mm: 890, ppe_category: '2', ppe_table_provenance: 'norma_NFPA_70E',
             provenance: 'ARC_FLASH_OPEN_SOURCE_PROVENANCE', provenance_caveat_pl: null,
-            why_pl: 'Energia incydentu wyznaczona wg IEEE 1584-2018.', missing_data: [], white_box: [],
+            why_pl: 'Arc Flash (konfiguracja VCB, IEEE 1584-2018): prąd łuku I_arc ≈ 7.7 kA (I_arc_min ≈ 6.75 kA), energia incydentu E ≈ 4.16 cal/cm² na odległości roboczej, granica łuku AFB ≈ 890.0 mm, kategoria ŚOI = 2.',
+            missing_data: [],
+            white_box: [
+              {
+                symbol: 'I_arc',
+                formula_latex: "I_{arc,kotwa} = 10^{k_1+k_2\\lg I_{bf}+k_3\\lg G}\\cdot\\sum_{i} k_{i}\\,I_{bf}^{\\,p_i}\\;;\\quad I_{arc}=\\mathrm{interp}_{U}(\\cdot)\\;;\\quad I_{arc,min}=I_{arc}(1-0{,}5\\,\\mathrm{VarCf})",
+                substitution_pl: 'I_bf=8.1 kA, G=152.0 mm, U=15.0 kV [VCB]; kotwy: V14300=7.66 kA, V2700=7.05 kA, V600=5.9 kA; VarCf=0.247',
+                result_pl: 'I_arc = 7.7 kA, I_arc_min = 6.7491 kA (IEEE 1584-2018, współczynniki open-source)',
+                unit_check_pl: 'I_bf,I_arc w kA; G w mm; VarCf bezwymiarowe; interpolacja po U [kV].',
+                table_ref: 'I_arc[VCB, kotwy 600/2700/14300 V] (Tab.1) + VarCf[VCB] (Tab.2) = open_source_IEEE_1584',
+              },
+              {
+                symbol: 'CF',
+                formula_latex: 'CF = b_1\\,EES^2 + b_2\\,EES + b_3 \\quad(CF=1 \\text{ w otwartym powietrzu; } CF=1/x \\text{ obudowa płytka})',
+                substitution_pl: 'konfiguracja VCB (w obudowie Typical)',
+                result_pl: 'CF = 1.0841',
+                unit_check_pl: 'CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.',
+                table_ref: 'CF[Typical,VCB] (Tab.7) = open_source_IEEE_1584',
+              },
+              {
+                symbol: 'E',
+                formula_latex: "E_{kotwa} = \\tfrac{12{,}552}{50}\\,t\\cdot 10^{\\,x_2+x_3+x_4+x_5}\\;;\\quad x_4 = k_{11}\\lg I_{bf}+k_{13}\\lg I_{arc}+\\lg(1/CF)\\;;\\quad x_5 = k_{12}\\lg D\\;;\\quad E=\\mathrm{interp}_U(\\cdot)\\;[\\mathrm{J/cm^2}]",
+                substitution_pl: 'I_bf=8.1 kA, G=152.0 mm, t=200.0 ms, D=455.0 mm, CF=1.0841; kotwy: V14300=17.32 J/cm², V2700=16.1 J/cm², V600=13.8 J/cm²',
+                result_pl: 'E = 17.4 J/cm² = 4.1587 cal/cm² (IEEE 1584-2018, współczynniki open-source)',
+                unit_check_pl: 'E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; interpolacja po U.',
+                table_ref: 'E[VCB, kotwy 600/2700/14300 V] (Tab.3/4/5) = open_source_IEEE_1584',
+              },
+              {
+                symbol: 'AFB',
+                formula_latex: "D_{AFB,kotwa} = \\left(\\frac{5{,}0208}{E/D^{k_{12}}}\\right)^{1/k_{12}}\\quad(\\mathrm{interp}_U);\\quad 5{,}0208\\,\\mathrm{J/cm^2}=1{,}2\\,\\mathrm{cal/cm^2}",
+                substitution_pl: 'E_próg = 1.2 cal/cm² = 5.0208 J/cm²; U=15.0 kV, D=455.0 mm',
+                result_pl: 'AFB = 890.0 mm (IEEE 1584-2018, współczynniki open-source)',
+                unit_check_pl: 'D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².',
+                table_ref: 'E[VCB] (odwrócone wzgl. D) (Tab.3/4/5) = open_source_IEEE_1584; próg 1,2 cal/cm² publiczny',
+              },
+              {
+                symbol: 'ŚOI',
+                formula_latex: '\\text{kategoria} = f_{NFPA\\,70E}(E)',
+                substitution_pl: 'E = 4.1587 cal/cm²; tablica progów NFPA 70E: wypełniona',
+                result_pl: 'kategoria ŚOI = 2',
+                unit_check_pl: 'E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).',
+                table_ref: 'progi ŚOI = norma_NFPA_70E',
+              },
+            ],
           },
         ],
       }),
@@ -1001,10 +1648,12 @@ if (creator === 'arcflash') {
 } else if (creator === 'walidacja') {
   // Walidacja energetyczna ze sladem WHITE BOX per pozycja (R2-A/V12K-105);
   // dane z podmienionego fetch (ksztalt 1:1 z builderem backendu).
-} else if (creator === 'kompensacja') {
+} else if (creator === 'kompensacja' || creator === 'kompensacja-wynik') {
   // „Dobor kompensacji" z pre-selekcja wezla z deep-linku (R2-B/V12K-106):
   // wezly z realnego snapshot store, preselekcja przez props ekranu.
   // Ekran wymaga zakonczonego przebiegu rozplywu (uczciwa blokada) — zasiew.
+  // Scena "kompensacja-wynik" (V-B) reuzywa ten sam zasiew: spec wybiera wezel
+  // i klika „Oblicz" natywnie (bez preselekcji), wynik z podmienionego fetch.
   const runKomp: ExecutionRun = {
     id: 'run-lf-3', analysis_type: 'LOAD_FLOW', status: 'DONE',
     started_at: '2026-07-22T08:00:00Z', finished_at: '2026-07-22T08:00:04Z',
@@ -1057,6 +1706,31 @@ if (creator === 'arcflash') {
     },
     selectedRunId: 'run-sc-2',
   } as never);
+} else if (creator === 'sila-sieci') {
+  // Runda dowodowa V-B: sekcja sily sieci (SCR/WSCR) pulpitu OZE — wymaga
+  // zakonczonego przebiegu zwarciowego; wywod white_box z grid-strength.
+  const runSc: ExecutionRun = {
+    id: 'run-sc-4', analysis_type: 'SC_3F', status: 'DONE',
+  } as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({ runs: [runSc], activeRunId: 'run-sc-4' } as never);
+} else if (creator === 'odbior-zgodnosc') {
+  // Runda dowodowa V-B: „Zgodnosc powykonawcza" — wymaga zakonczonego
+  // przebiegu rozplywu (slad_pl per wiersz z podmienionego fetch).
+  const runLf5: ExecutionRun = {
+    id: 'run-lf-5', analysis_type: 'LOAD_FLOW', status: 'DONE',
+  } as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({ runs: [runLf5], activeRunId: 'run-lf-5' } as never);
+} else if (creator === 'estymacja') {
+  // Runda dowodowa V-B: „Estymacja stanu (WLS)" — wymaga zakonczonego
+  // przebiegu rozplywu (zrodlo Y-bus); wymagania + wynik z podmienionego fetch.
+  const runLf6: ExecutionRun = {
+    id: 'run-lf-6', analysis_type: 'LOAD_FLOW', status: 'DONE',
+  } as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({ runs: [runLf6], activeRunId: 'run-lf-6' } as never);
+} else if (creator === 'ssci' || creator === 'migotanie') {
+  // Runda dowodowa V-B: ssci — aktywny przypadek 'case-demo' zasiany globalnie;
+  // migotanie — przebieg zwarciowy podawany propem sekcji. Pusta galaz chroni
+  // przed otwarciem formularza operacji kreatora w galezi domyslnej.
 } else if (creator === 'porownanie') {
   // Porownanie przebiegow A/B (R3-C/V12K-111): lista przebiegow i wynik
   // porownania z podmienionego fetch; nazwy przypadkow ze store'u.
@@ -1241,6 +1915,23 @@ function Harness() {
   else if (creator === 'frt') node = <EkranFrt trybZaawansowania="expert" />;
   else if (creator === 'oltc') node = <EkranBadanOltc />;
   else if (creator === 'macierz') node = <MacierzNcRfg trybZaawansowania="expert" />;
+  else if (creator === 'kompensacja-wynik')
+    // V-B: bez preselekcji — spec wybiera wezel i klika „Oblicz" natywnie.
+    node = <EkranKompensacji trybZaawansowania="expert" />;
+  else if (creator === 'sila-sieci') node = <SekcjaSilySieci trybEkspercki />;
+  else if (creator === 'odbior-zgodnosc')
+    node = <EkranOdbioru trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+  else if (creator === 'estymacja')
+    node = <EkranEstymacji trybZaawansowania="expert" onOtworzDowod={() => undefined} />;
+  else if (creator === 'ssci') node = <EkranSsci trybZaawansowania="expert" />;
+  else if (creator === 'migotanie')
+    node = (
+      <SekcjaMigotania
+        przebieg={{ id: 'run-sc-5', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun}
+        trybZaawansowania="expert"
+        onOtworzDowod={() => undefined}
+      />
+    );
   else if (creator === 'oze') node = <KreatorZrodlaOze />;
   else if (creator === 'transformator') node = <KreatorTransformatoraSnNn />;
   else if (creator === 'kompensator') node = <KreatorKompensatoraSn />;
@@ -1264,7 +1955,11 @@ function Harness() {
       data-creator={creator}
       data-theme={theme}
       style={{
-        width: creator === 'arcflash' ? 1180 : 1180,
+        // Sceny rundy dowodowej V-B mają szerokie tabele (kolumny decyzyjne +
+        // informacyjne + werdykt) — szerszy kadr eliminuje przycięcie z prawej.
+        width: ['kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie'].includes(creator)
+          ? 1400
+          : 1180,
         minHeight: 800,
         padding: 16,
         background: 'var(--mvd-bg, #07111c)',
