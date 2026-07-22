@@ -24,15 +24,15 @@ import { KreatorStacjiSnNn } from '../../ui2/kreatory/stacja';
 import { KreatorTransformatoraSnNn } from '../../ui2/kreatory/transformator';
 import { KreatorZrodloZasilania } from '../../ui2/kreatory/zrodlo';
 import { KreatorZrodlaOze } from '../../ui2/kreatory/zrodlo-oze';
+import { KreatorEdycjiParametrow } from '../../ui2/kreatory/edycja-parametrow';
+import { KreatorPolaNn } from '../../ui2/kreatory/pole-nn';
+import { KreatorPomiaru } from '../../ui2/kreatory/pomiar';
+import { KreatorPrzekaznika } from '../../ui2/kreatory/przekaznik';
+import { KreatorPrzypisaniaKatalogu } from '../../ui2/kreatory/przypisanie-katalogu';
 import { AddDispatchableSourceForm } from '../network-build/forms/AddDispatchableSourceForm';
-import { AddMeasurementForm } from '../network-build/forms/AddMeasurementForm';
-import { AddNnOutgoingFieldForm } from '../network-build/forms/AddNnOutgoingFieldForm';
-import { AddRelayForm } from '../network-build/forms/AddRelayForm';
-import { AssignCatalogForm } from '../network-build/forms/AssignCatalogForm';
 import { InsertBranchPoleForm } from '../network-build/forms/InsertBranchPoleForm';
 import { InsertZksnForm } from '../network-build/forms/InsertZksnForm';
 import { StartBranchForm } from '../network-build/forms/StartBranchForm';
-import { UpdateElementParametersForm } from '../network-build/forms/UpdateElementParametersForm';
 
 /**
  * Mapowanie CanonicalOpName → React component formularza.
@@ -51,18 +51,18 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   connect_secondary_ring_sn: KreatorPierscienia,
   set_normal_open_point: KreatorPierscienia,
   add_transformer_sn_nn: KreatorTransformatoraSnNn,
-  assign_catalog_to_element: AssignCatalogForm,
-  update_element_parameters: UpdateElementParametersForm,
-  add_nn_outgoing_field: AddNnOutgoingFieldForm,
+  assign_catalog_to_element: KreatorPrzypisaniaKatalogu,
+  update_element_parameters: KreatorEdycjiParametrow,
+  add_nn_outgoing_field: KreatorPolaNn,
   add_converter_source: KreatorZrodlaOze,
   add_genset_nn: AddDispatchableSourceForm,
   add_ups_nn: AddDispatchableSourceForm,
   add_shunt_compensator_sn: KreatorKompensatoraSn,
   add_surge_arrester_sn: KreatorOgranicznikaSn,
   add_nn_load: KreatorOdbioruNn,
-  add_ct: AddMeasurementForm,
-  add_vt: AddMeasurementForm,
-  add_relay: AddRelayForm,
+  add_ct: KreatorPomiaru,
+  add_vt: KreatorPomiaru,
+  add_relay: KreatorPrzekaznika,
   // Operacje bez formularza (delete, refresh, GPZ sections CRUD)
   delete_element: null,
   refresh_snapshot: null,

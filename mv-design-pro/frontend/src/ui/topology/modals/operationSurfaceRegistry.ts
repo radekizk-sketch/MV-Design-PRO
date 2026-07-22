@@ -113,7 +113,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'add_nn_outgoing_field',
-    'AddNnOutgoingFieldForm',
+    'KreatorPolaNn',
     'Dodaj odpływ nN',
     'E-19',
     'A',
@@ -168,7 +168,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'add_relay',
-    'AddRelayForm',
+    'KreatorPrzekaznika',
     'Dodaj zabezpieczenie',
     'E-27',
     'B',
@@ -179,7 +179,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'assign_catalog_to_element',
-    'AssignCatalogForm',
+    'KreatorPrzypisaniaKatalogu',
     'Przypisz katalog do elementu',
     'E-38',
     'A',
@@ -190,7 +190,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'update_element_parameters',
-    'UpdateElementParametersForm',
+    'KreatorEdycjiParametrow',
     'Zmień parametry elementu',
     'E-03',
     'B',
@@ -278,7 +278,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'add_ct',
-    'AddMeasurementForm',
+    'KreatorPomiaru',
     'Dodaj przekładnik prądowy',
     'E-11',
     'B',
@@ -289,7 +289,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'add_vt',
-    'AddMeasurementForm',
+    'KreatorPomiaru',
     'Dodaj przekładnik napięciowy',
     'E-11',
     'B',

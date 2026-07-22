@@ -6,7 +6,7 @@
  * - selekcja: wspólny store `ui/selection` (`selectedElements`),
  * - dane: snapshot ENM ze store `ui/topology/snapshotStore` (surowe rekordy),
  * - zapis: WYŁĄCZNIE istniejąca operacja domenowa `update_element_parameters`
- *   (ta sama ścieżka co InspectorEngineeringView / UpdateElementParametersForm) —
+ *   (ta sama ścieżka co InspectorEngineeringView / KreatorEdycjiParametrow) —
  *   zero nowych ścieżek mutacji, zero fizyki.
  *
  * Uczciwy stan pusty PL bez selekcji; multi-edit gdy zaznaczono wiele elementów

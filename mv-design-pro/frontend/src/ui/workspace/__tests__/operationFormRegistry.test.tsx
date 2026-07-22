@@ -33,7 +33,7 @@ describe('OPERATION_FORM_REGISTRY', () => {
     );
   });
 
-  it('add_ct i add_vt używają wspólnego AddMeasurementForm', () => {
+  it('add_ct i add_vt używają wspólnego KreatorPomiaru', () => {
     expect(OPERATION_FORM_REGISTRY.add_ct).toBe(OPERATION_FORM_REGISTRY.add_vt);
   });
 
