@@ -212,6 +212,13 @@ GAP-y z raportów wykonawców (zarejestrowane, nie ciche):
 
 ## §7. RUNDA 3 — ALL IN (dyrektywa właściciela 2026-07-22: „All in")
 
+**STATUS RUNDY: ZAMKNIĘTA (2026-07-22).** R3-A SCALONE (V12K-110),
+R3-B SCALONE (V12K-109), R3-C SCALONE (V12K-111). Dodatkowo karta recenzyjna
+właściciela **R3-D SCALONA (V12K-112)**: ślad WHITE BOX walidacji renderowany
+przez KaTeX (`MathBlock` z `ui/proof/MathRenderer` — reuse, zero duplikacji);
+backend emituje kroki `{tekst, latex}` z wywodem LaTeX per kontrola.
+Werdykt wizualny potwierdzony na scenie `walidacja` (zrzuty 10/10).
+
 Wszystkie trzy pozostałe pozycje rejestru naraz:
 
 - **R3-A (K1-G2) [WYKONAWCA]** — werdykt obciążalności gałęzi w tabeli rozpływu.

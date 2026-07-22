@@ -166,7 +166,12 @@ describe('SekcjaWalidacji — ślad WHITE BOX per pozycja (R2-A / K3-G1)', () =>
     fireEvent.click(screen.getByText('Odchylenie napięcia').closest('tr')!);
     fireEvent.click(screen.getByTestId('mvd-jakosc-wal-slad-otworz'));
     const slad = screen.getByTestId('mvd-jakosc-wal-slad');
-    expect(within(slad).getByText(/Wzor: odchylenie/)).toBeTruthy();
+    // R3-D: wzor i podstawienie renderowane KaTeX-em (nie surowy tekst ASCII).
+    const formuly = within(slad).getAllByTestId('math-rendered');
+    expect(formuly).toHaveLength(2);
+    expect(formuly[0].getAttribute('data-latex')).toContain('\\delta U');
+    expect(formuly[1].getAttribute('data-latex')).toContain('= 12.00');
+    // Kroki bez formuly (dane/progi/werdykt) pozostaja tekstowe.
     expect(within(slad).getByText(/U = 13.2000 kV \(wynik PF\)/)).toBeTruthy();
     expect(within(slad).getByText('Werdykt: PRZEKROCZENIE')).toBeTruthy();
   });

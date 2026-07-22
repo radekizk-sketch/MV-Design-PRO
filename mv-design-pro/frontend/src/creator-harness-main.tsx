@@ -95,11 +95,17 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
             observed_value: 12.0, unit: '%', limit_warn: 5.0, limit_fail: 10.0, margin_pct: 2.0,
             status: 'FAIL', why_pl: 'Odchylenie napieciowe 12.00 % przekracza limit 10.0 %.',
             white_box: [
-              'Wzor: odchylenie = |U - U_n| / U_n * 100%',
-              'Dane: U = 13.2000 kV (wynik PF), U_n = 15.0000 kV',
-              'Wynik: odchylenie = 12.00 %',
-              'Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %',
-              'Werdykt: PRZEKROCZENIE',
+              {
+                tekst: 'Wzor: odchylenie = |U - U_n| / U_n * 100%',
+                latex: '\\delta U = \\frac{|U - U_n|}{U_n} \\cdot 100\\%',
+              },
+              { tekst: 'Dane: U = 13.2000 kV (wynik PF), U_n = 15.0000 kV', latex: null },
+              {
+                tekst: 'Wynik: odchylenie = 12.00 %',
+                latex: '\\delta U = \\frac{|13.2000 - 15.0000|}{15.0000} \\cdot 100\\% = 12.00\\%',
+              },
+              { tekst: 'Progi: ostrzezenie 5.0 %, przekroczenie 10.0 %', latex: null },
+              { tekst: 'Werdykt: PRZEKROCZENIE', latex: null },
             ],
           },
           {
@@ -107,11 +113,17 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
             observed_value: 90.0, unit: '%', limit_warn: 80.0, limit_fail: 100.0, margin_pct: -10.0,
             status: 'WARNING', why_pl: 'Obciazenie 90.00 % powyzej progu ostrzegawczego 80.0 %.',
             white_box: [
-              'Wzor: obciazenie = |I| / I_n * 100%',
-              'Dane: |I| = 0.2295 kA (wynik PF), I_n = 0.2550 kA (dane galezi)',
-              'Wynik: obciazenie = 90.00 %',
-              'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %',
-              'Werdykt: OSTRZEZENIE',
+              {
+                tekst: 'Wzor: obciazenie = |I| / I_n * 100%',
+                latex: '\\varepsilon = \\frac{|I|}{I_n} \\cdot 100\\%',
+              },
+              { tekst: 'Dane: |I| = 0.2295 kA (wynik PF), I_n = 0.2550 kA (dane galezi)', latex: null },
+              {
+                tekst: 'Wynik: obciazenie = 90.00 %',
+                latex: '\\varepsilon = \\frac{0.2295}{0.2550} \\cdot 100\\% = 90.00\\%',
+              },
+              { tekst: 'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %', latex: null },
+              { tekst: 'Werdykt: OSTRZEZENIE', latex: null },
             ],
           },
         ],

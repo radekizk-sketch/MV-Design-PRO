@@ -47,10 +47,12 @@ class EnergyValidationItem:
     margin_pct: float | None
     status: EnergyValidationStatus
     why_pl: str
-    # Slad WHITE BOX per pozycja (R2-A / K3-G1): wywod wartosci obserwowanej
-    # (wzor -> dane -> wynik -> progi -> werdykt). Addytywnie, domyslnie pusty
+    # Slad WHITE BOX per pozycja (R2-A / K3-G1; struktura R3-D): krotka krokow
+    # {"tekst": str, "latex": str | None}. `latex` obecny dla wzoru i
+    # podstawienia (kanon Proof Engine: matematyka w LaTeX, UI renderuje KaTeX);
+    # `tekst` zawsze (raporty/eksport ASCII). Addytywnie, domyslnie pusty
     # (pozycje NOT_COMPUTED bez wywodu - powod niesie why_pl).
-    white_box: tuple[str, ...] = ()
+    white_box: tuple[dict, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -19,6 +19,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import './jakosc.css';
 import type { AdvancementMode } from '../../shell/modeModel';
+import { MathBlock } from '../../../ui/proof/MathRenderer';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
@@ -492,9 +493,16 @@ function SzczegolWalidacji({
             <div data-testid="mvd-jakosc-wal-slad-blok">
               <span className="mvd-jakosc-slad-tytul">{JAKOSC_STRINGS.sladTytul}</span>
               <ol className="mvd-jakosc-slad" data-testid="mvd-jakosc-wal-slad">
-                {(item.white_box ?? []).map((linia) => (
-                  <li key={linia} className="mvd-jakosc-slad-krok">
-                    <code className="mvd-num">{linia}</code>
+                {/* R3-D (recenzja właściciela): wzór i podstawienie renderowane
+                    KaTeX-em (kanon Proof Engine — matematyka w LaTeX); kroki bez
+                    formuły (dane/progi/werdykt) pozostają tekstowe. */}
+                {(item.white_box ?? []).map((krok) => (
+                  <li key={krok.tekst} className="mvd-jakosc-slad-krok">
+                    {krok.latex ? (
+                      <MathBlock latex={krok.latex} />
+                    ) : (
+                      <code className="mvd-num">{krok.tekst}</code>
+                    )}
                   </li>
                 ))}
               </ol>

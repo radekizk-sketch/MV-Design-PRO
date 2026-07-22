@@ -85,6 +85,12 @@ export type RodzajKontroli =
 /** Kody statusu walidacji energetycznej (models.py:31-35) — mapowane na polski. */
 export type StatusWalidacji = 'PASS' | 'WARNING' | 'FAIL' | 'NOT_COMPUTED';
 
+/** Krok śladu WHITE BOX pozycji walidacji (R3-D): tekst + opcjonalny LaTeX. */
+export interface KrokSladuWalidacji {
+  readonly tekst: string;
+  readonly latex: string | null;
+}
+
 /** Pozycja kontroli energetycznej. */
 export interface WalidacjaItem {
   readonly check_type: RodzajKontroli;
@@ -97,9 +103,10 @@ export interface WalidacjaItem {
   readonly margin_pct: number | null;
   readonly status: StatusWalidacji;
   readonly why_pl: string;
-  /** Ślad WHITE BOX per pozycja (R2-A / K3-G1): wzór → dane → wynik → progi →
-   * werdykt. Opcjonalny (starsze odpowiedzi bez pola); pusty dla NOT_COMPUTED. */
-  readonly white_box?: readonly string[];
+  /** Ślad WHITE BOX per pozycja (R2-A / K3-G1; struktura R3-D): kroki
+   * {tekst, latex} — wzór i podstawienie niosą LaTeX (render KaTeX, kanon
+   * Proof Engine), pozostałe kroki tekstowe. Opcjonalny; pusty dla NOT_COMPUTED. */
+  readonly white_box?: readonly KrokSladuWalidacji[];
 }
 
 /** Konfiguracja progów walidacji (część ZAŁOŻEŃ). */

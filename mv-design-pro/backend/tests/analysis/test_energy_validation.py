@@ -846,12 +846,16 @@ class TestWhiteBoxTrace:
         view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
         item = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING][0]
         assert len(item.white_box) == 5
-        assert item.white_box[0].startswith("Wzor:")
-        assert "0.4500 kA" in item.white_box[1]  # |I| z wyniku PF
-        assert "0.5000 kA" in item.white_box[1]  # I_n z danych galezi
-        assert "90.00 %" in item.white_box[2]
-        assert "ostrzezenie 80.0 %" in item.white_box[3]
-        assert item.white_box[4] == "Werdykt: OSTRZEZENIE"
+        # R3-D: kroki strukturalne {tekst, latex} - wzor i podstawienie w LaTeX.
+        assert item.white_box[0]["tekst"].startswith("Wzor:")
+        assert r"\frac{|I|}{I_n}" in item.white_box[0]["latex"]
+        assert "0.4500 kA" in item.white_box[1]["tekst"]  # |I| z wyniku PF
+        assert "0.5000 kA" in item.white_box[1]["tekst"]  # I_n z danych galezi
+        assert item.white_box[1]["latex"] is None  # pochodzenie danych = tekst
+        assert "90.00 %" in item.white_box[2]["tekst"]
+        assert "= 90.00" in item.white_box[2]["latex"]  # podstawienie liczbowe
+        assert "ostrzezenie 80.0 %" in item.white_box[3]["tekst"]
+        assert item.white_box[4]["tekst"] == "Werdykt: OSTRZEZENIE"
 
     def test_not_computed_item_has_empty_trace(self):
         graph = _build_simple_graph()
@@ -873,7 +877,8 @@ class TestWhiteBoxTrace:
             assert item_dict["white_box"] == list(item.white_box)
             if item.status != EnergyValidationStatus.NOT_COMPUTED:
                 assert len(item.white_box) == 5
-                assert item.white_box[-1].startswith("Werdykt:")
+                assert item.white_box[-1]["tekst"].startswith("Werdykt:")
+                assert item.white_box[0]["latex"]  # wzor zawsze w LaTeX
         json.dumps(data)  # serializowalnosc
 
     def test_trace_is_deterministic(self):
