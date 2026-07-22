@@ -40,6 +40,9 @@ export const ROZPLYW_STRINGS = {
   kolQKoniec: 'Q koniec',
   kolStratyP: 'Straty P',
   kolStratyQ: 'Straty Q',
+  // Kolumna werdyktu obciążalności (karta R3-A / K1-G2) — wartość i werdykt
+  // WYŁĄCZNIE z backendowej walidacji energetycznej (BRANCH/TRANSFORMER_LOADING).
+  kolObciazenie: 'Obciążenie',
 
   // Podzakładki okna rozpływu (karta E8.3)
   ariaPodzakladki: 'Podzakładki wyniku rozpływu',
@@ -73,6 +76,11 @@ export const ROZPLYW_STRINGS = {
   jednMVA: 'MVA',
   jednKW: 'kW',
   jednKvar: 'kvar',
+  jednProcent: '%',
+
+  // Uczciwy brak danych (R3-A): brak pozycji walidacji dla gałęzi lub brak
+  // odpowiedzi walidacji → komórka bez wartości i bez werdyktu.
+  kreska: '—',
 } as const;
 
 /** Format liczby z przecinkiem dziesiętnym (deterministyczny). */
@@ -124,4 +132,14 @@ export function fmtStrataKw(mw: number): string {
 /** Straty bierne gałęzi: Mvar → kvar (skalowanie ×1000) — jak wyżej. */
 export function fmtStrataKvar(mvar: number): string {
   return fmtLiczba(mvar * 1000, 2);
+}
+
+/**
+ * Obciążenie gałęzi/transformatora [%] — 1 miejsce po przecinku, spójnie
+ * z prezentacją procentów okna „Jakość wyników" (`jakosc/strings.ts:fmtProcent`).
+ * Wartość pochodzi WPROST z `observed_value` pozycji walidacji energetycznej
+ * (backend) — formater wyłącznie prezentuje, zero fizyki (karta R3-A).
+ */
+export function fmtObciazenie(pct: number): string {
+  return fmtLiczba(pct, 1);
 }

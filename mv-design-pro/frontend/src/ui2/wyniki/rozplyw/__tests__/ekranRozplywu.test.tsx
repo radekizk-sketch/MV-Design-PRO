@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+
+// R3-A: podzakładka Gałęzie pobiera walidację energetyczną (werdykt
+// obciążalności) — w testach kompozycji transport GET deterministycznie
+// niedostępny (odrzucenie): kolumna „Obciążenie" pokazuje kreski, zero sieci.
+vi.mock('../../jakosc/api', () => ({
+  fetchWalidacjaEnergetyczna: vi.fn(() => Promise.reject(new Error('walidacja niedostępna'))),
+}));
+
 import { EkranRozplywu } from '../EkranRozplywu';
 import { ROZPLYW_STRINGS } from '../strings';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';

@@ -10,20 +10,63 @@
  * `EkranAnalizy` (wzorzec nie niesie koncepcji wiersza podsumowania), wyłącznie
  * gdy wynik ma choć jedną gałąź (uczciwy stan pusty: brak gałęzi → sama
  * tabela pokazuje komunikat wzorca „Brak wyników do wyświetlenia.”, bez sumy).
+ *
+ * R3-A (K1-G2): kolumna „Obciążenie [%]" z werdyktem obciążalności. Kontrakt
+ * `PowerFlowBranchResult` (FROZEN) nie niesie obciążenia — werdykt KONSUMUJEMY
+ * z istniejącego endpointu walidacji energetycznej (`fetchWalidacjaEnergetyczna`,
+ * reuse klienta `jakosc/api.ts` — bez duplikacji). Pobranie on-demand po
+ * `runId` (wzorzec `useZasobJakosci` z `EkranJakosci`); brak odpowiedzi →
+ * kolumna z kreskami, tabela działa jak dotąd (uczciwie, bez werdyktu).
  */
 
+import { useEffect, useState } from 'react';
 import './rozplyw.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
+import { fetchWalidacjaEnergetyczna } from '../jakosc/api';
+import { rodzajPrzekroczeniaWalidacji, typElementuWalidacji } from '../jakosc/jakoscModel';
 import { ROZPLYW_STRINGS } from './strings';
 import {
   KLUCZ_GALAZ,
   KOLUMNY_GALEZI,
+  naMapeObciazen,
   naSumeStratGalezi,
   naWierszeGalezi,
   naZalozeniaRozplywu,
   useWynikRozplywu,
+  type PozycjaObciazenia,
 } from './adapters/rozplywAdapter';
+
+/**
+ * Pobiera walidację energetyczną przebiegu i buduje mapę `branch_id` → pozycja
+ * obciążalności (R3-A). Uczciwe stany: brak `runId`, trwające pobieranie lub
+ * błąd/brak odpowiedzi → `null` (kolumna „Obciążenie" pokazuje kreski, bez
+ * werdyktu i bez przycisku decyzji). Błąd celowo NIE ustawia stanu — mapa
+ * pozostaje `null` z inicjalizacji/resetu, a tabela działa jak przed kartą.
+ */
+export function useWalidacjaObciazen(
+  runId: string | null,
+): ReadonlyMap<string, PozycjaObciazenia> | null {
+  const [mapa, setMapa] = useState<ReadonlyMap<string, PozycjaObciazenia> | null>(null);
+
+  useEffect(() => {
+    setMapa(null); // reset przy zmianie przebiegu (stale werdykty nie przeciekają)
+    if (!runId) return;
+    let anulowane = false;
+    fetchWalidacjaEnergetyczna(runId)
+      .then((odpowiedz) => {
+        if (!anulowane) setMapa(naMapeObciazen(odpowiedz.items));
+      })
+      .catch(() => {
+        // Brak odpowiedzi walidacji → uczciwie bez werdyktu (mapa pozostaje null).
+      });
+    return () => {
+      anulowane = true;
+    };
+  }, [runId]);
+
+  return mapa;
+}
 
 export interface TabelaGaleziProps {
   trybZaawansowania: AdvancementMode;
@@ -34,6 +77,7 @@ export interface TabelaGaleziProps {
 export function TabelaGalezi({ trybZaawansowania, onOtworzDowod, onEksport }: TabelaGaleziProps) {
   const { wynik, runId } = useWynikRozplywu();
   const poprawWModelu = usePoprawWModelu();
+  const obciazenia = useWalidacjaObciazen(runId);
 
   if (!wynik) {
     return (
@@ -55,14 +99,28 @@ export function TabelaGalezi({ trybZaawansowania, onOtworzDowod, onEksport }: Ta
         naglowek={{ analizaPL: ROZPLYW_STRINGS.analizaGalezie, runId: runId ?? undefined }}
         zalozenia={naZalozeniaRozplywu(wynik)}
         kolumny={KOLUMNY_GALEZI}
-        wiersze={naWierszeGalezi(wynik.branch_results)}
+        wiersze={naWierszeGalezi(wynik.branch_results, obciazenia)}
         onOtworzDowod={onOtworzDowod}
         onEksport={onEksport}
         trybZaawansowania={trybZaawansowania}
         kluczWiersza={KLUCZ_GALAZ}
-        // K1 / F-E6.3: wiersz gałęzi → rodzaj 'obciazalnosc-galezi' (akcja generyczna;
-        // przycisk renderuje się tylko na wierszu z werdyktem `ostrzezenie` adaptera).
-        onPoprawWModelu={(ref) => poprawWModelu(ref, 'LineBranch', ref, 'obciazalnosc-galezi')}
+        // K1 / F-E6.3 + R3-A: rodzaj i typ elementu z REALNEGO `check_type`
+        // pozycji walidacji (reuse mapowań `jakosc/jakoscModel.ts`):
+        // BRANCH_LOADING → LineBranch/'obciazalnosc-galezi',
+        // TRANSFORMER_LOADING → TransformerBranch/'obciazalnosc-transformatora'.
+        // Werdykt (ostrzeżenie z kolumny „Obciążenie") pochodzi wyłącznie z tej
+        // walidacji, więc wiersz z przyciskiem ma zawsze pozycję w mapie;
+        // defensywny fallback = dotychczasowa akcja gałęzi liniowej (1:1).
+        onPoprawWModelu={(ref) => {
+          const poz = obciazenia?.get(ref);
+          const typ = poz ? typElementuWalidacji(poz.checkType) : null;
+          const rodzaj = poz ? rodzajPrzekroczeniaWalidacji(poz.checkType) : null;
+          poprawWModelu(ref, typ ?? 'LineBranch', ref, rodzaj ?? 'obciazalnosc-galezi');
+        }}
+        rodzajWiersza={(ref) => {
+          const poz = obciazenia?.get(ref);
+          return poz ? rodzajPrzekroczeniaWalidacji(poz.checkType) ?? undefined : undefined;
+        }}
       />
       {suma && (
         <div className="mvd-rozplyw-suma-strat" data-testid="mvd-rozplyw-suma-strat">

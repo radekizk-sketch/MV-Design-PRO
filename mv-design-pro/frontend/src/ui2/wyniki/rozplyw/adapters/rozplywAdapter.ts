@@ -48,12 +48,21 @@ import type {
   PowerFlowResultV1,
 } from '../../../../ui/power-flow-results/types';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
-import type { DefinicjaKolumny, WierszTabeli, WierszZalozenia } from '../../wzorzec';
+// Typy pozycji walidacji energetycznej (R3-A / K1-G2) — WYŁĄCZNIE typy (import
+// type-only, zero wołań API z tego pliku); klient GET żyje w `jakosc/api.ts`.
+import type { StatusWalidacji, WalidacjaItem } from '../../jakosc/api';
+import type {
+  DefinicjaKolumny,
+  WartoscKomorki,
+  WierszTabeli,
+  WierszZalozenia,
+} from '../../wzorzec';
 import {
   ROZPLYW_STRINGS,
   fmtBaza,
   fmtKat,
   fmtMoc,
+  fmtObciazenie,
   fmtPU,
   fmtStrataKvar,
   fmtStrataKw,
@@ -136,6 +145,9 @@ export function naProfilNapiec(busResults: PowerFlowBusResult[]): PunktProfilu[]
 
 export const KLUCZ_GALAZ = 'galaz';
 
+/** Klucz kolumny werdyktu obciążalności (R3-A / K1-G2). */
+export const KLUCZ_OBCIAZENIE = 'obciazenie';
+
 export const KOLUMNY_GALEZI: DefinicjaKolumny[] = [
   { klucz: KLUCZ_GALAZ, etykieta: ROZPLYW_STRINGS.kolGalaz, wyrownanie: 'lewo' },
   { klucz: 'pPoczatek', etykieta: ROZPLYW_STRINGS.kolPPoczatek, jednostka: ROZPLYW_STRINGS.jednMW, mono: true },
@@ -144,14 +156,93 @@ export const KOLUMNY_GALEZI: DefinicjaKolumny[] = [
   { klucz: 'qKoniec', etykieta: ROZPLYW_STRINGS.kolQKoniec, jednostka: ROZPLYW_STRINGS.jednMvar, mono: true },
   { klucz: 'stratyP', etykieta: ROZPLYW_STRINGS.kolStratyP, jednostka: ROZPLYW_STRINGS.jednKW, mono: true },
   { klucz: 'stratyQ', etykieta: ROZPLYW_STRINGS.kolStratyQ, jednostka: ROZPLYW_STRINGS.jednKvar, mono: true },
+  // R3-A (K1-G2): werdykt obciążalności z walidacji energetycznej backendu —
+  // ostatnia kolumna danych, bezpośrednio przy kolumnie decyzji („Popraw w modelu").
+  { klucz: KLUCZ_OBCIAZENIE, etykieta: ROZPLYW_STRINGS.kolObciazenie, jednostka: ROZPLYW_STRINGS.jednProcent, mono: true },
 ];
+
+// ---------------------------------------------------------------------------
+// Werdykt obciążalności gałęzi (karta R3-A / K1-G2)
+// ---------------------------------------------------------------------------
+// Kontrakt `PowerFlowBranchResult` (FROZEN) NIE niesie obciążalności — werdykt
+// KONSUMUJEMY z istniejącego endpointu walidacji energetycznej
+// (`GET /api/quality/energy-validation?run_id=`, klient: `jakosc/api.ts`):
+// pozycje `check_type=BRANCH_LOADING|TRANSFORMER_LOADING` kluczowane
+// `target_id`=`branch_id` (mapowanie gruntowane backendem —
+// `analysis/energy_validation/builder.py`, patrz `jakosc/jakoscModel.ts:219-241`).
+// ZERO fizyki w UI: `observed_value` [%] i status (PASS/WARNING/FAIL/NOT_COMPUTED)
+// pochodzą WYŁĄCZNIE z backendu; adapter wyłącznie formatuje.
+// Komórka obciążenia NIE niesie `dowodRef`: wartość liczy builder walidacji,
+// nie solver rozpływu — ref do śladu przebiegu byłby dowodem INNEJ wielkości
+// (reguła K3/R2-A: wywód buildera, `white_box`, żyje w szczególe pozycji okna
+// „Jakość wyników", nie w śladzie przebiegu).
+
+/** Pozycja obciążalności dla gałęzi — projekcja pozycji walidacji energetycznej. */
+export interface PozycjaObciazenia {
+  /** Rodzaj kontroli — rozróżnia gałąź liniową od transformatora (akcja naprawcza). */
+  checkType: 'BRANCH_LOADING' | 'TRANSFORMER_LOADING';
+  /** Obciążenie [%] policzone przez backend (null = nie policzono). */
+  observedValue: number | null;
+  /** Werdykt backendu — jedyne źródło ostrzeżenia (WARNING/FAIL). */
+  status: StatusWalidacji;
+}
+
+/**
+ * Buduje mapę `branch_id` → pozycja obciążalności z pozycji walidacji
+ * energetycznej. Czysta funkcja: filtruje wyłącznie kontrole obciążalności,
+ * pozostałe rodzaje (napięcie, straty, bilans biernej) pomija. Przy duplikacie
+ * `target_id` wygrywa PIERWSZA pozycja (deterministycznie, kolejność źródła).
+ */
+export function naMapeObciazen(
+  items: readonly WalidacjaItem[],
+): Map<string, PozycjaObciazenia> {
+  const mapa = new Map<string, PozycjaObciazenia>();
+  for (const it of items) {
+    if (it.check_type !== 'BRANCH_LOADING' && it.check_type !== 'TRANSFORMER_LOADING') continue;
+    if (mapa.has(it.target_id)) continue;
+    mapa.set(it.target_id, {
+      checkType: it.check_type,
+      observedValue: it.observed_value,
+      status: it.status,
+    });
+  }
+  return mapa;
+}
+
+/**
+ * Komórka „Obciążenie [%]" z pozycji walidacji (czysta funkcja, testowalna
+ * fixture'ami). Uczciwe stany (R3-A): brak pozycji dla gałęzi lub brak wartości
+ * → kreska bez werdyktu; `ostrzezenie` WYŁĄCZNIE z werdyktu backendu
+ * (WARNING/FAIL) — zero progów po stronie UI.
+ */
+export function komorkaObciazenia(poz: PozycjaObciazenia | undefined): WartoscKomorki {
+  if (!poz) return { wartosc: ROZPLYW_STRINGS.kreska };
+  const ostrzezenie = poz.status === 'WARNING' || poz.status === 'FAIL';
+  if (poz.observedValue === null) {
+    // Pozycja bez wartości (np. NOT_COMPUTED) — kreska; werdykt backendu zachowany.
+    return ostrzezenie
+      ? { wartosc: ROZPLYW_STRINGS.kreska, ostrzezenie: true }
+      : { wartosc: ROZPLYW_STRINGS.kreska };
+  }
+  return {
+    wartosc: fmtObciazenie(poz.observedValue),
+    sortKey: poz.observedValue,
+    ...(ostrzezenie ? { ostrzezenie: true } : {}),
+  };
+}
 
 /** Mapuje wiersze gałęzi na wiersze tabeli wzorca (kolejność ze źródła zachowana).
  * Straty (MW/Mvar w kontrakcie) prezentowane w kW/kvar — skalowanie jednostki
  * prezentacji, patrz `fmtStrataKw`/`fmtStrataKvar` w `strings.ts`; `sortKey`
  * niesie tę samą (skalowaną) wartość liczbową, więc sortowanie i wyświetlana
- * jednostka są spójne. `dowodRef` = `branch_id` (K3/C1) — jak `naWierszeSzyn`. */
-export function naWierszeGalezi(branchResults: PowerFlowBranchResult[]): WierszTabeli[] {
+ * jednostka są spójne. `dowodRef` = `branch_id` (K3/C1) — jak `naWierszeSzyn`.
+ * R3-A (parametr addytywny): `obciazenia` = mapa `branch_id` → pozycja
+ * obciążalności z walidacji energetycznej; brak mapy (null/undefined — walidacja
+ * niedostępna) → kolumna „Obciążenie" z kreskami, tabela działa jak dotąd. */
+export function naWierszeGalezi(
+  branchResults: PowerFlowBranchResult[],
+  obciazenia?: ReadonlyMap<string, PozycjaObciazenia> | null,
+): WierszTabeli[] {
   return branchResults.map((r) => ({
     [KLUCZ_GALAZ]: { wartosc: r.branch_id },
     pPoczatek: { wartosc: fmtMoc(r.p_from_mw), sortKey: r.p_from_mw, dowodRef: r.branch_id },
@@ -168,6 +259,7 @@ export function naWierszeGalezi(branchResults: PowerFlowBranchResult[]): WierszT
       sortKey: r.losses_q_mvar * 1000,
       dowodRef: r.branch_id,
     },
+    [KLUCZ_OBCIAZENIE]: komorkaObciazenia(obciazenia?.get(r.branch_id)),
   }));
 }
 

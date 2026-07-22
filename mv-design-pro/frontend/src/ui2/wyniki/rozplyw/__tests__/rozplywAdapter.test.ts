@@ -1,9 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   KLUCZ_GALAZ,
+  KLUCZ_OBCIAZENIE,
   KLUCZ_SZYNA,
   KOLUMNY_GALEZI,
   KOLUMNY_SZYN,
+  komorkaObciazenia,
+  naMapeObciazen,
   naProfilNapiec,
   naSumeStratGalezi,
   naWierszeGalezi,
@@ -18,7 +21,12 @@ import {
   NAPIECIE_MIN_PU,
   ROZPLYW_STRINGS,
 } from '../strings';
-import { branchResultFixture, busResultFixture, powerFlowResultFixture } from './fixtures';
+import {
+  branchResultFixture,
+  busResultFixture,
+  powerFlowResultFixture,
+  walidacjaItemFixture,
+} from './fixtures';
 
 describe('naWierszeSzyn — projekcja PowerFlowBusResult → wiersze wzorca (fixture 1:1)', () => {
   it('mapuje wszystkie pola wiersza szyny z formatem PL (przecinek dziesiętny)', () => {
@@ -163,6 +171,105 @@ describe('naWierszeGalezi — projekcja PowerFlowBranchResult → wiersze wzorca
 
   it('pusta lista gałęzi → pusta lista wierszy (uczciwy stan pusty)', () => {
     expect(naWierszeGalezi([])).toEqual([]);
+  });
+});
+
+describe('naMapeObciazen — pozycje walidacji → mapa branch_id → obciążalność (R3-A / K1-G2)', () => {
+  it('kluczuje pozycje obciążalności po target_id (= branch_id z backendu)', () => {
+    const mapa = naMapeObciazen([
+      walidacjaItemFixture(),
+      walidacjaItemFixture({ target_id: 'T-1', check_type: 'TRANSFORMER_LOADING', observed_value: 104.0, status: 'FAIL' }),
+    ]);
+    expect(mapa.get('L-1')).toEqual({ checkType: 'BRANCH_LOADING', observedValue: 92.0, status: 'WARNING' });
+    expect(mapa.get('T-1')).toEqual({ checkType: 'TRANSFORMER_LOADING', observedValue: 104.0, status: 'FAIL' });
+  });
+
+  it('filtruje wyłącznie kontrole obciążalności — pozostałe rodzaje pominięte', () => {
+    const mapa = naMapeObciazen([
+      walidacjaItemFixture({ target_id: 'bus-B', check_type: 'VOLTAGE_DEVIATION' }),
+      walidacjaItemFixture({ target_id: 'network', check_type: 'LOSS_BUDGET' }),
+      walidacjaItemFixture({ target_id: 'slack', check_type: 'REACTIVE_BALANCE' }),
+    ]);
+    expect(mapa.size).toBe(0);
+  });
+
+  it('duplikat target_id → wygrywa pierwsza pozycja (deterministycznie)', () => {
+    const mapa = naMapeObciazen([
+      walidacjaItemFixture({ observed_value: 92.0 }),
+      walidacjaItemFixture({ observed_value: 50.0, status: 'PASS' }),
+    ]);
+    expect(mapa.get('L-1')).toMatchObject({ observedValue: 92.0, status: 'WARNING' });
+  });
+
+  it('jest deterministyczne: to samo wejście → identyczna mapa', () => {
+    const wejscie = [walidacjaItemFixture(), walidacjaItemFixture({ target_id: 'L-2', status: 'PASS' })];
+    expect(naMapeObciazen(wejscie)).toEqual(naMapeObciazen(wejscie));
+  });
+});
+
+describe('komorkaObciazenia — pozycja walidacji → komórka „Obciążenie [%]" (R3-A)', () => {
+  it('brak pozycji dla gałęzi → kreska bez werdyktu i bez sortKey (uczciwie)', () => {
+    expect(komorkaObciazenia(undefined)).toEqual({ wartosc: ROZPLYW_STRINGS.kreska });
+  });
+
+  it('PASS → wartość PL (przecinek, 1 miejsce) + sortKey liczbowy, bez ostrzeżenia', () => {
+    expect(
+      komorkaObciazenia({ checkType: 'BRANCH_LOADING', observedValue: 65.0, status: 'PASS' }),
+    ).toEqual({ wartosc: '65,0', sortKey: 65.0 });
+  });
+
+  it('WARNING i FAIL → tag ostrzeżenia WYŁĄCZNIE z werdyktu backendu', () => {
+    expect(
+      komorkaObciazenia({ checkType: 'BRANCH_LOADING', observedValue: 92.0, status: 'WARNING' }),
+    ).toEqual({ wartosc: '92,0', sortKey: 92.0, ostrzezenie: true });
+    expect(
+      komorkaObciazenia({ checkType: 'TRANSFORMER_LOADING', observedValue: 104.0, status: 'FAIL' }),
+    ).toEqual({ wartosc: '104,0', sortKey: 104.0, ostrzezenie: true });
+  });
+
+  it('pozycja bez wartości (NOT_COMPUTED) → kreska bez werdyktu', () => {
+    expect(
+      komorkaObciazenia({ checkType: 'BRANCH_LOADING', observedValue: null, status: 'NOT_COMPUTED' }),
+    ).toEqual({ wartosc: ROZPLYW_STRINGS.kreska });
+  });
+
+  it('pozycja bez wartości z werdyktem FAIL → kreska Z werdyktem (werdykt backendu zachowany)', () => {
+    expect(
+      komorkaObciazenia({ checkType: 'BRANCH_LOADING', observedValue: null, status: 'FAIL' }),
+    ).toEqual({ wartosc: ROZPLYW_STRINGS.kreska, ostrzezenie: true });
+  });
+});
+
+describe('naWierszeGalezi + obciążenia — kolumna werdyktu obciążalności (R3-A)', () => {
+  it('bez mapy walidacji: komórka obciążenia = kreska (tabela działa jak dotąd)', () => {
+    const [w] = naWierszeGalezi([branchResultFixture()]);
+    expect(w[KLUCZ_OBCIAZENIE]).toEqual({ wartosc: ROZPLYW_STRINGS.kreska });
+    const [w2] = naWierszeGalezi([branchResultFixture()], null);
+    expect(w2[KLUCZ_OBCIAZENIE]).toEqual({ wartosc: ROZPLYW_STRINGS.kreska });
+  });
+
+  it('z mapą walidacji: wartość PL, sortKey liczbowy i werdykt z backendu', () => {
+    const mapa = naMapeObciazen([walidacjaItemFixture()]);
+    const [w] = naWierszeGalezi([branchResultFixture()], mapa);
+    expect(w[KLUCZ_OBCIAZENIE]).toEqual({ wartosc: '92,0', sortKey: 92.0, ostrzezenie: true });
+  });
+
+  it('gałąź bez pozycji walidacji w mapie → kreska bez werdyktu', () => {
+    const mapa = naMapeObciazen([walidacjaItemFixture()]); // tylko L-1
+    const wiersze = naWierszeGalezi(powerFlowResultFixture().branch_results, mapa);
+    expect(wiersze[1][KLUCZ_OBCIAZENIE]).toEqual({ wartosc: ROZPLYW_STRINGS.kreska });
+  });
+
+  it('komórka obciążenia NIE niesie dowodRef (wartość buildera walidacji, nie śladu solvera — K3/R2-A)', () => {
+    const mapa = naMapeObciazen([walidacjaItemFixture()]);
+    const [w] = naWierszeGalezi([branchResultFixture()], mapa);
+    expect(w[KLUCZ_OBCIAZENIE].dowodRef).toBeUndefined();
+  });
+
+  it('jest deterministyczne z mapą: to samo wejście → identyczne wyjście', () => {
+    const wejscie = powerFlowResultFixture().branch_results;
+    const mapa = naMapeObciazen([walidacjaItemFixture(), walidacjaItemFixture({ target_id: 'L-2', status: 'PASS', observed_value: 65.0 })]);
+    expect(naWierszeGalezi(wejscie, mapa)).toEqual(naWierszeGalezi(wejscie, mapa));
   });
 });
 

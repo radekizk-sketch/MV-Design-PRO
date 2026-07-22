@@ -13,6 +13,7 @@ import type {
   PowerFlowResultV1,
   PowerFlowRunHeader,
 } from '../../../../ui/power-flow-results/types';
+import type { WalidacjaItem, WalidacjaResponse } from '../../jakosc/api';
 
 export function busResultFixture(over: Partial<PowerFlowBusResult> = {}): PowerFlowBusResult {
   return {
@@ -88,6 +89,90 @@ export function powerFlowResultFixture(
       slack_q_mvar: 2.4,
     },
     ...over,
+  };
+}
+
+/**
+ * Pozycja walidacji energetycznej (R3-A / K1-G2) — kształt 1:1 z kontraktem
+ * `WalidacjaItem` (`ui2/wyniki/jakosc/api.ts:89-103`, źródłowo
+ * `analysis/energy_validation/serializer.py`). Domyślnie: przeciążona gałąź
+ * liniowa L-1 (WARNING) — spójna z `powerFlowResultFixture().branch_results`.
+ */
+export function walidacjaItemFixture(over: Partial<WalidacjaItem> = {}): WalidacjaItem {
+  return {
+    check_type: 'BRANCH_LOADING',
+    target_id: 'L-1',
+    target_name: 'Linia L-1',
+    observed_value: 92.0,
+    unit: '%',
+    limit_warn: 80.0,
+    limit_fail: 100.0,
+    margin_pct: 8.0,
+    status: 'WARNING',
+    why_pl: 'Obciążenie gałęzi 92% — powyżej progu ostrzeżenia 80%.',
+    white_box: [
+      'Wzor: obciazenie = S / S_dop * 100%',
+      'Wynik: obciazenie = 92.00 %',
+      'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %',
+      'Werdykt: OSTRZEZENIE',
+    ],
+    ...over,
+  };
+}
+
+/**
+ * Pełna odpowiedź `GET /api/quality/energy-validation` (R3-A) — kontrakt
+ * `WalidacjaResponse`. Domyślne pozycje pokrywają obie gałęzie fixtury rozpływu:
+ * L-1 przeciążona (WARNING 92%), L-2 zgodna (PASS 65%).
+ */
+export function walidacjaResponseFixture(
+  items: WalidacjaItem[] = [
+    walidacjaItemFixture(),
+    walidacjaItemFixture({
+      target_id: 'L-2',
+      target_name: 'Linia L-2',
+      observed_value: 65.0,
+      margin_pct: 35.0,
+      status: 'PASS',
+      why_pl: 'Obciążenie gałęzi 65% — poniżej progu ostrzeżenia 80%.',
+      white_box: [
+        'Wzor: obciazenie = S / S_dop * 100%',
+        'Wynik: obciazenie = 65.00 %',
+        'Progi: ostrzezenie 80.0 %, przekroczenie 100.0 %',
+        'Werdykt: ZGODNE',
+      ],
+    }),
+  ],
+): WalidacjaResponse {
+  const pass = items.filter((i) => i.status === 'PASS').length;
+  const warning = items.filter((i) => i.status === 'WARNING').length;
+  const fail = items.filter((i) => i.status === 'FAIL').length;
+  const notComputed = items.filter((i) => i.status === 'NOT_COMPUTED').length;
+  return {
+    context: {
+      project_name: 'Sieć testowa',
+      case_name: 'sc-1',
+      run_timestamp: '2026-07-15T10:00:05+00:00',
+      snapshot_id: 'snap-pf-1',
+      trace_id: 'pf-run-1',
+    },
+    config: {
+      loading_warn_pct: 80.0,
+      loading_fail_pct: 100.0,
+      voltage_warn_pct: 5.0,
+      voltage_fail_pct: 10.0,
+      loss_warn_pct: 5.0,
+      loss_fail_pct: 10.0,
+    },
+    items,
+    summary: {
+      pass_count: pass,
+      warning_count: warning,
+      fail_count: fail,
+      not_computed_count: notComputed,
+      worst_item_target_id: items[0]?.target_id ?? null,
+      worst_item_margin_pct: items[0]?.margin_pct ?? null,
+    },
   };
 }
 
