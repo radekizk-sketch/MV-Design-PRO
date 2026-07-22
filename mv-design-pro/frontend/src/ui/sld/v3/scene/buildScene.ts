@@ -251,6 +251,12 @@ export interface SceneV3 extends PreviewComposition {
 
 const GPZ_TRUNK_GAP = 4 * GRID;
 const ROW_VERTICAL_GAP = 4 * GRID;
+/** SCHEMAT-10 S7-P1 (V12K-137): minimalne światło poziome między footprintami
+ *  DWÓCH lateralów dzielących ten sam pas Y (interval packing). Rezerwa routingu
+ *  + światła (kontrakt S6 §5, `MIN_SUBTREE_CLEARANCE`/`MIN_ROUTE_CLEARANCE`) —
+ *  na tyle duża, by piony zejść i etykiety korytarza sąsiadów pasa nigdy się nie
+ *  zbliżyły. Równe `ROW_VERTICAL_GAP` (4×GRID) — spójne z rezerwą międzywierszową. */
+const LATERAL_SUBTREE_CLEARANCE = 4 * GRID;
 /** §16-v3 (bieg otwarty): minimalna długość pozioma/pionowa JEDNEGO kawałka
  *  biegu otwartego (ciąg z segmentami ENM, ale bez ŻADNEJ stacji) — na tyle
  *  długa, żeby kawałek był klikalny i odróżnialny (6×GRID = 48 px świata). */
@@ -1263,6 +1269,92 @@ function computeLateralChannelXById(
   return out;
 }
 
+/**
+ * SCHEMAT-10 S7-P1 (V12K-137, GAP `S7_GAP_CROSSING_ZERO` §S7-P1): packer
+ * pakowania interwałowego lateralów (Rodzina B). Zastępuje kursor sekwencyjny
+ * `nextRowTopY` (każdy lateral POD CAŁĄ dotychczasową treścią) pakowaniem w
+ * PASY Y: laterale ROZŁĄCZNE w X (footprint rzeczywisty + `LATERAL_SUBTREE_
+ * CLEARANCE`) dzielą jeden pas, zaczynając możliwie WYSOKO → krótsze piony zejść
+ * (`verticalLength↓`), mniej przecięć kanałów z wierszami płytszymi
+ * (`crossingCount` Rodziny B↓), gęstszy arkusz (`inkDensity↑`).
+ *
+ * NIEZMIENNIK REZERWACJI KANAŁÓW (poprawność `insertColumnChannels`): `dy`
+ * NIEMALEJĄCE w kolejności komponowania. Wiersz `li` rezerwuje kanały dla
+ * lateroli `li+1..` (głębszych w kolejności); ta rezerwacja jest poprawna wtw.
+ * „głębszy w kolejności ⇒ nie wyżej w Y" — inaczej pion lateralu wcześniejszego
+ * wchodziłby w blok późniejszego bez rezerwacji. Packer nigdy nie sadza lateralu
+ * WYŻEJ od poprzedniego: pas bieżący (najniższy) przyjmuje nowych członków, po
+ * zejściu niżej NIGDY nie wracamy w górę. Sąsiedzi pasa mają rozłączne X, więc
+ * ich piony zejść (na `channelX`, poza footprintem sąsiada) nie kolidują z
+ * cudzym blokiem. Wiersze PEŁNEJ SZEROKOŚCI (feeder GPZ / bieg otwarty) zamykają
+ * pas i schodzą sekwencyjnie (`setCursor`) — ich geometria bez zmian.
+ *
+ * Determinizm (P7): stan zależy WYŁĄCZNIE od kolejności `branchRuns` i
+ * footprintów (czysta arytmetyka, zero czasu/losowości/kolejności zbioru).
+ */
+interface ShelfPlacement {
+  readonly dy: number;
+  /** Dół treści NAD tym pasem — kotwica górna korytarza etykiety wjazdowej. */
+  readonly priorContentBottom: number;
+}
+
+interface LateralShelfPacker {
+  /** Umieść lateral ze stacjami: footprint X [left,right], wysokość pasm
+   *  `height`, wymagana wysokość korytarza etykiety wjazdowej `corridorHeight`. */
+  place(left: number, right: number, height: number, corridorHeight: number): ShelfPlacement;
+  /** Strop następnego wiersza sekwencyjnego (== dawne `nextRowTopY`) — dla
+   *  wierszy pełnej szerokości, które liczą własne `dy` z dodatkowymi
+   *  ograniczeniami (np. `gpzBottom`). */
+  nextTop(): number;
+  /** Zamknij bieżący pas i ustaw kursor sekwencyjny na `value` (== dawne
+   *  przypisanie `nextRowTopY = …`), po zbudowaniu wiersza pełnej szerokości. */
+  setCursor(value: number): void;
+}
+
+function createLateralShelfPacker(topBaseline: number): LateralShelfPacker {
+  let contentAbove = topBaseline; // dół treści nad bieżącym pasem
+  let shelfTop: number | null = null; // strop bieżącego pasa (null = pas zamknięty)
+  let shelfBottom = topBaseline; // najniższy dół footprintu bieżącego pasa
+  let globalBottom = topBaseline; // najniższy dół CAŁEJ dotychczasowej treści
+  const intervals: Array<{ readonly left: number; readonly right: number }> = [];
+
+  function openNewShelf(corridorHeight: number): number {
+    contentAbove = globalBottom;
+    const top = Math.max(snapUp(globalBottom + ROW_VERTICAL_GAP), snapUp(contentAbove + corridorHeight));
+    shelfTop = top;
+    shelfBottom = top;
+    intervals.length = 0;
+    return top;
+  }
+
+  return {
+    place(left, right, height, corridorHeight) {
+      const disjoint = intervals.every(
+        (iv) => right + LATERAL_SUBTREE_CLEARANCE <= iv.left || left >= iv.right + LATERAL_SUBTREE_CLEARANCE,
+      );
+      const corridorFits = shelfTop != null && snapUp(contentAbove + corridorHeight) <= shelfTop;
+      const dy =
+        shelfTop != null && intervals.length > 0 && disjoint && corridorFits
+          ? shelfTop
+          : openNewShelf(corridorHeight);
+      intervals.push({ left, right });
+      shelfBottom = Math.max(shelfBottom, dy + height);
+      globalBottom = Math.max(globalBottom, shelfBottom);
+      return { dy, priorContentBottom: contentAbove };
+    },
+    nextTop() {
+      return globalBottom + ROW_VERTICAL_GAP;
+    },
+    setCursor(value) {
+      globalBottom = value - ROW_VERTICAL_GAP;
+      contentAbove = globalBottom;
+      shelfBottom = globalBottom;
+      shelfTop = null;
+      intervals.length = 0;
+    },
+  };
+}
+
 interface RowConnectResult {
   readonly connectors: PreviewSegment[];
   readonly routeGeoms: RouteGeometry[];
@@ -2104,7 +2196,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // strefy GPZ nad y=0 — sekcja 2/3) + wysokość pasm; samo `totalHeight` było
   // poprawne tylko przy dy=0 sprzed F13.1.
   const mainRowBottom = mainLayout ? mainRowDy + mainLayout.bandsResult.totalHeight : 0;
-  let nextRowTopY = mainRowBottom + ROW_VERTICAL_GAP;
+  // SCHEMAT-10 S7-P1 (V12K-137): packer interwałowy zastępuje kursor `nextRowTopY`.
+  const packer = createLateralShelfPacker(mainRowBottom);
   const lateralRunIds: string[] = [];
   const branchOriginUsage = new Map<string, number>();
 
@@ -2175,7 +2268,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         const openPaths = cableRun?.segmentPaths ?? [];
         if (openPaths.length > 0) {
           const riserX = feederPort.x;
-          const yRow = Math.max(snapUp(nextRowTopY) + 2 * GRID, gpzBottom + 2 * GRID);
+          const yRow = Math.max(snapUp(packer.nextTop()) + 2 * GRID, gpzBottom + 2 * GRID);
           const xEnd = Math.max(mainRowDx, snapUp(riserX) + openPaths.length * OPEN_RUN_PIECE_SPAN);
           openPaths.forEach((sp, i) => {
             const to = xEnd - (openPaths.length - 1 - i) * OPEN_RUN_PIECE_SPAN;
@@ -2204,14 +2297,14 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
             allRouteGeoms.push({ points });
           });
           emitOpenTerminalTick(xEnd, yRow, true, openPaths[openPaths.length - 1].segmentRef, lod === 2);
-          nextRowTopY = yRow + 4 * GRID;
+          packer.setCursor(yRow + 4 * GRID);
           lateralRunIds.push(run.id);
         }
         continue;
       }
 
       // Feeder ZE STACJAMI — pełny wiersz jak magistrala/lateral.
-      const feederDy = Math.max(snapUp(nextRowTopY), gpzBottom + 4 * GRID);
+      const feederDy = Math.max(snapUp(packer.nextTop()), gpzBottom + 4 * GRID);
       // Recenzja NO-GO 2026-07-17 pkt 16 (kompozycja/skala) — POMIAR PRÓBY:
       // wyrównanie wiersza feederu POD strefę GPZ (lewa krawędź + margines)
       // wypełniłoby pusty lewy-dolny róg arkusza, ALE ciąg wchodzi wtedy „od
@@ -2222,7 +2315,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // Kompakcja wymaga LUSTRZANEJ kompozycji wiersza (odbicie kolejności
       // pól + portów) — program kompozycji, rejestr recenzji pkt 16 (plan).
       feederLayout = shiftRowLayout(feederLayout, mainRowDx, feederDy);
-      nextRowTopY = feederDy + feederLayout.bandsResult.totalHeight + ROW_VERTICAL_GAP;
+      packer.setCursor(feederDy + feederLayout.bandsResult.totalHeight + ROW_VERTICAL_GAP);
       lateralRunIds.push(run.id);
 
       const feederRow: RowStation[] = [];
@@ -2373,7 +2466,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       if (openPaths.length > 0) {
         const stripTopY = stripTopYOf(mainLayout!);
         const yEnd = Math.max(
-          snapUp(nextRowTopY) + 2 * GRID,
+          snapUp(packer.nextTop()) + 2 * GRID,
           snapUp(stripTopY) + openPaths.length * OPEN_RUN_PIECE_SPAN,
         );
         openPaths.forEach((sp, i) => {
@@ -2407,7 +2500,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         });
         emitOpenTerminalTick(channelX, yEnd, false, openPaths[openPaths.length - 1].segmentRef, lod === 2);
         // Rezerwacja pionowa: słupek + etykieta L2 mieszczą się w 4×GRID.
-        nextRowTopY = yEnd + 4 * GRID;
+        packer.setCursor(yEnd + 4 * GRID);
         lateralRunIds.push(run.id);
       }
       continue;
@@ -2432,21 +2525,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // więc `dx` bez zmian, zmienia się tylko L0 (dosuwa laterale do L1/L2).
     const provisional = composeRowStation(layout.geometryInputs[0], firstProps0, firstCol0, layout.busAxisY, layout.blockTopY, 2, []);
     const dx = snapToGrid(channelX - provisional.entryPort.x);
-    // Korytarz między-wierszowy musi zmieścić etykietę segmentu-lateralu
-    // (spec §4, `layout/labels.ts` `resolveSegmentLateralLabel`, `fitsLength`)
-    // POMIĘDZY `priorContentBottom` (dół WSZYSTKIEGO już umieszczonego —
-    // wiersza magistrali dla pierwszego lateralu, ALBO dołu POPRZEDNIEGO
-    // lateralu dla kolejnych — grzebień schodzi w dół sekwencyjnie,
-    // `ROW_VERTICAL_GAP` w `nextRowTopY` już to zawiera) a `dy` (lokalny
-    // początek TEGO wiersza, PRZED pasmami B1..B3 tego wiersza) — patrz
-    // DECYZJA przy `segmentLaterals.push` niżej (etykieta kotwiczona do
-    // przyciętego korytarza, nie do całej trasy). Punkt końcowy korytarza to
-    // `dy`, NIE `layout.blockTopY` — `blockTopY` to dół pasm B1..B3 (m.in.
-    // pasmo podpisów kierunku pól, `stationPortCaptionHeight`), czyli
-    // WEWNĄTRZ REZERWACJI tego wiersza; etykieta lateralu wjeżdżająca w ten
-    // zakres nachodziłaby na WŁASNY podpis kierunku pierwszej stacji
-    // lateralu (potwierdzone empirycznie na fixturze — patrz raport F6a).
-    const priorContentBottom = nextRowTopY - ROW_VERTICAL_GAP;
     // pkt 13 (recenzja NO-GO 2026-07-17): korytarz mierzony na TYM SAMYM
     // tekście, który zostanie narysowany (para końców origin↔stacja0).
     // SCHEMAT-10 S1 (V12K-135, „jedna kotwica"): REZERWACJA wysokości korytarza
@@ -2462,20 +2540,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       stationCodeOfId(layout.measureInputs[0].id),
     );
     const requiredCorridorHeight = incomingText != null ? measureLabelWidth(incomingText, 't2') + 2 * GRID : 0;
-    const minDy = snapUp(priorContentBottom + requiredCorridorHeight);
-    const dy = Math.max(nextRowTopY, minDy);
-    layout = shiftRowLayout(layout, dx, dy);
-    nextRowTopY = dy + layout.bandsResult.totalHeight + ROW_VERTICAL_GAP;
-    lateralRunIds.push(run.id);
 
-    // F6d (przypadek a): zarezerwuj kanały w TYM wierszu dla zejść lateroli
-    // PÓŹNIEJSZYCH w kolejności komponowania (`li+1..`, leżących GŁĘBIEJ w
-    // grzebieniu) — ich piony przechodzą PRZEZ ten wiersz w drodze do
-    // swojego. Współrzędne GLOBALNE (`layout` już przesunięty przez
-    // `shiftRowLayout` wyżej) — zero konwersji lokalna/globalna, kolumna 0
-    // (dx-wyrównana pod WŁASNY `channelX` tego wiersza) jest wyłączona z
-    // przesunięcia przez `insertColumnChannels` z konstrukcji (patrz jej
-    // nagłówek, `layout/columns.ts`).
+    // SCHEMAT-10 S7-P1 (V12K-137): rozdzielenie osi X (wyrównanie kanału +
+    // rezerwacje) od osi Y (pakowanie interwałowe). `shiftRowLayout` jest czystą
+    // translacją (addytywną), więc `shift(dx,0)` → rezerwacje → `shift(0,dy)`
+    // == dawne `shift(dx,dy)`; footprint X jest NIEZALEŻNY od `dy`, więc znamy go
+    // PRZED wyborem pasa Y. F6d (przypadek a): kanały zejść lateroli PÓŹNIEJSZYCH
+    // w kolejności komponowania (`li+1..`, głębszych w grzebieniu) — rezerwowane
+    // teraz, przy przesunięciu wyłącznie w X (współrzędne globalne z prepassu).
+    layout = shiftRowLayout(layout, dx, 0);
     const laterChannelXs = branchRuns
       .slice(li + 1)
       .map((laterRun) => lateralChannelXById.get(laterRun.id))
@@ -2483,6 +2556,33 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     const channels = insertColumnChannels(layout.columnsResult, laterChannelXs, `Lateral „${run.id}"`);
     stopNotes.push(...channels.stopNotes);
     layout = { ...layout, columnsResult: channels.result };
+
+    // Footprint X RZECZYWISTY (po rezerwacjach): od rynny zejścia (`gutterX =
+    // col0.x − 2×GRID`, lewa krawędź jogu §22.3) do prawej krawędzi ostatniej
+    // kolumny + rezerwa otwartego ogona (biegnie w prawo od ostatniej stacji).
+    const cols = layout.columnsResult.columns;
+    const footprintLeft = cols[0].x - 2 * GRID;
+    let footprintRight = Math.max(...cols.map((c) => c.x + c.width));
+    const lastLateralId = layout.measureInputs[layout.measureInputs.length - 1].id;
+    const tailPieceCount = openTailSegmentRefs(cableRun, lastLateralId).length;
+    if (tailPieceCount > 0) {
+      footprintRight = Math.max(
+        footprintRight,
+        snapUp(cols[cols.length - 1].tapX) + tailPieceCount * OPEN_RUN_PIECE_SPAN + 2 * GRID,
+      );
+    }
+    // Korytarz między-pasmowy musi zmieścić etykietę segmentu-lateralu (spec §4)
+    // POMIĘDZY `priorContentBottom` (dół treści NAD tym pasem, z packera) a `dy`.
+    const placement = packer.place(
+      footprintLeft,
+      footprintRight,
+      layout.bandsResult.totalHeight,
+      requiredCorridorHeight,
+    );
+    const dy = placement.dy;
+    const priorContentBottom = placement.priorContentBottom;
+    layout = shiftRowLayout(layout, 0, dy);
+    lateralRunIds.push(run.id);
 
     const lateralRow: RowStation[] = [];
     layout.columnsResult.columns.forEach((col, i) => {

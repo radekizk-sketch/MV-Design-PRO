@@ -929,9 +929,20 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // — spójność LOD (jedna kotwica) ma pierwszeństwo (precedens F9.10/F10.3).
     // L2 bez zmian potwierdza brak regresji przy pełnym szczególe. Zero nowych
     // kolizji (twarde zera symbolWireCollisions/k6/overlap wyżej/niżej).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(50264);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(67208);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(67208);
+    // → SCHEMAT-10 S7-P1 (V12K-137, GAP `S7_GAP_CROSSING_ZERO` §S7-P1,
+    // kompaktyzacja Rodziny B): L0 50264→28072 (−44%), L1/L2 67208→45016
+    // (−33%). Kursor sekwencyjny `nextRowTopY` (każdy lateral POD CAŁĄ
+    // dotychczasową treścią) zastąpiony pakowaniem interwałowym: laterale
+    // ROZŁĄCZNE w X dzielą pas Y (piony zejść PROPORCJONALNE do footprintu,
+    // nie do skumulowanej pozycji w grzebieniu — WARUNKI_ODBIORU_S6 §2). Piony
+    // MALEJĄ (miara „nie-rosnąca" §15.1 spełniona z zapasem). Topologia,
+    // kolejność aparatów, ciągłość toru, „jedna kotwica" NIEZMIENIONE — zmienia
+    // się WYŁĄCZNIE rzędna `dy` pasa (geometria, nie model). Dowód braku
+    // regresji: `accept:sld-v3` ALL PASS + s6Metrics (0 kolizji/przecięć-poddrzew/
+    // nie-ortogonalnych/niejednoznacznych).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(28072);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45016);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45016);
   });
 });
 

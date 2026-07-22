@@ -207,7 +207,14 @@ const EXPECTED_STATION_COUNT = 53;
 // światy"). L0/L1 renderują teraz w pełnej rezerwie L2 (stąd wzrost pionów);
 // §15.1 „redukcja jest ograniczeniem MIĘKKIM" — spójność LOD ma pierwszeństwo.
 // Uzasadnienie i dowód: buildScene.test.ts vertical_length_probe + „JEDNA KOTWICA".
-const VERTICAL_LENGTH_BASELINE = { 0: 50264, 1: 67208, 2: 67208 };
+// SCHEMAT-10 S7-P1 (V12K-137, GAP `S7_GAP_CROSSING_ZERO` §S7-P1): OBNIŻONY
+// 50264/67208/67208 → 28072/45016/45016 (L0 −44%, L1/L2 −33%) — kompaktyzacja
+// Rodziny B: kursor sekwencyjny `nextRowTopY` zastąpiony pakowaniem
+// interwałowym (laterale rozłączne w X dzielą pas Y; piony PROPORCJONALNE do
+// footprintu, nie do skumulowanej pozycji w grzebieniu). Baseline ZACIEŚNIONY
+// do zmierzonej wartości — bramka nie-rosnąca chroni przed cofnięciem zysku.
+// Topologia/kolejność aparatów/ciągłość toru/„jedna kotwica" NIEZMIENIONE.
+const VERTICAL_LENGTH_BASELINE = { 0: 28072, 1: 45016, 2: 45016 };
 
 /**
  * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):
@@ -233,7 +240,10 @@ const BEND_COUNT_BASELINE = { 0: 39, 1: 167, 2: 167 };
  * Kompaktyzacja (S7) ma tę wartość PODNIEŚĆ; podłoga chroni przed cofnięciem.
  * Podłogi = zmierzone wartości minus mały margines na jitter metryk tekstu.
  */
-const SHEET_FILL_FLOOR = { 0: 0.0069, 1: 0.0114, 2: 0.0117 };
+// SCHEMAT-10 S7-P1 (V12K-137): PODNIESIONY 0.0069/0.0114/0.0117 →
+// 0.0098/0.0180/0.0185 (zmierzone po kompaktyzacji Rodziny B; „wykorzystanie
+// arkusza po > przed" — warunek odbioru S6 §6). Podłoga zaryglowuje zysk.
+const SHEET_FILL_FLOOR = { 0: 0.0098, 1: 0.018, 2: 0.0185 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
