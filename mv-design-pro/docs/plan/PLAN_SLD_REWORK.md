@@ -22,9 +22,9 @@ przez SPEC V3); wykonawczo obowiązują fazy S1–S5:
 
 | Faza | Zakres (skrót — pełny w audycie §5) | Zależy od | Status |
 |---|---|---|---|
-| S1 Gramatyka stacji | jedna rodzina glifów stacji/GPZ z kotwicą L0→L1→L2; likwidacja osobnych gałęzi świata w buildScene (jedna geometria korytarzy); JEDEN słownik LOD (koniec mapowania v2 5→3); footprint kolumny per LOD (D12) | — | karta wykonawcy (w locie) |
-| S2 Silnik etykiet | rezerwacja miejsca + detekcja kolizji (wyrocznia testowa „zero kolizji"); hierarchia typografii (D10); gęstość (D3); słownik PL enumów (D4); manhattanizacja dołączeń (D5) | S1 | do zlecenia |
-| S3 Kolor + sekcje | tabela semantyki koloru jako tokeny kanwy (D8); znaczniki sekcji/NOP kotwiczone do renderu szyny per LOD (D7); GPZ w gramatyce stacji (D6) | S1 | do zlecenia |
+| S1 Gramatyka stacji | jedna rodzina glifów stacji/GPZ z kotwicą L0→L1→L2; likwidacja osobnych gałęzi świata w buildScene (jedna geometria korytarzy); JEDEN słownik LOD (koniec mapowania v2 5→3); footprint kolumny per LOD (D12) | — | ✅ 2026-07-22 (scalone, weryfikacja Fable: 170 plików/3274, guardy, test JEDNA KOTWICA) |
+| S2 Silnik etykiet | rezerwacja miejsca + detekcja kolizji (wyrocznia testowa „zero kolizji"); hierarchia typografii (D10); gęstość (D3); słownik PL enumów (D4); manhattanizacja dołączeń (D5) | S1 | karta wykonawcy (w locie) |
+| S3 Kolor + sekcje | tabela semantyki koloru jako tokeny kanwy (D8); znaczniki sekcji/NOP kotwiczone do renderu szyny per LOD (D7); GPZ w gramatyce stacji (D6) | S1 | karta wykonawcy (w locie) |
 | S4 Motyw + kadr | D11 (decyzja właściciela: SCADA-dark + jasny wariant w eksporcie — AskUserQuestion przed startem); fit-do-treści | S1–S3 | do zlecenia |
 | S5 Goldeny + dowód | wymiana goldenów jednym commitem; sekwencja zoom ≥3 kroki; macierz parytetu funkcji (overlaye, strzałki, znacznik, menu, edycja, kreatory, deep-linki) | S1–S4 | Fable osobiście |
 
