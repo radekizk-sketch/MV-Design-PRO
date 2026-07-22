@@ -1,5 +1,7 @@
 /**
- * Testy ekranu „Kontrakt analizy" (dostawca E-29…E-34, karta F-E5a).
+ * Testy ekranu „Kontrakt analizy" (dostawca E-29…E-32, karta F-E5a; E-33/E-34
+ * mają od karty P-1 realnego dostawcę — zakładkę zwarć warsztatu Wyników —
+ * i nie są już routowane do kontraktu).
  * Interakcje przez natywną ścieżkę użytkownika (userEvent.click) — dyrektywa
  * Zero-Debt pkt 5 (żadnych syntetycznych dispatchEvent).
  *
@@ -34,7 +36,7 @@ import {
 
 const mockKontrakt = vi.mocked(useAnalysisRunContract);
 
-const KODY: readonly KodEkranuKontraktu[] = ['E-29', 'E-30', 'E-31', 'E-32', 'E-33', 'E-34'];
+const KODY: readonly KodEkranuKontraktu[] = ['E-29', 'E-30', 'E-31', 'E-32'];
 
 function kontraktFixture(over: Partial<AnalysisRunContract> = {}): AnalysisRunContract {
   return {
@@ -172,14 +174,18 @@ describe('EkranKontraktuAnalizy — wiersze fokusowe 1:1 z konfiguracją (paryte
     expect(within(siatka).getByText(formatContractValue('load_flow'))).toBeInTheDocument();
   });
 
-  it('E-34: wiersze toru odpowiadają buildWiersze (temperatura, kompletność)', () => {
+  // Intencja dawnego testu E-34 (wiersze toru: temperatura, kompletność)
+  // przeniesiona wraz ze zdolnością: E-34 prowadzi od karty P-1 do realnego
+  // dostawcy (panel „Bilans IEC 60909" zakładki zwarć) — pokrycie w testach
+  // `ui2/wyniki/zwarcia` i deep-linku huba (`EkranAnalizTechnicznych.test`).
+  it('E-29: wiersze kontekstu Z0 odpowiadają buildWiersze (uziemienie, stan łączników)', () => {
     useAppStateStore.getState().setActiveRun('run-1');
-    const surface = otworzPowierzchnie('E-34');
+    const surface = otworzPowierzchnie('E-29');
     const contract = kontraktFixture();
     render(<EkranKontraktuAnalizy surface={surface} />);
 
     const siatka = screen.getByTestId('mvd-kontrakt-wiersze');
-    const oczekiwane = KONTRAKTY_EKRANOW['E-34'].buildWiersze(contract, {
+    const oczekiwane = KONTRAKTY_EKRANOW['E-29'].buildWiersze(contract, {
       surface,
       selectedElement: null,
       snapshot: null,
@@ -187,7 +193,7 @@ describe('EkranKontraktuAnalizy — wiersze fokusowe 1:1 z konfiguracją (paryte
     for (const wiersz of oczekiwane) {
       expect(within(siatka).getByText(wiersz.label)).toBeInTheDocument();
     }
-    expect(within(siatka).getByText('Kompletność')).toBeInTheDocument();
+    expect(within(siatka).getByText('Uziemienie')).toBeInTheDocument();
   });
 
   it('wartość brakująca renderuje chip „Do konfiguracji", bez udawania danych', () => {

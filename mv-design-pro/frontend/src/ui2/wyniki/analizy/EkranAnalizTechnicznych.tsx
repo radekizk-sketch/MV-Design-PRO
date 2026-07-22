@@ -123,6 +123,19 @@ export function EkranAnalizTechnicznych() {
   const przebiegi = useExecutionRunsStore((s) => s.runs);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
+  const setWynikiTab = useShellStore((s) => s.setWynikiTab);
+
+  // Karta z realnym dostawcą w warsztacie Wyników (P-1: E-33/E-34 → zakładka
+  // zwarć) nawiguje deep-linkiem zakładki (wzorzec V12K-106) zamiast otwierać
+  // zastępczy kontrakt analizy na powierzchni trasowej.
+  const otworzKarte = (karta: KartaAnalizy) => {
+    if (karta.zakladkaWynikow) {
+      setWynikiTab(karta.zakladkaWynikow);
+      setActiveSpace('wyniki');
+      return;
+    }
+    openRouteSurface(karta.ekran);
+  };
 
   const ostatni = ostatniZakonczonyPrzebieg(przebiegi);
   const etykietaOstatniego = ostatni
@@ -213,7 +226,7 @@ export function EkranAnalizTechnicznych() {
                   key={karta.ekran}
                   karta={karta}
                   chip={chipKarty(karta)}
-                  onOtworz={() => openRouteSurface(karta.ekran)}
+                  onOtworz={() => otworzKarte(karta)}
                 />
               ))}
             </div>

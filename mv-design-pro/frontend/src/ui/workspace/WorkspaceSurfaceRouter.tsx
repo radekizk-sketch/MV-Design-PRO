@@ -900,6 +900,16 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const projectName = useAppStateStore((state) => state.activeProjectName);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const setWynikiTab = useShellStore((state) => state.setWynikiTab);
+  const setActiveSpace = useShellStore((state) => state.setActiveSpace);
+  // P-1: zdolności E-33 (wkłady źródeł) i E-34 (weryfikacja cieplna/dynamiczna)
+  // mają realnego dostawcę w warsztacie Wyników — zakładka zwarć (sekcja
+  // „Wkłady do zwarcia" + panel „Bilans IEC 60909"). Deep-link zakładki
+  // (wzorzec V12K-106) zamiast zastępczego kontraktu analizy.
+  const openShortCircuitWorkbench = () => {
+    setWynikiTab('zwarcia');
+    setActiveSpace('wyniki');
+  };
   const executionRuns = useExecutionRunsStore((state) => state.runs);
   const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
   const snapshot = useSnapshotStore((state) => state.snapshot);
@@ -993,19 +1003,11 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           />
           <SurfaceActionButton
             label="Wkłady źródeł rozszerzone"
-            onClick={() =>
-              openChildSurface('analysis', {
-                screenCode: 'E-33',
-              })
-            }
+            onClick={openShortCircuitWorkbench}
           />
           <SurfaceActionButton
             label="Weryfikacja cieplna i dynamiczna"
-            onClick={() =>
-              openChildSurface('analysis', {
-                screenCode: 'E-34',
-              })
-            }
+            onClick={openShortCircuitWorkbench}
           />
           <SurfaceActionButton
             label="Testy NC RfG"
@@ -1083,6 +1085,8 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const session = useNetworkBuildStore((state) => state.surfaceSessions[surface.surfaceId] ?? null);
   const openChildSurface = useChildSurfaceLauncher(surface);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const setWynikiTab = useShellStore((state) => state.setWynikiTab);
+  const setActiveSpace = useShellStore((state) => state.setActiveSpace);
   const [scope, setScope] = useState<'siec' | 'ciag' | 'stacja' | 'pole' | 'zrodlo'>('siec');
   const [detailLevel, setDetailLevel] = useState<'standard' | 'pelny'>('standard');
   // Phase 11: integracja audit2 report.
@@ -1197,7 +1201,6 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const readinessBlockers = readiness?.blockers ?? [];
   const hasCompletedRun = Boolean(activeRunId && isCompletedAnalysisRunStatus(runContract?.status));
   const hasSolverTrace = Boolean(runContract?.traceSummary);
-  const sourceContributionSurfaceDefinition = SURFACE_REGISTRY['E-33'];
   const openProofSurface = () =>
     openChildSurface('E-36', {
       screenCode: 'E-36',
@@ -1214,14 +1217,13 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       sizeClass: 'C',
       supportsMiniSld: true,
     });
-  const openSourceContributionsSurface = () =>
-    openChildSurface('E-33', {
-      screenCode: 'E-33',
-      titlePl: sourceContributionSurfaceDefinition.titlePl,
-      sizeClass: 'C',
-      openMode: 'replace_right_panel',
-      supportsMiniSld: sourceContributionSurfaceDefinition.supportsMiniSld,
-    });
+  // P-1: „Wkłady źródeł" mają realnego dostawcę w warsztacie Wyników —
+  // zakładka zwarć (sekcja „Wkłady do zwarcia"); deep-link wzorcem V12K-106
+  // zamiast zastępczego kontraktu analizy E-33.
+  const openSourceContributionsSurface = () => {
+    setWynikiTab('zwarcia');
+    setActiveSpace('wyniki');
+  };
   const openProtectionSurface = () =>
     openChildSurface('analysis', {
       screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
@@ -1852,11 +1854,12 @@ function ComplianceSurface() {
   );
 }
 
-// Dostawca sześciu ekranów kontraktu analizy E-29…E-34 przeniesiony do modułu
+// Dostawca czterech ekranów kontraktu analizy E-29…E-32 przeniesiony do modułu
 // ui2 `wyniki/kontrakt-analizy/EkranKontraktuAnalizy` (karta F-E5a). Router
-// renderuje go bezpośrednio w `renderSurfaceBody` (case 'E-29'…'E-34');
+// renderuje go bezpośrednio w `renderSurfaceBody` (case 'E-29'…'E-32');
 // konfiguracja wierszy fokusowych i flag sekcji (dawne THIN_CONTRACT_SURFACES)
 // jest teraz źródłem danych w `wyniki/kontrakt-analizy/model.ts`.
+// E-33/E-34 (P-1): realny dostawca = zakładka zwarć warsztatu Wyników.
 
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const readiness = useSnapshotStore((state) => state.readiness);
@@ -2837,10 +2840,9 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
       return <EkranKontraktuAnalizy surface={surface} />;
     case 'E-32':
       return <EkranKontraktuAnalizy surface={surface} />;
-    case 'E-33':
-      return <EkranKontraktuAnalizy surface={surface} />;
-    case 'E-34':
-      return <EkranKontraktuAnalizy surface={surface} />;
+    // E-33/E-34 (P-1): zdolności prowadzą do realnego dostawcy — zakładki
+    // zwarć warsztatu Wyników (deep-link `setWynikiTab('zwarcia')` z huba
+    // analiz, nawigacji analitycznej i raportu) — brak powierzchni trasowej.
     case 'E-36':
       return <ProofSurface surface={surface} />;
     case 'E-01':

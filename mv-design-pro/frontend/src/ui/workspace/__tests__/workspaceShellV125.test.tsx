@@ -7,6 +7,7 @@ import { useReadinessLiveStore } from '../../engineering-readiness/readinessLive
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useShellStore } from '../../../ui2/shell/useShellStore';
 import { renderWithQueryClient } from '../../../test/queryClientTestUtils';
 
 // Faza 8: WorkspaceSurfaceRouter teraz uzywa hookow audit2 (React Query).
@@ -173,6 +174,7 @@ describe('workspace shell V12.5 surfaces', () => {
     useExecutionRunsStore.getState().reset();
     useSnapshotStore.getState().reset();
     useReadinessLiveStore.getState().clear();
+    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
   });
 
   it('renderuje formularz operacji GPZ w regionie głównym (pełna szerokość) zamiast statycznego edytora E-10', () => {
@@ -545,8 +547,6 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
     ['Rozpływ mocy NR/GS/FD', 'E-30'],
     ['Stan fazowy SN', 'E-31'],
     ['Stabilność dynamiczna', 'E-32'],
-    ['Wkłady źródeł rozszerzone', 'E-33'],
-    ['Weryfikacja cieplna i dynamiczna', 'E-34'],
   ] as const)(
     'launcher "%s" otwiera %s z kanonicznym title/class/tab',
     async (label, screenCode) => {
@@ -568,9 +568,37 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
     },
   );
 
+  // P-1: zdolności E-33/E-34 prowadzą do realnego dostawcy — zakładki zwarć
+  // warsztatu Wyników (deep-link setWynikiTab, wzorzec V12K-106) — zamiast
+  // zastępczego kontraktu analizy na powierzchni trasowej.
+  it.each([
+    ['Wkłady źródeł rozszerzone'],
+    ['Weryfikacja cieplna i dynamiczna'],
+  ] as const)(
+    'launcher "%s" prowadzi deep-linkiem do zakładki zwarć warsztatu Wyników (P-1)',
+    async (label) => {
+      const user = userEvent.setup();
+      useShellStore.setState({ activeSpace: 'schemat' });
+      useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+        subjectKind: 'analysis_run',
+        subjectRef: 'run-1',
+      });
+
+      render(<WorkspaceSurfaceRouter region="main" />);
+
+      await user.click(screen.getByRole('button', { name: label }));
+
+      expect(useShellStore.getState().wynikiTab).toBe('zwarcia');
+      expect(useShellStore.getState().activeSpace).toBe('wyniki');
+      // Powierzchnia trasowa bez zmian — deep-link nie otwiera kontraktu E-33/E-34.
+      expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe(
+        ANALYSIS_SURFACE_SCREEN_CODE,
+      );
+    },
+  );
+
   it.each([
     ['Uzasadnienie inżynierskie', 'E-36'],
-    ['Wkłady źródeł', 'E-33'],
   ] as const)(
     'launcher raportowy "%s" otwiera %s z kanonicznym title/class/tab',
     async (label, screenCode) => {
@@ -591,6 +619,25 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
       expect(activeSurface?.tabId).toBe(SCREEN_MATRIX[screenCode].defaultTabId);
     },
   );
+
+  it('launcher raportowy "Wkłady źródeł" prowadzi deep-linkiem do zakładki zwarć warsztatu Wyników (P-1)', async () => {
+    const user = userEvent.setup();
+    useShellStore.setState({ activeSpace: 'dokumentacja' });
+    useNetworkBuildStore.getState().openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
+      subjectKind: 'report',
+      subjectRef: 'report-1',
+    });
+
+    render(<WorkspaceSurfaceRouter region="main" />);
+
+    await user.click(screen.getByRole('button', { name: 'Wkłady źródeł' }));
+
+    expect(useShellStore.getState().wynikiTab).toBe('zwarcia');
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe(
+      REPORT_SURFACE_SCREEN_CODE,
+    );
+  });
 });
 
 describe('WorkspaceOperationalBar', () => {

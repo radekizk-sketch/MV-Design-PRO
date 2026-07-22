@@ -263,7 +263,11 @@ def check_sld_v2_menu_path() -> list[str]:
     screen_ids = extract_string_set(executor_content, "const ACTION_TO_SCREEN")
     hint_ids = extract_string_set(executor_content, "const ACTION_ROADMAP_HINT_PL")
     delete_ids = extract_string_set(executor_content, "const DELETE_ACTION_OBJECT_LABEL_PL")
-    special_ids = {"add-source"}
+    # Dedykowane galezie wykonawcy poza tabelami routingu:
+    #  - 'add-source': skrot do E-13 karty DER (Faza G),
+    #  - 'show-ncrfg': deep-link do macierzy wymogow NC RfG ui2 (zakladka
+    #    'ncrfg' warsztatu Wynikow, karta P-1 — luka F-E7 zamknieta).
+    special_ids = {"add-source", "show-ncrfg"}
     covered = op_ids | screen_ids | hint_ids | delete_ids | special_ids
 
     # SLD actions that are rendered but have neither navigation, operation, hint,

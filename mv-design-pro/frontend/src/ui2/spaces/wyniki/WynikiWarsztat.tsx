@@ -174,6 +174,7 @@ export function WynikiWarsztat({
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const [elementKompensacji, setElementKompensacji] = useState<string | null>(null);
   const [przebiegDowodu, setPrzebiegDowodu] = useState<string | null>(null);
+  const [modulNcRfg, setModulNcRfg] = useState<string | null>(null);
   useEffect(() => {
     if (!wynikiTab) return;
     if (ZAKLADKI.some((z) => z.id === wynikiTab)) {
@@ -184,6 +185,11 @@ export function WynikiWarsztat({
       if (wynikiTab === 'dowod') {
         // Deep-link bez kontekstu = dowód aktywnego przebiegu (czyści wskazanie).
         setPrzebiegDowodu(wynikiTabElement ?? null);
+      }
+      if (wynikiTab === 'ncrfg' && wynikiTabElement) {
+        // P-1 (akcja SLD „Pokaż zgodność przyłączeniową"): kontekst modułu
+        // wytwórczego — macierz pre-selekcjonuje kolumnę wskazanego DER.
+        setModulNcRfg(wynikiTabElement);
       }
     }
     setWynikiTab(null); // czyści OBA pola żądania (tab + element)
@@ -269,7 +275,13 @@ export function WynikiWarsztat({
           <EkranEstymacji trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />
         )}
         {zakladka === 'ssci' && <EkranSsci trybZaawansowania={trybZaawansowania} />}
-        {zakladka === 'ncrfg' && <MacierzNcRfg trybZaawansowania={trybZaawansowania} />}
+        {zakladka === 'ncrfg' && (
+          <MacierzNcRfg
+            trybZaawansowania={trybZaawansowania}
+            preselekcjaModulu={modulNcRfg}
+            onPreselekcjaSkonsumowana={() => setModulNcRfg(null)}
+          />
+        )}
         {zakladka === 'zdolnosc' && <EkranZdolnosci trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'ranking' && <EkranRankingu trybZaawansowania={trybZaawansowania} />}
         {zakladka === 'krzywe' && <EkranKrzywych trybZaawansowania={trybZaawansowania} />}

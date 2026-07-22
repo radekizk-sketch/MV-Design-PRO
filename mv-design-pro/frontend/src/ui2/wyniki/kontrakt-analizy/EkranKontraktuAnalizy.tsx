@@ -1,7 +1,9 @@
 /**
- * EkranKontraktuAnalizy — dostawca ui2 dla sześciu ekranów kanonicznych
- * E-29/E-30/E-31/E-32/E-33/E-34 (karta F-E5a, FLOW §0.3 „kontrakt ekranu
- * prowadzącego"). Zastępuje legacy `ThinContractSurface` (most, W5b-4):
+ * EkranKontraktuAnalizy — dostawca ui2 dla czterech ekranów kanonicznych
+ * E-29/E-30/E-31/E-32 (karta F-E5a, FLOW §0.3 „kontrakt ekranu
+ * prowadzącego"; E-33/E-34 prowadzą od karty P-1 do realnego dostawcy —
+ * zakładki zwarć warsztatu Wyników). Zastępuje legacy `ThinContractSurface`
+ * (most, W5b-4):
  *
  *  - nagłówek: tytuł obszaru + JEDNO zdanie celu inżynierskiego (per kod ekranu),
  *  - stan wejścia: brak aktywnego przebiegu → uczciwy stan zerowy z akcją

@@ -1,5 +1,5 @@
 /**
- * Teksty PL ekranu „Kontrakt analizy" (dostawca E-29…E-34, karta F-E5a).
+ * Teksty PL ekranu „Kontrakt analizy" (dostawca E-29…E-32, karta F-E5a).
  * Wyłącznie polski język techniczny; zero surowych identyfikatorów w strefie
  * pierwszoplanowej (formatery kontraktu maskują ślady audytu).
  */

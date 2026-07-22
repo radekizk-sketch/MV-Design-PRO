@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { useShellStore } from '../../../ui2/shell/useShellStore';
 import { BayCard } from '../cards/BayCard';
 
 const closeObjectCard = vi.fn();
@@ -361,5 +363,23 @@ describe('BayCard', () => {
     expect(screen.getByTestId('object-card')).toBeInTheDocument();
     expect(screen.getAllByText('Pole IN').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Pole liniowe wejściowe').length).toBeGreaterThan(0);
+  });
+
+  it('„Wkłady źródeł" prowadzi deep-linkiem do zakładki zwarć warsztatu Wyników (P-1, klik natywny)', async () => {
+    const user = userEvent.setup();
+    useShellStore.setState({ activeSpace: 'model', wynikiTab: null, wynikiTabElement: null });
+    render(<BayCard elementId="bay-1" />);
+
+    await user.click(screen.getByRole('button', { name: 'Wkłady źródeł' }));
+
+    // Realny dostawca: sekcja „Wkłady do zwarcia" ekranu zwarć — nie panel
+    // inspektora z zastępczym kontraktem analizy E-33.
+    expect(useShellStore.getState().wynikiTab).toBe('zwarcia');
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(openInspectorPanel).not.toHaveBeenCalledWith(
+      'field_source_contributions',
+      expect.anything(),
+      expect.anything(),
+    );
   });
 });

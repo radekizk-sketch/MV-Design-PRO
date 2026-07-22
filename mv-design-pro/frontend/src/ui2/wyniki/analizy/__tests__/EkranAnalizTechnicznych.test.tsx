@@ -53,7 +53,7 @@ describe('EkranAnalizTechnicznych — hub po przebudowie', () => {
     useSnapshotStore.setState({ snapshot: null });
     useExecutionRunsStore.setState({ runs: [] });
     useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
-    useShellStore.setState({ activeSpace: 'wyniki' });
+    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
   });
 
   afterEach(() => {
@@ -138,6 +138,32 @@ describe('EkranAnalizTechnicznych — hub po przebudowie', () => {
     const karta = screen.getByTestId('mvd-analizy-karta-koordynacja');
     await user.click(within(karta).getByRole('button', { name: 'Otwórz' }));
     expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-28');
+  });
+
+  it('karta „Wkłady źródeł rozszerzone" (E-33) prowadzi do realnego dostawcy — zakładki zwarć (klik natywny, P-1)', async () => {
+    const user = userEvent.setup();
+    render(<EkranAnalizTechnicznych />);
+    const karta = screen.getByTestId('mvd-analizy-karta-wklady');
+    // Opis inżynierski wg stanu FAKTYCZNEGO dostawcy (rozbicie maszynowe).
+    expect(within(karta).getByText(/μ, q oraz Ib/)).toBeTruthy();
+    expect(within(karta).getByText(/Wkłady do zwarcia/)).toBeTruthy();
+    await user.click(within(karta).getByRole('button', { name: 'Otwórz' }));
+    // Deep-link zakładki warsztatu Wyników — bez powierzchni trasowej mostu.
+    expect(useShellStore.getState().wynikiTab).toBe('zwarcia');
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+
+  it('karta „Weryfikacja cieplna i dynamiczna toru" (E-34) prowadzi do zakładki zwarć z bilansem IEC (klik natywny, P-1)', async () => {
+    const user = userEvent.setup();
+    render(<EkranAnalizTechnicznych />);
+    const karta = screen.getByTestId('mvd-analizy-karta-cieplna');
+    // Opis wskazuje bilans IEC 60909 i miejsce werdyktu (dobór aparatów).
+    expect(within(karta).getByText(/Bilans IEC 60909/)).toBeTruthy();
+    expect(within(karta).getByText(/dobór aparatów/)).toBeTruthy();
+    await user.click(within(karta).getByRole('button', { name: 'Otwórz' }));
+    expect(useShellStore.getState().wynikiTab).toBe('zwarcia');
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 
   it('widoki klasyczne otwierają jawne taby powierzchni analiz (parytet mostu)', async () => {

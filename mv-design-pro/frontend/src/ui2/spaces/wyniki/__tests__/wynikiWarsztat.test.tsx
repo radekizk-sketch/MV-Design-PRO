@@ -24,6 +24,7 @@ vi.mock('../../../../ui/results-inspector/api', async (importOriginal) => ({
 
 import { fetchShortCircuitResults } from '../../../../ui/results-inspector/api';
 import { useAppStateStore } from '../../../../ui/app-state';
+import { useStationDerStore } from '../../../../ui/network-build/station-der';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
 import { useResultsInspectorStore } from '../../../../ui/results-inspector/store';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
@@ -50,6 +51,7 @@ beforeEach(() => {
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
   useAppStateStore.setState({ activeRunId: null, activeProjectId: null });
   useSnapshotStore.getState().reset();
+  useStationDerStore.getState().reset();
   useShellStore.setState({ wynikiTab: null, wynikiTabElement: null });
 });
 
@@ -219,6 +221,42 @@ describe('WynikiWarsztat — zakładki', () => {
     // stan końcowy, żeby aktualizacja store'a domknęła się w act — bez tego React
     // zgłasza „An update to MacierzNcRfg was not wrapped in act(...)".
     expect(await screen.findByTestId('mvd-oze-blad-katalogu')).toBeInTheDocument();
+  });
+
+  it('deep-link „ncrfg" z kontekstem modułu (P-1): zakładka otwarta, moduł pre-selekcjonowany po nazwie, OBA pola wyczyszczone', async () => {
+    // Dwa moduły wytwórcze — kontekst wskazuje DRUGI po nazwie (wspólny klucz
+    // kreatora DER dla generatora ENM niesionego przez akcję SLD show-ncrfg).
+    useStationDerStore.getState().attachDer({
+      id: 'der-a', project_id: 'p-1', station_id: 'st-1',
+      der_kind: 'PV', name: 'PV_T1', connection_side: 'SN',
+    });
+    useStationDerStore.getState().attachDer({
+      id: 'der-b', project_id: 'p-1', station_id: 'st-1',
+      der_kind: 'PV', name: 'PV_T4', connection_side: 'SN',
+    });
+    useShellStore.setState({ wynikiTab: 'ncrfg', wynikiTabElement: 'PV_T4' });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-ncrfg').getAttribute('aria-selected')).toBe('true');
+    // Montaż macierzy pobiera katalog wymogów — czekamy na stan końcowy (act).
+    await screen.findByTestId('mvd-oze-blad-katalogu');
+    expect(screen.getByTestId('mvd-oze-modul-der-b')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('mvd-oze-modul-der-a')).toHaveAttribute('aria-pressed', 'false');
+    // Żądanie skonsumowane w całości (tab + element).
+    expect(useShellStore.getState().wynikiTab).toBeNull();
+    expect(useShellStore.getState().wynikiTabElement).toBeNull();
+  });
+
+  it('deep-link „ncrfg" z nieznanym refem: zakładka otwarta, pre-selekcja bez zmian (zero fabrykacji)', async () => {
+    useStationDerStore.getState().attachDer({
+      id: 'der-a', project_id: 'p-1', station_id: 'st-1',
+      der_kind: 'PV', name: 'PV_T1', connection_side: 'SN',
+    });
+    useShellStore.setState({ wynikiTab: 'ncrfg', wynikiTabElement: 'nieznany-ref' });
+    render(<WynikiWarsztat {...props()} />);
+    await screen.findByTestId('mvd-oze-blad-katalogu');
+    // Domyślny wybór (pierwszy moduł) — nieznany kontekst nie fabrykuje dopasowania.
+    expect(screen.getByTestId('mvd-oze-modul-der-a')).toHaveAttribute('aria-pressed', 'true');
+    expect(useShellStore.getState().wynikiTabElement).toBeNull();
   });
 
   it('zakładka „Wniosek OSD": bez biegów — okno renderuje się, generacja nieaktywna', () => {

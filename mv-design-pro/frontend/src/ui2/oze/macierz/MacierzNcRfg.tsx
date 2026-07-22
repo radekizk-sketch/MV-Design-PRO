@@ -13,7 +13,7 @@
  * z `ui/ncrfg-tests/api` — bez własnego klienta.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { type NcRfgVerdict } from '../../../ui/ncrfg-tests/api';
@@ -84,9 +84,24 @@ function zapiszBlob(blob: Blob, nazwa: string): void {
 export interface MacierzNcRfgProps {
   /** Tryb zaawansowania — odcisk deterministyczny widoczny w trybie eksperckim. */
   readonly trybZaawansowania: AdvancementMode;
+  /**
+   * Pre-selekcja modułu z deep-linku (P-1: akcja SLD „Pokaż zgodność
+   * przyłączeniową" niesie kontekst DER). Dopasowanie po `derRef` (id
+   * przyłączenia) ALBO po nazwie modułu (wspólny klucz kreatora DER dla
+   * generatora ENM). Nieznana wartość = brak pre-selekcji (zero fabrykacji);
+   * żądanie jednorazowe — konsumpcja przez `onPreselekcjaSkonsumowana`
+   * (wzorzec `EkranKompensacji.preselekcjaWezla`).
+   */
+  readonly preselekcjaModulu?: string | null;
+  /** Wywoływane po konsumpcji żądania pre-selekcji (także nieznanego refu). */
+  readonly onPreselekcjaSkonsumowana?: () => void;
 }
 
-export function MacierzNcRfg({ trybZaawansowania }: MacierzNcRfgProps): JSX.Element {
+export function MacierzNcRfg({
+  trybZaawansowania,
+  preselekcjaModulu = null,
+  onPreselekcjaSkonsumowana,
+}: MacierzNcRfgProps): JSX.Element {
   const ders = useStationDerStore((state) => selectAllDers(state));
   const opisyBazowe = useMemo(() => zbudujModuly(ders), [ders]);
 
@@ -127,6 +142,28 @@ export function MacierzNcRfg({ trybZaawansowania }: MacierzNcRfgProps): JSX.Elem
   useEffect(() => {
     if (!wybranyModul && opisyBazowe[0]) setWybranyModul(opisyBazowe[0].derRef);
   }, [opisyBazowe, wybranyModul]);
+
+  // Pre-selekcja modułu z deep-linku (P-1) — żądanie jednorazowe: dopasowanie
+  // po derRef albo nazwie, konsumpcja również przy nieznanym refie (żaden
+  // kontekst nie zalega); wzorzec `EkranKompensacji`.
+  const skonsumowanaPreselekcja = useRef<string | null>(null);
+  useEffect(() => {
+    if (preselekcjaModulu === null || preselekcjaModulu === '') {
+      skonsumowanaPreselekcja.current = null;
+      return;
+    }
+    if (preselekcjaModulu === skonsumowanaPreselekcja.current) return; // już skonsumowane
+    if (opisyBazowe.length === 0) return; // poczekaj na moduły ze store'a
+    const dopasowany = opisyBazowe.find(
+      (opis) => opis.derRef === preselekcjaModulu || opis.nazwa === preselekcjaModulu,
+    );
+    if (dopasowany) {
+      setWybranyModul(dopasowany.derRef);
+      setWybranaKomorka(null);
+    }
+    skonsumowanaPreselekcja.current = preselekcjaModulu;
+    onPreselekcjaSkonsumowana?.();
+  }, [preselekcjaModulu, opisyBazowe, onPreselekcjaSkonsumowana]);
 
   // Efektywne opisy = bazowe z modelu + edycje lokalne okna (zero mutacji modelu).
   const opisy = useMemo<OpisModulu[]>(

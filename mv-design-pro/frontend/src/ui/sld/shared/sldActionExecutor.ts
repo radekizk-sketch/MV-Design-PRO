@@ -49,6 +49,7 @@ import {
   toastBus,
   type SldElementKindForMenu,
 } from '../v2/command/SldCommandService';
+import { useShellStore } from '../../../ui2/shell/useShellStore';
 
 /** Mapowanie ID akcji na ekran kanoniczny (E-XX). Etapy 1-3 obsługują E-04/24/36/38, E-10/11/13. */
 export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
@@ -76,7 +77,9 @@ export const ACTION_TO_SCREEN: Readonly<Record<string, string>> = {
   'open-bess-config': 'E-22',
   'open-fw-config': 'E-23',
   'show-frt-hvrt': 'E-26',
-  'show-ncrfg': 'E-26',
+  // 'show-ncrfg' NIE jest tu mapowane (luka F-E7 zamknięta, karta P-1):
+  // realny dostawca zgodności NC RfG to macierz wymogów ui2 (zakładka „ncrfg"
+  // warsztatu Wyników) — dedykowana gałąź deep-linku w useSldActionExecutor.
 };
 
 export function routeSurfaceLabelPl(screenCode: string): string {
@@ -362,6 +365,8 @@ export function useSldActionExecutor(
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   const selectElement = useSelectionStore((state) => state.selectElement);
+  const setWynikiTab = useShellStore((state) => state.setWynikiTab);
+  const setActiveSpace = useShellStore((state) => state.setActiveSpace);
 
   return useCallback(
     (actionId: string, kind: SldElementKindForMenu, elementId: string | null) => {
@@ -408,6 +413,25 @@ export function useSldActionExecutor(
             { label: 'Anuluj', onClick: () => undefined },
           ],
         });
+        return;
+      }
+
+      // 0) Zgodność NC RfG (karta P-1, luka F-E7): realny dostawca to macierz
+      //    wymogów NC RfG ui2 — deep-link międzypowłokowy do zakładki „ncrfg"
+      //    warsztatu Wyników (wzorzec V12K-106: `setWynikiTab` + zmiana
+      //    przestrzeni). Kontekst modułu przenosimy z akcji: element SLD niesie
+      //    `Generator.ref_id` (ENM); macierz dopasowuje moduł po derRef albo po
+      //    nazwie, więc przekazujemy nazwę generatora ze snapshotu (wspólny
+      //    klucz kreatora DER), a przy jej braku surowy ref — zero fabrykacji.
+      if (actionId === 'show-ncrfg') {
+        const generator = elementId
+          ? (snapshot?.generators ?? []).find(
+              (gen) => gen.ref_id === elementId || gen.id === elementId,
+            )
+          : undefined;
+        setWynikiTab('ncrfg', generator?.name ?? elementId ?? null);
+        setActiveSpace('wyniki');
+        toastBus.publish('info', 'Otworzono macierz wymogów NC RfG w przestrzeni Wyniki.');
         return;
       }
 
@@ -473,6 +497,6 @@ export function useSldActionExecutor(
       // Konsumujemy parametr kind, żeby spełnić noUnusedParameters w trybie strict.
       void kind;
     },
-    [activeCaseId, executeDomainOperation, logicalViews, openOperationForm, openRouteSurface, readOnly, selectElement, snapshot],
+    [activeCaseId, executeDomainOperation, logicalViews, openOperationForm, openRouteSurface, readOnly, selectElement, setActiveSpace, setWynikiTab, snapshot],
   );
 }

@@ -1,18 +1,17 @@
 /**
- * Model ekranu „Kontrakt analizy" — konfiguracja sześciu ekranów kanonicznych
- * E-29/E-30/E-31/E-32/E-33/E-34 (dostawca ui2, karta F-E5a).
+ * Model ekranu „Kontrakt analizy" — konfiguracja czterech ekranów kanonicznych
+ * E-29/E-30/E-31/E-32 (dostawca ui2, karta F-E5a).
  *
  * ZERO fizyki, ZERO pobrań: buduje wyłącznie wiersze klucz→wartość z gotowego
  * kontraktu przebiegu (`AnalysisRunContract`). Wiersze fokusowe i flagi sekcji
  * warunkowych są przeniesione 1:1 z dawnej konfiguracji `THIN_CONTRACT_SURFACES`
  * (`ui/workspace/WorkspaceSurfaceRouter.tsx`, konsolidacja W5b-4) — parytet
- * ZDOLNOŚCI. Formatery kontraktu (`formatContractValue`, `formatCompletenessStatus`)
- * są reużyte read-only, jak fale W1–W3. Dochodzi warstwa prowadzenia: jedno
+ * ZDOLNOŚCI. Formater kontraktu (`formatContractValue`)
+ * jest reużyty read-only, jak fale W1–W3. Dochodzi warstwa prowadzenia: jedno
  * zdanie celu inżynierskiego per obszar (wzorzec opisów kart huba `GRUPY_ANALIZ`).
  */
 
 import {
-  formatCompletenessStatus,
   formatContractValue,
   type AnalysisRunContract,
   type LabeledValueRow,
@@ -23,11 +22,16 @@ import type { EnergyNetworkModel } from '../../../types/enm';
 
 /**
  * Kody ekranów obsługiwanych przez dostawcę kontraktu analizy.
- * E-29…E-34 z karty F-E5a. E-27 („Zabezpieczenia i automatyka") był tu tymczasowo
+ * E-29…E-32 z karty F-E5a. E-27 („Zabezpieczenia i automatyka") był tu tymczasowo
  * (F-E5b) po usunięciu wspólnej atrapy koordynacji; karta E-27 dostarczyła mu
  * realny ekran (`EkranZabezpieczenAutomatyki`), więc wpis został stąd usunięty.
+ * E-33 („Wkłady źródeł rozszerzone") i E-34 („Weryfikacja cieplna i dynamiczna
+ * toru") mają REALNYCH dostawców w warsztacie Wyników — zakładka zwarć
+ * (sekcja „Wkłady do zwarcia" + panel „Bilans IEC 60909"); karta P-1 usunęła
+ * ich wpisy kontraktowe (zdolności zostają w rejestrze kanonu, prowadzą tam
+ * deep-linki `setWynikiTab('zwarcia')`).
  */
-export type KodEkranuKontraktu = 'E-29' | 'E-30' | 'E-31' | 'E-32' | 'E-33' | 'E-34';
+export type KodEkranuKontraktu = 'E-29' | 'E-30' | 'E-31' | 'E-32';
 
 /** Kontekst potrzebny do zbudowania wiersza „Obiekt" (tylko E-29). */
 export interface KontekstWierszy {
@@ -75,7 +79,7 @@ export const ETYKIETY_POCHODZENIA: Record<string, string> = {
 };
 
 /**
- * Konfiguracja sześciu ekranów. Wiersze fokusowe i flagi sekcji przeniesione
+ * Konfiguracja czterech ekranów. Wiersze fokusowe i flagi sekcji przeniesione
  * 1:1 z `THIN_CONTRACT_SURFACES` (W5b-4); zdania celu dopisane per obszar.
  */
 export const KONTRAKTY_EKRANOW: Record<KodEkranuKontraktu, KonfiguracjaEkranu> = {
@@ -136,34 +140,6 @@ export const KONTRAKTY_EKRANOW: Record<KodEkranuKontraktu, KonfiguracjaEkranu> =
       { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
       { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
       { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-    ],
-  },
-  'E-33': {
-    eyebrow: 'Wkłady źródeł',
-    tytul: 'Wkłady źródeł rozszerzone',
-    cel: 'Prześledź, jakie założenia źródeł i obciążeń wchodzą do rozszerzonej analizy '
-      + 'wkładów źródeł w prąd zwarciowy — na podstawie kontraktu zakończonego przebiegu zwarciowego.',
-    tytulWierszy: 'Kontrakt źródeł',
-    buildWiersze: (contract) => [
-      { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
-      { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
-      { label: 'Założenia obciążeń', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
-      { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-      { label: 'Projekt', value: formatContractValue(contract.analysisCaseContext?.lineage['project_ref']) },
-    ],
-  },
-  'E-34': {
-    eyebrow: 'Ocena toru',
-    tytul: 'Weryfikacja cieplna i dynamiczna toru',
-    cel: 'Sprawdź warunki weryfikacji cieplnej (I_th) i dynamicznej (I_dyn) toru prądowego: '
-      + 'temperatura, obciążenia i źródła — na podstawie kontraktu zakończonego przebiegu zwarciowego.',
-    tytulWierszy: 'Kontrakt toru',
-    buildWiersze: (contract) => [
-      { label: 'Temperatura', value: formatContractValue(contract.analysisCaseContext?.assumptions['temperature_assumptions_ref']) },
-      { label: 'Założenia obciążeń', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
-      { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
-      { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-      { label: 'Kompletność', value: formatCompletenessStatus(contract.analysisCaseContext?.completeness ?? null) },
     ],
   },
 };

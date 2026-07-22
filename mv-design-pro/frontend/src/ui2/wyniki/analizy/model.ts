@@ -16,7 +16,7 @@ import type { WorkspaceSurfaceCode } from '../../../ui/workspace/types';
 export type WymaganyPrzebieg = 'zwarciowy' | 'rozplywowy' | 'dowolny' | 'model';
 
 export interface KartaAnalizy {
-  /** Kanoniczny kod ekranu docelowego (trasa mostu). */
+  /** Kanoniczny kod zdolności (rejestr V12.xx) — klucz karty. */
   readonly ekran: WorkspaceSurfaceCode;
   readonly tytul: string;
   /** Jedno zdanie inżynierskie: co ta analiza robi. */
@@ -25,6 +25,13 @@ export interface KartaAnalizy {
   readonly zrodlo: string;
   readonly wymaga: WymaganyPrzebieg;
   readonly testid: string;
+  /**
+   * Realny dostawca w przestrzeni „Wyniki" (karta P-1): gdy ustawione, karta
+   * otwiera zakładkę warsztatu Wyników (`useShellStore.setWynikiTab`, wzorzec
+   * V12K-106) zamiast powierzchni trasowej mostu. Kod `ekran` pozostaje
+   * metadaną zdolności (componentKey dostawcy — podmiana Opcja 1).
+   */
+  readonly zakladkaWynikow?: string;
 }
 
 export interface GrupaAnaliz {
@@ -97,18 +104,20 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
       {
         ekran: 'E-33',
         tytul: 'Wkłady źródeł rozszerzone',
-        opis: 'Udziały poszczególnych źródeł (system, generacja, OZE) w prądzie zwarciowym.',
-        zrodlo: 'kontrakt przebiegu zwarciowego (założenia źródeł i obciążeń)',
+        opis: 'Rozbicie prądu zwarciowego na źródła: system i maszyny z μ, q oraz Ib, z wywodem normowym — klik wkładu w tabeli rozwija szczegół maszyny.',
+        zrodlo: 'sekcja „Wkłady do zwarcia" ekranu zwarć (rozbicie maszynowe zakończonego przebiegu IEC 60909)',
         wymaga: 'zwarciowy',
         testid: 'mvd-analizy-karta-wklady',
+        zakladkaWynikow: 'zwarcia',
       },
       {
         ekran: 'E-34',
         tytul: 'Weryfikacja cieplna i dynamiczna toru',
-        opis: 'Wytrzymałość cieplna (I_th) i dynamiczna (I_dyn) aparatury w torze prądowym.',
-        zrodlo: 'kontrakt przebiegu zwarciowego (temperatura, obciążenia, źródła)',
+        opis: 'Pełny bilans IEC 60909 wybranego punktu zwarcia (Ik", ip, Ith, I²t, κ, X/R) jako podstawa oceny toru — werdykt wytrzymałości aparatury wydaje dobór aparatów w karcie pola.',
+        zrodlo: 'panel „Bilans IEC 60909" ekranu zwarć (zakończony przebieg zwarciowy)',
         wymaga: 'zwarciowy',
         testid: 'mvd-analizy-karta-cieplna',
+        zakladkaWynikow: 'zwarcia',
       },
     ],
   },

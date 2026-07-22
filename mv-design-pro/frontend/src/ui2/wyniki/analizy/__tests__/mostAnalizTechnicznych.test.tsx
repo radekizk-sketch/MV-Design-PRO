@@ -61,11 +61,15 @@ describe('MostAnalizTechnicznych — dostawca zakładki po przebudowie', () => {
     expect(screen.getByTestId('mvd-analizy-techniczne')).toBeTruthy();
   });
 
+  // Intencja bez zmian (hub → karta → powierzchnia → powrót); karta ćwicząca
+  // ścieżkę to E-28 (koordynacja), bo karty E-33/E-34 prowadzą od karty P-1
+  // deep-linkiem do zakładki zwarć warsztatu Wyników (bez powierzchni mostu) —
+  // pokrycie w `EkranAnalizTechnicznych.test`.
   it('pełna ścieżka użytkownika: hub → karta → powierzchnia → powrót → hub', async () => {
     const user = userEvent.setup();
     render(<MostAnalizTechnicznych />);
     await user.click(
-      screen.getByTestId('mvd-analizy-karta-cieplna').querySelector('button.mvd-analizy-otworz') as HTMLElement,
+      screen.getByTestId('mvd-analizy-karta-koordynacja').querySelector('button.mvd-analizy-otworz') as HTMLElement,
     );
     expect(screen.getByTestId('mvd-analizy-most-dziecko')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: '← Analizy techniczne' }));
