@@ -56,6 +56,8 @@ const SLD_KIND_LABEL_PL: Readonly<Record<SldElementKindForMenu, string>> = {
   der_pv: 'PV',
   der_bess: 'BESS',
   der_fw: 'Farma wiatrowa',
+  // Karta SLD-P (GAP P-1): kind generyczny DER na kanwie v3.
+  der: 'Źródło OZE / generator',
 };
 
 function fuzzyScore(query: string, text: string): number {

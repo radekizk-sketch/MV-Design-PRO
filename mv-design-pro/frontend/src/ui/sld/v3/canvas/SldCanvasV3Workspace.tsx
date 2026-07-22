@@ -248,12 +248,16 @@ export function elementTypeForKind(kind: PreviewElementKind | undefined): Elemen
  *    measurementLink), NIE rozróżnia kabel-vs-napowietrzna; v2 ma tę samą
  *    niepewność domyślnie na 'cable_segment_sn' gdy kind nie precyzuje
  *    'overhead_line_sn' — UDOKUMENTOWANA LUKA, nie regresja);
- *  - 'der' → `undefined` (BRAK MENU — UDOKUMENTOWANA LUKA: v2 rozróżnia
- *    der_pv/der_bess/der_fw jako OSOBNE kategorie menu z różnymi akcjami
- *    domenowymi; `elementKind='der'` v3 jest GENERYCZNE — scena nie niesie
- *    `Generator.gen_type`, więc nie da się wybrać poprawnej kategorii bez
- *    zgadywania (zakazane przez `domain_no_guessing_guard`). Test negatywny
- *    (c) w `__tests__/contextMenu.test.tsx` pokrywa TEN przypadek);
+ *  - 'der' → 'der' (Karta SLD-P, GAP zarejestrowany P-1 „menu kontekstowe DER
+ *    na v3" — ZAMKNIĘTY dla zakresu bez podtypu: v2 rozróżnia der_pv/
+ *    der_bess/der_fw jako OSOBNE kategorie menu z różnymi akcjami domenowymi,
+ *    ale scena v3 nie niesie `Generator.gen_type` — subtype-specific akcje
+ *    (`open-*-config`/`delete-*`) POZOSTAJĄ niedostępne bez zgadywania
+ *    (zakazane przez `domain_no_guessing_guard`, UDOKUMENTOWANA LUKA, nie
+ *    regresja). `SLD_MENU_REGISTRY.der` niesie WYŁĄCZNIE akcje bez zależności
+ *    od podtypu z realnym celem (`show-ncrfg`/`show-results`, patrz
+ *    `SldCommandService.ts`). Test (c) w `__tests__/contextMenu.test.tsx`
+ *    pokrywa ten przypadek (menu generyczne, bez pozycji subtype-specific);
  *  - 'protectionAnnotation' → `undefined` (adnotacja graficzna, nie obiekt
  *    domenowy — brak odpowiednika w v2/SLD_MENU_REGISTRY).
  */
@@ -271,6 +275,8 @@ function elementKindForMenu(kind: PreviewElementKind | undefined): SldElementKin
       return 'section';
     case 'segment':
       return 'cable_segment_sn';
+    case 'der':
+      return 'der';
     default:
       return undefined;
   }
@@ -761,9 +767,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // kanał w store — strzałki SC nie przeżywają cudzego wyniku).
   const faultFlowInput = useOverlayStore((state) => state.faultFlow);
   const faultFlowByOwnerRef = useFaultFlowOverlay(snapshot, faultFlowInput);
+  // Karta SLD-P (GAP V12K-120/121 „znacznik pulse punktu zwarcia"): TEN SAM
+  // kanał `faultFlow` niesie `fault_element_ref` — kanwa dotąd czytała z niego
+  // wyłącznie `flows` (strzałki), ref punktu zwarcia był ignorowany.
+  const faultPointMarkerRef = faultFlowInput?.fault_element_ref;
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef }),
-    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef],
   );
 
   // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,
@@ -868,8 +878,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     (testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => {
       // Tło (`sld-v3-background`, `SldCanvasV3` nagłówek onContextMenu) → menu
       // tła; realny element → tabela `elementKindForMenu` (brak dopasowania,
-      // np. `elementKind='der'` — UDOKUMENTOWANA LUKA — NIE otwiera menu, bez
-      // crasha, bez zgadywania kategorii).
+      // np. `elementKind='protectionAnnotation'` — UDOKUMENTOWANA LUKA — NIE
+      // otwiera menu, bez crasha, bez zgadywania kategorii; `elementKind='der'`
+      // OD Karty SLD-P otwiera menu generyczne `SLD_MENU_REGISTRY.der`, patrz
+      // `elementKindForMenu` nagłówek).
       if (testId === 'sld-v3-background') {
         setContextRequest({ kind: 'background', elementId: null, clientX, clientY });
         return;

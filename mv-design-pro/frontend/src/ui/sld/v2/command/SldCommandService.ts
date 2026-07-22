@@ -21,7 +21,8 @@ export type SldElementKindForMenu =
   | 'branch_pole'
   | 'der_pv'
   | 'der_bess'
-  | 'der_fw';
+  | 'der_fw'
+  | 'der';
 
 export interface SldMenuAction {
   readonly id: string;
@@ -137,6 +138,28 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'show-frt-hvrt', labelPl: 'Pokaż krzywe FRT/HVRT', group: 'widok' },
     { id: 'show-ncrfg', labelPl: 'Pokaż zgodność przyłączeniową', group: 'widok' },
     { id: 'delete-fw', labelPl: 'Usuń farmę wiatrową', group: 'usun' },
+  ],
+  /**
+   * Karta SLD-P (GAP zarejestrowany P-1: „menu kontekstowe DER na v3").
+   * Kanwa v3 niesie WYŁĄCZNIE `elementKind='der'` GENERYCZNY (scena v3 nie
+   * niesie `Generator.gen_type` — `SldCanvasV3Workspace.elementKindForMenu`
+   * nagłówek), więc nie da się bez zgadywania wybrać `der_pv`/`der_bess`/
+   * `der_fw` (subtype-specific `open-*-config`/`delete-*` wymagałyby
+   * fabrykowanego rodzaju — zakazane, `domain_no_guessing_guard`). TEN
+   * rejestr niesie WYŁĄCZNIE dwie akcje bez zależności od podtypu, z REALNYM
+   * celem w `useSldActionExecutor` (`shared/sldActionExecutor.ts`):
+   *  - `show-ncrfg` — TA SAMA etykieta/id co `der_pv`/`der_bess`/`der_fw`
+   *    wyżej (deep-link do macierzy wymogów NC RfG, karta P-1);
+   *  - `show-results` — wzorzec karty D-2 (deep-link do zakładki „Rozpływ"
+   *    warsztatu Wyników, preselekcja po ref klikniętego elementu).
+   * `open-*-config`/`show-frt-hvrt`/`delete-*` z `der_pv`/`der_bess`/`der_fw`
+   * NIE są tu przeniesione (brak realnego celu bez znanego podtypu/rodzaju
+   * ekranu docelowego) — UDOKUMENTOWANA LUKA, nie regresja v2 (v2 nadal ma
+   * pełne menu per podtyp).
+   */
+  der: [
+    { id: 'show-ncrfg', labelPl: 'Pokaż zgodność przyłączeniową', group: 'widok' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki źródła OZE', group: 'widok' },
   ],
 };
 

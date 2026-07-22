@@ -69,7 +69,7 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
     expect(screen.getByTestId('sld-menu-insert-gpz')).toBeTruthy();
   });
 
-  it('(c) negatywny: elementKind bez mapowania w SldElementKindForMenu (np. "der" — generyczne, nie rozróżnia PV/BESS/FW) NIE otwiera menu elementu', () => {
+  it('(c) Karta SLD-P (GAP P-1, ZAMKNIĘTY): prawy klik w symbol DER otwiera menu GENERYCZNE (SLD_MENU_REGISTRY.der — show-ncrfg + show-results, BEZ pozycji subtype-specific)', () => {
     // LOD2 ma najpełniejszą scenę (DER widoczne od L1/L2, patrz spec §7) —
     // `lodOverride` wymusza L2 deterministycznie (domyślny LOD Workspace to
     // 0, tylko topologia, bez DER — patrz `SldCanvasV3WorkspaceProps.lodOverride`).
@@ -83,6 +83,18 @@ describe('SldCanvasV3Workspace — F8c pkt 3: menu kontekstowe', () => {
 
     fireEvent.contextMenu(derGroup!, { clientX: 50, clientY: 50 });
 
-    expect(screen.queryByRole('menu')).toBeNull();
+    // Menu SIĘ OTWIERA (GAP P-1 zamknięty) — wyłącznie akcje bez zależności
+    // od podtypu, z realnym celem (`useSldActionExecutor`).
+    expect(screen.getByRole('menu')).toBeTruthy();
+    expect(screen.getByTestId('sld-menu-show-ncrfg')).toBeTruthy();
+    expect(screen.getByTestId('sld-menu-show-results')).toBeTruthy();
+    // Pozycje subtype-specific v2 (der_pv/der_bess/der_fw) POZOSTAJĄ
+    // niedostępne — scena v3 nie niesie `Generator.gen_type` (UDOKUMENTOWANA
+    // LUKA, nie regresja; zero zgadywania podtypu).
+    expect(screen.queryByTestId('sld-menu-open-pv-config')).toBeNull();
+    expect(screen.queryByTestId('sld-menu-open-bess-config')).toBeNull();
+    expect(screen.queryByTestId('sld-menu-open-fw-config')).toBeNull();
+    expect(screen.queryByTestId('sld-menu-delete-pv')).toBeNull();
+    expect(screen.queryByTestId('sld-menu-show-frt-hvrt')).toBeNull();
   });
 });

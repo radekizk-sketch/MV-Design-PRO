@@ -190,6 +190,20 @@ export interface SldV3Overlay {
    */
   readonly faultFlowByOwnerRef?: Readonly<Record<string, SegmentFaultFlowOverlay>>;
   /**
+   * Karta SLD-P (GAP zarejestrowany w V12K-120/121: „znacznik pulse punktu
+   * zwarcia w v3"): ref elementu punktu zwarcia z TEGO SAMEGO kanału co
+   * strzałki wyżej (`ShortCircuitFlowOverlayInput.fault_element_ref` —
+   * `useOverlayStore.faultFlow`, `row.element_id ?? row.target_id` z ekranu
+   * zwarć, `usePokazZwarcieNaSchemacie`). Adapter W-C
+   * (`adaptShortCircuitFlowToOverlay`) emituje ten sam ref jako pierwszy
+   * element `OverlayPayloadV1` (CRITICAL+pulse) — kanwa v3 dotąd tego nie
+   * renderowała (GAP). Rozwiązanie do pozycji ekranowej: `SldCanvasV3.
+   * computeFaultPointMarkerPlacement` (dopasowanie po `meta.ownerRef` w
+   * scenie EFEKTYWNEGO LOD — symbol lub odcinek geometryczny). Brak wpisu =
+   * brak znacznika (§14.2 „overlay wyłączony bez wyniku"), zero fabrykacji.
+   */
+  readonly faultPointMarkerRef?: string;
+  /**
    * F4/SLD (V12K-092, karta SLD-02 §3.5 „badge wynikowy OLTC"): pozycja
    * końcowa zaczepu + liczba przełączeń per TRANSFORMATOR (`meta.ownerRef`
    * symbolu `transformer2W` sceny = `transformerRef` = ENM `ref_id`, TA SAMA

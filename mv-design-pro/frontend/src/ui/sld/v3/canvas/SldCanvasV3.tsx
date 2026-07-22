@@ -809,6 +809,134 @@ function SceneFaultFlowNode(props: { readonly placement: FaultFlowPlacement }): 
 }
 
 // ---------------------------------------------------------------------------
+// Karta SLD-P (GAP zarejestrowany V12K-120/121 „znacznik pulse punktu
+// zwarcia w v3"): adapter W-C (`ShortCircuitFlowOverlayAdapter.
+// adaptShortCircuitFlowToOverlay`) oznacza punkt zwarcia CRITICAL+pulse jako
+// PIERWSZY element `OverlayPayloadV1`, ale ten payload nie sięga kanwy v3
+// (v3 czyta WYŁĄCZNIE kanał kierunku `faultFlow`, patrz `overlay.ts`
+// `SldV3Overlay.faultPointMarkerRef`) — kanwa dotąd nie rysowała ŻADNEGO
+// znacznika punktu zwarcia. RECON prymitywu pulsu w starszym torze: token
+// animacji `pulse` (`overlayTypes.ts` ANIMATION_TOKEN_MAP → klasa CSS
+// `sld-overlay-anim-pulse`) NIE MA odpowiadającej definicji `@keyframes` w
+// ŻADNYM arkuszu stylów repo (`grep -rn "@keyframes" src` — zero trafień
+// poza `LoadingOverlay.tsx`, niezwiązany komponent) — legacy „prymityw
+// pulsu" jest w praktyce MARTWY (nazwa klasy bez definicji, zero
+// renderowanego efektu). Zamiast dziedziczyć martwy kod, znacznik niżej
+// używa NATYWNEJ animacji SVG (`<animate>` na promieniu/przezroczystości
+// pierścienia) — samowystarczalny węzeł DOM, zero globalnego CSS, zero
+// zależności od nieistniejącej klasy.
+// ---------------------------------------------------------------------------
+
+/** Kolor znacznika punktu zwarcia — TA SAMA rodzina czerwieni co strzałki
+ *  rozpływu zwarciowego wyżej (`FAULT_FLOW_TOKEN_COLOR.critical`): adapter
+ *  W-C oznacza punkt zwarcia zawsze jako `visual_state: 'CRITICAL'`, więc
+ *  znacznik nie ma własnej skali tercylowej — jeden token, jeden kolor. */
+const FAULT_POINT_MARKER_COLOR = FAULT_FLOW_TOKEN_COLOR.critical;
+/** Promień kropki statycznej [px świata] — rząd wielkości grota strzałki
+ *  zwarciowej (`FLOW_ARROW_LENGTH=12`), żeby znacznik nie dominował nad
+ *  symbolami sceny. */
+const FAULT_POINT_MARKER_DOT_RADIUS = 5;
+/** Promień maksymalny pierścienia pulsu — 2×2 kropki, widoczny, ale bez
+ *  zasłaniania sąsiednich elementów przy typowym rozstawie siatki (GRID=8). */
+const FAULT_POINT_MARKER_PULSE_MAX_RADIUS = FAULT_POINT_MARKER_DOT_RADIUS + 3 * GRID;
+/** Okres pulsu [s] — wyłącznie prezentacyjne, zero wpływu na determinizm
+ *  danych (animacja SVG natywna, markup statyczny niezależny od czasu). */
+const FAULT_POINT_MARKER_PULSE_DURATION = '1.6s';
+
+export interface FaultPointMarkerPlacement {
+  readonly ownerRef: string;
+  readonly x: number;
+  readonly y: number;
+}
+
+/**
+ * Rozmieszczenie znacznika punktu zwarcia — dopasowanie `faultPointMarkerRef`
+ * (`overlay.faultPointMarkerRef`, TEN SAM ref co pierwszy element adaptera
+ * W-C) do pozycji EKRANOWEJ w scenie EFEKTYWNEGO LOD. Szuka NAJPIERW wśród
+ * symboli (`meta.ownerRef` — środek bboxa przez `SYMBOL_DEFS`, np. stacja/
+ * transformator/DER/aparat), potem wśród odcinków GEOMETRYCZNYCH (`meta.
+ * ownerRef`, z pominięciem `elementKind==='protectionAnnotation'` — warstwa
+ * adnotacji, nie geometria toru/szyny — środek najdłuższego biegu polilinii,
+ * TA SAMA selekcja co `computeFaultFlowPlacements`). Pierwsze trafienie w
+ * kolejności sceny wygrywa (deterministyczne). Brak dopasowania (ref spoza
+ * sceny/LOD) ⇒ `null` — znacznik wyłączony, zero fabrykacji pozycji.
+ */
+export function computeFaultPointMarkerPlacement(
+  scene: SceneV3,
+  faultPointMarkerRef: string | undefined,
+): FaultPointMarkerPlacement | null {
+  if (!faultPointMarkerRef) return null;
+  for (const symbol of scene.symbols) {
+    if (symbol.meta?.ownerRef !== faultPointMarkerRef) continue;
+    const def = SYMBOL_DEFS[symbol.symbolId];
+    return { ownerRef: faultPointMarkerRef, x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 };
+  }
+  for (const segment of scene.segments) {
+    if (segment.meta?.elementKind === 'protectionAnnotation') continue;
+    if (segment.meta?.ownerRef !== faultPointMarkerRef) continue;
+    const points = segment.points;
+    if (points.length < 2) continue;
+    let bestIndex = -1;
+    let bestLength = 0;
+    for (let i = 0; i < points.length - 1; i++) {
+      const length = Math.abs(points[i + 1].x - points[i].x) + Math.abs(points[i + 1].y - points[i].y);
+      if (length > bestLength) {
+        bestLength = length;
+        bestIndex = i;
+      }
+    }
+    if (bestIndex < 0) continue;
+    const a = points[bestIndex];
+    const b = points[bestIndex + 1];
+    return { ownerRef: faultPointMarkerRef, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+  return null;
+}
+
+/**
+ * Znacznik punktu zwarcia — kropka statyczna + pierścień pulsujący
+ * (animacja SVG natywna `<animate>`, WYŁĄCZNIE prezentacyjna: promień
+ * `r`/przezroczystość `opacity` cyklicznie, zero wpływu na geometrię
+ * segmentów/symboli sceny — warstwa NAKŁADKI, jak `SceneFaultFlowNode`).
+ */
+function SceneFaultPointMarkerNode(props: { readonly placement: FaultPointMarkerPlacement }): JSX.Element {
+  const { placement } = props;
+  return (
+    <g data-testid="sld-v3-fault-point-marker" data-fault-point-owner-ref={placement.ownerRef}>
+      <circle
+        data-testid="sld-v3-fault-point-marker-dot"
+        cx={placement.x}
+        cy={placement.y}
+        r={FAULT_POINT_MARKER_DOT_RADIUS}
+        fill={FAULT_POINT_MARKER_COLOR}
+      />
+      <circle
+        data-testid="sld-v3-fault-point-marker-pulse"
+        cx={placement.x}
+        cy={placement.y}
+        r={FAULT_POINT_MARKER_DOT_RADIUS}
+        fill="none"
+        stroke={FAULT_POINT_MARKER_COLOR}
+        strokeWidth={2}
+      >
+        <animate
+          attributeName="r"
+          values={`${FAULT_POINT_MARKER_DOT_RADIUS};${FAULT_POINT_MARKER_PULSE_MAX_RADIUS};${FAULT_POINT_MARKER_DOT_RADIUS}`}
+          dur={FAULT_POINT_MARKER_PULSE_DURATION}
+          repeatCount="indefinite"
+        />
+        <animate
+          attributeName="opacity"
+          values="0.85;0;0.85"
+          dur={FAULT_POINT_MARKER_PULSE_DURATION}
+          repeatCount="indefinite"
+        />
+      </circle>
+    </g>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // F4/SLD (V12K-092, karta SLD-02 §3.5): badge wynikowy OLTC — pozycja
 // końcowa zaczepu + liczba przełączeń NA glifie transformatora, PO obliczeniu
 // (dane z `overlay.oltcByOwnerRef`, budowane w `overlay.ts::buildOltcOverlay
@@ -1097,6 +1225,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     () => computeFaultFlowPlacements(scene, effectiveOverlay?.faultFlowByOwnerRef),
     [scene, effectiveOverlay],
   );
+  // Karta SLD-P (GAP V12K-120/121): znacznik pulse punktu zwarcia — ta sama
+  // warstwa „nakładki wyników" (filtr `effectiveOverlay`).
+  const faultPointMarkerPlacement = useMemo(
+    () => computeFaultPointMarkerPlacement(scene, effectiveOverlay?.faultPointMarkerRef),
+    [scene, effectiveOverlay],
+  );
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): informuje wołającego o
@@ -1303,6 +1437,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           {faultFlowPlacements.map((placement) => (
             <SceneFaultFlowNode key={`fault-flow-${placement.segmentIndex}`} placement={placement} />
           ))}
+          {/* Karta SLD-P (GAP V12K-120/121): znacznik pulse punktu zwarcia —
+           * ta sama warstwa co strzałki (jeden overlay „prąd zwarciowy"),
+           * zero wpisu = zero węzła (§14.2 „overlay wyłączony bez wyniku"). */}
+          {faultPointMarkerPlacement ? (
+            <SceneFaultPointMarkerNode placement={faultPointMarkerPlacement} />
+          ) : null}
         </g>
         {/* F4/SLD (V12K-092, karta SLD-02 §3.5): badge wynikowy OLTC NAD
          * warstwami bazowymi — pozycja końcowa zaczepu + liczba przełączeń

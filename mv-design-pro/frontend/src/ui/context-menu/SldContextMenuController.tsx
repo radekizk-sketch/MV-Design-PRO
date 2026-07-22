@@ -70,6 +70,9 @@ const KIND_HEADER_PL: Readonly<Record<SldElementKindForMenu, string>> = {
   der_pv: 'Źródło PV',
   der_bess: 'Magazyn energii BESS',
   der_fw: 'Farma wiatrowa',
+  // Karta SLD-P (GAP P-1): nagłówek generyczny — kanwa v3 nie rozróżnia
+  // podtypu DER (patrz SldCommandService.ts `SLD_MENU_REGISTRY.der`).
+  der: 'Źródło OZE / generator',
 };
 
 /** Mapowanie SldElementKindForMenu → ElementType (używane wyłącznie do nagłówka fallback). */
@@ -87,6 +90,9 @@ const KIND_TO_ELEMENT_TYPE: Readonly<Record<SldElementKindForMenu, ElementType>>
   der_pv: 'PVInverter',
   der_bess: 'BESSInverter',
   der_fw: 'Generator',
+  // Karta SLD-P (GAP P-1): TA SAMA wartość co `elementTypeForKind('der')` w
+  // `SldCanvasV3Workspace.tsx` (jedna prawda mapowania kind→ElementType).
+  der: 'Generator',
 };
 
 const SECTION_LABEL_PL: Readonly<Record<NonNullable<SldMenuAction['group']>, string>> = {

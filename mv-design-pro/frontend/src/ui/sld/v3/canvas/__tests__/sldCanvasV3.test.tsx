@@ -25,6 +25,7 @@ import { buildSceneV3, type SceneLod } from '../../scene/buildScene';
 import {
   SldCanvasV3,
   computeFaultFlowPlacements,
+  computeFaultPointMarkerPlacement,
   computeFlowOverlayPlacements,
   computeOltcBadgePlacements,
   flowOverlayGeometry,
@@ -820,5 +821,146 @@ describe('SldCanvasV3 — karta S-B: strzałki rozpływu prądu zwarciowego (war
     expect(
       computeFaultFlowPlacements(scene, { 'nieznany-ref': FAULT_ENTRY('nieznany-ref') }),
     ).toEqual([]);
+  });
+});
+
+describe('SldCanvasV3 — karta SLD-P: znacznik pulse punktu zwarcia (GAP V12K-120/121, warstwa sld-v3-fault-flow-overlay)', () => {
+  function overlayWithFaultPoint(faultPointMarkerRef: string): SldV3Overlay {
+    return { energizedByTestId: {}, faultPointMarkerRef };
+  }
+
+  it('(a) ref dopasowany do SYMBOLU → znacznik w środku bboxa tego symbolu', () => {
+    const scene = buildSceneV3(enm, 0);
+    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
+    expect(stationIndex).toBeGreaterThanOrEqual(0);
+    const symbol = scene.symbols[stationIndex];
+    const ownerRef = symbol.meta!.ownerRef!;
+    const def = SYMBOL_DEFS[symbol.symbolId];
+    const expectedX = symbol.x + def.width / 2;
+    const expectedY = symbol.y + def.height / 2;
+
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={0}
+        overlay={overlayWithFaultPoint(ownerRef)}
+      />,
+    );
+    const marker = container.querySelector('[data-testid="sld-v3-fault-point-marker"]');
+    expect(marker).toBeTruthy();
+    expect(marker!.getAttribute('data-fault-point-owner-ref')).toBe(ownerRef);
+    const dot = container.querySelector('[data-testid="sld-v3-fault-point-marker-dot"]')!;
+    expect(Number(dot.getAttribute('cx'))).toBe(expectedX);
+    expect(Number(dot.getAttribute('cy'))).toBe(expectedY);
+    const pulse = container.querySelector('[data-testid="sld-v3-fault-point-marker-pulse"]')!;
+    expect(Number(pulse.getAttribute('cx'))).toBe(expectedX);
+    expect(Number(pulse.getAttribute('cy'))).toBe(expectedY);
+  });
+
+  it('(b) ref dopasowany do ODCINKA (nie protectionAnnotation) → znacznik w środku najdłuższego biegu', () => {
+    const scene = buildSceneV3(enm, 2);
+    const segIndex = scene.segments.findIndex(
+      (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#'),
+    );
+    expect(segIndex).toBeGreaterThanOrEqual(0);
+    const ownerRef = scene.segments[segIndex].meta!.ownerRef!;
+    const placement = computeFaultPointMarkerPlacement(scene, ownerRef);
+    expect(placement).not.toBeNull();
+    expect(placement!.ownerRef).toBe(ownerRef);
+
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        overlay={overlayWithFaultPoint(ownerRef)}
+      />,
+    );
+    const dot = container.querySelector('[data-testid="sld-v3-fault-point-marker-dot"]')!;
+    expect(Number(dot.getAttribute('cx'))).toBe(placement!.x);
+    expect(Number(dot.getAttribute('cy'))).toBe(placement!.y);
+  });
+
+  it('(c) brak overlay / brak faultPointMarkerRef → warstwa bez znacznika (zero atrap — „overlay wyłączony bez wyniku")', () => {
+    const { container: without } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    expect(without.querySelector('[data-testid="sld-v3-fault-point-marker"]')).toBeNull();
+
+    const { container: withEmptyOverlay } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        overlay={{ energizedByTestId: {} }}
+      />,
+    );
+    expect(withEmptyOverlay.querySelector('[data-testid="sld-v3-fault-point-marker"]')).toBeNull();
+  });
+
+  it('(d) znacznik jest WARSTWĄ nakładki, nie zmianą layoutu: geometria segmentów/symboli IDENTYCZNA z i bez znacznika', () => {
+    const scene = buildSceneV3(enm, 0);
+    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
+    const ownerRef = scene.symbols[stationIndex].meta!.ownerRef!;
+
+    const { container: without } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />,
+    );
+    const { container: withMarker } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={0}
+        overlay={overlayWithFaultPoint(ownerRef)}
+      />,
+    );
+    expect(withMarker.querySelector('[data-testid="sld-v3-segments"]')!.innerHTML).toBe(
+      without.querySelector('[data-testid="sld-v3-segments"]')!.innerHTML,
+    );
+    expect(withMarker.querySelector('[data-testid="sld-v3-symbols"]')!.innerHTML).toBe(
+      without.querySelector('[data-testid="sld-v3-symbols"]')!.innerHTML,
+    );
+  });
+
+  it('(e) determinizm renderu: dwa rendery tych samych propsów → identyczny innerHTML warstwy', () => {
+    const scene = buildSceneV3(enm, 0);
+    const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
+    const ownerRef = scene.symbols[stationIndex].meta!.ownerRef!;
+    const overlay = overlayWithFaultPoint(ownerRef);
+
+    const { container: a } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} overlay={overlay} />,
+    );
+    const { container: b } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} overlay={overlay} />,
+    );
+    expect(a.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.innerHTML).toBe(
+      b.querySelector('[data-testid="sld-v3-fault-flow-overlay"]')!.innerHTML,
+    );
+  });
+
+  it('computeFaultPointMarkerPlacement: brak ref ⇒ null; ref spoza sceny ⇒ null (nie fabrykuje pozycji)', () => {
+    const scene = buildSceneV3(enm, 2);
+    expect(computeFaultPointMarkerPlacement(scene, undefined)).toBeNull();
+    expect(computeFaultPointMarkerPlacement(scene, 'nieznany-ref-spoza-sceny')).toBeNull();
+  });
+
+  it('computeFaultPointMarkerPlacement: pomija odcinki elementKind==="protectionAnnotation" (adnotacja, nie geometria toru)', () => {
+    const scene = buildSceneV3(enm, 2);
+    const annotationSegment = scene.segments.find(
+      (s) => s.meta?.elementKind === 'protectionAnnotation' && s.meta.ownerRef,
+    );
+    if (!annotationSegment) return; // fixtura może nie nieść adnotacji na tym LOD — bez fabrykacji.
+    const ownerRef = annotationSegment.meta!.ownerRef!;
+    const hasNonAnnotationMatch = scene.segments.some(
+      (s) => s.meta?.elementKind !== 'protectionAnnotation' && s.meta?.ownerRef === ownerRef,
+    ) || scene.symbols.some((s) => s.meta?.ownerRef === ownerRef);
+    if (hasNonAnnotationMatch) return; // ref współdzielony z elementem realnym — test niejednoznaczny na tej fixturze.
+    expect(computeFaultPointMarkerPlacement(scene, ownerRef)).toBeNull();
   });
 });
