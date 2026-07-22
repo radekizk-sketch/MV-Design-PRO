@@ -123,6 +123,20 @@ class ENMDefaults(BaseModel):
     sn_nominal_kv: float | None = None
 
 
+class ConnectionConditions(BaseModel):
+    """Warunki przyłączenia z dokumentu OSD (dane WEJŚCIOWE projektu, nie wynik).
+
+    Karta K2 programu FLOW EKSPERT+ (GAP B1/B2 audytu FLOW): statyczny limit
+    mocy z umowy/warunków przyłączeniowych + wymagany współczynnik mocy +
+    opis trybu pracy przyłącza (tekst z dokumentu OSD — bez zgadywania enuma).
+    Wszystkie pola opcjonalne (blok addytywny — istniejące payloady bez zmian).
+    """
+
+    moc_przylaczeniowa_mw: float | None = Field(default=None, gt=0)
+    wymagany_cos_phi: float | None = Field(default=None, gt=0, le=1)
+    tryb_pracy: str | None = None
+
+
 class ENMHeader(BaseModel):
     enm_version: Literal["1.0"] = "1.0"
     name: str

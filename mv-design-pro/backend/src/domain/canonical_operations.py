@@ -400,6 +400,14 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("element_ref", "label"),
         creates_elements=False,
     ),
+    "set_connection_conditions": OperationSpec(
+        canonical_name="set_connection_conditions",
+        category=OperationCategory.UNIVERSAL,
+        description_pl="Ustawienie warunków przyłączenia OSD (moc przyłączeniowa, cosφ, tryb pracy)",
+        target_layer="Domain / NetworkModel",
+        required_fields=(),
+        creates_elements=False,
+    ),
     "export_project_artifacts": OperationSpec(
         canonical_name="export_project_artifacts",
         category=OperationCategory.UNIVERSAL,

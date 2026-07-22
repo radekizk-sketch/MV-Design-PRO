@@ -3062,6 +3062,61 @@ def set_dynamic_profile(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
 # ---------------------------------------------------------------------------
 
 
+def set_connection_conditions(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Ustaw warunki przyłączenia OSD w nagłówku modelu (karta K2 FLOW EKSPERT+).
+
+    Dane WEJŚCIOWE projektu z dokumentu warunków przyłączeniowych (GAP B1/B2
+    audytu FLOW): moc przyłączeniowa [MW], wymagany cosφ, tryb pracy przyłącza
+    (tekst z dokumentu OSD). Zapis addytywny do ``header.connection_conditions``
+    — scala pola podane w payload z istniejącym blokiem (pole ``null`` czyści
+    wartość). Walidacja zakresów jak w modelu ``ConnectionConditions``.
+    """
+    znane_pola = ("moc_przylaczeniowa_mw", "wymagany_cos_phi", "tryb_pracy")
+    podane = {k: payload[k] for k in znane_pola if k in payload}
+    if not podane:
+        return _error_response(
+            "Brak pól warunków przyłączenia (moc_przylaczeniowa_mw / wymagany_cos_phi / tryb_pracy).",
+            "connection_conditions.fields_missing",
+        )
+
+    moc = podane.get("moc_przylaczeniowa_mw")
+    if moc is not None and (not isinstance(moc, int | float) or moc <= 0):
+        return _error_response(
+            "Moc przyłączeniowa musi być liczbą dodatnią [MW].",
+            "connection_conditions.moc_invalid",
+        )
+    cos_phi = podane.get("wymagany_cos_phi")
+    if cos_phi is not None and (
+        not isinstance(cos_phi, int | float) or cos_phi <= 0 or cos_phi > 1
+    ):
+        return _error_response(
+            "Wymagany cosφ musi być w przedziale (0, 1].",
+            "connection_conditions.cos_phi_invalid",
+        )
+    tryb = podane.get("tryb_pracy")
+    if tryb is not None and not isinstance(tryb, str):
+        return _error_response(
+            "Tryb pracy przyłącza musi być tekstem z dokumentu OSD.",
+            "connection_conditions.tryb_invalid",
+        )
+
+    new_enm = copy.deepcopy(enm)
+    header = new_enm.setdefault("header", {})
+    blok = dict(header.get("connection_conditions") or {})
+    for klucz, wartosc in podane.items():
+        if wartosc is None:
+            blok.pop(klucz, None)
+        else:
+            blok[klucz] = wartosc
+    header["connection_conditions"] = blok or None
+
+    return _response(
+        new_enm,
+        updated=["header"],
+        events=[{"event_seq": 1, "event_type": "PARAMETERS_UPDATED", "element_id": "header"}],
+    )
+
+
 def rename_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Zmień nazwę elementu."""
     element_ref = payload.get("element_ref")
@@ -3154,6 +3209,7 @@ V2_CANONICAL_OPS = frozenset(
         # Universal
         "rename_element",
         "set_label",
+        "set_connection_conditions",
     }
 )
 
@@ -3186,4 +3242,5 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "set_dynamic_profile": set_dynamic_profile,
     "rename_element": rename_element,
     "set_label": set_label,
+    "set_connection_conditions": set_connection_conditions,
 }
