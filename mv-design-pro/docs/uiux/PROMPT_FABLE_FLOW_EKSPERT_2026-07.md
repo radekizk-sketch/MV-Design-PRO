@@ -164,7 +164,13 @@ K5 (Fable, runda wizualna + strona oceny)              → zamknięcie programu
 - K4: **SCALONE** (V12K-102) — wykonawca-2, zweryfikowane niezależnie, cherry-pick 2026-07-22
 - K2: **SCALONE** (V12K-103) — Fable osobiście, backend+UI end-to-end, 2026-07-22
 - K3: **SCALONE** (V12K-104) — wykonawca-3, zweryfikowane niezależnie, cherry-pick 2026-07-22
-- K5: W TOKU (Fable — runda wizualna)
+- K5: **WYKONANE** — 3 sceny × 2 motywy (pulpit z warunkami OSD i werdyktem
+  limitu, rejestr „Co wymaga uwagi" z akcjami K1, pasek świeżości K4);
+  spec `e2e/flow-ekspert-screenshot.spec.ts` 6/6 zielony, zrzuty w
+  `docs/audit/visual/flow-ekspert/` + dostarczone właścicielowi wprost
+  (publikacja strony oceny wstrzymana decyzją właściciela w tej rundzie).
+  **PROGRAM FLOW EKSPERT+ ZAMKNIĘTY** — pozostałe GAP-y (K1-G1/G2, K4-G1,
+  K3-G1/G2/G3) czekają w rejestrze powyżej na kolejne dyspozycje.
 
 GAP-y z raportów wykonawców (zarejestrowane, nie ciche):
 - K3-G1: walidacja energetyczna bez śladu WHITE BOX per pozycja (`WalidacjaItem`

@@ -10,6 +10,8 @@
 
 import { createRoot } from 'react-dom/client';
 import './ui2/theme/tokens.css';
+// Scena „swiezosc" renderuje CaseBar poza AppShell — style paska ładuje shell.css.
+import './ui2/shell/shell.css';
 
 import { KreatorKompensatoraSn } from './ui2/kreatory/kompensator';
 import { KreatorMagistralaSn } from './ui2/kreatory/magistrala';
@@ -20,10 +22,16 @@ import { KreatorZrodloZasilania } from './ui2/kreatory/zrodlo';
 import { KreatorZrodlaOze } from './ui2/kreatory/zrodlo-oze';
 import { SekcjaArcFlash } from './ui2/wyniki/jakosc/EkranJakosci';
 import { HubDokumentacji } from './ui2/spaces/dokumentacja';
+import { PulpitProjektu } from './ui2/spaces/projekt';
+import { EkranCoWymagaUwagi } from './ui2/wyniki/co-wymaga-uwagi';
+import { CaseBar } from './ui2/shell/CaseBar';
+import { useShellCaseInfo } from './ui2/shell/shellStatus';
 import { useAppStateStore } from './ui/app-state';
 import { useSnapshotStore } from './ui/topology/snapshotStore';
 import { useNetworkBuildStore } from './ui/network-build/networkBuildStore';
 import { useExecutionRunsStore } from './ui/study-cases/runStore';
+import { useStudyCasesStore } from './ui/study-cases/store';
+import { usePowerFlowResultsStore } from './ui/power-flow-results/store';
 import type { ExecutionRun } from './ui/study-cases/types';
 
 // --- Motyw ---------------------------------------------------------------
@@ -158,6 +166,72 @@ if (creator === 'arcflash') {
     started_at: '2026-07-21T10:30:00Z', finished_at: '2026-07-21T10:30:00Z',
   } as unknown as ExecutionRun;
   useExecutionRunsStore.setState({ runs: [run], activeRunId: 'run-lf-1' } as never);
+} else if (creator === 'pulpit') {
+  // Pulpit projektu (E1 — K2/V12K-103): kafel „Warunki przyłączenia" z warunkami
+  // OSD z nagłówka + werdykt bilansu (generacja 6,2 MW > limit 5,0 MW).
+  useSnapshotStore.setState({
+    snapshot: {
+      header: {
+        name: 'Przyłączenie farmy PV 8 MW', revision: 9, hash_sha256: 'f00dfacecafe0123',
+        connection_conditions: { moc_przylaczeniowa_mw: 5.0, wymagany_cos_phi: 0.95, tryb_pracy: 'praca równoległa z siecią' },
+      },
+      substations: [{ ref_id: 'st-1', name: 'GPZ-01', bus_refs: ['b110', 'b15'] }],
+      buses: [
+        { ref_id: 'b110', name: 'Szyna 110 kV', voltage_kv: 110 },
+        { ref_id: 'b15', name: 'Szyna 15 kV', voltage_kv: 15 },
+      ],
+      branches: [{ ref_id: 'l1' }, { ref_id: 'l2' }, { ref_id: 'l3' }],
+      transformers: [{ ref_id: 't1' }],
+      sources: [{ ref_id: 's1', name: 'GPZ 110/15', bus_ref: 'b15', sk3_mva: 250, ik3_ka: 9.62 }],
+      generators: [
+        { ref_id: 'g1', bus_ref: 'b15', p_mw: 4.0 },
+        { ref_id: 'g2', bus_ref: 'b15', p_mw: 2.2 },
+      ],
+      loads: [{ ref_id: 'o1', bus_ref: 'b15', p_mw: 1.4 }],
+      bays: [], junctions: [], corridors: [], measurements: [], protection_assignments: [],
+    },
+    readiness: { ready: true, blockers: [], warnings: [] },
+  } as never);
+  useStudyCasesStore.setState({
+    cases: [
+      { id: 'K1', name: 'Stan normalny', description: 'Konfiguracja bazowa', result_status: 'FRESH', results_valid: true, is_active: true, updated_at: '2026-07-21T10:00:00Z' },
+      { id: 'K2', name: 'Zwarcia maks.', description: 'c_max, pełna generacja', result_status: 'OUTDATED', results_valid: false, is_active: false, updated_at: '2026-07-20T09:00:00Z' },
+    ],
+    activeCase: { id: 'K1', name: 'Stan normalny', result_status: 'FRESH', results_valid: true } as never,
+  } as never);
+  const run: ExecutionRun = {
+    id: 'run-lf-2', analysis_type: 'LOAD_FLOW', status: 'DONE',
+    started_at: '2026-07-21T18:05:00Z', finished_at: '2026-07-21T18:05:04Z',
+  } as unknown as ExecutionRun;
+  useExecutionRunsStore.setState({ runs: [run], activeStudyCaseId: 'K1' } as never);
+} else if (creator === 'uwaga') {
+  // Rejestr „Co wymaga uwagi" (A1/V12K-098 + kontekstowe akcje K1/V12K-101):
+  // dwa realne przekroczenia napięcia z wyniku rozpływu.
+  usePowerFlowResultsStore.setState({
+    results: {
+      result_version: '1.0', converged: true, iterations_count: 5, tolerance_used: 1e-6,
+      base_mva: 100, slack_bus_id: 'SZ-GPZ',
+      bus_results: [
+        { bus_id: 'SZ-GPZ', v_pu: 1.0, angle_deg: 0, p_injected_mw: 6.4, q_injected_mvar: 1.9 },
+        { bus_id: 'SZ-ST7', v_pu: 0.941, angle_deg: -2.9, p_injected_mw: -1.2, q_injected_mvar: -0.4 },
+        { bus_id: 'SZ-PV2', v_pu: 1.062, angle_deg: 1.4, p_injected_mw: 3.9, q_injected_mvar: 0.2 },
+      ],
+      branch_results: [], summary: { total_losses_p_mw: 0.11, total_losses_q_mvar: 0.08, min_v_pu: 0.941, max_v_pu: 1.062, slack_p_mw: 6.4, slack_q_mvar: 1.9 },
+    },
+    runHeader: { id: 'run-lf-2' },
+  } as never);
+} else if (creator === 'swiezosc') {
+  // Pasek aktywnego przypadku (K4/V12K-102): wyniki NIEAKTUALNE → klikalny znacznik.
+  // Chip wyników renderuje się wyłącznie przy obecnym projekcie (projectPresent).
+  useAppStateStore.setState({
+    activeProjectId: 'proj-demo',
+    activeProjectName: 'Przyłączenie farmy PV 8 MW',
+    activeCaseId: 'K1',
+    activeCaseName: 'Stan normalny',
+  } as never);
+  useStudyCasesStore.setState({
+    activeCase: { id: 'K1', name: 'Stan normalny', result_status: 'OUTDATED', results_valid: false } as never,
+  } as never);
 } else {
   // Kontekst operacji (szyna/stacja) dla kreatorów pole/OZE/transformator.
   const op =
@@ -190,9 +264,26 @@ if (creator === 'arcflash') {
   });
 }
 
+/** Pasek przypadku ze znacznikiem świeżości (K4) — info z realnego hooka powłoki. */
+function SwiezoscScena() {
+  const info = useShellCaseInfo();
+  return <CaseBar info={info} onPrzejdzDoObliczen={() => undefined} />;
+}
+
 function Harness() {
   let node: React.ReactNode;
   if (creator === 'dokumentacja') node = <HubDokumentacji />;
+  else if (creator === 'pulpit')
+    node = (
+      <PulpitProjektu
+        onNawiguj={() => undefined}
+        onOtworzProjekt={() => undefined}
+        onZaznaczPrzypadek={() => undefined}
+        onOtworzPrzypadek={() => undefined}
+      />
+    );
+  else if (creator === 'uwaga') node = <EkranCoWymagaUwagi />;
+  else if (creator === 'swiezosc') node = <SwiezoscScena />;
   else if (creator === 'oze') node = <KreatorZrodlaOze />;
   else if (creator === 'transformator') node = <KreatorTransformatoraSnNn />;
   else if (creator === 'kompensator') node = <KreatorKompensatoraSn />;
