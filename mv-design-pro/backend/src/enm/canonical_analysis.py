@@ -1670,7 +1670,18 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                     {"key": "ikss_ka", "label_pl": "Ik''", "unit": "kA"},
                     {"key": "ip_ka", "label_pl": "ip", "unit": "kA"},
                     {"key": "ith_ka", "label_pl": "Ith", "unit": "kA"},
+                    {"key": "ib_ka", "label_pl": "Ib", "unit": "kA"},
+                    {"key": "ik_ka", "label_pl": "Ik", "unit": "kA"},
                     {"key": "sk_mva", "label_pl": "Sk''", "unit": "MVA"},
+                    {"key": "rk_ohm", "label_pl": "Rk", "unit": "ohm"},
+                    {"key": "xk_ohm", "label_pl": "Xk", "unit": "ohm"},
+                    {"key": "zk_ohm", "label_pl": "|Zk|", "unit": "ohm"},
+                    {"key": "xr_ratio", "label_pl": "X/R"},
+                    {"key": "kappa", "label_pl": "kappa"},
+                    {"key": "c_factor", "label_pl": "c"},
+                    {"key": "un_kv", "label_pl": "Un", "unit": "kV"},
+                    {"key": "tk_s", "label_pl": "tk", "unit": "s"},
+                    {"key": "i2t_ka2s", "label_pl": "I2t", "unit": "kA2s"},
                     {"key": "reporting_status", "label_pl": "Status raportowy"},
                     {"key": "proof_status", "label_pl": "Status uzasadnienia"},
                     {"key": "proof_ref", "label_pl": "Identyfikator uzasadnienia"},
@@ -1848,6 +1859,46 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
     return {"run_id": str(run.id), "rows": rows}
 
 
+def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
+    """Pelny bilans IEC 60909 punktu zwarcia (program ZWARCIA-PRO F1, addytywnie).
+
+    Wszystkie wielkosci pochodza z FROZEN solvera (ShortCircuitResult.to_dict);
+    tutaj WYLACZNIE deterministyczne projekcje jednostek i wielkosci pochodnych
+    zdefiniowanych norma (klasa przeksztalcen jak A->kA, zero fizyki):
+    - |Zk| = sqrt(Rk^2 + Xk^2) — modul impedancji Thevenina policzonej przez solver,
+    - X/R = 1/(R/X) — odwrotnosc stosunku z solvera (kappa liczy solver),
+    - I2t = Ith^2 * tk — definicja pradu zastepczego cieplnego (IEC 60909-0 par. 12).
+    Starsze wyniki bez pol -> None (uczciwe braki, kontrakt addytywny).
+    """
+    zkk = item.get("zkk_ohm") or {}
+    rk = zkk.get("re")
+    xk = zkk.get("im")
+    zk = math.hypot(rk, xk) if rk is not None and xk is not None else None
+    rx = item.get("rx_ratio")
+    xr = (1.0 / rx) if rx else None
+    ith_a = item.get("ith_a")
+    tk_s = item.get("tk_s")
+    i2t_ka2s = ((ith_a / 1000.0) ** 2 * tk_s) if ith_a is not None and tk_s is not None else None
+    un_v = item.get("un_v")
+    return {
+        "rk_ohm": rk,
+        "xk_ohm": xk,
+        "zk_ohm": zk,
+        "rx_ratio": rx,
+        "xr_ratio": xr,
+        "kappa": item.get("kappa"),
+        "c_factor": item.get("c_factor"),
+        "un_kv": (un_v / 1000.0) if un_v is not None else None,
+        "tk_s": tk_s,
+        "tb_s": item.get("tb_s"),
+        "ib_ka": _amps_to_ka(item.get("ib_a")),
+        "ik_ka": _amps_to_ka(item.get("ik_total_a")),
+        "ik_thevenin_ka": _amps_to_ka(item.get("ik_thevenin_a")),
+        "ik_inverters_ka": _amps_to_ka(item.get("ik_inverters_a")),
+        "i2t_ka2s": i2t_ka2s,
+    }
+
+
 def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         return {"run_id": str(run.id), "rows": []}
@@ -1865,6 +1916,7 @@ def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
                 "ip_ka": _amps_to_ka(item.get("ip_a")),
                 "ith_ka": _amps_to_ka(item.get("ith_a")),
                 "sk_mva": item.get("sk_mva"),
+                **_sc_pelny_bilans(item),
                 "fault_type": item.get("short_circuit_type"),
                 "analysis_type": item.get("analysis_type")
                 or (run.raw_result or {}).get("analysis_type"),

@@ -81,6 +81,10 @@ test.describe('flow-ekspert:screenshot', () => {
           // R3-B: sekcja wkladow dla domyslnego punktu z realnego dostawcy
           // (endpoint SC3F contributions, podmieniony fetch).
           await expect(page.getByTestId('mvd-zwarcia-wklady')).toContainText('Falownik PV 4 MW');
+          // ZWARCIA-PRO F1: panel „Bilans IEC 60909" + kolumny impedancyjne (ekspert).
+          await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText('0,7777 Ω');
+          await expect(page.getByTestId('mvd-zwarcia-bilans')).toContainText('1,728');
+          await expect(page.getByTestId('mvd-wyn-th-kappa')).toBeVisible();
           // Zasada KaTeX (2026-07-22): slad obliczen na zadanie — klik przycisku
           // rozwija wywod z wzorami renderowanymi matematycznie.
           await page.getByTestId('mvd-zwarcia-wklady-slad-btn').click();

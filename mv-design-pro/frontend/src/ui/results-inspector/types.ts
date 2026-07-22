@@ -164,6 +164,23 @@ export interface ShortCircuitRow {
   sk_mva: number | null;
   fault_type: string | null;
   flags: string[];
+  // Pelny bilans IEC 60909 (ZWARCIA-PRO F1) — pola addytywne z wierszy
+  // kanonicznych (`build_short_circuit_results`); starsze wyniki bez pol.
+  rk_ohm?: number | null;
+  xk_ohm?: number | null;
+  zk_ohm?: number | null;
+  rx_ratio?: number | null;
+  xr_ratio?: number | null;
+  kappa?: number | null;
+  c_factor?: number | null;
+  un_kv?: number | null;
+  tk_s?: number | null;
+  tb_s?: number | null;
+  ib_ka?: number | null;
+  ik_ka?: number | null;
+  ik_thevenin_ka?: number | null;
+  ik_inverters_ka?: number | null;
+  i2t_ka2s?: number | null;
 }
 
 /**

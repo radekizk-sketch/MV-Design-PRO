@@ -24,6 +24,33 @@ export const ZWARCIA_STRINGS = {
   kolSk: 'Moc zwarciowa Sk"',
   kolUwagi: 'Uwagi',
   kolIdentyfikator: 'Identyfikator punktu',
+  // Kolumny impedancyjne (ZWARCIA-PRO F1, tryb ekspercki)
+  kolRk: 'Rk',
+  kolXk: 'Xk',
+  kolZk: '|Zk|',
+  kolXR: 'X/R',
+  kolKappa: 'Współczynnik udaru κ',
+
+  // Panel „Bilans IEC 60909" wybranego punktu (ZWARCIA-PRO F1)
+  bilansTytul: 'Bilans IEC 60909',
+  bilansOpis:
+    'Komplet wielkości punktu zwarcia z solvera — do weryfikacji bez zaglądania do śladu obliczeń.',
+  bilansIkss: 'Prąd zwarciowy początkowy Ik"',
+  bilansIp: 'Prąd udarowy ip',
+  bilansIth: 'Prąd cieplny zastępczy Ith',
+  bilansIb: 'Prąd wyłączeniowy symetryczny Ib',
+  bilansIk: 'Prąd zwarciowy ustalony Ik',
+  bilansSk: 'Moc zwarciowa Sk"',
+  bilansI2t: 'Energia cieplna I²t',
+  bilansKappa: 'Współczynnik udaru κ',
+  bilansXR: 'Stosunek X/R',
+  bilansRk: 'Rezystancja zastępcza Rk',
+  bilansXk: 'Reaktancja zastępcza Xk',
+  bilansZk: 'Impedancja zastępcza (Thevenin) |Zk|',
+  bilansC: 'Współczynnik napięciowy c',
+  bilansUn: 'Napięcie znamionowe przed zwarciem Un',
+  bilansTk: 'Czas trwania zwarcia tk',
+  bilansTb: 'Czas wyłączenia tb',
 
   // Założenia (parametry przebiegu, W-602)
   zalMetoda: 'Metoda obliczeń',
@@ -53,6 +80,9 @@ export const ZWARCIA_STRINGS = {
   // Jednostki
   jednKA: 'kA',
   jednMVA: 'MVA',
+  jednOhm: 'Ω',
+  jednKV: 'kV',
+  jednKA2s: 'kA²·s',
   jednProcent: '%',
   jednS: 's',
 
@@ -129,4 +159,19 @@ export function fmtCzas(n: number): string {
 /** Współczynnik napięciowy c — 2 miejsca po przecinku. */
 export function fmtWspolczynnik(n: number): string {
   return fmtLiczba(n, 2);
+}
+
+/** Napięcie [kV] — 1 miejsce (przecinek PL; „15,0", nie „15,000"). */
+export function fmtKV(n: number): string {
+  return fmtLiczba(n, 1);
+}
+
+/** Impedancja [Ω] — 4 miejsca (rzędy wielkości sieci SN). */
+export function fmtOhm(n: number): string {
+  return fmtLiczba(n, 4);
+}
+
+/** Współczynnik udaru κ / stosunek X/R — 3 miejsca. */
+export function fmtKappa(n: number): string {
+  return fmtLiczba(n, 3);
 }

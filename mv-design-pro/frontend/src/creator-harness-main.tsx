@@ -438,9 +438,10 @@ if (creator === 'arcflash') {
     shortCircuitResults: {
       run_id: 'run-sc-2',
       rows: [
-        { target_id: 'SZ-GPZ', element_id: 'SZ-GPZ', target_name: 'Szyna GPZ 15 kV', ikss_ka: 12.48, ip_ka: 31.2, ith_ka: 12.9, sk_mva: 324.2, fault_type: '3F', flags: [] },
-        { target_id: 'SZ-ST7', element_id: 'SZ-ST7', target_name: 'Szyna ST-7', ikss_ka: 6.05, ip_ka: 13.9, ith_ka: 6.2, sk_mva: 157.2, fault_type: '3F', flags: [] },
-        { target_id: 'SZ-PV2', element_id: 'SZ-PV2', target_name: 'Szyna PV-2', ikss_ka: 7.31, ip_ka: 17.4, ith_ka: 7.5, sk_mva: 189.9, fault_type: '3F', flags: [] },
+        // Pelny bilans IEC 60909 (ZWARCIA-PRO F1) — pola 1:1 z build_short_circuit_results.
+        { target_id: 'SZ-GPZ', element_id: 'SZ-GPZ', target_name: 'Szyna GPZ 15 kV', ikss_ka: 12.48, ip_ka: 31.2, ith_ka: 12.9, sk_mva: 324.2, fault_type: '3F', flags: [], rk_ohm: 0.0821, xk_ohm: 0.7734, zk_ohm: 0.7777, rx_ratio: 0.1062, xr_ratio: 9.4162, kappa: 1.7284, c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 12.31, ik_ka: 12.48, ik_thevenin_ka: 12.1, ik_inverters_ka: 0.38, i2t_ka2s: 166.41 },
+        { target_id: 'SZ-ST7', element_id: 'SZ-ST7', target_name: 'Szyna ST-7', ikss_ka: 6.05, ip_ka: 13.9, ith_ka: 6.2, sk_mva: 157.2, fault_type: '3F', flags: [], rk_ohm: 0.3105, xk_ohm: 1.5721, zk_ohm: 1.6025, rx_ratio: 0.1975, xr_ratio: 5.0633, kappa: 1.5602, c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 6.01, ik_ka: 6.05, ik_thevenin_ka: 5.9, ik_inverters_ka: 0.15, i2t_ka2s: 38.44 },
+        { target_id: 'SZ-PV2', element_id: 'SZ-PV2', target_name: 'Szyna PV-2', ikss_ka: 7.31, ip_ka: 17.4, ith_ka: 7.5, sk_mva: 189.9, fault_type: '3F', flags: [], rk_ohm: 0.221, xk_ohm: 1.3067, zk_ohm: 1.3253, rx_ratio: 0.1691, xr_ratio: 5.9136, kappa: 1.6014, c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, tb_s: 0.1, ib_ka: 7.24, ik_ka: 7.31, ik_thevenin_ka: 7.05, ik_inverters_ka: 0.26, i2t_ka2s: 56.25 },
       ],
     },
     selectedRunId: 'run-sc-2',

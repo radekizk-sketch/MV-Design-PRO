@@ -17,6 +17,7 @@ import './zwarcia.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy } from '../wzorzec';
 import { useWkladyZwarciowe } from './api';
+import { BilansIEC } from './BilansIEC';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresIkssChart } from './WykresIkssChart';
 import { ZWARCIA_STRINGS } from './strings';
@@ -104,6 +105,8 @@ export function EkranZwarc({
         onWybierzWiersz={setWybranyPunkt}
         wybranyWiersz={aktywnyPunkt}
       />
+
+      <BilansIEC row={wierszAktywny} punktNazwa={nazwaAktywnego} />
 
       <WkladyZwarciowe
         punktNazwa={nazwaAktywnego}

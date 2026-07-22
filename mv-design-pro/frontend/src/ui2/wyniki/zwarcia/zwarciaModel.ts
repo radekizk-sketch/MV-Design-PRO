@@ -46,7 +46,9 @@ import {
   ZWARCIA_STRINGS,
   fmtCzas,
   fmtKA,
+  fmtKappa,
   fmtMVA,
+  fmtOhm,
   fmtProcent,
   fmtWspolczynnik,
   rodzajZwarciaPL,
@@ -66,6 +68,31 @@ export const KOLUMNY_ZWARC: DefinicjaKolumny[] = [
   { klucz: 'ip', etykieta: ZWARCIA_STRINGS.kolIp, jednostka: ZWARCIA_STRINGS.jednKA, mono: true },
   { klucz: 'ith', etykieta: ZWARCIA_STRINGS.kolIth, jednostka: ZWARCIA_STRINGS.jednKA, mono: true },
   { klucz: 'sk', etykieta: ZWARCIA_STRINGS.kolSk, jednostka: ZWARCIA_STRINGS.jednMVA, mono: true },
+  // Kolumny impedancyjne (ZWARCIA-PRO F1): weryfikacja wyniku bez White Box —
+  // wielkosci FROZEN solvera (Zk Thevenina, X/R, kappa); tryb ekspercki.
+  {
+    klucz: 'rk',
+    etykieta: ZWARCIA_STRINGS.kolRk,
+    jednostka: ZWARCIA_STRINGS.jednOhm,
+    mono: true,
+    tylkoEkspercki: true,
+  },
+  {
+    klucz: 'xk',
+    etykieta: ZWARCIA_STRINGS.kolXk,
+    jednostka: ZWARCIA_STRINGS.jednOhm,
+    mono: true,
+    tylkoEkspercki: true,
+  },
+  {
+    klucz: 'zk',
+    etykieta: ZWARCIA_STRINGS.kolZk,
+    jednostka: ZWARCIA_STRINGS.jednOhm,
+    mono: true,
+    tylkoEkspercki: true,
+  },
+  { klucz: 'xr', etykieta: ZWARCIA_STRINGS.kolXR, mono: true, tylkoEkspercki: true },
+  { klucz: 'kappa', etykieta: ZWARCIA_STRINGS.kolKappa, mono: true, tylkoEkspercki: true },
   { klucz: 'uwagi', etykieta: ZWARCIA_STRINGS.kolUwagi, wyrownanie: 'lewo', sortowalna: false },
   {
     klucz: KLUCZ_PUNKT,
@@ -110,6 +137,12 @@ export function mapujWierszZwarcia(row: ShortCircuitRow): WierszTabeli {
     ip: komorkaWielkosci(row.ip_ka, fmtKA, dowodRef),
     ith: komorkaWielkosci(row.ith_ka, fmtKA, dowodRef),
     sk: komorkaWielkosci(row.sk_mva, fmtMVA, dowodRef),
+    // Bilans impedancyjny (F1): starsze wyniki bez pol -> uczciwa kreska.
+    rk: komorkaWielkosci(row.rk_ohm ?? null, fmtOhm, dowodRef),
+    xk: komorkaWielkosci(row.xk_ohm ?? null, fmtOhm, dowodRef),
+    zk: komorkaWielkosci(row.zk_ohm ?? null, fmtOhm, dowodRef),
+    xr: komorkaWielkosci(row.xr_ratio ?? null, fmtKappa, dowodRef),
+    kappa: komorkaWielkosci(row.kappa ?? null, fmtKappa, dowodRef),
     uwagi: { wartosc: uwagiZwarciaPL(row.flags) },
     [KLUCZ_PUNKT]: { wartosc: row.target_id },
   };

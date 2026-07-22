@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import math
 import zipfile
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -215,6 +216,32 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     assert short_circuit_payload["analysis_case_context"]["case_ref"] == case_id
     assert short_circuit_payload["rows"]
     assert all("element_id" in row for row in short_circuit_payload["rows"])
+    # Pelny bilans IEC 60909 (ZWARCIA-PRO F1): wielkosci FROZEN solvera
+    # przechodza do wierszy kanonicznych (Rk/Xk/|Zk|/X/R/kappa/c/Un/tk/Ib/I2t).
+    wiersz = short_circuit_payload["rows"][0]
+    for pole in (
+        "rk_ohm",
+        "xk_ohm",
+        "zk_ohm",
+        "rx_ratio",
+        "xr_ratio",
+        "kappa",
+        "c_factor",
+        "un_kv",
+        "tk_s",
+        "ib_ka",
+        "ik_ka",
+        "i2t_ka2s",
+    ):
+        assert pole in wiersz, pole
+        assert wiersz[pole] is not None, pole
+    assert wiersz["zk_ohm"] == pytest.approx(
+        math.hypot(wiersz["rk_ohm"], wiersz["xk_ohm"]), rel=1e-9
+    )
+    assert wiersz["xr_ratio"] == pytest.approx(1.0 / wiersz["rx_ratio"], rel=1e-9)
+    assert wiersz["i2t_ka2s"] == pytest.approx(wiersz["ith_ka"] ** 2 * wiersz["tk_s"], rel=1e-9)
+    assert wiersz["kappa"] > 1.0
+    assert wiersz["c_factor"] == pytest.approx(1.10, abs=0.01)
 
     trace_details = client.get(f"/api/analysis-runs/{run_id}/results/trace")
     assert trace_details.status_code == 200

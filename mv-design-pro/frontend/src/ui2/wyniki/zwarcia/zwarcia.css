@@ -62,3 +62,48 @@
   margin: 0;
   font-size: 12px;
 }
+
+/* --- Panel „Bilans IEC 60909" (ZWARCIA-PRO F1) --- */
+.mvd-zwarcia-bilans {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-panel);
+}
+.mvd-zwarcia-bilans-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-zwarcia-bilans-punkt {
+  color: var(--mvd-muted);
+  font-weight: 500;
+}
+.mvd-zwarcia-bilans-opis {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-zwarcia-bilans-siatka {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px 18px;
+  margin: 0;
+}
+.mvd-zwarcia-bilans-poz {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  border-bottom: 1px dotted var(--mvd-line);
+  padding-bottom: 4px;
+}
+.mvd-zwarcia-bilans-poz dt {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-zwarcia-bilans-poz dd {
+  margin: 0;
+  font-size: 12px;
+  white-space: nowrap;
+}

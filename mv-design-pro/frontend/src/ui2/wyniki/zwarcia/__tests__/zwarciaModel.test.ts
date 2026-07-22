@@ -155,11 +155,27 @@ describe('naWierszeWkladow — udział [%] liczony prezentacyjnie', () => {
 });
 
 describe('KOLUMNY_ZWARC — deklaratywne kolumny (jednostki zawsze, Ik"/ip/Ith/Sk" razem)', () => {
-  it('cztery wielkości liczbowe są mono i niosą jednostkę', () => {
+  it('wielkości liczbowe są mono; podstawowe niosą jednostkę (F1: + kolumny impedancyjne)', () => {
+    // Intencja testu bez zmian: kazda wielkosc liczbowa jest mono, a wielkosci
+    // mianowane niosa jednostke. Po ZWARCIA-PRO F1 doszly kolumny impedancyjne
+    // (rk/xk/zk z jednostka; xr i kappa sa bezwymiarowe) — tylko-eksperckie.
     const liczbowe = KOLUMNY_ZWARC.filter((k) => k.mono && k.klucz !== KLUCZ_PUNKT);
-    expect(liczbowe.map((k) => k.klucz)).toEqual(['ikss', 'ip', 'ith', 'sk']);
-    for (const kol of liczbowe) {
+    expect(liczbowe.map((k) => k.klucz)).toEqual([
+      'ikss',
+      'ip',
+      'ith',
+      'sk',
+      'rk',
+      'xk',
+      'zk',
+      'xr',
+      'kappa',
+    ]);
+    for (const kol of liczbowe.filter((k) => !['xr', 'kappa'].includes(k.klucz))) {
       expect(kol.jednostka).toBeTruthy();
+    }
+    for (const kol of liczbowe.filter((k) => ['rk', 'xk', 'zk', 'xr', 'kappa'].includes(k.klucz))) {
+      expect(kol.tylkoEkspercki).toBe(true);
     }
   });
 

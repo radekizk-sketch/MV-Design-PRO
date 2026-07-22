@@ -26,6 +26,47 @@ function ustawWynik() {
   });
 }
 
+describe('EkranZwarc — panel „Bilans IEC 60909" (ZWARCIA-PRO F1)', () => {
+  beforeEach(ustawWynik);
+
+  it('bilans wybranego punktu pokazuje komplet wielkosci z wiersza kanonicznego', () => {
+    render(<EkranZwarc {...props()} />);
+    const bilans = screen.getByTestId('mvd-zwarcia-bilans');
+    // Wielkosci impedancyjne i wspolczynniki (z FROZEN solvera, format PL).
+    expect(within(bilans).getByText(ZWARCIA_STRINGS.bilansZk)).toBeInTheDocument();
+    expect(within(bilans).getByText('0,7777 Ω')).toBeInTheDocument();
+    expect(within(bilans).getByText('1,728')).toBeInTheDocument(); // kappa
+    expect(within(bilans).getByText('9,416')).toBeInTheDocument(); // X/R
+    expect(within(bilans).getByText('1,100')).toBeInTheDocument(); // c
+    expect(within(bilans).getByText('15,0 kV')).toBeInTheDocument(); // Un
+    expect(within(bilans).getByText('156,250 kA²·s')).toBeInTheDocument(); // I2t
+  });
+
+  it('klik innego wiersza przelacza bilans na ten punkt', () => {
+    render(<EkranZwarc {...props()} />);
+    const wiersze = screen.getAllByTestId('mvd-wyn-wiersz');
+    fireEvent.click(wiersze[2]); // BUS-ST2 — starszy wynik bez bilansu
+    const bilans = screen.getByTestId('mvd-zwarcia-bilans');
+    // Uczciwe kreski (kontrakt addytywny — brak fabrykacji).
+    expect(within(bilans).queryByText('0,7777 Ω')).not.toBeInTheDocument();
+    const kreski = within(bilans)
+      .getAllByRole('definition')
+      .filter((el) => el.textContent === ZWARCIA_STRINGS.kreska);
+    expect(kreski.length).toBe(16);
+  });
+
+  it('kolumny impedancyjne (Rk/Xk/|Zk|/X/R/kappa) w trybie eksperckim, ukryte w podstawowym', () => {
+    const { unmount } = render(<EkranZwarc {...props({ trybZaawansowania: 'expert' })} />);
+    expect(screen.getByTestId('mvd-wyn-th-zk')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-wyn-th-kappa')).toBeInTheDocument();
+    unmount();
+    ustawWynik();
+    render(<EkranZwarc {...props({ trybZaawansowania: 'basic' })} />);
+    expect(screen.queryByTestId('mvd-wyn-th-zk')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-wyn-th-kappa')).not.toBeInTheDocument();
+  });
+});
+
 describe('EkranZwarc — stan pusty (brak wyniku w store)', () => {
   it('bez wyniku: komunikat PL zamiast tabeli', () => {
     render(<EkranZwarc {...props()} />);
