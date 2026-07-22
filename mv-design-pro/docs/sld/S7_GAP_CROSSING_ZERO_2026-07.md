@@ -94,3 +94,13 @@ Kryterium wyjścia S7 = pełna lista „WARUNKI ODBIORU" spełniona jednocześni
 `S6_METRYKI_LAYOUT_2026-07.md` §2 (verticalLength 50264/67208/67208; crossingCount
 13/24/24; labelCollision/subtreeIntersection/nonOrthogonal/ambiguous = 0). Geometria
 niezmieniona — dokument nie dotyka warstwy źródłowej.
+
+## ROZSTRZYGNIĘCIE ZARZĄDCY (Fable, 2026-07-22)
+Wariant 2 z modyfikacją: S7-P2 NIE wymaga osobnej decyzji właściciela — węzeł T
+z kropką (lateral kończy się NA magistrali) to wykonanie recenzji eksperckiej
+(„brak przeskoków przewodów") i litery §22.1 („pierwszeństwo ma routing; mostek
+jest środkiem ostatecznym") w ramach istniejącej dyscypliny kropki węzłowej.
+Kolejność wykonania: S7-P1 (kompaktyzacja Rodziny B + piony proporcjonalne) →
+S7-P2 (węzeł T dla Rodziny A; aktualizacja crossing_probe do zera z mostkiem
+dopuszczalnym wyłącznie dla pozostałych, dowiedzionych nieredukowalnych) →
+S7-P3 (balancing + światła). crossingCount=0 POZOSTAJE warunkiem odbioru.
