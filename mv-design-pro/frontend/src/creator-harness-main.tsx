@@ -165,6 +165,28 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
           { source_id: 'gen-pv-1', source_name: 'Falownik PV 4 MW', ikss_partial_a: 1730 },
           { source_id: 'gen-bess-1', source_name: 'Magazyn BESS 2 MW', ikss_partial_a: 1130 },
         ],
+        // Wywod prezentacyjny {tekst, latex} — ksztalt 1:1 z `_wywod_wkladow`
+        // (api/proof_pack.py, zasada KaTeX 2026-07-22).
+        wywod: [
+          { tekst: 'Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)', latex: null },
+          {
+            tekst: 'Wzor pradu czesciowego maszyny (zwarcie na zaciskach)',
+            latex: "I''_{k,m} = \\frac{c \\cdot U_n}{\\sqrt{3} \\cdot Z''_m}",
+          },
+          {
+            tekst: "Falownik PV 4 MW: I''k = 1.730 kA, I''k/Ir = 5.20, mu = 0.813, q = 0.870",
+            latex:
+              "I_b = \\mu \\cdot q \\cdot I''_k = 0.813 \\cdot 0.870 \\cdot 1.730\\,\\text{kA} = 1.224\\,\\text{kA}",
+          },
+          {
+            tekst: "Suma wkladow maszyn: I''k,M = 2.860 kA, I_b,M = 2.107 kA",
+            latex: "I''_{k,M} = \\sum_m I''_{k,m}, \\qquad I_{b,M} = \\sum_m I_{b,m}",
+          },
+          {
+            tekst: "Regula malych silnikow (par. 6.6): pomijalne gdy suma I''k,M <= 0.05 * I''k — NIESPELNIONA",
+            latex: null,
+          },
+        ],
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },
     );

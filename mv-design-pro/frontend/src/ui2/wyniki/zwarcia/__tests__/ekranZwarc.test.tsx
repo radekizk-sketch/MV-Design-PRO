@@ -187,6 +187,43 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     vi.unstubAllGlobals();
   });
 
+  it('wywod z backendu -> slad obliczen na zadanie z wzorami KaTeX (zasada 2026-07-22)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          contributions: [
+            { source_id: 'gen1', source_name: 'Agregat', ikss_partial_a: 1234.5 },
+          ],
+          wywod: [
+            { tekst: 'Model: IEC 60909-0:2016 par. 6.6', latex: null },
+            {
+              tekst: 'Wzor pradu czesciowego maszyny',
+              latex: "I''_{k,m} = \\frac{c \\cdot U_n}{\\sqrt{3} \\cdot Z''_m}",
+            },
+            {
+              tekst: 'Agregat: ...',
+              latex: "I_b = \\mu \\cdot q \\cdot I''_k = 0.813 \\cdot 1.000 \\cdot 1.234\\,\\text{kA} = 1.003\\,\\text{kA}",
+            },
+          ],
+        }),
+      }),
+    );
+    render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    const sekcja = await screen.findByTestId('mvd-zwarcia-wklady');
+    // Domyslnie zwiniety (bez przeladowania ekranu) — dostepny na klik.
+    expect(within(sekcja).queryByTestId('mvd-zwarcia-wklady-slad')).not.toBeInTheDocument();
+    fireEvent.click(await within(sekcja).findByTestId('mvd-zwarcia-wklady-slad-btn'));
+    const slad = within(sekcja).getByTestId('mvd-zwarcia-wklady-slad');
+    const wzory = within(slad).getAllByTestId('math-rendered');
+    expect(wzory).toHaveLength(2);
+    expect(wzory[1].getAttribute('data-latex')).toContain('I_b = \\mu');
+    // Krok tekstowy (bez latex) pozostaje monospace.
+    expect(within(slad).getByText('Model: IEC 60909-0:2016 par. 6.6')).toBeInTheDocument();
+    vi.unstubAllGlobals();
+  });
+
   it('blad pobrania -> uczciwy stan "dane niedostepne" (bez fabrykacji)', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
     render(<EkranZwarc trybZaawansowania="basic" onOtworzDowod={() => undefined} />);

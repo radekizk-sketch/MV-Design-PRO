@@ -115,7 +115,11 @@ describe('SekcjaMigotania — stany', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-migotanie')).toBeTruthy());
     fireEvent.click(screen.getByText('bus-oze-1').closest('tr')!);
     fireEvent.click(screen.getByTestId('mvd-jakosc-mig-slad-otworz'));
-    expect(screen.getByTestId('mvd-jakosc-mig-slad')).toBeTruthy();
+    const slad = screen.getByTestId('mvd-jakosc-mig-slad');
+    // Zasada KaTeX (2026-07-22): wzor renderowany matematycznie, nie surowy LaTeX.
+    const wzory = within(slad).getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThan(0);
+    expect(wzory[0].getAttribute('data-latex')).toContain('P_{st');
   });
 
   it('przekroczenie migotania → „Popraw" zaznacza węzeł (Bus) i przechodzi do „Schemat" (F-E6.2)', async () => {

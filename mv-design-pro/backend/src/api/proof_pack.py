@@ -144,6 +144,61 @@ class SCContributionsRequest(BaseModel):
     t_min_s: float = 0.10
 
 
+def _wywod_wkladow(result: Any) -> list[dict[str, Any]]:
+    """Wywod prezentacyjny wkladow — kroki {tekst, latex} (zasada KaTeX).
+
+    Czysty formatter: ZERO arytmetyki — wszystkie liczby pochodza z wyniku
+    solvera (`MachineShortCircuitResult`), formatter wylacznie sklada je
+    w kroki wywodu (wzor -> podstawienie -> wynik) do renderu KaTeX w UI.
+    Formaty stale (determinizm), tekst ASCII-PL jak why_pl.
+    """
+    kroki: list[dict[str, Any]] = [
+        {
+            "tekst": "Model: IEC 60909-0:2016 par. 6.6 — prady czesciowe maszyn + zanik (mu, q)",
+            "latex": None,
+        },
+        {
+            "tekst": "Wzor pradu czesciowego maszyny (zwarcie na zaciskach)",
+            "latex": r"I''_{k,m} = \frac{c \cdot U_n}{\sqrt{3} \cdot Z''_m}",
+        },
+    ]
+    for c in result.contributions:
+        ikss_ka = c.ikss_partial_a / 1000.0
+        ib_ka = c.ib_a / 1000.0
+        kroki.append(
+            {
+                "tekst": (
+                    f"{c.source_name}: I''k = {ikss_ka:.3f} kA, "
+                    f"I''k/Ir = {c.ratio_ik_ir:.2f}, mu = {c.mu:.3f}, q = {c.q:.3f}"
+                ),
+                "latex": (
+                    rf"I_b = \mu \cdot q \cdot I''_k = "
+                    rf"{c.mu:.3f} \cdot {c.q:.3f} \cdot {ikss_ka:.3f}\,\text{{kA}}"
+                    rf" = {ib_ka:.3f}\,\text{{kA}}"
+                ),
+            }
+        )
+    kroki.append(
+        {
+            "tekst": (
+                f"Suma wkladow maszyn: I''k,M = {result.ikss_machines_a / 1000.0:.3f} kA, "
+                f"I_b,M = {result.ib_machines_a / 1000.0:.3f} kA"
+            ),
+            "latex": r"I''_{k,M} = \sum_m I''_{k,m}, \qquad I_{b,M} = \sum_m I_{b,m}",
+        }
+    )
+    kroki.append(
+        {
+            "tekst": (
+                "Regula malych silnikow (par. 6.6): pomijalne gdy suma I''k,M <= 0.05 * I''k — "
+                + ("SPELNIONA" if result.motors_negligible else "NIESPELNIONA")
+            ),
+            "latex": None,
+        }
+    )
+    return kroki
+
+
 @router.post("/sc3f/contributions")
 def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
     """Wklady zwarciowe zrodel (maszyny/DER) w punkcie zwarcia — JSON.
@@ -174,7 +229,9 @@ def sc3f_contributions(payload: SCContributionsRequest) -> dict[str, Any]:
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=f"Nie udalo sie wyznaczyc wkladow zwarciowych: {exc}",
         ) from exc
-    return result.to_dict()
+    # Addytywnie: wywod prezentacyjny {tekst, latex} (zasada KaTeX) obok
+    # surowego sladu WHITE BOX solvera — bez zmiany istniejacych pol.
+    return {**result.to_dict(), "wywod": _wywod_wkladow(result)}
 
 
 @router.post("/sc3f/pack")

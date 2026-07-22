@@ -7,6 +7,8 @@
 export { EkranAnalizy } from './EkranAnalizy';
 export { TabelaWynikow } from './TabelaWynikow';
 export { SekcjaZalozen } from './SekcjaZalozen';
+export { SladWywodu } from './SladWywodu';
+export type { KrokWywodu } from './SladWywodu';
 export { WZORZEC_STRINGS } from './strings';
 export { usePoprawWModelu } from './usePoprawWModelu';
 export { akcjaNaprawcza, AKCJA_GENERYCZNA } from './akcjeNaprawcze';

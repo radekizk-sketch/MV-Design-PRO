@@ -300,3 +300,43 @@
 .mvd-wyn-wiersz-wybieralny:hover { background: var(--mvd-panel-2); }
 .mvd-wyn-wiersz-wybieralny:focus-visible { outline: 2px solid var(--mvd-accent); outline-offset: -2px; }
 .mvd-wyn-wiersz-wybieralny.mvd-on { background: var(--mvd-accent-soft, var(--mvd-panel-2)); box-shadow: inset 3px 0 0 var(--mvd-accent); }
+
+/* --- Ślad obliczeń na żądanie (SladWywodu — zasada KaTeX, 2026-07-22) --- */
+.mvd-wyn-slad-blok {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-wyn-slad-btn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-wyn-slad-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-wyn-slad-tytul {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+.mvd-wyn-slad {
+  list-style: decimal;
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-wyn-slad-krok {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}

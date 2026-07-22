@@ -84,7 +84,10 @@ export function EkranZwarc({
   const wierszAktywny = rows.find((r) => r.target_id === aktywnyPunkt) ?? rows[0];
   const nazwaAktywnego = wierszAktywny.target_name ?? wierszAktywny.target_id;
   const wkladyAktywne =
-    aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : wkladyPobrane;
+    aktywnyPunkt && wklady ? wklady[aktywnyPunkt] ?? null : wkladyPobrane?.wklady ?? null;
+  // Wywod {tekst, latex} z backendu (zasada KaTeX) — tylko od realnego dostawcy;
+  // przy wkladach z props (testy/nadpisanie) wywodu brak (zero fabrykacji).
+  const wywodWkladow = wklady ? [] : wkladyPobrane?.wywod ?? [];
 
   return (
     <div data-testid="mvd-zwarcia-ekran">
@@ -105,6 +108,7 @@ export function EkranZwarc({
       <WkladyZwarciowe
         punktNazwa={nazwaAktywnego}
         wklady={wkladyAktywne}
+        wywod={wywodWkladow}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
       />

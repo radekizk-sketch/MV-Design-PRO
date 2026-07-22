@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../types/enm';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
+import type { KrokWywodu } from '../wzorzec';
 import type { WkladZwarciowy } from './zwarciaModel';
 
 /** Kształt 1:1 pozycji odpowiedzi backendu (`MachinePartialContribution.to_dict`). */
@@ -26,6 +27,14 @@ export interface WkladZrodlaOdpowiedz {
 /** Kształt 1:1 odpowiedzi (`MachineShortCircuitResult.to_dict`, pola konsumowane). */
 export interface WkladyOdpowiedz {
   readonly contributions: readonly WkladZrodlaOdpowiedz[];
+  /** Wywód prezentacyjny {tekst, latex} z backendu (zasada KaTeX; addytywny). */
+  readonly wywod?: readonly KrokWywodu[];
+}
+
+/** Wkłady + wywód dla punktu — para zwracana przez hooka dostawcy. */
+export interface WkladyZWywodem {
+  readonly wklady: WkladZwarciowy[];
+  readonly wywod: readonly KrokWywodu[];
 }
 
 /** Pobiera wkłady zwarciowe źródeł dla punktu (ref ENM szyny). */
@@ -59,9 +68,9 @@ export function naWklady(odpowiedz: WkladyOdpowiedz): WkladZwarciowy[] {
  * sieć bez maszyn wirujących (backend zwraca pustą listę deterministycznie).
  * `punkt = null` wyłącza pobieranie (dostawca zewnętrzny przez props ma pierwszeństwo).
  */
-export function useWkladyZwarciowe(punkt: string | null): WkladZwarciowy[] | null {
+export function useWkladyZwarciowe(punkt: string | null): WkladyZWywodem | null {
   const snapshot = useSnapshotStore((s) => s.snapshot);
-  const [cache, setCache] = useState<Record<string, WkladZwarciowy[]>>({});
+  const [cache, setCache] = useState<Record<string, WkladyZWywodem>>({});
 
   useEffect(() => {
     if (!punkt || !snapshot) return;
@@ -69,7 +78,11 @@ export function useWkladyZwarciowe(punkt: string | null): WkladZwarciowy[] | nul
     let anulowane = false;
     fetchWkladyZwarciowe(snapshot, punkt)
       .then((odpowiedz) => {
-        if (!anulowane) setCache((c) => ({ ...c, [punkt]: naWklady(odpowiedz) }));
+        if (!anulowane)
+          setCache((c) => ({
+            ...c,
+            [punkt]: { wklady: naWklady(odpowiedz), wywod: odpowiedz.wywod ?? [] },
+          }));
       })
       .catch(() => {
         // Błąd pobrania → pozycja bez wpisu → sekcja pokazuje „dane niedostępne".

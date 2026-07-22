@@ -342,6 +342,19 @@ def test_sc3f_contributions_returns_machine_breakdown(tmp_path):
     assert 0 < wklad["mu"] <= 1.0
     assert dane["white_box"]  # slad solvera obecny
 
+    # Wywod prezentacyjny {tekst, latex} (zasada KaTeX): wzor normy, krok
+    # maszyny z podstawieniem liczbowym z wyniku solvera, suma i regula 5%.
+    wywod = dane["wywod"]
+    assert wywod[0]["tekst"].startswith("Model: IEC 60909")
+    assert wywod[0]["latex"] is None
+    assert r"\frac{c \cdot U_n}{\sqrt{3} \cdot Z''_m}" in wywod[1]["latex"]
+    krok_maszyny = wywod[2]
+    assert krok_maszyny["tekst"].startswith("Agregat:")
+    assert rf"{wklad['mu']:.3f}" in krok_maszyny["latex"]
+    assert rf"= {wklad['ib_a'] / 1000.0:.3f}" in krok_maszyny["latex"]
+    assert any(k["tekst"].startswith("Suma wkladow maszyn") for k in wywod)
+    assert any("Regula malych silnikow" in k["tekst"] for k in wywod)
+
     # Determinizm: to samo wejscie -> identyczna odpowiedz.
     response2 = client.post("/api/proof/sc3f/contributions", json=payload)
     assert response2.json() == dane

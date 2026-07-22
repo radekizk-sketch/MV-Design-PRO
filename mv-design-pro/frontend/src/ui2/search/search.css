@@ -26,7 +26,7 @@
   border-radius: 8px;
   box-shadow: var(--mvd-shadow);
   padding: 12px;
-  font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  font-family: var(--mvd-font-sans);
   font-size: 13px;
 }
 

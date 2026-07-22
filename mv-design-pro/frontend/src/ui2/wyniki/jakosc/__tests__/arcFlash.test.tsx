@@ -198,6 +198,10 @@ describe('SekcjaArcFlash — realna ścieżka', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-arcflash')).toBeTruthy());
     fireEvent.click(screen.getByText('bus-1').closest('tr')!);
     fireEvent.click(screen.getByTestId('mvd-jakosc-af-slad-otworz'));
-    expect(screen.getByTestId('mvd-jakosc-af-slad')).toBeTruthy();
+    const slad = screen.getByTestId('mvd-jakosc-af-slad');
+    // Zasada KaTeX (2026-07-22): wzor renderowany matematycznie, nie surowy LaTeX.
+    const wzory = within(slad).getAllByTestId('math-rendered');
+    expect(wzory.length).toBeGreaterThan(0);
+    expect(wzory[0].getAttribute('data-latex')).toContain('E = 1.2');
   });
 });

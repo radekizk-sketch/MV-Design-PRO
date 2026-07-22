@@ -32,6 +32,11 @@ export const WZORZEC_STRINGS = {
   // Wykres
   wykresTytul: 'Wykres',
 
+  // Ślad obliczeń na żądanie (zasada KaTeX, 2026-07-22)
+  sladTytul: 'Ślad obliczeń (WHITE BOX)',
+  sladPokaz: 'Pokaż ślad obliczeń',
+  sladUkryj: 'Ukryj ślad obliczeń',
+
   // Dostępny opis kierunku sortowania (aria)
   opisSortowania: (etykieta: string, kierunek: KierunekSortowania): string =>
     `Sortowanie wg „${etykieta}": ${kierunek === 'rosnaco' ? 'rosnąco' : 'malejąco'}.`,

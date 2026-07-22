@@ -10,7 +10,7 @@
  */
 
 import type { AdvancementMode } from '../../shell/modeModel';
-import { TabelaWynikow } from '../wzorzec';
+import { SladWywodu, TabelaWynikow, type KrokWywodu } from '../wzorzec';
 import { ZWARCIA_STRINGS } from './strings';
 import {
   KLUCZ_WKLAD,
@@ -24,6 +24,11 @@ export interface WkladyZwarcioweProps {
   punktNazwa: string;
   /** Wkłady źródeł dla wybranego punktu; `null` = dane niedostępne w przebiegu. */
   wklady: WkladZwarciowy[] | null;
+  /**
+   * Wywód {tekst, latex} z backendu (zasada KaTeX 2026-07-22) — ślad obliczeń
+   * na żądanie pod tabelą wkładów. Pusta lista → przycisk śladu nie renderuje się.
+   */
+  wywod?: readonly KrokWywodu[];
   trybZaawansowania: AdvancementMode;
   onOtworzDowod: (ref: string) => void;
 }
@@ -31,6 +36,7 @@ export interface WkladyZwarcioweProps {
 export function WkladyZwarciowe({
   punktNazwa,
   wklady,
+  wywod = [],
   trybZaawansowania,
   onOtworzDowod,
 }: WkladyZwarcioweProps) {
@@ -47,13 +53,16 @@ export function WkladyZwarciowe({
           <p className="mvd-zwarcia-wklady-brak-desc">{ZWARCIA_STRINGS.wkladyNiedostepneOpis}</p>
         </div>
       ) : (
-        <TabelaWynikow
-          kolumny={KOLUMNY_WKLADOW}
-          wiersze={naWierszeWkladow(wklady)}
-          onOtworzDowod={onOtworzDowod}
-          trybZaawansowania={trybZaawansowania}
-          kluczWiersza={KLUCZ_WKLAD}
-        />
+        <>
+          <TabelaWynikow
+            kolumny={KOLUMNY_WKLADOW}
+            wiersze={naWierszeWkladow(wklady)}
+            onOtworzDowod={onOtworzDowod}
+            trybZaawansowania={trybZaawansowania}
+            kluczWiersza={KLUCZ_WKLAD}
+          />
+          <SladWywodu kroki={wywod} testIdPrefix="mvd-zwarcia-wklady-slad" />
+        </>
       )}
     </section>
   );
