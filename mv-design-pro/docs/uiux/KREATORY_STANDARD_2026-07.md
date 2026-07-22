@@ -89,16 +89,16 @@ Każdy kreator MUSI (FLOW §0.3):
 | `add_converter_source` | `AddConverterSourceForm` (legacy, 1365 w.) | do przebudowy |
 | `add_nn_load` | `AddNnLoadForm` (legacy) | do przebudowy |
 | `add_nn_outgoing_field` | `AddNnOutgoingFieldForm` (legacy) | do przebudowy |
-| `add_genset_nn` / `add_ups_nn` | `AddDispatchableSourceForm` (legacy) | do przebudowy |
+| `add_genset_nn` / `add_ups_nn` | `KreatorZrodloDyspozycyjne` (ui2, kreatory/zrodlo-dyspozycyjne) | ✅ przebudowane (retirement `AddDispatchableSourceForm`/`GensetModal`/`UPSModal`) |
 | `add_relay` | `AddRelayForm` (legacy) | do przebudowy |
 | `add_ct` / `add_vt` | `AddMeasurementForm` (legacy) | do przebudowy |
 | `continue_trunk_segment_sn` | `KreatorMagistralaSn` (ui2, kreatory/rama) | ✅ przebudowane (V12K-047, G-MAG) |
 | `insert_station_on_segment_sn` | `InsertStationForm` (legacy, 1884 w.) | do przebudowy |
-| `start_branch_segment_sn` | `StartBranchForm` (legacy) | do przebudowy |
+| `start_branch_segment_sn` | `KreatorOdgalezienia` (ui2, kreatory/odgalezienie) | ✅ przebudowane (retirement `StartBranchForm`) |
 | `insert_section_switch_sn` | `KreatorLacznikaSekcyjnego` (ui2, kreatory/rama) | ✅ przebudowane (V12K-053, G-SEK) |
 | `connect_secondary_ring_sn` / `set_normal_open_point` | `KreatorPierscienia` (ui2, kreatory/rama) | ✅ przebudowane (V12K-055, G-RING) |
-| `insert_branch_pole_on_segment_sn` | `InsertBranchPoleForm` (legacy) | do przebudowy |
-| `insert_zksn_on_segment_sn` | `InsertZksnForm` (legacy) | do przebudowy |
+| `insert_branch_pole_on_segment_sn` | `KreatorSlupaOdgaleznego` (ui2, kreatory/slup-odgalezny) | ✅ przebudowane (retirement `InsertBranchPoleForm`) |
+| `insert_zksn_on_segment_sn` | `KreatorZksn` (ui2, kreatory/zksn) | ✅ przebudowane (retirement `InsertZksnForm`) |
 | `assign_catalog_to_element` | `AssignCatalogForm` (legacy) | do przebudowy |
 | `update_element_parameters` | `UpdateElementParametersForm` (legacy) | do przebudowy |
 

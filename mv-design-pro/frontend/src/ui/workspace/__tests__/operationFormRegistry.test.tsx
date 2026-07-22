@@ -37,7 +37,7 @@ describe('OPERATION_FORM_REGISTRY', () => {
     expect(OPERATION_FORM_REGISTRY.add_ct).toBe(OPERATION_FORM_REGISTRY.add_vt);
   });
 
-  it('add_genset_nn i add_ups_nn używają wspólnego AddDispatchableSourceForm', () => {
+  it('add_genset_nn i add_ups_nn używają wspólnego KreatorZrodloDyspozycyjne', () => {
     expect(OPERATION_FORM_REGISTRY.add_genset_nn).toBe(OPERATION_FORM_REGISTRY.add_ups_nn);
   });
 

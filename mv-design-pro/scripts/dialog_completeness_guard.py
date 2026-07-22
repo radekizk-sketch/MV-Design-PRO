@@ -29,8 +29,8 @@ MAPPING: operation -> expected modal
   add_nn_outgoing_field   -> NodeModal or dedicated
   add_nn_load             -> LoadDERModal (existing)
   add_converter_source    -> LoadDERModal / PVInverterModal / BESSInverterModal (existing)
-  add_genset_nn           -> GensetModal (existing)
-  add_ups_nn              -> UPSModal (existing)
+  add_genset_nn           -> KreatorZrodloDyspozycyjne (ui2)
+  add_ups_nn              -> KreatorZrodloDyspozycyjne (ui2)
   add_ct                  -> MeasurementModal (existing)
   add_vt                  -> MeasurementModal (existing)
   add_relay               -> ProtectionModal (existing)
@@ -59,7 +59,9 @@ OPERATION_TO_MODAL: dict[str, list[str]] = {
     "add_grid_source_sn": ["GridSource", "SourceModal", "GPZModal", "KreatorZrodlo"],
     "continue_trunk_segment_sn": ["TrunkContinue", "TrunkModal", "SegmentModal", "KreatorMagistrala", "Magistrala"],
     "insert_station_on_segment_sn": ["TransformerStation", "StationModal", "InsertStation"],
-    "start_branch_segment_sn": ["BranchModal", "Branch"],
+    "start_branch_segment_sn": ["KreatorOdgalezienia", "Odgalezienia", "BranchModal", "Branch"],
+    "insert_branch_pole_on_segment_sn": ["KreatorSlupaOdgaleznego", "SlupaOdgaleznego"],
+    "insert_zksn_on_segment_sn": ["KreatorZksn", "Zksn"],
     "insert_section_switch_sn": ["SwitchModal", "NodeModal", "SectionSwitch", "KreatorLacznika", "Lacznik"],
     "connect_secondary_ring_sn": ["RingClose", "RingModal", "KreatorPierscienia", "Pierscien"],
     "add_transformer_sn_nn": ["TransformerStation", "Transformer", "KreatorTransformatora", "Transformatora"],
@@ -67,8 +69,8 @@ OPERATION_TO_MODAL: dict[str, list[str]] = {
     "add_nn_outgoing_field": ["NodeModal", "OutgoingField", "NNField"],
     "add_nn_load": ["LoadDER", "LoadModal", "NNLoad", "KreatorOdbioru", "Odbior"],
     "add_converter_source": ["LoadDER", "PVInverter", "BESSInverter", "Converter"],
-    "add_genset_nn": ["Genset", "GensetModal"],
-    "add_ups_nn": ["UPS", "UPSModal"],
+    "add_genset_nn": ["KreatorZrodloDyspozycyjne", "ZrodloDyspozycyjne"],
+    "add_ups_nn": ["KreatorZrodloDyspozycyjne", "ZrodloDyspozycyjne"],
     "add_shunt_compensator_sn": ["KreatorKompensatora", "Kompensator", "ShuntCompensator"],
     "add_ct": ["Measurement", "CTModal"],
     "add_vt": ["Measurement", "VTModal"],

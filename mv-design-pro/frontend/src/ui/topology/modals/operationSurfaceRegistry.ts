@@ -69,7 +69,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'start_branch_segment_sn',
-    'StartBranchForm',
+    'KreatorOdgalezienia',
     'Dodaj odgałęzienie SN',
     'E-16',
     'A',
@@ -201,7 +201,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'add_genset_nn',
-    'AddDispatchableSourceForm',
+    'KreatorZrodloDyspozycyjne',
     'Dodaj agregat nN',
     'E-21',
     'B',
@@ -212,7 +212,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'add_ups_nn',
-    'AddDispatchableSourceForm',
+    'KreatorZrodloDyspozycyjne',
     'Dodaj UPS nN',
     'E-21',
     'B',
@@ -256,7 +256,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'insert_branch_pole_on_segment_sn',
-    'InsertBranchPoleForm',
+    'KreatorSlupaOdgaleznego',
     'Wstaw słup rozgałęźny',
     'E-15',
     'B',
@@ -267,7 +267,7 @@ export const OPERATION_SURFACE_REGISTRY: readonly OperationSurfaceEntry[] = [
   ),
   entry(
     'insert_zksn_on_segment_sn',
-    'InsertZksnForm',
+    'KreatorZksn',
     'Wstaw złącze kablowe SN',
     'E-14',
     'B',
