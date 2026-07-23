@@ -323,6 +323,12 @@ def _collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
                 protection_ref=spec.get("protection_ref"),
                 protection_codes=list(spec.get("protection_codes") or []),
                 bay_template_ref=spec.get("bay_template_ref"),
+                # W1 (RECENZJA_L2 §1/§12.1, V12K-145): aparaty pierwotne pola
+                # zmaterializowane z szablonu kreatora na field_spec — przenieś na
+                # snapshot Bay, aby konsumenci Bay.primary_devices (read-model pola,
+                # reference_engine/compliance, interlock W034) i adapter SLD widzieli
+                # TĘ SAMĄ konfigurację. Puste = brak danych (ścieżka konwencji).
+                primary_devices=list(spec.get("primary_devices") or []),
             )
 
     return sorted(bays_by_ref.values(), key=lambda item: (item.substation_ref, item.ref_id))
@@ -425,6 +431,12 @@ def _build_primary_devices(
     transformers_by_bus: dict[str, list[Transformer]],
     generators_by_bus: dict[str, list[Generator]],
 ) -> list[BayPrimaryDevice]:
+    # W1 (RECENZJA_L2 §12.1, V12K-145): PRYMAT DANYCH nad przeliczeniem — jeśli
+    # pole niesie już zmaterializowane aparaty pierwotne (szablon kreatora,
+    # `_collect_bays`), użyj ICH (schemat = odwzorowanie konfiguracji kreatora),
+    # zamiast wnioskować z equipment. Puste = przelicz z equipment jak dotąd.
+    if bay.primary_devices:
+        return list(bay.primary_devices)
     devices: list[BayPrimaryDevice] = []
     for ref in sorted(bay.equipment_refs):
         branch = branches.get(ref)

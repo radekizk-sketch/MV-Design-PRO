@@ -3757,6 +3757,12 @@ interface StationFieldSpec {
   readonly protection_ref?: string | null;
   readonly tags: readonly string[];
   readonly meta: Record<string, unknown>;
+  /** W1 (RECENZJA_L2 §1/§12.1, V12K-145): aparaty PIERWOTNE pola
+   *  zmaterializowane z szablonu kreatora na backendzie (`_build_field_spec`
+   *  → `template_primary_devices`). Gdy niepuste — tor pierwotny rysowany
+   *  Z DANYCH (kolejność/stan/uziemnik bocznie/głowica), a nie z jednego
+   *  fallbacku konwencji §12.4. `undefined` = pole bez danych → konwencja. */
+  readonly primary_devices?: readonly BayPrimaryDevice[];
 }
 
 function buildStationMiniBaysFromFieldSpecs(
@@ -3776,6 +3782,12 @@ function buildStationMiniBaysFromFieldSpecs(
         cbState: states.cb,
         dsState: states.ds,
         esState: states.es,
+        // W1 (RECENZJA_L2 §1/§12.1, V12K-145): tor pierwotny Z DANYCH gdy pole
+        // niesie zmaterializowane aparaty (szablon kreatora, backend
+        // `template_primary_devices`). Reużycie `projectBayPrimaryDevices` —
+        // JEDNA prawda sortowania/projekcji dla ścieżki field_specs i legacy
+        // bays[]. `undefined` gdy brak danych → konwencja §12.4 (zero regresu).
+        primaryDevices: projectBayPrimaryDevices({ primary_devices: spec.primary_devices }),
       };
     });
 }
@@ -3794,8 +3806,85 @@ function readStationFieldSpecs(station: Substation): StationFieldSpec[] {
       protection_ref: getString(raw.protection_ref),
       tags: getStringArray(raw.tags),
       meta: isPlainRecord(raw.meta) ? raw.meta : {},
+      primary_devices: parseStationFieldPrimaryDevices(raw.primary_devices),
     }))
     .filter((spec) => Boolean(spec.field_ref || spec.bus_ref || spec.equipment_refs.length > 0));
+}
+
+/** Dozwolone typy aparatu pierwotnego (lustro `BayPrimaryDeviceKind`, ENM). */
+const PRIMARY_DEVICE_KINDS: ReadonlySet<string> = new Set<string>([
+  'CB', 'LOAD_SWITCH', 'DS', 'ES', 'CT', 'VT', 'CABLE_HEAD', 'TRANSFORMER_DEVICE',
+  'FUSE', 'GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'SURGE_ARRESTER',
+]);
+
+/** Dozwolone położenia aparatu (lustro `BayPrimaryPlacement`, ENM). */
+const PRIMARY_DEVICE_PLACEMENTS: ReadonlySet<string> = new Set<string>([
+  'UPSTREAM', 'MIDSTREAM', 'DOWNSTREAM', 'OFF_PATH', 'GROUND_BRANCH',
+]);
+
+/**
+ * W1 (RECENZJA_L2 §1/§12.1, V12K-145): parsuje DEFENSYWNIE listę aparatów
+ * pierwotnych z surowego `field_spec.primary_devices` (backend
+ * `_build_field_spec`/`template_primary_devices`) na kształt `BayPrimaryDevice`.
+ * Odrzuca wpisy bez `device_ref`/`symbol_ref`/`kind`/`placement` mapowalnych
+ * na kontrakt ENM (zero domysłu — brak danych = brak aparatu). `undefined` gdy
+ * pole nie niesie żadnego prawidłowego aparatu (ścieżka konwencji §12.4).
+ */
+function parseStationFieldPrimaryDevices(value: unknown): readonly BayPrimaryDevice[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const devices: BayPrimaryDevice[] = [];
+  for (const raw of value) {
+    if (!isPlainRecord(raw)) continue;
+    const deviceRef = getString(raw.device_ref);
+    const symbolRef = getString(raw.symbol_ref);
+    const kind = getString(raw.kind);
+    const placement = getString(raw.placement);
+    if (!deviceRef || !symbolRef || !kind || !placement) continue;
+    if (!PRIMARY_DEVICE_KINDS.has(kind) || !PRIMARY_DEVICE_PLACEMENTS.has(placement)) continue;
+    const sectionSide = getString(raw.section_side);
+    const device: BayPrimaryDevice = {
+      device_ref: deviceRef,
+      symbol_ref: symbolRef,
+      kind: kind as BayPrimaryDevice['kind'],
+      placement: placement as BayPrimaryDevice['placement'],
+      is_controllable: raw.is_controllable === true,
+    };
+    const linkedRef = getString(raw.linked_ref);
+    if (linkedRef) device.linked_ref = linkedRef;
+    const catalogRef = getString(raw.catalog_ref);
+    if (catalogRef) device.catalog_ref = catalogRef;
+    const renderVariant = getString(raw.render_variant);
+    if (renderVariant) device.render_variant = renderVariant;
+    const designation = getString(raw.designation);
+    if (designation) device.designation = designation;
+    if (sectionSide === 'LEFT' || sectionSide === 'CENTER' || sectionSide === 'RIGHT') {
+      device.section_side = sectionSide;
+    }
+    const earthingRole = getString(raw.earthing_role);
+    if (
+      earthingRole === 'field_earth' ||
+      earthingRole === 'cable_screen' ||
+      earthingRole === 'structure' ||
+      earthingRole === 'neutral_point' ||
+      earthingRole === 'surge_ground'
+    ) {
+      device.earthing_role = earthingRole;
+    }
+    if (isPlainRecord(raw.switch_state)) {
+      const actualState = getString(raw.switch_state.actual_state);
+      const controlMode = getString(raw.switch_state.control_mode);
+      if (actualState && controlMode) {
+        device.switch_state = {
+          actual_state: actualState as NonNullable<BayPrimaryDevice['switch_state']>['actual_state'],
+          control_mode: controlMode as NonNullable<BayPrimaryDevice['switch_state']>['control_mode'],
+          communication_ok: raw.switch_state.communication_ok === true,
+          interlock_blocked: raw.switch_state.interlock_blocked === true,
+        };
+      }
+    }
+    devices.push(device);
+  }
+  return devices.length > 0 ? devices : undefined;
 }
 
 function compareStationFieldSpecs(a: StationFieldSpec, b: StationFieldSpec): number {
@@ -4028,28 +4117,19 @@ function bayRuntimeSwitchStates(bay: Bay): {
 // =============================================================================
 
 /**
- * STOP-notatka (F9.2, raport przekazany recenzentowi): `Bay` — czyli
- * `ENMElement` z `EnergyNetworkModel.bays[]`, co ten adapter faktycznie
- * konsumuje — NIE serializuje `primary_devices` w backendzie
- * (`backend/src/enm/models.py`, klasa `Bay(ENMElement)`, linie ~701-733: brak
- * takiego pola). `primary_devices` istnieje WYŁĄCZNIE na `BayBaseModel`/
- * `BayCanonicalModel` (models.py:1017/1140), obiekcie budowanym w locie przez
- * `backend/src/application/field_read_model.py:build_field_read_model()` i
- * wystawianym osobnym endpointem (`/api/cases/{id}/enm/field-view`,
- * `frontend/src/ui/field/useFieldReadModel.ts`) — INNYM kanałem danych niż
- * snapshot ENM, który zasila `buildSldDataFromSnapshot`. Krótko: cytat spec
- * §12.1 „Bay.primary_devices (models.py:769-795)” wskazuje na definicję TYPU
- * `BayPrimaryDevice` (linie 769-795), NIE na pole `Bay.primary_devices` — takiego
- * pola na `Bay` nie ma.
- *
- * Ten typ i funkcja czytają pole DEFENSYWNIE (bez zmiany kontraktu `Bay` —
- * zero typu-życzenia): jeśli/kiedy backend zacznie serializować
- * `primary_devices` na `Bay` w ramach `EnergyNetworkModel`, projekcja
- * aktywuje się automatycznie bez dalszych zmian adaptera. Do tego czasu
- * zwraca `undefined` dla KAŻDEGO pola na KAŻDYM realnym snapshocie — w tym na
- * fixturze `sldSubstrate52s`, która w ogóle nie ma elementów `Bay` (0 wpisów;
- * pola są tam reprezentowane przez `substation.meta.field_specs`, inną,
- * trzecią ścieżkę danych — patrz raport F9.2, sonda).
+ * W1 (RECENZJA_L2 §1/§12.1, V12K-145) — DOMKNIĘCIE STOP-notatki F9.2. Backend
+ * SERIALIZUJE dziś `primary_devices` na `Bay(ENMElement)` w
+ * `EnergyNetworkModel` (`backend/src/enm/models.py:855`) — zmaterializowane z
+ * szablonu kreatora (`template_primary_devices`) przez `_build_field_spec`
+ * (`domain_operations.py`) i przeniesione na snapshot Bay przez
+ * `field_read_model._collect_bays`. Adapter czyta je z DWÓCH ścieżek snapshotu:
+ *  - `snapshot.bays[]` (legacy Bay ENM) — `projectBayPrimaryDevices(bay)` niżej;
+ *  - `substation.meta.field_specs[].primary_devices` (stacje SN z kreatora,
+ *    realna ścieżka produkcyjna) — `buildStationMiniBaysFromFieldSpecs` reużywa
+ *    TĘ SAMĄ `projectBayPrimaryDevices` (jedna prawda sortowania/projekcji).
+ * `BayWithOptionalPrimaryDevices` pozostaje jako alias historyczny (`Bay` już
+ * niesie opcjonalne `primary_devices` — `types/enm.ts`); projekcja zwraca
+ * `undefined` dla pól bez danych (ścieżka konwencji §12.4, zero regresu).
  */
 export type BayWithOptionalPrimaryDevices = Bay & {
   readonly primary_devices?: readonly BayPrimaryDevice[];
@@ -4082,16 +4162,18 @@ function simplifyPrimaryDeviceSwitchState(
  * Projekcja `Bay.primary_devices` → `BayPrimaryDeviceView[]`, posortowana wg
  * `placement` (UPSTREAM→MIDSTREAM→DOWNSTREAM→OFF_PATH→GROUND_BRANCH) ze
  * stabilnym tie-breakerem = kolejność źródłowa z ENM (indeks w tablicy).
- * `undefined` gdy ENM nie niesie `primary_devices` dla tego pola (patrz
- * STOP-notatka powyżej — dziś ZAWSZE `undefined`, kontrakt gotowy pod
- * przyszłą serializację backendu).
+ * `undefined` gdy pole nie niesie `primary_devices` (ścieżka konwencji §12.4).
+ * W1 (V12K-145): AKTYWNA na realnych snapshotach — Bay ENM oraz field_specs
+ * niosą zmaterializowane aparaty kreatora (patrz nota `BayWithOptional
+ * PrimaryDevices` powyżej). Parametr zwężony do `{primary_devices?}` — wołana
+ * z pełnym `Bay` (bays[]) ORAZ z lekkim `{primary_devices}` (field_specs).
  *
  * F11.1 (SLD_CAD_SPEC_V3 §17.2/§20.1, rejestr device-ref w GPZ): eksportowana
  * — `v2/canvas/enmToCanonicalGpzAdapter.ts` reużywa TĘ SAMĄ funkcję dla
  * `CanonicalGpzBay.primaryDevices` (jedna prawda stacja↔GPZ, zero duplikacji).
  */
 export function projectBayPrimaryDevices(
-  bay: BayWithOptionalPrimaryDevices,
+  bay: { readonly primary_devices?: readonly BayPrimaryDevice[] | null },
 ): readonly BayPrimaryDeviceView[] | undefined {
   const devices = bay.primary_devices;
   if (!devices || devices.length === 0) return undefined;

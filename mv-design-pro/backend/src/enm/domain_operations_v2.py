@@ -1575,6 +1575,21 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     )
     if protection_codes:
         producer_refs["protection_codes"] = protection_codes
+    # W1 (RECENZJA_L2 §1/§12.1, V12K-145): materializacja aparatów PIERWOTNYCH
+    # pola z szablonu kreatora (BayTemplate.devices) → field_spec.primary_devices.
+    # Domyka łańcuch „kreator → ENM → adapter SLD → scena": tor pierwotny pola
+    # rysowany Z DANYCH (kolejność/stan/uziemnik bocznie/głowica), a nie z jednego
+    # szablonu §12.4. Wybór aparatu głównego (apparatus_kind) różnicuje pola
+    # wyłącznikowe/rozłącznikowe. Bez szablonu: brak primary_devices (konwencja).
+    from network_model.catalog.bay_templates import template_primary_devices
+
+    primary_devices_spec = template_primary_devices(
+        bay_template_ref,
+        field_ref=field_ref,
+        main_apparatus_kind=apparatus_kind if isinstance(apparatus_kind, str) else None,
+    )
+    if primary_devices_spec:
+        producer_refs["primary_devices"] = primary_devices_spec
 
     new_enm = copy.deepcopy(enm)
     existing_equipment_refs = (
@@ -1756,6 +1771,7 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             bay_template_ref=bay_template_ref,
             switchgear_family_ref=switchgear_family_ref,
             manufacturer_ref=manufacturer_ref,
+            primary_devices=primary_devices_spec or None,
             tags=list(payload.get("tags") or []),
             meta={
                 "apparatus_kind": apparatus_kind if isinstance(apparatus_kind, str) else None,

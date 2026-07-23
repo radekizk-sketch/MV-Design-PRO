@@ -392,6 +392,12 @@ export interface Bay extends ENMElement {
    *  control_mode, pending_command). Adapter SLD konsumuje gdy obecne;
    *  brak → 'unknown' (Invariant 9). Definicja typu BayRuntimeState niżej. */
   runtime_state?: BayRuntimeState | null;
+  /** W1 (RECENZJA_L2 §1/§12.1, V12K-145): aparaty PIERWOTNE pola na snapshocie
+   *  ENM — lustro backendowego `Bay.primary_devices` (models.py:855, domknięcie
+   *  STOP-notatki F9.2: backend serializuje je na `Bay` w `EnergyNetworkModel`).
+   *  Adapter (`projectBayPrimaryDevices`) rysuje tor pierwotny Z DANYCH gdy
+   *  niepuste. Additive, default [] (pole bez danych → konwencja §12.4). */
+  primary_devices?: BayPrimaryDevice[];
 }
 
 import type {

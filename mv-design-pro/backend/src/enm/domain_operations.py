@@ -750,6 +750,7 @@ def _build_field_spec(
     bay_template_ref: str | None = None,
     switchgear_family_ref: str | None = None,
     manufacturer_ref: str | None = None,
+    primary_devices: list[dict[str, Any]] | None = None,
     tags: list[str] | None = None,
     meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
@@ -779,6 +780,21 @@ def _build_field_spec(
         spec["switchgear_family_ref"] = switchgear_family_ref
     if manufacturer_ref:
         spec["manufacturer_ref"] = manufacturer_ref
+    # W1 (RECENZJA_L2 §1/§12.1, V12K-145): aparaty PIERWOTNE pola zmaterializowane
+    # z szablonu kreatora — czytane przez adapter SLD (`buildStationMiniBaysFrom
+    # FieldSpecs` → `projectBayPrimaryDevices`) i read-model pola. exclude puste
+    # (pole bez szablonu/danych → ścieżka konwencji §12.4, zero regresu).
+    # Prymat jawnego argumentu (add_sn_bay: override aparatu głównego wg kreatora);
+    # inaczej auto-materializacja z kanonicznego `bay_template_ref` — JEDNA prawda
+    # dla WSZYSTKICH call-site (add_sn_bay + insert_station...), zero duplikacji.
+    if primary_devices:
+        spec["primary_devices"] = list(primary_devices)
+    elif bay_template_ref:
+        from network_model.catalog.bay_templates import template_primary_devices
+
+        materialized = template_primary_devices(bay_template_ref, field_ref=field_ref)
+        if materialized:
+            spec["primary_devices"] = materialized
     return spec
 
 

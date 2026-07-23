@@ -11,7 +11,7 @@ Brief 2 §6/9 + plan rebuild §3 + STATION_INTERNAL_SLD.md.
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -301,6 +301,100 @@ BAY_TEMPLATE_REGISTRY: dict[str, BayTemplate] = {
         BAY_TEMPLATE_AUX,
     ]
 }
+
+
+# ---------------------------------------------------------------------------
+# W1 (RECENZJA_L2 §1/§12, V12K-145): materializacja aparatów PIERWOTNYCH pola
+# (Bay.primary_devices, spec §12.1) z kanonicznego szablonu pola. „Schemat =
+# bezpośrednie odwzorowanie konfiguracji kreatora" — szablon wybrany w kreatorze
+# JEST daną projektową, więc jego stos aparatów spływa na field_spc i dalej na
+# SLD (adapter → scena, tor pierwotny Z DANYCH zamiast jednego fallbacku §12.4).
+# ---------------------------------------------------------------------------
+
+# Mapowanie typu aparatu SZABLONU (BayDeviceTemplate.kind) → typu aparatu
+# PIERWOTNEGO pola (BayPrimaryDevice.kind, spec §12.1). DS_BUS/DS_LINE to warianty
+# POŁOŻENIA jednego typu „odłącznik" (DS) — glif SLD ten sam, rozróżnia je
+# `placement` (UPSTREAM vs DOWNSTREAM). Zero fabrykacji: 1:1, jawne, z komentarzem.
+_TEMPLATE_DEVICE_KIND_TO_PRIMARY_KIND: dict[str, str] = {
+    "CB": "CB",
+    "DS_BUS": "DS",
+    "DS_LINE": "DS",
+    "ES": "ES",
+    "CT": "CT",
+    "VT": "VT",
+    "FUSE": "FUSE",
+    "SURGE_ARRESTER": "SURGE_ARRESTER",
+    "CABLE_HEAD": "CABLE_HEAD",
+    "TRANSFORMER_DEVICE": "TRANSFORMER_DEVICE",
+}
+
+# Aparaty łączeniowe toru (sterowalne, ze stanem otwarty/zamknięty).
+_SWITCHABLE_PRIMARY_KINDS: frozenset[str] = frozenset({"CB", "LOAD_SWITCH", "DS"})
+
+
+def _main_apparatus_primary_kind(apparatus_kind: str | None) -> str | None:
+    """Wybór GŁÓWNEGO aparatu łączeniowego pola z kreatora (`apparatus_kind`)
+    → typ aparatu pierwotnego. Pole wyłącznikowe (CB) vs rozłącznikowe
+    (LOAD_SWITCH/DS/FUSE). `None` = brak jawnego wyboru (zostaje typ z szablonu).
+    """
+    normalized = apparatus_kind.strip().upper() if isinstance(apparatus_kind, str) else ""
+    if normalized in {"DISCONNECTOR", "DS", "ODLACZNIK", "ODŁĄCZNIK"}:
+        return "DS"
+    if normalized in {"LOAD_SWITCH", "LS", "ROZLACZNIK", "ROZŁĄCZNIK"}:
+        return "LOAD_SWITCH"
+    if normalized in {"FUSE", "FUSE_SWITCH", "ROZLACZNIK_BEZPIECZNIKOWY", "BEZPIECZNIK"}:
+        return "FUSE"
+    if normalized in {"CB", "BREAKER", "WYLACZNIK", "WYŁĄCZNIK"}:
+        return "CB"
+    return None
+
+
+def template_primary_devices(
+    template_id: str | None,
+    *,
+    field_ref: str,
+    main_apparatus_kind: str | None = None,
+) -> list[dict[str, Any]]:
+    """Materializuje listę aparatów pierwotnych pola (Bay.primary_devices, spec
+    §12.1) z kanonicznego szablonu `BayTemplate.devices`. Kolejność = pozycja w
+    szablonie (od szyny w dół: UPSTREAM → … → głowica). `device_ref`
+    DETERMINISTYCZNY (`field_ref` + pozycja) — zero losowości/seedu, ten sam
+    wynik dla tego samego pola. Zwraca `[]`, gdy szablon nieznany/brak
+    (wsteczna zgodność: pole bez danych → ścieżka konwencji §12.4 na SLD).
+
+    `main_apparatus_kind` (opcjonalny wybór z kreatora): nadpisuje typ GŁÓWNEGO
+    aparatu łączeniowego (CB szablonu) — pole wyłącznikowe (CB) vs rozłącznikowe
+    (LOAD_SWITCH/DS/FUSE). Pozostałe aparaty (CT/ES/głowica/TR/VT/SA) bez zmian.
+    """
+    if not template_id:
+        return []
+    template = BAY_TEMPLATE_REGISTRY.get(template_id)
+    if template is None:
+        return []
+    override = _main_apparatus_primary_kind(main_apparatus_kind)
+    devices: list[dict[str, Any]] = []
+    for device in template.devices:
+        primary_kind = _TEMPLATE_DEVICE_KIND_TO_PRIMARY_KIND.get(device.kind)
+        if primary_kind is None:
+            continue
+        # Nadpisanie GŁÓWNEGO łącznika pola (CB szablonu) wyborem kreatora.
+        if primary_kind == "CB" and override is not None:
+            primary_kind = override
+        entry: dict[str, Any] = {
+            "device_ref": f"{field_ref}::dev::{device.position}",
+            "symbol_ref": f"symbol:{primary_kind.lower()}",
+            "kind": primary_kind,
+            "placement": device.placement,
+            "is_controllable": primary_kind in _SWITCHABLE_PRIMARY_KINDS,
+            "render_variant": "kanoniczny",
+            "designation": device.designation_q,
+        }
+        if primary_kind == "ES":
+            # Uziemnik pola (typologia §12.5) — odróżnia go od uziemienia ekranów
+            # kabla/konstrukcji/punktu neutralnego. Szablon to uziemnik pola.
+            entry["earthing_role"] = "field_earth"
+        devices.append(entry)
+    return devices
 
 
 def get_bay_template(template_id: str) -> BayTemplate:

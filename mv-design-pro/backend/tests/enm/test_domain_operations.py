@@ -642,6 +642,131 @@ class TestNnFieldAdapters:
         assert spec["manufacturer_ref"] == "abb"
         assert spec["protection_ref"] == "rel_50_51_67"
 
+    def test_add_sn_bay_materializes_primary_devices_from_canonical_template(self):
+        """W1 (RECENZJA_L2 §1/§12.1, V12K-145): pole z KANONICZNEGO szablonu
+        kreatora materializuje aparaty pierwotne (Bay.primary_devices) na
+        field_spec — domyka łańcuch danych „kreator → ENM → adapter SLD → scena".
+        Kolejność = pozycja szablonu (od szyny w dół); zero fabrykacji.
+        """
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "IN",
+                "field_name": "Pole liniowe (szablon kanoniczny)",
+                "bay_template_ref": "bay_template_line_in",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        substation_after = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])
+        spec = substation_after["meta"]["field_specs"][-1]
+        devices = spec.get("primary_devices")
+        assert devices, "field_spec MUSI nieść zmaterializowane aparaty pierwotne"
+        # Kanoniczny tor liniowy §12.2: DS_szyn → CB → CT → DS_lin → ES → głowica.
+        assert [d["kind"] for d in devices] == [
+            "DS",
+            "CB",
+            "CT",
+            "DS",
+            "ES",
+            "CABLE_HEAD",
+        ]
+        assert [d["placement"] for d in devices] == [
+            "UPSTREAM",
+            "MIDSTREAM",
+            "MIDSTREAM",
+            "DOWNSTREAM",
+            "GROUND_BRANCH",
+            "DOWNSTREAM",
+        ]
+        # Uziemnik z jawną typologią (uziemnik pola, nie ekran/neutral).
+        es = next(d for d in devices if d["kind"] == "ES")
+        assert es["earthing_role"] == "field_earth"
+        # Aparaty łączeniowe sterowalne, głowica/CT/ES niesterowalne (bez fabrykacji stanu).
+        by_kind = {d["kind"]: d for d in devices}
+        assert by_kind["CB"]["is_controllable"] is True
+        assert by_kind["CABLE_HEAD"]["is_controllable"] is False
+        assert by_kind["CT"]["is_controllable"] is False
+
+    def test_add_sn_bay_primary_devices_deterministic(self):
+        """Determinizm (kanon §7): ten sam wejściowy ENM + ta sama operacja →
+        identyczne aparaty pierwotne (device_ref z pozycji, zero losowości)."""
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        payload = {
+            "bus_ref": substation["bus_refs"][0],
+            "station_ref": substation["ref_id"],
+            "bay_role": "IN",
+            "field_name": "Pole liniowe det",
+            "bay_template_ref": "bay_template_line_in",
+            "apparatus_kind": "BREAKER",
+        }
+        first = execute_domain_operation(
+            enm_dict=copy.deepcopy(gpz_snapshot), op_name="add_sn_bay", payload=dict(payload)
+        )
+        second = execute_domain_operation(
+            enm_dict=copy.deepcopy(gpz_snapshot), op_name="add_sn_bay", payload=dict(payload)
+        )
+        spec1 = _find_by_ref(first["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        spec2 = _find_by_ref(second["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert spec1["primary_devices"] == spec2["primary_devices"]
+
+    def test_add_sn_bay_apparatus_kind_overrides_main_switch(self):
+        """W1: wybór aparatu głównego z kreatora (apparatus_kind) różnicuje pole
+        wyłącznikowe (CB) od rozłącznikowego (LOAD_SWITCH) — koniec jednego
+        uniwersalnego szablonu. CB szablonu → LOAD_SWITCH; reszta bez zmian."""
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "IN",
+                "field_name": "Pole rozłącznikowe",
+                "bay_template_ref": "bay_template_line_in",
+                "apparatus_kind": "LOAD_SWITCH",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        kinds = [d["kind"] for d in spec["primary_devices"]]
+        assert "LOAD_SWITCH" in kinds
+        assert "CB" not in kinds
+        # Uziemnik/CT/głowica niezmienione (override dotyczy TYLKO aparatu głównego).
+        assert kinds == ["DS", "LOAD_SWITCH", "CT", "DS", "ES", "CABLE_HEAD"]
+
+    def test_add_sn_bay_no_template_no_primary_devices(self):
+        """Wsteczna zgodność: pole bez kanonicznego szablonu NIE zyskuje
+        primary_devices (ścieżka konwencji §12.4 na SLD, zero regresu)."""
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "OUT",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert "primary_devices" not in spec
+
     def test_add_sn_bay_without_producer_refs_stays_backward_compatible(self):
         """Bez refów producenta field_spec nie zyskuje kluczy producenckich (determinizm).
 
