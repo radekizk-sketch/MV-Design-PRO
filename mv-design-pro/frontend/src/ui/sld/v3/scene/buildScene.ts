@@ -1825,6 +1825,15 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       });
       derSourcesByStationId.set(s.connectionRef, list);
     });
+  // SCHEMAT-10 S7-P3 (V12K-137, WYTYCZNE_GENERALIZACJA §5/§4): kolejność DER
+  // w rzędzie nN stacji MUSI być deterministyczna względem PERMUTACJI rekordów
+  // wejściowych (`generators`/`sources` ENM) — inaczej ta sama sieć opisana z
+  // inną kolejnością tablicy renderuje PV/BESS na zamienionych pozycjach.
+  // Reguła ogólna §4: porządek po STABILNYM IDENTYFIKATORZE (`id`), nie po
+  // kolejności w pamięci. Zero hardcode — dotyczy KAŻDEJ stacji z >1 DER.
+  for (const [ref, list] of derSourcesByStationId) {
+    derSourcesByStationId.set(ref, [...list].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)));
+  }
 
   if (sldData.gpzs.length > 1) {
     stopNotes.push(

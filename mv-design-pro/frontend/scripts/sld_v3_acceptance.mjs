@@ -228,7 +228,15 @@ const VERTICAL_LENGTH_BASELINE = { 0: 28072, 1: 45016, 2: 45016 };
  * kompaktyzacja footprint-driven = S7). Aktualizacja tych baseline — jak
  * `VERTICAL_LENGTH_BASELINE` — wymaga świadomej zmiany TEGO pliku.
  */
-const HORIZONTAL_LENGTH_BASELINE = { 0: 47048, 1: 67192, 2: 70784 };
+// SCHEMAT-10 S7-P3 (V12K-137, WYTYCZNE_GENERALIZACJA §5): L1/L2 PODNIESIONE
+// 67192/70784 → 67224/70816 (+32/LOD). Przyczyna: naprawa determinizmu-pod-
+// permutacją DER (`scene/buildScene.ts` — kolejność PV/BESS w rzędzie nN
+// sortowana po STABILNYM `id`, nie po kolejności tablicy `generators` ENM;
+// test §5 `buildScene.schemat10s7p3.test.ts`). Kanoniczny porządek DER zmienia
+// długość dołączeń nN o stałą +32 na L1/L2 (piony/bbox/crossings/kolizje bez
+// zmian — patrz raport S7-P3, tabela 18 metryk). To NOWA kanoniczna geometria
+// po fixie poprawności, nie regresja. L0 (bez DER) bez zmian.
+const HORIZONTAL_LENGTH_BASELINE = { 0: 47048, 1: 67224, 2: 70816 };
 const BEND_COUNT_BASELINE = { 0: 39, 1: 167, 2: 167 };
 
 /**
