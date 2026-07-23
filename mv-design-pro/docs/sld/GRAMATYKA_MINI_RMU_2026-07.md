@@ -139,3 +139,28 @@ enklozurą — ODWRÓCENIE obecnej sondy na-wylot) + macierz kombinacji przepisa
    na przedziałach geometrii gramatyki; docelowo ciągłość analizowana po
    KONEKTORACH elektrycznych łańcucha pól (model konektorów w MINI_RMU), nie
    po styku współrzędnych.
+
+## GS-4 — OBOWIĄZKOWA korekta semantyki DER względem TR (recenzja 2026-07-23)
+ZASADA TWARDA: pozycja symbolu DER wynika z RZECZYWISTEGO miejsca przyłączenia
+źródła, nie z samego faktu obecności. ZAKAZ jednego symbolu „TR+DER" dla dwóch
+topologii. Mini-RMU nie może kłamać topologicznie.
+
+Kontrakt danych (minimum):
+- `hasDerOnMvSide` (osobne pole SN dla DER) i `hasDerBehindTransformer`
+  (źródło po stronie nN, za TR) — NIEZALEŻNE, oba mogą wystąpić naraz;
+- `derType` per strona; wariant B wymaga `hasTransformer=true` (walidacja).
+Źródło klasyfikacji: bus ref generatora w ENM (nN stacji → za TR; SN → pole SN;
+nieznany → uczciwe 'unknown', NIGDY zgadywanie strony).
+
+Gramatyka wizualna:
+- DER na SN → jak dziś: szyna → aparat pola DER → znak źródła (poleDer);
+- DER za TR → znak źródła zakotwiczony do GAŁĘZI POLA TR, PONIŻEJ
+  transformatora (strona nN) — inna kotwica niż DER na SN; ZAKAZ renderu
+  z szyny SN, gdy model mówi nN;
+- oba naraz → oba pokazane oddzielnie (wariant 4).
+
+Testy kanoniczne (minimum 6): TR only · TR+DER za TR · stacja SN + DER na SN ·
+TR+DER za TR+NO · TR+DER na SN+NO · TR+DER za TR+DER na SN. Macierz kombinacji
+rozszerzona o stronę (kombinacje z derBehindTr bez TR = NIEDOPUSZCZALNE,
+walidacja czerwona). Etykiety legendy jednoznaczne („PV za TR (nN)" vs
+„PV na SN").
