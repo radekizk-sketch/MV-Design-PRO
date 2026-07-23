@@ -220,3 +220,120 @@ GAP-y do S7-P3: balancing całych poddrzew + rozdzielenie świateł
 (`TOP_LEVEL_FIELD_CLEARANCE` +20–35%) — dopiero po spadku bbox, zgodnie z §4.
 Migracja geometrii do `engine/sld-layout/layoutEngine.ts` (S7.5) po ustabilizowaniu
 P1–P3. crossingCount=0 osiągnięty i utrzymany jako warunek odbioru.
+
+## 8. Wykonanie S7-P3 (2026-07-23) — rozdzielone światła + generalizacja + GAP balansowania
+
+Zrealizowano **S7-P3** w zakresie osiągalnym w bieżącej reprezentacji (grzebień
+sekwencyjny w `scene/buildScene.ts`), zgodnie z `WYTYCZNE_GENERALIZACJA_LAYOUTU_
+2026-07` (silnik OGÓLNY, nie strojony pod `sldSubstrate52s`).
+
+### 8.1 Rozdzielone światła §5 (ZREALIZOWANE)
+Jedno źródło prawdy `layout/clearances.ts` — 6 stałych kanonu §5, każda
+wyprowadzona z footprintu/topologii (zero hardcode), mierzona MIĘDZY OBRYSAMI:
+
+| Stała §5 | Plik/rola (realne miejsce) | Przed | Po | % |
+|---|---|---|---|---|
+| `MIN_GLYPH_CLEARANCE` | `measure.ts` `stationBlockWidth` (glify pól) | `GRID` | `GRID` | 0% |
+| `MIN_LABEL_CLEARANCE` | `measure.ts` `PORT_CAPTION_BUS_CLEARANCE`/`STATION_BUSBAR_LABEL_GAP` | `GRID` | `GRID` | 0% |
+| `MIN_FIELD_CLEARANCE` | `measure.ts` `STATION_BLOCK_BUS_CLEARANCE` | `2×GRID` | `2×GRID` | 0% |
+| `MIN_SUBTREE_CLEARANCE` | `buildScene.ts` packer (`LATERAL_SUBTREE_CLEARANCE`) | `4×GRID` | `4×GRID` | 0% |
+| `MIN_ROUTE_CLEARANCE` | `columns.ts` `CHANNEL_MIN_CLEARANCE` | `GRID` | `GRID` | 0% |
+| `TOP_LEVEL_FIELD_CLEARANCE` | pas górny (przewleczony `columnGap`, oddzielony od `COLUMN_GAP` lateralów) | `3×GRID` | `3×GRID` | 0% |
+
+**TOP_LEVEL_FIELD_CLEARANCE +20–35% — GAP netto (pomiar):** widełki `29..32 px`
+NIE są stosowane na fixturze referencyjnej, bo pas górny NIE MA ŚCISKU przy
+`3×GRID` (`minimumClearance = GRID = 8`, 0 kolizji, `accept:sld-v3` zielone).
+Zgodnie z §5 („NAJMNIEJSZA wartość usuwająca ścisk") wartość dla tej fixtury =
+bazowa; podniesienie w izolacji zwiększa `horizontalLength` (pomiar S6 §4: 24→32
+= +336/LOD) ⇒ regres `layout_cost_probe (poziomy)` ORAZ `bboxUtilization↓` (§6),
+czyli „niepotrzebne wydłużenie magistrali" (§5). Stała jest ODDZIELONA (osobny
+`columnGap` pasa górnego, przewleczony przez `computeStationTaps`/
+`computeColumns`/`buildRowLayout`), więc jej podniesienie jest teraz zmianą
+JEDNEJ liczby — netto-dodatnie zastosowanie wymaga jednak footprint-driven
+compact layout (S7.5), który obniży bbox na tyle, by szerszy pas górny był
+skompensowany. GAP wykonalnościowy (Zero-Debt pkt 4), nie normatywny.
+
+### 8.2 Fix determinizmu DER (ZREALIZOWANE — Zero-Debt, znalezisko §5)
+Test permutacji (`buildScene.schemat10s7p3.test.ts`, WYTYCZNE §5) wykrył, że
+kolejność DER (PV/BESS) w rzędzie nN zależała od kolejności tablicy `generators`
+ENM (brak determinizmu-pod-permutacją). Naprawiono U ŹRÓDŁA: sort DER po
+STABILNYM `id` (§4). Koszt kanonicznego porządku: `horizontalLength` +32/LOD na
+L1/L2 (dołączenia nN), reszta bez zmian. `HORIZONTAL_LENGTH_BASELINE` podniesiony
+z uzasadnieniem (nowa kanoniczna geometria po fixie poprawności).
+
+### 8.3 Tabela 18 metryk przed/po (fixtura `sldSubstrate52s`, L0/L1/L2)
+
+| Metryka | Przed (po P2) | Po S7-P3 |
+|---|---|---|
+| verticalLength | 28072/45016/45016 | 28072/45016/45016 |
+| horizontalLength | 47048/67192/70784 | 47048/**67224**/**70816** (DER kanon +32 L1/L2) |
+| totalOrthogonalLength | 75120/112208/115800 | 75120/112240/115832 |
+| bendCount | 39/167/167 | 39/167/167 |
+| contentBBox (w×h) | 14208×4379/4457/4457 | identycznie |
+| widthUtilization | 0.0957/0.4291/0.4426 | 0.0957/0.4291/0.4426 |
+| heightUtilization | 0.1204/0.2921/0.2921 | identycznie |
+| bboxUtilization | 0.000370/0.004328/0.004328 | identycznie |
+| inkDensity | 0.009854/0.018107/0.018560 | 0.009854/**0.018111**/**0.018564** (↑) |
+| minimumClearance | 8/8/8 | 8/8/8 |
+| labelCollisionCount | 0/0/0 | 0/0/0 |
+| subtreeIntersectionCount | 0/0/0 | 0/0/0 |
+| nonOrthogonalSegmentCount | 0/0/0 | 0/0/0 |
+| ambiguousConnectionCount | 0/0/0 | 0/0/0 |
+| crossingCount | 0/0/0 | 0/0/0 |
+| symbolCount | 81/592/592 | 81/592/592 |
+| stationCount | 53/53/53 | 53/53/53 |
+| — kropki T (`junction`) | 13/24/24 | 13/24/24 |
+
+### 8.4 Balancing całych poddrzew — GAP do S7.5 (POMIAR STRUKTURALNY)
+**Balancing pionowy = ZREALIZOWANY** i uogólniony: packer interwałowy P1
+(`createLateralShelfPacker`) JEST regułą balansowania całych poddrzew w osi Y
+(footprint-driven interval packing, `dy` niemalejące — niezmiennik rezerwacji
+kanałów). Uogólnienie dowiedzione na 5 klasach topologii (§12, niżej).
+
+**Balancing poziomy (centrowanie na osi przyłączenia, środek ciężkości ważony
+footprintem) = GAP nieredukowalny w tej reprezentacji** (Zero-Debt pkt 4).
+Dowód strukturalny: pozycja X lateralu jest SZTYWNO związana z kanałem zejścia
+(`dx = channelX − entryPort.x`, `buildScene.ts` sekcja 6). Przesunięcie
+poddrzewa w X wymaga albo (a) ruchu `channelX` — łamie rezerwację kanałów
+`insertColumnChannels` + `entry_collinearity_probe §22.3` + `junction_dot_probe`;
+albo (b) jogu poziomego zejścia do przesuniętego ciała — dodaje załamania
+(`layout_cost_probe`) i przecięcia (`crossing_probe` TWARDE ZERO). Packer jest
+przy tym na LOKALNYM optimum osi Y pod niezmiennikiem „dy niemalejące"
+(pakowanie first-fit-across-shelves zabronione tą samą rezerwacją). Genuine
+centrowanie CoG wymaga footprint-driven layout w `engine/sld-layout/
+layoutEngine.ts` (S7.5) — tam X poddrzewa jest zmienną decyzyjną, nie pochodną
+kanału. WYTYCZNE §11 zakazuje wprost hacków geometrii w buildScene, więc
+balancing poziomy NIE jest wciskany lokalnie — czeka na S7.5.
+
+### 8.5 Dowód generalizacji §12 (WYTYCZNE) — reguły świateł + packingu
+`buildScene.schemat10s7p3.test.ts` (8 testów) na 5 klasach topologii:
+
+| Klasa | Fixtura | subs | kolizje | przec. | nieortog. | niejedn. | crossing (L0/L1/L2) |
+|---|---|---|---|---|---|---|---|
+| A radialna prosta | openTerminal | 1 | 0 | 0 | 0 | 0 | 0/0/0 |
+| A ciąg radialny | openTrunkChain | 2 | 0 | 0 | 0 | 0 | 0/0/0 |
+| B z odgałęzieniem | openBranch | 2 | 0 | 0 | 0 | 0 | 0/0/0 |
+| C GPZ + feeder | gpzFeeder | 3 | 0 | 0 | 0 | 0 | 0/0/0 |
+| E wieloźródłowa | sldSubstrate52s | 54 | 0 | 0 | 0 | 0 | 0/0/0 |
+
+- **§5 permutacja**: odwrócenie pul rekordów (po `ref_id`) ⇒ scena
+  BAJT-IDENTYCZNA na każdej fixturze/LOD (po fixie DER 8.2).
+- **§11f różne footprinty razem**: stacja/switchgear/PV/BESS/trafo blokowy/
+  pole pomiarowe (CT) + wstrzyknięty punkt NO — współistnieją, 0 kolizji.
+- **§9 lokalność+stabilność**: długi opis PL na 1 lateralu ⇒ ciąg główny
+  `anchorMovementCount=0`, `totalAnchorDisplacement=0`, `maxAnchorDisplacement=0`.
+- **§10 wydajność**: 4.2 / 7.5 / 8.6 / 11.0 / 226.8 ms per 3 LOD (budżet <15 s).
+
+### 8.6 Bramki S7-P3
+`type-check`=0, `lint`=0, vitest (`src/ui/sld/v3` 962, `sld-overlay`+`engine/
+sld-layout` 249) zielone, `accept:sld-v3` ALL PASS (baseline poziomów
+zaktualizowany), guardy `sld_determinism`/`overlay_no_physics`/`no_codenames`/
+`forbidden_ui_terms`=0, determinizm 2×. Zrzuty `docs/audit/visual/schemat-10/
+s7p3-l0..l2.png` dołączone. Goldeny per plik: `HORIZONTAL_LENGTH_BASELINE`
+(`sld_v3_acceptance.mjs`, przyczyna: kanoniczny porządek DER).
+
+### 8.7 Pozostały dług (S7.5)
+- `TOP_LEVEL_FIELD_CLEARANCE` +20–35% netto-dodatnio (po obniżeniu bbox).
+- Balancing poziomy całych poddrzew (centrowanie CoG ważone footprintem).
+- Migracja geometrii `buildScene`→`layoutEngine.ts` (`LayoutResult` render-only).
+crossingCount=0 utrzymany jako warunek odbioru.
