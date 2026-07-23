@@ -108,12 +108,34 @@ export const MINI_RMU = {
   /** Sprzęgło sekcyjne / NO (K6): APARAT W TORZE SZYNY (środek). Zamknięty =
    *  kwadrat na szynie; OTWARTY (NO) = realna PRZERWA szyny + kreska ukośna. */
   sprzeglo: { x: CENTER, size: 4, gapHalf: 3 },
+  /** GS-5 (uwaga właściciela 2026-07-23): WĘZEŁ ODGAŁĘZIENIA na szynie —
+   *  stacja odgałęźna (≥3 pola liniowe, §19.3). Kropka węzłowa (notacja
+   *  junction SLD), NIE trzecie pełne pole: pomiar stref wykazał, że
+   *  kompozycja aparat+głowica w osi zejścia korytarza (x=24) łamie światło
+   *  minGap.marker=3 względem pola TR (aparat 17,5..20,5 / uzwojenia 17..21)
+   *  w każdym wariancie zgodnym z realnym punktem odejścia; pełne pole
+   *  odgałęźne żyje od L1 (adaptacyjny jest detal). Kabel zejścia rysuje
+   *  scena. Wyklucza się ze sprzęgłem przez klasyfikację (§19.3: sprzęgło ⇒
+   *  sekcyjna nadrzędna) — kontrakt `miniRmuFeatureContradictions`. */
+  odgalezienie: { x: CENTER, r: 1.1 },
   stroke: MINI_RMU_STROKE,
   minGap: MINI_RMU_MIN_GAP,
 } as const;
 
+/** GS-5: topologia pól liniowych sylwetki — L0 niesie ROLĘ TOPOLOGICZNĄ
+ *  stacji w ciągu (spec §19.3 + prezentacja stacji ostatniej w ciągu,
+ *  recenzja NO-GO 2026-07-17 pkt 7): `końcowa` = jedno pole WE (szyna kończy
+ *  się w rozdzielnicy — ZERO fantomowego toru na wylot), `przelotowa` = dwa
+ *  pola (dziś), `odgałęźna` = dwa pola + węzeł odgałęzienia na szynie.
+ *  Sekcyjna (sprzęgło) jest z definicji dwustronna → mapuje na 'przelotowa'
+ *  + flaga `sectioned`. */
+export type MiniRmuLineTopology = 'końcowa' | 'przelotowa' | 'odgałęźna';
+
 export interface MiniRmuFeatures {
   readonly sectioned: boolean;
+  /** GS-5: pola liniowe sylwetki z REALNEJ topologii stacji (nie założenia
+   *  „każda stacja przelotowa" — uwaga właściciela 2026-07-23). */
+  readonly lineTopology: MiniRmuLineTopology;
   readonly transformer: boolean;
   /** GS-4: DER przyłączony do SZYNY SN (osobne pole SN dla DER — `poleDer`). */
   readonly derOnMv: StationDerGlyphKind | null;
@@ -128,6 +150,7 @@ export interface MiniRmuFeatures {
 export function miniRmuSignature(f: MiniRmuFeatures): string {
   return [
     f.sectioned ? 'SEK' : '-',
+    f.lineTopology,
     f.transformer ? 'TR' : '-',
     f.derOnMv ? `SN:${f.derOnMv}` : '-',
     f.derBehindTr ? `nN:${f.derBehindTr}` : '-',
@@ -135,31 +158,43 @@ export function miniRmuSignature(f: MiniRmuFeatures): string {
   ].join('|');
 }
 
-/** GS-4: sprzeczności kontraktu cech — kombinacja `derBehindTr` bez
- *  transformatora jest NIEDOPUSZCZALNA (źródło „za TR" nie istnieje bez TR;
- *  walidacja czerwona, nie cichy render). Pusta lista = kombinacja legalna. */
+/** GS-4/GS-5: sprzeczności kontraktu cech (walidacja czerwona, nie cichy
+ *  render). Pusta lista = kombinacja legalna:
+ *  - GS-4: `derBehindTr` bez transformatora — źródło „za TR" nie istnieje;
+ *  - GS-5: `sectioned` z topologią inną niż dwustronna — sprzęgło dzieli
+ *    stację na sekcje, klasyfikacja §19.3 daje mu pierwszeństwo i stacja
+ *    sekcyjna jest z definicji dwustronna (mv_lv_sectional);
+ *  - GS-5: `noOpen` przy topologii 'końcowa' — punkt NO wymaga DRUGIEGO
+ *    toru (drugie pole spięte do sąsiedniego ciągu), stacja jednostronna
+ *    nie ma czego normalnie otwierać. */
 export function miniRmuFeatureContradictions(f: MiniRmuFeatures): readonly string[] {
   const g: string[] = [];
   if (f.derBehindTr != null && !f.transformer)
     g.push('GS-4: derBehindTr bez transformatora — źródło „za TR" wymaga pola TR (hasTransformer=true)');
+  if (f.sectioned && f.lineTopology !== 'przelotowa')
+    g.push('GS-5: sectioned wymaga topologii dwustronnej (sprzęgło ⇒ sekcyjna nadrzędna, §19.3)');
+  if (f.noOpen && f.lineTopology === 'końcowa')
+    g.push('GS-5: noOpen przy stacji końcowej — punkt NO wymaga drugiego toru (przelotowa/odgałęźna)');
   return g;
 }
 
-/** Macierz WYŁĄCZNIE kombinacji legalnych (GS-4: strona DER w iloczynie;
- *  kombinacje sprzeczne — `derBehindTr` bez TR — wykluczone z konstrukcji,
+/** Macierz WYŁĄCZNIE kombinacji legalnych (GS-4: strona DER; GS-5: topologia
+ *  pól liniowych w iloczynie; kombinacje sprzeczne wykluczone z konstrukcji,
  *  ich odrzucenie dowodzi test przez `miniRmuFeatureContradictions`). */
 export function allMiniRmuFeatureCombinations(): readonly MiniRmuFeatures[] {
   const out: MiniRmuFeatures[] = [];
   const kinds = [null, 'pv', 'bess', 'wind', 'generator'] as const;
+  const topologies: readonly MiniRmuLineTopology[] = ['końcowa', 'przelotowa', 'odgałęźna'];
   for (const sectioned of [false, true])
-    for (const transformer of [false, true])
-      for (const derOnMv of kinds)
-        for (const derBehindTr of kinds)
-          for (const noOpen of [false, true]) {
-            const f: MiniRmuFeatures = { sectioned, transformer, derOnMv, derBehindTr, noOpen };
-            if (miniRmuFeatureContradictions(f).length > 0) continue;
-            out.push(f);
-          }
+    for (const lineTopology of topologies)
+      for (const transformer of [false, true])
+        for (const derOnMv of kinds)
+          for (const derBehindTr of kinds)
+            for (const noOpen of [false, true]) {
+              const f: MiniRmuFeatures = { sectioned, lineTopology, transformer, derOnMv, derBehindTr, noOpen };
+              if (miniRmuFeatureContradictions(f).length > 0) continue;
+              out.push(f);
+            }
   return out;
 }
 
@@ -229,6 +264,11 @@ export function miniRmuMarkerSpacingGaps(): readonly string[] {
     g.push('GS-4: marker DER nN wychodzi poza bbox glifu');
   if (nn.stub.y1 > poleTr.circle2Y + poleTr.circleR + 0.001 || nn.stub.y2 < nn.markerCY - nn.markerHalf - 0.001)
     g.push('GS-4: przerwa gałęzi nN między uzwojeniami TR a markerem DER (tor niedomknięty)');
+  // GS-5: węzeł odgałęzienia MUSI leżeć NA szynie (wewnątrz jej przęsła) —
+  // kropka poza szyną fabrykowałaby punkt odejścia.
+  const od = MINI_RMU.odgalezienie;
+  if (od.x - od.r < MINI_RMU.bus.x1 || od.x + od.r > MINI_RMU.bus.x2)
+    g.push('GS-5: węzeł odgałęzienia poza przęsłem szyny');
   return g;
 }
 

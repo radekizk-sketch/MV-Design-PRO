@@ -294,6 +294,7 @@ function SceneSymbolNode(props: {
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
         meterQuantity={symbol.meta?.meterQuantity}
         stationSectioned={symbol.meta?.stationGlyph?.sectioned}
+        stationLineTopology={symbol.meta?.stationGlyph?.lineTopology}
         stationHasTransformer={symbol.meta?.stationGlyph?.hasTransformer}
         stationDerOnMv={symbol.meta?.stationGlyph?.derOnMv}
         stationDerBehindTr={symbol.meta?.stationGlyph?.derBehindTr}

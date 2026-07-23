@@ -9,7 +9,7 @@
 
 import { SYMBOL_DEFS, type SymbolId } from './defs';
 import { BASE_STROKE } from '../theme/colorTokens';
-import { MINI_RMU, DER_MARKER_SHAPE, type StationDerGlyphKind } from './miniRmuGrammar';
+import { MINI_RMU, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
  *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
@@ -74,6 +74,16 @@ export interface GlyphProps {
   /** GS-1: stacja niesie punkt/łącznik NORMALNIE OTWARTY (`Substation.isNop`)
    *  — marker otwartego łącznika na szynie (odróżnialny od zamkniętego). */
   readonly stationNoOpen?: boolean;
+  /** GS-5 (uwaga właściciela 2026-07-23: „render zakłada, że większość stacji
+   *  to przelotowe, a w realnej sieci to końcowe z odgałęzień"): topologia
+   *  pól liniowych sylwetki z REALNEJ roli stacji w ciągu (spec §19.3 +
+   *  prezentacja stacji ostatniej w ciągu): `'końcowa'` = TYLKO pole WE,
+   *  szyna kończy się w rozdzielnicy (zero fantomowego toru na wylot);
+   *  `'przelotowa'` = dwa pola (zachowanie dotychczasowe = default dla
+   *  wołających bez podsumowania); `'odgałęźna'` = dwa pola + węzeł
+   *  odgałęzienia na szynie (kabel zejścia rysuje scena; pełne pole
+   *  odgałęźne od L1 — uzasadnienie przestrzenne w `miniRmuGrammar.ts`). */
+  readonly stationLineTopology?: MiniRmuLineTopology;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -425,11 +435,15 @@ function glowica(xBase: number, xTip: number, y: number, halfH: number, s: strin
  */
 export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
   const s = stroke(props);
-  const { enclosure: e, bus, linia: L, poleTr: tr, poleDer: der, sprzeglo: sp, stroke: sw } = MINI_RMU;
+  const { enclosure: e, bus, linia: L, poleTr: tr, poleDer: der, sprzeglo: sp, odgalezienie: od, stroke: sw } = MINI_RMU;
   const y = L.y;
   const busBroken = props.stationNoOpen === true;
+  // GS-5: topologia pól liniowych z roli stacji w ciągu; brak danych =
+  // 'przelotowa' (zachowanie dotychczasowe — sylwetka bazowa bez podsumowania).
+  const lineTopology = props.stationLineTopology ?? 'przelotowa';
+  const drawRightField = lineTopology !== 'końcowa';
   return (
-    <g {...glyphGroupProps('stationCollapsed', props)} data-station-silhouette="mini-rmu">
+    <g {...glyphGroupProps('stationCollapsed', props)} data-station-silhouette="mini-rmu" data-station-line-topology={lineTopology}>
       {/* Obrys enklozury — WTÓRNY (K7): najlżejsza kreska, bez wypełnienia. */}
       <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={sw.outline} data-station-outline="true" />
       {/* POLE LINIOWE L1: kabel → głowica → aparat → łącznik do szyny (K1). */}
@@ -459,12 +473,26 @@ export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
         </g>
       )}
       {props.stationSectioned && busBroken && <g data-station-sectioned="true" />}
-      {/* POLE LINIOWE L2 (lustrzane). */}
-      <line x1={L.linkR.x1} y1={y} x2={L.linkR.x2} y2={y} stroke={s} strokeWidth={sw.path} />
-      <rect x={L.aparatR.x - L.aparatR.size / 2} y={y - L.aparatR.size / 2} width={L.aparatR.size} height={L.aparatR.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="L2" />
-      <line x1={L.aparatR.x + L.aparatR.size / 2} y1={y} x2={L.glowicaR.xTip} y2={y} stroke={s} strokeWidth={sw.path} />
-      {glowica(L.glowicaR.xBase, L.glowicaR.xTip, y, L.glowicaR.halfH, s, sw.path)}
-      <line x1={L.stubR.x1} y1={y} x2={L.stubR.x2} y2={y} stroke={s} strokeWidth={sw.path} />
+      {/* POLE LINIOWE L2 (lustrzane) — TYLKO gdy tor kontynuuje (GS-5):
+          stacja KOŃCOWA nie dostaje fantomowego pola na wylot; szyna kończy
+          się w rozdzielnicy (rezerwa/koniec ciągu — uczciwy obraz roli). */}
+      {drawRightField && (
+        <g data-station-field-out="true">
+          <line x1={L.linkR.x1} y1={y} x2={L.linkR.x2} y2={y} stroke={s} strokeWidth={sw.path} />
+          <rect x={L.aparatR.x - L.aparatR.size / 2} y={y - L.aparatR.size / 2} width={L.aparatR.size} height={L.aparatR.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="L2" />
+          <line x1={L.aparatR.x + L.aparatR.size / 2} y1={y} x2={L.glowicaR.xTip} y2={y} stroke={s} strokeWidth={sw.path} />
+          {glowica(L.glowicaR.xBase, L.glowicaR.xTip, y, L.glowicaR.halfH, s, sw.path)}
+          <line x1={L.stubR.x1} y1={y} x2={L.stubR.x2} y2={y} stroke={s} strokeWidth={sw.path} />
+        </g>
+      )}
+      {/* GS-5: WĘZEŁ ODGAŁĘZIENIA na szynie (stacja odgałęźna, ≥3 pola
+          liniowe §19.3) — kropka węzłowa (junction); kabel zejścia rysuje
+          scena. Przy NO (przerwa szyny w środku) kropka NIE jest rysowana —
+          punkt środka leży w realnej przerwie; odgałęzienie pozostaje
+          widoczne kablem sceny. */}
+      {lineTopology === 'odgałęźna' && !busBroken && (
+        <circle cx={od.x} cy={y} r={od.r} fill={s} stroke="none" data-station-branch-node="true" />
+      )}
       {/* POLE TR (K3): szyna → aparat pola TR → transformator (dwuuzwojeniowy). */}
       {props.stationHasTransformer && (
         <g data-station-transformer="true">

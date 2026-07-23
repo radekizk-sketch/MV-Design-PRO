@@ -765,10 +765,32 @@ function dominantDerGlyphKind(
  *     szyny, gdy model MÓWI nN);
  *   - `derBehindTr` bez transformatora = sprzeczność modelu (źródło „za TR"
  *     w stacji bez TR) — jawny stopNote, glif nie rysuje nN bez pola TR. */
+/** GS-5 (uwaga właściciela 2026-07-23) + recenzja NO-GO 2026-07-17 pkt 7:
+ *  JEDNA reguła prezentacji roli topologicznej stacji dla WSZYSTKICH LOD —
+ *  typ WYPROWADZONY z TYPU elementów (`classifyStationTopologicalType`,
+ *  spec §19.3), a stacja OSTATNIA w ciągu (drugie pole = wiszący koniec,
+ *  nie NO) prezentuje się jako KOŃCOWA. Wydzielone, żeby L0 (sylwetka
+ *  mini-RMU) i L1/L2 (etykieta typu) NIE mogły się rozjechać (zero cienia
+ *  reguły — wcześniej logika żyła tylko w gałęzi lod>=1, przez co L0
+ *  rysował KAŻDĄ stację dwustronnie, jak przelotową). */
+function presentedStationTopologicalType(
+  props: StationOnRunRendererProps,
+  terminalInRun: boolean,
+): {
+  readonly derived: ReturnType<typeof classifyStationTopologicalType>;
+  readonly presented: ReturnType<typeof classifyStationTopologicalType>;
+} {
+  const derived = classifyStationTopologicalType(props.snBays ?? []);
+  const presented =
+    terminalInRun && !props.isNop && derived === 'przelotowa' ? 'końcowa' : derived;
+  return { derived, presented };
+}
+
 function stationCompactGlyphSummary(
   props: StationOnRunRendererProps,
   derSources: readonly StationDerSourceInput[],
   stopNotes: string[],
+  terminalInRun: boolean,
 ): StationCompactGlyphSummary {
   const hasTransformer = props.hasTransformer ?? props.transformerRatedKva != null;
   const derBehindTr = dominantDerGlyphKind(derSources, ['nn']);
@@ -777,8 +799,13 @@ function stationCompactGlyphSummary(
       `station.der.behindTrBezTR: stacja „${props.name}" (${props.id}) — źródło DER na szynie nN (za TR), ale stacja bez transformatora; sprzeczność modelu ENM (GS-4), sylwetka L0 nie rysuje strony nN bez pola TR.`,
     );
   }
+  const { derived, presented } = presentedStationTopologicalType(props, terminalInRun);
   return {
-    sectioned: classifyStationTopologicalType(props.snBays ?? []) === 'sekcyjna',
+    sectioned: derived === 'sekcyjna',
+    // GS-5: pola liniowe sylwetki z ROLI stacji w ciągu (nie założenia
+    // „każda przelotowa"). Sekcyjna ⇒ dwustronna z definicji (mv_lv_
+    // sectional ma 2 pola liniowe) — mapuje na 'przelotowa' + `sectioned`.
+    lineTopology: presented === 'sekcyjna' ? 'przelotowa' : presented,
     hasTransformer,
     derOnMv: dominantDerGlyphKind(derSources, ['sn', 'unknown']),
     derBehindTr,
@@ -803,9 +830,10 @@ function buildMeasureInput(
     // wprost dopisuje „DER" do L1, nie do L0 (kontrakt LOD, decyzja F9.4:
     // dokumentowana, nie domyślna). measure.ts nie ma trybu „tylko kod" —
     // reużywamy pole `name` (wiersz obligatoryjny pasma nazw) jako nośnik
-    // kodu, zero zmian w measure.ts. Typ stacji (§19.3) NIE jest tu
-    // walidowany — L0 nie niesie `snBays` (topologia nieznana na tym LOD),
-    // walidacja żyje w gałęzi lod>=1 niżej.
+    // kodu, zero zmian w measure.ts. Walidacyjne stopNotes typu (§19.3)
+    // emitowane są WYŁĄCZNIE w gałęzi lod>=1 niżej (raz, nie per LOD) —
+    // ale ROLA topologiczna stacji (GS-5) liczona jest TĄ SAMĄ regułą
+    // (`presentedStationTopologicalType`) i wchodzi do `compactGlyph`.
     // GS-1 (V12K-137, GAP §10.4): L0 niesie SYLWETKĘ mini-RMU — typ stacji/TR/
     // DER/NO z TYPU elementów (spec §19.3). `snBays: []` (measure L0 nie
     // rezerwuje miejsca na pola — geometria z L2), ale `compactGlyph` niesie
@@ -814,7 +842,7 @@ function buildMeasureInput(
       id: props.id,
       name: props.stationCode ?? props.name,
       snBays: [],
-      compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? [], stopNotes),
+      compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? [], stopNotes, terminalInRun),
     };
   }
   const includeCableAndPorts = lod === 2;
@@ -825,7 +853,11 @@ function buildMeasureInput(
   // niezgodności (ostrzeżenie w `stopNotes`, BEZ cichego nadpisania
   // rysunku — spec §19.3 „dana degradowana do walidacji").
   const snBays = props.snBays ?? [];
-  const derivedType = classifyStationTopologicalType(snBays);
+  // GS-5: JEDNA reguła wyprowadzenia i prezentacji typu dla wszystkich LOD
+  // (`presentedStationTopologicalType` wyżej) — tu dodatkowo jawne stopNotes
+  // walidacyjne (emitowane raz, w gałęzi szczegółowej).
+  const { derived: derivedType, presented: presentedType } =
+    presentedStationTopologicalType(props, terminalInRun);
   if (derivedType !== props.topologicalType) {
     stopNotes.push(
       `station.type.mismatch: stacja „${props.name}" (${props.id}) — dana Substation.station_type ⇒ „${props.topologicalType}", topologia (pola liniowe/sprzęgło z snBays) ⇒ „${derivedType}"; rysunek pokazuje wyprowadzenie z topologii (spec §19.3).`,
@@ -835,10 +867,7 @@ function buildMeasureInput(
   // POŁĄCZONE". Stacja terminalna ciągu (bez następnej stacji; NO-punkt
   // wyłączony — tam drugie pole JEST okablowane do sąsiedniego ciągu)
   // prezentuje się jako KOŃCOWA, a rozjazd względem liczby pól idzie w
-  // jawny stopNote. Zakres świadomie wąski (tylko przelotowa→końcowa) —
-  // pełna typologia łącznościowa (odgałęźna itd.) w probe planu pkt 7.
-  const presentedType =
-    terminalInRun && !props.isNop && derivedType === 'przelotowa' ? 'końcowa' : derivedType;
+  // jawny stopNote.
   if (presentedType !== derivedType) {
     stopNotes.push(
       `station.type.terminal: stacja „${props.name}" (${props.id}) — pola liniowe sugerują „${derivedType}", ale drugie pole kończy się wiszącym odcinkiem (stacja ostatnia w ciągu, bez NO) — rysunek pokazuje „${presentedType}" (recenzja NO-GO 2026-07-17 pkt 7).`,

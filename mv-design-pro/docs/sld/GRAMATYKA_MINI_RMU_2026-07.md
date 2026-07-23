@@ -180,3 +180,57 @@ nN). Walidacja: `miniRmuFeatureContradictions` + macierz 120 kombinacji legalnyc
 sieć referencyjna miała 20/20 DER na szynach nN — przed GS-4 sylwetka kłamała
 w 100% przypadków; po GS-4 wszystkie znaki za TR (test fixture). Dowód wizualny:
 `docs/audit/visual/schemat-10/gs4-l0{,-detal}.png`.
+
+## GS-5 — pola liniowe sylwetki z topologii (uwaga właściciela 2026-07-23)
+
+„Render zakłada, że większość stacji to przelotowe, a w realnej sieci to
+końcowe z odgałęzień — musi być powiązane z kreatorami i całym UI, rozwiązanie
+globalne we wszystkich warstwach."
+
+POMIAR BAZOWY (sieć referencyjna, 53 stacje): 29 przelotowych + 12 KOŃCOWYCH
+(końce 12 lateralów) + 12 ODGAŁĘŹNYCH (stacje źródłujące laterale) — 45% sieci
+NIE jest przelotowe, a sylwetka L0 rysowała 53/53 dwustronnie (fantomowe pole
+WY na każdej stacji końcowej).
+
+ŁAŃCUCH GLOBALNY (audyt warstw — gdzie prawda już żyła, a gdzie była dziura):
+1. KREATOR stacji (`ui2/kreatory/stacja`): przy dopięciu na końcu odcinka
+   domyślnie `station_type='terminal'` (WE+TR, bez nadmiarowych pól WY/ODG) —
+   POPRAWNE (P1 dead-end).
+2. BACKEND: pola (bays) = prawda modelu; `continue_trunk_segment_sn` WYMAGA
+   wolnego pola liniowego (`trunk.source_field_not_line_bay`) — przedłużenie
+   ciągu ze stacji końcowej wymaga najpierw dodania pola (kreator `add_sn_bay`)
+   — SPÓJNE (typ stacji zmienia się przez topologię, nie przez edycję flagi).
+3. SCENA L1/L2: typ WYPROWADZONY z TYPU elementów (`classifyStationTopological
+   Type`, spec §19.3: 0–1 pól liniowych ⇒ końcowa, 2 ⇒ przelotowa, ≥3 ⇒
+   odgałęźna, sprzęgło ⇒ sekcyjna nadrzędnie) + prezentacja stacji OSTATNIEJ
+   w ciągu (przelotowa z wiszącym drugim polem ⇒ końcowa; NOP wyłączony) —
+   POPRAWNE (recenzja NO-GO pkt 7).
+4. SYLWETKA L0: **DZIURA** — zawsze dwa pola liniowe. NAPRAWIONE (GS-5).
+
+KANON GS-5:
+- JEDNA reguła prezentacji roli dla WSZYSTKICH LOD: helper
+  `presentedStationTopologicalType` (buildScene) — L0 i etykieta typu L1/L2
+  nie mogą się rozjechać (zero cienia reguły).
+- Semantyka LOD: **L0 = rola topologiczna stacji w ciągu** (końcowa nie
+  dostaje fantomowego toru na wylot); **L1/L2 = fizyczna kompletacja pól**
+  (pole rezerwowe/wiszące widoczne jako realny element rozdzielnicy).
+- `StationCompactGlyphSummary.lineTopology`: 'końcowa' (tylko pole WE, szyna
+  kończy się w rozdzielnicy), 'przelotowa' (dwa pola), 'odgałęźna' (dwa pola
+  + WĘZEŁ ODGAŁĘZIENIA na szynie — kropka junction `MINI_RMU.odgalezienie`).
+  Sekcyjna ⇒ 'przelotowa' + `sectioned` (dwustronna z definicji).
+- Węzeł odgałęzienia zamiast trzeciego pełnego pola: pomiar stref wykazał, że
+  kompozycja aparat+głowica w osi zejścia (x=24) łamie światło minGap=3
+  względem pola TR w każdym wariancie zgodnym z realnym punktem odejścia;
+  kabel zejścia lateralu rysuje SCENA, pełne pole odgałęźne żyje od L1
+  (adaptacyjny jest detal — kotwica stała). Przy NO (realna przerwa szyny w
+  środku) kropka nie jest rysowana (środek leży w przerwie).
+- Sprzeczności kontraktu (`miniRmuFeatureContradictions`, macierz je wyklucza):
+  sectioned ∧ topologia≠przelotowa; noOpen ∧ końcowa (punkt NO wymaga
+  drugiego toru).
+- Macierz kombinacji: 210 legalnych (30 legalnych TR×DER × 7 slotów
+  topologia×NO); sygnatury DOM unikalne.
+
+STATUS GS-5: WDROŻONE (2026-07-23, V12K-139, Fable osobiście). Po zmianie:
+12/12 stacji końcowych na L0 bez pola WY (DOM: zero linii do kotwicy E),
+12/12 odgałęźnych z węzłem; test fixture przybija rozkład 29/12/12 jak golden.
+Dowód wizualny: `docs/audit/visual/schemat-10/gs5-l0{,-detal}.png`.

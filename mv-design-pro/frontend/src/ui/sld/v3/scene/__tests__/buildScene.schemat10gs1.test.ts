@@ -120,6 +120,43 @@ describe('SCHEMAT-10 GS-1 — sylwetka mini-RMU L0 (GAP §10.4)', () => {
     expect(s0.meta.stopNotes.filter((n) => n.includes('station.der.behindTrBezTR'))).toHaveLength(0);
   });
 
+  it('GS-5: rola topologiczna stacji na L0 z topologii ciągu — końcowe istnieją, ostatnia stacja magistrali = końcowa, NOP dwustronny', () => {
+    // Uwaga właściciela 2026-07-23: „render zakłada, że większość stacji to
+    // przelotowe, a w realnej sieci to końcowe z odgałęzień" — sylwetka L0
+    // niesie ROLĘ stacji w ciągu TĄ SAMĄ regułą co etykieta typu L1/L2
+    // (presentedStationTopologicalType — jedno źródło, zero cienia).
+    const s0 = buildSceneV3(bigEnm, 0);
+    const stations = s0.symbols.filter((s) => s.symbolId === 'stationCollapsed');
+    const topo = (s: (typeof stations)[number]) => s.meta?.stationGlyph?.lineTopology;
+    // Zamknięta unia — każda stacja MA rolę.
+    for (const s of stations) {
+      expect(['końcowa', 'przelotowa', 'odgałęźna']).toContain(topo(s));
+    }
+    // POMIAR BAZOWY (2026-07-23, deterministyczna fixtura 53 stacji):
+    // 29 przelotowych + 12 KOŃCOWYCH (końce 12 lateralów) + 12 ODGAŁĘŹNYCH
+    // (stacje źródłujące laterale) — 45% sieci NIE jest przelotowe, a przed
+    // GS-5 sylwetka rysowała 53/53 dwustronnie. Liczby przybite na sztywno
+    // jak golden (fixtura niezmienna; zmiana fixtury = świadoma zmiana liczb).
+    const count = (t: string) => stations.filter((s) => topo(s) === t).length;
+    expect(count('przelotowa')).toBe(29);
+    expect(count('końcowa')).toBe(12);
+    expect(count('odgałęźna')).toBe(12);
+    // Ostatnia stacja ciągu głównego ŹRÓDŁUJE lateral (3 pola liniowe) ⇒
+    // uczciwie 'odgałęźna' (§19.3; prezentacja końcowa dotyczy WYŁĄCZNIE
+    // przelotowej z wiszącym drugim polem — recenzja NO-GO pkt 7).
+    const lastTrunkRef = s0.meta.mainTrunkStationIds[s0.meta.mainTrunkStationIds.length - 1];
+    const lastTrunk = stations.find((s) => s.meta?.ownerRef === lastTrunkRef);
+    expect(lastTrunk, 'ostatnia stacja magistrali obecna na L0').toBeTruthy();
+    expect(topo(lastTrunk!)).toBe('odgałęźna');
+    // Stacja z punktem NO: drugi tor JEST okablowany (do sąsiedniego ciągu)
+    // ⇒ rola dwustronna, nigdy 'końcowa' (sprzeczność kontraktu GS-5).
+    for (const s of stations) {
+      if (s.meta?.stationGlyph?.noOpen === true) {
+        expect(topo(s)).not.toBe('końcowa');
+      }
+    }
+  });
+
   it('kotwica: środek glifu mini-RMU L0 = środek glifu L1/L2 (JEDNA KOTWICA, zoom = skala szczegółu)', () => {
     // Środek stacji na L0 (środek stationCollapsed) MUSI zgadzać się z osią
     // magistrali/kolumną L2 — geometria liczona zawsze przy L2 (buildRowLayout).

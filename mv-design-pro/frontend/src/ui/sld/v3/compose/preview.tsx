@@ -28,6 +28,7 @@
  */
 import type { SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
+import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
 import { SOURCE_STATE_OVERLAY_COLOR, type SourceOperationalState } from './sourceKind';
 import { LABEL_TYPOGRAPHY } from '../core/text';
 import type { OwnedLabel } from '../layout/labels';
@@ -207,6 +208,14 @@ export interface PreviewElementMeta {
 export interface StationCompactGlyphSummary {
   /** Stacja sekcyjna (sprzęgło w `snBays`, `classifyStationTopologicalType`). */
   readonly sectioned: boolean;
+  /** GS-5 (uwaga właściciela 2026-07-23): topologia pól liniowych sylwetki z
+   *  ROLI stacji w ciągu — TA SAMA reguła prezentacji co L1/L2 (typ z TYPU
+   *  elementów §19.3 + stacja ostatnia w ciągu bez NO prezentuje się jako
+   *  końcowa, recenzja NO-GO pkt 7): 'końcowa' = tylko pole WE (zero
+   *  fantomowego toru na wylot), 'przelotowa' = dwa pola, 'odgałęźna' = dwa
+   *  pola + węzeł odgałęzienia na szynie. Sekcyjna ⇒ 'przelotowa' (dwustronna
+   *  z definicji) + `sectioned`. */
+  readonly lineTopology: MiniRmuLineTopology;
   /** Stacja SN/nN z transformatorem (odróżnia od rozdzielni sieciowej bez TR). */
   readonly hasTransformer: boolean;
   /** GS-4 (recenzja 2026-07-23): dominujący rodzaj DER przyłączonego do SZYNY
@@ -304,6 +313,7 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
         meterQuantity={symbol.meta?.meterQuantity}
         stationSectioned={symbol.meta?.stationGlyph?.sectioned}
+        stationLineTopology={symbol.meta?.stationGlyph?.lineTopology}
         stationHasTransformer={symbol.meta?.stationGlyph?.hasTransformer}
         stationDerOnMv={symbol.meta?.stationGlyph?.derOnMv}
         stationDerBehindTr={symbol.meta?.stationGlyph?.derBehindTr}

@@ -61,10 +61,15 @@ const HEIGHT = 1100;
   // przyłączenia DER — „PV na SN" (pole DER od szyny) vs „PV za TR (nN)"
   // (znak przy gałęzi pola TR, poniżej uzwojeń). Mini-RMU nie kłamie
   // topologicznie; DER za TR wymaga TR (kombinacja bez TR = niedopuszczalna).
+  // GS-5 (uwaga właściciela 2026-07-23): topologia pól liniowych z ROLI
+  // stacji w ciągu — stacja KOŃCOWA bez fantomowego pola WY, ODGAŁĘŹNA z
+  // węzłem odgałęzienia na szynie. Pomiar sieci referencyjnej: 29 przelotowych
+  // + 12 końcowych + 12 odgałęźnych (45% ≠ przelotowa).
   const cases: ReadonlyArray<{
     readonly title: string;
     readonly p: {
       stationSectioned?: boolean;
+      stationLineTopology?: 'końcowa' | 'przelotowa' | 'odgałęźna';
       stationHasTransformer?: boolean;
       stationDerOnMv?: StationDerGlyphKind | null;
       stationDerBehindTr?: StationDerGlyphKind | null;
@@ -74,6 +79,9 @@ const HEIGHT = 1100;
     { title: 'Rozdzielnia sieciowa', p: {} },
     { title: 'Stacja SN/nN (TR)', p: { stationHasTransformer: true } },
     { title: 'Stacja sekcyjna', p: { stationSectioned: true } },
+    { title: 'Końcowa (WE+TR)', p: { stationLineTopology: 'końcowa', stationHasTransformer: true } },
+    { title: 'Końcowa + PV za TR (nN)', p: { stationLineTopology: 'końcowa', stationHasTransformer: true, stationDerBehindTr: 'pv' } },
+    { title: 'Odgałęźna (węzeł na szynie)', p: { stationLineTopology: 'odgałęźna', stationHasTransformer: true } },
     { title: 'PV za TR (nN)', p: { stationHasTransformer: true, stationDerBehindTr: 'pv' } },
     { title: 'BESS za TR (nN)', p: { stationHasTransformer: true, stationDerBehindTr: 'bess' } },
     { title: 'Farma wiatr. za TR (nN)', p: { stationHasTransformer: true, stationDerBehindTr: 'wind' } },
@@ -107,7 +115,7 @@ const HEIGHT = 1100;
     .join('');
   const title =
     `<text x="20" y="34" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="600" fill="#E8EEF4">` +
-    `GS-4 · Gramatyka sylwetki stacji na L0 (mini-RMU, ×4) — typ · TR · DER na SN vs DER za TR (nN) · NO (V12K-137)</text>`;
+    `GS-5 · Gramatyka sylwetki stacji na L0 (mini-RMU, ×4) — rola w ciągu (końcowa/przelotowa/odgałęźna) · TR · DER na SN vs za TR (nN) · NO</text>`;
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${gridW}" height="${gridH}" viewBox="0 0 ${gridW} ${gridH}">` +
     `<rect width="${gridW}" height="${gridH}" fill="#0E1621"/>${title}${cells}</svg>`;

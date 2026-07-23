@@ -233,7 +233,7 @@ describe('GS-4 — DER na SN vs DER za transformatorem (nN)', () => {
 
   it('walidacja: DER za TR bez transformatora = sprzeczność (czerwona, nie cichy render)', () => {
     // Kontrakt cech: kombinacja NIEDOPUSZCZALNA, wykluczona z macierzy.
-    const f: MiniRmuFeatures = { sectioned: false, transformer: false, derOnMv: null, derBehindTr: 'pv', noOpen: false };
+    const f: MiniRmuFeatures = { sectioned: false, lineTopology: 'przelotowa', transformer: false, derOnMv: null, derBehindTr: 'pv', noOpen: false };
     expect(miniRmuFeatureContradictions(f).length).toBeGreaterThan(0);
     expect(allMiniRmuFeatureCombinations().every((c) => miniRmuFeatureContradictions(c).length === 0)).toBe(true);
     // Glif NIE fabrykuje strony nN bez pola TR (blok nN żyje wewnątrz grupy TR);
@@ -334,14 +334,18 @@ describe('GS-2 — kotwice, odstępy, proporcje (reguły 5–7, 10, 11, 12)', ()
   });
 });
 
-describe('GS-2/GS-4 — pełna macierz kombinacji cech (reguły 15–16 + strona DER)', () => {
-  // GS-4: macierz Z GRAMATYKI (jedna prawda) — iloczyn typ×TR×DER(SN)×DER(nN)×NO
-  // ograniczony do kombinacji LEGALNYCH (derBehindTr bez TR = NIEDOPUSZCZALNE,
-  // wykluczone z konstrukcji; dowód czerwoności w bloku GS-4 wyżej).
+describe('GS-2/GS-4/GS-5 — pełna macierz kombinacji cech (reguły 15–16 + strona DER + topologia pól)', () => {
+  // Macierz Z GRAMATYKI (jedna prawda) — iloczyn typ×topologia×TR×DER(SN)×
+  // DER(nN)×NO ograniczony do kombinacji LEGALNYCH (sprzeczności GS-4/GS-5
+  // wykluczone z konstrukcji; dowód czerwoności w blokach wyżej/niżej).
   const combos = allMiniRmuFeatureCombinations();
 
-  it('120 kombinacji legalnych (200 iloczynu − 80 sprzecznych derBehindTr-bez-TR)', () => {
-    expect(combos.length).toBe(2 * 2 * 5 * 5 * 2 - 2 * 1 * 5 * 4 * 2);
+  it('210 kombinacji legalnych (arytmetyka: 30 legalnych TR×DER × [sekcyjna:2NO·przelotowa + niesekcyjna:(2NO·przelotowa+2NO·odgałęźna+1NO·końcowa)])', () => {
+    // 30 = legalne (TR, derOnMv, derBehindTr): TR=true 5×5=25, TR=false 5×1=5.
+    // sectioned=false: przelotowa(2 NO) + odgałęźna(2 NO) + końcowa(1 NO — noOpen
+    // przy końcowej sprzeczny) = 5 slotów ⇒ 150; sectioned=true: tylko
+    // przelotowa (2 NO) ⇒ 60. Razem 210.
+    expect(combos.length).toBe(30 * (5 + 2));
     expect(combos.every((c) => miniRmuFeatureContradictions(c).length === 0)).toBe(true);
     // Sygnatury cech unikalne już na poziomie gramatyki.
     expect(new Set(combos.map(miniRmuSignature)).size).toBe(combos.length);
@@ -356,6 +360,7 @@ describe('GS-2/GS-4 — pełna macierz kombinacji cech (reguły 15–16 + strona
           x={0}
           y={0}
           stationSectioned={c.sectioned}
+          stationLineTopology={c.lineTopology}
           stationHasTransformer={c.transformer}
           stationDerOnMv={c.derOnMv}
           stationDerBehindTr={c.derBehindTr}
@@ -371,8 +376,14 @@ describe('GS-2/GS-4 — pełna macierz kombinacji cech (reguły 15–16 + strona
     const nnNode = root?.querySelector('[data-station-der-nn]');
     const snShape = snNode?.lastElementChild?.tagName.toLowerCase() ?? '';
     const nnShape = nnNode?.lastElementChild?.tagName.toLowerCase() ?? '';
+    // GS-5: topologia pól z DOM — pole WY (out) + węzeł odgałęzienia.
+    const fieldOut = root?.querySelector('[data-station-field-out="true"]') ? 'OUT' : '-';
+    const branchNode = root?.querySelector('[data-station-branch-node="true"]') ? 'W' : '-';
     return [
       root?.querySelector('[data-station-sectioned="true"]') ? 'S' : '-',
+      root?.getAttribute('data-station-line-topology') ?? '-',
+      fieldOut,
+      branchNode,
       root?.querySelector('[data-station-transformer="true"]') ? 'T' : '-',
       snNode ? `SN:${snNode.getAttribute('data-station-der-sn')}:${snShape}` : '-',
       nnNode ? `nN:${nnNode.getAttribute('data-station-der-nn')}:${nnShape}` : '-',
@@ -380,19 +391,24 @@ describe('GS-2/GS-4 — pełna macierz kombinacji cech (reguły 15–16 + strona
     ].join('|');
   }
 
-  it('każda kombinacja renderuje markery ZGODNIE z cechami (obecność 1:1, strona 1:1)', () => {
+  it('każda kombinacja renderuje markery ZGODNIE z cechami (obecność 1:1, strona 1:1, topologia 1:1)', () => {
     const shapeTag: Record<string, string> = { diamond: 'path', battery: 'g', 'circle-spokes': 'g', 'circle-dot': 'g' };
     for (const c of combos) {
       const parts = renderedSignature(c).split('|');
       expect(parts[0]).toBe(c.sectioned ? 'S' : '-');
-      expect(parts[1]).toBe(c.transformer ? 'T' : '-');
-      expect(parts[2]).toBe(c.derOnMv ? `SN:${c.derOnMv}:${shapeTag[DER_MARKER_SHAPE[c.derOnMv]]}` : '-');
-      expect(parts[3]).toBe(c.derBehindTr ? `nN:${c.derBehindTr}:${shapeTag[DER_MARKER_SHAPE[c.derBehindTr]]}` : '-');
-      expect(parts[4]).toBe(c.noOpen ? 'N' : '-');
+      expect(parts[1]).toBe(c.lineTopology);
+      // GS-5: pole WY tylko gdy tor kontynuuje; węzeł odgałęzienia tylko dla
+      // odgałęźnej BEZ przerwy NO (środek szyny w realnej przerwie).
+      expect(parts[2]).toBe(c.lineTopology === 'końcowa' ? '-' : 'OUT');
+      expect(parts[3]).toBe(c.lineTopology === 'odgałęźna' && !c.noOpen ? 'W' : '-');
+      expect(parts[4]).toBe(c.transformer ? 'T' : '-');
+      expect(parts[5]).toBe(c.derOnMv ? `SN:${c.derOnMv}:${shapeTag[DER_MARKER_SHAPE[c.derOnMv]]}` : '-');
+      expect(parts[6]).toBe(c.derBehindTr ? `nN:${c.derBehindTr}:${shapeTag[DER_MARKER_SHAPE[c.derBehindTr]]}` : '-');
+      expect(parts[7]).toBe(c.noOpen ? 'N' : '-');
     }
   });
 
-  it('iniekcja: 120 różnych cech ⇒ 120 różnych sygnatur DOM (unikalność)', () => {
+  it('iniekcja: 210 różnych cech ⇒ 210 różnych sygnatur DOM (unikalność)', () => {
     const sigs = new Set(combos.map(renderedSignature));
     expect(sigs.size).toBe(combos.length);
   });
@@ -400,10 +416,85 @@ describe('GS-2/GS-4 — pełna macierz kombinacji cech (reguły 15–16 + strona
   it('reguła 15 (determinizm/kolejność): identyczne cechy ⇒ bajt-identyczny glif', () => {
     for (const c of [combos[0], combos[47], combos[combos.length - 1]]) {
       const el = (
-        <Glyph x={0} y={0} stationSectioned={c.sectioned} stationHasTransformer={c.transformer} stationDerOnMv={c.derOnMv} stationDerBehindTr={c.derBehindTr} stationNoOpen={c.noOpen} />
+        <Glyph x={0} y={0} stationSectioned={c.sectioned} stationLineTopology={c.lineTopology} stationHasTransformer={c.transformer} stationDerOnMv={c.derOnMv} stationDerBehindTr={c.derBehindTr} stationNoOpen={c.noOpen} />
       );
       expect(renderToStaticMarkup(el)).toBe(renderToStaticMarkup(el));
     }
+  });
+});
+
+/**
+ * GS-5 (uwaga właściciela 2026-07-23: „render zakłada, że większość stacji to
+ * przelotowe, a w realnej sieci to końcowe z odgałęzień") — topologia pól
+ * liniowych sylwetki z ROLI stacji w ciągu. Stacja końcowa NIE dostaje
+ * fantomowego pola na wylot; odgałęźna niesie węzeł odgałęzienia na szynie.
+ */
+describe('GS-5 — pola liniowe sylwetki z topologii (końcowa/przelotowa/odgałęźna)', () => {
+  const Glyph = SYMBOL_GLYPHS.stationCollapsed;
+  const renderP = (el: JSX.Element) => render(<svg>{el}</svg>).container;
+
+  it('końcowa: TYLKO pole WE — zero pola WY (aparat L2/głowica R/kabel R nie istnieją)', () => {
+    const c = renderP(<Glyph x={0} y={0} stationLineTopology="końcowa" stationHasTransformer />);
+    expect(c.querySelector('[data-station-line-topology="końcowa"]')).toBeTruthy();
+    expect(c.querySelector('[data-station-field-out]')).toBeFalsy();
+    expect(c.querySelector('[data-station-aparat="L2"]')).toBeFalsy();
+    // Pole WE nietknięte + szyna kończy się w rozdzielnicy.
+    expect(c.querySelector('[data-station-aparat="L1"]')).toBeTruthy();
+    expect(c.querySelector('[data-station-bus="true"]')).toBeTruthy();
+    // Żadna linia toru nie sięga prawej kotwicy E (x=48) — brak fantomu.
+    const xs = Array.from(c.querySelectorAll('line')).map((l) => Number(l.getAttribute('x2')));
+    expect(xs.includes(MINI_RMU.bbox.width)).toBe(false);
+  });
+
+  it('końcowa + TR + PV za TR: realny dead-end z PV za trafo (przypadek z sieci) renderuje się kompletnie', () => {
+    const c = renderP(
+      <Glyph x={0} y={0} stationLineTopology="końcowa" stationHasTransformer stationDerBehindTr="pv" />,
+    );
+    expect(c.querySelector('[data-station-field-out]')).toBeFalsy();
+    expect(c.querySelector('[data-station-transformer="true"]')).toBeTruthy();
+    expect(c.querySelector('[data-station-der-nn="pv"]')).toBeTruthy();
+  });
+
+  it('przelotowa (jawnie i jako default bez podsumowania): pole WY obecne — zachowanie dotychczasowe', () => {
+    for (const el of [
+      <Glyph key="a" x={0} y={0} stationLineTopology="przelotowa" />,
+      <Glyph key="b" x={0} y={0} />,
+    ]) {
+      const c = renderP(el);
+      expect(c.querySelector('[data-station-line-topology="przelotowa"]')).toBeTruthy();
+      expect(c.querySelector('[data-station-field-out="true"]')).toBeTruthy();
+      expect(c.querySelector('[data-station-aparat="L2"]')).toBeTruthy();
+    }
+  });
+
+  it('odgałęźna: dwa pola + WĘZEŁ odgałęzienia NA szynie (kropka w przęśle szyny)', () => {
+    const c = renderP(<Glyph x={0} y={0} stationLineTopology="odgałęźna" />);
+    expect(c.querySelector('[data-station-field-out="true"]')).toBeTruthy();
+    const node = c.querySelector('[data-station-branch-node="true"]');
+    expect(node).toBeTruthy();
+    const cx = Number(node?.getAttribute('cx'));
+    expect(cx).toBeGreaterThan(MINI_RMU.bus.x1);
+    expect(cx).toBeLessThan(MINI_RMU.bus.x2);
+    expect(Number(node?.getAttribute('cy'))).toBe(MINI_RMU.bus.y);
+  });
+
+  it('odgałęźna + NO: węzeł NIE jest rysowany w realnej przerwie szyny (odgałęzienie niesie kabel sceny)', () => {
+    const c = renderP(<Glyph x={0} y={0} stationLineTopology="odgałęźna" stationNoOpen />);
+    expect(c.querySelector('[data-station-no="true"]')).toBeTruthy();
+    expect(c.querySelector('[data-station-branch-node]')).toBeFalsy();
+    expect(c.querySelector('[data-station-line-topology="odgałęźna"]')).toBeTruthy();
+  });
+
+  it('walidacja GS-5: sekcyjna wymusza dwustronność; NO przy końcowej sprzeczny (macierz bez tych kombinacji)', () => {
+    expect(
+      miniRmuFeatureContradictions({ sectioned: true, lineTopology: 'końcowa', transformer: false, derOnMv: null, derBehindTr: null, noOpen: false }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      miniRmuFeatureContradictions({ sectioned: false, lineTopology: 'końcowa', transformer: false, derOnMv: null, derBehindTr: null, noOpen: true }).length,
+    ).toBeGreaterThan(0);
+    expect(
+      allMiniRmuFeatureCombinations().some((c) => c.sectioned && c.lineTopology !== 'przelotowa'),
+    ).toBe(false);
   });
 });
 
