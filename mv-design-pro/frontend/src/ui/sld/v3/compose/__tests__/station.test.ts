@@ -411,6 +411,141 @@ describe('V3 compose/station — F9.4: DER przyłączone (nn_side) jako pełnopr
 });
 
 // ---------------------------------------------------------------------------
+// (d3) W2 (RECENZJA_L2 §3/§4; GS-4b / audyt Z2): DER wg REALNEJ strony
+// przyłączenia — `'sn'` ⇒ pole źródłowe od szyny SN; `'nn'`/`'unknown'`/brak
+// ⇒ rząd nN. Przed W2 KAŻDE źródło szło za TR (`nnBusPoint`) — kłamstwo
+// topologiczne dla źródła na SN (luka lustrzana Z2). Źródło syntetyczne SN =
+// generator z `connectionSide==='sn'` (klasyfikacja adaptera z `bus_ref`→
+// `voltage_kv` > 0,5 kV — jedyny pisarz, GS-4 przybija ją na fixturze).
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/station — W2 (GS-4b/Z2): DER wg strony przyłączenia', () => {
+  const snBays = [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_TRANSFORMER, 1)];
+
+  it('wariant A (nn): connectionSide=nn ⇒ rząd nN (der-row-bus/trunk na szynie nN), ZERO pola źródłowego SN; ciągłość TR→szyna→odczepy', () => {
+    const station = makeStation('w2-nn', snBays, {
+      nnVoltageKv: 0.4,
+      aggregatedLvLoad: { pMw: 0.3, qMvar: 0.1, count: 3 },
+      derSources: [{ id: 'gen-nn-1', kind: 'pv', ratedPower: 0.5, connectionSide: 'nn' }],
+    });
+    const composition = composeStation(buildComposeInput(station, { hasLvSection: true }));
+
+    // Rząd nN obecny (źródło ZA TR, na szynie nN).
+    expect(composition.segments.some((s) => s.ownerRef === 'w2-nn#der-row-bus')).toBe(true);
+    expect(composition.segments.some((s) => s.ownerRef === 'w2-nn#der-row-trunk')).toBe(true);
+    // Szyna nN obecna + odczep odbioru (strzałka odbioru na szynie nN).
+    expect(composition.segments.some((s) => s.ownerRef === 'w2-nn#lv-bus')).toBe(true);
+    expect(composition.segments.some((s) => s.ownerRef === 'w2-nn#lv-load-drop')).toBe(true);
+    expect(composition.symbols.some((s) => s.symbolId === 'loadArrow')).toBe(true);
+    // ZERO pola źródłowego SN dla tego źródła.
+    expect(composition.segments.some((s) => s.ownerRef.endsWith('#sn-source-descent'))).toBe(false);
+    // Ciągłość toru (odczepy kończą się na porcie/szynie).
+    expect(internalSegmentsEndAtPortsOrBus(composition)).toBe(true);
+    expect(allCompositionSymbolsOnGrid(composition)).toBe(true);
+    expect(noCompositionSymbolOverlaps(composition)).toBe(true);
+  });
+
+  it('wariant B (sn): connectionSide=sn ⇒ POLE ŹRÓDŁOWE od szyny SN (sn-source-descent), ZERO renderu za TR (asercja negatywna)', () => {
+    const input = buildComposeInput(
+      makeStation('w2-sn', snBays, {
+        nnVoltageKv: 0.4,
+        derSources: [{ id: 'gen-sn-1', kind: 'pv', ratedPower: 0.5, connectionSide: 'sn' }],
+      }),
+      { hasLvSection: true },
+    );
+    const composition = composeStation(input);
+
+    // Pole źródłowe SN: odczep od szyny SN do portu AC symbolu źródła.
+    const descent = composition.segments.find((s) => s.ownerRef === 'gen-sn-1#sn-source-descent');
+    expect(descent).toBeDefined();
+    // Kotwica GÓRNA odczepu na szynie SN (busAxisY), nie na szynie nN.
+    expect(descent!.points[0].y).toBe(input.busAxisY);
+    // Symbol źródła NAD blokiem (blockTopY), przyłączony od szyny SN — NIE za
+    // TR (rząd nN jest niżej, `nnBusPoint.y + clearance`).
+    const derSymbol = composition.symbols.find((s) => s.sourceRef === 'gen-sn-1');
+    expect(derSymbol).toBeDefined();
+    expect(derSymbol!.symbolId).toBe('derPv');
+    expect(derSymbol!.y).toBe(input.blockTopY);
+    // Dolny koniec odczepu = port AC symbolu (ciągłość elektryczna).
+    expect(descent!.points[1].y).toBe(derSymbol!.ports.ac!.y);
+    expect(descent!.points[1].x).toBe(derSymbol!.ports.ac!.x);
+    // ASERCJA NEGATYWNA (Z2): źródło na SN NIE jest rysowane za TR — brak
+    // rzędu nN dla tej stacji (nnDer puste).
+    expect(composition.segments.some((s) => s.ownerRef === 'w2-sn#der-row-bus')).toBe(false);
+    expect(composition.segments.some((s) => s.ownerRef === 'w2-sn#der-row-trunk')).toBe(false);
+    // Etykieta rodzaj+moc obecna.
+    expect(composition.labels.der.map((l) => l.text)).toContain('PV 500 kW');
+    // Wyrocznie: siatka, brak nachodzeń, ciągłość (odczep kończy się na szynie
+    // SN i porcie AC).
+    expect(allCompositionSymbolsOnGrid(composition)).toBe(true);
+    expect(noCompositionSymbolOverlaps(composition)).toBe(true);
+    expect(internalSegmentsEndAtPortsOrBus(composition)).toBe(true);
+    expect(composition.missingData).toEqual([]);
+  });
+
+  it('wariant mieszany (nn+sn): nn→rząd nN, sn→pole źródłowe SN — rozdzielone, oba widoczne', () => {
+    const composition = composeStation(
+      buildComposeInput(
+        makeStation('w2-mix', snBays, {
+          nnVoltageKv: 0.4,
+          derSources: [
+            { id: 'gen-nn-a', kind: 'bess', ratedPower: 0.5, connectionSide: 'nn' },
+            { id: 'gen-sn-b', kind: 'pv', ratedPower: 0.5, connectionSide: 'sn' },
+          ],
+        }),
+        { hasLvSection: true },
+      ),
+    );
+    expect(composition.segments.some((s) => s.ownerRef === 'w2-mix#der-row-bus')).toBe(true);
+    expect(composition.segments.some((s) => s.ownerRef === 'gen-sn-b#sn-source-descent')).toBe(true);
+    // Źródło nN NIE dostaje pola źródłowego SN; źródło SN NIE trafia do rzędu nN.
+    expect(composition.segments.some((s) => s.ownerRef === 'gen-nn-a#sn-source-descent')).toBe(false);
+    expect(composition.symbols.filter((s) => s.symbolId.startsWith('der'))).toHaveLength(2);
+    expect(internalSegmentsEndAtPortsOrBus(composition)).toBe(true);
+    expect(noCompositionSymbolOverlaps(composition)).toBe(true);
+  });
+
+  it('§0 karty: connectionSide=unknown przy stacji z TR ⇒ rząd nN (konwencja F9.4) + jawne oznaczenie meta station.der.sideAssumedNn', () => {
+    const composition = composeStation(
+      buildComposeInput(
+        makeStation('w2-unk', snBays, {
+          nnVoltageKv: 0.4,
+          derSources: [{ id: 'gen-unk', kind: 'pv', ratedPower: 0.5, connectionSide: 'unknown' }],
+        }),
+        { hasLvSection: true },
+      ),
+    );
+    expect(composition.segments.some((s) => s.ownerRef === 'w2-unk#der-row-bus')).toBe(true);
+    expect(composition.segments.some((s) => s.ownerRef.endsWith('#sn-source-descent'))).toBe(false);
+    expect(composition.missingData).toContain('station.der.sideAssumedNn');
+  });
+
+  it('§11/§10: stacja bez sekcji nN ⇒ zero szyny nN ORAZ zero sugestii „Szyna nN" w pasmie nazw (zakaz opisu niewidocznej topologii)', () => {
+    const lineOnly = makeStation('w2-no-nn', [makeBay(FIELD_ROLE.RMU_LINE, 0), makeBay(FIELD_ROLE.RMU_LINE, 1)]);
+    const composition = composeStation(buildComposeInput(lineOnly, { hasLvSection: true }));
+    expect(composition.segments.some((s) => s.ownerRef.endsWith('#lv-bus'))).toBe(false);
+    // Pasmo nazw NIE wspomina szyny nN, gdy geometrii nN nie ma.
+    const bandText = composition.labels.stationName.rows.map((r) => r.text).join(' | ');
+    expect(bandText).not.toContain('Szyna nN');
+  });
+
+  it('W2 determinizm: wariant B compose 2× ⇒ identyczne segmenty/symbole (to samo wejście = ten sam wynik)', () => {
+    const input = buildComposeInput(
+      makeStation('w2-det', snBays, {
+        nnVoltageKv: 0.4,
+        derSources: [{ id: 'gen-sn-1', kind: 'pv', ratedPower: 0.5, connectionSide: 'sn' }],
+      }),
+      { hasLvSection: true },
+    );
+    const a = composeStation(input);
+    const b = composeStation(input);
+    expect(JSON.stringify(a.segments)).toBe(JSON.stringify(b.segments));
+    expect(JSON.stringify(a.symbols)).toBe(JSON.stringify(b.symbols));
+    expect(JSON.stringify(a.labels.der)).toBe(JSON.stringify(b.labels.der));
+  });
+});
+
+// ---------------------------------------------------------------------------
 // (e) Podpisy kierunku (spec §9) — wejście gotowe dla resolveLabels.
 // ---------------------------------------------------------------------------
 

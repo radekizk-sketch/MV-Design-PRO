@@ -1100,6 +1100,70 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     bx += reservedWidth + GRID;
   });
 
+  // W2 (RECENZJA_L2 §3/§4 wariant B; GS-4b / audyt Z2, `AUDYT_POWYKONAWCZY_
+  // SLD_2026-07.md`): rozdział źródeł DER wg REALNEJ strony przyłączenia
+  // (`connectionSide`, klasyfikacja z szyny ENM `Generator.bus_ref`→
+  // `voltage_kv`, adapter v2 jedyny pisarz — §0 karty). `'sn'` ⇒ POLE ŹRÓDŁOWE
+  // od szyny SN (odczep → symbol źródła), reszta (`'nn'`/`'unknown'`/brak) ⇒
+  // rząd nN niżej (dotychczasowa konwencja F9.4). Przed W2 KAŻDE źródło szło
+  // za TR (`nnBusPoint ?? lvPorts[0]`) — źródło na SN rysowane za TR było
+  // kłamstwem topologicznym w drugą stronę niż to, które GS-4 naprawił na L0
+  // (luka lustrzana Z2). ZERO fabrykacji: pole źródłowe SN rysowane BEZ
+  // aparatu — `StationDerSourceInput` (projekcja `SldSourceView`) NIE niesie
+  // `primaryDevices`, więc §12.5 „zakaz domysłu" ⇒ odczep bez łącznika.
+  const allDerSources = station.derSources ?? [];
+  const nnDerSources = allDerSources.filter((s) => s.connectionSide !== 'sn');
+  const snDerSources = allDerSources.filter((s) => s.connectionSide === 'sn');
+
+  // Pola źródłowe SN — dodatkowe kolumny NA SZYNIE SN (po prawej pól), tap
+  // dopisany do `busTapXs` PRZED rysunkiem szyny SN, żeby szyna objęła je z
+  // konstrukcji (jak każde pole). Rezerwacja szerokości/wysokości: `layout/
+  // measure.ts` (`requiredStationWidth`/`stationBlockHeight` — `snSource
+  // FieldsRowWidth`/wysokość pola źródłowego, jedna prawda measure↔compose).
+  snDerSources.forEach((source) => {
+    const symbolId = symbolIdForSourceKind(source.kind);
+    const def = SYMBOL_DEFS[symbolId];
+    const slotWidth = derColumnRequiredWidth(source);
+    const symbolX = snapToGrid(bx + (slotWidth - def.width) / 2);
+    const symbolY = blockTopY;
+    const ports = portsInWorld(def, symbolX, symbolY);
+    const acPort = ports.ac ?? Object.values(ports)[0];
+    busTapXs.push(acPort.x);
+
+    symbols.push({
+      symbolId,
+      sourceRef: source.id,
+      missingData: source.missingData,
+      operationalState: source.operationalState,
+      derKind: source.kind,
+      x: symbolX,
+      y: symbolY,
+      ports,
+    });
+
+    // Odczep od szyny SN (`busAxisY`) do portu AC symbolu źródła (`blockTopY`)
+    // — pion pola źródłowego, kotwica GÓRNA na szynie SN (`#sn-bus`, bus-like
+    // w `internalSegmentsEndAtPortsOrBus`), dolna na porcie AC symbolu.
+    segments.push({
+      ownerRef: `${source.id}#sn-source-descent`,
+      points: [
+        { x: acPort.x, y: busAxisY },
+        { x: acPort.x, y: acPort.y },
+      ],
+    });
+
+    derLabels.push({
+      ownerRef: `${source.id}#der-label`,
+      ownerKind: 'der',
+      text: derLabelText(source),
+      labelClass: 't2',
+      anchor: { x: symbolX + def.width / 2, y: symbolY + def.height },
+      placement: 'below',
+    });
+
+    bx += slotWidth + GRID;
+  });
+
   // Szyna SN pozioma NA OSI B2 (spec §3: „dł. z liczby pól") — od pierwszego
   // do ostatniego zaczepu pola tej stacji.
   if (busTapXs.length > 0) {
@@ -1164,7 +1228,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // schodzi ze środka szyny; pomiar: na wąskiej szynie 2×GRID gabaryt
     // strzałki DOTYKAŁ trunku — symbolWireCollisions 24 na fixturze).
     const lvBusExtendLeft =
-      station.aggregatedLvLoad != null && (station.derSources ?? []).length > 0 ? 3 * GRID : 0;
+      station.aggregatedLvLoad != null && nnDerSources.length > 0 ? 3 * GRID : 0;
     const busLeft = (minX === maxX ? minX - GRID : minX) - lvBusExtendLeft;
     const busRight = minX === maxX ? maxX + GRID : maxX;
 
@@ -1199,7 +1263,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     // etykiety pod szyną (pomiar: kolidowały z pionem trunku DER).
     if (station.aggregatedLvLoad != null) {
       const arrowDef = SYMBOL_DEFS.loadArrow;
-      const arrowDropX = (station.derSources ?? []).length > 0 ? busLeft : nnBusPoint.x;
+      const arrowDropX = nnDerSources.length > 0 ? busLeft : nnBusPoint.x;
       const arrowX = snapToGrid(arrowDropX - arrowDef.width / 2);
       const arrowY = busY + GRID;
       segments.push({
@@ -1226,7 +1290,7 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   // `hasLvSection` było ustawione). Rysowane WYŁĄCZNIE gdy `station.
   // derSources` niesie wpisy (stacje bez DER: zero zmian geometrii,
   // `derRowFootprint([])==={0,0}`).
-  const derSources = station.derSources ?? [];
+  const derSources = nnDerSources;
   if (derSources.length > 0) {
     const attach = nnBusPoint ?? (lvPorts[0] ? { x: lvPorts[0].x, y: lvPorts[0].y } : null);
     if (!attach) {
@@ -1244,6 +1308,15 @@ export function composeStation(input: ComposeStationInput): StationComposition {
       // parytet liczności — teraz naprawdę, nie w komentarzu (raport F9.4).
       missingData.push('station.der.unattached');
     } else {
+      // W2 (§0 karty): źródło o stronie `'unknown'` (model NIE mówi nN —
+      // `Generator.bus_ref` bez szyny/napięcia) przyłączone do nN KONWENCJĄ
+      // F9.4 (stacja ma TR), nie z danych — jawne oznaczenie w meta, żeby
+      // czytelnik wiedział, że strona jest wywnioskowana z konwencji, nie
+      // odczytana z modelu (honest degradation; źródło `'sn'` poszło już do
+      // pola źródłowego SN wyżej, tu trafia tylko `'nn'`/`'unknown'`/brak).
+      if (derSources.some((s) => s.connectionSide === 'unknown')) {
+        missingData.push('station.der.sideAssumedNn');
+      }
       const derRowY = attach.y + DER_ROW_TOP_CLEARANCE;
       // FIX-3-wzorzec (spec §5.1 „max(bbox symbolu, najszerszy slot etykiet
       // WŁASNYCH)", ten sam wzorzec co oznacznik aparatu — komentarz wyżej

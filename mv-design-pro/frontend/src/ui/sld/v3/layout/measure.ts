@@ -452,6 +452,48 @@ function derRowExtraHeight(sources: readonly StationDerSourceInput[]): number {
   );
 }
 
+/**
+ * W2 (RECENZJA_L2 §4 wariant B, GS-4b): źródła DER o stronie `'sn'` —
+ * `connectionSide==='sn'` (pole źródłowe od szyny SN). `derBySide` rozdziela
+ * listę na stronę SN i resztę (nN/unknown/brak) — JEDNA prawda podziału
+ * measure↔compose (`compose/station.ts` filtruje IDENTYCZNIE). */
+export function snSideSources(
+  sources: readonly StationDerSourceInput[],
+): readonly StationDerSourceInput[] {
+  return sources.filter((s) => s.connectionSide === 'sn');
+}
+
+/** W2: reszta DER (nN/unknown/brak) — rząd nN. */
+export function nnSideSources(
+  sources: readonly StationDerSourceInput[],
+): readonly StationDerSourceInput[] {
+  return sources.filter((s) => s.connectionSide !== 'sn');
+}
+
+/**
+ * W2 (RECENZJA_L2 §4 wariant B): szerokość WYMAGANA rzędu pól źródłowych SN —
+ * te same sloty co rząd nN (`derColumnRequiredWidth` per źródło + odstępy
+ * GRID), bo `compose/station.ts` rysuje pole źródłowe SN symbolem tej samej
+ * klasy (`symbolIdForSourceKind`) z etykietą `derLabelText`. `0` gdy zero
+ * źródeł SN (sieć referencyjna: 20/20 DER na nN ⇒ 0 ⇒ zero zmian geometrii). */
+export function snSourceFieldsRowWidth(
+  sources: readonly StationDerSourceInput[],
+): number {
+  const snDer = snSideSources(sources);
+  return derRowFootprint(snDer).width;
+}
+
+/**
+ * W2: wysokość pola źródłowego SN pod osią magistrali (symbol źródła na
+ * `blockTopY` + etykieta rodzaj+moc pod nim) — kandydat do `max()` z
+ * najwyższą kolumną pola w `stationBlockHeight` (pole źródłowe zajmuje ten sam
+ * pas pionowy co kolumny pól, od `blockTopY` w dół). `0` gdy zero źródeł SN. */
+function snSourceFieldHeight(sources: readonly StationDerSourceInput[]): number {
+  const snDer = snSideSources(sources);
+  if (snDer.length === 0) return 0;
+  return derRowFootprint(snDer).height + DER_LABEL_GAP + LABEL_LINE_HEIGHT_T2;
+}
+
 /** Szerokość bloku stacji z liczby pól: suma szerokości kolumn (z rezerwacją
  *  etykiet własnych, FIX-3) + odstępy GRID między kolumnami (spec §5.1,
  *  §5.3 "blok stacji z liczby pól").
@@ -491,12 +533,23 @@ export function stationBlockWidth(
  *  wysokość = najwyższa kolumna + prześwit szyn SN/nN + F9.4 rząd DER
  *  (0, gdy stacja bez DER — zero zmian geometrii). */
 export function stationBlockHeight(station: StationMeasureInput): number {
-  const derExtra = derRowExtraHeight(station.derSources ?? []);
+  const allDer = station.derSources ?? [];
+  // W2 (GS-4b): rząd nN rezerwuje wysokość TYLKO dla źródeł strony nN —
+  // źródła SN mają własne pole źródłowe (pas kolumn, `snSourceFieldHeight`).
+  const derExtra = derRowExtraHeight(nnSideSources(allDer));
   // Recenzja NO-GO 2026-07-17 pkt 6: strona nN (etykieta szyny + odbiór/
   // granica modelu) rezerwuje własną wysokość POD szyną nN.
   const lvExtra = lvSideExtraHeight(station);
-  if (station.snBays.length === 0) return STATION_BLOCK_BUS_CLEARANCE + derExtra + lvExtra;
-  const tallest = Math.max(...station.snBays.map((bay) => bayColumnFootprint(bay).height));
+  // W2: pole źródłowe SN zajmuje pas pionowy kolumn (od `blockTopY` w dół) —
+  // kandydat do `max()` z najwyższą kolumną pola (0, gdy zero źródeł SN).
+  const snFieldHeight = snSourceFieldHeight(allDer);
+  if (station.snBays.length === 0) {
+    return snFieldHeight + STATION_BLOCK_BUS_CLEARANCE + derExtra + lvExtra;
+  }
+  const tallest = Math.max(
+    ...station.snBays.map((bay) => bayColumnFootprint(bay).height),
+    snFieldHeight,
+  );
   return tallest + STATION_BLOCK_BUS_CLEARANCE + derExtra + lvExtra;
 }
 
@@ -537,8 +590,17 @@ export function requiredStationWidth(station: StationMeasureInput): number {
     station.bayDirectionCaptions,
     station.entryDescentBayIndex,
   );
-  const derWidth = derRowFootprint(station.derSources ?? []).width;
-  const blockWidth = derWidth > 0 ? baysWidth + GRID + derWidth : baysWidth;
+  // W2 (GS-4b): EKSTENT poziomy = kolumny pól + pola źródłowe SN (dodatkowe
+  // kolumny NA szynie SN, `compose/station.ts` rysuje je flush-right za polami)
+  // + rząd nN (TYLKO źródła strony nN). Trzy człony dopisane PO PRAWEJ, każdy
+  // z odstępem GRID; sieć referencyjna (0 źródeł SN) ⇒ `snFieldsWidth==0` ⇒
+  // formuła identyczna jak przed W2 (zero zmian szerokości kolumny).
+  const allDer = station.derSources ?? [];
+  const snFieldsWidth = snSourceFieldsRowWidth(allDer);
+  const nnDerWidth = derRowFootprint(nnSideSources(allDer)).width;
+  let blockWidth = baysWidth;
+  if (snFieldsWidth > 0) blockWidth += GRID + snFieldsWidth;
+  if (nnDerWidth > 0) blockWidth += GRID + nnDerWidth;
 
   const nameWidths: number[] = [measureLabelWidth(station.name, 't1')];
   if (station.stationCode) nameWidths.push(measureLabelWidth(station.stationCode, 't1'));
