@@ -31,7 +31,7 @@ export type SymbolId =
   | 'derGenerator'     // generator (G w okręgu)
   | 'derWind'          // farma wiatrowa (turbina, F9.4 §13.2)
   | 'gridSource'       // sieć zewnętrzna (Source ENM, F9.4 §13.1/§13.2)
-  | 'stationCollapsed' // stacja SN/nN, widok zbiorczy (L0) — kontur kwadratu
+  | 'stationCollapsed' // stacja SN/nN, widok zbiorczy (L0) — mini-RMU (sylwetka)
   | 'protectionRelay'  // F9.9: przekaźnik zabezpieczeniowy (okrąg + kody ANSI, §17.1)
   | 'meter'            // F9.9: miernik (okrąg „M"/litera wielkości, §17.1)
   | 'loadArrow';       // zagregowany odbiór 0,4 kV (spec §12.5 — recenzja NO-GO pkt 6)
@@ -147,16 +147,25 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   gridSource: def('gridSource', 16, 24, [
     { name: 'bottom', x: 8, y: 24, dir: 'S' },
   ], 'Sieć zewnętrzna'),
-  // F6b (spłata STOP-notatki F6a): dedykowany symbol zbiorczy stacji na L0 —
-  // porty N/S/E/W jak `junction` (ten sam kontrakt geometrii routingu), ale
-  // rysunek to KONTUR KWADRATU (nie 4-portowy węzeł kropkowy), żeby stacja na
-  // L0 była odróżnialna od jawnego węzła T tras (`junction`), spec §3 „Stacja
-  // SN/nN … NIE kafel" — na L0 to nadal „∎16 z kodem", nie punkt.
-  stationCollapsed: def('stationCollapsed', 16, 16, [
-    { name: 'n', x: 8, y: 0, dir: 'N' },
-    { name: 's', x: 8, y: 16, dir: 'S' },
-    { name: 'e', x: 16, y: 8, dir: 'E' },
-    { name: 'w', x: 0, y: 8, dir: 'W' },
+  // SCHEMAT-10 GS-1 (V12K-137, GAP `S7_GAP_CROSSING_ZERO` §10.4, macierz
+  // `AUDYT_SCHEMATOW_OD_ZERA_2026-07` §3 wiersz „Stacja"): symbol zbiorczy
+  // stacji na L0 to MINI-RMU — sylwetka tej samej gramatyki co L1/L2 w
+  // miniaturze (obrys enklozury + wewnętrzna kreska szyny SN), nie goły
+  // kwadrat 16×16. Rozmiar 48×48 (6×GRID) WYPROWADZONY z czytelności na
+  // kadrze CAŁEJ sieci referencyjnej: przy fit `sldSubstrate52s` (bbox
+  // 14296×4379, harness 1800×1100, padding 40) skala fit=0,1203 ⇒ 48px świata
+  // = 5,78px ekranu (16px dawało 1,93px — nieodróżnialne od kropki węzła).
+  // Prześwit sąsiadów na L0 (min. odstęp osi stacji tego samego pasa = 664px)
+  // ⇒ glif zajmuje <8% odstępu, zero ryzyka kolizji (`noSceneSymbolOverlaps`).
+  // Porty N/S/E/W jak `junction` (kontrakt routingu; L0 kotwiczy dodatkowo
+  // ŚRODKIEM — `sceneSegmentEndpointGaps`). Markery typu/TR/DER/NO rysuje
+  // `StationCollapsedGlyph` WEWNĄTRZ bboxa (zero nowej rezerwacji), sterowane
+  // `GlyphProps` (`meta.stationGlyph`, wzór `protectionCodes`/`meterQuantity`).
+  stationCollapsed: def('stationCollapsed', 48, 48, [
+    { name: 'n', x: 24, y: 0, dir: 'N' },
+    { name: 's', x: 24, y: 48, dir: 'S' },
+    { name: 'e', x: 48, y: 24, dir: 'E' },
+    { name: 'w', x: 0, y: 24, dir: 'W' },
   ], 'Stacja (widok zbiorczy)'),
   // F9.9 (spec §17.1/§17.3): przekaźnik zabezpieczeniowy — okrąg 24×24
   // (3×GRID) w kolumnie adnotacji pola. Element ADNOTACJI (NIE aparat toru

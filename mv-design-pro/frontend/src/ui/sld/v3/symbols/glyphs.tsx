@@ -18,6 +18,12 @@ export const V3_STROKE_APPARATUS = 1.2;
 
 export type SwitchState = 'closed' | 'open' | 'unknown';
 
+/** SCHEMAT-10 GS-1 (V12K-137): rodzaj DER niesiony przez sylwetkę mini-RMU na
+ *  L0 — unia LOKALNA (biblioteka symboli nie zależy od `compose/sourceKind`,
+ *  zachowana warstwowość §3); `'unknown'` mapuje wołający na `'generator'`
+ *  (glif generyczny, jak `DER_SOURCE_KIND_SYMBOL`). */
+export type StationDerGlyphKind = 'pv' | 'bess' | 'wind' | 'generator';
+
 export interface GlyphProps {
   readonly x: number;
   readonly y: number;
@@ -43,6 +49,23 @@ export interface GlyphProps {
    *  pole (wzorzec `labelLines`). Brak danych ⇒ fallback „M" (rozstrzygany
    *  wpisem legendy arkusza). */
   readonly meterQuantity?: 'A' | 'V';
+  /** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): stacja SEKCYJNA (sprzęgło w
+   *  topologii, `classifyStationTopologicalType`) — WYŁĄCZNIE `Station
+   *  CollapsedGlyph` rysuje przerwę sekcyjną na szynie (wzór `labelLines`).
+   *  Rodzaj stacji (SN/nN · rozdzielnia sieciowa · sekcyjna) WYPROWADZONY z
+   *  TYPU elementów, nie z nazw (spec §19.3). */
+  readonly stationSectioned?: boolean;
+  /** GS-1: stacja SN/nN z transformatorem (`Substation.hasTransformer`/
+   *  `transformerRatedKva`) — mini-glif TR zwieszony pod szyną. Odróżnia
+   *  stację transformatorową od rozdzielni sieciowej (bez TR). */
+  readonly stationHasTransformer?: boolean;
+  /** GS-1 (baza §10.4: DER na L0 = 0 → domknięcie): dominujący rodzaj DER
+   *  przyłączonego do stacji — marker nad szyną (PV/BESS/FW). `null`/brak =
+   *  stacja bez DER (zero markera). */
+  readonly stationDer?: StationDerGlyphKind | null;
+  /** GS-1: stacja niesie punkt/łącznik NORMALNIE OTWARTY (`Substation.isNop`)
+   *  — marker otwartego łącznika na szynie (odróżnialny od zamkniętego). */
+  readonly stationNoOpen?: boolean;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -338,13 +361,74 @@ export function GridSourceGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
-/** F6b: stacja SN/nN, widok zbiorczy (L0) — kontur kwadratu (P5: rysunek
- *  bazowy mono, bez wypełnienia), NIE węzeł kropkowy `junction` (odróżnialny
- *  z konstrukcji: `querySelector('circle')` musi być puste dla tego glifu). */
+/** GS-1 (V12K-137, GAP §10.4): marker DER (nad szyną mini-RMU) — kształt
+ *  koduje rodzaj (PV trójkąt / BESS kwadrat / FW·generator okrąg), spójnie z
+ *  konwencją „rozróżnienie IKONĄ" glifów DER (`DerPvGlyph`…). */
+function derMiniMarker(kind: StationDerGlyphKind, s: string): JSX.Element {
+  const cx = 30;
+  const cy = 13;
+  if (kind === 'pv') {
+    return <path d={`M${cx},${cy - 4} L${cx + 4},${cy + 3} L${cx - 4},${cy + 3} Z`} fill="none" stroke={s} strokeWidth={0.9} />;
+  }
+  if (kind === 'bess') {
+    return <rect x={cx - 4} y={cy - 4} width={8} height={8} fill="none" stroke={s} strokeWidth={0.9} />;
+  }
+  // FW (farma wiatrowa) i generator generyczny → okrąg (maszyna wirująca).
+  return <circle cx={cx} cy={cy} r={4} fill="none" stroke={s} strokeWidth={0.9} />;
+}
+
+/**
+ * GS-1 (V12K-137, GAP `S7_GAP_CROSSING_ZERO` §10.4, macierz `AUDYT_SCHEMATOW_
+ * OD_ZERA_2026-07` §3 „Stacja"): stacja SN/nN — MINI-RMU na L0 (sylwetka tej
+ * samej gramatyki co L1/L2 w miniaturze), NIE goły kwadrat/kropka `junction`.
+ * Rysunek BAZOWY mono (P5, stan/rodzaj = GEOMETRIA, nie kolor):
+ *  - enklozura (obrys) + POZIOMA KRESKA SZYNY SN (grubsza) przez środek —
+ *    routing L0 kotwiczy się środkiem (24,24), więc szyna magistrali
+ *    przechodzi wprost przez sylwetkę (spójne z „szyna biegnie przez stację");
+ *  - markery WEWNĄTRZ bboxa (48×48), każdy w osobnej strefie (bez nachodzeń,
+ *    z dala od pionowej kolumny routingu x=24), z atrybutem DOM dla wyroczni:
+ *      · transformator (SN/nN) — mini-glif TR zwieszony pod szyną (dół-lewo);
+ *      · DER — marker rodzaju nad szyną (góra-prawo);
+ *      · stacja sekcyjna — przerwa/sprzęgło na szynie (środek);
+ *      · łącznik/NO otwarty — kwadrat otwarty na szynie (prawo).
+ * Odróżnialność od `junction`: obecność `data-station-silhouette` + enklozura
+ * (rect) + kreska szyny (test `symbols.test.tsx`). Kolor NIE koduje tu stanu.
+ */
 export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
+  const s = stroke(props);
   return (
-    <g {...glyphGroupProps('stationCollapsed', props)}>
-      <rect x={0} y={0} width={16} height={16} fill="none" stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+    <g {...glyphGroupProps('stationCollapsed', props)} data-station-silhouette="mini-rmu">
+      {/* Enklozura (obrys RMU) — mono, bez wypełnienia (P5). */}
+      <rect x={4} y={10} width={40} height={28} rx={3} fill="none" stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
+      {/* Szyna SN wewnętrzna — grubsza kreska (nośnik = waga, nie kolor). */}
+      <line x1={8} y1={24} x2={40} y2={24} stroke={s} strokeWidth={2} data-station-bus="true" />
+      {/* Stacja SEKCYJNA: sprzęgło = przerwa sekcyjna na szynie (dwa piony
+          flankujące środek, z dala od kolumny routingu x=24). */}
+      {props.stationSectioned && (
+        <g data-station-sectioned="true">
+          <line x1={21} y1={20} x2={21} y2={28} stroke={s} strokeWidth={0.9} />
+          <line x1={27} y1={20} x2={27} y2={28} stroke={s} strokeWidth={0.9} />
+        </g>
+      )}
+      {/* Transformator (SN/nN): stub w dół + dwa okręgi (dwuuzwojeniowy). */}
+      {props.stationHasTransformer && (
+        <g data-station-transformer="true">
+          <line x1={18} y1={24} x2={18} y2={29} stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
+          <circle cx={18} cy={32} r={2.6} fill="none" stroke={s} strokeWidth={0.9} />
+          <circle cx={18} cy={35.5} r={2.6} fill="none" stroke={s} strokeWidth={0.9} />
+        </g>
+      )}
+      {/* DER: stub w górę + marker rodzaju (PV/BESS/FW). */}
+      {props.stationDer && (
+        <g data-station-der={props.stationDer}>
+          <line x1={30} y1={24} x2={30} y2={18} stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
+          {derMiniMarker(props.stationDer, s)}
+        </g>
+      )}
+      {/* Łącznik/NO otwarty: kwadrat OTWARTY na szynie (prawy odcinek). */}
+      {props.stationNoOpen && (
+        <rect x={33} y={21} width={6} height={6} fill="none" stroke={s} strokeWidth={0.9} data-station-no="true" />
+      )}
     </g>
   );
 }
