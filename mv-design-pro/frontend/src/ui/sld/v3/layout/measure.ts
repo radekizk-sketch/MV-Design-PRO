@@ -33,6 +33,7 @@ import {
 } from '../compose/apparatusSequence';
 import { protectionAnnotationColumnWidth } from '../compose/protectionMarking';
 import { derLabelText, derSymbolSize, type StationDerSourceInput } from '../compose/sourceKind';
+import type { StationCompactGlyphSummary } from '../compose/preview';
 import type { FieldRole } from '../../v2/domain/apparatusContracts';
 
 const LABEL_LINE_HEIGHT_T1 = labelLineHeight('t1');
@@ -87,6 +88,12 @@ export interface StationMeasureInput
   /** Recenzja NO-GO 2026-07-17 pkt 6: zagregowany odbiór nN — `null` =
    *  ZERO rekordów `Load` (kompozycja pisze jawną granicę modelu). */
   readonly aggregatedLvLoad?: { readonly pMw: number; readonly qMvar: number; readonly count: number } | null;
+  /** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): podsumowanie sylwetki mini-RMU na
+   *  L0 (typ stacji/TR/DER/NO). Pole WŁASNE v3, wypełniane WYŁĄCZNIE dla
+   *  renderu L0 (`buildMeasureInput`) — geometria (measure/bands/columns) go
+   *  IGNORUJE (render-only). `composeRowStation` przenosi je na `meta.
+   *  stationGlyph` symbolu `stationCollapsed`. */
+  readonly compactGlyph?: StationCompactGlyphSummary;
 }
 
 /** FIX-2 (recenzja F2): re-eksport formatera mocy TR z `StationOnRunRenderer`

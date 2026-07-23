@@ -172,7 +172,9 @@ import type {
   PreviewSegment,
   PreviewSegmentKind,
   PreviewSymbol,
+  StationCompactGlyphSummary,
 } from '../compose/preview';
+import type { StationDerGlyphKind } from '../symbols/glyphs';
 
 // ---------------------------------------------------------------------------
 // Aliasy typów wyjścia adaptera v2 nienazwanych publicznie (indexed access —
@@ -728,6 +730,42 @@ interface RowLayout {
   readonly blockTopY: number;
 }
 
+/** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): dominujący rodzaj DER stacji dla
+ *  markera sylwetki mini-RMU na L0 — deterministyczny (lista `derSources`
+ *  posortowana po `id` w `buildSceneV3`, bierzemy PIERWSZY). `'unknown'` →
+ *  `'generator'` (glif generyczny, spójnie z `DER_SOURCE_KIND_SYMBOL`).
+ *  `null` gdy stacja bez DER (baza §10.4: L0 miało 0 markerów DER). */
+function dominantDerGlyphKind(
+  sources: readonly StationDerSourceInput[],
+): StationDerGlyphKind | null {
+  const first = sources[0];
+  if (!first) return null;
+  const map: Readonly<Record<DerSourceKind, StationDerGlyphKind>> = {
+    pv: 'pv',
+    bess: 'bess',
+    generator: 'generator',
+    wind: 'wind',
+    unknown: 'generator',
+  };
+  return map[first.kind];
+}
+
+/** GS-1 (V12K-137, macierz §3 „Stacja"): sylwetka mini-RMU L0 z TYPU
+ *  elementów stacji (nie nazw, spec §19.3): sekcyjna = sprzęgło w topologii;
+ *  SN/nN = transformator; DER = dominujący rodzaj; NO = punkt normalnie
+ *  otwarty. Rozdzielnia sieciowa = brak TR i brak sprzęgła (sylwetka bazowa). */
+function stationCompactGlyphSummary(
+  props: StationOnRunRendererProps,
+  derSources: readonly StationDerSourceInput[],
+): StationCompactGlyphSummary {
+  return {
+    sectioned: classifyStationTopologicalType(props.snBays ?? []) === 'sekcyjna',
+    hasTransformer: props.hasTransformer ?? props.transformerRatedKva != null,
+    der: dominantDerGlyphKind(derSources),
+    noOpen: props.isNop ?? false,
+  };
+}
+
 function buildMeasureInput(
   props: StationOnRunRendererProps,
   lod: SceneLod,
@@ -748,7 +786,16 @@ function buildMeasureInput(
     // kodu, zero zmian w measure.ts. Typ stacji (§19.3) NIE jest tu
     // walidowany — L0 nie niesie `snBays` (topologia nieznana na tym LOD),
     // walidacja żyje w gałęzi lod>=1 niżej.
-    return { id: props.id, name: props.stationCode ?? props.name, snBays: [] };
+    // GS-1 (V12K-137, GAP §10.4): L0 niesie SYLWETKĘ mini-RMU — typ stacji/TR/
+    // DER/NO z TYPU elementów (spec §19.3). `snBays: []` (measure L0 nie
+    // rezerwuje miejsca na pola — geometria z L2), ale `compactGlyph` niesie
+    // cechy rozpoznawcze rysowane WEWNĄTRZ glifu (zero zmiany geometrii).
+    return {
+      id: props.id,
+      name: props.stationCode ?? props.name,
+      snBays: [],
+      compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? []),
+    };
   }
   const includeCableAndPorts = lod === 2;
   // F10.2 (spec §19.3, V12K-034): typ stacji WYPROWADZONY z topologii
@@ -1006,7 +1053,13 @@ function composeRowStation(
           symbolId: 'stationCollapsed',
           x: boxX,
           y: boxY,
-          meta: { testId: `sld-v3-l0-${measureInput.id}`, ownerRef: measureInput.id, elementKind: 'station' },
+          meta: {
+            testId: `sld-v3-l0-${measureInput.id}`,
+            ownerRef: measureInput.id,
+            elementKind: 'station',
+            // GS-1 (V12K-137, GAP §10.4): sylwetka mini-RMU — typ/TR/DER/NO.
+            stationGlyph: measureInput.compactGlyph,
+          },
         },
       ],
       segments: [],
@@ -2076,7 +2129,14 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       stationNameBands.push(composed.stationNameOwner);
       portCaptions.push(...composed.portCaptionOwners);
       simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
-      if (props.isNop) {
+      // GS-1 (V12K-137, GAP §10.4): na L0 punkt NO stacji niesie SYLWETKA
+      // mini-RMU (marker `noOpen` na szynie glifu — `meta.stationGlyph.noOpen`),
+      // spójnie z rodziną glifów L0→L2. Osobny symbol `noPoint` (16×16 w środku
+      // 48×48 stacji byłby POGRZEBANY w enklozurze, a jego etykieta „NO" koliduje
+      // z glifem — declutter ją odrzuca) + etykieta „NO" pozostają reprezentacją
+      // L1/L2 (szyna pełna, marker na osi). TA SAMA kotwica (środek stacji) na
+      // wszystkich LOD — „zoom = skala szczegółu, nie przemeblowanie" (§3).
+      if (props.isNop && lod !== 0) {
         simpleAnchored.push({
           ownerRef: `${measureInput.id}#no-point`,
           ownerKind: 'no-point',
@@ -2481,7 +2541,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         stationNameBands.push(composed.stationNameOwner);
         portCaptions.push(...composed.portCaptionOwners);
         simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
-        if (props.isNop) {
+        // GS-1 (V12K-137, GAP §10.4): NO na L0 = sylwetka mini-RMU (patrz ciąg
+        // główny wyżej); symbol `noPoint` + etykieta „NO" = reprezentacja L1/L2.
+        if (props.isNop && lod !== 0) {
           simpleAnchored.push({
             ownerRef: `${measureInput.id}#no-point`,
             ownerKind: 'no-point',
@@ -2747,7 +2809,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       stationNameBands.push(composed.stationNameOwner);
       portCaptions.push(...composed.portCaptionOwners);
       simpleAnchored.push(...composed.apparatusOwners, ...composed.derOwners, ...composed.protectionOwners, ...composed.busbarOwners);
-      if (props.isNop) {
+      // GS-1 (V12K-137, GAP §10.4): NO na L0 = sylwetka mini-RMU (patrz ciąg
+      // główny); symbol `noPoint` + etykieta „NO" = reprezentacja L1/L2.
+      if (props.isNop && lod !== 0) {
         simpleAnchored.push({
           ownerRef: `${measureInput.id}#no-point`,
           ownerKind: 'no-point',
@@ -5648,11 +5712,19 @@ export function trunkThicknessGaps(scene: SceneV3): readonly string[] {
 // dla zbioru, który §3 nazywa „NIGDY NIE ZNIKA przy oddalaniu": TOR ELEKTRYCZNY
 // (z wagą magistrala>odejście — nośnik NIE-kolor), TOŻSAMOŚĆ+POZYCJA STACJI
 // (S-id), ŹRÓDŁO ZASILANIA, ZNACZNIK SEKCJI/NOP. Sprawdza je WPROST na scenie
-// L0. Elementy, które §3 pozwala AGREGOWAĆ wewnątrz glifu przy oddalaniu (typ
-// stacji, funkcja pola, stan łącznika per-pole, marker DER) należą do fazy S1
-// „Gramatyka stacji" (jedna rodzina glifów L0→L2, `docs/sld/AUDYT_SCHEMATOW_
-// OD_ZERA_2026-07` §5 / GAP `S7_GAP_CROSSING_ZERO` §9-followup) — NIE są tu
-// bramkowane, bo ich dodanie to przebudowa sylwetki stacji (osobny podetap).
+// L0.
+//
+// SCHEMAT-10 GS-1 (V12K-137, DOMKNIĘCIE GAP §10.4): zbiór §3 „nigdy nie znika"
+// ROZSZERZONY o TYP STACJI, TRANSFORMATOR, MARKER DER i STAN ŁĄCZNIKA/NO —
+// dawniej odłożone do S1 „Gramatyka stacji" (sylwetka `stationCollapsed` była
+// gołym kwadratem 16×16 bez markerów; DER na L0 = 0). GS-1 wprowadził rodzinę
+// glifów mini-RMU (obrys + szyna + markery typu/TR/DER/NO, `symbols/glyphs.ts`
+// `StationCollapsedGlyph`), więc te cechy SĄ TERAZ NA L0 i wyrocznia je
+// bramkuje: każdy kompaktowy glif stacji NIESIE podsumowanie sylwetki
+// (`meta.stationGlyph` — typ/TR/DER/NO wyprowadzone z TYPU elementów, spec
+// §19.3), a marker DER pojawia się na L0 gdy stacja ma DER (koniec bazy
+// „L0=0 vs L1=20"). Parytet obecności DER L0↔L1 sprawdza test w
+// `buildScene.schemat10gs1.test.ts` (osobno od tej wyroczni scenowo-lokalnej).
 // ---------------------------------------------------------------------------
 
 export interface Lod0ReadabilityGap {
@@ -5685,6 +5757,18 @@ export function lod0ReadabilityGaps(scene: SceneV3): readonly Lod0ReadabilityGap
     const ref = (sym.meta?.ownerRef ?? '').replace(/#.*$/, '');
     if (!nameOwners.has(ref)) {
       gaps.push({ element: 'tożsamość stacji', reason: `kompaktowy glif stacji ${ref} bez etykiety S-id na L0` });
+    }
+    // (4) GS-1 (V12K-137, DOMKNIĘCIE GAP §10.4): TYP STACJI · TRANSFORMATOR ·
+    //     MARKER DER · STAN ŁĄCZNIKA/NO — sylwetka mini-RMU NIESIE podsumowanie
+    //     rozpoznawcze (`meta.stationGlyph`, wyprowadzone z TYPU elementów, spec
+    //     §19.3). Brak podsumowania = sylwetka bez cech typu/TR/DER/NO ⇒ luka
+    //     czytelności §3 (glif nie do odróżnienia SN/nN vs rozdzielnia vs
+    //     sekcyjna, bez TR/DER/NO). Renderuje je `StationCollapsedGlyph`.
+    if (!sym.meta?.stationGlyph) {
+      gaps.push({
+        element: 'sylwetka stacji',
+        reason: `glif stacji ${ref} bez podsumowania typ/TR/DER/NO (meta.stationGlyph) — typ nierozpoznawalny na L0`,
+      });
     }
   }
 

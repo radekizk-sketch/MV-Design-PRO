@@ -224,14 +224,35 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku cało�
     expect(scene.symbols.some((s) => s.symbolId === 'transformer2W')).toBe(true);
   });
 
-  it('L0: punkt NO (§3 znacznik sekcji/NOP) NIGDY nie znika — obecny na widoku całości gdy jest w danych', () => {
-    const nopScene = buildSceneV3(withSyntheticNop(bigEnm), 0);
-    expect(nopScene.symbols.some((s) => s.symbolId === 'noPoint')).toBe(true);
-    expect(nopScene.labels.some((l) => l.ownerKind === 'no-point')).toBe(true);
-    // Kotwica NO identyczna L0/L1/L2 (§3 „ta sama kotwica") — pozycja markera stała.
-    const no0 = nopScene.symbols.find((s) => s.symbolId === 'noPoint');
-    const no2 = buildSceneV3(withSyntheticNop(bigEnm), 2).symbols.find((s) => s.symbolId === 'noPoint');
-    expect(no0 && no2 ? { x: no0.x, y: no0.y } : null).toEqual(no2 ? { x: no2.x, y: no2.y } : null);
+  it('L0: punkt NO (§3 znacznik sekcji/NOP) NIGDY nie znika — sylwetka mini-RMU niesie marker noOpen (GS-1)', () => {
+    // GS-1 (V12K-137, GAP §10.4, Zero-Debt pkt 2 — test do obecnego kanonu z
+    // zachowaniem intencji „NOP na L0 nie znika"): na L0 punkt NO stacji niesie
+    // SYLWETKA mini-RMU (marker `noOpen` w `meta.stationGlyph`, rysowany przez
+    // `StationCollapsedGlyph`), a nie osobny 16×16 symbol `noPoint` pogrzebany w
+    // enklozurze 48×48. Symbol `noPoint` + etykieta „NO" to reprezentacja L1/L2
+    // (patrz test niżej) — TA SAMA kotwica (środek stacji) na wszystkich LOD.
+    const withNop = withSyntheticNop(bigEnm);
+    const nopRef = buildSceneV3(bigEnm, 2).meta.mainTrunkStationIds[0];
+    const nopScene0 = buildSceneV3(withNop, 0);
+    const nopGlyph = nopScene0.symbols.find(
+      (s) => s.symbolId === 'stationCollapsed' && s.meta?.ownerRef === nopRef,
+    );
+    expect(nopGlyph, 'stacja NOP musi mieć glif mini-RMU na L0').toBeTruthy();
+    expect(nopGlyph?.meta?.stationGlyph?.noOpen).toBe(true);
+    // Na L0 osobny symbol `noPoint` NIE jest rysowany (sylwetka go zastępuje).
+    expect(nopScene0.symbols.some((s) => s.symbolId === 'noPoint')).toBe(false);
+  });
+
+  it('L1/L2: punkt NO = symbol noPoint + etykieta „NO" na osi szyny; kotwica identyczna L1↔L2 (GS-1)', () => {
+    const withNop = withSyntheticNop(bigEnm);
+    const s1 = buildSceneV3(withNop, 1);
+    const s2 = buildSceneV3(withNop, 2);
+    expect(s1.symbols.some((s) => s.symbolId === 'noPoint')).toBe(true);
+    expect(s1.labels.some((l) => l.ownerKind === 'no-point')).toBe(true);
+    // Kotwica NO identyczna L1/L2 (§3 „ta sama kotwica") — pozycja markera stała.
+    const no1 = s1.symbols.find((s) => s.symbolId === 'noPoint');
+    const no2 = s2.symbols.find((s) => s.symbolId === 'noPoint');
+    expect(no1 && no2 ? { x: no1.x, y: no1.y } : null).toEqual(no2 ? { x: no2.x, y: no2.y } : null);
   });
 
   it('L0: każda narysowana stacja ma kompaktowy glif + etykietę S-id (tożsamość nie znika)', () => {

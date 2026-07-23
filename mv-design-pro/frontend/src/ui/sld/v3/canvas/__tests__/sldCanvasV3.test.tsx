@@ -1015,10 +1015,13 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D8): kolor bazowy napięcia (
 });
 
 describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D7): kolor NOP (wyróżniony wg tabeli stanów)', () => {
-  it('symbol noPoint dostaje STATE_COLOR.nop — RÓŻNY od bazy/napięcia — na L0/L1/L2', () => {
+  it('symbol noPoint dostaje STATE_COLOR.nop — RÓŻNY od bazy/napięcia — na L1/L2 (GS-1: L0 = marker sylwetki)', () => {
     // Fixtura bazowa nie niesie żadnego NOP (patrz `buildScene.test.ts`
     // `enmWithSyntheticNop` — ten sam GAP udokumentowany tam). Syntetyzujemy
     // lokalnie: `nop_station_ref` ciągu głównego = ref pierwszej stacji ciągu.
+    // GS-1 (V12K-137, GAP §10.4): symbol `noPoint` (kolorowany wg tabeli stanów)
+    // to reprezentacja L1/L2; na L0 NOP niesie marker `noOpen` sylwetki mini-RMU
+    // (bez osobnego symbolu — patrz `buildScene.test.ts`).
     const scene2 = buildSceneV3(enm, 2);
     const targetStationRef = scene2.meta.mainTrunkStationIds[0];
     const enmWithNop = structuredClone(enm);
@@ -1026,7 +1029,7 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D7): kolor NOP (wyróżniony 
     expect(mainRun).toBeTruthy();
     (mainRun as { nop_station_ref: string | null }).nop_station_ref = targetStationRef;
 
-    for (const lod of [0, 1, 2] as const) {
+    for (const lod of [1, 2] as const) {
       const scene = buildSceneV3(enmWithNop, lod);
       const nopIndex = scene.symbols.findIndex((s) => s.symbolId === 'noPoint');
       expect(nopIndex).toBeGreaterThanOrEqual(0);

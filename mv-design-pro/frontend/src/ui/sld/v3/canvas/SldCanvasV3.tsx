@@ -293,6 +293,10 @@ function SceneSymbolNode(props: {
         labelLines={symbol.meta?.protectionCodes}
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
         meterQuantity={symbol.meta?.meterQuantity}
+        stationSectioned={symbol.meta?.stationGlyph?.sectioned}
+        stationHasTransformer={symbol.meta?.stationGlyph?.hasTransformer}
+        stationDer={symbol.meta?.stationGlyph?.der}
+        stationNoOpen={symbol.meta?.stationGlyph?.noOpen}
       />
     </g>
   );

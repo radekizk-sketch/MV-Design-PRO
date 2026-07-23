@@ -27,7 +27,7 @@
  * kompozycji to tory SN/WN klasy „normalny przewód", nie szyna.
  */
 import type { SymbolId } from '../symbols/defs';
-import { SYMBOL_GLYPHS, type SwitchState } from '../symbols/glyphs';
+import { SYMBOL_GLYPHS, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
 import { SOURCE_STATE_OVERLAY_COLOR, type SourceOperationalState } from './sourceKind';
 import { LABEL_TYPOGRAPHY } from '../core/text';
 import type { OwnedLabel } from '../layout/labels';
@@ -192,6 +192,27 @@ export interface PreviewElementMeta {
    *  (`kind==='openTerminal'`) — wyrocznia `openTerminalGaps`
    *  (`scene/buildScene.ts`); zwykły wolny koniec dalej obcina `port_probe`. */
   readonly openTerminal?: boolean;
+  /** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): podsumowanie sylwetki stacji dla
+   *  glifu mini-RMU na L0 — WYŁĄCZNIE dla symboli `stationCollapsed`. Steruje
+   *  markerami typu/TR/DER/NO w `StationCollapsedGlyph` (`symbols/glyphs.tsx`),
+   *  przekazane 1:1 do `GlyphProps` (wzór `protectionCodes`/`meterQuantity`).
+   *  Rodzaj stacji WYPROWADZONY z TYPU elementów (topologia/sprzęgło/TR/DER/NO),
+   *  nie z nazw (spec §19.3, macierz §3). */
+  readonly stationGlyph?: StationCompactGlyphSummary;
+}
+
+/** SCHEMAT-10 GS-1 (V12K-137): kompaktowe cechy stacji rysowane sylwetką
+ *  mini-RMU na L0 (`AUDYT_SCHEMATOW_OD_ZERA_2026-07` §3 „Stacja"). Wszystkie
+ *  pola WYPROWADZONE z realnej topologii/danych stacji (zero fabrykacji). */
+export interface StationCompactGlyphSummary {
+  /** Stacja sekcyjna (sprzęgło w `snBays`, `classifyStationTopologicalType`). */
+  readonly sectioned: boolean;
+  /** Stacja SN/nN z transformatorem (odróżnia od rozdzielni sieciowej bez TR). */
+  readonly hasTransformer: boolean;
+  /** Dominujący rodzaj DER przyłączonego do stacji, `null` gdy brak DER. */
+  readonly der: StationDerGlyphKind | null;
+  /** Stacja niesie punkt/łącznik normalnie otwarty (`isNop`). */
+  readonly noOpen: boolean;
 }
 
 export interface PreviewSymbol {
@@ -274,6 +295,10 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
         labelLines={symbol.meta?.protectionCodes}
         hasTopologyWarning={(symbol.meta?.topologyGaps?.length ?? 0) > 0}
         meterQuantity={symbol.meta?.meterQuantity}
+        stationSectioned={symbol.meta?.stationGlyph?.sectioned}
+        stationHasTransformer={symbol.meta?.stationGlyph?.hasTransformer}
+        stationDer={symbol.meta?.stationGlyph?.der}
+        stationNoOpen={symbol.meta?.stationGlyph?.noOpen}
       />
     </g>
   );

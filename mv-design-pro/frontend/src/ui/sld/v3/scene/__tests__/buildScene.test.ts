@@ -543,14 +543,16 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
     }
   });
 
-  it('L0/L1/L2: symbol noPoint (NO) niesie ownerRef=station id + elementKind=apparatus', () => {
-    const { enm: enmWithNop } = enmWithSyntheticNop();
-    for (const lod of LODS) {
+  it('L1/L2: symbol noPoint (NO) niesie ownerRef=station id + elementKind=apparatus; L0 = marker noOpen sylwetki (GS-1)', () => {
+    // GS-1 (V12K-137, GAP §10.4, Zero-Debt pkt 2): symbol `noPoint` (16×16 na
+    // osi szyny) to reprezentacja L1/L2. Na L0 (sylwetka mini-RMU 48×48) osobny
+    // noPoint byłby POGRZEBANY w enklozurze — NOP niesie marker `noOpen`
+    // sylwetki (`meta.stationGlyph.noOpen`). TA SAMA kotwica (środek stacji) na
+    // wszystkich LOD (test D7 niżej).
+    const { enm: enmWithNop, targetStationRef } = enmWithSyntheticNop();
+    for (const lod of [1, 2] as const) {
       const scene = buildSceneV3(enmWithNop, lod);
       const nopSymbols = scene.symbols.filter((s) => s.symbolId === 'noPoint');
-      // SCHEMAT-10 S3: dowód NIEPUSTY (fixtura bazowa nie miał żadnego NOP —
-      // patrz `enmWithSyntheticNop` — pętla po zerowym zbiorze byłaby
-      // zielona bez sprawdzenia niczego).
       expect(nopSymbols.length).toBeGreaterThan(0);
       for (const s of nopSymbols) {
         expect(s.meta?.elementKind).toBe('apparatus');
@@ -558,47 +560,46 @@ describe('buildSceneV3 — F8b-1 meta (ownerRef/elementKind, fundament selekcji 
         expect(s.meta?.testId).toBe(`sld-v3-nop-${s.meta?.ownerRef}`);
       }
     }
+    // L0: brak osobnego noPoint; NOP w markerze sylwetki stacji docelowej.
+    const scene0 = buildSceneV3(enmWithNop, 0);
+    expect(scene0.symbols.some((s) => s.symbolId === 'noPoint')).toBe(false);
+    const nopGlyph = scene0.symbols.find(
+      (s) => s.symbolId === 'stationCollapsed' && s.meta?.ownerRef === targetStationRef,
+    );
+    expect(nopGlyph?.meta?.stationGlyph?.noOpen).toBe(true);
   });
 
-  it('SCHEMAT-10 S3 (V12K-135, D7): znacznik NOP KOTWICZONY do renderu szyny — pozycja (x,y) IDENTYCZNA na L0/L1/L2', () => {
-    // Macierz prawdy LOD §3, wiersz „Sekcje/NOP": „znacznik NA torze (kotwica
-    // = render szyny TEGO LOD)" — dowód na REALNEJ fixturze: `noPoint` jest
-    // zaczepiony do `busAxisY` wiersza (§S1 „JEDNA KOTWICA" ujednoliciła
-    // `busAxisY` między LOD), więc NIE dryfuje w treść przy zmianie poziomu —
-    // dokładnie ten defekt D7 opisywał („znacznik kotwiczony do współrzędnej
-    // szyny, nie do RENDEROWANEJ reprezentacji szyny na danym LOD").
-    //
-    // UWAGA (defekt boczny wykryty przy tej karcie, patrz `enmWithSyntheticNop`
-    // wyżej): rozjazd semantyki `no_point_ref` (switch-ref) vs `nop_station_ref`
-    // (station-ref) w adapterze v2 to osobny GAP — raport karty S3.
+  it('SCHEMAT-10 S3 (V12K-135, D7) + GS-1: KOTWICA znacznika NOP (środek stacji) IDENTYCZNA na L0/L1/L2', () => {
+    // Macierz prawdy LOD §3, wiersz „Sekcje/NOP": „znacznik NA torze (kotwica =
+    // render szyny TEGO LOD)". Intencja D7 („marker nie dryfuje przy zmianie
+    // poziomu") ZACHOWANA pod kanonem GS-1: kotwica = ŚRODEK STACJI (JEDNA
+    // KOTWICA, geometria z L2). Reprezentacja RÓŻNI SIĘ per LOD („zoom = skala
+    // szczegółu"): L0 = marker `noOpen` sylwetki mini-RMU (środek stationCollapsed),
+    // L1/L2 = symbol `noPoint` (środek na osi szyny) — OBA w tym samym punkcie.
     const { enm: enmWithNop, targetStationRef } = enmWithSyntheticNop();
 
-    const nopAnchors = (lod: SceneLod): Map<string, string> => {
+    // Środek NOP-a stacji docelowej per LOD (kotwica, niezależnie od symbolu).
+    const nopCenter = (lod: SceneLod): string | null => {
       const scene = buildSceneV3(enmWithNop, lod);
-      const m = new Map<string, string>();
-      for (const s of scene.symbols) {
-        if (s.symbolId === 'noPoint' && s.meta?.ownerRef) {
-          m.set(s.meta.ownerRef, `${s.x},${s.y}`);
-        }
+      if (lod === 0) {
+        const g = scene.symbols.find(
+          (s) => s.symbolId === 'stationCollapsed' && s.meta?.ownerRef === targetStationRef && s.meta?.stationGlyph?.noOpen,
+        );
+        if (!g) return null;
+        const d = SYMBOL_DEFS.stationCollapsed;
+        return `${g.x + d.width / 2},${g.y + d.height / 2}`;
       }
-      return m;
+      const s = scene.symbols.find((x) => x.symbolId === 'noPoint' && x.meta?.ownerRef === targetStationRef);
+      if (!s) return null;
+      const d = SYMBOL_DEFS.noPoint;
+      return `${s.x + d.width / 2},${s.y + d.height / 2}`;
     };
-    const a0 = nopAnchors(0);
-    const a1 = nopAnchors(1);
-    const a2 = nopAnchors(2);
-    expect(a0.size).toBeGreaterThan(0);
-    expect(a0.has(targetStationRef)).toBe(true);
-    expect(a1.size).toBe(a0.size);
-    expect(a2.size).toBe(a0.size);
-    const drift: string[] = [];
-    for (const [ref, pos0] of a0) {
-      const pos1 = a1.get(ref);
-      const pos2 = a2.get(ref);
-      if (pos1 !== pos0 || pos2 !== pos0) {
-        drift.push(`${ref}: L0=${pos0} L1=${pos1} L2=${pos2}`);
-      }
-    }
-    expect(drift, `znaczniki NOP dryfują między LOD:\n${drift.join('\n')}`).toEqual([]);
+    const c0 = nopCenter(0);
+    const c1 = nopCenter(1);
+    const c2 = nopCenter(2);
+    expect(c0).toBeTruthy();
+    expect(c1).toBe(c0);
+    expect(c2).toBe(c0);
   });
 
   it('aparatura stacji (L2): ownerRef === bayRef odczytany z testId (`${bayRef}#${symbolId}`)', () => {
