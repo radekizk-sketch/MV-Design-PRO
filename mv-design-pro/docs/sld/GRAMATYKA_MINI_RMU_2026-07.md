@@ -84,3 +84,44 @@ ekranu** (rozpoznawalna jako blok stacji, ≠ kropka 1,93px). Markery (strefa 8p
 → ~1px na pełnym oddaleniu — rozpoznawalne od PIERWSZEGO kroku zoomu (glif w
 rozmiarze projektowym 48px: każdy marker ≥ swojej kreski i strefy `minGap`).
 Bramka: test „czytelność min. rozmiaru" (pomiar px).
+
+---
+
+## RECENZJA GS-2 (2026-07-23): WERDYKT NO-GO — WYMAGANA PRZEBUDOWA (ZADANIE DLA FABLE OSOBIŚCIE)
+
+Ocena inżynierska: obecny glif to linia przez obudowę + piktogramy — sugeruje
+NIEDOPUSZCZALNE połączenie kabli bezpośrednio z szyną. L0 ma być MINIATUROWYM
+SLD ROZDZIELNICY (kompozycją PÓL), nie ikoną stacji.
+
+### Błędy krytyczne (do usunięcia)
+K1. Kabel NIE wchodzi bezpośrednio na szynę — tor pola liniowego ZAWSZE:
+    kabel SN → GŁOWICA (trójkąt) → APARAT pola → szyna SN (i lustrzanie po
+    drugiej stronie). Głowice widoczne przy wejściu I wyjściu.
+K2. Szyna NIE wychodzi poza obudowę (obecna kreska na wylot = błędna semantyka
+    szyny zbiorczej wyprowadzonej poza RMU). Szyna żyje WEWNĄTRZ; sieć zewnętrzna
+    dochodzi do głowic pól.
+K3. Transformator przez WŁASNE POLE: szyna → aparat/zabezpieczenie pola TR →
+    transformator SN/nN (nie okręgi doczepione do kreski).
+K4. TRÓJKĄT = wyłącznie głowica kablowa (konflikt z markerem PV USUNĄĆ; typ
+    źródła DER rozróżniać inaczej, marker typu tylko POMOCNICZO).
+K5. DER przez WŁASNE POLE: szyna → aparat pola DER → tor/głowica → źródło
+    (piktogram nad linią NIE zastępuje elektrycznego odgałęzienia).
+K6. Sekcjonowanie = uproszczony JEDNOZNACZNY symbol łącznika/sprzęgła W TORZE
+    (nie dwie kreski); NO = STAN aparatu — realna PRZERWA w torze mocy, nie
+    prostokątny marker na końcu szyny.
+K7. Hierarchia wag: głowice+aparaty+ciągłość toru = pierwszoplanowe; obrys
+    stacji wtórny i lżejszy.
+
+### Gramatyka bazowa (stacja 2L+T; kompresja do 48×48 DOZWOLONA, relacje NIE):
+lewa kotwica → △ głowica L1 → aparat L1 → ═ szyna wewnętrzna ═ → aparat L2 →
+△ głowica L2 → prawa kotwica; pole TR: szyna → aparat TR → transformator → nN;
+pole DER: szyna → aparat DER → źródło; sekcja/NO jako stan aparatu w torze.
+Relacje nienaruszalne: kabel kończy się na głowicy · głowica należy do pola ·
+między głowicą a szyną jest aparat · TR/DER przez własne pola · NO = przerwa ·
+szyna nie wychodzi poza obudowę.
+
+### Wykonanie: GS-3 — FABLE OSOBIŚCIE (dyrektywa właściciela „Zadanie dla fable")
+Przebudowa `MINI_RMU` (miniRmuGrammar.ts) na kompozycję PÓL + renderer + sondy
+(ciągłość toru przez głowica–aparat–szyna, przerwa NO w torze, zakaz szyny poza
+enklozurą — ODWRÓCENIE obecnej sondy na-wylot) + macierz kombinacji przepisana +
+19 reguł nadal obowiązuje (kotwica, determinizm, globalne parametry).
