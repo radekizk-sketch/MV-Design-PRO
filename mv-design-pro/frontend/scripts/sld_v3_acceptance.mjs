@@ -1172,17 +1172,31 @@ for (const lod of LODS) {
       ? `tabela przyczyn(liczba/długość) — ${vTable}`
       : `NIEUZASADNIONE=${vGaps.length}: ${vGaps.slice(0, 5).map((g) => `${g.ownerRef ?? '?'}(${g.kind ?? '?'},${g.length})`).join(', ')}`,
   );
-  // -- SCHEMAT-10 S7-P4 (V12K-137, recenzja §9 P0 pkt 3): CZYTELNOŚĆ L0 na widoku
-  // całości — zbiór §3 „nigdy nie znika" (tor mocy z wagą, tożsamość stacji,
-  // źródło). Bramka WYŁĄCZNIE na L0 (semantyka „Przegląd sieci").
+  // -- SCHEMAT-10 S7-P4 + GS-1 (V12K-137, recenzja §9 P0 pkt 3, DOMKNIĘCIE GAP
+  // §10.4): CZYTELNOŚĆ L0 na widoku całości — zbiór §3 „nigdy nie znika" (tor
+  // mocy z wagą, tożsamość stacji, źródło) ROZSZERZONY o TYP STACJI · TR ·
+  // MARKER DER · STAN NO (sylwetka mini-RMU niesie `meta.stationGlyph`). Bramka
+  // WYŁĄCZNIE na L0 (semantyka „Przegląd sieci").
   if (lod === 0) {
     const l0Gaps = lod0ReadabilityGaps(scene);
     check(
-      'lod0_readability_probe (S7-P4 §9 P0 pkt 3): tor mocy(waga) + tożsamość stacji + źródło rozpoznawalne na L0',
+      'lod0_readability_probe (S7-P4 §9 P0 pkt 3 + GS-1 §10.4): tor mocy(waga) + tożsamość + źródło + typ/TR/DER/NO sylwetki rozpoznawalne na L0',
       allLod0ElementsReadable(scene),
       l0Gaps.length === 0
-        ? 'zbiór §3 „nigdy nie znika" obecny na L0'
+        ? 'zbiór §3 „nigdy nie znika" (z rozszerzeniem GS-1) obecny na L0'
         : `luki=${l0Gaps.length}: ${l0Gaps.slice(0, 5).map((g) => `${g.element}: ${g.reason}`).join(' | ')}`,
+    );
+    // Test negatywny (GS-1): usunięcie podsumowania sylwetki (`meta.stationGlyph`)
+    // MUSI dać lukę „sylwetka stacji" — dowód, że rozszerzenie §10.4 gryzie.
+    const sabotaged = {
+      ...scene,
+      symbols: scene.symbols.map((s) =>
+        s.symbolId === 'stationCollapsed' ? { ...s, meta: { ...s.meta, stationGlyph: undefined } } : s,
+      ),
+    };
+    check(
+      'lod0_readability_probe (GS-1, test negatywny — dowód, że wyrocznia gryzie): sylwetka bez typ/TR/DER/NO MUSI dać lukę',
+      lod0ReadabilityGaps(sabotaged).some((g) => g.element === 'sylwetka stacji') && !allLod0ElementsReadable(sabotaged),
     );
   }
 
