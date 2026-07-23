@@ -49,11 +49,18 @@ describe('F13.2 A — interiorCrossings (detekcja)', () => {
     expect(interiorCrossings([H, Vtrip, Vmeas])).toHaveLength(0);
   });
 
-  it('fixtura referencyjna L2: dokładnie 24 przecięcia toru mocy (pomiar P-1 audytu D3), ŻADNE z szyną', () => {
+  // SCHEMAT-10 S7-P2 (V12K-137) — patrz komentarz w ciele testu.
+  it('fixtura referencyjna L2 (węzeł T, V12K-137): TWARDE ZERO przecięć toru mocy — Rodziny A/B rozcięte węzłem T (styk końcem), ŻADNE z szyną', () => {
+    // Golden przepisany do kanonu S7-P2 (intencja zachowana: pomiar przecięć na
+    // fixturze referencyjnej + „żadne z szyną"). Baza P-1 audytu D3 wynosiła 24
+    // (11 Rodzina A magistrala×zejście + 13 Rodzina B lateral×zejście); S7-P2
+    // rozcina kabel POZIOMY w punkcie styku pionu zejścia (`resolveTeeJunctions`,
+    // `buildScene.ts`), zamieniając każde przecięcie wnętrza na T-węzeł z kropką
+    // (spec §22.1 „skrzyżowanie ≠ połączenie"). `interiorCrossings` sn×sn → 0.
     const scene = buildSceneV3(enm, 2);
     const crossings = interiorCrossings(scene.segments);
-    expect(crossings).toHaveLength(24);
-    expect(crossings.every((c) => !c.involvesBus)).toBe(true);
+    expect(crossings.filter((c) => !c.involvesBus)).toHaveLength(0);
+    expect(crossings).toHaveLength(0);
     expect(crossingBusGaps(scene.segments)).toHaveLength(0);
   });
 
@@ -124,16 +131,21 @@ describe('F13.2 B2 — polylinePathWithBridges (API renderu)', () => {
 });
 
 describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny węzeł rozgałęzienia tras)', () => {
-  it('fixtura L2: gramatyka rysunku nie ma węzłów T na trasach (odczepy żyją w polach stacji) i po V12K-039 nie ma też ŻADNEJ kropki — 0 luk', async () => {
+  // SCHEMAT-10 S7-P2 (V12K-137) — patrz komentarz w ciele testu.
+  it('fixtura L2 (węzeł T, V12K-137): każdy węzeł T tras (styk zejścia lateralu z kablem poziomym) ma kropkę węzłową, kropki wyłącznie na węzłach — 0 luk', async () => {
     const { SYMBOL_DEFS } = await import('../../symbols/defs');
     const { externalBranchNodes, junctionDotGaps } = await import('../crossings');
     const scene = buildSceneV3(enm, 2);
-    // Ustalenie D3-14: piony kanałów odgałęzień PRZECINAJĄ przęsła (bez
-    // połączenia) — realnych węzłów T tras zewnętrznych na tej gramatyce
-    // rysunku NIE MA (odczep elektryczny = pole odgałęźne stacji-origin).
-    expect(externalBranchNodes(scene.segments)).toEqual([]);
-    // Po V12K-039 scena nie niesie kropek (dawny akcent-kropka usunięty).
-    expect(scene.symbols.some((s) => s.symbolId === 'branchJunction' || s.symbolId === 'junction')).toBe(false);
+    // Golden przepisany do kanonu S7-P2 (intencja zachowana: obustronna
+    // spójność kropka⇔węzeł). Do V12K-039 zejścia PRZECINAŁY przęsła (0 węzłów
+    // T, 0 kropek); S7-P2 rozcina kabel poziomy w punkcie styku ⇒ każde dawne
+    // przecięcie (24 na L2) staje się realnym węzłem T tras zewnętrznych
+    // (`externalBranchNodes`) i dostaje kropkę `junction`.
+    const nodes = externalBranchNodes(scene.segments);
+    expect(nodes).toHaveLength(24);
+    const dots = scene.symbols.filter((s) => s.symbolId === 'junction');
+    expect(dots).toHaveLength(24);
+    // Obustronnie: każdy węzeł ma kropkę i żadna kropka nie wisi bez węzła.
     expect(junctionDotGaps(scene, SYMBOL_DEFS)).toEqual([]);
   });
 

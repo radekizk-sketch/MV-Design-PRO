@@ -363,7 +363,17 @@ describe('overlay.ts — F-1 (recenzja Opusa): kontrakt kierunku forward ↔ geo
       // dokładnie to wiązanie czyni znak p_from_mw (dodatni = od from ku to)
       // poprawnym zwrotem strzałki points[0]→points[last].
       expect(Math.abs(p0.x - fromX)).toBeLessThan(Math.abs(p0.x - toX));
-      expect(Math.abs(pLast.x - toX)).toBeLessThan(Math.abs(pLast.x - fromX));
+      // SCHEMAT-10 S7-P2 (V12K-137): kabel przęsła bywa rozcięty węzłem T w
+      // punkcie styku z pionem zejścia (`resolveTeeJunctions`, `buildScene.ts`).
+      // KAWAŁEK z realnym `ownerRef` (pierwszy, jedyny bez `#tee-N`) zaczyna się
+      // w `fromTerminal`, a kończy w PUNKCIE ODCZEPU — niekoniecznie w stacji
+      // `toTerminal`. Golden przepisany do niezmiennika KIERUNKU, który
+      // faktycznie utrzymuje poprawność strzałki: `points[last]` leży bardziej
+      // ku `toTerminal` niż `points[0]` (przęsło biegnie monotonicznie from→to),
+      // więc znak `p_from_mw` dalej mapuje się na zwrot `points[0]→points[last]`.
+      // Dla przęseł nierozciętych degeneruje się do dawnego „koniec = stacja to".
+      expect(Math.abs(pLast.x - fromX)).toBeGreaterThan(Math.abs(p0.x - fromX));
+      expect(Math.abs(pLast.x - toX)).toBeLessThan(Math.abs(p0.x - toX));
       checked += 1;
     }
     // Kontrola mocy dowodu: kontrakt sprawdzony na niezerowej liczbie przęseł.

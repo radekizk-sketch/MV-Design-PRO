@@ -89,9 +89,16 @@ describe('feedery z pól GPZ — gpzFeeder.enm (wspólne pole, stacje na obu ci�
     });
   }
 
-  it('kanon dedykowanych pól: feeder z WŁASNEGO pola (inna kolumna X niż magistrala), zero kropek junction', () => {
+  it('kanon dedykowanych pól: feeder z WŁASNEGO pola (inna kolumna X niż magistrala); styk zejścia feederu z kablem magistrali = węzeł T z kropką (0 luk)', () => {
     const scene = buildSceneV3(feederEnm, 2);
-    expect(scene.symbols.filter((s) => s.symbolId === 'junction')).toHaveLength(0);
+    // SCHEMAT-10 S7-P2 (V12K-137): zejście feederu z własnego pola i tak
+    // przecina poziomy kabel magistrali — S7-P2 zamienia to na węzeł T
+    // (kabel magistrali rozcięty w punkcie styku, kropka `junction`), zamiast
+    // dawnego przecięcia/mostka. Golden przepisany: intencja „feeder z własnego
+    // pola" żyje w asercjach kolumn X niżej; tu dowodzimy, że kropka jest na
+    // REALNYM węźle tras (junction_dot_probe: 0 luk), a nie fabrykowana.
+    expect(junctionDotGaps(scene, SYMBOL_DEFS)).toHaveLength(0);
+    expect(scene.symbols.filter((s) => s.symbolId === 'junction').length).toBeGreaterThan(0);
     // Pion feederu startuje w porcie pola 002 — X różny od portu pola 001
     // (magistrali). Porty odczytane z PIERWSZYCH wierzchołków tras obu
     // ciągów (kawałek 0 każdego ciągu zaczyna się w porcie jego pola).

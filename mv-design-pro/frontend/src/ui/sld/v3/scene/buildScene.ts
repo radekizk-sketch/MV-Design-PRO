@@ -156,7 +156,7 @@ import {
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
 import { isSourceOperationalState, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
-import { junctionDotGaps } from './crossings';
+import { junctionDotGaps, interiorCrossings } from './crossings';
 import {
   bayHasProtectionAnnotation,
   protectionAnnotationDetailForLod,
@@ -483,6 +483,139 @@ function splitPolylineIntoPieces(
   }
   pieces.push(current);
   return pieces;
+}
+
+// ---------------------------------------------------------------------------
+// SCHEMAT-10 S7-P2 (V12K-137, spec §22.1) — węzeł T: „skrzyżowanie ≠ połączenie".
+// ---------------------------------------------------------------------------
+
+/**
+ * SCHEMAT-10 S7-P2 (V12K-137, spec §22.1, ROZSTRZYGNIĘCIE ZARZĄDCY w
+ * `docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md`): rozcięcie kabla POZIOMEGO
+ * (przęsło magistrali `segment*` — Rodzina A; kabel-wiersz PŁYTSZEGO lateralu
+ * `branch_segment_R_*` — Rodzina B) DOKŁADNIE w punkcie, w którym dotyka go pion
+ * ZEJŚCIA lateralu (`branch_segment_L`). Skutek: dotyk staje się STYKIEM KOŃCEM
+ * (koniec połówki poziomej ląduje we WNĘTRZU pionu = T-węzeł), a NIE
+ * przecięciem wnętrz — `interiorCrossings` (sn×sn) spada do zera, a każdy nowy
+ * T-węzeł jest realnym węzłem rozgałęzienia tras (`externalBranchNodes`) i
+ * dostaje kropkę węzłową (`junction`, `junction_dot_probe`).
+ *
+ * Niezmienniki: sumy długości pionów/poziomów i liczba załamań NIEZMIENIONE
+ * (wierzchołek cięcia jest WSPÓŁLINIOWY — dzieli kabel bez ruchu geometrii,
+ * `orthogonalBendCount` liczy tylko rogi), więc kompaktyzacja P1
+ * (`vertical_length_probe`/`sheet_fill_probe`) nie może się cofnąć. Elektrycznie
+ * to WYŁĄCZNIE reprezentacja styku: obie połówki poziome niosą TEN SAM
+ * `ownerRef` (jeden kabel ENM narysowany z jawnym odczepem T), zero zmiany
+ * modelu. Dopasowanie kabla do rozcięcia jest GEOMETRYCZNE (krawędź pozioma
+ * zawierająca punkt we wnętrzu) — jedno przecięcie trafia w dokładnie jeden
+ * kabel na danej rzędnej.
+ */
+function horizontalEdgeContains(a: RouteVertex, b: RouteVertex, p: RouteVertex): boolean {
+  return a.y === b.y && a.y === p.y && p.x > Math.min(a.x, b.x) && p.x < Math.max(a.x, b.x);
+}
+
+function splitPolylineAtPoints(
+  points: readonly RouteVertex[],
+  cuts: readonly RouteVertex[],
+): readonly (readonly RouteVertex[])[] {
+  if (points.length < 2) return [points];
+  // WYŁĄCZNIE cięcia leżące we WNĘTRZU krawędzi POZIOMEJ TEJ polilinii (piony
+  // przecinamy wnętrzem, nie tniemy) — tylko one dzielą. Punkt zbieżny z
+  // WIERZCHOŁKIEM oryginalnym (np. kropka innej pary tras) NIE dzieli:
+  // rozcinamy tylko tam, gdzie realnie wstawiliśmy wierzchołek T.
+  const insertedKeys = new Set<string>();
+  const enriched: RouteVertex[] = [points[0]];
+  for (let i = 0; i + 1 < points.length; i++) {
+    const a = points[i];
+    const b = points[i + 1];
+    const onEdge = cuts.filter((c) => horizontalEdgeContains(a, b, c));
+    onEdge.sort((p, q) => (b.x > a.x ? p.x - q.x : q.x - p.x));
+    for (const c of onEdge) {
+      enriched.push(c);
+      insertedKeys.add(`${c.x},${c.y}`);
+    }
+    enriched.push(b);
+  }
+  if (insertedKeys.size === 0) return [points];
+  const pieces: RouteVertex[][] = [];
+  let current: RouteVertex[] = [enriched[0]];
+  for (let i = 1; i < enriched.length; i++) {
+    current.push(enriched[i]);
+    if (i < enriched.length - 1 && insertedKeys.has(`${enriched[i].x},${enriched[i].y}`)) {
+      pieces.push(current);
+      current = [enriched[i]];
+    }
+  }
+  pieces.push(current);
+  return pieces;
+}
+
+interface TeeJunctionResult {
+  readonly segments: readonly PreviewSegment[];
+  readonly dots: readonly RouteVertex[];
+}
+
+function resolveTeeJunctions(segments: readonly PreviewSegment[]): TeeJunctionResult {
+  const crossings = interiorCrossings(segments).filter((c) => !c.involvesBus);
+  if (crossings.length === 0) return { segments, dots: [] };
+  const cutsBySeg = new Map<number, RouteVertex[]>();
+  const dotKeys = new Set<string>();
+  const dots: RouteVertex[] = [];
+  for (const c of crossings) {
+    const pt: RouteVertex = { x: c.x, y: c.y };
+    for (let si = 0; si < segments.length; si++) {
+      const pts = segments[si].points;
+      for (let i = 0; i + 1 < pts.length; i++) {
+        if (horizontalEdgeContains(pts[i], pts[i + 1], pt)) {
+          const list = cutsBySeg.get(si) ?? [];
+          list.push(pt);
+          cutsBySeg.set(si, list);
+          break;
+        }
+      }
+    }
+    const key = `${pt.x},${pt.y}`;
+    if (!dotKeys.has(key)) {
+      dotKeys.add(key);
+      dots.push(pt);
+    }
+  }
+  const out: PreviewSegment[] = [];
+  segments.forEach((seg, si) => {
+    const cuts = cutsBySeg.get(si);
+    if (!cuts || cuts.length === 0) {
+      out.push(seg);
+      return;
+    }
+    const pieces = splitPolylineAtPoints(seg.points, cuts);
+    pieces.forEach((piecePoints, pi) => {
+      const isLast = pi === pieces.length - 1;
+      if (pi === 0) {
+        // PIERWSZY kawałek zachowuje realny `ownerRef` przęsła — `points[0]`
+        // pozostaje stroną `fromTerminal` (kontrakt kierunku nakładki F-1,
+        // `overlay.ts`), a bramka `singleHopSegmentRefs`/licznik przęseł
+        // (`overlay.ts`, kawałki `seg/` bez `#`) widzą DOKŁADNIE jeden odcinek
+        // na realny ref. `openTerminal` (jeśli był) należy do OSTATNIEGO
+        // kawałka, więc przy podziale (>1 kawałek) zdejmujemy go z pierwszego.
+        const baseMeta =
+          seg.meta && seg.meta.openTerminal && !isLast ? { ...seg.meta, openTerminal: false } : seg.meta;
+        out.push({ points: piecePoints, meta: baseMeta });
+        return;
+      }
+      // KOLEJNE kawałki (za odczepem T) to element WYŁĄCZNIE rysunkowy —
+      // kontynuacja TEGO SAMEGO kabla ENM za kropką węzłową. Sufiks `#tee-N`
+      // (konwencja kompozytu `#…`, patrz `PreviewElementMeta.ownerRef`) wyklucza
+      // je z bramki kierunku/licznika przęseł (jeden ref = jedna strzałka), a
+      // `seg/…` w prefiksie utrzymuje je w `externalBranchNodes` (styk końcem z
+      // pionem = realny węzeł T, kropka uzasadniona). Ostatni kawałek nosi
+      // ewentualny `openTerminal`.
+      const teeMeta = seg.meta
+        ? { ...seg.meta, ownerRef: seg.meta.ownerRef ? `${seg.meta.ownerRef}#tee-${pi}` : undefined }
+        : undefined;
+      out.push({ points: piecePoints, meta: teeMeta });
+    });
+  });
+  return { segments: out, dots };
 }
 
 /**
@@ -2936,6 +3069,37 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         `(silnik etykiet, priorytet S-id>nazwa>moc>parametry): ` +
         `${declutter.dropped.map((l) => `${l.ownerKind}:${l.ownerRef}`).join(', ')} (audyt §3 D2).`,
     );
+  }
+
+  // -- 7.5 (SCHEMAT-10 S7-P2, V12K-137, §22.1): węzeł T — rozcięcie kabli
+  // poziomych (magistrala/płytszy lateral) w punktach styku z pionami zejść
+  // lateralnych (styk KOŃCEM zamiast przecięcia wnętrza) + kropka węzłowa.
+  // `interiorCrossings` sn×sn → 0; piony/poziomy/załamania NIEZMIENIONE
+  // (rozcięcie współliniowe), elektryka niezmieniona (ten sam `ownerRef`).
+  const tee = resolveTeeJunctions(allSegments);
+  if (tee.dots.length > 0) {
+    allSegments.length = 0;
+    allSegments.push(...tee.segments);
+    const junctionDef = SYMBOL_DEFS.junction;
+    for (const d of tee.dots) {
+      allSymbols.push({
+        symbolId: 'junction',
+        x: d.x - junctionDef.width / 2,
+        y: d.y - junctionDef.height / 2,
+        meta: { elementKind: 'apparatus', testId: `sld-v3-wezel-t-${d.x}-${d.y}` },
+      });
+    }
+    // Te same punkty T rozcinają geometrię tras (`allRouteGeoms`) — kabel
+    // poziomy KOŃCZY się teraz w punkcie odczepu, więc `classifyRouteNodes`
+    // (sekcja 8) reklasyfikuje dawne skrzyżowanie na WĘZEŁ (koniec trasy na
+    // wnętrzu pionu), a metryka `crossingCount` (`scene.crossings`) spada do
+    // zera — spójnie z `interiorCrossings` wyroczni §22.1. Pion zejścia NIE
+    // dzieli się (punkt leży na jego pionie, nie na krawędzi poziomej).
+    const splitGeoms = allRouteGeoms.flatMap((g) =>
+      splitPolylineAtPoints(g.points, tee.dots).map((pts) => ({ points: pts })),
+    );
+    allRouteGeoms.length = 0;
+    allRouteGeoms.push(...splitGeoms);
   }
 
   // -- 8. Węzły routingu (junctions/crossings) — WYŁĄCZNIE trasy `route.ts` -

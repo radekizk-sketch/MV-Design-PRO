@@ -157,3 +157,66 @@ Kolejność wykonania: S7-P1 (kompaktyzacja Rodziny B + piony proporcjonalne) �
 S7-P2 (węzeł T dla Rodziny A; aktualizacja crossing_probe do zera z mostkiem
 dopuszczalnym wyłącznie dla pozostałych, dowiedzionych nieredukowalnych) →
 S7-P3 (balancing + światła). crossingCount=0 POZOSTAJE warunkiem odbioru.
+
+## 7. Wykonanie S7-P2 (2026-07-23) — węzeł T: przecięcia do zera
+
+Zrealizowano **S7-P2** dla OBU rodzin (A magistrala×zejście, B lateral×zejście).
+Mechanizm (`resolveTeeJunctions`, `scene/buildScene.ts` sekcja 7.5): każdy kabel
+POZIOMY (przęsło magistrali `segment*` / kabel-wiersz płytszego lateralu
+`branch_segment_R_*`) jest ROZCIĘTY dokładnie w punkcie, w którym dotyka go pion
+ZEJŚCIA lateralu (`branch_segment_L`). Koniec połówki poziomej ląduje we WNĘTRZU
+pionu ⇒ styk KOŃCEM = realny T-węzeł (`externalBranchNodes`) ⇒ kropka `junction`
+(∅ §22.1). PIERWSZY kawałek zachowuje realny `ownerRef` (kontrakt kierunku
+nakładki F-1 i licznik przęseł `overlay.ts` nietknięte), kolejne kawałki niosą
+`⟨ref⟩#tee-N` (element rysunkowy — kontynuacja tego samego kabla ENM za odczepem,
+poza bramką kierunku). Te same punkty rozcinają `allRouteGeoms`, więc
+`classifyRouteNodes` reklasyfikuje dawne skrzyżowania na WĘZŁY (`scene.crossings`
+→ 0). ELEKTRYCZNIE bez zmian (ten sam `ownerRef`, ciągłość toru zachowana).
+
+Tabela 18 metryk (fixtura `sldSubstrate52s`, per LOD — L0/L1/L2), przed→po S7-P2:
+
+| Metryka | Przed (po P1) | Po S7-P2 |
+|---|---|---|
+| **crossingCount** | **13/24/24** | **0/0/0** |
+| kropki T (`junction`) | 0/0/0 | 13/24/24 |
+| verticalLength | 28072/45016/45016 | 28072/45016/45016 (bez zmian) |
+| horizontalLength | 47048/67192/70784 | 47048/67192/70784 (bez zmian) |
+| totalOrthogonalLength | 75120/112208/115800 | 75120/112208/115800 (bez zmian) |
+| bendCount | 39/167/167 | 39/167/167 (bez zmian) |
+| contentBBox (w×h) | 14208×4379 / 14208×4457 / 14208×4457 | identycznie |
+| widthUtilization | 0.0957/0.4291/0.4426 | identycznie |
+| heightUtilization | 0.1204/0.2921/0.2921 | identycznie |
+| bboxUtilization | 0.000370/0.004328/0.004328 | identycznie |
+| inkDensity | 0.009854/0.018107/0.018560 | identycznie |
+| minimumClearance | 8/8/8 | 8/8/8 |
+| labelCollisionCount | 0/0/0 | 0/0/0 |
+| subtreeIntersectionCount | 0/0/0 | 0/0/0 |
+| nonOrthogonalSegmentCount | 0/0/0 | 0/0/0 |
+| ambiguousConnectionCount | 0/0/0 | 0/0/0 |
+| symbolCount | 68/568/568 | 81/592/592 (+kropki T) |
+| stationCount | 53/53/53 | 53/53/53 |
+
+Rozcięcie jest WSPÓŁLINIOWE (wierzchołek dzieli kabel bez ruchu geometrii), więc
+piony/poziomy/załamania/bbox/kompaktyzacja P1 NIE regresują (podłogi
+`sheet_fill_probe` i baza pionów `vertical_length_probe` spełnione z zapasem).
+Jedyny przyrost to symbolCount (+13/+24/+24 kropek T) i inkDensity marginalnie ↑.
+
+Pozostałe przecięcia po S7-P2: **ZERO** (`interiorCrossings` sn×sn = 0/0/0 na
+wszystkich LOD, `crossingBusGaps` = 0). Mostek półłukowy NIE jest użyty na
+fixturze referencyjnej (dopuszczalny wyłącznie dla dowiedzionych nieredukowalnych
+— brak takich). `crossing_probe` zaostrzony do TWARDEGO ZERA (sn×sn ORAZ szyna).
+
+Bramki S7-P2: `type-check`=0, `lint`=0, vitest (`src/ui/sld`, `sld-overlay`,
+`engine/sld-layout`) zielone, `accept:sld-v3` ALL PASS, guardy
+`sld_determinism`/`overlay_no_physics`/`no_codenames`/`forbidden_ui_terms`=0,
+determinizm 2× (buildSceneV3 bajt-identyczny). Goldeny wymienione per plik:
+`crossings.test.ts` (24 przecięcia → 0 + węzeł T z kropką), `buildScene.test.ts`
+(L0: kropka ≠ stacja), `buildScene.gpzFeeder.test.ts` (styk feeder×magistrala =
+węzeł T), `overlay.test.ts` (kontrakt kierunku F-1 przepisany na niezmiennik
+monotoniczny from→to dla przęseł rozciętych). Acceptance `crossing_probe`
+zaostrzony (TWARDE ZERO).
+
+GAP-y do S7-P3: balancing całych poddrzew + rozdzielenie świateł
+(`TOP_LEVEL_FIELD_CLEARANCE` +20–35%) — dopiero po spadku bbox, zgodnie z §4.
+Migracja geometrii do `engine/sld-layout/layoutEngine.ts` (S7.5) po ustabilizowaniu
+P1–P3. crossingCount=0 osiągnięty i utrzymany jako warunek odbioru.

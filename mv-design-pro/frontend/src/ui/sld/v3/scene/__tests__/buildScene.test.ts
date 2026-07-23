@@ -253,8 +253,16 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
     // `buildScene.ts`).
     const collapsedSymbols = scene.symbols.filter((s) => s.symbolId === 'stationCollapsed');
     expect(collapsedSymbols.length).toBe(EXPECTED_STATION_COUNT);
-    // 'junction' pozostaje WYŁĄCZNIE węzłem T tras (route.ts) — nie stacją.
-    expect(scene.symbols.some((s) => s.symbolId === 'junction')).toBe(false);
+    // 'junction' pozostaje WYŁĄCZNIE węzłem T tras — NIE stacją. Od S7-P2
+    // (V12K-137) węzeł T zejścia lateralu z kablem poziomym (Rodzina B na L0)
+    // materializuje kropkę `junction`; sprawdzamy więc, że ŻADNA kropka nie
+    // pokrywa się z pozycją stacji zbiorczej (kropki to węzły tras, stacje to
+    // `stationCollapsed`), zamiast dawnego „0 kropek w ogóle".
+    const collapsedKeys = new Set(collapsedSymbols.map((s) => `${s.x},${s.y}`));
+    const junctionOnStation = scene.symbols.some(
+      (s) => s.symbolId === 'junction' && collapsedKeys.has(`${s.x},${s.y}`),
+    );
+    expect(junctionOnStation).toBe(false);
   });
 
   it('LOD 1: pełne symbole stacji, ale zero etykiet segmentów i zero podpisów kierunku', () => {

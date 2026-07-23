@@ -861,11 +861,12 @@ for (const lod of LODS) {
 
   // -- §22.1 (F13.2, D3-3/D3-5): fizyka obrazu — skrzyżowania i kropki -------
   const crossings = interiorCrossings(scene.segments);
+  const snCrossings = crossings.filter((c) => !c.involvesBus);
   const busCrossGaps = crossingBusGaps(scene.segments);
   check(
-    'crossing_probe (§22.1): 0 przecięć toru mocy z SZYNĄ (mostek na szynie zakazany); przecięcia sn×sn pokryte mostkami z konstrukcji (polylinePathWithBridges — kanwa liczy TĄ SAMĄ funkcją)',
-    busCrossGaps.length === 0,
-    `przecięcia_sn×sn=${crossings.filter((c) => !c.involvesBus).length} (mostkowane) przecięcia_z_szyną=${busCrossGaps.length}`,
+    'crossing_probe (§22.1, węzeł T, V12K-137): TWARDE ZERO przecięć toru mocy — 0 sn×sn (Rodziny A/B rozcięte węzłem T, styk końcem + kropka) ORAZ 0 z SZYNĄ (mostek na szynie zakazany). Mostek półłukowy dopuszczalny WYŁĄCZNIE dla dowiedzionych nieredukowalnych (na fixturze referencyjnej: brak)',
+    snCrossings.length === 0 && busCrossGaps.length === 0,
+    `przecięcia_sn×sn=${snCrossings.length} przecięcia_z_szyną=${busCrossGaps.length}`,
   );
   const dotGaps = junctionDotGaps(scene, SYMBOL_DEFS);
   check(
