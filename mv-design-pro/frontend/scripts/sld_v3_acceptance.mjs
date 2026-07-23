@@ -93,6 +93,11 @@ import { fieldSilhouettesAreInjective } from '../src/ui/sld/v3/compose/station.t
 import { sourceKindSymbolsAreInjective } from '../src/ui/sld/v3/compose/sourceKind.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
 import {
+  miniRmuPathContinuityGaps,
+  miniRmuMarkerSpacingGaps,
+  transformerInteriorHeightRatio,
+} from '../src/ui/sld/v3/symbols/miniRmuGrammar.ts';
+import {
   busBandClearanceGaps,
   crossingBusGaps,
   entryCollinearityGaps,
@@ -433,6 +438,32 @@ check(
   'source_symbol_probe (§13.2): rodzaje DER ROZPOZNANE (pv/bess/generator/wind) mapują na UNIKALNE glify, rozłączne z gridSource',
   sourceKindSymbolsAreInjective(),
 );
+
+// SCHEMAT-10 GS-2 (V12K-137, `GRAMATYKA_MINI_RMU_2026-07` reguły 2–4, 5–7, 10,
+// 12): gramatyka konstrukcyjna sylwetki mini-RMU jest WŁAŚCIWOŚCIĄ GLOBALNĄ
+// (stałe `MINI_RMU`, `symbols/miniRmuGrammar.ts`) — nie zależy od fixtury/sceny.
+line('');
+line('=== mini_rmu_grammar_probe (GS-2, reguły 2–4 / 5–7,10,12, globalne — poza pętlą LOD) ===');
+{
+  const contGaps = miniRmuPathContinuityGaps();
+  check(
+    'mini_rmu_path_continuity_probe (reguły 2–4): szyna SN na wylot port W↔E przez enklozurę (tor ciągły, glif = fragment toru)',
+    contGaps.length === 0,
+    contGaps.length ? contGaps.join(' | ') : 'ciągłość toru zachowana',
+  );
+  const spGaps = miniRmuMarkerSpacingGaps();
+  check(
+    'mini_rmu_marker_spacing_probe (reguły 5–7, 10): markery wewnątrz enklozury, rozłączne, kanał routingu x=24 czysty',
+    spGaps.length === 0,
+    spGaps.length ? spGaps.join(' | ') : 'kotwice/odstępy zachowane',
+  );
+  const trRatio = transformerInteriorHeightRatio();
+  check(
+    'mini_rmu_transformer_proportion_probe (reguła 12): TR uzupełniający — ≤0,5 wysokości wnętrza',
+    trRatio <= 0.5,
+    `udział=${trRatio.toFixed(4)}`,
+  );
+}
 
 // F10.2 (spec §19.3, V12K-034): station_type_topology_probe — NIEZALEŻNA od
 // buildSceneV3/lod (działa WPROST na snapshot ENM przez adapter v2) — (a)
