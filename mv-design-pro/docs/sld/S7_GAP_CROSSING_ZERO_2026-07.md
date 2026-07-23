@@ -337,3 +337,20 @@ s7p3-l0..l2.png` dołączone. Goldeny per plik: `HORIZONTAL_LENGTH_BASELINE`
 - Balancing poziomy całych poddrzew (centrowanie CoG ważone footprintem).
 - Migracja geometrii `buildScene`→`layoutEngine.ts` (`LayoutResult` render-only).
 crossingCount=0 utrzymany jako warunek odbioru.
+
+## §9 RECENZJA WŁAŚCICIELA PO P1-P3 (2026-07-22) — S6/S7 NIEODEBRANE, wymagane P0
+Oceny: topologia 9, ortogonalność 9, piony 8, compact 8, balancing 7, arkusz 8,
+GÓRNY PAS 6, czytelność całości 6, skalowalność BEZ DOWODU, gotowość 7.
+P0 przed odbiorem: (1) światło górnego pasa mierzone bbox-do-bbox całych pól
+(prawy bbox pola N → lewy bbox pola N+1 ≥ TOP_LEVEL_FIELD_CLEARANCE, z opisami
+i aparaturą — nie odstęp kotwic); (2) każdy pion dłuższy niż footprint MUSI mieć
+w raporcie przyczynę (kolizja z poddrzewem X / etykieta Y / M-02) — bez przyczyny
+= skrócić; (3) czytelność stanów na widoku całości: na L0 rozpoznawalne typ
+stacji, funkcja pola, NO, stan łącznika, źródło, transformator, tor mocy (bez
+zoomu); (4-6) potwierdzenia: zero kolizji, JEDNA KOTWICA, raport metryk przed/po;
+(7) dowód wielotopologiczny (WYTYCZNE §12). P1: lokalna gęstość (metryki
+localOccupancyByGrid, largestEmptyRectangle, subtreeCenterDeviation,
+h/vDensityVariance), odstęp stacji z footprintu (nie stały krok), hierarchia wag
+tor główny→odejście→podgałąź (kolor NIE jedyny nośnik), testy długich opisów
+i sieci 100–500 stacji. Sekcjonowanie/wielorzędowy pas magistrali dla bardzo
+dużych sieci = polityka jawna, nigdy łamanie magistrali dla wyglądu.
