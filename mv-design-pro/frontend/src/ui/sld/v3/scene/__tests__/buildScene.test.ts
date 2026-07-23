@@ -949,9 +949,17 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // się WYŁĄCZNIE rzędna `dy` pasa (geometria, nie model). Dowód braku
     // regresji: `accept:sld-v3` ALL PASS + s6Metrics (0 kolizji/przecięć-poddrzew/
     // nie-ortogonalnych/niejednoznacznych).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(28072);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(45016);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(45016);
+    // → SCHEMAT-10 S7.6 (V12K-137, karta KOMPRESJA, Z1): L0 28072→21976 (−22%),
+    // L1/L2 45016→38920 (−14%). Etykieta zejścia lateralu (obrócony
+    // `segment-lateral`) przeniesiona z gapu NAD stacją docelową do PASA ZEJŚĆ
+    // pod magistralą (przy punkcie odejścia); gap pasm spadł z korytarza-etykiety
+    // (248 px) do MIN_SUBTREE_CLEARANCE (32 px), więc piony zejść skróciły się
+    // WYNIKOWO. Piony MALEJĄ (miara „nie-rosnąca" §15.1 spełniona). Topologia,
+    // kolejność aparatów, ciągłość toru, „jedna kotwica" NIEZMIENIONE — zmienia
+    // się WYŁĄCZNIE rzędna `dy` pasa (geometria, nie model).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21976);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(38920);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(38920);
   });
 });
 

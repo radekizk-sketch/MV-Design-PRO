@@ -497,3 +497,82 @@ i zbiór §3 „nigdy nie znika" utrzymane jako warunek odbioru.
   `buildScene.schemat10s7p3.test.ts` — stała `TOP_LEVEL_FIELD_CLEARANCE` 3→4×GRID
   (intencja „stała rozdzielona istnieje" zachowana). Topologia/kolejność aparatów/
   ciągłość toru/liczba stacji NIEZMIENIONE (wyłącznie geometria pozioma).
+
+## §11 WYKONANIE S7.6 (2026-07-23) — KOMPRESJA PIONOWA pasm (audyt powykonawczy Z1)
+
+Zrealizowano **kartę S7.6 KOMPRESJA** (`AUDYT_POWYKONAWCZY_SLD_2026-07` znalezisko
+**Z1**: pustka arkusza L1 79,7%, długie puste piony między magistralą a rzędami
+lateralnymi). Silnik OGÓLNY (WYTYCZNE §1/§2), zero strojenia fixtury.
+
+### 11.1 RECON (pomiar źródła Z1)
+Rzędna Y każdego rzędu lateralnego pochodzi z packera interwałowego S7-P1
+(`createLateralShelfPacker`, `scene/buildScene.ts`). Gap pasa liczony był
+`max(ROW_VERTICAL_GAP, corridorHeight)`, gdzie `corridorHeight = szerokość
+OBRÓCONEJ etykiety wjazdowej (segment-lateral) + 2×GRID`. Pomiar per rząd (L1,
+fixtura referencyjna, sonda `meta.lateralShelves`): KAŻDY z 12 gapów = **248 px**,
+z czego **242 px = korytarz etykiety**, a tylko **32 px = MIN_SUBTREE_CLEARANCE**.
+Etykieta zawyżała gap **7,75×**. Kontraktowe minimum światła poddrzew
+(MIN_SUBTREE_CLEARANCE = 4×GRID = 32) było spełnione z ~216 px NADMIARU/rząd.
+
+### 11.2 Przyczyna i naprawa (reguła OGÓLNA)
+Etykieta zejścia (`segment-lateral`, obrócona) opisuje ODEJŚCIE od magistrali i
+kartograficznie należy do PUNKTU ODEJŚCIA, nie do gapu nad ODLEGŁĄ stacją
+docelową. Wszystkie origins lateralów leżą na magistrali (`resolveBranchOrigin`
+odrzuca zagnieżdżone). Naprawa: PAS ZEJŚĆ tuż pod magistralą
+(`dropBandHeight` = NAJWYŻSZY korytarz etykiety zejścia, prepass deterministyczny
+z realnego bbox tekstu po pomiarze fontu) mieści WSZYSTKIE etykiety zejść przy ich
+`channelX` (rozrzut ≥855 px, etykiety 17 px — zero kolizji poziomej). Gap pasm
+lateralnych spadł do `MIN_SUBTREE_CLEARANCE`; usunięto też wymóg `corridorFits`
+przy współdzieleniu pasa (laterale rozłączne w X pakują się GĘŚCIEJ). Piony zejść
+skróciły się WYNIKOWO (ta sama trasa port→port, krótszy odcinek). Zmiana w SILNIKU
+(packer + emisja etykiety), zero lokalnych x/y per stacja.
+
+### 11.3 Metryki przed/po (fixtura referencyjna, L0/L1/L2)
+
+| Metryka | Przed (po P4) | Po S7.6 | Δ |
+|---|---|---|---|
+| Σ pionów (verticalLength) | 28072/45016/45016 | **21976/38920/38920** | L0 −22%, L1/L2 −14% |
+| rezerwacja-kanalu (L1/L2) | 43872 | **37776** | −14% |
+| contentBBox h | 4379/4457/4457 | **3331/3409/3409** | −24% |
+| bboxUtilization | 0.002102/0.004301/0.004301 | **0.002763/0.005623/0.005623** | +31% |
+| inkDensity | 0.011309/0.018024/0.018475 | **0.013840/0.022556/0.023144** | +22..25% |
+| heightUtilization (L1) | 0.2921 | **0.3817** | +31% |
+| Σ gapAbove pasm (L1) | 2976 | **384** | −87% |
+| Σ nadmiar światła pasm | 2592 (216×12) | **0** | domknięte |
+| horizontalLength | 47248/67424/71016 | **bez zmian** | 0 |
+| crossingCount | 0/0/0 | **0/0/0** | ✓ |
+| labelCollision/M-02/nieortog/niejedn | 0 | **0** | ✓ |
+| minimumClearance | 8 | **8** | ✓ |
+| symbolCount / stationCount / kropki T | 592 / 53 / 24 | **bez zmian** | ✓ |
+
+Warunek odbioru S6 §6 spełniony JEDNOCZEŚNIE: bboxUtilization PO > PRZED ∧
+verticalLength PO < PRZED ∧ kolizje/M-02/nieortog/crossing = 0.
+
+### 11.4 Bramki S7.6
+`type-check`=0, `lint`=0, vitest (`src/ui/sld`+`src/engine`) 184 plików / 3571
+testów zielone, `accept:sld-v3` ALL PASS (baseline pionów zaciśnięty, podłoga
+`sheet_fill` podniesiona), guardy `sld_determinism`/`overlay_no_physics`/
+`no_codenames`/`forbidden_ui_terms`/`ui_terminology`=0, determinizm 2×. Fixtury
+syntetyczne 106/265/530 (rodzina H) zero nadmiaru światła w budżetach czasu.
+Zrzuty `docs/audit/visual/schemat-10/s7p6-l0..l2.png` COMMITOWANE (baner metryk w
+STOPCE poza bbox treści — domyka Z4 dla tego skryptu).
+
+### 11.5 Goldeny per plik (jedyna dozwolona zmiana)
+- `sld_v3_acceptance.mjs` — `VERTICAL_LENGTH_BASELINE` 28072/45016/45016 →
+  21976/38920/38920 (przyczyna: etykieta zejścia → pas pod magistralą, gap →
+  MIN_SUBTREE_CLEARANCE, piony skrócone; bramka nie-rosnąca zaryglowana do zysku).
+- `sld_v3_acceptance.mjs` — `SHEET_FILL_FLOOR` 0.00977/0.01797/0.01842 →
+  0.01380/0.02250/0.02309 (przyczyna: bbox-h −24% ⇒ inkDensity ↑; podłoga = nowa
+  zmierzona wartość − ~0.00005 jitter, ryglowanie zysku gęstości).
+- `buildScene.test.ts` — asercja `totalVerticalSegmentLength` 28072/45016/45016 →
+  21976/38920/38920 (nowa kanoniczna geometria; intencja „piony nie-rosnące"
+  zachowana). Topologia/kolejność aparatów/ciągłość toru/„jedna kotwica"
+  NIEZMIENIONE — wyłącznie rzędna `dy` pasm + Y etykiety zejścia.
+- NOWY test: `buildScene.schemat10s7p6.test.ts` (22 testy) — dowód „żaden pas >
+  minimum + kwant siatki" na 5 klasach topologii × 3 LOD + rodzina H 106/265/530.
+
+### 11.6 Pozostały dług (bez zmian, S7.5)
+`TOP_LEVEL_FIELD_CLEARANCE` +20–35% netto-dodatnio; balancing POZIOMY całych
+poddrzew (centrowanie CoG); migracja `buildScene`→`layoutEngine.ts`. GAP
+nieredukowalny w bieżącej reprezentacji (§8.4) — S7.6 dotyczy WYŁĄCZNIE osi Y
+(kompresja pionowa), oś X bez zmian. crossingCount=0 utrzymany jako warunek odbioru.

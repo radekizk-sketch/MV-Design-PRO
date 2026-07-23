@@ -229,7 +229,15 @@ const EXPECTED_STATION_COUNT = 53;
 // footprintu, nie do skumulowanej pozycji w grzebieniu). Baseline ZACIEŚNIONY
 // do zmierzonej wartości — bramka nie-rosnąca chroni przed cofnięciem zysku.
 // Topologia/kolejność aparatów/ciągłość toru/„jedna kotwica" NIEZMIENIONE.
-const VERTICAL_LENGTH_BASELINE = { 0: 28072, 1: 45016, 2: 45016 };
+// SCHEMAT-10 S7.6 (V12K-137, karta KOMPRESJA, Z1): ZACIEŚNIONY 28072/45016/45016
+// → 21976/38920/38920 (L0 −22%, L1/L2 −14%). Przyczyna: etykieta zejścia lateralu
+// (obrócony `segment-lateral`) przeniesiona z gapu NAD stacją docelową do PASA
+// ZEJŚĆ pod magistralą (przy punkcie odejścia); gap pasm lateralnych spadł z
+// korytarza-etykiety (248 px) do MIN_SUBTREE_CLEARANCE (32 px), więc piony zejść
+// skróciły się WYNIKOWO (`rezerwacja-kanalu` 43872→37776 na L1/L2). Bramka
+// nie-rosnąca ryglowana do nowej wartości. Topologia/kolejność/ciągłość toru/
+// „jedna kotwica"/crossings=0/kolizje=0 NIEZMIENIONE (patrz raport S7.6, tabela).
+const VERTICAL_LENGTH_BASELINE = { 0: 21976, 1: 38920, 2: 38920 };
 
 /**
  * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):
@@ -286,7 +294,15 @@ const BEND_COUNT_BASELINE = { 0: 39, 1: 167, 2: 167 };
 // (recenzja AKCEPTUJE zmierzony koszt świateł pasa górnego jako P0). Nie jest to
 // „spuchnięcie pustką" — to świadomy koszt czytelniejszego światła, a bbox
 // rośnie tylko o poszerzone szczeliny, nie o pustą rezerwę.
-const SHEET_FILL_FLOOR = { 0: 0.00977, 1: 0.01797, 2: 0.01842 };
+// SCHEMAT-10 S7.6 (V12K-137, karta KOMPRESJA, Z1): PODNIESIONY 0.00977/0.01797/
+// 0.01842 → 0.01380/0.02250/0.02309 (zaryglowanie zysku kompresji pionowej).
+// Przyczyna: kompresja pasm lateralnych (etykieta zejścia → pas pod magistralą,
+// gap → MIN_SUBTREE_CLEARANCE) obniża bbox-h o −24% (4457→3409 na L1/L2), więc
+// udział pokrytych komórek (inkDensity ≈ sheetFill) rośnie: L0 0.011309→0.013840,
+// L1 0.018024→0.022556, L2 0.018475→0.023144 (spełnia „wykorzystanie arkusza po >
+// przed", warunek S6 §6). Podłoga = NOWA zmierzona wartość minus ~0.00005 na jitter
+// metryk tekstu (ta sama reguła co S7-P1/P4). Korekta per liczba.
+const SHEET_FILL_FLOOR = { 0: 0.01380, 1: 0.02250, 2: 0.02309 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —

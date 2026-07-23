@@ -238,6 +238,10 @@ export interface SceneV3Meta {
    *  §16); współrzędne świata (kompozycja pass-2). `null`/brak = brak GPZ
    *  lub kompozycja pusta. */
   readonly gpzZone?: import('../compose/gpz').GpzZoneDecoration | null;
+  /** SCHEMAT-10 S7.6 (V12K-137, Z1): rekordy umieszczeń lateralów w packerze
+   *  pionowym — audyt świateł pasm (raport przed/po, test kompresji). Addytywne,
+   *  deterministyczne; puste dla scen bez lateralów. */
+  readonly lateralShelves?: readonly LateralShelfRecord[];
 }
 
 export interface SceneV3 extends PreviewComposition {
@@ -1543,10 +1547,37 @@ interface ShelfPlacement {
   readonly priorContentBottom: number;
 }
 
+/** SCHEMAT-10 S7.6 (V12K-137, karta KOMPRESJA, Z1): diagnostyka JEDNEGO umieszczenia
+ *  lateralu w packerze — do audytu świateł pionowych (raport §6, test kompresji).
+ *  Wszystkie liczby z realnie policzonej geometrii, deterministyczne. */
+export interface LateralShelfRecord {
+  readonly runId: string;
+  /** Strop pasa Y (== `dy` przesunięcia poddrzewa). */
+  readonly dy: number;
+  /** Dół treści NAD pasem (kotwica korytarza etykiety wjazdowej). */
+  readonly contentAbove: number;
+  /** Wymagana wysokość korytarza etykiety wjazdowej (obrócony `segment-lateral`,
+   *  == szerokość tekstu + 2×GRID); 0 gdy brak etykiety. */
+  readonly corridorHeight: number;
+  /** Wysokość pasm poddrzewa (footprint w osi Y). */
+  readonly footprintHeight: number;
+  /** Realne światło pionowe od treści powyżej do stropu pasa = `dy − contentAbove`. */
+  readonly gapAbove: number;
+  /** Kontraktowe minimum światła pasa = max(MIN_SUBTREE_CLEARANCE, corridorHeight)
+   *  — najmniejsza dopuszczalna wartość `gapAbove` z REALNYCH footprintów pasm
+   *  (treść + rezerwa etykiety), po dosnapowaniu do siatki. */
+  readonly contractMin: number;
+  /** True, gdy lateral DOŁĄCZYŁ do istniejącego pasa (współdzieli Y z sąsiadem
+   *  rozłącznym w X) — wtedy `gapAbove` mierzone od stropu pasa, nie tworzy nowego. */
+  readonly sharedShelf: boolean;
+}
+
 interface LateralShelfPacker {
   /** Umieść lateral ze stacjami: footprint X [left,right], wysokość pasm
-   *  `height`, wymagana wysokość korytarza etykiety wjazdowej `corridorHeight`. */
-  place(left: number, right: number, height: number, corridorHeight: number): ShelfPlacement;
+   *  `height`, wysokość korytarza etykiety zejścia `labelCorridor` (WYŁĄCZNIE
+   *  do audytu — od S7.6 etykieta żyje w PASIE ZEJŚĆ pod magistralą, patrz
+   *  `dropBandHeight`, NIE rozpycha gap-u pasa; gap = MIN_SUBTREE_CLEARANCE). */
+  place(runId: string, left: number, right: number, height: number, labelCorridor: number): ShelfPlacement;
   /** Strop następnego wiersza sekwencyjnego (== dawne `nextRowTopY`) — dla
    *  wierszy pełnej szerokości, które liczą własne `dy` z dodatkowymi
    *  ograniczeniami (np. `gpzBottom`). */
@@ -1554,6 +1585,8 @@ interface LateralShelfPacker {
   /** Zamknij bieżący pas i ustaw kursor sekwencyjny na `value` (== dawne
    *  przypisanie `nextRowTopY = …`), po zbudowaniu wiersza pełnej szerokości. */
   setCursor(value: number): void;
+  /** S7.6: rekordy umieszczeń lateralów (audyt świateł pionowych). */
+  records(): readonly LateralShelfRecord[];
 }
 
 function createLateralShelfPacker(topBaseline: number): LateralShelfPacker {
@@ -1562,10 +1595,17 @@ function createLateralShelfPacker(topBaseline: number): LateralShelfPacker {
   let shelfBottom = topBaseline; // najniższy dół footprintu bieżącego pasa
   let globalBottom = topBaseline; // najniższy dół CAŁEJ dotychczasowej treści
   const intervals: Array<{ readonly left: number; readonly right: number }> = [];
+  const shelfRecords: LateralShelfRecord[] = [];
 
-  function openNewShelf(corridorHeight: number): number {
+  // SCHEMAT-10 S7.6 (V12K-137, Z1 KOMPRESJA): gap pasa = MIN_SUBTREE_CLEARANCE
+  // (== ROW_VERTICAL_GAP). Etykieta zejścia (obrócony `segment-lateral`) NIE
+  // rozpycha już gap-u — leży w PASIE ZEJŚĆ pod magistralą, przy PUNKCIE
+  // ODEJŚCIA (`dropBandHeight` doliczony do `topBaseline` przez wołającego,
+  // etykiety emitowane w tym pasie). Dzięki temu pasma dosuwają się do
+  // rzeczywistego footprintu (M-02), a piony zejść skracają się WYNIKOWO.
+  function openNewShelf(): number {
     contentAbove = globalBottom;
-    const top = Math.max(snapUp(globalBottom + ROW_VERTICAL_GAP), snapUp(contentAbove + corridorHeight));
+    const top = snapUp(globalBottom + ROW_VERTICAL_GAP);
     shelfTop = top;
     shelfBottom = top;
     intervals.length = 0;
@@ -1573,18 +1613,29 @@ function createLateralShelfPacker(topBaseline: number): LateralShelfPacker {
   }
 
   return {
-    place(left, right, height, corridorHeight) {
+    place(runId, left, right, height, labelCorridor) {
       const disjoint = intervals.every(
         (iv) => right + LATERAL_SUBTREE_CLEARANCE <= iv.left || left >= iv.right + LATERAL_SUBTREE_CLEARANCE,
       );
-      const corridorFits = shelfTop != null && snapUp(contentAbove + corridorHeight) <= shelfTop;
-      const dy =
-        shelfTop != null && intervals.length > 0 && disjoint && corridorFits
-          ? shelfTop
-          : openNewShelf(corridorHeight);
+      // S7.6: współdzielenie pasa zależy WYŁĄCZNIE od rozłączności footprintu X
+      // (dawny warunek `corridorFits` — mieszczenie korytarza etykiety NAD
+      // pasem — zniknął wraz z przeniesieniem etykiet do pasa zejść, więc
+      // laterale rozłączne w X pakują się gęściej: mniej pasm, niższy arkusz).
+      const shared = shelfTop != null && intervals.length > 0 && disjoint;
+      const dy = shared ? shelfTop! : openNewShelf();
       intervals.push({ left, right });
       shelfBottom = Math.max(shelfBottom, dy + height);
       globalBottom = Math.max(globalBottom, shelfBottom);
+      shelfRecords.push({
+        runId,
+        dy,
+        contentAbove,
+        corridorHeight: labelCorridor,
+        footprintHeight: height,
+        gapAbove: dy - contentAbove,
+        contractMin: snapUp(ROW_VERTICAL_GAP),
+        sharedShelf: shared,
+      });
       return { dy, priorContentBottom: contentAbove };
     },
     nextTop() {
@@ -1596,6 +1647,9 @@ function createLateralShelfPacker(topBaseline: number): LateralShelfPacker {
       shelfBottom = globalBottom;
       shelfTop = null;
       intervals.length = 0;
+    },
+    records() {
+      return shelfRecords;
     },
   };
 }
@@ -2464,8 +2518,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // strefy GPZ nad y=0 — sekcja 2/3) + wysokość pasm; samo `totalHeight` było
   // poprawne tylko przy dy=0 sprzed F13.1.
   const mainRowBottom = mainLayout ? mainRowDy + mainLayout.bandsResult.totalHeight : 0;
-  // SCHEMAT-10 S7-P1 (V12K-137): packer interwałowy zastępuje kursor `nextRowTopY`.
-  const packer = createLateralShelfPacker(mainRowBottom);
   const lateralRunIds: string[] = [];
   const branchOriginUsage = new Map<string, number>();
 
@@ -2478,6 +2530,49 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   const lateralChannelXById = mainLayout
     ? computeLateralChannelXById(branchRuns, cableRunById, mainRowById, mainLayout.columnsResult.columns)
     : new Map<string, number>();
+
+  // SCHEMAT-10 S7.6 (V12K-137, Z1 KOMPRESJA): PAS ETYKIET ZEJŚĆ pod magistralą.
+  // Etykieta zejścia lateralu (obrócony `segment-lateral`, origin→stacja0) opisuje
+  // ODEJŚCIE od magistrali i kartograficznie należy do PUNKTU ODEJŚCIA — leży w
+  // jednym pasie tuż pod magistralą (przy channelX każdego zejścia), NIE w gapie
+  // nad odległą stacją docelową. Dzięki temu gapy pasm lateralnych spadają do
+  // MIN_SUBTREE_CLEARANCE (realny footprint), a piony zejść skracają się WYNIKOWO.
+  // `dropBandHeight` = NAJWYŻSZY korytarz etykiety zejścia (reguła OGÓLNA z realnego
+  // bbox tekstu po pomiarze fontu, WYTYCZNE §2; 0 gdy brak lateralów z etykietą).
+  // Prepass deterministyczny (osobna mapa `usage`, jak `computeLateralChannelXById`
+  // — ta sama kolejność `branchRuns` i warunki ⇒ identyczny origin/branchPos).
+  const dropBandHeight = ((): number => {
+    const usage = new Map<string, number>();
+    let maxCorridor = 0;
+    for (const run of branchRuns) {
+      const cr = cableRunById.get(run.id);
+      const isFeeder =
+        gpzComposition != null &&
+        gpzData != null &&
+        (cr?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) === gpzData.id;
+      if (isFeeder) continue; // feeder ma etykietę POZIOMĄ (segmentSpans), nie zejściową
+      const origin = resolveBranchOrigin(run, cableRunById, mainRowById, usage);
+      if (!origin) continue;
+      if (lateralChannelXById.get(run.id) == null) continue;
+      const station0Id = run.stationRefs.find((id) => stationById.has(id));
+      if (station0Id == null) continue; // bieg otwarty (bez stacji) — nie woła place()
+      const incomingText = segmentSpanTextWithEndpoints(
+        incomingLabelText(cr, station0Id),
+        stationCodeOfId(origin.originOwnerRef),
+        stationCodeOfId(station0Id),
+      );
+      if (incomingText == null) continue;
+      maxCorridor = Math.max(maxCorridor, measureLabelWidth(incomingText, 't2') + 2 * GRID);
+    }
+    return maxCorridor > 0 ? snapUp(maxCorridor) : 0;
+  })();
+  // Pas zejść zajmuje [mainRowBottom, dropBandBottom]; wszystkie pasma lateralne
+  // startują poniżej (packer.topBaseline = dropBandBottom).
+  const dropBandTop = mainRowBottom;
+  const dropBandBottom = snapUp(mainRowBottom + dropBandHeight);
+  // SCHEMAT-10 S7-P1 (V12K-137): packer interwałowy zastępuje kursor `nextRowTopY`.
+  // S7.6: startuje POD pasem etykiet zejść (gap pasm = MIN_SUBTREE_CLEARANCE).
+  const packer = createLateralShelfPacker(dropBandBottom);
 
   // Feedery z pól GPZ (2026-07-17, po odbiorze „100% klasy przemysłowej"):
   // licznik przydziału KOLEJNYCH pól liniowych GPZ (pierwsze = magistrala).
@@ -2841,16 +2936,17 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         snapUp(cols[cols.length - 1].tapX) + tailPieceCount * OPEN_RUN_PIECE_SPAN + 2 * GRID,
       );
     }
-    // Korytarz między-pasmowy musi zmieścić etykietę segmentu-lateralu (spec §4)
-    // POMIĘDZY `priorContentBottom` (dół treści NAD tym pasem, z packera) a `dy`.
+    // SCHEMAT-10 S7.6: gap pasa = MIN_SUBTREE_CLEARANCE; `requiredCorridorHeight`
+    // (korytarz etykiety zejścia) przekazany WYŁĄCZNIE do audytu (rekord packera),
+    // etykieta emitowana w PASIE ZEJŚĆ pod magistralą (patrz `dropBandTop`).
     const placement = packer.place(
+      run.id,
       footprintLeft,
       footprintRight,
       layout.bandsResult.totalHeight,
       requiredCorridorHeight,
     );
     const dy = placement.dy;
-    const priorContentBottom = placement.priorContentBottom;
     layout = shiftRowLayout(layout, 0, dy);
     lateralRunIds.push(run.id);
 
@@ -3029,26 +3125,21 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
           stationCodeOfId(first.id),
         );
         if (text) {
-          // DECYZJA (F6a, X zaktualizowany F6d): `originPort.y` (zaczep pola
-          // odgałęźnego stacji-origin) leży NA OGÓŁ WYŻEJ niż
-          // `priorContentBottom` (dół WSZYSTKIEGO już umieszczonego nad tym
-          // wierszem — patrz DECYZJA przy obliczaniu `minDy` wyżej), a
-          // `layout.blockTopY` leży WEWNĄTRZ REZERWACJI tego wiersza (pasma
-          // B1..B3). Etykieta segmentu jest kotwiczona WYŁĄCZNIE do
-          // widocznego korytarza między wierszami (`priorContentBottom`..`dy`),
-          // NIE do całej (dłuższej, teraz też jog+kanał) trasy — stąd
-          // `lineYStart`/`lineYEnd` przycięte do granic korytarza (BEZ ZMIAN
-          // od F6a). `lineX` to teraz `channelX` (F6d) — finalny pion PO
-          // jogu, nie `originPort.x` (który leży WEWNĄTRZ bloku stacji-origin,
-          // poza widocznym korytarzem tej etykiety i tak, więc zmiana nie ma
-          // wpływu na `fitsLength`/clearance, tylko na to, PRZY KTÓRYM pionie
-          // etykieta faktycznie stoi — patrz raport F6d).
+          // SCHEMAT-10 S7.6 (V12K-137, Z1 KOMPRESJA): etykieta zejścia kotwiczona
+          // do PASA ZEJŚĆ tuż pod magistralą (`dropBandTop`..`dropBandBottom`),
+          // przy channelX PUNKTU ODEJŚCIA — NIE do gapu nad odległą stacją
+          // docelową. To odsprzęga długość etykiety od gap-u pasa lateralnego
+          // (gap = MIN_SUBTREE_CLEARANCE), skracając piony zejść. Pion channelX
+          // przechodzi przez pas zejść (od stripTopY magistrali w dół), więc
+          // etykieta leży PRZY nim, jak wcześniej — tylko wyżej (przy odejściu).
+          // `dropBandBottom−dropBandTop == dropBandHeight ≥ alongLine+2×GRID` z
+          // konstrukcji (prepass max), więc `fitsLength` zawsze spełnione.
           segmentLaterals.push({
             ownerRef: `${first.id}#lateral-label`,
             text,
             lineX: channelX,
-            lineYStart: Math.max(originPort.y, priorContentBottom),
-            lineYEnd: Math.min(layout.blockTopY, dy),
+            lineYStart: dropBandTop,
+            lineYEnd: dropBandBottom,
           });
         }
       }
@@ -3281,6 +3372,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       stopNotes,
       sources: allSources,
       gpzZone: gpzComposition?.zone ?? null,
+      lateralShelves: packer.records(),
     },
   };
 }

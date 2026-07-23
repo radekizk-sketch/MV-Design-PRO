@@ -97,7 +97,7 @@ V12K-145) jest NADRZĘDNA nad niniejszym werdyktem warunkowym; karta GS-4b
 
 | Karta | Priorytet | Zakres | Status |
 |---|---|---|---|
-| S7.6 kompresja pionowa | P1 | silnik: dosunięcie pasm/rzędów do minimalnych świateł, metryki przed/po | ZLECONA (Opus) |
+| S7.6 kompresja pionowa | P1 | silnik: dosunięcie pasm/rzędów do minimalnych świateł, metryki przed/po | **ZAMKNIĘTA** (2026-07-23, `S7_GAP_CROSSING_ZERO_2026-07` §11: etykieta zejścia → pas pod magistralą; gap → MIN_SUBTREE_CLEARANCE; piony L1/L2 −14%, bbox-h −24%, bboxUtil +31%; wszystkie niezmienniki zielone) |
 | GS-4b strona DER w kompozycji L1/L2 | P1 | `connectionSide==='sn'` ⇒ przyłącze SN; test kanoniczny | DO ZLECENIA (po S7.6/F-E8.3) |
 | Z3 oznaczenia aparatów z danych | P2 | realne designations pól albo dług jawny | DO ZLECENIA |
-| Z4 baner skryptów poza bbox | P2 | skrypty dowodowe (nie kanwa) | DO ZLECENIA |
+| Z4 baner skryptów poza bbox | P2 | skrypty dowodowe (nie kanwa) | CZĘŚCIOWO (skrypt `render_schemat10_s7p6.tsx` ma baner w stopce; pozostałe skrypty S1–S7p4 do zlecenia) |
