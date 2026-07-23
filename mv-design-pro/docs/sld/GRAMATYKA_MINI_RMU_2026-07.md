@@ -125,3 +125,17 @@ Przebudowa `MINI_RMU` (miniRmuGrammar.ts) na kompozycję PÓL + renderer + sondy
 (ciągłość toru przez głowica–aparat–szyna, przerwa NO w torze, zakaz szyny poza
 enklozurą — ODWRÓCENIE obecnej sondy na-wylot) + macierz kombinacji przepisana +
 19 reguł nadal obowiązuje (kotwica, determinizm, globalne parametry).
+
+## GS-3.2 — formalizacje po recenzji kompozycji pól (2026-07-23)
+1. **„Aparat łączeniowy pola — stan zamknięty"** (pkt 3 recenzji): kwadrat na
+   torze pola liniowego/TR/DER to formalnie aparat uogólniony L0 w stanie
+   ZAMKNIĘTYM (rozróżnienie rozłącznik/wyłącznik = kontrakt L1/L2, nie L0);
+   odpowiednik OTWARTY istnieje w rodzinie APARAT SEKCYJNY (przerwa + człon
+   odchylony) — te same styki i kotwica, zmienia się wyłącznie człon ruchomy.
+2. **Jawna reguła LOD pola DER** (pkt 8): na L0 pole DER = szyna → aparat →
+   tor → znak źródła (głowica/punkt przyłączenia POMINIĘTE świadomie z powodu
+   rozmiaru 48×48); pełna struktura pola DER (z głowicą) obowiązuje od L1.
+3. **GAP (do domknięcia przy wpięciu w sondę accept)**: sonda ciągłości działa
+   na przedziałach geometrii gramatyki; docelowo ciągłość analizowana po
+   KONEKTORACH elektrycznych łańcucha pól (model konektorów w MINI_RMU), nie
+   po styku współrzędnych.
