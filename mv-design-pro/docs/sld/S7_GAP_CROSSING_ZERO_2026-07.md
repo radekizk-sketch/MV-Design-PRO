@@ -397,7 +397,29 @@ który §3 nazywa NIGDY-NIE-ZNIKAJĄCYM na L0 i egzekwuje go na scenie:
   NOP; kotwica NO identyczna L0/L1/L2). **TRANSFORMATOR** — `transformer2W` (GPZ).
 `lod0_readability_probe` (bramka WYŁĄCZNIE na L0) + testy 5 fixtur + 2 negatywy.
 
-### 10.4 GAP → S1 „Gramatyka stacji" (Zero-Debt pkt 4 — dług ponadsesyjny)
+### 10.4 GAP → S1 „Gramatyka stacji" (Zero-Debt pkt 4 — ~~dług ponadsesyjny~~ DOMKNIĘTY GS-1)
+
+> **DOMKNIĘCIE (V12K-137, 2026-07-23, karta GS-1 „SCHEMAT-10"):** GAP zamknięty.
+> Sylwetka `stationCollapsed` przebudowana z kwadratu 16×16 na **mini-RMU 48×48**
+> (obrys + wewnętrzna kreska szyny SN — miniatura gramatyki L1/L2), z markerami
+> **typu stacji · transformatora · DER (PV/BESS/FW) · stanu NO** rysowanymi
+> WEWNĄTRZ glifu (`symbols/glyphs.tsx` `StationCollapsedGlyph`, sterowanie
+> `meta.stationGlyph` — wzór `protectionCodes`/`meterQuantity`). Wszystko
+> wyprowadzone z TYPU elementów (spec §19.3), zero nazw. **Rozmiar 48×48
+> uzasadniony**: fit sieci referencyjnej (`sldSubstrate52s`, bbox 14296×4379,
+> harness 1800×1100, padding 40) daje skalę 0,1203 ⇒ 48px świata = **5,78px
+> ekranu** (16px = 1,93px, nieodróżnialne od kropki węzła); min. odstęp osi
+> stacji tego samego pasa = 664px ⇒ glif <8% odstępu, zero kolizji. **JEDNA
+> KOTWICA** utrzymana (środek 48×48 = dotychczasowa kotwica; geometria kolumn
+> z L2). **DER na L0**: 0 → 16 stacji z markerem (baza „L1=20 symboli" ⇒ L0
+> agreguje po jednym markerze na stację). **NO na L0**: marker `noOpen` sylwetki
+> (osobny symbol `noPoint` byłby pogrzebany w enklozurze i jego etykieta koliduje
+> — pozostaje reprezentacją L1/L2, ta sama kotwica). Bramki: `accept:sld-v3` ALL
+> PASS (201 checków), `lod0_readability_probe` rozszerzona o typ/TR/DER/NO +
+> negatyw, `buildScene.schemat10gs1.test.ts`, crossing=0/kolizje=0 na 3 LOD +
+> fixtura 106 stacji, determinizm. Dowód wizualny: `docs/audit/visual/schemat-10/
+> gs1-l0.png` (kadr całości) + `gs1-l0-detal.png` (legenda gramatyki ×4).
+
 §9 pkt 3 wymienia też **typ stacji, funkcja pola, stan łącznika per-pole, marker
 DER** na L0. Macierz §3 klasyfikuje je jako szczegół, który AGREGUJE SIĘ wewnątrz
 glifu przy oddalaniu („Co ZNIKA: szczegół WEWNĄTRZ glifu"). Ich rozpoznawalność

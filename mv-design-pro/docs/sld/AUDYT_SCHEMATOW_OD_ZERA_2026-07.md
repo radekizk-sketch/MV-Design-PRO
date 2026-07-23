@@ -61,7 +61,7 @@ Trzy poziomy sceny (SceneLod bez zmian), JEDEN słownik nazw (koniec mapowania 5
 |---|---|---|---|
 | Magistrale SN | gruby tor (waga 3), kolor napięcia | tor (waga 2) | tor (waga 2) |
 | Odgałęzienia | cienki tor (waga 1) | waga 1 | waga 1 |
-| Stacja | **glif kompaktowy** (sylwetka RMU mini: obrys + kreska szyny), S-id | **ta sama sylwetka** + aparaty główne pól (wyłącznik/rozłącznik), transformator, nN kreską | **ta sama sylwetka rozwinięta**: pełne pola, przekładniki, uziemniki, głowice |
+| Stacja | **glif kompaktowy** (sylwetka RMU mini: obrys + kreska szyny), S-id — **markery typu/TR/DER/NO** [†GS-1] | **ta sama sylwetka** + aparaty główne pól (wyłącznik/rozłącznik), transformator, nN kreską | **ta sama sylwetka rozwinięta**: pełne pola, przekładniki, uziemniki, głowice |
 | GPZ | ta sama gramatyka co stacja (większy glif, sekcje A/B) | sekcje + pola liniowe główkami | pełna rozdzielnia |
 | Sekcje/NOP | znacznik NA torze (kotwica = render szyny TEGO LOD) | jw. + stan łącznika | jw. |
 | DER | marker (PV/BESS/FW ikona) | ikona + moc | pełny blok przyłącza |
@@ -73,6 +73,21 @@ Trzy poziomy sceny (SceneLod bez zmian), JEDEN słownik nazw (koniec mapowania 5
 Co ZNIKA przy oddalaniu: szczegół WEWNĄTRZ glifu (agregacja do sylwetki), etykiety
 wg budżetu. Co NIGDY nie znika: tor elektryczny (sonda `lod_path_probe` zostaje),
 tożsamość i pozycja stacji, znaczniki sekcji/NOP.
+
+> **[†GS-1] (V12K-137, 2026-07-23, DOMKNIĘCIE GAP `S7_GAP_CROSSING_ZERO` §10.4).**
+> Wiersz „Stacja L0" ZREALIZOWANY: sylwetka `stationCollapsed` to teraz MINI-RMU
+> (obrys 48×48 + wewnętrzna kreska szyny SN), z markerami rozpoznawczymi
+> rysowanymi WEWNĄTRZ glifu i wyprowadzonymi z TYPU elementów (spec §19.3, zero
+> nazw): **typ stacji** (SN/nN z transformatorem · rozdzielnia sieciowa bez TR ·
+> sekcyjna ze sprzęgłem), **transformator** (mini-glif dwuuzwojeniowy), **DER**
+> (marker rodzaju PV/BESS/FW/generator — koniec bazy „DER na L0 = 0"), **stan
+> NO** (na L0 marker `noOpen` sylwetki zastępuje osobny symbol `noPoint`, który
+> pozostaje reprezentacją L1/L2 — TA SAMA kotwica). Rozmiar 48×48 (6×GRID)
+> wyprowadzony z czytelności kadru całości (fit sieci referencyjnej skala 0,1203
+> ⇒ 5,78px ekranu; 16px dawało 1,93px, nieodróżnialne od kropki). Bramkowane
+> `lod0_readability_probe` (rozszerzona o typ/TR/DER/NO + test negatywny) i
+> `buildScene.schemat10gs1.test.ts`. Dowód wizualny: `docs/audit/visual/schemat-10/
+> gs1-l0.png` (kadr całości) + `gs1-l0-detal.png` (legenda gramatyki).
 
 ## §4 Tabela rozstrzygnięć — majowa specyfikacja (§0bis)
 

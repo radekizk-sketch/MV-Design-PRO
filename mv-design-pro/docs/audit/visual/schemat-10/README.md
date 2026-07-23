@@ -180,3 +180,32 @@ CANON_OUT=<dir> node scripts/rasterize_s4_host.mjs              # SVG→PNG (hos
   poprawną funkcję (`handleExportSvg`/`onExportSvgOverride`), więc zachowanie
   jest spójne, ale redundancja UI (dwa przyciski, jeden efekt) zostaje —
   konsolidacja layoutu doku poza zakresem tej karty (nie „motyw + kadr").
+
+## GS-1 — sylwetka mini-RMU stacji na L0 (DOMKNIĘCIE GAP §10.4)
+
+`gs1-l0.png` / `gs1-l0-detal.png` — dowód wizualny karty **GS-1** (V12K-137,
+domknięcie `S7_GAP_CROSSING_ZERO_2026-07` §10.4): sylwetka `stationCollapsed`
+przebudowana z kwadratu 16×16 na MINI-RMU 48×48 (obrys + wewnętrzna kreska szyny
+SN — miniatura gramatyki L1/L2), z markerami rozpoznawczymi wyprowadzonymi z
+TYPU elementów (spec §19.3).
+
+| Plik | Kadr | Co pokazuje |
+|---|---|---|
+| `gs1-l0.png` | L0, CAŁA sieć referencyjna (53 stacje) | Dowód czytelności na kadrze całości: sylwetki mini-RMU obecne w KAŻDEJ stacji na torze; tor mocy z wagą (magistrala>odejście), źródło/GPZ; sylwetka 48×48 (fit skala 0,1203 ⇒ 5,78px ekranu) |
+| `gs1-l0-detal.png` | Legenda gramatyki (glify ×4, podpisy PL) | Markery: rozdzielnia sieciowa (sam obrys+szyna) · stacja SN/nN (transformator dwuuzwojeniowy pod szyną) · sekcyjna (przerwa/sprzęgło na szynie) · DER PV (trójkąt)/BESS (kwadrat)/farma wiatrowa (okrąg) nad szyną · punkt NO (kwadrat otwarty na szynie) |
+
+### Co dowodzą (GS-1)
+
+- **Rozpoznawalność typ/TR/DER/NO na L0** (recenzja §9 pkt 3 „czytelność 6/10"):
+  sylwetka niesie `meta.stationGlyph` (typ · transformator · DER · NO), bramkowane
+  `lod0_readability_probe` (rozszerzona) + `buildScene.schemat10gs1.test.ts`.
+- **DER na L0**: 0 → 16 stacji z markerem (baza §10.4 „L1 = 20 symboli"; L0
+  agreguje po jednym markerze rodzaju dominującego na stację).
+- **JEDNA KOTWICA**: środek 48×48 = dotychczasowa kotwica stacji (geometria
+  kolumn z L2); NOP w tym samym punkcie na L0/L1/L2 (L0 marker `noOpen`
+  sylwetki, L1/L2 symbol `noPoint` — „zoom = skala szczegółu, nie
+  przemeblowanie").
+- **Niezmienniki**: `accept:sld-v3` ALL PASS (201 checków), crossing=0/kolizje=0
+  na L0/L1/L2 + fixtura 106 stacji, determinizm — bez regresu goldenów
+  (geometria pozioma/piony/bbox-h routingu niezmienione; rośnie wyłącznie
+  ekstent sylwetki wokół kotwicy, w granicach kolumny L2).
