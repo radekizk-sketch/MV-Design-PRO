@@ -371,10 +371,33 @@ function derMiniMarker(kind: StationDerGlyphKind, s: string): JSX.Element {
   if (shape === 'diamond') {
     return <path d={`M${cx},${cy - h} L${cx + h},${cy} L${cx},${cy + h} L${cx - h},${cy} Z`} fill="none" stroke={s} strokeWidth={w} />;
   }
-  if (shape === 'square') {
-    return <rect x={cx - h} y={cy - h} width={2 * h} height={2 * h} fill="none" stroke={s} strokeWidth={w} />;
+  if (shape === 'battery') {
+    // Prostokąt bateryjny 2:1 z kreską wewnętrzną (NIE kwadrat aparatu).
+    return (
+      <g>
+        <rect x={cx - h} y={cy - h / 2} width={2 * h} height={h} fill="none" stroke={s} strokeWidth={w} />
+        <line x1={cx} y1={cy - h / 2} x2={cx} y2={cy + h / 2} stroke={s} strokeWidth={w} />
+      </g>
+    );
   }
-  return <circle cx={cx} cy={cy} r={h} fill="none" stroke={s} strokeWidth={w} />;
+  if (shape === 'circle-spokes') {
+    // Wirnik: okrąg + 3 ramiona (Y).
+    return (
+      <g>
+        <circle cx={cx} cy={cy} r={h} fill="none" stroke={s} strokeWidth={w} />
+        <line x1={cx} y1={cy} x2={cx} y2={cy - h} stroke={s} strokeWidth={w} />
+        <line x1={cx} y1={cy} x2={cx - 0.87 * h} y2={cy + 0.5 * h} stroke={s} strokeWidth={w} />
+        <line x1={cx} y1={cy} x2={cx + 0.87 * h} y2={cy + 0.5 * h} stroke={s} strokeWidth={w} />
+      </g>
+    );
+  }
+  // Generator: okrąg z kropką centralną.
+  return (
+    <g>
+      <circle cx={cx} cy={cy} r={h} fill="none" stroke={s} strokeWidth={w} />
+      <circle cx={cx} cy={cy} r={0.35} fill={s} stroke="none" />
+    </g>
+  );
 }
 
 /** Głowica kablowa (K1/K4): trójkąt wierzchołkiem ku wnętrzu pola. */
@@ -399,7 +422,7 @@ export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
   return (
     <g {...glyphGroupProps('stationCollapsed', props)} data-station-silhouette="mini-rmu">
       {/* Obrys enklozury — WTÓRNY (K7): najlżejsza kreska, bez wypełnienia. */}
-      <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={sw.outline} />
+      <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={sw.outline} data-station-outline="true" />
       {/* POLE LINIOWE L1: kabel → głowica → aparat → łącznik do szyny (K1). */}
       <line x1={L.stubL.x1} y1={y} x2={L.stubL.x2} y2={y} stroke={s} strokeWidth={sw.path} />
       {glowica(L.glowicaL.xBase, L.glowicaL.xTip, y, L.glowicaL.halfH, s, sw.path)}
@@ -417,9 +440,14 @@ export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
       ) : (
         <line x1={bus.x1} y1={y} x2={bus.x2} y2={y} stroke={s} strokeWidth={sw.bus} data-station-bus="true" />
       )}
-      {/* Sprzęgło sekcyjne (K6): aparat W TORZE szyny (zamknięty — kwadrat). */}
+      {/* Rodzina APARAT SEKCYJNY (K6): stan ZAMKNIĘTY = te same styki co stan
+          otwarty (NO), człon ruchomy DOMKNIĘTY na osi (ciągłość); zmienia się
+          wyłącznie położenie członu — jedna rodzina glifu, jedna kotwica. */}
       {props.stationSectioned && !busBroken && (
-        <rect x={sp.x - sp.size / 2} y={y - sp.size / 2} width={sp.size} height={sp.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-sectioned="true" />
+        <g data-station-sectioned="true">
+          <line x1={sp.x - sp.gapHalf} y1={y - 2} x2={sp.x - sp.gapHalf} y2={y + 2} stroke={s} strokeWidth={sw.path} />
+          <line x1={sp.x + sp.gapHalf} y1={y - 2} x2={sp.x + sp.gapHalf} y2={y + 2} stroke={s} strokeWidth={sw.path} />
+        </g>
       )}
       {props.stationSectioned && busBroken && <g data-station-sectioned="true" />}
       {/* POLE LINIOWE L2 (lustrzane). */}

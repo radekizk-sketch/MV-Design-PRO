@@ -138,8 +138,17 @@ describe('V3 symbols — rejestr glifów i stany', () => {
       return g?.lastElementChild?.tagName.toLowerCase();
     };
     expect(shapeTag('pv')).toBe('path');
-    expect(shapeTag('bess')).toBe('rect');
-    expect(shapeTag('wind')).toBe('circle');
+    // BESS: prostokąt bateryjny 2:1 (grupa rect+kreska) — NIE kwadrat aparatu.
+    expect(shapeTag('bess')).toBe('g');
+    // FW: wirnik (grupa okrąg+3 ramiona) — rozróżnialny od generatora (okrąg+kropka).
+    expect(shapeTag('wind')).toBe('g');
+    // Rozróżnialność STRUKTURALNA wind vs generator (recenzja pkt 6):
+    const kidsOf = (der: 'wind' | 'generator') => {
+      const { container } = render(<svg><Glyph x={0} y={0} stationDer={der} /></svg>);
+      return container.querySelector('[data-station-der] g')?.children.length ?? 0;
+    };
+    expect(kidsOf('wind')).toBe(4);
+    expect(kidsOf('generator')).toBe(2);
   });
 });
 
@@ -211,10 +220,10 @@ describe('GS-2 — kotwice, odstępy, proporcje (reguły 5–7, 10, 11, 12)', ()
   it('transformator UZUPEŁNIAJĄCY (reguła 12): ≤0,5 wysokości wnętrza', () => {
     expect(transformerInteriorHeightRatio()).toBeLessThanOrEqual(0.5);
   });
-  it('hierarchia wag (K7/reguła 11): szyna > tor pola > obrys; tor > marker', () => {
-    expect(MINI_RMU.stroke.bus).toBeGreaterThan(MINI_RMU.stroke.path);
-    expect(MINI_RMU.stroke.path).toBeGreaterThan(MINI_RMU.stroke.outline);
-    expect(MINI_RMU.stroke.path).toBeGreaterThan(MINI_RMU.stroke.marker);
+  it('hierarchia wag (recenzja pkt 9): tor pól > szyna > TR/DER > obrys (najlżejszy)', () => {
+    expect(MINI_RMU.stroke.path).toBeGreaterThan(MINI_RMU.stroke.bus);
+    expect(MINI_RMU.stroke.bus).toBeGreaterThan(MINI_RMU.stroke.marker);
+    expect(MINI_RMU.stroke.marker).toBeGreaterThan(MINI_RMU.stroke.outline);
     // Obrys WTÓRNY (K7): najlżejsza kreska.
     const Glyph = SYMBOL_GLYPHS.stationCollapsed;
     const { container } = render(<svg><Glyph x={0} y={0} /></svg>);
@@ -277,7 +286,7 @@ describe('GS-2 — pełna macierz kombinacji cech (reguły 15–16)', () => {
   }
 
   it('każda kombinacja renderuje markery ZGODNIE z cechami (obecność 1:1)', () => {
-    const shapeTag: Record<string, string> = { diamond: 'path', square: 'rect', circle: 'circle' };
+    const shapeTag: Record<string, string> = { diamond: 'path', battery: 'g', 'circle-spokes': 'g', 'circle-dot': 'g' };
     for (const c of combos) {
       const sig = renderedSignature(c);
       const parts = sig.split('|');

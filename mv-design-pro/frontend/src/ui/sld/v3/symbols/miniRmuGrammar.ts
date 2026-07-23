@@ -20,26 +20,28 @@ export type StationDerGlyphKind = 'pv' | 'bess' | 'wind' | 'generator';
 
 /** K4: trójkąt = WYŁĄCZNIE głowica kablowa. Rodzaj DER rozróżniany innymi
  *  kształtami: PV=romb, BESS=kwadrat, FW/generator=okrąg. */
-export type DerMarkerShape = 'diamond' | 'square' | 'circle';
+export type DerMarkerShape = 'diamond' | 'battery' | 'circle-spokes' | 'circle-dot';
 export const DER_MARKER_SHAPE: Readonly<Record<StationDerGlyphKind, DerMarkerShape>> = {
   pv: 'diamond',
-  bess: 'square',
-  wind: 'circle',
-  generator: 'circle',
+  // Prostokąt bateryjny 2:1 z kreską wewnętrzną — NIE kwadrat (kolizja z aparatem).
+  bess: 'battery',
+  // Okrąg z 3 ramionami (wirnik) vs okrąg z kropką — rozróżnialne sylwetki.
+  wind: 'circle-spokes',
+  generator: 'circle-dot',
 } as const;
 
 const BBOX = 6 * GRID; // 48
 const CENTER = BBOX / 2; // 24 — kotwica stacji (JEDNA KOTWICA) i oś toru pól liniowych.
 
 export const MINI_RMU_STROKE = {
-  /** Szyna wewnętrzna — najgrubsza (K7: tor pierwszoplanowy). */
-  bus: 2,
-  /** Tor pola (kabel–głowica–aparat–szyna) — grubszy od obrysu. */
-  path: 1.4,
-  /** Elementy pomocnicze (marker rodzaju DER). */
+  /** 1. Tor mocy pól + przerwa NO + aparaty + głowice — PIERWSZOPLANOWE. */
+  path: 1.6,
+  /** 3. Szyna wewnętrzna — linia jednokreskowa (nie belka), lżejsza od toru. */
+  bus: 1.2,
+  /** 4. TR/DER — uzupełniające. */
   marker: 0.9,
-  /** Obrys enklozury — WTÓRNY, najlżejszy (K7). */
-  outline: 0.7,
+  /** 5. Obrys stacji — najlżejszy kontekst. */
+  outline: 0.5,
 } as const;
 
 export const MINI_RMU_MIN_GAP = { marker: 3, outline: 1 } as const;
@@ -54,28 +56,29 @@ export const MINI_RMU = {
   bbox: { width: BBOX, height: BBOX },
   center: { x: CENTER, y: CENTER },
   /** Enklozura — obrys wtórny (K7), bez wypełnienia. */
-  enclosure: { x: 4, y: 8, width: 40, height: 32, rx: 2 },
+  enclosure: { x: 4, y: 8, width: 40, height: 32, rx: 0 },
   /** Pola liniowe L1/L2 na osi y=24 (tor przez stację = łańcuch pól). */
   linia: {
     y: CENTER,
     /** Kabel zewnętrzny do głowicy (odcinki poza enklozurą). */
-    stubL: { x1: 0, x2: 6 },
-    stubR: { x1: 42, x2: BBOX },
-    /** Głowice kablowe (trójkąty, wierzchołek ku wnętrzu) — na krawędzi pola. */
-    glowicaL: { xTip: 10, xBase: 6, halfH: 3 },
-    glowicaR: { xTip: 38, xBase: 42, halfH: 3 },
-    /** Aparaty pól liniowych (kwadraty na torze). */
-    aparatL: { x: 12, size: 4 },
-    aparatR: { x: 36, size: 4 },
+    stubL: { x1: 0, x2: 7 },
+    stubR: { x1: 41, x2: BBOX },
+    /** Głowice kablowe — CAŁKOWICIE WEWNĄTRZ pola (nie dotykają obrysu);
+     *  wierzchołek ku KABLOWI (zakończenie kablowe, nie grot kierunku). */
+    glowicaL: { xTip: 7, xBase: 11, halfH: 3 },
+    glowicaR: { xTip: 41, xBase: 37, halfH: 3 },
+    /** Aparaty łączeniowe pól — stan ZAMKNIĘTY (rodzina APARAT, patrz doc). */
+    aparatL: { x: 13, size: 4 },
+    aparatR: { x: 35, size: 4 },
     /** Łączniki tor→szyna. */
-    linkL: { x1: 14, x2: 18 },
-    linkR: { x1: 30, x2: 34 },
+    linkL: { x1: 15, x2: 19 },
+    linkR: { x1: 29, x2: 33 },
   },
   /** SZYNA WEWNĘTRZNA — wyłącznie wewnątrz enklozury (K2). */
-  bus: { y: CENTER, x1: 18, x2: 30 },
+  bus: { y: CENTER, x1: 19, x2: 29 },
   /** Pole TRANSFORMATOROWE (K3): szyna → aparat TR → transformator (2 okręgi). */
   poleTr: {
-    x: 18,
+    x: 19,
     aparat: { y: 27.5, size: 3 },
     stub1: { y1: CENTER, y2: 27.5 },
     stub2: { y1: 30.5, y2: 31.6 },
@@ -85,7 +88,7 @@ export const MINI_RMU = {
   },
   /** Pole DER (K5): szyna → aparat DER → marker rodzaju (romb/kwadrat/okrąg). */
   poleDer: {
-    x: 30,
+    x: 29,
     aparat: { y: 17, size: 3 },
     stub1: { y1: 20, y2: CENTER },
     stub2: { y1: 14.4, y2: 17 },

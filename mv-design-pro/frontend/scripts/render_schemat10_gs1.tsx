@@ -72,7 +72,10 @@ const HEIGHT = 1100;
     { title: 'TR + PV', p: { stationHasTransformer: true, stationDer: 'pv' } },
     { title: 'TR + BESS', p: { stationHasTransformer: true, stationDer: 'bess' } },
     { title: 'TR + farma wiatr.', p: { stationHasTransformer: true, stationDer: 'wind' } },
-    { title: 'Punkt NO (otwarty)', p: { stationHasTransformer: true, stationNoOpen: true } },
+    { title: 'Punkt NO (bez TR)', p: { stationNoOpen: true } },
+    { title: 'TR + punkt NO', p: { stationHasTransformer: true, stationNoOpen: true } },
+    { title: 'Sekcyjna + NO', p: { stationSectioned: true, stationNoOpen: true } },
+    { title: 'TR + DER + NO', p: { stationHasTransformer: true, stationDer: 'pv' as const, stationNoOpen: true } },
     { title: 'Sekcyjna + TR + DER', p: { stationSectioned: true, stationHasTransformer: true, stationDer: 'pv' } },
   ];
   const cols = 4;
