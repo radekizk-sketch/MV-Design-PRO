@@ -7,6 +7,8 @@
  * WYŁĄCZNIE z tego modułu (zero cienia, wzór `apparatusSequence.ts`).
  */
 
+import { GRID } from '../core/grid';
+import { labelLineHeight } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { HIGHLIGHT_COLOR } from '../theme/colorTokens';
 
@@ -53,6 +55,72 @@ export interface StationDerSourceInput {
    *  `SldSourceView.connectionSide` (adapter v2, jedyny pisarz). Brak pola =
    *  `'unknown'` (uczciwy brak; wpis sprzed GS-4 lub źródło bez `bus_ref`). */
   readonly connectionSide?: DerConnectionSide;
+  /** W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07, reguły 1–7): kompletny tor DER
+   *  przyłączonego po stronie SN z REALNYCH elementów ENM (W2b: TR blokowy,
+   *  szyna nN producenta, kabel SN, pole źródłowe SN). Obecny WYŁĄCZNIE, gdy
+   *  źródło niesie zmaterializowany tor (`connection_variant==='block_transformer'`
+   *  ∧ `blocking_transformer_ref`, adapter v2 jedyny pisarz). Brak pola = brak
+   *  toru (stare dane / generator synchroniczny WPROST na SN, przypadek 4) ⇒
+   *  uczciwa degradacja W2 + stopNote `der.sn.torNiepelny`. */
+  readonly chain?: DerSnChain;
+}
+
+/**
+ * W2c: TR blokowy DER jako OSOBNY element toru SN (reguła 5: TR blokowy ≠ TR
+ * stacji — WŁASNE id/rola). Rzutowany 1:1 z `Transformer` ENM o roli
+ * `TRANSFORMATOR_BLOKOWY_DER` (adapter v2, jedyny pisarz).
+ */
+export interface DerSnBlockTransformer {
+  /** `Transformer.ref_id` TR blokowego — ownerRef symbolu `transformer2W`
+   *  na scenie (reguła 5: NIGDY współdzielony z TR stacji). */
+  readonly ref: string;
+  /** `Transformer.meta.catalog_role` (np. `TRANSFORMATOR_BLOKOWY_DER`) —
+   *  odróżnia rolę od TR stacji w wyroczniach/testach. */
+  readonly role: string;
+  /** Napięcie górne [kV] (`Transformer.uhv_kv`) — strona SN. */
+  readonly primaryVoltageKv?: number;
+  /** Napięcie dolne [kV] (`Transformer.ulv_kv`) — strona nN producenta. */
+  readonly secondaryVoltageKv?: number;
+}
+
+/**
+ * W2c: szyna nN producenta (reguła 2: część nN wolno uprościć WIZUALNIE dla
+ * wariantu `integrated-skid`, ale TR pozostaje OBECNY i ciągłość nieprzerwana).
+ * Rzutowana z `Bus` ENM o `meta.der_role==='producer_lv_bus'`.
+ */
+export interface DerSnProducerLvBus {
+  /** `Bus.ref_id` szyny nN producenta — ownerRef segmentu `#lv-bus`. */
+  readonly ref: string;
+  /** Napięcie [kV] (`Bus.voltage_kv`) — etykieta „0,4 kV" WYŁĄCZNIE z danych. */
+  readonly voltageKv?: number;
+  /** Wariant rozdzielni nN producenta (`Bus.meta.lv_switchgear_variant`):
+   *  `single-bus`/`multi-feeder`/`combiner` ⇒ realna kreska szyny;
+   *  `integrated-skid` ⇒ uproszczenie wizualne (TR→źródło bezpośrednio, bez
+   *  osobnej kreski szyny), TR nadal OBECNY. */
+  readonly lvSwitchgearVariant?: string;
+}
+
+/**
+ * W2c (reguła 1): kompletny tor DER-SN — pole źródłowe SN (stos primary_devices
+ * na szynie SN stacji, W1) → głowica → kabel SN → TR blokowy → szyna nN
+ * producenta → symbol źródła. Wszystkie ref-y z REALNYCH elementów ENM (W2b) —
+ * ZERO fabrykacji (rysujemy wyłącznie to, co snapshot niesie).
+ */
+export interface DerSnChain {
+  /** `Generator.meta.der_mv_field_ref` = `field_ref` pola źródłowego SN
+   *  (bay_role `OZE`) — spina symbol źródła z REALNYM polem SN (reguła 6). */
+  readonly mvFieldRef: string;
+  readonly blockTransformer: DerSnBlockTransformer;
+  readonly producerLvBus: DerSnProducerLvBus;
+  /** `Branch.ref_id` kabla SN (typ `cable`) — ownerRef segmentu kabla toru.
+   *  `undefined` gdy snapshot nie niesie realnego kabla (wtedy ownerRef
+   *  syntetyczny `#der-mv-cable`, nadal odcinek rysunkowy, nie gałąź solvera). */
+  readonly cableRef?: string;
+  /** `Generator.quantity`/`n_parallel` (>1 ⇒ krotność jednostek). Decyzja W2c:
+   *  JEDEN symbol źródła z krotnością w etykiecie (×N), nie n symboli —
+   *  deterministyczne, czytelne, wierne modelowi (backend materializuje JEDEN
+   *  rekord `Generator` z `n_parallel`). `undefined`/1 ⇒ bez krotności. */
+  readonly unitCount?: number;
 }
 
 /**
@@ -181,6 +249,38 @@ export function derSymbolSize(kind: DerSourceKind): { readonly width: number; re
   return { width: def.width, height: def.height };
 }
 
+// ---------------------------------------------------------------------------
+// W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07) — geometria TORU DER-SN.
+// JEDNA prawda measure↔compose: `layout/measure.ts` (rezerwacja wysokości pod
+// polem źródłowym SN) i `compose/station.ts` (rysunek toru) importują TE SAME
+// stałe/funkcje, inaczej rezerwacja i realna geometria rozjeżdżają się (wzór
+// `derRowFootprint`/`DER_ROW_TOP_CLEARANCE`).
+// ---------------------------------------------------------------------------
+
+/** Długość kabla SN (głowica pola → strona SN TR blokowego) — pion toru. */
+export const DER_SN_CABLE_LEN = 2 * GRID;
+
+/** Zejście od szyny nN producenta (port LV TR blokowego) do portu AC symbolu
+ *  źródła — dla `integrated-skid` (bez osobnej kreski szyny) TA SAMA długość
+ *  (TR nadal OBECNY, ciągłość zachowana, reguła 2). */
+export const DER_SN_LV_DROP = 2 * GRID;
+
+/**
+ * W2c: wysokość DODATKOWA toru DER-SN pod DOLNYM portem głowicy pola źródłowego
+ * (kabel + TR blokowy + zejście nN + symbol źródła + etykieta rodzaj+moc).
+ * Doliczana do wysokości KOLUMNY pola źródłowego w `stationBlockHeight`
+ * (`layout/measure.ts`), żeby pasmo B4 objęło cały tor (inaczej TR/źródło
+ * wystawałyby na pasmo nazw B5). `transformer2W`/symbol źródła gabaryty
+ * WYŁĄCZNIE z `SYMBOL_DEFS`, wysokość etykiety z `labelLineHeight('t2')`
+ * (zero duplikacji liczb — te same funkcje, które liczy `measure.ts`). */
+export function derSnChainExtraHeight(kind: DerSourceKind): number {
+  const trHeight = SYMBOL_DEFS.transformer2W.height;
+  const srcHeight = derSymbolSize(kind).height;
+  // kabel + TR + zejście nN + symbol źródła + prześwit etykiety + wysokość
+  // etykiety (t2, „pod symbolem", jak rząd DER — `derRowExtraHeight`).
+  return DER_SN_CABLE_LEN + trHeight + DER_SN_LV_DROP + srcHeight + GRID + labelLineHeight('t2');
+}
+
 /**
  * Tekst etykiety DER (spec §4 „DER: rodzaj+moc pod symbolem") — JEDNA
  * prawda dla `layout/measure.ts` (`derColumnRequiredWidth`, rezerwacja
@@ -194,4 +294,24 @@ export function derLabelText(source: {
 }): string {
   const powerText = source.ratedPower != null ? ` ${formatDerRatedPower(source.ratedPower)}` : '';
   return `${DER_SOURCE_KIND_LABEL_PL[source.kind]}${powerText}`;
+}
+
+/**
+ * W2c: etykieta symbolu źródła TORU DER-SN — `derLabelText` + KROTNOŚĆ
+ * jednostek (×N), gdy `chain.unitCount > 1`. Decyzja W2c (§0 karty): JEDEN
+ * symbol z krotnością w etykiecie zamiast n symboli — backend materializuje
+ * JEDEN rekord `Generator` z `n_parallel`, więc jeden symbol jest wierny
+ * modelowi, deterministyczny (brak rozmieszczania n glifów) i czytelny.
+ * `unitCount` ≤ 1 lub brak ⇒ identyczne z `derLabelText` (zero zmian dla
+ * pojedynczej jednostki). JEDNA prawda measure↔compose (obie strony wołają tę
+ * funkcję dla źródeł toru SN).
+ */
+export function derChainSourceLabelText(source: {
+  readonly kind: DerSourceKind;
+  readonly ratedPower?: number | null;
+  readonly chain?: { readonly unitCount?: number };
+}): string {
+  const base = derLabelText(source);
+  const n = source.chain?.unitCount ?? 1;
+  return n > 1 ? `${base} ×${n}` : base;
 }

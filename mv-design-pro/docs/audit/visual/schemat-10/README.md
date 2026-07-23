@@ -1,5 +1,31 @@
 # SCHEMAT-10 — dowód wizualny (V12K-135)
 
+## W2c — kompletny tor DER przyłączonego po stronie SN (reguły 1–7)
+
+`w2c-l2-tor-sn.png` — dowód wizualny L2 dla POLECENIE_DER_SN_TOPOLOGIA_2026-07
+(reguły 1–7). Trzy panele z produkcyjnego `composeStation` (ten sam potok
+measure→bands→columns→compose co scena):
+- **Przypadek 2 (PV + TR blokowy + pole SN):** pełny tor — pole źródłowe SN
+  (stos z danych: DS·CB·CT·VT·DS·ES·SA·głowica) → kabel SN (ceglasty) → TR
+  blokowy (`transformer2W`) → szyna nN producenta (turkus, „0,4 kV" z danych)
+  → symbol PV. Symbol źródła NIGDY bezpośrednio na szynie SN (reguła 7);
+- **Przypadek 7 (dwa DER, wspólna szyna SN):** PV (multi-feeder) + BESS
+  (single-bus) — dwa OSOBNE tory, dwa RÓŻNE TR blokowe (reguła 5);
+- **Przypadek 8 (DER-SN obok TR stacji):** pole TR odbiorczego stacji
+  współistnieje z torem DER; TR blokowy DER ≠ TR stacji (osobne symbole/role).
+
+Dowód testowy end-to-end (adapter v2 → scena v3, 8 przypadków kanonu):
+`frontend/src/ui/sld/v3/scene/__tests__/buildScene.w2cDerSnTopology.test.ts`
+(fixtury `fixtures/w2cDerSnFixtures.ts` wg kształtów backendu
+`tests/enm/test_der_sn_topology_domain_ops.py`); tor kompozycji:
+`compose/__tests__/station.test.ts`. Regeneracja:
+
+```
+cd mv-design-pro/frontend
+CANON_OUT=<abs-dir> npx vite-node scripts/render_schemat10_w2c.tsx   # SVG (3 panele L2)
+CANON_OUT=<abs-dir> node scripts/rasterize.mjs                       # SVG→PNG (playwright chromium)
+```
+
 ## S5 (FINAŁ) — zoom bez zmiany tożsamości stacji
 
 `s5-zoom-1..3.png` (ZBLIŻANIE L0→L1→L2) i `s5-zoom-4..6.png` (ODDALANIE

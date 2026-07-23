@@ -416,6 +416,14 @@ function isCableLikeBranch(b: Branch): boolean {
 }
 
 function isMediumVoltageNetworkBranch(snapshot: EnergyNetworkModel, branch: Branch): boolean {
+  // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): gałęzie WEWNĘTRZNE toru DER-SN
+  // (kabel SN od TR blokowego, `meta.der_role` obecny — W2b) NIE należą do
+  // magistrali sieci: tor DER rysuje `compose/station.ts` POD polem źródłowym
+  // (kabel→TR blokowy→szyna nN producenta→źródło). Bez tego wykluczenia kabel
+  // od szyny nN-producenta trafiłby do projekcji ciągów liniowych jako stray
+  // odcinek magistrali (zaśmiecenie topologii, reguła 4). Poprawka end-to-end —
+  // dotyczy TAKŻE realnych snapshotów W2b, nie tylko fixtur testowych.
+  if (typeof (branch.meta as { der_role?: unknown } | undefined)?.der_role === 'string') return false;
   const voltages = [readBusVoltageKv(snapshot, branch.from_bus_ref), readBusVoltageKv(snapshot, branch.to_bus_ref)]
     .filter((value): value is number => value !== null);
   if (voltages.length === 0) return true;
@@ -623,6 +631,36 @@ export interface SldSourceView {
    *  `external_grid` nie niesie tego pola (zasilanie sieciowe nie jest DER
    *  stacji — pozycjonuje je `compose/gpz.ts`). */
   readonly connectionSide?: 'sn' | 'nn' | 'unknown';
+  /** W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): kompletny tor DER przyłączonego
+   *  po stronie SN zmaterializowany jako REALNE elementy ENM (W2b). Obecny
+   *  WYŁĄCZNIE, gdy `Generator.connection_variant==='block_transformer'` ∧
+   *  `blocking_transformer_ref` (tor z TR blokowym); `undefined` dla źródeł bez
+   *  toru (nn / stare dane / generator synchroniczny WPROST na SN, przypadek 4).
+   *  Struktura LUSTRZANA `StationDerSourceInput.chain` (v3 `compose/sourceKind`,
+   *  celowo BEZ importu v3 do v2 — wzór `connectionSide`; parytet strukturalny
+   *  pilnuje `scene/buildScene.ts` przy projekcji na `StationDerSourceInput`). */
+  readonly derChain?: SldDerSnChain;
+}
+
+/** W2c: tor DER-SN — LUSTRO `DerSnChain` (v3 `compose/sourceKind.ts`), bez
+ *  importu v3 do v2 (wzór `connectionSide`). Projekcja z REALNYCH elementów
+ *  ENM: TR blokowy (rola `TRANSFORMATOR_BLOKOWY_DER`), szyna nN producenta
+ *  (`der_role==='producer_lv_bus'`), kabel SN, pole źródłowe SN. */
+export interface SldDerSnChain {
+  readonly mvFieldRef: string;
+  readonly blockTransformer: {
+    readonly ref: string;
+    readonly role: string;
+    readonly primaryVoltageKv?: number;
+    readonly secondaryVoltageKv?: number;
+  };
+  readonly producerLvBus: {
+    readonly ref: string;
+    readonly voltageKv?: number;
+    readonly lvSwitchgearVariant?: string;
+  };
+  readonly cableRef?: string;
+  readonly unitCount?: number;
 }
 
 export interface SldPowerFlowCaseHeader {
@@ -6343,13 +6381,28 @@ function buildSources(snapshot: EnergyNetworkModel): SldSourceView[] {
       busVoltageByRef.set(bus.ref_id, bus.voltage_kv);
     }
   }
+  // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07, semantyka `connectionSide`):
+  // strona = POZIOM NAPIĘCIA PUNKTU PRZYŁĄCZENIA do sieci nadrzędnej, NIE
+  // napięcie szyny WŁASNEJ falownika. Dla wariantów z dedykowanym polem SN
+  // (`block_transformer`/`DEDICATED_MV_CONNECTION`/`SOURCE_CONNECTION_STATION`)
+  // falownik siedzi na szynie nN PRODUCENTA (0,4 kV), ale przyłącza się do SN
+  // przez TR blokowy — więc `'sn'` (inaczej klasyfikacja z `bus_ref`→
+  // `voltage_kv` dawałaby fałszywe `'nn'`, przez co L0 rysowałby DER „za TR"
+  // zamiast markera przy szynie SN — kłamstwo topologiczne, reguła 4/7).
+  // `nn_side` (za TR STACJI) ⇒ `'nn'`; pozostałe/brak wariantu ⇒ fallback z
+  // napięcia szyny (istniejąca konwencja GS-4, próg 0,5 kV).
   const derConnectionSide = (gen: Generator): NonNullable<SldSourceView['connectionSide']> => {
+    if (isDedicatedMvDerConnection(gen.connection_variant)) return 'sn';
+    if (gen.connection_variant === 'nn_side' || gen.connection_variant === 'LV_BEHIND_STATION_TRANSFORMER') {
+      return 'nn';
+    }
     const v = gen.bus_ref ? busVoltageByRef.get(gen.bus_ref) : undefined;
     if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return 'unknown';
     return v > 0.5 ? 'sn' : 'nn';
   };
   const derSources: SldSourceView[] = (snapshot.generators ?? []).map((gen): SldSourceView => {
     const kind = mapGeneratorToSourceKind(gen);
+    const chain = buildDerSnChain(snapshot, gen);
     return {
       id: gen.ref_id,
       kind,
@@ -6360,10 +6413,70 @@ function buildSources(snapshot: EnergyNetworkModel): SldSourceView[] {
       operationalState: generatorOperationalState(gen),
       missingData: kind === 'unknown' ? true : undefined,
       connectionSide: derConnectionSide(gen),
+      // W2c: tor DER-SN (TR blokowy + szyna nN producenta + kabel + pole SN) —
+      // obecny WYŁĄCZNIE gdy snapshot niesie zmaterializowane elementy (W2b).
+      derChain: chain,
     };
   });
 
   return [...gridSources, ...derSources];
+}
+
+/**
+ * W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07, reguły 1–7): projekcja kompletnego
+ * toru DER przyłączonego po stronie SN z REALNYCH elementów ENM (W2b). Zwraca
+ * `undefined`, gdy generator NIE jest wariantem z TR blokowym LUB gdy któregoś
+ * elementu toru brak w snapshotcie (stare dane / generator synchroniczny WPROST
+ * na SN — przypadek 4): wtedy scena stosuje uczciwą degradację W2 + stopNote
+ * `der.sn.torNiepelny` (ZERO fabrykacji — nie dorysowujemy elementów, których
+ * snapshot nie niesie). Reguła 5: TR blokowy to OSOBNY element z WŁASNYM
+ * `ref_id`/rolą — projektowany jako taki, nigdy współdzielony z TR stacji.
+ */
+function buildDerSnChain(snapshot: EnergyNetworkModel, gen: Generator): SldDerSnChain | undefined {
+  if (!isDedicatedMvDerConnection(gen.connection_variant)) return undefined;
+  const blockTrRef = gen.blocking_transformer_ref;
+  if (!blockTrRef) return undefined;
+  const blockTr = (snapshot.transformers ?? []).find(
+    (t) => t.ref_id === blockTrRef || t.id === blockTrRef,
+  );
+  if (!blockTr) return undefined;
+  const role = getString(blockTr.meta?.catalog_role);
+  // Reguła 5: tylko element o roli TR blokowego DER wchodzi do toru (odróżnienie
+  // od TR stacji — inaczej scena mogłaby wpiąć źródło przez TR odbiorczy, reg. 4).
+  if (role !== 'TRANSFORMATOR_BLOKOWY_DER') return undefined;
+  const mvFieldRef = getString(gen.meta?.der_mv_field_ref);
+  if (!mvFieldRef) return undefined;
+  const producerBus = (snapshot.buses ?? []).find((b) => b.ref_id === gen.bus_ref || b.id === gen.bus_ref);
+  if (!producerBus) return undefined;
+
+  // Kabel SN: gałąź typu `cable` wychodząca ze strony SN TR blokowego
+  // (`from_bus_ref === blockTr.hv_bus_ref` = szyna SN TR blokowego). Opcjonalny —
+  // brak realnego kabla ⇒ ownerRef syntetyczny w kompozycji (odcinek rysunkowy).
+  const cable = (snapshot.branches ?? []).find(
+    (b) => b.type === 'cable' && b.from_bus_ref === blockTr.hv_bus_ref,
+  );
+
+  const lvVariant = getString(producerBus.meta?.lv_switchgear_variant);
+  const unitCount = (typeof gen.n_parallel === 'number' && gen.n_parallel > 1)
+    ? gen.n_parallel
+    : (typeof gen.quantity === 'number' && gen.quantity > 1 ? gen.quantity : undefined);
+
+  return {
+    mvFieldRef,
+    blockTransformer: {
+      ref: blockTr.ref_id,
+      role,
+      primaryVoltageKv: typeof blockTr.uhv_kv === 'number' ? blockTr.uhv_kv : undefined,
+      secondaryVoltageKv: typeof blockTr.ulv_kv === 'number' ? blockTr.ulv_kv : undefined,
+    },
+    producerLvBus: {
+      ref: producerBus.ref_id,
+      voltageKv: typeof producerBus.voltage_kv === 'number' ? producerBus.voltage_kv : undefined,
+      lvSwitchgearVariant: lvVariant || undefined,
+    },
+    cableRef: cable?.ref_id,
+    unitCount,
+  };
 }
 
 /**

@@ -480,7 +480,13 @@ describe('V3 compose/station — W2 (GS-4b/Z2): DER wg strony przyłączenia', (
     expect(allCompositionSymbolsOnGrid(composition)).toBe(true);
     expect(noCompositionSymbolOverlaps(composition)).toBe(true);
     expect(internalSegmentsEndAtPortsOrBus(composition)).toBe(true);
-    expect(composition.missingData).toEqual([]);
+    // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07 §0): źródło SN BEZ zmaterializowanego
+    // toru (`chain` nieobecny — stary wariant W2 / generator synchroniczny WPROST
+    // na SN, przypadek 4) = tor NIEPEŁNY. Placeholder na szynie SN pozostaje jako
+    // UCZCIWA DEGRADACJA, ale niesie JAWNY stopNote `der.sn.torNiepelny` (nie
+    // ciche uproszczenie). Pełny tor (kabel→TR blokowy→szyna nN producenta→źródło)
+    // ćwiczą testy W2c z `chain` (fixtury kanonu 2/3/5/6/7/8).
+    expect(composition.missingData).toEqual(['der.sn.torNiepelny:gen-sn-1']);
   });
 
   it('wariant mieszany (nn+sn): nn→rząd nN, sn→pole źródłowe SN — rozdzielone, oba widoczne', () => {

@@ -32,7 +32,7 @@ import {
   resolveBayApparatusSymbolIds,
 } from '../compose/apparatusSequence';
 import { protectionAnnotationColumnWidth } from '../compose/protectionMarking';
-import { derLabelText, derSymbolSize, type StationDerSourceInput } from '../compose/sourceKind';
+import { derLabelText, derSnChainExtraHeight, derSymbolSize, type StationDerSourceInput } from '../compose/sourceKind';
 import type { StationCompactGlyphSummary } from '../compose/preview';
 import type { FieldRole } from '../../v2/domain/apparatusContracts';
 
@@ -460,10 +460,25 @@ function derRowExtraHeight(sources: readonly StationDerSourceInput[]): number {
 export function snSideSources(
   sources: readonly StationDerSourceInput[],
 ): readonly StationDerSourceInput[] {
-  return sources.filter((s) => s.connectionSide === 'sn');
+  // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07, reguła 7): źródło SN z KOMPLETNYM
+  // torem (`chain` obecny, W2b) NIE jest polem placeholderowym na szynie SN —
+  // rysowane jest jako pełny tor POD głowicą pola źródłowego (kabel→TR blokowy→
+  // szyna nN producenta→symbol źródła). Tylko źródła SN BEZ toru (stare dane /
+  // generator synchroniczny WPROST na SN, przypadek 4) zostają placeholderem
+  // W2 (uczciwa degradacja + stopNote `der.sn.torNiepelny`).
+  return sources.filter((s) => s.connectionSide === 'sn' && s.chain == null);
 }
 
-/** W2: reszta DER (nN/unknown/brak) — rząd nN. */
+/** W2c: źródła SN z KOMPLETNYM torem (`chain` obecny) — rysowane jako tor pod
+ *  polem źródłowym SN (`compose/station.ts`), NIE placeholderem na szynie. */
+export function chainedSnSources(
+  sources: readonly StationDerSourceInput[],
+): readonly StationDerSourceInput[] {
+  return sources.filter((s) => s.connectionSide === 'sn' && s.chain != null);
+}
+
+/** W2: reszta DER (nN/unknown/brak) — rząd nN. Tor DER-SN (`chain`) ma
+ *  `connectionSide==='sn'`, więc jest naturalnie wykluczony z rzędu nN. */
 export function nnSideSources(
   sources: readonly StationDerSourceInput[],
 ): readonly StationDerSourceInput[] {
@@ -546,10 +561,28 @@ export function stationBlockHeight(station: StationMeasureInput): number {
   if (station.snBays.length === 0) {
     return snFieldHeight + STATION_BLOCK_BUS_CLEARANCE + derExtra + lvExtra;
   }
-  const tallest = Math.max(
-    ...station.snBays.map((bay) => bayColumnFootprint(bay).height),
-    snFieldHeight,
-  );
+  // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): tor DER-SN zwisa POD DOLNYM
+  // portem głowicy pola źródłowego (bay_role `OZE`) — wydłuża KOLUMNĘ tego
+  // pola o `derSnChainExtraHeight`. Wysokość kolumny pola z torem = tor główny
+  // (`bayMainPathHeight`, dno głowicy) + tor DER-SN, brana do `max()` z resztą
+  // kolumn. Dopasowanie tor↔pole po `chain.mvFieldRef === bay.bayRef` (jedna
+  // prawda measure↔compose — `compose/station.ts` wiesza tor na TYM SAMYM polu).
+  const chained = chainedSnSources(allDer);
+  const chainHeightByFieldRef = new Map<string, number>();
+  for (const src of chained) {
+    const ref = src.chain?.mvFieldRef;
+    if (ref) chainHeightByFieldRef.set(ref, derSnChainExtraHeight(src.kind));
+  }
+  const columnHeights = station.snBays.map((bay) => {
+    const base = bayColumnFootprint(bay).height;
+    const chainExtra2 = chainHeightByFieldRef.get(bay.bayRef);
+    if (chainExtra2 == null) return base;
+    // Tor zaczyna się na DNIE toru głównego pola (`bayMainPathHeight`), nie na
+    // dnie pełnego gabarytu (lateral ES może zwisać niżej) — kolumna z torem =
+    // max(pełny gabaryt, dno głowicy + tor).
+    return Math.max(base, bayMainPathHeight(bay) + chainExtra2);
+  });
+  const tallest = Math.max(...columnHeights, snFieldHeight);
   return tallest + STATION_BLOCK_BUS_CLEARANCE + derExtra + lvExtra;
 }
 

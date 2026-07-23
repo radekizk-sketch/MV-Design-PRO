@@ -1173,6 +1173,21 @@ function composeRowStation(
         `brak punktu przyłączenia geometrycznego (spec §14.1), źródło pominięte na scenie: ${derIds}.`,
     );
   }
+  // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07 §0): DER na SN BEZ zmaterializowanego
+  // toru (brak `der_topology`/TR blokowego w danych — stare dane / generator
+  // synchroniczny WPROST na SN, przypadek 4) = tor NIEPEŁNY. Placeholder W2
+  // (symbol na szynie SN) pozostaje jako UCZCIWA DEGRADACJA, ale scena niesie
+  // JAWNY ślad braku (koniec cichego uproszczenia — reguła 7).
+  for (const code of composition.missingData) {
+    if (code.startsWith('der.sn.torNiepelny:')) {
+      const sourceId = code.slice('der.sn.torNiepelny:'.length);
+      stopNotes.push(
+        `Stacja „${measureInput.id}": DER na SN „${sourceId}" bez kompletnego toru (brak TR blokowego/rozdzielni ` +
+          `nN producenta w danych) — rysunek uproszczony (symbol na szynie SN) jako uczciwa degradacja, ` +
+          `tor niepełny (POLECENIE_DER_SN_TOPOLOGIA_2026-07, reguła 7).`,
+      );
+    }
+  }
   // F9.9 (spec §17.2): tor wyzwalania/kotwica miernika nierozwiązywalne w
   // stosie NARYSOWANYM (§17.2 „nigdy linia do domyślnego aparatu") —
   // ujednolicone z DER (wzorzec wyżej), wołający czyta pole-po-polu
@@ -2000,6 +2015,13 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         // GS-4: strona przyłączenia względem TR (adapter v2, jedyny pisarz —
         // klasyfikacja z REALNEJ szyny `Generator.bus_ref`→`voltage_kv`).
         connectionSide: s.connectionSide,
+        // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): kompletny tor DER-SN
+        // (TR blokowy + szyna nN producenta + kabel + pole SN) z REALNYCH
+        // elementów ENM (W2b, adapter v2 jedyny pisarz). Struktura LUSTRZANA —
+        // parytet strukturalny `SldDerSnChain` (v2) ↔ `DerSnChain` (v3) pilnuje
+        // ten przepis (przypisanie `chain: s.derChain` type-checkuje tylko przy
+        // zgodności kształtów, wzór `connectionSide`).
+        chain: s.derChain,
       });
       derSourcesByStationId.set(s.connectionRef, list);
     });

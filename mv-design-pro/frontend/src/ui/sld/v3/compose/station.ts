@@ -77,7 +77,16 @@ import {
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../layout/measure';
-import { derLabelText, symbolIdForSourceKind, type DerSourceKind, type SourceOperationalState } from './sourceKind';
+import {
+  DER_SN_CABLE_LEN,
+  DER_SN_LV_DROP,
+  derChainSourceLabelText,
+  derLabelText,
+  symbolIdForSourceKind,
+  type DerSourceKind,
+  type SourceOperationalState,
+  type StationDerSourceInput,
+} from './sourceKind';
 import type {
   PortCaptionOwnerInput,
   SimpleAnchoredOwnerInput,
@@ -651,6 +660,129 @@ function isTransformerRole(role: FieldRole): boolean {
   return role === FIELD_ROLE.TRANSFORMER || role === FIELD_ROLE.RMU_TRANSFORMER;
 }
 
+/** W2c: mutowalny zbiór list, do których `composeDerSnChain` dopisuje prymitywy
+ *  toru DER-SN (bez zwracania — spójne z wzorcem `buildBayStack`). */
+interface ChainSink {
+  readonly symbols: ComposedSymbolInstance[];
+  readonly segments: ComposedSegment[];
+  readonly derLabels: SimpleAnchoredOwnerInput[];
+  readonly busbarLabels: SimpleAnchoredOwnerInput[];
+}
+
+/**
+ * W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07, reguły 1–7): komponuje KOMPLETNY tor
+ * DER przyłączonego po stronie SN POD DOLNYM portem głowicy pola źródłowego
+ * (`bottomPort`, głowica kablowa stosu pola OZE). Tor: kabel SN → TR BLOKOWY
+ * (`transformer2W`, ownerRef = REALNY `ref_id` TR blokowego, NIGDY współdzielony
+ * z TR stacji — reguła 5) → szyna nN producenta (segment `#lv-bus`; dla
+ * `integrated-skid` uproszczenie wizualne bez osobnej kreski — TR nadal OBECNY,
+ * ciągłość zachowana, reguła 2) → symbol źródła (PV/BESS/…).
+ *
+ * ZERO fabrykacji (reguła 7): symbol źródła NIGDY nie wisi bezpośrednio na
+ * szynie SN — jest liściem toru pod TR blokowym. `bottomPort.x === centerX`
+ * (port `line` głowicy leży w osi stosu pola), więc cały tor jest pionem w osi
+ * pola (zero objazdów wewnątrz bloku). Ciągłość: każdy odcinek kończy się na
+ * porcie symbolu LUB na szynie `#lv-bus` (wyrocznia
+ * `internalSegmentsEndAtPortsOrBus`/`sourceConnectivityGaps`).
+ */
+function composeDerSnChain(
+  source: StationDerSourceInput,
+  bottomPort: RoutePort,
+  centerX: number,
+  sink: ChainSink,
+): void {
+  const chain = source.chain;
+  if (!chain) return;
+
+  // 1) Kabel SN: głowica pola (port `line`) → strona SN (górny port) TR blokowego.
+  const cableTopY = bottomPort.y;
+  const trTopY = cableTopY + DER_SN_CABLE_LEN;
+  sink.segments.push({
+    ownerRef: chain.cableRef ?? `${source.id}#der-mv-cable`,
+    points: [
+      { x: centerX, y: cableTopY },
+      { x: centerX, y: trTopY },
+    ],
+  });
+
+  // 2) TR BLOKOWY (reguła 5): `transformer2W` z ownerRef = REALNY ref TR
+  // blokowego (`bayRef` niesie ownerRef w `scene/buildScene.ts`, elementKind
+  // `transformer`). hv (górny) na dole kabla, lv (dolny) = szyna nN producenta.
+  const trDef = SYMBOL_DEFS.transformer2W;
+  const trX = snapToGrid(centerX - trDef.width / 2);
+  const trY = trTopY;
+  const trPorts = portsInWorld(trDef, trX, trY);
+  sink.symbols.push({
+    symbolId: 'transformer2W',
+    bayRef: chain.blockTransformer.ref,
+    x: trX,
+    y: trY,
+    ports: trPorts,
+  });
+  const lvY = trPorts.lv.y;
+
+  // 3) Szyna nN producenta (reguła 2). `integrated-skid` = uproszczenie
+  // wizualne: BEZ osobnej kreski szyny (TR→źródło bezpośrednio), TR OBECNY.
+  const isIntegratedSkid = chain.producerLvBus.lvSwitchgearVariant === 'integrated-skid';
+  if (!isIntegratedSkid) {
+    // Realna kreska szyny nN producenta (segment `#lv-bus` — busopodobny,
+    // waliduje swoje końce tautologicznie jak szyna nN stacji).
+    sink.segments.push({
+      ownerRef: `${chain.producerLvBus.ref}#lv-bus`,
+      points: [
+        { x: centerX - GRID, y: lvY },
+        { x: centerX + GRID, y: lvY },
+      ],
+    });
+    // Etykieta napięcia szyny producenta „0,4 kV" — WYŁĄCZNIE z danych
+    // (`Bus.voltage_kv`); brak danych ⇒ brak etykiety (zero zgadywania).
+    if (chain.producerLvBus.voltageKv != null) {
+      sink.busbarLabels.push({
+        ownerRef: `${chain.producerLvBus.ref}#producer-bus-voltage`,
+        ownerKind: 'busbar-voltage',
+        text: stationBusbarLabelText(chain.producerLvBus.voltageKv),
+        labelClass: 't2',
+        anchor: { x: centerX - GRID, y: lvY },
+        placement: 'left',
+      });
+    }
+  }
+
+  // 4) Symbol źródła (PV/BESS/…) — LIŚĆ toru pod TR blokowym (reguła 7: nigdy
+  // bezpośrednio na szynie SN). Port `ac` (górny) → zejście od szyny nN
+  // producenta (lub wprost od portu lv TR dla `integrated-skid`).
+  const symbolId = symbolIdForSourceKind(source.kind);
+  const srcDef = SYMBOL_DEFS[symbolId];
+  const srcX = snapToGrid(centerX - srcDef.width / 2);
+  const srcY = lvY + DER_SN_LV_DROP;
+  const srcPorts = portsInWorld(srcDef, srcX, srcY);
+  sink.segments.push({
+    ownerRef: `${source.id}#der-source-descent`,
+    points: [
+      { x: centerX, y: lvY },
+      { x: centerX, y: srcPorts.ac.y },
+    ],
+  });
+  sink.symbols.push({
+    symbolId,
+    sourceRef: source.id,
+    missingData: source.missingData,
+    operationalState: source.operationalState,
+    derKind: source.kind,
+    x: srcX,
+    y: srcY,
+    ports: srcPorts,
+  });
+  sink.derLabels.push({
+    ownerRef: `${source.id}#der-label`,
+    ownerKind: 'der',
+    text: derChainSourceLabelText(source),
+    labelClass: 't2',
+    anchor: { x: srcX + srcDef.width / 2, y: srcY + srcDef.height },
+    placement: 'below',
+  });
+}
+
 function computeBbox(symbols: readonly ComposedSymbolInstance[], segments: readonly ComposedSegment[]): V3Rect {
   let minX = Infinity;
   let minY = Infinity;
@@ -721,6 +853,17 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   const missingData: string[] = [];
 
   const captionHeight = labelLineHeight('t3');
+
+  // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): źródła DER-SN z KOMPLETNYM torem
+  // (`chain` obecny, W2b) — indeks po `chain.mvFieldRef` = `field_ref` pola
+  // źródłowego SN (bay_role `OZE`), żeby w pętli pól niżej powiesić tor POD
+  // głowicą DOKŁADNIE tego pola (jedna prawda measure↔compose:
+  // `stationBlockHeight` rezerwuje wysokość na TYM SAMYM dopasowaniu).
+  const chainSink: ChainSink = { symbols: [], segments: [], derLabels: [], busbarLabels: [] };
+  const chainSourceByFieldRef = new Map<string, StationDerSourceInput>();
+  for (const s of station.derSources ?? []) {
+    if (s.connectionSide === 'sn' && s.chain) chainSourceByFieldRef.set(s.chain.mvFieldRef, s);
+  }
 
   let bx = blockLeftX;
   station.snBays.forEach((bay, index) => {
@@ -1101,8 +1244,20 @@ export function composeStation(input: ComposeStationInput): StationComposition {
 
     if (isTransformerRole(bay.fieldRole)) lvPorts.push(stack.bottomPort);
 
+    // W2c: tor DER-SN wisi POD głowicą TEGO pola źródłowego (bay_role `OZE`),
+    // gdy pole niesie dopasowane źródło z torem (`chain.mvFieldRef === bayRef`).
+    const chainSource = chainSourceByFieldRef.get(bay.bayRef);
+    if (chainSource) composeDerSnChain(chainSource, stack.bottomPort, centerX, chainSink);
+
     bx += reservedWidth + GRID;
   });
+
+  // W2c: prymitywy toru DER-SN scalone PO pętli pól (ADDYTYWNIE, jak warstwa
+  // adnotacji) — tor nie zmienia geometrii pól, tylko dokłada tor pod głowicą.
+  symbols.push(...chainSink.symbols);
+  segments.push(...chainSink.segments);
+  derLabels.push(...chainSink.derLabels);
+  busbarLabels.push(...chainSink.busbarLabels);
 
   // W2 (RECENZJA_L2 §3/§4 wariant B; GS-4b / audyt Z2, `AUDYT_POWYKONAWCZY_
   // SLD_2026-07.md`): rozdział źródeł DER wg REALNEJ strony przyłączenia
@@ -1117,7 +1272,18 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   // `primaryDevices`, więc §12.5 „zakaz domysłu" ⇒ odczep bez łącznika.
   const allDerSources = station.derSources ?? [];
   const nnDerSources = allDerSources.filter((s) => s.connectionSide !== 'sn');
-  const snDerSources = allDerSources.filter((s) => s.connectionSide === 'sn');
+  // W2c (reguła 7): źródło SN z KOMPLETNYM torem (`chain`) rysowane jest jako
+  // pełny tor POD polem źródłowym (`composeDerSnChain` wyżej), NIE jako
+  // placeholder na szynie SN. Placeholder W2 (symbol WPROST na szynie SN)
+  // zostaje WYŁĄCZNIE dla źródeł SN BEZ toru (stare dane / generator
+  // synchroniczny WPROST na SN, przypadek 4) — uczciwa degradacja + stopNote.
+  const snDerSources = allDerSources.filter((s) => s.connectionSide === 'sn' && s.chain == null);
+  for (const s of snDerSources) {
+    // §0 karty: DER na SN bez zmaterializowanego toru (brak `der_topology`/TR
+    // blokowego w danych) = tor niepełny — JAWNY stopNote (nie ciche
+    // uproszczenie), placeholder rysowany niżej jako uczciwa degradacja W2.
+    missingData.push(`der.sn.torNiepelny:${s.id}`);
+  }
 
   // Pola źródłowe SN — dodatkowe kolumny NA SZYNIE SN (po prawej pól), tap
   // dopisany do `busTapXs` PRZED rysunkiem szyny SN, żeby szyna objęła je z
