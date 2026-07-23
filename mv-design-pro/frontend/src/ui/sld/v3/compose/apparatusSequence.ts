@@ -37,7 +37,7 @@
  * APPARATUS` w `v2/domain/apparatusContracts.ts`, ten sam podział).
  */
 
-import { GRID } from '../core/grid';
+import { APPARATUS_STACK_VERTICAL_GAP, APPARATUS_STACK_LATERAL_TAP } from '../layout/apparatusStack';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
@@ -102,7 +102,11 @@ export function apparatusSymbolsForRole(role: FieldRole): readonly SymbolId[] {
  *  dla `layout/measure.ts` i `compose/station.ts`/`compose/gpz.ts`). */
 export function stackFootprint(ids: readonly SymbolId[]): { readonly width: number; readonly height: number } {
   const width = Math.max(...ids.map((id) => SYMBOL_DEFS[id].width));
-  const height = ids.reduce((sum, id, index) => sum + SYMBOL_DEFS[id].height + (index > 0 ? GRID : 0), 0);
+  const height = ids.reduce(
+    // W1b (uwaga 12): odstęp aparat–aparat z rastru kontraktowego, nie literał.
+    (sum, id, index) => sum + SYMBOL_DEFS[id].height + (index > 0 ? APPARATUS_STACK_VERTICAL_GAP : 0),
+    0,
+  );
   return { width, height };
 }
 
@@ -247,8 +251,10 @@ export function planBayApparatus(
   return { ...planApparatusSymbolIds(symbolIds), source };
 }
 
-/** Prześwit gałęzi bocznej od osi toru (poziomy jog) — 1×GRID (spec §2). */
-export const LATERAL_BRANCH_GAP = GRID;
+/** Prześwit gałęzi bocznej od osi toru (poziomy jog) — długość odczepu z
+ *  rastru kontraktowego (W1b uwaga 12, `layout/apparatusStack.ts`). Alias
+ *  zachowany: dawni wołający (`compose/station.ts`) importują tę nazwę. */
+export const LATERAL_BRANCH_GAP = APPARATUS_STACK_LATERAL_TAP;
 
 // ---------------------------------------------------------------------------
 // F10.2 (spec §19.1, dyrektywa D2-3, V12K-035) — identyfikator PER-APARAT
@@ -379,7 +385,8 @@ export function bayApparatusPlanFootprint(
     if (afterMainIndex < 0) return 0;
     let y = 0;
     for (let i = 0; i <= afterMainIndex; i++) {
-      y += SYMBOL_DEFS[plan.mainPath[i]].height + (i < afterMainIndex ? GRID : 0);
+      // W1b (uwaga 12): odstęp aparat–aparat z rastru kontraktowego.
+      y += SYMBOL_DEFS[plan.mainPath[i]].height + (i < afterMainIndex ? APPARATUS_STACK_VERTICAL_GAP : 0);
     }
     return y;
   };

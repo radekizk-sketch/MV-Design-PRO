@@ -45,6 +45,7 @@ import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/gri
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import type { SwitchState } from '../symbols/glyphs';
+import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import type { RoutePort, RouteVertex } from '../layout/route';
 import {
   colorSegmentLabelRows,
@@ -520,7 +521,10 @@ function buildFieldStack(
       bottomPort = { x: x + south.x, y: y + south.y, dir: south.dir };
     }
 
-    y += def.height + (stackIndex < stackSpecs.length - 1 ? GRID : 0);
+    // W1b (uwaga 12): odstęp aparat–aparat z rastru kontraktowego
+    // (`layout/apparatusStack.ts`) — TA SAMA stała co `station.ts::buildBayStack`
+    // (jeden raster stosu pola dla stacji i GPZ).
+    y += def.height + (stackIndex < stackSpecs.length - 1 ? APPARATUS_STACK_VERTICAL_GAP : 0);
   });
 
   // Odgałęzienia boczne (§18.1) — identyczna arytmetyka co

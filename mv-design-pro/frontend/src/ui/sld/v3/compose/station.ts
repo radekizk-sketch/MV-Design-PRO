@@ -87,6 +87,7 @@ import type {
 import { ALL_FIELD_ROLES, FIELD_ROLE, type FieldRole } from '../../v2/domain/apparatusContracts';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 import { fieldFunctionalDesignation, isLineLikeRole } from './directions';
+import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import {
   apparatusIdentifiers,
   apparatusIdentifierSources,
@@ -553,7 +554,10 @@ function buildBayStack(
     const south = def.ports.find((p) => p.dir === 'S');
     bottomPort = south ? { x: x + south.x, y: y + south.y, dir: south.dir } : (topPort ?? Object.values(ports)[0] ?? null);
 
-    y += def.height + (index < stackItems.length - 1 ? GRID : 0);
+    // W1b (uwaga 12): odstęp aparat–aparat z rastru kontraktowego
+    // (`layout/apparatusStack.ts`), nie literał — JEDNA prawda z
+    // `stackFootprint`/`bayApparatusPlanFootprint` (measure↔compose).
+    y += def.height + (index < stackItems.length - 1 ? APPARATUS_STACK_VERTICAL_GAP : 0);
   });
 
   if (!topPort || !bottomPort) {

@@ -65,6 +65,9 @@ function device(
   };
 }
 
+/** W1b (uwaga 15): grupa funkcjonalna renderu macierzy (sekcje dowodu). */
+export type W1Group = 'liniowe' | 'transformatorowe';
+
 export interface W1Variant {
   /** Identyfikator wariantu (stabilny klucz doboru pola + podpis renderu). */
   readonly id: string;
@@ -72,6 +75,8 @@ export interface W1Variant {
   readonly label: string;
   /** Rola pola, do którego wariant jest wstrzykiwany (LINIA_IN | TRANSFORMATOROWE). */
   readonly targetRole: 'LINIA_IN' | 'TRANSFORMATOROWE';
+  /** W1b (uwaga 15): grupa funkcjonalna do sekcjonowania renderu dowodowego. */
+  readonly group: W1Group;
   /** Aparaty pierwotne pola (kolejność „od szyny w dół" wg placement). */
   readonly devices: readonly BayPrimaryDevice[];
   /** Ewentualne kody zabezpieczeń pola (§17.2), dla wariantu z automatyką. */
@@ -87,8 +92,9 @@ export interface W1Variant {
 export const W1_VARIANTS: readonly W1Variant[] = [
   {
     id: 'linia-lbs-es',
-    label: 'Liniowe: LBS + uziemnik',
+    label: 'Liniowe: LBS + uziemnik (LBS zamknięty)',
     targetRole: 'LINIA_IN',
+    group: 'liniowe',
     devices: [
       device('v1/lbs', 'LOAD_SWITCH', 'UPSTREAM', { switch_state: closed(), designation: 'Q1' }),
       device('v1/head', 'CABLE_HEAD', 'DOWNSTREAM'),
@@ -96,9 +102,24 @@ export const W1_VARIANTS: readonly W1Variant[] = [
     ],
   },
   {
+    // W1b (uwagi 13): STAN aparatu otwarty vs zamknięty — IDENTYCZNA
+    // konfiguracja co `linia-lbs-es`, jedyna różnica: LBS OTWARTY (asercja
+    // różnicy geometrii stanu, nie etykiety — para stan-diff w macierzy).
+    id: 'linia-lbs-es-otw',
+    label: 'Liniowe: LBS + uziemnik (LBS otwarty)',
+    targetRole: 'LINIA_IN',
+    group: 'liniowe',
+    devices: [
+      device('v1o/lbs', 'LOAD_SWITCH', 'UPSTREAM', { switch_state: open(), designation: 'Q1' }),
+      device('v1o/head', 'CABLE_HEAD', 'DOWNSTREAM'),
+      device('v1o/es', 'ES', 'GROUND_BRANCH', { switch_state: open(), earthing_role: 'field_earth', designation: 'QE1' }),
+    ],
+  },
+  {
     id: 'linia-cb-ct-es',
     label: 'Liniowe: CB + CT + uziemnik',
     targetRole: 'LINIA_IN',
+    group: 'liniowe',
     devices: [
       device('v2/ds-bus', 'DS', 'UPSTREAM', { switch_state: closed(), designation: 'Q1' }),
       device('v2/cb', 'CB', 'MIDSTREAM', { switch_state: closed(), designation: 'Q0' }),
@@ -112,6 +133,7 @@ export const W1_VARIANTS: readonly W1Variant[] = [
     id: 'linia-lbs-fuse',
     label: 'Liniowe: LBS + bezpieczniki',
     targetRole: 'LINIA_IN',
+    group: 'liniowe',
     devices: [
       device('v3/lbs', 'LOAD_SWITCH', 'UPSTREAM', { switch_state: closed(), designation: 'Q1' }),
       device('v3/fuse', 'FUSE', 'MIDSTREAM', { designation: 'F1' }),
@@ -123,6 +145,7 @@ export const W1_VARIANTS: readonly W1Variant[] = [
     id: 'linia-cb-ct-sa',
     label: 'Liniowe: CB + CT + ogranicznik',
     targetRole: 'LINIA_IN',
+    group: 'liniowe',
     devices: [
       device('v4/ds-bus', 'DS', 'UPSTREAM', { switch_state: closed(), designation: 'Q1' }),
       device('v4/cb', 'CB', 'MIDSTREAM', { switch_state: closed(), designation: 'Q0' }),
@@ -133,9 +156,44 @@ export const W1_VARIANTS: readonly W1Variant[] = [
     ],
   },
   {
+    // W1b (uwaga 14): KROTNOŚĆ 2×uziemnik — dane niosą DWA ES (uziemnik pola
+    // od strony kabla + uziemnik ekranów kabla). Oba BOCZNE, rysowane obok
+    // siebie z odczepu (krotność naturalna z listy, zero fabrykacji).
+    id: 'linia-2es',
+    label: 'Liniowe: CB + CT + 2×uziemnik',
+    targetRole: 'LINIA_IN',
+    group: 'liniowe',
+    devices: [
+      device('v7/ds-bus', 'DS', 'UPSTREAM', { switch_state: closed(), designation: 'Q1' }),
+      device('v7/cb', 'CB', 'MIDSTREAM', { switch_state: closed(), designation: 'Q0' }),
+      device('v7/ct', 'CT', 'MIDSTREAM', { designation: 'T1' }),
+      device('v7/head', 'CABLE_HEAD', 'DOWNSTREAM'),
+      device('v7/es1', 'ES', 'GROUND_BRANCH', { switch_state: closed(), earthing_role: 'field_earth', designation: 'QE1' }),
+      device('v7/es2', 'ES', 'GROUND_BRANCH', { switch_state: open(), earthing_role: 'cable_screen', designation: 'QE2' }),
+    ],
+  },
+  {
+    // W1b (uwaga 14): CT + VT w JEDNYM polu — dowód rozróżnialności symboli
+    // (CT ≠ VT, RECENZJA_L2 §7). CT w torze (szereg), VT BOCZNIE (odczep,
+    // przekładnik napięciowy przyłączony do toru linii).
+    id: 'linia-ct-vt',
+    label: 'Liniowe: CB + CT + VT + uziemnik',
+    targetRole: 'LINIA_IN',
+    group: 'liniowe',
+    devices: [
+      device('v8/ds-bus', 'DS', 'UPSTREAM', { switch_state: closed(), designation: 'Q1' }),
+      device('v8/cb', 'CB', 'MIDSTREAM', { switch_state: closed(), designation: 'Q0' }),
+      device('v8/ct', 'CT', 'MIDSTREAM', { designation: 'T1' }),
+      device('v8/vt', 'VT', 'MIDSTREAM', { designation: 'T2' }),
+      device('v8/head', 'CABLE_HEAD', 'DOWNSTREAM'),
+      device('v8/es', 'ES', 'GROUND_BRANCH', { switch_state: open(), earthing_role: 'field_earth', designation: 'QE1' }),
+    ],
+  },
+  {
     id: 'tr-lbs-fuse-es',
     label: 'TR: LBS-bezpiecznik + uziemnik',
     targetRole: 'TRANSFORMATOROWE',
+    group: 'transformatorowe',
     devices: [
       device('v5/lbs', 'LOAD_SWITCH', 'UPSTREAM', { switch_state: closed(), designation: 'Q1' }),
       device('v5/fuse', 'FUSE', 'MIDSTREAM', { designation: 'F1' }),
@@ -147,6 +205,7 @@ export const W1_VARIANTS: readonly W1Variant[] = [
     id: 'tr-cb-ct-zab',
     label: 'TR: CB + CT + zabezpieczenie',
     targetRole: 'TRANSFORMATOROWE',
+    group: 'transformatorowe',
     protectionCodes: ['87T', '51', '50', '51N'],
     devices: [
       device('v6/ds-bus', 'DS', 'UPSTREAM', { switch_state: closed(), designation: 'Q1' }),
