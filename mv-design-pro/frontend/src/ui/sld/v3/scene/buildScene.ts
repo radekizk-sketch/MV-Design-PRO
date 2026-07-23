@@ -1268,6 +1268,11 @@ function composeRowStation(
       // `data-source-state`), wyrocznia `sourceStateGaps` niżej pilnuje, że
       // stan występuje WYŁĄCZNIE na symbolach źródeł i tylko ze słownika.
       operationalState: s.operationalState,
+      // DER-MENU-V3 (Karta SLD-P, GAP P-1): rodzaj DER przepisany 1:1 z
+      // kompozycji (`ComposedSymbolInstance.derKind`, REALNA wartość z
+      // `SldSourceView.kind`) — konsument to menu kontekstowe podtypu na v3
+      // (`SldCanvasV3Workspace.elementKindForMenu`). `undefined` dla nie-DER.
+      derKind: s.derKind,
     },
   }));
   const segments: PreviewSegment[] = composition.segments.map((s) => {

@@ -140,22 +140,24 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'delete-fw', labelPl: 'Usuń farmę wiatrową', group: 'usun' },
   ],
   /**
-   * Karta SLD-P (GAP zarejestrowany P-1: „menu kontekstowe DER na v3").
-   * Kanwa v3 niesie WYŁĄCZNIE `elementKind='der'` GENERYCZNY (scena v3 nie
-   * niesie `Generator.gen_type` — `SldCanvasV3Workspace.elementKindForMenu`
-   * nagłówek), więc nie da się bez zgadywania wybrać `der_pv`/`der_bess`/
-   * `der_fw` (subtype-specific `open-*-config`/`delete-*` wymagałyby
-   * fabrykowanego rodzaju — zakazane, `domain_no_guessing_guard`). TEN
-   * rejestr niesie WYŁĄCZNIE dwie akcje bez zależności od podtypu, z REALNYM
-   * celem w `useSldActionExecutor` (`shared/sldActionExecutor.ts`):
+   * Karta SLD-P (GAP P-1 „menu kontekstowe DER na v3") — DER-MENU-V3: kanwa v3
+   * niesie TERAZ podtyp DER w `meta.derKind` (REALNA wartość `SldSourceView.
+   * kind` z łańcucha adaptera, `SldCanvasV3Workspace.elementKindForMenu`
+   * nagłówek), więc `pv`/`bess`/`wind` trafiają do PEŁNYCH kategorii
+   * `der_pv`/`der_bess`/`der_fw` wyżej (z `open-*-config`/`show-frt-hvrt`/
+   * `delete-*`) BEZ zgadywania. TEN generyczny rejestr `der` obsługuje
+   * WYŁĄCZNIE UCZCIWĄ DEGRADACJĘ: `generator` (brak osobnej kategorii w v2)
+   * oraz `unknown`/brak `derKind` (`Generator.gen_type` nierozpoznany/`null`
+   * — honest-unknown, `domain_no_guessing_guard`: NIGDY domysł podtypu). Niesie
+   * dwie akcje bez zależności od podtypu, z REALNYM celem w `useSldActionExecutor`
+   * (`shared/sldActionExecutor.ts`):
    *  - `show-ncrfg` — TA SAMA etykieta/id co `der_pv`/`der_bess`/`der_fw`
    *    wyżej (deep-link do macierzy wymogów NC RfG, karta P-1);
    *  - `show-results` — wzorzec karty D-2 (deep-link do zakładki „Rozpływ"
    *    warsztatu Wyników, preselekcja po ref klikniętego elementu).
-   * `open-*-config`/`show-frt-hvrt`/`delete-*` z `der_pv`/`der_bess`/`der_fw`
-   * NIE są tu przeniesione (brak realnego celu bez znanego podtypu/rodzaju
-   * ekranu docelowego) — UDOKUMENTOWANA LUKA, nie regresja v2 (v2 nadal ma
-   * pełne menu per podtyp).
+   * `open-*-config`/`show-frt-hvrt`/`delete-*` NIE są tu przeniesione (brak
+   * realnego ekranu docelowego bez znanego podtypu) — poprawna degradacja dla
+   * źródła nierozpoznanego, nie regresja v2.
    */
   der: [
     { id: 'show-ncrfg', labelPl: 'Pokaż zgodność przyłączeniową', group: 'widok' },

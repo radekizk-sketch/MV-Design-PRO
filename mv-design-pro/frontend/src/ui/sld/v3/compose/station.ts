@@ -77,7 +77,7 @@ import {
   stationPortCaptionHeight,
   type StationMeasureInput,
 } from '../layout/measure';
-import { derLabelText, symbolIdForSourceKind, type SourceOperationalState } from './sourceKind';
+import { derLabelText, symbolIdForSourceKind, type DerSourceKind, type SourceOperationalState } from './sourceKind';
 import type {
   PortCaptionOwnerInput,
   SimpleAnchoredOwnerInput,
@@ -286,6 +286,17 @@ export interface ComposedSymbolInstance {
    *  operationalState` → kolor kreski + `data-source-state` (bez zmiany
    *  geometrii — §13.3). */
   readonly operationalState?: SourceOperationalState;
+  /** DER-MENU-V3 (Karta SLD-P, GAP P-1): rodzaj DER (`SldSourceView.kind`,
+   *  adapter v2 → `StationDerSourceInput.kind`) przepisany 1:1 — WYŁĄCZNIE dla
+   *  symboli DER (`sourceRef` obecny). REALNA wartość z łańcucha danych
+   *  (`Generator.gen_type` → `mapGeneratorToSourceKind`), NIE re-derywacja z
+   *  `symbolId` (ta byłaby niejednoznaczna: `generator`/`unknown` dzielą glif
+   *  `derGenerator`, patrz `compose/sourceKind.ts` `DER_SOURCE_KIND_SYMBOL`).
+   *  `undefined` dla symboli nie-DER. Konsument: `scene/buildScene.ts` →
+   *  `PreviewElementMeta.derKind` → menu kontekstowe podtypu na v3
+   *  (`SldCanvasV3Workspace.elementKindForMenu`, ZERO zgadywania podtypu —
+   *  `unknown`/`generator` degradują do menu generycznego `der`). */
+  readonly derKind?: DerSourceKind;
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
@@ -1267,6 +1278,10 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           missingData: source.missingData,
           // F11.3 (spec §13.3): przepisane 1:1 — zero re-derywacji w compose.
           operationalState: source.operationalState,
+          // DER-MENU-V3 (Karta SLD-P): rodzaj DER przepisany 1:1 z REALNEGO
+          // łańcucha (`StationDerSourceInput.kind`) — fundament menu podtypu na
+          // v3, zero re-derywacji z `symbolId` (patrz docstring pola).
+          derKind: source.kind,
           x,
           y,
           ports,

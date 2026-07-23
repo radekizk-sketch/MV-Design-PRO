@@ -26,7 +26,7 @@ import type { EnergyNetworkModel } from '../../../../types/enm';
 import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import { SYMBOL_DEFS } from '../symbols/defs';
 import { SYMBOL_GLYPHS, V3_STROKE_BASE } from '../symbols/glyphs';
-import { SOURCE_STATE_OVERLAY_COLOR } from '../compose/sourceKind';
+import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind } from '../compose/sourceKind';
 import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth } from '../core/text';
 import { GRID } from '../core/grid';
 import type { OwnedLabel } from '../layout/labels';
@@ -138,6 +138,12 @@ const LOD_CROSSFADE_DURATION = '0.18s';
 export interface SldElementClickMeta {
   readonly ownerRef?: string;
   readonly elementKind?: PreviewElementKind;
+  /** DER-MENU-V3 (Karta SLD-P, GAP P-1): rodzaj DER z `PreviewElementMeta.
+   *  derKind` (REALNA wartość łańcucha, WYŁĄCZNIE dla `elementKind==='der'`) —
+   *  konsument to `SldCanvasV3Workspace.elementKindForMenu` (wybór kategorii
+   *  menu podtypu). `undefined` dla nie-DER oraz DER `generator`/`unknown`
+   *  (menu generyczne — zero zgadywania). */
+  readonly derKind?: DerSourceKind;
 }
 
 export interface SldCanvasV3Props {
@@ -275,7 +281,7 @@ function SceneSymbolNode(props: {
   const stroke = sourceState
     ? SOURCE_STATE_OVERLAY_COLOR[sourceState]
     : strokeForEnergization(energizedSym) ?? baseSymbolStrokeColor(symbol.symbolId, symbol.meta);
-  const clickMeta: SldElementClickMeta = { ownerRef: symbol.meta?.ownerRef, elementKind: symbol.meta?.elementKind };
+  const clickMeta: SldElementClickMeta = { ownerRef: symbol.meta?.ownerRef, elementKind: symbol.meta?.elementKind, derKind: symbol.meta?.derKind };
   return (
     <g
       data-testid={testId}
@@ -286,6 +292,7 @@ function SceneSymbolNode(props: {
       data-energized={energizedSym === undefined ? undefined : String(energizedSym)}
       data-owner-ref={symbol.meta?.ownerRef}
       data-element-kind={symbol.meta?.elementKind}
+      data-der-kind={symbol.meta?.derKind}
       onClick={onElementClick ? () => onElementClick(testId, clickMeta) : undefined}
       onDoubleClick={onElementDoubleClick ? () => onElementDoubleClick(testId, clickMeta) : undefined}
       onContextMenu={

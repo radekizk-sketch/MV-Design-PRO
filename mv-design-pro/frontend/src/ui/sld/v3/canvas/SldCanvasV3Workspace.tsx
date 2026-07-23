@@ -135,6 +135,7 @@ import {
 import type { ViewportTransform } from './camera';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
+import type { DerSourceKind } from '../compose/sourceKind';
 import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
 // SCHEMAT-10 S4 (V12K-135/136): paleta jasna + kadr fit-do-treści WYŁĄCZNIE
 // dla toru eksportu — patrz nagłówki `export/exportPalette.ts`/`exportFrame.ts`.
@@ -253,20 +254,26 @@ export function elementTypeForKind(kind: PreviewElementKind | undefined): Elemen
  *    measurementLink), NIE rozróżnia kabel-vs-napowietrzna; v2 ma tę samą
  *    niepewność domyślnie na 'cable_segment_sn' gdy kind nie precyzuje
  *    'overhead_line_sn' — UDOKUMENTOWANA LUKA, nie regresja);
- *  - 'der' → 'der' (Karta SLD-P, GAP zarejestrowany P-1 „menu kontekstowe DER
- *    na v3" — ZAMKNIĘTY dla zakresu bez podtypu: v2 rozróżnia der_pv/
- *    der_bess/der_fw jako OSOBNE kategorie menu z różnymi akcjami domenowymi,
- *    ale scena v3 nie niesie `Generator.gen_type` — subtype-specific akcje
- *    (`open-*-config`/`delete-*`) POZOSTAJĄ niedostępne bez zgadywania
- *    (zakazane przez `domain_no_guessing_guard`, UDOKUMENTOWANA LUKA, nie
- *    regresja). `SLD_MENU_REGISTRY.der` niesie WYŁĄCZNIE akcje bez zależności
- *    od podtypu z realnym celem (`show-ncrfg`/`show-results`, patrz
- *    `SldCommandService.ts`). Test (c) w `__tests__/contextMenu.test.tsx`
- *    pokrywa ten przypadek (menu generyczne, bez pozycji subtype-specific);
+ *  - 'der' → kategoria PODTYPU wg `meta.derKind` (DER-MENU-V3, Karta SLD-P,
+ *    GAP P-1 — LUKA ZAMKNIĘTA): scena v3 niesie TERAZ `derKind` (REALNA
+ *    wartość `SldSourceView.kind` z łańcucha adaptera, `compose/station.ts` →
+ *    `scene/buildScene.ts` `meta.derKind`), więc mapowanie na OSOBNE kategorie
+ *    v2 działa BEZ zgadywania: `pv → 'der_pv'`, `bess → 'der_bess'`,
+ *    `wind → 'der_fw'` (pełne menu podtypu: `open-*-config`/`show-frt-hvrt`/
+ *    `delete-*`, `SldCommandService.ts`). `generator`/`unknown` oraz BRAK
+ *    `derKind` → 'der' GENERYCZNE (uczciwa degradacja — `domain_no_guessing_
+ *    guard`: v2 nie ma osobnej kategorii dla `generator`, a `unknown` to
+ *    honest-unknown; menu niesie tylko akcje bez zależności od podtypu
+ *    `show-ncrfg`/`show-results`). Testy (a)/(b) w
+ *    `__tests__/contextMenu.test.tsx` pokrywają oba tory (derPv → menu podtypu;
+ *    derGenerator → menu generyczne);
  *  - 'protectionAnnotation' → `undefined` (adnotacja graficzna, nie obiekt
  *    domenowy — brak odpowiednika w v2/SLD_MENU_REGISTRY).
  */
-function elementKindForMenu(kind: PreviewElementKind | undefined): SldElementKindForMenu | undefined {
+function elementKindForMenu(
+  kind: PreviewElementKind | undefined,
+  derKind: DerSourceKind | undefined,
+): SldElementKindForMenu | undefined {
   switch (kind) {
     case 'station':
       return 'station';
@@ -281,9 +288,35 @@ function elementKindForMenu(kind: PreviewElementKind | undefined): SldElementKin
     case 'segment':
       return 'cable_segment_sn';
     case 'der':
-      return 'der';
+      // DER-MENU-V3: podtyp z REALNEGO `derKind` — TYLKO trzy rozpoznane
+      // rodzaje mapują na osobne kategorie v2; `generator`/`unknown`/brak
+      // danych → 'der' generyczne (zero fabrykacji podtypu).
+      return derSubtypeMenuKind(derKind);
     default:
       return undefined;
+  }
+}
+
+/**
+ * DER-MENU-V3 (Karta SLD-P): `DerSourceKind` (REALNA wartość łańcucha) →
+ * kategoria menu v2. JAWNA, zamknięta tabela — WYŁĄCZNIE `pv`/`bess`/`wind`
+ * mają osobne kategorie (`der_pv`/`der_bess`/`der_fw`, `SLD_MENU_REGISTRY`);
+ * `generator` (brak kategorii v2), `unknown` (honest-unknown) i `undefined`
+ * (brak danych) degradują do 'der' generycznego — NIGDY domysł podtypu
+ * (`domain_no_guessing_guard`).
+ */
+function derSubtypeMenuKind(derKind: DerSourceKind | undefined): SldElementKindForMenu {
+  switch (derKind) {
+    case 'pv':
+      return 'der_pv';
+    case 'bess':
+      return 'der_bess';
+    case 'wind':
+      return 'der_fw';
+    case 'generator':
+    case 'unknown':
+    case undefined:
+      return 'der';
   }
 }
 
@@ -320,14 +353,20 @@ function elementKindForMenu(kind: PreviewElementKind | undefined): SldElementKin
  *    apparatus mają DEDYKOWANĄ ścieżkę rozwiązywania stacji-właściciela
  *    poniżej zamiast wpisu w tej tabeli.
  *  - 'der' → `undefined` (poza przepływem drop-z-palety, gdzie `derKind`
- *    jest ZNANY z akcji użytkownika — `buildDerDropDetailDrawerData`
- *    wyżej): `SldDetailDrawer` domyśla `derKind` do `'PV'`, gdy
- *    `data.derKind` nieustawione (`SldDetailDrawer.tsx` ok. linii 417) —
- *    dla klika w ISTNIEJĄCY DER nieznanego rodzaju (scena v3 nie niesie
- *    `Generator.gen_type`, patrz `elementTypeForKind` nagłówek pliku)
- *    fabrykowałoby to fałszywe „PV" dla realnego BESS/FW. UDOKUMENTOWANA
- *    LUKA, nie regresja — v3 przed tym zadaniem NIE miał drawera dla `der`
- *    w ogóle.
+ *    jest ZNANY z akcji użytkownika — `buildDerDropDetailDrawerData` wyżej).
+ *    DER-MENU-V3 (Karta SLD-P) domknęła kanał danych rodzaju DER dla MENU
+ *    (`meta.derKind` niesie TERAZ realny `SldSourceView.kind`, patrz
+ *    `elementKindForMenu` wyżej), ale NIE dla drawera: drawer typu `'der'`
+ *    w `SldDetailDrawer.tsx` (domyślne `data?.derKind ?? 'PV'`, ok. linii 421)
+ *    to FORMULARZ TWORZENIA nowego DER (przepływ dropu), a nie panel
+ *    ISTNIEJĄCEGO źródła — nie istnieje builder danych drawera dla
+ *    klikniętego, już obecnego DER (odpowiednik `buildStationDetailDrawerData`
+ *    dla stacji). Domyślne „PV" jest więc domyślną wartością FORMULARZA
+ *    kreacji (gdzie `derKind` i tak zawsze pochodzi z akcji dropu), NIE
+ *    fabrykacją rodzaju istniejącego DER — v3 nie otwiera dziś drawera dla
+ *    klika w istniejący DER. Zbudowanie takiego panelu (z `meta.derKind`
+ *    jako realnym rodzajem) to ODRĘBNY dostawca poza zakresem menu (raport
+ *    DER-MENU-V3, jawny dług), nie luka domykalna tym samym kanałem.
  *  - 'protectionAnnotation' → `undefined` (adnotacja graficzna, nie obiekt
  *    domenowy).
  */
@@ -901,14 +940,15 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       // Tło (`sld-v3-background`, `SldCanvasV3` nagłówek onContextMenu) → menu
       // tła; realny element → tabela `elementKindForMenu` (brak dopasowania,
       // np. `elementKind='protectionAnnotation'` — UDOKUMENTOWANA LUKA — NIE
-      // otwiera menu, bez crasha, bez zgadywania kategorii; `elementKind='der'`
-      // OD Karty SLD-P otwiera menu generyczne `SLD_MENU_REGISTRY.der`, patrz
-      // `elementKindForMenu` nagłówek).
+      // otwiera menu, bez crasha, bez zgadywania kategorii). DER-MENU-V3:
+      // `elementKind='der'` wybiera kategorię PODTYPU wg `meta.derKind`
+      // (der_pv/der_bess/der_fw dla pv/bess/wind; generyczne `der` dla
+      // generator/unknown/braku danych), patrz `elementKindForMenu` nagłówek.
       if (testId === 'sld-v3-background') {
         setContextRequest({ kind: 'background', elementId: null, clientX, clientY });
         return;
       }
-      const menuKind = elementKindForMenu(meta?.elementKind);
+      const menuKind = elementKindForMenu(meta?.elementKind, meta?.derKind);
       if (!menuKind) return;
       const id = meta?.ownerRef ?? elementIdFromTestId(testId);
       setContextRequest({ kind: menuKind, elementId: id, clientX, clientY });

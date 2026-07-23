@@ -29,7 +29,7 @@
 import type { SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS, type StationDerGlyphKind, type SwitchState } from '../symbols/glyphs';
 import type { MiniRmuLineTopology } from '../symbols/miniRmuGrammar';
-import { SOURCE_STATE_OVERLAY_COLOR, type SourceOperationalState } from './sourceKind';
+import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind, type SourceOperationalState } from './sourceKind';
 import { LABEL_TYPOGRAPHY } from '../core/text';
 import type { OwnedLabel } from '../layout/labels';
 import type { RouteVertex } from '../layout/route';
@@ -172,6 +172,17 @@ export interface PreviewElementMeta {
    *  `data-source-state` — ZERO zmiany geometrii/bboxu (§13.3 wyrocznia
    *  `sourceStateGaps`, `scene/buildScene.ts`). */
   readonly operationalState?: SourceOperationalState;
+  /** DER-MENU-V3 (Karta SLD-P, GAP P-1): rodzaj DER — WYŁĄCZNIE dla symboli
+   *  `elementKind==='der'`. Jedyny pisarz: adapter v2
+   *  (`mapGeneratorToSourceKind` z `Generator.gen_type`) → `StationDer
+   *  SourceInput.kind` → `ComposedSymbolInstance.derKind` → tu (przepisane 1:1
+   *  przez compose→scene, ZERO re-derywacji z `symbolId`). Konsument:
+   *  `SldCanvasV3Workspace.elementKindForMenu` mapuje `pv`/`bess`/`wind` na
+   *  kategorie menu v2 `der_pv`/`der_bess`/`der_fw`; `generator`/`unknown`
+   *  degradują do menu generycznego `der` (uczciwa degradacja — spec §13.2,
+   *  `domain_no_guessing_guard`: brak pokrycia kategorii ⇒ menu generyczne,
+   *  NIGDY domysł podtypu). `undefined` dla WSZYSTKICH elementów nie-DER. */
+  readonly derKind?: DerSourceKind;
   /** F9.9 (spec §17.3): kody funkcji przekaźnika — WYŁĄCZNIE dla symboli
    *  `protectionRelay` (`elementKind==='protectionAnnotation'`), przekazane
    *  1:1 do `ProtectionRelayGlyph.labelLines` (`symbols/glyphs.tsx`). */
