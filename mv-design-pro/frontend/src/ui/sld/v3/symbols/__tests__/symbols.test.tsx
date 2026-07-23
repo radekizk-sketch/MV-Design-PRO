@@ -154,7 +154,7 @@ describe('GS-2 — gramatyka mini-RMU: renderer = stałe globalne (reguła 13)',
   it('renderer NIE ma literałów lokalnych: rysowane współrzędne == MINI_RMU', () => {
     const Glyph = SYMBOL_GLYPHS.stationCollapsed;
     const { container } = render(
-      <svg><Glyph x={0} y={0} stationSectioned stationHasTransformer stationDer="pv" stationNoOpen /></svg>,
+      <svg><Glyph x={0} y={0} stationSectioned stationHasTransformer stationDer="pv" /></svg>,
     );
     // Enklozura.
     const rect = container.querySelector('rect');
@@ -162,7 +162,7 @@ describe('GS-2 — gramatyka mini-RMU: renderer = stałe globalne (reguła 13)',
     expect(Number(rect?.getAttribute('y'))).toBe(MINI_RMU.enclosure.y);
     expect(Number(rect?.getAttribute('width'))).toBe(MINI_RMU.enclosure.width);
     expect(Number(rect?.getAttribute('height'))).toBe(MINI_RMU.enclosure.height);
-    // Szyna SN — na wylot 0..48 przez środek.
+    // Szyna SN — WEWNĄTRZ enklozury (K2), oś środka.
     const bus = container.querySelector('[data-station-bus="true"]');
     expect(Number(bus?.getAttribute('x1'))).toBe(MINI_RMU.bus.x1);
     expect(Number(bus?.getAttribute('x2'))).toBe(MINI_RMU.bus.x2);
@@ -172,12 +172,14 @@ describe('GS-2 — gramatyka mini-RMU: renderer = stałe globalne (reguła 13)',
 });
 
 describe('GS-2 — tor mocy przez glif (reguły 2–4)', () => {
-  it('sonda ciągłości toru: szyna na wylot port W↔E, przez obie ściany enklozury', () => {
+  it('sonda ciągłości toru: łańcuch pól W→głowica→aparat→szyna→aparat→głowica→E (K1/K2)', () => {
     expect(miniRmuPathContinuityGaps()).toHaveLength(0);
-    // Bbox 48×48, szyna od 0 do 48 na osi środka = współliniowa z portami W/E.
-    expect(MINI_RMU.bus.x1).toBe(0);
-    expect(MINI_RMU.bus.x2).toBe(MINI_RMU.bbox.width);
+    // K2: szyna WEWNĄTRZ enklozury — nie wychodzi poza obudowę.
+    expect(MINI_RMU.bus.x1).toBeGreaterThan(MINI_RMU.enclosure.x);
+    expect(MINI_RMU.bus.x2).toBeLessThan(MINI_RMU.enclosure.x + MINI_RMU.enclosure.width);
     expect(MINI_RMU.bus.y).toBe(MINI_RMU.bbox.height / 2);
+    // K1: kabel kończy się na głowicy (stub nie sięga szyny).
+    expect(MINI_RMU.linia.stubL.x2).toBeLessThan(MINI_RMU.bus.x1);
   });
   it('enklozura nie maskuje toru: bez wypełnienia; szyna rysowana PONAD obrysem', () => {
     const Glyph = SYMBOL_GLYPHS.stationCollapsed;
@@ -203,19 +205,20 @@ describe('GS-2 — kotwice, odstępy, proporcje (reguły 5–7, 10, 11, 12)', ()
       const { container } = render(<svg><Glyph x={0} y={0} stationDer="pv" {...extra} /></svg>);
       return container.querySelector('[data-station-der] line')?.getAttribute('x1');
     };
-    expect(derXof({})).toBe(String(MINI_RMU.markers.der.x));
-    expect(derXof({ stationHasTransformer: true, stationNoOpen: true, stationSectioned: true })).toBe(String(MINI_RMU.markers.der.x));
+    expect(derXof({})).toBe(String(MINI_RMU.poleDer.x));
+    expect(derXof({ stationHasTransformer: true, stationNoOpen: true, stationSectioned: true })).toBe(String(MINI_RMU.poleDer.x));
   });
   it('transformator UZUPEŁNIAJĄCY (reguła 12): ≤0,5 wysokości wnętrza', () => {
     expect(transformerInteriorHeightRatio()).toBeLessThanOrEqual(0.5);
   });
-  it('grubości wspólne (reguła 11): szyna > aparat(obrys) > marker', () => {
-    expect(MINI_RMU.stroke.bus).toBeGreaterThan(V3_STROKE_APPARATUS);
-    expect(V3_STROKE_APPARATUS).toBeGreaterThan(MINI_RMU.stroke.marker);
-    // Obrys renderowany kreską aparatu (ta sama co L1/L2).
+  it('hierarchia wag (K7/reguła 11): szyna > tor pola > obrys; tor > marker', () => {
+    expect(MINI_RMU.stroke.bus).toBeGreaterThan(MINI_RMU.stroke.path);
+    expect(MINI_RMU.stroke.path).toBeGreaterThan(MINI_RMU.stroke.outline);
+    expect(MINI_RMU.stroke.path).toBeGreaterThan(MINI_RMU.stroke.marker);
+    // Obrys WTÓRNY (K7): najlżejsza kreska.
     const Glyph = SYMBOL_GLYPHS.stationCollapsed;
     const { container } = render(<svg><Glyph x={0} y={0} /></svg>);
-    expect(Number(container.querySelector('rect')?.getAttribute('stroke-width'))).toBe(V3_STROKE_APPARATUS);
+    expect(Number(container.querySelector('rect')?.getAttribute('stroke-width'))).toBe(MINI_RMU.stroke.outline);
     expect(Number(container.querySelector('[data-station-bus]')?.getAttribute('stroke-width'))).toBe(MINI_RMU.stroke.bus);
   });
 });
@@ -274,7 +277,7 @@ describe('GS-2 — pełna macierz kombinacji cech (reguły 15–16)', () => {
   }
 
   it('każda kombinacja renderuje markery ZGODNIE z cechami (obecność 1:1)', () => {
-    const shapeTag: Record<string, string> = { triangle: 'path', square: 'rect', circle: 'circle' };
+    const shapeTag: Record<string, string> = { diamond: 'path', square: 'rect', circle: 'circle' };
     for (const c of combos) {
       const sig = renderedSignature(c);
       const parts = sig.split('|');

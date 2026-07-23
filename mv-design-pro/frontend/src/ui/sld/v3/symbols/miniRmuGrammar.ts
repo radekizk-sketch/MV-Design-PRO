@@ -1,252 +1,195 @@
 /**
- * SCHEMAT-10 GS-2 (V12K-137) — GRAMATYKA KONSTRUKCYJNA sylwetki mini-RMU (L0)
- * jako CZYSTE DANE (reguła 13: obrys, promienie, marginesy, siatka, kotwice
- * markerów i minimalne odstępy = parametry GLOBALNE silnika, JEDNO miejsce,
- * ZERO wartości lokalnych w rendererze `StationCollapsedGlyph`).
+ * SCHEMAT-10 GS-3 (V12K-137) — GRAMATYKA KONSTRUKCYJNA mini-RMU (L0) jako
+ * KOMPOZYCJA PÓL (werdykt NO-GO recenzji GS-2, `GRAMATYKA_MINI_RMU_2026-07.md`
+ * sekcja K1–K7): L0 = miniaturowy SLD rozdzielnicy, NIE ikona na linii.
  *
- * FORMALNA specyfikacja tych reguł żyje w `docs/sld/GRAMATYKA_MINI_RMU_2026-07.md`
- * (sekcja „Specyfikacja konstrukcyjna") — renderer `symbols/glyphs.tsx` jest
- * WYŁĄCZNIE implementacją reguł stąd (reguła 14). Zmiana kształtu sylwetki =
- * zmiana TU (i w dokumencie), nie ręcznych literałów w glifie.
- *
- * Układ (reguły 2–4, 5–7, 10, 12):
- *  - TOR MOCY: pozioma kreska szyny SN przez środek bboxa (y = bbox/2),
- *    współliniowa z portami W/E — mini-RMU jest FRAGMENTEM toru, nie ikoną na
- *    linii (reguła 2/4). Enklozura bez wypełnienia — nie maskuje toru (reguła 3).
- *  - KOLUMNA ROUTINGU (x = bbox/2): pion N–S laterali; wszystkie markery trzymają
- *    się od niej z dala o `minGap.marker` (reguła 5: markery nie dominują toru).
- *  - KOTWICE markerów: STAŁE względem obrysu (reguła 6), z priorytetami i strefami
- *    rozłącznymi (reguła 7). Każdy marker zachowuje `minGap.outline` od enklozury
- *    i `minGap.marker` od sąsiada oraz od kolumny routingu (reguła 10).
- *  - TRANSFORMATOR: rola UZUPEŁNIAJĄCA (reguła 12) — dwa małe okręgi zwieszone
- *    pod szyną w lewej-dolnej strefie, nie dominują wnętrza (proporcja poniżej).
- *
- * Grubości (reguła 11 — proporcje wspólne z L1/L2): obrys = `V3_STROKE_APPARATUS`
- * (ta sama kreska aparatu co glify L1/L2, `glyphs.tsx`); szyna GRUBSZA od obrysu
- * (nośnik „tor” = WAGA, nie kolor — hierarchia §6 szyna > tor > odgałęzienie);
- * markery CIEŃSZE od obrysu (warstwa uzupełniająca). Relacja
- * `bus > outline(apparatus) > marker` zaryglowana testem w `symbols.test.tsx`.
+ * Relacje nienaruszalne (gramatyka bazowa 2L+T):
+ *  - kabel kończy się na GŁOWICY (trójkąt — K4: symbol ZAREZERWOWANY dla głowicy),
+ *  - między głowicą a szyną jest APARAT pola (K1),
+ *  - SZYNA żyje WEWNĄTRZ enklozury i NIE wychodzi poza obudowę (K2),
+ *  - TR i DER przyłączone przez WŁASNE POLA z aparatem (K3/K5),
+ *  - NO = STAN aparatu → realna PRZERWA w torze (K6),
+ *  - obrys wtórny; głowice+aparaty+ciągłość toru pierwszoplanowe (K7).
+ * Reguły 1–19 z dokumentu gramatyki nadal obowiązują (kotwica = środek bboxa,
+ * determinizm, parametry globalne — JEDNO miejsce, zero literałów w rendererze).
  */
 
 import { GRID } from '../core/grid';
 
-/** Rodzaj DER niesiony przez marker sylwetki — re-eksport z `glyphs.tsx` byłby
- *  cyklem (glyphs importuje ten moduł), więc unia jest tu ŹRÓDŁEM, a `glyphs.tsx`
- *  re-eksportuje `StationDerGlyphKind` z niej (jedna definicja). */
 export type StationDerGlyphKind = 'pv' | 'bess' | 'wind' | 'generator';
 
-/** Kształt markera DER (reguła: „rozróżnienie IKONĄ” — PV trójkąt / BESS kwadrat /
- *  FW·generator okrąg, spójnie z glifami `DerPvGlyph`…). */
-export type DerMarkerShape = 'triangle' | 'square' | 'circle';
-
+/** K4: trójkąt = WYŁĄCZNIE głowica kablowa. Rodzaj DER rozróżniany innymi
+ *  kształtami: PV=romb, BESS=kwadrat, FW/generator=okrąg. */
+export type DerMarkerShape = 'diamond' | 'square' | 'circle';
 export const DER_MARKER_SHAPE: Readonly<Record<StationDerGlyphKind, DerMarkerShape>> = {
-  pv: 'triangle',
+  pv: 'diamond',
   bess: 'square',
-  // Farma wiatrowa i generator generyczny = maszyna wirująca → okrąg.
   wind: 'circle',
   generator: 'circle',
 } as const;
 
-const BBOX = 6 * GRID; // 48 — patrz `defs.ts` (uzasadnienie czytelności kadru).
-const CENTER = BBOX / 2; // 24 — środek = kotwica stacji (JEDNA KOTWICA) i oś szyny.
+const BBOX = 6 * GRID; // 48
+const CENTER = BBOX / 2; // 24 — kotwica stacji (JEDNA KOTWICA) i oś toru pól liniowych.
 
-/**
- * Grubości mini-RMU (reguła 11). `outline` NIE jest tu literałem — glif podaje
- * `V3_STROKE_APPARATUS` (ta sama kreska aparatu co L1/L2); tu trzymamy tylko
- * proporcje SPECYFICZNE dla miniatury (szyna/markery). Wartości dobrane tak, by
- * `bus (2) > apparatus (1.2) > marker (0.9)` — hierarchia wag §6 w skali L0.
- */
 export const MINI_RMU_STROKE = {
+  /** Szyna wewnętrzna — najgrubsza (K7: tor pierwszoplanowy). */
   bus: 2,
+  /** Tor pola (kabel–głowica–aparat–szyna) — grubszy od obrysu. */
+  path: 1.4,
+  /** Elementy pomocnicze (marker rodzaju DER). */
   marker: 0.9,
+  /** Obrys enklozury — WTÓRNY, najlżejszy (K7). */
+  outline: 0.7,
 } as const;
 
-/** Minimalne odstępy (reguła 10) — GLOBALNE, czytelność przy najmniejszych
- *  rozmiarach. `marker` = min. prześwit marker↔marker i marker↔kolumna routingu;
- *  `outline` = min. prześwit marker↔enklozura. */
-export const MINI_RMU_MIN_GAP = {
-  marker: 4,
-  outline: 1,
-} as const;
-
-/** Strefa (bbox markera) — do walidacji rozłączności/odstępów przez sondę. */
-export interface MiniRmuZone {
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-}
+export const MINI_RMU_MIN_GAP = { marker: 3, outline: 1 } as const;
 
 /**
- * Parametry konstrukcyjne sylwetki mini-RMU — JEDYNE źródło geometrii glifu.
- * Wszystkie współrzędne w układzie bboxa 48×48 (origin = lewy-górny róg).
+ * GEOMETRIA KOMPOZYCJI PÓL (układ 48×48, origin lewy-górny):
+ * lewa kotwica W(0,24) → △ głowica L1 → aparat L1 → ═ SZYNA (wewnątrz) ═ →
+ * aparat L2 → △ głowica L2 → prawa kotwica E(48,24); pole TR w dół, pole DER
+ * w górę — oba OD SZYNY przez własny aparat.
  */
 export const MINI_RMU = {
-  /** Bbox = 6×GRID (reguła 13: siatka). */
   bbox: { width: BBOX, height: BBOX },
-  /** Środek = kotwica stacji na każdym LOD + oś szyny SN (reguła 6/„JEDNA KOTWICA”). */
   center: { x: CENTER, y: CENTER },
-  /** Enklozura (obrys RMU) — bez wypełnienia (reguła 3: nie maskuje toru). */
-  enclosure: { x: 4, y: 10, width: 40, height: 28, rx: 3 },
-  /** Szyna SN — TOR MOCY przez środek, na WYLOT od portu W(0,24) do E(48,24)
-   *  (reguła 2/4: moc płynie PRZEZ stację, mini-RMU = fragment toru; szyna
-   *  współliniowa i ciągła z trasą magistrali, enklozura jej nie przerywa). */
-  bus: { y: CENTER, x1: 0, x2: BBOX },
-  /** Kolumna routingu N–S (pion laterali) — markery trzymają się od niej z dala. */
-  routingColumnX: CENTER,
+  /** Enklozura — obrys wtórny (K7), bez wypełnienia. */
+  enclosure: { x: 4, y: 8, width: 40, height: 32, rx: 2 },
+  /** Pola liniowe L1/L2 na osi y=24 (tor przez stację = łańcuch pól). */
+  linia: {
+    y: CENTER,
+    /** Kabel zewnętrzny do głowicy (odcinki poza enklozurą). */
+    stubL: { x1: 0, x2: 6 },
+    stubR: { x1: 42, x2: BBOX },
+    /** Głowice kablowe (trójkąty, wierzchołek ku wnętrzu) — na krawędzi pola. */
+    glowicaL: { xTip: 10, xBase: 6, halfH: 3 },
+    glowicaR: { xTip: 38, xBase: 42, halfH: 3 },
+    /** Aparaty pól liniowych (kwadraty na torze). */
+    aparatL: { x: 12, size: 4 },
+    aparatR: { x: 36, size: 4 },
+    /** Łączniki tor→szyna. */
+    linkL: { x1: 14, x2: 18 },
+    linkR: { x1: 30, x2: 34 },
+  },
+  /** SZYNA WEWNĘTRZNA — wyłącznie wewnątrz enklozury (K2). */
+  bus: { y: CENTER, x1: 18, x2: 30 },
+  /** Pole TRANSFORMATOROWE (K3): szyna → aparat TR → transformator (2 okręgi). */
+  poleTr: {
+    x: 18,
+    aparat: { y: 27.5, size: 3 },
+    stub1: { y1: CENTER, y2: 27.5 },
+    stub2: { y1: 30.5, y2: 31.6 },
+    circleR: 2,
+    circle1Y: 33.6,
+    circle2Y: 36.4,
+  },
+  /** Pole DER (K5): szyna → aparat DER → marker rodzaju (romb/kwadrat/okrąg). */
+  poleDer: {
+    x: 30,
+    aparat: { y: 17, size: 3 },
+    stub1: { y1: 20, y2: CENTER },
+    stub2: { y1: 14.4, y2: 17 },
+    markerCY: 12,
+    markerHalf: 2.4,
+  },
+  /** Sprzęgło sekcyjne / NO (K6): APARAT W TORZE SZYNY (środek). Zamknięty =
+   *  kwadrat na szynie; OTWARTY (NO) = realna PRZERWA szyny + kreska ukośna. */
+  sprzeglo: { x: CENTER, size: 4, gapHalf: 3 },
   stroke: MINI_RMU_STROKE,
   minGap: MINI_RMU_MIN_GAP,
-
-  /** Kotwice markerów — STAŁE względem obrysu, strefy rozłączne (reguła 5–7, 10). */
-  markers: {
-    /** Stacja SEKCYJNA (priorytet 1): sprzęgło = dwie kreski flankujące kolumnę
-     *  routingu NA szynie (symetrycznie ±`markerHalfGap` od środka). */
-    sectioned: {
-      leftX: CENTER - MINI_RMU_MIN_GAP.marker, // 20
-      rightX: CENTER + MINI_RMU_MIN_GAP.marker, // 28
-      y1: 20,
-      y2: 28,
-    },
-    /** TRANSFORMATOR (priorytet 2): rola UZUPEŁNIAJĄCA (reguła 12) — stub w dół +
-     *  dwa małe okręgi (dwuuzwojeniowy) w lewej-dolnej strefie POD szyną. */
-    transformer: {
-      x: 16,
-      stubY1: CENTER, // 24
-      stubY2: 27,
-      circleR: 2.5,
-      circle1Y: 30,
-      circle2Y: 34,
-    },
-    /** DER (priorytet 3): stub w GÓRĘ + marker rodzaju w prawej-górnej strefie
-     *  NAD szyną. Marker rozłączny z enklozurą (`minGap.outline`) i z kolumną
-     *  routingu (`minGap.marker`). */
-    der: {
-      x: 32,
-      stubY1: CENTER, // 24
-      stubY2: 19,
-      centerY: 15,
-      half: 4, // połowa boku/promienia markera → strefa 8×8
-    },
-    /** Łącznik/punkt NORMALNIE OTWARTY (priorytet 4): kwadrat OTWARTY na szynie,
-     *  prawa strefa (za markerem DER, prześwit `minGap.outline` od prawej enklozury). */
-    noOpen: {
-      x: 37,
-      y: 21,
-      size: 6,
-    },
-  },
 } as const;
 
-/** Proporcja transformatora względem WNĘTRZA enklozury (reguła 12: „nie może
- *  dominować wnętrza”). Wysokość zajmowana przez oba okręgi TR / wysokość
- *  wnętrza. Zaryglowana testem (`symbols.test.tsx`) jako ≤ 0,5. */
+export interface MiniRmuFeatures {
+  readonly sectioned: boolean;
+  readonly transformer: boolean;
+  readonly der: StationDerGlyphKind | null;
+  readonly noOpen: boolean;
+}
+
+export function miniRmuSignature(f: MiniRmuFeatures): string {
+  return [f.sectioned ? 'SEK' : '-', f.transformer ? 'TR' : '-', f.der ?? '-', f.noOpen ? 'NO' : '-'].join('|');
+}
+
+export function allMiniRmuFeatureCombinations(): readonly MiniRmuFeatures[] {
+  const out: MiniRmuFeatures[] = [];
+  for (const sectioned of [false, true])
+    for (const transformer of [false, true])
+      for (const der of [null, 'pv', 'bess', 'wind', 'generator'] as const)
+        for (const noOpen of [false, true]) out.push({ sectioned, transformer, der, noOpen });
+  return out;
+}
+
+/** Proporcja pola TR względem wnętrza (reguła 12 — nie dominuje). */
 export function transformerInteriorHeightRatio(): number {
-  const tr = MINI_RMU.markers.transformer;
-  const trTop = tr.circle1Y - tr.circleR;
-  const trBottom = tr.circle2Y + tr.circleR;
-  return (trBottom - trTop) / MINI_RMU.enclosure.height;
+  const t = MINI_RMU.poleTr;
+  return (t.circle2Y + t.circleR - MINI_RMU.bus.y) / MINI_RMU.enclosure.height;
 }
 
 /**
- * SONDA CIĄGŁOŚCI TORU PRZEZ GLIF (reguły 2–4) — dowód, że mini-RMU jest
- * FRAGMENTEM toru mocy, nie ikoną na linii:
- *  (a) szyna leży na osi środka bboxa (y = bbox/2) — współliniowa z portami W/E;
- *  (b) szyna biegnie NA WYLOT od portu W (x=0) do portu E (x=bbox) — wejście/
- *      wyjście jednoznaczne, tor ciągły port↔port (nie inset ikony wewnątrz);
- *  (c) szyna przechodzi przez OBIE ściany enklozury (x < enclosure.x i
- *      x > enclosure prawa) — enklozura nie przerywa toru (jest bez wypełnienia,
- *      reguła 3 — sprawdza renderer/test);
- * Zwraca listę naruszeń (pusta = ciągłość zachowana).
+ * SONDA CIĄGŁOŚCI TORU PRZEZ ŁAŃCUCH PÓL (K1/K2 — ODWRÓCENIE sondy GS-2):
+ *  (a) szyna WEWNĄTRZ enklozury (nie na wylot),
+ *  (b) łańcuch W→głowicaL→aparatL→szyna→aparatR→głowicaR→E pokrywa oś bez dziur
+ *      (styk kolejnych elementów na y=24),
+ *  (c) kabel NIE dotyka szyny bezpośrednio (stub kończy się na głowicy).
  */
 export function miniRmuPathContinuityGaps(): readonly string[] {
-  const gaps: string[] = [];
-  const { bus, enclosure, center, bbox } = MINI_RMU;
-  if (bus.y !== center.y) {
-    gaps.push(`szyna poza osią środka: bus.y=${bus.y} ≠ center.y=${center.y}`);
-  }
-  if (bus.x1 !== 0) {
-    gaps.push(`szyna nie sięga portu W (x=0): bus.x1=${bus.x1}`);
-  }
-  if (bus.x2 !== bbox.width) {
-    gaps.push(`szyna nie sięga portu E (x=${bbox.width}): bus.x2=${bus.x2}`);
-  }
-  if (bus.x1 >= enclosure.x || bus.x2 <= enclosure.x + enclosure.width) {
-    gaps.push('szyna nie przechodzi przez obie ściany enklozury (tor przerwany)');
-  }
-  return gaps;
-}
-
-export const MINI_RMU_FEATURES = ['sectioned', 'transformer', 'der', 'noOpen'] as const;
-
-/** Nazwana strefa PRYMITYWU markera (pojedynczy rysowany kształt) — do walidacji
- *  rozłączności/odstępów (reguła 10). Sekcyjna to DWA prymitywy (ticki), żeby
- *  kolumna routingu `x=24` przechodziła kanałem MIĘDZY nimi. */
-export interface MiniRmuNamedZone extends MiniRmuZone {
-  readonly feature: string;
-}
-
-/** Wszystkie prymitywy markerów jako strefy (pełny zestaw = kombinacja typ×TR×
- *  DER×NO włączona) — geometria z `MINI_RMU`. Kreska markera wlicza się do
- *  strefy (połowa grubości z każdej strony). */
-export function miniRmuMarkerPrimitiveZones(): readonly MiniRmuNamedZone[] {
-  const m = MINI_RMU.markers;
-  const halfStroke = MINI_RMU.stroke.marker / 2;
-  const sec = m.sectioned;
-  const tr = m.transformer;
-  const der = m.der;
-  const no = m.noOpen;
-  return [
-    { feature: 'sectioned-left', x: sec.leftX - halfStroke, y: sec.y1, width: MINI_RMU.stroke.marker, height: sec.y2 - sec.y1 },
-    { feature: 'sectioned-right', x: sec.rightX - halfStroke, y: sec.y1, width: MINI_RMU.stroke.marker, height: sec.y2 - sec.y1 },
-    { feature: 'transformer', x: tr.x - tr.circleR, y: tr.circle1Y - tr.circleR, width: 2 * tr.circleR, height: tr.circle2Y + tr.circleR - (tr.circle1Y - tr.circleR) },
-    { feature: 'der', x: der.x - der.half, y: der.centerY - der.half, width: 2 * der.half, height: 2 * der.half },
-    { feature: 'noOpen', x: no.x, y: no.y, width: no.size, height: no.size },
+  const g: string[] = [];
+  const { linia, bus, enclosure, bbox } = MINI_RMU;
+  const eL = enclosure.x;
+  const eR = enclosure.x + enclosure.width;
+  if (bus.x1 <= eL || bus.x2 >= eR) g.push('K2: szyna wychodzi poza enklozurę');
+  // Łańcuch styków na osi (kolejne segmenty muszą się stykać):
+  const chain: Array<[number, number, string]> = [
+    [linia.stubL.x1, linia.stubL.x2, 'kabel L'],
+    [Math.min(linia.glowicaL.xBase, linia.glowicaL.xTip), Math.max(linia.glowicaL.xBase, linia.glowicaL.xTip), 'głowica L'],
+    [linia.aparatL.x - linia.aparatL.size / 2, linia.aparatL.x + linia.aparatL.size / 2, 'aparat L'],
+    [linia.linkL.x1, linia.linkL.x2, 'łącznik L'],
+    [bus.x1, bus.x2, 'szyna'],
+    [linia.linkR.x1, linia.linkR.x2, 'łącznik R'],
+    [linia.aparatR.x - linia.aparatR.size / 2, linia.aparatR.x + linia.aparatR.size / 2, 'aparat R'],
+    [Math.min(linia.glowicaR.xTip, linia.glowicaR.xBase), Math.max(linia.glowicaR.xTip, linia.glowicaR.xBase), 'głowica R'],
+    [linia.stubR.x1, linia.stubR.x2, 'kabel R'],
   ];
+  for (let i = 1; i < chain.length; i++) {
+    if (chain[i - 1][1] < chain[i][0] - 0.001)
+      g.push(`przerwa toru między „${chain[i - 1][2]}" a „${chain[i][2]}"`);
+  }
+  if (chain[0][0] !== 0 || chain[chain.length - 1][1] !== bbox.width)
+    g.push('tor nie sięga kotwic W/E');
+  // K1: kabel kończy się na głowicy, nie na szynie:
+  if (linia.stubL.x2 > bus.x1) g.push('K1: kabel L dotyka szyny');
+  if (linia.stubR.x1 < bus.x2) g.push('K1: kabel R dotyka szyny');
+  if (bus.y !== MINI_RMU.center.y) g.push('szyna poza osią kotwicy');
+  return g;
 }
 
-function zonesOverlap(a: MiniRmuZone, b: MiniRmuZone): boolean {
-  return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
-}
-
-/**
- * SONDA ODSTĘPÓW/KOTWIC MARKERÓW (reguły 5–7, 10) — dowód, że markery:
- *  (a) leżą WEWNĄTRZ enklozury z zapasem `minGap.outline`;
- *  (b) są PARAMI ROZŁĄCZNE (nie zlewają się przy najmniejszych rozmiarach);
- *  (c) kolumna routingu `x=24` przechodzi CZYSTYM kanałem (żaden prymityw jej nie
- *      przecina; ticki sekcyjne flankują ją o `minGap.marker`).
- * Zwraca listę naruszeń (pusta = odstępy zachowane).
- */
+/** Sonda odstępów pól (reguła 10): pole TR (dół) i DER (góra) rozłączne od
+ *  aparatu sprzęgła i od enklozury o minGap. */
 export function miniRmuMarkerSpacingGaps(): readonly string[] {
-  const gaps: string[] = [];
-  const zones = miniRmuMarkerPrimitiveZones();
-  const e = MINI_RMU.enclosure;
-  const g = MINI_RMU.minGap.outline;
-  const col = MINI_RMU.routingColumnX;
+  const g: string[] = [];
+  const { poleTr, poleDer, enclosure, sprzeglo, minGap } = MINI_RMU;
+  if (poleTr.circle2Y + poleTr.circleR > enclosure.y + enclosure.height - minGap.outline)
+    g.push('pole TR wychodzi poza enklozurę');
+  if (poleDer.markerCY - poleDer.markerHalf < enclosure.y + minGap.outline)
+    g.push('pole DER wychodzi poza enklozurę');
+  if (Math.abs(poleTr.x - sprzeglo.x) < sprzeglo.size / 2 + minGap.marker)
+    g.push('pole TR koliduje ze sprzęgłem');
+  if (Math.abs(poleDer.x - sprzeglo.x) < sprzeglo.size / 2 + minGap.marker)
+    g.push('pole DER koliduje ze sprzęgłem');
+  return g;
+}
 
-  for (const z of zones) {
-    if (z.x < e.x + g || z.x + z.width > e.x + e.width - g || z.y < e.y + g || z.y + z.height > e.y + e.height - g) {
-      gaps.push(`marker ${z.feature} narusza minGap.outline (${g}) względem enklozury`);
-    }
-    // Kolumna routingu przecinana przez prymityw (poza tickami sekcyjnymi, które
-    // z definicji flankują kolumnę) — zakaz.
-    if (!z.feature.startsWith('sectioned') && z.x < col && z.x + z.width > col) {
-      gaps.push(`marker ${z.feature} przecina kolumnę routingu x=${col}`);
-    }
-  }
-
-  for (let i = 0; i < zones.length; i++) {
-    for (let j = i + 1; j < zones.length; j++) {
-      if (zonesOverlap(zones[i], zones[j])) {
-        gaps.push(`markery ${zones[i].feature}↔${zones[j].feature} nachodzą (reguła 10)`);
-      }
-    }
-  }
-
-  // Ticki sekcyjne flankują kolumnę routingu o dokładnie minGap.marker (kanał).
-  const sec = MINI_RMU.markers.sectioned;
-  if (sec.leftX !== col - MINI_RMU.minGap.marker || sec.rightX !== col + MINI_RMU.minGap.marker) {
-    gaps.push(`ticki sekcyjne nie flankują kolumny routingu o minGap.marker (${MINI_RMU.minGap.marker})`);
-  }
-
-  return gaps;
+/** Strefy prymitywów per cecha (do testu czytelności — reguła 17). */
+export interface MiniRmuPrimitiveZone { readonly feature: string; readonly x: number; readonly y: number; readonly width: number; readonly height: number }
+export function miniRmuMarkerPrimitiveZones(): readonly MiniRmuPrimitiveZone[] {
+  const { poleTr: t, poleDer: d, sprzeglo: sp, linia: L } = MINI_RMU;
+  const y = L.y;
+  return [
+    { feature: 'sectioned', x: sp.x - sp.size / 2, y: y - sp.size / 2, width: sp.size, height: sp.size },
+    { feature: 'transformer-aparat', x: t.x - t.aparat.size / 2, y: t.aparat.y, width: t.aparat.size, height: t.aparat.size },
+    { feature: 'transformer-uzwojenia', x: t.x - t.circleR, y: t.circle1Y - t.circleR, width: 2 * t.circleR, height: t.circle2Y - t.circle1Y + 2 * t.circleR },
+    { feature: 'der-aparat', x: d.x - d.aparat.size / 2, y: d.aparat.y, width: d.aparat.size, height: d.aparat.size },
+    { feature: 'der-marker', x: d.x - d.markerHalf, y: d.markerCY - d.markerHalf, width: 2 * d.markerHalf, height: 2 * d.markerHalf },
+    { feature: 'noOpen', x: sp.x - sp.gapHalf, y: y - 2 * sp.gapHalf, width: 2 * sp.gapHalf, height: 2 * sp.gapHalf },
+  ];
 }

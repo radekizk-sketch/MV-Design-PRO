@@ -362,82 +362,90 @@ export function GridSourceGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
-/** GS-1/GS-2 (V12K-137, GAP §10.4): marker DER (nad szyną mini-RMU) — kształt
- *  koduje rodzaj (PV trójkąt / BESS kwadrat / FW·generator okrąg), spójnie z
- *  konwencją „rozróżnienie IKONĄ" glifów DER (`DerPvGlyph`…). Geometria WYŁĄCZNIE
- *  z `MINI_RMU.markers.der` (reguła 13: zero literałów lokalnych). */
+/** GS-3 (K4/K5): marker RODZAJU DER — pomocniczy, NAD polem DER. Trójkąt jest
+ *  ZAREZERWOWANY dla głowicy kablowej, więc PV=romb, BESS=kwadrat, FW/gen=okrąg. */
 function derMiniMarker(kind: StationDerGlyphKind, s: string): JSX.Element {
-  const { x: cx, centerY: cy, half: h } = MINI_RMU.markers.der;
+  const { x: cx, markerCY: cy, markerHalf: h } = MINI_RMU.poleDer;
   const w = MINI_RMU.stroke.marker;
   const shape = DER_MARKER_SHAPE[kind];
-  if (shape === 'triangle') {
-    // PV: trójkąt wierzchołkiem w górę, podstawa na dole strefy.
-    return <path d={`M${cx},${cy - h} L${cx + h},${cy + h} L${cx - h},${cy + h} Z`} fill="none" stroke={s} strokeWidth={w} />;
+  if (shape === 'diamond') {
+    return <path d={`M${cx},${cy - h} L${cx + h},${cy} L${cx},${cy + h} L${cx - h},${cy} Z`} fill="none" stroke={s} strokeWidth={w} />;
   }
   if (shape === 'square') {
     return <rect x={cx - h} y={cy - h} width={2 * h} height={2 * h} fill="none" stroke={s} strokeWidth={w} />;
   }
-  // FW (farma wiatrowa) i generator generyczny → okrąg (maszyna wirująca).
   return <circle cx={cx} cy={cy} r={h} fill="none" stroke={s} strokeWidth={w} />;
 }
 
+/** Głowica kablowa (K1/K4): trójkąt wierzchołkiem ku wnętrzu pola. */
+function glowica(xBase: number, xTip: number, y: number, halfH: number, s: string, w: number): JSX.Element {
+  return <path d={`M${xTip},${y} L${xBase},${y - halfH} L${xBase},${y + halfH} Z`} fill="none" stroke={s} strokeWidth={w} />;
+}
+
 /**
- * GS-1 (V12K-137, GAP `S7_GAP_CROSSING_ZERO` §10.4, macierz `AUDYT_SCHEMATOW_
- * OD_ZERA_2026-07` §3 „Stacja"): stacja SN/nN — MINI-RMU na L0 (sylwetka tej
- * samej gramatyki co L1/L2 w miniaturze), NIE goły kwadrat/kropka `junction`.
- * Rysunek BAZOWY mono (P5, stan/rodzaj = GEOMETRIA, nie kolor):
- *  - enklozura (obrys) + POZIOMA KRESKA SZYNY SN (grubsza) przez środek —
- *    routing L0 kotwiczy się środkiem (24,24), więc szyna magistrali
- *    przechodzi wprost przez sylwetkę (spójne z „szyna biegnie przez stację");
- *  - markery WEWNĄTRZ bboxa (48×48), każdy w osobnej strefie (bez nachodzeń,
- *    z dala od pionowej kolumny routingu x=24), z atrybutem DOM dla wyroczni:
- *      · transformator (SN/nN) — mini-glif TR zwieszony pod szyną (dół-lewo);
- *      · DER — marker rodzaju nad szyną (góra-prawo);
- *      · stacja sekcyjna — przerwa/sprzęgło na szynie (środek);
- *      · łącznik/NO otwarty — kwadrat otwarty na szynie (prawo).
- * Odróżnialność od `junction`: obecność `data-station-silhouette` + enklozura
- * (rect) + kreska szyny (test `symbols.test.tsx`). Kolor NIE koduje tu stanu.
+ * GS-3 (V12K-137, werdykt NO-GO recenzji GS-2 — `GRAMATYKA_MINI_RMU_2026-07.md`
+ * K1–K7): stacja SN/nN na L0 = MINIATUROWY SLD ROZDZIELNICY — kompozycja PÓL,
+ * nie ikona na linii. Tor: kabel → △głowica → aparat pola → SZYNA WEWNĘTRZNA
+ * (nie wychodzi poza enklozurę, K2) → aparat → △głowica → kabel. Pola TR/DER
+ * jako własne odgałęzienia z aparatem (K3/K5); sekcja/NO = stan aparatu W TORZE
+ * szyny (K6, NO = realna przerwa). Obrys wtórny (K7). Geometria WYŁĄCZNIE z
+ * `MINI_RMU` (reguła 13). Mono (P5) — stan/rodzaj = geometria, nie kolor.
  */
 export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
   const s = stroke(props);
-  const { enclosure: e, bus, markers, stroke: sw } = MINI_RMU;
-  const tr = markers.transformer;
-  const sc = markers.sectioned;
-  const der = markers.der;
-  const no = markers.noOpen;
+  const { enclosure: e, bus, linia: L, poleTr: tr, poleDer: der, sprzeglo: sp, stroke: sw } = MINI_RMU;
+  const y = L.y;
+  const busBroken = props.stationNoOpen === true;
   return (
     <g {...glyphGroupProps('stationCollapsed', props)} data-station-silhouette="mini-rmu">
-      {/* Enklozura (obrys RMU) — mono, bez wypełnienia (P5, reguła 3: nie maskuje toru). */}
-      <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
-      {/* Szyna SN wewnętrzna — TOR MOCY przez środek, grubsza kreska (nośnik = waga,
-          nie kolor); współliniowa z portami W/E (reguła 2/4). */}
-      <line x1={bus.x1} y1={bus.y} x2={bus.x2} y2={bus.y} stroke={s} strokeWidth={sw.bus} data-station-bus="true" />
-      {/* Stacja SEKCYJNA: sprzęgło = dwie kreski flankujące kolumnę routingu na szynie. */}
-      {props.stationSectioned && (
-        <g data-station-sectioned="true">
-          <line x1={sc.leftX} y1={sc.y1} x2={sc.leftX} y2={sc.y2} stroke={s} strokeWidth={sw.marker} />
-          <line x1={sc.rightX} y1={sc.y1} x2={sc.rightX} y2={sc.y2} stroke={s} strokeWidth={sw.marker} />
+      {/* Obrys enklozury — WTÓRNY (K7): najlżejsza kreska, bez wypełnienia. */}
+      <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={sw.outline} />
+      {/* POLE LINIOWE L1: kabel → głowica → aparat → łącznik do szyny (K1). */}
+      <line x1={L.stubL.x1} y1={y} x2={L.stubL.x2} y2={y} stroke={s} strokeWidth={sw.path} />
+      {glowica(L.glowicaL.xBase, L.glowicaL.xTip, y, L.glowicaL.halfH, s, sw.path)}
+      <rect x={L.aparatL.x - L.aparatL.size / 2} y={y - L.aparatL.size / 2} width={L.aparatL.size} height={L.aparatL.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="L1" />
+      <line x1={L.glowicaL.xTip} y1={y} x2={L.aparatL.x - L.aparatL.size / 2} y2={y} stroke={s} strokeWidth={sw.path} />
+      <line x1={L.linkL.x1} y1={y} x2={L.linkL.x2} y2={y} stroke={s} strokeWidth={sw.path} />
+      {/* SZYNA WEWNĘTRZNA (K2) — najgrubsza; przy NO realna PRZERWA (K6). */}
+      {busBroken ? (
+        <g data-station-no="true">
+          <line x1={bus.x1} y1={y} x2={sp.x - sp.gapHalf} y2={y} stroke={s} strokeWidth={sw.bus} data-station-bus="true" />
+          <line x1={sp.x + sp.gapHalf} y1={y} x2={bus.x2} y2={y} stroke={s} strokeWidth={sw.bus} />
+          {/* Otwarty styk aparatu: kreska odchylona od osi (stan OTWARTY). */}
+          <line x1={sp.x - sp.gapHalf} y1={y} x2={sp.x + sp.gapHalf} y2={y - 2 * sp.gapHalf} stroke={s} strokeWidth={sw.path} />
         </g>
+      ) : (
+        <line x1={bus.x1} y1={y} x2={bus.x2} y2={y} stroke={s} strokeWidth={sw.bus} data-station-bus="true" />
       )}
-      {/* Transformator (SN/nN): rola UZUPEŁNIAJĄCA (reguła 12) — stub w dół + dwa
-          małe okręgi (dwuuzwojeniowy) w lewej-dolnej strefie. */}
+      {/* Sprzęgło sekcyjne (K6): aparat W TORZE szyny (zamknięty — kwadrat). */}
+      {props.stationSectioned && !busBroken && (
+        <rect x={sp.x - sp.size / 2} y={y - sp.size / 2} width={sp.size} height={sp.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-sectioned="true" />
+      )}
+      {props.stationSectioned && busBroken && <g data-station-sectioned="true" />}
+      {/* POLE LINIOWE L2 (lustrzane). */}
+      <line x1={L.linkR.x1} y1={y} x2={L.linkR.x2} y2={y} stroke={s} strokeWidth={sw.path} />
+      <rect x={L.aparatR.x - L.aparatR.size / 2} y={y - L.aparatR.size / 2} width={L.aparatR.size} height={L.aparatR.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="L2" />
+      <line x1={L.aparatR.x + L.aparatR.size / 2} y1={y} x2={L.glowicaR.xTip} y2={y} stroke={s} strokeWidth={sw.path} />
+      {glowica(L.glowicaR.xBase, L.glowicaR.xTip, y, L.glowicaR.halfH, s, sw.path)}
+      <line x1={L.stubR.x1} y1={y} x2={L.stubR.x2} y2={y} stroke={s} strokeWidth={sw.path} />
+      {/* POLE TR (K3): szyna → aparat pola TR → transformator (dwuuzwojeniowy). */}
       {props.stationHasTransformer && (
         <g data-station-transformer="true">
-          <line x1={tr.x} y1={tr.stubY1} x2={tr.x} y2={tr.stubY2} stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
+          <line x1={tr.x} y1={tr.stub1.y1} x2={tr.x} y2={tr.stub1.y2} stroke={s} strokeWidth={sw.path} />
+          <rect x={tr.x - tr.aparat.size / 2} y={tr.aparat.y} width={tr.aparat.size} height={tr.aparat.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="TR" />
+          <line x1={tr.x} y1={tr.stub2.y1} x2={tr.x} y2={tr.stub2.y2} stroke={s} strokeWidth={sw.path} />
           <circle cx={tr.x} cy={tr.circle1Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
           <circle cx={tr.x} cy={tr.circle2Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
         </g>
       )}
-      {/* DER: stub w górę + marker rodzaju (PV/BESS/FW) w prawej-górnej strefie. */}
+      {/* POLE DER (K5): szyna → aparat pola DER → marker rodzaju (pomocniczy). */}
       {props.stationDer && (
         <g data-station-der={props.stationDer}>
-          <line x1={der.x} y1={der.stubY1} x2={der.x} y2={der.stubY2} stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
+          <line x1={der.x} y1={der.stub1.y1} x2={der.x} y2={der.stub1.y2} stroke={s} strokeWidth={sw.path} />
+          <rect x={der.x - der.aparat.size / 2} y={der.aparat.y} width={der.aparat.size} height={der.aparat.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="DER" />
+          <line x1={der.x} y1={der.stub2.y1} x2={der.x} y2={der.stub2.y2} stroke={s} strokeWidth={sw.path} />
           {derMiniMarker(props.stationDer, s)}
         </g>
-      )}
-      {/* Łącznik/NO otwarty: kwadrat OTWARTY na szynie (prawy odcinek). */}
-      {props.stationNoOpen && (
-        <rect x={no.x} y={no.y} width={no.size} height={no.size} fill="none" stroke={s} strokeWidth={sw.marker} data-station-no="true" />
       )}
     </g>
   );
