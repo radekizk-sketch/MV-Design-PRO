@@ -61,7 +61,7 @@ Trzy poziomy sceny (SceneLod bez zmian), JEDEN słownik nazw (koniec mapowania 5
 |---|---|---|---|
 | Magistrale SN | gruby tor (waga 3), kolor napięcia | tor (waga 2) | tor (waga 2) |
 | Odgałęzienia | cienki tor (waga 1) | waga 1 | waga 1 |
-| Stacja | **glif kompaktowy** (sylwetka RMU mini: obrys + kreska szyny), S-id — **markery typu/TR/DER/NO** [†GS-1] | **ta sama sylwetka** + aparaty główne pól (wyłącznik/rozłącznik), transformator, nN kreską | **ta sama sylwetka rozwinięta**: pełne pola, przekładniki, uziemniki, głowice |
+| Stacja | **glif kompaktowy** (sylwetka RMU mini: obrys + szyna NA WYLOT), S-id — **markery typu/TR/DER/NO** [†GS-1][†GS-2] | **ta sama sylwetka** + aparaty główne pól (wyłącznik/rozłącznik), transformator, nN kreską | **ta sama sylwetka rozwinięta**: pełne pola, przekładniki, uziemniki, głowice |
 | GPZ | ta sama gramatyka co stacja (większy glif, sekcje A/B) | sekcje + pola liniowe główkami | pełna rozdzielnia |
 | Sekcje/NOP | znacznik NA torze (kotwica = render szyny TEGO LOD) | jw. + stan łącznika | jw. |
 | DER | marker (PV/BESS/FW ikona) | ikona + moc | pełny blok przyłącza |
@@ -88,6 +88,19 @@ tożsamość i pozycja stacji, znaczniki sekcji/NOP.
 > `lod0_readability_probe` (rozszerzona o typ/TR/DER/NO + test negatywny) i
 > `buildScene.schemat10gs1.test.ts`. Dowód wizualny: `docs/audit/visual/schemat-10/
 > gs1-l0.png` (kadr całości) + `gs1-l0-detal.png` (legenda gramatyki).
+>
+> **[†GS-2] (V12K-137, 2026-07-23, ZGODNOŚĆ Z 19 REGUŁAMI `GRAMATYKA_MINI_RMU_2026-07`).**
+> Sylwetka GS-1 doprowadzona do zgodności z 19 wiążącymi regułami konstrukcyjnymi:
+> tor mocy biegnie PRZEZ sylwetkę NA WYLOT (szyna port W↔E — mini-RMU = fragment
+> toru, reguły 2–4); parametry konstrukcyjne (obrys/kotwice/odstępy/grubości) w
+> JEDNYM module globalnym `symbols/miniRmuGrammar.ts` (`MINI_RMU`), renderer bez
+> literałów lokalnych (reguły 13–14, formalna sekcja „Specyfikacja konstrukcyjna”
+> w gramatyce); kotwice markerów stałe/rozłączne z kanałem routingu, TR
+> uzupełniający (reguły 5–7, 10, 12); pełna macierz 40 kombinacji typ×TR×DER×NO
+> renderuje się unikalnie (reguły 15–16); czytelność min. rozmiaru zmierzona
+> (reguła 17). Bramki: `accept:sld-v3` ALL PASS (204 checki, +3 sondy mini_rmu),
+> `symbols.test.tsx` 92 zielone. Dowód: `docs/audit/visual/schemat-10/gs2-l0.png`
+> + `gs2-l0-detal.png`.
 
 ## §4 Tabela rozstrzygnięć — majowa specyfikacja (§0bis)
 

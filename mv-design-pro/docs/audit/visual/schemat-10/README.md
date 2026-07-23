@@ -209,3 +209,40 @@ TYPU elementów (spec §19.3).
   na L0/L1/L2 + fixtura 106 stacji, determinizm — bez regresu goldenów
   (geometria pozioma/piony/bbox-h routingu niezmienione; rośnie wyłącznie
   ekstent sylwetki wokół kotwicy, w granicach kolumny L2).
+
+## GS-2 — mini-RMU zgodne z 19 regułami gramatyki (`GRAMATYKA_MINI_RMU_2026-07`)
+
+`gs2-l0.png` / `gs2-l0-detal.png` — dowód wizualny karty **GS-2** (V12K-137):
+sylwetka GS-1 doprowadzona do zgodności z 19 wiążącymi regułami konstrukcyjnymi
+właściciela. Kluczowe zmiany widoczne wizualnie: TOR MOCY biegnie PRZEZ sylwetkę
+NA WYLOT (szyna od portu W do E — mini-RMU jest fragmentem toru, nie ikoną na
+linii), a parametry konstrukcyjne (obrys/kotwice/odstępy/grubości) są stałymi
+globalnymi silnika (`symbols/miniRmuGrammar.ts` `MINI_RMU`), nie literałami w
+rendererze.
+
+| Plik | Kadr | Co pokazuje |
+|---|---|---|
+| `gs2-l0.png` | L0, CAŁA sieć referencyjna (53 stacje) | Tor mocy PRZEZ każdą sylwetkę (szyna na wylot, ciągłość magistrali); czytelność sylwetek na kadrze całości (48×48 ⇒ 5,78px) |
+| `gs2-l0-detal.png` | Legenda gramatyki (glify ×4, pełen zestaw cech) | Kotwice STAŁE: TR (dwa okręgi pod szyną, rola uzupełniająca) · DER PV/BESS/FW/generator (nad szyną, prawo) · sekcyjna (ticki flankujące kanał routingu) · NO (kwadrat na szynie, prawo) · kombinacja pełna |
+
+### Co dowodzą (GS-2, tabela 19 reguł)
+
+- **Reguły 2–4 (tor mocy)**: szyna SN na wylot port W(0,24)↔E(48,24), współliniowa
+  z magistralą, enklozura bez wypełnienia jej nie przerywa. Sonda
+  `miniRmuPathContinuityGaps()` (accept + test).
+- **Reguły 5–7, 10, 12 (kotwice/odstępy/TR)**: markery w stałych strefach
+  rozłącznych, kanał kolumny routingu x=24 czysty, minimalne odstępy globalne;
+  transformator uzupełniający (≈0,32 wysokości wnętrza ≤0,5). Sonda
+  `miniRmuMarkerSpacingGaps()` + `transformerInteriorHeightRatio()`.
+- **Reguły 13–14 (stałe globalne + specyfikacja formalna)**: cała geometria w
+  `MINI_RMU` (JEDNO miejsce, zero literałów w rendererze — bramka „rysowane
+  współrzędne == MINI_RMU"); formalna sekcja „Specyfikacja konstrukcyjna" w
+  `GRAMATYKA_MINI_RMU_2026-07.md`.
+- **Reguły 15–16 (pełna macierz)**: 40 kombinacji typ×TR×DER×NO renderują się
+  poprawnie (obecność 1:1) i UNIKALNIE (iniekcja cecha→sygnatura DOM),
+  identyczne cechy ⇒ bajt-identyczny glif (`symbols.test.tsx`).
+- **Reguła 17 (czytelność min. rozmiaru)**: sylwetka 5,78px na fit ≠ kropka;
+  strefa markera ≥ 4× kreski (rozpoznawalna od pierwszego kroku zoomu).
+- **Niezmienniki**: `accept:sld-v3` ALL PASS (204 checków, +3 sondy mini_rmu),
+  crossing=0/kolizje=0 na L0/L1/L2, determinizm, JEDNA KOTWICA — geometria
+  routingu/piony/bbox niezmienione (zmiana dotyczy wyłącznie WNĘTRZA glifu).

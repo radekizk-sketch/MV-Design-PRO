@@ -419,6 +419,19 @@ który §3 nazywa NIGDY-NIE-ZNIKAJĄCYM na L0 i egzekwuje go na scenie:
 > negatyw, `buildScene.schemat10gs1.test.ts`, crossing=0/kolizje=0 na 3 LOD +
 > fixtura 106 stacji, determinizm. Dowód wizualny: `docs/audit/visual/schemat-10/
 > gs1-l0.png` (kadr całości) + `gs1-l0-detal.png` (legenda gramatyki ×4).
+>
+> **ZGODNOŚĆ Z 19 REGUŁAMI (V12K-137, 2026-07-23, karta GS-2).** Sylwetka GS-1
+> doprowadzona do zgodności z `GRAMATYKA_MINI_RMU_2026-07.md` (19 reguł
+> właściciela): TOR MOCY na wylot port W↔E (mini-RMU = fragment toru, reguły
+> 2–4); parametry konstrukcyjne wyniesione do stałych globalnych
+> `symbols/miniRmuGrammar.ts` (`MINI_RMU`), renderer bez literałów lokalnych +
+> formalna specyfikacja konstrukcyjna w gramatyce (reguły 13–14); kotwice
+> markerów stałe/rozłączne, kanał routingu czysty, TR uzupełniający (reguły 5–7,
+> 10, 12); pełna macierz 40 kombinacji typ×TR×DER×NO unikalna (reguły 15–16);
+> czytelność min. rozmiaru zmierzona (reguła 17). Sondy globalne
+> `mini_rmu_path_continuity`/`marker_spacing`/`transformer_proportion` wpięte do
+> `accept:sld-v3` — ALL PASS teraz **204 checki** (+3). `symbols.test.tsx` 92
+> zielone. Dowód: `docs/audit/visual/schemat-10/gs2-l0.png` + `gs2-l0-detal.png`.
 
 §9 pkt 3 wymienia też **typ stacji, funkcja pola, stan łącznika per-pole, marker
 DER** na L0. Macierz §3 klasyfikuje je jako szczegół, który AGREGUJE SIĘ wewnątrz
