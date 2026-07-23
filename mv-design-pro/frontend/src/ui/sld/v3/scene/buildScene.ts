@@ -5639,3 +5639,66 @@ export function trunkThicknessGaps(scene: SceneV3): readonly string[] {
   }
   return gaps;
 }
+
+// ---------------------------------------------------------------------------
+// SCHEMAT-10 S7-P4 (V12K-137, recenzja właściciela §9 P0 pkt 3) — CZYTELNOŚĆ L0
+// na widoku CAŁOŚCI (bez zoomu). Recenzja: na L0 rozpoznawalne typ stacji,
+// funkcja pola, punkt NO, stan łącznika, źródło, transformator, tor mocy. Ta
+// wyrocznia CODYFIKUJE macierz prawdy LOD §3 (`AUDYT_SCHEMATOW_OD_ZERA_2026-07`)
+// dla zbioru, który §3 nazywa „NIGDY NIE ZNIKA przy oddalaniu": TOR ELEKTRYCZNY
+// (z wagą magistrala>odejście — nośnik NIE-kolor), TOŻSAMOŚĆ+POZYCJA STACJI
+// (S-id), ŹRÓDŁO ZASILANIA, ZNACZNIK SEKCJI/NOP. Sprawdza je WPROST na scenie
+// L0. Elementy, które §3 pozwala AGREGOWAĆ wewnątrz glifu przy oddalaniu (typ
+// stacji, funkcja pola, stan łącznika per-pole, marker DER) należą do fazy S1
+// „Gramatyka stacji" (jedna rodzina glifów L0→L2, `docs/sld/AUDYT_SCHEMATOW_
+// OD_ZERA_2026-07` §5 / GAP `S7_GAP_CROSSING_ZERO` §9-followup) — NIE są tu
+// bramkowane, bo ich dodanie to przebudowa sylwetki stacji (osobny podetap).
+// ---------------------------------------------------------------------------
+
+export interface Lod0ReadabilityGap {
+  readonly element: string;
+  readonly reason: string;
+}
+
+/** §9 P0 pkt 3: zbiór §3 „nigdy nie znika" rozpoznawalny na L0. Pusta lista = OK.
+ *  Semantyka L0 — wołać na scenie zbudowanej z `lod=0`. */
+export function lod0ReadabilityGaps(scene: SceneV3): readonly Lod0ReadabilityGap[] {
+  const gaps: Lod0ReadabilityGap[] = [];
+
+  // (1) TOR MOCY z hierarchią WAGI: magistrala grubsza (`snTrunk`) od odejść
+  //     (`sn`) — nośnik to KLASA/grubość, nie kolor (§3 „gruby tor waga 3" vs
+  //     „cienki tor waga 1"; SEGMENT_STROKE_WIDTH.snTrunk > .sn, test stałych).
+  const hasTrunkStations = scene.meta.mainTrunkStationIds.length > 0;
+  if (hasTrunkStations && !scene.segments.some((s) => s.meta?.kind === 'snTrunk')) {
+    gaps.push({ element: 'tor mocy', reason: 'ciąg główny bez klasy snTrunk — magistrala nierozróżnialna wagą od odejść' });
+  }
+  for (const g of trunkThicknessGaps(scene)) gaps.push({ element: 'tor mocy', reason: g });
+
+  // (2) TOŻSAMOŚĆ + POZYCJA STACJI: każdy kompaktowy glif stacji (`stationCollapsed`)
+  //     na L0 ma etykietę tożsamości (S-id / nazwa) — §3 „tożsamość i pozycja
+  //     stacji NIGDY nie znika".
+  const nameOwners = new Set(
+    scene.labels.filter((l) => l.ownerKind === 'station-name').map((l) => l.ownerRef.replace(/#.*$/, '')),
+  );
+  for (const sym of scene.symbols) {
+    if (sym.symbolId !== 'stationCollapsed') continue;
+    const ref = (sym.meta?.ownerRef ?? '').replace(/#.*$/, '');
+    if (!nameOwners.has(ref)) {
+      gaps.push({ element: 'tożsamość stacji', reason: `kompaktowy glif stacji ${ref} bez etykiety S-id na L0` });
+    }
+  }
+
+  // (3) ŹRÓDŁO ZASILANIA: sieci zewnętrzne/GPZ widoczne na L0 (§3 „źródło" —
+  //     glif źródła; `allSourcesVisible` egzekwuje liczbę narysowanych ==
+  //     liczbie źródeł podlegających temu LOD, external_grid zawsze).
+  if (!allSourcesVisible(scene)) {
+    gaps.push({ element: 'źródło', reason: `źródła sieci niewidoczne na L0: ${sourceCoverageGaps(scene).length} luk` });
+  }
+
+  return gaps;
+}
+
+/** Bramka §9 P0 pkt 3: zbiór §3 „nigdy nie znika" rozpoznawalny na L0. */
+export function allLod0ElementsReadable(scene: SceneV3): boolean {
+  return lod0ReadabilityGaps(scene).length === 0;
+}

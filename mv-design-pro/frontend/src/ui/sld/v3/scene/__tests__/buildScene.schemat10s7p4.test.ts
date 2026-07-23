@@ -27,11 +27,15 @@ import {
   verticalCauseBreakdown,
   allSceneSegmentEndpointsAnchored,
   totalVerticalSegmentLength,
+  lod0ReadabilityGaps,
+  allLod0ElementsReadable,
   type SceneLod,
   type SceneV3,
 } from '../buildScene';
 import { TOP_LEVEL_FIELD_CLEARANCE } from '../../layout/clearances';
 import { GRID } from '../../core/grid';
+import { SEGMENT_STROKE_WIDTH } from '../../compose/preview';
+import type { EnergyNetworkModel as Enm } from '../../../../../types/enm';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const bigFixturePath = resolve(here, '..', '..', '..', 'v2', 'geometry', '__tests__', 'fixtures', 'sldSubstrate52s.enm.json');
@@ -173,5 +177,83 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 2 — audyt długości pionów (każdy
     const teeVerticals = auditVerticalSegments(scene).filter((v) => (v.ownerRef ?? '').includes('#tee-'));
     expect(teeVerticals.length).toBeGreaterThan(0);
     for (const v of teeVerticals) expect(v.cause).not.toBe('nieuzasadniony');
+  });
+});
+
+/** Wstrzyknięcie syntetycznego punktu NO na ciąg główny (§3: „znacznik sekcji/NOP
+ *  NIGDY nie znika") — wzorzec z S3/S7-P3. */
+function withSyntheticNop(model: Enm): Enm {
+  const clone = structuredClone(model);
+  const mainRun = clone.line_runs?.find((r) => r.run_kind === 'main_trunk');
+  if (!mainRun) throw new Error('fixtura bez main_trunk');
+  (mainRun as { nop_station_ref: string | null }).nop_station_ref = buildSceneV3(model, 2).meta.mainTrunkStationIds[0];
+  return clone;
+}
+
+describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku całości', () => {
+  const bigEnm = FIXTURES[FIXTURES.length - 1].enm;
+
+  it('hierarchia wagi toru: SEGMENT_STROKE_WIDTH.snTrunk > .sn (tor główny > odejście, nośnik = WAGA, nie kolor)', () => {
+    expect(SEGMENT_STROKE_WIDTH.snTrunk).toBeGreaterThan(SEGMENT_STROKE_WIDTH.sn);
+    expect(SEGMENT_STROKE_WIDTH.bus).toBeGreaterThan(SEGMENT_STROKE_WIDTH.snTrunk);
+  });
+
+  for (const fx of FIXTURES) {
+    it(`${fx.nazwa} L0: zbiór §3 „nigdy nie znika" (tor mocy z wagą + tożsamość stacji + źródło) rozpoznawalny`, () => {
+      const scene = buildSceneV3(fx.enm, 0);
+      const gaps = lod0ReadabilityGaps(scene);
+      expect(gaps, gaps.map((g) => `${g.element}: ${g.reason}`).join(' | ')).toHaveLength(0);
+      expect(allLod0ElementsReadable(scene)).toBe(true);
+    });
+  }
+
+  it('L0: magistrala niesie klasę snTrunk, a odejścia klasę sn (rozróżnienie wagą na przeglądzie sieci)', () => {
+    const scene = buildSceneV3(bigEnm, 0);
+    expect(scene.segments.some((s) => s.meta?.kind === 'snTrunk')).toBe(true);
+    const branchSegs = scene.segments.filter((s) => (s.meta?.ownerRef ?? '').includes('branch_segment'));
+    expect(branchSegs.length).toBeGreaterThan(0);
+    for (const b of branchSegs) expect(b.meta?.kind === 'sn' || b.meta?.kind === 'openTerminal').toBe(true);
+  });
+
+  it('L0: źródło (sieć zewnętrzna/GPZ) i transformator rozpoznawalne bez zoomu (glify obecne)', () => {
+    const scene = buildSceneV3(bigEnm, 0);
+    expect(scene.symbols.some((s) => s.symbolId === 'gridSource')).toBe(true);
+    expect(scene.symbols.some((s) => s.symbolId === 'transformer2W')).toBe(true);
+  });
+
+  it('L0: punkt NO (§3 znacznik sekcji/NOP) NIGDY nie znika — obecny na widoku całości gdy jest w danych', () => {
+    const nopScene = buildSceneV3(withSyntheticNop(bigEnm), 0);
+    expect(nopScene.symbols.some((s) => s.symbolId === 'noPoint')).toBe(true);
+    expect(nopScene.labels.some((l) => l.ownerKind === 'no-point')).toBe(true);
+    // Kotwica NO identyczna L0/L1/L2 (§3 „ta sama kotwica") — pozycja markera stała.
+    const no0 = nopScene.symbols.find((s) => s.symbolId === 'noPoint');
+    const no2 = buildSceneV3(withSyntheticNop(bigEnm), 2).symbols.find((s) => s.symbolId === 'noPoint');
+    expect(no0 && no2 ? { x: no0.x, y: no0.y } : null).toEqual(no2 ? { x: no2.x, y: no2.y } : null);
+  });
+
+  it('L0: każda narysowana stacja ma kompaktowy glif + etykietę S-id (tożsamość nie znika)', () => {
+    const scene = buildSceneV3(bigEnm, 0);
+    const collapsed = scene.symbols.filter((s) => s.symbolId === 'stationCollapsed');
+    expect(collapsed.length).toBeGreaterThan(0);
+    const nameOwners = new Set(scene.labels.filter((l) => l.ownerKind === 'station-name').map((l) => l.ownerRef.replace(/#.*$/, '')));
+    for (const c of collapsed) expect(nameOwners.has((c.meta?.ownerRef ?? '').replace(/#.*$/, ''))).toBe(true);
+  });
+
+  it('wyrocznia GRYZIE: usunięcie klasy snTrunk (tor główny bez wagi) ⇒ luka toru mocy na L0', () => {
+    const scene = buildSceneV3(bigEnm, 0);
+    const sabotaged: SceneV3 = {
+      ...scene,
+      segments: scene.segments.map((s) => (s.meta?.kind === 'snTrunk' ? { ...s, meta: { ...s.meta, kind: 'sn' as const } } : s)),
+    };
+    const gaps = lod0ReadabilityGaps(sabotaged);
+    expect(gaps.some((g) => g.element === 'tor mocy')).toBe(true);
+    expect(allLod0ElementsReadable(sabotaged)).toBe(false);
+  });
+
+  it('wyrocznia GRYZIE: usunięcie etykiet S-id ⇒ luka tożsamości stacji na L0', () => {
+    const scene = buildSceneV3(bigEnm, 0);
+    const sabotaged: SceneV3 = { ...scene, labels: scene.labels.filter((l) => l.ownerKind !== 'station-name') };
+    const gaps = lod0ReadabilityGaps(sabotaged);
+    expect(gaps.some((g) => g.element === 'tożsamość stacji')).toBe(true);
   });
 });

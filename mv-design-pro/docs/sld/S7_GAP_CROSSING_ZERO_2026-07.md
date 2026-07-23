@@ -354,3 +354,62 @@ h/vDensityVariance), odstęp stacji z footprintu (nie stały krok), hierarchia w
 tor główny→odejście→podgałąź (kolor NIE jedyny nośnik), testy długich opisów
 i sieci 100–500 stacji. Sekcjonowanie/wielorzędowy pas magistrali dla bardzo
 dużych sieci = polityka jawna, nigdy łamanie magistrali dla wyglądu.
+
+## §10 WYKONANIE S7-P4 (2026-07-23) — WYMAGANIA P0 recenzji §9
+
+Zrealizowano **S7-P4** — trzy wymagania P0 z §9 (pkt 1-3) + potwierdzenia (pkt 4-7).
+Silnik OGÓLNY (WYTYCZNE), zero strojenia fixtury, determinizm + permutacja.
+
+### 10.1 P0 pkt 1 — światło pasa górnego BBOX-DO-BBOX (ZREALIZOWANE)
+`TOP_LEVEL_FIELD_CLEARANCE` 3×GRID→4×GRID (24→32 px, +33,3%) — najmniejszy `k×GRID`
+w paśmie §5 „+20–35%" (wartości pośrednie łamią `grid_probe`). Wyrocznia
+`topBandFieldClearances`/`allTopBandFieldsClearance` (`scene/buildScene.ts`) mierzy
+światło MIĘDZY REALNYMI OBRYSAMI pól (unia symboli+etykiet footprintu stacji,
+z wykluczeniem etykiet kabli-korytarza `segment-span`/`segment-lateral`, które
+siedzą w szczelinie routingu). `top_band_clearance_probe` + test negatywny
+(gryzie) w `sld_v3_acceptance.mjs`. Koszt zaakceptowany przez recenzję:
+`HORIZONTAL_LENGTH_BASELINE` 47048/67224/70816 → 47248/67424/71016 (+200/LOD),
+`SHEET_FILL_FLOOR` 0.0098/0.018/0.0185 → 0.00977/0.01797/0.01842 (koszt świateł,
+uzasadnienie per liczba w commicie). Piony/bbox-h/crossings/kolizje BEZ ZMIAN.
+
+### 10.2 P0 pkt 2 — audyt długości pionów (ZREALIZOWANE)
+`auditVerticalSegments`/`verticalCauseBreakdown`/`verticalAuditGaps`/
+`allVerticalsAttributed`: KAŻDY pion przypisany do przyczyny z zamkniętej
+taksonomii wyprowadzonej z ROLI odcinka (`ownerRef`/`kind`): `footprint` (stos
+pola/nN/DER/GPZ), `rezerwacja-kanalu` (zejście lateralu do półki packera =
+kolizja z poddrzewem+M-02+etykiety, strip `#descent`), `jog-trasy`,
+`slupek-terminalny`, `nieuzasadniony` (rola nierozpoznana → DO SKRÓCENIA). Sufiks
+`#tee-N` zdejmowany (pion dziedziczy przyczynę pierwotnego kabla). Tabela per LOD
+w `vertical_audit_probe`. Pomiar fixtury referencyjnej (L1/L2, liczba/długość):
+footprint 95/832 · rezerwacja-kanalu 313/43872 · jog-trasy 1/104 · słupek 13/208
+· **nieuzasadniony 0/0** na WSZYSTKICH 5 klasach topologii × 3 LOD. Minimalność
+(„pion nie krótszy bez utraty połączenia") związana z `allSceneSegmentEndpoints
+Anchored` (każdy koniec = port/inny odcinek).
+
+### 10.3 P0 pkt 3 — czytelność L0 (ZREALIZOWANE: zbiór §3 „nigdy nie znika")
+`lod0ReadabilityGaps`/`allLod0ElementsReadable` codyfikuje macierz §3 dla zbioru,
+który §3 nazywa NIGDY-NIE-ZNIKAJĄCYM na L0 i egzekwuje go na scenie:
+- **TOR MOCY z hierarchią WAGI** — magistrala `snTrunk` grubsza (2.4) od odejść
+  `sn` (1.6); nośnik = WAGA, nie kolor (`SEGMENT_STROKE_WIDTH`, recenzja P1 pkt 3).
+- **TOŻSAMOŚĆ+POZYCJA STACJI** — każdy kompaktowy glif ma etykietę S-id na L0.
+- **ŹRÓDŁO** — sieci zewnętrzne/GPZ widoczne (`allSourcesVisible`).
+- **ZNACZNIK SEKCJI/NOP** — `noPoint` obecny na L0 gdy w danych (test syntetyczny
+  NOP; kotwica NO identyczna L0/L1/L2). **TRANSFORMATOR** — `transformer2W` (GPZ).
+`lod0_readability_probe` (bramka WYŁĄCZNIE na L0) + testy 5 fixtur + 2 negatywy.
+
+### 10.4 GAP → S1 „Gramatyka stacji" (Zero-Debt pkt 4 — dług ponadsesyjny)
+§9 pkt 3 wymienia też **typ stacji, funkcja pola, stan łącznika per-pole, marker
+DER** na L0. Macierz §3 klasyfikuje je jako szczegół, który AGREGUJE SIĘ wewnątrz
+glifu przy oddalaniu („Co ZNIKA: szczegół WEWNĄTRZ glifu"). Ich rozpoznawalność
+na L0 wymaga JEDNEJ RODZINY GLIFÓW stacji (sylwetka L0→L2, ta sama kotwica) —
+czyli przebudowy sylwetki `stationCollapsed` (16×16 kwadrat → mini-RMU: obrys +
+kreska szyny + marker typu/DER). To jest DOKŁADNIE zakres fazy **S1 „Gramatyka
+stacji"** (`AUDYT_SCHEMATOW_OD_ZERA_2026-07` §5, wykonawca Opus), a nie punktowa
+poprawka: dotyka ~53 glifów stacji + goldenów + wyroczni (`noSceneSymbolOverlaps`,
+`grid_probe`, kotwica środka `sceneSegmentEndpointGaps`, bbox/`sheet_fill`).
+Wciśnięcie tego do S7-P4 dubluje/wyprzedza S1 i niesie regres goldenów bez
+domknięcia. **Pomiar bazy:** DER na L0 = 0 symboli (L1 = 20: derPv/derBess/derWind);
+`stationCollapsed` = jednolity kwadrat bez markera typu/funkcji/stanu. **Plan:** S1
+wprowadza rodzinę glifów; audyt `lod0ReadabilityGaps` rozszerzy się wtedy o typ/
+funkcję/stan/DER (dodanie elementów do listy, nie nowy mechanizm). crossingCount=0
+i zbiór §3 „nigdy nie znika" utrzymane jako warunek odbioru.

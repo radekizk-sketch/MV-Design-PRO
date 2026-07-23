@@ -82,6 +82,8 @@ import {
   allVerticalsAttributed,
   verticalAuditGaps,
   verticalCauseBreakdown,
+  allLod0ElementsReadable,
+  lod0ReadabilityGaps,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { TOP_LEVEL_FIELD_CLEARANCE } from '../src/ui/sld/v3/layout/clearances.ts';
 import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
@@ -1170,6 +1172,19 @@ for (const lod of LODS) {
       ? `tabela przyczyn(liczba/długość) — ${vTable}`
       : `NIEUZASADNIONE=${vGaps.length}: ${vGaps.slice(0, 5).map((g) => `${g.ownerRef ?? '?'}(${g.kind ?? '?'},${g.length})`).join(', ')}`,
   );
+  // -- SCHEMAT-10 S7-P4 (V12K-137, recenzja §9 P0 pkt 3): CZYTELNOŚĆ L0 na widoku
+  // całości — zbiór §3 „nigdy nie znika" (tor mocy z wagą, tożsamość stacji,
+  // źródło). Bramka WYŁĄCZNIE na L0 (semantyka „Przegląd sieci").
+  if (lod === 0) {
+    const l0Gaps = lod0ReadabilityGaps(scene);
+    check(
+      'lod0_readability_probe (S7-P4 §9 P0 pkt 3): tor mocy(waga) + tożsamość stacji + źródło rozpoznawalne na L0',
+      allLod0ElementsReadable(scene),
+      l0Gaps.length === 0
+        ? 'zbiór §3 „nigdy nie znika" obecny na L0'
+        : `luki=${l0Gaps.length}: ${l0Gaps.slice(0, 5).map((g) => `${g.element}: ${g.reason}`).join(' | ')}`,
+    );
+  }
 
   // -- S6 (V12K-137) funkcja kosztu layoutu: poziomy + załamania (pkt 3) ------
   const horizontalLength = totalHorizontalSegmentLength(scene);
