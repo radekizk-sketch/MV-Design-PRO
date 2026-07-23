@@ -77,29 +77,66 @@ export interface LodThresholds {
 }
 
 /**
- * Progi zoomu L0/L1/L2 — DECYZJA WŁASNA F6b: spec §7 nie podaje liczb dla
- * kontraktu 3-poziomowego („progi jak dziś" odnosi się do 5-poziomowej
- * polityki v2, `LodPolicy.LOD_ZOOM_THRESHOLDS`, niekompatybilnej — patrz
- * nagłówek). Wybrane jako przybliżone środki geometryczne przedziałów v2
- * (LOD_1_MAX=0.7 i LOD_2_MAX=1.5 „zlepione" do dwóch progów obejmujących
- * odpowiednik L0=„topologia" / L1=„obiekty" / L2=„pełny szczegół" tej
- * taksonomii) — do kalibracji wizualnej przy render-odbiorze F7, nie
- * wyrocznia CI.
+ * Progi zoomu L0/L1/L2 — WYPROWADZONE Z CZYTELNOŚCI (karta S8, płynność
+ * przejść P2). Jednostka progu: `refScale` — skala w PRZESTRZENI świata LOD2
+ * („Stacje i aparatura"), tj. piksele EKRANU na jednostkę świata pełnego
+ * detalu; to dokładnie ta wielkość, którą porównuje histereza (patrz
+ * `refScaleFor` niżej: dla LOD2 `refScale === scale`). Model czytelności
+ * bierze DWA odniesienia rozmiaru z warstwy detalu, po jednym na granicę:
  *
- * F8a-2 — FIX-1 (recenzja Opusa, oscylacja LOD 0↔1 na zoomie produkcyjnym,
- * patrz `refScaleFor` niżej): te wartości są od tej dostawy progami w
- * PRZESTRZENI `refScale` (skala „jakby świat LOD2"), NIE surowej `scale`
- * kamery. Dla LOD2 `refScale === scale` (świat odniesienia = samego siebie)
- * — więc wizualnie NIC się nie zmienia dla kalibracji przy LOD2 wykonanej w
- * F7. Dla LOD0/LOD1 punkt przejścia w surowej skali kamery przesuwa się
- * (mnożnik `widthOf(LOD2)/widthOf(danego LOD)`) — to jest CEL naprawy: próg
- * przestaje być przywiązany do rozmiaru świata AKTUALNEGO poziomu, więc
- * `applyLodScaleMapping` (który zachowuje `refScale` z konstrukcji) nie może
- * już retriggerować przejścia w odwrotną stronę.
+ *  ── l1Max (granica L1↔L2) — brama: ETYKIETA t2 ──────────────────────────
+ *  L2 wnosi parametry aparatury: etykiety klasy `t2` (kVA · typ·przekrój·
+ *  długość · kV) o wysokości pisma 11 px ŚWIATA (`core/text.ts`
+ *  `LABEL_TYPOGRAPHY.t2.fontSize = 11`). Na ekranie: `11 · refScale` px.
+ *    • wyjście L2→L1 przy `l1Max·(1−margin) = 1,2·0,85 = 1,02`
+ *      ⇒ t2 = 11·1,02 = 11,2 px ekranu — dolna granica czytelności gęstych
+ *      łańcuchów parametrów („630kVA", „3×240", „15,75kV"), ~1:1 świat:ekran;
+ *    • wejście L1→L2 przy `l1Max·(1+margin) = 1,2·1,15 = 1,38`
+ *      ⇒ t2 = 11·1,38 = 15,2 px ekranu — komfortowy rozmiar czytania, przy
+ *      którym pełen szczegół aparatury + parametry są uzasadnione.
+ *  Środek pasma histerezy (~1,18–1,19) zaokrąglony do 1,2.
+ *
+ *  ── l0Max (granica L0↔L1) — brama: GLIF stacji 48 px ────────────────────
+ *  L0 pokazuje stacje jako zbiorczy glif mini-RMU 48×48 px ŚWIATA
+ *  (`symbols/defs.ts` `stationCollapsed`, 6×GRID). Odniesienie pomiarowe
+ *  (tamże): przy dopasowaniu CAŁEJ sieci referencyjnej `sldSubstrate52s`
+ *  (skala fit ≈ 0,1203) glif renderuje 5,78 px ekranu — PRÓG rozpoznawalności
+ *  (16 px świata dawało 1,93 px, nieodróżnialne od kropki węzła).
+ *    • wejście L0→L1 przy `l0Max·(1+margin) = 0,4·1,15 = 0,46` — ok. 3,8×
+ *      skali przeglądu całej sieci (0,46/0,12), gdzie wewnętrzny detal
+ *      mini-RMU (obrys enklozury + kreska szyny, cechy ~8 px świata ⇒ ~3 px
+ *      ekranu każda) staje się rozróżnialny i uzasadnia sylwetkę operatorską
+ *      (pola liniowe);
+ *    • powrót L1→L0 przy `l0Max·(1−margin) = 0,4·0,85 = 0,34` — ok. 2,8×
+ *      skali przeglądu; poniżej detal operatorski zwija się do
+ *      rozpoznawalnego mini-RMU.
+ *  Uwaga o normalizacji: glif żyje w świecie L0, a próg jest w `refScale`
+ *  (świat L2); kotwica pozostaje ta sama między LOD (JEDNA KOTWICA), więc
+ *  ekranowy rozmiar stacji jest CIĄGŁY w poprzek granicy (własność
+ *  `refScaleFor`/`applyLodScaleMapping` niżej) — anchor „×N skali przeglądu"
+ *  jest stabilny mimo różnic szerokości światów per-LOD.
+ *
+ * F8a-2 — FIX-1 (oscylacja LOD 0↔1 na zoomie produkcyjnym, `refScaleFor`):
+ * porównanie w `refScale` (nie surowej `scale` kamery, natywnej dla świata
+ * AKTUALNEGO LOD) sprawia, że `applyLodScaleMapping` — który zachowuje
+ * `refScale` z konstrukcji — nie może retriggerować przejścia w odwrotną
+ * stronę na następnym ticku.
  */
 export const DEFAULT_LOD_THRESHOLDS: LodThresholds = { l0Max: 0.4, l1Max: 1.2 };
 
-/** Margines histerezy (spec §7 „przełączanie progami kamery, histereza"). */
+/**
+ * Margines histerezy — daje OSOBNE progi wejścia/wyjścia wokół każdej granicy
+ * (spec §7 „przełączanie progami kamery, histereza"; karta S8 „osobna wartość
+ * wejścia i wyjścia, żeby oscylacja zoomu na granicy nie trzepotała
+ * L0↔L1/L1↔L2"). Dla granicy o progu `t`: wejście (LOD w górę) wymaga
+ * `refScale ≥ t·(1+margin)`, wyjście (LOD w dół) wymaga `refScale ≤ t·(1−margin)`
+ * — między nimi leży martwa strefa `[t·0,85 … t·1,15]`, w której LOD się NIE
+ * zmienia (patrz `lodFromScaleWithHysteresis`). Wartość 0,15 kalibrowana z
+ * modelu czytelności wyżej: pasmo t2 = 11,2…15,2 px ekranu (l1Max) i pasmo
+ * glifu ≈ 2,8×…3,8× skali przeglądu (l0Max) — szerokość każdego pasma jest
+ * na tyle duża, że typowe drganie skali kółka/pinch wokół granicy nie
+ * przekracza obu jego brzegów.
+ */
 export const LOD_HYSTERESIS_MARGIN = 0.15;
 
 /** Klasyfikacja BEZ histerezy (użyta tylko dla stanu POCZĄTKOWEGO kamery —

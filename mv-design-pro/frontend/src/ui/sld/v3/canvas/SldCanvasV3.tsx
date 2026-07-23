@@ -118,6 +118,14 @@ const FAULT_ARROW_MIN_RUN = 2 * FLOW_ARROW_LENGTH;
  *  jeden „tick" typowej myszy, deltaY≈100, daje ~16% zmiany skali). */
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
 
+/** Karta S8 (P2, płynność przejść LOD): czas trwania crossfade warstwy detalu
+ *  przy zmianie LOD [s] — wyłącznie prezentacyjne, zero wpływu na determinizm
+ *  danych (natywny SMIL `<animate>`, markup statyczny niezależny od czasu; ta
+ *  sama kategoria co `FAULT_POINT_MARKER_PULSE_DURATION` niżej). Krótki
+ *  (180 ms): dość, by oko odczytało „przedetalowanie" jako ciągłe, za krótki,
+ *  by opóźnić interakcję pan/zoom po przełączeniu. */
+const LOD_CROSSFADE_DURATION = '0.18s';
+
 /**
  * F8b-1 (REBUILD_PLAN_V3 §F8b, zadanie „parytet funkcjonalny v3" — B:
  * selekcja z realnym typem): dane elementu przekazywane WRAZ z `testId` przy
@@ -196,6 +204,18 @@ export interface SldCanvasV3Props {
    *  `onElementClick`/`onElementDoubleClick`, zero zmiany geometrii/logiki
    *  kamery. Brak propa = brak nasłuchu (kanwa działa jak dziś). */
   readonly onCameraChange?: (transform: ViewportTransform, lod: SceneLod) => void;
+  /** Karta S8 (płynność przejść LOD, P2): włącza krótki crossfade warstwy
+   *  detalu przy ZMIANIE LOD (wejście nowego szczegółu z opacity 0→1, natywne
+   *  SVG `<animate>`, SMIL — wzorzec repo, patrz znacznik pulse niżej; zero
+   *  globalnego CSS, zero timerów w logice stanu). Animacja czysto
+   *  PREZENTACYJNA — geometria (kotwice) jest stała między LOD (JEDNA KOTWICA),
+   *  więc fade nie przesuwa świata, tylko wygładza „przedetalowanie".
+   *  Domyślnie `true` (produkcja). Eksport/SSR/harness screenshotów przekazują
+   *  `false` — deterministyczny statyczny kadr bez animacji (opacity bazowe 1,
+   *  brak węzła `<animate>`); w jsdom/SSR (brak silnika SMIL) i tak
+   *  renderowane jest opacity bazowe 1, więc `false` służy WYŁĄCZNIE jawnemu
+   *  usunięciu węzła animacji z markupu eksportu. */
+  readonly animateLodTransitions?: boolean;
 }
 
 function strokeForEnergization(energized: boolean | undefined): string | undefined {
@@ -1123,7 +1143,7 @@ function toLocalPoint(svg: SVGSVGElement | null, clientX: number, clientY: numbe
 export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const {
     snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
-    layerVisibility, onCameraChange,
+    layerVisibility, onCameraChange, animateLodTransitions = true,
   } = props;
 
   // F8a — ROZSTRZYGNIĘCIE k4/k3 (REBUILD_PLAN_V3 §F8, SLD_V3_ACCEPTANCE.md §3):
@@ -1395,6 +1415,33 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             opacity={0.7}
           />
         )}
+        {/* Karta S8 (P2, płynność przejść LOD): WARSTWA DETALU (segmenty/
+         * symbole/etykiety — treść zależna od LOD) owinięta w jedną grupę z
+         * `key` = efektywny LOD. Zmiana LOD remontuje grupę ⇒ natywny SMIL
+         * `<animate>` odgrywa raz fade-in opacity 0→1 (crossfade nowego
+         * szczegółu na STAŁEJ kotwicy — JEDNA KOTWICA gwarantuje, że świat się
+         * nie przesuwa, fade tylko wygładza „przedetalowanie"). Overlays
+         * wyników (przepływ/zwarcia/OLTC) są PONIŻEJ, POZA tą grupą — nie
+         * migoczą przy zmianie LOD (ciągłość nakładek, karta S8 pkt 3).
+         * `opacity` bazowe 1: jsdom/SSR/eksport (brak silnika SMIL) i tryb
+         * `animateLodTransitions={false}` renderują pełną widoczność bez
+         * animacji. */}
+        <g
+          key={`sld-v3-detail-lod-${effectiveLod}`}
+          data-testid="sld-v3-detail-layer"
+          opacity={1}
+        >
+          {animateLodTransitions ? (
+            <animate
+              attributeName="opacity"
+              from="0"
+              to="1"
+              dur={LOD_CROSSFADE_DURATION}
+              begin="0s"
+              fill="freeze"
+              calcMode="linear"
+            />
+          ) : null}
         {/* F12-B pkt 4 (spec §10.1 ARCH-4): filtr WYŁĄCZNIE renderu —
          * `scene.segments`/`scene.symbols`/`scene.labels` (`buildSceneV3`)
          * NIETKNIĘTE (mapowane w PEŁNI, `index` zachowany dla każdego elementu
@@ -1440,6 +1487,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 <SceneLabelNode key={`label-${index}`} label={label} index={index} />
               ))
             : null}
+        </g>
         </g>
         {/* F9.5 (spec §14.2): nakładka przepływu NAD warstwami bazowymi
          * (segmenty/symbole/etykiety) — grot i wartości nie mogą być

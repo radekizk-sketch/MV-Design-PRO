@@ -1042,3 +1042,113 @@ describe('SldCanvasV3 — SCHEMAT-10 S3 (V12K-135, D7): kolor NOP (wyróżniony 
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// Karta S8 (płynność przejść LOD, P2): crossfade warstwy detalu (DOM), tryb
+// bez animacji dla eksportu, oraz CIĄGŁOŚĆ na REALNEJ ścieżce (natywny wheel
+// zmienia LOD — nie syntetyczny dispatch stanu; ciągłość nakładki po zmianie).
+// ---------------------------------------------------------------------------
+describe('SldCanvasV3 — S8: crossfade detalu i ciągłość przejść LOD', () => {
+  const detailLayerOf = (c: HTMLElement) =>
+    c.querySelector('[data-testid="sld-v3-detail-layer"]');
+  const lodOf = (c: HTMLElement) =>
+    c.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-scene-lod');
+
+  it('warstwa detalu (segmenty/symbole/etykiety) jest owinięta w JEDNĄ grupę crossfade', () => {
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    const detail = detailLayerOf(container);
+    expect(detail).toBeTruthy();
+    // Trzy grupy bazowe są POTOMKAMI warstwy detalu (nie rodzeństwem overlayów).
+    expect(detail?.querySelector('[data-testid="sld-v3-segments"]')).toBeTruthy();
+    expect(detail?.querySelector('[data-testid="sld-v3-symbols"]')).toBeTruthy();
+    expect(detail?.querySelector('[data-testid="sld-v3-labels"]')).toBeTruthy();
+    // Overlay wyników jest POZA warstwą detalu (nie migocze przy zmianie LOD).
+    expect(detail?.querySelector('[data-testid="sld-v3-flow-overlay"]')).toBeNull();
+  });
+
+  it('domyślnie (produkcja) warstwa detalu niesie węzeł <animate> opacity 0→1 (crossfade)', () => {
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    const anim = detailLayerOf(container)?.querySelector('animate');
+    expect(anim).toBeTruthy();
+    expect(anim?.getAttribute('attributeName')).toBe('opacity');
+    expect(anim?.getAttribute('from')).toBe('0');
+    expect(anim?.getAttribute('to')).toBe('1');
+    // opacity BAZOWE = 1 (jsdom/SSR/eksport bez silnika SMIL widzą pełną treść).
+    expect(detailLayerOf(container)?.getAttribute('opacity')).toBe('1');
+  });
+
+  it('animateLodTransitions=false (eksport/SSR/harness) ⇒ BRAK węzła <animate>, opacity bazowe 1', () => {
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        animateLodTransitions={false}
+      />,
+    );
+    expect(detailLayerOf(container)?.querySelector('animate')).toBeNull();
+    expect(detailLayerOf(container)?.getAttribute('opacity')).toBe('1');
+  });
+
+  it('REALNA ścieżka: natywny wheel zoom-in przekraczający próg PODNOSI LOD i ZACHOWUJE nakładkę (ciągłość, karta S8)', () => {
+    // Nakładka energizacji kluczowana ownerRef (tożsamość LOD-niezależna) —
+    // pokrywa symbole KAŻDEGO LOD; po zmianie LOD musi nadal kolorować.
+    const energizedByOwnerRef: Record<string, boolean> = {};
+    for (const lod of [0, 1, 2] as const) {
+      for (const sym of buildSceneV3(enm, lod).symbols) {
+        if (sym.meta?.ownerRef) energizedByOwnerRef[sym.meta.ownerRef] = true;
+      }
+    }
+    const overlay: SldV3Overlay = { energizedByTestId: {}, energizedByOwnerRef };
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} overlay={overlay} />,
+    );
+    const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+    const startLod = Number(lodOf(container));
+    const energizedCount = () =>
+      container.querySelectorAll('[data-testid="sld-v3-symbols"] [data-energized="true"]').length;
+    const energizedBefore = energizedCount();
+    expect(energizedBefore).toBeGreaterThan(0);
+
+    // Użytkownik kręci kółkiem w kierunku zoom-in (natywne zdarzenie wheel,
+    // NIE syntetyczny dispatch stanu kamery) aż LOD wzrośnie.
+    let guard = 0;
+    while (Number(lodOf(container)) === startLod && guard < 60) {
+      fireEvent.wheel(svg, { clientX: CANVAS_WIDTH / 2, clientY: CANVAS_HEIGHT / 2, deltaY: -140 });
+      guard += 1;
+    }
+    const endLod = Number(lodOf(container));
+    expect(endLod).toBeGreaterThan(startLod); // LOD podniesiony na realnej ścieżce
+    // Warstwa detalu wciąż obecna (remontowana per LOD, key=effectiveLod).
+    expect(detailLayerOf(container)).toBeTruthy();
+    // Nakładka PRZEŻYŁA zmianę LOD — symbole nowego LOD dalej energizowane
+    // (klucz ownerRef, brak ponownego wyliczania stanu użytkownika).
+    expect(energizedCount()).toBeGreaterThan(0);
+  });
+
+  it('REALNA ścieżka: powrót zoom-out po zoom-in WRACA do LOD startowego (histereza domyka pętlę, karta S8)', () => {
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
+    );
+    const svg = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+    const startLod = Number(lodOf(container));
+    let guard = 0;
+    while (Number(lodOf(container)) === startLod && guard < 60) {
+      fireEvent.wheel(svg, { clientX: CANVAS_WIDTH / 2, clientY: CANVAS_HEIGHT / 2, deltaY: -140 });
+      guard += 1;
+    }
+    expect(Number(lodOf(container))).toBeGreaterThan(startLod);
+    // Zoom-out symetryczny — wracamy poniżej progu wyjścia, LOD spada do startu.
+    guard = 0;
+    while (Number(lodOf(container)) > startLod && guard < 120) {
+      fireEvent.wheel(svg, { clientX: CANVAS_WIDTH / 2, clientY: CANVAS_HEIGHT / 2, deltaY: 140 });
+      guard += 1;
+    }
+    expect(Number(lodOf(container))).toBe(startLod);
+  });
+});

@@ -300,6 +300,7 @@ function SubstrateHarness(): JSX.Element {
         height={size.height}
         lodOverride={lodOverride}
         overlay={overlay}
+        animateLodTransitions={false}
       />
     </div>
   );

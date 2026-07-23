@@ -20,8 +20,10 @@ import {
   pointerMidpoint,
   refScaleFor,
   type BoundingBox,
+  type CameraAction,
   type CameraState,
 } from '../camera';
+import { screenToWorld } from '../../../v2/viewport/ViewportController';
 import type { SceneLod } from '../../scene/buildScene';
 
 describe('lodFromScale (bez histerezy — klasyfikacja czysta)', () => {
@@ -372,5 +374,142 @@ describe('cameraViewBox', () => {
   it('viewBox przy scale=1, translate=0 pokrywa dokładnie viewport', () => {
     const transform = { scale: 1, translateX: 0, translateY: 0 };
     expect(cameraViewBox(transform, { width: 800, height: 600 })).toBe('0 0 800 600');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Karta S8 (płynność przejść LOD, P2) — dowody: brak trzepotania (liczbą
+// przełączeń), zachowanie viewportu przy przełączeniu, determinizm sekwencji.
+// ---------------------------------------------------------------------------
+
+describe('histereza LOD — brak trzepotania na granicy (karta S8, dowód liczbą przełączeń)', () => {
+  /** Przepuszcza sekwencję wartości `refScale` przez czystą histerezę, nosząc
+   *  `currentLod`; zwraca liczbę faktycznych PRZEŁĄCZEŃ LOD i ślad poziomów.
+   *  „Trzepotanie" = >0 przełączeń dla drgania, które NIE opuszcza martwej
+   *  strefy granicy. */
+  function threadHysteresis(scales: readonly number[], startLod: SceneLod) {
+    let lod = startLod;
+    let switches = 0;
+    const trail: SceneLod[] = [lod];
+    for (const s of scales) {
+      const next = lodFromScaleWithHysteresis(s, lod);
+      if (next !== lod) switches += 1;
+      lod = next;
+      trail.push(lod);
+    }
+    return { switches, finalLod: lod, trail };
+  }
+
+  it('drganie refScale WEWNĄTRZ martwej strefy granicy L1↔L2 ⇒ ZERO przełączeń', () => {
+    const { l1Max } = DEFAULT_LOD_THRESHOLDS;
+    const enter = l1Max * (1 + LOD_HYSTERESIS_MARGIN); // 1,38
+    const exit = l1Max * (1 - LOD_HYSTERESIS_MARGIN); // 1,02
+    const jitter = [1.1, 1.3, 1.05, 1.35, 1.15, 1.25, 1.1, 1.34];
+    jitter.forEach((s) => expect(s > exit && s < enter).toBe(true));
+    const { switches, finalLod } = threadHysteresis(jitter, 1);
+    expect(switches).toBe(0);
+    expect(finalLod).toBe(1);
+  });
+
+  it('drganie refScale WEWNĄTRZ martwej strefy granicy L0↔L1 ⇒ ZERO przełączeń', () => {
+    const { l0Max } = DEFAULT_LOD_THRESHOLDS;
+    const enter = l0Max * (1 + LOD_HYSTERESIS_MARGIN); // 0,46
+    const exit = l0Max * (1 - LOD_HYSTERESIS_MARGIN); // 0,34
+    const jitter = [0.36, 0.44, 0.35, 0.45, 0.4, 0.43, 0.37];
+    jitter.forEach((s) => expect(s > exit && s < enter).toBe(true));
+    const { switches, finalLod } = threadHysteresis(jitter, 0);
+    expect(switches).toBe(0);
+    expect(finalLod).toBe(0);
+  });
+
+  it('kontrast: TA SAMA sekwencja drgająca wokół surowego progu TRZEPOCZE bez histerezy, nie trzepocze z histerezą', () => {
+    const { l0Max } = DEFAULT_LOD_THRESHOLDS; // 0,4
+    const around = [l0Max - 0.02, l0Max + 0.02, l0Max - 0.02, l0Max + 0.02, l0Max - 0.02];
+    let rawSwitches = 0;
+    let prev = lodFromScale(around[0]);
+    for (const s of around.slice(1)) {
+      const cur = lodFromScale(s);
+      if (cur !== prev) rawSwitches += 1;
+      prev = cur;
+    }
+    expect(rawSwitches).toBeGreaterThan(0);
+    expect(threadHysteresis(around, 0).switches).toBe(0);
+  });
+
+  it('pełne przekroczenie tam-i-z-powrotem ⇒ DOKŁADNIE 2 przełączenia (L1→L2→L1)', () => {
+    const seq = [1.1, 1.4, 1.2, 1.0, 1.1];
+    const { switches, trail } = threadHysteresis(seq, 1);
+    expect(trail).toEqual([1, 1, 2, 2, 1, 1]);
+    expect(switches).toBe(2);
+  });
+
+  it('progi wejścia i wyjścia są OSOBNE (wejście > wyjście) na obu granicach', () => {
+    const { l0Max, l1Max } = DEFAULT_LOD_THRESHOLDS;
+    expect(l0Max * (1 + LOD_HYSTERESIS_MARGIN)).toBeGreaterThan(l0Max * (1 - LOD_HYSTERESIS_MARGIN));
+    expect(l1Max * (1 + LOD_HYSTERESIS_MARGIN)).toBeGreaterThan(l1Max * (1 - LOD_HYSTERESIS_MARGIN));
+  });
+});
+
+describe('przełączenie LOD zachowuje viewport (karta S8 — brak „skoku świata")', () => {
+  const bbox0: BoundingBox = { minX: 0, minY: 0, maxX: 1000, maxY: 500 };
+  const bbox1: BoundingBox = { minX: 0, minY: 0, maxX: 2000, maxY: 500 };
+  const bbox2: BoundingBox = { minX: 0, minY: 0, maxX: 4000, maxY: 500 };
+  const viewportSize = { width: 800, height: 600 };
+
+  it('zoom przekraczający próg L0→L1 zachowuje punkt świata pod ŚRODKIEM viewportu', () => {
+    const state: CameraState = {
+      transform: { scale: 0.3, translateX: 40, translateY: 20 },
+      lod: 0,
+      viewportSize,
+      lodBboxes: { 0: bbox0, 1: bbox1, 2: bbox2 },
+    };
+    const center = { x: viewportSize.width / 2, y: viewportSize.height / 2 };
+    const worldBefore = screenToWorld(center, state.transform);
+    // refScale = scale · w0/w2 = scale · 0,25; próg wejścia L0→L1 = 0,46 ⇒
+    // scale ≥ 1,84. Zoom Z KURSOREM w środku (przejście LOD też recentruje na
+    // środek — oba kroki zachowują punkt pod środkiem).
+    const factor = 1.9 / 0.3;
+    const next = cameraReducer(state, { type: 'zoom', cursor: center, factor });
+    expect(next.lod).toBe(1);
+    const worldAfter = screenToWorld(center, next.transform);
+    expect(worldAfter.x).toBeCloseTo(worldBefore.x, 6);
+    expect(worldAfter.y).toBeCloseTo(worldBefore.y, 6);
+  });
+});
+
+describe('determinizm sekwencji kamery (karta S8 — 2× ta sama sekwencja ⇒ identyczny stan)', () => {
+  const sameBbox: BoundingBox = { minX: 0, minY: 0, maxX: 1000, maxY: 1000 };
+  const initial: CameraState = {
+    transform: { scale: 1, translateX: 0, translateY: 0 },
+    lod: 1,
+    viewportSize: { width: 800, height: 600 },
+    lodBboxes: { 0: sameBbox, 1: sameBbox, 2: sameBbox },
+  };
+  const sequence: readonly CameraAction[] = [
+    { type: 'zoom', cursor: { x: 400, y: 300 }, factor: 1.5 },
+    { type: 'pan', delta: { x: 12, y: -8 } },
+    { type: 'zoom', cursor: { x: 100, y: 200 }, factor: 0.4 },
+    { type: 'zoom', cursor: { x: 400, y: 300 }, factor: 3.0 },
+    { type: 'pan', delta: { x: -30, y: 15 } },
+    { type: 'zoom', cursor: { x: 600, y: 500 }, factor: 0.2 },
+  ];
+
+  it('dwa niezależne przebiegi TEJ SAMEJ sekwencji dają identyczny stan końcowy', () => {
+    const runA = sequence.reduce(cameraReducer, initial);
+    const runB = sequence.reduce(cameraReducer, initial);
+    expect(runA).toEqual(runB);
+  });
+
+  it('ślad LOD sekwencji jest deterministyczny (identyczny per krok)', () => {
+    const traceOf = () => {
+      const trace: SceneLod[] = [];
+      sequence.reduce((st, a) => {
+        const nx = cameraReducer(st, a);
+        trace.push(nx.lod);
+        return nx;
+      }, initial);
+      return trace;
+    };
+    expect(traceOf()).toEqual(traceOf());
   });
 });
