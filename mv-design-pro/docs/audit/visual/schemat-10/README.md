@@ -1,5 +1,33 @@
 # SCHEMAT-10 — dowód wizualny (V12K-135)
 
+## S5 (FINAŁ) — zoom bez zmiany tożsamości stacji
+
+`s5-zoom-1..3.png` (ZBLIŻANIE L0→L1→L2) i `s5-zoom-4..6.png` (ODDALANIE
+L2→L1→L0) — sekwencja kadrów PRODUKCYJNEJ kanwy `SldCanvasV3` na TĘ SAMĄ
+stację magistrali (`S01`, TR + DER za TR = PV 500 kW na szynie nN; realny
+przypadek z sieci referencyjnej `sldSubstrate52s`). Okno kadru (viewBox świata)
+zacieśnia się/rozszerza wokół stacji, LOD rośnie/maleje, a TOŻSAMOŚĆ i KOTWICA
+stacji są STAŁE — dowód liczbowy V12K-135 „zoom = skala szczegółu, nie
+przemeblowanie". Skrypt PRZERYWA render, jeśli którakolwiek asercja treści nie
+przejdzie, więc każdy zrzut z definicji spełnia:
+(1) kotwica stacji (`station-name #name-row-0`) IDENTYCZNA na L0/L1/L2
+(rect `552,648,864` — pokazane na banerze każdego kadru);
+(2) `ownerRef` stacji-celu obecny w scenie kadru; (3) okno kadru ZAWIERA
+kotwicę (liczbowo); (4) `data-scene-lod` w SVG == deklarowany LOD.
+Środek/rozmiar okna WYPROWADZONE z bboxa treści stacji-celu (zero magicznych
+współrzędnych). Determinizm: 2 biegi = bajt-identyczne SVG. Regeneracja:
+
+```
+cd mv-design-pro/frontend
+CANON_OUT=<abs-dir> npx vite-node scripts/render_schemat10_s5.tsx   # 6 SVG (viewBox świata, kadr per LOD)
+CANON_OUT=<abs-dir> node scripts/rasterize.mjs                       # SVG→PNG (playwright chromium)
+```
+
+Parytet funkcji SLD v3 (overlaye, strzałki jedno/wielokawałkowe, pulse punktu
+zwarcia, badge OLTC, menu kontekstowe + DER, selekcja/centrowanie/deep-linki,
+kreatory, edycja CAD, eksport, reguła 18) — dowody testowe w
+`docs/sld/S5_MACIERZ_PARYTETU_2026-07.md`.
+
 ## S2 — silnik etykiet z wyrocznią zero-kolizji
 
 `s2-l0.png` / `s2-l1.png` / `s2-l2.png` — REALNA sieć referencyjna
