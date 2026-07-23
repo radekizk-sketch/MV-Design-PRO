@@ -413,3 +413,52 @@ domknięcia. **Pomiar bazy:** DER na L0 = 0 symboli (L1 = 20: derPv/derBess/derW
 wprowadza rodzinę glifów; audyt `lod0ReadabilityGaps` rozszerzy się wtedy o typ/
 funkcję/stan/DER (dodanie elementów do listy, nie nowy mechanizm). crossingCount=0
 i zbiór §3 „nigdy nie znika" utrzymane jako warunek odbioru.
+
+### 10.5 Potwierdzenia P0 pkt 4-7 (recenzja §9)
+- **Zero kolizji · JEDNA KOTWICA · crossing=0**: `accept:sld-v3` ALL PASS
+  (labelCollision/subtreeIntersection/nonOrthogonal/ambiguous/crossing = 0/0/0
+  na L0/L1/L2), `lod_path_probe` + „JEDNA KOTWICA" zielone; kotwica NO identyczna
+  L0/L1/L2 (test). Na fixturze H (106 stacji) też crossing=0/kolizje=0 na 3 LOD.
+- **Tabela 18 metryk przed/po** (fixtura referencyjna, L0/L1/L2):
+
+  | Metryka | Przed (po P3) | Po S7-P4 |
+  |---|---|---|
+  | verticalLength | 28072/45016/45016 | 28072/45016/45016 |
+  | horizontalLength | 47048/67224/70816 | **47248/67424/71016** (+200, światło pasa) |
+  | totalOrthogonalLength | 75120/112240/115832 | 75320/112440/116032 |
+  | bendCount | 39/167/167 | 39/167/167 |
+  | contentBBox w×h | 14208×4379/4457/4457 | **14296**×4379/4457/4457 (+88 szer.) |
+  | widthUtilization | 0.0957/0.4285/0.4426 | ~identycznie |
+  | heightUtilization | 0.1204/0.2921/0.2921 | identycznie |
+  | bboxUtilization | 0.000370/0.004328/0.004328 | 0.000368/0.004301/0.004301 |
+  | inkDensity | 0.009854/0.018111/0.018564 | **0.009818/0.018024/0.018475** |
+  | minimumClearance | 8/8/8 | 8/8/8 |
+  | labelCollisionCount | 0/0/0 | 0/0/0 |
+  | subtreeIntersectionCount | 0/0/0 | 0/0/0 |
+  | nonOrthogonalSegmentCount | 0/0/0 | 0/0/0 |
+  | ambiguousConnectionCount | 0/0/0 | 0/0/0 |
+  | crossingCount | 0/0/0 | 0/0/0 |
+  | symbolCount | 81/592/592 | 81/592/592 |
+  | stationCount | 53/53/53 | 53/53/53 |
+  | kropki T (junction) | 13/24/24 | 13/24/24 |
+
+  Zmiana WYŁĄCZNIE pozioma (koszt świateł pasa górnego) — piony/bbox-h/crossings/
+  kolizje/symbole bez zmian. Tabela przyczyn pionów: §10.2.
+- **Dowód wielotopologiczny (WYTYCZNE §12)**: 5 klas (A prosta `openTerminal`,
+  A ciąg `openTrunkChain`, B `openBranch`, C `gpzFeeder`, E `sldSubstrate52s`
+  53 st.) × 3 LOD — wszystkie wyrocznie P0 (top-band clearance, audyt pionów,
+  czytelność L0) zielone. **Fixtura H syntetyczna** (`buildScene.schemat10s7p4.
+  test.ts` `synthLargeTrunk`, deterministyczne łańcuchowanie kopii podgrafu
+  referencyjnego na jednej magistrali): **106 stacji**, 3 LOD, **~0,5 s** (budżet
+  WYTYCZNE §10 < 15 s); crossing=0/kolizje=0/przecięcia=0/nieortog=0, determinizm
+  2× bajt-identyczny, JEDNA KOTWICA (kolejność magistrali L0/L1/L2 identyczna),
+  źródła spięte (`allSourcesConnected`), grid/symWire/busLbl/appId/switch zielone.
+- **Zrzuty** `docs/audit/visual/schemat-10/s7p4-l0..l2.png` COMMITOWANE (render
+  produkcyjny `SldCanvasV3` per LOD; L0 pokazuje tor mocy z wagą + GPZ/źródło +
+  glify stacji + znaczniki).
+- **Goldeny per plik**: `sld_v3_acceptance.mjs` — `HORIZONTAL_LENGTH_BASELINE`
+  (przyczyna: światło pasa górnego 3×GRID→4×GRID, +200/LOD, geometria pozioma),
+  `SHEET_FILL_FLOOR` (przyczyna: zmierzony koszt świateł, −0,00005 jitter);
+  `buildScene.schemat10s7p3.test.ts` — stała `TOP_LEVEL_FIELD_CLEARANCE` 3→4×GRID
+  (intencja „stała rozdzielona istnieje" zachowana). Topologia/kolejność aparatów/
+  ciągłość toru/liczba stacji NIEZMIENIONE (wyłącznie geometria pozioma).

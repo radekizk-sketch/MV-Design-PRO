@@ -29,6 +29,9 @@ import {
   totalVerticalSegmentLength,
   lod0ReadabilityGaps,
   allLod0ElementsReadable,
+  layoutMetricsReport,
+  noSceneSymbolOverlaps,
+  allSourcesConnected,
   type SceneLod,
   type SceneV3,
 } from '../buildScene';
@@ -255,5 +258,118 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku cało�
     const sabotaged: SceneV3 = { ...scene, labels: scene.labels.filter((l) => l.ownerKind !== 'station-name') };
     const gaps = lod0ReadabilityGaps(sabotaged);
     expect(gaps.some((g) => g.element === 'tożsamość stacji')).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SCHEMAT-10 S7-P4 §9 potwierdzenie pkt 7 — fixtura H (WYTYCZNE §3 „wielkoskalowa
+// 100/250/500"), SYNTETYCZNA, z czasem wykonania. Silnik OGÓLNY: sieć powstaje
+// przez DETERMINISTYCZNE łańcuchowanie kopii podgrafu sieci referencyjnej (bez
+// GPZ kopii) na jednej magistrali — każda kopia z unikalnym sufiksem hasha (refy
+// strukturalnie poprawne), spięta busem ogona magistrali poprzednika. To NIE jest
+// strojenie fixtury (WYTYCZNE §1): to replikacja REALNEJ topologii dla dowodu
+// SKALOWALNOŚCI (budżet czasu, determinizm, zero-defekt przy ~100+ stacjach).
+// ---------------------------------------------------------------------------
+
+function synthLargeTrunk(model: Enm, copies: number): Enm {
+  const clone = (o: unknown): any => JSON.parse(JSON.stringify(o));
+  const trunkOf = (e: any): any => e.line_runs.find((r: any) => r.run_kind === 'main_trunk');
+  const remap = (o: any, suf: string): any => {
+    if (typeof o === 'string') return o.replace(/([0-9a-f]{16,})/g, `$1${suf}`);
+    if (Array.isArray(o)) return o.map((x) => remap(x, suf));
+    if (o && typeof o === 'object') { const r: any = {}; for (const k of Object.keys(o)) r[k] = remap(o[k], suf); return r; }
+    return o;
+  };
+  const isGpz = (r: unknown): boolean => typeof r === 'string' && r.includes('gpz/');
+  const isGpzTr = (t: any): boolean => (Array.isArray(t.tags) && t.tags.includes('gpz_wn_sn_transformer')) || (t.meta && t.meta.visual_role === 'GPZ_WN_SN_TRANSFORMER');
+  const tailBus = (e: any): string | null => { const t = trunkOf(e); const l = t.segments[t.segments.length - 1].segment_ref; return e.branches.find((b: any) => b.ref_id === l)?.to_bus_ref ?? null; };
+  const out = clone(model);
+  const ot = trunkOf(out);
+  let prev = tailBus(out);
+  let order = ot.segments.length;
+  for (let c = 1; c < copies; c++) {
+    const suf = `${String(c).padStart(2, '0')}ab`;
+    const cp = remap(clone(model), suf);
+    const ct = trunkOf(cp);
+    const fb = cp.branches.find((b: any) => b.ref_id === ct.segments[0].segment_ref);
+    if (fb) fb.from_bus_ref = prev;
+    out.substations.push(...cp.substations.filter((s: any) => !isGpz(s.ref_id)));
+    out.buses.push(...cp.buses.filter((b: any) => !isGpz(b.ref_id)));
+    out.branches.push(...cp.branches);
+    out.transformers.push(...cp.transformers.filter((t: any) => !isGpzTr(t)));
+    out.sources.push(...cp.sources.filter((s: any) => !isGpz(s.ref_id)));
+    out.loads.push(...cp.loads);
+    out.generators.push(...cp.generators);
+    out.bays.push(...(cp.bays ?? []).filter((b: any) => !isGpz(b.ref_id)));
+    out.junctions.push(...(cp.junctions ?? []));
+    out.branch_points.push(...(cp.branch_points ?? []));
+    out.measurements.push(...(cp.measurements ?? []));
+    out.protection_assignments.push(...(cp.protection_assignments ?? []));
+    out.connection_nodes.push(...(cp.connection_nodes ?? []));
+    out.corridors.push(...(cp.corridors ?? []));
+    for (const r of cp.line_runs) if (r.run_kind === 'branch') out.line_runs.push(r);
+    for (const seg of ct.segments) { order += 1; ot.segments.push({ segment_ref: seg.segment_ref, order }); }
+    prev = tailBus(cp);
+  }
+  return out as Enm;
+}
+
+function sceneSig(scene: SceneV3): string {
+  const s = scene.symbols.map((y) => `${y.symbolId}@${y.x},${y.y}`).sort().join('|');
+  const g = scene.segments.map((seg) => `${seg.meta?.ownerRef ?? '?'}#${seg.points.map((p) => `${p.x},${p.y}`).join(';')}`).sort().join('|');
+  const l = scene.labels.map((x) => `${x.ownerRef}:${x.text}@${x.rect.x},${x.rect.y}`).sort().join('|');
+  return `${s}::${g}::${l}::X${scene.crossings.length}`;
+}
+
+describe('SCHEMAT-10 S7 etap 4 §9 pkt 7 — fixtura H (~100 stacji, syntetyczna, skalowalność)', () => {
+  const bigEnm = FIXTURES[FIXTURES.length - 1].enm;
+  const hEnm = synthLargeTrunk(bigEnm, 2); // ~106 stacji (2 × 53)
+
+  it('sieć H ma ~100 stacji na JEDNEJ magistrali (skala WYTYCZNE §3 H)', () => {
+    const scene = buildSceneV3(hEnm, 0);
+    expect(scene.meta.stationCount).toBeGreaterThanOrEqual(100);
+    expect(scene.meta.mainTrunkStationIds.length).toBeGreaterThan(FIXTURES[FIXTURES.length - 1].enm ? 12 : 0);
+  });
+
+  for (const lod of LODS) {
+    it(`H LOD${lod}: ZERO-DEFEKT (crossing/kolizje/przecięcia/nieortog=0) + wszystkie wyrocznie P0 zielone`, () => {
+      const scene = buildSceneV3(hEnm, lod);
+      const m = layoutMetricsReport(scene);
+      expect(m.crossingCount).toBe(0);
+      expect(m.labelCollisionCount).toBe(0);
+      expect(m.subtreeIntersectionCount).toBe(0);
+      expect(m.nonOrthogonalSegmentCount).toBe(0);
+      expect(m.ambiguousConnectionCount).toBe(0);
+      expect(noSceneSymbolOverlaps(scene)).toBe(true);
+      expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
+      expect(allSourcesConnected(scene)).toBe(true);
+      expect(allTopBandFieldsClearance(scene)).toBe(true); // P0 pkt 1
+      expect(allVerticalsAttributed(scene)).toBe(true); // P0 pkt 2
+      if (lod === 0) expect(allLod0ElementsReadable(scene)).toBe(true); // P0 pkt 3
+    });
+  }
+
+  it('H: determinizm 2× — scena bajt-identyczna na każdym LOD', () => {
+    for (const lod of LODS) {
+      expect(sceneSig(buildSceneV3(hEnm, lod))).toBe(sceneSig(buildSceneV3(hEnm, lod)));
+    }
+  });
+
+  it('H: JEDNA KOTWICA — kolejność i liczba stacji magistrali identyczne L0/L1/L2', () => {
+    const t0 = buildSceneV3(hEnm, 0).meta.mainTrunkStationIds;
+    const t1 = buildSceneV3(hEnm, 1).meta.mainTrunkStationIds;
+    const t2 = buildSceneV3(hEnm, 2).meta.mainTrunkStationIds;
+    expect(t1).toEqual(t0);
+    expect(t2).toEqual(t0);
+  });
+
+  it('H: czas budowy w budżecie (WYTYCZNE §10 — duża sieć < 15 s / 3 LOD) + raport', () => {
+    const start = Date.now();
+    let stations = 0;
+    for (const lod of LODS) stations = buildSceneV3(hEnm, lod).meta.stationCount;
+    const elapsed = Date.now() - start;
+    // Raport wydajności (widoczny w --reporter verbose / CI log).
+    console.log(`[S7 etap 4 §9 pkt 7] fixtura H: ${stations} stacji, 3 LOD, ${elapsed} ms`);
+    expect(elapsed).toBeLessThan(15000);
   });
 });
