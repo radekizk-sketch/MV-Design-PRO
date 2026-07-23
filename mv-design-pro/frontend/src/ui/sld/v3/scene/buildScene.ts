@@ -1915,9 +1915,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   };
 
   // -- 1. Magistrala (main trunk) — measure→bands→columns lokalnie (0,0). ---
-  // SCHEMAT-10 S7-P3 (V12K-137): pas górny używa ODDZIELONEGO światła §5
+  // SCHEMAT-10 S7-P3/P4 (V12K-137): pas górny używa ODDZIELONEGO światła §5
   // `TOP_LEVEL_FIELD_CLEARANCE` (niezależnie strojalnego od `COLUMN_GAP`
-  // lateralów). Wartość bazowa = `COLUMN_GAP` (3×GRID), więc geometria bez zmian.
+  // lateralów). S7-P4 (recenzja §9 P0): podniesione 3×GRID→4×GRID (+33,3%),
+  // egzekwowane bbox-do-bbox przez `topBandFieldClearances` (niżej).
   let mainLayout: RowLayout | null = mainTrunkRun
     ? buildRowLayout(mainTrunkRun.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, mainCableRun, lod, stopNotes, derSourcesByStationId, false, TOP_LEVEL_FIELD_CLEARANCE)
     : null;
@@ -4343,6 +4344,87 @@ export function sheetFillRatio(scene: SceneV3): number {
   }
 
   return marked.size / totalCells;
+}
+
+// ---------------------------------------------------------------------------
+// SCHEMAT-10 S7-P4 (V12K-137, recenzja właściciela §9 P0 pkt 1) — światło pasa
+// górnego mierzone BBOX-DO-BBOX (nie kotwic). Recenzja: „odstęp = prawy bbox
+// CAŁEGO pola N (z opisami+aparaturą) → lewy bbox pola N+1 ≥
+// TOP_LEVEL_FIELD_CLEARANCE". Wyrocznia liczy REALNE obrysy pól pasa górnego
+// (magistrali) z symboli I etykiet stacji (opisy, podpisy pól, identyfikatory
+// aparatów) — nie z anchorów/kolumn — i zwraca światło między sąsiednimi polami.
+// ---------------------------------------------------------------------------
+
+export interface TopBandFieldClearance {
+  readonly leftStationId: string;
+  readonly rightStationId: string;
+  /** Światło = lewy bbox N+1 − prawy bbox N (px świata), MIĘDZY REALNYMI
+   *  OBRYSAMI (symbole+etykiety), nie kotwicami. Może być ujemne (nachodzenie). */
+  readonly gap: number;
+}
+
+/** Bbox POLA pasa górnego = unia obrysów elementów FOOTPRINTU stacji magistrali
+ *  (baza `stn/<id>` bez sufiksu `/station`): WSZYSTKIE symbole pola (aparatura,
+ *  transformator, głowice) + etykiety NALEŻĄCE DO POLA (blok nazwy, podpis
+ *  kierunku, identyfikator Q/T, funkcja pola, napięcie szyny, badge NO, odbiór
+ *  nN) — tj. „opisy+aparatura" z §9. WYKLUCZONE (reguła OGÓLNA, nie hardcode):
+ *  etykiety KABLI-KORYTARZA (`segment-span` przęsło poziome między stacjami,
+ *  `segment-lateral` pion zejścia) — leżą w KORYTARZU routingu MIĘDZY polami,
+ *  nie w obrysie pola; ich rozłączność pilnuje `labelCollisions`/`crossing_probe`,
+ *  a wliczenie ich do obrysu pola zafałszowałoby światło (etykieta przęsła
+ *  celowo siedzi w szczelinie, jak kanał zejścia). Przynależność WYŁĄCZNIE z
+ *  `ownerRef`/`ownerKind`, nie z pozycji/id (WYTYCZNE §1/§2). `null`, gdy pole
+ *  nie ma żadnego narysowanego elementu footprintu. */
+function topBandFieldRect(scene: SceneV3, stationBase: string): V3Rect | null {
+  const rects: V3Rect[] = [];
+  const owns = (ref: string | undefined): boolean =>
+    ref !== undefined && (ref === stationBase || ref.startsWith(`${stationBase}/`) || ref.startsWith(`${stationBase}#`));
+  for (const s of scene.symbols) if (owns(s.meta?.ownerRef)) rects.push(symbolRect(s));
+  for (const l of scene.labels) {
+    if (!owns(l.ownerRef)) continue;
+    if (l.ownerKind === 'segment-span' || l.ownerKind === 'segment-lateral') continue;
+    rects.push(l.rect);
+  }
+  if (rects.length === 0) return null;
+  return unionRects(rects);
+}
+
+/** §9 P0 pkt 1: światła MIĘDZY REALNYMI OBRYSAMI kolejnych pól pasa górnego,
+ *  w kolejności rosnącego X (deterministyczne). Pola bez narysowanych elementów
+ *  pominięte (np. stacja poza zakresem kompozycji). */
+export function topBandFieldClearances(scene: SceneV3): readonly TopBandFieldClearance[] {
+  const fields = scene.meta.mainTrunkStationIds
+    .map((id) => ({ id, rect: topBandFieldRect(scene, id.replace(/\/station$/, '')) }))
+    .filter((f): f is { id: string; rect: V3Rect } => f.rect !== null)
+    .sort((a, b) => a.rect.x - b.rect.x || (a.id < b.id ? -1 : 1));
+  const out: TopBandFieldClearance[] = [];
+  for (let i = 0; i + 1 < fields.length; i++) {
+    const left = fields[i];
+    const right = fields[i + 1];
+    out.push({
+      leftStationId: left.id,
+      rightStationId: right.id,
+      gap: right.rect.x - (left.rect.x + left.rect.width),
+    });
+  }
+  return out;
+}
+
+/** Pola pasa górnego, których światło bbox-do-bbox jest MNIEJSZE niż kontrakt
+ *  `minClearance` (domyślnie `TOP_LEVEL_FIELD_CLEARANCE`). Pusta lista = OK. */
+export function topBandClearanceViolations(
+  scene: SceneV3,
+  minClearance: number = TOP_LEVEL_FIELD_CLEARANCE,
+): readonly TopBandFieldClearance[] {
+  return topBandFieldClearances(scene).filter((c) => c.gap < minClearance);
+}
+
+/** Bramka §9 P0 pkt 1: KAŻDE światło pasa górnego (bbox-do-bbox) ≥ kontrakt. */
+export function allTopBandFieldsClearance(
+  scene: SceneV3,
+  minClearance: number = TOP_LEVEL_FIELD_CLEARANCE,
+): boolean {
+  return topBandClearanceViolations(scene, minClearance).length === 0;
 }
 
 // ---------------------------------------------------------------------------

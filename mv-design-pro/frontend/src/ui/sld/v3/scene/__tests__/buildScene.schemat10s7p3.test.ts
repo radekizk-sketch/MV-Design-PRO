@@ -271,7 +271,12 @@ describe('SCHEMAT-10 S7 etap 3 — rozdzielone światła §5 (wartości + realne
     expect(MIN_FIELD_CLEARANCE).toBe(2 * GRID);
     expect(MIN_SUBTREE_CLEARANCE).toBe(4 * GRID);
     expect(MIN_ROUTE_CLEARANCE).toBe(GRID);
-    expect(TOP_LEVEL_FIELD_CLEARANCE).toBe(3 * GRID);
+    // SCHEMAT-10 S7-P4 (recenzja §9 P0 pkt 1): PODNIESIONE 3×GRID→4×GRID
+    // (+33,3%, widełki §5 „+20–35%") — światło pasa górnego mierzone
+    // bbox-do-bbox (patrz `buildScene.schemat10s7p4.test.ts`). Rola §5
+    // niezmieniona (nadal ODDZIELONA od `COLUMN_GAP` lateralów), zmieniona
+    // wyłącznie wartość — intencja testu (stała istnieje, rozdzielona) zachowana.
+    expect(TOP_LEVEL_FIELD_CLEARANCE).toBe(4 * GRID);
   });
 
   it('TOP_LEVEL_FIELD_CLEARANCE realnie steruje rozstawem pasa górnego (NIE phantom)', () => {

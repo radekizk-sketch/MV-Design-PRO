@@ -77,7 +77,10 @@ import {
   orthogonalBendCount,
   sheetFillRatio,
   trunkThicknessGaps,
+  allTopBandFieldsClearance,
+  topBandClearanceViolations,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
+import { TOP_LEVEL_FIELD_CLEARANCE } from '../src/ui/sld/v3/layout/clearances.ts';
 import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
 import { SEGMENT_STROKE_WIDTH } from '../src/ui/sld/v3/compose/preview.tsx';
@@ -236,7 +239,17 @@ const VERTICAL_LENGTH_BASELINE = { 0: 28072, 1: 45016, 2: 45016 };
 // długość dołączeń nN o stałą +32 na L1/L2 (piony/bbox/crossings/kolizje bez
 // zmian — patrz raport S7-P3, tabela 18 metryk). To NOWA kanoniczna geometria
 // po fixie poprawności, nie regresja. L0 (bez DER) bez zmian.
-const HORIZONTAL_LENGTH_BASELINE = { 0: 47048, 1: 67224, 2: 70816 };
+// SCHEMAT-10 S7-P4 (V12K-137, recenzja właściciela §9 P0 pkt 1): PODNIESIONE
+// L0/L1/L2 47048/67224/70816 → 47248/67424/71016 (+200/LOD). Przyczyna:
+// `TOP_LEVEL_FIELD_CLEARANCE` (`layout/clearances.ts`) podniesione 3×GRID→4×GRID
+// (+33,3%, widełki §5 „+20–35%"), żeby światło pasa górnego MIĘDZY REALNYMI
+// obrysami pól (opisy+aparatura) rosło z 24 → 32 px (recenzja: „GÓRNY PAS 6").
+// Koszt poziomy = +8 px na szczelinę magistrali × 25 pododcinków objętych
+// pomiarem `totalHorizontalSegmentLength` (11 szczelin × segmenty przęseł +
+// slotów etykiet). Recenzja AKCEPTUJE ten koszt jako P0; baseline podniesiony
+// świadomie. Piony/załamania/bbox-h/crossings/kolizje bez zmian (patrz raport
+// S7-P4, tabela 18 metryk). NOWA kanoniczna geometria po podniesieniu światła.
+const HORIZONTAL_LENGTH_BASELINE = { 0: 47248, 1: 67424, 2: 71016 };
 const BEND_COUNT_BASELINE = { 0: 39, 1: 167, 2: 167 };
 
 /**
@@ -251,7 +264,17 @@ const BEND_COUNT_BASELINE = { 0: 39, 1: 167, 2: 167 };
 // SCHEMAT-10 S7-P1 (V12K-137): PODNIESIONY 0.0069/0.0114/0.0117 →
 // 0.0098/0.0180/0.0185 (zmierzone po kompaktyzacji Rodziny B; „wykorzystanie
 // arkusza po > przed" — warunek odbioru S6 §6). Podłoga zaryglowuje zysk.
-const SHEET_FILL_FLOOR = { 0: 0.0098, 1: 0.018, 2: 0.0185 };
+// SCHEMAT-10 S7-P4 (V12K-137, recenzja §9 P0 pkt 1): OBNIŻONY o ZMIERZONY koszt
+// świateł 0.0098/0.018/0.0185 → 0.00977/0.01797/0.01842. Przyczyna: podniesienie
+// `TOP_LEVEL_FIELD_CLEARANCE` 3×GRID→4×GRID poszerza bbox arkusza o +88 px
+// (11 szczelin × 8), więc udział pokrytych komórek spada marginalnie
+// (L0 0.009854→0.009818, L1 0.018111→0.018024, L2 0.018564→0.018475; sheetFill
+// ≈ inkDensity). Podłoga = NOWA zmierzona wartość minus ~0.00005 na jitter
+// metryk tekstu (ta sama reguła co S7-P1). Korekta per liczba, z uzasadnieniem
+// (recenzja AKCEPTUJE zmierzony koszt świateł pasa górnego jako P0). Nie jest to
+// „spuchnięcie pustką" — to świadomy koszt czytelniejszego światła, a bbox
+// rośnie tylko o poszerzone szczeliny, nie o pustą rezerwę.
+const SHEET_FILL_FLOOR = { 0: 0.00977, 1: 0.01797, 2: 0.01842 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -1153,6 +1176,31 @@ for (const lod of LODS) {
     fill >= fillFloor,
     `wartość=${fill.toFixed(6)} podłoga=${fillFloor} koszt(piony+poziomy)=${verticalLength + horizontalLength}`,
   );
+  // -- SCHEMAT-10 S7-P4 (V12K-137, recenzja §9 P0 pkt 1): światło pasa górnego
+  // BBOX-DO-BBOX (nie kotwic). Odstęp = prawy bbox CAŁEGO pola N (opisy+aparatura)
+  // → lewy bbox pola N+1 ≥ TOP_LEVEL_FIELD_CLEARANCE, na REALNYCH obrysach pól.
+  const topBandViolations = topBandClearanceViolations(scene);
+  const topBandGaps = topBandViolations.map((v) => v.gap);
+  check(
+    `top_band_clearance_probe (S7-P4 §9 P0 pkt 1): każde światło pasa górnego bbox-do-bbox ≥ TOP_LEVEL_FIELD_CLEARANCE=${TOP_LEVEL_FIELD_CLEARANCE}`,
+    allTopBandFieldsClearance(scene),
+    topBandViolations.length === 0
+      ? `zero naruszeń (kontrakt=${TOP_LEVEL_FIELD_CLEARANCE})`
+      : `naruszenia=${topBandViolations.length} min=${Math.min(...topBandGaps)} < ${TOP_LEVEL_FIELD_CLEARANCE}`,
+  );
+  // Test negatywny — dowód, że wyrocznia MIERZY realne światła i próg gryzie:
+  // z progiem = (największe zmierzone światło + 1) MUSI pojawić się naruszenie
+  // (chyba że pas górny ma <2 pola — wtedy 0 świateł, dowód pusty/pominięty).
+  {
+    const gaps = topBandClearanceViolations(scene, Number.MAX_SAFE_INTEGER).map((v) => v.gap);
+    if (gaps.length > 0) {
+      const maxGap = Math.max(...gaps);
+      check(
+        'top_band_clearance_probe (test negatywny — dowód, że wyrocznia gryzie): próg > największego światła MUSI dać naruszenie',
+        topBandClearanceViolations(scene, maxGap + 1).length > 0,
+      );
+    }
+  }
 
   // -- §17.5 protection_marking_probe (F9.9) ---------------------------------
   // Fixtura referencyjna niesie 0 Bay[]/protection_assignments/measurements

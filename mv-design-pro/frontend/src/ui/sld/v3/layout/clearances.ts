@@ -69,6 +69,20 @@ export const MIN_ROUTE_CLEARANCE = GRID;
 
 /** Światło POZIOME między kolumnami stacji PASA GÓRNEGO (magistrali) — ODDZIELONE
  *  od `COLUMN_GAP` lateralów, by dało się je podnieść niezależnie (§5, widełki
- *  +20–35%). Wartość bazowa `3×GRID`; patrz nagłówek pliku i GAP S7.5.
- *  Rola §5: `TOP_LEVEL_FIELD_CLEARANCE`. */
-export const TOP_LEVEL_FIELD_CLEARANCE = 3 * GRID;
+ *  +20–35%). Rola §5: `TOP_LEVEL_FIELD_CLEARANCE`.
+ *
+ *  SCHEMAT-10 S7-P4 (V12K-137, recenzja właściciela §9 P0 pkt 1): PODNIESIONE
+ *  `3×GRID` (24 px) → `4×GRID` (32 px), tj. +33,3% — NAJMNIEJSZA wartość
+ *  wyrównana do siatki w widełkach §5 „+20–35%" (28,8..32,4 px). Wyprowadzenie
+ *  OGÓLNE (nie strojenie fixtury): §5 wymaga „NAJMNIEJSZEJ wartości z +20–35%,
+ *  która usuwa ścisk i zapewnia światło"; jedyny mnożnik `k×GRID` w tym paśmie
+ *  to `k=4` (siatka `GRID=8` — wartości pośrednie łamałyby `grid_probe`, bo
+ *  originy stacji muszą leżeć na `GRID`). Recenzja AKCEPTUJE zmierzony koszt
+ *  poziomy: pas górny mierzony bbox-do-bbox (wyrocznia `topBandFieldClearances`,
+ *  `scene/buildScene.ts`) rósł z 24 → 32 px między REALNYMI obrysami pól
+ *  (opisy+aparatura), co daje czytelniejszy odstęp (recenzja: „GÓRNY PAS 6").
+ *  Koszt: `horizontalLength` +8 px × (liczba szczelin magistrali) per LOD —
+ *  baseline `HORIZONTAL_LENGTH_BASELINE` (`scripts/sld_v3_acceptance.mjs`)
+ *  podniesiony świadomie, z uzasadnieniem per liczba. Podłoga `sheet_fill_probe`
+ *  skorygowana o zmierzony koszt świateł (nie poza). */
+export const TOP_LEVEL_FIELD_CLEARANCE = 4 * GRID;
