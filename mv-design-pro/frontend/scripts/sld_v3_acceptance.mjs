@@ -84,6 +84,8 @@ import {
   verticalCauseBreakdown,
   allLod0ElementsReadable,
   lod0ReadabilityGaps,
+  localDensityMetrics,
+  LOCAL_DENSITY_WINDOW_CELLS,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { TOP_LEVEL_FIELD_CLEARANCE } from '../src/ui/sld/v3/layout/clearances.ts';
 import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
@@ -1253,6 +1255,25 @@ for (const lod of LODS) {
     `sheet_fill_probe (S6 pkt 10): wykorzystanie arkusza nie-spadające poniżej podłogi=${fillFloor}`,
     fill >= fillFloor,
     `wartość=${fill.toFixed(6)} podłoga=${fillFloor} koszt(piony+poziomy)=${verticalLength + horizontalLength}`,
+  );
+  // -- RECENZJA P1.1 (gęstość lokalna) — ROZKŁAD zajętości arkusza z REALNEJ
+  // geometrii sceny (okna `LOCAL_DENSITY_WINDOW_CELLS`×`GRID`): średnia/maks/
+  // odchylenie/pustka. Sonda RAPORTUJĄCA (PASS z wartością) — twardy próg
+  // dopiero po uczciwym pomiarze bazy (recenzja P1). Sanity: okna niepuste,
+  // wartości skończone w [0,1], maks ≥ średnia. Deterministyczne (2× ⇒ identyczne).
+  const density = localDensityMetrics(scene);
+  const densityAgain = localDensityMetrics(buildSceneV3(enm, lod));
+  const densitySane =
+    density.windowCount > 0 &&
+    [density.meanDensity, density.maxLocalDensity, density.densityStdDev, density.voidRatio].every(
+      (v) => Number.isFinite(v) && v >= 0 && v <= 1,
+    ) &&
+    density.maxLocalDensity >= density.meanDensity &&
+    JSON.stringify(density) === JSON.stringify(densityAgain);
+  check(
+    `local_density_probe (RECENZJA EKSPERCKA — gęstość lokalna, okno=${LOCAL_DENSITY_WINDOW_CELLS}×GRID): rozkład zajętości arkusza zmierzony (raport, bez twardego progu)`,
+    densitySane,
+    `okna=${density.windowCount} średnia=${density.meanDensity.toFixed(6)} maks=${density.maxLocalDensity.toFixed(6)} odch=${density.densityStdDev.toFixed(6)} pustka=${density.voidRatio.toFixed(6)}`,
   );
   // -- SCHEMAT-10 S7-P4 (V12K-137, recenzja §9 P0 pkt 1): światło pasa górnego
   // BBOX-DO-BBOX (nie kotwic). Odstęp = prawy bbox CAŁEGO pola N (opisy+aparatura)

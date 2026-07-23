@@ -4531,14 +4531,28 @@ export function layoutCostMetrics(scene: SceneV3): LayoutCostMetrics {
  * ułamek = dużo pustego pola (grzebień z długimi pionami). Zwraca 0 dla pustej
  * sceny (brak treści LUB zerowy bbox).
  */
-export function sheetFillRatio(scene: SceneV3): number {
+/**
+ * Rasteryzacja sceny na siatkę `GRID`: zbiór KOMÓREK pokrytych treścią (symbole
+ * + trasy) w prostokącie `scene.bbox`, wraz z wymiarami rastra. WSPÓLNE ŹRÓDŁO
+ * dla `sheetFillRatio` (S6 pkt 10 — jeden ułamek globalny) i `localDensity
+ * Metrics` (recenzja ekspercka P1 — ROZKŁAD zajętości arkusza): jedna
+ * deterministyczna rasteryzacja, dwie miary (zero duplikacji logiki). Cała
+ * geometria sceny leży na `GRID` z konstrukcji (`allSceneGeometryOnGrid`), więc
+ * raster jest deterministyczny i bez losowości. Pusty zbiór, gdy bbox zerowy.
+ */
+interface MarkedGrid {
+  readonly marked: ReadonlySet<string>;
+  readonly cols: number;
+  readonly rows: number;
+}
+
+function markedGridCells(scene: SceneV3): MarkedGrid {
   const { bbox } = scene;
   const cols = Math.max(0, Math.ceil(bbox.width / GRID));
   const rows = Math.max(0, Math.ceil(bbox.height / GRID));
-  const totalCells = cols * rows;
-  if (totalCells === 0) return 0;
-
   const marked = new Set<string>();
+  if (cols === 0 || rows === 0) return { marked, cols, rows };
+
   const cellX = (x: number): number => Math.floor((x - bbox.x) / GRID);
   const cellY = (y: number): number => Math.floor((y - bbox.y) / GRID);
   const mark = (cx: number, cy: number): void => {
@@ -4576,7 +4590,117 @@ export function sheetFillRatio(scene: SceneV3): number {
     }
   }
 
+  return { marked, cols, rows };
+}
+
+export function sheetFillRatio(scene: SceneV3): number {
+  const { marked, cols, rows } = markedGridCells(scene);
+  const totalCells = cols * rows;
+  if (totalCells === 0) return 0;
   return marked.size / totalCells;
+}
+
+// ---------------------------------------------------------------------------
+// RECENZJA EKSPERCKA P1 (pkt „gęstość lokalna", `docs/sld/RECENZJA_EKSPERCKA_
+// LAYOUT_2026-07.md` + WARUNKI_ODBIORU_S6 §6 „occupancyGrid") — ROZKŁAD zajętości
+// arkusza liczony z REALNEJ geometrii sceny. `sheetFillRatio` daje jeden ułamek
+// globalny (może być „zdrowy" średnio, a mieć lokalne ściski i pustkowia); ta
+// miara dzieli arkusz na okna o stałym boku i raportuje statystyki rozkładu
+// gęstości: średnią, maksimum lokalne, wariancję/odchylenie i współczynnik pustki.
+// Deterministyczna, wyprowadzona wyłącznie z właściwości ogólnych (siatka `GRID`
+// + bbox), zero hardcode po id/nazwie/liczbie stacji (WYTYCZNE §1/§2).
+// ---------------------------------------------------------------------------
+
+/** Bok okna analizy gęstości lokalnej, w komórkach `GRID`. 16 komórek = 128 px
+ *  świata — okno na tyle duże, by uśrednić pojedyncze glify/trasy, a na tyle
+ *  małe, by wykryć lokalne zagęszczenia i pustki na arkuszu grzebieniowym.
+ *  Stała OGÓLNA (nie zależy od id/nazwy/liczby stacji — WYTYCZNE §1/§2). */
+export const LOCAL_DENSITY_WINDOW_CELLS = 16;
+
+export interface LocalDensityMetrics {
+  /** Bok okna użyty do pomiaru (w komórkach `GRID`). */
+  readonly windowCells: number;
+  /** Liczba okien pokrywających bbox (z oknami brzegowymi). */
+  readonly windowCount: number;
+  /** Średnia gęstość (udział pokrytych komórek) po WSZYSTKICH oknach. */
+  readonly meanDensity: number;
+  /** Najgęstsze okno (maksimum lokalne — wskaźnik ściska lokalnego). */
+  readonly maxLocalDensity: number;
+  /** Wariancja gęstości okien (rozrzut zajętości — im większa, tym bardziej
+   *  „plamiasty" arkusz: gęste wyspy + pustkowia). */
+  readonly densityVariance: number;
+  /** Odchylenie standardowe gęstości okien (`sqrt(variance)`). */
+  readonly densityStdDev: number;
+  /** Udział okien CAŁKOWICIE pustych (współczynnik pustki — martwa przestrzeń). */
+  readonly voidRatio: number;
+}
+
+/**
+ * Rozkład zajętości arkusza po oknach o boku `windowCells` (recenzja P1 „gęstość
+ * lokalna" / S6 §6 „occupancyGrid"). Okna kafelkują `scene.bbox`; gęstość okna =
+ * pokryte komórki / pojemność okna (okna brzegowe mają mniejszą pojemność, więc
+ * gęstość pozostaje w [0,1]). Deterministyczna: obchód zbioru `marked` i
+ * kolejność okien są w pełni wyznaczone przez raster `GRID`. Zwraca zera dla
+ * pustej sceny.
+ */
+export function localDensityMetrics(
+  scene: SceneV3,
+  windowCells: number = LOCAL_DENSITY_WINDOW_CELLS,
+): LocalDensityMetrics {
+  const { marked, cols, rows } = markedGridCells(scene);
+  const w = Math.max(1, Math.floor(windowCells));
+  const winCols = Math.ceil(cols / w);
+  const winRows = Math.ceil(rows / w);
+  const windowCount = winCols * winRows;
+  if (windowCount === 0) {
+    return {
+      windowCells: w,
+      windowCount: 0,
+      meanDensity: 0,
+      maxLocalDensity: 0,
+      densityVariance: 0,
+      densityStdDev: 0,
+      voidRatio: 0,
+    };
+  }
+
+  // Pokryte komórki per okno (klucz siatki `"cx,cy"` → indeks okna).
+  const markedPerWindow = new Map<number, number>();
+  for (const key of marked) {
+    const comma = key.indexOf(',');
+    const cx = Number(key.slice(0, comma));
+    const cy = Number(key.slice(comma + 1));
+    const wi = Math.floor(cy / w) * winCols + Math.floor(cx / w);
+    markedPerWindow.set(wi, (markedPerWindow.get(wi) ?? 0) + 1);
+  }
+
+  // Gęstość per okno = pokryte / pojemność (okno brzegowe: przycięta pojemność).
+  const densities: number[] = [];
+  let voids = 0;
+  for (let wy = 0; wy < winRows; wy++) {
+    for (let wx = 0; wx < winCols; wx++) {
+      const wi = wy * winCols + wx;
+      const capCols = Math.min(w, cols - wx * w);
+      const capRows = Math.min(w, rows - wy * w);
+      const capacity = Math.max(1, capCols * capRows);
+      const count = markedPerWindow.get(wi) ?? 0;
+      densities.push(count / capacity);
+      if (count === 0) voids += 1;
+    }
+  }
+
+  const mean = densities.reduce((s, d) => s + d, 0) / windowCount;
+  const maxLocal = densities.reduce((m, d) => (d > m ? d : m), 0);
+  const variance = densities.reduce((s, d) => s + (d - mean) * (d - mean), 0) / windowCount;
+  return {
+    windowCells: w,
+    windowCount,
+    meanDensity: mean,
+    maxLocalDensity: maxLocal,
+    densityVariance: variance,
+    densityStdDev: Math.sqrt(variance),
+    voidRatio: voids / windowCount,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -4641,6 +4765,22 @@ export function topBandFieldClearances(scene: SceneV3): readonly TopBandFieldCle
     });
   }
   return out;
+}
+
+/** Recenzja P1 (pkt „odstęp stacji z footprintu") — EKSTENTY poziome pól pasa
+ *  górnego (lewy X + szerokość REALNEGO obrysu footprintu), w kolejności rosnącego
+ *  X. Dowód, że szerokość kolumny stacji wynika z footprintu (symbole+etykiety),
+ *  nie ze stałego slotu: różne stacje mają różne `width`, a odstęp bbox-do-bbox
+ *  między sąsiadami (`topBandFieldClearances`) jest stałym minimalnym światłem —
+ *  więc rozstaw = footprint + światło (nie stała szerokość slotu). */
+export function topBandFieldExtents(
+  scene: SceneV3,
+): readonly { readonly stationId: string; readonly left: number; readonly width: number }[] {
+  return scene.meta.mainTrunkStationIds
+    .map((id) => ({ id, rect: topBandFieldRect(scene, id.replace(/\/station$/, '')) }))
+    .filter((f): f is { id: string; rect: V3Rect } => f.rect !== null)
+    .sort((a, b) => a.rect.x - b.rect.x || (a.id < b.id ? -1 : 1))
+    .map((f) => ({ stationId: f.id, left: f.rect.x, width: f.rect.width }));
 }
 
 /** Pola pasa górnego, których światło bbox-do-bbox jest MNIEJSZE niż kontrakt
@@ -4762,9 +4902,16 @@ export interface LayoutMetricsReport {
   readonly ambiguousConnectionCount: number;
   readonly crossingCount: number;
   readonly symbolCount: number;
+  // Recenzja P1 (gęstość lokalna) — ROZKŁAD zajętości (dodatkowo do `inkDensity`
+  // globalnego): średnia/maks/odchylenie/pustka po oknach `LOCAL_DENSITY_WINDOW_CELLS`.
+  readonly localDensityMean: number;
+  readonly localDensityMax: number;
+  readonly localDensityStdDev: number;
+  readonly localDensityVoidRatio: number;
 }
 
 export function layoutMetricsReport(scene: SceneV3): LayoutMetricsReport {
+  const density = localDensityMetrics(scene);
   const verticalLength = totalVerticalSegmentLength(scene);
   const horizontalLength = totalHorizontalSegmentLength(scene);
   const { widthUtilization, heightUtilization } = axisOccupancy(scene);
@@ -4794,6 +4941,100 @@ export function layoutMetricsReport(scene: SceneV3): LayoutMetricsReport {
     ambiguousConnectionCount: sceneSegmentEndpointGaps(scene).length,
     crossingCount: scene.crossings.length,
     symbolCount: scene.symbols.length,
+    localDensityMean: density.meanDensity,
+    localDensityMax: density.maxLocalDensity,
+    localDensityStdDev: density.densityStdDev,
+    localDensityVoidRatio: density.voidRatio,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// RECENZJA EKSPERCKA P1 (pkt „skalowalność / lokalność zmiany") + WYTYCZNE §9
+// (miary stabilności produkcyjnej: anchorMovementCount, totalAnchorDisplacement,
+// maxAnchorDisplacement, unchangedSubtreeMovementCount). Miary MIĘDZY dwiema
+// scenami TEGO SAMEGO LOD: ile kotwic stacji przesunęło się po lokalnej zmianie
+// topologii/footprintu (dowód, że silnik nie reorganizuje całości przy zmianie
+// jednej gałęzi). Kotwica = origin symbolu `stationCollapsed` (warstwa L0, jedna
+// kotwica na stację) — deterministyczna i LOD-niezależna z konstrukcji „JEDNA
+// KOTWICA". Wyprowadzone z właściwości ogólnych (ref stacji, pozycja), zero
+// hardcode (WYTYCZNE §1/§2).
+// ---------------------------------------------------------------------------
+
+/** Kotwice stacji z warstwy L0 (`stationCollapsed`, jedna kotwica/stacja),
+ *  kluczowane BAZĄ ref stacji (`stn/<hash>` bez sufiksu `#...`). */
+export function stationCollapsedAnchors(scene: SceneV3): ReadonlyMap<string, readonly [number, number]> {
+  const anchors = new Map<string, readonly [number, number]>();
+  for (const s of scene.symbols) {
+    if (s.symbolId !== 'stationCollapsed') continue;
+    const base = (s.meta?.ownerRef ?? '').replace(/#.*$/, '');
+    if (base) anchors.set(base, [s.x, s.y]);
+  }
+  return anchors;
+}
+
+export interface AnchorDisplacementMetrics {
+  /** Liczba stacji (obecnych w OBU scenach), których kotwica się przesunęła. */
+  readonly anchorMovementCount: number;
+  /** Suma |Δx|+|Δy| po przesuniętych kotwicach (px świata). */
+  readonly totalAnchorDisplacement: number;
+  /** Największe pojedyncze przemieszczenie kotwicy (px świata). */
+  readonly maxAnchorDisplacement: number;
+  /** Liczba stacji obecnych w OBU scenach, których kotwica NIE drgnęła
+   *  (WYTYCZNE §9 `unchangedSubtreeMovementCount` — miara „ile zostało na
+   *  miejscu"; im wyższa względem `anchorMovementCount`, tym bardziej lokalna
+   *  była zmiana). */
+  readonly unchangedSubtreeMovementCount: number;
+  /** Ile przesunięć miało składową POZIOMĄ (Δx≠0). */
+  readonly movedHorizontalCount: number;
+  /** Ile przesunięć miało składową PIONOWĄ (Δy≠0). */
+  readonly movedVerticalCount: number;
+  /** Przesunięcia per stacja (posortowane po ref — determinizm raportu). */
+  readonly displacements: ReadonlyArray<{ readonly ownerRef: string; readonly dx: number; readonly dy: number }>;
+}
+
+/**
+ * WYTYCZNE §9 — miary stabilności produkcyjnej między dwiema scenami TEGO SAMEGO
+ * LOD. Liczone dla stacji OBECNYCH W OBU (część wspólna kluczy): kotwica, która
+ * zniknęła/pojawiła się (zmiana topologii — np. dodana stacja) NIE jest „ruchem",
+ * mierzymy przemieszczenie stacji ZACHOWANYCH. Deterministyczna (mapy po
+ * kluczu-ref, wynik posortowany).
+ */
+export function anchorDisplacementMetrics(before: SceneV3, after: SceneV3): AnchorDisplacementMetrics {
+  const a = stationCollapsedAnchors(before);
+  const b = stationCollapsedAnchors(after);
+  let count = 0;
+  let total = 0;
+  let max = 0;
+  let unchanged = 0;
+  let horizontal = 0;
+  let vertical = 0;
+  const displacements: { ownerRef: string; dx: number; dy: number }[] = [];
+  for (const [ref, pa] of a) {
+    const pb = b.get(ref);
+    if (!pb) continue;
+    const dx = pb[0] - pa[0];
+    const dy = pb[1] - pa[1];
+    if (dx === 0 && dy === 0) {
+      unchanged += 1;
+      continue;
+    }
+    count += 1;
+    const d = Math.abs(dx) + Math.abs(dy);
+    total += d;
+    if (d > max) max = d;
+    if (dx !== 0) horizontal += 1;
+    if (dy !== 0) vertical += 1;
+    displacements.push({ ownerRef: ref, dx, dy });
+  }
+  displacements.sort((x, y) => (x.ownerRef < y.ownerRef ? -1 : x.ownerRef > y.ownerRef ? 1 : 0));
+  return {
+    anchorMovementCount: count,
+    totalAnchorDisplacement: total,
+    maxAnchorDisplacement: max,
+    unchangedSubtreeMovementCount: unchanged,
+    movedHorizontalCount: horizontal,
+    movedVerticalCount: vertical,
+    displacements,
   };
 }
 
