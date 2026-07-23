@@ -118,6 +118,7 @@ export interface StationTap {
 export function computeStationTaps(
   stations: readonly StationMeasureInput[],
   segmentTexts: readonly (string | null)[],
+  columnGap: number = COLUMN_GAP,
 ): readonly StationTap[] {
   const out: StationTap[] = [];
   let x = 0;
@@ -140,7 +141,7 @@ export function computeStationTaps(
     // DECYZJA przy `ColumnResult.tapX` w `./columns`.
     const tapX = snapToGrid(x + GRID + blockWidth / 2);
     out.push({ x, width, tapX });
-    x += width + COLUMN_GAP;
+    x += width + columnGap;
   });
   return out;
 }
@@ -170,12 +171,13 @@ export interface SegmentLabelSlotX {
 export function computeSegmentLabelSlotX(
   stations: readonly StationMeasureInput[],
   segmentTexts: readonly (string | null)[],
+  columnGap: number = COLUMN_GAP,
 ): readonly (SegmentLabelSlotX | null)[] {
   if (segmentTexts.length !== stations.length) {
     throw new Error('segmentTexts musi mieć tę samą długość co stations (spec §5.3)');
   }
 
-  const taps = computeStationTaps(stations, segmentTexts);
+  const taps = computeStationTaps(stations, segmentTexts, columnGap);
   const last = taps[taps.length - 1];
   const totalWidth = last ? last.x + last.width : 0;
 

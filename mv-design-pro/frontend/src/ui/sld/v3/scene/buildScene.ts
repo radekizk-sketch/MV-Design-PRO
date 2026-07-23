@@ -127,7 +127,8 @@ import {
 } from '../layout/measure';
 import { computeBands, BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, type BandsResult, type StationBandHeights } from '../layout/bands';
 import { computeColumns, insertColumnChannels, type ColumnsResult, type ColumnResult } from '../layout/columns';
-import { computeSegmentLabelSlotX, colorSegmentLabelRows } from '../layout/segments';
+import { computeSegmentLabelSlotX, colorSegmentLabelRows, COLUMN_GAP } from '../layout/segments';
+import { MIN_SUBTREE_CLEARANCE, TOP_LEVEL_FIELD_CLEARANCE } from '../layout/clearances';
 import {
   resolveLabels,
   type OwnedLabel,
@@ -253,10 +254,12 @@ const GPZ_TRUNK_GAP = 4 * GRID;
 const ROW_VERTICAL_GAP = 4 * GRID;
 /** SCHEMAT-10 S7-P1 (V12K-137): minimalne światło poziome między footprintami
  *  DWÓCH lateralów dzielących ten sam pas Y (interval packing). Rezerwa routingu
- *  + światła (kontrakt S6 §5, `MIN_SUBTREE_CLEARANCE`/`MIN_ROUTE_CLEARANCE`) —
- *  na tyle duża, by piony zejść i etykiety korytarza sąsiadów pasa nigdy się nie
- *  zbliżyły. Równe `ROW_VERTICAL_GAP` (4×GRID) — spójne z rezerwą międzywierszową. */
-const LATERAL_SUBTREE_CLEARANCE = 4 * GRID;
+ *  + światła (kontrakt S6 §5) — na tyle duża, by piony zejść i etykiety korytarza
+ *  sąsiadów pasa nigdy się nie zbliżyły. Równe `ROW_VERTICAL_GAP` (4×GRID) —
+ *  spójne z rezerwą międzywierszową. SCHEMAT-10 S7-P3 (V12K-137): kanoniczna
+ *  nazwa §5 = `MIN_SUBTREE_CLEARANCE` (`layout/clearances.ts`, wartość bazowa
+ *  `4×GRID` bez zmian). */
+const LATERAL_SUBTREE_CLEARANCE = MIN_SUBTREE_CLEARANCE;
 /** §16-v3 (bieg otwarty): minimalna długość pozioma/pionowa JEDNEGO kawałka
  *  biegu otwartego (ciąg z segmentami ENM, ale bez ŻADNEJ stacji) — na tyle
  *  długa, żeby kawałek był klikalny i odróżnialny (6×GRID = 48 px świata). */
@@ -811,6 +814,7 @@ function buildRowLayout(
   stopNotes: string[],
   derSourcesByStationId: ReadonlyMap<string, readonly StationDerSourceInput[]>,
   firstStationEntryDescent = false,
+  columnGap: number = COLUMN_GAP,
 ): RowLayout {
   const stationCodeOf = (ref: string): string | null => stationById.get(ref)?.stationCode ?? null;
 
@@ -879,7 +883,7 @@ function buildRowLayout(
     ),
   );
 
-  const slotXs = computeSegmentLabelSlotX(geometryInputs, incomingTexts);
+  const slotXs = computeSegmentLabelSlotX(geometryInputs, incomingTexts, columnGap);
   const rows = colorSegmentLabelRows(slotXs);
   const stationBandHeights: StationBandHeights[] = geometryInputs.map((m, i) => ({
     incomingSegmentLabelText: incomingTexts[i],
@@ -900,6 +904,7 @@ function buildRowLayout(
     incomingSegmentLabelTexts: incomingTexts,
     nameSlotBand: bandsResult.bands.B5,
     segmentSlotBand: bandsResult.bands.B1,
+    columnGap,
   });
   const busAxisY = bandsResult.bands.B2.y + bandsResult.bands.B2.height - BUS_AXIS_BAND_HEIGHT;
   const blockTopY = bandsResult.bands.B4.y;
@@ -1901,8 +1906,11 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   };
 
   // -- 1. Magistrala (main trunk) — measure→bands→columns lokalnie (0,0). ---
+  // SCHEMAT-10 S7-P3 (V12K-137): pas górny używa ODDZIELONEGO światła §5
+  // `TOP_LEVEL_FIELD_CLEARANCE` (niezależnie strojalnego od `COLUMN_GAP`
+  // lateralów). Wartość bazowa = `COLUMN_GAP` (3×GRID), więc geometria bez zmian.
   let mainLayout: RowLayout | null = mainTrunkRun
-    ? buildRowLayout(mainTrunkRun.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, mainCableRun, lod, stopNotes, derSourcesByStationId)
+    ? buildRowLayout(mainTrunkRun.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, mainCableRun, lod, stopNotes, derSourcesByStationId, false, TOP_LEVEL_FIELD_CLEARANCE)
     : null;
 
   // -- 2. GPZ: pass1 @ (0,0) → dowiedz się bbox (X) i snBusY (Y docelowe). --

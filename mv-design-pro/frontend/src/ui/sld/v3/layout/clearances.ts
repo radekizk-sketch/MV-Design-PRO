@@ -1,0 +1,74 @@
+/**
+ * SCHEMAT-10 S7-P3 (V12K-137) — ROZDZIELONE ŚWIATŁA layoutu SLD v3.
+ *
+ * WARUNKI_ODBIORU_S6 §5 wymaga, by światło NIE było jedną globalną stałą `gap`,
+ * lecz rodziną stałych ROZDZIELONYCH per rola, z których każda jest niezależnie
+ * strojalna. Do S7-P2 światło poziome żyło jako pojedyncze `COLUMN_GAP`
+ * (`segments.ts`) plus rozproszone, nienazwane stałe roli (`CHANNEL_MIN_CLEARANCE`
+ * w `columns.ts`, `LATERAL_SUBTREE_CLEARANCE` w `scene/buildScene.ts`,
+ * `STATION_BLOCK_BUS_CLEARANCE`/`PORT_CAPTION_BUS_CLEARANCE`/między-polowy `GRID`
+ * w `measure.ts`). Ten moduł jest JEDNYM ŹRÓDŁEM PRAWDY tych świateł, nadaje im
+ * kanoniczne nazwy z §5 i dokumentuje rolę każdego. Wartości są zachowane
+ * bajt-identycznie względem S7-P2 (geometria niezmieniona — patrz raport karty
+ * S7-P3, tabela 18 metryk przed/po), więc rozdzielenie to refaktoryzacja
+ * słownika, nie zmiana obrazu.
+ *
+ * ŚWIATŁO MIĘDZY OBRYSAMI (§5, ostatnie zdanie): każde z tych świateł jest
+ * mierzone między RZECZYWISTYMI obrysami (footprintami) treści, nie między
+ * kotwicami. `MIN_SUBTREE_CLEARANCE` liczy się od footprintu poddrzewa
+ * (`footprintLeft..footprintRight` w packerze, `scene/buildScene.ts` sekcja 6,
+ * uwzględnia rezerwę etykiet po pomiarze fontu i otwarty ogon). `MIN_ROUTE_
+ * CLEARANCE` liczy się od bounds treści sąsiedniej kolumny (kolumna + pasmo nazw
+ * B5, `insertColumnChannels`). `TOP_LEVEL_FIELD_CLEARANCE`/`MIN_GLYPH_CLEARANCE`/
+ * `MIN_FIELD_CLEARANCE` wchodzą do szerokości kolumny/bloku wyliczanej z
+ * `requiredStationWidth`/`stationBlockWidth`, tj. z realnego obrysu bloku
+ * (symbole + pola + etykiety), nie ze stałego slotu.
+ *
+ * TOP_LEVEL_FIELD_CLEARANCE (+20–35%, §5/§6): stała jest ODDZIELONA od
+ * `COLUMN_GAP` lateralów właśnie po to, by dało się ją PODNIEŚĆ niezależnie od
+ * grzebienia lateralnego. Na fixturze referencyjnej `sldSubstrate52s` pozostaje
+ * przy wartości bazowej `3×GRID` — pomiar (raport S7-P3 §GAP) dowodzi, że pas
+ * górny NIE MA ŚCISKU przy `3×GRID` (`minimumClearance = GRID`, 0 kolizji), więc
+ * NAJMNIEJSZA wartość „usuwająca ścisk" (§5) = wartość bazowa; podniesienie w
+ * izolacji wydłużyłoby magistralę (`horizontalLength↑` ⇒ regres
+ * `layout_cost_probe`, `bboxUtilization↓`), co §5 nazywa „niepotrzebnym
+ * wydłużeniem magistrali", a §6 — regresją. Widełki +20–35% (=`29..32 px`) są
+ * PUŁAPEM stałej stosowanym tam, gdzie obrysy FAKTYCZNIE się ściskają; jego
+ * netto-dodatnie zastosowanie na tej fixturze wymaga footprint-driven compact
+ * layout (S7.5, migracja do `engine/sld-layout/layoutEngine.ts`), który obniży
+ * bbox na tyle, że wzrost pasa górnego będzie skompensowany — GAP zapisany
+ * w `docs/sld/S7_GAP_CROSSING_ZERO_2026-07.md` §8.
+ */
+
+import { GRID } from '../core/grid';
+
+/** Minimalne światło między dwoma sąsiednimi GLIFAMI (kolumnami pól/aparatów)
+ *  WEWNĄTRZ jednego bloku stacji — `stationBlockWidth` (`measure.ts`) dolicza je
+ *  między kolejnymi kolumnami pól. Rola §5: `MIN_GLYPH_CLEARANCE`. */
+export const MIN_GLYPH_CLEARANCE = GRID;
+
+/** Minimalne światło ETYKIETY od sąsiedniej geometrii (osi szyny / portu pola)
+ *  — podpis kierunku pola (`PORT_CAPTION_BUS_CLEARANCE`) i etykieta szyny SN
+ *  (`STATION_BUSBAR_LABEL_GAP`) w `measure.ts`. Rola §5: `MIN_LABEL_CLEARANCE`. */
+export const MIN_LABEL_CLEARANCE = GRID;
+
+/** Minimalne światło BLOKU PÓL od szyny (nad kolumnami — szyna SN; pod
+ *  kolumnami — szyna nN), `STATION_BLOCK_BUS_CLEARANCE` w `measure.ts`.
+ *  Rola §5: `MIN_FIELD_CLEARANCE`. */
+export const MIN_FIELD_CLEARANCE = 2 * GRID;
+
+/** Minimalne światło POZIOME między footprintami DWÓCH poddrzew (lateralów)
+ *  dzielących ten sam pas Y (interval packing, `scene/buildScene.ts` packer).
+ *  Rola §5: `MIN_SUBTREE_CLEARANCE`. */
+export const MIN_SUBTREE_CLEARANCE = 4 * GRID;
+
+/** Minimalne światło kanału ROUTINGU (pionu zejścia lateralu) od treści
+ *  sąsiedniej kolumny z KAŻDEJ strony — `insertColumnChannels` (`columns.ts`).
+ *  Rola §5: `MIN_ROUTE_CLEARANCE`. */
+export const MIN_ROUTE_CLEARANCE = GRID;
+
+/** Światło POZIOME między kolumnami stacji PASA GÓRNEGO (magistrali) — ODDZIELONE
+ *  od `COLUMN_GAP` lateralów, by dało się je podnieść niezależnie (§5, widełki
+ *  +20–35%). Wartość bazowa `3×GRID`; patrz nagłówek pliku i GAP S7.5.
+ *  Rola §5: `TOP_LEVEL_FIELD_CLEARANCE`. */
+export const TOP_LEVEL_FIELD_CLEARANCE = 3 * GRID;

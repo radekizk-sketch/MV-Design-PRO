@@ -47,10 +47,12 @@
  * faktycznie potrzebnych) — `computeBands` przyjmuje teraz tę liczbę.
  */
 
+import { MIN_ROUTE_CLEARANCE } from './clearances';
 import { GRID, snapUp, type V3Rect } from '../core/grid';
 import type { StationMeasureInput } from './measure';
 import {
   colorSegmentLabelRows,
+  COLUMN_GAP,
   computeSegmentLabelSlotX,
   computeStationTaps,
   SEGMENT_LABEL_ROW_HEIGHT,
@@ -60,7 +62,7 @@ import {
  *  r7b: źródło prawdy przeniesione do `segments.ts` (potrzebne tam RÓWNIEŻ
  *  przez `computeStationTaps`) — re-eksport tutaj zachowuje dotychczasowe
  *  publiczne API tego modułu. */
-export { COLUMN_GAP } from './segments';
+export { COLUMN_GAP };
 
 export interface ColumnBandY {
   readonly y: number;
@@ -125,6 +127,11 @@ export interface ComputeColumnsInput {
   readonly nameSlotBand: ColumnBandY;
   /** Pasmo B1 (etykiety segmentów) z `computeBands` — pozycja slotu segmentu. */
   readonly segmentSlotBand: ColumnBandY;
+  /** SCHEMAT-10 S7-P3 (V12K-137): światło poziome między kolumnami TEGO wiersza.
+   *  Pas górny (magistrala) przekazuje `TOP_LEVEL_FIELD_CLEARANCE` (oddzielone,
+   *  §5); laterale/feedery — domyślne `COLUMN_GAP`. Domyślnie `COLUMN_GAP`
+   *  (zachowanie wsteczne dla pozostałych wołających). */
+  readonly columnGap?: number;
 }
 
 /**
@@ -135,6 +142,7 @@ export interface ComputeColumnsInput {
  */
 export function computeColumns(input: ComputeColumnsInput): ColumnsResult {
   const { stations, incomingSegmentLabelTexts, nameSlotBand, segmentSlotBand } = input;
+  const columnGap = input.columnGap ?? COLUMN_GAP;
   if (incomingSegmentLabelTexts.length !== stations.length) {
     throw new Error(
       'incomingSegmentLabelTexts musi mieć tę samą długość co stations (jeden segment wejściowy na stację, spec §5.3)',
@@ -146,8 +154,8 @@ export function computeColumns(input: ComputeColumnsInput): ColumnsResult {
   // przycięta do arkusza) i przydział wierszy (`colorSegmentLabelRows`,
   // kolorowanie grafu przedziałów) liczone z TEJ SAMEJ pary wejść
   // (`stations`, `incomingSegmentLabelTexts`) — determinizm (P7).
-  const taps = computeStationTaps(stations, incomingSegmentLabelTexts);
-  const slotXs = computeSegmentLabelSlotX(stations, incomingSegmentLabelTexts);
+  const taps = computeStationTaps(stations, incomingSegmentLabelTexts, columnGap);
+  const slotXs = computeSegmentLabelSlotX(stations, incomingSegmentLabelTexts, columnGap);
   const rows = colorSegmentLabelRows(slotXs);
 
   const columns: ColumnResult[] = [];
@@ -220,8 +228,10 @@ export function allColumnsOnGrid(result: ColumnsResult): boolean {
 // ---------------------------------------------------------------------------
 
 /** Minimalny prześwit wymagany z KAŻDEJ strony punktu kanału od treści
- *  sąsiedniej kolumny (spec F6d: szerokość kanału całkowita >= 2×GRID). */
-const CHANNEL_MIN_CLEARANCE = GRID;
+ *  sąsiedniej kolumny (spec F6d: szerokość kanału całkowita >= 2×GRID).
+ *  SCHEMAT-10 S7-P3 (V12K-137): kanoniczna nazwa §5 = `MIN_ROUTE_CLEARANCE`
+ *  (`layout/clearances.ts`, wartość bazowa `GRID` bez zmian). */
+const CHANNEL_MIN_CLEARANCE = MIN_ROUTE_CLEARANCE;
 
 export interface InsertColumnChannelsResult {
   readonly result: ColumnsResult;

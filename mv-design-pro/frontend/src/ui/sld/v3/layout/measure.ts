@@ -17,6 +17,7 @@
  */
 
 import { GRID, snapUp } from '../core/grid';
+import { MIN_FIELD_CLEARANCE, MIN_GLYPH_CLEARANCE, MIN_LABEL_CLEARANCE } from './clearances';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 import {
@@ -117,9 +118,10 @@ export function stationBusbarLabelText(busVoltageKv: number | null | undefined):
 /** F10.3 (spec §18.4): odstęp między wierszem etykiety szyny SN (nowy, ten
  *  paragraf) a treścią POD nim (wiersz podpisu kierunku pola, gdy obecny —
  *  `stationPortCaptionHeight` niżej — lub wprost oś magistrali `busAxisY`,
- *  gdy nieobecny) — TA SAMA wartość co `PORT_CAPTION_BUS_CLEARANCE` (GRID),
+ *  gdy nieobecny) — TA SAMA wartość co `PORT_CAPTION_BUS_CLEARANCE`, oba są
+ *  światłem etykiety §5 `MIN_LABEL_CLEARANCE` (`layout/clearances.ts`, `GRID`);
  *  nazwana osobno dla czytelności (§4 „prześwit" per para etykiet). */
-export const STATION_BUSBAR_LABEL_GAP = GRID;
+export const STATION_BUSBAR_LABEL_GAP = MIN_LABEL_CLEARANCE;
 
 /** F10.3 (spec §18.4): wysokość DODATKOWA pasma B2 na wiersz etykiety szyny
  *  SN (t2, `stationBusbarLabelText`) — jeden wiersz t2 + prześwit, NAD
@@ -377,8 +379,10 @@ export function entryDescentCaptionInset(role: FieldRole): number {
 }
 
 /** Margines stały bloku stacji: prześwit na szynę SN (nad kolumnami) i szynę
- *  nN (pod kolumnami) — spec §3 "szyna SN + kolumny pól + TR + szyna nN". */
-const STATION_BLOCK_BUS_CLEARANCE = 2 * GRID;
+ *  nN (pod kolumnami) — spec §3 "szyna SN + kolumny pól + TR + szyna nN".
+ *  SCHEMAT-10 S7-P3 (V12K-137): kanoniczna nazwa §5 = `MIN_FIELD_CLEARANCE`
+ *  (`layout/clearances.ts`, wartość bazowa `2×GRID` bez zmian). */
+const STATION_BLOCK_BUS_CLEARANCE = MIN_FIELD_CLEARANCE;
 
 /**
  * F9.4 (spec §14.1 strona nN, §13.1 V12K-029): prześwit między szyną nN (lub
@@ -471,7 +475,9 @@ export function stationBlockWidth(
     (sum, _bay, index) => sum + bayColumnRequiredWidth(snBays, index, bayDirectionCaptions, entryDescentBayIndex),
     0,
   );
-  return columnsWidth + GRID * Math.max(snBays.length - 1, 0);
+  // SCHEMAT-10 S7-P3 (V12K-137): światło między sąsiednimi glifami pól = §5
+  // `MIN_GLYPH_CLEARANCE` (`layout/clearances.ts`, wartość bazowa `GRID`).
+  return columnsWidth + MIN_GLYPH_CLEARANCE * Math.max(snBays.length - 1, 0);
 }
 
 /** Wysokość bloku stacji (B4, spec §5.2): kolumny stoją OBOK siebie, więc
@@ -566,7 +572,7 @@ export function requiredSegmentLabelWidth(text: string): number {
  * station.ts`) MUSZĄ liczyć tę samą stałą — jedna prawda, jak przy
  * `bayColumnRequiredWidth`/`compose/station.ts` (F6b-1).
  */
-export const PORT_CAPTION_BUS_CLEARANCE = GRID;
+export const PORT_CAPTION_BUS_CLEARANCE = MIN_LABEL_CLEARANCE;
 
 /**
  * Wysokość dodatkowa pasma osi magistrali (B2, spec §5.2) na podpis
