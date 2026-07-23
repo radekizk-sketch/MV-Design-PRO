@@ -9,6 +9,7 @@
 
 import { SYMBOL_DEFS, type SymbolId } from './defs';
 import { BASE_STROKE } from '../theme/colorTokens';
+import { MINI_RMU, DER_MARKER_SHAPE, type StationDerGlyphKind } from './miniRmuGrammar';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
  *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
@@ -18,11 +19,11 @@ export const V3_STROKE_APPARATUS = 1.2;
 
 export type SwitchState = 'closed' | 'open' | 'unknown';
 
-/** SCHEMAT-10 GS-1 (V12K-137): rodzaj DER niesiony przez sylwetkę mini-RMU na
- *  L0 — unia LOKALNA (biblioteka symboli nie zależy od `compose/sourceKind`,
- *  zachowana warstwowość §3); `'unknown'` mapuje wołający na `'generator'`
- *  (glif generyczny, jak `DER_SOURCE_KIND_SYMBOL`). */
-export type StationDerGlyphKind = 'pv' | 'bess' | 'wind' | 'generator';
+/** SCHEMAT-10 GS-1/GS-2 (V12K-137): rodzaj DER niesiony przez sylwetkę mini-RMU
+ *  na L0. Źródło definicji = `miniRmuGrammar.ts` (gramatyka konstrukcyjna),
+ *  re-eksport tu zachowuje istniejące importy; `'unknown'` mapuje wołający na
+ *  `'generator'` (glif generyczny, jak `DER_SOURCE_KIND_SYMBOL`). */
+export type { StationDerGlyphKind } from './miniRmuGrammar';
 
 export interface GlyphProps {
   readonly x: number;
@@ -361,20 +362,23 @@ export function GridSourceGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
-/** GS-1 (V12K-137, GAP §10.4): marker DER (nad szyną mini-RMU) — kształt
+/** GS-1/GS-2 (V12K-137, GAP §10.4): marker DER (nad szyną mini-RMU) — kształt
  *  koduje rodzaj (PV trójkąt / BESS kwadrat / FW·generator okrąg), spójnie z
- *  konwencją „rozróżnienie IKONĄ" glifów DER (`DerPvGlyph`…). */
+ *  konwencją „rozróżnienie IKONĄ" glifów DER (`DerPvGlyph`…). Geometria WYŁĄCZNIE
+ *  z `MINI_RMU.markers.der` (reguła 13: zero literałów lokalnych). */
 function derMiniMarker(kind: StationDerGlyphKind, s: string): JSX.Element {
-  const cx = 30;
-  const cy = 13;
-  if (kind === 'pv') {
-    return <path d={`M${cx},${cy - 4} L${cx + 4},${cy + 3} L${cx - 4},${cy + 3} Z`} fill="none" stroke={s} strokeWidth={0.9} />;
+  const { x: cx, centerY: cy, half: h } = MINI_RMU.markers.der;
+  const w = MINI_RMU.stroke.marker;
+  const shape = DER_MARKER_SHAPE[kind];
+  if (shape === 'triangle') {
+    // PV: trójkąt wierzchołkiem w górę, podstawa na dole strefy.
+    return <path d={`M${cx},${cy - h} L${cx + h},${cy + h} L${cx - h},${cy + h} Z`} fill="none" stroke={s} strokeWidth={w} />;
   }
-  if (kind === 'bess') {
-    return <rect x={cx - 4} y={cy - 4} width={8} height={8} fill="none" stroke={s} strokeWidth={0.9} />;
+  if (shape === 'square') {
+    return <rect x={cx - h} y={cy - h} width={2 * h} height={2 * h} fill="none" stroke={s} strokeWidth={w} />;
   }
   // FW (farma wiatrowa) i generator generyczny → okrąg (maszyna wirująca).
-  return <circle cx={cx} cy={cy} r={4} fill="none" stroke={s} strokeWidth={0.9} />;
+  return <circle cx={cx} cy={cy} r={h} fill="none" stroke={s} strokeWidth={w} />;
 }
 
 /**
@@ -396,38 +400,44 @@ function derMiniMarker(kind: StationDerGlyphKind, s: string): JSX.Element {
  */
 export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
   const s = stroke(props);
+  const { enclosure: e, bus, markers, stroke: sw } = MINI_RMU;
+  const tr = markers.transformer;
+  const sc = markers.sectioned;
+  const der = markers.der;
+  const no = markers.noOpen;
   return (
     <g {...glyphGroupProps('stationCollapsed', props)} data-station-silhouette="mini-rmu">
-      {/* Enklozura (obrys RMU) — mono, bez wypełnienia (P5). */}
-      <rect x={4} y={10} width={40} height={28} rx={3} fill="none" stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
-      {/* Szyna SN wewnętrzna — grubsza kreska (nośnik = waga, nie kolor). */}
-      <line x1={8} y1={24} x2={40} y2={24} stroke={s} strokeWidth={2} data-station-bus="true" />
-      {/* Stacja SEKCYJNA: sprzęgło = przerwa sekcyjna na szynie (dwa piony
-          flankujące środek, z dala od kolumny routingu x=24). */}
+      {/* Enklozura (obrys RMU) — mono, bez wypełnienia (P5, reguła 3: nie maskuje toru). */}
+      <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
+      {/* Szyna SN wewnętrzna — TOR MOCY przez środek, grubsza kreska (nośnik = waga,
+          nie kolor); współliniowa z portami W/E (reguła 2/4). */}
+      <line x1={bus.x1} y1={bus.y} x2={bus.x2} y2={bus.y} stroke={s} strokeWidth={sw.bus} data-station-bus="true" />
+      {/* Stacja SEKCYJNA: sprzęgło = dwie kreski flankujące kolumnę routingu na szynie. */}
       {props.stationSectioned && (
         <g data-station-sectioned="true">
-          <line x1={21} y1={20} x2={21} y2={28} stroke={s} strokeWidth={0.9} />
-          <line x1={27} y1={20} x2={27} y2={28} stroke={s} strokeWidth={0.9} />
+          <line x1={sc.leftX} y1={sc.y1} x2={sc.leftX} y2={sc.y2} stroke={s} strokeWidth={sw.marker} />
+          <line x1={sc.rightX} y1={sc.y1} x2={sc.rightX} y2={sc.y2} stroke={s} strokeWidth={sw.marker} />
         </g>
       )}
-      {/* Transformator (SN/nN): stub w dół + dwa okręgi (dwuuzwojeniowy). */}
+      {/* Transformator (SN/nN): rola UZUPEŁNIAJĄCA (reguła 12) — stub w dół + dwa
+          małe okręgi (dwuuzwojeniowy) w lewej-dolnej strefie. */}
       {props.stationHasTransformer && (
         <g data-station-transformer="true">
-          <line x1={18} y1={24} x2={18} y2={29} stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
-          <circle cx={18} cy={32} r={2.6} fill="none" stroke={s} strokeWidth={0.9} />
-          <circle cx={18} cy={35.5} r={2.6} fill="none" stroke={s} strokeWidth={0.9} />
+          <line x1={tr.x} y1={tr.stubY1} x2={tr.x} y2={tr.stubY2} stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
+          <circle cx={tr.x} cy={tr.circle1Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
+          <circle cx={tr.x} cy={tr.circle2Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
         </g>
       )}
-      {/* DER: stub w górę + marker rodzaju (PV/BESS/FW). */}
+      {/* DER: stub w górę + marker rodzaju (PV/BESS/FW) w prawej-górnej strefie. */}
       {props.stationDer && (
         <g data-station-der={props.stationDer}>
-          <line x1={30} y1={24} x2={30} y2={18} stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
+          <line x1={der.x} y1={der.stubY1} x2={der.x} y2={der.stubY2} stroke={s} strokeWidth={V3_STROKE_APPARATUS} />
           {derMiniMarker(props.stationDer, s)}
         </g>
       )}
       {/* Łącznik/NO otwarty: kwadrat OTWARTY na szynie (prawy odcinek). */}
       {props.stationNoOpen && (
-        <rect x={33} y={21} width={6} height={6} fill="none" stroke={s} strokeWidth={0.9} data-station-no="true" />
+        <rect x={no.x} y={no.y} width={no.size} height={no.size} fill="none" stroke={s} strokeWidth={sw.marker} data-station-no="true" />
       )}
     </g>
   );
