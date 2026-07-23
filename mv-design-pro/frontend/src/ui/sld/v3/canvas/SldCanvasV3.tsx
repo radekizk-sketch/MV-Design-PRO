@@ -295,7 +295,8 @@ function SceneSymbolNode(props: {
         meterQuantity={symbol.meta?.meterQuantity}
         stationSectioned={symbol.meta?.stationGlyph?.sectioned}
         stationHasTransformer={symbol.meta?.stationGlyph?.hasTransformer}
-        stationDer={symbol.meta?.stationGlyph?.der}
+        stationDerOnMv={symbol.meta?.stationGlyph?.derOnMv}
+        stationDerBehindTr={symbol.meta?.stationGlyph?.derBehindTr}
         stationNoOpen={symbol.meta?.stationGlyph?.noOpen}
       />
     </g>

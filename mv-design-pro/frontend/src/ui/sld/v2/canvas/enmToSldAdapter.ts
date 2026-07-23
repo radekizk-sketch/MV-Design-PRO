@@ -596,6 +596,17 @@ export interface SldSourceView {
    *  (dziś: `kind='unknown'` — `Generator.gen_type` nierozpoznany/`null`).
    *  Ta sama konwencja nazwy co `StationOnRunRendererProps.missingData`. */
   readonly missingData?: boolean;
+  /** GS-4 (`GRAMATYKA_MINI_RMU_2026-07.md`, recenzja 2026-07-23): strona
+   *  przyłączenia DER względem transformatora stacji, z REALNEJ szyny ENM
+   *  (`Generator.bus_ref` → `Bus.voltage_kv`): >0,5 kV ⇒ `'sn'` (pole SN),
+   *  0<U≤0,5 kV ⇒ `'nn'` (źródło ZA transformatorem, strona nN), brak
+   *  szyny/napięcia ⇒ `'unknown'` (uczciwy brak — NIGDY zgadywanie strony).
+   *  Próg 0,5 kV = ISTNIEJĄCA konwencja klasyfikacji szyn nN stacji (K30-37 /
+   *  recenzja NO-GO 2026-07-17 pkt 6, `buildStationProps`) — jedna reguła,
+   *  nie nowa heurystyka. Nadawane WYŁĄCZNIE dla DER (`Generator`);
+   *  `external_grid` nie niesie tego pola (zasilanie sieciowe nie jest DER
+   *  stacji — pozycjonuje je `compose/gpz.ts`). */
+  readonly connectionSide?: 'sn' | 'nn' | 'unknown';
 }
 
 export interface SldPowerFlowCaseHeader {
@@ -6184,6 +6195,20 @@ function buildSources(snapshot: EnergyNetworkModel): SldSourceView[] {
   // wykluczenie (poprzednie zachowanie: `.filter` odrzucał `null`, źródło
   // „ginęło bez śladu" — naruszenie spec §13.1 „każda scena renderuje
   // WSZYSTKIE punkty zasilania jako widoczne symbole źródeł").
+  // GS-4: strona przyłączenia względem TR — z REALNEJ szyny generatora
+  // (`bus_ref` → `voltage_kv`, próg 0,5 kV jak klasyfikacja szyn nN stacji);
+  // brak szyny/napięcia ⇒ 'unknown' (zero zgadywania strony).
+  const busVoltageByRef = new Map<string, number>();
+  for (const bus of snapshot.buses ?? []) {
+    if (typeof bus.ref_id === 'string' && typeof bus.voltage_kv === 'number') {
+      busVoltageByRef.set(bus.ref_id, bus.voltage_kv);
+    }
+  }
+  const derConnectionSide = (gen: Generator): NonNullable<SldSourceView['connectionSide']> => {
+    const v = gen.bus_ref ? busVoltageByRef.get(gen.bus_ref) : undefined;
+    if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return 'unknown';
+    return v > 0.5 ? 'sn' : 'nn';
+  };
   const derSources: SldSourceView[] = (snapshot.generators ?? []).map((gen): SldSourceView => {
     const kind = mapGeneratorToSourceKind(gen);
     return {
@@ -6195,6 +6220,7 @@ function buildSources(snapshot: EnergyNetworkModel): SldSourceView[] {
       // przez udokumentowaną regułę (patrz `generatorOperationalState` wyżej).
       operationalState: generatorOperationalState(gen),
       missingData: kind === 'unknown' ? true : undefined,
+      connectionSide: derConnectionSide(gen),
     };
   });
 

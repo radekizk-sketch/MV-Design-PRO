@@ -60,10 +60,17 @@ export interface GlyphProps {
    *  `transformerRatedKva`) — mini-glif TR zwieszony pod szyną. Odróżnia
    *  stację transformatorową od rozdzielni sieciowej (bez TR). */
   readonly stationHasTransformer?: boolean;
-  /** GS-1 (baza §10.4: DER na L0 = 0 → domknięcie): dominujący rodzaj DER
-   *  przyłączonego do stacji — marker nad szyną (PV/BESS/FW). `null`/brak =
-   *  stacja bez DER (zero markera). */
-  readonly stationDer?: StationDerGlyphKind | null;
+  /** GS-4 (recenzja 2026-07-23; baza GS-1 §10.4): dominujący rodzaj DER
+   *  przyłączonego do SZYNY SN stacji — pole DER nad szyną (`poleDer`).
+   *  `null`/brak = zero DER na SN. Pozycja symbolu DER wynika z RZECZYWISTEGO
+   *  miejsca przyłączenia (nie z samego faktu obecności). */
+  readonly stationDerOnMv?: StationDerGlyphKind | null;
+  /** GS-4: dominujący rodzaj DER ZA TRANSFORMATOREM (strona nN) — znak przy
+   *  gałęzi pola TR PONIŻEJ uzwojeń (`poleTr.derNn`, INNA kotwica niż DER na
+   *  SN). Wymaga `stationHasTransformer` (bez TR nie istnieje strona nN —
+   *  sprzeczność raportuje `buildScene`, glif jej nie rysuje). NIEZALEŻNE od
+   *  `stationDerOnMv` — oba mogą wystąpić naraz. */
+  readonly stationDerBehindTr?: StationDerGlyphKind | null;
   /** GS-1: stacja niesie punkt/łącznik NORMALNIE OTWARTY (`Substation.isNop`)
    *  — marker otwartego łącznika na szynie (odróżnialny od zamkniętego). */
   readonly stationNoOpen?: boolean;
@@ -362,10 +369,12 @@ export function GridSourceGlyph(props: GlyphProps): JSX.Element {
   );
 }
 
-/** GS-3 (K4/K5): marker RODZAJU DER — pomocniczy, NAD polem DER. Trójkąt jest
- *  ZAREZERWOWANY dla głowicy kablowej, więc PV=romb, BESS=kwadrat, FW/gen=okrąg. */
-function derMiniMarker(kind: StationDerGlyphKind, s: string): JSX.Element {
-  const { x: cx, markerCY: cy, markerHalf: h } = MINI_RMU.poleDer;
+/** GS-3 (K4/K5): marker RODZAJU DER — pomocniczy. Trójkąt jest ZAREZERWOWANY
+ *  dla głowicy kablowej, więc PV=romb, BESS=bateria, FW/gen=okrąg. GS-4:
+ *  kotwica (cx,cy,h) parametryzowana — TEN SAM kształt rodzaju w polu DER na
+ *  SN (`poleDer`) i za TR na nN (`poleTr.derNn`); różni się WYŁĄCZNIE miejsce
+ *  przyłączenia (topologia), nigdy notacja rodzaju. */
+function derMiniMarker(kind: StationDerGlyphKind, s: string, cx: number, cy: number, h: number): JSX.Element {
   const w = MINI_RMU.stroke.marker;
   const shape = DER_MARKER_SHAPE[kind];
   if (shape === 'diamond') {
@@ -464,15 +473,26 @@ export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
           <line x1={tr.x} y1={tr.stub2.y1} x2={tr.x} y2={tr.stub2.y2} stroke={s} strokeWidth={sw.path} />
           <circle cx={tr.x} cy={tr.circle1Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
           <circle cx={tr.x} cy={tr.circle2Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
+          {/* GS-4: DER ZA TRANSFORMATOREM (strona nN) — znak źródła przy
+              gałęzi pola TR PONIŻEJ uzwojeń, POZA enklozurą (nN na zewnątrz
+              rozdzielnicy SN). ZAKAZ renderu z szyny SN, gdy model mówi nN.
+              Guard `stationHasTransformer` z konstrukcji: blok żyje WEWNĄTRZ
+              grupy TR (bez TR strona nN nie istnieje). */}
+          {props.stationDerBehindTr && (
+            <g data-station-der-nn={props.stationDerBehindTr}>
+              <line x1={tr.x} y1={tr.derNn.stub.y1} x2={tr.x} y2={tr.derNn.stub.y2} stroke={s} strokeWidth={sw.path} />
+              {derMiniMarker(props.stationDerBehindTr, s, tr.x, tr.derNn.markerCY, tr.derNn.markerHalf)}
+            </g>
+          )}
         </g>
       )}
-      {/* POLE DER (K5): szyna → aparat pola DER → marker rodzaju (pomocniczy). */}
-      {props.stationDer && (
-        <g data-station-der={props.stationDer}>
+      {/* POLE DER na SN (K5): szyna → aparat pola DER → marker rodzaju. */}
+      {props.stationDerOnMv && (
+        <g data-station-der-sn={props.stationDerOnMv}>
           <line x1={der.x} y1={der.stub1.y1} x2={der.x} y2={der.stub1.y2} stroke={s} strokeWidth={sw.path} />
           <rect x={der.x - der.aparat.size / 2} y={der.aparat.y} width={der.aparat.size} height={der.aparat.size} fill="none" stroke={s} strokeWidth={sw.path} data-station-aparat="DER" />
           <line x1={der.x} y1={der.stub2.y1} x2={der.x} y2={der.stub2.y2} stroke={s} strokeWidth={sw.path} />
-          {derMiniMarker(props.stationDer, s)}
+          {derMiniMarker(props.stationDerOnMv, s, der.x, der.markerCY, der.markerHalf)}
         </g>
       )}
     </g>

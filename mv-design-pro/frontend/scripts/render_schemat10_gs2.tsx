@@ -63,19 +63,22 @@ const HEIGHT = 1100;
     readonly p: {
       stationSectioned?: boolean;
       stationHasTransformer?: boolean;
-      stationDer?: StationDerGlyphKind | null;
+      stationDerOnMv?: StationDerGlyphKind | null;
+      stationDerBehindTr?: StationDerGlyphKind | null;
       stationNoOpen?: boolean;
     };
   }> = [
+    // GS-4: skrypt historyczny GS-2 zaktualizowany do kontraktu per strona
+    // (usunięty prop `stationDer` — bez tego render gubiłby markery DER).
     { title: 'Rozdzielnia sieciowa', p: {} },
     { title: 'Stacja SN/nN (TR)', p: { stationHasTransformer: true } },
     { title: 'Stacja sekcyjna', p: { stationSectioned: true } },
-    { title: 'TR + PV', p: { stationHasTransformer: true, stationDer: 'pv' } },
-    { title: 'TR + BESS', p: { stationHasTransformer: true, stationDer: 'bess' } },
-    { title: 'TR + farma wiatr.', p: { stationHasTransformer: true, stationDer: 'wind' } },
-    { title: 'TR + generator', p: { stationHasTransformer: true, stationDer: 'generator' } },
+    { title: 'PV za TR (nN)', p: { stationHasTransformer: true, stationDerBehindTr: 'pv' } },
+    { title: 'BESS za TR (nN)', p: { stationHasTransformer: true, stationDerBehindTr: 'bess' } },
+    { title: 'Farma wiatr. za TR (nN)', p: { stationHasTransformer: true, stationDerBehindTr: 'wind' } },
+    { title: 'Generator na SN', p: { stationHasTransformer: true, stationDerOnMv: 'generator' } },
     { title: 'Punkt NO (otwarty)', p: { stationHasTransformer: true, stationNoOpen: true } },
-    { title: 'Sekcyjna + TR + DER + NO', p: { stationSectioned: true, stationHasTransformer: true, stationDer: 'pv', stationNoOpen: true } },
+    { title: 'Sekcyjna + TR + PV za TR + NO', p: { stationSectioned: true, stationHasTransformer: true, stationDerBehindTr: 'pv', stationNoOpen: true } },
   ];
   const cols = 4;
   const gridW = cols * CELL_W + 40;

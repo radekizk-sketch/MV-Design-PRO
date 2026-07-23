@@ -156,7 +156,7 @@ import {
   classifyStationTopologicalType,
   FORBIDDEN_RAW_DIRECTION_TOKENS,
 } from '../compose/directions';
-import { isSourceOperationalState, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
+import { isSourceOperationalState, type DerConnectionSide, type DerSourceKind, type StationDerSourceInput } from '../compose/sourceKind';
 import { junctionDotGaps, interiorCrossings } from './crossings';
 import {
   bayHasProtectionAnnotation,
@@ -730,15 +730,17 @@ interface RowLayout {
   readonly blockTopY: number;
 }
 
-/** SCHEMAT-10 GS-1 (V12K-137, GAP §10.4): dominujący rodzaj DER stacji dla
- *  markera sylwetki mini-RMU na L0 — deterministyczny (lista `derSources`
- *  posortowana po `id` w `buildSceneV3`, bierzemy PIERWSZY). `'unknown'` →
- *  `'generator'` (glif generyczny, spójnie z `DER_SOURCE_KIND_SYMBOL`).
- *  `null` gdy stacja bez DER (baza §10.4: L0 miało 0 markerów DER). */
+/** SCHEMAT-10 GS-1/GS-4 (V12K-137, GAP §10.4; recenzja 2026-07-23):
+ *  dominujący rodzaj DER stacji PER STRONA przyłączenia dla markera sylwetki
+ *  mini-RMU na L0 — deterministyczny (lista `derSources` posortowana po `id`
+ *  w `buildSceneV3`, bierzemy PIERWSZE źródło o pasującej stronie).
+ *  `'unknown'` (rodzaj) → `'generator'` (glif generyczny, spójnie z
+ *  `DER_SOURCE_KIND_SYMBOL`). `null` gdy zero DER po tej stronie. */
 function dominantDerGlyphKind(
   sources: readonly StationDerSourceInput[],
+  sides: readonly DerConnectionSide[],
 ): StationDerGlyphKind | null {
-  const first = sources[0];
+  const first = sources.find((s) => sides.includes(s.connectionSide ?? 'unknown'));
   if (!first) return null;
   const map: Readonly<Record<DerSourceKind, StationDerGlyphKind>> = {
     pv: 'pv',
@@ -752,16 +754,34 @@ function dominantDerGlyphKind(
 
 /** GS-1 (V12K-137, macierz §3 „Stacja"): sylwetka mini-RMU L0 z TYPU
  *  elementów stacji (nie nazw, spec §19.3): sekcyjna = sprzęgło w topologii;
- *  SN/nN = transformator; DER = dominujący rodzaj; NO = punkt normalnie
- *  otwarty. Rozdzielnia sieciowa = brak TR i brak sprzęgła (sylwetka bazowa). */
+ *  SN/nN = transformator; DER = dominujący rodzaj PER STRONA (GS-4); NO =
+ *  punkt normalnie otwarty. Rozdzielnia sieciowa = brak TR i brak sprzęgła.
+ *  GS-4 (recenzja 2026-07-23 — „mini-RMU nie może kłamać topologicznie"):
+ *   - `derBehindTr` = źródło na szynie nN (`connectionSide==='nn'` z REALNEJ
+ *     szyny ENM) — znak przy gałęzi pola TR, PONIŻEJ uzwojeń;
+ *   - `derOnMv` = źródło na SN (`'sn'`) LUB strona nieznana (`'unknown'` —
+ *     model nie mówi nN, więc rysunek od szyny rozdzielnicy jest uczciwym
+ *     punktem przyłączenia stacji; jedyny ZAKAZ kanonu dotyczy renderu z
+ *     szyny, gdy model MÓWI nN);
+ *   - `derBehindTr` bez transformatora = sprzeczność modelu (źródło „za TR"
+ *     w stacji bez TR) — jawny stopNote, glif nie rysuje nN bez pola TR. */
 function stationCompactGlyphSummary(
   props: StationOnRunRendererProps,
   derSources: readonly StationDerSourceInput[],
+  stopNotes: string[],
 ): StationCompactGlyphSummary {
+  const hasTransformer = props.hasTransformer ?? props.transformerRatedKva != null;
+  const derBehindTr = dominantDerGlyphKind(derSources, ['nn']);
+  if (derBehindTr != null && !hasTransformer) {
+    stopNotes.push(
+      `station.der.behindTrBezTR: stacja „${props.name}" (${props.id}) — źródło DER na szynie nN (za TR), ale stacja bez transformatora; sprzeczność modelu ENM (GS-4), sylwetka L0 nie rysuje strony nN bez pola TR.`,
+    );
+  }
   return {
     sectioned: classifyStationTopologicalType(props.snBays ?? []) === 'sekcyjna',
-    hasTransformer: props.hasTransformer ?? props.transformerRatedKva != null,
-    der: dominantDerGlyphKind(derSources),
+    hasTransformer,
+    derOnMv: dominantDerGlyphKind(derSources, ['sn', 'unknown']),
+    derBehindTr,
     noOpen: props.isNop ?? false,
   };
 }
@@ -794,7 +814,7 @@ function buildMeasureInput(
       id: props.id,
       name: props.stationCode ?? props.name,
       snBays: [],
-      compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? []),
+      compactGlyph: stationCompactGlyphSummary(props, derSourcesByStationId.get(props.id) ?? [], stopNotes),
     };
   }
   const includeCableAndPorts = lod === 2;
@@ -1875,6 +1895,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         ratedPower: s.ratedPower,
         missingData: s.missingData,
         operationalState: s.operationalState,
+        // GS-4: strona przyłączenia względem TR (adapter v2, jedyny pisarz —
+        // klasyfikacja z REALNEJ szyny `Generator.bus_ref`→`voltage_kv`).
+        connectionSide: s.connectionSide,
       });
       derSourcesByStationId.set(s.connectionRef, list);
     });

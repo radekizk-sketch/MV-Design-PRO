@@ -57,26 +57,34 @@ const HEIGHT = 1100;
   const S = 4; // powiększenie (48px → 192px)
   const CELL_W = 260;
   const CELL_H = 300;
+  // GS-4 (recenzja 2026-07-23): etykiety legendy JEDNOZNACZNE co do strony
+  // przyłączenia DER — „PV na SN" (pole DER od szyny) vs „PV za TR (nN)"
+  // (znak przy gałęzi pola TR, poniżej uzwojeń). Mini-RMU nie kłamie
+  // topologicznie; DER za TR wymaga TR (kombinacja bez TR = niedopuszczalna).
   const cases: ReadonlyArray<{
     readonly title: string;
     readonly p: {
       stationSectioned?: boolean;
       stationHasTransformer?: boolean;
-      stationDer?: StationDerGlyphKind | null;
+      stationDerOnMv?: StationDerGlyphKind | null;
+      stationDerBehindTr?: StationDerGlyphKind | null;
       stationNoOpen?: boolean;
     };
   }> = [
     { title: 'Rozdzielnia sieciowa', p: {} },
     { title: 'Stacja SN/nN (TR)', p: { stationHasTransformer: true } },
     { title: 'Stacja sekcyjna', p: { stationSectioned: true } },
-    { title: 'TR + PV', p: { stationHasTransformer: true, stationDer: 'pv' } },
-    { title: 'TR + BESS', p: { stationHasTransformer: true, stationDer: 'bess' } },
-    { title: 'TR + farma wiatr.', p: { stationHasTransformer: true, stationDer: 'wind' } },
+    { title: 'PV za TR (nN)', p: { stationHasTransformer: true, stationDerBehindTr: 'pv' } },
+    { title: 'BESS za TR (nN)', p: { stationHasTransformer: true, stationDerBehindTr: 'bess' } },
+    { title: 'Farma wiatr. za TR (nN)', p: { stationHasTransformer: true, stationDerBehindTr: 'wind' } },
+    { title: 'PV na SN (bez TR)', p: { stationDerOnMv: 'pv' } },
+    { title: 'TR + PV na SN', p: { stationHasTransformer: true, stationDerOnMv: 'pv' } },
+    { title: 'TR + PV na SN + BESS za TR', p: { stationHasTransformer: true, stationDerOnMv: 'pv', stationDerBehindTr: 'bess' } },
     { title: 'Punkt NO (bez TR)', p: { stationNoOpen: true } },
     { title: 'TR + punkt NO', p: { stationHasTransformer: true, stationNoOpen: true } },
     { title: 'Sekcyjna + NO', p: { stationSectioned: true, stationNoOpen: true } },
-    { title: 'TR + DER + NO', p: { stationHasTransformer: true, stationDer: 'pv' as const, stationNoOpen: true } },
-    { title: 'Sekcyjna + TR + DER', p: { stationSectioned: true, stationHasTransformer: true, stationDer: 'pv' } },
+    { title: 'TR + PV za TR + NO', p: { stationHasTransformer: true, stationDerBehindTr: 'pv' as const, stationNoOpen: true } },
+    { title: 'Sekcyjna + TR + PV za TR', p: { stationSectioned: true, stationHasTransformer: true, stationDerBehindTr: 'pv' } },
   ];
   const cols = 4;
   const gridW = cols * CELL_W + 40;
@@ -99,7 +107,7 @@ const HEIGHT = 1100;
     .join('');
   const title =
     `<text x="20" y="34" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="600" fill="#E8EEF4">` +
-    `GS-1 · Gramatyka sylwetki stacji na L0 (mini-RMU, ×4) — typ · transformator · DER · NO (V12K-137)</text>`;
+    `GS-4 · Gramatyka sylwetki stacji na L0 (mini-RMU, ×4) — typ · TR · DER na SN vs DER za TR (nN) · NO (V12K-137)</text>`;
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${gridW}" height="${gridH}" viewBox="0 0 ${gridW} ${gridH}">` +
     `<rect width="${gridW}" height="${gridH}" fill="#0E1621"/>${title}${cells}</svg>`;

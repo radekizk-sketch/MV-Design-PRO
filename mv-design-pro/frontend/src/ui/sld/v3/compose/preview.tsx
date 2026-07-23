@@ -209,8 +209,16 @@ export interface StationCompactGlyphSummary {
   readonly sectioned: boolean;
   /** Stacja SN/nN z transformatorem (odróżnia od rozdzielni sieciowej bez TR). */
   readonly hasTransformer: boolean;
-  /** Dominujący rodzaj DER przyłączonego do stacji, `null` gdy brak DER. */
-  readonly der: StationDerGlyphKind | null;
+  /** GS-4 (recenzja 2026-07-23): dominujący rodzaj DER przyłączonego do SZYNY
+   *  SN stacji (`connectionSide` 'sn'/'unknown' — strona nieznana NIE jest
+   *  zgadywana jako nN; rysunek od szyny rozdzielnicy = uczciwy punkt
+   *  przyłączenia stacji), `null` gdy brak. */
+  readonly derOnMv: StationDerGlyphKind | null;
+  /** GS-4: dominujący rodzaj DER ZA TRANSFORMATOREM (strona nN, `connection
+   *  Side==='nn'` z REALNEJ szyny ENM) — znak przy gałęzi pola TR, INNA
+   *  kotwica niż DER na SN. NIEZALEŻNE od `derOnMv`. Wymaga `hasTransformer`
+   *  (sprzeczność ⇒ stopNote w `buildScene`, glif nie rysuje nN bez TR). */
+  readonly derBehindTr: StationDerGlyphKind | null;
   /** Stacja niesie punkt/łącznik normalnie otwarty (`isNop`). */
   readonly noOpen: boolean;
 }
@@ -297,7 +305,8 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
         meterQuantity={symbol.meta?.meterQuantity}
         stationSectioned={symbol.meta?.stationGlyph?.sectioned}
         stationHasTransformer={symbol.meta?.stationGlyph?.hasTransformer}
-        stationDer={symbol.meta?.stationGlyph?.der}
+        stationDerOnMv={symbol.meta?.stationGlyph?.derOnMv}
+        stationDerBehindTr={symbol.meta?.stationGlyph?.derBehindTr}
         stationNoOpen={symbol.meta?.stationGlyph?.noOpen}
       />
     </g>

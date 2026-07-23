@@ -85,6 +85,16 @@ export const MINI_RMU = {
     circleR: 2,
     circle1Y: 33.6,
     circle2Y: 36.4,
+    /** GS-4 (recenzja 2026-07-23): DER ZA TRANSFORMATOREM (strona nN) — znak
+     *  źródła zakotwiczony do GAŁĘZI POLA TR PONIŻEJ uzwojeń, POZA enklozurą
+     *  (strona nN jest na zewnątrz rozdzielnicy SN — ten sam wzór co kable
+     *  pól liniowych przecinające obrys). INNA kotwica niż DER na SN
+     *  (`poleDer`) — mini-RMU nie może kłamać topologicznie. */
+    derNn: {
+      stub: { y1: 38.4, y2: 41 },
+      markerCY: 43.4,
+      markerHalf: 2.4,
+    },
   },
   /** Pole DER (K5): szyna → aparat DER → marker rodzaju (romb/kwadrat/okrąg). */
   poleDer: {
@@ -105,20 +115,51 @@ export const MINI_RMU = {
 export interface MiniRmuFeatures {
   readonly sectioned: boolean;
   readonly transformer: boolean;
-  readonly der: StationDerGlyphKind | null;
+  /** GS-4: DER przyłączony do SZYNY SN (osobne pole SN dla DER — `poleDer`). */
+  readonly derOnMv: StationDerGlyphKind | null;
+  /** GS-4: DER ZA transformatorem (strona nN — znak przy gałęzi pola TR,
+   *  PONIŻEJ uzwojeń, `poleTr.derNn`). NIEZALEŻNE od `derOnMv` — oba mogą
+   *  wystąpić naraz. Wymaga `transformer=true` (walidacja
+   *  `miniRmuFeatureContradictions`). */
+  readonly derBehindTr: StationDerGlyphKind | null;
   readonly noOpen: boolean;
 }
 
 export function miniRmuSignature(f: MiniRmuFeatures): string {
-  return [f.sectioned ? 'SEK' : '-', f.transformer ? 'TR' : '-', f.der ?? '-', f.noOpen ? 'NO' : '-'].join('|');
+  return [
+    f.sectioned ? 'SEK' : '-',
+    f.transformer ? 'TR' : '-',
+    f.derOnMv ? `SN:${f.derOnMv}` : '-',
+    f.derBehindTr ? `nN:${f.derBehindTr}` : '-',
+    f.noOpen ? 'NO' : '-',
+  ].join('|');
 }
 
+/** GS-4: sprzeczności kontraktu cech — kombinacja `derBehindTr` bez
+ *  transformatora jest NIEDOPUSZCZALNA (źródło „za TR" nie istnieje bez TR;
+ *  walidacja czerwona, nie cichy render). Pusta lista = kombinacja legalna. */
+export function miniRmuFeatureContradictions(f: MiniRmuFeatures): readonly string[] {
+  const g: string[] = [];
+  if (f.derBehindTr != null && !f.transformer)
+    g.push('GS-4: derBehindTr bez transformatora — źródło „za TR" wymaga pola TR (hasTransformer=true)');
+  return g;
+}
+
+/** Macierz WYŁĄCZNIE kombinacji legalnych (GS-4: strona DER w iloczynie;
+ *  kombinacje sprzeczne — `derBehindTr` bez TR — wykluczone z konstrukcji,
+ *  ich odrzucenie dowodzi test przez `miniRmuFeatureContradictions`). */
 export function allMiniRmuFeatureCombinations(): readonly MiniRmuFeatures[] {
   const out: MiniRmuFeatures[] = [];
+  const kinds = [null, 'pv', 'bess', 'wind', 'generator'] as const;
   for (const sectioned of [false, true])
     for (const transformer of [false, true])
-      for (const der of [null, 'pv', 'bess', 'wind', 'generator'] as const)
-        for (const noOpen of [false, true]) out.push({ sectioned, transformer, der, noOpen });
+      for (const derOnMv of kinds)
+        for (const derBehindTr of kinds)
+          for (const noOpen of [false, true]) {
+            const f: MiniRmuFeatures = { sectioned, transformer, derOnMv, derBehindTr, noOpen };
+            if (miniRmuFeatureContradictions(f).length > 0) continue;
+            out.push(f);
+          }
   return out;
 }
 
@@ -179,6 +220,15 @@ export function miniRmuMarkerSpacingGaps(): readonly string[] {
     g.push('pole TR koliduje ze sprzęgłem');
   if (Math.abs(poleDer.x - sprzeglo.x) < sprzeglo.size / 2 + minGap.marker)
     g.push('pole DER koliduje ze sprzęgłem');
+  // GS-4: strefa DER za TR (nN) — POZA enklozurą (strona nN na zewnątrz
+  // rozdzielnicy SN), wewnątrz bboxa, gałąź ciągła od uzwojeń do markera.
+  const nn = poleTr.derNn;
+  if (nn.markerCY - nn.markerHalf < enclosure.y + enclosure.height)
+    g.push('GS-4: marker DER nN wchodzi w enklozurę (strona nN jest na zewnątrz rozdzielnicy SN)');
+  if (nn.markerCY + nn.markerHalf > MINI_RMU.bbox.height - minGap.outline)
+    g.push('GS-4: marker DER nN wychodzi poza bbox glifu');
+  if (nn.stub.y1 > poleTr.circle2Y + poleTr.circleR + 0.001 || nn.stub.y2 < nn.markerCY - nn.markerHalf - 0.001)
+    g.push('GS-4: przerwa gałęzi nN między uzwojeniami TR a markerem DER (tor niedomknięty)');
   return g;
 }
 
@@ -193,6 +243,9 @@ export function miniRmuMarkerPrimitiveZones(): readonly MiniRmuPrimitiveZone[] {
     { feature: 'transformer-uzwojenia', x: t.x - t.circleR, y: t.circle1Y - t.circleR, width: 2 * t.circleR, height: t.circle2Y - t.circle1Y + 2 * t.circleR },
     { feature: 'der-aparat', x: d.x - d.aparat.size / 2, y: d.aparat.y, width: d.aparat.size, height: d.aparat.size },
     { feature: 'der-marker', x: d.x - d.markerHalf, y: d.markerCY - d.markerHalf, width: 2 * d.markerHalf, height: 2 * d.markerHalf },
+    // GS-4: DER za TR (nN) — INNA kotwica niż DER na SN (gałąź pola TR);
+    // osobna rodzina cechy (`derNn`), bo strefa SN i nN to różne przyłącza.
+    { feature: 'derNn-marker', x: t.x - t.derNn.markerHalf, y: t.derNn.markerCY - t.derNn.markerHalf, width: 2 * t.derNn.markerHalf, height: 2 * t.derNn.markerHalf },
     { feature: 'noOpen', x: sp.x - sp.gapHalf, y: y - 2 * sp.gapHalf, width: 2 * sp.gapHalf, height: 2 * sp.gapHalf },
   ];
 }

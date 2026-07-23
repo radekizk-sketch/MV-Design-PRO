@@ -18,6 +18,17 @@ import { HIGHLIGHT_COLOR } from '../theme/colorTokens';
 export type DerSourceKind = 'pv' | 'bess' | 'generator' | 'wind' | 'unknown';
 
 /**
+ * GS-4 (`GRAMATYKA_MINI_RMU_2026-07.md`, recenzja 2026-07-23): strona
+ * przyłączenia DER względem transformatora stacji — klasyfikacja z REALNEJ
+ * szyny ENM (`Generator.bus_ref` → `Bus.voltage_kv`, adapter v2, jedyny
+ * pisarz): >0,5 kV ⇒ `'sn'` (pole SN), ≤0,5 kV ⇒ `'nn'` (za TR), brak
+ * szyny/napięcia ⇒ `'unknown'` (uczciwy brak — NIGDY zgadywanie strony).
+ * Ten sam próg 0,5 kV co klasyfikacja szyn nN stacji (adapter, K30-37 /
+ * recenzja NO-GO 2026-07-17 pkt 6) — jedna konwencja, nie nowa heurystyka.
+ */
+export type DerConnectionSide = 'sn' | 'nn' | 'unknown';
+
+/**
  * Jedno widoczne źródło DER przypisane do stacji (spec §13.1, V12K-029) —
  * projekcja `SldSourceView` (adapter v2) ZAWĘŻONA do tego, czego potrzebuje
  * measure/compose (`Pick`-owy podzbiór, wzór `StationMeasureInput`) — zero
@@ -38,6 +49,10 @@ export interface StationDerSourceInput {
    *  `undefined` = uczciwy brak danych ⇒ ZERO nakładki (spec §13.3: „0 stanów
    *  wywiedzionych bez udokumentowanej reguły"). */
   readonly operationalState?: SourceOperationalState;
+  /** GS-4: strona przyłączenia względem TR stacji — 1:1 z
+   *  `SldSourceView.connectionSide` (adapter v2, jedyny pisarz). Brak pola =
+   *  `'unknown'` (uczciwy brak; wpis sprzed GS-4 lub źródło bez `bus_ref`). */
+  readonly connectionSide?: DerConnectionSide;
 }
 
 /**

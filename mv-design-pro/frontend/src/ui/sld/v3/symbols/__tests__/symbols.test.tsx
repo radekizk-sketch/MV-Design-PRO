@@ -16,10 +16,13 @@ import { SYMBOL_GLYPHS, SYMBOL_IDS, V3_STROKE_APPARATUS } from '../glyphs';
 import {
   MINI_RMU,
   DER_MARKER_SHAPE,
-  type StationDerGlyphKind,
+  type MiniRmuFeatures,
+  allMiniRmuFeatureCombinations,
+  miniRmuFeatureContradictions,
   miniRmuPathContinuityGaps,
   miniRmuMarkerSpacingGaps,
   miniRmuMarkerPrimitiveZones,
+  miniRmuSignature,
   transformerInteriorHeightRatio,
 } from '../miniRmuGrammar';
 
@@ -111,19 +114,21 @@ describe('V3 symbols — rejestr glifów i stany', () => {
     // Sylwetka BAZOWA (bez flag) nie niesie markerów typu/TR/DER/NO ani okręgu.
     expect(container.querySelector('circle')).toBeFalsy();
     expect(container.querySelector('[data-station-transformer]')).toBeFalsy();
-    expect(container.querySelector('[data-station-der]')).toBeFalsy();
+    expect(container.querySelector('[data-station-der-sn]')).toBeFalsy();
+    expect(container.querySelector('[data-station-der-nn]')).toBeFalsy();
   });
 
-  it('stacja mini-RMU: markery typu/TR/DER/NO rysowane z danych (GS-1)', () => {
+  it('stacja mini-RMU: markery typu/TR/DER/NO rysowane z danych (GS-1/GS-4)', () => {
     const Glyph = SYMBOL_GLYPHS.stationCollapsed;
     const { container } = render(
       <svg>
-        <Glyph x={0} y={0} stationSectioned stationHasTransformer stationDer="pv" stationNoOpen />
+        <Glyph x={0} y={0} stationSectioned stationHasTransformer stationDerOnMv="pv" stationDerBehindTr="bess" stationNoOpen />
       </svg>,
     );
     expect(container.querySelector('[data-station-sectioned="true"]')).toBeTruthy();
     expect(container.querySelector('[data-station-transformer="true"]')).toBeTruthy();
-    expect(container.querySelector('[data-station-der="pv"]')).toBeTruthy();
+    expect(container.querySelector('[data-station-der-sn="pv"]')).toBeTruthy();
+    expect(container.querySelector('[data-station-der-nn="bess"]')).toBeTruthy();
     expect(container.querySelector('[data-station-no="true"]')).toBeTruthy();
     // TR = dwa okręgi (dwuuzwojeniowy) — obecne TYLKO gdy transformator.
     expect(container.querySelectorAll('circle').length).toBeGreaterThanOrEqual(2);
@@ -132,8 +137,8 @@ describe('V3 symbols — rejestr glifów i stany', () => {
   it('stacja mini-RMU: rodzaj DER koduje kształt (PV≠BESS≠FW) (GS-1)', () => {
     const Glyph = SYMBOL_GLYPHS.stationCollapsed;
     const shapeTag = (der: 'pv' | 'bess' | 'wind') => {
-      const { container } = render(<svg><Glyph x={0} y={0} stationDer={der} /></svg>);
-      const g = container.querySelector('[data-station-der]');
+      const { container } = render(<svg><Glyph x={0} y={0} stationDerOnMv={der} /></svg>);
+      const g = container.querySelector('[data-station-der-sn]');
       // ostatni element markera to kształt rodzaju (po stub-linii).
       return g?.lastElementChild?.tagName.toLowerCase();
     };
@@ -144,11 +149,108 @@ describe('V3 symbols — rejestr glifów i stany', () => {
     expect(shapeTag('wind')).toBe('g');
     // Rozróżnialność STRUKTURALNA wind vs generator (recenzja pkt 6):
     const kidsOf = (der: 'wind' | 'generator') => {
-      const { container } = render(<svg><Glyph x={0} y={0} stationDer={der} /></svg>);
-      return container.querySelector('[data-station-der] g')?.children.length ?? 0;
+      const { container } = render(<svg><Glyph x={0} y={0} stationDerOnMv={der} /></svg>);
+      return container.querySelector('[data-station-der-sn] g')?.children.length ?? 0;
     };
     expect(kidsOf('wind')).toBe(4);
     expect(kidsOf('generator')).toBe(2);
+  });
+});
+
+/**
+ * GS-4 (recenzja 2026-07-23, `GRAMATYKA_MINI_RMU_2026-07.md` §GS-4) — semantyka
+ * DER względem transformatora: pozycja znaku źródła wynika z RZECZYWISTEGO
+ * miejsca przyłączenia (SN = pole DER od szyny; nN = przy gałęzi pola TR,
+ * PONIŻEJ uzwojeń, INNA kotwica). Mini-RMU nie może kłamać topologicznie.
+ * 6 testów kanonicznych z kanonu + walidacja sprzeczności.
+ */
+describe('GS-4 — DER na SN vs DER za transformatorem (nN)', () => {
+  const Glyph = SYMBOL_GLYPHS.stationCollapsed;
+  const parts = (el: JSX.Element) => {
+    const { container } = render(<svg>{el}</svg>);
+    return {
+      tr: container.querySelector('[data-station-transformer="true"]'),
+      sn: container.querySelector('[data-station-der-sn]'),
+      nn: container.querySelector('[data-station-der-nn]'),
+      no: container.querySelector('[data-station-no="true"]'),
+      container,
+    };
+  };
+
+  it('1: TR bez DER — pole TR obecne, ZERO znaków źródła po obu stronach', () => {
+    const p = parts(<Glyph x={0} y={0} stationHasTransformer />);
+    expect(p.tr).toBeTruthy();
+    expect(p.sn).toBeFalsy();
+    expect(p.nn).toBeFalsy();
+  });
+
+  it('2: TR + DER za TR — znak WYŁĄCZNIE przy gałęzi TR, poniżej uzwojeń (nie od szyny SN)', () => {
+    const p = parts(<Glyph x={0} y={0} stationHasTransformer stationDerBehindTr="pv" />);
+    expect(p.nn?.getAttribute('data-station-der-nn')).toBe('pv');
+    expect(p.sn).toBeFalsy();
+    // Kotwica nN: oś pola TR, PONIŻEJ dolnego uzwojenia (strona nN, poza enklozurą).
+    const stub = p.nn?.querySelector('line');
+    expect(stub?.getAttribute('x1')).toBe(String(MINI_RMU.poleTr.x));
+    expect(Number(stub?.getAttribute('y1'))).toBeGreaterThanOrEqual(MINI_RMU.poleTr.circle2Y + MINI_RMU.poleTr.circleR);
+    expect(MINI_RMU.poleTr.derNn.markerCY - MINI_RMU.poleTr.derNn.markerHalf)
+      .toBeGreaterThanOrEqual(MINI_RMU.enclosure.y + MINI_RMU.enclosure.height);
+    // Znak nN żyje WEWNĄTRZ grupy pola TR (gałąź TR, nie osobne pole od szyny).
+    expect(p.tr?.contains(p.nn)).toBe(true);
+  });
+
+  it('3: stacja bez TR + DER na SN — pole DER od szyny, ZERO strony nN', () => {
+    const p = parts(<Glyph x={0} y={0} stationDerOnMv="wind" />);
+    expect(p.sn?.getAttribute('data-station-der-sn')).toBe('wind');
+    expect(p.tr).toBeFalsy();
+    expect(p.nn).toBeFalsy();
+    // Kotwica SN: pole DER od szyny (INNA kotwica niż nN).
+    expect(p.sn?.querySelector('line')?.getAttribute('x1')).toBe(String(MINI_RMU.poleDer.x));
+  });
+
+  it('4: TR + DER za TR + NO — przerwa szyny NIE kasuje znaku nN', () => {
+    const p = parts(<Glyph x={0} y={0} stationHasTransformer stationDerBehindTr="bess" stationNoOpen />);
+    expect(p.nn?.getAttribute('data-station-der-nn')).toBe('bess');
+    expect(p.no).toBeTruthy();
+    expect(p.sn).toBeFalsy();
+  });
+
+  it('5: TR + DER na SN + NO — znak na SN, strona nN pusta', () => {
+    const p = parts(<Glyph x={0} y={0} stationHasTransformer stationDerOnMv="pv" stationNoOpen />);
+    expect(p.sn?.getAttribute('data-station-der-sn')).toBe('pv');
+    expect(p.nn).toBeFalsy();
+    expect(p.no).toBeTruthy();
+  });
+
+  it('6: TR + oba naraz — dwa znaki, dwie RÓŻNE kotwice (wariant 4 kanonu)', () => {
+    const p = parts(<Glyph x={0} y={0} stationHasTransformer stationDerOnMv="pv" stationDerBehindTr="generator" />);
+    expect(p.sn?.getAttribute('data-station-der-sn')).toBe('pv');
+    expect(p.nn?.getAttribute('data-station-der-nn')).toBe('generator');
+    // Różne kotwice: SN nad szyną (poleDer), nN pod transformatorem (poleTr.derNn).
+    expect(MINI_RMU.poleDer.x).not.toBe(MINI_RMU.poleTr.x);
+    expect(MINI_RMU.poleDer.markerCY).toBeLessThan(MINI_RMU.bus.y);
+    expect(MINI_RMU.poleTr.derNn.markerCY).toBeGreaterThan(MINI_RMU.poleTr.circle2Y);
+  });
+
+  it('walidacja: DER za TR bez transformatora = sprzeczność (czerwona, nie cichy render)', () => {
+    // Kontrakt cech: kombinacja NIEDOPUSZCZALNA, wykluczona z macierzy.
+    const f: MiniRmuFeatures = { sectioned: false, transformer: false, derOnMv: null, derBehindTr: 'pv', noOpen: false };
+    expect(miniRmuFeatureContradictions(f).length).toBeGreaterThan(0);
+    expect(allMiniRmuFeatureCombinations().every((c) => miniRmuFeatureContradictions(c).length === 0)).toBe(true);
+    // Glif NIE fabrykuje strony nN bez pola TR (blok nN żyje wewnątrz grupy TR);
+    // sprzeczność modelu raportuje `buildScene` jawnym stopNote.
+    const p = parts(<Glyph x={0} y={0} stationDerBehindTr="pv" />);
+    expect(p.nn).toBeFalsy();
+    expect(p.tr).toBeFalsy();
+  });
+
+  it('ten sam rodzaj = ten sam kształt po OBU stronach (różni się wyłącznie przyłącze)', () => {
+    const p = parts(<Glyph x={0} y={0} stationHasTransformer stationDerOnMv="bess" stationDerBehindTr="bess" />);
+    // BESS po obu stronach: grupa (rect 2:1 + kreska) — identyczna struktura.
+    const snShape = p.sn?.lastElementChild;
+    const nnShape = p.nn?.lastElementChild;
+    expect(snShape?.tagName.toLowerCase()).toBe('g');
+    expect(nnShape?.tagName.toLowerCase()).toBe('g');
+    expect(snShape?.children.length).toBe(nnShape?.children.length);
   });
 });
 
@@ -163,7 +265,7 @@ describe('GS-2 — gramatyka mini-RMU: renderer = stałe globalne (reguła 13)',
   it('renderer NIE ma literałów lokalnych: rysowane współrzędne == MINI_RMU', () => {
     const Glyph = SYMBOL_GLYPHS.stationCollapsed;
     const { container } = render(
-      <svg><Glyph x={0} y={0} stationSectioned stationHasTransformer stationDer="pv" /></svg>,
+      <svg><Glyph x={0} y={0} stationSectioned stationHasTransformer stationDerOnMv="pv" /></svg>,
     );
     // Enklozura.
     const rect = container.querySelector('rect');
@@ -211,8 +313,8 @@ describe('GS-2 — kotwice, odstępy, proporcje (reguły 5–7, 10, 11, 12)', ()
     // Marker DER tej samej cechy ma identyczną kotwicę niezależnie od pozostałych.
     const Glyph = SYMBOL_GLYPHS.stationCollapsed;
     const derXof = (extra: Record<string, unknown>) => {
-      const { container } = render(<svg><Glyph x={0} y={0} stationDer="pv" {...extra} /></svg>);
-      return container.querySelector('[data-station-der] line')?.getAttribute('x1');
+      const { container } = render(<svg><Glyph x={0} y={0} stationDerOnMv="pv" {...extra} /></svg>);
+      return container.querySelector('[data-station-der-sn] line')?.getAttribute('x1');
     };
     expect(derXof({})).toBe(String(MINI_RMU.poleDer.x));
     expect(derXof({ stationHasTransformer: true, stationNoOpen: true, stationSectioned: true })).toBe(String(MINI_RMU.poleDer.x));
@@ -232,40 +334,31 @@ describe('GS-2 — kotwice, odstępy, proporcje (reguły 5–7, 10, 11, 12)', ()
   });
 });
 
-describe('GS-2 — pełna macierz kombinacji cech (reguły 15–16)', () => {
-  const SECTIONED = [false, true];
-  const TR = [false, true];
-  const DER: readonly (StationDerGlyphKind | null)[] = [null, 'pv', 'bess', 'wind', 'generator'];
-  const NO = [false, true];
+describe('GS-2/GS-4 — pełna macierz kombinacji cech (reguły 15–16 + strona DER)', () => {
+  // GS-4: macierz Z GRAMATYKI (jedna prawda) — iloczyn typ×TR×DER(SN)×DER(nN)×NO
+  // ograniczony do kombinacji LEGALNYCH (derBehindTr bez TR = NIEDOPUSZCZALNE,
+  // wykluczone z konstrukcji; dowód czerwoności w bloku GS-4 wyżej).
+  const combos = allMiniRmuFeatureCombinations();
 
-  interface Combo {
-    readonly sectioned: boolean;
-    readonly hasTransformer: boolean;
-    readonly der: StationDerGlyphKind | null;
-    readonly noOpen: boolean;
-  }
-  const combos: Combo[] = [];
-  for (const sectioned of SECTIONED)
-    for (const hasTransformer of TR)
-      for (const der of DER)
-        for (const noOpen of NO)
-          combos.push({ sectioned, hasTransformer, der, noOpen });
-
-  it('40 kombinacji (typ×TR×DER×NO)', () => {
-    expect(combos.length).toBe(2 * 2 * 5 * 2);
+  it('120 kombinacji legalnych (200 iloczynu − 80 sprzecznych derBehindTr-bez-TR)', () => {
+    expect(combos.length).toBe(2 * 2 * 5 * 5 * 2 - 2 * 1 * 5 * 4 * 2);
+    expect(combos.every((c) => miniRmuFeatureContradictions(c).length === 0)).toBe(true);
+    // Sygnatury cech unikalne już na poziomie gramatyki.
+    expect(new Set(combos.map(miniRmuSignature)).size).toBe(combos.length);
   });
 
   const Glyph = SYMBOL_GLYPHS.stationCollapsed;
   /** Sygnatura ODCZYTANA z DOM (nie z wejścia) — dowód, że render odróżnia cechy. */
-  function renderedSignature(c: Combo): string {
+  function renderedSignature(c: MiniRmuFeatures): string {
     const { container } = render(
       <svg>
         <Glyph
           x={0}
           y={0}
           stationSectioned={c.sectioned}
-          stationHasTransformer={c.hasTransformer}
-          stationDer={c.der}
+          stationHasTransformer={c.transformer}
+          stationDerOnMv={c.derOnMv}
+          stationDerBehindTr={c.derBehindTr}
           stationNoOpen={c.noOpen}
         />
       </svg>,
@@ -274,44 +367,42 @@ describe('GS-2 — pełna macierz kombinacji cech (reguły 15–16)', () => {
     // Bazowa sylwetka ZAWSZE: enklozura (fill none) + szyna.
     expect(root?.querySelector('rect')?.getAttribute('fill')).toBe('none');
     expect(root?.querySelector('[data-station-bus="true"]')).toBeTruthy();
-    const derNode = root?.querySelector('[data-station-der]');
-    const derShape = derNode?.lastElementChild?.tagName.toLowerCase() ?? '';
+    const snNode = root?.querySelector('[data-station-der-sn]');
+    const nnNode = root?.querySelector('[data-station-der-nn]');
+    const snShape = snNode?.lastElementChild?.tagName.toLowerCase() ?? '';
+    const nnShape = nnNode?.lastElementChild?.tagName.toLowerCase() ?? '';
     return [
       root?.querySelector('[data-station-sectioned="true"]') ? 'S' : '-',
       root?.querySelector('[data-station-transformer="true"]') ? 'T' : '-',
-      derNode?.getAttribute('data-station-der') ?? '-',
-      derShape || '-',
+      snNode ? `SN:${snNode.getAttribute('data-station-der-sn')}:${snShape}` : '-',
+      nnNode ? `nN:${nnNode.getAttribute('data-station-der-nn')}:${nnShape}` : '-',
       root?.querySelector('[data-station-no="true"]') ? 'N' : '-',
     ].join('|');
   }
 
-  it('każda kombinacja renderuje markery ZGODNIE z cechami (obecność 1:1)', () => {
+  it('każda kombinacja renderuje markery ZGODNIE z cechami (obecność 1:1, strona 1:1)', () => {
     const shapeTag: Record<string, string> = { diamond: 'path', battery: 'g', 'circle-spokes': 'g', 'circle-dot': 'g' };
     for (const c of combos) {
-      const sig = renderedSignature(c);
-      const parts = sig.split('|');
+      const parts = renderedSignature(c).split('|');
       expect(parts[0]).toBe(c.sectioned ? 'S' : '-');
-      expect(parts[1]).toBe(c.hasTransformer ? 'T' : '-');
-      expect(parts[2]).toBe(c.der ?? '-');
+      expect(parts[1]).toBe(c.transformer ? 'T' : '-');
+      expect(parts[2]).toBe(c.derOnMv ? `SN:${c.derOnMv}:${shapeTag[DER_MARKER_SHAPE[c.derOnMv]]}` : '-');
+      expect(parts[3]).toBe(c.derBehindTr ? `nN:${c.derBehindTr}:${shapeTag[DER_MARKER_SHAPE[c.derBehindTr]]}` : '-');
       expect(parts[4]).toBe(c.noOpen ? 'N' : '-');
-      if (c.der) expect(parts[3]).toBe(shapeTag[DER_MARKER_SHAPE[c.der]]);
     }
   });
 
-  it('iniekcja: 40 różnych cech ⇒ 40 różnych sygnatur DOM (unikalność)', () => {
+  it('iniekcja: 120 różnych cech ⇒ 120 różnych sygnatur DOM (unikalność)', () => {
     const sigs = new Set(combos.map(renderedSignature));
     expect(sigs.size).toBe(combos.length);
   });
 
   it('reguła 15 (determinizm/kolejność): identyczne cechy ⇒ bajt-identyczny glif', () => {
-    for (const c of [combos[0], combos[17], combos[39]]) {
-      const once = renderToStaticMarkup(
-        <Glyph x={0} y={0} stationSectioned={c.sectioned} stationHasTransformer={c.hasTransformer} stationDer={c.der} stationNoOpen={c.noOpen} />,
+    for (const c of [combos[0], combos[47], combos[combos.length - 1]]) {
+      const el = (
+        <Glyph x={0} y={0} stationSectioned={c.sectioned} stationHasTransformer={c.transformer} stationDerOnMv={c.derOnMv} stationDerBehindTr={c.derBehindTr} stationNoOpen={c.noOpen} />
       );
-      const twice = renderToStaticMarkup(
-        <Glyph x={0} y={0} stationSectioned={c.sectioned} stationHasTransformer={c.hasTransformer} stationDer={c.der} stationNoOpen={c.noOpen} />,
-      );
-      expect(once).toBe(twice);
+      expect(renderToStaticMarkup(el)).toBe(renderToStaticMarkup(el));
     }
   });
 });

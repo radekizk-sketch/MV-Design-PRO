@@ -164,3 +164,19 @@ TR+DER za TR+NO · TR+DER na SN+NO · TR+DER za TR+DER na SN. Macierz kombinacji
 rozszerzona o stronę (kombinacje z derBehindTr bez TR = NIEDOPUSZCZALNE,
 walidacja czerwona). Etykiety legendy jednoznaczne („PV za TR (nN)" vs
 „PV na SN").
+
+STATUS GS-4: WDROŻONE (2026-07-23, V12K-138, Fable osobiście). Łańcuch:
+`SldSourceView.connectionSide` (adapter v2, klasyfikacja z REALNEJ szyny
+`Generator.bus_ref`→`Bus.voltage_kv`, próg 0,5 kV = konwencja szyn nN K30-37;
+brak szyny ⇒ 'unknown', zero zgadywania) → `StationDerSourceInput.connectionSide`
+→ `StationCompactGlyphSummary.{derOnMv,derBehindTr}` (dominanta per strona) →
+`StationCollapsedGlyph` (`stationDerOnMv` = poleDer od szyny; `stationDerBehindTr`
+= strefa `MINI_RMU.poleTr.derNn` przy gałęzi pola TR poniżej uzwojeń, poza
+enklozurą, wewnątrz grupy TR — bez TR strona nN nie istnieje z konstrukcji).
+Strona 'unknown' renderuje od szyny rozdzielnicy (model nie mówi nN — uczciwy
+punkt przyłączenia stacji; zakaz kanonu dotyczy renderu z szyny, gdy model MÓWI
+nN). Walidacja: `miniRmuFeatureContradictions` + macierz 120 kombinacji legalnych
++ stopNote `station.der.behindTrBezTR` przy sprzeczności modelu. Pomiar bazowy:
+sieć referencyjna miała 20/20 DER na szynach nN — przed GS-4 sylwetka kłamała
+w 100% przypadków; po GS-4 wszystkie znaki za TR (test fixture). Dowód wizualny:
+`docs/audit/visual/schemat-10/gs4-l0{,-detal}.png`.

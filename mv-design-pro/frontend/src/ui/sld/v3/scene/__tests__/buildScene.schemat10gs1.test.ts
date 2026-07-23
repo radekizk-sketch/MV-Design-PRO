@@ -76,10 +76,12 @@ describe('SCHEMAT-10 GS-1 — sylwetka mini-RMU L0 (GAP §10.4)', () => {
     const s1 = buildSceneV3(bigEnm, 1);
     // Baza §10.4: L1 rysuje symbole DER (derPv/derBess/derWind) — POJEDYNCZO.
     const l1DerSymbols = s1.symbols.filter((s) => DER_SYMBOLS.has(s.symbolId)).length;
-    // GS-1: L0 rysuje MARKER DER na sylwetce stacji — po jednym na stację z DER
-    // (rodzaj dominujący). Zbiór stacji z markerem.
+    // GS-1/GS-4: L0 rysuje MARKER DER na sylwetce stacji — po jednym na stację
+    // z DER PER STRONA przyłączenia (rodzaj dominujący). Zbiór stacji z markerem.
     const l0DerStations = s0.symbols.filter(
-      (s) => s.symbolId === 'stationCollapsed' && s.meta?.stationGlyph?.der != null,
+      (s) =>
+        s.symbolId === 'stationCollapsed' &&
+        (s.meta?.stationGlyph?.derOnMv != null || s.meta?.stationGlyph?.derBehindTr != null),
     );
     // DOMKNIĘCIE: L0 miało 0 markerów DER — teraz > 0 (obecność nie znika).
     expect(l0DerStations.length).toBeGreaterThan(0);
@@ -89,8 +91,33 @@ describe('SCHEMAT-10 GS-1 — sylwetka mini-RMU L0 (GAP §10.4)', () => {
     expect(l0DerStations.length).toBeLessThanOrEqual(l1DerSymbols);
     // Rodzaj markera z zamkniętej unii (kształt koduje PV/BESS/FW/generator).
     for (const s of l0DerStations) {
-      expect(['pv', 'bess', 'wind', 'generator']).toContain(s.meta?.stationGlyph?.der);
+      const g = s.meta?.stationGlyph;
+      for (const kind of [g?.derOnMv, g?.derBehindTr]) {
+        if (kind != null) expect(['pv', 'bess', 'wind', 'generator']).toContain(kind);
+      }
     }
+  });
+
+  it('GS-4: sieć referencyjna — WSZYSTKIE DER na szynach nN (0,4 kV) ⇒ znak ZA transformatorem, zero na SN', () => {
+    // Pomiar bazowy (2026-07-23): 20/20 generatorów fixture ma `bus_ref` →
+    // szynę 0,4 kV. Przed GS-4 sylwetka rysowała je od szyny SN — kłamstwo
+    // topologiczne w 100% przypadków (recenzja: „mini-RMU nie może kłamać
+    // topologicznie"). Po GS-4: strona z REALNEJ szyny ENM.
+    const s0 = buildSceneV3(bigEnm, 0);
+    const withDer = s0.symbols.filter(
+      (s) =>
+        s.symbolId === 'stationCollapsed' &&
+        (s.meta?.stationGlyph?.derOnMv != null || s.meta?.stationGlyph?.derBehindTr != null),
+    );
+    expect(withDer.length).toBeGreaterThan(0);
+    for (const s of withDer) {
+      expect(s.meta?.stationGlyph?.derBehindTr, `stacja ${s.meta?.ownerRef}: DER musi być za TR (nN)`).not.toBeNull();
+      expect(s.meta?.stationGlyph?.derOnMv, `stacja ${s.meta?.ownerRef}: zero DER na SN w fixture`).toBeNull();
+      // Kontrakt GS-4: derBehindTr wymaga transformatora (walidacja czerwona).
+      expect(s.meta?.stationGlyph?.hasTransformer).toBe(true);
+    }
+    // Sprzeczność derBehindTr-bez-TR NIE występuje ⇒ zero stopNote GS-4.
+    expect(s0.meta.stopNotes.filter((n) => n.includes('station.der.behindTrBezTR'))).toHaveLength(0);
   });
 
   it('kotwica: środek glifu mini-RMU L0 = środek glifu L1/L2 (JEDNA KOTWICA, zoom = skala szczegółu)', () => {
