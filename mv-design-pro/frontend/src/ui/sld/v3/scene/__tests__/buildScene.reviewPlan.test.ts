@@ -106,15 +106,20 @@ describe('strona nN w paśmie nazw (spec §12.5, recenzja NO-GO pkt 6)', () => {
   });
 });
 
-describe('etykieta przęsła z parą końców (spec §12.5, recenzja NO-GO pkt 13)', () => {
-  it('etykieta segmentu GPZ→S01 niesie parę końców „GPZ ↔ S01 — …" (L2)', () => {
+describe('etykieta przęsła z parą końców (spec §12.5, recenzja NO-GO pkt 13; W3-KABLE-ETYKIETY §7)', () => {
+  it('etykieta segmentu GPZ→S01 niesie parę końców „GPZ ↔ S01 · …" (L2, separator §7 „ · ")', () => {
     const scene = buildSceneV3(enm, 2);
     const spanTexts = scene.labels
       .filter((l) => l.ownerKind === 'segment-span')
       .map((l) => l.text);
     expect(spanTexts.length).toBeGreaterThan(0);
-    expect(spanTexts.some((t) => /^GPZ ↔ S\d{2} — /.test(t))).toBe(true);
+    expect(spanTexts.some((t) => /^GPZ ↔ S\d{2} · /.test(t))).toBe(true);
     // Zero etykiet przęseł BEZ pary końców na tej fixturze (oba końce znane).
     expect(spanTexts.every((t) => t.includes(' ↔ '))).toBe(true);
+    // W3 §7 L2: co najmniej jedna etykieta niesie PEŁNY człon techniczny
+    // z realnych danych katalogu/ENM — długość w formacie „l = …" oraz
+    // napięcie znamionowe „NN kV" (fixtura niesie voltage_rating_kv=20).
+    expect(spanTexts.some((t) => /· l = \d/.test(t))).toBe(true);
+    expect(spanTexts.some((t) => /· \d+(?:,\d+)? kV · l = /.test(t))).toBe(true);
   });
 });

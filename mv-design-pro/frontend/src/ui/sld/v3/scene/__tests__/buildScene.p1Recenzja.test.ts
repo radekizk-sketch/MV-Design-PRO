@@ -309,11 +309,28 @@ describe('RECENZJA EKSPERCKA — lokalność zmiany (+1 stacja na ogonie magistr
     // POZIOMO — żadna kotwica nie jest pchana PIONOWO (brak reorganizacji wierszy).
     expect(stab.movedVerticalCount).toBe(0);
     // Każde przesunięcie to POZIOMY kwant siatki (upakowanie footprintu, nie ruch
-    // arbitralny): Δx > 0 i wielokrotność GRID, Δy = 0.
+    // arbitralny): Δx ≠ 0 i wielokrotność GRID, Δy = 0.
+    //
+    // W3-KABLE-ETYKIETY §7 (zmiana kanonu, 2026-07-23): pełna etykieta techniczna
+    // L2 („relacja · typ · napięcie · l = …", `layout/lineLabel.ts`) jest SZERSZA
+    // od dawnej „typ · długość", więc footprint kolumny NIEKTÓRYCH pól rośnie.
+    // Packer interwałowy przydziela laterale do pasm wg footprintu — szersza
+    // kolumna potrafi PRZECHYLIĆ jedną decyzję pasma tak, że lateralne poddrzewo
+    // przepakuje się POZIOMO w LEWO (zmierzone: 1 z 17 ruchów, |Δ|=872). Dawna
+    // asercja „każdy Δx > 0" (monotoniczność w prawo) zakładała, że footprinty
+    // nigdy nie przechylą pasma — to założenie upada przy bogatszych etykietach.
+    // NIEZMIENNIK ZACHOWANY (intencja testu): zmiana jest LOKALNA (89 nieruszonych
+    // ≫ 17 przesuniętych, asercja niżej), BEZ reorganizacji pionowej (Δy=0
+    // wyżej), a każdy ruch to realny kwant siatki (nie dryf) — NIE monotoniczność
+    // kierunku, która nigdy nie była gwarancją packera, tylko artefaktem dawnych
+    // wąskich footprintów.
     for (const d of stab.displacements) {
       expect(d.dy).toBe(0);
-      expect(d.dx).toBeGreaterThan(0);
-      expect(d.dx % GRID).toBe(0);
+      expect(d.dx).not.toBe(0);
+      // `=== 0` (nie `.toBe(0)`): Δx bywa teraz UJEMNY (repack w lewo), a
+      // `(-872) % GRID === -0`, którego Object.is odróżnia od +0 (jak w
+      // `grid_probe` wyżej w tym pliku). Grid-alignment sprawdzamy wartościowo.
+      expect(d.dx % GRID === 0).toBe(true);
     }
     // LOKALNOŚĆ: większość sieci bit-identyczna (nieruszone > przesunięte) —
     // dowód, że silnik NIE reorganizuje całości przy zmianie lokalnej.

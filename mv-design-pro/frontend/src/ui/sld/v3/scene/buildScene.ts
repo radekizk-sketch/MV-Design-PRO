@@ -108,6 +108,7 @@ import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRende
 
 import { GRID, snapToGrid, snapUp, rectsOverlap, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
+import { formatLineTechnicalLabel } from '../layout/lineLabel';
 import { FORBIDDEN_RAW_ENUM_RE } from '../core/enumLabelsPl';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import {
@@ -128,7 +129,7 @@ import {
 import { computeBands, BUS_AXIS_BAND_HEIGHT, DESCENT_STRIP_HEIGHT, type BandsResult, type StationBandHeights } from '../layout/bands';
 import { computeColumns, insertColumnChannels, type ColumnsResult, type ColumnResult } from '../layout/columns';
 import { computeSegmentLabelSlotX, colorSegmentLabelRows, COLUMN_GAP } from '../layout/segments';
-import { MIN_SUBTREE_CLEARANCE, TOP_LEVEL_FIELD_CLEARANCE } from '../layout/clearances';
+import { MIN_PARALLEL_CABLE_CLEARANCE, MIN_SUBTREE_CLEARANCE, TOP_LEVEL_FIELD_CLEARANCE } from '../layout/clearances';
 import {
   resolveLabels,
   type OwnedLabel,
@@ -264,8 +265,12 @@ const ROW_VERTICAL_GAP = 4 * GRID;
  *  sąsiadów pasa nigdy się nie zbliżyły. Równe `ROW_VERTICAL_GAP` (4×GRID) —
  *  spójne z rezerwą międzywierszową. SCHEMAT-10 S7-P3 (V12K-137): kanoniczna
  *  nazwa §5 = `MIN_SUBTREE_CLEARANCE` (`layout/clearances.ts`, wartość bazowa
- *  `4×GRID` bez zmian). */
-const LATERAL_SUBTREE_CLEARANCE = MIN_SUBTREE_CLEARANCE;
+ *  `4×GRID` bez zmian). W3-KABLE-ETYKIETY §5: footprint lateralu = OŚ TRASY
+ *  KABLA, więc ten sam gap egzekwuje kontrakt `MIN_PARALLEL_CABLE_CLEARANCE`
+ *  („równoległe kable nie zlewają się w przewód podwójny"). `max(...)` jest
+ *  wartościowo tożsamościowy (oba `4×GRID` = 32 px) — ZERO zmiany geometrii —
+ *  ale czyni egzekwowanie światła równoległych tras JAWNYM w packerze. */
+const LATERAL_SUBTREE_CLEARANCE = Math.max(MIN_SUBTREE_CLEARANCE, MIN_PARALLEL_CABLE_CLEARANCE);
 /** §16-v3 (bieg otwarty): minimalna długość pozioma/pionowa JEDNEGO kawałka
  *  biegu otwartego (ciąg z segmentami ENM, ale bez ŻADNEJ stacji) — na tyle
  *  długa, żeby kawałek był klikalny i odróżnialny (6×GRID = 48 px świata). */
@@ -320,18 +325,27 @@ function incomingLabelText(cableRun: SldCableRun | undefined, ownerRef: string):
   const sp = (cableRun?.segmentPaths ?? []).find((p) => p.toTerminal?.ownerRef === ownerRef);
   if (!sp) return null;
   const label = (cableRun?.segmentLabels ?? []).find((l) => l.segmentRef === sp.segmentRef);
-  const text = label?.text?.trim();
+  if (!label) return null;
+  // W3-KABLE-ETYKIETY §7 (L2): jeśli adapter niesie STRUKTURALNE dane techniczne
+  // (typ z żyły×przekrój · napięcie znamionowe · długość „l = …" · mufa), składamy
+  // PEŁNY człon techniczny L2 z realnych danych (zero fabrykacji — brakująca dana
+  // pominięta w formatterze). Fallback: baked `text` (L1/base) gdy brak danych
+  // strukturalnych (żaden run bez `technical`). Span rysowany tylko na L2 (bramka
+  // `lod===2` u wołających), więc wzbogacenie nie zmienia L0/L1.
+  const technicalText = label.technical ? formatLineTechnicalLabel(label.technical) : null;
+  if (technicalText) return technicalText;
+  const text = label.text?.trim();
   return text ? text : null;
 }
 
 /**
- * Recenzja NO-GO 2026-07-17 pkt 13 (spec §12.5): etykieta przęsła ZWIĄZANA
- * z odcinkiem przez PARĘ KOŃCÓW — „⟨A⟩ ↔ ⟨B⟩ — typ · długość" (format
- * recenzji: `L01: GPZ.F01 ↔ S01.F01 — …`, realizacja na dostępnych danych:
- * kody stacji/węzła GPZ; identyfikator pola drugiego końca = program
- * etykiet pól stacji, plan). Bez obu kodów — sam opis typu (uczciwy brak,
- * zero fabrykacji końca). Kasuje wieloznaczność recenzji pkt 13 („nie można
- * ustalić, który kabel należy do którego pola") niezależnie od pozycji slotu.
+ * Recenzja NO-GO 2026-07-17 pkt 13 (spec §12.5) + W3-KABLE-ETYKIETY §7/§17:
+ * etykieta przęsła ZWIĄZANA z odcinkiem przez PARĘ KOŃCÓW (kotwica tożsamości
+ * §17) — „⟨A⟩ ↔ ⟨B⟩ · ⟨człon techniczny⟩" (format §7 L2:
+ * „S01 ↔ S02 · YAKXS 3×1×240 mm² · 20 kV · l = 680 m"; separator relacja↔człon
+ * = „ · ", spójny z separatorem członów technicznych). Bez obu kodów — sam
+ * człon techniczny (uczciwy brak, zero fabrykacji końca). Kasuje wieloznaczność
+ * recenzji pkt 13 („nie można ustalić, który kabel należy do którego pola").
  */
 function segmentSpanTextWithEndpoints(
   base: string | null,
@@ -340,7 +354,7 @@ function segmentSpanTextWithEndpoints(
 ): string | null {
   if (!base) return null;
   if (!fromCode || !toCode) return base;
-  return `${fromCode} ↔ ${toCode} — ${base}`;
+  return `${fromCode} ↔ ${toCode} · ${base}`;
 }
 
 /**
@@ -4600,6 +4614,54 @@ export function orthogonalBendCount(scene: SceneV3): number {
     }
   }
   return bends;
+}
+
+/**
+ * W3-KABLE-ETYKIETY §5 (`parallel_cable_clearance_probe`): minimalne światło
+ * między osiami DWÓCH RÓŻNYCH tras kablowych/liniowych (magistrala + laterale)
+ * dzielących ten sam pas — mierzone między RÓWNOLEGŁYMI odcinkami PIONOWYMI
+ * (zejścia lateralne — jedyny wektor ryzyka „przewodu podwójnego": dwa piony
+ * blisko siebie wyglądają jak jeden przewód dwużyłowy). Zakres: WYŁĄCZNIE
+ * odcinki toru elektrycznego MIĘDZY stacjami (`elementKind==='segment'`,
+ * `kind` snTrunk/sn, `ownerRef` bez `#` — dekoracje wewnątrz stacji, np. szyny
+ * nN/rzędy DER, to NIE trasy). Pary z tym samym `ownerRef` (ten sam odcinek
+ * ENM / łańcuch) pomijane; odcinki współliniowe (Δx<0,5, styk/kontynuacja)
+ * pomijane. Zwraca `Infinity`, gdy scena nie ma pary równoległych pionów
+ * różnych tras (np. L0 bez lateralów) — wołający traktuje to jako PASS
+ * (brak ryzyka zlania). Czysta geometria, deterministyczne (bez Date/losowości).
+ */
+export function minParallelCableClearance(scene: SceneV3): number {
+  interface VSeg { x: number; y0: number; y1: number; owner: string }
+  const verticals: VSeg[] = [];
+  for (const segment of scene.segments) {
+    if (segment.meta?.elementKind !== 'segment') continue;
+    const kind = segment.meta?.kind;
+    if (kind !== 'snTrunk' && kind !== 'sn') continue;
+    const owner = segment.meta?.ownerRef;
+    if (typeof owner !== 'string' || owner.includes('#')) continue;
+    const pts = segment.points;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      if (Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) >= 0.5) {
+        verticals.push({ x: a.x, y0: Math.min(a.y, b.y), y1: Math.max(a.y, b.y), owner });
+      }
+    }
+  }
+  let min = Infinity;
+  for (let i = 0; i < verticals.length; i++) {
+    for (let j = i + 1; j < verticals.length; j++) {
+      const a = verticals[i];
+      const b = verticals[j];
+      if (a.owner === b.owner) continue;
+      const overlap = Math.min(a.y1, b.y1) - Math.max(a.y0, b.y0);
+      if (overlap <= 0) continue; // muszą dzielić pas Y (być realnie równoległe)
+      const dx = Math.abs(a.x - b.x);
+      if (dx < 0.5) continue; // ta sama oś (węzeł/styk) — nie „równoległe trasy"
+      if (dx < min) min = dx;
+    }
+  }
+  return min;
 }
 
 /** S6 pkt 3 — trójskładnikowa funkcja kosztu layoutu (piony + poziomy +

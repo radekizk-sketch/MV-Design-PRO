@@ -86,3 +86,54 @@ export const MIN_ROUTE_CLEARANCE = GRID;
  *  podniesiony świadomie, z uzasadnieniem per liczba. Podłoga `sheet_fill_probe`
  *  skorygowana o zmierzony koszt świateł (nie poza). */
 export const TOP_LEVEL_FIELD_CLEARANCE = 4 * GRID;
+
+// ---------------------------------------------------------------------------
+// W3-KABLE-ETYKIETY §5 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §5 „Światła
+// równoległych kabli", P0): CZTERY stałe kontraktowe świateł tras kablowych.
+// Zakaz „przewodu podwójnego" (dwie trasy tak blisko, że wyglądają jak jeden
+// przewód dwużyłowy). Każda wartość WYPROWADZONA Z POMIARU dzisiejszej
+// geometrii na fixturze referencyjnej `sldSubstrate52s` + fixturach H
+// (`scripts/measure_parallel_clearance.mjs`, wynik w raporcie karty W3),
+// wg reguły §5 WARUNKÓW_ODBIORU_S6: „NAJMNIEJSZA wartość, która usuwa zlanie
+// optyczne i nie wydłuża magistrali niepotrzebnie". Wartości są PODŁOGAMI
+// (floor) — dzisiejsza geometria je SPEŁNIA Z ZAPASEM (pomiar: min. światło
+// równoległych PIONÓW tras między stacjami = 64 px na L1/L2, 408 px na L0),
+// więc wpięcie NIE zmienia obrazu (zero regresji baseline) — jest twardą
+// bramką chroniącą przed przyszłym zbliżeniem tras poniżej progu zlania.
+// Światło mierzone między RZECZYWISTYMI osiami tras (nie kotwicami), spójnie
+// z resztą modułu.
+
+/** Minimalne światło POZIOME między osiami DWÓCH RÓŻNYCH tras kablowych
+ *  (magistrala/laterale) dzielących ten sam pas Y — „równoległe kable nie
+ *  zlewają się w przewód podwójny" (§5). Wyprowadzenie: dzisiejszy packer
+ *  interwałowy pakuje laterale z footprintem `MIN_SUBTREE_CLEARANCE` (4×GRID),
+ *  a zmierzone realne minimum osi-do-osi między niezależnymi trasami wynosi
+ *  64 px (L1/L2). `4×GRID` (32 px) to NAJMNIEJSZY pełny czteroklatkowy odstęp,
+ *  przy którym dwie osie są jednoznacznie rozdzielone (próg zlania optycznego
+ *  ≪ 32 px), a jednocześnie NIE wydłuża magistrali (bieżące 64 px ≥ 32 px).
+ *  Rola §5: `MIN_PARALLEL_CABLE_CLEARANCE`. */
+export const MIN_PARALLEL_CABLE_CLEARANCE = 4 * GRID;
+
+/** Minimalne światło między osią kabla a jego ETYKIETĄ techniczną (§5/§7) —
+ *  etykieta nie może dotykać ani nachodzić na trasę. Wyprowadzenie: silnik
+ *  etykiet (`layout/labels.ts`, `resolveSegmentLateralLabel`) rezerwuje
+ *  `required = acrossLine + GRID`, tj. dokładnie `GRID` (8 px) prześwitu między
+ *  blokiem tekstu a linią. `GRID` to zmierzona, egzekwowana dziś wartość
+ *  minimalna tekst↔trasa. Rola §5: `MIN_CABLE_LABEL_CLEARANCE`. */
+export const MIN_CABLE_LABEL_CLEARANCE = GRID;
+
+/** Minimalne światło wokół WĘZŁA ROZGAŁĘZIENIA (branch junction) — sąsiednie
+ *  osie/treść nie wchodzą w akcent węzła, węzeł pozostaje jednoznaczny (§5).
+ *  Wyprowadzenie: akcent węzła rozgałęzienia (`branchJunction`, `symbols/
+ *  defs.ts`) ma 4×GRID (32 px) gabarytu; `2×GRID` (16 px) = połowa gabarytu,
+ *  minimalny prześwit z KAŻDEJ strony, przy którym akcent nie styka się z
+ *  sąsiednią osią. Rola §5: `MIN_JUNCTION_CLEARANCE`. */
+export const MIN_JUNCTION_CLEARANCE = 2 * GRID;
+
+/** Minimalne światło między DWOMA WYJŚCIAMI kabli z tej samej stacji — każdy
+ *  kabel wychodzi z osi WŁASNEJ głowicy (§5/§6, po W1b głowica na porcie
+ *  kablowym). Wyprowadzenie: gdy z jednej stacji wychodzi wiele laterali,
+ *  `LATERAL_CHANNEL_STEP` (`scene/buildScene.ts`) rozsuwa kolejne kanały
+ *  zejścia o `GRID` (8 px) — to zmierzona, egzekwowana dziś minimalna
+ *  separacja odrębnych wyjść pól. Rola §5: `MIN_FIELD_EXIT_CLEARANCE`. */
+export const MIN_FIELD_EXIT_CLEARANCE = GRID;

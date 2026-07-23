@@ -335,6 +335,22 @@ interface CableRunRendererPropsLight {
     y: number;
     /** Rozmieszczona globalnym declutterem adaptera — renderer nie przesuwa. */
     preplaced?: boolean;
+    /** W3-KABLE-ETYKIETY §7/§6: STRUKTURALNE dane techniczne odcinka (nie
+     *  sparsowany string) — WYŁĄCZNIE z modelu/katalogu, dla złożenia etykiety
+     *  L2 w v3 (`layout/lineLabel.ts`). Brak danej = pole nieobecne (zero
+     *  fabrykacji). `text` (wyżej) pozostaje L1/base dla v2. */
+    technical?: {
+      /** Etykieta typu z katalogu z żyły×przekrój, bez długości. */
+      typeLabel: string | null;
+      /** Napięcie znamionowe kabla [kV] (`voltage_rating_kv`), null gdy brak. */
+      ratedVoltageKv: number | null;
+      /** Długość odcinka [km] (`length_km`), null gdy brak. */
+      lengthKm: number | null;
+      /** Odcinek napowietrzny (rozróżnienie zakończeń §6). */
+      overhead: boolean;
+      /** ENM niesie złącze kablowe (mufę) na odcinku (`cable_joints` niepuste). */
+      hasJoint: boolean;
+    };
   }>;
   pendingEndpoint?: boolean;
   /** True gdy któryś z segmentów (Cable / OverheadLine) ma brak
@@ -5084,13 +5100,19 @@ function buildCorridorRunGeometry(
 
   // --- etykiety odcinków na WŁASNYM torze (dedupe jak K30-52) ---------------
   let previousLabel: string | null = null;
-  const segmentLabels: Array<{ segmentRef: string; text: string; x: number; y: number }> = [];
+  const segmentLabels: Array<NonNullable<CableRunRendererPropsLight['segmentLabels']>[number]> = [];
   runSegments.forEach((segment, index) => {
     const label = buildCableRunLabel([segment], classifySegmentKind(segment));
     if (label === previousLabel) return;
     previousLabel = label;
     const point = segmentLabelPointFromPath(segmentPaths[index].pathPoints, index);
-    segmentLabels.push({ segmentRef: segment.ref_id, text: label, x: point.x, y: point.y });
+    segmentLabels.push({
+      segmentRef: segment.ref_id,
+      text: label,
+      x: point.x,
+      y: point.y,
+      technical: segmentTechnicalFields(segment),
+    });
   });
 
   // Tor całego ciągu: usuń punkty współliniowe (czysta polilinia — tylko
@@ -5674,6 +5696,7 @@ function buildRunSegmentLabels(
       text: label,
       x: point.x,
       y: point.y,
+      technical: segmentTechnicalFields(segment),
     }];
   });
 }
@@ -5851,6 +5874,40 @@ function stationOutputX(station: StationOnRunRendererProps | undefined): number 
 
 function distinctCatalogLabels(segments: readonly Branch[]): string[] {
   return [...new Set(segments.map(readCatalogTypeLabel).filter((label): label is string => Boolean(label)))];
+}
+
+/**
+ * W3-KABLE-ETYKIETY §7/§6: STRUKTURALNE dane techniczne JEDNEGO odcinka do
+ * złożenia etykiety L2 w v3 (`layout/lineLabel.ts`). WYŁĄCZNIE z modelu/
+ * katalogu; brakująca dana ⇒ `null`/`false` (zero fabrykacji). Reużywa
+ * istniejące czytniki katalogu (`readCatalogTypeLabel`, `readBranchCatalogData`).
+ */
+function segmentTechnicalFields(segment: Branch): {
+  typeLabel: string | null;
+  ratedVoltageKv: number | null;
+  lengthKm: number | null;
+  overhead: boolean;
+  hasJoint: boolean;
+} {
+  const materialized = readBranchCatalogData(segment);
+  // Napięcie znamionowe: surowa liczba (bez Math.round — zachowaj 10,5 kV).
+  const readRawKv = (key: string): number | null => {
+    const raw = materialized?.[key];
+    const value = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
+    return Number.isFinite(value) && value > 0 ? value : null;
+  };
+  const ratedVoltageKv = readRawKv('voltage_rating_kv') ?? readRawKv('rated_voltage_kv');
+  const lengthRaw = readBranchLengthKm(segment);
+  const lengthKm = Number.isFinite(lengthRaw) && lengthRaw > 0 ? lengthRaw : null;
+  const joints = (segment as unknown as { cable_joints?: unknown }).cable_joints;
+  const hasJoint = Array.isArray(joints) && joints.length > 0;
+  return {
+    typeLabel: readCatalogTypeLabel(segment) ?? null,
+    ratedVoltageKv,
+    lengthKm,
+    overhead: classifySegmentKind(segment) === 'overhead_line_sn',
+    hasJoint,
+  };
 }
 
 function stationsForConnectionY(

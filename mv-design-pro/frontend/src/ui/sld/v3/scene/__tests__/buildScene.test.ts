@@ -957,9 +957,20 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // WYNIKOWO. Piony MALEJĄ (miara „nie-rosnąca" §15.1 spełniona). Topologia,
     // kolejność aparatów, ciągłość toru, „jedna kotwica" NIEZMIENIONE — zmienia
     // się WYŁĄCZNIE rzędna `dy` pasa (geometria, nie model).
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(21976);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(38920);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(38920);
+    // W3-KABLE-ETYKIETY §7 (2026-07-23): PODNIESIONY 21976/38920/38920 →
+    // 22936/39880/39880 (+960/LOD, jednolicie). Przyczyna: pełna etykieta
+    // techniczna L2 („relacja · typ · napięcie · l = …", `layout/lineLabel.ts`)
+    // jest szersza od dawnej „typ · długość" → footprint kolumny NIEKTÓRYCH pól
+    // rośnie → przez `colorSegmentLabelRows` (`layout/segments.ts`) inny przydział
+    // wierszy pasma B1 dokłada +960 px pionów. „Jedna kotwica" (geometria liczona
+    // przy pełnym szczególe L2 niezależnie od LOD) propaguje deltę JEDNOLICIE na
+    // L0/L1/L2. Świadome odstępstwo od „nie-rosnącej" (§15.1 „redukcja jest
+    // ograniczeniem MIĘKKIM") — pełne dane techniczne linii (§7 P0) mają
+    // pierwszeństwo; ZERO nowych kolizji (accept:sld-v3 zielony). NOWA kanoniczna
+    // geometria po wzbogaceniu etykiet, nie regresja.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22936);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(39880);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(39880);
   });
 });
 

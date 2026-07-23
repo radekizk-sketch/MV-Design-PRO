@@ -86,8 +86,9 @@ import {
   lod0ReadabilityGaps,
   localDensityMetrics,
   LOCAL_DENSITY_WINDOW_CELLS,
+  minParallelCableClearance,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
-import { TOP_LEVEL_FIELD_CLEARANCE } from '../src/ui/sld/v3/layout/clearances.ts';
+import { MIN_PARALLEL_CABLE_CLEARANCE, TOP_LEVEL_FIELD_CLEARANCE } from '../src/ui/sld/v3/layout/clearances.ts';
 import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
 import { SEGMENT_STROKE_WIDTH } from '../src/ui/sld/v3/compose/preview.tsx';
@@ -237,7 +238,16 @@ const EXPECTED_STATION_COUNT = 53;
 // skróciły się WYNIKOWO (`rezerwacja-kanalu` 43872→37776 na L1/L2). Bramka
 // nie-rosnąca ryglowana do nowej wartości. Topologia/kolejność/ciągłość toru/
 // „jedna kotwica"/crossings=0/kolizje=0 NIEZMIENIONE (patrz raport S7.6, tabela).
-const VERTICAL_LENGTH_BASELINE = { 0: 21976, 1: 38920, 2: 38920 };
+// W3-KABLE-ETYKIETY §7 (2026-07-23): PODNIESIONY 21976/38920/38920 →
+// 22936/39880/39880 (+960/LOD, jednolicie). Pełna etykieta techniczna L2
+// („relacja · typ · napięcie znam. · l = …", `layout/lineLabel.ts`, dane z
+// katalogu/ENM) jest szersza od dawnej „typ · długość" → footprint kolumn
+// NIEKTÓRYCH pól rośnie → `colorSegmentLabelRows` (`layout/segments.ts`) inaczej
+// przydziela wiersze pasma B1, dokładając +960 px pionów; „jedna kotwica"
+// propaguje deltę JEDNOLICIE na L0/L1/L2. Świadome odstępstwo od „nie-rosnącej"
+// (§15.1 „redukcja MIĘKKA") — pełne dane techniczne linii (§7 P0) mają
+// pierwszeństwo; ZERO nowych kolizji jakiegokolwiek rodzaju (ten skrypt zielony).
+const VERTICAL_LENGTH_BASELINE = { 0: 22936, 1: 39880, 2: 39880 };
 
 /**
  * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):
@@ -269,7 +279,11 @@ const VERTICAL_LENGTH_BASELINE = { 0: 21976, 1: 38920, 2: 38920 };
 // slotów etykiet). Recenzja AKCEPTUJE ten koszt jako P0; baseline podniesiony
 // świadomie. Piony/załamania/bbox-h/crossings/kolizje bez zmian (patrz raport
 // S7-P4, tabela 18 metryk). NOWA kanoniczna geometria po podniesieniu światła.
-const HORIZONTAL_LENGTH_BASELINE = { 0: 47248, 1: 67424, 2: 71016 };
+// W3-KABLE-ETYKIETY §7 (2026-07-23): PODNIESIONY 47248/67424/71016 →
+// 48208/68384/71976 (+960/LOD, jednolicie) — ta sama przyczyna co
+// `VERTICAL_LENGTH_BASELINE` wyżej (szersze kolumny pełnej etykiety L2 wydłużają
+// pododcinki poziome przęseł/slotów o stałą na LOD). Załamania (bends) BEZ zmian.
+const HORIZONTAL_LENGTH_BASELINE = { 0: 48208, 1: 68384, 2: 71976 };
 const BEND_COUNT_BASELINE = { 0: 39, 1: 167, 2: 167 };
 
 /**
@@ -302,7 +316,14 @@ const BEND_COUNT_BASELINE = { 0: 39, 1: 167, 2: 167 };
 // L1 0.018024→0.022556, L2 0.018475→0.023144 (spełnia „wykorzystanie arkusza po >
 // przed", warunek S6 §6). Podłoga = NOWA zmierzona wartość minus ~0.00005 na jitter
 // metryk tekstu (ta sama reguła co S7-P1/P4). Korekta per liczba.
-const SHEET_FILL_FLOOR = { 0: 0.01380, 1: 0.02250, 2: 0.02309 };
+// W3-KABLE-ETYKIETY §7 (2026-07-23): OBNIŻONY 0.01380/0.02250/0.02309 →
+// 0.01374/0.02223/0.02281. Przyczyna: pełna etykieta techniczna L2 poszerza bbox
+// arkusza (piony+poziomy +960/LOD), więc udział pokrytych komórek spada
+// marginalnie (zmierzone 0.01379/0.02228/0.02286). To NIE „spuchnięcie pustką"
+// (S6 §6) — bbox rośnie o REALNĄ treść (dłuższe, kompletne etykiety), nie o pustą
+// rezerwę. Podłoga = NOWA zmierzona wartość minus ~0.00005 na jitter metryk
+// tekstu (ta sama reguła co S7-P1/P4). Korekta per liczba.
+const SHEET_FILL_FLOOR = { 0: 0.01374, 1: 0.02223, 2: 0.02281 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —
@@ -555,6 +576,14 @@ for (const lod of LODS) {
     'noLabelWireCollisions (D3/k6): zero kolizji etykieta↔przewód',
     noLabelWireCollisions(scene) && wireHits.length === 0,
     `kolizje=${wireHits.length}`,
+  );
+
+  // -- W3 §5: światła równoległych kabli -------------------------------------
+  const parallelClearance = minParallelCableClearance(scene);
+  check(
+    `parallel_cable_clearance_probe (W3 §5): min. światło równoległych pionów tras ≥ MIN_PARALLEL_CABLE_CLEARANCE (${MIN_PARALLEL_CABLE_CLEARANCE}px) — brak „przewodu podwójnego"`,
+    parallelClearance === Infinity || parallelClearance >= MIN_PARALLEL_CABLE_CLEARANCE,
+    parallelClearance === Infinity ? 'brak par równoległych tras (brak ryzyka)' : `min=${parallelClearance}px`,
   );
 
   // -- §9: zakazane tokeny ---------------------------------------------------

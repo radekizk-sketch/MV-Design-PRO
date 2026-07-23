@@ -85,11 +85,14 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
   it('kompresja obniżyła piony vs korytarz-etykiety (fixtura referencyjna, wszystkie LOD)', () => {
     // Kontraktowe minimum światła jest WIELOKROTNIE mniejsze od korytarza etykiety
     // zejścia (obrócony `segment-lateral`, ~242 px) — dowód że gap NIE jest już
-    // dyktowany długością etykiety. Po S7.6: 21976/38920/38920 (patrz baseline
-    // `vertical_length_probe` + `buildScene.test.ts`).
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(21976);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(38920);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(38920);
+    // dyktowany długością etykiety. Po S7.6: 21976/38920/38920; po W3-KABLE-
+    // ETYKIETY §7 (2026-07-23) PODNIESIONY do 22936/39880/39880 (+960/LOD) —
+    // pełna etykieta techniczna L2 poszerza footprint kolumn (patrz baseline
+    // `vertical_length_probe` + `buildScene.test.ts`). Kompresja pasm (przedmiot
+    // tego testu) NIETKNIĘTA — delta pochodzi z szerokości etykiet, nie z gapów.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22936);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(39880);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(39880);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {
