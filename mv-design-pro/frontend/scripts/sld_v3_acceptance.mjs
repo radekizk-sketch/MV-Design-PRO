@@ -79,6 +79,9 @@ import {
   trunkThicknessGaps,
   allTopBandFieldsClearance,
   topBandClearanceViolations,
+  allVerticalsAttributed,
+  verticalAuditGaps,
+  verticalCauseBreakdown,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { TOP_LEVEL_FIELD_CLEARANCE } from '../src/ui/sld/v3/layout/clearances.ts';
 import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
@@ -1151,6 +1154,21 @@ for (const lod of LODS) {
     `vertical_length_probe (§15.1): suma długości pionów nie-rosnąca względem baseline=${verticalBaseline}`,
     verticalLength <= verticalBaseline,
     `wartość=${verticalLength} baseline=${verticalBaseline}`,
+  );
+  // -- SCHEMAT-10 S7-P4 (V12K-137, recenzja §9 P0 pkt 2): AUDYT DŁUGOŚCI PIONÓW.
+  // Każdy pion MUSI mieć przyczynę (footprint / rezerwacja-kanalu / jog-trasy /
+  // slupek-terminalny); pion `nieuzasadniony` = DO SKRÓCENIA (regresja).
+  const vGaps = verticalAuditGaps(scene);
+  const vBreak = verticalCauseBreakdown(scene);
+  const vTable = Object.entries(vBreak)
+    .map(([k, v]) => `${k}:${v.count}/${v.length}`)
+    .join(' · ');
+  check(
+    'vertical_audit_probe (S7-P4 §9 P0 pkt 2): każdy pion ma przyczynę (żaden nieuzasadniony)',
+    allVerticalsAttributed(scene),
+    vGaps.length === 0
+      ? `tabela przyczyn(liczba/długość) — ${vTable}`
+      : `NIEUZASADNIONE=${vGaps.length}: ${vGaps.slice(0, 5).map((g) => `${g.ownerRef ?? '?'}(${g.kind ?? '?'},${g.length})`).join(', ')}`,
   );
 
   // -- S6 (V12K-137) funkcja kosztu layoutu: poziomy + załamania (pkt 3) ------

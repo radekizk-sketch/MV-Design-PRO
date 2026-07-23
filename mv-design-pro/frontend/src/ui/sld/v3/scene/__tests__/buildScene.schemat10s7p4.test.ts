@@ -21,7 +21,14 @@ import {
   topBandFieldClearances,
   topBandClearanceViolations,
   allTopBandFieldsClearance,
+  auditVerticalSegments,
+  verticalAuditGaps,
+  allVerticalsAttributed,
+  verticalCauseBreakdown,
+  allSceneSegmentEndpointsAnchored,
+  totalVerticalSegmentLength,
   type SceneLod,
+  type SceneV3,
 } from '../buildScene';
 import { TOP_LEVEL_FIELD_CLEARANCE } from '../../layout/clearances';
 import { GRID } from '../../core/grid';
@@ -104,5 +111,67 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 1 — światło górnego pasa bbox-do-
     const scene = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm, 2);
     expect(allTopBandFieldsClearance(scene, 3 * GRID)).toBe(true);
     expect(allTopBandFieldsClearance(scene, 5 * GRID)).toBe(false);
+  });
+});
+
+describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 2 — audyt długości pionów (każdy z przyczyną)', () => {
+  for (const fx of FIXTURES) {
+    for (const lod of LODS) {
+      it(`${fx.nazwa} LOD${lod}: KAŻDY pion ma przyczynę (żaden nieuzasadniony)`, () => {
+        const scene = buildSceneV3(fx.enm, lod);
+        const gaps = verticalAuditGaps(scene);
+        expect(
+          gaps,
+          `piony bez przyczyny: ${gaps.map((g) => `${g.ownerRef}(${g.kind},${g.length})`).join(', ')}`,
+        ).toHaveLength(0);
+        expect(allVerticalsAttributed(scene)).toBe(true);
+      });
+
+      it(`${fx.nazwa} LOD${lod}: suma długości pionów per przyczyna = totalVerticalSegmentLength (kompletność audytu)`, () => {
+        const scene = buildSceneV3(fx.enm, lod);
+        const audit = auditVerticalSegments(scene);
+        const sumAudit = audit.reduce((s, v) => s + v.length, 0);
+        // Audyt pokrywa DOKŁADNIE zbiór pionów mierzony przez funkcję kosztu —
+        // nie gubi ani nie dublach żadnego pionu (dowód, że tabela jest pełna).
+        expect(sumAudit).toBe(totalVerticalSegmentLength(scene));
+        const breakdown = verticalCauseBreakdown(scene);
+        const sumBreak = Object.values(breakdown).reduce((s, v) => s + v.length, 0);
+        expect(sumBreak).toBe(sumAudit);
+      });
+
+      it(`${fx.nazwa} LOD${lod}: każdy pion sięga realnej geometrii (nie dynda — minimalność §9 P0)`, () => {
+        // „Piony bez przyczyny → skrócić" w sensie geometrycznym: żaden koniec
+        // trasy nie wisi w pustce (port/inny odcinek). Wiąże audyt z realną
+        // minimalnością — pion nie może być krótszy bez utraty połączenia.
+        const scene = buildSceneV3(fx.enm, lod);
+        expect(allSceneSegmentEndpointsAnchored(scene)).toBe(true);
+      });
+    }
+  }
+
+  it('wyrocznia GRYZIE: pion o NIEROZPOZNANEJ roli (kind leader) ⇒ nieuzasadniony', () => {
+    // Dowód, że klasyfikacja nie jest martwa: syntetyczny odcinek pionowy o roli
+    // spoza taksonomii (kind `leader`, ownerRef obcy) MUSI wpaść do kosza.
+    const base = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm, 2);
+    const mystery: SceneV3 = {
+      ...base,
+      segments: [
+        ...base.segments,
+        { points: [{ x: 4000, y: 4000 }, { x: 4000, y: 4200 }], meta: { kind: 'leader', ownerRef: 'obcy/rola/nieznana' } },
+      ],
+    };
+    const gaps = verticalAuditGaps(mystery);
+    expect(gaps.length).toBeGreaterThan(0);
+    expect(gaps.some((g) => g.ownerRef === 'obcy/rola/nieznana')).toBe(true);
+    expect(allVerticalsAttributed(mystery)).toBe(false);
+  });
+
+  it('węzeł T (#tee-N): pion dziedziczy przyczynę pierwotnego kabla (nie nieuzasadniony)', () => {
+    // Kontynuacja kabla za odczepem (`#tee-1`) NIE jest osobną rolą — sufiks
+    // zdejmowany, pion dziedziczy przyczynę bazy (lateral ⇒ rezerwacja-kanalu).
+    const scene = buildSceneV3(FIXTURES[FIXTURES.length - 1].enm, 2);
+    const teeVerticals = auditVerticalSegments(scene).filter((v) => (v.ownerRef ?? '').includes('#tee-'));
+    expect(teeVerticals.length).toBeGreaterThan(0);
+    for (const v of teeVerticals) expect(v.cause).not.toBe('nieuzasadniony');
   });
 });

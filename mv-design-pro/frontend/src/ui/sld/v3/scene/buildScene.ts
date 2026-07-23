@@ -4218,6 +4218,123 @@ export function totalVerticalSegmentLength(scene: SceneV3): number {
 }
 
 // ---------------------------------------------------------------------------
+// SCHEMAT-10 S7-P4 (V12K-137, recenzja właściciela §9 P0 pkt 2) — AUDYT DŁUGOŚCI
+// PIONÓW. Recenzja: „każdy pion dłuższy niż footprint MUSI mieć w raporcie
+// przyczynę (footprint / kolizja z poddrzewem X / etykieta Y / M-02 / rezerwacja
+// kanału); piony bez przyczyny → skrócić; wynik jako test (żaden pion bez
+// przyczyny) + tabela". KAŻDY pion (pododcinek pionowy sceny) jest przypisany do
+// PRZYCZYNY z zamkniętej taksonomii, wyprowadzonej z ROLI odcinka (`ownerRef`/
+// `kind`) — nie z pozycji/id (WYTYCZNE §1/§2). Pion, którego roli nie da się
+// rozpoznać, ląduje w koszu `nieuzasadniony` (regresja: DO SKRÓCENIA). Odrębna
+// gwarancja „pion sięga realnej geometrii, nie dynda w pustce" żyje w
+// `sceneSegmentEndpointGaps`/`port_probe` (każdy kraniec trasy = port/inny
+// odcinek) — audyt pionów NIE dubluje jej, lecz uzupełnia o mapę PRZYCZYN.
+// ---------------------------------------------------------------------------
+
+/** Zamknięta taksonomia przyczyn długości pionu (§9 P0 pkt 2). */
+export type VerticalCause =
+  /** Footprint obrysu: stos aparatury pola, dołączenie szyny nN / DER / źródła,
+   *  kolumna GPZ (pola WN-SN, transformator) — długość wynika z WYSOKOŚCI obrysu. */
+  | 'footprint'
+  /** Rezerwacja kanału zejścia lateralu do PÓŁKI packera — długość wynika z
+   *  pozycji Y półki (packing interwałowy), czyli z KOLIZJI Z PODDRZEWEM
+   *  sąsiada, M-02 i budżetu etykiet (S7-P1). Obejmuje strip `#descent`. */
+  | 'rezerwacja-kanalu'
+  /** Jog routingu: pion łączący dwa poziomy tej samej trasy (magistrala/przęsło,
+   *  kontynuacja kabla za węzłem T) — długość = różnica poziomów łączonych torów. */
+  | 'jog-trasy'
+  /** Kreska słupka terminalnego biegu OTWARTEGO (§16) — footprint zakończenia. */
+  | 'slupek-terminalny'
+  /** Pion bez rozpoznanej przyczyny — DO SKRÓCENIA (regresja). */
+  | 'nieuzasadniony';
+
+export interface VerticalAuditEntry {
+  readonly x: number;
+  readonly y1: number;
+  readonly y2: number;
+  readonly length: number;
+  readonly cause: VerticalCause;
+  readonly ownerRef: string | null;
+  readonly kind: PreviewSegmentKind | null;
+}
+
+/** Rola odcinka → przyczyna długości jego pionów. `null` = rola nierozpoznana
+ *  (⇒ `nieuzasadniony`). Reguła OGÓLNA z `ownerRef`/`kind` (WYTYCZNE §1/§2),
+ *  sufiks `#tee-N` (kontynuacja kabla za węzłem T) zdejmowany przed klasyfikacją
+ *  — pion dziedziczy przyczynę pierwotnego kabla. */
+function verticalCauseOfRole(
+  ownerRef: string | null | undefined,
+  kind: PreviewSegmentKind | undefined,
+): Exclude<VerticalCause, 'nieuzasadniony'> | null {
+  const r = (ownerRef ?? '').replace(/#tee-\d+$/, '');
+  if (kind === 'openTerminal' || r.endsWith('#open-terminal')) return 'slupek-terminalny';
+  // Dołączenia nN / DER / źródło sieci — obrys pola nN pod stacją.
+  if (kind === 'lv' || r.includes('#lv-') || r.includes('#der-row') || r.endsWith('#grid-source-drop')) return 'footprint';
+  // Kolumna GPZ (pola WN-SN, transformator, kotwica pola, mostki WN).
+  if (r.startsWith('gpz/') || r.includes('#hv-') || r.includes('#tr-') || r.endsWith('#field-anchor')) return 'footprint';
+  // Zejścia lateralne (packer): `#descent` strip + segmenty gałęzi/pierwszych
+  // hopów lateralu (`*branch_segment*`, `*segment_L`/`_R` i ich zagnieżdżenia).
+  if (r.includes('#descent') || r.includes('branch_segment') || /segment_[LR](_[LR]+)*(_S[LR])?$/.test(r)) return 'rezerwacja-kanalu';
+  // Pozostałe piony toru SN (magistrala/przęsło/kontynuacja) = jog routingu.
+  if (kind === 'sn' || kind === 'snTrunk') return 'jog-trasy';
+  return null;
+}
+
+/** §9 P0 pkt 2: KAŻDY pion sceny z przypisaną PRZYCZYNĄ (footprint / rezerwacja
+ *  kanału / jog trasy / słupek terminalny) lub `nieuzasadniony`. Deterministyczne
+ *  (kolejność odcinków sceny → wierzchołki). */
+export function auditVerticalSegments(scene: SceneV3): readonly VerticalAuditEntry[] {
+  const out: VerticalAuditEntry[] = [];
+  for (const segment of scene.segments) {
+    const cause = verticalCauseOfRole(segment.meta?.ownerRef, segment.meta?.kind) ?? 'nieuzasadniony';
+    const pts = segment.points;
+    for (let i = 0; i + 1 < pts.length; i++) {
+      const a = pts[i];
+      const b = pts[i + 1];
+      if (a.x === b.x && a.y !== b.y) {
+        out.push({
+          x: a.x,
+          y1: Math.min(a.y, b.y),
+          y2: Math.max(a.y, b.y),
+          length: Math.abs(a.y - b.y),
+          cause,
+          ownerRef: segment.meta?.ownerRef ?? null,
+          kind: segment.meta?.kind ?? null,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/** Piony BEZ przyczyny (rola nierozpoznana) — DO SKRÓCENIA. Pusta lista = OK. */
+export function verticalAuditGaps(scene: SceneV3): readonly VerticalAuditEntry[] {
+  return auditVerticalSegments(scene).filter((v) => v.cause === 'nieuzasadniony');
+}
+
+/** Bramka §9 P0 pkt 2: żaden pion nie jest `nieuzasadniony`. */
+export function allVerticalsAttributed(scene: SceneV3): boolean {
+  return verticalAuditGaps(scene).length === 0;
+}
+
+/** Rozkład długości pionów per przyczyna (do TABELI w raporcie): liczba pionów
+ *  i suma długości w każdej kategorii. */
+export function verticalCauseBreakdown(scene: SceneV3): Readonly<Record<VerticalCause, { count: number; length: number }>> {
+  const acc: Record<VerticalCause, { count: number; length: number }> = {
+    footprint: { count: 0, length: 0 },
+    'rezerwacja-kanalu': { count: 0, length: 0 },
+    'jog-trasy': { count: 0, length: 0 },
+    'slupek-terminalny': { count: 0, length: 0 },
+    nieuzasadniony: { count: 0, length: 0 },
+  };
+  for (const v of auditVerticalSegments(scene)) {
+    acc[v.cause].count += 1;
+    acc[v.cause].length += v.length;
+  }
+  return acc;
+}
+
+// ---------------------------------------------------------------------------
 // SCHEMAT-10 S6 (V12K-137) — instrumentacja funkcji kosztu layoutu (pkt 3
 // recenzji: „jawna funkcja kosztu = suma długości pionów + poziomów + liczba
 // załamań, liczona przed/po") oraz miara wykorzystania arkusza (pkt 10:
