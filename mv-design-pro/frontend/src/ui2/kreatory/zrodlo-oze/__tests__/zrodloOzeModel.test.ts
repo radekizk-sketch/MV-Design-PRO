@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import type { ConverterType } from '../../../../ui/catalog/types';
 import {
   BESS_OPCJE,
+  DANE_DER_SN_DOMYSLNE,
   DANE_DOMYSLNE,
+  LV_SWITCHGEAR_OPCJE,
   REGULACJA_OPCJE,
   TECHNOLOGIA_OPCJE,
   bessLabel,
@@ -11,11 +13,15 @@ import {
   maKontekst,
   materializedParams,
   regulacjaLabel,
+  sugerujDerSn,
   technologiaLabel,
   trybQWymagaWartosci,
+  walidujDerSn,
   walidujFormularz,
   wariantLabel,
+  zbudujDerTopology,
   zbudujPayload,
+  type DerSnFormData,
   type OzeFormData,
   type TransformatorBlokowy,
 } from '../zrodloOzeModel';
@@ -302,5 +308,108 @@ describe('zrodloOzeModel — kontekst', () => {
   it('maKontekst wymaga stacji', () => {
     expect(maKontekst({})).toBe(false);
     expect(maKontekst({ station_ref: 'st-1' })).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W2b-DANE: tor DER przyłączonego po stronie SN — model payloadu (DerTopology).
+// ---------------------------------------------------------------------------
+
+const DER_SN: DerSnFormData = {
+  ...DANE_DER_SN_DOMYSLNE,
+  inverter_output_voltage_kv: 0.4,
+  has_manufacturer_lv_switchgear: true,
+  lv_switchgear_variant: 'multi-feeder',
+  block_transformer_catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11',
+  block_transformer_rated_power_mva: 1.0,
+  block_transformer_primary_voltage_kv: 15.0,
+  block_transformer_secondary_voltage_kv: 0.4,
+  mv_switching_device: 'CB',
+  mv_ct: true,
+  mv_vt: true,
+  mv_earthing_switch: true,
+  mv_surge_arrester: true,
+  mv_protection_relay: true,
+  mv_cable_head: true,
+  mv_field_apparatus_catalog_ref: 'ap-sn-cb-630',
+  mv_field_name: 'Pole PV SN',
+  mv_cable_catalog_ref: 'cable-base-epr-al-1c-240',
+  mv_cable_length_km: 0.05,
+};
+
+describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
+  it('zbudujDerTopology mapuje 1:1 na kontrakt backendu', () => {
+    const topo = zbudujDerTopology(DER_SN, 'bus_sn_1');
+    expect(topo.connection_level).toBe('sn');
+    expect(topo.has_block_transformer).toBe(true);
+    expect(topo.has_dedicated_mv_field).toBe(true);
+    expect(topo.mv_bus_ref).toBe('bus_sn_1');
+    expect(topo.inverter_output_voltage_kv).toBe(0.4);
+    expect(topo.lv_switchgear_variant).toBe('multi-feeder');
+    expect(topo.block_transformer?.catalog_binding).toMatchObject({
+      catalog_namespace: 'TRAFO_SN_NN',
+      catalog_item_id: 'tr-sn-nn-15-04-1000kva-dyn11',
+    });
+    expect(topo.mv_field_configuration?.apparatus_catalog_binding).toMatchObject({
+      catalog_namespace: 'APARAT_SN',
+      catalog_item_id: 'ap-sn-cb-630',
+    });
+    expect(topo.mv_field_configuration?.cable_catalog_binding).toMatchObject({
+      catalog_namespace: 'KABEL_SN',
+      catalog_item_id: 'cable-base-epr-al-1c-240',
+    });
+  });
+
+  it('przełączniki wyposażenia pola są load-bearing (zero fabrykacji)', () => {
+    const topo = zbudujDerTopology(
+      { ...DER_SN, mv_vt: false, mv_surge_arrester: false, mv_switching_device: 'LBS' },
+      'bus_sn_1',
+    );
+    const cfg = topo.mv_field_configuration;
+    expect(cfg?.vt).toBe(false);
+    expect(cfg?.surge_arrester).toBe(false);
+    expect(cfg?.switching_device).toBe('LBS');
+    // Odznaczone opcje trafiają do payloadu jako false (backend usuwa aparat), nie znikają.
+    expect(cfg?.ct).toBe(true);
+    expect(cfg?.cable_head).toBe(true);
+  });
+
+  it('walidujDerSn wymaga katalogów toru i spójności napięć', () => {
+    expect(walidujDerSn(DER_SN)).toEqual([]);
+    const braki = walidujDerSn({
+      ...DANE_DER_SN_DOMYSLNE,
+      inverter_output_voltage_kv: 0.4,
+    });
+    const fields = braki.map((b) => b.field);
+    expect(fields).toContain('block_transformer_catalog_ref');
+    expect(fields).toContain('mv_field_apparatus_catalog_ref');
+    expect(fields).toContain('mv_cable_catalog_ref');
+  });
+
+  it('walidujDerSn wykrywa niezgodność napięcia strony nN TR blokowego', () => {
+    const braki = walidujDerSn({ ...DER_SN, block_transformer_secondary_voltage_kv: 0.69 });
+    expect(braki.map((b) => b.field)).toContain('block_transformer_secondary_voltage_kv');
+  });
+
+  it('sugerujDerSn wyprowadza napięcia z katalogu falownika i szyny SN', () => {
+    const seeded = sugerujDerSn(
+      { ...DANE_DER_SN_DOMYSLNE, inverter_output_voltage_kv: null },
+      KONWERTER,
+      15.0,
+    );
+    expect(seeded.inverter_output_voltage_kv).toBe(0.4);
+    expect(seeded.block_transformer_secondary_voltage_kv).toBe(0.4);
+    expect(seeded.block_transformer_primary_voltage_kv).toBe(15.0);
+  });
+
+  it('LV_SWITCHGEAR_OPCJE eksponuje warianty części nN producenta', () => {
+    const values = LV_SWITCHGEAR_OPCJE.map((o) => o.value);
+    expect(values).toEqual([
+      'none',
+      'single-bus',
+      'multi-feeder',
+      'combiner',
+      'integrated-skid',
+    ]);
   });
 });

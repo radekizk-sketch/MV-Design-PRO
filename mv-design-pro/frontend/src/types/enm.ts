@@ -339,6 +339,21 @@ export interface Generator extends ENMElement {
   nc_rfg_module?: 'A' | 'B' | 'C' | 'D' | null;
 }
 
+/**
+ * W2b-DANE (POLECENIE_DER_SN_TOPOLOGIA_2026-07): migawka toru DER przyłączonego po
+ * stronie SN — zapisywana przez backend na `generator.meta.der_topology`. Lustro
+ * kontraktu operacji (`DerTopologyPayload` w domainOps.ts). Falownik siedzi na szynie
+ * nN producenta; punkt przyłączenia do sieci to dedykowane pole źródłowe SN.
+ */
+export interface DerTopologyMeta {
+  connection_level: 'nn' | 'sn';
+  inverter_output_voltage_kv?: number | null;
+  has_manufacturer_lv_switchgear: boolean;
+  lv_switchgear_variant: 'none' | 'single-bus' | 'multi-feeder' | 'combiner' | 'integrated-skid';
+  has_block_transformer: boolean;
+  has_dedicated_mv_field: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Substation (stacja SN/nn — kontener logiczny z rozdzielnicami)
 // ---------------------------------------------------------------------------

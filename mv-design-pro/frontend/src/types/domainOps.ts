@@ -404,6 +404,56 @@ export interface SourceNN {
 
 export type SourcePlacement = 'NEW_FIELD' | 'EXISTING_FIELD';
 
+// --- DER-SN topology contract (W2b-DANE, POLECENIE_DER_SN_TOPOLOGIA_2026-07) ---
+// Lustro kontraktu backendu (DerTopologyPayload). Kompletny tor DER po stronie SN:
+// szyna nN producenta → TR blokowy (osobny element) → kabel SN → pole źródłowe SN.
+export type DerConnectionLevel = 'nn' | 'sn';
+export type LvSwitchgearVariant =
+  | 'none'
+  | 'single-bus'
+  | 'multi-feeder'
+  | 'combiner'
+  | 'integrated-skid';
+export type DerMvSwitchingDevice = 'CB' | 'LBS';
+
+export interface DerBlockTransformerSpec {
+  rated_power_mva: number | null;
+  primary_voltage_kv: number | null;
+  secondary_voltage_kv: number | null;
+  uk_percent: number | null;
+  vector_group: string | null;
+  catalog_ref: string | null;
+  catalog_binding: CatalogBindingPayload | null;
+}
+
+export interface DerMvFieldConfigurationSpec {
+  switching_device: DerMvSwitchingDevice;
+  ct: boolean;
+  vt: boolean;
+  earthing_switch: boolean;
+  surge_arrester: boolean;
+  protection_relay: boolean;
+  cable_head: boolean;
+  field_name: string | null;
+  bay_template_ref: string | null;
+  apparatus_catalog_binding: CatalogBindingPayload | null;
+  cable_catalog_ref: string | null;
+  cable_catalog_binding: CatalogBindingPayload | null;
+  cable_length_km: number | null;
+}
+
+export interface DerTopologyPayload {
+  connection_level: DerConnectionLevel;
+  inverter_output_voltage_kv: number | null;
+  has_manufacturer_lv_switchgear: boolean;
+  lv_switchgear_variant: LvSwitchgearVariant;
+  has_block_transformer: boolean;
+  block_transformer: DerBlockTransformerSpec | null;
+  has_dedicated_mv_field: boolean;
+  mv_field_configuration: DerMvFieldConfigurationSpec | null;
+  mv_bus_ref: string | null;
+}
+
 export interface AddConverterSourcePayload {
   source_technology: ConverterSourceTechnology;
   connection_variant: ConverterConnectionVariant;
@@ -428,6 +478,8 @@ export interface AddConverterSourcePayload {
   blocking_transformer_ref: string | null;
   catalog_binding: CatalogBindingPayload | null;
   materialized_params: Record<string, unknown> | null;
+  // W2b-DANE: kompletny tor DER-SN (ADDYTYWNY — brak = dotychczasowe zachowanie).
+  der_topology?: DerTopologyPayload | null;
 }
 
 export interface AddGensetNNPayload {

@@ -397,6 +397,75 @@ def template_primary_devices(
     return devices
 
 
+# ---------------------------------------------------------------------------
+# W2b-DANE (POLECENIE_DER_SN_TOPOLOGIA_2026-07): materializacja aparatów
+# PIERWOTNYCH dedykowanego POLA ŹRÓDŁOWEGO SN dla DER przyłączonego po stronie
+# SN — sterowana JAWNĄ konfiguracją pola z kreatora (mvFieldConfiguration), a nie
+# stałym szablonem. Każda kontrolka kreatora (switchingDevice / ct / vt /
+# earthingSwitch / surgeArrester / cableHead) mapuje 1:1 na obecność aparatu
+# pierwotnego — zero fabrykacji (phantom rule): odznaczenie CT realnie usuwa CT.
+# Kanoniczna KOLEJNOŚĆ i oznaczenia Q są lustrem `BAY_TEMPLATE_DER_PV` (jedno
+# źródło porządku pola źródłowego); protection_relay mapuje na Bay.protection_codes
+# (NIE na aparat pierwotny) przez `protection_codes_for_bay_role("OZE")`.
+# ---------------------------------------------------------------------------
+
+
+def mv_source_field_primary_devices(
+    field_ref: str,
+    *,
+    switching_device: str = "CB",
+    ct: bool = True,
+    vt: bool = False,
+    earthing_switch: bool = True,
+    surge_arrester: bool = False,
+    cable_head: bool = True,
+) -> list[dict[str, Any]]:
+    """Aparaty pierwotne pola źródłowego SN wg jawnej konfiguracji (kreator DER-SN).
+
+    Struktura stała toru (odłącznik szynowy Q1, główny łącznik Q0, odłącznik
+    liniowy Q2) jest zawsze obecna — to szkielet pola, nie przełącznik UI.
+    Aparaty opcjonalne (CT/VT/uziemnik/ogranicznik/głowica) pojawiają się WYŁĄCZNIE
+    gdy konfiguracja tak stanowi. `switching_device` różnicuje pole wyłącznikowe
+    (CB) od rozłącznikowego (LBS→LOAD_SWITCH). `device_ref` deterministyczny
+    (`field_ref` + pozycja) — ten sam wynik dla tego samego pola, zero seedu.
+    """
+    main_kind = (
+        "LOAD_SWITCH" if str(switching_device).strip().upper() in {"LBS", "LOAD_SWITCH"} else "CB"
+    )
+
+    plan: list[tuple[str, str, str]] = [
+        ("DS", "Q1", "UPSTREAM"),  # odłącznik szynowy — szkielet pola
+        (main_kind, "Q0", "MIDSTREAM"),  # główny aparat łączeniowy (CB/LBS)
+    ]
+    if ct:
+        plan.append(("CT", "T1", "MIDSTREAM"))
+    if vt:
+        plan.append(("VT", "T2", "OFF_PATH"))
+    plan.append(("DS", "Q2", "DOWNSTREAM"))  # odłącznik liniowy — szkielet pola
+    if earthing_switch:
+        plan.append(("ES", "Q9", "GROUND_BRANCH"))
+    if surge_arrester:
+        plan.append(("SURGE_ARRESTER", "Z1", "GROUND_BRANCH"))
+    if cable_head:
+        plan.append(("CABLE_HEAD", "GK", "DOWNSTREAM"))
+
+    devices: list[dict[str, Any]] = []
+    for position, (kind, designation, placement) in enumerate(plan):
+        entry: dict[str, Any] = {
+            "device_ref": f"{field_ref}::dev::{position}",
+            "symbol_ref": f"symbol:{kind.lower()}",
+            "kind": kind,
+            "placement": placement,
+            "is_controllable": kind in _SWITCHABLE_PRIMARY_KINDS,
+            "render_variant": "kanoniczny",
+            "designation": designation,
+        }
+        if kind == "ES":
+            entry["earthing_role"] = "field_earth"
+        devices.append(entry)
+    return devices
+
+
 def get_bay_template(template_id: str) -> BayTemplate:
     """Pobiera kanoniczny szablon pola po ID. Raises KeyError if not found."""
 

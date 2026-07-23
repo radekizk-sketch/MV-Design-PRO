@@ -19,6 +19,9 @@ from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding
 
 from .domain_operations import (
+    _apply_catalog_metadata,
+    _apply_materialized_branch_fields,
+    _apply_materialized_transformer_fields,
     _build_field_spec,
     _compute_seed,
     _error_legacy_field_write_disabled,
@@ -26,6 +29,8 @@ from .domain_operations import (
     _find_element,
     _find_legacy_field_element_collection,
     _make_id,
+    _materialize_catalog_payload,
+    _require_catalog_ref,
     _response,
     _station_has_transformer,
 )
@@ -2398,6 +2403,586 @@ def _append_converter_field_if_needed(
     )
 
 
+def _next_der_sn_sequence(
+    enm: dict[str, Any],
+    *,
+    station_ref: str,
+    mv_bus_ref: str,
+    catalog_ref: str,
+    name: str,
+) -> int:
+    """Deterministyczny numer kolejny powtarzalnego DER-SN na tej samej szynie SN."""
+    sequence = 0
+    for existing in enm.get("generators", []):
+        if not isinstance(existing, dict):
+            continue
+        meta = existing.get("meta") if isinstance(existing.get("meta"), dict) else {}
+        if (
+            existing.get("station_ref") == station_ref
+            and isinstance(meta, dict)
+            and meta.get("der_mv_bus_ref") == mv_bus_ref
+            and existing.get("catalog_ref") == catalog_ref
+            and existing.get("name") == name
+        ):
+            sequence += 1
+    return sequence
+
+
+def _materialize_der_block_transformer(
+    *,
+    spec: dict[str, Any],
+    ref_id: str,
+    name: str,
+    hv_bus_ref: str,
+    lv_bus_ref: str,
+    hv_voltage_kv: float,
+    lv_voltage_kv: float,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Zmaterializuj TR blokowy DER — OSOBNY element (katalog TRAFO_SN_NN), własny id.
+
+    Zwraca (transformer_dict, None) przy sukcesie albo (None, error_response) przy błędzie.
+    Rola „TRANSFORMATOR_BLOKOWY_DER" w meta odróżnia go jednoznacznie od TR stacji.
+    """
+    catalog_ref = _require_catalog_ref(
+        payload_ref=spec.get("catalog_ref"),
+        payload_binding=spec.get("catalog_binding"),
+        context_code="der.block_transformer",
+    )
+    if isinstance(catalog_ref, dict):
+        return None, catalog_ref
+
+    tr_data: dict[str, Any] = {
+        "ref_id": ref_id,
+        "name": name,
+        "hv_bus_ref": hv_bus_ref,
+        "lv_bus_ref": lv_bus_ref,
+        "sn_mva": _as_float(spec.get("rated_power_mva")) or 0.0,
+        "uhv_kv": _as_float(spec.get("primary_voltage_kv")) or hv_voltage_kv,
+        "ulv_kv": _as_float(spec.get("secondary_voltage_kv")) or lv_voltage_kv,
+        "uk_percent": _as_float(spec.get("uk_percent")) or 0.0,
+        "pk_kw": 0.0,
+        "vector_group": spec.get("vector_group"),
+        "source_mode": "KATALOG",
+        "catalog_namespace": "TRAFO_SN_NN",
+        "n_parallel": 1,
+        "tags": ["der_block_transformer"],
+        "meta": {
+            "catalog_role": "TRANSFORMATOR_BLOKOWY_DER",
+            "der_role": "block_transformer",
+            "visual_role": "DER_BLOCK_TRANSFORMER",
+        },
+        "overrides": [],
+    }
+    materialization = _materialize_catalog_payload(
+        catalog_ref=catalog_ref,
+        catalog_binding=spec.get("catalog_binding"),
+        default_namespace="TRAFO_SN_NN",
+    )
+    if isinstance(materialization, dict):
+        return None, materialization
+    binding_payload, materialized_params = materialization
+    tr_data["catalog_ref"] = catalog_ref
+    _apply_catalog_metadata(tr_data, binding_payload, default_namespace="TRAFO_SN_NN")
+    _apply_materialized_transformer_fields(tr_data, materialized_params)
+    # Rola DER musi przetrwać materializację katalogu (odróżnienie od TR stacji).
+    tr_data.setdefault("meta", {})
+    tr_data["meta"]["catalog_role"] = "TRANSFORMATOR_BLOKOWY_DER"
+    tr_data["meta"]["der_role"] = "block_transformer"
+    tr_data["meta"]["visual_role"] = "DER_BLOCK_TRANSFORMER"
+    return tr_data, None
+
+
+def _materialize_der_mv_cable(
+    *,
+    ref_id: str,
+    name: str,
+    from_bus_ref: str,
+    to_bus_ref: str,
+    catalog_ref: object,
+    catalog_binding: object,
+    length_km: float,
+) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
+    """Zmaterializuj kabel SN przyłączeniowy DER (katalog KABEL_SN), krótki odcinek.
+
+    Zwraca (branch_data, None) przy sukcesie albo (None, error_response) przy błędzie.
+    """
+    resolved_ref = _require_catalog_ref(
+        payload_ref=catalog_ref,
+        payload_binding=catalog_binding,
+        context_code="der.mv_cable",
+    )
+    if isinstance(resolved_ref, dict):
+        return None, resolved_ref
+
+    materialization = _materialize_catalog_payload(
+        catalog_ref=resolved_ref,
+        catalog_binding=catalog_binding,
+        default_namespace="KABEL_SN",
+    )
+    if isinstance(materialization, dict):
+        return None, materialization
+    binding_payload, materialized_params = materialization
+
+    branch_data: dict[str, Any] = {
+        "ref_id": ref_id,
+        "name": name,
+        "type": "cable",
+        "from_bus_ref": from_bus_ref,
+        "to_bus_ref": to_bus_ref,
+        "status": "closed",
+        "length_km": length_km,
+        "r_ohm_per_km": 0.0,
+        "x_ohm_per_km": 0.0,
+        "source_mode": "KATALOG",
+        "catalog_namespace": "KABEL_SN",
+        "catalog_ref": resolved_ref,
+        "tags": ["der_mv_cable"],
+        "meta": {"der_role": "mv_connection_cable", "visual_role": "DER_MV_CABLE"},
+    }
+    _apply_catalog_metadata(branch_data, binding_payload, default_namespace="KABEL_SN")
+    _apply_materialized_branch_fields(branch_data, materialized_params)
+    branch_data["length_km"] = length_km
+    return branch_data, None
+
+
+def _add_converter_source_der_sn(
+    enm: dict[str, Any],
+    payload: dict[str, Any],
+    *,
+    technology: str,
+    catalog_ref: str,
+    der_topology: dict[str, Any],
+) -> dict[str, Any]:
+    """Materializuj KOMPLETNY tor DER przyłączonego po stronie SN (kanon
+    POLECENIE_DER_SN_TOPOLOGIA_2026-07): szyna nN producenta → TR blokowy (osobny
+    element) → kabel SN → dedykowane pole źródłowe SN → szyna SN stacji.
+
+    Generator (falownik) siedzi na szynie nN PRODUCENTA; punkt przyłączenia do sieci
+    to pole SN. Wszystkie elementy REALNE (buses/transformers/branches/generators) —
+    LF/SC liczą je istniejącymi mechanizmami (zero zmian solverów, zero nowej fizyki).
+    """
+    from network_model.catalog.bay_templates import (
+        mv_source_field_primary_devices,
+        protection_codes_for_bay_role,
+    )
+
+    has_block_transformer = bool(der_topology.get("has_block_transformer"))
+    if not has_block_transformer:
+        # Kanon: sn ∧ brak TR blokowego = przypadek 4 (generator SYNCHRONICZNY wprost
+        # na SN) — osobna zdolność, NIE źródło przekształtnikowe. Falownik (PV/BESS/FW)
+        # na SN zawsze wymaga transformacji napięcia (TR blokowy).
+        return _error_response(
+            "Źródło przekształtnikowe po stronie SN wymaga transformatora blokowego. "
+            "Bezpośrednie przyłączenie do szyny SN bez TR blokowego jest zarezerwowane "
+            "dla generatora synchronicznego (osobna operacja).",
+            "converter.sn_requires_block_transformer",
+        )
+
+    block_spec = der_topology.get("block_transformer")
+    if not isinstance(block_spec, dict):
+        return _error_response(
+            "Tor DER-SN wymaga specyfikacji transformatora blokowego (block_transformer).",
+            "der.block_transformer_spec_missing",
+        )
+
+    mv_bus_ref = der_topology.get("mv_bus_ref") or payload.get("mv_bus_ref")
+    if not isinstance(mv_bus_ref, str) or not mv_bus_ref.strip():
+        return _error_response(
+            "Tor DER-SN wymaga wskazania szyny SN stacji (mv_bus_ref).",
+            "der.mv_bus_missing",
+        )
+    mv_bus_ref = mv_bus_ref.strip()
+
+    station_ref = payload.get("station_ref")
+    if not isinstance(station_ref, str) or not station_ref.strip():
+        return _error_response(
+            "Brak referencji stacji dla toru DER-SN.", "converter.station_missing"
+        )
+    station_ref = station_ref.strip()
+
+    station = _resolve_station_for_field_write(enm, station_ref=station_ref, bus_ref=mv_bus_ref)
+    if station is None:
+        return _error_response("Nie znaleziono stacji dla szyny SN.", "der.station_not_found")
+
+    mv_bus_voltage_kv = _bus_voltage_kv(enm, mv_bus_ref)
+    if mv_bus_voltage_kv is None or mv_bus_voltage_kv <= 0:
+        return _error_response(
+            "Nie znaleziono napięcia szyny SN stacji dla toru DER-SN.",
+            "der.mv_bus_voltage_missing",
+        )
+
+    # Materializacja parametrów falownika (reużycie kanonicznej ścieżki katalogowej).
+    materialized_params, materialization_error = _build_converter_materialized_params(
+        technology=technology,
+        payload=payload,
+        catalog_ref=catalog_ref,
+    )
+    if materialization_error:
+        return _error_response(
+            f"Źródło {technology} wymaga kompletnej materializacji parametrów katalogowych.",
+            materialization_error,
+        )
+    converter_un_kv = _as_float(materialized_params.get("un_kv"))
+    if converter_un_kv is None or converter_un_kv <= 0:
+        return _error_response(
+            f"Źródło {technology} wymaga napięcia znamionowego un_kv z katalogu.",
+            "converter.un_kv_missing",
+        )
+
+    # Napięcie wyjściowe falownika / strona nN producenta (== szyna nN producenta).
+    inverter_output_kv = (
+        _as_float(der_topology.get("inverter_output_voltage_kv"))
+        or _as_float(block_spec.get("secondary_voltage_kv"))
+        or converter_un_kv
+    )
+    if inverter_output_kv is None or inverter_output_kv <= 0:
+        return _error_response(
+            "Tor DER-SN wymaga napięcia wyjściowego falownika (inverter_output_voltage_kv).",
+            "der.inverter_voltage_missing",
+        )
+
+    # Spójność napięć toru (kanon: napięcia TR blokowego spójne z falownikiem i szyną SN).
+    if not _same_nominal_voltage(converter_un_kv, inverter_output_kv):
+        return _error_response(
+            "Napięcie katalogowe falownika nie jest zgodne z napięciem wyjściowym toru DER. "
+            f"Falownik: {converter_un_kv:g} kV, wyjście: {inverter_output_kv:g} kV.",
+            "der.inverter_voltage_mismatch",
+        )
+    block_secondary_kv = _as_float(block_spec.get("secondary_voltage_kv")) or inverter_output_kv
+    block_primary_kv = _as_float(block_spec.get("primary_voltage_kv")) or mv_bus_voltage_kv
+    if not _same_nominal_voltage(block_secondary_kv, inverter_output_kv):
+        return _error_response(
+            "Strona nN transformatora blokowego nie jest zgodna z wyjściem falownika. "
+            f"TR blokowy nN: {block_secondary_kv:g} kV, falownik: {inverter_output_kv:g} kV.",
+            "der.block_transformer_lv_mismatch",
+        )
+    if not _same_nominal_voltage(block_primary_kv, mv_bus_voltage_kv):
+        return _error_response(
+            "Strona SN transformatora blokowego nie jest zgodna z szyną SN stacji. "
+            f"TR blokowy SN: {block_primary_kv:g} kV, szyna SN: {mv_bus_voltage_kv:g} kV.",
+            "der.block_transformer_hv_mismatch",
+        )
+
+    name, gen_type, event_type, gen_meta, p_mw = _resolve_converter_defaults(
+        technology, payload, materialized_params
+    )
+    q_mvar = _first_number(payload.get("q_min_mvar"), 0.0)
+
+    # Deterministyczny seed z refów (kolejny numer powtarzalnego DER na tej szynie SN).
+    source_sequence = _next_der_sn_sequence(
+        enm, station_ref=station_ref, mv_bus_ref=mv_bus_ref, catalog_ref=catalog_ref, name=name
+    )
+    seed_payload: dict[str, Any] = {
+        "op": "der_sn_topology",
+        "station_ref": station_ref,
+        "mv_bus": mv_bus_ref,
+        "technology": technology,
+        "catalog_ref": catalog_ref,
+        "name": name,
+    }
+    if source_sequence > 0:
+        seed_payload["source_sequence"] = source_sequence
+    seed = _compute_seed(seed_payload)
+    prefix = technology.lower()
+
+    producer_bus_ref = _make_id(prefix, seed, "der/producer_nn_bus")
+    block_hv_bus_ref = _make_id(prefix, seed, "der/block_hv_bus")
+    block_tr_ref = _make_id(prefix, seed, "der/block_transformer")
+    cable_ref = _make_id(prefix, seed, "der/mv_cable")
+    field_ref = _make_id("sn", seed, "der/source_field")
+    terminal_bus_ref = _make_id("sn", seed, "der/field_terminal")
+    apparatus_ref = _make_id("sn", seed, "der/field_device")
+    generator_ref = _make_id(prefix, seed, "converter")
+
+    lv_variant = der_topology.get("lv_switchgear_variant") or "none"
+    has_lv_switchgear = bool(der_topology.get("has_manufacturer_lv_switchgear"))
+
+    new_enm = copy.deepcopy(enm)
+    created: list[str] = []
+    events: list[dict[str, Any]] = []
+    ev_seq = 0
+
+    def _emit(event_type_name: str, element_id: str) -> None:
+        nonlocal ev_seq
+        ev_seq += 1
+        events.append(
+            {"event_seq": ev_seq, "event_type": event_type_name, "element_id": element_id}
+        )
+
+    # 1. Szyna nN PRODUCENTA (strona falownika + strona nN TR blokowego).
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": producer_bus_ref,
+            "name": f"Szyna nN producenta {name}",
+            "voltage_kv": inverter_output_kv,
+            "tags": ["nn", "der_producer_lv"],
+            "meta": {
+                "visual_role": "DER_PRODUCER_LV_BUS",
+                "der_role": "producer_lv_bus",
+                "station_ref": station_ref,
+                "has_manufacturer_lv_switchgear": has_lv_switchgear,
+                "lv_switchgear_variant": lv_variant,
+            },
+        },
+    )
+    if not result.success:
+        return _error_response(
+            "Nie udało się utworzyć szyny nN producenta DER.", "der.producer_bus_failed"
+        )
+    new_enm = result.enm
+    created.append(producer_bus_ref)
+    _emit("BUS_NN_CREATED", producer_bus_ref)
+
+    # 2. Szyna SN po stronie górnej TR blokowego (wejście kabla SN).
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": block_hv_bus_ref,
+            "name": f"Szyna SN TR blokowego {name}",
+            "voltage_kv": block_primary_kv,
+            "tags": ["sn", "der_block_hv"],
+            "meta": {
+                "visual_role": "DER_BLOCK_HV_BUS",
+                "der_role": "block_hv_bus",
+                "station_ref": station_ref,
+            },
+        },
+    )
+    if not result.success:
+        return _error_response(
+            "Nie udało się utworzyć szyny SN transformatora blokowego DER.",
+            "der.block_hv_bus_failed",
+        )
+    new_enm = result.enm
+    created.append(block_hv_bus_ref)
+    _emit("BUS_CREATED", block_hv_bus_ref)
+
+    # 3. Dedykowane POLE ŹRÓDŁOWE SN stacji (łańcuch W1: terminal + aparat + field_spec).
+    mv_field_cfg = der_topology.get("mv_field_configuration")
+    if not isinstance(mv_field_cfg, dict):
+        mv_field_cfg = {}
+    switching_device = str(mv_field_cfg.get("switching_device") or "CB").upper()
+    apparatus_kind = "LOAD_SWITCH" if switching_device in {"LBS", "LOAD_SWITCH"} else "BREAKER"
+    branch_type = _sn_bay_branch_type(apparatus_kind)
+    apparatus_binding = mv_field_cfg.get("apparatus_catalog_binding")
+    apparatus_catalog_ref = (
+        _catalog_item_id(apparatus_binding) if isinstance(apparatus_binding, dict) else None
+    )
+
+    result = create_node(
+        new_enm,
+        {
+            "ref_id": terminal_bus_ref,
+            "name": f"Zacisk pola źródłowego SN {name}",
+            "voltage_kv": mv_bus_voltage_kv,
+            "tags": ["helper_bus", "field_terminal"],
+            "meta": {
+                "visual_role": "FIELD_TERMINAL",
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+                "field_ref": field_ref,
+                "station_ref": station_ref,
+                "port_kind": "der_source_in",
+            },
+        },
+    )
+    if not result.success:
+        return _error_response(
+            "Nie udało się utworzyć zacisku pola źródłowego SN.", "der.field_terminal_failed"
+        )
+    new_enm = result.enm
+    created.append(terminal_bus_ref)
+    _emit("FIELD_TERMINAL_CREATED_SN", terminal_bus_ref)
+
+    result = create_branch(
+        new_enm,
+        {
+            "ref_id": apparatus_ref,
+            "name": f"Aparat pola źródłowego SN {name}",
+            "type": branch_type,
+            "from_bus_ref": mv_bus_ref,
+            "to_bus_ref": terminal_bus_ref,
+            "status": "closed",
+            "r_ohm": 0.0,
+            "x_ohm": 0.0,
+            "source_mode": "KATALOG" if apparatus_catalog_ref else None,
+            "catalog_namespace": "APARAT_SN" if apparatus_catalog_ref else None,
+            "catalog_ref": apparatus_catalog_ref,
+            "tags": ["gpz_field_device", "der_source_field_device"],
+            "meta": {
+                "field_ref": field_ref,
+                "station_ref": station_ref,
+                "bay_role": "OZE",
+                "apparatus_kind": apparatus_kind,
+                "terminal_bus_ref": terminal_bus_ref,
+                "render_on_sld": False,
+                "show_in_project_tree": False,
+                "requires_catalog_binding": apparatus_catalog_ref is None,
+                "catalog_binding": (
+                    copy.deepcopy(apparatus_binding)
+                    if isinstance(apparatus_binding, dict)
+                    else None
+                ),
+            },
+        },
+    )
+    if not result.success:
+        message = result.issues[0].message_pl if result.issues else "Nieznany błąd."
+        return _error_response(
+            f"Nie udało się utworzyć aparatu pola źródłowego SN: {message}",
+            "der.field_apparatus_failed",
+        )
+    new_enm = result.enm
+    created.append(apparatus_ref)
+    _emit("FIELD_DEVICE_CREATED_SN", apparatus_ref)
+
+    primary_devices = mv_source_field_primary_devices(
+        field_ref,
+        switching_device=switching_device,
+        ct=bool(mv_field_cfg.get("ct", True)),
+        vt=bool(mv_field_cfg.get("vt", False)),
+        earthing_switch=bool(mv_field_cfg.get("earthing_switch", True)),
+        surge_arrester=bool(mv_field_cfg.get("surge_arrester", False)),
+        cable_head=bool(mv_field_cfg.get("cable_head", True)),
+    )
+    protection_codes = (
+        protection_codes_for_bay_role("OZE")
+        if bool(mv_field_cfg.get("protection_relay", True))
+        else []
+    )
+    field_name = str(mv_field_cfg.get("field_name") or f"Pole źródłowe SN {technology}")
+    field_spec = _build_field_spec(
+        field_ref=field_ref,
+        name=field_name,
+        bay_role="OZE",
+        bus_ref=mv_bus_ref,
+        equipment_refs=[apparatus_ref],
+        protection_codes=protection_codes or None,
+        bay_template_ref=mv_field_cfg.get("bay_template_ref"),
+        primary_devices=primary_devices or None,
+        tags=["der_source_field", "nn_source_field"],
+        meta={
+            "apparatus_kind": apparatus_kind,
+            "catalog_binding": (
+                copy.deepcopy(apparatus_binding) if isinstance(apparatus_binding, dict) else None
+            ),
+            "terminal_bus_ref": terminal_bus_ref,
+            "default_device_ref": apparatus_ref,
+            "field_status": "CONFIGURED_FOR_TRUNK",
+            "source_field_kind": technology,
+            "der_role": "mv_source_field",
+            "der_feeder_bus_ref": block_hv_bus_ref,
+        },
+    )
+    if not _append_substation_field_spec(
+        new_enm,
+        station_ref=station_ref,
+        meta_key="field_specs",
+        field_spec=field_spec,
+    ):
+        return _error_response("Nie znaleziono stacji dla szyny SN.", "der.station_not_found")
+    created.insert(0, field_ref)
+    _emit("FIELDS_CREATED_SN", field_ref)
+
+    # 4. Kabel SN przyłączeniowy: szyna SN TR blokowego → zacisk pola źródłowego SN.
+    cable_length_km = _as_float(mv_field_cfg.get("cable_length_km"))
+    if cable_length_km is None or cable_length_km <= 0:
+        cable_length_km = 0.05  # krótki odcinek przyłączeniowy (50 m) — domyślny
+    cable_data, cable_error = _materialize_der_mv_cable(
+        ref_id=cable_ref,
+        name=f"Kabel SN przyłączeniowy {name}",
+        from_bus_ref=block_hv_bus_ref,
+        to_bus_ref=terminal_bus_ref,
+        catalog_ref=mv_field_cfg.get("cable_catalog_ref"),
+        catalog_binding=mv_field_cfg.get("cable_catalog_binding"),
+        length_km=cable_length_km,
+    )
+    if cable_error is not None:
+        return cable_error
+    assert cable_data is not None
+    result = create_branch(new_enm, cable_data)
+    if not result.success:
+        message = result.issues[0].message_pl if result.issues else "Nieznany błąd."
+        return _error_response(
+            f"Nie udało się utworzyć kabla SN przyłączeniowego DER: {message}",
+            "der.mv_cable_failed",
+        )
+    new_enm = result.enm
+    created.append(cable_ref)
+    _emit("BRANCH_CREATED", cable_ref)
+
+    # 5. TR blokowy DER (osobny element w enm["transformers"], konsumowany przez LF/SC).
+    tr_data, tr_error = _materialize_der_block_transformer(
+        spec=block_spec,
+        ref_id=block_tr_ref,
+        name=f"Transformator blokowy {name}",
+        hv_bus_ref=block_hv_bus_ref,
+        lv_bus_ref=producer_bus_ref,
+        hv_voltage_kv=block_primary_kv,
+        lv_voltage_kv=inverter_output_kv,
+    )
+    if tr_error is not None:
+        return tr_error
+    assert tr_data is not None
+    new_enm.setdefault("transformers", []).append(tr_data)
+    created.append(block_tr_ref)
+    _emit("TRANSFORMER_CREATED", block_tr_ref)
+
+    # 6. Generator (falownik) na szynie nN PRODUCENTA. Punkt przyłączenia do sieci = pole SN.
+    generator_meta = {
+        **gen_meta,
+        "field_ref": field_ref,
+        "der_mv_bus_ref": mv_bus_ref,
+        "der_mv_field_ref": field_ref,
+        "der_producer_bus_ref": producer_bus_ref,
+        "der_block_hv_bus_ref": block_hv_bus_ref,
+        "der_mv_cable_ref": cable_ref,
+        "block_transformer_ref": block_tr_ref,
+        "source_sequence_index": source_sequence,
+        "der_topology": {
+            "connection_level": "sn",
+            "inverter_output_voltage_kv": inverter_output_kv,
+            "has_manufacturer_lv_switchgear": has_lv_switchgear,
+            "lv_switchgear_variant": lv_variant,
+            "has_block_transformer": True,
+            "has_dedicated_mv_field": True,
+        },
+    }
+    new_enm.setdefault("generators", []).append(
+        {
+            "ref_id": generator_ref,
+            "name": name,
+            "bus_ref": producer_bus_ref,
+            "gen_type": gen_type,
+            "p_mw": p_mw,
+            "q_mvar": q_mvar,
+            "catalog_ref": catalog_ref,
+            "catalog_namespace": _resolve_converter_catalog_namespace(payload, technology),
+            "source_mode": "KATALOG",
+            "materialized_params": materialized_params,
+            "station_ref": station_ref,
+            "connection_variant": "block_transformer",
+            "blocking_transformer_ref": block_tr_ref,
+            "quantity": gen_meta.get("quantity"),
+            "n_parallel": gen_meta.get("quantity"),
+            "in_service": True,
+            "tags": [],
+            "meta": generator_meta,
+        }
+    )
+    created.append(generator_ref)
+    _emit(event_type, generator_ref)
+
+    return _response(
+        new_enm,
+        created=created,
+        selection_id=field_ref,
+        selection_type="bay",
+        events=events,
+    )
+
+
 def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaj kanoniczne źródło przekształtnikowe PV, BESS albo FW."""
     technology = _normalize_source_technology(payload)
@@ -2440,6 +3025,19 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         return _error_response(
             f"Źródło {technology} wymaga poprawnego powiązania z katalogiem.",
             catalog_error or "catalog.ref_required",
+        )
+
+    # W2b-DANE (POLECENIE_DER_SN_TOPOLOGIA_2026-07): kompletny tor DER po stronie SN.
+    # ADDYTYWNY — bez der_topology zachowanie bez zmian. connection_level='sn' materializuje
+    # szynę nN producenta → TR blokowy (osobny element) → kabel SN → pole źródłowe SN.
+    der_topology = payload.get("der_topology")
+    if isinstance(der_topology, dict) and der_topology.get("connection_level") == "sn":
+        return _add_converter_source_der_sn(
+            enm,
+            payload,
+            technology=technology,
+            catalog_ref=catalog_ref,
+            der_topology=der_topology,
         )
 
     bus_nn_ref = payload.get("bus_nn_ref")

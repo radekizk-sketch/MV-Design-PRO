@@ -19,6 +19,11 @@
 
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import type { ConverterType } from '../../../ui/catalog/types';
+import type {
+  DerMvSwitchingDevice,
+  DerTopologyPayload,
+  LvSwitchgearVariant,
+} from '../../../types/domainOps';
 
 const CANONICAL_CATALOG_VERSION = 'v12.5';
 
@@ -355,4 +360,188 @@ export function trybQWymagaWartosci(data: OzeFormData): boolean {
 /** Etykieta pozycji katalogu falownika. */
 export function etykietaKonwertera(item: ConverterType): string {
   return `${item.name} · Un ${item.un_kv} kV · S ${item.sn_mva.toFixed(3)} MVA · Pmax ${item.pmax_mw.toFixed(3)} MW`;
+}
+
+// ===========================================================================
+// W2b-DANE (POLECENIE_DER_SN_TOPOLOGIA_2026-07): kompletny tor DER po stronie SN.
+// Model MAPUJE 1:1 na DerTopologyPayload backendu (zero fabrykacji): każda kontrolka
+// odpowiada realnemu polu operacji, które materializuje osobny TR blokowy, kabel SN
+// i dedykowane pole źródłowe SN. Render toru w SLD (W2c) poza zakresem tej karty.
+// ===========================================================================
+
+export const LV_SWITCHGEAR_OPCJE: ReadonlyArray<{ value: LvSwitchgearVariant; label: string }> = [
+  { value: 'none', label: 'Bez rozdzielni producenta (bezpośrednio z falownika)' },
+  { value: 'single-bus', label: 'Rozdzielnica jednosekcyjna' },
+  { value: 'multi-feeder', label: 'Rozdzielnica z kilkoma odpływami' },
+  { value: 'combiner', label: 'Odpływ zbiorczy (combiner)' },
+  { value: 'integrated-skid', label: 'Zestaw zintegrowany / stacja kompaktowa' },
+];
+
+export const APARAT_POLA_SN_OPCJE: ReadonlyArray<{ value: DerMvSwitchingDevice; label: string }> = [
+  { value: 'CB', label: 'Wyłącznik' },
+  { value: 'LBS', label: 'Rozłącznik' },
+];
+
+const LV_SWITCHGEAR_LABEL = new Map(LV_SWITCHGEAR_OPCJE.map((o) => [o.value, o.label]));
+const APARAT_POLA_SN_LABEL = new Map(APARAT_POLA_SN_OPCJE.map((o) => [o.value, o.label]));
+
+export const lvSwitchgearLabel = (v: LvSwitchgearVariant): string =>
+  LV_SWITCHGEAR_LABEL.get(v) ?? '';
+export const aparatPolaSnLabel = (v: DerMvSwitchingDevice): string =>
+  APARAT_POLA_SN_LABEL.get(v) ?? '';
+
+/** Formularz toru DER-SN — pola 1:1 z DerTopologyPayload (zero pól-widm). */
+export interface DerSnFormData {
+  inverter_output_voltage_kv: number | null;
+  has_manufacturer_lv_switchgear: boolean;
+  lv_switchgear_variant: LvSwitchgearVariant;
+  block_transformer_catalog_ref: string | null;
+  block_transformer_rated_power_mva: number | null;
+  block_transformer_primary_voltage_kv: number | null;
+  block_transformer_secondary_voltage_kv: number | null;
+  mv_switching_device: DerMvSwitchingDevice;
+  mv_ct: boolean;
+  mv_vt: boolean;
+  mv_earthing_switch: boolean;
+  mv_surge_arrester: boolean;
+  mv_protection_relay: boolean;
+  mv_cable_head: boolean;
+  mv_field_apparatus_catalog_ref: string | null;
+  mv_field_name: string | null;
+  mv_cable_catalog_ref: string | null;
+  mv_cable_length_km: number | null;
+}
+
+export const DANE_DER_SN_DOMYSLNE: DerSnFormData = {
+  inverter_output_voltage_kv: null,
+  has_manufacturer_lv_switchgear: true,
+  lv_switchgear_variant: 'multi-feeder',
+  block_transformer_catalog_ref: null,
+  block_transformer_rated_power_mva: null,
+  block_transformer_primary_voltage_kv: null,
+  block_transformer_secondary_voltage_kv: null,
+  mv_switching_device: 'CB',
+  mv_ct: true,
+  mv_vt: false,
+  mv_earthing_switch: true,
+  mv_surge_arrester: false,
+  mv_protection_relay: true,
+  mv_cable_head: true,
+  mv_field_apparatus_catalog_ref: null,
+  mv_field_name: null,
+  mv_cable_catalog_ref: null,
+  mv_cable_length_km: null,
+};
+
+/**
+ * Podpowiedź napięcia wyjściowego falownika = Un katalogu falownika (uczciwy stan
+ * zerowy: projektant potwierdza). Napięcie strony wtórnej TR blokowego = wyjście
+ * falownika, strony pierwotnej = napięcie szyny SN stacji.
+ */
+export function sugerujDerSn(
+  data: DerSnFormData,
+  converter: ConverterType | null,
+  mvBusVoltageKv: number | null,
+): DerSnFormData {
+  const inverterKv = data.inverter_output_voltage_kv ?? converter?.un_kv ?? null;
+  return {
+    ...data,
+    inverter_output_voltage_kv: inverterKv,
+    block_transformer_secondary_voltage_kv:
+      data.block_transformer_secondary_voltage_kv ?? inverterKv,
+    block_transformer_primary_voltage_kv:
+      data.block_transformer_primary_voltage_kv ?? mvBusVoltageKv,
+  };
+}
+
+/** Walidacja toru DER-SN — braki blokujące (każde pole realnie konsumowane przez backend). */
+export function walidujDerSn(data: DerSnFormData): BladPolaOze[] {
+  const errors: BladPolaOze[] = [];
+  if (!data.block_transformer_catalog_ref?.trim()) {
+    errors.push({
+      field: 'block_transformer_catalog_ref',
+      message: 'Wybierz transformator blokowy SN/nN z katalogu.',
+    });
+  }
+  if (!data.mv_field_apparatus_catalog_ref?.trim()) {
+    errors.push({
+      field: 'mv_field_apparatus_catalog_ref',
+      message: 'Dobierz aparat główny dedykowanego pola źródłowego SN.',
+    });
+  }
+  if (!data.mv_cable_catalog_ref?.trim()) {
+    errors.push({
+      field: 'mv_cable_catalog_ref',
+      message: 'Wybierz kabel SN odcinka przyłączeniowego z katalogu.',
+    });
+  }
+  if (data.inverter_output_voltage_kv === null || data.inverter_output_voltage_kv <= 0) {
+    errors.push({
+      field: 'inverter_output_voltage_kv',
+      message: 'Podaj napięcie wyjściowe falownika / strony nN producenta.',
+    });
+  }
+  const lv = data.block_transformer_secondary_voltage_kv;
+  const inv = data.inverter_output_voltage_kv;
+  if (lv !== null && inv !== null && Math.abs(lv - inv) > 1e-6) {
+    errors.push({
+      field: 'block_transformer_secondary_voltage_kv',
+      message: 'Strona nN transformatora blokowego musi być zgodna z wyjściem falownika.',
+    });
+  }
+  if (data.mv_cable_length_km !== null && data.mv_cable_length_km <= 0) {
+    errors.push({
+      field: 'mv_cable_length_km',
+      message: 'Długość kabla przyłączeniowego musi być większa od zera.',
+    });
+  }
+  return errors;
+}
+
+/**
+ * Zbuduj `der_topology` (connection_level='sn') z formularza — 1:1 na kontrakt backendu.
+ * `mvBusRef` = szyna SN stacji, do której przypina się dedykowane pole źródłowe SN.
+ * Aparaty pierwotne pola wynikają z przełączników (ct/vt/uziemnik/SA/głowica) — backend
+ * materializuje je wg tej konfiguracji (odznaczenie realnie usuwa aparat, nie phantom).
+ */
+export function zbudujDerTopology(data: DerSnFormData, mvBusRef: string): DerTopologyPayload {
+  return {
+    connection_level: 'sn',
+    inverter_output_voltage_kv: data.inverter_output_voltage_kv,
+    has_manufacturer_lv_switchgear: data.has_manufacturer_lv_switchgear,
+    lv_switchgear_variant: data.lv_switchgear_variant,
+    has_block_transformer: true,
+    block_transformer: {
+      rated_power_mva: data.block_transformer_rated_power_mva,
+      primary_voltage_kv: data.block_transformer_primary_voltage_kv,
+      secondary_voltage_kv: data.block_transformer_secondary_voltage_kv,
+      uk_percent: null,
+      vector_group: null,
+      catalog_ref: data.block_transformer_catalog_ref,
+      catalog_binding: normalizeCatalogBinding(
+        data.block_transformer_catalog_ref,
+        'TRAFO_SN_NN',
+      ),
+    },
+    has_dedicated_mv_field: true,
+    mv_field_configuration: {
+      switching_device: data.mv_switching_device,
+      ct: data.mv_ct,
+      vt: data.mv_vt,
+      earthing_switch: data.mv_earthing_switch,
+      surge_arrester: data.mv_surge_arrester,
+      protection_relay: data.mv_protection_relay,
+      cable_head: data.mv_cable_head,
+      field_name: data.mv_field_name?.trim() || null,
+      bay_template_ref: null,
+      apparatus_catalog_binding: normalizeCatalogBinding(
+        data.mv_field_apparatus_catalog_ref,
+        'APARAT_SN',
+      ),
+      cable_catalog_ref: data.mv_cable_catalog_ref,
+      cable_catalog_binding: normalizeCatalogBinding(data.mv_cable_catalog_ref, 'KABEL_SN'),
+      cable_length_km: data.mv_cable_length_km,
+    },
+    mv_bus_ref: mvBusRef,
+  };
 }

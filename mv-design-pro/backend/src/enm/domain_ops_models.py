@@ -978,6 +978,70 @@ class ConverterSourceFieldPayload(_FrozenBase):
     catalog_binding: dict[str, Any] | None = None
 
 
+class DerBlockTransformerSpec(_FrozenBase):
+    """TR blokowy DER — OSOBNY element modelu (≠ transformator stacji), katalog-first.
+
+    Napięcia toru: strona pierwotna = SN stacji (HV), strona wtórna = wyjście
+    falownika/rozdzielni producenta (LV). Katalog TRAFO_SN_NN dostarcza fizykę
+    solvera; jawne pola walidują spójność napięć i stanowią bazę materializacji.
+    """
+
+    rated_power_mva: float | None = None
+    primary_voltage_kv: float | None = None
+    secondary_voltage_kv: float | None = None
+    uk_percent: float | None = None
+    vector_group: str | None = None
+    catalog_ref: str | None = None
+    catalog_binding: dict[str, Any] | None = None
+
+
+class DerMvFieldConfigurationSpec(_FrozenBase):
+    """Wyposażenie dedykowanego pola źródłowego SN DER (łańcuch W1, katalog-first).
+
+    Każde pole mapuje 1:1 na obecność aparatu pierwotnego pola albo na wymaganą
+    funkcję zabezpieczeniową (protection_relay → Bay.protection_codes). Kabel SN
+    (odcinek przyłączeniowy TR blokowy → pole SN) materializowany z katalogu kabli.
+    """
+
+    switching_device: Literal["CB", "LBS"] = "CB"
+    ct: bool = True
+    vt: bool = False
+    earthing_switch: bool = True
+    surge_arrester: bool = False
+    protection_relay: bool = True
+    cable_head: bool = True
+    field_name: str | None = None
+    bay_template_ref: str | None = None
+    apparatus_catalog_binding: dict[str, Any] | None = None
+    cable_catalog_ref: str | None = None
+    cable_catalog_binding: dict[str, Any] | None = None
+    cable_length_km: float | None = None
+
+
+class DerTopologyPayload(_FrozenBase):
+    """Kontrakt kompletnego toru DER przyłączonego po stronie SN (kanon
+    POLECENIE_DER_SN_TOPOLOGIA_2026-07). ADDYTYWNY: brak `der_topology` w payloadzie
+    add_converter_source = dotychczasowe zachowanie (wariant A/nn bez zmian).
+
+    connection_level='sn' + has_block_transformer materializuje pełny tor:
+    szyna nN producenta → TR blokowy (osobny element) → kabel SN → pole źródłowe SN
+    → szyna SN stacji. Zakaz wyprowadzania obecności TR wyłącznie z connection_level.
+    """
+
+    connection_level: Literal["nn", "sn"]
+    inverter_output_voltage_kv: float | None = None
+    has_manufacturer_lv_switchgear: bool = False
+    lv_switchgear_variant: Literal[
+        "none", "single-bus", "multi-feeder", "combiner", "integrated-skid"
+    ] = "none"
+    has_block_transformer: bool = False
+    block_transformer: DerBlockTransformerSpec | None = None
+    has_dedicated_mv_field: bool = False
+    mv_field_configuration: DerMvFieldConfigurationSpec | None = None
+    mv_bus_ref: str | None = None
+    """Szyna SN stacji, do której przypina się dedykowane pole źródłowe SN."""
+
+
 class AddConverterSourcePayload(_FrozenBase):
     """Payload: add_converter_source — kanoniczne źródło przekształtnikowe."""
 
@@ -1020,6 +1084,9 @@ class AddConverterSourcePayload(_FrozenBase):
     blocking_transformer_ref: str | None = None
     catalog_binding: dict[str, Any] | None = None
     materialized_params: dict[str, Any] | None = None
+    # W2b-DANE: kompletny tor DER-SN (kanon POLECENIE_DER_SN_TOPOLOGIA_2026-07).
+    # ADDYTYWNY — brak pola = dotychczasowe zachowanie (wariant nn/A bez zmian).
+    der_topology: DerTopologyPayload | None = None
 
 
 class AddGensetNNPayload(_FrozenBase):
