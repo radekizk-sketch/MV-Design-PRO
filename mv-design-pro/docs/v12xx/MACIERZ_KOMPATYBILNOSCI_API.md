@@ -217,6 +217,8 @@ Data wejscia statusow: 2026-05-24.
 | `GET /api/analysis-runs/{run_id}/export/report/docx` | v12xx | aktywny | 2026-05-24 | - | Eksport raportu DOCX z wyniku i uzasadnienia. | analysis run export tests | Architekt raportow |
 | `GET /api/analysis-runs/{run_id}/export/report/json` | v12xx | aktywny | 2026-05-24 | - | Eksport raportu JSON z wyniku i uzasadnienia. | analysis run export tests | Architekt raportow |
 | `GET /api/analysis-runs/{run_id}/export/report/pdf` | v12xx | aktywny | 2026-05-24 | - | Eksport raportu PDF z wyniku i uzasadnienia. | analysis run export tests | Architekt raportow |
+| `GET /api/projects/{project_id}/documents` | v12xx | aktywny | 2026-07-23 | - | Lista wygenerowanych dokumentow projektu z magazynu (cykl zycia; F-E8.3/V12K-094). | document store API tests | Architekt raportow |
+| `GET /api/documents/{document_id}/content` | v12xx | aktywny | 2026-07-23 | - | Strumien tresci dokumentu z magazynu (pobranie/podglad; F-E8.3). | document store API tests | Architekt raportow |
 | `GET /api/cases/{case_id}/analysis/eligibility` | v12xx | aktywny | 2026-05-24 | - | Zdolnosc uruchomienia analiz w widoku solver input. | solver input tests | Architekt walidacji |
 | `GET /api/cases/{case_id}/analysis/solver-input/{analysis_type}` | v12xx | aktywny | 2026-05-24 | - | Audytowalny podglad wejscia solvera dla typu analizy. | solver input tests | Architekt solverow |
 | `GET /api/station-templates` | v12xx | aktywny | 2026-05-24 | - | Lista szablonow stacji. | station template tests | Architekt stacji |

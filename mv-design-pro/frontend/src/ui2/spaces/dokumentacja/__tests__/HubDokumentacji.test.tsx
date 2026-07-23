@@ -7,7 +7,7 @@
 
 import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
@@ -16,7 +16,7 @@ import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../../shell/useShellStore';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { HubDokumentacji } from '../HubDokumentacji';
-import { dokumentDostepny, maZakonczonyPrzebieg, ostatniZakonczonyPrzebieg, zawartoscZPrzebiegow } from '../model';
+import { dokumentDostepny, formatujRozmiar, maZakonczonyPrzebieg, ostatniZakonczonyPrzebieg, rekordyDlaKarty, zawartoscZPrzebiegow } from '../model';
 
 function snapshotTestowy(): EnergyNetworkModel {
   return {
@@ -38,7 +38,12 @@ function przebiegZakonczony(analysisType: string, finishedAt: string) {
 
 describe('HubDokumentacji — ekran prowadzący (R2: 3 pytania inżyniera)', () => {
   beforeEach(() => {
-    useAppStateStore.setState({ activeProjectName: null, activeCaseName: null, activeCaseId: null });
+    useAppStateStore.setState({
+      activeProjectName: null,
+      activeProjectId: null,
+      activeCaseName: null,
+      activeCaseId: null,
+    });
     useSnapshotStore.setState({ snapshot: null });
     useExecutionRunsStore.setState({ runs: [] });
     useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
@@ -149,6 +154,87 @@ describe('HubDokumentacji — ekran prowadzący (R2: 3 pytania inżyniera)', () 
   });
 });
 
+describe('HubDokumentacji — magazyn dokumentów (cykl życia; F-E8.3)', () => {
+  const REKORD_PDF = {
+    id: 'doc-raport-pdf',
+    project_id: 'proj-1',
+    doc_type: 'RAPORT',
+    doc_format: 'PDF',
+    filename: 'raport.pdf',
+    size_bytes: 2048,
+    sha256: 'a'.repeat(64),
+    source: 'analysis-run-report',
+    created_at: '2026-07-23T10:30:00Z',
+    content_url: '/api/documents/doc-raport-pdf/content',
+    page_count: 3,
+    run_ref: 'run-1',
+  };
+
+  beforeEach(() => {
+    useAppStateStore.setState({ activeProjectName: 'Projekt Z', activeProjectId: 'proj-1' });
+    useExecutionRunsStore.setState({
+      runs: [przebiegZakonczony('LOAD_FLOW', '2026-07-22T09:00:00Z')],
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function mockFetch(rekordy: readonly unknown[]) {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ project_id: 'proj-1', items: rekordy, count: rekordy.length }),
+      })),
+    );
+  }
+
+  it('rekord w magazynie → status „Wygenerowany [data]" + rozmiar/strony (realne dane)', async () => {
+    mockFetch([REKORD_PDF]);
+    render(<HubDokumentacji />);
+
+    const status = await screen.findByTestId('mvd-dok-karta-raport-status');
+    expect(status.textContent).toContain('Wygenerowany');
+    expect(status.textContent).toContain('2026-07-23 10:30');
+
+    const magazyn = screen.getByTestId('mvd-dok-karta-raport-magazyn');
+    expect(within(magazyn).getByText(/PDF/)).toBeTruthy();
+    expect(within(magazyn).getByText(/2\.0 kB/)).toBeTruthy();
+    expect(within(magazyn).getByText(/3 str\./)).toBeTruthy();
+  });
+
+  it('akcje Pobierz/Podgląd wskazują REALNE URL-e endpointu magazynu', async () => {
+    mockFetch([REKORD_PDF]);
+    render(<HubDokumentacji />);
+
+    const pobierz = (await screen.findByTestId('mvd-dok-karta-raport-pobierz')) as HTMLAnchorElement;
+    expect(pobierz.getAttribute('href')).toBe('/api/documents/doc-raport-pdf/content');
+    const podglad = screen.getByTestId('mvd-dok-karta-raport-podglad') as HTMLAnchorElement;
+    expect(podglad.getAttribute('href')).toBe('/api/documents/doc-raport-pdf/content?inline=true');
+  });
+
+  it('brak rekordu magazynu → dzisiejszy stan „Do wygenerowania" (zero regresu)', async () => {
+    mockFetch([]);
+    render(<HubDokumentacji />);
+
+    // Karta raportu ma zakończony przebieg → „Do wygenerowania"; brak sekcji magazynu.
+    const status = await screen.findByTestId('mvd-dok-karta-raport-status');
+    expect(status.textContent).toBe('Do wygenerowania');
+    expect(screen.queryByTestId('mvd-dok-karta-raport-magazyn')).toBeNull();
+  });
+
+  it('rekord trafia tylko na kartę swojego typu (RAPORT → karta raportu, nie dowód)', async () => {
+    mockFetch([REKORD_PDF]);
+    render(<HubDokumentacji />);
+
+    await screen.findByTestId('mvd-dok-karta-raport-magazyn');
+    expect(screen.queryByTestId('mvd-dok-karta-dowod-magazyn')).toBeNull();
+  });
+});
+
 describe('model dokumentacji — czyste selektory', () => {
   it('maZakonczonyPrzebieg: dowolny zakończony przebieg wystarcza', () => {
     expect(maZakonczonyPrzebieg([{ analysis_type: 'SC_3F', status: 'RUNNING' }])).toBe(false);
@@ -179,5 +265,22 @@ describe('model dokumentacji — czyste selektory', () => {
     ]);
     expect(zawartoscZPrzebiegow([{ analysis_type: 'SC_3F', status: 'DONE' }])).toEqual(['Zwarcia (IEC 60909)']);
     expect(zawartoscZPrzebiegow([{ analysis_type: 'LOAD_FLOW', status: 'RUNNING' }])).toEqual([]);
+  });
+
+  it('rekordyDlaKarty: filtruje po typie dokumentu; karta bez dostawcy → pusto', () => {
+    const rekordy = [
+      { id: 'a', doc_type: 'RAPORT' },
+      { id: 'b', doc_type: 'DOWOD' },
+      { id: 'c', doc_type: 'RAPORT' },
+    ];
+    expect(rekordyDlaKarty('raport-analizy', rekordy).map((r) => r.id)).toEqual(['a', 'c']);
+    expect(rekordyDlaKarty('pakiet-dowodowy', rekordy).map((r) => r.id)).toEqual(['b']);
+    expect(rekordyDlaKarty('nieznana-karta', rekordy)).toEqual([]);
+  });
+
+  it('formatujRozmiar: B/kB/MB deterministycznie', () => {
+    expect(formatujRozmiar(512)).toBe('512 B');
+    expect(formatujRozmiar(2048)).toBe('2.0 kB');
+    expect(formatujRozmiar(3 * 1024 * 1024)).toBe('3.0 MB');
   });
 });

@@ -12,9 +12,10 @@ from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
+from api.document_store import store_generated_document
 from application.project_archive.service import ProjectArchiveService
 from domain.project_archive import ArchiveError
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Response, UploadFile
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/projects", tags=["project-archive"])
@@ -86,6 +87,7 @@ class PreviewResponse(BaseModel):
 @router.post("/{project_id}/export")
 def export_project(
     project_id: UUID,
+    zapisz_do_magazynu: bool = Query(default=False),
     uow_factory: Any = Depends(get_uow_factory),
 ) -> Response:
     """
@@ -93,10 +95,13 @@ def export_project(
 
     Args:
         project_id: ID projektu do eksportu
+        zapisz_do_magazynu: gdy True, przechwyc archiwum do magazynu dokumentow
+            (karta F-E8.3) — cykl zycia dokumentu w hubie Dokumentacji.
 
     Returns:
         Plik ZIP z archiwum projektu
     """
+    filename = f"projekt_{project_id}.mvdp.zip"
     with uow_factory() as uow:
         service = ProjectArchiveService(uow.session)
 
@@ -105,11 +110,21 @@ def export_project(
         except ArchiveError as e:
             raise HTTPException(status_code=404, detail=str(e))
 
+    if zapisz_do_magazynu:
+        store_generated_document(
+            project_ref=str(project_id),
+            doc_type="ARCHIWUM",
+            doc_format="ZIP",
+            filename=filename,
+            content=archive_bytes,
+            source="project-archive",
+        )
+
     # Zwróć jako plik do pobrania
     return Response(
         content=archive_bytes,
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="projekt_{project_id}.mvdp.zip"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

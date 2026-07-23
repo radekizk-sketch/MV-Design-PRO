@@ -27,6 +27,7 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from api.document_store import store_generated_document_from_response
 from application.analyses.certyfikat_zgodnosci import (
     CertyfikatBrakiError,
     CertyfikatZgodnosciRequest,
@@ -595,22 +596,46 @@ def post_connection_study(request: DokumentStudiumRequest) -> dict[str, Any]:
 
 
 @router.post("/api/oze-analysis/connection-study.docx")
-def post_connection_study_docx(request: DokumentStudiumRequest) -> Response:
+def post_connection_study_docx(
+    request: DokumentStudiumRequest, zapisz_do_magazynu: bool = Query(default=False)
+) -> Response:
     view = _dokument_studium_view(request)
     docx_bytes = render_dokument_studium_docx(view)
-    return Response(
+    response = Response(
         content=docx_bytes,
         media_type=("application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
         headers={"Content-Disposition": 'attachment; filename="dokument_studium.docx"'},
     )
+    if zapisz_do_magazynu:
+        store_generated_document_from_response(
+            response,
+            project_ref=_require_run(request.run_id).project_id,
+            doc_type="STUDIUM_OZE",
+            doc_format="DOCX",
+            source="oze-connection-study",
+            run_ref=str(request.run_id),
+        )
+    return response
 
 
 @router.post("/api/oze-analysis/connection-study.pdf")
-def post_connection_study_pdf(request: DokumentStudiumRequest) -> Response:
+def post_connection_study_pdf(
+    request: DokumentStudiumRequest, zapisz_do_magazynu: bool = Query(default=False)
+) -> Response:
     view = _dokument_studium_view(request)
     pdf_bytes = render_dokument_studium_pdf(view)
-    return Response(
+    response = Response(
         content=pdf_bytes,
         media_type="application/pdf",
         headers={"Content-Disposition": 'attachment; filename="dokument_studium.pdf"'},
     )
+    if zapisz_do_magazynu:
+        store_generated_document_from_response(
+            response,
+            project_ref=_require_run(request.run_id).project_id,
+            doc_type="STUDIUM_OZE",
+            doc_format="PDF",
+            source="oze-connection-study",
+            run_ref=str(request.run_id),
+        )
+    return response

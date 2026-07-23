@@ -33,7 +33,7 @@ zabezpieczeń, audytor WHITE BOX, projektant sieci end-to-end, UX/IA.
 | E5 Wyniki | rozpływ/zwarcia/jakość/koordynacja/dowód/porównanie/estymacja/ssci/odbior + hub analiz | ✅ szeroki |
 | E6 Decyzje | świeżość (`freshness/`), nastawy (E-27), **pętla wynik→model (F-E6.1)** | ◐ — pętla wpięta tylko w rozpływ; brak akcji kontekstowych |
 | E7 Zgodność OZE | strumień OZE (studium/wniosek/OSD/zdolność/macierz NC RfG/FRT…) | ✅ dobry |
-| E8 Dokumentacja | hub F-E8.1/8.2 (raport/dowód/archiwum/studium) | ◐ — brak cyklu życia dokumentu + BOM (F-E8.3 backend) |
+| E8 Dokumentacja | hub F-E8.1/8.2 (raport/dowód/archiwum/studium) + magazyn cyklu życia (F-E8.3: zapis opt-in z generatorów, lista + Pobierz/Podgląd, `document_store`) | ◐ — cykl życia dokumentu DOSTARCZONY (status/data/rozmiar/strony/SHA z realnego rekordu); zostaje BOM/zestawienie materiałowe (wymaga własnego generatora — jawny dług, nie phantom) |
 
 ## 2. Znaleziska (rejestr braków, gruntowane) — priorytet malejąco
 

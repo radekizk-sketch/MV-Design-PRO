@@ -10,6 +10,7 @@ from api.audit2_station_config import router as audit2_station_config_router
 from api.catalog import production_router as catalog_router
 from api.comparison import router as comparison_router
 from api.diagnostics import router as diagnostics_router
+from api.document_store import router as document_store_router
 from api.enm import production_router as enm_router
 from api.equipment_proof_pack import router as equipment_proof_pack_router
 from api.exception_handlers import register_exception_handlers
@@ -23,14 +24,13 @@ from api.middleware import RequestIdMiddleware
 from api.ncrfg_ptpiree_tests import router as ncrfg_ptpiree_tests_router
 from api.oze_analysis_runs import router as oze_analysis_runs_router
 from api.power_flow_comparisons import router as power_flow_comparisons_router
-from api.quality_analysis_runs import router as quality_analysis_runs_router
-from api.reference_networks import router as reference_networks_router
 from api.power_flow_runs import router as power_flow_runs_router
 from api.project_archive import router as project_archive_router
 from api.projects import router as projects_router
 from api.proof_pack import router as proof_pack_router
 from api.protection_analysis_runs import router as protection_analysis_runs_router
 from api.protection_comparisons import router as protection_comparisons_router
+from api.quality_analysis_runs import router as quality_analysis_runs_router
 from api.reference_engine import router as reference_engine_router
 from api.reference_networks import router as reference_networks_router
 from api.reference_patterns import router as reference_patterns_router
@@ -112,6 +112,7 @@ app.include_router(audit2_station_config_router)
 app.include_router(catalog_router)
 app.include_router(comparison_router)
 app.include_router(diagnostics_router)
+app.include_router(document_store_router)
 app.include_router(equipment_proof_pack_router)
 app.include_router(health_router)
 app.include_router(ncrfg_ptpiree_tests_router)

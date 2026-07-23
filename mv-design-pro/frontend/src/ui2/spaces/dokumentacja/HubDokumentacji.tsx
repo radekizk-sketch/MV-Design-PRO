@@ -22,10 +22,14 @@ import { ANALYSIS_TYPE_LABELS } from '../../../ui/study-cases/types';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../shell/useShellStore';
+import { useDokumentyMagazynu, type RekordDokumentu } from './api';
 import {
   GRUPY_DOKUMENTOW,
   dokumentDostepny,
+  formatujDate,
+  formatujRozmiar,
   ostatniZakonczonyPrzebieg,
+  rekordyDlaKarty,
   zawartoscZPrzebiegow,
   type CelDokumentu,
   type IkonaDokumentu,
@@ -85,22 +89,34 @@ function KrokProcesu({ etykieta, stan }: { etykieta: string; stan: 'zrobiony' | 
   );
 }
 
+/** Najnowsza data wygenerowania z rekordów magazynu (ISO malejąco). */
+function najnowszaData(rekordy: readonly RekordDokumentu[]): string {
+  return rekordy.reduce((max, r) => (r.created_at > max ? r.created_at : max), '');
+}
+
 function Karta({
   karta,
   dostepny,
   zawartosc,
+  rekordy,
   onOtworz,
 }: {
   karta: KartaDokumentu;
   dostepny: boolean;
   zawartosc: readonly string[];
+  rekordy: readonly RekordDokumentu[];
   onOtworz: () => void;
 }) {
-  const statusEtyk = dostepny
-    ? T.statusDoWygenerowania
-    : karta.wymaga === 'projekt'
-      ? T.statusWymagaProjektu
-      : T.statusWymagaPrzebiegu;
+  // Cykl życia (F-E8.3): rekord w magazynie → „Wygenerowany [data]" + akcje
+  // Pobierz/Podgląd (realne URL-e); brak rekordu → dzisiejszy stan (zero regresu).
+  const maRekord = rekordy.length > 0;
+  const statusEtyk = maRekord
+    ? `${T.statusWygenerowany} ${formatujDate(najnowszaData(rekordy))}`
+    : dostepny
+      ? T.statusDoWygenerowania
+      : karta.wymaga === 'projekt'
+        ? T.statusWymagaProjektu
+        : T.statusWymagaPrzebiegu;
   return (
     <article
       className="mvd-dok-karta"
@@ -117,7 +133,11 @@ function Karta({
           <h5>{karta.tytul}</h5>
         </div>
         <span
-          className={dostepny ? 'mvd-dok-chip mvd-dok-chip--ok' : 'mvd-dok-chip mvd-dok-chip--brak'}
+          className={
+            maRekord || dostepny
+              ? 'mvd-dok-chip mvd-dok-chip--ok'
+              : 'mvd-dok-chip mvd-dok-chip--brak'
+          }
           data-testid={`${karta.testid}-status`}
         >
           {statusEtyk}
@@ -138,6 +158,42 @@ function Karta({
         </div>
       )}
 
+      {/* Magazyn dokumentów (F-E8.3): realne rekordy z akcjami Pobierz/Podgląd. */}
+      {maRekord && (
+        <div className="mvd-dok-karta-magazyn" data-testid={`${karta.testid}-magazyn`}>
+          <span className="mvd-dok-meta-k">{T.magazynLabel.toUpperCase()}</span>
+          <ul className="mvd-dok-rekordy">
+            {rekordy.map((r) => (
+              <li key={r.id} className="mvd-dok-rekord" data-testid={`${karta.testid}-rekord`}>
+                <span className="mvd-dok-rekord-meta mvd-num">
+                  <b>{r.doc_format}</b> · {formatujRozmiar(r.size_bytes)}
+                  {r.page_count !== undefined ? ` · ${r.page_count} ${T.stronyLabel}` : ''}
+                </span>
+                <span className="mvd-dok-rekord-akcje">
+                  <a
+                    className="mvd-dok-rekord-akcja"
+                    href={r.content_url}
+                    download={r.filename}
+                    data-testid={`${karta.testid}-pobierz`}
+                  >
+                    {T.akcjaPobierz}
+                  </a>
+                  <a
+                    className="mvd-dok-rekord-akcja mvd-dok-rekord-akcja--podglad"
+                    href={`${r.content_url}?inline=true`}
+                    target="_blank"
+                    rel="noreferrer"
+                    data-testid={`${karta.testid}-podglad`}
+                  >
+                    {T.akcjaPodglad}
+                  </a>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mvd-dok-karta-stopka">
         <button type="button" className="mvd-dok-otworz" data-akcent={karta.akcent} onClick={onOtworz}>
           {karta.akcjaEtykieta}
@@ -151,11 +207,13 @@ function Karta({
 
 export function HubDokumentacji() {
   const activeProjectName = useAppStateStore((s) => s.activeProjectName);
+  const activeProjectId = useAppStateStore((s) => s.activeProjectId);
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const przebiegi = useExecutionRunsStore((s) => s.runs);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
+  const magazyn = useDokumentyMagazynu(activeProjectId);
 
   const maProjekt = Boolean(activeProjectName);
   const ostatni = ostatniZakonczonyPrzebieg(przebiegi);
@@ -231,6 +289,7 @@ export function HubDokumentacji() {
                   karta={karta}
                   dostepny={dokumentDostepny(karta.wymaga, maProjekt, przebiegi)}
                   zawartosc={zawartosc}
+                  rekordy={rekordyDlaKarty(karta.id, magazyn.rekordy)}
                   onOtworz={() => otworzCel(karta.cel)}
                 />
               ))}

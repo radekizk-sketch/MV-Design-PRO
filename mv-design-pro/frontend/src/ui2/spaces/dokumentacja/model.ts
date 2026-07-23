@@ -127,6 +127,41 @@ export const GRUPY_DOKUMENTOW: readonly GrupaDokumentow[] = [
   },
 ] as const;
 
+/**
+ * Mapowanie karty huba → typ dokumentu magazynu backendu (karta F-E8.3;
+ * zamknięta unia `DOCUMENT_TYPES` w document_store_repository.py). Karty bez
+ * dostawcy magazynu (brak wpisu) pozostają w dzisiejszym trybie „Do
+ * wygenerowania" — zero fabrykacji, zero regresu.
+ */
+export const TYP_DOKUMENTU_KARTY: Readonly<Record<string, string>> = {
+  'raport-analizy': 'RAPORT',
+  'pakiet-dowodowy': 'DOWOD',
+  'studium-oze': 'STUDIUM_OZE',
+  'archiwum-projektu': 'ARCHIWUM',
+} as const;
+
+/** Rekordy magazynu pasujące do karty (po typie dokumentu; kolejność z backendu). */
+export function rekordyDlaKarty<T extends { readonly doc_type: string }>(
+  cardId: string,
+  rekordy: readonly T[],
+): readonly T[] {
+  const typ = TYP_DOKUMENTU_KARTY[cardId];
+  if (!typ) return [];
+  return rekordy.filter((r) => r.doc_type === typ);
+}
+
+/** Rozmiar pliku w czytelnym PL formacie (B/kB/MB, deterministyczny). */
+export function formatujRozmiar(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} kB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/** Data magazynu w czytelnym PL formacie (bez sekund; ISO → „RRRR-MM-DD GG:MM"). */
+export function formatujDate(iso: string): string {
+  return iso.slice(0, 16).replace('T', ' ');
+}
+
 /** Statusy przebiegów uznawane za zakończone (kontrakt runStore). */
 const STATUS_ZAKONCZONY = 'DONE';
 

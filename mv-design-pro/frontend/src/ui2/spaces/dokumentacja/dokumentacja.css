@@ -203,6 +203,61 @@
   color: var(--mvd-ink);
 }
 
+/* --- Magazyn dokumentów (cykl życia; karta F-E8.3) ----------------------- */
+
+.mvd-dok-karta-magazyn {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mvd-dok-rekordy {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mvd-dok-rekord {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+}
+
+.mvd-dok-rekord-meta {
+  font: 500 11.5px/1.4 var(--mvd-font-mono);
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-rekord-akcje {
+  display: inline-flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.mvd-dok-rekord-akcja {
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 3px 10px;
+}
+.mvd-dok-rekord-akcja--podglad {
+  color: var(--mvd-muted);
+  border-color: var(--mvd-line);
+}
+.mvd-dok-rekord-akcja:hover { filter: brightness(1.08); }
+.mvd-dok-rekord-akcja:focus-visible { outline: 2px solid var(--mvd-focus); outline-offset: 2px; }
+
 .mvd-dok-chip {
   display: inline-flex;
   align-items: center;

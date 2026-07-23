@@ -24,6 +24,13 @@ export const DOK_STRINGS = {
   statusWymagaPrzebiegu: 'Wymaga: zakończony przebieg',
   statusWymagaProjektu: 'Wymaga: otwarty projekt',
 
+  // --- Magazyn dokumentów (cykl życia; karta F-E8.3) ---------------------
+  statusWygenerowany: 'Wygenerowany',
+  magazynLabel: 'W magazynie',
+  stronyLabel: 'str.',
+  akcjaPobierz: 'Pobierz',
+  akcjaPodglad: 'Podgląd',
+
   // --- Q3: CO DALEJ (pasek procesu) --------------------------------------
   procesEyebrow: 'CO DALEJ',
   procesProjekt: 'Projekt',

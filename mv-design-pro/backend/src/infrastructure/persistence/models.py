@@ -12,6 +12,7 @@ from sqlalchemy import (
     Float,
     ForeignKey,
     Index,
+    LargeBinary,
     Numeric,
     String,
     Text,
@@ -626,6 +627,37 @@ class DesignEvidenceORM(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class DocumentRecordORM(Base):
+    """
+    Magazyn wygenerowanych dokumentow projektu (karta F-E8.3).
+
+    Rekord cyklu zycia dokumentu przechwyconego z ISTNIEJACYCH generatorow
+    (raport analizy, pakiet dowodowy WHITE BOX, studium OZE, archiwum ZIP).
+    Magazyn NIE generuje dokumentow — przechowuje ich REALNY wynik + metadane.
+
+    Tozsamosc rekordu deterministyczna: (project_id, doc_type, doc_format,
+    run_ref) → jeden rekord (upsert przy ponownej generacji). SHA-256 tresci
+    stabilny dla identycznego wejscia; liczba stron wyznaczana z realnego PDF
+    (uczciwy brak dla formatow bez stron).
+    """
+
+    __tablename__ = "document_records"
+    __table_args__ = (Index("ix_document_records_project_created", "project_id", "created_at"),)
+
+    id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
+    project_id: Mapped[str] = mapped_column(String(64), nullable=False)
+    doc_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    doc_format: Mapped[str] = mapped_column(String(16), nullable=False)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    content: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    page_count: Mapped[int | None] = mapped_column(nullable=True)
+    run_ref: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    source: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class StationAudit2ConfigORM(Base):
     """
     Audit2 Station Config ORM (Punkt 3 — Phase 2 backend integration).
@@ -639,9 +671,7 @@ class StationAudit2ConfigORM(Base):
     """
 
     __tablename__ = "station_audit2_configs"
-    __table_args__ = (
-        Index("ix_audit2_project_station", "project_id", "station_id", unique=True),
-    )
+    __table_args__ = (Index("ix_audit2_project_station", "project_id", "station_id", unique=True),)
 
     id: Mapped[UUID] = mapped_column(GUID(), primary_key=True)
     project_id: Mapped[UUID] = mapped_column(
