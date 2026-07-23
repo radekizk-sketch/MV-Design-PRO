@@ -87,6 +87,12 @@ ZNALEZISKA:
 Werdykt zespołu: **ODBIÓR WARUNKOWY** — warunkiem pełnego odbioru jest
 domknięcie Z1 (karta S7.6) i Z2 (karta GS-4b); Z3/Z4 jako karty P2.
 
+AKTUALIZACJA 2026-07-23: po oględzinach ekranów właściciel wydał pełną
+recenzję warstwy inżynierskiej L2 z werdyktem **NIE ZATWIERDZAĆ** —
+`RECENZJA_L2_POLA_WYPOSAZENIE_2026-07.md` (WIĄŻĄCA, program W1–W5,
+V12K-145) jest NADRZĘDNA nad niniejszym werdyktem warunkowym; karta GS-4b
+(Z2) zaabsorbowana przez fazę W2 recenzji.
+
 ## 6. Rejestr kart poprawkowych
 
 | Karta | Priorytet | Zakres | Status |
