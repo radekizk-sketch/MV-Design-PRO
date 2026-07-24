@@ -1282,6 +1282,14 @@ class BayEarthFaultPath(BaseModel):
     closure_path_elements: list[str] = []
     transformer_contribution_ref: str | None = None
     grounding_device_ref: str | None = None
+    # EARTHING-1 (most produkcyjny SC_1F -> uziemienia): dane PROJEKTOWE uziomu
+    # potrzebne do napiec dotykowego/krokowego (PN-EN 50522). Addytywne, None =
+    # dana niedostarczona (ZERO zgadywania — brak => readiness fix-action,
+    # pack nie liczy). Nie sa fizyka: to wejscie projektowe (rezystancja uziomu
+    # z pomiaru rezystywnosci gruntu; wspolczynnik podzialu r z torow powrotnych
+    # ekran/OPGW). Prad doziemny I''k1 pochodzi z solvera SC_1F.
+    earth_electrode_resistance_ohm: float | None = None  # R_u = Z_E [Ω]
+    earth_return_split_factor: float | None = None  # r (0..1): udzial wracajacy uziomem
 
 
 class BayVerificationResult(BaseModel):

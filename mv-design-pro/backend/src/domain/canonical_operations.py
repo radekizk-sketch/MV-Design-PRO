@@ -721,6 +721,16 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_protection_settings",
         fix_navigation={"panel": "inspector", "tab": "nastawy"},
     ),
+    # Earthing / Ground fault (EARTHING-1: most SC_1F -> napięcia dotykowe/krokowe)
+    "earthing.electrode_data_missing": ReadinessCodeSpec(
+        code="earthing.electrode_data_missing",
+        area=ReadinessArea.STATIONS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl="Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe",
+        fix_action_id="fix_earthing_electrode",
+        fix_navigation={"panel": "inspector", "tab": "uziemienie", "focus": "earth_electrode"},
+    ),
     # Study Case / Analysis
     "study_case.missing_base_snapshot": ReadinessCodeSpec(
         code="study_case.missing_base_snapshot",
