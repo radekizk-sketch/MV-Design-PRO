@@ -258,6 +258,14 @@ class CableSelectionInput:
     candidates: tuple[CableCandidate, ...]
     reserve_pu: float = 0.0
     max_delta_u_pct: float = 2.0
+    # V12K-190: tor DER ODDAJE moc czynną, więc napięcie w punkcie przyłączenia
+    # ROŚNIE — i to wzrost, nie spadek, jest tu ograniczeniem przyłączeniowym.
+    # Kryterium sprawdza więc MODUŁ zmiany napięcia (|ΔU%| ≤ dopuszczalne), a nie
+    # samą wartość ze znakiem: dobór ma odrzucić kabel zarówno przy zbyt dużym
+    # spadku, jak i przy zbyt dużym wzroście. Domyślnie „generation", bo to jest
+    # przelicznik toru DER; „load" zostawia zachowanie odbiorowe.
+    flow_direction: str = "generation"
+    reactive_character: str = "inductive"
 
 
 @dataclass(frozen=True)
@@ -316,6 +324,8 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
                 x_ohm_per_km=candidate.x_ohm_per_km,
                 cos_phi=data.cos_phi,
                 line_voltage_v=data.line_voltage_v,
+                flow_direction=data.flow_direction,
+                reactive_character=data.reactive_character,
             )
         )
         if candidate.rated_current_a + _EPS < required_ampacity:
@@ -329,13 +339,17 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
                 )
             )
             continue
-        if drop.delta_u_pct > data.max_delta_u_pct + _EPS:
+        # |ΔU%| — kryterium obejmuje ZARÓWNO spadek, JAK I wzrost napięcia
+        # (V12K-190). Dla toru DER wiążący jest zwykle wzrost.
+        delta_u_pct_abs = abs(drop.delta_u_pct)
+        if delta_u_pct_abs > data.max_delta_u_pct + _EPS:
             rejected.append(
                 RejectedCandidate(
                     candidate.catalog_ref,
                     candidate.name,
                     "spadek_napiecia_przekroczony",
-                    f"Spadek napięcia {drop.delta_u_pct:g}% przekracza dopuszczalny "
+                    f"{'Wzrost' if drop.is_voltage_rise else 'Spadek'} napięcia "
+                    f"{delta_u_pct_abs:g}% przekracza dopuszczalny "
                     f"{data.max_delta_u_pct:g}%.",
                 )
             )

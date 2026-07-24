@@ -95,7 +95,8 @@ Kolejność wg ryzyka × zasięgu konsekwencji projektowych.
 | A | ZAMKNIĘTA | 6 defektów (patrz §1), wszystkie naprawione | V12K-184, V12K-186 |
 | B | ZAMKNIĘTA | **0 defektów** — wszystkie niezmienniki zachodzą | — |
 | C | ZAMKNIĘTA | **3 defekty** (W1, W9 + hunting OLTC) — naprawione, re-baseline | V12K-187 |
-| D | ZAMKNIĘTA | charakterystyki **czyste**; 1 defekt werdyktu kryteriów | V12K-188 |
+| D | ZAMKNIĘTA | charakterystyki **czyste**; 1 defekt werdyktu kryteriów | V12K-188, V12K-189 |
+| E | ZAMKNIĘTA | wzory **dokładne**; 1 luka: brak kierunku mocy (wzrost napięcia) | V12K-190 |
 
 ### Fala B — składowe symetryczne: wynik
 
@@ -173,6 +174,38 @@ informacja, która prowadzi do decyzji (zmiana przekroju, nastawy czasowej,
 podział odcinka). Naprawa: przy pustym oknie FAIL dostaje kryterium wyznaczające
 dolną granicę oraz to, które wyznaczyło górną, wraz z deficytem w kA i osobnym
 krokiem śladu `setting_window_conflict`.
+
+### Fala E — spadki napięć i straty: wynik
+
+**Wzory — zero błędów.** Zweryfikowane rachunkiem niezależnym:
+
+| Sprawdzenie | Błąd |
+|---|---|
+| `ΔU = √3·I·(R·cosφ + X·sinφ)` (3 przypadki) | 0,00 % |
+| `I = P/(cosφ·√3·U)`, `S = P/cosφ` | 0,00 % |
+
+**E-1 — brak kierunku mocy: podgląd nie umiał pokazać WZROSTU napięcia.**
+Przelicznik znał wyłącznie „odbiór indukcyjny": `sinφ = √(1−cos²φ)` zawsze dodatni,
+walidacja odrzucała `cosφ ≤ 0` oraz `I < 0`. Zwracał więc **zawsze spadek** — a
+jest używany także przez dobór kabla toru DER (`der_selection_preview`), gdzie moc
+czynna płynie w przeciwną stronę i napięcie w punkcie przyłączenia **rośnie**.
+Przy przyłączaniu generacji to właśnie wzrost jest głównym ograniczeniem, więc
+kryterium „ΔU% ≤ dopuszczalne" sprawdzało nie tę wielkość, co trzeba.
+
+Naprawa: dwa niezależne znaki — `s_P` (kierunek mocy czynnej) przy członie
+`R·cosφ` i `s_Q` (charakter mocy biernej) przy członie `X·sinφ`. Niezależność jest
+istotna: falownik oddaje moc czynną i **jednocześnie** może pobierać bierną — na
+tym polega regulacja Q(U). Dowód liczbowy (I = 100 A, 5 km, cosφ = 0,95):
+
+| przypadek | ΔU | |
+|---|---|---|
+| odbiór indukcyjny | +158,68 V | spadek (bez zmian, bit w bit) |
+| odbiór skompensowany | +104,59 V | mniejszy spadek |
+| OZE pobierające Q | −104,59 V | **wzrost tłumiony regulacją** |
+| OZE oddające Q | −158,68 V | **wzrost największy** |
+
+Kryterium doboru kabla DER sprawdza teraz `|ΔU%|`, więc odrzuca kabel zarówno przy
+zbyt dużym spadku, jak i przy zbyt dużym wzroście.
 | D | — | — | — |
 | E | — | — | — |
 | F | — | — | — |

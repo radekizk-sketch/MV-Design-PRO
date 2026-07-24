@@ -186,3 +186,88 @@ def test_rated_current_rejects_invalid_input() -> None:
         compute_cable_rated_current(
             CableRatedCurrentInput(active_power_kw=0.0, cos_phi=0.9, line_voltage_v=15000.0)
         )
+
+
+# ---------------------------------------------------------------------------
+# V12K-190: kierunek mocy — spadek vs WZROST napięcia (fala E audytu fizyki)
+# ---------------------------------------------------------------------------
+
+
+def _hand_delta_u(current_a, r_km, x_km, length_km, cos_phi, sign_p, sign_q) -> float:
+    """Niezależny rachunek: ΔU = √3·I·(s_P·R·cosφ + s_Q·X·sinφ)."""
+    sin_phi = math.sqrt(1.0 - cos_phi * cos_phi)
+    return (
+        math.sqrt(3.0)
+        * current_a
+        * (sign_p * (r_km * length_km) * cos_phi + sign_q * (x_km * length_km) * sin_phi)
+    )
+
+
+_BASE = dict(
+    current_a=100.0,
+    length_km=5.0,
+    r_ohm_per_km=0.16,
+    x_ohm_per_km=0.10,
+    cos_phi=0.95,
+    line_voltage_v=15000.0,
+)
+
+
+def test_default_is_load_inductive_and_bit_identical() -> None:
+    """Domyślne wartości = dawne zachowanie (odbiór indukcyjny), bit w bit.
+
+    Rozszerzenie o kierunek mocy musi być ADDYTYWNE: istniejący kod, który nie zna
+    nowych pól, ma dostać dokładnie ten sam wynik co przed V12K-190.
+    """
+    result = compute_cable_voltage_drop(CableVoltageDropInput(**_BASE))
+    assert result.flow_direction == "load"
+    assert result.reactive_character == "inductive"
+    assert result.delta_u_v == _hand_delta_u(100.0, 0.16, 0.10, 5.0, 0.95, 1.0, 1.0)
+    assert result.is_voltage_rise is False
+
+
+@pytest.mark.parametrize(
+    "flow_direction,reactive_character,sign_p,sign_q,expect_rise",
+    [
+        ("load", "inductive", 1.0, 1.0, False),  # odbiór indukcyjny — największy spadek
+        ("load", "capacitive", 1.0, -1.0, False),  # odbiór skompensowany — mniejszy spadek
+        ("generation", "inductive", -1.0, 1.0, True),  # OZE pobierające Q — wzrost tłumiony
+        ("generation", "capacitive", -1.0, -1.0, True),  # OZE oddające Q — wzrost największy
+    ],
+)
+def test_flow_direction_signs_match_hand_calculation(
+    flow_direction: str, reactive_character: str, sign_p: float, sign_q: float, expect_rise: bool
+) -> None:
+    """Znaki składowych są NIEZALEŻNE: P steruje członem R·cosφ, Q członem X·sinφ.
+
+    Falownik OZE oddaje moc czynną (napięcie rośnie) i może jednocześnie pobierać
+    bierną (napięcie obniża) — na tym polega regulacja Q(U). Model musi umieć
+    wyrazić tę kombinację, inaczej podgląd przyłączenia generacji jest bezużyteczny.
+    """
+    result = compute_cable_voltage_drop(
+        CableVoltageDropInput(
+            **_BASE, flow_direction=flow_direction, reactive_character=reactive_character
+        )
+    )
+    expected = _hand_delta_u(100.0, 0.16, 0.10, 5.0, 0.95, sign_p, sign_q)
+    assert result.delta_u_v == pytest.approx(expected, abs=1e-9)
+    assert result.is_voltage_rise is expect_rise
+
+
+def test_reactive_compensation_reduces_voltage_rise() -> None:
+    """Pobór mocy biernej TŁUMI wzrost napięcia od generacji (sedno regulacji Q(U))."""
+    absorbing = compute_cable_voltage_drop(
+        CableVoltageDropInput(**_BASE, flow_direction="generation", reactive_character="inductive")
+    )
+    injecting = compute_cable_voltage_drop(
+        CableVoltageDropInput(**_BASE, flow_direction="generation", reactive_character="capacitive")
+    )
+    assert absorbing.is_voltage_rise and injecting.is_voltage_rise
+    # Oba to wzrosty (ΔU < 0), ale pobór Q daje wzrost MNIEJSZY co do modułu.
+    assert abs(absorbing.delta_u_v) < abs(injecting.delta_u_v)
+
+
+def test_rejects_unknown_direction_flags() -> None:
+    for kwargs in ({"flow_direction": "oze"}, {"reactive_character": "pojemnosciowy"}):
+        with pytest.raises(ValueError):
+            compute_cable_voltage_drop(CableVoltageDropInput(**_BASE, **kwargs))
