@@ -162,26 +162,44 @@ def producer_cell_primary_devices(
 
 def _has_main_path(devices: list[dict[str, Any]]) -> bool:
     """Czy konfiguracja ma choć jeden aparat TORU GŁÓWNEGO (nie tylko boczne)?
-    Celka złożona wyłącznie z ES/VT (np. moduł uziemnika szyn) NIE jest polem
-    renderowalnym jako stos — nie da się z niej zbudować toru (buildBayStack
-    rzuciłby „pusty stos aparatów"). Rejestrowana jako nie-renderowalna."""
+    Celka złożona wyłącznie z aparatów bocznych (ES/VT/SA — np. moduł uziemiania
+    szyn zbiorczych) NIE ma toru szeregowego z natury. Taka celka pozostaje
+    RENDEROWALNA jako wariant specjalny (patrz `enumerate_producer_configurations`):
+    compose rysuje ją zdegenerowanym fallbackiem `planApparatusSymbolIds`
+    (sekwencja samych aparatów bocznych → stub od szyny), więc `_has_main_path`
+    służy WYŁĄCZNIE do klasyfikacji wariantu (torowa vs beztorowa-specjalna),
+    nie do decyzji o renderowalności."""
     lateral = set(_LATERAL_PLACEMENT)
     return any(d["kind"] not in lateral for d in devices)
 
 
-def enumerate_producer_configurations() -> tuple[list[dict[str, Any]], list[str], list[str]]:
+def enumerate_producer_configurations() -> (
+    tuple[list[dict[str, Any]], list[str], list[str], list[str]]
+):
     """Most producencki dla WSZYSTKICH packów z `cell_configurations`.
 
-    Zwraca `(configurations, packs_without_cells, cells_without_main_path)`:
-    - `configurations` — przypadki producenckie (renderowalne + nie), posortowane
-      po `config_ref`,
+    Zwraca `(configurations, packs_without_cells, non_renderable_cells,
+    pathless_special_cells)`:
+    - `configurations` — przypadki producenckie (wszystkie renderowalne — torowe
+      ORAZ beztorowe-specjalne), posortowane po `config_ref`,
     - `packs_without_cells` — packi PRODUCENCKIE bez `cell_configurations`
-      (jawny rejestr braków — zero fabrykacji),
-    - `cells_without_main_path` — celki bez toru głównego (nie-renderowalne).
+      (jawny rejestr braków — zero fabrykacji; skład aparatowy per typ pola nie
+      jest publikowany przez producenta ⇒ decyzja danych, nie kod),
+    - `non_renderable_cells` — celki, których NIE da się wyrenderować w ogóle
+      (pusty zbiór aparatów; realny brak danych),
+    - `pathless_special_cells` — celki BEZ toru głównego renderowane jako wariant
+      SPECJALNY (uziemianie szyn: same aparaty boczne, np. ES/VT). To NIE jest
+      błąd danych — poprawna reprezentacja typu beztorowego (§0.3), a nie brak.
+
+    Renderowalność (§0.3): celka jest renderowalna, gdy niesie ≥1 aparat pola —
+    torowa przez stos toru głównego, beztorowa-specjalna przez zdegenerowany
+    fallback compose (stub aparatu bocznego od szyny). Tylko celka z PUSTYM
+    zbiorem aparatów jest nie-renderowalna.
     """
     configurations: list[dict[str, Any]] = []
     packs_without_cells: list[str] = []
-    cells_without_main_path: list[str] = []
+    non_renderable_cells: list[str] = []
+    pathless_special_cells: list[str] = []
 
     for pack in list_reference_packs():
         if pack.kind != "manufacturer":
@@ -193,14 +211,23 @@ def enumerate_producer_configurations() -> tuple[list[dict[str, Any]], list[str]
             config_ref = f"producent:{pack.pack_id}:{cell.cell_code}"
             kinds = [a.kind for a in cell.apparatus]
             devices = producer_cell_primary_devices(kinds, config_ref=config_ref)
-            renderable = _has_main_path(devices)
+            has_main_path = _has_main_path(devices)
+            renderable = len(devices) > 0
+            pathless_special = renderable and not has_main_path
             if not renderable:
-                cells_without_main_path.append(config_ref)
+                non_renderable_cells.append(config_ref)
+            elif pathless_special:
+                pathless_special_cells.append(config_ref)
+            # Celka beztorowa-specjalna (uziemianie szyn) → grupa „specjalne"
+            # (siemens E niesie VT, co sygnaturowo dałoby „pomiarowe" — ale to
+            # celka uziemiania szyn, nie pomiarowa; wariant typu wygrywa nad
+            # sygnaturą pojedynczego aparatu bocznego).
+            group = "specjalne" if pathless_special else _producer_group(set(kinds))
             configurations.append(
                 {
                     "config_ref": config_ref,
                     "source": "producencki",
-                    "group": _producer_group(set(kinds)),
+                    "group": group,
                     "group_derivation": "sygnatura_aparatury",
                     "bay_role": None,
                     "field_role": None,
@@ -208,6 +235,7 @@ def enumerate_producer_configurations() -> tuple[list[dict[str, Any]], list[str]
                     "cell_code": cell.cell_code,
                     "name": f"{pack.name_pl} — celka {cell.cell_code} ({cell.name_pl})",
                     "primary_devices": devices,
+                    "main_path": has_main_path,
                     "renderable": renderable,
                 }
             )
@@ -215,7 +243,8 @@ def enumerate_producer_configurations() -> tuple[list[dict[str, Any]], list[str]
     return (
         sorted(configurations, key=lambda c: str(c["config_ref"])),
         sorted(packs_without_cells),
-        sorted(cells_without_main_path),
+        sorted(non_renderable_cells),
+        sorted(pathless_special_cells),
     )
 
 
@@ -223,13 +252,24 @@ def enumerate_field_configurations() -> dict[str, Any]:
     """PEŁNY katalog konfiguracji pól — źródło macierzy generatywnej W1c.
 
     Deterministyczny (te same dane katalogu ⇒ identyczny wynik). Kanoniczne
-    konfiguracje mają `renderable=True` (każdy szablon tworzy renderowalne pole);
-    producenckie mogą być nie-renderowalne (celki bez toru głównego). Rejestr
-    braków (`gaps`) jest JAWNY: packi bez celek, typy pól bez szablonu, celki bez
-    toru głównego — zgodnie z zasadą „zero fabrykacji" (uwagi 9/16).
+    konfiguracje mają `renderable=True` i `main_path=True` (każdy szablon tworzy
+    renderowalne pole torowe). Producenckie są renderowalne, gdy niosą ≥1 aparat
+    — torowe (`main_path=True`) ORAZ beztorowe-specjalne (`main_path=False`, np.
+    uziemianie szyn). Rejestr braków (`gaps`) jest JAWNY (zero fabrykacji, uwagi
+    9/16): packi bez celek (skład niepublikowany — decyzja danych), typy pól bez
+    szablonu, celki nie-renderowalne (pusty zbiór aparatów). Celki beztorowe-
+    specjalne są w `special_configurations` — renderowalne, NIE braki (§0.3).
     """
-    canonical = [{**entry, "renderable": True} for entry in enumerate_canonical_configurations()]
-    producer, packs_without_cells, cells_without_main_path = enumerate_producer_configurations()
+    canonical = [
+        {**entry, "renderable": True, "main_path": True}
+        for entry in enumerate_canonical_configurations()
+    ]
+    (
+        producer,
+        packs_without_cells,
+        non_renderable_cells,
+        pathless_special_cells,
+    ) = enumerate_producer_configurations()
 
     return {
         "canonical": canonical,
@@ -237,6 +277,9 @@ def enumerate_field_configurations() -> dict[str, Any]:
         "gaps": {
             "manufacturer_packs_without_cell_configurations": packs_without_cells,
             "field_types_without_template": list(FIELD_TYPES_WITHOUT_TEMPLATE),
-            "producer_cells_without_main_path": cells_without_main_path,
+            "producer_non_renderable_cells": non_renderable_cells,
+        },
+        "special_configurations": {
+            "producer_pathless_cells": pathless_special_cells,
         },
     }

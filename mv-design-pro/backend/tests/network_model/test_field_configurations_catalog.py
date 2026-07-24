@@ -117,14 +117,42 @@ def test_producer_double_ds_gets_distinct_designations() -> None:
 
 
 def test_gap_register_is_honest() -> None:
-    """Rejestr braków JAWNY (uwagi 9/16): packi bez celek, typy pól bez szablonu,
-    celki bez toru głównego — zero cichych pominięć."""
-    gaps = enumerate_field_configurations()["gaps"]
+    """Rejestr braków JAWNY (uwagi 9/16): packi bez celek (skład aparatowy per typ
+    pola NIEPUBLIKOWANY przez producenta — decyzja danych, nie kod), typy pól bez
+    szablonu, celki nie-renderowalne (pusty zbiór aparatów) — zero cichych
+    pominięć. Celki BEZTOROWE-SPECJALNE (uziemianie szyn) NIE są brakiem — są w
+    `special_configurations` jako renderowalny wariant typu (§0.3)."""
+    catalog = enumerate_field_configurations()
+    gaps = catalog["gaps"]
     assert "elektrometal_e2alpha" in gaps["manufacturer_packs_without_cell_configurations"]
     assert "bateria_kondensatorow" in gaps["field_types_without_template"]
     assert "generator_synchroniczny" in gaps["field_types_without_template"]
-    # Celki złożone wyłącznie z aparatów bocznych (np. moduł uziemnika szyn).
-    assert all(ref.startswith("producent:") for ref in gaps["producer_cells_without_main_path"])
+    # Nie-renderowalne = pusty zbiór aparatów; realnie brak takich celek w repo.
+    assert gaps["producer_non_renderable_cells"] == []
+
+
+def test_pathless_special_cells_are_renderable_variant() -> None:
+    """§0.3: celki bez toru głównego złożone z samych aparatów bocznych
+    (uziemianie szyn zbiorczych) to RENDEROWALNY wariant SPECJALNY, nie brak
+    danych. Rejestrowane w `special_configurations`, `renderable=True`,
+    `main_path=False`, grupa „specjalne"."""
+    catalog = enumerate_field_configurations()
+    pathless = catalog["special_configurations"]["producer_pathless_cells"]
+    # Trzy udokumentowane moduły uziemiania szyn (ABB Be, Schneider EMB, Siemens E).
+    assert "producent:abb_safering:Be" in pathless
+    assert "producent:schneider_sm6:EMB" in pathless
+    assert "producent:siemens_8djh:E" in pathless
+    assert all(ref.startswith("producent:") for ref in pathless)
+    by_ref = {c["config_ref"]: c for c in catalog["producer"]}
+    for ref in pathless:
+        entry = by_ref[ref]
+        assert entry["renderable"] is True, ref
+        assert entry["main_path"] is False, ref
+        assert entry["group"] == "specjalne", ref
+    # Każda celka torowa (main_path=True) też jest renderowalna.
+    for entry in catalog["producer"]:
+        if entry["main_path"]:
+            assert entry["renderable"] is True, entry["config_ref"]
 
 
 def test_functional_grouping_from_role() -> None:

@@ -5,6 +5,7 @@
       "config_ref": "kanoniczny:bay_template_aux",
       "field_role": "FEEDER",
       "group": "specjalne",
+      "main_path": true,
       "name": "Pole potrzeb własnych",
       "primary_devices": [
         {
@@ -51,6 +52,7 @@
       "config_ref": "kanoniczny:bay_template_coupler",
       "field_role": "SPRZEGLO",
       "group": "sprzeglowe",
+      "main_path": true,
       "name": "Pole sprzęgłowe",
       "primary_devices": [
         {
@@ -104,6 +106,7 @@
       "config_ref": "kanoniczny:bay_template_der_bess",
       "field_role": "OZE",
       "group": "OZE",
+      "main_path": true,
       "name": "Pole źródłowe BESS",
       "primary_devices": [
         {
@@ -190,6 +193,7 @@
       "config_ref": "kanoniczny:bay_template_der_fw",
       "field_role": "OZE",
       "group": "OZE",
+      "main_path": true,
       "name": "Pole źródłowe FW",
       "primary_devices": [
         {
@@ -276,6 +280,7 @@
       "config_ref": "kanoniczny:bay_template_der_pv",
       "field_role": "OZE",
       "group": "OZE",
+      "main_path": true,
       "name": "Pole źródłowe PV",
       "primary_devices": [
         {
@@ -362,6 +367,7 @@
       "config_ref": "kanoniczny:bay_template_line_in",
       "field_role": "LINIA_IN",
       "group": "liniowe",
+      "main_path": true,
       "name": "Pole liniowe wejściowe",
       "primary_devices": [
         {
@@ -434,6 +440,7 @@
       "config_ref": "kanoniczny:bay_template_line_out",
       "field_role": "LINIA_OUT",
       "group": "liniowe",
+      "main_path": true,
       "name": "Pole liniowe wyjściowe",
       "primary_devices": [
         {
@@ -507,6 +514,7 @@
       "config_ref": "kanoniczny:bay_template_measurement",
       "field_role": "POMIAROWE",
       "group": "pomiarowe",
+      "main_path": true,
       "name": "Pole pomiarowe",
       "primary_devices": [
         {
@@ -548,6 +556,7 @@
       "config_ref": "kanoniczny:bay_template_reserve",
       "field_role": "FEEDER",
       "group": "specjalne",
+      "main_path": true,
       "name": "Pole rezerwowe",
       "primary_devices": [
         {
@@ -585,6 +594,7 @@
       "config_ref": "kanoniczny:bay_template_transformer",
       "field_role": "TRANSFORMATOROWE",
       "group": "transformatorowe",
+      "main_path": true,
       "name": "Pole transformatorowe",
       "primary_devices": [
         {
@@ -661,6 +671,7 @@
       "config_ref": "kanoniczny:mv_source_cb",
       "field_role": "OZE",
       "group": "OZE",
+      "main_path": true,
       "name": "Pole źródłowe SN (wyłącznikowe)",
       "primary_devices": [
         {
@@ -748,6 +759,7 @@
       "config_ref": "kanoniczny:mv_source_lbs",
       "field_role": "OZE",
       "group": "OZE",
+      "main_path": true,
       "name": "Pole źródłowe SN (rozłącznikowe)",
       "primary_devices": [
         {
@@ -848,11 +860,7 @@
     "manufacturer_packs_without_cell_configurations": [
       "elektrometal_e2alpha"
     ],
-    "producer_cells_without_main_path": [
-      "producent:abb_safering:Be",
-      "producent:schneider_sm6:EMB",
-      "producent:siemens_8djh:E"
-    ]
+    "producer_non_renderable_cells": []
   },
   "producer": [
     {
@@ -862,6 +870,7 @@
       "field_role": null,
       "group": "specjalne",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": false,
       "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka Be (Uziemianie szyn zbiorczych)",
       "pack_id": "abb_safering",
       "primary_devices": [
@@ -876,7 +885,7 @@
           "symbol_ref": "symbol:es"
         }
       ],
-      "renderable": false,
+      "renderable": true,
       "source": "producencki"
     },
     {
@@ -886,6 +895,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka C (Moduł liniowy (rozłącznikowy))",
       "pack_id": "abb_safering",
       "primary_devices": [
@@ -956,6 +966,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka CB (Pole wyłącznikowe pełne (dopływ/rozdział, 630/1250 A))",
       "pack_id": "abb_safering",
       "primary_devices": [
@@ -1007,6 +1018,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka D (Przyłącze kablowe bezpośrednie)",
       "pack_id": "abb_safering",
       "primary_devices": [
@@ -1030,6 +1042,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka De (Przyłącze kablowe bezpośrednie z uziemnikiem)",
       "pack_id": "abb_safering",
       "primary_devices": [
@@ -1063,6 +1076,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka F (Moduł transformatorowy bezpiecznikowy (rozłącznik-bezpieczniki))",
       "pack_id": "abb_safering",
       "primary_devices": [
@@ -1124,6 +1138,7 @@
       "field_role": null,
       "group": "pomiarowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka M (Moduł pomiarowy)",
       "pack_id": "abb_safering",
       "primary_devices": [
@@ -1165,6 +1180,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka Sl (Sprzęgło rozłącznikowe (sekcjonowanie szyn))",
       "pack_id": "abb_safering",
       "primary_devices": [
@@ -1198,6 +1214,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka Sv (Sprzęgło wyłącznikowe (z modułem wzniosu Br))",
       "pack_id": "abb_safering",
       "primary_devices": [
@@ -1240,6 +1257,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka V (Moduł wyłącznikowy (próżniowy 200/630 A))",
       "pack_id": "abb_safering",
       "primary_devices": [
@@ -1309,6 +1327,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka BT (Sprzęgło wyłącznikowe (para z polem wzniosu R))",
       "pack_id": "abb_unigear",
       "primary_devices": [
@@ -1378,6 +1397,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka DF (Pole rozłącznikowe z bezpiecznikami)",
       "pack_id": "abb_unigear",
       "primary_devices": [
@@ -1438,6 +1458,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka IF (Pole dopływowe/odpływowe z wyłącznikiem wysuwnym)",
       "pack_id": "abb_unigear",
       "primary_devices": [
@@ -1526,6 +1547,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka IFD (Pole dopływowe/odpływowe bezpośrednie (bez wyłącznika))",
       "pack_id": "abb_unigear",
       "primary_devices": [
@@ -1595,6 +1617,7 @@
       "field_role": null,
       "group": "pomiarowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka M (Pole pomiarowe (wysuwny VT z bezpiecznikami))",
       "pack_id": "abb_unigear",
       "primary_devices": [
@@ -1637,6 +1660,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka OFM (Pole odpływowe z pomiarem na szynach)",
       "pack_id": "abb_unigear",
       "primary_devices": [
@@ -1715,6 +1739,7 @@
       "field_role": null,
       "group": "pomiarowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka RM (Wznios szynowy z pomiarem)",
       "pack_id": "abb_unigear",
       "primary_devices": [
@@ -1757,6 +1782,7 @@
       "field_role": null,
       "group": "pomiarowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka CM (Celka pomiaru napięcia)",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -1808,6 +1834,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka DM1-A (Celka wyłącznikowa SF6)",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -1887,6 +1914,7 @@
       "field_role": null,
       "group": "specjalne",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": false,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka EMB (Uziemianie szyn (SM6-24))",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -1901,7 +1929,7 @@
           "symbol_ref": "symbol:es"
         }
       ],
-      "renderable": false,
+      "renderable": true,
       "source": "producencki"
     },
     {
@@ -1911,6 +1939,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka GAM (Przyłącze kablowe dopływowe z uziemnikiem)",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -1954,6 +1983,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka GAM2 (Przyłącze kablowe dopływowe (bez aparatu))",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -1987,6 +2017,7 @@
       "field_role": null,
       "group": "pomiarowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka GBC-A (Celka pomiaru prądu i/lub napięcia w torze)",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -2019,6 +2050,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka IM (Celka liniowa (rozłącznikowa))",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -2080,6 +2112,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka IMM (Celka rozłącznikowo-pomiarowa)",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -2140,6 +2173,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka PM (Celka z rozłącznikiem i bezpiecznikami (bez kombinacji))",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -2191,6 +2225,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka QM (Celka transformatorowa (kombinacja rozłącznik-bezpieczniki))",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -2251,6 +2286,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka SM (Celka odłącznikowa)",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -2293,6 +2329,7 @@
       "field_role": null,
       "group": "pomiarowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka TM (Celka transformatora potrzeb własnych)",
       "pack_id": "schneider_sm6",
       "primary_devices": [
@@ -2323,8 +2360,9 @@
       "cell_code": "E",
       "config_ref": "producent:siemens_8djh:E",
       "field_role": null,
-      "group": "pomiarowe",
+      "group": "specjalne",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": false,
       "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka E (Uziemianie szyn zbiorczych)",
       "pack_id": "siemens_8djh",
       "primary_devices": [
@@ -2348,7 +2386,7 @@
           "symbol_ref": "symbol:vt"
         }
       ],
-      "renderable": false,
+      "renderable": true,
       "source": "producencki"
     },
     {
@@ -2358,6 +2396,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka H (Sprzęgło z bezpiecznikami)",
       "pack_id": "siemens_8djh",
       "primary_devices": [
@@ -2400,6 +2439,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka K (Pole kablowe (przyłączeniowe, bez łącznika))",
       "pack_id": "siemens_8djh",
       "primary_devices": [
@@ -2442,6 +2482,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka K(E) (Pole kablowe z uziemnikiem szybkim)",
       "pack_id": "siemens_8djh",
       "primary_devices": [
@@ -2494,6 +2535,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka L (Pole wyłącznikowe)",
       "pack_id": "siemens_8djh",
       "primary_devices": [
@@ -2573,6 +2615,7 @@
       "field_role": null,
       "group": "pomiarowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka M(430) (Pomiar napięcia szyn (za bezpiecznikami))",
       "pack_id": "siemens_8djh",
       "primary_devices": [
@@ -2605,6 +2648,7 @@
       "field_role": null,
       "group": "pomiarowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka M(840) (Pole pomiarowe rozliczeniowe (przedział powietrzny))",
       "pack_id": "siemens_8djh",
       "primary_devices": [
@@ -2637,6 +2681,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka R (Pole liniowe pierścieniowe (rozłącznikowe))",
       "pack_id": "siemens_8djh",
       "primary_devices": [
@@ -2707,6 +2752,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka S (Sprzęgło rozłącznikowe (sekcjonowanie szyn))",
       "pack_id": "siemens_8djh",
       "primary_devices": [
@@ -2758,6 +2804,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka T (Pole transformatorowe (rozłącznik z bezpiecznikami))",
       "pack_id": "siemens_8djh",
       "primary_devices": [
@@ -2828,6 +2875,7 @@
       "field_role": null,
       "group": "liniowe",
       "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
       "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka V (Sprzęgło wyłącznikowe)",
       "pack_id": "siemens_8djh",
       "primary_devices": [
@@ -2881,5 +2929,12 @@
       "renderable": true,
       "source": "producencki"
     }
-  ]
+  ],
+  "special_configurations": {
+    "producer_pathless_cells": [
+      "producent:abb_safering:Be",
+      "producent:schneider_sm6:EMB",
+      "producent:siemens_8djh:E"
+    ]
+  }
 }

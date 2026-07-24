@@ -23,6 +23,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import type { BayPrimaryDevice, BaySwitchState, EnergyNetworkModel } from '../../../../../types/enm';
+import { buildSceneV3 } from '../../buildScene';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BASE_FIXTURE = resolve(
@@ -58,6 +59,9 @@ interface CatalogEntry {
   readonly field_role?: string | null;
   readonly name: string;
   readonly primary_devices: readonly CatalogDevice[];
+  /** Czy celka ma tor główny szeregowy. `false` = celka beztorowa-specjalna
+   *  (uziemianie szyn) — renderowalna wariantem specjalnym (§0.3). */
+  readonly main_path: boolean;
   readonly renderable: boolean;
 }
 interface FieldConfigurationsCatalog {
@@ -66,7 +70,13 @@ interface FieldConfigurationsCatalog {
   readonly gaps: {
     readonly manufacturer_packs_without_cell_configurations: readonly string[];
     readonly field_types_without_template: readonly string[];
-    readonly producer_cells_without_main_path: readonly string[];
+    /** Celki nie-renderowalne (pusty zbiór aparatów; realny brak danych). */
+    readonly producer_non_renderable_cells: readonly string[];
+  };
+  /** Warianty specjalne — renderowalne, NIE braki (§0.3). */
+  readonly special_configurations: {
+    /** Celki bez toru głównego renderowane specjalnie (uziemianie szyn). */
+    readonly producer_pathless_cells: readonly string[];
   };
 }
 
@@ -88,6 +98,10 @@ export interface W1cCase {
   readonly group: string;
   readonly name: string;
   readonly state: W1cState | null;
+  /** Czy konfiguracja ma tor główny szeregowy. `false` = celka beztorowa-
+   *  specjalna (uziemianie szyn) — bez portu dolnego (kablowego), więc host
+   *  wstrzyknięcia musi być polem BEZ zejścia międzystacyjnego (§0.3). */
+  readonly mainPath: boolean;
   /** Aparaty pierwotne z katalogu z nałożonym stanem aparatu głównego. */
   readonly devices: readonly BayPrimaryDevice[];
 }
@@ -165,6 +179,7 @@ export function buildW1cCases(): W1cCase[] {
         group: entry.group,
         name: entry.name,
         state,
+        mainPath: entry.main_path,
         devices: devicesForCase(entry, state),
       });
     }
@@ -213,6 +228,55 @@ function loadBaseEnm(): EnergyNetworkModel {
 }
 
 /**
+ * Pola-hosty BEZPIECZNE dla celek BEZTOROWYCH (§0.3, uziemianie szyn).
+ *
+ * Celka beztorowa-specjalna kończy stos aparatem bocznym (ES) BEZ portu dolnego
+ * (kablowego). Pole, do którego schodzi ZEJŚCIE MIĘDZYSTACYJNE (trunk/branch
+ * kablowy między stacjami), oczekuje na dole pola portu kablowego — celka
+ * beztorowa zostawiłaby tam wiszący koniec segmentu (`allSceneSegmentEndpoints
+ * Anchored`). Compose↔scene kontrakt portu dolnego to obszar wątku SLD (Z3);
+ * MACIERZ rozwiązuje to danymi wejściowymi: celki beztorowe wstrzykujemy TYLKO
+ * do pól bez zejścia międzystacyjnego (jak realna celka uziemiania szyn — wisi
+ * WYŁĄCZNIE od szyny, nie ma kabla odpływowego).
+ *
+ * Detekcja deterministyczna z BAZOWEJ sceny: pole jest bezpieczne, gdy w jego
+ * KOLUMNIE (x zejścia `${field_ref}#descent`) nie kończy się żaden segment
+ * międzystacyjny (`ownerRef` z prefiksem `seg/`) w pobliżu dna zejścia.
+ */
+function connectionSafeFieldRefs(baseEnm: EnergyNetworkModel): Set<string> {
+  interface Seg {
+    readonly points: readonly { x: number; y: number }[];
+    readonly meta?: { ownerRef?: unknown };
+  }
+  const scene = buildSceneV3(baseEnm, 2);
+  const segs = scene.segments as unknown as Seg[];
+  const descentBottomByField = new Map<string, { x: number; y: number }>();
+  const interEndpointYByColumn = new Map<number, number[]>();
+  for (const seg of segs) {
+    const ref = String(seg.meta?.ownerRef ?? '');
+    if (ref.endsWith('#descent')) {
+      descentBottomByField.set(ref.replace(/#descent$/u, ''), seg.points[seg.points.length - 1]);
+    } else if (ref.startsWith('seg/')) {
+      for (const p of [seg.points[0], seg.points[seg.points.length - 1]]) {
+        const ys = interEndpointYByColumn.get(p.x) ?? [];
+        ys.push(p.y);
+        interEndpointYByColumn.set(p.x, ys);
+      }
+    }
+  }
+  const safe = new Set<string>();
+  for (const [fieldRef, bottom] of descentBottomByField) {
+    const columnYs = interEndpointYByColumn.get(bottom.x);
+    // Zejście międzystacyjne w tej kolumnie w promieniu 64 px (4×GRID) od dna
+    // zejścia = pole z odpływem kablowym → NIEbezpieczne dla celki beztorowej.
+    if (!columnYs || !columnYs.some((y) => Math.abs(y - bottom.y) <= 64)) {
+      safe.add(fieldRef);
+    }
+  }
+  return safe;
+}
+
+/**
  * Buduje fixturę macierzy generatywnej: klon `sldSubstrate52s` + wstrzyknięcie
  * KAŻDEGO przypadku katalogu do OSOBNEGO pola-hosta (pola deterministycznie
  * posortowane po ref_id stacji + field_ref). Render podąża za DANYMI, więc rola
@@ -246,17 +310,48 @@ export function buildW1cMatrixFixture(): W1cMatrixFixture {
     );
   }
 
+  // §0.3: celki BEZTOROWE (uziemianie szyn) trafiają WYŁĄCZNIE do pól bez zejścia
+  // międzystacyjnego (brak odpływu kablowego — jak realna celka uziemiania szyn).
+  // Celki torowe (main_path) mają port dolny i kotwiczą się na dowolnym hoście.
+  const safeRefs = connectionSafeFieldRefs(baseEnm);
+  const isSafe = (host: { spec: RawFieldSpec }): boolean => safeRefs.has(host.spec.field_ref ?? '');
+  const safeHosts = hostFields.filter(isSafe);
+  const otherHosts = hostFields.filter((h) => !isSafe(h));
+  const pathlessCases = cases.filter((c) => !c.mainPath);
+  const mainPathCases = cases.filter((c) => c.mainPath);
+
+  if (safeHosts.length < pathlessCases.length) {
+    throw new Error(
+      `W1c fixture: za mało pól-hostów bez zejścia (${safeHosts.length}) dla celek ` +
+        `beztorowych (${pathlessCases.length}).`,
+    );
+  }
+
+  // Deterministyczne przypisanie: celki beztorowe → pierwsze bezpieczne hosty;
+  // celki torowe → pozostałe hosty (nadmiar bezpiecznych + pozostałe), w
+  // kolejności hostFields (stabilnej po ref_id stacji + field_ref).
+  const pathlessHosts = safeHosts.slice(0, pathlessCases.length);
+  const usedPathless = new Set(pathlessHosts);
+  const mainPathHosts = hostFields.filter((h) => !usedPathless.has(h));
+
   const targets: W1cInjectionTarget[] = [];
-  cases.forEach((testCase, index) => {
-    const host = hostFields[index];
-    host.spec.primary_devices = testCase.devices.map((d) => ({ ...d }));
-    host.spec.config_id = testCase.configId;
-    targets.push({
-      case: testCase,
-      stationRef: host.station.ref_id,
-      fieldRef: host.spec.field_ref ?? '',
+  const assign = (
+    assignedCases: readonly W1cCase[],
+    hosts: readonly { station: RawSubstation; spec: RawFieldSpec }[],
+  ): void => {
+    assignedCases.forEach((testCase, index) => {
+      const host = hosts[index];
+      host.spec.primary_devices = testCase.devices.map((d) => ({ ...d }));
+      host.spec.config_id = testCase.configId;
+      targets.push({
+        case: testCase,
+        stationRef: host.station.ref_id,
+        fieldRef: host.spec.field_ref ?? '',
+      });
     });
-  });
+  };
+  assign(pathlessCases, pathlessHosts);
+  assign(mainPathCases, mainPathHosts);
 
   return { enm, baseEnm, targets };
 }
