@@ -2482,6 +2482,15 @@ def _materialize_der_block_transformer(
     if isinstance(materialization, dict):
         return None, materialization
     binding_payload, materialized_params = materialization
+    # D3 wymaganie 7: układ połączeń = parametr modelu spójny z TYPEM katalogu. Grupa żądana
+    # w payloadzie (spec) musi zgadzać się z grupą typu katalogowego — inaczej odrzucamy JAWNIE
+    # (zakaz cichej podmiany rysunkowej na katalogową). Grupa katalogowa pozostaje autorytatywna.
+    vector_group_error = der_val.validate_block_transformer_vector_group(
+        requested_vector_group=spec.get("vector_group"),
+        catalog_vector_group=materialized_params.get("vector_group"),
+    )
+    if vector_group_error is not None:
+        return None, _error_response(vector_group_error.message_pl, vector_group_error.code)
     tr_data["catalog_ref"] = catalog_ref
     _apply_catalog_metadata(tr_data, binding_payload, default_namespace="TRAFO_SN_NN")
     _apply_materialized_transformer_fields(tr_data, materialized_params)

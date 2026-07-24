@@ -82,6 +82,8 @@ export function zastosujPropozycje(
     next.block_transformer_rated_power_mva = tr.sn_mva;
     next.block_transformer_primary_voltage_kv = tr.primary_kv;
     next.block_transformer_secondary_voltage_kv = tr.secondary_kv;
+    // D3 wym. 7: grupa połączeń z propozycji (spójna z typem katalogowym TR).
+    next.block_transformer_vector_group = tr.vector_group;
     // Wyjście falownika = strona nN TR blokowego (spójność napięć wg D1).
     next.inverter_output_voltage_kv = tr.secondary_kv;
   }

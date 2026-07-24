@@ -326,6 +326,7 @@ const DER_SN: DerSnFormData = {
   block_transformer_rated_power_mva: 1.0,
   block_transformer_primary_voltage_kv: 15.0,
   block_transformer_secondary_voltage_kv: 0.4,
+  block_transformer_vector_group: 'Dyn11',
   mv_switching_device: 'CB',
   mv_ct: true,
   mv_vt: true,
@@ -352,6 +353,8 @@ describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
       catalog_namespace: 'TRAFO_SN_NN',
       catalog_item_id: 'tr-sn-nn-15-04-1000kva-dyn11',
     });
+    // D3 wym. 7: grupa połączeń idzie w payload (parametr modelu, spójny z typem katalogu).
+    expect(topo.block_transformer?.vector_group).toBe('Dyn11');
     expect(topo.mv_field_configuration?.apparatus_catalog_binding).toMatchObject({
       catalog_namespace: 'APARAT_SN',
       catalog_item_id: 'ap-sn-cb-630',

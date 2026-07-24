@@ -381,3 +381,33 @@ def test_req2_canon_matrix(inverter_kv: float, secondary_kv: float, expect_error
         assert result["error_code"] == "converter.der_sn.napiecie_falownika_niezgodne"
     else:
         assert not result.get("error"), result.get("error")
+
+
+# ---------------------------------------------------------------------------
+# D3 wymaganie 7: spójność układu połączeń TR blokowego z typem katalogowym.
+# ---------------------------------------------------------------------------
+
+
+def test_validate_block_transformer_vector_group_unit() -> None:
+    from enm.der_sn_validation import validate_block_transformer_vector_group
+
+    # Brak żądania → użyj grupy katalogu (bez błędu).
+    assert (
+        validate_block_transformer_vector_group(
+            requested_vector_group=None, catalog_vector_group="Dyn11"
+        )
+        is None
+    )
+    # Zgodna (różnica tylko wielkości liter/spacji) → bez błędu.
+    assert (
+        validate_block_transformer_vector_group(
+            requested_vector_group=" dyn11 ", catalog_vector_group="Dyn11"
+        )
+        is None
+    )
+    # Niezgodna → błąd ze stabilnym kodem.
+    err = validate_block_transformer_vector_group(
+        requested_vector_group="Dyn5", catalog_vector_group="Dyn11"
+    )
+    assert err is not None
+    assert err.code == "converter.der_sn.grupa_polaczen_niezgodna_z_katalogiem"

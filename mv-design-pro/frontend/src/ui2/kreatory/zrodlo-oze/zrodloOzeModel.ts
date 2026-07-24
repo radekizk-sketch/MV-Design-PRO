@@ -431,6 +431,8 @@ export interface DerSnFormData {
   block_transformer_rated_power_mva: number | null;
   block_transformer_primary_voltage_kv: number | null;
   block_transformer_secondary_voltage_kv: number | null;
+  /** D3 wym. 7: układ połączeń TR blokowego — parametr modelu spójny z typem katalogu. */
+  block_transformer_vector_group: string | null;
   mv_switching_device: DerMvSwitchingDevice;
   mv_ct: boolean;
   mv_vt: boolean;
@@ -453,6 +455,7 @@ export const DANE_DER_SN_DOMYSLNE: DerSnFormData = {
   block_transformer_rated_power_mva: null,
   block_transformer_primary_voltage_kv: null,
   block_transformer_secondary_voltage_kv: null,
+  block_transformer_vector_group: null,
   mv_switching_device: 'CB',
   mv_ct: true,
   mv_vt: false,
@@ -562,7 +565,9 @@ export function zbudujDerTopology(data: DerSnFormData, mvBusRef: string): DerTop
       primary_voltage_kv: data.block_transformer_primary_voltage_kv,
       secondary_voltage_kv: data.block_transformer_secondary_voltage_kv,
       uk_percent: null,
-      vector_group: null,
+      // D3 wym. 7: grupa z wyboru projektanta idzie w payload; backend waliduje spójność
+      // z typem katalogowym (converter.der_sn.grupa_polaczen_niezgodna_z_katalogiem).
+      vector_group: data.block_transformer_vector_group,
       catalog_ref: data.block_transformer_catalog_ref,
       catalog_binding: normalizeCatalogBinding(
         data.block_transformer_catalog_ref,

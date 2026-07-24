@@ -182,6 +182,42 @@ def validate_sn_voltage(
     return None
 
 
+def _normalize_vector_group(value: str | None) -> str | None:
+    """Znormalizuj oznaczenie układu połączeń do porównań (bez wielkości liter/spacji)."""
+    if value is None:
+        return None
+    normalized = value.strip().upper()
+    return normalized or None
+
+
+def validate_block_transformer_vector_group(
+    *,
+    requested_vector_group: str | None,
+    catalog_vector_group: str | None,
+) -> ValidationError | None:
+    """Wymaganie 7: układ połączeń TR blokowego = PARAMETR MODELU spójny z TYPEM katalogu.
+
+    Grupa połączeń jest własnością typu katalogowego (jedno źródło prawdy — zakaz dwóch
+    modeli). Gdy projektant wybierze w kreatorze grupę różną od tej, którą niesie wybrany
+    typ katalogowy, materializacja NIE może po cichu podmienić grupy na katalogową (to był
+    phantom) — odrzucamy jawnie. Brak żądania (``requested`` = None) = użyj grupy z katalogu.
+    """
+    requested = _normalize_vector_group(requested_vector_group)
+    if requested is None:
+        return None
+    catalog = _normalize_vector_group(catalog_vector_group)
+    if catalog is None:
+        return None
+    if requested != catalog:
+        return ValidationError(
+            "converter.der_sn.grupa_polaczen_niezgodna_z_katalogiem",
+            f"❌ Układ połączeń „{requested_vector_group}” jest niezgodny z typem katalogowym "
+            f"transformatora blokowego (grupa katalogowa: „{catalog_vector_group}”). Wybierz typ "
+            f"katalogowy o żądanym układzie połączeń albo grupę zgodną z typem.",
+        )
+    return None
+
+
 def converter_apparent_power_mva(active_power_mw: float, cos_phi: float | None) -> float:
     """ΣS falowników z ΣP: MW→MVA przez cosφ znamionowy (gdy podany), inaczej P=S (konserwatywnie).
 

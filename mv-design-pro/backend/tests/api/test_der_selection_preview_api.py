@@ -32,6 +32,9 @@ def test_der_selection_preview_998kw_cascade(app_client) -> None:
     assert tr["proposal"]["secondary_kv"] == pytest.approx(0.4)
     assert tr["error_code"] is None
     assert len(tr["rejected"]) > 0  # ślad WHITE BOX: odrzuceni kandydaci z katalogu
+    # D3 wym. 7: realne układy połączeń dla klasy 15/0,4 kV z katalogu (Dyn11 obecny).
+    assert "Dyn11" in tr["available_vector_groups"]
+    assert tr["proposal"]["vector_group"] == "Dyn11"
 
     # Prąd znamionowy TR (strona SN) i kaskada kabel/pole obecne.
     assert data["transformer_current_a"] == pytest.approx(1.0e6 / (3.0**0.5 * 15.0e3), rel=1e-6)

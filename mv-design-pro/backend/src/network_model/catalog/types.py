@@ -2756,6 +2756,9 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "uk_percent",
             "p0_kw",
             "pk_kw",
+            # I0 (prąd jałowy) — parametr solverowy TR (req 8: uk/Pcu/P0/I0 wprost do solvera).
+            # Bez niego gałąź magnesująca nie miała danych źródłowych z katalogu.
+            "i0_percent",
             "vector_group",
         ),
         ui_fields=(
@@ -2763,6 +2766,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("uk_percent", "uk%", "%"),
             ("p0_kw", "P0 [kW]", "kW"),
             ("pk_kw", "Pk [kW]", "kW"),
+            ("i0_percent", "I0 [%]", "%"),
             ("vector_group", "Grupa połączeń", ""),
         ),
     ),

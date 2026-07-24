@@ -560,6 +560,69 @@ def test_short_circuit_nonzero_on_der_sn_buses() -> None:
         assert sc.ikss_a > 0, f"ikss=0 na {node_id}"
 
 
+# ---------------------------------------------------------------------------
+# D3 (7+8): grupa połączeń + uk/Pcu/P0/I0 TR blokowego jako parametry MODELU
+# konsumowane przez solvery (jeden model — z typu katalogowego), z walidacją
+# spójności grupy z typem.
+# ---------------------------------------------------------------------------
+
+
+def _der_sn_payload_with_vector_group(vector_group: str) -> dict:
+    """Payload toru DER-SN z JAWNYM układem połączeń w specyfikacji TR blokowego."""
+    import copy
+
+    payload = copy.deepcopy(_der_sn_payload())
+    payload["der_topology"]["block_transformer"]["vector_group"] = vector_group
+    return payload
+
+
+def test_block_transformer_catalog_params_flow_into_model_and_solver() -> None:
+    """Req 8: uk/Pcu/P0/I0 + grupa z TYPU katalogu 1000 kVA Dyn11 (uk=6%) wchodzą do
+    modelu i do gałęzi transformatorowej konsumowanej przez solver (jeden model)."""
+    result = execute_domain_operation(_sn_station_enm(), "add_converter_source", _der_sn_payload())
+    assert not result.get("error"), result.get("error")
+    block_tr = _block_transformer(result["snapshot"])
+    # Parametry impedancyjne i grupa = wartości ZMATERIALIZOWANE z typu katalogowego.
+    assert block_tr["uk_percent"] == 6.0
+    assert block_tr["pk_kw"] == 11.0
+    assert block_tr["p0_kw"] == 1.70
+    assert block_tr["i0_percent"] == 1.2
+    assert block_tr["vector_group"] == "Dyn11"
+
+    # Ta sama impedancja wchodzi do solvera przez gałąź transformatorową (bez drugiego modelu).
+    enm = EnergyNetworkModel.model_validate(result["snapshot"])
+    graph = map_enm_to_network_graph(enm)
+    trafo = next(b for b in graph.branches.values() if isinstance(b, TransformerBranch))
+    assert trafo.uk_percent == 6.0
+    assert trafo.pk_kw == 11.0
+    assert trafo.vector_group == "Dyn11"
+    # z_pu = uk/100 = 0.06 na mocy znamionowej TR (WHITE BOX konsumpcja uk przez solver).
+    assert abs(abs(trafo.get_short_circuit_impedance_pu()) - 0.06) < 1e-9
+
+
+def test_vector_group_consistent_with_catalog_type_accepted() -> None:
+    """Grupa żądana == grupa typu katalogowego (Dyn11) → materializacja OK."""
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _der_sn_payload_with_vector_group("Dyn11"),
+    )
+    assert not result.get("error"), result.get("error")
+    assert _block_transformer(result["snapshot"])["vector_group"] == "Dyn11"
+
+
+def test_vector_group_inconsistent_with_catalog_type_rejected() -> None:
+    """Req 7: grupa żądana (Dyn5) ≠ grupa typu katalogowego (Dyn11) → odrzucenie JAWNE,
+    bez cichej podmiany na katalogową (zakaz dwóch modeli)."""
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _der_sn_payload_with_vector_group("Dyn5"),
+    )
+    assert result.get("error"), "Niezgodna grupa połączeń powinna zostać odrzucona."
+    assert result["error_code"] == "converter.der_sn.grupa_polaczen_niezgodna_z_katalogiem"
+
+
 @pytest.mark.parametrize("technology", ["PV", "BESS", "FW"])
 def test_all_converter_technologies_materialize_sn_chain(technology: str) -> None:
     result = execute_domain_operation(

@@ -58,6 +58,26 @@ def test_block_transformer_998kw_proposes_1000kva() -> None:
     assert reason_by_ref["tr-1000-069"] == "napiecie_nn_niezgodne"
 
 
+def test_block_transformer_available_vector_groups_from_voltage_class() -> None:
+    """D3 wym. 7: lista układów połączeń = realne grupy kandydatów zgodnych napięciowo,
+    posortowane, unikalne, niezależnie od progu mocy (i bez wpisów o innych napięciach)."""
+    candidates = (
+        BlockTransformerCandidate("tr-630", "TR 630 Dyn11", 0.63, 15.0, 0.4, 5.0, "Dyn11"),
+        BlockTransformerCandidate("tr-1000-yd", "TR 1000 Yd11", 1.0, 15.0, 0.4, 6.0, "Yd11"),
+        # Inne napięcie SN (20 kV) — jego grupa (YNyn0) NIE należy do klasy 15/0,4 kV.
+        BlockTransformerCandidate("tr-20", "TR 20/0.4 YNyn0", 1.0, 20.0, 0.4, 6.0, "YNyn0"),
+    )
+    result = propose_block_transformer(
+        BlockTransformerSelectionInput(
+            sum_apparent_power_mva=0.5,
+            primary_voltage_kv=15.0,
+            secondary_voltage_kv=0.4,
+            candidates=candidates,
+        )
+    )
+    assert result.available_vector_groups == ("Dyn11", "Yd11")
+
+
 def test_block_transformer_reserve_and_simultaneity_raise_threshold() -> None:
     """Rezerwa + jednoczesność podnoszą próg: 0,63·1,2·1,1 = 0,8316 MVA ⇒ nadal 1000 kVA,
     ale 630 kVA już nie starcza (0,63 < 0,8316)."""

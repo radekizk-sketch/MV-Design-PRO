@@ -16,6 +16,7 @@ import {
   KreatorSiatka,
   PanelTeorii,
   PoleLiczbowe,
+  PoleWyboru,
   RzadWartosci,
 } from '../rama';
 import {
@@ -37,6 +38,7 @@ export interface DoborToruSnProps {
   snBusVoltageKv: number | null;
   derSn: DerSnFormData;
   onCableLengthChange: (value: number | null) => void;
+  onVectorGroupChange: (value: string) => void;
   onZastosuj: (response: DerSelectionPreviewResponse) => void;
   applied: boolean;
   testid?: string;
@@ -48,6 +50,7 @@ export function DoborToruSn({
   snBusVoltageKv,
   derSn,
   onCableLengthChange,
+  onVectorGroupChange,
   onZastosuj,
   applied,
   testid = 'mvd-kreator-oze-dobor',
@@ -89,6 +92,8 @@ export function DoborToruSn({
   }, [converter, snBusVoltageKv, cableLength, quantity, rezerwaTr, rezerwaKabel, maxDeltaU]);
 
   const tr = response?.transformer.proposal ?? null;
+  const grupyKatalogu = response?.transformer.available_vector_groups ?? [];
+  const wybranaGrupa = derSn.block_transformer_vector_group ?? tr?.vector_group ?? '';
   const kabel = response?.cable?.proposal ?? null;
   const pole = response?.field_apparatus?.proposal ?? null;
   const bledyBackendu = response ? komunikatyBledow(response) : [];
@@ -173,10 +178,18 @@ export function DoborToruSn({
                 etykieta={T.doborProgTr}
                 wartosc={`${response.transformer.required_apparent_power_mva.toFixed(3)} MVA`}
               />
-              <RzadWartosci
-                etykieta="Grupa połączeń"
-                wartosc={tr.vector_group ?? '—'}
-              />
+              {grupyKatalogu.length > 0 ? (
+                <PoleWyboru
+                  etykieta="Układ połączeń"
+                  wartosc={wybranaGrupa}
+                  onZmiana={onVectorGroupChange}
+                  opcje={grupyKatalogu.map((g) => ({ id: g, etykieta: g }))}
+                  pomoc="Parametr modelu (zwarcie, przesunięcie faz, składowa zerowa, zabezpieczenia). Lista z realnych typów katalogu; wybór inny niż typ TR odrzuci backend."
+                  testid={`${testid}-grupa`}
+                />
+              ) : (
+                <RzadWartosci etykieta="Układ połączeń" wartosc={tr.vector_group ?? '—'} />
+              )}
             </KreatorSiatka>
           ) : null}
           {tr ? (

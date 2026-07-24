@@ -315,3 +315,36 @@ class TestSolverInputDeterminism:
         assert env.eligibility.eligible is False
         assert env.payload == {}
         assert any(b.code == "SI-100" for b in env.eligibility.blockers)
+
+
+class TestTransformerVectorGroupSolverInput:
+    """D3 wym. 7+8: parametry TR (uk/Pcu/P0/I0 + grupa) w wejściu solvera + ślad WHITE BOX."""
+
+    def test_transformer_params_and_vector_group_in_payload_and_trace(self):
+        graph = _make_test_network()
+        catalog = _make_empty_catalog()
+
+        env = build_solver_input(
+            graph=graph,
+            catalog=catalog,
+            case_id="case-vg",
+            enm_revision="rev-1",
+            analysis_type=SolverAnalysisType.SHORT_CIRCUIT_3F,
+        )
+
+        trafos = env.payload.get("transformers", [])
+        assert len(trafos) == 1
+        tr = trafos[0]
+        # Req 8: parametry impedancyjne/jałowe wprost w payloadzie solvera (jeden model).
+        assert tr["uk_percent"] == 11.5
+        assert tr["pk_kw"] == 150.0
+        assert tr["p0_kw"] == 25.0
+        assert tr["i0_percent"] == 0.35
+        # Req 7: układ połączeń jest parametrem modelu w payloadzie solvera.
+        assert tr["vector_group"] == "Yd11"
+
+        # WHITE BOX: proweniencja układu połączeń jest w śladzie wejścia solvera.
+        vg_traces = [
+            t for t in env.trace if t.element_ref == "trafo_1" and "vector_group" in t.field_path
+        ]
+        assert len(vg_traces) == 1

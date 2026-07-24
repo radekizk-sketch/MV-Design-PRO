@@ -326,6 +326,9 @@ class BlockTransformerSelectionResponse(BaseModel):
     rejected: list[RejectedCandidateResponse]
     error_code: str | None
     error_pl: str | None
+    # D3 wymaganie 7: realne układy połączeń dla klasy napięcia toru (z katalogu, nie hardcode);
+    # kreator prezentuje je jako listę wyboru grupy TR blokowego.
+    available_vector_groups: list[str] = []
     formula_ref: str
 
 
@@ -528,6 +531,7 @@ def preview_der_selection(
         rejected=_rejected_response(tr_result.rejected),
         error_code=tr_result.error_code,
         error_pl=tr_result.error_pl,
+        available_vector_groups=list(tr_result.available_vector_groups),
         formula_ref=tr_result.formula_ref,
     )
 

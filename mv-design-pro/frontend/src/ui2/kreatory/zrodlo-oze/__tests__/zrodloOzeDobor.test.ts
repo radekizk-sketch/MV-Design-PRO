@@ -109,6 +109,7 @@ describe('zrodloOzeDobor — model doboru kreatora', () => {
     expect(wynik.block_transformer_rated_power_mva).toBe(1.0);
     expect(wynik.block_transformer_primary_voltage_kv).toBe(15.0);
     expect(wynik.block_transformer_secondary_voltage_kv).toBe(0.4);
+    expect(wynik.block_transformer_vector_group).toBe('Dyn11');
     expect(wynik.inverter_output_voltage_kv).toBe(0.4);
     expect(wynik.mv_cable_catalog_ref).toBe('cab-50');
     expect(wynik.mv_field_apparatus_catalog_ref).toBe('cb-400');

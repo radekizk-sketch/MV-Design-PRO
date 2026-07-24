@@ -39,6 +39,7 @@ const RESPONSE = {
     rejected: [{ catalog_ref: 'tr-630', name: 'TR 630', reason_code: 'moc_niewystarczajaca', reason_pl: 'x' }],
     error_code: null,
     error_pl: null,
+    available_vector_groups: ['Dyn11', 'Yd11'],
     formula_ref: 'S_wym',
   },
   cable: {
@@ -99,6 +100,7 @@ describe('DoborToruSn — krok doboru toru SN', () => {
         snBusVoltageKv={15}
         derSn={derSn}
         onCableLengthChange={() => {}}
+        onVectorGroupChange={() => {}}
         onZastosuj={onZastosuj}
         applied={false}
       />,
@@ -118,6 +120,36 @@ describe('DoborToruSn — krok doboru toru SN', () => {
     expect(onZastosuj.mock.calls[0][0].transformer.proposal.catalog_ref).toBe('tr-1000');
   });
 
+  it('wybór układu połączeń z realnej listy katalogu → callback grupy (native change)', async () => {
+    const user = userEvent.setup();
+    const onVectorGroupChange = vi.fn();
+    const derSn = { ...DANE_DER_SN_DOMYSLNE, mv_cable_length_km: 1.0 };
+
+    render(
+      <DoborToruSn
+        converter={KONWERTER}
+        quantity={2}
+        snBusVoltageKv={15}
+        derSn={derSn}
+        onCableLengthChange={() => {}}
+        onVectorGroupChange={onVectorGroupChange}
+        onZastosuj={() => {}}
+        applied={false}
+      />,
+    );
+
+    await user.click(screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-dobor-grupa')).toBeInTheDocument());
+
+    // Lista z realnych typów katalogu (nie hardcode): oba układy dostępne, domyślnie z propozycji.
+    const select = screen.getByTestId('mvd-kreator-oze-dobor-grupa') as HTMLSelectElement;
+    expect(select.value).toBe('Dyn11');
+    expect(Array.from(select.options).map((o) => o.value)).toEqual(['Dyn11', 'Yd11']);
+
+    await user.selectOptions(select, 'Yd11');
+    expect(onVectorGroupChange).toHaveBeenCalledWith('Yd11');
+  });
+
   it('bez długości kabla przycisk doboru jest zablokowany', () => {
     render(
       <DoborToruSn
@@ -126,6 +158,7 @@ describe('DoborToruSn — krok doboru toru SN', () => {
         snBusVoltageKv={15}
         derSn={{ ...DANE_DER_SN_DOMYSLNE, mv_cable_length_km: null }}
         onCableLengthChange={() => {}}
+        onVectorGroupChange={() => {}}
         onZastosuj={() => {}}
         applied={false}
       />,

@@ -230,6 +230,10 @@ export function KreatorZrodlaOze() {
     setDerSn((p) => ({ ...p, mv_cable_length_km: v }));
   }, []);
 
+  const zmienGrupePolaczen = useCallback((v: string) => {
+    setDerSn((p) => ({ ...p, block_transformer_vector_group: v || null }));
+  }, []);
+
   const onZastosujDobor = useCallback(
     (response: DerSelectionPreviewResponse) => {
       setDerSn((p) => zastosujPropozycje(p, response));
@@ -515,6 +519,7 @@ export function KreatorZrodlaOze() {
             snBusVoltageKv={snBusVoltageKv}
             derSn={derSn}
             onCableLengthChange={zmienDlugoscKabla}
+            onVectorGroupChange={zmienGrupePolaczen}
             onZastosuj={onZastosujDobor}
             applied={derSnZastosowany}
           />

@@ -234,6 +234,9 @@ def _build_transformer_payloads(
             ("pk_kw", pk, "kW"),
             ("i0_percent", i0, "%"),
             ("p0_kw", p0, "kW"),
+            # Układ połączeń: parametr modelu (D3 wym. 7) — jego proweniencja jest częścią
+            # śladu WHITE BOX wejścia solvera, tak jak parametry impedancyjne (uk/Pcu/P0/I0).
+            ("vector_group", vg, ""),
         ]:
             trace_entries.append(
                 ProvenanceEntry(

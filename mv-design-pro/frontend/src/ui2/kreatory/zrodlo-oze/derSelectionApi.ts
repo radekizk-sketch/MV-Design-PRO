@@ -45,6 +45,8 @@ export interface BlockTransformerSelection {
   rejected: RejectedCandidate[];
   error_code: string | null;
   error_pl: string | null;
+  /** D3 wym. 7: realne układy połączeń dla klasy napięcia toru (z katalogu, nie hardcode). */
+  available_vector_groups?: string[];
   formula_ref: string;
 }
 

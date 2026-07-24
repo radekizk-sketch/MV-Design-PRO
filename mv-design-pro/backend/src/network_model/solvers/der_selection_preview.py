@@ -100,7 +100,12 @@ class BlockTransformerProposal:
 
 @dataclass(frozen=True)
 class BlockTransformerSelectionResult:
-    """Wynik doboru TR blokowego — WHITE BOX: próg + kandydaci odrzuceni z powodem."""
+    """Wynik doboru TR blokowego — WHITE BOX: próg + kandydaci odrzuceni z powodem.
+
+    ``available_vector_groups`` to POSORTOWANE, unikalne układy połączeń realnych typów
+    katalogu pasujących napięciowo do toru (niezależnie od progu mocy). Kreator używa ich
+    jako listy wyboru grupy (D3 wymaganie 7) — źródłem jest katalog, nie hardcode UI.
+    """
 
     proposal: BlockTransformerProposal | None
     required_apparent_power_mva: float
@@ -108,6 +113,7 @@ class BlockTransformerSelectionResult:
     rejected: tuple[RejectedCandidate, ...]
     error_code: str | None
     error_pl: str | None
+    available_vector_groups: tuple[str, ...] = ()
     formula_ref: str = _TR_FORMULA_REF
 
 
@@ -134,8 +140,19 @@ def propose_block_transformer(
 
     rejected: list[RejectedCandidate] = []
     eligible: list[BlockTransformerCandidate] = []
+    # Układy połączeń dostępne dla KLASY NAPIĘCIA toru (kandydaci zgodni napięciowo,
+    # niezależnie od progu mocy) — realna lista wyboru grupy dla kreatora (D3 wym. 7).
+    voltage_class_vector_groups: set[str] = set()
 
     for candidate in data.candidates:
+        if (
+            _voltages_match(candidate.primary_kv, data.primary_voltage_kv, data.sn_tolerance_kv)
+            and _voltages_match(
+                candidate.secondary_kv, data.secondary_voltage_kv, data.nn_tolerance_kv
+            )
+            and candidate.vector_group
+        ):
+            voltage_class_vector_groups.add(candidate.vector_group)
         if not _voltages_match(candidate.primary_kv, data.primary_voltage_kv, data.sn_tolerance_kv):
             rejected.append(
                 RejectedCandidate(
@@ -173,6 +190,8 @@ def propose_block_transformer(
             continue
         eligible.append(candidate)
 
+    available_vector_groups = tuple(sorted(voltage_class_vector_groups))
+
     if not eligible:
         return BlockTransformerSelectionResult(
             proposal=None,
@@ -184,6 +203,7 @@ def propose_block_transformer(
                 f"❌ Brak transformatora blokowego w katalogu dla progu {required_mva:g} MVA "
                 f"przy napięciach {data.primary_voltage_kv:g}/{data.secondary_voltage_kv:g} kV."
             ),
+            available_vector_groups=available_vector_groups,
         )
 
     # Najmniejsza wystarczająca Sn; remis rozstrzyga ref katalogu (determinizm).
@@ -203,6 +223,7 @@ def propose_block_transformer(
         rejected=tuple(rejected),
         error_code=None,
         error_pl=None,
+        available_vector_groups=available_vector_groups,
     )
 
 
