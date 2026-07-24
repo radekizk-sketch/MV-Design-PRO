@@ -993,6 +993,9 @@ class DerBlockTransformerSpec(_FrozenBase):
     vector_group: str | None = None
     catalog_ref: str | None = None
     catalog_binding: dict[str, Any] | None = None
+    loadability_pu: float | None = None
+    """Dopuszczalne obciążenie (przeciążalność) TR blokowego [pu]. Brak → domyślnie 1,0
+    (konserwatywnie, PN-EN 60076-7). Konsumowane przez walidację mocy TR (D1 wymaganie 5)."""
 
 
 class DerMvFieldConfigurationSpec(_FrozenBase):
@@ -1040,6 +1043,21 @@ class DerTopologyPayload(_FrozenBase):
     mv_field_configuration: DerMvFieldConfigurationSpec | None = None
     mv_bus_ref: str | None = None
     """Szyna SN stacji, do której przypina się dedykowane pole źródłowe SN."""
+    connection_method: (
+        Literal[
+            "der_za_tr_stacji",
+            "der_z_tr_blokowym",
+            "der_bezposrednio_sn",
+            "der_przez_rozdzielnie_producenta",
+        ]
+        | None
+    ) = None
+    """D1 wymaganie 9: jawny „sposób przyłączenia" DER. ADDYTYWNY (brak → dotychczasowe
+    zachowanie). Mapowany JAWNIE na connection_level/has_block_transformer/
+    has_manufacturer_lv_switchgear z walidacją spójności (der_sn_validation)."""
+    simultaneity_factor: float | None = None
+    """Współczynnik jednoczesności źródeł na wspólnym torze [pu]. Brak → domyślnie 1,0
+    (konserwatywnie). Konsumowany przez walidację mocy TR (D1 wymaganie 5)."""
 
 
 class AddConverterSourcePayload(_FrozenBase):

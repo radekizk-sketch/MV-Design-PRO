@@ -20,6 +20,7 @@
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import type { ConverterType } from '../../../ui/catalog/types';
 import type {
+  DerConnectionMethod,
   DerMvSwitchingDevice,
   DerTopologyPayload,
   LvSwitchgearVariant,
@@ -382,16 +383,28 @@ export const APARAT_POLA_SN_OPCJE: ReadonlyArray<{ value: DerMvSwitchingDevice; 
   { value: 'LBS', label: 'Rozłącznik' },
 ];
 
+// D1 wymaganie 9: jawny „sposób przyłączenia" DER dla toru po stronie SN (z TR blokowym).
+// Tor DER-SN zawsze ma connection_level='sn' + has_block_transformer=true, więc oferujemy
+// dwa spójne warianty; walidacja spójności zapada w backendzie (der_sn_validation).
+export const SPOSOB_PRZYLACZENIA_OPCJE: ReadonlyArray<{ value: DerConnectionMethod; label: string }> = [
+  { value: 'der_z_tr_blokowym', label: 'DER z transformatorem blokowym' },
+  { value: 'der_przez_rozdzielnie_producenta', label: 'DER przez rozdzielnię producenta' },
+];
+
 const LV_SWITCHGEAR_LABEL = new Map(LV_SWITCHGEAR_OPCJE.map((o) => [o.value, o.label]));
 const APARAT_POLA_SN_LABEL = new Map(APARAT_POLA_SN_OPCJE.map((o) => [o.value, o.label]));
+const SPOSOB_PRZYLACZENIA_LABEL = new Map(SPOSOB_PRZYLACZENIA_OPCJE.map((o) => [o.value, o.label]));
 
 export const lvSwitchgearLabel = (v: LvSwitchgearVariant): string =>
   LV_SWITCHGEAR_LABEL.get(v) ?? '';
 export const aparatPolaSnLabel = (v: DerMvSwitchingDevice): string =>
   APARAT_POLA_SN_LABEL.get(v) ?? '';
+export const sposobPrzylaczeniaLabel = (v: DerConnectionMethod): string =>
+  SPOSOB_PRZYLACZENIA_LABEL.get(v) ?? '';
 
 /** Formularz toru DER-SN — pola 1:1 z DerTopologyPayload (zero pól-widm). */
 export interface DerSnFormData {
+  connection_method: DerConnectionMethod;
   inverter_output_voltage_kv: number | null;
   has_manufacturer_lv_switchgear: boolean;
   lv_switchgear_variant: LvSwitchgearVariant;
@@ -413,6 +426,7 @@ export interface DerSnFormData {
 }
 
 export const DANE_DER_SN_DOMYSLNE: DerSnFormData = {
+  connection_method: 'der_z_tr_blokowym',
   inverter_output_voltage_kv: null,
   has_manufacturer_lv_switchgear: true,
   lv_switchgear_variant: 'multi-feeder',
@@ -495,6 +509,18 @@ export function walidujDerSn(data: DerSnFormData): BladPolaOze[] {
       message: 'Długość kabla przyłączeniowego musi być większa od zera.',
     });
   }
+  // D1 wymaganie 9: wczesne ostrzeżenie spójności sposobu przyłączenia (decyzja w backendzie —
+  // zero dublowania logiki liczbowej; to kontrola STRUKTURALNA enum↔pola, nie napięć/mocy).
+  if (
+    data.connection_method === 'der_przez_rozdzielnie_producenta' &&
+    !data.has_manufacturer_lv_switchgear
+  ) {
+    errors.push({
+      field: 'connection_method',
+      message:
+        'Sposób przyłączenia „DER przez rozdzielnię producenta” wymaga rozdzielni nN producenta.',
+    });
+  }
   return errors;
 }
 
@@ -507,6 +533,7 @@ export function walidujDerSn(data: DerSnFormData): BladPolaOze[] {
 export function zbudujDerTopology(data: DerSnFormData, mvBusRef: string): DerTopologyPayload {
   return {
     connection_level: 'sn',
+    connection_method: data.connection_method,
     inverter_output_voltage_kv: data.inverter_output_voltage_kv,
     has_manufacturer_lv_switchgear: data.has_manufacturer_lv_switchgear,
     lv_switchgear_variant: data.lv_switchgear_variant,

@@ -7,12 +7,14 @@ import {
   DANE_DOMYSLNE,
   LV_SWITCHGEAR_OPCJE,
   REGULACJA_OPCJE,
+  SPOSOB_PRZYLACZENIA_OPCJE,
   TECHNOLOGIA_OPCJE,
   bessLabel,
   converterCatalogNamespace,
   maKontekst,
   materializedParams,
   regulacjaLabel,
+  sposobPrzylaczeniaLabel,
   sugerujDerSn,
   technologiaLabel,
   trybQWymagaWartosci,
@@ -411,5 +413,35 @@ describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
       'combiner',
       'integrated-skid',
     ]);
+  });
+
+  it('zbudujDerTopology przenosi jawny sposób przyłączenia do payloadu (D1 wymaganie 9)', () => {
+    const topo = zbudujDerTopology(
+      { ...DER_SN, connection_method: 'der_przez_rozdzielnie_producenta' },
+      'bus_sn_1',
+    );
+    expect(topo.connection_method).toBe('der_przez_rozdzielnie_producenta');
+    const domyslny = zbudujDerTopology(DER_SN, 'bus_sn_1');
+    expect(domyslny.connection_method).toBe('der_z_tr_blokowym');
+  });
+
+  it('SPOSOB_PRZYLACZENIA_OPCJE mapuje kody backendu na polskie etykiety', () => {
+    expect(SPOSOB_PRZYLACZENIA_OPCJE.map((o) => o.value)).toEqual([
+      'der_z_tr_blokowym',
+      'der_przez_rozdzielnie_producenta',
+    ]);
+    expect(sposobPrzylaczeniaLabel('der_z_tr_blokowym')).toBe('DER z transformatorem blokowym');
+    expect(sposobPrzylaczeniaLabel('der_przez_rozdzielnie_producenta')).toBe(
+      'DER przez rozdzielnię producenta',
+    );
+  });
+
+  it('walidujDerSn ostrzega o niespójnym sposobie przyłączenia (rozdzielnia bez rozdzielni nN)', () => {
+    const braki = walidujDerSn({
+      ...DER_SN,
+      connection_method: 'der_przez_rozdzielnie_producenta',
+      has_manufacturer_lv_switchgear: false,
+    });
+    expect(braki.map((b) => b.field)).toContain('connection_method');
   });
 });

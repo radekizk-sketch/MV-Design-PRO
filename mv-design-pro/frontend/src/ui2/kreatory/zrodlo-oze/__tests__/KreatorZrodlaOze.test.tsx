@@ -112,6 +112,32 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     expect(closeFormMock).toHaveBeenCalled();
   });
 
+  it('prezentuje komunikat błędu walidacji z backendu 1:1 (D1 wymaganie 5)', async () => {
+    // Backend jest jedynym źródłem prawdy walidacji doborowej — kreator prezentuje
+    // jego komunikat verbatim (np. niewystarczająca moc TR blokowego DER-SN).
+    const komunikat =
+      '❌ Moc transformatora jest niewystarczająca (ΣS=1 MVA > dopuszczalne 0.63 MVA).';
+    executeDomainOperationMock.mockResolvedValue({
+      error: komunikat,
+      error_code: 'converter.der_sn.moc_transformatora_niewystarczajaca',
+    });
+    render(<KreatorZrodlaOze />);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument();
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-blad')).toHaveTextContent(komunikat);
+    });
+    expect(closeFormMock).not.toHaveBeenCalled();
+  });
+
   it('krok regulacji: cosφ dla stałego cosφ, nachylenie Q(U) po zmianie trybu (G-OZE-B3)', async () => {
     render(<KreatorZrodlaOze />);
     // Przejdź do kroku 3 (regulacja): tech → katalog → regulacja.

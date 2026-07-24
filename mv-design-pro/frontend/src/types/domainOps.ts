@@ -416,6 +416,15 @@ export type LvSwitchgearVariant =
   | 'integrated-skid';
 export type DerMvSwitchingDevice = 'CB' | 'LBS';
 
+// D1 wymaganie 9: jawny „sposób przyłączenia" DER (kanon RECENZJA_DER_SN_DOBORY_2026-07).
+// Mapowany JAWNIE na connection_level/has_block_transformer/has_manufacturer_lv_switchgear;
+// walidacja spójności zapada w backendzie (der_sn_validation).
+export type DerConnectionMethod =
+  | 'der_za_tr_stacji'
+  | 'der_z_tr_blokowym'
+  | 'der_bezposrednio_sn'
+  | 'der_przez_rozdzielnie_producenta';
+
 export interface DerBlockTransformerSpec {
   rated_power_mva: number | null;
   primary_voltage_kv: number | null;
@@ -424,6 +433,8 @@ export interface DerBlockTransformerSpec {
   vector_group: string | null;
   catalog_ref: string | null;
   catalog_binding: CatalogBindingPayload | null;
+  // D1 wymaganie 5: dopuszczalne obciążenie (przeciążalność) TR [pu]; brak → backend 1,0.
+  loadability_pu?: number | null;
 }
 
 export interface DerMvFieldConfigurationSpec {
@@ -452,6 +463,10 @@ export interface DerTopologyPayload {
   has_dedicated_mv_field: boolean;
   mv_field_configuration: DerMvFieldConfigurationSpec | null;
   mv_bus_ref: string | null;
+  // D1 wymaganie 9: jawny „sposób przyłączenia" (ADDYTYWNY — brak → dotychczasowe zachowanie).
+  connection_method?: DerConnectionMethod | null;
+  // D1 wymaganie 5: współczynnik jednoczesności źródeł na wspólnym torze [pu]; brak → backend 1,0.
+  simultaneity_factor?: number | null;
 }
 
 export interface AddConverterSourcePayload {

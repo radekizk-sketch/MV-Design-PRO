@@ -18,6 +18,7 @@ from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding
 
+from . import der_sn_validation as der_val
 from .domain_operations import (
     _apply_catalog_metadata,
     _apply_materialized_branch_fields,
@@ -2545,6 +2546,32 @@ def _materialize_der_mv_cable(
     return branch_data, None
 
 
+def _resolve_apparatus_rated_current_a(apparatus_binding: object) -> float | None:
+    """Best-effort: prąd znamionowy In aparatu głównego pola SN z katalogu (APARAT_SN).
+
+    Zwraca None gdy brak powiązania lub katalog nie niesie prądu (i_n_a/rated_current_a) —
+    wtedy ogniwo kaskady prądowej jest pomijane Z JAWNYM OSTRZEŻENIEM (nie cichy skip).
+    """
+    if not isinstance(apparatus_binding, dict):
+        return None
+    catalog_ref = _catalog_item_id(apparatus_binding)
+    if not catalog_ref:
+        return None
+    materialization = _materialize_catalog_payload(
+        catalog_ref=catalog_ref,
+        catalog_binding=apparatus_binding,
+        default_namespace="APARAT_SN",
+    )
+    if not isinstance(materialization, tuple):
+        return None
+    _binding_payload, materialized_params = materialization
+    return _as_float(
+        materialized_params.get("i_n_a")
+        if materialized_params.get("i_n_a") is not None
+        else materialized_params.get("rated_current_a")
+    )
+
+
 def _add_converter_source_der_sn(
     enm: dict[str, Any],
     payload: dict[str, Any],
@@ -2650,18 +2677,14 @@ def _add_converter_source_der_sn(
         )
     block_secondary_kv = _as_float(block_spec.get("secondary_voltage_kv")) or inverter_output_kv
     block_primary_kv = _as_float(block_spec.get("primary_voltage_kv")) or mv_bus_voltage_kv
-    if not _same_nominal_voltage(block_secondary_kv, inverter_output_kv):
-        return _error_response(
-            "Strona nN transformatora blokowego nie jest zgodna z wyjściem falownika. "
-            f"TR blokowy nN: {block_secondary_kv:g} kV, falownik: {inverter_output_kv:g} kV.",
-            "der.block_transformer_lv_mismatch",
-        )
-    if not _same_nominal_voltage(block_primary_kv, mv_bus_voltage_kv):
-        return _error_response(
-            "Strona SN transformatora blokowego nie jest zgodna z szyną SN stacji. "
-            f"TR blokowy SN: {block_primary_kv:g} kV, szyna SN: {mv_bus_voltage_kv:g} kV.",
-            "der.block_transformer_hv_mismatch",
-        )
+    # D1 wymaganie 2: U_AC falownika ↔ strona nN TR blokowego (tolerancja nN, kanon).
+    lv_error = der_val.validate_inverter_lv_voltage(inverter_output_kv, block_secondary_kv)
+    if lv_error is not None:
+        return _error_response(lv_error.message_pl, lv_error.code)
+    # D1 wymaganie 6: strona SN TR blokowego ↔ napięcie szyny SN przyłączenia (tolerancja SN).
+    sn_error = der_val.validate_sn_voltage(block_primary_kv, mv_bus_voltage_kv)
+    if sn_error is not None:
+        return _error_response(sn_error.message_pl, sn_error.code)
 
     name, gen_type, event_type, gen_meta, p_mw = _resolve_converter_defaults(
         technology, payload, materialized_params
@@ -2925,6 +2948,23 @@ def _add_converter_source_der_sn(
     if tr_error is not None:
         return tr_error
     assert tr_data is not None
+
+    # D1 wymaganie 5: moc TR blokowego — ΣS falowników ≤ Sn_TR · dopuszczalne obciążenie
+    # (z uwzgl. współczynnika jednoczesności). Sn_TR = wartość ZMATERIALIZOWANA z katalogu
+    # (autorytatywna — ta sama, którą widzi solver i kaskada prądowa); ΣS z mocy czynnej
+    # falowników przez cosφ znamionowy (inaczej P=S konserwatywnie).
+    cos_phi = _first_number(payload.get("cos_phi"), materialized_params.get("cosphi"))
+    sum_apparent_mva = der_val.converter_apparent_power_mva(p_mw, cos_phi)
+    tr_sn_mva = _as_float(tr_data.get("sn_mva")) or 0.0
+    power_error = der_val.validate_transformer_power(
+        sum_apparent_power_mva=sum_apparent_mva,
+        transformer_sn_mva=tr_sn_mva,
+        loadability_pu=_as_float(block_spec.get("loadability_pu")),
+        simultaneity_factor=_as_float(der_topology.get("simultaneity_factor")),
+    )
+    if power_error is not None:
+        return _error_response(power_error.message_pl, power_error.code)
+
     new_enm.setdefault("transformers", []).append(tr_data)
     created.append(block_tr_ref)
     _emit("TRANSFORMER_CREATED", block_tr_ref)
@@ -2974,13 +3014,39 @@ def _add_converter_source_der_sn(
     created.append(generator_ref)
     _emit(event_type, generator_ref)
 
-    return _response(
+    response = _response(
         new_enm,
         created=created,
         selection_id=field_ref,
         selection_type="bay",
         events=events,
     )
+
+    # D1 wymaganie 5b: kaskada prądowa I_TR (strona SN) ≤ Iz kabla SN ≤ In pola.
+    # Ogniwo bez danych jest POMIJANE Z JAWNYM OSTRZEŻENIEM (nie cichy skip). Prąd
+    # znamionowy TR z tabliczki (Sn, U_SN); Iz kabla z materializacji katalogu kabla;
+    # In pola z katalogu aparatu głównego (best-effort — brak → pominięcie).
+    transformer_current_a = der_val.rated_current_a(
+        _as_float(tr_data.get("sn_mva")) or 0.0, block_primary_kv
+    )
+    cable_ampacity_a = _as_float((cable_data.get("rating") or {}).get("in_a"))
+    field_rated_current_a = _resolve_apparatus_rated_current_a(apparatus_binding)
+    cascade_warnings = der_val.build_current_cascade_warnings(
+        transformer_current_a=transformer_current_a,
+        cable_ampacity_a=cable_ampacity_a,
+        field_rated_current_a=field_rated_current_a,
+    )
+    if cascade_warnings:
+        response["readiness"]["warnings"].extend(
+            {
+                "code": warning.code,
+                "severity": "OSTRZEZENIE",
+                "message_pl": warning.message_pl,
+                "element_ref": field_ref,
+            }
+            for warning in cascade_warnings
+        )
+    return response
 
 
 def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
@@ -3031,6 +3097,18 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     # ADDYTYWNY — bez der_topology zachowanie bez zmian. connection_level='sn' materializuje
     # szynę nN producenta → TR blokowy (osobny element) → kabel SN → pole źródłowe SN.
     der_topology = payload.get("der_topology")
+    if isinstance(der_topology, dict):
+        # D1 wymaganie 9: jawny „sposób przyłączenia" — walidacja spójności z kontraktem
+        # (dotyczy obu ścieżek nn/sn; PV/BESS/FW = źródło przekształtnikowe).
+        method_error = der_val.validate_connection_method(
+            connection_method=der_topology.get("connection_method"),
+            connection_level=str(der_topology.get("connection_level") or ""),
+            has_block_transformer=bool(der_topology.get("has_block_transformer")),
+            has_manufacturer_lv_switchgear=bool(der_topology.get("has_manufacturer_lv_switchgear")),
+            is_converter=True,
+        )
+        if method_error is not None:
+            return _error_response(method_error.message_pl, method_error.code)
     if isinstance(der_topology, dict) and der_topology.get("connection_level") == "sn":
         return _add_converter_source_der_sn(
             enm,
