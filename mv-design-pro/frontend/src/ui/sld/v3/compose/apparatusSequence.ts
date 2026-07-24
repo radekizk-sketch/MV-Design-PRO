@@ -286,25 +286,50 @@ const Q_IDENTIFIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
  * (identyfikator+przekładnia, §18.3, F10.4, POZA torem mocy), VT/SA nie mają
  * zdefiniowanej konwencji numeracji w spec §19.1 (zero zgadywania).
  *
- * F10.6 (DOMAIN, V12K-035, D1): `designations` (index-aligned do `symbolIds`)
- * niesie `BayPrimaryDevice.designation` — DANA projektowa — gdy obecna
- * (niepusty, przycięty string) dla danej pozycji, JEJ TEKST wygrywa nad
- * wyliczonym Q/QE/T (prymat danych §12.1); licznik kategorii mimo to ROŚNIE
- * (spójna numeracja pozostałych aparatów pola bez danych w tej samej
- * kategorii). Parametr opcjonalny — wywołanie BEZ niego (dawne callsite'y,
- * `layout/measure.ts`) zachowuje dokładnie poprzednie zachowanie (100%
- * konwencja). Źródło `'dane'`/`'konwencja'` per pozycja —
- * `apparatusIdentifierSources` niżej (JEDNA prawda, ta sama kategoryzacja).
+ * PRYMAT DANYCH NAD KONWENCJĄ (spec §12.1, Z3 audytu powykonawczego SLD
+ * `docs/sld/AUDYT_POWYKONAWCZY_SLD_2026-07.md` §Z3 + dług W1c). Priorytet
+ * rozstrzygania oznaczenia aparatu (od najsilniejszego):
+ *   (1) `designations[i]` — `BayPrimaryDevice.designation` (DANA per-aparat,
+ *       np. z packa producenckiego / szablonu kreatora: „Q0", „Q9", „F1",
+ *       „TR", „QE1"): gdy obecna (niepusty, przycięty string), JEJ TEKST
+ *       wygrywa. Źródło `'dane'`. Producenckie „F1"/„TR" — które NIE pasują do
+ *       wzorca §19.1 Q\d+/QE\d+/T\d+ — są tu PEŁNOPRAWNE (dług W1c domknięty:
+ *       oznaczenie identyfikowalne aparatu = DANA, nie tylko wzorzec konwencji;
+ *       wyrocznia sceny `apparatusIdentifierGaps` rozpoznaje je po
+ *       `designationSource==='dane'`).
+ *   (2) „designation pola + indeks wg konwencji": gdy brak danej per-aparat,
+ *       tożsamość pola (`MiniBlockBayDescriptor.designation`, np. „WE"/„WY"/
+ *       „ODG"/„TR") jest renderowana OSOBNO jako etykieta pola (sidecar
+ *       funkcyjny / podpis kierunku, `compose/directions.ts`), a TEN
+ *       identyfikator dokłada indeks konwencji per-aparat — razem w scenie
+ *       tworzą „⟨pole⟩ + ⟨Q/QE/T⟩". Świadomie NIE wklejamy prefiksu pola w
+ *       glif aparatu (poszerzałby etykietę t4 ⇒ wzrost `apparatusIdentifier
+ *       LeftReserve` ⇒ zmiana geometrii/kotwic — zakazana inwariantem Z3
+ *       „geometria nietknięta, zmienia się WYŁĄCZNIE treść etykiet"; wariant z
+ *       prefiksem w glifie = jawny dług layoutowy, wymaga karty poszerzenia
+ *       rezerwy, patrz raport Z3).
+ *   (3) czysta konwencja §19.1 (Q{n}/QE{n}/T{n}), gdy pole nie niesie żadnej
+ *       tożsamości ani danej per-aparat.
+ *
+ * UNIKALNOŚĆ W OBRĘBIE POLA (Z3 §0.3): identyfikatory KONWENCJI (Q{n}/QE{n}/
+ * T{n}) są z natury unikalne w polu (rosnące liczniki). Kolizja może wystąpić
+ * WYŁĄCZNIE między DANYMI (dwa aparaty pola z identycznym `designation` — np.
+ * niespójny pack) — wtedy deterministyczny sufiks „·{k}" (k=2,3,… wg
+ * kolejności w sekwencji), ZERO cichego nadpisania (disambiguacja JAWNA i
+ * powtarzalna: te same dane ⇒ te same oznaczenia).
+ *
+ * F10.6 (DOMAIN, V12K-035, D1): parametr `designations` opcjonalny — wywołanie
+ * BEZ niego (`layout/measure.ts` `apparatusIdentifierLeftReserve`) zachowuje
+ * dokładnie zachowanie 100% konwencji (rezerwacja szerokości LICZONA Z
+ * KONWENCJI — stały margines geometryczny niezależny od danych, dlatego glif
+ * priorytetu (2) nie może poszerzać etykiety, patrz wyżej). Źródło
+ * `'dane'`/`'konwencja'` per pozycja — `apparatusIdentifierSources` niżej.
  *
  * Numeracja: JEDEN licznik na kategorię (Q/QE/T) per POLE, rosnąco wg
  * pozycji w PEŁNEJ sekwencji aparatów pola (tor główny + laterale w
  * kolejności `placement`/konwencji, V12K-040) — deterministyczne, licznik
  * resetuje się na każdym polu. Zwraca tablicę index-aligned do `symbolIds`
  * (`null` dla aparatów bez identyfikatora w tej fazie).
- *
- * JEDNA prawda dla `layout/measure.ts` (`apparatusIdentifierLeftReserve` —
- * rezerwacja miejsca PO LEWEJ stosu) i `compose/station.ts`
- * (`buildBayStack` — realne etykiety t4) — wzór F6b-1/F9.3.
  */
 export function apparatusIdentifiers(
   symbolIds: readonly SymbolId[],
@@ -313,19 +338,33 @@ export function apparatusIdentifiers(
   let q = 0;
   let qe = 0;
   let t = 0;
+  // Z3 §0.3: mapa zajętych oznaczeń pola (dzielona dane↔konwencja — celem jest
+  // unikalność RENDEROWANEGO tekstu w polu). Konwencja nigdy nie koliduje;
+  // sufiks fire'uje wyłącznie przy powtórzonej DANEJ.
+  const used = new Map<string, number>();
+  const disambiguate = (base: string): string => {
+    const seen = used.get(base);
+    if (seen === undefined) {
+      used.set(base, 1);
+      return base;
+    }
+    const next = seen + 1;
+    used.set(base, next);
+    return `${base}·${next}`;
+  };
   return symbolIds.map((symbolId, index) => {
     const dataDesignation = designations?.[index]?.trim() || null;
     if (Q_IDENTIFIER_SYMBOLS.has(symbolId)) {
       q += 1;
-      return dataDesignation ?? `Q${q}`;
+      return disambiguate(dataDesignation ?? `Q${q}`);
     }
     if (symbolId === 'earthSwitch') {
       qe += 1;
-      return dataDesignation ?? `QE${qe}`;
+      return disambiguate(dataDesignation ?? `QE${qe}`);
     }
     if (symbolId === 'transformer2W') {
       t += 1;
-      return dataDesignation ?? `T${t}`;
+      return disambiguate(dataDesignation ?? `T${t}`);
     }
     return null;
   });

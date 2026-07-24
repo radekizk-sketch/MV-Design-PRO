@@ -561,6 +561,9 @@ function buildBayStack(
         labelClass: 't4',
         anchor: { x: stackLeftX, y: y + def.height / 2 },
         placement: 'left',
+        // Z3 (spec §12.1): pochodzenie identyfikatora na etykietę — wyrocznia
+        // sceny rozróżnia DANĄ producencką (np. „F1"/„TR") od wzorca konwencji.
+        designationSource: stackIdentifierSources[index] ?? undefined,
       });
     }
 
@@ -645,6 +648,9 @@ function buildBayStack(
           labelClass: 't4',
           anchor: { x: x + def.width / 2, y: lateralY + def.height },
           placement: 'below',
+          // Z3 (spec §12.1): pochodzenie identyfikatora lateralu (uziemnik QE)
+          // na etykietę — spójnie z torem głównym.
+          designationSource: identifierSource ?? undefined,
         });
       }
       const north = def.ports.find((p) => p.dir === 'N') ?? def.ports[0];

@@ -98,12 +98,16 @@ export interface W1cCase {
  * łączniki (DS) → zamknięte. Aparaty bez stanu (CT/VT/SA/głowica/TR/bezpiecznik)
  * bez `switch_state`.
  *
- * `designation` NIE jest wstrzykiwana: macierz W1c dowodzi GENERATYWNEJ ZGODNOŚCI
- * STOSU i wyroczni (uwaga 18), więc identyfikatory bierzemy z KONWENCJI (Q/QE/T,
- * §19.1) — jednolicie dla wszystkich przypadków, w tym producenckich. Oznaczenia
- * DANYCH (Q1/QE1…) są odrębnie ćwiczone przez W1b/F10.2; katalogowe etykiety
- * producenckie (np. „F1"/„TR") nie realizują konwencji §19.1 aparatu
- * identyfikowalnego, więc render używa tu numeracji konwencji (spójnie z bazą).
+ * Z3 (AUDYT_POWYKONAWCZY_SLD §Z3 + dług W1c): `designation` jest TERAZ
+ * wstrzykiwana Z KATALOGU (prymat danych §12.1). Katalog niesie realne
+ * oznaczenia aparatów z packów producenckich / kanonicznych szablonów
+ * (backend `bay_templates.designation_q`: „Q0", „Q1", „Q2", „Q9", „QE1", „F1",
+ * „TR"). Macierz dowodzi END-TO-END, że TE oznaczenia renderują się na scenie —
+ * także producenckie „F1"/„TR", które NIE pasują do wzorca §19.1 Q\d+/QE\d+/T\d+
+ * (dług W1c domknięty: oznaczenie identyfikowalne aparatu = DANA, rozpoznawana
+ * przez wyrocznię `apparatusIdentifierGaps` po `designationSource==='dane'`).
+ * Aparaty pola BEZ danej per-aparat (jeśli katalog nie niesie `designation`)
+ * degradują do fallbacku KONWENCJI — spójnie z bazą.
  */
 function devicesForCase(entry: CatalogEntry, state: W1cState | null): BayPrimaryDevice[] {
   const mainIndex = entry.primary_devices.findIndex((d) => MAIN_SWITCH_KINDS.has(d.kind));
@@ -116,6 +120,11 @@ function devicesForCase(entry: CatalogEntry, state: W1cState | null): BayPrimary
       is_controllable: d.is_controllable,
       render_variant: d.render_variant ?? 'kanoniczny',
     };
+    // Z3 (§12.1): oznaczenie aparatu Z DANYCH katalogu (prymat danych), gdy
+    // obecne — spływa na `BayPrimaryDevice.designation` → adapter → scena.
+    if (d.designation) {
+      device.designation = d.designation;
+    }
     if (d.earthing_role) {
       device.earthing_role = d.earthing_role as BayPrimaryDevice['earthing_role'];
     }

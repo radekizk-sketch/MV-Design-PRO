@@ -89,3 +89,52 @@ describe('F10.6 (DOMAIN, V12K-035, D1) — apparatusIdentifiers/apparatusIdentif
     expect(apparatusIdentifierSources(symbolIds)).toEqual(['konwencja', 'konwencja', 'konwencja', null]);
   });
 });
+
+describe('Z3 (AUDYT_POWYKONAWCZY_SLD §Z3 + dług W1c) — prymat danych i unikalność w polu', () => {
+  it('PEŁNE dane producenckie: „F1"/„TR" (poza wzorcem §19.1) wygrywają nad konwencją', () => {
+    // Pole transformatorowe RMU z packa: rozłącznik bezpiecznikowy „F1" +
+    // uziemnik „Q9" (dana) + transformator „TR". Dane spływają 1:1.
+    const symbolIds: readonly SymbolId[] = ['fuseSwitch', 'earthSwitch', 'transformer2W'];
+    const designations = ['F1', 'Q9', 'TR'];
+    expect(apparatusIdentifiers(symbolIds, designations)).toEqual(['F1', 'Q9', 'TR']);
+  });
+
+  it('CZĘŚCIOWE dane: brakująca dana per-aparat degraduje do konwencji, obecna wygrywa', () => {
+    const symbolIds: readonly SymbolId[] = ['disconnector', 'breaker', 'earthSwitch'];
+    // odłącznik ma daną „Q1", wyłącznik bez danej (→ konwencja Q2), uziemnik „Q9".
+    const designations = ['Q1', null, 'Q9'];
+    expect(apparatusIdentifiers(symbolIds, designations)).toEqual(['Q1', 'Q2', 'Q9']);
+  });
+
+  it('BRAK danych: czysta konwencja §19.1 (fallback)', () => {
+    const symbolIds: readonly SymbolId[] = ['disconnector', 'breaker', 'earthSwitch', 'transformer2W'];
+    expect(apparatusIdentifiers(symbolIds)).toEqual(['Q1', 'Q2', 'QE1', 'T1']);
+  });
+
+  it('KOLIZJA danych: dwa aparaty pola z tym samym designation ⇒ deterministyczny sufiks „·k" (zero nadpisania)', () => {
+    const symbolIds: readonly SymbolId[] = ['disconnector', 'breaker', 'disconnector'];
+    const designations = ['Q1', 'Q1', 'Q1'];
+    expect(apparatusIdentifiers(symbolIds, designations)).toEqual(['Q1', 'Q1·2', 'Q1·3']);
+    // Determinizm: powtórka daje identyczny wynik.
+    expect(apparatusIdentifiers(symbolIds, designations)).toEqual(apparatusIdentifiers(symbolIds, designations));
+  });
+
+  it('KOLIZJA dana↔konwencja: dana „Q2" na 1. odłączniku koliduje z konwencyjnym Q2 2. odłącznika ⇒ sufiks', () => {
+    // Licznik „Q" jest WSPÓLNY dla wszystkich łączników toru (odłącznik/
+    // wyłącznik/…): idx0 odłącznik q=1 (ale dana „Q2" wygrywa), idx1 odłącznik
+    // q=2 → konwencja „Q2" KOLIDUJE z daną → „Q2·2", idx2 wyłącznik q=3 → „Q3".
+    const symbolIds: readonly SymbolId[] = ['disconnector', 'disconnector', 'breaker'];
+    const designations = ['Q2', null, null];
+    expect(apparatusIdentifiers(symbolIds, designations)).toEqual(['Q2', 'Q2·2', 'Q3']);
+  });
+
+  it('sufiks kolizji „·k" przechodzi wzorzec wyroczni sceny (Q\\d+/QE\\d+/T\\d+ + ·k)', () => {
+    // Regresja: sufiks musi pozostać rozpoznawalny przez wyrocznię
+    // `apparatusIdentifierGaps` dla fallbacku konwencji.
+    const pattern = /^(Q\d+|QE\d+|T\d+)(·\d+)?$/;
+    // dwie DANE „Q2" na łącznikach toru ⇒ ['Q2', 'Q2·2'] — obie zgodne z wzorcem.
+    const ids = apparatusIdentifiers(['disconnector', 'breaker'], ['Q2', 'Q2']);
+    expect(ids).toEqual(['Q2', 'Q2·2']);
+    for (const id of ids) expect(pattern.test(id as string)).toBe(true);
+  });
+});

@@ -85,6 +85,13 @@ export interface OwnedLabel {
   /** Segment pionowy (lateral): etykieta czytana z dołu, obrócona 90°. */
   readonly rotated?: boolean;
   readonly leader?: { readonly from: LabelPoint; readonly to: LabelPoint };
+  /** Z3 (spec §12.1/§19.1): pochodzenie identyfikatora aparatu przeniesione na
+   *  etykietę, żeby wyrocznia sceny (`apparatusIdentifierGaps`, `scene/
+   *  buildScene.ts`) mogła rozróżnić DANĄ producencką (dowolny tekst
+   *  identyfikowalny, np. „F1"/„TR") od fallbacku KONWENCJI (wzorzec Q\d+/QE\d+/
+   *  T\d+) bez korelowania label↔symbol. `undefined` dla etykiet niebędących
+   *  identyfikatorem aparatu (nazwa stacji, kierunek, DER, …). */
+  readonly designationSource?: 'dane' | 'konwencja';
 }
 
 // ---------------------------------------------------------------------------
@@ -387,6 +394,10 @@ export interface SimpleAnchoredOwnerInput {
   readonly labelClass: LabelClass;
   readonly anchor: LabelPoint;
   readonly placement: SimpleAnchorPlacement;
+  /** Z3 (spec §12.1): pochodzenie identyfikatora aparatu (`'dane'`/`'konwencja'`)
+   *  — przenoszone 1:1 na `OwnedLabel.designationSource`. `undefined` dla
+   *  właścicieli innych niż identyfikator aparatu. */
+  readonly designationSource?: 'dane' | 'konwencja';
 }
 
 function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel {
@@ -419,6 +430,9 @@ function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel
     text: owner.text,
     slotIndex: 1,
     rect: { x: snapToGrid(x), y: snapToGrid(y), width, height },
+    // Z3 (spec §12.1): passthrough pochodzenia identyfikatora aparatu (tylko
+    // etykiety `ownerKind:'apparatus'` niosą wartość; reszta `undefined`).
+    ...(owner.designationSource !== undefined ? { designationSource: owner.designationSource } : {}),
   };
 }
 

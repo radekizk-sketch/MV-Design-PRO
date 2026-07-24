@@ -99,7 +99,7 @@ V12K-145) jest NADRZĘDNA nad niniejszym werdyktem warunkowym; karta GS-4b
 |---|---|---|---|
 | S7.6 kompresja pionowa | P1 | silnik: dosunięcie pasm/rzędów do minimalnych świateł, metryki przed/po | **ZAMKNIĘTA** (2026-07-23, `S7_GAP_CROSSING_ZERO_2026-07` §11: etykieta zejścia → pas pod magistralą; gap → MIN_SUBTREE_CLEARANCE; piony L1/L2 −14%, bbox-h −24%, bboxUtil +31%; wszystkie niezmienniki zielone) |
 | GS-4b strona DER w kompozycji L1/L2 (faza W2) | P1 | `connectionSide==='sn'` ⇒ przyłącze SN; test kanoniczny | **ZAMKNIĘTA** (2026-07-23, W2/V12K): `compose/station.ts` rozdziela DER wg strony — `'sn'` ⇒ POLE ŹRÓDŁOWE od szyny SN (`#sn-source-descent`, odczep od `busAxisY` do portu AC symbolu, bez aparatu — `StationDerSourceInput` nie niesie `primaryDevices`, §12.5 zakaz domysłu), reszta (`'nn'`/`'unknown'`/brak) ⇒ rząd nN (dotąd). `measure.ts` parytet (`snSourceFieldsRowWidth`/wysokość pola źródłowego, `nnSideSources` do rzędu nN). Sieć referencyjna (0 źródeł SN) = NO-OP (3588 vitest zielone, kotwica L0/L1/L2 bez dryfu). Testy: `compose/__tests__/station.test.ts` (wariant A/B/mieszany/unknown+meta/no-nN/determinizm), `scene/__tests__/buildScene.w2GS4b.test.ts` (fixtura 20/20 nn L1/L2 + kotwica). Dowód: `docs/audit/visual/schemat-10/w2-l2-tor-der.png`. DŁUG JAWNY (odłożone, §10/§11 warstwa etykiet, wymaga świadomej wymiany baseline'ów): (a) relokacja etykiety napięcia szyny nN z pasma nazw DO szyny („przy szynie", §11/§17) — dziś §11 spełnione geometrią + opisem w pasmie nazw, przeniesienie churnuje baseline i dotyka delikatnej matematyki wysokości (rząd DER/strzałka odbioru/pasmo nazw); (b) kotwica pasma nazw §10 do bbox poddrzewa stacji zamiast pasma B5 współdzielonego per-wiersz — POMIAR: mediana luki pasmo↔blok ≈56px (max ≈160px, sonda renderowa), wynika z B5 ustawianego przez najwyższy blok wiersza; naprawa = per-stacja `nameSlot.y` z measure (LOD-niezależne ⇒ JEDNA KOTWICA zachowana), ale to zmiana silnika o szerokim promieniu determinizmu (klasa S7.6) — do dedykowanej karty layoutowej |
-| Z3 oznaczenia aparatów z danych | P2 | realne designations pól albo dług jawny | DO ZLECENIA |
+| Z3 oznaczenia aparatów z danych | P2 | realne designations pól albo dług jawny | **ZAMKNIĘTA** (2026-07-24, karta Z3 — patrz adnotacja §8 poniżej) |
 | Z4 baner skryptów poza bbox | P2 | skrypty dowodowe (nie kanwa) | **ZAMKNIĘTA** (2026-07-24, karta Z4 — patrz adnotacja §7 poniżej) |
 
 ## 7. Adnotacja Z4 — domknięcie (2026-07-24)
@@ -139,3 +139,32 @@ banerem — zgodnie z regułą Z4 („scena musi pozostać identyczna") wstrzyma
 Skrypty tych plików są jednak poprawione u źródła (baner w stopce), więc
 regeneracja w środowisku referencyjnym da poprawne artefakty. `s7p1` — brak
 zacommitowanego PNG, skrypt poprawiony (bez regeneracji).
+
+## 8. Adnotacja Z3 — domknięcie (2026-07-24)
+
+Znalezisko Z3 (oznaczenia aparatów L2 powtarzalne we wszystkich polach — „każde
+pole Q1/QE1") domknięte wg zasady PRYMATU DANYCH nad konwencją (spec §12.1),
+konwencja §19.1 jako FALLBACK. Zrealizowano end-to-end + domknięto dług W1c
+(„katalogowe etykiety producenckie F1/TR nie realizują konwencji aparatu
+identyfikowalnego"):
+
+- **Priorytet rozstrzygania** (`compose/apparatusSequence.ts::apparatusIdentifiers`):
+  (1) `BayPrimaryDevice.designation` — DANA per-aparat z packa/szablonu
+  (backend `bay_templates.designation_q`: Q0/Q1/Q2/Q9/„F1"/„TR"…) wygrywa;
+  (2) tożsamość pola (`Bay.designation`) renderowana OSOBNO jako etykieta pola
+  + indeks konwencji per-aparat (razem „⟨pole⟩ + ⟨Q/QE/T⟩"); (3) czysta
+  konwencja §19.1. **Unikalność w obrębie pola**: kolizja DANYCH ⇒
+  deterministyczny sufiks „·k".
+- **Dług W1c domknięty**: wyrocznia sceny `apparatusIdentifierGaps` (buildScene)
+  rozpoznaje realne oznaczenia producenckie („F1"/„TR" — spoza wzorca §19.1)
+  po `designationSource='dane'` (przeniesionym na etykietę `OwnedLabel`), zamiast
+  zmuszać DANE do wzorca Q\d+/QE\d+/T\d+. Macierz W1c
+  (`buildScene.w1cMatrixGen.test.ts`) wstrzykuje TERAZ realne designations z
+  katalogu — dowód, że „F1"/„TR" renderują się z danych.
+- **Geometria/kotwice NIETKNIĘTE**: glif priorytetu (2) NIE dostaje
+  poszerzającego prefiksu pola (rezerwacja `apparatusIdentifierLeftReserve`
+  liczona z konwencji, niezależna od danych — wariant prefiksu w glifie =
+  jawny dług layoutowy). Bramki geometrii accept:sld-v3 bez dryfu baseline'ów.
+- **Dowód wizualny**: `docs/audit/visual/schemat-10/z3-l2-oznaczenia.png` —
+  to samo pole stacji L2 w wariancie Z DANYMI („Q1·F1·Q9", producenckie F1/Q9)
+  vs FALLBACK KONWENCJI („Q1·QE1"); render produkcyjną kanwą `SldCanvasV3`.

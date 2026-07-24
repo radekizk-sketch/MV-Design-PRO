@@ -3939,7 +3939,10 @@ export function allSwitchSymbolsUnambiguous(scene: SceneV3): boolean {
 // (breaker/disconnector/fuseSwitch/earthSwitch/transformer2W) niesie
 // znacznik `designationSource` i ma dokładnie JEDNĄ etykietę
 // `ownerKind:'apparatus'` odpowiadającą; (c) aparaty z konwencji mają
-// znacznik źródła; (d) tekst identyfikatora zgodny z konwencją Q\d+/QE\d+/T\d+.
+// znacznik źródła; (d) tekst identyfikatora: DANE (`designationSource==='dane'`)
+// — dowolny NIEPUSTY tekst identyfikowalny aparatu (prymat danych §12.1, Z3:
+// producenckie „F1"/„TR" są pełnoprawne); KONWENCJA — wzorzec Q\d+/QE\d+/T\d+
+// (+ opcjonalny sufiks kolizji „·k").
 // ---------------------------------------------------------------------------
 
 /** Symbole, które spec §19.1 wymienia WPROST jako nośniki identyfikatora
@@ -3957,7 +3960,12 @@ const IDENTIFIER_ELIGIBLE_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
 ]);
 
 const RAW_FIELD_LABEL_PATTERN = /^Q\d+$|^T\d+$/;
-const APPARATUS_IDENTIFIER_PATTERN = /^(Q\d+|QE\d+|T\d+)$/;
+// Z3 (spec §19.1/§0.3): wzorzec identyfikatora KONWENCJI Q\d+/QE\d+/T\d+ z
+// opcjonalnym deterministycznym sufiksem kolizji „·k" (`apparatusSequence.ts`
+// `apparatusIdentifiers`, disambiguacja powtórzonej DANEJ w polu). DANE
+// producenckie/kreatora (np. „F1"/„TR") NIE muszą pasować do tego wzorca —
+// rozpoznaje je `designationSource==='dane'` niżej (prymat danych §12.1).
+const APPARATUS_IDENTIFIER_PATTERN = /^(Q\d+|QE\d+|T\d+)(·\d+)?$/;
 
 export interface ApparatusIdentifierGap {
   readonly ownerRef: string | undefined;
@@ -3985,7 +3993,8 @@ export function apparatusIdentifierGaps(scene: SceneV3): readonly ApparatusIdent
   }
 
   // (b)/(c): każdy aparat uprawniony do identyfikatora niesie znacznik
-  // `designationSource` (dziś zawsze 'konwencja', F10.6 doda 'dane').
+  // `designationSource` ('dane' gdy `BayPrimaryDevice.designation` obecny —
+  // prymat danych §12.1, Z3; 'konwencja' dla fallbacku §19.1).
   // ZAKRES F10.2 (Autoryzacje REBUILD_PLAN_V3 F10.2): WYŁĄCZNIE aparaty
   // POLA STACJI (`compose/station.ts` `buildBayStack`) — TA SAMA filtracja
   // po `apparatusSource != null` co §12.1 wyżej (znacznik ustawiany
@@ -4024,13 +4033,28 @@ export function apparatusIdentifierGaps(scene: SceneV3): readonly ApparatusIdent
     });
   }
 
-  // (d): tekst identyfikatora zgodny z konwencją Q\d+/QE\d+/T\d+.
+  // (d): tekst identyfikatora aparatu. PRYMAT DANYCH (Z3, spec §12.1): etykieta
+  // z `designationSource==='dane'` niesie DANĄ producencką/kreatora (np.
+  // „F1"/„TR"/„Q0"/„QE1") — oznaczenie identyfikowalne aparatu JEST daną, więc
+  // wymagamy tylko NIEPUSTEGO tekstu (dług W1c domknięty: nie zmuszamy danej do
+  // wzorca §19.1). Etykieta KONWENCJI (`'konwencja'`/brak znacznika) musi
+  // pasować do Q\d+/QE\d+/T\d+ (+ ewentualny sufiks kolizji „·k", Z3 §0.3).
   for (const l of idLabels) {
+    if (l.designationSource === 'dane') {
+      if (l.text.trim().length === 0) {
+        gaps.push({
+          ownerRef: l.ownerRef,
+          symbolId: 'apparatus-label',
+          reason: 'pusty identyfikator aparatu z danych (designationSource="dane", tekst pusty)',
+        });
+      }
+      continue;
+    }
     if (!APPARATUS_IDENTIFIER_PATTERN.test(l.text)) {
       gaps.push({
         ownerRef: l.ownerRef,
         symbolId: 'apparatus-label',
-        reason: `tekst identyfikatora „${l.text}" niezgodny z konwencją Q\\d+/QE\\d+/T\\d+`,
+        reason: `tekst identyfikatora „${l.text}" (fallback konwencji) niezgodny z Q\\d+/QE\\d+/T\\d+`,
       });
     }
   }

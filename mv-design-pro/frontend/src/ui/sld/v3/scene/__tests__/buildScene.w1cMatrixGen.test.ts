@@ -195,6 +195,29 @@ describe('W1c — macierz generatywna z katalogu: enumeracja → adapter → sce
     }
   });
 
+  it('Z3 (§Z3 + dług W1c): oznaczenia aparatów Z DANYCH katalogu (m.in. producenckie „F1"/„TR") renderują się jako etykiety identyfikatora, znacznik "dane"', () => {
+    // Etykiety identyfikatora aparatu na scenie (tor główny + laterale).
+    const idLabels = sceneL2.labels.filter(
+      (l) => l.ownerKind === 'apparatus' && l.ownerRef.includes('#apparatus-id-'),
+    );
+    expect(idLabels.length).toBeGreaterThan(0);
+    const texts = new Set(idLabels.map((l) => l.text));
+    // Dowód prymatu danych: producenckie oznaczenia SPOZA wzorca §19.1
+    // (Q\d+/QE\d+/T\d+) obecne na scenie — czyli render bierze DANĄ, nie
+    // fallback konwencji. Katalog niesie FUSE→„F1" i TRANSFORMER_DEVICE→„TR".
+    const CONVENTION = /^(Q\d+|QE\d+|T\d+)(·\d+)?$/;
+    const nonConvention = [...texts].filter((t) => !CONVENTION.test(t));
+    expect(nonConvention, `oznaczenia spoza wzorca konwencji: ${nonConvention.join(',')}`).toContain('F1');
+    expect(nonConvention).toContain('TR');
+    // Każde oznaczenie SPOZA wzorca konwencji MUSI mieć znacznik "dane"
+    // (zero fabrykacji — nie ma nie-konwencyjnego identyfikatora z fallbacku).
+    for (const l of idLabels) {
+      if (!CONVENTION.test(l.text)) {
+        expect(l.designationSource, `„${l.text}" musi być z danych`).toBe('dane');
+      }
+    }
+  });
+
   it('adapter DOMYKA łańcuch: field_spec.primary_devices + config_id → snBays (nie gubione)', () => {
     const payload = buildSldDataFromSnapshot(fixture.enm, null);
     for (const target of fixture.targets) {
