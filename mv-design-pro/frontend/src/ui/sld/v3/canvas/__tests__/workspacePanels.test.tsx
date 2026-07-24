@@ -213,3 +213,80 @@ describe('SldCanvasV3Workspace — F12-B pkt 4: panel warstw jako realny filtr r
     expect(symbolsGroup.children.length).toBeLessThan(sceneA.symbols.length);
   });
 });
+
+describe('SldCanvasV3Workspace — W5 §18: podwarstwy L2 przełączalne (widoczność, geometria bez dryfu)', () => {
+  it('master-toggle podwarstwy L2-A ukrywa WSZYSTKIE warstwy członkowskie (stacje/aparatura + DER)', () => {
+    const scene = buildSceneV3(enm, 2);
+    const derIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'der');
+    const apparatusIndex = scene.symbols.findIndex((s) =>
+      ['station', 'apparatus', 'transformer', 'bus'].includes(s.meta?.elementKind ?? ''),
+    );
+    expect(derIndex).toBeGreaterThanOrEqual(0);
+    expect(apparatusIndex).toBeGreaterThanOrEqual(0);
+
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const symbolsGroup = () => container.querySelector('[data-testid="sld-v3-symbols"]')!;
+    const baseCount = symbolsGroup().children.length;
+
+    fireEvent.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
+    const master = screen.getByTestId('sld-v3-l2-sublayer-toggle-L2A') as HTMLInputElement;
+    expect(master.getAttribute('data-sublayer-state')).toBe('on');
+
+    // master OFF → obie warstwy członkowskie (stationsApparatus, derSources) ukryte,
+    // per-warstwowe checkboxy odznaczone (spójność master↔członkowie).
+    fireEvent.click(master);
+    expect(
+      (screen.getByTestId('sld-v3-layer-toggle-stationsApparatus') as HTMLInputElement).checked,
+    ).toBe(false);
+    expect((screen.getByTestId('sld-v3-layer-toggle-derSources') as HTMLInputElement).checked).toBe(false);
+    expect(symbolsGroup().children.length).toBeLessThan(baseCount);
+
+    // master ON → przywrócone
+    fireEvent.click(screen.getByTestId('sld-v3-l2-sublayer-toggle-L2A'));
+    expect(symbolsGroup().children.length).toBe(baseCount);
+  });
+
+  it('odznaczenie JEDNEGO członka podwarstwy → master w stanie „mixed" (indeterminate)', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    fireEvent.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
+
+    fireEvent.click(screen.getByTestId('sld-v3-layer-toggle-derSources'));
+    const master = screen.getByTestId('sld-v3-l2-sublayer-toggle-L2A') as HTMLInputElement;
+    expect(master.getAttribute('data-sublayer-state')).toBe('mixed');
+    expect(master.indeterminate).toBe(true);
+  });
+
+  it('geometria BAJT-INWARIANTNA: scena buildSceneV3 identyczna niezależnie od stanu KAŻDEJ podwarstwy L2', () => {
+    const base = buildSceneV3(enm, 2);
+
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    fireEvent.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
+
+    // Przełącz WSZYSTKIE cztery podwarstwy — scena bazowa (rebudowana niezależnie
+    // od UI) MUSI mieć tę samą liczebność i bbox (§18 „kotwica stacji niezmienna").
+    for (const id of ['L2A', 'L2B', 'L2C', 'L2D']) {
+      fireEvent.click(screen.getByTestId(`sld-v3-l2-sublayer-toggle-${id}`));
+      const after = buildSceneV3(enm, 2);
+      expect(after.symbols.length, `${id}: symbole`).toBe(base.symbols.length);
+      expect(after.segments.length, `${id}: segmenty`).toBe(base.segments.length);
+      expect(after.labels.length, `${id}: etykiety`).toBe(base.labels.length);
+      expect(after.bbox, `${id}: bbox`).toEqual(base.bbox);
+    }
+  });
+
+  it('reset przywraca wszystkie podwarstwy L2 do stanu „on"', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    fireEvent.click(screen.getByTestId('sld-v3-layer-panel-toggle'));
+    fireEvent.click(screen.getByTestId('sld-v3-l2-sublayer-toggle-L2B'));
+    expect(
+      (screen.getByTestId('sld-v3-l2-sublayer-toggle-L2B') as HTMLInputElement).getAttribute('data-sublayer-state'),
+    ).toBe('off');
+
+    fireEvent.click(screen.getByTestId('sld-v3-layer-panel-reset'));
+    for (const id of ['L2A', 'L2B', 'L2C', 'L2D']) {
+      expect(
+        (screen.getByTestId(`sld-v3-l2-sublayer-toggle-${id}`) as HTMLInputElement).getAttribute('data-sublayer-state'),
+      ).toBe('on');
+    }
+  });
+});

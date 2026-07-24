@@ -1188,6 +1188,9 @@ export function composeStation(input: ComposeStationInput): StationComposition {
             labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
             anchor: { x: ctTextAnchorX, y: center.y },
             placement: 'right',
+            // W5 (§12–15/uwaga 7): wariant CT z danych — kanał geometrycznie
+            // neutralny (`data-ct-purpose`), tekst adnotacji bez zmian.
+            ctPurpose: ann.purpose,
           });
         });
         if ((bay.ctRatingAnnotations?.length ?? 0) > 0 && ctAnnotations.length === 0) {

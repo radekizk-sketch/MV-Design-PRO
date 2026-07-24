@@ -4401,6 +4401,10 @@ export function resolveBayCtRatingAnnotations(
     identifier: m.name,
     ratioText: `${m.rating.ratio_primary}/${m.rating.ratio_secondary}`,
     arrangement: m.ct_arrangement ?? undefined,
+    // W5 (§12–15/uwaga 7): przeznaczenie CT (pomiarowy/zabezpieczeniowy/łączony)
+    // 1:1 z `Measurement.purpose` — dana wariantu, zero domysłu. Kanał
+    // geometrycznie neutralny (patrz `CtRatingAnnotationView.purpose`).
+    purpose: m.purpose,
   }));
 }
 

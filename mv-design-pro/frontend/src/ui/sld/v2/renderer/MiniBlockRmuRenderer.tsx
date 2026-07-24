@@ -150,6 +150,14 @@ export interface CtRatingAnnotationView {
    *  BOX — adnotacja rysuje sam identyfikator+przekładnię bez członu układu,
    *  §18.3 „zero zgadywania"). */
   readonly arrangement?: '3xCT' | 'ferranti';
+  /** W5 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §12–15/uwaga 7 „CT pomiarowy vs
+   *  zabezpieczeniowy") — przeznaczenie CT z `Measurement.purpose`. Wariant CT
+   *  Z DANYCH, nie z domysłu: `undefined` gdy pomiar nie niesie `purpose`
+   *  (uczciwy brak, rejestr braków — §0.2 karty W5). Kanał GEOMETRYCZNIE
+   *  NEUTRALNY: przenoszony na `OwnedLabel.ctPurpose` → atrybut DOM
+   *  `data-ct-purpose` (audyt), NIE dokładany do tekstu etykiety (zero zmiany
+   *  szerokości/kotwic — inwariant W5 „geometria bez dryfu"). */
+  readonly purpose?: 'protection' | 'metering' | 'combined';
 }
 
 export interface MiniBlockBayDescriptor {

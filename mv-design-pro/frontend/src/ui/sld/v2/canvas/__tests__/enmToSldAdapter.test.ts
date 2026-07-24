@@ -3989,6 +3989,40 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     expect(byRef.get('ct-2')).toBeUndefined();
   });
 
+  it('W5 (§12–15/uwaga 7): ctRatingAnnotations niesie purpose z Measurement.purpose (wariant CT z danych)', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+      } as never,
+    ];
+    snap.measurements = [
+      {
+        id: 'm1', ref_id: 'ct-p', name: 'CT-P', tags: [], meta: {},
+        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
+        rating: { ratio_primary: 300, ratio_secondary: 5 },
+        connection: 'star', purpose: 'protection',
+      },
+      {
+        id: 'm2', ref_id: 'ct-m', name: 'CT-M', tags: [], meta: {},
+        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
+        rating: { ratio_primary: 150, ratio_secondary: 5 },
+        connection: 'star', purpose: 'metering',
+      },
+    ] as never;
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.ctRatingAnnotations ?? [];
+    const byRef = new Map(annotations.map((a) => [a.measurementRef, a]));
+    // przeznaczenie CT rozróżnione Z DANYCH (pomiarowy vs zabezpieczeniowy)
+    expect(byRef.get('ct-p')?.purpose).toBe('protection');
+    expect(byRef.get('ct-m')?.purpose).toBe('metering');
+    // kanał geometrycznie neutralny: purpose NIE w tekście przekładni
+    expect(byRef.get('ct-p')?.ratioText).toBe('300/5');
+    expect(byRef.get('ct-m')?.ratioText).toBe('150/5');
+  });
+
   it('vtArrangements agreguje Measurement.vt_arrangement niepuste VT tego pola, undefined gdy brak danych', () => {
     const snap = makeStationOnlySnapshot('ST-1');
     snap.bays = [

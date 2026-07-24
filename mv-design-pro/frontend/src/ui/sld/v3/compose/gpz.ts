@@ -1275,6 +1275,9 @@ export function composeGpz(
               labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
               anchor: { x: ctTextAnchorX, y: center.y },
               placement: 'right',
+              // W5 (§12–15/uwaga 7): wariant CT z danych — `data-ct-purpose`,
+              // geometrycznie neutralny (tekst adnotacji bez zmian).
+              ctPurpose: ann.purpose,
             });
           });
           if (ctAnnotations.length === 0) {

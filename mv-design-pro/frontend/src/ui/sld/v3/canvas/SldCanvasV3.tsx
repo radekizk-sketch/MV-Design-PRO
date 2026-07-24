@@ -1906,6 +1906,7 @@ function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: num
       data-owner-ref={label.ownerRef}
       data-owner-kind={label.ownerKind}
       data-slot-index={label.slotIndex}
+      data-ct-purpose={label.ctPurpose}
     >
       {label.leader && (
         <path

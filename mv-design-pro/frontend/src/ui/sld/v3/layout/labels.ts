@@ -92,6 +92,12 @@ export interface OwnedLabel {
    *  T\d+) bez korelowania label↔symbol. `undefined` dla etykiet niebędących
    *  identyfikatorem aparatu (nazwa stacji, kierunek, DER, …). */
   readonly designationSource?: 'dane' | 'konwencja';
+  /** W5 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §12–15/uwaga 7): przeznaczenie CT
+   *  z danych (`Measurement.purpose`) — WYŁĄCZNIE dla etykiet adnotacji CT
+   *  (`ownerKind:'protection'`, `#ct-rating-…`). Kanał audytu (atrybut DOM
+   *  `data-ct-purpose`), geometrycznie neutralny (NIE wpływa na `text`/`rect`).
+   *  `undefined` dla pozostałych etykiet. */
+  readonly ctPurpose?: 'protection' | 'metering' | 'combined';
 }
 
 // ---------------------------------------------------------------------------
@@ -398,6 +404,10 @@ export interface SimpleAnchoredOwnerInput {
    *  — przenoszone 1:1 na `OwnedLabel.designationSource`. `undefined` dla
    *  właścicieli innych niż identyfikator aparatu. */
   readonly designationSource?: 'dane' | 'konwencja';
+  /** W5 (§12–15/uwaga 7): przeznaczenie CT (`Measurement.purpose`) —
+   *  przenoszone 1:1 na `OwnedLabel.ctPurpose`. WYŁĄCZNIE dla adnotacji CT
+   *  (`ownerKind:'protection'`); `undefined` dla reszty. */
+  readonly ctPurpose?: 'protection' | 'metering' | 'combined';
 }
 
 function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel {
@@ -433,6 +443,9 @@ function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel
     // Z3 (spec §12.1): passthrough pochodzenia identyfikatora aparatu (tylko
     // etykiety `ownerKind:'apparatus'` niosą wartość; reszta `undefined`).
     ...(owner.designationSource !== undefined ? { designationSource: owner.designationSource } : {}),
+    // W5 (§12–15/uwaga 7): passthrough przeznaczenia CT (tylko adnotacje CT
+    // `ownerKind:'protection'` niosą wartość) — geometrycznie neutralny.
+    ...(owner.ctPurpose !== undefined ? { ctPurpose: owner.ctPurpose } : {}),
   };
 }
 

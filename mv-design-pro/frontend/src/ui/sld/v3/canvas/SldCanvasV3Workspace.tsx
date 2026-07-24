@@ -133,8 +133,14 @@ import { SYMBOL_DEFS } from '../symbols/defs';
 import {
   CANVAS_LAYER_IDS,
   CANVAS_LAYER_LABELS_PL,
+  L2_SUBLAYER_IDS,
+  L2_SUBLAYER_LABELS_PL,
+  L2_SUBLAYER_MEMBERS,
+  l2SublayerState,
+  toggleL2Sublayer,
   type CanvasLayerId,
   type CanvasLayerVisibility,
+  type L2SublayerId,
 } from './layers';
 import type { ViewportTransform } from './camera';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
@@ -793,10 +799,11 @@ export function symbolsInLassoRect(
 function SldV3LayerTogglePanel(props: {
   readonly visibility: CanvasLayerVisibility;
   readonly onToggleLayer: (layerId: CanvasLayerId) => void;
+  readonly onToggleSublayer: (sublayer: L2SublayerId) => void;
   readonly onResetAll: () => void;
   readonly className?: string;
 }): JSX.Element {
-  const { visibility, onToggleLayer, onResetAll, className } = props;
+  const { visibility, onToggleLayer, onToggleSublayer, onResetAll, className } = props;
   return (
     <section
       className={[
@@ -810,7 +817,7 @@ function SldV3LayerTogglePanel(props: {
     >
       <header className="flex items-center justify-between gap-2 border-b border-scada-border pb-1">
         <span className="font-semibold uppercase tracking-wider text-scada-muted">
-          Warstwy ({CANVAS_LAYER_IDS.length})
+          Podwarstwy L2 ({L2_SUBLAYER_IDS.length})
         </span>
         <button
           type="button"
@@ -821,20 +828,45 @@ function SldV3LayerTogglePanel(props: {
           Reset
         </button>
       </header>
-      <ul className="flex flex-col gap-0.5">
-        {CANVAS_LAYER_IDS.map((layerId) => {
-          const checked = visibility[layerId] !== false;
+      {/* W5 (§18): grupowanie warstw renderu w podwarstwy L2. Master-toggle
+          podwarstwy (checkbox z tri-state „mixed") + zagnieżdżone per-warstwowe
+          checkboxy (granularność zachowana, testid bez zmian). */}
+      <ul className="flex flex-col gap-1">
+        {L2_SUBLAYER_IDS.map((sublayer) => {
+          const state = l2SublayerState(visibility, sublayer);
           return (
-            <li key={layerId}>
-              <label className="flex cursor-pointer items-center gap-2 py-0.5">
+            <li key={sublayer} className="flex flex-col gap-0.5">
+              <label className="flex cursor-pointer items-center gap-2 font-semibold">
                 <input
                   type="checkbox"
-                  checked={checked}
-                  onChange={() => onToggleLayer(layerId)}
-                  data-testid={`sld-v3-layer-toggle-${layerId}`}
+                  checked={state === 'on'}
+                  ref={(el) => {
+                    if (el) el.indeterminate = state === 'mixed';
+                  }}
+                  onChange={() => onToggleSublayer(sublayer)}
+                  data-testid={`sld-v3-l2-sublayer-toggle-${sublayer}`}
+                  data-sublayer-state={state}
                 />
-                <span>{CANVAS_LAYER_LABELS_PL[layerId]}</span>
+                <span>{L2_SUBLAYER_LABELS_PL[sublayer]}</span>
               </label>
+              <ul className="ml-4 flex flex-col gap-0.5">
+                {L2_SUBLAYER_MEMBERS[sublayer].map((layerId) => {
+                  const checked = visibility[layerId] !== false;
+                  return (
+                    <li key={layerId}>
+                      <label className="flex cursor-pointer items-center gap-2 py-0.5 text-scada-muted">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => onToggleLayer(layerId)}
+                          data-testid={`sld-v3-layer-toggle-${layerId}`}
+                        />
+                        <span>{CANVAS_LAYER_LABELS_PL[layerId]}</span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
             </li>
           );
         })}
@@ -1340,6 +1372,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   const [layerPanelOpen, setLayerPanelOpen] = useState(false);
   const handleToggleLayer = useCallback((layerId: CanvasLayerId) => {
     setLayerVisibility((prev) => ({ ...prev, [layerId]: prev[layerId] === false ? true : false }));
+  }, []);
+  // W5 (§18): master-toggle podwarstwy L2 — ustawia widoczność WSZYSTKICH warstw
+  // wchodzących w skład podwarstwy (czysta `toggleL2Sublayer`, `./layers`).
+  const handleToggleSublayer = useCallback((sublayer: L2SublayerId) => {
+    setLayerVisibility((prev) => toggleL2Sublayer(prev, sublayer));
   }, []);
   const handleResetLayers = useCallback(() => setLayerVisibility({}), []);
 
@@ -1873,6 +1910,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             <SldV3LayerTogglePanel
               visibility={layerVisibility}
               onToggleLayer={handleToggleLayer}
+              onToggleSublayer={handleToggleSublayer}
               onResetAll={handleResetLayers}
               className="w-[240px]"
             />

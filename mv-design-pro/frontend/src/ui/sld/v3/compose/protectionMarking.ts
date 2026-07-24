@@ -284,6 +284,11 @@ export interface ResolvedCtRatingAnnotation {
   readonly device: PlacedStackDevice;
   /** Gotowy tekst „identyfikator · przekładnia" (`ctRatingLabelText`). */
   readonly text: string;
+  /** W5 (§12–15/uwaga 7): przeznaczenie CT z danych (`Measurement.purpose`) —
+   *  wariant CT NIE dokładany do `text` (kanał geometrycznie neutralny),
+   *  przenoszony na `OwnedLabel.ctPurpose` → `data-ct-purpose`. `undefined`
+   *  gdy dana niedostarczona (uczciwy brak). */
+  readonly purpose?: 'protection' | 'metering' | 'combined';
 }
 
 /**
@@ -306,7 +311,7 @@ export function resolveCtRatingAnnotations(
       (d) => d.symbolId === 'currentTransformer' && d.linkedRef === entry.measurementRef,
     );
     if (!device) continue;
-    result.push({ device, text: ctRatingLabelText(entry) });
+    result.push({ device, text: ctRatingLabelText(entry), purpose: entry.purpose });
   }
   return result;
 }

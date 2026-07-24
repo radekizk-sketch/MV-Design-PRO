@@ -438,8 +438,11 @@ describe('buildCanonicalGpzProps — F11.1 rejestr device-ref (primaryDevices/pr
     };
     const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
     const b = props.sections[0].bays[0];
+    // W5 (§12–15/uwaga 7): `purpose` addytywnie z `Measurement.purpose` (wariant
+    // CT z danych) — `resolveBayCtRatingAnnotations` współdzielony ze stacją,
+    // GPZ dziedziczy pole. Helper `measurement()` domyślnie `purpose:'protection'`.
     expect(b.ctRatingAnnotations).toEqual([
-      { measurementRef: 'm-1', identifier: 'T1', ratioText: '300/5', arrangement: undefined },
+      { measurementRef: 'm-1', identifier: 'T1', ratioText: '300/5', arrangement: undefined, purpose: 'protection' },
     ]);
   });
 

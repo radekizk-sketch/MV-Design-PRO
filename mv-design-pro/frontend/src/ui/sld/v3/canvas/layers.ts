@@ -102,3 +102,70 @@ export function isLayerVisible(
   const explicit = visibility[layerId];
   return explicit !== false;
 }
+
+// ---------------------------------------------------------------------------
+// W5 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §18 „Podwarstwy L2", P1) —
+// przełączalne PODWARSTWY L2 jako GRUPY istniejących warstw renderu v3 (reużycie
+// mechanizmu `CanvasLayerVisibility`, dyrektywa właściciela 7 „reużycie zamiast
+// duplikacji"). Podwarstwa = WIDOCZNOŚĆ (filtr renderu, `SldCanvasV3.tsx`), NIE
+// layout: `buildSceneV3`/`layout`/`compose` NIETKNIĘTE, geometria/bbox/kotwica
+// stacji identyczne w KAŻDYM stanie podwarstw (§18 „tożsamość i kotwica stacji
+// niezmienne"; test bajt-inwariancji `workspacePanels.test.tsx`). Recenzja
+// definiuje cztery podwarstwy — mapowanie 1:1 na warstwy renderu:
+//   L2-A aparatura pierwotna    → stacje/aparatura + źródła DER (tor główny)
+//   L2-B pomiary + zabezpieczenia → adnotacje zabezpieczeń/pomiarów
+//   L2-C dane katalogowe (opisy)  → etykiety techniczne (typ/przekrój/długość…)
+//   L2-D wyniki                   → nakładki + liczbowe etykiety wyników
+// Użytkownik włącza dowolne kombinacje: master-toggle podwarstwy ustawia
+// WSZYSTKICH jej członków; per-warstwowe checkboxy pozostają (granularność).
+// ---------------------------------------------------------------------------
+
+/** Podwarstwy L2 (spec §18, W5) — jawny, zamknięty zestaw. */
+export type L2SublayerId = 'L2A' | 'L2B' | 'L2C' | 'L2D';
+
+export const L2_SUBLAYER_IDS: readonly L2SublayerId[] = ['L2A', 'L2B', 'L2C', 'L2D'];
+
+export const L2_SUBLAYER_LABELS_PL: Readonly<Record<L2SublayerId, string>> = {
+  L2A: 'L2-A · aparatura pierwotna',
+  L2B: 'L2-B · pomiary i zabezpieczenia',
+  L2C: 'L2-C · dane katalogowe',
+  L2D: 'L2-D · wyniki',
+};
+
+/** Warstwy renderu wchodzące w skład każdej podwarstwy L2 (spec §18). Suma
+ *  pokrywa DOKŁADNIE `CANVAS_LAYER_IDS` bez powtórzeń (wyrocznia
+ *  `layers.test.ts` — kompletność i rozłączność). */
+export const L2_SUBLAYER_MEMBERS: Readonly<Record<L2SublayerId, readonly CanvasLayerId[]>> = {
+  L2A: ['stationsApparatus', 'derSources'],
+  L2B: ['protectionAnnotations'],
+  L2C: ['labels'],
+  L2D: ['resultOverlays', 'resultLabels'],
+};
+
+/** Stan zbiorczy podwarstwy: `'on'` gdy WSZYSCY członkowie widoczni, `'off'`
+ *  gdy WSZYSCY ukryci, `'mixed'` gdy część (master-checkbox indeterminate). */
+export function l2SublayerState(
+  visibility: CanvasLayerVisibility | undefined,
+  sublayer: L2SublayerId,
+): 'on' | 'off' | 'mixed' {
+  const members = L2_SUBLAYER_MEMBERS[sublayer];
+  const visibleCount = members.filter((layerId) => (visibility?.[layerId] ?? true) !== false).length;
+  if (visibleCount === members.length) return 'on';
+  if (visibleCount === 0) return 'off';
+  return 'mixed';
+}
+
+/** Nowa mapa widoczności po przełączeniu master-toggle podwarstwy: `'mixed'`/
+ *  `'off'` → wszyscy członkowie widoczni; `'on'` → wszyscy ukryci (klasyczna
+ *  logika tri-state master). Czysta funkcja (zwraca NOWY obiekt). */
+export function toggleL2Sublayer(
+  visibility: CanvasLayerVisibility,
+  sublayer: L2SublayerId,
+): CanvasLayerVisibility {
+  const turnOff = l2SublayerState(visibility, sublayer) === 'on';
+  const next: Record<CanvasLayerId, boolean> = { ...visibility } as Record<CanvasLayerId, boolean>;
+  for (const layerId of L2_SUBLAYER_MEMBERS[sublayer]) {
+    next[layerId] = !turnOff;
+  }
+  return next;
+}

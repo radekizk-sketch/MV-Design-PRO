@@ -651,3 +651,34 @@ describe('V3 labels — sanity: pomiar tekstu spójny z core/text', () => {
     expect(measureLabelWidth('kier. GPZ', 't3')).toBe(measureLabelWidth('kier. GPZ', 't3'));
   });
 });
+
+// ---------------------------------------------------------------------------
+// W5 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §12–15/uwaga 7) — passthrough
+// przeznaczenia CT (`Measurement.purpose`) przez `resolveSimpleAnchoredLabel`
+// GEOMETRYCZNIE NEUTRALNY: `ctPurpose` na OwnedLabel, `rect` identyczny jak bez
+// niego (kanał audytu `data-ct-purpose`, nie tekst — inwariant „geometria bez
+// dryfu"). Wzorzec `designationSource` (Z3).
+// ---------------------------------------------------------------------------
+describe('V3 labels — W5: ctPurpose passthrough (geometrycznie neutralny)', () => {
+  const base = {
+    ownerRef: 'bay-1#ct-rating-ct1',
+    ownerKind: 'protection' as const,
+    text: 'CT1 · 300/5',
+    labelClass: 't4' as const,
+    anchor: { x: 200, y: 120 },
+    placement: 'right' as const,
+  };
+
+  it('przenosi ctPurpose na OwnedLabel, gdy dana obecna', () => {
+    const [withPurpose] = resolveLabels({ simpleAnchored: [{ ...base, ctPurpose: 'metering' }] });
+    expect(withPurpose.ctPurpose).toBe('metering');
+  });
+
+  it('rect IDENTYCZNY z ctPurpose i bez (zero wpływu na geometrię/kotwice)', () => {
+    const [withPurpose] = resolveLabels({ simpleAnchored: [{ ...base, ctPurpose: 'protection' }] });
+    const [without] = resolveLabels({ simpleAnchored: [base] });
+    expect(withPurpose.rect).toEqual(without.rect);
+    expect(withPurpose.text).toBe(without.text);
+    expect(without.ctPurpose).toBeUndefined();
+  });
+});
