@@ -134,19 +134,30 @@ def _add_series_admittance(
     y_bus[to_idx, to_idx] += y_series_pu
 
 
-def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np.ndarray:
-    """
-    Build the zero-sequence Z-bus from ENM fields without mutating the graph.
+def _assemble_zero_sequence_y0(
+    enm: EnergyNetworkModel, graph: NetworkGraph
+) -> tuple[AdmittanceMatrixBuilder, dict[str, int], int, np.ndarray, list[dict]]:
+    """Składa macierz Y0 (składowej zerowej) z pól ENM + ślad WHITE BOX.
 
-    The returned matrix uses the same merged node order as
-    ``AdmittanceMatrixBuilder(graph)`` so it can be passed directly as
-    ``z0_bus`` to the IEC 60909 single-phase and two-phase-ground solvers.
+    Rozbicie po elementach (linie/kable, źródła, transformatory wg grupy
+    połączeń) — kolejność deterministyczna (sort po ref_id). Transformatory
+    stampowane wg tablicy połączeń sekwencji zerowej (SM-3, V12K-181):
+    grupa wektorowa + uziemienie punktów neutralnych decydują o ciągłości /
+    przerwie / boczniku do ziemi prądu zerowego.
     """
+    from network_model.whitebox.tracer import WhiteBoxTracer
+
+    from .zero_sequence_transformer import (
+        ZeroSeqConnection,
+        build_transformer_zero_seq_model,
+    )
+
     builder = AdmittanceMatrixBuilder(graph)
     builder.build()
     node_index = builder.node_id_to_index
     size = len(set(node_index.values()))
     y0_bus = np.zeros((size, size), dtype=complex)
+    tracer = WhiteBoxTracer()
 
     ref_to_node_id = {bus.ref_id: _ref_to_uuid(bus.ref_id) for bus in enm.buses}
     bus_voltage = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
@@ -174,6 +185,19 @@ def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np
             z_ohm=z0_ohm,
             z_base_ohm=z_base_ohm,
         )
+        tracer.add(
+            key=f"z0_line[{branch.ref_id}]",
+            title=f"Gałąź {branch.name or branch.ref_id}: impedancja zerowa (szeregowa)",
+            formula_latex=r"Z_{0,line} = (r_0 + jx_0)\cdot \ell",
+            inputs={
+                "ref_id": branch.ref_id,
+                "r0_ohm_per_km": branch.r0_ohm_per_km,
+                "x0_ohm_per_km": branch.x0_ohm_per_km,
+                "length_km": branch.length_km,
+            },
+            substitution=f"Z0 = {z0_ohm.real:.6g} + j{z0_ohm.imag:.6g} Ω (szereg {from_id}↔{to_id})",
+            result={"z0_ohm": z0_ohm},
+        )
 
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_id = ref_to_node_id.get(source.bus_ref)
@@ -191,6 +215,42 @@ def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np
             )
         idx = node_index[bus_id]
         y0_bus[idx, idx] += 1.0 / (z0_ohm / builder.get_zbase_ohm(bus_id))
+        tracer.add(
+            key=f"z0_source[{source.ref_id}]",
+            title=f"Źródło {source.name or source.ref_id}: impedancja zerowa (bocznik do ziemi)",
+            formula_latex=r"Y_{0,src} = 1 / (Z_{0,src}/Z_{base})",
+            inputs={"ref_id": source.ref_id, "z0_ohm": z0_ohm},
+            substitution=f"Z0(src) = {z0_ohm.real:.6g} + j{z0_ohm.imag:.6g} Ω (bocznik {bus_id})",
+            result={"z0_ohm": z0_ohm},
+        )
+
+    # SM-3 (V12K-181): transformatory w sieci składowej zerowej wg grupy połączeń.
+    # Przed tą kartą całkowicie pomijane — grupa wektorowa nie sterowała ścieżką
+    # I0. Stamp: SERIES_THROUGH → gałąź HV↔LV; HV/LV_SHUNT_GROUND → bocznik do
+    # ziemi na danym zacisku; OPEN → brak wkładu (droga zablokowana, np. trójkąt).
+    transformer_trace: list[dict] = []
+    for trafo in sorted(enm.transformers, key=lambda t: t.ref_id):
+        hv_id = ref_to_node_id.get(trafo.hv_bus_ref)
+        lv_id = ref_to_node_id.get(trafo.lv_bus_ref)
+        if hv_id not in node_index or lv_id not in node_index:
+            continue
+        model = build_transformer_zero_seq_model(trafo)
+        transformer_trace.extend(model.trace)
+        if model.z0_pu is None or model.z0_pu == 0:
+            continue
+        y_pu = 1.0 / model.z0_pu
+        if model.connection == ZeroSeqConnection.SERIES_THROUGH:
+            hv_idx = node_index[hv_id]
+            lv_idx = node_index[lv_id]
+            if hv_idx != lv_idx:
+                y0_bus[hv_idx, lv_idx] -= y_pu
+                y0_bus[lv_idx, hv_idx] -= y_pu
+                y0_bus[hv_idx, hv_idx] += y_pu
+                y0_bus[lv_idx, lv_idx] += y_pu
+        elif model.connection == ZeroSeqConnection.HV_SHUNT_GROUND:
+            y0_bus[node_index[hv_id], node_index[hv_id]] += y_pu
+        elif model.connection == ZeroSeqConnection.LV_SHUNT_GROUND:
+            y0_bus[node_index[lv_id], node_index[lv_id]] += y_pu
 
     # Source impedance mapping creates virtual ground nodes in the positive
     # graph. They are not physical ENM buses, so ground them in Z0 to avoid an
@@ -208,10 +268,34 @@ def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np
         if np.allclose(y0_bus[idx, :], 0.0) and np.allclose(y0_bus[:, idx], 0.0):
             y0_bus[idx, idx] += complex(1e6, 0.0)
 
+    return builder, node_index, size, y0_bus, tracer.to_list() + transformer_trace
+
+
+def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np.ndarray:
+    """
+    Build the zero-sequence Z-bus from ENM fields without mutating the graph.
+
+    The returned matrix uses the same merged node order as
+    ``AdmittanceMatrixBuilder(graph)`` so it can be passed directly as
+    ``z0_bus`` to the IEC 60909 single-phase and two-phase-ground solvers.
+
+    SM-3 (V12K-181): transformatory wchodzą do sieci składowej zerowej wg grupy
+    połączeń wektorowych (patrz ``zero_sequence_transformer``). Sieci bez
+    transformatorów z grupą zachowują wynik sprzed karty (TR bez ``vector_group``
+    → połączenie OTWARTE, brak wkładu).
+    """
+    _, _, _, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph)
     try:
         return np.linalg.inv(y0_bus)
     except np.linalg.LinAlgError as exc:
         raise ValueError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
+
+
+def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> list[dict]:
+    """Ślad WHITE BOX budowy sieci składowej zerowej — rozbicie po elementach
+    (linie/kable, źródła, transformatory z decyzją grupy połączeń). ADDYTYWNE."""
+    _, _, _, _, trace = _assemble_zero_sequence_y0(enm, graph)
+    return trace
 
 
 # G-SCM (V12K-054): classification of enm.generators.gen_type onto the IEC 60909
