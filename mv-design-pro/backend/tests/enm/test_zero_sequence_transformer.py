@@ -206,9 +206,20 @@ class TestHandCalc1F:
         z_sum = abs(result.z1_ohm + result.z2_ohm + result.z0_ohm)
         ik1_hand = math.sqrt(3.0) * 1.1 * (_ULV_KV * 1000.0) / z_sum
         assert result.ikss_a == pytest.approx(ik1_hand)
-        # Hand-calc wartości referencyjne (dla audytu): Z0 = 0.0396 + j0.98921 Ω;
-        # I_k1'' ≈ 9750.24 A.
-        assert result.ikss_a == pytest.approx(9750.24, rel=1e-4)
+        # Hand-calc wartości referencyjne (dla audytu): Z1 = Z2 = 0.053698 + j1.118529 Ω;
+        # Z0 = 0.0396 + j0.98921 Ω; |Z1+Z2+Z0| = 3.229612 Ω; I_k1'' ≈ 8849.00 A.
+        #
+        # RE-BASELINE 9750.24 → 8849.00 A (V12K-184). Asercja formuły wyżej trzyma
+        # bez zmian — zmieniło się WEJŚCIE, nie sposób liczenia. Z0 pozostało
+        # BIT-IDENTYCZNE (0.0396 + j0.98921); wzrosło wyłącznie Z1 = Z2, z
+        # 0.038824 + j0.969769 na 0.053698 + j1.118529 Ω, o Δ = 0.014874 + j0.148760
+        # (X/R = 10.0 — czyli dokładnie impedancja zasilania systemowego). Do V12K-184
+        # zasilanie systemowe było modelowane jako wirtualny węzeł ziemi za gałęzią
+        # „Z_source", a ten węzeł był w macierzy SC uziemiany admitancją idealną
+        # (1e6 pu), co ZWIERAŁO Z_Q — impedancja sieci nie wchodziła do składowej
+        # zgodnej wcale. Teraz jest SEM za Z_Q (bocznik Y_Q = 1/Z_Q, IEC 60909-0 §3.2),
+        # więc prąd doziemny jest mniejszy — kierunek zmiany jest fizycznie poprawny.
+        assert result.ikss_a == pytest.approx(8849.00, rel=1e-4)
 
     def test_delta_blocks_source_zero_sequence(self):
         """Dyn: strona trójkąta (HV) izoluje Z0 źródła — 10× zmiana Z0 źródła

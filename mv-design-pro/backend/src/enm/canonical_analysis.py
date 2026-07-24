@@ -2248,13 +2248,23 @@ def _build_snapshot_graph_element_context(
         if not ref_id:
             continue
         tags = raw_bus.get("tags") or []
-        meta = raw_bus.get("meta") if isinstance(raw_bus.get("meta"), dict) else {}
-        skip_short_circuit_target = (
-            "helper_bus" in tags
-            or ("/section/" in ref_id and ref_id.endswith("/bus_sn"))
-            or meta.get("render_on_sld") is False
-            or meta.get("show_in_project_tree") is False
-        )
+        # Celem zwarcia jest KAZDA szyna modelu poza jawnie pomocniczymi
+        # (tag `helper_bus` — wezly podzialu magistrali i punkty techniczne,
+        # ktore nie sa fizyczna szyna rozdzielni).
+        #
+        # V12K-184 — usuniete dwa bledne kryteria:
+        #  1. `"/section/" in ref_id and ref_id.endswith("/bus_sn")` wykluczalo
+        #     GLOWNA szyne sekcji SN GPZ (`add_grid_source_sn`) — czyli punkt, w
+        #     ktorym moc zwarciowa jest podstawa doboru rozdzielni (Icw/Idyn pol)
+        #     i nastaw zabezpieczen. Dowod: companion sieci demonstracyjnej mial
+        #     14 szyn wynikowych i ANI JEDNEJ szyny GPZ. Reguly na wzorzec
+        #     ref_id nie ma w zadnym kontrakcie — byla ad-hoc.
+        #  2. `render_on_sld` / `show_in_project_tree` to atrybuty PREZENTACJI;
+        #     sterowanie nimi zakresem obliczen odwraca separacje warstw (o tym,
+        #     czy liczymy zwarcie, decyduje rola elektryczna wezla, nie jego
+        #     widocznosc na schemacie). Szyny, ktore te flagi mialy wylaczyc, i
+        #     tak nosza `helper_bus`.
+        skip_short_circuit_target = "helper_bus" in tags
         node_context[_graph_id_from_ref(ref_id)] = {
             "element_id": ref_id,
             "element_type": "BUS",
@@ -2286,24 +2296,9 @@ def _build_snapshot_graph_element_context(
             "synthetic": False,
         }
 
-    for raw_source in snapshot.get("sources") or []:
-        if not isinstance(raw_source, dict):
-            continue
-        ref_id = str(raw_source.get("ref_id") or "")
-        if not ref_id:
-            continue
-        node_context[_graph_id_from_ref(f"_gnd_{ref_id}")] = {
-            "element_id": ref_id,
-            "element_type": "SOURCE",
-            "synthetic": True,
-            "graph_role": "SOURCE_GROUND",
-        }
-        branch_context[_graph_id_from_ref(f"_zsrc_{ref_id}")] = {
-            "element_id": ref_id,
-            "element_type": "SOURCE",
-            "synthetic": True,
-            "graph_role": "SOURCE_IMPEDANCE",
-        }
+    # Zasilanie systemowe nie tworzy juz wezla/galezi w grafie — od V12K-184 jest
+    # bocznikiem Y_Q = 1/Z_Q w wezle przylaczenia (IEC 60909-0 §3.2), wiec nie ma
+    # syntetycznych elementow do opisania w kontekscie snapshotu.
 
     return {
         "nodes": node_context,

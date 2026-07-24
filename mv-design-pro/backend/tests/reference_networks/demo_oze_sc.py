@@ -65,10 +65,7 @@ def _sn_bus_ref(enm: dict[str, Any], station_ref: str) -> str | None:
             continue
         for bus_ref in stn.get("bus_refs", []):
             for bus in enm.get("buses", []):
-                if (
-                    bus.get("ref_id") == bus_ref
-                    and (bus.get("voltage_kv") or 0.0) >= 1.0
-                ):
+                if bus.get("ref_id") == bus_ref and (bus.get("voltage_kv") or 0.0) >= 1.0:
                     return bus_ref
     return None
 
@@ -163,9 +160,7 @@ def _add_der_sn_block(
     }
     from enm.domain_operations import execute_domain_operation
 
-    result = execute_domain_operation(
-        enm_dict=enm, op_name="add_converter_source", payload=payload
-    )
+    result = execute_domain_operation(enm_dict=enm, op_name="add_converter_source", payload=payload)
     if result.get("error"):
         return enm, result["error"]
     snapshot = result.get("snapshot")
@@ -270,9 +265,7 @@ def _new_generator_refs(before: dict[str, Any], after: dict[str, Any]) -> list[s
     """Refy generatorow dodanych miedzy dwoma snapshotami (kolejnosc stabilna)."""
     prev = {g.get("ref_id") for g in before.get("generators", [])}
     return [
-        str(g.get("ref_id"))
-        for g in after.get("generators", [])
-        if g.get("ref_id") not in prev
+        str(g.get("ref_id")) for g in after.get("generators", []) if g.get("ref_id") not in prev
     ]
 
 
@@ -285,9 +278,7 @@ def _attach_ders(
     for di, (tech, variant, cat, ns, power) in enumerate(config["ders"], start=1):
         name = f"{config['key']}_{tech}_{seq}_{di}"
         if variant == "block_transformer":
-            new_enm, err = _add_der_sn_block(
-                enm, station_ref, tech, cat, ns, power, name
-            )
+            new_enm, err = _add_der_sn_block(enm, station_ref, tech, cat, ns, power, name)
         else:
             new_enm, err = _add_der(enm, station_ref, tech, cat, ns, power, name)
         if err:
@@ -365,9 +356,7 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
         target_frac = (i + 1) / (n_stations + 1)
         seg_idx = max(0, min(n_segs - 1, int(target_frac * n_segs)))
         seg_ref = segs[seg_idx]
-        enm = _add_trunk_station(
-            enm, seg_ref, f"Stacja S{i + 1}", trafo_ref=config["trafo"]
-        )
+        enm = _add_trunk_station(enm, seg_ref, f"Stacja S{i + 1}", trafo_ref=config["trafo"])
         ref = _latest_station_ref(enm)
         if ref:
             station_refs.append(ref)
@@ -378,9 +367,7 @@ def build_demo_oze_sc_network() -> dict[str, Any]:
     station_configs: list[dict[str, Any]] = []
     der_errors: list[str] = []
     load_errors: list[str] = []
-    for i, (station_ref, config) in enumerate(
-        zip(station_refs, _STATION_CONFIGS, strict=False)
-    ):
+    for i, (station_ref, config) in enumerate(zip(station_refs, _STATION_CONFIGS, strict=False)):
         enm, der_records, errs = _attach_ders(enm, station_ref, config, seq=i + 1)
         der_errors.extend(errs)
 

@@ -753,11 +753,36 @@ def estimate_wls(
                 "(rank(H) < n). Estymacja przerwana (brak zgadywania)."
             ) from exc
         # Warunek liczby uwarunkowania — ostrzeżenie o słabej obserwowalności.
-        cond = float(np.linalg.cond(gain_g))
+        # Warunek liczby uwarunkowania — bramka słabej obserwowalności.
+        #
+        # Liczbę uwarunkowania mierzymy na macierzy RÓWNOWAŻONEJ (symetryczne
+        # skalowanie Jacobiego G_s = D⁻¹ G D⁻¹, D = diag(√G_ii)), bo surowe
+        # cond(G) w sieci wielonapięciowej mierzy przede wszystkim ROZRZUT
+        # SKALI kolumn (θ w radianach vs |V| w pu; admitancje szyn 110/15/0,4 kV
+        # różniące się o rzędy wielkości), a nie obserwowalność układu.
+        # Równoważenie jest transformacją DOKŁADNĄ (zero heurystyk, zero
+        # korekcji wyniku) i standardową diagnostyką w estymacji stanu —
+        # równania normalne G = HᵀWH z definicji podnoszą cond(H) do kwadratu,
+        # więc próg nałożony na surową G odrzuca układy w pełni obserwowalne.
+        #
+        # V12K-184: bramka na surowej G była krucha. Sieć wzorcowa (110/15/0,4 kV)
+        # dawała cond_raw = 8,99e11 — 11 % pod progiem 1e12 — i ten margines
+        # brał się z trzech pomiarów na WIRTUALNYM węźle ziemi źródła. Po
+        # usunięciu tej fikcji z modelu (zasilanie systemowe = bocznik Y_Q)
+        # cond_raw = 1,059e12 przekraczało próg o 5,9 % i przerywało estymację
+        # układu obserwowalnego. Po równoważeniu: 1,28e11 → 2,52e11, obie
+        # wartości z ~4x zapasem, a bramka mierzy to, co ma mierzyć.
+        # G SUROWA pozostaje bez zmian w śladzie White Box i w analizie złych
+        # danych (g_inv) — kontrakt wyniku nietknięty.
+        cond_raw = float(np.linalg.cond(gain_g))
+        scale = np.sqrt(np.abs(np.diag(gain_g)))
+        scale[scale == 0.0] = 1.0
+        cond = float(np.linalg.cond(gain_g / np.outer(scale, scale)))
         if not math.isfinite(cond) or cond > 1e12:
             raise ObservabilityError(
-                f"Macierz zysku G źle uwarunkowana (cond={cond:.3e}): "
-                "układ praktycznie nieobserwowalny. Estymacja przerwana."
+                f"Macierz zysku G źle uwarunkowana (cond={cond:.3e} po "
+                f"równoważeniu, cond surowa={cond_raw:.3e}): układ praktycznie "
+                "nieobserwowalny. Estymacja przerwana."
             )
 
         delta_x = g_inv @ rhs

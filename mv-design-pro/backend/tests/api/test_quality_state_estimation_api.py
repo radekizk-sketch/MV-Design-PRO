@@ -139,8 +139,12 @@ def test_state_estimation_returns_view(app_client) -> None:
     assert data["analysis_id"] == str(run_id)
     assert data["converged"] is True
     assert data["status"] == "OK"
-    # Estymowany stan per węzeł: |V|/kąt.
-    assert len(data["buses"]) == 6
+    # Estymowany stan per węzeł: |V|/kąt. RE-BASELINE 6 → 5 (V12K-184): sieć
+    # wzorcowa ma 5 szyn, a szósty węzeł był WIRTUALNĄ ZIEMIĄ źródła, tworzoną
+    # przez mapowanie ENM→graf. Zasilanie systemowe jest teraz bocznikiem
+    # Y_Q = 1/Z_Q w węźle przyłączenia (IEC 60909-0 §3.2), więc estymator
+    # raportuje wyłącznie węzły istniejące w modelu — bez fikcyjnego wiersza.
+    assert len(data["buses"]) == 5
     for bus in data["buses"]:
         assert 0.99 <= bus["v_magnitude_pu"] <= 1.01
         assert "v_angle_deg" in bus and "v_angle_rad" in bus

@@ -139,20 +139,40 @@ class AdmittanceMatrixBuilder:
 
     def _ground_slack_buses(self, y_bus: np.ndarray) -> None:
         """
-        Dodaje admitancje bocznikowe (do ziemi) dla wezlow SLACK.
+        Dodaje admitancje bocznikowe (do ziemi) dla wezlow zasilajacych.
 
-        Wezel SLACK (szyna nieskonczona) ma zerowa impedancje wewnetrzna
-        → nieskonczona admitancja bocznikowa. W praktyce stosuje sie
-        duza wartosc (1e6 pu) zapewniajaca referencje napiecia.
+        Zasilanie systemowe (IEC 60909-0 §3.2) to SEM ZA impedancja Z_Q — w
+        metodzie Z-bus bocznik Y_Q = 1/Z_Q w wezle przylaczenia. Uziemienie
+        tego samego wezla admitancja idealna ZWIERALOBY Z_Q i dawalo szyne
+        nieskonczona (V12K-184): Ik'' na szynie GPZ rosl do wartosci
+        ograniczonej wylacznie impedancja linii/kabli, a moc zwarciowa
+        zrodla (Sk'') nie wchodzila do obliczen wcale.
+
+        Referencje napiecia admitancja idealna (1e6 pu) stosujemy WYLACZNIE
+        dla wezla SLACK BEZ zadeklarowanej impedancji zrodla — model szyny
+        nieskonczonej jest wtedy jedyna dostepna informacja.
         """
+        grid_y_pu: dict[int, complex] = {}
+        for src in self._graph.get_grid_sc_sources():
+            idx = self._node_id_to_index.get(src.node_id)
+            if idx is None or src.z_ohm == 0:
+                continue
+            z_base = self.get_zbase_ohm(src.node_id)
+            grid_y_pu[idx] = grid_y_pu.get(idx, 0j) + z_base / src.z_ohm
+
         y_slack_pu = complex(1e6, 0.0)
         seen_indices: set[int] = set()
         for node in self._graph.nodes.values():
             if node.node_type == NodeType.SLACK:
                 idx = self._node_id_to_index.get(node.id)
                 if idx is not None and idx not in seen_indices:
-                    y_bus[idx, idx] += y_slack_pu
+                    y_bus[idx, idx] += grid_y_pu.get(idx, y_slack_pu)
                     seen_indices.add(idx)
+        # Zasilania systemowe w wezlach nie-SLACK (np. druga sekcja GPZ) tez sa
+        # SEM za Z_Q — deterministyczna kolejnosc po indeksie.
+        for idx in sorted(grid_y_pu):
+            if idx not in seen_indices:
+                y_bus[idx, idx] += grid_y_pu[idx]
 
     def _add_machine_shunts(self, y_bus: np.ndarray) -> None:
         """Add rotating-machine SC sources as shunt admittances Y″ = 1/Z″ (IEC 60909

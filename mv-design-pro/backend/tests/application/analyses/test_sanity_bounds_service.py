@@ -197,8 +197,12 @@ def test_real_short_circuit_run_produces_verdicts() -> None:
     assert view["analysis_id"] == str(run.id)
     assert len(view["items"]) >= 5
     statuses = {item["status"] for item in view["items"]}
-    # Węzeł systemowy 110 kV (idealne źródło) daje absurdalnie duży Ik'' →
-    # poza zakresem wiarygodności; pozostałe węzły są wiarygodne.
-    assert "zweryfikowany" in statuses
-    assert "poza zakresem wiarygodności" in statuses
-    assert view["summary"]["blocks_osd_package_count"] >= 1
+    # RE-BASELINE (V12K-184). Wcześniej ten test utrwalał DEFEKT: węzeł zasilający
+    # był uziemiany admitancją idealną, co zwierało impedancję sieci Z_Q i dawało
+    # absurdalny Ik'' — a test asertował, że taki węzeł MUSI wyjść „poza zakresem
+    # wiarygodności". Po naprawie (zasilanie systemowe = SEM za Z_Q, bocznik
+    # Y_Q = 1/Z_Q) wszystkie węzły sieci wzorcowej mieszczą się w granicach
+    # wiarygodności, więc pakiet OSD nie jest blokowany. Ścieżkę werdyktu
+    # „poza zakresem" pokrywa test syntetyczny (116 kA na SN 15 kV) wyżej.
+    assert statuses == {"zweryfikowany"}
+    assert view["summary"]["blocks_osd_package_count"] == 0

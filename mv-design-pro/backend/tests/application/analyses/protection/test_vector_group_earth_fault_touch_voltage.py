@@ -107,12 +107,23 @@ class TestTouchVoltageReactsToGroup:
         """U_d proporcjonalne do I″k1 — ten sam stosunek co prądy (pack liczy od 1F)."""
         u_dyn = _touch_voltage_for("Dyn11")
         u_ynyn = _touch_voltage_for("YNyn0")
-        assert u_ynyn / u_dyn == pytest.approx(8649.10 / 9750.24, rel=1e-3)
+        # RE-BASELINE odniesienia prądowego (V12K-184): 8649.10/9750.24 → 7932.23/8849.00
+        # (zasilanie systemowe wchodzi teraz do składowej zgodnej — patrz
+        # test_vector_group_earth_fault_chain.test_reference_currents).
+        assert u_ynyn / u_dyn == pytest.approx(7932.23 / 8849.00, rel=1e-3)
 
     def test_reference_touch_voltages(self) -> None:
-        """Wartości referencyjne dla audytu (U_d = r·I″k1·R_u)."""
-        assert _touch_voltage_for("Dyn11") == pytest.approx(58501.44, rel=1e-4)
-        assert _touch_voltage_for("YNyn0") == pytest.approx(51894.60, rel=1e-4)
+        """Wartości referencyjne dla audytu (U_d = r·I″k1·R_u).
+
+        RE-BASELINE (V12K-184): U_d dziedziczy prąd 1F w proporcji dokładnie
+        r·R_u = 0.6·10 = 6.0, co widać w obu odczytach:
+        Dyn 6.0·8849.00 = 53094.00 V (było 6.0·9750.24 = 58501.44);
+        YNyn 6.0·7932.23 = 47593.36 V (było 6.0·8649.10 = 51894.60).
+        Uziom (R_u, r) i tor uziemieniowy są nietknięte — zmienił się wyłącznie
+        prąd wejściowy, bo impedancja sieci zasilającej przestała być zwierana.
+        """
+        assert _touch_voltage_for("Dyn11") == pytest.approx(53094.00, rel=1e-4)
+        assert _touch_voltage_for("YNyn0") == pytest.approx(47593.36, rel=1e-4)
 
 
 # ---------------------------------------------------------------------------

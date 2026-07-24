@@ -29,6 +29,7 @@ from network_model.core.branch import (
     TransformerBranch,
 )
 from network_model.core.graph import NetworkGraph
+from network_model.core.grid_source import GridShortCircuitSource
 from network_model.core.inverter import InverterSource
 from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
 from network_model.core.node import Node, NodeType
@@ -251,14 +252,6 @@ def _assemble_zero_sequence_y0(
             y0_bus[node_index[hv_id], node_index[hv_id]] += y_pu
         elif model.connection == ZeroSeqConnection.LV_SHUNT_GROUND:
             y0_bus[node_index[lv_id], node_index[lv_id]] += y_pu
-
-    # Source impedance mapping creates virtual ground nodes in the positive
-    # graph. They are not physical ENM buses, so ground them in Z0 to avoid an
-    # isolated row without changing the real bus impedances.
-    for node in graph.nodes.values():
-        idx = node_index.get(node.id)
-        if idx is not None and node.name.startswith("GND ("):
-            y0_bus[idx, idx] += complex(1e6, 0.0)
 
     # Zero-sequence paths can be intentionally blocked by transformer vector
     # groups. Such nodes are uncoupled in Z0 and must not make SN-side 1F/2F+G
@@ -621,9 +614,15 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         )
         graph.add_branch(tb)
 
-    # 4. Sources → virtual ground node + impedance branch
-    #    The SC solver needs the source impedance in the Y-bus matrix.
-    #    IEC 60909: Z_source = U_n² / Sk'' (at source bus voltage).
+    # 4. Sources → zasilanie systemowe: SEM za impedancją Z_Q (IEC 60909-0 §3.2).
+    #    W metodzie Z-bus to bocznik Y_Q = 1/Z_Q w węźle przyłączenia — tak samo
+    #    jak maszyny wirujące (§6.3/§6.7) i tak jak stamp źródła w sieci składowej
+    #    zerowej niżej w tym pliku. Wcześniej mapowanie tworzyło wirtualny węzeł
+    #    ziemi i gałąź „Z_source"; szyna źródła jest jednak węzłem SLACK, a ten był
+    #    w macierzy SC uziemiany admitancją idealną (1e6 pu), co ZWIERAŁO Z_Q i
+    #    czyniło z niej wiszący, bezużyteczny odgałęzienie (V12K-184). Skutek:
+    #    moc zwarciowa sieci zasilającej nie wchodziła do obliczeń wcale.
+    #    IEC 60909: Z_Q = U_n² / Sk'' (przy napięciu szyny źródła).
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_node_id = ref_to_node_id.get(source.bus_ref)
         if bus_node_id is None:
@@ -655,33 +654,14 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         if r_ohm == 0 and x_ohm == 0:
             continue
 
-        # Create virtual ground node (PQ with zero load)
-        gnd_node_id = _ref_to_uuid(f"_gnd_{source.ref_id}")
-        gnd_node = Node(
-            id=gnd_node_id,
-            name=f"GND ({source.name})",
-            node_type=NodeType.PQ,
-            voltage_level=bus_voltage_kv,
-            active_power=0.0,
-            reactive_power=0.0,
+        graph.add_grid_sc_source(
+            GridShortCircuitSource(
+                id=_ref_to_uuid(f"_zsrc_{source.ref_id}"),
+                name=source.name or source.ref_id,
+                node_id=bus_node_id,
+                z_ohm=complex(r_ohm, x_ohm),
+            )
         )
-        graph.add_node(gnd_node)
-
-        # Create impedance branch: ground → source bus
-        src_branch = LineBranch(
-            id=_ref_to_uuid(f"_zsrc_{source.ref_id}"),
-            name=f"Z_source ({source.name})",
-            branch_type=BranchType.LINE,
-            from_node_id=gnd_node_id,
-            to_node_id=bus_node_id,
-            in_service=True,
-            r_ohm_per_km=r_ohm,
-            x_ohm_per_km=x_ohm,
-            b_us_per_km=0.0,
-            length_km=1.0,
-            rated_current_a=1.0,
-        )
-        graph.add_branch(src_branch)
 
     # 5. Generators (DER / rotating machines) → IEC 60909 SC sources (G-SCM, V12K-054).
     #    Without this the designer's PV/BESS/wind/synchronous sources contributed only

@@ -266,8 +266,12 @@ class TestSolverRoundtrip:
             ],
         )
         graph = map_enm_to_network_graph(enm)
-        # 2 buses + 1 virtual ground for source impedance = 3 nodes
-        assert len(graph.nodes) == 3
+        # V12K-184: zasilanie systemowe NIE tworzy juz wirtualnego wezla ziemi ani
+        # galezi "Z_source" — jest bocznikiem Y_Q = 1/Z_Q w wezle przylaczenia
+        # (IEC 60909-0 §3.2). Graf ma dokladnie tyle wezlow, ile szyn w ENM.
+        assert len(graph.nodes) == 2
+        assert len(graph.get_grid_sc_sources()) == 1
+        assert graph.get_grid_sc_sources()[0].z_ohm != 0
 
         from network_model.solvers.short_circuit_iec60909 import (
             ShortCircuitIEC60909Solver,

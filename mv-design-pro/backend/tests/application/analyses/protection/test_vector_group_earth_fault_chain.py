@@ -153,9 +153,19 @@ class TestGroupControlsEarthFaultCurrent:
         assert (r_dyn.ikss_a - r_ynyn.ikss_a) / r_dyn.ikss_a > 0.05
 
     def test_reference_currents(self) -> None:
-        """Wartości referencyjne dla audytu (hand-calc)."""
-        assert _run_1ph_on_lv("Dyn11").ikss_a == pytest.approx(9750.24, rel=1e-4)
-        assert _run_1ph_on_lv("YNyn0").ikss_a == pytest.approx(8649.10, rel=1e-4)
+        """Wartości referencyjne dla audytu (hand-calc).
+
+        RE-BASELINE (V12K-184): Dyn 9750.24 → 8849.00 A, YNyn 8649.10 → 7932.23 A.
+        Z0 OBU grup pozostało BIT-IDENTYCZNE (Dyn 0.039600 + j0.989208;
+        YNyn 0.076790 + j1.361109) — sieć składowej zerowej jest nietknięta i cała
+        wymowa tego łańcucha (grupa połączeń steruje prądem doziemnym) zostaje.
+        Zmieniło się wyłącznie Z1 = Z2, bo do V12K-184 impedancja zasilania
+        systemowego była ZWIERANA (wirtualny węzeł ziemi uziemiany admitancją
+        idealną); teraz zasilanie jest SEM za Z_Q (IEC 60909-0 §3.2), więc realnie
+        wchodzi do składowej zgodnej i prąd 1F jest odpowiednio mniejszy.
+        """
+        assert _run_1ph_on_lv("Dyn11").ikss_a == pytest.approx(8849.00, rel=1e-4)
+        assert _run_1ph_on_lv("YNyn0").ikss_a == pytest.approx(7932.23, rel=1e-4)
 
 
 # ---------------------------------------------------------------------------
@@ -188,16 +198,27 @@ class TestEarthFaultProtectionReactsToGroup:
         ratio_pickup = s_ynyn.i_pickup_51n_a / s_dyn.i_pickup_51n_a
         ratio_inst = s_ynyn.i_inst_50n_a / s_dyn.i_inst_50n_a
         assert ratio_pickup == pytest.approx(ratio_inst)
-        assert ratio_pickup == pytest.approx(8649.10 / 9750.24, rel=1e-3)
+        # RE-BASELINE odniesienia prądowego (V12K-184): 8649.10/9750.24 → 7932.23/8849.00.
+        # Stosunek rośnie z 0.887065 na 0.896398 — obie grupy dostały ten sam,
+        # wcześniej zwierany przyczynek Z_Q do składowej zgodnej, więc ich RÓŻNICA
+        # (pochodząca z Z0) waży teraz relatywnie mniej. Różnica pozostaje realna
+        # (10.36 %, próg 5 % w teście wyżej), a kierunek Dyn > YNyn niezmieniony.
+        assert ratio_pickup == pytest.approx(7932.23 / 8849.00, rel=1e-3)
 
     def test_reference_settings(self) -> None:
-        """Wartości referencyjne nastaw (hand-calc: 51N=0.2·I, 50N=0.8·I)."""
+        """Wartości referencyjne nastaw (hand-calc: 51N=0.2·I, 50N=0.8·I).
+
+        RE-BASELINE (V12K-184) — nastawy są dokładnie proporcjonalne do I″k1
+        (dowód proporcjonalności: test wyżej), więc przeliczają się wraz z prądem:
+        Dyn 0.2·8849.00 = 1769.80 / 0.8·8849.00 = 7079.20;
+        YNyn 0.2·7932.23 = 1586.45 / 0.8·7932.23 = 6345.78.
+        """
         _, s_dyn = _settings_for("Dyn11")
         _, s_ynyn = _settings_for("YNyn0")
-        assert s_dyn.i_pickup_51n_a == pytest.approx(1950.048, rel=1e-4)
-        assert s_dyn.i_inst_50n_a == pytest.approx(7800.192, rel=1e-4)
-        assert s_ynyn.i_pickup_51n_a == pytest.approx(1729.820, rel=1e-4)
-        assert s_ynyn.i_inst_50n_a == pytest.approx(6919.280, rel=1e-4)
+        assert s_dyn.i_pickup_51n_a == pytest.approx(1769.800, rel=1e-4)
+        assert s_dyn.i_inst_50n_a == pytest.approx(7079.200, rel=1e-4)
+        assert s_ynyn.i_pickup_51n_a == pytest.approx(1586.445, rel=1e-4)
+        assert s_ynyn.i_inst_50n_a == pytest.approx(6345.781, rel=1e-4)
 
 
 # ---------------------------------------------------------------------------

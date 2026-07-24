@@ -713,8 +713,20 @@ def test_contributions_contains_grid_and_inverters():
     contrib_b = find_contribution(result.contributions, "INV-B")
 
     assert grid.i_contrib_a == pytest.approx(result.ik_thevenin_a, rel=1e-12, abs=0.0)
-    assert contrib_a.i_contrib_a == pytest.approx(inv_a.k_sc * inv_a.in_rated_a, rel=1e-12, abs=0.0)
+    # INTENCJA (bez zmian): lista wkładów zawiera sieć + oba falowniki, a udziały
+    # sumują się do 1. RE-BASELINE (V12K-184): wkład falownika jest PRZENOSZONY do
+    # węzła zwarcia — I_k = I_j·|Z_kj/Z_kk|·(U_j/U_k). Wcześniej wchodził 1:1 w
+    # amperach, więc falownik 110 kV oddawał do zwarcia 20 kV tyle samo amperów,
+    # co jest złamaniem zasady zachowania mocy.
+    # INV-B stoi W węźle zwarcia (B, 20 kV) → współczynnik = 1 (bez zmiany).
     assert contrib_b.i_contrib_a == pytest.approx(inv_b.k_sc * inv_b.in_rated_a, rel=1e-12, abs=0.0)
+    # INV-A stoi w węźle A (110 kV); w tej sieci Z_BA/Z_BB ≈ 1 (wspólna gałąź
+    # odniesienia 1e9 Ω dominuje), więc przeniesienie to czysta przekładnia
+    # 110/20 = 5,5: 1,2·50 A = 60 A (110 kV) → 330 A (20 kV).
+    # Dowód niezmienniczości mocy: √3·110 kV·60 A = √3·20 kV·330 A = 11,43 MVA.
+    assert contrib_a.i_contrib_a == pytest.approx(
+        inv_a.k_sc * inv_a.in_rated_a * (110.0 / 20.0), rel=1e-9, abs=0.0
+    )
     total_share = sum(contrib.share for contrib in result.contributions)
     assert total_share == pytest.approx(1.0, rel=1e-12, abs=0.0)
 

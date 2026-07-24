@@ -265,11 +265,25 @@ function renderStationTile(cfg: StationConfig, ox: number, oy: number, tileW: nu
     const resultRef = resultRefForSegment(seg.meta) ?? seg.meta?.ownerRef;
     const ownerRef = seg.meta?.ownerRef;
     if (!resultRef || !ownerRef) continue;
-    const entry =
-      scByRef.get(resultRef) ??
-      scByRef.get(ownerRef) ??
-      scByKey.get(seedKey(ownerRef)) ??
-      scByKey.get(seedKey(resultRef));
+    // Wiazanie wyniku z segmentem: NAJPIERW po kanonicznym refie (produkcyjna
+    // sciezka `busResultRef`), dopiero potem — i TYLKO dla segmentow, ktore
+    // kanonicznego refu nie niosa — po kluczu seedowym.
+    //
+    // V12K-184: fallback seedowy stosowany BEZWARUNKOWO fabrykowal wynik.
+    // Szyna 110 kV GPZ (`gpz/<seed>/substation#hv-bus`, busResultRef
+    // `gpz/<seed>/transformer/001/bus_110`) ma ten sam seedKey `gpz/<seed>` co
+    // szyna SN, wiec dostawala ETYKIETE Z PRADEM SZYNY 15 kV. Segment z
+    // kanonicznym refem, ktorego nie ma w companionie, MUSI zostac bez etykiety
+    // (uczciwy brak zamiast cudzej liczby). Fallback zostaje wylacznie dla szyn
+    // SN stacji, ktore `busResultRef` jeszcze nie niosa — dlug zapisany jako
+    // karta V12K-185 (compose/station.ts), po niej fallback znika.
+    const hasCanonicalRef = seg.meta?.busResultRef != null;
+    const entry = hasCanonicalRef
+      ? scByRef.get(resultRef)
+      : (scByRef.get(resultRef) ??
+        scByRef.get(ownerRef) ??
+        scByKey.get(seedKey(ownerRef)) ??
+        scByKey.get(seedKey(resultRef)));
     if (!entry || elements[resultRef]) continue;
     elements[resultRef] = {
       ref_id: resultRef,

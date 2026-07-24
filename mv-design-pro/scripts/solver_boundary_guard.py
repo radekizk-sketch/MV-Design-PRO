@@ -33,7 +33,17 @@ SANCTIONED_CHANGES = {
         "'THEVENIN_GRID'), wpis do usuniecia po scaleniu do main. "
         "V12K-178 (SM-1): korekcja K_T IEC 60909 par. 3.3.3 dla TR sieciowych, "
         "twarde wg decyzji wlasciciela V12K-175, WHITE BOX + re-baseline "
-        "goldenow z dowodem; wpis do usuniecia po scaleniu do main."
+        "goldenow z dowodem; wpis do usuniecia po scaleniu do main. "
+        "V12K-184: FIX pre-existing - wklad zrodel przeksztaltnikowych (IEC "
+        "60909-0 par. 6.8, zrodlo pradowe) wchodzil do zwarcia 1:1 w amperach, "
+        "bez przeniesienia przez przekladnie ani podzialu Z-bus; parametr "
+        "fault_node_id byl przyjmowany i ignorowany. Skutek: 15 mikrozrodel "
+        "0,4 kV dawalo 21,5 kA na szynie 15 kV. Naprawa: I_k = I_j*|Z_kj/Z_kk|"
+        "*(U_j/U_k), zero heurystyk, WHITE BOX. Przy okazji naprawione "
+        "mieszanie jednostek pu/SI w torze wkladow galeziowych falownikow "
+        "(iniekcja jednostkowa + _series_admittance_pu). Dla zrodla W wezle "
+        "zwarcia wspolczynnik = 1 -> bit-identycznosc. Wpis do usuniecia po "
+        "scaleniu do main."
     ),
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "

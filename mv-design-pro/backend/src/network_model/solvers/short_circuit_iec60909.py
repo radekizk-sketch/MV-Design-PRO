@@ -578,6 +578,83 @@ class ShortCircuitIEC60909Solver:
         return tracer.to_list()
 
     @staticmethod
+    def _inverter_transfer_factors(
+        graph: NetworkGraph,
+        fault_node_id: str,
+        *,
+        builder: object | None = None,
+        z_bus: object | None = None,
+    ) -> dict[str, float]:
+        """
+        Współczynniki przeniesienia wkładu falowników do węzła zwarcia.
+
+        Falownik (IEC 60909-0 §6.8, źródło z pełnowymiarowym przekształtnikiem)
+        jest źródłem PRĄDOWYM I_skPF = k·I_rN na SWOICH zaciskach. Prąd, który z
+        tego wstrzyknięcia dopływa do zwarcia w węźle k, wynika z superpozycji na
+        macierzy Z-bus:
+
+            I_k = I_j · Z_kj / Z_kk
+
+        Dodatkowo prąd znamionowy falownika jest wyrażony przy napięciu jego
+        węzła, więc do węzła zwarcia przenosi się przekładnią U_j/U_k (rachunek
+        w per-unit: I_pu = I_A / I_base, I_base = S_base/(√3·U_n)).
+
+        Bez tego przeniesienia wkład falownika wchodził do zwarcia 1:1 w amperach,
+        niezależnie od poziomu napięcia i odległości elektrycznej (V12K-184):
+        15 mikroźródeł 0,4 kV dawało 21,5 kA na szynie 15 kV, czyli 559 MVA mocy
+        zwarciowej z kilkunastu MW przyłączonej generacji.
+
+        Dla falownika stojącego W węźle zwarcia współczynnik wynosi dokładnie 1
+        (Z_kk/Z_kk = 1, U_j/U_k = 1) — sieci z DER na szynie zwarcia zachowują
+        dotychczasowe wyniki co do bitu.
+        """
+        from network_model.solvers.short_circuit_core import build_zbus
+
+        sources = graph.get_inverter_sources()
+        if not sources:
+            return {}
+        if builder is None or z_bus is None:
+            builder, z_bus = build_zbus(graph)
+
+        index_map = builder.node_id_to_index  # type: ignore[union-attr]
+        fault_index = index_map.get(fault_node_id)
+        if fault_index is None:
+            return {}
+        z_kk = z_bus[fault_index, fault_index]  # type: ignore[index]
+        un_k = graph.nodes[fault_node_id].voltage_level
+        if z_kk == 0 or un_k <= 0:
+            return {}
+
+        factors: dict[str, float] = {}
+        for source in sources:
+            source_index = index_map.get(source.node_id)
+            node = graph.nodes.get(source.node_id)
+            if source_index is None or node is None or node.voltage_level <= 0:
+                continue
+            z_kj = z_bus[fault_index, source_index]  # type: ignore[index]
+            factors[source.id] = abs(z_kj / z_kk) * (node.voltage_level / un_k)
+        return factors
+
+    @staticmethod
+    def _inverter_contributions_by_source(
+        graph: NetworkGraph,
+        fault_node_id: str,
+        short_circuit_type: ShortCircuitType,
+    ) -> dict[str, float]:
+        """Wkład prądowy [A] każdego falownika, przeniesiony do węzła zwarcia."""
+        sources = graph.get_inverter_sources()
+        if not sources:
+            return {}
+        factors = ShortCircuitIEC60909Solver._inverter_transfer_factors(graph, fault_node_id)
+        contributions: dict[str, float] = {}
+        for source in sources:
+            i_terminal = ShortCircuitIEC60909Solver._inverter_contribution_for_type(
+                source, short_circuit_type
+            )
+            contributions[source.id] = i_terminal * factors.get(source.id, 0.0)
+        return contributions
+
+    @staticmethod
     def _compute_inverter_contribution(
         graph: NetworkGraph,
         fault_node_id: str,
@@ -586,15 +663,13 @@ class ShortCircuitIEC60909Solver:
         """
         Sumuje wkład prądowy źródeł falownikowych zgodnie z IEC 60909 (model uproszczony).
         """
-        sources = graph.get_inverter_sources()
-        if not sources:
-            return 0.0
-        total = 0.0
-        for source in sources:
-            total += ShortCircuitIEC60909Solver._inverter_contribution_for_type(
-                source, short_circuit_type
+        return float(
+            sum(
+                ShortCircuitIEC60909Solver._inverter_contributions_by_source(
+                    graph, fault_node_id, short_circuit_type
+                ).values()
             )
-        return total
+        )
 
     @staticmethod
     def _inverter_contribution_for_type(
@@ -637,10 +712,13 @@ class ShortCircuitIEC60909Solver:
             )
         )
 
+        # Wkłady przeniesione do węzła zwarcia (V12K-184) — te same wartości, które
+        # sumują się do ik_inverters_a, więc udziały (share) sumują się do 1.
+        referred = ShortCircuitIEC60909Solver._inverter_contributions_by_source(
+            graph, fault_node_id, short_circuit_type
+        )
         for source in graph.get_inverter_sources():
-            i_contrib = ShortCircuitIEC60909Solver._inverter_contribution_for_type(
-                source, short_circuit_type
-            )
+            i_contrib = referred.get(source.id, 0.0)
             share = i_contrib / base if base > 0 else 0.0
             contributions.append(
                 ShortCircuitSourceContribution(
@@ -657,29 +735,19 @@ class ShortCircuitIEC60909Solver:
         return contributions
 
     @staticmethod
-    def _get_series_admittance(branch: object) -> complex | None:
-        if hasattr(branch, "get_series_admittance"):
-            return branch.get_series_admittance()
-        if hasattr(branch, "get_short_circuit_impedance_ohm_lv"):
-            z_ohm = branch.get_short_circuit_impedance_ohm_lv()
-            # IEC 60909-0 §3.3.3: network transformers carry the K_T correction
-            # in the SC network — mirror of the Y-bus builder so the inverter
-            # branch-distribution stays consistent with the corrected Z-bus.
-            if hasattr(branch, "get_kt_correction_factor"):
-                z_ohm = z_ohm * branch.get_kt_correction_factor()
-            if z_ohm == 0:
-                return None
-            return 1.0 / z_ohm
-        return None
-
-    @staticmethod
     def _build_branch_contributions_for_inverters(
         graph: NetworkGraph,
         fault_node_id: str,
         short_circuit_type: ShortCircuitType,
     ) -> list[ShortCircuitBranchContribution]:
         """
-        Przybliżone wkłady falowników do prądów gałęzi (superpozycja, moduły RMS).
+        Wkłady falowników do prądów gałęzi (superpozycja Z-bus, moduły RMS).
+
+        Metoda identyczna z torem Thevenina: iniekcja JEDNOSTKOWA (+1 w węźle
+        źródła, −1 w węźle zwarcia) daje bezwymiarowe współczynniki podziału
+        ``f = (V_i − V_j)·y_ij`` (admitancja szeregowa w per-unit, SPÓJNA z
+        macierzą Y-bus), a prąd gałęzi ``I = |f| · I_wkład``. ``I_wkład`` to
+        wkład falownika PRZENIESIONY do węzła zwarcia (V12K-184).
         """
         sources = graph.get_inverter_sources()
         if not sources:
@@ -693,15 +761,21 @@ class ShortCircuitIEC60909Solver:
         fault_index = builder.node_id_to_index.get(fault_node_id)
         if fault_index is None:
             return []
+        factors = ShortCircuitIEC60909Solver._inverter_transfer_factors(
+            graph, fault_node_id, builder=builder, z_bus=z_bus
+        )
 
         for source in sources:
-            i_contrib = ShortCircuitIEC60909Solver._inverter_contribution_for_type(
+            i_terminal = ShortCircuitIEC60909Solver._inverter_contribution_for_type(
                 source, short_circuit_type
             )
-            if i_contrib <= 0:
+            if i_terminal <= 0:
                 continue
             source_index = builder.node_id_to_index.get(source.node_id)
             if source_index is None or source_index == fault_index:
+                continue
+            i_contrib = i_terminal * factors.get(source.id, 0.0)
+            if i_contrib <= 0:
                 continue
 
             # FIX (karta W-C, Zero-Debt): wektor iniekcji MUSI mieć wymiar macierzy
@@ -712,14 +786,16 @@ class ShortCircuitIEC60909Solver:
             # mismatch) dla każdej sieci z zamkniętym łącznikiem. Defekt
             # pre-existing toru `include_branch_contributions` (scenariusze).
             i_inj = np.zeros(z_bus.shape[0], dtype=complex)
-            i_inj[source_index] = complex(i_contrib, 0.0)
-            i_inj[fault_index] = complex(-i_contrib, 0.0)
+            i_inj[source_index] = complex(1.0, 0.0)
+            i_inj[fault_index] = complex(-1.0, 0.0)
             v_nodes = z_bus @ i_inj
 
             for branch_id, branch in graph.branches.items():
                 if not getattr(branch, "in_service", True):
                     continue
-                y_series = ShortCircuitIEC60909Solver._get_series_admittance(branch)
+                # Admitancja w PER-UNIT — Z-bus też jest w pu; wcześniej ten tor
+                # mieszał pu z omami (SI), co dawało niespójne moduły prądów.
+                y_series = ShortCircuitIEC60909Solver._series_admittance_pu(builder, branch)
                 if y_series is None:
                     continue
                 from_index = builder.node_id_to_index.get(branch.from_node_id)
@@ -728,7 +804,7 @@ class ShortCircuitIEC60909Solver:
                     continue
                 v_from = v_nodes[from_index]
                 v_to = v_nodes[to_index]
-                i_branch = (v_from - v_to) * y_series
+                i_branch = (v_from - v_to) * y_series * i_contrib
                 i_mag = abs(i_branch)
                 if i_mag <= 0:
                     continue

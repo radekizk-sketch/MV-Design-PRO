@@ -15,9 +15,13 @@ ENTRYPOINT_PATTERNS: dict[str, list[tuple[str, str]]] = {
         ("legacy helper page import", r"TypeLibraryBrowser|CaseConfigPage"),
     ],
     # F12 (2026-07-16): CanonicalLayout.tsx skasowany w a88c6960 (konsolidacja
-    # shellu) — nastepca CanonicalLayoutV3.tsx przejmuje TE SAME zakazy
+    # shellu) — nastepca CanonicalLayoutV3.tsx przejal TE SAME zakazy.
+    # V12K-184: CanonicalLayoutV3.tsx zostal z kolei skasowany w 3693c01e
+    # (E1.7c „nowa powloka domyslna … kasacja starej ramy"), a wpis guarda nie
+    # zostal wtedy przekierowany — guard byl CZERWONY na [missing-entrypoint].
+    # Aktywna powloka to ui2/shell/AppShell.tsx i przejmuje TE SAME zakazy
     # (intencja guarda bez zmian: brak importu legacy layoutu w aktywnym shellu).
-    "frontend/src/ui/layout/CanonicalLayoutV3.tsx": [
+    "frontend/src/ui2/shell/AppShell.tsx": [
         ("legacy layout import", r"PowerFactoryLayout"),
     ],
     "frontend/src/ui/navigation/routes.ts": [

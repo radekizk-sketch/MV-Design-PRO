@@ -89,11 +89,31 @@ def _valid_enm_payload_with_helper_terminal(name: str) -> dict:
             "phase_system": "3ph",
         }
     )
+    # Szyna POMOCNICZA o kształcie refu sekcji GPZ. V12K-184: „techniczność" musi
+    # być wyrażona W DANYCH (tag `helper_bus`), a nie wywnioskowana ze wzorca
+    # `ref_id` — bo PRAWDZIWA szyna sekcji SN GPZ (z `add_grid_source_sn`) ma
+    # dokładnie taki sam ref_id, puste tagi i pustą meta, więc reguła na wzorzec
+    # ścieżki wykluczała z celów zwarcia główną szynę rozdzielni (patrz szyna
+    # `gpz/real/section/001/bus_sn` niżej, która MUSI być raportowana).
     payload["buses"].append(
         {
             "id": "00000000-0000-0000-0000-000000000005",
             "ref_id": "gpz/test/section/001/bus_sn",
             "name": "Szyna techniczna sekcji GPZ",
+            "tags": ["helper_bus"],
+            "meta": {},
+            "voltage_kv": 15,
+            "phase_system": "3ph",
+        }
+    )
+    # Kontrola dodatnia: REALNA szyna sekcji SN GPZ — bez tagów, bez meta.
+    # Jest głównym punktem doboru aparatury rozdzielni, więc MUSI trafić do
+    # wyników zwarciowych.
+    payload["buses"].append(
+        {
+            "id": "00000000-0000-0000-0000-000000000007",
+            "ref_id": "gpz/real/section/001/bus_sn",
+            "name": "Szyna GPZ S1 15 kV",
             "tags": [],
             "meta": {},
             "voltage_kv": 15,
@@ -124,6 +144,21 @@ def _valid_enm_payload_with_helper_terminal(name: str) -> dict:
             "meta": {"render_on_sld": False, "show_in_project_tree": False},
             "from_bus_ref": "b1",
             "to_bus_ref": "gpz/test/section/001/bus_sn",
+            "status": "closed",
+            "type": "breaker",
+            "r_ohm": 0.0,
+            "x_ohm": 0.0,
+        }
+    )
+    payload["branches"].append(
+        {
+            "id": "00000000-0000-0000-0000-000000000008",
+            "ref_id": "brk_real_section_bus",
+            "name": "Lacznik szyny GPZ",
+            "tags": [],
+            "meta": {},
+            "from_bus_ref": "b1",
+            "to_bus_ref": "gpz/real/section/001/bus_sn",
             "status": "closed",
             "type": "breaker",
             "r_ohm": 0.0,
@@ -181,8 +216,14 @@ def test_short_circuit_does_not_report_helper_field_terminals():
     assert result.raw_result is not None
     rows = build_short_circuit_results(result)["rows"]
     assert rows
-    assert "b_helper" not in {row["element_id"] for row in rows}
-    assert "gpz/test/section/001/bus_sn" not in {row["element_id"] for row in rows}
+    reported = {row["element_id"] for row in rows}
+    # Szyny POMOCNICZE (jawny tag `helper_bus`) nie są celem zwarcia…
+    assert "b_helper" not in reported
+    assert "gpz/test/section/001/bus_sn" not in reported
+    # …ale realna szyna sekcji SN GPZ JEST (V12K-184: kryterium to tag w danych,
+    # nie wzorzec ref_id ani flagi prezentacyjne — inaczej z wyników znikał punkt,
+    # w którym liczy się moc zwarciową dla doboru rozdzielni).
+    assert "gpz/real/section/001/bus_sn" in reported
     assert all(row["target_name"] != "Zacisk techniczny" for row in rows)
     assert all(row["target_name"] != "Szyna techniczna sekcji GPZ" for row in rows)
 
