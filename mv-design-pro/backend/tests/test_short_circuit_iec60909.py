@@ -513,10 +513,15 @@ def test_white_box_trace_has_expected_steps():
 
     for result in (res_3ph, res_1ph):
         assert isinstance(result.white_box_trace, list)
-        assert len(result.white_box_trace) >= 7
-        keys = [step["key"] for step in result.white_box_trace[:7]]
+        # IEC 60909-0 §3.3.3 (V12K-177): the SC trace now opens with an explicit
+        # K_T correction step per network transformer (KT[<id>]), followed by the
+        # canonical fault-quantity steps. Intent preserved: the 7 standard steps
+        # appear in order, located by the "Zk" anchor instead of index 0.
+        assert any(step["key"] == "KT[T1]" for step in result.white_box_trace)
+        zk_index = next(i for i, step in enumerate(result.white_box_trace) if step["key"] == "Zk")
+        keys = [step["key"] for step in result.white_box_trace[zk_index : zk_index + 7]]
         assert keys == ["Zk", "Ikss", "kappa", "Ip", "Ib", "Ith", "Sk"]
-        for step in result.white_box_trace[:7]:
+        for step in result.white_box_trace[zk_index : zk_index + 7]:
             assert {
                 "key",
                 "title",
@@ -526,7 +531,7 @@ def test_white_box_trace_has_expected_steps():
                 "result",
             } <= step.keys()
 
-        z_step = result.white_box_trace[0]
+        z_step = result.white_box_trace[zk_index]
         z_result = z_step["result"]
         assert z_step["key"] == "Zk"
         assert set(z_result) >= {"z_equiv_ohm", "r_ohm", "x_ohm", "z_equiv_abs_ohm"}
@@ -534,7 +539,7 @@ def test_white_box_trace_has_expected_steps():
         assert z_result["x_ohm"] == pytest.approx(z_result["z_equiv_ohm"].imag)
         assert z_result["z_equiv_abs_ohm"] == pytest.approx(abs(z_result["z_equiv_ohm"]))
 
-        z_dict = result.to_dict()["white_box_trace"][0]["result"]
+        z_dict = result.to_dict()["white_box_trace"][zk_index]["result"]
         assert z_dict["z_equiv_ohm"]["re"] == pytest.approx(z_result["r_ohm"])
         assert z_dict["z_equiv_ohm"]["im"] == pytest.approx(z_result["x_ohm"])
         assert z_dict["z_equiv_abs_ohm"] == pytest.approx(z_result["z_equiv_abs_ohm"])

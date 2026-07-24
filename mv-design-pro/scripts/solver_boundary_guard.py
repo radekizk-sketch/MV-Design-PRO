@@ -30,7 +30,10 @@ SANCTIONED_CHANGES = {
         "V12K-132: rozszerzenie WHITE BOX wkladow galeziowych o tor Thevenina "
         "(rozplyw pradu od zrodla zastepczego po galeziach) - pkt 7 karty "
         "wlasciciela; addytywnie (branch_flow_trace + wpisy source_id="
-        "'THEVENIN_GRID'), wpis do usuniecia po scaleniu do main."
+        "'THEVENIN_GRID'), wpis do usuniecia po scaleniu do main. "
+        "V12K-178 (SM-1): korekcja K_T IEC 60909 par. 3.3.3 dla TR sieciowych, "
+        "twarde wg decyzji wlasciciela V12K-175, WHITE BOX + re-baseline "
+        "goldenow z dowodem; wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/domain/protection_engine_v1.py": (
         "V12K-174: WYLACZNIE formatowanie black (parentezacja przypisan "

@@ -432,9 +432,10 @@ class TestSinglePhaseResultContract:
         )
 
         assert len(result.white_box_trace) >= 1
-        # Pierwszy krok (Zk) powinien zawierać z0 w inputs
-        zk_step = result.white_box_trace[0]
-        assert zk_step["key"] == "Zk"
+        # Krok Zk powinien zawierać z0 w inputs. IEC 60909-0 §3.3.3 (V12K-178):
+        # slad otwieraja teraz jawne kroki korekcji K_T per transformator
+        # sieciowy (KT[<id>]), wiec Zk lokalizujemy po kluczu, nie po indeksie 0.
+        zk_step = next(step for step in result.white_box_trace if step["key"] == "Zk")
         assert "z0_ohm" in zk_step["inputs"]
 
     def test_1ph_to_dict_is_json_serializable(self):

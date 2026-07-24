@@ -319,7 +319,9 @@ def test_transformer_stamping_between_two_nodes():
     builder = AdmittanceMatrixBuilder(graph)
     y_bus = builder.build()
 
-    z_pu_sn = transformer.get_short_circuit_impedance_pu()
+    # IEC 60909-0 §3.3.3: the SC/Z-bus network stamps the K_T-corrected network
+    # transformer impedance Z_TK = K_T·(R_T + jX_T), not the nominal impedance.
+    z_pu_sn = transformer.get_short_circuit_impedance_pu_corrected()
     z_pu_base = z_pu_sn * (S_BASE_MVA / transformer.rated_power_mva)
     y_series = 1.0 / z_pu_base
     expected = np.array(

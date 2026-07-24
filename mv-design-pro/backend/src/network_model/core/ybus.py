@@ -193,7 +193,12 @@ class AdmittanceMatrixBuilder:
             return y_series_pu, y_shunt_per_end_pu
 
         if isinstance(branch, TransformerBranch):
-            z_pu_sn = branch.get_short_circuit_impedance_pu()
+            # IEC 60909-0 §3.3.3: network transformers enter the short-circuit
+            # network with the corrected impedance Z_TK = K_T · (R_T + jX_T).
+            # This builder is the IEC 60909 SC/Z-bus network (grounds slack,
+            # adds machine shunts); power flow uses a separate Y-bus builder, so
+            # the K_T correction stays confined to short-circuit.
+            z_pu_sn = branch.get_short_circuit_impedance_pu_corrected()
             z_pu_base = z_pu_sn * (S_BASE_MVA / branch.rated_power_mva)
             if z_pu_base == 0:
                 raise ZeroDivisionError("Cannot compute transformer admittance: impedance is zero")

@@ -899,6 +899,61 @@ class TransformerBranch(Branch):
         """
         return self.get_ikss_lv_ka(self.get_voltage_factor_c_min())
 
+    def get_relative_reactance_xt(self) -> float:
+        """
+        IEC 60909-0 relative reactance x_T of the transformer, on its own ratings.
+
+        Formula:
+            x_T = X_T / (U_rT² / S_rT)
+
+        Because ``get_short_circuit_reactance_pu()`` already expresses X_T in
+        per-unit on the transformer rated base (Z_base_rT = U_rT² / S_rT), that
+        per-unit reactance IS x_T by definition. Returned dimensionless.
+
+        Returns:
+            Relative reactance x_T [pu on rated base].
+        """
+        return self.get_short_circuit_reactance_pu()
+
+    def get_kt_correction_factor(self) -> float:
+        """
+        IEC 60909-0 §3.3.3 impedance correction factor K_T for a *network*
+        (two-winding) transformer.
+
+        Formula:
+            K_T = 0.95 · c_max / (1 + 0.6 · x_T)
+
+        where x_T is the transformer relative reactance on its own ratings
+        (``get_relative_reactance_xt``) and c_max is the IEC 60909 voltage factor
+        (Table 1) related to the nominal voltage of the network connected to the
+        LOW-voltage side of the network transformer
+        (``get_voltage_factor_c_max``). K_T is computed EXPLICITLY here (WHITE
+        BOX) — never baked into a constant.
+
+        Returns:
+            Impedance correction factor K_T [dimensionless].
+        """
+        x_t = self.get_relative_reactance_xt()
+        c_max = self.get_voltage_factor_c_max()
+        return 0.95 * c_max / (1.0 + 0.6 * x_t)
+
+    def get_short_circuit_impedance_pu_corrected(self) -> complex:
+        """
+        IEC 60909-0 §3.3.3 corrected short-circuit impedance of a network
+        transformer, in per-unit on the transformer ratings:
+
+            Z_TK = K_T · (R_T + j·X_T)
+
+        This is the impedance the IEC 60909 short-circuit network (Y-bus / Z-bus)
+        must use for network transformers. The uncorrected
+        ``get_short_circuit_impedance_pu`` stays available for callers outside the
+        SC network correction (e.g. rated-current context).
+
+        Returns:
+            Complex corrected per-unit impedance Z_TK = K_T · Z_T.
+        """
+        return self.get_kt_correction_factor() * self.get_short_circuit_impedance_pu()
+
     def to_dict(self) -> dict[str, Any]:
         """
         Convert the transformer branch to a dictionary.

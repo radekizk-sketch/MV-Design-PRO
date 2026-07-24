@@ -329,6 +329,62 @@ class ShortCircuitIEC60909Solver:
         return f"\\left({real} {sign} j {imag}\\right)"
 
     @staticmethod
+    def _append_transformer_kt_trace(tracer: WhiteBoxTracer, graph: NetworkGraph) -> None:
+        """WHITE BOX (IEC 60909-0 §3.3.3): jawny ślad korekcji impedancji K_T dla
+        każdego transformatora sieciowego w modelu. Kolejność deterministyczna
+        (sort po id gałęzi). Bez ukrytych korekcji — K_T ze wzorem i podstawieniem
+        liczb; Z_T i Z_TK w per-unit na wartościach znamionowych TR."""
+        from network_model.core.branch import TransformerBranch
+
+        fmt = ShortCircuitIEC60909Solver._format_float
+        fmt_c = ShortCircuitIEC60909Solver._format_complex_latex
+        for branch_id in sorted(graph.branches.keys()):
+            branch = graph.branches[branch_id]
+            if not isinstance(branch, TransformerBranch):
+                continue
+            if not getattr(branch, "in_service", True):
+                continue
+            x_t = branch.get_relative_reactance_xt()
+            c_max = branch.get_voltage_factor_c_max()
+            k_t = branch.get_kt_correction_factor()
+            z_t = branch.get_short_circuit_impedance_pu()
+            z_tk = branch.get_short_circuit_impedance_pu_corrected()
+            # X_T on the HV side [Ω] = x_T · (U_rT,HV² / S_rT) (rated base ohm).
+            z_base_hv_ohm = (
+                (branch.voltage_hv_kv**2) / branch.rated_power_mva
+                if branch.rated_power_mva > 0
+                else 0.0
+            )
+            x_t_ohm_hv = x_t * z_base_hv_ohm
+            tracer.add(
+                key=f"KT[{branch_id}]",
+                title=f"Korekcja impedancji transformatora sieciowego {branch.name or branch_id}",
+                formula_latex=r"K_T = 0.95 \cdot \frac{c_{max}}{1 + 0.6 \cdot x_T}",
+                inputs={
+                    "branch_id": branch_id,
+                    "s_rt_mva": branch.rated_power_mva,
+                    "u_rt_hv_kv": branch.voltage_hv_kv,
+                    "u_rt_lv_kv": branch.voltage_lv_kv,
+                    "x_t_pu": x_t,
+                    "x_t_ohm_hv": x_t_ohm_hv,
+                    "c_max": c_max,
+                },
+                substitution=(f"0.95 \\cdot \\frac{{{fmt(c_max)}}}{{1 + 0.6 \\cdot {fmt(x_t)}}}"),
+                substitution_latex=(
+                    f"0.95 \\cdot \\frac{{{fmt(c_max)}}}{{1 + 0.6 \\cdot {fmt(x_t)}}}"
+                ),
+                result={
+                    "k_t": k_t,
+                    "z_t_pu": z_t,
+                    "z_tk_pu": z_tk,
+                    "z_tk_formula_latex": (
+                        f"Z_{{TK}} = K_T \\cdot Z_T = {fmt(k_t)} \\cdot {fmt_c(z_t)}"
+                        f" = {fmt_c(z_tk)}"
+                    ),
+                },
+            )
+
+    @staticmethod
     def _build_white_box_trace(
         *,
         short_circuit_type: ShortCircuitType,
@@ -343,8 +399,11 @@ class ShortCircuitIEC60909Solver:
         z0: complex | None,
         ikss_a: float,
         post: ShortCircuitPostProcessResult,
+        graph: NetworkGraph | None = None,
     ) -> list[dict]:
         tracer = WhiteBoxTracer()
+        if graph is not None:
+            ShortCircuitIEC60909Solver._append_transformer_kt_trace(tracer, graph)
         z_equiv_abs = abs(z_equiv)
         voltage_factor = voltage_factor_for_fault(short_circuit_type)
 
@@ -603,6 +662,11 @@ class ShortCircuitIEC60909Solver:
             return branch.get_series_admittance()
         if hasattr(branch, "get_short_circuit_impedance_ohm_lv"):
             z_ohm = branch.get_short_circuit_impedance_ohm_lv()
+            # IEC 60909-0 §3.3.3: network transformers carry the K_T correction
+            # in the SC network — mirror of the Y-bus builder so the inverter
+            # branch-distribution stays consistent with the corrected Z-bus.
+            if hasattr(branch, "get_kt_correction_factor"):
+                z_ohm = z_ohm * branch.get_kt_correction_factor()
             if z_ohm == 0:
                 return None
             return 1.0 / z_ohm
@@ -957,6 +1021,7 @@ class ShortCircuitIEC60909Solver:
             z0=core.z0,
             ikss_a=ik_total,
             post=post,
+            graph=graph,
         )
         contributions = ShortCircuitIEC60909Solver._build_source_contributions(
             graph=graph,
@@ -1096,6 +1161,7 @@ class ShortCircuitIEC60909Solver:
             z0=core.z0,
             ikss_a=ik_total,
             post=post,
+            graph=graph,
         )
         contributions = ShortCircuitIEC60909Solver._build_source_contributions(
             graph=graph,
@@ -1194,6 +1260,7 @@ class ShortCircuitIEC60909Solver:
             z0=core.z0,
             ikss_a=ik_total,
             post=post,
+            graph=graph,
         )
         contributions = ShortCircuitIEC60909Solver._build_source_contributions(
             graph=graph,
@@ -1296,6 +1363,7 @@ class ShortCircuitIEC60909Solver:
             z0=core.z0,
             ikss_a=ik_total,
             post=post,
+            graph=graph,
         )
         contributions = ShortCircuitIEC60909Solver._build_source_contributions(
             graph=graph,
