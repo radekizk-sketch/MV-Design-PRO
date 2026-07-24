@@ -462,6 +462,10 @@ def mv_source_field_primary_devices(
         }
         if kind == "ES":
             entry["earthing_role"] = "field_earth"
+        elif kind == "SURGE_ARRESTER":
+            # Ogranicznik przepięć to odgałęzienie DO ZIEMI (uwaga 6) — niesie
+            # `earthing_role` spójnie z mostem producenckim i macierzą W1b.
+            entry["earthing_role"] = "surge_ground"
         devices.append(entry)
     return devices
 
@@ -479,3 +483,139 @@ def list_bay_templates() -> list[BayTemplate]:
     """Lista wszystkich kanonicznych szablonów pola (deterministyczna kolejność)."""
 
     return sorted(BAY_TEMPLATE_REGISTRY.values(), key=lambda t: t.template_id)
+
+
+# ---------------------------------------------------------------------------
+# W1c (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwagi 10/15/16/17): ENUMERACJA
+# KANONICZNA katalogu konfiguracji pól. Macierz wyposażenia jest TESTEM
+# REFERENCYJNYM SILNIKA generowanym Z KATALOGU (uwaga 16), nie z ręcznej listy
+# przykładów (uwaga 17). Źródłem przypadków jest ta enumeracja: KAŻDY kanoniczny
+# szablon (`BAY_TEMPLATE_REGISTRY`) + warianty pola źródłowego SN (W2b,
+# `mv_source_field_primary_devices`) staje się przypadkiem macierzy. Most
+# producencki (`cell_configurations` → `primary_devices`) dokłada
+# `reference_engine.field_configuration_catalog` (warstwa, która może zależeć od
+# katalogu producentów) — tu WYŁĄCZNIE kanon, bez zależności od reference_engine.
+# ---------------------------------------------------------------------------
+
+# Grupowanie funkcjonalne konfiguracji (uwaga 15): sekcje macierzy dowodowej i
+# testu. Wyprowadzone z ROLI pola (`BayTemplate.bay_role`) — dana katalogowa, nie
+# domysł. FEEDER (rezerwowe / potrzeb własnych) → „specjalne".
+_FUNCTIONAL_GROUP_BY_ROLE: dict[str, str] = {
+    "IN": "liniowe",
+    "OUT": "liniowe",
+    "FEEDER": "specjalne",
+    "TR": "transformatorowe",
+    "COUPLER": "sprzeglowe",
+    "MEASUREMENT": "pomiarowe",
+    "OZE": "OZE",
+}
+
+# Mapowanie roli pola → rola pola we frontendowym read-modelu (`field_role`,
+# `enmToSldAdapter`). Lustro mapowania roli macierzy W1 (LINIA_IN /
+# TRANSFORMATOROWE) — potrzebne generatorowi macierzy do ustawienia roli pola
+# hosta (render podąża za DANYMI, nie za rolą — uwaga 10, ale rola jest metadaną).
+_FIELD_ROLE_BY_BAY_ROLE: dict[str, str] = {
+    "IN": "LINIA_IN",
+    "OUT": "LINIA_OUT",
+    "FEEDER": "FEEDER",
+    "TR": "TRANSFORMATOROWE",
+    "COUPLER": "SPRZEGLO",
+    "MEASUREMENT": "POMIAROWE",
+    "OZE": "OZE",
+}
+
+
+def functional_group_for_role(bay_role: str) -> str:
+    """Grupa funkcjonalna macierzy (uwaga 15) dla roli pola. Domyślnie „specjalne"."""
+    return _FUNCTIONAL_GROUP_BY_ROLE.get(bay_role, "specjalne")
+
+
+def config_ref_for_template(template_id: str) -> str:
+    """Stabilny identyfikator konfiguracji KANONICZNEJ (uwaga 10) — deterministyczny,
+    wyprowadzony z ref szablonu. Prefiks `kanoniczny:` odróżnia od mostu
+    producenckiego (`producent:<pack>:<cell>`). NIE zależy od stanu aparatu —
+    wariant stanu (zamknięty/otwarty) dokłada konsument (`<config_ref>::<stan>`).
+    """
+    return f"kanoniczny:{template_id}"
+
+
+def config_ref_for_mv_source(switching_device: str) -> str:
+    """Stabilny identyfikator konfiguracji pola źródłowego SN (W2b) — kanoniczny."""
+    main = "lbs" if str(switching_device).strip().upper() in {"LBS", "LOAD_SWITCH"} else "cb"
+    return f"kanoniczny:mv_source_{main}"
+
+
+def _canonical_config_entry(template: BayTemplate) -> dict[str, Any]:
+    """Jeden przypadek macierzy z kanonicznego szablonu pola (uwaga 16)."""
+    config_ref = config_ref_for_template(template.template_id)
+    primary_devices = template_primary_devices(template.template_id, field_ref=config_ref)
+    return {
+        "config_ref": config_ref,
+        "source": "kanoniczny",
+        "group": functional_group_for_role(template.bay_role),
+        "bay_role": template.bay_role,
+        "field_role": _FIELD_ROLE_BY_BAY_ROLE.get(template.bay_role, template.bay_role),
+        "template_id": template.template_id,
+        "name": template.name,
+        "primary_devices": primary_devices,
+        "protection_codes": protection_codes_for_bay_role(template.bay_role),
+    }
+
+
+def _mv_source_config_entry(
+    *, switching_device: str, ct: bool, vt: bool, surge_arrester: bool
+) -> dict[str, Any]:
+    """Przypadek macierzy z pola źródłowego SN (W2b) — jawna konfiguracja DER-SN."""
+    config_ref = config_ref_for_mv_source(switching_device)
+    name = (
+        "Pole źródłowe SN (wyłącznikowe)"
+        if config_ref.endswith("cb")
+        else "Pole źródłowe SN (rozłącznikowe)"
+    )
+    primary_devices = mv_source_field_primary_devices(
+        config_ref,
+        switching_device=switching_device,
+        ct=ct,
+        vt=vt,
+        earthing_switch=True,
+        surge_arrester=surge_arrester,
+        cable_head=True,
+    )
+    return {
+        "config_ref": config_ref,
+        "source": "kanoniczny",
+        "group": "OZE",
+        "bay_role": "OZE",
+        "field_role": "OZE",
+        "template_id": None,
+        "name": name,
+        "primary_devices": primary_devices,
+        "protection_codes": protection_codes_for_bay_role("OZE"),
+    }
+
+
+def enumerate_canonical_configurations() -> list[dict[str, Any]]:
+    """Enumeracja KANONICZNA katalogu konfiguracji pól (uwaga 16/17): każdy szablon
+    `BAY_TEMPLATE_REGISTRY` + dwa warianty pola źródłowego SN (W2b). Deterministyczna
+    kolejność (config_ref) — ten sam wynik przy każdym wywołaniu. Zwraca listę
+    słowników (JSON-serializowalnych) z `config_ref` (uwaga 10), grupą funkcjonalną
+    (uwaga 15), rolą pola i zmaterializowanymi `primary_devices` (tor pierwotny).
+    """
+    entries: list[dict[str, Any]] = [_canonical_config_entry(t) for t in list_bay_templates()]
+    entries.append(
+        _mv_source_config_entry(switching_device="CB", ct=True, vt=False, surge_arrester=True)
+    )
+    entries.append(
+        _mv_source_config_entry(switching_device="LBS", ct=True, vt=True, surge_arrester=True)
+    )
+    return sorted(entries, key=lambda e: str(e["config_ref"]))
+
+
+# Typy pól z uwagi 9 (RECENZJA_MACIERZ_WYPOSAZENIA), które NIE mają szablonu w
+# katalogu — jawny rejestr braków (zero fabrykacji: nie wymyślamy szablonu,
+# którego katalog nie niesie). Bateria kondensatorów i generator synchroniczny
+# (odróżniony od źródła OZE inwerterowego) czekają na decyzję danych/domeny.
+FIELD_TYPES_WITHOUT_TEMPLATE: list[str] = [
+    "bateria_kondensatorow",
+    "generator_synchroniczny",
+]

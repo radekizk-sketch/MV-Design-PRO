@@ -183,6 +183,13 @@ export interface PreviewElementMeta {
    *  `domain_no_guessing_guard`: brak pokrycia kategorii ⇒ menu generyczne,
    *  NIGDY domysł podtypu). `undefined` dla WSZYSTKICH elementów nie-DER. */
   readonly derKind?: DerSourceKind;
+  /** W1c (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwaga 10): identyfikator
+   *  KONFIGURACJI pola (backend `config_ref` → field_spec.config_id → adapter →
+   *  `ComposedSymbolInstance.configId` → tu, przepisane 1:1). Świadczy o
+   *  tożsamości konfiguracji NIEZALEŻNIE od nazwy/roli pola — render podąża za
+   *  DANYMI (uwaga 10). Konsument: audytor DOM (`data-config-id`) i generator
+   *  macierzy W1c. `undefined` dla DER i pól bez szablonu kanonicznego. */
+  readonly configId?: string;
   /** F9.9 (spec §17.3): kody funkcji przekaźnika — WYŁĄCZNIE dla symboli
    *  `protectionRelay` (`elementKind==='protectionAnnotation'`), przekazane
    *  1:1 do `ProtectionRelayGlyph.labelLines` (`symbols/glyphs.tsx`). */
@@ -311,6 +318,7 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
       data-parity-key={parityKeysOf(symbol.meta)}
       data-test-id={symbol.meta?.testId}
       data-apparatus-source={symbol.meta?.apparatusSource}
+      data-config-id={symbol.meta?.configId}
       data-designation-source={symbol.meta?.designationSource}
       data-missing-data={symbol.meta?.missingData ? 'true' : undefined}
       data-source-state={state}

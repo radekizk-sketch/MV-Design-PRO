@@ -3817,6 +3817,12 @@ interface StationFieldSpec {
    *  Z DANYCH (kolejność/stan/uziemnik bocznie/głowica), a nie z jednego
    *  fallbacku konwencji §12.4. `undefined` = pole bez danych → konwencja. */
   readonly primary_devices?: readonly BayPrimaryDevice[];
+  /** W1c (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwaga 10): identyfikator
+   *  KONFIGURACJI pola (backend `_build_field_spec` → `config_ref_for_template`).
+   *  Stabilny, deterministyczny — niesiony do meta sceny, żeby render nie
+   *  zgadywał wyposażenia z typu/roli pola (tożsamość konfiguracji jest DANĄ).
+   *  `undefined` gdy pole bez szablonu kanonicznego. */
+  readonly config_id?: string;
 }
 
 function buildStationMiniBaysFromFieldSpecs(
@@ -3842,6 +3848,9 @@ function buildStationMiniBaysFromFieldSpecs(
         // JEDNA prawda sortowania/projekcji dla ścieżki field_specs i legacy
         // bays[]. `undefined` gdy brak danych → konwencja §12.4 (zero regresu).
         primaryDevices: projectBayPrimaryDevices({ primary_devices: spec.primary_devices }),
+        // W1c (uwaga 10): identyfikator konfiguracji pola przepisany 1:1 z
+        // field_spec (backend) do read-modelu bloku — dalej do meta sceny.
+        configId: spec.config_id,
       };
     });
 }
@@ -3861,6 +3870,7 @@ function readStationFieldSpecs(station: Substation): StationFieldSpec[] {
       tags: getStringArray(raw.tags),
       meta: isPlainRecord(raw.meta) ? raw.meta : {},
       primary_devices: parseStationFieldPrimaryDevices(raw.primary_devices),
+      config_id: getString(raw.config_id),
     }))
     .filter((spec) => Boolean(spec.field_ref || spec.bus_ref || spec.equipment_refs.length > 0));
 }

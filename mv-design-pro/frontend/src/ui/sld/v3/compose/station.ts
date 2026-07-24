@@ -307,6 +307,13 @@ export interface ComposedSymbolInstance {
    *  (`SldCanvasV3Workspace.elementKindForMenu`, ZERO zgadywania podtypu —
    *  `unknown`/`generator` degradują do menu generycznego `der`). */
   readonly derKind?: DerSourceKind;
+  /** W1c (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwaga 10): identyfikator
+   *  KONFIGURACJI pola, do którego należy ten aparat (`MiniBlockBayDescriptor.
+   *  configId`, backend `config_ref`). Przepisany 1:1 na WSZYSTKIE symbole pola
+   *  (tor główny + boczne) → `scene/buildScene.ts` `PreviewElementMeta.configId`.
+   *  Render podąża za DANYMI, nie za rolą pola — configId świadczy o tożsamości
+   *  konfiguracji (uwaga 10). `undefined` dla DER i pól bez szablonu. */
+  readonly configId?: string;
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
@@ -530,6 +537,7 @@ function buildBayStack(
     const instance: ComposedSymbolInstance = {
       symbolId,
       bayRef: bay.bayRef,
+      configId: bay.configId,
       deviceRef: item.deviceRef,
       linkedRef: item.linkedRef,
       apparatusSource,
@@ -609,6 +617,7 @@ function buildBayStack(
       const instance: ComposedSymbolInstance = {
         symbolId: item.symbolId,
         bayRef: bay.bayRef,
+        configId: bay.configId,
         deviceRef: item.deviceRef,
         linkedRef: item.linkedRef,
         apparatusSource,

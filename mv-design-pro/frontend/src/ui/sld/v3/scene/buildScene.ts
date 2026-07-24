@@ -1288,6 +1288,10 @@ function composeRowStation(
       // `deviceRef` (WHITE BOX §12.1) mieszka na `StationComposition`
       // (`compose/station.ts`), poza zakresem propagacji do sceny w F9.3.
       apparatusSource: s.apparatusSource,
+      // W1c (uwaga 10): identyfikator KONFIGURACJI pola przepisany 1:1 z
+      // kompozycji — audytor DOM (`data-config-id`) i generator macierzy W1c
+      // czytają WYŁĄCZNIE stąd. Render nie zgaduje wyposażenia z typu pola.
+      configId: s.configId,
       // F10.2 (spec §19.1, V12K-035): przepisane 1:1 — audytor DOM
       // (`data-designation-source`) dla identyfikatora PER-APARAT Q/QE/T
       // (`compose/apparatusSequence.ts` `apparatusIdentifiers`) — ODDZIELNE

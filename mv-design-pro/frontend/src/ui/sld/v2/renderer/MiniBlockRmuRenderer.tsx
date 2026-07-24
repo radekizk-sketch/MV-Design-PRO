@@ -169,6 +169,11 @@ export interface MiniBlockBayDescriptor {
    *  niesie `primary_devices` — konwencja-wg-roli (§12.4, fallback rysunkowy)
    *  NIE jest projektowana tutaj (poza zakresem F9.2, patrz F9.3). */
   readonly primaryDevices?: readonly BayPrimaryDeviceView[];
+  /** W1c (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwaga 10): identyfikator
+   *  KONFIGURACJI pola — stabilny, deterministyczny (backend `config_ref`).
+   *  Niesiony do meta sceny (`configId`) przez `compose/station.ts`, żeby render
+   *  nie zgadywał wyposażenia z typu pola. `undefined` gdy pole bez szablonu. */
+  readonly configId?: string;
   /** F9.9 (SLD_CAD_SPEC_V3 §17.2): adnotacja zabezpieczeń tego pola —
    *  `undefined` gdy `Bay.protection_codes` puste/nieobecne (brak danych =
    *  brak oznaczenia, §17.2 dosłownie). */

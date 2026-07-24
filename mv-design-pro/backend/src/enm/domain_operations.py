@@ -795,6 +795,15 @@ def _build_field_spec(
         materialized = template_primary_devices(bay_template_ref, field_ref=field_ref)
         if materialized:
             spec["primary_devices"] = materialized
+    # W1c (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwaga 10): identyfikator
+    # KONFIGURACJI pola — stabilny, deterministyczny, wyprowadzony z ref szablonu
+    # kanonicznego. Klucz TOP-LEVEL field_spec (addytywny, exclude gdy brak
+    # szablonu) czytany przez adapter SLD (`config_id` → meta sceny) — render nie
+    # zgaduje wyposażenia z typu pola, tożsamość konfiguracji jest DANĄ.
+    if bay_template_ref:
+        from network_model.catalog.bay_templates import config_ref_for_template
+
+        spec["config_id"] = config_ref_for_template(bay_template_ref)
     return spec
 
 
