@@ -914,6 +914,17 @@ export interface Measurement extends ENMElement {
    *  warunek konieczny dla 67N kierunkowego) vs gwiazda. WYŁĄCZNIE dla
    *  measurement_type==='VT'; `null`/brak = dotychczasowe uproszczenie. */
   vt_arrangement?: 'open_delta' | 'star' | null;
+  /** CTVT-MODEL (W5/V12K-173): liczba rdzeni przekładnika prądowego (osobne
+   *  uzwojenia wtórne, np. pomiarowe 0,2S + zabezpieczeniowe 5P10; tabliczka
+   *  CT wg IEC 61869-2). Dane producenta; WYŁĄCZNIE dla
+   *  measurement_type==='CT'; wartość > 0. `null`/brak = dana niedostarczona
+   *  (uczciwy brak, zero fabrykacji). Oś odrębna od `ct_arrangement`. */
+  ct_cores?: number | null;
+  /** CTVT-MODEL (W5/V12K-173): typ montażu przekładnika napięciowego —
+   *  szynowy (`bus`) vs kablowy (`cable`). Dane producenta/projektowe;
+   *  WYŁĄCZNIE dla measurement_type==='VT'. Oś odrębna od `vt_arrangement`
+   *  (open_delta/star = oś 3U0). `null`/brak = dana niedostarczona. */
+  vt_mounting?: 'bus' | 'cable' | null;
 }
 
 // ---------------------------------------------------------------------------

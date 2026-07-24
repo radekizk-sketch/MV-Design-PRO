@@ -557,6 +557,23 @@ class Measurement(ENMElement):
     # vs gwiazda. WYŁĄCZNIE dla measurement_type=='VT'; None = dana
     # niedostarczona (dotychczasowe uproszczenie §20.2 pozostaje w mocy).
     vt_arrangement: Literal["open_delta", "star"] | None = None
+    # CTVT-MODEL (W5/V12K-173): liczba rdzeni przekładnika prądowego (rdzeń =
+    # osobne uzwojenie wtórne, każdy o własnej klasie/mocy — np. rdzeń pomiarowy
+    # 0,2S + rdzeń zabezpieczeniowy 5P10). Dane PRODUCENTA (tabliczka CT wg
+    # IEC 61869-2); WYŁĄCZNIE dla measurement_type=='CT'. `gt=0` = liczba
+    # rdzeni musi być dodatnia. None = dana niedostarczona przez producenta
+    # (uczciwy brak, ZERO fabrykacji — konsument NIE zgaduje). Oś ODRĘBNA od
+    # `ct_arrangement` (3×CT vs Ferranti opisuje układ dla I0, `ct_cores`
+    # opisuje liczbę uzwojeń wtórnych każdego przekładnika).
+    ct_cores: int | None = Field(default=None, gt=0)
+    # CTVT-MODEL (W5/V12K-173): typ montażu przekładnika napięciowego — szynowy
+    # (`bus`, VT na szynach zbiorczych) vs kablowy (`cable`, VT w polu
+    # kablowym/na głowicy). Dane PRODUCENTA/projektowe rozdzielni; WYŁĄCZNIE
+    # dla measurement_type=='VT'. Oś ODRĘBNA od `vt_arrangement`
+    # (open_delta/star = oś składowej zerowej 3U0; `vt_mounting` = lokalizacja
+    # fizyczna montażu). None = dana niedostarczona (uczciwy brak, ZERO
+    # fabrykacji).
+    vt_mounting: Literal["bus", "cable"] | None = None
 
     @model_validator(mode="after")
     def _validate_arrangement_matches_measurement_type(self) -> Measurement:
@@ -570,6 +587,20 @@ class Measurement(ENMElement):
         if self.vt_arrangement is not None and self.measurement_type != "VT":
             raise ValueError(
                 f"Measurement '{self.ref_id}': vt_arrangement wymaga measurement_type='VT'."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_ctvt_variant_matches_measurement_type(self) -> Measurement:
+        """CTVT-MODEL: `ct_cores`/`vt_mounting` to dane WYŁĄCZNIE dla
+        odpowiadającego `measurement_type` — CT nie ma montażu VT, a VT nie ma
+        rdzeni CT (spójność osi, WHITE BOX, `domain_no_guessing_guard`).
+        Dodatnia liczba rdzeni jest egzekwowana przez `Field(gt=0)`."""
+        if self.ct_cores is not None and self.measurement_type != "CT":
+            raise ValueError(f"Measurement '{self.ref_id}': ct_cores wymaga measurement_type='CT'.")
+        if self.vt_mounting is not None and self.measurement_type != "VT":
+            raise ValueError(
+                f"Measurement '{self.ref_id}': vt_mounting wymaga measurement_type='VT'."
             )
         return self
 
