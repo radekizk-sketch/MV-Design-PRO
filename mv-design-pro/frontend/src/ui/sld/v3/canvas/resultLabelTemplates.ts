@@ -48,10 +48,14 @@ export type ResultLabelAnalysis = 'load_flow' | 'short_circuit';
 export type ResultLabelLod = 0 | 1 | 2;
 
 /** Jedna linia etykiety: prefiks wielkości (np. „U", „P", „obc.") + wartość
- *  sformatowana (1:1 ze źródła). */
+ *  sformatowana (1:1 ze źródła). W trybie porównawczym (R4, wym. 10/15) `text`
+ *  niesie Δ lub „poprzednia → bieżąca", a `trend` — kierunek mini trendu.
+ *  W trybie bazowym (domyślnym) `trend` jest NIEOBECNY (pole opcjonalne, brak
+ *  klucza) — kontrakt bazowy `{prefix, text}` niezmieniony. */
 export interface ResultLabelLine {
   readonly prefix: string;
   readonly text: string;
+  readonly trend?: ResultLabelTrend;
 }
 
 /** Specyfikacja jednej linii szablonu: kod metryki + prefiks + formater.
@@ -114,6 +118,61 @@ export function formatCurrent(metric: RawMetricValue): string {
 }
 
 // ---------------------------------------------------------------------------
+// R4 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.10/15) — TRYB PORÓWNAWCZY + MINI
+// TREND. Jedno źródło mechanizmu dla wym. 10 (Δ / poprzednia→bieżąca) i wym. 15
+// (↑/↓/→). CZYSTA arytmetyka porównania DWÓCH gotowych wyników backendu
+// (bieżący − poprzedni) — to NIE fizyka: żadna wielkość nie jest liczona
+// modelem sieci, różnica dwóch liczb solvera to interpretacja (jak severity /
+// loading w warstwie kanonicznej). Formatowanie przez ISTNIEJĄCE formattery
+// szablonu (polski przecinek, jednostka, znak) — zero nowej prezentacji fizyki.
+// ---------------------------------------------------------------------------
+
+/** Tryb prezentacji porównania (wym. 10): `delta` = różnica ze znakiem;
+ *  `previous` = „poprzednia → bieżąca". */
+export type ResultLabelComparisonMode = 'delta' | 'previous';
+
+/** Kierunek mini trendu (wym. 15). `flat` = w martwej strefie (brak istotnej
+ *  zmiany). BRAK trendu (element/kod bez odpowiednika w poprzednim biegu) NIE
+ *  jest tu reprezentowany — linia po prostu nie dostaje pola `trend` (uczciwie,
+ *  §0.4 „element bez odpowiednika ⇒ bez trendu"). */
+export type ResultLabelTrend = 'up' | 'down' | 'flat';
+
+/** Glify mini trendu — JEDEN nośnik, używany przez pomiar bloku (`resultLabel
+ *  BlockSize`) i renderer (`resultLabelLineText`) → spójność szerokości/pozycji
+ *  ekran ↔ eksport (wym. 18). */
+export const RESULT_LABEL_TREND_GLYPH: Readonly<Record<ResultLabelTrend, string>> = {
+  up: '↑',
+  down: '↓',
+  flat: '→',
+};
+
+/** PRÓG MARTWEJ STREFY trendu (wym. 15) — WZGLĘDNY (bezjednostkowy), by jeden
+ *  próg działał dla kV/%/A/MW bez interpretacji jednostek. |Δ|/max(|poprz|,
+ *  |bież|) ≤ próg ⇒ trend `flat`. 0,005 = 0,5 % — stała KONTRAKTOWA (nie
+ *  liczona z modelu; czysta arytmetyka porównania dwóch liczb solvera). */
+export const RESULT_LABEL_TREND_DEADBAND = 0.005;
+
+/** Kierunek trendu z pary (poprzednia, bieżąca) wg progu martwej strefy —
+ *  CZYSTA arytmetyka (zero fizyki). Obie wartości zerowe lub różnica w martwej
+ *  strefie ⇒ `flat`. Determinizm: ta sama para ⇒ ten sam trend. */
+export function computeResultLabelTrend(previous: number, current: number): ResultLabelTrend {
+  const diff = current - previous;
+  const denom = Math.max(Math.abs(previous), Math.abs(current));
+  if (denom === 0) return 'flat';
+  if (Math.abs(diff) / denom <= RESULT_LABEL_TREND_DEADBAND) return 'flat';
+  return diff > 0 ? 'up' : 'down';
+}
+
+/** Zapewnia jawny znak „+" dla różnicy dodatniej (ujemna niesie własny „-",
+ *  zero bez znaku), NIE dublując znaku, gdy formatter szablonu już go dodał
+ *  (`formatSignedScalar`). WYŁĄCZNIE prezentacja — arytmetyka różnicy jest u
+ *  wołającego (builder). */
+export function applyDeltaSign(formattedBody: string, diff: number): string {
+  if (diff > 0 && !formattedBody.startsWith('+')) return `+${formattedBody}`;
+  return formattedBody;
+}
+
+// ---------------------------------------------------------------------------
 // REJESTR SZABLONÓW: (analiza × klasa elementu) → uporządkowane specyfikacje.
 // Kolejność = priorytet informacji (L1 = pierwsza; L2 = 2–3 pierwsze).
 // ---------------------------------------------------------------------------
@@ -157,12 +216,22 @@ const LF_BRANCH: readonly ResultLabelLineSpec[] = [
   { code: 'COS_PHI', prefix: 'cosφ', format: formatDimensionless },
 ];
 
-/** Zwarcie — szyna (zachowane z W4): Ik″/ip/Ith. Pozostałe klasy SC NIE
- *  rozbudowywane w R1 (bez spekulacji — struktura gotowa). */
+/** Zwarcie — szyna (węzeł): prąd początkowy Ik″ (L1), prąd udarowy ip, prąd
+ *  cieplny Ith oraz moc zwarciowa Sk (R4 — domknięcie slotu W4 realnymi
+ *  wielkościami zwarciowymi węzła, które payload backendu NIESIE:
+ *  `short_circuit_to_resultset_v1.py` element „bus" → ikss_a/ip_a/ith_a/sk_mva,
+ *  `result_builder_v1._METRIC_MAP` → IK_3F_A/IP_A/ITH_A/SK_MVA). Kolejność =
+ *  priorytet: na kanwie top-3 wg LOD (Ik″/ip/Ith), Sk w pełnym zestawie
+ *  (agregat/inspektor) — wzorzec LF (branch 6 linii, cap 3). Rozkład wkładu
+ *  system/DER/total (IK_3F_SYSTEM_A/IK_3F_DER_A/IK_3F_TOTAL_A) jest w payloadzie,
+ *  ale ŚWIADOMIE NIE templatowany jako tekst — jest już wizualizowany
+ *  strzałkami wkładu (`FaultContributionArrow`), duplikacja zakazana
+ *  (reużycie zamiast dublowania). Patrz rejestr braków R4. */
 const SC_BUS: readonly ResultLabelLineSpec[] = [
   { code: 'IK_3F_A', prefix: 'Ik″', format: formatCurrent },
   { code: 'IP_A', prefix: 'ip', format: formatCurrent },
   { code: 'ITH_A', prefix: 'Ith', format: formatCurrent },
+  { code: 'SK_MVA', prefix: 'Sk', format: formatScalar },
 ];
 
 /** Rejestr szablonów: `analysis → kind → specyfikacje`. Brak wpisu (analiza lub

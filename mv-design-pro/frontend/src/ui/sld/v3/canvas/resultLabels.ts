@@ -42,21 +42,37 @@
  * `busResultRef` — dokładnie jedna etykieta U/δ na sekcję, kotwica na szynie
  * głównej (pierwsza w kolejności sceny).
  */
-import type { RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
+import type { RawMetricValue, RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { SceneV3 } from '../scene/buildScene';
 import { singleHopSegmentRefs } from './overlay';
 import {
+  applyDeltaSign,
+  computeResultLabelTrend,
   normalizeResultLabelAnalysis,
   selectResultLabelSpecs,
   type ResultLabelAnalysis,
+  type ResultLabelComparisonMode,
   type ResultLabelKind,
   type ResultLabelLine,
   type ResultLabelLineSpec,
 } from './resultLabelTemplates';
 
 export type { ResultLabelKind, ResultLabelLine } from './resultLabelTemplates';
+export type { ResultLabelComparisonMode, ResultLabelTrend } from './resultLabelTemplates';
+
+/**
+ * R4 (wym. 10/15) — KONTEKST porównawczy dla buildera etykiet: poprzedni payload
+ * (ten SAM `analysis_type` co bieżący — gwarantuje wołający) + tryb prezentacji.
+ * Porównanie WYŁĄCZNIE ref-do-ref i kod-do-kodu (lookup po TYM SAMYM refie i
+ * kodzie metryki, którymi zbudowano linię bieżącą) — element/kod bez
+ * odpowiednika w poprzednim biegu nie dostaje ani Δ, ani trendu (uczciwie).
+ */
+export interface ResultLabelComparison {
+  readonly previousPayload: RawOverlayPayload;
+  readonly mode: ResultLabelComparisonMode;
+}
 
 /** Wpis etykiety wynikowej jednego elementu — linie w kolejności priorytetu
  *  (kotwica z `ownerRef` w rendererze; zwijanie LOD w rendererze). Pusty
@@ -76,23 +92,58 @@ export interface ResultLabelEntry {
   readonly severity: string;
 }
 
+/** Czy metryka niesie skończoną liczbę (jedyny warunek emisji linii, §0). */
+function finiteMetric(metric: RawMetricValue | null): metric is RawMetricValue & { value: number } {
+  return metric != null && metric.value !== null && metric.value !== undefined && Number.isFinite(metric.value);
+}
+
+/**
+ * R4 (wym. 10/15) — złóż JEDNĄ linię z bieżącej metryki i (opcjonalnie)
+ * porównania. Bez porównania (lub gdy poprzednia metryka nie istnieje) linia
+ * jest BAZOWA (`{prefix, text}`, bez `trend`). Z porównaniem i istniejącą
+ * poprzednią metryką: `text` = Δ ze znakiem (`delta`) albo „poprzednia →
+ * bieżąca" (`previous`), a `trend` = kierunek wg progu martwej strefy. Znak i
+ * jednostka Δ pochodzą z ISTNIEJĄCEGO formattera szablonu (`spec.format`) —
+ * zero nowej prezentacji fizyki.
+ */
+function buildLine(
+  metric: RawMetricValue & { value: number },
+  spec: ResultLabelLineSpec,
+  comparison: ResultLabelComparison | undefined,
+  lookupRef: string,
+): ResultLabelLine {
+  const base = spec.format(metric);
+  if (!comparison) return { prefix: spec.prefix, text: base };
+  const prev = getMetric(comparison.previousPayload, lookupRef, spec.code);
+  if (!finiteMetric(prev)) return { prefix: spec.prefix, text: base }; // brak odpowiednika ⇒ bez trendu
+  const trend = computeResultLabelTrend(prev.value, metric.value);
+  if (comparison.mode === 'delta') {
+    const diff = metric.value - prev.value;
+    const deltaBody = applyDeltaSign(spec.format({ ...metric, value: diff }), diff);
+    return { prefix: spec.prefix, text: `Δ ${deltaBody}`, trend };
+  }
+  return { prefix: spec.prefix, text: `${spec.format(prev)} → ${base}`, trend };
+}
+
 /** Zbuduj linie dla jednego elementu z metryk payloadu (obecne kody → linie,
  *  w kolejności specyfikacji; brak kodu ⇒ brak linii). Wartość `null`/brak/
- *  nieskończona ⇒ linia pominięta (zero placeholderów, §0). */
+ *  nieskończona ⇒ linia pominięta (zero placeholderów, §0). `comparison` (R4)
+ *  wzbogaca linie o Δ/poprzednią i trend — po TYM SAMYM `ownerRef` (ref-do-ref)
+ *  i kodzie (kod-do-kodu). */
 function linesFor(
   payload: RawOverlayPayload,
   ownerRef: string,
   specs: readonly ResultLabelLineSpec[],
+  comparison?: ResultLabelComparison,
 ): readonly ResultLabelLine[] {
   const lines: ResultLabelLine[] = [];
   const presentCodes = new Set<string>();
   for (const spec of specs) {
     if (spec.skipIfAnyPresent && spec.skipIfAnyPresent.some((c) => presentCodes.has(c))) continue;
     const metric = getMetric(payload, ownerRef, spec.code);
-    if (!metric || metric.value === null || metric.value === undefined) continue;
-    if (!Number.isFinite(metric.value)) continue;
+    if (!finiteMetric(metric)) continue;
     presentCodes.add(spec.code);
-    lines.push({ prefix: spec.prefix, text: spec.format(metric) });
+    lines.push(buildLine(metric, spec, comparison, ownerRef));
   }
   return lines;
 }
@@ -135,6 +186,7 @@ export function buildResultLabelsFromScene(
   scene: SceneV3,
   payload: RawOverlayPayload | null,
   trustedBranchRefs: ReadonlySet<string>,
+  comparison?: ResultLabelComparison,
 ): Record<string, ResultLabelEntry> {
   const entries: Record<string, ResultLabelEntry> = {};
   if (!payload) return entries;
@@ -148,7 +200,7 @@ export function buildResultLabelsFromScene(
     const labelKind = SYMBOL_KIND_TO_LABEL_KIND[elementKind];
     if (!labelKind) continue;
     if (entries[ownerRef]) continue; // ta sama tożsamość na wielu LOD/symbolach
-    const lines = linesFor(payload, ownerRef, selectResultLabelSpecs(analysis, labelKind));
+    const lines = linesFor(payload, ownerRef, selectResultLabelSpecs(analysis, labelKind), comparison);
     if (lines.length === 0) continue;
     entries[ownerRef] = { ownerRef, kind: labelKind, lines, severity: severityOf(payload, ownerRef) };
   }
@@ -168,13 +220,13 @@ export function buildResultLabelsFromScene(
     if (elementKind === 'bus') {
       const resultRef = resultRefForSegment(segment.meta) ?? ownerRef;
       if (seenBusResultRefs.has(resultRef)) continue;
-      const lines = linesFor(payload, resultRef, selectResultLabelSpecs(analysis, 'bus'));
+      const lines = linesFor(payload, resultRef, selectResultLabelSpecs(analysis, 'bus'), comparison);
       if (lines.length === 0) continue;
       seenBusResultRefs.add(resultRef);
       entries[ownerRef] = { ownerRef, kind: 'bus', lines, severity: severityOf(payload, resultRef) };
     } else if (elementKind === 'segment') {
       if (ownerRef.includes('#') || !trustedBranchRefs.has(ownerRef)) continue;
-      const lines = linesFor(payload, ownerRef, selectResultLabelSpecs(analysis, 'branch'));
+      const lines = linesFor(payload, ownerRef, selectResultLabelSpecs(analysis, 'branch'), comparison);
       if (lines.length === 0) continue;
       entries[ownerRef] = { ownerRef, kind: 'branch', lines, severity: severityOf(payload, ownerRef) };
     }
@@ -211,6 +263,9 @@ const PREFIX_TO_QUANTITY: Readonly<Record<string, ResultLabelQuantity>> = {
   'ΔP': 'P',
   Q: 'Q',
   S: 'S',
+  // Sk = moc zwarciowa [MVA] (R4) — filtrowana pod „moc pozorna S" (obie w MVA,
+  // najbliższa semantyka; linia pozostaje filtrowalna, brak cichego gubienia).
+  Sk: 'S',
   I: 'I',
   'Ik″': 'I',
   ip: 'I',

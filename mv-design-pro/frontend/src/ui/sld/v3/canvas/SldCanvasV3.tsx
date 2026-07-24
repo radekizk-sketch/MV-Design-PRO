@@ -53,7 +53,7 @@ import {
 import type { SegmentFaultFlowOverlay, SegmentFlowOverlay, SldV3Overlay, TransformerOltcOverlay } from './overlay';
 import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
 import { resultRefForSegment } from './resultLabels';
-import { resultLabelLinesForLod, type ResultLabelLod } from './resultLabelTemplates';
+import { resultLabelLinesForLod, RESULT_LABEL_TREND_GLYPH, type ResultLabelLod } from './resultLabelTemplates';
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { FaultContributionArrow } from '../../../sld-overlay/FaultContributionArrow';
 import { formatTapPositionLabel } from '../../v2/canvas/oltcGlyph';
@@ -1224,9 +1224,14 @@ export interface ResultLabelLayout {
   readonly metrics: ResultLabelMetrics;
 }
 
-/** Tekst jednej linii: „prefiks wartość" (np. „U 15,02 kV", „obc. 72,5 %"). */
+/** Tekst jednej linii: „prefiks wartość" (np. „U 15,02 kV", „obc. 72,5 %").
+ *  R4 (wym. 15): w trybie porównawczym dokleja mini trend ↑/↓/→ ZA wartością —
+ *  JEDEN nośnik używany i przez pomiar bloku (`resultLabelBlockSize`), i przez
+ *  render (`SceneResultLabelNode`), więc szerokość/pozycja etykiety są spójne
+ *  ekran ↔ eksport (wym. 18). Glif w kolorze linii (bez osobnego tokenu). */
 function resultLabelLineText(line: ResultLabelLine): string {
-  return `${line.prefix} ${line.text}`;
+  const trend = line.trend ? ` ${RESULT_LABEL_TREND_GLYPH[line.trend]}` : '';
+  return `${line.prefix} ${line.text}${trend}`;
 }
 
 /** Etykieta PL klasy właściciela (do popovera agregatu; zero kodenames). */

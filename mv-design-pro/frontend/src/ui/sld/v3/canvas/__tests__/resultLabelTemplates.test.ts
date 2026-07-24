@@ -9,9 +9,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { RawMetricValue } from '../../../../sld-overlay/rawResultOverlayStore';
 import {
+  applyDeltaSign,
+  computeResultLabelTrend,
   formatScalar,
   formatSignedScalar,
   normalizeResultLabelAnalysis,
+  RESULT_LABEL_TREND_DEADBAND,
+  RESULT_LABEL_TREND_GLYPH,
   resultLabelLinesForLod,
   selectResultLabelSpecs,
   type ResultLabelLine,
@@ -71,9 +75,16 @@ describe('resultLabelTemplates — rejestr treści (analiza × klasa elementu)',
     expect(specs[1].skipIfAnyPresent).toEqual(['U_kV']);
   });
 
-  it('zwarcie · szyna: Ik″→ip→Ith (zachowane z W4)', () => {
+  it('zwarcie · szyna: Ik″→ip→Ith→Sk (R4 — slot W4 domknięty mocą zwarciową Sk)', () => {
+    // R4 (wym. 13): payload backendu (short_circuit_to_resultset_v1.py) NIESIE
+    // sk_mva na węźle → dołączony na końcu (priorytet: Ik″/ip/Ith na kanwie
+    // top-3, Sk w pełnym zestawie). Rozkład wkładu system/DER/total pozostaje w
+    // strzałkach wkładu (nie duplikujemy tekstem) — patrz rejestr braków R4.
     const specs = selectResultLabelSpecs('short_circuit', 'bus');
-    expect(codesOf(specs)).toEqual(['IK_3F_A', 'IP_A', 'ITH_A']);
+    expect(codesOf(specs)).toEqual(['IK_3F_A', 'IP_A', 'ITH_A', 'SK_MVA']);
+    expect(prefixesOf(specs)).toEqual(['Ik″', 'ip', 'Ith', 'Sk']);
+    // Sk formatowane jak skalar z jednostką (MVA).
+    expect(specs[3].format(metric(120.5, 'MVA', 'fixed2'))).toBe('120,50 MVA');
   });
 
   it('zwarcie · linia/źródło/TR NIE rozbudowane w R1 (bez spekulacji) ⇒ []', () => {
@@ -138,5 +149,38 @@ describe('resultLabelTemplates — zwijanie wg LOD (wym. 5)', () => {
   it('gdy linii ≤ limit ⇒ ten sam obiekt (stabilność referencji dla memo)', () => {
     const two: readonly ResultLabelLine[] = [lines[0], lines[1]];
     expect(resultLabelLinesForLod(two, 2)).toBe(two);
+  });
+});
+
+describe('resultLabelTemplates — trend porównawczy (R4 wym. 15)', () => {
+  it('wzrost ponad martwą strefę ⇒ up; spadek ⇒ down', () => {
+    expect(computeResultLabelTrend(100, 110)).toBe('up');
+    expect(computeResultLabelTrend(110, 100)).toBe('down');
+  });
+  it('zmiana w martwej strefie (≤0,5 % względnie) ⇒ flat', () => {
+    // |Δ|/max = 0,4/110 ≈ 0,0036 ≤ 0,005 ⇒ flat.
+    expect(computeResultLabelTrend(110.0, 110.4)).toBe('flat');
+    // dokładnie na progu ⇒ flat (≤).
+    expect(computeResultLabelTrend(100, 100 + 100 * RESULT_LABEL_TREND_DEADBAND)).toBe('flat');
+  });
+  it('obie wartości zerowe ⇒ flat (brak dzielenia przez zero)', () => {
+    expect(computeResultLabelTrend(0, 0)).toBe('flat');
+  });
+  it('determinizm: ta sama para ⇒ ten sam trend', () => {
+    expect(computeResultLabelTrend(15.02, 15.4)).toBe(computeResultLabelTrend(15.02, 15.4));
+  });
+  it('glify trendu są jednoznaczne (↑/↓/→)', () => {
+    expect(RESULT_LABEL_TREND_GLYPH).toEqual({ up: '↑', down: '↓', flat: '→' });
+  });
+});
+
+describe('resultLabelTemplates — znak różnicy Δ (R4 wym. 10)', () => {
+  it('różnica dodatnia dostaje „+"; ujemna zostaje bez zmian; nie dubluje znaku', () => {
+    expect(applyDeltaSign('0,12 kV', 0.12)).toBe('+0,12 kV');
+    expect(applyDeltaSign('-0,12 kV', -0.12)).toBe('-0,12 kV');
+    // formatter już dodał „+" (formatSignedScalar) ⇒ brak podwojenia.
+    expect(applyDeltaSign('+0,12 MW', 0.12)).toBe('+0,12 MW');
+    // zero bez znaku.
+    expect(applyDeltaSign('0,00 kV', 0)).toBe('0,00 kV');
   });
 });

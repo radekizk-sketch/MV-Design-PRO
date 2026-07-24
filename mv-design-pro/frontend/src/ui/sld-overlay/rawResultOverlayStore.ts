@@ -45,15 +45,59 @@ export interface RawOverlayPayload {
 
 interface RawResultOverlayStore {
   readonly payload: RawOverlayPayload | null;
+  /**
+   * R4 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.10/15) — POPRZEDNI payload per
+   * `analysis_type` (klucz = dokładny łańcuch `analysis_type`; wymiana przy
+   * nadejściu nowego biegu tego samego typu). Wyłącznie frontend, ADDYTYWNIE:
+   * gdy nadchodzi nowy payload o TYM SAMYM `analysis_type` i INNYM `run_id`,
+   * dotychczasowy trafia tu jako „poprzedni" — źródło Δ/trendu trybu
+   * porównawczego. Bieg innego typu NIE nadpisuje poprzednika typu bieżącego
+   * (trend porównuje wyłącznie kolejne biegi TEJ SAMEJ analizy). ZERO fizyki —
+   * to tylko bufor poprzedniego wyniku solvera.
+   */
+  readonly previousByAnalysisType: Readonly<Record<string, RawOverlayPayload>>;
   readonly setPayload: (payload: RawOverlayPayload | null) => void;
   readonly clear: () => void;
 }
 
-export const useRawResultOverlayStore = create<RawResultOverlayStore>((set) => ({
+export const useRawResultOverlayStore = create<RawResultOverlayStore>((set, get) => ({
   payload: null,
-  setPayload: (payload) => set({ payload }),
-  clear: () => set({ payload: null }),
+  previousByAnalysisType: {},
+  setPayload: (payload) => {
+    if (!payload) {
+      set({ payload: null });
+      return;
+    }
+    const current = get().payload;
+    if (
+      current &&
+      current.analysis_type === payload.analysis_type &&
+      current.run_id !== payload.run_id
+    ) {
+      set({
+        payload,
+        previousByAnalysisType: {
+          ...get().previousByAnalysisType,
+          [current.analysis_type]: current,
+        },
+      });
+      return;
+    }
+    set({ payload });
+  },
+  clear: () => set({ payload: null, previousByAnalysisType: {} }),
 }));
+
+/**
+ * R4 — poprzedni payload dla danego `analysis_type` (lub `null`). Selektor
+ * czysty: brak wpisu / brak typu ⇒ `null` (brak porównania, uczciwie). */
+export function previousPayloadForAnalysis(
+  previousByAnalysisType: Readonly<Record<string, RawOverlayPayload>>,
+  analysisType: string | undefined,
+): RawOverlayPayload | null {
+  if (!analysisType) return null;
+  return previousByAnalysisType[analysisType] ?? null;
+}
 
 /**
  * Helper: pobierz wartość metryki dla danego elementu (np. U_kV bus,

@@ -81,7 +81,11 @@ import { useAppStateStore } from '../../../app-state';
 import { useSelectionStore } from '../../../selection';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { buildSupplyPathHighlight, isElementEnergized, type SupplyPathHighlight } from '../../v2/canvas/SupplyPathHighlighter';
-import { useRawResultOverlayStore, type RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
+import {
+  previousPayloadForAnalysis,
+  useRawResultOverlayStore,
+  type RawOverlayPayload,
+} from '../../../sld-overlay/rawResultOverlayStore';
 // Karta S-B (ZWARCIA-PRO pkt 7): kanał KIERUNKU rozpływu prądu zwarciowego —
 // zasilany przez ekran zwarć (`ui2/wyniki/zwarcia/pokazNaSchemacie.ts`,
 // `loadFaultFlow` PO `loadOverlay`), czyszczony automatycznie przy podmianie
@@ -157,6 +161,8 @@ import {
   buildResultLabelsFromScene,
   DEFAULT_RESULT_LABEL_FILTER,
   resultLabelsHaveExceedances,
+  type ResultLabelComparison,
+  type ResultLabelComparisonMode,
   type ResultLabelEntry,
   type ResultLabelFilter,
   type ResultLabelKind,
@@ -652,12 +658,13 @@ function useOltcOverlay(
 export function buildResultLabelsForSnapshot(
   snapshot: EnergyNetworkModel,
   payload: RawOverlayPayload | null,
+  comparison?: ResultLabelComparison,
 ): Readonly<Record<string, ResultLabelEntry>> {
   if (!payload) return {};
   const trustedRefs = singleHopSegmentRefs(snapshot);
   const merged: Record<string, ResultLabelEntry> = {};
   for (const lod of ALL_SCENE_LODS) {
-    Object.assign(merged, buildResultLabelsFromScene(buildSceneV3(snapshot, lod), payload, trustedRefs));
+    Object.assign(merged, buildResultLabelsFromScene(buildSceneV3(snapshot, lod), payload, trustedRefs, comparison));
   }
   return merged;
 }
@@ -665,10 +672,11 @@ export function buildResultLabelsForSnapshot(
 function useResultLabelsOverlay(
   snapshot: EnergyNetworkModel | null,
   payload: RawOverlayPayload | null,
+  comparison: ResultLabelComparison | undefined,
 ): Readonly<Record<string, ResultLabelEntry>> {
   return useMemo(
-    () => (snapshot ? buildResultLabelsForSnapshot(snapshot, payload) : {}),
-    [snapshot, payload],
+    () => (snapshot ? buildResultLabelsForSnapshot(snapshot, payload, comparison) : {}),
+    [snapshot, payload, comparison],
   );
 }
 
@@ -860,6 +868,14 @@ const RESULT_FILTER_CLASS_LABELS_PL: Readonly<Record<ResultLabelKind, string>> =
 };
 const RESULT_FILTER_CLASS_IDS: readonly ResultLabelKind[] = ['source', 'transformer', 'branch', 'bus'];
 
+/** R4 (wym. 10) — etykiety PL trybów porównawczych. */
+const RESULT_COMPARISON_MODE_LABELS_PL: Readonly<Record<'off' | ResultLabelComparisonMode, string>> = {
+  off: 'Wyłączone',
+  delta: 'Różnica Δ',
+  previous: 'Poprzednia → bieżąca',
+};
+const RESULT_COMPARISON_MODE_IDS: readonly ('off' | ResultLabelComparisonMode)[] = ['off', 'delta', 'previous'];
+
 function SldV3ResultFilterPanel(props: {
   readonly filter: ResultLabelFilter;
   readonly hasExceedances: boolean;
@@ -867,10 +883,25 @@ function SldV3ResultFilterPanel(props: {
   readonly onToggleClass: (kind: ResultLabelKind) => void;
   readonly onToggleOnlyExceedances: () => void;
   readonly onResetAll: () => void;
+  readonly comparisonMode: 'off' | ResultLabelComparisonMode;
+  readonly comparisonAvailable: boolean;
+  readonly comparisonBlockedReason: string | null;
+  readonly onSetComparisonMode: (mode: 'off' | ResultLabelComparisonMode) => void;
   readonly className?: string;
 }): JSX.Element {
-  const { filter, hasExceedances, onToggleQuantity, onToggleClass, onToggleOnlyExceedances, onResetAll, className } =
-    props;
+  const {
+    filter,
+    hasExceedances,
+    onToggleQuantity,
+    onToggleClass,
+    onToggleOnlyExceedances,
+    onResetAll,
+    comparisonMode,
+    comparisonAvailable,
+    comparisonBlockedReason,
+    onSetComparisonMode,
+    className,
+  } = props;
   return (
     <section
       className={[
@@ -944,6 +975,51 @@ function SldV3ResultFilterPanel(props: {
         />
         <span>Tylko przekroczenia</span>
       </label>
+      {/* R4 (wym. 10/15): TRYB PORÓWNAWCZY — etykieta pokazuje Δ lub
+        * „poprzednia → bieżąca" + mini trend ↑/↓/→. DOSTĘPNY wyłącznie, gdy
+        * istnieje poprzedni bieg TEJ analizy i wyniki NIE są nieaktualne
+        * (OUTDATED ⇒ zablokowany z wyjaśnieniem — zero mylących delt). */}
+      <div
+        className={[
+          'mt-1 flex flex-col gap-0.5 border-t border-scada-border pt-1',
+          comparisonAvailable ? '' : 'opacity-50',
+        ].join(' ')}
+        data-testid="sld-v3-result-comparison"
+        data-comparison-available={comparisonAvailable ? 'true' : 'false'}
+        title={comparisonAvailable ? undefined : comparisonBlockedReason ?? undefined}
+      >
+        <span className="font-semibold uppercase tracking-wider text-scada-muted">Tryb porównawczy</span>
+        <ul className="flex flex-col gap-0.5">
+          {RESULT_COMPARISON_MODE_IDS.map((mode) => (
+            <li key={mode}>
+              <label
+                className={[
+                  'flex items-center gap-2 py-0.5',
+                  comparisonAvailable ? 'cursor-pointer' : 'cursor-not-allowed',
+                ].join(' ')}
+              >
+                <input
+                  type="radio"
+                  name="sld-v3-result-comparison-mode"
+                  checked={comparisonMode === mode}
+                  disabled={!comparisonAvailable}
+                  onChange={() => onSetComparisonMode(mode)}
+                  data-testid={`sld-v3-result-comparison-mode-${mode}`}
+                />
+                <span>{RESULT_COMPARISON_MODE_LABELS_PL[mode]}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {!comparisonAvailable && comparisonBlockedReason && (
+          <span
+            className="text-scada-muted"
+            data-testid="sld-v3-result-comparison-blocked"
+          >
+            {comparisonBlockedReason}
+          </span>
+        )}
+      </div>
     </section>
   );
 }
@@ -977,6 +1053,9 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // (patrz `overlay.ts`/`buildFlowOverlayForSnapshot` nagłówki dla pełnego
   // uzasadnienia i udokumentowanej luki backendu).
   const rawOverlayPayload = useRawResultOverlayStore((state) => state.payload);
+  // R4 (wym. 10/15): bufor POPRZEDNIEGO payloadu per analiza (store,
+  // frontend-only) — źródło Δ/trendu trybu porównawczego.
+  const previousByAnalysisType = useRawResultOverlayStore((state) => state.previousByAnalysisType);
   const flowByOwnerRef = useFlowOverlay(snapshot, rawOverlayPayload);
   const oltcByOwnerRef = useOltcOverlay(snapshot, rawOverlayPayload);
   // Karta S-B: kanał kierunku rozpływu zwarciowego (ekran zwarć „Pokaż na
@@ -988,17 +1067,44 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // kanał `faultFlow` niesie `fault_element_ref` — kanwa dotąd czytała z niego
   // wyłącznie `flows` (strzałki), ref punktu zwarcia był ignorowany.
   const faultPointMarkerRef = faultFlowInput?.fault_element_ref;
-  // W4 (§8): kanał liczbowych etykiet wynikowych — TEN SAM `rawOverlayPayload`
-  // co flow/OLTC (jeden wynik aktywnego przebiegu), bramkowany w kanwie
-  // ODRĘBNYM layerem `resultLabels`.
-  const resultLabelsByOwnerRef = useResultLabelsOverlay(snapshot, rawOverlayPayload);
   // R2 (§wym.8): status NIEAKTUALNOŚCI wyników KONSUMOWANY z ISTNIEJĄCEGO
   // `activeCaseResultStatus` (ten sam status, którego używa hook świeżości
   // `ui2/freshness/useSwiezoscWynikow`; Case Immutability Rule — zmiana modelu
   // ustawia status OUTDATED). ZAKAZ równoległego trackera zmian modelu w warstwie
   // SLD — czytamy gotowy status. Flaga aktywna WYŁĄCZNIE gdy overlay niesie
   // wynik (payload) I status to OUTDATED — stary wynik nie może udawać aktualnego.
+  // Liczona PRZED warstwą etykiet, bo bramkuje tryb porównawczy (wym. 10).
   const resultsStale = rawOverlayPayload != null && activeCaseResultStatus === 'OUTDATED';
+  // R4 (wym. 10/15): TRYB PORÓWNAWCZY — stan LOKALNY renderu (domyślnie „off",
+  // zgodność z akceptacją R2: sonda metryk przy domyślnych ustawieniach).
+  const [comparisonMode, setComparisonMode] = useState<'off' | ResultLabelComparisonMode>('off');
+  // R4 (§0.4): poprzedni payload TEJ SAMEJ analizy (ref-do-ref, kod-do-kodu).
+  const previousPayload = useMemo(
+    () => previousPayloadForAnalysis(previousByAnalysisType, rawOverlayPayload?.analysis_type),
+    [previousByAnalysisType, rawOverlayPayload?.analysis_type],
+  );
+  // R4 (§0.4): porównanie DOSTĘPNE tylko, gdy istnieje poprzedni bieg TEJ analizy
+  // ORAZ wyniki NIE są nieaktualne (OUTDATED ⇒ tryb zablokowany — zero mylących
+  // delt ze starego modelu). Inaczej brak obiektu porównania ⇒ warstwa bazowa.
+  const comparisonAvailable = previousPayload != null && !resultsStale;
+  // R4 (§0.4): powód niedostępności trybu porównawczego — jawny komunikat
+  // (OUTDATED ma pierwszeństwo nad brakiem poprzednika). `null` = dostępny.
+  const comparisonBlockedReason = resultsStale
+    ? 'Wyniki nieaktualne — porównanie zablokowane'
+    : previousPayload == null
+      ? 'Brak poprzedniego biegu do porównania'
+      : null;
+  const comparison = useMemo<ResultLabelComparison | undefined>(
+    () =>
+      comparisonMode !== 'off' && comparisonAvailable && previousPayload
+        ? { previousPayload, mode: comparisonMode }
+        : undefined,
+    [comparisonMode, comparisonAvailable, previousPayload],
+  );
+  // W4 (§8): kanał liczbowych etykiet wynikowych — TEN SAM `rawOverlayPayload`
+  // co flow/OLTC (jeden wynik aktywnego przebiegu), bramkowany w kanwie
+  // ODRĘBNYM layerem `resultLabels`. R4: `comparison` wzbogaca linie o Δ/trend.
+  const resultLabelsByOwnerRef = useResultLabelsOverlay(snapshot, rawOverlayPayload, comparison);
   // R3 (wym. 17): FILTRY widoczności warstwy wynikowej — stan LOKALNY renderu.
   // Domyślnie WSZYSTKO widoczne (zgodność z akceptacją R2 i inwariantem
   // geometrii: filtr działa WYŁĄCZNIE na warstwie etykiet — mapa `ownerRef→
@@ -1248,6 +1354,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     setResultFilter((prev) => ({ ...prev, onlyExceedances: !prev.onlyExceedances }));
   }, []);
   const handleResetResultFilter = useCallback(() => setResultFilter(DEFAULT_RESULT_LABEL_FILTER), []);
+  // R4 (wym. 10): wybór trybu porównawczego (off / Δ / poprzednia→bieżąca).
+  const handleSetComparisonMode = useCallback((mode: 'off' | ResultLabelComparisonMode) => {
+    setComparisonMode(mode);
+  }, []);
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): stan kamery (transform+
   // LOD) zgłaszany przez `SldCanvasV3.onCameraChange` — jedyny sposób, w jaki
@@ -1747,6 +1857,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               onToggleClass={handleToggleClass}
               onToggleOnlyExceedances={handleToggleOnlyExceedances}
               onResetAll={handleResetResultFilter}
+              comparisonMode={comparisonMode}
+              comparisonAvailable={comparisonAvailable}
+              comparisonBlockedReason={comparisonBlockedReason}
+              onSetComparisonMode={handleSetComparisonMode}
               className="w-[240px]"
             />
             <SldV3LayerTogglePanel
