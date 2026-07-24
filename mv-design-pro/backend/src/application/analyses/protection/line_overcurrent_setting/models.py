@@ -24,7 +24,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # =============================================================================
@@ -32,7 +32,7 @@ from typing import Any
 # =============================================================================
 
 
-class ConductorMaterial(str, Enum):
+class ConductorMaterial(StrEnum):
     """Conductor/cable material type."""
 
     COPPER = "COPPER"  # Miedź
@@ -61,7 +61,7 @@ MATERIAL_LABELS_PL: dict[str, str] = {
 }
 
 
-class SPZMode(str, Enum):
+class SPZMode(StrEnum):
     """SPZ (Auto-reclosing) mode."""
 
     DISABLED = "DISABLED"  # SPZ wyłączone
@@ -76,7 +76,7 @@ SPZ_MODE_LABELS_PL: dict[str, str] = {
 }
 
 
-class GenerationSourceType(str, Enum):
+class GenerationSourceType(StrEnum):
     """Type of local generation source (for E-L mode)."""
 
     SYNCHRONOUS = "SYNCHRONOUS"  # Generator synchroniczny
@@ -91,7 +91,7 @@ GENERATION_SOURCE_LABELS_PL: dict[str, str] = {
 }
 
 
-class LineOvercurrentVerdict(str, Enum):
+class LineOvercurrentVerdict(StrEnum):
     """Verdict for I>> setting analysis."""
 
     PASS = "PASS"  # Zgodne

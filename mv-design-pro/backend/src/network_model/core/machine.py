@@ -46,12 +46,12 @@ class SynchronousMachineSource:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = field(default="")
     node_id: str = field(default="")
-    sr_mva: float = field(default=0.0)        # rated apparent power S_rG [MVA]
-    ur_kv: float = field(default=0.0)         # rated voltage U_rG [kV]
+    sr_mva: float = field(default=0.0)  # rated apparent power S_rG [MVA]
+    ur_kv: float = field(default=0.0)  # rated voltage U_rG [kV]
     xd_subtransient_pu: float = field(default=0.15)  # x″d [pu], saturated subtransient
-    cos_phi_r: float = field(default=0.8)     # rated power factor cos φ_rG
+    cos_phi_r: float = field(default=0.8)  # rated power factor cos φ_rG
     un_kv: float | None = field(default=None)  # system nominal voltage U_n [kV]; default U_rG
-    c_max: float = field(default=1.1)          # voltage factor c_max (for K_G)
+    c_max: float = field(default=1.1)  # voltage factor c_max (for K_G)
     r_over_x: float | None = field(default=None)  # R_G/X″d override; else IEC default
     in_service: bool = field(default=True)
 
@@ -62,7 +62,11 @@ class SynchronousMachineSource:
 
     @property
     def r_over_x_ratio(self) -> float:
-        return self.r_over_x if self.r_over_x is not None else _synchronous_r_over_x(self.ur_kv, self.sr_mva)
+        return (
+            self.r_over_x
+            if self.r_over_x is not None
+            else _synchronous_r_over_x(self.ur_kv, self.sr_mva)
+        )
 
     @property
     def r_ohm(self) -> float:
@@ -123,12 +127,12 @@ class AsynchronousMachineSource:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     name: str = field(default="")
     node_id: str = field(default="")
-    pr_mw: float = field(default=0.0)         # rated mechanical power P_rM [MW]
-    ur_kv: float = field(default=0.0)         # rated voltage U_rM [kV]
-    cos_phi_r: float = field(default=0.85)    # rated power factor
-    efficiency: float = field(default=0.95)   # rated efficiency η
-    i_lr_ratio: float = field(default=5.0)    # locked-rotor ratio I_LR/I_rM
-    pole_pairs: int = field(default=1)        # p (for P_rM/p)
+    pr_mw: float = field(default=0.0)  # rated mechanical power P_rM [MW]
+    ur_kv: float = field(default=0.0)  # rated voltage U_rM [kV]
+    cos_phi_r: float = field(default=0.85)  # rated power factor
+    efficiency: float = field(default=0.95)  # rated efficiency η
+    i_lr_ratio: float = field(default=5.0)  # locked-rotor ratio I_LR/I_rM
+    pole_pairs: int = field(default=1)  # p (for P_rM/p)
     r_over_x: float | None = field(default=None)  # R_M/X_M override; else IEC default
     # DFIG (wind Type 3) marker. A doubly-fed induction generator has a partial-scale
     # rotor converter; on a severe fault the crowbar fires (rotor shorted) and the
@@ -160,7 +164,11 @@ class AsynchronousMachineSource:
 
     @property
     def r_over_x_ratio(self) -> float:
-        return self.r_over_x if self.r_over_x is not None else _asynchronous_r_over_x(self.ur_kv, self.p_per_pole_mw)
+        return (
+            self.r_over_x
+            if self.r_over_x is not None
+            else _asynchronous_r_over_x(self.ur_kv, self.p_per_pole_mw)
+        )
 
     @property
     def z_internal_ohm(self) -> complex:

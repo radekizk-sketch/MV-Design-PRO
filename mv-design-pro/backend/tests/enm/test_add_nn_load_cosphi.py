@@ -10,7 +10,6 @@ from __future__ import annotations
 import math
 
 import pytest
-
 from enm.domain_operations import execute_domain_operation
 
 
@@ -40,7 +39,12 @@ def test_reactive_power_derived_from_cos_phi() -> None:
     result = execute_domain_operation(
         snapshot,
         "add_nn_load",
-        {"feeder_ref": feeder_ref, "bus_nn_ref": "bus-nn", "active_power_kw": 100.0, "cos_phi": 0.9},
+        {
+            "feeder_ref": feeder_ref,
+            "bus_nn_ref": "bus-nn",
+            "active_power_kw": 100.0,
+            "cos_phi": 0.9,
+        },
     )
     assert not result.get("error"), result
     load = _load(result["snapshot"])

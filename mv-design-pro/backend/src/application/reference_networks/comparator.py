@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 from typing import Any, Literal
 
 from application.reference_networks.expected_values import (
-    ExpectedBranchPF,
-    ExpectedBusPF,
-    ExpectedShortCircuit,
     ExpectedValues,
 )
 
@@ -114,7 +110,9 @@ def compare_power_flow(
         if abs(exp_bus.angle_deg) < 10.0:
             angle_status: Literal["PASS", "FAIL"] = "PASS" if angle_diff < 10.0 else "FAIL"
         else:
-            angle_status = "PASS" if angle_diff / abs(exp_bus.angle_deg) <= exp_bus.rtol * 10 else "FAIL"
+            angle_status = (
+                "PASS" if angle_diff / abs(exp_bus.angle_deg) <= exp_bus.rtol * 10 else "FAIL"
+            )
         comparisons.append(
             ElementComparison(
                 element_id=exp_bus.bus_id,
@@ -265,9 +263,7 @@ def build_validation_report(
     pf_b_fail = sum(1 for c in pf_branch_comparisons if c.status == "FAIL")
     sc_pass = sum(1 for c in sc_comparisons if c.status == "PASS")
     sc_fail = sum(1 for c in sc_comparisons if c.status == "FAIL")
-    overall: Literal["PASS", "FAIL"] = (
-        "PASS" if (pf_fail + pf_b_fail + sc_fail == 0) else "FAIL"
-    )
+    overall: Literal["PASS", "FAIL"] = "PASS" if (pf_fail + pf_b_fail + sc_fail == 0) else "FAIL"
     return ValidationReport(
         network_id=network_id,
         network_name_pl=network_name_pl,

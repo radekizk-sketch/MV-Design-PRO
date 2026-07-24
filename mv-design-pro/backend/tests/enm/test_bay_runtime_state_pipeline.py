@@ -7,10 +7,11 @@ Sprawdza:
   4. Brak runtime_state (default None) — back-compat dla legacy ENM.
   5. primary_device_states z konwencją kluczy `apparatus_<kind>_<q-designation>`.
 """
+
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from enm.models import (
     Bay,
@@ -25,7 +26,7 @@ def _make_runtime_state() -> BayRuntimeState:
     """Buduje runtime_state z 3 aparatami (CB+DS+ES) — kanon polskiego pola."""
     return BayRuntimeState(
         secondary_communication_status="ok",
-        last_good_update_at=datetime(2026, 5, 7, 12, 0, 0, tzinfo=timezone.utc),
+        last_good_update_at=datetime(2026, 5, 7, 12, 0, 0, tzinfo=UTC),
         control_availability="dostepne",
         measurement_availability="dostepne",
         primary_device_states={
@@ -110,11 +111,19 @@ def test_bay_runtime_state_round_trip_json() -> None:
     )
     payload = bay.model_dump_json()
     raw = json.loads(payload)
-    assert raw["runtime_state"]["primary_device_states"]["apparatus_cb_q0"]["actual_state"] == "zamkniety"
+    assert (
+        raw["runtime_state"]["primary_device_states"]["apparatus_cb_q0"]["actual_state"]
+        == "zamkniety"
+    )
     restored = Bay.model_validate(raw)
     assert restored.runtime_state is not None
-    assert restored.runtime_state.primary_device_states["apparatus_cb_q0"].actual_state == "zamkniety"
-    assert restored.runtime_state.primary_device_states["apparatus_ds_lin_q9"].actual_state == "otwarty"
+    assert (
+        restored.runtime_state.primary_device_states["apparatus_cb_q0"].actual_state == "zamkniety"
+    )
+    assert (
+        restored.runtime_state.primary_device_states["apparatus_ds_lin_q9"].actual_state
+        == "otwarty"
+    )
 
 
 def test_enm_with_bay_runtime_state_round_trip() -> None:
@@ -141,12 +150,18 @@ def test_enm_with_bay_runtime_state_round_trip() -> None:
         bays=[bay],
     )
     raw = json.loads(enm.model_dump_json())
-    assert raw["bays"][0]["runtime_state"]["primary_device_states"]["apparatus_cb_q0"]["actual_state"] == "zamkniety"
+    assert (
+        raw["bays"][0]["runtime_state"]["primary_device_states"]["apparatus_cb_q0"]["actual_state"]
+        == "zamkniety"
+    )
 
     restored = EnergyNetworkModel.model_validate(raw)
     assert len(restored.bays) == 1
     assert restored.bays[0].runtime_state is not None
-    assert restored.bays[0].runtime_state.primary_device_states["apparatus_cb_q0"].actual_state == "zamkniety"
+    assert (
+        restored.bays[0].runtime_state.primary_device_states["apparatus_cb_q0"].actual_state
+        == "zamkniety"
+    )
 
 
 def test_bay_runtime_state_legacy_enm_back_compat() -> None:

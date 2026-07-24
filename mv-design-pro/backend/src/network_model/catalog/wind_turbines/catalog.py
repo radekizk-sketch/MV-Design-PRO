@@ -384,9 +384,7 @@ WIND_TURBINES: list[WindTurbineCatalogEntry] = [
 ]
 
 
-WIND_TURBINE_CATALOG: dict[str, WindTurbineCatalogEntry] = {
-    t.catalog_id: t for t in WIND_TURBINES
-}
+WIND_TURBINE_CATALOG: dict[str, WindTurbineCatalogEntry] = {t.catalog_id: t for t in WIND_TURBINES}
 
 
 def list_wind_turbines() -> list[WindTurbineCatalogEntry]:
@@ -397,7 +395,5 @@ def list_wind_turbines() -> list[WindTurbineCatalogEntry]:
 def get_turbine(catalog_id: str) -> WindTurbineCatalogEntry:
     if catalog_id not in WIND_TURBINE_CATALOG:
         available = ", ".join(sorted(WIND_TURBINE_CATALOG.keys()))
-        raise KeyError(
-            f"Unknown wind turbine catalog_id: {catalog_id}. Available: {available}"
-        )
+        raise KeyError(f"Unknown wind turbine catalog_id: {catalog_id}. Available: {available}")
     return WIND_TURBINE_CATALOG[catalog_id]

@@ -26,7 +26,7 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # =============================================================================
@@ -41,7 +41,7 @@ PROTECTION_IEC60255_SOLVER_VERSION = "1.0.0"
 # =============================================================================
 
 
-class IEC60255CurveType(str, Enum):
+class IEC60255CurveType(StrEnum):
     """IEC 60255-151 standard IDMT curve types."""
 
     NI = "NI"  # Normal Inverse (Normalna odwrotna)
@@ -51,7 +51,7 @@ class IEC60255CurveType(str, Enum):
     DT = "DT"  # Definite Time (Czas niezalezny)
 
 
-class SelectivityVerdict(str, Enum):
+class SelectivityVerdict(StrEnum):
     """Selectivity coordination verdict."""
 
     PASS = "PASS"  # Margines >= 0.3 s

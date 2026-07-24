@@ -17,10 +17,10 @@ import pytest
 def _make_real_graph_with_transformer_and_inverter():
     """Buduje minimalny NetworkGraph z 1 transformatorem + 1 inverter source."""
     from network_model.catalog.types import ConverterKind
-    from network_model.core.node import Node, NodeType
     from network_model.core.branch import BranchType, TransformerBranch
     from network_model.core.graph import NetworkGraph
     from network_model.core.inverter import InverterSource
+    from network_model.core.node import Node, NodeType
 
     graph = NetworkGraph()
     # SLACK + PQ wezly z wymaganymi polami.
@@ -186,10 +186,21 @@ def test_apply_audit2_to_real_network_graph_full_combination():
                 "tr_001": {"id": "tc1", "neutral_position": 0, "step_percent": 1.25},
             },
             "bess_operation_modes_per_der": [
-                {"der_id": "der_pv_001", "mode": {"mode_code": "voltage_support", "reserved_capacity_percent": 30}},
+                {
+                    "der_id": "der_pv_001",
+                    "mode": {"mode_code": "voltage_support", "reserved_capacity_percent": 30},
+                },
             ],
             "p_f_curves_per_der": [
-                {"der_id": "der_pv_001", "curve": {"droop_percent": 4.0, "f_min_hz": 47.5, "f_max_hz": 51.5, "deadband_hz": 0.15}},
+                {
+                    "der_id": "der_pv_001",
+                    "curve": {
+                        "droop_percent": 4.0,
+                        "f_min_hz": 47.5,
+                        "f_max_hz": 51.5,
+                        "deadband_hz": 0.15,
+                    },
+                },
             ],
         },
         "sc_iec60909_extensions": {

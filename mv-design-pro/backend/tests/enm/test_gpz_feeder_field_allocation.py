@@ -60,9 +60,7 @@ def _continue_trunk(enm_dict: dict) -> dict:
 
 
 def _gpz_substation(snapshot: dict) -> dict:
-    return next(
-        s for s in snapshot["substations"] if str(s.get("ref_id", "")).startswith("gpz/")
-    )
+    return next(s for s in snapshot["substations"] if str(s.get("ref_id", "")).startswith("gpz/"))
 
 
 def _gpz_line_fields(snapshot: dict) -> list[dict]:
@@ -123,9 +121,7 @@ class TestGpzFeederDedicatedField:
         assert new_field["meta"]["gpz_line_field_index"] == 1
         assert new_field["equipment_refs"] == [], "zero fabrykacji aparatury nowego pola"
 
-        branch_ref = next(
-            b["ref_id"] for b in after["branches"] if "branch_segment" in b["ref_id"]
-        )
+        branch_ref = next(b["ref_id"] for b in after["branches"] if "branch_segment" in b["ref_id"])
         corridor = _branch_corridor(after, branch_ref)
         assert corridor["meta"]["gpz_field_ref"] == new_field["field_ref"]
         assert new_field["meta"]["assigned_corridor_ref"] == corridor["ref_id"]
@@ -154,9 +150,7 @@ class TestGpzFeederDedicatedField:
         after = result["snapshot"]
 
         assert len(_gpz_line_fields(after)) == 2, "wolne pole istnieje — zero nowych pól"
-        branch_ref = next(
-            b["ref_id"] for b in after["branches"] if "branch_segment" in b["ref_id"]
-        )
+        branch_ref = next(b["ref_id"] for b in after["branches"] if "branch_segment" in b["ref_id"])
         corridor = _branch_corridor(after, branch_ref)
         assert corridor["meta"]["gpz_field_ref"] == free_ref
 
@@ -173,9 +167,7 @@ class TestGpzFeederDedicatedField:
 
         fields = _gpz_line_fields(after)
         assert len(fields) == 3
-        feeder_corridors = [
-            c for c in after["corridors"] if c.get("meta", {}).get("gpz_field_ref")
-        ]
+        feeder_corridors = [c for c in after["corridors"] if c.get("meta", {}).get("gpz_field_ref")]
         assert len(feeder_corridors) == 2
         allocated = {c["meta"]["gpz_field_ref"] for c in feeder_corridors}
         assert len(allocated) == 2, "każdy feeder MA WŁASNE pole — zero współdzielenia"
@@ -204,9 +196,7 @@ class TestGpzFeederDedicatedField:
         snapshot = r["snapshot"]
         gpz_fields_before = len(_gpz_line_fields(snapshot))
 
-        station = next(
-            s for s in snapshot["substations"] if str(s["ref_id"]).startswith("stn/")
-        )
+        station = next(s for s in snapshot["substations"] if str(s["ref_id"]).startswith("stn/"))
         station_field = next(
             spec
             for spec in station.get("meta", {}).get("field_specs", [])
@@ -217,18 +207,14 @@ class TestGpzFeederDedicatedField:
         after = result["snapshot"]
 
         assert len(_gpz_line_fields(after)) == gpz_fields_before
-        branch_ref = next(
-            b["ref_id"] for b in after["branches"] if "branch_segment" in b["ref_id"]
-        )
+        branch_ref = next(b["ref_id"] for b in after["branches"] if "branch_segment" in b["ref_id"])
         corridor = _branch_corridor(after, branch_ref)
         assert "gpz_field_ref" not in (corridor.get("meta") or {})
 
     def test_field_limit_exhausted_rejects_with_error(self):
         """Test NEGATYWNY (wyrocznia gryzie): limit pól sekcji wyczerpany ⇒
         operacja ODMAWIA (nigdy dwa kable z jednego pola)."""
-        snapshot = _build_gpz_with_trunk(
-            line_fields_count=MAX_GPZ_LINE_FIELDS_PER_SECTION
-        )
+        snapshot = _build_gpz_with_trunk(line_fields_count=MAX_GPZ_LINE_FIELDS_PER_SECTION)
         field_ref = _gpz_line_fields(snapshot)[0]["field_ref"]
         # Pole 0 zajęte przez magistralę ⇒ wolnych jest MAX-1; zapełnij je.
         for i in range(MAX_GPZ_LINE_FIELDS_PER_SECTION - 1):

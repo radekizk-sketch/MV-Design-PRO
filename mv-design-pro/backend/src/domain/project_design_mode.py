@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class ProjectDesignMode(str, Enum):
+class ProjectDesignMode(StrEnum):
     SN_NETWORK = "SN_NETWORK"
     NN_NETWORK = "NN_NETWORK"

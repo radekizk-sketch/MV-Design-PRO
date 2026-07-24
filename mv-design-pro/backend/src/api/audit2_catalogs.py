@@ -200,7 +200,9 @@ def generate_audit2_proof_pack_endpoint(
     for spec in req.bess_modes_specs:
         proofs.append(generate_bess_modes_proof(generated_at_iso=req.generated_at_iso, **spec))
     for spec in req.tap_changer_specs:
-        proofs.append(generate_tap_changer_plan_proof(generated_at_iso=req.generated_at_iso, **spec))
+        proofs.append(
+            generate_tap_changer_plan_proof(generated_at_iso=req.generated_at_iso, **spec)
+        )
     for spec in req.hosting_capacity_specs:
         proofs.append(
             generate_hosting_capacity_export_proof(generated_at_iso=req.generated_at_iso, **spec)

@@ -17,24 +17,24 @@ from pydantic import BaseModel, Field
 
 DynamicModelKind = Literal[
     "synchronous_machine_6th_order",  # GENROU/GENSAL z saturacją
-    "avr_ieee_t1",                     # AVR IEEE Type 1
-    "avr_ieee_t2",                     # AVR IEEE Type 2
-    "avr_ac4a",                        # AVR AC4A
-    "avr_st5b",                        # AVR ST5B (statyczny)
-    "governor_tgov1",                  # Governor TGOV1
-    "governor_gast",                   # Governor GAST
-    "governor_ieee_g1",                # IEEE-G1
-    "pss_ieee_pss2a",                  # PSS IEEE PSS2A
-    "pss_ieee_pss2b",                  # PSS IEEE PSS2B
-    "induction_motor_5th_order",       # Silnik indukcyjny 5-rzędowy
-    "wind_type_1",                     # IEC 61400-27 Type 1 (asynchroniczna)
-    "wind_type_2",                     # Type 2 (asynchroniczna z rezystancją)
-    "wind_type_3",                     # Type 3 (DFIG)
-    "wind_type_4",                     # Type 4 (full converter)
-    "pv_inverter_grid_following",      # Generic PV inverter (GFL)
-    "pv_inverter_grid_forming",        # Grid-forming PV
-    "bess_pcs_grid_following",         # BESS PCS grid-following
-    "bess_pcs_grid_forming",           # BESS PCS grid-forming + droop
+    "avr_ieee_t1",  # AVR IEEE Type 1
+    "avr_ieee_t2",  # AVR IEEE Type 2
+    "avr_ac4a",  # AVR AC4A
+    "avr_st5b",  # AVR ST5B (statyczny)
+    "governor_tgov1",  # Governor TGOV1
+    "governor_gast",  # Governor GAST
+    "governor_ieee_g1",  # IEEE-G1
+    "pss_ieee_pss2a",  # PSS IEEE PSS2A
+    "pss_ieee_pss2b",  # PSS IEEE PSS2B
+    "induction_motor_5th_order",  # Silnik indukcyjny 5-rzędowy
+    "wind_type_1",  # IEC 61400-27 Type 1 (asynchroniczna)
+    "wind_type_2",  # Type 2 (asynchroniczna z rezystancją)
+    "wind_type_3",  # Type 3 (DFIG)
+    "wind_type_4",  # Type 4 (full converter)
+    "pv_inverter_grid_following",  # Generic PV inverter (GFL)
+    "pv_inverter_grid_forming",  # Grid-forming PV
+    "bess_pcs_grid_following",  # BESS PCS grid-following
+    "bess_pcs_grid_forming",  # BESS PCS grid-forming + droop
 ]
 
 
@@ -83,10 +83,10 @@ class StabilitySolverInput(BaseModel):
 # ---------------------------------------------------------------------------
 
 StabilityStatus = Literal[
-    "ok",                # Solver zbiegł
-    "diverged",          # Solver nie zbiegł (małe-sygnał lub time-domain)
-    "no_module",         # Brak modułu numerycznego (PR-15-impl pending)
-    "input_invalid",     # Walidacja wejścia się nie powiodła
+    "ok",  # Solver zbiegł
+    "diverged",  # Solver nie zbiegł (małe-sygnał lub time-domain)
+    "no_module",  # Brak modułu numerycznego (PR-15-impl pending)
+    "input_invalid",  # Walidacja wejścia się nie powiodła
 ]
 
 
@@ -138,7 +138,8 @@ class StabilitySolverAdapter:
     """Adapter API solvera stabilności RMS (PR-15-impl: MVP Newton-Raphson)."""
 
     def validate_input(
-        self, solver_input: StabilitySolverInput,
+        self,
+        solver_input: StabilitySolverInput,
     ) -> tuple[bool, list[str]]:
         """Walidacja wejścia solvera. Zwraca (valid, errors_pl)."""
         errors: list[str] = []
@@ -158,9 +159,7 @@ class StabilitySolverAdapter:
             if ev.duration_s <= 0:
                 errors.append(f"Event {ev.event_id}: duration_s <= 0.")
             if ev.time_s + ev.duration_s > solver_input.simulation_duration_s:
-                errors.append(
-                    f"Event {ev.event_id}: koniec zdarzenia poza horyzontem symulacji."
-                )
+                errors.append(f"Event {ev.event_id}: koniec zdarzenia poza horyzontem symulacji.")
         return len(errors) == 0, errors
 
     def run(self, solver_input: StabilitySolverInput) -> StabilityResult:
@@ -176,4 +175,5 @@ class StabilitySolverAdapter:
         from src.network_model.solvers.stability_rms.engine import (
             run_stability_rms,
         )
+
         return run_stability_rms(solver_input)

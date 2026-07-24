@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class ProtectionSelectivityStatus(str, Enum):
+class ProtectionSelectivityStatus(StrEnum):
     OK = "OK"
     NOT_SELECTIVE = "NOT_SELECTIVE"
     NOT_EVALUATED = "NOT_EVALUATED"

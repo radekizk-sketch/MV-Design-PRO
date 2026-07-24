@@ -16,11 +16,11 @@ Ten modul definiuje struktury danych dla wynikow walidacji:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class SanityCheckSeverity(str, Enum):
+class SanityCheckSeverity(StrEnum):
     """
     Poziom waznosci wyniku walidacji.
 
@@ -48,7 +48,7 @@ class SanityCheckSeverity(str, Enum):
 # =============================================================================
 
 
-class SanityCheckCode(str, Enum):
+class SanityCheckCode(StrEnum):
     """
     Kody regul walidacji — STABILNE dla UI/raportow.
 

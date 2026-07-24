@@ -22,12 +22,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 
 
-class RunResultState(str, Enum):
+class RunResultState(StrEnum):
     """
     Result state for a Study Run (industrial-grade).
 

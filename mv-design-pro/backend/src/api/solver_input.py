@@ -9,13 +9,12 @@ Endpoints:
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 
-from domain.study_case import StudyCaseConfig
 from api.dependencies import get_uow_factory
+from domain.study_case import StudyCaseConfig
 from fastapi import APIRouter, Depends, HTTPException, Path
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.core.graph import NetworkGraph
 from pydantic import BaseModel

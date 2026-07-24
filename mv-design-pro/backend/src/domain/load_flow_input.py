@@ -13,21 +13,21 @@ from dataclasses import dataclass
 from typing import Any
 
 
-class SlackType(str, enum.Enum):
+class SlackType(enum.StrEnum):
     SINGLE = "SINGLE"
     DISTRIBUTED = "DISTRIBUTED"
 
 
-class StartMode(str, enum.Enum):
+class StartMode(enum.StrEnum):
     FLAT_START = "FLAT_START"
     CUSTOM_INITIAL = "CUSTOM_INITIAL"
 
 
-class ModelingMode(str, enum.Enum):
+class ModelingMode(enum.StrEnum):
     AC_POWER_FLOW = "AC_POWER_FLOW"
 
 
-class SolverMethod(str, enum.Enum):
+class SolverMethod(enum.StrEnum):
     NEWTON_RAPHSON = "newton-raphson"
     GAUSS_SEIDEL = "gauss-seidel"
     FAST_DECOUPLED = "fast-decoupled"

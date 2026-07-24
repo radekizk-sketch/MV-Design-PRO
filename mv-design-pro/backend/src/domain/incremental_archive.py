@@ -20,7 +20,7 @@ import json
 import zipfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from domain.project_archive import (
@@ -111,14 +111,14 @@ class IncrementalVersionError(IncrementalArchiveError):
 # ============================================================================
 
 
-class IncrementalExportType(str, Enum):
+class IncrementalExportType(StrEnum):
     """Typ eksportu archiwum."""
 
     FULL = "FULL"
     DELTA = "DELTA"
 
 
-class SectionChangeStatus(str, Enum):
+class SectionChangeStatus(StrEnum):
     """Status zmiany sekcji w eksporcie przyrostowym."""
 
     UNCHANGED = "UNCHANGED"

@@ -40,7 +40,7 @@ from __future__ import annotations
 import logging
 import math
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 
-class NetworkType(str, Enum):
+class NetworkType(StrEnum):
     """Typ uziemienia sieci nN per IEC 60364-3."""
 
     TN_S = "TN-S"  # Separate neutral + protective conductors
@@ -60,7 +60,7 @@ class NetworkType(str, Enum):
     IT = "IT"  # Isolated neutral (deferred)
 
 
-class ProtectionArrangement(str, Enum):
+class ProtectionArrangement(StrEnum):
     """Sposób ochrony przed dotykiem pośrednim."""
 
     PE = "PE"  # Oddzielny przewód ochronny (TN-S)
@@ -256,8 +256,7 @@ def compute_fault_loop(data: FaultLoopInput) -> FaultLoopResult:
             "step": "sum_components",
             "method": "Z_loop = Σ(R_i + jX_i)",
             "components": [
-                {"label": c.label, "r_ohm": c.r_ohm, "x_ohm": c.x_ohm}
-                for c in components
+                {"label": c.label, "r_ohm": c.r_ohm, "x_ohm": c.x_ohm} for c in components
             ],
             "result": {
                 "r_total_ohm": z_loop_complex.real,

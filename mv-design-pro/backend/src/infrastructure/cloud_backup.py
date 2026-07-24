@@ -20,7 +20,7 @@ import logging
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -79,7 +79,7 @@ class CloudBackupIntegrityError(CloudBackupError):
 # ============================================================================
 
 
-class CloudBackendType(str, Enum):
+class CloudBackendType(StrEnum):
     """Typ backendu chmurowego."""
 
     S3 = "S3"

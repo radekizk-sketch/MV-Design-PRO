@@ -17,8 +17,8 @@ pytest.importorskip("pydantic")
 def test_solver_input_envelope_no_audit2_extensions_default():
     """Domyslnie audit2_extensions = None gdy nie przekazano payload."""
     from solver_input.contracts import (
-        SolverInputEnvelope,
         SolverAnalysisType,
+        SolverInputEnvelope,
     )
     from solver_input.eligibility import EligibilityResult
 
@@ -35,8 +35,8 @@ def test_solver_input_envelope_no_audit2_extensions_default():
 def test_audit2_extensions_can_be_populated():
     """audit2_extensions akceptuje dict gdy przekazany."""
     from solver_input.contracts import (
-        SolverInputEnvelope,
         SolverAnalysisType,
+        SolverInputEnvelope,
     )
     from solver_input.eligibility import EligibilityResult
 
@@ -54,7 +54,10 @@ def test_audit2_extensions_can_be_populated():
         audit2_extensions=extensions,
     )
     assert env.audit2_extensions is not None
-    assert env.audit2_extensions["sc_iec60909_extensions"]["mv_neutral_grounding"]["grounding_type"] == "petersen_coil"
+    assert (
+        env.audit2_extensions["sc_iec60909_extensions"]["mv_neutral_grounding"]["grounding_type"]
+        == "petersen_coil"
+    )
 
 
 def test_audit2_extensions_deterministic():
@@ -64,11 +67,11 @@ def test_audit2_extensions_deterministic():
         extract_solver_extensions_from_payload,
     )
 
-    payload_kwargs = dict(
-        station_id="station_X",
-        mv_neutral_grounding_ref="mng_petersen",
-        tap_changer_refs=["tc_oltc_110sn_19_125"],
-        der_specs=[
+    payload_kwargs = {
+        "station_id": "station_X",
+        "mv_neutral_grounding_ref": "mng_petersen",
+        "tap_changer_refs": ["tc_oltc_110sn_19_125"],
+        "der_specs": [
             {
                 "der_id": "der_001",
                 "der_kind": "BESS",
@@ -76,7 +79,7 @@ def test_audit2_extensions_deterministic():
                 "pf_curve_ref": "pf_pse_b",
             }
         ],
-    )
+    }
     p1 = build_station_audit2_payload(**payload_kwargs)
     p2 = build_station_audit2_payload(**payload_kwargs)
     e1 = extract_solver_extensions_from_payload(p1)

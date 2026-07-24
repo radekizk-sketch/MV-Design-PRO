@@ -5,11 +5,11 @@ import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class RecommendationEffect(str, Enum):
+class RecommendationEffect(StrEnum):
     PASS = "PASS"
     STILL_FAIL = "STILL_FAIL"
     NOT_COMPUTED = "NOT_COMPUTED"

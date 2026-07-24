@@ -10,7 +10,6 @@ contribution = the SUM of the PV + BESS IBG, and the base case exports PV genera
 discharge (~2 MW reverse). Numbers come from the FROZEN solver (READ-ONLY)."""
 
 import pytest
-
 from application.reference_networks.station_archetype_substrate import (
     build_g4_pvbess_ac,
     build_g4_pvbess_bus,

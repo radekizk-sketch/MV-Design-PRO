@@ -7,7 +7,9 @@ from application.symphony.config import load_symphony_config
 from application.symphony.workflow import load_workflow_definition
 
 
-def test_load_workflow_definition_parses_front_matter_and_body(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_workflow_definition_parses_front_matter_and_body(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setenv("LINEAR_TOKEN", "secret-token")
     workflow = tmp_path / "WORKFLOW.md"
     workflow.write_text(

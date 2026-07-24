@@ -5,9 +5,9 @@ from __future__ import annotations
 from application.analyses.fault_loop.service import build_station_fault_loop_view
 from enm.models import (
     Bus,
+    EnergyNetworkModel,
     ENMDefaults,
     ENMHeader,
-    EnergyNetworkModel,
     Substation,
     Transformer,
 )

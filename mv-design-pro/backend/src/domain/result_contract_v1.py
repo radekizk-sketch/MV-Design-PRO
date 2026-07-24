@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -47,7 +47,7 @@ RESULT_CONTRACT_VERSION = "1.0"
 # ---------------------------------------------------------------------------
 
 
-class OverlaySeverity(str, Enum):
+class OverlaySeverity(StrEnum):
     """Severity levels for overlay elements and badges."""
 
     INFO = "INFO"
@@ -56,7 +56,7 @@ class OverlaySeverity(str, Enum):
     BLOCKER = "BLOCKER"
 
 
-class OverlayMetricSource(str, Enum):
+class OverlayMetricSource(StrEnum):
     """Source of an overlay metric value."""
 
     SOLVER = "solver"
@@ -64,7 +64,7 @@ class OverlayMetricSource(str, Enum):
     READINESS = "readiness"
 
 
-class OverlayElementKind(str, Enum):
+class OverlayElementKind(StrEnum):
     """Kind of element in overlay."""
 
     BUS = "bus"

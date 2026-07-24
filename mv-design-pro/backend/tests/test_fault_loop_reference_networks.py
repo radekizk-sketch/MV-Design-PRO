@@ -24,8 +24,6 @@ INVARIANTS:
 - Ik_min in [100 A, 100 kA] (zakres realny dla LV networks)
 """
 
-import pytest
-
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     build_fault_loop_input,
@@ -99,9 +97,9 @@ class TestFaultLoopGN04Scenarios:
         result = compute_fault_loop(input_obj)
 
         # Sanity: Z_loop w fizycznym zakresie 1 mΩ – 1 Ω
-        assert 0.001 <= result.z_loop_magnitude_ohm <= 1.0, (
-            f"Z_loop = {result.z_loop_magnitude_ohm} Ω poza fizycznym zakresem"
-        )
+        assert (
+            0.001 <= result.z_loop_magnitude_ohm <= 1.0
+        ), f"Z_loop = {result.z_loop_magnitude_ohm} Ω poza fizycznym zakresem"
 
     def test_gn04_400kva_ik_in_realistic_lv_range(self) -> None:
         """Ik dla typowej stacji 400 kVA powinno być w zakresie 1-10 kA."""
@@ -120,26 +118,26 @@ class TestFaultLoopGN04Scenarios:
         )
         result = compute_fault_loop(build_fault_loop_input(request))
         # 400 kVA station z 50 m kabel: Ik_min ~ 3-5 kA
-        assert 1000 < result.ik_min_a < 10000, (
-            f"Ik_min = {result.ik_min_a} A poza realistycznym LV range (1-10 kA)"
-        )
+        assert (
+            1000 < result.ik_min_a < 10000
+        ), f"Ik_min = {result.ik_min_a} A poza realistycznym LV range (1-10 kA)"
         assert result.ik_max_a > result.ik_min_a
 
     def test_gn04_with_upstream_sn_reduces_ik(self) -> None:
         """Dodanie Z upstream SN (250 MVA sk3 per GN04 source) zmniejsza Ik."""
         c = _make_typical_400kva_components()
-        base_kwargs = dict(
-            fault_node_id="bus_nN_gn04",
-            u_nom_v=230.0,
-            network_type=NetworkType.TN_S,
-            protection_arrangement=ProtectionArrangement.PE,
-            phase_conductor_r_ohm=c["phase_r"],
-            phase_conductor_x_ohm=c["phase_x"],
-            return_conductor_r_ohm=c["return_r"],
-            return_conductor_x_ohm=c["return_x"],
-            transformer_r_ohm=c["transformer_r"],
-            transformer_x_ohm=c["transformer_x"],
-        )
+        base_kwargs = {
+            "fault_node_id": "bus_nN_gn04",
+            "u_nom_v": 230.0,
+            "network_type": NetworkType.TN_S,
+            "protection_arrangement": ProtectionArrangement.PE,
+            "phase_conductor_r_ohm": c["phase_r"],
+            "phase_conductor_x_ohm": c["phase_x"],
+            "return_conductor_r_ohm": c["return_r"],
+            "return_conductor_x_ohm": c["return_x"],
+            "transformer_r_ohm": c["transformer_r"],
+            "transformer_x_ohm": c["transformer_x"],
+        }
         # Bez upstream
         result_base = compute_fault_loop(
             build_fault_loop_input(FaultLoopBuildRequest(**base_kwargs))
@@ -156,9 +154,9 @@ class TestFaultLoopGN04Scenarios:
                 )
             )
         )
-        assert result_with_upstream.ik_min_a < result_base.ik_min_a, (
-            "Upstream impedance powinien zmniejszyć Ik"
-        )
+        assert (
+            result_with_upstream.ik_min_a < result_base.ik_min_a
+        ), "Upstream impedance powinien zmniejszyć Ik"
 
 
 class TestFaultLoopGN05Scenarios:
@@ -234,10 +232,7 @@ class TestSolverInvariantsAcrossNetworks:
             transformer_x_ohm=c["transformer_x"],
         )
         # 5x same call → identical to_dict
-        outputs = [
-            compute_fault_loop(build_fault_loop_input(request)).to_dict()
-            for _ in range(5)
-        ]
+        outputs = [compute_fault_loop(build_fault_loop_input(request)).to_dict() for _ in range(5)]
         assert all(o == outputs[0] for o in outputs)
 
     def test_all_scenarios_have_white_box_trace(self) -> None:
@@ -261,8 +256,6 @@ class TestSolverInvariantsAcrossNetworks:
                 transformer_x_ohm=c["transformer_x"],
             )
             result = compute_fault_loop(build_fault_loop_input(request))
-            assert len(result.white_box_trace) >= 2, (
-                f"{network_type.value}: brak white_box_trace"
-            )
+            assert len(result.white_box_trace) >= 2, f"{network_type.value}: brak white_box_trace"
             assert any(t["step"] == "sum_components" for t in result.white_box_trace)
             assert any(t["step"] == "compute_ik" for t in result.white_box_trace)

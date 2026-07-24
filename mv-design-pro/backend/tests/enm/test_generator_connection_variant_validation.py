@@ -15,9 +15,8 @@ Pydantic v2 model_validator(mode='after') wymusza tabele prawdy:
 """
 
 import pytest
-from pydantic import ValidationError
-
 from enm.models import Generator
+from pydantic import ValidationError
 
 
 def _gen(**overrides) -> Generator:

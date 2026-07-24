@@ -212,7 +212,9 @@ def build_gn02_sn_odgalezienie() -> dict[str, Any]:
 
     # Step 5: Start branch from station branch field
     station_refs = [
-        s.get("ref_id") for s in enm.get("substations", []) if s.get("ref_id", "").startswith("stn/")
+        s.get("ref_id")
+        for s in enm.get("substations", [])
+        if s.get("ref_id", "").startswith("stn/")
     ]
     if station_refs:
         result = execute_domain_operation(

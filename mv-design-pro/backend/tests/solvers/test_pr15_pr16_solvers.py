@@ -25,7 +25,6 @@ from src.network_model.solvers.stability_rms.contracts import (
     DynamicModelParameters,
 )
 
-
 # ---------------------------------------------------------------------------
 # PR-15: Stability solver adapter
 # ---------------------------------------------------------------------------
@@ -79,8 +78,10 @@ class TestStabilitySolverAdapter:
             ],
             events=[
                 DisturbanceEvent(
-                    event_id="e", event_type="three_phase_fault",
-                    time_s=0, duration_s=0.1,
+                    event_id="e",
+                    event_type="three_phase_fault",
+                    time_s=0,
+                    duration_s=0.1,
                 ),
             ],
         )
@@ -96,20 +97,28 @@ class TestStabilitySolverAdapter:
 
     def test_19_dynamic_model_kinds_supported(self) -> None:
         """Brief 2 §15: 8 modeli + 11 dodatkowych = 19 typów modeli dynamicznych."""
-        from src.network_model.solvers.stability_rms.contracts import (
-            DynamicModelKind as _DMK,
-        )
         # DMK to typ Literal — sprawdź przez parameters klasy
         # że adapter akceptuje wszystkie kanoniczne nazwy
         canonical_kinds = [
             "synchronous_machine_6th_order",
-            "avr_ieee_t1", "avr_ieee_t2", "avr_ac4a", "avr_st5b",
-            "governor_tgov1", "governor_gast", "governor_ieee_g1",
-            "pss_ieee_pss2a", "pss_ieee_pss2b",
+            "avr_ieee_t1",
+            "avr_ieee_t2",
+            "avr_ac4a",
+            "avr_st5b",
+            "governor_tgov1",
+            "governor_gast",
+            "governor_ieee_g1",
+            "pss_ieee_pss2a",
+            "pss_ieee_pss2b",
             "induction_motor_5th_order",
-            "wind_type_1", "wind_type_2", "wind_type_3", "wind_type_4",
-            "pv_inverter_grid_following", "pv_inverter_grid_forming",
-            "bess_pcs_grid_following", "bess_pcs_grid_forming",
+            "wind_type_1",
+            "wind_type_2",
+            "wind_type_3",
+            "wind_type_4",
+            "pv_inverter_grid_following",
+            "pv_inverter_grid_forming",
+            "bess_pcs_grid_following",
+            "bess_pcs_grid_forming",
         ]
         for kind in canonical_kinds:
             # Parametr Literal nie da się sprawdzić runtime; sprawdzamy że
@@ -335,8 +344,10 @@ class TestNcRfgComplianceChecker:
                 der_ref="pv_full",
                 p_max_kw=5000.0,
                 voltage_kv=15.0,
-                has_lvrt_curve=True, has_hvrt_curve=True,
-                has_pf_droop=True, has_qu_curve=True,
+                has_lvrt_curve=True,
+                has_hvrt_curve=True,
+                has_pf_droop=True,
+                has_qu_curve=True,
                 has_dynamic_model=True,
                 has_scada_communication=True,
                 has_disturbance_recorder=True,

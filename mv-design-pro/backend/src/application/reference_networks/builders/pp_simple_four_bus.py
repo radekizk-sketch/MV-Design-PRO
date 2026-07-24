@@ -20,10 +20,34 @@ def build_pp_simple_four_bus_network() -> dict[str, Any]:
             "defaults": {},
         },
         "buses": [
-            {"ref_id": "BUS-1", "id": "BUS-1", "name": "Slack 110kV", "u_n_kv": 110.0, "bus_kind": "slack"},
-            {"ref_id": "BUS-2", "id": "BUS-2", "name": "MV bus 20kV", "u_n_kv": 20.0, "bus_kind": "pq"},
-            {"ref_id": "BUS-3", "id": "BUS-3", "name": "MV bus 20kV", "u_n_kv": 20.0, "bus_kind": "pq"},
-            {"ref_id": "BUS-4", "id": "BUS-4", "name": "MV bus 20kV", "u_n_kv": 20.0, "bus_kind": "pq"},
+            {
+                "ref_id": "BUS-1",
+                "id": "BUS-1",
+                "name": "Slack 110kV",
+                "u_n_kv": 110.0,
+                "bus_kind": "slack",
+            },
+            {
+                "ref_id": "BUS-2",
+                "id": "BUS-2",
+                "name": "MV bus 20kV",
+                "u_n_kv": 20.0,
+                "bus_kind": "pq",
+            },
+            {
+                "ref_id": "BUS-3",
+                "id": "BUS-3",
+                "name": "MV bus 20kV",
+                "u_n_kv": 20.0,
+                "bus_kind": "pq",
+            },
+            {
+                "ref_id": "BUS-4",
+                "id": "BUS-4",
+                "name": "MV bus 20kV",
+                "u_n_kv": 20.0,
+                "bus_kind": "pq",
+            },
         ],
         "branches": [
             {

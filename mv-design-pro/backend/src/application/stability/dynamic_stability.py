@@ -149,9 +149,7 @@ def evaluate_fault_clear_dynamic_stability(
         abs(source_state.during_fault_angle_deg - source_state.pre_fault_angle_deg),
         abs(source_state.post_fault_angle_deg - source_state.pre_fault_angle_deg),
     )
-    clearing_margin_ms = _round_metric(
-        thresholds.max_clearing_time_ms - scenario.clearing_time_ms
-    )
+    clearing_margin_ms = _round_metric(thresholds.max_clearing_time_ms - scenario.clearing_time_ms)
 
     checks = {
         "clearing_time": scenario.clearing_time_ms <= thresholds.max_clearing_time_ms,

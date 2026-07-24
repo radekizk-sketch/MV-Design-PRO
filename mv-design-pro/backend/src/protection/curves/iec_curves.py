@@ -17,7 +17,7 @@ WHITE BOX: All intermediate values are exposed for auditability.
 
 import math
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # Numeric guard for inverse-time results, NOT a protection setting.
@@ -30,7 +30,7 @@ MAX_TRIPPING_TIME_S = 100_000.0
 MIN_TRIPPING_TIME_S = 0.001
 
 
-class IECCurveType(str, Enum):
+class IECCurveType(StrEnum):
     """
     IEC 60255-151 standard curve types.
 

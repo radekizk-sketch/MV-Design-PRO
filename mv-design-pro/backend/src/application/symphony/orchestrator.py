@@ -102,7 +102,9 @@ class SymphonyOrchestrator:
         return DispatchDecision(issue.id, issue.identifier, True, "started")
 
     def _is_blocked(self, issue: Issue) -> bool:
-        return any(blocker.state not in self._config.terminal_states for blocker in issue.blocked_by)
+        return any(
+            blocker.state not in self._config.terminal_states for blocker in issue.blocked_by
+        )
 
     def _dispatch(self, issue: Issue) -> None:
         self.state.active_issue_ids.add(issue.id)

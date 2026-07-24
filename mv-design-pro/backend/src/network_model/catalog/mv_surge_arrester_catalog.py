@@ -5,10 +5,7 @@ from typing import Any
 
 from .types import CATALOG_CONTRACT_VERSION, CatalogStatus, CatalogVerificationStatus
 
-
-SOURCE_REFERENCE = (
-    "PN-EN 60099-4 / IEC 60099-4 / referencyjny typoszereg ogranicznikow SN"
-)
+SOURCE_REFERENCE = "PN-EN 60099-4 / IEC 60099-4 / referencyjny typoszereg ogranicznikow SN"
 
 
 def _record(

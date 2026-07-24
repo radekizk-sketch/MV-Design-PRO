@@ -41,7 +41,10 @@ class TestRunResultState:
 
     def test_result_state_string_conversion(self):
         """RunResultState must be string-convertible."""
-        assert str(RunResultState.NONE) == "RunResultState.NONE"
+        # Kanon py3.11 StrEnum (UP042): str(member) zwraca wartosc czlonu,
+        # nie "Klasa.CZLON" jak dawne (str, Enum). Intencja testu (string-convertible
+        # + rownosc z wartoscia) zachowana; produkcja uzywa .value/porownania, nie repr.
+        assert str(RunResultState.NONE) == "NONE"
         assert RunResultState.FRESH == "FRESH"
 
 

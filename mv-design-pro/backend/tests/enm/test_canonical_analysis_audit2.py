@@ -36,6 +36,8 @@ def test_maybe_load_audit2_extensions_none_for_invalid_uuid():
 
 def test_maybe_load_audit2_extensions_returns_extensions_for_existing_config(tmp_path):
     """Phase 41: istniejacy config -> extensions dict z kluczami SC/PF/Protection."""
+    import os
+
     from enm.canonical_analysis import _maybe_load_audit2_extensions
     from infrastructure.persistence.db import (
         create_engine_from_url,
@@ -44,8 +46,6 @@ def test_maybe_load_audit2_extensions_returns_extensions_for_existing_config(tmp
     )
     from infrastructure.persistence.models import StationAudit2ConfigORM
     from infrastructure.persistence.unit_of_work import build_uow_factory
-
-    import os
 
     db_path = tmp_path / "test_audit2_canonical.db"
     db_url = f"sqlite+pysqlite:///{db_path.as_posix()}"
@@ -101,7 +101,10 @@ def test_maybe_load_audit2_extensions_returns_extensions_for_existing_config(tmp
     assert "transformer_to_tap_changer" in extensions["power_flow_extensions"]
     assert "tr_001" in extensions["power_flow_extensions"]["transformer_to_tap_changer"]
     # Grounding type populated.
-    assert extensions["sc_iec60909_extensions"]["mv_neutral_grounding"]["grounding_type"] == "petersen_coil"
+    assert (
+        extensions["sc_iec60909_extensions"]["mv_neutral_grounding"]["grounding_type"]
+        == "petersen_coil"
+    )
 
 
 def test_canonical_run_pf_options_propagate_to_audit2():
@@ -125,6 +128,7 @@ def test_canonical_run_sc_options_propagate_to_audit2():
     """Phase 43: _execute_short_circuit tez korzysta z _maybe_load_audit2_extensions."""
     # Smoke: sprawdza ze SC i PF uzywaja tego samego helper'a.
     import inspect
+
     from enm import canonical_analysis
 
     pf_source = inspect.getsource(canonical_analysis._execute_power_flow)
@@ -183,22 +187,24 @@ def test_phase_state_default_fault_from_grounding_none():
     assert _phase_state_default_fault_current_from_grounding(None) is None
     assert _phase_state_default_fault_current_from_grounding({}) is None
     # Brak grounding key.
-    assert _phase_state_default_fault_current_from_grounding(
-        {"sc_iec60909_extensions": {}}
-    ) is None
+    assert _phase_state_default_fault_current_from_grounding({"sc_iec60909_extensions": {}}) is None
     # Empty range.
-    assert _phase_state_default_fault_current_from_grounding(
-        {
-            "sc_iec60909_extensions": {
-                "mv_neutral_grounding": {"typical_ik1_a_range": {"min": 0, "max": 0}}
+    assert (
+        _phase_state_default_fault_current_from_grounding(
+            {
+                "sc_iec60909_extensions": {
+                    "mv_neutral_grounding": {"typical_ik1_a_range": {"min": 0, "max": 0}}
+                }
             }
-        }
-    ) is None
+        )
+        is None
+    )
 
 
 def test_phase_state_uses_audit2_helper():
     """Phase 46: _execute_phase_state_sn tez korzysta z _maybe_load_audit2_extensions."""
     import inspect
+
     from enm import canonical_analysis
 
     ps_source = inspect.getsource(canonical_analysis._execute_phase_state_sn)

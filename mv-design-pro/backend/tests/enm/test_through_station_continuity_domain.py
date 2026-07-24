@@ -9,7 +9,6 @@ transformator.
 from enm.models import (
     Bay,
     Bus,
-    Cable,
     EnergyNetworkModel,
     ENMHeader,
     Source,

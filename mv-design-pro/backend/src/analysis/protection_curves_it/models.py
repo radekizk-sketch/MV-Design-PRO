@@ -2,31 +2,31 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from analysis.normative.models import NormativeStatus
 
 
-class ITCurveRole(str, Enum):
+class ITCurveRole(StrEnum):
     PRIMARY = "PRIMARY"
     BACKUP = "BACKUP"
 
 
-class ITCurveType(str, Enum):
+class ITCurveType(StrEnum):
     INVERSE = "INVERSE"
     DEFINITE = "DEFINITE"
     INSTANTANEOUS = "INSTANTANEOUS"
     UNKNOWN = "UNKNOWN"
 
 
-class ITCurveSource(str, Enum):
+class ITCurveSource(StrEnum):
     CATALOG = "CATALOG"
     USER = "USER"
     UNKNOWN = "UNKNOWN"
 
 
-class ITMarkerKind(str, Enum):
+class ITMarkerKind(StrEnum):
     IKSS = "IKSS"
     IP = "IP"
     ITH = "ITH"

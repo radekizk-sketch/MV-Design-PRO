@@ -4,7 +4,6 @@ from dataclasses import replace
 from uuid import uuid4
 
 import pytest
-
 from application.protection_analysis.service import ProtectionAnalysisService
 from domain.protection_analysis import ProtectionRunStatus, new_protection_analysis_run
 

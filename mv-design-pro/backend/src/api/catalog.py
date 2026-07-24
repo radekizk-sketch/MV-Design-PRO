@@ -12,8 +12,6 @@ All assign/clear endpoints return 204 No Content.
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 from uuid import UUID
 
@@ -28,21 +26,18 @@ from application.catalog_governance import CatalogGovernanceService
 from application.network_wizard import NetworkWizardService
 from application.network_wizard.service import NotFound
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.catalog.governance import ImportMode
 from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 from network_model.catalog.mv_ptpiree_catalog import get_ptpiree_catalog_manifest
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.switchgear import (
+    list_families_for_manufacturer,
+    list_switchgear_families,
     list_switchgear_solution_templates_for_manufacturer,
 )
 from network_model.catalog.switchgear import (
-    list_families_for_manufacturer,
-)
-from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
-)
-from network_model.catalog.switchgear import (
-    list_switchgear_families,
 )
 from pydantic import BaseModel
 
@@ -348,8 +343,7 @@ def get_ptpiree_manifest() -> dict[str, Any]:
 def list_ptpiree_generator_certificates() -> list[dict[str, Any]]:
     """List local PTPiREE generator/converter certificate snapshot records."""
     return [
-        item.to_dict()
-        for item in get_default_mv_catalog().list_ptpiree_generator_certificates()
+        item.to_dict() for item in get_default_mv_catalog().list_ptpiree_generator_certificates()
     ]
 
 
@@ -859,8 +853,7 @@ def _auto_populate_transformers(req: AutoPopulateRequest) -> AutoPopulateRespons
         confidence = _confidence_with_ptpire(confidence, is_ptpire, req.prefer_ptpire_certified)
 
         rationale = (
-            f"Sn={rated_mva*1000:.0f} kVA, U_HV={v_hv} kV, "
-            f"U_LV={v_lv} kV ({manufacturer})"
+            f"Sn={rated_mva*1000:.0f} kVA, U_HV={v_hv} kV, " f"U_LV={v_lv} kV ({manufacturer})"
         )
 
         suggestions.append(
@@ -969,9 +962,7 @@ def _auto_populate_switches(req: AutoPopulateRequest, kind_filter: str) -> AutoP
                 manufacturer=manufacturer or None,
                 confidence=confidence,
                 badge_pl="PTPiRE" if is_ptpire else None,
-                rationale_pl=(
-                    f"{int(v_kv)} kV / {int(rated_i)} A ({manufacturer})"
-                ),
+                rationale_pl=(f"{int(v_kv)} kV / {int(rated_i)} A ({manufacturer})"),
             )
         )
 
@@ -995,9 +986,7 @@ def _auto_populate_protection(req: AutoPopulateRequest) -> AutoPopulateResponse:
         if req.prefer_manufacturer and req.prefer_manufacturer.lower() in manufacturer.lower():
             confidence = 0.85
         # PTPiRE = Polish vendors (Elektrometal, ZPAS, Elester, Energotest, ZIAD)
-        is_polish = manufacturer in {
-            "ELEKTROMETAL", "ZPAS", "ELESTER", "ENERGOTEST", "ZIAD"
-        }
+        is_polish = manufacturer in {"ELEKTROMETAL", "ZPAS", "ELESTER", "ENERGOTEST", "ZIAD"}
         confidence = _confidence_with_ptpire(confidence, is_polish, req.prefer_ptpire_certified)
         # Current match
         if req.expected_current_a is not None and isinstance(rated, int | float):
@@ -1082,7 +1071,10 @@ def _auto_populate_inverters(
             if abs(item.un_kv - req.voltage_kv) / max(req.voltage_kv, 0.001) > 0.3:
                 continue
         if req.expected_power_mva is not None:
-            if item.sn_mva < req.expected_power_mva * 0.5 or item.sn_mva > req.expected_power_mva * 2.0:
+            if (
+                item.sn_mva < req.expected_power_mva * 0.5
+                or item.sn_mva > req.expected_power_mva * 2.0
+            ):
                 continue
 
         manufacturer = item.manufacturer or ""

@@ -11,7 +11,6 @@ CRUD endpoints:
 from __future__ import annotations
 
 from urllib.parse import quote
-from uuid import uuid4
 
 import pytest
 
@@ -103,7 +102,10 @@ def test_get_after_put_returns_config(app_client):
     assert res.status_code == 200
     data = res.json()
     assert data["mv_neutral_grounding_ref"] == "mng_resistor_low"
-    assert data["der_specs"][0]["bess_operation_mode_refs"] == ["mode_fcr_n", "mode_voltage_support"]
+    assert data["der_specs"][0]["bess_operation_mode_refs"] == [
+        "mode_fcr_n",
+        "mode_voltage_support",
+    ]
 
 
 def test_station_id_accepts_enm_reference_with_slashes(app_client):
@@ -131,7 +133,11 @@ def test_list_returns_multiple_stations(app_client):
     for sid in ["station-A", "station-B", "station-C"]:
         app_client.put(
             f"/api/v1/projects/{pid}/audit2-station-config/{sid}",
-            json={"mv_neutral_grounding_ref": "mng_petersen", "tap_changer_refs": [], "der_specs": []},
+            json={
+                "mv_neutral_grounding_ref": "mng_petersen",
+                "tap_changer_refs": [],
+                "der_specs": [],
+            },
         )
 
     res = app_client.get(f"/api/v1/projects/{pid}/audit2-station-config")
@@ -205,13 +211,9 @@ def test_validate_all_uses_real_p_import_from_snapshot_loads(app_client):
     assert res.status_code == 200
     body = res.json()
     # Hosting capacity proof istnieje dla station-real-loads.
-    station_result = next(
-        s for s in body["per_station"] if s["station_id"] == "station-real-loads"
-    )
+    station_result = next(s for s in body["per_station"] if s["station_id"] == "station-real-loads")
     hosting_proofs = [
-        p
-        for p in station_result["proofs"]
-        if p["proof_type"] == "AUDIT2_HOSTING_CAPACITY_EXPORT"
+        p for p in station_result["proofs"] if p["proof_type"] == "AUDIT2_HOSTING_CAPACITY_EXPORT"
     ]
     assert len(hosting_proofs) > 0
     # p_export_kw = 2000, p_import_kw = 0 (no snapshot).
@@ -224,6 +226,7 @@ def test_validate_all_uses_real_p_import_from_snapshot_loads(app_client):
 def test_aggregate_loads_per_station_helper_no_snapshot(app_client):
     """Phase 49: helper graceful gdy projekt nie ma snapshotu."""
     from uuid import UUID
+
     from api.audit2_station_config import _aggregate_loads_per_station_for_project
 
     pid = _create_project(app_client)
@@ -231,16 +234,15 @@ def test_aggregate_loads_per_station_helper_no_snapshot(app_client):
     app = app_client.app  # type: ignore[attr-defined]
     uow_factory = app.state.uow_factory
     with uow_factory() as uow:
-        result = _aggregate_loads_per_station_for_project(
-            uow=uow, project_id=UUID(pid)
-        )
+        result = _aggregate_loads_per_station_for_project(uow=uow, project_id=UUID(pid))
     assert result == {}
 
 
 def test_aggregate_loads_or_chain_zero_value_bug_fix():
     """Phase 51: explicit None check (or-chain z 0 nie psuje wyniku)."""
-    from uuid import UUID
     from unittest.mock import MagicMock
+    from uuid import UUID
+
     from api.audit2_station_config import _aggregate_loads_per_station_for_project
 
     # Mock UoW z snapshot zawierajacym load z p=0.
@@ -274,8 +276,9 @@ def test_aggregate_loads_or_chain_zero_value_bug_fix():
 
 def test_aggregate_loads_p_mw_conversion():
     """Phase 51: p_mw -> kW conversion (* 1000)."""
-    from uuid import UUID
     from unittest.mock import MagicMock
+    from uuid import UUID
+
     from api.audit2_station_config import _aggregate_loads_per_station_for_project
 
     mock_uow = MagicMock()

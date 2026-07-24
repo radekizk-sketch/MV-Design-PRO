@@ -18,14 +18,14 @@ INVARIANTS:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 # ---------------------------------------------------------------------------
 # PoleTypeV1 — Polish field type taxonomy
 # ---------------------------------------------------------------------------
 
 
-class PoleTypeV1(str, Enum):
+class PoleTypeV1(StrEnum):
     """Typ pola rozdzielczego — polska taksonomia OSD."""
 
     # SN
@@ -44,7 +44,7 @@ class PoleTypeV1(str, Enum):
     POLE_ZRODLA_BESS_NN = "POLE_ZRODLA_BESS_NN"
 
 
-class FieldRoleV1(str, Enum):
+class FieldRoleV1(StrEnum):
     """Rola pola (backwards-compatible, EN naming)."""
 
     LINE_IN = "LINE_IN"
@@ -101,7 +101,7 @@ FIELD_ROLE_TO_POLE: dict[FieldRoleV1, PoleTypeV1] = {
 # ---------------------------------------------------------------------------
 
 
-class AparatTypeV1(str, Enum):
+class AparatTypeV1(StrEnum):
     """Typ aparatu — polska taksonomia OSD."""
 
     WYLACZNIK = "WYLACZNIK"
@@ -121,7 +121,7 @@ class AparatTypeV1(str, Enum):
     ACB = "ACB"
 
 
-class DeviceTypeV1(str, Enum):
+class DeviceTypeV1(StrEnum):
     """Typ urzadzenia (backwards-compatible, EN naming)."""
 
     CB = "CB"

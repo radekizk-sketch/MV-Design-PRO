@@ -153,7 +153,16 @@ def test_audit2_power_flow_endpoint_no_config_returns_empty_apply(app_client):
     assert res.status_code == 200
     body = res.json()
     assert body["audit2_extensions_keys"] == []
-    assert body["audit2_applied"] in ({}, {"tap_position_changes": {}, "block_transformer_z_changes": {}, "grounding_z0_z1_ratio": None, "bess_reserved_changes": {}, "pf_droop_changes": {}})
+    assert body["audit2_applied"] in (
+        {},
+        {
+            "tap_position_changes": {},
+            "block_transformer_z_changes": {},
+            "grounding_z0_z1_ratio": None,
+            "bess_reserved_changes": {},
+            "pf_droop_changes": {},
+        },
+    )
 
 
 def test_audit2_power_flow_endpoint_invalid_project_id(app_client):
@@ -235,13 +244,9 @@ def test_get_solver_input_with_audit2_query_params_populates_extensions(app_clie
     assert "power_flow_extensions" in body["audit2_extensions"]
     assert "sc_iec60909_extensions" in body["audit2_extensions"]
     # Per-transformer mapping w extensions.
+    assert "transformer_to_tap_changer" in body["audit2_extensions"]["power_flow_extensions"]
     assert (
-        "transformer_to_tap_changer"
-        in body["audit2_extensions"]["power_flow_extensions"]
-    )
-    assert (
-        "tr_001"
-        in body["audit2_extensions"]["power_flow_extensions"]["transformer_to_tap_changer"]
+        "tr_001" in body["audit2_extensions"]["power_flow_extensions"]["transformer_to_tap_changer"]
     )
     # Grounding type.
     grounding = body["audit2_extensions"]["sc_iec60909_extensions"]["mv_neutral_grounding"]
@@ -250,9 +255,7 @@ def test_get_solver_input_with_audit2_query_params_populates_extensions(app_clie
 
 def test_get_solver_input_without_audit2_params_returns_none(app_client):
     """Phase 52: brak audit2 params -> audit2_extensions = None (backward compat)."""
-    res = app_client.get(
-        "/api/cases/case-fake/analysis/solver-input/short_circuit_3f"
-    )
+    res = app_client.get("/api/cases/case-fake/analysis/solver-input/short_circuit_3f")
     assert res.status_code == 200
     body = res.json()
     assert body["audit2_extensions"] is None
@@ -302,7 +305,10 @@ def test_apply_to_network_model_endpoint_full_pipeline(app_client):
     assert body["post_adjustment_branches"]["tr_001"]["tap_step_percent"] == 1.25
     # Applied trail.
     assert "tr_001" in body["applied"]["tap_position_changes"]
-    assert body["applied"]["tap_position_changes"]["tr_001"]["tap_changer_id"] == "tc_oltc_110sn_19_125"
+    assert (
+        body["applied"]["tap_position_changes"]["tr_001"]["tap_changer_id"]
+        == "tc_oltc_110sn_19_125"
+    )
 
 
 def test_der_spec_nominal_power_persists(app_client):

@@ -13,17 +13,16 @@ Backward compatible: existing per-type endpoints remain untouched.
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
 from application.analysis_dispatch.summary import AnalysisRunSummary
-from application.unified_run_dispatch import UnifiedRunDispatchService
 from application.analysis_run.read_model import canonicalize_json
+from application.unified_run_dispatch import UnifiedRunDispatchService
 from domain.analysis_kind import AnalysisKind
 from fastapi import APIRouter, Depends, HTTPException, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/runs", tags=["unified-runs"])

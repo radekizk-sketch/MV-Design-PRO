@@ -8,6 +8,7 @@ from application.station_templates.schema import StationTemplate, TemplateCatego
 def list_templates() -> list[StationTemplate]:
     """Return all 57 templates sorted by category + id."""
     from application.station_templates.templates import ALL_TEMPLATES
+
     return sorted(ALL_TEMPLATES, key=lambda t: (t.category.value, t.id))
 
 

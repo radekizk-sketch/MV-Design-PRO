@@ -19,8 +19,6 @@ Ten plik dostarcza brakujący test E2E determinism.
 import hashlib
 import json
 
-import pytest
-
 from domain.study_case import StudyCaseConfig
 from network_model.catalog.repository import CatalogRepository
 from network_model.core.branch import BranchType, LineBranch
@@ -229,12 +227,8 @@ class TestFaultLoopFingerprintStability:
         data = FaultLoopInput(
             fault_node_id="bus_lv",
             u_nom_v=230.0,
-            phase_conductor=LoopImpedanceComponent(
-                label="Kabel L", r_ohm=0.0157, x_ohm=0.0023
-            ),
-            return_conductor=LoopImpedanceComponent(
-                label="Przewód PE", r_ohm=0.0157, x_ohm=0.0023
-            ),
+            phase_conductor=LoopImpedanceComponent(label="Kabel L", r_ohm=0.0157, x_ohm=0.0023),
+            return_conductor=LoopImpedanceComponent(label="Przewód PE", r_ohm=0.0157, x_ohm=0.0023),
             transformer_impedance=LoopImpedanceComponent(
                 label="TR SN/NN", r_ohm=0.005, x_ohm=0.015
             ),
@@ -254,12 +248,8 @@ class TestFaultLoopFingerprintStability:
         base_kwargs = {
             "fault_node_id": "bus_lv",
             "u_nom_v": 230.0,
-            "return_conductor": LoopImpedanceComponent(
-                label="PE", r_ohm=0.01, x_ohm=0.001
-            ),
-            "transformer_impedance": LoopImpedanceComponent(
-                label="TR", r_ohm=0.005, x_ohm=0.015
-            ),
+            "return_conductor": LoopImpedanceComponent(label="PE", r_ohm=0.01, x_ohm=0.001),
+            "transformer_impedance": LoopImpedanceComponent(label="TR", r_ohm=0.005, x_ohm=0.015),
             "network_type": NetworkType.TN_S,
             "protection_arrangement": ProtectionArrangement.PE,
         }
@@ -309,12 +299,13 @@ class TestE2EFingerprintStability:
             combined = {
                 "payload_hash": _hash_canonical_json(env.payload),
                 "result_hash": _hash_canonical_json(
-                    {k: v for k, v in result.to_dict().items()
-                     if k not in {"run_id", "computed_at", "timestamp"}}
+                    {
+                        k: v
+                        for k, v in result.to_dict().items()
+                        if k not in {"run_id", "computed_at", "timestamp"}
+                    }
                 ),
             }
             pipeline_hashes.append(_hash_canonical_json(combined))
 
-        assert len(set(pipeline_hashes)) == 1, (
-            f"E2E pipeline fingerprint drift: {pipeline_hashes}"
-        )
+        assert len(set(pipeline_hashes)) == 1, f"E2E pipeline fingerprint drift: {pipeline_hashes}"

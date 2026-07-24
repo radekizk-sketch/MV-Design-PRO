@@ -30,8 +30,8 @@ from __future__ import annotations
 
 import cmath
 import math
-from dataclasses import dataclass, field
-from typing import Any, Literal
+from dataclasses import dataclass
+from typing import Any
 
 UNBALANCED_PF_SOLVER_VERSION = "load-flow-unbalanced-bfs-v1"
 
@@ -154,8 +154,8 @@ class UnbalancedNetworkInput:
     base_kv: float
     slack_bus_id: str
     bus_ids: tuple[str, ...]
-    branches: tuple["UnbalancedBranchSpec", ...]
-    loads: tuple["UnbalancedLoadSpec", ...]
+    branches: tuple[UnbalancedBranchSpec, ...]
+    loads: tuple[UnbalancedLoadSpec, ...]
     slack_voltage_pu: float = 1.0  # |V_slack| (balanced angles)
 
 
@@ -208,7 +208,7 @@ def _build_radial_topology(
         adj[branch.from_bus_id].append((branch.to_bus_id, branch.branch_id))
         adj[branch.to_bus_id].append((branch.from_bus_id, branch.branch_id))
 
-    parent: dict[str, str | None] = {bus: None for bus in input_data.bus_ids}
+    parent: dict[str, str | None] = dict.fromkeys(input_data.bus_ids)
     children: dict[str, list[str]] = {bus: [] for bus in input_data.bus_ids}
     traversal_order: list[str] = [input_data.slack_bus_id]
     visited: set[str] = {input_data.slack_bus_id}
@@ -276,7 +276,7 @@ def _compute_voltage_unbalance_factor_pct(v_a: complex, v_b: complex, v_c: compl
 
 def _ohm_to_pu(z_ohm: complex, base_mva: float, base_kv: float) -> complex:
     """Z[pu] = Z[Ohm] × (Sbase / Vbase²) — line-to-line voltage base."""
-    z_base = (base_kv ** 2) / base_mva
+    z_base = (base_kv**2) / base_mva
     return z_ohm / z_base
 
 
@@ -312,15 +312,15 @@ def solve_unbalanced_backward_forward_sweep(
 
     # Init per-phase voltages: balanced 3-phase at all buses
     v_init_a, v_init_b, v_init_c = _balanced_initial_voltages()
-    voltages_a: dict[str, complex] = {
-        bus: v_init_a * input_data.slack_voltage_pu for bus in input_data.bus_ids
-    }
-    voltages_b: dict[str, complex] = {
-        bus: v_init_b * input_data.slack_voltage_pu for bus in input_data.bus_ids
-    }
-    voltages_c: dict[str, complex] = {
-        bus: v_init_c * input_data.slack_voltage_pu for bus in input_data.bus_ids
-    }
+    voltages_a: dict[str, complex] = dict.fromkeys(
+        input_data.bus_ids, v_init_a * input_data.slack_voltage_pu
+    )
+    voltages_b: dict[str, complex] = dict.fromkeys(
+        input_data.bus_ids, v_init_b * input_data.slack_voltage_pu
+    )
+    voltages_c: dict[str, complex] = dict.fromkeys(
+        input_data.bus_ids, v_init_c * input_data.slack_voltage_pu
+    )
 
     # Slack always fixed
     voltages_a[input_data.slack_bus_id] = v_init_a * input_data.slack_voltage_pu

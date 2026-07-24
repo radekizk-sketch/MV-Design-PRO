@@ -67,7 +67,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 # ---------------------------------------------------------------------------
@@ -116,7 +116,7 @@ ARC_FLASH_SOURCE_URLS: tuple[str, ...] = (
 )
 
 
-class ArcFlashStatus(str, Enum):
+class ArcFlashStatus(StrEnum):
     """Status WYNIKU Arc Flash — odrębna oś od jakości danych wejściowych.
 
     Oś ODRĘBNA od :class:`solver_input.provenance.FieldQuality` (jakość DANYCH
@@ -179,14 +179,14 @@ _STATUS_LABEL_PL: dict[ArcFlashStatus, str] = {
 }
 
 
-class ArcFlashMethod(str, Enum):
+class ArcFlashMethod(StrEnum):
     """Metoda obliczeniowa zastosowana dla punktu."""
 
     IEEE_1584_2018 = "IEEE_1584_2018"
     RALPH_LEE = "RALPH_LEE"
 
 
-class ElectrodeConfig(str, Enum):
+class ElectrodeConfig(StrEnum):
     """Pięć konfiguracji elektrod IEEE 1584-2018."""
 
     VCB = "VCB"  # pionowe pręty w obudowie
@@ -201,7 +201,7 @@ class ElectrodeConfig(str, Enum):
         return self in (ElectrodeConfig.VCB, ElectrodeConfig.VCBB, ElectrodeConfig.HCB)
 
 
-class EnclosureType(str, Enum):
+class EnclosureType(StrEnum):
     """Typ obudowy dla korekcji rozmiaru (IEEE 1584-2018, Tab. 7)."""
 
     TYPICAL = "Typical"  # obudowa typowa
@@ -260,7 +260,7 @@ VALIDITY_IBF_MAX_KA = 106.0  # 106 kA
 # ---------------------------------------------------------------------------
 
 
-class TableProvenance(str, Enum):
+class TableProvenance(StrEnum):
     """Proweniencja ŹRÓDŁA tablicy współczynników (oś normatywna/open-source).
 
     To NIE jest :class:`FieldQuality` (jakość danych pojedynczego pola karty):

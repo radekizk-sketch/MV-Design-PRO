@@ -11,7 +11,6 @@ Verifies that FaultLoopResult is wrapped into AnalysisRunEnvelope:
 from __future__ import annotations
 
 import pytest
-
 from application.analyses.fault_loop.envelope_adapter import (
     result_to_serializable_dict,
     to_run_envelope,
@@ -32,9 +31,15 @@ def _build_fault_loop_input() -> FaultLoopInput:
     return FaultLoopInput(
         fault_node_id="bus_LV_outgoing",
         u_nom_v=230.0,
-        phase_conductor=LoopImpedanceComponent(label="L 50 mm² Cu 30 m", r_ohm=0.0108, x_ohm=0.0024),
-        return_conductor=LoopImpedanceComponent(label="PE 25 mm² Cu 30 m", r_ohm=0.0216, x_ohm=0.0024),
-        transformer_impedance=LoopImpedanceComponent(label="TR 400 kVA SN/nN", r_ohm=0.0080, x_ohm=0.0250),
+        phase_conductor=LoopImpedanceComponent(
+            label="L 50 mm² Cu 30 m", r_ohm=0.0108, x_ohm=0.0024
+        ),
+        return_conductor=LoopImpedanceComponent(
+            label="PE 25 mm² Cu 30 m", r_ohm=0.0216, x_ohm=0.0024
+        ),
+        transformer_impedance=LoopImpedanceComponent(
+            label="TR 400 kVA SN/nN", r_ohm=0.0080, x_ohm=0.0250
+        ),
         network_type=NetworkType.TN_S,
         protection_arrangement=ProtectionArrangement.PE,
     )

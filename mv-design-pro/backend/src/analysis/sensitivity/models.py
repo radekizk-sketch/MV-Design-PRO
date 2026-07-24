@@ -5,11 +5,11 @@ import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class SensitivityDecision(str, Enum):
+class SensitivityDecision(StrEnum):
     PASS = "PASS"
     FAIL = "FAIL"
     NOT_COMPUTED = "NOT_COMPUTED"

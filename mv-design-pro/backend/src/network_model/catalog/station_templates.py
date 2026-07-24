@@ -70,7 +70,9 @@ STATION_TEMPLATE_TERMINAL = StationTemplate(
     description="Stacja kończąca ciąg — 1 wejście SN, 1 transformator SN/nN, rozdzielnica nN.",
     bays=[
         StationTemplateBay(bay_template_id="bay_template_line_in", designation="Pole 1", order=0),
-        StationTemplateBay(bay_template_id="bay_template_transformer", designation="Pole TR", order=1),
+        StationTemplateBay(
+            bay_template_id="bay_template_transformer", designation="Pole TR", order=1
+        ),
     ],
     transformers=[StationTemplateTransformer(designation="TR1", lv_voltage_kv=0.4)],
     nn_switchgears=[StationTemplateNnSwitchgear(designation="RnN-1", nn_voltage_kv=0.4)],
@@ -85,7 +87,9 @@ STATION_TEMPLATE_INLINE = StationTemplate(
     bays=[
         StationTemplateBay(bay_template_id="bay_template_line_in", designation="Pole 1", order=0),
         StationTemplateBay(bay_template_id="bay_template_line_out", designation="Pole 2", order=1),
-        StationTemplateBay(bay_template_id="bay_template_transformer", designation="Pole TR", order=2),
+        StationTemplateBay(
+            bay_template_id="bay_template_transformer", designation="Pole TR", order=2
+        ),
     ],
     transformers=[StationTemplateTransformer(designation="TR1", lv_voltage_kv=0.4)],
     nn_switchgears=[StationTemplateNnSwitchgear(designation="RnN-1", nn_voltage_kv=0.4)],
@@ -100,8 +104,12 @@ STATION_TEMPLATE_BRANCH = StationTemplate(
     bays=[
         StationTemplateBay(bay_template_id="bay_template_line_in", designation="Pole 1", order=0),
         StationTemplateBay(bay_template_id="bay_template_line_out", designation="Pole 2", order=1),
-        StationTemplateBay(bay_template_id="bay_template_line_out", designation="Pole 3 (odgałęzienie)", order=2),
-        StationTemplateBay(bay_template_id="bay_template_transformer", designation="Pole TR", order=3),
+        StationTemplateBay(
+            bay_template_id="bay_template_line_out", designation="Pole 3 (odgałęzienie)", order=2
+        ),
+        StationTemplateBay(
+            bay_template_id="bay_template_transformer", designation="Pole TR", order=3
+        ),
     ],
     transformers=[StationTemplateTransformer(designation="TR1", lv_voltage_kv=0.4)],
     nn_switchgears=[StationTemplateNnSwitchgear(designation="RnN-1", nn_voltage_kv=0.4)],
@@ -114,9 +122,13 @@ STATION_TEMPLATE_SECTIONAL = StationTemplate(
     topological_type="sekcyjna",
     description="Stacja sekcyjna — 2 wejścia SN + sprzęgło/NOP, opcjonalnie transformator.",
     bays=[
-        StationTemplateBay(bay_template_id="bay_template_line_in", designation="Pole 1 (sekcja A)", order=0),
+        StationTemplateBay(
+            bay_template_id="bay_template_line_in", designation="Pole 1 (sekcja A)", order=0
+        ),
         StationTemplateBay(bay_template_id="bay_template_coupler", designation="Sprzęgło", order=1),
-        StationTemplateBay(bay_template_id="bay_template_line_in", designation="Pole 2 (sekcja B)", order=2),
+        StationTemplateBay(
+            bay_template_id="bay_template_line_in", designation="Pole 2 (sekcja B)", order=2
+        ),
     ],
     transformers=[],
     nn_switchgears=[],
@@ -129,9 +141,13 @@ STATION_TEMPLATE_PV = StationTemplate(
     topological_type="końcowa",
     description="Stacja przyłączeniowa farmy PV — pole DER PV + transformator blokowy.",
     bays=[
-        StationTemplateBay(bay_template_id="bay_template_line_in", designation="Pole 1 (przyłączeniowe)", order=0),
+        StationTemplateBay(
+            bay_template_id="bay_template_line_in", designation="Pole 1 (przyłączeniowe)", order=0
+        ),
         StationTemplateBay(bay_template_id="bay_template_der_pv", designation="Pole PV", order=1),
-        StationTemplateBay(bay_template_id="bay_template_transformer", designation="Pole TR-blok", order=2),
+        StationTemplateBay(
+            bay_template_id="bay_template_transformer", designation="Pole TR-blok", order=2
+        ),
     ],
     transformers=[StationTemplateTransformer(designation="TR-blok-PV", lv_voltage_kv=0.4)],
     nn_switchgears=[StationTemplateNnSwitchgear(designation="RnN-PV", nn_voltage_kv=0.4)],
@@ -144,9 +160,15 @@ STATION_TEMPLATE_BESS = StationTemplate(
     topological_type="końcowa",
     description="Stacja przyłączeniowa magazynu BESS — pole DER BESS + transformator blokowy.",
     bays=[
-        StationTemplateBay(bay_template_id="bay_template_line_in", designation="Pole 1 (przyłączeniowe)", order=0),
-        StationTemplateBay(bay_template_id="bay_template_der_bess", designation="Pole BESS", order=1),
-        StationTemplateBay(bay_template_id="bay_template_transformer", designation="Pole TR-blok", order=2),
+        StationTemplateBay(
+            bay_template_id="bay_template_line_in", designation="Pole 1 (przyłączeniowe)", order=0
+        ),
+        StationTemplateBay(
+            bay_template_id="bay_template_der_bess", designation="Pole BESS", order=1
+        ),
+        StationTemplateBay(
+            bay_template_id="bay_template_transformer", designation="Pole TR-blok", order=2
+        ),
     ],
     transformers=[StationTemplateTransformer(designation="TR-blok-BESS", lv_voltage_kv=0.4)],
     nn_switchgears=[StationTemplateNnSwitchgear(designation="RnN-BESS", nn_voltage_kv=0.4)],
@@ -159,10 +181,16 @@ STATION_TEMPLATE_FW = StationTemplate(
     topological_type="końcowa",
     description="Stacja przyłączeniowa farmy wiatrowej — pole DER FW + transformator główny + sieć kolektorowa.",
     bays=[
-        StationTemplateBay(bay_template_id="bay_template_line_in", designation="Pole 1 (przyłączeniowe)", order=0),
+        StationTemplateBay(
+            bay_template_id="bay_template_line_in", designation="Pole 1 (przyłączeniowe)", order=0
+        ),
         StationTemplateBay(bay_template_id="bay_template_der_fw", designation="Pole FW", order=1),
-        StationTemplateBay(bay_template_id="bay_template_transformer", designation="Pole TR-głowny", order=2),
-        StationTemplateBay(bay_template_id="bay_template_measurement", designation="Pole pomiarowe", order=3),
+        StationTemplateBay(
+            bay_template_id="bay_template_transformer", designation="Pole TR-głowny", order=2
+        ),
+        StationTemplateBay(
+            bay_template_id="bay_template_measurement", designation="Pole pomiarowe", order=3
+        ),
     ],
     transformers=[StationTemplateTransformer(designation="TR-glowny-FW", lv_voltage_kv=0.69)],
     nn_switchgears=[StationTemplateNnSwitchgear(designation="RnN-Aux-FW", nn_voltage_kv=0.4)],
@@ -176,9 +204,13 @@ STATION_TEMPLATE_CONSUMER = StationTemplate(
     description="Stacja odbiorcza SN/nN — wejście + transformator + duża rozdzielnica nN.",
     bays=[
         StationTemplateBay(bay_template_id="bay_template_line_in", designation="Pole 1", order=0),
-        StationTemplateBay(bay_template_id="bay_template_transformer", designation="Pole TR", order=1),
+        StationTemplateBay(
+            bay_template_id="bay_template_transformer", designation="Pole TR", order=1
+        ),
     ],
-    transformers=[StationTemplateTransformer(designation="TR1", nominal_power_kva=630.0, lv_voltage_kv=0.4)],
+    transformers=[
+        StationTemplateTransformer(designation="TR1", nominal_power_kva=630.0, lv_voltage_kv=0.4)
+    ],
     nn_switchgears=[
         StationTemplateNnSwitchgear(designation="RnN-1", nn_voltage_kv=0.4, feeders_count=12)
     ],
@@ -193,9 +225,15 @@ STATION_TEMPLATE_INDUSTRIAL_CUSTOM_NN = StationTemplate(
     bays=[
         StationTemplateBay(bay_template_id="bay_template_line_in", designation="Pole 1", order=0),
         StationTemplateBay(bay_template_id="bay_template_line_out", designation="Pole 2", order=1),
-        StationTemplateBay(bay_template_id="bay_template_transformer", designation="Pole TR1", order=2),
-        StationTemplateBay(bay_template_id="bay_template_transformer", designation="Pole TR2", order=3),
-        StationTemplateBay(bay_template_id="bay_template_aux", designation="Pole potrzeb własnych", order=4),
+        StationTemplateBay(
+            bay_template_id="bay_template_transformer", designation="Pole TR1", order=2
+        ),
+        StationTemplateBay(
+            bay_template_id="bay_template_transformer", designation="Pole TR2", order=3
+        ),
+        StationTemplateBay(
+            bay_template_id="bay_template_aux", designation="Pole potrzeb własnych", order=4
+        ),
     ],
     transformers=[
         StationTemplateTransformer(designation="TR1", lv_voltage_kv=6.0),
@@ -230,9 +268,7 @@ def get_station_template(template_id: str) -> StationTemplate:
 
     if template_id not in STATION_TEMPLATE_REGISTRY:
         available = ", ".join(sorted(STATION_TEMPLATE_REGISTRY.keys()))
-        raise KeyError(
-            f"Unknown station_template_id: {template_id}. Available: {available}"
-        )
+        raise KeyError(f"Unknown station_template_id: {template_id}. Available: {available}")
     return STATION_TEMPLATE_REGISTRY[template_id]
 
 

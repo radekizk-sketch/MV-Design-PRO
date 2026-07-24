@@ -130,7 +130,9 @@ def test_refresh_snapshot_completes_legacy_zksn_switch_state() -> None:
     legacy["branch_points"][0].pop("switch_state", None)
 
     refreshed = execute_domain_operation(legacy, "refresh_snapshot", {})
-    zksn = next(bp for bp in refreshed["snapshot"]["branch_points"] if bp["branch_point_type"] == "zksn")
+    zksn = next(
+        bp for bp in refreshed["snapshot"]["branch_points"] if bp["branch_point_type"] == "zksn"
+    )
     blocker_codes = {b.get("code") for b in refreshed.get("readiness", {}).get("blockers", [])}
 
     assert zksn["switch_state"] == "closed"
@@ -188,7 +190,9 @@ def test_start_branch_segment_accepts_explicit_zero_sequence_data() -> None:
     branch_ref = next(
         ref for ref in resp["changes"]["created_element_ids"] if ref.startswith("seg/")
     )
-    branch = next(branch for branch in resp["snapshot"]["branches"] if branch["ref_id"] == branch_ref)
+    branch = next(
+        branch for branch in resp["snapshot"]["branches"] if branch["ref_id"] == branch_ref
+    )
     assert branch["r0_ohm_per_km"] == 1.11
     assert branch["x0_ohm_per_km"] == 1.37
 

@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID, uuid4
 
 from domain.project_design_mode import ProjectDesignMode
 
 
-class ProjectMode(str, Enum):
+class ProjectMode(StrEnum):
     """Tryb projektu - AS-IS (weryfikacja) vs TO-BE (projektowanie)."""
 
     AS_IS = "AS-IS"

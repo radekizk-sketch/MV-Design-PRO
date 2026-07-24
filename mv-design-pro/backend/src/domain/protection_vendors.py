@@ -18,7 +18,7 @@ SUPPORTED MANUFACTURERS (Open list):
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # =============================================================================
@@ -26,7 +26,7 @@ from typing import Any
 # =============================================================================
 
 
-class Manufacturer(str, Enum):
+class Manufacturer(StrEnum):
     """Protection device manufacturers (open list)."""
 
     ABB = "ABB"
@@ -44,7 +44,7 @@ class Manufacturer(str, Enum):
     OTHER = "OTHER"  # For manufacturers not explicitly listed
 
 
-class CurveOrigin(str, Enum):
+class CurveOrigin(StrEnum):
     """Origin/source of the protection curve definition."""
 
     IEC_STANDARD = "IEC_STANDARD"  # Pure IEC 60255-151 curve
@@ -52,14 +52,14 @@ class CurveOrigin(str, Enum):
     VENDOR_NATIVE = "VENDOR_NATIVE"  # Vendor-specific formula (non-IEC)
 
 
-class FormulaKind(str, Enum):
+class FormulaKind(StrEnum):
     """Formula type used for trip time calculation."""
 
     IEC = "IEC"  # Standard IEC formula: t = TMS * A / (M^B - 1)
     VENDOR = "VENDOR"  # Vendor-specific formula (documented separately)
 
 
-class IecVariant(str, Enum):
+class IecVariant(StrEnum):
     """IEC 60255-151 curve variants."""
 
     SI = "SI"  # Standard Inverse (A=0.14, B=0.02)
@@ -68,7 +68,7 @@ class IecVariant(str, Enum):
     LTI = "LTI"  # Long-Time Inverse (A=120, B=1.0) — per IEEE C37.112
 
 
-class VerificationStatus(str, Enum):
+class VerificationStatus(StrEnum):
     """Verification status of curve parameters."""
 
     VERIFIED = "VERIFIED"  # Parameters verified against datasheet/standard

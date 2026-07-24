@@ -135,7 +135,9 @@ def test_extract_solver_extensions_short_circuit():
     )
     ext = extract_solver_extensions_from_payload(payload)
     assert "mv_neutral_grounding" in ext["sc_iec60909_extensions"]
-    assert ext["sc_iec60909_extensions"]["mv_neutral_grounding"]["grounding_type"] == "petersen_coil"
+    assert (
+        ext["sc_iec60909_extensions"]["mv_neutral_grounding"]["grounding_type"] == "petersen_coil"
+    )
     assert "block_transformers" in ext["sc_iec60909_extensions"]
     assert len(ext["sc_iec60909_extensions"]["block_transformers"]) == 1
 
@@ -188,7 +190,10 @@ def test_determinism_same_input_same_output():
             {
                 "der_id": "der_001",
                 "der_kind": "BESS",
-                "bess_operation_mode_refs": ["mode_voltage_support", "mode_fcr_n"],  # nieuporzadkowane
+                "bess_operation_mode_refs": [
+                    "mode_voltage_support",
+                    "mode_fcr_n",
+                ],  # nieuporzadkowane
                 "pf_curve_ref": "pf_pse_b",
             }
         ],

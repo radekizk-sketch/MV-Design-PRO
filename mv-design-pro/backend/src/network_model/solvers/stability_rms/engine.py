@@ -32,7 +32,6 @@ from src.network_model.solvers.stability_rms.contracts import (
     TrajectorySample,
 )
 
-
 # ---------------------------------------------------------------------------
 # State vectors per model kind
 # ---------------------------------------------------------------------------
@@ -94,7 +93,7 @@ def _model_derivative(
         d_damping = parameters.get("D", 1.0)
         pm = parameters.get("Pm", 1.0)
         pe = voltage_pu * np.sin(state[0])  # Pe = V·sin(δ) — uproszczony air-gap
-        delta, omega = state[0], state[1]
+        omega = state[1]
         ddelta_dt = 2.0 * np.pi * 50.0 * omega  # ω in p.u., bus 50 Hz
         domega_dt = (pm - pe - d_damping * omega) / (2.0 * m_inertia)
         return np.array([ddelta_dt, domega_dt])
@@ -260,23 +259,18 @@ def _compute_eigenvalues(
             x_pert = x0.copy()
             x_pert[j] += epsilon
             f_pert = _model_derivative(
-                dm.model_kind, x_pert, initial_voltage_pu, dm.parameters,
+                dm.model_kind,
+                x_pert,
+                initial_voltage_pu,
+                dm.parameters,
             )
             jacobian[:, j] = (f_pert - f0) / epsilon
 
         try:
             eigvals = np.linalg.eigvals(jacobian)
             for ev in eigvals:
-                damping_ratio = (
-                    -float(np.real(ev)) / float(abs(ev))
-                    if abs(ev) > 1.0e-10
-                    else None
-                )
-                natural_freq = (
-                    float(abs(ev)) / (2.0 * np.pi)
-                    if abs(ev) > 1.0e-10
-                    else None
-                )
+                damping_ratio = -float(np.real(ev)) / float(abs(ev)) if abs(ev) > 1.0e-10 else None
+                natural_freq = float(abs(ev)) / (2.0 * np.pi) if abs(ev) > 1.0e-10 else None
                 eigenvalues.append(
                     EigenvaluePoint(
                         real=float(np.real(ev)),
@@ -336,7 +330,9 @@ def run_stability_rms(
         t = step * dt
         for dm in solver_input.dynamic_models:
             voltage_pu = _apply_event_to_voltage(
-                initial_voltage_pu, list(solver_input.events), t,
+                initial_voltage_pu,
+                list(solver_input.events),
+                t,
             )
             new_state, iters = _trapezoidal_step(
                 states[dm.element_ref],
@@ -358,8 +354,7 @@ def run_stability_rms(
                 )
                 speed = (
                     float(new_state[1])
-                    if dm.model_kind == "synchronous_machine_6th_order"
-                    and len(new_state) > 1
+                    if dm.model_kind == "synchronous_machine_6th_order" and len(new_state) > 1
                     else None
                 )
                 trajectories_data[dm.element_ref].append(
@@ -381,9 +376,7 @@ def run_stability_rms(
     # Stability margin: minimum damping ratio (jeśli eigenvalues)
     margin = None
     if eigenvalues:
-        damping_ratios = [
-            ev.damping_ratio for ev in eigenvalues if ev.damping_ratio is not None
-        ]
+        damping_ratios = [ev.damping_ratio for ev in eigenvalues if ev.damping_ratio is not None]
         if damping_ratios:
             margin = min(damping_ratios)
 

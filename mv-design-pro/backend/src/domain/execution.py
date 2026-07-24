@@ -28,7 +28,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -37,7 +37,7 @@ from uuid import UUID, uuid4
 # ---------------------------------------------------------------------------
 
 
-class RunStatus(str, Enum):
+class RunStatus(StrEnum):
     """Run lifecycle status."""
 
     PENDING = "PENDING"
@@ -46,7 +46,7 @@ class RunStatus(str, Enum):
     FAILED = "FAILED"
 
 
-class ExecutionAnalysisType(str, Enum):
+class ExecutionAnalysisType(StrEnum):
     """Analysis types supported by the execution layer."""
 
     SC_3F = "SC_3F"

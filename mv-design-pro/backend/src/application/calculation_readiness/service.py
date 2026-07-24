@@ -37,11 +37,11 @@ CalculationType = Literal[
 ]
 
 ReadinessStatus = Literal[
-    "ready",       # gotowe — można uruchomić
-    "partial",     # częściowe — niektóre dane brakują
-    "blocked",     # zablokowane — kluczowe dane brakują
-    "no_module",   # brak modułu obliczeniowego (numerycznego)
-    "n_a",         # nie dotyczy
+    "ready",  # gotowe — można uruchomić
+    "partial",  # częściowe — niektóre dane brakują
+    "blocked",  # zablokowane — kluczowe dane brakują
+    "no_module",  # brak modułu obliczeniowego (numerycznego)
+    "n_a",  # nie dotyczy
 ]
 
 
@@ -123,7 +123,9 @@ def _check_power_flow(enm: EnergyNetworkModel) -> ReadinessTypeReport:
                 blockers.append(branch.ref_id)
 
     if blockers:
-        status: ReadinessStatus = "blocked" if has_critical_blocker or len(blockers) > 2 else "partial"
+        status: ReadinessStatus = (
+            "blocked" if has_critical_blocker or len(blockers) > 2 else "partial"
+        )
         return ReadinessTypeReport(
             calculation_type="power_flow",
             label_pl=CALCULATION_LABEL_PL["power_flow"],
@@ -163,7 +165,7 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
     blockers: list[str] = []
 
     if not enm.sources:
-        missing.append("źródło zwarciowe (S_k\")")
+        missing.append('źródło zwarciowe (S_k")')
         blockers.append("project")
 
     for src in enm.sources:
@@ -183,7 +185,7 @@ def _check_short_circuit(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             status="partial" if len(blockers) <= 3 else "blocked",
             missing_fields_pl=missing,
             blocking_object_refs=blockers,
-            recommended_action_pl="Uzupełnij dane zwarciowe źródła i transformatorów (u_k, S_k\").",
+            recommended_action_pl='Uzupełnij dane zwarciowe źródła i transformatorów (u_k, S_k").',
         )
     return ReadinessTypeReport(
         calculation_type="short_circuit",
@@ -290,13 +292,9 @@ def _resolve_der_dynamic_for_generator(gen) -> str:  # type: ignore[no-untyped-d
     explicit = getattr(gen, "dynamic_profile_id", None)
 
     if gen_type == "pv_inverter":
-        result = resolve_der_dynamic_profile(
-            der_kind="PV", explicit_profile_id=explicit
-        )
+        result = resolve_der_dynamic_profile(der_kind="PV", explicit_profile_id=explicit)
     elif gen_type == "bess":
-        result = resolve_der_dynamic_profile(
-            der_kind="BESS", explicit_profile_id=explicit
-        )
+        result = resolve_der_dynamic_profile(der_kind="BESS", explicit_profile_id=explicit)
     elif gen_type == "fw_scig":
         result = resolve_der_dynamic_profile(
             der_kind="FW", explicit_profile_id=explicit, converter_type="SCIG"
@@ -357,9 +355,7 @@ def _check_frt_hvrt(enm: EnergyNetworkModel) -> ReadinessTypeReport:
             status="n_a",
             recommended_action_pl="Brak DER w projekcie. FRT/HVRT nie dotyczy.",
         )
-    resolved_count = sum(
-        1 for g in der_generators if _resolve_der_dynamic_for_generator(g)
-    )
+    resolved_count = sum(1 for g in der_generators if _resolve_der_dynamic_for_generator(g))
     return ReadinessTypeReport(
         calculation_type="frt_hvrt",
         label_pl=CALCULATION_LABEL_PL["frt_hvrt"],

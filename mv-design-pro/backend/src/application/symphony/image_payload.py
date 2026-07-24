@@ -12,9 +12,7 @@ logger = logging.getLogger(__name__)
 
 ALLOWED_IMAGE_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 _DATA_IMAGE_URL_RE = re.compile(r"^data:(image/[A-Za-z0-9.+-]+);base64,(.*)$", re.DOTALL)
-_EMPTY_DATA_IMAGE_IN_TEXT_RE = re.compile(
-    r"data:image/[A-Za-z0-9.+-]+;base64,(?=$|[\s)'\"\]>}])"
-)
+_EMPTY_DATA_IMAGE_IN_TEXT_RE = re.compile(r"data:image/[A-Za-z0-9.+-]+;base64,(?=$|[\s)'\"\]>}])")
 
 
 class ImageAttachmentError(ValueError):

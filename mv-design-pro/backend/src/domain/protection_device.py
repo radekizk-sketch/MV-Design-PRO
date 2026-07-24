@@ -27,7 +27,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -36,7 +36,7 @@ from uuid import UUID, uuid4
 # =============================================================================
 
 
-class ProtectionDeviceType(str, Enum):
+class ProtectionDeviceType(StrEnum):
     """Type of protection device."""
 
     RELAY = "RELAY"  # Przekaźnik nadprądowy
@@ -45,7 +45,7 @@ class ProtectionDeviceType(str, Enum):
     CIRCUIT_BREAKER = "CIRCUIT_BREAKER"  # Wyłącznik z wyzwalaczem nadprądowym
 
 
-class CurveStandard(str, Enum):
+class CurveStandard(StrEnum):
     """Protection curve standard."""
 
     IEC = "IEC"  # IEC 60255
@@ -53,7 +53,7 @@ class CurveStandard(str, Enum):
     FUSE = "FUSE"  # Charakterystyka bezpiecznikowa
 
 
-class IECCurveVariant(str, Enum):
+class IECCurveVariant(StrEnum):
     """IEC 60255 curve variants."""
 
     SI = "SI"  # Standard Inverse (Normalna odwrotna)
@@ -63,7 +63,7 @@ class IECCurveVariant(str, Enum):
     DT = "DT"  # Definite Time (Czas niezależny)
 
 
-class CoordinationVerdict(str, Enum):
+class CoordinationVerdict(StrEnum):
     """Coordination analysis verdict."""
 
     PASS = "PASS"  # Koordynacja prawidłowa

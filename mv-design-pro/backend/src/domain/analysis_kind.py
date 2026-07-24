@@ -8,10 +8,10 @@ used in AnalysisRun and ProtectionAnalysisRun.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 
 
-class AnalysisKind(str, Enum):
+class AnalysisKind(StrEnum):
     """Canonical analysis kind enum.
 
     Used by AnalysisDispatchService to unify dispatch across all analysis types.

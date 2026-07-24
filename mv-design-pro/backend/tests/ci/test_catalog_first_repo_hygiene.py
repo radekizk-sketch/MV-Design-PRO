@@ -45,9 +45,7 @@ def _iter_source_files(root: Path) -> list[Path]:
     if not root.exists():
         return []
     extensions = {".py", ".ts", ".tsx", ".md"}
-    return sorted(
-        path for path in root.rglob("*") if path.is_file() and path.suffix in extensions
-    )
+    return sorted(path for path in root.rglob("*") if path.is_file() and path.suffix in extensions)
 
 
 def test_required_stage_docs_exist() -> None:
@@ -62,9 +60,7 @@ def test_results_workspace_path_is_removed_from_active_code() -> None:
             text = path.read_text(encoding="utf-8", errors="ignore")
             if "results-workspace" in text or "/api/results-workspace" in text:
                 violations.append(str(path.relative_to(REPO_ROOT)))
-    assert (
-        not violations
-    ), f"Aktywny kod nadal odwołuje się do results-workspace: {violations}"
+    assert not violations, f"Aktywny kod nadal odwołuje się do results-workspace: {violations}"
 
 
 def test_legacy_issue_api_is_removed_from_active_code() -> None:
@@ -74,9 +70,7 @@ def test_legacy_issue_api_is_removed_from_active_code() -> None:
             text = path.read_text(encoding="utf-8", errors="ignore")
             if "/api/issues" in text:
                 violations.append(str(path.relative_to(REPO_ROOT)))
-    assert (
-        not violations
-    ), f"Aktywny kod nadal odwołuje się do /api/issues: {violations}"
+    assert not violations, f"Aktywny kod nadal odwołuje się do /api/issues: {violations}"
 
 
 def test_no_todo_fixme_in_catalog_first_critical_paths() -> None:
@@ -103,9 +97,7 @@ def test_no_todo_fixme_in_catalog_first_critical_paths() -> None:
                 # polskie „meTODOlogia" (fałszywy trafień, lasso.test.ts) i
                 # trzymało ten test permanentnie czerwonym (2026-07-17).
                 if re.search(r"\b(?:TODO|FIXME)\b", stripped):
-                    violations.append(
-                        f"{path.relative_to(REPO_ROOT)}:{line_no}: {stripped}"
-                    )
+                    violations.append(f"{path.relative_to(REPO_ROOT)}:{line_no}: {stripped}")
     assert not violations, "Wykryto TODO/FIXME w krytycznych ścieżkach:\n" + "\n".join(
         violations[:20]
     )
@@ -113,13 +105,7 @@ def test_no_todo_fixme_in_catalog_first_critical_paths() -> None:
 
 def test_catalog_optional_language_is_absent_in_active_modals() -> None:
     targets = [
-        REPO_ROOT
-        / "frontend"
-        / "src"
-        / "ui"
-        / "topology"
-        / "modals"
-        / "GridSourceModal.tsx",
+        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "GridSourceModal.tsx",
         # Ciąg SN: kanoniczny kreator ui2 (retirowany TrunkContinueModal/ContinueTrunkForm).
         REPO_ROOT
         / "frontend"
@@ -128,20 +114,8 @@ def test_catalog_optional_language_is_absent_in_active_modals() -> None:
         / "kreatory"
         / "magistrala"
         / "KreatorMagistralaSn.tsx",
-        REPO_ROOT
-        / "frontend"
-        / "src"
-        / "ui2"
-        / "kreatory"
-        / "magistrala"
-        / "strings.ts",
-        REPO_ROOT
-        / "frontend"
-        / "src"
-        / "ui"
-        / "topology"
-        / "modals"
-        / "SectionSwitchModal.tsx",
+        REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory" / "magistrala" / "strings.ts",
+        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "SectionSwitchModal.tsx",
         # Pierścień SN: kanoniczny kreator ui2 (retirowany RingCloseModal/ConnectRingForm, G-RING).
         REPO_ROOT
         / "frontend"
@@ -150,13 +124,7 @@ def test_catalog_optional_language_is_absent_in_active_modals() -> None:
         / "kreatory"
         / "pierscien"
         / "KreatorPierscienia.tsx",
-        REPO_ROOT
-        / "frontend"
-        / "src"
-        / "ui2"
-        / "kreatory"
-        / "pierscien"
-        / "strings.ts",
+        REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory" / "pierscien" / "strings.ts",
     ]
     violations: list[str] = []
     forbidden_fragments = ['placeholder="opcjonalnie"', "Brak katalogu nie blokuje"]
@@ -212,7 +180,5 @@ def test_dead_legacy_modules_are_deleted() -> None:
         REPO_ROOT / "frontend" / "src" / "ui" / "results-workspace",
         REPO_ROOT / "scripts" / "results_workspace_determinism_guard.py",
     ]
-    existing = [
-        str(path.relative_to(REPO_ROOT)) for path in forbidden_paths if path.exists()
-    ]
+    existing = [str(path.relative_to(REPO_ROOT)) for path in forbidden_paths if path.exists()]
     assert not existing, f"Pozostały martwe moduły legacy: {existing}"

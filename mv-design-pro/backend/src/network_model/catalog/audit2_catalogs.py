@@ -18,7 +18,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-
 # =============================================================================
 # 1. BESS Operation Mode Catalog (eng.10)
 # =============================================================================

@@ -529,7 +529,9 @@ def _template_der_required_kva(
         # mocą POZORNĄ jednostki (`sn_mva`, np. Vestas 3 MW = 3.3 MVA) —
         # selektor transformatora musi liczyć tę samą wielkość, inaczej
         # dobiera TR po mocy czynnej i walidacja odrzuca (3300 > 3150 kVA).
-        catalog_ref = overrides.get(f"der_{spec.kind}_ref") or _der_catalog_for_power(spec, p_mw_each)
+        catalog_ref = overrides.get(f"der_{spec.kind}_ref") or _der_catalog_for_power(
+            spec, p_mw_each
+        )
         apparent_mva = _converter_apparent_power_mva(catalog_ref)
         total_mw += apparent_mva if apparent_mva is not None else p_mw_each
 

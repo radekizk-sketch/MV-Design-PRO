@@ -15,7 +15,7 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # ---------------------------------------------------------------------------
@@ -38,7 +38,7 @@ def canonical_float(x: float, precision: int = 10) -> float:
 # ---------------------------------------------------------------------------
 
 
-class AnalysisTypeV2(str, Enum):
+class AnalysisTypeV2(StrEnum):
     """Analysis types for Trace v2."""
 
     SC = "SC"

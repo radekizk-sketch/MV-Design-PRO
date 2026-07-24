@@ -78,9 +78,9 @@ class TestIeee4BusCrossValidatePandapower:
         for i, bus_id in enumerate(["BUS-1", "BUS-2", "BUS-3", "BUS-4"]):
             v_pp = float(net.res_bus.loc[i, "vm_pu"])
             v_ours = result["buses"][bus_id]["v_pu"]
-            assert abs(v_pp - v_ours) < 1e-5, (
-                f"{bus_id}: differ by {abs(v_pp - v_ours):.2e} (target < 1e-5)"
-            )
+            assert (
+                abs(v_pp - v_ours) < 1e-5
+            ), f"{bus_id}: differ by {abs(v_pp - v_ours):.2e} (target < 1e-5)"
 
     def test_all_angles_within_0_5_degrees_of_pandapower(self) -> None:
         """Każdy kąt różni się od pandapower o < 0.5°."""
@@ -120,9 +120,9 @@ class TestSolverEqualsPandapowerNumerically:
         for i, bus_id in enumerate(["BUS-1", "BUS-2", "BUS-3", "BUS-4"]):
             v_pp = round(float(net.res_bus.loc[i, "vm_pu"]), 5)
             v_ours = round(result["buses"][bus_id]["v_pu"], 5)
-            assert v_pp == v_ours, (
-                f"{bus_id}: nasz={v_ours} vs pandapower={v_pp} (mismatch in 5 decimal places)"
-            )
+            assert (
+                v_pp == v_ours
+            ), f"{bus_id}: nasz={v_ours} vs pandapower={v_pp} (mismatch in 5 decimal places)"
 
     def test_angles_match_to_3_decimal_places(self) -> None:
         net = _build_pandapower_4bus()
@@ -132,6 +132,6 @@ class TestSolverEqualsPandapowerNumerically:
         for i, bus_id in enumerate(["BUS-1", "BUS-2", "BUS-3", "BUS-4"]):
             a_pp = round(float(net.res_bus.loc[i, "va_degree"]), 3)
             a_ours = round(result["buses"][bus_id]["angle_deg"], 3)
-            assert a_pp == a_ours, (
-                f"{bus_id}: angle nasz={a_ours}° vs pandapower={a_pp}° (mismatch in 3 dec)"
-            )
+            assert (
+                a_pp == a_ours
+            ), f"{bus_id}: angle nasz={a_ours}° vs pandapower={a_pp}° (mismatch in 3 dec)"

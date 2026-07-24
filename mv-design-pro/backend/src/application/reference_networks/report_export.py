@@ -29,8 +29,8 @@ def to_pdf_bytes(report: ValidationReport) -> bytes:
     try:
         from reportlab.lib import colors
         from reportlab.lib.pagesizes import A4
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
     except ImportError as exc:
         raise ImportError("reportlab is required for PDF export") from exc
 
@@ -46,7 +46,7 @@ def to_pdf_bytes(report: ValidationReport) -> bytes:
         fontSize=18,
         spaceAfter=12,
     )
-    story.append(Paragraph(f"Raport walidacji sieci referencyjnej", title_style))
+    story.append(Paragraph("Raport walidacji sieci referencyjnej", title_style))
     story.append(Paragraph(report.network_name_pl, styles["Heading2"]))
     story.append(Spacer(1, 12))
 
@@ -57,7 +57,11 @@ def to_pdf_bytes(report: ValidationReport) -> bytes:
     story.append(Spacer(1, 12))
 
     # Overall verdict — coloured box
-    verdict_color = colors.HexColor("#2ea043") if report.overall_status == "PASS" else colors.HexColor("#cf222e")
+    verdict_color = (
+        colors.HexColor("#2ea043")
+        if report.overall_status == "PASS"
+        else colors.HexColor("#cf222e")
+    )
     verdict_style = ParagraphStyle(
         "Verdict",
         parent=styles["Heading1"],
@@ -72,7 +76,11 @@ def to_pdf_bytes(report: ValidationReport) -> bytes:
     summary_data = [
         ["Kategoria", "PASS", "FAIL"],
         ["Rozpływ mocy (węzły)", str(report.pf_pass_count), str(report.pf_fail_count)],
-        ["Rozpływ mocy (gałęzie)", str(report.pf_branch_pass_count), str(report.pf_branch_fail_count)],
+        [
+            "Rozpływ mocy (gałęzie)",
+            str(report.pf_branch_pass_count),
+            str(report.pf_branch_fail_count),
+        ],
         ["Zwarcia", str(report.sc_pass_count), str(report.sc_fail_count)],
     ]
     summary_table = Table(summary_data, hAlign="LEFT")

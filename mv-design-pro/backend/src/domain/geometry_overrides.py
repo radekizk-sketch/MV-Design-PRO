@@ -16,7 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # =============================================================================
@@ -31,7 +31,7 @@ OVERRIDES_VERSION = "1.0"
 # =============================================================================
 
 
-class OverrideScopeV1(str, Enum):
+class OverrideScopeV1(StrEnum):
     """Scope (zakres) nadpisania geometrii."""
 
     NODE = "NODE"
@@ -41,7 +41,7 @@ class OverrideScopeV1(str, Enum):
     EDGE_CHANNEL = "EDGE_CHANNEL"
 
 
-class OverrideOperationV1(str, Enum):
+class OverrideOperationV1(StrEnum):
     """Typ operacji geometrycznej."""
 
     MOVE_DELTA = "MOVE_DELTA"
@@ -293,7 +293,7 @@ def validate_overrides(
 # =============================================================================
 
 
-class GeometryFixCode(str, Enum):
+class GeometryFixCode(StrEnum):
     """Stabilne kody FixActions dla trybu projektowego (CAD)."""
 
     OVERRIDE_INVALID_ELEMENT = "geometry.override_invalid_element"

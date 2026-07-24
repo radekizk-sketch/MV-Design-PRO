@@ -59,13 +59,18 @@ def test_polish_ptpire_entries_marked_certified() -> None:
     """K30-18: Polish entries must have ptpire_certified=True flag."""
     all_types = get_all_transformer_types()
     polish_entries = [
-        t for t in all_types
-        if t["params"].get("manufacturer") in {
-            "WZL Kędzierzyn-Koźle", "ZPUE Trafo Włoszczowa", "Energen Polska", "Trafocomp",
+        t
+        for t in all_types
+        if t["params"].get("manufacturer")
+        in {
+            "WZL Kędzierzyn-Koźle",
+            "ZPUE Trafo Włoszczowa",
+            "Energen Polska",
+            "Trafocomp",
         }
     ]
     assert len(polish_entries) >= 16, f"Expected ≥16 Polish entries, got {len(polish_entries)}"
     for entry in polish_entries:
-        assert entry["params"].get("ptpire_certified") is True, (
-            f"Polish entry {entry['id']} missing ptpire_certified flag"
-        )
+        assert (
+            entry["params"].get("ptpire_certified") is True
+        ), f"Polish entry {entry['id']} missing ptpire_certified flag"

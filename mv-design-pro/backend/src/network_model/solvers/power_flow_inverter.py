@@ -24,14 +24,14 @@ slope_pu_per_pu representation as the Q(U) proof pack (single source of truth).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 import numpy as np
 
 _TOL = 1e-9
 
 
-class InverterMode(str, Enum):
+class InverterMode(StrEnum):
     Q_CONST = "Q_CONST"
     COSPHI_CONST = "COSPHI_CONST"
     COSPHI_P = "COSPHI_P"

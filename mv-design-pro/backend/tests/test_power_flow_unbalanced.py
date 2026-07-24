@@ -4,13 +4,10 @@ from __future__ import annotations
 
 import math
 
-import pytest
-
 from network_model.solvers.power_flow_unbalanced import (
     UnbalancedBranchSpec,
     UnbalancedLoadSpec,
     UnbalancedNetworkInput,
-    UnbalancedPowerFlowResult,
     solve_unbalanced_backward_forward_sweep,
 )
 
@@ -161,7 +158,11 @@ class TestVoltageDropsAlongRadial:
         bus_1 = next(b for b in result.bus_results if b.bus_id == "BUS-1")
         bus_2 = next(b for b in result.bus_results if b.bus_id == "BUS-2")
         # Slack at 1.0, drops along radial
-        assert slack.voltage_pu_magnitude_a >= bus_1.voltage_pu_magnitude_a >= bus_2.voltage_pu_magnitude_a
+        assert (
+            slack.voltage_pu_magnitude_a
+            >= bus_1.voltage_pu_magnitude_a
+            >= bus_2.voltage_pu_magnitude_a
+        )
 
 
 class TestWhiteBoxTrace:
@@ -211,9 +212,15 @@ class TestDeterminism:
         result_2 = solve_unbalanced_backward_forward_sweep(_radial_3bus_network())
         # Compare critical numeric fields
         for bus_1, bus_2 in zip(result_1.bus_results, result_2.bus_results, strict=True):
-            assert math.isclose(bus_1.voltage_pu_magnitude_a, bus_2.voltage_pu_magnitude_a, abs_tol=1e-12)
-            assert math.isclose(bus_1.voltage_pu_magnitude_b, bus_2.voltage_pu_magnitude_b, abs_tol=1e-12)
-            assert math.isclose(bus_1.voltage_pu_magnitude_c, bus_2.voltage_pu_magnitude_c, abs_tol=1e-12)
+            assert math.isclose(
+                bus_1.voltage_pu_magnitude_a, bus_2.voltage_pu_magnitude_a, abs_tol=1e-12
+            )
+            assert math.isclose(
+                bus_1.voltage_pu_magnitude_b, bus_2.voltage_pu_magnitude_b, abs_tol=1e-12
+            )
+            assert math.isclose(
+                bus_1.voltage_pu_magnitude_c, bus_2.voltage_pu_magnitude_c, abs_tol=1e-12
+            )
 
 
 class TestEdgeCases:

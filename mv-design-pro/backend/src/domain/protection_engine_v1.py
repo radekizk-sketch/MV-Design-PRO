@@ -587,15 +587,15 @@ def function_50_evaluate(
         t_trip = settings.t_trip_s
         trace["t_trip_s"] = t_trip
         trace["result"] = "TRIP"
-        trace[
-            "notes_pl"
-        ] = f"Prąd {i_a_secondary:.3f} A > nastawa {settings.pickup_a_secondary:.3f} A"
+        trace["notes_pl"] = (
+            f"Prąd {i_a_secondary:.3f} A > nastawa {settings.pickup_a_secondary:.3f} A"
+        )
         return Function50Result(picked_up=True, t_trip_s=t_trip), trace
     else:
         trace["result"] = "NO_TRIP"
-        trace[
-            "notes_pl"
-        ] = f"Prąd {i_a_secondary:.3f} A <= nastawa {settings.pickup_a_secondary:.3f} A"
+        trace["notes_pl"] = (
+            f"Prąd {i_a_secondary:.3f} A <= nastawa {settings.pickup_a_secondary:.3f} A"
+        )
         return Function50Result(picked_up=False), trace
 
 

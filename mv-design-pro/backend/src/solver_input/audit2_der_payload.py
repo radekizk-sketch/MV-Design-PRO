@@ -16,11 +16,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from network_model.catalog.audit2_catalogs import (
-    BESS_OPERATION_MODE_CATALOG,
-    BLOCK_TRANSFORMER_CATALOG,
-    MV_NEUTRAL_GROUNDING_CATALOG,
-    PF_CURVE_CATALOG,
-    TAP_CHANGER_CATALOG,
     get_bess_operation_mode,
     get_block_transformer,
     get_mv_neutral_grounding,
@@ -237,9 +232,7 @@ def extract_solver_extensions_from_payload(
     # Short-circuit IEC 60909: typ uziemienia neutralnego wplywa na Z0.
     if payload.mv_neutral_grounding:
         sc_extensions["mv_neutral_grounding"] = payload.mv_neutral_grounding
-        protection_extensions["grounding_type"] = payload.mv_neutral_grounding.get(
-            "grounding_type"
-        )
+        protection_extensions["grounding_type"] = payload.mv_neutral_grounding.get("grounding_type")
 
     # Power Flow Newton-Raphson: tap-changer settings.
     if payload.tap_changers:

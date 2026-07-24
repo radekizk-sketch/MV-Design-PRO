@@ -176,7 +176,7 @@ def test_state_estimation_residual_present_without_trace(app_client) -> None:
     assert data["measurements"]
     for m in data["measurements"]:
         assert m["residual"] is not None
-        assert isinstance(m["residual"], (int, float))
+        assert isinstance(m["residual"], int | float)
         assert m["normalized_residual"] is not None
 
 

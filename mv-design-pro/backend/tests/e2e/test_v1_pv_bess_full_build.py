@@ -31,7 +31,6 @@ import json
 from typing import Any
 
 import pytest
-
 from enm.domain_operations import execute_domain_operation
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
@@ -45,7 +44,6 @@ from network_model.solvers.power_flow_types import (
 from network_model.solvers.short_circuit_iec60909 import (
     ShortCircuitIEC60909Solver,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers — materializacja katalogowa (kable, transformatory, źródła)
@@ -417,13 +415,14 @@ class TestPvBessFullBuild:
         # add_converter_source ląduje w generators[]; filtruj inverter-based.
         # Faktyczne wartości gen_type (po stronie domeny): 'bess', 'pv_inverter', 'wind_inverter'.
         inverters = [
-            g for g in enm.get("generators", [])
+            g
+            for g in enm.get("generators", [])
             if g.get("gen_type") in ("bess", "pv_inverter", "wind_inverter", "BESS", "PV", "FW")
             or g.get("connection_variant") in ("nn_side", "block_transformer")
         ]
-        assert len(inverters) == 3, (
-            f"Oczekiwano 3 źródeł PV+FW+BESS, jest {len(inverters)}: {[g.get('gen_type') for g in inverters]}"
-        )
+        assert (
+            len(inverters) == 3
+        ), f"Oczekiwano 3 źródeł PV+FW+BESS, jest {len(inverters)}: {[g.get('gen_type') for g in inverters]}"
 
         gen_types = {g.get("gen_type") for g in inverters}
         assert "bess" in gen_types, f"Brak BESS, jest: {gen_types}"
@@ -527,8 +526,12 @@ def test_converter_source_requires_explicit_connection_variant(technology: str) 
     r = execute_domain_operation(
         enm,
         "add_grid_source_sn",
-        {"voltage_kv": 15.0, "sk3_mva": 250.0, "rx_ratio": 0.1,
-         "catalog_ref": "src-gpz-15kv-250mva-rx010"},
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
+            "rx_ratio": 0.1,
+            "catalog_ref": "src-gpz-15kv-250mva-rx010",
+        },
     )
     enm = r["snapshot"]
 

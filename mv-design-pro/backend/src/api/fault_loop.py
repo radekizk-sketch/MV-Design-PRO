@@ -19,8 +19,6 @@ from __future__ import annotations
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, Field
-
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     build_fault_loop_input,
@@ -30,6 +28,7 @@ from network_model.solvers.fault_loop_iec60364 import (
     ProtectionArrangement,
     compute_fault_loop,
 )
+from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/fault-loop", tags=["fault-loop"])
 
@@ -135,10 +134,6 @@ def compute_fault_loop_endpoint(
         result = compute_fault_loop(fault_loop_input)
         return FaultLoopComputeResponse(**result.to_dict())
     except NotImplementedError as e:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail=str(e)) from e
     except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e

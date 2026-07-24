@@ -25,7 +25,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from enm.fix_actions import FixAction
@@ -35,7 +35,7 @@ from enm.fix_actions import FixAction
 # ---------------------------------------------------------------------------
 
 
-class AnalysisType(str, Enum):
+class AnalysisType(StrEnum):
     """Typy analiz objęte macierzą eligibility."""
 
     SC_3F = "SC_3F"
@@ -44,14 +44,14 @@ class AnalysisType(str, Enum):
     LOAD_FLOW = "LOAD_FLOW"
 
 
-class EligibilityStatus(str, Enum):
+class EligibilityStatus(StrEnum):
     """Status eligibility dla danego typu analizy."""
 
     ELIGIBLE = "ELIGIBLE"
     INELIGIBLE = "INELIGIBLE"
 
 
-class IssueSeverity(str, Enum):
+class IssueSeverity(StrEnum):
     """Waga problemu eligibility."""
 
     BLOCKER = "BLOCKER"

@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 
 from api.dependencies import get_uow_factory
@@ -14,6 +12,7 @@ from application.analyses.design_synth.envelope_adapter import to_run_envelope
 from application.analyses.design_synth.pipeline import run_connection_study
 from application.analyses.run_index import index_run
 from fastapi import APIRouter, Depends, HTTPException, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/analyses/design-synth", tags=["design-synth"])
 

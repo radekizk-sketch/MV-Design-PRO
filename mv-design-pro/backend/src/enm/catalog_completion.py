@@ -1,10 +1,9 @@
 from __future__ import annotations
 
+import math
 from copy import deepcopy
 from hashlib import sha256
 from typing import Any
-
-import math
 
 from enm.models import BranchRating, Cable, EnergyNetworkModel, Load, OverheadLine
 from network_model.catalog.materialization import materialize_catalog_binding
@@ -67,7 +66,9 @@ def _branch_point_port_count(
     return max(1, min(2, value))
 
 
-def _branch_point_route_ports(branch_point_type: str, branch_ports_count: int) -> list[dict[str, Any]]:
+def _branch_point_route_ports(
+    branch_point_type: str, branch_ports_count: int
+) -> list[dict[str, Any]]:
     medium = "LINE_OVERHEAD" if branch_point_type == "branch_pole" else "CABLE"
     route_ports: list[dict[str, Any]] = [
         {"port_id": "MAIN_IN", "role": "ciag_wejscie", "medium": medium},
@@ -194,7 +195,11 @@ def complete_branch_point_catalog_materialization(
     for branch_point in completed.branch_points:
         if not branch_point.catalog_ref:
             continue
-        existing = branch_point.materialized_params if isinstance(branch_point.materialized_params, dict) else {}
+        existing = (
+            branch_point.materialized_params
+            if isinstance(branch_point.materialized_params, dict)
+            else {}
+        )
         if not _branch_point_needs_materialization(branch_point.branch_point_type, existing):
             continue
         catalog_params = _branch_point_catalog_params(branch_point.catalog_ref)
@@ -220,7 +225,9 @@ def complete_branch_point_catalog_materialization(
         branch_point.completeness_status = "KOMPLETNY"
         if branch_point.switch_state is None:
             branch_point.switch_state = DEFAULT_ZKSN_SWITCH_STATE
-        runtime_inputs = branch_point.runtime_inputs if isinstance(branch_point.runtime_inputs, dict) else {}
+        runtime_inputs = (
+            branch_point.runtime_inputs if isinstance(branch_point.runtime_inputs, dict) else {}
+        )
         branch_point.runtime_inputs = {
             **runtime_inputs,
             "branch_ports_count": branch_ports_count,
@@ -247,7 +254,7 @@ def complete_branch_catalog_materialization(
     candidates = [
         branch
         for branch in enm.branches
-        if isinstance(branch, (Cable, OverheadLine)) and branch.catalog_ref
+        if isinstance(branch, Cable | OverheadLine) and branch.catalog_ref
     ]
     if not candidates:
         return enm, False
@@ -257,9 +264,11 @@ def complete_branch_catalog_materialization(
     changed = False
 
     for branch in completed.branches:
-        if not isinstance(branch, (Cable, OverheadLine)) or not branch.catalog_ref:
+        if not isinstance(branch, Cable | OverheadLine) or not branch.catalog_ref:
             continue
-        namespace = branch.catalog_namespace or ("KABEL_SN" if isinstance(branch, Cable) else "LINIA_SN")
+        namespace = branch.catalog_namespace or (
+            "KABEL_SN" if isinstance(branch, Cable) else "LINIA_SN"
+        )
         binding = CatalogBinding(
             catalog_namespace=namespace,
             catalog_item_id=branch.catalog_ref,
@@ -270,7 +279,9 @@ def complete_branch_catalog_materialization(
         if not result.success:
             continue
 
-        existing = branch.materialized_params if isinstance(branch.materialized_params, dict) else {}
+        existing = (
+            branch.materialized_params if isinstance(branch.materialized_params, dict) else {}
+        )
         materialized = {
             **existing,
             **result.solver_fields,
@@ -334,7 +345,13 @@ def _apply_materialized_branch_values(
     branch: Cable | OverheadLine,
     materialized: dict[str, Any],
 ) -> None:
-    for key in ("r_ohm_per_km", "x_ohm_per_km", "r0_ohm_per_km", "x0_ohm_per_km", "b0_siemens_per_km"):
+    for key in (
+        "r_ohm_per_km",
+        "x_ohm_per_km",
+        "r0_ohm_per_km",
+        "x0_ohm_per_km",
+        "b0_siemens_per_km",
+    ):
         value = materialized.get(key)
         if value is not None:
             setattr(branch, key, float(value))
@@ -440,7 +457,9 @@ def complete_zksn_switch_states(enm: EnergyNetworkModel) -> tuple[EnergyNetworkM
             and branch_point.switch_state is None
         ):
             branch_point.switch_state = DEFAULT_ZKSN_SWITCH_STATE
-            runtime_inputs = branch_point.runtime_inputs if isinstance(branch_point.runtime_inputs, dict) else {}
+            runtime_inputs = (
+                branch_point.runtime_inputs if isinstance(branch_point.runtime_inputs, dict) else {}
+            )
             branch_point.runtime_inputs = {
                 **runtime_inputs,
                 "switch_state": DEFAULT_ZKSN_SWITCH_STATE,

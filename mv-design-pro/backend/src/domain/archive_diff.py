@@ -17,7 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from domain.project_archive import (
@@ -95,7 +95,7 @@ _SECTION_LABELS_PL: dict[str, str] = {
 # ============================================================================
 
 
-class DiffStatus(str, Enum):
+class DiffStatus(StrEnum):
     """Status roznic miedzy elementami."""
 
     IDENTICAL = "IDENTICAL"

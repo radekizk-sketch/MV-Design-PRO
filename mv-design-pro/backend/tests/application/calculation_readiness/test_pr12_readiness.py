@@ -202,7 +202,7 @@ class TestCalculationReadinessService:
         assert overall in ("partial", "blocked")
 
     def test_calculation_label_pl_for_all_types(self) -> None:
-        for calc_type, label in CALCULATION_LABEL_PL.items():
+        for label in CALCULATION_LABEL_PL.values():
             assert label  # niepusta etykieta
             # Brak zakazanych tokenów
             for forbidden in ["snapshot", "case", "run", "wizard", "legacy", "fallback"]:

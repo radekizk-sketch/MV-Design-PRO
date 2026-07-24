@@ -24,7 +24,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -33,7 +33,7 @@ from uuid import UUID, uuid4
 # =============================================================================
 
 
-class StateChange(str, Enum):
+class StateChange(StrEnum):
     """
     Protection state change between Run A and Run B.
 
@@ -46,7 +46,7 @@ class StateChange(str, Enum):
     INVALID_CHANGE = "INVALID_CHANGE"  # One or both states are INVALID
 
 
-class IssueCode(str, Enum):
+class IssueCode(StrEnum):
     """
     Issue codes for protection comparison ranking.
 
@@ -471,7 +471,7 @@ class ProtectionComparisonTrace:
 # =============================================================================
 
 
-class ProtectionComparisonStatus(str, Enum):
+class ProtectionComparisonStatus(StrEnum):
     """Status of a protection comparison."""
 
     CREATED = "CREATED"

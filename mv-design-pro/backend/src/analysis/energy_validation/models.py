@@ -16,11 +16,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class EnergyCheckType(str, Enum):
+class EnergyCheckType(StrEnum):
     BRANCH_LOADING = "BRANCH_LOADING"
     TRANSFORMER_LOADING = "TRANSFORMER_LOADING"
     VOLTAGE_DEVIATION = "VOLTAGE_DEVIATION"
@@ -28,7 +28,7 @@ class EnergyCheckType(str, Enum):
     REACTIVE_BALANCE = "REACTIVE_BALANCE"
 
 
-class EnergyValidationStatus(str, Enum):
+class EnergyValidationStatus(StrEnum):
     PASS = "PASS"
     WARNING = "WARNING"
     FAIL = "FAIL"

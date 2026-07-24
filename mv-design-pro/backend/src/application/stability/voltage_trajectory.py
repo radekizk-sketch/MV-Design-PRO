@@ -88,14 +88,16 @@ def generate_voltage_trajectory(
             # Recovery: exponential rise toward post_fault
             t_recovery = t - clearing_time_s
             decay = math.exp(-t_recovery / params.recovery_time_constant_s)
-            u_pu = params.post_fault_voltage_pu - (
-                params.post_fault_voltage_pu - params.during_fault_voltage_pu
-            ) * decay
+            u_pu = (
+                params.post_fault_voltage_pu
+                - (params.post_fault_voltage_pu - params.during_fault_voltage_pu) * decay
+            )
             # Frequency follows similar pattern (faster recovery typically)
             f_decay = math.exp(-t_recovery / (params.recovery_time_constant_s * 0.5))
-            f_pu = params.post_fault_frequency_pu - (
-                params.post_fault_frequency_pu - params.during_fault_frequency_pu
-            ) * f_decay
+            f_pu = (
+                params.post_fault_frequency_pu
+                - (params.post_fault_frequency_pu - params.during_fault_frequency_pu) * f_decay
+            )
         points.append(VoltageTrajectoryPoint(t_s=t, voltage_pu=u_pu, frequency_pu=f_pu))
 
     return tuple(points)

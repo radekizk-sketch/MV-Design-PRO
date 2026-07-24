@@ -889,7 +889,9 @@ class TestE2E5ReceivingStationsAndOzeBess:
         assert not result.get("error"), f"Nieoczekiwany błąd: {result.get('error_code')}"
         assert result.get("snapshot") is not None
 
-    def test_insert_station_with_pv_behind_sn_nn_transformer_creates_generator_and_protection(self) -> None:
+    def test_insert_station_with_pv_behind_sn_nn_transformer_creates_generator_and_protection(
+        self,
+    ) -> None:
         s = _empty_enm()
         s = op(s, "add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0})
         s = op(
@@ -952,12 +954,17 @@ class TestE2E5ReceivingStationsAndOzeBess:
             for sub in s.get("substations", [])
             if sub.get("name") == "Stacja PV za transformatorem"
         )
-        pv_generators = [gen for gen in s.get("generators", []) if gen.get("gen_type") == "pv_inverter"]
+        pv_generators = [
+            gen for gen in s.get("generators", []) if gen.get("gen_type") == "pv_inverter"
+        ]
         assert len(pv_generators) == 1
         assert pv_generators[0]["catalog_ref"] == "conv-pv-e2e-1"
         assert pv_generators[0]["connection_variant"] == "nn_side"
         assert pv_generators[0]["station_ref"] == station_ref
-        assert pv_generators[0].get("meta", {}).get("protection_intent", {}).get("device_catalog_ref") == "EM_ETANGO_400_V0"
+        assert (
+            pv_generators[0].get("meta", {}).get("protection_intent", {}).get("device_catalog_ref")
+            == "EM_ETANGO_400_V0"
+        )
 
         protections = [
             item
@@ -965,7 +972,9 @@ class TestE2E5ReceivingStationsAndOzeBess:
             if item.get("catalog_ref") == "EM_ETANGO_400_V0"
         ]
         assert len(protections) == 1
-        assert protections[0].get("meta", {}).get("protected_object_ref") == pv_generators[0]["ref_id"]
+        assert (
+            protections[0].get("meta", {}).get("protected_object_ref") == pv_generators[0]["ref_id"]
+        )
 
     def test_branch_point_objects_in_topology_for_analysis(self) -> None:
         """Branch points muszą być widoczne w topologii i readiness."""

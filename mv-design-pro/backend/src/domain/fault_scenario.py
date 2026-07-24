@@ -26,7 +26,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
@@ -37,7 +37,7 @@ from domain.execution import ExecutionAnalysisType
 # ---------------------------------------------------------------------------
 
 
-class FaultType(str, Enum):
+class FaultType(StrEnum):
     """Short-circuit fault types (IEC 60909)."""
 
     SC_3F = "SC_3F"
@@ -45,13 +45,13 @@ class FaultType(str, Enum):
     SC_1F = "SC_1F"
 
 
-class FaultImpedanceType(str, Enum):
+class FaultImpedanceType(StrEnum):
     """Fault impedance type (v1: metallic only). Kept for backward compatibility."""
 
     METALLIC = "METALLIC"
 
 
-class FaultMode(str, Enum):
+class FaultMode(StrEnum):
     """Fault mode (v2): metallic or through impedance.
 
     METALLIC — zero-impedance fault (Zf = 0)

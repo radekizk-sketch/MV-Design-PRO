@@ -24,7 +24,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -33,7 +33,7 @@ from uuid import UUID, uuid4
 # =============================================================================
 
 
-class PowerFlowIssueCode(str, Enum):
+class PowerFlowIssueCode(StrEnum):
     """
     Issue codes for power flow comparison ranking.
 
@@ -596,7 +596,7 @@ class PowerFlowComparisonTrace:
 # =============================================================================
 
 
-class PowerFlowComparisonStatus(str, Enum):
+class PowerFlowComparisonStatus(StrEnum):
     """Status of a power flow comparison."""
 
     CREATED = "CREATED"

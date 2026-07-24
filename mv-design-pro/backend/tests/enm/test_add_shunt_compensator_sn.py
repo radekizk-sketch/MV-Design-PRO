@@ -11,7 +11,6 @@ from __future__ import annotations
 import math
 
 import pytest
-
 from enm.canonical_analysis import _build_shunt_specs_from_snapshot
 from enm.domain_operations import execute_domain_operation
 from network_model.solvers.shunt_compensator_preview import (
@@ -84,7 +83,9 @@ def test_open_status_is_preserved() -> None:
 
 
 def test_missing_bus_is_rejected() -> None:
-    result = execute_domain_operation(_enm_with_sn_bus(), "add_shunt_compensator_sn", _binding("KOMP_SN_1V2_15KV"))
+    result = execute_domain_operation(
+        _enm_with_sn_bus(), "add_shunt_compensator_sn", _binding("KOMP_SN_1V2_15KV")
+    )
     assert result.get("error")
     assert result.get("error_code") == "shunt.bus_missing"
 
@@ -116,7 +117,9 @@ def test_voltage_mismatch_is_rejected() -> None:
 
 
 def test_preview_first_principles() -> None:
-    res = compute_shunt_compensator_preview(ShuntCompensatorPreviewInput(rated_mvar=1.2, rated_kv=15.0))
+    res = compute_shunt_compensator_preview(
+        ShuntCompensatorPreviewInput(rated_mvar=1.2, rated_kv=15.0)
+    )
     q_var = 1.2e6
     u_v = 15_000.0
     assert res.susceptance_siemens == pytest.approx(q_var / (u_v * u_v))
@@ -125,4 +128,6 @@ def test_preview_first_principles() -> None:
 
 def test_preview_rejects_nonpositive() -> None:
     with pytest.raises(ValueError):
-        compute_shunt_compensator_preview(ShuntCompensatorPreviewInput(rated_mvar=0.0, rated_kv=15.0))
+        compute_shunt_compensator_preview(
+            ShuntCompensatorPreviewInput(rated_mvar=0.0, rated_kv=15.0)
+        )

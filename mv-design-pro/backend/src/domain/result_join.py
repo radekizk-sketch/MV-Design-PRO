@@ -24,7 +24,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from domain.element_ref import ElementRefV1, ElementTypeV1
@@ -34,7 +34,7 @@ from domain.element_ref import ElementRefV1, ElementTypeV1
 # ---------------------------------------------------------------------------
 
 
-class OverlayTokenKindV1(str, Enum):
+class OverlayTokenKindV1(StrEnum):
     """Typ tokenu warstwy wynikow na SLD."""
 
     VOLTAGE = "VOLTAGE"
@@ -79,7 +79,7 @@ class SldOverlayTokenV1:
 # ---------------------------------------------------------------------------
 
 
-class InspectorFactSourceV1(str, Enum):
+class InspectorFactSourceV1(StrEnum):
     """Zrodlo faktu inspektora."""
 
     DOMAIN = "DOMAIN"

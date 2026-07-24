@@ -73,8 +73,7 @@ class TestDefaultProfilesPresent:
     def test_wind_type_1_has_lower_iq_than_type_3(self) -> None:
         # SCIG (type 1) ma ograniczone Iq vs DFIG (type 3)
         assert (
-            DEFAULT_WIND_TYPE_1.iq_max_during_fault_pu
-            < DEFAULT_WIND_TYPE_3.iq_max_during_fault_pu
+            DEFAULT_WIND_TYPE_1.iq_max_during_fault_pu < DEFAULT_WIND_TYPE_3.iq_max_during_fault_pu
         )
 
 
@@ -110,9 +109,7 @@ class TestResolverChain:
         assert r.profile_id == "default_wind_type_3"
 
     def test_wind_full_converter_resolves_type_4(self) -> None:
-        r = resolve_der_dynamic_profile(
-            der_kind="FW", converter_type="full_converter"
-        )
+        r = resolve_der_dynamic_profile(der_kind="FW", converter_type="full_converter")
         assert r.profile_id == "default_wind_type_4"
 
     def test_wind_unknown_converter_falls_back_to_type_4(self) -> None:
@@ -120,9 +117,7 @@ class TestResolverChain:
         assert r.profile_id == "default_wind_type_4"
 
     def test_explicit_profile_id_wins_over_default(self) -> None:
-        r = resolve_der_dynamic_profile(
-            der_kind="PV", explicit_profile_id="default_pv_gfm"
-        )
+        r = resolve_der_dynamic_profile(der_kind="PV", explicit_profile_id="default_pv_gfm")
         assert r.profile_id == "default_pv_gfm"
         assert r.source == "explicit_profile_id"
 
@@ -134,9 +129,7 @@ class TestResolverChain:
         assert r.source == "catalog_entry_dynamic_profile_id"
 
     def test_explicit_unknown_falls_back_to_default(self) -> None:
-        r = resolve_der_dynamic_profile(
-            der_kind="PV", explicit_profile_id="nonexistent_profile"
-        )
+        r = resolve_der_dynamic_profile(der_kind="PV", explicit_profile_id="nonexistent_profile")
         assert r.profile_id == "default_pv_gfl"
         assert r.source == "default_per_kind"
 
@@ -159,10 +152,7 @@ class TestSolverParametersIntegration:
         assert "frt_response_time_s" in params
         assert "p_recovery_rate_pu_per_s" in params
         # ms → s konwersja
-        assert (
-            params["frt_response_time_s"]
-            == DEFAULT_PV_GFL.frt_response_time_ms / 1000.0
-        )
+        assert params["frt_response_time_s"] == DEFAULT_PV_GFL.frt_response_time_ms / 1000.0
 
     def test_wind_type_3_to_stability_parameters(self) -> None:
         params = DEFAULT_WIND_TYPE_3.to_stability_parameters()
@@ -247,8 +237,7 @@ class TestCatalogEndToEndCoverage:
             # tylko gdy nie jest podany explicit dynamic_profile_id
             if t.dynamic_profile_id is None:
                 assert (
-                    r.profile.iec_type  # type: ignore[union-attr]
-                    == expected_iec
+                    r.profile.iec_type == expected_iec  # type: ignore[union-attr]
                 ), f"Turbina {t.catalog_id} ({t.converter_type}) → {r.profile_id} (expected {expected_iec})"
 
 

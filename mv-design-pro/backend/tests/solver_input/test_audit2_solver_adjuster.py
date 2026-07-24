@@ -5,7 +5,6 @@ Testy audit2_solver_adjuster (Phase 16) — pre-solver adjustments z audit2_exte
 from __future__ import annotations
 
 from solver_input.audit2_solver_adjuster import (
-    Audit2Adjustments,
     apply_audit2_to_network_model,
     compute_audit2_adjustments,
 )
@@ -92,9 +91,9 @@ def test_compute_adjustments_grounding_z0_z1_ratio_per_type():
             },
         }
         adj = compute_audit2_adjustments(extensions)
-        assert adj.grounding_z0_z1_ratio == expected_ratio, (
-            f"Grounding {grounding_type} -> Z0/Z1 = {expected_ratio}"
-        )
+        assert (
+            adj.grounding_z0_z1_ratio == expected_ratio
+        ), f"Grounding {grounding_type} -> Z0/Z1 = {expected_ratio}"
 
 
 def test_apply_to_network_model_passes_through_when_no_extensions():
@@ -302,18 +301,42 @@ def test_apply_to_network_model_combines_all_adjustments():
     extensions = {
         "power_flow_extensions": {
             "transformer_to_tap_changer": {
-                "tr_001": {"id": "tc_oltc_110sn_19_125", "neutral_position": 0, "step_percent": 1.25},
+                "tr_001": {
+                    "id": "tc_oltc_110sn_19_125",
+                    "neutral_position": 0,
+                    "step_percent": 1.25,
+                },
             },
             "bess_operation_modes_per_der": [
-                {"der_id": "der_bess_001", "mode": {"mode_code": "fcr_n", "reserved_capacity_percent": 50}},
+                {
+                    "der_id": "der_bess_001",
+                    "mode": {"mode_code": "fcr_n", "reserved_capacity_percent": 50},
+                },
             ],
             "p_f_curves_per_der": [
-                {"der_id": "der_pv_001", "curve": {"droop_percent": 5, "f_min_hz": 47.5, "f_max_hz": 51.5, "deadband_hz": 0.2}},
+                {
+                    "der_id": "der_pv_001",
+                    "curve": {
+                        "droop_percent": 5,
+                        "f_min_hz": 47.5,
+                        "f_max_hz": 51.5,
+                        "deadband_hz": 0.2,
+                    },
+                },
             ],
         },
         "sc_iec60909_extensions": {
             "block_transformers": [
-                {"der_id": "der_pv_001", "transformer": {"id": "btr", "uk_percent": 6.5, "pk_kw": 25, "p0_kw": 3.6, "i0_percent": 0.42}},
+                {
+                    "der_id": "der_pv_001",
+                    "transformer": {
+                        "id": "btr",
+                        "uk_percent": 6.5,
+                        "pk_kw": 25,
+                        "p0_kw": 3.6,
+                        "i0_percent": 0.42,
+                    },
+                },
             ],
             "mv_neutral_grounding": {"grounding_type": "petersen_coil"},
         },

@@ -4,11 +4,11 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class NormativeStatus(str, Enum):
+class NormativeStatus(StrEnum):
     PASS = "PASS"
     FAIL = "FAIL"
     WARNING = "WARNING"
@@ -16,7 +16,7 @@ class NormativeStatus(str, Enum):
     NOT_EVALUATED = "NOT_EVALUATED"
 
 
-class NormativeSeverity(str, Enum):
+class NormativeSeverity(StrEnum):
     INFO = "INFO"
     WARNING = "WARNING"
     FAIL = "FAIL"

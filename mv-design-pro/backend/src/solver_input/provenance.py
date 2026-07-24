@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
 
 
@@ -29,7 +29,7 @@ class SourceKind(Enum):
     DEFAULT_FORBIDDEN = "DEFAULT_FORBIDDEN"
 
 
-class FieldQuality(str, Enum):
+class FieldQuality(StrEnum):
     """Data-quality provenance axis for a single card field.
 
     Orthogonal to :class:`SourceKind` (which records *where* a value came from in

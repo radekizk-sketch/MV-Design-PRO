@@ -56,7 +56,7 @@ def is_warning_severity(severity: str) -> bool:
 
 
 def empty_severity_counts() -> dict[ValidationSeverity, int]:
-    return {severity: 0 for severity in CANONICAL_SEVERITIES}
+    return dict.fromkeys(CANONICAL_SEVERITIES, 0)
 
 
 def is_failed_status(status: str) -> bool:

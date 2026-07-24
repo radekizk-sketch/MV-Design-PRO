@@ -22,12 +22,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
 
-class StudyCaseResultStatus(str, Enum):
+class StudyCaseResultStatus(StrEnum):
     """Result status for a study case (industrial-grade)."""
 
     NONE = "NONE"  # No calculations performed

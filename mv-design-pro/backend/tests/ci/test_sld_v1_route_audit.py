@@ -6,6 +6,7 @@ Sprawdza:
   3. _scan_file zwraca poprawne V1Reference.
   4. Real-repo smoke: brak V1 references na aktualnym repo.
 """
+
 from __future__ import annotations
 
 import importlib.util

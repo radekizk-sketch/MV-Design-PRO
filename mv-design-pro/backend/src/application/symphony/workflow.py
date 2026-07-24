@@ -32,12 +32,12 @@ def _parse_scalar(value: str) -> Any:
         inner = value[1:-1].strip()
         if not inner:
             return []
-        return [item.strip().strip('"\'') for item in inner.split(",") if item.strip()]
+        return [item.strip().strip("\"'") for item in inner.split(",") if item.strip()]
     if value in {"true", "false"}:
         return value == "true"
     if value.isdigit():
         return int(value)
-    return value.strip('"\'')
+    return value.strip("\"'")
 
 
 def _parse_minimal_yaml(front_matter: str) -> dict[str, Any]:
@@ -83,7 +83,9 @@ def _resolve_env_tokens(value: Any) -> Any:
     return value
 
 
-def load_workflow_definition(repo_root: str | Path, workflow_path: str = "WORKFLOW.md") -> WorkflowDefinition:
+def load_workflow_definition(
+    repo_root: str | Path, workflow_path: str = "WORKFLOW.md"
+) -> WorkflowDefinition:
     path = Path(repo_root).resolve() / workflow_path
     if not path.is_file():
         raise FileNotFoundError(f"WORKFLOW.md not found at: {path}")

@@ -82,7 +82,6 @@ class TestCatalogCompleteness:
                 "AL_ST",
             ), f"Linia {line.id}: nieznany materiał {line.conductor_material}"
 
-
     def test_production_cables_have_zero_sequence_parameters(self) -> None:
         """Produkcyjne typy kabli SN mają katalogowe R0/X0 do zwarć doziemnych."""
         catalog = get_default_mv_catalog()
@@ -254,7 +253,9 @@ class TestManufacturerTypeMapping:
             record["params"]["verification_status"] == "CZESCIOWO_ZWERYFIKOWANY"
             for record in records[:4]
         )
-        assert all("ENEA Operator" in record["params"]["source_reference"] for record in records[:4])
+        assert all(
+            "ENEA Operator" in record["params"]["source_reference"] for record in records[:4]
+        )
 
         catalog = get_default_mv_catalog()
         assert [str(item.id) for item in catalog.list_cable_types()[:4]] == [

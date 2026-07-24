@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 from enm.models import (
     Bus,
@@ -57,7 +57,7 @@ _RDF_RESOURCE = f"{{{NS_RDF}}}resource"
 _RDF_ID = f"{{{NS_RDF}}}ID"
 
 
-class CgmesImportStatus(str, Enum):
+class CgmesImportStatus(StrEnum):
     """Status of a CGMES import (mirrors ArchiveImportStatus semantics)."""
 
     SUCCESS = "SUCCESS"

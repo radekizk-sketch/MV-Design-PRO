@@ -23,8 +23,6 @@ CANONICAL ALIGNMENT:
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 
 from api.dependencies import get_uow_factory
@@ -38,6 +36,7 @@ from domain.power_flow_comparison import (
     PowerFlowRunNotFoundError,
 )
 from fastapi import APIRouter, Depends, HTTPException, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/power-flow-comparisons", tags=["power-flow-comparison"])

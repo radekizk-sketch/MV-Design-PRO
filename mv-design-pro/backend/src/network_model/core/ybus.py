@@ -162,9 +162,7 @@ class AdmittanceMatrixBuilder:
         machine sources exist, so machine-free networks keep a byte-identical Y-bus."""
         machines: list[tuple[str, complex]] = [
             (m.node_id, m.z_internal_ohm) for m in self._graph.get_synchronous_machine_sources()
-        ] + [
-            (m.node_id, m.z_internal_ohm) for m in self._graph.get_asynchronous_machine_sources()
-        ]
+        ] + [(m.node_id, m.z_internal_ohm) for m in self._graph.get_asynchronous_machine_sources()]
         for node_id, z_internal_ohm in machines:
             idx = self._node_id_to_index.get(node_id)
             if idx is None or abs(z_internal_ohm) == 0.0:

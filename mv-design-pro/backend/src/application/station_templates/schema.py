@@ -16,22 +16,22 @@ Schema covers:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 
 
-class TemplateCategory(str, Enum):
+class TemplateCategory(StrEnum):
     """10 kategorii templates per use-case."""
 
-    TYPOWA_SN_NN = "typowa_sn_nn"          # Dystrybucyjne 100-2500 kVA
-    SLUPOWA = "slupowa"                    # Stacje słupowe ZSP
-    ZKSN_WNETRZOWA = "zksn_wnetrzowa"      # ZKSN wnętrzowe
-    PROSUMENT_PV = "prosument_pv"          # μPV 5-250 kW
-    FARMA_PV = "farma_pv"                  # Farmy PV SN 0.5-5 MW
-    BESS = "bess"                          # Magazyny energii
-    HYBRYDOWA = "hybrydowa"                # PV + BESS
-    PRZEMYSLOWA = "przemyslowa"            # Odbiorcze przemysłowe
-    WIATROWA = "wiatrowa"                  # OZE wiatrowe
-    SEKCYJNA = "sekcyjna"                  # Sekcyjne / pętlowe
+    TYPOWA_SN_NN = "typowa_sn_nn"  # Dystrybucyjne 100-2500 kVA
+    SLUPOWA = "slupowa"  # Stacje słupowe ZSP
+    ZKSN_WNETRZOWA = "zksn_wnetrzowa"  # ZKSN wnętrzowe
+    PROSUMENT_PV = "prosument_pv"  # μPV 5-250 kW
+    FARMA_PV = "farma_pv"  # Farmy PV SN 0.5-5 MW
+    BESS = "bess"  # Magazyny energii
+    HYBRYDOWA = "hybrydowa"  # PV + BESS
+    PRZEMYSLOWA = "przemyslowa"  # Odbiorcze przemysłowe
+    WIATROWA = "wiatrowa"  # OZE wiatrowe
+    SEKCYJNA = "sekcyjna"  # Sekcyjne / pętlowe
 
 
 @dataclass(frozen=True)
@@ -107,7 +107,9 @@ class TemplateSchema:
     # Transformer
     transformer_options: tuple[CatalogChoice, ...]
     transformer_count: TemplateParamInt = field(
-        default_factory=lambda: TemplateParamInt(default=1, min_value=1, max_value=2, label_pl="Liczba transformatorów")
+        default_factory=lambda: TemplateParamInt(
+            default=1, min_value=1, max_value=2, label_pl="Liczba transformatorów"
+        )
     )
 
     # SN switchgear
@@ -120,26 +122,36 @@ class TemplateSchema:
     )
     sn_switchgear_default: str = "ZPUE_WLOSZCZOWA"
     sn_bays_count: TemplateParamInt = field(
-        default_factory=lambda: TemplateParamInt(default=2, min_value=1, max_value=8, label_pl="Liczba pól SN")
+        default_factory=lambda: TemplateParamInt(
+            default=2, min_value=1, max_value=8, label_pl="Liczba pól SN"
+        )
     )
     sn_bay_roles: tuple[BayRoleSpec, ...] = ()
     sn_bay_protection_options: tuple[ProtectionRelaySpec, ...] = ()
 
     # nN side
     nn_feeders_count: TemplateParamInt = field(
-        default_factory=lambda: TemplateParamInt(default=2, min_value=1, max_value=8, label_pl="Liczba odpływów nN")
+        default_factory=lambda: TemplateParamInt(
+            default=2, min_value=1, max_value=8, label_pl="Liczba odpływów nN"
+        )
     )
     nn_feeder_cb_options: tuple[CatalogChoice, ...] = ()
     nn_load_default_kw: TemplateParamFloat = field(
         default_factory=lambda: TemplateParamFloat(
-            default=50.0, min_value=0.0, max_value=2000.0, unit="kW", label_pl="Obciążenie per odpływ"
+            default=50.0,
+            min_value=0.0,
+            max_value=2000.0,
+            unit="kW",
+            label_pl="Obciążenie per odpływ",
         )
     )
 
     # DER
     der_options: tuple[DerKindSpec, ...] = ()
     der_total_count: TemplateParamInt = field(
-        default_factory=lambda: TemplateParamInt(default=0, min_value=0, max_value=20, label_pl="Liczba modułów DER")
+        default_factory=lambda: TemplateParamInt(
+            default=0, min_value=0, max_value=20, label_pl="Liczba modułów DER"
+        )
     )
 
     # Protection
@@ -158,15 +170,15 @@ class TemplateSchema:
 class StationTemplate:
     """Single station template definition."""
 
-    id: str                          # 'tpl_sn_nn_630kva'
-    name_pl: str                     # "Stacja SN/nN 630 kVA z RMU 3-pole"
+    id: str  # 'tpl_sn_nn_630kva'
+    name_pl: str  # "Stacja SN/nN 630 kVA z RMU 3-pole"
     category: TemplateCategory
     description_pl: str
-    use_case_pl: str                 # "Standardowa dystrybucyjna w terenie wiejskim"
-    nc_rfg_type: str | None          # 'A' | 'B' | 'C' | 'D' | None
+    use_case_pl: str  # "Standardowa dystrybucyjna w terenie wiejskim"
+    nc_rfg_type: str | None  # 'A' | 'B' | 'C' | 'D' | None
     schema: TemplateSchema
-    tags: tuple[str, ...] = ()       # Searchable tags
-    icon: str = "station-default"    # Frontend icon hint
+    tags: tuple[str, ...] = ()  # Searchable tags
+    icon: str = "station-default"  # Frontend icon hint
 
     def to_dict(self) -> dict:
         """Serialize to JSON dict dla API."""

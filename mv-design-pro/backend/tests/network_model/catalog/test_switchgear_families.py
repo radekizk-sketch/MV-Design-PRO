@@ -12,7 +12,6 @@ Sprawdza:
 from __future__ import annotations
 
 import pytest
-
 from network_model.catalog.switchgear import (
     ABB__SAFERING,
     ABB__UNIGEAR_ZS1,

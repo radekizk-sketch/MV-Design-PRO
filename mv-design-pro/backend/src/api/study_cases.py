@@ -10,8 +10,6 @@ All responses use Polish error messages for UI consistency.
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 from uuid import UUID
 
@@ -21,6 +19,7 @@ from application.study_case import (
     StudyCaseService,
 )
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/study-cases", tags=["study-cases"])

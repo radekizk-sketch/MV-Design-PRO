@@ -11,13 +11,13 @@ BINDING: Polish labels, no project codenames.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class StepStatus(str, Enum):
+class StepStatus(StrEnum):
     """Status jednego kroku kreatora."""
 
     EMPTY = "empty"
@@ -26,7 +26,7 @@ class StepStatus(str, Enum):
     ERROR = "error"
 
 
-class IssueSeverity(str, Enum):
+class IssueSeverity(StrEnum):
     """Priorytet problemu walidacji."""
 
     BLOCKER = "BLOCKER"

@@ -1,6 +1,7 @@
 """E3 distiller — the 53-station ENM → compact SLD network model: every station reachable
 (NO-ORPHAN), the radial tree is intact, the normally-open stub is kept, and it is deterministic.
 """
+
 from __future__ import annotations
 
 import json

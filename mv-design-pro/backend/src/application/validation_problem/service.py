@@ -111,9 +111,7 @@ class ValidationProblemService:
                 )
         return problems
 
-    def _validate_voltage_consistency(
-        self, enm: EnergyNetworkModel
-    ) -> list[ValidationProblem]:
+    def _validate_voltage_consistency(self, enm: EnergyNetworkModel) -> list[ValidationProblem]:
         problems: list[ValidationProblem] = []
         bus_voltage = {b.ref_id: b.voltage_kv for b in enm.buses}
 
@@ -157,9 +155,7 @@ class ValidationProblemService:
                 )
         return problems
 
-    def _validate_endpoints(
-        self, enm: EnergyNetworkModel
-    ) -> list[ValidationProblem]:
+    def _validate_endpoints(self, enm: EnergyNetworkModel) -> list[ValidationProblem]:
         """Każdy normalny odcinek powinien mieć endpoint_a + endpoint_b."""
         problems: list[ValidationProblem] = []
         for branch in enm.branches:
@@ -188,9 +184,7 @@ class ValidationProblemService:
                 )
         return problems
 
-    def _readiness_to_warnings(
-        self, readiness: ReadinessReport
-    ) -> list[ValidationProblem]:
+    def _readiness_to_warnings(self, readiness: ReadinessReport) -> list[ValidationProblem]:
         """Konwertuje partial readiness na warnings, blocked na errors."""
         problems: list[ValidationProblem] = []
         for item in readiness.items:

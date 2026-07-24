@@ -231,5 +231,3 @@ def _label_for_summary_key(key: str) -> str:
     if key == "connection_node_id":
         return "BoundaryNode – węzeł przyłączenia"
     return key
-
-

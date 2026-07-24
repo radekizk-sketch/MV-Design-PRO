@@ -20,7 +20,7 @@ INVARIANTS:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from domain.readiness import (
     ReadinessAreaV1,
@@ -33,7 +33,7 @@ from domain.readiness import (
 # ---------------------------------------------------------------------------
 
 
-class FieldDeviceRequirement(str, Enum):
+class FieldDeviceRequirement(StrEnum):
     """Whether a device is required, optional, or required conditionally."""
 
     REQUIRED = "REQUIRED"

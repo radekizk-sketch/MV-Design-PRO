@@ -17,7 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # =============================================================================
@@ -25,7 +25,7 @@ from typing import Any
 # =============================================================================
 
 
-class CurrentSourceType(str, Enum):
+class CurrentSourceType(StrEnum):
     """How protection test currents are sourced."""
 
     TEST_POINTS = "TEST_POINTS"  # User-defined explicit test currents

@@ -34,8 +34,7 @@ def test_mv_cable_catalog_has_industrial_series_width() -> None:
     assert summary["liczba_kabli_testowych"] == 1
     # K30-22: + POLISH family (YHAKXS, YHKXS)
     assert "POLISH" in summary["rodziny_kabli"] or any(
-        f.startswith("POLISH") or "YHAKXS" in f or "YHKXS" in f
-        for f in summary["rodziny_kabli"]
+        f.startswith("POLISH") or "YHAKXS" in f or "YHKXS" in f for f in summary["rodziny_kabli"]
     ), f"Polish PN-HD family missing: {summary['rodziny_kabli']}"
     # Cross-sections: baseline + 50, 95 (new)
     assert 50 in summary["przekroje_kabli_mm2"]
@@ -59,7 +58,7 @@ def test_polish_pn_hd_620_cables_present() -> None:
     yhakxs = [c for c in polish_cables if "yhakxs" in c["id"]]
     yhkxs = [c for c in polish_cables if "yhkxs" in c["id"]]
     assert len(yhakxs) == 5  # 50/95/120/150/240 Al
-    assert len(yhkxs) == 3   # 95/150/240 Cu
+    assert len(yhkxs) == 3  # 95/150/240 Cu
     for c in polish_cables:
         params = c["params"]
         assert params.get("ptpire_certified") is True

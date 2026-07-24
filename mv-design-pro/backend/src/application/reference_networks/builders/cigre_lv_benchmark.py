@@ -24,11 +24,21 @@ def build_cigre_lv_benchmark_network() -> dict[str, Any]:
             # LV-side slack (transformer absorbed into source impedance via base-MVA scaling).
             # Simplification: pure LV network bez explicit transformer dla numerical stability NR
             # w mixed-voltage levels. Pełny multi-voltage flow wymaga proper p.u. base z handler.
-            {"ref_id": "BUS-LV-MAIN", "id": "BUS-LV-MAIN", "name": "LV main (after MV/LV transformer)",
-             "u_n_kv": 0.4, "bus_kind": "slack"},
+            {
+                "ref_id": "BUS-LV-MAIN",
+                "id": "BUS-LV-MAIN",
+                "name": "LV main (after MV/LV transformer)",
+                "u_n_kv": 0.4,
+                "bus_kind": "slack",
+            },
             *[
-                {"ref_id": f"BUS-LV-{i:02d}", "id": f"BUS-LV-{i:02d}",
-                 "name": f"House {i:02d}", "u_n_kv": 0.4, "bus_kind": "pq"}
+                {
+                    "ref_id": f"BUS-LV-{i:02d}",
+                    "id": f"BUS-LV-{i:02d}",
+                    "name": f"House {i:02d}",
+                    "u_n_kv": 0.4,
+                    "bus_kind": "pq",
+                }
                 for i in range(1, 6)
             ],
         ],
@@ -51,7 +61,13 @@ def build_cigre_lv_benchmark_network() -> dict[str, Any]:
         ],
         "transformers": [],
         "sources": [
-            {"ref_id": "GRID", "id": "GRID", "bus": "BUS-LV-MAIN", "v_pu": 1.0, "source_kind": "slack"},
+            {
+                "ref_id": "GRID",
+                "id": "GRID",
+                "bus": "BUS-LV-MAIN",
+                "v_pu": 1.0,
+                "source_kind": "slack",
+            },
         ],
         "loads": [
             {

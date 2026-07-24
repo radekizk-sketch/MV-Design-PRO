@@ -6,14 +6,12 @@ struct into FaultLoopInput object expected by compute_fault_loop().
 """
 
 import pytest
-
 from network_model.solvers.fault_loop_builder import (
     FaultLoopBuildRequest,
     build_fault_loop_input,
 )
 from network_model.solvers.fault_loop_iec60364 import (
     FaultLoopInput,
-    LoopImpedanceComponent,
     NetworkType,
     ProtectionArrangement,
     compute_fault_loop,

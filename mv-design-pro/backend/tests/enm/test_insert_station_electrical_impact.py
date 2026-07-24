@@ -19,6 +19,7 @@ Pokrycie:
   8. affected_object_refs zawiera stację + halves + affected_buses.
   9. missing_data_after zawiera ostrzeżenia.
 """
+
 from __future__ import annotations
 
 import copy
@@ -52,13 +53,17 @@ def _build_gpz_with_segment_500m() -> tuple[dict[str, Any], str]:
     """Buduje ENM z 500m segmentem napowietrznym. Zwraca (snap, segment_id)."""
     snap = _empty_enm()
     snap = op(snap, "add_grid_source_sn", {"voltage_kv": 15.0, "sk3_mva": 250.0})
-    snap = op(snap, "continue_trunk_segment_sn", {
-        "segment": {
-            "rodzaj": "LINIA_NAPOWIETRZNA",
-            "dlugosc_m": 500.0,
-            "catalog_ref": CATALOG_LINE_70,
+    snap = op(
+        snap,
+        "continue_trunk_segment_sn",
+        {
+            "segment": {
+                "rodzaj": "LINIA_NAPOWIETRZNA",
+                "dlugosc_m": 500.0,
+                "catalog_ref": CATALOG_LINE_70,
+            },
         },
-    })
+    )
     seg_id = next(b["ref_id"] for b in snap["branches"] if b.get("type") == "line_overhead")
     return snap, seg_id
 
@@ -100,7 +105,9 @@ def test_halves_ratio_03() -> None:
 
 def test_halves_distance_mode_250m_of_500m() -> None:
     snap, seg_id = _build_gpz_with_segment_500m()
-    response = _exec_dry_run(snap, seg_id, insert_at={"mode": "ODLEGLOSC_OD_POCZATKU_M", "value": 250.0})
+    response = _exec_dry_run(
+        snap, seg_id, insert_at={"mode": "ODLEGLOSC_OD_POCZATKU_M", "value": 250.0}
+    )
     halves = response["preview"]["halves"]
     assert halves["split_ratio"] == 0.5
     assert halves["first_length_km"] == 0.25
@@ -169,7 +176,9 @@ def test_length_assignment_ratio_mode() -> None:
 
 def test_length_assignment_distance_mode() -> None:
     snap, seg_id = _build_gpz_with_segment_500m()
-    response = _exec_dry_run(snap, seg_id, insert_at={"mode": "ODLEGLOSC_OD_POCZATKU_M", "value": 100.0})
+    response = _exec_dry_run(
+        snap, seg_id, insert_at={"mode": "ODLEGLOSC_OD_POCZATKU_M", "value": 100.0}
+    )
     la = response["preview"]["electrical_impact"]["length_assignment"]
     assert la["split_mode"] == "ODLEGLOSC_OD_POCZATKU_M"
     assert la["split_value"] == 100.0

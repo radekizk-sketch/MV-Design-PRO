@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class BlockedCode(str, Enum):
+class BlockedCode(StrEnum):
     NETWORK_INCOMPLETE = "network_incomplete"
     NO_SOLVER_RESULTS = "no_solver_results"
     UNSUPPORTED_ACTION = "unsupported_action"

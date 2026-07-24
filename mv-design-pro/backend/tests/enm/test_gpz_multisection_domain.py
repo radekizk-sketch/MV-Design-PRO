@@ -97,9 +97,13 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert field_by_section[sections[0]["section_id"]]["name"] == "Pole liniowe A"
     assert field_by_section[sections[1]["section_id"]]["name"] == "Pole liniowe B"
     assert sections[0]["line_fields_count"] == 1
-    assert sections[0]["line_field_refs"] == [field_by_section[sections[0]["section_id"]]["field_ref"]]
+    assert sections[0]["line_field_refs"] == [
+        field_by_section[sections[0]["section_id"]]["field_ref"]
+    ]
     assert sections[1]["line_fields_count"] == 1
-    assert sections[1]["line_field_refs"] == [field_by_section[sections[1]["section_id"]]["field_ref"]]
+    assert sections[1]["line_field_refs"] == [
+        field_by_section[sections[1]["section_id"]]["field_ref"]
+    ]
 
     couplers = [branch for branch in snapshot["branches"] if branch.get("type") == "bus_coupler"]
     assert len(couplers) == 1

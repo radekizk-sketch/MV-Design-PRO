@@ -219,12 +219,7 @@ def export_p24_plus_report_pdf(
         draw_text("Top 5 najbardziej krytycznych BUS:", bold=True)
         for rank, row in enumerate(_top_critical_buses(voltage_profile.rows), start=1):
             draw_wrapped(
-                "Rank {rank}: BUS {bus} | Δ%={delta} | Status={status}".format(
-                    rank=rank,
-                    bus=row.bus_id,
-                    delta=_format_percent(row.delta_pct),
-                    status=row.status.value,
-                )
+                f"Rank {rank}: BUS {row.bus_id} | Δ%={_format_percent(row.delta_pct)} | Status={row.status.value}"
             )
         draw_text("Tabela (BUS, Unom, U, Δ%, Status):", bold=True)
         for row in voltage_profile.rows:
@@ -510,22 +505,14 @@ def _build_summary_lines(
     else:
         summary = voltage_profile.summary
         lines.append(
-            "P21: FAIL={fail}, WARNING={warn}, NOT COMPUTED={nc}".format(
-                fail=summary.fail_count,
-                warn=summary.warning_count,
-                nc=summary.not_computed_count,
-            )
+            f"P21: FAIL={summary.fail_count}, WARNING={summary.warning_count}, NOT COMPUTED={summary.not_computed_count}"
         )
     if protection_insight is None:
         lines.append("P22a: brak analizy zabezpieczeń.")
     else:
         summary = protection_insight.summary
         lines.append(
-            "P22a: FAIL={fail}, WARNING={warn}, NOT_EVALUATED={ne}".format(
-                fail=summary.count_fail,
-                warn=summary.count_warning,
-                ne=summary.count_not_evaluated,
-            )
+            f"P22a: FAIL={summary.count_fail}, WARNING={summary.count_warning}, NOT_EVALUATED={summary.count_not_evaluated}"
         )
     if protection_curves_it is None:
         lines.append("P22: brak krzywych I–t.")
@@ -538,21 +525,13 @@ def _build_summary_lines(
         lines.append("P25: brak analizy wrażliwości.")
     else:
         lines.append(
-            "P25: entries={entries}, top_drivers={drivers}, not_computed={nc}".format(
-                entries=len(sensitivity.entries),
-                drivers=len(sensitivity.top_drivers),
-                nc=sensitivity.summary.not_computed_count,
-            )
+            f"P25: entries={len(sensitivity.entries)}, top_drivers={len(sensitivity.top_drivers)}, not_computed={sensitivity.summary.not_computed_count}"
         )
     if lf_sensitivity is None:
         lines.append("P33: brak wrażliwości napięć.")
     else:
         lines.append(
-            "P33: entries={entries}, top_drivers={drivers}, not_computed={nc}".format(
-                entries=len(lf_sensitivity.entries),
-                drivers=len(lf_sensitivity.top_drivers),
-                nc=lf_sensitivity.summary.not_computed_count,
-            )
+            f"P33: entries={len(lf_sensitivity.entries)}, top_drivers={len(lf_sensitivity.top_drivers)}, not_computed={lf_sensitivity.summary.not_computed_count}"
         )
     if recommendations is None:
         lines.append("P26: brak rekomendacji.")

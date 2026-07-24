@@ -115,9 +115,7 @@ class EndpointPortsMigrationReport:
         }
 
 
-def _collect_ports_on_bus(
-    model: EnergyNetworkModel, bus_ref: str
-) -> list[Port]:
+def _collect_ports_on_bus(model: EnergyNetworkModel, bus_ref: str) -> list[Port]:
     """Zwraca wszystkie porty pól (Bay.ports) zaczepione o szynę `bus_ref`."""
     ports: list[Port] = []
     for bay in model.bays:
@@ -128,9 +126,7 @@ def _collect_ports_on_bus(
     return ports
 
 
-def _bus_voltage_kv(
-    model: EnergyNetworkModel, bus_ref: str
-) -> float | None:
+def _bus_voltage_kv(model: EnergyNetworkModel, bus_ref: str) -> float | None:
     for bus in model.buses:
         if bus.ref_id == bus_ref:
             return bus.voltage_kv

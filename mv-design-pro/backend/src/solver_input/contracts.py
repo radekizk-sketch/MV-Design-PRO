@@ -10,7 +10,7 @@ Contract version: 1.0
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -27,7 +27,7 @@ SOLVER_INPUT_CONTRACT_VERSION = "1.0"
 # ---------------------------------------------------------------------------
 
 
-class SolverAnalysisType(str, Enum):
+class SolverAnalysisType(StrEnum):
     """Analysis types supported by the solver-input contract."""
 
     SHORT_CIRCUIT_3F = "short_circuit_3f"
@@ -41,7 +41,7 @@ class SolverAnalysisType(str, Enum):
 # ---------------------------------------------------------------------------
 
 
-class SolverInputIssueSeverity(str, Enum):
+class SolverInputIssueSeverity(StrEnum):
     BLOCKER = "BLOCKER"
     WARNING = "WARNING"
     INFO = "INFO"

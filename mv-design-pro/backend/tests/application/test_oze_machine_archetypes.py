@@ -5,8 +5,8 @@ gate tests but pins the backend substrate builders directly."""
 
 from application.reference_networks.station_archetype_substrate import (
     build_g5_wind_t4,
-    build_g8_biogaz,
     build_g7_wind_async,
+    build_g8_biogaz,
 )
 
 

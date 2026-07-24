@@ -74,9 +74,9 @@ def test_ui_allowlist_entries_are_not_stale():
         full_path = ui_no_physics_guard.REPO_ROOT / rel_path
         assert full_path.is_file(), f"allowlisted path does not exist: {rel_path}"
         hit_lines = {ln for ln, _content, _pattern in ui_no_physics_guard.scan_file(full_path)}
-        assert line_no in hit_lines, (
-            f"allowlist entry {rel_path}:{line_no} is stale (no longer a raw hit)"
-        )
+        assert (
+            line_no in hit_lines
+        ), f"allowlist entry {rel_path}:{line_no} is stale (no longer a raw hit)"
 
 
 def test_allowlist_is_scoped_to_exact_line_not_whole_file(tmp_path: Path, monkeypatch):

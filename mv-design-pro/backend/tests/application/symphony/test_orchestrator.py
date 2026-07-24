@@ -23,7 +23,11 @@ class FakeTracker:
         return [issue for issue in self.issues if issue.state in active_states]
 
     def get_issue_states(self, issue_ids: list[str]) -> dict[str, str]:
-        return {issue_id: self.states_by_id[issue_id] for issue_id in issue_ids if issue_id in self.states_by_id}
+        return {
+            issue_id: self.states_by_id[issue_id]
+            for issue_id in issue_ids
+            if issue_id in self.states_by_id
+        }
 
     def list_terminal_issues(self, terminal_states: tuple[str, ...]) -> list[Issue]:
         return [issue for issue in self.issues if issue.state in terminal_states]
@@ -59,7 +63,9 @@ def _cfg(tmp_path: Path) -> SymphonyConfig:
     )
 
 
-def _issue(issue_id: str, key: str, priority: int | None, created_offset: int, state: str = "Todo") -> Issue:
+def _issue(
+    issue_id: str, key: str, priority: int | None, created_offset: int, state: str = "Todo"
+) -> Issue:
     created = datetime.now(UTC) + timedelta(seconds=created_offset)
     return Issue(
         id=issue_id,
@@ -85,7 +91,13 @@ def test_orchestrator_dispatches_by_priority_then_created_at(tmp_path: Path) -> 
     tracker = FakeTracker([i1, i2, i3])
     runner = FakeRunner(results=[], runs=[], stopped=[])
 
-    orch = SymphonyOrchestrator(_cfg(tmp_path), "Issue {issue_identifier}", tracker, runner, WorkspaceManager(_cfg(tmp_path)))
+    orch = SymphonyOrchestrator(
+        _cfg(tmp_path),
+        "Issue {issue_identifier}",
+        tracker,
+        runner,
+        WorkspaceManager(_cfg(tmp_path)),
+    )
     decisions = orch.tick()
 
     dispatched_ids = [d.issue_id for d in decisions if d.dispatched]
@@ -98,7 +110,13 @@ def test_orchestrator_schedules_retry_with_exponential_backoff(tmp_path: Path) -
     tracker = FakeTracker([issue])
     runner = FakeRunner(results=[AgentRunResult(status="error", error="boom")], runs=[], stopped=[])
 
-    orch = SymphonyOrchestrator(_cfg(tmp_path), "Issue {issue_identifier}", tracker, runner, WorkspaceManager(_cfg(tmp_path)))
+    orch = SymphonyOrchestrator(
+        _cfg(tmp_path),
+        "Issue {issue_identifier}",
+        tracker,
+        runner,
+        WorkspaceManager(_cfg(tmp_path)),
+    )
     orch.tick()
 
     retry = orch.state.pending_retries[issue.id]
@@ -120,12 +138,21 @@ def test_orchestrator_schedules_retry_with_exponential_backoff(tmp_path: Path) -
 def test_orchestrator_skips_blocked_issues(tmp_path: Path) -> None:
     blocked = _issue("1", "ABC-1", priority=1, created_offset=0)
     blocked = Issue(
-        **{**blocked.__dict__, "blocked_by": (BlockerRef(id="x", identifier="ABC-0", state="Todo"),)}
+        **{
+            **blocked.__dict__,
+            "blocked_by": (BlockerRef(id="x", identifier="ABC-0", state="Todo"),),
+        }
     )
     tracker = FakeTracker([blocked])
     runner = FakeRunner(results=[], runs=[], stopped=[])
 
-    orch = SymphonyOrchestrator(_cfg(tmp_path), "Issue {issue_identifier}", tracker, runner, WorkspaceManager(_cfg(tmp_path)))
+    orch = SymphonyOrchestrator(
+        _cfg(tmp_path),
+        "Issue {issue_identifier}",
+        tracker,
+        runner,
+        WorkspaceManager(_cfg(tmp_path)),
+    )
     decisions = orch.tick()
 
     assert decisions[0].reason == "blocked"

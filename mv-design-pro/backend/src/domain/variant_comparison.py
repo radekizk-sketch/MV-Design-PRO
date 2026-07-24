@@ -19,11 +19,11 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class VariantDeltaKind(str, Enum):
+class VariantDeltaKind(StrEnum):
     """Kind of variant difference."""
 
     CONFIG = "CONFIG"
@@ -33,7 +33,7 @@ class VariantDeltaKind(str, Enum):
     RESULT_PROTECTION = "RESULT_PROTECTION"
 
 
-class DeltaDirection(str, Enum):
+class DeltaDirection(StrEnum):
     """Direction of a numeric change."""
 
     INCREASED = "INCREASED"

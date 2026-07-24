@@ -1,7 +1,6 @@
 import math
 
 import pytest
-
 from network_model.solvers.grid_source_preview import (
     GridSourcePreviewInput,
     compute_grid_source_preview,

@@ -85,7 +85,9 @@ def _zksn_solution(branch_ports_count: int) -> dict[str, Any]:
     }
 
 
-def _branch_pole_solution(*, switch_device_kind: str, switch_rated_current_a: float) -> dict[str, Any]:
+def _branch_pole_solution(
+    *, switch_device_kind: str, switch_rated_current_a: float
+) -> dict[str, Any]:
     return {
         "object_role": "OVERHEAD_BRANCH_POLE",
         "standard_topology": "OVERHEAD_LINE_POLE_WITH_BRANCH_SWITCH",

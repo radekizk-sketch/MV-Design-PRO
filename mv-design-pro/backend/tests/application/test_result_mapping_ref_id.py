@@ -19,8 +19,6 @@ from __future__ import annotations
 
 from uuid import UUID, uuid4
 
-import pytest
-
 from application.result_mapping.short_circuit_to_resultset_v1 import (
     map_short_circuit_to_resultset_v1,
 )
@@ -28,14 +26,13 @@ from application.solvers.short_circuit_binding import (
     ShortCircuitBindingResult,
     execute_short_circuit,
 )
-from domain.execution import ElementResult, ExecutionAnalysisType, ResultSet
+from domain.execution import ElementResult, ResultSet
 from domain.execution import ExecutionAnalysisType as EAT
 from domain.study_case import StudyCaseConfig
 from network_model.core.branch import BranchType, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.inverter import InverterSource
 from network_model.core.node import Node, NodeType
-
 
 # ---------------------------------------------------------------------------
 # Minimal network fixture
@@ -411,5 +408,5 @@ class TestResultSetSerializationWithRefId:
         )
         d = rs.to_dict()
         rs2 = ResultSet.from_dict(d)
-        for er, er2 in zip(rs.element_results, rs2.element_results):
+        for er, er2 in zip(rs.element_results, rs2.element_results, strict=True):
             assert er.element_ref_id == er2.element_ref_id

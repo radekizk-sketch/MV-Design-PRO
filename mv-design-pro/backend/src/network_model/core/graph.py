@@ -267,7 +267,9 @@ class NetworkGraph:
 
     def get_synchronous_machine_sources(self) -> list[SynchronousMachineSource]:
         """Active synchronous-machine sources, deterministically ordered by id."""
-        sources = [s for s in self.synchronous_machine_sources.values() if getattr(s, "in_service", True)]
+        sources = [
+            s for s in self.synchronous_machine_sources.values() if getattr(s, "in_service", True)
+        ]
         sources.sort(key=lambda s: s.id)
         return sources
 
@@ -281,7 +283,9 @@ class NetworkGraph:
 
     def get_asynchronous_machine_sources(self) -> list[AsynchronousMachineSource]:
         """Active asynchronous-machine sources, deterministically ordered by id."""
-        sources = [s for s in self.asynchronous_machine_sources.values() if getattr(s, "in_service", True)]
+        sources = [
+            s for s in self.asynchronous_machine_sources.values() if getattr(s, "in_service", True)
+        ]
         sources.sort(key=lambda s: s.id)
         return sources
 

@@ -7,6 +7,7 @@ Walidują:
   4. Brak pliku testowego → mismatch.
   5. CI smoke: guard przechodzi na aktualnym repo (no mismatches).
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -105,14 +106,20 @@ def test_check_reference_exact_match(tmp_path: Path) -> None:
     )
 
     ref_ok = DocReference(
-        doc_path=repo / "x.md", line_number=1, filename="exact.test.ts",
-        declared_count=3, is_lower_bound=False,
+        doc_path=repo / "x.md",
+        line_number=1,
+        filename="exact.test.ts",
+        declared_count=3,
+        is_lower_bound=False,
     )
     assert guard_module._check_reference(ref_ok, repo, strict=False) is None
 
     ref_mismatch = DocReference(
-        doc_path=repo / "x.md", line_number=1, filename="exact.test.ts",
-        declared_count=4, is_lower_bound=False,
+        doc_path=repo / "x.md",
+        line_number=1,
+        filename="exact.test.ts",
+        declared_count=4,
+        is_lower_bound=False,
     )
     m = guard_module._check_reference(ref_mismatch, repo, strict=False)
     assert m is not None
@@ -129,8 +136,11 @@ def test_check_reference_lower_bound_drop(tmp_path: Path) -> None:
     test_file.write_text("it('a', ()=>{});", encoding="utf-8")
 
     ref = DocReference(
-        doc_path=repo / "x.md", line_number=1, filename="lb.test.ts",
-        declared_count=10, is_lower_bound=True,
+        doc_path=repo / "x.md",
+        line_number=1,
+        filename="lb.test.ts",
+        declared_count=10,
+        is_lower_bound=True,
     )
     m = guard_module._check_reference(ref, repo, strict=False)
     assert m is not None
@@ -148,8 +158,11 @@ def test_check_reference_lower_bound_within_range(tmp_path: Path) -> None:
     test_file.write_text("\n".join(f"it('c{i}', ()=>{{}});" for i in range(15)), encoding="utf-8")
 
     ref = DocReference(
-        doc_path=repo / "x.md", line_number=1, filename="lb.test.ts",
-        declared_count=10, is_lower_bound=True,
+        doc_path=repo / "x.md",
+        line_number=1,
+        filename="lb.test.ts",
+        declared_count=10,
+        is_lower_bound=True,
     )
     assert guard_module._check_reference(ref, repo, strict=False) is None
 
@@ -164,8 +177,11 @@ def test_check_reference_lower_bound_exceeds_tolerance(tmp_path: Path) -> None:
     test_file.write_text("\n".join(f"it('c{i}', ()=>{{}});" for i in range(50)), encoding="utf-8")
 
     ref = DocReference(
-        doc_path=repo / "x.md", line_number=1, filename="lb.test.ts",
-        declared_count=10, is_lower_bound=True,
+        doc_path=repo / "x.md",
+        line_number=1,
+        filename="lb.test.ts",
+        declared_count=10,
+        is_lower_bound=True,
     )
     m = guard_module._check_reference(ref, repo, strict=False)
     assert m is not None
@@ -178,8 +194,11 @@ def test_check_reference_missing_test_file(tmp_path: Path) -> None:
     repo = tmp_path
     (repo / "frontend" / "src").mkdir(parents=True)
     ref = DocReference(
-        doc_path=repo / "x.md", line_number=1, filename="missing.test.ts",
-        declared_count=5, is_lower_bound=False,
+        doc_path=repo / "x.md",
+        line_number=1,
+        filename="missing.test.ts",
+        declared_count=5,
+        is_lower_bound=False,
     )
     m = guard_module._check_reference(ref, repo, strict=False)
     assert m is not None
@@ -197,7 +216,8 @@ def test_guard_smoke_real_repo() -> None:
         m = guard_module._check_reference(ref, repo_root, strict=False)
         if m is not None:
             mismatches.append(m)
-    assert mismatches == [], (
-        f"docs_count_consistency_guard znalazł {len(mismatches)} naruszeń: "
-        + "\n".join(f"  {m.ref.doc_path.name}:{m.ref.line_number} — {m.reason}" for m in mismatches)
+    assert (
+        mismatches == []
+    ), f"docs_count_consistency_guard znalazł {len(mismatches)} naruszeń: " + "\n".join(
+        f"  {m.ref.doc_path.name}:{m.ref.line_number} — {m.reason}" for m in mismatches
     )

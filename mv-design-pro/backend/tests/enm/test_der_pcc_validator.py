@@ -20,6 +20,7 @@ Pokrycie:
   5. E029: DER inverter na Bus nN (≤1 kV) → brak issue.
   6. E029 + E028 razem: oba issues emitowane gdy oba problemy.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -30,11 +31,17 @@ from enm.models import (
     ENMDefaults,
     ENMHeader,
     Generator,
-    Source,
 )
 from enm.validator import ENMValidator
 
-INVERTER_GEN_TYPES: list[Any] = ["pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"]
+INVERTER_GEN_TYPES: list[Any] = [
+    "pv_inverter",
+    "wind_inverter",
+    "fw_pmsg",
+    "fw_dfig",
+    "fw_scig",
+    "bess",
+]
 
 
 def _empty_enm() -> EnergyNetworkModel:
@@ -98,7 +105,10 @@ def test_e028_inverter_with_connection_variant_no_issue() -> None:
     test_cases: list[tuple[str, dict[str, Any]]] = [
         ("nn_side", {"station_ref": "sub_a"}),
         ("block_transformer", {"blocking_transformer_ref": "tr_block_a"}),
-        ("LV_BEHIND_STATION_TRANSFORMER", {"station_ref": "sub_a", "blocking_transformer_ref": "tr_block_a"}),
+        (
+            "LV_BEHIND_STATION_TRANSFORMER",
+            {"station_ref": "sub_a", "blocking_transformer_ref": "tr_block_a"},
+        ),
         ("DEDICATED_MV_CONNECTION", {}),
         ("SOURCE_CONNECTION_STATION", {}),
     ]

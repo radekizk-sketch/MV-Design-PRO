@@ -155,8 +155,18 @@ def test_v126_api_run_result_and_trace() -> None:
             {
                 "header": ENMHeader(name="test").model_dump(),
                 "buses": [
-                    {"id": "11111111-1111-1111-1111-111111111101", "ref_id": "B1", "name": "GPZ", "voltage_kv": 15.0},
-                    {"id": "11111111-1111-1111-1111-111111111102", "ref_id": "B2", "name": "Stacja", "voltage_kv": 15.0},
+                    {
+                        "id": "11111111-1111-1111-1111-111111111101",
+                        "ref_id": "B1",
+                        "name": "GPZ",
+                        "voltage_kv": 15.0,
+                    },
+                    {
+                        "id": "11111111-1111-1111-1111-111111111102",
+                        "ref_id": "B2",
+                        "name": "Stacja",
+                        "voltage_kv": 15.0,
+                    },
                 ],
                 "branches": [
                     {

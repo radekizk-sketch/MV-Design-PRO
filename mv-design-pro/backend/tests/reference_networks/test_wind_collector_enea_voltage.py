@@ -7,11 +7,10 @@ collector Un outside the ENEA SN set fails here.
 """
 
 import pytest
-
 from application.reference_networks.station_archetype_substrate import (
     build_g5_wind_t4,
-    build_g7_wind_async,
     build_g6_wind_dfig,
+    build_g7_wind_async,
 )
 
 # ENEA Operator SN levels (kV) — 30 kV is intentionally ABSENT.

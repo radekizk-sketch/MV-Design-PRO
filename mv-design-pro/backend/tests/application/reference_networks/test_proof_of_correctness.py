@@ -14,8 +14,6 @@ from __future__ import annotations
 
 import math
 
-import pytest
-
 from application.reference_networks.builders.ieee_4bus import build_ieee_4bus_network
 from application.reference_networks.builders.ieee_13bus import build_ieee_13bus_network
 from application.reference_networks.computation import (
@@ -58,9 +56,9 @@ class TestIeee4BusStevenson:
         result = _power_flow_newton_raphson(enm)
         # PV bus magnitude is fixed; solver respects this constraint
         v_pv = result["buses"]["BUS-4"]["v_pu"]
-        assert math.isclose(v_pv, 1.02, abs_tol=1e-6), (
-            f"PV bus voltage drift: expected 1.02, got {v_pv}"
-        )
+        assert math.isclose(
+            v_pv, 1.02, abs_tol=1e-6
+        ), f"PV bus voltage drift: expected 1.02, got {v_pv}"
 
     def test_pq_bus_voltages_match_stevenson_table_9_4(self) -> None:
         """
@@ -88,9 +86,13 @@ class TestIeee4BusStevenson:
         rel_diff_bus2 = abs(v_bus2 - expected_bus2) / expected_bus2
         rel_diff_bus3 = abs(v_bus3 - expected_bus3) / expected_bus3
 
-        print(f"\n=== DOWÓD POPRAWNOŚCI IEEE 4-bus vs pandapower (verified) ===")
-        print(f"BUS-2 nasz solver: {v_bus2:.6f} pu vs pandapower: {expected_bus2:.6f} pu (rel.diff: {rel_diff_bus2 * 100:.5f}%)")
-        print(f"BUS-3 nasz solver: {v_bus3:.6f} pu vs pandapower: {expected_bus3:.6f} pu (rel.diff: {rel_diff_bus3 * 100:.5f}%)")
+        print("\n=== DOWÓD POPRAWNOŚCI IEEE 4-bus vs pandapower (verified) ===")
+        print(
+            f"BUS-2 nasz solver: {v_bus2:.6f} pu vs pandapower: {expected_bus2:.6f} pu (rel.diff: {rel_diff_bus2 * 100:.5f}%)"
+        )
+        print(
+            f"BUS-3 nasz solver: {v_bus3:.6f} pu vs pandapower: {expected_bus3:.6f} pu (rel.diff: {rel_diff_bus3 * 100:.5f}%)"
+        )
 
         # WYMAGANIE: < 0.5% différence od pandapower (industry-verified)
         assert rel_diff_bus2 < 5e-3, f"BUS-2 voltage diff {rel_diff_bus2 * 100:.5f}% >= 0.5%"
@@ -108,7 +110,9 @@ class TestIeee4BusStevenson:
         result = _power_flow_newton_raphson(enm)
         for bus_id, vals in result["buses"].items():
             assert math.isfinite(vals["angle_deg"]), f"{bus_id} angle nieskończony"
-            assert abs(vals["angle_deg"]) < 90.0, f"{bus_id} angle {vals['angle_deg']}° poza granicą stabilności"
+            assert (
+                abs(vals["angle_deg"]) < 90.0
+            ), f"{bus_id} angle {vals['angle_deg']}° poza granicą stabilności"
 
 
 class TestIeee13BusBfsConvergence:
@@ -143,7 +147,7 @@ class TestIeee13BusBfsConvergence:
         v_end = result["buses"]["BUS-675"]["v_pu"]
         drop_pct = (1.0 - v_end) * 100.0
         assert drop_pct < 12.0, f"BUS-675 voltage drop {drop_pct:.2f}% > 12%"
-        print(f"\n=== DOWÓD BFS IEEE 13-bus ===")
+        print("\n=== DOWÓD BFS IEEE 13-bus ===")
         print(f"BUS-650 (slack): {result['buses']['BUS-650']['v_pu']:.4f} pu")
         print(f"BUS-675 (end): {v_end:.4f} pu (drop: {drop_pct:.2f}%)")
         print(f"Iterations: {result['iterations']}")
@@ -156,8 +160,8 @@ class TestEndToEndProofViaApi:
 
     def test_ieee_4bus_validate_endpoint_returns_pass(self) -> None:
         """Cały flow: build → solve → compare → ValidationReport z PASS."""
-        from fastapi.testclient import TestClient
         from api.main import app
+        from fastapi.testclient import TestClient
 
         client = TestClient(app)
         response = client.post("/api/v1/reference-networks/ieee-4bus/validate")
@@ -175,8 +179,7 @@ class TestEndToEndProofViaApi:
         result = solve_reference_network("ieee-4bus", enm)
         # Trace MUST contain NR iteration steps
         assert any(
-            "iteration" in step or "max_mismatch_pu" in step
-            for step in result["trace"]
+            "iteration" in step or "max_mismatch_pu" in step for step in result["trace"]
         ), f"Solver trace nie pokazuje iteracji NR: {result['trace']}"
         assert result.get("iterations", 0) >= 1
 

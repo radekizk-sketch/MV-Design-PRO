@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from enm.models import EnergyNetworkModel
 from pydantic import BaseModel, Field
 
 
-class V126AnalysisType(str, Enum):
+class V126AnalysisType(StrEnum):
     POWER_QUALITY_HARMONICS = "power_quality_harmonics"
     SSCI_IMPEDANCE = "ssci_impedance"
     VOLTAGE_STABILITY = "voltage_stability"

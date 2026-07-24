@@ -11,7 +11,6 @@ Używane przez `POST /api/v1/reference-networks/similarity-match` endpoint
 from __future__ import annotations
 
 from application.reference_networks.library import (
-    REFERENCE_NETWORK_REGISTRY,
     list_reference_networks,
 )
 

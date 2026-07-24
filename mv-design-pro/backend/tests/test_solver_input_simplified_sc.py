@@ -12,7 +12,6 @@ Coverage:
 """
 
 import pytest
-
 from domain.study_case import StudyCaseConfig
 from network_model.catalog.repository import CatalogRepository
 from network_model.core.branch import BranchType, LineBranch

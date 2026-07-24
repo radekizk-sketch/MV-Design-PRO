@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 from uuid import UUID
 
@@ -12,6 +10,7 @@ from application.sld_projection import SldProjectionService
 from application.wizard_actions import WizardActionService
 from application.wizard_actions.service import InvalidActionPayload
 from fastapi import APIRouter, Depends, HTTPException, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 
 router = APIRouter()
 

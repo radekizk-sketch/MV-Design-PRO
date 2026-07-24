@@ -42,7 +42,7 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -63,7 +63,7 @@ SYNTHETIC_VALIDATION_MARKER = (
 )
 
 
-class MeasurementType(str, Enum):
+class MeasurementType(StrEnum):
     """Typy pomiarów obsługiwane przez estymator (Abur & Expósito §2.2)."""
 
     V_MAGNITUDE = "V_MAGNITUDE"  # |V_i| — moduł napięcia węzła [pu]

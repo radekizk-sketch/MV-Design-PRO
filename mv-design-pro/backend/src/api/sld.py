@@ -10,8 +10,6 @@ Production contract:
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 from uuid import UUID
 
@@ -20,6 +18,7 @@ from api.dependencies import get_uow_factory
 from application.analysis_run.read_model import canonicalize_json
 from enm.canonical_analysis import get_run as get_canonical_run
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 
 router = APIRouter()
 
