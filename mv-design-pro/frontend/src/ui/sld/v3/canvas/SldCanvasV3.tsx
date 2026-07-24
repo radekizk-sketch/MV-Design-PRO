@@ -52,6 +52,7 @@ import {
 } from './camera';
 import type { SegmentFaultFlowOverlay, SegmentFlowOverlay, SldV3Overlay, TransformerOltcOverlay } from './overlay';
 import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
+import { resultLabelLinesForLod, type ResultLabelLod } from './resultLabelTemplates';
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { FaultContributionArrow } from '../../../sld-overlay/FaultContributionArrow';
 import { formatTapPositionLabel } from '../../v2/canvas/oltcGlyph';
@@ -1178,11 +1179,18 @@ function resultLabelCandidates(
  * kanałów) + wcześniej położone etykiety wyników. Kolejność = ownerRef
  * posortowany (determinizm niezależny od kolejności iteracji obiektu). Brak
  * dopasowania kotwicy w scenie ⇒ wpis pominięty (nie fabrykuje pozycji).
+ *
+ * R1 (wym. 5) — ZWIJANIE wg LOD (histereza S8): `lod` z efektywnego LOD kamery
+ * (`SldCanvasV3` `effectiveLod`) przycina linie wpisu (`resultLabelLinesForLod`):
+ * L0 ⇒ brak linii ⇒ etykieta pominięta (warstwa nie renderuje nic); L1 ⇒ jedna
+ * najważniejsza wartość; L2 ⇒ 2–3 wartości. Domyślnie L2 (pełny szczegół) — dla
+ * wołających bez kontekstu kamery (testy węzłowe).
  */
 export function computeResultLabelPlacements(
   scene: SceneV3,
   resultLabelsByOwnerRef: Readonly<Record<string, ResultLabelEntry>> | undefined,
   extraObstacles: readonly FlowRect[] = [],
+  lod: ResultLabelLod = 2,
 ): readonly ResultLabelPlacement[] {
   if (!resultLabelsByOwnerRef) return [];
   const obstacles: FlowRect[] = [
@@ -1215,7 +1223,10 @@ export function computeResultLabelPlacements(
   const sortedRefs = Object.keys(resultLabelsByOwnerRef).sort();
   for (const ref of sortedRefs) {
     const entry = resultLabelsByOwnerRef[ref];
-    const block = resultLabelBlockSize(entry.lines);
+    // R1 (wym. 5): zwiń linie do bieżącego LOD; L0 (0 linii) ⇒ etykieta znika.
+    const lines = resultLabelLinesForLod(entry.lines, lod);
+    if (lines.length === 0) continue;
+    const block = resultLabelBlockSize(lines);
     let anchor: { cx: number; cy: number; halfW: number; halfH: number; horizontal: boolean; symbol: boolean } | null = null;
     if (entry.kind === 'transformer' || entry.kind === 'source') {
       const a = symbolAnchor.get(ref);
@@ -1241,7 +1252,7 @@ export function computeResultLabelPlacements(
     placements.push({
       ownerRef: ref,
       kind: entry.kind,
-      lines: entry.lines,
+      lines,
       x: chosen.x,
       y: chosen.y,
       width: block.width,
@@ -1517,8 +1528,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         scene,
         resultLabelsVisible ? overlay?.resultLabelsByOwnerRef : undefined,
         resultLabelExtraObstacles,
+        effectiveLod,
       ),
-    [scene, resultLabelsVisible, overlay?.resultLabelsByOwnerRef, resultLabelExtraObstacles],
+    [scene, resultLabelsVisible, overlay?.resultLabelsByOwnerRef, resultLabelExtraObstacles, effectiveLod],
   );
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 

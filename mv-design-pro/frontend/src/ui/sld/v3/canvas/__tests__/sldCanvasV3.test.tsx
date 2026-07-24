@@ -1208,6 +1208,43 @@ describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16
     expect(withLabels.querySelectorAll('[data-testid^="sld-v3-result-label-"]').length).toBeGreaterThan(0);
   });
 
+  it('R1 §11 inwariancja geometrii ON/OFF × L0/L1/L2: żaden LOD nie zmienia sceny warstwą liczb', () => {
+    for (const lod of [0, 1, 2] as const) {
+      const { container: without } = render(
+        <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} />,
+      );
+      const { container: withLabels } = render(
+        <SldCanvasV3
+          snapshot={enm}
+          width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
+          lodOverride={lod}
+          overlay={overlayWithLabels}
+        />,
+      );
+      for (const testId of ['sld-v3-segments', 'sld-v3-symbols', 'sld-v3-labels']) {
+        expect(withLabels.querySelector(`[data-testid="${testId}"]`)!.innerHTML).toBe(
+          without.querySelector(`[data-testid="${testId}"]`)!.innerHTML,
+        );
+      }
+    }
+  });
+
+  it('R1 §wym.5 zwijanie LOD: L0 bez etykiet; L1 jedna linia; L2 do trzech (źródło P/Q)', () => {
+    // Źródło niesie 2 linie (P, Q). L0 ⇒ 0 etykiet; L1 ⇒ 1 linia (P); L2 ⇒ 2 (P, Q).
+    const linesAtLod = (lod: 0 | 1 | 2): readonly string[] => {
+      const { container } = render(
+        <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={lod} overlay={overlayWithLabels} />,
+      );
+      const group = container.querySelector(`[data-result-owner-ref="${CSS.escape(sourceRef)}"]`);
+      if (!group) return [];
+      return Array.from(group.querySelectorAll('text')).map((t) => t.textContent ?? '');
+    };
+    expect(linesAtLod(0)).toEqual([]);
+    expect(linesAtLod(1)).toEqual(['P +6,5468 MW']);
+    expect(linesAtLod(2)).toEqual(['P +6,5468 MW', 'Q -0,3000 Mvar']);
+  });
+
   it('§8 kolizje=0: etykiety wyników wzajemnie rozłączne (anty-dryf), każda ulokowana bezkolizyjnie', () => {
     const placements = computeResultLabelPlacements(sceneL2, resultLabelsByOwnerRef);
     expect(placements.length).toBe(3);

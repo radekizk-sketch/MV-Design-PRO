@@ -202,6 +202,78 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     ]);
   });
 
+  it('R1 §wym.1–2 linia/kabel: pełna treść obc.→I→P(+)→Q z payloadu rozpływu', () => {
+    const payload = payloadOf({
+      [branchRef]: el(branchRef, 'branch', {
+        LOADING_PCT: { code: 'LOADING_PCT', value: 68, unit: '%', format_hint: 'fixed1' },
+        I_A: { code: 'I_A', value: 182, unit: 'A', format_hint: 'fixed1' },
+        P_MW: { code: 'P_MW', value: 5.648, unit: 'MW', format_hint: 'fixed4' },
+        Q_Mvar: { code: 'Q_Mvar', value: 0.92, unit: 'Mvar', format_hint: 'fixed4' },
+      }),
+    });
+    const entries = buildResultLabelsFromScene(scene, payload, singleHop);
+    expect(entries[branchRef]).toEqual({
+      ownerRef: branchRef,
+      kind: 'branch',
+      lines: [
+        { prefix: 'obc.', text: '68,0 %' },
+        { prefix: 'I', text: '182,0 A' },
+        { prefix: 'P', text: '+5,6480 MW' },
+        { prefix: 'Q', text: '+0,9200 Mvar' },
+      ],
+    });
+  });
+
+  it('R1 §wym.1–4 źródło: P(+)→Q→S — moc bierna i pozorna obecne, gdy w payloadzie', () => {
+    const payload = payloadOf({
+      [sourceRef]: el(sourceRef, 'generator', {
+        P_MW: { code: 'P_MW', value: 5.648, unit: 'MW', format_hint: 'fixed4' },
+        Q_Mvar: { code: 'Q_Mvar', value: 0.92, unit: 'Mvar', format_hint: 'fixed4' },
+        S_MVA: { code: 'S_MVA', value: 5.72, unit: 'MVA', format_hint: 'fixed2' },
+      }),
+    });
+    const entries = buildResultLabelsFromScene(scene, payload, singleHop);
+    expect(entries[sourceRef]?.lines).toEqual([
+      { prefix: 'P', text: '+5,6480 MW' },
+      { prefix: 'Q', text: '+0,9200 Mvar' },
+      { prefix: 'S', text: '5,72 MVA' },
+    ]);
+  });
+
+  it('R1 §wym.1–2 transformator: obc.→S→ΔP (kolejność priorytetu), gdy w payloadzie', () => {
+    const payload = payloadOf({
+      [trRef]: el(trRef, 'transformer', {
+        LOADING_PCT: { code: 'LOADING_PCT', value: 73, unit: '%', format_hint: 'fixed1' },
+        S_MVA: { code: 'S_MVA', value: 1.84, unit: 'MVA', format_hint: 'fixed2' },
+      }),
+    });
+    const entries = buildResultLabelsFromScene(scene, payload, singleHop);
+    expect(entries[trRef]?.lines).toEqual([
+      { prefix: 'obc.', text: '73,0 %' },
+      { prefix: 'S', text: '1,84 MVA' },
+    ]);
+  });
+
+  it('R1 bramka analizy: kod spoza szablonu danej analizy ⇒ linia NIE renderowana', () => {
+    // U_kV nie należy do szablonu ZWARCIOWEGO szyny ⇒ pod analysis_type=sc_3f
+    // szyna nie dostaje etykiety napięcia (rejestr rozdziela treść per analiza).
+    const busSeg = scene.segments.find((s) => s.meta?.elementKind === 'bus' && s.meta?.ownerRef);
+    const busRef = busSeg!.meta!.ownerRef!;
+    const payload = payloadOf(
+      { [busRef]: el(busRef, 'bus', { U_kV: { code: 'U_kV', value: 15, unit: 'kV', format_hint: 'fixed2' } }) },
+      'sc_3f',
+    );
+    expect(isResultLabelsEmpty(buildResultLabelsFromScene(scene, payload, singleHop))).toBe(true);
+  });
+
+  it('R1 bramka analizy: analiza nierozpoznana ⇒ mapa pusta (zero fabrykacji)', () => {
+    const payload = payloadOf(
+      { [branchRef]: el(branchRef, 'branch', { LOADING_PCT: { code: 'LOADING_PCT', value: 72.5, unit: '%', format_hint: 'fixed1' } }) },
+      'thermal',
+    );
+    expect(isResultLabelsEmpty(buildResultLabelsFromScene(scene, payload, singleHop))).toBe(true);
+  });
+
   it('determinizm: dwa buildy identycznego wejścia ⇒ identyczny wynik (JSON)', () => {
     const payload = payloadOf({
       [trRef]: el(trRef, 'transformer', { S_MVA: { code: 'S_MVA', value: 0.63, unit: 'MVA', format_hint: 'fixed2' } }),
