@@ -1980,6 +1980,23 @@ function symbolRect(sym: PreviewSymbol): V3Rect {
   return { x: sym.x, y: sym.y, width: def.width, height: def.height };
 }
 
+/** KROPKA-WEZLOWA (V12K-150): kropka węzłowa (`junction`/`branchJunction`) to
+ *  MARKER WARSTWY TORU (§22.1/IEC 60617), nie aparat — z DEFINICJI leży NA
+ *  przewodzie w węźle/porcie (odczep lateralny siedzi w porcie aparatu toru).
+ *  Metryki gabarytowe symbol↔symbol (nachodzenia/światło/przecięcia poddrzew)
+ *  bronią czytelności APARATÓW, nie węzłów-markerów — dlatego liczą wyłącznie
+ *  gabaryty NIE-węzłowe. Odczyt dla par APARAT↔APARAT jest NIEZMIENIONY
+ *  (kropka nie przesuwa niczego). */
+function isNodeMarkerSymbol(sym: PreviewSymbol): boolean {
+  return sym.symbolId === 'junction' || sym.symbolId === 'branchJunction';
+}
+
+/** Gabaryty symboli NIE-węzłowych (aparaty/DER/etykiety-symbole) — wspólna baza
+ *  wszystkich metryk symbol↔symbol (patrz `isNodeMarkerSymbol`). */
+function nonNodeSymbolRects(scene: SceneV3): readonly V3Rect[] {
+  return scene.symbols.filter((s) => !isNodeMarkerSymbol(s)).map(symbolRect);
+}
+
 function segmentRect(seg: PreviewSegment): V3Rect {
   return unionRects(seg.points.map((p) => ({ x: p.x, y: p.y, width: 0, height: 0 })));
 }
@@ -3377,6 +3394,51 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     allRouteGeoms.push(...splitGeoms);
   }
 
+  // -- 7.6 (KROPKA-WEZLOWA, V12K-150, spec §22.1 / IEC 60617): kropka węzłowa
+  // na KAŻDYM odgałęzieniu lateralnym pola (ES/VT/SA). Odczep `#lateral-…`
+  // (`compose/station.ts`/`compose/gpz.ts`) niesie WĘZEŁ elektryczny na osi
+  // toru jako `points[0]` — semantyka z DANYCH odgałęzienia (porty/odczepy),
+  // nie z heurystyki przecięć: „odgałęzienie od toru = węzeł oznaczony kropką"
+  // (skrzyżowanie bez połączenia — bez kropki, bo NIE ma odcinka `#lateral-`).
+  // Kropka jest CZYSTO WIZUALNYM markerem warstwy toru: `r` z rastru symbolu
+  // (`junction` 16×16), BEZ rezerwacji miejsca — NIE przesuwa NICZEGO (piony/
+  // korytarze/crossings/kotwica nietknięte; geometria odczepu bez zmian).
+  // Determinizm: sort po (y,x), dedupe po współrzędnej + względem istniejących
+  // kropek (tee/branchJunction). Dług W1b (V12K-150) zamknięty w scenie
+  // produkcyjnej (nie tylko w zrzucie) — wyrocznia: `lateralBranchNodes`/
+  // `junctionDotGaps` (`./crossings`).
+  {
+    const lateralDotDef = SYMBOL_DEFS.junction;
+    const existingDotCenters = new Set<string>();
+    for (const s of allSymbols) {
+      if (s.symbolId === 'junction' || s.symbolId === 'branchJunction') {
+        const d = SYMBOL_DEFS[s.symbolId];
+        existingDotCenters.add(`${s.x + d.width / 2},${s.y + d.height / 2}`);
+      }
+    }
+    const taps: RouteVertex[] = [];
+    const tapSeen = new Set<string>();
+    for (const seg of allSegments) {
+      const ref = seg.meta?.ownerRef ?? '';
+      if (!ref.includes('#lateral-') || ref.includes('#tee-')) continue;
+      const tap = seg.points[0];
+      if (!tap) continue;
+      const key = `${tap.x},${tap.y}`;
+      if (tapSeen.has(key) || existingDotCenters.has(key)) continue;
+      tapSeen.add(key);
+      taps.push(tap);
+    }
+    taps.sort((a, b) => (a.y - b.y) || (a.x - b.x));
+    for (const tap of taps) {
+      allSymbols.push({
+        symbolId: 'junction',
+        x: tap.x - lateralDotDef.width / 2,
+        y: tap.y - lateralDotDef.height / 2,
+        meta: { elementKind: 'apparatus', testId: `sld-v3-wezel-lateral-${tap.x}-${tap.y}` },
+      });
+    }
+  }
+
   // -- 8. Węzły routingu (junctions/crossings) — WYŁĄCZNIE trasy `route.ts` -
   const { junctions, crossings } = classifyRouteNodes(allRouteGeoms);
 
@@ -3459,9 +3521,20 @@ export function noForbiddenDirectionTokens(scene: SceneV3): boolean {
 }
 
 /** Zero nachodzeń symbol↔symbol (bboxy z `SYMBOL_DEFS`) — rozszerzenie F6a
- *  wyroczni F5 na CAŁĄ scenę (magistrala+laterale+GPZ razem). */
+ *  wyroczni F5 na CAŁĄ scenę (magistrala+laterale+GPZ razem).
+ *
+ *  KROPKA-WEZLOWA (V12K-150): kropki węzłowe (`junction`/`branchJunction`) są
+ *  MARKERAMI WARSTWY TORU (§22.1/IEC 60617), nie aparatami — z DEFINICJI leżą
+ *  NA przewodzie w węźle/porcie (odczep lateralny ES/VT/SA siedzi w porcie
+ *  aparatu toru, więc bbox kropki 16×16 STYKA SIĘ z bboxem aparatu z
+ *  konstrukcji). Ta wyrocznia broni czytelności APARATÓW (żaden aparat na
+ *  aparacie), nie węzłów-markerów, więc kropki są z niej wyłączone. Odczyt
+ *  symbol↔symbol dla par APARAT↔APARAT jest NIEZMIENIONY (kropka nie przesuwa
+ *  niczego — karta §3(d): metryka niezwiązana z kropką identyczna); porty
+ *  N/S/E/W kropki leżą na przewodzie, więc `symbolWireCollisions` (twarde zero)
+ *  pozostaje spełniona bez wyjątku. */
 export function noSceneSymbolOverlaps(scene: SceneV3): boolean {
-  const rects = scene.symbols.map(symbolRect);
+  const rects = nonNodeSymbolRects(scene);
   for (let i = 0; i < rects.length; i++) {
     for (let j = i + 1; j < rects.length; j++) {
       if (rectsOverlap(rects[i], rects[j])) return false;
@@ -5074,7 +5147,9 @@ export function nonOrthogonalSegmentCount(scene: SceneV3): number {
 /** §3/M-02: liczba par nakładających się gabarytów symboli (proxy przecięcia
  *  bbox poddrzew — na scenie rozłącznej z konstrukcji = 0). */
 export function subtreeIntersectionCount(scene: SceneV3): number {
-  const rects = scene.symbols.map(symbolRect);
+  // KROPKA-WEZLOWA (V12K-150): kropki węzłowe wyłączone (marker warstwy toru,
+  // patrz `isNodeMarkerSymbol`) — metryka liczy nachodzenia APARATÓW.
+  const rects = nonNodeSymbolRects(scene);
   let count = 0;
   for (let i = 0; i < rects.length; i++)
     for (let j = i + 1; j < rects.length; j++) if (rectsOverlap(rects[i], rects[j])) count += 1;
@@ -5084,7 +5159,9 @@ export function subtreeIntersectionCount(scene: SceneV3): number {
 /** §3: minimalne światło między JAKIMIKOLWIEK dwoma gabarytami symboli (min po
  *  parach nie-nakładających się). `Infinity`→0 gdy <2 symboli. */
 export function minimumClearance(scene: SceneV3): number {
-  const rects = scene.symbols.map(symbolRect);
+  // KROPKA-WEZLOWA (V12K-150): kropki węzłowe wyłączone (marker warstwy toru,
+  // z definicji styka się z portem aparatu) — światło mierzone między APARATAMI.
+  const rects = nonNodeSymbolRects(scene);
   let min = Infinity;
   for (let i = 0; i < rects.length; i++)
     for (let j = i + 1; j < rects.length; j++) {

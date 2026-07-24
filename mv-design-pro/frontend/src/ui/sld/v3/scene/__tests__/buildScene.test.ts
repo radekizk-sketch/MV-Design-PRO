@@ -151,11 +151,20 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
         expect(noLabelWireCollisions(scene)).toBe(true);
       });
 
-      it('junction_dot_probe (F13.2, §22.1, V12K-039 — zastępuje dawną branch_accent_probe): kropka wyłącznie na realnym węźle tras; po usunięciu akcentu-kropki scena bez kropek i bez luk', () => {
+      it('junction_dot_probe (F13.2 + V12K-150, §22.1): kropka wyłącznie na realnym węźle (T tras I odczep pola); akcent-kropka usunięty, odczepy lateralne z kropką, 0 luk', () => {
         expect(scene.meta.lateralRunIds.length).toBeGreaterThan(0);
         // Dawny akcent-kropka (fałszywy odczyt węzła przy przelocie, D3-14)
         // NIE istnieje na scenie:
         expect(scene.symbols.some((s) => s.symbolId === 'branchJunction')).toBe(false);
+        // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) mają
+        // kropkę węzłową `junction` w scenie produkcyjnej. Na L0 stacje SN są
+        // zbiorcze (bez pól), ale GPZ renderuje pełny detal na KAŻDYM LOD i
+        // niesie odczep — więc kropka lateralna istnieje na wszystkich LOD.
+        const lateralDots = scene.symbols.filter((s) =>
+          String(s.meta?.testId ?? '').startsWith('sld-v3-wezel-lateral-'),
+        );
+        expect(lateralDots.length).toBeGreaterThan(0);
+        // Obustronna spójność kropka⇔węzeł (tee + lateral):
         expect(noBranchWithoutAccent(scene)).toBe(true);
       });
 

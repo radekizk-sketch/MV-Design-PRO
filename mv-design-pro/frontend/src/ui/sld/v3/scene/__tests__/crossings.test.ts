@@ -132,19 +132,30 @@ describe('F13.2 B2 — polylinePathWithBridges (API renderu)', () => {
 
 describe('F13.2 D — junction_dot_probe (§22.1, V12K-039: kropka ⇔ realny węzeł rozgałęzienia tras)', () => {
   // SCHEMAT-10 S7-P2 (V12K-137) — patrz komentarz w ciele testu.
-  it('fixtura L2 (węzeł T, V12K-137): każdy węzeł T tras (styk zejścia lateralu z kablem poziomym) ma kropkę węzłową, kropki wyłącznie na węzłach — 0 luk', async () => {
+  it('fixtura L2 (węzeł T, V12K-137 + odczepy lateralne V12K-150): każdy węzeł T tras I każdy odczep pola ma kropkę węzłową, kropki wyłącznie na węzłach — 0 luk', async () => {
     const { SYMBOL_DEFS } = await import('../../symbols/defs');
-    const { externalBranchNodes, junctionDotGaps } = await import('../crossings');
+    const { externalBranchNodes, lateralBranchNodes, junctionDotGaps } = await import('../crossings');
     const scene = buildSceneV3(enm, 2);
     // Golden przepisany do kanonu S7-P2 (intencja zachowana: obustronna
     // spójność kropka⇔węzeł). Do V12K-039 zejścia PRZECINAŁY przęsła (0 węzłów
     // T, 0 kropek); S7-P2 rozcina kabel poziomy w punkcie styku ⇒ każde dawne
     // przecięcie (24 na L2) staje się realnym węzłem T tras zewnętrznych
     // (`externalBranchNodes`) i dostaje kropkę `junction`.
-    const nodes = externalBranchNodes(scene.segments);
-    expect(nodes).toHaveLength(24);
+    const teeNodes = externalBranchNodes(scene.segments);
+    expect(teeNodes).toHaveLength(24);
+    // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) też są węzłami
+    // z DANYCH odgałęzienia (`#lateral-…`, `points[0]` = oś toru) i dostają
+    // kropkę w scenie produkcyjnej — dług W1b zamknięty.
+    const lateralNodes = lateralBranchNodes(scene.segments);
+    expect(lateralNodes.length).toBeGreaterThan(0);
+    const teeKeys = new Set(teeNodes.map((n) => `${n.x},${n.y}`));
     const dots = scene.symbols.filter((s) => s.symbolId === 'junction');
-    expect(dots).toHaveLength(24);
+    const jdef = SYMBOL_DEFS.junction;
+    // Kropki dzielą się DOKŁADNIE na (a) węzły T tras i (b) odczepy lateralne —
+    // suma pokrywa wszystkie kropki (kropka wyłącznie na realnym węźle).
+    const dotsAtTee = dots.filter((s) => teeKeys.has(`${s.x + jdef.width / 2},${s.y + jdef.height / 2}`));
+    expect(dotsAtTee).toHaveLength(24);
+    expect(dots).toHaveLength(24 + lateralNodes.length);
     // Obustronnie: każdy węzeł ma kropkę i żadna kropka nie wisi bez węzła.
     expect(junctionDotGaps(scene, SYMBOL_DEFS)).toEqual([]);
   });

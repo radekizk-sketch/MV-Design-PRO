@@ -282,17 +282,62 @@ export function externalBranchNodes(segments: readonly PreviewSegment[]): readon
 }
 
 /**
+ * KROPKA-WEZLOWA (V12K-150, spec §22.1, IEC 60617) — realne węzły ODCZEPÓW
+ * LATERALNYCH POLA (świat): punkt na osi toru głównego, w którym odgałęzia się
+ * aparat boczny (ES/VT/SA — `compose/station.ts`/`compose/gpz.ts` budują odcinek
+ * `#lateral-…` jako `[{anchor na osi}, {port aparatu bocznego}]`, więc `points[0]`
+ * = WĘZEŁ przyłączenia na osi, ta sama prawda co wyrocznia W1b
+ * `buildScene.w1MatrixVariants.test` „start odczepu = oś"). W ODRÓŻNIENIU od
+ * `externalBranchNodes` (T-węzły TRAS zewnętrznych `seg/…`) te węzły powstają z
+ * DANYCH ODGAŁĘZIENIA pola (ownerRef `#lateral-`), nie z heurystyki
+ * geometrycznego przecięcia — dług W1b (V12K-150) zamknięty: junction_dot_probe
+ * liczy teraz również odczepy WEWNĄTRZ pola, nie tylko węzły tras.
+ *
+ * Kawałki rozcięte węzłem T (`#tee-N`, `buildScene.resolveTeeJunctions`) są
+ * WYKLUCZONE — ich `points[0]` to punkt rozcięcia kabla, nie odczep lateralny
+ * (odczep jest krótki i poziomy, nie bywa rozcinany; filtr chroni przed
+ * fałszywym węzłem, gdyby kiedyś był).
+ */
+export function lateralBranchNodes(segments: readonly PreviewSegment[]): readonly RouteVertex[] {
+  const nodes: RouteVertex[] = [];
+  const seen = new Set<string>();
+  for (const s of segments) {
+    const ref = s.meta?.ownerRef ?? '';
+    if (!ref.includes('#lateral-') || ref.includes('#tee-')) continue;
+    const tap = s.points[0];
+    if (!tap) continue;
+    const key = `${tap.x},${tap.y}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      nodes.push(tap);
+    }
+  }
+  return nodes.sort((p, q) => (p.y - q.y) || (p.x - q.x));
+}
+
+/**
  * junction_dot_probe (spec §22.1, D3-5): (a) każdy realny węzeł rozgałęzienia
- * tras ma kropkę węzłową (`junction`/`branchJunction`) w promieniu GRID;
- * (b) żadna kropka bez realnego węzła. Rozmiary symboli podaje wołający
- * (mapą symbolId→{width,height}) — moduł nie importuje SYMBOL_DEFS, żeby
- * pozostać czysty względem warstwy symboli (wołający: acceptance/testy).
+ * ma kropkę węzłową (`junction`/`branchJunction`) w promieniu GRID;
+ * (b) żadna kropka bez realnego węzła. Węzły = T-węzły TRAS zewnętrznych
+ * (`externalBranchNodes`) ∪ odczepy LATERALNE pól (`lateralBranchNodes`,
+ * V12K-150 — kropka na odgałęzieniu ES/VT/SA w scenie produkcyjnej). Rozmiary
+ * symboli podaje wołający (mapą symbolId→{width,height}) — moduł nie importuje
+ * SYMBOL_DEFS, żeby pozostać czysty względem warstwy symboli (wołający:
+ * acceptance/testy).
  */
 export function junctionDotGaps(
   scene: JunctionSceneInput,
   symbolSizes: Readonly<Record<string, { readonly width: number; readonly height: number }>>,
 ): readonly JunctionDotGap[] {
-  const nodes = externalBranchNodes(scene.segments);
+  const nodeSeen = new Set<string>();
+  const nodes: RouteVertex[] = [];
+  for (const n of [...externalBranchNodes(scene.segments), ...lateralBranchNodes(scene.segments)]) {
+    const key = `${n.x},${n.y}`;
+    if (!nodeSeen.has(key)) {
+      nodeSeen.add(key);
+      nodes.push(n);
+    }
+  }
   const dots = scene.symbols
     .filter((s) => s.symbolId === 'junction' || s.symbolId === 'branchJunction')
     .map((s) => {
