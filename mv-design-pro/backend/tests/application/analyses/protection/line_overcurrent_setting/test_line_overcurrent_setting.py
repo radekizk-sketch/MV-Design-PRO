@@ -390,6 +390,54 @@ class TestAnalyzerConflictingWindow:
         # Should mention conflict
         assert any("sprzeczne" in r.lower() for r in result.recommendations_pl)
 
+    def test_conflicting_window_marks_partial_verdicts(
+        self,
+        analyzer: LineOvercurrentSettingAnalyzer,
+        conflicting_input: LineOvercurrentSettingInput,
+    ):
+        """Puste okno ⇒ kryteria, które się wykluczają, dostają FAIL (V12K-188).
+
+        Kryteria selektywności i czułości wyznaczają PRZECIWSTAWNE granice tej samej
+        nastawy. Dotąd każde zwracało PASS wyłącznie na podstawie tego, że dane
+        wejściowe są dodatnie — nigdy nie porównywały granic ze sobą. Przy pustym
+        oknie raport pokazywał „Selektywność: PASS" i „Czułość: PASS" obok werdyktu
+        ogólnego FAIL, więc projektant nie mógł odczytać, KTÓRE kryteria się
+        wykluczają ani o ile — a to jest informacja prowadząca do decyzji (zmiana
+        przekroju, nastawy czasowej, podział odcinka).
+        """
+        result = analyzer.analyze(conflicting_input)
+        assert result.setting_window.window_valid is False
+
+        # Dolna granica pochodzi z selektywności — to ona jest w konflikcie.
+        assert result.selectivity.verdict == LineOvercurrentVerdict.FAIL
+        # Górna granica: FAIL dostaje TO kryterium, które ją wyznaczyło.
+        if result.setting_window.limiting_criterion_max == "sensitivity":
+            assert result.sensitivity.verdict == LineOvercurrentVerdict.FAIL
+        else:
+            assert result.thermal.verdict == LineOvercurrentVerdict.FAIL
+
+        # Deficyt podany liczbowo — projektant widzi, o ile okno jest za ciasne.
+        deficit_ka = (
+            result.setting_window.i_min_primary_a - result.setting_window.i_max_primary_a
+        ) / 1000.0
+        assert deficit_ka > 0
+        assert f"{deficit_ka:.2f} kA" in result.selectivity.notes_pl
+        conflict_step = [s for s in result.trace_steps if s["step"] == "setting_window_conflict"]
+        assert len(conflict_step) == 1
+        assert conflict_step[0]["outputs"]["deficit_a"] == pytest.approx(deficit_ka * 1000.0)
+
+    def test_valid_window_leaves_partial_verdicts_untouched(
+        self,
+        analyzer: LineOvercurrentSettingAnalyzer,
+        valid_input: LineOvercurrentSettingInput,
+    ):
+        """Okno poprawne ⇒ werdykty cząstkowe bez zmian i bez kroku konfliktu."""
+        result = analyzer.analyze(valid_input)
+        assert result.setting_window.window_valid is True
+        assert result.selectivity.verdict != LineOvercurrentVerdict.FAIL
+        assert result.sensitivity.verdict != LineOvercurrentVerdict.FAIL
+        assert not [s for s in result.trace_steps if s["step"] == "setting_window_conflict"]
+
 
 # =============================================================================
 # ANALYZER TESTS - SPZ BLOCKING

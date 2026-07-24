@@ -94,7 +94,8 @@ Kolejność wg ryzyka × zasięgu konsekwencji projektowych.
 |------|------|-----------|------|
 | A | ZAMKNIĘTA | 6 defektów (patrz §1), wszystkie naprawione | V12K-184, V12K-186 |
 | B | ZAMKNIĘTA | **0 defektów** — wszystkie niezmienniki zachodzą | — |
-| C | w toku | **2 defekty krytyczne** (W1, W9) — naprawione, re-baseline | V12K-187 |
+| C | ZAMKNIĘTA | **3 defekty** (W1, W9 + hunting OLTC) — naprawione, re-baseline | V12K-187 |
+| D | ZAMKNIĘTA | charakterystyki **czyste**; 1 defekt werdyktu kryteriów | V12K-188 |
 
 ### Fala B — składowe symetryczne: wynik
 
@@ -137,6 +138,41 @@ Naprawa: skalowanie każdej gałęzi jej własnym ilorazem baz `(U/U_ref)²` +
 przekładnia poza-znamionowa szyn (spójnie z falą A) + jedna funkcja
 `_resolve_tap_ratio` dla Y-bus i przepływów. Sieci jednonapięciowe pozostają
 **bit-identyczne** (iloraz = 1,0).
+
+### Fala D — zabezpieczenia (IEC 60255): wynik
+
+**Charakterystyki czasowo-prądowe — zero defektów.** Sprawdzone wobec wartości
+podręcznikowych `t = TMS·A/(M^B − 1)` oraz niezmienników:
+
+| Sprawdzenie | Wynik |
+|---|---|
+| SI: M=2 → 10,029 s; M=10 → 2,971 s | błąd ≤ 1,3·10⁻⁵ % |
+| VI: M=2 → 13,5 s; M=10 → 1,5 s | dokładnie |
+| EI: M=2 → 26,667 s; M=10 → 0,808 s | błąd ≤ 2,4·10⁻⁵ % |
+| M ≤ 1 ⇒ brak zadziałania (nie ekstrapolacja) | poprawnie |
+| monotoniczność t(I) na każdej krzywej | zachowana |
+| liniowość względem TMS | dokładnie (0,0 %) |
+| niezmienniczość skali (I i I_pickup ×100) | dokładnie (0,0 %) |
+| porządek EI < VI < SI przy dużej krotności | zachowany |
+
+**D-1 — werdykt kryterium nie sprawdzał kryterium.** `_check_selectivity` i
+`_check_sensitivity` wydawały `PASS`, gdy **dane wejściowe są dodatnie** — nigdy
+nie porównywały wyznaczonych granic ze sobą:
+
+```python
+if i_min_primary > 0 and ik_max_next > 0:
+    verdict = PASS          # nastawa I_nast nie jest z niczym porownywana
+```
+
+Werdykt **ogólny** był poprawny, bo bramkuje go `window_valid` (I_max > I_min),
+więc decyzja nie była fałszowana. Ale przy pustym oknie — czyli gdy **żadna
+nastawa nie spełnia obu warunków naraz** — raport pokazywał „Selektywność: PASS"
+i „Czułość: PASS" obok werdyktu ogólnego FAIL. Projektant nie miał z czego
+odczytać, które kryteria się wykluczają ani o ile, a to jest dokładnie ta
+informacja, która prowadzi do decyzji (zmiana przekroju, nastawy czasowej,
+podział odcinka). Naprawa: przy pustym oknie FAIL dostaje kryterium wyznaczające
+dolną granicę oraz to, które wyznaczyło górną, wraz z deficytem w kA i osobnym
+krokiem śladu `setting_window_conflict`.
 | D | — | — | — |
 | E | — | — | — |
 | F | — | — | — |
