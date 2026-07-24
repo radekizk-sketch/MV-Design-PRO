@@ -107,6 +107,25 @@ def _run_short_circuit(enm_dict: dict) -> dict:
     }
 
 
+def _stabilize_technical_ids(dumped: dict) -> None:
+    """Wyprowadz techniczne `id` z `ref_id` — fixtura ma byc DETERMINISTYCZNA.
+
+    Operacje domenowe nadaja rekordom losowy `uuid4()` jako klucz techniczny. To
+    poprawne w bazie (klucz nie niesie znaczenia), ale w PLIKU WERSJONOWANYM
+    znaczy, ze kazda regeneracja przy IDENTYCZNYM wejsciu daje inny plik — tu
+    227 zmienionych linii przy zerowej zmianie fizyki (wyniki SC bit-identyczne).
+    Nadpisujemy `id` deterministycznym UUID5 z `ref_id` (ta sama funkcja, ktorej
+    uzywa `enm.mapping._ref_to_uuid`), wiec plik zalezy wylacznie od modelu.
+    """
+    for key in sorted(dumped):
+        records = dumped.get(key)
+        if not isinstance(records, list):
+            continue
+        for record in records:
+            if isinstance(record, dict) and record.get("ref_id") and "id" in record:
+                record["id"] = str(uuid.uuid5(uuid.NAMESPACE_DNS, str(record["ref_id"])))
+
+
 def main() -> int:
     result = build_demo_oze_sc_network()
     enm_dict = result["enm"]
@@ -118,6 +137,7 @@ def main() -> int:
     header["created_at"] = _FIXED_TS
     header["updated_at"] = _FIXED_TS
     header["hash_sha256"] = builder_hash
+    _stabilize_technical_ids(dumped)
 
     sc = _run_short_circuit(enm_dict)
     if not sc["converged"]:

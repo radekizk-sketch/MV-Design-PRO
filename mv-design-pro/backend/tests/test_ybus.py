@@ -299,10 +299,27 @@ def test_ikss_lv_rejects_nonpositive_c():
         transformer.get_ikss_lv_ka(c=-0.1)
 
 
+def _node_at(node_id: str, voltage_kv: float) -> Node:
+    return Node(
+        id=node_id,
+        name=f"Node {node_id}",
+        node_type=NodeType.PQ,
+        voltage_level=voltage_kv,
+        active_power=5.0,
+        reactive_power=2.0,
+    )
+
+
 def test_transformer_stamping_between_two_nodes():
+    """Stempel przy szynach ZGODNYCH z tabliczką (110/20 kV) — przekładnia a = 1.
+
+    To jest przypadek odniesienia dla V12K-186: gdy napięcia znamionowe szyn są
+    w stosunku równym przekładni transformatora, model z przekładnią redukuje
+    się do symetrycznego stempla i macierz jest BIT-IDENTYCZNA jak przed zmianą.
+    """
     graph = NetworkGraph()
-    graph.add_node(create_pq_node("A"))
-    graph.add_node(create_pq_node("B"))
+    graph.add_node(_node_at("A", 110.0))
+    graph.add_node(_node_at("B", 20.0))
 
     transformer = create_transformer_branch(
         "T1",
@@ -333,6 +350,92 @@ def test_transformer_stamping_between_two_nodes():
     )
 
     np.testing.assert_allclose(y_bus, expected)
+
+
+def test_transformer_stamping_uses_bus_voltage_base_and_off_nominal_ratio():
+    """Szyna LV NIEZGODNA z tabliczką ⇒ zmiana bazy + przekładnia poza-znamionowa.
+
+    V12K-186: transformator katalogowy 110/20 kV pracujący na szynie 21 kV.
+    Przeliczenie na bazę systemową wymaga członu (U_lv_TR/U_szyny)², a różnica
+    przekładni znamionowej i bazowej daje a = (110/110)/(20/21) = 1,05. Bez tych
+    dwóch członów macierz opisywała INNY transformator niż model — i to cicho,
+    bo walidator porównuje napięcia szyn tylko względem siebie.
+    """
+    graph = NetworkGraph()
+    graph.add_node(_node_at("A", 110.0))
+    graph.add_node(_node_at("B", 21.0))
+
+    transformer = create_transformer_branch(
+        "T1",
+        "A",
+        "B",
+        rated_power_mva=20.0,
+        voltage_hv_kv=110.0,
+        voltage_lv_kv=20.0,
+        uk_percent=8.0,
+        pk_kw=60.0,
+    )
+    graph.add_branch(transformer)
+
+    y_bus = AdmittanceMatrixBuilder(graph).build()
+
+    v_scale = 20.0 / 21.0
+    z_pu_base = (
+        transformer.get_short_circuit_impedance_pu_corrected()
+        * (S_BASE_MVA / transformer.rated_power_mva)
+        * v_scale**2
+    )
+    y_series = 1.0 / z_pu_base
+    ratio = (110.0 / 110.0) / v_scale  # = 1.05
+    expected = np.array(
+        [
+            [y_series / ratio**2, -y_series / ratio],
+            [-y_series / ratio, y_series],
+        ],
+        dtype=complex,
+    )
+
+    np.testing.assert_allclose(y_bus, expected)
+    # Stempel jest ASYMETRYCZNY (a ≠ 1) — to odróżnia poprawny model od starego.
+    assert y_bus[0, 0] != y_bus[1, 1]
+
+
+def test_transformer_stamping_follows_tap_position():
+    """Zaczep zmienia przekładnię także w sieci ZWARCIOWEJ (V12K-186).
+
+    Do V12K-186 macierz zwarciowa ignorowała pozycję zaczepu, więc rozpływ mocy
+    i zwarcie widziały DWA różne transformatory tego samego modelu. Źródłem
+    przekładni jest `get_tap_ratio()` — ta sama metoda domenowa, z której
+    korzysta Y-bus rozpływu.
+    """
+
+    def build(tap: int) -> np.ndarray:
+        graph = NetworkGraph()
+        graph.add_node(_node_at("A", 110.0))
+        graph.add_node(_node_at("B", 20.0))
+        tr = create_transformer_branch(
+            "T1",
+            "A",
+            "B",
+            rated_power_mva=20.0,
+            voltage_hv_kv=110.0,
+            voltage_lv_kv=20.0,
+            uk_percent=8.0,
+            pk_kw=60.0,
+        )
+        tr.tap_position = tap
+        tr.tap_step_percent = 1.5
+        graph.add_branch(tr)
+        return AdmittanceMatrixBuilder(graph).build()
+
+    y0 = build(0)
+    y5 = build(5)
+    # Strona LV (indeks 1) jest odniesieniem admitancji — bez zmian.
+    np.testing.assert_allclose(y0[1, 1], y5[1, 1])
+    # Strona HV i sprzężenie skalują się przekładnią 1 + 5·1,5% = 1,075.
+    ratio = 1.075
+    np.testing.assert_allclose(y5[0, 0], y0[0, 0] / ratio**2, rtol=1e-12)
+    np.testing.assert_allclose(y5[0, 1], y0[0, 1] / ratio, rtol=1e-12)
 
 
 def test_transformer_ignored_when_out_of_service():

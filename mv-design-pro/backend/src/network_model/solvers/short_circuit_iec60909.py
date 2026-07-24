@@ -795,16 +795,19 @@ class ShortCircuitIEC60909Solver:
                     continue
                 # Admitancja w PER-UNIT — Z-bus też jest w pu; wcześniej ten tor
                 # mieszał pu z omami (SI), co dawało niespójne moduły prądów.
-                y_series = ShortCircuitIEC60909Solver._series_admittance_pu(builder, branch)
-                if y_series is None:
+                admittance = ShortCircuitIEC60909Solver._series_admittance_pu(builder, branch)
+                if admittance is None:
                     continue
+                y_series, ratio = admittance
                 from_index = builder.node_id_to_index.get(branch.from_node_id)
                 to_index = builder.node_id_to_index.get(branch.to_node_id)
                 if from_index is None or to_index is None:
                     continue
                 v_from = v_nodes[from_index]
                 v_to = v_nodes[to_index]
-                i_branch = (v_from - v_to) * y_series * i_contrib
+                # Prąd po stronie `from` w modelu z przekładnią poza-znamionową
+                # (V12K-186); dla a = 1 redukuje się do (V_from − V_to)·y.
+                i_branch = (v_from / (ratio * ratio) - v_to / ratio) * y_series * i_contrib
                 i_mag = abs(i_branch)
                 if i_mag <= 0:
                     continue
@@ -824,23 +827,27 @@ class ShortCircuitIEC60909Solver:
         return contributions
 
     @staticmethod
-    def _series_admittance_pu(builder: object, branch: object) -> complex | None:
-        """Admitancja szeregowa gałęzi w per-unit — SPÓJNA z macierzą Y-bus.
+    def _series_admittance_pu(builder: object, branch: object) -> tuple[complex, float] | None:
+        """Admitancja szeregowa gałęzi w per-unit + przekładnia — SPÓJNE z Y-bus.
 
         Reużywa `AdmittanceMatrixBuilder._get_branch_admittances_pu` (ten sam
         buider co `build_zbus`), dzięki czemu prawo Kirchhoffa (KCL) domyka się
         w napięciach węzłowych z Z-bus — warunek konieczny dokładnego bilansu
         rozpływu Thevenina z Ik'' w węźle zwarcia. Gałąź o nieobsługiwanym typie
         albo zerowej impedancji → None (pomijana, jak w torze superpozycji).
+
+        Zwraca `(y_series_pu, a)`, gdzie `a` to przekładnia poza-znamionowa
+        gałęzi (1.0 dla linii i kabli). Prąd po stronie `from` liczy się wtedy
+        jako `(V_from/a² − V_to/a)·y` — przy `a = 1` to zwykłe `(V_from−V_to)·y`.
         """
         getter = getattr(builder, "_get_branch_admittances_pu", None)
         if getter is None:
             return None
         try:
-            y_series_pu, _ = getter(branch)
+            y_series_pu, _shunt, ratio = getter(branch)
         except (ValueError, ZeroDivisionError):
             return None
-        return y_series_pu
+        return y_series_pu, float(ratio)
 
     @staticmethod
     def _build_branch_contributions_for_thevenin(
@@ -910,16 +917,18 @@ class ShortCircuitIEC60909Solver:
         for branch_id, branch in graph.branches.items():
             if not getattr(branch, "in_service", True):
                 continue
-            y_series_pu = ShortCircuitIEC60909Solver._series_admittance_pu(builder, branch)
-            if y_series_pu is None:
+            admittance = ShortCircuitIEC60909Solver._series_admittance_pu(builder, branch)
+            if admittance is None:
                 continue
+            y_series_pu, ratio = admittance
             from_index = builder.node_id_to_index.get(branch.from_node_id)
             to_index = builder.node_id_to_index.get(branch.to_node_id)
             if from_index is None or to_index is None or from_index == to_index:
                 continue
             v_from = v_nodes[from_index]
             v_to = v_nodes[to_index]
-            fraction = (v_from - v_to) * y_series_pu
+            # Jak wyżej (V12K-186): prąd strony `from` przy przekładni a.
+            fraction = (v_from / (ratio * ratio) - v_to / ratio) * y_series_pu
             f_mag = float(abs(fraction))
             i_a = f_mag * ik_thevenin_a
             if i_a <= 0:

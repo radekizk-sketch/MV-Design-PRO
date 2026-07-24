@@ -43,7 +43,14 @@ SANCTIONED_CHANGES = {
         "mieszanie jednostek pu/SI w torze wkladow galeziowych falownikow "
         "(iniekcja jednostkowa + _series_admittance_pu). Dla zrodla W wezle "
         "zwarcia wspolczynnik = 1 -> bit-identycznosc. Wpis do usuniecia po "
-        "scaleniu do main."
+        "scaleniu do main. "
+        "V12K-186: model transformatora w sieci zwarciowej dostal PRZEKLADNIE "
+        "poza-znamionowa (zmiana bazy napieciowej + zaczep). Tor wkladow "
+        "galeziowych liczy teraz prad strony from jako (V_from/a^2 - V_to/a)*y "
+        "zamiast (V_from - V_to)*y; dla a = 1 (szyny zgodne z tabliczka, brak "
+        "zaczepu) wynik bit-identyczny. Zmiana sygnatury _series_admittance_pu "
+        "na (y, a) — bez niej rozpakowanie lapaloby ValueError i CICHO gasilo "
+        "wklady galeziowe. Wpis do usuniecia po scaleniu do main."
     ),
     "backend/src/network_model/solvers/power_flow_newton_internal.py": (
         "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "
