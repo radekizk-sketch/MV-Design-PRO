@@ -31,10 +31,16 @@
  * Przestrzeń refów (identyczna co pozostałe kanały, patrz `overlay.ts` nagłówek):
  * transformator/źródło/DER — `meta.ownerRef` = ENM `ref_id` = klucz
  * `payload.elements`; przęsło — `segmentRef` == `branch_id` (bramka
- * jednokawałkowa `singleHopSegmentRefs` jak flow); szyna — `meta.ownerRef`
- * (rozwiązuje się do klucza payloadu, gdy adapter niesie realny bus ref; szyny
- * GPZ o refie kompozytowym `#bus-primary`/`#sn-bus` NIE mapują — znana luka
- * adaptera, uczciwie: brak etykiety).
+ * jednokawałkowa `singleHopSegmentRefs` jak flow); szyna — `meta.ownerRef`,
+ * gdy adapter niesie realny bus ref. ADAPTER-BUSREF (dług W4/R2/V12K-163
+ * DOMKNIĘTY): szyny GPZ o refie KOMPOZYTOWYM (`${sectionId}#bus-primary` itd.)
+ * niosą TERAZ addytywną metadanę `meta.busResultRef` = kanoniczny `Bus.ref_id`
+ * ze snapshotu ENM (adapter `enmToCanonicalGpzAdapter.ts`) — dopasowanie
+ * `payload.elements` idzie po TYM refie (`resultRefForSegment`), a `ownerRef`
+ * (kompozyt) pozostaje kluczem tożsamości/kotwicy. Szyny sekcji rysowane
+ * wielokrotnie (główna/rezerwowa/domknięcie ringu) DEDUPLIKUJĄ się po
+ * `busResultRef` — dokładnie jedna etykieta U/δ na sekcję, kotwica na szynie
+ * głównej (pierwsza w kolejności sceny).
  */
 import type { RawOverlayPayload } from '../../../sld-overlay/rawResultOverlayStore';
 import { getMetric } from '../../../sld-overlay/rawResultOverlayStore';
@@ -102,6 +108,20 @@ const SYMBOL_KIND_TO_LABEL_KIND: Readonly<Record<string, ResultLabelKind>> = {
 };
 
 /**
+ * ADAPTER-BUSREF (dług W4/R2/V12K-163): ref używany do DOPASOWANIA payloadu/
+ * energizacji dla segmentu — kanoniczny `Bus.ref_id` (`meta.busResultRef`,
+ * niesiony ze snapshotu przez adapter dla szyn GPZ o refie kompozytowym), a w
+ * jego braku `meta.ownerRef` (segmenty, których `ownerRef` JEST już realnym
+ * refem ENM). JEDNO ŹRÓDŁO PRAWDY dla warstwy wynikowej (`resultLabels`) i
+ * energizacji/flow (`SldCanvasV3`) — zero rozjazdu mapowań. `undefined` gdy
+ * segment nie ma ŻADNEGO refu. */
+export function resultRefForSegment(
+  meta: { readonly ownerRef?: string; readonly busResultRef?: string } | undefined,
+): string | undefined {
+  return meta?.busResultRef ?? meta?.ownerRef;
+}
+
+/**
  * Zbuduj mapę etykiet wynikowych `ownerRef → ResultLabelEntry` dla jednej sceny.
  * `payload===null` ⇒ pusta mapa (§14.2 „overlay wyłączony bez wyniku"). TREŚĆ
  * wg rejestru szablonów (`resultLabelTemplates.ts`) dla rodziny analizy z
@@ -133,15 +153,25 @@ export function buildResultLabelsFromScene(
     entries[ownerRef] = { ownerRef, kind: labelKind, lines, severity: severityOf(payload, ownerRef) };
   }
 
+  // ADAPTER-BUSREF: dedup etykiet szyny po KANONICZNYM refie — sekcja SN GPZ
+  // rysowana jako główna+rezerwowa+domknięcie ringu (różne `ownerRef`
+  // kompozytowe) współdzieli JEDEN `busResultRef` ⇒ dokładnie jedna etykieta
+  // U/δ (kotwica na PIERWSZEJ, tj. szynie głównej). Refy realne (szyny stacji,
+  // gdzie `busResultRef` brak) trafiają tu jako własny `ownerRef` — zachowanie
+  // niezmienne (każda taka szyna to inny wpis).
+  const seenBusResultRefs = new Set<string>();
   for (const segment of scene.segments) {
     const elementKind = segment.meta?.elementKind;
     const ownerRef = segment.meta?.ownerRef;
     if (!elementKind || !ownerRef) continue;
     if (entries[ownerRef]) continue;
     if (elementKind === 'bus') {
-      const lines = linesFor(payload, ownerRef, selectResultLabelSpecs(analysis, 'bus'));
+      const resultRef = resultRefForSegment(segment.meta) ?? ownerRef;
+      if (seenBusResultRefs.has(resultRef)) continue;
+      const lines = linesFor(payload, resultRef, selectResultLabelSpecs(analysis, 'bus'));
       if (lines.length === 0) continue;
-      entries[ownerRef] = { ownerRef, kind: 'bus', lines, severity: severityOf(payload, ownerRef) };
+      seenBusResultRefs.add(resultRef);
+      entries[ownerRef] = { ownerRef, kind: 'bus', lines, severity: severityOf(payload, resultRef) };
     } else if (elementKind === 'segment') {
       if (ownerRef.includes('#') || !trustedBranchRefs.has(ownerRef)) continue;
       const lines = linesFor(payload, ownerRef, selectResultLabelSpecs(analysis, 'branch'));

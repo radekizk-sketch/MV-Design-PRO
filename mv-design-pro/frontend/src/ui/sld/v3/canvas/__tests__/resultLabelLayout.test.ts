@@ -17,7 +17,7 @@ import { describe, expect, it } from 'vitest';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import { buildSceneV3 } from '../../scene/buildScene';
-import { buildResultLabelsFromScene, singleHopSegmentRefs } from '../resultLabels';
+import { buildResultLabelsFromScene, resultRefForSegment, singleHopSegmentRefs } from '../resultLabels';
 import { layoutResultLabels } from '../SldCanvasV3';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -55,8 +55,14 @@ function fullPayload(lod: 0 | 1 | 2): { scene: ReturnType<typeof buildSceneV3>; 
   for (const s of scene.segments) {
     const k = s.meta?.elementKind;
     const ref = s.meta?.ownerRef;
-    if (k === 'bus' && ref && !elements[ref]) {
-      elements[ref] = { ref_id: ref, kind: 'bus', badges: [], severity: 'INFO', metrics: metricsForKind('bus') };
+    if (k === 'bus') {
+      // ADAPTER-BUSREF: payload backendu kluczowany KANONICZNYM Bus.ref_id —
+      // szyny GPZ kompozytowe po `busResultRef`, szyny stacji po ownerRef.
+      const busRef = resultRefForSegment(s.meta);
+      if (busRef && !elements[busRef]) {
+        elements[busRef] = { ref_id: busRef, kind: 'bus', badges: [], severity: 'INFO', metrics: metricsForKind('bus') };
+      }
+      continue;
     }
     if (k === 'segment' && ref && !ref.includes('#') && singleHop.has(ref) && !elements[ref]) {
       elements[ref] = { ref_id: ref, kind: 'branch', badges: [], severity: 'INFO', metrics: metricsForKind('branch') };

@@ -52,6 +52,7 @@ import {
 } from './camera';
 import type { SegmentFaultFlowOverlay, SegmentFlowOverlay, SldV3Overlay, TransformerOltcOverlay } from './overlay';
 import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
+import { resultRefForSegment } from './resultLabels';
 import { resultLabelLinesForLod, type ResultLabelLod } from './resultLabelTemplates';
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { FaultContributionArrow } from '../../../sld-overlay/FaultContributionArrow';
@@ -377,8 +378,12 @@ function SceneSegmentNode(props: {
             ? '3 2'
             : undefined;
   // F8b-1 FIX (recenzja): jak w SceneSymbolNode — ownerRef przed testId.
-  const energizedSeg = segment.meta?.ownerRef != null
-    ? overlay?.energizedByOwnerRef?.[segment.meta.ownerRef] ?? overlay?.energizedByTestId[testId]
+  // ADAPTER-BUSREF: dla szyn GPZ kompozytowych dopasowanie idzie po KANONICZNYM
+  // `busResultRef` (jedno źródło prawdy z warstwą wynikową — `resultRefForSegment`);
+  // dla pozostałych segmentów to nadal `ownerRef` (bez zmiany zachowania).
+  const segResultRef = resultRefForSegment(segment.meta);
+  const energizedSeg = segResultRef != null
+    ? overlay?.energizedByOwnerRef?.[segResultRef] ?? overlay?.energizedByTestId[testId]
     : overlay?.energizedByTestId[testId];
   // SCHEMAT-10 S3 (V12K-135, D8): brak nakładki ⇒ kolor BAZOWY z tabeli §3
   // (napięcie: 110 biały/SN zielony/nN niebieski — `baseSegmentStrokeColor`),
@@ -388,8 +393,8 @@ function SceneSegmentNode(props: {
   // nakładki (zero fizyki w kanwie), kanał diagnostyczny/E2E jak
   // `data-owner-ref`. Brak wpisu nakładki = brak atrybutu (uczciwe „nie
   // wiem", nie fabrykowany stan).
-  const flowSeg = segment.meta?.ownerRef != null
-    ? overlay?.flowByOwnerRef?.[segment.meta.ownerRef]
+  const flowSeg = segResultRef != null
+    ? overlay?.flowByOwnerRef?.[segResultRef]
     : undefined;
   const segmentClickMeta: SldElementClickMeta = { ownerRef: segment.meta?.ownerRef, elementKind: segment.meta?.elementKind };
   // F13.2 (spec §22.1): mostki liczone deterministycznie z przecięć sceny —

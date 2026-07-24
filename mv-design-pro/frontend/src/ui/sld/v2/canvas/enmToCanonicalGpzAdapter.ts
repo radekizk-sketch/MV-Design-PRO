@@ -171,6 +171,13 @@ export function buildCanonicalGpzProps(
       (substation.gpz_hv_sections ?? []).length === 0
         ? deriveHvSystemSource(substation, enm.buses ?? [], allTransformers, enm.sources ?? [])
         : null,
+    // ADAPTER-BUSREF: kanoniczny Bus ref szyny WN GPZ = jedyna szyna
+    // `voltage_kv > 60` w `Substation.bus_refs` (TA SAMA derywacja co
+    // `deriveHvSystemSource` pkt 2). `null` gdy brak szyny WN (uczciwy brak).
+    hvBusRef:
+      (enm.buses ?? []).find(
+        (b) => substation.bus_refs?.includes(b.ref_id) && b.voltage_kv > 60,
+      )?.ref_id ?? null,
   };
 }
 
@@ -389,6 +396,9 @@ function buildLvSections(
       order: 1,
       label: 'S1',
       busVoltageKv: defaultBus?.voltage_kv ?? 15,
+      // ADAPTER-BUSREF: kanoniczny Bus ref sekcji syntetycznej = szyna SN GPZ
+      // (ta sama, z której czytamy `busVoltageKv`). `null` gdy brak.
+      busRef: defaultBus?.ref_id ?? null,
       bays: lvBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
       busVtMeasurements: busVtMeasurementsOf(defaultBus?.ref_id, protectionCtx),
     }];
@@ -407,6 +417,9 @@ function buildLvSections(
         order: sec.order,
         label: sec.name ?? `S${idx + 1}`,
         busVoltageKv: bus?.voltage_kv ?? 15,
+        // ADAPTER-BUSREF: kanoniczny Bus ref sekcji WPROST ze snapshotu
+        // (`gpz_sections[].bus_ref`) — prymat danych, zero parsowania refów sceny.
+        busRef: sec.bus_ref ?? null,
         bays: sectionBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
         busVtMeasurements: busVtMeasurementsOf(sec.bus_ref, protectionCtx),
       };

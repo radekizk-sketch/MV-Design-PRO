@@ -118,6 +118,14 @@ export interface GpzElementMeta {
    *  `buildScene.ts` `gpzSegmentToPreview` (mapowanie na `PreviewSegmentKind`)
    *  — `undefined` dla segmentów, które NIE są szyną sekcji SN GPZ. */
   readonly busbarKind?: 'busGpz';
+  /** ADAPTER-BUSREF (dług W4/R2/V12K-163): KANONICZNY ref Bus ENM tej szyny —
+   *  `CanonicalGpzSection.busRef` (sekcja SN) lub `GpzCanonicalRendererProps.
+   *  hvBusRef` (szyna WN). Metadana ADDYTYWNA: `ownerRef` segmentu sceny
+   *  (`${sectionId}#bus-primary` itp.) pozostaje NIETKNIĘTY (determinizm/goldeny),
+   *  a warstwa wynikowa/energizacja używa TEGO refu do dopasowania klucza
+   *  `payload.elements` (= `Bus.ref_id`). `undefined` gdy snapshot nie niesie
+   *  bus_ref (uczciwy brak — szyna bez etykiety, jak dotąd). */
+  readonly busResultRef?: string;
   /** Odpowiednik `data-terminates-at` w v2 — gdzie faktycznie kończy się
    *  odcinek (aparat pola, nie sąsiedni element elektryczny). */
   readonly terminatesAt?: string;
@@ -943,12 +951,21 @@ export function composeGpz(
     const busLeftX = layout.x;
     const busRightX = layout.x + layout.width;
 
+    // ADAPTER-BUSREF: kanoniczny Bus ref sekcji ze snapshotu (adapter
+    // `enmToCanonicalGpzAdapter.ts`). Wspólny dla szyny głównej/rezerwowej/
+    // domknięcia ringu — snapshot niesie JEDEN `bus_ref` na sekcję (prymat
+    // danych), więc wszystkie reprezentacje wizualne tej samej szyny fizycznej
+    // energizują się razem; etykieta wynikowa jest DEDUPLIKOWANA po tym refie
+    // w warstwie wynikowej (dokładnie jedna U/δ na sekcję, kotwica na szynie
+    // głównej — patrz `canvas/resultLabels.ts`).
+    const sectionBusResultRef = layout.section.busRef ?? undefined;
     const primaryBusMeta: GpzElementMeta = {
       parityKeys: ['gpz.bus.sn'],
       testId: `gpz-canonical-section-${layout.section.sectionId}-bus`,
       sectionId: layout.section.sectionId,
       busbarRole: 'primary',
       busbarKind: 'busGpz',
+      busResultRef: sectionBusResultRef,
     };
     tag(primaryBusMeta.parityKeys);
     segments.push({ ownerRef: `${layout.section.sectionId}#bus-primary`, points: [{ x: busLeftX, y: snBusY }, { x: busRightX, y: snBusY }], meta: primaryBusMeta });
@@ -965,6 +982,7 @@ export function composeGpz(
         busbarRole: 'reserve',
         dashed: topology === 'double',
         busbarKind: 'busGpz',
+        busResultRef: sectionBusResultRef,
       };
       tag(reserveMeta.parityKeys);
       segments.push({ ownerRef: `${layout.section.sectionId}#bus-reserve`, points: [{ x: busLeftX, y: reserveY }, { x: busRightX, y: reserveY }], meta: reserveMeta });
@@ -976,6 +994,7 @@ export function composeGpz(
           sectionId: layout.section.sectionId,
           ringClosure: true,
           busbarKind: 'busGpz',
+          busResultRef: sectionBusResultRef,
         };
         tag(closureMeta.parityKeys);
         segments.push({ ownerRef: `${layout.section.sectionId}#ring-closure`, points: [{ x: busRightX, y: reserveY }, { x: busRightX, y: snBusY }], meta: closureMeta });
@@ -1527,6 +1546,8 @@ export function composeGpz(
       parityKeys: ['gpz.bus.hv'],
       testId: 'gpz-canonical-hv-bus',
       busbarRole: 'primary',
+      // ADAPTER-BUSREF: kanoniczny Bus ref szyny WN ze snapshotu (adapter).
+      busResultRef: props.hvBusRef ?? undefined,
     };
     tag(hvBusMeta.parityKeys);
     segments.push({ ownerRef: `${props.id}#hv-bus`, points: [{ x: busLeft, y: hvBusY }, { x: busRight, y: hvBusY }], meta: hvBusMeta });

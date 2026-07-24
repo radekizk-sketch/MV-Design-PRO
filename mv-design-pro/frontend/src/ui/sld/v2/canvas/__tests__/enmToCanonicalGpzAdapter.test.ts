@@ -833,3 +833,64 @@ describe('buildCanonicalGpzProps - meta.field_specs', () => {
     expect(props.sections[1].bays.map((bay) => bay.bayRef)).toEqual(['field-02']);
   });
 });
+
+/* ---------------------------------------------------------------------------
+   ADAPTER-BUSREF (dług W4/R2/V12K-163): kanoniczny Bus ref sekcji GPZ + szyny WN
+   niesiony ze snapshotu (prymat danych, zero parsowania refów sceny).
+   --------------------------------------------------------------------------- */
+
+describe('buildCanonicalGpzProps — ADAPTER-BUSREF (bus_ref sekcji + hvBusRef)', () => {
+  it('GPZ 2 sekcje + sprzęgło ⇒ każda sekcja niesie KANONICZNY bus_ref ze snapshotu', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        bus_refs: ['bus-sn-1', 'bus-sn-2', 'bus-110'],
+        gpz_sections: [
+          { section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-sn-1' },
+          { section_id: 's2', order: 2, name: 'S2', bus_ref: 'bus-sn-2' },
+        ],
+      })],
+      bays: [
+        bay('bay-1', 'OUT', 'g', 'bus-sn-1', { gpz_section_id: 's1' }),
+        bay('bay-2', 'OUT', 'g', 'bus-sn-2', { gpz_section_id: 's2' }),
+        bay('cpl', 'COUPLER', 'g', 'bus-sn-1', { gpz_section_id: 's1' }),
+      ],
+      buses: [bus('bus-sn-1', 15), bus('bus-sn-2', 15), bus('bus-110', 110)],
+    };
+
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+
+    const byId = new Map(props.sections.map((s) => [s.sectionId, s]));
+    // Prymat danych: bus_ref DOKŁADNIE ze snapshotu, nie z parsowania sectionId.
+    expect(byId.get('s1')?.busRef).toBe('bus-sn-1');
+    expect(byId.get('s2')?.busRef).toBe('bus-sn-2');
+    // Szyna WN = jedyna szyna voltage_kv > 60 w bus_refs.
+    expect(props.hvBusRef).toBe('bus-110');
+  });
+
+  it('Sekcja bez bus_ref w snapshocie ⇒ busRef=null (uczciwy brak, zero fabrykacji)', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', {
+        bus_refs: ['bus-15'],
+        gpz_sections: [{ section_id: 's1', order: 1, name: 'S1' } as never],
+      })],
+      bays: [bay('bay-1', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
+      buses: [bus('bus-15', 15)],
+    };
+
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.sections[0].busRef ?? null).toBeNull();
+  });
+
+  it('Brak szyny WN (>60 kV) ⇒ hvBusRef=null', () => {
+    const enm: EnmFragment = {
+      ...emptyEnm(),
+      substations: [gpz('g', { bus_refs: ['bus-15'], gpz_sections: [{ section_id: 's1', order: 1, name: 'S1', bus_ref: 'bus-15' }] })],
+      bays: [bay('bay-1', 'OUT', 'g', 'bus-15', { gpz_section_id: 's1' })],
+      buses: [bus('bus-15', 15)],
+    };
+    const props = buildCanonicalGpzProps(enm, 'g', { x: 0, y: 0 });
+    expect(props.hvBusRef ?? null).toBeNull();
+  });
+});

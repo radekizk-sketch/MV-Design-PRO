@@ -25,6 +25,7 @@ import { buildSceneV3 } from '../../scene/buildScene';
 import {
   buildResultLabelsFromScene,
   isResultLabelsEmpty,
+  resultRefForSegment,
   singleHopSegmentRefs,
 } from '../resultLabels';
 
@@ -154,7 +155,11 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     // Węzeł-szyna: ownerRef z realnego segmentu bus sceny.
     const busSeg = scene.segments.find((s) => s.meta?.elementKind === 'bus' && s.meta?.ownerRef);
     if (!busSeg?.meta?.ownerRef) throw new Error('brak szyny w scenie');
-    const busRef = busSeg.meta.ownerRef;
+    // ADAPTER-BUSREF: wpis kluczowany refem SCENY (kotwica), ale payload
+    // dopasowywany po KANONICZNYM refie (`resultRefForSegment` — busResultRef
+    // dla szyn GPZ kompozytowych, ownerRef dla szyn stacji).
+    const busOwnerRef = busSeg.meta.ownerRef;
+    const busRef = resultRefForSegment(busSeg.meta)!;
     // ikss_ka=12.5 (kA) i ith_a=116910 (A) — źródło test_result_contract_v1.py.
     const payload = payloadOf(
       {
@@ -167,8 +172,8 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     );
     const entries = buildResultLabelsFromScene(scene, payload, singleHop);
     // 12.5 kA → „12,5 kA"; 116910 A = 116,91 kA → „116,9 kA".
-    expect(entries[busRef]).toEqual({
-      ownerRef: busRef,
+    expect(entries[busOwnerRef]).toEqual({
+      ownerRef: busOwnerRef,
       kind: 'bus',
       severity: 'INFO',
       lines: [
@@ -180,18 +185,20 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
 
   it('§8 węzeł (SC) wkład <0,1 kA prezentowany w amperach (nie „0,0 kA")', () => {
     const busSeg = scene.segments.find((s) => s.meta?.elementKind === 'bus' && s.meta?.ownerRef);
-    const busRef = busSeg!.meta!.ownerRef!;
+    const busOwnerRef = busSeg!.meta!.ownerRef!;
+    const busRef = resultRefForSegment(busSeg!.meta)!;
     const payload = payloadOf(
       { [busRef]: el(busRef, 'bus', { IK_3F_A: { code: 'IK_3F_A', value: 24, unit: 'A', format_hint: 'fixed0' } }) },
       'sc_3f',
     );
     const entries = buildResultLabelsFromScene(scene, payload, singleHop);
-    expect(entries[busRef]?.lines).toEqual([{ prefix: 'Ik″', text: '24 A' }]);
+    expect(entries[busOwnerRef]?.lines).toEqual([{ prefix: 'Ik″', text: '24 A' }]);
   });
 
   it('węzeł (LF): U_kV wygrywa nad V_PU (jedna linia napięcia); kąt δ osobno', () => {
     const busSeg = scene.segments.find((s) => s.meta?.elementKind === 'bus' && s.meta?.ownerRef);
-    const busRef = busSeg!.meta!.ownerRef!;
+    const busOwnerRef = busSeg!.meta!.ownerRef!;
+    const busRef = resultRefForSegment(busSeg!.meta)!;
     const payload = payloadOf({
       [busRef]: el(busRef, 'bus', {
         U_kV: { code: 'U_kV', value: 15.02, unit: 'kV', format_hint: 'fixed2' },
@@ -201,7 +208,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     });
     const entries = buildResultLabelsFromScene(scene, payload, singleHop);
     // U_kV present ⇒ V_PU pominięte (skipIfAnyPresent), kąt jako druga linia.
-    expect(entries[busRef]?.lines).toEqual([
+    expect(entries[busOwnerRef]?.lines).toEqual([
       { prefix: 'U', text: '15,02 kV' },
       { prefix: 'δ', text: '-1,40 °' },
     ]);
@@ -264,7 +271,9 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     // U_kV nie należy do szablonu ZWARCIOWEGO szyny ⇒ pod analysis_type=sc_3f
     // szyna nie dostaje etykiety napięcia (rejestr rozdziela treść per analiza).
     const busSeg = scene.segments.find((s) => s.meta?.elementKind === 'bus' && s.meta?.ownerRef);
-    const busRef = busSeg!.meta!.ownerRef!;
+    // Payload kluczowany zresolwowanym refem — pustka MUSI wynikać z bramki
+    // szablonu (U_kV spoza sc_3f), nie z niedopasowania refu.
+    const busRef = resultRefForSegment(busSeg!.meta)!;
     const payload = payloadOf(
       { [busRef]: el(busRef, 'bus', { U_kV: { code: 'U_kV', value: 15, unit: 'kV', format_hint: 'fixed2' } }) },
       'sc_3f',
@@ -334,5 +343,58 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     const a = buildResultLabelsFromScene(scene, payload, singleHop);
     const b = buildResultLabelsFromScene(scene, payload, singleHop);
     expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+  });
+});
+
+/* ---------------------------------------------------------------------------
+   ADAPTER-BUSREF (dług W4/R2/V12K-163 DOMKNIĘTY): szyny GPZ o refie
+   KOMPOZYTOWYM dostają wyniki przez KANONICZNY bus_ref ze snapshotu.
+   --------------------------------------------------------------------------- */
+
+describe('resultLabels.ts — ADAPTER-BUSREF (szyny GPZ kompozytowe ↔ wyniki)', () => {
+  // Szyna GPZ = jedyny segment sceny z addytywnym `busResultRef` (kompozytowy
+  // ownerRef `#bus-primary`/`#hv-bus`; realny bus_ref niesiony osobno).
+  const gpzBusSeg = scene.segments.find(
+    (s) => s.meta?.elementKind === 'bus' && s.meta?.ownerRef && s.meta?.busResultRef,
+  );
+
+  it('scena niesie szynę GPZ z kompozytowym ownerRef ORAZ kanonicznym busResultRef (metadana addytywna)', () => {
+    expect(gpzBusSeg).toBeDefined();
+    // ownerRef pozostaje kompozytem sceny (tożsamość/kotwica NIETKNIĘTA)…
+    expect(gpzBusSeg!.meta!.ownerRef).toContain('#');
+    // …a busResultRef to realny ref ENM (bez sufiksu kompozytu).
+    expect(gpzBusSeg!.meta!.busResultRef).toBeTruthy();
+    expect(gpzBusSeg!.meta!.busResultRef).not.toContain('#');
+    expect(gpzBusSeg!.meta!.busResultRef).not.toBe(gpzBusSeg!.meta!.ownerRef);
+  });
+
+  it('payload kluczowany KANONICZNYM bus_ref ⇒ szyna GPZ dostaje U/δ (wpis kotwiczony po ownerRef sceny)', () => {
+    const ownerRef = gpzBusSeg!.meta!.ownerRef!;
+    const canonicalRef = gpzBusSeg!.meta!.busResultRef!;
+    const payload = payloadOf({
+      [canonicalRef]: el(canonicalRef, 'bus', {
+        U_kV: { code: 'U_kV', value: 15.31, unit: 'kV', format_hint: 'fixed2' },
+        ANGLE_DEG: { code: 'ANGLE_DEG', value: -0.8, unit: '°', format_hint: 'fixed2' },
+      }),
+    });
+    const entries = buildResultLabelsFromScene(scene, payload, singleHop);
+    expect(entries[ownerRef]).toEqual({
+      ownerRef,
+      kind: 'bus',
+      severity: 'INFO',
+      lines: [
+        { prefix: 'U', text: '15,31 kV' },
+        { prefix: 'δ', text: '-0,80 °' },
+      ],
+    });
+  });
+
+  it('payload kluczowany KOMPOZYTOWYM ownerRef (stara luka) ⇒ BRAK wpisu — dowód, że mapuje kanoniczny ref', () => {
+    const ownerRef = gpzBusSeg!.meta!.ownerRef!;
+    const payload = payloadOf({
+      [ownerRef]: el(ownerRef, 'bus', { U_kV: { code: 'U_kV', value: 15, unit: 'kV', format_hint: 'fixed2' } }),
+    });
+    const entries = buildResultLabelsFromScene(scene, payload, singleHop);
+    expect(entries[ownerRef]).toBeUndefined();
   });
 });

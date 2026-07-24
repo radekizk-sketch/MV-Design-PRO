@@ -1928,6 +1928,11 @@ function gpzSegmentToPreview(seg: ComposedGpzSegment): PreviewSegment {
       // `${transformerRef}#hv-connector` itd., TA SAMA konwencja co segmenty
       // stacji) — przenoszony wprost, zero re-derywacji.
       ownerRef: seg.ownerRef,
+      // ADAPTER-BUSREF (dług W4/R2/V12K-163): kanoniczny Bus ref szyny GPZ
+      // przenoszony WPROST z `GpzElementMeta` (compose/gpz.ts, źródło:
+      // snapshot ENM przez adapter) — `undefined` dla segmentów nie-szynowych.
+      // Addytywne: `ownerRef` (kompozyt sceny) NIETKNIĘTY, geometria bez zmian.
+      busResultRef: seg.meta.busResultRef,
       elementKind: segmentElementKind(kind),
     },
   };

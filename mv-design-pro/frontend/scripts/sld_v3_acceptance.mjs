@@ -161,8 +161,17 @@ function buildFullResultPayload(scene, singleHop) {
   for (const s of scene.segments) {
     const k = s.meta?.elementKind;
     const ref = s.meta?.ownerRef;
-    if (k === 'bus' && ref && !elements[ref]) {
-      elements[ref] = { ref_id: ref, kind: 'bus', badges: [], severity: 'INFO', metrics: metricsForKind('bus') };
+    if (k === 'bus') {
+      // ADAPTER-BUSREF: payload backendu jest kluczowany KANONICZNYM `Bus.ref_id`
+      // — dla szyn GPZ kompozytowych używamy `busResultRef` (jak realny backend),
+      // dla szyn stacji `ownerRef` (który JUŻ jest realnym refem). Tożsame z
+      // `resultRefForSegment` w warstwie wynikowej — sonda ćwiczy realną ścieżkę
+      // mapowania, nie fabrykuje klucza kompozytowego.
+      const busRef = s.meta?.busResultRef ?? ref;
+      if (busRef && !elements[busRef]) {
+        elements[busRef] = { ref_id: busRef, kind: 'bus', badges: [], severity: 'INFO', metrics: metricsForKind('bus') };
+      }
+      continue;
     }
     if (k === 'segment' && ref && !ref.includes('#') && singleHop.has(ref) && !elements[ref]) {
       elements[ref] = { ref_id: ref, kind: 'branch', badges: [], severity: 'INFO', metrics: metricsForKind('branch') };

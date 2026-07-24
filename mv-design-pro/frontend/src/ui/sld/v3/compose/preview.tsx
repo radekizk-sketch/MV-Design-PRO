@@ -139,6 +139,16 @@ export interface PreviewElementMeta {
    * odpowiadającego `cableRun.segmentPaths`).
    */
   readonly ownerRef?: string;
+  /** ADAPTER-BUSREF (dług W4/R2/V12K-163): KANONICZNY ref Bus ENM dla szyn GPZ
+   *  o refie KOMPOZYTOWYM (`${sectionId}#bus-primary`/`#bus-reserve`/
+   *  `#ring-closure`, `${id}#hv-bus`). Metadana ADDYTYWNA — `ownerRef` (wyżej)
+   *  pozostaje kompozytem sceny (tożsamość/selekcja/kotwica), a warstwa
+   *  wynikowa i energizacja dopasowują klucz `payload.elements` (= `Bus.ref_id`)
+   *  po TYM refie. `undefined` dla WSZYSTKICH elementów, których `ownerRef` jest
+   *  już realnym refem ENM (szyny stacji, przęsła, TR/źródła) — bez zmiany
+   *  zachowania. Zapis: `compose/gpz.ts` (z `CanonicalGpzSection.busRef`/
+   *  `hvBusRef`), przenoszony przez `scene/buildScene.ts::gpzSegmentToPreview`. */
+  readonly busResultRef?: string;
   /** F8b-1: kategoria elementu — patrz `PreviewElementKind`. */
   readonly elementKind?: PreviewElementKind;
   /** F9.3 (SLD_CAD_SPEC_V3 §12.1): pochodzenie stosu aparatów pola —

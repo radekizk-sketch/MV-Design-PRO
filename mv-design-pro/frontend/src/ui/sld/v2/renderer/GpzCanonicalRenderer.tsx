@@ -93,6 +93,14 @@ export interface CanonicalGpzBusVt {
 export interface CanonicalGpzSection {
   /** Stable id z ENM (`Substation.gpz_sections[].section_id`). */
   readonly sectionId: string;
+  /** ADAPTER-BUSREF (dług W4/R2/V12K-163): KANONICZNY ref Bus ENM tej sekcji
+   *  (`Substation.gpz_sections[].bus_ref` — TA SAMA szyna, z której adapter
+   *  czyta `busVoltageKv`). Prymat danych: NIE parsujemy refów sceny, mapowanie
+   *  bierzemy WPROST ze snapshotu. Metadana WYŁĄCZNIE do powiązania szyny
+   *  sekcji GPZ z wynikami/energizacją (klucz `payload.elements` = `Bus.ref_id`)
+   *  — `sectionId` (identyfikator sceny) pozostaje NIETKNIĘTY. `null`/brak gdy
+   *  snapshot nie niesie `bus_ref` (uczciwy brak, zero fabrykacji). */
+  readonly busRef?: string | null;
   /** Order w rozdzielni (1-N). */
   readonly order: number;
   /** Etykieta widoczna ("S1"/"S2"/...). */
@@ -300,6 +308,11 @@ export interface GpzCanonicalRendererProps {
    *  KTÓRYKOLWIEK z trzech rekordów (TR WN/SN, szyna WN, `Source` na szynie
    *  GPZ) nieobecny (uczciwy brak, adapter NIE zgaduje). */
   readonly hvSystemSource?: CanonicalGpzHvSystemSource | null;
+  /** ADAPTER-BUSREF (dług W4/R2/V12K-163): KANONICZNY ref Bus ENM szyny WN
+   *  (jedna szyna GPZ z `voltage_kv > 60` w `Substation.bus_refs`). Metadana do
+   *  powiązania rysowanej szyny WN (`${id}#hv-bus`) z wynikami/energizacją —
+   *  identyfikator sceny NIETKNIĘTY. `null`/brak gdy snapshot nie ma szyny WN. */
+  readonly hvBusRef?: string | null;
   /** Transformatory NA OSI (T1...Tn). */
   readonly transformers: readonly CanonicalGpzTransformer[];
   /** LV side: ≥1 sekcja 15 kV. */

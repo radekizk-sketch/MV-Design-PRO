@@ -1076,3 +1076,74 @@ describe('V3 compose/gpz — F11.1: rejestr device-ref (tor wyzwalania + linia p
     expect(noDirectTransformerBusTies(composition)).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// ADAPTER-BUSREF (dług W4/R2/V12K-163): segmenty szyn GPZ niosą addytywny
+// `busResultRef` = KANONICZNY Bus ref z propsów (snapshot ENM przez adapter).
+// Metadana addytywna: `ownerRef` (kompozyt sceny) NIETKNIĘTY.
+// ---------------------------------------------------------------------------
+
+describe('V3 compose/gpz — ADAPTER-BUSREF (busResultRef szyn sekcji + szyny WN)', () => {
+  function busSegments(composition: GpzComposition, sectionId: string) {
+    return composition.segments.filter(
+      (s) => s.ownerRef.startsWith(`${sectionId}#bus`) || s.ownerRef === `${sectionId}#ring-closure`,
+    );
+  }
+
+  it('sekcja single z busRef ⇒ szyna główna niesie busResultRef = kanoniczny ref (ownerRef pozostaje kompozytem)', () => {
+    const composition = composeGpz(
+      baseProps({
+        sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1')], busRef: 'bus/real/sn-1' }],
+      }),
+      ORIGIN,
+    );
+    const primary = composition.segments.find((s) => s.ownerRef === 'sec-1#bus-primary');
+    expect(primary).toBeDefined();
+    expect(primary!.ownerRef).toBe('sec-1#bus-primary'); // identyfikator sceny nietknięty
+    expect(primary!.meta.busResultRef).toBe('bus/real/sn-1'); // kanoniczny ref addytywnie
+  });
+
+  it('sekcja double ⇒ szyna główna I rezerwowa współdzielą ten sam kanoniczny busResultRef (jedna szyna fizyczna)', () => {
+    const composition = composeGpz(
+      baseProps({
+        sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1')], busbarTopology: 'double', busRef: 'bus/real/sn-1' }],
+      }),
+      ORIGIN,
+    );
+    const refs = busSegments(composition, 'sec-1').map((s) => s.meta.busResultRef);
+    expect(refs.length).toBeGreaterThanOrEqual(2);
+    expect(refs.every((r) => r === 'bus/real/sn-1')).toBe(true);
+  });
+
+  it('sekcja ring ⇒ szyna główna, rezerwowa I domknięcie ringu niosą ten sam busResultRef', () => {
+    const composition = composeGpz(
+      baseProps({
+        sections: [{ sectionId: 'sec-1', order: 1, label: 'S1', busVoltageKv: 15, bays: [lineBay('b-1')], busbarTopology: 'ring', busRef: 'bus/real/sn-1' }],
+      }),
+      ORIGIN,
+    );
+    const closure = composition.segments.find((s) => s.ownerRef === 'sec-1#ring-closure');
+    expect(closure!.meta.busResultRef).toBe('bus/real/sn-1');
+    expect(busSegments(composition, 'sec-1').every((s) => s.meta.busResultRef === 'bus/real/sn-1')).toBe(true);
+  });
+
+  it('NO-OP: sekcja BEZ busRef ⇒ busResultRef undefined (uczciwy brak, zero fabrykacji)', () => {
+    const composition = composeGpz(baseProps(), ORIGIN);
+    const primary = composition.segments.find((s) => s.ownerRef === 'sec-1#bus-primary');
+    expect(primary).toBeDefined();
+    expect(primary!.meta.busResultRef).toBeUndefined();
+  });
+
+  it('szyna WN niesie busResultRef = props.hvBusRef (gdy obecne)', () => {
+    const composition = composeGpz(
+      baseProps({
+        hvBusRef: 'bus/real/hv-110',
+        hvSections: [{ sectionId: 'hv-1', order: 1, label: '110 kV', busVoltageKv: 110, bays: [lineBay('hvb-1', { fieldRole: 'LINE_IN' })] }],
+      }),
+      ORIGIN,
+    );
+    const hvBus = composition.segments.find((s) => s.ownerRef === 'gpz-test#hv-bus');
+    expect(hvBus).toBeDefined();
+    expect(hvBus!.meta.busResultRef).toBe('bus/real/hv-110');
+  });
+});

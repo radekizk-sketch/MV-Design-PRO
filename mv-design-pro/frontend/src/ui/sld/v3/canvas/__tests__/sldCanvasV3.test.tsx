@@ -34,7 +34,7 @@ import {
   formatFlowLabelPl,
   formatOltcBadgeLabel,
 } from '../SldCanvasV3';
-import { buildResultLabelsFromScene } from '../resultLabels';
+import { buildResultLabelsFromScene, resultRefForSegment } from '../resultLabels';
 import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import {
   singleHopSegmentRefs,
@@ -1361,7 +1361,13 @@ describe('SldCanvasV3 — R2 staleness + agregacja warstwy wynikowej', () => {
     for (const s of sceneL2.segments) {
       const k = s.meta?.elementKind;
       const ref = s.meta?.ownerRef;
-      if (k === 'bus' && ref && !elements[ref]) elements[ref] = el(ref, 'bus', { U_kV: { code: 'U_kV', value: 15.02, unit: 'kV', format_hint: 'fixed2' } });
+      if (k === 'bus') {
+        // ADAPTER-BUSREF: payload backendu kluczowany KANONICZNYM Bus.ref_id —
+        // szyny GPZ kompozytowe po `busResultRef`, szyny stacji po ownerRef.
+        const busRef = resultRefForSegment(s.meta);
+        if (busRef && !elements[busRef]) elements[busRef] = el(busRef, 'bus', { U_kV: { code: 'U_kV', value: 15.02, unit: 'kV', format_hint: 'fixed2' } });
+        continue;
+      }
       if (k === 'segment' && ref && !ref.includes('#') && singleHop.has(ref) && !elements[ref]) {
         elements[ref] = el(ref, 'branch', { LOADING_PCT: { code: 'LOADING_PCT', value: 72.5, unit: '%', format_hint: 'fixed1' } });
       }
