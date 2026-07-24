@@ -431,7 +431,8 @@ export interface DerBlockTransformerSpec {
   secondary_voltage_kv: number | null;
   uk_percent: number | null;
   vector_group: string | null;
-  catalog_ref: string | null;
+  /** @deprecated Pole kompatybilności; kanonicznie używaj catalog_binding. */
+  catalog_ref?: string | null;
   catalog_binding: CatalogBindingPayload | null;
   // D1 wymaganie 5: dopuszczalne obciążenie (przeciążalność) TR [pu]; brak → backend 1,0.
   loadability_pu?: number | null;
