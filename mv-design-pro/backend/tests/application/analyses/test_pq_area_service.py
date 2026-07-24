@@ -259,9 +259,17 @@ def test_voltage_binding_on_high_edge_weak_network() -> None:
 
 def test_loading_binding_on_golden() -> None:
     """Granica obciążeniowa: na golden network przy dużym P skrajny punkt Q jest
-    ograniczony obciążeniem gałęzi/transformatora (nie napięciem)."""
+    ograniczony obciążeniem gałęzi/transformatora (nie napięciem).
+
+    V12K-187: zasięg po P zwiększony 8 → 20. Do naprawy bazy napięciowej Y-bus
+    rozpływu impedancje gałęzi spoza poziomu slacka były zaniżone o (U/U_slack)²,
+    więc prądy w sieci wzorcowej wychodziły niefizyczne i granica obciążeniowa
+    pojawiała się już przy 8 krokach. Przy poprawnych impedancjach sieć jest
+    realnie mniej obciążona i trzeba sięgnąć dalej po P, żeby to OBCIĄŻENIE — a
+    nie napięcie — stało się wiążące. Intencja testu bez zmian.
+    """
     run = _golden_pf_run()
-    view = build_pq_area_view(run, bus_ref="bus_sn_c", max_steps_p=8, max_steps_q=10)
+    view = build_pq_area_view(run, bus_ref="bus_sn_c", max_steps_p=20, max_steps_q=10)
     bindings = [
         b
         for v in view["vertices"]

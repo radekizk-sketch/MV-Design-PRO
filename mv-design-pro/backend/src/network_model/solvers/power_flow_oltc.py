@@ -139,6 +139,21 @@ def solve_with_oltc(
         "converged": False,
     }
 
+    # V12K-187 — blokada oscylacji (hunting) regulatora zaczepowego.
+    # Regulator jest DYSKRETNY: jeden stopień zmienia napięcie skokowo. Gdy ten
+    # skok jest większy niż strefa nieczułości, żadna pozycja nie mieści się w
+    # paśmie i regulator w nieskończoność przerzuca się między dwoma sąsiednimi
+    # zaczepami — dokładnie jak rzeczywisty regulator bez blokady antyhuntingowej.
+    # Do V12K-187 nie było tego widać, bo Y-bus rozpływu zaniżała impedancje sieci
+    # o (U/U_slack)², więc stopień zaczepu ledwo ruszał napięciem i pętla zawsze
+    # „zbiegała". Po naprawie bazy napięciowej zjawisko się ujawniło.
+    # Rozwiązanie (standard inżynierski): pamiętamy odwiedzone pozycje wraz z
+    # odchyłką |U − U_zad|; próba powrotu na pozycję już odwiedzoną oznacza cykl —
+    # regulator zatrzymuje się wtedy na zaczepie o NAJMNIEJSZEJ odchyłce spośród
+    # odwiedzonych (deterministycznie: przy równej odchyłce niższy numer pozycji).
+    visited: dict[str, dict[int, float]] = {reg.id: {} for reg in regulators}
+    frozen: set[str] = set()
+
     for iteration in range(max_iterations):
         any_moved = False
         decisions: list[dict[str, Any]] = []
@@ -166,6 +181,15 @@ def solve_with_oltc(
                 decisions.append(decision)
                 continue
 
+            if reg.id in frozen:
+                decision["position_after"] = tc.current_position
+                decision["reason"] = "oscillation_stop"
+                decisions.append(decision)
+                continue
+
+            # Odchyłka bieżącej pozycji trafia do pamięci odwiedzonych zaczepów.
+            visited[reg.id][tc.current_position] = abs(u_reg_kv - setpoint)
+
             half_band = (tc.deadband_kv or 0.0) / 2.0
             if abs(u_reg_kv - setpoint) <= half_band:
                 decision["position_after"] = tc.current_position
@@ -184,6 +208,22 @@ def solve_with_oltc(
                 decisions.append(decision)
                 continue
 
+            if clamped in visited[reg.id]:
+                # Cykl: ta pozycja była już badana. Regulator dyskretny nie trafi
+                # w pasmo — wybieramy zaczep o najmniejszej odchyłce od zadanej.
+                best = min(visited[reg.id].items(), key=lambda item: (item[1], item[0]))[0]
+                frozen.add(reg.id)
+                decision["position_after"] = best
+                decision["reason"] = "oscillation_stop"
+                decision["oscillation_candidates"] = {
+                    str(pos): round(err, 9) for pos, err in sorted(visited[reg.id].items())
+                }
+                decisions.append(decision)
+                if best != tc.current_position:
+                    reg.tap_changer = replace(tc, current_position=best)
+                    any_moved = True
+                continue
+
             reg.tap_changer = replace(tc, current_position=clamped)
             decision["position_after"] = clamped
             decision["reason"] = "step_up" if direction > 0 else "step_down"
@@ -199,13 +239,18 @@ def solve_with_oltc(
         solution = solve_once(pf_input)
 
     # Switch count per regulator = number of tap moves across the loop (owner §7/§8).
+    # V12K-187: liczymy KAŻDĄ faktyczną zmianę pozycji, nie tylko kroki regulacyjne —
+    # powrót na lepszy zaczep przy zatrzymaniu oscylacji też przestawia przełącznik i
+    # też zużywa jego resurs. Licznik ma odpowiadać liczbie łączeń, nie liczbie decyzji
+    # o kierunku (przy monotonicznym dojściu obie wielkości są równe, jak dotąd).
     switch_counts: dict[str, int] = {reg.id: 0 for reg in regulators}
     for it in trace["iterations"]:
         for decision in it["decisions"]:
-            if decision["reason"] in ("step_up", "step_down"):
-                switch_counts[decision["branch_id"]] = (
-                    switch_counts.get(decision["branch_id"], 0) + 1
-                )
+            before = decision.get("position_before")
+            after = decision.get("position_after")
+            if before is None or after is None or before == after:
+                continue
+            switch_counts[decision["branch_id"]] = switch_counts.get(decision["branch_id"], 0) + 1
 
     trace["iterations_count"] = len(trace["iterations"])
     trace["switch_counts"] = switch_counts

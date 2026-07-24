@@ -285,11 +285,11 @@ def build_ybus_pu(
     node_ids_sorted = sorted(graph.nodes.keys())
     node_id_to_index_full = {node_id: idx for idx, node_id in enumerate(node_ids_sorted)}
 
-    ybus_ohm, applied_taps, applied_phase_shifts = _build_ybus_ohm(
-        graph, node_id_to_index_full, tap_ratios
-    )
-
     slack_voltage_kv = graph.nodes[slack_node_id].voltage_level
+
+    ybus_ohm, applied_taps, applied_phase_shifts = _build_ybus_ohm(
+        graph, node_id_to_index_full, tap_ratios, slack_voltage_kv
+    )
     ybus_note = ""
     ybus_source = "network_model.solvers.power_flow_newton_internal.build_ybus_pu"
 
@@ -811,10 +811,13 @@ def compute_branch_flows(
         if branch.to_node_id not in node_voltage:
             continue
 
-        tap_ratio = 1.0
-        if tap_ratios and branch_id in tap_ratios:
-            tap_ratio = tap_ratios[branch_id]
-        y_series, y_shunt = _branch_admittance_pu(branch, z_base)
+        # V12K-187: przekładnia i baza napięciowa TAK SAMO jak w Y-bus — inaczej
+        # przepływy nie są spójne z rozwiązanymi napięciami (patrz
+        # `_resolve_tap_ratio` i `_base_scale`).
+        tap_ratio, _tap_source = _resolve_tap_ratio(graph, branch, tap_ratios or {})
+        y_series, y_shunt = _branch_admittance_pu(
+            branch, z_base * _base_scale(graph, branch.to_node_id, slack_voltage_kv)
+        )
         if y_series is None:
             continue
 
@@ -876,8 +879,94 @@ def _find_duplicates(values: list[str]) -> set[str]:
     return duplicates
 
 
+def _base_scale(graph: NetworkGraph, node_id: str, reference_kv: float) -> float:
+    """Iloraz baz impedancyjnych: z_base(węzeł) / z_base(odniesienie) = (U/U_ref)².
+
+    V12K-187. ``_build_ybus_ohm`` składa admitancje w SIEMENSACH, każdą liczoną
+    NA WŁASNYM poziomie napięcia gałęzi, a ``build_ybus_pu`` mnożyła całą macierz
+    przez JEDNO ``z_base`` z napięcia slacka. Dla sieci jednonapięciowej to
+    poprawne; przy wielu poziomach napięcia gałęzie spoza poziomu slacka
+    dostawały impedancję zaniżoną o (U_gałęzi/U_slack)². Skalujemy więc każdą
+    gałąź jej WŁASNYM ilorazem baz, zanim macierz przejdzie przez wspólne
+    ``z_base`` — dla sieci o jednym napięciu iloraz wynosi dokładnie 1.0, więc
+    Y-bus pozostaje BIT-IDENTYCZNA (mnożenie przez 1.0 jest w IEEE-754 dokładne).
+
+    Baza mocy skraca się w ilorazie, więc funkcja jej nie potrzebuje.
+    """
+    if reference_kv is None or reference_kv <= 0.0:
+        return 1.0
+    node = graph.nodes.get(node_id)
+    if node is None or node.voltage_level <= 0.0:
+        return 1.0
+    return (node.voltage_level / reference_kv) ** 2
+
+
+def _off_nominal_tap(graph: NetworkGraph, branch: TransformerBranch) -> float:
+    """Przekładnia POZA-ZNAMIONOWA transformatora: rzeczywista / bazowa.
+
+    V12K-187 (spójnie z V12K-186 w sieci zwarciowej): gdy napięcia znamionowe
+    szyn nie są w stosunku równym przekładni z tabliczki, model wymaga idealnego
+    transformatora o przekładni a = (U_hv_TR/U_szyny_HV)/(U_lv_TR/U_szyny_LV).
+    Szyny zgodne z tabliczką ⇒ a = 1.0 dokładnie ⇒ zero zmian w macierzy.
+    """
+    hv = graph.nodes.get(branch.from_node_id)
+    lv = graph.nodes.get(branch.to_node_id)
+    if hv is None or lv is None or hv.voltage_level <= 0.0 or lv.voltage_level <= 0.0:
+        return 1.0
+    return (branch.voltage_hv_kv / hv.voltage_level) / (branch.voltage_lv_kv / lv.voltage_level)
+
+
+def _resolve_tap_ratio(
+    graph: NetworkGraph, branch: Branch, tap_ratios: dict[str, float]
+) -> tuple[float, str | None]:
+    """Efektywna przekładnia gałęzi w modelu per-unit + źródło zaczepu.
+
+    JEDNO miejsce rozstrzygania przekładni dla całego rozpływu — Y-bus i tor
+    przepływów gałęziowych muszą widzieć TĘ SAMĄ wartość, inaczej przepływy
+    przestają być spójne z rozwiązanymi napięciami. Do V12K-187 Y-bus czytała
+    zaczep z modelu (``tap_changer`` / ``tap_position``), a przepływy WYŁĄCZNIE
+    z nakładki ``tap_ratios``, więc bilans rozjeżdżał się przy pracującym OLTC.
+
+    Kolejność źródeł zaczepu (bez zmian): kanoniczny ``tap_changer`` (to jego
+    pozycją steruje pętla regulacji OLTC) → ``tap_position`` → nakładka →
+    ``get_tap_ratio()``. Na końcu dochodzi przekładnia POZA-ZNAMIONOWA szyn.
+    """
+    tap_ratio = 1.0
+    tap_source: str | None = None
+    if isinstance(branch, TransformerBranch):
+        tc = branch.tap_changer
+        if tc is not None and tc.is_active():
+            # V12K-045: canonical tap changer drives the ratio (its position
+            # is what the OLTC control loop mutates). get_tap_ratio() honours
+            # the regulated winding.
+            tap_ratio = branch.get_tap_ratio()
+            if tap_ratio != 1.0:
+                tap_source = "core"
+        elif branch.tap_position != 0:
+            tap_ratio = branch.get_tap_ratio()
+            tap_source = "core"
+        elif branch.id in tap_ratios:
+            tap_ratio = tap_ratios[branch.id]
+            tap_source = "overlay"
+        else:
+            tap_ratio = branch.get_tap_ratio()
+            if tap_ratio != 1.0:
+                tap_source = "core"
+        # V12K-187: do zaczepu dochodzi przekładnia POZA-ZNAMIONOWA wynikająca
+        # z różnicy między tabliczką a napięciami znamionowymi szyn (spójnie z
+        # siecią zwarciową, V12K-186). Szyny zgodne z tabliczką ⇒ czynnik 1.0.
+        tap_ratio = tap_ratio * _off_nominal_tap(graph, branch)
+    elif branch.id in tap_ratios:
+        tap_ratio = tap_ratios[branch.id]
+        tap_source = "overlay"
+    return tap_ratio, tap_source
+
+
 def _build_ybus_ohm(
-    graph: NetworkGraph, node_id_to_index: dict[str, int], tap_ratios: dict[str, float]
+    graph: NetworkGraph,
+    node_id_to_index: dict[str, int],
+    tap_ratios: dict[str, float],
+    reference_kv: float = 0.0,
 ) -> tuple[np.ndarray, list[dict[str, Any]], list[dict[str, Any]]]:
     size = len(node_id_to_index)
     y_bus = np.zeros((size, size), dtype=complex)
@@ -905,10 +994,11 @@ def _build_ybus_ohm(
         to_idx = node_id_to_index.get(switch.to_node_id)
         if from_idx is None or to_idx is None:
             continue
-        y_bus[from_idx, to_idx] -= Y_CLOSED_SWITCH
-        y_bus[to_idx, from_idx] -= Y_CLOSED_SWITCH
-        y_bus[from_idx, from_idx] += Y_CLOSED_SWITCH
-        y_bus[to_idx, to_idx] += Y_CLOSED_SWITCH
+        y_switch = Y_CLOSED_SWITCH * _base_scale(graph, switch.to_node_id, reference_kv)
+        y_bus[from_idx, to_idx] -= y_switch
+        y_bus[to_idx, from_idx] -= y_switch
+        y_bus[from_idx, from_idx] += y_switch
+        y_bus[to_idx, to_idx] += y_switch
 
     for branch in graph.branches.values():
         if not branch.in_service:
@@ -918,31 +1008,15 @@ def _build_ybus_ohm(
         to_idx = node_id_to_index[branch.to_node_id]
 
         y_series, y_shunt = _get_branch_admittances_ohm(branch)
+        # V12K-187: admitancja jest liczona na WŁASNYM poziomie napięcia gałęzi
+        # (linia — napięcie szyn, transformator — strona LV, czyli węzeł `to`),
+        # więc odnosimy ją do bazy tego węzła, zanim macierz przejdzie przez
+        # wspólne z_base slacka. Sieć jednonapięciowa: iloraz = 1.0 (bez zmian).
+        branch_scale = _base_scale(graph, branch.to_node_id, reference_kv)
+        y_series = y_series * branch_scale
+        y_shunt = y_shunt * branch_scale
 
-        tap_ratio = 1.0
-        tap_source = None
-        if isinstance(branch, TransformerBranch):
-            tc = branch.tap_changer
-            if tc is not None and tc.is_active():
-                # V12K-045: canonical tap changer drives the ratio (its position
-                # is what the OLTC control loop mutates). get_tap_ratio() honours
-                # the regulated winding.
-                tap_ratio = branch.get_tap_ratio()
-                if tap_ratio != 1.0:
-                    tap_source = "core"
-            elif branch.tap_position != 0:
-                tap_ratio = branch.get_tap_ratio()
-                tap_source = "core"
-            elif branch.id in tap_ratios:
-                tap_ratio = tap_ratios[branch.id]
-                tap_source = "overlay"
-            else:
-                tap_ratio = branch.get_tap_ratio()
-                if tap_ratio != 1.0:
-                    tap_source = "core"
-        elif branch.id in tap_ratios:
-            tap_ratio = tap_ratios[branch.id]
-            tap_source = "overlay"
+        tap_ratio, tap_source = _resolve_tap_ratio(graph, branch, tap_ratios)
 
         if tap_ratio <= 0:
             raise ValueError(f"Tap ratio must be > 0 for branch '{branch.id}'")

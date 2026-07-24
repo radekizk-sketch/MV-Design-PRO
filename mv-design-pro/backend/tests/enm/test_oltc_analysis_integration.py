@@ -191,13 +191,36 @@ def test_oltc_regulates_sn_bus_through_analysis():
     assert oltc["converged"] is True
     tr_key = _graph_id_from_ref("tr1")
     assert oltc["final_positions"][tr_key] < 0  # HV-regulated stepped down to raise SN
-    assert oltc["switch_counts"][tr_key] == abs(oltc["final_positions"][tr_key])
+    # Licznik łączeń ≥ |pozycja końcowa| (V12K-187). Równość zachodzi przy dojściu
+    # monotonicznym; gdy regulator dyskretny przeskoczy pasmo i blokada oscylacji
+    # cofnie go na lepszy zaczep, dochodzi łączenie powrotne — resurs przełącznika
+    # zużywa KAŻDY ruch, nie tylko ruch „w stronę celu".
+    assert oltc["switch_counts"][tr_key] >= abs(oltc["final_positions"][tr_key])
     assert oltc["total_switch_count"] >= 1
 
     # The regulated SN busbar rose toward the setpoint.
     v_on = _v_kv(run_on, "b_sn")
     assert v_on > v_off
-    assert abs(v_on - 15.5) <= 0.2 / 2 + 1e-6
+    # V12K-187: regulator zaczepowy jest DYSKRETNY — gdy skok jednego stopnia jest
+    # większy niż strefa nieczułości, ŻADNA pozycja nie mieści się w paśmie i
+    # dawna asercja `|U − U_zad| ≤ pasmo/2` była nieosiągalna. (Wcześniej przechodziła
+    # tylko dlatego, że Y-bus rozpływu zaniżała impedancje sieci i stopień zaczepu
+    # ledwo ruszał napięciem.) Weryfikujemy więc mocniejszą własność: regulator stanął
+    # na zaczepie o NAJMNIEJSZEJ osiągalnej odchyłce — dowód wprost ze śladu blokady
+    # oscylacji, bez utrwalania liczby.
+    stops = [
+        decision
+        for it in oltc["iterations"]
+        for decision in it["decisions"]
+        if decision.get("reason") == "oscillation_stop" and "oscillation_candidates" in decision
+    ]
+    if stops:
+        candidates = stops[0]["oscillation_candidates"]
+        best_position = min(candidates.items(), key=lambda item: (item[1], int(item[0])))[0]
+        assert oltc["final_positions"][tr_key] == int(best_position)
+        assert abs(v_on - 15.5) == pytest.approx(min(candidates.values()), abs=1e-6)
+    else:
+        assert abs(v_on - 15.5) <= 0.2 / 2 + 1e-6
 
     # Without OLTC there is no oltc_control key (backward compatible).
     assert "oltc_control" not in run_off.raw_result
@@ -213,8 +236,17 @@ def test_oltc_sweep_study_surfaced_on_run():
     assert len(sweep["points"]) == 19  # full -9..+9 range
     positions = [p["position"] for p in sweep["points"]]
     assert positions == list(range(-9, 10))
-    # Controlled-bus voltage decreases monotonically as the position increases.
-    vs = [p["controlled_bus_kv"] for p in sweep["points"]]
+    # Controlled-bus voltage decreases monotonically as the position increases —
+    # ale WYŁĄCZNIE po punktach ZBIEŻNYCH (V12K-187). Skrajne zaczepy tej sieci
+    # przekraczają punkt krytyczny krzywej PV (kolaps napięciowy): rozpływ nie
+    # zbiega i zwraca wartości bez sensu eksploatacyjnego (np. 0,66 kV na szynie
+    # 15 kV). Solver oznacza je uczciwie `converged=False` — monotoniczność wolno
+    # sprawdzać tylko tam, gdzie rozwiązanie istnieje. Dawniej test obejmował
+    # wszystkie punkty i przechodził jedynie dlatego, że zaniżone impedancje
+    # rozpływu czyniły sieć sztywną, więc kolaps nie występował.
+    solved = [p for p in sweep["points"] if p.get("converged")]
+    assert len(solved) >= 10, "oczekiwano zbieżnego rozwiązania w większości zakresu zaczepów"
+    vs = [p["controlled_bus_kv"] for p in solved]
     assert all(a >= b - 1e-9 for a, b in zip(vs, vs[1:], strict=False))
 
 
