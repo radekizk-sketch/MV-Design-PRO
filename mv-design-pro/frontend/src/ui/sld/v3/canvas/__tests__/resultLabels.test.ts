@@ -103,6 +103,8 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     expect(entries[branchRef]).toEqual({
       ownerRef: branchRef,
       kind: 'branch',
+      // R3 (wym. 9): severity 1:1 z payloadu (`el(...)` domyślnie „INFO”).
+      severity: 'INFO',
       lines: [{ prefix: 'obc.', text: '72,5 %' }],
     });
   });
@@ -118,6 +120,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     expect(entries[trRef]).toEqual({
       ownerRef: trRef,
       kind: 'transformer',
+      severity: 'INFO',
       lines: [
         { prefix: 'S', text: '0,63 MVA' },
         { prefix: 'ΔP', text: '0,0120 MW' },
@@ -139,6 +142,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     expect(entries[sourceRef]).toEqual({
       ownerRef: sourceRef,
       kind: 'source',
+      severity: 'INFO',
       lines: [
         { prefix: 'P', text: '+6,5468 MW' },
         { prefix: 'Q', text: '-0,3000 Mvar' },
@@ -166,6 +170,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     expect(entries[busRef]).toEqual({
       ownerRef: busRef,
       kind: 'bus',
+      severity: 'INFO',
       lines: [
         { prefix: 'Ik″', text: '12,5 kA' },
         { prefix: 'Ith', text: '116,9 kA' },
@@ -215,6 +220,7 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     expect(entries[branchRef]).toEqual({
       ownerRef: branchRef,
       kind: 'branch',
+      severity: 'INFO',
       lines: [
         { prefix: 'obc.', text: '68,0 %' },
         { prefix: 'I', text: '182,0 A' },

@@ -254,8 +254,17 @@ export interface SldV3Overlay {
    * lub nakładka cząstkowa bez wyniku przypadku) — badge nie renderuje się.
    */
   readonly provenance?: {
-    readonly caseRef: string;
-    readonly converged: boolean;
+    readonly caseRef?: string;
+    readonly converged?: boolean;
+    /** R3 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.7): nazwa MODUŁU obliczeniowego
+     *  (etykieta polska z `analysis_type` payloadu — istniejący słownik analiz
+     *  `workspace/analysisRunContract.formatContractValue`, ZERO nowego słownika).
+     *  „Nie zakładać, że użytkownik pamięta aktywny moduł.” */
+    readonly analysisTypeLabel?: string;
+    /** R3 (wym. 7): identyfikator PRZEBIEGU (`RawOverlayPayload.run_id`) — z
+     *  którego biegu solvera pochodzą wartości. Timestamp NIE jest niesiony przez
+     *  `RawOverlayPayload` (znany brak kontraktu — rejestr braków R3). */
+    readonly runId?: string;
   };
 }
 

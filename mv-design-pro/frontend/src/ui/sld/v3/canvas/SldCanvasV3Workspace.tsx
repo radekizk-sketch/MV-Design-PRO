@@ -152,7 +152,17 @@ import {
   type SldV3Overlay,
   type TransformerOltcOverlay,
 } from './overlay';
-import { buildResultLabelsFromScene, type ResultLabelEntry } from './resultLabels';
+import {
+  applyResultLabelFilter,
+  buildResultLabelsFromScene,
+  DEFAULT_RESULT_LABEL_FILTER,
+  resultLabelsHaveExceedances,
+  type ResultLabelEntry,
+  type ResultLabelFilter,
+  type ResultLabelKind,
+  type ResultLabelQuantity,
+} from './resultLabels';
+import { formatContractValue } from '../../../workspace/analysisRunContract';
 
 const MIN_CANVAS_WIDTH_PX = 320;
 const MIN_CANVAS_HEIGHT_PX = 240;
@@ -824,6 +834,120 @@ function SldV3LayerTogglePanel(props: {
   );
 }
 
+// ---------------------------------------------------------------------------
+// R3 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.17) — panel FILTRÓW warstwy
+// wynikowej. WZORZEC 1:1 z `SldV3LayerTogglePanel` (checkboxy, PL, reset) —
+// osobny stan/zakres (wielkości P/Q/S/I/U/obciążenie · klasy źródła/TR/linie/
+// szyny · „tylko przekroczenia”). Filtr działa WYŁĄCZNIE na warstwie etykiet
+// (mapa `ownerRef→ResultLabelEntry`), NIE na scenie — inwariant geometrii §11.
+// ---------------------------------------------------------------------------
+
+const RESULT_FILTER_QUANTITY_LABELS_PL: Readonly<Record<ResultLabelQuantity, string>> = {
+  P: 'Moc czynna P',
+  Q: 'Moc bierna Q',
+  S: 'Moc pozorna S',
+  I: 'Prądy I',
+  U: 'Napięcia U',
+  loading: 'Obciążenie',
+};
+const RESULT_FILTER_QUANTITY_IDS: readonly ResultLabelQuantity[] = ['P', 'Q', 'S', 'I', 'U', 'loading'];
+
+const RESULT_FILTER_CLASS_LABELS_PL: Readonly<Record<ResultLabelKind, string>> = {
+  source: 'Źródła',
+  transformer: 'Transformatory',
+  branch: 'Linie',
+  bus: 'Szyny',
+};
+const RESULT_FILTER_CLASS_IDS: readonly ResultLabelKind[] = ['source', 'transformer', 'branch', 'bus'];
+
+function SldV3ResultFilterPanel(props: {
+  readonly filter: ResultLabelFilter;
+  readonly hasExceedances: boolean;
+  readonly onToggleQuantity: (quantity: ResultLabelQuantity) => void;
+  readonly onToggleClass: (kind: ResultLabelKind) => void;
+  readonly onToggleOnlyExceedances: () => void;
+  readonly onResetAll: () => void;
+  readonly className?: string;
+}): JSX.Element {
+  const { filter, hasExceedances, onToggleQuantity, onToggleClass, onToggleOnlyExceedances, onResetAll, className } =
+    props;
+  return (
+    <section
+      className={[
+        'flex flex-col gap-1 rounded border border-scada-border bg-scada-panel/95 p-2 text-[11px] text-scada-text shadow-lg',
+        className ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      aria-label="Panel filtrów warstwy wynikowej (v3)"
+      data-testid="sld-v3-result-filter-panel"
+    >
+      <header className="flex items-center justify-between gap-2 border-b border-scada-border pb-1">
+        <span className="font-semibold uppercase tracking-wider text-scada-muted">Filtry wyników</span>
+        <button
+          type="button"
+          onClick={onResetAll}
+          data-testid="sld-v3-result-filter-reset"
+          className="text-scada-muted hover:text-scada-text"
+        >
+          Reset
+        </button>
+      </header>
+      <span className="mt-1 font-semibold uppercase tracking-wider text-scada-muted">Wielkości</span>
+      <ul className="flex flex-col gap-0.5">
+        {RESULT_FILTER_QUANTITY_IDS.map((quantity) => (
+          <li key={quantity}>
+            <label className="flex cursor-pointer items-center gap-2 py-0.5">
+              <input
+                type="checkbox"
+                checked={filter.quantities[quantity]}
+                onChange={() => onToggleQuantity(quantity)}
+                data-testid={`sld-v3-result-filter-quantity-${quantity}`}
+              />
+              <span>{RESULT_FILTER_QUANTITY_LABELS_PL[quantity]}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      <span className="mt-1 font-semibold uppercase tracking-wider text-scada-muted">Klasy elementów</span>
+      <ul className="flex flex-col gap-0.5">
+        {RESULT_FILTER_CLASS_IDS.map((kind) => (
+          <li key={kind}>
+            <label className="flex cursor-pointer items-center gap-2 py-0.5">
+              <input
+                type="checkbox"
+                checked={filter.classes[kind]}
+                onChange={() => onToggleClass(kind)}
+                data-testid={`sld-v3-result-filter-class-${kind}`}
+              />
+              <span>{RESULT_FILTER_CLASS_LABELS_PL[kind]}</span>
+            </label>
+          </li>
+        ))}
+      </ul>
+      {/* R3 (wym. 17): „tylko przekroczenia” — AKTYWNE wyłącznie gdy payload
+        * niesie przekroczenia (severity>INFO); inaczej wyszarzone z tytułem
+        * wyjaśniającym (zero dead-click). */}
+      <label
+        className={[
+          'mt-1 flex items-center gap-2 border-t border-scada-border pt-1',
+          hasExceedances ? 'cursor-pointer' : 'cursor-not-allowed opacity-50',
+        ].join(' ')}
+        title={hasExceedances ? undefined : 'Brak przekroczeń w bieżącym wyniku'}
+      >
+        <input
+          type="checkbox"
+          checked={filter.onlyExceedances}
+          disabled={!hasExceedances}
+          onChange={onToggleOnlyExceedances}
+          data-testid="sld-v3-result-filter-only-exceedances"
+        />
+        <span>Tylko przekroczenia</span>
+      </label>
+    </section>
+  );
+}
+
 export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Element {
   const { width: widthOverride, height: heightOverride, lodOverride } = props;
   const containerRef = useRef<HTMLDivElement>(null);
@@ -875,9 +999,39 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // SLD — czytamy gotowy status. Flaga aktywna WYŁĄCZNIE gdy overlay niesie
   // wynik (payload) I status to OUTDATED — stary wynik nie może udawać aktualnego.
   const resultsStale = rawOverlayPayload != null && activeCaseResultStatus === 'OUTDATED';
+  // R3 (wym. 17): FILTRY widoczności warstwy wynikowej — stan LOKALNY renderu.
+  // Domyślnie WSZYSTKO widoczne (zgodność z akceptacją R2 i inwariantem
+  // geometrii: filtr działa WYŁĄCZNIE na warstwie etykiet — mapa `ownerRef→
+  // ResultLabelEntry`, scena/geometria niezmienna).
+  const [resultFilter, setResultFilter] = useState<ResultLabelFilter>(DEFAULT_RESULT_LABEL_FILTER);
+  // R3 (wym. 17): brama filtra „tylko przekroczenia” — aktywny WYŁĄCZNIE gdy
+  // payload NIESIE przekroczenia (severity>INFO); inaczej kontrolka wyszarzona
+  // (zero dead-click). Liczone z niefiltrowanych etykiet (kontrakt backendu).
+  const hasExceedances = useMemo(
+    () => resultLabelsHaveExceedances(resultLabelsByOwnerRef),
+    [resultLabelsByOwnerRef],
+  );
+  const filteredResultLabels = useMemo(
+    () => applyResultLabelFilter(resultLabelsByOwnerRef, resultFilter),
+    [resultLabelsByOwnerRef, resultFilter],
+  );
+  // R3 (wym. 7): POCHODZENIE wyniku — moduł (etykieta PL z `analysis_type` przez
+  // ISTNIEJĄCY słownik `formatContractValue`) + identyfikator przebiegu
+  // (`run_id`) z payloadu. Timestamp NIE jest niesiony przez `RawOverlayPayload`
+  // (znany brak kontraktu — rejestr braków R3). Brak payloadu = brak deklaracji.
+  const provenance = useMemo(
+    () =>
+      rawOverlayPayload
+        ? {
+            analysisTypeLabel: formatContractValue(rawOverlayPayload.analysis_type),
+            runId: rawOverlayPayload.run_id,
+          }
+        : undefined,
+    [rawOverlayPayload],
+  );
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef, resultsStale }),
-    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef, resultsStale],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef: filteredResultLabels, resultsStale, provenance }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, filteredResultLabels, resultsStale, provenance],
   );
 
   // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,
@@ -1075,6 +1229,25 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     setLayerVisibility((prev) => ({ ...prev, [layerId]: prev[layerId] === false ? true : false }));
   }, []);
   const handleResetLayers = useCallback(() => setLayerVisibility({}), []);
+
+  // R3 (wym. 17): handlery FILTRÓW warstwy wynikowej. Toggle wielkości/klasy;
+  // „tylko przekroczenia” gaśnie sama, gdy payload nie niesie przekroczeń.
+  const handleToggleQuantity = useCallback((quantity: ResultLabelQuantity) => {
+    setResultFilter((prev) => ({
+      ...prev,
+      quantities: { ...prev.quantities, [quantity]: !prev.quantities[quantity] },
+    }));
+  }, []);
+  const handleToggleClass = useCallback((kind: ResultLabelKind) => {
+    setResultFilter((prev) => ({
+      ...prev,
+      classes: { ...prev.classes, [kind]: !prev.classes[kind] },
+    }));
+  }, []);
+  const handleToggleOnlyExceedances = useCallback(() => {
+    setResultFilter((prev) => ({ ...prev, onlyExceedances: !prev.onlyExceedances }));
+  }, []);
+  const handleResetResultFilter = useCallback(() => setResultFilter(DEFAULT_RESULT_LABEL_FILTER), []);
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): stan kamery (transform+
   // LOD) zgłaszany przez `SldCanvasV3.onCameraChange` — jedyny sposób, w jaki
@@ -1307,6 +1480,22 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     [derDrag, rawOverlayPayload, selectElement, sldData, snapshot],
   );
 
+  // R3 (wym. 6): AKTYWACJA etykiety wynikowej — klik w blok liczbowy prowadzony
+  // TĄ SAMĄ ścieżką co klik w element (`handleElementClick`: selekcja +
+  // istniejący panel wyników `SldDetailDrawer`). Klasa etykiety
+  // (`ResultLabelKind`) mapuje 1:1 na `elementKind` sceny — zero nowego panelu,
+  // zero nowej ścieżki danych (reuse). Deep-link do White Box/proof: brak
+  // działającej ścieżki z v3 kanwy (kanwa czyta payload wynikowy, nie ślad
+  // proof) — JAWNY DŁUG R3 (rejestr braków), NIE atrapa.
+  const handleResultLabelActivate = useCallback(
+    (ownerRef: string, kind: ResultLabelKind) => {
+      const elementKind: PreviewElementKind =
+        kind === 'branch' ? 'segment' : kind === 'bus' ? 'bus' : kind === 'transformer' ? 'transformer' : 'source';
+      handleElementClick(ownerRef, { ownerRef, elementKind });
+    },
+    [handleElementClick],
+  );
+
   return (
     <div
       ref={containerRef}
@@ -1325,6 +1514,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           onElementContextMenu={handleElementContextMenu}
           lodOverride={lodOverride}
           layerVisibility={layerVisibility}
+          onResultLabelActivate={handleResultLabelActivate}
           onCameraChange={handleCameraChange}
         />
       ) : null}
@@ -1547,12 +1737,25 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           {layerPanelOpen ? '▾ Warstwy' : `▴ Warstwy (${CANVAS_LAYER_IDS.length})`}
         </button>
         {layerPanelOpen && (
-          <SldV3LayerTogglePanel
-            visibility={layerVisibility}
-            onToggleLayer={handleToggleLayer}
-            onResetAll={handleResetLayers}
-            className="w-[240px]"
-          />
+          <>
+            {/* R3 (wym. 17): panel filtrów warstwy wynikowej — TEN SAM dok co
+              * przełącznik warstw (rozszerzenie, nie osobne miejsce). */}
+            <SldV3ResultFilterPanel
+              filter={resultFilter}
+              hasExceedances={hasExceedances}
+              onToggleQuantity={handleToggleQuantity}
+              onToggleClass={handleToggleClass}
+              onToggleOnlyExceedances={handleToggleOnlyExceedances}
+              onResetAll={handleResetResultFilter}
+              className="w-[240px]"
+            />
+            <SldV3LayerTogglePanel
+              visibility={layerVisibility}
+              onToggleLayer={handleToggleLayer}
+              onResetAll={handleResetLayers}
+              className="w-[240px]"
+            />
+          </>
         )}
       </div>
 

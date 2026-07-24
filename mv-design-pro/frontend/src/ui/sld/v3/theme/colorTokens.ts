@@ -231,3 +231,40 @@ export const HIGHLIGHT_COLOR = {
    *  tokenizacja istniejącej). Wartość zgodna z v2 `COLOR_SELECTION`. */
   selection: '#35C7FF',
 } as const;
+
+// ---------------------------------------------------------------------------
+// R3 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.9) — PROGI KOLORYSTYCZNE warstwy
+// wynikowej z KONTRAKTU SEVERITY backendu (`RawOverlayElement.severity`). ZERO
+// progów liczonych w UI: żaden „>100% ⇒ czerwony” nie powstaje tutaj — mapujemy
+// gotową klasyfikację solvera 1:1 na ISTNIEJĄCE tokeny statusów (`HIGHLIGHT_COLOR`).
+// Kolor jest DODATKIEM (renderer dokłada też znacznik tekstowy „⚠”, nie sam kolor).
+// ---------------------------------------------------------------------------
+
+/**
+ * Severity backendu → istniejący token statusu. CRITICAL = czerwień (awaria,
+ * `HIGHLIGHT_COLOR.fault`), IMPORTANT = bursztyn (`HIGHLIGHT_COLOR.oltc`),
+ * WARNING = żółty (`HIGHLIGHT_COLOR.standby`). INFO NIE ma wpisu — element
+ * poprawny zostaje na bazowym kolorze warstwy (`HIGHLIGHT_COLOR.resultLabel`),
+ * zero recoloringu „na zielono” w UI (brak sygnału OK per element w kontrakcie).
+ */
+const SEVERITY_COLOR: Readonly<Record<string, string>> = {
+  CRITICAL: HIGHLIGHT_COLOR.fault,
+  IMPORTANT: HIGHLIGHT_COLOR.oltc,
+  WARNING: HIGHLIGHT_COLOR.standby,
+} as const;
+
+/** Kolor progu dla severity (`null` = INFO/nieznane ⇒ bez nadpisania koloru
+ *  bazowego warstwy). CZYSTA funkcja — zero fizyki, odczyt tabeli. */
+export function resultSeverityColor(severity: string | undefined): string | null {
+  if (!severity) return null;
+  return SEVERITY_COLOR[severity] ?? null;
+}
+
+/** Ranga severity (wyższa liczba = poważniejsze) — do wyboru najgroźniejszego
+ *  członka agregatu „+N wyniki”. INFO/nieznane = 0. */
+export function resultSeverityRank(severity: string | undefined): number {
+  if (severity === 'CRITICAL') return 3;
+  if (severity === 'IMPORTANT') return 2;
+  if (severity === 'WARNING') return 1;
+  return 0;
+}

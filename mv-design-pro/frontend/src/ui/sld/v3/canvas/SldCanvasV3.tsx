@@ -68,6 +68,8 @@ import {
   baseSymbolStrokeColor,
   CANVAS_BACKGROUND,
   HIGHLIGHT_COLOR,
+  resultSeverityColor,
+  resultSeverityRank,
 } from '../theme/colorTokens';
 
 /** SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
@@ -200,6 +202,14 @@ export interface SldCanvasV3Props {
    *  (`buildSceneV3`/bbox/routing) NIETKNIĘTA. Brak propa = wszystko
    *  widoczne (zero zmiany zachowania sprzed tej dostawy). */
   readonly layerVisibility?: CanvasLayerVisibility;
+  /** R3 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.6): AKTYWACJA etykiety wynikowej
+   *  — klik w blok liczbowy (lub w wiersz członka agregatu „+N wyniki”) woła
+   *  wołającego z `ownerRef` właściciela + jego klasą. Wołający
+   *  (`SldCanvasV3Workspace`) prowadzi to TĄ SAMĄ ścieżką co klik w element
+   *  (`handleElementClick`: selekcja + istniejący panel wyników elementu —
+   *  `SldDetailDrawer`); kanwa NIE otwiera własnego panelu (reuse, zero nowej
+   *  ścieżki danych). Brak propa = etykiety nieklikalne (kanwa jak dziś). */
+  readonly onResultLabelActivate?: (ownerRef: string, kind: ResultLabelKind) => void;
   /** F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): wywoływany przy KAŻDEJ
    *  zmianie transformu/LOD kamery — jedyny sposób, w jaki wołający
    *  (`SldCanvasV3Workspace`) może poznać AKTUALNY `ViewportTransform` do
@@ -1140,6 +1150,9 @@ export interface ResultLabelPlacement {
    *  R2 wym. 12) — dzięki temu warstwa nie renderuje nakładających się liczb
    *  (kolizje końcowe = 0). */
   readonly labelPlaced: boolean;
+  /** R3 (wym. 9) — severity elementu (`ResultLabelEntry.severity`, 1:1 z
+   *  backendu) do progów kolorystycznych + znacznika „⚠” w rendererze. */
+  readonly severity: string;
 }
 
 /** R2 (wym. 14) — jeden element listy pod markerem agregatu (do popovera).
@@ -1149,6 +1162,9 @@ export interface ResultLabelAggregateMember {
   readonly ownerRef: string;
   readonly kind: ResultLabelKind;
   readonly primaryText: string;
+  /** R3 (wym. 9) — severity członka (1:1 z backendu) do progu koloru wiersza
+   *  popovera i znacznika przekroczenia. */
+  readonly severity: string;
 }
 
 /** R2 (wym. 14) — marker agregatu „+N wyniki" dla skupiska bliskich kotwic.
@@ -1164,6 +1180,9 @@ export interface ResultLabelAggregatePlacement {
   readonly width: number;
   readonly height: number;
   readonly labelPlaced: boolean;
+  /** R3 (wym. 9) — NAJGROŹNIEJSZE severity spośród członków (marker „+N wyniki”
+   *  dziedziczy próg koloru najpoważniejszego wyniku skupiska). */
+  readonly severity: string;
 }
 
 /** R2 (wym. 19) — METRYKI rozmieszczania warstwy wynikowej (obiektywna ocena
@@ -1281,6 +1300,9 @@ interface ResultLabelUnit {
   readonly lines: readonly ResultLabelLine[];
   readonly anchor: ResultLabelAnchor;
   readonly rank: number;
+  /** R3 (wym. 9) — severity elementu (przenoszone z `ResultLabelEntry` do
+   *  placement/agregatu na potrzeby progów kolorystycznych). */
+  readonly severity: string;
 }
 
 /** Próba ulokowania bloku wokół kotwicy — pierwszy kandydat bezkolizyjny wygrywa
@@ -1400,7 +1422,7 @@ export function layoutResultLabels(
       if (a) anchor = { cx: a.cx, cy: a.cy, halfW: 0, halfH: 0, horizontal: a.horizontal, symbol: false };
     }
     if (!anchor) continue;
-    units.push({ ownerRef: ref, kind: entry.kind, lines, anchor, rank: RESULT_LABEL_PRIORITY[entry.kind] });
+    units.push({ ownerRef: ref, kind: entry.kind, lines, anchor, rank: RESULT_LABEL_PRIORITY[entry.kind], severity: entry.severity });
   }
   units.sort((a, b) => (a.rank - b.rank) || (a.ownerRef < b.ownerRef ? -1 : a.ownerRef > b.ownerRef ? 1 : 0));
 
@@ -1451,12 +1473,19 @@ export function layoutResultLabels(
       if (res.calloutIndex > 0) calloutCount++;
       obstacles.push({ x: res.x, y: res.y, width: block.width, height: block.height });
       anchorDistances.push(Math.hypot(res.x + block.width / 2 - anchor.cx, res.y + block.height / 2 - anchor.cy));
+      // R3 (wym. 9): marker skupiska dziedziczy NAJGROŹNIEJSZE severity członków
+      // (najpoważniejszy wynik decyduje o progu koloru „+N wyniki”).
+      let aggSeverity = 'INFO';
+      for (const m of cluster.members) {
+        if (resultSeverityRank(m.severity) > resultSeverityRank(aggSeverity)) aggSeverity = m.severity;
+      }
       aggregates.push({
         anchorRef: cluster.seed.ownerRef,
         members: cluster.members.map((m) => ({
           ownerRef: m.ownerRef,
           kind: m.kind,
           primaryText: m.lines[0] ? resultLabelLineText(m.lines[0]) : '',
+          severity: m.severity,
         })),
         count: cluster.members.length,
         x: res.x,
@@ -1464,6 +1493,7 @@ export function layoutResultLabels(
         width: block.width,
         height: block.height,
         labelPlaced: true,
+        severity: aggSeverity,
       });
       continue;
     }
@@ -1489,6 +1519,7 @@ export function layoutResultLabels(
       width: block.width,
       height: block.height,
       labelPlaced: true,
+      severity: unit.severity,
     });
   }
 
@@ -1543,17 +1574,28 @@ export function computeResultLabelPlacements(
 
 const RESULT_STALE_COLOR = HIGHLIGHT_COLOR.resultStale;
 
+/** R3 (wym. 9) — znacznik TEKSTOWY przekroczenia (kolor DODATKIEM, nie jedynym
+ *  nośnikiem): „⚠” obok wartości, gdy severity to przekroczenie. */
+const RESULT_EXCEEDANCE_GLYPH = '⚠';
+
 function SceneResultLabelNode(props: {
   readonly placement: ResultLabelPlacement;
   readonly index: number;
   readonly stale: boolean;
+  readonly onActivate: ((ownerRef: string, kind: ResultLabelKind) => void) | undefined;
 }): JSX.Element {
-  const { placement, index, stale } = props;
+  const { placement, index, stale, onActivate } = props;
   const typo = LABEL_TYPOGRAPHY.t4;
   const lineH = labelLineHeight('t4');
   // R2 (wym. 8): wyniki nieaktualne ⇒ etykieta wyszarzona i oznaczona, ale
-  // NIE ukryta (inżynier ma widzieć, że wartości są stare).
-  const color = stale ? RESULT_STALE_COLOR : RESULT_LABEL_COLOR;
+  // NIE ukryta (inżynier ma widzieć, że wartości są stare). Staleness ma
+  // PIERWSZEŃSTWO nad progiem severity (wym. 9): wartości stare nie mogą
+  // „krzyczeć” kolorem przekroczenia z nieaktualnego biegu.
+  const severityColor = stale ? null : resultSeverityColor(placement.severity);
+  const color = stale ? RESULT_STALE_COLOR : severityColor ?? RESULT_LABEL_COLOR;
+  const exceeded = !stale && severityColor != null;
+  const interactive = Boolean(onActivate);
+  const activate = onActivate ? () => onActivate(placement.ownerRef, placement.kind) : undefined;
   return (
     <g
       data-testid={`sld-v3-result-label-${index}`}
@@ -1561,7 +1603,31 @@ function SceneResultLabelNode(props: {
       data-result-kind={placement.kind}
       data-result-label-placed={placement.labelPlaced ? 'true' : 'false'}
       data-result-stale={stale ? 'true' : 'false'}
+      data-result-severity={placement.severity}
+      data-result-exceeded={exceeded ? 'true' : 'false'}
       opacity={stale ? 0.5 : 1}
+      role={interactive ? 'button' : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      style={interactive ? { cursor: 'pointer' } : undefined}
+      onClick={
+        activate
+          ? (event) => {
+              event.stopPropagation();
+              activate();
+            }
+          : undefined
+      }
+      onKeyDown={
+        activate
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                event.stopPropagation();
+                activate();
+              }
+            }
+          : undefined
+      }
     >
       <rect
         x={placement.x}
@@ -1590,6 +1656,23 @@ function SceneResultLabelNode(props: {
           {resultLabelLineText(line)}
         </text>
       ))}
+      {/* R3 (wym. 9): znacznik przekroczenia „⚠” w rogu bloku (padding, poza
+        * miarą linii ⇒ geometria layoutu niezmieniona) — sygnał NIE-kolorowy. */}
+      {exceeded && (
+        <text
+          data-testid={`sld-v3-result-exceedance-${index}`}
+          x={placement.x + placement.width - 3}
+          y={placement.y + 3}
+          textAnchor="end"
+          dominantBaseline="hanging"
+          fill={color}
+          fontFamily="sans-serif"
+          fontSize={typo.fontSize}
+          fontWeight={typo.fontWeight}
+        >
+          {RESULT_EXCEEDANCE_GLYPH}
+        </text>
+      )}
     </g>
   );
 }
@@ -1606,17 +1689,31 @@ function SceneResultAggregateNode(props: {
   readonly stale: boolean;
   readonly expanded: boolean;
   readonly onToggle: (anchorRef: string) => void;
+  /** R3 (wym. 6): aktywacja członka skupiska — klik wiersza otwiera panel
+   *  wyników elementu (ta sama ścieżka co klik etykiety pojedynczej). */
+  readonly onActivate: ((ownerRef: string, kind: ResultLabelKind) => void) | undefined;
+  /** R3 (wym. 7): wiersz POCHODZENIA w nagłówku popovera (moduł + przebieg
+   *  z payloadu; `undefined` = brak deklaracji). */
+  readonly provenanceText: string | undefined;
 }): JSX.Element {
-  const { aggregate, index, stale, expanded, onToggle } = props;
+  const { aggregate, index, stale, expanded, onToggle, onActivate, provenanceText } = props;
   const typo = LABEL_TYPOGRAPHY.t4;
   const lineH = labelLineHeight('t4');
-  const color = stale ? RESULT_STALE_COLOR : RESULT_LABEL_COLOR;
+  // R3 (wym. 9): marker skupiska w kolorze NAJGROŹNIEJSZEGO severity członka
+  // (staleness ma pierwszeństwo). Kolor DODATKIEM (znacznik „⚠” gdy przekroczenie).
+  const aggSeverityColor = stale ? null : resultSeverityColor(aggregate.severity);
+  const color = stale ? RESULT_STALE_COLOR : aggSeverityColor ?? RESULT_LABEL_COLOR;
+  const aggExceeded = !stale && aggSeverityColor != null;
   const popoverRowH = lineH + 2;
+  const memberText = (m: ResultLabelAggregateMember): string =>
+    m.primaryText ? `${RESULT_LABEL_KIND_PL[m.kind]}: ${m.primaryText}` : RESULT_LABEL_KIND_PL[m.kind];
   const popoverW = Math.max(
     aggregate.width,
-    ...aggregate.members.map((m) => measureLabelWidth(`${RESULT_LABEL_KIND_PL[m.kind]}: ${m.primaryText}`, 't4') + GRID),
+    ...aggregate.members.map((m) => measureLabelWidth(memberText(m), 't4') + GRID),
+    provenanceText ? measureLabelWidth(provenanceText, 't4') + GRID : 0,
   );
-  const popoverH = aggregate.members.length * popoverRowH + GRID / 2;
+  const headerRows = provenanceText ? 1 : 0;
+  const popoverH = (aggregate.members.length + headerRows) * popoverRowH + GRID / 2;
   const popoverY = aggregate.y + aggregate.height + 2;
   return (
     <g
@@ -1625,6 +1722,8 @@ function SceneResultAggregateNode(props: {
       data-aggregate-count={aggregate.count}
       data-aggregate-expanded={expanded ? 'true' : 'false'}
       data-result-stale={stale ? 'true' : 'false'}
+      data-result-severity={aggregate.severity}
+      data-result-exceeded={aggExceeded ? 'true' : 'false'}
       opacity={stale ? 0.5 : 1}
     >
       <g
@@ -1665,7 +1764,7 @@ function SceneResultAggregateNode(props: {
           fontSize={typo.fontSize}
           fontWeight={typo.fontWeight}
         >
-          {`+${aggregate.count} wyniki`}
+          {aggExceeded ? `${RESULT_EXCEEDANCE_GLYPH} +${aggregate.count} wyniki` : `+${aggregate.count} wyniki`}
         </text>
       </g>
       {expanded && (
@@ -1680,22 +1779,76 @@ function SceneResultAggregateNode(props: {
             stroke={color}
             strokeWidth={1}
           />
-          {aggregate.members.map((m, i) => (
+          {/* R3 (wym. 7): pochodzenie wyniku (moduł + przebieg) w nagłówku. */}
+          {provenanceText && (
             <text
-              key={`agg-member-${i}`}
-              data-testid={`sld-v3-result-aggregate-member-${index}-${i}`}
+              data-testid={`sld-v3-result-aggregate-provenance-${index}`}
               x={aggregate.x + GRID / 2}
-              y={popoverY + GRID / 4 + popoverRowH * (i + 0.5)}
+              y={popoverY + GRID / 4 + popoverRowH * 0.5}
               textAnchor="start"
               dominantBaseline="middle"
-              fill={color}
+              fill={RESULT_LABEL_COLOR}
               fontFamily="sans-serif"
               fontSize={typo.fontSize}
               fontWeight={typo.fontWeight}
             >
-              {m.primaryText ? `${RESULT_LABEL_KIND_PL[m.kind]}: ${m.primaryText}` : RESULT_LABEL_KIND_PL[m.kind]}
+              {provenanceText}
             </text>
-          ))}
+          )}
+          {aggregate.members.map((m, i) => {
+            const rowY = popoverY + popoverRowH * (headerRows + i);
+            const memberSeverityColor = stale ? null : resultSeverityColor(m.severity);
+            const rowColor = stale ? RESULT_STALE_COLOR : memberSeverityColor ?? RESULT_LABEL_COLOR;
+            const rowExceeded = !stale && memberSeverityColor != null;
+            const activateMember = onActivate ? () => onActivate(m.ownerRef, m.kind) : undefined;
+            return (
+              <g
+                key={`agg-member-${i}`}
+                data-testid={`sld-v3-result-aggregate-member-${index}-${i}`}
+                data-result-owner-ref={m.ownerRef}
+                data-result-kind={m.kind}
+                data-result-severity={m.severity}
+                data-result-exceeded={rowExceeded ? 'true' : 'false'}
+                role={activateMember ? 'button' : undefined}
+                tabIndex={activateMember ? 0 : undefined}
+                style={activateMember ? { cursor: 'pointer' } : undefined}
+                onClick={
+                  activateMember
+                    ? (event) => {
+                        event.stopPropagation();
+                        activateMember();
+                      }
+                    : undefined
+                }
+                onKeyDown={
+                  activateMember
+                    ? (event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          activateMember();
+                        }
+                      }
+                    : undefined
+                }
+              >
+                {/* Przezroczysty prostokąt = realny cel klika na całą szerokość wiersza. */}
+                <rect x={aggregate.x} y={rowY} width={popoverW} height={popoverRowH} fill="transparent" />
+                <text
+                  x={aggregate.x + GRID / 2}
+                  y={rowY + popoverRowH * 0.5}
+                  textAnchor="start"
+                  dominantBaseline="middle"
+                  fill={rowColor}
+                  fontFamily="sans-serif"
+                  fontSize={typo.fontSize}
+                  fontWeight={typo.fontWeight}
+                >
+                  {rowExceeded ? `${RESULT_EXCEEDANCE_GLYPH} ${memberText(m)}` : memberText(m)}
+                </text>
+              </g>
+            );
+          })}
         </g>
       )}
     </g>
@@ -1802,7 +1955,7 @@ function toLocalPoint(svg: SVGSVGElement | null, clientX: number, clientY: numbe
 export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const {
     snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
-    layerVisibility, onCameraChange, animateLodTransitions = true,
+    layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true,
   } = props;
 
   // F8a — ROZSTRZYGNIĘCIE k4/k3 (REBUILD_PLAN_V3 §F8, SLD_V3_ACCEPTANCE.md §3):
@@ -1973,6 +2126,18 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // provenance), poniżej niej — na arkuszu, nie w pasie marginesu.
   const staleBannerX = (scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : 0) + 2 * GRID;
   const staleBannerY = 4 * GRID;
+  // R3 (wym. 7): wiersz POCHODZENIA wyniku do popovera agregatu — moduł
+  // (etykieta PL z `analysis_type`) + przebieg (`run_id`), z overlay.provenance
+  // (workspace wypełnia z payloadu; ZERO nowego słownika). Timestamp niedostępny
+  // w payloadzie (znany brak kontraktu). `undefined` = brak deklaracji.
+  const resultProvenanceText = useMemo(() => {
+    const p = effectiveOverlay?.provenance;
+    if (!p) return undefined;
+    const parts: string[] = [];
+    if (p.analysisTypeLabel) parts.push(`Moduł: ${p.analysisTypeLabel}`);
+    if (p.runId) parts.push(`Przebieg: ${p.runId}`);
+    return parts.length > 0 ? parts.join(' · ') : undefined;
+  }, [effectiveOverlay?.provenance]);
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): informuje wołającego o
@@ -2242,6 +2407,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
               placement={placement}
               index={index}
               stale={resultsStale}
+              onActivate={onResultLabelActivate}
             />
           ))}
           {/* R2 (wym. 14): markery agregatów „+N wyniki" (klik → popover listy). */}
@@ -2253,6 +2419,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
               stale={resultsStale}
               expanded={expandedAggregateRef === aggregate.anchorRef}
               onToggle={toggleAggregate}
+              onActivate={onResultLabelActivate}
+              provenanceText={resultProvenanceText}
             />
           ))}
           {/* R2 (wym. 8): baner „⚠ wyniki nieaktualne" — gdy wyniki stare i
@@ -2262,44 +2430,65 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             <ResultStaleBannerNode x={staleBannerX} y={staleBannerY} />
           )}
         </g>
-        {/* Program P-A (spec §14.2 „overlay wyłącznie z wyniku"): deklaracja
-         * POCHODZENIA nakładki — operator zawsze widzi, z którego przypadku
-         * pochodzą wartości i czy solver zbiegł. Render w ukladzie arkusza
+        {/* Program P-A + R3 (§14.2 „overlay wyłącznie z wyniku”; wym. 7
+         * „pochodzenie wyniku”): deklaracja POCHODZENIA nakładki — operator
+         * zawsze widzi, z którego przypadku i z którego biegu (MODUŁ + PRZEBIEG)
+         * pochodzą wartości oraz czy solver zbiegł. Render w ukladzie arkusza
          * (lewy górny róg treści), brak `provenance` = brak badge. */}
-        {effectiveOverlay?.provenance && (
-          <g
-            data-testid="sld-v3-overlay-provenance"
-            data-case-ref={effectiveOverlay.provenance.caseRef}
-            data-converged={String(effectiveOverlay.provenance.converged)}
-          >
-            {/* Pozycja WEWNĄTRZ treści arkusza (świat y<0 = pas marginesu,
-              * przykrywany przez chrom ramki — lekcja F13.1): na prawo od
-              * strefy GPZ przy górnej krawędzi treści. */}
-            <rect
-              x={(scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : 0) + 2 * GRID}
-              y={GRID}
-              width={measureLabelWidth(
-                `Wynik: ${effectiveOverlay.provenance.caseRef} · ${effectiveOverlay.provenance.converged ? 'zbieżny' : 'NIEZBIEŻNY'}`,
-                't3',
-              ) + 2 * GRID}
-              height={2.5 * GRID}
-              fill={SLD_V3_BACKGROUND}
-              stroke={effectiveOverlay.provenance.converged ? FLOW_OVERLAY_COLOR : HIGHLIGHT_COLOR.fault}
-              strokeWidth={1}
-              rx={2}
-            />
-            <text
-              x={(scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : 0) + 3 * GRID}
-              y={2.3 * GRID}
-              fill={effectiveOverlay.provenance.converged ? FLOW_OVERLAY_COLOR : HIGHLIGHT_COLOR.fault}
-              fontFamily="sans-serif"
-              fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
-              dominantBaseline="middle"
+        {(() => {
+          const prov = effectiveOverlay?.provenance;
+          if (!prov) return null;
+          const caseLine =
+            prov.caseRef != null
+              ? `Wynik: ${prov.caseRef} · ${prov.converged ? 'zbieżny' : 'NIEZBIEŻNY'}`
+              : null;
+          const rows: string[] = [];
+          if (caseLine) rows.push(caseLine);
+          if (resultProvenanceText) rows.push(resultProvenanceText);
+          if (rows.length === 0) return null;
+          const badgeX = (scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : 0) + 2 * GRID;
+          const rowH = 1.7 * GRID;
+          const boxW = Math.max(...rows.map((r) => measureLabelWidth(r, 't3'))) + 2 * GRID;
+          const boxH = rows.length * rowH + 0.8 * GRID;
+          // Kolor konturu: gdy znany status zbieżności — sygnalizuj (zbieżny/nie);
+          // gdy sam moduł+przebieg (workspace) — neutralny kolor warstwy przepływu.
+          const strokeColor =
+            prov.converged === false ? HIGHLIGHT_COLOR.fault : FLOW_OVERLAY_COLOR;
+          return (
+            <g
+              data-testid="sld-v3-overlay-provenance"
+              data-case-ref={prov.caseRef}
+              data-converged={prov.converged == null ? undefined : String(prov.converged)}
+              data-analysis-type-label={prov.analysisTypeLabel}
+              data-run-id={prov.runId}
             >
-              {`Wynik: ${effectiveOverlay.provenance.caseRef} · ${effectiveOverlay.provenance.converged ? 'zbieżny' : 'NIEZBIEŻNY'}`}
-            </text>
-          </g>
-        )}
+              <rect
+                x={badgeX}
+                y={GRID}
+                width={boxW}
+                height={boxH}
+                fill={SLD_V3_BACKGROUND}
+                stroke={strokeColor}
+                strokeWidth={1}
+                rx={2}
+              />
+              {rows.map((row, i) => (
+                <text
+                  key={`provenance-row-${i}`}
+                  data-testid={`sld-v3-overlay-provenance-row-${i}`}
+                  x={badgeX + GRID}
+                  y={GRID + 0.4 * GRID + rowH * (i + 0.5)}
+                  fill={i === 0 && caseLine ? strokeColor : RESULT_LABEL_COLOR}
+                  fontFamily="sans-serif"
+                  fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
+                  dominantBaseline="middle"
+                >
+                  {row}
+                </text>
+              ))}
+            </g>
+          );
+        })()}
       </SheetFrame>
     </svg>
   );

@@ -59,6 +59,15 @@ export interface ResultLabelEntry {
   readonly ownerRef: string;
   readonly kind: ResultLabelKind;
   readonly lines: readonly ResultLabelLine[];
+  /** R3 (wym. 9) — SEVERITY elementu 1:1 z kontraktu backendu
+   *  (`RawOverlayElement.severity`: INFO/WARNING/IMPORTANT/CRITICAL). ZERO progów
+   *  liczonych w UI — renderer mapuje ten łańcuch na istniejące tokeny statusów
+   *  (`colorTokens.ts::resultSeverityColor`) oraz na znacznik tekstowy „⚠"
+   *  (kolor DODATKIEM, nie jedynym nośnikiem). Element bez wpisu payloadu nie
+   *  powstaje (entry emitowany tylko dla elementu z metrykami), więc severity
+   *  ZAWSZE pochodzi z realnego elementu; brak pola w payloadzie ⇒ „INFO”
+   *  (neutralne, brak przekroczenia). */
+  readonly severity: string;
 }
 
 /** Zbuduj linie dla jednego elementu z metryk payloadu (obecne kody → linie,
@@ -121,7 +130,7 @@ export function buildResultLabelsFromScene(
     if (entries[ownerRef]) continue; // ta sama tożsamość na wielu LOD/symbolach
     const lines = linesFor(payload, ownerRef, selectResultLabelSpecs(analysis, labelKind));
     if (lines.length === 0) continue;
-    entries[ownerRef] = { ownerRef, kind: labelKind, lines };
+    entries[ownerRef] = { ownerRef, kind: labelKind, lines, severity: severityOf(payload, ownerRef) };
   }
 
   for (const segment of scene.segments) {
@@ -132,16 +141,144 @@ export function buildResultLabelsFromScene(
     if (elementKind === 'bus') {
       const lines = linesFor(payload, ownerRef, selectResultLabelSpecs(analysis, 'bus'));
       if (lines.length === 0) continue;
-      entries[ownerRef] = { ownerRef, kind: 'bus', lines };
+      entries[ownerRef] = { ownerRef, kind: 'bus', lines, severity: severityOf(payload, ownerRef) };
     } else if (elementKind === 'segment') {
       if (ownerRef.includes('#') || !trustedBranchRefs.has(ownerRef)) continue;
       const lines = linesFor(payload, ownerRef, selectResultLabelSpecs(analysis, 'branch'));
       if (lines.length === 0) continue;
-      entries[ownerRef] = { ownerRef, kind: 'branch', lines };
+      entries[ownerRef] = { ownerRef, kind: 'branch', lines, severity: severityOf(payload, ownerRef) };
     }
   }
 
   return entries;
+}
+
+/** R3 (wym. 9) — SEVERITY elementu 1:1 z payloadu (`RawOverlayElement.severity`).
+ *  ZERO progów w UI: odczyt gotowej klasyfikacji backendu, brak wpisu/pola ⇒
+ *  „INFO” (neutralne). */
+function severityOf(payload: RawOverlayPayload, ownerRef: string): string {
+  return payload.elements[ownerRef]?.severity ?? 'INFO';
+}
+
+// ---------------------------------------------------------------------------
+// R3 (wym. 9/17) — POCHODNE severity + FILTRY widoczności warstwy wynikowej.
+// CZYSTE funkcje (bez DOM/React) — działają WYŁĄCZNIE na warstwie etykiet
+// (mapa `ownerRef → ResultLabelEntry`), NIE na scenie: geometria niezmienna
+// niezależnie od stanu filtrów (inwariant §11, dowód w testach).
+// ---------------------------------------------------------------------------
+
+/** Wielkości filtrowane (wym. 17 „tylko P / tylko Q / tylko prądy / tylko
+ *  napięcia / tylko przeciążenia”, rozszerzone o S — komplet realnych wielkości
+ *  szablonów). Każdy prefiks linii mapuje się na dokładnie jedną. */
+export type ResultLabelQuantity = 'P' | 'Q' | 'S' | 'I' | 'U' | 'loading';
+
+/** Prefiks linii (z `resultLabelTemplates.ts`) → wielkość filtrowana. Zamknięta
+ *  tabela — WSZYSTKIE prefiksy szablonów pokryte, więc każda linia jest
+ *  filtrowalna: P/ΔP→moc czynna, Q→bierna, S→pozorna, I/Ik″/ip/Ith→prądy,
+ *  U/δ→węzeł (napięcie/kąt), obc.→obciążenie. */
+const PREFIX_TO_QUANTITY: Readonly<Record<string, ResultLabelQuantity>> = {
+  P: 'P',
+  'ΔP': 'P',
+  Q: 'Q',
+  S: 'S',
+  I: 'I',
+  'Ik″': 'I',
+  ip: 'I',
+  Ith: 'I',
+  U: 'U',
+  δ: 'U',
+  'obc.': 'loading',
+};
+
+/** Wielkość linii wg prefiksu (`null` = prefiks spoza tabeli — linia traktowana
+ *  jako zawsze widoczna, bez cichego gubienia). */
+export function resultLabelLineQuantity(prefix: string): ResultLabelQuantity | null {
+  return PREFIX_TO_QUANTITY[prefix] ?? null;
+}
+
+/** Klasy severity oznaczające PRZEKROCZENIE (wym. 9/17 „tylko przekroczenia”).
+ *  1:1 z kontraktem backendu — INFO to brak przekroczenia. */
+const EXCEEDANCE_SEVERITIES: ReadonlySet<string> = new Set(['WARNING', 'IMPORTANT', 'CRITICAL']);
+
+/** `true` gdy severity oznacza przekroczenie (kontrakt backendu, ZERO progów w UI). */
+export function isExceedanceSeverity(severity: string | undefined): boolean {
+  return severity != null && EXCEEDANCE_SEVERITIES.has(severity);
+}
+
+/** `true` gdy JAKIKOLWIEK element warstwy niesie przekroczenie — brama aktywności
+ *  filtra „tylko przekroczenia” (wym. 17: przy braku przekroczeń kontrolka
+ *  wyszarzona, zero dead-click). */
+export function resultLabelsHaveExceedances(
+  entries: Readonly<Record<string, ResultLabelEntry>> | undefined,
+): boolean {
+  if (!entries) return false;
+  for (const ref of Object.keys(entries)) {
+    if (isExceedanceSeverity(entries[ref].severity)) return true;
+  }
+  return false;
+}
+
+/** Stan filtrów warstwy wynikowej (wym. 17). Domyślnie WSZYSTKO widoczne —
+ *  zgodnie z akceptacją R2 (sonda metryk przy domyślnych filtrach) i inwariantem
+ *  geometrii (filtr działa WYŁĄCZNIE na warstwie etykiet). */
+export interface ResultLabelFilter {
+  /** Wielkości widoczne (odznaczenie ukrywa linie tej wielkości). */
+  readonly quantities: Readonly<Record<ResultLabelQuantity, boolean>>;
+  /** Klasy elementów widoczne (odznaczenie ukrywa cały wpis danej klasy). */
+  readonly classes: Readonly<Record<ResultLabelKind, boolean>>;
+  /** `true` = pokazuj wyłącznie elementy z przekroczeniem (severity>INFO). */
+  readonly onlyExceedances: boolean;
+}
+
+export const DEFAULT_RESULT_LABEL_FILTER: ResultLabelFilter = {
+  quantities: { P: true, Q: true, S: true, I: true, U: true, loading: true },
+  classes: { source: true, transformer: true, branch: true, bus: true },
+  onlyExceedances: false,
+};
+
+/** `true` gdy filtr jest w stanie DOMYŚLNYM (wszystko widoczne) — wtedy
+ *  `applyResultLabelFilter` zwraca wejście bez zmian (tożsamość referencji:
+ *  determinizm i zerowy koszt, sonda akceptacji R2 nietknięta). */
+function isDefaultResultLabelFilter(filter: ResultLabelFilter): boolean {
+  if (filter.onlyExceedances) return false;
+  for (const q of Object.keys(filter.quantities) as ResultLabelQuantity[]) {
+    if (!filter.quantities[q]) return false;
+  }
+  for (const k of Object.keys(filter.classes) as ResultLabelKind[]) {
+    if (!filter.classes[k]) return false;
+  }
+  return true;
+}
+
+/**
+ * Zastosuj filtry widoczności (wym. 17) do mapy etykiet — CZYSTA funkcja na
+ * warstwie etykiet (scena/geometria NIETKNIĘTA). Kolejność:
+ *   1. klasa elementu wyłączona ⇒ cały wpis pominięty;
+ *   2. „tylko przekroczenia” ⇒ wpis bez przekroczenia (severity≤INFO) pominięty;
+ *   3. linie przycięte do włączonych wielkości; wpis bez linii ⇒ pominięty.
+ * Stan DOMYŚLNY (wszystko widoczne) ⇒ zwraca wejście bez zmian (tożsamość).
+ * Determinizm: iteracja po kluczach posortowanych, brak zależności od kolejności
+ * wstawień.
+ */
+export function applyResultLabelFilter(
+  entries: Readonly<Record<string, ResultLabelEntry>> | undefined,
+  filter: ResultLabelFilter,
+): Readonly<Record<string, ResultLabelEntry>> {
+  if (!entries) return {};
+  if (isDefaultResultLabelFilter(filter)) return entries;
+  const out: Record<string, ResultLabelEntry> = {};
+  for (const ref of Object.keys(entries).sort()) {
+    const entry = entries[ref];
+    if (!filter.classes[entry.kind]) continue;
+    if (filter.onlyExceedances && !isExceedanceSeverity(entry.severity)) continue;
+    const lines = entry.lines.filter((line) => {
+      const q = resultLabelLineQuantity(line.prefix);
+      return q === null ? true : filter.quantities[q];
+    });
+    if (lines.length === 0) continue;
+    out[ref] = lines.length === entry.lines.length ? entry : { ...entry, lines };
+  }
+  return out;
 }
 
 /** `true` gdy mapa etykiet pusta (brak wyniku / brak metryk) — bramka renderera
