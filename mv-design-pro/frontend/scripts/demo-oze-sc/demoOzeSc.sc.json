@@ -1,0 +1,128 @@
+{
+  "_meta": {
+    "analysis_type": "short_circuit_3f",
+    "builder_snapshot_hash": "621a32cb3d167187b6d37fffff50595ca303a00e51056e37fe4c6e7b39d11318",
+    "c_factor": 1.1,
+    "note": "Realny bieg zwarciowy; Ik''/ip/Ith/Sk 1:1 z solvera. Regeneracja: scripts/generate-demo-oze-sc.py.",
+    "source": "SC IEC 60909 (FROZEN solver) per szyna SN — tor kanoniczny",
+    "tk_s": 1.0
+  },
+  "bus_count": 14,
+  "bus_short_circuit": {
+    "bess/9febfa8ed1bfc0fe0264ad14cca5f7ca/der/block_hv_bus": {
+      "bus_ref": "bess/9febfa8ed1bfc0fe0264ad14cca5f7ca/der/block_hv_bus",
+      "ikss_a": 39765.489,
+      "ip_a": 57675.54,
+      "ith_a": 39765.489,
+      "sk_mva": 1033.138,
+      "voltage_kv": 15.0
+    },
+    "pv/c16b8f5f2b025299c8c65b8d51fb6461/der/block_hv_bus": {
+      "bus_ref": "pv/c16b8f5f2b025299c8c65b8d51fb6461/der/block_hv_bus",
+      "ikss_a": 63661.651,
+      "ip_a": 91888.562,
+      "ith_a": 63661.651,
+      "sk_mva": 1653.978,
+      "voltage_kv": 15.0
+    },
+    "stn/0d2463234c01b8ddaf403cc2e55a2ef8/sn_bus": {
+      "bus_ref": "stn/0d2463234c01b8ddaf403cc2e55a2ef8/sn_bus",
+      "ikss_a": 33539.998,
+      "ip_a": 48777.133,
+      "ith_a": 33539.998,
+      "sk_mva": 871.395,
+      "voltage_kv": 15.0
+    },
+    "stn/1255443c874a67e09e59e55295b4a633/sn_bus": {
+      "bus_ref": "stn/1255443c874a67e09e59e55295b4a633/sn_bus",
+      "ikss_a": 66776.514,
+      "ip_a": 96371.699,
+      "ith_a": 66776.514,
+      "sk_mva": 1734.905,
+      "voltage_kv": 15.0
+    },
+    "stn/3d8225a35dae954e085a7a61cf343b2c/sn_bus": {
+      "bus_ref": "stn/3d8225a35dae954e085a7a61cf343b2c/sn_bus",
+      "ikss_a": 68522.943,
+      "ip_a": 98892.143,
+      "ith_a": 68522.943,
+      "sk_mva": 1780.278,
+      "voltage_kv": 15.0
+    },
+    "stn/51fa038c2374b51174660887fe54402a/sn_bus": {
+      "bus_ref": "stn/51fa038c2374b51174660887fe54402a/sn_bus",
+      "ikss_a": 160198.006,
+      "ip_a": 231197.426,
+      "ith_a": 160198.006,
+      "sk_mva": 4162.066,
+      "voltage_kv": 15.0
+    },
+    "stn/54d9405a8f4ce2608d389f6bf3d4666e/sn_bus": {
+      "bus_ref": "stn/54d9405a8f4ce2608d389f6bf3d4666e/sn_bus",
+      "ikss_a": 39417.312,
+      "ip_a": 57142.953,
+      "ith_a": 39417.312,
+      "sk_mva": 1024.092,
+      "voltage_kv": 15.0
+    },
+    "stn/83a848677fa2f56c670d9d57167669c6/sn_bus": {
+      "bus_ref": "stn/83a848677fa2f56c670d9d57167669c6/sn_bus",
+      "ikss_a": 33434.486,
+      "ip_a": 48616.861,
+      "ith_a": 33434.486,
+      "sk_mva": 868.653,
+      "voltage_kv": 15.0
+    },
+    "stn/8d0a187f730c120e697bbf21ec6f1c00/sn_bus": {
+      "bus_ref": "stn/8d0a187f730c120e697bbf21ec6f1c00/sn_bus",
+      "ikss_a": 33330.78,
+      "ip_a": 48459.455,
+      "ith_a": 33330.78,
+      "sk_mva": 865.959,
+      "voltage_kv": 15.0
+    },
+    "stn/abadcfb0f0a539897a912a1ee0412463/sn_bus": {
+      "bus_ref": "stn/abadcfb0f0a539897a912a1ee0412463/sn_bus",
+      "ikss_a": 136327.885,
+      "ip_a": 196748.114,
+      "ith_a": 136327.885,
+      "sk_mva": 3541.902,
+      "voltage_kv": 15.0
+    },
+    "stn/b7594985a5ba20169e15d7fbe93d525b/sn_bus": {
+      "bus_ref": "stn/b7594985a5ba20169e15d7fbe93d525b/sn_bus",
+      "ikss_a": 33487.013,
+      "ip_a": 48696.634,
+      "ith_a": 33487.013,
+      "sk_mva": 870.018,
+      "voltage_kv": 15.0
+    },
+    "stn/bb940119982d6672dc70ed02f5abac14/sn_bus": {
+      "bus_ref": "stn/bb940119982d6672dc70ed02f5abac14/sn_bus",
+      "ikss_a": 45775.154,
+      "ip_a": 66614.413,
+      "ith_a": 45775.154,
+      "sk_mva": 1189.273,
+      "voltage_kv": 15.0
+    },
+    "stn/ef3d8e7660349a685ae9db5b321f946a/sn_bus": {
+      "bus_ref": "stn/ef3d8e7660349a685ae9db5b321f946a/sn_bus",
+      "ikss_a": 40049.864,
+      "ip_a": 58078.155,
+      "ith_a": 40049.864,
+      "sk_mva": 1040.526,
+      "voltage_kv": 15.0
+    },
+    "stn/fd19fa5e8c94e13d88b9e6beb3df01ac/sn_bus": {
+      "bus_ref": "stn/fd19fa5e8c94e13d88b9e6beb3df01ac/sn_bus",
+      "ikss_a": 65155.217,
+      "ip_a": 94031.847,
+      "ith_a": 65155.217,
+      "sk_mva": 1692.782,
+      "voltage_kv": 15.0
+    }
+  },
+  "converged": true,
+  "ikss_max_ka": 160.198,
+  "ikss_min_ka": 33.331
+}
