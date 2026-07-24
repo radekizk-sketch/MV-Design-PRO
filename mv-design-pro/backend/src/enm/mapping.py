@@ -200,6 +200,47 @@ def _assemble_zero_sequence_y0(
             result={"z0_ohm": z0_ohm},
         )
 
+        # Audyt fizyki fala F (V12K): pojemność doziemna linii/kabla (B0) jako
+        # bocznik do ziemi w modelu π (jak susceptancja zgodna w Y1 — patrz
+        # AdmittanceMatrixBuilder._get_branch_admittances_pu, split /2 na
+        # każdy koniec). Przed tą kartą B0 było CAŁKOWICIE pomijane w sieci
+        # składowej zerowej SC_1F/2F+G — dla sieci o punkcie neutralnym
+        # izolowanym/skompensowanym (Petersen) ta pojemność jest DOMINUJĄCĄ
+        # drogą powrotu prądu doziemnego (fizycznie: prąd pojemnościowy,
+        # IEC 60909-0 / PN-EN 50522), więc jej brak fałszywie eliminował
+        # jedyną realną ścieżkę I0 (macierz osobliwa lub Z0 zaniżone o brakujący
+        # bocznik). ``b0_siemens_per_km`` jest już w S/km (NIE μS/km — w
+        # odróżnieniu od ``b_us_per_km`` zgodnej, patrz nazwa pola i
+        # v126_academic._neutral_earthing: brak przelicznika 1e-6 tamże).
+        # Zero fabrykacji: gdy b0 brak, bocznik pomijany (bez zmiany, jak dla
+        # r0/x0 wyżej) — NIE podstawiamy zera znaczącego fizycznie.
+        if branch.b0_siemens_per_km is not None:
+            y0_shunt_total_s = branch.b0_siemens_per_km * branch.length_km
+            y0_shunt_total_pu = complex(0.0, y0_shunt_total_s * z_base_ohm)
+            y0_shunt_per_end_pu = y0_shunt_total_pu / 2.0
+            y0_bus[from_idx, from_idx] += y0_shunt_per_end_pu
+            y0_bus[to_idx, to_idx] += y0_shunt_per_end_pu
+            tracer.add(
+                key=f"z0_line_shunt[{branch.ref_id}]",
+                title=(
+                    f"Gałąź {branch.name or branch.ref_id}: pojemność doziemna "
+                    "(bocznik B0, model π)"
+                ),
+                formula_latex=r"Y_{0,sh} = j B_0 \cdot \ell;\quad Y_{0,sh,end} = Y_{0,sh}/2",
+                inputs={
+                    "ref_id": branch.ref_id,
+                    "b0_siemens_per_km": branch.b0_siemens_per_km,
+                    "length_km": branch.length_km,
+                    "z_base_ohm": z_base_ohm,
+                },
+                substitution=(
+                    f"B0={branch.b0_siemens_per_km:.6g} S/km · {branch.length_km:.6g} km = "
+                    f"{y0_shunt_total_s:.6g} S; Y0_sh,end(pu) = "
+                    f"j{y0_shunt_per_end_pu.imag:.6g} (na {from_id} i {to_id})"
+                ),
+                result={"y0_shunt_per_end_pu": y0_shunt_per_end_pu},
+            )
+
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_id = ref_to_node_id.get(source.bus_ref)
         if bus_id not in node_index:
@@ -276,8 +317,25 @@ def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np
     połączeń wektorowych (patrz ``zero_sequence_transformer``). Sieci bez
     transformatorów z grupą zachowują wynik sprzed karty (TR bez ``vector_group``
     → połączenie OTWARTE, brak wkładu).
+
+    Audyt fizyki fala F (V12K): rangowanie JAWNE przez SVD (``matrix_rank``)
+    przed inwersją. ``np.linalg.inv`` NIE gwarantuje ``LinAlgError`` dla macierzy
+    rangowo-niedomiarowej (np. sieć izolowana bez żadnej pojemności doziemnej
+    B0 — podsieć „unosi się" bez odniesienia do ziemi): LU z pivotingiem
+    częściowym potrafi „odwrócić" taką macierz, dając ogromne, fizycznie
+    bezsensowne Z0 (rząd 1e15+ Ω) zamiast czytelnego błędu. To byłoby CICHĄ
+    fabrykacją wyniku — zakazaną. Jawne sprawdzenie rangi wyłapuje ten
+    przypadek niezależnie od tego, czy LU akurat zgłosi wyjątek.
     """
-    _, _, _, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph)
+    _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph)
+    if np.linalg.matrix_rank(y0_bus) < size:
+        raise ValueError(
+            "Zero-sequence Y-bus is singular; cannot compute Z0-bus "
+            "(sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia "
+            "punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; "
+            "dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd "
+            "pojemnościowy doziemienia)"
+        )
     try:
         return np.linalg.inv(y0_bus)
     except np.linalg.LinAlgError as exc:

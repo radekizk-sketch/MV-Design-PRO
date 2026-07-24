@@ -128,19 +128,54 @@ def _parse_vector_group(vector_group: str) -> tuple[str, bool, str, bool]:
 def _neutral_grounded_and_zn(
     grounding: GroundingConfig | None,
     neutral_letter_present: bool,
+    *,
+    trafo_ref: str,
+    side: str,
 ) -> tuple[bool, complex]:
     """Zwraca (uziemiony?, Z_N [Ω]) na podstawie GroundingConfig / litery neutralnej.
 
     Priorytet: jawna GroundingConfig > litera neutralna w grupie. 'isolated' →
     brak uziemienia. Brak configu i brak litery → nieuziemione.
+
+    ZERO fabrykacji (audyt fizyki, fala F): 'resistor_grounded' i 'petersen_coil'
+    to urządzenia z NIEZEROWĄ, dominującą impedancją ograniczającą prąd doziemny
+    (rezystor NER: R rzędu dziesiątek-setek Ω; dławik Petersena: X rzędu
+    dziesiątek-setek Ω, dostrojony do pojemności sieci). Brakująca wartość tej
+    ISTOTNEJ składowej NIE MOŻE być cicho podstawiona zerem — to zamieniłoby
+    uziemienie impedancyjne w bezpośrednie (Z_N=0) i SZTUCZNIE ZAWYŻYŁO prąd
+    zwarcia doziemnego I''k1 (fizyka odwrotna: sieć skompensowana/rezystancyjna
+    ma CELOWO mały prąd doziemny). Składowa PRZECIWNA (X dla rezystora, R —
+    tłumienie dławika — dla cewki Petersena) jest fizycznie zwykle pomijalna i
+    tam 0 Ω jest uzasadnionym założeniem domyślnym (jak w v126_academic.py
+    ``petersen_residual_damping`` default 0.0), więc pozostaje dozwolona.
     """
     if grounding is not None:
         if grounding.type == "isolated":
             return False, 0j
         if grounding.type == "directly_grounded":
             return True, 0j
-        # resistor_grounded / petersen_coil: Z_N = r + jx (0 gdy brak danych).
-        return True, complex(grounding.r_ohm or 0.0, grounding.x_ohm or 0.0)
+        if grounding.type == "resistor_grounded":
+            if grounding.r_ohm is None:
+                raise ValueError(
+                    f"Transformator {trafo_ref}: uziemienie punktu neutralnego "
+                    f"({side}) typu 'resistor_grounded' wymaga rezystancji R_N "
+                    "[Ω] (GroundingConfig.r_ohm). Brak wartości — nie wolno "
+                    "przyjmować R_N=0 (to byłoby uziemienie bezpośrednie, nie "
+                    "rezystancyjne). Podaj r_ohm rezystora NER."
+                )
+            return True, complex(grounding.r_ohm, grounding.x_ohm or 0.0)
+        # petersen_coil: reaktancja X_N jest wielkością dostrajaną do pojemności
+        # sieci (dominuje Z0) i MUSI być podana; rezystancja tłumienia dławika
+        # (r_ohm) może być pominięta (0 Ω — brak jawnie podanych strat dławika).
+        if grounding.x_ohm is None:
+            raise ValueError(
+                f"Transformator {trafo_ref}: uziemienie punktu neutralnego "
+                f"({side}) typu 'petersen_coil' wymaga reaktancji dławika X_N "
+                "[Ω] (GroundingConfig.x_ohm). Brak wartości — nie wolno "
+                "przyjmować X_N=0 (to byłoby uziemienie bezpośrednie, nie "
+                "przez cewkę Petersena). Podaj x_ohm dławika ziemnozwarciowego."
+            )
+        return True, complex(grounding.r_ohm or 0.0, grounding.x_ohm)
     # Brak jawnej konfiguracji: uziemienie wynika z litery neutralnej (bezpośrednie).
     return neutral_letter_present, 0j
 
@@ -214,8 +249,12 @@ def build_transformer_zero_seq_model(trafo: Transformer) -> TransformerZeroSeqMo
         )
 
     hv_type, hv_n_letter, lv_type, lv_n_letter = _parse_vector_group(trafo.vector_group)
-    hv_grounded, zn_hv_ohm = _neutral_grounded_and_zn(trafo.hv_neutral, hv_n_letter)
-    lv_grounded, zn_lv_ohm = _neutral_grounded_and_zn(trafo.lv_neutral, lv_n_letter)
+    hv_grounded, zn_hv_ohm = _neutral_grounded_and_zn(
+        trafo.hv_neutral, hv_n_letter, trafo_ref=trafo.ref_id, side="HV"
+    )
+    lv_grounded, zn_lv_ohm = _neutral_grounded_and_zn(
+        trafo.lv_neutral, lv_n_letter, trafo_ref=trafo.ref_id, side="LV"
+    )
     hv_winding = _classify_winding(hv_type, hv_grounded)
     lv_winding = _classify_winding(lv_type, lv_grounded)
 

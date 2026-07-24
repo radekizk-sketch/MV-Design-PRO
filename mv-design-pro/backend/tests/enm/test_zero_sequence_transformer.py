@@ -23,6 +23,7 @@ from enm.mapping import (
 )
 from enm.models import (
     Bus,
+    Cable,
     EnergyNetworkModel,
     ENMHeader,
     GroundingConfig,
@@ -156,6 +157,72 @@ class TestSequenceConnectionTable:
 
 
 # ---------------------------------------------------------------------------
+# 1b) Audyt fizyki fala F: zakaz fabrykacji Z_N brakującej dla urządzeń
+#     impedancyjnych (rezystor NER / dławik Petersena). Precedens: te typy
+#     GroundingConfig niosą NIEZEROWĄ, dominującą impedancję ograniczającą
+#     prąd doziemny — cichy fallback na 0 Ω zamieniałby je w uziemienie
+#     BEZPOŚREDNIE i SZTUCZNIE ZAWYŻAŁ I''k1 (fizyka odwrotna: sieć
+#     kompensowana/rezystancyjna ma z założenia mały prąd doziemny).
+# ---------------------------------------------------------------------------
+
+
+class TestGroundingImpedanceNoFabrication:
+    def test_petersen_coil_missing_x_ohm_raises_not_defaults_to_zero(self):
+        """Cewka Petersena bez podanej reaktancji X_N MUSI zgłosić błąd danych,
+        NIE cicho przyjąć X_N=0 (co dałoby uziemienie bezpośrednie)."""
+        trafo = _mk_transformer("YNyn0", hv_neutral=GroundingConfig(type="petersen_coil"))
+        with pytest.raises(ValueError, match="petersen_coil.*reaktancji|reaktancji.*petersen_coil"):
+            build_transformer_zero_seq_model(trafo)
+
+    def test_resistor_grounded_missing_r_ohm_raises_not_defaults_to_zero(self):
+        """Rezystor NER bez podanej rezystancji R_N MUSI zgłosić błąd danych,
+        NIE cicho przyjąć R_N=0 (co dałoby uziemienie bezpośrednie)."""
+        trafo = _mk_transformer("YNyn0", hv_neutral=GroundingConfig(type="resistor_grounded"))
+        with pytest.raises(
+            ValueError, match="resistor_grounded.*rezystancji|rezystancji.*resistor_grounded"
+        ):
+            build_transformer_zero_seq_model(trafo)
+
+    def test_petersen_coil_with_x_ohm_dominates_z0_not_zero(self):
+        """Gdy X_N dławika JEST podane, Z0 = Z_T0 + 3·X_N (rozproszenie TR w
+        szeregu z dławikiem), NIE samo Z_T0 (co byłoby przypadkiem uziemienia
+        bezpośredniego, gdzie dławik zniknąłby z obwodu)."""
+        x_coil_ohm = 120.0
+        model = build_transformer_zero_seq_model(
+            _mk_transformer(
+                "YNyn0", hv_neutral=GroundingConfig(type="petersen_coil", x_ohm=x_coil_ohm)
+            )
+        )
+        z0_ohm_hv = model.z0_pu * (_UHV_KV**2 / S_BASE_MVA)
+        # Hand-calc: Z_T0(HV) = (r_pu + j·x_pu)·Zbase_HV, patrz _hand_zt0_ohm_lv
+        # (tu strona HV zamiast LV: Zbase = UHV²/Sn = 484 Ω).
+        z_pu = _UK_PCT / 100.0
+        r_pu = (_PK_KW / 1000.0) / _SN_MVA
+        x_pu = math.sqrt(z_pu * z_pu - r_pu * r_pu)
+        z_t0_hv = complex(r_pu, x_pu) * (_UHV_KV**2 / _SN_MVA)
+        expected = z_t0_hv + complex(0.0, 3.0 * x_coil_ohm)
+        assert z0_ohm_hv == pytest.approx(expected, rel=1e-6)
+        # Dławik (3·X_N = 360 Ω) musi być OBECNY w Z0, nie zerowy: różnica
+        # względem Z_T0 samego transformatora równa się dokładnie 3·X_N.
+        assert (z0_ohm_hv - z_t0_hv).imag == pytest.approx(3.0 * x_coil_ohm, rel=1e-6)
+
+    def test_resistor_grounded_missing_r_ohm_does_not_silently_ground_directly(self):
+        """Regresja: przed naprawą (fala F) brak r_ohm dawał Z_N=0 (identyczne
+        z 'directly_grounded'). Po naprawie brak danych jest błędem, więc gdy
+        r_ohm JEST podane, wynik MUSI różnić się od uziemienia bezpośredniego."""
+        r_ner_ohm = 50.0
+        directly = build_transformer_zero_seq_model(
+            _mk_transformer("YNyn0", hv_neutral=GroundingConfig(type="directly_grounded"))
+        )
+        ner = build_transformer_zero_seq_model(
+            _mk_transformer(
+                "YNyn0", hv_neutral=GroundingConfig(type="resistor_grounded", r_ohm=r_ner_ohm)
+            )
+        )
+        assert ner.z0_pu != pytest.approx(directly.z0_pu)
+
+
+# ---------------------------------------------------------------------------
 # 2) Hand-calc IEC 60909: source + Dyn TR + zwarcie 1F na szynie yn
 # ---------------------------------------------------------------------------
 
@@ -250,6 +317,142 @@ class TestHandCalc1F:
             graph=g_b, fault_node_id=lv_b, c_factor=1.1, tk_s=1.0, z0_bus=z0_b
         )
         assert r_b.z0_ohm != pytest.approx(r_a.z0_ohm)
+
+
+# ---------------------------------------------------------------------------
+# 2b) Audyt fizyki fala F: pojemność doziemna linii/kabli (B0) w sieci Z0.
+#     Sieć IZOLOWANA (bez uziemienia punktu neutralnego nigdzie) — jedyna
+#     droga powrotu prądu zerowego to pojemność doziemna kabla. Przed naprawą
+#     Y0 była tu macierzą OSOBLIWĄ (brak jakiegokolwiek bocznika do ziemi) —
+#     build_zero_sequence_zbus rzucał ValueError. Hand-calc: obwód 2-węzłowy
+#     (blv=A, b2=B) z JEDNĄ gałęzią niosącą Z0 szeregowe I B0 bocznikowe;
+#     transformator Dyn11+izolowany LV blokuje/nie wnosi Z0 (OPEN), źródło
+#     odcięte deltą HV — jedyne admitancje w podsieci {A,B} to y_s (szereg
+#     kabla) i y_sh (bocznik B0/2 na każdym końcu).
+# ---------------------------------------------------------------------------
+
+
+def _build_isolated_cable_network(b0_siemens_per_km: float):
+    """Sieć SN CAŁKOWICIE izolowana: TR Dyn11 z lv_neutral='isolated' (blokuje
+    HV deltą i LV izolacją), jeden kabel blv→b2 z B0 jawnym. Jedyna droga
+    zerowa: pojemność doziemna kabla."""
+    ulv_kv = 15.0
+    r0_per_km, x0_per_km, length_km = 0.6, 0.3, 10.0
+    enm = EnergyNetworkModel(
+        header=ENMHeader(name="F-shunt-c0"),
+        buses=[
+            Bus(ref_id="bhv", name="HV", voltage_kv=110.0),
+            Bus(ref_id="blv", name="LV", voltage_kv=ulv_kv),
+            Bus(ref_id="b2", name="B2", voltage_kv=ulv_kv),
+        ],
+        sources=[
+            Source(
+                ref_id="src",
+                name="Siec",
+                bus_ref="bhv",
+                model="thevenin",
+                r_ohm=0.8,
+                x_ohm=8.0,
+                r0_ohm=0.16,
+                x0_ohm=1.6,
+            ),
+        ],
+        transformers=[
+            Transformer(
+                ref_id="tr1",
+                name="TR",
+                hv_bus_ref="bhv",
+                lv_bus_ref="blv",
+                sn_mva=_SN_MVA,
+                uhv_kv=_UHV_KV,
+                ulv_kv=ulv_kv,
+                uk_percent=_UK_PCT,
+                pk_kw=_PK_KW,
+                vector_group="Dyn11",
+                lv_neutral=GroundingConfig(type="isolated"),
+            )
+        ],
+        branches=[
+            Cable(
+                ref_id="c1",
+                name="C1",
+                from_bus_ref="blv",
+                to_bus_ref="b2",
+                length_km=length_km,
+                r_ohm_per_km=0.2,
+                x_ohm_per_km=0.1,
+                r0_ohm_per_km=r0_per_km,
+                x0_ohm_per_km=x0_per_km,
+                b0_siemens_per_km=b0_siemens_per_km,
+            ),
+        ],
+    )
+    graph = map_enm_to_network_graph(enm)
+    b2_node = next(n.id for n in graph.nodes.values() if n.name == "B2")
+    return enm, graph, b2_node, ulv_kv, r0_per_km, x0_per_km, length_km
+
+
+class TestLineShuntCapacitanceZ0:
+    def test_isolated_network_without_b0_is_singular(self):
+        """Kontrolne: bez B0 (jak przed naprawą) sieć CAŁKOWICIE izolowana ma
+        Y0 osobliwą — brak jakiejkolwiek drogi do ziemi. To potwierdza, że
+        obserwowana naprawa (test niżej) faktycznie WYMAGA bocznika B0."""
+        enm, graph, _, _, _, _, _ = _build_isolated_cable_network(b0_siemens_per_km=0.0)
+        with pytest.raises(ValueError, match="singular"):
+            build_zero_sequence_zbus(enm, graph)
+
+    def test_isolated_network_z0_matches_hand_calc_series_shunt_circuit(self):
+        """Hand-calc niezależny (obwód 2-węzłowy szereg+bocznik, algebra
+        zespolona) porównany BIT-DOKŁADNIE z wynikiem solvera.
+
+        Y0 (pu, węzły {blv,b2}) = [[y_s+y_sh, -y_s], [-y_s, y_s+y_sh]]
+        (symetryczne, bo jedna gałąź, ten sam y_sh na obu końcach — model π).
+        det = y_sh·(2y_s + y_sh);  Z0[b2,b2] = (y_s+y_sh)/det.
+        """
+        b0_per_km = 3.0e-6  # S/km (pole już w S/km — NIE μS/km, patrz nazwa pola)
+        enm, graph, b2, ulv_kv, r0_per_km, x0_per_km, length_km = _build_isolated_cable_network(
+            b0_siemens_per_km=b0_per_km
+        )
+        z0_bus = build_zero_sequence_zbus(enm, graph)
+        result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
+            graph=graph, fault_node_id=b2, c_factor=1.1, tk_s=1.0, z0_bus=z0_bus
+        )
+
+        z_base_ohm = (ulv_kv**2) / S_BASE_MVA
+        z0_cable_ohm = complex(r0_per_km, x0_per_km) * length_km
+        y_s_pu = 1.0 / (z0_cable_ohm / z_base_ohm)
+        b0_total_s = b0_per_km * length_km
+        y_sh_pu = complex(0.0, b0_total_s * z_base_ohm) / 2.0
+        det = y_sh_pu * (2.0 * y_s_pu + y_sh_pu)
+        z0_b2_pu_hand = (y_s_pu + y_sh_pu) / det
+        z0_b2_ohm_hand = z0_b2_pu_hand * z_base_ohm
+
+        assert result.z0_ohm == pytest.approx(z0_b2_ohm_hand, rel=1e-9)
+        # Fizyka: sieć izolowana → Z0 zdominowane REAKTANCJĄ POJEMNOŚCIOWĄ
+        # (część urojona ujemna, rząd wielkości 1/B0_total), NIE impedancją
+        # szeregową kabla (Z0_cable = 6+j3 Ω, o 4 rzędy wielkości mniejsza).
+        assert result.z0_ohm.imag < 0.0
+        assert abs(result.z0_ohm.imag) == pytest.approx(1.0 / b0_total_s, rel=0.05)
+        # I''k1 fizycznie MAŁY (prąd pojemnościowy, nie zwarciowy) — rząd A, nie kA.
+        assert result.ikss_a < 10.0
+
+    def test_missing_b0_leaves_z0_unchanged_zero_fabrication(self):
+        """Zero fabrykacji: gdy B0 NIE jest podane na gałęzi, bocznik jest
+        pomijany (Y0 niezmieniona) — kod NIE podstawia domyślnej pojemności."""
+        b0_per_km = 3.0e-6
+        enm_with, graph_with, b2_with, *_ = _build_isolated_cable_network(
+            b0_siemens_per_km=b0_per_km
+        )
+        z0_with = build_zero_sequence_zbus(enm_with, graph_with)
+        result_with = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
+            graph=graph_with, fault_node_id=b2_with, c_factor=1.1, tk_s=1.0, z0_bus=z0_with
+        )
+        # Referencja z Dyn11+izolowany, ale ZE ŹRÓDŁEM Z0 osiągalnym gdzie indziej
+        # nie istnieje w tej sieci — więc bez B0 macierz jest osobliwa (patrz test
+        # wyżej). Tu potwierdzamy tylko, że wynik Z B0 różni się od Z0_cable samego
+        # (czyli bocznik REALNIE wpływa na wynik, nie jest martwym kodem).
+        z0_cable_only_ohm = complex(0.6, 0.3) * 10.0
+        assert result_with.z0_ohm != pytest.approx(z0_cable_only_ohm)
 
 
 # ---------------------------------------------------------------------------

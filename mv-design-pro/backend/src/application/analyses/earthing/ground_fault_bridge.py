@@ -4,8 +4,8 @@ Domyka lukę „(a)" z mapy konsumpcji V-SM-1/V12K-182: pakiet dowodowy zwarcia
 doziemnego (``earthing_ground_fault_sn``) był wołany WYŁĄCZNIE z testów — brak
 produkcyjnego dostawcy prądu doziemnego 1F. Ten most dostarcza go analogicznie
 do ``build_protection_input`` (zabezpieczenia 50N/51N), tak by napięcie dotykowe
-i krokowe liczyły się od POPRAWNEGO prądu doziemnego — a więc od poprawnej
-składowej zerowej zależnej od grupy połączeń transformatora.
+liczyło się od POPRAWNEGO prądu doziemnego — a więc od poprawnej składowej
+zerowej zależnej od grupy połączeń transformatora.
 
 Łańcuch (każde ogniwo to realny kod, zero fabrykacji):
 
@@ -14,7 +14,10 @@ składowej zerowej zależnej od grupy połączeń transformatora.
                  ─► ShortCircuitResult.ikss_a  (I″k1 = prąd doziemny)
                  ─► build_earthing_ground_fault_input  (TEN most)
                  ─► generate_earthing_ground_fault_pack
-                 ─► U_d / U_s (napięcie dotykowe / krokowe)
+                 ─► U_d (napięcie dotykowe, tryb uproszczony — patrz ostrzeżenie
+                    packa). Napięcie KROKOWE (U_s) NIE jest obecnie liczone
+                    przez ten łańcuch (brak modelu geometrii uziomu) — audyt
+                    fizyki fala F, zgłoszone jako dług jawny, nie fabrykowane.
 
 Fizyka:
     * I″k1 pochodzi WYŁĄCZNIE z solvera SC_1F (``ShortCircuitResult``).

@@ -1,6 +1,8 @@
 """Dowód end-to-end „do ostatniego klika" (karta EARTHING-1): grupa połączeń
 transformatora steruje prądem zwarcia doziemnego 1F, a ten — przez PRODUKCYJNY
-most SC_1F → pakiet dowodowy uziemień — steruje NAPIĘCIEM DOTYKOWYM/KROKOWYM.
+most SC_1F → pakiet dowodowy uziemień — steruje NAPIĘCIEM DOTYKOWYM (U_d;
+napięcie krokowe U_s NIE jest obecnie liczone przez ten łańcuch — brak modelu
+geometrii uziomu, patrz ground_fault_bridge.py, audyt fizyki fala F).
 
 Rozszerza dowód V-SM-1 (nastawy 50N/51N) o drugiego konsumenta prądu doziemnego:
 decyzję uziemieniową. Łańcuch (każde ogniwo to realny kod produkcyjny):
@@ -17,8 +19,11 @@ samym uziomie napięcie dotykowe MUSI odziedziczyć tę różnicę: U_d(Dyn) > U
 proporcjonalnie do I″k1. Gdyby most/pack liczył od stałej zamiast od prądu 1F —
 asercje by padły.
 
-Wartości referencyjne I″k1 (hand-calc, z V-SM-1): Dyn11=9750.24 A, YNyn0=8649.10 A.
-Uziom testowy R_u=10 Ω, r=0.6 ⇒ U_d(Dyn)=58501.44 V, U_d(YNyn)=51894.60 V.
+Wartości referencyjne I″k1 (hand-calc, RE-BASELINE V12K-184 — patrz
+test_vector_group_earth_fault_chain.test_reference_currents): Dyn11=8849.00 A,
+YNyn0=7932.23 A. Uziom testowy R_u=10 Ω, r=0.6 ⇒ U_d(Dyn)=53094.00 V,
+U_d(YNyn)=47593.36 V (zgodnie z asercjami niżej — poprzednie wartości
+9750.24/8649.10 A i 58501.44/51894.60 V są NIEAKTUALNE sprzed V12K-184).
 """
 
 from __future__ import annotations

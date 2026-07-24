@@ -203,14 +203,14 @@ def _hand_delta_u(current_a, r_km, x_km, length_km, cos_phi, sign_p, sign_q) -> 
     )
 
 
-_BASE = dict(
-    current_a=100.0,
-    length_km=5.0,
-    r_ohm_per_km=0.16,
-    x_ohm_per_km=0.10,
-    cos_phi=0.95,
-    line_voltage_v=15000.0,
-)
+_BASE = {
+    "current_a": 100.0,
+    "length_km": 5.0,
+    "r_ohm_per_km": 0.16,
+    "x_ohm_per_km": 0.10,
+    "cos_phi": 0.95,
+    "line_voltage_v": 15000.0,
+}
 
 
 def test_default_is_load_inductive_and_bit_identical() -> None:
