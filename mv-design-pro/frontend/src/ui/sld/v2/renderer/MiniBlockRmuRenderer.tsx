@@ -150,6 +150,13 @@ export interface CtRatingAnnotationView {
    *  BOX — adnotacja rysuje sam identyfikator+przekładnię bez członu układu,
    *  §18.3 „zero zgadywania"). */
   readonly arrangement?: '3xCT' | 'ferranti';
+  /** CTVT-RENDER (CTVT-MODEL/V12K-176): liczba rdzeni CT (osobne uzwojenia
+   *  wtórne, tabliczka IEC 61869-2) z `Measurement.ct_cores`. Doklejona jako
+   *  DODATKOWY człon etykiety (`ctRatingLabelText`, „… · N rdz.") WYŁĄCZNIE gdy
+   *  dana obecna — `undefined` gdy `Measurement.ct_cores` nieobecne (zero zmiany
+   *  tekstu/szerokości względem F10.4/F10.6, uczciwy brak). Oś odrębna od
+   *  `arrangement`. */
+  readonly cores?: number;
   /** W5 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §12–15/uwaga 7 „CT pomiarowy vs
    *  zabezpieczeniowy") — przeznaczenie CT z `Measurement.purpose`. Wariant CT
    *  Z DANYCH, nie z domysłu: `undefined` gdy pomiar nie niesie `purpose`
@@ -158,6 +165,23 @@ export interface CtRatingAnnotationView {
    *  `data-ct-purpose` (audyt), NIE dokładany do tekstu etykiety (zero zmiany
    *  szerokości/kotwic — inwariant W5 „geometria bez dryfu"). */
   readonly purpose?: 'protection' | 'metering' | 'combined';
+}
+
+/**
+ * CTVT-RENDER (CTVT-MODEL/V12K-176, SLD_CAD_SPEC_V3 §20.2) — adnotacja montażu
+ * JEDNEGO aparatu VT toru bocznego: identyfikator (`Measurement.name`, wzorzec
+ * `CtRatingAnnotationView`) + typ montażu z `Measurement.vt_mounting`
+ * (szynowy/kablowy). Dana producenta/projektowa — WYŁĄCZNIE gdy `vt_mounting`
+ * obecne (adapter `resolveBayVtMountings` pomija VT bez tej danej, §20.2 „zero
+ * zgadywania"). Dopasowanie na aparat VT NARYSOWANEGO stosu przez
+ * `measurementRef === BayPrimaryDevice.linked_ref` (TA SAMA reguła co
+ * `resolveMeterAnchor`/`resolveCtRatingAnnotations`). Oś odrębna od
+ * `vtArrangements` (open_delta/star = oś 3U0, `protectionTopologyValidation`).
+ */
+export interface VtMountingAnnotationView {
+  readonly measurementRef: string;
+  readonly identifier: string;
+  readonly mounting: 'bus' | 'cable';
 }
 
 export interface MiniBlockBayDescriptor {
@@ -208,6 +232,11 @@ export interface MiniBlockBayDescriptor {
    *  `protectionFunctionTopologyGaps` (`compose/protectionTopologyValidation.ts`)
    *  degraduje 67N do dotychczasowego uproszczenia (sama obecność VT). */
   readonly vtArrangements?: readonly ('open_delta' | 'star')[];
+  /** CTVT-RENDER (SLD_CAD_SPEC_V3 §20.2, CTVT-MODEL/V12K-176): adnotacje montażu
+   *  VT tego pola — JEDNA pozycja per aparat VT z `Measurement.vt_mounting`
+   *  obecnym. `undefined` gdy pole nie niesie żadnego VT z montażem (brak danych
+   *  = brak oznaczenia, §20.2 — zero „z domysłu"; adapter `resolveBayVtMountings`). */
+  readonly vtMountingAnnotations?: readonly VtMountingAnnotationView[];
 }
 
 export interface MiniBlockDerBadge {

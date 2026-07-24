@@ -61,6 +61,7 @@ import type {
   BayPrimaryDeviceView,
   BayProtectionMarkingView,
   CtRatingAnnotationView,
+  VtMountingAnnotationView,
 } from './MiniBlockRmuRenderer';
 import type { OltcGlyphAnnotation } from './GpzSwitchgearTypes';
 
@@ -175,6 +176,11 @@ export interface CanonicalGpzBay {
    *  `undefined` gdy pole nie niesie żadnego CT z `Measurement.rating` obecnym
    *  (brak danych = brak oznaczenia, §18.3 dosłownie). */
   readonly ctRatingAnnotations?: readonly CtRatingAnnotationView[];
+  /** CTVT-RENDER (spec §20.2): adnotacje montażu VT tego pola — wzorzec
+   *  `MiniBlockBayDescriptor.vtMountingAnnotations`/`resolveBayVtMountings`.
+   *  `undefined` gdy pole nie niesie żadnego VT z `Measurement.vt_mounting`
+   *  obecnym (brak danych = brak oznaczenia, §20.2). */
+  readonly vtMountingAnnotations?: readonly VtMountingAnnotationView[];
 }
 
 /**

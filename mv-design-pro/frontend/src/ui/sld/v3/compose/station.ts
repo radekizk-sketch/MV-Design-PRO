@@ -119,6 +119,7 @@ import {
   resolveCtRatingAnnotations,
   resolveMeterAnchor,
   resolveStationProtectionMarking,
+  resolveVtMountingAnnotations,
   type PlacedStackDevice,
   type ProtectionAnnotationDetail,
 } from './protectionMarking';
@@ -1199,6 +1200,33 @@ export function composeStation(input: ComposeStationInput): StationComposition {
           // pasującego `linked_ref` — luka danych zgłoszona zamiast cichego
           // pominięcia (zero adnotacji-widm, WHITE BOX).
           missingData.push('bay.protection.ct_rating_anchor_unresolved');
+        }
+
+        // CTVT-RENDER (spec §20.2, CTVT-MODEL/V12K-176): adnotacja montażu VT
+        // (szynowy/kablowy) — TA SAMA reguła LOD/kotwicy/pasma co CT (§18.3):
+        // zaczep w lewym paśmie tuż za torem głównym (`ctTextAnchorX`),
+        // dopasowanie na aparat `voltageTransformer` NARYSOWANEGO stosu przez
+        // `linked_ref` (VT boczny żyje w `stackDevices`). Kotwica na Y aparatu
+        // VT (różne od CT ⇒ etykiety nie kolidują w tym samym paśmie). Zero
+        // adnotacji + zero rezerwacji gdy pole bez `vtMountingAnnotations`
+        // (§20.2 „brak danych = brak oznaczenia").
+        const vtAnnotations = resolveVtMountingAnnotations(bay.vtMountingAnnotations, stackDevices);
+        vtAnnotations.forEach((ann, vtIndex) => {
+          const center = protectionDeviceCenter(ann.device);
+          protectionLabels.push({
+            ownerRef: `${bay.bayRef}#vt-mounting-${ann.device.deviceRef ?? vtIndex}`,
+            ownerKind: 'protection',
+            text: ann.text,
+            labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+            anchor: { x: ctTextAnchorX, y: center.y },
+            placement: 'right',
+          });
+        });
+        if ((bay.vtMountingAnnotations?.length ?? 0) > 0 && vtAnnotations.length === 0) {
+          // Wzorzec `ct_rating_anchor_unresolved` wyżej: dana montażu VT
+          // wskazana, ale ŻADEN aparat stosu nie niesie pasującego `linked_ref`
+          // — luka danych zgłoszona zamiast cichego pominięcia (WHITE BOX).
+          missingData.push('bay.protection.vt_mounting_anchor_unresolved');
         }
       }
     }

@@ -4090,6 +4090,72 @@ describe('F10.6 — układ CT/VT + strefa 87T (SLD_CAD_SPEC_V3 §18.3/§20.2, D3
     expect(byRef.get('bay-1')).toEqual(['ct-2']);
     expect(byRef.get('bay-2')).toBeUndefined();
   });
+
+  it('CTVT-RENDER (V12K-176): ctRatingAnnotations niesie cores z Measurement.ct_cores, undefined gdy dana niedostarczona', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+      } as never,
+    ];
+    snap.measurements = [
+      {
+        id: 'm1', ref_id: 'ct-3rdz', name: 'CT1', tags: [], meta: {},
+        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
+        rating: { ratio_primary: 300, ratio_secondary: 5 },
+        connection: 'star', purpose: 'protection', ct_cores: 3,
+      },
+      {
+        id: 'm2', ref_id: 'ct-brak', name: 'CT2', tags: [], meta: {},
+        measurement_type: 'CT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
+        rating: { ratio_primary: 150, ratio_secondary: 5 },
+        connection: 'star', purpose: 'protection',
+      },
+    ] as never;
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const annotations = r.stations.find((s) => s.id === 'ST-1')?.snBays[0]?.ctRatingAnnotations ?? [];
+    const byRef = new Map(annotations.map((a) => [a.measurementRef, a.cores]));
+    expect(byRef.get('ct-3rdz')).toBe(3);
+    expect(byRef.get('ct-brak')).toBeUndefined();
+  });
+
+  it('CTVT-RENDER (V12K-176): vtMountingAnnotations niesie montaż z Measurement.vt_mounting, undefined gdy ŻADEN VT pola nie niesie danej', () => {
+    const snap = makeStationOnlySnapshot('ST-1');
+    snap.bays = [
+      {
+        id: 'b1', ref_id: 'bay-1', name: 'Pole z montażem', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+      } as never,
+      {
+        id: 'b2', ref_id: 'bay-2', name: 'Pole bez montażu', tags: [], meta: {},
+        bay_role: 'OUT', substation_ref: 'ST-1', bus_ref: 'bus-sn', equipment_refs: [],
+      } as never,
+    ];
+    snap.measurements = [
+      {
+        id: 'm1', ref_id: 'vt-cable', name: 'VT1', tags: [], meta: {},
+        measurement_type: 'VT', bus_ref: 'bus-sn', bay_ref: 'bay-1',
+        rating: { ratio_primary: 15000, ratio_secondary: 100 },
+        connection: 'star', purpose: 'protection', vt_mounting: 'cable',
+      },
+      {
+        id: 'm2', ref_id: 'vt-brak', name: 'VT2', tags: [], meta: {},
+        measurement_type: 'VT', bus_ref: 'bus-sn', bay_ref: 'bay-2',
+        rating: { ratio_primary: 15000, ratio_secondary: 100 },
+        connection: 'star', purpose: 'protection',
+      },
+    ] as never;
+
+    const r = buildSldDataFromSnapshot(snap, null);
+    const bays = r.stations.find((s) => s.id === 'ST-1')?.snBays ?? [];
+    const byRef = new Map(bays.map((b) => [b.bayRef, b.vtMountingAnnotations]));
+    expect(byRef.get('bay-1')).toEqual([
+      { measurementRef: 'vt-cable', identifier: 'VT1', mounting: 'cable' },
+    ]);
+    expect(byRef.get('bay-2')).toBeUndefined();
+  });
 });
 
 describe('F9.2 — projekcja źródeł SldDataPayload.sources (SLD_CAD_SPEC_V3 §13.1/§13.2)', () => {

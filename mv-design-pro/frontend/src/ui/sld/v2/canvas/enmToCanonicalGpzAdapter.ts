@@ -50,6 +50,7 @@ import {
   projectBayPrimaryDevices,
   resolveBayCtRatingAnnotations,
   resolveBayProtectionMarking,
+  resolveBayVtMountings,
 } from './enmToSldAdapter';
 import { buildOltcAnnotation } from './oltcGlyph';
 
@@ -536,6 +537,9 @@ function buildBay(
     primaryDevices: projectBayPrimaryDevices(bay),
     protectionMarking: resolveBayProtectionMarking(bay, protectionCtx),
     ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, protectionCtx),
+    // CTVT-RENDER (spec §20.2, parytet ze stacjami): TA SAMA projekcja montażu
+    // VT co `buildExplicitStationMiniBays` — reużyta wprost (zero duplikacji).
+    vtMountingAnnotations: resolveBayVtMountings(bay, protectionCtx),
   };
 }
 

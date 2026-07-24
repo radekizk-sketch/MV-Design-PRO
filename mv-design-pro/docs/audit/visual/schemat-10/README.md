@@ -26,6 +26,32 @@ CANON_OUT=<abs-dir> npx vite-node scripts/render_schemat10_w2c.tsx   # SVG (3 pa
 CANON_OUT=<abs-dir> node scripts/rasterize.mjs                       # SVG→PNG (playwright chromium)
 ```
 
+## CTVT-RENDER — adnotacja liczby rdzeni CT i montażu VT (V12K-176 konsument)
+
+`ctvt-render-l2.png` — dowód wizualny L2 domknięcia łańcucha CTVT-MODEL: model
+ENM `Measurement` niesie pola `ct_cores` (liczba rdzeni CT) i `vt_mounting`
+(montaż szynowy/kablowy VT, V12K-176); ta karta dodaje BRAKUJĄCEGO
+konsumenta-render. Dwa panele z produkcyjnego `composeStation`:
+- **Z DANYMI** (`ct_cores=3`, `vt_mounting='cable'`): liczba rdzeni doklejona do
+  ISTNIEJĄCEJ, geometrycznie bezpiecznej etykiety przekładni CT
+  („CT1 · 300/5 · 3×CT · 3 rdz.") ORAZ NOWA adnotacja montażu VT „V1 · kablowy"
+  (turkus) w kolumnie adnotacji tuż za torem głównym;
+- **BEZ DANYCH** (`ct_cores=None`, `vt_mounting=None`): TE SAME aparaty CT/VT,
+  ZERO adnotacji, ZERO rezerwacji szerokości (warunkowość — produkcja bez danych
+  = brak zmiany wizualnej ⇒ baseline'y `accept:sld-v3` NIEZMIENIONE).
+
+Wartości WYŁĄCZNIE z `Measurement` (dane producenta, zero fizyki/fabrykacji w
+UI). Dowód testowy: `compose/__tests__/station.test.ts` (bloki „CTVT-RENDER" —
+render z danymi + bajt-inwariancja bez danych), `v2/canvas/__tests__/
+enmToSldAdapter.test.ts` (projekcja `ct_cores`/`vt_mounting` model→view).
+Regeneracja:
+
+```
+cd mv-design-pro/frontend
+CANON_OUT=<abs-dir> npx vite-node scripts/render_schemat10_ctvt.tsx  # SVG (2 panele L2)
+CANON_OUT=<abs-dir> node scripts/rasterize.mjs                       # SVG→PNG (playwright chromium)
+```
+
 ## S5 (FINAŁ) — zoom bez zmiany tożsamości stacji
 
 `s5-zoom-1..3.png` (ZBLIŻANIE L0→L1→L2) i `s5-zoom-4..6.png` (ODDALANIE

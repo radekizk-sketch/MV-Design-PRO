@@ -63,6 +63,7 @@ import {
   type CtRatingAnnotationView,
   type MiniBlockBayDescriptor,
   type MiniBlockDerBadge,
+  type VtMountingAnnotationView,
 } from '../renderer/MiniBlockRmuRenderer';
 import type { DerRendererProps } from '../renderer/DerRenderer';
 import type { ConnectionRendererProps } from '../renderer/ConnectionRenderer';
@@ -3733,6 +3734,9 @@ function buildExplicitStationMiniBays(
         // F10.6 (SLD_CAD_SPEC_V3 §20.2, D4): układ VT — patrz docstring
         // `resolveBayVtArrangements` poniżej.
         vtArrangements: resolveBayVtArrangements(bay, snapshot),
+        // CTVT-RENDER (SLD_CAD_SPEC_V3 §20.2): adnotacja montażu VT — patrz
+        // docstring `resolveBayVtMountings` poniżej (oś odrębna od układu VT).
+        vtMountingAnnotations: resolveBayVtMountings(bay, snapshot),
       };
     });
 
@@ -4405,6 +4409,37 @@ export function resolveBayCtRatingAnnotations(
     // 1:1 z `Measurement.purpose` — dana wariantu, zero domysłu. Kanał
     // geometrycznie neutralny (patrz `CtRatingAnnotationView.purpose`).
     purpose: m.purpose,
+    // CTVT-RENDER (CTVT-MODEL/V12K-176): liczba rdzeni CT 1:1 z
+    // `Measurement.ct_cores` — dana producenta (IEC 61869-2), doklejana do
+    // etykiety WYŁĄCZNIE gdy obecna (`undefined` gdy `null`/brak — uczciwy brak,
+    // zero fabrykacji). Domyka konsumenta-render danej wprowadzonej w V12K-176.
+    cores: m.ct_cores ?? undefined,
+  }));
+}
+
+/**
+ * CTVT-RENDER (SLD_CAD_SPEC_V3 §20.2, CTVT-MODEL/V12K-176): projekcja adnotacji
+ * montażu VT (`Measurement.vt_mounting`) WSZYSTKICH pomiarów VT tego pola z
+ * ustawioną daną. `undefined` gdy pole nie ma żadnego VT niosącego `vt_mounting`
+ * (brak danych = brak oznaczenia, §20.2 dosłownie). Dopasowanie na aparat
+ * NARYSOWANEGO stosu (compose) — TA SAMA reguła co `resolveBayCtRatingAnnotations`
+ * (identyfikator = `Measurement.name`, kotwica przez `linked_ref`). Domyka
+ * konsumenta-render danej `vt_mounting` wprowadzonej w V12K-176. Oś odrębna od
+ * `resolveBayVtArrangements` (open_delta/star = 3U0).
+ */
+export function resolveBayVtMountings(
+  bay: Bay,
+  snapshot: Pick<EnergyNetworkModel, 'measurements'>,
+): readonly VtMountingAnnotationView[] | undefined {
+  const measurements = (snapshot.measurements ?? []).filter(
+    (m: Measurement) =>
+      m.measurement_type === 'VT' && m.bay_ref === bay.ref_id && m.vt_mounting != null,
+  );
+  if (measurements.length === 0) return undefined;
+  return measurements.map((m) => ({
+    measurementRef: m.ref_id,
+    identifier: m.name,
+    mounting: m.vt_mounting as 'bus' | 'cable',
   }));
 }
 

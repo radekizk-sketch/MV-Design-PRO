@@ -46,7 +46,16 @@ function planOrderedSymbols(role: FieldRole): readonly string[] {
   const plan = planApparatusSymbolIds([...apparatusSymbolsForRole(role)]);
   return [...plan.mainPath, ...plan.laterals.map((l) => l.symbolId)];
 }
-import { PROTECTION_ANNOTATION_DIAMETER } from '../protectionMarking';
+import {
+  PROTECTION_ANNOTATION_DIAMETER,
+  bayHasProtectionAnnotation,
+  ctCoresLabelText,
+  ctRatingLabelText,
+  protectionAnnotationColumnWidth,
+  vtMountingAnnotationLabelText,
+  vtMountingAnnotationsWidth,
+  vtMountingLabelText,
+} from '../protectionMarking';
 
 // ---------------------------------------------------------------------------
 // Helpery syntetyczne (wzorzec z layout.test.ts / labels.test.ts).
@@ -1513,6 +1522,162 @@ describe('V3 compose/station — F10.3 §18.4: sprzęgło (COUPLER) renderuje ST
     expect(breaker.state).toBe('open');
     expect(breaker.apparatusSource).toBe('dane');
     expect(breaker.deviceRef).toBe('cb-c1');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CTVT-RENDER (spec §18.3/§20.2, CTVT-MODEL/V12K-176) — konsument-render pól
+// `Measurement.ct_cores`/`vt_mounting`: rdzenie CT doklejone do ISTNIEJĄCEJ
+// etykiety CT + NOWA adnotacja montażu VT (szynowy/kablowy). WARUNKOWOŚĆ:
+// adnotacja i rezerwacja WYŁĄCZNIE gdy dana obecna; None ⇒ zero adnotacji +
+// zero zmiany geometrii (bajt-inwariancja).
+// ---------------------------------------------------------------------------
+
+/** Pole z aparatem VT bocznym niosącym `linked_ref` — kotwica adnotacji
+ *  montażu VT (wzorzec `makeLineBayPrimaryDevices` z CT). */
+function makeLineBayWithVtPrimaryDevices(): readonly BayPrimaryDeviceView[] {
+  return [
+    ...makeLineBayPrimaryDevices(),
+    { kind: 'VT', placement: 'MIDSTREAM', deviceRef: 'vt-1', linkedRef: 'meas-vt-1' },
+  ];
+}
+
+describe('CTVT-RENDER §18.3: liczba rdzeni CT doklejona do etykiety (ct_cores)', () => {
+  it('ctCoresLabelText: dana obecna ⇒ „N rdz."; None/≤0/NaN ⇒ null (zero fabrykacji)', () => {
+    expect(ctCoresLabelText(2)).toBe('2 rdz.');
+    expect(ctCoresLabelText(3)).toBe('3 rdz.');
+    expect(ctCoresLabelText(null)).toBeNull();
+    expect(ctCoresLabelText(undefined)).toBeNull();
+    expect(ctCoresLabelText(0)).toBeNull();
+    expect(ctCoresLabelText(-1)).toBeNull();
+    expect(ctCoresLabelText(Number.NaN)).toBeNull();
+  });
+
+  it('ctRatingLabelText: cores doklejone jako kolejny człon; brak cores ⇒ tekst F10.4/F10.6 bez zmian (inwariancja)', () => {
+    // Bez cores (i bez arrangement) — dwuczłonowy tekst F10.4 NIETKNIĘTY.
+    expect(ctRatingLabelText({ identifier: 'CT1', ratioText: '300/5' })).toBe('CT1 · 300/5');
+    // Arrangement bez cores — trójczłonowy tekst F10.6 NIETKNIĘTY.
+    expect(ctRatingLabelText({ identifier: 'CT1', ratioText: '300/5', arrangement: '3xCT' }))
+      .toBe('CT1 · 300/5 · 3×CT');
+    // Cores bez arrangement.
+    expect(ctRatingLabelText({ identifier: 'CT1', ratioText: '300/5', cores: 2 }))
+      .toBe('CT1 · 300/5 · 2 rdz.');
+    // Arrangement + cores — pełny czteroczłonowy tekst.
+    expect(ctRatingLabelText({ identifier: 'CT1', ratioText: '300/5', arrangement: 'ferranti', cores: 3 }))
+      .toBe('CT1 · 300/5 · Ferranti-I0 · 3 rdz.');
+  });
+
+  it('render: cores obecne ⇒ etykieta CT niesie „· N rdz."; cores None ⇒ etykieta bez członu rdzeni (inwariancja tekstu)', () => {
+    const bayWithCores = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5', cores: 3 }],
+    });
+    const withCores = composeStation(buildComposeInput(makeStation('ct-cores', [bayWithCores])));
+    const labelWith = withCores.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
+    expect(labelWith).toHaveLength(1);
+    expect(labelWith[0].text).toBe('CT1 · 300/5 · 3 rdz.');
+
+    const bayNoCores = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayPrimaryDevices(),
+      ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5' }],
+    });
+    const noCores = composeStation(buildComposeInput(makeStation('ct-no-cores', [bayNoCores])));
+    const labelNo = noCores.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
+    expect(labelNo).toHaveLength(1);
+    expect(labelNo[0].text).toBe('CT1 · 300/5');
+  });
+});
+
+describe('CTVT-RENDER §20.2: adnotacja montażu VT (vt_mounting)', () => {
+  it('vtMountingLabelText/vtMountingAnnotationLabelText: bus⇒„szynowy", cable⇒„kablowy"', () => {
+    expect(vtMountingLabelText('bus')).toBe('szynowy');
+    expect(vtMountingLabelText('cable')).toBe('kablowy');
+    expect(vtMountingAnnotationLabelText({ identifier: 'V1', mounting: 'cable' })).toBe('V1 · kablowy');
+    expect(vtMountingAnnotationLabelText({ identifier: 'V2', mounting: 'bus' })).toBe('V2 · szynowy');
+  });
+
+  it('bayHasProtectionAnnotation: pole z SAMYM vtMountingAnnotations ⇒ true (kolumna rezerwowana)', () => {
+    expect(bayHasProtectionAnnotation({
+      vtMountingAnnotations: [{ measurementRef: 'meas-vt-1', identifier: 'V1', mounting: 'cable' }],
+    })).toBe(true);
+  });
+
+  it('(a) dane obecne (measurementRef rozwiązywalny na VT stosu) ⇒ DOKŁADNIE 1 etykieta „identyfikator · montaż" #vt-mounting-', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayWithVtPrimaryDevices(),
+      vtMountingAnnotations: [{ measurementRef: 'meas-vt-1', identifier: 'V1', mounting: 'cable' }],
+    });
+    const composition = composeStation(buildComposeInput(makeStation('vt-mounting-ok', [bay])));
+
+    const vtLabels = composition.labels.protection.filter((l) => l.ownerRef.includes('#vt-mounting-'));
+    expect(vtLabels).toHaveLength(1);
+    expect(vtLabels[0].text).toBe('V1 · kablowy');
+    expect(vtLabels[0].labelClass).toBe('t4');
+    expect(vtLabels[0].ownerKind).toBe('protection');
+    expect(composition.missingData).not.toContain('bay.protection.vt_mounting_anchor_unresolved');
+  });
+
+  it('(§20.2 zero zgadywania) measurementRef NIEROZWIĄZYWALNY w stosie ⇒ ZERO etykiety + missingData `vt_mounting_anchor_unresolved`', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayWithVtPrimaryDevices(),
+      vtMountingAnnotations: [{ measurementRef: 'meas-vt-nieistniejacy', identifier: 'V9', mounting: 'bus' }],
+    });
+    const composition = composeStation(buildComposeInput(makeStation('vt-mounting-unresolved', [bay])));
+
+    expect(composition.labels.protection.filter((l) => l.ownerRef.includes('#vt-mounting-'))).toHaveLength(0);
+    expect(composition.missingData).toContain('bay.protection.vt_mounting_anchor_unresolved');
+  });
+
+  it('(b, negatyw obowiązkowy — bajt-inwariancja) brak danych = brak oznaczenia + ZERO zmiany geometrii', () => {
+    // Pole z aparatem VT bocznym ALE bez `vtMountingAnnotations` (None) —
+    // dowód: ZERO etykiet #vt-mounting-, ZERO rezerwacji, kompozycja
+    // BAJT-IDENTYCZNA z polem bez warstwy VT (warunkowość §0.2).
+    const bayNoData = makeBay(FIELD_ROLE.LINE_IN, 0, { primaryDevices: makeLineBayWithVtPrimaryDevices() });
+    const composition = composeStation(buildComposeInput(makeStation('vt-mounting-none', [bayNoData])));
+
+    expect(composition.labels.protection.filter((l) => l.ownerRef.includes('#vt-mounting-'))).toHaveLength(0);
+    expect(composition.missingData).not.toContain('bay.protection.vt_mounting_anchor_unresolved');
+
+    // Rezerwacja szerokości NIEZMIENIONA: pole bez adnotacji ma zerową kolumnę.
+    expect(vtMountingAnnotationsWidth(bayNoData)).toBe(0);
+    expect(protectionAnnotationColumnWidth(bayNoData)).toBe(0);
+    expect(bayHasProtectionAnnotation(bayNoData)).toBe(false);
+
+    // Bajt-inwariancja: kompozycja pola z VT-bez-danych IDENTYCZNA z
+    // kompozycją tego samego pola liczoną osobno (determinizm + brak dryfu).
+    const compositionRepeat = composeStation(buildComposeInput(makeStation('vt-mounting-none', [
+      makeBay(FIELD_ROLE.LINE_IN, 0, { primaryDevices: makeLineBayWithVtPrimaryDevices() }),
+    ])));
+    expect(JSON.stringify(composition)).toBe(JSON.stringify(compositionRepeat));
+  });
+
+  it('rezerwacja WARUNKOWA: pole Z vtMountingAnnotations ma szerszą kolumnę niż pole bez danych', () => {
+    const bayWithout = makeBay(FIELD_ROLE.LINE_IN, 0, { primaryDevices: makeLineBayWithVtPrimaryDevices() });
+    const bayWith = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayWithVtPrimaryDevices(),
+      vtMountingAnnotations: [{ measurementRef: 'meas-vt-1', identifier: 'V1', mounting: 'cable' }],
+    });
+    expect(bayColumnRequiredWidth([bayWith], 0, undefined))
+      .toBeGreaterThan(bayColumnRequiredWidth([bayWithout], 0, undefined));
+  });
+
+  it('koegzystencja CT+VT: obie etykiety obecne w tym samym lewym paśmie, na RÓŻNYCH Y (różne aparaty)', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0, {
+      primaryDevices: makeLineBayWithVtPrimaryDevices(),
+      ctRatingAnnotations: [{ measurementRef: 'meas-metering-1', identifier: 'CT1', ratioText: '300/5', cores: 2 }],
+      vtMountingAnnotations: [{ measurementRef: 'meas-vt-1', identifier: 'V1', mounting: 'cable' }],
+    });
+    const composition = composeStation(buildComposeInput(makeStation('ctvt-coexist', [bay])));
+
+    const ctLabels = composition.labels.protection.filter((l) => l.ownerRef.includes('#ct-rating-'));
+    const vtLabels = composition.labels.protection.filter((l) => l.ownerRef.includes('#vt-mounting-'));
+    expect(ctLabels).toHaveLength(1);
+    expect(vtLabels).toHaveLength(1);
+    expect(ctLabels[0].text).toBe('CT1 · 300/5 · 2 rdz.');
+    expect(vtLabels[0].text).toBe('V1 · kablowy');
+    // Ten sam lewy anchor X, różne Y (kotwice na CT vs VT).
+    expect(ctLabels[0].anchor.x).toBe(vtLabels[0].anchor.x);
+    expect(ctLabels[0].anchor.y).not.toBe(vtLabels[0].anchor.y);
   });
 });
 

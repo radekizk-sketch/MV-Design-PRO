@@ -45,7 +45,11 @@
 import { GRID, snapUp } from '../core/grid';
 import { measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
-import type { CtRatingAnnotationView, MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
+import type {
+  CtRatingAnnotationView,
+  MiniBlockBayDescriptor,
+  VtMountingAnnotationView,
+} from '../../v2/renderer/MiniBlockRmuRenderer';
 
 /** Średnica okręgu adnotacji (przekaźnik/miernik) — spec §17.3: 24px = 3×GRID. */
 export const PROTECTION_ANNOTATION_DIAMETER = 3 * GRID;
@@ -86,20 +90,22 @@ export const PROTECTION_FULL_LIST_LABEL_CLASS = 't4' as const;
 
 type ProtectionAwareBay = Pick<
   MiniBlockBayDescriptor,
-  'protectionMarking' | 'meteringMeasurementRef' | 'ctRatingAnnotations'
+  'protectionMarking' | 'meteringMeasurementRef' | 'ctRatingAnnotations' | 'vtMountingAnnotations'
 >;
 
 /**
  * Czy pole NIESIE dane adnotacji zabezpieczeń (§17.2/§17.3: „kolumna istnieje
  * TYLKO dla pól z danymi") — kody przekaźnika NIEPUSTE, rozwiązany miernik,
- * LUB (F10.4, §18.3) co najmniej jedna adnotacja przekładni CT. Jedna prawda
- * dla `layout/measure.ts` (rezerwacja) i `compose/station.ts` (rysunek).
+ * (F10.4, §18.3) co najmniej jedna adnotacja przekładni CT, LUB (CTVT-RENDER,
+ * §20.2) co najmniej jedna adnotacja montażu VT. Jedna prawda dla
+ * `layout/measure.ts` (rezerwacja) i `compose/station.ts` (rysunek).
  */
 export function bayHasProtectionAnnotation(bay: ProtectionAwareBay): boolean {
   return (
     (bay.protectionMarking?.codes.length ?? 0) > 0
     || bay.meteringMeasurementRef != null
     || (bay.ctRatingAnnotations?.length ?? 0) > 0
+    || (bay.vtMountingAnnotations?.length ?? 0) > 0
   );
 }
 
@@ -113,22 +119,55 @@ export function ctArrangementLabelText(
   return null;
 }
 
+/** Etykieta PL liczby rdzeni CT (§20.2, CTVT-RENDER) — `null` gdy dana
+ *  niedostarczona LUB niepoprawna (≤0). „N rdz." = N rdzeni (uzwojeń wtórnych,
+ *  IEC 61869-2). Zero zgadywania: człon dokleja się WYŁĄCZNIE dla realnej danej
+ *  `Measurement.ct_cores`. */
+export function ctCoresLabelText(cores: number | null | undefined): string | null {
+  if (cores == null || !Number.isFinite(cores) || cores <= 0) return null;
+  return `${cores} rdz.`;
+}
+
 /**
  * Tekst etykiety adnotacji CT (§18.3: „identyfikator aparatu i przekładnię,
  * np. «T1 · 300/5»") — separator „·" jak w pełnej liście kodów §17.3/podpisie
  * linii §19.2 (spójna typografia adnotacji). F10.6 (D3): gdy `arrangement`
- * obecny, doklejony jako trzeci człon („T1 · 300/5 · 3×CT") — brak danych
- * pozostawia dwuczłonowy tekst F10.4 bez zmian (zero zgadywania). JEDNA
- * funkcja dla rezerwacji szerokości (`ctRatingAnnotationsWidth` niżej) i
- * rysunku (`resolveCtRatingAnnotations` niżej) — zero rozjazdu tekst↔szerokość.
+ * obecny, doklejony jako trzeci człon („T1 · 300/5 · 3×CT"). CTVT-RENDER
+ * (CTVT-MODEL/V12K-176): gdy `cores` obecne, doklejone jako KOLEJNY człon
+ * („T1 · 300/5 · 3×CT · 2 rdz.") — brak `cores` pozostawia tekst F10.4/F10.6
+ * bez zmian (zero dryfu bez danych). JEDNA funkcja dla rezerwacji szerokości
+ * (`ctRatingAnnotationsWidth` niżej) i rysunku (`resolveCtRatingAnnotations`
+ * niżej) — zero rozjazdu tekst↔szerokość.
  */
 export function ctRatingLabelText(
-  entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText' | 'arrangement'>,
+  entry: Pick<CtRatingAnnotationView, 'identifier' | 'ratioText' | 'arrangement' | 'cores'>,
 ): string {
+  const members = [`${entry.identifier} · ${entry.ratioText}`];
   const arrangementLabel = ctArrangementLabelText(entry.arrangement);
-  return arrangementLabel
-    ? `${entry.identifier} · ${entry.ratioText} · ${arrangementLabel}`
-    : `${entry.identifier} · ${entry.ratioText}`;
+  if (arrangementLabel) members.push(arrangementLabel);
+  const coresLabel = ctCoresLabelText(entry.cores);
+  if (coresLabel) members.push(coresLabel);
+  return members.join(' · ');
+}
+
+/** Etykieta PL montażu VT (§20.2, CTVT-RENDER) — `bus`⇒„szynowy",
+ *  `cable`⇒„kablowy". Dana producenta/projektowa `Measurement.vt_mounting`. */
+export function vtMountingLabelText(
+  mounting: VtMountingAnnotationView['mounting'],
+): string {
+  return mounting === 'bus' ? 'szynowy' : 'kablowy';
+}
+
+/**
+ * Tekst etykiety adnotacji montażu VT (§20.2, CTVT-RENDER) — „identyfikator ·
+ * montaż" (np. „V1 · kablowy"), separator „·" spójny z etykietą CT. JEDNA
+ * funkcja dla rezerwacji szerokości (`vtMountingAnnotationsWidth` niżej) i
+ * rysunku (`resolveVtMountingAnnotations` niżej).
+ */
+export function vtMountingAnnotationLabelText(
+  entry: Pick<VtMountingAnnotationView, 'identifier' | 'mounting'>,
+): string {
+  return `${entry.identifier} · ${vtMountingLabelText(entry.mounting)}`;
 }
 
 /**
@@ -150,6 +189,24 @@ export function ctRatingAnnotationsWidth(bay: ProtectionAwareBay): number {
   if (entries.length === 0) return 0;
   const maxWidth = Math.max(
     ...entries.map((entry) => measureLabelWidth(ctRatingLabelText(entry), PROTECTION_FULL_LIST_LABEL_CLASS)),
+  );
+  return GRID + maxWidth;
+}
+
+/**
+ * Szerokość DODATKOWA na adnotacje montażu VT (§20.2, CTVT-RENDER) — 0, gdy
+ * pole nie niesie żadnego `vtMountingAnnotations` (zero zmian geometrii dla pól
+ * bez danych). Inaczej `GRID` (prześwit) + najszerszy tekst „identyfikator ·
+ * montaż" pola. Etykieta VT leży w TYM SAMYM lewym paśmie co adnotacja CT
+ * (zaczep `stackLeftX+planFootprint.width`, placement 'right') — VT i CT
+ * kotwiczą na RÓŻNYCH aparatach (różne Y), więc pasmo musi zmieścić SZERSZY z
+ * dwóch (`Math.max` w `protectionAnnotationColumnWidth` niżej, nie suma).
+ */
+export function vtMountingAnnotationsWidth(bay: ProtectionAwareBay): number {
+  const entries = bay.vtMountingAnnotations ?? [];
+  if (entries.length === 0) return 0;
+  const maxWidth = Math.max(
+    ...entries.map((entry) => measureLabelWidth(vtMountingAnnotationLabelText(entry), PROTECTION_FULL_LIST_LABEL_CLASS)),
   );
   return GRID + maxWidth;
 }
@@ -178,7 +235,12 @@ export function protectionAnnotationColumnWidth(bay: ProtectionAwareBay): number
     : 0;
   const hasRelayOrMeter = (bay.protectionMarking?.codes.length ?? 0) > 0 || bay.meteringMeasurementRef != null;
   const relayMeterWidth = hasRelayOrMeter ? GRID + Math.max(PROTECTION_ANNOTATION_DIAMETER, fullListWidth) : 0;
-  return relayMeterWidth + ctRatingAnnotationsWidth(bay);
+  // CTVT-RENDER (§20.2): adnotacja CT i VT leżą w TYM SAMYM lewym paśmie
+  // (różne Y — różne aparaty), więc pasmo = SZERSZA z dwóch (max, nie suma);
+  // dla pola bez VT `vtMountingAnnotationsWidth===0` ⇒ max = szerokość CT
+  // (zero regresji dla pól CT-only, baseline'y nietknięte).
+  const leftBandWidth = Math.max(ctRatingAnnotationsWidth(bay), vtMountingAnnotationsWidth(bay));
+  return relayMeterWidth + leftBandWidth;
 }
 
 /**
@@ -312,6 +374,40 @@ export function resolveCtRatingAnnotations(
     );
     if (!device) continue;
     result.push({ device, text: ctRatingLabelText(entry), purpose: entry.purpose });
+  }
+  return result;
+}
+
+/** Adnotacja montażu VT rozstrzygnięta na aparat NARYSOWANEGO stosu (§20.2,
+ *  CTVT-RENDER). */
+export interface ResolvedVtMountingAnnotation {
+  /** Aparat VT toru bocznego, do którego przypięta jest ta adnotacja. */
+  readonly device: PlacedStackDevice;
+  /** Gotowy tekst „identyfikator · montaż" (`vtMountingAnnotationLabelText`). */
+  readonly text: string;
+}
+
+/**
+ * Rozstrzyga adnotacje montażu VT (§20.2, CTVT-RENDER) na już zbudowanym
+ * stosie — dopasowanie KAŻDEJ pozycji `vtMountingAnnotations` na aparat
+ * `symbolId==='voltageTransformer'` przez `measurementRef === linked_ref` (TA
+ * SAMA reguła co `resolveMeterAnchor`/`resolveCtRatingAnnotations`; VT jest
+ * aparatem BOCZNYM, ale i tak żyje w `stack.instances` z `linkedRef`). Pozycje
+ * bez dopasowania są POMIJANE (zero zgadywania — adnotacja NIE jest rysowana
+ * bez jednoznacznej kotwicy geometrycznej).
+ */
+export function resolveVtMountingAnnotations(
+  vtMountingAnnotations: readonly VtMountingAnnotationView[] | undefined,
+  stack: readonly PlacedStackDevice[],
+): readonly ResolvedVtMountingAnnotation[] {
+  if (!vtMountingAnnotations || vtMountingAnnotations.length === 0) return [];
+  const result: ResolvedVtMountingAnnotation[] = [];
+  for (const entry of vtMountingAnnotations) {
+    const device = stack.find(
+      (d) => d.symbolId === 'voltageTransformer' && d.linkedRef === entry.measurementRef,
+    );
+    if (!device) continue;
+    result.push({ device, text: vtMountingAnnotationLabelText(entry) });
   }
   return result;
 }

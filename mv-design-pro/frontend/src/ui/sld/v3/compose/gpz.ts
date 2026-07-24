@@ -73,6 +73,7 @@ import {
   protectionDeviceCenter,
   resolveCtRatingAnnotations,
   resolveStationProtectionMarking,
+  resolveVtMountingAnnotations,
   type ProtectionAnnotationDetail,
 } from './protectionMarking';
 import type {
@@ -638,6 +639,9 @@ function gpzBayAnnotationWidth(bay: CanonicalGpzBay): number {
   return protectionAnnotationColumnWidth({
     protectionMarking: codes.length > 0 ? { codes } : undefined,
     ctRatingAnnotations: bay.ctRatingAnnotations,
+    // CTVT-RENDER (§20.2): montaż VT współdzieli lewe pasmo z CT (max, patrz
+    // `protectionAnnotationColumnWidth`) — jedna prawda measure↔compose.
+    vtMountingAnnotations: bay.vtMountingAnnotations,
   });
 }
 
@@ -1148,7 +1152,8 @@ export function composeGpz(
       // `'circle-only'` sam kontur; `'none'` nic.
       const gpzCodes = field.bay.protectionMarking?.codes ?? field.bay.protectionCodes ?? [];
       const hasCtRatings = (field.bay.ctRatingAnnotations?.length ?? 0) > 0;
-      if (annotationDetail !== 'none' && (gpzCodes.length > 0 || hasCtRatings)) {
+      const hasVtMountings = (field.bay.vtMountingAnnotations?.length ?? 0) > 0;
+      if (annotationDetail !== 'none' && (gpzCodes.length > 0 || hasCtRatings || hasVtMountings)) {
         if (gpzCodes.length > 0) {
           // Wejście strukturalnie zgodne z `Pick<MiniBlockBayDescriptor,
           // 'protectionMarking'>` — `resolveStationProtectionMarking` nie
@@ -1286,6 +1291,33 @@ export function composeGpz(
             // niesie pasującego `linked_ref` (rejestr device-ref nierozwiązany
             // /nieobecny) — luka danych zgłoszona zamiast cichego pominięcia.
             missingData.push('bay.protection.ct_rating_anchor_unresolved');
+          }
+        }
+
+        // CTVT-RENDER (spec §20.2, parytet ze stacjami): adnotacje montażu VT —
+        // TA SAMA funkcja co stacje (`resolveVtMountingAnnotations`), dopasowanie
+        // na aparat `voltageTransformer` NARYSOWANEGO stosu przez `linked_ref`.
+        // Lewe pasmo współdzielone z CT (`ctTextAnchorX`), kotwica na Y aparatu
+        // VT (różne od CT ⇒ brak kolizji). `gpzBayAnnotationWidth` rezerwuje
+        // `max(CT, VT)` — jedna prawda measure↔compose.
+        if (annotationDetail === 'full' && hasVtMountings) {
+          const vtAnnotations = resolveVtMountingAnnotations(field.bay.vtMountingAnnotations, stack.instances);
+          const vtTextAnchorX = snapToGrid(field.centerX - footprint.mainStack.width / 2 + footprint.width);
+          vtAnnotations.forEach((ann, vtIndex) => {
+            const center = protectionDeviceCenter(ann.device);
+            protectionLabels.push({
+              ownerRef: `${field.bay.bayRef}#vt-mounting-${ann.device.deviceRef ?? vtIndex}`,
+              ownerKind: 'protection',
+              text: ann.text,
+              labelClass: PROTECTION_FULL_LIST_LABEL_CLASS,
+              anchor: { x: vtTextAnchorX, y: center.y },
+              placement: 'right',
+            });
+          });
+          if (vtAnnotations.length === 0) {
+            // Wzorzec `ct_rating_anchor_unresolved` wyżej: dana montażu VT
+            // wskazana, ale ŻADEN aparat stosu nie niesie pasującego `linked_ref`.
+            missingData.push('bay.protection.vt_mounting_anchor_unresolved');
           }
         }
         // GPZ nie rysuje miernika „M" (poza zakresem F11.1 — brak
