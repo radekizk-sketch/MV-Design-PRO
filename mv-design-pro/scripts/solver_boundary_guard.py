@@ -35,6 +35,11 @@ SANCTIONED_CHANGES = {
         "twarde wg decyzji wlasciciela V12K-175, WHITE BOX + re-baseline "
         "goldenow z dowodem; wpis do usuniecia po scaleniu do main."
     ),
+    "backend/src/network_model/solvers/power_flow_newton_internal.py": (
+        "V12K-180 (SM-2): przesuniecie fazowe grupy polaczen w PF, twarde wg "
+        "V12K-175, WHITE BOX + re-baseline katow goldenow z dowodem |V| "
+        "niezmienione; wpis do usuniecia po scaleniu do main."
+    ),
     "backend/src/domain/protection_engine_v1.py": (
         "V12K-174: WYLACZNIE formatowanie black (parentezacja przypisan "
         "f-string w trace notes_pl) - zero zmian semantycznych, zero zmian "
