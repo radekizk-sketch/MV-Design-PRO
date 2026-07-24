@@ -63,7 +63,10 @@ export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, Component
   add_ct: KreatorPomiaru,
   add_vt: KreatorPomiaru,
   add_relay: KreatorPrzekaznika,
-  // Operacje bez formularza (delete, refresh, GPZ sections CRUD)
+  // Operacje bez formularza modalnego (delete, refresh, GPZ sections CRUD oraz warunki
+  // przyłączenia OSD — te mają formularz inline w kaflu pulpitu projektu, nie w oknie
+  // kreatora: `ui2/spaces/projekt/KafelPrzylaczenia.tsx`).
+  set_connection_conditions: null,
   delete_element: null,
   refresh_snapshot: null,
   add_gpz_section: null,

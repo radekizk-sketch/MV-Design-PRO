@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { executeDomainOp } from '../domainApi';
+import { CANONICAL_OPERATION_NAMES } from '../../../types/domainOps';
 
 describe('executeDomainOp', () => {
   const fetchMock = vi.fn();
@@ -133,5 +134,39 @@ describe('executeDomainOp', () => {
     await expect(executeDomainOp('case-1', 'refresh_snapshot', {})).rejects.toThrow(
       'API 422 Unprocessable Entity: /api/cases/case-1/enm/domain-ops',
     );
+  });
+
+  /**
+   * Bramka kanoniczności jest w `executeDomainOp`, PRZED żądaniem sieciowym. Testy
+   * kreatorów mockują `executeDomainOperation` na poziomie store'u, czyli PONAD bramką —
+   * dlatego przez lata nie wykryły, że nazwy `add_shunt_compensator_sn`,
+   * `add_surge_arrester_sn` i `set_connection_conditions` nie były na białej liście i ich
+   * kontrolki były martwe. Ten blok ćwiczy REALNĄ ścieżkę: mockowany jest wyłącznie
+   * `fetch`, więc każda nazwa musi faktycznie przejść przez `assertCanonicalOpName`.
+   */
+  describe('bramka kanoniczności na realnej ścieżce', () => {
+    beforeEach(() => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ snapshot: {}, logical_views: {} }),
+      } as Response);
+    });
+
+    it.each([...CANONICAL_OPERATION_NAMES])(
+      'przepuszcza operację z białej listy i wysyła żądanie: %s',
+      async (nazwa) => {
+        await expect(executeDomainOp('case-1', nazwa, {})).resolves.toBeDefined();
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        const body = JSON.parse(String(fetchMock.mock.calls[0][1].body));
+        expect(body.operation.name).toBe(nazwa);
+      },
+    );
+
+    it('odrzuca nazwę spoza białej listy ZANIM poleci żądanie', async () => {
+      await expect(executeDomainOp('case-1', 'operacja_widmo', {})).rejects.toThrow(
+        'Niekanoniczna nazwa operacji: operacja_widmo',
+      );
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
   });
 });

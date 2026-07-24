@@ -17,39 +17,14 @@ export interface DomainOpEnvelope {
 }
 
 // --- Canonical operation names ---
-export type CanonicalOpName =
-  | 'add_grid_source_sn'
-  | 'add_sn_bay'
-  | 'continue_trunk_segment_sn'
-  | 'insert_station_on_segment_sn'
-  | 'append_station_on_endpoint'
-  | 'insert_branch_pole_on_segment_sn'
-  | 'insert_zksn_on_segment_sn'
-  | 'start_branch_segment_sn'
-  | 'insert_section_switch_sn'
-  | 'connect_secondary_ring_sn'
-  | 'set_normal_open_point'
-  | 'add_transformer_sn_nn'
-  | 'assign_catalog_to_element'
-  | 'update_element_parameters'
-  // Operacje nN / źródła
-  | 'add_nn_outgoing_field'
-  | 'add_converter_source'
-  | 'add_genset_nn'
-  | 'add_ups_nn'
-  | 'add_shunt_compensator_sn'
-  | 'add_surge_arrester_sn'
-  | 'add_nn_load'
-  | 'add_ct'
-  | 'add_vt'
-  | 'add_relay'
-  // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
-  | 'add_gpz_section'
-  | 'update_gpz_section'
-  | 'delete_gpz_section'
-  | 'delete_element'
-  | 'refresh_snapshot';
-
+//
+// JEDNO źródło prawdy: tablica poniżej. Typ `CanonicalOpName` jest z niej WYPROWADZONY.
+// Wcześniej typ (unia) i tablica runtime były zapisane osobno, a `satisfies readonly
+// CanonicalOpName[]` pilnowało tylko JEDNEGO kierunku (tablica ⊆ unia). Nazwa obecna w unii,
+// ale pominięta w tablicy, przechodziła kontrolę typów i kompilację, a w runtime
+// `assertCanonicalOpName` odrzucał ją wyjątkiem — kontrolka w UI była martwa mimo poprawnego
+// handlera w backendzie (tak zginęły `add_shunt_compensator_sn` i `add_surge_arrester_sn`).
+// Wyprowadzenie typu z tablicy usuwa tę klasę błędu: rozjazd jest niewyrażalny.
 export const CANONICAL_OPERATION_NAMES = [
   'add_grid_source_sn',
   'add_sn_bay',
@@ -65,20 +40,28 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_transformer_sn_nn',
   'assign_catalog_to_element',
   'update_element_parameters',
+  // Operacje nN / źródła
   'add_nn_outgoing_field',
   'add_converter_source',
   'add_genset_nn',
   'add_ups_nn',
+  'add_shunt_compensator_sn',
+  'add_surge_arrester_sn',
   'add_nn_load',
   'add_ct',
   'add_vt',
   'add_relay',
+  // Warunki przyłączenia OSD (nagłówek modelu, krok E1 flow projektanta)
+  'set_connection_conditions',
+  // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
   'add_gpz_section',
   'update_gpz_section',
   'delete_gpz_section',
   'delete_element',
   'refresh_snapshot',
-] as const satisfies readonly CanonicalOpName[];
+] as const;
+
+export type CanonicalOpName = (typeof CANONICAL_OPERATION_NAMES)[number];
 
 const CANONICAL_OPERATION_SET = new Set<string>(CANONICAL_OPERATION_NAMES);
 
