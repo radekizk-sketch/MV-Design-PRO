@@ -306,7 +306,7 @@
       "type": "object"
     }
   },
-  "description": "Canonical Result Set v1 \u2014 FROZEN contract.\n\nThis is the single stable format consumed by:\n- SLD overlay (PR-16) via overlay_payload\n- Results inspector UI\n- Proof Engine (future)\n- Export/reporting (future)\n\nINVARIANTS:\n- contract_version = \"1.0\" (bump = new model)\n- deterministic_signature = SHA-256 of canonical JSON (excludes created_at)\n- overlay_payload is ALWAYS present (may be sparse)\n- element_results sorted by element_ref\n- global_results sorted by key",
+  "description": "Canonical Result Set v1 \u2014 FROZEN contract.\n\nThis is the single stable format consumed by:\n- SLD overlay (PR-16) via overlay_payload\n- Results inspector UI\n- Proof Engine (future)\n- Export/reporting (future)\n\nINVARIANTS:\n- contract_version = \"1.0\" (bump = new model)\n- deterministic_signature = SHA-256 of canonical JSON (excludes created_at, run_finished_at)\n- overlay_payload is ALWAYS present (may be sparse)\n- element_results sorted by element_ref\n- global_results sorted by key",
   "properties": {
     "analysis_type": {
       "description": "Analysis type: SC_3F, SC_1F, LOAD_FLOW",
@@ -348,6 +348,19 @@
     "overlay_payload": {
       "$ref": "#/$defs/OverlayPayloadV1",
       "description": "Overlay payload for SLD (bridge to PR-16)"
+    },
+    "run_finished_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "UTC ISO timestamp of run completion (CanonicalRun.finished_at). Presentation-only provenance metadata; NOT in deterministic signature.",
+      "title": "Run Finished At"
     },
     "run_id": {
       "description": "Run UUID",

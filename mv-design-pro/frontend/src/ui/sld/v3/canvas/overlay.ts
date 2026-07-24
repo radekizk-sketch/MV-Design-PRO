@@ -262,9 +262,15 @@ export interface SldV3Overlay {
      *  „Nie zakładać, że użytkownik pamięta aktywny moduł.” */
     readonly analysisTypeLabel?: string;
     /** R3 (wym. 7): identyfikator PRZEBIEGU (`RawOverlayPayload.run_id`) — z
-     *  którego biegu solvera pochodzą wartości. Timestamp NIE jest niesiony przez
-     *  `RawOverlayPayload` (znany brak kontraktu — rejestr braków R3). */
+     *  którego biegu solvera pochodzą wartości. */
     readonly runId?: string;
+    /** OVERLAY-TIMESTAMP (domyka dług R3/V12K-165): CZAS UKOŃCZENIA BIEGU już
+     *  sformatowany polskim formatterem repo (`workspace/routerDisplayHelpers.
+     *  formatDateTime`) z `RawOverlayPayload.run_finished_at` (← realny
+     *  `CanonicalRun.finished_at`). Kanon V12K-159 wym. 6-7: dane pochodzenia
+     *  MUSZĄ nieść timestamp. Brak/`undefined` ⇒ badge NIE renderuje wiersza
+     *  czasu (uczciwy brak, zero fabrykacji czasu we froncie). */
+    readonly completedAtLabel?: string;
   };
 }
 

@@ -340,6 +340,7 @@ def build_resultset_v1(
     readiness: dict[str, Any] | None = None,
     element_results_raw: list[dict[str, Any]] | None = None,
     global_results: dict[str, Any] | None = None,
+    run_finished_at: str | None = None,
 ) -> ResultSetV1:
     """
     Build a ResultSetV1 from run data, solver output, validation, and readiness.
@@ -353,6 +354,8 @@ def build_resultset_v1(
         readiness: Readiness snapshot dict (optional)
         element_results_raw: Pre-built element results list (optional)
         global_results: Global results dict (optional)
+        run_finished_at: UTC ISO timestamp of run completion (optional; provenance
+            metadata, excluded from deterministic signature)
 
     Returns:
         Frozen ResultSetV1 with deterministic signature and overlay payload.
@@ -436,6 +439,7 @@ def build_resultset_v1(
         analysis_type=analysis_type,
         solver_input_hash=solver_input_hash,
         created_at=created_at,
+        run_finished_at=run_finished_at,
         deterministic_signature="",  # populated after canonical payload hashing
         global_results=dict(sorted(merged_global.items())),
         element_results=element_results,
@@ -455,6 +459,7 @@ def build_resultset_v1(
         analysis_type=analysis_type,
         solver_input_hash=solver_input_hash,
         created_at=created_at,
+        run_finished_at=run_finished_at,
         deterministic_signature=signature,
         global_results=dict(sorted(merged_global.items())),
         element_results=element_results,

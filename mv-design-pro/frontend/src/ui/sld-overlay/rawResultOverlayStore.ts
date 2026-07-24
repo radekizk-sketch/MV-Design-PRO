@@ -41,6 +41,12 @@ export interface RawOverlayPayload {
   readonly quality_status?: string | null;
   /** Proof completeness: 'complete' | 'partial'. */
   readonly proof_status?: string | null;
+  /** OVERLAY-TIMESTAMP (dług R3/V12K-165): CZAS UKOŃCZENIA BIEGU — UTC ISO z
+   *  realnego rekordu runu (`ResultSetV1.run_finished_at` ← `CanonicalRun.finished_at`).
+   *  Domyka brak kontraktu z R3 (pochodzenie wyniku niosło run_id bez czasu; kanon
+   *  V12K-159 wym. 6-7 wymaga timestampu w danych pochodzenia). `null`/brak ⇒ badge
+   *  pochodzenia NIE renderuje wiersza czasu (uczciwy brak, nie fabrykacja). */
+  readonly run_finished_at?: string | null;
 }
 
 interface RawResultOverlayStore {

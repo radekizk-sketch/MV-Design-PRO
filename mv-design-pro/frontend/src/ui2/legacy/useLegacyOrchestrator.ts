@@ -825,6 +825,9 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
             elements: payload.elements,
             quality_status: data?.global_results?.quality_status ?? null,
             proof_status: data?.global_results?.proof_status ?? null,
+            // OVERLAY-TIMESTAMP: czas ukończenia biegu z topu ResultSetV1 (nie z
+            // overlay_payload) — pochodzenie wyniku pokazuje moduł + przebieg + CZAS.
+            run_finished_at: data?.run_finished_at ?? null,
           };
           setRawOverlay(rawPayload);
           // V12K-088: karmimy typowaną warstwę tym samym wynikiem (rekoncyliacja).

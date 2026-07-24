@@ -287,6 +287,44 @@ describe('R3 — render: interakcja natywna + progi + pochodzenie (wym.6/7/9)', 
     expect(badge!.textContent).toContain('Moduł: rozpływ mocy');
     expect(badge!.textContent).toContain('Przebieg: run-r3');
   });
+
+  it('OVERLAY-TIMESTAMP: czas ukończenia biegu obecny ⇒ badge pokazuje wiersz „Czas ukończenia”', () => {
+    const byRef = buildResultLabelsFromScene(sceneL2, soloSource(), singleHop);
+    const overlay: SldV3Overlay = {
+      energizedByTestId: {},
+      resultLabelsByOwnerRef: byRef,
+      // `completedAtLabel` jest już sformatowanym łańcuchem PL (workspace woła
+      // formatter repo `formatDateTime`) — kanwa asembluje sam tekst pochodzenia.
+      provenance: {
+        analysisTypeLabel: 'rozpływ mocy',
+        runId: 'run-r3',
+        completedAtLabel: '24.07.2026, 10:15:30',
+      },
+    };
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    const badge = container.querySelector('[data-testid="sld-v3-overlay-provenance"]');
+    expect(badge).toBeTruthy();
+    expect(badge!.getAttribute('data-completed-at')).toBe('24.07.2026, 10:15:30');
+    expect(badge!.textContent).toContain('Czas ukończenia: 24.07.2026, 10:15:30');
+  });
+
+  it('OVERLAY-TIMESTAMP: brak czasu ukończenia ⇒ badge NIE pokazuje wiersza czasu (uczciwy brak, zero fabrykacji)', () => {
+    const byRef = buildResultLabelsFromScene(sceneL2, soloSource(), singleHop);
+    const overlay: SldV3Overlay = {
+      energizedByTestId: {},
+      resultLabelsByOwnerRef: byRef,
+      provenance: { analysisTypeLabel: 'rozpływ mocy', runId: 'run-r3' },
+    };
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    const badge = container.querySelector('[data-testid="sld-v3-overlay-provenance"]');
+    expect(badge).toBeTruthy();
+    expect(badge!.getAttribute('data-completed-at')).toBeNull();
+    expect(badge!.textContent).not.toContain('Czas ukończenia');
+  });
 });
 
 describe('R3 — inwariant geometrii ze stanami filtrów (wym.11/17)', () => {

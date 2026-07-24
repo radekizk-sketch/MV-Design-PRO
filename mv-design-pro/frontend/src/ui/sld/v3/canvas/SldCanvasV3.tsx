@@ -2136,16 +2136,19 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // provenance), poniżej niej — na arkuszu, nie w pasie marginesu.
   const staleBannerX = (scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : 0) + 2 * GRID;
   const staleBannerY = 4 * GRID;
-  // R3 (wym. 7): wiersz POCHODZENIA wyniku do popovera agregatu — moduł
-  // (etykieta PL z `analysis_type`) + przebieg (`run_id`), z overlay.provenance
-  // (workspace wypełnia z payloadu; ZERO nowego słownika). Timestamp niedostępny
-  // w payloadzie (znany brak kontraktu). `undefined` = brak deklaracji.
+  // R3 (wym. 7) + OVERLAY-TIMESTAMP: wiersz POCHODZENIA wyniku (popover agregatu
+  // ORAZ badge w rogu arkusza) — moduł (etykieta PL z `analysis_type`) + przebieg
+  // (`run_id`) + CZAS UKOŃCZENIA BIEGU (`completedAtLabel`, sformatowany w
+  // workspace formatterem repo `formatDateTime`), z overlay.provenance (workspace
+  // wypełnia z payloadu; ZERO nowego słownika/formattera). Brak `completedAtLabel`
+  // ⇒ brak wiersza czasu (uczciwy brak). `undefined` = brak deklaracji.
   const resultProvenanceText = useMemo(() => {
     const p = effectiveOverlay?.provenance;
     if (!p) return undefined;
     const parts: string[] = [];
     if (p.analysisTypeLabel) parts.push(`Moduł: ${p.analysisTypeLabel}`);
     if (p.runId) parts.push(`Przebieg: ${p.runId}`);
+    if (p.completedAtLabel) parts.push(`Czas ukończenia: ${p.completedAtLabel}`);
     return parts.length > 0 ? parts.join(' · ') : undefined;
   }, [effectiveOverlay?.provenance]);
   const viewBox = cameraViewBox(camera.transform, viewportSize);
@@ -2471,6 +2474,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
               data-converged={prov.converged == null ? undefined : String(prov.converged)}
               data-analysis-type-label={prov.analysisTypeLabel}
               data-run-id={prov.runId}
+              data-completed-at={prov.completedAtLabel}
             >
               <rect
                 x={badgeX}

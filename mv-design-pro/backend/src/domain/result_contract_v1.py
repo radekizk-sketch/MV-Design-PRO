@@ -298,7 +298,7 @@ class ResultSetV1(BaseModel):
 
     INVARIANTS:
     - contract_version = "1.0" (bump = new model)
-    - deterministic_signature = SHA-256 of canonical JSON (excludes created_at)
+    - deterministic_signature = SHA-256 of canonical JSON (excludes created_at, run_finished_at)
     - overlay_payload is ALWAYS present (may be sparse)
     - element_results sorted by element_ref
     - global_results sorted by key
@@ -320,6 +320,13 @@ class ResultSetV1(BaseModel):
     created_at: str = Field(
         default="",
         description="UTC ISO timestamp (NOT in deterministic signature)",
+    )
+    run_finished_at: str | None = Field(
+        default=None,
+        description=(
+            "UTC ISO timestamp of run completion (CanonicalRun.finished_at). "
+            "Presentation-only provenance metadata; NOT in deterministic signature."
+        ),
     )
     deterministic_signature: str = Field(
         default="",
@@ -386,13 +393,13 @@ def compute_deterministic_signature(result_set_dict: dict[str, Any]) -> str:
     """
     Compute SHA-256 of canonical result set JSON.
 
-    Excludes transient fields: created_at, deterministic_signature.
+    Excludes transient fields: created_at, run_finished_at, deterministic_signature.
     Sort keys + deterministic list ordering.
     """
     sig_data = {
         k: v
         for k, v in result_set_dict.items()
-        if k not in ("created_at", "deterministic_signature")
+        if k not in ("created_at", "run_finished_at", "deterministic_signature")
     }
     canonical = _canonicalize(sig_data)
     payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"), default=str)

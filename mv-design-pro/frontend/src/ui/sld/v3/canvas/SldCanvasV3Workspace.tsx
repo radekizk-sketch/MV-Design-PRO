@@ -169,6 +169,7 @@ import {
   type ResultLabelQuantity,
 } from './resultLabels';
 import { formatContractValue } from '../../../workspace/analysisRunContract';
+import { formatDateTime } from '../../../workspace/routerDisplayHelpers';
 
 const MIN_CANVAS_WIDTH_PX = 320;
 const MIN_CANVAS_HEIGHT_PX = 240;
@@ -1121,16 +1122,22 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     () => applyResultLabelFilter(resultLabelsByOwnerRef, resultFilter),
     [resultLabelsByOwnerRef, resultFilter],
   );
-  // R3 (wym. 7): POCHODZENIE wyniku — moduł (etykieta PL z `analysis_type` przez
-  // ISTNIEJĄCY słownik `formatContractValue`) + identyfikator przebiegu
-  // (`run_id`) z payloadu. Timestamp NIE jest niesiony przez `RawOverlayPayload`
-  // (znany brak kontraktu — rejestr braków R3). Brak payloadu = brak deklaracji.
+  // R3 (wym. 7) + OVERLAY-TIMESTAMP: POCHODZENIE wyniku — moduł (etykieta PL z
+  // `analysis_type` przez ISTNIEJĄCY słownik `formatContractValue`) + identyfikator
+  // przebiegu (`run_id`) + CZAS UKOŃCZENIA BIEGU (`run_finished_at`, realny
+  // `CanonicalRun.finished_at`) sformatowany ISTNIEJĄCYM formatterem repo
+  // (`formatDateTime`, pl-PL). Domyka dług R3 (kanon V12K-159 wym. 6-7: pochodzenie
+  // musi nieść timestamp). Brak `run_finished_at` ⇒ brak wiersza czasu (uczciwy
+  // brak, zero fabrykacji). Brak payloadu = brak deklaracji.
   const provenance = useMemo(
     () =>
       rawOverlayPayload
         ? {
             analysisTypeLabel: formatContractValue(rawOverlayPayload.analysis_type),
             runId: rawOverlayPayload.run_id,
+            completedAtLabel: rawOverlayPayload.run_finished_at
+              ? formatDateTime(rawOverlayPayload.run_finished_at)
+              : undefined,
           }
         : undefined,
     [rawOverlayPayload],
