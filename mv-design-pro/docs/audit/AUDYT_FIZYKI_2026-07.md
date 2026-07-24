@@ -97,6 +97,7 @@ Kolejność wg ryzyka × zasięgu konsekwencji projektowych.
 | C | ZAMKNIĘTA | **3 defekty** (W1, W9 + hunting OLTC) — naprawione, re-baseline | V12K-187 |
 | D | ZAMKNIĘTA | charakterystyki **czyste**; 1 defekt werdyktu kryteriów | V12K-188, V12K-189 |
 | E | ZAMKNIĘTA | wzory **dokładne**; 1 luka: brak kierunku mocy (wzrost napięcia) | V12K-190 |
+| G | ZAMKNIĘTA | **4 defekty** (W3×3, W9) — najcięższy: I_th rdzennego solvera bez m,n | V12K-192 |
 
 ### Fala B — składowe symetryczne: wynik
 
@@ -206,11 +207,75 @@ tym polega regulacja Q(U). Dowód liczbowy (I = 100 A, 5 km, cosφ = 0,95):
 
 Kryterium doboru kabla DER sprawdza teraz `|ΔU%|`, więc odrzuca kabel zarówno przy
 zbyt dużym spadku, jak i przy zbyt dużym wzroście.
-| D | — | — | — |
-| E | — | — | — |
 | F | — | — | — |
-| G | — | — | — |
 | H | — | — | — |
+
+### Fala G — arc flash, wytrzymałość, dobór aparatury: wynik
+
+**Wzory arc flash IEEE 1584-2018, ścieżka HV/SN (600 V<U≤15 kV) — dokładne.**
+Zweryfikowane pełnym niezależnym przeliczeniem od zera (Eq.1, Eq.2, Eq.3-6, Eq.7-10,
+Eq.16-18, reimplementacja z surowych współczynników tablicy produkcyjnej, NIE przez
+wywołanie kodu repo) na przypadku VCB, 13,8 kV, I_bf=25 kA, t=200 ms, G=152 mm,
+D=914,4 mm:
+
+| Wielkość | repo | rachunek niezależny | błąd względny |
+|---|---|---|---|
+| I_arc | 23,2481 kA | 23,248058 kA | 1,8·10⁻⁶ % |
+| E | 7,0585 cal/cm² | 7,058543 cal/cm² | 6,1·10⁻⁶ % |
+| AFB | 2830,5882 mm | 2830,588240 mm | 1,4·10⁻⁸ % |
+
+(rozbieżności wyłącznie z zaokrąglenia do 4 miejsc w warstwie prezentacji repo).
+
+**G-1 (W7) — granica ważności I_bf dla HV/SN dziedziczyła próg LV.** Jeden wspólny
+przedział 500 A–106 kA stosowany do WSZYSTKICH klas napięcia; norma (zweryfikowana
+wobec referencyjnej implementacji open-source rwl/arcflash, `i_arc.rs::i_arc()`)
+wymaga 200 A–65 kA dla 600 V<U≤15 kV — INNEGO niż dla U≤600 V (500 A–106 kA). Dla
+narzędzia klasy SN to błąd na GŁÓWNYM zakresie zastosowania: punkty SN 200–500 A
+błędnie trafiały do ścieżki Ralpha Lee (mniej dokładnej niż IEEE 1584), punkty
+65–106 kA błędnie liczyły się ścieżką IEEE mimo bycia poza normą.
+
+**G-2 (W3) — brak korekty Eq.25 dla układów ≤600 V (parametr napięcia rzeczywistego
+ignorowany).** Ścieżka LV liczyła KAŻDE napięcie ≤600 V tak, jakby wynosiło dokładnie
+600 V (interpolacja klamrowała do wartości kotwy 600 V bez korekty). Dowód liczbowy
+(VCB, I_bf=20 kA, G=32 mm, Tab.1@600V produkcyjne): I_arc,600(Eq.1)=16,2723 kA;
+poprawka Eq.25 przy rzeczywistym U=208 V daje I_arc=8,7294 kA — różnica −46,35%
+względem stanu sprzed naprawy (błąd malejący z napięciem: −8,34% przy 480 V, 0% przy
+dokładnie 600 V).
+
+**G-3 (W3, drobny) — wysokość obudowy VCB > 1244,6 mm.** Tab.6 IEEE 1584-2018 wymaga
+STAŁEGO limitu 49" dla WYSOKOŚCI konfiguracji VCB (nasycenie EES); repo stosowało
+identyczną transformację eq.11/12 jak dla szerokości/VCBB/HCB — różnica do −36% EES
+przy niskich napięciach (asymptota zbiega do ok. −2% przy 15 kV).
+
+**G-4 (W9, KRYTYCZNY) — I_th rdzennego solvera IEC 60909 pomijał współczynniki m,n.**
+`short_circuit_core.py::compute_post_fault_quantities` liczył
+`ith_a = ikss·sqrt(tk_s)` — wymiarowo niespójne (sqrt(sekundy)·prąd ≠ prąd) i
+sprzeczne z formułą JUŻ udokumentowaną jako wiążąca w TYM SAMYM repo
+(`docs/proof/NORMATIVE_COMPLETION_PACK_IEC_60909.md` §4.7,
+`docs/proof_engine/EQUATIONS_IEC60909_SC3F.md` EQ_SC3F_008: I_th=I_k''·√(m+n)) i już
+poprawnie zaimplementowana w warstwie proof engine dla SC1 — rozjazd modeli (ta sama
+wielkość fizyczna, dwa różne wzory w dwóch warstwach tego samego repo). Rdzenny
+solver (FROZEN `ShortCircuitResult.ith_a`) zasila equipment_proof, protection_insight,
+normative/OSD i pakiet dowodowy SC3F (który do tej naprawy wyświetlał podstawienie
+`sqrt(m+n)` NIESPÓJNE z faktyczną, wyświetlaną liczbą `ith_ka` za każdym razem, gdy
+tk_s≠1s — biały box łamał własną zasadę spójności podstawienia).
+
+Dowód liczbowy (fixture solvera, κ=1,9251): t_k=1 s → I_th/I_k''=1,06227 (m=0,12841);
+t_k=4 s → I_th/I_k''=1,01592 (m=0,03210) — MALEJE z czasem (składowa DC zanika), a NIE
+rośnie jak przy defekcie (`sqrt(4)/sqrt(1) = 2×`). Naprawa: postać zamknięta m (norma,
+publiczna, analogiczna do już istniejącej formuły κ w tym samym module) + n=1 (daleko
+od generatora — udokumentowane ograniczenie modelu, patrz „Sprawy do decyzji
+produktowej"). m_factor/n_factor niesione addytywnie na `ShortCircuitResult` i
+przekazane do pakietów dowodowych SC3F, żeby podstawienie White Box było spójne z
+wyświetlanym wynikiem.
+
+**Bez defektów:** I_arc (nie I_bf) poprawnie użyty w energii incydentu (x3 i x4);
+konwersja cal/cm²↔J/cm² (4,184) poprawna; Idyn porównywane z i_p (prąd szczytowy),
+NIE z I_k'' (skuteczny) — potwierdzone w `equipment_proof/generator.py` i
+`protection_insight/builder.py`; równoważność energetyczna I²t dla Ith/Icw przy różnych
+czasach odniesienia (`Ith_req²·t_k ≤ Icw²·t_cw`) już poprawnie zaimplementowana w
+`equipment_proof/generator.py::_check_ith`; brak fabrykacji Icw/Idyn przy braku danych
+katalogowych — honest FAIL zamiast wartości domyślnej.
 
 ## 7. Kryterium odbioru audytu
 

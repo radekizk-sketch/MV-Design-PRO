@@ -75,6 +75,13 @@ OPTIONAL_SHORT_CIRCUIT_RESULT_KEYS: list[str] = [
     # None (opcja wyłączona / starszy wynik) → pominięty, payload bajt-w-bajt
     # jak sprzed delty (dowód: testy addytywności).
     "branch_flow_trace",
+    # Audyt fizyki fala G (2026-07): wspolczynniki cieplne m/n faktycznie
+    # uzyte w ith_a = ikss*sqrt(m+n) (IEC 60909-0 §4.7/§12). Obecne w
+    # to_dict() ZAWSZE dla wynikow policzonych PO tej delcie (solver je
+    # zawsze liczy); None tylko dla wynikow zrekonstruowanych z payloadu
+    # sprzed delty (kompatybilnosc wsteczna).
+    "m_factor",
+    "n_factor",
 ]
 
 
@@ -144,6 +151,14 @@ class ShortCircuitResult:
     # gałęziach — kroki i wartości pośrednie podziału prądu z macierzy Z-bus.
     # None = wkłady gałęziowe nieliczone (opcja wyłączona) / wynik sprzed delty.
     branch_flow_trace: list[dict] | None = None
+    # Audyt fizyki fala G (2026-07, addytywnie): wspolczynniki cieplne m
+    # (skladowa DC) i n (skladowa AC) FAKTYCZNIE uzyte w ith_a = ikss*sqrt(m+n)
+    # (IEC 60909-0 §4.7/§12; ta sama norma jest juz udokumentowana i uzywana
+    # w proof_generator.py dla SC1/SC3F — patrz EQ_SC3F_008/EQ_SC1_011).
+    # None = wynik sprzed delty (rekonstrukcja bez tych pol) — payload
+    # bajt-w-bajt jak przed delta (dowod: testy addytywnosci kontraktu).
+    m_factor: float | None = None
+    n_factor: float | None = None
 
     # -------------------------------------------------------------------------
     # Aliasy dla kompatybilności wstecznej (preferuj canonical: ikss_a, ip_a, ...)
@@ -250,6 +265,13 @@ class ShortCircuitResult:
         # zgodność payloadu wyników bez tego pola z kontraktem sprzed delty.
         if self.branch_flow_trace is not None:
             data["branch_flow_trace"] = serialize_value(list(self.branch_flow_trace))
+        # Audyt fizyki fala G (2026-07, addytywnie, exclude-None): m_factor/n_factor
+        # dolaczane WYLACZNIE gdy solver je policzyl — pominiecie None gwarantuje
+        # bajt-w-bajt zgodnosc payloadu wynikow sprzed delty.
+        if self.m_factor is not None:
+            data["m_factor"] = float(self.m_factor)
+        if self.n_factor is not None:
+            data["n_factor"] = float(self.n_factor)
         return data
 
 
@@ -308,6 +330,8 @@ class ShortCircuitIEC60909Solver:
             z2_ohm=z2,
             z0_ohm=z0,
             branch_flow_trace=branch_flow_trace,
+            m_factor=post.m_factor,
+            n_factor=post.n_factor,
         )
 
     @staticmethod
@@ -546,15 +570,17 @@ class ShortCircuitIEC60909Solver:
         tracer.add(
             key="Ith",
             title="Prąd zastępczy cieplny",
-            formula_latex=r"I_{th} = I_{k}'' \cdot \sqrt{t_k}",
-            inputs={"ikss_a": ikss_a, "tk_s": tk_s},
+            formula_latex=r"I_{th} = I_{k}'' \cdot \sqrt{m + n}",
+            inputs={"ikss_a": ikss_a, "m_factor": post.m_factor, "n_factor": post.n_factor},
             substitution=(
                 f"{ShortCircuitIEC60909Solver._format_float(ikss_a)}"
-                f" \\cdot \\sqrt{{{ShortCircuitIEC60909Solver._format_float(tk_s)}}}"
+                f" \\cdot \\sqrt{{{ShortCircuitIEC60909Solver._format_float(post.m_factor)}"
+                f" + {ShortCircuitIEC60909Solver._format_float(post.n_factor)}}}"
             ),
             substitution_latex=(
                 f"{ShortCircuitIEC60909Solver._format_float(ikss_a)}"
-                f" \\cdot \\sqrt{{{ShortCircuitIEC60909Solver._format_float(tk_s)}}}"
+                f" \\cdot \\sqrt{{{ShortCircuitIEC60909Solver._format_float(post.m_factor)}"
+                f" + {ShortCircuitIEC60909Solver._format_float(post.n_factor)}}}"
             ),
             result={"ith_a": post.ith_a},
         )

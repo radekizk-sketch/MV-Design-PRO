@@ -177,7 +177,18 @@ class SC3FInput:
         Konwersje jednostek:
         - V → kV: / 1000
         - A → kA: / 1000
+
+        Audyt fizyki fala G (2026-07): m_factor/n_factor są niesione z
+        WYNIKU solvera (``result.m_factor``/``result.n_factor``, faktycznie
+        użyte do policzenia ``ith_a = ikss*sqrt(m+n)``), NIE z domyślnych
+        placeholderów (1,0 / 0,0) — inaczej wywód White Box (krok Ith,
+        EQ_SC3F_008) pokazywałby podstawienie niespójne z wyświetlaną
+        liczbą ith_ka za każdym razem, gdy tk_s różni się od wartości, przy
+        której m+n≈1. Starsze wyniki solvera (sprzed delty, m_factor=None)
+        ⇒ honest fallback na (1,0; 0,0) — bez zmyślania, jawnie oznaczony.
         """
+        m_factor = result.m_factor if result.m_factor is not None else 1.0
+        n_factor = result.n_factor if result.n_factor is not None else 0.0
         return cls(
             project_name=project_name,
             case_name=case_name,
@@ -195,6 +206,8 @@ class SC3FInput:
             kappa=result.kappa,
             rx_ratio=result.rx_ratio,
             tk_s=result.tk_s,
+            m_factor=m_factor,
+            n_factor=n_factor,
             ib_ka=result.ib_a / 1000.0,
             tb_s=result.tb_s,
         )

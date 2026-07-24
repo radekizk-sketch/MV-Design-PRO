@@ -265,6 +265,60 @@ def test_open_air_has_cf_one_boxed_uses_table_7() -> None:
     assert boxed.enclosure_correction_cf is not None and boxed.enclosure_correction_cf > 0.0
 
 
+def test_vcb_enclosure_height_above_1244_6mm_uses_fixed_49in_cap() -> None:
+    """Tab.6 IEEE 1584-2018: dla VCB WYSOKOŚĆ obudowy > 1244,6 mm ma STAŁY limit
+    ekwiwalentny 49" (NIE rośnie dalej wg transformacji eq.11/12, w przeciwieństwie
+    do szerokości i do VCBB/HCB) — zweryfikowane wobec rwl/arcflash
+    ``cubicle.rs::calc_cf``. Sprawdzone pośrednio: CF dla b. wysokiej obudowy VCB
+    (2000 mm) jest NIEZALEŻNE od napięcia (bo EES nasyca się na 49"), podczas gdy
+    dla VCBB (ta sama wysokość) CF ZALEŻY od napięcia (eq.11/12 rośnie z U)."""
+    tall_low_v = _build_one(
+        _in_range_input(
+            electrode_config=ElectrodeConfig.VCB,
+            voltage_kv=2.7,
+            enclosure_height_mm=2000.0,
+            enclosure_width_mm=500.0,
+        )
+    )
+    tall_high_v = _build_one(
+        _in_range_input(
+            electrode_config=ElectrodeConfig.VCB,
+            voltage_kv=14.3,
+            enclosure_height_mm=2000.0,
+            enclosure_width_mm=500.0,
+        )
+    )
+    assert tall_low_v.enclosure_correction_cf is not None
+    assert tall_high_v.enclosure_correction_cf is not None
+    # VCB: CF NIEZALEŻNE od napięcia dla wysokiej obudowy (limit 49" nasycony).
+    assert tall_low_v.enclosure_correction_cf == pytest.approx(
+        tall_high_v.enclosure_correction_cf, rel=1e-9
+    )
+
+    tall_vcbb_low_v = _build_one(
+        _in_range_input(
+            electrode_config=ElectrodeConfig.VCBB,
+            voltage_kv=2.7,
+            enclosure_height_mm=2000.0,
+            enclosure_width_mm=500.0,
+        )
+    )
+    tall_vcbb_high_v = _build_one(
+        _in_range_input(
+            electrode_config=ElectrodeConfig.VCBB,
+            voltage_kv=14.3,
+            enclosure_height_mm=2000.0,
+            enclosure_width_mm=500.0,
+        )
+    )
+    assert tall_vcbb_low_v.enclosure_correction_cf is not None
+    assert tall_vcbb_high_v.enclosure_correction_cf is not None
+    # VCBB: CF ZALEŻY od napięcia dla wysokiej obudowy (eq.11/12 bez limitu 49").
+    assert tall_vcbb_low_v.enclosure_correction_cf != pytest.approx(
+        tall_vcbb_high_v.enclosure_correction_cf, rel=1e-6
+    )
+
+
 def test_longer_arc_time_increases_energy() -> None:
     """Dłuższy czas łuku ⇒ większa energia (człon 12,552/50·t liniowy w czasie).
     Dwukrotny czas ⇒ dwukrotna energia (na danych produkcyjnych)."""
@@ -483,13 +537,30 @@ def test_ieee_path_not_used_above_range_even_with_full_table() -> None:
         (15.0, 25.0, False),  # 15 kV = górny kraniec ⇒ IEEE
         (20.0, 25.0, True),  # U > 15 kV ⇒ Lee
         (0.1, 25.0, True),  # U < 208 V ⇒ poza zakresem ⇒ Lee
-        (13.8, 120.0, True),  # I_bf > 106 kA ⇒ poza zakresem ⇒ Lee
-        (13.8, 0.3, True),  # I_bf < 500 A ⇒ poza zakresem ⇒ Lee
+        (13.8, 120.0, True),  # HV: I_bf > 65 kA (górny kraniec HV) ⇒ poza zakresem ⇒ Lee
+        # RE-BASELINE (audyt fizyki, fala G, 2026-07): poprzedni test zakładał JEDEN
+        # wspólny przedział I_bf 500 A-106 kA dla LV i HV (defekt W7 — bramka na złej
+        # wielkości/progu). Norma (zweryfikowana wobec referencyjnej implementacji
+        # open-source rwl/arcflash, i_arc.rs::i_arc()) używa DWÓCH przedziałów:
+        # LV (U<=600 V) 500 A-106 kA, HV (600 V<U<=15 kV) 200 A-65 kA. 13,8 kV/300 A
+        # jest W ZAKRESIE HV (300 A > 200 A) ⇒ IEEE, NIE Lee. Stary test utrwalał
+        # defekt (test-utrwalający-defekt, W8): 300 A < 500 A (próg LV błędnie
+        # stosowany do HV) dawało fałszywe "poza zakresem".
+        (13.8, 0.3, False),  # HV: I_bf=300 A >= 200 A (dolny próg HV) ⇒ W ZAKRESIE ⇒ IEEE
+        (13.8, 0.199, True),  # HV: I_bf=199 A < 200 A (dolny próg HV) ⇒ poza zakresem ⇒ Lee
+        (13.8, 65.0, False),  # HV: I_bf=65 kA = górny próg HV (inclusive) ⇒ IEEE
+        (13.8, 65.001, True),  # HV: I_bf=65,001 kA > górny próg HV ⇒ poza zakresem ⇒ Lee
+        (0.4, 0.5, False),  # LV: I_bf=500 A = dolny próg LV (inclusive) ⇒ IEEE
+        (0.4, 0.499, True),  # LV: I_bf=499 A < dolny próg LV ⇒ poza zakresem ⇒ Lee
+        (0.4, 106.0, False),  # LV: I_bf=106 kA = górny próg LV (inclusive) ⇒ IEEE
+        (0.4, 106.001, True),  # LV: I_bf=106,001 kA > górny próg LV ⇒ poza zakresem ⇒ Lee
     ],
 )
 def test_validity_range_gating(voltage_kv: float, i_bf_ka: float, expect_lee: bool) -> None:
     """Poza zakresem ważności (U lub I_bf) builder przełącza na Lee; w zakresie
-    używa ścieżki IEEE (na danych produkcyjnych open-source)."""
+    używa ścieżki IEEE (na danych produkcyjnych open-source). Przedział I_bf
+    ZALEŻY od klasy napięcia (LV 500 A-106 kA; HV 200 A-65 kA) — patrz RE-BASELINE
+    powyżej."""
     r = _build_one(_in_range_input(voltage_kv=voltage_kv, i_bf_ka=i_bf_ka))
     if expect_lee:
         assert r.status is ArcFlashStatus.COMPUTED_RALPH_LEE, (voltage_kv, i_bf_ka)
@@ -497,6 +568,109 @@ def test_validity_range_gating(voltage_kv: float, i_bf_ka: float, expect_lee: bo
     else:
         assert r.status is ArcFlashStatus.COMPUTED_IEEE_1584_OPEN_SOURCE, (voltage_kv, i_bf_ka)
         assert r.method is ArcFlashMethod.IEEE_1584_2018
+
+
+# ===========================================================================
+# (11) Ścieżka LV (U<=600 V) — korekcja Eq.25 do rzeczywistego napięcia układu.
+#      Audyt fizyki, fala G (2026-07): poprzedni kod stosował dla KAŻDEGO
+#      U<=600 V wartość policzoną TAK, jakby układ miał dokładnie 600 V (brak
+#      Eq.25) — błąd do ok. 46% prądu łuku dla typowego układu 208 V. Poniższe
+#      testy weryfikują korektę NIEZALEŻNYM rachunkiem ręcznym (Eq.1 + Eq.25 na
+#      współczynnikach Tab.1 VCB@600V z pliku produkcyjnego).
+# ===========================================================================
+
+
+def test_lv_path_applies_eq25_voltage_correction_not_raw_600v_anchor() -> None:
+    """208 V/20 kA/32 mm (VCB): I_arc MUSI być skorygowany Eq.25, NIE równy
+    surowej wartości pośredniej Eq.1 przy kotwie 600 V (defekt sprzed naprawy).
+
+    Rachunek kontrolny (Tab.1 VCB@600V, produkcyjne dane open-source):
+    k1..k10 = -0,04287; 1,035; -0,083; 0; 0; -4,783e-9; 1,962e-6; -0,000229;
+    0,003141; 1,092.
+        x1 = k1 + k2*lg(20) + k3*lg(32) = -0,04287 + 1,035*1,30103 + (-0,083)*1,50515
+           = 1,161719...
+        x2 = k6*20^4 + k7*20^3 + k8*20^2 + k9*20 + k10
+           = -4,783e-9*160000 + 1,962e-6*8000 + (-0,000229)*400 + 0,003141*20 + 1,092
+           = -0,00076528 + 0,015696 - 0,0916 + 0,06282 + 1,092 = 1,0784707...
+        I_arc,600 = 10^x1 * x2 = 10^1,161719 * 1,0784707 = 16,2723 kA (Eq.1)
+    Eq.25 przy U=0,208 kV:
+        I_arc = [ (0,6/0,208)^2 * (1/16,2723^2 - (0,6^2-0,208^2)/(0,6^2*20^2)) ]^(-1/2)
+              = 8,7294 kA  (różnica od 16,2723 kA: -46,35% — defekt sprzed naprawy
+                zawyżał I_arc, a w ślad za nim E i AFB, dla układów LV < 600 V).
+    """
+    item = _in_range_input(
+        voltage_kv=0.208,
+        i_bf_ka=20.0,
+        conductor_gap_mm=32.0,
+        working_distance_mm=455.0,
+        electrode_config=ElectrodeConfig.VCB,
+    )
+    r = _build_one(item)
+    assert r.status is ArcFlashStatus.COMPUTED_IEEE_1584_OPEN_SOURCE
+    assert r.i_arc_ka is not None
+    # Rachunek kontrolny Eq.1 (wartość pośrednia, NIESKORYGOWANA) na danych produkcyjnych.
+    i_arc_600_expected = 16.2723
+    assert r.i_arc_at_anchors_ka is not None
+    assert r.i_arc_at_anchors_ka["V600"] == pytest.approx(i_arc_600_expected, abs=2e-3)
+    # Rachunek kontrolny Eq.25 (skorygowany do rzeczywistego U=0,208 kV).
+    i_arc_corrected_expected = 8.7294
+    assert r.i_arc_ka == pytest.approx(i_arc_corrected_expected, abs=2e-3)
+    # I_arc SKORYGOWANY musi być WYRAŹNIE mniejszy niż wartość pośrednia 600 V
+    # (dowód, że korekcja Eq.25 faktycznie zadziałała, a nie została pominięta).
+    assert r.i_arc_ka < 0.6 * i_arc_600_expected
+
+
+def test_lv_path_voltage_dependence_208v_vs_480v_vs_600v() -> None:
+    """Dla STAŁEGO I_bf/G różne napięcia LV (208/480/600 V) MUSZĄ dać RÓŻNE
+    I_arc (Eq.25 zależy jawnie od U). Przy U=600 V Eq.25 zwraca dokładnie
+    wartość pośrednią Eq.1 (redukuje się do tożsamości — kotwa=napięcie)."""
+    base = {
+        "i_bf_ka": 20.0,
+        "conductor_gap_mm": 32.0,
+        "working_distance_mm": 455.0,
+        "electrode_config": ElectrodeConfig.VCB,
+    }
+    r208 = _build_one(_in_range_input(voltage_kv=0.208, **base))
+    r480 = _build_one(_in_range_input(voltage_kv=0.48, **base))
+    r600 = _build_one(_in_range_input(voltage_kv=0.6, **base))
+    assert r208.i_arc_ka is not None and r480.i_arc_ka is not None and r600.i_arc_ka is not None
+    # Monotonicznie rosnące I_arc wraz z napięciem LV (Eq.25).
+    assert r208.i_arc_ka < r480.i_arc_ka < r600.i_arc_ka
+    # Przy U=600 V Eq.25 redukuje się do wartości pośredniej Eq.1 (kotwa=U).
+    assert r600.i_arc_ka == pytest.approx(r600.i_arc_at_anchors_ka["V600"], rel=1e-6)  # type: ignore[index]
+
+
+def test_lv_path_no_anchor_interpolation_only_v600_used() -> None:
+    """Ścieżka LV NIE interpoluje między kotwami — raportowany słownik kotew
+    zawiera WYŁĄCZNIE V600 (norma liczy bezpośrednio dla U<=600 V, bez 2700/14300)."""
+    r = _build_one(_in_range_input(voltage_kv=0.4, i_bf_ka=10.0))
+    assert r.i_arc_at_anchors_ka is not None
+    assert set(r.i_arc_at_anchors_ka.keys()) == {"V600"}
+
+
+def test_lv_path_energy_uses_uncorrected_i_arc600_in_x3_and_corrected_in_x4() -> None:
+    """Rachunek kontrolny x3 (Eq.6, licznik) używa I_arc,600 NIESKORYGOWANEGO,
+    a x4 (człon logarytmiczny) I_arc SKORYGOWANEGO Eq.25 — zweryfikowane wobec
+    rwl/arcflash ``equations.rs::intermediate_e`` (gałąź LV). Podmiana obu na tę
+    samą wartość dałaby INNY wynik energii — test dowodzi, że kod ich NIE myli."""
+    from analysis.arc_flash.loader import PRODUCTION_IEEE_1584_TABLE
+
+    table = PRODUCTION_IEEE_1584_TABLE
+    i_bf, gap, u, t_ms, d = 20.0, 32.0, 0.208, 200.0, 455.0
+    builder = ArcFlashBuilder()
+    arc_coeffs_600 = table.arc_entry(ElectrodeConfig.VCB, VoltageAnchor.V600)
+    i_arc_600 = builder._arc_current_at_anchor(i_bf, gap, arc_coeffs_600)  # noqa: SLF001
+    i_arc_final = builder._arc_current_final_lv(u, i_arc_600, i_bf)  # noqa: SLF001
+    cf = 1.0  # otwarte powietrze / neutralne dla porównania algebry
+    energy_coeffs_600 = table.energy_entry(ElectrodeConfig.VCB, VoltageAnchor.V600)
+    e_correct = builder._incident_energy_lv(  # noqa: SLF001
+        i_bf, i_arc_final, i_arc_600, gap, t_ms, d, cf, energy_coeffs_600
+    )
+    # Wersja BŁĘDNA (hipotetyczna): oba człony na i_arc_600 (jak przy pomyłce W3/W7).
+    e_wrong_both_uncorrected = builder._incident_energy_at_anchor(  # noqa: SLF001
+        i_bf, i_arc_600, gap, t_ms, d, cf, energy_coeffs_600
+    )
+    assert e_correct != pytest.approx(e_wrong_both_uncorrected, rel=1e-6)
 
 
 # ===========================================================================

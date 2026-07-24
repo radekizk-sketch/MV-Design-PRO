@@ -122,6 +122,14 @@ class SC3FProofPack:
             kappa=result.kappa,
             rx_ratio=result.rx_ratio,
             tk_s=result.tk_s,
+            # Audyt fizyki fala G (2026-07): m_factor/n_factor FAKTYCZNIE uzyte
+            # przez solver do ith_a = ikss*sqrt(m+n) (IEC 60909-0 SS4.7/SS12) —
+            # niesione z wyniku solvera, zeby wywod White Box (krok Ith,
+            # EQ_SC3F_008) podstawial LICZBY SPOJNE z wyswietlanym ith_ka.
+            # Honest fallback (1,0; 0,0) tylko dla starszych wynikow solvera
+            # sprzed delty (m_factor=None) — bez zmyslania.
+            m_factor=result.m_factor if result.m_factor is not None else 1.0,
+            n_factor=result.n_factor if result.n_factor is not None else 0.0,
             machine_result=machine_result if has_machines else None,
             # Karta S-C (2026-07-22): kroki I_b(t_b) i I²t w dowodzie — wartości
             # z FROZEN wyniku solvera (ib_a/tb_s), zero fizyki w proof engine.

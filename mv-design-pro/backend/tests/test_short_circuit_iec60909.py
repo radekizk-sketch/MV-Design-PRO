@@ -303,6 +303,19 @@ def test_sk_matches_formula():
 
 
 def test_post_processing_quantities_match_ikss_formula():
+    """RE-BASELINE (audyt fizyki, fala G, 2026-07): poprzedni test utrwalał
+    defekt W1 (pominięte współczynniki m,n) — zakładał ``ith_a = ikss*sqrt(tk_s)``,
+    formułę WYMIAROWO NIESPÓJNĄ (sqrt(tk_s) ma jednostkę sqrt(s), a I_th musi być
+    prądem [A]) i sprzeczną z udokumentowaną normą (``docs/proof/
+    NORMATIVE_COMPLETION_PACK_IEC_60909.md`` §4.7, ``docs/proof_engine/
+    EQUATIONS_IEC60909_SC3F.md`` EQ_SC3F_008: I_th = I_k''·sqrt(m+n)).
+
+    Poprawna formuła (IEC 60909-0 §4.7/§12): I_th = I_k''·sqrt(m+n), gdzie m to
+    postać zamknięta (norma, publiczna — jak już istniejący wzór na kappa w tym
+    samym solverze): m = 1/(2f·tk·ln(κ-1))·(exp(4f·tk·ln(κ-1))-1) dla κ>1,
+    n=1 (daleko od generatora — udokumentowane uproszczenie modelu, patrz
+    ``_thermal_mn_factors`` w ``short_circuit_core.py``).
+    """
     graph = build_transformer_only_graph()
     tb_s = 0.1
     tk_s = 0.4
@@ -318,7 +331,12 @@ def test_post_processing_quantities_match_ikss_formula():
     rx_ratio = math.inf if result.zkk_ohm.imag == 0 else result.zkk_ohm.real / result.zkk_ohm.imag
     kappa = 1.02 + 0.98 * math.exp(-3.0 * rx_ratio)
     ip_expected = kappa * math.sqrt(2.0) * result.ikss_a
-    ith_expected = result.ikss_a * math.sqrt(tk_s)
+    # Rachunek kontrolny m,n (IEC 60909-0 §12, postać zamknięta na kappa/tk/f=50Hz).
+    f_hz = 50.0
+    ln_term = math.log(kappa - 1.0)
+    m_expected = (math.exp(4.0 * f_hz * tk_s * ln_term) - 1.0) / (2.0 * f_hz * tk_s * ln_term)
+    n_expected = 1.0
+    ith_expected = result.ikss_a * math.sqrt(m_expected + n_expected)
     sk_expected = (math.sqrt(3.0) * result.un_v * result.ikss_a) / 1_000_000.0
 
     omega = 2.0 * math.pi * 50.0
@@ -330,6 +348,8 @@ def test_post_processing_quantities_match_ikss_formula():
 
     assert result.kappa == pytest.approx(kappa, rel=1e-12, abs=0.0)
     assert result.ip_a == pytest.approx(ip_expected, rel=1e-12, abs=0.0)
+    assert result.m_factor == pytest.approx(m_expected, rel=1e-12, abs=0.0)
+    assert result.n_factor == pytest.approx(n_expected, rel=1e-12, abs=0.0)
     assert result.ith_a == pytest.approx(ith_expected, rel=1e-12, abs=0.0)
     assert result.sk_mva == pytest.approx(sk_expected, rel=1e-12, abs=0.0)
     assert result.ib_a == pytest.approx(ib_expected, rel=1e-12, abs=0.0)
@@ -414,7 +434,23 @@ def test_increasing_rx_ratio_reduces_kappa_and_ip():
         assert high.ip_a <= low.ip_a
 
 
-def test_ith_scales_with_time():
+def test_ith_approaches_ikss_as_time_grows_not_scales_with_sqrt_time():
+    """RE-BASELINE (audyt fizyki, fala G, 2026-07): poprzedni test — nazwany
+    "scales_with_time" — utrwalał defekt W1: asercja ``ith_a(t=4s) ==
+    2*ikss`` zakładała ``I_th = I_k''*sqrt(t_k)``, formułę wymiarowo
+    niespójną (sqrt(sekundy) pomnożone przez prąd NIE daje prądu) i fizycznie
+    absurdalną (dłuższy czas trwania zwarcia NIE zwiększa "prądu
+    równoważnego cieplnie" bez ograniczeń — Ith jest MIARĄ AMPLITUDY prądu,
+    ograniczoną w pobliżu I_k'', nie skumulowaną energią).
+
+    Poprawna fizyka (IEC 60909-0 §4.7/§12, I_th = I_k''*sqrt(m+n), n=1 daleko
+    od generatora): składowa DC (m) ZANIKA z czasem, więc I_th MALEJE w
+    stronę I_k'' (nie rośnie) wraz z wydłużeniem t_k. Rachunek kontrolny na
+    fixture ``build_transformer_only_graph()`` (c=1,0; kappa≈1,9251):
+        t_k=1 s: m≈0,12841 → I_th/I_k''≈sqrt(1,12841)≈1,06227
+        t_k=4 s: m≈0,03210 → I_th/I_k''≈sqrt(1,03210)≈1,01592
+    (wartości zweryfikowane niezależnym wywołaniem solvera przed napisaniem
+    tego testu — patrz raport audytu fala G)."""
     graph = build_transformer_only_graph()
 
     result_t1 = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
@@ -430,8 +466,20 @@ def test_ith_scales_with_time():
         tk_s=4.0,
     )
 
-    assert result_t1.ith_a == pytest.approx(result_t1.ikss_a, rel=1e-12, abs=0.0)
-    assert result_t4.ith_a == pytest.approx(2.0 * result_t4.ikss_a, rel=1e-12, abs=0.0)
+    # I_th zawsze >= I_k'' (m,n >= 0) i NIGDY nie podwaja sie z 4x dluzszym t_k
+    # (dowod, ze defekt sqrt(tk_s) zostal usuniety, nie tylko przemianowany).
+    assert result_t1.ith_a >= result_t1.ikss_a
+    assert result_t4.ith_a >= result_t4.ikss_a
+    assert result_t4.ith_a != pytest.approx(2.0 * result_t4.ikss_a, rel=1e-6)
+    # Dluzszy t_k -> mniejszy udzial skladowej DC (m) -> I_th BLIZEJ I_k'' (maleje).
+    assert result_t4.ith_a < result_t1.ith_a
+    # Rachunek kontrolny dokladnych wartosci (m z postaci zamknietej IEC 60909-0).
+    ratio_t1 = result_t1.ith_a / result_t1.ikss_a
+    ratio_t4 = result_t4.ith_a / result_t4.ikss_a
+    assert ratio_t1 == pytest.approx(1.06227, abs=2e-5)
+    assert ratio_t4 == pytest.approx(1.01592, abs=2e-5)
+    assert result_t1.m_factor is not None and result_t1.m_factor > result_t4.m_factor  # type: ignore[operator]
+    assert result_t1.n_factor == pytest.approx(1.0) and result_t4.n_factor == pytest.approx(1.0)
 
 
 def test_zkk_from_inverse_ybus():

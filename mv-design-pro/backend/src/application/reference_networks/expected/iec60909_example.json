@@ -10,20 +10,20 @@
       "sc_type": "3F",
       "ikss_a": 4880.313,
       "ip_a": 13803.559,
-      "ith_a": 4880.313,
+      "ith_a": 8450.851,
       "sk_mva": 278.947,
       "rtol": 0.001,
-      "note": "Three-phase fault on 33 kV bus, c=1.10, K_T-corrected TR impedance Z_TK=K_T*Zk=0.9858490566*(0.00001089+j4.356)=(0.00001073+j4.294660) ohm (IEC 60909-0 par. 3.3.3). Poprzedni baseline bez K_T: ikss=4811.252 A; nowy/stary=1.0143540566=1/K_T."
+      "note": "Three-phase fault on 33 kV bus, c=1.10, K_T-corrected TR impedance Z_TK=K_T*Zk=0.9858490566*(0.00001089+j4.356)=(0.00001073+j4.294660) ohm (IEC 60909-0 par. 3.3.3). Poprzedni baseline bez K_T: ikss=4811.252 A; nowy/stary=1.0143540566=1/K_T. RE-BASELINE ith_a (audyt fizyki fala G, 2026-07): poprzednia wartosc oczekiwana byla DOSLOWNA KOPIA ikss_a, bo rdzenny solver liczyl ith_a = ikss*sqrt(t_k), co jest niezgodne wymiarowo (sqrt(s) nie jest bezwymiarowe) i przy t_k = 1 s dawalo ith = ikss. Poprawna formula IEC 60909-0 par. 4.7/12: I_th = I''k*sqrt(m+n). Dla tej sieci kappa = ip/(sqrt2*ikss) = 13803.559/(1.414214*4880.313) = 1.999993, czyli R/X ~ 0 i skladowa DC praktycznie nie zanika => m -> 2, n = 1 (zwarcie daleko od generatora). Sprawdzenie analityczne niezalezne od kodu: I_th^2 = I_AC^2 + I_DC^2 = ikss^2 + (sqrt2*ikss)^2 = 3*ikss^2, czyli I_th = sqrt(3)*ikss = 8452.95 A dla 3F; wartosc solvera 8450.851 A rozni sie o 0.025 %, bo kappa jest nieco mniejsza od 2. Stosunek ith/ikss = 1.731621 jest IDENTYCZNY dla 3F i 2F, bo kappa (a wiec m) zalezy od R/X sieci, nie od rodzaju zwarcia."
     },
     {
       "fault_node_id": "BUS-MV",
       "sc_type": "2F",
       "ikss_a": 4226.475,
       "ip_a": 11954.233,
-      "ith_a": 4226.475,
+      "ith_a": 7318.651,
       "sk_mva": 241.576,
       "rtol": 0.001,
-      "note": "Two-phase fault on 33 kV bus, c=1.10, K_T-corrected TR impedance Z1+Z2 (oba czlony z K_T=0.9858490566). Poprzedni baseline bez K_T: ikss=4166.667 A; nowy/stary=1.0143540566=1/K_T."
+      "note": "Two-phase fault on 33 kV bus, c=1.10, K_T-corrected TR impedance Z1+Z2 (oba czlony z K_T=0.9858490566). Poprzedni baseline bez K_T: ikss=4166.667 A; nowy/stary=1.0143540566=1/K_T. RE-BASELINE ith_a (audyt fizyki fala G, 2026-07): poprzednia wartosc oczekiwana byla DOSLOWNA KOPIA ikss_a, bo rdzenny solver liczyl ith_a = ikss*sqrt(t_k), co jest niezgodne wymiarowo (sqrt(s) nie jest bezwymiarowe) i przy t_k = 1 s dawalo ith = ikss. Poprawna formula IEC 60909-0 par. 4.7/12: I_th = I''k*sqrt(m+n). Dla tej sieci kappa = ip/(sqrt2*ikss) = 13803.559/(1.414214*4880.313) = 1.999993, czyli R/X ~ 0 i skladowa DC praktycznie nie zanika => m -> 2, n = 1 (zwarcie daleko od generatora). Sprawdzenie analityczne niezalezne od kodu: I_th^2 = I_AC^2 + I_DC^2 = ikss^2 + (sqrt2*ikss)^2 = 3*ikss^2, czyli I_th = sqrt(3)*ikss = 8452.95 A dla 3F; wartosc solvera 8450.851 A rozni sie o 0.025 %, bo kappa jest nieco mniejsza od 2. Stosunek ith/ikss = 1.731621 jest IDENTYCZNY dla 3F i 2F, bo kappa (a wiec m) zalezy od R/X sieci, nie od rodzaju zwarcia."
     }
   ],
   "dynamic_samples": []
