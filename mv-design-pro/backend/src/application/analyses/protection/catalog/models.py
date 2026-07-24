@@ -53,13 +53,19 @@ class DeviceCapability:
 
 @dataclass(frozen=True)
 class ProtectionRequirementV0:
+    """Wymaganie nastaw wobec aparatu.
+
+    V12K-189: nastawa ``None`` znaczy „niewyznaczalna z danych projektu" — nie
+    stawia wymagania wobec aparatu i nie może być zastąpiona liczbą domyślną.
+    """
+
     curve: str
-    i_pickup_51_a: float
+    i_pickup_51_a: float | None
     tms_51: float
-    i_inst_50_a: float
-    i_pickup_51n_a: float
+    i_inst_50_a: float | None
+    i_pickup_51n_a: float | None
     tms_51n: float
-    i_inst_50n_a: float
+    i_inst_50n_a: float | None
 
     def to_dict(self) -> dict[str, Any]:
         payload = {

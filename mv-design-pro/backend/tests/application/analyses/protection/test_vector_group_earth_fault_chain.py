@@ -72,7 +72,7 @@ def _hand_zt0_ohm_lv() -> complex:
     return complex(r_pu, x_pu) * z_base_lv
 
 
-def _run_1ph_on_lv(vector_group: str) -> ShortCircuitResult:
+def _run_1ph_on_lv(vector_group: str, c_factor: float = 1.1) -> ShortCircuitResult:
     """Zwarcie 1F doziemne na szynie nN dla podanej grupy połączeń (reszta identyczna)."""
     enm = EnergyNetworkModel(
         header=ENMHeader(name="V-SM-1 chain"),
@@ -111,7 +111,7 @@ def _run_1ph_on_lv(vector_group: str) -> ShortCircuitResult:
     lv_node = next(n.id for n in graph.nodes.values() if n.name == "LV")
     z0_bus = build_zero_sequence_zbus(enm, graph)
     result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
-        graph=graph, fault_node_id=lv_node, c_factor=1.1, tk_s=1.0, z0_bus=z0_bus
+        graph=graph, fault_node_id=lv_node, c_factor=c_factor, tk_s=1.0, z0_bus=z0_bus
     )
     # Wynik solvera nie niesie run_id; nadaj jak realny tor (pipeline robi tak samo).
     object.__setattr__(result, "run_id", f"run-{vector_group}")
@@ -119,8 +119,16 @@ def _run_1ph_on_lv(vector_group: str) -> ShortCircuitResult:
 
 
 def _settings_for(vector_group: str) -> tuple[ShortCircuitResult, OvercurrentSettingsV0]:
-    """Pełny łańcuch konsumenta: SC 1F → build_protection_input → nastawy 50N/51N."""
-    sc_result = _run_1ph_on_lv(vector_group)
+    """Pełny łańcuch konsumenta: SC 1F → build_protection_input → nastawy 50N/51N.
+
+    Bieg MINIMALNY (c = 0,95, IEC 60909-0 Tabela 1) — nastawy zabezpieczeń dobiera
+    się od najsłabszego zwarcia, bo to ono musi je jeszcze pobudzić. Do V12K-189
+    łańcuch szedł biegiem maksymalnym (c = 1,10), co adapter poprawnie klasyfikuje
+    jako `ik_max_1ph`; nastawy nie miały wtedy danych i wpadały w wartość zastępczą.
+    Dowód wpływu grupy połączeń na Z0 (testy wyżej) zostaje na c = 1,10 — tam bada
+    się impedancję, nie nastawę.
+    """
+    sc_result = _run_1ph_on_lv(vector_group, c_factor=0.95)
     protection_input = build_protection_input(
         sc_result,
         case_id="case-vsm1",
@@ -203,22 +211,29 @@ class TestEarthFaultProtectionReactsToGroup:
         # wcześniej zwierany przyczynek Z_Q do składowej zgodnej, więc ich RÓŻNICA
         # (pochodząca z Z0) waży teraz relatywnie mniej. Różnica pozostaje realna
         # (10.36 %, próg 5 % w teście wyżej), a kierunek Dyn > YNyn niezmieniony.
-        assert ratio_pickup == pytest.approx(7932.23 / 8849.00, rel=1e-3)
+        # Stosunek jest NIEZALEŻNY od gałęzi c (skaluje obie grupy tak samo) —
+        # dlatego przejście łańcucha nastaw na bieg minimalny (V12K-189) go nie ruszyło.
+        assert ratio_pickup == pytest.approx(6850.56 / 7642.32, rel=1e-3)
 
     def test_reference_settings(self) -> None:
         """Wartości referencyjne nastaw (hand-calc: 51N=0.2·I, 50N=0.8·I).
 
-        RE-BASELINE (V12K-184) — nastawy są dokładnie proporcjonalne do I″k1
-        (dowód proporcjonalności: test wyżej), więc przeliczają się wraz z prądem:
-        Dyn 0.2·8849.00 = 1769.80 / 0.8·8849.00 = 7079.20;
-        YNyn 0.2·7932.23 = 1586.45 / 0.8·7932.23 = 6345.78.
+        RE-BASELINE (V12K-189): łańcuch nastaw idzie teraz biegiem MINIMALNYM
+        (c = 0,95) — nastawę dobiera się od najsłabszego zwarcia, bo to ono musi
+        zabezpieczenie jeszcze pobudzić. Wcześniej szedł biegiem maksymalnym
+        (c = 1,10) i nastawy nie miały danych, bo adapter klasyfikuje taki wynik
+        jako `ik_max_1ph`; brak wpadał w wartość zastępczą. Prądy skalują się
+        wprost współczynnikiem c (impedancja od c nie zależy):
+        Dyn  I″k1(0,95) = 7642.32 A ⇒ 0.2·I = 1528.46 / 0.8·I = 6113.85;
+        YNyn I″k1(0,95) = 6850.56 A ⇒ 0.2·I = 1370.11 / 0.8·I = 5480.45.
+        Sprawdzenie skali: 7642.32/8849.00 = 0.8636 = 0.95/1.10.
         """
         _, s_dyn = _settings_for("Dyn11")
         _, s_ynyn = _settings_for("YNyn0")
-        assert s_dyn.i_pickup_51n_a == pytest.approx(1769.800, rel=1e-4)
-        assert s_dyn.i_inst_50n_a == pytest.approx(7079.200, rel=1e-4)
-        assert s_ynyn.i_pickup_51n_a == pytest.approx(1586.445, rel=1e-4)
-        assert s_ynyn.i_inst_50n_a == pytest.approx(6345.781, rel=1e-4)
+        assert s_dyn.i_pickup_51n_a == pytest.approx(1528.464, rel=1e-4)
+        assert s_dyn.i_inst_50n_a == pytest.approx(6113.854, rel=1e-4)
+        assert s_ynyn.i_pickup_51n_a == pytest.approx(1370.112, rel=1e-4)
+        assert s_ynyn.i_inst_50n_a == pytest.approx(5480.447, rel=1e-4)
 
 
 # ---------------------------------------------------------------------------

@@ -10,10 +10,14 @@ from tests.utils.determinism import assert_deterministic
 
 
 def _build_short_circuit_result() -> ShortCircuitResult:
+    # c = 0,95 ⇒ gałąź MINIMALNA (IEC 60909-0, Tabela 1). Nastawy zabezpieczeń
+    # dobiera się z prądu zwarciowego minimalnego — zabezpieczenie ma zadziałać
+    # także przy najsłabszym zwarciu. Dawne c = 1,0 dawało gałąź maksymalną, więc
+    # nastawa I>> nie miała danych i wpadała w wartość zastępczą (V12K-189).
     return ShortCircuitResult(
         short_circuit_type=ShortCircuitType.THREE_PHASE,
         fault_node_id="node-1",
-        c_factor=1.0,
+        c_factor=0.95,
         un_v=400.0,
         zkk_ohm=complex(0.05, 0.12),
         ikss_a=1234.0,
@@ -83,10 +87,18 @@ def test_overcurrent_v0_happy_path(uow_factory) -> None:
     settings = settings_step["settings"]
     report = report_step["report"]
 
+    # Nastawy fazowe: mamy prąd znamionowy pola i bieg zwarciowy 3F (gałąź
+    # minimalna, c = 0,95), więc obie dają się wyznaczyć z DANYCH.
     assert settings["i_pickup_51_a"] > 0
     assert settings["i_inst_50_a"] > settings["i_pickup_51_a"]
-    assert settings["i_pickup_51n_a"] > 0
-    assert settings["i_inst_50n_a"] > settings["i_pickup_51n_a"]
+    # Nastawy ziemnozwarciowe: fixtura niesie WYŁĄCZNIE bieg 3F, więc prądu
+    # zwarcia doziemnego nie ma i 51N/50N są NIEDOSTĘPNE (V12K-189). Wcześniej
+    # podstawiano tu nastawę fazową przemnożoną przez k_ef — mieszanie dwóch
+    # różnych wielkości; teraz brak jest jawny i wskazany kodem gotowości.
+    assert settings["i_pickup_51n_a"] is None
+    assert settings["i_inst_50n_a"] is None
+    assert settings["is_complete"] is False
+    assert "protection.fault_current_missing" in settings["readiness_codes"]
     assert report["inputs"]["connection_node"]["id"] == "BoundaryNode-1"
     assert "fingerprint" in report
 
@@ -123,20 +135,60 @@ def test_overcurrent_v0_is_deterministic(uow_factory) -> None:
     )
 
 
-def test_overcurrent_v0_fallbacks(uow_factory) -> None:
+def test_overcurrent_v0_settings_unavailable_without_input_data(uow_factory) -> None:
+    """Brak danych ⇒ nastawa NIEDOSTĘPNA + kod gotowości, nigdy liczba domyślna.
+
+    V12K-189 (decyzja właściciela: „nastawa bez danych powinna być niedostępna").
+    Wcześniej brak prądu znamionowego dawał nastawę 100,0 A, a brak prądu
+    zwarciowego mnożnik 5× nastawy rozruchowej — obie oznaczone ostrzeżeniem
+    `fallback_*`, ale bez ŻADNEJ podstawy w danych projektu. W raporcie wyglądały
+    jak wynik obliczeń, więc projektant mógł nastawić przekaźnik na wartość
+    wziętą z powietrza. Test pilnuje, że takich liczb NIE MA.
+    """
     sc_run_id = _store_short_circuit_run(uow_factory)
     envelope = run_overcurrent_v0(
         sc_run_id=sc_run_id,
-        connection_node={"id": "BoundaryNode-1", "voltage_kv": 15.0},
+        connection_node={"id": "BoundaryNode-1", "voltage_kv": 15.0},  # bez prądu znamionowego
         topology_ref=None,
         uow_factory=uow_factory,
     )
 
     settings_step = _find_step(envelope.trace.inline["steps"], "compute_settings")
     warnings = settings_step["warnings"]
-    assert "fallback_inst_50_a_missing_ik_min_3ph" in warnings
+    assert "unavailable_pickup_51_a_missing_nominal_current" in warnings
+    assert "unavailable_pickup_51n_a_missing_ik_min_1ph" in warnings
+
+    settings = settings_step["settings"]
+    # Nastawy niewyznaczalne — jawnie puste, bez wartości zastępczych.
+    assert settings["i_pickup_51_a"] is None  # brak prądu znamionowego pola
+    assert settings["i_pickup_51n_a"] is None  # brak biegu zwarciowego 1F
+    assert settings["i_inst_50n_a"] is None
+    assert settings["is_complete"] is False
+    # Żaden ślad po dawnych liczbach z powietrza (100 A oraz 5× pickup).
+    assert 100.0 not in {
+        settings[key] for key in ("i_pickup_51_a", "i_inst_50_a", "i_pickup_51n_a", "i_inst_50n_a")
+    }
+    # Powód niedostępności niesie kanoniczny kod gotowości z akcją naprawczą.
+    assert "protection.nominal_current_missing" in settings["readiness_codes"]
+    assert "protection.fault_current_missing" in settings["readiness_codes"]
+    # Krzywa bez nastawy rozruchowej nie istnieje — brak zmyślonych czasów.
+    assert settings["computed_points"]["phase"]["pickup_a"] is None
+    assert settings["computed_points"]["phase"]["t_2x_s"] is None
 
     with uow_factory() as uow:
         stored = uow.analysis_runs_index.get(envelope.run_id)
     assert stored is not None
     assert stored.status == "DEGRADED"
+
+
+def test_readiness_codes_are_canonical() -> None:
+    """Kody gotowości muszą istnieć w kanonicznym rejestrze (z akcją naprawczą)."""
+    from application.analyses.protection.overcurrent.calculator import (
+        READINESS_FAULT_CURRENT_MISSING,
+        READINESS_NOMINAL_CURRENT_MISSING,
+    )
+    from domain.canonical_operations import READINESS_CODES
+
+    for code in (READINESS_NOMINAL_CURRENT_MISSING, READINESS_FAULT_CURRENT_MISSING):
+        assert code in READINESS_CODES, f"kod {code} spoza kanonicznego rejestru"
+        assert READINESS_CODES[code].fix_action_id

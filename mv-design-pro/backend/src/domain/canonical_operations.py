@@ -721,6 +721,33 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_protection_settings",
         fix_navigation={"panel": "inspector", "tab": "nastawy"},
     ),
+    # V12K-189 (decyzja właściciela: „nastawa bez danych powinna być niedostępna").
+    # Nastawa zabezpieczenia policzona z wartości zastępczej jest GROŹNIEJSZA niż
+    # jej brak, bo wygląda jak wynik obliczeń. Brak danych wejściowych ⇒ nastawa
+    # NIEDOSTĘPNA + kod gotowości z akcją naprawczą, nigdy liczba domyślna.
+    "protection.nominal_current_missing": ReadinessCodeSpec(
+        code="protection.nominal_current_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak prądu znamionowego pola — uzupełnij, by wyznaczyć nastawę " "rozruchową I> (51)"
+        ),
+        fix_action_id="fix_protection_nominal_current",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "in_a"},
+    ),
+    "protection.fault_current_missing": ReadinessCodeSpec(
+        code="protection.fault_current_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak prądu zwarciowego z biegu SC — uruchom analizę zwarciową, "
+            "by wyznaczyć nastawy bezzwłoczne I>> (50/50N) i ziemnozwarciowe (51N)"
+        ),
+        fix_action_id="fix_protection_run_short_circuit",
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
+    ),
     # Earthing / Ground fault (EARTHING-1: most SC_1F -> napięcia dotykowe/krokowe)
     "earthing.electrode_data_missing": ReadinessCodeSpec(
         code="earthing.electrode_data_missing",
