@@ -23,6 +23,7 @@ import { buildSceneV3, layoutMetricsReport, SCENE_LOD_LABELS_PL } from '../src/u
 import { SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import { StationCollapsedGlyph, type StationDerGlyphKind } from '../src/ui/sld/v3/symbols/glyphs';
 import { MINI_RMU } from '../src/ui/sld/v3/symbols/miniRmuGrammar';
+import { CANVAS_BACKGROUND } from '../src/ui/sld/v3/theme/colorTokens';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(HERE, '../src/ui/sld/v2/geometry/__tests__/fixtures/sldSubstrate52s.enm.json');
@@ -33,6 +34,7 @@ mkdirSync(OUT, { recursive: true });
 
 const WIDTH = 1800;
 const HEIGHT = 1100;
+const FOOTER = 56; // pas stopki POD kanwą (Z4: baner poza bbox treści arkusza)
 
 // --- (1) Pełna sieć na L0 (dowód czytelności kadru całości) -----------------
 {
@@ -44,11 +46,17 @@ const HEIGHT = 1100;
     `stacje=${scene.meta.stationCount} symbole=${m.symbolCount} crossing=${m.crossingCount} ` +
     `kolizje=${m.labelCollisionCount} bbox=${m.contentBBoxWidth}x${m.contentBBoxHeight} ` +
     `sylwetka=${MINI_RMU.bbox.width}x${MINI_RMU.bbox.height}px · szyna na wylot (tor przez glif)`;
-  const banner =
-    `<text x="16" y="${HEIGHT - 40}" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="600" fill="#E8EEF4">${line1}</text>` +
-    `<text x="16" y="${HEIGHT - 14}" font-family="Inter, system-ui, sans-serif" font-size="16" fill="#9FB3C8">${line2}</text>`;
+  // Z4 (audyt powykonawczy SLD 2026-07): baner metryczny w STOPCE POD kanwą
+  // (poza bbox treści), wzorcem s7p6 — PNG do oceny nie sugeruje kolizji sceny.
   const withNs = inner.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
-  const svg = withNs.replace('</svg>', `${banner}</svg>`);
+  const footer =
+    `<rect x="0" y="${HEIGHT}" width="${WIDTH}" height="${FOOTER}" fill="${CANVAS_BACKGROUND}" />` +
+    `<text x="16" y="${HEIGHT + 24}" font-family="Inter, system-ui, sans-serif" font-size="20" font-weight="600" fill="#E8EEF4">${line1}</text>` +
+    `<text x="16" y="${HEIGHT + 46}" font-family="Inter, system-ui, sans-serif" font-size="14" fill="#9FB3C8">${line2}</text>`;
+  const svg =
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT + FOOTER}" ` +
+    `viewBox="0 0 ${WIDTH} ${HEIGHT + FOOTER}"><rect width="${WIDTH}" height="${HEIGHT + FOOTER}" ` +
+    `fill="${CANVAS_BACKGROUND}" />${withNs}${footer}</svg>`;
   writeFileSync(`${OUT}/gs2-l0.svg`, svg);
   console.log('wrote', `${OUT}/gs2-l0.svg`, `stacje=${scene.meta.stationCount}`);
 }

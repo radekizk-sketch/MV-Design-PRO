@@ -100,4 +100,42 @@ V12K-145) jest NADRZĘDNA nad niniejszym werdyktem warunkowym; karta GS-4b
 | S7.6 kompresja pionowa | P1 | silnik: dosunięcie pasm/rzędów do minimalnych świateł, metryki przed/po | **ZAMKNIĘTA** (2026-07-23, `S7_GAP_CROSSING_ZERO_2026-07` §11: etykieta zejścia → pas pod magistralą; gap → MIN_SUBTREE_CLEARANCE; piony L1/L2 −14%, bbox-h −24%, bboxUtil +31%; wszystkie niezmienniki zielone) |
 | GS-4b strona DER w kompozycji L1/L2 (faza W2) | P1 | `connectionSide==='sn'` ⇒ przyłącze SN; test kanoniczny | **ZAMKNIĘTA** (2026-07-23, W2/V12K): `compose/station.ts` rozdziela DER wg strony — `'sn'` ⇒ POLE ŹRÓDŁOWE od szyny SN (`#sn-source-descent`, odczep od `busAxisY` do portu AC symbolu, bez aparatu — `StationDerSourceInput` nie niesie `primaryDevices`, §12.5 zakaz domysłu), reszta (`'nn'`/`'unknown'`/brak) ⇒ rząd nN (dotąd). `measure.ts` parytet (`snSourceFieldsRowWidth`/wysokość pola źródłowego, `nnSideSources` do rzędu nN). Sieć referencyjna (0 źródeł SN) = NO-OP (3588 vitest zielone, kotwica L0/L1/L2 bez dryfu). Testy: `compose/__tests__/station.test.ts` (wariant A/B/mieszany/unknown+meta/no-nN/determinizm), `scene/__tests__/buildScene.w2GS4b.test.ts` (fixtura 20/20 nn L1/L2 + kotwica). Dowód: `docs/audit/visual/schemat-10/w2-l2-tor-der.png`. DŁUG JAWNY (odłożone, §10/§11 warstwa etykiet, wymaga świadomej wymiany baseline'ów): (a) relokacja etykiety napięcia szyny nN z pasma nazw DO szyny („przy szynie", §11/§17) — dziś §11 spełnione geometrią + opisem w pasmie nazw, przeniesienie churnuje baseline i dotyka delikatnej matematyki wysokości (rząd DER/strzałka odbioru/pasmo nazw); (b) kotwica pasma nazw §10 do bbox poddrzewa stacji zamiast pasma B5 współdzielonego per-wiersz — POMIAR: mediana luki pasmo↔blok ≈56px (max ≈160px, sonda renderowa), wynika z B5 ustawianego przez najwyższy blok wiersza; naprawa = per-stacja `nameSlot.y` z measure (LOD-niezależne ⇒ JEDNA KOTWICA zachowana), ale to zmiana silnika o szerokim promieniu determinizmu (klasa S7.6) — do dedykowanej karty layoutowej |
 | Z3 oznaczenia aparatów z danych | P2 | realne designations pól albo dług jawny | DO ZLECENIA |
-| Z4 baner skryptów poza bbox | P2 | skrypty dowodowe (nie kanwa) | CZĘŚCIOWO (skrypt `render_schemat10_s7p6.tsx` ma baner w stopce; pozostałe skrypty S1–S7p4 do zlecenia) |
+| Z4 baner skryptów poza bbox | P2 | skrypty dowodowe (nie kanwa) | **ZAMKNIĘTA** (2026-07-24, karta Z4 — patrz adnotacja §7 poniżej) |
+
+## 7. Adnotacja Z4 — domknięcie (2026-07-24)
+
+Znalezisko Z4 (baner tytułowo-metryczny skryptów renderu leżący W POLU TREŚCI
+arkusza) domknięte. Baner przeniesiono do STOPKI POD kanwą (poza bbox sceny),
+wzorcem najświeższego skryptu `render_schemat10_s7p6.tsx` (zewnętrzny `<svg>` +
+pas stopki `fill=CANVAS_BACKGROUND`, tekst w screen-space).
+
+Przeniesione banery (skrypty `frontend/scripts/`): `render_schemat10_s1.tsx`,
+`s2`, `s3`, `s4` (ekran + eksport), `s6`, `s7p1`, `s7p2`, `s7p3`, `gs1`
+(blok pełnej sieci L0), `gs2` (blok pełnej sieci L0). Bloki „legend/detal"
+(`gs1-l0-detal`, `gs2-l0-detal`) i skrypty explainer (`r1..r3`, `w1..w4`) mają
+tytuł arkusza U GÓRY (nie baner nad sceną) — poza defektem, nietknięte.
+`rasterize_s4_host.mjs` uczyniono świadomym stopki (`data-footer`): skala kadru
+liczona z wysokości SCENY, więc scena zachowuje identyczną skalę.
+
+Dowód niezmienności sceny: geometria SldCanvasV3/eksportu (blok
+`<svg data-testid="sld-canvas-v3">`, po usunięciu chrome banera/stopki) jest
+BAJT-IDENTYCZNA pre-edit vs post-edit dla każdego zmienionego skryptu
+(np. s6-l0/s3-l1/s7p2-l0/s7p3-l2/gs1-l0/gs2-l0/s4-ekran/s4-eksport — porównanie
+łańcuchów, 0 różnic). Zmienia się WYŁĄCZNIE pas stopki i wysokość arkusza
+(+2·FOOTER w PNG, szerokość bez zmian).
+
+Zregenerowane artefakty PNG (identyczne nazwy, scena niezmieniona, baner w
+stopce): `s3-l{0,1,2}`, `s6-l{0,1,2}`, `s7p2-l{0,1,2}`, `s7p3-l{0,1,2}`,
+`gs1-l0`, `gs2-l0`, `s4-ekran-l1` (15 plików; fixed-viewport SldCanvasV3,
+kadr 1800×1100 camera-fit — wymiary bazowe zgodne z zacommitowanymi).
+
+Odłożona regeneracja (DŁUG JAWNY, przyczyna niezależna od Z4): artefakty
+o rozmiarze ŚWIATA sceny — `s1-l{0,1,2}`, `s2-l{0,1,2}` (CompositionPreview)
+oraz `s4-eksport-l1` (kadr fit-do-treści) — mają zacommitowane PNG SPRZED
+kompresji pionowej S7 (S7.6 ZAMKNIĘTA). Obecny kod renderuje scenę o realnie
+innych wymiarach (np. s1-L0 14384px vs zacommitowane 2600px; s4-eksport kadr
+14400×3553 vs ~14400×8256), więc ich regeneracja zmieniłaby SCENĘ poza samym
+banerem — zgodnie z regułą Z4 („scena musi pozostać identyczna") wstrzymana.
+Skrypty tych plików są jednak poprawione u źródła (baner w stopce), więc
+regeneracja w środowisku referencyjnym da poprawne artefakty. `s7p1` — brak
+zacommitowanego PNG, skrypt poprawiony (bez regeneracji).

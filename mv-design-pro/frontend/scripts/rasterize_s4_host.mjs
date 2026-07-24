@@ -23,7 +23,13 @@ for (const f of readdirSync(dir).filter((x) => x.endsWith('.svg')).sort()) {
   const svg = readFileSync(`${dir}/${f}`, 'utf8');
   const w = Number(svg.match(/width="(\d+)"/)?.[1] ?? TARGET_W);
   const h = Number(svg.match(/height="(\d+)"/)?.[1] ?? TARGET_H);
-  const scale = Math.min(TARGET_W / w, TARGET_H / h, 1);
+  // Z4 (audyt SLD 2026-07): baner metryczny leży w STOPCE POD sceną (poza bbox
+  // treści). Skala kadru liczona z wysokości SCENY (h − stopka), nie całości —
+  // dzięki temu SCENA zachowuje identyczną skalę jak przed przeniesieniem
+  // baneru, a stopka tylko dokłada pas pod spodem (rośnie tylko wysokość PNG).
+  const footer = Number(svg.match(/data-footer="(\d+)"/)?.[1] ?? 0);
+  const sceneH = h - footer;
+  const scale = Math.min(TARGET_W / w, TARGET_H / sceneH, 1);
   const hostBg = f.includes('eksport') ? '#FFFFFF' : '#0B0F14';
   const htmlPath = `${dir}/${f}.host.html`;
   writeFileSync(

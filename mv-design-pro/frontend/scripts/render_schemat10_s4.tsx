@@ -26,6 +26,7 @@ import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod } from '../src/ui/sld/
 import { SldCanvasV3 } from '../src/ui/sld/v3/canvas/SldCanvasV3';
 import { computeContentFitFrame } from '../src/ui/sld/v3/export/exportFrame';
 import { toLightTechnicalExportSvg } from '../src/ui/sld/v3/export/exportPalette';
+import { CANVAS_BACKGROUND } from '../src/ui/sld/v3/theme/colorTokens';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -40,17 +41,27 @@ mkdirSync(OUT, { recursive: true });
 const LOD: SceneLod = 1;
 const WIDTH = 1800;
 const HEIGHT = 1100;
+const FOOTER = 40; // pas stopki POD kanwą (Z4: baner poza bbox treści arkusza)
 
 const scene = buildSceneV3(enm, LOD);
 
 // --- Ekran (dark SCADA) --------------------------------------------------
+// Z4 (audyt powykonawczy SLD 2026-07): pasek w STOPCE POD kanwą (poza bbox
+// treści), wzorcem s7p6. `data-footer` informuje `rasterize_s4_host.mjs`, że
+// skalę kadru liczyć z wysokości SCENY (bez stopki) — scena bez zmiany skali.
 const ekranInner = renderToStaticMarkup(
   <SldCanvasV3 snapshot={enm} width={WIDTH} height={HEIGHT} lodOverride={LOD} />,
 );
-const ekranBanner =
-  `<text x="16" y="${HEIGHT - 16}" font-family="Inter, system-ui, sans-serif" font-size="22" ` +
-  `font-weight="600" fill="#E8EEF4">Widok: ${SCENE_LOD_LABELS_PL[LOD]} (L${LOD}) · S4: ekran SCADA-dark</text>`;
-const ekranSvg = ekranInner.replace('</svg>', `${ekranBanner}</svg>`);
+const ekranWithNs = ekranInner.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+const ekranLine = `Widok: ${SCENE_LOD_LABELS_PL[LOD]} (L${LOD}) · S4: ekran SCADA-dark`;
+const ekranFooter =
+  `<rect x="0" y="${HEIGHT}" width="${WIDTH}" height="${FOOTER}" fill="${CANVAS_BACKGROUND}" />` +
+  `<text x="16" y="${HEIGHT + 26}" font-family="Inter, system-ui, sans-serif" font-size="20" ` +
+  `font-weight="600" fill="#E8EEF4">${ekranLine}</text>`;
+const ekranSvg =
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${WIDTH}" height="${HEIGHT + FOOTER}" ` +
+  `viewBox="0 0 ${WIDTH} ${HEIGHT + FOOTER}" data-footer="${FOOTER}">` +
+  `<rect width="${WIDTH}" height="${HEIGHT + FOOTER}" fill="${CANVAS_BACKGROUND}" />${ekranWithNs}${ekranFooter}</svg>`;
 writeFileSync(`${OUT}/s4-ekran-l1.svg`, ekranSvg);
 
 // --- Eksport (light_technical, kadr fit-do-treści) -----------------------
@@ -62,11 +73,18 @@ const exportRaw = ekranInner
   .replace(/^(<svg[^>]*\swidth=")[^"]*(")/, `$1${frame.width}$2`)
   .replace(/^(<svg[^>]*\sheight=")[^"]*(")/, `$1${frame.height}$2`);
 const exportSvgBody = toLightTechnicalExportSvg(exportRaw);
-const exportBanner =
-  `<text x="16" y="${frame.height - 16}" font-family="Inter, system-ui, sans-serif" font-size="22" ` +
-  `font-weight="600" fill="#000000">Widok: ${SCENE_LOD_LABELS_PL[LOD]} (L${LOD}) · S4: eksport light_technical` +
-  ` · kadr fit-do-treści</text>`;
-const exportSvg = exportSvgBody.replace('</svg>', `${exportBanner}</svg>`);
+const exportWithNs = exportSvgBody.replace('<svg ', '<svg xmlns="http://www.w3.org/2000/svg" ');
+const exportLine =
+  `Widok: ${SCENE_LOD_LABELS_PL[LOD]} (L${LOD}) · S4: eksport light_technical · kadr fit-do-treści`;
+// Stopka w palecie eksportu (jasne tło, czarny tekst), poza bbox kadru sceny.
+const exportFooter =
+  `<rect x="0" y="${frame.height}" width="${frame.width}" height="${FOOTER}" fill="#FFFFFF" />` +
+  `<text x="16" y="${frame.height + 26}" font-family="Inter, system-ui, sans-serif" font-size="20" ` +
+  `font-weight="600" fill="#000000">${exportLine}</text>`;
+const exportSvg =
+  `<svg xmlns="http://www.w3.org/2000/svg" width="${frame.width}" height="${frame.height + FOOTER}" ` +
+  `viewBox="0 0 ${frame.width} ${frame.height + FOOTER}" data-footer="${FOOTER}">` +
+  `<rect width="${frame.width}" height="${frame.height + FOOTER}" fill="#FFFFFF" />${exportWithNs}${exportFooter}</svg>`;
 writeFileSync(`${OUT}/s4-eksport-l1.svg`, exportSvg);
 
 console.log(
