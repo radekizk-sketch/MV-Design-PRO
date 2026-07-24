@@ -12,7 +12,9 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { fetchConverterTypes, fetchLvApparatusTypes, getCatalogErrorMessage } from '../../../ui/catalog/api';
 import type { ConverterType, LVApparatusType } from '../../../ui/catalog/types';
 import {
+  listSnBusOptions,
   resolveBusNnRef,
+  resolveBusSnRef,
   resolveStationRef,
   stationLabel,
 } from '../../../ui/network-build/forms/enmResolvers';
@@ -38,6 +40,7 @@ import {
 } from '../rama';
 import {
   BESS_OPCJE,
+  DANE_DER_SN_DOMYSLNE,
   DANE_DOMYSLNE,
   REGULACJA_OPCJE,
   SUGEROWANE,
@@ -48,13 +51,16 @@ import {
   etykietaKonwertera,
   maKontekst,
   regulacjaLabel,
+  sugerujDerSn,
   technologiaLabel,
   transformatoryBlokowe,
   trybQWymagaWartosci,
   walidujFormularz,
   wariantLabel,
+  zbudujDerTopology,
   zbudujPayload,
   type BladPolaOze,
+  type DerSnFormData,
   type KontekstOze,
   type OzeFormData,
   type TechnologiaOze,
@@ -63,15 +69,24 @@ import {
   type TrybRegulacji,
   type WariantPrzylaczenia,
 } from './zrodloOzeModel';
+import { DoborToruSn } from './DoborToruSn';
+import { zastosujPropozycje } from './zrodloOzeDobor';
+import type { DerSelectionPreviewResponse } from './derSelectionApi';
 import { OZE_STRINGS as T } from './strings';
 import { CharakterystykaNcRfg } from './WykresyNcRfg';
 
-const KROKI: readonly KrokKreatora[] = [
-  { id: 'tech', tytul: T.krokTechnologia },
-  { id: 'katalog', tytul: T.krokKatalog },
-  { id: 'regulacja', tytul: T.krokRegulacja },
-  { id: 'zapis', tytul: T.krokZapis },
-];
+// Krok „dobor" (dobór toru SN z katalogu) wchodzi po „katalog" tylko dla wariantu
+// z transformatorem blokowym (tor materializowany po stronie SN).
+function zbudujKroki(zTorem: boolean): readonly KrokKreatora[] {
+  const kroki: KrokKreatora[] = [
+    { id: 'tech', tytul: T.krokTechnologia },
+    { id: 'katalog', tytul: T.krokKatalog },
+  ];
+  if (zTorem) kroki.push({ id: 'dobor', tytul: T.krokDobor });
+  kroki.push({ id: 'regulacja', tytul: T.krokRegulacja });
+  kroki.push({ id: 'zapis', tytul: T.krokZapis });
+  return kroki;
+}
 
 const OPCJE_TECH = TECHNOLOGIA_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
 const OPCJE_WARIANT = WARIANT_OPCJE.map((o) => ({ id: o.value, etykieta: o.label }));
@@ -133,6 +148,11 @@ export function KreatorZrodlaOze() {
   const [bladGlobalny, setBladGlobalny] = useState<string | null>(null);
   const [krok, setKrok] = useState<string>('tech');
 
+  // D2: tor DER-SN materializowany doborem (der_topology). `derSnZastosowany` = użytkownik
+  // zastosował propozycję → payload materializuje tor zamiast wiązać istniejący TR.
+  const [derSn, setDerSn] = useState<DerSnFormData>(() => ({ ...DANE_DER_SN_DOMYSLNE }));
+  const [derSnZastosowany, setDerSnZastosowany] = useState(false);
+
   const [konwertery, setKonwertery] = useState<ConverterType[]>([]);
   const [aparaty, setAparaty] = useState<LVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
@@ -188,23 +208,57 @@ export function KreatorZrodlaOze() {
     [transformatory],
   );
 
+  const isBlock = dane.connection_variant === 'block_transformer';
+  const KROKI = useMemo(() => zbudujKroki(isBlock), [isBlock]);
+
+  // Szyna SN stacji (punkt przyłączenia toru DER-SN) + jej napięcie — z realnego snapshotu.
+  const snBusRef = useMemo(
+    () => resolveBusSnRef((context ?? undefined) as Record<string, unknown> | undefined, snapshot),
+    [context, snapshot],
+  );
+  const snBusVoltageKv = useMemo(() => {
+    if (!snBusRef) return null;
+    const opcja = listSnBusOptions(snapshot, kontekst.station_ref).find((b) => b.ref_id === snBusRef);
+    return opcja?.voltage_kv ?? null;
+  }, [snapshot, kontekst.station_ref, snBusRef]);
+
   const zmien = useCallback(<K extends keyof OzeFormData>(pole: K, wartosc: OzeFormData[K]) => {
     setDane((p) => ({ ...p, [pole]: wartosc }));
   }, []);
+
+  const zmienDlugoscKabla = useCallback((v: number | null) => {
+    setDerSn((p) => ({ ...p, mv_cable_length_km: v }));
+  }, []);
+
+  const onZastosujDobor = useCallback(
+    (response: DerSelectionPreviewResponse) => {
+      setDerSn((p) => zastosujPropozycje(p, response));
+      setDerSnZastosowany(true);
+    },
+    [],
+  );
 
   const zmienTechnologie = useCallback((v: TechnologiaOze) => {
     // Zmiana technologii → inny katalog; wyczyść wybór falownika.
     setDane((p) => ({ ...p, source_technology: v, converter_catalog_ref: null }));
   }, []);
 
+  // Krok „dobor" istnieje tylko dla wariantu blokowego — po zmianie na nN wróć do „katalog".
+  useEffect(() => {
+    if (!isBlock && krok === 'dobor') setKrok('katalog');
+  }, [isBlock, krok]);
+
   const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
+
+  // Tor SN materializowany doborem: użytkownik zastosował propozycję i mamy szynę SN.
+  const materializowanyTorSn = isBlock && derSnZastosowany && Boolean(snBusRef);
 
   const onZapisz = useCallback(async () => {
     if (!hasKontekst) {
       setBladGlobalny(T.brakStacjiOpis);
       return;
     }
-    const walid = walidujFormularz(dane, kontekst);
+    const walid = walidujFormularz(dane, kontekst, { torSnMaterializowany: materializowanyTorSn });
     setBledy(walid);
     if (walid.length > 0) return;
     if (!wybranyKonwerter) {
@@ -217,7 +271,11 @@ export function KreatorZrodlaOze() {
     }
     setBladGlobalny(null);
     try {
-      const payload = zbudujPayload(dane, kontekst, wybranyKonwerter, wybranyTransformator);
+      const derTopology =
+        materializowanyTorSn && snBusRef
+          ? zbudujDerTopology(sugerujDerSn(derSn, wybranyKonwerter, snBusVoltageKv), snBusRef)
+          : null;
+      const payload = zbudujPayload(dane, kontekst, wybranyKonwerter, wybranyTransformator, derTopology);
       const response = await executeDomainOperation(activeCaseId, 'add_converter_source', payload);
       if (!response) {
         setBladGlobalny(useSnapshotStore.getState().error ?? T.walidacjaStopka);
@@ -232,11 +290,12 @@ export function KreatorZrodlaOze() {
     } catch (e) {
       setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
     }
-  }, [activeCaseId, closeForm, dane, executeDomainOperation, hasKontekst, kontekst, selekcjaPoOperacji, wybranyKonwerter, wybranyTransformator]);
+  }, [activeCaseId, closeForm, dane, derSn, executeDomainOperation, hasKontekst, kontekst, materializowanyTorSn, selekcjaPoOperacji, snBusRef, snBusVoltageKv, wybranyKonwerter, wybranyTransformator]);
 
-  const isBlock = dane.connection_variant === 'block_transformer';
   const przylaczenieWartosc = isBlock
-    ? wybranyTransformator?.name ?? 'Transformator blokowy'
+    ? materializowanyTorSn
+      ? 'Tor SN (dobór)'
+      : wybranyTransformator?.name ?? 'Transformator blokowy'
     : kontekst.bus_nn_ref
     ? 'Szyna nN'
     : 'Brak';
@@ -250,7 +309,13 @@ export function KreatorZrodlaOze() {
     { etykieta: T.wierszTechnologia, stan: 'kompletne', wartosc: technologiaLabel(dane.source_technology) },
     {
       etykieta: T.wierszPrzylaczenie,
-      stan: isBlock ? (wybranyTransformator ? 'kompletne' : 'brak') : kontekst.bus_nn_ref ? 'kompletne' : 'brak',
+      stan: isBlock
+        ? materializowanyTorSn || wybranyTransformator
+          ? 'kompletne'
+          : 'brak'
+        : kontekst.bus_nn_ref
+        ? 'kompletne'
+        : 'brak',
       wartosc: przylaczenieWartosc,
     },
     {
@@ -438,6 +503,20 @@ export function KreatorZrodlaOze() {
             wymog={T.teoriaKatalogWymog}
             podstawa={T.teoriaKatalogPodstawa}
             testid="mvd-kreator-oze-teoria-katalog"
+          />
+        </KreatorSekcja>
+      ) : null}
+
+      {krok === 'dobor' && isBlock ? (
+        <KreatorSekcja tytul={T.sekcjaDobor} testid="mvd-kreator-oze-dobor-sekcja">
+          <DoborToruSn
+            converter={wybranyKonwerter}
+            quantity={dane.quantity}
+            snBusVoltageKv={snBusVoltageKv}
+            derSn={derSn}
+            onCableLengthChange={zmienDlugoscKabla}
+            onZastosuj={onZastosujDobor}
+            applied={derSnZastosowany}
           />
         </KreatorSekcja>
       ) : null}

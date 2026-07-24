@@ -169,6 +169,52 @@ export const OZE_STRINGS = {
   teoriaKatalogPodstawa:
     'Podstawa: NC RfG (2016/631), procedura PTPiREE WOŚ, karty katalogowe producentów falowników.',
 
+  // Krok DOBÓR toru SN (D2 — RECENZJA_DER_SN_DOBORY_2026-07)
+  krokDobor: 'Dobór toru SN',
+  sekcjaDobor: 'Dobór transformatora, kabla i aparatu pola',
+  doborPomoc:
+    'System proponuje z REALNYCH katalogów najmniejszy transformator blokowy, przekrój kabla SN '
+    + 'i aparat głównego pola SN dla podanych falowników. Propozycję możesz zastosować jednym '
+    + 'kliknięciem albo wybrać własne elementy — wynik liczbowy zawsze z backendu (zero fizyki w UI).',
+  doborDlugoscKabla: 'Długość kabla SN',
+  doborDlugoscKablaPomoc: 'Długość odcinka przyłączeniowego SN [km] — potrzebna do sprawdzenia spadku napięcia ΔU.',
+  doborRezerwaTr: 'Rezerwa mocy TR',
+  doborRezerwaTrPomoc: 'Zapas ponad moc pozorną falowników [pu], np. 0,1 = +10%.',
+  doborRezerwaKabel: 'Rezerwa prądowa kabla',
+  doborRezerwaKabelPomoc: 'Zapas obciążalności kabla ponad prąd TR [pu].',
+  doborMaxDeltaU: 'Dopuszczalny ΔU',
+  doborMaxDeltaUPomoc: 'Maksymalny spadek napięcia odcinka kabla SN [%].',
+  doborNapiecieSn: 'Napięcie szyny SN',
+  doborZaproponuj: 'Zaproponuj dobór',
+  doborZastosuj: 'Zastosuj propozycję',
+  doborPobieranie: 'Dobieranie z katalogów…',
+  doborBrakKontekstu: 'Wskaż szynę SN stacji, aby dobrać tor (napięcie szyny SN wyznacza dobór).',
+  doborBrakFalownika: 'Wybierz falownik z katalogu w poprzednim kroku, aby dobrać tor.',
+  doborPropTr: 'Transformator blokowy',
+  doborPropKabel: 'Kabel SN',
+  doborPropPole: 'Aparat pola SN',
+  doborProgTr: 'Próg mocy (ΣS·k·(1+rezerwa))',
+  doborProgKabel: 'Próg obciążalności (I_TR·(1+rezerwa))',
+  doborProgPole: 'Próg prądu (I_TR·(1+rezerwa))',
+  doborPradTr: 'Prąd znamionowy TR (strona SN)',
+  doborOdrzucono: (n: number) => `Kandydatów odrzuconych: ${n}`,
+  doborZastosowano: 'Propozycja zastosowana do toru.',
+  teoriaDoborTytul: 'Teoria: dobór toru DER po stronie SN',
+  teoriaDoborOpis:
+    'Dobór wychodzi z parametrów elektrycznych, nie z rysunku. Moc pozorna źródła '
+    + '$S = \\Sigma P / \\cos\\varphi$ (gdy podano cosφ). Transformator blokowy: najmniejsza moc znamionowa '
+    + 'spełniająca $S_n \\cdot \\text{obciążalność} \\ge S \\cdot k_j \\cdot (1 + \\text{rezerwa})$ przy zgodnych '
+    + 'napięciach stron SN/nN. Prąd znamionowy TR (strona SN) $I_{TR} = S_n / (\\sqrt{3} \\cdot U_{SN})$. Kabel SN: '
+    + 'najmniejszy przekrój z $I_z \\ge I_{TR} \\cdot (1 + \\text{rezerwa})$ oraz $\\Delta U\\% \\le \\Delta U_{dop}$, gdzie '
+    + '$\\Delta U = \\sqrt{3} \\cdot I \\cdot (R\\cos\\varphi + X\\sin\\varphi)$. Aparat pola SN: najmniejszy prąd znamionowy '
+    + '$I_n \\ge I_{TR} \\cdot (1 + \\text{rezerwa})$ przy $U_n \\ge$ napięcie sieci.',
+  teoriaDoborWymog:
+    'Kaskada prądowa toru: $I_{TR} \\le I_z\\ \\text{kabla} \\le I_n\\ \\text{pola}$. Wybór słabszy niż propozycja '
+    + 'jest dopuszczalny tylko, gdy nie narusza twardych walidacji (moc TR, napięcia, obciążalność).',
+  teoriaDoborPodstawa:
+    'Podstawa: PN-EN 60076 (transformatory), PN-HD 60364 / IEC 60502 (kable, obciążalność, ΔU), '
+    + 'PN-EN 62271 (aparatura SN).',
+
   // Panel teorii + charakterystyki NC RfG (G-OZE-B5)
   teoriaTytul: 'Teoria i charakterystyka NC RfG',
   teoriaRozwin: 'Pokaż teorię i wykres charakterystyki',

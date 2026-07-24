@@ -13,7 +13,11 @@ const executeDomainOperationMock = vi.fn();
 const navigateToSldMock = vi.fn();
 
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
-const resolved: { station: string | null; bus: string | null } = { station: 'st-1', bus: 'bus-nn-1' };
+const resolved: { station: string | null; bus: string | null; busSn: string | null } = {
+  station: 'st-1',
+  bus: 'bus-nn-1',
+  busSn: 'bus-sn-1',
+};
 const snapshotState = {
   error: null as string | null,
   snapshot: { substations: [], transformers: [] },
@@ -39,6 +43,9 @@ vi.mock('../../../../ui/network-build/networkBuildStore', () => ({
 vi.mock('../../../../ui/network-build/forms/enmResolvers', () => ({
   resolveStationRef: () => resolved.station,
   resolveBusNnRef: () => resolved.bus,
+  resolveBusSnRef: () => resolved.busSn,
+  listSnBusOptions: () =>
+    resolved.busSn ? [{ ref_id: resolved.busSn, name: 'Szyna SN', voltage_kv: 15 }] : [],
   stationLabel: () => 'Rozdzielnia ST-1',
 }));
 

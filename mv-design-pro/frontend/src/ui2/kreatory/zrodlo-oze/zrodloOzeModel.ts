@@ -193,7 +193,17 @@ export function transformatoryBlokowe(
   return transformers.filter((t) => Boolean(t.lv_bus_ref?.trim()));
 }
 
-export function walidujFormularz(data: OzeFormData, kontekst: KontekstOze): BladPolaOze[] {
+/** Opcje walidacji formularza — tor SN materializowany doborem zamiast istniejącego TR. */
+export interface WalidacjaOpcje {
+  /** D2: tor DER-SN materializowany z katalogu (der_topology) — nie wymaga istniejącego TR. */
+  torSnMaterializowany?: boolean;
+}
+
+export function walidujFormularz(
+  data: OzeFormData,
+  kontekst: KontekstOze,
+  opcje: WalidacjaOpcje = {},
+): BladPolaOze[] {
   const errors: BladPolaOze[] = [];
   if (!data.converter_catalog_ref?.trim()) {
     errors.push({ field: 'converter_catalog_ref', message: 'Wybierz układ PV/BESS/FW z katalogu.' });
@@ -208,7 +218,8 @@ export function walidujFormularz(data: OzeFormData, kontekst: KontekstOze): Blad
     if (data.placement === 'NEW_FIELD' && !data.apparatus_catalog_ref?.trim()) {
       errors.push({ field: 'apparatus_catalog_ref', message: 'Dobierz aparat nN dla nowego pola źródłowego.' });
     }
-  } else if (!data.blocking_transformer_ref?.trim()) {
+  } else if (!opcje.torSnMaterializowany && !data.blocking_transformer_ref?.trim()) {
+    // Tor SN materializowany doborem (der_topology) nie potrzebuje istniejącego TR stacji.
     errors.push({ field: 'blocking_transformer_ref', message: 'Wybierz transformator blokowy SN/nN.' });
   }
   const qMin = data.q_min_mvar;
@@ -277,9 +288,13 @@ export function zbudujPayload(
   kontekst: KontekstOze,
   converter: ConverterType,
   transformer: TransformatorBlokowy | null,
+  derTopology: DerTopologyPayload | null = null,
 ): Record<string, unknown> {
   const tech = TECHNOLOGIE[data.source_technology];
   const isBlock = data.connection_variant === 'block_transformer';
+  // D2: tor SN materializowany doborem (der_topology) — falownik siada na szynie nN
+  // producenta materializowanej przez backend; nie wiążemy istniejącego TR/szyny nN stacji.
+  const materializowanyTorSn = derTopology != null;
   const quantity = parseQuantity(data.quantity);
   const nominalPowerMw = converter.pmax_mw * quantity;
   const qMin = data.q_min_mvar ?? converter.qmin_mvar ?? null;
@@ -292,6 +307,9 @@ export function zbudujPayload(
     connection_variant: data.connection_variant,
     station_ref: kontekst.station_ref,
     bus_nn_ref: targetBusRef,
+    // D2 (ADDYTYWNY): kompletny tor DER-SN z doboru — backend materializuje TR blokowy,
+    // kabel SN i dedykowane pole SN (connection_level='sn'); pomija blocking_transformer_ref.
+    der_topology: derTopology ?? undefined,
     placement: isBlock ? undefined : data.placement,
     existing_field_ref:
       !isBlock && data.placement === 'EXISTING_FIELD' ? kontekst.existing_field_ref : undefined,
@@ -330,7 +348,8 @@ export function zbudujPayload(
       data.source_technology === 'BESS' ? data.soc_min_percent ?? undefined : undefined,
     soc_max_percent:
       data.source_technology === 'BESS' ? data.soc_max_percent ?? undefined : undefined,
-    blocking_transformer_ref: isBlock ? transformer?.ref_id ?? undefined : undefined,
+    blocking_transformer_ref:
+      isBlock && !materializowanyTorSn ? transformer?.ref_id ?? undefined : undefined,
     catalog_binding:
       normalizeCatalogBinding(data.converter_catalog_ref, converterCatalogNamespace(data.source_technology)) ??
       undefined,
