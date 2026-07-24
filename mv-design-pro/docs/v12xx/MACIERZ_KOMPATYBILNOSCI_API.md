@@ -178,6 +178,8 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/oze-analysis/frt-trajectories` | v12xx | aktywny | 2026-07-17 | - | Trajektorie FRT/HVRT modulu DER (D6). | frt trajektorie tests | Architekt OZE |
 | `GET /api/oze-analysis/frt-sequence` | v12xx | aktywny | 2026-07-17 | - | Sekwencje zapadow FRT z kontekstem sily sieci (D9). | frt sequence tests | Architekt OZE |
 | `GET /api/oze-analysis/lom-protection` | v12xx | aktywny | 2026-07-17 | - | Ochrona przed praca wyspowa LoM (D10). | lom protection tests | Architekt OZE |
+| `GET /api/der-sn/{case_id}/compliance-report` | v12xx | aktywny | 2026-07-24 | - | Raport zgodnosci toru DER-SN (checklista walidacji D1 + biegu, D4/wymaganie 13); JSON, opt-in magazyn F-E8.3. | der sn documents api tests | Architekt OZE |
+| `GET /api/der-sn/{case_id}/bom` | v12xx | aktywny | 2026-07-24 | - | Lista materialowa toru DER-SN z materializowanych elementow (D4/BOM); JSON, opt-in magazyn F-E8.3. | der sn documents api tests | Architekt OZE |
 | `GET /api/oze-analysis/osd-response` | v12xx | aktywny | 2026-07-17 | - | Ocena odpowiedzi na polecenie OSD (D7). | osd response tests | Architekt OZE |
 | `GET /api/oze-analysis/compensation-sizing` | v12xx | aktywny | 2026-07-17 | - | Dobor kompensacji mocy biernej z katalogu (D8/K2, cosfi punktu). | dobor kompensacji tests | Architekt OZE |
 | `POST /api/oze-analysis/compliance-certificate` | v12xx | aktywny | 2026-07-17 | - | Certyfikat zgodnosci projektu NC RfG (JSON, D14). | certyfikat zgodnosci tests | Architekt OZE |

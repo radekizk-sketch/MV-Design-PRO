@@ -108,6 +108,37 @@ export const GRUPY_DOKUMENTOW: readonly GrupaDokumentow[] = [
     ],
   },
   {
+    tytul: 'Dokumenty toru DER-SN (OZE)',
+    karty: [
+      {
+        id: 'raport-zgodnosci-der-sn',
+        tytul: 'Raport zgodności toru DER-SN',
+        opis: 'Checklista ✓/⚠/❌ z walidacji doboru i biegu obliczeń po kreatorze OZE.',
+        wymaga: 'projekt',
+        cel: { rodzaj: 'przestrzen', przestrzen: 'schemat' },
+        ikona: 'raport',
+        akcent: 'accent',
+        formaty: ['JSON'],
+        akcjaEtykieta: 'Otwórz kreator OZE',
+        pokazZawartosc: false,
+        testid: 'mvd-dok-karta-raport-zgodnosci',
+      },
+      {
+        id: 'lista-materialowa-der-sn',
+        tytul: 'Lista materiałowa toru DER-SN',
+        opis: 'Zestawienie zmaterializowanych elementów toru: transformator, kabel, pole, falowniki.',
+        wymaga: 'projekt',
+        cel: { rodzaj: 'przestrzen', przestrzen: 'schemat' },
+        ikona: 'archiwum',
+        akcent: 'neutralny',
+        formaty: ['JSON'],
+        akcjaEtykieta: 'Otwórz kreator OZE',
+        pokazZawartosc: false,
+        testid: 'mvd-dok-karta-lista-materialowa',
+      },
+    ],
+  },
+  {
     tytul: 'Dokumenty projektu',
     karty: [
       {
@@ -138,6 +169,8 @@ export const TYP_DOKUMENTU_KARTY: Readonly<Record<string, string>> = {
   'pakiet-dowodowy': 'DOWOD',
   'studium-oze': 'STUDIUM_OZE',
   'archiwum-projektu': 'ARCHIWUM',
+  'raport-zgodnosci-der-sn': 'RAPORT_ZGODNOSCI',
+  'lista-materialowa-der-sn': 'LISTA_MATERIALOWA',
 } as const;
 
 /** Rekordy magazynu pasujące do karty (po typie dokumentu; kolejność z backendu). */

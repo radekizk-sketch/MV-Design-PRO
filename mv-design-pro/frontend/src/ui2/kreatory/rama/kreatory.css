@@ -459,3 +459,35 @@
 .mvd-kreator-btn--glowna:hover { filter: brightness(1.06); }
 .mvd-kreator-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 .mvd-kreator-btn--glowna:disabled { filter: none; }
+
+/* D4: podsumowanie kreatora OZE — status auto-biegu + raport zgodności + BOM. */
+.mvd-oze-podsumowanie { display: flex; flex-direction: column; gap: 12px; }
+.mvd-oze-status { font-size: 13px; font-weight: 600; margin: 0; }
+.mvd-oze-status[data-ton="ok"] { color: var(--mvd-ok); }
+.mvd-oze-status[data-ton="warn"] { color: var(--mvd-warn); }
+.mvd-oze-status[data-ton="blad"] { color: var(--mvd-danger, #d33); }
+.mvd-oze-werdykt { font-size: 14px; font-weight: 700; margin: 0 0 4px; }
+.mvd-oze-werdykt[data-ton="ok"] { color: var(--mvd-ok); }
+.mvd-oze-werdykt[data-ton="warn"] { color: var(--mvd-warn); }
+.mvd-oze-werdykt[data-ton="blad"] { color: var(--mvd-danger, #d33); }
+.mvd-oze-krytyczny {
+  margin: 0 0 8px; padding: 8px 10px; border-radius: 6px;
+  border: 1px solid var(--mvd-danger, #d33); color: var(--mvd-danger, #d33);
+  font-size: 12.5px; font-weight: 600;
+}
+.mvd-oze-raport-podsum { font-size: 12px; color: var(--mvd-muted); margin: 0 0 8px; }
+.mvd-oze-checklista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.mvd-oze-check { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; }
+.mvd-oze-check-ikona { flex: 0 0 auto; }
+.mvd-oze-bom { width: 100%; border-collapse: collapse; font-size: 12px; }
+.mvd-oze-bom th, .mvd-oze-bom td {
+  text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--mvd-line); vertical-align: top;
+}
+.mvd-oze-bom th { color: var(--mvd-muted); font-weight: 600; }
+.mvd-oze-podsumowanie-akcje { display: flex; gap: 10px; justify-content: flex-end; }
+.mvd-oze-akcja {
+  height: 34px; padding: 0 16px; border-radius: 8px; border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel-2); color: var(--mvd-ink); font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.mvd-oze-akcja:hover { border-color: var(--mvd-accent); }
+.mvd-oze-akcja-glowna { border-color: var(--mvd-accent); background: var(--mvd-accent); color: var(--mvd-accent-ink); }

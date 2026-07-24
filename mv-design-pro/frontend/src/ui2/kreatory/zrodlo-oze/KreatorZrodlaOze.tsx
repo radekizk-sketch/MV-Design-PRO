@@ -70,10 +70,22 @@ import {
   type WariantPrzylaczenia,
 } from './zrodloOzeModel';
 import { DoborToruSn } from './DoborToruSn';
+import { PodsumowanieAutoBieg } from './PodsumowanieAutoBieg';
 import { zastosujPropozycje } from './zrodloOzeDobor';
 import type { DerSelectionPreviewResponse } from './derSelectionApi';
-import { OZE_STRINGS as T } from './strings';
+import {
+  fetchListaMaterialowa,
+  fetchRaportZgodnosci,
+  uruchomAutoBieg,
+  type ListaMaterialowa,
+  type RaportZgodnosci,
+} from './podsumowanieApi';
+import { OZE_STRINGS as T, PODSUMOWANIE_STRINGS as P } from './strings';
 import { CharakterystykaNcRfg } from './WykresyNcRfg';
+import { useShellStore } from '../../shell/useShellStore';
+import type { RunStatus } from '../../../ui/study-cases/types';
+
+type FazaPodsumowania = 'formularz' | 'bieg' | 'dokumenty' | 'gotowe';
 
 // Krok „dobor" (dobór toru SN z katalogu) wchodzi po „katalog" tylko dla wariantu
 // z transformatorem blokowym (tor materializowany po stronie SN).
@@ -108,6 +120,8 @@ export function KreatorZrodlaOze() {
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const selekcjaPoOperacji = useSelekcjaPoOperacji();
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
+  const activeProjectId = useAppStateStore((s) => s.activeProjectId);
+  const setActiveSpace = useShellStore((s) => s.setActiveSpace);
 
   const kontekst = useMemo<KontekstOze>(() => {
     const ctx = context ?? undefined;
@@ -156,6 +170,14 @@ export function KreatorZrodlaOze() {
   const [konwertery, setKonwertery] = useState<ConverterType[]>([]);
   const [aparaty, setAparaty] = useState<LVApparatusType[]>([]);
   const [bladKatalogu, setBladKatalogu] = useState<string | null>(null);
+
+  // D4: auto-bieg obliczeń po zapisie + raport zgodności + BOM (opt-in, domyślnie tak).
+  const [autoBieg, setAutoBieg] = useState(true);
+  const [zapiszDoMagazynu, setZapiszDoMagazynu] = useState(true);
+  const [faza, setFaza] = useState<FazaPodsumowania>('formularz');
+  const [runStatus, setRunStatus] = useState<RunStatus | null>(null);
+  const [raport, setRaport] = useState<RaportZgodnosci | null>(null);
+  const [bom, setBom] = useState<ListaMaterialowa | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -289,12 +311,36 @@ export function KreatorZrodlaOze() {
         setBladGlobalny(response.error);
         return;
       }
-      closeForm();
       selekcjaPoOperacji(response, { type: 'Generator', name: dane.source_name.trim() || 'Źródło OZE' });
+      setKrok('zapis');
+
+      // D4 (wymaganie 12+13+BOM): auto-bieg (LF + SC) po zapisie + raport zgodności + BOM.
+      // Bez fizyki w UI — bieg reużywa mechanizmu przebiegów, dokumenty liczy backend.
+      let status: RunStatus | null = null;
+      if (autoBieg) {
+        setFaza('bieg');
+        status = await uruchomAutoBieg(activeCaseId);
+        setRunStatus(status);
+      }
+      setFaza('dokumenty');
+      const opcjeStore = { projectId: activeProjectId, zapiszDoMagazynu };
+      const [raportView, bomView] = await Promise.all([
+        fetchRaportZgodnosci(activeCaseId, { ...opcjeStore, runStatus: status }),
+        fetchListaMaterialowa(activeCaseId, opcjeStore),
+      ]);
+      setRaport(raportView);
+      setBom(bomView);
+      setFaza('gotowe');
     } catch (e) {
-      setBladGlobalny(e instanceof Error ? e.message : T.walidacjaStopka);
+      setFaza('formularz');
+      setBladGlobalny(e instanceof Error ? e.message : P.bladDokumentow);
     }
-  }, [activeCaseId, closeForm, dane, derSn, executeDomainOperation, hasKontekst, kontekst, materializowanyTorSn, selekcjaPoOperacji, snBusRef, snBusVoltageKv, wybranyKonwerter, wybranyTransformator]);
+  }, [activeCaseId, activeProjectId, autoBieg, dane, derSn, executeDomainOperation, hasKontekst, kontekst, materializowanyTorSn, selekcjaPoOperacji, snBusRef, snBusVoltageKv, wybranyKonwerter, wybranyTransformator, zapiszDoMagazynu]);
+
+  const otworzDokumentacje = useCallback(() => {
+    setActiveSpace('dokumentacja');
+    closeForm();
+  }, [closeForm, setActiveSpace]);
 
   const przylaczenieWartosc = isBlock
     ? materializowanyTorSn
@@ -349,6 +395,24 @@ export function KreatorZrodlaOze() {
   ) : null;
 
   const krokIndex = KROKI.findIndex((k) => k.id === krok);
+  const wToku = faza === 'bieg' || faza === 'dokumenty';
+
+  const akcjaGlowna =
+    faza === 'gotowe'
+      ? { etykieta: P.zakoncz, onClick: () => closeForm(), testid: 'mvd-kreator-oze-zapisz' }
+      : wToku
+      ? {
+          etykieta: faza === 'bieg' ? P.fazaBieg : P.fazaDokumenty,
+          onClick: () => {},
+          zablokowana: true,
+          testid: 'mvd-kreator-oze-zapisz',
+        }
+      : {
+          etykieta: T.zapisz,
+          onClick: onZapisz,
+          zablokowana: !hasKontekst || !activeCaseId,
+          testid: 'mvd-kreator-oze-zapisz',
+        };
 
   return (
     <KreatorRama
@@ -363,15 +427,15 @@ export function KreatorZrodlaOze() {
       aside={aside}
       bladGlobalny={bladGlobalny}
       walidacja={bledy.length > 0 ? T.walidacjaStopka : !hasKontekst ? T.brakStacjiOpis : null}
-      akcjaGlowna={{ etykieta: T.zapisz, onClick: onZapisz, zablokowana: !hasKontekst || !activeCaseId, testid: 'mvd-kreator-oze-zapisz' }}
+      akcjaGlowna={akcjaGlowna}
       akcjaAnuluj={{ etykieta: T.anuluj, onClick: () => closeForm(), testid: 'mvd-kreator-oze-anuluj' }}
       krokWstecz={
-        krokIndex > 0
+        faza === 'formularz' && krokIndex > 0
           ? { etykieta: T.wstecz, onClick: () => setKrok(KROKI[krokIndex - 1].id), testid: 'mvd-kreator-oze-wstecz' }
           : undefined
       }
       krokDalej={
-        krokIndex < KROKI.length - 1
+        faza === 'formularz' && krokIndex < KROKI.length - 1
           ? { etykieta: T.dalej, onClick: () => setKrok(KROKI[krokIndex + 1].id), testid: 'mvd-kreator-oze-dalej' }
           : undefined
       }
@@ -705,20 +769,59 @@ export function KreatorZrodlaOze() {
         </>
       ) : null}
 
-      {krok === 'zapis' ? (
-        <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-oze-zapis">
-          <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
-          <KreatorSiatka kolumny={2}>
-            <RzadWartosci etykieta={T.wierszStacja} wartosc={kontekst.station_label || '—'} />
-            <RzadWartosci etykieta={T.wierszTechnologia} wartosc={technologiaLabel(dane.source_technology)} />
-            <RzadWartosci etykieta={T.wierszPrzylaczenie} wartosc={wariantLabel(dane.connection_variant)} />
-            <RzadWartosci etykieta={T.wierszRegulacja} wartosc={regulacjaLabel(dane.control_mode)} />
-            {dane.source_technology === 'BESS' ? (
-              <RzadWartosci etykieta={T.bessTryb} wartosc={bessLabel(dane.bess_mode)} />
-            ) : null}
-            <RzadWartosci etykieta={T.nazwa} wartosc={dane.source_name.trim() || tech.defaultName} />
-          </KreatorSiatka>
+      {krok === 'zapis' && faza === 'formularz' ? (
+        <>
+          <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-oze-zapis">
+            <KreatorInfo>{T.downstreamOpis}</KreatorInfo>
+            <KreatorSiatka kolumny={2}>
+              <RzadWartosci etykieta={T.wierszStacja} wartosc={kontekst.station_label || '—'} />
+              <RzadWartosci etykieta={T.wierszTechnologia} wartosc={technologiaLabel(dane.source_technology)} />
+              <RzadWartosci etykieta={T.wierszPrzylaczenie} wartosc={wariantLabel(dane.connection_variant)} />
+              <RzadWartosci etykieta={T.wierszRegulacja} wartosc={regulacjaLabel(dane.control_mode)} />
+              {dane.source_technology === 'BESS' ? (
+                <RzadWartosci etykieta={T.bessTryb} wartosc={bessLabel(dane.bess_mode)} />
+              ) : null}
+              <RzadWartosci etykieta={T.nazwa} wartosc={dane.source_name.trim() || tech.defaultName} />
+            </KreatorSiatka>
+          </KreatorSekcja>
+          <KreatorSekcja tytul={P.sekcjaAutoBieg} testid="mvd-kreator-oze-autobieg">
+            <KreatorInfo>{P.autoBiegOpis}</KreatorInfo>
+            <KreatorSiatka kolumny={2}>
+              <PoleWyboru
+                etykieta={P.autoBieg}
+                wartosc={autoBieg ? 'tak' : 'nie'}
+                onZmiana={(v) => setAutoBieg(v === 'tak')}
+                opcje={P.opcjeTakNie}
+                testid="mvd-kreator-oze-autobieg-toggle"
+              />
+              <PoleWyboru
+                etykieta={P.zapiszDoMagazynu}
+                wartosc={zapiszDoMagazynu ? 'tak' : 'nie'}
+                onZmiana={(v) => setZapiszDoMagazynu(v === 'tak')}
+                opcje={P.opcjeTakNie}
+                pomoc={P.zapiszDoMagazynuOpis}
+                testid="mvd-kreator-oze-magazyn-toggle"
+              />
+            </KreatorSiatka>
+          </KreatorSekcja>
+        </>
+      ) : null}
+
+      {krok === 'zapis' && wToku ? (
+        <KreatorSekcja tytul={T.krokZapis} testid="mvd-kreator-oze-wtoku">
+          <KreatorInfo>{faza === 'bieg' ? P.fazaBieg : P.fazaDokumenty}</KreatorInfo>
         </KreatorSekcja>
+      ) : null}
+
+      {krok === 'zapis' && faza === 'gotowe' ? (
+        <PodsumowanieAutoBieg
+          runStatus={runStatus}
+          autoBieg={autoBieg}
+          raport={raport}
+          bom={bom}
+          onOtworzDokumentacje={otworzDokumentacje}
+          onZakoncz={() => closeForm()}
+        />
       ) : null}
     </KreatorRama>
   );

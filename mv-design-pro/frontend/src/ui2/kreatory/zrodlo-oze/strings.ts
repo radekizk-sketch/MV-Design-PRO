@@ -225,6 +225,57 @@ export const OZE_STRINGS = {
     + 'nastaw. Rzeczywiste Q i redukcję P w punkcie pracy liczy solver (rozpływ mocy).',
 } as const;
 
+/** Teksty PL podsumowania kreatora: auto-bieg + raport zgodności + BOM (D4). */
+export const PODSUMOWANIE_STRINGS = {
+  sekcjaAutoBieg: 'Obliczenia po zapisie',
+  autoBiegOpis:
+    'Po zapisie źródła system uruchomi obliczenia na zmaterializowanym modelu (rozpływ mocy '
+    + '+ zwarcia) istniejącym mechanizmem przebiegów — bez ponownego budowania modelu.',
+  autoBieg: 'Uruchom obliczenia po zapisie',
+  zapiszDoMagazynu: 'Zapisz raport i listę materiałową do Dokumentacji',
+  zapiszDoMagazynuOpis:
+    'Raport zgodności i lista materiałowa trafią do huba Dokumentacji projektu (magazyn dokumentów).',
+  opcjeTakNie: [
+    { id: 'tak', etykieta: 'Tak' },
+    { id: 'nie', etykieta: 'Nie' },
+  ],
+
+  // Fazy
+  fazaZapis: 'Zapisywanie źródła…',
+  fazaBieg: 'Obliczenia w toku (rozpływ + zwarcia)…',
+  fazaDokumenty: 'Składanie raportu i listy materiałowej…',
+
+  // Status biegu
+  statusTytul: 'Status obliczeń',
+  statusDone: '✓ Bieg analiz ukończony (rozpływ + zwarcia).',
+  statusFailed: '❌ Bieg analiz nieudany — wyniki niedostępne.',
+  statusRunning: '⏳ Bieg analiz w toku.',
+  statusPominiety: 'Auto-bieg pominięty — obliczenia uruchomisz w przestrzeni „Obliczenia".',
+
+  // Raport zgodności
+  raportTytul: 'Raport zgodności toru DER-SN',
+  raportZgodny: 'Projekt zgodny',
+  raportZUwagami: 'Projekt zgodny z uwagami',
+  raportNiezgodny: 'Projekt niezgodny',
+  raportPodsumowanie: (pass: number, warn: number, fail: number) =>
+    `Spełnione: ${pass} · Uwagi: ${warn} · Błędy: ${fail}`,
+  raportBrak: 'Raport zgodności dotyczy toru DER przyłączonego po stronie SN (transformator blokowy).',
+
+  // Lista materiałowa
+  bomTytul: 'Lista materiałowa toru',
+  bomKolLp: 'Lp',
+  bomKolElement: 'Element',
+  bomKolTyp: 'Typ katalogowy',
+  bomKolParametry: 'Parametry',
+  bomKolIlosc: 'Ilość',
+  bomBrak: 'Lista materiałowa dotyczy toru DER przyłączonego po stronie SN.',
+
+  // Nawigacja
+  otworzDokumentacje: 'Otwórz Dokumentację',
+  zakoncz: 'Zakończ',
+  bladDokumentow: 'Nie udało się pobrać dokumentów toru DER-SN.',
+} as const;
+
 /** Teoria + opis osi wykresów charakterystyk NC RfG (poglądowych). */
 export const NCRFG_TEORIA = {
   cosPhi: {

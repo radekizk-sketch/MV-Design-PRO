@@ -30,9 +30,13 @@ from infrastructure.persistence.time_utils import ensure_utc
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-# Zamknieta unia typow dokumentu — zgodna z kartami huba (model.ts). BOM/
-# zestawienie materialowe POZA zakresem (brak generatora → phantom, F-E8.x).
-DOCUMENT_TYPES: frozenset[str] = frozenset({"RAPORT", "DOWOD", "STUDIUM_OZE", "ARCHIWUM"})
+# Zamknieta unia typow dokumentu — zgodna z kartami huba (model.ts). RAPORT_ZGODNOSCI
+# i LISTA_MATERIALOWA (BOM) dolaczone w D4 (RECENZJA_DER_SN_DOBORY_2026-07, 12+13+BOM):
+# maja REALNYCH generatorow (application/analyses/raport_zgodnosci + lista_materialowa),
+# co domyka jawny dlug BOM z V12K-094/096 (juz NIE phantom).
+DOCUMENT_TYPES: frozenset[str] = frozenset(
+    {"RAPORT", "DOWOD", "STUDIUM_OZE", "ARCHIWUM", "RAPORT_ZGODNOSCI", "LISTA_MATERIALOWA"}
+)
 
 # Regex obiektu strony PDF: /Type /Page (z granica slowa, by wykluczyc /Pages).
 _PDF_PAGE_OBJECT = re.compile(rb"/Type\s*/Page(?![s])")

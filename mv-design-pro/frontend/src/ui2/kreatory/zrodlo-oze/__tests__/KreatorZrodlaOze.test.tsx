@@ -12,6 +12,17 @@ const closeFormMock = vi.fn();
 const executeDomainOperationMock = vi.fn();
 const navigateToSldMock = vi.fn();
 
+// D4: po zapisie kreator uruchamia auto-bieg + składa raport/BOM z backendu.
+// Mockujemy klienta dokumentów, aby ćwiczyć realną ścieżkę UI deterministycznie.
+const uruchomAutoBiegMock = vi.fn();
+const fetchRaportMock = vi.fn();
+const fetchBomMock = vi.fn();
+vi.mock('../podsumowanieApi', () => ({
+  uruchomAutoBieg: (...args: unknown[]) => uruchomAutoBiegMock(...args),
+  fetchRaportZgodnosci: (...args: unknown[]) => fetchRaportMock(...args),
+  fetchListaMaterialowa: (...args: unknown[]) => fetchBomMock(...args),
+}));
+
 const appState: { activeCaseId: string | null } = { activeCaseId: 'case-1' };
 const resolved: { station: string | null; bus: string | null; busSn: string | null } = {
   station: 'st-1',
@@ -83,6 +94,12 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
     closeFormMock.mockReset();
     executeDomainOperationMock.mockReset();
     navigateToSldMock.mockReset();
+    uruchomAutoBiegMock.mockReset();
+    fetchRaportMock.mockReset();
+    fetchBomMock.mockReset();
+    uruchomAutoBiegMock.mockResolvedValue('DONE');
+    fetchRaportMock.mockResolvedValue(null);
+    fetchBomMock.mockResolvedValue(null);
   });
 
   afterEach(() => cleanup());
@@ -116,7 +133,105 @@ describe('KreatorZrodlaOze — realna ścieżka', () => {
         }),
       );
     });
+    // D4: po zapisie kreator uruchamia auto-bieg i pokazuje podsumowanie (nie zamyka od razu).
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-oze-podsumowanie')).toBeInTheDocument();
+    });
+    expect(uruchomAutoBiegMock).toHaveBeenCalledWith('case-1');
+    expect(fetchRaportMock).toHaveBeenCalled();
+    expect(fetchBomMock).toHaveBeenCalled();
+    // Zamknięcie następuje dopiero po akcji „Zakończ".
+    expect(closeFormMock).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zakoncz'));
     expect(closeFormMock).toHaveBeenCalled();
+  });
+
+  it('po zapisie renderuje raport zgodności i BOM z backendu 1:1 (D4 wymaganie 13+BOM)', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    uruchomAutoBiegMock.mockResolvedValue('DONE');
+    fetchRaportMock.mockResolvedValue({
+      wersja: '1.0',
+      source_ref: 'gen-1',
+      source_name: 'Blok PV SN',
+      werdykt: 'ZGODNY_Z_UWAGAMI',
+      komunikat_krytyczny: null,
+      pozycje: [
+        {
+          check_id: 'napiecie_sn',
+          kategoria: 'walidacja_D1',
+          status: 'PASS',
+          code: 'der_sn.ok.napiecie_sn',
+          message_pl: '✓ Strona SN TR blokowego zgodna z napięciem szyny SN.',
+        },
+        {
+          check_id: 'converter.der_sn.kaskada_prad_pole_brak',
+          kategoria: 'kaskada_pradowa',
+          status: 'WARN',
+          code: 'converter.der_sn.kaskada_prad_pole_brak',
+          message_pl: '⚠️ Kaskada prądowa: pominięto ogniwo prądu znamionowego pola SN.',
+        },
+      ],
+      podsumowanie: { pass: 1, warn: 1, fail: 0, razem: 2 },
+    });
+    fetchBomMock.mockResolvedValue({
+      wersja: '1.0',
+      source_ref: 'gen-1',
+      source_name: 'Blok PV SN',
+      pozycje: [
+        {
+          lp: 1,
+          kategoria: 'transformator_blokowy',
+          element: 'Transformator blokowy DER',
+          catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11',
+          ref_id: 'tr-1',
+          parametry: { sn_mva: 1.0, grupa_polaczen: 'Dyn11' },
+          ilosc: 1,
+          jednostka: 'szt.',
+        },
+      ],
+      count: 1,
+      braki_ogniw: [],
+    });
+
+    render(<KreatorZrodlaOze />);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mvd-kreator-oze-werdykt')).toHaveTextContent('Projekt zgodny z uwagami');
+    });
+    // Komunikaty walidacji 1:1 z backendu (bez parafraz w UI).
+    expect(screen.getByTestId('mvd-kreator-oze-check-napiecie_sn')).toHaveTextContent(
+      '✓ Strona SN TR blokowego zgodna z napięciem szyny SN.',
+    );
+    expect(screen.getByTestId('mvd-kreator-oze-status-tekst')).toHaveTextContent('ukończony');
+    // BOM z materializowanych elementów.
+    expect(screen.getByTestId('mvd-kreator-oze-bom-tabela')).toHaveTextContent('tr-sn-nn-15-04-1000kva-dyn11');
+  });
+
+  it('auto-bieg wyłączony: dokumenty bez statusu biegu (opt-in)', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorZrodlaOze />);
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-konwerter')).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-konwerter'), 'conv-pv-1');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-wstecz'));
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-aparat'), 'apar-1');
+    // Przejdź do kroku „Podsumowanie i zapis" (tech → katalog → regulacja → zapis) i wyłącz auto-bieg.
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-dalej'));
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-autobieg-toggle')).toBeInTheDocument());
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-oze-autobieg-toggle'), 'nie');
+    await userEvent.click(screen.getByTestId('mvd-kreator-oze-zapisz'));
+
+    await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-podsumowanie')).toBeInTheDocument());
+    expect(uruchomAutoBiegMock).not.toHaveBeenCalled();
+    expect(screen.getByTestId('mvd-kreator-oze-status-tekst')).toHaveTextContent('pominięty');
   });
 
   it('prezentuje komunikat błędu walidacji z backendu 1:1 (D1 wymaganie 5)', async () => {

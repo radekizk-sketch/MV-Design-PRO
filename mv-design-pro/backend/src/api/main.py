@@ -9,6 +9,7 @@ from api.audit2_catalogs import router as audit2_catalogs_router
 from api.audit2_station_config import router as audit2_station_config_router
 from api.catalog import production_router as catalog_router
 from api.comparison import router as comparison_router
+from api.der_sn_documents import router as der_sn_documents_router
 from api.diagnostics import router as diagnostics_router
 from api.document_store import router as document_store_router
 from api.enm import production_router as enm_router
@@ -111,6 +112,7 @@ app.include_router(audit2_catalogs_router)
 app.include_router(audit2_station_config_router)
 app.include_router(catalog_router)
 app.include_router(comparison_router)
+app.include_router(der_sn_documents_router)
 app.include_router(diagnostics_router)
 app.include_router(document_store_router)
 app.include_router(equipment_proof_pack_router)
