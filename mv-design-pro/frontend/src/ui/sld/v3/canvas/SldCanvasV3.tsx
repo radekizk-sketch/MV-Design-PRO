@@ -20,7 +20,7 @@
  * czytelny, bez integracji z solver companion w tej dostawie, STOP-notatka
  * tam).
  */
-import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
@@ -1100,6 +1100,31 @@ const RESULT_LABEL_COLOR = HIGHLIGHT_COLOR.resultLabel;
 const RESULT_LABEL_GAP = GRID / 2;
 const RESULT_LABEL_MARGIN = 2;
 
+/**
+ * R2 (wym. 12) — PRIORYTET klasy właściciela przy kolizji etykiet wyników.
+ * Mniejsza liczba = wyższy priorytet = plasowana WCZEŚNIEJ (zajmuje pozycję
+ * bezkolizyjną jako pierwsza; niżej-priorytetowa ustępuje — callout/przesunięcie,
+ * a przy braku miejsca ukrycie). Kolejność wg recenzji: źródła/DER → transformatory
+ * → linie magistrali → szyny/pomocnicze (NIGDY odwrotnie). Klasa pochodzi z
+ * DANYCH SCENY (`ResultLabelKind` = `elementKind` symbolu/segmentu), NIE z
+ * heurystyki tekstowej. Odbiory (loads) nie mają dziś odrębnej `ResultLabelKind`
+ * — gdy dojdą, wchodzą MIĘDZY `branch` a `bus` bez zmiany tej tabeli. */
+const RESULT_LABEL_PRIORITY: Readonly<Record<ResultLabelKind, number>> = {
+  source: 0,
+  transformer: 1,
+  branch: 2,
+  bus: 3,
+};
+
+/**
+ * R2 (wym. 14) — PROMIEŃ AGREGACJI etykiet wyników [px świata]. Gdy ≥2 kotwic
+ * leży w tym promieniu, ich etykiety zastępuje jeden marker „+N wyniki" (zamiast
+ * nakładania). Uzasadnienie rastrem siatki: blok etykiety wielolinijkowej ma
+ * rozpiętość rzędu 4–8 komórek `GRID`; kotwice bliższe niż 5 komórek (`5·GRID`)
+ * generują bloki, które nieuchronnie by się nakładały — kolaps do markera jest
+ * czytelniejszy niż deklutter po kolizji. `5·GRID = 40 px`. */
+const RESULT_LABEL_AGGREGATION_RADIUS = 5 * GRID;
+
 export interface ResultLabelPlacement {
   readonly ownerRef: string;
   readonly kind: ResultLabelKind;
@@ -1109,15 +1134,84 @@ export interface ResultLabelPlacement {
   readonly y: number;
   readonly width: number;
   readonly height: number;
-  /** `true` = znaleziono kandydata bezkolizyjnego; `false` = fallback na
-   *  pierwszego (dane WAŻNIEJSZE niż estetyka — nie chowamy liczb). */
+  /** `true` = etykieta ulokowana bezkolizyjnie (na pozycji pierwotnej albo
+   *  przesunięta = callout). Etykieta, dla której ŻADEN kandydat nie był
+   *  bezkolizyjny, NIE trafia do wyniku (jest ukryta i policzona w metrykach,
+   *  R2 wym. 12) — dzięki temu warstwa nie renderuje nakładających się liczb
+   *  (kolizje końcowe = 0). */
   readonly labelPlaced: boolean;
+}
+
+/** R2 (wym. 14) — jeden element listy pod markerem agregatu (do popovera).
+ *  `primaryText` = najważniejsza (pierwsza) linia etykiety członka (1:1 z
+ *  payloadu, zero fabrykacji); pusta, gdy członek nie ma linii. */
+export interface ResultLabelAggregateMember {
+  readonly ownerRef: string;
+  readonly kind: ResultLabelKind;
+  readonly primaryText: string;
+}
+
+/** R2 (wym. 14) — marker agregatu „+N wyniki" dla skupiska bliskich kotwic.
+ *  Zakotwiczony deterministycznie w kotwicy członka o NAJWYŻSZYM priorytecie
+ *  (`RESULT_LABEL_PRIORITY`, remis po `ownerRef`). Rozwinięcie (klik → popover)
+ *  listuje `members` (posortowane po (priorytet, ownerRef) — determinizm). */
+export interface ResultLabelAggregatePlacement {
+  readonly anchorRef: string;
+  readonly members: readonly ResultLabelAggregateMember[];
+  readonly count: number;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly labelPlaced: boolean;
+}
+
+/** R2 (wym. 19) — METRYKI rozmieszczania warstwy wynikowej (obiektywna ocena
+ *  kolejnych wersji). CZYSTE liczby (bez czasu — czas mierzy wołający sondy,
+ *  poza kontraktem determinizmu; patrz `sld_v3_acceptance.mjs`). */
+export interface ResultLabelMetrics {
+  /** Liczba etykiet rozważanych (kotwica + ≥1 linia na tym LOD; przed agregacją). */
+  readonly labelCount: number;
+  /** Etykiety/agregaty, których pozycja PIERWOTNA kolidowała (wymagały deklutteru). */
+  readonly collisionsDetected: number;
+  /** Z powyższych — ulokowane bezkolizyjnie po przesunięciu (callout). */
+  readonly collisionsResolved: number;
+  /** Kolizje MIĘDZY finalnie renderowanymi blokami + względem sceny (budżet: 0). */
+  readonly collisionsFinal: number;
+  /** Etykiety/agregaty ulokowane na pozycji INNEJ niż pierwotna (przesunięte). */
+  readonly calloutCount: number;
+  /** Etykiety ukryte (żaden kandydat bezkolizyjny) — kandydaci do agregacji. */
+  readonly hiddenCount: number;
+  /** Liczba markerów „+N wyniki". */
+  readonly aggregateCount: number;
+  /** Średnia odległość środka bloku od kotwicy (po ulokowanych; 0 gdy brak). */
+  readonly avgAnchorDistance: number;
+  /** Maksymalna odległość środka bloku od kotwicy (0 gdy brak). */
+  readonly maxAnchorDistance: number;
+}
+
+/** R2 — pełny wynik rozmieszczenia warstwy: etykiety pojedyncze + markery
+ *  agregatów + refy ukryte + metryki. `computeResultLabelPlacements` (poniżej)
+ *  zwraca samo `.placements` dla zgodności wstecznej (renderer/testy/skrypty). */
+export interface ResultLabelLayout {
+  readonly placements: readonly ResultLabelPlacement[];
+  readonly aggregates: readonly ResultLabelAggregatePlacement[];
+  readonly hiddenRefs: readonly string[];
+  readonly metrics: ResultLabelMetrics;
 }
 
 /** Tekst jednej linii: „prefiks wartość" (np. „U 15,02 kV", „obc. 72,5 %"). */
 function resultLabelLineText(line: ResultLabelLine): string {
   return `${line.prefix} ${line.text}`;
 }
+
+/** Etykieta PL klasy właściciela (do popovera agregatu; zero kodenames). */
+const RESULT_LABEL_KIND_PL: Readonly<Record<ResultLabelKind, string>> = {
+  source: 'Źródło',
+  transformer: 'Transformator',
+  branch: 'Przęsło',
+  bus: 'Szyna',
+};
 
 /** Wymiary bloku wielolinijkowego (szerokość = najszersza linia + padding;
  *  wysokość = liczba linii × wysokość wiersza + padding). */
@@ -1170,29 +1264,100 @@ function resultLabelCandidates(
   return out;
 }
 
+/** Kotwica jednego wpisu w układzie świata (środek + półwymiary + orientacja). */
+interface ResultLabelAnchor {
+  readonly cx: number;
+  readonly cy: number;
+  readonly halfW: number;
+  readonly halfH: number;
+  readonly horizontal: boolean;
+  readonly symbol: boolean;
+}
+
+/** Jednostka wejściowa rozmieszczenia (wpis o rozwiązanej kotwicy i liniach LOD). */
+interface ResultLabelUnit {
+  readonly ownerRef: string;
+  readonly kind: ResultLabelKind;
+  readonly lines: readonly ResultLabelLine[];
+  readonly anchor: ResultLabelAnchor;
+  readonly rank: number;
+}
+
+/** Próba ulokowania bloku wokół kotwicy — pierwszy kandydat bezkolizyjny wygrywa
+ *  (kolejność = preferencja). Zwraca też, czy pozycja PIERWOTNA kolidowała
+ *  (metryka R2) i indeks wybranego kandydata (>0 ⇒ callout/przesunięcie).
+ *  `placed=false` ⇒ ŻADEN kandydat nie był wolny (wołający ukrywa etykietę). */
+function placeResultBlock(
+  anchor: ResultLabelAnchor,
+  block: { readonly width: number; readonly height: number },
+  obstacles: readonly FlowRect[],
+): { readonly x: number; readonly y: number; readonly placed: boolean; readonly primaryCollided: boolean; readonly calloutIndex: number } {
+  const candidates = resultLabelCandidates(anchor, block);
+  const primaryRect: FlowRect = { x: candidates[0].x, y: candidates[0].y, width: block.width, height: block.height };
+  const primaryCollided = !obstacles.every((o) => flowRectsDisjoint(primaryRect, o, RESULT_LABEL_MARGIN));
+  for (let i = 0; i < candidates.length; i++) {
+    const c = candidates[i];
+    const rect: FlowRect = { x: c.x, y: c.y, width: block.width, height: block.height };
+    if (obstacles.every((o) => flowRectsDisjoint(rect, o, RESULT_LABEL_MARGIN))) {
+      return { x: c.x, y: c.y, placed: true, primaryCollided, calloutIndex: i };
+    }
+  }
+  return { x: candidates[0].x, y: candidates[0].y, placed: false, primaryCollided, calloutIndex: 0 };
+}
+
+/** Blok markera agregatu „+N wyniki" (jedna linia). */
+function aggregateBlockSize(count: number): { readonly width: number; readonly height: number } {
+  const lineH = labelLineHeight('t4');
+  return { width: measureLabelWidth(`+${count} wyniki`, 't4') + GRID, height: lineH + GRID / 2 };
+}
+
 /**
- * Rozmieszczenie CAŁEJ warstwy liczbowych etykiet wynikowych dla jednej sceny.
- * Kotwica per wpis: TR/źródło/DER → środek symbolu (`SYMBOL_DEFS`); szyna/
- * przęsło → środek najdłuższego biegu odcinka (`flowOverlayGeometry`, ta sama
- * arytmetyka co strzałka). Declutter: przeszkody = etykiety sceny + bboxy
- * symboli + `extraObstacles` (etykiety przepływu / badge OLTC z równoległych
- * kanałów) + wcześniej położone etykiety wyników. Kolejność = ownerRef
- * posortowany (determinizm niezależny od kolejności iteracji obiektu). Brak
- * dopasowania kotwicy w scenie ⇒ wpis pominięty (nie fabrykuje pozycji).
+ * R2 — pełne rozmieszczenie warstwy liczbowych etykiet wynikowych dla sceny.
+ * Rozbudowa R1 o: (wym. 12) PRIORYTETY kolizji (klasa właściciela ze sceny —
+ * `RESULT_LABEL_PRIORITY`), (wym. 14) AGREGACJĘ bliskich kotwic w marker
+ * „+N wyniki", (wym. 19) METRYKI rozmieszczania. Kotwica per wpis: TR/źródło/
+ * DER → środek symbolu (`SYMBOL_DEFS`); szyna/przęsło → środek najdłuższego
+ * biegu odcinka (`flowOverlayGeometry`). Przeszkody declutteru: etykiety sceny +
+ * bboxy symboli + `extraObstacles` (przepływ/OLTC z równoległych kanałów) +
+ * wcześniej ulokowane bloki wyników.
  *
- * R1 (wym. 5) — ZWIJANIE wg LOD (histereza S8): `lod` z efektywnego LOD kamery
- * (`SldCanvasV3` `effectiveLod`) przycina linie wpisu (`resultLabelLinesForLod`):
- * L0 ⇒ brak linii ⇒ etykieta pominięta (warstwa nie renderuje nic); L1 ⇒ jedna
- * najważniejsza wartość; L2 ⇒ 2–3 wartości. Domyślnie L2 (pełny szczegół) — dla
- * wołających bez kontekstu kamery (testy węzłowe).
+ * DETERMINIZM: iteracja wpisów w kolejności (priorytet, ownerRef) — niezależna
+ * od kolejności kluczy obiektu. Ta sama scena+payload+LOD ⇒ identyczny wynik.
+ *
+ * PRIORYTET (wym. 12): wpisy wyżej-priorytetowe plasowane WCZEŚNIEJ (zajmują
+ * pozycję bezkolizyjną jako pierwsze). Niżej-priorytetowa, dla której żaden
+ * kandydat nie jest wolny, jest UKRYTA (nie trafia do `placements`) i policzona
+ * (`hiddenCount`) — dzięki temu warstwa nie renderuje nakładających się liczb
+ * (kolizje końcowe = 0).
+ *
+ * AGREGACJA (wym. 14): przed plasowaniem skupiska ≥2 kotwic w promieniu
+ * `RESULT_LABEL_AGGREGATION_RADIUS` zastępuje jeden marker „+N wyniki"
+ * (zakotwiczony w kotwicy członka o najwyższym priorytecie). Skupisko
+ * 1-elementowe → zwykła etykieta.
+ *
+ * LOD (wym. 5): `resultLabelLinesForLod` przycina linie; L0 ⇒ 0 linii ⇒ wpis
+ * pominięty. Domyślnie L2 (pełny szczegół) dla wołających bez kontekstu kamery.
  */
-export function computeResultLabelPlacements(
+export function layoutResultLabels(
   scene: SceneV3,
   resultLabelsByOwnerRef: Readonly<Record<string, ResultLabelEntry>> | undefined,
   extraObstacles: readonly FlowRect[] = [],
   lod: ResultLabelLod = 2,
-): readonly ResultLabelPlacement[] {
-  if (!resultLabelsByOwnerRef) return [];
+): ResultLabelLayout {
+  const EMPTY_METRICS: ResultLabelMetrics = {
+    labelCount: 0,
+    collisionsDetected: 0,
+    collisionsResolved: 0,
+    collisionsFinal: 0,
+    calloutCount: 0,
+    hiddenCount: 0,
+    aggregateCount: 0,
+    avgAnchorDistance: 0,
+    maxAnchorDistance: 0,
+  };
+  if (!resultLabelsByOwnerRef) {
+    return { placements: [], aggregates: [], hiddenRefs: [], metrics: EMPTY_METRICS };
+  }
   const obstacles: FlowRect[] = [
     ...scene.labels.map((l) => l.rect),
     ...scene.symbols.map((s) => {
@@ -1219,15 +1384,14 @@ export function computeResultLabelPlacements(
     segmentAnchor.set(ref, { cx: geom.runMidX, cy: geom.runMidY, horizontal: geom.horizontal });
   }
 
-  const placements: ResultLabelPlacement[] = [];
-  const sortedRefs = Object.keys(resultLabelsByOwnerRef).sort();
-  for (const ref of sortedRefs) {
+  // Jednostki o rozwiązanej kotwicy i niepustych liniach LOD, uporządkowane
+  // wg (priorytet klasy, ownerRef) — wym. 12 + determinizm.
+  const units: ResultLabelUnit[] = [];
+  for (const ref of Object.keys(resultLabelsByOwnerRef).sort()) {
     const entry = resultLabelsByOwnerRef[ref];
-    // R1 (wym. 5): zwiń linie do bieżącego LOD; L0 (0 linii) ⇒ etykieta znika.
     const lines = resultLabelLinesForLod(entry.lines, lod);
     if (lines.length === 0) continue;
-    const block = resultLabelBlockSize(lines);
-    let anchor: { cx: number; cy: number; halfW: number; halfH: number; horizontal: boolean; symbol: boolean } | null = null;
+    let anchor: ResultLabelAnchor | null = null;
     if (entry.kind === 'transformer' || entry.kind === 'source') {
       const a = symbolAnchor.get(ref);
       if (a) anchor = { ...a, horizontal: true, symbol: true };
@@ -1236,43 +1400,168 @@ export function computeResultLabelPlacements(
       if (a) anchor = { cx: a.cx, cy: a.cy, halfW: 0, halfH: 0, horizontal: a.horizontal, symbol: false };
     }
     if (!anchor) continue;
-    const candidates = resultLabelCandidates(anchor, block);
-    let chosen = candidates[0];
-    let labelPlaced = false;
-    for (const candidate of candidates) {
-      const rect: FlowRect = { x: candidate.x, y: candidate.y, width: block.width, height: block.height };
-      if (obstacles.every((o) => flowRectsDisjoint(rect, o, RESULT_LABEL_MARGIN))) {
-        chosen = candidate;
-        labelPlaced = true;
-        break;
+    units.push({ ownerRef: ref, kind: entry.kind, lines, anchor, rank: RESULT_LABEL_PRIORITY[entry.kind] });
+  }
+  units.sort((a, b) => (a.rank - b.rank) || (a.ownerRef < b.ownerRef ? -1 : a.ownerRef > b.ownerRef ? 1 : 0));
+
+  // AGREGACJA (wym. 14): skupiska kotwic w promieniu kontraktowym → marker.
+  // Deterministyczne, zachłanne: pierwszy nieskonsumowany wpis (najwyższy
+  // priorytet) zasiewa skupisko, dołączane są dalsze wpisy w promieniu.
+  const consumed = new Set<string>();
+  type Cluster = { readonly seed: ResultLabelUnit; readonly members: ResultLabelUnit[] };
+  const clusters: Cluster[] = [];
+  for (const seed of units) {
+    if (consumed.has(seed.ownerRef)) continue;
+    consumed.add(seed.ownerRef);
+    const members: ResultLabelUnit[] = [seed];
+    for (const other of units) {
+      if (consumed.has(other.ownerRef)) continue;
+      const dx = other.anchor.cx - seed.anchor.cx;
+      const dy = other.anchor.cy - seed.anchor.cy;
+      if (Math.hypot(dx, dy) <= RESULT_LABEL_AGGREGATION_RADIUS) {
+        consumed.add(other.ownerRef);
+        members.push(other);
       }
     }
-    const rect: FlowRect = { x: chosen.x, y: chosen.y, width: block.width, height: block.height };
-    obstacles.push(rect);
+    clusters.push({ seed, members });
+  }
+
+  const placements: ResultLabelPlacement[] = [];
+  const aggregates: ResultLabelAggregatePlacement[] = [];
+  const hiddenRefs: string[] = [];
+  let collisionsDetected = 0;
+  let collisionsResolved = 0;
+  let calloutCount = 0;
+  const anchorDistances: number[] = [];
+  let labelCount = 0;
+
+  for (const cluster of clusters) {
+    labelCount += cluster.members.length;
+    if (cluster.members.length >= 2) {
+      // Marker agregatu zakotwiczony w kotwicy seeda (najwyższy priorytet).
+      const anchor = cluster.seed.anchor;
+      const block = aggregateBlockSize(cluster.members.length);
+      const res = placeResultBlock(anchor, block, obstacles);
+      if (res.primaryCollided) collisionsDetected++;
+      if (!res.placed) {
+        for (const m of cluster.members) hiddenRefs.push(m.ownerRef);
+        continue;
+      }
+      if (res.primaryCollided) collisionsResolved++;
+      if (res.calloutIndex > 0) calloutCount++;
+      obstacles.push({ x: res.x, y: res.y, width: block.width, height: block.height });
+      anchorDistances.push(Math.hypot(res.x + block.width / 2 - anchor.cx, res.y + block.height / 2 - anchor.cy));
+      aggregates.push({
+        anchorRef: cluster.seed.ownerRef,
+        members: cluster.members.map((m) => ({
+          ownerRef: m.ownerRef,
+          kind: m.kind,
+          primaryText: m.lines[0] ? resultLabelLineText(m.lines[0]) : '',
+        })),
+        count: cluster.members.length,
+        x: res.x,
+        y: res.y,
+        width: block.width,
+        height: block.height,
+        labelPlaced: true,
+      });
+      continue;
+    }
+    // Skupisko 1-elementowe → zwykła etykieta.
+    const unit = cluster.seed;
+    const block = resultLabelBlockSize(unit.lines);
+    const res = placeResultBlock(unit.anchor, block, obstacles);
+    if (res.primaryCollided) collisionsDetected++;
+    if (!res.placed) {
+      hiddenRefs.push(unit.ownerRef);
+      continue;
+    }
+    if (res.primaryCollided) collisionsResolved++;
+    if (res.calloutIndex > 0) calloutCount++;
+    obstacles.push({ x: res.x, y: res.y, width: block.width, height: block.height });
+    anchorDistances.push(Math.hypot(res.x + block.width / 2 - unit.anchor.cx, res.y + block.height / 2 - unit.anchor.cy));
     placements.push({
-      ownerRef: ref,
-      kind: entry.kind,
-      lines,
-      x: chosen.x,
-      y: chosen.y,
+      ownerRef: unit.ownerRef,
+      kind: unit.kind,
+      lines: unit.lines,
+      x: res.x,
+      y: res.y,
       width: block.width,
       height: block.height,
-      labelPlaced,
+      labelPlaced: true,
     });
   }
-  return placements;
+
+  // Kolizje KOŃCOWE (budżet 0): między finalnie renderowanymi blokami wzajemnie
+  // ORAZ względem przeszkód sceny (etykiety+symbole). Liczone NIEZALEŻNIE od
+  // flagi plasowania (dowód, nie deklaracja).
+  const sceneObstacles: FlowRect[] = [
+    ...scene.labels.map((l) => l.rect),
+    ...scene.symbols.map((s) => {
+      const def = SYMBOL_DEFS[s.symbolId];
+      return { x: s.x, y: s.y, width: def.width, height: def.height };
+    }),
+    ...extraObstacles,
+  ];
+  const finalRects: FlowRect[] = [
+    ...placements.map((p) => ({ x: p.x, y: p.y, width: p.width, height: p.height })),
+    ...aggregates.map((a) => ({ x: a.x, y: a.y, width: a.width, height: a.height })),
+  ];
+  let collisionsFinal = 0;
+  for (let i = 0; i < finalRects.length; i++) {
+    for (const o of sceneObstacles) {
+      if (!flowRectsDisjoint(finalRects[i], o, RESULT_LABEL_MARGIN)) collisionsFinal++;
+    }
+    for (let j = i + 1; j < finalRects.length; j++) {
+      if (!flowRectsDisjoint(finalRects[i], finalRects[j], RESULT_LABEL_MARGIN)) collisionsFinal++;
+    }
+  }
+
+  const metrics: ResultLabelMetrics = {
+    labelCount,
+    collisionsDetected,
+    collisionsResolved,
+    collisionsFinal,
+    calloutCount,
+    hiddenCount: hiddenRefs.length,
+    aggregateCount: aggregates.length,
+    avgAnchorDistance: anchorDistances.length ? anchorDistances.reduce((s, d) => s + d, 0) / anchorDistances.length : 0,
+    maxAnchorDistance: anchorDistances.length ? Math.max(...anchorDistances) : 0,
+  };
+  return { placements, aggregates, hiddenRefs, metrics };
 }
 
-function SceneResultLabelNode(props: { readonly placement: ResultLabelPlacement; readonly index: number }): JSX.Element {
-  const { placement, index } = props;
+/** Zgodność wsteczna R1: samo `placements` (renderer/testy/skrypty R1). */
+export function computeResultLabelPlacements(
+  scene: SceneV3,
+  resultLabelsByOwnerRef: Readonly<Record<string, ResultLabelEntry>> | undefined,
+  extraObstacles: readonly FlowRect[] = [],
+  lod: ResultLabelLod = 2,
+): readonly ResultLabelPlacement[] {
+  return layoutResultLabels(scene, resultLabelsByOwnerRef, extraObstacles, lod).placements;
+}
+
+const RESULT_STALE_COLOR = HIGHLIGHT_COLOR.resultStale;
+
+function SceneResultLabelNode(props: {
+  readonly placement: ResultLabelPlacement;
+  readonly index: number;
+  readonly stale: boolean;
+}): JSX.Element {
+  const { placement, index, stale } = props;
   const typo = LABEL_TYPOGRAPHY.t4;
   const lineH = labelLineHeight('t4');
+  // R2 (wym. 8): wyniki nieaktualne ⇒ etykieta wyszarzona i oznaczona, ale
+  // NIE ukryta (inżynier ma widzieć, że wartości są stare).
+  const color = stale ? RESULT_STALE_COLOR : RESULT_LABEL_COLOR;
   return (
     <g
       data-testid={`sld-v3-result-label-${index}`}
       data-result-owner-ref={placement.ownerRef}
       data-result-kind={placement.kind}
       data-result-label-placed={placement.labelPlaced ? 'true' : 'false'}
+      data-result-stale={stale ? 'true' : 'false'}
+      opacity={stale ? 0.5 : 1}
     >
       <rect
         x={placement.x}
@@ -1281,8 +1570,9 @@ function SceneResultLabelNode(props: { readonly placement: ResultLabelPlacement;
         height={placement.height}
         rx={2}
         fill={SLD_V3_BACKGROUND}
-        stroke={RESULT_LABEL_COLOR}
+        stroke={color}
         strokeWidth={1}
+        strokeDasharray={stale ? '3 2' : undefined}
       />
       {placement.lines.map((line, i) => (
         <text
@@ -1292,7 +1582,7 @@ function SceneResultLabelNode(props: { readonly placement: ResultLabelPlacement;
           y={placement.y + GRID / 4 + lineH * (i + 0.5)}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill={RESULT_LABEL_COLOR}
+          fill={color}
           fontFamily="sans-serif"
           fontSize={typo.fontSize}
           fontWeight={typo.fontWeight}
@@ -1300,6 +1590,143 @@ function SceneResultLabelNode(props: { readonly placement: ResultLabelPlacement;
           {resultLabelLineText(line)}
         </text>
       ))}
+    </g>
+  );
+}
+
+/**
+ * R2 (wym. 14) — marker agregatu „+N wyniki" dla skupiska bliskich kotwic.
+ * Klik rozwija prosty popover z listą etykiet skupiska (członek: klasa PL +
+ * najważniejsza linia, 1:1 z payloadu — bez White Box, to R3). Popover
+ * renderowany W WARSTWIE nakładki (NAD sceną) — nie zmienia geometrii sceny.
+ */
+function SceneResultAggregateNode(props: {
+  readonly aggregate: ResultLabelAggregatePlacement;
+  readonly index: number;
+  readonly stale: boolean;
+  readonly expanded: boolean;
+  readonly onToggle: (anchorRef: string) => void;
+}): JSX.Element {
+  const { aggregate, index, stale, expanded, onToggle } = props;
+  const typo = LABEL_TYPOGRAPHY.t4;
+  const lineH = labelLineHeight('t4');
+  const color = stale ? RESULT_STALE_COLOR : RESULT_LABEL_COLOR;
+  const popoverRowH = lineH + 2;
+  const popoverW = Math.max(
+    aggregate.width,
+    ...aggregate.members.map((m) => measureLabelWidth(`${RESULT_LABEL_KIND_PL[m.kind]}: ${m.primaryText}`, 't4') + GRID),
+  );
+  const popoverH = aggregate.members.length * popoverRowH + GRID / 2;
+  const popoverY = aggregate.y + aggregate.height + 2;
+  return (
+    <g
+      data-testid={`sld-v3-result-aggregate-${index}`}
+      data-aggregate-anchor-ref={aggregate.anchorRef}
+      data-aggregate-count={aggregate.count}
+      data-aggregate-expanded={expanded ? 'true' : 'false'}
+      data-result-stale={stale ? 'true' : 'false'}
+      opacity={stale ? 0.5 : 1}
+    >
+      <g
+        role="button"
+        tabIndex={0}
+        data-testid={`sld-v3-result-aggregate-toggle-${index}`}
+        style={{ cursor: 'pointer' }}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggle(aggregate.anchorRef);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            event.stopPropagation();
+            onToggle(aggregate.anchorRef);
+          }
+        }}
+      >
+        <rect
+          x={aggregate.x}
+          y={aggregate.y}
+          width={aggregate.width}
+          height={aggregate.height}
+          rx={2}
+          fill={SLD_V3_BACKGROUND}
+          stroke={color}
+          strokeWidth={1}
+          strokeDasharray={stale ? '3 2' : undefined}
+        />
+        <text
+          x={aggregate.x + aggregate.width / 2}
+          y={aggregate.y + GRID / 4 + lineH * 0.5}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={color}
+          fontFamily="sans-serif"
+          fontSize={typo.fontSize}
+          fontWeight={typo.fontWeight}
+        >
+          {`+${aggregate.count} wyniki`}
+        </text>
+      </g>
+      {expanded && (
+        <g data-testid={`sld-v3-result-aggregate-popover-${index}`}>
+          <rect
+            x={aggregate.x}
+            y={popoverY}
+            width={popoverW}
+            height={popoverH}
+            rx={2}
+            fill={SLD_V3_BACKGROUND}
+            stroke={color}
+            strokeWidth={1}
+          />
+          {aggregate.members.map((m, i) => (
+            <text
+              key={`agg-member-${i}`}
+              data-testid={`sld-v3-result-aggregate-member-${index}-${i}`}
+              x={aggregate.x + GRID / 2}
+              y={popoverY + GRID / 4 + popoverRowH * (i + 0.5)}
+              textAnchor="start"
+              dominantBaseline="middle"
+              fill={color}
+              fontFamily="sans-serif"
+              fontSize={typo.fontSize}
+              fontWeight={typo.fontWeight}
+            >
+              {m.primaryText ? `${RESULT_LABEL_KIND_PL[m.kind]}: ${m.primaryText}` : RESULT_LABEL_KIND_PL[m.kind]}
+            </text>
+          ))}
+        </g>
+      )}
+    </g>
+  );
+}
+
+/** R2 (wym. 8) — baner warstwy „⚠ wyniki nieaktualne" (zakotwiczony w arkuszu,
+ *  deterministycznie względem strefy GPZ). Renderowany, gdy wyniki są stare i
+ *  warstwa liczb ma co pokazać. Zero fizyki, zero zgadywania — sam sygnał. */
+function ResultStaleBannerNode(props: { readonly x: number; readonly y: number }): JSX.Element {
+  const { x, y } = props;
+  const typo = LABEL_TYPOGRAPHY.t4;
+  const lineH = labelLineHeight('t4');
+  const text = '⚠ wyniki nieaktualne';
+  const width = measureLabelWidth(text, 't4') + GRID;
+  const height = lineH + GRID / 2;
+  return (
+    <g data-testid="sld-v3-result-stale-badge">
+      <rect x={x} y={y} width={width} height={height} rx={2} fill={SLD_V3_BACKGROUND} stroke={RESULT_STALE_COLOR} strokeWidth={1} strokeDasharray="3 2" />
+      <text
+        x={x + width / 2}
+        y={y + GRID / 4 + lineH * 0.5}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        fill={RESULT_STALE_COLOR}
+        fontFamily="sans-serif"
+        fontSize={typo.fontSize}
+        fontWeight={typo.fontWeight}
+      >
+        {text}
+      </text>
     </g>
   );
 }
@@ -1522,9 +1949,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     ],
     [flowPlacements, oltcBadgePlacements],
   );
-  const resultLabelPlacements = useMemo(
+  const resultLabelLayout = useMemo(
     () =>
-      computeResultLabelPlacements(
+      layoutResultLabels(
         scene,
         resultLabelsVisible ? overlay?.resultLabelsByOwnerRef : undefined,
         resultLabelExtraObstacles,
@@ -1532,6 +1959,20 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       ),
     [scene, resultLabelsVisible, overlay?.resultLabelsByOwnerRef, resultLabelExtraObstacles, effectiveLod],
   );
+  // R2 (wym. 8): status ważności wyników KONSUMOWANY z nakładki (workspace
+  // przewierca ISTNIEJĄCY `activeCaseResultStatus` — zero równoległego trackera).
+  // Nieaktualne ⇒ etykiety wyszarzone + baner „⚠ wyniki nieaktualne" (nie znikają).
+  const resultsStale = resultLabelsVisible && overlay?.resultsStale === true;
+  // R2 (wym. 14): rozwinięty agregat (klik) — stan LOKALNY renderu; scena nietknięta.
+  const [expandedAggregateRef, setExpandedAggregateRef] = useState<string | null>(null);
+  const toggleAggregate = useCallback(
+    (anchorRef: string) => setExpandedAggregateRef((prev) => (prev === anchorRef ? null : anchorRef)),
+    [],
+  );
+  // Baner staleness zakotwiczony deterministycznie względem strefy GPZ (jak
+  // provenance), poniżej niej — na arkuszu, nie w pasie marginesu.
+  const staleBannerX = (scene.meta.gpzZone ? scene.meta.gpzZone.x + scene.meta.gpzZone.width : 0) + 2 * GRID;
+  const staleBannerY = 4 * GRID;
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): informuje wołającego o
@@ -1795,9 +2236,31 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
          * wyniku/metryk lub layer `resultLabels` ukryty (`resultLabelsVisible`
          * false ⇒ `undefined` do buildera). Wartości 1:1 z payloadu (§0). */}
         <g data-testid="sld-v3-result-labels">
-          {resultLabelPlacements.map((placement, index) => (
-            <SceneResultLabelNode key={`result-label-${placement.ownerRef}`} placement={placement} index={index} />
+          {resultLabelLayout.placements.map((placement, index) => (
+            <SceneResultLabelNode
+              key={`result-label-${placement.ownerRef}`}
+              placement={placement}
+              index={index}
+              stale={resultsStale}
+            />
           ))}
+          {/* R2 (wym. 14): markery agregatów „+N wyniki" (klik → popover listy). */}
+          {resultLabelLayout.aggregates.map((aggregate, index) => (
+            <SceneResultAggregateNode
+              key={`result-aggregate-${aggregate.anchorRef}`}
+              aggregate={aggregate}
+              index={index}
+              stale={resultsStale}
+              expanded={expandedAggregateRef === aggregate.anchorRef}
+              onToggle={toggleAggregate}
+            />
+          ))}
+          {/* R2 (wym. 8): baner „⚠ wyniki nieaktualne" — gdy wyniki stare i
+            * warstwa ma co pokazać (etykiety lub agregaty). */}
+          {resultsStale
+            && (resultLabelLayout.placements.length > 0 || resultLabelLayout.aggregates.length > 0) && (
+            <ResultStaleBannerNode x={staleBannerX} y={staleBannerY} />
+          )}
         </g>
         {/* Program P-A (spec §14.2 „overlay wyłącznie z wyniku"): deklaracja
          * POCHODZENIA nakładki — operator zawsze widzi, z którego przypadku

@@ -234,6 +234,18 @@ export interface SldV3Overlay {
    */
   readonly resultLabelsByOwnerRef?: Readonly<Record<string, import('./resultLabels').ResultLabelEntry>>;
   /**
+   * R2 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.8): flaga NIEAKTUALNOŚCI wyników
+   * względem modelu (Case Immutability Rule — zmiana modelu unieważnia wynik
+   * przypadku). KONSUMOWANA z ISTNIEJĄCEGO statusu ważności (`SldCanvasV3
+   * Workspace` przewierca `useAppStateStore.activeCaseResultStatus === 'OUTDATED'`
+   * — ten sam status, którego używa hook świeżości `ui2/freshness/useSwiezosc
+   * Wynikow`; ZAKAZ równoległego trackera zmian modelu w warstwie SLD). `true`
+   * ⇒ kanwa wyszarza etykiety wyników i pokazuje baner „⚠ wyniki nieaktualne"
+   * (etykiety NIE znikają — inżynier ma widzieć, że wartości są stare). Brak/
+   * `false` ⇒ prezentacja normalna. Zero fizyki, zero zgadywania — sam sygnał.
+   */
+  readonly resultsStale?: boolean;
+  /**
    * Deklaracja POCHODZENIA nakładki (spec §14.2 „overlay wyłącznie z
    * wyniku", program P-A): z którego przypadku obliczeniowego pochodzą
    * wartości i czy solver zbiegł. Kanwa renderuje badge

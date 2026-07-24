@@ -868,9 +868,16 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // co flow/OLTC (jeden wynik aktywnego przebiegu), bramkowany w kanwie
   // ODRĘBNYM layerem `resultLabels`.
   const resultLabelsByOwnerRef = useResultLabelsOverlay(snapshot, rawOverlayPayload);
+  // R2 (§wym.8): status NIEAKTUALNOŚCI wyników KONSUMOWANY z ISTNIEJĄCEGO
+  // `activeCaseResultStatus` (ten sam status, którego używa hook świeżości
+  // `ui2/freshness/useSwiezoscWynikow`; Case Immutability Rule — zmiana modelu
+  // ustawia status OUTDATED). ZAKAZ równoległego trackera zmian modelu w warstwie
+  // SLD — czytamy gotowy status. Flaga aktywna WYŁĄCZNIE gdy overlay niesie
+  // wynik (payload) I status to OUTDATED — stary wynik nie może udawać aktualnego.
+  const resultsStale = rawOverlayPayload != null && activeCaseResultStatus === 'OUTDATED';
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef }),
-    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef, resultsStale }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef, resultsStale],
   );
 
   // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,

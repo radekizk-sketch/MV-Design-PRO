@@ -120,9 +120,56 @@ import {
   isFlowOverlayEmpty,
   singleHopSegmentRefs,
 } from '../src/ui/sld/v3/canvas/overlay.ts';
-import { computeFlowOverlayPlacements } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
+import { computeFlowOverlayPlacements, layoutResultLabels } from '../src/ui/sld/v3/canvas/SldCanvasV3.tsx';
+import { buildResultLabelsFromScene } from '../src/ui/sld/v3/canvas/resultLabels.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * R2 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.19) — BUDŻETY sondy metryk warstwy
+ * wynikowej. Kolizje KOŃCOWE = 0 (twarde: warstwa nie renderuje nakładających
+ * się liczb). Ukryte etykiety ≤ budżet per LOD (zmierzone na fixturze
+ * referencyjnej z PEŁNYM payloadem rozpływu: L0=0, L1=0, L2=15 — budżet z
+ * zapasem chroni przed regresją „chowamy za dużo"; spadek dozwolony). */
+const RESULT_LABEL_HIDDEN_BUDGET = { 0: 0, 1: 5, 2: 25 };
+
+/** Buduje PEŁNY, syntetyczny payload rozpływu na REALNYCH refach sceny (źródła/
+ *  TR/szyny/przęsła jednokawałkowe) — kształt identyczny z `RawOverlayPayload`,
+ *  wartości 1:1 z kontraktu (zero fizyki w skrypcie). Odwzorowuje bieg z
+ *  wynikami na całej sieci — maksymalne obciążenie deklutteru/agregacji. */
+function buildFullResultPayload(scene, singleHop) {
+  const metricsForKind = (kind) => {
+    if (kind === 'branch') {
+      return {
+        LOADING_PCT: { code: 'LOADING_PCT', value: 72.5, unit: '%', format_hint: 'fixed1' },
+        I_A: { code: 'I_A', value: 350, unit: 'A', format_hint: 'fixed1' },
+        P_MW: { code: 'P_MW', value: 6.546769, unit: 'MW', format_hint: 'fixed4' },
+      };
+    }
+    if (kind === 'source') return { P_MW: { code: 'P_MW', value: 6.546769, unit: 'MW', format_hint: 'fixed4' } };
+    if (kind === 'transformer') return { S_MVA: { code: 'S_MVA', value: 0.63, unit: 'MVA', format_hint: 'fixed2' } };
+    return { U_kV: { code: 'U_kV', value: 15.02, unit: 'kV', format_hint: 'fixed2' } };
+  };
+  const elements = {};
+  for (const s of scene.symbols) {
+    const k = s.meta?.elementKind;
+    const ref = s.meta?.ownerRef;
+    if ((k === 'source' || k === 'transformer') && ref && !elements[ref]) {
+      elements[ref] = { ref_id: ref, kind: k, badges: [], severity: 'INFO', metrics: metricsForKind(k) };
+    }
+  }
+  for (const s of scene.segments) {
+    const k = s.meta?.elementKind;
+    const ref = s.meta?.ownerRef;
+    if (k === 'bus' && ref && !elements[ref]) {
+      elements[ref] = { ref_id: ref, kind: 'bus', badges: [], severity: 'INFO', metrics: metricsForKind('bus') };
+    }
+    if (k === 'segment' && ref && !ref.includes('#') && singleHop.has(ref) && !elements[ref]) {
+      elements[ref] = { ref_id: ref, kind: 'branch', badges: [], severity: 'INFO', metrics: metricsForKind('branch') };
+    }
+  }
+  return { run_id: 'accept-sld-v3-result-labels', analysis_type: 'LOAD_FLOW', elements };
+}
 const fixturePath = resolve(
   here,
   '..',
@@ -1178,6 +1225,59 @@ for (const lod of LODS) {
         `flow_overlay_probe (V-1/V-2, r3 — liczenie NIEZALEŻNE od labelPlaced): wszystkie etykiety przepływu (${placements.length}) bez nachodzeń geometrycznych`,
         placements.length > 0 && independentCollisions === 0,
         `wpisy=${Object.keys(fullFlow).length} nachodzenia_niezależne=${independentCollisions} nieulokowane_flaga=${unplaced.length}`,
+      );
+    }
+  }
+
+  // -- R2 (§wym.19): result_label_metrics_probe — metryki rozmieszczania -----
+  // Warstwa wynikowa na PEŁNYM syntetycznym payloadzie rozpływu (wszystkie
+  // realne kotwice sceny) — maksymalne obciążenie deklutteru/agregacji na
+  // REALNEJ scenie. Metryki (wym. 19): liczba etykiet, kolizje wykryte/
+  // rozwiązane/końcowe, callouty, ukryte, agregaty, śr./maks. odległość od
+  // kotwicy, CZAS rozmieszczania. Budżety: kolizje KOŃCOWE = 0 (twarde),
+  // ukryte ≤ budżet per LOD. Czas mierzony poza kontraktem determinizmu (nie
+  // wchodzi do porównania JSON) — sam raportowany.
+  {
+    const rlPayload = buildFullResultPayload(scene, singleHop);
+    const rlByRef = buildResultLabelsFromScene(scene, rlPayload, singleHop);
+    const t0 = performance.now();
+    const layout = layoutResultLabels(scene, rlByRef, [], lod);
+    const layoutMs = performance.now() - t0;
+    const m = layout.metrics;
+    line(
+      `  result_label_metrics (LOD ${lod}): etykiety=${m.labelCount} ulokowane=${layout.placements.length} `
+      + `agregaty=${m.aggregateCount} ukryte=${m.hiddenCount} callouty=${m.calloutCount} `
+      + `kolizje(wykryte=${m.collisionsDetected} rozwiązane=${m.collisionsResolved} końcowe=${m.collisionsFinal}) `
+      + `odl_kotwica(śr=${m.avgAnchorDistance.toFixed(1)} maks=${m.maxAnchorDistance.toFixed(1)}) czas=${layoutMs.toFixed(2)}ms`,
+    );
+    check(
+      `result_label_metrics_probe (§wym.19): kolizje KOŃCOWE = 0 (warstwa nie renderuje nakładających się liczb) na LOD ${lod}`,
+      m.collisionsFinal === 0,
+      `końcowe=${m.collisionsFinal}`,
+    );
+    check(
+      `result_label_metrics_probe (§wym.19): ukryte ≤ budżet (${RESULT_LABEL_HIDDEN_BUDGET[lod]}) na LOD ${lod}`,
+      m.hiddenCount <= RESULT_LABEL_HIDDEN_BUDGET[lod],
+      `ukryte=${m.hiddenCount}`,
+    );
+    check(
+      `result_label_metrics_probe (§wym.19): bilans etykiet = ulokowane + ukryte + Σ członków agregatów na LOD ${lod}`,
+      layout.placements.length + m.hiddenCount + layout.aggregates.reduce((s, a) => s + a.count, 0) === m.labelCount,
+    );
+    // Determinizm rozmieszczania (bez czasu) — dwa wywołania identyczne.
+    const layoutAgain = layoutResultLabels(scene, rlByRef, [], lod);
+    check(
+      `result_label_metrics_probe (§wym.19): determinizm rozmieszczania (placements+agregaty+ukryte+metryki identyczne) na LOD ${lod}`,
+      JSON.stringify(layout) === JSON.stringify(layoutAgain),
+    );
+    // Priorytet (wym. 12): źródła/transformatory NIGDY ukryte, gdy niżej-
+    // priorytetowe klasy obecne — dowód, że wyrocznia mierzy realny priorytet.
+    if (lod !== 0) {
+      const hiddenHighPri = layout.hiddenRefs.filter((r) => rlByRef[r]?.kind === 'source' || rlByRef[r]?.kind === 'transformer');
+      check(
+        `result_label_metrics_probe (§wym.12): 0 źródeł/transformatorów ukrytych (klasa właściciela rozstrzyga kolizję) na LOD ${lod}`,
+        hiddenHighPri.length === 0,
+        `ukryte_wysokopriorytetowe=${hiddenHighPri.length}`,
       );
     }
   }

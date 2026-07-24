@@ -219,6 +219,11 @@ export const HIGHLIGHT_COLOR = {
    *  odrębna od flow (błękit)/oltc (bursztyn)/fault (czerwień)/energized
    *  (zieleń), by warstwa liczb była wizualnie rozróżnialna od strzałek. */
   resultLabel: '#B39DDB',
+  /** R2 (wym. 8) — etykiety wyników NIEAKTUALNYCH względem modelu (Case
+   *  Immutability Rule): wyszarzona lawenda + baner „⚠ wyniki nieaktualne".
+   *  Etykiety NIE znikają (inżynier ma widzieć, że są stare), ale są wizualnie
+   *  stłumione — odrębny, ściemniony odcień od `resultLabel`. */
+  resultStale: '#7A6E8F',
   /** Selekcja elementu (rezerwa tabeli — `SldCanvasV3.tsx` nie ma dziś
    *  własnej nakładki stroke dla selekcji, ta wchodzi przez `useSelectionStore`
    *  w warstwie wyższej; GAP do S4/S5: podłączenie tego tokenu jako realnej

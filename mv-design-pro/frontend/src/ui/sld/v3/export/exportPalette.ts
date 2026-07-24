@@ -101,6 +101,9 @@ const EXPORT_HIGHLIGHT_COLOR: Readonly<Record<keyof typeof HIGHLIGHT_COLOR, stri
   // W4 (§8) — liczbowe etykiety wynikowe; fiolet przyciemniony pod jasny druk
   // techniczny (kontrast z tłem białym, odrębny od flow/oltc/fault/selekcji).
   resultLabel: '#6A3FB5',
+  // R2 (§8) — etykiety wyników NIEAKTUALNYCH: fiolet stłumiony/szarawy pod
+  // jasny druk (widoczny, ale wyraźnie mniej dominujący niż `resultLabel`).
+  resultStale: '#8A7A9E',
   // Selekcja — TA SAMA wartość co v2 `LIGHT_TECHNICAL_COLOR_SELECTION`.
   selection: '#0066CC',
 };

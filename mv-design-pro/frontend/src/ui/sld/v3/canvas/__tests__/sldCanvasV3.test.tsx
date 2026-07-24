@@ -29,6 +29,7 @@ import {
   computeFlowOverlayPlacements,
   computeOltcBadgePlacements,
   computeResultLabelPlacements,
+  layoutResultLabels,
   flowOverlayGeometry,
   formatFlowLabelPl,
   formatOltcBadgeLabel,
@@ -1313,5 +1314,155 @@ describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16
       <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
     );
     expect(container.querySelectorAll('[data-testid^="sld-v3-result-label-"]').length).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// R2 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.8/12/14): warstwa wynikowa —
+// walidacja NIEAKTUALNYCH wyników (baner + wyszarzenie), markery agregatów
+// „+N wyniki" (klik → popover), inwariancja geometrii w stanach stale/agregacja.
+// ---------------------------------------------------------------------------
+describe('SldCanvasV3 — R2 staleness + agregacja warstwy wynikowej', () => {
+  const sceneL2 = buildSceneV3(enm, 2);
+  const singleHop = singleHopSegmentRefs(enm);
+
+  function el(refId: string, kind: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
+    return { ref_id: refId, kind, badges: [], metrics, severity: 'INFO' };
+  }
+
+  const trRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'transformer' && s.meta?.ownerRef)!.meta!.ownerRef!;
+  const sourceRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'source' && s.meta?.ownerRef)!.meta!.ownerRef!;
+  const branchRef = sceneL2.segments.find(
+    (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && singleHop.has(s.meta.ownerRef),
+  )!.meta!.ownerRef!;
+
+  // Payload MAŁY (3 rozłączne kotwice — patrz W4 blok): brak agregacji, do
+  // testów staleness/inwariancji graying.
+  const smallPayload: RawOverlayPayload = {
+    run_id: 'run-r2',
+    analysis_type: 'load_flow',
+    elements: {
+      [trRef]: el(trRef, 'transformer', { S_MVA: { code: 'S_MVA', value: 0.63, unit: 'MVA', format_hint: 'fixed2' } }),
+      [sourceRef]: el(sourceRef, 'generator', { P_MW: { code: 'P_MW', value: 6.546769, unit: 'MW', format_hint: 'fixed4' } }),
+      [branchRef]: el(branchRef, 'branch', { LOADING_PCT: { code: 'LOADING_PCT', value: 72.5, unit: '%', format_hint: 'fixed1' } }),
+    },
+  };
+  const smallByRef = buildResultLabelsFromScene(sceneL2, smallPayload, singleHop);
+
+  /** PEŁNY payload rozpływu z realnych refów (produkuje ≥1 agregat na fixturze). */
+  function buildFullByRef(): Record<string, ReturnType<typeof buildResultLabelsFromScene>[string]> {
+    const elements: Record<string, RawOverlayElement> = {};
+    for (const s of sceneL2.symbols) {
+      const k = s.meta?.elementKind;
+      const ref = s.meta?.ownerRef;
+      if (k === 'source' && ref && !elements[ref]) elements[ref] = el(ref, 'generator', { P_MW: { code: 'P_MW', value: 6.5, unit: 'MW', format_hint: 'fixed4' } });
+      if (k === 'transformer' && ref && !elements[ref]) elements[ref] = el(ref, 'transformer', { S_MVA: { code: 'S_MVA', value: 0.63, unit: 'MVA', format_hint: 'fixed2' } });
+    }
+    for (const s of sceneL2.segments) {
+      const k = s.meta?.elementKind;
+      const ref = s.meta?.ownerRef;
+      if (k === 'bus' && ref && !elements[ref]) elements[ref] = el(ref, 'bus', { U_kV: { code: 'U_kV', value: 15.02, unit: 'kV', format_hint: 'fixed2' } });
+      if (k === 'segment' && ref && !ref.includes('#') && singleHop.has(ref) && !elements[ref]) {
+        elements[ref] = el(ref, 'branch', { LOADING_PCT: { code: 'LOADING_PCT', value: 72.5, unit: '%', format_hint: 'fixed1' } });
+      }
+    }
+    return buildResultLabelsFromScene(sceneL2, { run_id: 'r2-full', analysis_type: 'load_flow', elements }, singleHop);
+  }
+
+  it('wym.8 nieaktualne: baner „⚠ wyniki nieaktualne" + etykiety oznaczone data-result-stale/wyszarzone (nie znikają)', () => {
+    const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: smallByRef, resultsStale: true };
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    // Baner obecny.
+    const badge = container.querySelector('[data-testid="sld-v3-result-stale-badge"]');
+    expect(badge).toBeTruthy();
+    expect(badge!.textContent).toContain('wyniki nieaktualne');
+    // Etykiety NIE znikają, ale są oznaczone jako nieaktualne i wyszarzone.
+    const labels = container.querySelectorAll('[data-testid^="sld-v3-result-label-"]');
+    expect(labels.length).toBeGreaterThan(0);
+    for (const g of Array.from(labels)) {
+      expect(g.getAttribute('data-result-stale')).toBe('true');
+      expect(g.getAttribute('opacity')).toBe('0.5');
+    }
+  });
+
+  it('wym.8 aktualne: brak banera; etykiety data-result-stale="false", pełna widoczność', () => {
+    const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: smallByRef };
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    expect(container.querySelector('[data-testid="sld-v3-result-stale-badge"]')).toBeNull();
+    const labels = container.querySelectorAll('[data-testid^="sld-v3-result-label-"]');
+    expect(labels.length).toBeGreaterThan(0);
+    for (const g of Array.from(labels)) {
+      expect(g.getAttribute('data-result-stale')).toBe('false');
+      expect(g.getAttribute('opacity')).toBe('1');
+    }
+  });
+
+  it('wym.8 baner NIE renderuje się, gdy warstwa liczb pusta (nawet przy resultsStale)', () => {
+    const overlay: SldV3Overlay = { energizedByTestId: {}, resultsStale: true };
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    expect(container.querySelector('[data-testid="sld-v3-result-stale-badge"]')).toBeNull();
+  });
+
+  it('§11 inwariancja geometrii w stanie NIEAKTUALNYM: bazowe grupy sceny bajt-identyczne z i bez warstwy', () => {
+    const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: smallByRef, resultsStale: true };
+    const { container: without } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    const { container: withStale } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    for (const testId of ['sld-v3-segments', 'sld-v3-symbols', 'sld-v3-labels']) {
+      expect(withStale.querySelector(`[data-testid="${testId}"]`)!.innerHTML).toBe(
+        without.querySelector(`[data-testid="${testId}"]`)!.innerHTML,
+      );
+    }
+  });
+
+  it('wym.14 agregacja: marker „+N wyniki" renderuje się; klik rozwija popover z listą; ponowny klik zwija', () => {
+    const fullByRef = buildFullByRef();
+    // Bramka: layout produkuje ≥1 agregat na tej fixturze (skutek realny).
+    const layout = layoutResultLabels(sceneL2, fullByRef, [], 2);
+    expect(layout.aggregates.length).toBeGreaterThan(0);
+    const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: fullByRef };
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    const toggle = container.querySelector('[data-testid="sld-v3-result-aggregate-toggle-0"]');
+    expect(toggle).toBeTruthy();
+    expect(container.querySelector('[data-testid="sld-v3-result-aggregate-0"]')!.textContent).toContain('wyniki');
+    // Popover domyślnie zwinięty.
+    expect(container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]')).toBeNull();
+    // Klik → rozwinięty, lista członków obecna.
+    fireEvent.click(toggle!);
+    const popover = container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]');
+    expect(popover).toBeTruthy();
+    expect(container.querySelectorAll('[data-testid^="sld-v3-result-aggregate-member-0-"]').length).toBe(layout.aggregates[0].count);
+    // Ponowny klik → zwinięty.
+    fireEvent.click(toggle!);
+    expect(container.querySelector('[data-testid="sld-v3-result-aggregate-popover-0"]')).toBeNull();
+  });
+
+  it('§11 inwariancja geometrii przy AGREGACJI: bazowe grupy sceny bajt-identyczne z i bez warstwy', () => {
+    const fullByRef = buildFullByRef();
+    const overlay: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef: fullByRef };
+    const { container: without } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    const { container: withAgg } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlay} />,
+    );
+    for (const testId of ['sld-v3-segments', 'sld-v3-symbols', 'sld-v3-labels']) {
+      expect(withAgg.querySelector(`[data-testid="${testId}"]`)!.innerHTML).toBe(
+        without.querySelector(`[data-testid="${testId}"]`)!.innerHTML,
+      );
+    }
+    // A jednak agregat JEST obecny (dowód, że test nie jest pusty).
+    expect(withAgg.querySelectorAll('[data-testid^="sld-v3-result-aggregate-"]').length).toBeGreaterThan(0);
   });
 });
