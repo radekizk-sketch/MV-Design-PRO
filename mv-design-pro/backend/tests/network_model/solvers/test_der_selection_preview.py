@@ -253,3 +253,134 @@ def test_field_apparatus_voltage_too_low_rejected() -> None:
     assert result.error_code == "converter.der_sn.dobor_pole_brak_kandydata"
     reason_codes = {r.reason_code for r in result.rejected}
     assert "napiecie_aparatu_za_niskie" in reason_codes
+
+
+# ---------------------------------------------------------------------------
+# Karta F-K1 — TRZECIE kryterium doboru: wytrzymalosc zwarciowa zyly (IEC 60949).
+# Znalezisko Z1 audytu FLOW: przekroj poprawny pradowo i napieciowo moze ulec
+# zniszczeniu przy zwarciu. Kryterium bywa WIAZACE, czyli decyduje o przekroju
+# bardziej niz obciazalnosc dlugotrwala.
+# ---------------------------------------------------------------------------
+
+# Al/XLPE wg katalogu kabli SN (mv_cable_line_catalog): Jth(1s) = 94 A/mm².
+_JTH = 94.0
+
+
+def _cable_candidates_z_danymi_cieplnymi() -> tuple[CableCandidate, ...]:
+    return tuple(
+        CableCandidate(
+            base.catalog_ref,
+            base.name,
+            base.cross_section_mm2,
+            base.rated_current_a,
+            base.r_ohm_per_km,
+            base.x_ohm_per_km,
+            jth_1s_a_per_mm2=_JTH,
+        )
+        for base in _cable_candidates()
+    )
+
+
+def test_bez_danych_zwarciowych_wynik_jest_bit_identyczny() -> None:
+    """Kryterium jest ADDYTYWNE: bez ith_a/fault_duration_s dobor dziala jak dotad.
+
+    Determinizm istniejacych plynow zalezy od tego, ze rozszerzenie niczego nie
+    zmienia, dopoki dane zwarciowe nie sa podane.
+    """
+    wspolne = {
+        "transformer_current_a": 140.0,
+        "length_km": 1.0,
+        "line_voltage_v": 15000.0,
+        "cos_phi": 0.95,
+        "max_delta_u_pct": 2.0,
+    }
+    bez_danych_cieplnych = propose_mv_cable(
+        CableSelectionInput(candidates=_cable_candidates(), **wspolne)
+    )
+    z_danymi_w_katalogu = propose_mv_cable(
+        CableSelectionInput(candidates=_cable_candidates_z_danymi_cieplnymi(), **wspolne)
+    )
+    # Sam katalog z Jth niczego nie zmienia — kryterium wlacza dopiero prad i czas.
+    assert bez_danych_cieplnych.proposal == z_danymi_w_katalogu.proposal
+    assert bez_danych_cieplnych.rejected == z_danymi_w_katalogu.rejected
+    assert bez_danych_cieplnych.error_code is None
+
+
+def test_kryterium_zwarciowe_jest_wiazace_i_podnosi_przekroj() -> None:
+    """Rachunek niezalezny (przypadek Z1 audytu).
+
+    I_TR = 140 A, wiec obciazalnosc dopuszcza 50 mm² (Iz = 160 A) — i tak wychodzi
+    z doboru bez kryterium zwarciowego. Dolozmy I_th = 12 500 A i t = 0,5 s:
+      50 mm² : Ith(1s) = 94·50  = 4 700 A -> I_dop = 4 700/√0,5  =  6 646,80 A < 12 500 => ODPADA
+      120 mm²: Ith(1s) = 94·120 = 11 280 A -> I_dop = 11 280/√0,5 = 15 952,33 A > 12 500 => OK
+    Dobor musi przejsc z 50 mm² na 120 mm².
+    """
+    import math
+
+    assert 4700.0 / math.sqrt(0.5) == pytest.approx(6646.80, rel=1e-5)
+    assert 11280.0 / math.sqrt(0.5) == pytest.approx(15952.33, rel=1e-5)
+
+    result = propose_mv_cable(
+        CableSelectionInput(
+            transformer_current_a=140.0,
+            length_km=1.0,
+            line_voltage_v=15000.0,
+            cos_phi=0.95,
+            candidates=_cable_candidates_z_danymi_cieplnymi(),
+            max_delta_u_pct=2.0,
+            ith_a=12500.0,
+            fault_duration_s=0.5,
+        )
+    )
+    assert result.proposal is not None
+    assert result.proposal.cross_section_mm2 == pytest.approx(120.0)
+    powody = {r.catalog_ref: r.reason_code for r in result.rejected}
+    assert powody["cab-50"] == "wytrzymalosc_zwarciowa_niewystarczajaca"
+    # Komunikat musi podac wymagany przekroj, zeby projektant wiedzial, co wybrac.
+    komunikat = next(r.reason_pl for r in result.rejected if r.catalog_ref == "cab-50")
+    assert "Wymagany przekroj co najmniej" in komunikat
+
+
+def test_brak_danych_cieplnych_w_katalogu_nie_odrzuca_kandydata() -> None:
+    """Kandydat bez Ith/Jth nie moze byc odrzucony — brak danych to nie naruszenie.
+
+    Zero fabrykacji dziala w obie strony: nie wolno ani przepuscic jako „spelnia”,
+    ani odrzucic jako „nie spelnia”, gdy nie ma czym sprawdzic.
+    """
+    result = propose_mv_cable(
+        CableSelectionInput(
+            transformer_current_a=140.0,
+            length_km=1.0,
+            line_voltage_v=15000.0,
+            cos_phi=0.95,
+            candidates=_cable_candidates(),  # bez danych cieplnych
+            max_delta_u_pct=2.0,
+            ith_a=12500.0,
+            fault_duration_s=0.5,
+        )
+    )
+    assert result.proposal is not None
+    assert result.proposal.cross_section_mm2 == pytest.approx(50.0)
+    assert all(r.reason_code != "wytrzymalosc_zwarciowa_niewystarczajaca" for r in result.rejected)
+
+
+def test_gdy_zaden_kabel_nie_wytrzyma_zwarcia_komunikat_wskazuje_wlasciwa_przyczyne() -> None:
+    """Bez rozroznienia powodu blad raportowalby sie jako przekroczony ΔU.
+
+    I_th = 60 kA przez 1 s: nawet 240 mm² ma Ith(1s) = 22 560 A — wszystkie odpadaja.
+    """
+    result = propose_mv_cable(
+        CableSelectionInput(
+            transformer_current_a=140.0,
+            length_km=1.0,
+            line_voltage_v=15000.0,
+            cos_phi=0.95,
+            candidates=_cable_candidates_z_danymi_cieplnymi(),
+            max_delta_u_pct=5.0,
+            ith_a=60000.0,
+            fault_duration_s=1.0,
+        )
+    )
+    assert result.proposal is None
+    assert result.error_code == "converter.der_sn.dobor_kabel_wytrzymalosc_zwarciowa"
+    assert result.error_pl is not None and "Wytrzymałość zwarciowa" in result.error_pl

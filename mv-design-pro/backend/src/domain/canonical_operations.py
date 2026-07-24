@@ -748,6 +748,47 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_protection_run_short_circuit",
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
+    # Wytrzymałość zwarciowa przewodu (karta F-K1, IEC 60949). Kryterium wymaga TRZECH
+    # danych z trzech różnych etapów projektu: prądu cieplnego (bieg zwarciowy), czasu
+    # wyłączenia (analiza zabezpieczeń) i wytrzymałości żyły (katalog). Brak którejkolwiek
+    # oznacza, że przekrój jest NIESPRAWDZONY — stan, którego nie wolno mylić ze
+    # spełnieniem kryterium.
+    "conductor.fault_current_missing": ReadinessCodeSpec(
+        code="conductor.fault_current_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak prądu cieplnego z biegu SC — uruchom analizę zwarciową, by sprawdzić "
+            "wytrzymałość zwarciową przekroju"
+        ),
+        fix_action_id="fix_conductor_run_short_circuit",
+        fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
+    ),
+    "conductor.fault_duration_missing": ReadinessCodeSpec(
+        code="conductor.fault_duration_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak czasu wyłączenia zabezpieczenia — bez niego nie da się sprawdzić, "
+            "czy przekrój wytrzyma zwarcie"
+        ),
+        fix_action_id="fix_conductor_fault_duration",
+        fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
+    ),
+    "conductor.thermal_data_missing": ReadinessCodeSpec(
+        code="conductor.thermal_data_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak wytrzymałości cieplnej przewodu w katalogu (Ith/Jth dla 1 s) — "
+            "uzupełnij pozycję katalogową"
+        ),
+        fix_action_id="fix_conductor_thermal_data",
+        fix_navigation={"panel": "katalog", "tab": "kable", "focus": "ith_1s_a"},
+    ),
     # Earthing / Ground fault (EARTHING-1: most SC_1F -> napięcia dotykowe/krokowe)
     "earthing.electrode_data_missing": ReadinessCodeSpec(
         code="earthing.electrode_data_missing",

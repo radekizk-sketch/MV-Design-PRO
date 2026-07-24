@@ -27,6 +27,13 @@ from network_model.solvers.cable_voltage_drop import (
     CableVoltageDropInput,
     compute_cable_voltage_drop,
 )
+from network_model.solvers.conductor_thermal_withstand import (
+    STATUS_FAIL as STATUS_THERMAL_FAIL,
+)
+from network_model.solvers.conductor_thermal_withstand import (
+    ConductorThermalInput,
+    check_conductor_thermal_withstand,
+)
 
 # ---------------------------------------------------------------------------
 # Wspólny epsilon porównań doborowych (spójny z D1 der_sn_validation).
@@ -245,6 +252,23 @@ class CableCandidate:
     r_ohm_per_km: float
     x_ohm_per_km: float
     voltage_rating_kv: float | None = None
+    # Karta F-K1: wytrzymalosc cieplna zwarciowa zyly wg IEC 60949 (katalog).
+    # Wystarczy JEDNA z dwoch — Ith(1s) wprost albo gestosc Jth(1s) do przemnozenia
+    # przez przekroj. Brak obu = kryterium zwarciowe NIESPRAWDZALNE dla tego kandydata.
+    ith_1s_a: float | None = None
+    jth_1s_a_per_mm2: float | None = None
+
+    def ith_1s(self) -> float | None:
+        """Dopuszczalny prad cieplny dla 1 s [A] — wprost albo z gestosci i przekroju."""
+        if self.ith_1s_a is not None and self.ith_1s_a > 0.0:
+            return self.ith_1s_a
+        if (
+            self.jth_1s_a_per_mm2 is not None
+            and self.jth_1s_a_per_mm2 > 0.0
+            and self.cross_section_mm2 > 0.0
+        ):
+            return self.jth_1s_a_per_mm2 * self.cross_section_mm2
+        return None
 
 
 @dataclass(frozen=True)
@@ -266,6 +290,16 @@ class CableSelectionInput:
     # przelicznik toru DER; „load" zostawia zachowanie odbiorowe.
     flow_direction: str = "generation"
     reactive_character: str = "inductive"
+    # Karta F-K1 (znalezisko Z1 audytu FLOW): TRZECIE kryterium doboru — wytrzymalosc
+    # zwarciowa zyly. Przekroj poprawny pradowo i napieciowo moze ulec zniszczeniu przy
+    # zwarciu, jesli nie wytrzyma calki Joule'a przez czas wylaczenia zabezpieczenia.
+    # Oba pola sa OPCJONALNE: bez nich dobor zachowuje sie DOKLADNIE jak dotad
+    # (kryterium pomijane, zero zmian wyniku), bo prad zwarciowy w miejscu zabudowy
+    # znany jest dopiero po biegu SC, a czas wylaczenia po analizie zabezpieczen.
+    # ith_a          — prad zwarciowy ekwiwalentny cieplnie [A] (IEC 60909-0 §12)
+    # fault_duration_s — czas wylaczenia zabezpieczenia przy tym pradzie [s]
+    ith_a: float | None = None
+    fault_duration_s: float | None = None
 
 
 @dataclass(frozen=True)
@@ -354,16 +388,58 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
                 )
             )
             continue
+        # Kryterium 3 (F-K1): wytrzymalosc zwarciowa zyly. Sprawdzane WYLACZNIE gdy
+        # znane sa prad cieplny i czas wylaczenia — brak tych danych nie moze skutkowac
+        # cichym przepuszczeniem kandydata jako „spelniajacego", wiec nie jest wtedy
+        # kryterium wcale (kandydat przechodzi na podstawie dwoch pozostalych, a brak
+        # sprawdzenia zglasza wyzsza warstwa kodem gotowosci).
+        if data.ith_a is not None and data.fault_duration_s is not None:
+            thermal = check_conductor_thermal_withstand(
+                ConductorThermalInput(
+                    ith_a=data.ith_a,
+                    fault_duration_s=data.fault_duration_s,
+                    ith_1s_a=candidate.ith_1s(),
+                    jth_1s_a_per_mm2=candidate.jth_1s_a_per_mm2,
+                    cross_section_mm2=candidate.cross_section_mm2,
+                )
+            )
+            if thermal.status == STATUS_THERMAL_FAIL:
+                wymagany = thermal.required_cross_section_mm2
+                uzupelnienie = (
+                    f" Wymagany przekroj co najmniej {wymagany:.1f} mm²." if wymagany else ""
+                )
+                rejected.append(
+                    RejectedCandidate(
+                        candidate.catalog_ref,
+                        candidate.name,
+                        "wytrzymalosc_zwarciowa_niewystarczajaca",
+                        f"Prad cieplny {data.ith_a:g} A przekracza dopuszczalny "
+                        f"{thermal.admissible_current_a:g} A przy czasie "
+                        f"{data.fault_duration_s:g} s.{uzupelnienie}",
+                    )
+                )
+                continue
         eligible.append((candidate, drop.delta_u_v, drop.delta_u_pct))
 
     if not eligible:
         # Rozróżnij dominujący powód braku kandydata dla właściwego komunikatu ❌ kanonu.
         only_ampacity = all(r.reason_code == "przekroj_niewystarczajacy" for r in rejected)
+        only_thermal = all(
+            r.reason_code == "wytrzymalosc_zwarciowa_niewystarczajaca" for r in rejected
+        )
         if rejected and only_ampacity:
             error_code = "converter.der_sn.dobor_kabel_przekroj_niewystarczajacy"
             error_pl = (
                 f"❌ Przekrój niewystarczający — żaden kabel z katalogu nie osiąga obciążalności "
                 f"{required_ampacity:g} A."
+            )
+        elif rejected and only_thermal:
+            # F-K1: bez tego rozróżnienia odrzucenie zwarciowe raportowałoby się jako
+            # przekroczony ΔU, czyli kierowałoby projektanta do niewłaściwej poprawki.
+            error_code = "converter.der_sn.dobor_kabel_wytrzymalosc_zwarciowa"
+            error_pl = (
+                f"❌ Wytrzymałość zwarciowa — żaden kabel z katalogu nie wytrzyma prądu "
+                f"cieplnego {data.ith_a:g} A przez {data.fault_duration_s:g} s."
             )
         elif rejected:
             error_code = "converter.der_sn.dobor_kabel_spadek_przekroczony"
