@@ -215,6 +215,10 @@ export const HIGHLIGHT_COLOR = {
   faultWarning: '#F5A623',
   /** Strzałki rozpływu zwarciowego — token tercylowy „ok". */
   faultOk: '#F9E79F',
+  /** W4 (§8) — LICZBOWE etykiety wynikowe (U/obc./S/P/Q/Ik″/Ith). Lawenda:
+   *  odrębna od flow (błękit)/oltc (bursztyn)/fault (czerwień)/energized
+   *  (zieleń), by warstwa liczb była wizualnie rozróżnialna od strzałek. */
+  resultLabel: '#B39DDB',
   /** Selekcja elementu (rezerwa tabeli — `SldCanvasV3.tsx` nie ma dziś
    *  własnej nakładki stroke dla selekcji, ta wchodzi przez `useSelectionStore`
    *  w warstwie wyższej; GAP do S4/S5: podłączenie tego tokenu jako realnej

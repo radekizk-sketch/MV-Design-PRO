@@ -219,6 +219,21 @@ export interface SldV3Overlay {
    */
   readonly oltcByOwnerRef?: Readonly<Record<string, TransformerOltcOverlay>>;
   /**
+   * W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8): LICZBOWE etykiety wynikowe
+   * per element (`meta.ownerRef` — TA SAMA przestrzeń refów co pozostałe kanały)
+   * — U przy węzłach, obciążenie przęseł, S/straty TR, P/Q generacji (ZE ZNAKIEM,
+   * §16), Ik″/ip/Ith przy węzłach. Budowane przez `resultLabels.ts::
+   * buildResultLabelsFromScene` WYŁĄCZNIE z `RawOverlayPayload` (ZERO fizyki w
+   * UI, formatowanie 1:1). Warstwa RENDERU osobna (`sld-v3-result-labels`),
+   * bramkowana odrębnym layerem `resultLabels` (nie `resultOverlays`) —
+   * użytkownik włącza liczby niezależnie od strzałek. Brak wpisu = brak
+   * metryk dla elementu (zero placeholderów). Typ zaimportowany lokalnie w
+   * rendererze/workspace (`ResultLabelEntry`) — tu `unknown`-neutralny alias,
+   * by uniknąć cyklu import (resultLabels.ts importuje `SceneV3`, nie ten plik
+   * poza `singleHopSegmentRefs`).
+   */
+  readonly resultLabelsByOwnerRef?: Readonly<Record<string, import('./resultLabels').ResultLabelEntry>>;
+  /**
    * Deklaracja POCHODZENIA nakładki (spec §14.2 „overlay wyłącznie z
    * wyniku", program P-A): z którego przypadku obliczeniowego pochodzą
    * wartości i czy solver zbiegł. Kanwa renderuje badge

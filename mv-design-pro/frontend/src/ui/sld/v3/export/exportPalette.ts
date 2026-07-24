@@ -98,6 +98,9 @@ const EXPORT_HIGHLIGHT_COLOR: Readonly<Record<keyof typeof HIGHLIGHT_COLOR, stri
   fault: EXPORT_NOP_RED,
   faultWarning: '#C77700',
   faultOk: '#7A6B00',
+  // W4 (§8) — liczbowe etykiety wynikowe; fiolet przyciemniony pod jasny druk
+  // techniczny (kontrast z tłem białym, odrębny od flow/oltc/fault/selekcji).
+  resultLabel: '#6A3FB5',
   // Selekcja — TA SAMA wartość co v2 `LIGHT_TECHNICAL_COLOR_SELECTION`.
   selection: '#0066CC',
 };

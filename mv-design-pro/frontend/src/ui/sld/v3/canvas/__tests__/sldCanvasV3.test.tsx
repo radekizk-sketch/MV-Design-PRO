@@ -28,10 +28,13 @@ import {
   computeFaultPointMarkerPlacement,
   computeFlowOverlayPlacements,
   computeOltcBadgePlacements,
+  computeResultLabelPlacements,
   flowOverlayGeometry,
   formatFlowLabelPl,
   formatOltcBadgeLabel,
 } from '../SldCanvasV3';
+import { buildResultLabelsFromScene } from '../resultLabels';
+import type { RawOverlayElement, RawOverlayPayload } from '../../../../sld-overlay/rawResultOverlayStore';
 import {
   singleHopSegmentRefs,
   type SegmentFaultFlowOverlay,
@@ -1150,5 +1153,128 @@ describe('SldCanvasV3 — S8: crossfade detalu i ciągłość przejść LOD', ()
       guard += 1;
     }
     expect(Number(lodOf(container))).toBe(startLod);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8/§9/§16): warstwa liczbowych
+// etykiet wynikowych — inwariancja geometrii, kolizje=0, znak/kierunek,
+// determinizm, bramkowanie layerem `resultLabels`.
+// ---------------------------------------------------------------------------
+describe('SldCanvasV3 — W4 warstwa liczbowych etykiet wynikowych (§8/§9/§16)', () => {
+  const sceneL2 = buildSceneV3(enm, 2);
+  const singleHop = singleHopSegmentRefs(enm);
+
+  function el(refId: string, kind: string, metrics: RawOverlayElement['metrics']): RawOverlayElement {
+    return { ref_id: refId, kind, badges: [], metrics, severity: 'INFO' };
+  }
+  function payloadOf(elements: Record<string, RawOverlayElement>, analysisType = 'load_flow'): RawOverlayPayload {
+    return { run_id: 'run-w4', analysis_type: analysisType, elements };
+  }
+
+  const trRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'transformer' && s.meta?.ownerRef)!.meta!.ownerRef!;
+  const sourceRef = sceneL2.symbols.find((s) => s.meta?.elementKind === 'source' && s.meta?.ownerRef)!.meta!.ownerRef!;
+  const branchRef = sceneL2.segments.find(
+    (s) => s.meta?.elementKind === 'segment' && s.meta.ownerRef && !s.meta.ownerRef.includes('#') && singleHop.has(s.meta.ownerRef),
+  )!.meta!.ownerRef!;
+
+  // Wartości przepisane z realnych źródeł (patrz `resultLabels.test.ts` nagłówek):
+  // loading 72,5 % (test_result_contract_v1.py); S 0,63 MVA; P 6,546769 MW
+  // (sldSubstrate52s.powerflow.json branch_flow); Q -0,3 Mvar.
+  const payload = payloadOf({
+    [trRef]: el(trRef, 'transformer', { S_MVA: { code: 'S_MVA', value: 0.63, unit: 'MVA', format_hint: 'fixed2' } }),
+    [sourceRef]: el(sourceRef, 'generator', {
+      P_MW: { code: 'P_MW', value: 6.546769, unit: 'MW', format_hint: 'fixed4' },
+      Q_Mvar: { code: 'Q_Mvar', value: -0.3, unit: 'Mvar', format_hint: 'fixed4' },
+    }),
+    [branchRef]: el(branchRef, 'branch', { LOADING_PCT: { code: 'LOADING_PCT', value: 72.5, unit: '%', format_hint: 'fixed1' } }),
+  });
+  const resultLabelsByOwnerRef = buildResultLabelsFromScene(sceneL2, payload, singleHop);
+  const overlayWithLabels: SldV3Overlay = { energizedByTestId: {}, resultLabelsByOwnerRef };
+
+  it('§9 inwariancja: geometria segmentów/symboli/etykiet BAJT-identyczna z i bez warstwy liczb', () => {
+    const { container: without } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    const { container: withLabels } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlayWithLabels} />,
+    );
+    for (const testId of ['sld-v3-segments', 'sld-v3-symbols', 'sld-v3-labels']) {
+      expect(withLabels.querySelector(`[data-testid="${testId}"]`)!.innerHTML).toBe(
+        without.querySelector(`[data-testid="${testId}"]`)!.innerHTML,
+      );
+    }
+    // A jednak warstwa liczb JEST obecna (dowód, że test nie jest pusty).
+    expect(withLabels.querySelectorAll('[data-testid^="sld-v3-result-label-"]').length).toBeGreaterThan(0);
+  });
+
+  it('§8 kolizje=0: etykiety wyników wzajemnie rozłączne (anty-dryf), każda ulokowana bezkolizyjnie', () => {
+    const placements = computeResultLabelPlacements(sceneL2, resultLabelsByOwnerRef);
+    expect(placements.length).toBe(3);
+    // Każda ulokowana względem sceny bezkolizyjnie (nie fallback).
+    for (const p of placements) expect(p.labelPlaced).toBe(true);
+    // Parami rozłączne (warstwa się nie nakłada sama na siebie).
+    for (let i = 0; i < placements.length; i++) {
+      for (let j = i + 1; j < placements.length; j++) {
+        const a = placements[i];
+        const b = placements[j];
+        const disjoint =
+          a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
+        expect(disjoint).toBe(true);
+      }
+    }
+  });
+
+  it('§16 znak/kierunek: P generacji dodatnie renderuje się z „+"; ujemne Q z „-"', () => {
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlayWithLabels} />,
+    );
+    const sourceGroup = container.querySelector(`[data-result-owner-ref="${CSS.escape(sourceRef)}"]`)!;
+    const texts = Array.from(sourceGroup.querySelectorAll('text')).map((t) => t.textContent);
+    expect(texts).toContain('P +6,5468 MW');
+    expect(texts).toContain('Q -0,3000 Mvar');
+  });
+
+  it('§0 wartość 1:1: obciążenie przęsła renderuje dokładnie wartość payloadu', () => {
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlayWithLabels} />,
+    );
+    const branchGroup = container.querySelector(`[data-result-owner-ref="${CSS.escape(branchRef)}"]`)!;
+    expect(Array.from(branchGroup.querySelectorAll('text')).map((t) => t.textContent)).toEqual(['obc. 72,5 %']);
+  });
+
+  it('determinizm: dwa rendery tych samych propsów ⇒ identyczny innerHTML warstwy liczb', () => {
+    const { container: a } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlayWithLabels} />,
+    );
+    const { container: b } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} overlay={overlayWithLabels} />,
+    );
+    expect(a.querySelector('[data-testid="sld-v3-result-labels"]')!.innerHTML).toBe(
+      b.querySelector('[data-testid="sld-v3-result-labels"]')!.innerHTML,
+    );
+  });
+
+  it('bramkowanie warstwą: layer `resultLabels` ukryty ⇒ warstwa liczb pusta (zero węzłów)', () => {
+    const { container } = render(
+      <SldCanvasV3
+        snapshot={enm}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
+        lodOverride={2}
+        overlay={overlayWithLabels}
+        layerVisibility={{ resultLabels: false }}
+      />,
+    );
+    expect(container.querySelectorAll('[data-testid^="sld-v3-result-label-"]').length).toBe(0);
+    // Kontener warstwy pozostaje (pusty) — filtr renderu, nie usunięcie węzła.
+    expect(container.querySelector('[data-testid="sld-v3-result-labels"]')).toBeTruthy();
+  });
+
+  it('brak payloadu ⇒ warstwa liczb pusta (§8 „gdy wyniki są")', () => {
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />,
+    );
+    expect(container.querySelectorAll('[data-testid^="sld-v3-result-label-"]').length).toBe(0);
   });
 });

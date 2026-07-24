@@ -152,6 +152,7 @@ import {
   type SldV3Overlay,
   type TransformerOltcOverlay,
 } from './overlay';
+import { buildResultLabelsFromScene, type ResultLabelEntry } from './resultLabels';
 
 const MIN_CANVAS_WIDTH_PX = 320;
 const MIN_CANVAS_HEIGHT_PX = 240;
@@ -631,6 +632,37 @@ function useOltcOverlay(
 }
 
 /**
+ * W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8): LICZBOWE etykiety wynikowe ze
+ * WSZYSTKICH trzech LOD — TEN SAM wzorzec co `buildFlowOverlayForSnapshot`
+ * (ownerRef = tożsamość LOD-niezależna, scalanie neutralne). Bramka przęseł =
+ * `singleHopSegmentRefs` (jednoznaczna tożsamość gałęzi, jak flow). Źródło
+ * `payload`: `useRawResultOverlayStore` (produkcyjnie z `App.tsx`). Brak
+ * wyniku/metryk ⇒ `{}` (warstwa wyłączona, §8 „gdy wyniki są").
+ */
+export function buildResultLabelsForSnapshot(
+  snapshot: EnergyNetworkModel,
+  payload: RawOverlayPayload | null,
+): Readonly<Record<string, ResultLabelEntry>> {
+  if (!payload) return {};
+  const trustedRefs = singleHopSegmentRefs(snapshot);
+  const merged: Record<string, ResultLabelEntry> = {};
+  for (const lod of ALL_SCENE_LODS) {
+    Object.assign(merged, buildResultLabelsFromScene(buildSceneV3(snapshot, lod), payload, trustedRefs));
+  }
+  return merged;
+}
+
+function useResultLabelsOverlay(
+  snapshot: EnergyNetworkModel | null,
+  payload: RawOverlayPayload | null,
+): Readonly<Record<string, ResultLabelEntry>> {
+  return useMemo(
+    () => (snapshot ? buildResultLabelsForSnapshot(snapshot, payload) : {}),
+    [snapshot, payload],
+  );
+}
+
+/**
  * Karta S-B (ZWARCIA-PRO pkt 7): strzałki kierunku rozpływu prądu zwarciowego
  * ze WSZYSTKICH trzech LOD — TEN SAM wzorzec co `buildFlowOverlayForSnapshot`
  * (ownerRef = tożsamość LOD-niezależna; bramka F-1 `singleHopSegmentRefs` —
@@ -832,9 +864,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // kanał `faultFlow` niesie `fault_element_ref` — kanwa dotąd czytała z niego
   // wyłącznie `flows` (strzałki), ref punktu zwarcia był ignorowany.
   const faultPointMarkerRef = faultFlowInput?.fault_element_ref;
+  // W4 (§8): kanał liczbowych etykiet wynikowych — TEN SAM `rawOverlayPayload`
+  // co flow/OLTC (jeden wynik aktywnego przebiegu), bramkowany w kanwie
+  // ODRĘBNYM layerem `resultLabels`.
+  const resultLabelsByOwnerRef = useResultLabelsOverlay(snapshot, rawOverlayPayload);
   const overlay = useMemo<SldV3Overlay>(
-    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef }),
-    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef],
+    () => ({ ...energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef }),
+    [energizationOverlay, flowByOwnerRef, oltcByOwnerRef, faultFlowByOwnerRef, faultPointMarkerRef, resultLabelsByOwnerRef],
   );
 
   // F8c pkt 2: `SldDataPayload` — TEN SAM adapter co v2 (`enmToSldAdapter.ts`,

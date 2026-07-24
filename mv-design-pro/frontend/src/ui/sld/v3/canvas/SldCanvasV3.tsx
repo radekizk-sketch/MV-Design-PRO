@@ -51,6 +51,7 @@ import {
   type ViewportTransform,
 } from './camera';
 import type { SegmentFaultFlowOverlay, SegmentFlowOverlay, SldV3Overlay, TransformerOltcOverlay } from './overlay';
+import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
 import { FaultContributionArrow } from '../../../sld-overlay/FaultContributionArrow';
 import { formatTapPositionLabel } from '../../v2/canvas/oltcGlyph';
@@ -1079,6 +1080,219 @@ function SceneOltcBadgeNode(props: { readonly placement: OltcBadgePlacement; rea
   );
 }
 
+// ---------------------------------------------------------------------------
+// W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8/§9/§16): warstwa LICZBOWYCH
+// etykiet wynikowych na L2. Element NAKŁADKI (jak grot przepływu / badge OLTC),
+// NIE symbol/etykieta sceny — `scene.symbols`/`scene.segments`/`scene.labels`
+// NIETKNIĘTE (dowód inwariancji: `sldCanvasV3.test.tsx`). Dane 1:1 z
+// `overlay.resultLabelsByOwnerRef` (`resultLabels.ts::buildResultLabelsFromScene`
+// — ZERO fizyki w UI). Etykieta zakotwiczona do WŁAŚCICIELA (`ownerRef`, §17):
+// TR/źródło/DER pod symbolem; szyna/przęsło przy środku najdłuższego biegu
+// odcinka. Declutter (kolizje=0, §8 „bez kolizji opisów") — pierwszy
+// bezkolizyjny kandydat względem etykiet/symboli sceny ORAZ przekazanych
+// przeszkód nakładek (etykiety przepływu, badge OLTC) i wcześniej położonych
+// etykiet wyników (anty-dryf, deterministycznie po ownerRef posortowanym).
+// ---------------------------------------------------------------------------
+
+const RESULT_LABEL_COLOR = HIGHLIGHT_COLOR.resultLabel;
+/** Odstęp etykiety wyniku od kotwicy [px świata]. */
+const RESULT_LABEL_GAP = GRID / 2;
+const RESULT_LABEL_MARGIN = 2;
+
+export interface ResultLabelPlacement {
+  readonly ownerRef: string;
+  readonly kind: ResultLabelKind;
+  readonly lines: readonly ResultLabelLine[];
+  /** Górny-lewy róg bloku etykiety (tło + linie). */
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  /** `true` = znaleziono kandydata bezkolizyjnego; `false` = fallback na
+   *  pierwszego (dane WAŻNIEJSZE niż estetyka — nie chowamy liczb). */
+  readonly labelPlaced: boolean;
+}
+
+/** Tekst jednej linii: „prefiks wartość" (np. „U 15,02 kV", „obc. 72,5 %"). */
+function resultLabelLineText(line: ResultLabelLine): string {
+  return `${line.prefix} ${line.text}`;
+}
+
+/** Wymiary bloku wielolinijkowego (szerokość = najszersza linia + padding;
+ *  wysokość = liczba linii × wysokość wiersza + padding). */
+function resultLabelBlockSize(lines: readonly ResultLabelLine[]): { readonly width: number; readonly height: number } {
+  const lineH = labelLineHeight('t4');
+  let maxW = 0;
+  for (const line of lines) {
+    const w = measureLabelWidth(resultLabelLineText(line), 't4');
+    if (w > maxW) maxW = w;
+  }
+  return { width: maxW + GRID, height: lines.length * lineH + GRID / 2 };
+}
+
+/** Kandydaci górnego-lewego rogu bloku (kolejność = preferencja). Kotwica
+ *  symbolu: pod → nad → prawo → lewo (+ warianty z 2×GRID). Kotwica odcinka:
+ *  bieg poziomy → pod/nad środkiem biegu; bieg pionowy → prawo/lewo. */
+function resultLabelCandidates(
+  anchor: { readonly cx: number; readonly cy: number; readonly halfW: number; readonly halfH: number; readonly horizontal: boolean; readonly symbol: boolean },
+  block: { readonly width: number; readonly height: number },
+): readonly { readonly x: number; readonly y: number }[] {
+  const { cx, cy, halfW, halfH } = anchor;
+  const out: { x: number; y: number }[] = [];
+  const belowY = cy + halfH + RESULT_LABEL_GAP;
+  const aboveY = cy - halfH - RESULT_LABEL_GAP - block.height;
+  const rightX = cx + halfW + RESULT_LABEL_GAP;
+  const leftX = cx - halfW - RESULT_LABEL_GAP - block.width;
+  const centeredX = cx - block.width / 2;
+  const centeredY = cy - block.height / 2;
+  if (anchor.symbol || anchor.horizontal) {
+    // Preferuj pion (pod/nad), potem bok.
+    for (const dx of [0, GRID, -GRID]) {
+      out.push({ x: centeredX + dx, y: belowY });
+    }
+    for (const dx of [0, GRID, -GRID]) {
+      out.push({ x: centeredX + dx, y: aboveY });
+    }
+    out.push({ x: rightX, y: centeredY });
+    out.push({ x: leftX, y: centeredY });
+  } else {
+    // Bieg pionowy odcinka — preferuj bok (prawo/lewo), potem pion.
+    for (const dy of [0, GRID, -GRID]) {
+      out.push({ x: rightX, y: centeredY + dy });
+    }
+    for (const dy of [0, GRID, -GRID]) {
+      out.push({ x: leftX, y: centeredY + dy });
+    }
+    out.push({ x: centeredX, y: belowY });
+    out.push({ x: centeredX, y: aboveY });
+  }
+  return out;
+}
+
+/**
+ * Rozmieszczenie CAŁEJ warstwy liczbowych etykiet wynikowych dla jednej sceny.
+ * Kotwica per wpis: TR/źródło/DER → środek symbolu (`SYMBOL_DEFS`); szyna/
+ * przęsło → środek najdłuższego biegu odcinka (`flowOverlayGeometry`, ta sama
+ * arytmetyka co strzałka). Declutter: przeszkody = etykiety sceny + bboxy
+ * symboli + `extraObstacles` (etykiety przepływu / badge OLTC z równoległych
+ * kanałów) + wcześniej położone etykiety wyników. Kolejność = ownerRef
+ * posortowany (determinizm niezależny od kolejności iteracji obiektu). Brak
+ * dopasowania kotwicy w scenie ⇒ wpis pominięty (nie fabrykuje pozycji).
+ */
+export function computeResultLabelPlacements(
+  scene: SceneV3,
+  resultLabelsByOwnerRef: Readonly<Record<string, ResultLabelEntry>> | undefined,
+  extraObstacles: readonly FlowRect[] = [],
+): readonly ResultLabelPlacement[] {
+  if (!resultLabelsByOwnerRef) return [];
+  const obstacles: FlowRect[] = [
+    ...scene.labels.map((l) => l.rect),
+    ...scene.symbols.map((s) => {
+      const def = SYMBOL_DEFS[s.symbolId];
+      return { x: s.x, y: s.y, width: def.width, height: def.height };
+    }),
+    ...extraObstacles,
+  ];
+  // Kotwice: symbol (TR/źródło/DER) lub odcinek (szyna/przęsło) — indeks po
+  // ownerRef, pierwsze wystąpienie w scenie (LOD-niezależna tożsamość).
+  const symbolAnchor = new Map<string, { cx: number; cy: number; halfW: number; halfH: number }>();
+  for (const s of scene.symbols) {
+    const ref = s.meta?.ownerRef;
+    if (!ref || symbolAnchor.has(ref)) continue;
+    const def = SYMBOL_DEFS[s.symbolId];
+    symbolAnchor.set(ref, { cx: s.x + def.width / 2, cy: s.y + def.height / 2, halfW: def.width / 2, halfH: def.height / 2 });
+  }
+  const segmentAnchor = new Map<string, { cx: number; cy: number; horizontal: boolean }>();
+  for (const seg of scene.segments) {
+    const ref = seg.meta?.ownerRef;
+    if (!ref || segmentAnchor.has(ref)) continue;
+    const geom = flowOverlayGeometry(seg.points, true);
+    if (!geom) continue;
+    segmentAnchor.set(ref, { cx: geom.runMidX, cy: geom.runMidY, horizontal: geom.horizontal });
+  }
+
+  const placements: ResultLabelPlacement[] = [];
+  const sortedRefs = Object.keys(resultLabelsByOwnerRef).sort();
+  for (const ref of sortedRefs) {
+    const entry = resultLabelsByOwnerRef[ref];
+    const block = resultLabelBlockSize(entry.lines);
+    let anchor: { cx: number; cy: number; halfW: number; halfH: number; horizontal: boolean; symbol: boolean } | null = null;
+    if (entry.kind === 'transformer' || entry.kind === 'source') {
+      const a = symbolAnchor.get(ref);
+      if (a) anchor = { ...a, horizontal: true, symbol: true };
+    } else {
+      const a = segmentAnchor.get(ref);
+      if (a) anchor = { cx: a.cx, cy: a.cy, halfW: 0, halfH: 0, horizontal: a.horizontal, symbol: false };
+    }
+    if (!anchor) continue;
+    const candidates = resultLabelCandidates(anchor, block);
+    let chosen = candidates[0];
+    let labelPlaced = false;
+    for (const candidate of candidates) {
+      const rect: FlowRect = { x: candidate.x, y: candidate.y, width: block.width, height: block.height };
+      if (obstacles.every((o) => flowRectsDisjoint(rect, o, RESULT_LABEL_MARGIN))) {
+        chosen = candidate;
+        labelPlaced = true;
+        break;
+      }
+    }
+    const rect: FlowRect = { x: chosen.x, y: chosen.y, width: block.width, height: block.height };
+    obstacles.push(rect);
+    placements.push({
+      ownerRef: ref,
+      kind: entry.kind,
+      lines: entry.lines,
+      x: chosen.x,
+      y: chosen.y,
+      width: block.width,
+      height: block.height,
+      labelPlaced,
+    });
+  }
+  return placements;
+}
+
+function SceneResultLabelNode(props: { readonly placement: ResultLabelPlacement; readonly index: number }): JSX.Element {
+  const { placement, index } = props;
+  const typo = LABEL_TYPOGRAPHY.t4;
+  const lineH = labelLineHeight('t4');
+  return (
+    <g
+      data-testid={`sld-v3-result-label-${index}`}
+      data-result-owner-ref={placement.ownerRef}
+      data-result-kind={placement.kind}
+      data-result-label-placed={placement.labelPlaced ? 'true' : 'false'}
+    >
+      <rect
+        x={placement.x}
+        y={placement.y}
+        width={placement.width}
+        height={placement.height}
+        rx={2}
+        fill={SLD_V3_BACKGROUND}
+        stroke={RESULT_LABEL_COLOR}
+        strokeWidth={1}
+      />
+      {placement.lines.map((line, i) => (
+        <text
+          key={`result-line-${i}`}
+          data-testid={`sld-v3-result-line-${index}-${i}`}
+          x={placement.x + placement.width / 2}
+          y={placement.y + GRID / 4 + lineH * (i + 0.5)}
+          textAnchor="middle"
+          dominantBaseline="middle"
+          fill={RESULT_LABEL_COLOR}
+          fontFamily="sans-serif"
+          fontSize={typo.fontSize}
+          fontWeight={typo.fontWeight}
+        >
+          {resultLabelLineText(line)}
+        </text>
+      ))}
+    </g>
+  );
+}
+
 function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: number }): JSX.Element {
   const { label, index } = props;
   const typo = LABEL_TYPOGRAPHY[label.labelClass];
@@ -1283,6 +1497,28 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const faultPointMarkerPlacement = useMemo(
     () => computeFaultPointMarkerPlacement(scene, effectiveOverlay?.faultPointMarkerRef),
     [scene, effectiveOverlay],
+  );
+  // W4 (§8): warstwa LICZBOWYCH etykiet wynikowych — bramkowana ODRĘBNYM
+  // layerem `resultLabels` (nie `resultOverlays`): użytkownik włącza liczby
+  // niezależnie od strzałek. Przeszkody declutteru: etykiety przepływu +
+  // badge OLTC z równoległych kanałów (gdy widoczne) — anty-kolizja między
+  // warstwami. Filtr WYŁĄCZNIE renderu (scena nietknięta, §9).
+  const resultLabelsVisible = isLayerVisible('resultLabels', layerVisibility);
+  const resultLabelExtraObstacles = useMemo(
+    () => [
+      ...flowPlacements.filter((p) => p.label).map((p) => p.labelRect),
+      ...oltcBadgePlacements.map((p) => ({ x: p.x, y: p.y, width: p.width, height: p.height })),
+    ],
+    [flowPlacements, oltcBadgePlacements],
+  );
+  const resultLabelPlacements = useMemo(
+    () =>
+      computeResultLabelPlacements(
+        scene,
+        resultLabelsVisible ? overlay?.resultLabelsByOwnerRef : undefined,
+        resultLabelExtraObstacles,
+      ),
+    [scene, resultLabelsVisible, overlay?.resultLabelsByOwnerRef, resultLabelExtraObstacles],
   );
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
@@ -1538,6 +1774,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <g data-testid="sld-v3-oltc-overlay">
           {oltcBadgePlacements.map((placement, index) => (
             <SceneOltcBadgeNode key={`oltc-${placement.ownerRef}`} placement={placement} index={index} />
+          ))}
+        </g>
+        {/* W4 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §8): warstwa LICZBOWYCH
+         * etykiet wynikowych NAD warstwami bazowymi — U przy węzłach,
+         * obciążenie przęseł, S/straty TR, P/Q generacji (ze znakiem, §16),
+         * Ik″/Ith przy węzłach. Warstwa pusta (zero węzłów DOM), gdy brak
+         * wyniku/metryk lub layer `resultLabels` ukryty (`resultLabelsVisible`
+         * false ⇒ `undefined` do buildera). Wartości 1:1 z payloadu (§0). */}
+        <g data-testid="sld-v3-result-labels">
+          {resultLabelPlacements.map((placement, index) => (
+            <SceneResultLabelNode key={`result-label-${placement.ownerRef}`} placement={placement} index={index} />
           ))}
         </g>
         {/* Program P-A (spec §14.2 „overlay wyłącznie z wyniku"): deklaracja

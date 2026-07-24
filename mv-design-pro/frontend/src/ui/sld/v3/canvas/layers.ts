@@ -28,7 +28,8 @@ export type CanvasLayerId =
   | 'derSources'
   | 'protectionAnnotations'
   | 'labels'
-  | 'resultOverlays';
+  | 'resultOverlays'
+  | 'resultLabels';
 
 export const CANVAS_LAYER_IDS: readonly CanvasLayerId[] = [
   'stationsApparatus',
@@ -36,6 +37,7 @@ export const CANVAS_LAYER_IDS: readonly CanvasLayerId[] = [
   'protectionAnnotations',
   'labels',
   'resultOverlays',
+  'resultLabels',
 ];
 
 export const CANVAS_LAYER_LABELS_PL: Readonly<Record<CanvasLayerId, string>> = {
@@ -44,6 +46,11 @@ export const CANVAS_LAYER_LABELS_PL: Readonly<Record<CanvasLayerId, string>> = {
   protectionAnnotations: 'Zabezpieczenia i adnotacje',
   labels: 'Etykiety',
   resultOverlays: 'Nakładki wyników',
+  // W4 (§8): opcjonalna warstwa LICZBOWYCH etykiet wynikowych (U przy węzłach,
+  // obciążenie przęseł, S/straty TR, P/Q generacji, Ik″/Ith przy węzłach).
+  // Odrębny przełącznik od „Nakładki wyników" (strzałki/badge) — użytkownik
+  // włącza liczby niezależnie od strzałek (spec §18 podwarstwy L2-D wyniki).
+  resultLabels: 'Etykiety wyników (liczby)',
 };
 
 /** Mapa warstwa→widoczność. Brak wpisu (lub `undefined` cały obiekt) = warstwa
