@@ -361,7 +361,8 @@ Kolejność wynika z wagi i z zależności łańcucha.
 
 | Karta | Zakres | Zamyka |
 |---|---|---|
-| **F-K1** | Kryterium wytrzymałości zwarciowej przewodu end-to-end: solver kryterium (`I_th ≤ I_th(1s)/√t_k`) → wpięcie w dobór kabla jako trzecie kryterium → sprawdzenie na modelu po biegu SC → dowód → prezentacja z jawnym kryterium wiążącym | **Z1** |
+| **F-K1** faza 1 — **WDROŻONA** (V12K-192) | Solver kryterium `conductor_thermal_withstand.py` (`I_th ≤ I_th(1s)/√t_k`, `S_min = I_th·√t/Jth`) + wpięcie w dobór kabla jako trzecie kryterium, addytywnie (bez danych zwarciowych wynik bit-identyczny) + własny kod odrzucenia + 3 kanoniczne kody gotowości | **Z1** (rdzeń) |
+| **F-K1** faza 2 | Sprawdzenie na modelu po biegu SC dla wszystkich gałęzi → pakiet dowodowy → prezentacja z jawnym kryterium wiążącym | **Z1** (domknięcie) |
 | **F-K2** | Warunki przyłączenia jako kryterium: `P_limit` i `cosφ_wymagany` z E1 konsumowane w ocenie rozpływu w PWP; werdykt zamiast samego wyświetlenia | **Z2** |
 | **F-K3** | Agregat werdyktu projektowego (E7): rejestr kryteriów projektu, trzy stany, nawigacja do przyczyny | **Z3** |
 | **F-K4** | Pętla decyzji na pozostałych ekranach wyników (9 ekranów) | **Z4** |
@@ -376,3 +377,4 @@ Kolejność wynika z wagi i z zależności łańcucha.
 | Data | Wpis | Autor |
 |---|---|---|
 | 2026-07-24 | Dokument założony: audyt 7 soczewek + projekt FLOW E1–E8 + kontrakt ekranu + plan kart F-K1…F-K7. Znaleziska Z1–Z8 z dowodem w kodzie. | Fable (architekt) |
+| 2026-07-24 | F-K1 faza 1 wdrożona (V12K-192). Przy okazji domknięcie od strony dostawcy: równoległa fala G audytu fizyki naprawiła sam `I_th` w rdzeniu solvera — liczony był jako `I_kss·√t_k`, czyli niezgodnie wymiarowo. Kryterium F-K1 konsumuje `I_th`, więc bez tej naprawy zamknięcie łańcucha byłoby pozorne: nowe ogniwo dostawałoby fałszywą wielkość. Oba końce łańcucha (dostawca i konsument) są teraz poprawne. | Fable (architekt) |
