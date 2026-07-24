@@ -58,3 +58,39 @@ re-baseline goldenow gdzie dotyczy), trace_determinism 0, solver_boundary/
 solver_diff sankcjonowane i zielone, dowod liczbowy delty w rejestrze.
 Konsumpcja przez analizy/raporty/eksporty sprawdzona (wartosci korekcji
 splywaja do pakietow dowodowych i raportow PF/SC).
+
+## Weryfikacja konsumpcji end-to-end (karta V-SM-1, 2026-07-24)
+Recon mapy konsumpcji fizyki TR (plik:linia; werdykt per konsument):
+
+- **(a) Uziemienia / prad doziemny (P19 EARTHING_GROUND_FAULT_SN):** PRZERWA
+  (brak dostawcy). generate_earthing_ground_fault_proof
+  (application/proof_engine/proof_generator.py:3114) wyprowadza I_E z (U_0, Z_E)
+  albo (I_u, I_p) podanych na WEJSCIU pakietu — wielkosci, ktorych zaden solver
+  SC nie produkuje. Pakiet jest wywolywany WYLACZNIE z testow jednostkowych;
+  brak produkcyjnego mostka SC_1F -> Earthing. To NIE jest usterka
+  "3F zamiast 1F", tylko brak okablowania. Naprawa = pelna funkcja (model pradu
+  ziemnozwarciowego U_0/Z_E/I_u/I_p) wymagajaca decyzji produktowej o modelu
+  uziemien. DLUG JAWNY (pomiar: 0 produkcyjnych wywolan; przekracza karte).
+- **(b) Zabezpieczenia ziemnozwarciowe 50N/51N:** KOMPLETNE. input_adapter.py:39
+  pobiera fault_levels["ik_min_1ph"] z ShortCircuitResult.ikss_a gdy
+  short_circuit_type == SINGLE_PHASE_GROUND; calculator.py:59,65 liczy
+  i_pickup_51n_a = k_ef_pickup * ik_min_1ph oraz i_inst_50n_a = k_sc_inst *
+  ik_min_1ph. Prad 1F ma z0 zalezne od grupy (SM-3). DOWOD: nowy test
+  tests/application/analyses/protection/test_vector_group_earth_fault_chain.py.
+- **(c) SM-1 K_T w dowodzie/raporcie SC:** KOMPLETNE na poziomie solvera/raportu
+  (short_circuit_iec60909.py:406 _append_transformer_kt_trace -> white_box_trace;
+  test_kt_whitebox_trace_entry_present; slad splywa do raportu przez
+  canonical_analysis.py trace_steps). PRZERWA tylko w standalone pakiecie SC3F:
+  SC3FInput (packs/sc_symmetrical.py:108) niesie wylacznie skalary — brak kroku
+  K_T/Z_TK. DLUG JAWNY (addytywny krok w generate_sc3f_proof; pomiar: raport ma
+  K_T, standalone pack SC3F nie ma).
+- **(d) SM-2 kat grupy w wyniku/raporcie PF:** KOMPLETNE na poziomie
+  solvera/wyniku/trace (power_flow_newton_internal.py:317 applied_phase_shifts +
+  katy wezlow; test_transformer_phase_shift_pf.py). PRZERWA tylko w pakiecie
+  P14: p14_power_flow.py niesie zbieznosc/bilans/|V|, brak katow wezlow. DLUG
+  JAWNY (addytywny krok katow w P14; pomiar: wynik/raport ma katy, pack P14 nie).
+
+Werdykt karty: jedyny KONSUMENT wpiety produkcyjnie (50N/51N) uzywa poprawnego
+pradu 1F (z0 wg grupy) — udowodnione testem Dyn-vs-YNyn. Pozostale pozycje to
+brak okablowania / brak surfacingu w standalone pakietach dowodowych (dlugi
+jawne wyzej), nie regresje SM-1..3.
