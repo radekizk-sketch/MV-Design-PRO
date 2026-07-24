@@ -793,6 +793,91 @@ def test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correc
     )
 
 
+def test_resultset_v1_load_flow_emits_source_injection_and_derived_branch_metrics(
+    client: TestClient,
+) -> None:
+    """LF-KONTRAKT (V12K-161): domknięcie kontraktu wyników rozpływu.
+
+    Sieć referencyjna (`_seed_power_flow_enm`): `src-grid` (sieć zewnętrzna GPZ)
+    @ `bus-main` (slack) -[`branch-load`, kabel]-> `bus-load` (odbior 1,2 MW /
+    0,35 Mvar). Dowodzimy NA REALNYCH DANYCH, że:
+      (a) element_results niesie wiersz źródła `src-grid` z P/Q/S/cosφ, a P jest
+          bilansem węzła źródłowego: P_src ≈ P_load + straty czynne gałęzi;
+      (b) S = hypot(P,Q) i cosφ = |P|/S dokładnie (pochodne, nie fabrykacja);
+      (c) gałąź niesie straty czynne (LOSSES_P_MW) oraz pochodne ΔU% i cosφ,
+          a ΔU% = (u_from − u_to)·100 z napięć węzłów wyniku solvera.
+    """
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
+    assert run_response.status_code == 200
+    run_id = run_response.json()["run_id"]
+
+    payload = client.get(f"/api/execution/runs/{run_id}/results/v1").json()
+    element_results = payload["element_results"]
+
+    sources = {er["element_ref"]: er for er in element_results if er["element_type"] == "Source"}
+    buses = {er["element_ref"]: er for er in element_results if er["element_type"] == "Bus"}
+    branches = {er["element_ref"]: er for er in element_results if er["element_type"] == "Branch"}
+
+    # (a) źródło wyemitowane, injekcja dodatnia (generacja do sieci).
+    assert "src-grid" in sources, "resultset v1 musi niesc wiersz zrodla dla LOAD_FLOW"
+    src_values = sources["src-grid"]["values"]
+    p_src = src_values["p_injected_mw"]
+    q_src = src_values["q_injected_mvar"]
+    s_src = src_values["s_mva"]
+    assert p_src > 0.0, f"zrodlo zasilajace odbior musi wtlaczac P>0, jest {p_src}"
+
+    # (b) wielkosci pochodne DOKLADNIE ze wzorow (zero heurystyk).
+    assert s_src == pytest.approx(math.hypot(p_src, q_src))
+    assert src_values["cos_phi"] == pytest.approx(abs(p_src) / s_src)
+
+    # (a cd.) bilans wezla zrodlowego: P_src = P_odbioru + straty czynne galezi.
+    branch_values = branches["branch-load"]["values"]
+    losses_p = branch_values["losses_p_mw"]
+    assert losses_p is not None and losses_p > 0.0
+    assert p_src == pytest.approx(1.2 + losses_p, rel=1e-6)
+
+    # (c) straty biernej tez obecne (pass-through FROZEN), oraz cosφ galezi.
+    assert branch_values["losses_q_mvar"] is not None
+    assert branch_values["cos_phi"] == pytest.approx(
+        abs(branch_values["p_mw"]) / branch_values["s_mva"]
+    )
+
+    # (c cd.) ΔU% = (u_from − u_to)·100 z napiec wezlow wyniku solvera; spadek
+    # w kierunku odbioru (bus-load ponizej bus-main).
+    u_main = buses["bus-main"]["values"]["u_pu"]
+    u_load = buses["bus-load"]["values"]["u_pu"]
+    assert branch_values["delta_u_pct"] == pytest.approx((u_main - u_load) * 100.0)
+    assert branch_values["delta_u_pct"] > 0.0
+    # ΔU[kV] spojne z napieciami wezlow (u_kv) z tych samych wierszy Bus.
+    ukv_main = buses["bus-main"]["values"]["u_kv"]
+    ukv_load = buses["bus-load"]["values"]["u_kv"]
+    assert branch_values["delta_u_kv"] == pytest.approx(ukv_main - ukv_load)
+
+
+def test_resultset_v1_load_flow_source_and_branch_metrics_are_deterministic(
+    client: TestClient,
+) -> None:
+    """LF-KONTRAKT (V12K-161): dwa niezalezne biegi tej samej sieci ⇒ identyczne
+    wiersze zrodla i galezi (Rule 7 determinizm; addytywne pola nie psuja
+    powtarzalnosci)."""
+    values_by_run = []
+    for _ in range(2):
+        case_id = str(uuid4())
+        _seed_power_flow_enm(client, case_id)
+        run_id = client.post(f"/api/cases/{case_id}/runs/power-flow").json()["run_id"]
+        payload = client.get(f"/api/execution/runs/{run_id}/results/v1").json()
+        picked = {
+            er["element_ref"]: er["values"]
+            for er in payload["element_results"]
+            if er["element_ref"] in ("src-grid", "branch-load")
+        }
+        values_by_run.append(picked)
+    assert values_by_run[0] == values_by_run[1]
+
+
 def test_canonical_run_persists_outside_process_memory(client: TestClient) -> None:
     case_id = str(uuid4())
     _seed_power_flow_enm(client, case_id)

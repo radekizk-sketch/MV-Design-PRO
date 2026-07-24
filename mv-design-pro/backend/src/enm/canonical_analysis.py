@@ -1863,16 +1863,52 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
     result_v1 = raw_result.get("result_v1", {})
     graph_branches = (raw_result.get("graph") or {}).get("branches", {})
     branch_current_ka = raw_result.get("branch_current_ka", {})
+    node_voltage_kv = raw_result.get("node_voltage_kv", {})
+    # LF-KONTRAKT (V12K-161): mapa napięć węzłów w p.u. (z FROZEN
+    # ``result_v1.bus_results``) — potrzebna do deterministycznej pochodnej ΔU%
+    # (różnica potencjałów końców gałęzi), analogicznie jak ``loading_pct``
+    # korzysta z prądu i obciążalności. Zero nowej fizyki: solver już policzył
+    # napięcia węzłów, tu WYŁĄCZNIE ich różnica.
+    node_u_pu = {
+        b["bus_id"]: b.get("v_pu")
+        for b in result_v1.get("bus_results", [])
+        if b.get("bus_id") is not None
+    }
     rows = []
     for item in result_v1.get("branch_results", []):
         branch_id = item["branch_id"]
         branch = graph_branches.get(branch_id, {})
         i_ka = branch_current_ka.get(branch_id)
         i_a = i_ka * 1000.0 if i_ka is not None else None
-        s_mva = math.sqrt(item.get("p_from_mw", 0.0) ** 2 + item.get("q_from_mvar", 0.0) ** 2)
+        p_from = item.get("p_from_mw", 0.0)
+        q_from = item.get("q_from_mvar", 0.0)
+        s_mva = math.sqrt(p_from**2 + q_from**2)
         rated_current_a = branch.get("rated_current_a")
         loading_pct = (
             (i_a / rated_current_a * 100.0) if i_a is not None and rated_current_a else None
+        )
+        # LF-KONTRAKT (V12K-161): współczynnik mocy gałęzi — pochodna |P|/|S|
+        # (wzorzec loading_pct). Bez znaku (cosφ jako moduł); gałąź jałowa
+        # (S=0) ⇒ None (uczciwy brak, nie 0/0).
+        cos_phi = (abs(p_from) / s_mva) if s_mva > 0.0 else None
+        # LF-KONTRAKT (V12K-161): spadek napięcia ΔU na gałęzi (linia/kabel) —
+        # różnica potencjałów końców z wyniku solvera. Wartość [kV] =
+        # |U_from|−|U_to|; procent = (u_from−u_to)·100 [% U_n] (różnica w p.u.
+        # jest już znormalizowana do napięcia znamionowego). Brak któregoś
+        # napięcia ⇒ None (uczciwy brak).
+        from_node = branch.get("from_node_id", "")
+        to_node = branch.get("to_node_id", "")
+        u_from_kv = node_voltage_kv.get(from_node)
+        u_to_kv = node_voltage_kv.get(to_node)
+        delta_u_kv = (
+            (u_from_kv - u_to_kv) if (u_from_kv is not None and u_to_kv is not None) else None
+        )
+        u_from_pu = node_u_pu.get(from_node)
+        u_to_pu = node_u_pu.get(to_node)
+        delta_u_pct = (
+            ((u_from_pu - u_to_pu) * 100.0)
+            if (u_from_pu is not None and u_to_pu is not None)
+            else None
         )
         flags: list[str] = []
         if loading_pct is not None and loading_pct > 100.0:
@@ -1889,6 +1925,17 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
                 "p_mw": item.get("p_from_mw"),
                 "q_mvar": item.get("q_from_mvar"),
                 "loading_pct": loading_pct,
+                # LF-KONTRAKT (V12K-161): pass-through składowych strat/końca „to"
+                # WPROST z FROZEN ``PowerFlowBranchResult`` (już policzone przez
+                # solver, tu bez zmian) + pochodne cosφ/ΔU. Straty transformatora
+                # (LOSSES_P_MW) domknięte — dotąd branch_row ich nie niósł.
+                "p_to_mw": item.get("p_to_mw"),
+                "q_to_mvar": item.get("q_to_mvar"),
+                "losses_p_mw": item.get("losses_p_mw"),
+                "losses_q_mvar": item.get("losses_q_mvar"),
+                "cos_phi": cos_phi,
+                "delta_u_kv": delta_u_kv,
+                "delta_u_pct": delta_u_pct,
                 "synthetic": branch.get("synthetic"),
                 "graph_role": branch.get("graph_role"),
                 "flags": flags,
@@ -2594,6 +2641,63 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                     "reporting_status": raw_result.get("reporting_status"),
                 }
             )
+        # LF-KONTRAKT (V12K-161): emisja metryk wtrysku źródeł/DER (P/Q/S/cosφ)
+        # w element_results — dotąd ścieżka PF wystawiała TYLKO Bus+Branch, więc
+        # frontendowy szablon `load_flow.source` (resultLabelTemplates.ts) nie
+        # miał danych. Wartość = BILANS WĘZŁA źródłowego: injekcja netto w węźle,
+        # w którym stoi źródło, WPROST z FROZEN wyniku solvera
+        # (``result_v1.bus_results[node].p_injected_mw/q_injected_mvar`` —
+        # konwencja injekcyjna: +generacja/wtłaczanie). Dla węzła bilansującego
+        # jest to moc sieci zewnętrznej (slack_power), dla węzła PQ z DER —
+        # injekcja netto węzła. S i cosφ to deterministyczne wielkości pochodne
+        # (wzorzec loading_pct: |S|=hypot(P,Q), cosφ=|P|/|S|) — ZERO nowej
+        # fizyki, ZERO heurystyk. Ref = ref_id źródła (przestrzeń refów overlay
+        # identyczna z symbolem SLD źródła/DER). Sortowanie element_results
+        # (po element_ref) w builderze niżej — determinizm zachowany.
+        _bus_injection: dict[str, tuple[Any, Any]] = {
+            b["bus_id"]: (b.get("p_injected_mw"), b.get("q_injected_mvar"))
+            for b in result_v1.get("bus_results", [])
+            if b.get("bus_id") is not None
+        }
+        snapshot = run.snapshot or {}
+        _source_rows: list[dict[str, Any]] = []
+        for _collection in ("sources", "generators"):
+            for _src in snapshot.get(_collection) or []:
+                if not isinstance(_src, dict):
+                    continue
+                _src_ref = str(_src.get("ref_id") or "")
+                _bus_ref = str(_src.get("bus_ref") or "")
+                if not _src_ref or not _bus_ref:
+                    continue
+                _p, _q = _bus_injection.get(_graph_id_from_ref(_bus_ref), (None, None))
+                if _p is None and _q is None:
+                    continue
+                _p_val = float(_p) if _p is not None else 0.0
+                _q_val = float(_q) if _q is not None else 0.0
+                _s_val = math.hypot(_p_val, _q_val)
+                _src_values: dict[str, Any] = {
+                    "p_injected_mw": _p,
+                    "q_injected_mvar": _q,
+                    "s_mva": _s_val,
+                    "bus_ref": _bus_ref,
+                }
+                if _s_val > 0.0:
+                    _src_values["cos_phi"] = abs(_p_val) / _s_val
+                _source_rows.append(
+                    {
+                        "element_ref": _src_ref,
+                        "element_type": "Source",
+                        "solver_ref": _graph_id_from_ref(_bus_ref),
+                        "values": _src_values,
+                        "proof_ref": raw_result.get("proof_ref"),
+                        "proof_status": raw_result.get("proof_status"),
+                        "reporting_status": raw_result.get("reporting_status"),
+                    }
+                )
+        # Sort deterministyczny po ref źródła (niezależny od kolejności kolekcji
+        # w snapshocie) — sygnatura wyników liczona nad kolejnością listy.
+        _source_rows.sort(key=lambda r: r["element_ref"])
+        element_results.extend(_source_rows)
         global_results = {
             **(result_v1.get("summary", {}) or {}),
             "analysis_type": "load_flow",

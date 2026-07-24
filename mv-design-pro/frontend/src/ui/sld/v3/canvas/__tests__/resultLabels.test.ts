@@ -280,6 +280,52 @@ describe('resultLabels.ts — buildResultLabelsFromScene (W4 §8)', () => {
     expect(isResultLabelsEmpty(buildResultLabelsFromScene(scene, payload, singleHop))).toBe(true);
   });
 
+  it('LF-KONTRAKT (V12K-161) źródło: P(+)→Q→S→cosφ z payloadu backendu (bilans węzła)', () => {
+    // Fixture jak z backendu: build_execution_result_set emituje dla źródła
+    // P/Q/S (=hypot) + cosφ (=|P|/|S|). P=6,5 MW, Q=0,9 Mvar ⇒ S=6,562 MVA,
+    // cosφ=6,5/6,562=0,9905 → „0,99". Wszystkie cztery linie renderują się bez
+    // zmian frontu (kody już w rejestrze), dowód domknięcia kontraktu źródła.
+    const payload = payloadOf({
+      [sourceRef]: el(sourceRef, 'generator', {
+        P_MW: { code: 'P_MW', value: 6.5, unit: 'MW', format_hint: 'fixed4' },
+        Q_Mvar: { code: 'Q_Mvar', value: 0.9, unit: 'Mvar', format_hint: 'fixed4' },
+        S_MVA: { code: 'S_MVA', value: 6.561974, unit: 'MVA', format_hint: 'fixed2' },
+        COS_PHI: { code: 'COS_PHI', value: 0.990552, unit: '', format_hint: 'fixed2' },
+      }),
+    });
+    const entries = buildResultLabelsFromScene(scene, payload, singleHop);
+    expect(entries[sourceRef]?.lines).toEqual([
+      { prefix: 'P', text: '+6,5000 MW' },
+      { prefix: 'Q', text: '+0,9000 Mvar' },
+      { prefix: 'S', text: '6,56 MVA' },
+      { prefix: 'cosφ', text: '0,99' },
+    ]);
+  });
+
+  it('LF-KONTRAKT (V12K-161) linia/kabel: ΔU% i cosφ renderują z payloadu backendu', () => {
+    // build_branch_results dokłada delta_u_pct (pochodna z napięć węzłów) i
+    // cos_phi (=|P|/|S|). Pełny zestaw priorytetu obc.→I→P→Q→ΔU→cosφ.
+    const payload = payloadOf({
+      [branchRef]: el(branchRef, 'branch', {
+        LOADING_PCT: { code: 'LOADING_PCT', value: 68, unit: '%', format_hint: 'fixed1' },
+        I_A: { code: 'I_A', value: 182, unit: 'A', format_hint: 'fixed1' },
+        P_MW: { code: 'P_MW', value: 5.648, unit: 'MW', format_hint: 'fixed4' },
+        Q_Mvar: { code: 'Q_Mvar', value: 0.92, unit: 'Mvar', format_hint: 'fixed4' },
+        DELTA_U_PCT: { code: 'DELTA_U_PCT', value: 1.35, unit: '%', format_hint: 'fixed2' },
+        COS_PHI: { code: 'COS_PHI', value: 0.987, unit: '', format_hint: 'fixed2' },
+      }),
+    });
+    const entries = buildResultLabelsFromScene(scene, payload, singleHop);
+    expect(entries[branchRef]?.lines).toEqual([
+      { prefix: 'obc.', text: '68,0 %' },
+      { prefix: 'I', text: '182,0 A' },
+      { prefix: 'P', text: '+5,6480 MW' },
+      { prefix: 'Q', text: '+0,9200 Mvar' },
+      { prefix: 'ΔU', text: '1,35 %' },
+      { prefix: 'cosφ', text: '0,99' },
+    ]);
+  });
+
   it('determinizm: dwa buildy identycznego wejścia ⇒ identyczny wynik (JSON)', () => {
     const payload = payloadOf({
       [trRef]: el(trRef, 'transformer', { S_MVA: { code: 'S_MVA', value: 0.63, unit: 'MVA', format_hint: 'fixed2' } }),

@@ -10,26 +10,26 @@
  *
  * §0 ZERO fizyki w UI: każdy `code` mapuje 1:1 na istniejącą metrykę backendu
  * (`domain/result_builder_v1.py::_extract_element_metrics` `_METRIC_MAP` —
- * U_kV/V_PU/ANGLE_DEG/P_MW/Q_Mvar/S_MVA/LOADING_PCT/I_A/LOSSES_P_MW/IK_3F_A/
- * IP_A/ITH_A). Funkcje `format*` WYŁĄCZNIE formatują (polski przecinek
- * dziesiętny, jednostki, znak kierunku) — ŻADNEJ arytmetyki wielkości. Brak
- * metryki w payloadzie ⇒ linia pominięta (zero placeholderów).
+ * U_kV/V_PU/ANGLE_DEG/P_MW/Q_Mvar/S_MVA/LOADING_PCT/I_A/LOSSES_P_MW/COS_PHI/
+ * DELTA_U_KV/DELTA_U_PCT/IK_3F_A/IP_A/ITH_A). Funkcje `format*` WYŁĄCZNIE
+ * formatują (polski przecinek dziesiętny, jednostki, znak kierunku) — ŻADNEJ
+ * arytmetyki wielkości. Brak metryki w payloadzie ⇒ linia pominięta (zero
+ * placeholderów).
  *
  * KOLEJNOŚĆ specyfikacji = PRIORYTET informacji (wym. 2/5). Pierwsza pozycja to
  * „najważniejsza wartość" pokazywana na L1; L2 pokazuje 2–3 pierwsze
  * (`resultLabelLinesForLod`); L0 nie pokazuje nic. Znak (wym. 3): +P generacja
  * / −P pobór — `formatSignedScalar`.
  *
- * ZNANE BRAKI KONTRAKTU LF (rejestr braków R1 — NIE fabrykujemy, linia po
- * prostu się nie renderuje, aż backend dostarczy pole):
- *   - źródło/DER: ścieżka PF (`canonical_analysis.py`) NIE emituje
- *     `element_results` dla źródeł (tylko Bus+Branch), więc P/Q/S/cosφ/tryb
- *     pracy źródła BRAK w overlay — szablon `load_flow.source` gotowy, renderuje
- *     się dopiero po rozbudowie emisji backendu (poza R1);
- *   - linia/kabel ΔU (spadek napięcia): brak kodu w `_METRIC_MAP` — BRAK;
- *   - transformator ΔP strat: `LOSSES_P_MW` istnieje w mapie, ale `branch_row`
- *     rozpływu go nie niesie — BRAK (renderuje się po dołożeniu pola);
- *   - cosφ: brak kodu w kontrakcie — BRAK.
+ * KONTRAKT LF DOMKNIĘTY (LF-KONTRAKT, V12K-161 — dawny rejestr braków R1
+ * zamknięty): ścieżka PF (`canonical_analysis.py::build_execution_result_set`)
+ * emituje teraz `element_results` również dla źródeł/DER (P/Q/S/cosφ = bilans
+ * węzła źródłowego z FROZEN wyniku solvera), a `build_branch_results` niesie
+ * straty czynne/bierne (LOSSES_P_MW/LOSSES_Q_Mvar — domknięcie ΔP transformatora)
+ * oraz pochodne ΔU (DELTA_U_KV/DELTA_U_PCT) i cosφ (COS_PHI) linii/kabla. Wszystko
+ * addytywnie, kontrakt FROZEN PowerFlowResult nietknięty. Kody ΔU/cosφ włączone
+ * do rejestru poniżej — na kanwie widoczne top-N wg LOD (cap 3), pełny zestaw
+ * dostępny w inspektorze/overlay.
  */
 import type { RawMetricValue } from '../../../sld-overlay/rawResultOverlayStore';
 import { formatMagnitudeKa } from '../../../sld-overlay/FaultContributionArrow';
@@ -96,6 +96,13 @@ export function formatSignedScalar(metric: RawMetricValue): string {
   return body; // ujemne niesie własny „-"; zero bez znaku
 }
 
+/** Wielkość bezwymiarowa (cosφ) — sam sformatowany skalar, BEZ jednostki (unit
+ *  metryki COS_PHI jest pustym łańcuchem, więc `formatScalar` zostawiłby wiszącą
+ *  spację). WYŁĄCZNIE formatowanie (polski przecinek dziesiętny). */
+export function formatDimensionless(metric: RawMetricValue): string {
+  return formatMetricValuePl(metric);
+}
+
 /** Prąd zwarciowy [kA] przez istniejący `formatMagnitudeKa` (<0,1 kA ⇒ ampery).
  *  Payload emituje IK/IP/ITH albo w kA (`ikss_ka`, hint fixed2), albo w A
  *  (`ikss_a`, hint fixed0) — normalizacja do kA (A ⇒ /1000) zachowuje wartość
@@ -128,20 +135,26 @@ const LF_TRANSFORMER: readonly ResultLabelLineSpec[] = [
 ];
 
 /** Rozpływ — źródło/DER: moc czynna P (L1, ZE ZNAKIEM), moc bierna Q
- *  (wym. 4 — obowiązkowo dostępna), moc pozorna S. */
+ *  (wym. 4 — obowiązkowo dostępna), moc pozorna S, współczynnik mocy cosφ
+ *  (LF-KONTRAKT V12K-161 — pochodna |P|/|S| z bilansu węzła źródłowego). */
 const LF_SOURCE: readonly ResultLabelLineSpec[] = [
   { code: 'P_MW', prefix: 'P', format: formatSignedScalar },
   { code: 'Q_Mvar', prefix: 'Q', format: formatSignedScalar },
   { code: 'S_MVA', prefix: 'S', format: formatScalar },
+  { code: 'COS_PHI', prefix: 'cosφ', format: formatDimensionless },
 ];
 
 /** Rozpływ — linia/kabel: obciążenie [%] (L1, wym. 5), prąd I, moc czynna P
- *  (ZE ZNAKIEM), moc bierna Q. */
+ *  (ZE ZNAKIEM), moc bierna Q, spadek napięcia ΔU% oraz cosφ (LF-KONTRAKT
+ *  V12K-161 — pochodne z wyniku solvera; na kanwie top-N wg LOD, pełny zestaw
+ *  w inspektorze). */
 const LF_BRANCH: readonly ResultLabelLineSpec[] = [
   { code: 'LOADING_PCT', prefix: 'obc.', format: formatScalar },
   { code: 'I_A', prefix: 'I', format: formatScalar },
   { code: 'P_MW', prefix: 'P', format: formatSignedScalar },
   { code: 'Q_Mvar', prefix: 'Q', format: formatSignedScalar },
+  { code: 'DELTA_U_PCT', prefix: 'ΔU', format: formatScalar },
+  { code: 'COS_PHI', prefix: 'cosφ', format: formatDimensionless },
 ];
 
 /** Zwarcie — szyna (zachowane z W4): Ik″/ip/Ith. Pozostałe klasy SC NIE

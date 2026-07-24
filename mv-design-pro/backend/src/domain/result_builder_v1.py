@@ -95,6 +95,13 @@ _ELEMENT_TYPE_TO_KIND: dict[str, OverlayElementKind] = {
     "Generator": OverlayElementKind.GENERATOR,
     "inverter": OverlayElementKind.GENERATOR,
     "Inverter": OverlayElementKind.GENERATOR,
+    # LF-KONTRAKT (V12K-161): źródło (sieć zewnętrzna/GPZ, DER) wstrzykuje moc —
+    # najbliższy istniejący rodzaj overlay to GENERATOR (rozdział rodzajowy
+    # OverlayElementKind nie ma osobnego SOURCE; addytywne mapowanie, brak
+    # zmiany enumu schematu). Rodzaj etykiety frontendu ('source') wyprowadzany
+    # jest niezależnie z symbolu SLD, nie z tego pola.
+    "source": OverlayElementKind.GENERATOR,
+    "Source": OverlayElementKind.GENERATOR,
     "switch": OverlayElementKind.DEVICE,
     "Switch": OverlayElementKind.DEVICE,
     "breaker": OverlayElementKind.DEVICE,
@@ -267,6 +274,13 @@ def _extract_element_metrics(
         "loading_pct": ("LOADING_PCT", "%", "fixed1"),
         "i_a": ("I_A", "A", "fixed1"),
         "s_mva": ("S_MVA", "MVA", "fixed2"),
+        # LF-KONTRAKT (V12K-161): domknięcie kontraktu wyników rozpływu —
+        # wielkości pochodne (bilans węzła / różnica napięć) liczone w warstwie
+        # interpretacji kanonicznej (wzorzec loading_pct), ZERO fizyki tutaj.
+        # cosφ = |P|/|S|; ΔU = |U_from|−|U_to| (kV) oraz (u_from−u_to)·100 [%U_n].
+        "cos_phi": ("COS_PHI", "", "fixed2"),
+        "delta_u_kv": ("DELTA_U_KV", "kV", "fixed2"),
+        "delta_u_pct": ("DELTA_U_PCT", "%", "fixed2"),
         # V12K-089: metryki overlay OLTC (pozycja koncowa zaczepu + liczba
         # przelaczen) z `oltc_control`. Obecne tylko na transformatorach z
         # regulacja — reszta bez zmian (determinizm). format_hint "fixed0"

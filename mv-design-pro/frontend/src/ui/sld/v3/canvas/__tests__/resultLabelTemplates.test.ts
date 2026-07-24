@@ -28,19 +28,35 @@ function metric(value: number, unit: string, hint = 'fixed2'): RawMetricValue {
 }
 
 describe('resultLabelTemplates — rejestr treści (analiza × klasa elementu)', () => {
-  it('rozpływ · linia/kabel: obciążenie→I→P→Q w kolejności priorytetu', () => {
+  it('rozpływ · linia/kabel: obciążenie→I→P→Q→ΔU→cosφ w kolejności priorytetu', () => {
+    // LF-KONTRAKT (V12K-161): ΔU% i cosφ domknięte w kontrakcie i dopięte na
+    // końcu rejestru (append — priorytet L1/L2 obciążenia bez zmian).
     const specs = selectResultLabelSpecs('load_flow', 'branch');
-    expect(codesOf(specs)).toEqual(['LOADING_PCT', 'I_A', 'P_MW', 'Q_Mvar']);
-    expect(prefixesOf(specs)).toEqual(['obc.', 'I', 'P', 'Q']);
+    expect(codesOf(specs)).toEqual([
+      'LOADING_PCT',
+      'I_A',
+      'P_MW',
+      'Q_Mvar',
+      'DELTA_U_PCT',
+      'COS_PHI',
+    ]);
+    expect(prefixesOf(specs)).toEqual(['obc.', 'I', 'P', 'Q', 'ΔU', 'cosφ']);
+    // ΔU formatowane jak skalar z jednostką; cosφ bezwymiarowe (bez jednostki).
+    expect(specs[4].format(metric(3.2, '%', 'fixed2'))).toBe('3,20 %');
+    expect(specs[5].format(metric(0.98, '', 'fixed2'))).toBe('0,98');
   });
 
-  it('rozpływ · źródło/DER: P→Q→S (P i Q ZE ZNAKIEM — kierunek generacji/poboru)', () => {
+  it('rozpływ · źródło/DER: P→Q→S→cosφ (P i Q ZE ZNAKIEM — kierunek generacji/poboru)', () => {
+    // LF-KONTRAKT (V12K-161): cosφ źródła (pochodna |P|/|S| bilansu węzła) dopięte
+    // na końcu rejestru; P/Q/S bez zmian.
     const specs = selectResultLabelSpecs('load_flow', 'source');
-    expect(codesOf(specs)).toEqual(['P_MW', 'Q_Mvar', 'S_MVA']);
+    expect(codesOf(specs)).toEqual(['P_MW', 'Q_Mvar', 'S_MVA', 'COS_PHI']);
     // P i Q formatowane ze znakiem (formatSignedScalar), S bez znaku (formatScalar).
     expect(specs[0].format(metric(5.648, 'MW', 'fixed4'))).toBe('+5,6480 MW');
     expect(specs[1].format(metric(-0.92, 'Mvar', 'fixed2'))).toBe('-0,92 Mvar');
     expect(specs[2].format(metric(5.72, 'MVA'))).toBe('5,72 MVA');
+    // cosφ bezwymiarowe — sam skalar, bez wiszącej spacji po pustej jednostce.
+    expect(specs[3].format(metric(0.95, '', 'fixed2'))).toBe('0,95');
   });
 
   it('rozpływ · transformator: obciążenie→S→ΔP (zaczep osobno przez badge OLTC)', () => {

@@ -146,6 +146,16 @@ Standard metric codes used across all analysis types:
 | `ANGLE_DEG` | Voltage angle | deg |
 | `LOSSES_P_MW` | Active power losses | MW |
 | `LOSSES_Q_Mvar` | Reactive power losses | Mvar |
+| `COS_PHI` | Power factor (\|P\|/\|S\|, derived) | — |
+| `DELTA_U_KV` | Branch voltage drop \|U_from\|−\|U_to\| (derived) | kV |
+| `DELTA_U_PCT` | Branch voltage drop (u_from−u_to)·100 (derived) | % |
+
+> **LF-KONTRAKT (V12K-161)** — the load-flow path additionally emits `element_results`
+> rows of type `Source` (external grid / DER) carrying `P_MW`/`Q_Mvar`/`S_MVA`/`COS_PHI`
+> from the source node's balance (solver node injection; `S`/`cosφ` derived), plus
+> per-branch `LOSSES_P_MW`/`LOSSES_Q_Mvar` (pass-through of the FROZEN
+> `PowerFlowBranchResult`) and derived `DELTA_U_KV`/`DELTA_U_PCT`/`COS_PHI`. All additive;
+> the FROZEN `PowerFlowResult` API is untouched.
 
 ## 7. Badge Severity Levels
 
