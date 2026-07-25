@@ -24,6 +24,7 @@ from application.eligibility_service import EligibilityService
 from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
 from domain.canonical_operations import resolve_operation_name
+from domain.readiness_bridge import opis_kanoniczny
 from enm.canonical_analysis import run_power_flow_now, run_short_circuit_now
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
@@ -227,8 +228,18 @@ async def get_engineering_readiness(case_id: str) -> dict[str, Any]:
             "message_pl": issue.message_pl,
             "wizard_step_hint": issue.wizard_step_hint,
             "suggested_fix": issue.suggested_fix,
-            "fix_action": (issue.fix_action.model_dump(mode="json") if issue.fix_action else None),
+            "fix_action": (
+                issue.fix_action.model_dump(mode="json") if issue.fix_action else None
+            ),
         }
+        # V12K-206 (karta F-K6, znalezisko Z8): DROGA kanonu do UI. Kanoniczny rejestr
+        # kodow gotowosci nie mial dotad zadnego konsumenta w czasie dzialania — sygnal
+        # szedl wylacznie z walidatora ENM, w innej przestrzeni nazw. Pola kanoniczne sa
+        # ADDYTYWNE i wystepuja TYLKO tam, gdzie odwzorowanie jest rzetelne (ten sam
+        # warunek); brak odwzorowania nie podstawia cudzej tresci.
+        kanon = opis_kanoniczny(issue.code)
+        if kanon is not None:
+            item.update(kanon)
         issues_out.append(item)
 
     by_severity = empty_severity_counts()
@@ -366,10 +377,14 @@ _OP_DISPATCH = {
         data.get("ref_id", ""),
     ),
     "create_measurement": lambda enm, data: create_measurement(enm, data),
-    "delete_measurement": lambda enm, data: delete_measurement(enm, data.get("ref_id", "")),
+    "delete_measurement": lambda enm, data: delete_measurement(
+        enm, data.get("ref_id", "")
+    ),
     "attach_protection": lambda enm, data: attach_protection(enm, data),
     "update_protection": lambda enm, data: update_protection(enm, data),
-    "detach_protection": lambda enm, data: detach_protection(enm, data.get("ref_id", "")),
+    "detach_protection": lambda enm, data: detach_protection(
+        enm, data.get("ref_id", "")
+    ),
 }
 
 
@@ -552,7 +567,9 @@ async def run_short_circuit(case_id: str, request: Request) -> dict[str, Any]:
         "case_id": case_id,
         "enm_revision": enm.header.revision,
         "enm_hash": compute_enm_hash(enm),
-        "analysis_type": (run.raw_result or {}).get("analysis_type", "short_circuit_3f"),
+        "analysis_type": (run.raw_result or {}).get(
+            "analysis_type", "short_circuit_3f"
+        ),
         "short_circuit_type": (run.raw_result or {}).get("short_circuit_type", "3F"),
         "reporting_status": (run.raw_result or {}).get("reporting_status"),
         "proof_status": (run.raw_result or {}).get("proof_status"),
@@ -615,7 +632,9 @@ async def get_wizard_state(case_id: str) -> dict[str, Any]:
 
 
 @router.post("/{case_id}/wizard/apply-step")
-async def wizard_apply_step(case_id: str, req: WizardStepRequestModel) -> dict[str, Any]:
+async def wizard_apply_step(
+    case_id: str, req: WizardStepRequestModel
+) -> dict[str, Any]:
     """Atomic step application: preconditions → mutate → postconditions.
 
     If preconditions fail → original ENM unchanged, success=False.

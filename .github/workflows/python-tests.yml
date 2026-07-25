@@ -68,6 +68,11 @@ jobs:
       - name: Readiness Codes Guard
         working-directory: mv-design-pro
         run: python scripts/readiness_codes_guard.py
+      # V12K-206 (karta F-K6): guard KONSUMPCJI kodow gotowosci. Wymaga zaleznosci
+      # backendu (importuje rejestr), dlatego biegnie tu, a nie w workflow guardow.
+      - name: Readiness Consumption Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/readiness_consumption_guard.py
       - name: Catalog Binding Guard
         working-directory: mv-design-pro
         run: python scripts/catalog_binding_guard.py

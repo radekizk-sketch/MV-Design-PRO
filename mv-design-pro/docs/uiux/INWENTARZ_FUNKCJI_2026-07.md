@@ -306,6 +306,7 @@ domknięty przy karcie F-K3). Metoda bez zmian: grep w żywym repo, każdy wpis 
 | `GET /api/quality/connection-conditions?run_id=` | `api/quality_analysis_runs.py` | Ocena warunków przyłączenia OSD wobec rozpływu |
 | `GET /api/quality/design-verdict?case_id=` | `api/quality_analysis_runs.py` | Agregat werdyktu projektowego (jedyna końcówka rodziny per PRZYPADEK — obejmuje wiele biegów) |
 | `GET /api/protection/overcurrent-settings?run_id=` albo `?case_id=` | `api/protection_overcurrent_settings.py` (V12K-204) | Nastawy nadprądowe w postaci prezentacyjnej: wartość albo jawny stan NIEDOSTĘPNA z powodem i akcją naprawczą (dług V12K-189) |
+| `GET /api/readiness/registry` | `api/readiness_registry.py` (V12K-206) | Kanoniczny rejestr kodów gotowości (64 kody) RAZEM z lukami: odwzorowanie kodów walidatora ENM na kanon, kody bez odpowiednika z powodem, rezerwacje kodów bez emitera — jedno źródło treści naprawczej (Z8) |
 
 ### 9.4 Dodane — frontend (§5b)
 
@@ -323,5 +324,6 @@ domknięty przy karcie F-K3). Metoda bez zmian: grep w żywym repo, każdy wpis 
 | Warunki przyłączenia OSD jako kryterium: pozycji nie było → ✔ analiza + API + UI | `warunki_przylaczenia.py`; `/api/quality/connection-conditions`; `ui2/wyniki/jakosc/` | Z2 domknięte |
 | Werdykt projektowy (agregat E7): pozycji nie było → ✔ analiza + API + UI | `werdykt_projektowy.py`; `/api/quality/design-verdict`; `ui2/wyniki/werdykt/` | Z3 domknięte |
 | Nastawy nadprądowe: solver ✔ / API ✖ / UI ✖ → ✔ solver + API + UI | `overcurrent/settings_presentation.py`; `/api/protection/overcurrent-settings`; `ui2/wyniki/koordynacja/SekcjaNastaw.tsx` | Dług V12K-189 domknięty: nastawa niedostępna ma stan, powód i akcję naprawczą |
+| Kanoniczny rejestr kodów gotowości: rejestr ✔ / konsument runtime ✖ → ✔ rejestr + API + UI | `domain/readiness_bridge.py`; `/api/readiness/registry` + wzbogacone `engineering-readiness`; `ui/engineering-readiness/ReadinessLivePanel.tsx` (kolejność napraw po kanonicznym priorytecie) | Z8 domknięte: kanon ma drogę do projektanta, luki są policzalne, guard pilnuje konsumpcji |
 | Przypadek pracy toru DER w doborze kabla: solver ✔ / API ✖ / UI ✖ → ✔ solver + API + UI | `der_selection_preview.propose_mv_cable`; `/api/solver/der-selection-preview`; `ui2/kreatory/zrodlo-oze/DoborToruSn.tsx` | Dług V12K-190 domknięty: charakter Q zmienia dobrany przekrój |
 | Kryteria POZA automatem (selektywność zabezpieczeń, wytrzymałość aparatury na całym modelu, korekta obciążalności wg warunków ułożenia, ekonomiczna gęstość prądu) | `werdykt_projektowy.ZAKRES_POZA_AUTOMATEM` | Luki są WIDOCZNE w produkcie, nie tylko w dokumentach — nie da się ich przeoczyć |

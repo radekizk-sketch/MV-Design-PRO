@@ -35,6 +35,7 @@ from api.protection_overcurrent_settings import (
     router as protection_overcurrent_settings_router,
 )
 from api.quality_analysis_runs import router as quality_analysis_runs_router
+from api.readiness_registry import router as readiness_registry_router
 from api.reference_engine import router as reference_engine_router
 from api.reference_networks import router as reference_networks_router
 from api.reference_patterns import router as reference_patterns_router
@@ -134,6 +135,8 @@ app.include_router(protection_comparisons_router)
 app.include_router(protection_analysis_runs_router, prefix="/api")
 # Karta F-K5 (dlug V12K-189): prezentacja nastaw, w tym NIEDOSTEPNYCH, z akcja naprawcza.
 app.include_router(protection_overcurrent_settings_router)
+# Karta F-K6 (V12K-206): kanoniczny rejestr kodow gotowosci jako jedno zrodlo tresci.
+app.include_router(readiness_registry_router)
 app.include_router(reference_patterns_router)
 app.include_router(sld_router)
 app.include_router(station_templates_router)

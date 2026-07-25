@@ -196,7 +196,12 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         category=OperationCategory.OZE_NN,
         description_pl="Dodanie źródła przekształtnikowego PV, BESS lub FW",
         target_layer="Domain / NetworkModel",
-        required_fields=("source_technology", "connection_variant", "station_ref", "bus_nn_ref"),
+        required_fields=(
+            "source_technology",
+            "connection_variant",
+            "station_ref",
+            "bus_nn_ref",
+        ),
         optional_fields=(
             "placement",
             "existing_field_ref",
@@ -493,7 +498,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Nieprawidłowe napięcie źródła zasilania",
         fix_action_id="fix_source_voltage",
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "voltage_kv"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "voltage_kv",
+        },
     ),
     "source.sk3_invalid": ReadinessCodeSpec(
         code="source.sk3_invalid",
@@ -566,7 +575,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Odcinek SN nie ma przypisanego katalogu",
         fix_action_id="fix_line_catalog",
-        fix_navigation={"panel": "inspector", "tab": "katalog", "modal": "select_catalog"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "select_catalog",
+        },
     ),
     # Stations
     "station.type_invalid": ReadinessCodeSpec(
@@ -585,7 +598,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Stacja nie ma zdefiniowanego napięcia",
         fix_action_id="fix_station_voltage",
-        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "voltage_kv"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "voltage_kv",
+        },
     ),
     "station.nn_outgoing_min_1": ReadinessCodeSpec(
         code="station.nn_outgoing_min_1",
@@ -613,7 +630,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Transformator nie ma przypisanego katalogu",
         fix_action_id="fix_transformer_catalog",
-        fix_navigation={"panel": "inspector", "tab": "katalog", "modal": "select_catalog"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "select_catalog",
+        },
     ),
     "transformer.connection_missing": ReadinessCodeSpec(
         code="transformer.connection_missing",
@@ -731,7 +752,8 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         priority=3,
         level=ReadinessLevel.WARNING,
         message_pl=(
-            "Brak prądu znamionowego pola — uzupełnij, by wyznaczyć nastawę " "rozruchową I> (51)"
+            "Brak prądu znamionowego pola — uzupełnij, by wyznaczyć nastawę "
+            "rozruchową I> (51)"
         ),
         fix_action_id="fix_protection_nominal_current",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "in_a"},
@@ -777,7 +799,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "mocy w punkcie przyłączenia"
         ),
         fix_action_id="fix_connection_cos_phi",
-        fix_navigation={"panel": "projekt", "tab": "przylaczenie", "focus": "wymagany_cos_phi"},
+        fix_navigation={
+            "panel": "projekt",
+            "tab": "przylaczenie",
+            "focus": "wymagany_cos_phi",
+        },
     ),
     "connection.power_flow_missing": ReadinessCodeSpec(
         code="connection.power_flow_missing",
@@ -840,7 +866,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.WARNING,
         message_pl="Brak danych uziomu (Z_E, r) — uzupełnij, by policzyć napięcia dotykowe/krokowe",
         fix_action_id="fix_earthing_electrode",
-        fix_navigation={"panel": "inspector", "tab": "uziemienie", "focus": "earth_electrode"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "uziemienie",
+            "focus": "earth_electrode",
+        },
     ),
     # Study Case / Analysis
     "study_case.missing_base_snapshot": ReadinessCodeSpec(
@@ -914,7 +944,11 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         level=ReadinessLevel.BLOCKER,
         message_pl="Segment lub transformator wymaga referencji katalogowej przed utworzeniem",
         fix_action_id="fix_catalog_select",
-        fix_navigation={"panel": "inspector", "tab": "katalog", "modal": "CatalogPicker"},
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
     ),
     # Import — mandatory catalog mapping
     "import.catalog_mapping_required": ReadinessCodeSpec(
@@ -1056,15 +1090,185 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
             "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
         },
     ),
+    # ------------------------------------------------------------------
+    # Zrodla nN (karta F-K6, V12K-206). Te kody istnialy DO TEJ PORY WYLACZNIE
+    # w tablicy frontu (`ui/engineering-readiness/nnSourceReadinessCodes.ts`),
+    # ktora nie miala ANI emitera w backendzie, ANI konsumenta produkcyjnego
+    # (uzywaly jej tylko testy struktury). Front nie moze miec wlasnego rejestru
+    # gotowosci, bo tylko backend zna stan modelu — dlatego tresc inzynierska
+    # zostala przeniesiona TUTAJ, do jedynego kanonu, a tablica frontu usunieta.
+    # Kody sa na razie ZAREZERWOWANE (brak emitera w walidatorze ENM); rejestr
+    # rezerwacji z powodem trzyma `domain/readiness_bridge.py`, a guard
+    # `readiness_consumption_guard.py` pilnuje, by rezerwacja nie byla cicha.
+    # ------------------------------------------------------------------
+    "nn.source.field_missing": ReadinessCodeSpec(
+        code="nn.source.field_missing",
+        area=ReadinessArea.SOURCES,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Zrodlo nN nie jest przypiete do pola zrodlowego",
+        fix_action_id="fix_nn_source_field",
+        fix_navigation={"panel": "inspector", "tab": "pole", "focus": "field_ref"},
+    ),
+    "nn.source.switch_missing": ReadinessCodeSpec(
+        code="nn.source.switch_missing",
+        area=ReadinessArea.SOURCES,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Pole zrodlowe nN nie posiada aparatu laczeniowego",
+        fix_action_id="fix_nn_source_switch",
+        fix_navigation={"panel": "inspector", "tab": "pole", "focus": "switch_kind"},
+    ),
+    "nn.source.catalog_missing": ReadinessCodeSpec(
+        code="nn.source.catalog_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Zrodlo nN nie ma przypisanego katalogu urzadzenia",
+        fix_action_id="fix_nn_source_catalog",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
+    ),
+    "nn.source.parameters_missing": ReadinessCodeSpec(
+        code="nn.source.parameters_missing",
+        area=ReadinessArea.SOURCES,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Zrodlo nN nie ma wymaganych parametrow elektrycznych",
+        fix_action_id="fix_nn_source_parameters",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "rated_power",
+        },
+    ),
+    "nn.voltage_missing": ReadinessCodeSpec(
+        code="nn.voltage_missing",
+        area=ReadinessArea.STATIONS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Napiecie szyny nN nie jest okreslone",
+        fix_action_id="fix_nn_bus_voltage",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "voltage_nn_kv",
+        },
+    ),
+    "pv.control_mode_missing": ReadinessCodeSpec(
+        code="pv.control_mode_missing",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Falownik PV nie ma okreslonego trybu regulacji",
+        fix_action_id="fix_pv_control_mode",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "regulacja",
+            "focus": "control_mode",
+        },
+    ),
+    "bess.energy_module_missing": ReadinessCodeSpec(
+        code="bess.energy_module_missing",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Falownik BESS nie ma przypisanego modulu magazynu energii",
+        fix_action_id="fix_bess_storage_catalog",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
+    ),
+    "bess.soc_limits_invalid": ReadinessCodeSpec(
+        code="bess.soc_limits_invalid",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Ograniczenia SOC magazynu BESS sa nieprawidlowe "
+            "(min >= max albo poza zakresem 0-100%)"
+        ),
+        fix_action_id="fix_bess_soc_limits",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "soc_min_percent",
+        },
+    ),
+    "ups.backup_time_invalid": ReadinessCodeSpec(
+        code="ups.backup_time_invalid",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Czas podtrzymania UPS jest nieprawidlowy (musi byc > 0)",
+        fix_action_id="fix_ups_backup_time",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "parametry",
+            "focus": "backup_time_min",
+        },
+    ),
+    "nn.switch.catalog_ref_missing": ReadinessCodeSpec(
+        code="nn.switch.catalog_ref_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl="Aparat laczeniowy pola nN nie ma przypisanego katalogu",
+        fix_action_id="fix_nn_switch_catalog",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
+    ),
+    "nn.measurement.required_missing": ReadinessCodeSpec(
+        code="nn.measurement.required_missing",
+        area=ReadinessArea.SOURCES,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl="Zrodlo nN nie ma przypisanego punktu pomiaru energii",
+        fix_action_id="fix_nn_source_measurement",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "pomiary",
+            "focus": "measurement_point",
+        },
+    ),
+    "genset.fuel_type_missing": ReadinessCodeSpec(
+        code="genset.fuel_type_missing",
+        area=ReadinessArea.GENERATORS,
+        priority=4,
+        level=ReadinessLevel.INFO,
+        message_pl="Agregat nie ma okreslonego rodzaju paliwa",
+        fix_action_id="fix_genset_fuel_type",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "fuel_type"},
+    ),
 }
 
 
 def get_blockers_for_analysis(analysis_type: str) -> tuple[str, ...]:
     """Return readiness code keys that block a specific analysis type."""
     area_map = {
-        "SC_3F": {ReadinessArea.TOPOLOGY, ReadinessArea.SOURCES, ReadinessArea.CATALOGS},
-        "SC_2F": {ReadinessArea.TOPOLOGY, ReadinessArea.SOURCES, ReadinessArea.CATALOGS},
-        "SC_1F": {ReadinessArea.TOPOLOGY, ReadinessArea.SOURCES, ReadinessArea.CATALOGS},
+        "SC_3F": {
+            ReadinessArea.TOPOLOGY,
+            ReadinessArea.SOURCES,
+            ReadinessArea.CATALOGS,
+        },
+        "SC_2F": {
+            ReadinessArea.TOPOLOGY,
+            ReadinessArea.SOURCES,
+            ReadinessArea.CATALOGS,
+        },
+        "SC_1F": {
+            ReadinessArea.TOPOLOGY,
+            ReadinessArea.SOURCES,
+            ReadinessArea.CATALOGS,
+        },
         "LOAD_FLOW": {
             ReadinessArea.TOPOLOGY,
             ReadinessArea.SOURCES,
@@ -1132,7 +1336,9 @@ class CutPortPolicy(enum.Enum):
 
 
 class TieBreaker(enum.Enum):
-    SORTUJ_PO_ELEMENT_ID_NASTEPNIE_PO_PORT_ID = "SORTUJ_PO_ELEMENT_ID_NASTEPNIE_PO_PORT_ID"
+    SORTUJ_PO_ELEMENT_ID_NASTEPNIE_PO_PORT_ID = (
+        "SORTUJ_PO_ELEMENT_ID_NASTEPNIE_PO_PORT_ID"
+    )
 
 
 class EmbeddingContinuity(enum.Enum):
