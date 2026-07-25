@@ -8,7 +8,7 @@
  * ostrzeżenie; twarde walidacje D1 bronią przed niemożliwym po stronie backendu.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import type { ConverterType } from '../../../ui/catalog/types';
 import {
@@ -20,7 +20,10 @@ import {
   RzadWartosci,
 } from '../rama';
 import {
+  fetchCableLayingConditions,
   fetchDerSelectionPreview,
+  type CableLayingConditions,
+  type CableLayingConditionsCatalog,
   type DerSelectionPreviewResponse,
   type ReactiveCharacter,
 } from './derSelectionApi';
@@ -47,6 +50,8 @@ export interface DoborToruSnProps {
   derSn: DerSnFormData;
   onCableLengthChange: (value: number | null) => void;
   onVectorGroupChange: (value: string) => void;
+  /** V12K-207: wybór warunków ułożenia kabla — jedzie do modelu razem z torem. */
+  onLayingConditionsChange: (value: CableLayingConditions | null) => void;
   onZastosuj: (response: DerSelectionPreviewResponse) => void;
   applied: boolean;
   testid?: string;
@@ -59,6 +64,7 @@ export function DoborToruSn({
   derSn,
   onCableLengthChange,
   onVectorGroupChange,
+  onLayingConditionsChange,
   onZastosuj,
   applied,
   testid = 'mvd-kreator-oze-dobor',
@@ -74,8 +80,23 @@ export function DoborToruSn({
   const [response, setResponse] = useState<DerSelectionPreviewResponse | null>(null);
   const [ladowanie, setLadowanie] = useState(false);
   const [blad, setBlad] = useState<string | null>(null);
+  // V12K-207: lista warunków ułożenia POCHODZI Z BACKENDU (współczynniki to dane
+  // doborowe o udokumentowanej podstawie, nie tekst interfejsu).
+  const [warunkiKatalog, setWarunkiKatalog] = useState<CableLayingConditionsCatalog | null>(null);
+  const [warunkiBlad, setWarunkiBlad] = useState(false);
+
+  useEffect(() => {
+    const abort = new AbortController();
+    fetchCableLayingConditions({ signal: abort.signal })
+      .then((katalog) => setWarunkiKatalog(katalog))
+      .catch(() => {
+        if (!abort.signal.aborted) setWarunkiBlad(true);
+      });
+    return () => abort.abort();
+  }, []);
 
   const cableLength = derSn.mv_cable_length_km;
+  const wybraneWarunki = derSn.mv_cable_laying_conditions;
   const gotoweWejscie =
     Boolean(converter) &&
     snBusVoltageKv != null &&
@@ -95,6 +116,7 @@ export function DoborToruSn({
         cableReservePu: rezerwaKabel ?? undefined,
         maxDeltaUPct: maxDeltaU ?? undefined,
         reactiveCharacter: charakterQ,
+        layingConditions: wybraneWarunki,
       });
       const wynik = await fetchDerSelectionPreview(request);
       setResponse(wynik);
@@ -114,7 +136,18 @@ export function DoborToruSn({
     rezerwaKabel,
     maxDeltaU,
     charakterQ,
+    wybraneWarunki,
   ]);
+
+  const zmienWarunki = useCallback(
+    (nazwa: string) => {
+      // Warunki katalogowe = brak korekty: wtedy pole nie jedzie do modelu w ogóle
+      // (tor pozostaje bit-identyczny z dotychczasowym).
+      const domyslna = warunkiKatalog?.default_name ?? 'warunki_katalogowe';
+      onLayingConditionsChange(nazwa === domyslna ? null : { set_name: nazwa });
+    },
+    [onLayingConditionsChange, warunkiKatalog],
+  );
 
   const tr = response?.transformer.proposal ?? null;
   const grupyKatalogu = response?.transformer.available_vector_groups ?? [];
@@ -172,6 +205,22 @@ export function DoborToruSn({
       {!charakterQMaZnaczenie(cosPhi) ? (
         <KreatorInfo>{T.doborCharakterQBezZnaczenia}</KreatorInfo>
       ) : null}
+      {warunkiKatalog ? (
+        <KreatorSiatka kolumny={1}>
+          <PoleWyboru
+            etykieta={T.doborWarunkiUlozenia}
+            wartosc={wybraneWarunki?.set_name ?? warunkiKatalog.default_name}
+            onZmiana={zmienWarunki}
+            opcje={warunkiKatalog.sets.map((zestaw) => ({
+              id: zestaw.name,
+              etykieta: zestaw.label_pl,
+            }))}
+            pomoc={`${T.doborWarunkiUlozeniaPomoc} ${warunkiKatalog.limitation_pl}`}
+            testid={`${testid}-warunki-ulozenia`}
+          />
+        </KreatorSiatka>
+      ) : null}
+      {warunkiBlad ? <KreatorInfo>{T.doborWarunkiUlozeniaNiedostepne}</KreatorInfo> : null}
       <KreatorSiatka kolumny={3}>
         <PoleLiczbowe
           etykieta={T.doborRezerwaTr}
@@ -260,7 +309,10 @@ export function DoborToruSn({
                   etykieta={T.doborZmianaNapiecia(kabel.is_voltage_rise === true)}
                   wartosc={`${Math.abs(kabel.delta_u_pct).toFixed(2)} %`}
                 />
-                <RzadWartosci etykieta="Obciążalność Iz" wartosc={`${kabel.rated_current_a} A`} />
+                <RzadWartosci
+                  etykieta={T.doborObciazalnoscKatalogowa}
+                  wartosc={`${kabel.rated_current_a} A`}
+                />
                 <RzadWartosci
                   etykieta={T.doborProgKabel}
                   wartosc={
@@ -269,6 +321,20 @@ export function DoborToruSn({
                       : '—'
                   }
                 />
+                {/* V12K-207: obciążalność po korekcie warunków ułożenia POKAZUJEMY OBOK
+                    katalogowej i tylko wtedy, gdy korekta faktycznie działa — projektant
+                    musi widzieć, ile zabrała. Obie liczby liczy backend. */}
+                {kabel.derating_total != null && kabel.derating_total !== 1 ? (
+                  <RzadWartosci
+                    etykieta={T.doborObciazalnoscSkorygowana}
+                    wartosc={
+                      kabel.effective_ampacity_a != null
+                        ? `${kabel.effective_ampacity_a.toFixed(1)} A `
+                          + `(× ${kabel.derating_total.toFixed(4)})`
+                        : '—'
+                    }
+                  />
+                ) : null}
               </KreatorSiatka>
               {kabel.is_voltage_rise === true ? (
                 <KreatorInfo>{T.doborWzrostInfo}</KreatorInfo>
@@ -288,6 +354,16 @@ export function DoborToruSn({
                 }
               />
             </KreatorSiatka>
+          ) : null}
+
+          {/* V12K-207: JAWNE założenie obciążalności — także gdy nie ma propozycji.
+              Bez tego projektant nie wie, że zamiast szukać grubszego kabla może
+              poprawić warunki ułożenia trasy. Treść w całości z backendu. */}
+          {response.cable?.derating_assumption_pl ? (
+            <RzadWartosci
+              etykieta={T.doborZalozenieObciazalnosci}
+              wartosc={response.cable.derating_assumption_pl}
+            />
           ) : null}
 
           {bledyBackendu.map((msg) => (

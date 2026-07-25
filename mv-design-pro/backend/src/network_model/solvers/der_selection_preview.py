@@ -23,6 +23,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from network_model.solvers.cable_ampacity_derating import (
+    WARUNKI_KATALOGOWE,
+    WspolczynnikiObciazalnosci,
+    obciazalnosc_skorygowana,
+)
 from network_model.solvers.cable_voltage_drop import (
     CableVoltageDropInput,
     CableVoltageDropResult,
@@ -302,6 +307,11 @@ class CableSelectionInput:
     # fault_duration_s — czas wylaczenia zabezpieczenia przy tym pradzie [s]
     ith_a: float | None = None
     fault_duration_s: float | None = None
+    # Karta F-K7 (znalezisko Z6): wspolczynniki korekcyjne obciazalnosci wg warunkow
+    # ULOZENIA. `None` znaczy „warunki katalogowe" — wynik jest wtedy BIT-IDENTYCZNY
+    # z dotychczasowym, ale zalozenie jest jawne w sladzie (dotad nie bylo nigdzie
+    # napisane, ze dobor obowiazuje dla warunkow odniesienia producenta).
+    derating: WspolczynnikiObciazalnosci | None = None
 
 
 @dataclass(frozen=True)
@@ -318,6 +328,11 @@ class CableProposal:
     # prezentacji musiałaby sama interpretować znak, a dla toru DER wzrost jest
     # regułą, nie wyjątkiem — kreator ma nazwać wielkość, którą pokazuje.
     is_voltage_rise: bool = False
+    # V12K-207 (karta F-K7): obciazalnosc SKORYGOWANA warunkami ulozenia obok
+    # katalogowej. Dwie liczby, nie jedna — projektant musi widziec, ile zabrala
+    # korekta, a nie tylko wynik po korekcie.
+    effective_ampacity_a: float = 0.0
+    derating_total: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -336,6 +351,10 @@ class CableSelectionResult:
     # ΔU jest spadkiem, czy wzrostem, i czy wybrano właściwy przekrój).
     flow_direction: str = "generation"
     reactive_character: str = "inductive"
+    # V12K-207: warunki ulozenia, dla ktorych policzono obciazalnosc, i jawne zalozenie.
+    derating_set: str = WARUNKI_KATALOGOWE.nazwa
+    derating_total: float = 1.0
+    derating_assumption_pl: str = ""
 
 
 def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
@@ -360,6 +379,9 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
 
     reserve = data.reserve_pu if data.reserve_pu >= 0 else 0.0
     required_ampacity = data.transformer_current_a * (1.0 + reserve)
+    # F-K7: brak wspolczynnikow == warunki katalogowe (iloczyn 1,0), wiec wynik jest
+    # bit-identyczny z dotychczasowym; rozni sie tylko tym, ze zalozenie jest jawne.
+    derating = data.derating or WARUNKI_KATALOGOWE
 
     rejected: list[RejectedCandidate] = []
     # Kandydat razem z CALYM wynikiem ΔU — znak (spadek/wzrost) nie jest wtedy
@@ -379,14 +401,26 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
                 reactive_character=data.reactive_character,
             )
         )
-        if candidate.rated_current_a + _EPS < required_ampacity:
+        # F-K7 (Z6): kryterium porownuje prog z obciazalnoscia SKORYGOWANA warunkami
+        # ulozenia. Obciazalnosc katalogowa obowiazuje dla warunkow odniesienia
+        # producenta; w ziemi, w wiazce i w grupie kabel przenosi MNIEJ, wiec dobor na
+        # samej wartosci katalogowej byl optymistyczny.
+        obciazalnosc_efektywna = obciazalnosc_skorygowana(candidate.rated_current_a, derating)
+        if obciazalnosc_efektywna + _EPS < required_ampacity:
+            powod = (
+                f"Obciążalność {candidate.rated_current_a:g} A"
+                if derating.bez_korekty
+                else (
+                    f"Obciążalność skorygowana {obciazalnosc_efektywna:.1f} A "
+                    f"(katalogowa {candidate.rated_current_a:g} A × {derating.iloczyn:.4f})"
+                )
+            )
             rejected.append(
                 RejectedCandidate(
                     candidate.catalog_ref,
                     candidate.name,
                     "przekroj_niewystarczajacy",
-                    f"Obciążalność {candidate.rated_current_a:g} A poniżej progu "
-                    f"{required_ampacity:g} A.",
+                    f"{powod} poniżej progu {required_ampacity:g} A.",
                 )
             )
             continue
@@ -476,6 +510,9 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
             error_pl=error_pl,
             flow_direction=data.flow_direction,
             reactive_character=data.reactive_character,
+            derating_set=derating.nazwa,
+            derating_total=derating.iloczyn,
+            derating_assumption_pl=derating.zalozenie_pl(),
         )
 
     # Najmniejszy przekrój spełniający oba warunki; remis rozstrzyga ref (determinizm).
@@ -491,6 +528,8 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
             delta_u_v=best_drop.delta_u_v,
             delta_u_pct=best_drop.delta_u_pct,
             is_voltage_rise=best_drop.is_voltage_rise,
+            effective_ampacity_a=obciazalnosc_skorygowana(best.rated_current_a, derating),
+            derating_total=derating.iloczyn,
         ),
         required_ampacity_a=required_ampacity,
         max_delta_u_pct=data.max_delta_u_pct,
@@ -499,6 +538,9 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
         error_pl=None,
         flow_direction=data.flow_direction,
         reactive_character=data.reactive_character,
+        derating_set=derating.nazwa,
+        derating_total=derating.iloczyn,
+        derating_assumption_pl=derating.zalozenie_pl(),
     )
 
 

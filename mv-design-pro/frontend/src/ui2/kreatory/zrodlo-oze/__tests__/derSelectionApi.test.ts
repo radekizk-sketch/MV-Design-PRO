@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  fetchCableLayingConditions,
   fetchDerSelectionPreview,
   type DerSelectionPreviewRequest,
 } from '../derSelectionApi';
@@ -94,5 +95,46 @@ describe('fetchDerSelectionPreview', () => {
         cable_length_km: 1,
       }),
     ).rejects.toThrow(/niedostępny/);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Karta F-K7 / V12K-207: końcówka listy warunków ułożenia kabla.
+// ---------------------------------------------------------------------------
+
+const WARUNKI = {
+  sets: [
+    {
+      name: 'warunki_katalogowe',
+      label_pl: 'Warunki katalogowe (bez korekty)',
+      f_grunt: 1.0,
+      f_wiazka: 1.0,
+      f_grupa: 1.0,
+      total: 1.0,
+      basis: 'Karta katalogowa producenta.',
+      assumption_pl: 'Obciazalnosc przyjeta dla WARUNKOW KATALOGOWYCH.',
+    },
+  ],
+  custom_name: 'wlasne',
+  default_name: 'warunki_katalogowe',
+  limitation_pl: 'System nie interpoluje miedzy zestawami.',
+};
+
+describe('fetchCableLayingConditions — warunki ułożenia z backendu (V12K-207)', () => {
+  it('czyta listę zestawów z końcówki GET (kreator nie ma własnej listy)', async () => {
+    fetchMock.mockResolvedValueOnce({ ok: true, json: async () => WARUNKI } as Response);
+    const wynik = await fetchCableLayingConditions();
+    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/solver/cable-laying-conditions');
+    expect(wynik.default_name).toBe('warunki_katalogowe');
+    expect(wynik.sets[0].total).toBe(1.0);
+    expect(wynik.limitation_pl).toContain('nie interpoluje');
+  });
+
+  it('błąd backendu → wyjątek z treścią PL (bez cichego pustego wyniku)', async () => {
+    fetchMock.mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({ detail: 'Katalog warunków niedostępny.' }),
+    } as Response);
+    await expect(fetchCableLayingConditions()).rejects.toThrow(/niedostępny/);
   });
 });

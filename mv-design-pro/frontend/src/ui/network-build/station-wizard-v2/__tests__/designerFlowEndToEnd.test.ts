@@ -36,7 +36,7 @@ import {
 } from '../interlockingRules';
 import {
   CABLE_REFERENCE_XRUHAKXS_120,
-  DEFAULT_DERATING_GROUND_THREE_PHASE,
+  LAYING_CONDITIONS_GROUND_THREE_CABLES,
   checkCableAmpacity,
   computeCableVoltageDrop,
   computeRatedCurrentFromPower,
@@ -70,6 +70,24 @@ import {
 // odwzorowuje kontrakt 1:1 (kształt jak `CableVoltageDropResponse` /
 // `CableRatedCurrentResponse`).
 function cableSolverResponse(url: string, body: Record<string, number>) {
+  if (url.endsWith('/api/solver/cable-ampacity-derating-preview')) {
+    // V12K-207: korekta obciazalnosci liczy sie w backendzie. Wspolczynniki zestawu
+    // „ziemia, 3 kable, 200 mm": 0,90 · 1,01 · 0,82 = 0,74538 (dowod liczbowy reguly
+    // w backendzie: tests/network_model/solvers/test_cable_ampacity_derating.py).
+    const total = 0.9 * 1.01 * 0.82;
+    const effective = body.rated_ampacity_a * total;
+    return {
+      rated_ampacity_a: body.rated_ampacity_a,
+      effective_ampacity_a: effective,
+      design_current_a: body.design_current_a,
+      derating_total: total,
+      derating_set: 'ziemia_3_kable_warstwa_200mm',
+      utilization_pct: (body.design_current_a / effective) * 100,
+      ok: body.design_current_a <= effective,
+      formula_ref: "I'z = Iz · f_grunt · f_wiazka · f_grupa;  I_obl ≤ I'z",
+      assumption_pl: 'Obciazalnosc skorygowana dla warunkow ulozenia (mock kontraktu).',
+    };
+  }
   if (url.endsWith('/api/solver/transformer-rated-currents-preview')) {
     const apparentVa = body.rated_power_kva * 1000;
     return {
@@ -149,10 +167,11 @@ describe('Designer Flow End-to-End — naturalny flow projektanta', () => {
     });
     expect(inA).toBeCloseTo(162.06, 1);
 
-    // Dobór kabla XRUHAKXS 120 mm² — sprawdź obciążalność.
-    const ampacityCheck = checkCableAmpacity({
+    // Dobór kabla XRUHAKXS 120 mm² — obciążalność po korekcie warunków ułożenia
+    // (V12K-207: rachunek w backendzie, warstwa prezentacji tylko pyta i pokazuje).
+    const ampacityCheck = await checkCableAmpacity({
       cable: CABLE_REFERENCE_XRUHAKXS_120,
-      factors: DEFAULT_DERATING_GROUND_THREE_PHASE,
+      layingConditionsSet: LAYING_CONDITIONS_GROUND_THREE_CABLES,
       designCurrentA: inA,
     });
     expect(ampacityCheck.ok).toBe(true);

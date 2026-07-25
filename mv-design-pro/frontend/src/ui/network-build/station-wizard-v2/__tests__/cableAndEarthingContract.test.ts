@@ -13,7 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CABLE_REFERENCE_XRUHAKXS_120,
-  DEFAULT_DERATING_GROUND_THREE_PHASE,
+  LAYING_CONDITIONS_GROUND_THREE_CABLES,
   checkCableAmpacity,
   computeCableVoltageDrop,
   checkCableShortCircuit,
@@ -23,25 +23,57 @@ import {
 // Fizyka ΔU / prądu znamionowego liczy się w backendzie; mock końcówek solvera
 // odwzorowuje kontrakt 1:1 (kształt jak `CableVoltageDropResponse` /
 // `CableRatedCurrentResponse`).
-function cableSolverResponse(url: string, body: Record<string, number>) {
-  if (url.endsWith('/api/solver/cable-rated-current-preview')) {
-    const apparentVa = (body.active_power_kw * 1000) / body.cos_phi;
+// V12K-207: wspolczynniki zestawu „ziemia, 3 kable, 200 mm" NIE sa juz stalymi frontu —
+// mock odwzorowuje wartosci backendu (0,90 · 1,01 · 0,82 = 0,74538). Dowod liczbowy
+// reguly stoi po stronie backendu (tests/network_model/solvers/test_cable_ampacity_derating.py
+// oraz tests/api/test_der_selection_preview_api.py); tutaj sprawdzamy KONTRAKT klienta.
+const MOCK_DERATING: Record<string, number> = {
+  warunki_katalogowe: 1.0,
+  ziemia_3_kable_warstwa_200mm: 0.9 * 1.01 * 0.82,
+};
+
+function cableSolverResponse(url: string, body: Record<string, unknown>) {
+  if (url.endsWith('/api/solver/cable-ampacity-derating-preview')) {
+    const zestaw =
+      (body.laying_conditions as { set_name?: string } | undefined)?.set_name
+      ?? 'warunki_katalogowe';
+    const total = MOCK_DERATING[zestaw];
+    if (total === undefined) throw new Error(`Nieznany zestaw warunkow: ${zestaw}`);
+    const rated = Number(body.rated_ampacity_a);
+    const design = Number(body.design_current_a);
+    const effective = rated * total;
     return {
-      rated_current_a: apparentVa / (Math.sqrt(3) * body.line_voltage_v),
+      rated_ampacity_a: rated,
+      effective_ampacity_a: effective,
+      design_current_a: design,
+      derating_total: total,
+      derating_set: zestaw,
+      utilization_pct: (design / effective) * 100,
+      ok: design <= effective,
+      formula_ref: "I'z = Iz · f_grunt · f_wiazka · f_grupa;  I_obl ≤ I'z",
+      assumption_pl: 'Obciazalnosc skorygowana dla warunkow ulozenia (mock kontraktu).',
+    };
+  }
+  if (url.endsWith('/api/solver/cable-rated-current-preview')) {
+    const apparentVa = (Number(body.active_power_kw) * 1000) / Number(body.cos_phi);
+    return {
+      rated_current_a: apparentVa / (Math.sqrt(3) * Number(body.line_voltage_v)),
       apparent_power_kva: apparentVa / 1000,
       formula_ref: 'I = S_n / (√3·U);  S_n = P / cosφ',
       assumptions: ['Uklad 3-fazowy symetryczny; wspolczynnik linii √3.'],
     };
   }
-  const sinPhi = Math.sqrt(1 - body.cos_phi ** 2);
-  const rTotal = body.r_ohm_per_km * body.length_km;
-  const xTotal = body.x_ohm_per_km * body.length_km;
-  const resistive = Math.sqrt(3) * body.current_a * rTotal * body.cos_phi;
-  const reactive = Math.sqrt(3) * body.current_a * xTotal * sinPhi;
+  const cosPhi = Number(body.cos_phi);
+  const currentA = Number(body.current_a);
+  const sinPhi = Math.sqrt(1 - cosPhi ** 2);
+  const rTotal = Number(body.r_ohm_per_km) * Number(body.length_km);
+  const xTotal = Number(body.x_ohm_per_km) * Number(body.length_km);
+  const resistive = Math.sqrt(3) * currentA * rTotal * cosPhi;
+  const reactive = Math.sqrt(3) * currentA * xTotal * sinPhi;
   const deltaU = resistive + reactive;
   return {
     delta_u_v: deltaU,
-    delta_u_pct: (deltaU / body.line_voltage_v) * 100,
+    delta_u_pct: (deltaU / Number(body.line_voltage_v)) * 100,
     r_total_ohm: rTotal,
     x_total_ohm: xTotal,
     delta_u_resistive_v: resistive,
@@ -56,7 +88,7 @@ beforeEach(() => {
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, number>;
+      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, unknown>;
       return { ok: true, json: async () => cableSolverResponse(url, body) } as Response;
     }),
   );
@@ -118,31 +150,54 @@ describe('computeRatedCurrentFromPower — In z mocy', () => {
   });
 });
 
-describe('checkCableAmpacity — I\'dd = Idd × f1 × f2 × kg5', () => {
-  it('Excel MT880: 285 × 0.9 × 1.01 × 0.82 = 212.43 A', () => {
-    const result = checkCableAmpacity({
+describe("checkCableAmpacity — I'z = Idd × f_grunt × f_wiazka × f_grupa (backend)", () => {
+  it('Excel MT880: 285 × 0.74538 = 212.43 A', async () => {
+    const result = await checkCableAmpacity({
       cable: CABLE_REFERENCE_XRUHAKXS_120,
-      factors: DEFAULT_DERATING_GROUND_THREE_PHASE,
+      layingConditionsSet: LAYING_CONDITIONS_GROUND_THREE_CABLES,
       designCurrentA: 162.06,
     });
     expect(result.effectiveAmpacityA).toBeCloseTo(212.43, 1);
+    expect(result.deratingTotal).toBeCloseTo(0.74538, 5);
     expect(result.ok).toBe(true);
   });
 
-  it('Warunek niespełniony gdy Iobl > I\'dd', () => {
-    const result = checkCableAmpacity({
+  it("Warunek niespełniony gdy Iobl > I'z", async () => {
+    const result = await checkCableAmpacity({
       cable: CABLE_REFERENCE_XRUHAKXS_120,
-      factors: DEFAULT_DERATING_GROUND_THREE_PHASE,
+      layingConditionsSet: LAYING_CONDITIONS_GROUND_THREE_CABLES,
       designCurrentA: 250,
     });
     expect(result.ok).toBe(false);
     expect(result.utilizationPct).toBeGreaterThan(100);
   });
 
-  it('Domyślne factors per ENEA Standard: 0.9 / 1.01 / 0.82', () => {
-    expect(DEFAULT_DERATING_GROUND_THREE_PHASE.f1_groundResistivity).toBe(0.9);
-    expect(DEFAULT_DERATING_GROUND_THREE_PHASE.f2_parallelCables).toBe(1.01);
-    expect(DEFAULT_DERATING_GROUND_THREE_PHASE.kg5_parallelGroup).toBe(0.82);
+  it('Bez warunków ułożenia obowiązuje obciążalność KATALOGOWA (jawne założenie)', async () => {
+    const result = await checkCableAmpacity({
+      cable: CABLE_REFERENCE_XRUHAKXS_120,
+      designCurrentA: 250,
+    });
+    expect(result.effectiveAmpacityA).toBeCloseTo(285, 6);
+    expect(result.deratingTotal).toBe(1);
+    expect(result.deratingSet).toBe('warunki_katalogowe');
+    expect(result.assumptionPl.length).toBeGreaterThan(0);
+    expect(result.ok).toBe(true);
+  });
+
+  it('Warstwa prezentacji NIE liczy korekty sama — pyta backend', async () => {
+    // Reguła braku fizyki w UI: mnożenie obciążalności przez współczynniki jest
+    // kryterium doborowym, więc MUSI wyjść żądanie do solvera.
+    await checkCableAmpacity({
+      cable: CABLE_REFERENCE_XRUHAKXS_120,
+      layingConditionsSet: LAYING_CONDITIONS_GROUND_THREE_CABLES,
+      designCurrentA: 162.06,
+    });
+    const wywolania = (fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
+    expect(
+      wywolania.some((call) =>
+        String(call[0]).endsWith('/api/solver/cable-ampacity-derating-preview'),
+      ),
+    ).toBe(true);
   });
 });
 

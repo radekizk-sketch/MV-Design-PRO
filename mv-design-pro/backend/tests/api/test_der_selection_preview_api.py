@@ -201,3 +201,233 @@ def test_nieznany_charakter_q_jest_odrzucany(app_client) -> None:
     )
     assert response.status_code == 422
     assert "reactive_character" in response.json()["detail"]
+
+
+# ===========================================================================
+# Karta F-K7 (znalezisko Z6, V12K-207): warunki UŁOŻENIA kabla przez API
+# ===========================================================================
+
+
+def test_lista_warunkow_ulozenia_pochodzi_z_backendu(app_client) -> None:
+    """Kreator nie może mieć własnej listy współczynników — to dane doborowe."""
+    response = app_client.get("/api/solver/cable-laying-conditions")
+    assert response.status_code == 200
+    data = response.json()
+
+    nazwy = [item["name"] for item in data["sets"]]
+    assert nazwy == sorted(nazwy), "lista musi być deterministycznie posortowana"
+    assert "warunki_katalogowe" in nazwy
+    assert "ziemia_3_kable_warstwa_200mm" in nazwy
+    assert data["default_name"] == "warunki_katalogowe"
+    assert data["custom_name"] == "wlasne"
+    # POWÓD krótkiej listy musi jechać z danymi, żeby nie wyglądała na tablicę norm.
+    assert "nie interpoluje" in data["limitation_pl"]
+
+    ziemia = next(item for item in data["sets"] if item["name"] == "ziemia_3_kable_warstwa_200mm")
+    assert ziemia["total"] == pytest.approx(0.74538, abs=1e-9)
+    assert ziemia["basis"].strip(), "zestaw bez podstawy dokumentowej nie może trafić do UI"
+
+
+def test_brak_warunkow_ulozenia_zachowuje_dawne_zachowanie(app_client) -> None:
+    """Pominięcie sekcji = warunki katalogowe: ten sam wynik + JAWNE założenie."""
+    payload = {
+        "sum_active_power_mw": 0.998,
+        "inverter_output_kv": 0.4,
+        "sn_bus_voltage_kv": 15.0,
+        "cable_length_km": 1.0,
+        "max_delta_u_pct": 2.0,
+    }
+    bez = app_client.post("/api/solver/der-selection-preview", json=payload).json()
+    jawnie = app_client.post(
+        "/api/solver/der-selection-preview",
+        json={**payload, "laying_conditions": {"set_name": "warunki_katalogowe"}},
+    ).json()
+    assert bez == jawnie
+
+    cable = bez["cable"]
+    assert cable["derating_set"] == "warunki_katalogowe"
+    assert cable["derating_total"] == pytest.approx(1.0)
+    assert "WARUNKOW KATALOGOWYCH" in cable["derating_assumption_pl"]
+    # Obciążalność skorygowana = katalogowa; obie liczby w odpowiedzi (bez mnożenia w UI).
+    assert cable["proposal"]["effective_ampacity_a"] == pytest.approx(
+        cable["proposal"]["rated_current_a"]
+    )
+    assert cable["proposal"]["derating_total"] == pytest.approx(1.0)
+
+
+def test_warunki_ziemne_podnosza_przekroj_na_realnym_katalogu(app_client) -> None:
+    """DOWÓD LICZBOWY na REALNYM katalogu, że warunki ułożenia zmieniają dobór.
+
+    ΣP = 2,4 MW ⇒ TR 2,5 MVA ⇒ I_SN = 96,2 A; rezerwa kabla 0,3 ⇒ próg 125,1 A.
+      warunki katalogowe: najmniejszy kabel 50 mm² (Iz 160 A ≥ 125,1 A) ⇒ 50 mm²
+      ziemia/3 kable:     160 × 0,74538 = 119,3 A < 125,1 A ⇒ 50 mm² ODRZUCONY ⇒ 70 mm²
+    """
+    payload = {
+        "sum_active_power_mw": 2.4,
+        "inverter_output_kv": 0.4,
+        "sn_bus_voltage_kv": 15.0,
+        "cable_length_km": 1.0,
+        "cable_reserve_pu": 0.3,
+        "max_delta_u_pct": 2.0,
+    }
+    katalogowe = app_client.post("/api/solver/der-selection-preview", json=payload).json()
+    w_ziemi = app_client.post(
+        "/api/solver/der-selection-preview",
+        json={**payload, "laying_conditions": {"set_name": "ziemia_3_kable_warstwa_200mm"}},
+    ).json()
+
+    assert katalogowe["cable"]["required_ampacity_a"] == pytest.approx(125.1, abs=0.1)
+    assert katalogowe["cable"]["proposal"]["cross_section_mm2"] == pytest.approx(50.0)
+    assert w_ziemi["cable"]["proposal"]["cross_section_mm2"] == pytest.approx(70.0)
+    # Próg prądowy się NIE zmienił — zmieniła się obciążalność kandydatów.
+    assert w_ziemi["cable"]["required_ampacity_a"] == pytest.approx(
+        katalogowe["cable"]["required_ampacity_a"]
+    )
+    assert w_ziemi["cable"]["derating_total"] == pytest.approx(0.74538, abs=1e-9)
+    propozycja = w_ziemi["cable"]["proposal"]
+    assert propozycja["effective_ampacity_a"] == pytest.approx(
+        propozycja["rated_current_a"] * 0.74538, abs=1e-6
+    )
+    # Ślad odrzucenia niesie rozbicie korekty (katalogowa × iloczyn).
+    powody = " ".join(item["reason_pl"] for item in w_ziemi["cable"]["rejected"])
+    assert "skorygowana" in powody
+    assert "0.7454" in powody
+
+
+def test_wlasne_wspolczynniki_bez_opisu_sa_odrzucane(app_client) -> None:
+    """Fail-closed: bez opisu warunków wynik doboru nie dałby się obronić w projekcie."""
+    payload = {
+        "sum_active_power_mw": 0.998,
+        "inverter_output_kv": 0.4,
+        "sn_bus_voltage_kv": 15.0,
+        "cable_length_km": 1.0,
+        "laying_conditions": {
+            "set_name": "wlasne",
+            "f_grunt": 0.85,
+            "f_wiazka": 1.0,
+            "f_grupa": 0.8,
+        },
+    }
+    response = app_client.post("/api/solver/der-selection-preview", json=payload)
+    assert response.status_code == 422
+    assert "opisu" in response.json()["detail"]
+
+
+def test_nieznany_zestaw_warunkow_jest_odrzucany_przez_api(app_client) -> None:
+    """Literówka w nazwie zestawu nie może cicho wrócić jako warunki katalogowe."""
+    response = app_client.post(
+        "/api/solver/der-selection-preview",
+        json={
+            "sum_active_power_mw": 0.998,
+            "inverter_output_kv": 0.4,
+            "sn_bus_voltage_kv": 15.0,
+            "cable_length_km": 1.0,
+            "laying_conditions": {"set_name": "ziemia_5_kabli"},
+        },
+    )
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert "Nieznany zestaw warunkow ulozenia" in detail
+    assert "warunki_katalogowe" in detail
+
+
+def test_wlasne_wspolczynniki_z_opisem_wchodza_do_doboru(app_client) -> None:
+    """Warunki spoza listy podaje projektant WPROST — z opisem, który jedzie do śladu."""
+    response = app_client.post(
+        "/api/solver/der-selection-preview",
+        json={
+            "sum_active_power_mw": 2.4,
+            "inverter_output_kv": 0.4,
+            "sn_bus_voltage_kv": 15.0,
+            "cable_length_km": 1.0,
+            "cable_reserve_pu": 0.3,
+            "laying_conditions": {
+                "set_name": "wlasne",
+                "f_grunt": 0.85,
+                "f_wiazka": 1.0,
+                "f_grupa": 0.9,
+                "opis_pl": "Ziemia, 2 obwody w rurach oslonowych, odstep 300 mm",
+            },
+        },
+    )
+    assert response.status_code == 200
+    cable = response.json()["cable"]
+    assert cable["derating_set"] == "wlasne"
+    assert cable["derating_total"] == pytest.approx(0.765, abs=1e-9)
+    assert "rurach oslonowych" in cable["derating_assumption_pl"]
+    # 160 × 0,765 = 122,4 A < 125,1 A ⇒ 50 mm² nie przechodzi także tu.
+    assert cable["proposal"]["cross_section_mm2"] == pytest.approx(70.0)
+
+
+def test_wspolczynniki_przy_nazwanym_zestawie_sa_odrzucane(app_client) -> None:
+    """Współczynniki obok nazwanego zestawu nie mogą zostać cicho zignorowane.
+
+    Nazwany zestaw ma swoje wartości — przyjęcie żądania i policzenie czegoś innego niż
+    nadawca chciał byłoby cichą zmianą jego doboru.
+    """
+    response = app_client.post(
+        "/api/solver/der-selection-preview",
+        json={
+            "sum_active_power_mw": 0.998,
+            "inverter_output_kv": 0.4,
+            "sn_bus_voltage_kv": 15.0,
+            "cable_length_km": 1.0,
+            "laying_conditions": {
+                "set_name": "ziemia_3_kable_warstwa_200mm",
+                "f_grunt": 0.5,
+            },
+        },
+    )
+    assert response.status_code == 422
+    assert "f_grunt" in response.text
+
+
+# ===========================================================================
+# Karta F-K7: koncowka korekty obciazalnosci (rachunek przeniesiony z frontu)
+# ===========================================================================
+
+
+def test_korekta_obciazalnosci_liczy_backend_z_werdyktem(app_client) -> None:
+    """Excel MT880: 285 A × 0,74538 = 212,43 A; I_obl = 162,06 A ⇒ kryterium spełnione."""
+    response = app_client.post(
+        "/api/solver/cable-ampacity-derating-preview",
+        json={
+            "rated_ampacity_a": 285.0,
+            "design_current_a": 162.06,
+            "laying_conditions": {"set_name": "ziemia_3_kable_warstwa_200mm"},
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["effective_ampacity_a"] == pytest.approx(212.4333, abs=1e-3)
+    assert data["derating_total"] == pytest.approx(0.74538, abs=1e-9)
+    assert data["ok"] is True
+    assert data["utilization_pct"] == pytest.approx(162.06 / 212.4333 * 100.0, abs=1e-3)
+    assert "ziemia" in data["assumption_pl"].lower()
+
+
+def test_korekta_obciazalnosci_bez_warunkow_daje_wartosc_katalogowa(app_client) -> None:
+    """Brak warunków = obciążalność katalogowa, ale z JAWNYM założeniem w odpowiedzi."""
+    data = app_client.post(
+        "/api/solver/cable-ampacity-derating-preview",
+        json={"rated_ampacity_a": 285.0, "design_current_a": 250.0},
+    ).json()
+    assert data["effective_ampacity_a"] == pytest.approx(285.0)
+    assert data["derating_total"] == pytest.approx(1.0)
+    assert data["derating_set"] == "warunki_katalogowe"
+    assert data["ok"] is True
+    assert "WARUNKOW KATALOGOWYCH" in data["assumption_pl"]
+
+
+def test_korekta_obciazalnosci_zglasza_przekroczenie(app_client) -> None:
+    """I_obl 250 A > I′z 212,4 A ⇒ kryterium NIESPEŁNIONE, wykorzystanie > 100 %."""
+    data = app_client.post(
+        "/api/solver/cable-ampacity-derating-preview",
+        json={
+            "rated_ampacity_a": 285.0,
+            "design_current_a": 250.0,
+            "laying_conditions": {"set_name": "ziemia_3_kable_warstwa_200mm"},
+        },
+    ).json()
+    assert data["ok"] is False
+    assert data["utilization_pct"] > 100.0

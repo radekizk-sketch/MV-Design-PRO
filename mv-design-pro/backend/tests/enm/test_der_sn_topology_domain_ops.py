@@ -634,3 +634,126 @@ def test_all_converter_technologies_materialize_sn_chain(technology: str) -> Non
     snap = result["snapshot"]
     _block_transformer(snap)
     EnergyNetworkModel.model_validate(snap)
+
+
+# ---------------------------------------------------------------------------
+# Karta F-K7 (znalezisko Z6, V12K-207): warunki UŁOŻENIA kabla w modelu.
+#
+# Warunki ułożenia są ZAŁOŻENIEM DOBORU, a nie parametrem fizycznym gałęzi, dlatego
+# jadą w `meta`. Muszą jednak jechać: raport zgodności liczy propozycję ponownie i bez
+# tego zapisu porównywałby zastosowany kabel z propozycją policzoną dla INNYCH warunków
+# (fałszywe odstępstwo ⚠).
+# ---------------------------------------------------------------------------
+
+
+def _der_cable(snapshot: dict) -> dict:
+    return next(b for b in snapshot["branches"] if "der_mv_cable" in (b.get("tags") or []))
+
+
+def _payload_z_warunkami(warunki: object) -> dict:
+    payload = _der_sn_payload()
+    payload["der_topology"]["mv_field_configuration"]["cable_laying_conditions"] = warunki
+    return payload
+
+
+def test_warunki_ulozenia_kabla_zapisane_przy_kablu() -> None:
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _payload_z_warunkami({"set_name": "ziemia_3_kable_warstwa_200mm"}),
+    )
+    assert not result.get("error"), result.get("error")
+    meta = _der_cable(result["snapshot"])["meta"]
+    assert meta["cable_laying_conditions"] == {"set_name": "ziemia_3_kable_warstwa_200mm"}
+    # Sam WSPÓŁCZYNNIK nie jest kopiowany do modelu — jedno źródło reguły to solver.
+    assert "derating_total" not in meta
+
+
+def test_nazwa_zestawu_moze_byc_podana_jako_tekst() -> None:
+    """Skrót dla warstw, które przenoszą samą nazwę (bez opisu współczynników)."""
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _payload_z_warunkami("ziemia_3_kable_warstwa_200mm"),
+    )
+    assert not result.get("error"), result.get("error")
+    meta = _der_cable(result["snapshot"])["meta"]
+    assert meta["cable_laying_conditions"] == {"set_name": "ziemia_3_kable_warstwa_200mm"}
+
+
+def test_brak_warunkow_ulozenia_nie_zasmieca_modelu() -> None:
+    """Warunki katalogowe = brak korekty: model dotychczasowych torów bez zmian."""
+    bez = execute_domain_operation(_sn_station_enm(), "add_converter_source", _der_sn_payload())
+    jawnie_katalogowe = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _payload_z_warunkami({"set_name": "warunki_katalogowe"}),
+    )
+    assert not bez.get("error"), bez.get("error")
+    assert not jawnie_katalogowe.get("error"), jawnie_katalogowe.get("error")
+    assert "cable_laying_conditions" not in _der_cable(bez["snapshot"])["meta"]
+    # Poza naglowkiem (znacznik czasu utworzenia modelu) snapshoty musza byc identyczne.
+    for klucz in ("branches", "buses", "transformers", "generators", "substations"):
+        assert bez["snapshot"][klucz] == jawnie_katalogowe["snapshot"][klucz], klucz
+
+
+def test_nieznane_warunki_ulozenia_sa_odrzucane_przy_wejsciu_do_modelu() -> None:
+    """Fail-closed: literówka nie może wejść do modelu i zamilknąć jako brak korekty."""
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _payload_z_warunkami({"set_name": "ziemia_5_kabli_rura"}),
+    )
+    assert result.get("error")
+    assert result["error_code"] == "der.mv_cable_laying_conditions_invalid"
+    assert "Nieznany zestaw warunkow ulozenia" in result["error"]
+
+
+def test_wlasne_warunki_ulozenia_jada_z_modelem_w_calosci() -> None:
+    """Nazwa „wlasne" sama nic nie odtwarza — współczynniki i opis muszą być w modelu."""
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _payload_z_warunkami(
+            {
+                "set_name": "wlasne",
+                "f_grunt": 0.85,
+                "f_wiazka": 1.0,
+                "f_grupa": 0.9,
+                "opis_pl": "Ziemia, 2 obwody w rurach oslonowych, odstep 300 mm",
+            }
+        ),
+    )
+    assert not result.get("error"), result.get("error")
+    zapis = _der_cable(result["snapshot"])["meta"]["cable_laying_conditions"]
+    assert zapis["set_name"] == "wlasne"
+    assert zapis["f_grunt"] == pytest.approx(0.85)
+    assert zapis["f_grupa"] == pytest.approx(0.9)
+    assert "rurach oslonowych" in zapis["opis_pl"]
+
+
+def test_wlasne_warunki_bez_opisu_sa_odrzucane() -> None:
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _payload_z_warunkami({"set_name": "wlasne", "f_grunt": 0.85, "f_wiazka": 1.0}),
+    )
+    assert result.get("error")
+    assert result["error_code"] == "der.mv_cable_laying_conditions_invalid"
+    assert "opisu" in result["error"]
+
+
+def test_wspolczynniki_bez_nazwy_zestawu_sa_odrzucane() -> None:
+    """Podane wspolczynniki nie moga zostac cicho pominiete jako warunki katalogowe.
+
+    Milczace przyjecie warunkow katalogowych zmienilo by dobor projektanta — a on wlasnie
+    podal wartosci, ktore od niego odbiegaja.
+    """
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _payload_z_warunkami({"f_grunt": 0.85, "f_wiazka": 1.0, "f_grupa": 0.9}),
+    )
+    assert result.get("error")
+    assert result["error_code"] == "der.mv_cable_laying_conditions_invalid"
+    assert "bez nazwy zestawu" in result["error"]

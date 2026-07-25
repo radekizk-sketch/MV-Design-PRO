@@ -65,6 +65,34 @@ def _store(
     )
 
 
+def _cable_derating_from_model(cable: dict[str, Any]) -> Any:
+    """Warunki UŁOŻENIA zapisane przy kablu w modelu → współczynniki doboru (V12K-207).
+
+    Brak zapisu = warunki katalogowe (tory zbudowane przed tą kartą liczą się identycznie
+    jak dotąd). Nieznany/uszkodzony zapis też daje warunki katalogowe: sekcja odstępstw
+    jest interpretacją, więc nie może wywrócić raportu — a walidacja nazwy stoi tam, gdzie
+    dane wchodzą do modelu (`_der_cable_laying_conditions`).
+    """
+    from network_model.solvers.cable_ampacity_derating import (
+        WARUNKI_KATALOGOWE,
+        wspolczynniki_z_opisu,
+    )
+
+    opis = (cable.get("meta") or {}).get("cable_laying_conditions")
+    if not isinstance(opis, dict):
+        return WARUNKI_KATALOGOWE
+    try:
+        return wspolczynniki_z_opisu(
+            opis.get("set_name"),
+            f_grunt=opis.get("f_grunt"),
+            f_wiazka=opis.get("f_wiazka"),
+            f_grupa=opis.get("f_grupa"),
+            opis_pl=opis.get("opis_pl"),
+        )
+    except ValueError:
+        return WARUNKI_KATALOGOWE
+
+
 def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
     """Odstępstwa zastosowanego doboru od propozycji D2 (⚠). ``None`` gdy brak danych.
 
@@ -131,6 +159,9 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
 
         tr_current = rated_current_a(float(tr.get("sn_mva") or 0.0), float(sn_bus_kv))
         if tr_current is not None:
+            # V12K-207 (F-K7): propozycję trzeba policzyć dla TYCH SAMYCH warunków
+            # ułożenia, które przyjęto w doborze — inaczej raport zgłaszałby odstępstwo
+            # od propozycji, którą sam liczy przy innym założeniu (fałszywe ⚠).
             cable_result = propose_mv_cable(
                 CableSelectionInput(
                     transformer_current_a=tr_current,
@@ -138,6 +169,7 @@ def _compute_d2_deviations(track: Any) -> list[dict[str, Any]] | None:
                     line_voltage_v=float(sn_bus_kv) * 1000.0,
                     cos_phi=0.95,
                     candidates=_cable_candidates(),
+                    derating=_cable_derating_from_model(cable),
                 )
             )
             if cable_result.proposal is not None:

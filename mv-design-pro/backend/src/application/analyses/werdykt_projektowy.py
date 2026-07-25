@@ -264,11 +264,17 @@ ZAKRES_POZA_AUTOMATEM: tuple[dict[str, str], ...] = (
         ),
     },
     {
-        "kryterium_pl": "Obciazalnosc przewodu z korekta warunkow ulozenia",
+        # V12K-207 (karta F-K7): korekta JEST juz czescia toru doboru kabla DER — ale nie
+        # calego modelu. Wpis zostaje z ZAWEZONYM powodem, bo skreslenie go sugerowaloby,
+        # ze kazdy przewod modelu jest sprawdzony z warunkami trasy, a to nieprawda.
+        "kryterium_pl": "Obciazalnosc przewodu z korekta warunkow ulozenia na calym modelu",
         "etap": "E3",
         "powod_pl": (
-            "Obciazalnosc brana jest dla warunkow katalogowych (odniesienia); wspolczynniki "
-            "korekcyjne ulozenia nie sa czescia toru doboru."
+            "Korekta warunkow ulozenia dziala w torze doboru kabla DER (zestawy warunkow z "
+            "udokumentowana podstawa albo wspolczynniki projektanta) i jest zapisana przy "
+            "kablu w modelu. Nie ma przebiegu, ktory sprawdza obciazalnosc WSZYSTKICH "
+            "przewodow modelu wobec warunkow ich trasy — magistrala SN dobierana jest inna "
+            "sciezka, a katalog nie dokumentuje warunkow odniesienia przy typach."
         ),
     },
     {

@@ -69,6 +69,59 @@ export async function fetchCableVoltageDrop(
   return response.json() as Promise<CableVoltageDropResponse>;
 }
 
+/** V12K-207 (karta F-K7): opis warunków ułożenia kabla — nazwa zestawu albo własne. */
+export interface CableLayingConditionsPayload {
+  set_name: string;
+  f_grunt?: number;
+  f_wiazka?: number;
+  f_grupa?: number;
+  opis_pl?: string;
+}
+
+export interface CableAmpacityDeratingRequest {
+  rated_ampacity_a: number;
+  design_current_a: number;
+  /** Brak = warunki katalogowe (obciążalność bez korekty). */
+  laying_conditions?: CableLayingConditionsPayload;
+}
+
+export interface CableAmpacityDeratingResponse {
+  rated_ampacity_a: number;
+  effective_ampacity_a: number;
+  design_current_a: number;
+  derating_total: number;
+  derating_set: string;
+  utilization_pct: number;
+  ok: boolean;
+  formula_ref: string;
+  assumption_pl: string;
+}
+
+/**
+ * Obciążalność SKORYGOWANA warunkami ułożenia + werdykt I_obl ≤ I′z (V12K-207).
+ *
+ * Rachunek `Iz · f_grunt · f_wiazka · f_grupa` jest KRYTERIUM DOBOROWYM, więc należy do
+ * backendu — dotąd mnożenie działo się w warstwie prezentacji (`checkCableAmpacity`),
+ * co łamało regułę braku fizyki w UI i rozjeżdżało się z solverem doboru.
+ */
+export async function fetchCableAmpacityDerating(
+  payload: CableAmpacityDeratingRequest,
+  options: { signal?: AbortSignal } = {},
+): Promise<CableAmpacityDeratingResponse> {
+  const response = await fetch('/api/solver/cable-ampacity-derating-preview', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+    signal: options.signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(await readSolverError(response));
+  }
+
+  return response.json() as Promise<CableAmpacityDeratingResponse>;
+}
+
 export async function fetchCableRatedCurrent(
   payload: CableRatedCurrentRequest,
   options: { signal?: AbortSignal } = {},

@@ -10,7 +10,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ConverterType } from '../../../../ui/catalog/types';
 import { DoborToruSn } from '../DoborToruSn';
-import { DANE_DER_SN_DOMYSLNE } from '../zrodloOzeModel';
+import type { CableLayingConditions } from '../derSelectionApi';
+import { DANE_DER_SN_DOMYSLNE, type DerSnFormData } from '../zrodloOzeModel';
 
 const KONWERTER: ConverterType = {
   id: 'conv-pv-500',
@@ -75,10 +76,58 @@ const RESPONSE = {
   },
 };
 
+/**
+ * V12K-207 (karta F-K7): lista warunków ułożenia POCHODZI Z BACKENDU — kreator nie ma
+ * własnej listy współczynników. Kształt 1:1 z `CableLayingConditionsResponse`.
+ */
+const WARUNKI = {
+  sets: [
+    {
+      name: 'warunki_katalogowe',
+      label_pl: 'Warunki katalogowe (bez korekty)',
+      f_grunt: 1.0,
+      f_wiazka: 1.0,
+      f_grupa: 1.0,
+      total: 1.0,
+      basis: 'Karta katalogowa producenta.',
+      assumption_pl: 'Obciazalnosc przyjeta dla WARUNKOW KATALOGOWYCH.',
+    },
+    {
+      name: 'ziemia_3_kable_warstwa_200mm',
+      label_pl: 'Ziemia, 3 kable jednozylowe, odstep 200 mm',
+      f_grunt: 0.9,
+      f_wiazka: 1.01,
+      f_grupa: 0.82,
+      total: 0.74538,
+      basis: 'Arkusz doborowy MT880 v3, sekcja 1.',
+      assumption_pl: 'Obciazalnosc skorygowana dla warunkow: ziemia, 3 kable.',
+    },
+  ],
+  custom_name: 'wlasne',
+  default_name: 'warunki_katalogowe',
+  limitation_pl: 'System nie interpoluje miedzy zestawami.',
+};
+
+/** Wywołania końcówki DOBORU (bez wywołań listy warunków z montażu komponentu). */
+function wywolaniaDoboru(): unknown[][] {
+  return fetchMock.mock.calls.filter((call) =>
+    String(call[0]).endsWith('/api/solver/der-selection-preview'),
+  );
+}
+
 let fetchMock: ReturnType<typeof vi.fn>;
+/** Odpowiedź końcówki doboru — testy podmieniają ją na własną. */
+let odpowiedzDoboru: unknown = RESPONSE;
 
 beforeEach(() => {
-  fetchMock = vi.fn(async () => ({ ok: true, json: async () => RESPONSE } as Response));
+  odpowiedzDoboru = RESPONSE;
+  fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith('/api/solver/cable-laying-conditions')) {
+      return { ok: true, json: async () => WARUNKI } as Response;
+    }
+    return { ok: true, json: async () => odpowiedzDoboru } as Response;
+  });
   vi.stubGlobal('fetch', fetchMock);
 });
 
@@ -101,6 +150,7 @@ describe('DoborToruSn — krok doboru toru SN', () => {
         derSn={derSn}
         onCableLengthChange={() => {}}
         onVectorGroupChange={() => {}}
+        onLayingConditionsChange={() => {}}
         onZastosuj={onZastosuj}
         applied={false}
       />,
@@ -109,8 +159,7 @@ describe('DoborToruSn — krok doboru toru SN', () => {
     await user.click(screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj'));
 
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-oze-dobor-propozycje')).toBeInTheDocument());
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(String(fetchMock.mock.calls[0][0])).toBe('/api/solver/der-selection-preview');
+    expect(wywolaniaDoboru()).toHaveLength(1);
     expect(screen.getByText(/TR 1000 kVA 15\/0.4/)).toBeInTheDocument();
     expect(screen.getByText(/Kabel 50 mm²/)).toBeInTheDocument();
     expect(screen.getByText(/Rozłącznik 400 A/)).toBeInTheDocument();
@@ -133,6 +182,7 @@ describe('DoborToruSn — krok doboru toru SN', () => {
         derSn={derSn}
         onCableLengthChange={() => {}}
         onVectorGroupChange={onVectorGroupChange}
+        onLayingConditionsChange={() => {}}
         onZastosuj={() => {}}
         applied={false}
       />,
@@ -159,6 +209,7 @@ describe('DoborToruSn — krok doboru toru SN', () => {
         derSn={{ ...DANE_DER_SN_DOMYSLNE, mv_cable_length_km: null }}
         onCableLengthChange={() => {}}
         onVectorGroupChange={() => {}}
+        onLayingConditionsChange={() => {}}
         onZastosuj={() => {}}
         applied={false}
       />,
@@ -189,15 +240,22 @@ const RESPONSE_WZROST = {
   },
 };
 
-function wyrenderujKrok(onZastosuj = vi.fn()) {
+function wyrenderujKrok(
+  onZastosuj = vi.fn(),
+  opcje: {
+    onLayingConditionsChange?: (v: CableLayingConditions | null) => void;
+    derSn?: DerSnFormData;
+  } = {},
+) {
   return render(
     <DoborToruSn
       converter={KONWERTER}
       quantity={2}
       snBusVoltageKv={15}
-      derSn={{ ...DANE_DER_SN_DOMYSLNE, mv_cable_length_km: 8.0 }}
+      derSn={opcje.derSn ?? { ...DANE_DER_SN_DOMYSLNE, mv_cable_length_km: 8.0 }}
       onCableLengthChange={() => {}}
       onVectorGroupChange={() => {}}
+      onLayingConditionsChange={opcje.onLayingConditionsChange ?? (() => {})}
       onZastosuj={onZastosuj}
       applied={false}
     />,
@@ -217,8 +275,8 @@ describe('DoborToruSn — przypadek pracy toru (V12K-203)', () => {
     );
     await user.click(screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj'));
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-    const body = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body));
+    await waitFor(() => expect(wywolaniaDoboru()).toHaveLength(1));
+    const body = JSON.parse(String((wywolaniaDoboru()[0][1] as RequestInit).body));
     expect(body.cos_phi).toBe(0.95);
     expect(body.reactive_character).toBe('capacitive');
     // Kierunek mocy czynnej NIE jest polem formularza — tor DER oddaje moc do sieci
@@ -237,7 +295,7 @@ describe('DoborToruSn — przypadek pracy toru (V12K-203)', () => {
 
   it('wzrost napięcia jest NAZWANY, a wartość pokazana jako moduł zmiany', async () => {
     const user = userEvent.setup();
-    fetchMock.mockResolvedValue({ ok: true, json: async () => RESPONSE_WZROST } as Response);
+    odpowiedzDoboru = RESPONSE_WZROST;
     wyrenderujKrok();
 
     await user.click(screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj'));
@@ -264,5 +322,136 @@ describe('DoborToruSn — przypadek pracy toru (V12K-203)', () => {
 
     expect(screen.getByText('Spadek napięcia')).toBeInTheDocument();
     expect(screen.queryByText('Wzrost napięcia')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Karta F-K7 / V12K-207: warunki UŁOŻENIA kabla w doborze obciążalności.
+// Obciążalność katalogowa obowiązuje dla warunków ODNIESIENIA producenta — dotąd
+// kreator nigdzie tego nie mówił, a dobór bez korekty jest optymistyczny.
+// ---------------------------------------------------------------------------
+
+/** Propozycja z KOREKTĄ obciążalności (kształt 1:1 z backendem). */
+const RESPONSE_Z_KOREKTA = {
+  ...RESPONSE,
+  cable: {
+    ...RESPONSE.cable,
+    proposal: {
+      ...RESPONSE.cable.proposal,
+      rated_current_a: 340,
+      effective_ampacity_a: 253.4292,
+      derating_total: 0.74538,
+    },
+    derating_set: 'ziemia_3_kable_warstwa_200mm',
+    derating_total: 0.74538,
+    derating_assumption_pl:
+      'Obciazalnosc skorygowana dla warunkow: ziemia, 3 kable jednozylowe, odstep 200 mm; '
+      + 'iloczyn = 0.7454. Podstawa: arkusz doborowy MT880 v3.',
+  },
+};
+
+describe('DoborToruSn — warunki ułożenia kabla (V12K-207)', () => {
+  it('lista warunków ułożenia pochodzi z backendu (kreator nie ma własnej)', async () => {
+    wyrenderujKrok();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-dobor-warunki-ulozenia')).toBeInTheDocument(),
+    );
+    const select = screen.getByTestId(
+      'mvd-kreator-oze-dobor-warunki-ulozenia',
+    ) as HTMLSelectElement;
+    expect(Array.from(select.options).map((o) => o.value)).toEqual([
+      'warunki_katalogowe',
+      'ziemia_3_kable_warstwa_200mm',
+    ]);
+    // Domyślnie warunki katalogowe (brak korekty = dotychczasowe zachowanie).
+    expect(select.value).toBe('warunki_katalogowe');
+    // POWÓD krótkiej listy jedzie z backendu, żeby nie wyglądała na tablicę norm.
+    expect(
+      screen.getByText(/System nie interpoluje miedzy zestawami/),
+    ).toBeInTheDocument();
+  });
+
+  it('wybór warunków ziemnych → callback do modelu i pole w żądaniu doboru', async () => {
+    const user = userEvent.setup();
+    const onLayingConditionsChange = vi.fn();
+    const { unmount } = wyrenderujKrok(vi.fn(), { onLayingConditionsChange });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-dobor-warunki-ulozenia')).toBeInTheDocument(),
+    );
+    await user.selectOptions(
+      screen.getByTestId('mvd-kreator-oze-dobor-warunki-ulozenia'),
+      'ziemia_3_kable_warstwa_200mm',
+    );
+    // Wybór jedzie DO MODELU (a nie tylko do podglądu) — raport zgodności liczy potem
+    // propozycję dla tego samego założenia.
+    expect(onLayingConditionsChange).toHaveBeenCalledWith({
+      set_name: 'ziemia_3_kable_warstwa_200mm',
+    });
+
+    // Komponent jest bezstanowy w tej sprawie: warunki wchodzą przez `derSn`.
+    unmount();
+    wyrenderujKrok(vi.fn(), {
+      derSn: {
+        ...DANE_DER_SN_DOMYSLNE,
+        mv_cable_length_km: 8.0,
+        mv_cable_laying_conditions: { set_name: 'ziemia_3_kable_warstwa_200mm' },
+      },
+    });
+    await user.click(screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj'));
+    await waitFor(() => expect(wywolaniaDoboru()).toHaveLength(1));
+    const body = JSON.parse(String((wywolaniaDoboru()[0][1] as RequestInit).body));
+    expect(body.laying_conditions).toEqual({ set_name: 'ziemia_3_kable_warstwa_200mm' });
+  });
+
+  it('powrót do warunków katalogowych czyści pole w modelu (brak korekty ≠ zestaw)', async () => {
+    const user = userEvent.setup();
+    const onLayingConditionsChange = vi.fn();
+    wyrenderujKrok(vi.fn(), {
+      onLayingConditionsChange,
+      derSn: {
+        ...DANE_DER_SN_DOMYSLNE,
+        mv_cable_length_km: 8.0,
+        mv_cable_laying_conditions: { set_name: 'ziemia_3_kable_warstwa_200mm' },
+      },
+    });
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-dobor-warunki-ulozenia')).toBeInTheDocument(),
+    );
+    await user.selectOptions(
+      screen.getByTestId('mvd-kreator-oze-dobor-warunki-ulozenia'),
+      'warunki_katalogowe',
+    );
+    expect(onLayingConditionsChange).toHaveBeenCalledWith(null);
+  });
+
+  it('obciążalność po korekcie pokazana OBOK katalogowej + jawne założenie', async () => {
+    const user = userEvent.setup();
+    odpowiedzDoboru = RESPONSE_Z_KOREKTA;
+    wyrenderujKrok();
+
+    await user.click(screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-dobor-propozycje')).toBeInTheDocument(),
+    );
+
+    // Dwie liczby, nie jedna — projektant musi widzieć, ile zabrała korekta.
+    expect(screen.getByText('340 A')).toBeInTheDocument();
+    expect(screen.getByText('253.4 A (× 0.7454)')).toBeInTheDocument();
+    expect(screen.getByText(/Obciazalnosc skorygowana dla warunkow/)).toBeInTheDocument();
+  });
+
+  it('bez korekty wiersz obciążalności skorygowanej NIE pojawia się (zero szumu)', async () => {
+    const user = userEvent.setup();
+    wyrenderujKrok();
+
+    await user.click(screen.getByTestId('mvd-kreator-oze-dobor-zaproponuj'));
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-oze-dobor-propozycje')).toBeInTheDocument(),
+    );
+
+    expect(screen.queryByText(/Obciążalność po korekcie/)).toBeNull();
   });
 });

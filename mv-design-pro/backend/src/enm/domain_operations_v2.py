@@ -17,6 +17,7 @@ from typing import Any
 from network_model.catalog.materialization import materialize_catalog_binding
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding
+from network_model.solvers import cable_ampacity_derating as cable_derating
 
 from . import der_sn_validation as der_val
 from .domain_operations import (
@@ -2502,6 +2503,59 @@ def _materialize_der_block_transformer(
     return tr_data, None
 
 
+def _der_cable_laying_conditions(
+    config: dict[str, Any]
+) -> tuple[dict[str, Any] | None, str | None]:
+    """Warunki UŁOŻENIA kabla DER z konfiguracji pola SN (V12K-207, karta F-K7).
+
+    Zwraca (opis_do_meta, None) albo (None, komunikat_bledu). Opis trafia do modelu, żeby
+    raport zgodności liczył propozycję dla TYCH SAMYCH warunków, dla których policzył ją
+    kreator — inaczej raport zgłaszałby ODSTĘPSTWO od propozycji, którą sam liczy inaczej.
+    Nazwa jest WALIDOWANA tu, przy wejściu do modelu: nieznany zestaw nie może zamilknąć
+    i wrócić jako „warunki katalogowe" (fail-closed).
+    """
+    raw = config.get("cable_laying_conditions")
+    if raw is None:
+        return None, None
+    if isinstance(raw, str):
+        raw = {"set_name": raw}
+    if not isinstance(raw, dict):
+        return None, "Warunki ułożenia kabla SN muszą być nazwą zestawu albo obiektem opisu."
+    set_name = str(raw.get("set_name") or "").strip()
+    if not set_name:
+        # Współczynniki BEZ nazwy zestawu nie mogą zostać cicho pominięte — projektant je
+        # podał, więc milczące przyjęcie warunków katalogowych zmieniłoby jego dobór.
+        if any(raw.get(pole) is not None for pole in ("f_grunt", "f_wiazka", "f_grupa")):
+            return None, (
+                "Podano wspolczynniki obciazalnosci bez nazwy zestawu warunkow ulozenia. "
+                f"Uzyj set_name = {cable_derating.NAZWA_WLASNE} i dodaj opis warunkow."
+            )
+        return None, None
+    if set_name == cable_derating.NAZWA_WARUNKI_KATALOGOWE:
+        # Warunki katalogowe = brak korekty; nie zaśmiecamy modelu domyślną wartością
+        # (determinizm seedów i porównania modelu bez zmian dla dotychczasowych torów).
+        return None, None
+    try:
+        wspolczynniki = cable_derating.wspolczynniki_z_opisu(
+            set_name,
+            f_grunt=_as_float(raw.get("f_grunt")),
+            f_wiazka=_as_float(raw.get("f_wiazka")),
+            f_grupa=_as_float(raw.get("f_grupa")),
+            opis_pl=raw.get("opis_pl"),
+        )
+    except ValueError as exc:
+        return None, str(exc)
+    opis: dict[str, Any] = {"set_name": wspolczynniki.nazwa}
+    if wspolczynniki.nazwa == cable_derating.NAZWA_WLASNE:
+        # Własne współczynniki muszą pojechać z modelem — nazwa „wlasne" sama niczego
+        # nie odtwarza, a raport zgodności musi umieć powtórzyć ten sam rachunek.
+        opis["f_grunt"] = wspolczynniki.f_grunt
+        opis["f_wiazka"] = wspolczynniki.f_wiazka
+        opis["f_grupa"] = wspolczynniki.f_grupa
+        opis["opis_pl"] = wspolczynniki.etykieta_pl
+    return opis, None
+
+
 def _materialize_der_mv_cable(
     *,
     ref_id: str,
@@ -2511,6 +2565,7 @@ def _materialize_der_mv_cable(
     catalog_ref: object,
     catalog_binding: object,
     length_km: float,
+    laying_conditions: dict[str, Any] | None = None,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     """Zmaterializuj kabel SN przyłączeniowy DER (katalog KABEL_SN), krótki odcinek.
 
@@ -2549,6 +2604,11 @@ def _materialize_der_mv_cable(
         "tags": ["der_mv_cable"],
         "meta": {"der_role": "mv_connection_cable", "visual_role": "DER_MV_CABLE"},
     }
+    if laying_conditions:
+        # F-K7: warunki ułożenia to ZAŁOŻENIE DOBORU, nie parametr fizyczny gałęzi —
+        # dlatego meta, a nie pole modelu. Solver liczy z nich obciążalność skorygowaną;
+        # w modelu zostaje sam OPIS warunków (jedno źródło reguły to solver).
+        branch_data["meta"]["cable_laying_conditions"] = laying_conditions
     _apply_catalog_metadata(branch_data, binding_payload, default_namespace="KABEL_SN")
     _apply_materialized_branch_fields(branch_data, materialized_params)
     branch_data["length_km"] = length_km
@@ -2921,6 +2981,9 @@ def _add_converter_source_der_sn(
     cable_length_km = _as_float(mv_field_cfg.get("cable_length_km"))
     if cable_length_km is None or cable_length_km <= 0:
         cable_length_km = 0.05  # krótki odcinek przyłączeniowy (50 m) — domyślny
+    laying_conditions, laying_error = _der_cable_laying_conditions(mv_field_cfg)
+    if laying_error is not None:
+        return _error_response(laying_error, "der.mv_cable_laying_conditions_invalid")
     cable_data, cable_error = _materialize_der_mv_cable(
         ref_id=cable_ref,
         name=f"Kabel SN przyłączeniowy {name}",
@@ -2929,6 +2992,7 @@ def _add_converter_source_der_sn(
         catalog_ref=mv_field_cfg.get("cable_catalog_ref"),
         catalog_binding=mv_field_cfg.get("cable_catalog_binding"),
         length_km=cable_length_km,
+        laying_conditions=laying_conditions,
     )
     if cable_error is not None:
         return cable_error

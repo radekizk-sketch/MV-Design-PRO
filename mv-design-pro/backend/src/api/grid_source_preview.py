@@ -14,6 +14,13 @@ from fastapi import APIRouter, HTTPException
 from network_model.catalog.mv_cable_line_catalog import get_all_cable_types
 from network_model.catalog.mv_switch_catalog import get_all_switch_equipment_types
 from network_model.catalog.mv_transformer_catalog import get_sn_nn_transformer_types
+from network_model.solvers.cable_ampacity_derating import (
+    NAZWA_WARUNKI_KATALOGOWE,
+    NAZWA_WLASNE,
+    obciazalnosc_skorygowana,
+    widok_zestawow,
+    wspolczynniki_z_opisu,
+)
 from network_model.solvers.cable_voltage_drop import (
     CableRatedCurrentInput,
     CableVoltageDropInput,
@@ -43,7 +50,7 @@ from network_model.solvers.transformer_rated_currents import (
     TransformerRatedCurrentsInput,
     compute_transformer_rated_currents,
 )
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 router = APIRouter(tags=["grid-source-preview"])
 
@@ -230,6 +237,131 @@ def preview_cable_rated_current(
     )
 
 
+class CableLayingConditionsRequest(BaseModel):
+    """Warunki UŁOŻENIA kabla (V12K-207, karta F-K7).
+
+    `set_name` to nazwa zestawu o udokumentowanej podstawie albo „wlasne" — wtedy trzy
+    współczynniki i opis warunków są WYMAGANE (bez opisu wynik doboru nie dałby się
+    obronić w dokumentacji projektu). Pominięcie całego obiektu = warunki katalogowe,
+    czyli zachowanie dotychczasowe co do bitu.
+    """
+
+    set_name: str = NAZWA_WARUNKI_KATALOGOWE
+    f_grunt: float | None = Field(default=None, gt=0, le=1.5)
+    f_wiazka: float | None = Field(default=None, gt=0, le=1.5)
+    f_grupa: float | None = Field(default=None, gt=0, le=1.5)
+    opis_pl: str | None = None
+
+    @model_validator(mode="after")
+    def _wspolczynniki_wymagaja_zestawu_wlasnego(self) -> CableLayingConditionsRequest:
+        """Współczynniki podane przy NAZWANYM zestawie nie mogą zostać cicho pominięte.
+
+        Nazwany zestaw ma swoje wartości, więc `f_*` obok niego znaczy, że nadawca chciał
+        czegoś innego niż to, co dostanie. Milczące zignorowanie zmieniłoby jego dobór.
+        """
+        podane = [
+            pole
+            for pole, wartosc in (
+                ("f_grunt", self.f_grunt),
+                ("f_wiazka", self.f_wiazka),
+                ("f_grupa", self.f_grupa),
+            )
+            if wartosc is not None
+        ]
+        if podane and self.set_name != NAZWA_WLASNE:
+            raise ValueError(
+                f"Wspolczynniki {', '.join(podane)} mozna podac tylko dla "
+                f"set_name = {NAZWA_WLASNE}; zestaw {self.set_name} ma wlasne wartosci."
+            )
+        return self
+
+
+class CableLayingConditionsSetResponse(BaseModel):
+    """Jeden nazwany zestaw warunków ułożenia — dla listy w kreatorze."""
+
+    name: str
+    label_pl: str
+    f_grunt: float
+    f_wiazka: float
+    f_grupa: float
+    total: float
+    basis: str
+    assumption_pl: str
+
+
+class CableLayingConditionsResponse(BaseModel):
+    """Lista warunków ułożenia + POWÓD, dla którego jest krótka.
+
+    Kreator nie może mieć własnej listy: wartości współczynników są danymi doborowymi,
+    nie tekstem interfejsu.
+    """
+
+    sets: list[CableLayingConditionsSetResponse]
+    custom_name: str
+    default_name: str
+    limitation_pl: str
+
+
+class CableAmpacityDeratingRequest(BaseModel):
+    """Korekta obciążalności kabla wg warunków ułożenia (V12K-207, karta F-K7).
+
+    Warstwa prezentacji NIE MOŻE mnożyć obciążalności przez współczynniki sama — to
+    kryterium doborowe, więc rachunek należy do backendu (reguła braku fizyki w UI).
+    """
+
+    rated_ampacity_a: float = Field(gt=0)
+    design_current_a: float = Field(gt=0)
+    laying_conditions: CableLayingConditionsRequest | None = None
+
+
+class CableAmpacityDeratingResponse(BaseModel):
+    """I′z = Iz · f_grunt · f_wiazka · f_grupa oraz werdykt I_obl ≤ I′z."""
+
+    rated_ampacity_a: float
+    effective_ampacity_a: float
+    design_current_a: float
+    derating_total: float
+    derating_set: str
+    utilization_pct: float
+    ok: bool
+    formula_ref: str
+    assumption_pl: str
+
+
+@router.post(
+    "/api/solver/cable-ampacity-derating-preview",
+    response_model=CableAmpacityDeratingResponse,
+)
+def preview_cable_ampacity_derating(
+    request: CableAmpacityDeratingRequest,
+) -> CableAmpacityDeratingResponse:
+    """Obciążalność skorygowana warunkami ułożenia + werdykt kryterium prądowego."""
+    laying = request.laying_conditions
+    try:
+        derating = wspolczynniki_z_opisu(
+            laying.set_name if laying is not None else None,
+            f_grunt=laying.f_grunt if laying is not None else None,
+            f_wiazka=laying.f_wiazka if laying is not None else None,
+            f_grupa=laying.f_grupa if laying is not None else None,
+            opis_pl=laying.opis_pl if laying is not None else None,
+        )
+        effective = obciazalnosc_skorygowana(request.rated_ampacity_a, derating)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    return CableAmpacityDeratingResponse(
+        rated_ampacity_a=request.rated_ampacity_a,
+        effective_ampacity_a=effective,
+        design_current_a=request.design_current_a,
+        derating_total=derating.iloczyn,
+        derating_set=derating.nazwa,
+        utilization_pct=request.design_current_a / effective * 100.0,
+        ok=request.design_current_a <= effective,
+        formula_ref="I'z = Iz · f_grunt · f_wiazka · f_grupa;  I_obl ≤ I'z",
+        assumption_pl=derating.zalozenie_pl(),
+    )
+
+
 class TransformerRatedCurrentsRequest(BaseModel):
     rated_power_kva: float
     primary_voltage_kv: float
@@ -359,6 +491,10 @@ class CableProposalResponse(BaseModel):
     # V12K-203: dla toru DER ΔU jest zwykle WZROSTEM napięcia (ΔU < 0). Kreator musi
     # nazwać wielkość, którą pokazuje — bez tego pola „−1,20 %" wygląda jak spadek.
     is_voltage_rise: bool = False
+    # V12K-207 (F-K7): obciążalność SKORYGOWANA warunkami ułożenia obok katalogowej.
+    # Dwie liczby, nie jedna — projektant musi widzieć, ile zabrała korekta.
+    effective_ampacity_a: float = 0.0
+    derating_total: float = 1.0
 
 
 class CableSelectionResponse(BaseModel):
@@ -372,6 +508,12 @@ class CableSelectionResponse(BaseModel):
     # V12K-203: echo przypadku pracy toru, dla którego sprawdzono ΔU kandydatów.
     flow_direction: str = "generation"
     reactive_character: str = "inductive"
+    # V12K-207: warunki ułożenia, dla których policzono obciążalność, i jawne założenie.
+    # Echo jest wymagane także przy braku propozycji — inaczej projektant nie wie, że
+    # zamiast szukać grubszego kabla może poprawić warunki ułożenia trasy.
+    derating_set: str = NAZWA_WARUNKI_KATALOGOWE
+    derating_total: float = 1.0
+    derating_assumption_pl: str = ""
 
 
 class FieldApparatusProposalResponse(BaseModel):
@@ -411,6 +553,10 @@ class DerSelectionPreviewRequest(BaseModel):
     # napięcia), czy ją ODDAJE (wzrost największy) — od tego zależy, jaki przekrój
     # kabla przechodzi kryterium |ΔU%|.
     reactive_character: str = Field(default="inductive")
+    # V12K-207 (F-K7): warunki UŁOŻENIA kabla. Pominięcie = warunki katalogowe (wynik
+    # bit-identyczny z dotychczasowym), ale wtedy odpowiedź MÓWI, że takie założenie
+    # przyjęto — dotąd nigdzie nie było napisane, dla jakich warunków obowiązuje dobór.
+    laying_conditions: CableLayingConditionsRequest | None = None
 
 
 class DerSelectionPreviewResponse(BaseModel):
@@ -509,6 +655,26 @@ def _field_apparatus_candidates() -> tuple[FieldApparatusCandidate, ...]:
     return tuple(candidates)
 
 
+@router.get(
+    "/api/solver/cable-laying-conditions",
+    response_model=CableLayingConditionsResponse,
+)
+def list_cable_laying_conditions() -> CableLayingConditionsResponse:
+    """Warunki UŁOŻENIA kabla dostępne w doborze (V12K-207, karta F-K7).
+
+    Kreator nie może mieć własnej listy współczynników: to dane doborowe o
+    udokumentowanej podstawie, nie tekst interfejsu. Odpowiedź niesie także POWÓD, dla
+    którego lista jest krótka — żeby nie wyglądała na kompletną tablicę norm.
+    """
+    view = widok_zestawow()
+    return CableLayingConditionsResponse(
+        sets=[CableLayingConditionsSetResponse(**item) for item in view["sets"]],  # type: ignore[arg-type]
+        custom_name=str(view["custom_name"]),
+        default_name=str(view["default_name"]),
+        limitation_pl=str(view["limitation_pl"]),
+    )
+
+
 @router.post(
     "/api/solver/der-selection-preview",
     response_model=DerSelectionPreviewResponse,
@@ -584,6 +750,17 @@ def preview_der_selection(
 
     cos_phi_load = request.cos_phi if request.cos_phi is not None else 1.0
     try:
+        # F-K7: nazwa zestawu / współczynniki własne → współczynniki. Nieznany zestaw i
+        # brak opisu warunków własnych kończą się 422 (fail-closed), nie cichym
+        # przyjęciem warunków katalogowych.
+        laying = request.laying_conditions
+        derating = wspolczynniki_z_opisu(
+            laying.set_name if laying is not None else None,
+            f_grunt=laying.f_grunt if laying is not None else None,
+            f_wiazka=laying.f_wiazka if laying is not None else None,
+            f_grupa=laying.f_grupa if laying is not None else None,
+            opis_pl=laying.opis_pl if laying is not None else None,
+        )
         cable_result = propose_mv_cable(
             CableSelectionInput(
                 transformer_current_a=transformer_current_a,
@@ -594,6 +771,7 @@ def preview_der_selection(
                 reserve_pu=request.cable_reserve_pu,
                 max_delta_u_pct=request.max_delta_u_pct,
                 reactive_character=request.reactive_character,
+                derating=derating,
             )
         )
         field_result = propose_mv_field_apparatus(
@@ -617,6 +795,8 @@ def preview_der_selection(
                 delta_u_v=cable_result.proposal.delta_u_v,
                 delta_u_pct=cable_result.proposal.delta_u_pct,
                 is_voltage_rise=cable_result.proposal.is_voltage_rise,
+                effective_ampacity_a=cable_result.proposal.effective_ampacity_a,
+                derating_total=cable_result.proposal.derating_total,
             )
             if cable_result.proposal is not None
             else None
@@ -629,6 +809,9 @@ def preview_der_selection(
         formula_ref=cable_result.formula_ref,
         flow_direction=cable_result.flow_direction,
         reactive_character=cable_result.reactive_character,
+        derating_set=cable_result.derating_set,
+        derating_total=cable_result.derating_total,
+        derating_assumption_pl=cable_result.derating_assumption_pl,
     )
     field_response = FieldApparatusSelectionResponse(
         proposal=(

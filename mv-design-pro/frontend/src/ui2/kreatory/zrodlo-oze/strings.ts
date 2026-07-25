@@ -206,6 +206,18 @@ export const OZE_STRINGS = {
   doborWzrostInfo:
     'Tor generacji podnosi napięcie w punkcie przyłączenia — to ograniczenie wiodące przy '
     + 'przyłączaniu OZE. Wartość poniżej jest modułem zmiany; kryterium |ΔU%| sprawdza backend.',
+  // V12K-207 (karta F-K7) — warunki UŁOŻENIA kabla w doborze obciążalności.
+  doborWarunkiUlozenia: 'Warunki ułożenia kabla',
+  doborWarunkiUlozeniaPomoc:
+    'Obciążalność z katalogu obowiązuje dla warunków ODNIESIENIA producenta. W ziemi, '
+    + 'w wiązce i w grupie kabel przenosi mniej, więc dobór bez korekty jest optymistyczny. '
+    + 'Zestawy i współczynniki pochodzą z backendu (podstawa dokumentowa przy każdym).',
+  doborWarunkiUlozeniaNiedostepne:
+    'Nie udało się pobrać listy warunków ułożenia — dobór policzy się dla warunków '
+    + 'katalogowych i tak też zostanie opisany.',
+  doborObciazalnoscKatalogowa: 'Obciążalność katalogowa Iz',
+  doborObciazalnoscSkorygowana: 'Obciążalność po korekcie I′z',
+  doborZalozenieObciazalnosci: 'Założenie obciążalności',
   doborNapiecieSn: 'Napięcie szyny SN',
   doborZaproponuj: 'Zaproponuj dobór',
   doborZastosuj: 'Zastosuj propozycję',

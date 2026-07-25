@@ -8,6 +8,11 @@ najmniejsza Sn ≥ próg przy zgodnych napięciach — katalog ma wpis 1000 kVA 
 from __future__ import annotations
 
 import pytest
+from network_model.solvers.cable_ampacity_derating import (
+    WARUNKI_KATALOGOWE,
+    ZIEMIA_3_KABLE_200MM,
+    wspolczynniki_wlasne,
+)
 from network_model.solvers.der_selection_preview import (
     BlockTransformerCandidate,
     BlockTransformerSelectionInput,
@@ -503,3 +508,162 @@ def test_nieznany_przypadek_pracy_jest_odrzucany_takze_bez_kandydatow() -> None:
                 flow_direction="w_obie_strony",
             )
         )
+
+
+# ===========================================================================
+# Karta F-K7 (znalezisko Z6, V12K-207): warunki ULOZENIA kabla
+# ===========================================================================
+
+
+def test_bez_wspolczynnikow_dobor_jest_bit_identyczny_a_zalozenie_jawne() -> None:
+    """Brak `derating` == warunki katalogowe: ten sam wynik, ale nazwane zalozenie.
+
+    To jest bramka bezpieczenstwa calej karty: dolozenie korekty NIE MOZE przesunac
+    zadnego dotychczasowego doboru. Jedyna roznica polega na tym, ze wynik od teraz
+    mowi, dla jakich warunkow obowiazuje.
+    """
+    wspolne = {
+        "transformer_current_a": 140.0,
+        "length_km": 1.0,
+        "line_voltage_v": 15000.0,
+        "cos_phi": 0.95,
+        "candidates": _cable_candidates(),
+        "max_delta_u_pct": 2.0,
+    }
+    domyslny = propose_mv_cable(CableSelectionInput(**wspolne))
+    jawnie_katalogowy = propose_mv_cable(
+        CableSelectionInput(**wspolne, derating=WARUNKI_KATALOGOWE)
+    )
+    assert domyslny == jawnie_katalogowy
+
+    assert domyslny.derating_set == "warunki_katalogowe"
+    assert domyslny.derating_total == pytest.approx(1.0)
+    assert "WARUNKOW KATALOGOWYCH" in domyslny.derating_assumption_pl
+    assert domyslny.proposal is not None
+    # Obciazalnosc skorygowana rowna katalogowej — obie liczby sa w wyniku, zeby
+    # prezentacja nie musiala niczego domnazac po fakcie.
+    assert domyslny.proposal.rated_current_a == pytest.approx(160.0)
+    assert domyslny.proposal.effective_ampacity_a == pytest.approx(160.0)
+    assert domyslny.proposal.derating_total == pytest.approx(1.0)
+
+
+def test_warunki_ulozenia_podnosza_wymagany_przekroj() -> None:
+    """DOWOD LICZBOWY, ze korekta jest parametrem DOBORU, a nie adnotacja w opisie.
+
+    Ten sam tor (I_TR = 140 A, L = 1 km, cos 0,95, |ΔU%| ≤ 2,0 %), dwa warunki:
+      warunki katalogowe        -> cab-50:  Iz 160,0 A >= 140 A => propozycja 50 mm²
+      ziemia, 3 kable, 200 mm   -> iloczyn 0,74538
+                                   cab-50:  160 x 0,74538 = 119,3 A < 140 A => ODRZUCONY
+                                   cab-120: 340 x 0,74538 = 253,4 A >= 140 A => 120 mm²
+    Ulozenie w ziemi w grupie zabiera wiec caly stopien przekroju — dobor na samej
+    obciazalnosci katalogowej byl optymistyczny o ten stopien.
+    """
+    wspolne = {
+        "transformer_current_a": 140.0,
+        "length_km": 1.0,
+        "line_voltage_v": 15000.0,
+        "cos_phi": 0.95,
+        "candidates": _cable_candidates(),
+        "max_delta_u_pct": 2.0,
+    }
+    katalogowe = propose_mv_cable(CableSelectionInput(**wspolne))
+    w_ziemi = propose_mv_cable(CableSelectionInput(**wspolne, derating=ZIEMIA_3_KABLE_200MM))
+
+    assert katalogowe.proposal is not None
+    assert katalogowe.proposal.cross_section_mm2 == pytest.approx(50.0)
+    assert w_ziemi.proposal is not None
+    assert w_ziemi.proposal.cross_section_mm2 == pytest.approx(120.0)
+    # Prog pradowy sie NIE zmienil — zmienila sie obciazalnosc kandydatow.
+    assert w_ziemi.required_ampacity_a == pytest.approx(katalogowe.required_ampacity_a)
+    assert w_ziemi.proposal.rated_current_a == pytest.approx(340.0)
+    assert w_ziemi.proposal.effective_ampacity_a == pytest.approx(253.4292, abs=1e-4)
+    assert w_ziemi.derating_set == "ziemia_3_kable_warstwa_200mm"
+    assert w_ziemi.derating_total == pytest.approx(0.74538, abs=1e-9)
+
+
+def test_powod_odrzucenia_pokazuje_rozbicie_korekty() -> None:
+    """Projektant musi widziec, ILE zabrala korekta — sam wynik po korekcie nie wystarczy."""
+    w_ziemi = propose_mv_cable(
+        CableSelectionInput(
+            transformer_current_a=140.0,
+            length_km=1.0,
+            line_voltage_v=15000.0,
+            cos_phi=0.95,
+            candidates=_cable_candidates(),
+            max_delta_u_pct=2.0,
+            derating=ZIEMIA_3_KABLE_200MM,
+        )
+    )
+    powody = {r.catalog_ref: r.reason_pl for r in w_ziemi.rejected}
+    assert "cab-50" in powody
+    assert "Obciążalność skorygowana 119.3 A" in powody["cab-50"]
+    assert "katalogowa 160 A × 0.7454" in powody["cab-50"]
+    assert "poniżej progu 140 A" in powody["cab-50"]
+
+    # Bez korekty komunikat NIE moze sugerowac przeliczenia, ktorego nie bylo.
+    katalogowe = propose_mv_cable(
+        CableSelectionInput(
+            transformer_current_a=200.0,
+            length_km=1.0,
+            line_voltage_v=15000.0,
+            cos_phi=0.95,
+            candidates=_cable_candidates(),
+            max_delta_u_pct=5.0,
+        )
+    )
+    powody_katalogowe = {r.catalog_ref: r.reason_pl for r in katalogowe.rejected}
+    assert powody_katalogowe["cab-50"] == "Obciążalność 160 A poniżej progu 200 A."
+
+
+def test_korekta_moze_wyczerpac_katalog_i_daje_wlasciwy_kod_bledu() -> None:
+    """Gdy korekta zabiera cala rezerwe, blad musi wskazac PRZEKROJ, nie ΔU.
+
+    I_TR = 400 A, ziemia/3 kable: najwieksza obciazalnosc skorygowana to
+    530 x 0,74538 = 395,1 A < 400 A. Bez korekty ten sam tor przechodzilby na 240 mm².
+    """
+    wspolne = {
+        "transformer_current_a": 400.0,
+        "length_km": 1.0,
+        "line_voltage_v": 15000.0,
+        "cos_phi": 0.95,
+        "candidates": _cable_candidates(),
+        "max_delta_u_pct": 5.0,
+    }
+    katalogowe = propose_mv_cable(CableSelectionInput(**wspolne))
+    assert katalogowe.proposal is not None
+    assert katalogowe.proposal.cross_section_mm2 == pytest.approx(240.0)
+
+    w_ziemi = propose_mv_cable(CableSelectionInput(**wspolne, derating=ZIEMIA_3_KABLE_200MM))
+    assert w_ziemi.proposal is None
+    assert w_ziemi.error_code == "converter.der_sn.dobor_kabel_przekroj_niewystarczajacy"
+    # Zalozenie musi zostac w wyniku takze przy braku propozycji — inaczej projektant
+    # nie wie, ze mozna je zmienic zamiast szukac grubszego kabla.
+    assert w_ziemi.derating_set == "ziemia_3_kable_warstwa_200mm"
+    assert "ziemia" in w_ziemi.derating_assumption_pl.lower()
+
+
+def test_wspolczynniki_wlasne_dzialaja_w_doborze() -> None:
+    """Warunki spoza listy podaje projektant WPROST — bez interpolacji przez system."""
+    wlasne = wspolczynniki_wlasne(
+        f_grunt=0.88,
+        f_wiazka=1.0,
+        f_grupa=1.0,
+        opis_pl="Ziemia, rezystywnosc 2,0 K·m/W, temperatura gruntu 25°C (dokumentacja projektu)",
+    )
+    wynik = propose_mv_cable(
+        CableSelectionInput(
+            transformer_current_a=140.0,
+            length_km=1.0,
+            line_voltage_v=15000.0,
+            cos_phi=0.95,
+            candidates=_cable_candidates(),
+            max_delta_u_pct=2.0,
+            derating=wlasne,
+        )
+    )
+    # 160 x 0,88 = 140,8 A >= 140 A — kabel 50 mm² jeszcze przechodzi (granica).
+    assert wynik.proposal is not None
+    assert wynik.proposal.cross_section_mm2 == pytest.approx(50.0)
+    assert wynik.proposal.effective_ampacity_a == pytest.approx(140.8, abs=1e-9)
+    assert wynik.derating_set == "wlasne"
+    assert "rezystywnosc 2,0" in wynik.derating_assumption_pl

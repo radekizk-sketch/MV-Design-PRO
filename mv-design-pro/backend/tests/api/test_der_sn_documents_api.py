@@ -203,3 +203,138 @@ def test_opt_in_store_captures_documents() -> None:
     doc_types = {r.doc_type for r in records}
     assert "LISTA_MATERIALOWA" in doc_types
     assert "RAPORT_ZGODNOSCI" in doc_types
+
+
+# ===========================================================================
+# Karta F-K7 (V12K-207): raport zgodności liczy propozycję dla TYCH SAMYCH
+# warunków ułożenia, które przyjęto w doborze.
+#
+# Bez tego powiązania raport porównywałby zastosowany kabel z propozycją policzoną
+# przy warunkach KATALOGOWYCH i zgłaszał ⚠ „odstępstwo od propozycji D2" za kabel
+# dobrany POPRAWNIE dla warunków ziemnych. To nie jest ozdoba: fałszywe odstępstwo
+# każe projektantowi cofnąć dobrą decyzję.
+# ===========================================================================
+
+_TR_BLOCK_4MVA = "tr-sn-nn-15-0p69-4mva-dyn11-inverter"
+
+
+def _der_payload_4mva(*, cable_ref: str, laying_conditions: object | None) -> dict:
+    """Tor 4 MVA / 15 kV ⇒ I_SN = 153,96 A — jedyne okno, w którym korekta ziemna
+    (0,74538) przesuwa dobór: 50 mm² ma Iz 160 A (przechodzi katalogowo), a po korekcie
+    119,3 A (nie przechodzi)."""
+    payload = _der_sn_payload()
+    payload["source_name"] = "Blok PV SN 4 MVA"
+    payload["quantity"] = 2
+    payload["power_setpoint_mw"] = 2.0
+    payload["catalog_binding"]["catalog_item_id"] = "conv-pv-nn-2mw-0p69kv"
+    payload["materialized_params"] = {
+        "catalog_item_id": "conv-pv-nn-2mw-0p69kv",
+        "catalog_item_version": "2024.1",
+        "un_kv": 0.69,
+        "pmax_mw": 2.0,
+        "sn_mva": 2.0,
+    }
+    topology = payload["der_topology"]
+    topology["inverter_output_voltage_kv"] = 0.69
+    topology["block_transformer"] = {
+        "rated_power_mva": 4.0,
+        "primary_voltage_kv": 15.0,
+        "secondary_voltage_kv": 0.69,
+        "catalog_ref": _TR_BLOCK_4MVA,
+        "catalog_binding": {
+            "catalog_namespace": "TRAFO_SN_NN",
+            "catalog_item_id": _TR_BLOCK_4MVA,
+            "catalog_item_version": "2024.1",
+            "materialize": True,
+            "snapshot_mapping_version": "1.0",
+        },
+    }
+    field = topology["mv_field_configuration"]
+    field["cable_catalog_ref"] = cable_ref
+    field["cable_catalog_binding"]["catalog_item_id"] = cable_ref
+    if laying_conditions is not None:
+        field["cable_laying_conditions"] = laying_conditions
+    return payload
+
+
+def _seed_case_4mva(case_id: str, *, cable_ref: str, laying_conditions: object | None) -> None:
+    result = execute_domain_operation(
+        _sn_station_enm(),
+        "add_converter_source",
+        _der_payload_4mva(cable_ref=cable_ref, laying_conditions=laying_conditions),
+    )
+    assert not result.get("error"), result.get("error")
+    set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
+
+
+def _odstepstwo_przekroju(body: dict) -> dict | None:
+    """Pozycja raportu dotycząca doboru przekroju kabla (sekcja odstępstw D2)."""
+    for pozycja in body.get("pozycje", []):
+        if pozycja.get("check_id") == "d2.przekroj_kabla_mm2":
+            return pozycja
+    return None
+
+
+def test_warunki_ulozenia_z_modelu_nie_daja_falszywego_odstepstwa() -> None:
+    """Kabel 70 mm² dobrany dla warunków ziemnych NIE MOŻE być odstępstwem.
+
+    Propozycja przy warunkach ziemnych to 70 mm² (50 mm² odpada: 119,3 A < 154,0 A),
+    więc zastosowanie 70 mm² jest zgodne z propozycją. Gdyby raport liczył propozycję
+    dla warunków katalogowych, dostałby 50 mm² i zgłosił ⚠ za dobrą decyzję.
+    """
+    _seed_case_4mva(
+        "case-fk7-zgodny",
+        cable_ref="cable-base-xlpe-cu-1c-70",
+        laying_conditions={"set_name": "ziemia_3_kable_warstwa_200mm"},
+    )
+    resp = client.get(
+        "/api/der-sn/case-fk7-zgodny/compliance-report", params={"run_status": "DONE"}
+    )
+    assert resp.status_code == 200, resp.text
+    pozycja = _odstepstwo_przekroju(resp.json())
+    assert pozycja is not None, "sekcja odstępstw D2 musi zawierać przekrój kabla"
+    assert pozycja["zastosowano"] == pytest.approx(70.0)
+    assert pozycja["propozycja"] == pytest.approx(70.0)
+    assert pozycja["status"] == "PASS"
+    assert pozycja["code"] == "der_sn.d2.zgodne"
+
+
+def test_realne_odstepstwo_przekroju_nadal_jest_zglaszane() -> None:
+    """Odwrotna strona: 50 mm² przy warunkach ziemnych to PRAWDZIWE odstępstwo (⚠).
+
+    Kabel przechodzi katalogowo (160 A ≥ 154,0 A), ale w ziemi w grupie przenosi
+    119,3 A — czyli mniej niż prąd toru. Powiązanie warunków z modelem musi ten
+    przypadek nadal wyłapać, a nie „wyciszyć" odstępstw w ogóle.
+    """
+    _seed_case_4mva(
+        "case-fk7-odstepstwo",
+        cable_ref="cable-polish-yhakxs-1c-50",
+        laying_conditions={"set_name": "ziemia_3_kable_warstwa_200mm"},
+    )
+    resp = client.get(
+        "/api/der-sn/case-fk7-odstepstwo/compliance-report", params={"run_status": "DONE"}
+    )
+    assert resp.status_code == 200, resp.text
+    pozycja = _odstepstwo_przekroju(resp.json())
+    assert pozycja is not None
+    assert pozycja["zastosowano"] == pytest.approx(50.0)
+    assert pozycja["propozycja"] == pytest.approx(70.0)
+    assert pozycja["status"] == "WARN"
+    assert pozycja["code"] == "der_sn.d2.odstepstwo"
+
+
+def test_tor_bez_zapisu_warunkow_liczy_sie_jak_dotad() -> None:
+    """Tory zbudowane przed tą kartą: warunki katalogowe ⇒ propozycja 50 mm²."""
+    _seed_case_4mva(
+        "case-fk7-katalogowy",
+        cable_ref="cable-polish-yhakxs-1c-50",
+        laying_conditions=None,
+    )
+    resp = client.get(
+        "/api/der-sn/case-fk7-katalogowy/compliance-report", params={"run_status": "DONE"}
+    )
+    assert resp.status_code == 200, resp.text
+    pozycja = _odstepstwo_przekroju(resp.json())
+    assert pozycja is not None
+    assert pozycja["propozycja"] == pytest.approx(50.0)
+    assert pozycja["status"] == "PASS"

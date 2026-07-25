@@ -435,6 +435,21 @@ export interface DerMvFieldConfigurationSpec {
   cable_catalog_ref: string | null;
   cable_catalog_binding: CatalogBindingPayload | null;
   cable_length_km: number | null;
+  /**
+   * V12K-207 (karta F-K7): warunki UŁOŻENIA kabla przyjęte w doborze obciążalności —
+   * ADDYTYWNE (brak/null → backend przyjmuje warunki katalogowe, czyli zachowanie
+   * dotychczasowe co do bitu). Nazwa zestawu jest WALIDOWANA przy wejściu do modelu.
+   */
+  cable_laying_conditions?: DerCableLayingConditionsPayload | null;
+}
+
+/** Opis warunków ułożenia kabla: nazwa zestawu albo współczynniki własne z opisem. */
+export interface DerCableLayingConditionsPayload {
+  set_name: string;
+  f_grunt?: number;
+  f_wiazka?: number;
+  f_grupa?: number;
+  opis_pl?: string;
 }
 
 export interface DerTopologyPayload {

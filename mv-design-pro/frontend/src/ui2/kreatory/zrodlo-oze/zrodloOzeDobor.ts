@@ -12,6 +12,7 @@
 
 import type { ConverterType } from '../../../ui/catalog/types';
 import type {
+  CableLayingConditions,
   DerSelectionPreviewRequest,
   DerSelectionPreviewResponse,
   ReactiveCharacter,
@@ -30,6 +31,8 @@ export interface ParametryDoboru {
   maxDeltaUPct?: number;
   /** V12K-203: charakter mocy biernej falownika w sprawdzanym przypadku pracy toru. */
   reactiveCharacter?: ReactiveCharacter;
+  /** V12K-207: warunki ułożenia kabla (nazwa zestawu z backendu albo własne wartości). */
+  layingConditions?: CableLayingConditions | null;
 }
 
 /**
@@ -57,6 +60,7 @@ export function zbudujZapytanieDoboru(
   if (params.fieldReservePu != null) request.field_reserve_pu = params.fieldReservePu;
   if (params.maxDeltaUPct != null) request.max_delta_u_pct = params.maxDeltaUPct;
   if (params.reactiveCharacter != null) request.reactive_character = params.reactiveCharacter;
+  if (params.layingConditions != null) request.laying_conditions = params.layingConditions;
   return request;
 }
 

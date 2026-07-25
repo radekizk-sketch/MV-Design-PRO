@@ -338,6 +338,7 @@ const DER_SN: DerSnFormData = {
   mv_field_name: 'Pole PV SN',
   mv_cable_catalog_ref: 'cable-base-epr-al-1c-240',
   mv_cable_length_km: 0.05,
+  mv_cable_laying_conditions: null,
 };
 
 describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
@@ -362,6 +363,47 @@ describe('zrodloOzeModel — tor DER-SN (DerTopology)', () => {
     expect(topo.mv_field_configuration?.cable_catalog_binding).toMatchObject({
       catalog_namespace: 'KABEL_SN',
       catalog_item_id: 'cable-base-epr-al-1c-240',
+    });
+    // V12K-207: brak warunków ułożenia = warunki katalogowe. Pole jedzie jako null,
+    // więc payload dotychczasowych torów pozostaje bez zmian znaczeniowych.
+    expect(topo.mv_field_configuration?.cable_laying_conditions).toBeNull();
+  });
+
+  it('warunki UŁOŻENIA kabla jadą do modelu razem z torem (V12K-207)', () => {
+    // Bez tego raport zgodności liczyłby propozycję dla warunków katalogowych i
+    // zgłaszał fałszywe odstępstwo od doboru zrobionego dla warunków ziemnych.
+    const topo = zbudujDerTopology(
+      {
+        ...DER_SN,
+        mv_cable_laying_conditions: { set_name: 'ziemia_3_kable_warstwa_200mm' },
+      },
+      'bus_sn_1',
+    );
+    expect(topo.mv_field_configuration?.cable_laying_conditions).toEqual({
+      set_name: 'ziemia_3_kable_warstwa_200mm',
+    });
+  });
+
+  it('własne współczynniki jadą w całości (nazwa sama nic nie odtwarza)', () => {
+    const topo = zbudujDerTopology(
+      {
+        ...DER_SN,
+        mv_cable_laying_conditions: {
+          set_name: 'wlasne',
+          f_grunt: 0.88,
+          f_wiazka: 1.0,
+          f_grupa: 0.9,
+          opis_pl: 'Ziemia, 2 obwody w rurach oslonowych',
+        },
+      },
+      'bus_sn_1',
+    );
+    expect(topo.mv_field_configuration?.cable_laying_conditions).toEqual({
+      set_name: 'wlasne',
+      f_grunt: 0.88,
+      f_wiazka: 1.0,
+      f_grupa: 0.9,
+      opis_pl: 'Ziemia, 2 obwody w rurach oslonowych',
     });
   });
 

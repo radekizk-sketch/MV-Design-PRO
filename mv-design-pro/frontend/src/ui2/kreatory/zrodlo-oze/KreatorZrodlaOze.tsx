@@ -72,7 +72,10 @@ import {
 import { DoborToruSn } from './DoborToruSn';
 import { PodsumowanieAutoBieg } from './PodsumowanieAutoBieg';
 import { zastosujPropozycje } from './zrodloOzeDobor';
-import type { DerSelectionPreviewResponse } from './derSelectionApi';
+import type {
+  CableLayingConditions,
+  DerSelectionPreviewResponse,
+} from './derSelectionApi';
 import {
   fetchListaMaterialowa,
   fetchRaportZgodnosci,
@@ -254,6 +257,12 @@ export function KreatorZrodlaOze() {
 
   const zmienGrupePolaczen = useCallback((v: string) => {
     setDerSn((p) => ({ ...p, block_transformer_vector_group: v || null }));
+  }, []);
+
+  // V12K-207 (karta F-K7): warunki ułożenia kabla jadą DO MODELU razem z torem —
+  // raport zgodności liczy potem propozycję dla tego samego założenia.
+  const zmienWarunkiUlozenia = useCallback((v: CableLayingConditions | null) => {
+    setDerSn((p) => ({ ...p, mv_cable_laying_conditions: v }));
   }, []);
 
   const onZastosujDobor = useCallback(
@@ -584,6 +593,7 @@ export function KreatorZrodlaOze() {
             derSn={derSn}
             onCableLengthChange={zmienDlugoscKabla}
             onVectorGroupChange={zmienGrupePolaczen}
+            onLayingConditionsChange={zmienWarunkiUlozenia}
             onZastosuj={onZastosujDobor}
             applied={derSnZastosowany}
           />

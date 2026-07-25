@@ -19,6 +19,7 @@
 
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import type { ConverterType } from '../../../ui/catalog/types';
+import type { CableLayingConditions } from './derSelectionApi';
 import type {
   DerConnectionMethod,
   DerMvSwitchingDevice,
@@ -444,6 +445,13 @@ export interface DerSnFormData {
   mv_field_name: string | null;
   mv_cable_catalog_ref: string | null;
   mv_cable_length_km: number | null;
+  /**
+   * V12K-207 (karta F-K7): warunki UŁOŻENIA kabla przyjęte w doborze obciążalności.
+   * `null` = warunki katalogowe (bez korekty) — wtedy pole NIE jedzie do payloadu i
+   * model dotychczasowych torów pozostaje bit-identyczny. Nazwy zestawów i wartości
+   * współczynników pochodzą z backendu (`/api/solver/cable-laying-conditions`).
+   */
+  mv_cable_laying_conditions: CableLayingConditions | null;
 }
 
 export const DANE_DER_SN_DOMYSLNE: DerSnFormData = {
@@ -467,6 +475,7 @@ export const DANE_DER_SN_DOMYSLNE: DerSnFormData = {
   mv_field_name: null,
   mv_cable_catalog_ref: null,
   mv_cable_length_km: null,
+  mv_cable_laying_conditions: null,
 };
 
 /**
@@ -592,6 +601,10 @@ export function zbudujDerTopology(data: DerSnFormData, mvBusRef: string): DerTop
       cable_catalog_ref: data.mv_cable_catalog_ref,
       cable_catalog_binding: normalizeCatalogBinding(data.mv_cable_catalog_ref, 'KABEL_SN'),
       cable_length_km: data.mv_cable_length_km,
+      // V12K-207: założenie doboru jedzie z modelem, żeby raport zgodności policzył
+      // propozycję dla TYCH SAMYCH warunków (inaczej zgłosiłby fałszywe odstępstwo).
+      // Warunki katalogowe = brak korekty, więc wtedy pola nie wysyłamy w ogóle.
+      cable_laying_conditions: data.mv_cable_laying_conditions,
     },
     mv_bus_ref: mvBusRef,
   };
