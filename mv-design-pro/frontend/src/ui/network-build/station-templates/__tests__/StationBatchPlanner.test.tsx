@@ -92,8 +92,12 @@ describe('StationBatchPlanner', () => {
       />,
     );
 
+    // Czekamy na wiersz Z SZABLONEM, a nie na sam wiersz: wiersze powstają zanim dojdą
+    // szablony, więc samo `station-batch-row-1` nie znaczy, że plan jest już ustalony.
+    // Poprzednia wersja tego oczekiwania przepuszczała wyścig i test padał losowo w
+    // pełnym biegu (V12K-208).
     await waitFor(() => {
-      expect(screen.getByTestId('station-batch-row-1')).toBeInTheDocument();
+      expect(screen.getByTestId('station-batch-row-1').textContent).toContain('Stacja SN/nN 630 kVA');
     });
 
     const firstLengthInput = screen.getByLabelText('Długość odcinka wiersza 1') as HTMLInputElement;
@@ -101,5 +105,69 @@ describe('StationBatchPlanner', () => {
 
     expect(screen.getByTestId('station-batch-row-1').textContent).toContain('brak długości');
     expect(screen.getByTestId('station-batch-apply')).toBeDisabled();
+  });
+
+  it('edycja wpisana PRZED dojściem szablonów nie przepada po ich dojściu (V12K-208)', async () => {
+    // REALNY DEFEKT, nie tylko chwiejny test: wiersze planu renderują się od razu (bez
+    // szablonu, ze statusem „brak szablonu"), więc projektant może zacząć uzupełniać
+    // długości w trakcie pobierania. Spóźnione `setTemplates` przestawiało wtedy CAŁY
+    // plan od zera i jego wpisy przepadały bez żadnego komunikatu.
+    let wypuscSzablony: (() => void) | null = null;
+    const oczekiwanie = new Promise<Response>((resolve) => {
+      wypuscSzablony = () => resolve(response({ templates, total: templates.length }));
+    });
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(oczekiwanie);
+
+    render(
+      <StationBatchPlanner
+        caseId="case-1"
+        segmentRefs={['seg/1', 'seg/2', 'seg/3']}
+        targetCount={3}
+      />,
+    );
+
+    // Plan bez szablonów: wiersz istnieje i ma edytowalną długość.
+    await waitFor(() => {
+      expect(screen.getByTestId('station-batch-row-1')).toBeInTheDocument();
+    });
+    const lengthInput = screen.getByLabelText('Długość odcinka wiersza 1') as HTMLInputElement;
+    fireEvent.change(lengthInput, { target: { value: '777' } });
+    expect((screen.getByLabelText('Długość odcinka wiersza 1') as HTMLInputElement).value).toBe('777');
+
+    // Teraz szablony dochodzą — plan jest przebudowywany.
+    wypuscSzablony?.();
+    await waitFor(() => {
+      expect(screen.getByTestId('station-batch-row-1').textContent).toContain('Stacja SN/nN 630 kVA');
+    });
+
+    // Wpis projektanta MUSI przeżyć przebudowę planu.
+    expect((screen.getByLabelText('Długość odcinka wiersza 1') as HTMLInputElement).value).toBe('777');
+  });
+
+  it('„Odtwórz plan" porzuca edycje projektanta (przycisk robi to, co obiecuje)', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(response({ templates, total: templates.length }));
+
+    render(
+      <StationBatchPlanner
+        caseId="case-1"
+        segmentRefs={['seg/1', 'seg/2', 'seg/3']}
+        targetCount={3}
+      />,
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId('station-batch-row-1').textContent).toContain('Stacja SN/nN 630 kVA');
+    });
+
+    const wejscie = screen.getByLabelText('Długość odcinka wiersza 1') as HTMLInputElement;
+    const dlugoscZPlanu = wejscie.value;
+    fireEvent.change(wejscie, { target: { value: '777' } });
+    expect((screen.getByLabelText('Długość odcinka wiersza 1') as HTMLInputElement).value).toBe('777');
+
+    fireEvent.click(screen.getByText(/Odtwórz plan/));
+    await waitFor(() => {
+      expect((screen.getByLabelText('Długość odcinka wiersza 1') as HTMLInputElement).value).toBe(
+        dlugoscZPlanu,
+      );
+    });
   });
 });
