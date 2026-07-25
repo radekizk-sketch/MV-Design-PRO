@@ -38,6 +38,7 @@ from application.analyses.state_estimation import (
     build_state_estimation_requirements,
     build_state_estimation_view,
 )
+from application.analyses.warunki_przylaczenia import build_warunki_przylaczenia_view
 from application.analyses.zgodnosc_powykonawcza import (
     build_zgodnosc_powykonawcza_view,
     parse_measurements_csv,
@@ -158,6 +159,25 @@ def get_flicker(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
         return build_migotanie_view(run)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/api/quality/connection-conditions")
+def get_connection_conditions(run_id: UUID = Query(...)) -> dict[str, Any]:
+    """Ocena warunkow przylaczenia OSD wobec wyniku rozplywu (karta F-K2).
+
+    Domyka lancuch E1 -> E5 -> E7: moc przylaczeniowa i wymagany cosfi z dokumentu
+    OSD staja sie kryterium oceny mocy i cosfi RZECZYWISCIE wymienianych w punkcie
+    przylaczenia. Brak danych daje pozycje NIESPRAWDZONA z kodem gotowosci — nigdy
+    milczacego PASS.
+    """
+    run = _require_run(run_id)
+    try:
+        return build_warunki_przylaczenia_view(run)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

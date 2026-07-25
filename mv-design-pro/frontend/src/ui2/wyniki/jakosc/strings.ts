@@ -47,6 +47,22 @@ export const JAKOSC_STRINGS = {
   kolProgOstrzezenia: 'Próg ostrzeżenia',
   kolProgPrzekroczenia: 'Próg przekroczenia',
   kolMargines: 'Margines',
+  // Warunki przyłączenia OSD (karta F-K2, znalezisko Z2 audytu FLOW)
+  sekcjaWarunki: 'Warunki przyłączenia OSD',
+  kolKryterium: 'Kryterium',
+  kolWartoscZmierzona: 'Zmierzona',
+  kolWartoscWymagana: 'Wymagana',
+  kolOcena: 'Ocena',
+  kryteriumMoc: 'Moc czynna w punkcie przyłączenia',
+  kryteriumCosPhi: 'Współczynnik mocy cosφ w punkcie przyłączenia',
+  ocenaSpelnione: 'Spełnione',
+  ocenaNaruszone: 'Naruszone',
+  ocenaNiesprawdzone: 'Niesprawdzone — brak danych',
+  warunkiKierunekPobor: 'pobór z sieci',
+  warunkiKierunekOddawanie: 'oddawanie do sieci',
+  warunkiBrakWarunkow: 'Nie podano warunków przyłączenia',
+  warunkiBrakWarunkowOpis:
+    'Uzupełnij moc przyłączeniową i wymagany cosφ w kaflu „Warunki przyłączenia" na pulpicie projektu — bez nich punkt przyłączenia pozostaje nieoceniony.',
   kolStatusWalidacji: 'Status',
   kolIdentyfikatorObiektu: 'Identyfikator obiektu',
 

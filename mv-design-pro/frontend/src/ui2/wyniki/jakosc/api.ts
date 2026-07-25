@@ -386,3 +386,57 @@ export async function pobierzRaportArcFlash(
   }
   return response.blob();
 }
+
+// ---------------------------------------------------------------------------
+// Warunki przyłączenia OSD (karta F-K2, znalezisko Z2 audytu FLOW)
+// ---------------------------------------------------------------------------
+// `GET /api/quality/connection-conditions?run_id=`:
+//   `backend/src/api/quality_analysis_runs.py` →
+//   `application/analyses/warunki_przylaczenia.py:build_warunki_przylaczenia_view`.
+// Moc i cosφ w punkcie przyłączenia pochodzą WYŁĄCZNIE z biegu rozpływu (węzeł
+// bilansujący), a wartości wymagane z dokumentu OSD zapisanego w nagłówku modelu.
+// ZERO fizyki w UI — front wyłącznie prezentuje werdykt backendu.
+
+/** Status pozycji werdyktu. `UNAVAILABLE` = NIESPRAWDZONE (brak danych), nie „spełnione". */
+export type StatusWarunku = 'PASS' | 'FAIL' | 'UNAVAILABLE';
+
+/** Jedna pozycja werdyktu warunków przyłączenia (kryterium + wartość + wymagana). */
+export interface PozycjaWarunku {
+  readonly kryterium: string;
+  readonly status: StatusWarunku;
+  readonly wartosc: number | null;
+  readonly wymagana: number | null;
+  readonly jednostka: string;
+  readonly opis_pl: string;
+  readonly readiness_codes: readonly string[];
+}
+
+/** Ocena warunków przyłączenia w punkcie przyłączenia (PWP). */
+export interface OcenaWarunkow {
+  readonly punkt_przylaczenia: string | null;
+  readonly p_mw: number | null;
+  readonly q_mvar: number | null;
+  readonly s_mva: number | null;
+  readonly cos_phi: number | null;
+  readonly kierunek: 'pobor' | 'oddawanie' | null;
+  readonly status_ogolny: StatusWarunku;
+  readonly pozycje: readonly PozycjaWarunku[];
+  readonly readiness_codes: readonly string[];
+  readonly formula_ref: string;
+  readonly zalozenia: readonly string[];
+}
+
+/** Pełna odpowiedź `GET /api/quality/connection-conditions`. */
+export interface WarunkiPrzylaczeniaResponse {
+  readonly run_id: string;
+  readonly case_id: string;
+  readonly analysis_type: string;
+  readonly ocena: OcenaWarunkow;
+}
+
+/** Pobiera ocenę warunków przyłączenia dla przebiegu rozpływu (PF/DONE). */
+export function fetchWarunkiPrzylaczenia(runId: string): Promise<WarunkiPrzylaczeniaResponse> {
+  return getJson<WarunkiPrzylaczeniaResponse>(
+    `/api/quality/connection-conditions?run_id=${encodeURIComponent(runId)}`,
+  );
+}

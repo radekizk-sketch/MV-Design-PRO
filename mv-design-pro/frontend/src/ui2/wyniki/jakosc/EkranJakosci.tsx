@@ -27,6 +27,7 @@ import {
   fetchArcFlash,
   fetchMigotanie,
   fetchWalidacjaEnergetyczna,
+  fetchWarunkiPrzylaczenia,
   fetchWiarygodnoscZwarciowa,
   pobierzRaportArcFlash,
   type ArcFlashResponse,
@@ -39,6 +40,7 @@ import {
   type TypObudowy,
   type WalidacjaItem,
   type WalidacjaResponse,
+  type WarunkiPrzylaczeniaResponse,
   type WezelMigotania,
   type WiarygodnoscItem,
   type WiarygodnoscResponse,
@@ -52,15 +54,18 @@ import {
   KOLUMNY_ARC_FLASH,
   KOLUMNY_MIGOTANIE,
   KOLUMNY_WALIDACJI,
+  KOLUMNY_WARUNKOW,
   KOLUMNY_WIARYGODNOSCI,
   kluczWalidacji,
   rodzajPrzekroczeniaWalidacji,
   naWierszeArcFlash,
   naWierszeMigotania,
   naWierszeWalidacji,
+  naWierszeWarunkow,
   naWierszeWiarygodnosci,
   naZalozeniaMigotania,
   naZalozeniaWalidacji,
+  naZalozeniaWarunkow,
   naZalozeniaWiarygodnosci,
   typElementuWalidacji,
   przebiegRozplywu,
@@ -1183,6 +1188,94 @@ export interface EkranJakosciProps {
   onEksport?: () => void;
 }
 
+/**
+ * Sekcja „Warunki przyłączenia OSD" (karta F-K2, znalezisko Z2 audytu FLOW).
+ *
+ * Domyka łańcuch E1 → E5 → E7: moc przyłączeniowa i wymagany cosφ z dokumentu OSD
+ * (krok E1, kafel na pulpicie projektu) stają się KRYTERIUM oceny mocy i cosφ
+ * rzeczywiście wymienianych w punkcie przyłączenia (wynik rozpływu, krok E5).
+ * Wcześniej warunki były wyłącznie wyświetlane i nie oceniały niczego.
+ *
+ * ZERO fizyki w UI — werdykt, wielkości i założenia przychodzą gotowe z backendu.
+ * Trzeci stan („Niesprawdzone — brak danych") jest pokazywany JAWNIE i nie może
+ * być odczytany jako spełnienie kryterium.
+ */
+export function SekcjaWarunkowPrzylaczenia({
+  przebieg,
+  trybZaawansowania,
+  onOtworzDowod,
+  onEksport,
+}: SekcjaProps) {
+  const runId = przebieg?.id ?? null;
+  const { stan, dane } = useZasobJakosci<WarunkiPrzylaczeniaResponse>(
+    runId,
+    fetchWarunkiPrzylaczenia,
+  );
+
+  if (stan === 'brakPrzebiegu') {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaWarunki}
+        komunikat={JAKOSC_STRINGS.brakPrzebieguRozplywu}
+        opis={JAKOSC_STRINGS.brakPrzebieguRozplywuOpis}
+        wariant="info"
+        testid="mvd-jakosc-warunki-brak"
+      />
+    );
+  }
+  if (stan === 'ladowanie') {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaWarunki}
+        komunikat={JAKOSC_STRINGS.ladowanie}
+        wariant="info"
+        testid="mvd-jakosc-warunki-ladowanie"
+      />
+    );
+  }
+  if (stan === 'blad' || dane === null) {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaWarunki}
+        komunikat={JAKOSC_STRINGS.blad}
+        opis={JAKOSC_STRINGS.bladOpis}
+        wariant="blad"
+        testid="mvd-jakosc-warunki-blad"
+      />
+    );
+  }
+
+  const { ocena } = dane;
+  // Brak warunków OSD to nie błąd i nie brak wyniku — to brak DANYCH WEJŚCIOWYCH
+  // projektu. Mówimy wprost, czego brakuje i gdzie to uzupełnić (akcja naprawcza).
+  const brakWarunkow = ocena.pozycje.every((p) => p.status === 'UNAVAILABLE');
+  if (brakWarunkow) {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaWarunki}
+        komunikat={JAKOSC_STRINGS.warunkiBrakWarunkow}
+        opis={JAKOSC_STRINGS.warunkiBrakWarunkowOpis}
+        wariant="info"
+        testid="mvd-jakosc-warunki-bez-danych"
+      />
+    );
+  }
+
+  return (
+    <section data-testid="mvd-jakosc-warunki">
+      <EkranAnalizy
+        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaWarunki, runId: runId ?? undefined }}
+        zalozenia={naZalozeniaWarunkow(ocena)}
+        kolumny={KOLUMNY_WARUNKOW}
+        wiersze={naWierszeWarunkow(ocena.pozycje)}
+        onOtworzDowod={onOtworzDowod}
+        onEksport={onEksport}
+        trybZaawansowania={trybZaawansowania}
+      />
+    </section>
+  );
+}
+
 export function EkranJakosci({ trybZaawansowania, onOtworzDowod, onEksport }: EkranJakosciProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
@@ -1202,6 +1295,12 @@ export function EkranJakosci({ trybZaawansowania, onOtworzDowod, onEksport }: Ek
         onEksport={onEksport ? eksport : undefined}
       />
       <SekcjaWalidacji
+        przebieg={przebiegPF}
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={onOtworzDowod}
+        onEksport={onEksport ? eksport : undefined}
+      />
+      <SekcjaWarunkowPrzylaczenia
         przebieg={przebiegPF}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}

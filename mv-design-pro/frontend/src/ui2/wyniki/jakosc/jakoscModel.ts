@@ -26,7 +26,9 @@ import type {
   WezelMigotania,
   WiarygodnoscItem,
   WynikArcFlash,
-} from './api';
+  OcenaWarunkow,
+  PozycjaWarunku,
+  StatusWarunku} from './api';
 import {
   JAKOSC_STRINGS,
   fmtCal,
@@ -401,4 +403,80 @@ export function mapujWierszArcFlash(wynik: WynikArcFlash): WierszTabeli {
 /** Mapuje wyniki Arc Flash na wiersze tabeli wzorca (kolejność źródłowa). */
 export function naWierszeArcFlash(wyniki: readonly WynikArcFlash[]): WierszTabeli[] {
   return wyniki.map(mapujWierszArcFlash);
+}
+
+// ---------------------------------------------------------------------------
+// Warunki przyłączenia OSD (karta F-K2, znalezisko Z2 audytu FLOW)
+// ---------------------------------------------------------------------------
+// Adapter PREZENTACYJNY: wszystkie wielkości i werdykty przychodzą gotowe z
+// backendu (`/api/quality/connection-conditions`). UI nie liczy ani nie ocenia —
+// tłumaczy tylko kryteria i statusy na język polski i formatuje liczby.
+
+/** Kolumny werdyktu warunków przyłączenia: kryterium, zmierzona, wymagana, ocena. */
+export const KOLUMNY_WARUNKOW: DefinicjaKolumny[] = [
+  { klucz: 'kryterium', etykieta: JAKOSC_STRINGS.kolKryterium, wyrownanie: 'lewo' },
+  { klucz: 'zmierzona', etykieta: JAKOSC_STRINGS.kolWartoscZmierzona, mono: true },
+  { klucz: 'wymagana', etykieta: JAKOSC_STRINGS.kolWartoscWymagana, mono: true },
+  { klucz: 'ocena', etykieta: JAKOSC_STRINGS.kolOcena, wyrownanie: 'lewo' },
+];
+
+/** Etykieta kryterium po polsku; nieznany klucz zwracamy bez zmian (uczciwie). */
+export function kryteriumWarunkuPL(kryterium: string): string {
+  if (kryterium === 'moc_w_punkcie_przylaczenia') return JAKOSC_STRINGS.kryteriumMoc;
+  if (kryterium === 'cos_phi_w_punkcie_przylaczenia') return JAKOSC_STRINGS.kryteriumCosPhi;
+  return kryterium;
+}
+
+/** Ocena po polsku. UNAVAILABLE to TRZECI stan — nigdy nie mylony ze spełnieniem. */
+export function ocenaWarunkuPL(status: StatusWarunku): string {
+  if (status === 'PASS') return JAKOSC_STRINGS.ocenaSpelnione;
+  if (status === 'FAIL') return JAKOSC_STRINGS.ocenaNaruszone;
+  return JAKOSC_STRINGS.ocenaNiesprawdzone;
+}
+
+/** Wiersze tabeli werdyktu — kolejność z backendu (deterministyczna). */
+export function naWierszeWarunkow(pozycje: readonly PozycjaWarunku[]): WierszTabeli[] {
+  return pozycje.map((pozycja) => ({
+    kryterium: { wartosc: kryteriumWarunkuPL(pozycja.kryterium) },
+    zmierzona: komorkaLiczba(pozycja.wartosc, fmtWartosc, {
+      jednostka: pozycja.jednostka === '-' ? undefined : pozycja.jednostka,
+      ostrzezenie: pozycja.status === 'FAIL',
+    }),
+    wymagana: komorkaLiczba(pozycja.wymagana, fmtWartosc, {
+      jednostka: pozycja.jednostka === '-' ? undefined : pozycja.jednostka,
+    }),
+    ocena: { wartosc: ocenaWarunkuPL(pozycja.status) },
+  }));
+}
+
+/**
+ * Założenia sekcji — pokazują, SKĄD wzięły się liczby i jaka jest konwencja znaku.
+ * Bez tego werdykt „moc 6,2 MW wobec 5,0 MW" nie mówi projektantowi, co zmierzono.
+ */
+export function naZalozeniaWarunkow(ocena: OcenaWarunkow): WierszZalozenia[] {
+  const kierunekPL =
+    ocena.kierunek === 'oddawanie'
+      ? JAKOSC_STRINGS.warunkiKierunekOddawanie
+      : ocena.kierunek === 'pobor'
+        ? JAKOSC_STRINGS.warunkiKierunekPobor
+        : JAKOSC_STRINGS.kreska;
+  return [
+    {
+      etykieta: 'Punkt przyłączenia',
+      wartosc: ocena.punkt_przylaczenia ?? JAKOSC_STRINGS.kreska,
+      uwaga: 'Węzeł bilansujący biegu rozpływu — zasilanie z sieci OSD.',
+    },
+    { etykieta: 'Kierunek przepływu mocy czynnej', wartosc: kierunekPL },
+    {
+      etykieta: 'Moc pozorna w punkcie',
+      wartosc: ocena.s_mva === null ? JAKOSC_STRINGS.kreska : fmtWartosc(ocena.s_mva),
+      jednostka: 'MVA',
+      uwaga: 'S = √(P² + Q²) z wyniku rozpływu.',
+    },
+    {
+      etykieta: 'Zależność kryterialna',
+      wartosc: ocena.formula_ref,
+      uwaga: 'Limit mocy dotyczy modułu — dokument OSD ogranicza oba kierunki.',
+    },
+  ];
 }

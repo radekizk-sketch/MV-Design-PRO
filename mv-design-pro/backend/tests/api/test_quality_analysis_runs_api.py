@@ -17,6 +17,7 @@ from tests.cgmes.golden_enm import build_golden_enm
 SANITY_BOUNDS = "/api/quality/sanity-bounds"
 ENERGY_VALIDATION = "/api/quality/energy-validation"
 FLICKER = "/api/quality/flicker"
+CONNECTION_CONDITIONS = "/api/quality/connection-conditions"
 ARC_FLASH = "/api/quality/arc-flash"
 ARC_FLASH_REPORT = "/api/quality/arc-flash/report"
 
@@ -280,3 +281,39 @@ def test_flicker_wrong_analysis_type_returns_422(app_client) -> None:
     resp = app_client.get(FLICKER, params={"run_id": str(run_id)})
     assert resp.status_code == 422
     assert "przebiegu zwarciowego" in resp.json()["detail"]
+
+
+# --------------------------------------------------------------------------
+# Ocena warunkow przylaczenia OSD (karta F-K2, znalezisko Z2 audytu FLOW)
+# --------------------------------------------------------------------------
+
+
+def test_connection_conditions_endpoint_returns_view(app_client) -> None:
+    """Widok istnieje i niesie werdykt per kryterium — endpoint jest REALNYM konsumentem."""
+    run_id = _pf_run_id()
+    resp = app_client.get(CONNECTION_CONDITIONS, params={"run_id": str(run_id)})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["run_id"] == str(run_id)
+    ocena = body["ocena"]
+    kryteria = [p["kryterium"] for p in ocena["pozycje"]]
+    assert kryteria == ["moc_w_punkcie_przylaczenia", "cos_phi_w_punkcie_przylaczenia"]
+    # Golden ENM nie ma warunkow OSD w naglowku, wiec ocena jest NIESPRAWDZONA —
+    # i to jest poprawne zachowanie (trzeci stan), nie milczace PASS.
+    assert ocena["status_ogolny"] == "UNAVAILABLE"
+    assert "connection.power_limit_missing" in ocena["readiness_codes"]
+    # Punkt przylaczenia wyznaczony z wezla bilansujacego biegu.
+    assert ocena["punkt_przylaczenia"]
+
+
+def test_connection_conditions_rejects_short_circuit_run(app_client) -> None:
+    """Bieg zwarciowy nie jest podstawa oceny warunkow przylaczenia (422 po polsku)."""
+    run_id = _sc_run_id()
+    resp = app_client.get(CONNECTION_CONDITIONS, params={"run_id": str(run_id)})
+    assert resp.status_code == 422
+    assert "rozplywu mocy" in resp.json()["detail"]
+
+
+def test_connection_conditions_unknown_run_returns_404(app_client) -> None:
+    resp = app_client.get(CONNECTION_CONDITIONS, params={"run_id": str(uuid4())})
+    assert resp.status_code == 404

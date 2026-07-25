@@ -9,7 +9,9 @@
 import type {
   ExecutionRun,
 } from '../../../../ui/study-cases/types';
-import type { MigotanieResponse, WalidacjaResponse, WiarygodnoscResponse } from '../api';
+import type { MigotanieResponse, WalidacjaResponse, WiarygodnoscResponse,
+  WarunkiPrzylaczeniaResponse,
+} from '../api';
 
 export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
   analysis_id: '11111111-1111-1111-1111-111111111111',
@@ -296,3 +298,46 @@ export function przebiegTestowy(
     error_message: null,
   };
 }
+
+/**
+ * Ocena warunków przyłączenia OSD (karta F-K2) — moc w limicie, cosφ dotrzymany.
+ * Wartości spójne rachunkowo: P = -4,5 MW, Q = 0,64 Mvar → S = 4,545 MVA,
+ * cosφ = 4,5/4,545 = 0,990.
+ */
+export const WARUNKI_FIXTURE: WarunkiPrzylaczeniaResponse = {
+  run_id: 'pf-1',
+  case_id: 'case-1',
+  analysis_type: 'PF',
+  ocena: {
+    punkt_przylaczenia: 'BUS-GPZ-SN',
+    p_mw: -4.5,
+    q_mvar: 0.64,
+    s_mva: 4.545262,
+    cos_phi: 0.990047,
+    kierunek: 'oddawanie',
+    status_ogolny: 'PASS',
+    pozycje: [
+      {
+        kryterium: 'moc_w_punkcie_przylaczenia',
+        status: 'PASS',
+        wartosc: 4.5,
+        wymagana: 5,
+        jednostka: 'MW',
+        opis_pl: 'Moc oddawana do sieci 4.500 MW wobec limitu 5.000 MW (dotrzymany).',
+        readiness_codes: [],
+      },
+      {
+        kryterium: 'cos_phi_w_punkcie_przylaczenia',
+        status: 'PASS',
+        wartosc: 0.990047,
+        wymagana: 0.95,
+        jednostka: '-',
+        opis_pl: 'cosfi w punkcie 0.9900 wobec wymaganego 0.9500 (dotrzymany).',
+        readiness_codes: [],
+      },
+    ],
+    readiness_codes: [],
+    formula_ref: 'cosφ = |P| / √(P² + Q²);  kryterium mocy: |P| ≤ P_limit',
+    zalozenia: [],
+  },
+};

@@ -748,6 +748,49 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_protection_run_short_circuit",
         fix_navigation={"panel": "analizy", "tab": "zwarciowa"},
     ),
+    # Warunki przyłączenia OSD jako kryterium (karta F-K2, znalezisko Z2 audytu FLOW).
+    # Moc przyłączeniowa i wymagany cosφ z dokumentu OSD są danymi WEJŚCIOWYMI projektu;
+    # bez nich ocena punktu przyłączenia jest NIESPRAWDZONA, a nie spełniona.
+    "connection.power_limit_missing": ReadinessCodeSpec(
+        code="connection.power_limit_missing",
+        area=ReadinessArea.SOURCES,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak mocy przyłączeniowej z warunków OSD — uzupełnij, by ocenić moc "
+            "w punkcie przyłączenia"
+        ),
+        fix_action_id="fix_connection_power_limit",
+        fix_navigation={
+            "panel": "projekt",
+            "tab": "przylaczenie",
+            "focus": "moc_przylaczeniowa_mw",
+        },
+    ),
+    "connection.cos_phi_required_missing": ReadinessCodeSpec(
+        code="connection.cos_phi_required_missing",
+        area=ReadinessArea.SOURCES,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak wymaganego cosφ z warunków OSD — uzupełnij, by ocenić współczynnik "
+            "mocy w punkcie przyłączenia"
+        ),
+        fix_action_id="fix_connection_cos_phi",
+        fix_navigation={"panel": "projekt", "tab": "przylaczenie", "focus": "wymagany_cos_phi"},
+    ),
+    "connection.power_flow_missing": ReadinessCodeSpec(
+        code="connection.power_flow_missing",
+        area=ReadinessArea.SOURCES,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak zbieżnego biegu rozpływu — uruchom analizę rozpływu mocy, by ocenić "
+            "warunki przyłączenia"
+        ),
+        fix_action_id="fix_connection_run_power_flow",
+        fix_navigation={"panel": "analizy", "tab": "rozplyw"},
+    ),
     # Wytrzymałość zwarciowa przewodu (karta F-K1, IEC 60949). Kryterium wymaga TRZECH
     # danych z trzech różnych etapów projektu: prądu cieplnego (bieg zwarciowy), czasu
     # wyłączenia (analiza zabezpieczeń) i wytrzymałości żyły (katalog). Brak którejkolwiek
