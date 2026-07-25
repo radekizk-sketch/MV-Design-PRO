@@ -30,8 +30,9 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
-import { SekcjaZalozen } from '../wzorzec';
+import { akcjaNaprawcza, SekcjaZalozen, usePoprawWModelu } from '../wzorzec';
 import { usePrzebiegStabilnosci, useWynikStabilnosci } from './api';
+import { elementWerdyktuStabilnosci } from './model';
 import {
   fmtMs,
   fmtWskaznik,
@@ -90,6 +91,7 @@ export function EkranStabilnosci() {
   const clearRouteManagedSurface = useNetworkBuildStore((s) => s.clearRouteManagedSurface);
   const activeRunId = useAppStateStore((s) => s.activeRunId);
   const przebiegi = useExecutionRunsStore((s) => s.runs);
+  const poprawWModelu = usePoprawWModelu();
   const [sladWidoczny, setSladWidoczny] = useState(false);
   const [przebiegWidoczny, setPrzebiegWidoczny] = useState(false);
 
@@ -200,6 +202,26 @@ export function EkranStabilnosci() {
                 <dd>{naruszoneKryteriaPL(wiersz)}</dd>
               </div>
             </dl>
+            {/* F-K4 faza 3 (znalezisko Z4): utrata stabilności prowadzi do elementu
+                w modelu — najpierw miejsce zwarcia, potem źródło. Typ elementu
+                pochodzi z KONTRAKTU (`*_kind` rozstrzygnięte ze snapshotu biegu);
+                brak rodzaju = brak akcji, bo prowadziłaby w nikąd. */}
+            {wiersz.status !== 'STABLE' &&
+              (() => {
+                const element = elementWerdyktuStabilnosci(wiersz);
+                if (!element) return null;
+                return (
+                  <button
+                    type="button"
+                    className="mvd-stabilnosc-popraw"
+                    data-testid="mvd-stabilnosc-popraw"
+                    title={akcjaNaprawcza().opis}
+                    onClick={() => poprawWModelu(element.ref, element.typ, element.ref)}
+                  >
+                    {akcjaNaprawcza().etykieta}
+                  </button>
+                );
+              })()}
           </section>
 
           <section className="mvd-stabilnosc-sekcja" data-testid="mvd-stabilnosc-wielkosci">

@@ -26,6 +26,7 @@ from application.stability.voltage_trajectory import (
     TrajectoryGenerationParams,
     generate_voltage_trajectory,
 )
+from enm.element_kind import rodzaj_elementu, zbuduj_indeks_rodzajow
 from enm.hash import compute_enm_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
@@ -2136,11 +2137,23 @@ def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
     result = (run.raw_result or {}).get("result") or {}
     if not result:
         return {"run_id": str(run.id), "rows": []}
+    # Karta F-K4 faza 3: wynik niesie IDENTYFIKATORY elementow, ale nie ich RODZAJ,
+    # a bez rodzaju warstwa prezentacji nie moze zaznaczyc elementu w modelu (petla
+    # decyzji „od wyniku do przyczyny" byla przez to niemozliwa). Rozstrzygamy rodzaj
+    # ze snapshotu biegu — addytywnie, bez dotykania kontraktu solvera. Brak wpisu w
+    # snapshocie daje None, nigdy rodzaj domyslny (zero zgadywania).
+    # `getattr`, bo widok jest wolany takze na atrapach biegu w testach kontraktu
+    # (SimpleNamespace bez snapshotu) — brak snapshotu daje pusty indeks, czyli None.
+    indeks_rodzajow = zbuduj_indeks_rodzajow(getattr(run, "snapshot", None))
     return {
         "run_id": str(run.id),
         "rows": [
             {
                 **result,
+                "source_kind": rodzaj_elementu(result.get("source_id"), indeks=indeks_rodzajow),
+                "faulted_element_kind": rodzaj_elementu(
+                    result.get("faulted_element_id"), indeks=indeks_rodzajow
+                ),
                 "proof_ref": (run.raw_result or {}).get("proof_ref"),
                 "proof_status": (run.raw_result or {}).get("proof_status"),
                 "proof_status_pl": (run.raw_result or {}).get("proof_status_pl"),

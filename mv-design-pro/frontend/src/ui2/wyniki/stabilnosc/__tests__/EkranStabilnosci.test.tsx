@@ -13,6 +13,7 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
+import { useSelectionStore } from '../../../../ui/selection/store';
 import { EkranStabilnosci } from '../EkranStabilnosci';
 import { STABILNOSC_STRINGS as T } from '../strings';
 
@@ -321,5 +322,85 @@ describe('EkranStabilnosci — uczciwe braki', () => {
 
     expect(await screen.findByTestId('mvd-stabilnosc-brak-wiersza')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-stabilnosc-wielkosci')).not.toBeInTheDocument();
+  });
+});
+
+describe('EkranStabilnosci — pętla decyzji (F-K4 faza 3, znalezisko Z4)', () => {
+  /** Wynik NIESTABILNY z rodzajami elementów z kontraktu (`*_kind` ze snapshotu biegu). */
+  function mockNiestabilny(over: Record<string, unknown> = {}) {
+    const wiersz = {
+      ...WYNIK.rows[0],
+      stable: false,
+      status: 'UNSTABLE',
+      violated_checks: ['angle_swing'],
+      faulted_element_kind: 'galaz_liniowa',
+      source_kind: 'generator',
+      ...over,
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        const json = url.endsWith('/results/dynamic-stability')
+          ? { run_id: 'run-dyn', rows: [wiersz] }
+          : url.endsWith('/results/automation-trace')
+            ? SLAD
+            : null;
+        if (json === null) throw new Error(`Nieoczekiwany URL w teście: ${url}`);
+        return { ok: true, status: 200, json: async () => json } as Response;
+      }),
+    );
+  }
+
+  beforeEach(() => {
+    useExecutionRunsStore.setState({ runs: [RUN_DYN] });
+    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+  });
+
+  it('utrata stabilności prowadzi do MIEJSCA ZWARCIA w modelu (typ z kontraktu)', async () => {
+    const user = userEvent.setup();
+    mockNiestabilny();
+    render(<EkranStabilnosci />);
+    await screen.findByTestId('mvd-stabilnosc-werdykt');
+
+    await user.click(screen.getByTestId('mvd-stabilnosc-popraw'));
+
+    expect(useSelectionStore.getState().selectedElement).toEqual({
+      id: 'line/gpz/1',
+      type: 'LineBranch',
+      name: 'line/gpz/1',
+    });
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+  });
+
+  it('bez rodzaju miejsca zwarcia akcja prowadzi do ŹRÓDŁA (drugi kandydat kontraktu)', async () => {
+    const user = userEvent.setup();
+    mockNiestabilny({ faulted_element_kind: null });
+    render(<EkranStabilnosci />);
+    await screen.findByTestId('mvd-stabilnosc-werdykt');
+
+    await user.click(screen.getByTestId('mvd-stabilnosc-popraw'));
+
+    expect(useSelectionStore.getState().selectedElement).toEqual({
+      id: 'src/pv/1',
+      type: 'Generator',
+      name: 'src/pv/1',
+    });
+  });
+
+  it('kontrakt BEZ rodzajów (starszy bieg) → brak akcji, bo prowadziłaby w nikąd', async () => {
+    mockNiestabilny({ faulted_element_kind: null, source_kind: null });
+    render(<EkranStabilnosci />);
+    await screen.findByTestId('mvd-stabilnosc-werdykt');
+
+    expect(screen.queryByTestId('mvd-stabilnosc-popraw')).toBeNull();
+  });
+
+  it('wynik STABILNY nie dostaje akcji naprawczej (nie ma czego naprawiać)', async () => {
+    mockFetchStabilnosci();
+    render(<EkranStabilnosci />);
+    await screen.findByTestId('mvd-stabilnosc-werdykt');
+
+    expect(screen.queryByTestId('mvd-stabilnosc-popraw')).toBeNull();
   });
 });

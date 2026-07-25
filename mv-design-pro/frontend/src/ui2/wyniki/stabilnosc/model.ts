@@ -19,6 +19,7 @@
  *   sekcja wielkości prezentuje wartości skrajne/końcowe backendu z jawną notą.
  */
 
+import type { ElementType } from '../../../ui/types';
 import type { WierszZalozenia } from '../wzorzec';
 import { kryteriumPL, STABILNOSC_STRINGS as T } from './strings';
 
@@ -31,6 +32,10 @@ export interface WierszStabilnosci {
   readonly scenario_id?: string;
   readonly source_id?: string;
   readonly faulted_element_id?: string;
+  /** Rodzaj elementu ze snapshotu biegu (F-K4 faza 3) — bez niego nie da się
+   *  zaznaczyć elementu w modelu; `null`/brak = nie ustalono (zero zgadywania). */
+  readonly source_kind?: string | null;
+  readonly faulted_element_kind?: string | null;
   readonly cleared_by_element_ids?: readonly string[];
   readonly stable?: boolean;
   readonly status?: string;
@@ -300,4 +305,46 @@ export function naSeriePrzebiegu(
     serie.push({ dataKey: mapa.klucz, nazwa: mapa.nazwa, jednostka: q.unit });
   }
   return serie;
+}
+
+// ---------------------------------------------------------------------------
+// Pętla decyzji (F-K4 faza 3): rodzaj domenowy z kontraktu → typ elementu UI
+// ---------------------------------------------------------------------------
+
+/**
+ * Typ elementu interfejsu dla rodzaju z kontraktu backendu (`enm/element_kind.py`).
+ * `null` = rodzaju nie ustalono albo nie mapuje się na element schematu — wtedy
+ * akcji nie ma, bo prowadziłaby w nikąd.
+ */
+export function typElementuStabilnosci(rodzaj: string | null | undefined): ElementType | null {
+  switch (rodzaj) {
+    case 'szyna':
+      return 'Bus';
+    case 'galaz_liniowa':
+      return 'LineBranch';
+    case 'transformator':
+      return 'TransformerBranch';
+    case 'zrodlo':
+      return 'Source';
+    case 'generator':
+      return 'Generator';
+    default:
+      return null;
+  }
+}
+
+/** Element, do którego prowadzi werdykt niestabilności: najpierw miejsce zwarcia,
+ *  potem źródło (to ono traci stabilność). `null` gdy kontrakt nie niesie rodzaju. */
+export function elementWerdyktuStabilnosci(
+  wiersz: WierszStabilnosci,
+): { ref: string; typ: ElementType } | null {
+  const kandydaci: readonly [string | undefined, string | null | undefined][] = [
+    [wiersz.faulted_element_id, wiersz.faulted_element_kind],
+    [wiersz.source_id, wiersz.source_kind],
+  ];
+  for (const [ref, rodzaj] of kandydaci) {
+    const typ = typElementuStabilnosci(rodzaj);
+    if (ref && typ) return { ref, typ };
+  }
+  return null;
 }

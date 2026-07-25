@@ -150,3 +150,47 @@ def test_fault_clear_stability_detects_instability() -> None:
     assert result["status"] == "UNSTABLE"
     assert "clearing_time" in result["violated_checks"]
     assert "angle_swing" in result["violated_checks"]
+
+
+def test_wynik_stabilnosci_niesie_rodzaj_elementu_ze_snapshotu() -> None:
+    """Karta F-K4 faza 3: bez RODZAJU elementu petla decyzji nie ma jak zaznaczyc
+    elementu w modelu. Rodzaj pochodzi ze snapshotu biegu, nie ze zgadywania."""
+    run = SimpleNamespace(
+        id=uuid4(),
+        analysis_type="dynamic_stability",
+        raw_result={
+            "analysis_type": "dynamic_stability",
+            "result": {
+                "status": "UNSTABLE",
+                "source_id": "gen-oze-1",
+                "faulted_element_id": "szyna-sn-2",
+            },
+        },
+        snapshot={
+            "generators": [{"ref_id": "gen-oze-1"}],
+            "buses": [{"ref_id": "szyna-sn-2"}],
+        },
+    )
+
+    wiersz = build_dynamic_stability_results(run)["rows"][0]
+
+    assert wiersz["source_kind"] == "generator"
+    assert wiersz["faulted_element_kind"] == "szyna"
+
+
+def test_identyfikator_poza_snapshotem_nie_dostaje_rodzaju() -> None:
+    """Zero zgadywania: brak elementu w modelu => brak rodzaju => UI nie oferuje drogi."""
+    run = SimpleNamespace(
+        id=uuid4(),
+        analysis_type="dynamic_stability",
+        raw_result={
+            "analysis_type": "dynamic_stability",
+            "result": {"status": "STABLE", "source_id": "zrodlo-ktorego-nie-ma"},
+        },
+        snapshot={"buses": [{"ref_id": "szyna-1"}]},
+    )
+
+    wiersz = build_dynamic_stability_results(run)["rows"][0]
+
+    assert wiersz["source_kind"] is None
+    assert wiersz["faulted_element_kind"] is None
