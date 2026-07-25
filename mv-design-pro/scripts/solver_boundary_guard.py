@@ -8,8 +8,9 @@ z jawną sankcją w SANCTIONED_CHANGES (ścieżka -> wpis rejestru V12K-*
 z uzasadnieniem). Guard pozostaje czerwony dla każdej nieusankcjonowanej
 zmiany — sankcja jest audytowalna i punktowa, nie wyłącza ochrony.
 """
-import subprocess
 import sys
+
+from guard_diff_base import zmienione_pliki
 
 WATCHED_PATHS = [
     "backend/src/network_model/solvers/short_circuit_iec60909.py",
@@ -67,22 +68,15 @@ SANCTIONED_CHANGES = {
     ),
 }
 
-def get_changed_files() -> list[str]:
-    try:
-        result = subprocess.run(
-            ["git", "diff", "--name-only", "origin/main...HEAD"],
-            capture_output=True, text=True, check=True,
-        )
-        return [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
-    except subprocess.CalledProcessError:
-        result = subprocess.run(
-            ["git", "diff", "--name-only", "HEAD~1"],
-            capture_output=True, text=True, check=True,
-        )
-        return [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
 
 def main() -> int:
-    changed = get_changed_files()
+    # Baza porownania z odpornego helpera: brak bazy => JAWNY blad, nigdy
+    # ciche „nic sie nie zmienilo" (patrz scripts/guard_diff_base.py).
+    wynik = zmienione_pliki()
+    if not wynik.ok:
+        print(wynik.powod_bledu)
+        return 1
+    changed = list(wynik.pliki or ())
     violations = []
     sanctioned = []
     for path in changed:
@@ -108,6 +102,7 @@ def main() -> int:
 
     print("OK [SolverBoundaryGuard]: Brak zmian w chronionych plikach solverów.")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

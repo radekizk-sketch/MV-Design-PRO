@@ -29,6 +29,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Guardy delta-owe (solver_boundary, resultset_v1_schema) porownuja
+          # zmiany wobec galezi bazowej. Klon glebokosci 1 nie ma ani
+          # `origin/main`, ani `HEAD~1` — przy fetch-depth domyslnym oba guardy
+          # padaly, a workflow przerywal sie na 3. z 15 krokow, wiec 12 kolejnych
+          # guardow NIGDY sie nie wykonywalo (naprawa 2026-07-25).
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
