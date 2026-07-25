@@ -11,6 +11,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Pelna historia jest WYMAGANA: `tests/ci/test_guard_diff_base.py` sprawdza
+          # sciezke produkcyjna guardow delta-owych na REALNYM repozytorium, a klon
+          # glebokosci 1 nie ma ani `origin/main`, ani `HEAD~1` — guard poprawnie
+          # zglasza wtedy brak bazy (fail-closed), wiec test pada. Bez tego ustawienia
+          # workflow byl czerwony od V12K-199 na tym jednym tescie (V12K-205).
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:

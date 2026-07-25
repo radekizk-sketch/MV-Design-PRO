@@ -124,3 +124,53 @@ def test_guardy_delta_owe_na_repozytorium_projektu_daja_werdykt() -> None:
         assert "Traceback" not in wynik.stderr, wynik.stderr
         assert "GuardDiffBase" not in wynik.stdout, f"{nazwa}: baza porownania musi byc dostepna"
         assert wynik.returncode in (0, 1)
+
+
+# ---------------------------------------------------------------------------
+# V12K-205: kontrakt KONFIGURACJI CI, nie tylko kodu guarda.
+#
+# Test powyzej („sciezka produkcyjna") wymaga bazy porownania, wiec zaklada pelna
+# historie klonu. To zalozenie bylo NIEWYPOWIEDZIANE: `python-tests.yml` robil
+# `actions/checkout` bez `fetch-depth: 0`, wiec workflow byl czerwony na tym jednym
+# tescie od V12K-199 — dwa commity raportowano jako „CI zielone”, bo czerwony byl
+# tylko jeden krok w jednym z osmiu workflowow. Ponizszy test zamienia zalozenie w
+# sprawdzalny kontrakt: workflow, ktory uruchamia guard delta-owy ALBO pytest, musi
+# jawnie zadac pelnej historii.
+# ---------------------------------------------------------------------------
+
+WORKFLOWS_DIR = PROJECT_ROOT.parent / ".github" / "workflows"
+
+
+def _workflowy_wymagajace_pelnej_historii() -> list[Path]:
+    """Workflowy, ktore wolaja guard delta-owy albo pytest (czyli testy CI)."""
+    wybrane: list[Path] = []
+    for plik in sorted(WORKFLOWS_DIR.glob("*.yml")):
+        tresc = plik.read_text(encoding="utf-8")
+        wola_guard = any(f"{nazwa}.py" in tresc for nazwa in GUARDY_DELTA_OWE)
+        wola_pytest = "pytest" in tresc
+        if wola_guard or wola_pytest:
+            wybrane.append(plik)
+    return wybrane
+
+
+def test_workflowy_z_guardami_delta_owymi_maja_pelna_historie() -> None:
+    """`fetch-depth: 0` przy kazdym checkoucie w tych workflowach.
+
+    Brak pelnej historii nie daje falszywego PASS (guard jest fail-closed), ale daje
+    czerwony krok o mylacej przyczynie — i tak wlasnie utracono dwa biegi CI.
+    """
+    assert WORKFLOWS_DIR.is_dir(), f"brak katalogu workflowow: {WORKFLOWS_DIR}"
+    wymagajace = _workflowy_wymagajace_pelnej_historii()
+    assert wymagajace, "spodziewamy sie co najmniej workflowu pytest i guardow P0"
+
+    braki: list[str] = []
+    for plik in wymagajace:
+        tresc = plik.read_text(encoding="utf-8")
+        liczba_checkoutow = tresc.count("actions/checkout")
+        liczba_pelnych = tresc.count("fetch-depth: 0")
+        if liczba_pelnych < liczba_checkoutow:
+            braki.append(
+                f"{plik.name}: checkoutow {liczba_checkoutow}, fetch-depth: 0 -> {liczba_pelnych}"
+            )
+
+    assert not braki, "workflowy bez pelnej historii dla guardow delta-owych: " + "; ".join(braki)
