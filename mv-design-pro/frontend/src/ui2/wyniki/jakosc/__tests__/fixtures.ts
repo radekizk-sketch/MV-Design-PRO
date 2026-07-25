@@ -11,6 +11,7 @@ import type {
 } from '../../../../ui/study-cases/types';
 import type { MigotanieResponse, WalidacjaResponse, WiarygodnoscResponse,
   WarunkiPrzylaczeniaResponse,
+  WytrzymaloscCieplnaResponse,
 } from '../api';
 
 export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
@@ -339,5 +340,34 @@ export const WARUNKI_FIXTURE: WarunkiPrzylaczeniaResponse = {
     readiness_codes: [],
     formula_ref: 'cosφ = |P| / √(P² + Q²);  kryterium mocy: |P| ≤ P_limit',
     zalozenia: [],
+  },
+};
+
+/**
+ * Ocena wytrzymałości cieplnej przewodów (karta F-K1) — jedna gałąź spełniająca.
+ * Rachunek: Jth 94 A/mm² × 120 mm² = 11 280 A; przy t = 0,25 s I_dop = 22 560 A.
+ */
+export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
+  run_id: 'sc-1',
+  case_id: 'case-1',
+  analysis_type: 'short_circuit_sn',
+  fault_node_id: 'BUS-02',
+  tk_s: 0.25,
+  ocena: {
+    items: [
+      {
+        branch_id: 'cable_A',
+        branch_name: 'Magistrala L-01',
+        status: 'PASS',
+        i_fault_a: 15000,
+        i_permissible_a: 22560,
+        utilization: 0.665,
+        s_min_mm2: 79.8,
+        applied_cross_section_mm2: 120,
+        missing_codes: [],
+        uzasadnienie_pl: null,
+      },
+    ],
+    summary: { pass_count: 1, fail_count: 0, unavailable_count: 0 },
   },
 };

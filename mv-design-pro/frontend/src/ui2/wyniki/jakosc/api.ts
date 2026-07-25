@@ -440,3 +440,55 @@ export function fetchWarunkiPrzylaczenia(runId: string): Promise<WarunkiPrzylacz
     `/api/quality/connection-conditions?run_id=${encodeURIComponent(runId)}`,
   );
 }
+
+// ---------------------------------------------------------------------------
+// Wytrzymałość zwarciowa przewodów (karta F-K1, znalezisko Z1 audytu FLOW)
+// ---------------------------------------------------------------------------
+// `GET /api/quality/conductor-thermal-withstand?run_id=`:
+//   `backend/src/api/quality_analysis_runs.py` →
+//   `application/analyses/wytrzymalosc_cieplna_przewodow.py`.
+// Kryterium IEC 60949: I_th ≤ I_th(1s)/√t — czy przekrój wytrzyma prąd zwarciowy
+// przez czas wyłączenia zabezpieczenia. Prąd gałęzi z rozbicia wkładów źródeł
+// (solver zwarciowy), wytrzymałość żyły z katalogu. ZERO fizyki w UI.
+
+/** Pozycja oceny cieplnej jednej gałęzi (linia/kabel). */
+export interface PozycjaCieplna {
+  readonly branch_id: string;
+  readonly branch_name: string;
+  readonly status: StatusWarunku;
+  readonly i_fault_a: number | null;
+  readonly i_permissible_a: number | null;
+  readonly utilization: number | null;
+  readonly s_min_mm2: number | null;
+  readonly applied_cross_section_mm2: number | null;
+  readonly missing_codes: readonly string[];
+  /** Powód statusu, gdy nie wynika z rachunku (np. gałąź poza drogą zwarcia). */
+  readonly uzasadnienie_pl: string | null;
+}
+
+/** Podsumowanie: NIESPRAWDZONE nigdy nie jest doliczane do spełnionych. */
+export interface PodsumowanieCieplne {
+  readonly pass_count: number;
+  readonly fail_count: number;
+  readonly unavailable_count: number;
+}
+
+/** Pełna odpowiedź `GET /api/quality/conductor-thermal-withstand`. */
+export interface WytrzymaloscCieplnaResponse {
+  readonly run_id: string;
+  readonly case_id: string;
+  readonly analysis_type: string;
+  readonly fault_node_id: string;
+  readonly tk_s: number;
+  readonly ocena: {
+    readonly items: readonly PozycjaCieplna[];
+    readonly summary: PodsumowanieCieplne;
+  };
+}
+
+/** Pobiera ocenę wytrzymałości cieplnej przewodów dla przebiegu zwarciowego. */
+export function fetchWytrzymaloscCieplna(runId: string): Promise<WytrzymaloscCieplnaResponse> {
+  return getJson<WytrzymaloscCieplnaResponse>(
+    `/api/quality/conductor-thermal-withstand?run_id=${encodeURIComponent(runId)}`,
+  );
+}

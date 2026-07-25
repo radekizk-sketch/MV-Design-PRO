@@ -28,6 +28,7 @@ import {
   fetchMigotanie,
   fetchWalidacjaEnergetyczna,
   fetchWarunkiPrzylaczenia,
+  fetchWytrzymaloscCieplna,
   fetchWiarygodnoscZwarciowa,
   pobierzRaportArcFlash,
   type ArcFlashResponse,
@@ -41,6 +42,7 @@ import {
   type WalidacjaItem,
   type WalidacjaResponse,
   type WarunkiPrzylaczeniaResponse,
+  type WytrzymaloscCieplnaResponse,
   type WezelMigotania,
   type WiarygodnoscItem,
   type WiarygodnoscResponse,
@@ -54,6 +56,8 @@ import {
   KOLUMNY_ARC_FLASH,
   KOLUMNY_MIGOTANIE,
   KOLUMNY_WALIDACJI,
+  KOLUMNY_CIEPLNE,
+  KLUCZ_CIEPLNA_GALAZ,
   KOLUMNY_WARUNKOW,
   KOLUMNY_WIARYGODNOSCI,
   kluczWalidacji,
@@ -61,10 +65,12 @@ import {
   naWierszeArcFlash,
   naWierszeMigotania,
   naWierszeWalidacji,
+  naWierszeCieplne,
   naWierszeWarunkow,
   naWierszeWiarygodnosci,
   naZalozeniaMigotania,
   naZalozeniaWalidacji,
+  naZalozeniaCieplne,
   naZalozeniaWarunkow,
   naZalozeniaWiarygodnosci,
   typElementuWalidacji,
@@ -1276,6 +1282,105 @@ export function SekcjaWarunkowPrzylaczenia({
   );
 }
 
+/**
+ * Sekcja „Wytrzymałość zwarciowa przewodów" (karta F-K1, znalezisko Z1 audytu FLOW).
+ *
+ * Kryterium IEC 60949 per gałąź: czy przekrój żyły wytrzyma prąd zwarciowy przez
+ * czas wyłączenia zabezpieczenia. Do tej karty NIKT tego nie sprawdzał — kabel
+ * poprawny prądowo i napięciowo mógł ulec zniszczeniu przy zwarciu.
+ *
+ * ZERO fizyki w UI: prąd gałęzi, prąd dopuszczalny i minimalny wymagany przekrój
+ * przychodzą gotowe z backendu. Trzeci stan („Niesprawdzone") jest pokazywany
+ * jawnie; gałąź poza drogą zwarcia niesie własne uzasadnienie zamiast liczb.
+ *
+ * Pętla decyzji: naruszona pozycja prowadzi wprost do gałęzi w modelu (to jej
+ * przekrój trzeba zmienić), zgodnie z kontraktem ekranu prowadzącego.
+ */
+export function SekcjaWytrzymaloscCieplna({
+  przebieg,
+  trybZaawansowania,
+  onOtworzDowod,
+  onEksport,
+}: SekcjaProps) {
+  const runId = przebieg?.id ?? null;
+  const { stan, dane } = useZasobJakosci<WytrzymaloscCieplnaResponse>(
+    runId,
+    fetchWytrzymaloscCieplna,
+  );
+  const [wybrany, setWybrany] = useState<string | null>(null);
+  const poprawWModelu = usePoprawWModelu();
+
+  if (stan === 'brakPrzebiegu') {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaCieplna}
+        komunikat={JAKOSC_STRINGS.brakPrzebieguZwarciowego}
+        opis={JAKOSC_STRINGS.brakPrzebieguZwarciowegoOpis}
+        wariant="info"
+        testid="mvd-jakosc-cieplna-brak"
+      />
+    );
+  }
+  if (stan === 'ladowanie') {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaCieplna}
+        komunikat={JAKOSC_STRINGS.ladowanie}
+        wariant="info"
+        testid="mvd-jakosc-cieplna-ladowanie"
+      />
+    );
+  }
+  if (stan === 'blad' || dane === null) {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaCieplna}
+        komunikat={JAKOSC_STRINGS.blad}
+        opis={JAKOSC_STRINGS.bladOpis}
+        wariant="blad"
+        testid="mvd-jakosc-cieplna-blad"
+      />
+    );
+  }
+
+  const { items, summary } = dane.ocena;
+  // Wszystko niesprawdzone => brak DANYCH KATALOGOWYCH, nie brak wyniku. Mówimy
+  // wprost, czego brakuje, zamiast pokazywać tabelę pustych liczb.
+  if (items.length > 0 && items.every((it) => it.status === 'UNAVAILABLE')) {
+    return (
+      <StanSekcji
+        tytul={JAKOSC_STRINGS.sekcjaCieplna}
+        komunikat={JAKOSC_STRINGS.cieplnaBrakDanych}
+        opis={JAKOSC_STRINGS.cieplnaBrakDanychOpis}
+        wariant="info"
+        testid="mvd-jakosc-cieplna-bez-danych"
+      />
+    );
+  }
+
+  return (
+    <section data-testid="mvd-jakosc-cieplna">
+      <EkranAnalizy
+        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaCieplna, runId: runId ?? undefined }}
+        zalozenia={naZalozeniaCieplne(dane.fault_node_id, dane.tk_s, summary)}
+        kolumny={KOLUMNY_CIEPLNE}
+        wiersze={naWierszeCieplne(items)}
+        onOtworzDowod={onOtworzDowod}
+        onEksport={onEksport}
+        trybZaawansowania={trybZaawansowania}
+        kluczWiersza={KLUCZ_CIEPLNA_GALAZ}
+        onWybierzWiersz={setWybrany}
+        wybranyWiersz={wybrany}
+        onPoprawWModelu={(klucz) => {
+          // Naruszone kryterium cieplne poprawia się ZMIANA PRZEKROJU tej gałęzi,
+          // więc prowadzimy wprost do niej w modelu.
+          poprawWModelu(klucz, 'LineBranch', klucz);
+        }}
+      />
+    </section>
+  );
+}
+
 export function EkranJakosci({ trybZaawansowania, onOtworzDowod, onEksport }: EkranJakosciProps) {
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
@@ -1307,6 +1412,12 @@ export function EkranJakosci({ trybZaawansowania, onOtworzDowod, onEksport }: Ek
         onEksport={onEksport ? eksport : undefined}
       />
       <SekcjaMigotania
+        przebieg={przebiegSC}
+        trybZaawansowania={trybZaawansowania}
+        onOtworzDowod={onOtworzDowod}
+        onEksport={onEksport ? eksport : undefined}
+      />
+      <SekcjaWytrzymaloscCieplna
         przebieg={przebiegSC}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}

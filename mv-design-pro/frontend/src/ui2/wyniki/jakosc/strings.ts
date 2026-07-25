@@ -63,6 +63,19 @@ export const JAKOSC_STRINGS = {
   warunkiBrakWarunkow: 'Nie podano warunków przyłączenia',
   warunkiBrakWarunkowOpis:
     'Uzupełnij moc przyłączeniową i wymagany cosφ w kaflu „Warunki przyłączenia" na pulpicie projektu — bez nich punkt przyłączenia pozostaje nieoceniony.',
+  // Wytrzymałość zwarciowa przewodów (karta F-K1, znalezisko Z1 audytu FLOW)
+  sekcjaCieplna: 'Wytrzymałość zwarciowa przewodów',
+  kolPrzewod: 'Przewód',
+  kolPradCieplny: 'Prąd cieplny',
+  kolPradDopuszczalny: 'Dopuszczalny',
+  kolWykorzystanie: 'Wykorzystanie',
+  kolPrzekrojZastosowany: 'Przekrój',
+  kolPrzekrojWymagany: 'Wymagany min.',
+  cieplnaBrakDanych: 'Brak danych cieplnych przewodów',
+  cieplnaBrakDanychOpis:
+    'Żadna gałąź nie ma w katalogu wytrzymałości cieplnej żyły (Ith lub Jth dla 1 s) albo bieg nie dał rozbicia prądu na gałęzie. Uzupełnij pozycje katalogowe kabli, aby ocenić przekroje.',
+  cieplnaPodsumowanie: (ok: number, zle: number, brak: number) =>
+    `Spełnione: ${ok} · Naruszone: ${zle} · Niesprawdzone: ${brak}`,
   kolStatusWalidacji: 'Status',
   kolIdentyfikatorObiektu: 'Identyfikator obiektu',
 

@@ -28,7 +28,9 @@ import type {
   WynikArcFlash,
   OcenaWarunkow,
   PozycjaWarunku,
-  StatusWarunku} from './api';
+  StatusWarunku,
+  PodsumowanieCieplne,
+  PozycjaCieplna} from './api';
 import {
   JAKOSC_STRINGS,
   fmtCal,
@@ -477,6 +479,101 @@ export function naZalozeniaWarunkow(ocena: OcenaWarunkow): WierszZalozenia[] {
       etykieta: 'Zależność kryterialna',
       wartosc: ocena.formula_ref,
       uwaga: 'Limit mocy dotyczy modułu — dokument OSD ogranicza oba kierunki.',
+    },
+  ];
+}
+
+// ---------------------------------------------------------------------------
+// Wytrzymałość zwarciowa przewodów (karta F-K1, znalezisko Z1 audytu FLOW)
+// ---------------------------------------------------------------------------
+// Adapter PREZENTACYJNY: werdykty i wielkości przychodzą gotowe z backendu
+// (kryterium IEC 60949 liczy solver). UI formatuje i tłumaczy.
+
+/** Klucz identyfikujący gałąź w tabeli (selekcja + pętla decyzji do modelu). */
+export const KLUCZ_CIEPLNA_GALAZ = 'branchId';
+
+export const KOLUMNY_CIEPLNE: DefinicjaKolumny[] = [
+  { klucz: 'przewod', etykieta: JAKOSC_STRINGS.kolPrzewod, wyrownanie: 'lewo' },
+  { klucz: 'pradCieplny', etykieta: JAKOSC_STRINGS.kolPradCieplny, jednostka: 'A', mono: true },
+  {
+    klucz: 'pradDopuszczalny',
+    etykieta: JAKOSC_STRINGS.kolPradDopuszczalny,
+    jednostka: 'A',
+    mono: true,
+  },
+  {
+    klucz: 'przekroj',
+    etykieta: JAKOSC_STRINGS.kolPrzekrojZastosowany,
+    jednostka: 'mm²',
+    mono: true,
+  },
+  {
+    klucz: 'przekrojWymagany',
+    etykieta: JAKOSC_STRINGS.kolPrzekrojWymagany,
+    jednostka: 'mm²',
+    mono: true,
+  },
+  { klucz: 'ocena', etykieta: JAKOSC_STRINGS.kolOcena, wyrownanie: 'lewo' },
+  { klucz: KLUCZ_CIEPLNA_GALAZ, etykieta: JAKOSC_STRINGS.kolIdentyfikatorObiektu, mono: true },
+];
+
+/**
+ * Wiersze tabeli — kolejność z backendu (deterministyczna, po id gałęzi).
+ * Przy stanie NIESPRAWDZONE wielkości są puste, a ocena mówi wprost, że nic nie
+ * policzono; przy gałęzi poza drogą zwarcia pokazujemy uzasadnienie zamiast liczb.
+ */
+export function naWierszeCieplne(pozycje: readonly PozycjaCieplna[]): WierszTabeli[] {
+  return pozycje.map((pozycja) => ({
+    przewod: { wartosc: pozycja.branch_name || pozycja.branch_id },
+    pradCieplny: komorkaLiczba(pozycja.i_fault_a, fmtWartosc, {
+      ostrzezenie: pozycja.status === 'FAIL',
+    }),
+    pradDopuszczalny: komorkaLiczba(pozycja.i_permissible_a, fmtWartosc),
+    przekroj: komorkaLiczba(pozycja.applied_cross_section_mm2, fmtWartosc),
+    przekrojWymagany: komorkaLiczba(pozycja.s_min_mm2, fmtWartosc, {
+      ostrzezenie: pozycja.status === 'FAIL',
+    }),
+    ocena: { wartosc: pozycja.uzasadnienie_pl ?? ocenaWarunkuPL(pozycja.status) },
+    [KLUCZ_CIEPLNA_GALAZ]: { wartosc: pozycja.branch_id },
+  }));
+}
+
+/** Założenia sekcji: skąd prąd, skąd wytrzymałość, jaki czas i jaka norma. */
+export function naZalozeniaCieplne(
+  faultNodeId: string,
+  tkS: number,
+  podsumowanie: PodsumowanieCieplne,
+): WierszZalozenia[] {
+  return [
+    {
+      etykieta: 'Kryterium',
+      wartosc: 'I_th ≤ I_th(1s) / √t',
+      uwaga: 'IEC 60949 — równoważna energia cieplna I²·t = const (nagrzewanie adiabatyczne).',
+    },
+    {
+      etykieta: 'Miejsce zwarcia',
+      wartosc: faultNodeId || JAKOSC_STRINGS.kreska,
+      uwaga: 'Prąd gałęzi z rozbicia wkładów źródeł (solver zwarciowy).',
+    },
+    {
+      etykieta: 'Czas trwania zwarcia',
+      wartosc: fmtWartosc(tkS),
+      jednostka: 's',
+      uwaga:
+        'Czas z biegu zwarciowego, jednolity dla wszystkich gałęzi — mapa gałąź→zabezpieczenie→czas zadziałania nie jest jeszcze dostępna.',
+    },
+    {
+      etykieta: 'Wytrzymałość żyły',
+      wartosc: 'Ith(1s) albo Jth(1s)·S z katalogu',
+      uwaga: 'Brak danych katalogowych ⇒ pozycja niesprawdzona, nigdy spełniona.',
+    },
+    {
+      etykieta: 'Podsumowanie',
+      wartosc: JAKOSC_STRINGS.cieplnaPodsumowanie(
+        podsumowanie.pass_count,
+        podsumowanie.fail_count,
+        podsumowanie.unavailable_count,
+      ),
     },
   ];
 }
