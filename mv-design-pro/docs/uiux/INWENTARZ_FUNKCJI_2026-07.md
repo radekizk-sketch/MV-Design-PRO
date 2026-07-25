@@ -3,6 +3,7 @@
 **Status:** WIĄŻĄCY dla Programu UI/UX 2026-07 (podrzędny wobec kanonu V12.xx)
 **Data inwentaryzacji:** 2026-07-15 (żywy klon, gałąź `claude/power-network-design-ui-ir91mv`, HEAD `95d0576`)
 **Rewizja:** 2026-07-20 (Audyt F) — synchronizacja z rzeczywistą powierzchnią kodu na HEAD `b30249d`; delty w §8.
+**Rewizja:** 2026-07-25 (audyt FLOW, karty F-K1…F-K3) — powierzchnia kryteriów projektowych (solver cieplny, dwie analizy kryterialne, agregat werdyktu, 3 końcówki, 1 nowy moduł UI); delty w §9.
 **Metoda:** listing katalogów + grep w żywym repo (bez zgadywania). Każdy wpis ma źródło w postaci ścieżki.
 **Cel:** gwarancja „ŻADNA funkcja obliczeniowa nie zostaje pominięta" w przebudowie UI/UX.
 **Reguła nadrzędna:** każda pozycja z §1–§3 MUSI mieć przypisaną powierzchnię UI w §6 (macierz pokrycia).
@@ -275,3 +276,48 @@ Synchronizacja inwentarza z rzeczywistą powierzchnią kodu na HEAD `b30249d` (g
   (Sun 2011 / Wen 2016) z gotowego przebiegu v126 ssci_impedance; UI (ekran werdyktu/metryk/flag) = następna faza.
 - ◐ Estymacja stanu WLS: backend wpięty 2026-07-21 (`quality_analysis_runs.py` +
   `application/analyses/state_estimation`); UI (ekran wyników |V|/kąt/χ²) = następna faza.
+
+---
+
+## 9. Rewizja 2026-07-25 (audyt FLOW — karty F-K1…F-K3)
+
+Powierzchnia dodana po rewizji 2026-07-20, wcześniej nieujęta w inwentarzu (dług dokumentacyjny
+domknięty przy karcie F-K3). Metoda bez zmian: grep w żywym repo, każdy wpis ze ścieżką.
+
+### 9.1 Dodane — solvery (§1)
+
+| Delta | Dowód | Uzasadnienie |
+|---|---|---|
+| `conductor_thermal_withstand.py` — kryterium wytrzymałości zwarciowej przewodu (IEC 60949 / PN-HD 60364-5-54: `I_th ≤ I_th(1s)/√t`, `S_min = I_th·√t/Jth`) | `network_model/solvers/conductor_thermal_withstand.py` (V12K-192) | Kryterium normowe, którego nikt nie sprawdzał — znalezisko Z1 audytu FLOW |
+
+### 9.2 Dodane — analizy (§2, warstwa application/analyses)
+
+| Delta | Dowód | Uzasadnienie |
+|---|---|---|
+| `wytrzymalosc_cieplna_przewodow.py` — kryterium cieplne na CAŁYM modelu po biegu zwarciowym (per gałąź) | `application/analyses/wytrzymalosc_cieplna_przewodow.py` (V12K-195/196) | Z1 na modelu, nie tylko w doborze kabla |
+| `warunki_przylaczenia.py` — moc i cosφ w punkcie przyłączenia wobec warunków OSD | `application/analyses/warunki_przylaczenia.py` (V12K-194) | Z2: warunki OSD przestały być wyświetlaczem, są kryterium |
+| `werdykt_projektowy.py` — agregat 10 kryteriów projektu (E1–E6) z 5 dostawców, trzy stany, jawny zakres poza automatem | `application/analyses/werdykt_projektowy.py` (V12K-198) | Z3: etap E7 (weryfikacja normatywna) nie miał dostawcy |
+
+### 9.3 Dodane — API (§4)
+
+| Delta | Dowód | Uzasadnienie |
+|---|---|---|
+| `GET /api/quality/conductor-thermal-withstand?run_id=` | `api/quality_analysis_runs.py` | Wytrzymałość zwarciowa przewodów per gałąź |
+| `GET /api/quality/connection-conditions?run_id=` | `api/quality_analysis_runs.py` | Ocena warunków przyłączenia OSD wobec rozpływu |
+| `GET /api/quality/design-verdict?case_id=` | `api/quality_analysis_runs.py` | Agregat werdyktu projektowego (jedyna końcówka rodziny per PRZYPADEK — obejmuje wiele biegów) |
+
+### 9.4 Dodane — frontend (§5b)
+
+| Delta | Dowód | Uzasadnienie |
+|---|---|---|
+| `ui2/wyniki/jakosc/` — dwie nowe sekcje: „Warunki przyłączenia" (bieg PF) i „Wytrzymałość zwarciowa przewodów" (bieg SC) | `ui2/wyniki/jakosc/{api.ts,jakoscModel.ts,EkranJakosci.tsx}` (V12K-194/197) | Kryteria widoczne dla projektanta, z pętlą decyzji |
+| `ui2/wyniki/werdykt/` — NOWY moduł: ekran „Werdykt projektowy" jako pierwsza zakładka przestrzeni Wyniki | `ui2/wyniki/werdykt/`, `ui2/spaces/wyniki/WynikiWarsztat.tsx` (V12K-198) | Jedno miejsce rozliczenia kryteriów projektu (etap E7) |
+
+### 9.5 Poprawione — macierz pokrycia (§6)
+
+| Delta | Dowód | Uzasadnienie |
+|---|---|---|
+| Wytrzymałość zwarciowa przewodu: pozycji nie było → ✔ solver + API + UI | `conductor_thermal_withstand.py`; `/api/quality/conductor-thermal-withstand`; `ui2/wyniki/jakosc/` | Zdolność nowa, wpięta end-to-end |
+| Warunki przyłączenia OSD jako kryterium: pozycji nie było → ✔ analiza + API + UI | `warunki_przylaczenia.py`; `/api/quality/connection-conditions`; `ui2/wyniki/jakosc/` | Z2 domknięte |
+| Werdykt projektowy (agregat E7): pozycji nie było → ✔ analiza + API + UI | `werdykt_projektowy.py`; `/api/quality/design-verdict`; `ui2/wyniki/werdykt/` | Z3 domknięte |
+| Kryteria POZA automatem (selektywność zabezpieczeń, wytrzymałość aparatury na całym modelu, korekta obciążalności wg warunków ułożenia, ekonomiczna gęstość prądu) | `werdykt_projektowy.ZAKRES_POZA_AUTOMATEM` | Luki są WIDOCZNE w produkcie, nie tylko w dokumentach — nie da się ich przeoczyć |

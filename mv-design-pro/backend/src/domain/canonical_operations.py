@@ -861,6 +861,51 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id=None,
         fix_navigation={"panel": "readiness"},
     ),
+    # Werdykt projektowy (karta F-K3) — powody braku oceny kryterium. Trzeci stan
+    # („niesprawdzone") musi nieść PRZYCZYNĘ, inaczej jest nie do odróżnienia od
+    # spełnienia kryterium.
+    "verdict.run_missing": ReadinessCodeSpec(
+        code="verdict.run_missing",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak zakończonego biegu wymaganego przez kryterium — uruchom obliczenia, "
+            "by je ocenić"
+        ),
+        fix_action_id="fix_verdict_run_analysis",
+        fix_navigation={"panel": "analizy"},
+    ),
+    "verdict.run_stale": ReadinessCodeSpec(
+        code="verdict.run_stale",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Model zmienił się po biegu — wynik nie opisuje bieżącego modelu; "
+            "uruchom obliczenia ponownie"
+        ),
+        fix_action_id="fix_verdict_rerun_analysis",
+        fix_navigation={"panel": "analizy"},
+    ),
+    "verdict.run_failed": ReadinessCodeSpec(
+        code="verdict.run_failed",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl="Bieg zakończył się błędem — kryterium nie ma na czym się oprzeć",
+        fix_action_id="fix_verdict_rerun_analysis",
+        fix_navigation={"panel": "analizy"},
+    ),
+    "verdict.input_data_missing": ReadinessCodeSpec(
+        code="verdict.input_data_missing",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl="Brak danych wejściowych kryterium — uzupełnij dane wskazane w pozycji werdyktu",
+        fix_action_id="fix_verdict_input_data",
+        fix_navigation={"panel": "gotowosc"},
+    ),
     # Catalog gate — input validation (NOT readiness, blocks operation execution)
     "catalog.ref_required": ReadinessCodeSpec(
         code="catalog.ref_required",

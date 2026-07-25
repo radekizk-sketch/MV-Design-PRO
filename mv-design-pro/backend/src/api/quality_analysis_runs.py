@@ -12,6 +12,10 @@
   porównanie pomiarów z obiektu (lista JSON lub tekst CSV w body) z wynikiem
   FROZEN rozpływu (``PF``) i jawnymi tolerancjami (POST — jedyna końcówka rodziny
   z body, uzasadnione rozmiarem danych pomiarowych),
+- ``GET /api/quality/design-verdict?case_id=`` — agregat werdyktu projektowego:
+  rejestr kryteriów projektu (E1–E6) sklejony z gotowych widoków analiz obu
+  biegów i danych modelu; JEDYNA końcówka rodziny parametryzowana PRZYPADKIEM,
+  bo werdykt z definicji obejmuje więcej niż jeden przebieg,
 - ``GET /api/quality/state-estimation/requirements?run_id=`` — wymagane wejścia
   estymacji stanu WLS (mapa węzeł→indeks, slack, minimalna liczba pomiarów),
 - ``POST /api/quality/state-estimation`` — estymacja stanu metodą ważonych
@@ -39,6 +43,7 @@ from application.analyses.state_estimation import (
     build_state_estimation_view,
 )
 from application.analyses.warunki_przylaczenia import build_warunki_przylaczenia_view
+from application.analyses.werdykt_projektowy import build_werdykt_projektowy_view
 from application.analyses.wytrzymalosc_cieplna_przewodow import build_wytrzymalosc_cieplna_view
 from application.analyses.zgodnosc_powykonawcza import (
     build_zgodnosc_powykonawcza_view,
@@ -385,3 +390,18 @@ def post_arc_flash_report_docx(zadanie: ArcFlashReportZadanie) -> Response:
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": 'attachment; filename="raport_arc_flash.docx"'},
     )
+
+
+@router.get("/api/quality/design-verdict")
+def get_design_verdict(case_id: str = Query(...)) -> dict[str, Any]:
+    """Agregat werdyktu projektowego dla przypadku obliczeniowego (karta F-K3).
+
+    JEDYNA koncowka tej rodziny parametryzowana PRZYPADKIEM, nie przebiegiem — i
+    tak byc musi: werdykt zestawia kryteria z ROZNYCH biegow (rozplyw + zwarcia) z
+    danymi modelu, wiec pojedynczy ``run_id`` bylby z definicji za waski.
+
+    Werdykt niesie trzy stany (spelnione / naruszone / niesprawdzone) oraz jawny
+    zakres kryteriow, ktorych system NIE sprawdza automatycznie. Bieg nieaktualny
+    wobec biezacego modelu daje NIESPRAWDZONE (regula 4 kanonu), nigdy spelnienie.
+    """
+    return build_werdykt_projektowy_view(case_id)

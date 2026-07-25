@@ -19,6 +19,7 @@ ENERGY_VALIDATION = "/api/quality/energy-validation"
 FLICKER = "/api/quality/flicker"
 CONNECTION_CONDITIONS = "/api/quality/connection-conditions"
 CONDUCTOR_THERMAL = "/api/quality/conductor-thermal-withstand"
+DESIGN_VERDICT = "/api/quality/design-verdict"
 ARC_FLASH = "/api/quality/arc-flash"
 ARC_FLASH_REPORT = "/api/quality/arc-flash/report"
 
@@ -357,3 +358,53 @@ def test_conductor_thermal_rejects_power_flow_run(app_client) -> None:
 def test_conductor_thermal_unknown_run_returns_404(app_client) -> None:
     resp = app_client.get(CONDUCTOR_THERMAL, params={"run_id": str(uuid4())})
     assert resp.status_code == 404
+
+
+# --------------------------------------------------------------------------
+# Werdykt projektowy (agregat kryteriów, karta F-K3)
+# --------------------------------------------------------------------------
+
+
+def test_design_verdict_endpoint_returns_aggregate(app_client) -> None:
+    set_enm("c-werdykt", build_golden_enm())
+    execute_run(create_run(case_id="c-werdykt", analysis_type="PF").id)
+    execute_run(create_run(case_id="c-werdykt", analysis_type="short_circuit_sn").id)
+
+    resp = app_client.get(DESIGN_VERDICT, params={"case_id": "c-werdykt"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["case_id"] == "c-werdykt"
+    assert data["werdykt"] in {"SPELNIONE", "NARUSZONE", "NIESPRAWDZONE"}
+    assert len(data["pozycje"]) >= 8
+    # Każde kryterium niesie warunek i odniesienie normowe (kontrakt ekranu).
+    for pozycja in data["pozycje"]:
+        assert pozycja["warunek_pl"]
+        assert pozycja["norma_pl"]
+    rodzaje = {zrodlo["rodzaj"] for zrodlo in data["zrodla"]}
+    assert {"PF", "short_circuit_sn", "model"} <= rodzaje
+    assert data["zakres_poza_automatem"]
+
+
+def test_design_verdict_without_runs_is_unchecked_not_error(app_client) -> None:
+    """Brak biegów to stan „niesprawdzone", a nie błąd — projektant ma dostać listę braków."""
+    set_enm("c-bez-biegow", build_golden_enm())
+
+    resp = app_client.get(DESIGN_VERDICT, params={"case_id": "c-bez-biegow"})
+
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["werdykt"] == "NIESPRAWDZONE"
+    assert data["podsumowanie"]["spelnione"] == 0
+    powody = {pozycja["powod_kod"] for pozycja in data["pozycje"] if pozycja["powod_kod"]}
+    assert "verdict.run_missing" in powody
+
+
+def test_design_verdict_endpoint_is_deterministic(app_client) -> None:
+    set_enm("c-det-werdykt", build_golden_enm())
+    execute_run(create_run(case_id="c-det-werdykt", analysis_type="PF").id)
+
+    first = app_client.get(DESIGN_VERDICT, params={"case_id": "c-det-werdykt"}).json()
+    second = app_client.get(DESIGN_VERDICT, params={"case_id": "c-det-werdykt"}).json()
+
+    assert first == second

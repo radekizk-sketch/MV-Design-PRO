@@ -20,6 +20,7 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import { EkranBadanOltc } from '../../wyniki/oltc';
 import { EkranCoWymagaUwagi } from '../../wyniki/co-wymaga-uwagi';
+import { EkranWerdyktu } from '../../wyniki/werdykt';
 import { EkranRozplywu } from '../../wyniki/rozplyw';
 import { EkranZwarc } from '../../wyniki/zwarcia';
 import { useAppStateStore } from '../../../ui/app-state';
@@ -50,6 +51,7 @@ import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
 import './wynikiWarsztat.css';
 
 const ZAKLADKI = [
+  { id: 'werdykt', etykieta: T.zakladkaWerdykt },
   { id: 'co-wymaga-uwagi', etykieta: T.zakladkaCoWymagaUwagi },
   { id: 'rozplyw', etykieta: T.zakladkaRozplyw },
   { id: 'regulacja-oltc', etykieta: T.zakladkaRegulacjaOltc },
@@ -81,6 +83,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
   {
     etykieta: T.grupaAnalizy,
     zakladki: [
+      'werdykt',
       'co-wymaga-uwagi',
       'rozplyw',
       'regulacja-oltc',
@@ -256,6 +259,7 @@ export function WynikiWarsztat({
         ))}
       </div>
       <div role="tabpanel" className="mvd-wyniki-tresc">
+        {zakladka === 'werdykt' && <EkranWerdyktu />}
         {zakladka === 'co-wymaga-uwagi' && <EkranCoWymagaUwagi />}
         {zakladka === 'rozplyw' && (
           <EkranRozplywu

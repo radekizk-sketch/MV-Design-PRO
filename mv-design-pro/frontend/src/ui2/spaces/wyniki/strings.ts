@@ -4,6 +4,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   ariaZakladki: 'Widoki wyników',
   grupaAnalizy: 'Analizy sieci',
   grupaOze: 'OZE i przyłączenia',
+  zakladkaWerdykt: 'Werdykt projektowy',
   zakladkaCoWymagaUwagi: 'Co wymaga uwagi',
   zakladkaRozplyw: 'Rozpływ mocy',
   zakladkaRegulacjaOltc: 'Regulacja OLTC',
