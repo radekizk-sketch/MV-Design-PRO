@@ -493,3 +493,18 @@
   color: var(--mvd-ink);
   word-break: break-all;
 }
+
+/* ---- pętla decyzji (F-K4): odrzucony pomiar → szyna pomiaru w modelu ---- */
+.mvd-est-popraw {
+  margin-left: 8px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--mvd-accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 2px 8px;
+}
+.mvd-est-popraw:hover {
+  background: var(--mvd-sel);
+}

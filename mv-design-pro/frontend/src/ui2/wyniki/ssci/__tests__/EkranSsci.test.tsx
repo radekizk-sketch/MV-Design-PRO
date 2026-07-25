@@ -11,11 +11,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
 import { useAppStateStore } from '../../../../ui/app-state';
+import { useSelectionStore } from '../../../../ui/selection/store';
+import { useShellStore } from '../../../shell/useShellStore';
 import { EkranSsci } from '../EkranSsci';
-import {
-  widokBrakDanychFixture,
-  widokNiestabilnyFixture,
-} from './fixtures';
+import { widokBrakDanychFixture, widokNiestabilnyFixture, widokStabilnyFixture } from './fixtures';
 import type { WidokStabilnosciSsci } from '../api';
 
 const CASE_ID = 'case-ssci-1';
@@ -127,5 +126,47 @@ describe('EkranSsci — ślad WHITE BOX (tryb ekspercki)', () => {
     expect(screen.queryByTestId('mvd-ssci-slad')).not.toBeInTheDocument();
     fireEvent.click(otworz);
     expect(screen.getByTestId('mvd-ssci-slad')).toBeInTheDocument();
+  });
+});
+
+describe('EkranSsci — pętla decyzji (F-K4, znalezisko Z4)', () => {
+  it('ryzyko SSCI prowadzi do SZYNY przyłączenia przekształtnika (realna ścieżka)', async () => {
+    ustawFetch(widokNiestabilnyFixture());
+    aktywujPrzypadek();
+    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
+    render(<EkranSsci trybZaawansowania="basic" />);
+    fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));
+
+    const przycisk = await screen.findByTestId('mvd-ssci-popraw');
+    fireEvent.click(przycisk);
+
+    // Element modelu = WĘZEŁ z kontraktu werdyktu; `converter_ref` nie jest id elementu grafu.
+    expect(useSelectionStore.getState().selectedElement).toEqual({
+      id: 'CONV',
+      type: 'Bus',
+      name: 'CONV',
+    });
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+  });
+
+  it('werdykt stabilny → brak przycisku decyzji (nie ma czego naprawiać)', async () => {
+    ustawFetch(widokStabilnyFixture());
+    aktywujPrzypadek();
+    render(<EkranSsci trybZaawansowania="basic" />);
+    fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));
+
+    await screen.findByTestId('mvd-ssci-werdykt');
+    expect(screen.queryByTestId('mvd-ssci-popraw')).not.toBeInTheDocument();
+  });
+
+  it('brak danych (bez węzła w kontrakcie) → brak przycisku prowadzącego w nikąd', async () => {
+    ustawFetch(widokBrakDanychFixture());
+    aktywujPrzypadek();
+    render(<EkranSsci trybZaawansowania="basic" />);
+    fireEvent.click(screen.getByTestId('mvd-ssci-uruchom'));
+
+    await screen.findByTestId('mvd-ssci-werdykt');
+    expect(screen.queryByTestId('mvd-ssci-popraw')).not.toBeInTheDocument();
   });
 });

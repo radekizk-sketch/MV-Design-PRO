@@ -283,3 +283,18 @@
   outline: 2px solid var(--mvd-focus);
   outline-offset: 1px;
 }
+
+/* ---- pętla decyzji (F-K4): przekroczona asymetria → szyna w modelu ---- */
+.mvd-fazowy-popraw {
+  margin-top: 8px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--mvd-accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 10px;
+}
+.mvd-fazowy-popraw:hover {
+  background: var(--mvd-sel);
+}

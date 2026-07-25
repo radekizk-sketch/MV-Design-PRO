@@ -26,7 +26,7 @@ import { useAppStateStore } from '../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
-import { SekcjaZalozen } from '../wzorzec';
+import { akcjaNaprawcza, SekcjaZalozen, usePoprawWModelu } from '../wzorzec';
 import { fetchWynikiStanuFazowego, type WynikiStanuFazowego } from './api';
 import {
   naPozycjeAsymetrii,
@@ -106,6 +106,8 @@ export function EkranStanuFazowego() {
   }, [przebieg?.id]);
 
   const wiersz = wyniki && wyniki.run_id === przebieg?.id ? wyniki.rows[0] ?? null : null;
+
+  const poprawWModelu = usePoprawWModelu();
 
   const otworzDowod = () => {
     // Deep-link do okna „Dowód obliczeń" z kontekstem KONKRETNEGO przebiegu
@@ -212,6 +214,24 @@ export function EkranStanuFazowego() {
                 </div>
               ))}
             </dl>
+            {/* F-K4 (znalezisko Z4): przekroczona asymetria prowadzi do SZYNY w
+                modelu — projektant widzi problem i ma stąd drogę do jego
+                przyczyny. Przycisk pojawia się WYŁĄCZNIE przy realnym
+                przekroczeniu (flaga solvera), nigdy „na wszelki wypadek". */}
+            {naPozycjeAsymetrii(wiersz).some((p) => p.werdykt === 'przekroczenie') && (
+              <button
+                type="button"
+                className="mvd-fazowy-popraw"
+                data-testid="mvd-fazowy-popraw"
+                title={akcjaNaprawcza('asymetria-fazowa').opis}
+                onClick={() => {
+                  const ref = wiersz.element_id || wiersz.target_id;
+                  poprawWModelu(ref, 'Bus', wiersz.target_name || ref, 'asymetria-fazowa');
+                }}
+              >
+                {akcjaNaprawcza('asymetria-fazowa').etykieta}
+              </button>
+            )}
           </section>
 
           <section className="mvd-fazowy-sekcja" aria-label={T.stanTytul}>

@@ -342,3 +342,17 @@
   color: var(--mvd-ink);
   word-break: break-all;
 }
+
+/* ---- pętla decyzji (F-K4): ryzyko SSCI → szyna przyłączenia w modelu ---- */
+.mvd-ssci-popraw {
+  border: 1px solid var(--mvd-accent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--mvd-accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 3px 9px;
+}
+.mvd-ssci-popraw:hover {
+  background: var(--mvd-sel);
+}

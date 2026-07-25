@@ -306,3 +306,18 @@
   outline: 2px solid var(--mvd-focus);
   outline-offset: 1px;
 }
+
+/* ---- wskazanie elementu (F-K4): transformator z tabeli zaczepów ---- */
+.mvd-zbieznosc-popraw {
+  border: 1px solid var(--mvd-accent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--mvd-accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.mvd-zbieznosc-popraw:hover {
+  background: var(--mvd-sel);
+}

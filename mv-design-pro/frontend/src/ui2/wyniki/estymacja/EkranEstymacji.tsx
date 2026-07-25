@@ -22,7 +22,7 @@ import { useEffect, useMemo, useState } from 'react';
 import './estymacja.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
-import { EkranAnalizy } from '../wzorzec';
+import { akcjaNaprawcza, EkranAnalizy, usePoprawWModelu } from '../wzorzec';
 import {
   fetchWymaganiaEstymacji,
   postEstymacjaStanu,
@@ -391,6 +391,7 @@ function PanelZlychDanych({
   typy: readonly MetaTypuPomiaru[];
 }) {
   const bad = dane.bad_data;
+  const poprawWModelu = usePoprawWModelu();
   const chiIstotnosc: IstotnoscStanu = bad.chi_square_flag ? 'err' : 'ok';
   const lnrIstotnosc: IstotnoscStanu = bad.lnr_flag ? 'err' : 'ok';
   return (
@@ -423,6 +424,27 @@ function PanelZlychDanych({
           {S.badPodejrzany}: {typPomiaruPL(bad.lnr_measurement.meas_type, typy)} ·{' '}
           {bad.lnr_measurement.bus_ref}
           {bad.lnr_measurement.bus_j_ref ? ` → ${bad.lnr_measurement.bus_j_ref}` : ''}
+          {/* F-K4 (znalezisko Z4): odrzucony pomiar prowadzi do SZYNY, w ktorej go
+              wykonano — inaczej projektant wie, ze cos jest zle, i nie ma stad
+              drogi do miejsca. Przycisk tylko przy przekroczonym progu LNR. */}
+          {bad.lnr_flag && (
+            <button
+              type="button"
+              className="mvd-est-popraw"
+              data-testid="mvd-est-popraw"
+              title={akcjaNaprawcza('zle-dane-pomiarowe').opis}
+              onClick={() =>
+                poprawWModelu(
+                  bad.lnr_measurement!.bus_ref,
+                  'Bus',
+                  bad.lnr_measurement!.bus_ref,
+                  'zle-dane-pomiarowe',
+                )
+              }
+            >
+              {akcjaNaprawcza('zle-dane-pomiarowe').etykieta}
+            </button>
+          )}
         </p>
       ) : (
         <p className="mvd-est-bad-podejrzany mvd-est-bad-podejrzany--brak">

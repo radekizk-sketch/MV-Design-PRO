@@ -17,6 +17,7 @@ import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/stor
 import type { PowerFlowResultV1, PowerFlowTrace } from '../../../../ui/power-flow-results/types';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
+import { useSelectionStore } from '../../../../ui/selection/store';
 import { useShellStore } from '../../../shell/useShellStore';
 import { EkranAnalizTechnicznych } from '../../analizy/EkranAnalizTechnicznych';
 import { EkranZbieznosci } from '../EkranZbieznosci';
@@ -381,5 +382,23 @@ describe('zbieznoscModel — czyste projekcje kontraktów', () => {
     expect(wiersz.regulacja).toBe(T.kreska);
     expect(wiersz.pozycja).toBe(T.kreska);
     expect(wiersz.zakres).toBe(T.kreska);
+  });
+});
+
+describe('EkranZbieznosci — wskazanie transformatora (F-K4, znalezisko Z4)', () => {
+  it('klik w tabeli zaczepów prowadzi do TRANSFORMATORA w modelu (akcja inspekcyjna)', async () => {
+    const user = userEvent.setup();
+    ustawKompletnyKontekst();
+    mockFetchPrzebiegu(wynikFixture());
+    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    render(<EkranZbieznosci />);
+
+    const model = await screen.findByTestId('mvd-zbieznosc-model-tabela');
+    const przycisk = within(model).getAllByTestId('mvd-zbieznosc-popraw')[0];
+    expect(przycisk).toHaveTextContent('Pokaż na schemacie');
+    await user.click(przycisk);
+
+    expect(useSelectionStore.getState().selectedElement?.type).toBe('TransformerBranch');
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 });

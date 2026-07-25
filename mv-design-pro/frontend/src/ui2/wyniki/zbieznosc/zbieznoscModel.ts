@@ -170,6 +170,8 @@ const TRYB_STEROWANIA_PL: Record<string, string> = {
 };
 
 export interface WierszZaczepowModelu {
+  /** Identyfikator elementu modelu (`ref_id`) — dla wskazania transformatora (F-K4). */
+  ref: string;
   nazwa: string;
   regulacja: string;
   tryb: string;
@@ -187,6 +189,7 @@ export function naWierszZaczepowModelu(trafo: Transformer): WierszZaczepowModelu
   const max = tc ? tc.max_position : trafo.tap_max ?? null;
   const krok = tc ? tc.step_percent : trafo.tap_step_percent ?? null;
   return {
+    ref: trafo.ref_id,
     nazwa: trafo.name || trafo.ref_id,
     regulacja: tc ? RODZAJ_REGULACJI_PL[tc.regulation_type] ?? tc.regulation_type : T.kreska,
     tryb: tc ? TRYB_STEROWANIA_PL[tc.control_mode] ?? tc.control_mode : T.kreska,

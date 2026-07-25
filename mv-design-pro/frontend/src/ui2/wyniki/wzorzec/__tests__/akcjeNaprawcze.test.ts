@@ -41,3 +41,20 @@ describe('akcjaNaprawcza — rejestr akcji per rodzaj przekroczenia', () => {
     expect(akcja.opis).not.toBe(AKCJA_GENERYCZNA.opis);
   });
 });
+
+describe('rejestr akcji — F-K4 (nowe rodzaje wskazań)', () => {
+  it('nowe rodzaje przekroczeń mają akcję naprawczą („Popraw w modelu")', () => {
+    for (const rodzaj of ['asymetria-fazowa', 'stabilnosc-ssci', 'zle-dane-pomiarowe'] as const) {
+      expect(akcjaNaprawcza(rodzaj).etykieta).toBe(WZORZEC_STRINGS.poprawWModelu);
+      expect(akcjaNaprawcza(rodzaj).cel).toEqual({ rodzaj: 'schemat' });
+    }
+  });
+
+  it('rodzaj inspekcyjny NIE obiecuje naprawy — etykieta „Pokaż na schemacie"', () => {
+    const akcja = akcjaNaprawcza('inspekcja-elementu');
+    expect(akcja.etykieta).toBe(WZORZEC_STRINGS.pokazNaSchemacie);
+    expect(akcja.etykieta).not.toBe(WZORZEC_STRINGS.poprawWModelu);
+    // Mechanika ta sama co generyczna — różni je obietnica, nie ścieżka.
+    expect(akcja.cel).toEqual({ rodzaj: 'schemat' });
+  });
+});

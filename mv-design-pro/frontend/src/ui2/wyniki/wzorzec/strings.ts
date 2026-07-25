@@ -28,6 +28,9 @@ export const WZORZEC_STRINGS = {
   kolumnaDecyzja: 'Decyzja',
   poprawWModelu: 'Popraw w modelu',
   poprawWModeluOpis: 'Zaznacz element na schemacie i przejdź do modelu, aby dostosować dobór',
+  // F-K4: wynik BEZ kryterium naruszenia — wskazanie elementu, nie sugestia naprawy.
+  pokazNaSchemacie: 'Pokaż na schemacie',
+  pokazNaSchemacieOpis: 'Zaznacz element na schemacie i przejdź do przestrzeni Schemat, aby go obejrzeć w modelu',
 
   // Wykres
   wykresTytul: 'Wykres',

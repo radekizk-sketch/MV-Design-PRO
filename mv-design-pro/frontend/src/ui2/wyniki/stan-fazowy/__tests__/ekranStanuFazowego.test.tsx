@@ -14,6 +14,7 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
+import { useSelectionStore } from '../../../../ui/selection/store';
 import { EkranAnalizTechnicznych } from '../../analizy/EkranAnalizTechnicznych';
 import type { WierszStanuFazowego, WynikiStanuFazowego } from '../api';
 import { EkranStanuFazowego } from '../EkranStanuFazowego';
@@ -265,6 +266,60 @@ describe('EkranStanuFazowego — wartości fazowe i werdykty z flag solvera', ()
     render(<EkranStanuFazowego />);
     await user.click(screen.getByTestId('mvd-fazowy-powrot'));
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+});
+
+describe('EkranStanuFazowego — pętla decyzji (F-K4, znalezisko Z4)', () => {
+  it('przekroczona asymetria prowadzi do SZYNY w modelu (realna ścieżka, bez mocka hooka)', async () => {
+    ustawKompletnyKontekst();
+    // Fixture ma flagę current_unbalance_alert = true, czyli REALNE przekroczenie
+    // z solvera — nie wymuszony stan UI.
+    mockFetchStanuFazowego({ run_id: 'run-ps-1', rows: [wierszFixture()] } as WynikiStanuFazowego);
+    render(<EkranStanuFazowego />);
+
+    const przycisk = await screen.findByTestId('mvd-fazowy-popraw');
+    await userEvent.click(przycisk);
+
+    const sel = useSelectionStore.getState();
+    expect(sel.selectedElement).toEqual({ id: 'BUS-SN-01', type: 'Bus', name: 'BUS-SN-01' });
+    expect(sel.sldCenterOnElement).toBe('BUS-SN-01');
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+  });
+
+  it('brak przekroczenia → brak przycisku decyzji (nie sugerujemy naprawy bez werdyktu)', async () => {
+    ustawKompletnyKontekst();
+    mockFetchStanuFazowego({
+      run_id: 'run-ps-1',
+      rows: [
+        wierszFixture({
+          flags: {
+            has_fault: false,
+            has_open_phase: false,
+            faulted_phases: [],
+            open_phases: [],
+            voltage_unbalance_alert: false,
+            current_unbalance_alert: false,
+            losses_unbalance_alert: false,
+          },
+        }),
+      ],
+    } as WynikiStanuFazowego);
+    render(<EkranStanuFazowego />);
+
+    await screen.findByTestId('mvd-fazowy-asymetrie');
+    expect(screen.queryByTestId('mvd-fazowy-popraw')).toBeNull();
+  });
+
+  it('brak flag (niesprawdzone) → brak przycisku decyzji, bo nie ma werdyktu', async () => {
+    ustawKompletnyKontekst();
+    mockFetchStanuFazowego({
+      run_id: 'run-ps-1',
+      rows: [wierszFixture({ flags: {} })],
+    } as WynikiStanuFazowego);
+    render(<EkranStanuFazowego />);
+
+    await screen.findByTestId('mvd-fazowy-asymetrie');
+    expect(screen.queryByTestId('mvd-fazowy-popraw')).toBeNull();
   });
 });
 

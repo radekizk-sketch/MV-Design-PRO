@@ -40,13 +40,31 @@
 
 import { WZORZEC_STRINGS } from './strings';
 
-/** Rodzaj przekroczenia — wyprowadzony z realnych źródeł werdyktów (nagłówek). */
+/**
+ * Rodzaj WSKAZANIA elementu — wyprowadzony z realnych źródeł werdyktów (nagłówek).
+ *
+ * Karta F-K4 (znalezisko Z4): większość rodzajów to PRZEKROCZENIA (wynik narusza
+ * kryterium ⇒ „popraw w modelu"), ale są ekrany, które niosą wynik BEZ kryterium
+ * — np. składowe symetryczne w punkcie zwarcia albo pozycja zaczepu OLTC. Tam
+ * uczciwa akcja to INSPEKCJA („pokaż na schemacie"), nie sugestia poprawy: nazwanie
+ * jej „popraw" wmawiałoby projektantowi defekt, którego nikt nie stwierdził.
+ * Mechanika obu jest ta sama (selekcja + zoom SLD + przestrzeń „Schemat");
+ * różni je etykieta i obietnica, jaką składają użytkownikowi.
+ */
 export type RodzajPrzekroczenia =
   | 'napiecie'
   | 'obciazalnosc-galezi'
   | 'obciazalnosc-transformatora'
   | 'migotanie'
-  | 'bilans-biernej';
+  | 'bilans-biernej'
+  /** Asymetria fazowa poza dopuszczalnym pasmem (stan fazowy SN, F-K4). */
+  | 'asymetria-fazowa'
+  /** Ryzyko lub brak stabilności podsynchronicznej przekształtnika (SSCI, F-K4). */
+  | 'stabilnosc-ssci'
+  /** Pomiar odrzucony przez detekcję złych danych estymacji stanu (F-K4). */
+  | 'zle-dane-pomiarowe'
+  /** Wskazanie elementu BEZ werdyktu naruszenia — inspekcja, nie naprawa (F-K4). */
+  | 'inspekcja-elementu';
 
 /** Cel nawigacji akcji naprawczej — wyłącznie powierzchnie osiągalne programowo. */
 export type CelAkcjiNaprawczej =
@@ -87,6 +105,18 @@ const AKCJA_DOBOR_KOMPENSACJI: AkcjaNaprawcza = {
 };
 
 /**
+ * Akcja INSPEKCYJNA (F-K4): ten sam mechanizm co generyczna (selekcja + zoom SLD +
+ * przestrzeń „Schemat"), ale etykieta nie obiecuje naprawy. Dla ekranów, które
+ * niosą wynik bez kryterium naruszenia — projektant chce zobaczyć element, a nie
+ * dostać sugestię, że coś jest z nim nie tak.
+ */
+const AKCJA_INSPEKCJA: AkcjaNaprawcza = {
+  etykieta: WZORZEC_STRINGS.pokazNaSchemacie,
+  opis: WZORZEC_STRINGS.pokazNaSchemacieOpis,
+  cel: { rodzaj: 'schemat' },
+};
+
+/**
  * Registry rodzaj → akcja. Rodzaje bez realnego, programowego wejścia
  * w dedykowany konfigurator zostają przy akcji generycznej (dobór odcinka/
  * kabla/transformatora/modułu OZE odbywa się w property-gridzie po selekcji
@@ -98,6 +128,10 @@ const REJESTR: Record<RodzajPrzekroczenia, AkcjaNaprawcza> = {
   'obciazalnosc-transformatora': AKCJA_GENERYCZNA,
   migotanie: AKCJA_GENERYCZNA,
   'bilans-biernej': AKCJA_DOBOR_KOMPENSACJI,
+  'asymetria-fazowa': AKCJA_GENERYCZNA,
+  'stabilnosc-ssci': AKCJA_GENERYCZNA,
+  'zle-dane-pomiarowe': AKCJA_GENERYCZNA,
+  'inspekcja-elementu': AKCJA_INSPEKCJA,
 };
 
 /**

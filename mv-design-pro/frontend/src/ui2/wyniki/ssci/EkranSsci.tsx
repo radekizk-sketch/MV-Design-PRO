@@ -30,6 +30,7 @@ import {
   type WidokStabilnosciSsci,
 } from './api';
 import { etykietaWerdyktu, istotnoscWerdyktu, naMetryki } from './model';
+import { akcjaNaprawcza, usePoprawWModelu } from '../wzorzec';
 import { SSCI_STRINGS as S, fmtGain, fmtStopnie, type IstotnoscStanu } from './strings';
 
 // ---------------------------------------------------------------------------
@@ -73,6 +74,13 @@ function StanPanel({
 function ChipWerdyktu({ dane }: { dane: WidokStabilnosciSsci }) {
   const w = dane.verdict;
   const istotnosc = istotnoscWerdyktu(w.verdict);
+  const poprawWModelu = usePoprawWModelu();
+  // F-K4 (znalezisko Z4): ryzyko/brak stabilności podsynchronicznej prowadzi do
+  // SZYNY przyłączenia przekształtnika w modelu. Węzeł, bo to on jest elementem
+  // modelu wskazanym przez kontrakt werdyktu (`bus_ref`); `converter_ref` nie
+  // jest identyfikatorem elementu grafu, więc nawigacja po nim byłaby zgadywaniem.
+  const wezel = w.bus_ref;
+  const decyzja = w.is_risk && Boolean(wezel);
   return (
     <section className="mvd-ssci-werdykt" data-testid="mvd-ssci-werdykt">
       <div className="mvd-ssci-werdykt-glowny">
@@ -92,6 +100,17 @@ function ChipWerdyktu({ dane }: { dane: WidokStabilnosciSsci }) {
           <span className="mvd-ssci-werdykt-meta">
             {S.chipWezel}: {w.bus_ref}
           </span>
+        )}
+        {decyzja && (
+          <button
+            type="button"
+            className="mvd-ssci-popraw"
+            data-testid="mvd-ssci-popraw"
+            title={akcjaNaprawcza('stabilnosc-ssci').opis}
+            onClick={() => poprawWModelu(wezel as string, 'Bus', wezel as string, 'stabilnosc-ssci')}
+          >
+            {akcjaNaprawcza('stabilnosc-ssci').etykieta}
+          </button>
         )}
       </div>
     </section>

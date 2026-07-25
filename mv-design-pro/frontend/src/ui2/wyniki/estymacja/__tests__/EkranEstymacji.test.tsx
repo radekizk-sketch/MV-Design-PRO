@@ -12,6 +12,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
+import { useSelectionStore } from '../../../../ui/selection/store';
+import { useShellStore } from '../../../shell/useShellStore';
 import type { ExecutionRun } from '../../../../ui/study-cases/types';
 import { EkranEstymacji } from '../EkranEstymacji';
 import { widokEstymacjiFixture, wymaganiaFixture } from './fixtures';
@@ -218,5 +220,45 @@ describe('EkranEstymacji — uczciwe stany i edytor', () => {
     expect(wezelJpo.disabled).toBe(false);
     // Węzły dostępne jako opcje „do".
     expect(within(wezelJpo).getAllByRole('option').length).toBeGreaterThan(1);
+  });
+});
+
+describe('EkranEstymacji — pętla decyzji (F-K4, znalezisko Z4)', () => {
+  it('odrzucony pomiar (LNR ponad progiem) prowadzi do SZYNY pomiaru w modelu', async () => {
+    ustawPrzebieg();
+    post.mockResolvedValue(widokEstymacjiFixture());
+    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
+    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await screen.findByTestId('mvd-est-edytor');
+    wpiszPomiarV();
+    fireEvent.click(screen.getByTestId('mvd-est-estymuj'));
+    await screen.findByTestId('mvd-est-wynik');
+
+    fireEvent.click(screen.getByTestId('mvd-est-popraw'));
+
+    // Fixture: lnr_flag = true, lnr_measurement.bus_ref = 'BUS-1'.
+    expect(useSelectionStore.getState().selectedElement).toEqual({
+      id: 'BUS-1',
+      type: 'Bus',
+      name: 'BUS-1',
+    });
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+  });
+
+  it('brak przekroczenia progu LNR → brak przycisku decyzji', async () => {
+    ustawPrzebieg();
+    const widok = widokEstymacjiFixture();
+    post.mockResolvedValue({
+      ...widok,
+      bad_data: { ...widok.bad_data, lnr_flag: false, chi_square_flag: false },
+    });
+    render(<EkranEstymacji trybZaawansowania="basic" onOtworzDowod={() => undefined} />);
+    await screen.findByTestId('mvd-est-edytor');
+    wpiszPomiarV();
+    fireEvent.click(screen.getByTestId('mvd-est-estymuj'));
+    await screen.findByTestId('mvd-est-wynik');
+
+    expect(screen.queryByTestId('mvd-est-popraw')).not.toBeInTheDocument();
   });
 });

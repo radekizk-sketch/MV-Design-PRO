@@ -10,6 +10,8 @@ import {
   fetchPowerFlowRuns,
 } from '../../../../ui/power-flow-comparison/api';
 import { useStudyCasesStore } from '../../../../ui/study-cases/store';
+import { useSelectionStore } from '../../../../ui/selection/store';
+import { useShellStore } from '../../../shell/useShellStore';
 import type { StudyCaseListItem } from '../../../../ui/study-cases/types';
 import { comparisonFixture, runsFixture } from './fixtures';
 
@@ -282,5 +284,59 @@ describe('EkranPorownania — dowody kolumn A/B (R3-C)', () => {
     fireEvent.click(screen.getByTestId('mvd-por-tab-ranking'));
     const tabela = within(screen.getByTestId('mvd-wyn-tabela'));
     expect(tabela.queryAllByRole('button', { name: WZORZEC_STRINGS.pokazDowod })).toHaveLength(0);
+  });
+});
+
+describe('EkranPorownania — wskazanie elementu (F-K4, znalezisko Z4)', () => {
+  it('szyna z istotną różnicą prowadzi do elementu w modelu (akcja inspekcyjna)', async () => {
+    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+
+    const przyciski = screen.getAllByTestId('mvd-wyn-popraw');
+    expect(przyciski.length).toBeGreaterThanOrEqual(1);
+    // Różnica między wariantami nie jest naruszeniem kryterium — etykieta inspekcyjna.
+    expect(przyciski[0]).toHaveTextContent('Pokaż na schemacie');
+
+    fireEvent.click(przyciski[0]);
+    expect(useSelectionStore.getState().selectedElement?.type).toBe('Bus');
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+  });
+
+  it('gałąź z wagą PONIŻEJ progu istotności nie dostaje wskazania (nie sugerujemy bez sygnału)', async () => {
+    // Fixtura: problem gałęzi LINIA-GPZ-ST1 ma wagę 3, próg tagu istotności to 4,
+    // więc wiersz gałęzi NIE jest oflagowany — i akcji być nie może.
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+    fireEvent.click(screen.getByTestId('mvd-por-tab-galezie'));
+
+    expect(screen.queryByTestId('mvd-wyn-popraw')).toBeNull();
+  });
+
+  it('gałąź z wagą krytyczną: wskazanie prowadzi do GAŁĘZI w modelu (typ LineBranch)', async () => {
+    const bazowy = comparisonFixture();
+    mockCompare.mockResolvedValue(
+      comparisonFixture({
+        // Podnosimy wagę problemu gałęzi do krytycznej — wtedy wiersz jest oflagowany
+        // jako istotna różnica i wskazanie ma sens (poniżej progu go nie ma).
+        ranking: bazowy.ranking.map((pr) =>
+          pr.element_ref === 'LINIA-GPZ-ST1' ? { ...pr, severity: 5 } : pr,
+        ),
+      }),
+    );
+    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+    fireEvent.click(screen.getByTestId('mvd-por-tab-galezie'));
+
+    fireEvent.click(screen.getAllByTestId('mvd-wyn-popraw')[0]);
+    expect(useSelectionStore.getState().selectedElement).toEqual({
+      id: 'LINIA-GPZ-ST1',
+      type: 'LineBranch',
+      name: 'LINIA-GPZ-ST1',
+    });
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 });

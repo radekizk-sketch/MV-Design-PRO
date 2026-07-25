@@ -67,6 +67,16 @@ interface TabelaWynikowProps {
   /** Rodzaj przekroczenia wiersza (K1 / F-E6.3) — etykieta/opis przycisku z rejestru
    * `akcjeNaprawcze.ts`; brak = etykieta generyczna (1:1). */
   rodzajWiersza?: (klucz: string) => RodzajPrzekroczenia | undefined;
+  /**
+   * Kiedy renderować akcję kolumny „Decyzja" (F-K4):
+   * - `'przy-ostrzezeniu'` (domyślne, zachowanie 1:1 sprzed F-K4) — tylko wiersz
+   *   z ostrzeżeniem, bo akcja obiecuje NAPRAWĘ przekroczenia,
+   * - `'zawsze'` — każdy wiersz przechodzący `wierszDecyzyjny`; dla ekranów, które
+   *   niosą wynik BEZ kryterium naruszenia i oferują akcję INSPEKCYJNĄ
+   *   („Pokaż na schemacie"). Rozprzęgnięcie jest jawne, żeby nikt przez pomyłkę
+   *   nie pokazał „Popraw w modelu" w wierszu, którego nikt nie zakwestionował.
+   */
+  trybDecyzji?: 'przy-ostrzezeniu' | 'zawsze';
 }
 
 /** Czy wiersz niesie jakiekolwiek przekroczenie (dowolna komórka `ostrzezenie`). */
@@ -122,6 +132,7 @@ export function TabelaWynikow({
   onPoprawWModelu,
   wierszDecyzyjny,
   rodzajWiersza,
+  trybDecyzji = 'przy-ostrzezeniu',
 }: TabelaWynikowProps) {
   const [sort, setSort] = useState<StanSortowania | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
@@ -242,7 +253,7 @@ export function TabelaWynikow({
         ))}
         {kolumnaDecyzji && (
           <td className="mvd-wyn-td-decyzja">
-            {wierszMaOstrzezenie(wiersz) &&
+            {(trybDecyzji === 'zawsze' || wierszMaOstrzezenie(wiersz)) &&
               (wierszDecyzyjny == null || wierszDecyzyjny(rowKey)) && (
               <button
                 type="button"

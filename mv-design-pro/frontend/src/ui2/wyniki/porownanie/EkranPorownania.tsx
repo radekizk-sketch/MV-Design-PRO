@@ -23,7 +23,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import './porownanie.css';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
-import { SekcjaZalozen, TabelaWynikow } from '../wzorzec';
+import { SekcjaZalozen, TabelaWynikow, usePoprawWModelu } from '../wzorzec';
 import { stronaDowodu } from './dowodPorownania';
 import {
   createPowerFlowComparison,
@@ -208,6 +208,7 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
     () => (wynik ? mapaWagElementow(wynik.ranking) : new Map<string, number>()),
     [wynik],
   );
+  const poprawWModelu = usePoprawWModelu();
   const wierszeSzyn = useMemo(
     () => (wynik ? naWierszeSzynDiff(wynik.bus_diffs, wagi) : []),
     [wynik, wagi],
@@ -330,11 +331,16 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
                 {POROWNANIE_STRINGS.brakSzyn}
               </p>
             ) : (
+              /* F-K4 (znalezisko Z4): wiersz z ISTOTNĄ różnicą prowadzi do szyny
+                 w modelu. Akcja jest INSPEKCYJNA: różnica między wariantami nie
+                 jest naruszeniem kryterium, więc nie obiecujemy naprawy. */
               <TabelaWynikow
                 kolumny={KOLUMNY_SZYN_DIFF}
                 wiersze={wierszeSzyn}
                 onOtworzDowod={otworzDowodPrzebiegu}
                 trybZaawansowania={trybZaawansowania}
+                onPoprawWModelu={(klucz) => poprawWModelu(klucz, 'Bus', klucz, 'inspekcja-elementu')}
+                rodzajWiersza={() => 'inspekcja-elementu'}
               />
             ))}
 
@@ -349,6 +355,10 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
                 wiersze={wierszeGalezi}
                 onOtworzDowod={otworzDowodPrzebiegu}
                 trybZaawansowania={trybZaawansowania}
+                onPoprawWModelu={(klucz) =>
+                  poprawWModelu(klucz, 'LineBranch', klucz, 'inspekcja-elementu')
+                }
+                rodzajWiersza={() => 'inspekcja-elementu'}
               />
             ))}
 

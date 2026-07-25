@@ -29,7 +29,7 @@ import { usePowerFlowResultsStore } from '../../../ui/power-flow-results/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useShellStore } from '../../shell/useShellStore';
-import { SekcjaZalozen } from '../wzorzec';
+import { akcjaNaprawcza, SekcjaZalozen, usePoprawWModelu, WZORZEC_STRINGS } from '../wzorzec';
 import {
   naBilansPrzebiegu,
   naWierszeIteracji,
@@ -111,6 +111,7 @@ export function EkranZbieznosci() {
   const sladAktualny = przebieg && selectedRunId === przebieg.id ? slad : null;
   const oltc = sladAktualny?.oltc_control ?? null;
   const wierszeModelu = naWierszeZaczepowModelu(snapshot);
+  const poprawWModelu = usePoprawWModelu();
 
   const otworzWyniki = (tab: string) => {
     setWynikiTab(tab);
@@ -272,17 +273,33 @@ export function EkranZbieznosci() {
                         <th>{T.modelKolPozycja}</th>
                         <th>{T.modelKolZakres}</th>
                         <th>{T.modelKolKrok}</th>
+                        <th>{WZORZEC_STRINGS.kolumnaDecyzja}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {wierszeModelu.map((w) => (
-                        <tr key={w.nazwa}>
+                        <tr key={w.ref}>
                           <td>{w.nazwa}</td>
                           <td>{w.regulacja}</td>
                           <td>{w.tryb}</td>
                           <td className="mvd-num">{w.pozycja}</td>
                           <td className="mvd-num">{w.zakres}</td>
                           <td className="mvd-num">{w.krok}</td>
+                          <td>
+                            {/* F-K4: zaczepy to nastawa modelu, nie naruszenie kryterium —
+                                akcja INSPEKCYJNA prowadzi do transformatora na schemacie. */}
+                            <button
+                              type="button"
+                              className="mvd-zbieznosc-popraw"
+                              data-testid="mvd-zbieznosc-popraw"
+                              title={akcjaNaprawcza('inspekcja-elementu').opis}
+                              onClick={() =>
+                                poprawWModelu(w.ref, 'TransformerBranch', w.nazwa, 'inspekcja-elementu')
+                              }
+                            >
+                              {akcjaNaprawcza('inspekcja-elementu').etykieta}
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>

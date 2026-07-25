@@ -357,3 +357,29 @@ describe('TabelaWynikow — wirtualizacja okienkowa (>500 wierszy)', () => {
     expect(within(screen.getByTestId('mvd-wyn-th-wartosc')).getByText('[kV]')).toBeInTheDocument();
   });
 });
+
+describe('TabelaWynikow — tryb decyzji (F-K4)', () => {
+  /** Wiersz BEZ ostrzeżenia (fixtura ma taki: „Szyna C"). */
+  const bezOstrzezenia = [wierszeFixture[2]];
+
+  it('tryb „zawsze": akcja także w wierszu BEZ ostrzeżenia (wynik bez kryterium naruszenia)', () => {
+    render(
+      <TabelaWynikow
+        {...props({
+          wiersze: bezOstrzezenia,
+          onPoprawWModelu: vi.fn(),
+          rodzajWiersza: () => 'inspekcja-elementu' as const,
+          trybDecyzji: 'zawsze' as const,
+        })}
+      />,
+    );
+    expect(screen.getByTestId('mvd-wyn-popraw')).toHaveTextContent(
+      WZORZEC_STRINGS.pokazNaSchemacie,
+    );
+  });
+
+  it('domyślny tryb (1:1 sprzed F-K4): wiersz bez ostrzeżenia NIE dostaje akcji', () => {
+    render(<TabelaWynikow {...props({ wiersze: bezOstrzezenia, onPoprawWModelu: vi.fn() })} />);
+    expect(screen.queryByTestId('mvd-wyn-popraw')).toBeNull();
+  });
+});

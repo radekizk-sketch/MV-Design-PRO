@@ -29,7 +29,7 @@ import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStor
 import { MathBlock } from '../../../ui/proof/MathRenderer';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
-import { SekcjaZalozen, TabelaWynikow } from '../wzorzec';
+import { SekcjaZalozen, TabelaWynikow, usePoprawWModelu } from '../wzorzec';
 import { useDaneSkladowych } from './api';
 import {
   fmtImpedancjaUziemienia,
@@ -110,6 +110,7 @@ export function EkranSkladowych() {
   const rows = dane?.wynik?.rows ?? [];
 
   const [wybranyPunkt, setWybranyPunkt] = useState<string | null>(null);
+  const poprawWModelu = usePoprawWModelu();
   const aktywnyPunkt = useMemo(() => {
     if (rows.length === 0) return null;
     if (wybranyPunkt && rows.some((r) => r.target_id === wybranyPunkt)) return wybranyPunkt;
@@ -165,6 +166,10 @@ export function EkranSkladowych() {
           <section className="mvd-skladowe-sekcja" data-testid="mvd-skladowe-tabela">
             <h4>{T.tabelaTytul}</h4>
             <p className="mvd-skladowe-nota">{T.tabelaOpis}</p>
+            {/* F-K4 (znalezisko Z4): ten ekran nie ma kryterium naruszenia
+                (raportowalność jest zawsze pozytywna), więc akcja jest INSPEKCYJNA —
+                „Pokaż na schemacie", nie „Popraw". Nazwanie jej naprawą wmawiałoby
+                projektantowi defekt, którego nikt nie stwierdził. */}
             <TabelaWynikow
               kolumny={KOLUMNY_SKLADOWYCH}
               wiersze={naWierszeSkladowych(rows)}
@@ -173,6 +178,13 @@ export function EkranSkladowych() {
               kluczWiersza={KLUCZ_PUNKT}
               onWybierzWiersz={setWybranyPunkt}
               wybranyWiersz={aktywnyPunkt}
+              onPoprawWModelu={(klucz) => {
+                const wiersz = rows.find((r) => r.target_id === klucz);
+                const ref = wiersz?.element_id ?? klucz;
+                poprawWModelu(ref, 'Bus', wiersz?.target_name ?? ref, 'inspekcja-elementu');
+              }}
+              rodzajWiersza={() => 'inspekcja-elementu'}
+              trybDecyzji="zawsze"
             />
           </section>
 

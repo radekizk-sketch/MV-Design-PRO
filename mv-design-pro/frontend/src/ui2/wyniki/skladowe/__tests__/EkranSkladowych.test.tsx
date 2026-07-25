@@ -13,6 +13,8 @@ import { useAppStateStore } from '../../../../ui/app-state';
 import { useNetworkBuildStore } from '../../../../ui/network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../../../ui/study-cases/runStore';
 import { useShellStore } from '../../../shell/useShellStore';
+import { useSelectionStore } from '../../../../ui/selection/store';
+import { WZORZEC_STRINGS } from '../../wzorzec';
 import { EkranSkladowych } from '../EkranSkladowych';
 import { SKLADOWE_STRINGS as T } from '../strings';
 
@@ -280,5 +282,40 @@ describe('EkranSkladowych — uczciwe braki danych opcjonalnych', () => {
 
     expect(await screen.findByTestId('mvd-skladowe-blad')).toBeInTheDocument();
     expect(screen.queryByTestId('mvd-skladowe-tabela')).not.toBeInTheDocument();
+  });
+});
+
+describe('EkranSkladowych — wskazanie elementu (F-K4, znalezisko Z4)', () => {
+  beforeEach(() => {
+    mockFetchSkladowych();
+    useExecutionRunsStore.setState({ runs: [RUN_1F, RUN_3F] });
+    useSelectionStore.setState({ selectedElement: null, sldCenterOnElement: null } as never);
+  });
+
+  it('akcja jest INSPEKCYJNA („Pokaż na schemacie"), bo ekran nie ma kryterium naruszenia', async () => {
+    render(<EkranSkladowych />);
+    await screen.findByTestId('mvd-skladowe-tabela');
+
+    const przyciski = screen.getAllByRole('button', { name: WZORZEC_STRINGS.pokazNaSchemacie });
+    expect(przyciski.length).toBeGreaterThan(0);
+    // Etykieta naprawcza NIE może się tu pojawić — nikt nie stwierdził defektu.
+    expect(
+      screen.queryByRole('button', { name: WZORZEC_STRINGS.poprawWModelu }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('klik prowadzi do punktu zwarcia w modelu (element_id z kontraktu, nie target_id)', async () => {
+    const user = userEvent.setup();
+    render(<EkranSkladowych />);
+    await screen.findByTestId('mvd-skladowe-tabela');
+
+    await user.click(screen.getAllByRole('button', { name: WZORZEC_STRINGS.pokazNaSchemacie })[0]);
+
+    expect(useSelectionStore.getState().selectedElement).toEqual({
+      id: 'bus/gpz/sn',
+      type: 'Bus',
+      name: 'Szyna GPZ',
+    });
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
   });
 });
