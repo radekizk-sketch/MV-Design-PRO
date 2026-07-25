@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
 import numpy as np
 from network_model.core.graph import NetworkGraph
@@ -212,7 +213,7 @@ class ShortCircuitResult:
         ) -> dict:
             return contrib.to_dict()
 
-        def serialize_value(val):
+        def serialize_value(val: Any) -> Any:
             """Rekurencyjnie konwertuje wartości do typów JSON-ready."""
             if isinstance(val, complex):
                 return serialize_complex(val)
