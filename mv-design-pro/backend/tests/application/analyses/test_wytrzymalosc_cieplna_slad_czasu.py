@@ -21,7 +21,7 @@ from application.analyses.wytrzymalosc_cieplna_przewodow import (
     zbuduj_dowod_cieplny,
 )
 from enm.canonical_analysis import create_run, execute_run, get_run, reset_canonical_runs
-from enm.models import ProtectionAssignment, ProtectionSetting
+from enm.models import Cable, ProtectionAssignment, ProtectionSetting
 from enm.store import reset_enm_store, set_enm
 
 from tests.cgmes.golden_enm import build_golden_enm
@@ -137,6 +137,37 @@ def test_dowod_nieznanej_galezi_jest_bledem_z_komunikatem_po_polsku() -> None:
     run = _przebieg(z_zabezpieczeniem=False)
     with pytest.raises(ValueError, match="nie występuje w ocenie cieplnej"):
         zbuduj_dowod_cieplny(run, "nie-ma-takiej-galezi")
+
+
+def test_raport_mowi_czy_liczby_dotycza_biezacej_wersji_modelu() -> None:
+    """Uwaga 12 wlasciciela: kazda zmiana modelu musi byc widoczna w raporcie.
+
+    Wynik sprzed zmiany wyglada IDENTYCZNIE jak aktualny — bez tej informacji
+    projekt moglby zostac odebrany na nieaktualnym dowodzie.
+    """
+    run = _przebieg(z_zabezpieczeniem=True)
+    widok = build_wytrzymalosc_cieplna_view(run)
+    assert widok["aktualnosc"]["aktualny"] is True
+    assert widok["aktualnosc"]["model_hash"] == widok["aktualnosc"]["snapshot_hash"]
+
+    # Zmiana modelu (nowy kabel) unieważnia podstawe biegu — raport ma to nazwac.
+    model = build_golden_enm()
+    model.branches.append(
+        Cable(
+            ref_id="cab_nowy",
+            name="Kabel dolozony po biegu",
+            from_bus_ref="bus_sn_b",
+            to_bus_ref="bus_sn_c",
+            length_km=0.5,
+            r_ohm_per_km=0.2,
+            x_ohm_per_km=0.1,
+        )
+    )
+    set_enm("c-cieplna", model)
+
+    po_zmianie = build_wytrzymalosc_cieplna_view(run)
+    assert po_zmianie["aktualnosc"]["aktualny"] is False
+    assert "WCZESNIEJSZEJ" in po_zmianie["aktualnosc"]["powod_pl"]
 
 
 def test_ocena_jest_deterministyczna() -> None:

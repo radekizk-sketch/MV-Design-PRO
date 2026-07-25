@@ -473,6 +473,67 @@ export interface PozycjaCieplna {
    * Bez tego pola obie wartości wyglądałyby w tabeli identycznie.
    */
   readonly czas_wylaczenia: SladCzasuWylaczenia | null;
+  /** Energia cieplna zwarcia I²·t [A²·s] — fizyczna treść kryterium. */
+  readonly i2t_a2s: number | null;
+  /** Dopuszczalna energia cieplna żyły k²·S² [A²·s]. */
+  readonly i2t_dopuszczalne_a2s: number | null;
+  /** Zapas do granicy [%] (dopełnienie wykorzystania). */
+  readonly margines_procent: number | null;
+  /** Kryteria cząstkowe z osobnym werdyktem — które ograniczenie zdecydowało. */
+  readonly kryteria: readonly KryteriumCieplne[];
+  /** Jednozdaniowy powód werdyktu (kolumna „Powód decyzji"). */
+  readonly powod_decyzji_pl: string | null;
+  /** Działania naprawcze z progiem liczbowym (puste dla pozycji spełnionych). */
+  readonly zalecenia: readonly ZalecenieCieplne[];
+  /** Wrażliwość wyniku na czas, prąd i przekrój. */
+  readonly wrazliwosc: readonly PunktWrazliwosci[];
+  /** Uzasadnienie współczynnika k (materiał, izolacja, temperatury, źródło). */
+  readonly uzasadnienie_k: UzasadnienieK | null;
+}
+
+/** Kryterium cząstkowe: wielkość wobec granicy, z własnym werdyktem. */
+export interface KryteriumCieplne {
+  readonly kod: string;
+  readonly nazwa_pl: string;
+  readonly warunek_pl: string;
+  readonly wartosc: number | null;
+  readonly granica: number | null;
+  readonly jednostka: string;
+  readonly status: StatusWarunku;
+}
+
+/** Działanie naprawcze z wartością docelową — rekomendacja bez liczby jest bezużyteczna. */
+export interface ZalecenieCieplne {
+  readonly kod: string;
+  readonly dzialanie_pl: string;
+  readonly wzor: string;
+  readonly wartosc_docelowa: number;
+  readonly jednostka: string;
+  readonly wartosc_obecna: number | null;
+  readonly skutek_pl: string;
+}
+
+/** Punkt analizy wrażliwości (jeden parametr, jeden mnożnik). */
+export interface PunktWrazliwosci {
+  readonly parametr: string;
+  readonly nazwa_pl: string;
+  readonly mnoznik: number;
+  readonly wartosc: number;
+  readonly jednostka: string;
+  readonly wykorzystanie: number;
+}
+
+/** Uzasadnienie współczynnika k — bez niego liczby nie da się zweryfikować. */
+export interface UzasadnienieK {
+  readonly k_a_s05_per_mm2: number | null;
+  readonly tozsamosc_pl: string;
+  readonly material_zyly: string | null;
+  readonly izolacja: string | null;
+  readonly temp_poczatkowa_c: number | null;
+  readonly temp_koncowa_c: number | null;
+  readonly zrodlo_pl: string | null;
+  readonly braki_pl: readonly string[];
+  readonly kompletne: boolean;
 }
 
 /** Ślad czasu wyłączenia — `application/analyses/protection/czas_wylaczenia_galezi.py`. */
@@ -487,6 +548,24 @@ export interface SladCzasuWylaczenia {
   readonly prad_rozruchowy_a: number | null;
   readonly krzywa: string | null;
   readonly tms: number | null;
+}
+
+/**
+ * Aktualność wyniku wobec modelu. `aktualny === null` = nie ma z czym porównać
+ * (model przypadku nie jest załadowany) — to inny stan niż „nieaktualny".
+ */
+export interface AktualnoscWyniku {
+  readonly aktualny: boolean | null;
+  readonly powod_pl: string;
+  readonly model_hash: string | null;
+  readonly snapshot_hash: string | null;
+}
+
+/** Norma z punktem, z którego wynika zastosowane kryterium. */
+export interface NormaCieplna {
+  readonly norma: string;
+  readonly punkt: string;
+  readonly tresc_pl: string;
 }
 
 /** Ile gałęzi ma czas z nastawy, a ile z założenia przypadku. */
@@ -511,6 +590,10 @@ export interface WytrzymaloscCieplnaResponse {
   readonly fault_node_id: string;
   readonly tk_s: number;
   readonly czasy_wylaczenia: PodsumowanieCzasow;
+  /** Podstawa normowa z PUNKTEM — raport ma być dowodem, nie prezentacją wyniku. */
+  readonly normy: readonly NormaCieplna[];
+  /** Czy liczby dotyczą BIEŻĄCEJ wersji modelu (reguła 4 kanonu). */
+  readonly aktualnosc: AktualnoscWyniku;
   readonly ocena: {
     readonly items: readonly PozycjaCieplna[];
     readonly summary: PodsumowanieCieplne;

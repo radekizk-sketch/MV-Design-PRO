@@ -205,9 +205,13 @@ def test_kroki_dowodowe_niosa_te_same_liczby_co_pozycja_wyniku() -> None:
     pozycja = next(item for item in view.items if item.branch_id == "cable_A")
 
     kroki = {krok["key"]: krok for krok in pozycja.kroki_dowodu}
+    # Karta F-K1 faza 6: dowod zaczyna sie od wspolczynnika k (bez niego liczby nie
+    # da sie zweryfikowac) i niesie osobny krok bilansu energii.
     assert set(kroki) == {
+        "conductor_thermal_k_factor",
         "conductor_thermal_admissible",
         "conductor_thermal_criterion",
+        "conductor_thermal_energy",
         "conductor_thermal_min_section",
     }
     assert kroki["conductor_thermal_admissible"]["result"]["i_dop_a"]["value"] == pytest.approx(
@@ -224,6 +228,11 @@ def test_kroki_dowodowe_niosa_te_same_liczby_co_pozycja_wyniku() -> None:
         assert krok["formula_latex"].startswith("$$")
         assert krok["inputs"] and krok["result"]
         assert krok["substitution"] and krok["notes"]
+
+    # Bilans energii: I²t = 15000² * 0,25 = 5,625e7 A²s; k²S² = 8000² = 6,4e7 A²s.
+    assert pozycja.i2t_a2s == pytest.approx(56_250_000.0)
+    assert pozycja.i2t_dopuszczalne_a2s == pytest.approx(64_000_000.0)
+    assert pozycja.margines_procent == pytest.approx(6.25)
 
 
 def test_pozycja_niesprawdzona_nie_niesie_krokow_dowodowych() -> None:

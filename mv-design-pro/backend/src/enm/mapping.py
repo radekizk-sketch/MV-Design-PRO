@@ -624,6 +624,14 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 ith_1s_a=getattr(branch, "ith_1s_a", None),
                 jth_1s_a_per_mm2=getattr(branch, "jth_1s_a_per_mm2", None),
                 cross_section_mm2=getattr(branch, "cross_section_mm2", None),
+                # Karta F-K1 faza 6: dane materialowe zyly do UZASADNIENIA k w
+                # dowodzie obliczeniowym. `getattr` z None, bo linia napowietrzna
+                # nie niesie izolacji ani temperatur zwarciowych w modelu.
+                conductor_material=getattr(branch, "conductor_material", None),
+                insulation=getattr(branch, "insulation", None),
+                operating_temperature_c=getattr(branch, "operating_temperature_c", None),
+                short_circuit_temperature_c=getattr(branch, "short_circuit_temperature_c", None),
+                thermal_source_ref=getattr(branch, "thermal_source_ref", None),
             )
             graph.add_branch(lb)
 

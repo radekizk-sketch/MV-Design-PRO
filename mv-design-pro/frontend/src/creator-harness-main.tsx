@@ -1323,6 +1323,31 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
         fault_node_id: 'SZ-ST7',
         tk_s: 1.0,
         czasy_wylaczenia: { z_nastawy: 1, z_zalozenia: 1, razem: 2 },
+        aktualnosc: {
+          aktualny: true,
+          powod_pl: 'Wynik policzony dla biezacej wersji modelu.',
+          model_hash: 'h-demo',
+          snapshot_hash: 'h-demo',
+        },
+        normy: [
+          {
+            norma: 'PN-HD 60364-4-43',
+            punkt: '§ 434.5.2',
+            tresc_pl:
+              'Warunek adiabatyczny doboru przekroju ze wzgledu na zwarcie: S ≥ √(I²·t) / k.',
+          },
+          {
+            norma: 'IEC 60949',
+            punkt: '§ 3, § 4',
+            tresc_pl:
+              'Obliczanie dopuszczalnych pradow zwarciowych kabli; podstawa wartosci k dla par material zyly / izolacja.',
+          },
+          {
+            norma: 'IEC 60909-0',
+            punkt: '§ 12',
+            tresc_pl: 'Prad ekwiwalentny cieplnie I_th = I″k·√(m+n) — to jego uzywa kryterium.',
+          },
+        ],
         ocena: {
           items: [
             {
@@ -1336,6 +1361,59 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
               applied_cross_section_mm2: 120,
               missing_codes: [],
               uzasadnienie_pl: null,
+              i2t_a2s: 94744125,
+              i2t_dopuszczalne_a2s: 190440000,
+              margines_procent: 29.4662,
+              kryteria: [
+                {
+                  kod: 'prad_dopuszczalny',
+                  nazwa_pl: 'Prąd zwarciowy wobec dopuszczalnego dla czasu t',
+                  warunek_pl: 'I_th ≤ I_dop(t) = I_th(1s)/√t',
+                  wartosc: 15000,
+                  granica: 21266.410898,
+                  jednostka: 'A',
+                  status: 'PASS',
+                },
+                {
+                  kod: 'energia_cieplna',
+                  nazwa_pl: 'Energia zwarcia wobec wytrzymałości żyły',
+                  warunek_pl: 'I²·t ≤ k²·S²',
+                  wartosc: 94744125,
+                  granica: 190440000,
+                  jednostka: 'A²·s',
+                  status: 'PASS',
+                },
+                {
+                  kod: 'przekroj_minimalny',
+                  nazwa_pl: 'Przekrój zastosowany wobec minimalnego z warunku cieplnego',
+                  warunek_pl: 'S ≥ S_min = √(I²·t)/k',
+                  wartosc: 120,
+                  granica: 84.640516,
+                  jednostka: 'mm²',
+                  status: 'PASS',
+                },
+              ],
+              powod_decyzji_pl: 'Wykorzystanie wytrzymałości cieplnej 70,5 % (zapas 29,5 %).',
+              zalecenia: [],
+              wrazliwosc: [
+                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 0.5, wartosc: 0.2105, jednostka: 's', wykorzystanie: 0.498749 },
+                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 1.0, wartosc: 0.4211, jednostka: 's', wykorzystanie: 0.705338 },
+                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 2.0, wartosc: 0.8422, jednostka: 's', wykorzystanie: 0.997496 },
+                { parametr: 'prad_zwarciowy', nazwa_pl: 'Prąd zwarciowy', mnoznik: 1.5, wartosc: 22500, jednostka: 'A', wykorzystanie: 1.058007 },
+                { parametr: 'przekroj', nazwa_pl: 'Przekrój żyły', mnoznik: 0.5, wartosc: 60, jednostka: 'mm²', wykorzystanie: 1.410677 },
+              ],
+              uzasadnienie_k: {
+                k_a_s05_per_mm2: 115,
+                tozsamosc_pl:
+                  'k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s).',
+                material_zyly: 'CU',
+                izolacja: 'XLPE',
+                temp_poczatkowa_c: 90,
+                temp_koncowa_c: 250,
+                zrodlo_pl: 'IEC 60502-2 / IEC 60949',
+                braki_pl: [],
+                kompletne: true,
+              },
               czas_wylaczenia: {
                 tk_s: 0.421085,
                 zrodlo: 'nastawa_zabezpieczenia',
@@ -1361,6 +1439,90 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
               applied_cross_section_mm2: 70,
               missing_codes: [],
               uzasadnienie_pl: null,
+              i2t_a2s: 84640000,
+              i2t_dopuszczalne_a2s: 64802500,
+              margines_procent: -14.2857,
+              kryteria: [
+                {
+                  kod: 'prad_dopuszczalny',
+                  nazwa_pl: 'Prąd zwarciowy wobec dopuszczalnego dla czasu t',
+                  warunek_pl: 'I_th ≤ I_dop(t) = I_th(1s)/√t',
+                  wartosc: 9200,
+                  granica: 8050,
+                  jednostka: 'A',
+                  status: 'FAIL',
+                },
+                {
+                  kod: 'energia_cieplna',
+                  nazwa_pl: 'Energia zwarcia wobec wytrzymałości żyły',
+                  warunek_pl: 'I²·t ≤ k²·S²',
+                  wartosc: 84640000,
+                  granica: 64802500,
+                  jednostka: 'A²·s',
+                  status: 'FAIL',
+                },
+                {
+                  kod: 'przekroj_minimalny',
+                  nazwa_pl: 'Przekrój zastosowany wobec minimalnego z warunku cieplnego',
+                  warunek_pl: 'S ≥ S_min = √(I²·t)/k',
+                  wartosc: 70,
+                  granica: 80,
+                  jednostka: 'mm²',
+                  status: 'FAIL',
+                },
+              ],
+              powod_decyzji_pl:
+                'Przekrój 70 mm² jest mniejszy od wymaganego 80,0 mm² z warunku cieplnego.',
+              zalecenia: [
+                {
+                  kod: 'zwieksz_przekroj',
+                  dzialanie_pl: 'Zwiększ przekrój żyły',
+                  wzor: 'S ≥ I·√t / k',
+                  wartosc_docelowa: 80,
+                  jednostka: 'mm²',
+                  wartosc_obecna: 70,
+                  skutek_pl:
+                    'Przekrój 80,0 mm² sprowadza wykorzystanie wytrzymałości do 100 %; typoszereg powyżej daje zapas.',
+                },
+                {
+                  kod: 'skroc_czas',
+                  dzialanie_pl: 'Skróć czas wyłączenia zwarcia (nastawa zabezpieczenia)',
+                  wzor: 't ≤ (k·S / I)²',
+                  wartosc_docelowa: 0.7656,
+                  jednostka: 's',
+                  wartosc_obecna: 1.0,
+                  skutek_pl:
+                    'Czas 0,766 s zamiast 1,000 s wystarczy, żeby obecny przekrój spełnił kryterium bez wymiany kabla.',
+                },
+                {
+                  kod: 'ogranicz_prad',
+                  dzialanie_pl: 'Ogranicz prąd zwarciowy w tym miejscu sieci',
+                  wzor: 'I ≤ k·S / √t',
+                  wartosc_docelowa: 8050,
+                  jednostka: 'A',
+                  wartosc_obecna: 9200,
+                  skutek_pl:
+                    'Prąd do 8050 A (np. dławik zwarciowy, podział sieci, inny punkt pracy) mieści się w wytrzymałości obecnego przekroju.',
+                },
+              ],
+              wrazliwosc: [
+                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 0.5, wartosc: 0.5, jednostka: 's', wykorzystanie: 0.808122 },
+                { parametr: 'czas_wylaczenia', nazwa_pl: 'Czas wyłączenia', mnoznik: 1.0, wartosc: 1.0, jednostka: 's', wykorzystanie: 1.142857 },
+                { parametr: 'prad_zwarciowy', nazwa_pl: 'Prąd zwarciowy', mnoznik: 0.75, wartosc: 6900, jednostka: 'A', wykorzystanie: 0.857143 },
+                { parametr: 'przekroj', nazwa_pl: 'Przekrój żyły', mnoznik: 1.5, wartosc: 105, jednostka: 'mm²', wykorzystanie: 0.761905 },
+              ],
+              uzasadnienie_k: {
+                k_a_s05_per_mm2: 115,
+                tozsamosc_pl:
+                  'k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s).',
+                material_zyly: 'AL',
+                izolacja: 'XLPE',
+                temp_poczatkowa_c: 90,
+                temp_koncowa_c: 250,
+                zrodlo_pl: 'IEC 60502-2 / IEC 60949',
+                braki_pl: [],
+                kompletne: true,
+              },
               czas_wylaczenia: {
                 tk_s: 1.0,
                 zrodlo: 'zalozenie_przypadku',

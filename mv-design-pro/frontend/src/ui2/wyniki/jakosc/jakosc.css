@@ -414,3 +414,132 @@
   font-size: 12px;
   color: var(--mvd-muted);
 }
+
+/* --- Dowód obliczeniowy kryterium cieplnego (karta F-K1 faza 6) ---------- */
+.mvd-cieplny-dowod {
+  margin-top: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--mvd-panel);
+}
+.mvd-cieplny-dowod-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.mvd-cieplny-dowod-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+/* Werdykt niesie ikonę I tekst — kolor jest tylko wzmocnieniem, nigdy nośnikiem. */
+.mvd-cieplny-werdykt {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mvd-cieplny-werdykt--pass {
+  color: var(--mvd-ok);
+}
+.mvd-cieplny-werdykt--fail {
+  color: var(--mvd-err);
+}
+.mvd-cieplny-werdykt--unavailable {
+  color: var(--mvd-muted);
+}
+.mvd-cieplny-akcja {
+  margin-left: auto;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.mvd-cieplny-akcja:hover {
+  border-color: var(--mvd-accent);
+}
+.mvd-cieplny-akcja:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-cieplny-bilans {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px 16px;
+  margin: 0 0 12px;
+}
+.mvd-cieplny-bilans dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-cieplny-bilans dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.mvd-cieplny-sekcja {
+  margin-top: 14px;
+}
+.mvd-cieplny-sekcja h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-cieplny-opis {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-cieplny-brak {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--mvd-warn, var(--mvd-err));
+}
+/* Tabele dowodu bywają szersze od panelu — przewijają się we własnym boksie,
+   żeby strona nigdy nie jechała w poziomie. */
+.mvd-cieplny-tabela {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.mvd-cieplny-tabela th,
+.mvd-cieplny-tabela td {
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 4px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+.mvd-cieplny-tabela td.mvd-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.mvd-cieplny-tabela td.mvd-mono {
+  font-family: var(--mvd-mono, ui-monospace, monospace);
+}
+.mvd-cieplny-normy {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+}
+.mvd-cieplny-normy li {
+  margin-bottom: 4px;
+}
+
+/* Ostrzeżenie o wyniku sprzed zmiany modelu (karta F-K1 faza 6, uwaga 12).
+   Liczby ze starego biegu wyglądają identycznie jak aktualne — komunikat musi
+   być nad tabelą, zanim ktoś je odczyta jako obowiązujące. */
+.mvd-jakosc-nieaktualne {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--mvd-warn, var(--mvd-err));
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--mvd-warn, var(--mvd-err));
+}

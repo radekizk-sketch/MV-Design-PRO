@@ -2138,10 +2138,25 @@ def _apply_materialized_branch_fields(
         "return_conductor_r_ohm_per_km_20c",
         "return_conductor_jth_1s_a_per_mm2",
         "return_conductor_ith_1s_a",
+        # Karta F-K1 faza 3/6: dane cieplne ZYLY FAZOWEJ i para temperatur, ktora
+        # uzasadnia wspolczynnik k. Bez przepisania na galaz kryterium cieplne
+        # dostawaloby je wylacznie z recznej edycji modelu.
+        "jth_1s_a_per_mm2",
+        "ith_1s_a",
     ):
         value = materialized_params.get(key)
         if value is not None:
             target[key] = float(value)
+
+    temperatura_robocza = materialized_params.get("max_temperature_c")
+    if temperatura_robocza is not None:
+        target["operating_temperature_c"] = float(temperatura_robocza)
+    temperatura_zwarciowa = materialized_params.get("short_circuit_temperature_c")
+    if temperatura_zwarciowa is not None:
+        target["short_circuit_temperature_c"] = float(temperatura_zwarciowa)
+    izolacja = materialized_params.get("insulation_type")
+    if isinstance(izolacja, str) and izolacja.strip():
+        target["insulation"] = izolacja.strip().upper()
 
     number_of_cores = materialized_params.get("number_of_cores")
     if number_of_cores is not None:

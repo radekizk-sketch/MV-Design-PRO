@@ -643,6 +643,11 @@ class CableType:
     x0_ohm_per_km: float | None = None
     b0_siemens_per_km: float | None = None
     max_temperature_c: float = 90.0
+    # Karta F-K1 faza 6: temperatura GRANICZNA zyly przy zwarciu [°C]. Razem z
+    # `max_temperature_c` (temperatura robocza) tworzy pare, ktora uzasadnia
+    # wspolczynnik k = Jth(1 s). Bez niej projektant nie zweryfikuje, czy przyjete
+    # k pasuje do tego kabla. None = dana nie zostala podana w karcie katalogowej.
+    short_circuit_temperature_c: float | None = None
     number_of_cores: int = 1
     # Thermal data for short-circuit analysis
     ith_1s_a: float | None = None
@@ -746,6 +751,7 @@ class CableType:
             "x0_ohm_per_km": self.x0_ohm_per_km,
             "b0_siemens_per_km": self.b0_siemens_per_km,
             "max_temperature_c": self.max_temperature_c,
+            "short_circuit_temperature_c": self.short_circuit_temperature_c,
             "number_of_cores": self.number_of_cores,
             "ith_1s_a": self.ith_1s_a,
             "jth_1s_a_per_mm2": self.jth_1s_a_per_mm2,
@@ -810,6 +816,11 @@ class CableType:
                 else None
             ),
             max_temperature_c=float(data.get("max_temperature_c", 90.0)),
+            short_circuit_temperature_c=(
+                float(data["short_circuit_temperature_c"])
+                if data.get("short_circuit_temperature_c") is not None
+                else None
+            ),
             number_of_cores=int(data.get("number_of_cores", 1)),
             ith_1s_a=(float(data["ith_1s_a"]) if data.get("ith_1s_a") is not None else None),
             jth_1s_a_per_mm2=(
@@ -2720,6 +2731,12 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             # cieplne przewodu nie mialo z czego liczyc dopuszczalnego pradu.
             "jth_1s_a_per_mm2",
             "ith_1s_a",
+            # Karta F-K1 faza 6 (Calculation Evidence): dane, ktore UZASADNIAJA
+            # wspolczynnik k = Jth(1 s). Bez pary temperatur i rodzaju izolacji
+            # projektant nie zweryfikuje, czy przyjeta wartosc pasuje do kabla.
+            "insulation_type",
+            "max_temperature_c",
+            "short_circuit_temperature_c",
             "r0_ohm_per_km",
             "x0_ohm_per_km",
             "b0_siemens_per_km",

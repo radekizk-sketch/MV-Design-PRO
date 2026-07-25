@@ -62,6 +62,8 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
     slad_czasu,
 )
 from enm.canonical_analysis import CanonicalRun
+from enm.hash import compute_enm_hash
+from enm.store import get_enm
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
 from network_model.catalog.repository import CatalogRepository
@@ -69,6 +71,7 @@ from network_model.catalog.resolver import resolve_thermal_params
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.solvers.conductor_thermal_withstand import (
+    STANDARD_REFS,
     ConductorThermalInput,
     check_conductor_thermal_withstand,
 )
@@ -100,6 +103,21 @@ class ConductorThermalWithstandItem:
     czas_wylaczenia: dict[str, Any] | None = None
     # Kroki dowodowe rachunku (WHITE BOX solvera) — puste, gdy nie bylo rachunku.
     kroki_dowodu: tuple[dict[str, Any], ...] = ()
+    # --- Calculation Evidence (karta F-K1 faza 6) ---
+    # Bilans energii: I²t wobec k²S² — fizyczna tresc kryterium.
+    i2t_a2s: float | None = None
+    i2t_dopuszczalne_a2s: float | None = None
+    margines_procent: float | None = None
+    # Kryteria czastkowe z osobnym werdyktem (ktore ograniczenie zdecydowalo).
+    kryteria: tuple[dict[str, Any], ...] = ()
+    # Jednozdaniowy powod werdyktu do kolumny tabeli.
+    powod_decyzji_pl: str | None = None
+    # Dzialania naprawcze z progiem liczbowym i skutkiem.
+    zalecenia: tuple[dict[str, Any], ...] = ()
+    # Wrazliwosc wyniku na czas, prad i przekroj.
+    wrazliwosc: tuple[dict[str, Any], ...] = ()
+    # Uzasadnienie wspolczynnika k (material, izolacja, temperatury, zrodlo).
+    uzasadnienie_k: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -114,6 +132,14 @@ class ConductorThermalWithstandItem:
             "uzasadnienie_pl": self.uzasadnienie_pl,
             "missing_codes": list(self.missing_codes),
             "czas_wylaczenia": self.czas_wylaczenia,
+            "i2t_a2s": self.i2t_a2s,
+            "i2t_dopuszczalne_a2s": self.i2t_dopuszczalne_a2s,
+            "margines_procent": self.margines_procent,
+            "kryteria": [dict(k) for k in self.kryteria],
+            "powod_decyzji_pl": self.powod_decyzji_pl,
+            "zalecenia": [dict(z) for z in self.zalecenia],
+            "wrazliwosc": [dict(w) for w in self.wrazliwosc],
+            "uzasadnienie_k": self.uzasadnienie_k,
         }
 
 
@@ -175,6 +201,22 @@ def _resolve_branch_thermal_catalog(
     if thermal is None:
         return None, None, None
     return thermal.get_ith_1s(), thermal.jth_1s_a_per_mm2, thermal.cross_section_mm2
+
+
+def _dane_materialowe_galezi(branch: LineBranch) -> dict[str, Any]:
+    """Material zyly, izolacja i para temperatur — do UZASADNIENIA k.
+
+    Dane ida z galezi grafu (przeniesione z modelu przez mapowanie ENM). Brak
+    ktorejkolwiek pozycji jest NAZWANY w dowodzie, a nie uzupelniany wartoscia
+    typowa z tablic normy — zgadniete k falszowaloby werdykt bezpieczenstwa.
+    """
+    return {
+        "conductor_material": branch.conductor_material,
+        "insulation": branch.insulation,
+        "temp_operating_c": branch.operating_temperature_c,
+        "temp_short_circuit_c": branch.short_circuit_temperature_c,
+        "material_source_ref": branch.thermal_source_ref,
+    }
 
 
 def build_conductor_thermal_withstand_view(
@@ -271,6 +313,7 @@ def build_conductor_thermal_withstand_view(
                 ith_1s_a=ith_1s_a,
                 jth_1s_a_per_mm2=jth_1s_a_per_mm2,
                 cross_section_mm2=cross_section_mm2,
+                **_dane_materialowe_galezi(branch),
             )
         )
 
@@ -287,6 +330,14 @@ def build_conductor_thermal_withstand_view(
                 missing_codes=result.readiness_codes,
                 czas_wylaczenia=slad_czasu,
                 kroki_dowodu=result.white_box_trace,
+                i2t_a2s=result.i2t_a2s,
+                i2t_dopuszczalne_a2s=result.i2t_admissible_a2s,
+                margines_procent=result.margin_percent,
+                kryteria=result.criteria,
+                powod_decyzji_pl=result.decision_reason_pl,
+                zalecenia=result.recommendations,
+                wrazliwosc=result.sensitivity,
+                uzasadnienie_k=result.k_justification,
             )
         )
 
@@ -326,6 +377,40 @@ def _odtworz_wklady_galeziowe(
             )
         )
     return wklady
+
+
+def _aktualnosc_wobec_modelu(run: CanonicalRun) -> dict[str, Any]:
+    """Czy bieg zostal policzony dla BIEZACEJ wersji modelu (regula 4 kanonu).
+
+    Ta sama zasada, ktorej uzywa agregat werdyktu projektowego: porownanie hasha
+    snapshotu biegu z hashem modelu przypadku. Brak modelu w rejestrze nie jest
+    „nieaktualnoscia" — to brak podstawy do porownania i mowimy o tym wprost.
+    """
+    model = get_enm(run.case_id)
+    if model is None:
+        return {
+            "aktualny": None,
+            "powod_pl": (
+                "Nie ma z czym porownac: model przypadku nie jest zaladowany w tej sesji."
+            ),
+            "model_hash": None,
+            "snapshot_hash": run.snapshot_hash,
+        }
+    model_hash = compute_enm_hash(model)
+    aktualny = run.snapshot_hash == model_hash
+    return {
+        "aktualny": aktualny,
+        "powod_pl": (
+            "Wynik policzony dla biezacej wersji modelu."
+            if aktualny
+            else (
+                "Model zmienil sie po tym biegu — liczby dotycza WCZESNIEJSZEJ wersji "
+                "projektu. Uruchom bieg zwarciowy ponownie przed odbiorem."
+            )
+        ),
+        "model_hash": model_hash,
+        "snapshot_hash": run.snapshot_hash,
+    }
 
 
 def _odtworz_wynik_zwarciowy(run: CanonicalRun) -> ShortCircuitResult:
@@ -422,11 +507,19 @@ def build_wytrzymalosc_cieplna_view(run: CanonicalRun) -> dict[str, Any]:
     sc_result, widok, slad = _ocena_dla_przebiegu(run)
     return {
         "run_id": str(run.id),
+        # Karta F-K1 faza 6 (uwaga 12): raport MUSI powiedziec, czy liczby dotycza
+        # BIEZACEGO modelu. Zmiana przekroju, nastawy albo topologii unieważnia bieg,
+        # a wynik sprzed zmiany wyglada identycznie — bez tej informacji projektant
+        # moglby odebrac projekt na nieaktualnym dowodzie.
+        "aktualnosc": _aktualnosc_wobec_modelu(run),
         "case_id": run.case_id,
         "analysis_type": run.analysis_type,
         "fault_node_id": sc_result.fault_node_id,
         "tk_s": sc_result.tk_s,
         "czasy_wylaczenia": podsumowanie_czasow(slad),
+        # Podstawa normowa Z PUNKTEM — raport ma byc dowodem obliczeniowym, wiec
+        # kazde kryterium musi dac sie odniesc do zapisu normy (uwaga 14).
+        "normy": [dict(pozycja) for pozycja in STANDARD_REFS],
         "ocena": widok.to_dict(),
     }
 

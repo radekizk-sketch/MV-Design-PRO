@@ -51,7 +51,7 @@ test.describe('F-K1 faza 5 — czas wyłączenia i dowód kryterium cieplnego', 
         fullPage: true,
       });
 
-      // Kadr 2 — dowód otwarty REALNYM klikiem w wiersz gałęzi.
+      // Kadr 2 — pełny dowód obliczeniowy otwarty REALNYM klikiem w wiersz gałęzi.
       await page.getByText('Magistrala L-01 (120 mm²)').first().click();
       await expect(page.getByTestId('mvd-jakosc-cieplna-dowod')).toBeVisible();
       await expect(
@@ -59,6 +59,18 @@ test.describe('F-K1 faza 5 — czas wyłączenia i dowód kryterium cieplnego', 
       ).toBeVisible();
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `fk1_czas_dowod_${theme}.png`),
+        fullPage: true,
+      });
+
+      // Kadr 3 — Calculation Evidence dla gałęzi NARUSZONEJ: tylko ona dostaje
+      // działania naprawcze (dla spełnionej byłyby szumem, nie informacją).
+      await page.getByText('Odgałęzienie L-02 (70 mm²)').first().click();
+      await expect(page.getByTestId('mvd-jakosc-cieplna-kryteria')).toBeVisible();
+      await expect(page.getByTestId('mvd-jakosc-cieplna-zalecenia')).toBeVisible();
+      await expect(page.getByTestId('mvd-jakosc-cieplna-material')).toBeVisible();
+      await page.getByTestId('mvd-jakosc-cieplna-normy').scrollIntoViewIfNeeded();
+      await page.screenshot({
+        path: path.join(OUTPUT_DIR, `fk1_dowod_pelny_${theme}.png`),
         fullPage: true,
       });
 

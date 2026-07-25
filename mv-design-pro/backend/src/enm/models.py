@@ -230,7 +230,15 @@ class Cable(BranchBase):
     jth_1s_a_per_mm2: float | None = None
     ith_1s_a: float | None = None
     rating: BranchRating | None = None
-    insulation: Literal["XLPE", "PVC", "PAPER"] | None = None
+    # EPR dolozony w karcie F-K1 faza 6: katalog SN ma 18 rekordow z ta izolacja,
+    # a model ich NIE PRZYJMOWAL — materializacja takiego kabla wywracala walidacje
+    # dokumentu. Defekt byl niewidoczny, dopoki izolacja nie trafila do modelu.
+    insulation: Literal["XLPE", "EPR", "PVC", "PAPER"] | None = None
+    # Karta F-K1 faza 6 (Calculation Evidence): para temperatur uzasadniajaca k.
+    # Addytywne, opcjonalne — dokumenty bez tych pol walidowaly sie i walidują dalej.
+    operating_temperature_c: float | None = None
+    short_circuit_temperature_c: float | None = None
+    thermal_source_ref: str | None = None
     # PR-3 rebuild SLD: jawne porty endpointów (opcjonalne, automigracja w PR-3)
     endpoint_a_port: PortRef | None = None
     endpoint_b_port: PortRef | None = None

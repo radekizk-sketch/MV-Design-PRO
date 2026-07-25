@@ -23,7 +23,7 @@ import { MathBlock } from '../../../ui/proof/MathRenderer';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
-import { PrzegladDowodu } from '../dowod';
+import { PanelDowoduCieplnego } from './PanelDowoduCieplnego';
 import {
   fetchArcFlash,
   fetchMigotanie,
@@ -45,6 +45,8 @@ import {
   type WalidacjaResponse,
   type WarunkiPrzylaczeniaResponse,
   type DowodCieplnyResponse,
+  type NormaCieplna,
+  type PozycjaCieplna,
   type WytrzymaloscCieplnaResponse,
   type WezelMigotania,
   type WiarygodnoscItem,
@@ -1363,6 +1365,11 @@ export function SekcjaWytrzymaloscCieplna({
 
   return (
     <section data-testid="mvd-jakosc-cieplna">
+      {dane.aktualnosc?.aktualny === false && (
+        <p className="mvd-jakosc-nieaktualne" data-testid="mvd-jakosc-cieplna-nieaktualne">
+          {dane.aktualnosc.powod_pl}
+        </p>
+      )}
       <EkranAnalizy
         naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaCieplna, runId: runId ?? undefined }}
         zalozenia={naZalozeniaCieplne(dane.fault_node_id, dane.tk_s, summary, dane.czasy_wylaczenia)}
@@ -1383,7 +1390,10 @@ export function SekcjaWytrzymaloscCieplna({
       <DowodCieplnyGalezi
         runId={runId}
         branchId={wybrany}
+        pozycja={items.find((it) => it.branch_id === wybrany) ?? null}
+        normy={dane.normy ?? []}
         trybZaawansowania={trybZaawansowania}
+        onPokazNaSchemacie={(branchId, nazwa) => poprawWModelu(branchId, 'LineBranch', nazwa)}
       />
     </section>
   );
@@ -1401,11 +1411,17 @@ export function SekcjaWytrzymaloscCieplna({
 function DowodCieplnyGalezi({
   runId,
   branchId,
+  pozycja,
+  normy,
   trybZaawansowania,
+  onPokazNaSchemacie,
 }: {
   runId: string | null;
   branchId: string | null;
+  pozycja: PozycjaCieplna | null;
+  normy: readonly NormaCieplna[];
   trybZaawansowania: AdvancementMode;
+  onPokazNaSchemacie: (branchId: string, nazwa: string) => void;
 }) {
   const [dowod, setDowod] = useState<DowodCieplnyResponse | null>(null);
   const [stan, setStan] = useState<'pusty' | 'ladowanie' | 'gotowe' | 'blad'>('pusty');
@@ -1417,6 +1433,9 @@ function DowodCieplnyGalezi({
       return;
     }
     let aktualne = true;
+    // Kroki poprzedniej galezi musza zniknac NATYCHMIAST: panel niosl by wtedy
+    // naglowek jednego przewodu i rachunek drugiego.
+    setDowod(null);
     setStan('ladowanie');
     fetchDowodCieplny(runId, branchId)
       .then((wynik) => {
@@ -1434,7 +1453,7 @@ function DowodCieplnyGalezi({
     };
   }, [runId, branchId]);
 
-  if (stan === 'pusty') {
+  if (stan === 'pusty' || pozycja === null) {
     return (
       <p className="mvd-jakosc-dowod-podpowiedz" data-testid="mvd-jakosc-cieplna-dowod-pusty">
         {JAKOSC_STRINGS.dowodWybierzGalaz}
@@ -1450,14 +1469,16 @@ function DowodCieplnyGalezi({
   }
 
   return (
-    <div data-testid="mvd-jakosc-cieplna-dowod">
-      <PrzegladDowodu
-        analizaPL={`${JAKOSC_STRINGS.dowodTytul} — ${dowod?.branch_name ?? ''}`}
-        kroki={dowod ? [...dowod.kroki] : []}
-        trybZaawansowania={trybZaawansowania}
-        ladowanie={stan === 'ladowanie'}
-      />
-    </div>
+    <PanelDowoduCieplnego
+      pozycja={pozycja}
+      dowod={dowod}
+      normy={normy}
+      trybZaawansowania={trybZaawansowania}
+      ladowanie={stan === 'ladowanie'}
+      onPokazNaSchemacie={() =>
+        onPokazNaSchemacie(pozycja.branch_id, pozycja.branch_name || pozycja.branch_id)
+      }
+    />
   );
 }
 

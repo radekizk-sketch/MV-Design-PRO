@@ -39,6 +39,7 @@ import {
   fmtKV,
   fmtMm,
   fmtMva,
+  fmtLiczba,
   fmtProcent,
   fmtPst,
   fmtWartosc,
@@ -374,7 +375,7 @@ export const KOLUMNY_ARC_FLASH: DefinicjaKolumny[] = [
   { klucz: 'ibf', etykieta: JAKOSC_STRINGS.kolIbf, jednostka: JAKOSC_STRINGS.jednKA, mono: true },
   {
     klucz: 'energia',
-    etykieta: JAKOSC_STRINGS.kolEnergia,
+    etykieta: JAKOSC_STRINGS.kolEnergiaCieplna,
     jednostka: JAKOSC_STRINGS.jednCal,
     mono: true,
   },
@@ -518,7 +519,17 @@ export const KOLUMNY_CIEPLNE: DefinicjaKolumny[] = [
   // więc stoi w tabeli obok liczb, a nie tylko w założeniach sekcji.
   { klucz: 'czasWylaczenia', etykieta: JAKOSC_STRINGS.kolCzasWylaczenia, jednostka: 's', mono: true },
   { klucz: 'zrodloCzasu', etykieta: JAKOSC_STRINGS.kolZrodloCzasu, wyrownanie: 'lewo' },
+  // Karta F-K1 faza 6: bilans energii to fizyczna treść kryterium — musi być
+  // widoczny obok prądów, a nie tylko w dowodzie.
+  { klucz: 'energia', etykieta: JAKOSC_STRINGS.kolEnergiaCieplna, jednostka: 'A²·s', mono: true },
+  {
+    klucz: 'wykorzystanie',
+    etykieta: JAKOSC_STRINGS.kolWykorzystanieCieplne,
+    jednostka: '%',
+    mono: true,
+  },
   { klucz: 'ocena', etykieta: JAKOSC_STRINGS.kolOcena, wyrownanie: 'lewo' },
+  { klucz: 'powodDecyzji', etykieta: JAKOSC_STRINGS.kolPowodDecyzji, wyrownanie: 'lewo' },
   { klucz: KLUCZ_CIEPLNA_GALAZ, etykieta: JAKOSC_STRINGS.kolIdentyfikatorObiektu, mono: true },
 ];
 
@@ -527,6 +538,22 @@ export const KOLUMNY_CIEPLNE: DefinicjaKolumny[] = [
  * Przy stanie NIESPRAWDZONE wielkości są puste, a ocena mówi wprost, że nic nie
  * policzono; przy gałęzi poza drogą zwarcia pokazujemy uzasadnienie zamiast liczb.
  */
+/** Ikona werdyktu — dublet znaczenia dla koloru (uwaga 9 właściciela). */
+export function ikonaWarunku(status: StatusWarunku): string {
+  if (status === 'PASS') return JAKOSC_STRINGS.ikonaSpelnione;
+  if (status === 'FAIL') return JAKOSC_STRINGS.ikonaNaruszone;
+  return JAKOSC_STRINGS.ikonaNiesprawdzone;
+}
+
+/**
+ * Energia cieplna ma rząd 10⁷ A²·s — format skrócony (mln A²·s) zamiast
+ * piętnastu cyfr, żeby kolumna dała się porównać wzrokiem.
+ */
+export function fmtEnergia(wartosc: number): string {
+  if (Math.abs(wartosc) >= 1_000_000) return `${fmtLiczba(wartosc / 1_000_000, 2)} mln`;
+  return fmtWartosc(wartosc);
+}
+
 export function zrodloCzasuPL(zrodlo: string | undefined): string {
   // Zero zgadywania: nieznany kod źródła pokazujemy jako kreskę, a nie jako
   // domyślne „nastawa" — to zafałszowałoby audytowalność werdyktu.
@@ -548,7 +575,17 @@ export function naWierszeCieplne(pozycje: readonly PozycjaCieplna[]): WierszTabe
     }),
     czasWylaczenia: komorkaLiczba(pozycja.czas_wylaczenia?.tk_s ?? null, fmtWartosc),
     zrodloCzasu: { wartosc: zrodloCzasuPL(pozycja.czas_wylaczenia?.zrodlo) },
-    ocena: { wartosc: pozycja.uzasadnienie_pl ?? ocenaWarunkuPL(pozycja.status) },
+    energia: komorkaLiczba(pozycja.i2t_a2s ?? null, fmtEnergia),
+    wykorzystanie: komorkaLiczba(
+      pozycja.utilization === null ? null : pozycja.utilization * 100,
+      fmtWartosc,
+      { ostrzezenie: pozycja.status === 'FAIL' },
+    ),
+    // Ikona + tekst: sam kolor nie może nieść werdyktu (dostępność).
+    ocena: { wartosc: `${ikonaWarunku(pozycja.status)} ${ocenaWarunkuPL(pozycja.status)}` },
+    powodDecyzji: {
+      wartosc: pozycja.powod_decyzji_pl ?? pozycja.uzasadnienie_pl ?? JAKOSC_STRINGS.kreska,
+    },
     [KLUCZ_CIEPLNA_GALAZ]: { wartosc: pozycja.branch_id },
   }));
 }

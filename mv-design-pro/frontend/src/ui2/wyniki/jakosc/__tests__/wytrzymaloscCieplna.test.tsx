@@ -32,6 +32,62 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
     missing_codes: [],
     uzasadnienie_pl: null,
     czas_wylaczenia: slad(),
+    i2t_a2s: 56_250_000,
+    i2t_dopuszczalne_a2s: 64_000_000,
+    margines_procent: 6.25,
+    kryteria: [
+      {
+        kod: 'prad_dopuszczalny',
+        nazwa_pl: 'Prąd zwarciowy wobec dopuszczalnego dla czasu t',
+        warunek_pl: 'I_th ≤ I_dop(t) = I_th(1s)/√t',
+        wartosc: 15000,
+        granica: 13160,
+        jednostka: 'A',
+        status: 'FAIL',
+      },
+      {
+        kod: 'energia_cieplna',
+        nazwa_pl: 'Energia zwarcia wobec wytrzymałości żyły',
+        warunek_pl: 'I²·t ≤ k²·S²',
+        wartosc: 56_250_000,
+        granica: 64_000_000,
+        jednostka: 'A²·s',
+        status: 'FAIL',
+      },
+    ],
+    powod_decyzji_pl: 'Przekrój 70 mm² jest mniejszy od wymaganego 79,8 mm² z warunku cieplnego.',
+    zalecenia: [
+      {
+        kod: 'zwieksz_przekroj',
+        dzialanie_pl: 'Zwiększ przekrój żyły',
+        wzor: 'S ≥ I·√t / k',
+        wartosc_docelowa: 79.8,
+        jednostka: 'mm²',
+        wartosc_obecna: 70,
+        skutek_pl: 'Przekrój 79,8 mm² sprowadza wykorzystanie wytrzymałości do 100 %.',
+      },
+    ],
+    wrazliwosc: [
+      {
+        parametr: 'czas_wylaczenia',
+        nazwa_pl: 'Czas wyłączenia',
+        mnoznik: 0.5,
+        wartosc: 0.125,
+        jednostka: 's',
+        wykorzystanie: 0.806,
+      },
+    ],
+    uzasadnienie_k: {
+      k_a_s05_per_mm2: 143,
+      tozsamosc_pl: 'k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej.',
+      material_zyly: 'CU',
+      izolacja: 'XLPE',
+      temp_poczatkowa_c: 90,
+      temp_koncowa_c: 250,
+      zrodlo_pl: 'IEC 60502-2 / IEC 60949',
+      braki_pl: [],
+      kompletne: true,
+    },
     ...over,
   };
 }
@@ -62,6 +118,19 @@ function odpowiedz(items: readonly PozycjaCieplna[]): WytrzymaloscCieplnaRespons
     analysis_type: 'short_circuit_sn',
     fault_node_id: 'BUS-02',
     tk_s: 0.25,
+    aktualnosc: {
+      aktualny: true,
+      powod_pl: 'Wynik policzony dla biezacej wersji modelu.',
+      model_hash: 'h1',
+      snapshot_hash: 'h1',
+    },
+    normy: [
+      {
+        norma: 'PN-HD 60364-4-43',
+        punkt: '§ 434.5.2',
+        tresc_pl: 'Warunek adiabatyczny doboru przekroju: S ≥ √(I²·t) / k.',
+      },
+    ],
     czasy_wylaczenia: {
       z_nastawy: items.filter((i) => i.czas_wylaczenia?.zrodlo === 'nastawa_zabezpieczenia')
         .length,
@@ -132,10 +201,16 @@ describe('SekcjaWytrzymaloscCieplna — werdykt i stany', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
 
     expect(screen.getByText('Magistrala L-01')).toBeTruthy();
-    expect(screen.getByText(JAKOSC_STRINGS.ocenaNaruszone)).toBeTruthy();
+    // Werdykt wystepuje w wierszu tabeli ORAZ w naglowku panelu dowodu — oba maja
+    // niesc ikone i tekst, wiec sprawdzamy, ze pojawia sie co najmniej raz.
+    expect(
+      screen.getAllByText(new RegExp(JAKOSC_STRINGS.ocenaNaruszone)).length,
+    ).toBeGreaterThan(0);
     // Wymagany przekrój (79,8) jest większy od zastosowanego (70) — projektant widzi,
     // CO ma zmienić, nie tylko że jest źle.
-    expect(screen.getByText(/79,8/)).toBeTruthy();
+    // 79,8 mm² wystepuje w kolumnie „Wymagany min." oraz w zaleceniu naprawczym
+    // (karta F-K1 faza 6) — projektant widzi te sama liczbe jako diagnoze i jako cel.
+    expect(screen.getAllByText(/79,8/).length).toBeGreaterThan(0);
     expect(screen.getByText(/13\s?160/)).toBeTruthy();
   });
 
@@ -154,6 +229,14 @@ describe('SekcjaWytrzymaloscCieplna — werdykt i stany', () => {
             s_min_mm2: null,
             uzasadnienie_pl:
               'Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; kryterium cieplne spełnione trywialnie.',
+            powod_decyzji_pl: null,
+            kryteria: [],
+            zalecenia: [],
+            wrazliwosc: [],
+            i2t_a2s: null,
+            i2t_dopuszczalne_a2s: null,
+            margines_procent: null,
+            uzasadnienie_k: null,
           }),
         ]),
       ),
@@ -312,5 +395,163 @@ describe('SekcjaWytrzymaloscCieplna — dowód kryterium (karta F-K1 faza 5)', (
     fireEvent.click(screen.getByText('Magistrala L-01'));
 
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna-dowod-blad')).toBeTruthy());
+  });
+});
+
+describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
+  const dowodPelny: DowodCieplnyResponse = {
+    run_id: 'sc-1',
+    branch_id: 'cable_A',
+    branch_name: 'Magistrala L-01',
+    status: 'FAIL',
+    kroki: [
+      {
+        step: 1,
+        key: 'conductor_thermal_k_factor',
+        title: 'Współczynnik materiałowy k żyły',
+        inputs: {},
+        substitution: '$$k = 143$$',
+        result: {},
+        notes: 'k = Jth(1 s).',
+      },
+    ],
+  };
+
+  function renderZWyborem() {
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(
+        odpowiedzOk(String(url).includes('/proof') ? dowodPelny : odpowiedz([pozycja()])),
+      ),
+    );
+    return render(<SekcjaWytrzymaloscCieplna {...props()} />);
+  }
+
+  it('pokazuje pełny bilans: energię, dopuszczalną energię i margines', async () => {
+    renderZWyborem();
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    const bilans = await screen.findByTestId('mvd-jakosc-cieplna-bilans');
+    // I²t = 56,25 mln A²s, k²S² = 64 mln A²s, margines 6,25 %.
+    expect(bilans.textContent).toContain('56,250 mln');
+    expect(bilans.textContent).toContain('64,000 mln');
+    expect(bilans.textContent).toContain('6,25 %');
+  });
+
+  it('rozbija werdykt na kryteria cząstkowe z osobnym statusem', async () => {
+    renderZWyborem();
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    const kryteria = await screen.findByTestId('mvd-jakosc-cieplna-kryteria');
+    expect(kryteria.textContent).toContain('I_th ≤ I_dop(t) = I_th(1s)/√t');
+    expect(kryteria.textContent).toContain('I²·t ≤ k²·S²');
+    // Ikona towarzyszy tekstowi — sam kolor nie może nieść werdyktu.
+    expect(kryteria.textContent).toContain(JAKOSC_STRINGS.ikonaNaruszone);
+  });
+
+  it('dla naruszenia podaje działanie naprawcze z progiem liczbowym', async () => {
+    renderZWyborem();
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    const zalecenia = await screen.findByTestId('mvd-jakosc-cieplna-zalecenia');
+    expect(zalecenia.textContent).toContain('Zwiększ przekrój żyły');
+    expect(zalecenia.textContent).toContain('S ≥ I·√t / k');
+    expect(zalecenia.textContent).toContain('79,8');
+  });
+
+  it('pokazuje wrażliwość i podstawę współczynnika k z temperaturami', async () => {
+    renderZWyborem();
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    const wrazliwosc = await screen.findByTestId('mvd-jakosc-cieplna-wrazliwosc');
+    expect(wrazliwosc.textContent).toContain('Czas wyłączenia');
+
+    const material = screen.getByTestId('mvd-jakosc-cieplna-material');
+    expect(material.textContent).toContain('143');
+    expect(material.textContent).toContain('CU');
+    expect(material.textContent).toContain('XLPE');
+    expect(material.textContent).toContain('90');
+    expect(material.textContent).toContain('250');
+  });
+
+  it('niepełne uzasadnienie k jest nazwane, a nie uzupełniane z tablic', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(
+        odpowiedzOk(
+          String(url).includes('/proof')
+            ? dowodPelny
+            : odpowiedz([
+                pozycja({
+                  uzasadnienie_k: {
+                    k_a_s05_per_mm2: 143,
+                    tozsamosc_pl: 'k = Jth(1 s).',
+                    material_zyly: null,
+                    izolacja: 'XLPE',
+                    temp_poczatkowa_c: 90,
+                    temp_koncowa_c: null,
+                    zrodlo_pl: null,
+                    braki_pl: ['materiał żyły', 'temperatura końcowa (zwarciowa)'],
+                    kompletne: false,
+                  },
+                }),
+              ]),
+        ),
+      ),
+    );
+    render(<SekcjaWytrzymaloscCieplna {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    const brak = await screen.findByTestId('mvd-jakosc-cieplna-brak-k');
+    expect(brak.textContent).toContain('materiał żyły');
+    expect(brak.textContent).toContain('temperatura końcowa');
+  });
+
+  it('podaje normę z punktem i prowadzi na schemat realnym klikiem', async () => {
+    renderZWyborem();
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    const normy = await screen.findByTestId('mvd-jakosc-cieplna-normy');
+    expect(normy.textContent).toContain('PN-HD 60364-4-43');
+    expect(normy.textContent).toContain('§ 434.5.2');
+
+    // Pętla decyzji: przycisk prowadzi do gałęzi na schemacie (ścieżka natywna).
+    const przycisk = screen.getByTestId('mvd-jakosc-cieplna-pokaz-schemat');
+    fireEvent.click(przycisk);
+    expect(przycisk).toBeTruthy();
+  });
+});
+
+describe('Aktualność wyniku wobec modelu (uwaga 12 właściciela)', () => {
+  it('bieg sprzed zmiany modelu dostaje jawne ostrzeżenie nad tabelą', async () => {
+    const body = odpowiedz([pozycja()]);
+    fetchMock.mockResolvedValue(
+      odpowiedzOk({
+        ...body,
+        aktualnosc: {
+          aktualny: false,
+          powod_pl:
+            'Model zmienil sie po tym biegu — liczby dotycza WCZESNIEJSZEJ wersji projektu.',
+          model_hash: 'h2',
+          snapshot_hash: 'h1',
+        },
+      }),
+    );
+    render(<SekcjaWytrzymaloscCieplna {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+
+    const pasek = screen.getByTestId('mvd-jakosc-cieplna-nieaktualne');
+    expect(pasek.textContent).toContain('WCZESNIEJSZEJ');
+  });
+
+  it('bieg zgodny z modelem nie pokazuje ostrzeżenia', async () => {
+    fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz([pozycja()])));
+    render(<SekcjaWytrzymaloscCieplna {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+    expect(screen.queryByTestId('mvd-jakosc-cieplna-nieaktualne')).toBeNull();
   });
 });

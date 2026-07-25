@@ -600,6 +600,39 @@ def test_block_transformer_catalog_params_flow_into_model_and_solver() -> None:
     assert abs(abs(trafo.get_short_circuit_impedance_pu()) - 0.06) < 1e-9
 
 
+def test_dane_materialowe_kabla_docieraja_z_katalogu_do_galezi_grafu() -> None:
+    """Karta F-K1 faza 6: material zyly, izolacja i PARA TEMPERATUR do konca lancucha.
+
+    Bez tych danych wspolczynnik k = Jth(1 s) jest liczba bez uzasadnienia — dowod
+    obliczeniowy nie pozwala sprawdzic, czy pasuje do TEGO kabla. Test idzie realna
+    droga: operacja domenowa -> materializacja katalogowa -> model ENM -> graf.
+    """
+    result = execute_domain_operation(_sn_station_enm(), "add_converter_source", _der_sn_payload())
+    assert not result.get("error"), result.get("error")
+
+    snapshot = result["snapshot"]
+    kabel = next(b for b in snapshot["branches"] if b.get("type") == "cable")
+    # Dane cieplne ZYLY FAZOWEJ i para temperatur — z karty katalogowej, nie z domyslu.
+    assert kabel["jth_1s_a_per_mm2"] > 0
+    assert kabel["conductor_material"] in {"AL", "CU"}
+    assert kabel["insulation"] in {"XLPE", "EPR", "PVC", "PAPER"}
+    assert kabel["operating_temperature_c"] > 0
+    assert kabel["short_circuit_temperature_c"] > kabel["operating_temperature_c"]
+
+    # Ta sama droga do grafu, z ktorego czyta analiza cieplna.
+    enm = EnergyNetworkModel.model_validate(snapshot)
+    graph = map_enm_to_network_graph(enm)
+    galaz = next(
+        b
+        for b in graph.branches.values()
+        if getattr(b, "jth_1s_a_per_mm2", None) not in (None, 0.0)
+    )
+    assert galaz.conductor_material == kabel["conductor_material"]
+    assert galaz.insulation == kabel["insulation"]
+    assert galaz.operating_temperature_c == kabel["operating_temperature_c"]
+    assert galaz.short_circuit_temperature_c == kabel["short_circuit_temperature_c"]
+
+
 def test_vector_group_consistent_with_catalog_type_accepted() -> None:
     """Grupa żądana == grupa typu katalogowego (Dyn11) → materializacja OK."""
     result = execute_domain_operation(

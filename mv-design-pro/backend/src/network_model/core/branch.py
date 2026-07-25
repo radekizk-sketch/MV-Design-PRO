@@ -243,6 +243,14 @@ class LineBranch(Branch):
     ith_1s_a: float | None = None
     jth_1s_a_per_mm2: float | None = None
     cross_section_mm2: float | None = None
+    # Karta F-K1 faza 6 (Calculation Evidence): dane MATERIALOWE zyly. Nie wchodza
+    # do zadnego rachunku — sluza UZASADNIENIU wspolczynnika k = Jth(1 s), bez
+    # ktorego werdyktu cieplnego nie da sie niezaleznie zweryfikowac.
+    conductor_material: str | None = None
+    insulation: str | None = None
+    operating_temperature_c: float | None = None
+    short_circuit_temperature_c: float | None = None
+    thermal_source_ref: str | None = None
 
     def get_thermal_ith_1s_a(self) -> float | None:
         """Dopuszczalny prad cieplny zyly dla 1 s [A] — wprost albo z gestosci.
