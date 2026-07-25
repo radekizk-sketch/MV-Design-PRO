@@ -247,7 +247,7 @@ def test_brak_warunkow_ulozenia_zachowuje_dawne_zachowanie(app_client) -> None:
     cable = bez["cable"]
     assert cable["derating_set"] == "warunki_katalogowe"
     assert cable["derating_total"] == pytest.approx(1.0)
-    assert "WARUNKOW KATALOGOWYCH" in cable["derating_assumption_pl"]
+    assert "WARUNKÓW KATALOGOWYCH" in cable["derating_assumption_pl"]
     # Obciążalność skorygowana = katalogowa; obie liczby w odpowiedzi (bez mnożenia w UI).
     assert cable["proposal"]["effective_ampacity_a"] == pytest.approx(
         cable["proposal"]["rated_current_a"]
@@ -327,7 +327,7 @@ def test_nieznany_zestaw_warunkow_jest_odrzucany_przez_api(app_client) -> None:
     )
     assert response.status_code == 422
     detail = response.json()["detail"]
-    assert "Nieznany zestaw warunkow ulozenia" in detail
+    assert "Nieznany zestaw warunków ułożenia" in detail
     assert "warunki_katalogowe" in detail
 
 
@@ -346,7 +346,7 @@ def test_wlasne_wspolczynniki_z_opisem_wchodza_do_doboru(app_client) -> None:
                 "f_grunt": 0.85,
                 "f_wiazka": 1.0,
                 "f_grupa": 0.9,
-                "opis_pl": "Ziemia, 2 obwody w rurach oslonowych, odstep 300 mm",
+                "opis_pl": "Ziemia, 2 obwody w rurach osłonowych, odstęp 300 mm",
             },
         },
     )
@@ -354,7 +354,7 @@ def test_wlasne_wspolczynniki_z_opisem_wchodza_do_doboru(app_client) -> None:
     cable = response.json()["cable"]
     assert cable["derating_set"] == "wlasne"
     assert cable["derating_total"] == pytest.approx(0.765, abs=1e-9)
-    assert "rurach oslonowych" in cable["derating_assumption_pl"]
+    assert "rurach osłonowych" in cable["derating_assumption_pl"]
     # 160 × 0,765 = 122,4 A < 125,1 A ⇒ 50 mm² nie przechodzi także tu.
     assert cable["proposal"]["cross_section_mm2"] == pytest.approx(70.0)
 
@@ -416,7 +416,7 @@ def test_korekta_obciazalnosci_bez_warunkow_daje_wartosc_katalogowa(app_client) 
     assert data["derating_total"] == pytest.approx(1.0)
     assert data["derating_set"] == "warunki_katalogowe"
     assert data["ok"] is True
-    assert "WARUNKOW KATALOGOWYCH" in data["assumption_pl"]
+    assert "WARUNKÓW KATALOGOWYCH" in data["assumption_pl"]
 
 
 def test_korekta_obciazalnosci_zglasza_przekroczenie(app_client) -> None:

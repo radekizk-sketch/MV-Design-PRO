@@ -2527,8 +2527,8 @@ def _der_cable_laying_conditions(
         # podał, więc milczące przyjęcie warunków katalogowych zmieniłoby jego dobór.
         if any(raw.get(pole) is not None for pole in ("f_grunt", "f_wiazka", "f_grupa")):
             return None, (
-                "Podano wspolczynniki obciazalnosci bez nazwy zestawu warunkow ulozenia. "
-                f"Uzyj set_name = {cable_derating.NAZWA_WLASNE} i dodaj opis warunkow."
+                "Podano współczynniki obciążalności bez nazwy zestawu warunków ułożenia. "
+                f"Użyj set_name = {cable_derating.NAZWA_WLASNE} i dodaj opis warunków."
             )
         return None, None
     if set_name == cable_derating.NAZWA_WARUNKI_KATALOGOWE:

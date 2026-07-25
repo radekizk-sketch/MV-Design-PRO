@@ -270,8 +270,8 @@ class CableLayingConditionsRequest(BaseModel):
         ]
         if podane and self.set_name != NAZWA_WLASNE:
             raise ValueError(
-                f"Wspolczynniki {', '.join(podane)} mozna podac tylko dla "
-                f"set_name = {NAZWA_WLASNE}; zestaw {self.set_name} ma wlasne wartosci."
+                f"Współczynniki {', '.join(podane)} można podać tylko dla "
+                f"set_name = {NAZWA_WLASNE}; zestaw {self.set_name} ma własne wartości."
             )
         return self
 

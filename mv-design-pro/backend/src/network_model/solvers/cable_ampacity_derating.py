@@ -56,7 +56,7 @@ class WspolczynnikiObciazalnosci:
         ):
             if not 0.0 < wartosc <= 1.5:
                 raise ValueError(
-                    f"Wspolczynnik {pole} musi lezec w zakresie (0; 1,5] — otrzymano {wartosc}."
+                    f"Współczynnik {pole} musi leżeć w zakresie (0; 1,5] — otrzymano {wartosc}."
                 )
 
     @property
@@ -73,11 +73,11 @@ class WspolczynnikiObciazalnosci:
         """Jedno zdanie do sladu WHITE BOX — co przyjeto i skad."""
         if self.bez_korekty:
             return (
-                "Obciazalnosc przyjeta dla WARUNKOW KATALOGOWYCH (bez korekty ulozenia); "
-                "w rzeczywistej trasie moze byc mniejsza."
+                "Obciążalność przyjęta dla WARUNKÓW KATALOGOWYCH (bez korekty ułożenia); "
+                "w rzeczywistej trasie może być mniejsza."
             )
         return (
-            f"Obciazalnosc skorygowana dla warunkow: {self.etykieta_pl}; "
+            f"Obciążalność skorygowana dla warunków: {self.etykieta_pl}; "
             f"f_grunt = {self.f_grunt:g}, f_wiazka = {self.f_wiazka:g}, "
             f"f_grupa = {self.f_grupa:g}, iloczyn = {self.iloczyn:.4f}. "
             f"Podstawa: {self.podstawa}."
@@ -101,7 +101,7 @@ WARUNKI_KATALOGOWE = WspolczynnikiObciazalnosci(
     f_grunt=1.0,
     f_wiazka=1.0,
     f_grupa=1.0,
-    podstawa="Obciazalnosc znamionowa z karty katalogowej producenta (warunki odniesienia).",
+    podstawa="Obciążalność znamionowa z karty katalogowej producenta (warunki odniesienia).",
 )
 
 # Wartosci z dokumentacji projektowej uzywanej przez ten produkt: arkusz doborowy
@@ -111,13 +111,13 @@ WARUNKI_KATALOGOWE = WspolczynnikiObciazalnosci(
 ZIEMIA_3_KABLE_200MM = WspolczynnikiObciazalnosci(
     nazwa=NAZWA_ZIEMIA_3_KABLE_200MM,
     etykieta_pl=(
-        "Ziemia, 3 kable jednozylowe w jednej warstwie, odstep 200 mm, "
-        "rezystywnosc gruntu 1,5 K·m/W, temperatura gruntu 20°C"
+        "Ziemia, 3 kable jednożyłowe w jednej warstwie, odstęp 200 mm, "
+        "rezystywność gruntu 1,5 K·m/W, temperatura gruntu 20°C"
     ),
     f_grunt=0.90,
     f_wiazka=1.01,
     f_grupa=0.82,
-    podstawa="Arkusz doborowy MT880 v3, sekcja 1; standard ENEA „Dobor kabli SN” 2021-06-30.",
+    podstawa="Arkusz doborowy MT880 v3, sekcja 1; standard ENEA „Dobór kabli SN” 2021-06-30.",
 )
 
 ZESTAWY_WARUNKOW: dict[str, WspolczynnikiObciazalnosci] = {
@@ -127,9 +127,9 @@ ZESTAWY_WARUNKOW: dict[str, WspolczynnikiObciazalnosci] = {
 
 # Powod, dla ktorego lista jest krotka — zapisany w kodzie, zeby nie wygladala na pelna.
 OGRANICZENIE_ZESTAWOW_PL = (
-    "Lista zestawow zawiera wylacznie warunki o udokumentowanej podstawie w tym "
-    "repozytorium. Dla innych warunkow ulozenia podaj wspolczynniki WPROST "
-    "(z wlasnej dokumentacji projektowej) — system nie interpoluje miedzy zestawami, "
+    "Lista zestawów zawiera wyłącznie warunki o udokumentowanej podstawie w tym "
+    "repozytorium. Dla innych warunków ułożenia podaj współczynniki WPROST "
+    "(z własnej dokumentacji projektowej) — system nie interpoluje między zestawami, "
     "bo nie ma tablic IEC 60287."
 )
 
@@ -140,7 +140,7 @@ def zestaw_warunkow(nazwa: str) -> WspolczynnikiObciazalnosci:
     if zestaw is None:
         dostepne = ", ".join(sorted(ZESTAWY_WARUNKOW))
         raise ValueError(
-            f"Nieznany zestaw warunkow ulozenia: {nazwa}. Dostepne: {dostepne}. "
+            f"Nieznany zestaw warunków ułożenia: {nazwa}. Dostępne: {dostepne}. "
             f"{OGRANICZENIE_ZESTAWOW_PL}"
         )
     return zestaw
@@ -155,14 +155,14 @@ def wspolczynniki_wlasne(
     w dokumentacji projektu — a to jest jedyny powod, dla ktorego korekta istnieje.
     """
     if not opis_pl or not opis_pl.strip():
-        raise ValueError("Wspolczynniki wlasne wymagaja opisu warunkow ulozenia.")
+        raise ValueError("Współczynniki własne wymagają opisu warunków ułożenia.")
     return WspolczynnikiObciazalnosci(
         nazwa=NAZWA_WLASNE,
         etykieta_pl=opis_pl.strip(),
         f_grunt=f_grunt,
         f_wiazka=f_wiazka,
         f_grupa=f_grupa,
-        podstawa="Wspolczynniki podane przez projektanta (dokumentacja projektowa).",
+        podstawa="Współczynniki podane przez projektanta (dokumentacja projektowa).",
     )
 
 
@@ -171,7 +171,7 @@ def obciazalnosc_skorygowana(
 ) -> float:
     """I'z = Iz · f_grunt · f_wiazka · f_grupa."""
     if obciazalnosc_katalogowa_a <= 0.0:
-        raise ValueError("Obciazalnosc katalogowa musi byc dodatnia.")
+        raise ValueError("Obciążalność katalogowa musi być dodatnia.")
     return obciazalnosc_katalogowa_a * wspolczynniki.iloczyn
 
 
@@ -199,8 +199,8 @@ def wspolczynniki_z_opisu(
         return zestaw_warunkow(klucz)
     if f_grunt is None or f_wiazka is None or f_grupa is None:
         raise ValueError(
-            "Wlasne warunki ulozenia wymagaja trzech wspolczynnikow "
-            "(f_grunt, f_wiazka, f_grupa) oraz opisu warunkow."
+            "Własne warunki ułożenia wymagają trzech współczynników "
+            "(f_grunt, f_wiazka, f_grupa) oraz opisu warunków."
         )
     return wspolczynniki_wlasne(
         f_grunt=f_grunt,

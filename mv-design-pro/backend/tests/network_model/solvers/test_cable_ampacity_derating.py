@@ -36,8 +36,8 @@ def test_warunki_katalogowe_nie_zmieniaja_obciazalnosci() -> None:
 def test_warunki_katalogowe_nazywaja_swoje_ograniczenie() -> None:
     """Zalozenie MUSI byc jawne: „warunki katalogowe" to nie to samo co „bez zalozen"."""
     zalozenie = WARUNKI_KATALOGOWE.zalozenie_pl()
-    assert "WARUNKOW KATALOGOWYCH" in zalozenie
-    assert "moze byc mniejsza" in zalozenie
+    assert "WARUNKÓW KATALOGOWYCH" in zalozenie
+    assert "może być mniejsza" in zalozenie
 
 
 def test_zestaw_ziemny_obniza_obciazalnosc_o_zmierzona_wartosc() -> None:
@@ -71,7 +71,7 @@ def test_zestaw_po_nazwie_i_fail_closed_dla_nieznanej() -> None:
     """Nieznany zestaw = blad, nie ciche przyjecie warunkow katalogowych."""
     assert zestaw_warunkow(NAZWA_WARUNKI_KATALOGOWE) is WARUNKI_KATALOGOWE
     assert zestaw_warunkow(NAZWA_ZIEMIA_3_KABLE_200MM) is ZIEMIA_3_KABLE_200MM
-    with pytest.raises(ValueError, match="Nieznany zestaw warunkow ulozenia"):
+    with pytest.raises(ValueError, match="Nieznany zestaw warunków ułożenia"):
         zestaw_warunkow("ziemia_5_kabli_rura_karbowana")
 
 
@@ -99,7 +99,7 @@ def test_wspolczynniki_wlasne_wymagaja_opisu_warunkow() -> None:
     assert "projektanta" in wlasne.podstawa
 
     for pusty in ("", "   "):
-        with pytest.raises(ValueError, match="wymagaja opisu"):
+        with pytest.raises(ValueError, match="wymagają opisu"):
             wspolczynniki_wlasne(f_grunt=0.9, f_wiazka=1.0, f_grupa=0.8, opis_pl=pusty)
 
 
@@ -119,7 +119,7 @@ def test_wspolczynnik_poza_zakresem_jest_odrzucany(wartosc: float) -> None:
 
 def test_obciazalnosc_katalogowa_musi_byc_dodatnia() -> None:
     """Brak/zerowa obciazalnosc katalogowa = brak danych, nie „0 A dopuszczalne"."""
-    with pytest.raises(ValueError, match="musi byc dodatnia"):
+    with pytest.raises(ValueError, match="musi być dodatnia"):
         obciazalnosc_skorygowana(0.0, WARUNKI_KATALOGOWE)
 
 
@@ -140,7 +140,7 @@ def test_wspolczynniki_z_opisu_jest_jedynym_przelozeniem() -> None:
         "wlasne", f_grunt=0.9, f_wiazka=1.0, f_grupa=0.85, opis_pl="Ziemia, rura oslonowa"
     )
     assert wlasne.iloczyn == pytest.approx(0.765)
-    with pytest.raises(ValueError, match="trzech wspolczynnikow"):
+    with pytest.raises(ValueError, match="trzech współczynników"):
         wspolczynniki_z_opisu("wlasne", f_grunt=0.9, opis_pl="brak dwoch pozostalych")
     with pytest.raises(ValueError, match="Nieznany zestaw"):
         wspolczynniki_z_opisu("ziemia_7_kabli")

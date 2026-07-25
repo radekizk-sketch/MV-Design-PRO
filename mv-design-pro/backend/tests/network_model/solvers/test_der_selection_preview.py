@@ -538,7 +538,7 @@ def test_bez_wspolczynnikow_dobor_jest_bit_identyczny_a_zalozenie_jawne() -> Non
 
     assert domyslny.derating_set == "warunki_katalogowe"
     assert domyslny.derating_total == pytest.approx(1.0)
-    assert "WARUNKOW KATALOGOWYCH" in domyslny.derating_assumption_pl
+    assert "WARUNKÓW KATALOGOWYCH" in domyslny.derating_assumption_pl
     assert domyslny.proposal is not None
     # Obciazalnosc skorygowana rowna katalogowej — obie liczby sa w wyniku, zeby
     # prezentacja nie musiala niczego domnazac po fakcie.
@@ -648,7 +648,7 @@ def test_wspolczynniki_wlasne_dzialaja_w_doborze() -> None:
         f_grunt=0.88,
         f_wiazka=1.0,
         f_grupa=1.0,
-        opis_pl="Ziemia, rezystywnosc 2,0 K·m/W, temperatura gruntu 25°C (dokumentacja projektu)",
+        opis_pl="Ziemia, rezystywność 2,0 K·m/W, temperatura gruntu 25°C (dokumentacja projektu)",
     )
     wynik = propose_mv_cable(
         CableSelectionInput(
@@ -666,4 +666,4 @@ def test_wspolczynniki_wlasne_dzialaja_w_doborze() -> None:
     assert wynik.proposal.cross_section_mm2 == pytest.approx(50.0)
     assert wynik.proposal.effective_ampacity_a == pytest.approx(140.8, abs=1e-9)
     assert wynik.derating_set == "wlasne"
-    assert "rezystywnosc 2,0" in wynik.derating_assumption_pl
+    assert "rezystywność 2,0" in wynik.derating_assumption_pl

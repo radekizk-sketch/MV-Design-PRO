@@ -706,7 +706,7 @@ def test_nieznane_warunki_ulozenia_sa_odrzucane_przy_wejsciu_do_modelu() -> None
     )
     assert result.get("error")
     assert result["error_code"] == "der.mv_cable_laying_conditions_invalid"
-    assert "Nieznany zestaw warunkow ulozenia" in result["error"]
+    assert "Nieznany zestaw warunków ułożenia" in result["error"]
 
 
 def test_wlasne_warunki_ulozenia_jada_z_modelem_w_calosci() -> None:
@@ -720,7 +720,7 @@ def test_wlasne_warunki_ulozenia_jada_z_modelem_w_calosci() -> None:
                 "f_grunt": 0.85,
                 "f_wiazka": 1.0,
                 "f_grupa": 0.9,
-                "opis_pl": "Ziemia, 2 obwody w rurach oslonowych, odstep 300 mm",
+                "opis_pl": "Ziemia, 2 obwody w rurach osłonowych, odstęp 300 mm",
             }
         ),
     )
@@ -729,7 +729,7 @@ def test_wlasne_warunki_ulozenia_jada_z_modelem_w_calosci() -> None:
     assert zapis["set_name"] == "wlasne"
     assert zapis["f_grunt"] == pytest.approx(0.85)
     assert zapis["f_grupa"] == pytest.approx(0.9)
-    assert "rurach oslonowych" in zapis["opis_pl"]
+    assert "rurach osłonowych" in zapis["opis_pl"]
 
 
 def test_wlasne_warunki_bez_opisu_sa_odrzucane() -> None:
