@@ -24,6 +24,33 @@ const DONE_SC_RUN = {
   started_at: '2026-07-18T09:59:00Z',
 } as never;
 
+/** Drugi bieg zwarciowy (przypadek minimalny c = 0,95). Od karty F-K4 faza 3b prądy
+ *  koordynacji pochodzą WYŁĄCZNIE z biegów, a Ik_min wymaga osobnego przypadku —
+ *  wcześniej były losowane w UI (`Math.random()`), więc test nie potrzebował biegów. */
+const DONE_SC_RUN_MIN = {
+  id: 'run-sc-2',
+  analysis_type: 'SC_3F',
+  status: 'DONE',
+  finished_at: '2026-07-18T10:01:00Z',
+  started_at: '2026-07-18T10:00:30Z',
+} as never;
+
+/** Wiersz wyniku zwarciowego dla lokalizacji pierwszego urządzenia (`bus_1`). */
+function wierszSC(cFactor: number, ikssKa: number) {
+  return {
+    target_id: 'bus_1',
+    element_id: 'bus_1',
+    target_name: 'Szyna 1',
+    ikss_ka: ikssKa,
+    ip_ka: null,
+    ith_ka: null,
+    sk_mva: null,
+    fault_type: '3F',
+    flags: [],
+    c_factor: cFactor,
+  };
+}
+
 function ustawKompletnyKontekst() {
   useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');
   useExecutionRunsStore.setState({ runs: [DONE_SC_RUN] });
@@ -109,6 +136,9 @@ describe('EkranKoordynacji — realna strona przy kompletnym kontekście', () =>
   it('przebieg analizy koordynacji woła API 1:1 z kontraktem api.ts (POST run + GET wynik)', async () => {
     const user = userEvent.setup();
     ustawKompletnyKontekst();
+    // Koordynacja bez prądów z biegów jest zablokowana (F-K4 faza 3b) — dajemy
+    // przypadek maksymalny i minimalny, czyli warunki, w których analiza ma sens.
+    useExecutionRunsStore.setState({ runs: [DONE_SC_RUN, DONE_SC_RUN_MIN] });
 
     const summary: CoordinationSummaryResponse = {
       run_id: 'coord-run-1',
@@ -153,6 +183,22 @@ describe('EkranKoordynacji — realna strona przy kompletnym kontekście', () =>
       }
       if (url === '/api/protection-coordination/coord-run-1') {
         return { ok: true, status: 200, json: async () => result } as Response;
+      }
+      // Prądy koordynacji z realnych biegów (F-K4 faza 3b): przypadek maksymalny
+      // z pierwszego biegu, minimalny z drugiego — klasyfikacja po współczynniku c.
+      if (url === '/api/analysis-runs/run-sc-1/results/short-circuit') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ run_id: 'run-sc-1', rows: [wierszSC(1.1, 8.4)] }),
+        } as Response;
+      }
+      if (url === '/api/analysis-runs/run-sc-2/results/short-circuit') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({ run_id: 'run-sc-2', rows: [wierszSC(0.95, 3.1)] }),
+        } as Response;
       }
       throw new Error(`Niespodziewane wywołanie fetch: ${init?.method ?? 'GET'} ${url}`);
     });

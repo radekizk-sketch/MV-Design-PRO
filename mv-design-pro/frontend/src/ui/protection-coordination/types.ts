@@ -461,6 +461,17 @@ export const LABELS = {
     timePositive: 'Czas musi być dodatni',
     minOneDevice: 'Dodaj przynajmniej jedno urządzenie',
     invalidConfig: 'Nieprawidłowa konfiguracja',
+    // F-K4 faza 3b: prądy koordynacji pochodzą WYŁĄCZNIE z zakończonych biegów
+    // (wcześniej powstawały z Math.random() — patrz `pradyZBiegow.ts`).
+    brakPradowZwarciowych:
+      'Brak prądów zwarciowych z biegu obliczeniowego — koordynacja nie ma na czym oprzeć '
+      + 'marginesów. Uruchom analizę zwarciową dla przypadku maksymalnego (c = 1,10) '
+      + 'i minimalnego (c = 0,95).',
+    brakPraduMinimalnego:
+      'Brak biegu zwarciowego minimalnego (c = 0,95) — czułość zabezpieczeń jest '
+      + 'niesprawdzalna. Prąd maksymalny nie zastąpi minimalnego.',
+    brakPraduRoboczego:
+      'Brak prądu roboczego z rozpływu mocy — kryterium przeciążenia jest niesprawdzalne.',
   },
 
   templates: {

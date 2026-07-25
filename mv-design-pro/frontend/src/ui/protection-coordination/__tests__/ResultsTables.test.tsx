@@ -263,6 +263,39 @@ describe('SelectivityTable', () => {
     );
     expect(screen.getByText(LABELS.checks.selectivity.minDevicesRequired)).toBeInTheDocument();
   });
+
+  // F-K4 faza 3b (znalezisko Z4): werdykt miskoordynacji musi prowadzić do
+  // urządzenia, którego nastawę trzeba zmienić — NADRZĘDNEGO (rezerwowego),
+  // bo podrzędne ma zadziałać pierwsze i szybko (stopniowanie CTI).
+  it('klik w wiersz prowadzi do urządzenia NADRZĘDNEGO pary (pętla decyzji)', () => {
+    const onRowClick = vi.fn();
+    render(
+      <SelectivityTable
+        checks={mockSelectivityChecks}
+        devices={mockDevices}
+        onRowClick={onRowClick}
+      />
+    );
+
+    fireEvent.click(screen.getByText('Zabezpieczenie 1'));
+
+    const [upstreamId, downstreamId] = onRowClick.mock.calls[0];
+    expect(upstreamId).toBe(mockSelectivityChecks[0].upstream_device_id);
+    expect(downstreamId).toBe(mockSelectivityChecks[0].downstream_device_id);
+    expect(upstreamId).not.toBe(downstreamId);
+  });
+
+  it('bez onRowClick wiersz nie udaje klikalnego (brak kursora wskazującego)', () => {
+    render(
+      <SelectivityTable
+        checks={mockSelectivityChecks}
+        devices={mockDevices}
+      />
+    );
+
+    const wiersz = screen.getByTestId('selectivity-table').querySelector('tbody tr');
+    expect(wiersz?.className).not.toContain('cursor-pointer');
+  });
 });
 
 // =============================================================================

@@ -17,7 +17,7 @@
  * - No physics calculations in frontend
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect} from 'react';
 import type {
   ProtectionDevice,
   CoordinationResult,
@@ -45,6 +45,10 @@ import { TccChartFromResult } from './TccChart';
 import { TracePanel } from './TracePanel';
 import { TccInterpretationPanel } from './TccInterpretationPanel';
 import { useAppStateStore } from '../app-state/store';
+import { useExecutionRunsStore } from '../study-cases/runStore';
+import { fetchBranchResults, fetchShortCircuitResults } from '../results-inspector/api';
+import { podzielWierszeNaPrzypadki, zbudujPradyKoordynacji } from './pradyZBiegow';
+import type { BrakDanejPradowej } from './pradyZBiegow';
 
 // =============================================================================
 // Types
@@ -410,6 +414,9 @@ function TabNavigation({ activeTab, onTabChange, result }: TabNavigationProps) {
 // Main Page Component
 // =============================================================================
 
+type ShortCircuitRowLite = Awaited<ReturnType<typeof fetchShortCircuitResults>>['rows'][number];
+type BranchRowLite = Awaited<ReturnType<typeof fetchBranchResults>>['rows'][number];
+
 export function ProtectionCoordinationPage() {
   const projectId = useAppStateStore((state) => state.activeProjectId);
   const caseId = useAppStateStore((state) => state.activeCaseId);
@@ -426,6 +433,68 @@ export function ProtectionCoordinationPage() {
     editingDeviceId: null,
     showTemplates: false,
   });
+  // F-K4 faza 3b: braki danych prądowych z biegów (uczciwy stan zamiast atrapy).
+  const [brakiPradowe, setBrakiPradowe] = useState<readonly BrakDanejPradowej[]>([]);
+
+  // F-K4 faza 3b: prądy wejściowe koordynacji pochodzą WYŁĄCZNIE z zakończonych
+  // biegów obliczeniowych. Klasyfikacja przypadku (maksymalny / minimalny) idzie po
+  // REALNYM współczynniku `c` z wiersza wyniku (IEC 60909: c_max ≈ 1,10,
+  // c_min ≈ 0,95) — kanoniczny bieg liczy jeden scenariusz, więc pełna koordynacja
+  // wymaga dwóch biegów. Braki są raportowane jawnie, nigdy uzupełniane liczbą.
+  const przebiegi = useExecutionRunsStore((s) => s.runs);
+  const urzadzeniaKlucz = state.devices.map((d) => d.location_element_id).join('|');
+  useEffect(() => {
+    if (state.devices.length === 0) {
+      setBrakiPradowe([]);
+      return;
+    }
+    const zakonczone = przebiegi.filter((r) => r.status === 'DONE');
+    const biegiZwarciowe = zakonczone.filter((r) =>
+      ['SC_3F', 'SC_1F', 'SC_2F', 'SC_2F_G'].includes(r.analysis_type),
+    );
+    const biegRozplywu = zakonczone.find((r) => r.analysis_type === 'LOAD_FLOW') ?? null;
+    let anulowane = false;
+
+    void (async () => {
+      const wierszeZwarciowe: ShortCircuitRowLite[] = [];
+      for (const bieg of biegiZwarciowe) {
+        try {
+          const wynik = await fetchShortCircuitResults(bieg.id);
+          wierszeZwarciowe.push(...wynik.rows);
+        } catch {
+          // Brak wyniku biegu = brak danych; nie zastępujemy go niczym.
+        }
+      }
+      let wierszeGalezi: BranchRowLite[] = [];
+      if (biegRozplywu) {
+        try {
+          wierszeGalezi = (await fetchBranchResults(biegRozplywu.id)).rows;
+        } catch {
+          wierszeGalezi = [];
+        }
+      }
+      if (anulowane) return;
+      const { max, min } = podzielWierszeNaPrzypadki(wierszeZwarciowe);
+      const prady = zbudujPradyKoordynacji({
+        urzadzenia: state.devices,
+        wierszeMax: max,
+        wierszeMin: min,
+        wierszeGalezi,
+      });
+      setState((prev) => ({
+        ...prev,
+        faultCurrents: [...prady.faultCurrents],
+        operatingCurrents: [...prady.operatingCurrents],
+      }));
+      setBrakiPradowe(prady.braki);
+    })();
+
+    return () => {
+      anulowane = true;
+    };
+    // Zależność po identyfikatorach lokalizacji (`urzadzeniaKlucz`): zmiana nastaw
+    // urządzenia nie wymaga ponownego pobierania wyników biegów.
+  }, [urzadzeniaKlucz, przebiegi]);
 
   // Add new device
   const handleAddDevice = useCallback(() => {
@@ -439,23 +508,16 @@ export function ProtectionCoordinationPage() {
       },
     };
 
-    // Demo fault/operating currents
-    const newFault: FaultCurrentData = {
-      location_id: newDevice.location_element_id,
-      ik_max_3f_a: 5000 + Math.random() * 3000,
-      ik_min_3f_a: 2000 + Math.random() * 1000,
-    };
-
-    const newOperating: OperatingCurrentData = {
-      location_id: newDevice.location_element_id,
-      i_operating_a: 200 + Math.random() * 200,
-    };
-
+    // F-K4 faza 3b (naprawa fabrykacji): urządzenie NIE dostaje prądów.
+    // Wcześniej powstawały tu wartości z `Math.random()` (komentarz „Demo
+    // fault/operating currents"), czyli marginesy selektywności liczyły się na
+    // LOSOWYCH danych i wyglądały jak wynik obliczeń. Prądy zwarciowe pochodzą
+    // wyłącznie z zakończonego biegu zwarciowego, prąd roboczy z rozpływu —
+    // patrz `useWczytajPradyZBiegow`. Brak biegu = brak prądów i jawny stan,
+    // nigdy liczba zastępcza.
     setState((prev) => ({
       ...prev,
       devices: [...prev.devices, newDevice],
-      faultCurrents: [...prev.faultCurrents, newFault],
-      operatingCurrents: [...prev.operatingCurrents, newOperating],
       editingDeviceId: newDevice.id,
     }));
   }, [state.devices.length]);
@@ -504,22 +566,10 @@ export function ProtectionCoordinationPage() {
       settings: JSON.parse(JSON.stringify(template.settings)),
     };
 
-    const newFault: FaultCurrentData = {
-      location_id: newDevice.location_element_id,
-      ik_max_3f_a: 5000 + Math.random() * 3000,
-      ik_min_3f_a: 2000 + Math.random() * 1000,
-    };
-
-    const newOperating: OperatingCurrentData = {
-      location_id: newDevice.location_element_id,
-      i_operating_a: 200 + Math.random() * 200,
-    };
-
+    // Jak w `handleAddDevice`: zero fabrykacji prądów (patrz komentarz tam).
     setState((prev) => ({
       ...prev,
       devices: [...prev.devices, newDevice],
-      faultCurrents: [...prev.faultCurrents, newFault],
-      operatingCurrents: [...prev.operatingCurrents, newOperating],
       editingDeviceId: newDevice.id,
       showTemplates: false,
     }));
@@ -568,6 +618,16 @@ export function ProtectionCoordinationPage() {
       setState((prev) => ({
         ...prev,
         error: LABELS.validation.minOneDevice,
+      }));
+      return;
+    }
+
+    // F-K4 faza 3b: bez prądów z biegu analiza policzyłaby marginesy na niczym.
+    // Wcześniej ten warunek nie mógł zaistnieć, bo prądy były losowane.
+    if (state.faultCurrents.length === 0) {
+      setState((prev) => ({
+        ...prev,
+        error: LABELS.validation.brakPradowZwarciowych,
       }));
       return;
     }
@@ -659,6 +719,30 @@ export function ProtectionCoordinationPage() {
               }
             />
 
+            {/* F-K4 faza 3b: uczciwy stan braków danych prądowych. Wcześniej prądy
+                powstawały z Math.random(), więc panelu nie było — analiza zawsze
+                „miała" dane. Teraz projektant widzi, czego brakuje i skąd to wziąć. */}
+            {brakiPradowe.length > 0 && (
+              <div
+                className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900"
+                data-testid="coordination-missing-currents"
+              >
+                <p className="font-medium">{LABELS.validation.brakPradowZwarciowych}</p>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {brakiPradowe.map((brak) => (
+                    <li key={`${brak.deviceId}-${brak.czegoBrakuje}`}>
+                      {brak.deviceName} ({brak.locationElementId}):{' '}
+                      {brak.czegoBrakuje === 'prad_zwarciowy_min'
+                        ? LABELS.validation.brakPraduMinimalnego
+                        : brak.czegoBrakuje === 'prad_roboczy'
+                          ? LABELS.validation.brakPraduRoboczego
+                          : LABELS.validation.brakPradowZwarciowych}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Run Analysis Button */}
             <button
               onClick={handleRunAnalysis}
@@ -723,6 +807,15 @@ export function ProtectionCoordinationPage() {
                   <SelectivityTable
                     checks={state.result.selectivity_checks}
                     devices={state.devices}
+                    // F-K4 faza 3b (znalezisko Z4): werdykt miskoordynacji prowadzi do
+                    // edytora nastaw urządzenia NADRZĘDNEGO. Tabela miała już `onRowClick`,
+                    // ale nikt go nie przekazywał — klik w wiersz nie prowadził nigdzie,
+                    // choć tabela przeciążeń obok prowadziła do edytora. Nadrzędne, bo przy
+                    // braku selektywności koryguje się czas zabezpieczenia rezerwowego:
+                    // podrzędne ma zadziałać pierwsze i szybko (stopniowanie CTI).
+                    onRowClick={(upstreamId) =>
+                      setState((prev) => ({ ...prev, editingDeviceId: upstreamId }))
+                    }
                   />
                 )}
                 {state.activeTab === 'overload' && (
