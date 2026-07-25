@@ -51,9 +51,20 @@ from .models import (
 )
 
 
-def _ref_to_uuid(ref_id: str) -> str:
-    """Deterministic UUID-like string from ref_id (for mapping stability)."""
+def ref_to_graph_id(ref_id: str) -> str:
+    """Identyfikator elementu w grafie domenowym dla ``ref_id`` modelu ENM.
+
+    Publiczne wejscie do TEGO SAMEGO przelozenia, ktorego uzywa mapowanie modelu
+    na graf. Potrzebne warstwie analiz, ktora wiaze wpisy modelu odwolujace sie do
+    ``ref_id`` (np. ``ProtectionAssignment.breaker_ref``) z elementami grafu — bez
+    tego kazdy konsument powielalby regule identyfikatorow i rozjechalby sie z
+    mapowaniem przy pierwszej jej zmianie.
+    """
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, ref_id))
+
+
+# Alias historyczny uzywany wewnatrz tego modulu (jedna implementacja powyzej).
+_ref_to_uuid = ref_to_graph_id
 
 
 def _map_tap_changer(tap_changer, ref_to_node_id: dict[str, str]) -> TapChanger | None:

@@ -44,7 +44,10 @@ from application.analyses.state_estimation import (
 )
 from application.analyses.warunki_przylaczenia import build_warunki_przylaczenia_view
 from application.analyses.werdykt_projektowy import build_werdykt_projektowy_view
-from application.analyses.wytrzymalosc_cieplna_przewodow import build_wytrzymalosc_cieplna_view
+from application.analyses.wytrzymalosc_cieplna_przewodow import (
+    build_wytrzymalosc_cieplna_view,
+    zbuduj_dowod_cieplny,
+)
 from application.analyses.zgodnosc_powykonawcza import (
     build_zgodnosc_powykonawcza_view,
     parse_measurements_csv,
@@ -183,6 +186,28 @@ def get_conductor_thermal_withstand(run_id: UUID = Query(...)) -> dict[str, Any]
     run = _require_run(run_id)
     try:
         return build_wytrzymalosc_cieplna_view(run)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/api/quality/conductor-thermal-withstand/proof")
+def get_conductor_thermal_withstand_proof(
+    run_id: UUID = Query(...),
+    branch_id: str = Query(...),
+) -> dict[str, Any]:
+    """Pakiet dowodowy kryterium cieplnego dla JEDNEJ galezi (karta F-K1 faza 5).
+
+    Kroki w kanonie Wzor -> Dane -> Podstawienie -> Wynik -> Uwagi. Krok pierwszy
+    nazywa ZRODLO czasu trwania zwarcia (rozwiazana nastawa zabezpieczenia albo
+    zalozenie przypadku obliczeniowego) — bez tego werdykt cieplny nie jest
+    audytowalny, bo czas rozstrzyga o wyniku tak samo mocno jak prad.
+    """
+    run = _require_run(run_id)
+    try:
+        return zbuduj_dowod_cieplny(run, branch_id)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

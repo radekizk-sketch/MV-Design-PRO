@@ -6,11 +6,16 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SekcjaWytrzymaloscCieplna } from '../EkranJakosci';
 import { JAKOSC_STRINGS } from '../strings';
 import { przebiegTestowy } from './fixtures';
-import type { PozycjaCieplna, WytrzymaloscCieplnaResponse } from '../api';
+import type {
+  DowodCieplnyResponse,
+  PozycjaCieplna,
+  SladCzasuWylaczenia,
+  WytrzymaloscCieplnaResponse,
+} from '../api';
 
 const fetchMock = vi.fn();
 
@@ -26,6 +31,23 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
     applied_cross_section_mm2: 70,
     missing_codes: [],
     uzasadnienie_pl: null,
+    czas_wylaczenia: slad(),
+    ...over,
+  };
+}
+
+function slad(over: Partial<SladCzasuWylaczenia> = {}): SladCzasuWylaczenia {
+  return {
+    tk_s: 0.594119,
+    zrodlo: 'nastawa_zabezpieczenia',
+    powod_pl: 'Czas z charakterystyki IEC_SI zabezpieczenia pola przy prądzie gałęzi.',
+    urzadzenie_ref: 'CB1',
+    urzadzenie_nazwa: 'Wyłącznik pola liniowego',
+    funkcja: 'overcurrent_51',
+    prad_galezi_a: 6000,
+    prad_rozruchowy_a: 600,
+    krzywa: 'IEC_SI',
+    tms: 0.2,
     ...over,
   };
 }
@@ -40,6 +62,12 @@ function odpowiedz(items: readonly PozycjaCieplna[]): WytrzymaloscCieplnaRespons
     analysis_type: 'short_circuit_sn',
     fault_node_id: 'BUS-02',
     tk_s: 0.25,
+    czasy_wylaczenia: {
+      z_nastawy: items.filter((i) => i.czas_wylaczenia?.zrodlo === 'nastawa_zabezpieczenia')
+        .length,
+      z_zalozenia: items.filter((i) => i.czas_wylaczenia?.zrodlo === 'zalozenie_przypadku').length,
+      razem: items.length,
+    },
     ocena: {
       items,
       summary: { pass_count: pass, fail_count: fail, unavailable_count: unavailable },
@@ -125,14 +153,14 @@ describe('SekcjaWytrzymaloscCieplna — werdykt i stany', () => {
             utilization: null,
             s_min_mm2: null,
             uzasadnienie_pl:
-              'Brak przeplywu pradu zwarciowego — galaz poza droga zwarcia; kryterium cieplne spelnione trywialnie.',
+              'Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; kryterium cieplne spełnione trywialnie.',
           }),
         ]),
       ),
     );
     render(<SekcjaWytrzymaloscCieplna {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
-    expect(screen.getByText(/poza droga zwarcia/)).toBeTruthy();
+    expect(screen.getByText(/poza drogą zwarcia/)).toBeTruthy();
   });
 
   it('wszystko niesprawdzone → uczciwy stan z akcją, bez tabeli pustych liczb', async () => {
@@ -162,5 +190,127 @@ describe('SekcjaWytrzymaloscCieplna — werdykt i stany', () => {
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
     expect(screen.getByText(/I_th ≤ I_th\(1s\)/)).toBeTruthy();
     expect(screen.getByText('BUS-02')).toBeTruthy();
+  });
+});
+
+describe('SekcjaWytrzymaloscCieplna — źródło czasu wyłączenia (karta F-K1 faza 5)', () => {
+  it('odróżnia czas z nastawy od czasu założonego w przypadku', async () => {
+    fetchMock.mockResolvedValue(
+      odpowiedzOk(
+        odpowiedz([
+          pozycja(),
+          pozycja({
+            branch_id: 'cable_B',
+            branch_name: 'Odgałęzienie L-02',
+            status: 'PASS',
+            czas_wylaczenia: slad({
+              tk_s: 0.25,
+              zrodlo: 'zalozenie_przypadku',
+              powod_pl:
+                'Aparat nie ma przypisanego czynnego zabezpieczenia. Przyjęto założony czas przypadku 0,25 s.',
+              urzadzenie_ref: null,
+              urzadzenie_nazwa: null,
+              funkcja: null,
+              krzywa: null,
+              tms: null,
+            }),
+          }),
+        ]),
+      ),
+    );
+    render(<SekcjaWytrzymaloscCieplna {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+
+    // Obie gałęzie mają czas, ale tabela mówi wprost, która z nastawy, a która z
+    // założenia — bez tego liczby wyglądałyby identycznie.
+    expect(screen.getByText(JAKOSC_STRINGS.czasZNastawy)).toBeTruthy();
+    expect(screen.getByText(JAKOSC_STRINGS.czasZZalozenia)).toBeTruthy();
+    // Tabela formatuje czas do dwoch miejsc (wspolny format liczb sekcji).
+    expect(screen.getByText('0,59')).toBeTruthy();
+    // Założenia sekcji podają PROPORCJĘ, a nie jedną wspólną wartość czasu.
+    expect(screen.getByText(JAKOSC_STRINGS.czasPodsumowanie(1, 1))).toBeTruthy();
+  });
+
+  it('nieznany kod źródła nie jest zgadywany — pokazuje kreskę', async () => {
+    fetchMock.mockResolvedValue(
+      odpowiedzOk(odpowiedz([pozycja({ czas_wylaczenia: slad({ zrodlo: 'cos_nowego' }) })])),
+    );
+    render(<SekcjaWytrzymaloscCieplna {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+    expect(screen.queryByText(JAKOSC_STRINGS.czasZNastawy)).toBeNull();
+  });
+});
+
+describe('SekcjaWytrzymaloscCieplna — dowód kryterium (karta F-K1 faza 5)', () => {
+  const dowod: DowodCieplnyResponse = {
+    run_id: 'sc-1',
+    branch_id: 'cable_A',
+    branch_name: 'Magistrala L-01',
+    status: 'FAIL',
+    kroki: [
+      {
+        step: 1,
+        key: 'conductor_thermal_time_source',
+        title: 'Czas trwania zwarcia z nastawy zabezpieczenia',
+        inputs: {},
+        substitution: 'Charakterystyka IEC_SI aparatu CB1 ⇒ t_k = 0,594119 s',
+        result: { tk_s: { value: 0.594119, unit: 's', label: 'Czas trwania zwarcia' } },
+        notes: 'Czas z charakterystyki IEC_SI.',
+      },
+      {
+        step: 2,
+        key: 'conductor_thermal_admissible',
+        title: 'Prąd dopuszczalny przewodu przy czasie trwania zwarcia',
+        formula_latex: '$$I_{dop}(t) = I_{th(1s)}$$',
+        inputs: {},
+        substitution: 'I_dop = 13800 / 0,771 = 17899 A',
+        result: { i_dop_a: { value: 17899, unit: 'A', label: 'Prąd dopuszczalny' } },
+        notes: 'Nagrzewanie adiabatyczne.',
+      },
+    ],
+  };
+
+  it('wybór gałęzi w tabeli pobiera dowód dla TEJ gałęzi i pokazuje kroki', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(
+        odpowiedzOk(String(url).includes('/proof') ? dowod : odpowiedz([pozycja()])),
+      ),
+    );
+    render(<SekcjaWytrzymaloscCieplna {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+
+    // Przed wyborem: uczciwa podpowiedź zamiast pustego panelu.
+    expect(screen.getByTestId('mvd-jakosc-cieplna-dowod-pusty')).toBeTruthy();
+
+    // ŚCIEŻKA REALNA: klik w wiersz tabeli, nie wymuszony stan komponentu.
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna-dowod')).toBeTruthy());
+    const adres = String(
+      fetchMock.mock.calls.map((c) => String(c[0])).find((u) => u.includes('/proof')),
+    );
+    expect(adres).toContain('run_id=sc-1');
+    expect(adres).toContain('branch_id=cable_A');
+    // Tytul kroku pojawia sie i w spisie krokow, i w naglowku kroku.
+    expect(screen.getAllByText(/Czas trwania zwarcia z nastawy/).length).toBeGreaterThan(0);
+  });
+
+  it('błąd pobrania dowodu nie udaje wyniku', async () => {
+    fetchMock.mockImplementation((url: string) =>
+      String(url).includes('/proof')
+        ? Promise.resolve({
+            ok: false,
+            status: 422,
+            statusText: 'Unprocessable Entity',
+            json: async () => ({ detail: 'brak galezi' }),
+          } as Response)
+        : Promise.resolve(odpowiedzOk(odpowiedz([pozycja()]))),
+    );
+    render(<SekcjaWytrzymaloscCieplna {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna-dowod-blad')).toBeTruthy());
   });
 });

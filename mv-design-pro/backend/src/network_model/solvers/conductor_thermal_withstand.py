@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
+from typing import Any
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
 READINESS_CONDUCTOR_THERMAL_DATA_MISSING = "conductor.thermal_data_missing"
@@ -89,6 +90,11 @@ class ConductorThermalResult:
     margin_a: float | None
     readiness_codes: tuple[str, ...] = ()
     formula_ref: str = _FORMULA_REF
+    # WHITE BOX (karta F-K1 faza 5, addytywnie): kroki rachunku w kanonie
+    # Wzor -> Dane -> Podstawienie -> Wynik -> Uwagi, gotowe do okna „Dowod
+    # obliczen". Pusta krotka dla wyniku NIEDOSTEPNEGO (nie ma czego dowodzic)
+    # oraz dla wynikow sprzed tej delty.
+    white_box_trace: tuple[dict[str, Any], ...] = ()
     assumptions: tuple[str, ...] = field(
         default_factory=lambda: (
             "Nagrzewanie zwarciowe adiabatyczne (bez odplywu ciepla do otoczenia).",
@@ -161,4 +167,165 @@ def check_conductor_thermal_withstand(
         required_cross_section_mm2=required_section,
         margin_a=margin,
         readiness_codes=(),
+        white_box_trace=_build_white_box_trace(
+            ith_a=ith,
+            duration_s=duration,
+            sqrt_t=sqrt_t,
+            ith_1s_a=ith_1s,
+            admissible_a=admissible,
+            utilization=utilization,
+            margin_a=margin,
+            jth_1s_a_per_mm2=jth,
+            required_section_mm2=required_section,
+            applied_section_mm2=_positive(data.cross_section_mm2),
+            status=status,
+        ),
     )
+
+
+def _wartosc(value: float, unit: str, label: str) -> dict[str, Any]:
+    """Wielkosc sladu w kanonie TraceValue (zaokraglenie = determinizm zapisu)."""
+    return {"value": round(value, 6), "unit": unit, "label": label}
+
+
+def _liczba_tex(value: float) -> str:
+    """Liczba w zapisie polskim dla LaTeX-a.
+
+    Pole „Podstawienie" okna dowodu renderuje sie przez KaTeX (``KrokDowodu.tsx``),
+    wiec przecinek dziesietny musi byc grupa ``{,}`` — inaczej KaTeX traktuje go
+    jako separator i wstawia spacje (``0, 421``).
+    """
+    return f"{round(value, 3):g}".replace(".", "{,}")
+
+
+def _build_white_box_trace(
+    *,
+    ith_a: float,
+    duration_s: float,
+    sqrt_t: float,
+    ith_1s_a: float,
+    admissible_a: float,
+    utilization: float,
+    margin_a: float,
+    jth_1s_a_per_mm2: float | None,
+    required_section_mm2: float | None,
+    applied_section_mm2: float | None,
+    status: str,
+) -> tuple[dict[str, Any], ...]:
+    """Kroki dowodowe rachunku cieplnego (WHITE BOX, kanon pieciu pol).
+
+    Slad NIE liczy niczego od nowa — wszystkie wielkosci sa argumentami tej
+    funkcji, wyliczonymi wyzej w tym samym solverze. Formatowanie i tekst sa
+    prezentacja, fizyka zostaje w jednym miejscu.
+    """
+    kroki: list[dict[str, Any]] = [
+        {
+            "step": 1,
+            "key": "conductor_thermal_admissible",
+            "title": "Prąd dopuszczalny przewodu przy czasie trwania zwarcia",
+            "formula_latex": r"$$I_{dop}(t) = I_{th(1s)} \cdot \sqrt{\frac{1\,\mathrm{s}}{t}}$$",
+            "inputs": {
+                "ith_1s_a": _wartosc(ith_1s_a, "A", "Wytrzymałość cieplna żyły dla 1 s"),
+                "tk_s": _wartosc(duration_s, "s", "Czas trwania zwarcia"),
+            },
+            "substitution": (
+                r"$$I_{dop} = \frac{"
+                + _liczba_tex(ith_1s_a)
+                + r"}{\sqrt{"
+                + _liczba_tex(duration_s)
+                + r"}} = "
+                + _liczba_tex(admissible_a)
+                + r"\ \mathrm{A}$$"
+            ),
+            "result": {
+                "i_dop_a": _wartosc(admissible_a, "A", "Prąd dopuszczalny przy czasie t"),
+            },
+            "notes": (
+                "Nagrzewanie zwarciowe przyjmuje się za adiabatyczne, więc obowiązuje "
+                "równoważna energia cieplna I²·t = const (IEC 60949)."
+            ),
+        },
+        {
+            "step": 2,
+            "key": "conductor_thermal_criterion",
+            "title": "Sprawdzenie kryterium cieplnego",
+            "formula_latex": r"$$I_{th} \le I_{dop}(t)$$",
+            "inputs": {
+                "ith_a": _wartosc(ith_a, "A", "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"),
+                "i_dop_a": _wartosc(admissible_a, "A", "Prąd dopuszczalny przy czasie t"),
+            },
+            "substitution": (
+                r"$$"
+                + _liczba_tex(ith_a)
+                + r"\ \mathrm{A} "
+                + (r"\le " if status == STATUS_PASS else r"> ")
+                + _liczba_tex(admissible_a)
+                + r"\ \mathrm{A} \quad\Rightarrow\quad "
+                + _liczba_tex(utilization * 100.0)
+                + r"\ \%$$"
+            ),
+            "result": {
+                "utilization": _wartosc(utilization, "-", "Wykorzystanie wytrzymałości cieplnej"),
+                "margin_a": _wartosc(margin_a, "A", "Zapas do prądu dopuszczalnego"),
+            },
+            "notes": (
+                "Kryterium spełnione — przekrój wytrzyma zwarcie przez ten czas."
+                if status == STATUS_PASS
+                else "Kryterium naruszone — przekrój nie wytrzyma zwarcia przez ten czas."
+            ),
+        },
+    ]
+
+    if jth_1s_a_per_mm2 is not None and required_section_mm2 is not None:
+        podstawienie = (
+            r"$$S_{min} = \frac{"
+            + _liczba_tex(ith_a)
+            + r" \cdot \sqrt{"
+            + _liczba_tex(duration_s)
+            + r"}}{"
+            + _liczba_tex(jth_1s_a_per_mm2)
+            + r"} = "
+            + _liczba_tex(required_section_mm2)
+            + r"\ \mathrm{mm^2}"
+        )
+        if applied_section_mm2 is not None:
+            znak = r"\ge" if applied_section_mm2 >= required_section_mm2 else r"<"
+            podstawienie += (
+                r" \quad ; \quad S = "
+                + _liczba_tex(applied_section_mm2)
+                + r"\ \mathrm{mm^2} "
+                + znak
+                + r" S_{min}"
+            )
+        podstawienie += "$$"
+        wejscia = {
+            "ith_a": _wartosc(ith_a, "A", "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"),
+            "tk_s": _wartosc(duration_s, "s", "Czas trwania zwarcia"),
+            "jth_1s_a_per_mm2": _wartosc(
+                jth_1s_a_per_mm2, "A/mm²", "Gęstość prądu cieplnego dla 1 s"
+            ),
+        }
+        wyniki = {
+            "s_min_mm2": _wartosc(required_section_mm2, "mm²", "Minimalny wymagany przekrój"),
+        }
+        if applied_section_mm2 is not None:
+            wejscia["cross_section_mm2"] = _wartosc(
+                applied_section_mm2, "mm²", "Przekrój zastosowany"
+            )
+        kroki.append(
+            {
+                "step": 3,
+                "key": "conductor_thermal_min_section",
+                "title": "Minimalny przekrój żyły z warunku cieplnego",
+                "formula_latex": r"$$S_{min} = \frac{I_{th} \cdot \sqrt{t}}{J_{th(1s)}}$$",
+                "inputs": wejscia,
+                "substitution": podstawienie,
+                "result": wyniki,
+                "notes": (
+                    "Zapis równoważny kryterium prądowemu — mówi wprost, jaki przekrój "
+                    "usunie naruszenie."
+                ),
+            }
+        )
+
+    return tuple(kroki)

@@ -36,7 +36,12 @@ import { KreatorPomiaru } from './ui2/kreatory/pomiar';
 import { KreatorPolaNn } from './ui2/kreatory/pole-nn';
 import { KreatorPrzypisaniaKatalogu } from './ui2/kreatory/przypisanie-katalogu';
 import { KreatorEdycjiParametrow } from './ui2/kreatory/edycja-parametrow';
-import { SekcjaArcFlash, SekcjaMigotania, SekcjaWalidacji } from './ui2/wyniki/jakosc/EkranJakosci';
+import {
+  SekcjaArcFlash,
+  SekcjaMigotania,
+  SekcjaWalidacji,
+  SekcjaWytrzymaloscCieplna,
+} from './ui2/wyniki/jakosc/EkranJakosci';
 import { EkranOdbioru } from './ui2/wyniki/odbior';
 import { EkranEstymacji } from './ui2/wyniki/estymacja';
 import { EkranSsci } from './ui2/wyniki/ssci';
@@ -1220,6 +1225,162 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (url.includes('/api/catalog/complete-bay-templates')) {
     return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  }
+  if (url.includes('/api/quality/conductor-thermal-withstand/proof')) {
+    // Scena "cieplna" (karta F-K1 faza 5): dowod kryterium dla galezi Z NASTAWA.
+    // Kroki 1:1 z solverem `conductor_thermal_withstand.py::_build_white_box_trace`
+    // i `wytrzymalosc_cieplna_przewodow.py::_krok_czasu`; liczby WYLICZONE tym
+    // solverem (nie wpisane recznie): I=15000 A, Is=600 A, TMS=0,2, krzywa SI ->
+    // t = 0,421085 s; I_dop = 13800/sqrt(0,421085) = 21266,4 A; 15000/21266,4 =
+    // 0,705338; S_min = 15000*sqrt(0,421085)/115 = 84,64 mm2.
+    return new Response(
+      JSON.stringify({
+        run_id: 'run-sc-7',
+        branch_id: 'kabel-magistrala-1',
+        branch_name: 'Magistrala L-01 (120 mm²)',
+        status: 'PASS',
+        kroki: [
+          {
+            step: 1,
+            key: 'conductor_thermal_time_source',
+            title: 'Czas trwania zwarcia z nastawy zabezpieczenia',
+            formula_latex: '$$t_k = \\mathrm{TMS} \\cdot \\frac{A}{(I/I_s)^{B} - 1}$$',
+            inputs: {
+              i_galezi_a: { value: 15000, unit: 'A', label: 'Prąd zwarciowy gałęzi' },
+              i_rozruchowy_a: { value: 600, unit: 'A', label: 'Próg rozruchowy zabezpieczenia' },
+              tms: { value: 0.2, unit: '-', label: 'Mnożnik czasowy nastawy' },
+            },
+            substitution:
+              '$$t_k = 0{,}2 \\cdot \\frac{0{,}14}{\\left(\\frac{15000}{600}\\right)^{0{,}02} - 1} = 0{,}421085\\ \\mathrm{s}$$',
+            result: { tk_s: { value: 0.421085, unit: 's', label: 'Czas trwania zwarcia' } },
+            notes:
+              'Czas z charakterystyki IEC_SI zabezpieczenia pola L-01 przy prądzie gałęzi 15000.0 A.',
+          },
+          {
+            step: 2,
+            key: 'conductor_thermal_admissible',
+            title: 'Prąd dopuszczalny przewodu przy czasie trwania zwarcia',
+            formula_latex: '$$I_{dop}(t) = I_{th(1s)} \\cdot \\sqrt{\\frac{1\\,\\mathrm{s}}{t}}$$',
+            inputs: {
+              ith_1s_a: { value: 13800, unit: 'A', label: 'Wytrzymałość cieplna żyły dla 1 s' },
+              tk_s: { value: 0.421085, unit: 's', label: 'Czas trwania zwarcia' },
+            },
+            substitution: '$$I_{dop} = \\frac{13800}{\\sqrt{0{,}421}} = 21266{,}4\\ \\mathrm{A}$$',
+            result: { i_dop_a: { value: 21266.410898, unit: 'A', label: 'Prąd dopuszczalny przy czasie t' } },
+            notes:
+              'Nagrzewanie zwarciowe przyjmuje się za adiabatyczne, więc obowiązuje równoważna energia cieplna I²·t = const (IEC 60949).',
+          },
+          {
+            step: 3,
+            key: 'conductor_thermal_criterion',
+            title: 'Sprawdzenie kryterium cieplnego',
+            formula_latex: '$$I_{th} \\le I_{dop}(t)$$',
+            inputs: {
+              ith_a: { value: 15000, unit: 'A', label: 'Prąd zwarciowy ekwiwalentny cieplnie gałęzi' },
+              i_dop_a: { value: 21266.410898, unit: 'A', label: 'Prąd dopuszczalny przy czasie t' },
+            },
+            substitution:
+              '$$15000\\ \\mathrm{A} \\le 21266{,}4\\ \\mathrm{A} \\quad\\Rightarrow\\quad 70{,}534\\ \\%$$',
+            result: {
+              utilization: { value: 0.705338, unit: '-', label: 'Wykorzystanie wytrzymałości cieplnej' },
+              margin_a: { value: 6266.410898, unit: 'A', label: 'Zapas do prądu dopuszczalnego' },
+            },
+            notes: 'Kryterium spełnione — przekrój wytrzyma zwarcie przez ten czas.',
+          },
+          {
+            step: 4,
+            key: 'conductor_thermal_min_section',
+            title: 'Minimalny przekrój żyły z warunku cieplnego',
+            formula_latex: '$$S_{min} = \\frac{I_{th} \\cdot \\sqrt{t}}{J_{th(1s)}}$$',
+            inputs: {
+              ith_a: { value: 15000, unit: 'A', label: 'Prąd zwarciowy ekwiwalentny cieplnie gałęzi' },
+              tk_s: { value: 0.421085, unit: 's', label: 'Czas trwania zwarcia' },
+              jth_1s_a_per_mm2: { value: 115, unit: 'A/mm²', label: 'Gęstość prądu cieplnego dla 1 s' },
+              cross_section_mm2: { value: 120, unit: 'mm²', label: 'Przekrój zastosowany' },
+            },
+            substitution:
+              '$$S_{min} = \\frac{15000 \\cdot \\sqrt{0{,}421}}{115} = 84{,}641\\ \\mathrm{mm^2} \\quad ; \\quad S = 120\\ \\mathrm{mm^2} \\ge S_{min}$$',
+            result: { s_min_mm2: { value: 84.640516, unit: 'mm²', label: 'Minimalny wymagany przekrój' } },
+            notes: 'Zapis równoważny kryterium prądowemu — mówi wprost, jaki przekrój usunie naruszenie.',
+          },
+        ],
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
+  }
+  if (url.includes('/api/quality/conductor-thermal-withstand')) {
+    // Scena "cieplna": ocena per galaz — ksztalt 1:1 z
+    // `wytrzymalosc_cieplna_przewodow.py::build_wytrzymalosc_cieplna_view`.
+    // Galaz 1 ma czas Z NASTAWY (0,421085 s), galaz 2 — z ZALOZENIA przypadku
+    // (1,0 s), bo jej aparat nie ma czynnego zabezpieczenia. Liczby wyliczone
+    // solverem: L-01 PASS (15000 <= 21266,4; S_min 84,64 mm2 < 120 mm2);
+    // L-02 FAIL (9200 > 8050 = 8050/sqrt(1); S_min 80 mm2 > 70 mm2).
+    return new Response(
+      JSON.stringify({
+        run_id: 'run-sc-7',
+        case_id: 'case-demo',
+        analysis_type: 'short_circuit_sn',
+        fault_node_id: 'SZ-ST7',
+        tk_s: 1.0,
+        czasy_wylaczenia: { z_nastawy: 1, z_zalozenia: 1, razem: 2 },
+        ocena: {
+          items: [
+            {
+              branch_id: 'kabel-magistrala-1',
+              branch_name: 'Magistrala L-01 (120 mm²)',
+              status: 'PASS',
+              i_fault_a: 15000,
+              i_permissible_a: 21266.410898,
+              utilization: 0.705338,
+              s_min_mm2: 84.640516,
+              applied_cross_section_mm2: 120,
+              missing_codes: [],
+              uzasadnienie_pl: null,
+              czas_wylaczenia: {
+                tk_s: 0.421085,
+                zrodlo: 'nastawa_zabezpieczenia',
+                powod_pl:
+                  'Czas z charakterystyki IEC_SI zabezpieczenia pola L-01 przy prądzie gałęzi 15000.0 A.',
+                urzadzenie_ref: 'CB-L01',
+                urzadzenie_nazwa: 'Wyłącznik pola L-01',
+                funkcja: 'overcurrent_51',
+                prad_galezi_a: 15000,
+                prad_rozruchowy_a: 600,
+                krzywa: 'IEC_SI',
+                tms: 0.2,
+              },
+            },
+            {
+              branch_id: 'kabel-odgalezienie-2',
+              branch_name: 'Odgałęzienie L-02 (70 mm²)',
+              status: 'FAIL',
+              i_fault_a: 9200,
+              i_permissible_a: 8050,
+              utilization: 1.142857,
+              s_min_mm2: 80,
+              applied_cross_section_mm2: 70,
+              missing_codes: [],
+              uzasadnienie_pl: null,
+              czas_wylaczenia: {
+                tk_s: 1.0,
+                zrodlo: 'zalozenie_przypadku',
+                powod_pl:
+                  'Aparat Rozłącznik odgałęzienia nie ma przypisanego czynnego zabezpieczenia, więc czas zadziałania jest niewyznaczalny. Przyjęto założony czas przypadku obliczeniowego 1 s.',
+                urzadzenie_ref: null,
+                urzadzenie_nazwa: null,
+                funkcja: null,
+                prad_galezi_a: 9200,
+                prad_rozruchowy_a: null,
+                krzywa: null,
+                tms: null,
+              },
+            },
+          ],
+          summary: { pass_count: 1, fail_count: 1, unavailable_count: 0 },
+        },
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } },
+    );
   }
   if (url.includes('/api/quality/arc-flash')) {
     // Scena "arcflash" (wzbogacona w rundzie dowodowej V-B): kroki WHITE BOX
@@ -2509,6 +2670,14 @@ function Harness() {
   else if (creator === 'magistrala') node = <KreatorMagistralaSn />;
   else if (creator === 'odbior') node = <KreatorOdbioruNn />;
   else if (creator === 'zrodlo') node = <KreatorZrodloZasilania />;
+  else if (creator === 'cieplna')
+    node = (
+      <SekcjaWytrzymaloscCieplna
+        przebieg={{ id: 'run-sc-7', analysis_type: 'SC_3F', status: 'DONE' } as unknown as ExecutionRun}
+        trybZaawansowania="expert"
+        onOtworzDowod={() => undefined}
+      />
+    );
   else if (creator === 'arcflash') {
     node = (
       <SekcjaArcFlash
@@ -2540,7 +2709,7 @@ function Harness() {
         // Sceny rundy dowodowej V-B mają szerokie tabele (kolumny decyzyjne +
         // informacyjne + werdykt) — szerszy kadr eliminuje przycięcie z prawej.
         width: [
-          'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie',
+          'kompensacja-wynik', 'sila-sieci', 'odbior-zgodnosc', 'estymacja', 'ssci', 'migotanie', 'cieplna',
           'wyniki-skladowe', 'wyniki-zbieznosc', 'wyniki-stan-fazowy', 'wyniki-stabilnosc',
         ].includes(creator)
           ? 1400

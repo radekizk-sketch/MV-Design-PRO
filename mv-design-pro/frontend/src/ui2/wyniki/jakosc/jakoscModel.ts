@@ -30,6 +30,7 @@ import type {
   PozycjaWarunku,
   StatusWarunku,
   PodsumowanieCieplne,
+  PodsumowanieCzasow,
   PozycjaCieplna} from './api';
 import {
   JAKOSC_STRINGS,
@@ -513,6 +514,10 @@ export const KOLUMNY_CIEPLNE: DefinicjaKolumny[] = [
     jednostka: 'mm²',
     mono: true,
   },
+  // Karta F-K1 faza 5: czas współtworzy werdykt cieplny tak samo mocno jak prąd,
+  // więc stoi w tabeli obok liczb, a nie tylko w założeniach sekcji.
+  { klucz: 'czasWylaczenia', etykieta: JAKOSC_STRINGS.kolCzasWylaczenia, jednostka: 's', mono: true },
+  { klucz: 'zrodloCzasu', etykieta: JAKOSC_STRINGS.kolZrodloCzasu, wyrownanie: 'lewo' },
   { klucz: 'ocena', etykieta: JAKOSC_STRINGS.kolOcena, wyrownanie: 'lewo' },
   { klucz: KLUCZ_CIEPLNA_GALAZ, etykieta: JAKOSC_STRINGS.kolIdentyfikatorObiektu, mono: true },
 ];
@@ -522,6 +527,14 @@ export const KOLUMNY_CIEPLNE: DefinicjaKolumny[] = [
  * Przy stanie NIESPRAWDZONE wielkości są puste, a ocena mówi wprost, że nic nie
  * policzono; przy gałęzi poza drogą zwarcia pokazujemy uzasadnienie zamiast liczb.
  */
+export function zrodloCzasuPL(zrodlo: string | undefined): string {
+  // Zero zgadywania: nieznany kod źródła pokazujemy jako kreskę, a nie jako
+  // domyślne „nastawa" — to zafałszowałoby audytowalność werdyktu.
+  if (zrodlo === 'nastawa_zabezpieczenia') return JAKOSC_STRINGS.czasZNastawy;
+  if (zrodlo === 'zalozenie_przypadku') return JAKOSC_STRINGS.czasZZalozenia;
+  return JAKOSC_STRINGS.kreska;
+}
+
 export function naWierszeCieplne(pozycje: readonly PozycjaCieplna[]): WierszTabeli[] {
   return pozycje.map((pozycja) => ({
     przewod: { wartosc: pozycja.branch_name || pozycja.branch_id },
@@ -533,6 +546,8 @@ export function naWierszeCieplne(pozycje: readonly PozycjaCieplna[]): WierszTabe
     przekrojWymagany: komorkaLiczba(pozycja.s_min_mm2, fmtWartosc, {
       ostrzezenie: pozycja.status === 'FAIL',
     }),
+    czasWylaczenia: komorkaLiczba(pozycja.czas_wylaczenia?.tk_s ?? null, fmtWartosc),
+    zrodloCzasu: { wartosc: zrodloCzasuPL(pozycja.czas_wylaczenia?.zrodlo) },
     ocena: { wartosc: pozycja.uzasadnienie_pl ?? ocenaWarunkuPL(pozycja.status) },
     [KLUCZ_CIEPLNA_GALAZ]: { wartosc: pozycja.branch_id },
   }));
@@ -543,6 +558,9 @@ export function naZalozeniaCieplne(
   faultNodeId: string,
   tkS: number,
   podsumowanie: PodsumowanieCieplne,
+  // Opcjonalne: odpowiedź sprzed karty F-K1 faza 5 nie niesie pochodzenia czasu.
+  // Wtedy mówimy „nie wiadomo" zamiast wywracać sekcję albo zgadywać proporcję.
+  czasy?: PodsumowanieCzasow,
 ): WierszZalozenia[] {
   return [
     {
@@ -557,10 +575,17 @@ export function naZalozeniaCieplne(
     },
     {
       etykieta: 'Czas trwania zwarcia',
+      wartosc: czasy
+        ? JAKOSC_STRINGS.czasPodsumowanie(czasy.z_nastawy, czasy.z_zalozenia)
+        : JAKOSC_STRINGS.kreska,
+      uwaga: JAKOSC_STRINGS.czasZrodloUwaga,
+    },
+    {
+      etykieta: 'Czas założony w przypadku',
       wartosc: fmtWartosc(tkS),
       jednostka: 's',
       uwaga:
-        'Czas z biegu zwarciowego, jednolity dla wszystkich gałęzi — mapa gałąź→zabezpieczenie→czas zadziałania nie jest jeszcze dostępna.',
+        'Wartość z konfiguracji biegu zwarciowego — używana tam, gdzie gałąź nie ma rozwiązanej nastawy zabezpieczenia.',
     },
     {
       etykieta: 'Wytrzymałość żyły',

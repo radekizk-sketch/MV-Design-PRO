@@ -52,6 +52,15 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from application.analyses.prad_zwarciowy_galezi import (
+    prad_zwarciowy_galezi as _branch_fault_current_a,
+)
+from application.analyses.protection.czas_wylaczenia_galezi import (
+    czasy_dla_modelu,
+    mapa_tk_s_z_nastaw,
+    podsumowanie_czasow,
+    slad_czasu,
+)
 from enm.canonical_analysis import CanonicalRun
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
@@ -84,6 +93,13 @@ class ConductorThermalWithstandItem:
     # Uzasadnienie statusu, gdy nie wynika on z rachunku kryterium (np. galaz poza
     # droga zwarcia). Bez tego PASS bylby nieodroznialny od PASS z obliczen.
     uzasadnienie_pl: str | None = None
+    # Karta F-K1 faza 5: POCHODZENIE czasu trwania zwarcia dla TEJ galezi. Czas z
+    # rozwiazanej nastawy i czas zalozony w przypadku obliczeniowym daja tak samo
+    # wygladajaca liczbe, wiec bez tego sladu projektant nie odroznia rozwiazanej
+    # ochrony od wlasnego zalozenia. ``None`` = galaz nie weszla do rachunku.
+    czas_wylaczenia: dict[str, Any] | None = None
+    # Kroki dowodowe rachunku (WHITE BOX solvera) — puste, gdy nie bylo rachunku.
+    kroki_dowodu: tuple[dict[str, Any], ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -97,6 +113,7 @@ class ConductorThermalWithstandItem:
             "applied_cross_section_mm2": self.applied_cross_section_mm2,
             "uzasadnienie_pl": self.uzasadnienie_pl,
             "missing_codes": list(self.missing_codes),
+            "czas_wylaczenia": self.czas_wylaczenia,
         }
 
 
@@ -128,31 +145,6 @@ class ConductorThermalWithstandView:
             "items": [item.to_dict() for item in self.items],
             "summary": self.summary.to_dict(),
         }
-
-
-def _branch_fault_current_a(sc_result: ShortCircuitResult, branch_id: str) -> float | None:
-    """Prad zwarciowy [A] przypisany galezi.
-
-    Suma udzialow zrodel (``branch_contributions``) dla danej galezi, netto wg
-    kierunku (from_to dodatnio, to_from ujemnie), modul sumy.
-
-    Zwraca ``None``, gdy solver NIE policzyl rozbicia na galezie
-    (``branch_contributions is None``) - brak danych, nie przyblizenie.
-    Zwraca ``0.0``, gdy rozbicie ISTNIEJE, ale galaz nie ma zadnego wpisu -
-    realny brak przeplywu pradu zwarciowego przez ta galaz dla danego zwarcia.
-    """
-    if sc_result.branch_contributions is None:
-        return None
-
-    net_a = 0.0
-    for contrib in sc_result.branch_contributions:
-        if contrib.branch_id != branch_id:
-            continue
-        if contrib.direction == "from_to":
-            net_a += contrib.i_contrib_a
-        else:
-            net_a -= contrib.i_contrib_a
-    return abs(net_a)
 
 
 def _resolve_branch_thermal_catalog(
@@ -190,6 +182,7 @@ def build_conductor_thermal_withstand_view(
     graph: NetworkGraph,
     catalog: CatalogRepository | None,
     tk_s_by_branch: Mapping[str, float | None] | None = None,
+    slad_czasu_by_branch: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> ConductorThermalWithstandView:
     """Zbuduj widok wytrzymalosci cieplnej przewodow (linie/kable) dla calego modelu.
 
@@ -210,6 +203,10 @@ def build_conductor_thermal_withstand_view(
             w mapie z wartoscia ``None`` jest jawnie oznaczana jako brak czasu
             (kod ``conductor.fault_duration_missing``). Galaz nieobecna w mapie
             uzywa ``sc_result.tk_s``.
+        slad_czasu_by_branch: opcjonalna mapa branch_id -> POCHODZENIE czasu
+            (``protection.czas_wylaczenia_galezi.slad_czasu``). Trafia wprost do
+            pozycji wyniku, zeby czas z nastawy byl odrozniany od czasu
+            zalozonego w przypadku obliczeniowym.
 
     Returns:
         ConductorThermalWithstandView - pozycje posortowane wg branch_id
@@ -230,6 +227,11 @@ def build_conductor_thermal_withstand_view(
             tk_s = tk_s_by_branch[branch_id]
         else:
             tk_s = sc_result.tk_s
+
+        slad_czasu = None
+        if slad_czasu_by_branch is not None:
+            wpis_czasu = slad_czasu_by_branch.get(branch_id)
+            slad_czasu = dict(wpis_czasu) if wpis_czasu is not None else None
 
         ith_1s_a, jth_1s_a_per_mm2, cross_section_mm2 = _resolve_branch_thermal_catalog(
             branch, catalog
@@ -254,9 +256,10 @@ def build_conductor_thermal_withstand_view(
                     applied_cross_section_mm2=cross_section_mm2,
                     missing_codes=(),
                     uzasadnienie_pl=(
-                        "Brak przeplywu pradu zwarciowego — galaz poza droga zwarcia; "
-                        "kryterium cieplne spelnione trywialnie."
+                        "Brak przepływu prądu zwarciowego — gałąź poza drogą zwarcia; "
+                        "kryterium cieplne spełnione trywialnie."
                     ),
+                    czas_wylaczenia=slad_czasu,
                 )
             )
             continue
@@ -282,6 +285,8 @@ def build_conductor_thermal_withstand_view(
                 s_min_mm2=result.required_cross_section_mm2,
                 applied_cross_section_mm2=cross_section_mm2,
                 missing_codes=result.readiness_codes,
+                czas_wylaczenia=slad_czasu,
+                kroki_dowodu=result.white_box_trace,
             )
         )
 
@@ -323,28 +328,26 @@ def _odtworz_wklady_galeziowe(
     return wklady
 
 
-def build_wytrzymalosc_cieplna_view(run: CanonicalRun) -> dict[str, Any]:
-    """Widok wytrzymalosci cieplnej przewodow dla przebiegu zwarciowego (karta F-K1 faza 3).
+def _odtworz_wynik_zwarciowy(run: CanonicalRun) -> ShortCircuitResult:
+    """Wynik zwarciowy odtworzony z wiersza przebiegu (read-only, bez fizyki).
 
-    Konsument analizy — bez niego kryterium liczyloby sie, a projektant by go nie
-    widzial (czyli byloby wyspa, przed ktora ostrzega audyt FLOW).
-
-    Bierze PIERWSZY wiersz wyniku zwarciowego (najniekorzystniejszy przypadek jest
-    wybierany przy zestawianiu biegu, nie tutaj) i buduje ocene per galaz.
+    Bierze PIERWSZY wiersz wyniku (najniekorzystniejszy przypadek wybiera sie przy
+    zestawianiu biegu, nie tutaj). Wspolne wejscie dla widoku oceny i dla dowodu —
+    dzieki temu dowod pokazuje TE SAME liczby, co tabela.
 
     Raises:
-        ValueError: gdy przebieg nie jest zwarciowy albo nie jest zakonczony —
-            komunikat w jezyku polskim, jak w pozostalych widokach.
+        ValueError: gdy przebieg nie jest zwarciowy, nie jest zakonczony albo nie
+            zawiera wiersza wyniku — komunikat po polsku, jak w innych widokach.
     """
     if run.analysis_type != "short_circuit_sn":
         raise ValueError(
-            "Ocena wytrzymalosci cieplnej przewodow wymaga przebiegu zwarciowego; "
+            "Ocena wytrzymałości cieplnej przewodów wymaga przebiegu zwarciowego; "
             f"otrzymano rodzaj analizy: {run.analysis_type}."
         )
     if run.status != "FINISHED":
         raise ValueError(
-            f"Przebieg {run.id} nie jest zakonczony (status={run.status}); "
-            "wynik zwarciowy nie jest dostepny."
+            f"Przebieg {run.id} nie jest zakończony (status={run.status}); "
+            "wynik zwarciowy nie jest dostępny."
         )
 
     # `raw_result["results"]` jest LISTA wierszy (canonical_analysis.py:1015), nie mapa.
@@ -352,7 +355,7 @@ def build_wytrzymalosc_cieplna_view(run: CanonicalRun) -> dict[str, Any]:
     if not wiersze:
         raise ValueError(
             f"Przebieg {run.id} nie zawiera wiersza wyniku zwarciowego, "
-            "wiec nie ma na czym oprzec oceny cieplnej."
+            "więc nie ma na czym oprzeć oceny cieplnej."
         )
     payload = wiersze[0]
 
@@ -373,17 +376,197 @@ def build_wytrzymalosc_cieplna_view(run: CanonicalRun) -> dict[str, Any]:
         tb_s=float(payload.get("tb_s", 0.0)),
         branch_contributions=_odtworz_wklady_galeziowe(payload),
     )
+    return sc_result
 
-    graph = map_enm_to_network_graph(EnergyNetworkModel.model_validate(run.snapshot))
+
+def _ocena_dla_przebiegu(
+    run: CanonicalRun,
+) -> tuple[ShortCircuitResult, ConductorThermalWithstandView, dict[str, dict[str, Any]]]:
+    """(wynik zwarciowy, ocena cieplna, slad czasu) dla przebiegu — jedno przejscie.
+
+    Karta F-K1 faza 5: czas trwania zwarcia PER GALAZ z realnej mapy zabezpieczen.
+    Galaz z rozwiazana nastawa dostaje czas policzony przez solver IEC 60255 przy
+    PRADZIE TEJ GALEZI; pozostale uzywaja zalozonego czasu przypadku, ale slad mowi
+    to wprost (``zrodlo``), wiec zalozenie nigdy nie udaje nastawy.
+    """
+    sc_result = _odtworz_wynik_zwarciowy(run)
+    model = EnergyNetworkModel.model_validate(run.snapshot)
+    graph = map_enm_to_network_graph(model)
+
+    czasy = czasy_dla_modelu(model=model, graph=graph, sc_result=sc_result)
+    slad = slad_czasu(czasy, tk_s_zalozony=sc_result.tk_s)
+
     # Katalog nie jest przekazywany: w sciezce produkcyjnej dane cieplne przychodza
     # NA GALEZI (przeniesione z materializacji katalogowej przez mapowanie ENM),
     # a nie przez `type_ref`, ktorego graf swiadomie nie wypelnia.
-    widok = build_conductor_thermal_withstand_view(sc_result, graph, None)
+    widok = build_conductor_thermal_withstand_view(
+        sc_result,
+        graph,
+        None,
+        tk_s_by_branch=mapa_tk_s_z_nastaw(czasy),
+        slad_czasu_by_branch=slad,
+    )
+    return sc_result, widok, slad
+
+
+def build_wytrzymalosc_cieplna_view(run: CanonicalRun) -> dict[str, Any]:
+    """Widok wytrzymalosci cieplnej przewodow dla przebiegu zwarciowego (karta F-K1 faza 3).
+
+    Konsument analizy — bez niego kryterium liczyloby sie, a projektant by go nie
+    widzial (czyli byloby wyspa, przed ktora ostrzega audyt FLOW).
+
+    Raises:
+        ValueError: gdy przebieg nie jest zwarciowy albo nie jest zakonczony —
+            komunikat w jezyku polskim, jak w pozostalych widokach.
+    """
+    sc_result, widok, slad = _ocena_dla_przebiegu(run)
     return {
         "run_id": str(run.id),
         "case_id": run.case_id,
         "analysis_type": run.analysis_type,
         "fault_node_id": sc_result.fault_node_id,
         "tk_s": sc_result.tk_s,
+        "czasy_wylaczenia": podsumowanie_czasow(slad),
         "ocena": widok.to_dict(),
     }
+
+
+def zbuduj_dowod_cieplny(run: CanonicalRun, branch_id: str) -> dict[str, Any]:
+    """Kroki dowodowe kryterium cieplnego dla JEDNEJ galezi (karta F-K1 faza 5).
+
+    Dowod zaczyna sie od kroku „Czas trwania zwarcia" — bo to on rozstrzyga, czy
+    werdykt opiera sie na rozwiazanej nastawie, czy na zalozeniu przypadku. Dalsze
+    kroki to slad WHITE BOX solvera kryterium (Wzor -> Dane -> Podstawienie ->
+    Wynik -> Uwagi), przepisany bez zadnego przeliczania.
+
+    Raises:
+        ValueError: gdy przebieg nie nadaje sie do oceny (jak w widoku) albo gdy
+            wskazana galaz nie wystepuje w ocenie.
+    """
+    # Kroki solvera bierzemy z OBIEKTU oceny (``to_dict`` ich nie niesie — lista
+    # pozycji nie ma puchnac o slad dowodowy kazdej galezi).
+    _sc_result, widok, slad = _ocena_dla_przebiegu(run)
+    pozycja = next((item for item in widok.items if item.branch_id == branch_id), None)
+    if pozycja is None:
+        raise ValueError(f"Gałąź {branch_id} nie występuje w ocenie cieplnej przebiegu {run.id}.")
+
+    kroki: list[dict[str, Any]] = []
+    wpis_czasu = slad.get(branch_id)
+    if wpis_czasu is not None:
+        kroki.append(_krok_czasu(wpis_czasu))
+    for numer, krok in enumerate(pozycja.kroki_dowodu, start=len(kroki) + 1):
+        kopia = dict(krok)
+        kopia["step"] = numer
+        kopia["element_id"] = branch_id
+        kroki.append(kopia)
+
+    if not pozycja.kroki_dowodu:
+        # Rachunku nie bylo (galaz poza droga zwarcia albo brak danej wejsciowej).
+        # Okno dowodu i tak musi powiedziec DLACZEGO — puste okno wygladaloby jak
+        # awaria, a nie jak uczciwy brak podstawy do rachunku.
+        kroki.append(
+            {
+                "step": len(kroki) + 1,
+                "key": "conductor_thermal_no_calculation",
+                "title": "Rachunku cieplnego nie przeprowadzono",
+                "inputs": {},
+                "substitution": "",
+                "result": {},
+                "notes": pozycja.uzasadnienie_pl
+                or (
+                    "Brak danych do rachunku: " + ", ".join(pozycja.missing_codes) + "."
+                    if pozycja.missing_codes
+                    else "Brak podstawy do rachunku cieplnego dla tej gałęzi."
+                ),
+                "element_id": branch_id,
+            }
+        )
+
+    return {
+        "run_id": str(run.id),
+        "branch_id": branch_id,
+        "branch_name": pozycja.branch_name,
+        "status": pozycja.status,
+        "kroki": kroki,
+    }
+
+
+def _liczba_tex(value: float) -> str:
+    """Liczba w zapisie polskim dla KaTeX (przecinek jako grupa ``{,}``)."""
+    return f"{round(value, 6):g}".replace(".", "{,}")
+
+
+def _krok_czasu(wpis: Mapping[str, Any]) -> dict[str, Any]:
+    """Krok 1 dowodu: SKAD wziety jest czas trwania zwarcia dla tej galezi."""
+    z_nastawy = wpis.get("zrodlo") == "nastawa_zabezpieczenia"
+    dane: dict[str, Any] = {}
+    if wpis.get("prad_galezi_a") is not None:
+        dane["i_galezi_a"] = {
+            "value": round(float(wpis["prad_galezi_a"]), 6),
+            "unit": "A",
+            "label": "Prąd zwarciowy gałęzi",
+        }
+    if wpis.get("prad_rozruchowy_a") is not None:
+        dane["i_rozruchowy_a"] = {
+            "value": round(float(wpis["prad_rozruchowy_a"]), 6),
+            "unit": "A",
+            "label": "Próg rozruchowy zabezpieczenia",
+        }
+    if wpis.get("tms") is not None:
+        dane["tms"] = {
+            "value": round(float(wpis["tms"]), 6),
+            "unit": "-",
+            "label": "Mnożnik czasowy nastawy",
+        }
+
+    # Pole „Podstawienie" okna dowodu renderuje sie przez KaTeX, wiec musi byc
+    # LaTeX-em (zdanie zostaloby zlepione w jeden ciag matematyczny).
+    czas_tex = _liczba_tex(float(wpis["tk_s"])) if wpis.get("tk_s") is not None else "?"
+    if z_nastawy and wpis.get("stala_a") is not None and wpis.get("stala_b") is not None:
+        wzor = r"$$t_k = \mathrm{TMS} \cdot \frac{A}{(I/I_s)^{B} - 1}$$"
+        podstawienie = (
+            r"$$t_k = "
+            + _liczba_tex(float(wpis["tms"]))
+            + r" \cdot \frac{"
+            + _liczba_tex(float(wpis["stala_a"]))
+            + r"}{\left(\frac{"
+            + _liczba_tex(float(wpis["prad_galezi_a"]))
+            + r"}{"
+            + _liczba_tex(float(wpis["prad_rozruchowy_a"]))
+            + r"}\right)^{"
+            + _liczba_tex(float(wpis["stala_b"]))
+            + r"} - 1} = "
+            + czas_tex
+            + r"\ \mathrm{s}$$"
+        )
+    elif z_nastawy:
+        # Charakterystyka niezalezna (DT): czas to wprost nastawiona zwloka —
+        # nie ma wzoru do podstawienia, jest sama wartosc.
+        wzor = None
+        podstawienie = r"$$t_k = " + czas_tex + r"\ \mathrm{s}$$"
+    else:
+        wzor = None
+        podstawienie = r"$$t_k = " + czas_tex + r"\ \mathrm{s}$$"
+
+    krok: dict[str, Any] = {
+        "step": 1,
+        "key": "conductor_thermal_time_source",
+        "title": (
+            "Czas trwania zwarcia z nastawy zabezpieczenia"
+            if z_nastawy
+            else "Czas trwania zwarcia z założenia przypadku"
+        ),
+        "inputs": dane,
+        "substitution": podstawienie,
+        "result": {
+            "tk_s": {
+                "value": wpis.get("tk_s"),
+                "unit": "s",
+                "label": "Czas trwania zwarcia",
+            }
+        },
+        "notes": str(wpis.get("powod_pl") or ""),
+    }
+    if wzor is not None:
+        krok["formula_latex"] = wzor
+    return krok

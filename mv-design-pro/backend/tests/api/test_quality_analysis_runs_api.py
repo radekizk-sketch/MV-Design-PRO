@@ -19,6 +19,7 @@ ENERGY_VALIDATION = "/api/quality/energy-validation"
 FLICKER = "/api/quality/flicker"
 CONNECTION_CONDITIONS = "/api/quality/connection-conditions"
 CONDUCTOR_THERMAL = "/api/quality/conductor-thermal-withstand"
+CONDUCTOR_THERMAL_PROOF = "/api/quality/conductor-thermal-withstand/proof"
 DESIGN_VERDICT = "/api/quality/design-verdict"
 ARC_FLASH = "/api/quality/arc-flash"
 ARC_FLASH_REPORT = "/api/quality/arc-flash/report"
@@ -345,6 +346,53 @@ def test_conductor_thermal_endpoint_returns_view(app_client) -> None:
     for pozycja in ocena["items"]:
         if pozycja["status"] == "UNAVAILABLE":
             assert pozycja["missing_codes"], "brak kodu gotowosci przy stanie niesprawdzonym"
+
+
+def test_conductor_thermal_exposes_time_source_per_branch(app_client) -> None:
+    """Karta F-K1 faza 5: kazda galaz mowi, SKAD ma czas trwania zwarcia.
+
+    Bez tego czas zalozony w przypadku obliczeniowym byl nieodrozninialny od
+    rozwiazanej nastawy zabezpieczenia — a to on wspoltworzy werdykt cieplny.
+    """
+    run_id = _sc_run_id()
+    resp = app_client.get(CONDUCTOR_THERMAL, params={"run_id": str(run_id)})
+    assert resp.status_code == 200
+    body = resp.json()
+
+    podsumowanie = body["czasy_wylaczenia"]
+    assert podsumowanie["z_nastawy"] + podsumowanie["z_zalozenia"] == podsumowanie["razem"]
+    assert podsumowanie["razem"] == len(body["ocena"]["items"])
+
+    for pozycja in body["ocena"]["items"]:
+        czas = pozycja["czas_wylaczenia"]
+        assert czas is not None
+        assert czas["zrodlo"] in {"nastawa_zabezpieczenia", "zalozenie_przypadku"}
+        assert czas["powod_pl"]
+
+
+def test_conductor_thermal_proof_returns_steps_starting_from_time_source(app_client) -> None:
+    run_id = _sc_run_id()
+    ocena = app_client.get(CONDUCTOR_THERMAL, params={"run_id": str(run_id)}).json()
+    branch_id = ocena["ocena"]["items"][0]["branch_id"]
+
+    resp = app_client.get(
+        CONDUCTOR_THERMAL_PROOF, params={"run_id": str(run_id), "branch_id": branch_id}
+    )
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["branch_id"] == branch_id
+    assert body["kroki"][0]["key"] == "conductor_thermal_time_source"
+    assert [krok["step"] for krok in body["kroki"]] == list(range(1, len(body["kroki"]) + 1))
+
+
+def test_conductor_thermal_proof_unknown_branch_returns_422(app_client) -> None:
+    run_id = _sc_run_id()
+    resp = app_client.get(
+        CONDUCTOR_THERMAL_PROOF, params={"run_id": str(run_id), "branch_id": "brak"}
+    )
+    assert resp.status_code == 422
+    assert "nie występuje" in resp.json()["detail"]
 
 
 def test_conductor_thermal_rejects_power_flow_run(app_client) -> None:

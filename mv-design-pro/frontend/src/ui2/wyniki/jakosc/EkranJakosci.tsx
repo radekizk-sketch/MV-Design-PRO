@@ -23,11 +23,13 @@ import { MathBlock } from '../../../ui/proof/MathRenderer';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
+import { PrzegladDowodu } from '../dowod';
 import {
   fetchArcFlash,
   fetchMigotanie,
   fetchWalidacjaEnergetyczna,
   fetchWarunkiPrzylaczenia,
+  fetchDowodCieplny,
   fetchWytrzymaloscCieplna,
   fetchWiarygodnoscZwarciowa,
   pobierzRaportArcFlash,
@@ -42,6 +44,7 @@ import {
   type WalidacjaItem,
   type WalidacjaResponse,
   type WarunkiPrzylaczeniaResponse,
+  type DowodCieplnyResponse,
   type WytrzymaloscCieplnaResponse,
   type WezelMigotania,
   type WiarygodnoscItem,
@@ -1362,7 +1365,7 @@ export function SekcjaWytrzymaloscCieplna({
     <section data-testid="mvd-jakosc-cieplna">
       <EkranAnalizy
         naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaCieplna, runId: runId ?? undefined }}
-        zalozenia={naZalozeniaCieplne(dane.fault_node_id, dane.tk_s, summary)}
+        zalozenia={naZalozeniaCieplne(dane.fault_node_id, dane.tk_s, summary, dane.czasy_wylaczenia)}
         kolumny={KOLUMNY_CIEPLNE}
         wiersze={naWierszeCieplne(items)}
         onOtworzDowod={onOtworzDowod}
@@ -1377,7 +1380,84 @@ export function SekcjaWytrzymaloscCieplna({
           poprawWModelu(klucz, 'LineBranch', klucz);
         }}
       />
+      <DowodCieplnyGalezi
+        runId={runId}
+        branchId={wybrany}
+        trybZaawansowania={trybZaawansowania}
+      />
     </section>
+  );
+}
+
+/**
+ * Dowód kryterium cieplnego wybranej gałęzi (karta F-K1 faza 5).
+ *
+ * Werdykt cieplny zależy od czasu trwania zwarcia tak samo mocno jak od prądu,
+ * więc dowód zaczyna się od kroku nazywającego ŹRÓDŁO tego czasu (rozwiązana
+ * nastawa zabezpieczenia albo założenie przypadku obliczeniowego). Kroki
+ * przychodzą gotowe z backendu — ZERO fizyki w UI; okno kroków to istniejący
+ * `PrzegladDowodu` (kanon pięciu pól), a nie druga implementacja.
+ */
+function DowodCieplnyGalezi({
+  runId,
+  branchId,
+  trybZaawansowania,
+}: {
+  runId: string | null;
+  branchId: string | null;
+  trybZaawansowania: AdvancementMode;
+}) {
+  const [dowod, setDowod] = useState<DowodCieplnyResponse | null>(null);
+  const [stan, setStan] = useState<'pusty' | 'ladowanie' | 'gotowe' | 'blad'>('pusty');
+
+  useEffect(() => {
+    if (!runId || !branchId) {
+      setDowod(null);
+      setStan('pusty');
+      return;
+    }
+    let aktualne = true;
+    setStan('ladowanie');
+    fetchDowodCieplny(runId, branchId)
+      .then((wynik) => {
+        if (!aktualne) return;
+        setDowod(wynik);
+        setStan('gotowe');
+      })
+      .catch(() => {
+        if (!aktualne) return;
+        setDowod(null);
+        setStan('blad');
+      });
+    return () => {
+      aktualne = false;
+    };
+  }, [runId, branchId]);
+
+  if (stan === 'pusty') {
+    return (
+      <p className="mvd-jakosc-dowod-podpowiedz" data-testid="mvd-jakosc-cieplna-dowod-pusty">
+        {JAKOSC_STRINGS.dowodWybierzGalaz}
+      </p>
+    );
+  }
+  if (stan === 'blad') {
+    return (
+      <p className="mvd-jakosc-dowod-podpowiedz" data-testid="mvd-jakosc-cieplna-dowod-blad">
+        {JAKOSC_STRINGS.dowodBlad}
+      </p>
+    );
+  }
+
+  return (
+    <div data-testid="mvd-jakosc-cieplna-dowod">
+      <PrzegladDowodu
+        analizaPL={`${JAKOSC_STRINGS.dowodTytul} — ${dowod?.branch_name ?? ''}`}
+        kroki={dowod ? [...dowod.kroki] : []}
+        trybZaawansowania={trybZaawansowania}
+        ladowanie={stan === 'ladowanie'}
+      />
+    </div>
   );
 }
 

@@ -296,6 +296,7 @@ domknięty przy karcie F-K3). Metoda bez zmian: grep w żywym repo, każdy wpis 
 | Delta | Dowód | Uzasadnienie |
 |---|---|---|
 | `wytrzymalosc_cieplna_przewodow.py` — kryterium cieplne na CAŁYM modelu po biegu zwarciowym (per gałąź) | `application/analyses/wytrzymalosc_cieplna_przewodow.py` (V12K-195/196) | Z1 na modelu, nie tylko w doborze kabla |
+| `protection/czas_wylaczenia_galezi.py` — czas wyłączenia PER GAŁĄŹ z mapy zabezpieczeń (topologia → wyłącznik → nastawa 50/51 → solver IEC 60255 przy prądzie tej gałęzi) + `prad_zwarciowy_galezi.py` (wspólny odczyt rozbicia prądu) | `application/analyses/protection/czas_wylaczenia_galezi.py`, `application/analyses/prad_zwarciowy_galezi.py` (V12K-209) | Z1: kryterium cieplne brało jeden założony `tk_s` dla całej sieci; teraz czas ma źródło per gałąź |
 | `warunki_przylaczenia.py` — moc i cosφ w punkcie przyłączenia wobec warunków OSD | `application/analyses/warunki_przylaczenia.py` (V12K-194) | Z2: warunki OSD przestały być wyświetlaczem, są kryterium |
 | `werdykt_projektowy.py` — agregat 10 kryteriów projektu (E1–E6) z 5 dostawców, trzy stany, jawny zakres poza automatem | `application/analyses/werdykt_projektowy.py` (V12K-198) | Z3: etap E7 (weryfikacja normatywna) nie miał dostawcy |
 
@@ -304,6 +305,7 @@ domknięty przy karcie F-K3). Metoda bez zmian: grep w żywym repo, każdy wpis 
 | Delta | Dowód | Uzasadnienie |
 |---|---|---|
 | `GET /api/quality/conductor-thermal-withstand?run_id=` | `api/quality_analysis_runs.py` | Wytrzymałość zwarciowa przewodów per gałąź |
+| `GET /api/quality/conductor-thermal-withstand/proof?run_id=&branch_id=` | `api/quality_analysis_runs.py` (V12K-209) | Pakiet dowodowy kryterium cieplnego jednej gałęzi; krok 1 nazywa źródło czasu trwania zwarcia |
 | `GET /api/quality/connection-conditions?run_id=` | `api/quality_analysis_runs.py` | Ocena warunków przyłączenia OSD wobec rozpływu |
 | `GET /api/quality/design-verdict?case_id=` | `api/quality_analysis_runs.py` | Agregat werdyktu projektowego (jedyna końcówka rodziny per PRZYPADEK — obejmuje wiele biegów) |
 | `GET /api/protection/overcurrent-settings?run_id=` albo `?case_id=` | `api/protection_overcurrent_settings.py` (V12K-204) | Nastawy nadprądowe w postaci prezentacyjnej: wartość albo jawny stan NIEDOSTĘPNA z powodem i akcją naprawczą (dług V12K-189) |

@@ -353,6 +353,7 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
   analysis_type: 'short_circuit_sn',
   fault_node_id: 'BUS-02',
   tk_s: 0.25,
+  czasy_wylaczenia: { z_nastawy: 1, z_zalozenia: 0, razem: 1 },
   ocena: {
     items: [
       {
@@ -366,6 +367,19 @@ export const CIEPLNA_FIXTURE: WytrzymaloscCieplnaResponse = {
         applied_cross_section_mm2: 120,
         missing_codes: [],
         uzasadnienie_pl: null,
+        // Karta F-K1 faza 5: czas z ROZWIAZANEJ nastawy (nie z zalozenia przypadku).
+        czas_wylaczenia: {
+          tk_s: 0.25,
+          zrodlo: 'nastawa_zabezpieczenia',
+          powod_pl: 'Czas z charakterystyki IEC_SI zabezpieczenia pola przy prądzie gałęzi.',
+          urzadzenie_ref: 'CB1',
+          urzadzenie_nazwa: 'Wyłącznik pola liniowego',
+          funkcja: 'overcurrent_51',
+          prad_galezi_a: 15000,
+          prad_rozruchowy_a: 600,
+          krzywa: 'IEC_SI',
+          tms: 0.2,
+        },
       },
     ],
     summary: { pass_count: 1, fail_count: 0, unavailable_count: 0 },

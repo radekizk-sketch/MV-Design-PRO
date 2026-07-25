@@ -22,6 +22,8 @@
  * Wzór pobierania: `ui/ncrfg-tests/api.ts`.
  */
 
+import type { TraceStep } from '../../../ui/results-inspector/types';
+
 // ---------------------------------------------------------------------------
 // Wiarygodność zwarciowa (sanity-bounds)
 // ---------------------------------------------------------------------------
@@ -464,6 +466,34 @@ export interface PozycjaCieplna {
   readonly missing_codes: readonly string[];
   /** Powód statusu, gdy nie wynika z rachunku (np. gałąź poza drogą zwarcia). */
   readonly uzasadnienie_pl: string | null;
+  /**
+   * Pochodzenie czasu trwania zwarcia dla TEJ gałęzi (karta F-K1 faza 5).
+   * `zrodlo`: `nastawa_zabezpieczenia` — czas policzony przez solver IEC 60255 przy
+   * prądzie tej gałęzi; `zalozenie_przypadku` — czas podany w konfiguracji biegu.
+   * Bez tego pola obie wartości wyglądałyby w tabeli identycznie.
+   */
+  readonly czas_wylaczenia: SladCzasuWylaczenia | null;
+}
+
+/** Ślad czasu wyłączenia — `application/analyses/protection/czas_wylaczenia_galezi.py`. */
+export interface SladCzasuWylaczenia {
+  readonly tk_s: number | null;
+  readonly zrodlo: string;
+  readonly powod_pl: string;
+  readonly urzadzenie_ref: string | null;
+  readonly urzadzenie_nazwa: string | null;
+  readonly funkcja: string | null;
+  readonly prad_galezi_a: number | null;
+  readonly prad_rozruchowy_a: number | null;
+  readonly krzywa: string | null;
+  readonly tms: number | null;
+}
+
+/** Ile gałęzi ma czas z nastawy, a ile z założenia przypadku. */
+export interface PodsumowanieCzasow {
+  readonly z_nastawy: number;
+  readonly z_zalozenia: number;
+  readonly razem: number;
 }
 
 /** Podsumowanie: NIESPRAWDZONE nigdy nie jest doliczane do spełnionych. */
@@ -480,6 +510,7 @@ export interface WytrzymaloscCieplnaResponse {
   readonly analysis_type: string;
   readonly fault_node_id: string;
   readonly tk_s: number;
+  readonly czasy_wylaczenia: PodsumowanieCzasow;
   readonly ocena: {
     readonly items: readonly PozycjaCieplna[];
     readonly summary: PodsumowanieCieplne;
@@ -490,5 +521,30 @@ export interface WytrzymaloscCieplnaResponse {
 export function fetchWytrzymaloscCieplna(runId: string): Promise<WytrzymaloscCieplnaResponse> {
   return getJson<WytrzymaloscCieplnaResponse>(
     `/api/quality/conductor-thermal-withstand?run_id=${encodeURIComponent(runId)}`,
+  );
+}
+
+/** Pełna odpowiedź `GET /api/quality/conductor-thermal-withstand/proof`. */
+export interface DowodCieplnyResponse {
+  readonly run_id: string;
+  readonly branch_id: string;
+  readonly branch_name: string;
+  readonly status: StatusWarunku;
+  /** Kroki w kanonie Wzór → Dane → Podstawienie → Wynik → Uwagi (`TraceStep`). */
+  readonly kroki: readonly TraceStep[];
+}
+
+/**
+ * Pakiet dowodowy kryterium cieplnego dla JEDNEJ gałęzi (karta F-K1 faza 5).
+ * Krok pierwszy nazywa źródło czasu trwania zwarcia — bez niego werdykt nie jest
+ * audytowalny, bo czas rozstrzyga o wyniku tak samo mocno jak prąd.
+ */
+export function fetchDowodCieplny(
+  runId: string,
+  branchId: string,
+): Promise<DowodCieplnyResponse> {
+  return getJson<DowodCieplnyResponse>(
+    `/api/quality/conductor-thermal-withstand/proof?run_id=${encodeURIComponent(runId)}` +
+      `&branch_id=${encodeURIComponent(branchId)}`,
   );
 }

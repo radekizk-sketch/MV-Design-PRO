@@ -176,6 +176,68 @@ def test_pass_item_for_branch_with_sufficient_cross_section() -> None:
     assert by_id["cable_A"].utilization == 0.9375
 
 
+def test_kroki_dowodowe_niosa_te_same_liczby_co_pozycja_wyniku() -> None:
+    """Karta F-K1 faza 5: dowod musi POKAZYWAC rachunek, a nie go powtarzac.
+
+    Rachunek niezalezny (te same dane co w tescie PASS): I_dop = 8000/√0,25 = 16000 A,
+    wykorzystanie = 15000/16000 = 0,9375, S_min = 15000·√0,25/80 = 93,75 mm²
+    (Jth(1s) = 80 A/mm² z katalogu testowego).
+    Krok dowodu ma niesc DOKLADNIE te liczby — rozjazd oznaczalby drugi rachunek
+    ukryty w warstwie prezentacji.
+    """
+    graph = _graph_with_two_cables()
+    catalog = _catalog_with_cable_type()
+    sc_result = _sc_result(
+        tk_s=0.25,
+        branch_contributions=[
+            ShortCircuitBranchContribution(
+                source_id="GRID",
+                branch_id="cable_A",
+                from_node_id="BUS1",
+                to_node_id="BUS2",
+                i_contrib_a=15000.0,
+                direction="from_to",
+            ),
+        ],
+    )
+
+    view = build_conductor_thermal_withstand_view(sc_result, graph, catalog)
+    pozycja = next(item for item in view.items if item.branch_id == "cable_A")
+
+    kroki = {krok["key"]: krok for krok in pozycja.kroki_dowodu}
+    assert set(kroki) == {
+        "conductor_thermal_admissible",
+        "conductor_thermal_criterion",
+        "conductor_thermal_min_section",
+    }
+    assert kroki["conductor_thermal_admissible"]["result"]["i_dop_a"]["value"] == pytest.approx(
+        16000.0
+    )
+    assert kroki["conductor_thermal_criterion"]["result"]["utilization"]["value"] == pytest.approx(
+        0.9375
+    )
+    assert kroki["conductor_thermal_min_section"]["result"]["s_min_mm2"]["value"] == pytest.approx(
+        93.75
+    )
+    # Kanon pieciu pol: wzor, dane, podstawienie, wynik, uwagi.
+    for krok in pozycja.kroki_dowodu:
+        assert krok["formula_latex"].startswith("$$")
+        assert krok["inputs"] and krok["result"]
+        assert krok["substitution"] and krok["notes"]
+
+
+def test_pozycja_niesprawdzona_nie_niesie_krokow_dowodowych() -> None:
+    """Brak rachunku = brak krokow. Kroki „na sucho" udawalyby przeprowadzony dowod."""
+    graph = _graph_with_two_cables()
+    sc_result = _sc_result(tk_s=0.25, branch_contributions=None)
+
+    view = build_conductor_thermal_withstand_view(sc_result, graph, None)
+
+    for item in view.items:
+        assert item.status == "UNAVAILABLE"
+        assert item.kroki_dowodu == ()
+
+
 def test_fail_item_for_branch_with_insufficient_cross_section() -> None:
     """FAIL: prad gałęzi > I_dop(t).
 
@@ -445,7 +507,7 @@ def test_galaz_poza_droga_zwarcia_ma_jawne_uzasadnienie_statusu() -> None:
     assert poza_droga.status == "PASS"
     assert poza_droga.i_fault_a == 0.0
     assert poza_droga.uzasadnienie_pl is not None
-    assert "poza droga zwarcia" in poza_droga.uzasadnienie_pl
+    assert "poza drogą zwarcia" in poza_droga.uzasadnienie_pl
     # Brak wielkosci kryterialnych — nie udajemy, ze cokolwiek policzono.
     assert poza_droga.i_permissible_a is None
     assert poza_droga.utilization is None

@@ -76,6 +76,18 @@ export const JAKOSC_STRINGS = {
     'Żadna gałąź nie ma w katalogu wytrzymałości cieplnej żyły (Ith lub Jth dla 1 s) albo bieg nie dał rozbicia prądu na gałęzie. Uzupełnij pozycje katalogowe kabli, aby ocenić przekroje.',
   cieplnaPodsumowanie: (ok: number, zle: number, brak: number) =>
     `Spełnione: ${ok} · Naruszone: ${zle} · Niesprawdzone: ${brak}`,
+  // Karta F-K1 faza 5: czas wyłączenia per gałąź i jego pochodzenie.
+  kolCzasWylaczenia: 'Czas wyłączenia',
+  kolZrodloCzasu: 'Źródło czasu',
+  czasZNastawy: 'Nastawa zabezpieczenia',
+  czasZZalozenia: 'Założenie przypadku',
+  czasPodsumowanie: (zNastawy: number, zZalozenia: number) =>
+    `Z nastaw zabezpieczeń: ${zNastawy} · z założenia przypadku: ${zZalozenia}`,
+  czasZrodloUwaga:
+    'Czas z nastawy liczy solver IEC 60255 przy prądzie tej gałęzi; założenie przypadku to wartość podana w konfiguracji biegu zwarciowego.',
+  dowodTytul: 'Dowód kryterium cieplnego',
+  dowodWybierzGalaz: 'Wybierz gałąź w tabeli, aby zobaczyć dowód kryterium.',
+  dowodBlad: 'Nie udało się pobrać dowodu dla tej gałęzi.',
   kolStatusWalidacji: 'Status',
   kolIdentyfikatorObiektu: 'Identyfikator obiektu',
 

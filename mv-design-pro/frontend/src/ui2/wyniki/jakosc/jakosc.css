@@ -406,3 +406,11 @@
 .mvd-jakosc-af-raport-blad {
   color: var(--mvd-err);
 }
+
+/* Podpowiedź nad dowodem kryterium cieplnego (karta F-K1 faza 5): stan „nie
+   wybrano gałęzi" i błąd pobrania — uczciwy komunikat zamiast pustego panelu. */
+.mvd-jakosc-dowod-podpowiedz {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
