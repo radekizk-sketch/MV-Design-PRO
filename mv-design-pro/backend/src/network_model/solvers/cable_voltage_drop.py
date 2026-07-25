@@ -3,6 +3,20 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 
+# Dozwolone wartosci kierunkow — JEDNO zrodlo dla wszystkich przelicznikow, ktore te
+# pola przyjmuja (podglad ΔU oraz dobor kabla toru DER). Bez wspolnej definicji kazda
+# warstwa musialaby powtarzac liste i mogla sie z nia rozjechac.
+FLOW_DIRECTIONS: tuple[str, ...] = ("load", "generation")
+REACTIVE_CHARACTERS: tuple[str, ...] = ("inductive", "capacitive")
+
+
+def validate_flow_flags(flow_direction: str, reactive_character: str) -> None:
+    """Sprawdz kierunek mocy czynnej i charakter mocy biernej (ValueError przy bledzie)."""
+    if flow_direction not in FLOW_DIRECTIONS:
+        raise ValueError("flow_direction musi byc 'load' albo 'generation'.")
+    if reactive_character not in REACTIVE_CHARACTERS:
+        raise ValueError("reactive_character musi byc 'inductive' albo 'capacitive'.")
+
 
 @dataclass(frozen=True)
 class CableVoltageDropInput:
@@ -109,10 +123,7 @@ def compute_cable_voltage_drop(data: CableVoltageDropInput) -> CableVoltageDropR
         raise ValueError("Reaktancja jednostkowa nie moze byc ujemna.")
     if not 0.0 < data.cos_phi <= 1.0:
         raise ValueError("Wspolczynnik mocy cosφ musi lezec w zakresie (0, 1].")
-    if data.flow_direction not in ("load", "generation"):
-        raise ValueError("flow_direction musi byc 'load' albo 'generation'.")
-    if data.reactive_character not in ("inductive", "capacitive"):
-        raise ValueError("reactive_character musi byc 'inductive' albo 'capacitive'.")
+    validate_flow_flags(data.flow_direction, data.reactive_character)
 
     # Znaki skladowych sa NIEZALEZNE, bo kierunek mocy czynnej i biernej moze byc
     # rozny: falownik OZE oddaje P (napiecie rosnie) i moze jednoczesnie pobierac Q

@@ -6,6 +6,9 @@ from application.analyses.design_synth.canonical import canonicalize_json
 from application.analyses.design_synth.fingerprint import fingerprint_json
 from application.analyses.protection.overcurrent.inputs import ProtectionInput
 from application.analyses.protection.overcurrent.settings import OvercurrentSettingsV0
+from application.analyses.protection.overcurrent.settings_presentation import (
+    zbuduj_prezentacje_nastaw,
+)
 
 BoundaryNode_LABEL = "BoundaryNode – węzeł przyłączenia"
 
@@ -16,6 +19,15 @@ def build_overcurrent_report_v0(
     *,
     run_meta: dict[str, Any],
 ) -> dict[str, Any]:
+    """Raport nastaw v0.
+
+    V12K-204 (karta F-K5, dlug V12K-189): raport niesie SEKCJE PREZENTACYJNA nastaw,
+    w ktorej nastawa niewyznaczalna jest jawnym stanem „niedostepna — uzupelnij dane"
+    z powodem i akcja naprawcza z kanonicznego rejestru kodow gotowosci. Bez tej sekcji
+    kazdy konsument (ekran, PDF, DOCX) musialby sam interpretowac ``None`` i pokazywalby
+    puste pole, czyli milczenie tam, gdzie projektant potrzebuje instrukcji.
+    """
+    settings_dict = settings.to_dict()
     report_body: dict[str, Any] = {
         "analysis_type": "protection.overcurrent.v0",
         "inputs": {
@@ -27,7 +39,8 @@ def build_overcurrent_report_v0(
             "topology_ref": input.topology_ref,
             "source_run_id": input.source_run_id,
         },
-        "settings": settings.to_dict(),
+        "settings": settings_dict,
+        "settings_presentation": zbuduj_prezentacje_nastaw(settings_dict),
         "assumptions": settings.assumptions,
         "warnings": settings.warnings,
         "trace_summary": {

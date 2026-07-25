@@ -25,6 +25,7 @@ import { ProtectionCoordinationPage } from '../../../ui/protection-coordination/
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useShellStore } from '../../shell/useShellStore';
 import { maZakonczonyPrzebieg } from '../analizy/model';
+import { SekcjaNastaw } from './SekcjaNastaw';
 import { KOORDYNACJA_STRINGS as T } from './strings';
 
 function StanZerowy({
@@ -58,6 +59,7 @@ function StanZerowy({
 
 export function EkranKoordynacji() {
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
+  const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const przebiegi = useExecutionRunsStore((s) => s.runs);
   const setActiveSpace = useShellStore((s) => s.setActiveSpace);
 
@@ -87,9 +89,16 @@ export function EkranKoordynacji() {
           testid="mvd-koordynacja-brak-zwarcia"
         />
       ) : (
-        <div className="mvd-koordynacja-strona" data-testid="mvd-koordynacja-strona">
-          <ProtectionCoordinationPage />
-        </div>
+        <>
+          {/* Nastawy z analizy IDĄ PRZED selektywnością: kolejność flow to
+              „nastawy → selektywność", a bez wyznaczonych nastaw margines CTI
+              nie ma czego porównywać. Sekcja mówi też wprost, których nastaw
+              nie da się wyznaczyć i co uzupełnić (dług V12K-189). */}
+          {activeCaseId ? <SekcjaNastaw caseId={activeCaseId} /> : null}
+          <div className="mvd-koordynacja-strona" data-testid="mvd-koordynacja-strona">
+            <ProtectionCoordinationPage />
+          </div>
+        </>
       )}
     </div>
   );

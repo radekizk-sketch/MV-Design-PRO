@@ -6,6 +6,11 @@
  * z `gridSourcePreviewApi.ts`.
  */
 
+/** Kierunek przepływu mocy czynnej: odbiór (spadek) albo generacja (wzrost). */
+export type FlowDirection = 'load' | 'generation';
+/** Charakter mocy biernej: indukcyjny (pobór Q) albo pojemnościowy (oddawanie Q). */
+export type ReactiveCharacter = 'inductive' | 'capacitive';
+
 export interface CableVoltageDropRequest {
   current_a: number;
   length_km: number;
@@ -13,6 +18,9 @@ export interface CableVoltageDropRequest {
   x_ohm_per_km: number;
   cos_phi: number;
   line_voltage_v: number;
+  /** Karta F-K5 (dług V12K-190): brak pola = odbiór indukcyjny (dawne zachowanie). */
+  flow_direction?: FlowDirection;
+  reactive_character?: ReactiveCharacter;
 }
 
 export interface CableVoltageDropResponse {
@@ -24,6 +32,10 @@ export interface CableVoltageDropResponse {
   delta_u_reactive_v: number;
   formula_ref: string;
   assumptions: string[];
+  /** True ⇒ napięcie ROŚNIE (ΔU < 0). Znak samego ΔU bez tego jest nieczytelny. */
+  is_voltage_rise?: boolean;
+  flow_direction?: FlowDirection;
+  reactive_character?: ReactiveCharacter;
 }
 
 export interface CableRatedCurrentRequest {

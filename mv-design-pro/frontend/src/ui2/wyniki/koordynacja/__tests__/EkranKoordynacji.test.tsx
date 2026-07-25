@@ -229,3 +229,77 @@ describe('EkranKoordynacji — realna strona przy kompletnym kontekście', () =>
     expect(body.devices.length).toBeGreaterThan(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Karta F-K5 (dług V12K-189): sekcja nastaw NA EKRANIE, przed selektywnością.
+// Test celowo ćwiczy WPIĘCIE (nie sam komponent): bez aktywnego przypadku sekcji
+// nie ma czym zapytać, a kolejność „nastawy → selektywność" jest kontraktem flow.
+// ---------------------------------------------------------------------------
+
+const NASTAWY_ODPOWIEDZ = {
+  run_id: 'protection.overcurrent.v0:e2e',
+  case_id: 'case-1',
+  analysis_type: 'protection.overcurrent.v0',
+  status: 'DEGRADED',
+  prezentacja: {
+    pozycje: [
+      {
+        klucz: 'i_inst_50_a',
+        etykieta: 'I>> (50) — nastawa bezzwloczna',
+        jednostka: 'A',
+        wartosc: null,
+        stan: 'NIEDOSTEPNA',
+        komunikat_pl: 'Niedostepna — uzupelnij dane wejsciowe',
+        powod_pl: 'Brak prądu zwarciowego z biegu SC',
+        fix_action_id: 'fix_protection_run_short_circuit',
+        fix_navigation: { panel: 'analizy' },
+      },
+    ],
+    kompletne: false,
+    brakujace: ['i_inst_50_a'],
+    kody_gotowosci: ['protection.fault_current_missing'],
+    podsumowanie_pl: 'Niedostepne nastawy: 1 z 4',
+  },
+};
+
+describe('EkranKoordynacji — nastawy z analizy (karta F-K5)', () => {
+  it('z aktywnym przypadkiem sekcja nastaw jest na ekranie PRZED stroną selektywności', async () => {
+    ustawKompletnyKontekst();
+    useAppStateStore.getState().setActiveCase('case-1', 'Warian bazowy');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).startsWith('/api/protection/overcurrent-settings')) {
+          return { ok: true, status: 200, json: async () => NASTAWY_ODPOWIEDZ } as Response;
+        }
+        // Strona selektywności ma własne wywołania — dla tego testu nieistotne.
+        return { ok: true, status: 200, json: async () => ({ rows: [] }) } as Response;
+      }),
+    );
+
+    render(<EkranKoordynacji />);
+
+    const sekcja = await screen.findByTestId('mvd-koordynacja-nastawy');
+    const strona = screen.getByTestId('mvd-koordynacja-strona');
+    // Kolejność w DOM = kolejność pracy inżyniera: najpierw nastawy, potem selektywność.
+    expect(sekcja.compareDocumentPosition(strona) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(sekcja.textContent).toContain('Niedostepna');
+    vi.unstubAllGlobals();
+  });
+
+  it('bez aktywnego przypadku sekcja nastaw się nie renderuje (nie ma czym zapytać)', () => {
+    ustawKompletnyKontekst();
+    const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }) as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<EkranKoordynacji />);
+
+    expect(screen.queryByTestId('mvd-koordynacja-nastawy')).toBeNull();
+    expect(screen.queryByTestId('mvd-koordynacja-nastawy-ladowanie')).toBeNull();
+    const wywolaniaNastaw = fetchMock.mock.calls.filter((c) =>
+      String(c[0]).startsWith('/api/protection/overcurrent-settings'),
+    );
+    expect(wywolaniaNastaw).toHaveLength(0);
+    vi.unstubAllGlobals();
+  });
+});

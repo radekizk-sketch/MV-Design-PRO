@@ -149,15 +149,28 @@ def _extract_requirement(meta_json: dict[str, Any] | None) -> ProtectionRequirem
     raise ValueError("Protection requirements not available")
 
 
+def _nastawa_opcjonalna(wartosc: Any) -> float | None:
+    """Nastawa NIEDOSTĘPNA pozostaje ``None`` — nigdy 0,0 ani wyjątek (V12K-189).
+
+    Defekt naprawiony w karcie F-K5: adapter wymuszał ``float(...)`` na każdym polu,
+    więc po V12K-189 (nastawy ``float | None``) niedostępna nastawa albo wywalała
+    ``TypeError`` w środku doboru aparatu, albo — gdyby klucza brakowało — cicho
+    stawała się zerem, czyli wymaganiem, którego projekt nie policzył.
+    """
+    if wartosc is None:
+        return None
+    return float(wartosc)
+
+
 def _settings_to_requirement(settings: dict[str, Any]) -> ProtectionRequirementV0:
     return ProtectionRequirementV0(
         curve=str(settings.get("curve", "")),
-        i_pickup_51_a=float(settings.get("i_pickup_51_a", 0.0)),
+        i_pickup_51_a=_nastawa_opcjonalna(settings.get("i_pickup_51_a")),
         tms_51=float(settings.get("tms_51", 0.0)),
-        i_inst_50_a=float(settings.get("i_inst_50_a", 0.0)),
-        i_pickup_51n_a=float(settings.get("i_pickup_51n_a", 0.0)),
+        i_inst_50_a=_nastawa_opcjonalna(settings.get("i_inst_50_a")),
+        i_pickup_51n_a=_nastawa_opcjonalna(settings.get("i_pickup_51n_a")),
         tms_51n=float(settings.get("tms_51n", 0.0)),
-        i_inst_50n_a=float(settings.get("i_inst_50n_a", 0.0)),
+        i_inst_50n_a=_nastawa_opcjonalna(settings.get("i_inst_50n_a")),
     )
 
 

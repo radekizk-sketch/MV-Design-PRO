@@ -25,7 +25,9 @@ from dataclasses import dataclass
 
 from network_model.solvers.cable_voltage_drop import (
     CableVoltageDropInput,
+    CableVoltageDropResult,
     compute_cable_voltage_drop,
+    validate_flow_flags,
 )
 from network_model.solvers.conductor_thermal_withstand import (
     STATUS_FAIL as STATUS_THERMAL_FAIL,
@@ -312,6 +314,10 @@ class CableProposal:
     rated_current_a: float
     delta_u_v: float
     delta_u_pct: float
+    # V12K-203: czy ΔU propozycji to WZROST napięcia (ΔU < 0). Bez tego pola warstwa
+    # prezentacji musiałaby sama interpretować znak, a dla toru DER wzrost jest
+    # regułą, nie wyjątkiem — kreator ma nazwać wielkość, którą pokazuje.
+    is_voltage_rise: bool = False
 
 
 @dataclass(frozen=True)
@@ -325,6 +331,11 @@ class CableSelectionResult:
     error_code: str | None
     error_pl: str | None
     formula_ref: str = _CABLE_FORMULA_REF
+    # V12K-203: kierunki, dla których policzono ΔU kandydatów — bez ich echa wynik
+    # doboru nie mówi, jaki przypadek pracy toru sprawdzono (a od tego zależy, czy
+    # ΔU jest spadkiem, czy wzrostem, i czy wybrano właściwy przekrój).
+    flow_direction: str = "generation"
+    reactive_character: str = "inductive"
 
 
 def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
@@ -342,12 +353,18 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
         raise ValueError("Napięcie linii musi być dodatnie.")
     if not 0.0 < data.cos_phi <= 1.0:
         raise ValueError("Współczynnik mocy cosφ musi leżeć w zakresie (0, 1].")
+    # Kierunki sprawdzamy PRZED petla kandydatow: przy pustym katalogu blad wejscia
+    # inaczej przeszedlby niezauwazony, a wynik „brak kandydata" ukrylby literowke
+    # w nazwie przypadku pracy toru.
+    validate_flow_flags(data.flow_direction, data.reactive_character)
 
     reserve = data.reserve_pu if data.reserve_pu >= 0 else 0.0
     required_ampacity = data.transformer_current_a * (1.0 + reserve)
 
     rejected: list[RejectedCandidate] = []
-    eligible: list[tuple[CableCandidate, float, float]] = []
+    # Kandydat razem z CALYM wynikiem ΔU — znak (spadek/wzrost) nie jest wtedy
+    # odtwarzany po fakcie w warstwie wyzej, tylko przenoszony z rachunku solvera.
+    eligible: list[tuple[CableCandidate, CableVoltageDropResult]] = []
 
     for candidate in data.candidates:
         drop = compute_cable_voltage_drop(
@@ -419,7 +436,7 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
                     )
                 )
                 continue
-        eligible.append((candidate, drop.delta_u_v, drop.delta_u_pct))
+        eligible.append((candidate, drop))
 
     if not eligible:
         # Rozróżnij dominujący powód braku kandydata dla właściwego komunikatu ❌ kanonu.
@@ -457,10 +474,12 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
             rejected=tuple(rejected),
             error_code=error_code,
             error_pl=error_pl,
+            flow_direction=data.flow_direction,
+            reactive_character=data.reactive_character,
         )
 
     # Najmniejszy przekrój spełniający oba warunki; remis rozstrzyga ref (determinizm).
-    best, best_delta_u_v, best_delta_u_pct = min(
+    best, best_drop = min(
         eligible, key=lambda item: (item[0].cross_section_mm2, item[0].catalog_ref)
     )
     return CableSelectionResult(
@@ -469,14 +488,17 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
             name=best.name,
             cross_section_mm2=best.cross_section_mm2,
             rated_current_a=best.rated_current_a,
-            delta_u_v=best_delta_u_v,
-            delta_u_pct=best_delta_u_pct,
+            delta_u_v=best_drop.delta_u_v,
+            delta_u_pct=best_drop.delta_u_pct,
+            is_voltage_rise=best_drop.is_voltage_rise,
         ),
         required_ampacity_a=required_ampacity,
         max_delta_u_pct=data.max_delta_u_pct,
         rejected=tuple(rejected),
         error_code=None,
         error_pl=None,
+        flow_direction=data.flow_direction,
+        reactive_character=data.reactive_character,
     )
 
 

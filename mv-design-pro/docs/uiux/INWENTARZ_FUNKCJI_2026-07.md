@@ -305,6 +305,7 @@ domknięty przy karcie F-K3). Metoda bez zmian: grep w żywym repo, każdy wpis 
 | `GET /api/quality/conductor-thermal-withstand?run_id=` | `api/quality_analysis_runs.py` | Wytrzymałość zwarciowa przewodów per gałąź |
 | `GET /api/quality/connection-conditions?run_id=` | `api/quality_analysis_runs.py` | Ocena warunków przyłączenia OSD wobec rozpływu |
 | `GET /api/quality/design-verdict?case_id=` | `api/quality_analysis_runs.py` | Agregat werdyktu projektowego (jedyna końcówka rodziny per PRZYPADEK — obejmuje wiele biegów) |
+| `GET /api/protection/overcurrent-settings?run_id=` albo `?case_id=` | `api/protection_overcurrent_settings.py` (V12K-204) | Nastawy nadprądowe w postaci prezentacyjnej: wartość albo jawny stan NIEDOSTĘPNA z powodem i akcją naprawczą (dług V12K-189) |
 
 ### 9.4 Dodane — frontend (§5b)
 
@@ -312,6 +313,7 @@ domknięty przy karcie F-K3). Metoda bez zmian: grep w żywym repo, każdy wpis 
 |---|---|---|
 | `ui2/wyniki/jakosc/` — dwie nowe sekcje: „Warunki przyłączenia" (bieg PF) i „Wytrzymałość zwarciowa przewodów" (bieg SC) | `ui2/wyniki/jakosc/{api.ts,jakoscModel.ts,EkranJakosci.tsx}` (V12K-194/197) | Kryteria widoczne dla projektanta, z pętlą decyzji |
 | `ui2/wyniki/werdykt/` — NOWY moduł: ekran „Werdykt projektowy" jako pierwsza zakładka przestrzeni Wyniki | `ui2/wyniki/werdykt/`, `ui2/spaces/wyniki/WynikiWarsztat.tsx` (V12K-198) | Jedno miejsce rozliczenia kryteriów projektu (etap E7) |
+| `ui2/wyniki/koordynacja/` — nowa sekcja „Nastawy wyznaczone z analizy" PRZED stroną selektywności; kreator OZE (`ui2/kreatory/zrodlo-oze/`) dostał `cos φ toru` i `Charakter mocy biernej falownika` | `ui2/wyniki/koordynacja/{nastawyApi.ts,SekcjaNastaw.tsx}` (V12K-204); `ui2/kreatory/zrodlo-oze/{derSelectionApi,zrodloOzeDobor,DoborToruSn}` (V12K-203) | Nastawa niedostępna widoczna jako stan z drogą do naprawy; przypadek pracy toru DER wybierany, a ΔU nazwane wzrostem albo spadkiem |
 
 ### 9.5 Poprawione — macierz pokrycia (§6)
 
@@ -320,4 +322,6 @@ domknięty przy karcie F-K3). Metoda bez zmian: grep w żywym repo, każdy wpis 
 | Wytrzymałość zwarciowa przewodu: pozycji nie było → ✔ solver + API + UI | `conductor_thermal_withstand.py`; `/api/quality/conductor-thermal-withstand`; `ui2/wyniki/jakosc/` | Zdolność nowa, wpięta end-to-end |
 | Warunki przyłączenia OSD jako kryterium: pozycji nie było → ✔ analiza + API + UI | `warunki_przylaczenia.py`; `/api/quality/connection-conditions`; `ui2/wyniki/jakosc/` | Z2 domknięte |
 | Werdykt projektowy (agregat E7): pozycji nie było → ✔ analiza + API + UI | `werdykt_projektowy.py`; `/api/quality/design-verdict`; `ui2/wyniki/werdykt/` | Z3 domknięte |
+| Nastawy nadprądowe: solver ✔ / API ✖ / UI ✖ → ✔ solver + API + UI | `overcurrent/settings_presentation.py`; `/api/protection/overcurrent-settings`; `ui2/wyniki/koordynacja/SekcjaNastaw.tsx` | Dług V12K-189 domknięty: nastawa niedostępna ma stan, powód i akcję naprawczą |
+| Przypadek pracy toru DER w doborze kabla: solver ✔ / API ✖ / UI ✖ → ✔ solver + API + UI | `der_selection_preview.propose_mv_cable`; `/api/solver/der-selection-preview`; `ui2/kreatory/zrodlo-oze/DoborToruSn.tsx` | Dług V12K-190 domknięty: charakter Q zmienia dobrany przekrój |
 | Kryteria POZA automatem (selektywność zabezpieczeń, wytrzymałość aparatury na całym modelu, korekta obciążalności wg warunków ułożenia, ekonomiczna gęstość prądu) | `werdykt_projektowy.ZAKRES_POZA_AUTOMATEM` | Luki są WIDOCZNE w produkcie, nie tylko w dokumentach — nie da się ich przeoczyć |

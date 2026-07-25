@@ -384,3 +384,122 @@ def test_gdy_zaden_kabel_nie_wytrzyma_zwarcia_komunikat_wskazuje_wlasciwa_przycz
     assert result.proposal is None
     assert result.error_code == "converter.der_sn.dobor_kabel_wytrzymalosc_zwarciowa"
     assert result.error_pl is not None and "Wytrzymałość zwarciowa" in result.error_pl
+
+
+# ---------------------------------------------------------------------------
+# Karta F-K5 / V12K-203 — CHARAKTER MOCY BIERNEJ jako parametr doboru toru DER.
+# Dlug z V12K-190: solver ΔU umial juz liczyc wzrost napiecia, ale dobor nie
+# wystawial przypadku pracy toru wyzszym warstwom (wynik nie mowil, czy ΔU jest
+# spadkiem, czy wzrostem, ani dla jakich kierunkow policzono).
+# ---------------------------------------------------------------------------
+
+
+def test_wynik_doboru_niesie_przypadek_pracy_toru_i_znak_zmiany() -> None:
+    """Tor DER oddaje moc czynna, wiec domyslnie ΔU jest WZROSTEM napiecia.
+
+    Rachunek niezalezny (cab-50: R = 0,641 om/km, X = 0,14 om/km; I_TR = 140 A,
+    L = 1 km, cos fi = 0,95, sin fi = 0,31225; sqrt(3)*I = 242,4871):
+      czlon czynny = 242,4871 * 0,641 * 0,95 = 147,663 V
+      czlon bierny = 242,4871 * 0,140 * 0,31225 = 10,600 V
+    Generacja + pobor Q: ΔU = -147,663 + 10,600 = -137,062 V = -0,9137 % (WZROST).
+    """
+    result = propose_mv_cable(
+        CableSelectionInput(
+            transformer_current_a=140.0,
+            length_km=1.0,
+            line_voltage_v=15000.0,
+            cos_phi=0.95,
+            candidates=_cable_candidates(),
+            max_delta_u_pct=2.0,
+        )
+    )
+    assert result.proposal is not None
+    assert result.proposal.cross_section_mm2 == pytest.approx(50.0)
+    assert result.proposal.delta_u_v == pytest.approx(-137.062, abs=0.01)
+    assert result.proposal.delta_u_pct == pytest.approx(-0.9137, abs=0.0001)
+    # Bez tych trzech pol warstwa prezentacji nazwalaby wzrost spadkiem.
+    assert result.proposal.is_voltage_rise is True
+    assert result.flow_direction == "generation"
+    assert result.reactive_character == "inductive"
+
+
+def test_odbior_zamiast_generacji_daje_spadek_i_znak_dodatni() -> None:
+    """Ten sam tor policzony jako ODBIOR: ΔU = +158,263 V (+1,0551 %), czyli spadek.
+
+    Modul zmiany rozni sie od przypadku generacji z poborem Q (0,9137 %), bo znak
+    czlonu biernego jest NIEZALEZNY od kierunku mocy czynnej — przy odbiorze
+    indukcyjnym oba czlony obnizaja napiecie i sumuja sie.
+    """
+    result = propose_mv_cable(
+        CableSelectionInput(
+            transformer_current_a=140.0,
+            length_km=1.0,
+            line_voltage_v=15000.0,
+            cos_phi=0.95,
+            candidates=_cable_candidates(),
+            max_delta_u_pct=2.0,
+            flow_direction="load",
+        )
+    )
+    assert result.proposal is not None
+    assert result.proposal.delta_u_pct == pytest.approx(1.0551, abs=0.0001)
+    assert result.proposal.is_voltage_rise is False
+    assert result.flow_direction == "load"
+
+
+def test_oddawanie_mocy_biernej_podnosi_wymagany_przekroj() -> None:
+    """DOWOD, ze charakter Q jest parametrem DOBORU, a nie ozdoba opisu.
+
+    Ten sam tor (I_TR = 140 A, L = 1 km, cos 0,95) przy limicie |ΔU%| = 1,0 %:
+      falownik POBIERA Q  -> cab-50: -0,9137 % <= 1,0 % => propozycja 50 mm²
+      falownik ODDAJE Q   -> cab-50: -1,0551 %  > 1,0 % => ODRZUCONY,
+                             cab-120: -0,2915 % => propozycja 120 mm²
+    Regulacja Q(U) falownika oszczedza wiec caly stopien przekroju kabla.
+    """
+    wspolne = {
+        "transformer_current_a": 140.0,
+        "length_km": 1.0,
+        "line_voltage_v": 15000.0,
+        "cos_phi": 0.95,
+        "candidates": _cable_candidates(),
+        "max_delta_u_pct": 1.0,
+    }
+    z_poborem_q = propose_mv_cable(CableSelectionInput(**wspolne))
+    z_oddawaniem_q = propose_mv_cable(
+        CableSelectionInput(**wspolne, reactive_character="capacitive")
+    )
+
+    assert z_poborem_q.proposal is not None
+    assert z_poborem_q.proposal.cross_section_mm2 == pytest.approx(50.0)
+    assert z_oddawaniem_q.proposal is not None
+    assert z_oddawaniem_q.proposal.cross_section_mm2 == pytest.approx(120.0)
+    assert z_oddawaniem_q.proposal.delta_u_pct == pytest.approx(-0.2915, abs=0.0001)
+    # Powod odrzucenia mowi „Wzrost", bo to wzrost jest tu ograniczeniem.
+    powody = {r.catalog_ref: r.reason_pl for r in z_oddawaniem_q.rejected}
+    assert "Wzrost napięcia" in powody["cab-50"]
+
+
+def test_nieznany_przypadek_pracy_jest_odrzucany_takze_bez_kandydatow() -> None:
+    """Walidacja kierunkow PRZED petla: literowka nie moze udawac „braku kandydata"."""
+    with pytest.raises(ValueError, match="reactive_character"):
+        propose_mv_cable(
+            CableSelectionInput(
+                transformer_current_a=140.0,
+                length_km=1.0,
+                line_voltage_v=15000.0,
+                cos_phi=0.95,
+                candidates=(),
+                reactive_character="pojemnosciowy",
+            )
+        )
+    with pytest.raises(ValueError, match="flow_direction"):
+        propose_mv_cable(
+            CableSelectionInput(
+                transformer_current_a=140.0,
+                length_km=1.0,
+                line_voltage_v=15000.0,
+                cos_phi=0.95,
+                candidates=(),
+                flow_direction="w_obie_strony",
+            )
+        )

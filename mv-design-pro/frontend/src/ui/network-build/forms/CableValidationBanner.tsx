@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react';
 
 import { validateCableAmpacity, type CableType, type AmpacityVerdict } from './cableAmpacityValidator';
 import { calculateVoltageDrop, type DropVerdict, type VoltageDropResult } from './voltageDropValidator';
+import type { FlowDirection, ReactiveCharacter } from './cableVoltageDropApi';
 
 interface CableValidationBannerProps {
   cableType: CableType;
@@ -28,6 +29,14 @@ interface CableValidationBannerProps {
   cosPhi: number;
   systemVoltageKv: number;
   voltageLevel?: 'SN' | 'WN';
+  /**
+   * Karta F-K5 (dług V12K-190): kierunek mocy czynnej. Dla toru przyłączenia
+   * generacji („generation") ΔU jest WZROSTEM napięcia — i to on jest zwykle
+   * ograniczeniem wiodącym. Brak pola = odbiór (zachowanie sprzed karty).
+   */
+  flowDirection?: FlowDirection;
+  /** Charakter mocy biernej: pobór Q („inductive") tłumi wzrost od generacji. */
+  reactiveCharacter?: ReactiveCharacter;
   className?: string;
 }
 
@@ -44,6 +53,8 @@ export function CableValidationBanner({
   cosPhi,
   systemVoltageKv,
   voltageLevel = 'SN',
+  flowDirection = 'load',
+  reactiveCharacter = 'inductive',
   className,
 }: CableValidationBannerProps) {
   const ampResult = validateCableAmpacity({
@@ -71,6 +82,8 @@ export function CableValidationBanner({
         cableReactanceOhmPerKm,
         cosPhi,
         systemVoltageKv,
+        flowDirection,
+        reactiveCharacter,
       },
       { signal: controller.signal },
     )
@@ -100,6 +113,8 @@ export function CableValidationBanner({
     cableReactanceOhmPerKm,
     cosPhi,
     systemVoltageKv,
+    flowDirection,
+    reactiveCharacter,
   ]);
 
   const worstVerdict: AmpacityVerdict | DropVerdict = dropResult

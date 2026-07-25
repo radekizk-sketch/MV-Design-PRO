@@ -182,8 +182,30 @@ export const OZE_STRINGS = {
   doborRezerwaTrPomoc: 'Zapas ponad moc pozorną falowników [pu], np. 0,1 = +10%.',
   doborRezerwaKabel: 'Rezerwa prądowa kabla',
   doborRezerwaKabelPomoc: 'Zapas obciążalności kabla ponad prąd TR [pu].',
-  doborMaxDeltaU: 'Dopuszczalny ΔU',
-  doborMaxDeltaUPomoc: 'Maksymalny spadek napięcia odcinka kabla SN [%].',
+  doborMaxDeltaU: 'Dopuszczalna zmiana napięcia',
+  doborMaxDeltaUPomoc:
+    'Dopuszczalna zmiana napięcia na odcinku kabla SN [%] — kryterium obejmuje MODUŁ zmiany, '
+    + 'czyli zarówno spadek, jak i wzrost napięcia (przy generacji wiążący jest wzrost).',
+  // V12K-203 — przypadek pracy toru DER sprawdzany w doborze.
+  doborCosPhi: 'cos φ toru',
+  doborCosPhiPomoc:
+    'Współczynnik mocy falowników w sprawdzanym przypadku pracy. Wyznacza moc pozorną '
+    + '(S = ΣP / cos φ), czyli moc transformatora blokowego, oraz udział mocy biernej w zmianie '
+    + 'napięcia na kablu. cos φ = 1 oznacza pracę bez mocy biernej.',
+  doborCharakterQ: 'Charakter mocy biernej falownika',
+  doborCharakterQPobor: 'Pobór Q (indukcyjny — regulacja Q(U))',
+  doborCharakterQOddawanie: 'Oddawanie Q (pojemnościowy)',
+  doborCharakterQPomoc:
+    'Kierunek mocy CZYNNEJ nie jest wyborem — tor oddaje moc do sieci, więc napięcie w punkcie '
+    + 'przyłączenia rośnie. Wyborem jest moc bierna: pobór Q (tak działa regulacja Q(U) falownika) '
+    + 'TŁUMI wzrost napięcia i pozwala zwykle na mniejszy przekrój; oddawanie Q wzrost powiększa.',
+  doborCharakterQBezZnaczenia:
+    'Przy cos φ = 1 falownik nie wymienia mocy biernej (sin φ = 0), więc charakter Q nie wpływa '
+    + 'na dobór. Ustaw cos φ < 1, aby sprawdzić wpływ regulacji Q(U).',
+  doborZmianaNapiecia: (wzrost: boolean) => (wzrost ? 'Wzrost napięcia' : 'Spadek napięcia'),
+  doborWzrostInfo:
+    'Tor generacji podnosi napięcie w punkcie przyłączenia — to ograniczenie wiodące przy '
+    + 'przyłączaniu OZE. Wartość poniżej jest modułem zmiany; kryterium |ΔU%| sprawdza backend.',
   doborNapiecieSn: 'Napięcie szyny SN',
   doborZaproponuj: 'Zaproponuj dobór',
   doborZastosuj: 'Zastosuj propozycję',

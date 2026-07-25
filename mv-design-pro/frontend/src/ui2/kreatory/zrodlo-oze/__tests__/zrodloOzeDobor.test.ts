@@ -9,6 +9,7 @@ import type { ConverterType } from '../../../../ui/catalog/types';
 import type { DerSelectionPreviewResponse } from '../derSelectionApi';
 import { DANE_DER_SN_DOMYSLNE, type DerSnFormData } from '../zrodloOzeModel';
 import {
+  charakterQMaZnaczenie,
   komunikatyBledow,
   odstepstwaPropozycji,
   propozycjaKompletna,
@@ -140,5 +141,33 @@ describe('zrodloOzeDobor — model doboru kreatora', () => {
     const komunikaty = komunikatyBledow(zBledem);
     expect(komunikaty).toHaveLength(1);
     expect(komunikaty[0]).toContain('❌');
+  });
+});
+
+describe('przypadek pracy toru DER (karta F-K5, V12K-203)', () => {
+  it('charakter mocy biernej i cos φ trafiają do żądania doboru', () => {
+    const req = zbudujZapytanieDoboru(KONWERTER, 2, 15.0, {
+      cableLengthKm: 8.0,
+      cosPhi: 0.95,
+      reactiveCharacter: 'capacitive',
+    });
+    expect(req.cos_phi).toBe(0.95);
+    expect(req.reactive_character).toBe('capacitive');
+  });
+
+  it('bez charakteru Q żądanie jest identyczne jak przed kartą', () => {
+    const req = zbudujZapytanieDoboru(KONWERTER, 2, 15.0, { cableLengthKm: 8.0 });
+    expect('reactive_character' in req).toBe(false);
+    expect('cos_phi' in req).toBe(false);
+  });
+
+  it('charakterQMaZnaczenie: tylko cos φ z przedziału (0; 1) daje moc bierną', () => {
+    // Przy cos φ = 1 sin φ = 0, więc człon X·sinφ zeruje się i wybór poboru/oddawania Q
+    // nie może zmienić ani ΔU, ani przekroju — kontrolka musi być wtedy wyłączona.
+    expect(charakterQMaZnaczenie(0.95)).toBe(true);
+    expect(charakterQMaZnaczenie(1)).toBe(false);
+    expect(charakterQMaZnaczenie(null)).toBe(false);
+    expect(charakterQMaZnaczenie(undefined)).toBe(false);
+    expect(charakterQMaZnaczenie(0)).toBe(false);
   });
 });

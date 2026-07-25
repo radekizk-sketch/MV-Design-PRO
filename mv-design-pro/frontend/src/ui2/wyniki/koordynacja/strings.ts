@@ -25,4 +25,24 @@ export const KOORDYNACJA_STRINGS = {
     + 'zwarciowych (IEC 60909) zakończonego przebiegu. Uruchom przebieg zwarciowy dla '
     + 'wybranego wariantu, aby dobrać nastawy na tle rzeczywistych prądów zwarcia.',
   brakZwarciaAkcja: 'Przejdź do obliczeń',
+
+  // Sekcja nastaw z analizy (karta F-K5, dług V12K-189). Nastawa bez danych jest
+  // NIEDOSTĘPNA — nazywamy stan i mówimy, co uzupełnić, zamiast zostawiać puste pole.
+  nastawyTytul: 'Nastawy wyznaczone z analizy',
+  nastawyOpis: 'Nastawy pochodzą z analizy nastaw nadprądowych (prąd znamionowy pola + '
+    + 'prądy zwarciowe z przebiegu). Nastawa, której nie da się wyznaczyć z danych '
+    + 'projektu, jest pokazana jako NIEDOSTĘPNA — liczba zastępcza trafiłaby wprost do '
+    + 'przekaźnika, więc jej tu nie ma.',
+  nastawyBrakBieguTytul: 'Brak analizy nastaw',
+  nastawyBrakBieguOpis: 'Dla tego przypadku nie uruchomiono jeszcze analizy nastaw '
+    + 'nadprądowych. Uruchom ją, aby zobaczyć nastawy I> / I>> / Io> / Io>> wraz z '
+    + 'informacją, których danych brakuje.',
+  nastawyBrakBieguAkcja: 'Przejdź do obliczeń',
+  nastawyBlad: 'Nie udało się wczytać nastaw',
+  nastawyLadowanie: 'Wczytywanie nastaw z analizy…',
+  nastawyKolumnaNastawa: 'Nastawa',
+  nastawyKolumnaWartosc: 'Wartość',
+  nastawyKolumnaStan: 'Stan',
+  nastawyStanDostepna: 'Wyznaczona',
+  nastawyUzupelnijDane: 'Uzupełnij dane',
 } as const;

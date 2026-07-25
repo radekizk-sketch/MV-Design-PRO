@@ -14,6 +14,7 @@ import type { ConverterType } from '../../../ui/catalog/types';
 import type {
   DerSelectionPreviewRequest,
   DerSelectionPreviewResponse,
+  ReactiveCharacter,
 } from './derSelectionApi';
 import type { DerSnFormData } from './zrodloOzeModel';
 
@@ -27,6 +28,8 @@ export interface ParametryDoboru {
   cableReservePu?: number;
   fieldReservePu?: number;
   maxDeltaUPct?: number;
+  /** V12K-203: charakter mocy biernej falownika w sprawdzanym przypadku pracy toru. */
+  reactiveCharacter?: ReactiveCharacter;
 }
 
 /**
@@ -53,7 +56,21 @@ export function zbudujZapytanieDoboru(
   if (params.cableReservePu != null) request.cable_reserve_pu = params.cableReservePu;
   if (params.fieldReservePu != null) request.field_reserve_pu = params.fieldReservePu;
   if (params.maxDeltaUPct != null) request.max_delta_u_pct = params.maxDeltaUPct;
+  if (params.reactiveCharacter != null) request.reactive_character = params.reactiveCharacter;
   return request;
+}
+
+/**
+ * Czy charakter mocy biernej może w tym przypadku cokolwiek zmienić.
+ *
+ * Przy cos φ = 1 mocy biernej NIE MA (sin φ = 0), więc człon X·sinφ zeruje się i
+ * wybór poboru/oddawania Q nie wpływa na ΔU ani na dobór przekroju. Kreator musi to
+ * powiedzieć wprost — inaczej kontrolka wyglądałaby na działającą, nie działając
+ * (reguła zakazu kontrolek pozornych). To NIE jest fizyka w UI: żadnej wartości tu
+ * nie liczymy, tylko rozpoznajemy przypadek zdegenerowany wejścia.
+ */
+export function charakterQMaZnaczenie(cosPhi: number | null | undefined): boolean {
+  return cosPhi != null && cosPhi > 0 && cosPhi < 1;
 }
 
 /** Czy odpowiedź niesie komplet propozycji (TR + kabel + pole) gotowy do zastosowania. */

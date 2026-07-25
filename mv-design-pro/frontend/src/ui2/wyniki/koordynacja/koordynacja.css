@@ -87,3 +87,76 @@
   border-radius: 10px;
   overflow: hidden;
 }
+
+/* --- Nastawy z analizy (karta F-K5, dług V12K-189) ------------------------- */
+
+.mvd-koordynacja-nastawy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 16px 20px;
+}
+
+.mvd-koordynacja-nastawy h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--mvd-ink);
+}
+
+.mvd-koordynacja-nastawy p {
+  margin: 0;
+  max-width: 82ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+.mvd-koordynacja-nastawy-podsumowanie {
+  font-weight: 600;
+}
+
+/* Zestaw niekompletny czyta się jako ostrzeżenie, nie jako wynik w normie. */
+.mvd-koordynacja-nastawy-podsumowanie[data-kompletne='nie'] {
+  color: var(--mvd-warn);
+}
+
+.mvd-koordynacja-nastawy-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.mvd-koordynacja-nastawy-tabela th,
+.mvd-koordynacja-nastawy-tabela td {
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 8px 10px;
+  text-align: left;
+  vertical-align: top;
+  color: var(--mvd-ink);
+}
+
+.mvd-koordynacja-nastawy-tabela thead th {
+  font: 600 10.5px/1.4 var(--mvd-font-mono);
+  letter-spacing: 0.08em;
+  color: var(--mvd-muted);
+  text-transform: uppercase;
+}
+
+.mvd-koordynacja-nastawa-brak {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+.mvd-koordynacja-nastawy-tabela [data-tone='warn'] {
+  font-weight: 600;
+  color: var(--mvd-warn);
+}
+
+.mvd-koordynacja-nastawy-tabela [data-tone='ok'] {
+  color: var(--mvd-ok);
+}

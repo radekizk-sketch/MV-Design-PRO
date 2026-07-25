@@ -7,6 +7,10 @@
  * z `transformerRatedCurrentsApi.ts`. Kontrakt 1:1 z `DerSelectionPreviewResponse`.
  */
 
+import type { ReactiveCharacter } from '../../../ui/network-build/forms/cableVoltageDropApi';
+
+export type { ReactiveCharacter };
+
 export interface DerSelectionPreviewRequest {
   sum_active_power_mw: number;
   inverter_output_kv: number;
@@ -19,6 +23,13 @@ export interface DerSelectionPreviewRequest {
   cable_reserve_pu?: number;
   field_reserve_pu?: number;
   max_delta_u_pct?: number;
+  /**
+   * V12K-203: charakter mocy biernej falownika. Kierunek mocy CZYNNEJ nie jest tu
+   * wyborem — tor DER oddaje moc do sieci („generation" po stronie backendu), więc
+   * ΔU jest WZROSTEM napięcia. Wyborem projektanta jest, czy falownik POBIERA moc
+   * bierną (regulacja Q(U) tłumi wzrost), czy ją ODDAJE (wzrost największy).
+   */
+  reactive_character?: ReactiveCharacter;
 }
 
 export interface RejectedCandidate {
@@ -55,8 +66,11 @@ export interface CableProposal {
   name: string;
   cross_section_mm2: number;
   rated_current_a: number;
+  /** ΔU ze znakiem: wartość ujemna = WZROST napięcia (typowo przy generacji). */
   delta_u_v: number;
   delta_u_pct: number;
+  /** V12K-203: znak nazwany przez backend — prezentacja nie interpretuje znaku sama. */
+  is_voltage_rise?: boolean;
 }
 
 export interface CableSelection {
@@ -67,6 +81,9 @@ export interface CableSelection {
   error_code: string | null;
   error_pl: string | null;
   formula_ref: string;
+  /** V12K-203: echo przypadku pracy toru, dla którego sprawdzono ΔU kandydatów. */
+  flow_direction?: string;
+  reactive_character?: ReactiveCharacter;
 }
 
 export interface FieldApparatusProposal {

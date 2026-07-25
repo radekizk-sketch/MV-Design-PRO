@@ -22,15 +22,23 @@ import {
 import {
   fetchDerSelectionPreview,
   type DerSelectionPreviewResponse,
+  type ReactiveCharacter,
 } from './derSelectionApi';
 import { OZE_STRINGS as T } from './strings';
 import type { DerSnFormData } from './zrodloOzeModel';
 import {
+  charakterQMaZnaczenie,
   komunikatyBledow,
   odstepstwaPropozycji,
   propozycjaKompletna,
   zbudujZapytanieDoboru,
 } from './zrodloOzeDobor';
+
+/** Charakter mocy biernej falownika — opcje mapują 1:1 na pole backendu. */
+const OPCJE_CHARAKTER_Q: ReadonlyArray<{ id: ReactiveCharacter; etykieta: string }> = [
+  { id: 'inductive', etykieta: T.doborCharakterQPobor },
+  { id: 'capacitive', etykieta: T.doborCharakterQOddawanie },
+];
 
 export interface DoborToruSnProps {
   converter: ConverterType | null;
@@ -58,6 +66,11 @@ export function DoborToruSn({
   const [rezerwaTr, setRezerwaTr] = useState<number | null>(0.1);
   const [rezerwaKabel, setRezerwaKabel] = useState<number | null>(0.1);
   const [maxDeltaU, setMaxDeltaU] = useState<number | null>(2.0);
+  // V12K-203: przypadek pracy toru sprawdzany w doborze. cos φ = 1 odtwarza dawne
+  // zachowanie co do bitu (backend bez cos φ liczy S = ΣP), a charakter Q jest wtedy
+  // bez znaczenia fizycznego — kreator mówi to wprost zamiast udawać wybór.
+  const [cosPhi, setCosPhi] = useState<number | null>(1.0);
+  const [charakterQ, setCharakterQ] = useState<ReactiveCharacter>('inductive');
   const [response, setResponse] = useState<DerSelectionPreviewResponse | null>(null);
   const [ladowanie, setLadowanie] = useState(false);
   const [blad, setBlad] = useState<string | null>(null);
@@ -77,9 +90,11 @@ export function DoborToruSn({
     try {
       const request = zbudujZapytanieDoboru(converter, quantity, snBusVoltageKv, {
         cableLengthKm: cableLength,
+        cosPhi,
         transformerReservePu: rezerwaTr ?? undefined,
         cableReservePu: rezerwaKabel ?? undefined,
         maxDeltaUPct: maxDeltaU ?? undefined,
+        reactiveCharacter: charakterQ,
       });
       const wynik = await fetchDerSelectionPreview(request);
       setResponse(wynik);
@@ -89,7 +104,17 @@ export function DoborToruSn({
     } finally {
       setLadowanie(false);
     }
-  }, [converter, snBusVoltageKv, cableLength, quantity, rezerwaTr, rezerwaKabel, maxDeltaU]);
+  }, [
+    converter,
+    snBusVoltageKv,
+    cableLength,
+    quantity,
+    cosPhi,
+    rezerwaTr,
+    rezerwaKabel,
+    maxDeltaU,
+    charakterQ,
+  ]);
 
   const tr = response?.transformer.proposal ?? null;
   const grupyKatalogu = response?.transformer.available_vector_groups ?? [];
@@ -123,6 +148,30 @@ export function DoborToruSn({
           testid={`${testid}-dlugosc`}
         />
       </KreatorSiatka>
+      <KreatorSiatka kolumny={2}>
+        <PoleLiczbowe
+          etykieta={T.doborCosPhi}
+          wartosc={cosPhi}
+          onZmiana={setCosPhi}
+          krok={0.01}
+          min={0}
+          max={1}
+          pomoc={T.doborCosPhiPomoc}
+          testid={`${testid}-cos-phi`}
+        />
+        <PoleWyboru
+          etykieta={T.doborCharakterQ}
+          wartosc={charakterQ}
+          onZmiana={(v) => setCharakterQ(v as ReactiveCharacter)}
+          opcje={OPCJE_CHARAKTER_Q}
+          pomoc={T.doborCharakterQPomoc}
+          wylaczone={!charakterQMaZnaczenie(cosPhi)}
+          testid={`${testid}-charakter-q`}
+        />
+      </KreatorSiatka>
+      {!charakterQMaZnaczenie(cosPhi) ? (
+        <KreatorInfo>{T.doborCharakterQBezZnaczenia}</KreatorInfo>
+      ) : null}
       <KreatorSiatka kolumny={3}>
         <PoleLiczbowe
           etykieta={T.doborRezerwaTr}
@@ -202,19 +251,29 @@ export function DoborToruSn({
             />
           ) : null}
           {kabel ? (
-            <KreatorSiatka kolumny={2}>
-              <RzadWartosci etykieta={T.doborPropKabel} wartosc={`${kabel.name}`} />
-              <RzadWartosci etykieta="ΔU" wartosc={`${kabel.delta_u_pct.toFixed(2)} %`} />
-              <RzadWartosci etykieta="Obciążalność Iz" wartosc={`${kabel.rated_current_a} A`} />
-              <RzadWartosci
-                etykieta={T.doborProgKabel}
-                wartosc={
-                  response.cable
-                    ? `${response.cable.required_ampacity_a.toFixed(1)} A`
-                    : '—'
-                }
-              />
-            </KreatorSiatka>
+            <>
+              <KreatorSiatka kolumny={2}>
+                <RzadWartosci etykieta={T.doborPropKabel} wartosc={`${kabel.name}`} />
+                {/* Nazwa wielkości z backendu (is_voltage_rise), wartość jako MODUŁ zmiany —
+                    „−1,20 %" bez nazwy czytało się jak spadek, a przy generacji to wzrost. */}
+                <RzadWartosci
+                  etykieta={T.doborZmianaNapiecia(kabel.is_voltage_rise === true)}
+                  wartosc={`${Math.abs(kabel.delta_u_pct).toFixed(2)} %`}
+                />
+                <RzadWartosci etykieta="Obciążalność Iz" wartosc={`${kabel.rated_current_a} A`} />
+                <RzadWartosci
+                  etykieta={T.doborProgKabel}
+                  wartosc={
+                    response.cable
+                      ? `${response.cable.required_ampacity_a.toFixed(1)} A`
+                      : '—'
+                  }
+                />
+              </KreatorSiatka>
+              {kabel.is_voltage_rise === true ? (
+                <KreatorInfo>{T.doborWzrostInfo}</KreatorInfo>
+              ) : null}
+            </>
           ) : null}
           {pole ? (
             <KreatorSiatka kolumny={2}>

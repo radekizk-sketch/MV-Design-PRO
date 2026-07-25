@@ -128,6 +128,13 @@ class CableVoltageDropRequest(BaseModel):
     x_ohm_per_km: float
     cos_phi: float
     line_voltage_v: float
+    # Karta F-K5 (dlug V12K-190): solver zna kierunek mocy i charakter mocy biernej
+    # od fali E audytu fizyki, ale koncowka ich NIE wystawiala — zdolnosc pokazania
+    # WZROSTU napiecia od generacji byla w produkcie niedostepna. Pola opcjonalne z
+    # domyslnymi wartosciami dawnego zachowania, wiec payload bez nich jest
+    # bit-identyczny (odbior indukcyjny).
+    flow_direction: str = "load"
+    reactive_character: str = "inductive"
 
 
 class CableVoltageDropResponse(BaseModel):
@@ -139,6 +146,11 @@ class CableVoltageDropResponse(BaseModel):
     delta_u_reactive_v: float
     formula_ref: str
     assumptions: list[str]
+    # Znak samego ``delta_u_v`` jest nieczytelny bez kierunkow — dlatego werdykt
+    # „wzrost czy spadek" i oba kierunki jada w odpowiedzi (WHITE BOX).
+    is_voltage_rise: bool = False
+    flow_direction: str = "load"
+    reactive_character: str = "inductive"
 
 
 @router.post(
@@ -157,6 +169,8 @@ def preview_cable_voltage_drop(
                 x_ohm_per_km=request.x_ohm_per_km,
                 cos_phi=request.cos_phi,
                 line_voltage_v=request.line_voltage_v,
+                flow_direction=request.flow_direction,
+                reactive_character=request.reactive_character,
             )
         )
     except ValueError as exc:
@@ -171,6 +185,9 @@ def preview_cable_voltage_drop(
         delta_u_reactive_v=result.delta_u_reactive_v,
         formula_ref=result.formula_ref,
         assumptions=list(result.assumptions),
+        is_voltage_rise=result.is_voltage_rise,
+        flow_direction=result.flow_direction,
+        reactive_character=result.reactive_character,
     )
 
 
@@ -339,6 +356,9 @@ class CableProposalResponse(BaseModel):
     rated_current_a: float
     delta_u_v: float
     delta_u_pct: float
+    # V12K-203: dla toru DER ΔU jest zwykle WZROSTEM napięcia (ΔU < 0). Kreator musi
+    # nazwać wielkość, którą pokazuje — bez tego pola „−1,20 %" wygląda jak spadek.
+    is_voltage_rise: bool = False
 
 
 class CableSelectionResponse(BaseModel):
@@ -349,6 +369,9 @@ class CableSelectionResponse(BaseModel):
     error_code: str | None
     error_pl: str | None
     formula_ref: str
+    # V12K-203: echo przypadku pracy toru, dla którego sprawdzono ΔU kandydatów.
+    flow_direction: str = "generation"
+    reactive_character: str = "inductive"
 
 
 class FieldApparatusProposalResponse(BaseModel):
@@ -381,6 +404,13 @@ class DerSelectionPreviewRequest(BaseModel):
     cable_reserve_pu: float = Field(default=0.0, ge=0)
     field_reserve_pu: float = Field(default=0.0, ge=0)
     max_delta_u_pct: float = Field(default=2.0, gt=0)
+    # V12K-203: charakter mocy biernej falownika w przypadku doboru. Kierunek mocy
+    # CZYNNEJ nie jest tu wyborem — tor DER oddaje moc do sieci, więc pozostaje
+    # „generation" (stała fizyczna toru, nie pole formularza). Wyborem projektanta
+    # jest natomiast, czy falownik POBIERA moc bierną (regulacja Q(U) tłumi wzrost
+    # napięcia), czy ją ODDAJE (wzrost największy) — od tego zależy, jaki przekrój
+    # kabla przechodzi kryterium |ΔU%|.
+    reactive_character: str = Field(default="inductive")
 
 
 class DerSelectionPreviewResponse(BaseModel):
@@ -563,6 +593,7 @@ def preview_der_selection(
                 candidates=_cable_candidates(),
                 reserve_pu=request.cable_reserve_pu,
                 max_delta_u_pct=request.max_delta_u_pct,
+                reactive_character=request.reactive_character,
             )
         )
         field_result = propose_mv_field_apparatus(
@@ -585,6 +616,7 @@ def preview_der_selection(
                 rated_current_a=cable_result.proposal.rated_current_a,
                 delta_u_v=cable_result.proposal.delta_u_v,
                 delta_u_pct=cable_result.proposal.delta_u_pct,
+                is_voltage_rise=cable_result.proposal.is_voltage_rise,
             )
             if cable_result.proposal is not None
             else None
@@ -595,6 +627,8 @@ def preview_der_selection(
         error_code=cable_result.error_code,
         error_pl=cable_result.error_pl,
         formula_ref=cable_result.formula_ref,
+        flow_direction=cable_result.flow_direction,
+        reactive_character=cable_result.reactive_character,
     )
     field_response = FieldApparatusSelectionResponse(
         proposal=(
