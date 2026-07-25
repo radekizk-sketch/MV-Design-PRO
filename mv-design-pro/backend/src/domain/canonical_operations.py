@@ -751,10 +751,7 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         area=ReadinessArea.PROTECTION,
         priority=3,
         level=ReadinessLevel.WARNING,
-        message_pl=(
-            "Brak prądu znamionowego pola — uzupełnij, by wyznaczyć nastawę "
-            "rozruchową I> (51)"
-        ),
+        message_pl="Brak prądu znamionowego pola — uzupełnij, by wyznaczyć nastawę rozruchową I> (51)",
         fix_action_id="fix_protection_nominal_current",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "in_a"},
     ),
@@ -1336,9 +1333,7 @@ class CutPortPolicy(enum.Enum):
 
 
 class TieBreaker(enum.Enum):
-    SORTUJ_PO_ELEMENT_ID_NASTEPNIE_PO_PORT_ID = (
-        "SORTUJ_PO_ELEMENT_ID_NASTEPNIE_PO_PORT_ID"
-    )
+    SORTUJ_PO_ELEMENT_ID_NASTEPNIE_PO_PORT_ID = "SORTUJ_PO_ELEMENT_ID_NASTEPNIE_PO_PORT_ID"
 
 
 class EmbeddingContinuity(enum.Enum):
