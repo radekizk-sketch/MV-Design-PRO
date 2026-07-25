@@ -223,6 +223,12 @@ class Cable(BranchBase):
     return_conductor_r_ohm_per_km_20c: float | None = None
     return_conductor_jth_1s_a_per_mm2: float | None = None
     return_conductor_ith_1s_a: float | None = None
+    # Karta F-K1 faza 3: wytrzymalosc cieplna zwarciowa ZYLY FAZOWEJ (IEC 60949).
+    # Model niosl dotad wylacznie dane zyly POWROTNEJ; kryterium cieplne przewodu
+    # nie mialo z czego liczyc pradu dopuszczalnego. Pola opcjonalne — brak = dana
+    # nieznana, nigdy zero.
+    jth_1s_a_per_mm2: float | None = None
+    ith_1s_a: float | None = None
     rating: BranchRating | None = None
     insulation: Literal["XLPE", "PVC", "PAPER"] | None = None
     # PR-3 rebuild SLD: jawne porty endpointów (opcjonalne, automigracja w PR-3)

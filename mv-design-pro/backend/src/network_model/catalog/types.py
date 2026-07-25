@@ -2715,6 +2715,11 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "return_conductor_r_ohm_per_km_20c",
             "return_conductor_jth_1s_a_per_mm2",
             "return_conductor_ith_1s_a",
+            # Karta F-K1 faza 3: wytrzymalosc cieplna ZYLY FAZOWEJ (IEC 60949).
+            # Kontrakt niosl dotad wylacznie dane zyly POWROTNEJ, wiec kryterium
+            # cieplne przewodu nie mialo z czego liczyc dopuszczalnego pradu.
+            "jth_1s_a_per_mm2",
+            "ith_1s_a",
             "r0_ohm_per_km",
             "x0_ohm_per_km",
             "b0_siemens_per_km",

@@ -604,6 +604,15 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 b_us_per_km=b_us_per_km,
                 length_km=branch.length_km,
                 rated_current_a=rated_a if rated_a > 0 else 1.0,
+                # Karta F-K1 faza 3: przeniesienie danych cieplnych ZYLY FAZOWEJ do
+                # grafu. Bez tego ogniwa kryterium wytrzymalosci zwarciowej przewodu
+                # nie mialo w warstwie analizy z czego liczyc pradu dopuszczalnego
+                # (graf nie niesie odniesienia katalogowego, a `type_ref` swiadomie
+                # pozostaje niewypelniony, bo steruje precedencja impedancji).
+                # `getattr` z None, bo linia napowietrzna nie ma pola przekroju.
+                ith_1s_a=getattr(branch, "ith_1s_a", None),
+                jth_1s_a_per_mm2=getattr(branch, "jth_1s_a_per_mm2", None),
+                cross_section_mm2=getattr(branch, "cross_section_mm2", None),
             )
             graph.add_branch(lb)
 

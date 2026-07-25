@@ -39,6 +39,7 @@ from application.analyses.state_estimation import (
     build_state_estimation_view,
 )
 from application.analyses.warunki_przylaczenia import build_warunki_przylaczenia_view
+from application.analyses.wytrzymalosc_cieplna_przewodow import build_wytrzymalosc_cieplna_view
 from application.analyses.zgodnosc_powykonawcza import (
     build_zgodnosc_powykonawcza_view,
     parse_measurements_csv,
@@ -159,6 +160,24 @@ def get_flicker(run_id: UUID = Query(...)) -> dict[str, Any]:
     run = _require_run(run_id)
     try:
         return build_migotanie_view(run)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+
+
+@router.get("/api/quality/conductor-thermal-withstand")
+def get_conductor_thermal_withstand(run_id: UUID = Query(...)) -> dict[str, Any]:
+    """Wytrzymalosc zwarciowa przewodow dla przebiegu zwarciowego (karta F-K1 faza 3).
+
+    Kryterium IEC 60949 (I_th <= I_th(1s)/sqrt(t)) per galaz: czy przekroj wytrzyma
+    prad zwarciowy przez czas wylaczenia. Brak danych daje pozycje NIESPRAWDZONA z
+    kodem gotowosci — nigdy milczacego PASS.
+    """
+    run = _require_run(run_id)
+    try:
+        return build_wytrzymalosc_cieplna_view(run)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,

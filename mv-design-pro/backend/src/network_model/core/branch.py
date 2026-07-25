@@ -233,6 +233,34 @@ class LineBranch(Branch):
     rated_current_a: float = 0.0
     type_ref: str | None = None
     impedance_override: LineImpedanceOverride | None = None
+    # Karta F-K1 faza 3: wytrzymalosc cieplna zwarciowa ZYLY FAZOWEJ (IEC 60949).
+    # Dane, nie odniesienie — swiadomie NIE przez `type_ref`, bo ten steruje
+    # precedencja impedancji (`impedance_override > type_ref > instance`), wiec
+    # wypelnienie go po to, by dosiegnac danych cieplnych, zmienialoby ZRODLO
+    # impedancji, czyli fizyke rozplywu i zwarcia. Tu przenosimy wylacznie
+    # wielkosci cieplne, zmaterializowane z katalogu w warstwie domenowej.
+    # Brak wartosci = kryterium cieplne NIESPRAWDZALNE (kod gotowosci), nie zero.
+    ith_1s_a: float | None = None
+    jth_1s_a_per_mm2: float | None = None
+    cross_section_mm2: float | None = None
+
+    def get_thermal_ith_1s_a(self) -> float | None:
+        """Dopuszczalny prad cieplny zyly dla 1 s [A] — wprost albo z gestosci.
+
+        Ta sama zasada, ktorej uzywa `catalog/resolver.py::get_ith_1s()`: Ith(1s)
+        podane wprost ma pierwszenstwo, w przeciwnym razie liczymy je z gestosci
+        pradu i przekroju. Zwraca None, gdy nie ma podstawy — nigdy zera.
+        """
+        if self.ith_1s_a is not None and self.ith_1s_a > 0.0:
+            return self.ith_1s_a
+        if (
+            self.jth_1s_a_per_mm2 is not None
+            and self.jth_1s_a_per_mm2 > 0.0
+            and self.cross_section_mm2 is not None
+            and self.cross_section_mm2 > 0.0
+        ):
+            return self.jth_1s_a_per_mm2 * self.cross_section_mm2
+        return None
 
     @classmethod
     def _from_dict(cls, data: dict[str, Any], branch_type: BranchType) -> "LineBranch":
@@ -268,6 +296,11 @@ class LineBranch(Branch):
             rated_current_a=float(data.get("rated_current_a", 0.0)),
             type_ref=_parse_type_ref(data),
             impedance_override=_parse_impedance_override(data),
+            # F-K1 faza 3: brak klucza => None (dana nieznana), nigdy 0.0 — zero
+            # bylaby fabrykacja wytrzymalosci cieplnej rownej zeru.
+            ith_1s_a=_parse_dodatnia(data.get("ith_1s_a")),
+            jth_1s_a_per_mm2=_parse_dodatnia(data.get("jth_1s_a_per_mm2")),
+            cross_section_mm2=_parse_dodatnia(data.get("cross_section_mm2")),
         )
 
     def validate(self) -> bool:
@@ -360,6 +393,16 @@ class LineBranch(Branch):
         )
         if self.impedance_override is not None:
             result["impedance_override"] = self.impedance_override.to_dict()
+        # F-K1 faza 3: pola cieplne dolaczane WYLACZNIE gdy sa znane (exclude-None),
+        # wiec payload galezi bez danych cieplnych jest bajt-w-bajt jak przed delta —
+        # hashe, goldeny i determinizm istniejacych modeli pozostaja nietkniete.
+        for klucz, wartosc in (
+            ("ith_1s_a", self.ith_1s_a),
+            ("jth_1s_a_per_mm2", self.jth_1s_a_per_mm2),
+            ("cross_section_mm2", self.cross_section_mm2),
+        ):
+            if wartosc is not None:
+                result[klucz] = float(wartosc)
         return result
 
     def get_total_impedance(self) -> complex:
@@ -1139,6 +1182,22 @@ class TransformerBranch(Branch):
             p0_kw=nameplate.p0_kw or 0.0,
             vector_group=nameplate.vector_group or "",
         )
+
+
+def _parse_dodatnia(value: Any) -> float | None:
+    """Liczba dodatnia albo None (karta F-K1 faza 3).
+
+    Wielkosci cieplne przewodu: brak klucza, wartosc nieliczbowa oraz wartosc
+    niedodatnia oznaczaja BRAK DANEJ, nie zero. Zero wytrzymalosci cieplnej byloby
+    fabrykacja i dawaloby werdykt FAIL dla kazdego przewodu.
+    """
+    if value is None:
+        return None
+    try:
+        liczba = float(value)
+    except (TypeError, ValueError):
+        return None
+    return liczba if liczba > 0.0 else None
 
 
 def _parse_type_ref(data: dict[str, Any]) -> str | None:

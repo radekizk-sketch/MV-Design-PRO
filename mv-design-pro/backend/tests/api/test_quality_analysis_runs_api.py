@@ -18,6 +18,7 @@ SANITY_BOUNDS = "/api/quality/sanity-bounds"
 ENERGY_VALIDATION = "/api/quality/energy-validation"
 FLICKER = "/api/quality/flicker"
 CONNECTION_CONDITIONS = "/api/quality/connection-conditions"
+CONDUCTOR_THERMAL = "/api/quality/conductor-thermal-withstand"
 ARC_FLASH = "/api/quality/arc-flash"
 ARC_FLASH_REPORT = "/api/quality/arc-flash/report"
 
@@ -316,4 +317,43 @@ def test_connection_conditions_rejects_short_circuit_run(app_client) -> None:
 
 def test_connection_conditions_unknown_run_returns_404(app_client) -> None:
     resp = app_client.get(CONNECTION_CONDITIONS, params={"run_id": str(uuid4())})
+    assert resp.status_code == 404
+
+
+# --------------------------------------------------------------------------
+# Wytrzymalosc zwarciowa przewodow (karta F-K1 faza 3, znalezisko Z1)
+# --------------------------------------------------------------------------
+
+
+def test_conductor_thermal_endpoint_returns_view(app_client) -> None:
+    """Koncowka dziala na realnym biegu zwarciowym i niesie ocene per galaz."""
+    run_id = _sc_run_id()
+    resp = app_client.get(CONDUCTOR_THERMAL, params={"run_id": str(run_id)})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["run_id"] == str(run_id)
+    assert body["fault_node_id"]
+    ocena = body["ocena"]
+    assert "items" in ocena and "summary" in ocena
+    podsumowanie = ocena["summary"]
+    # Suma pozycji zgadza sie z liczba galezi w ocenie — brak gubienia wierszy.
+    assert podsumowanie["pass_count"] + podsumowanie["fail_count"] + podsumowanie[
+        "unavailable_count"
+    ] == len(ocena["items"])
+    # NIESPRAWDZONE nigdy nie jest doliczane do spelnionych.
+    for pozycja in ocena["items"]:
+        if pozycja["status"] == "UNAVAILABLE":
+            assert pozycja["missing_codes"], "brak kodu gotowosci przy stanie niesprawdzonym"
+
+
+def test_conductor_thermal_rejects_power_flow_run(app_client) -> None:
+    """Bieg rozplywu nie jest podstawa oceny cieplnej przewodow (422 po polsku)."""
+    run_id = _pf_run_id()
+    resp = app_client.get(CONDUCTOR_THERMAL, params={"run_id": str(run_id)})
+    assert resp.status_code == 422
+    assert "zwarciowego" in resp.json()["detail"]
+
+
+def test_conductor_thermal_unknown_run_returns_404(app_client) -> None:
+    resp = app_client.get(CONDUCTOR_THERMAL, params={"run_id": str(uuid4())})
     assert resp.status_code == 404

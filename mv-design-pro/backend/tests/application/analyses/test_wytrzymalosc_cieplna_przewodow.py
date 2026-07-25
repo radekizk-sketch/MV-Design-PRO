@@ -7,6 +7,7 @@ kazdego testu), NIE z uruchomienia testowanego kodu.
 
 from __future__ import annotations
 
+import pytest
 from application.analyses.wytrzymalosc_cieplna_przewodow import (
     build_conductor_thermal_withstand_view,
 )
@@ -454,3 +455,76 @@ def test_galaz_poza_droga_zwarcia_ma_jawne_uzasadnienie_statusu() -> None:
     na_drodze = by_id["cable_A"]
     assert na_drodze.uzasadnienie_pl is None
     assert na_drodze.i_permissible_a is not None
+
+
+def test_dane_cieplne_z_galezi_grafu_maja_pierwszenstwo_przed_katalogiem() -> None:
+    """Karta F-K1 faza 3: lancuch ENM -> graf -> kryterium jest ZAMKNIETY.
+
+    W sciezce produkcyjnej graf NIE niesie odniesienia katalogowego (`type_ref`
+    swiadomie pozostaje pusty, bo steruje precedencja impedancji), wiec bez danych
+    cieplnych NA GALEZI kryterium bylo niesprawdzalne dla kazdego przewodu.
+
+    Rachunek niezalezny: Jth = 94 A/mm², S = 70 mm² => Ith(1s) = 6 580 A;
+    przy t = 0,25 s I_dop = 6 580/0,5 = 13 160 A. Prad 15 000 A > 13 160 A => FAIL.
+    """
+    graph = _graph_with_two_cables()
+    for branch in graph.branches.values():
+        # Stan jak po mapowaniu ENM: brak type_ref, dane cieplne wprost na galezi.
+        branch.type_ref = None
+        branch.jth_1s_a_per_mm2 = 94.0
+        branch.cross_section_mm2 = 70.0
+
+    sc_result = _sc_result(
+        tk_s=0.25,
+        branch_contributions=[
+            ShortCircuitBranchContribution(
+                source_id="GRID",
+                branch_id="cable_A",
+                from_node_id="BUS1",
+                to_node_id="BUS2",
+                i_contrib_a=15000.0,
+                direction="from_to",
+            ),
+        ],
+    )
+
+    # Katalog PUSTY — dowod, ze dane pochodza z galezi, nie z katalogu.
+    view = build_conductor_thermal_withstand_view(sc_result, graph, None)
+    by_id = {item.branch_id: item for item in view.items}
+
+    oceniana = by_id["cable_A"]
+    assert oceniana.status == "FAIL"
+    assert oceniana.i_permissible_a == pytest.approx(6580.0 / 0.5, rel=1e-9)
+    assert oceniana.i_permissible_a == pytest.approx(13160.0, rel=1e-9)
+    assert oceniana.missing_codes == ()
+    # Minimalny wymagany przekroj z tego samego rachunku: 15000*sqrt(0,25)/94.
+    assert oceniana.s_min_mm2 == pytest.approx(15000.0 * 0.5 / 94.0, rel=1e-9)
+    assert oceniana.s_min_mm2 is not None and oceniana.s_min_mm2 > 70.0
+
+
+def test_brak_danych_cieplnych_na_galezi_i_w_katalogu_daje_niesprawdzone() -> None:
+    """Bez danych z zadnego zrodla kryterium jest NIESPRAWDZONE, nie spelnione."""
+    graph = _graph_with_two_cables()
+    for branch in graph.branches.values():
+        branch.type_ref = None
+        branch.jth_1s_a_per_mm2 = None
+        branch.ith_1s_a = None
+
+    sc_result = _sc_result(
+        tk_s=0.25,
+        branch_contributions=[
+            ShortCircuitBranchContribution(
+                source_id="GRID",
+                branch_id="cable_A",
+                from_node_id="BUS1",
+                to_node_id="BUS2",
+                i_contrib_a=15000.0,
+                direction="from_to",
+            ),
+        ],
+    )
+    view = build_conductor_thermal_withstand_view(sc_result, graph, None)
+    by_id = {item.branch_id: item for item in view.items}
+    assert by_id["cable_A"].status == "UNAVAILABLE"
+    assert "conductor.thermal_data_missing" in by_id["cable_A"].missing_codes
+    assert view.summary.pass_count == 0 or by_id["cable_A"].status != "PASS"

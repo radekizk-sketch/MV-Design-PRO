@@ -378,6 +378,9 @@ def _apply_materialized_branch_values(
             "return_conductor_r_ohm_per_km_20c",
             "return_conductor_jth_1s_a_per_mm2",
             "return_conductor_ith_1s_a",
+            # F-K1 faza 3: dane cieplne ZYLY FAZOWEJ.
+            "jth_1s_a_per_mm2",
+            "ith_1s_a",
         ):
             value = materialized.get(key)
             if value is not None:
