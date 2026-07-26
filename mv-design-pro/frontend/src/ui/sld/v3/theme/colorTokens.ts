@@ -48,6 +48,13 @@ import type { SymbolId } from '../symbols/defs';
 interface VoltageClassifiableMeta {
   readonly kind?: string;
   readonly ownerRef?: string;
+  /** JAWNA klasa napięcia nadana przez kompozycję (V12K-217). Potrzebna dla
+   *  SYMBOLI aparatów: klasyfikacja substring po `ownerRef` działa dla odcinków
+   *  (niosą `#hv-`/`#lv-`), ale `bayRef`/`transformerRef` symboli są opaque i
+   *  napięcia nie niosą — patrz GAP karty S3 przy `baseSymbolStrokeColor`. Ma
+   *  PIERWSZEŃSTWO nad substringiem: kompozycja wie, po której stronie
+   *  transformatora stoi aparat, a nazwa referencji tego nie zdradza. */
+  readonly voltageClass?: VoltageClass;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,6 +133,8 @@ const ANNOTATION_SEGMENT_KINDS = new Set(['protectionTrip', 'measurementLink', '
  * tabela na WSZYSTKICH LOD").
  */
 export function voltageClassOf(meta: VoltageClassifiableMeta | undefined): VoltageClass {
+  // Jawna klasa z kompozycji wygrywa (V12K-217) — patrz `VoltageClassifiableMeta`.
+  if (meta?.voltageClass) return meta.voltageClass;
   const kind = meta?.kind;
   if (kind === 'lv') return 'nn';
   const ownerRef = meta?.ownerRef;
@@ -155,7 +164,9 @@ export function baseSegmentStrokeColor(meta: VoltageClassifiableMeta | undefined
  * 0,4 kV"), ZAWSZE nN. `noPoint` dostaje kolor STANU (`STATE_COLOR.nop`),
  * NIE napięcia — patrz `baseSymbolStrokeColor` wołający.
  *
- * GAP (świadomy, do S4/S5 — raport karty S3): pozostałe symbole aparatury
+ * GAP karty S3 — CZĘŚCIOWO ZAMKNIĘTY (V12K-217): aparaty pola WN transformatora
+ * GPZ dostają jawne `meta.voltageClass = 'hv'` z kompozycji (`compose/gpz.ts`),
+ * więc wyłącznik 110 kV nie wygląda już jak wyłącznik SN. Pozostałe symbole aparatury
  * (breaker/disconnector/earthSwitch/fuseSwitch/CT/VT/SA/transformer2W/DER)
  * NIE niosą dziś w `ownerRef` znacznika napięcia pola (`bayRef` to opaque
  * ENM ref) — spadają na fallback `'sn'` (większość aparatury w scenach tej

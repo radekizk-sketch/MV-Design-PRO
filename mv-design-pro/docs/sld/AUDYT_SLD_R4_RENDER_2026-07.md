@@ -116,7 +116,7 @@ baza spadła 94 → 88, **L0 ma teraz trzy kolory zamiast dwóch**. Kanon matrix
 Weryfikacja: 3745 testów `src/ui/sld` (197 plików), `accept:sld-v3` ALL PASS,
 `sld_determinism_guards` 0 naruszeń, tsc i eslint czyste.
 
-### Niedomiar zmierzony, NIEZAMKNIĘTY — aparaty pola WN
+### Niedomiar — aparaty pola WN · ZAMKNIĘTY (V12K-217)
 
 Aparaty pola transformatorowego GPZ (`wn_sn-cb`, `wn_sn-ds`, `wn_sn-ct`) mają nadal kolor
 SN `rgb(19,196,90)` — **wyłącznik 110 kV wygląda jak wyłącznik 15 kV**. Czerwień dostały
@@ -127,4 +127,16 @@ To nie przeoczenie tej karty, a **udokumentowany GAP karty S3** (`colorTokens.ts
 komentarz przy `baseSymbolStrokeColor`: „pozostałe symbole aparatury … NIE niosą dziś w
 `ownerRef` znacznika napięcia pola, `bayRef` to opaque"). Naprawa wymaga przeniesienia klasy
 napięcia z pola do symbolu w `compose/gpz.ts`/`compose/station.ts` — zakres S4/S5, nie token.
-Zapisane z pomiarem, nie przemilczane.
+
+**Domknięte tego samego dnia (V12K-217).** Kompozycja nadaje aparatom stosu WN jawne
+`meta.voltageClass = 'hv'`, a `voltageClassOf` czyta je z pierwszeństwem przed klasyfikacją
+substring. Świadomie NIE doklejano markera `#hv-` do `ownerRef`: to referencja domenowa
+(audyt §12.1), a znacznik prezentacji zmieszałby dwa porządki.
+
+Pomiar po naprawie (render L2): pole WN `rgb(217,58,43)`, pole SN tego samego transformatora
+`rgb(19,196,90)` — **rozróżnienie stron działa**; histogram WN 6 → 15, SN 3050 → 3041.
+
+Pułapka warta zapamiętania: pierwsza próba nie zadziałała mimo poprawnej kompozycji, bo
+`gpzSymbolToPreview` przepisuje meta przez **jawną listę pól** i `voltageClass` wypadało po
+cichu w drodze do sceny — bez błędu typów, bo pole jest opcjonalne. Diagnoza wyszła z pomiaru
+sceny (0 symboli z `voltageClass`), nie z lektury kodu.

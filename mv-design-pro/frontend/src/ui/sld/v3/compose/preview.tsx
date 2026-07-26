@@ -151,6 +151,12 @@ export interface PreviewElementMeta {
   readonly busResultRef?: string;
   /** F8b-1: kategoria elementu — patrz `PreviewElementKind`. */
   readonly elementKind?: PreviewElementKind;
+  /** Jawna klasa napięcia elementu (V12K-217) — nadawana przez kompozycję tam,
+   *  gdzie referencja domenowa strony napięciowej NIE zdradza (aparaty pola WN
+   *  transformatora GPZ: `transformerRef`/`bayRef` są opaque). Czytana przez
+   *  `theme/colorTokens.ts::voltageClassOf` z PIERWSZEŃSTWEM przed klasyfikacją
+   *  substring po `ownerRef`. Brak pola = klasyfikacja jak dotąd. */
+  readonly voltageClass?: 'hv' | 'sn' | 'nn';
   /** F9.3 (SLD_CAD_SPEC_V3 §12.1): pochodzenie stosu aparatów pola —
    *  `'dane'` gdy zbudowany z `Bay.primary_devices`, `'konwencja'` gdy z
    *  fallbacku rysunkowego §12.4. Audytor DOM czyta to jako

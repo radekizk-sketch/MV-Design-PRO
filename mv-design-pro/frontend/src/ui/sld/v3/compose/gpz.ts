@@ -44,6 +44,7 @@
 import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
+import type { VoltageClass } from '../theme/colorTokens';
 import type { SwitchState } from '../symbols/glyphs';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
 import type { RoutePort, RouteVertex } from '../layout/route';
@@ -104,6 +105,11 @@ export interface GpzElementMeta {
   readonly transformerRef?: string;
   readonly bayRef?: string;
   readonly busbarRole?: 'primary' | 'reserve';
+  /** Jawna klasa napięcia symbolu (V12K-217). Aparaty pola WN transformatora
+   *  stoją po stronie 110 kV, ale ich `transformerRef`/`bayRef` tego nie
+   *  zdradza — bez tego pola dziedziczyły domyślny kolor SN i wyłącznik
+   *  110 kV wyglądał jak wyłącznik 15 kV (pomiar audytu R4). */
+  readonly voltageClass?: VoltageClass;
   readonly dashed?: boolean;
   readonly ringClosure?: boolean;
   /** noDirectTie (spec §8/§3): zawsze `false` z KONSTRUKCJI — compose NIGDY
@@ -1422,7 +1428,10 @@ export function composeGpz(
       hvFieldTopY,
       (_i, id) => `${hvBayTestIdBase}-${id === 'disconnector' ? 'ds' : id === 'breaker' ? 'cb' : 'ct'}`,
       () => 'unknown',
-      { transformerRef: transformer.transformerRef },
+      // V12K-217: aparaty tego stosu stoją po stronie 110 kV (pole WN
+      // transformatora), więc dostają klasę napięcia WPROST z kompozycji —
+      // jedyne miejsce, które tę stronę zna.
+      { transformerRef: transformer.transformerRef, voltageClass: 'hv' },
     );
     symbols.push(...hvStack.instances);
     hvStack.instances.forEach((instance) => tag(instance.meta.parityKeys));

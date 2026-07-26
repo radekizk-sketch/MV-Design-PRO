@@ -450,3 +450,27 @@ describe('composeGpz — VT szyny sekcji GPZ (recenzja NO-GO pkt 12)', () => {
     expect(bare.symbols.some((s) => (s.meta.testId ?? '').startsWith('gpz-canonical-bus-vt-'))).toBe(false);
   });
 });
+
+describe('GPZ — klasa napięcia aparatów pola WN (V12K-217)', () => {
+  // Audyt R4 zmierzył na renderze, że wyłącznik 110 kV miał kolor SN. Ten test
+  // pilnuje ROZRÓŻNIENIA STRON transformatora u źródła (kompozycja), bo tylko
+  // ona wie, po której stronie stoi aparat — testId/ownerRef obu pól zawierają
+  // ten sam człon `wn_sn` i nie da się z nich tej strony odczytać.
+  it('aparaty pola WN niosą voltageClass=hv, aparaty pola SN nie niosą jej wcale', () => {
+    const composition = composeGpz(
+      buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 }),
+      { x: 0, y: 0 },
+    );
+    const wnBay = composition.symbols.filter((s) =>
+      String(s.meta.testId ?? '').includes('hv-tr-bay'),
+    );
+    const snBay = composition.symbols.filter((s) =>
+      String(s.meta.testId ?? '').includes('tr-field'),
+    );
+    expect(wnBay.length).toBeGreaterThan(0);
+    expect(snBay.length).toBeGreaterThan(0);
+    for (const s of wnBay) expect(s.meta.voltageClass).toBe('hv');
+    // Strona SN zostaje BEZ jawnej klasy — dziedziczy domyślne SN, jak dotąd.
+    for (const s of snBay) expect(s.meta.voltageClass).toBeUndefined();
+  });
+});

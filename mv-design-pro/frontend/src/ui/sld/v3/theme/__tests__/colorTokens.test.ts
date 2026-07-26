@@ -46,6 +46,34 @@ describe('colorTokens — voltageClassOf (napięcie)', () => {
   });
 });
 
+describe('colorTokens — jawna klasa napięcia z kompozycji (V12K-217)', () => {
+  // Aparaty pola WN transformatora GPZ stoją po stronie 110 kV, ale ich
+  // `transformerRef`/`bayRef` tego nie zdradza (referencje są opaque). Bez jawnej
+  // klasy dziedziczyły domyślny kolor SN — wyłącznik 110 kV wyglądał jak
+  // wyłącznik 15 kV (pomiar audytu R4). Kompozycja jest jedynym miejscem, które
+  // stronę transformatora zna, więc jej deklaracja MUSI wygrywać.
+  it('`voltageClass` ma pierwszeństwo przed klasyfikacją substring po ownerRef', () => {
+    expect(voltageClassOf({ voltageClass: 'hv', ownerRef: 'gpz/x/transformer/001/wn_sn' })).toBe('hv');
+    // ownerRef wskazywałby nN, jawna klasa mówi WN — wygrywa jawna.
+    expect(voltageClassOf({ voltageClass: 'hv', ownerRef: 'stacja#lv-bus' })).toBe('hv');
+    expect(voltageClassOf({ voltageClass: 'nn', ownerRef: 'gpz#hv-bus' })).toBe('nn');
+  });
+
+  it('brak `voltageClass` NIE zmienia dotychczasowej klasyfikacji (zmiana addytywna)', () => {
+    expect(voltageClassOf({ ownerRef: 'gpz#hv-bus' })).toBe('hv');
+    expect(voltageClassOf({ ownerRef: 'stacja#lv-drop-1' })).toBe('nn');
+    expect(voltageClassOf({ ownerRef: 'gpz/x/transformer/001/wn_sn' })).toBe('sn');
+    expect(voltageClassOf(undefined)).toBe('sn');
+  });
+
+  it('aparat z jawną klasą WN dostaje czerwień WN, nie zieleń SN', () => {
+    expect(baseSymbolStrokeColor('breaker', { voltageClass: 'hv' })).toBe(VOLTAGE_COLOR.hv);
+    expect(baseSymbolStrokeColor('breaker', { voltageClass: 'hv' })).not.toBe(VOLTAGE_COLOR.sn);
+    // Ten sam symbol BEZ jawnej klasy zostaje SN — dowód, że różnicę robi klasa.
+    expect(baseSymbolStrokeColor('breaker', {})).toBe(VOLTAGE_COLOR.sn);
+  });
+});
+
 describe('colorTokens — baseSegmentStrokeColor', () => {
   it('odcinki adnotacji (protectionTrip/measurementLink/leader) zostają na BASE_STROKE — NIE dostają koloru napięcia', () => {
     expect(baseSegmentStrokeColor({ kind: 'protectionTrip', ownerRef: 'x#hv-bus' })).toBe(BASE_STROKE);

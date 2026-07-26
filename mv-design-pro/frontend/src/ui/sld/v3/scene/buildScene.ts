@@ -1952,6 +1952,12 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
       // symboli bez przypisanego pola. Zero re-derywacji z geometrii.
       ownerRef: sym.meta.sourceRef ?? sym.meta.bayRef ?? sym.meta.transformerRef ?? sym.meta.sectionId,
       elementKind: classifySymbolElementKind(sym.symbolId),
+      // V12K-217: jawna klasa napięcia z kompozycji MUSI przejść do sceny.
+      // Ta funkcja przepisuje meta przez listę pól, więc każde nowe pole trzeba
+      // tu przepuścić świadomie — `voltageClass` wypadało po cichu i aparaty
+      // pola WN transformatora dziedziczyły domyślny kolor SN (wyłącznik
+      // 110 kV wyglądał jak wyłącznik 15 kV, pomiar audytu R4).
+      voltageClass: sym.meta.voltageClass,
     },
   };
 }
