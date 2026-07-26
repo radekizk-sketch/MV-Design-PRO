@@ -599,3 +599,96 @@ def test_brak_danych_cieplnych_na_galezi_i_w_katalogu_daje_niesprawdzone() -> No
     assert by_id["cable_A"].status == "UNAVAILABLE"
     assert "conductor.thermal_data_missing" in by_id["cable_A"].missing_codes
     assert view.summary.pass_count == 0 or by_id["cable_A"].status != "PASS"
+
+
+# ---------------------------------------------------------------------------
+# Karta F-K1 faza 7: LINIA NAPOWIETRZNA (przewod goly) w tym samym widoku
+# ---------------------------------------------------------------------------
+
+
+def test_linia_napowietrzna_dostaje_werdykt_i_rodzaj_przewodu_z_typu_galezi() -> None:
+    """Widok obejmuje CALY model — kable i przewody gole (uwaga 12 wlasciciela).
+
+    Rodzaj przewodu bierze sie z typu galezi grafu: to jedyne miejsce, ktore wie,
+    czy odcinek jest kablem, czy przewodem golym. Bez tego rozroznienia dowod dla
+    linii zglaszalby nieprawdziwy „brak izolacji" (przewod goly izolacji nie ma).
+
+    Rachunek niezalezny (AFL 6 70 mm²): Jth = 88 A·√s/mm², S = 70 mm² =>
+    Ith(1 s) = 6 160 A; przy t = 0,25 s I_dop = 6 160/0,5 = 12 320 A.
+    Prad 9 000 A < 12 320 A => PASS.
+    """
+    graph = _graph_with_two_cables()
+    linia = graph.branches["cable_A"]
+    linia.branch_type = BranchType.LINE
+    linia.name = "Linia AFL 6 70"
+    linia.type_ref = None
+    linia.jth_1s_a_per_mm2 = 88.0
+    linia.cross_section_mm2 = 70.0
+    linia.conductor_material = "AL_ST"
+    linia.insulation = None  # przewod goly — brak izolacji jest POPRAWNA informacja
+    linia.operating_temperature_c = 70.0
+    linia.short_circuit_temperature_c = 200.0
+    linia.thermal_source_ref = "PN-E-05115 / IEC 61936-1; k wg IEC 60949 § 3"
+
+    sc_result = _sc_result(
+        tk_s=0.25,
+        branch_contributions=[
+            ShortCircuitBranchContribution(
+                source_id="GRID",
+                branch_id="cable_A",
+                from_node_id="BUS1",
+                to_node_id="BUS2",
+                i_contrib_a=9000.0,
+                direction="from_to",
+            ),
+        ],
+    )
+
+    view = build_conductor_thermal_withstand_view(sc_result, graph, None)
+    oceniana = {item.branch_id: item for item in view.items}["cable_A"]
+
+    assert oceniana.status == "PASS"
+    assert oceniana.missing_codes == ()
+    assert oceniana.i_permissible_a == pytest.approx(6160.0 / 0.5, rel=1e-9)
+
+    # Uzasadnienie k jest KOMPLETNE mimo braku izolacji — bo to przewod goly.
+    assert oceniana.uzasadnienie_k is not None
+    assert oceniana.uzasadnienie_k["rodzaj_przewodu"] == "PRZEWOD_GOLY"
+    assert oceniana.uzasadnienie_k["izolacja"] == "brak — przewód goły"
+    assert oceniana.uzasadnienie_k["braki_pl"] == ()
+    assert oceniana.uzasadnienie_k["kompletne"] is True
+
+
+def test_kabel_w_tym_samym_widoku_zachowuje_wymog_izolacji() -> None:
+    """Rozluznienie dotyczy WYLACZNIE przewodu golego — kabel bez izolacji ma brak."""
+    graph = _graph_with_two_cables()
+    kabel = graph.branches["cable_A"]
+    kabel.type_ref = None
+    kabel.jth_1s_a_per_mm2 = 94.0
+    kabel.cross_section_mm2 = 120.0
+    kabel.conductor_material = "AL"
+    kabel.insulation = None
+    kabel.operating_temperature_c = 90.0
+    kabel.short_circuit_temperature_c = 250.0
+
+    sc_result = _sc_result(
+        tk_s=0.25,
+        branch_contributions=[
+            ShortCircuitBranchContribution(
+                source_id="GRID",
+                branch_id="cable_A",
+                from_node_id="BUS1",
+                to_node_id="BUS2",
+                i_contrib_a=9000.0,
+                direction="from_to",
+            ),
+        ],
+    )
+
+    view = build_conductor_thermal_withstand_view(sc_result, graph, None)
+    oceniana = {item.branch_id: item for item in view.items}["cable_A"]
+
+    assert oceniana.uzasadnienie_k is not None
+    assert oceniana.uzasadnienie_k["rodzaj_przewodu"] == "KABEL"
+    assert "rodzaj izolacji" in oceniana.uzasadnienie_k["braki_pl"]
+    assert oceniana.uzasadnienie_k["kompletne"] is False
