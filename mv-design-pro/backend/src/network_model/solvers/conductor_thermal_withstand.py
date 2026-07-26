@@ -48,6 +48,18 @@ STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
 STATUS_UNAVAILABLE = "UNAVAILABLE"
 
+# Kanoniczne rodzaje przewodu (karta F-K1 faza 7). Rozroznienie jest istotne fizycznie:
+# kabel ma izolacje, ktora wyznacza temperature graniczna przy zwarciu; przewod goly
+# linii napowietrznej izolacji NIE MA i jego granice wyznacza utrata wytrzymalosci
+# mechanicznej zyly oraz dopuszczalna temperatura osprzetu.
+CONDUCTOR_KIND_CABLE = "KABEL"
+CONDUCTOR_KIND_BARE = "PRZEWOD_GOLY"
+
+_CONDUCTOR_KIND_LABELS_PL = {
+    CONDUCTOR_KIND_CABLE: "kabel",
+    CONDUCTOR_KIND_BARE: "przewód goły (linia napowietrzna)",
+}
+
 _FORMULA_REF = "I_dop(t) = I_th(1s)·√(1 s / t);  S_min = I_th·√t / Jth(1s)"
 
 
@@ -82,6 +94,12 @@ class ConductorThermalInput:
     temp_operating_c: float | None = None
     temp_short_circuit_c: float | None = None
     material_source_ref: str | None = None
+    # RODZAJ przewodu (karta F-K1 faza 7): ``KABEL`` albo ``PRZEWOD_GOLY``. Rozstrzyga,
+    # czy brak izolacji jest brakiem danej, czy poprawna informacja — przewod goly
+    # linii napowietrznej izolacji NIE MA, a jego temperature graniczna przy zwarciu
+    # wyznacza utrata wytrzymalosci mechanicznej zyly i osprzet. Bez tego rozroznienia
+    # dowod dla kazdej linii napowietrznej zglaszalby nieprawdziwy „brak izolacji".
+    conductor_kind: str | None = None
 
 
 @dataclass(frozen=True)
@@ -313,9 +331,11 @@ def _build_white_box_trace(
     """
     material = k_justification.get("material_zyly") or "—"
     izolacja = k_justification.get("izolacja") or "—"
+    rodzaj_pl = k_justification.get("rodzaj_przewodu_pl") or "—"
     temp_pocz = k_justification.get("temp_poczatkowa_c")
     temp_konc = k_justification.get("temp_koncowa_c")
     braki_k = k_justification.get("braki_pl") or ()
+    granica_pl = k_justification.get("granica_temperatury_pl")
 
     kroki: list[dict[str, Any]] = [
         {
@@ -327,6 +347,10 @@ def _build_white_box_trace(
                 r"{\mathrm{mm^2}}\right]$$"
             ),
             "inputs": {
+                # Karta F-K1 faza 7: rodzaj przewodu jest daną wejściową uzasadnienia k —
+                # rozstrzyga, czy temperaturę graniczną wyznacza izolacja (kabel), czy
+                # wytrzymałość mechaniczna żyły i osprzęt (przewód goły).
+                "rodzaj_przewodu": {"value": rodzaj_pl, "label": "Rodzaj przewodu"},
                 "material_zyly": {"value": material, "label": "Materiał żyły"},
                 "izolacja": {"value": izolacja, "label": "Izolacja"},
                 "temp_poczatkowa_c": {
@@ -356,10 +380,12 @@ def _build_white_box_trace(
             "notes": (
                 f"{k_justification.get('tozsamosc_pl')} Źródło: "
                 f"{k_justification.get('zrodlo_pl') or 'nie podano w modelu'}."
+                + (f" {granica_pl}" if granica_pl else "")
                 + (
                     " NIEPEŁNE UZASADNIENIE — brak: " + ", ".join(braki_k) + "."
                     if braki_k
-                    else " Para materiał/izolacja i temperatury pozwalają zweryfikować tę wartość."
+                    else " Rodzaj przewodu, materiał żyły i para temperatur pozwalają "
+                    "zweryfikować tę wartość."
                 )
             ),
         },
@@ -818,15 +844,47 @@ def _build_k_justification(
     Braki sa nazwane wprost — NIE podstawiamy wartosci typowej z tablic normy,
     bo zgadniete k falszuje werdykt bezpieczenstwa.
     """
+    rodzaj = (data.conductor_kind or "").strip().upper() or None
+    przewod_goly = rodzaj == CONDUCTOR_KIND_BARE
+
     braki: list[str] = []
     if not data.conductor_material:
         braki.append("materiał żyły")
-    if not data.insulation:
+    # Karta F-K1 faza 7: brak izolacji jest BRAKIEM DANEJ tylko dla kabla. Przewod goly
+    # linii napowietrznej izolacji nie ma — zgloszenie tu braku byloby nieprawda i
+    # kazdy dowod dla linii napowietrznej wygladalby na niekompletny.
+    if not data.insulation and not przewod_goly:
         braki.append("rodzaj izolacji")
     if data.temp_operating_c is None:
         braki.append("temperatura początkowa (robocza)")
     if data.temp_short_circuit_c is None:
         braki.append("temperatura końcowa (zwarciowa)")
+    # Rodzaj przewodu jest brakiem tylko wtedy, gdy jest NIEROZSTRZYGALNY. Podana
+    # izolacja wyklucza przewod goly, wiec rodzaj da sie wywnioskowac i wymaganie
+    # jawnej deklaracji byloby fałszywym brakiem (regula symetryczna do powyzszej:
+    # nie wolno naprawiac jednego fałszywego braku, wprowadzajac drugi).
+    if rodzaj is None and not data.insulation:
+        braki.append("rodzaj przewodu (kabel / przewód goły)")
+
+    izolacja_pl: str | None
+    granica_pl: str | None
+    if przewod_goly:
+        izolacja_pl = "brak — przewód goły"
+        granica_pl = (
+            "Temperaturę graniczną przy zwarciu wyznacza utrata wytrzymałości "
+            "mechanicznej żyły i dopuszczalna temperatura osprzętu (przewód goły "
+            "nie ma izolacji)."
+        )
+    else:
+        izolacja_pl = data.insulation
+        granica_pl = (
+            "Temperaturę graniczną przy zwarciu wyznacza materiał izolacji żyły."
+            if data.insulation
+            else None
+        )
+
+    # Rodzaj wywnioskowany z izolacji (patrz wyzej) — kabel, bo przewod goly jej nie ma.
+    rodzaj_wynikowy = rodzaj or (CONDUCTOR_KIND_CABLE if data.insulation else None)
 
     return {
         "k_a_s05_per_mm2": round(jth_1s_a_per_mm2, 3) if jth_1s_a_per_mm2 is not None else None,
@@ -834,8 +892,13 @@ def _build_k_justification(
             "k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej "
             "(prąd na 1 mm² przekroju wytrzymywany przez 1 s)."
         ),
+        "rodzaj_przewodu": rodzaj_wynikowy,
+        "rodzaj_przewodu_pl": (
+            _CONDUCTOR_KIND_LABELS_PL.get(rodzaj_wynikowy) if rodzaj_wynikowy else None
+        ),
         "material_zyly": data.conductor_material,
-        "izolacja": data.insulation,
+        "izolacja": izolacja_pl,
+        "granica_temperatury_pl": granica_pl,
         "temp_poczatkowa_c": data.temp_operating_c,
         "temp_koncowa_c": data.temp_short_circuit_c,
         "zrodlo_pl": data.material_source_ref,

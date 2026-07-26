@@ -50,6 +50,35 @@ JTH_AL_ST_OHL = 88.0  # Aluminium-stal linie napowietrzne (ACSR/AFL)
 TEMP_SHORT_CIRCUIT_XLPE_C = 250.0  # XLPE / EPR, izolacja usieciowana (IEC 60502-2)
 TEMP_SHORT_CIRCUIT_PVC_C = 160.0  # PVC (IEC 60502-1 / PN-HD 60364-4-43 tab. 43A)
 
+# Temperatura ROBOCZA przewodu golego linii napowietrznej [°C] — pierwsza polowa pary
+# (theta_b). Rekordy linii niosly ja od poczatku w `max_temperature_c`; ta stala nazywa
+# ja wprost, zeby domkniecie pary bylo czytelne.
+TEMP_OPERATING_OHL_C = 70.0
+
+# Temperatury GRANICZNE przy zwarciu dla przewodow GOLYCH linii napowietrznych [°C].
+# Karta F-K1 faza 7. Dla przewodu golego granice wyznacza nie izolacja (jej nie ma),
+# lecz utrata wytrzymalosci mechanicznej zyly i dopuszczalna temperatura osprzetu:
+# - AAL/AAC (jednorodne aluminium, bez rdzenia stalowego) — 220 °C,
+# - AFL/ACSR (aluminium na rdzeniu stalowym) — 200 °C, granica ostrzejsza z uwagi na
+#   rdzen i zaciski.
+# Te pary NIE sa dobrane dowolnie: podstawione do wzoru IEC 60949 §3 (Al: K = 148
+# A·√s/mm², beta = 228 K) odtwarzaja stale JTH powyzej —
+#   70 -> 220 °C daje k = 94,50 (katalog: 94,0),
+#   70 -> 200 °C daje k = 89,05 (katalog: 88,0),
+# a katalog trzyma wartosc ROWNA albo NIZSZA od wzorowej, czyli nigdy optymistyczna.
+# Spojnosc pilnuje test `tests/network_model/solvers/test_line_thermal_chain.py`.
+TEMP_SHORT_CIRCUIT_OHL_AL_C = 220.0  # AAL / AAC (PN-E-05115 / IEC 61936-1)
+TEMP_SHORT_CIRCUIT_OHL_AL_ST_C = 200.0  # AFL / ACSR z rdzeniem stalowym
+
+# Odniesienie normowe pary temperatur przewodu golego (do uzasadnienia k w dowodzie).
+# UWAGA: ten napis TRAFIA DO UI (pole „Zrodlo" w dowodzie obliczeniowym), wiec ma
+# polskie znaki — konwencja ASCII-PL obowiazuje w rejestrach i komentarzach, nigdy w
+# tekstach widocznych dla projektanta.
+OHL_THERMAL_SOURCE_REFERENCE = (
+    "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; "
+    "k wg IEC 60949 § 3"
+)
+
 LINE_SOURCE_REFERENCE = "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN"
 CABLE_BASE_SOURCE_REFERENCE = (
     "IEC 60502-2 / IEC 60949 / matryca bazowych kabli SN 12/20 kV MV-DESIGN-PRO"
@@ -221,10 +250,36 @@ def _cable_family(record_id: str) -> str:
     return "TEST"
 
 
+def _with_line_short_circuit_temperature(record: dict[str, Any]) -> dict[str, Any]:
+    """Domyka pare temperatur przewodu GOLEGO (theta_b -> theta_k) wg materialu zyly.
+
+    Karta F-K1 faza 7. Rekordy linii niosly `jth_1s_a_per_mm2` i `max_temperature_c`
+    (theta_b), ale temperatura koncowa theta_k nie byla dana — istniala tylko jako
+    komentarz przy stalych JTH. Bez niej dowod obliczeniowy kryterium cieplnego nie
+    mogl uzasadnic wspolczynnika k dla linii napowietrznej i nazywal go „brakiem".
+
+    Przypisanie jest deterministyczne i wynika WYLACZNIE z materialu zyly zapisanego
+    w rekordzie — zaden material nieznany nie dostaje wartosci domyslnej (brak
+    pozostaje brakiem, zgodnie z zasada zero fabrykacji).
+    """
+    params = dict(record.get("params") or {})
+    material = str(params.get("conductor_material") or "").strip().upper()
+    temperatura_zwarciowa = {
+        "AL": TEMP_SHORT_CIRCUIT_OHL_AL_C,
+        "AL_ST": TEMP_SHORT_CIRCUIT_OHL_AL_ST_C,
+    }.get(material)
+    if temperatura_zwarciowa is not None:
+        params.setdefault("short_circuit_temperature_c", temperatura_zwarciowa)
+        params.setdefault("thermal_source_reference", OHL_THERMAL_SOURCE_REFERENCE)
+    return {"id": record["id"], "name": record["name"], "params": params}
+
+
 def _line_records_with_quality() -> list[dict[str, Any]]:
     production = [
         _with_catalog_quality(
-            _with_zero_sequence_parameters(record, kind="line"),
+            _with_line_short_circuit_temperature(
+                _with_zero_sequence_parameters(record, kind="line")
+            ),
             source_reference=LINE_SOURCE_REFERENCE,
             verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
             catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,

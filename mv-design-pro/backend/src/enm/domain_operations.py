@@ -2158,6 +2158,17 @@ def _apply_materialized_branch_fields(
     if isinstance(izolacja, str) and izolacja.strip():
         target["insulation"] = izolacja.strip().upper()
 
+    # Karta F-K1 faza 7: ODNIESIENIE NORMOWE danych cieplnych. Pole `thermal_source_ref`
+    # bylo w modelu, w grafie i w dowodzie od fazy 6, ale zaden kontrakt go nie
+    # wypelnial — dowod pokazywal „zrodlo: —", czyli pole bez dostawcy. Pierwszenstwo
+    # ma odniesienie DEDYKOWANE cieplu (linie napowietrzne), w drugiej kolejnosci
+    # metadana jakosci calego rekordu katalogu (kable).
+    for klucz_zrodla in ("thermal_source_reference", "source_reference"):
+        zrodlo = materialized_params.get(klucz_zrodla)
+        if isinstance(zrodlo, str) and zrodlo.strip():
+            target["thermal_source_ref"] = zrodlo.strip()
+            break
+
     number_of_cores = materialized_params.get("number_of_cores")
     if number_of_cores is not None:
         target["number_of_cores"] = int(number_of_cores)
@@ -2191,6 +2202,15 @@ def _copy_split_segment_fields(target: dict[str, Any], source: dict[str, Any]) -
         "return_conductor_r_ohm_per_km_20c",
         "return_conductor_jth_1s_a_per_mm2",
         "return_conductor_ith_1s_a",
+        # Karta F-K1 faza 7: dane cieplne ZYLY FAZOWEJ i para temperatur uzasadniajaca
+        # k. Podzial odcinka GUBIL je po drodze, wiec po wstawieniu stacji na magistrali
+        # kryterium cieplne przestawalo dzialac dla obu polowek odcinka (werdykt
+        # NIEDOSTEPNY) — mimo ze przewod byl fizycznie ten sam.
+        "jth_1s_a_per_mm2",
+        "ith_1s_a",
+        "operating_temperature_c",
+        "short_circuit_temperature_c",
+        "thermal_source_ref",
     ):
         if source.get(key) is not None:
             target[key] = copy.deepcopy(source[key])

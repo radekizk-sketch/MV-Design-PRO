@@ -200,6 +200,22 @@ class OverheadLine(BranchBase):
     r0_ohm_per_km: float | None = None
     x0_ohm_per_km: float | None = None
     b0_siemens_per_km: float | None = None
+    # Karta F-K1 faza 7: dane cieplne i materialowe PRZEWODU GOLEGO. Model niosl
+    # dotad wylacznie impedancje i obciazalnosc — a poniewaz pydantic domyslnie
+    # IGNORUJE nadmiarowe pola, dane cieplne z materializacji katalogowej byly cicho
+    # POLYKANE. Objaw: kryterium IEC 60949 dla kazdej linii napowietrznej konczylo
+    # sie werdyktem NIEDOSTEPNY, mimo ze katalog mial Jth(1 s) od poczatku.
+    # Pola opcjonalne (blok addytywny) — dokumenty bez nich walidowaly sie i walidują dalej.
+    conductor_material: str | None = None
+    cross_section_mm2: float | None = None
+    jth_1s_a_per_mm2: float | None = None
+    ith_1s_a: float | None = None
+    # Para temperatur uzasadniajaca k. Dla przewodu GOLEGO granice wyznacza utrata
+    # wytrzymalosci mechanicznej zyly i osprzet, nie izolacja — dlatego linia nie ma
+    # (i nie moze miec) pola `insulation`.
+    operating_temperature_c: float | None = None
+    short_circuit_temperature_c: float | None = None
+    thermal_source_ref: str | None = None
     rating: BranchRating | None = None
     # PR-3 rebuild SLD: jawne porty endpointów (opcjonalne, automigracja w PR-3)
     endpoint_a_port: PortRef | None = None

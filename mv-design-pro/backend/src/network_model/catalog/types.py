@@ -472,6 +472,12 @@ class LineType:
     # Thermal data for short-circuit analysis
     ith_1s_a: float | None = None
     jth_1s_a_per_mm2: float | None = None
+    # Karta F-K1 faza 7: druga polowa pary temperatur, ktora UZASADNIA k = Jth(1 s).
+    # Dla przewodu GOLEGO granice wyznacza utrata wytrzymalosci mechanicznej zyly i
+    # dopuszczalna temperatura osprzetu (nie izolacja — jej nie ma). Bez tego pola
+    # dowod obliczeniowy kryterium cieplnego nazywal k dla linii „bez uzasadnienia".
+    short_circuit_temperature_c: float | None = None
+    thermal_source_reference: str | None = None
     # Manufacturer type linking
     base_type_id: str | None = None
     trade_name: str | None = None
@@ -538,6 +544,8 @@ class LineType:
             "b0_siemens_per_km": self.b0_siemens_per_km,
             "ith_1s_a": self.ith_1s_a,
             "jth_1s_a_per_mm2": self.jth_1s_a_per_mm2,
+            "short_circuit_temperature_c": self.short_circuit_temperature_c,
+            "thermal_source_reference": self.thermal_source_reference,
             "base_type_id": self.base_type_id,
             "trade_name": self.trade_name,
             "dane_cieplne_kompletne": self.dane_cieplne_kompletne,
@@ -583,6 +591,12 @@ class LineType:
                 if data.get("jth_1s_a_per_mm2") is not None
                 else None
             ),
+            short_circuit_temperature_c=(
+                float(data["short_circuit_temperature_c"])
+                if data.get("short_circuit_temperature_c") is not None
+                else None
+            ),
+            thermal_source_reference=data.get("thermal_source_reference"),
             base_type_id=data.get("base_type_id"),
             trade_name=data.get("trade_name"),
             **_catalog_metadata_kwargs(
@@ -2737,6 +2751,11 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "insulation_type",
             "max_temperature_c",
             "short_circuit_temperature_c",
+            # Karta F-K1 faza 7: ODNIESIENIE NORMOWE danych cieplnych. Pole
+            # `thermal_source_ref` istnialo w modelu, grafie i dowodzie od fazy 6, ale
+            # zaden kontrakt go nie wypelnial — dowod pokazywal „zrodlo: —", czyli
+            # kontrolke bez dostawcy. Zrodlem jest metadana jakosci rekordu katalogu.
+            "source_reference",
             "r0_ohm_per_km",
             "x0_ohm_per_km",
             "b0_siemens_per_km",
@@ -2761,12 +2780,29 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "r0_ohm_per_km",
             "x0_ohm_per_km",
             "b0_siemens_per_km",
+            # Karta F-K1 faza 7: dane cieplne i materialowe PRZEWODU GOLEGO. Kontrakt
+            # niosl dotad wylacznie impedancje i obciazalnosc, wiec kryterium cieplne
+            # IEC 60949 dla KAZDEJ linii napowietrznej konczylo sie werdyktem
+            # NIEDOSTEPNY — mimo ze katalog mial Jth(1 s) od poczatku. Kabel dostal
+            # to ogniwo w fazie 3/6; linia byla dlugiem zapisanym z pomiarem.
+            "voltage_rating_kv",
+            "conductor_material",
+            "cross_section_mm2",
+            "jth_1s_a_per_mm2",
+            "ith_1s_a",
+            "max_temperature_c",
+            "short_circuit_temperature_c",
+            "thermal_source_reference",
+            "source_reference",
+            "trade_name",
         ),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),
             ("b_us_per_km", "B [μS/km]", "μS/km"),
             ("rated_current_a", "In [A]", "A"),
+            ("cross_section_mm2", "Przekrój", "mm²"),
+            ("jth_1s_a_per_mm2", "Jth(1 s)", "A·√s/mm²"),
         ),
     ),
     CatalogNamespace.TRAFO_SN_NN.value: MaterializationContract(

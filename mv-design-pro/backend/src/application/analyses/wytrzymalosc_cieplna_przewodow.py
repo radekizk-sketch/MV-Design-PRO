@@ -63,14 +63,16 @@ from application.analyses.protection.czas_wylaczenia_galezi import (
 )
 from enm.canonical_analysis import CanonicalRun
 from enm.hash import compute_enm_hash
-from enm.store import get_enm
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
+from enm.store import get_enm
 from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.resolver import resolve_thermal_params
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.solvers.conductor_thermal_withstand import (
+    CONDUCTOR_KIND_BARE,
+    CONDUCTOR_KIND_CABLE,
     STANDARD_REFS,
     ConductorThermalInput,
     check_conductor_thermal_withstand,
@@ -216,6 +218,13 @@ def _dane_materialowe_galezi(branch: LineBranch) -> dict[str, Any]:
         "temp_operating_c": branch.operating_temperature_c,
         "temp_short_circuit_c": branch.short_circuit_temperature_c,
         "material_source_ref": branch.thermal_source_ref,
+        # Karta F-K1 faza 7: RODZAJ przewodu bierzemy z typu galezi grafu — to jedyne
+        # miejsce, ktore wie, czy odcinek jest kablem, czy przewodem golym linii
+        # napowietrznej. Bez tego rozroznienia dowod dla kazdej linii zglaszalby
+        # nieprawdziwy „brak izolacji" (przewod goly izolacji nie ma).
+        "conductor_kind": (
+            CONDUCTOR_KIND_CABLE if branch.branch_type == BranchType.CABLE else CONDUCTOR_KIND_BARE
+        ),
     }
 
 

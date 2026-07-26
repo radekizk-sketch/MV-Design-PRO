@@ -620,13 +620,16 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 # nie mialo w warstwie analizy z czego liczyc pradu dopuszczalnego
                 # (graf nie niesie odniesienia katalogowego, a `type_ref` swiadomie
                 # pozostaje niewypelniony, bo steruje precedencja impedancji).
-                # `getattr` z None, bo linia napowietrzna nie ma pola przekroju.
+                # Karta F-K1 faza 7: te same pola niesie juz LINIA NAPOWIETRZNA
+                # (wczesniej mial je tylko kabel), wiec kryterium cieplne obejmuje
+                # caly model — kable i przewody gole.
                 ith_1s_a=getattr(branch, "ith_1s_a", None),
                 jth_1s_a_per_mm2=getattr(branch, "jth_1s_a_per_mm2", None),
                 cross_section_mm2=getattr(branch, "cross_section_mm2", None),
                 # Karta F-K1 faza 6: dane materialowe zyly do UZASADNIENIA k w
-                # dowodzie obliczeniowym. `getattr` z None, bo linia napowietrzna
-                # nie niesie izolacji ani temperatur zwarciowych w modelu.
+                # dowodzie obliczeniowym. `getattr` z None zostaje, bo `insulation`
+                # ma sens wylacznie dla kabla — przewod goly izolacji NIE MA i to
+                # jest poprawna informacja, nie brak danej (patrz `conductor_kind`).
                 conductor_material=getattr(branch, "conductor_material", None),
                 insulation=getattr(branch, "insulation", None),
                 operating_temperature_c=getattr(branch, "operating_temperature_c", None),
