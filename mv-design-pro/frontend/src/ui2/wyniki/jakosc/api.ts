@@ -527,6 +527,15 @@ export interface PunktWrazliwosci {
 export interface UzasadnienieK {
   readonly k_a_s05_per_mm2: number | null;
   readonly tozsamosc_pl: string;
+  /**
+   * Karta F-K1 faza 7: rodzaj przewodu (`KABEL` / `PRZEWOD_GOLY`). Rozstrzyga, czy
+   * temperaturę graniczną przy zwarciu wyznacza izolacja (kabel), czy wytrzymałość
+   * mechaniczna żyły i osprzęt (przewód goły linii napowietrznej).
+   */
+  readonly rodzaj_przewodu: string | null;
+  readonly rodzaj_przewodu_pl: string | null;
+  /** Zdanie mówiące, CO wyznacza temperaturę graniczną tego przewodu. */
+  readonly granica_temperatury_pl: string | null;
   readonly material_zyly: string | null;
   readonly izolacja: string | null;
   readonly temp_poczatkowa_c: number | null;

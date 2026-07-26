@@ -105,6 +105,10 @@ export const JAKOSC_STRINGS = {
   sekcjaWrazliwoscOpis:
     'Czas wchodzi do kryterium pierwiastkiem, prąd i przekrój liniowo — stąd różna siła wpływu.',
   sekcjaMaterial: 'Podstawa współczynnika k',
+  // Karta F-K1 faza 7: rodzaj przewodu rozstrzyga, CO wyznacza temperaturę
+  // graniczną przy zwarciu — izolacja (kabel) czy wytrzymałość mechaniczna
+  // żyły i osprzęt (przewód goły linii napowietrznej).
+  polRodzajPrzewodu: 'Rodzaj przewodu',
   sekcjaNormy: 'Podstawa normowa',
   kolumnaParametr: 'Parametr',
   kolumnaWartosc: 'Wartość',

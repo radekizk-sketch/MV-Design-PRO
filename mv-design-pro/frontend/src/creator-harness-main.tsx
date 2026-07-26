@@ -1227,6 +1227,195 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
   }
   if (url.includes('/api/quality/conductor-thermal-withstand/proof')) {
+    // Karta F-K1 faza 7: dowod LINII NAPOWIETRZNEJ. Krok 1 pokazuje rodzaj przewodu
+    // i zdanie o tym, CO wyznacza temperature graniczna — brak izolacji przewodu
+    // golego nie jest tu raportowany jako brak danej. Kroki WYLICZONE solverem
+    // `conductor_thermal_withstand.py` (AFL 6 70 mm², I = 5200 A, t = 1,0 s).
+    if (url.includes('linia-napowietrzna-3')) {
+      return new Response(JSON.stringify({
+          "run_id": "run-sc-7",
+          "branch_id": "linia-napowietrzna-3",
+          "branch_name": "Odgałęzienie napowietrzne L-03 (AFL 6 70 mm²)",
+          "status": "PASS",
+          "kroki": [
+            {
+              "step": 1,
+              "key": "conductor_thermal_k_factor",
+              "title": "Współczynnik materiałowy k żyły",
+              "formula_latex": "$$k = J_{th(1s)} \\quad \\left[\\frac{\\mathrm{A}\\sqrt{\\mathrm{s}}}{\\mathrm{mm^2}}\\right]$$",
+              "inputs": {
+                "rodzaj_przewodu": {
+                  "value": "przewód goły (linia napowietrzna)",
+                  "label": "Rodzaj przewodu"
+                },
+                "material_zyly": {
+                  "value": "AL_ST",
+                  "label": "Materiał żyły"
+                },
+                "izolacja": {
+                  "value": "brak — przewód goły",
+                  "label": "Izolacja"
+                },
+                "temp_poczatkowa_c": {
+                  "value": 70.0,
+                  "unit": "°C",
+                  "label": "Temperatura początkowa (robocza)"
+                },
+                "temp_koncowa_c": {
+                  "value": 200.0,
+                  "unit": "°C",
+                  "label": "Temperatura końcowa (zwarciowa)"
+                }
+              },
+              "substitution": "$$k = 88\\ \\frac{\\mathrm{A}\\sqrt{\\mathrm{s}}}{\\mathrm{mm^2}}$$",
+              "result": {
+                "k_a_s05_per_mm2": {
+                  "value": 88.0,
+                  "unit": "A·√s/mm²",
+                  "label": "Współczynnik k (= Jth dla 1 s)"
+                }
+              },
+              "notes": "k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s). Źródło: PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3. Temperaturę graniczną przy zwarciu wyznacza utrata wytrzymałości mechanicznej żyły i dopuszczalna temperatura osprzętu (przewód goły nie ma izolacji). Rodzaj przewodu, materiał żyły i para temperatur pozwalają zweryfikować tę wartość."
+            },
+            {
+              "step": 2,
+              "key": "conductor_thermal_admissible",
+              "title": "Prąd dopuszczalny przewodu przy czasie trwania zwarcia",
+              "formula_latex": "$$I_{dop}(t) = I_{th(1s)} \\cdot \\sqrt{\\frac{1\\,\\mathrm{s}}{t}}$$",
+              "inputs": {
+                "ith_1s_a": {
+                  "value": 6160.0,
+                  "unit": "A",
+                  "label": "Wytrzymałość cieplna żyły dla 1 s"
+                },
+                "tk_s": {
+                  "value": 1.0,
+                  "unit": "s",
+                  "label": "Czas trwania zwarcia"
+                }
+              },
+              "substitution": "$$I_{dop} = \\frac{6160}{\\sqrt{1}} = 6160\\ \\mathrm{A}$$",
+              "result": {
+                "i_dop_a": {
+                  "value": 6160.0,
+                  "unit": "A",
+                  "label": "Prąd dopuszczalny przy czasie t"
+                }
+              },
+              "notes": "Nagrzewanie zwarciowe przyjmuje się za adiabatyczne, więc obowiązuje równoważna energia cieplna I²·t = const (IEC 60949)."
+            },
+            {
+              "step": 3,
+              "key": "conductor_thermal_criterion",
+              "title": "Sprawdzenie kryterium cieplnego (zapis prądowy)",
+              "formula_latex": "$$I_{th} \\le I_{dop}(t)$$",
+              "inputs": {
+                "ith_a": {
+                  "value": 5200.0,
+                  "unit": "A",
+                  "label": "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"
+                },
+                "i_dop_a": {
+                  "value": 6160.0,
+                  "unit": "A",
+                  "label": "Prąd dopuszczalny przy czasie t"
+                }
+              },
+              "substitution": "$$5200\\ \\mathrm{A} \\le 6160\\ \\mathrm{A} \\quad\\Rightarrow\\quad 84{,}416\\ \\%$$",
+              "result": {
+                "utilization": {
+                  "value": 0.844156,
+                  "unit": "-",
+                  "label": "Wykorzystanie wytrzymałości cieplnej"
+                },
+                "margin_a": {
+                  "value": 960.0,
+                  "unit": "A",
+                  "label": "Zapas do prądu dopuszczalnego"
+                }
+              },
+              "notes": "Kryterium spełnione — przekrój wytrzyma zwarcie przez ten czas."
+            },
+            {
+              "step": 4,
+              "key": "conductor_thermal_energy",
+              "title": "Bilans energii cieplnej zwarcia",
+              "formula_latex": "$$I^2 t \\le k^2 S^2$$",
+              "inputs": {
+                "ith_a": {
+                  "value": 5200.0,
+                  "unit": "A",
+                  "label": "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"
+                },
+                "tk_s": {
+                  "value": 1.0,
+                  "unit": "s",
+                  "label": "Czas trwania zwarcia"
+                },
+                "ith_1s_a": {
+                  "value": 6160.0,
+                  "unit": "A",
+                  "label": "Wytrzymałość cieplna żyły dla 1 s"
+                }
+              },
+              "substitution": "$$5200^2 \\cdot 1 = 2{,}704 \\cdot 10^{7}\\ \\mathrm{A^2s} \\le 3{,}7946 \\cdot 10^{7}\\ \\mathrm{A^2s}$$",
+              "result": {
+                "i2t_a2s": {
+                  "value": 27040000.0,
+                  "unit": "A²·s",
+                  "label": "Energia cieplna zwarcia I²t"
+                },
+                "i2t_dop_a2s": {
+                  "value": 37945600.0,
+                  "unit": "A²·s",
+                  "label": "Dopuszczalna energia cieplna żyły k²S²"
+                }
+              },
+              "notes": "Zapis energetyczny i prądowy to ta sama nierówność — muszą dać ten sam werdykt; rozjazd oznaczałby błąd rachunku."
+            },
+            {
+              "step": 5,
+              "key": "conductor_thermal_min_section",
+              "title": "Minimalny przekrój żyły z warunku cieplnego",
+              "formula_latex": "$$S_{min} = \\frac{I_{th} \\cdot \\sqrt{t}}{J_{th(1s)}}$$",
+              "inputs": {
+                "ith_a": {
+                  "value": 5200.0,
+                  "unit": "A",
+                  "label": "Prąd zwarciowy ekwiwalentny cieplnie gałęzi"
+                },
+                "tk_s": {
+                  "value": 1.0,
+                  "unit": "s",
+                  "label": "Czas trwania zwarcia"
+                },
+                "jth_1s_a_per_mm2": {
+                  "value": 88.0,
+                  "unit": "A/mm²",
+                  "label": "Gęstość prądu cieplnego dla 1 s"
+                },
+                "cross_section_mm2": {
+                  "value": 70.0,
+                  "unit": "mm²",
+                  "label": "Przekrój zastosowany"
+                }
+              },
+              "substitution": "$$S_{min} = \\frac{5200 \\cdot \\sqrt{1}}{88} = 59{,}091\\ \\mathrm{mm^2} \\quad ; \\quad S = 70\\ \\mathrm{mm^2} \\ge S_{min}$$",
+              "result": {
+                "s_min_mm2": {
+                  "value": 59.090909,
+                  "unit": "mm²",
+                  "label": "Minimalny wymagany przekrój"
+                }
+              },
+              "notes": "Zapis równoważny kryterium prądowemu — mówi wprost, jaki przekrój usunie naruszenie."
+            }
+          ]
+        }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
     // Scena "cieplna" (karta F-K1 faza 5): dowod kryterium dla galezi Z NASTAWA.
     // Kroki 1:1 z solverem `conductor_thermal_withstand.py::_build_white_box_trace`
     // i `wytrzymalosc_cieplna_przewodow.py::_krok_czasu`; liczby WYLICZONE tym
@@ -1322,7 +1511,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
         analysis_type: 'short_circuit_sn',
         fault_node_id: 'SZ-ST7',
         tk_s: 1.0,
-        czasy_wylaczenia: { z_nastawy: 1, z_zalozenia: 1, razem: 2 },
+        czasy_wylaczenia: { z_nastawy: 1, z_zalozenia: 2, razem: 3 },
         aktualnosc: {
           aktualny: true,
           powod_pl: 'Wynik policzony dla biezacej wersji modelu.',
@@ -1537,8 +1726,209 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
                 tms: null,
               },
             },
+            // Karta F-K1 faza 7: LINIA NAPOWIETRZNA (przewod goly) w tym samym widoku.
+            // Liczby WYLICZONE solverem `conductor_thermal_withstand.py` z danych
+            // katalogowych AFL 6 70/11 mm² (Jth = 88 A·√s/mm², S = 70 mm²,
+            // theta_b = 70 °C -> theta_k = 200 °C), NIE wpisane recznie:
+            //   Ith(1 s) = 88 · 70 = 6160 A; t = 1,0 s (zalozenie przypadku) ->
+            //   I_dop = 6160 A; I = 5200 A -> wykorzystanie 0,844156;
+            //   S_min = 5200·√1 / 88 = 59,0909 mm² < 70 mm² => PASS.
+            {
+              "branch_id": "linia-napowietrzna-3",
+              "branch_name": "Odgałęzienie napowietrzne L-03 (AFL 6 70 mm²)",
+              "status": "PASS",
+              "i_fault_a": 5200.0,
+              "i_permissible_a": 6160.0,
+              "utilization": 0.8441558441558441,
+              "s_min_mm2": 59.09090909090909,
+              "applied_cross_section_mm2": 70.0,
+              "missing_codes": [],
+              "uzasadnienie_pl": null,
+              "i2t_a2s": 27040000.0,
+              "i2t_dopuszczalne_a2s": 37945600.0,
+              "margines_procent": 15.58441558441559,
+              "kryteria": [
+                {
+                  "kod": "prad_dopuszczalny",
+                  "nazwa_pl": "Prąd zwarciowy wobec dopuszczalnego dla czasu t",
+                  "warunek_pl": "I_th ≤ I_dop(t) = I_th(1s)/√t",
+                  "wartosc": 5200.0,
+                  "granica": 6160.0,
+                  "jednostka": "A",
+                  "status": "PASS"
+                },
+                {
+                  "kod": "energia_cieplna",
+                  "nazwa_pl": "Energia zwarcia wobec wytrzymałości żyły",
+                  "warunek_pl": "I²·t ≤ k²·S²",
+                  "wartosc": 27040000.0,
+                  "granica": 37945600.0,
+                  "jednostka": "A²·s",
+                  "status": "PASS"
+                },
+                {
+                  "kod": "przekroj_minimalny",
+                  "nazwa_pl": "Przekrój zastosowany wobec minimalnego z warunku cieplnego",
+                  "warunek_pl": "S ≥ S_min = √(I²·t)/k",
+                  "wartosc": 70.0,
+                  "granica": 59.090909,
+                  "jednostka": "mm²",
+                  "status": "PASS"
+                }
+              ],
+              "powod_decyzji_pl": "Wykorzystanie wytrzymałości cieplnej 84,4 % (zapas 15,6 %).",
+              "zalecenia": [],
+              "wrazliwosc": [
+                {
+                  "parametr": "czas_wylaczenia",
+                  "nazwa_pl": "Czas wyłączenia",
+                  "mnoznik": 0.5,
+                  "wartosc": 0.5,
+                  "jednostka": "s",
+                  "wykorzystanie": 0.596908
+                },
+                {
+                  "parametr": "czas_wylaczenia",
+                  "nazwa_pl": "Czas wyłączenia",
+                  "mnoznik": 0.75,
+                  "wartosc": 0.75,
+                  "jednostka": "s",
+                  "wykorzystanie": 0.73106
+                },
+                {
+                  "parametr": "czas_wylaczenia",
+                  "nazwa_pl": "Czas wyłączenia",
+                  "mnoznik": 1.0,
+                  "wartosc": 1.0,
+                  "jednostka": "s",
+                  "wykorzystanie": 0.844156
+                },
+                {
+                  "parametr": "czas_wylaczenia",
+                  "nazwa_pl": "Czas wyłączenia",
+                  "mnoznik": 1.5,
+                  "wartosc": 1.5,
+                  "jednostka": "s",
+                  "wykorzystanie": 1.033876
+                },
+                {
+                  "parametr": "czas_wylaczenia",
+                  "nazwa_pl": "Czas wyłączenia",
+                  "mnoznik": 2.0,
+                  "wartosc": 2.0,
+                  "jednostka": "s",
+                  "wykorzystanie": 1.193817
+                },
+                {
+                  "parametr": "prad_zwarciowy",
+                  "nazwa_pl": "Prąd zwarciowy",
+                  "mnoznik": 0.5,
+                  "wartosc": 2600.0,
+                  "jednostka": "A",
+                  "wykorzystanie": 0.422078
+                },
+                {
+                  "parametr": "prad_zwarciowy",
+                  "nazwa_pl": "Prąd zwarciowy",
+                  "mnoznik": 0.75,
+                  "wartosc": 3900.0,
+                  "jednostka": "A",
+                  "wykorzystanie": 0.633117
+                },
+                {
+                  "parametr": "prad_zwarciowy",
+                  "nazwa_pl": "Prąd zwarciowy",
+                  "mnoznik": 1.0,
+                  "wartosc": 5200.0,
+                  "jednostka": "A",
+                  "wykorzystanie": 0.844156
+                },
+                {
+                  "parametr": "prad_zwarciowy",
+                  "nazwa_pl": "Prąd zwarciowy",
+                  "mnoznik": 1.25,
+                  "wartosc": 6500.0,
+                  "jednostka": "A",
+                  "wykorzystanie": 1.055195
+                },
+                {
+                  "parametr": "prad_zwarciowy",
+                  "nazwa_pl": "Prąd zwarciowy",
+                  "mnoznik": 1.5,
+                  "wartosc": 7800.0,
+                  "jednostka": "A",
+                  "wykorzystanie": 1.266234
+                },
+                {
+                  "parametr": "przekroj",
+                  "nazwa_pl": "Przekrój żyły",
+                  "mnoznik": 0.5,
+                  "wartosc": 35.0,
+                  "jednostka": "mm²",
+                  "wykorzystanie": 1.688312
+                },
+                {
+                  "parametr": "przekroj",
+                  "nazwa_pl": "Przekrój żyły",
+                  "mnoznik": 0.75,
+                  "wartosc": 52.5,
+                  "jednostka": "mm²",
+                  "wykorzystanie": 1.125541
+                },
+                {
+                  "parametr": "przekroj",
+                  "nazwa_pl": "Przekrój żyły",
+                  "mnoznik": 1.0,
+                  "wartosc": 70.0,
+                  "jednostka": "mm²",
+                  "wykorzystanie": 0.844156
+                },
+                {
+                  "parametr": "przekroj",
+                  "nazwa_pl": "Przekrój żyły",
+                  "mnoznik": 1.5,
+                  "wartosc": 105.0,
+                  "jednostka": "mm²",
+                  "wykorzystanie": 0.562771
+                },
+                {
+                  "parametr": "przekroj",
+                  "nazwa_pl": "Przekrój żyły",
+                  "mnoznik": 2.0,
+                  "wartosc": 140.0,
+                  "jednostka": "mm²",
+                  "wykorzystanie": 0.422078
+                }
+              ],
+              "uzasadnienie_k": {
+                "k_a_s05_per_mm2": 88.0,
+                "tozsamosc_pl": "k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej (prąd na 1 mm² przekroju wytrzymywany przez 1 s).",
+                "rodzaj_przewodu": "PRZEWOD_GOLY",
+                "rodzaj_przewodu_pl": "przewód goły (linia napowietrzna)",
+                "material_zyly": "AL_ST",
+                "izolacja": "brak — przewód goły",
+                "granica_temperatury_pl": "Temperaturę graniczną przy zwarciu wyznacza utrata wytrzymałości mechanicznej żyły i dopuszczalna temperatura osprzętu (przewód goły nie ma izolacji).",
+                "temp_poczatkowa_c": 70.0,
+                "temp_koncowa_c": 200.0,
+                "zrodlo_pl": "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; k wg IEC 60949 § 3",
+                "braki_pl": [],
+                "kompletne": true
+              },
+              "czas_wylaczenia": {
+                "tk_s": 1.0,
+                "zrodlo": "zalozenie_przypadku",
+                "powod_pl": "Gałąź bez rozwiązanej nastawy zabezpieczenia — czas z przypadku obliczeniowego.",
+                "urzadzenie_ref": null,
+                "urzadzenie_nazwa": null,
+                "funkcja": null,
+                "prad_galezi_a": 5200.0,
+                "prad_rozruchowy_a": null,
+                "krzywa": null,
+                "tms": null
+              }
+            },
           ],
-          summary: { pass_count: 1, fail_count: 1, unavailable_count: 0 },
+          summary: { pass_count: 2, fail_count: 1, unavailable_count: 0 },
         },
       }),
       { status: 200, headers: { 'Content-Type': 'application/json' } },

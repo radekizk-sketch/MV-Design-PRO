@@ -240,6 +240,12 @@ export function PanelDowoduCieplnego({
               </dd>
             </div>
             <div>
+              <dt>{JAKOSC_STRINGS.polRodzajPrzewodu}</dt>
+              <dd data-testid="mvd-jakosc-cieplna-rodzaj">
+                {k.rodzaj_przewodu_pl ?? JAKOSC_STRINGS.kreska}
+              </dd>
+            </div>
+            <div>
               <dt>Materiał żyły</dt>
               <dd>{k.material_zyly ?? JAKOSC_STRINGS.kreska}</dd>
             </div>
@@ -269,6 +275,11 @@ export function PanelDowoduCieplnego({
             </div>
           </dl>
           <p className="mvd-cieplny-opis">{k.tozsamosc_pl}</p>
+          {k.granica_temperatury_pl && (
+            <p className="mvd-cieplny-opis" data-testid="mvd-jakosc-cieplna-granica-temp">
+              {k.granica_temperatury_pl}
+            </p>
+          )}
           {!k.kompletne && (
             <p className="mvd-cieplny-brak" data-testid="mvd-jakosc-cieplna-brak-k">
               {JAKOSC_STRINGS.brakUzasadnieniaK}

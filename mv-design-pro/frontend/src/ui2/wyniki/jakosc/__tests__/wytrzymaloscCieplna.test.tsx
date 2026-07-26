@@ -80,6 +80,9 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
     uzasadnienie_k: {
       k_a_s05_per_mm2: 143,
       tozsamosc_pl: 'k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej.',
+      rodzaj_przewodu: 'KABEL',
+      rodzaj_przewodu_pl: 'kabel',
+      granica_temperatury_pl: 'Temperaturę graniczną przy zwarciu wyznacza materiał izolacji żyły.',
       material_zyly: 'CU',
       izolacja: 'XLPE',
       temp_poczatkowa_c: 90,
@@ -477,6 +480,60 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
     expect(material.textContent).toContain('250');
   });
 
+  it('przewód goły linii napowietrznej: brak izolacji nie jest brakiem danej', async () => {
+    // Karta F-K1 faza 7. Przed nią KAŻDY dowód dla linii napowietrznej miał adnotację
+    // „brak: rodzaj izolacji" — nieprawdę, bo przewód goły izolacji nie ma. Panel musi
+    // pokazać rodzaj przewodu i zdanie o tym, CO wyznacza temperaturę graniczną.
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(
+        odpowiedzOk(
+          String(url).includes('/proof')
+            ? dowodPelny
+            : odpowiedz([
+                pozycja({
+                  uzasadnienie_k: {
+                    k_a_s05_per_mm2: 88,
+                    tozsamosc_pl: 'k = Jth(1 s).',
+                    rodzaj_przewodu: 'PRZEWOD_GOLY',
+                    rodzaj_przewodu_pl: 'przewód goły (linia napowietrzna)',
+                    granica_temperatury_pl:
+                      'Temperaturę graniczną przy zwarciu wyznacza utrata wytrzymałości ' +
+                      'mechanicznej żyły i dopuszczalna temperatura osprzętu (przewód goły ' +
+                      'nie ma izolacji).',
+                    material_zyly: 'AL_ST',
+                    izolacja: 'brak — przewód goły',
+                    temp_poczatkowa_c: 70,
+                    temp_koncowa_c: 200,
+                    zrodlo_pl: 'PN-E-05115 / IEC 61936-1; k wg IEC 60949 § 3',
+                    braki_pl: [],
+                    kompletne: true,
+                  },
+                }),
+              ]),
+        ),
+      ),
+    );
+    render(<SekcjaWytrzymaloscCieplna {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    const rodzaj = await screen.findByTestId('mvd-jakosc-cieplna-rodzaj');
+    expect(rodzaj.textContent).toContain('przewód goły');
+
+    const material = screen.getByTestId('mvd-jakosc-cieplna-material');
+    expect(material.textContent).toContain('AL_ST');
+    expect(material.textContent).toContain('brak — przewód goły');
+    expect(material.textContent).toContain('70');
+    expect(material.textContent).toContain('200');
+
+    // Zdanie o granicy temperatury — bez niego przyjęte k jest nieweryfikowalne.
+    const granica = screen.getByTestId('mvd-jakosc-cieplna-granica-temp');
+    expect(granica.textContent).toContain('wytrzymałości mechanicznej');
+
+    // Uzasadnienie jest KOMPLETNE — żadnej adnotacji o brakach.
+    expect(screen.queryByTestId('mvd-jakosc-cieplna-brak-k')).toBeNull();
+  });
+
   it('niepełne uzasadnienie k jest nazwane, a nie uzupełniane z tablic', async () => {
     fetchMock.mockImplementation((url: string) =>
       Promise.resolve(
@@ -488,6 +545,9 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
                   uzasadnienie_k: {
                     k_a_s05_per_mm2: 143,
                     tozsamosc_pl: 'k = Jth(1 s).',
+                    rodzaj_przewodu: 'KABEL',
+                    rodzaj_przewodu_pl: 'kabel',
+                    granica_temperatury_pl: null,
                     material_zyly: null,
                     izolacja: 'XLPE',
                     temp_poczatkowa_c: 90,
