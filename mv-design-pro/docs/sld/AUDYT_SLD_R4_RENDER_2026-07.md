@@ -149,3 +149,26 @@ Pułapka warta zapamiętania: pierwsza próba nie zadziałała mimo poprawnej ko
 `gpzSymbolToPreview` przepisuje meta przez **jawną listę pól** i `voltageClass` wypadało po
 cichu w drodze do sceny — bez błędu typów, bo pole jest opcjonalne. Diagnoza wyszła z pomiaru
 sceny (0 symboli z `voltageClass`), nie z lektury kodu.
+
+## Etykieta punktu neutralnego — trzy próby odrzucone przez bramki (V12K-221)
+
+Niedomiar z V12K-219 (wartość R/X nieopisana na rysunku) **nie został zamknięty**, i to jest
+wynik pomiaru, nie zaniechania. Trzy podejścia, każde odrzucone przez inną wyrocznię —
+warto je zapisać, bo każda odmowa była słuszna i mówi coś o architekturze rysunku:
+
+| Próba | Umiejscowienie | Kto odrzucił i dlaczego |
+|---|---|---|
+| 1 | osobna etykieta **pod aparatem** | `declutterLabels` — kolizja z bboxem aparatu; etykieta obecna w kompozycji, w scenie zero (cisza, bez błędu) |
+| 2 | osobna etykieta **po lewej** aparatu | wyrocznia „żadna etykieta nie wystaje za lewą krawędź" — aparat stoi przy krawędzi sekcji, a sekcja przy krawędzi arkusza. Dodatkowo `busbar_label_probe` §18.4 słusznie nie dopuścił etykiety `busbar-voltage` bez odpowiadającego odcinka szyny |
+| 3 | **dopisek do etykiety sekcji** | `noLabelWireCollisions` + ta sama wyrocznia lewej krawędzi — etykieta sekcji jest wyśrodkowana na lewym końcu szyny, więc jej wydłużenie wypycha ją poza rysunek (mechanizm opisany wprost w komentarzu `sectionLabelText`) |
+
+**Wniosek projektowy:** sposób pracy punktu neutralnego jest informacją o **całej sieci**, nie
+o pojedynczym elemencie geometrii — tak jak poziomy napięć czy podstawa normowa. Właściwym
+miejscem jest więc **legenda / opis arkusza**, gdzie jest miejsce i gdzie nie konkuruje z
+aparaturą pól. Próby wciśnięcia jej w warstwę geometrii musiały przegrać z wyroczniami
+pilnującymi czytelności — i dobrze, że przegrały.
+
+Kod trzech prób został **wycofany** (nie zostawiono martwych kolekcji ani nieużywanych
+helperów). Tryb pracy nadal niesie **kształt glifu** (rezystor / dławik / połączenie
+bezpośrednie / przerwa dla sieci izolowanej), więc informacja jakościowa jest na rysunku —
+brakuje wyłącznie liczby. Domknięcie: rozbudowa bloku legendy o wiersze opisu sieci.
