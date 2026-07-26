@@ -1,6 +1,6 @@
 # KONCEPCJA — Import danych od OSD (XLS + podkład mapowy PDF)
 
-**Status:** KONCEPCJA (burza mózgów, do decyzji właściciela — patrz §11)
+**Status:** KONCEPCJA (burza mózgów, do decyzji właściciela — patrz §12)
 **Data:** 2026-07-26
 **Warstwa:** Infrastructure (parsery) + Application (uzgodnienie i emisja operacji) — **ZERO fizyki**
 **Powiązane:**
@@ -147,7 +147,90 @@ rzeczywisty przebieg ciągu. **Nigdy nie zasilają długości gałęzi.**
 
 ---
 
-## 4. PDF — co realnie da się z niego wyciągnąć (uczciwie)
+## 4. Źródło danych po stronie operatora — Digpro dpPower (rozpoznanie 2026-07)
+
+Rozpoznanie systemu, z którego pochodzą pliki, przestawia priorytety całej koncepcji. Jeżeli
+operator pracuje na **Digpro dpPower** (system informacji o sieci, NIS), to otrzymywane XLS i PDF
+są *najsłabszym* z dostępnych wyjść tego systemu — zwykłym wydrukiem tabeli i mapy.
+
+### 4.1 Formaty eksportu dpPower / dpSpatial
+
+| Format | Kierunek | Znaczenie dla nas |
+|---|---|---|
+| **Shape** | import **i eksport** | **Geometria + atrybuty w jednym pliku maszynowym.** To jest właściwy przedmiot prośby do operatora — zastępuje jednocześnie XLS i PDF. |
+| **DXF / DWG** | eksport | Geometria CAD z warstwami, wybór układu współrzędnych, 2D/3D. Symbole zamieniane na linie. |
+| **Plik zmian (changeset)** | eksport | Eksport przyrostowy — podstawa **utrzymania modelu w czasie**, a nie tylko jednorazowego wczytania. |
+| **PNG / JPEG + plik świata** (`.pgw`, `.jgw`) | eksport | Raster **z georeferencją**, z jawnym „metr na piksel" i skalą 1:x. |
+| PDF, SVG | eksport | To, co dostajesz dziś. |
+| KML 2.1, GPX | eksport | Lekka geometria punktowo-liniowa. |
+| XLS | eksport | „Tabele i wyniki wyszukiwania" — to najpewniej źródło Twojego arkusza. |
+| DPS | import i eksport | Własny format wektorowy Digpro z atrybutami. |
+
+**Wniosek praktyczny nr 1:** eksport rastrowy z plikiem świata oznacza, że podkład mapowy da się
+georeferencować **dokładnie**. Kalibracja dwupunktowa z §5 spada do roli rozwiązania awaryjnego
+dla skanów, zamiast być mechanizmem podstawowym.
+
+**Wniosek praktyczny nr 2 — najważniejszy w całym dokumencie:** skoro istnieje eksport Shape
+i eksport przyrostowy, to najlepszą wersją tej funkcjonalności może być **jednostronicowa
+specyfikacja danych wejściowych dla operatora** — mówiąca wprost, który eksport uruchomić —
+a nie coraz sprytniejszy parser wydruków.
+
+### 4.2 dpPower liczy to samo, co my
+
+Moduł **Analyzer** to pakiet obliczeń sieciowych dla zakresu 230 V – 400 kV: zwarcia trójfazowe,
+dwufazowe, jednofazowe prądy zwarciowe, napięcie na uziemionych częściach, zwarcia dwufazowe
+doziemne, a także napięcia zespolone, prądy, rozpływy mocy czynnej i biernej, spadki napięcia
+i straty. Parametry obliczeń obejmują m.in. udary, straty obciążeniowe i jałowe, regulację
+transformatorów, poziom obciążenia i czasy wykorzystania.
+
+To ustalenie działa w dwie strony:
+
+- **Szansa:** możemy zestawiać własne wyniki z liczbami operatora, a rozbieżność jest sama w sobie
+  informacją inżynierską — i mocnym argumentem w rozmowie o warunkach przyłączenia.
+- **Ryzyko pozycjonowania:** przewagą nie jest „liczymy zwarcia", bo operator też je liczy.
+  Przewagą jest **biała skrzynka z dowodem** — jawny ślad IEC 60909, ProofPack i audytowalność
+  wejścia (§8). Wyniki Analyzera nie trafiają do wnioskodawcy; nasz dowód trafia.
+
+### 4.3 Model danych liniowych dpPower kontra nasz katalog
+
+Zestaw pól danych liniowych w dpPower pokrywa się z naszym modelem niemal jeden do jednego:
+
+| dpPower (dane liniowe) | MV-DESIGN-PRO |
+|---|---|
+| rezystancja fazowa [Ω/km] | `r_ohm_per_km` |
+| rezystancja zerowa [Ω/km] | `r0_ohm_per_km` |
+| indukcyjność fazowa [mH/km] | `x_ohm_per_km` (przez `X = 2πfL`) |
+| indukcyjność zerowa [mH/km] | `x0_ohm_per_km` |
+| pojemność robocza [µF/km] | `b_siemens_per_km` (przez `B = 2πfC`) |
+| pojemność doziemna [µF/km] | `b0_siemens_per_km` |
+| prąd znamionowy [A] | `rated_current_a` |
+| prąd krótkotrwały fazy, 1 s [A] | `ith_1s_a` (= `jth × przekrój`) |
+| prąd krótkotrwały żyły powrotnej [A] | `return_conductor_ith_1s_a` |
+| typ ułożenia, współczynnik korekcyjny | typ ułożenia, współczynnik korekcyjny |
+| temperatura maksymalna i początkowa fazy | podstawa cieplna (θmax / θkz) |
+
+**To jest najważniejsza pojedyncza obserwacja tego rozdziału.** Parametry `R`/`X`, których żąda
+obecny importer (`importer.py:81-89`), oraz obciążalność, którą zaślepia wartością `1.0`
+(`importer.py:436`), **istnieją po stronie operatora w postaci strukturalnej** — po prostu nie ma
+ich w arkuszu, który dostajesz. Właściwą reakcją nie jest budowa estymatora, tylko poproszenie
+o właściwy eksport. Estymator zostaje wyłącznie jako ścieżka awaryjna, z jawnym oznaczeniem
+`MIGRACJA` i blokadą w bramce gotowości (§6).
+
+### 4.4 Czego nie udało się potwierdzić
+
+- **Brak dowodu na eksport CIM/CGMES z dpPower.** To istotne, bo repo ma już gotowy importer
+  CGMES (`backend/src/infrastructure/cgmes/cgmes_importer.py`) — gdyby taki eksport istniał,
+  byłby ścieżką najkrótszą i niemal darmową. Do zweryfikowania u operatora, **nie do założenia**.
+- Publiczna dokumentacja menu eksportu jest niekompletna (część stron zwraca 404), więc powyższa
+  lista jest dolnym oszacowaniem możliwości, nie listą zamkniętą.
+- Kontekst polski: Digpro prowadzi spółkę w Polsce, a materiały rejestrowe wskazują na prace
+  rozwojowe nad dpPower z Enea Operator. W naszym katalogu istnieje już rodzina „standard ENEA
+  Operator" (`mv_cable_line_catalog.py:174-213`), co dobrze się składa — ale przynależność
+  konkretnego operatora do dpPower należy potwierdzić, a nie zakładać.
+
+---
+
+## 5. PDF — co realnie da się z niego wyciągnąć (uczciwie)
 
 Trzy klasy plików, trzy różne poziomy zwrotu z inwestycji:
 
@@ -172,7 +255,7 @@ i audytowalna — bez ukrytego dopasowywania.
 
 ---
 
-## 5. Przekrój → typ katalogowy — sedno wartości i sedno ryzyka
+## 6. Przekrój → typ katalogowy — sedno wartości i sedno ryzyka
 
 To jest miejsce, w którym import albo daje przewagę, albo cicho psuje wyniki.
 
@@ -204,7 +287,7 @@ istniejącą i sprawdzoną.
 
 ---
 
-## 6. Gdzie z tego bierze się realna wartość (maksymalne wykorzystanie)
+## 7. Gdzie z tego bierze się realna wartość (maksymalne wykorzystanie)
 
 Osiem zastosowań, uporządkowanych od najbardziej oczywistego do najbardziej niedocenianego.
 
@@ -237,7 +320,7 @@ Osiem zastosowań, uporządkowanych od najbardziej oczywistego do najbardziej ni
 
 ---
 
-## 7. Ślad pochodzenia — dlaczego to jest teza, a nie dodatek
+## 8. Ślad pochodzenia — dlaczego to jest teza, a nie dodatek
 
 Każda zaimportowana wartość powinna nieść: hash pliku źródłowego, arkusz, wiersz, kolumnę
 (albo stronę PDF i obszar), identyfikator przebiegu importu oraz informację, kto zaakceptował
@@ -254,7 +337,7 @@ po tej zmianie białą skrzynką staje się **także wejście**.
 
 ---
 
-## 8. Ryzyka i świadome „nie"
+## 9. Ryzyka i świadome „nie"
 
 | Ryzyko | Decyzja |
 |---|---|
@@ -267,14 +350,15 @@ po tej zmianie białą skrzynką staje się **także wejście**.
 
 ---
 
-## 9. Etapowanie — każdy etap oddaje wartość samodzielnie
+## 10. Etapowanie — każdy etap oddaje wartość samodzielnie
 
 | Etap | Zakres | Wartość po zakończeniu |
 |---|---|---|
+| **E-1 — specyfikacja danych wejściowych** (bez kodu) | Jednostronicowy dokument dla operatora: który eksport uruchomić (Shape zamiast XLS + PDF), jakie atrybuty załączyć, plik świata do rastra, pytanie o CIM/CGMES. | **Najwyższy stosunek wartości do kosztu w całym planie.** Może zredukować zakres E1/E4 o rząd wielkości. |
 | **E0 — naprawa fundamentu** | Rozstrzygnąć los `/api/import/xlsx`: albo `openpyxl` do `pyproject.toml` i ścieżka do ENM, albo jawne wycofanie endpointu. Skorygować §16.1.1 spec i ADR-009. | Znika martwy kod udający działający. |
 | **E1 — dokument źródłowy + XLS** | Niezmienny dokument źródłowy z hashem, parser XLS z profilem operatora, słownik oznaczeń, raport dopasowań. **Bez tworzenia modelu.** | Już tutaj powstaje raport jakości danych OSD. |
 | **E2 — emisja operacji** | Szkic → kanoniczne operacje domenowe → ENM z `LineRun`, ślad pochodzenia, wpięcie w bramkę gotowości. | Pełny model sieci z danych operatora. |
-| **E3 — PDF jako podkład** | Obraz podkładu, kalibracja dwupunktowa, ręczne kotwiczenie stacji. Działa dla skanów. | Weryfikacja wzrokowa importu; schemat przypomina rzeczywistość. |
+| **E3 — mapa jako podkład** | Obraz podkładu; georeferencja z pliku świata, gdy operator go dostarczy (§4.1), kalibracja dwupunktowa jako ścieżka awaryjna dla skanów. | Weryfikacja wzrokowa importu; schemat przypomina rzeczywistość. |
 | **E4 — ekstrakcja z PDF** | Odczyt tekstu i wektorów, automatyczna weryfikacja krzyżowa topologii (§3 poziom 2). | Cztery klasy ustaleń zgodności z §3 — automatycznie. |
 | **E5 — obieg zwrotny** | Raport rozbieżności + eksport do formatu operatora. | Formalne domknięcie odpowiedzialności za dane. |
 
@@ -282,7 +366,7 @@ Test poprawności etapowania: **każdy wiersz da się zatrzymać i nadal zostawi
 
 ---
 
-## 10. Umiejscowienie w architekturze (kontrola granic warstw)
+## 11. Umiejscowienie w architekturze (kontrola granic warstw)
 
 ```
 Infrastructure   parsery XLS/PDF, kalibracja, słowniki operatorów        ← ZERO fizyki
@@ -298,16 +382,19 @@ jest zgodna z systemem, a nie doklejona z boku.
 
 ---
 
-## 11. Pytania otwarte (blokujące projekt szczegółowy)
+## 12. Pytania otwarte (blokujące projekt szczegółowy)
 
 1. **Który operator lub operatorzy?** Formaty różnią się istotnie — profil to pierwsza decyzja
    projektowa, nie szczegół implementacyjny.
 2. **Jaki jest kształt arkusza?** Czy wiersz to odcinek „od stacji A do stacji B", czy płaska
    lista odcinków w obrębie obwodu bez jawnych końców? To rozstrzyga, czy topologia jest
    w XLS, czy trzeba ją odtworzyć z mapy.
-3. **Jakiej klasy są pliki PDF** (§4) — eksport wektorowy z GIS czy skan? To rozstrzyga
+3. **Jakiej klasy są pliki PDF** (§5) — eksport wektorowy z GIS czy skan? To rozstrzyga
    kolejność etapów E3/E4.
 4. **Cel docelowy:** pojedyncze przyłączenie czy analiza całego ciągu? Wpływa na to, ile
    modelu trzeba odtworzyć, żeby wynik był wiarygodny.
 5. **Czy dysponujesz plikami przykładowymi?** Bez nich profil operatora i słownik oznaczeń
    pozostają hipotezą.
+6. **Czy operator pracuje na dpPower** (§4)? Jeśli tak, pierwszym krokiem nie jest kod, tylko
+   prośba o eksport Shape zamiast XLS + PDF — oraz pytanie wprost o eksport CIM/CGMES (§4.4),
+   który skróciłby całą drogę do gotowego już importera w repo.
