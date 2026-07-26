@@ -168,3 +168,106 @@ identyfikowalnego"):
 - **Dowód wizualny**: `docs/audit/visual/schemat-10/z3-l2-oznaczenia.png` —
   to samo pole stacji L2 w wariancie Z DANYMI („Q1·F1·Q9", producenckie F1/Q9)
   vs FALLBACK KONWENCJI („Q1·QE1"); render produkcyjną kanwą `SldCanvasV3`.
+
+## 9. Runda powykonawcza R2 — audyt POMIAROWY (2026-07-26)
+
+Poprzednie sekcje oceniały schemat z oględzin wycinków 1:1. Ta runda dokłada
+**pomiar na żywym renderze w przestrzeni EKRANU** — bo dokładnie tam mieszkały dwa
+znaleziska, których oględziny wycinka nie mogły pokazać: wycinek 1:1 jest czytelny
+z definicji, a pełny widok sieci nie.
+
+Materiał: `docs/audit/visual/sld_audyt/sld_L{0,1,2}_{light,dark}.png`, generator
+`frontend/e2e/sld-audyt-powykonawczy-screenshot.spec.ts` (bramki w spec: kanwa
+niepusta, wymuszony LOD dotarł do kanwy, ≥52 stacje, zero błędów konsoli).
+Pomiar: `getBoundingClientRect` po transformacji kamery, kadr 1920×1080.
+
+### 9.1 Pomiar wyjściowy (HEAD przed rundą)
+
+| Poziom | Elementów | Etykiet | Etykiet Q/QE/T | Etykiet < 6 px | Wykorzystanie kadru |
+|---|---|---|---|---|---|
+| L0 | 1 784 | 127 | 0 | 127 (100 %) | 96,0 % × 41,1 % |
+| L1 | 7 862 | 1 031 | **171** | 1 031 (100 %) | 96,0 % × 42,0 % |
+| L2 | 8 196 | 1 198 | 395 | 1 186 (99 %) | 96,0 % × 42,0 % |
+
+### 9.2 Karta R2-A · identyfikatory aparatów o poziom za wcześnie — NAPRAWIONE
+
+Kontrakt (`SLD_LOD_SPEC_OPERATOR_GRADE.md` §6) przypisuje identyfikatory aparatów
+(`Q1`/`QE1`/`T1`) do pełnego detalu; L1 („sieć terenowa") ma nieść nazwy stacji, nazwy
+sekcji GPZ i oznaczenia odpływów liczbowo. `buildBayStack` (`compose/station.ts`) nie
+zna LOD i emitował je bezwarunkowo — L1 dostawał **171 etykiet Q ponad kontrakt**.
+
+Skutek był mierzalny i dotykał sensu całej drabiny LOD: L1 i L2 różniły się o **4 %**
+elementów (7 862 wobec 8 196). Kontrakt obiecuje trzy poziomy detalu, realnie działały
+dwa — „sieć terenowa" była tak samo zatłoczona jak widok pól.
+
+Naprawa: filtr w JEDYNYM punkcie wejścia etykiet do sceny (`resolveLabels`,
+`buildScene.ts` §7), zawężony do identyfikatorów (`#apparatus-id-` w `ownerRef`) — nie
+do całego `ownerKind:'apparatus'`, bo ten rodzaj jest **dzielony ze znacznikiem GPZ**
+obecnym na L0. Szersze cięcie zdejmowało znacznik z mapy sieci; wersja pośrednia została
+zmierzona i odrzucona (L0 traciło 1 element), zanim weszła do repozytorium. Kompozycja
+stacji pozostaje nietknięta — ta sama geometria, te same porty — więc Acceptance
+Invariant nr 6 jest zachowany wprost: zmienia się wyłącznie zbiór etykiet.
+
+| Poziom | Elementów (było → jest) | Etykiet (było → jest) | Etykiet Q |
+|---|---|---|---|
+| L0 | 1 784 → **1 784** (bit-identyczny) | 127 → **127** | 0 |
+| L1 | 7 862 → **7 072** (−10 %) | 1 031 → **636** (−396) | 171 → **0** |
+| L2 | 8 196 → **8 196** (nietknięty) | 1 198 → **1 198** | 395 |
+
+Rozróżnialność L1→L2 wzrosła z **+4 %** do **+16 %** elementów. Regresja
+`src/ui/sld/v3` + `src/ui/sld/core`: **1399 passed, 0 failed**;
+`sld_determinism_guards`: 0 naruszeń.
+
+### 9.3 Karta R2-B · etykiety nieczytelne na pełnym widoku sieci — OTWARTA
+
+100 % etykiet ma wysokość **2 px** na każdym poziomie detalu. Rysunek 52-stacyjny
+wpasowany w kadr 1920 px daje skalę ≈ 0,17, więc tekst t3/t4 spada z kilkunastu
+jednostek arkusza do 2 px ekranu.
+
+Dlaczego nie wyłapały tego istniejące bramki: `declutterLabels` rozstrzyga kolizje w
+przestrzeni ARKUSZA i na sieci wzorcowej jest tożsamością (0 kolizji na L0/L1/L2 —
+komentarz `buildScene.ts` §3348). Arkusz jest ogromny, więc kolizji faktycznie nie ma.
+Czytelność jest jednak własnością ekranu i żaden dotychczasowy pomiar jej nie sprawdzał.
+
+Karta pozostaje OTWARTA, bo naprawa wymaga rozstrzygnięcia między trzema wykluczającymi
+się kierunkami:
+1. **declutter ekranowy** — etykieta poniżej progu czytelności jest UKRYWANA (zgodne ze
+   spec §6, ale pełny widok sieci traci opisy),
+2. **tekst w przestrzeni ekranu** — stały rozmiar niezależny od zoomu (czytelny zawsze,
+   ale przy 52 stacjach zlewa się w plamę i łamie proporcje rysunku technicznego),
+3. **wymuszony minimalny zoom** — pełna sieć nie jest pokazywana w jednym kadrze
+   (uczciwe wobec czytelności, odbiera przegląd całości).
+
+Rekomendacja audytu: kierunek 1 z progiem 6 px i jawnym wskaźnikiem „ukryto N opisów —
+przybliż, aby zobaczyć"; tylko on nie łamie ani proporcji rysunku, ani przeglądu całości.
+Decyzja należy do właściciela.
+
+### 9.4 Karta R2-C · motyw jasny nie dotyczy kanwy — ZAMKNIĘTA jako decyzja projektowa
+
+Zrzuty `light` i `dark` są wizualnie identyczne. Kanwa v3 ma stałe tło techniczne
+(`SLD_V3_BACKGROUND`) — decyzja udokumentowana w `screenshot-harness-main.tsx` §46
+(rysunek techniczny, nie UI reagujące na motyw), spójna z praktyką PowerFactory / ETAP
+dla widoku SCADA.
+
+Audyt nie kwalifikuje tego jako defektu implementacji, ale odnotowuje napięcie wobec
+dyrektywy właściciela #8 (oględziny w obu motywach): dla dokumentacji projektowej i
+wydruku standardem jest tło jasne. Jeśli SLD ma zasilać wydruk, potrzebny jest osobny
+wariant arkuszowy — karta do rozstrzygnięcia przy eksporcie rysunku, nie tutaj.
+
+### 9.5 Co runda potwierdziła jako poprawne
+
+- **Acceptance Invariant nr 6** trzyma: L0/L1/L2 mają IDENTYCZNY layout, różnią się
+  wyłącznie gęstością szczegółu (zero przesunięć geometrii między poziomami).
+- **Hierarchia etykiet L0** jest respektowana: 0 numerów pól, 0 nazw stacji, obecne
+  nazwy GPZ — dokładnie zakres spec §6 dla mapy sieci.
+- **Wykorzystanie kadru 96 % × 41 %** nie jest defektem auto-fitu: rysunek sieci
+  wzorcowej ma proporcję ≈ 4,06:1 wobec kadru 1,78:1, więc pasy nad i pod rysunkiem
+  wynikają z zachowania proporcji. Rysunek jest wycentrowany symetrycznie.
+- **Zero błędów konsoli** na wszystkich sześciu kadrach.
+
+### 9.6 Dług zapisany z pomiarem
+
+Czytelność etykiet nie ma dziś **bramki automatycznej** — guardy SLD mierzą arkusz, nie
+ekran. Dopóki karta R2-B nie zostanie rozstrzygnięta, regresja czytelności jest
+niewykrywalna w CI. Bramka ekranowa (próg wysokości tekstu) powstanie razem z naprawą
+R2-B, bo dopiero wtedy będzie znany kontraktowy próg.

@@ -3279,12 +3279,33 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   });
 
   // -- 7. Rozwiąż WSZYSTKIE etykiety JEDNYM globalnym resolveLabels. --------
+  // AUDYT POWYKONAWCZY SLD (zadanie #76, znalezisko A-2): identyfikatory
+  // APARATÓW (`Q1`/`QE1`/`T1`) należą wg `docs/sld/SLD_LOD_SPEC_OPERATOR_GRADE.md`
+  // §6 do PEŁNEGO detalu, a emitowane były na KAŻDYM poziomie — `buildBayStack`
+  // nie zna LOD i wystawia je bezwarunkowo. Skutek zmierzony na sieci wzorcowej
+  // (52 stacje, 1920×1080): L1 dostawał 171 etykiet Q ponad kontrakt, przez co
+  // „sieć terenowa" (L1) i „obiekty + pola" (L2) różniły się o 4 % elementów —
+  // trzy poziomy detalu w kontrakcie, realnie dwa. Filtr stoi TUTAJ, w jedynym
+  // punkcie wejścia etykiet do scen, a nie w trzech miejscach `simpleAnchored.push`:
+  // kompozycja stacji zostaje nietknięta (ta sama geometria, te same porty), więc
+  // Acceptance Invariant nr 6 („LOD zmienia szczegół wizualny, nie znaczenie
+  // elektryczne") jest zachowany wprost — zmienia się WYŁĄCZNIE zbiór etykiet.
+  // Filtrowany jest WYŁĄCZNIE identyfikator aparatu (`#apparatus-id-` w `ownerRef`,
+  // ta sama wyrocznia co §19.1 niżej), a nie cały `ownerKind:'apparatus'` — ten
+  // rodzaj jest DZIELONY ze znacznikiem GPZ obecnym na L0 i szersze cięcie zdjęłoby
+  // go z mapy sieci (zmierzone: L0 traciło 1 element).
+  const simpleAnchoredForLod =
+    lod === 2
+      ? simpleAnchored
+      : simpleAnchored.filter(
+          (owner) => !(owner.ownerKind === 'apparatus' && owner.ownerRef.includes('#apparatus-id-')),
+        );
   const resolvedLabels: readonly OwnedLabel[] = resolveLabels({
     segmentSpans,
     segmentLaterals,
     stationNameBands,
     portCaptions,
-    simpleAnchored,
+    simpleAnchored: simpleAnchoredForLod,
   });
 
   // -- 7b. F10.1 (spec §18.6, dyrektywa D2-1): OPISANE zakończenia torów. ----
