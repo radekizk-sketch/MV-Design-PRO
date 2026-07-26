@@ -2,3 +2,6 @@
 # Test artifacts
 playwright-report/
 test-results/
+
+# Raporty pomiarowe audytu SLD R4 (artefakty przebiegu, nie zrodlo prawdy)
+audyt-r4/
