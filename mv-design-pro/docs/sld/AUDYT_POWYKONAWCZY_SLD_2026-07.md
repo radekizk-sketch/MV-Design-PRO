@@ -271,3 +271,38 @@ Czytelność etykiet nie ma dziś **bramki automatycznej** — guardy SLD mierz�
 ekran. Dopóki karta R2-B nie zostanie rozstrzygnięta, regresja czytelności jest
 niewykrywalna w CI. Bramka ekranowa (próg wysokości tekstu) powstanie razem z naprawą
 R2-B, bo dopiero wtedy będzie znany kontraktowy próg.
+
+### 9.7 Runda R2b — kolizja dwóch kontraktów wyłapana przez CI
+
+Pierwsze scalenie R2 przeszło regresję `src/ui/sld/v3` + `src/ui/sld/core` (1399 passed)
+i guard `sld_determinism_guards`, ale **padło w CI** na `npm run accept:sld-v3`. Ten skrypt
+akceptacyjny nie jest testem vitest i nie wchodzi w zakres żadnego katalogu testów —
+został pominięty w weryfikacji lokalnej. Lekcja jest ogólna: **bramki workflowu trzeba
+czytać z pliku workflowu**, a nie odtwarzać z pamięci o „testach warstwy".
+
+Przyczyna była merytoryczna, nie techniczna — **dwa kontrakty mówiły co innego**:
+
+- `SLD_LOD_SPEC_OPERATOR_GRADE.md` §6: identyfikatory aparatów należą do pełnego detalu,
+- `apparatus_identifier_probe` §19.1: **każdy** uprawniony aparat niesie identyfikator.
+
+Probe uruchamiał się dla `lod !== 0` — warunek dobrany do tego, gdzie istnieją SYMBOLE
+aparatów (L0 = `stationCollapsed`, zero aparatów), podczas gdy mierzy ich ETYKIETY. Dopóki
+etykiety były wszędzie, rozjazd był niewidoczny; naprawa R2-A go obnażyła (0 etykiet wobec
+395 aparatów na L1).
+
+Rozstrzygnięcie: intencja §19.1 zostaje bez zmian („każdy uprawniony aparat niesie
+identyfikator funkcyjny ze znacznikiem konwencji"), przenosi się tylko poziom, na którym
+da się ją sprawdzić — na L2. Do tego doszła **kontrola odwrotna** na L1: identyfikatorów
+tam nie ma, symbole owszem. Bez tej pary powrót etykiet Q na „sieć terenową" byłby
+niewykrywalny, bo probe §19.1 wtedy tylko by się ucieszył.
+
+Przy okazji naprawiony licznik diagnostyczny nowej kontroli: pierwsza wersja pytała o
+`meta.kind` (pola, którego symbole nie mają) i raportowała **0 aparatów przy 513
+obecnych**. Asercja obok była poprawna, ale liczba w raporcie audytowym nie może kłamać —
+licznik korzysta teraz z tej samej wyroczni „aparatu uprawnionego" co §19.1
+(`elementKind` + znacznik `apparatusSource`).
+
+Bramki workflowu `sld-determinism.yml` uruchomione lokalnie po naprawie, wszystkie zielone:
+`sld_determinism_guards` (0 naruszeń), `layoutEngine.substrate`, `ViewportController`,
+`LodPolicy`, `renderers`, `portAnchoredGeometry.substrate`, `StationInternalView`,
+`SldCommandService`, `ports` (razem 185 passed) oraz `accept:sld-v3` (ALL PASS).

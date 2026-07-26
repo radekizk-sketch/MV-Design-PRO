@@ -678,14 +678,44 @@ for (const lod of LODS) {
   );
 
   // -- §19.1 (F10.2, V12K-035) apparatus_identifier_probe --------------------
-  // Symbole pola istnieją WYŁĄCZNIE na lod>=1 (L0 = stationCollapsed, zero
-  // aparatów) — ta sama gałąź co §12.1 wyżej.
-  if (lod !== 0) {
+  // Wyrocznia idzie na L2, bo tam identyfikatory są RYSOWANE. Warunek był dotąd
+  // `lod !== 0` i dobrany do tego, gdzie istnieją SYMBOLE aparatów (L0 =
+  // stationCollapsed, zero aparatów) — a mierzy ETYKIETY tych symboli. Rozjazd
+  // ujawnił audyt powykonawczy SLD (V12K-212): kontrakt LOD §6 przypisuje
+  // identyfikatory aparatów do pełnego detalu, więc od tej zmiany L1 ich nie ma
+  // i probe raportował 0 etykiet wobec 395 aparatów. Intencja §19.1 zostaje bez
+  // zmian — „każdy uprawniony aparat niesie identyfikator funkcyjny ze znacznikiem
+  // konwencji" — przenosi się tylko poziom, na którym da się ją sprawdzić.
+  if (lod === 2) {
     const idGaps = apparatusIdentifierGaps(scene);
     check(
       'apparatus_identifier_probe (§19.1 a-d): oznaczenie pola FUNKCYJNE (nie surowe Q\\d+/T\\d+), każdy aparat uprawniony (CB/DS/rozłącznik/uziemnik/TR) niesie identyfikator Q/QE/T ze znacznikiem konwencji',
       allApparatusIdentifiersValid(scene),
       `luki=${idGaps.length}${idGaps.length ? ' np. ' + JSON.stringify(idGaps[0]) : ''}`,
+    );
+  }
+  // Kontrola ODWROTNA (V12K-212): na L1 identyfikatorów aparatów nie ma, a symbole
+  // owszem. Bez tej pary regresja w drugą stronę — powrót etykiet Q na „sieć
+  // terenową" — byłaby niewykrywalna, bo probe §19.1 wtedy tylko by się ucieszył.
+  if (lod === 1) {
+    const idLabels = scene.labels.filter(
+      (l) => l.ownerKind === 'apparatus' && l.ownerRef.includes('#apparatus-id-'),
+    );
+    // TA SAMA wyrocznia „aparatu uprawnionego" co §19.1 (`apparatusIdentifierGaps`):
+    // `elementKind` + znacznik `apparatusSource` ustawiany wyłącznie przez
+    // `compose/station.ts`. Pierwsza wersja licznika pytała o `meta.kind` (pole,
+    // którego symbole nie mają) i raportowała 0 aparatów przy 395 obecnych —
+    // liczba w raporcie audytowym nie może kłamać, nawet gdy asercja obok jest
+    // poprawna.
+    const apparatusSymbols = scene.symbols.filter(
+      (sym) =>
+        (sym.meta?.elementKind === 'apparatus' || sym.meta?.elementKind === 'transformer') &&
+        sym.meta?.apparatusSource != null,
+    ).length;
+    check(
+      'apparatus_identifier_lod_probe (kontrakt LOD §6): L1 („sieć terenowa") niesie SYMBOLE aparatów, ale NIE ich identyfikatory — te należą do pełnego detalu',
+      idLabels.length === 0,
+      `etykiety_identyfikatorow=${idLabels.length} symbole_aparatow=${apparatusSymbols}`,
     );
   }
   if (lod === 2) {
