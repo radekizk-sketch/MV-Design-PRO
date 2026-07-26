@@ -62,16 +62,30 @@ describe('exportPalette — substituteExportHexColors (jednostka)', () => {
     }
   });
 
-  it('hv (=BASE_STROKE) i nop (=open) mapują na TEN SAM cel jasny (symetria z ciemnym)', () => {
-    expect(VOLTAGE_COLOR.hv).toBe(BASE_STROKE);
+  // INTENCJA (zachowana z wersji sprzed V12K-216): gdy dwa tokeny dzielą JEDNĄ
+  // wartość ciemną, deduplikacja Mapy nie może cicho nadpisać celu — cele jasne
+  // muszą się zgadzać. Do V12K-216 taką parą były `hv`/`BASE_STROKE`; dziś `hv`
+  // to czerwień OSD `#D93A2B` (paleta wg praktyki polskich OSD), więc rolę pary
+  // dzielącej wartość pełni WYŁĄCZNIE `nop`/`open` (oba `#FF006E`).
+  it('nop (=open) mapuje na TEN SAM cel jasny — dedup Mapy nie nadpisuje cichaczem', () => {
     expect(STATE_COLOR.nop).toBe(STATE_COLOR.open);
-    const out = substituteExportHexColors(`<a fill="${BASE_STROKE}"/><b fill="${VOLTAGE_COLOR.hv}"/>`);
     const outNop = substituteExportHexColors(`<a fill="${STATE_COLOR.open}"/><b fill="${STATE_COLOR.nop}"/>`);
-    expect(out).toBe(`<a fill="${LIGHT_TECHNICAL_V3.baseStroke}"/><b fill="${LIGHT_TECHNICAL_V3.voltage.hv}"/>`);
-    expect(LIGHT_TECHNICAL_V3.voltage.hv).toBe(LIGHT_TECHNICAL_V3.baseStroke);
     expect(outNop).toBe(
       `<a fill="${LIGHT_TECHNICAL_V3.state.open}"/><b fill="${LIGHT_TECHNICAL_V3.state.nop}"/>`,
     );
+  });
+
+  // NOWE (V12K-216): WN rozdzielone od bazy na ekranie, ale ZBIEŻNE w druku —
+  // ta asymetria jest świadoma (czerwień drukowalna zarezerwowana dla NOP, D11),
+  // więc musi mieć własny dowód. Bez niego cichy powrót `hv` do bieli albo
+  // rozjazd druku przeszedłby niezauważony.
+  it('WN: na ekranie czerwień ≠ baza, w druku oba → tusz (asymetria D11 zamierzona)', () => {
+    expect(VOLTAGE_COLOR.hv).not.toBe(BASE_STROKE);
+    expect(VOLTAGE_COLOR.hv).not.toBe(STATE_COLOR.nop);
+    const out = substituteExportHexColors(`<a fill="${BASE_STROKE}"/><b fill="${VOLTAGE_COLOR.hv}"/>`);
+    expect(out).toBe(`<a fill="${LIGHT_TECHNICAL_V3.baseStroke}"/><b fill="${LIGHT_TECHNICAL_V3.voltage.hv}"/>`);
+    expect(LIGHT_TECHNICAL_V3.voltage.hv).toBe(LIGHT_TECHNICAL_V3.baseStroke);
+    expect(LIGHT_TECHNICAL_V3.voltage.hv).not.toBe(LIGHT_TECHNICAL_V3.state.nop);
   });
 
   it('nie dotyka treści niebędącej jednym z tokenów (etykieta PL nietknięta)', () => {

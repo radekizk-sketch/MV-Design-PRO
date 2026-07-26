@@ -66,7 +66,7 @@ Trzy poziomy sceny (SceneLod bez zmian), JEDEN słownik nazw (koniec mapowania 5
 | Sekcje/NOP | znacznik NA torze (kotwica = render szyny TEGO LOD) | jw. + stan łącznika | jw. |
 | DER | marker (PV/BESS/FW ikona) | ikona + moc | pełny blok przyłącza |
 | Etykiety | S-id; nazwa korytarza 1×; NIC katalogowego | nazwa stacji + moc; typ kabla **≤1× na korytarz** | pełne (typ, długość, przekładnie) — z silnikiem kolizji |
-| Kolory | JEDNA tabela: napięcie (110 biały / SN zielony / nN niebieski) × stan (zał./wył./NOP) × wyróżnienie (selekcja/overlay) — identyczna na WSZYSTKICH LOD | jw. | jw. |
+| Kolory | JEDNA tabela: napięcie (110 **czerwony** `#D93A2B` / SN zielony / nN niebieski — zmiana V12K-216, dyrektywa właściciela 2026-07-26 „paleta wg praktyki polskich OSD”; do tej zmiany 110 był biały, czyli dzielił barwę z ramką arkusza i legendą, patrz audyt R4) × stan (zał./wył./NOP) × wyróżnienie (selekcja/overlay) — identyczna na WSZYSTKICH LOD | jw. | jw. |
 | Kotwica | **środek glifu stacji i oś korytarza IDENTYCZNE na L0/L1/L2** (zoom = skala szczegółu, nie przemeblowanie) | jw. | jw. |
 | Kadr | fit do treści (bez martwych pól) | jw. | jw. |
 

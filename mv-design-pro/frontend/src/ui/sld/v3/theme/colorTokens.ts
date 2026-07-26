@@ -70,9 +70,25 @@ export const BASE_STROKE = '#E8EEF4' as const;
 export type VoltageClass = 'hv' | 'sn' | 'nn';
 
 /**
- * `hv` = biały (matrix §3) — TA SAMA wartość co `BASE_STROKE` (110 kV/WN
- * pozostaje kolorem „domyślnym/bazowym" kanwy, zero zmiany dla GPZ szyny WN
- * względem stanu sprzed S3).
+ * `hv` = CZERWIEŃ (V12K-216, dyrektywa właściciela 2026-07-26: paleta wg praktyki
+ * polskich OSD — „110 kV czerwony, SN zielony, nN niebieski"). Do tej zmiany
+ * `hv === BASE_STROKE` (biały, dawna matrix §3), co audyt R4 zmierzył jako realny
+ * brak: strona 110 kV dzieliła barwę z obwiednią arkusza, znacznikami stref i
+ * legendą, więc NAJWYŻSZY poziom napięcia nie wyróżniał się jako poziom — miał
+ * kolor „domyślny", wspólny z elementami NIEELEKTRYCZNYMI rysunku (pomiar: L0
+ * niósł dwa kolory w całym drzewie DOM przy trzech poziomach napięcia w modelu).
+ *
+ * DOBÓR ODCIENIA. `#D93A2B` to czerwień przechylona w ciepło (hue ≈ 7°), wybrana
+ * ŚWIADOMIE daleko od `STATE_COLOR.nop`/`open` = `#FF006E` (magenta, hue ≈ 334°):
+ * na ekranie czerwień była wolna, bo stan otwarty/NOP nosi magentę, i ta odległość
+ * w odcieniu musi zostać zachowana przy każdej przyszłej korekcie — inaczej
+ * „poziom napięcia" i „stan ruchowy" zlałyby się w jedną barwę.
+ *
+ * ASYMETRIA WOBEC DRUKU (świadoma, patrz `export/exportPalette.ts`): w druku WN
+ * pozostaje czarnym tuszem, bo czerwień drukowalna `#B71C1C` jest zarezerwowana
+ * dla NOP (wymóg D11 „WN/SN/nN i NOP wzajemnie rozróżnialne"). Gdy trzeba wybrać,
+ * PIERWSZEŃSTWO ma stan ruchowy nad poziomem napięcia — pomyłka co do punktu
+ * podziału sieci jest groźniejsza niż pomyłka co do poziomu napięcia.
  * `sn` = zielony — wartość ZGODNA z kanonicznym zielonym szyny SN w v2
  * (`ui/sld/v2/theme/tokens.ts` `COLOR_BUS_LV`/`COLOR_FIELD_TRUNK_ENERGIZED`,
  * „Szyna 15/30 kV (SN) — zielony tor operatorski"), ale ŚWIADOMIE INNY
@@ -83,7 +99,7 @@ export type VoltageClass = 'hv' | 'sn' | 'nn';
  * `HIGHLIGHT_COLOR.flow` (#4FC3F7), z tego samego powodu.
  */
 export const VOLTAGE_COLOR: Readonly<Record<VoltageClass, string>> = {
-  hv: BASE_STROKE,
+  hv: '#D93A2B',
   sn: '#13C45A',
   nn: '#0099CC',
 } as const;

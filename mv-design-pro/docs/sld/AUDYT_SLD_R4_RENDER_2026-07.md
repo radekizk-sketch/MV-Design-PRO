@@ -96,3 +96,35 @@ Oba były błędne: `networkidle` nie nadchodzi przy dev-serverze Vite (HMR trzy
 a `test-results/` Playwright czyści na starcie przebiegu, więc raport z L1 ginął, gdy
 dobiegał L2. Poprawione na `domcontentloaded` + oczekiwanie na `data-lod-override` oraz
 katalog `audyt-r4/` (poza czyszczeniem).
+
+## Wdrożenie Z4-1 (V12K-216) — zrobione
+
+`VOLTAGE_COLOR.hv` = `#D93A2B` (czerwień ciepła, hue ≈ 7°), zgodnie z wybraną paletą praktyki
+polskich OSD. Odcień dobrany świadomie daleko od `STATE_COLOR.nop`/`open` = `#FF006E`
+(magenta, hue ≈ 334°) — na ekranie czerwień była wolna, a „poziom napięcia" i „stan ruchowy"
+nie mogą się zlać.
+
+**W druku WN zostaje czarnym tuszem** (asymetria zamierzona): czerwień drukowalna `#B71C1C`
+jest zarezerwowana dla NOP (wymóg D11 wzajemnej rozróżnialności). Gdy trzeba wybrać,
+pierwszeństwo ma stan ruchowy — pomyłka co do punktu podziału sieci jest groźniejsza niż
+pomyłka co do poziomu napięcia.
+
+Pomiar po zmianie (render L0/L1/L2): WN `rgb(217,58,43)` × 6 (szyna WN, źródło, 2 odcinki),
+baza spadła 94 → 88, **L0 ma teraz trzy kolory zamiast dwóch**. Kanon matrix §3 zaktualizowany
+(„110 czerwony"), bo inaczej kod rozjechałby się z kanonem.
+
+Weryfikacja: 3745 testów `src/ui/sld` (197 plików), `accept:sld-v3` ALL PASS,
+`sld_determinism_guards` 0 naruszeń, tsc i eslint czyste.
+
+### Niedomiar zmierzony, NIEZAMKNIĘTY — aparaty pola WN
+
+Aparaty pola transformatorowego GPZ (`wn_sn-cb`, `wn_sn-ds`, `wn_sn-ct`) mają nadal kolor
+SN `rgb(19,196,90)` — **wyłącznik 110 kV wygląda jak wyłącznik 15 kV**. Czerwień dostały
+tylko szyna WN, źródło i odcinki, bo klasyfikacja `voltageClassOf` czyta znacznik `#hv-`
+z `ownerRef` odcinka, a symbole aparatów takiego znacznika nie noszą.
+
+To nie przeoczenie tej karty, a **udokumentowany GAP karty S3** (`colorTokens.ts`,
+komentarz przy `baseSymbolStrokeColor`: „pozostałe symbole aparatury … NIE niosą dziś w
+`ownerRef` znacznika napięcia pola, `bayRef` to opaque"). Naprawa wymaga przeniesienia klasy
+napięcia z pola do symbolu w `compose/gpz.ts`/`compose/station.ts` — zakres S4/S5, nie token.
+Zapisane z pomiarem, nie przemilczane.

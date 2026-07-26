@@ -7,8 +7,11 @@
  *
  * SAME KLUCZE co `theme/colorTokens.ts` (dark) — wartości jasne, drukowalne
  * (tło białe, tor SN zielony/nN granatowy przyciemnione dla kontrastu na
- * bieli, WN/tusz bazowy czarny — zachowuje symetrię ciemnego motywu, gdzie
- * `VOLTAGE_COLOR.hv === BASE_STROKE`, patrz `colorTokens.ts` nagłówek — WN
+ * bieli, WN/tusz bazowy czarny. UWAGA (V12K-216): na EKRANIE `VOLTAGE_COLOR.hv`
+ * to już czerwień `#D93A2B` (paleta OSD), więc dawna symetria „hv === BASE_STROKE"
+ * NIE obowiązuje. W druku WN zostaje czarnym tuszem ŚWIADOMIE: czerwień drukowalna
+ * `#B71C1C` jest zarezerwowana dla NOP (D11), a przy kolizji pierwszeństwo ma stan
+ * ruchowy nad poziomem napięcia — WN
  * pozostaje kolorem „bazowym" kanwy w OBU motywach). Semantyka napięć
  * WN/SN/nN i NOP pozostają WZAJEMNIE rozróżnialne w druku (D11 wymóg
  * dosłowny). Selekcja WYŁĄCZNIE w torze eksportu
@@ -121,9 +124,10 @@ export const LIGHT_TECHNICAL_V3 = {
 // ---------------------------------------------------------------------------
 // Mapa substytucji: dark hex -> light hex — DERIVED z importów `colorTokens.ts`
 // (źródło ciemne NIGDY nie dryfuje od prawdy ekranu), deduplikowana Mapą
-// (klucz = wartość ciemna — `BASE_STROKE`/`VOLTAGE_COLOR.hv` i
-// `STATE_COLOR.open`/`STATE_COLOR.nop` dzielą dziś TĘ SAMĄ wartość ciemną z
-// definicji, patrz `colorTokens.ts`; ich cele jasne MUSZĄ się zgadzać —
+// (klucz = wartość ciemna — `STATE_COLOR.open`/`STATE_COLOR.nop` dzielą TĘ SAMĄ
+// wartość ciemną z definicji, patrz `colorTokens.ts`; `BASE_STROKE` i
+// `VOLTAGE_COLOR.hv` dzieliły ją do V12K-216, dziś są rozdzielone — oba nadal
+// celują w `EXPORT_INK`; wszystkie cele jasne MUSZĄ się zgadzać —
 // pilnowane twardym fail niżej, nie cichym nadpisaniem).
 // ---------------------------------------------------------------------------
 
