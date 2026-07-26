@@ -150,6 +150,10 @@ export interface ComposedGpzSymbolInstance {
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
+  /** Rodzaj uziemienia punktu neutralnego (V12K-219) — WYŁĄCZNIE dla symbolu
+   *  `neutralEarthing`; przechodzi do glifu, który rysuje rezystor, dławik,
+   *  połączenie bezpośrednie albo przerwę (sieć izolowana). */
+  readonly earthingKind?: 'resistor' | 'coil' | 'direct' | 'isolated';
   /** F11.1 (spec §17.2/§20.1, rejestr device-ref w GPZ): `BayPrimaryDevice.
    *  device_ref` — WYŁĄCZNIE gdy `bay.primaryDevices` dostarcza sekwencję
    *  DOKŁADNIE odpowiadającą (długość + kolejność symboli) szablonowi
@@ -1413,6 +1417,58 @@ export function composeGpz(
     });
   });
 
+  // -- 5b. Punkt neutralny sieci SN (V12K-219) ------------------------------
+  // Rysowany JEDEN raz, przy PIERWSZEJ sekcji SN: punkt neutralny jest
+  // własnością SIECI, nie pojedynczej sekcji — sekcje sprzęgnięte tworzą jedną
+  // galwanicznie całość i mają wspólny punkt uziemienia. Aparat wisi pod szyną,
+  // po lewej krawędzi sekcji, żeby nie kolidować z polami odpływowymi.
+  // ZERO DOMYSŁU: brak `snNeutralEarthing` = brak symbolu (nie „izolowana").
+  // NIEDOMIAR ZMIERZONY: sam TRYB pracy niesie KSZTAŁT glifu (rezystor / dławik /
+  // przerwa dla sieci izolowanej), ale WARTOŚĆ parametru (R, X) nie jest podpisana.
+  // Kolekcja `sectionLabels` bierze JEDNĄ etykietę na sekcję — zajmuje ją
+  // oznaczenie sekcji — więc opis punktu neutralnego wymaga własnej kolekcji w
+  // kontrakcie kompozycji. Zapisane w audycie, nie przemilczane.
+  const neutralEarthing = props.snNeutralEarthing;
+  if (neutralEarthing && sectionLayouts.length > 0) {
+    const first = sectionLayouts[0];
+    // NA LEWO od sekcji, poza pasem pól odpływowych: pierwsza wersja stawiała
+    // aparat pod szyną wewnątrz sekcji i NACHODZIŁ na głowicę pierwszego pola
+    // (złapał to `noSceneSymbolOverlaps`). Transformator uziemiający jest w
+    // rzeczywistości osobnym przyłączem do szyny, więc miejsce obok sekcji jest
+    // też poprawne rysunkowo.
+    const neutralX = snapToGrid(first.x - SYMBOL_DEFS.neutralEarthing.width - GRID);
+    const neutralY = snapToGrid(snBusY + GRID);
+    const neutralMeta: GpzElementMeta = {
+      parityKeys: ['gpz.neutral.earthing'],
+      testId: 'gpz-canonical-sn-neutral-earthing',
+      sectionId: first.section.sectionId,
+      voltageClass: 'sn',
+    };
+    tag(neutralMeta.parityKeys);
+    symbols.push({
+      symbolId: 'neutralEarthing',
+      x: neutralX,
+      y: neutralY,
+      ports: portsInWorld('neutralEarthing', neutralX, neutralY),
+      earthingKind: neutralEarthing.kind,
+      meta: neutralMeta,
+    });
+    // Zejście od szyny do aparatu — bez niego symbol wisiałby w powietrzu.
+    segments.push({
+      ownerRef: `${first.section.sectionId}#sn-neutral-earthing`,
+      // Trasa dwuodcinkowa: od LEWEGO KOŃCA SZYNY poziomo do osi aparatu, potem
+      // w dół. Wersja jednoodcinkowa startowała na wysokości szyny, ale POZA nią
+      // (aparat stoi obok sekcji), więc górny koniec wisiał w powietrzu —
+      // złapał to `port_probe` §11.3.
+      points: [
+        { x: first.x, y: snBusY },
+        { x: neutralX + SYMBOL_DEFS.neutralEarthing.width / 2, y: snBusY },
+        { x: neutralX + SYMBOL_DEFS.neutralEarthing.width / 2, y: neutralY },
+      ],
+      meta: { parityKeys: [], sectionId: first.section.sectionId, voltageClass: 'sn' },
+    });
+  }
+
   // -- 6. Transformatory: pole WN TR → TR2W → pole TR. ----------------------
   const orderedSectionLayouts = sectionLayouts; // już wg `order`
   const transformerTapXs: number[] = [];
@@ -2048,3 +2104,4 @@ export function noDirectTransformerBusTies(composition: GpzComposition): boolean
 export function busbarTopologyOf(composition: GpzComposition, sectionId: string): CanonicalGpzBusbarTopology | undefined {
   return composition.sections.find((s) => s.sectionId === sectionId)?.busbarTopology;
 }
+

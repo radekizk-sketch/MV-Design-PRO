@@ -292,6 +292,18 @@ export interface CanonicalGpzHvSystemSource {
 }
 
 export interface GpzCanonicalRendererProps {
+  /** Sposób pracy punktu neutralnego sieci SN (V12K-219) — wyprowadzony z
+   *  `Bus.grounding` szyny SN GPZ. `null`/brak = model uziemienia nieokreślony
+   *  i wtedy schemat NIE rysuje niczego (zero domysłu: „brak danej" to nie to
+   *  samo co „sieć izolowana", a pomyłka zmienia prąd doziemny o rzędy
+   *  wielkości). Rysowany przy szynie, bo przy transformatorze o dolnej stronie
+   *  w trójkącie (Yd11) punkt neutralny na transformatorze NIE ISTNIEJE —
+   *  wytwarza go transformator uziemiający wpięty do szyny. */
+  readonly snNeutralEarthing?: {
+    readonly kind: 'resistor' | 'coil' | 'direct' | 'isolated';
+    readonly rOhm?: number;
+    readonly xOhm?: number;
+  } | null;
   readonly id: string;
   readonly x: number;
   readonly y: number;

@@ -29,6 +29,9 @@ export interface GlyphProps {
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
+  /** Rodzaj uziemienia punktu neutralnego (V12K-219) — WYŁĄCZNIE dla glifu
+   *  `neutralEarthing`; pozostałe glify go ignorują (wspólny `GlyphProps`). */
+  readonly earthingKind?: 'resistor' | 'coil' | 'direct' | 'isolated';
   /** Nadpisanie koloru bazowego (nakładka napięcia na szynach itd.). */
   readonly stroke?: string;
   /** F9.9 (spec §17.3): kody funkcji przekaźnika (np. ["50/51","51N"], maks.
@@ -184,6 +187,67 @@ export function EarthSwitchGlyph(props: GlyphProps): JSX.Element {
       <line x1={2} y1={17} x2={14} y2={17} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
       <line x1={4} y1={20} x2={12} y2={20} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
       <line x1={6} y1={23} x2={10} y2={23} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+    </g>
+  );
+}
+
+/**
+ * Punkt neutralny sieci — sposób jego pracy rozstrzyga o prądzie zwarcia
+ * doziemnego, a przez to o czułości zabezpieczeń ziemnozwarciowych i o
+ * napięciach dotykowych na uziomach (PN-EN 50522). Wariant bierze się z
+ * `earthingKind` (dana modelu, zero domysłu):
+ *
+ *  • `resistor`  — prostokąt rezystora; prąd ograniczony do `U_f/R`,
+ *  • `coil`      — cewka (dławik gaszący/Petersena); kompensuje prąd
+ *                  pojemnościowy sieci, zostaje prąd resztkowy,
+ *  • `direct`    — samo połączenie z uziomem; prąd rzędu zwarcia trójfazowego,
+ *  • `isolated`  — PRZERWA w torze do uziomu (kreska urwana): sieć izolowana,
+ *                  prąd doziemny płynie wyłącznie przez pojemności doziemne.
+ *
+ * Symbol uziomu (trzy malejące kreski) jest wspólny dla wszystkich wariantów
+ * poza izolowanym — tam zostaje, ale tor jest przerwany, co jest istotą tej
+ * konfiguracji i musi być widoczne na pierwszy rzut oka.
+ */
+export function NeutralEarthingGlyph(props: GlyphProps): JSX.Element {
+  const kind = props.earthingKind ?? 'direct';
+  const izolowana = kind === 'isolated';
+  return (
+    <g {...glyphGroupProps('neutralEarthing', props)} data-earthing-kind={kind}>
+      {/* Zejście od szyny do aparatu; przy sieci izolowanej krótsze — tor jest
+          przerwany celowo, nie z braku miejsca. */}
+      <line
+        x1={8}
+        y1={0}
+        x2={8}
+        y2={izolowana ? 5 : 8}
+        stroke={stroke(props)}
+        strokeWidth={V3_STROKE_APPARATUS}
+      />
+      {kind === 'resistor' && (
+        <rect
+          x={4}
+          y={8}
+          width={8}
+          height={10}
+          fill="none"
+          stroke={stroke(props)}
+          strokeWidth={V3_STROKE_APPARATUS}
+        />
+      )}
+      {kind === 'coil' && (
+        <path
+          d="M 8 8 q 5 2.5 0 5 q -5 2.5 0 5"
+          fill="none"
+          stroke={stroke(props)}
+          strokeWidth={V3_STROKE_APPARATUS}
+        />
+      )}
+      {!izolowana && (
+        <line x1={8} y1={18} x2={8} y2={21} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      )}
+      <line x1={2} y1={21} x2={14} y2={21} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={4} y1={25} x2={12} y2={25} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
+      <line x1={6} y1={29} x2={10} y2={29} stroke={stroke(props)} strokeWidth={V3_STROKE_APPARATUS} />
     </g>
   );
 }
@@ -598,6 +662,7 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   loadBreakSwitch: LoadBreakSwitchGlyph,
   loadArrow: LoadArrowGlyph,
   earthSwitch: EarthSwitchGlyph,
+  neutralEarthing: NeutralEarthingGlyph,
   fuseSwitch: FuseSwitchGlyph,
   transformer2W: Transformer2WGlyph,
   cableHead: CableHeadGlyph,

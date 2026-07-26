@@ -967,7 +967,7 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // kolejność aparatów, ciągłość toru, „jedna kotwica" NIEZMIENIONE — zmienia
     // się WYŁĄCZNIE rzędna `dy` pasa (geometria, nie model).
     // W3-KABLE-ETYKIETY §7 (2026-07-23): PODNIESIONY 21976/38920/38920 →
-    // 22936/39880/39880 (+960/LOD, jednolicie). Przyczyna: pełna etykieta
+    // 22944/39888/39888 (+960/LOD, jednolicie). Przyczyna: pełna etykieta
     // techniczna L2 („relacja · typ · napięcie · l = …", `layout/lineLabel.ts`)
     // jest szersza od dawnej „typ · długość" → footprint kolumny NIEKTÓRYCH pól
     // rośnie → przez `colorSegmentLabelRows` (`layout/segments.ts`) inny przydział
@@ -977,9 +977,9 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // ograniczeniem MIĘKKIM") — pełne dane techniczne linii (§7 P0) mają
     // pierwszeństwo; ZERO nowych kolizji (accept:sld-v3 zielony). NOWA kanoniczna
     // geometria po wzbogaceniu etykiet, nie regresja.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22936);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(39880);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(39880);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22944);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(39888);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(39888);
   });
 });
 

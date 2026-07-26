@@ -26,6 +26,7 @@ export type SymbolId =
   | 'currentTransformer' // przekładnik prądowy CT
   | 'voltageTransformer' // przekładnik napięciowy VT
   | 'surgeArrester'    // ogranicznik przepięć SA
+  | 'neutralEarthing'  // punkt neutralny sieci + aparat uziemiający (V12K-219)
   | 'derPv'            // falownik PV
   | 'derBess'          // magazyn energii
   | 'derGenerator'     // generator (G w okręgu)
@@ -76,6 +77,15 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   earthSwitch: def('earthSwitch', 16, 24, [
     { name: 'top', x: 8, y: 0, dir: 'N' },
   ], 'Uziemnik'),
+  /** Punkt neutralny sieci z aparatem uziemiającym (V12K-219). Rysowany przy
+   *  szynie, bo w sieci zasilanej z transformatora o dolnej stronie w TRÓJKĄCIE
+   *  (tu Yd11) punkt neutralny nie istnieje na transformatorze mocy — wytwarza go
+   *  transformator uziemiający wpięty do szyny. Wysokość 32 = 4×GRID mieści
+   *  aparat (rezystor albo dławik) i symbol uziomu pod nim; bbox MUSI być
+   *  wielokrotnością siatki — pilnuje tego `grid_probe` (spec §11.2). */
+  neutralEarthing: def('neutralEarthing', 16, 32, [
+    { name: 'top', x: 8, y: 0, dir: 'N' },
+  ], 'Punkt neutralny — uziemienie'),
   fuseSwitch: def('fuseSwitch', 16, 32, [
     { name: 'top', x: 8, y: 0, dir: 'N' },
     { name: 'bottom', x: 8, y: 32, dir: 'S' },

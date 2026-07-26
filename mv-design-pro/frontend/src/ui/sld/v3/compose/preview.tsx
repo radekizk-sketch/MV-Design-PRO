@@ -271,6 +271,10 @@ export interface PreviewSymbol {
   readonly x: number;
   readonly y: number;
   readonly state?: SwitchState;
+  /** Rodzaj uziemienia punktu neutralnego (V12K-219) — dla symbolu
+   *  `neutralEarthing`; niesie go scena aż do glifu, który rysuje rezystor,
+   *  dławik, połączenie bezpośrednie albo przerwę (sieć izolowana). */
+  readonly earthingKind?: 'resistor' | 'coil' | 'direct' | 'isolated';
   readonly meta?: PreviewElementMeta;
 }
 

@@ -303,7 +303,12 @@ const EXPECTED_STATION_COUNT = 53;
 // propaguje deltę JEDNOLICIE na L0/L1/L2. Świadome odstępstwo od „nie-rosnącej"
 // (§15.1 „redukcja MIĘKKA") — pełne dane techniczne linii (§7 P0) mają
 // pierwszeństwo; ZERO nowych kolizji jakiegokolwiek rodzaju (ten skrypt zielony).
-const VERTICAL_LENGTH_BASELINE = { 0: 22936, 1: 39880, 2: 39880 };
+// RE-BASELINE V12K-219 (+8 pion / +16 poziom / +1 róg, jednolicie na L0/L1/L2):
+// schemat zyskał APARAT UZIEMIAJĄCY punktu neutralnego sieci SN wraz z trasą
+// przyłączenia od szyny. Wzrost jest kosztem NOWEJ TREŚCI rysunku, nie regresją
+// układu — aparat stoi obok sekcji (poza pasem pól), a trasa ma jeden róg, bo
+// biegnie poziomo od lewego końca szyny i schodzi pionowo do aparatu.
+const VERTICAL_LENGTH_BASELINE = { 0: 22944, 1: 39888, 2: 39888 };
 
 /**
  * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):
@@ -339,8 +344,8 @@ const VERTICAL_LENGTH_BASELINE = { 0: 22936, 1: 39880, 2: 39880 };
 // 48208/68384/71976 (+960/LOD, jednolicie) — ta sama przyczyna co
 // `VERTICAL_LENGTH_BASELINE` wyżej (szersze kolumny pełnej etykiety L2 wydłużają
 // pododcinki poziome przęseł/slotów o stałą na LOD). Załamania (bends) BEZ zmian.
-const HORIZONTAL_LENGTH_BASELINE = { 0: 48208, 1: 68384, 2: 71976 };
-const BEND_COUNT_BASELINE = { 0: 39, 1: 167, 2: 167 };
+const HORIZONTAL_LENGTH_BASELINE = { 0: 48224, 1: 68400, 2: 71992 };
+const BEND_COUNT_BASELINE = { 0: 40, 1: 168, 2: 168 };
 
 /**
  * S6 pkt 10 (eliminacja pustych przestrzeni) — PODŁOGA wykorzystania arkusza

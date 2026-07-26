@@ -163,6 +163,11 @@ export function buildCanonicalGpzProps(
     alarms: options.alarms,
     transformers,
     sections: lvSections,
+    // V12K-219: sposób pracy punktu neutralnego sieci SN — z `Bus.grounding`
+    // szyny SN GPZ (jedyna szyna stacji o napięciu z pasma SN). Mapowanie 1:1
+    // z kanonu ENM, zero domysłu: brak `grounding` daje `null`, a schemat wtedy
+    // nie rysuje aparatu uziemiającego.
+    snNeutralEarthing: deriveSnNeutralEarthing(substation, enm.buses ?? []),
     couplers: buildCouplers(substation, allBays),
     hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx),
     // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
@@ -758,4 +763,34 @@ function extractInManipulation(
     return Object.values(runtime.primary_device_states).some((s) => s.interlock_blocked === true);
   }
   return false;
+}
+
+/**
+ * Sposób pracy punktu neutralnego sieci SN z modelu (V12K-219).
+ *
+ * Szukamy szyny SN tej stacji (napięcie w pasmie SN: 1 kV < U ≤ 60 kV — ta sama
+ * granica co `hvBusRef` powyżej, tylko z drugiej strony) i przepisujemy jej
+ * `grounding`. Rozstrzygnięcie należy do MODELU: `isolated` to informacja
+ * inżynierska (sieć pracuje z izolowanym punktem neutralnym), a BRAK pola to
+ * brak danej — te dwa stany nie mogą się zlać, bo prąd zwarcia doziemnego różni
+ * się między konfiguracjami o rzędy wielkości.
+ */
+function deriveSnNeutralEarthing(
+  substation: Substation,
+  buses: readonly Bus[],
+): GpzCanonicalRendererProps['snNeutralEarthing'] {
+  const snBus = buses.find(
+    (b) => substation.bus_refs?.includes(b.ref_id) && b.voltage_kv > 1 && b.voltage_kv <= 60,
+  );
+  const g = snBus?.grounding;
+  if (!g) return null;
+  const kind =
+    g.type === 'resistor_grounded'
+      ? 'resistor'
+      : g.type === 'petersen_coil'
+        ? 'coil'
+        : g.type === 'directly_grounded'
+          ? 'direct'
+          : 'isolated';
+  return { kind, rOhm: g.r_ohm ?? undefined, xOhm: g.x_ohm ?? undefined };
 }

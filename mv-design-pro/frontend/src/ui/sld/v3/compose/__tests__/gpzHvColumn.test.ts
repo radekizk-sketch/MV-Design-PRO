@@ -22,6 +22,7 @@ import type { Bus, EnergyNetworkModel, Source, Substation, Transformer } from '.
 import { buildCanonicalGpzProps } from '../../../v2/canvas/enmToCanonicalGpzAdapter';
 import type { GpzCanonicalRendererProps } from '../../../v2/renderer/GpzCanonicalRenderer';
 import { composeGpz } from '../gpz';
+import { SYMBOL_DEFS } from '../../symbols/defs';
 import { buildSceneV3, gpzDominanceGaps, gpzHvColumnGaps } from '../../scene/buildScene';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -472,5 +473,55 @@ describe('GPZ — klasa napięcia aparatów pola WN (V12K-217)', () => {
     for (const s of wnBay) expect(s.meta.voltageClass).toBe('hv');
     // Strona SN zostaje BEZ jawnej klasy — dziedziczy domyślne SN, jak dotąd.
     for (const s of snBay) expect(s.meta.voltageClass).toBeUndefined();
+  });
+});
+
+describe('GPZ — punkt neutralny sieci SN (V12K-219)', () => {
+  // Sposób pracy punktu neutralnego rozstrzyga o prądzie zwarcia doziemnego, a
+  // przez to o czułości zabezpieczeń ziemnozwarciowych i napięciach dotykowych
+  // na uziomach. Rysowany przy SZYNIE, bo transformator GPZ ma dolną stronę w
+  // trójkącie (Yd11) i punkt neutralny na nim NIE ISTNIEJE — wytwarza go
+  // transformator uziemiający wpięty do szyny.
+  const zPunktem = (kind: 'resistor' | 'coil' | 'direct' | 'isolated') =>
+    composeGpz(
+      {
+        ...buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 }),
+        snNeutralEarthing: { kind, rOhm: kind === 'resistor' ? 57.7 : undefined },
+      },
+      { x: 0, y: 0 },
+    );
+
+  it('symbol powstaje raz i niesie rodzaj uziemienia z modelu', () => {
+    for (const kind of ['resistor', 'coil', 'direct', 'isolated'] as const) {
+      const symbols = zPunktem(kind).symbols.filter((s) => s.symbolId === 'neutralEarthing');
+      expect(symbols).toHaveLength(1);
+      expect(symbols[0].earthingKind).toBe(kind);
+    }
+  });
+
+  it('brak danej = brak symbolu (zero domysłu — „brak" to nie „izolowana")', () => {
+    const bez = composeGpz(
+      { ...buildCanonicalGpzProps(fullFixture(), 'gpz-1', { x: 0, y: 0 }), snNeutralEarthing: null },
+      { x: 0, y: 0 },
+    );
+    expect(bez.symbols.filter((s) => s.symbolId === 'neutralEarthing')).toHaveLength(0);
+  });
+
+  it('aparat jest połączony z szyną SN, nie wisi w powietrzu', () => {
+    const c = zPunktem('resistor');
+    const symbol = c.symbols.find((s) => s.symbolId === 'neutralEarthing')!;
+    const zejscie = c.segments.filter((g) => g.ownerRef.includes('#sn-neutral-earthing'));
+    expect(zejscie).toHaveLength(1);
+    // Trasa dwuodcinkowa: poziomo od lewego końca szyny do osi aparatu, potem
+    // pionowo w dół. Pierwsza wersja testu zakładała jeden odcinek pionowy —
+    // wtedy górny koniec wisiał POZA szyną (aparat stoi obok sekcji), co złapał
+    // `port_probe` §11.3.
+    const os = symbol.x + SYMBOL_DEFS.neutralEarthing.width / 2;
+    const pkt = zejscie[0].points;
+    expect(pkt).toHaveLength(3);
+    expect(pkt[0].y).toBe(pkt[1].y); // odcinek poziomy na wysokości szyny
+    expect(pkt[1].x).toBe(os);
+    expect(pkt[2].x).toBe(os);
+    expect(pkt[2].y).toBe(symbol.y); // pion kończy się na porcie aparatu
   });
 });

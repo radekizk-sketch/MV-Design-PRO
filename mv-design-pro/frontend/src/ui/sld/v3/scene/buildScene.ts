@@ -1959,6 +1959,10 @@ function gpzSymbolToPreview(sym: ComposedGpzSymbolInstance): PreviewSymbol {
       // 110 kV wyglądał jak wyłącznik 15 kV, pomiar audytu R4).
       voltageClass: sym.meta.voltageClass,
     },
+    // V12K-219: rodzaj uziemienia punktu neutralnego. Druga po `voltageClass`
+    // dana, która wypadała w tej samej jawnej liście pól — glif rysowałby
+    // wariant domyślny zamiast tego, co niesie model.
+    earthingKind: sym.earthingKind,
   };
 }
 
