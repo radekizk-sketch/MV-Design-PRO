@@ -125,6 +125,11 @@ export interface SheetFrameProps {
    *  szczegółu z JEDNEGO słownika (`SCENE_LOD_LABELS_PL`) — pasek statusu
    *  arkusza. Brak = pasek LOD nie renderowany (zgodność wstecz). */
   readonly lodLabel?: string;
+  /** Liczba opisów ukrytych przez próg czytelności ekranu (V12K-218, karta R2-B).
+   *  Ukrycie MUSI być jawne — projektant, który nie widzi opisów, ma wiedzieć,
+   *  że są i jak je odsłonić, zamiast wnioskować, że sieć ich nie ma. 0 lub brak
+   *  = komunikat nierenderowany (zero szumu przy normalnym zoomie). */
+  readonly hiddenLabelCount?: number;
   /** Slot na title block (K30-38, `SldTitleBlock` z v2) — Frame NIE
    *  duplikuje jego zawartości, tylko pozycjonuje jako blok w rogu arkusza. */
   readonly titleBlock?: ReactNode;
@@ -345,7 +350,7 @@ const DEFAULT_TITLE_BLOCK_FOOTPRINT = { width: 360, height: 220 };
  * wynikiem pomiaru DOM).
  */
 export function SheetFrame(props: SheetFrameProps): JSX.Element {
-  const { width, height, scaleLabel, lodLabel, titleBlock, children } = props;
+  const { width, height, scaleLabel, lodLabel, hiddenLabelCount, titleBlock, children } = props;
   const legend = props.legend ?? buildDefaultLegend();
   const titleBlockOrigin = props.titleBlockOrigin ?? {
     x: Math.max(width - DEFAULT_TITLE_BLOCK_FOOTPRINT.width, 0),
@@ -403,6 +408,22 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
             fill={SHEET_STROKE}
           >
             {`Widok: ${lodLabel}`}
+          </text>
+        ) : null}
+        {hiddenLabelCount != null && hiddenLabelCount > 0 ? (
+          <text
+            data-testid="sld-sheet-hidden-labels"
+            data-parity-key="sheet-hidden-labels"
+            data-hidden-count={hiddenLabelCount}
+            x={width}
+            y={height + 20}
+            textAnchor="end"
+            fontFamily="sans-serif"
+            fontSize={LABEL_TYPOGRAPHY.t2.fontSize}
+            fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
+            fill={SHEET_STROKE}
+          >
+            {`Ukryto ${hiddenLabelCount} ${hiddenLabelCount === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`}
           </text>
         ) : null}
         <SheetLegend entries={legend} sheetHeight={height} />

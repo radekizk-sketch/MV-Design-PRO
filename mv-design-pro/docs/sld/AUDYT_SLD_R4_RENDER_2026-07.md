@@ -86,8 +86,11 @@ zerowym użyciu produkcyjnym — łagodniejszy wariant wzorca „test maskujący
 - **Z7 (z R3, potwierdzone):** `measurements: 0` i `protection_assignments: 0` w sieci
   wzorcowej — cztery bramki warstwy zabezpieczeniowej mierzą pustkę.
 - **Z6 (z R3, część danych):** `GroundingConfig` niewypełniony w żadnej z 315 szyn.
-- **R2-B (z R2):** etykiety 2 px przy pełnym widoku sieci — decyzja o kierunku naprawy
-  podjęta (declutter ekranowy), niewdrożona.
+- ~~**R2-B (z R2):** etykiety 2 px~~ — **ZAMKNIĘTE (V12K-218)**: declutter ekranowy z progiem
+  6 px w warstwie renderu + jawny wskaźnik „Ukryto N opisów — przybliż, aby zobaczyć". Przy
+  pełnym widoku sieci ukrywane są wszystkie opisy (1135 na L2) — zamierzone: pył udający
+  informację znika, a licznik mówi, ile i jak je odsłonić. Próg żyje w renderze, nie w scenie,
+  żeby scena została deterministyczna.
 
 ## Wada narzędzia naprawiona w trakcie
 

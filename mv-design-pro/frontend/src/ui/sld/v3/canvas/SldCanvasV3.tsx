@@ -27,7 +27,12 @@ import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '
 import { SYMBOL_DEFS } from '../symbols/defs';
 import { SYMBOL_GLYPHS, V3_STROKE_BASE } from '../symbols/glyphs';
 import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind } from '../compose/sourceKind';
-import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth } from '../core/text';
+import {
+  isLabelReadableAtScale,
+  LABEL_TYPOGRAPHY,
+  labelLineHeight,
+  measureLabelWidth,
+} from '../core/text';
 import { GRID } from '../core/grid';
 import type { OwnedLabel } from '../layout/labels';
 import {
@@ -2152,6 +2157,15 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     if (p.completedAtLabel) parts.push(`Czas ukończenia: ${p.completedAtLabel}`);
     return parts.length > 0 ? parts.join(' · ') : undefined;
   }, [effectiveOverlay?.provenance]);
+  // Ile opisów wypadło przez próg czytelności (V12K-218) — potrzebne, żeby
+  // ukrycie było JAWNE dla projektanta, a nie cichym zniknięciem danych.
+  const hiddenUnreadableLabels = isLayerVisible('labels', layerVisibility)
+    ? scene.labels.reduce(
+        (n, l) => (isLabelReadableAtScale(l.labelClass, camera.transform.scale) ? n : n + 1),
+        0,
+      )
+    : 0;
+
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): informuje wołającego o
@@ -2271,6 +2285,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         height={sheetSize.height}
         scaleLabel="wg kamery"
         lodLabel={SCENE_LOD_LABELS_PL[effectiveLod]}
+        hiddenLabelCount={hiddenUnreadableLabels}
       >
         {/* F13.1 (spec §21.2, D3-2/D3-12): rama strefy GPZ — DEKORACJA z meta
          *  sceny (nie segment toru mocy — zero udziału w wyroczniach §11/
@@ -2356,11 +2371,20 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             );
           })}
         </g>
-        <g data-testid="sld-v3-labels">
+        {/* DECLUTTER EKRANOWY (V12K-218, karta R2-B). `layout/declutter.ts`
+         *  rozstrzyga kolizje w przestrzeni ARKUSZA i na sieci wzorcowej jest
+         *  tożsamością — arkusz jest ogromny, więc kolizji faktycznie nie ma.
+         *  Czytelność jest jednak własnością EKRANU: przy wpasowaniu 52 stacji
+         *  w kadr skala spada do ≈0,17 i całe pismo ma ~2 px (pomiar audytu R2).
+         *  Ukrywamy tu to, co przestało być pismem — świadomie w renderze, bo
+         *  scena musi zostać deterministyczna, a próg zależy od kamery. */}
+        <g data-testid="sld-v3-labels" data-hidden-unreadable={hiddenUnreadableLabels}>
           {isLayerVisible('labels', layerVisibility)
-            ? scene.labels.map((label, index) => (
-                <SceneLabelNode key={`label-${index}`} label={label} index={index} />
-              ))
+            ? scene.labels.map((label, index) =>
+                isLabelReadableAtScale(label.labelClass, camera.transform.scale) ? (
+                  <SceneLabelNode key={`label-${index}`} label={label} index={index} />
+                ) : null,
+              )
             : null}
         </g>
         </g>

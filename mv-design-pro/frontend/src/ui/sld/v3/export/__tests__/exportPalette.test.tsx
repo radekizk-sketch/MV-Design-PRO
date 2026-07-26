@@ -203,7 +203,18 @@ describe('exportPalette — integracja na realnym markupie kanwy (parytet ekspor
     it(`LOD ${lod}: parytet elementów — liczności segmenty/symbole/etykiety identyczne przed/po`, () => {
       const { svgEl, raw } = renderRealMarkupAtLod(lod);
       const before = sceneGroupChildCounts(svgEl);
-      expect(before.every((n) => n > 0)).toBe(true);
+      // Strażnik „test nie mierzy pustki". Do V12K-218 wymagał, by KAŻDA grupa
+      // sceny miała dzieci; od declutteru ekranowego grupa etykiet bywa pusta
+      // zgodnie z kontraktem — na kadrze 1200×900 pełna sieć daje skalę, przy
+      // której całe pismo jest poniżej progu czytelności i nie trafia do DOM.
+      // Wymagamy więc dowodu na grupach, które puste być NIE MOGĄ (tory i
+      // symbole), a żadna grupa nie może być nieobecna (-1 z selektora).
+      const [segmenty, symbole, etykiety] = before;
+      expect(segmenty).toBeGreaterThan(0);
+      expect(symbole).toBeGreaterThan(0);
+      // Etykiety: tylko obecność grupy (0 dzieci jest legalne po declutterze,
+      // -1 oznaczałoby brak samej grupy w markupie i to byłby błąd).
+      expect(etykiety).toBeGreaterThanOrEqual(0);
 
       const out = toLightTechnicalExportSvg(raw);
       const parsed = new DOMParser().parseFromString(out, 'image/svg+xml');

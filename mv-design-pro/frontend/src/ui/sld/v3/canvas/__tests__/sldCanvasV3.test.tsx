@@ -92,13 +92,35 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
     expect(symbolGroup?.children.length).toBe(scene.symbols.length);
   });
 
-  it('LOD 2: liczba symboli i etykiet w DOM = scene.symbols.length / scene.labels.length', () => {
+  // INTENCJA (zachowana z wersji sprzed V12K-218): render NIE GUBI elementów
+  // sceny. Od declutteru ekranowego etykieta poniżej progu czytelności nie
+  // trafia do DOM, więc równość „węzły = scene.labels.length" przestała być
+  // prawdziwa przy pełnym widoku sieci (kadr 1200×800 na 53 stacje daje skalę,
+  // przy której CAŁE pismo ma ~2 px). Intencja zostaje wyrażona mocniej: nic nie
+  // ginie PO CICHU — każda etykieta jest albo w DOM, albo policzona jako ukryta.
+  it('LOD 2: symbole w DOM = scene.symbols.length; etykiety w DOM + ukryte = scene.labels.length', () => {
     const scene = buildSceneV3(enm, 2);
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     const symbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]');
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
     expect(symbolGroup?.children.length).toBe(scene.symbols.length);
-    expect(labelGroup?.children.length).toBe(scene.labels.length);
+    const ukryte = Number(labelGroup?.getAttribute('data-hidden-unreadable') ?? '0');
+    expect((labelGroup?.children.length ?? 0) + ukryte).toBe(scene.labels.length);
+  });
+
+  // Dowód, że próg NAPRAWDĘ gryzie na tym kadrze, i że ukrycie jest JAWNE.
+  // Bez tego poprzedni test przechodziłby także wtedy, gdyby declutter przestał
+  // działać (0 ukrytych + wszystkie w DOM też daje sumę).
+  it('pełny widok sieci: opisy nieczytelne są ukryte i zameldowane na arkuszu', () => {
+    const scene = buildSceneV3(enm, 2);
+    const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
+    const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
+    const ukryte = Number(labelGroup?.getAttribute('data-hidden-unreadable') ?? '0');
+    expect(ukryte).toBeGreaterThan(0);
+    expect(ukryte).toBeLessThanOrEqual(scene.labels.length);
+    const komunikat = container.querySelector('[data-testid="sld-sheet-hidden-labels"]');
+    expect(komunikat?.textContent).toContain('przybliż, aby zobaczyć');
+    expect(komunikat?.getAttribute('data-hidden-count')).toBe(String(ukryte));
   });
 
   it('kanwa niesie ramkę arkusza (SheetFrame) i tło SCADA', () => {
@@ -115,9 +137,16 @@ describe('SldCanvasV3 — LOD (spec §7): L0 vs L2 daje różną zawartość', (
     expect(c0.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-scene-lod')).toBe('0');
     expect(c2.querySelector('[data-testid="sld-canvas-v3"]')?.getAttribute('data-scene-lod')).toBe('2');
 
-    const labels0 = c0.querySelector('[data-testid="sld-v3-labels"]')?.children.length ?? 0;
-    const labels2 = c2.querySelector('[data-testid="sld-v3-labels"]')?.children.length ?? 0;
-    expect(labels2).toBeGreaterThan(labels0);
+    // INTENCJA (zachowana): L2 niesie WIĘCEJ opisów niż L0. Od declutteru
+    // ekranowego (V12K-218) sama liczba węzłów w DOM tego nie wyraża przy pełnym
+    // widoku sieci — na tym kadrze próg czytelności ukrywa opisy na OBU
+    // poziomach, więc porównywalibyśmy zero z zerem. Liczymy więc opisy, które
+    // scena NA TYM POZIOMIE wystawiła: w DOM plus zameldowane jako ukryte.
+    const opisyRazem = (c: ParentNode): number => {
+      const g = c.querySelector('[data-testid="sld-v3-labels"]');
+      return (g?.children.length ?? 0) + Number(g?.getAttribute('data-hidden-unreadable') ?? '0');
+    };
+    expect(opisyRazem(c2)).toBeGreaterThan(opisyRazem(c0));
 
     const symbols0 = c0.querySelector('[data-testid="sld-v3-symbols"]')?.children.length ?? 0;
     const symbols2 = c2.querySelector('[data-testid="sld-v3-symbols"]')?.children.length ?? 0;

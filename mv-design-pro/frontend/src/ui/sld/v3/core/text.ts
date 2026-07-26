@@ -23,6 +23,37 @@ export const LABEL_TYPOGRAPHY: Readonly<Record<LabelClass, LabelTypography>> = {
   t4: { fontSize: 8, fontWeight: 600 },  // adnotacje
 };
 
+/**
+ * Próg CZYTELNOŚCI pisma w pikselach EKRANU (V12K-218, karta R2-B audytu).
+ *
+ * Poniżej tej wysokości tekst przestaje być tekstem — staje się szarym pyłem,
+ * który zaśmieca rysunek, niczego nie komunikując. Audyt R2 zmierzył, że przy
+ * wpasowaniu sieci 52 stacji w kadr 1920 px skala spada do ≈0,17, więc etykieta
+ * t1 (13 px świata) ma na ekranie 2,2 px, a t4 — 1,4 px. Dotyczy KAŻDEGO
+ * poziomu detalu, bo fit-to-content dużej sieci schodzi poniżej wszystkich
+ * progów histerezy LOD (`canvas/camera.ts`), dla których dobierano rozmiary.
+ *
+ * 6 px to granica, przy której pojedyncze znaki są jeszcze rozróżnialne jako
+ * kształty. Wartość ŚWIADOMIE niższa niż dolna granica komfortu czytania z
+ * modelu histerezy (t2 ≈ 11 px ekranu przy wejściu w L2): tam chodzi o
+ * czytanie łańcuchów parametrów, tu wyłącznie o to, czy element jest jeszcze
+ * pismem, czy już artefaktem.
+ *
+ * Egzekwowane w WARSTWIE RENDERU (`canvas/SldCanvasV3.tsx`), nie w scenie:
+ * scena musi zostać deterministyczna (te same wejścia = ten sam hash), a próg
+ * zależy od kamery, która do sceny nie należy.
+ */
+export const MIN_READABLE_LABEL_SCREEN_PX = 6;
+
+/** Czy etykieta danej klasy jest czytelna przy tej skali kamery [px ekranu na
+ *  jednostkę świata]. Skala niewiarygodna (≤0, NaN — np. viewport 0×0 przed
+ *  pierwszym pomiarem układu) NIE ukrywa niczego: brak pomiaru nie jest
+ *  dowodem nieczytelności. */
+export function isLabelReadableAtScale(cls: LabelClass, scale: number): boolean {
+  if (!Number.isFinite(scale) || scale <= 0) return true;
+  return LABEL_TYPOGRAPHY[cls].fontSize * scale >= MIN_READABLE_LABEL_SCREEN_PX;
+}
+
 const AVG_GLYPH_WIDTH_FACTOR = 0.62;
 
 /** Deterministyczna szerokość etykiety [px świata]. */
