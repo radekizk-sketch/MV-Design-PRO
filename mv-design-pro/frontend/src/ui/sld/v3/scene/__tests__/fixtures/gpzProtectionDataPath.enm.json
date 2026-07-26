@@ -1080,28 +1080,33 @@
       ],
       "primary_devices": [
        {
-        "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/cb",
-        "symbol_ref": "breaker",
-        "kind": "CB",
-        "placement": "MIDSTREAM",
-        "designation": "Q1",
-        "switch_state": "CLOSED",
-        "is_controllable": true
-       },
-       {
         "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/ds",
         "symbol_ref": "disconnector",
         "kind": "DS",
         "placement": "UPSTREAM",
         "designation": "Q11",
-        "switch_state": "CLOSED"
+        "switch_state": {
+         "actual_state": "zamkniety"
+        }
+       },
+       {
+        "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/cb",
+        "symbol_ref": "breaker",
+        "kind": "CB",
+        "placement": "MIDSTREAM",
+        "designation": "Q1",
+        "switch_state": {
+         "actual_state": "zamkniety"
+        },
+        "is_controllable": true
        },
        {
         "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/ct",
         "symbol_ref": "currentTransformer",
         "kind": "CT",
         "placement": "MIDSTREAM",
-        "designation": "T1"
+        "designation": "T1",
+        "linked_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/ct"
        },
        {
         "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/es",
@@ -1109,10 +1114,13 @@
         "kind": "ES",
         "placement": "DOWNSTREAM",
         "designation": "QE1",
-        "switch_state": "OPEN",
+        "switch_state": {
+         "actual_state": "otwarty"
+        },
         "earthing_role": "BAY_EARTH"
        }
-      ]
+      ],
+      "protection_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/prot"
      },
      {
       "ref_id": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01",
@@ -1128,28 +1136,43 @@
       ],
       "primary_devices": [
        {
+        "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/ds_bus",
+        "symbol_ref": "disconnector",
+        "kind": "DS",
+        "placement": "UPSTREAM",
+        "designation": "Q11",
+        "switch_state": {
+         "actual_state": "zamkniety"
+        }
+       },
+       {
         "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/cb",
         "symbol_ref": "breaker",
         "kind": "CB",
         "placement": "MIDSTREAM",
         "designation": "Q1",
-        "switch_state": "CLOSED",
+        "switch_state": {
+         "actual_state": "zamkniety"
+        },
         "is_controllable": true
-       },
-       {
-        "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/ds",
-        "symbol_ref": "disconnector",
-        "kind": "DS",
-        "placement": "UPSTREAM",
-        "designation": "Q11",
-        "switch_state": "CLOSED"
        },
        {
         "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/ct",
         "symbol_ref": "currentTransformer",
         "kind": "CT",
         "placement": "MIDSTREAM",
-        "designation": "T1"
+        "designation": "T1",
+        "linked_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/ct"
+       },
+       {
+        "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/ds_lin",
+        "symbol_ref": "disconnector",
+        "kind": "DS",
+        "placement": "MIDSTREAM",
+        "designation": "Q12",
+        "switch_state": {
+         "actual_state": "zamkniety"
+        }
        },
        {
         "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/es",
@@ -1157,7 +1180,9 @@
         "kind": "ES",
         "placement": "DOWNSTREAM",
         "designation": "QE1",
-        "switch_state": "OPEN",
+        "switch_state": {
+         "actual_state": "otwarty"
+        },
         "earthing_role": "BAY_EARTH"
        },
        {
@@ -1166,7 +1191,8 @@
         "kind": "CABLE_HEAD",
         "placement": "DOWNSTREAM"
        }
-      ]
+      ],
+      "protection_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/prot"
      },
      {
       "ref_id": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02",
@@ -1182,28 +1208,43 @@
       ],
       "primary_devices": [
        {
+        "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/ds_bus",
+        "symbol_ref": "disconnector",
+        "kind": "DS",
+        "placement": "UPSTREAM",
+        "designation": "Q21",
+        "switch_state": {
+         "actual_state": "zamkniety"
+        }
+       },
+       {
         "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/cb",
         "symbol_ref": "breaker",
         "kind": "CB",
         "placement": "MIDSTREAM",
         "designation": "Q2",
-        "switch_state": "CLOSED",
+        "switch_state": {
+         "actual_state": "zamkniety"
+        },
         "is_controllable": true
-       },
-       {
-        "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/ds",
-        "symbol_ref": "disconnector",
-        "kind": "DS",
-        "placement": "UPSTREAM",
-        "designation": "Q21",
-        "switch_state": "CLOSED"
        },
        {
         "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/ct",
         "symbol_ref": "currentTransformer",
         "kind": "CT",
         "placement": "MIDSTREAM",
-        "designation": "T2"
+        "designation": "T2",
+        "linked_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/ct"
+       },
+       {
+        "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/ds_lin",
+        "symbol_ref": "disconnector",
+        "kind": "DS",
+        "placement": "MIDSTREAM",
+        "designation": "Q22",
+        "switch_state": {
+         "actual_state": "zamkniety"
+        }
        },
        {
         "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/es",
@@ -1211,7 +1252,9 @@
         "kind": "ES",
         "placement": "DOWNSTREAM",
         "designation": "QE2",
-        "switch_state": "OPEN",
+        "switch_state": {
+         "actual_state": "otwarty"
+        },
         "earthing_role": "BAY_EARTH"
        },
        {
@@ -1220,7 +1263,8 @@
         "kind": "CABLE_HEAD",
         "placement": "DOWNSTREAM"
        }
-      ]
+      ],
+      "protection_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/prot"
      }
     ]
    },
@@ -1459,28 +1503,33 @@
     ],
     "primary_devices": [
      {
-      "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/cb",
-      "symbol_ref": "breaker",
-      "kind": "CB",
-      "placement": "MIDSTREAM",
-      "designation": "Q1",
-      "switch_state": "CLOSED",
-      "is_controllable": true
-     },
-     {
       "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/ds",
       "symbol_ref": "disconnector",
       "kind": "DS",
       "placement": "UPSTREAM",
       "designation": "Q11",
-      "switch_state": "CLOSED"
+      "switch_state": {
+       "actual_state": "zamkniety"
+      }
+     },
+     {
+      "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/cb",
+      "symbol_ref": "breaker",
+      "kind": "CB",
+      "placement": "MIDSTREAM",
+      "designation": "Q1",
+      "switch_state": {
+       "actual_state": "zamkniety"
+      },
+      "is_controllable": true
      },
      {
       "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/ct",
       "symbol_ref": "currentTransformer",
       "kind": "CT",
       "placement": "MIDSTREAM",
-      "designation": "T1"
+      "designation": "T1",
+      "linked_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/ct"
      },
      {
       "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/es",
@@ -1488,10 +1537,13 @@
       "kind": "ES",
       "placement": "DOWNSTREAM",
       "designation": "QE1",
-      "switch_state": "OPEN",
+      "switch_state": {
+       "actual_state": "otwarty"
+      },
       "earthing_role": "BAY_EARTH"
      }
-    ]
+    ],
+    "protection_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/tr01/prot"
    },
    {
     "ref_id": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01",
@@ -1507,28 +1559,43 @@
     ],
     "primary_devices": [
      {
+      "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/ds_bus",
+      "symbol_ref": "disconnector",
+      "kind": "DS",
+      "placement": "UPSTREAM",
+      "designation": "Q11",
+      "switch_state": {
+       "actual_state": "zamkniety"
+      }
+     },
+     {
       "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/cb",
       "symbol_ref": "breaker",
       "kind": "CB",
       "placement": "MIDSTREAM",
       "designation": "Q1",
-      "switch_state": "CLOSED",
+      "switch_state": {
+       "actual_state": "zamkniety"
+      },
       "is_controllable": true
-     },
-     {
-      "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/ds",
-      "symbol_ref": "disconnector",
-      "kind": "DS",
-      "placement": "UPSTREAM",
-      "designation": "Q11",
-      "switch_state": "CLOSED"
      },
      {
       "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/ct",
       "symbol_ref": "currentTransformer",
       "kind": "CT",
       "placement": "MIDSTREAM",
-      "designation": "T1"
+      "designation": "T1",
+      "linked_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/ct"
+     },
+     {
+      "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/ds_lin",
+      "symbol_ref": "disconnector",
+      "kind": "DS",
+      "placement": "MIDSTREAM",
+      "designation": "Q12",
+      "switch_state": {
+       "actual_state": "zamkniety"
+      }
      },
      {
       "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/es",
@@ -1536,7 +1603,9 @@
       "kind": "ES",
       "placement": "DOWNSTREAM",
       "designation": "QE1",
-      "switch_state": "OPEN",
+      "switch_state": {
+       "actual_state": "otwarty"
+      },
       "earthing_role": "BAY_EARTH"
      },
      {
@@ -1545,7 +1614,8 @@
       "kind": "CABLE_HEAD",
       "placement": "DOWNSTREAM"
      }
-    ]
+    ],
+    "protection_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line01/prot"
    },
    {
     "ref_id": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02",
@@ -1561,28 +1631,43 @@
     ],
     "primary_devices": [
      {
+      "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/ds_bus",
+      "symbol_ref": "disconnector",
+      "kind": "DS",
+      "placement": "UPSTREAM",
+      "designation": "Q21",
+      "switch_state": {
+       "actual_state": "zamkniety"
+      }
+     },
+     {
       "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/cb",
       "symbol_ref": "breaker",
       "kind": "CB",
       "placement": "MIDSTREAM",
       "designation": "Q2",
-      "switch_state": "CLOSED",
+      "switch_state": {
+       "actual_state": "zamkniety"
+      },
       "is_controllable": true
-     },
-     {
-      "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/ds",
-      "symbol_ref": "disconnector",
-      "kind": "DS",
-      "placement": "UPSTREAM",
-      "designation": "Q21",
-      "switch_state": "CLOSED"
      },
      {
       "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/ct",
       "symbol_ref": "currentTransformer",
       "kind": "CT",
       "placement": "MIDSTREAM",
-      "designation": "T2"
+      "designation": "T2",
+      "linked_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/ct"
+     },
+     {
+      "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/ds_lin",
+      "symbol_ref": "disconnector",
+      "kind": "DS",
+      "placement": "MIDSTREAM",
+      "designation": "Q22",
+      "switch_state": {
+       "actual_state": "zamkniety"
+      }
      },
      {
       "device_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/es",
@@ -1590,7 +1675,9 @@
       "kind": "ES",
       "placement": "DOWNSTREAM",
       "designation": "QE2",
-      "switch_state": "OPEN",
+      "switch_state": {
+       "actual_state": "otwarty"
+      },
       "earthing_role": "BAY_EARTH"
      },
      {
@@ -1599,7 +1686,8 @@
       "kind": "CABLE_HEAD",
       "placement": "DOWNSTREAM"
      }
-    ]
+    ],
+    "protection_ref": "gpz/860003b4514aa388b39561d5005ce584/section/001/bay/line02/prot"
    }
   ],
   "junctions": [],

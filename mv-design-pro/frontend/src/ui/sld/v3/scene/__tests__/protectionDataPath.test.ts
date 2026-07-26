@@ -61,6 +61,58 @@ describe('warstwa zabezpieczeniowa — fixtura ścieżki danych (Z7, V12K-220)',
     expect(adnotacje(dane)).toBeGreaterThan(adnotacje(konwencja));
   });
 
+  // TO JEST SEDNO Z7: cztery bramki (§17.5, §18.3, §20.1, §20.4) mierzyły dotąd
+  // pustkę na KAŻDEJ fixturze. Ten test jest pierwszym dowodem, że warstwa
+  // adnotacji zabezpieczeń w ogóle powstaje — i zarazem strażnikiem, że nie
+  // wróci do stanu, w którym bramki przechodzą przy zerowej treści.
+  it('warstwa adnotacji zabezpieczeń POWSTAJE: okręgi, linie pomiarowe CT→przekaźnik, tory wyzwalania', () => {
+    const dane = buildSceneV3(SCIEZKA_DANYCH, 2);
+    const konwencja = buildSceneV3(KONWENCJA_52S, 2);
+    const liniePomiarowe = (s: typeof dane) =>
+      s.segments.filter((g) => g.meta?.kind === 'measurementLink').length;
+    const toryWyzwalania = (s: typeof dane) =>
+      s.segments.filter((g) => g.meta?.kind === 'protectionTrip').length;
+    // Na ścieżce danych wszystkie trzy elementy warstwy istnieją…
+    expect(dane.labels.filter((l) => l.ownerKind === 'protection').length).toBeGreaterThan(0);
+    expect(liniePomiarowe(dane)).toBeGreaterThan(0);
+    expect(toryWyzwalania(dane)).toBeGreaterThan(0);
+    // …a na sieci wzorcowej NIE — to właśnie dlatego bramki przechodziły trywialnie.
+    expect(liniePomiarowe(konwencja)).toBe(0);
+    expect(toryWyzwalania(konwencja)).toBe(0);
+  });
+
+  // Łańcuch danych, bez którego warstwa milczy — każde ogniwo osobno, bo każde
+  // z nich w trakcie budowy fixtury okazało się brakujące i dawało ciche zero:
+  //   `primary_devices` w kolejności szablonu → `switch_state` jako OBIEKT z
+  //   polskim literałem → `linked_ref` CT na Measurement → `protection_ref` pola
+  //   na ProtectionAssignment.
+  it('ogniwa łańcucha danych są kompletne (każde brakujące dawało ciche zero)', () => {
+    const pola = SCIEZKA_DANYCH.bays as {
+      protection_ref?: string;
+      primary_devices: { kind: string; switch_state?: { actual_state?: string }; linked_ref?: string }[];
+    }[];
+    for (const pole of pola) {
+      expect(pole.protection_ref).toBeTruthy();
+      const laczniki = pole.primary_devices.filter((d) => ['CB', 'DS', 'ES'].includes(d.kind));
+      for (const l of laczniki) expect(l.switch_state?.actual_state).toBeTruthy();
+      for (const ct of pole.primary_devices.filter((d) => d.kind === 'CT')) {
+        expect(ct.linked_ref).toBeTruthy();
+      }
+    }
+  });
+
+  it('aparaty pól GPZ niosą STANY z modelu: łączniki toru zamknięte, uziemniki otwarte', () => {
+    const sc = buildSceneV3(SCIEZKA_DANYCH, 2);
+    const wPolach = sc.symbols.filter((s) => String(s.meta?.testId ?? '').includes('gpz-canonical-bay'));
+    const stan = (id: string, st: string) =>
+      wPolach.filter((s) => s.symbolId === id && s.state === st).length;
+    expect(stan('breaker', 'closed')).toBeGreaterThan(0);
+    expect(stan('disconnector', 'closed')).toBeGreaterThan(0);
+    // Uziemnik w ruchu normalnym jest OTWARTY — inaczej pole byłoby zwarte do ziemi.
+    expect(stan('earthSwitch', 'open')).toBeGreaterThan(0);
+    expect(stan('earthSwitch', 'closed')).toBe(0);
+  });
+
   it('koordynacja jest selektywna czasowo i czuła na doziemienie (dobór fizyczny)', () => {
     const nastawy = (kod: string) =>
       SCIEZKA_DANYCH.protection_assignments

@@ -83,9 +83,15 @@ zerowym użyciu produkcyjnym — łagodniejszy wariant wzorca „test maskujący
 
 ## Dług otwarty (z rund poprzednich, wciąż aktualny)
 
-- **Z7 (z R3, potwierdzone):** `measurements: 0` i `protection_assignments: 0` w sieci
-  wzorcowej — cztery bramki warstwy zabezpieczeniowej mierzą pustkę.
-- **Z6 (z R3, część danych):** `GroundingConfig` niewypełniony w żadnej z 315 szyn.
+- ~~**Z7 (z R3):** cztery bramki warstwy zabezpieczeniowej mierzą pustkę~~ — **ZAMKNIĘTE
+  (V12K-220)**: nowa fixtura ścieżki danych `gpzProtectionDataPath.enm.json` z koordynacją
+  dobraną fizycznie. Pomiar: adnotacje zabezpieczeń 0→8, linie pomiarowe CT→przekaźnik 0→3,
+  tory wyzwalania 0→3, aparaty pól GPZ 6→28 ze stanami z modelu. Łańcuch danych miał cztery
+  ogniwa i każde brakujące dawało ciche zero — spis w rejestrze V12K-220.
+- ~~**Z6 (z R3):** `GroundingConfig` niewypełniony~~ — **ZAMKNIĘTE (V12K-219)**: model
+  uziemienia na trzech poziomach napięcia + symbol punktu neutralnego z czterema wariantami
+  fizycznymi. Rezystor 57,7 Ω → prąd doziemny ≈ 150 A; ten wynik jest podstawą nastaw
+  ziemnozwarciowych z V12K-220.
 - ~~**R2-B (z R2):** etykiety 2 px~~ — **ZAMKNIĘTE (V12K-218)**: declutter ekranowy z progiem
   6 px w warstwie renderu + jawny wskaźnik „Ukryto N opisów — przybliż, aby zobaczyć". Przy
   pełnym widoku sieci ukrywane są wszystkie opisy (1135 na L2) — zamierzone: pył udający
