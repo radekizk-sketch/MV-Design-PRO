@@ -1,6 +1,16 @@
 /**
  * SONDA INWENTARYZACYJNA SLD (audyt powykonawczy, runda R3 — „czego brakuje").
  *
+ * UWAGA (V12K-214, wycofanie rundy R3): pierwsza wersja tej sondy pytała o dane
+ * ZGADYWANYMI nazwami pól i wzorcami tekstu i dawała FAŁSZYWE NEGATYWY — przegapiła
+ * pole `state` na aparatach (regex nie łapał słowa „state") oraz `uk 11%` na tabliczce
+ * (regex wymagał „%" wprost po „uk"). Na tej podstawie postawiono trzy nieprawdziwe
+ * zarzuty. Od tej wersji sonda WYPISUJE PEŁNE INWENTARZE zamiast odpowiadać JEST/BRAK:
+ * wszystkie klucze obiektów i pełny tekst etykiet. Czytający wyciąga wnioski sam.
+ * Druga lekcja: to jest sonda MODELU SCENY. Kolor, paleta, ramka i tabelka żyją w
+ * RENDERZE (`SldCanvasV3.tsx`, `sheet/Frame.tsx`, `export/exportPalette.ts`) — brak
+ * pola tutaj NIE dowodzi braku na rysunku.
+ *
  * Nie jest bramką i nie wchodzi do CI. Odpowiada na jedno pytanie audytowe:
  * CO MODEL NIESIE, A RYSUNEK POMIJA. Porównuje inwentarz sceny (symbole,
  * etykiety, kolory) z inwentarzem modelu ENM sieci wzorcowej, żeby braki
@@ -59,23 +69,34 @@ for (const k of kolekcje) {
 const klucze = Object.keys(enm).filter((k) => !kolekcje.includes(k));
 console.log(`  pozostałe klucze ENM: ${klucze.join(', ')}`);
 
-// --- PUNKTOWE PYTANIA AUDYTOWE ---------------------------------------------
-const tekstEtykiet = scena.labels.map((l) => String(l.text ?? '')).join('');
-const ma = (re) => re.test(tekstEtykiet);
-console.log('\n=== PYTANIA PUNKTOWE (czy rysunek to pokazuje) ===');
-const pytania = [
-  ['tabelka rysunkowa (nr rysunku / rewizja / skala / data)', /rewizj|nr rys|skala|arkusz/i],
-  ['dane systemu zasilającego (Sk″ / Ik″)', /Sk|Ik″|Ik"/],
-  ['punkt normalnie otwarty (NOP)', /NOP|normalnie otwart/i],
-  ['sposób pracy punktu neutralnego (izolowany / Petersen / rezystor)', /petersen|izolowan|dławik|rezystor uziem/i],
-  ['przekładnia transformatora (np. 110/20 kV)', /\d+\s*\/\s*\d+\s*kV/],
-  ['moc transformatora (MVA)', /MVA/],
-  ['napięcie zwarcia transformatora (uk%)', /uk\s*%|u_k/i],
-  ['grupa połączeń transformatora (np. Yd11)', /Y[nd]?d\d{1,2}|Dyn\d/],
-  ['przekrój/typ przewodu na gałęzi (mm²)', /mm²|mm2/],
-  ['długość odcinka (km/m)', /\d\s*km|\d\s*m\b/],
-  ['moc odbioru (kW/MW)', /\bkW\b|\bMW\b/],
-  ['przekładnia CT (np. 200/5)', /\d+\s*\/\s*[15]\b/],
-  ['numery funkcji zabezpieczeń (50/51/67)', /\b(50|51|67|81)N?\b/],
-];
-for (const [opis, re] of pytania) console.log(`  ${ma(re) ? 'JEST ' : 'BRAK '} ${opis}`);
+// --- PEŁNE INWENTARZE (zamiast pytań JEST/BRAK — patrz nagłówek) -----------
+console.log('\n=== WSZYSTKIE KLUCZE SYMBOLU (unia po symbolach sceny) ===');
+const kluczeSym = new Set();
+for (const s2 of scena.symbols) {
+  for (const k of Object.keys(s2)) kluczeSym.add(k);
+  for (const k of Object.keys(s2.meta ?? {})) kluczeSym.add('meta.' + k);
+}
+console.log('  ' + [...kluczeSym].sort().join(', '));
+
+console.log('\n=== WSZYSTKIE KLUCZE ODCINKA (unia po odcinkach sceny) ===');
+const kluczeSeg = new Set();
+for (const g of scena.segments) {
+  for (const k of Object.keys(g)) kluczeSeg.add(k);
+  for (const k of Object.keys(g.meta ?? {})) kluczeSeg.add('meta.' + k);
+}
+console.log('  ' + [...kluczeSeg].sort().join(', '));
+
+pokaz('STAN APARATÓW ŁĄCZNIKOWYCH (pole `state`)', licz(
+  scena.symbols.filter((s2) => /breaker|disconnector|loadBreakSwitch|earthSwitch|fuseSwitch/.test(s2.symbolId)),
+  (s2) => `${s2.symbolId} :: state=${s2.state ?? '(undefined)'}`,
+));
+
+console.log('\n=== PEŁNY TEKST ETYKIET wg kategorii (próbka 6 na kategorię) ===');
+const wgKat = new Map();
+for (const l of scena.labels) {
+  const k = l.ownerKind ?? '(brak)';
+  if (!wgKat.has(k)) wgKat.set(k, []);
+  const lista = wgKat.get(k);
+  if (lista.length < 6) lista.push(String(l.text ?? ''));
+}
+for (const [k, v] of wgKat) console.log(`  [${k}] ${v.map((t) => `"${t}"`).join(' · ')}`);
