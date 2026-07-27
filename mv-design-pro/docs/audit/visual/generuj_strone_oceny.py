@@ -49,7 +49,7 @@ def zrzut_data_uri() -> str:
 
 ZRZUT = zrzut_data_uri()
 
-STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…231</title>
+STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…233</title>
 <style>
 :root{--tlo:#f7f6f2;--karta:#fff;--tekst:#191814;--cichy:#5d594f;--linia:#dbd6c9;--akcent:#2e5f7a;
 --akcent-tlo:#e6eef3;--ok:#2f6b3f;--brak:#8c2f2f;--uwaga:#8a5a12}
@@ -92,7 +92,7 @@ padding:3px 7px;border-radius:2px;vertical-align:2px}
 </style>
 <div class="owijka">
 <header>
-<div class="nadtytul">Seria · V12K-216…231 · jedna doba</div>
+<div class="nadtytul">Seria · V12K-216…233 · jedna doba</div>
 <h1>Od schematu do jednej reguły: brak danej nie może stać się zerem</h1>
 <p class="cichy">Zrzuty żywej aplikacji, sieć wzorcowa 52 stacji · pomiar na renderze i na kodzie · 2026-07-27</p>
 </header>
@@ -283,6 +283,42 @@ nie do zakładki wytwórcy. Mapuję <strong>tylko trzy dokładne odpowiedniki</s
 odpowiednika (zwarcie dwufazowe z ziemią, spadek napięcia, zabezpieczenia, FRT, raporty) nie
 dopisuję mapowania „po podobieństwie”, bo to byłoby zgadywanie, nie składanie faktów.</p>
 
+<h2>Reguła normowa stała na atrapie katalogu</h2>
+<div class="karta">
+<p>Front miał <strong>dwa</strong> katalogi przekładników prądowych z <strong>zerowym pokryciem
+identyfikatorów</strong>: prawdziwy z backendu (12 typów producenckich — ABB, Siemens, Arteche,
+Schneider), z którego kreator pomiaru dodaje przekładnik do modelu, i lokalny pięciowpisowy,
+na którym stała reguła klasy zabezpieczeniowej IEC 61869-2 oraz warunek różnicowy 87T.</p>
+<div class="tab"><table>
+<thead><tr><th>Przekładnik</th><th>Klasa</th><th>Oś zabezpieczeń</th><th>Powody</th></tr></thead>
+<tbody>
+<tr><td><code>ct_200_5_5p10_10va_abb</code> (realny)</td><td>5P10 — poprawna zabezpieczeniowo</td>
+<td><strong>częściowo</strong></td><td class="num">0 — pusta lista</td></tr>
+<tr><td><code>ct_200_5_5p20</code> (syntetyczny)</td><td>5P20</td><td>gotowa</td><td class="num">—</td></tr>
+</tbody></table></div>
+<p>Projektant wybierający przekładnik w prawdziwym kreatorze dostawał trwale „niegotowe"
+<em>bez podania przyczyny</em>, a warunek 87T był dla realnych typów niespełnialny.</p>
+</div>
+
+<h2>Trzy stopnie tej naprawy</h2>
+<div class="tab"><table>
+<thead><tr><th>Krok</th><th>Co zrobiłem</th><th>Stan po</th></tr></thead>
+<tbody>
+<tr><td>klasa jako <strong>dana</strong></td><td>reguła czyta <code>ct_accuracy_class</code>
+z rekordu, nie szuka w katalogu; rozdzieliłem „klasa nie jest zabezpieczeniowa" (werdykt)
+od „klasy nie da się ustalić" (brak danej)</td><td>„niegotowe" przestało być milczące</td></tr>
+<tr><td>wypełnienie danej</td><td>rozwiązanie klasy z <em>prawdziwego</em> katalogu; klasa spoza
+kanonu daje <code>null</code>, nie najbliższe przybliżenie</td><td>oś <strong>gotowa</strong>
+dla realnego 5P10</td></tr>
+<tr><td>zastosowanie rdzenia</td><td>wyprowadzone definicyjnie wg IEC 61869-2: klasy z literą P
+to rdzenie zabezpieczeniowe, 0,2/0,5/1,0 pomiarowe</td><td>przekładnik pomiarowy daje
+<em>werdykt</em>, nie brak danej</td></tr>
+</tbody></table></div>
+<p class="cichy">Rdzenia <strong>podwójnego</strong> nie wyprowadzam z niczego — to cecha
+konstrukcyjna (dwa niezależne rdzenie), nie wniosek z jednej klasy. Żaden katalog nie ma dziś
+realnego typu dwurdzeniowego, więc warunek 87T pozostaje nierozstrzygalny i mówi to wprost.
+To luka <em>danych producenta</em>, nie kodu — i nie wypełnię jej wymyślonym wpisem.</p>
+
 <h2>Bramki sprawdzone, nie tylko uruchomione</h2>
 <div class="karta">
 <p>Żadnej bramki nie przyjąłem na zielonym wyniku. Dla guarda parzystości wstrzyknąłem regresję —
@@ -297,9 +333,11 @@ wprowadza w błąd tak samo jak brak wpisu, więc go skorygowałem.</p>
 <h2>Otwarte <span class="stan otw">do karty</span></h2>
 <div class="karta otwarta">
 <ul>
-<li><strong>F-K8 faza 2</strong> — relokacja samej oceny gotowości DER (533 linie, reguły klasy CT
-wg IEC 61869-2) do backendu. Rozstrzygnięcie z fazy 1 obowiązuje: relokacja musi zachować oba
-poziomy oceny i ich złożenie, nie spłaszczać do jednego.</li>
+<li><strong>F-K8 faza 2</strong> — relokacja samej oceny gotowości DER (533 linie) do backendu.
+Rozstrzygnięcie z fazy 1 obowiązuje: relokacja musi zachować oba poziomy oceny i ich złożenie,
+nie spłaszczać do jednego.</li>
+<li><strong>Przekładnik dwurdzeniowy</strong> — warunek 87T czeka na realny typ katalogowy
+z dwoma rdzeniami oraz na współczynnik bezpieczeństwa Ksbn (IEC 61869). Dane producenta.</li>
 <li><strong>NOP</strong> — wskazanie <code>nop_station_ref</code> wymaga wiedzy, która magistrala
 jest pierścieniem i gdzie projektant ją dzieli. To dana projektowa, nie derywacja z topologii.</li>
 <li><strong>Osiem typów kablowych</strong> — dane cieplne uzupełnione normowo; pełna weryfikacja
