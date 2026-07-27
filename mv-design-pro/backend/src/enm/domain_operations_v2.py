@@ -3822,6 +3822,117 @@ def set_dynamic_profile(enm: dict[str, Any], payload: dict[str, Any]) -> dict[st
     )
 
 
+#: Wiązania wytwórcy wybierane PO jego utworzeniu — nazwy kluczy są te same, których
+#: odczyt ENM (`buildDerFromGenerator`) już szuka w ``materialized_params``, więc ścieżka
+#: powrotna nie wymaga tłumaczenia nazw (V12K-238).
+DER_BINDING_KEYS: tuple[str, ...] = (
+    "protection_catalog_ref",
+    "ct_catalog_ref",
+    "vt_catalog_ref",
+    "fault_current_data_ref",
+    "dynamic_model_ref",
+)
+
+#: Referencje profili zgodności przyłączeniowej — trzymane w podsłowniku ``profiles``,
+#: bo tam ich szuka odczyt (i tam trafiają z kreatora OZE).
+DER_PROFILE_KEYS: tuple[str, ...] = (
+    "nc_rfg_profile_ref",
+    "lvrt_curve_ref",
+    "hvrt_curve_ref",
+    "pf_curve_ref",
+)
+
+
+def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+    """Zapisz wiązania katalogowe i profile zgodności wytwórcy (DER) w modelu.
+
+    DLACZEGO TA OPERACJA ISTNIEJE (V12K-238, pomiar V12K-237). Kreator DER woła backend
+    RAZ, przy tworzeniu, i wysyła wtedy katalog urządzenia, baterii i transformatora
+    blokowego. Katalog zabezpieczeń, przekładniki CT/VT, dane prądu zwarciowego, model
+    dynamiczny i profile zgodności są wybierane PÓŹNIEJ, w konfiguratorze — a dla tych
+    wyborów NIE ISTNIAŁA żadna operacja domenowa. Ginęły więc w store przeglądarki:
+    sześć osi gotowości (zabezpieczenia, selektywność, SC1F, SC2FG, FRT, HVRT) opierało
+    werdykt na danych, których model nie zna, a które przepadały po odświeżeniu strony
+    i nie wchodziły do eksportu projektu.
+
+    ZERO FABRYKACJI. Zapisywane są WYŁĄCZNIE klucze OBECNE w payloadzie — brak klucza
+    zostawia model bez zmian (nie wpisuje ``null``, nie kasuje wcześniejszej wartości).
+    Jawne wyczyszczenie wiązania to ``null`` W PAYLOADZIE: wtedy klucz jest USUWANY
+    z modelu, więc reguła gotowości znów widzi brak danej, a nie puste pole udające
+    wartość. Determinizm istniejących modeli nietknięty: wywołanie bez żadnego wiązania
+    niczego nie dopisuje.
+    """
+    generator_ref = payload.get("generator_ref") or payload.get("source_ref")
+    if not generator_ref:
+        return _error_response(
+            "Brak identyfikatora wytwórcy.", "der_bindings.generator_missing"
+        )
+
+    obecne_wiazania = {k: payload[k] for k in DER_BINDING_KEYS if k in payload}
+    obecne_profile = {k: payload[k] for k in DER_PROFILE_KEYS if k in payload}
+    if not obecne_wiazania and not obecne_profile:
+        return _error_response(
+            "Żadne wiązanie ani profil nie zostały podane.", "der_bindings.payload_empty"
+        )
+
+    new_enm = copy.deepcopy(enm)
+    generator = next(
+        (
+            g
+            for g in new_enm.get("generators", [])
+            if g.get("ref_id") == generator_ref or g.get("id") == generator_ref
+        ),
+        None,
+    )
+    if generator is None:
+        return _error_response(
+            f"Wytwórca '{generator_ref}' nie istnieje w modelu.",
+            "der_bindings.generator_not_found",
+        )
+
+    materialized = generator.setdefault("materialized_params", {})
+    if not isinstance(materialized, dict):  # pragma: no cover - obrona kontraktu
+        return _error_response(
+            "Parametry zmaterializowane wytwórcy mają nieoczekiwaną postać.",
+            "der_bindings.materialized_params_invalid",
+        )
+
+    for klucz, wartosc in obecne_wiazania.items():
+        if wartosc is None:
+            materialized.pop(klucz, None)
+        else:
+            materialized[klucz] = wartosc
+
+    if obecne_profile:
+        profile = materialized.setdefault("profiles", {})
+        if not isinstance(profile, dict):  # pragma: no cover - obrona kontraktu
+            return _error_response(
+                "Profile wytwórcy mają nieoczekiwaną postać.",
+                "der_bindings.profiles_invalid",
+            )
+        for klucz, wartosc in obecne_profile.items():
+            if wartosc is None:
+                profile.pop(klucz, None)
+            else:
+                profile[klucz] = wartosc
+        if not profile:
+            materialized.pop("profiles", None)
+
+    return _response(
+        new_enm,
+        updated=[str(generator_ref)],
+        selection_id=str(generator_ref),
+        selection_type="generator",
+        events=[
+            {
+                "event_seq": 1,
+                "event_type": "PARAMETERS_UPDATED",
+                "element_id": str(generator_ref),
+            }
+        ],
+    )
+
+
 # ---------------------------------------------------------------------------
 # 24-25. UNIWERSALNE
 # ---------------------------------------------------------------------------
@@ -3971,6 +4082,7 @@ V2_CANONICAL_OPS = frozenset(
         "add_surge_arrester_sn",
         "set_source_operating_mode",
         "set_dynamic_profile",
+        "set_der_catalog_bindings",
         # Universal
         "rename_element",
         "set_label",
@@ -4005,6 +4117,7 @@ ALL_V2_HANDLERS: dict[str, Any] = {
     "add_surge_arrester_sn": add_surge_arrester_sn,
     "set_source_operating_mode": set_source_operating_mode,
     "set_dynamic_profile": set_dynamic_profile,
+    "set_der_catalog_bindings": set_der_catalog_bindings,
     "rename_element": rename_element,
     "set_label": set_label,
     "set_connection_conditions": set_connection_conditions,

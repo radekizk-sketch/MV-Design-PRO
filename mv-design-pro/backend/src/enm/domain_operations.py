@@ -65,6 +65,10 @@ CANONICAL_OPS = frozenset(
         "delete_gpz_section",
         # Phase 0B (operator-grade SLD plan v2): append-on-endpoint workflow
         "append_station_on_endpoint",
+        # V12K-238: wiązania wytwórcy wybierane PO jego utworzeniu (konfigurator DER) —
+        # bez tej operacji wybór katalogu zabezpieczeń, CT/VT, danych prądu zwarciowego
+        # i modelu dynamicznego nie miał gdzie spłynąć (pomiar: V12K-237).
+        "set_der_catalog_bindings",
     }
 )
 

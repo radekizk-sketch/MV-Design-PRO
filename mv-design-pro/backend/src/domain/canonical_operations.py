@@ -242,6 +242,30 @@ CANONICAL_OPERATIONS: dict[str, OperationSpec] = {
         required_fields=("source_ref", "profile"),
         creates_elements=False,
     ),
+    # V12K-238: wiązania wytwórcy wybierane PO jego utworzeniu (konfigurator DER).
+    # Bez tej operacji katalog zabezpieczeń, przekładniki CT/VT, dane prądu zwarciowego,
+    # model dynamiczny i profile zgodności nie miały GDZIE spłynąć — wybór żył wyłącznie
+    # w store przeglądarki, więc sześć osi gotowości opierało werdykt na danych, których
+    # model nie zna (pomiar: V12K-237).
+    "set_der_catalog_bindings": OperationSpec(
+        canonical_name="set_der_catalog_bindings",
+        category=OperationCategory.OZE_NN,
+        description_pl="Wiązania katalogowe i profile zgodności wytwórcy (DER)",
+        target_layer="Domain / NetworkModel",
+        required_fields=("generator_ref",),
+        optional_fields=(
+            "protection_catalog_ref",
+            "ct_catalog_ref",
+            "vt_catalog_ref",
+            "fault_current_data_ref",
+            "dynamic_model_ref",
+            "nc_rfg_profile_ref",
+            "lvrt_curve_ref",
+            "hvrt_curve_ref",
+            "pf_curve_ref",
+        ),
+        creates_elements=False,
+    ),
     # --- Protection (7 operations) ---
     "add_ct": OperationSpec(
         canonical_name="add_ct",
