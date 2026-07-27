@@ -121,8 +121,13 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
     expect(screen.getByText('Rozpływ mocy')).toBeInTheDocument();
     expect(screen.getByText('Zabezpieczenia DER')).toBeInTheDocument();
-    expect(screen.getByText('Funkcje ANSI wymagane')).toBeInTheDocument();
-    expect(screen.getByText(/50, 51/)).toBeInTheDocument();
+    // V12K-245: uniwersalna lista funkcji ANSI ZNIKA z ekranu. Sklejala kody ze STALEJ
+    // listy katalogu (13 z 24 pozycji z flaga `required_for_der`) — jedna i ta sama dla
+    // KAZDEJ instalacji, niezalezna od topologii, uziemienia sieci, wymagan OSD
+    // i mozliwosci wybranego urzadzenia, wiec nie byla projektem zabezpieczen tylko
+    // ozdoba. Realny dobor funkcji od obiektu wchodzi karta E21-3; do tego czasu ekran
+    // NIE UDAJE, ze go ma.
+    expect(screen.queryByText('Funkcje ANSI wymagane')).toBeNull();
   });
 
   it('PvSourceSurface odtwarza DER z ENM snapshot po odświeżeniu lokalnego store', () => {
@@ -349,13 +354,13 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(document.body.textContent ?? '').not.toMatch(/wybierz wariant katalogowy|wybierz certyfikat PTPiREE|wymaga wariantu katalogowego/i);
 
     fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
-    expect(screen.getByText('Kompletność konfiguracji')).toBeInTheDocument();
     // INTENCJA TESTU bez zmian: legacy generator BEZ rozpoznawalnego `catalog_ref`
-    // dostaje pakiet katalogowy — dowodzą tego asercje wyżej. Zmieniony jest werdykt
-    // kompletności: ten model nie niesie ŻADNEGO profilu zgodności, więc konfiguracja
-    // NIE jest kompletna. Przed V12K-236 wychodziła „kompletna", bo brak profilu był
-    // po cichu zastępowany zestawem ENEA — czyli test kodyfikował fabrykację operatora.
-    expect(screen.getByText('wybierz profil zgodności przyłączeniowej')).toBeInTheDocument();
+    // dostaje pakiet katalogowy — dowodzą tego asercje wyżej. Zmienia się tylko sposób,
+    // w jaki ekran mówi o stanie: „Kompletność konfiguracji" liczona z TRZECH pól
+    // ustąpiła miejsca stanowi liczonemu z tej samej macierzy, którą ekran pokazuje
+    // (V12K-245, audyt E-21 pkt P4 — słowo „kompletna" nie może padać obok listy braków).
+    expect(screen.getByText('Stan konfiguracji')).toBeInTheDocument();
+    expect(screen.getByText(/Konfiguracja niekompletna/)).toBeInTheDocument();
     expect(screen.queryByText('kompletna konfiguracja')).not.toBeInTheDocument();
   });
 

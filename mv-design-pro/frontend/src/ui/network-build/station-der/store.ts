@@ -49,6 +49,8 @@ export interface AttachDerInput {
   readonly catalogs?: Partial<DerCatalogSelections>;
   readonly profiles?: Partial<DerProfileSelections>;
   readonly nominal_power_kw?: number | null;
+  /** Liczba jednostek (`quantity` w modelu); brak danej zostaje brakiem. */
+  readonly unit_count?: number | null;
   readonly created_at?: string;
 }
 
@@ -76,6 +78,7 @@ export interface StationDerState {
         | 'voltage_level_ref'
         | 'name'
         | 'nominal_power_kw'
+        | 'unit_count'
       >
     >,
     nowIso?: string,
@@ -110,6 +113,7 @@ export const useStationDerStore = create<StationDerState>((set) => ({
       catalogs,
       profiles,
       nominal_power_kw: input.nominal_power_kw ?? null,
+      unit_count: input.unit_count ?? null,
       completeness: computeDerCompleteness({
         connection_side: input.connection_side,
         pcc_ref: input.pcc_ref ?? null,

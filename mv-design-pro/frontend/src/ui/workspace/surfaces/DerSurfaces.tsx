@@ -32,7 +32,6 @@ import {
   LVRT_CURVE_CATALOG,
   NC_RFG_PROFILE_CATALOG,
   PF_CURVE_CATALOG,
-  PROTECTION_FUNCTION_CATALOG,
   PV_INVERTER_CATALOG,
   WIND_TURBINE_CATALOG,
   BLOCK_TRANSFORMER_CATALOG,
@@ -44,6 +43,13 @@ import {
   useStationDerStore,
 } from '../../network-build/station-der';
 import { wzbogacOKlaseCt } from '../../network-build/station-der/ctZKatalogu';
+import {
+  identyfikacjaMocy,
+  stanKonfiguracji,
+  torMocy,
+  type IdentyfikacjaMocy,
+  type OgniwoToru,
+} from '../../network-build/station-der/tozsamoscWytworcy';
 import {
   PTPIREE_CERTIFIED_DEVICE_SOURCES,
   PTPIREE_CERTIFIED_INVERTERS,
@@ -217,6 +223,17 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function numberFromRecord(
+  record: Record<string, unknown>,
+  keys: readonly string[],
+): number | null {
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'number' && Number.isFinite(value) && value > 0) return value;
+  }
+  return null;
+}
+
 function stringFromRecord(
   record: Record<string, unknown>,
   keys: readonly string[],
@@ -322,7 +339,12 @@ function buildDerFromGenerator(
     ?? stringFromRecord(meta, ['lv_busbar_ref', 'lv_bus_ref'])
     ?? (connectionSide === 'nN' ? generator.bus_ref ?? null : null);
   const ncRfgRef = stringFromRecord(profiles, ['nc_rfg_profile_ref', 'nc_rfg', 'ncrfg']);
+  // Moc z modelu to moc CAŁEJ pozycji (operacja zapisuje moc katalogową × liczba sztuk).
   const nominalPowerKw = typeof generator.p_mw === 'number' ? Math.round(generator.p_mw * 1000) : null;
+  // Liczba jednostek — dana modelu (`quantity`), do tej pory na ekran NIE DOCHODZILA,
+  // wiec moc jednostkowa i grupowa byly nierozroznialne (audyt E-21 pkt P2).
+  const unitCount = numberFromRecord(materialized, ['quantity', 'n_parallel'])
+    ?? numberFromRecord(meta, ['quantity', 'n_parallel']);
   const catalogRef = resolveDeviceCatalogRef(
     fallbackKind,
     generator.catalog_ref ?? stringFromRecord(materialized, ['device_catalog_ref']),
@@ -381,6 +403,7 @@ function buildDerFromGenerator(
       pf_curve_ref: stringFromRecord(profiles, ['pf_curve_ref', 'p_f_curve_ref', 'pf']),
     },
     nominal_power_kw: nominalPowerKw,
+    unit_count: unitCount,
     completeness,
     // JEDNA regula gotowosci na tym ekranie (V12K-243). Wczesniej stal tu lokalny,
     // slabszy duplikat (`buildReadinessForGenerator`): patrzyl wylacznie na obecnosc
@@ -431,6 +454,7 @@ function buildDerFromSurfaceContext(
     catalogs: { ...EMPTY_DER_CATALOGS },
     profiles: { ...EMPTY_DER_PROFILES },
     nominal_power_kw: null,
+    unit_count: null,
     completeness: 'no_pcc',
     readiness: { ...EMPTY_DER_READINESS },
     created_at: '',
@@ -468,15 +492,21 @@ function findPvInverter(der: StationDerConnection) {
   return PV_INVERTER_CATALOG.find((item) => item.id === der.catalogs.device_catalog_ref) ?? null;
 }
 
-function findDeviceNominalPower(der: StationDerConnection): number | null {
-  if (der.nominal_power_kw !== null) return der.nominal_power_kw;
+
+/**
+ * Moc POJEDYNCZEJ jednostki z katalogu urzadzenia.
+ *
+ * Odroznienie od `der.nominal_power_kw` (moc calej pozycji) jest sednem naprawy P2:
+ * do V12K-245 jedna etykieta „Moc znamionowa AC" pokazywala raz jedno, raz drugie.
+ */
+function mocJednostkiZKatalogu(der: StationDerConnection): number | null {
   if (der.der_kind === 'PV') return findPvInverter(der)?.nominal_power_kw ?? null;
   if (der.der_kind === 'BESS') {
-    return BESS_PCS_CATALOG.find((item) => item.id === der.catalogs.device_catalog_ref)?.nominal_power_kw
-      ?? null;
+    return BESS_PCS_CATALOG.find((item) => item.id === der.catalogs.device_catalog_ref)
+      ?.nominal_power_kw ?? null;
   }
-  return WIND_TURBINE_CATALOG.find((item) => item.id === der.catalogs.device_catalog_ref)?.nominal_power_kw
-    ?? null;
+  return WIND_TURBINE_CATALOG.find((item) => item.id === der.catalogs.device_catalog_ref)
+    ?.nominal_power_kw ?? null;
 }
 
 function blockTransformerLabel(der: StationDerConnection): string {
@@ -538,38 +568,38 @@ function readinessPl(value: ReadinessAxisStatus): string {
   }
 }
 
-function completenessPl(value: DerCompleteness): string {
-  switch (value) {
-    case 'complete':
-      return 'kompletna konfiguracja';
-    case 'partial':
-      return 'konfiguracja do doprecyzowania';
-    case 'missing_catalog':
-      return 'wybierz wariant katalogowy';
-    case 'missing_profile':
-      return 'wybierz profil zgodności przyłączeniowej';
-    case 'voltage_mismatch':
-      return 'niezgodność napięcia';
-    case 'no_pcc':
-      return 'wybierz punkt przyłączenia';
-  }
+/** Moc grupy — tyle wnosi ta pozycja do modelu (`p_mw`). */
+function mocGrupyPl(moc: IdentyfikacjaMocy): string {
+  if (moc.mocGrupyKw === null) return 'brak danej w modelu';
+  const podstawa = `${moc.mocGrupyKw.toLocaleString('pl-PL')} kW`;
+  if (!moc.sprzecznosc) return podstawa;
+  // SPRZECZNOSC POKAZANA, NIE UKRYTA (audyt E-21 pkt P2): iloczyn jednostka × liczba
+  // nie zgadza sie z moca zapisana w modelu — od tej liczby zaleza prady robocze,
+  // dobor transformatora, CT i kategoria NC RfG, wiec projektant musi to zobaczyc.
+  return `${podstawa} — niezgodne z iloczynem `
+    + `${moc.sprzecznosc.oczekiwanaKw.toLocaleString('pl-PL')} kW (jednostka × liczba)`;
 }
 
-function pccPathLabel(der: StationDerConnection): string {
-  if (der.connection_side === 'nN') return 'falownik → wyłącznik nN → szyna nN → transformator SN/nN → pole SN';
-  if (der.connection_side === 'SN') return 'falownik/transformator → pole SN → szyna SN';
-  if (der.connection_side === 'dedicated_transformer') return 'falownik → transformator blokowy → pole SN dedykowane';
-  if (der.connection_side === 'at_zksn') return 'źródło → ZK SN → ciąg główny SN';
-  if (der.connection_side === 'at_branch_pole') return 'źródło → słup rozgałęźny → ciąg główny SN';
-  return 'źródło → mufa kablowa → ciąg główny SN';
+function liczbaJednostekPl(moc: IdentyfikacjaMocy): string {
+  if (moc.liczbaJednostek === null) return 'brak danej w modelu';
+  return moc.liczbaJednostek === 1 ? '1 (pojedyncza jednostka)' : `${moc.liczbaJednostek}`;
 }
 
-function derProtectionSummary(): string {
-  return PROTECTION_FUNCTION_CATALOG
-    .filter((item) => item.required_for_der)
-    .map((item) => item.ansi_code)
-    .join(', ');
+function mocJednostkiPl(moc: IdentyfikacjaMocy): string {
+  if (moc.mocJednostkiKw === null) return 'wg wybranego urządzenia katalogowego';
+  return `${moc.mocJednostkiKw.toLocaleString('pl-PL')} kW`;
 }
+
+/** Tor mocy z elementow modelu; brakujace ogniwo jest NAZWANE, nie pomijane. */
+function torMocyPl(tor: readonly OgniwoToru[]): string {
+  return tor
+    .filter((ogniwo) => ogniwo.wymagane || ogniwo.nazwa !== null)
+    .map((ogniwo) => `${ogniwo.rola}: ${ogniwo.nazwa ?? 'brak w modelu'}`)
+    .join(' → ');
+}
+
+
+
 
 function assignedLabel(value: string | null | undefined, label: string): string {
   return value ? label : 'do konfiguracji w wariancie katalogowym';
@@ -612,6 +642,10 @@ interface KatalogiWiazan {
 
 function buildDerCards(
   der: StationDerConnection,
+  /** Rozbicie mocy na jednostke, liczbe sztuk i grupe (audyt E-21 pkt P2). */
+  moc: IdentyfikacjaMocy,
+  /** Tor mocy z ELEMENTOW MODELU, z jawnie brakujacymi ogniwami (pkt P3). */
+  tor: readonly OgniwoToru[],
   /**
    * Macierz gotowosci liczona NA ZYWO z rekordu (V12K-243). Ekran czytal wczesniej pole
    * `der.readiness` ZAPISANE na rekordzie — nikt go nie przeliczal po zmianie wiazan, wiec
@@ -626,7 +660,6 @@ function buildDerCards(
     : null;
   const inverter = findPvInverter(der);
   const ptpireeCertificate = getPtpireeCertifiedInverter(der.catalogs.ptpiree_certificate_ref);
-  const devicePower = findDeviceNominalPower(der);
   const faultCurrent = inverter?.fault_current_capability_pu
     ? `${inverter.fault_current_capability_pu.toFixed(2)} × In`
     : MISSING_DASH;
@@ -641,10 +674,9 @@ function buildDerCards(
             label="Punkt przyłączenia"
             value={assignedLabel(der.pcc_ref, 'PCC przypisany do toru przyłączenia')}
           />
-          <FieldRow
-            label="Moc znamionowa AC"
-            value={devicePower !== null ? `${devicePower} kW` : 'wg wybranego urządzenia katalogowego'}
-          />
+          <FieldRow label="Moc pozycji (grupy)" value={mocGrupyPl(moc)} />
+          <FieldRow label="Liczba jednostek" value={liczbaJednostekPl(moc)} />
+          <FieldRow label="Moc jednostki (katalog)" value={mocJednostkiPl(moc)} />
           {isDedicatedTransformer && (
             <FieldRow label="Transformator blokowy" value={blockTransformerLabel(der)} />
           )}
@@ -662,7 +694,7 @@ function buildDerCards(
         <dl>
           <FieldRow label="Stacja" value={assignedLabel(der.station_id, 'stacja przypisana')} />
           <FieldRow label="Strona przyłączenia" value={connectionSidePl(der.connection_side)} />
-          <FieldRow label="Tor mocy" value={pccPathLabel(der)} />
+          <FieldRow label="Tor mocy" value={torMocyPl(tor)} />
           <FieldRow label="Pole SN" value={assignedLabel(der.bay_ref, 'pole SN przypisane')} />
           <FieldRow label="Szyna nN" value={assignedLabel(der.lv_busbar_ref, 'szyna nN przypisana')} />
           <FieldRow
@@ -748,14 +780,13 @@ function buildDerCards(
     readiness: (
       <section>
         <dl>
-          <FieldRow label="Kompletność konfiguracji" value={completenessPl(der.completeness)} />
+          <FieldRow label="Stan konfiguracji" value={stanKonfiguracji(gotowosc).zdanie} />
           <FieldRow label="Zwarcie 3-fazowe" value={readinessPl(gotowosc.sc_3f)} />
           <FieldRow label="Zwarcie doziemne" value={readinessPl(gotowosc.sc_1f)} />
           <FieldRow label="Rozpływ mocy" value={readinessPl(gotowosc.vdrop)} />
           <FieldRow label="Regulacja Q(U)" value={readinessPl(gotowosc.q_u)} />
           <FieldRow label="Zabezpieczenia DER" value={readinessPl(gotowosc.protection)} />
           <FieldRow label="Selektywność" value={readinessPl(gotowosc.protection_selectivity)} />
-          <FieldRow label="Funkcje ANSI wymagane" value={derProtectionSummary()} />
           <FieldRow label="Raport OSD" value={readinessPl(gotowosc.report_osd)} />
           <FieldRow label="Raport techniczny" value={readinessPl(gotowosc.report_technical)} />
         </dl>
@@ -1025,6 +1056,35 @@ function DerSurfaceShell({
     });
   }, [der, katalogiWiazan.ct, wszystkieDery]);
 
+  // Tozsamosc mocy i tor mocy — dane modelu, nie stale etykiety (audyt E-21 P2/P3).
+  const mocWytworcy = useMemo(
+    () => identyfikacjaMocy(
+      der ?? { nominal_power_kw: null, unit_count: null },
+      der ? mocJednostkiZKatalogu(der) : null,
+    ),
+    [der],
+  );
+  const torWytworcy = useMemo(() => {
+    if (!der) return [];
+    const nazwaSzyny = (ref: string | null): string | null =>
+      ref ? snapshot?.buses?.find((bus) => bus.ref_id === ref)?.name ?? ref : null;
+    const stacja = snapshot?.substations?.find(
+      (item) => item.ref_id === der.station_id || item.id === der.station_id,
+    );
+    return torMocy(der, {
+      stacja: der.station_id ? publicStationName(snapshot ?? null, stacja ?? null, der.station_id) : null,
+      szynaNn: nazwaSzyny(der.lv_busbar_ref),
+      transformator: der.transformer_ref
+        ? snapshot?.transformers?.find((tr) => tr.ref_id === der.transformer_ref)?.name
+          ?? der.transformer_ref
+        : null,
+      poleSn: der.bay_ref
+        ? snapshot?.bays?.find((bay) => bay.ref_id === der.bay_ref)?.name ?? der.bay_ref
+        : null,
+      pcc: nazwaSzyny(der.pcc_ref),
+    });
+  }, [der, snapshot]);
+
   const navigateToStation = useCallback(() => {
     if (!der?.station_id) return;
     openRouteSurface('E-13', {
@@ -1136,15 +1196,21 @@ function DerSurfaceShell({
           derId={derId ?? 'unselected'}
           derKind={derKind}
           stationContext={stationContext}
-          children={der ? buildDerCards(der, gotowosc, edytorWiazan) : undefined}
+          children={der ? buildDerCards(der, mocWytworcy, torWytworcy, gotowosc, edytorWiazan) : undefined}
         />
       </div>
       {der && (
         <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
           <DerKpi label="Punkt przyłączenia" value={connectionSidePl(der.connection_side)} />
+          {/* Kafel nazywa POZIOM mocy, ktory pokazuje (V12K-245). „Moc znamionowa" bez
+              wskazania, czy chodzi o jednostke czy o cala pozycje, byla dokladnie ta
+              dwuznacznoscia, ktora audyt E-21 wskazal w pkt P2. */}
           <DerKpi
-            label="Moc znamionowa"
-            value={findDeviceNominalPower(der) !== null ? `${findDeviceNominalPower(der)} kW` : MISSING_DASH}
+            label={mocWytworcy.grupaJednostek ? 'Moc pozycji (grupy)' : 'Moc znamionowa AC'}
+            value={mocWytworcy.mocGrupyKw !== null
+              ? `${mocWytworcy.mocGrupyKw.toLocaleString('pl-PL')} kW`
+              + (mocWytworcy.grupaJednostek ? ` (${mocWytworcy.liczbaJednostek} × jednostka)` : '')
+              : MISSING_DASH}
           />
           <DerKpi
             label="Profil NC RfG"

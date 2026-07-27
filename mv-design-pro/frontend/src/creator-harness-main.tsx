@@ -2641,6 +2641,7 @@ function derDemo(
     catalogs: EMPTY_DER_CATALOGS,
     profiles: EMPTY_DER_PROFILES,
     nominal_power_kw: null,
+    unit_count: null,
     completeness: 'complete',
     readiness: EMPTY_DER_READINESS,
     created_at: '2026-07-01T00:00:00Z',

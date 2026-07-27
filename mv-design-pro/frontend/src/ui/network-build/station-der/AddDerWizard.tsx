@@ -206,7 +206,12 @@ const EMPTY_SELECTIONS: WizardSelections = {
 };
 
 const DEFAULT_LV_VOLTAGE_LEVEL_REF = 'lv_0_4kV';
-const DEFAULT_NC_RFG_PROFILE_REF = 'ncrfg_enea';
+// ZERO PRESELEKCJI OPERATORA (V12K-245). Krok „profil" podstawial wczesniej zestaw ENEA
+// (profil + krzywe LVRT/HVRT + P(f)), wiec projektant mogl przejsc dalej JEDNYM klikiem,
+// nie podejmujac decyzji — a wybor OSD wynika z lokalizacji przylaczenia i determinuje
+// krzywe FRT oraz wymagania Q(U). Bramka kroku i tak wymaga profilu, wiec usuniecie
+// preselekcji zamienia „domyslnie ENEA" na „wybierz operatora" — bez zadnej straty
+// funkcji, za to bez fabrykacji danej projektowej.
 
 const STATION_TRANSFORMER_CATALOG: readonly StationTransformerCatalogItem[] = [
   { id: 'tr-sn-nn-15-04-63kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 63 kVA Dyn11', sn_mva: 0.063, hv_kv: 15, lv_kv: 0.4 },
@@ -281,26 +286,6 @@ function applyPointDefaults(
   return next;
 }
 
-function applyProfileDefaults(selections: WizardSelections): WizardSelections {
-  if (selections.ncRfgProfileRef && selections.lvrtCurveRef && selections.hvrtCurveRef) {
-    return selections;
-  }
-  const profile = NC_RFG_PROFILE_CATALOG.find((entry) => entry.id === DEFAULT_NC_RFG_PROFILE_REF)
-    ?? NC_RFG_PROFILE_CATALOG[0];
-  if (!profile) return selections;
-  const lvrtCurveRef = selectLvrtCurvesForProfile(profile.id)[0]?.id ?? null;
-  const hvrtCurveRef = selectHvrtCurvesForProfile(profile.id)[0]?.id ?? null;
-  const pfCurveRef = PF_CURVE_CATALOG.find(
-    (curve) => curve.operator_code === profile.operator_code,
-  )?.id ?? null;
-  return {
-    ...selections,
-    ncRfgProfileRef: profile.id,
-    lvrtCurveRef,
-    hvrtCurveRef,
-    pfCurveRef,
-  };
-}
 
 function readRefList(value: unknown): string[] {
   return Array.isArray(value)
@@ -974,9 +959,6 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     const idx = STEPS.indexOf(step);
     if (idx < STEPS.length - 1) {
       const nextStep = STEPS[idx + 1];
-      if (nextStep === 'profile') {
-        setSelections((current) => applyProfileDefaults(current));
-      }
       setStep(nextStep);
     }
   }, [step]);

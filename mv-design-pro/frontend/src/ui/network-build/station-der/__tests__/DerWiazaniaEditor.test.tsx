@@ -217,11 +217,19 @@ describe('DerWiazaniaEditor — wybór wiązań katalogowych wytwórcy', () => {
     );
   });
 
-  it('wiązania bez katalogu w backendzie są NAZWANE, a nie udawane pickerem', () => {
+  it('dane spoza katalogu są opisane inżyniersko: po co, dla jakich analiz, skąd wziąć', () => {
+    // V12K-245 (audyt E-21 pkt P6): treść „brak katalogu w backendzie" opisywała stan
+    // implementacji zamiast sytuacji projektowej. Test pilnuje TRZECH elementów, których
+    // projektant potrzebuje przy każdym braku: po co dana jest, co od niej zależy i skąd
+    // ją wziąć — bez nich komunikat jest ślepym zaułkiem.
     renderEditor();
     const sekcja = screen.getByTestId('der-wiazania-editor');
-    expect(sekcja.textContent).toContain('Dane prądu zwarciowego');
-    expect(sekcja.textContent).toContain('Model dynamiczny');
+    expect(sekcja.textContent).toContain('Model zwarciowy urządzenia');
+    expect(sekcja.textContent).toContain('Model dynamiczny urządzenia');
+    expect(sekcja.textContent).toContain('IEC 60909-3');
+    expect(sekcja.textContent).toContain('Zależne analizy:');
+    expect(sekcja.textContent).toContain('Źródło danych:');
+    expect(sekcja.textContent).not.toContain('backend');
     expect(screen.queryByTestId('der-wiazanie-wybierz-fault_current_data_ref')).toBeNull();
     expect(screen.queryByTestId('der-wiazanie-wybierz-dynamic_model_ref')).toBeNull();
   });

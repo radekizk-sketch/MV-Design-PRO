@@ -228,6 +228,10 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
       target: { value: 'pv_inv_catalog_50' },
     });
     fireEvent.click(screen.getByTestId('add-der-next'));
+    // V12K-245: operator NIE jest preselekcjonowany — test przechodzi ta sama sciezke,
+    // co projektant, czyli WYBIERA profil (wczesniej „Dalej" dzialalo, bo krok byl
+    // wypelniony zestawem ENEA, ktorego nikt nie wskazal).
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_enea' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
     fireEvent.click(screen.getByTestId('add-der-create'));
 

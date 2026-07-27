@@ -210,8 +210,25 @@ export interface StationDerConnection {
   /** Profile zgodności i regulacji — z katalogów profili. */
   readonly profiles: DerProfileSelections;
 
-  /** Moc znamionowa AC w kW (deterministyczna projekcja z catalogs.device_catalog_ref). */
+  /**
+   * Moc znamionowa AC CAŁEJ pozycji w kW — tyle wnosi ten rekord do modelu.
+   *
+   * E21-1: operacja kanoniczna zapisuje do modelu `p_mw` = moc katalogowa jednostki
+   * × liczba sztuk, więc dla grupy falowników jest to moc GRUPY, nie jednostki.
+   * Rozbicie na jednostkę i liczbę sztuk daje `identyfikacjaMocy` — ekran ma pokazać
+   * oba poziomy, bo od nich zależą prądy robocze, dobór transformatora, CT i kategoria
+   * NC RfG.
+   */
   readonly nominal_power_kw: number | null;
+
+  /**
+   * Liczba jednostek wytwórczych w tej pozycji (`quantity` w modelu).
+   *
+   * `null` znaczy „model nie niesie tej danej" i MUSI zostać brakiem — podstawienie
+   * jednej sztuki zamieniałoby brak danej w wartość i fałszowało moc jednostkową
+   * (audyt E-21 pkt P2: sprzeczność 1 MW / 8 MW nie była nawet wykrywalna).
+   */
+  readonly unit_count: number | null;
 
   /** Status kompletności + macierz gotowości. */
   readonly completeness: DerCompleteness;

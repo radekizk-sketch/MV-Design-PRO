@@ -63,14 +63,35 @@ export const WIAZANIA_EDYTOWALNE: readonly WiazanieEdytowalne[] = [
 ];
 
 /** Wiązania BEZ katalogu w backendzie — nazwane wprost, bez atrapy pickera. */
-export const WIAZANIA_BEZ_KATALOGU: readonly { readonly etykieta: string; readonly powod: string }[] = [
+/**
+ * Wiązania, których nie da się wybrać z katalogu — opisane JĘZYKIEM INŻYNIERSKIM.
+ *
+ * V12K-245 (audyt E-21 pkt P6): poprzednia treść („brak katalogu w backendzie") opisywała
+ * stan implementacji, a nie sytuację projektową. Projektant potrzebuje wiedzieć, czego
+ * brakuje, po co to jest, które analizy od tego zależą i skąd wziąć dane.
+ */
+export const WIAZANIA_BEZ_KATALOGU: readonly {
+  readonly etykieta: string;
+  readonly powod: string;
+  readonly zaleznosci: string;
+  readonly skadDane: string;
+}[] = [
   {
-    etykieta: 'Dane prądu zwarciowego',
-    powod: 'brak katalogu w backendzie — wymaga danych producenta (osie SC1F/SC2FG)',
+    etykieta: 'Model zwarciowy urządzenia',
+    powod:
+      'Składowe symetryczne (R₀/X₀, Z₀·Z₁⁻¹) określają udział źródła w zwarciach '
+      + 'niesymetrycznych — bez nich prądu doziemnego nie da się policzyć (IEC 60909-3).',
+    zaleznosci: 'zwarcie doziemne (SC1F), zwarcie 2-fazowe z ziemią (SC2FG)',
+    skadDane: 'karta katalogowa falownika albo protokół badań producenta',
   },
   {
-    etykieta: 'Model dynamiczny',
-    powod: 'brak katalogu w backendzie — wymaga danych producenta (osie FRT/HVRT)',
+    etykieta: 'Model dynamiczny urządzenia',
+    powod:
+      'Opis zachowania przekształtnika w stanach przejściowych (grid-following / '
+      + 'grid-forming, ograniczenie prądowe) — wymagany przez solver RMS do sprawdzenia '
+      + 'przejścia przez zapad i wzrost napięcia.',
+    zaleznosci: 'FRT / LVRT, HVRT',
+    skadDane: 'model producenta (RMS/EMT) albo zweryfikowane parametry z badań',
   },
 ];
 
@@ -207,11 +228,15 @@ export function DerWiazaniaEditor({
       )}
 
       <div className="rounded border border-scada-border/60 bg-scada-surface/40 p-2">
-        <p className="text-xs font-semibold text-scada-text">Bez wyboru na tym ekranie</p>
+        <p className="text-xs font-semibold text-scada-text">
+          Dane producenta wymagane poza katalogiem
+        </p>
         <ul className="mt-1 space-y-1">
           {WIAZANIA_BEZ_KATALOGU.map((pozycja) => (
             <li key={pozycja.etykieta} className="text-xs text-scada-muted">
               <span className="text-scada-text">{pozycja.etykieta}</span> — {pozycja.powod}
+              <span className="block">Zależne analizy: {pozycja.zaleznosci}.</span>
+              <span className="block">Źródło danych: {pozycja.skadDane}.</span>
             </li>
           ))}
         </ul>
