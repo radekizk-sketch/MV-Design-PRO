@@ -111,16 +111,24 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
   // Dowód, że próg NAPRAWDĘ gryzie na tym kadrze, i że ukrycie jest JAWNE.
   // Bez tego poprzedni test przechodziłby także wtedy, gdyby declutter przestał
   // działać (0 ukrytych + wszystkie w DOM też daje sumę).
-  it('pełny widok sieci: opisy nieczytelne są ukryte i zameldowane na arkuszu', () => {
+  it('pełny widok sieci: opisy nieczytelne są ukryte i zameldowane w warstwie ekranu', () => {
     const scene = buildSceneV3(enm, 2);
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
     const ukryte = Number(labelGroup?.getAttribute('data-hidden-unreadable') ?? '0');
     expect(ukryte).toBeGreaterThan(0);
     expect(ukryte).toBeLessThanOrEqual(scene.labels.length);
-    const komunikat = container.querySelector('[data-testid="sld-sheet-hidden-labels"]');
+    // V12K-222: komunikat przeniesiony z ramki ARKUSZA do warstwy EKRANU. Pierwsza
+    // wersja wpadała w pułapkę, którą sama opisuje — przy skali ukrywającej etykiety
+    // sam komunikat miał ~2 px i był nieczytelny.
+    const komunikat = container.querySelector('[data-testid="sld-v3-hidden-labels-hint"]');
     expect(komunikat?.textContent).toContain('przybliż, aby zobaczyć');
     expect(komunikat?.getAttribute('data-hidden-count')).toBe(String(ukryte));
+    // Dowód kompensacji skali: pismo w jednostkach ŚWIATA musi być tym większe, im
+    // mniejsza skala kamery — tylko wtedy na ekranie ma stały rozmiar. Przy pełnym
+    // widoku sieci (skala ≪ 1) fontSize w świecie jest wyraźnie większy od nominału.
+    const fontSize = Number(komunikat?.getAttribute('font-size') ?? '0');
+    expect(fontSize).toBeGreaterThan(12);
   });
 
   it('kanwa niesie ramkę arkusza (SheetFrame) i tło SCADA', () => {

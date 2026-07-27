@@ -55,6 +55,10 @@ import {
   type BoundingBox,
   type ViewportTransform,
 } from './camera';
+// Przeliczenie ekran→świat pochodzi z kontrolera widoku v2 (jedno źródło prawdy
+// matematyki kamery) — wskaźnik ukrytych opisów kotwiczy się w rogu WIDOKU,
+// nie arkusza (V12K-222).
+import { screenToWorld } from '../../v2/viewport/ViewportController';
 import type { SegmentFaultFlowOverlay, SegmentFlowOverlay, SldV3Overlay, TransformerOltcOverlay } from './overlay';
 import type { ResultLabelEntry, ResultLabelKind, ResultLabelLine } from './resultLabels';
 import { resultRefForSegment } from './resultLabels';
@@ -76,6 +80,7 @@ import {
   HIGHLIGHT_COLOR,
   resultSeverityColor,
   resultSeverityRank,
+  BASE_STROKE,
 } from '../theme/colorTokens';
 
 /** SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
@@ -2285,7 +2290,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         height={sheetSize.height}
         scaleLabel="wg kamery"
         lodLabel={SCENE_LOD_LABELS_PL[effectiveLod]}
-        hiddenLabelCount={hiddenUnreadableLabels}
       >
         {/* F13.1 (spec §21.2, D3-2/D3-12): rama strefy GPZ — DEKORACJA z meta
          *  sceny (nie segment toru mocy — zero udziału w wyroczniach §11/
@@ -2529,6 +2533,35 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           );
         })()}
       </SheetFrame>
+      {/* WSKAŹNIK UKRYTYCH OPISÓW W PRZESTRZENI EKRANU (V12K-222).
+       *
+       * Pierwsza wersja (V12K-218) umieszczała go w ramce ARKUSZA — i wpadał w tę
+       * samą pułapkę, którą sam opisuje: przy skali, przy której etykiety
+       * przestają być czytelne, komunikat o ich ukryciu też miał ~2 px i był
+       * nieczytelny. Zobaczyłem to dopiero na zrzucie, bo pomiar liczbowy tego
+       * nie pokazywał.
+       *
+       * Komunikat systemowy NIE jest treścią rysunku technicznego — należy do
+       * warstwy ekranu. Kompensujemy skalę kamery: rozmiar pisma i marginesy
+       * dzielimy przez `scale`, a kotwiczymy w rogu WIDOKU (prawy dolny róg
+       * viewBoxu), nie arkusza. Efekt: stała wielkość na ekranie niezależnie od
+       * zoomu, dokładnie jak pasek stanu. */}
+      {hiddenUnreadableLabels > 0 && Number.isFinite(camera.transform.scale) && camera.transform.scale > 0 && (
+        <text
+          data-testid="sld-v3-hidden-labels-hint"
+          data-hidden-count={hiddenUnreadableLabels}
+          x={screenToWorld({ x: width - 12, y: height - 12 }, camera.transform).x}
+          y={screenToWorld({ x: width - 12, y: height - 12 }, camera.transform).y}
+          textAnchor="end"
+          fontFamily="sans-serif"
+          fontSize={12 / camera.transform.scale}
+          fontWeight={600}
+          fill={BASE_STROKE}
+          opacity={0.75}
+        >
+          {`Ukryto ${hiddenUnreadableLabels} ${hiddenUnreadableLabels === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`}
+        </text>
+      )}
     </svg>
   );
 }
