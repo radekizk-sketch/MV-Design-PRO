@@ -102,3 +102,10 @@ jobs:
       - name: ENM Contract Parity Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/enm_contract_parity_guard.py
+      # V12K-240: zapadka dlugu typow. `pyproject.toml` konfiguruje mypy w trybie strict,
+      # ale ZADEN workflow go nie uruchamial — narzedzie skonfigurowane i nigdy nie
+      # wywolane. Zapadka uruchamia mypy naprawde i pilnuje, zeby liczba bledow nie
+      # urosla (dziala tez w druga strone: po poprawie zada obnizenia progu).
+      - name: Mypy Ratchet Guard (dlug typow nie rosnie)
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/mypy_ratchet_guard.py

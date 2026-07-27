@@ -81,19 +81,19 @@ ALLOWLIST: dict[tuple[str, int], str] = {
     # class b: label_pl is a display string for a catalog dropdown, not arithmetic.
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        443,
+        368,
     ): "b: label_pl string literal (VT nameplate text 'VT 15 kV/root3 / 100 V/root3 ...'), not arithmetic",
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        455,
+        380,
     ): "b: label_pl string literal (VT nameplate text), not arithmetic",
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        467,
+        392,
     ): "b: label_pl string literal (VT nameplate text), not arithmetic",
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        479,
+        404,
     ): "b: label_pl string literal (VT nameplate text), not arithmetic",
     # class c: ratio_primary_kv / ratio_secondary_v are fixed VT ratios per
     # IEC 61869-3 (rated primary/secondary voltage of a VT type is a standard
@@ -102,35 +102,35 @@ ALLOWLIST: dict[tuple[str, int], str] = {
     # ("100/root3 V = stala katalogowa IEC 61869-3, nie obliczenie fizyki").
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        444,
+        369,
     ): "c: VT catalog constant per IEC 61869-3 (ratio_primary_kv), see R2 precedent",
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        445,
+        370,
     ): "c: VT catalog constant per IEC 61869-3 (ratio_secondary_v), see R2 precedent",
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        456,
+        381,
     ): "c: VT catalog constant per IEC 61869-3 (ratio_primary_kv), see R2 precedent",
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        457,
+        382,
     ): "c: VT catalog constant per IEC 61869-3 (ratio_secondary_v), see R2 precedent",
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        468,
+        393,
     ): "c: VT catalog constant per IEC 61869-3 (ratio_primary_kv), see R2 precedent",
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        469,
+        394,
     ): "c: VT catalog constant per IEC 61869-3 (ratio_secondary_v), see R2 precedent",
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        480,
+        405,
     ): "c: VT catalog constant per IEC 61869-3 (ratio_primary_kv), see R2 precedent",
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        481,
+        406,
     ): "c: VT catalog constant per IEC 61869-3 (ratio_secondary_v), see R2 precedent",
     # class c: selectVtForVoltage() converts a nominal system voltage (a
     # discrete catalog-level input, e.g. 15/20 kV) to a per-phase value with
@@ -139,7 +139,7 @@ ALLOWLIST: dict[tuple[str, int], str] = {
     # impedance, current, or power-flow term involved).
     (
         "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        645,
+        422,
     ): "c: catalog-matching helper (selectVtForVoltage), fixed IEC 61869-3 factor, no network-state term",
     # StationWizardStepContent.tsx — descriptive UI strings, no arithmetic.
     (
@@ -192,14 +192,14 @@ PHYSICS_PATTERNS = [
 
 # Lines to skip (comments, imports, type declarations, JSDoc, description fields).
 SKIP_LINE_PATTERNS = [
-    re.compile(r"^\s*//"),            # Single-line comment
-    re.compile(r"^\s*\*"),            # Block comment continuation
-    re.compile(r"^\s*/\*"),           # Block comment start
-    re.compile(r"^\s*import\s"),      # Import statements
+    re.compile(r"^\s*//"),  # Single-line comment
+    re.compile(r"^\s*\*"),  # Block comment continuation
+    re.compile(r"^\s*/\*"),  # Block comment start
+    re.compile(r"^\s*import\s"),  # Import statements
     re.compile(r"^\s*export\s+type"),  # Type exports
     re.compile(r"^\s*export\s+interface"),  # Interface exports
-    re.compile(r"^\s*\*\s*@"),        # JSDoc annotations
-    re.compile(r"^\s*\*\s*-"),        # JSDoc list items
+    re.compile(r"^\s*\*\s*@"),  # JSDoc annotations
+    re.compile(r"^\s*\*\s*-"),  # JSDoc list items
     re.compile(r"^\s*description:"),  # Description fields
 ]
 
