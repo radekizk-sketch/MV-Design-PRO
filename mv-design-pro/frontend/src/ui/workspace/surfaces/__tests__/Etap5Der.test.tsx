@@ -2,7 +2,8 @@
  * Testy E-21/E-22/E-23: powierzchnie konfiguracji PV/BESS/FW z useStationDerStore.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../app-state/store';
@@ -557,10 +558,14 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     render(<PvSourceSurface surface={makeSurface('der_z_ct')} />);
     fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
 
-    // Nazwa z REALNEGO katalogu, a nie polecenie wyboru.
+    // Nazwa z REALNEGO katalogu, a nie polecenie wyboru. Po V12K-242 wiazania mieszkaja
+    // w edytorze (wybor, nie tylko odczyt), wiec asercja celuje w jego pole wartosci —
+    // sprawdzanie `surface.textContent` bylo bramka, ktora po usunieciu wiersza „Przekladnik
+    // CT" nie moglaby juz upasc.
     await screen.findByText(/CT 200\/5 A kl\. 5P10/);
-    const surface = screen.getByTestId('pv-source-surface');
-    expect(surface.textContent).not.toContain('Przekładnik CT: wybierz wariant katalogowy');
+    const wartoscCt = await screen.findByTestId('der-wiazanie-wartosc-ct_catalog_ref');
+    expect(wartoscCt.textContent).toContain('CT 200/5 A kl. 5P10');
+    expect(wartoscCt.textContent).not.toContain('wybierz wariant katalogowy');
 
   });
 
@@ -595,11 +600,130 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     render(<PvSourceSurface surface={makeSurface('der_ct_spoza')} />);
     fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
 
-    const wiersz = await screen.findByText('Przekładnik CT');
-    const wartosc = wiersz.parentElement?.textContent ?? '';
+    // INTENCJA BEZ ZMIAN, inne miejsce w UI: po V12K-242 przypisanie CT pokazuje edytor
+    // wiazan (bo tam sie je TERAZ wybiera), a nie wiersz tylko-do-odczytu.
+    const wartosc = (await screen.findByTestId('der-wiazanie-wartosc-ct_catalog_ref')).textContent ?? '';
     expect(wartosc).toContain(MISSING_DASH);
     expect(wartosc).not.toContain('wybierz wariant katalogowy');
 
+  });
+
+  it('nazwa zabezpieczenia pochodzi z REALNEGO katalogu urządzeń (V12K-242)', async () => {
+    // Ekran wiązał CT i VT z katalogiem backendu, a zabezpieczenie NIE — pole zwracało
+    // twarde `null`, więc wybrany przekaźnik pokazywał się jako kreska „nie wiemy, jak się
+    // nazywa" mimo że katalog (51 typów) zna go pod nazwą. Zdolność bez wywołania.
+    const typyZabezpieczen = [
+      { id: 'ABB_REB670', name_pl: 'ABB Relion REB670', params: { vendor: 'ABB', model: 'Relion REB670' } },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        ({
+          ok: true,
+          json: async () =>
+            String(url).includes('protection/device-types') ? typyZabezpieczen : [],
+        }) as unknown as Response,
+      ),
+    );
+
+    useStationDerStore.getState().attachDer({
+      id: 'der_z_przekaznikiem',
+      project_id: 'p',
+      station_id: 'station_xyz',
+      der_kind: 'PV',
+      name: 'PV z zabezpieczeniem',
+      connection_side: 'SN',
+      pcc_ref: 'pcc_y',
+      catalogs: {
+        device_catalog_ref: 'pv_inv_sma_2500',
+        protection_catalog_ref: 'ABB_REB670',
+      },
+      profiles: {},
+      nominal_power_kw: 2500,
+      created_at: FROZEN_NOW,
+    });
+
+    render(<PvSourceSurface surface={makeSurface('der_z_przekaznikiem')} />);
+    fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
+
+    const wartosc = await screen.findByTestId('der-wiazanie-wartosc-protection_catalog_ref');
+    await screen.findByText('ABB Relion REB670');
+    expect(wartosc.textContent).toBe('ABB Relion REB670');
+  });
+
+  it('wybór przekładnika NA EKRANIE zapisuje wiązanie i odświeża model (V12K-242)', async () => {
+    // ŁAŃCUCH DO OSTATNIEGO KLIKA: kliknięcie „Wybierz" → picker z REALNEGO katalogu →
+    // wybór typu → operacja kanoniczna → snapshot z odpowiedzi w magazynie modelu.
+    // Do V12K-242 łańcuch nie miał POCZĄTKU: backend przyjmował wiązania, katalog je
+    // wzbogacał, reguła gotowości je czytała — a ekran pokazywał je wyłącznie do odczytu.
+    const typyCt = [
+      { id: 'ct_200_5_5p10_10va_abb', name: 'CT 200/5 A kl. 5P10 10 VA', application: 'protection' },
+    ];
+    const zadaniaPatch: { url: string; body: unknown }[] = [];
+    const snapshotPoZapisie = { substations: [], generators: [{ ref_id: 'der_wybor_ct' }] };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if ((init?.method ?? 'GET') === 'PATCH') {
+          zadaniaPatch.push({ url: String(url), body: JSON.parse(String(init?.body ?? '{}')) });
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              snapshot: snapshotPoZapisie,
+              logical_views: {},
+              readiness: {},
+              fix_actions: [],
+              changes: {},
+              selection_hint: null,
+              audit_trail: [],
+              domain_events: [],
+              materialized_params: {},
+              layout: {},
+            }),
+          } as unknown as Response;
+        }
+        return {
+          ok: true,
+          json: async () => (String(url).includes('ct-types') ? typyCt : []),
+        } as unknown as Response;
+      }),
+    );
+
+    useAppStateStore.getState().setActiveProject('PRJ-1');
+    useAppStateStore.getState().setActiveCase('CASE-1');
+    useStationDerStore.getState().attachDer({
+      id: 'der_wybor_ct',
+      project_id: 'PRJ-1',
+      station_id: 'station_xyz',
+      der_kind: 'PV',
+      name: 'PV do wyboru CT',
+      connection_side: 'SN',
+      pcc_ref: 'pcc_y',
+      catalogs: { device_catalog_ref: 'pv_inv_sma_2500' },
+      profiles: {},
+      nominal_power_kw: 2500,
+      created_at: FROZEN_NOW,
+    });
+
+    const uzytkownik = userEvent.setup();
+    render(<PvSourceSurface surface={makeSurface('der_wybor_ct')} />);
+    await uzytkownik.click(screen.getByTestId('der-card-tab-readiness'));
+    await uzytkownik.click(screen.getByTestId('der-wiazanie-wybierz-ct_catalog_ref'));
+    await uzytkownik.click(await screen.findByText('CT 200/5 A kl. 5P10 10 VA'));
+
+    await waitFor(() => expect(zadaniaPatch).toHaveLength(1));
+    expect(zadaniaPatch[0].url).toBe(
+      '/api/projects/PRJ-1/cases/CASE-1/generators/der_wybor_ct/bindings',
+    );
+    expect(zadaniaPatch[0].body).toEqual({ ct_catalog_ref: 'ct_200_5_5p10_10va_abb' });
+    // OBIE strony prawdy: rekord warsztatu i snapshot modelu.
+    await waitFor(() =>
+      expect(useStationDerStore.getState().ders.der_wybor_ct.catalogs.ct_catalog_ref).toBe(
+        'ct_200_5_5p10_10va_abb',
+      ),
+    );
+    expect(useSnapshotStore.getState().snapshot).toEqual(snapshotPoZapisie);
   });
 
   it('KPI Profil NC RfG wyświetla kreskę gdy brak profilu', () => {

@@ -9,8 +9,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { fetchCtTypes, fetchVtTypes } from '../../catalog/api';
-import type { CTCatalogType, VTCatalogType } from '../../catalog/types';
+import { fetchCtTypes, fetchProtectionDeviceTypes, fetchVtTypes } from '../../catalog/api';
+import type { CTCatalogType, ProtectionDeviceType, VTCatalogType } from '../../catalog/types';
 import { useAppStateStore } from '../../app-state';
 import {
   DerConfigurator,
@@ -18,6 +18,7 @@ import {
   type DerKind,
   type DerStationContext,
 } from '../../network-build/der-configurator/DerConfigurator';
+import { DerWiazaniaEditor } from '../../network-build/station-der/DerWiazaniaEditor';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import {
   BESS_BATTERY_CATALOG,
@@ -192,21 +193,19 @@ function catalogLabel<T extends CatalogItem>(
 }
 
 /**
- * Etykieta aparatu pomiarowego z REALNEGO katalogu (V12K-239).
+ * Nazwa typu z REALNEGO katalogu (V12K-239, kontrakt zawężony w V12K-242).
  *
- * Trzy stany, trzy różne komunikaty — żaden nie udaje drugiego:
- *  - brak przypisania w modelu ⇒ „wybierz wariant katalogowy" (jest co zrobić),
- *  - przypisanie jest, katalogu jeszcze nie pobrano albo typu w nim nie ma ⇒ kreska
- *    (nie wiemy, jak się nazywa — ale NIE mówimy projektantowi, że ma wybierać),
- *  - typ znaleziony ⇒ nazwa katalogowa.
+ * Zwraca `null`, gdy typu NIE MA w katalogu (jeszcze nie pobrano albo referencja wskazuje
+ * na typ nieznany). Rozróżnienie „brak przypisania" od „nie wiemy, jak się nazywa" robi
+ * WYŁĄCZNIE wołający — tu nie zgadujemy, który z tych dwóch stanów pokazać.
  */
-function etykietaAparatuPomiarowego(
+function nazwaTypuZKatalogu(
   katalog: readonly { readonly id: string; readonly name?: string }[],
   ref: string | null | undefined,
-): string {
-  if (!ref) return 'wybierz wariant katalogowy';
+): string | null {
+  if (!ref) return null;
   const typ = katalog.find((entry) => entry.id === ref);
-  return typ?.name ? cleanCatalogText(typ.name) : MISSING_DASH;
+  return typ?.name ? cleanCatalogText(typ.name) : null;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -617,20 +616,22 @@ function EngineeringNote({ children }: { readonly children: string }) {
 }
 
 /**
- * Katalogi przekładników POBRANE z backendu (V12K-239). Etykiety CT/VT nie mogą stać na
- * lokalnej piątce syntetycznej: POMIAR pokrycia identyfikatorów z katalogiem realnym to
- * ZERO (CT 5 lokalnych vs 12 realnych, VT 4 vs 9), wiec dla przekładnika wybranego w
- * prawdziwym kreatorze `catalogLabel` nie znajdowal wpisu i wypisywal „wybierz wariant
- * katalogowy" — ekran kazal projektantowi wybrac aparat, ktory JUZ wybral.
+ * Katalogi wiązań POBRANE z backendu (V12K-239, rozszerzone o zabezpieczenia w V12K-242).
+ * Etykiety nie mogą stać na lokalnej liście syntetycznej: POMIAR pokrycia identyfikatorów
+ * z katalogiem realnym to ZERO (CT 5 lokalnych vs 12 realnych, VT 4 vs 9), wiec dla
+ * przekładnika wybranego w prawdziwym kreatorze `catalogLabel` nie znajdowal wpisu i
+ * wypisywal „wybierz wariant katalogowy" — ekran kazal projektantowi wybrac aparat,
+ * ktory JUZ wybral.
  */
-interface KatalogiPomiarowe {
+interface KatalogiWiazan {
   readonly ct: readonly CTCatalogType[];
   readonly vt: readonly VTCatalogType[];
+  readonly zabezpieczenia: readonly ProtectionDeviceType[];
 }
 
 function buildDerCards(
   der: StationDerConnection,
-  katalogi: KatalogiPomiarowe,
+  edytorWiazan: JSX.Element,
 ): Partial<Record<DerCardId, JSX.Element>> {
   const ncRfg = der.profiles.nc_rfg_profile_ref
     ? NC_RFG_PROFILE_CATALOG.find((profile) => profile.id === der.profiles.nc_rfg_profile_ref)
@@ -767,17 +768,10 @@ function buildDerCards(
           <FieldRow label="Zabezpieczenia DER" value={readinessPl(der.readiness.protection)} />
           <FieldRow label="Selektywność" value={readinessPl(der.readiness.protection_selectivity)} />
           <FieldRow label="Funkcje ANSI wymagane" value={derProtectionSummary()} />
-          <FieldRow
-            label="Przekładnik CT"
-            value={etykietaAparatuPomiarowego(katalogi.ct, der.catalogs.ct_catalog_ref)}
-          />
-          <FieldRow
-            label="Przekładnik VT"
-            value={etykietaAparatuPomiarowego(katalogi.vt, der.catalogs.vt_catalog_ref)}
-          />
           <FieldRow label="Raport OSD" value={readinessPl(der.readiness.report_osd)} />
           <FieldRow label="Raport techniczny" value={readinessPl(der.readiness.report_technical)} />
         </dl>
+        {edytorWiazan}
       </section>
     ),
   };
@@ -1002,24 +996,30 @@ function DerSurfaceShell({
   // Katalogi przekładników z BACKENDU (V12K-239). Błąd pobrania zostawia listy puste —
   // etykieta pokaże wtedy kreskę („nie wiemy, jak się nazywa"), a nie „wybierz wariant",
   // bo przypisanie w modelu istnieje i podpowiadanie wyboru byłoby nieprawdą.
-  const [katalogiPomiarowe, setKatalogiPomiarowe] = useState<KatalogiPomiarowe>({
+  const [katalogiWiazan, setKatalogiWiazan] = useState<KatalogiWiazan>({
     ct: [],
     vt: [],
+    zabezpieczenia: [],
   });
   useEffect(() => {
     let aktualne = true;
     void (async () => {
-      const [ct, vt] = await Promise.all([
+      const [ct, vt, zabezpieczenia] = await Promise.all([
         fetchCtTypes().catch(() => [] as CTCatalogType[]),
         fetchVtTypes().catch(() => [] as VTCatalogType[]),
+        fetchProtectionDeviceTypes().catch(() => [] as ProtectionDeviceType[]),
       ]);
-      if (aktualne) setKatalogiPomiarowe({ ct, vt });
+      if (aktualne) setKatalogiWiazan({ ct, vt, zabezpieczenia });
     })();
     return () => {
       aktualne = false;
     };
   }, []);
   const projectName = useAppStateStore((state) => state.activeProjectName);
+  const activeProjectId = useAppStateStore((state) => state.activeProjectId);
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  const updateDerCatalogsWiazania = useStationDerStore((state) => state.updateDerCatalogs);
+  const setSnapshotPoZapisie = useSnapshotStore((state) => state.setSnapshot);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
 
   const navigateToStation = useCallback(() => {
@@ -1029,6 +1029,59 @@ function DerSurfaceShell({
       subjectKind: 'helper_context',
     });
   }, [der?.station_id, openRouteSurface]);
+
+  // Edytor wiazan (V12K-242): stan pickera trzyma komponent, wiec `buildDerCards`
+  // pozostaje czysta. Po udanym zapisie odswiezamy OBIE strony prawdy — model
+  // (snapshot z odpowiedzi operacji) i rekord warsztatu — zeby regula gotowosci
+  // przeliczyla sie od razu, bez odswiezania strony.
+  const edytorWiazan = useMemo(() => {
+    if (!der) return <></>;
+    return (
+      <DerWiazaniaEditor
+        derId={der.id}
+        projectId={activeProjectId}
+        caseId={activeCaseId}
+        wartosci={{
+          protection_catalog_ref: der.catalogs.protection_catalog_ref,
+          ct_catalog_ref: der.catalogs.ct_catalog_ref,
+          vt_catalog_ref: der.catalogs.vt_catalog_ref,
+        }}
+        etykietaTypu={(pole) => {
+          if (pole === 'vt_catalog_ref') {
+            return nazwaTypuZKatalogu(katalogiWiazan.vt, der.catalogs.vt_catalog_ref);
+          }
+          if (pole === 'ct_catalog_ref') {
+            return nazwaTypuZKatalogu(katalogiWiazan.ct, der.catalogs.ct_catalog_ref);
+          }
+          if (pole === 'protection_catalog_ref') {
+            return nazwaTypuZKatalogu(
+              katalogiWiazan.zabezpieczenia,
+              der.catalogs.protection_catalog_ref,
+            );
+          }
+          return null;
+        }}
+        poZapisie={(pole, ref, odpowiedz) => {
+          updateDerCatalogsWiazania(
+            der.id,
+            { [pole]: ref },
+            der.updated_at || der.created_at || '1970-01-01T00:00:00Z',
+          );
+          // Snapshot podmieniamy TYLKO, gdy operacja go zwrociła. `setSnapshot` wpisuje
+          // `response.snapshot` bez warunku, wiec pusta odpowiedz WYKASOWALABY model z
+          // ekranu — brak danej nie moze skasowac danych, ktore juz sa.
+          if (odpowiedz.snapshot) setSnapshotPoZapisie(odpowiedz);
+        }}
+      />
+    );
+  }, [
+    activeCaseId,
+    activeProjectId,
+    der,
+    katalogiWiazan,
+    setSnapshotPoZapisie,
+    updateDerCatalogsWiazania,
+  ]);
 
   const stationContext: DerStationContext | undefined = useMemo(() => {
     if (!der) return undefined;
@@ -1080,7 +1133,7 @@ function DerSurfaceShell({
           derId={derId ?? 'unselected'}
           derKind={derKind}
           stationContext={stationContext}
-          children={der ? buildDerCards(der, katalogiPomiarowe) : undefined}
+          children={der ? buildDerCards(der, edytorWiazan) : undefined}
         />
       </div>
       {der && (
