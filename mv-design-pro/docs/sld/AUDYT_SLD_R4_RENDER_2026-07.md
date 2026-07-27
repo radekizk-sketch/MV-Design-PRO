@@ -177,3 +177,26 @@ Kod trzech prób umiejscowienia przy symbolu został **wycofany** (nie zostawion
 helperów). Tryb pracy nadal niesie **kształt glifu** (rezystor / dławik / połączenie
 bezpośrednie / przerwa dla sieci izolowanej), więc informacja jakościowa jest na rysunku —
 brakuje wyłącznie liczby. Domknięcie: rozbudowa bloku legendy o wiersze opisu sieci.
+
+## Znalezisko R4-3 — punkt podziału sieci (NOP) nieoznaczony · waga: wysoka
+
+**Pomiar (sieć wzorcowa 52 stacji):** model ma **1 gałąź `status='open'`** — realny punkt
+rozcięcia. Symbol `noPoint` w scenie: **0 na L0, 0 na L1, 0 na L2**.
+
+Warstwa prezentacji jest przy tym **w pełni gotowa**: glif `noPoint` istnieje, paleta ma dla
+niego dedykowany kolor (`STATE_COLOR.nop` = `#FF006E`, magenta świadomie odrębna od barw
+napięciowych), a `baseSymbolStrokeColor` obsługuje go jawnie z komentarzem „punkt podziału
+jest z DEFINICJI domenowej normalnie otwarty — WYRÓŻNIONY na KAŻDYM LOD". Wersja eksportowa
+też ma własną czerwień NOP (`#B71C1C`) z wymogiem D11 rozróżnialności.
+
+Brakuje jedynego ogniwa: **nikt nie emituje tego symbolu dla gałęzi ze `status='open'`**.
+Zdolność bez wywołania — ten sam wzorzec co `titleBlock` (slot bez konsumenta) i jak
+warstwa zabezpieczeniowa przed V12K-220.
+
+**Dlaczego to waży wysoko:** dla sieci SN pracującej promieniowo z możliwością rezerwowania
+punkt podziału jest informacją ruchową pierwszego rzędu — projektant patrzący na schemat nie
+wie, gdzie sieć jest rozcięta, więc nie odczyta kierunków zasilania ani skutków przełączeń.
+Kolor jest zarezerwowany i czeka; brakuje emisji.
+
+Do domknięcia w osobnej karcie: emisja `noPoint` na odcinku gałęzi otwartej, z pomiarem
+na obu fixturach i kontrolą odwrotną (sieć bez gałęzi otwartej = zero symboli NOP).
