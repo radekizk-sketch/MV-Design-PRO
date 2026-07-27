@@ -255,14 +255,41 @@ describe('magistralaModel — builder realnej sieci (M2, V12K-071)', () => {
     expect(maStartCiagu(kontekstKontynuacji('bus/end-1', undefined, undefined))).toBe(true);
   });
 
-  it('skumulowany spadek = suma spadków odcinków (pomija null)', () => {
-    expect(
-      lacznySpadekPct([
-        { rodzaj: 'KABEL', typLabel: 'a', cross_section_mm2: 120, dlugosc_m: 500, delta_u_pct: 1.2 },
-        { rodzaj: 'KABEL', typLabel: 'b', cross_section_mm2: 120, dlugosc_m: 800, delta_u_pct: 2.1 },
-        { rodzaj: 'LINIA', typLabel: 'c', cross_section_mm2: 70, dlugosc_m: 300, delta_u_pct: null },
-      ]),
-    ).toBeCloseTo(3.3, 5);
+  it('skumulowany spadek sumuje ZNANE skladniki i ZGLASZA niekompletnosc', () => {
+    // Ten test wczesniej nazywal sie „pomija null" i utrwalal defekt: suma z
+    // pominietym skladnikiem byla podawana jako spadek magistrali, a kreator
+    // porownuje ja z limitem 5 %. Niepelne dane wyciszaly ostrzezenie, czyli dawaly
+    // milczacy PASS na kryterium, ktorego nikt nie sprawdzil (V12K-227).
+    // Intencja pomiaru zachowana: suma znanych = 1,2 + 2,1 = 3,3 %.
+    const wynik = lacznySpadekPct([
+      { rodzaj: 'KABEL', typLabel: 'a', cross_section_mm2: 120, dlugosc_m: 500, delta_u_pct: 1.2 },
+      { rodzaj: 'KABEL', typLabel: 'b', cross_section_mm2: 120, dlugosc_m: 800, delta_u_pct: 2.1 },
+      { rodzaj: 'LINIA', typLabel: 'c', cross_section_mm2: 70, dlugosc_m: 300, delta_u_pct: null },
+    ]);
+
+    expect(wynik.sumaZnanychPct).toBeCloseTo(3.3, 5);
+    expect(wynik.odcinkiZeSpadkiem).toBe(2);
+    expect(wynik.odcinkiBezSpadku).toBe(1);
+    expect(wynik.kompletny).toBe(false);
+  });
+
+  it('wszystkie odcinki z wynikiem daja ocene KOMPLETNA', () => {
+    // Kontrola odwrotna: bez niej flaga mogla by byc zawsze falszywa i nic nie znaczyc.
+    const wynik = lacznySpadekPct([
+      { rodzaj: 'KABEL', typLabel: 'a', cross_section_mm2: 120, dlugosc_m: 500, delta_u_pct: 1.2 },
+      { rodzaj: 'KABEL', typLabel: 'b', cross_section_mm2: 120, dlugosc_m: 800, delta_u_pct: 2.1 },
+    ]);
+
+    expect(wynik.kompletny).toBe(true);
+    expect(wynik.odcinkiBezSpadku).toBe(0);
+    expect(wynik.sumaZnanychPct).toBeCloseTo(3.3, 5);
+  });
+
+  it('pusta magistrala jest KOMPLETNA z suma zero — nie ma czego brakowac', () => {
+    const wynik = lacznySpadekPct([]);
+
+    expect(wynik.kompletny).toBe(true);
+    expect(wynik.sumaZnanychPct).toBe(0);
   });
 });
 

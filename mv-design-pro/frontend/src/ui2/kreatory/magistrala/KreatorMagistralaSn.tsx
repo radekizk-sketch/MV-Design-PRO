@@ -439,10 +439,18 @@ export function KreatorMagistralaSn() {
   ];
 
   const skumulowanySpadek = lacznySpadekPct(zbudowane);
+  // V12K-227: niepełna suma NIE MOŻE wyciszać ostrzeżenia. Gdy któremuś odcinkowi
+  // brakuje spadku, mówimy to wprost — inaczej projektant dostaje milczący PASS na
+  // kryterium, którego nikt nie sprawdził.
+  const komunikatSpadku = !skumulowanySpadek.kompletny
+    ? T.builderSkumulowanyNiepelny(skumulowanySpadek.odcinkiBezSpadku)
+    : skumulowanySpadek.sumaZnanychPct > LIMIT_SPADKU_PCT
+      ? T.builderSkumulowanyOstrzezenie(LIMIT_SPADKU_PCT)
+      : null;
   const builderPanel = (
     <KreatorPodsumowanie
       tytul={T.builderTytul}
-      komunikat={skumulowanySpadek > LIMIT_SPADKU_PCT ? T.builderSkumulowanyOstrzezenie(LIMIT_SPADKU_PCT) : null}
+      komunikat={komunikatSpadku}
       komunikatTon="warn"
       testid="mvd-kreator-magistrala-builder"
     >
@@ -458,7 +466,14 @@ export function KreatorMagistralaSn() {
             />
           ))}
           <RzadWartosci etykieta={T.builderLaczna} wartosc={fmtDlugosc(lacznaDlugosc(zbudowane))} />
-          <RzadWartosci etykieta={T.builderSkumulowany} wartosc={fmtPct(skumulowanySpadek)} />
+          <RzadWartosci
+            etykieta={T.builderSkumulowany}
+            wartosc={
+              skumulowanySpadek.kompletny
+                ? fmtPct(skumulowanySpadek.sumaZnanychPct)
+                : `${fmtPct(skumulowanySpadek.sumaZnanychPct)} (z ${skumulowanySpadek.odcinkiZeSpadkiem} z ${zbudowane.length} odcinków)`
+            }
+          />
         </>
       )}
     </KreatorPodsumowanie>

@@ -96,6 +96,9 @@ export const MAGISTRALA_STRINGS = {
   builderDodaj: 'Dodaj odcinek',
   builderSkumulowany: 'Skumulowany spadek ΔU',
   builderSkumulowanyOstrzezenie: (limit: number) => `Skumulowany spadek przekracza ${limit}% — rozważ większy przekrój lub krótszy ciąg.`,
+  builderSkumulowanyNiepelny: (bez: number) =>
+    `Ocena niepełna: ${bez} ${bez === 1 ? 'odcinek nie ma' : 'odcinki nie mają'} policzonego spadku `
+    + 'napięcia, więc suma jest zaniżona i limitu nie da się sprawdzić.',
 
   // Asystent doboru przekroju (M3, V12K-072).
   ocenaTytul: 'Ocena doboru przekroju',

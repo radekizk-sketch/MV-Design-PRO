@@ -238,9 +238,47 @@ export function lacznaDlugosc(odcinki: readonly OdcinekBudowy[]): number {
   return odcinki.reduce((sum, o) => sum + o.dlugosc_m, 0);
 }
 
-/** Skumulowany spadek napięcia magistrali [%] — suma spadków odcinków (radialny ciąg). */
-export function lacznySpadekPct(odcinki: readonly OdcinekBudowy[]): number {
-  return odcinki.reduce((sum, o) => sum + (o.delta_u_pct ?? 0), 0);
+/**
+ * Skumulowany spadek napięcia magistrali (radialny ciąg) wraz z KOMPLETNOŚCIĄ.
+ *
+ * DLACZEGO Z KOMPLETNOŚCIĄ (defekt, który to wymusił — V12K-227). Funkcja zwracała
+ * samą liczbę i sumowała `delta_u_pct ?? 0`, a `delta_u_pct` jest jawnie
+ * `number | null` (null, gdy backend nie policzył spadku tego odcinka). Odcinek bez
+ * wyniku wnosił więc ZERO, przez co suma była ZANIŻONA — a kreator porównuje ją z
+ * limitem 5% i ostrzega tylko po jego przekroczeniu. Niepełne dane wyciszały
+ * ostrzeżenie: projektant dostawał milczący PASS na kryterium, którego nikt nie
+ * sprawdził. Suma nieznanych składników nie jest sumą — dlatego brak jest teraz
+ * LICZONY i wystawiony, a nie zamieniany w zero.
+ */
+export interface SkumulowanySpadek {
+  /** Suma spadków odcinków, dla których backend podał wynik [%]. */
+  readonly sumaZnanychPct: number;
+  /** Liczba odcinków z policzonym spadkiem. */
+  readonly odcinkiZeSpadkiem: number;
+  /** Liczba odcinków BEZ policzonego spadku — składniki pominięte w sumie. */
+  readonly odcinkiBezSpadku: number;
+  /** Czy każdy odcinek ma wynik. Tylko wtedy suma jest spadkiem magistrali. */
+  readonly kompletny: boolean;
+}
+
+export function lacznySpadekPct(odcinki: readonly OdcinekBudowy[]): SkumulowanySpadek {
+  let sumaZnanychPct = 0;
+  let odcinkiZeSpadkiem = 0;
+  let odcinkiBezSpadku = 0;
+  for (const odcinek of odcinki) {
+    if (typeof odcinek.delta_u_pct === 'number') {
+      sumaZnanychPct += odcinek.delta_u_pct;
+      odcinkiZeSpadkiem += 1;
+    } else {
+      odcinkiBezSpadku += 1;
+    }
+  }
+  return {
+    sumaZnanychPct,
+    odcinkiZeSpadkiem,
+    odcinkiBezSpadku,
+    kompletny: odcinkiBezSpadku === 0,
+  };
 }
 
 // --------------------------------------------------- Asystent doboru przekroju (M3, V12K-072)
