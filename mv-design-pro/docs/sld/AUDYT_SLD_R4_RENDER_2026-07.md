@@ -178,25 +178,40 @@ helperów). Tryb pracy nadal niesie **kształt glifu** (rezystor / dławik / po�
 bezpośrednie / przerwa dla sieci izolowanej), więc informacja jakościowa jest na rysunku —
 brakuje wyłącznie liczby. Domknięcie: rozbudowa bloku legendy o wiersze opisu sieci.
 
-## Znalezisko R4-3 — punkt podziału sieci (NOP) nieoznaczony · waga: wysoka
+## Znalezisko R4-3 — punkt podziału sieci (NOP) nieoznaczony · SKORYGOWANE
 
-**Pomiar (sieć wzorcowa 52 stacji):** model ma **1 gałąź `status='open'`** — realny punkt
-rozcięcia. Symbol `noPoint` w scenie: **0 na L0, 0 na L1, 0 na L2**.
+**Pomiar (sieć wzorcowa 52 stacji):** symbol `noPoint` w scenie: **0 na L0, 0 na L1, 0 na L2**,
+przy 1 gałęzi `status='open'` w modelu.
 
-Warstwa prezentacji jest przy tym **w pełni gotowa**: glif `noPoint` istnieje, paleta ma dla
-niego dedykowany kolor (`STATE_COLOR.nop` = `#FF006E`, magenta świadomie odrębna od barw
-napięciowych), a `baseSymbolStrokeColor` obsługuje go jawnie z komentarzem „punkt podziału
-jest z DEFINICJI domenowej normalnie otwarty — WYRÓŻNIONY na KAŻDYM LOD". Wersja eksportowa
-też ma własną czerwień NOP (`#B71C1C`) z wymogiem D11 rozróżnialności.
+**KOREKTA PIERWSZEJ DIAGNOZY.** Zapisałem najpierw, że „nikt nie emituje tego symbolu" — to
+było **nieprawdziwe**. Emisja istnieje w trzech miejscach `buildScene.ts` (linie 2337, 2785,
+3043) i działa; warunkiem jest `props.isNop && lod !== 0`. Sprawdzenie mechanizmu przed
+postawieniem zarzutu to ta sama lekcja, która wywróciła rundę R3 (V12K-214) — tym razem
+złapałem to w tej samej turze.
 
-Brakuje jedynego ogniwa: **nikt nie emituje tego symbolu dla gałęzi ze `status='open'`**.
-Zdolność bez wywołania — ten sam wzorzec co `titleBlock` (slot bez konsumenta) i jak
-warstwa zabezpieczeniowa przed V12K-220.
+**Rzeczywista przyczyna:** `isNop` pochodzi z `LineRun.nop_station_ref`
+(`enmToSldAdapter.ts:3404`), a sieć wzorcowa ma **13 biegów i ani jednego z tym polem**.
+Brakuje więc DANEJ, nie kodu — ten sam wzorzec co Z6 (`GroundingConfig` niewypełniony) i Z7
+(`measurements`/`protection_assignments` puste).
 
-**Dlaczego to waży wysoko:** dla sieci SN pracującej promieniowo z możliwością rezerwowania
-punkt podziału jest informacją ruchową pierwszego rzędu — projektant patrzący na schemat nie
-wie, gdzie sieć jest rozcięta, więc nie odczyta kierunków zasilania ani skutków przełączeń.
-Kolor jest zarezerwowany i czeka; brakuje emisji.
+### Rozstrzygnięcie merytoryczne: dwie reprezentacje, świadomie rozdzielone
 
-Do domknięcia w osobnej karcie: emisja `noPoint` na odcinku gałęzi otwartej, z pomiarem
-na obu fixturach i kontrolą odwrotną (sieć bez gałęzi otwartej = zero symboli NOP).
+Model wyraża „otwarcie" na dwa sposoby i **nie wolno ich zlewać**:
+
+| Reprezentacja | Znaczenie | Warstwa |
+|---|---|---|
+| `branch.status = 'open'` | **stan** — łącznik jest w tej chwili otwarty (prace, awaria, przełączenie ruchowe) | fakt |
+| `LineRun.nop_station_ref` | **intencja projektowa** — tu sieć pierścieniowa jest dzielona w ruchu normalnym | decyzja |
+
+Otwarty łącznik **nie jest** punktem normalnie otwartym. Automatyczne wnioskowanie
+`status='open'` ⇒ NOP byłoby heurystyką — zakazaną wprost przez kanon i merytorycznie fałszywą:
+łącznik otwarty na czas prac nie jest projektowanym punktem podziału, a NOP zamknięty na czas
+rezerwowania nie przestaje nim być. Rysunek pokazuje więc **oba fakty osobno**: stan łącznika
+geometrią glifu (działa — zmierzone 171 uziemników `open`, 118 rozłączników `closed`), a NOP
+własnym znacznikiem z zarezerwowanym kolorem.
+
+**Do domknięcia:** wskazanie `nop_station_ref` w sieci wzorcowej wymaga wiedzy, która magistrala
+jest pierścieniem i gdzie projektant dzieli ją w ruchu normalnym — to dana projektowa, nie
+derywacja z topologii. Karta: uzupełnić biegi wzorcowe o punkt podziału (z uzasadnieniem
+wyboru miejsca) i dołożyć kontrolę odwrotną: sieć bez `nop_station_ref` = zero symboli NOP,
+sieć z nim = dokładnie jeden na wskazanej stacji, na L1 i L2, nigdy na L0 (kolaps).
