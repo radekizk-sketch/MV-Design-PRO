@@ -1136,6 +1136,21 @@ describe('SldCanvasV3 — S8: crossfade detalu i ciągłość przejść LOD', ()
     expect(detailLayerOf(container)?.getAttribute('opacity')).toBe('1');
   });
 
+  it('przesuwanie rysunku to gest KAMERY, nie zaznaczanie tekstu (V12K-235)', () => {
+    // Znalezisko z oględzin materiału audytowego V12K-234: przeciągnięcie po kanwie
+    // zaznaczało napisy schematu (przeglądarka traktuje `<text>` jak treść do
+    // selekcji) i zostawiało niebieskie prostokąty podświetlenia NA RYSUNKU — na
+    // zrzucie objęły całą tabliczkę stacji. `touchAction: 'none'` chronił tylko dotyk.
+    // Tu pilnujemy DEKLARACJI (jsdom nie ma zaznaczania tekstu); dowód na realnej
+    // ścieżce — pusty `window.getSelection()` po natywnym przeciągnięciu — jest w
+    // e2e `sld-audyt-powykonawczy-screenshot.spec.ts`.
+    const { container } = render(
+      <SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />,
+    );
+    const svg = container.querySelector('[data-testid="sld-canvas-v3"]') as SVGSVGElement;
+    expect(svg.style.userSelect).toBe('none');
+  });
+
   it('REALNA ścieżka: natywny wheel zoom-in przekraczający próg PODNOSI LOD i ZACHOWUJE nakładkę (ciągłość, karta S8)', () => {
     // Nakładka energizacji kluczowana ownerRef (tożsamość LOD-niezależna) —
     // pokrywa symbole KAŻDEGO LOD; po zmianie LOD musi nadal kolorować.

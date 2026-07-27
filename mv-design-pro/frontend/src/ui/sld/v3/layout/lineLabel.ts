@@ -25,6 +25,10 @@
  * pominięta (jawny brak, zero zgadywania rodzaju zakończenia).
  */
 
+// Jedyna zależność: konwencja zapisu liczby rysunku (`core/text.ts`) — też czysta
+// funkcja, bez DOM i bez `toLocaleString`, więc determinizm modułu zostaje.
+import { liczbaRysunkuPl } from '../core/text';
+
 /** Wejście formattera — WYŁĄCZNIE realne dane z modelu/katalogu (adapter v2
  *  przenosi je 1:1 do `SldCableRun.segmentLabels`). */
 export interface LineTechnicalLabelInput {
@@ -70,9 +74,10 @@ export function formatRatedVoltageKv(ratedVoltageKv: number | null | undefined):
   if (typeof ratedVoltageKv !== 'number' || !Number.isFinite(ratedVoltageKv) || ratedVoltageKv <= 0) {
     return null;
   }
-  const rounded = Math.round(ratedVoltageKv * 10) / 10;
-  const text = Number.isInteger(rounded) ? String(rounded) : String(rounded).replace('.', ',');
-  return `${text} kV`;
+  // Zapis liczby — jedna konwencja rysunku (`liczbaRysunkuPl`, core/text.ts).
+  // Dwa miejsca dziesiętne zamiast jednego: katalogowe 20/30 kV wychodzą tak samo,
+  // a wartość ułamkowa nie traci cyfry przez zaokrąglenie zapisu.
+  return `${liczbaRysunkuPl(ratedVoltageKv)} kV`;
 }
 
 /**

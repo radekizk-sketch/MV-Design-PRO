@@ -2280,7 +2280,13 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       width={width}
       height={height}
       viewBox={viewBox}
-      style={{ background: SLD_V3_BACKGROUND, touchAction: 'none' }}
+      // `userSelect: none` — przesuwanie rysunku to gest KAMERY, nie zaznaczanie
+      // tekstu. Bez tego przeciągnięcie po kanwie zaznaczało napisy schematu
+      // (przeglądarka traktuje `<text>` jak treść do selekcji) i zostawiało na
+      // rysunku niebieskie prostokąty podświetlenia — widoczne na zrzucie audytu
+      // V12K-234 na całej tabliczce stacji („Stacja T8 / S02 / 630 kVA / …").
+      // `touchAction: 'none'` załatwia to samo dla dotyku, ale nie dla myszy.
+      style={{ background: SLD_V3_BACKGROUND, touchAction: 'none', userSelect: 'none' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}

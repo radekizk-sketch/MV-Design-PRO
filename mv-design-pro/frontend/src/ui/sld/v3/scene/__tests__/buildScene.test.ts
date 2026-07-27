@@ -922,7 +922,7 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // (+4632), L2 55712→67208 (+11496), L0 BEZ zmian — złożenie trzech
     // ŚWIADOMYCH kosztów czytelności (§15.1 miękka, precedens F9.10/F10.3):
     // (a) pkt 6: KAŻDA stacja z polem TR niesie teraz dwa wiersze strony nN
-    // w paśmie B5 („Szyna nN · 0.4 kV" + odbiór/granica modelu) → wyższe
+    // w paśmie B5 („Szyna nN · 0,4 kV" + odbiór/granica modelu) → wyższe
     // wiersze → dłuższe zejścia międzywierszowe na L1/L2; strzałki odbioru
     // (12 stacji z Load na fixturze) dokładają pion+symbol pod szyną nN;
     // (b) pkt 13 (L2): etykiety przęseł z parą końców („S01 ↔ S02 — …") są

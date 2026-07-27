@@ -54,6 +54,29 @@ export function isLabelReadableAtScale(cls: LabelClass, scale: number): boolean 
   return LABEL_TYPOGRAPHY[cls].fontSize * scale >= MIN_READABLE_LABEL_SCREEN_PX;
 }
 
+/**
+ * Liczba w POLSKIM zapisie rysunku: całkowita bez miejsc dziesiętnych („20"),
+ * ułamkowa z PRZECINKIEM („0,4", „10,5", „9,62"). Bez zer nieznaczących.
+ *
+ * DLACZEGO TU, A NIE PRZY KAŻDEJ ETYKIECIE. Rysunek miał trzy równoległe
+ * konwencje: tabliczka danych systemu formatowała po polsku („Ik″ 9,62 kA"),
+ * etykieta linii tak samo („10,5 kV"), a etykiety szyn wstawiały liczbę
+ * SUROWO — więc szyna nN wychodziła jako „Szyna nN · 0.4 kV" (kropka), obok
+ * „Odbiór ΣP 0,4 MW" (przecinek) w tej samej tabliczce stacji. Zmierzone na
+ * zrzucie audytu V12K-234. Jedna funkcja zamiast trzech konwencji.
+ *
+ * Zaokrąglenie do DWÓCH miejsc, nie jednego: szyna 0,69 kV nie może stać się
+ * „0,7 kV" — zaokrąglenie napięcia znamionowego to zmiana danej, nie zapisu.
+ *
+ * Szerokość etykiety liczy `measureLabelWidth` z DŁUGOŚCI tekstu, a przecinek
+ * i kropka mają tę samą długość — więc ta konwencja nie rusza geometrii ani
+ * hashy sceny.
+ */
+export function liczbaRysunkuPl(value: number): string {
+  if (Number.isInteger(value)) return value.toFixed(0);
+  return value.toFixed(2).replace(/0$/, '').replace(/\.$/, '').replace('.', ',');
+}
+
 const AVG_GLYPH_WIDTH_FACTOR = 0.62;
 
 /** Deterministyczna szerokość etykiety [px świata]. */

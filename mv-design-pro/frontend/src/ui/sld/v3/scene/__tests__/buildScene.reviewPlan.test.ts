@@ -6,7 +6,7 @@
  *    (`bayTemplateGaps`) z NEGATYWEM (sabotaż: breaker wstrzyknięty w pole
  *    RMU konwencji MUSI dać gap);
  *  - pkt 6: tor za TR domknięty — wiersze strony nN w paśmie nazw
- *    („Szyna nN · 0.4 kV" + jawna granica modelu, bo fixtura nie niesie
+ *    („Szyna nN · 0,4 kV" + jawna granica modelu, bo fixtura nie niesie
  *    rekordów `Load`);
  *  - pkt 13: etykieta przęsła ZWIĄZANA z odcinkiem parą końców
  *    („GPZ ↔ S01 — typ · długość").
@@ -84,14 +84,17 @@ describe('bay_template_probe (spec §12.5, recenzja NO-GO pkt 5)', () => {
 });
 
 describe('strona nN w paśmie nazw (spec §12.5, recenzja NO-GO pkt 6)', () => {
-  it('każda stacja z polem TR niesie wiersz „Szyna nN · 0.4 kV" + ODBIÓR zagregowany z rekordów Load (fixtura z realnego backendu je niesie) + strzałkę odbioru na szynie nN', () => {
+  it('każda stacja z polem TR niesie wiersz „Szyna nN · 0,4 kV" + ODBIÓR zagregowany z rekordów Load (fixtura z realnego backendu je niesie) + strzałkę odbioru na szynie nN', () => {
     const scene = buildSceneV3(enm, 2);
     const texts = scene.labels.filter((l) => l.ownerKind === 'station-name').map((l) => l.text);
     const lvRows = texts.filter((t) => t.startsWith('Szyna nN'));
     const loadRows = texts.filter((t) => t.startsWith('Odbiór ΣP'));
     // Dwie stacje (S01/S02), obie z polem transformatorowym i rekordem Load.
     expect(lvRows.length).toBe(2);
-    expect(lvRows[0]).toBe('Szyna nN · 0.4 kV');
+    // ZAPIS POLSKI (V12K-235). Ten test kodyfikował wcześniej „0.4 kV" z kropką —
+    // czyli zapis, który w tej samej tabliczce stał obok „ΣP 0,4 MW" z przecinkiem.
+    // Intencja pozostaje: wiersz szyny nN NIESIE napięcie z modelu (nie sam opis).
+    expect(lvRows[0]).toBe('Szyna nN · 0,4 kV');
     expect(loadRows.length).toBe(2);
     expect(scene.symbols.filter((s) => s.symbolId === 'loadArrow')).toHaveLength(2);
   });

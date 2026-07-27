@@ -3783,7 +3783,10 @@ export function noBranchWithoutAccent(scene: SceneV3): boolean {
 // F13.1 (spec §21.1): forma WN „Szyna WN · 110 kV" dopisana do ZAMKNIĘTEGO
 // słownika form (§19.2 autorstwa dla sekcji SN; strona WN GPZ dostaje własną,
 // równie zamkniętą formę — rozszerzenie słownika, nie osłabienie wzorca).
-const BUSBAR_LABEL_TEXT_PATTERN = /^(?:Sekcja \d+|Szyna WN)(?: · \d+(?:\.\d+)? kV)?$/;
+// Napięcie w zapisie POLSKIM (przecinek dziesiętny — `liczbaRysunkuPl`, core/text.ts).
+// Kropka była tu przepuszczana, dopóki etykiety szyn wstawiały liczbę surowo (V12K-235):
+// wzorzec legalizował zapis niezgodny z resztą rysunku, zamiast go wyłapać.
+const BUSBAR_LABEL_TEXT_PATTERN = /^(?:Sekcja \d+|Szyna WN)(?: · \d+(?:,\d+)? kV)?$/;
 
 export interface BusbarLabelGap {
   readonly reason: 'bus-without-label' | 'label-without-bus' | 'malformed-text';
@@ -3812,7 +3815,7 @@ export function busbarLabelGaps(scene: SceneV3): readonly BusbarLabelGap[] {
     // F13.1 (spec §21.1): `#hv-bus` — szyna 110 kV GPZ objęta TĄ SAMĄ
     // dyscypliną zakazu anonimowej szyny (forma „Szyna WN · V kV").
     // Recenzja NO-GO 2026-07-17 pkt 6: `#lv-bus` (szyna nN stacji) jest
-    // OPISANA wierszem pasma nazw B5 („Szyna nN · 0.4 kV", `composeStation`
+    // OPISANA wierszem pasma nazw B5 („Szyna nN · 0,4 kV", `composeStation`
     // `rows` — kolizyjnie bezpieczne z konstrukcji rezerwacji B5), NIE luźną
     // etykietą busbar-voltage — dlatego celowo POZA parowaniem tej wyroczni.
     .filter((ref): ref is string => ref != null && (ref.endsWith('#sn-bus') || ref.endsWith('#bus-primary') || ref.endsWith('#hv-bus')));

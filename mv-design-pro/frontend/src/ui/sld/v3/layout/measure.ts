@@ -18,7 +18,7 @@
 
 import { GRID, snapUp } from '../core/grid';
 import { MIN_FIELD_CLEARANCE, MIN_GLYPH_CLEARANCE, MIN_LABEL_CLEARANCE } from './clearances';
-import { labelLineHeight, measureLabelWidth } from '../core/text';
+import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 import {
   formatTransformerRatedPower,
@@ -119,7 +119,7 @@ export { formatTransformerRatedPower } from '../../v2/renderer/StationOnRunRende
  * mogą się rozjechać (wzór F6b-1).
  */
 export function stationBusbarLabelText(busVoltageKv: number | null | undefined): string {
-  return busVoltageKv != null ? `Sekcja 1 · ${busVoltageKv} kV` : 'Sekcja 1';
+  return busVoltageKv != null ? `Sekcja 1 · ${liczbaRysunkuPl(busVoltageKv)} kV` : 'Sekcja 1';
 }
 
 /** F10.3 (spec §18.4): odstęp między wierszem etykiety szyny SN (nowy, ten
@@ -166,10 +166,13 @@ function stationBusbarLabelWidth(station: Pick<StationMeasureInput, 'snBays' | '
 // ---------------------------------------------------------------------------
 
 /** Etykieta szyny nN — TA SAMA zamknięta gramatyka co szyny SN/WN
- *  (`BUSBAR_LABEL_TEXT_PATTERN`, scene/buildScene.ts): „Szyna nN · 0.4 kV";
- *  bez napięcia (dana nieobecna) — samo „Szyna nN" (uczciwy brak). */
+ *  (`BUSBAR_LABEL_TEXT_PATTERN`, scene/buildScene.ts): „Szyna nN · 0,4 kV";
+ *  bez napięcia (dana nieobecna) — samo „Szyna nN" (uczciwy brak).
+ *  Zapis liczby POLSKI (`liczbaRysunkuPl`) — przed V12K-235 wstawiał liczbę
+ *  surowo, więc jedyna ułamkowa szyna rysunku wychodziła jako „0.4 kV" obok
+ *  „ΣP 0,4 MW" w tej samej tabliczce. */
 export function stationLvBusbarLabelText(nnVoltageKv: number | null | undefined): string {
-  return nnVoltageKv != null ? `Szyna nN · ${nnVoltageKv} kV` : 'Szyna nN';
+  return nnVoltageKv != null ? `Szyna nN · ${liczbaRysunkuPl(nnVoltageKv)} kV` : 'Szyna nN';
 }
 
 /** Zagregowany odbiór (pkt 6): suma P/Q rekordów `Load` na szynach nN —

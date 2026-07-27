@@ -42,7 +42,7 @@
  */
 
 import { GRID, rectsOverlap, snapToGrid, snapUp, type V3Rect } from '../core/grid';
-import { labelLineHeight, measureLabelWidth } from '../core/text';
+import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import type { VoltageClass } from '../theme/colorTokens';
 import type { SwitchState } from '../symbols/glyphs';
@@ -742,7 +742,7 @@ function sectionLayoutById(layouts: readonly SectionLayout[]): ReadonlyMap<strin
  *  marginesu lewego niżej i budowa etykiety w pętli sekcji), zero
  *  duplikacji formuły tekstu. */
 function sectionLabelText(section: CanonicalGpzSection): string {
-  return `${section.label} · ${section.busVoltageKv} kV`;
+  return `${section.label} · ${liczbaRysunkuPl(section.busVoltageKv)} kV`;
 }
 
 /**
@@ -812,24 +812,16 @@ function switchStateOrUndefined(state: CanonicalGpzBay['esState'] | undefined): 
   return state;
 }
 
-/** F13.1 (spec §21.2): liczba w notacji polskiej (przecinek dziesiętny) —
- *  WYŁĄCZNIE formatowanie tabliczki danych systemowych źródła WN, żaden
- *  przelicznik/zaokrąglenie fizyczne (spójne z konwencją `SldCanvasV3.tsx`
- *  `formatPlNumber`, nieeksportowaną stamtąd — kopia lokalna, zero cross-import
- *  między warstwą kanwy a compose). Liczby całkowite bez części dziesiętnej. */
-function formatGpzSystemNumberPl(value: number): string {
-  if (Number.isInteger(value)) return value.toFixed(0);
-  return value.toFixed(2).replace(/0$/, '').replace(/\.$/, '').replace('.', ',');
-}
+
 
 /** F13.1 (spec §21.1/§21.2, D3-8/D3-10): tabliczka danych systemu — „Sk″ 250
  *  MVA · Ik″ 9,62 kA · 110 kV" — WYŁĄCZNIE człony, dla których ENM niesie
  *  wartość (brak = brak członu, zero atrap/zer fabrykowanych). */
 function gpzSystemSourceDataplateText(source: CanonicalGpzHvSystemSource): string | null {
   const parts: string[] = [];
-  if (source.sk3Mva != null) parts.push(`Sk″ ${formatGpzSystemNumberPl(source.sk3Mva)} MVA`);
-  if (source.ik3Ka != null) parts.push(`Ik″ ${formatGpzSystemNumberPl(source.ik3Ka)} kA`);
-  if (source.voltageKv != null) parts.push(`${formatGpzSystemNumberPl(source.voltageKv)} kV`);
+  if (source.sk3Mva != null) parts.push(`Sk″ ${liczbaRysunkuPl(source.sk3Mva)} MVA`);
+  if (source.ik3Ka != null) parts.push(`Ik″ ${liczbaRysunkuPl(source.ik3Ka)} kA`);
+  if (source.voltageKv != null) parts.push(`${liczbaRysunkuPl(source.voltageKv)} kV`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
@@ -1590,8 +1582,8 @@ export function composeGpz(
     // katalogowa) na tabliczce TR — WYŁĄCZNIE gdy dane są (uczciwy brak,
     // zero literałów zastępczych). Zaczepy/punkt neutralny → plan (dane null).
     const shortCircuitParts: string[] = [];
-    if (transformer.ukPercent != null) shortCircuitParts.push(`uk ${formatGpzSystemNumberPl(transformer.ukPercent)}%`);
-    if (transformer.pkKw != null) shortCircuitParts.push(`Pk ${formatGpzSystemNumberPl(transformer.pkKw)} kW`);
+    if (transformer.ukPercent != null) shortCircuitParts.push(`uk ${liczbaRysunkuPl(transformer.ukPercent)}%`);
+    if (transformer.pkKw != null) shortCircuitParts.push(`Pk ${liczbaRysunkuPl(transformer.pkKw)} kW`);
     // SLD-02 (V12K-091): wiersz regulacji zaczepów z modelu (`tap_changer`
     // → oltc). WYŁĄCZNIE gdy regulacja obecna (uczciwy brak: bez wiersza).
     // Domyka komentarz „Zaczepy → plan (dane null)" wyżej. READ-ONLY.
@@ -1602,7 +1594,7 @@ export function composeGpz(
     const trRows: StationNameBandRow[] = [
       { text: transformer.designation, labelClass: 't1' },
       { text: ratingRowText, labelClass: 't2' },
-      { text: `${transformer.uhvKv}/${transformer.ulvKv} kV`, labelClass: 't2' },
+      { text: `${liczbaRysunkuPl(transformer.uhvKv)}/${liczbaRysunkuPl(transformer.ulvKv)} kV`, labelClass: 't2' },
       ...(shortCircuitParts.length > 0
         ? [{ text: shortCircuitParts.join(' · '), labelClass: 't3' } as StationNameBandRow]
         : []),
@@ -1671,7 +1663,7 @@ export function composeGpz(
         // F13.1 (przejęcie nadzorcy): forma zamknięta „Szyna WN · V kV" —
         // spójna z `BUSBAR_LABEL_TEXT_PATTERN` (buildScene.ts, §19.2+§21.1);
         // samo „110 kV" łamało wzorzec (malformed-text w busbar_label_probe).
-        text: `Szyna WN · ${hvBusVoltageKv} kV`,
+        text: `Szyna WN · ${liczbaRysunkuPl(hvBusVoltageKv)} kV`,
         labelClass: 't2',
         anchor: { x: busLeft, y: hvBusY },
         placement: 'above',
@@ -1831,7 +1823,7 @@ export function composeGpz(
   // w nagłówku strefy. Prefiks dokładamy TYLKO gdy nazwa go nie niesie.
   const headerName = /^GPZ\b/i.test(props.name.trim()) ? props.name.trim() : `GPZ ${props.name}`;
   const headerText = firstTransformer
-    ? `${headerName} · ${firstTransformer.uhvKv}/${firstTransformer.ulvKv} kV`
+    ? `${headerName} · ${liczbaRysunkuPl(firstTransformer.uhvKv)}/${liczbaRysunkuPl(firstTransformer.ulvKv)} kV`
     : headerName;
   const headerHeight = labelLineHeight('t1') + GRID;
   let headerSlot = {
