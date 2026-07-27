@@ -7,7 +7,14 @@ from typing import Any, Literal
 from uuid import UUID
 
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
+from application.analyses.protection.catalog.catalog_store import list_devices
+from application.field_read_model import build_field_read_model
 from domain.canonical_operations import resolve_operation_name
+from domain.der_protection_functions import (
+    FaktyPolaWytworcy,
+    dobierz_funkcje,
+    ocen_urzadzenie,
+)
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm as _get_enm
@@ -514,3 +521,149 @@ async def set_der_bindings(
             ) from exc
 
     return result
+
+
+def _fakty_pola_wytworcy(
+    generator: dict[str, Any],
+    sciezka_zwarcia: dict[str, Any] | None,
+) -> FaktyPolaWytworcy:
+    """Zloz fakty o polu wytworcy z modelu — bez ani jednej wartosci domyslnej.
+
+    Sciezka zwarcia doziemnego pochodzi z KANONICZNEGO odczytu pola
+    (`build_field_read_model`), a nie z rownoleglego wyprowadzenia — dwa opisy tego
+    samego pola rozjezdzalyby sie (precedens V12K-243).
+    """
+
+    zmaterializowane = generator.get("materialized_params") or {}
+    meta = generator.get("meta") or {}
+    if not isinstance(zmaterializowane, dict):
+        zmaterializowane = {}
+    if not isinstance(meta, dict):
+        meta = {}
+
+    wariant = generator.get("connection_variant")
+    strona = {
+        "DEDICATED_MV_CONNECTION": "dedicated_transformer",
+        "block_transformer": "dedicated_transformer",
+        "SOURCE_CONNECTION_STATION": "SN",
+    }.get(wariant if isinstance(wariant, str) else "", "nN")
+
+    rodzaj = {
+        "pv_inverter": "PV",
+        "bess": "BESS",
+        "wind_inverter": "FW",
+        "fw_pmsg": "FW",
+        "fw_dfig": "FW",
+        "fw_scig": "FW",
+    }.get(generator.get("gen_type") or "", "PV")
+
+    p_mw = generator.get("p_mw")
+    sciezka = sciezka_zwarcia or {}
+    return FaktyPolaWytworcy(
+        der_id=str(generator.get("ref_id") or ""),
+        der_kind=rodzaj,  # type: ignore[arg-type]
+        connection_side=strona,
+        nominal_power_kw=(p_mw * 1000.0 if isinstance(p_mw, int | float) else None),
+        block_transformer_catalog_ref=(
+            zmaterializowane.get("block_transformer_catalog_ref")
+            or meta.get("block_transformer_catalog_ref")
+        ),
+        # Brak opisu sciezki zwarcia doziemnego zostaje BRAKIEM: regula zamieni go
+        # w nazwana kwestie otwarta, zamiast wybrac rodzine funkcji za projektanta.
+        neutral_grounding_mode=sciezka.get("neutral_grounding_mode") or "nieznany",
+        zero_sequence_current_source=sciezka.get("zero_sequence_current_source") or "brak",
+        zero_sequence_voltage_source=sciezka.get("zero_sequence_voltage_source") or "brak",
+    )
+
+
+def _sciezka_zwarcia_dla_pola(
+    case_id: str, enm: EnergyNetworkModel, bay_ref: str | None
+) -> dict[str, Any] | None:
+    if not bay_ref:
+        return None
+    model_pol = build_field_read_model(case_id, enm)
+    for pozycja in model_pol.get("items", []):
+        if pozycja.get("bay_ref") == bay_ref:
+            wyniki = pozycja.get("project_results") or {}
+            return wyniki.get("earth_fault_path")
+    return None
+
+
+def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | None, str]:
+    """Funkcje deklarowane przez wybrane urzadzenie + jego nazwa do komunikatu."""
+    if not protection_ref:
+        return None, "wybrane urządzenie"
+    for urzadzenie in list_devices():
+        if urzadzenie.device_id == protection_ref:
+            nazwa = f"{urzadzenie.vendor} {urzadzenie.model}".strip()
+            return tuple(urzadzenie.functions_supported), nazwa or protection_ref
+    return None, protection_ref
+
+
+@router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/protection-functions")
+async def get_der_protection_functions(
+    project_id: str,
+    case_id: str,
+    generator_ref: str,
+    request: Request,
+) -> dict[str, Any]:
+    """Wymagane funkcje zabezpieczeniowe pola wytworcy + ocena wybranego urzadzenia.
+
+    ZERO FIZYKI I ZERO NASTAW: odpowiedz mowi, JAKIE funkcje sa wymagane, CZYM je
+    zmierzyc i CZY wybrane urzadzenie je realizuje. Nastawy licza moduly koordynacji.
+    """
+
+    _validate_project_case_context(request, project_id, case_id)
+    enm = _get_enm(case_id)
+    dane = enm.model_dump(mode="json")
+
+    generator = next(
+        (g for g in dane.get("generators", []) if g.get("ref_id") == generator_ref),
+        None,
+    )
+    if generator is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "generator.not_found",
+                "message_pl": f"Wytwórca {generator_ref} nie istnieje w modelu.",
+            },
+        )
+
+    zmaterializowane = generator.get("materialized_params") or {}
+    meta = generator.get("meta") or {}
+    bay_ref = None
+    for zrodlo in (zmaterializowane, meta):
+        if isinstance(zrodlo, dict) and isinstance(zrodlo.get("bay_ref"), str):
+            bay_ref = zrodlo["bay_ref"]
+            break
+
+    sciezka = _sciezka_zwarcia_dla_pola(case_id, enm, bay_ref)
+    fakty = _fakty_pola_wytworcy(generator, sciezka)
+    dobor = dobierz_funkcje(fakty)
+
+    protection_ref = None
+    for zrodlo in (zmaterializowane, meta):
+        if isinstance(zrodlo, dict) and isinstance(zrodlo.get("protection_catalog_ref"), str):
+            protection_ref = zrodlo["protection_catalog_ref"]
+            break
+
+    funkcje_urzadzenia, nazwa_urzadzenia = _funkcje_urzadzenia(protection_ref)
+    ocena = ocen_urzadzenie(dobor.kody(), funkcje_urzadzenia, nazwa_urzadzenia=nazwa_urzadzenia)
+
+    return {
+        "generator_ref": generator_ref,
+        "bay_ref": bay_ref,
+        "fakty": {
+            "connection_side": fakty.connection_side,
+            "neutral_grounding_mode": fakty.neutral_grounding_mode,
+            "zero_sequence_current_source": fakty.zero_sequence_current_source,
+            "zero_sequence_voltage_source": fakty.zero_sequence_voltage_source,
+        },
+        "dobor": dobor.to_dict(),
+        "urzadzenie": {
+            "protection_catalog_ref": protection_ref,
+            "nazwa": nazwa_urzadzenia if protection_ref else None,
+            **ocena.to_dict(),
+        },
+    }

@@ -3867,6 +3867,7 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
     `None` (jawne wyczyszczenie wiazania) NIE jest sprawdzane — to usuniecie danej,
     nie wskazanie typu.
     """
+    from application.analyses.protection.catalog.catalog_store import list_devices
     from network_model.catalog import get_default_mv_catalog
 
     katalog = get_default_mv_catalog()
@@ -3875,8 +3876,21 @@ def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
         wartosc = wiazania.get(pole)
         if wartosc is None or pole not in wiazania:
             continue
-        if getattr(katalog, metoda)(str(wartosc)) is None:
-            nieznane.append(f"{pole}={wartosc}")
+        if getattr(katalog, metoda)(str(wartosc)) is not None:
+            continue
+        # V12K-248: zabezpieczenia zyja w DWOCH zbiorach. Repozytorium katalogu MV ma
+        # 12 wpisow (syntetyczne `ACME_REX*`), a katalog analityczny — 51 rekordow
+        # producenckich (ABB, SEL…), i to WLASNIE jego wystawia endpoint
+        # `/api/catalog/protection/device-types`, z ktorego wybiera picker. Sprawdzanie
+        # wylacznie repozytorium MV odrzucalo 39 z 51 urzadzen, ktore projektant widzi
+        # na liscie — czyli bramka postawiona przeciw literowkom blokowala realny wybor.
+        # Walidacja pyta wiec „czy system zna to urzadzenie", a nie „czy zna je jeden
+        # z dwoch zbiorow".
+        if pole == "protection_catalog_ref" and any(
+            urzadzenie.device_id == str(wartosc) for urzadzenie in list_devices()
+        ):
+            continue
+        nieznane.append(f"{pole}={wartosc}")
     return nieznane
 
 

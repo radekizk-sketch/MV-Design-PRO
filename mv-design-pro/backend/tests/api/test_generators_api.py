@@ -364,3 +364,97 @@ def test_puste_zadanie_jest_odrzucone(app_client) -> None:
 
     assert response.status_code == 422
     assert response.json()["detail"]["code"] == "der_bindings.payload_empty"
+
+
+def test_protection_functions_wyprowadzone_z_faktow_pola(app_client) -> None:
+    """Endpoint doboru funkcji zabezpieczeniowych (karta E21-3, audyt E-21 P7/P8).
+
+    Do V12K-246 ekran pokazywal STALA liste 13 kodow ANSI, ta sama dla kazdej
+    instalacji. Ten test pilnuje, ze odpowiedz jest WYPROWADZENIEM z faktow o polu:
+    kazda funkcja niesie podstawe, chroniony obiekt i zrodlo pomiaru, a brak danych
+    o torze zerowym daje NAZWANA kwestie otwarta zamiast domyslnej rodziny funkcji.
+    """
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id)
+
+    utworzenie = app_client.post(
+        f"/api/projects/{project_id}/cases/{case_id}/generators",
+        json={
+            "station_ref": "station/1",
+            "der_kind": "PV",
+            "power_mw": 0.5,
+            "connection_variant": "nn_side",
+            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            "source_name": "PV Stacja 1",
+            "nc_rfg_module": "A",
+        },
+    )
+    assert utworzenie.status_code == 201
+    generator_ref = utworzenie.json()["snapshot"]["generators"][0]["ref_id"]
+
+    odpowiedz = app_client.get(
+        f"/api/projects/{project_id}/cases/{case_id}"
+        f"/generators/{generator_ref}/protection-functions"
+    )
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    dane = odpowiedz.json()
+
+    kody = [f["kod"] for f in dane["dobor"]["wymagane"]]
+    # Podstawa pola: zwarcia miedzyfazowe niezaleznie od sposobu uziemienia.
+    assert "50" in kody and "51" in kody
+    # Wytworca PV po stronie nN → zestaw anty-wyspowy (IEEE 1547 / NC RfG Art. 14).
+    assert {"27", "59", "81U", "81O"}.issubset(set(kody))
+    # Kazda funkcja z UZASADNIENIEM — sam kod nie jest projektem zabezpieczen.
+    for funkcja in dane["dobor"]["wymagane"]:
+        assert funkcja["podstawa_pl"].strip()
+        assert funkcja["chroniony_obiekt_pl"].strip()
+        assert funkcja["zrodlo_pomiaru_pl"].strip()
+
+    # Model tej stacji nie opisuje toru pradu zerowego ani punktu neutralnego, wiec
+    # rodzina funkcji ziemnozwarciowej NIE jest zgadywana — brak jest nazwany.
+    kwestie = {k["kod"] for k in dane["dobor"]["kwestie_otwarte"]}
+    assert "protection.earth_current_source_missing" in kwestie
+    assert "protection.osd_requirements_not_modelled" in kwestie
+    assert not [k for k in kody if k in ("50N", "51N", "50G", "51G")]
+
+    # Bez wybranego zabezpieczenia komplet wymaganych funkcji jest brakiem, nie zgoda.
+    assert dane["urzadzenie"]["protection_catalog_ref"] is None
+    assert dane["urzadzenie"]["pokrywa_wymagania"] is False
+    assert set(dane["urzadzenie"]["brakujace_funkcje"]) == set(kody)
+
+
+def test_protection_functions_zglasza_niezgodnosc_przeznaczenia_urzadzenia(app_client) -> None:
+    """Zabezpieczenie roznicowe SZYN przypisane wytworcy — ostrzezenie, nie cisza."""
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id)
+
+    utworzenie = app_client.post(
+        f"/api/projects/{project_id}/cases/{case_id}/generators",
+        json={
+            "station_ref": "station/1",
+            "der_kind": "PV",
+            "power_mw": 0.5,
+            "connection_variant": "nn_side",
+            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            "source_name": "PV Stacja 1",
+            "nc_rfg_module": "A",
+        },
+    )
+    generator_ref = utworzenie.json()["snapshot"]["generators"][0]["ref_id"]
+
+    # ABB REB670 to aparat roznicowy SZYN — katalog niesie `87BB`.
+    wiazanie = app_client.patch(
+        f"/api/projects/{project_id}/cases/{case_id}/generators/{generator_ref}/bindings",
+        json={"protection_catalog_ref": "ABB_REB670"},
+    )
+    assert wiazanie.status_code == 200, wiazanie.text
+
+    dane = app_client.get(
+        f"/api/projects/{project_id}/cases/{case_id}"
+        f"/generators/{generator_ref}/protection-functions"
+    ).json()
+
+    ostrzezenia = dane["urzadzenie"]["ostrzezenia_przeznaczenia"]
+    assert ostrzezenia, "aparat innej strefy musi dostac ostrzezenie o przeznaczeniu"
+    assert "87BB" in ostrzezenia[0]
+    assert dane["urzadzenie"]["nazwa"]

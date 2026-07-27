@@ -226,3 +226,26 @@ class TestWiazanieMusiIstniecWKatalogu:
         )
 
         assert wynik.get("error") is None
+
+
+def test_urzadzenie_z_listy_pickera_daje_sie_ZAPISAC(tmp_path=None) -> None:
+    """V12K-248: walidacja wiazan pyta o katalog, ktory widzi projektant.
+
+    POMIAR: repozytorium katalogu MV ma 12 urzadzen zabezpieczeniowych (syntetyczne
+    `ACME_REX*`), a katalog analityczny — 51 rekordow producenckich; to jego wystawia
+    `/api/catalog/protection/device-types`, z ktorego wybiera picker. Sprawdzanie samego
+    repozytorium MV odrzucalo **39 z 51** urzadzen widocznych na liscie: projektant
+    wybieral realny przekaznik ABB i dostawal „typ katalogowy nie istnieje".
+    """
+    from application.analyses.protection.catalog.catalog_store import list_devices
+    from enm.domain_operations_v2 import _nieznane_referencje_katalogowe
+
+    analityczne = [u.device_id for u in list_devices()]
+    assert "ABB_REF615" in analityczne, "test stoi na realnym wpisie katalogu"
+
+    # Urzadzenie z listy pickera przechodzi…
+    assert _nieznane_referencje_katalogowe({"protection_catalog_ref": "ABB_REF615"}) == []
+    # …a wymyslony identyfikator nadal NIE (bramka nie zostala rozmontowana).
+    assert _nieznane_referencje_katalogowe(
+        {"protection_catalog_ref": "REL_KTORY_NIE_ISTNIEJE"}
+    ) == ["protection_catalog_ref=REL_KTORY_NIE_ISTNIEJE"]
