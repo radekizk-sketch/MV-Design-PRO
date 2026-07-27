@@ -27,6 +27,7 @@ import {
   buildAggregatedReadiness,
   computeDerReadinessMatrix,
   summarizeReadiness,
+  sumStationLoadImportKw,
   useGenerateAudit2ProofPack,
   useGenerateAudit2Report,
   useRunAudit2PowerFlow,
@@ -1905,27 +1906,37 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
   });
 
   // Naprawa eng.15: walidacja hosting capacity (export vs import) per stacja.
+  //
+  // V12K-226: import stacji liczy `sumStationLoadImportKw` na REALNYCH polach
+  // kontraktu (Substation.bus_refs ∋ Load.bus_ref, moc z `p_mw`). Poprzednia wersja
+  // filtrowała odbiory po `station_ref` i sumowała `nominal_power_kw ?? 0` — obu pól
+  // `Load` NIE MA, a rzutowania `as` wyłączyły kontrolę typów, więc import był
+  // ZAWSZE zerowy i KAŻDA stacja z DER dostawała werdykt „krytyczny eksport".
+  //
+  // Import NIEZNANY (brak snapshotu, stacja nieobecna w modelu) NIE jest zerem:
+  // wtedy oceny nie liczymy wcale, bo zero importu jest twierdzeniem o sieci.
   const hostingCapacityRows = useMemo(() => {
     const stationIds = Array.from(new Set(allDers.map((d) => d.station_id)));
-    return stationIds.map((stationId) => {
+    return stationIds.flatMap((stationId) => {
       const stationDers = allDers.filter((d) => d.station_id === stationId);
       const p_export_kw = stationDers.reduce((sum, d) => sum + (d.nominal_power_kw ?? 0), 0);
-      // Suma odbiorow dla stacji ze snapshotu (jezeli dostepne).
-      const allLoads = (snapshot?.loads ?? []) as readonly unknown[];
-      const stationLoads = allLoads.filter((l) => {
-        const lo = l as { station_ref?: string };
-        return lo.station_ref === stationId;
-      });
-      const p_import_kw = stationLoads.reduce((sum: number, l) => {
-        const lo = l as { nominal_power_kw?: number };
-        return sum + (lo.nominal_power_kw ?? 0);
-      }, 0);
-      return validateHostingCapacityExport({
-        station_id: stationId,
-        p_export_kw,
-        p_import_kw,
-      });
+      const p_import_kw = sumStationLoadImportKw(snapshot, stationId);
+      if (p_import_kw === null) return [];
+      return [
+        validateHostingCapacityExport({
+          station_id: stationId,
+          p_export_kw,
+          p_import_kw,
+        }),
+      ];
     });
+  }, [allDers, snapshot]);
+
+  // Stacje, dla ktorych oceny kierunku przeplywu NIE DA SIE policzyc — pokazywane
+  // wprost, zeby brak nie wygladal na brak problemu (kontrakt uczciwych stanow zerowych).
+  const hostingCapacityNieznane = useMemo(() => {
+    const stationIds = Array.from(new Set(allDers.map((d) => d.station_id)));
+    return stationIds.filter((stationId) => sumStationLoadImportKw(snapshot, stationId) === null);
   }, [allDers, snapshot]);
 
   const fixActionByElement = (elementRef: string | null) => {
@@ -2151,6 +2162,34 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
       )}
 
       {/* Naprawa eng.15: hosting capacity export check per stacja. */}
+      {hostingCapacityNieznane.length > 0 && (
+        <SectionCard
+          title={`Kierunek przepływu — nie sprawdzono dla ${hostingCapacityNieznane.length} stacji`}
+          eyebrow="NC RfG Art. 17"
+        >
+          {/*
+            V12K-226: brak oceny musi być WIDOCZNY. Milczenie w tym miejscu czytałoby się
+            jako „bez zastrzeżeń", a przyczyną jest brak danej: odbiorów nie da się
+            przypisać do stacji (stacja nieobecna w modelu albo brak szyn).
+          */}
+          <div data-testid="hosting-capacity-nieznane" className="space-y-2">
+            {hostingCapacityNieznane.map((stationId) => (
+              <div
+                key={stationId}
+                data-testid={`hosting-capacity-nieznane-${stationId}`}
+                className="rounded border border-slate-600 bg-slate-900/40 p-3 text-sm text-slate-300"
+              >
+                <div className="font-semibold">Stacja: {stationId}</div>
+                <div className="mt-1 text-[11px]">
+                  Nie sprawdzono kierunku przepływu — w modelu nie da się przypisać odbiorów
+                  do tej stacji (brak stacji albo brak przypisanych szyn). Uzupełnij model,
+                  aby ocenić eksport wobec importu.
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
       {hostingCapacityRows.length > 0 && (
         <SectionCard
           title={`Hosting capacity (export vs import) — ${hostingCapacityRows.length} stacji`}

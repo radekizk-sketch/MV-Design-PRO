@@ -323,6 +323,26 @@ function buildBlockersForAxis(
           target_tab: 'topology',
         });
       }
+      // V12K-226: osie NIESYMETRYCZNE potrzebują składowej zerowej (Naprawa A.1,
+      // IEC 60909-3), a status to uwzględniał — brakowało tylko POWODU na liście.
+      // Skutek: oś SC1F/SC2F/SC2FG z kompletnym urządzeniem i PWP kończyła się
+      // stanem „częściowo" z PUSTĄ listą blokerów, czyli projektant widział
+      // „niegotowe" bez żadnej akcji naprawczej (ślepy zaułek w torze pracy).
+      // Tylko zwarcia Z UDZIAŁEM ZIEMI potrzebują składowej zerowej. Zwarcie
+      // dwufazowe bez ziemi rozkłada się na składową zgodną i przeciwną (Z₁, Z₂),
+      // więc żądanie od niego danych Z₀ byłoby FAŁSZYWYM BRAKIEM — status w tym
+      // pliku ma to poprawnie (`sc2f = sc3f`), lista blokerów musi się zgadzać.
+      if ((axis === 'sc_1f' || axis === 'sc_2fg') && !der.catalogs.fault_current_data_ref) {
+        blockers.push({
+          code: 'der.fault_current_data.missing',
+          message_pl:
+            'Brak modelu zwarciowego urządzenia (R₀/X₀/Z₀·Z₁⁻¹) — bez składowej '
+            + 'zerowej zwarcia niesymetrycznego nie da się policzyć.',
+          object_ref: der.id,
+          target_screen: derKindToScreen(der.der_kind),
+          target_tab: 'ncrfg',
+        });
+      }
       break;
     case 'vdrop':
       if (der.nominal_power_kw === null) {
@@ -530,4 +550,56 @@ export function summarizeReadiness(matrix: DerReadinessMatrix): {
 /** Pomocnicza projekcja na pełen empty matrix. */
 export function emptyReadinessMatrix(): DerReadinessMatrix {
   return { ...EMPTY_DER_READINESS };
+}
+
+// =============================================================================
+// Import mocy stacji — dana wejściowa oceny kierunku przepływu (V12K-226)
+// =============================================================================
+
+/**
+ * Suma mocy czynnej ODBIORÓW przypisanych do stacji [kW], albo `null`, gdy
+ * przypisania nie da się ustalić.
+ *
+ * DLACZEGO TA FUNKCJA ISTNIEJE (defekt, który ją wymusił). Ekran liczył import
+ * stacji w miejscu wywołania, dwoma ZGADNIĘTYMI nazwami pól pod rzutowaniem
+ * `as`, które wyłączyło kontrolę typów: filtrował odbiory po `station_ref`
+ * (tego pola `Load` nie ma — należy do źródła z wariantem `nn_side`) i sumował
+ * `nominal_power_kw ?? 0` (tego pola `Load` też nie ma — niesie `p_mw`).
+ * Oba rzutowania dawały `undefined`, więc lista odbiorów była ZAWSZE pusta,
+ * a import ZAWSZE zerowy. Ocena kierunku przepływu dzieli eksport przez import,
+ * a przy imporcie zerowym stosunek jest nieskończony — więc KAŻDA stacja z DER
+ * dostawała werdykt „krytyczny eksport" z żądaniem studium NC RfG ramp-down
+ * i uzgodnienia z OSD, niezależnie od rzeczywistych odbiorów.
+ *
+ * PRZYPISANIE ODBIORU DO STACJI idzie prawdziwą drogą modelu: `Substation`
+ * niesie `bus_refs`, a `Load` niesie `bus_ref` — odbiór należy do stacji, gdy
+ * jego szyna jest jedną z szyn tej stacji.
+ *
+ * `null` ZNACZY „NIE WIEM", NIE „ZERO". Brak snapshotu albo stacja nieobecna w
+ * modelu daje `null`, a wtedy oceny kierunku przepływu NIE WOLNO policzyć:
+ * zero importu jest twierdzeniem o sieci (stacja bez odbiorów, cała generacja
+ * idzie na eksport), a nie zapisem braku wiedzy.
+ */
+export function sumStationLoadImportKw(
+  snapshot: {
+    readonly substations?: ReadonlyArray<{ readonly ref_id?: string; readonly bus_refs?: readonly string[] }>;
+    readonly loads?: ReadonlyArray<{ readonly bus_ref?: string; readonly p_mw?: number }>;
+  } | null,
+  stationId: string,
+): number | null {
+  if (!snapshot) return null;
+  const stacja = (snapshot.substations ?? []).find((s) => s.ref_id === stationId);
+  if (!stacja) return null;
+  const szyny = new Set(stacja.bus_refs ?? []);
+  if (szyny.size === 0) return null;
+
+  let sumaMw = 0;
+  for (const odbior of snapshot.loads ?? []) {
+    if (odbior.bus_ref === undefined || !szyny.has(odbior.bus_ref)) continue;
+    // `p_mw` jest w kontrakcie wymagane; brak wartości oznacza model niezgodny z
+    // kontraktem, więc nie zgadujemy zera — cały import staje się nieznany.
+    if (typeof odbior.p_mw !== 'number' || !Number.isFinite(odbior.p_mw)) return null;
+    sumaMw += odbior.p_mw;
+  }
+  return sumaMw * 1000;
 }
