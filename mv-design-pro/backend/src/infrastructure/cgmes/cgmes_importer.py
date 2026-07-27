@@ -339,7 +339,17 @@ def import_from_eq_tp(
         )
 
     # Loads -> EnergyConsumer.
+    #
+    # V12K-228: moc odbioru (`EnergyConsumer.p`/`.q`) nalezy w CGMES do profilu
+    # STANU USTALONEGO (SteadyStateHypothesis), a nie do EQ/TP. Import bez tego
+    # profilu podstawial za brak ZERO, wiec kazdy odbior wchodzil do modelu jako
+    # 0 MW — siec wygladala na NIEOBCIAZONA, a rozplyw i spadki napiecia dawaly
+    # bezuzytecznie optymistyczny wynik bez zadnego sygnalu, ze danych nie bylo.
+    # Kontrakt `Load` wymaga liczby, wiec elementu nie da sie wniesc z brakiem —
+    # ale brak MUSI byc NAZWANY w ostrzezeniach importu, bo dopiero wtedy jest
+    # decyzja projektanta, a nie cicha podmiana.
     loads: list[Load] = []
+    odbiory_bez_stanu_ustalonego: list[str] = []
     for ec in by_class.get("EnergyConsumer", []):
         mrid = _mrid_of(ec)
         if not mrid:
@@ -349,13 +359,17 @@ def import_from_eq_tp(
         a, _ = endpoint_bus_refs(mrid)
         if a is None:
             continue
+        p_w = _float(_text(ec, "EnergyConsumer.p"))
+        q_w = _float(_text(ec, "EnergyConsumer.q"))
+        if p_w is None:
+            odbiory_bez_stanu_ustalonego.append(name)
         loads.append(
             Load(
                 ref_id=ref,
                 name=name,
                 bus_ref=a,
-                p_mw=w_to_mw(_float(_text(ec, "EnergyConsumer.p")) or 0.0),
-                q_mvar=w_to_mw(_float(_text(ec, "EnergyConsumer.q")) or 0.0),
+                p_mw=w_to_mw(p_w or 0.0),
+                q_mvar=w_to_mw(q_w or 0.0),
             )
         )
 
@@ -406,10 +420,9 @@ def import_from_eq_tp(
         ),
         enm=enm,
         validation=validation,
-        warnings=(
-            [f"Import wymaga mapowania katalogowego: {len(elements_no_catalog)} element(ow)."]
-            if needs_mapping
-            else []
+        warnings=_ostrzezenia_importu(
+            elements_no_catalog=elements_no_catalog,
+            odbiory_bez_stanu_ustalonego=odbiory_bez_stanu_ustalonego,
         ),
         elements_without_catalog=sorted(set(elements_no_catalog)),
         catalog_mapping_required=needs_mapping,
@@ -420,6 +433,38 @@ def import_from_eq_tp(
 # ---------------------------------------------------------------------------
 # Shared catalog gate
 # ---------------------------------------------------------------------------
+
+
+def _ostrzezenia_importu(
+    *,
+    elements_no_catalog: list[str],
+    odbiory_bez_stanu_ustalonego: list[str],
+) -> list[str]:
+    """Ostrzezenia importu — kazdy brak danej NAZWANY, nigdy podmieniony w milczeniu.
+
+    Brak mocy odbioru jest osobnym ostrzezeniem niz brak katalogu, bo prowadzi do
+    innej decyzji: katalog projektant domapuje, a moc odbioru musi pochodzic z
+    profilu stanu ustalonego CGMES albo z wlasnego zalozenia projektowego.
+    """
+    ostrzezenia: list[str] = []
+    if elements_no_catalog:
+        ostrzezenia.append(
+            f"Import wymaga mapowania katalogowego: {len(elements_no_catalog)} element(ow)."
+        )
+    if odbiory_bez_stanu_ustalonego:
+        nazwy = ", ".join(sorted(set(odbiory_bez_stanu_ustalonego))[:5])
+        wiecej = (
+            f" (i {len(set(odbiory_bez_stanu_ustalonego)) - 5} wiecej)"
+            if len(set(odbiory_bez_stanu_ustalonego)) > 5
+            else ""
+        )
+        ostrzezenia.append(
+            f"Brak mocy czynnej w profilu stanu ustalonego dla {len(odbiory_bez_stanu_ustalonego)} "
+            f"odbior(ow) — wniesione jako 0 MW: {nazwy}{wiecej}. "
+            "Rozplyw i spadki napiecia beda zanizone do czasu uzupelnienia profilu "
+            "SteadyStateHypothesis albo wlasnych wartosci mocy."
+        )
+    return ostrzezenia
 
 
 def _elements_without_catalog(enm: EnergyNetworkModel) -> list[str]:
