@@ -218,7 +218,7 @@ Rozróżnialność L1→L2 wzrosła z **+4 %** do **+16 %** elementów. Regresja
 `src/ui/sld/v3` + `src/ui/sld/core`: **1399 passed, 0 failed**;
 `sld_determinism_guards`: 0 naruszeń.
 
-### 9.3 Karta R2-B · etykiety nieczytelne na pełnym widoku sieci — OTWARTA
+### 9.3 Karta R2-B · etykiety nieczytelne na pełnym widoku sieci — ZAMKNIĘTA (§10.1)
 
 100 % etykiet ma wysokość **2 px** na każdym poziomie detalu. Rysunek 52-stacyjny
 wpasowany w kadr 1920 px daje skalę ≈ 0,17, więc tekst t3/t4 spada z kilkunastu
@@ -229,8 +229,8 @@ przestrzeni ARKUSZA i na sieci wzorcowej jest tożsamością (0 kolizji na L0/L1
 komentarz `buildScene.ts` §3348). Arkusz jest ogromny, więc kolizji faktycznie nie ma.
 Czytelność jest jednak własnością ekranu i żaden dotychczasowy pomiar jej nie sprawdzał.
 
-Karta pozostaje OTWARTA, bo naprawa wymaga rozstrzygnięcia między trzema wykluczającymi
-się kierunkami:
+Karta była OTWARTA (rozstrzygnięcie w §10.1: wdrożono kierunek 1), bo naprawa wymagała
+wyboru między trzema wykluczającymi się kierunkami:
 1. **declutter ekranowy** — etykieta poniżej progu czytelności jest UKRYWANA (zgodne ze
    spec §6, ale pełny widok sieci traci opisy),
 2. **tekst w przestrzeni ekranu** — stały rozmiar niezależny od zoomu (czytelny zawsze,
@@ -268,9 +268,11 @@ wariant arkuszowy — karta do rozstrzygnięcia przy eksporcie rysunku, nie tuta
 ### 9.6 Dług zapisany z pomiarem
 
 Czytelność etykiet nie ma dziś **bramki automatycznej** — guardy SLD mierzą arkusz, nie
-ekran. Dopóki karta R2-B nie zostanie rozstrzygnięta, regresja czytelności jest
-niewykrywalna w CI. Bramka ekranowa (próg wysokości tekstu) powstanie razem z naprawą
-R2-B, bo dopiero wtedy będzie znany kontraktowy próg.
+ekran. Zapis z czasu rundy R2: dopóki karta R2-B nie zostanie rozstrzygnięta, regresja
+czytelności jest niewykrywalna w CI. Stan po rundzie R5 (§10.1): próg kontraktowy jest
+znany (`MIN_READABLE_LABEL_SCREEN_PX` = 6 px), a bramka czytelności istnieje dla MATERIAŁU
+AUDYTOWEGO (kadry szczegółu asertują, że wymagane opisy leżą całe w kadrze). Bramka dla
+produkcyjnego widoku pełnej sieci pozostaje zadaniem osobnym.
 
 ### 9.7 Runda R2b — kolizja dwóch kontraktów wyłapana przez CI
 
@@ -306,3 +308,67 @@ Bramki workflowu `sld-determinism.yml` uruchomione lokalnie po naprawie, wszystk
 `sld_determinism_guards` (0 naruszeń), `layoutEngine.substrate`, `ViewportController`,
 `LodPolicy`, `renderers`, `portAnchoredGeometry.substrate`, `StationInternalView`,
 `SldCommandService`, `ports` (razem 185 passed) oraz `accept:sld-v3` (ALL PASS).
+
+## 10. Runda powykonawcza R5 — oględziny na KADRACH SZCZEGÓŁU (2026-07-27)
+
+Runda wywołana jednym spostrzeżeniem: materiał audytowy opisany jako „L2 — obiekty i pola
+(+ detal stacji, aparaty, DER pełny)" **nie zawierał ani jednego z tych elementów**. Kadr
+obejmuje całą sieć wzorcową (52 stacje), więc skala kamery spada tak nisko, że declutter
+ukrywa 1135 opisów, legenda schodzi do smugi, a aparaty pól leżą poniżej piksela.
+Sześć zielonych testów tego nie wykrywało, bo sprawdzały RENDER i konsolę — nie
+CZYTELNOŚĆ tego, co mają pokazać (rejestr: V12K-234).
+
+### 10.1 Domknięcie karty R2-B (§9.3) i długu pomiarowego (§9.6)
+
+Karta R2-B była OTWARTA w oczekiwaniu na decyzję właściciela między trzema kierunkami.
+Wdrożony został kierunek 1 wraz z rekomendacją audytu — declutter EKRANOWY z progiem 6 px
+(`MIN_READABLE_LABEL_SCREEN_PX`) i jawnym wskaźnikiem „Ukryto N opisów — przybliż, aby
+zobaczyć" (V12K-218, V12K-222). **Karta ZAMKNIĘTA.**
+
+Dług z §9.6 („czytelność nie ma bramki automatycznej") jest domknięty w części, która
+dotyczy materiału audytowego: kadry szczegółu MIERZĄ obwiednię symbolu i wymaganych
+opisów, dosuwają ją realnym przeciągnięciem i **asertują, że każdy wymagany opis leży
+CAŁY w kadrze**. Bramka wyłapała po drodze trzy własne błędy narzędzia (napisów nie da się
+namierzyć przed powiększeniem, bo declutter ich nie renderuje; `.first()` brał opis INNEJ
+stacji — obwiednia 4430 px; osiem kroków kółka dawało obszar 1173×1265 px, wyższy niż
+widok 1080 px). Bramka czytelności dla PRODUKCYJNEGO widoku pełnej sieci pozostaje
+zadaniem osobnym — próg ekranowy jest tam własnością kamery, nie sceny.
+
+### 10.2 Karta R5-A · przesuwanie rysunku zaznaczało tekst schematu — NAPRAWIONE
+
+Kanwa nie deklarowała `user-select`, więc przeciągnięcie — gest KAMERY — było przez
+przeglądarkę rozumiane także jako zaznaczanie treści. POMIAR: po jednym przeciągnięciu
+`window.getSelection()` zwracało „Stacja T8 …", a niebieskie prostokąty podświetlenia
+objęły całą tabliczkę stacji. `touchAction: 'none'` chronił wyłącznie dotyk.
+
+Defekt istniał od początku v3 i był niewidoczny, bo **żaden test nie przesuwał kanwy
+realnym gestem** — dokładnie wzorzec z CLAUDE.md Zero-Debt pkt 5 (precedens martwego
+lewego klika). Ujawnił się w chwili, gdy kadr szczegółu zaczął używać kółka i
+przeciągnięcia zamiast wymuszonego stanu kamery.
+
+### 10.3 Karta R5-B · trzy konwencje zapisu liczby na jednym rysunku — NAPRAWIONE
+
+W TEJ SAMEJ tabliczce stacji stało „Szyna nN · 0.4 kV" (kropka) i „Odbiór ΣP 0,4 MW ·
+ΣQ 0,132 Mvar" (przecinek). Etykiety szyn wstawiały liczbę surowo, tabliczka danych
+systemu i etykieta linii miały po własnej kopii reguły polskiej — a wzorzec kontrolny
+`BUSBAR_LABEL_TEXT_PATTERN` **legalizował kropkę**, czyli bramka chroniła zapis niezgodny
+z resztą rysunku. Jedna funkcja `liczbaRysunkuPl` (`core/text.ts`) zamiast trzech
+konwencji; dwa miejsca dziesiętne, żeby szyna 0,69 kV nie stała się „0,7 kV".
+
+### 10.4 Znaleziska SPRAWDZONE i ODRZUCONE
+
+| Spostrzeżenie | Weryfikacja | Werdykt |
+|---|---|---|
+| Etykieta kabla „YAKXS 3×120/16 · 20 kV" przy szynie „Sekcja 1 · 15 kV" — niespójność napięć | 20 kV to napięcie ZNAMIONOWE kabla (12/20 kV dla sieci 15 kV), stoi na konwencjonalnym miejscu: za typem i przekrojem. `layout/lineLabel.ts` dokumentuje decyzję wraz z zakazem fabrykowania pary Uo/U, której katalog nie niesie. | NIE defekt — zmiana byłaby psuciem konwencji |
+| Każde pole stacji pokazuje `Q1` i `QE1` — nic nie da się wskazać jednoznacznie | To ponowne zobaczenie znaleziska **Z3, zamkniętego w §8** — sprawdzone, nie odkryte na nowo. Pola są rozróżnione OPISEM KIERUNKU nad szyną („kier. S01", „kier. S03", „odg. S45", pole transformatorowe), więc łańcuch „⟨pole⟩ + ⟨Q/QE⟩" jest zamknięty. Prefiks pola W GLIFIE poszerzyłby etykietę t4 ⇒ `apparatusIdentifierLeftReserve` ⇒ geometria — dług udokumentowany w `compose/apparatusSequence.ts` z warunkiem karty poszerzenia rezerwy. Sieć wzorcowa ma `bays: []`, więc `Bay.designation` nie ma także w DANYCH: render pokazuje fallback konwencji §19.1, czyli wszystko, co model niesie. | NIE nowy defekt — Z3 (§8) potwierdzony na kadrze szczegółu |
+| Pary zrzutów jasny/ciemny bajtowo identyczne | Świadoma decyzja projektowa (§9.4), nie defekt. Komentarz zamieniony w SPRAWDZANY niezmiennik: gdyby render zaczął reagować na motyw, asercja padnie i wymusi decyzję. | NIE defekt — zamknięte niezmiennikiem |
+
+### 10.5 Weryfikacja rundy
+
+vitest `src/ui/sld` 3777 zielonych (199 plików, 14 todo), `accept:sld-v3` ALL PASS, guard
+`sld_determinism_guards` 0 naruszeń, type-check rc=0, lint rc=0, guardy overlay /
+kodenazwy / terminologia UI / UTF-8 rc=0. Test e2e materiału audytowego: 9 zielonych.
+Bramki sprawdzone WSTRZYKNIĘTĄ REGRESJĄ, nie zielonym wynikiem — po usunięciu
+`userSelect` test pada i nazywa zaznaczony tekst; po podmianie zrzutu `dark` na `light`
+pada niezmiennik motywu. Determinizm materiału: dwie regeneracje sześciu kadrów bez
+zmiany ani jednego bajtu.
