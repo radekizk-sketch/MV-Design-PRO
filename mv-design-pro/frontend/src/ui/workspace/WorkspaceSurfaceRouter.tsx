@@ -1,6 +1,8 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 import { useAnalysisEligibilityStore, useEligibilityMatrix } from '../analysis-eligibility';
+import { fetchCtTypes } from '../catalog/api';
+import type { CTCatalogType } from '../catalog/types';
 
 import { useAppStateStore } from '../app-state';
 import { ResultsComparisonPage } from '../comparison/ResultsComparisonPage';
@@ -30,6 +32,7 @@ import {
   computeDerReadinessMatrix,
   summarizeReadiness,
   sumStationLoadImportKw,
+  wzbogacDeryOKlaseCt,
   zlozZBramkaModelu,
   type BramkaModelu,
   useGenerateAudit2ProofPack,
@@ -1922,9 +1925,33 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
     return wynik;
   }, [macierzModelu]);
 
+  // V12K-233: klasa przekladnika z PRAWDZIWEGO katalogu jako DANA dla reguly normowej.
+  // Pola `ct_accuracy_class`/`ct_application` byly w kontrakcie i w regule od V12K-232,
+  // ale nikt ich nie wypelnial — wiec dla kazdego realnego przekladnika os zabezpieczen
+  // zostawala „czesciowo" z kodem `der.ct_class.unresolved`. Katalog pobieramy RAZ dla
+  // ekranu; dopoki go nie ma, regula nadal zglasza brak danej (nie zgadujemy klasy).
+  const [typyCt, setTypyCt] = useState<readonly CTCatalogType[]>([]);
+  useEffect(() => {
+    let aktualne = true;
+    void fetchCtTypes()
+      .then((typy) => {
+        if (aktualne) setTypyCt(typy);
+      })
+      .catch(() => {
+        // Blad pobrania NIE moze udawac pustego katalogu z werdyktem — pola zostaja
+        // niewypelnione, wiec regula zglosi brak danej, tak jak przed pobraniem.
+        if (aktualne) setTypyCt([]);
+      });
+    return () => {
+      aktualne = false;
+    };
+  }, []);
+
+  const deryZKlasaCt = useMemo(() => wzbogacDeryOKlaseCt(allDers, typyCt), [allDers, typyCt]);
+
   // Agregacja kontroli DER per stacja (Faza F).
-  const derReadinessRows = allDers.map((der) => {
-    const sameStationCount = allDers.filter((d) => d.station_id === der.station_id).length;
+  const derReadinessRows = deryZKlasaCt.map((der) => {
+    const sameStationCount = deryZKlasaCt.filter((d) => d.station_id === der.station_id).length;
     const matrix = computeDerReadinessMatrix(der, {
       otherDersInStation: sameStationCount - 1,
     });
