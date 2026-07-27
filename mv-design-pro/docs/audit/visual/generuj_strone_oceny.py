@@ -37,6 +37,7 @@ OSADZONE = {
     # (`creator-harness.html?creator=wiazania`), nie makieta.
     "ZRZUT_WIAZANIA": "kreatory/wiazania_oze.png",
     "ZRZUT_PICKER": "kreatory/wiazania_oze_picker.png",
+    "ZRZUT_MOBILNY": "kreatory/wiazania_oze_mobile.png",
 }
 
 
@@ -518,6 +519,22 @@ razem z powodem, zamiast udawany atrapą.</p>
 <figure><img src="ZRZUT_PICKER" alt="Wybór przekładnika napięciowego z katalogu backendu" loading="lazy">
 <figcaption><strong>Wybór z realnego katalogu.</strong> Ten sam picker, którego używają pozostałe
 ekrany — nie druga implementacja. Nazwa, producent i parametry pochodzą z backendu.</figcaption></figure>
+
+<h2>Ten sam ekran na telefonie</h2>
+<figure><img src="ZRZUT_MOBILNY" alt="Powierzchnia E-21 na ekranie telefonu 390 px" loading="lazy">
+<figcaption><strong>390&nbsp;px, pełna szerokość.</strong> Etykieta nad wartością zamiast sztywnej
+kolumny 170&nbsp;px, cele dotykowe 44&nbsp;px, kafle jeden pod drugim. Bramka mierzy
+<em>geometrię wyrenderowanego ekranu</em> — brak przewijania w bok, wysokość celu dotykowego,
+położenie wartości względem etykiety — a nie klasy CSS.</figcaption></figure>
+
+<div class="karta">
+<p><strong>Bramka, która nie gryzła — złapana przez wykonawcę na sobie samym.</strong> Pierwsza
+wersja testu sprawdzała tylko „strona nie przewija się w bok". Usunięcie przewijania z paska
+zakładek… nie spowodowało upadku testu: panel karty jest kontenerem przewijanym, więc pochłaniał
+nadmiar, a dojście do ostatniej zakładki przesuwało całą kartę w bok przy „czystej" stronie.
+Test został wzmocniony o pomiar zachowania (pasek szerszy od okna MUSI dać się przewinąć sam)
+i dopiero wtedy ta sama injekcja dała czerwone.</p>
+</div>
 
 <h2>Zrzut żywego ekranu pokazał cztery rzeczy, których testy nie widziały</h2>
 <div class="karta otwarta">

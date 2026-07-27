@@ -64,6 +64,14 @@ mv-design-pro/artifacts/
 # Zrzuty ekranów kreatorów (artefakty regenerowalne przez e2e/creator-screenshot.spec)
 mv-design-pro/docs/audit/visual/kreatory/*.png
 mv-design-pro/docs/audit/visual/dokumentacja/*.png
+# WYJĄTEK: zrzuty OSADZANE w stronie oceny (`generuj_strone_oceny.py` czyta je z dysku
+# i wstawia jako data URI). Gdyby były ignorowane, po cofnięciu migawki kontenera
+# generator przerywałby z „brak zrzutu" — czyli reguła kasowałaby to, czego generator
+# w repo miał pilnować.
+!mv-design-pro/docs/audit/visual/kreatory/wiazania_oze*.png
+
+# Artefakty przebiegu Playwrighta — stan ostatniego uruchomienia, nie kod projektu.
+mv-design-pro/test-results/
 
 # Strona oceny — WYNIK generatora `generuj_strone_oceny.py` (zrzuty osadzone jako data URI).
 # Źródłem prawdy jest generator + zrzuty w repo, nie ten plik; po cofnięciu migawki
