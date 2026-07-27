@@ -57,7 +57,7 @@ def zrzut_data_uri(nazwa: str) -> str:
     return f"data:{mime};base64," + base64.b64encode(plik.read_bytes()).decode()
 
 
-STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…235</title>
+STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…239</title>
 <style>
 :root{--tlo:#f7f6f2;--karta:#fff;--tekst:#191814;--cichy:#5d594f;--linia:#dbd6c9;--akcent:#2e5f7a;
 --akcent-tlo:#e6eef3;--ok:#2f6b3f;--brak:#8c2f2f;--uwaga:#8a5a12}
@@ -100,7 +100,7 @@ padding:3px 7px;border-radius:2px;vertical-align:2px}
 </style>
 <div class="owijka">
 <header>
-<div class="nadtytul">Seria · V12K-216…235 · jedna doba</div>
+<div class="nadtytul">Seria · V12K-216…239 · jedna doba</div>
 <h1>Od schematu do jednej reguły: brak danej nie może stać się zerem</h1>
 <p class="cichy">Zrzuty żywej aplikacji, sieć wzorcowa 52 stacji · pomiar na renderze i na kodzie · 2026-07-27</p>
 </header>
@@ -195,6 +195,42 @@ to zapisany dług z policzoną ceną, nie przeoczenie.</td></tr>
 <td>Decyzja projektowa, nie defekt — zamknięta sprawdzanym niezmiennikiem (wyżej).</td></tr>
 </tbody></table></div>
 
+<h2>Norma wróciła do katalogu</h2>
+<p>Reguła IEC 61869-2 — „klasa z literą P oznacza rdzeń zabezpieczeniowy" — była
+zaimplementowana <strong>w warstwie prezentacji</strong>, a kontrakt katalogu tej danej
+w ogóle nie wystawiał. Katalog jest właścicielem tej własności, więc derywacja stoi teraz
+w nim, a ekran czyta opublikowaną wartość. Przy okazji każdy rdzeń zabezpieczeniowy niesie
+ALF — liczbę po literze P, czyli <em>odczyt oznaczenia</em>, nie oszacowanie.</p>
+<div class="tab"><table>
+<thead><tr><th>Katalog referencyjny CT</th><th class="num">Liczba</th><th>Co z tego wynika</th></tr></thead>
+<tbody>
+<tr><td>rdzenie zabezpieczeniowe (2× 5P10, 6× 5P20, 1× 10P10)</td><td class="num">9</td>
+<td>na tych typach może dziś stanąć oś zabezpieczeń</td></tr>
+<tr><td>rdzenie pomiarowe (0,5)</td><td class="num">3</td>
+<td>dają <em>werdykt</em> „klasa nie jest zabezpieczeniowa", nie brak danej</td></tr>
+<tr><td>typy dwurdzeniowe</td><td class="num">0</td>
+<td>warunek różnicowy 87T pozostaje nierozstrzygalny — <strong>uczciwie</strong></td></tr>
+</tbody></table></div>
+
+<div class="karta">
+<p><strong>Ekran kazał wybrać przekładnik, który już był wybrany.</strong> Wiersze
+„Przekładnik CT/VT" rozwiązywały identyfikator w lokalnym katalogu syntetycznym o zerowym
+pokryciu z prawdziwym (5 wpisów wobec 12, i 4 wobec 9), więc dla aparatu przypisanego
+w modelu wypisywały „wybierz wariant katalogowy". Teraz etykieta ma trzy <em>różne</em>
+stany: brak przypisania to polecenie wyboru, przypisanie bez wpisu w katalogu to kreska
+(„nie wiem, jak się nazywa"), a znaleziony typ to nazwa katalogowa. Żaden nie udaje
+drugiego.</p>
+</div>
+
+<div class="karta wycof">
+<p><strong>Samokorekta w trakcie tej naprawy.</strong> Usunąłem najpierw także katalog VT
+jako martwy — bo inwentarz konsumentów przeczytałem przez <code>head</code>, który uciął
+listę. Pełny przebieg pokazał realnego konsumenta: picker w karcie zabezpieczeń stacji.
+Katalog VT przywrócony, lekcja zapisana w rejestrze: <em>inwentarz czytany przez
+<code>head</code> nie jest inwentarzem</em>. To ta sama klasa błędu, przed którą chroni
+zasada „mierz, nie zgaduj" — tyle że popełniona na własnym pomiarze.</p>
+</div>
+
 <h2>Zamknięte na schemacie</h2>
 <div class="tab"><table>
 <thead><tr><th>Rejestr</th><th>Rzecz</th><th>Pomiar</th></tr></thead>
@@ -215,6 +251,8 @@ to zapisany dług z policzoną ceną, nie przeoczenie.</td></tr>
 <td class="num">testy 6 → <span class="lep">9</span></td></tr>
 <tr><td>V12K-235</td><td>Przesuwanie rysunku nie zaznacza tekstu · jeden zapis liczby</td>
 <td class="num">3 konwencje → <span class="lep">1</span></td></tr>
+<tr><td>V12K-239</td><td>Rdzeń CT wyprowadzany w katalogu · koniec katalogu atrapy</td>
+<td class="num">12 typów, <span class="lep">9</span> zabezp.</td></tr>
 </tbody></table></div>
 
 <div class="karta wycof">
@@ -449,7 +487,7 @@ pytest 1239 (aplikacja), 957 (API + analizy), 613 (solwery + API), 397 (katalog 
 <code>accept:sld-v3</code> 224 PASS / 0 FAIL; guard determinizmu SLD 0 naruszeń; guard parzystości
 69/69 encji; guard determinizmu materiału audytowego — dwie regeneracje sześciu zrzutów
 bez zmiany <em>ani jednego bajtu</em>; type-check, lint, guardy architektury, katalogu, UI
-i dokumentacji zielone. Dwadzieścia sześć commitów, każdy wypchnięty od razu po weryfikacji —
+i dokumentacji zielone. Dwadzieścia dziewięć commitów, każdy wypchnięty od razu po weryfikacji —
 kontener cofnął migawkę osiem razy, ostatni raz o 10:40, i tylko dlatego nic nie przepadło.</p>
 <p class="cichy">Bramki sprawdzane wstrzykniętą regresją, nie zielonym wynikiem — dla niezmiennika
 motywu nadpisałem jeden zrzut bajtami drugiego i potwierdziłem, że test pada z komunikatem
