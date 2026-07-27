@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useAppStateStore } from '../../../app-state/store';
 import { EMPTY_DER_READINESS, useStationDerStore } from '../../../network-build/station-der';
+import { MISSING_DASH } from '../../../shared/formatPolishValue';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { BessSurface, FwSurface, PvSourceSurface } from '../DerSurfaces';
 
@@ -341,7 +342,13 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
 
     fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
     expect(screen.getByText('Kompletność konfiguracji')).toBeInTheDocument();
-    expect(screen.getByText('kompletna konfiguracja')).toBeInTheDocument();
+    // INTENCJA TESTU bez zmian: legacy generator BEZ rozpoznawalnego `catalog_ref`
+    // dostaje pakiet katalogowy — dowodzą tego asercje wyżej. Zmieniony jest werdykt
+    // kompletności: ten model nie niesie ŻADNEGO profilu zgodności, więc konfiguracja
+    // NIE jest kompletna. Przed V12K-236 wychodziła „kompletna", bo brak profilu był
+    // po cichu zastępowany zestawem ENEA — czyli test kodyfikował fabrykację operatora.
+    expect(screen.getByText('wybierz profil zgodności przyłączeniowej')).toBeInTheDocument();
+    expect(screen.queryByText('kompletna konfiguracja')).not.toBeInTheDocument();
   });
 
   it('PvSourceSurface nie gubi falownika przekazanego z SLD, gdy snapshot nie ma jeszcze generatora', () => {
@@ -436,6 +443,73 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     const breadcrumb = screen.getByTestId('der-breadcrumb-station');
     expect(breadcrumb).toBeInTheDocument();
     expect(breadcrumb.textContent).toContain('station_xyz');
+  });
+
+  it('wytwórca ze snapshotu BEZ profili nie dostaje operatora z domysłu (V12K-236)', () => {
+    // POMIAR PRZED NAPRAWĄ: brak profilu w modelu był zastępowany zestawem ENEA
+    // (`ncrfg_enea`/`lvrt_enea_b`/`hvrt_enea_b`/`pf_enea_b`), więc cztery osie
+    // gotowości (Q(U), FRT, HVRT, NC RfG) świeciły „gotowe" dla wytwórcy bez
+    // ŻADNEGO profilu — a nazwa operatora na ekranie była wymyślona. Każdy z pięciu
+    // OSD ma inne krzywe LVRT/HVRT, więc podstawienie zmieniało werdykt normowy.
+    useSnapshotStore.setState({
+      snapshot: {
+        header: {
+          enm_version: '1.0',
+          name: 'Model bez profili',
+          created_at: FROZEN_NOW,
+          updated_at: FROZEN_NOW,
+          revision: 1,
+          hash_sha256: 'hash',
+          defaults: { frequency_hz: 50, unit_system: 'SI' },
+        },
+        buses: [],
+        branches: [],
+        transformers: [],
+        sources: [],
+        loads: [],
+        generators: [
+          {
+            id: 'gen_bez_profili',
+            ref_id: 'gen_bez_profili',
+            name: 'PV bez profili w modelu',
+            tags: [],
+            meta: {},
+            bus_ref: 'bus_lv_1',
+            p_mw: 0.5,
+            gen_type: 'pv_inverter',
+            catalog_ref: 'pv_inv_huawei_185',
+            station_ref: 'station_snapshot',
+            connection_variant: 'nn_side',
+            materialized_params: {},
+          },
+        ],
+        substations: [
+          {
+            id: 'station_snapshot',
+            ref_id: 'station_snapshot',
+            name: 'Stacja inline',
+            tags: [],
+            meta: {},
+            station_type: 'inline',
+            bus_refs: ['bus_lv_1'],
+            transformer_refs: [],
+          },
+        ],
+        bays: [],
+        junctions: [],
+        corridors: [],
+        measurements: [],
+        protection_assignments: [],
+      },
+    } as never);
+
+    render(<PvSourceSurface surface={makeSurface('gen_bez_profili')} />);
+    const surface = screen.getByTestId('pv-source-surface');
+
+    // Żaden profil ENEA nie może się pojawić — model go nie niesie.
+    expect(surface.textContent).not.toMatch(/ENEA/i);
+    // Brak danej jest POKAZANY jako brak (kreska), nie zastąpiony wartością.
+    expect(surface.textContent).toContain(MISSING_DASH);
   });
 
   it('KPI Profil NC RfG wyświetla kreskę gdy brak profilu', () => {

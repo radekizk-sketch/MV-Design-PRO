@@ -83,12 +83,17 @@ type PowerCatalogItem = CatalogItem & {
   readonly nominal_power_kw: number;
 };
 
-const DEFAULT_DER_PROFILE_REFS = {
-  nc_rfg_profile_ref: 'ncrfg_enea',
-  lvrt_curve_ref: 'lvrt_enea_b',
-  hvrt_curve_ref: 'hvrt_enea_b',
-  pf_curve_ref: 'pf_enea_b',
-} as const;
+// ZERO DOMYSLNEGO OPERATORA (V12K-236). Nie ma tu żadnego „profilu domyślnego":
+// wcześniej brak profilu w modelu był zastępowany zestawem ENEA
+// (`ncrfg_enea`/`lvrt_enea_b`/`hvrt_enea_b`/`pf_enea_b`), co fabrykowało OPERATORA —
+// a każdy z pięciu obsługiwanych OSD (pse, energa, tauron, enea, pge) ma własne krzywe
+// LVRT/HVRT i własne wymagania Q(U). Skutek: cztery osie gotowości (Q(U), FRT, HVRT,
+// NC RfG) świeciły „gotowe" dla wytwórcy, którego model NIE NIESIE ŻADNEGO profilu,
+// a `buildReadinessForGenerator` — czytający surowy rekord — mówił o tym samym
+// wytwórcy „zablokowane". Backend takiego domysłu nie robi: `load_nc_rfg_profile`
+// odrzuca nieznanego operatora wyjątkiem, zamiast podstawiać jakiegokolwiek.
+// Brak profilu zostaje BRAKIEM (null) — reguła gotowości nazywa go kodem
+// `der.nc_rfg.missing` z akcją naprawczą „wybierz profil OSD".
 
 function cleanCatalogText(value: string): string {
   const replacements: readonly [string, string][] = [
@@ -332,12 +337,11 @@ function buildDerFromGenerator(
     generator.catalog_ref ?? stringFromRecord(materialized, ['device_catalog_ref']),
     nominalPowerKw,
   );
-  const effectiveNcRfgRef = ncRfgRef ?? DEFAULT_DER_PROFILE_REFS.nc_rfg_profile_ref;
   const completeness: DerCompleteness = !pccRef
     ? 'no_pcc'
     : !catalogRef
       ? 'missing_catalog'
-      : !effectiveNcRfgRef
+      : !ncRfgRef
         ? 'missing_profile'
         : 'complete';
 
@@ -379,25 +383,18 @@ function buildDerFromGenerator(
     },
     profiles: {
       ...EMPTY_DER_PROFILES,
-      nc_rfg_profile_ref: effectiveNcRfgRef,
-      lvrt_curve_ref: stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt'])
-        ?? DEFAULT_DER_PROFILE_REFS.lvrt_curve_ref,
-      hvrt_curve_ref: stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt'])
-        ?? DEFAULT_DER_PROFILE_REFS.hvrt_curve_ref,
+      nc_rfg_profile_ref: ncRfgRef,
+      lvrt_curve_ref: stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt']),
+      hvrt_curve_ref: stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt']),
       regulation_profile_ref: stringFromRecord(profiles, ['regulation_profile_ref', 'q_u_curve_ref']),
-      pf_curve_ref: stringFromRecord(profiles, ['pf_curve_ref', 'p_f_curve_ref', 'pf'])
-        ?? DEFAULT_DER_PROFILE_REFS.pf_curve_ref,
+      pf_curve_ref: stringFromRecord(profiles, ['pf_curve_ref', 'p_f_curve_ref', 'pf']),
     },
     nominal_power_kw: nominalPowerKw,
     completeness,
-    readiness: buildReadinessForGenerator(generator, catalogRef, {
-      ...profiles,
-      nc_rfg_profile_ref: effectiveNcRfgRef,
-      lvrt_curve_ref: stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt'])
-        ?? DEFAULT_DER_PROFILE_REFS.lvrt_curve_ref,
-      hvrt_curve_ref: stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt'])
-        ?? DEFAULT_DER_PROFILE_REFS.hvrt_curve_ref,
-    }),
+    // Ta sama, SUROWA mapa profili, którą widzi rekord wyżej — dwie oceny tego samego
+    // wytwórcy nie mogą się rozjeżdżać (przed V12K-236 rekord dostawał profile domyślne,
+    // a ta funkcja surowe, więc jedna ocena mówiła „gotowe", druga „zablokowane").
+    readiness: buildReadinessForGenerator(generator, catalogRef, profiles),
     created_at: '',
     updated_at: '',
   };
