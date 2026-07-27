@@ -1315,7 +1315,13 @@ def _resolve_neutral_grounding_mode(
             return _map_grounding_type(transformer.hv_neutral)
         if transformer.lv_neutral is not None:
             return _map_grounding_type(transformer.lv_neutral)
-    return "nieznany" if not sources else "bezposrednio_uziemiony"
+    # V12K-246: brak danych o punkcie neutralnym to „nieznany", NIE „bezposrednio
+    # uziemiony". Poprzedni domysl zamienial BRAK DANEJ w najmniej ostrozny werdykt:
+    # w sieci bezposrednio uziemionej prad zwarcia doziemnego jest duzy i mierzalny
+    # kryterium nadpradowym, wiec dobor zabezpieczen NIE zglaszal potrzeby kryterium
+    # kierunkowego — a polskie sieci SN sa w wiekszosci kompensowane albo uziemione
+    # przez rezystor. Obecnosc zrodla na szynie nie mowi NIC o sposobie uziemienia.
+    return "nieznany"
 
 
 def _map_grounding_type(grounding: GroundingConfig) -> str:
