@@ -47,6 +47,13 @@ JTH_AL_ST_OHL = 88.0  # Aluminium-stal linie napowietrzne (ACSR/AFL)
 # wartosci jth powyzej (komentarze „θb=90°C → θk=250°C" mowily o nich od poczatku,
 # ale liczby nie byly danymi, tylko tekstem). Karta F-K1 faza 6: dowod obliczeniowy
 # musi pokazac obie temperatury, bo bez nich nie da sie zweryfikowac k.
+# Temperatura ROBOCZA zyly izolacji usieciowanej [°C] — pierwsza polowa pary (theta_b)
+# do TEMP_SHORT_CIRCUIT_XLPE_C. Dana normowa dla ZADEKLAROWANEJ izolacji (IEC 60502-2),
+# a nie wartosc typowa: katalog potwierdza ja jednoglosnie — wszystkie 37 typow XLPE i
+# 18 typow EPR, ktore te temperature podaja, podaja 90 °C. Osiem typow polskich
+# (YHAKXS/YHKXS) jej NIE podawalo, przez co kryterium IEC 60949 nie mialo pierwszej
+# temperatury i konczylo sie brakiem werdyktu (V12K-225).
+TEMP_OPERATING_XLPE_C = 90.0  # XLPE / EPR (IEC 60502-2)
 TEMP_SHORT_CIRCUIT_XLPE_C = 250.0  # XLPE / EPR, izolacja usieciowana (IEC 60502-2)
 TEMP_SHORT_CIRCUIT_PVC_C = 160.0  # PVC (IEC 60502-1 / PN-HD 60364-4-43 tab. 43A)
 
@@ -144,10 +151,14 @@ def _float_param(params: dict[str, Any], key: str) -> float | None:
     value = params.get(key)
     if isinstance(value, int | float):
         return float(value)
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
+    # Rekordy katalogu moga niesc liczbe jako tekst; wszystko inne (w tym brak
+    # klucza) daje None — brak danej nie moze stac sie zerem.
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
 
 
 def _with_zero_sequence_parameters(record: dict[str, Any], *, kind: str) -> dict[str, Any]:
@@ -2205,6 +2216,7 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "number_of_cores": 1,
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
             "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "r_ohm_per_km": 0.641,
             "x_ohm_per_km": 0.130,
@@ -2227,6 +2239,7 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "number_of_cores": 1,
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
             "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "r_ohm_per_km": 0.320,
             "x_ohm_per_km": 0.123,
@@ -2249,6 +2262,7 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "number_of_cores": 1,
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
             "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "r_ohm_per_km": 0.253,
             "x_ohm_per_km": 0.121,
@@ -2271,6 +2285,7 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "number_of_cores": 1,
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
             "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "r_ohm_per_km": 0.206,
             "x_ohm_per_km": 0.119,
@@ -2293,6 +2308,7 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "number_of_cores": 1,
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
             "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "r_ohm_per_km": 0.125,
             "x_ohm_per_km": 0.115,
@@ -2316,6 +2332,7 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "number_of_cores": 1,
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
             "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "r_ohm_per_km": 0.193,
             "x_ohm_per_km": 0.122,
@@ -2338,6 +2355,7 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "number_of_cores": 1,
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
             "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "r_ohm_per_km": 0.124,
             "x_ohm_per_km": 0.119,
@@ -2360,6 +2378,7 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
             "number_of_cores": 1,
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
             "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "r_ohm_per_km": 0.076,
             "x_ohm_per_km": 0.115,

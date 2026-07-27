@@ -88,6 +88,9 @@ function pozycja(over: Partial<PozycjaCieplna> = {}): PozycjaCieplna {
       temp_poczatkowa_c: 90,
       temp_koncowa_c: 250,
       zrodlo_pl: 'IEC 60502-2 / IEC 60949',
+      zrodlo_k: 'KATALOG' as const,
+      zrodlo_k_pl: 'wartość katalogowa producenta',
+      wyprowadzenie_k: null,
       braki_pl: [],
       kompletne: true,
     },
@@ -553,6 +556,9 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
                     temp_poczatkowa_c: 90,
                     temp_koncowa_c: null,
                     zrodlo_pl: null,
+                    zrodlo_k: 'KATALOG' as const,
+                    zrodlo_k_pl: 'wartość katalogowa producenta',
+                    wyprowadzenie_k: null,
                     braki_pl: ['materiał żyły', 'temperatura końcowa (zwarciowa)'],
                     kompletne: false,
                   },
@@ -568,6 +574,69 @@ describe('Panel dowodu obliczeniowego (karta F-K1 faza 6)', () => {
     const brak = await screen.findByTestId('mvd-jakosc-cieplna-brak-k');
     expect(brak.textContent).toContain('materiał żyły');
     expect(brak.textContent).toContain('temperatura końcowa');
+  });
+
+  it('wartość katalogowa k nie jest opatrzona ostrzeżeniem dokumentacyjnym', async () => {
+    // Kontrola ODWROTNA do testu poniżej: bez niej ostrzeżenie mogłoby wisieć zawsze
+    // i przestałoby cokolwiek znaczyć.
+    renderZWyborem();
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    const pochodzenie = await screen.findByTestId('mvd-jakosc-cieplna-pochodzenie-k');
+    expect(pochodzenie.textContent).toContain('katalogowa');
+    expect(screen.queryByTestId('mvd-jakosc-cieplna-k-wyprowadzone')).toBeNull();
+  });
+
+  it('k wyprowadzone ze wzoru normy jest nazwane wprost, z ostrzeżeniem o karcie producenta', async () => {
+    // V12K-224: bez tego wiersza projektant nie odróżni wartości producenta od
+    // policzonej ze wzoru — a to rozstrzyga, czy liczbę wolno wstawić do dokumentacji.
+    fetchMock.mockImplementation((url: string) =>
+      Promise.resolve(
+        odpowiedzOk(
+          String(url).includes('/proof')
+            ? dowodPelny
+            : odpowiedz([
+                pozycja({
+                  uzasadnienie_k: {
+                    k_a_s05_per_mm2: 94.553,
+                    tozsamosc_pl: 'k WYPROWADZONE ze wzoru IEC 60949 § 4.',
+                    rodzaj_przewodu: 'KABEL',
+                    rodzaj_przewodu_pl: 'kabel',
+                    granica_temperatury_pl: null,
+                    material_zyly: 'AL',
+                    izolacja: 'XLPE',
+                    temp_poczatkowa_c: 90,
+                    temp_koncowa_c: 250,
+                    zrodlo_pl: null,
+                    zrodlo_k: 'WYPROWADZONE_IEC60949' as const,
+                    zrodlo_k_pl: 'wyprowadzone ze wzoru IEC 60949 (katalog nie podaje)',
+                    wyprowadzenie_k: {
+                      wzor_tex: 'k = \\sqrt{...}',
+                      material_klucz: 'AL',
+                      qc_j_per_c_mm3: 0.0025,
+                      rho20_ohm_mm: 2.8264e-5,
+                      beta_c: 228,
+                      temp_poczatkowa_c: 90,
+                      temp_koncowa_c: 250,
+                      norma: 'IEC 60949 § 4',
+                    },
+                    braki_pl: [],
+                    kompletne: true,
+                  },
+                }),
+              ]),
+        ),
+      ),
+    );
+    render(<SekcjaWytrzymaloscCieplna {...props()} />);
+    await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
+    fireEvent.click(screen.getByText('Magistrala L-01'));
+
+    const pochodzenie = await screen.findByTestId('mvd-jakosc-cieplna-pochodzenie-k');
+    expect(pochodzenie.textContent).toContain('IEC 60949');
+    const ostrzezenie = screen.getByTestId('mvd-jakosc-cieplna-k-wyprowadzone');
+    expect(ostrzezenie.textContent).toContain('karta katalogowa');
   });
 
   it('podaje normę z punktem i prowadzi na schemat realnym klikiem', async () => {

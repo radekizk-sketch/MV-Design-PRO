@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from network_model.catalog.mv_cable_line_catalog import (
+    TEMP_OPERATING_XLPE_C,
     get_all_cable_types,
     get_all_line_types,
     get_cable_catalog_quality_summary,
@@ -102,3 +103,40 @@ def test_mv_cable_records_have_explicit_quality_metadata() -> None:
             "CZESCIOWO_ZWERYFIKOWANY",
             "ZWERYFIKOWANY",
         }
+
+
+def test_kazdy_typ_kablowy_niesie_pare_temperatur_do_kryterium_cieplnego() -> None:
+    """V12K-225: bez PARY temperatur kryterium IEC 60949 nie ma czego podstawic.
+
+    Osiem typow polskich (YHAKXS/YHKXS) podawalo tylko temperature zwarciowa, a
+    temperatura robocza „istniala" wylacznie jako domyslna wartosc dataclassy
+    `CableType.max_temperature_c = 90.0` — sciezka rekordowa zglaszala brak, sciezka
+    obiektowa go maskowala. Ten test pilnuje, zeby kolejny dodany typ nie wrocil do
+    tego stanu: brak temperatury w REKORDZIE oznacza kryterium bez werdyktu.
+    """
+    bez_pary: list[str] = []
+    for item in get_all_cable_types():
+        params = item["params"]
+        if params.get("max_temperature_c") is None or (
+            params.get("short_circuit_temperature_c") is None
+        ):
+            bez_pary.append(str(item["id"]))
+
+    assert bez_pary == [], (
+        "typy kablowe bez pary temperatur (kryterium cieplne bez werdyktu): " f"{bez_pary}"
+    )
+
+
+def test_temperatura_robocza_izolacji_usieciowanej_jest_jednoglosna() -> None:
+    """Kontrola SPOJNOSCI, nie wartosci: stala TEMP_OPERATING_XLPE_C ma sens tylko
+    wtedy, gdy katalog nie ma dla tej izolacji drugiej temperatury roboczej. Gdyby
+    pojawil sie typ XLPE z inna theta_b, nazwana stala przestala by byc prawda o
+    katalogu i uzupelnienie osmiu rekordow trzeba by przemyslec na nowo.
+    """
+    temperatury_usieciowane = {
+        params["max_temperature_c"]
+        for params in (item["params"] for item in get_all_cable_types())
+        if params.get("insulation_type") in {"XLPE", "EPR"}
+    }
+
+    assert temperatury_usieciowane == {TEMP_OPERATING_XLPE_C}

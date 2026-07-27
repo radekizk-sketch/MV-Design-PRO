@@ -109,6 +109,11 @@ export const JAKOSC_STRINGS = {
   // graniczną przy zwarciu — izolacja (kabel) czy wytrzymałość mechaniczna
   // żyły i osprzęt (przewód goły linii napowietrznej).
   polRodzajPrzewodu: 'Rodzaj przewodu',
+  polPochodzenieK: 'Pochodzenie k',
+  polZrodloMaterialowe: 'Źródło danych materiałowych',
+  ostrzezenieKWyprowadzone:
+    'Wartość k nie pochodzi z karty producenta — katalog nie podaje dla tego typu '
+    + 'ani Ith(1 s), ani Jth(1 s). Do dokumentacji wymagana karta katalogowa kabla.',
   sekcjaNormy: 'Podstawa normowa',
   kolumnaParametr: 'Parametr',
   kolumnaWartosc: 'Wartość',

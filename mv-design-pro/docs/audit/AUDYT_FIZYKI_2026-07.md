@@ -321,12 +321,34 @@ pokazuje wzór i stałe, nie `k = Jth(1 s)`.
 korzystniejszą. Karta producenta może uwzględniać ograniczenia, których rachunek
 adiabatyczny nie widzi (osprzęt, głowice, warunki ułożenia).
 
-**Pozostaje niesprawdzalnych 8 typów** — brakuje im temperatury roboczej (θ_i),
-a `CableType.max_temperature_c` ma domyślną wartość klasy 90,0, więc ścieżka
-obiektowa **maskuje** ten brak, podczas gdy ścieżka rekordowa raportuje go uczciwie.
-Wyprowadzenie θ_i z tego defaultu byłoby derywacją ze zgadniętej danej, więc tego
-nie robimy. Do uzupełnienia z kart producentów albo przez usunięcie defaultu —
-zapis długu, nie obejście.
+**H-3 (W3) — brak temperatury roboczej u tych samych 8 typów, maskowany defaultem.**
+`CableType.max_temperature_c` ma domyślną wartość klasy 90,0, więc ścieżka obiektowa
+**maskowała** brak, a ścieżka rekordowa raportowała go uczciwie (`None`) — dwie drogi
+do tej samej danej dawały różną odpowiedź. Wyprowadzenie θ_i z takiego defaultu byłoby
+derywacją ze zgadniętej danej, więc tego nie zrobiono.
+
+ROZSTRZYGNIĘCIE: uzupełniono **dane w katalogu**, nie dodano drugiej ścieżki
+wnioskowania w solverze — dana trafia wtedy do wszystkich konsumentów, a katalog
+przestaje być niespójny sam ze sobą. Podstawa: θ_b = 90 °C jest normową własnością
+*zadeklarowanej* izolacji (IEC 60502-2), a katalog potwierdza to **jednogłośnie** —
+wszystkie 37 typów XLPE i 18 typów EPR, które tę temperaturę podają, podają 90 °C.
+Nowa nazwana stała `TEMP_OPERATING_XLPE_C`, dwa testy kontrolne (żaden typ kablowy bez
+pary temperatur; jednogłośność θ_b dla izolacji usieciowanej — gdyby pojawił się typ
+XLPE z inną θ_b, nazwana stała przestałaby być prawdą o katalogu).
+
+POMIAR KOŃCOWY: **63 z 63** kandydatów kablowych kończy się werdyktem — 54 na danych
+katalogowych, 9 na k wyprowadzonym.
+
+**Zastrzeżenie do wyprowadzenia (odnotowane wprost).** Ten sam plik katalogu stosuje
+zasadę „wartość równa albo niższa od wzorowej, czyli nigdy optymistyczna" (patrz
+komentarz przy `TEMP_SHORT_CIRCUIT_OHL_AL_C`). Wyprowadzone k = 94,553 jest o 0,59 %
+**wyższe** od tablicowych 94, więc kabel z k wyprowadzonym wypada nieznacznie mocniej
+niż jego tablicowy bliźniak. Nie zaokrąglamy w dół, bo byłaby to niejawna korekta
+wyniku normy; zamiast tego: (1) sam wzór adiabatyczny IEC 60949 jest modelem
+zachowawczym — pomija odpływ ciepła do otoczenia, który rzeczywistą wytrzymałość
+zwiększa, więc wynik nie jest optymistyczny wobec fizyki, tylko wobec zaokrąglonej
+tablicy; (2) źródło k jest nazwane w wyniku i w dowodzie, więc projektant przy
+wykorzystaniu blisko 100 % widzi, że dla tej pozycji należy zdobyć kartę producenta.
 
 ## 7. Kryterium odbioru audytu
 

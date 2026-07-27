@@ -270,11 +270,28 @@ export function PanelDowoduCieplnego({
               </dd>
             </div>
             <div>
-              <dt>Źródło</dt>
+              <dt>{JAKOSC_STRINGS.polZrodloMaterialowe}</dt>
               <dd>{k.zrodlo_pl ?? JAKOSC_STRINGS.kreska}</dd>
+            </div>
+            {/*
+              V12K-224: POCHODZENIE k jest osobnym faktem niz zrodlo danych
+              materialowych. Bez tego wiersza projektant nie odrozni wartosci
+              producenta od policzonej ze wzoru normy — a to rozstrzyga, czy liczbe
+              wolno wstawic do dokumentacji bez karty katalogowej.
+            */}
+            <div>
+              <dt>{JAKOSC_STRINGS.polPochodzenieK}</dt>
+              <dd data-testid="mvd-jakosc-cieplna-pochodzenie-k">
+                {k.zrodlo_k_pl ?? JAKOSC_STRINGS.kreska}
+              </dd>
             </div>
           </dl>
           <p className="mvd-cieplny-opis">{k.tozsamosc_pl}</p>
+          {k.zrodlo_k === 'WYPROWADZONE_IEC60949' && (
+            <p className="mvd-cieplny-brak" data-testid="mvd-jakosc-cieplna-k-wyprowadzone">
+              {JAKOSC_STRINGS.ostrzezenieKWyprowadzone}
+            </p>
+          )}
           {k.granica_temperatury_pl && (
             <p className="mvd-cieplny-opis" data-testid="mvd-jakosc-cieplna-granica-temp">
               {k.granica_temperatury_pl}

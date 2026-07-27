@@ -541,8 +541,31 @@ export interface UzasadnienieK {
   readonly temp_poczatkowa_c: number | null;
   readonly temp_koncowa_c: number | null;
   readonly zrodlo_pl: string | null;
+  /**
+   * POCHODZENIE samego k (V12K-224) — inne niz `zrodlo_pl`, ktore mowi o zrodle
+   * danych MATERIALOWYCH. `KATALOG` = wartosc producenta; `WYPROWADZONE_IEC60949`
+   * = katalog nie podaje ani Ith(1 s), ani Jth(1 s), wiec k policzono ze wzoru
+   * normy dla zadeklarowanego materialu i pary temperatur. Roznica jest istotna
+   * dokumentacyjnie: wartosci wyprowadzonej nie wolno wstawic do dokumentacji jako
+   * katalogowej bez karty producenta.
+   */
+  readonly zrodlo_k: 'KATALOG' | 'WYPROWADZONE_IEC60949' | null;
+  readonly zrodlo_k_pl: string | null;
+  readonly wyprowadzenie_k: WyprowadzenieK | null;
   readonly braki_pl: readonly string[];
   readonly kompletne: boolean;
+}
+
+/** Skladniki wyprowadzenia k wg IEC 60949 § 4 — do odtworzenia rachunku bez kodu. */
+export interface WyprowadzenieK {
+  readonly wzor_tex: string;
+  readonly material_klucz: string;
+  readonly qc_j_per_c_mm3: number;
+  readonly rho20_ohm_mm: number;
+  readonly beta_c: number;
+  readonly temp_poczatkowa_c: number;
+  readonly temp_koncowa_c: number;
+  readonly norma: string;
 }
 
 /** Ślad czasu wyłączenia — `application/analyses/protection/czas_wylaczenia_galezi.py`. */
