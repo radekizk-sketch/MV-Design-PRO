@@ -336,82 +336,7 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
 /** Klasa CT wg IEC 61869-2 (zabezpieczenia: 5P/10P; pomiary: 0,2/0,5/1,0). */
 export type CtClass = '0.2' | '0.5' | '1.0' | '5P10' | '5P20' | '10P10' | '10P20';
 
-export interface CtCatalogItem {
-  readonly id: string;
-  readonly catalog_namespace: 'ct';
-  readonly catalog_version: string;
-  readonly label_pl: string;
-  readonly ratio_primary_a: number;
-  readonly ratio_secondary_a: number;
-  readonly burden_va: number;
-  readonly accuracy_class: CtClass;
-  /** Współczynnik bezpieczeństwa zabezpieczeń (Ksbn — IEC 61869). */
-  readonly safety_factor?: number;
-  /** Stosowanie: zabezpieczenia, pomiary, lub uniwersalne. */
-  readonly application: 'protection' | 'metering' | 'dual';
-}
 
-export const CT_CATALOG: ReadonlyArray<CtCatalogItem> = Object.freeze([
-  {
-    id: 'ct_100_5_5p10',
-    catalog_namespace: 'ct',
-    catalog_version: '2024.1',
-    label_pl: 'CT 100/5 A · 5P10 · 15 VA (zabezpieczenia)',
-    ratio_primary_a: 100,
-    ratio_secondary_a: 5,
-    burden_va: 15,
-    accuracy_class: '5P10',
-    safety_factor: 10,
-    application: 'protection',
-  },
-  {
-    id: 'ct_200_5_5p20',
-    catalog_namespace: 'ct',
-    catalog_version: '2024.1',
-    label_pl: 'CT 200/5 A · 5P20 · 30 VA (zabezpieczenia)',
-    ratio_primary_a: 200,
-    ratio_secondary_a: 5,
-    burden_va: 30,
-    accuracy_class: '5P20',
-    safety_factor: 20,
-    application: 'protection',
-  },
-  {
-    id: 'ct_500_5_10p20',
-    catalog_namespace: 'ct',
-    catalog_version: '2024.1',
-    label_pl: 'CT 500/5 A · 10P20 · 30 VA (zabezpieczenia)',
-    ratio_primary_a: 500,
-    ratio_secondary_a: 5,
-    burden_va: 30,
-    accuracy_class: '10P20',
-    safety_factor: 20,
-    application: 'protection',
-  },
-  {
-    id: 'ct_50_5_05',
-    catalog_namespace: 'ct',
-    catalog_version: '2024.1',
-    label_pl: 'CT 50/5 A · 0,5 · 10 VA (pomiar handlowy)',
-    ratio_primary_a: 50,
-    ratio_secondary_a: 5,
-    burden_va: 10,
-    accuracy_class: '0.5',
-    application: 'metering',
-  },
-  {
-    id: 'ct_300_5_dual',
-    catalog_namespace: 'ct',
-    catalog_version: '2024.1',
-    label_pl: 'CT 300/5 A · 5P10 + 0,5 · 30 VA (uniwersalny dwurdzeniowy)',
-    ratio_primary_a: 300,
-    ratio_secondary_a: 5,
-    burden_va: 30,
-    accuracy_class: '5P10',
-    safety_factor: 10,
-    application: 'dual',
-  },
-]);
 
 // =============================================================================
 // 3. VtCatalog (Przekładniki napięciowe — Naprawa C.6)
@@ -485,6 +410,20 @@ export const VT_CATALOG: ReadonlyArray<VtCatalogItem> = Object.freeze([
     application: 'dual',
   },
 ]);
+
+/** Zwraca VT na podstawie wymaganego napięcia pierwotnego. */
+export function selectVtForVoltage(
+  primaryVoltageKv: number,
+  application: 'protection' | 'metering' | 'dual' = 'protection',
+): readonly VtCatalogItem[] {
+  return VT_CATALOG.filter(
+    (vt) =>
+      (vt.application === application || vt.application === 'dual')
+      && Math.abs(vt.ratio_primary_kv - primaryVoltageKv / Math.sqrt(3)) < 1.0,
+  );
+}
+
+
 
 // =============================================================================
 // 4. SpzCatalog (Auto-reclosing 79 — Naprawa C.3)
@@ -622,29 +561,7 @@ export function getProtectionFunctionByAnsiCode(
   return PROTECTION_FUNCTION_CATALOG.find((f) => f.ansi_code === code) ?? null;
 }
 
-/** Zwraca CT na podstawie wymaganego prądu pierwotnego (zaokrąglenie w górę). */
-export function selectCtForCurrent(
-  primaryCurrentA: number,
-  application: 'protection' | 'metering' | 'dual' = 'protection',
-): readonly CtCatalogItem[] {
-  return CT_CATALOG.filter(
-    (ct) =>
-      (ct.application === application || ct.application === 'dual')
-      && ct.ratio_primary_a >= primaryCurrentA,
-  );
-}
 
-/** Zwraca VT na podstawie wymaganego napięcia pierwotnego. */
-export function selectVtForVoltage(
-  primaryVoltageKv: number,
-  application: 'protection' | 'metering' | 'dual' = 'protection',
-): readonly VtCatalogItem[] {
-  return VT_CATALOG.filter(
-    (vt) =>
-      (vt.application === application || vt.application === 'dual')
-      && Math.abs(vt.ratio_primary_kv - primaryVoltageKv / Math.sqrt(3)) < 1.0,
-  );
-}
 
 /** Zwraca SPZ kompatybilne z DER (Naprawa C.3). */
 export function selectSpzCompatibleWithDer(): readonly SpzCatalogItem[] {

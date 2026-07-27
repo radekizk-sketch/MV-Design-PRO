@@ -9,6 +9,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { fetchCtTypes, fetchVtTypes } from '../../catalog/api';
+import type { CTCatalogType, VTCatalogType } from '../../catalog/types';
 import { useAppStateStore } from '../../app-state';
 import {
   DerConfigurator,
@@ -20,7 +22,6 @@ import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import {
   BESS_BATTERY_CATALOG,
   BESS_PCS_CATALOG,
-  CT_CATALOG,
   DER_DYNAMIC_MODEL_CATALOG,
   DER_FAULT_CURRENT_DATA_CATALOG,
   EMPTY_DER_CATALOGS,
@@ -32,7 +33,6 @@ import {
   PF_CURVE_CATALOG,
   PROTECTION_FUNCTION_CATALOG,
   PV_INVERTER_CATALOG,
-  VT_CATALOG,
   WIND_TURBINE_CATALOG,
   BLOCK_TRANSFORMER_CATALOG,
   getBlockTransformer,
@@ -189,6 +189,24 @@ function catalogLabel<T extends CatalogItem>(
   if (!id) return 'wybierz wariant katalogowy';
   const item = catalog.find((entry) => entry.id === id);
   return item ? cleanCatalogText(item.label_pl) : 'wybierz wariant katalogowy';
+}
+
+/**
+ * Etykieta aparatu pomiarowego z REALNEGO katalogu (V12K-239).
+ *
+ * Trzy stany, trzy różne komunikaty — żaden nie udaje drugiego:
+ *  - brak przypisania w modelu ⇒ „wybierz wariant katalogowy" (jest co zrobić),
+ *  - przypisanie jest, katalogu jeszcze nie pobrano albo typu w nim nie ma ⇒ kreska
+ *    (nie wiemy, jak się nazywa — ale NIE mówimy projektantowi, że ma wybierać),
+ *  - typ znaleziony ⇒ nazwa katalogowa.
+ */
+function etykietaAparatuPomiarowego(
+  katalog: readonly { readonly id: string; readonly name?: string }[],
+  ref: string | null | undefined,
+): string {
+  if (!ref) return 'wybierz wariant katalogowy';
+  const typ = katalog.find((entry) => entry.id === ref);
+  return typ?.name ? cleanCatalogText(typ.name) : MISSING_DASH;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -598,7 +616,22 @@ function EngineeringNote({ children }: { readonly children: string }) {
   );
 }
 
-function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX.Element>> {
+/**
+ * Katalogi przekładników POBRANE z backendu (V12K-239). Etykiety CT/VT nie mogą stać na
+ * lokalnej piątce syntetycznej: POMIAR pokrycia identyfikatorów z katalogiem realnym to
+ * ZERO (CT 5 lokalnych vs 12 realnych, VT 4 vs 9), wiec dla przekładnika wybranego w
+ * prawdziwym kreatorze `catalogLabel` nie znajdowal wpisu i wypisywal „wybierz wariant
+ * katalogowy" — ekran kazal projektantowi wybrac aparat, ktory JUZ wybral.
+ */
+interface KatalogiPomiarowe {
+  readonly ct: readonly CTCatalogType[];
+  readonly vt: readonly VTCatalogType[];
+}
+
+function buildDerCards(
+  der: StationDerConnection,
+  katalogi: KatalogiPomiarowe,
+): Partial<Record<DerCardId, JSX.Element>> {
   const ncRfg = der.profiles.nc_rfg_profile_ref
     ? NC_RFG_PROFILE_CATALOG.find((profile) => profile.id === der.profiles.nc_rfg_profile_ref)
     : null;
@@ -734,8 +767,14 @@ function buildDerCards(der: StationDerConnection): Partial<Record<DerCardId, JSX
           <FieldRow label="Zabezpieczenia DER" value={readinessPl(der.readiness.protection)} />
           <FieldRow label="Selektywność" value={readinessPl(der.readiness.protection_selectivity)} />
           <FieldRow label="Funkcje ANSI wymagane" value={derProtectionSummary()} />
-          <FieldRow label="Przekładnik CT" value={catalogLabel(CT_CATALOG, der.catalogs.ct_catalog_ref)} />
-          <FieldRow label="Przekładnik VT" value={catalogLabel(VT_CATALOG, der.catalogs.vt_catalog_ref)} />
+          <FieldRow
+            label="Przekładnik CT"
+            value={etykietaAparatuPomiarowego(katalogi.ct, der.catalogs.ct_catalog_ref)}
+          />
+          <FieldRow
+            label="Przekładnik VT"
+            value={etykietaAparatuPomiarowego(katalogi.vt, der.catalogs.vt_catalog_ref)}
+          />
           <FieldRow label="Raport OSD" value={readinessPl(der.readiness.report_osd)} />
           <FieldRow label="Raport techniczny" value={readinessPl(der.readiness.report_technical)} />
         </dl>
@@ -959,6 +998,27 @@ function DerSurfaceShell({
     [derKind, surface],
   );
   const der = storeDer ?? snapshotDer ?? surfaceContextDer;
+
+  // Katalogi przekładników z BACKENDU (V12K-239). Błąd pobrania zostawia listy puste —
+  // etykieta pokaże wtedy kreskę („nie wiemy, jak się nazywa"), a nie „wybierz wariant",
+  // bo przypisanie w modelu istnieje i podpowiadanie wyboru byłoby nieprawdą.
+  const [katalogiPomiarowe, setKatalogiPomiarowe] = useState<KatalogiPomiarowe>({
+    ct: [],
+    vt: [],
+  });
+  useEffect(() => {
+    let aktualne = true;
+    void (async () => {
+      const [ct, vt] = await Promise.all([
+        fetchCtTypes().catch(() => [] as CTCatalogType[]),
+        fetchVtTypes().catch(() => [] as VTCatalogType[]),
+      ]);
+      if (aktualne) setKatalogiPomiarowe({ ct, vt });
+    })();
+    return () => {
+      aktualne = false;
+    };
+  }, []);
   const projectName = useAppStateStore((state) => state.activeProjectName);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
 
@@ -1020,7 +1080,7 @@ function DerSurfaceShell({
           derId={derId ?? 'unselected'}
           derKind={derKind}
           stationContext={stationContext}
-          children={der ? buildDerCards(der) : undefined}
+          children={der ? buildDerCards(der, katalogiPomiarowe) : undefined}
         />
       </div>
       {der && (

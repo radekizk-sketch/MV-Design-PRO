@@ -3,7 +3,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../app-state/store';
 import { EMPTY_DER_READINESS, useStationDerStore } from '../../../network-build/station-der';
@@ -510,6 +510,91 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(surface.textContent).not.toMatch(/ENEA/i);
     // Brak danej jest POKAZANY jako brak (kreska), nie zastąpiony wartością.
     expect(surface.textContent).toContain(MISSING_DASH);
+  });
+
+  it('etykieta przekładnika CT nie każe wybierać aparatu, który JUŻ jest w modelu (V12K-239)', async () => {
+    // POMIAR PRZED NAPRAWĄ: etykieta rozwiązywała `ct_catalog_ref` w lokalnym katalogu
+    // syntetycznym (5 wpisów) o ZEROWYM pokryciu identyfikatorów z katalogiem realnym
+    // (12 typów), więc dla przekładnika wybranego w prawdziwym kreatorze wypisywała
+    // „wybierz wariant katalogowy" — ekran kazał zrobić coś, co było już zrobione.
+    const typyCt = [
+      { id: 'ct_200_5_5p10_10va_abb', name: 'CT 200/5 A kl. 5P10 10 VA', application: 'protection' },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) =>
+        ({
+          ok: true,
+          json: async () => (String(url).includes('ct-types') ? typyCt : []),
+        }) as unknown as Response,
+      ),
+    );
+
+    useStationDerStore.getState().attachDer({
+      id: 'der_z_ct',
+      project_id: 'p',
+      station_id: 'station_xyz',
+      der_kind: 'PV',
+      name: 'PV z przekładnikiem',
+      connection_side: 'SN',
+      pcc_ref: 'pcc_y',
+      catalogs: {
+        device_catalog_ref: 'pv_inv_sma_2500',
+        ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
+      },
+      profiles: {},
+      nominal_power_kw: 2500,
+      created_at: FROZEN_NOW,
+    });
+
+    render(<PvSourceSurface surface={makeSurface('der_z_ct')} />);
+    fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
+
+    // Nazwa z REALNEGO katalogu, a nie polecenie wyboru.
+    await screen.findByText(/CT 200\/5 A kl\. 5P10/);
+    const surface = screen.getByTestId('pv-source-surface');
+    expect(surface.textContent).not.toContain('Przekładnik CT: wybierz wariant katalogowy');
+
+    vi.unstubAllGlobals();
+  });
+
+  it('przypisany przekładnik SPOZA pobranego katalogu daje kreskę, nie polecenie wyboru (V12K-239)', async () => {
+    // To jest przypadek, ktory ODROZNIA naprawe od stanu sprzed niej: model NIESIE
+    // przypisanie, ale katalog go nie zna (blad pobrania albo typ wycofany). Wtedy
+    // uczciwa odpowiedz brzmi „nie wiem, jak sie nazywa" (kreska), a NIE „wybierz
+    // wariant katalogowy" — bo wybor juz zostal dokonany i podpowiadanie go byloby
+    // nieprawda. Bez tego przypadku bramka nie gryzie (sprawdzone wstrzykieta regresja).
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({ ok: true, json: async () => [] }) as unknown as Response),
+    );
+
+    useStationDerStore.getState().attachDer({
+      id: 'der_ct_spoza',
+      project_id: 'p',
+      station_id: 'station_xyz',
+      der_kind: 'PV',
+      name: 'PV z przekładnikiem spoza katalogu',
+      connection_side: 'SN',
+      pcc_ref: 'pcc_y',
+      catalogs: {
+        device_catalog_ref: 'pv_inv_sma_2500',
+        ct_catalog_ref: 'ct_typ_wycofany',
+      },
+      profiles: {},
+      nominal_power_kw: 2500,
+      created_at: FROZEN_NOW,
+    });
+
+    render(<PvSourceSurface surface={makeSurface('der_ct_spoza')} />);
+    fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
+
+    const wiersz = await screen.findByText('Przekładnik CT');
+    const wartosc = wiersz.parentElement?.textContent ?? '';
+    expect(wartosc).toContain(MISSING_DASH);
+    expect(wartosc).not.toContain('wybierz wariant katalogowy');
+
+    vi.unstubAllGlobals();
   });
 
   it('KPI Profil NC RfG wyświetla kreskę gdy brak profilu', () => {

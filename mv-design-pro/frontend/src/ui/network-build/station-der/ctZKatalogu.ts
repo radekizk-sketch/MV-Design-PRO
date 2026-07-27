@@ -44,23 +44,25 @@ export function klasaKanoniczna(klasaKatalogowa: string | undefined | null): CtC
 }
 
 /**
- * Zastosowanie rdzenia WYPROWADZONE z klasy (IEC 61869-2), albo `null`.
+ * Zastosowanie rdzenia — CZYTANE Z KATALOGU, nie wyprowadzane tutaj (V12K-239).
  *
- * Podzial jest definicyjny, nie umowny: klasy z litera `P` opisuja rdzenie
- * ZABEZPIECZENIOWE (blad zdefiniowany przy wielokrotnosci pradu znamionowego —
- * IEC 61869-2 § 5.6.2), klasy liczbowe 0,2 / 0,5 / 1,0 opisuja rdzenie POMIAROWE
- * (blad przy pradzie znamionowym). Dlatego z klasy wolno wyprowadzic te dwie
- * wartosci — tak samo, jak z materialu zyly wolno wziac stale IEC 60949.
+ * Regula normowa IEC 61869-2 („klasa z litera P ⇒ rdzen zabezpieczeniowy") mieszkala
+ * przez jedna karte W TEJ WARSTWIE, czyli norma zyla w prezentacji, a kontrakt katalogu
+ * tej danej nie wystawial. Derywacja stoi teraz w katalogu
+ * (`network_model/catalog/types.py::rdzen_ct_z_klasy`) i wraca polem `application`,
+ * wiec front NIE MA wlasnej kopii reguly — czyta opublikowana wartosc.
  *
- * `dual` NIE JEST wyprowadzane. Rdzen podwojny to CECHA KONSTRUKCYJNA przekladnika
- * (dwa niezalezne rdzenie: zabezpieczeniowy + pomiarowy), a nie wniosek z jednej
- * klasy. Kontrakt katalogu backendu nie ma jeszcze tej danej, wiec warunek 87T
- * pozostaje nierozstrzygalny dopoki jej nie dostanie — i mowi to wprost, zamiast
- * zgadywac (V12K-232).
+ * Wartosc nieznana katalogowi (`null`/brak, np. zapis zlozony opisujacy dwa rdzenie)
+ * zostaje `null`: regula gotowosci zglosi wtedy brak danej, a nie spelnienie warunku.
  */
-export function zastosowanieZKlasy(klasa: CtClass | null): 'protection' | 'metering' | null {
-  if (klasa === null) return null;
-  return klasa.includes('P') ? 'protection' : 'metering';
+export function zastosowanieZKatalogu(
+  typ: CTCatalogType | undefined,
+): 'protection' | 'metering' | 'dual' | null {
+  const zKatalogu = typ?.application;
+  if (zKatalogu === 'protection' || zKatalogu === 'metering' || zKatalogu === 'dual') {
+    return zKatalogu;
+  }
+  return null;
 }
 
 /**
@@ -86,8 +88,9 @@ export function wzbogacOKlaseCt(
   return {
     ...der,
     ct_accuracy_class: klasa,
-    // Zastosowanie tylko gdy rekord go nie ma — i nigdy `dual` (patrz wyzej).
-    ct_application: der.ct_application ?? zastosowanieZKlasy(klasa),
+    // Zastosowanie z KATALOGU (V12K-239) — dana obecna na rekordzie ma pierwszenstwo.
+    // Katalog bez tej danej zostawia pole puste, wiec regula zglosi brak, nie spelnienie.
+    ct_application: der.ct_application ?? zastosowanieZKatalogu(typ) ?? undefined,
   };
 }
 

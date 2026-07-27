@@ -16,16 +16,16 @@ import {
   klasaKanoniczna,
   wzbogacDeryOKlaseCt,
   wzbogacOKlaseCt,
-  zastosowanieZKlasy,
+  zastosowanieZKatalogu,
 } from '../ctZKatalogu';
 import type { StationDerConnection } from '../types';
 
 /** Realne wpisy katalogu backendu (`/api/catalog/ct-types`). */
 const TYPY_CT = [
-  { id: 'ct_200_5_5p10_10va_abb', name: 'CT 200/5 A kl. 5P10 10 VA', ratio_primary_a: 200, ratio_secondary_a: 5, accuracy_class: '5P10', burden_va: 10 },
-  { id: 'ct_100_1_0_5_5va_abb', name: 'CT 100/1 A kl. 0.5 5 VA', ratio_primary_a: 100, ratio_secondary_a: 1, accuracy_class: '0.5', burden_va: 5 },
-  { id: 'ct_bez_klasy', name: 'CT bez klasy', ratio_primary_a: 300, ratio_secondary_a: 5 },
-  { id: 'ct_klasa_nieznana', name: 'CT 5P30', ratio_primary_a: 400, ratio_secondary_a: 5, accuracy_class: '5P30' },
+  { id: 'ct_200_5_5p10_10va_abb', name: 'CT 200/5 A kl. 5P10 10 VA', ratio_primary_a: 200, ratio_secondary_a: 5, accuracy_class: '5P10', burden_va: 10, application: 'protection', accuracy_limit_factor: 10 },
+  { id: 'ct_100_1_0_5_5va_abb', name: 'CT 100/1 A kl. 0.5 5 VA', ratio_primary_a: 100, ratio_secondary_a: 1, accuracy_class: '0.5', burden_va: 5, application: 'metering', accuracy_limit_factor: null },
+  { id: 'ct_bez_klasy', name: 'CT bez klasy', ratio_primary_a: 300, ratio_secondary_a: 5, application: null, accuracy_limit_factor: null },
+  { id: 'ct_klasa_nieznana', name: 'CT 5P30', ratio_primary_a: 400, ratio_secondary_a: 5, accuracy_class: '5P30', application: 'protection', accuracy_limit_factor: 30 },
 ] as unknown as readonly CTCatalogType[];
 
 function der(over: Partial<StationDerConnection> = {}): StationDerConnection {
@@ -72,28 +72,34 @@ describe('klasaKanoniczna — zwezenie tekstu katalogowego', () => {
   });
 });
 
-describe('zastosowanieZKlasy — wyprowadzenie definicyjne wg IEC 61869-2', () => {
-  it('klasy z litera P sa rdzeniami ZABEZPIECZENIOWYMI', () => {
-    expect(zastosowanieZKlasy('5P10')).toBe('protection');
-    expect(zastosowanieZKlasy('5P20')).toBe('protection');
-    expect(zastosowanieZKlasy('10P10')).toBe('protection');
-    expect(zastosowanieZKlasy('10P20')).toBe('protection');
+describe('zastosowanieZKatalogu — dana CZYTANA, nie wyprowadzana tutaj (V12K-239)', () => {
+  it('przepuszcza rodzaj rdzenia opublikowany przez katalog', () => {
+    // Regula normowa IEC 61869-2 stoi w KATALOGU (`rdzen_ct_z_klasy`, backend) — front
+    // nie ma wlasnej kopii, wiec tutaj sprawdzamy odczyt, a nie norme.
+    expect(zastosowanieZKatalogu(TYPY_CT[0])).toBe('protection');
+    expect(zastosowanieZKatalogu(TYPY_CT[1])).toBe('metering');
   });
 
-  it('klasy liczbowe sa rdzeniami POMIAROWYMI', () => {
-    expect(zastosowanieZKlasy('0.2')).toBe('metering');
-    expect(zastosowanieZKlasy('0.5')).toBe('metering');
-    expect(zastosowanieZKlasy('1.0')).toBe('metering');
+  it('brak danej w katalogu daje NULL — front jej nie dorabia', () => {
+    // Kontrola odwrotna do przeniesienia reguly: gdyby front nadal umial wyprowadzic
+    // rodzaj rdzenia z klasy, ten wpis (klasa nieobecna) dostalby wartosc mimo braku
+    // danej w katalogu — i rownolegla regula wrocilaby bocznymi drzwiami.
+    expect(zastosowanieZKatalogu(TYPY_CT[2])).toBeNull();
+    expect(zastosowanieZKatalogu(undefined)).toBeNull();
   });
 
-  it('NIGDY nie wyprowadza rdzenia podwojnego — to cecha konstrukcyjna, nie wniosek', () => {
-    // Kontrola granicy: rdzen podwojny to DWA niezalezne rdzenie (zabezpieczeniowy +
-    // pomiarowy). Z jednej klasy nie da sie tego wywnioskowac, wiec warunek 87T
-    // zostaje nierozstrzygalny do czasu uzupelnienia kontraktu katalogu.
-    for (const klasa of ['5P10', '5P20', '10P10', '10P20', '0.2', '0.5', '1.0'] as const) {
-      expect(zastosowanieZKlasy(klasa)).not.toBe('dual');
-    }
-    expect(zastosowanieZKlasy(null)).toBeNull();
+  it('wartosc spoza kanonu w odpowiedzi katalogu jest odrzucana', () => {
+    const dziwny = { id: 'x', application: 'cokolwiek' } as unknown as CTCatalogType;
+    expect(zastosowanieZKatalogu(dziwny)).toBeNull();
+  });
+
+  it('rdzen PODWOJNY jest przepuszczany, gdy katalog go zadeklaruje', () => {
+    // `dual` to dana KONSTRUKCYJNA producenta. Front jej nie wymysla, ale musi ja
+    // przepuscic — inaczej warunek 87T zostanie nierozstrzygalny nawet po uzupelnieniu
+    // katalogu. Dzisiejszy katalog referencyjny nie ma takiego typu (pomiar: 12 typow,
+    // zero dwurdzeniowych — test w backendzie pilnuje tej granicy).
+    const dwurdzeniowy = { id: 'ct_dual', application: 'dual' } as unknown as CTCatalogType;
+    expect(zastosowanieZKatalogu(dwurdzeniowy)).toBe('dual');
   });
 });
 

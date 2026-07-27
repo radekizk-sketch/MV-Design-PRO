@@ -114,10 +114,14 @@ describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
           ...EMPTY_DER_CATALOGS,
           device_catalog_ref: 'pv_inv_sma_2500',
           protection_catalog_ref: 'prot_xyz',
-          // Naprawa eng.5: CT musi być z katalogu i mieć klasę 5P/10P.
-          ct_catalog_ref: 'ct_200_5_5p20',
-          vt_catalog_ref: 'vt_15kv_100v_3p',
+          // Naprawa eng.5: CT musi mieć klasę 5P/10P. V12K-239: klasa jest DANĄ na
+          // rekordzie (wypełnia ją warstwa znająca prawdziwy katalog), a nie wynikiem
+          // szukania identyfikatora wewnątrz reguły — dlatego test podaje ją wprost.
+          ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
+          vt_catalog_ref: 'vt_15kv_100v_3p_abb',
         },
+        ct_accuracy_class: '5P20',
+        ct_application: 'protection',
       }),
     );
     expect(matrix.protection).toBe('ready');

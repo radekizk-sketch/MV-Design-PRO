@@ -2280,6 +2280,66 @@ class LVApparatusType:
 # =============================================================================
 
 
+def rdzen_ct_z_klasy(accuracy_class: str | None) -> str | None:
+    """Rodzaj rdzenia przekładnika WYPROWADZONY z klasy dokładności (IEC 61869-2).
+
+    Podział jest DEFINICYJNY, nie umowny: klasy z literą ``P`` opisują rdzenie
+    ZABEZPIECZENIOWE — błąd zdefiniowany przy wielokrotności prądu znamionowego
+    (IEC 61869-2 § 5.6.2) — a klasy liczbowe (0,1 / 0,2 / 0,5 / 1 / 3 / 5) rdzenie
+    POMIAROWE, gdzie błąd definiuje się przy prądzie znamionowym. Dlatego z klasy wolno
+    wyprowadzić tę wartość: jest własnością NAZWANEJ rzeczy, nie założeniem o rzeczy
+    (ta sama klasa derywacji, co stałe IEC 60949 z materiału żyły — V12K-224).
+
+    ``dual`` NIE JEST tu nigdy zwracane. Rdzeń podwójny to cecha KONSTRUKCYJNA
+    przekładnika (dwa niezależne rdzenie: zabezpieczeniowy + pomiarowy), której nie da
+    się wywnioskować z jednej klasy — wymaga danej producenta. Klasa złożona
+    (np. „5P10/0,5") opisywałaby dwa rdzenie, ale katalog referencyjny takiego wpisu nie
+    ma (pomiar V12K-239: 12 typów, zero zapisów złożonych).
+
+    Brak klasy albo klasa nierozpoznana daje ``None`` — „nie da się ustalić", nie
+    „przyjmijmy pomiarowy".
+    """
+    if not accuracy_class:
+        return None
+    znormalizowana = accuracy_class.strip().upper()
+    if not znormalizowana:
+        return None
+    if "/" in znormalizowana:
+        # Zapis złożony opisuje DWA rdzenie — konstrukcja, nie jedna klasa. Bez danej
+        # producenta o rdzeniach nie zgadujemy (patrz wyżej).
+        return None
+    if "P" in znormalizowana:
+        return "protection"
+    # Klasa pomiarowa jest liczbą (0.2 / 0.5 / 1.0 / 3 / 5) — cokolwiek innego zostaje
+    # nierozpoznane, zamiast wpadać do „pomiarowy" jako gałąź domyślna.
+    try:
+        float(znormalizowana.replace(",", "."))
+    except ValueError:
+        return None
+    return "metering"
+
+
+def alf_ct_z_klasy(accuracy_class: str | None) -> float | None:
+    """Znamionowa graniczna liczba dokładności (ALF) rdzenia ZABEZPIECZENIOWEGO.
+
+    Dla klas ``⟨błąd⟩P⟨ALF⟩`` liczba po literze ``P`` JEST znamionową graniczną liczbą
+    dokładności (IEC 61869-2 § 3.4.201): 5P10 ⇒ ALF 10, 10P20 ⇒ ALF 20. To odczyt
+    oznaczenia, nie oszacowanie — dlatego wolno go wyprowadzić.
+
+    Rdzeń pomiarowy ALF nie ma (ma współczynnik bezpieczeństwa przyrządowego F_s, który
+    jest osobną daną znamionową producenta i NIE wynika z klasy) — dla klas liczbowych
+    zwracane jest ``None``.
+    """
+    if rdzen_ct_z_klasy(accuracy_class) != "protection":
+        return None
+    assert accuracy_class is not None  # gwarantowane przez `rdzen_ct_z_klasy`
+    _, _, po_p = accuracy_class.strip().upper().partition("P")
+    try:
+        return float(po_p.replace(",", "."))
+    except ValueError:
+        return None
+
+
 @dataclass(frozen=True)
 class CTType:
     """Immutable current transformer type.
@@ -2316,6 +2376,13 @@ class CTType:
             "accuracy_class": self.accuracy_class,
             "burden_va": self.burden_va,
             "manufacturer": self.manufacturer,
+            # V12K-239: rodzaj rdzenia i ALF WYPROWADZONE z klasy w JEDNYM miejscu —
+            # katalogu. Wcześniej regułę „litera P ⇒ rdzeń zabezpieczeniowy" miał tylko
+            # front (`ctZKatalogu.ts`), czyli norma żyła w warstwie prezentacji, a katalog
+            # tej danej nie wystawiał. `None` znaczy „nie da się ustalić" (klasa nieznana
+            # albo zapis złożony) i musi zostać `None` — brak wiedzy nie jest werdyktem.
+            "application": rdzen_ct_z_klasy(self.accuracy_class),
+            "accuracy_limit_factor": alf_ct_z_klasy(self.accuracy_class),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,

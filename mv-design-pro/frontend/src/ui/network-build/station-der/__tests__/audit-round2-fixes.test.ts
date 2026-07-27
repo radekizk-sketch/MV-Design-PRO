@@ -59,7 +59,7 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
       cable_catalog_ref: null,
       bay_catalog_ref: null,
       protection_catalog_ref: 'protection_der_basic',
-      ct_catalog_ref: 'ct_200_5_5p20',
+      ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
       vt_catalog_ref: 'vt_15kv_100v_3p',
       fault_current_data_ref: null,
       dynamic_model_ref: null,
@@ -85,11 +85,17 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
 
 describe('eng.5 — CT klasa musi być zabezpieczeniowa (5P/10P)', () => {
   it('CT z klasą 5P20 (zabezpieczeniowa) → protection ready', () => {
+    // V12K-239: regula czyta DANE na rekordzie (`ct_accuracy_class`/`ct_application`),
+    // ktore warstwa wyzej wypelnia z PRAWDZIWEGO katalogu. Test podaje je wprost —
+    // wczesniej liczyl na rozwiazanie ID w lokalnym katalogu syntetycznym, ktory mial
+    // zerowe pokrycie z katalogiem realnym (czyli sprawdzal atrape).
     const der = makeDer({
       catalogs: {
         ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_200_5_5p20', // 5P20
+        ct_catalog_ref: 'ct_400_5_5p20_15va_abb', // realny typ ABB
       },
+      ct_accuracy_class: '5P20',
+      ct_application: 'protection',
     });
     const matrix = computeDerReadinessMatrix(der);
     expect(matrix.protection).toBe('ready');
@@ -99,8 +105,10 @@ describe('eng.5 — CT klasa musi być zabezpieczeniowa (5P/10P)', () => {
     const der = makeDer({
       catalogs: {
         ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_50_5_05', // klasa 0,5 — pomiarowa
+        ct_catalog_ref: 'ct_50_1_0_5_5va_arteche', // realny typ Arteche
       },
+      ct_accuracy_class: '0.5',
+      ct_application: 'metering',
     });
     const matrix = computeDerReadinessMatrix(der);
     expect(matrix.protection).toBe('partial');
@@ -123,9 +131,11 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       nominal_power_kw: 2500, // ≥ 1600
       catalogs: {
         ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_200_5_5p20', // single-core protection
+        ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
         transformer_catalog_ref: 'btr_pv_15_069_2500',
       },
+      ct_accuracy_class: '5P20',
+      ct_application: 'protection', // rdzen POJEDYNCZY zabezpieczeniowy
     });
     const matrix = computeDerReadinessMatrix(der);
     expect(matrix.protection).toBe('partial');
@@ -142,9 +152,14 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       nominal_power_kw: 2500,
       catalogs: {
         ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_300_5_dual', // dual-core
+        ct_catalog_ref: 'ct_dwurdzeniowy_z_karty_producenta',
         transformer_catalog_ref: 'btr_pv_15_069_2500',
       },
+      ct_accuracy_class: '5P20',
+      // Rdzen PODWOJNY jako DANA producenta. Katalog referencyjny nie ma dzis takiego
+      // typu (pomiar V12K-239: 12 typow, zero dwurdzeniowych — test w backendzie pilnuje
+      // tej granicy), wiec ten test opisuje warunek 87T po uzupelnieniu katalogu.
+      ct_application: 'dual',
     });
     const matrix = computeDerReadinessMatrix(der);
     expect(matrix.protection).toBe('ready');
@@ -157,9 +172,11 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       nominal_power_kw: 1000, // < 1600
       catalogs: {
         ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_200_5_5p20', // single-core
+        ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
         transformer_catalog_ref: 'btr_pv_15_04_1000',
       },
+      ct_accuracy_class: '5P20',
+      ct_application: 'protection', // rdzen pojedynczy
     });
     const matrix = computeDerReadinessMatrix(der);
     expect(matrix.protection).toBe('ready');

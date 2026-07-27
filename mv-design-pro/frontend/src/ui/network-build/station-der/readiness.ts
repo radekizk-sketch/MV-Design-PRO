@@ -13,7 +13,7 @@
  *  - eng.11: anti-islanding (27/59/81U/81O) wymagane dla DER po stronie nN
  */
 
-import { CT_CATALOG, isCtClassValidForProtection, type CtClass } from './protection-catalogs';
+import { isCtClassValidForProtection, type CtClass } from './protection-catalogs';
 import {
   EMPTY_DER_READINESS,
   type DerReadinessMatrix,
@@ -161,23 +161,15 @@ export function validateHostingCapacity(args: {
  * inny fakt niż „klasa nie jest zabezpieczeniowa". Pierwszy to brak danej, drugi to
  * werdykt; mieszanie ich dało milczące „częściowo" bez powodu.
  */
-function ctKlasaZDanychAlboKatalogu(der: StationDerConnection): CtClass | null {
-  const zModelu = der.ct_accuracy_class;
-  if (zModelu) return zModelu;
-  const ref = der.catalogs.ct_catalog_ref;
-  if (!ref) return null;
-  return CT_CATALOG.find((c) => c.id === ref)?.accuracy_class ?? null;
+function ctKlasaZDanej(der: StationDerConnection): CtClass | null {
+  return der.ct_accuracy_class ?? null;
 }
 
 /** Zastosowanie przekładnika (zabezpieczenia / pomiar / dwurdzeniowy) — jak wyżej. */
-function ctZastosowanieZDanychAlboKatalogu(
+function ctZastosowanieZDanej(
   der: StationDerConnection,
 ): 'protection' | 'metering' | 'dual' | null {
-  const zModelu = der.ct_application;
-  if (zModelu) return zModelu;
-  const ref = der.catalogs.ct_catalog_ref;
-  if (!ref) return null;
-  return CT_CATALOG.find((c) => c.id === ref)?.application ?? null;
+  return der.ct_application ?? null;
 }
 
 export function computeDerReadinessMatrix(
@@ -217,7 +209,7 @@ export function computeDerReadinessMatrix(
   // Nierozstrzygnieta klasa NIE spelnia warunku (bezpieczniej: „nie wiem" nie jest
   // „spelnione"), ale powod jest NAZWANY w `buildBlockersForAxis` — os nie moze byc
   // niegotowa w milczeniu.
-  const ctKlasa = ctKlasaZDanychAlboKatalogu(der);
+  const ctKlasa = ctKlasaZDanej(der);
   const ctValidForProtection = ctKlasa !== null && isCtClassValidForProtection(ctKlasa);
   // Naprawa eng.6: CT dual-core wymagany jeśli mamy dedicated_transformer
   // o mocy ≥ 1.6 MVA (próg dla 87T per IEC 60255-13). Dual-core = klasa 5P/10P
@@ -225,7 +217,7 @@ export function computeDerReadinessMatrix(
   const requires87T =
     der.connection_side === 'dedicated_transformer' &&
     (der.nominal_power_kw ?? 0) >= 1600;
-  const ctIsDualCore = ctZastosowanieZDanychAlboKatalogu(der) === 'dual';
+  const ctIsDualCore = ctZastosowanieZDanej(der) === 'dual';
   // Naprawa eng.11: anti-islanding (27/59/81U/81O) — egzekwowane przez
   // buildBlockersForAxis dla protection axis (po nN/ZK/słupie/mufie).
 
@@ -453,7 +445,7 @@ function buildBlockersForAxis(
       }
       // Naprawa eng.5: CT klasa musi być zabezpieczeniowa.
       if (der.catalogs.ct_catalog_ref) {
-        const klasa = ctKlasaZDanychAlboKatalogu(der);
+        const klasa = ctKlasaZDanej(der);
         if (klasa === null) {
           // V12K-232: brak rozstrzygnięcia klasy MUSI być nazwany. Wcześniej ta gałąź
           // milczała, więc oś kończyła się stanem „częściowo" z PUSTĄ listą powodów —
@@ -487,7 +479,7 @@ function buildBlockersForAxis(
         (der.nominal_power_kw ?? 0) >= 1600
       ) {
         if (der.catalogs.ct_catalog_ref) {
-          const zastosowanie = ctZastosowanieZDanychAlboKatalogu(der);
+          const zastosowanie = ctZastosowanieZDanej(der);
           if (zastosowanie !== null && zastosowanie !== 'dual') {
             blockers.push({
               code: 'der.ct_87t_dual_core.required',

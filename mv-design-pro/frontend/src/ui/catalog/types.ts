@@ -237,6 +237,21 @@ export interface CTCatalogType extends CatalogType {
   ratio_secondary_a: number;
   accuracy_class?: string;
   burden_va?: number;
+  /**
+   * Rodzaj rdzenia WYPROWADZONY z klasy w katalogu (IEC 61869-2, V12K-239): klasa
+   * z literą P ⇒ `protection`, klasa liczbowa ⇒ `metering`. `null`/brak = nie da się
+   * ustalić (klasa nieznana albo zapis złożony opisujący dwa rdzenie).
+   *
+   * `dual` katalog referencyjny wystawi dopiero z DANĄ producenta o konstrukcji
+   * dwurdzeniowej — dziś żaden z 12 typów jej nie ma, więc warunek 87T pozostaje
+   * nierozstrzygalny (jawny brak danych, nie luka kontraktu).
+   */
+  application?: 'protection' | 'metering' | 'dual' | null;
+  /**
+   * Znamionowa graniczna liczba dokładności rdzenia zabezpieczeniowego (ALF, liczba po
+   * literze P — IEC 61869-2 § 3.4.201). Rdzeń pomiarowy jej nie ma (`null`).
+   */
+  accuracy_limit_factor?: number | null;
 }
 
 /**
