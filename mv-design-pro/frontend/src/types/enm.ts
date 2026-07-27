@@ -49,6 +49,13 @@ export interface ProtectionSetting {
   /** Mnożnik czasowy (TMS) dla charakterystyk odwrotnych IEC 60255; null/undefined dla DT. */
   time_multiplier?: number | null;
   is_directional?: boolean;
+  /**
+   * V12K-230: progi zabezpieczen, ktorych lustro nie mialo — kierunkowego (67,
+   * kat w stopniach) oraz czestotliwosciowych (81U/81O w Hz, 81R w Hz/s).
+   */
+  threshold_deg?: number | null;
+  threshold_hz?: number | null;
+  threshold_hz_s?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -83,6 +90,8 @@ export interface ENMElement {
 export interface ENMDefaults {
   frequency_hz: number;
   unit_system: 'SI';
+  /** V12K-230: domyslne napiecie znamionowe SN [kV]. */
+  sn_nominal_kv?: number | null;
 }
 
 /** Warunki przyłączenia z dokumentu OSD (dane wejściowe projektu — karta K2). */
@@ -103,6 +112,15 @@ export interface ENMHeader {
   defaults: ENMDefaults;
   /** Blok addytywny (backend `set_connection_conditions`); brak = nie podano. */
   connection_conditions?: ConnectionConditions | null;
+  /**
+   * V12K-230: hashe TOZSAMOSCI modelu i przypadku. Bez nich front nie ma typowanego
+   * dostepu do danych, ktore rozstrzygaja, czy wynik jest AKTUALNY wobec modelu.
+   */
+  input_hash?: string | null;
+  semantic_hash?: string | null;
+  case_hash?: string | null;
+  variant_hash?: string | null;
+  switching_snapshot_hash?: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -269,6 +287,14 @@ export interface TapChanger {
   control_mode: 'MANUAL' | 'AUTOMATIC' | 'PROFILE' | 'REMOTE';
   voltage_setpoint_kv?: number | null;
   deadband_kv?: number | null;
+  /** V12K-230: typ przelacznika z katalogu. */
+  catalog_ref?: string | null;
+  /** Szyna, ktorej napiecie regulacja utrzymuje (moze byc inna niz zaczepowa). */
+  controlled_bus_ref?: string | null;
+  /** Opoznienie zadzialania regulacji [s]. */
+  delay_seconds?: number | null;
+  /** Kompensacja spadku napiecia w linii (regulacja wg punktu zdalnego). */
+  line_drop_compensation?: LineDropCompensation | null;
 }
 
 export interface Transformer extends ENMElement {
@@ -295,6 +321,8 @@ export interface Transformer extends ENMElement {
   source_mode?: CatalogSourceMode | null;
   materialized_params?: Record<string, unknown> | null;
   overrides?: ParameterOverride[] | null;
+  /** V12K-230: liczba jednostek rownoleglych (wplywa na impedancje zastepcza). */
+  n_parallel?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -304,6 +332,16 @@ export interface Transformer extends ENMElement {
 export interface Source extends ENMElement {
   bus_ref: string;
   model: 'thevenin' | 'short_circuit_power' | 'external_grid';
+  /**
+   * V12K-230: dane strony WN zasilania GPZ, ktorych lustro NIE MIALO — moc zwarciowa
+   * i napiecie po stronie 110 kV oraz napiecie SN, plus deklaracja, po ktorej STRONIE
+   * zrodlo jest zdefiniowane. Kreator zrodla je zapisuje, ale front nie mial typowanego
+   * dostepu do tego, co model juz przewozi.
+   */
+  sk3_hv_mva?: number | null;
+  voltage_hv_kv?: number | null;
+  sn_voltage_kv?: number | null;
+  source_side?: 'SN' | 'HV_110' | null;
   substation_ref?: string | null;
   gpz_section_id?: string | null;
   sk3_mva?: number | null;
@@ -431,6 +469,12 @@ export interface Substation extends ENMElement {
   /** Phase 0A audit fix 8/8: GPZ HV side (110 kV) sekcje — eliminuje
    *  synthesize w adapterze SLD. */
   gpz_hv_sections?: GPZSection[] | null;
+  /** V12K-230: rodzaj konstrukcji stacji (wplywa na dobor aparatury i osprzetu). */
+  construction_type?: 'wnetrzowa' | 'kontenerowa' | 'slupowa' | 'prefabrykowana' | 'inna' | null;
+  /** Porty zewnetrzne stacji (kontrakt topologii). */
+  external_ports?: Port[] | null;
+  /** Poziomy napiec nN obslugiwane przez stacje [kV]. */
+  nn_voltage_levels?: number[] | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -466,6 +510,10 @@ export interface Bay extends ENMElement {
    *  Adapter (`projectBayPrimaryDevices`) rysuje tor pierwotny Z DANYCH gdy
    *  niepuste. Additive, default [] (pole bez danych → konwencja §12.4). */
   primary_devices?: BayPrimaryDevice[];
+  /** V12K-230: szablon pola producenta, z ktorego pole zostalo zlozone. */
+  bay_template_ref?: string | null;
+  /** Jawne porty pola (kontrakt topologii). */
+  ports?: Port[] | null;
 }
 
 import type {
@@ -855,6 +903,10 @@ export interface BayEarthFaultPath {
   closure_path_elements: string[];
   transformer_contribution_ref?: string | null;
   grounding_device_ref?: string | null;
+  /** V12K-230: rezystancja uziomu [Ohm] — wspolautor pradu doziemnego. */
+  earth_electrode_resistance_ohm?: number | null;
+  /** Wspolczynnik podzialu pradu powrotnego przez ziemie. */
+  earth_return_split_factor?: number | null;
 }
 
 export interface BayVerificationResult {
@@ -1033,6 +1085,51 @@ export interface LineRunV1 {
   branch_origin_station_ref?: string | null;
 }
 
+
+/**
+ * V12K-230: typy pomocnicze modelu, ktorych lustro NIE MIALO. Lustro niekompletne
+ * wymusza rzutowanie `as`, a rzutowanie wylacza kontrole typow i przepuszcza
+ * zgadniete nazwy pol (tak powstal V12K-226). Guard `enm_contract_parity_guard.py`
+ * pilnuje, zeby ta luka nie wrocila.
+ */
+
+/** Port pola/stacji — jawny punkt przylaczenia w kontrakcie topologii. */
+export interface Port {
+  id: string;
+  kind:
+    | 'sn_input' | 'sn_output' | 'sn_branch' | 'sn_transformer' | 'sn_measurement'
+    | 'sn_der_pv' | 'sn_der_bess' | 'sn_der_fw' | 'sn_coupler' | 'sn_reserve'
+    | 'nn_feeder' | 'nn_load' | 'nn_der_pv' | 'nn_der_bess' | 'nn_der_fw';
+  nominal_voltage_kv: number;
+  bay_ref?: string | null;
+  substation_ref: string;
+  meta?: Record<string, unknown>;
+  occupied_by?: string | null;
+}
+
+/** Wezel przylaczenia — punkt, w ktorym element wchodzi do sieci. */
+export interface ConnectionNode {
+  id: string;
+  location: 'bay' | 'bus' | 'der_terminal' | 'branch_point';
+  voltage_kv: number;
+  parent_ref: string;
+}
+
+/** Bateria kondensatorow rownoleglych (kompensacja mocy biernej). */
+export interface ShuntCapacitor extends ENMElement {
+  bus_ref: string;
+  rated_mvar: number;
+  rated_kv: number;
+  status?: 'closed' | 'open';
+}
+
+/** Kompensacja spadku napiecia w linii (regulacja OLTC wg punktu zdalnego). */
+export interface LineDropCompensation {
+  enabled: boolean;
+  r_ohm: number;
+  x_ohm: number;
+}
+
 export interface EnergyNetworkModel {
   header: ENMHeader;
   buses: Bus[];
@@ -1048,6 +1145,13 @@ export interface EnergyNetworkModel {
   corridors: Corridor[];
   measurements: Measurement[];
   protection_assignments: ProtectionAssignment[];
+  /**
+   * V12K-230: kolekcje modelu, ktorych lustro NIE DEKLAROWALO — baterie kondensatorow
+   * (kompensacja mocy biernej) i wezly przylaczenia. Odczyt bez deklaracji wymusilby
+   * rzutowanie, a to droga do zgadnietych nazw pol (V12K-226).
+   */
+  shunt_capacitors?: ShuntCapacitor[];
+  connection_nodes?: ConnectionNode[];
   /** Opcjonalne widoki logiczne Snapshota (kanoniczne wejście segmentacji SLD). */
   logical_views?: LogicalViewsV1;
   /** Phase 0B-4: ciągi liniowe — explicit order stacji (zamiast wnioskowania z grafu). */
