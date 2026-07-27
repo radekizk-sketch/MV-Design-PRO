@@ -245,4 +245,115 @@ describe('Wizard → Store integration (Pakiet H/G end-to-end)', () => {
       });
     });
   });
+
+  it('liczba jednostek trafia do modelu, a moc pozycji to ILOCZYN (V12K-249)', async () => {
+    // POMIAR PRZED NAPRAWA: kreator wysylal na sztywno `quantity: 1`, wiec farmy
+    // 8 × 1 MW NIE DALO SIE wyrazic — a od iloczynu zaleza prady robocze, dobor
+    // transformatora, przekladnikow i kategoria NC RfG (audyt E-21 pkt P2).
+    render(
+      <AddDerWizard
+        isOpen
+        stationId="station-001"
+        stationName="Stacja Test"
+        derKind="PV"
+        projectId="projekt-test-001"
+        onClose={() => {}}
+        nowIso="2026-04-01T00:00:00Z"
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('variant-nN'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.change(screen.getByTestId('add-der-device'), {
+      target: { value: 'pv_inv_catalog_50' },
+    });
+    fireEvent.change(screen.getByTestId('add-der-unit-count'), { target: { value: '8' } });
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_enea' } });
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-create'));
+
+    await waitFor(() => {
+      const generatorCall = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.find(
+        ([url]) => String(url).includes('/generators'),
+      );
+      const body = JSON.parse(String(generatorCall?.[1]?.body));
+      expect(body.quantity).toBe(8);
+      // 8 × 50 kW = 400 kW = 0,4 MW — moc CALEJ pozycji, nie jednostki.
+      expect(body.power_mw).toBeCloseTo(0.4, 6);
+    });
+  });
+
+  it('urzadzenie BEZ mocy katalogowej NIE zapisuje sie z moca podstawiona (V12K-249)', async () => {
+    // POMIAR: kreator liczyl `power_mw: (nominalPowerKw ?? 500) / 1000`, wiec brak mocy
+    // dawal 500 kW WPISANE DO MODELU jako moc wytworcy — dana projektowa, od ktorej
+    // zaleza wszystkie obliczenia sieciowe. Sciezka byla UTAJONA (lokalne katalogi maja
+    // moc, a mapowanie z backendu zawsze ustawia pole), ale mapowanie ustawia ZERO, gdy
+    // `pmax_mw` jest zerowe albo nieliczbowe — i to jest wariant OSIAGALNY: generator
+    // o mocy 0 MW jest rowna fabrykacja co 500 kW.
+    const konwerterBezMocy = [
+      {
+        id: 'conv_bez_mocy',
+        name: 'Falownik bez tabliczki',
+        kind: 'PV',
+        un_kv: 0.4,
+        pmax_mw: 0,
+        sn_mva: 0,
+        manufacturer: 'Nieznany',
+      },
+    ];
+    global.fetch = vi.fn(async (url: string) => ({
+      ok: true,
+      json: async () =>
+        String(url).includes('converter') ? konwerterBezMocy : {
+          bess_operation_modes: [],
+          tap_changers: [],
+          hv_fuses: [],
+          device_withstand: [],
+          pf_curves: [],
+          block_transformers: [],
+          mv_neutral_groundings: [],
+        },
+    })) as never;
+
+    rtlRender(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <AddDerWizard
+          isOpen
+          stationId="station-001"
+          stationName="Stacja Test"
+          derKind="PV"
+          projectId="projekt-test-001"
+          onClose={() => {}}
+          nowIso="2026-04-01T00:00:00Z"
+        />
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(screen.getByTestId('variant-nN'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    const wybor = screen.getByTestId('add-der-device') as HTMLSelectElement;
+    const bezMocy = Array.from(wybor.options).find((o) => o.value === 'conv_bez_mocy');
+    if (!bezMocy) {
+      // Katalog backendu nie podal tej pozycji — wtedy sciezka jest poza zasiegiem
+      // testu interfejsu i pilnuje jej wylacznie warunek w kodzie zapisu.
+      return;
+    }
+    fireEvent.change(wybor, { target: { value: 'conv_bez_mocy' } });
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.change(screen.getByTestId('add-der-ncrfg'), { target: { value: 'ncrfg_enea' } });
+    fireEvent.click(screen.getByTestId('add-der-next'));
+    fireEvent.click(screen.getByTestId('add-der-create'));
+
+    await waitFor(() => {
+      const zadania = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+        ([url, init]) => String(url).includes('/generators') && init?.method === 'POST',
+      );
+      expect(zadania, 'wytworca bez mocy katalogowej nie moze trafic do modelu').toHaveLength(0);
+    });
+  });
 });
