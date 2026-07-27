@@ -1,3 +1,5 @@
+import type { CtClass } from './protection-catalogs';
+
 /**
  * StationDer types — jednolity model danych łączący Stację SN/nN (E-13)
  * z konfiguratorami DER (PV E-21, BESS E-22, FW E-23).
@@ -172,6 +174,16 @@ export interface StationDerConnection {
   readonly connection_side: ConnectionSide;
   /** Punkt wspólnego przyłączenia (PCC). Format: `{stationId}__{busbarId}__{nominal_kv}`. */
   readonly pcc_ref: string | null;
+  /**
+   * V12K-232: klasa dokladnosci i zastosowanie przypisanego przekladnika PRADOWEGO,
+   * rozwiazane z PRAWDZIWEGO katalogu (`/api/catalog/ct-types`). Regula normowa
+   * IEC 61869-2 (klasa 5P/10P dla zabezpieczen) oraz warunek 87T (rdzen podwojny)
+   * czytaja te DANE, a nie szukaja identyfikatora w rownoleglym katalogu frontu —
+   * tamten ma zerowe pokrycie ID z backendem, wiec dla realnego przekladnika regula
+   * nigdy nie mogla byc spelniona.
+   */
+  readonly ct_accuracy_class?: CtClass | null;
+  readonly ct_application?: 'protection' | 'metering' | 'dual' | null;
   /** Pole SN — jeśli `connection_side='SN'`. */
   readonly bay_ref: string | null;
   /** Transformator dedykowany — jeśli `connection_side='dedicated_transformer'`. */

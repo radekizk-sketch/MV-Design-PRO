@@ -13,7 +13,7 @@
  *  - eng.11: anti-islanding (27/59/81U/81O) wymagane dla DER po stronie nN
  */
 
-import { CT_CATALOG, isCtClassValidForProtection } from './protection-catalogs';
+import { CT_CATALOG, isCtClassValidForProtection, type CtClass } from './protection-catalogs';
 import {
   EMPTY_DER_READINESS,
   type DerReadinessMatrix,
@@ -146,6 +146,40 @@ export function validateHostingCapacity(args: {
  * at_cable_joint), zabezpieczenia kierunkowe (67/67N) są wymagane —
  * sprawdzane jako warning w protection axis (Naprawa B.2).
  */
+/**
+ * Klasa dokladnosci przekladnika prądowego przypisanego do wytwórcy, albo `null`.
+ *
+ * KOLEJNOSC ZRODEL (V12K-232). (1) DANA z modelu — pole `ct_accuracy_class` na
+ * rekordzie wytwórcy, wypełniane przez warstwę, która zna PRAWDZIWY katalog
+ * (`/api/catalog/ct-types`). (2) Przejściowo katalog lokalny frontu — ma tylko pięć
+ * wpisów i ZEROWE pokrycie identyfikatorów z katalogiem backendu, więc dla realnych
+ * przekładników nic nie znajdzie; zostaje wyłącznie po to, żeby nie zepsuć ścieżek,
+ * które nadal używają tamtych identyfikatorów. Docelowo (F-K8 faza 2) źródłem jest
+ * wyłącznie dana, a katalog lokalny znika razem z relokacją oceny do backendu.
+ *
+ * `null` przy PODANYM `ct_catalog_ref` znaczy „klasy nie da się ustalić" — i to jest
+ * inny fakt niż „klasa nie jest zabezpieczeniowa". Pierwszy to brak danej, drugi to
+ * werdykt; mieszanie ich dało milczące „częściowo" bez powodu.
+ */
+function ctKlasaZDanychAlboKatalogu(der: StationDerConnection): CtClass | null {
+  const zModelu = der.ct_accuracy_class;
+  if (zModelu) return zModelu;
+  const ref = der.catalogs.ct_catalog_ref;
+  if (!ref) return null;
+  return CT_CATALOG.find((c) => c.id === ref)?.accuracy_class ?? null;
+}
+
+/** Zastosowanie przekładnika (zabezpieczenia / pomiar / dwurdzeniowy) — jak wyżej. */
+function ctZastosowanieZDanychAlboKatalogu(
+  der: StationDerConnection,
+): 'protection' | 'metering' | 'dual' | null {
+  const zModelu = der.ct_application;
+  if (zModelu) return zModelu;
+  const ref = der.catalogs.ct_catalog_ref;
+  if (!ref) return null;
+  return CT_CATALOG.find((c) => c.id === ref)?.application ?? null;
+}
+
 export function computeDerReadinessMatrix(
   der: StationDerConnection,
   context?: { readonly otherDersInStation?: number },
@@ -166,24 +200,32 @@ export function computeDerReadinessMatrix(
   const hasFaultCurrentData = der.catalogs.fault_current_data_ref !== null;
   // Naprawa A.5: model dynamiczny dla FRT/HVRT.
   const hasDynamicModel = der.catalogs.dynamic_model_ref !== null;
-  // Naprawa eng.5: klasa CT musi być zabezpieczeniowa (5P/10P) dla protection axis.
-  const ctValidForProtection = (() => {
-    if (!der.catalogs.ct_catalog_ref) return false;
-    const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
-    if (!ct) return false;
-    return isCtClassValidForProtection(ct.accuracy_class);
-  })();
+  // Naprawa eng.5: klasa CT musi byc zabezpieczeniowa (5P/10P) dla protection axis.
+  //
+  // V12K-232: klasa przekladnika jest DANA, nie wynikiem szukania w katalogu wewnatrz
+  // reguly. Poprzednia wersja rozwiazywala `ct_catalog_ref` w LOKALNYM, piecio-wpisowym
+  // `CT_CATALOG` frontu, ktory ma ZEROWE pokrycie identyfikatorow z prawdziwym
+  // katalogiem backendu (`/api/catalog/ct-types`, 12 typow producenckich) — a to
+  // wlasnie z niego kreator pomiaru dodaje przekladnik do modelu. POMIAR: dla realnego
+  // `ct_200_5_5p10_10va_abb` (klasa 5P10, w pelni poprawna zabezpieczeniowo wg
+  // IEC 61869-2) os zabezpieczen konczyla sie stanem „czesciowo" z PUSTA lista
+  // powodow; dla syntetycznego `ct_200_5_5p20` z piatki frontu — „gotowa".
+  //
+  // `ctKlasaNieznana` odroznia „klasa nie jest zabezpieczeniowa" od „klasy nie da sie
+  // ustalic". Pierwsze jest werdyktem, drugie brakiem danej — i musi byc NAZWANE
+  // (patrz `buildBlockersForAxis`), nigdy milczacym „czesciowo".
+  // Nierozstrzygnieta klasa NIE spelnia warunku (bezpieczniej: „nie wiem" nie jest
+  // „spelnione"), ale powod jest NAZWANY w `buildBlockersForAxis` — os nie moze byc
+  // niegotowa w milczeniu.
+  const ctKlasa = ctKlasaZDanychAlboKatalogu(der);
+  const ctValidForProtection = ctKlasa !== null && isCtClassValidForProtection(ctKlasa);
   // Naprawa eng.6: CT dual-core wymagany jeśli mamy dedicated_transformer
   // o mocy ≥ 1.6 MVA (próg dla 87T per IEC 60255-13). Dual-core = klasa 5P/10P
   // + 0,5/0,2 łączone (oznaczone application='dual' w katalogu CT).
   const requires87T =
     der.connection_side === 'dedicated_transformer' &&
     (der.nominal_power_kw ?? 0) >= 1600;
-  const ctIsDualCore = (() => {
-    if (!der.catalogs.ct_catalog_ref) return false;
-    const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
-    return ct?.application === 'dual';
-  })();
+  const ctIsDualCore = ctZastosowanieZDanychAlboKatalogu(der) === 'dual';
   // Naprawa eng.11: anti-islanding (27/59/81U/81O) — egzekwowane przez
   // buildBlockersForAxis dla protection axis (po nN/ZK/słupie/mufie).
 
@@ -411,12 +453,27 @@ function buildBlockersForAxis(
       }
       // Naprawa eng.5: CT klasa musi być zabezpieczeniowa.
       if (der.catalogs.ct_catalog_ref) {
-        const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
-        if (ct && !isCtClassValidForProtection(ct.accuracy_class)) {
+        const klasa = ctKlasaZDanychAlboKatalogu(der);
+        if (klasa === null) {
+          // V12K-232: brak rozstrzygnięcia klasy MUSI być nazwany. Wcześniej ta gałąź
+          // milczała, więc oś kończyła się stanem „częściowo" z PUSTĄ listą powodów —
+          // dokładnie dla przekładników z PRAWDZIWEGO katalogu, bo reguła szukała ich
+          // identyfikatorów w równoległym katalogu frontu (zerowe pokrycie ID).
+          blockers.push({
+            code: 'der.ct_class.unresolved',
+            message_pl:
+              'Nie ustalono klasy dokładności przypisanego przekładnika prądowego, '
+              + 'więc warunku klasy zabezpieczeniowej 5P/10P (IEC 61869-2) nie da się '
+              + 'sprawdzić. Uzupełnij dane katalogowe przekładnika w modelu.',
+            object_ref: der.id,
+            target_screen: derKindToScreen(der.der_kind),
+            target_tab: 'topology',
+          });
+        } else if (!isCtClassValidForProtection(klasa)) {
           blockers.push({
             code: 'der.ct_class.invalid',
             message_pl:
-              `Klasa CT "${ct.accuracy_class}" jest pomiarowa, nie zabezpieczeniowa. `
+              `Klasa CT "${klasa}" jest pomiarowa, nie zabezpieczeniowa. `
               + `Wymagana klasa 5P/10P (IEC 61869-2). Wybierz przekładnik typu protection.`,
             object_ref: der.id,
             target_screen: derKindToScreen(der.der_kind),
@@ -430,8 +487,8 @@ function buildBlockersForAxis(
         (der.nominal_power_kw ?? 0) >= 1600
       ) {
         if (der.catalogs.ct_catalog_ref) {
-          const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
-          if (ct && ct.application !== 'dual') {
+          const zastosowanie = ctZastosowanieZDanychAlboKatalogu(der);
+          if (zastosowanie !== null && zastosowanie !== 'dual') {
             blockers.push({
               code: 'der.ct_87t_dual_core.required',
               message_pl:

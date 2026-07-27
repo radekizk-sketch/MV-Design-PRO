@@ -433,3 +433,87 @@ describe('zlozZBramkaModelu — ocena DER + bramka modelu (V12K-231)', () => {
     expect(wynik.find((a) => a.axis === 'sc_1f')?.status).toBe('not_applicable');
   });
 });
+
+describe('klasa przekladnika: DANA z modelu, nie szukanie w rownoleglym katalogu (V12K-232)', () => {
+  function derZCt(over: Partial<StationDerConnection>): StationDerConnection {
+    return {
+      id: 'DER-1', station_id: 'ST-1', der_kind: 'PV', connection_side: 'mv_bay',
+      pcc_ref: 'BUS-1', bay_ref: 'BAY-1', lv_busbar_ref: null, connection_node_ref: null,
+      nominal_power_kw: 500, voltage_level_ref: null,
+      catalogs: {
+        device_catalog_ref: 'INV-1', transformer_catalog_ref: null,
+        protection_catalog_ref: 'REL-1', ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
+        vt_catalog_ref: 'VT-1', fault_current_data_ref: 'FC-1', dynamic_model_ref: null,
+      },
+      profiles: { nc_rfg_profile_ref: null, lvrt_curve_ref: null, hvrt_curve_ref: null },
+      ...over,
+    } as unknown as StationDerConnection;
+  }
+
+  it('przekladnik z PRAWDZIWEGO katalogu bez podanej klasy: powod NAZWANY, nie milczenie', () => {
+    // POMIAR PRZED NAPRAWĄ: dla realnego `ct_200_5_5p10_10va_abb` (klasa 5P10, w pełni
+    // poprawna zabezpieczeniowo wg IEC 61869-2) oś zabezpieczeń kończyła się stanem
+    // „częściowo" z PUSTĄ listą powodów — bo reguła szukała identyfikatora w lokalnym,
+    // pięciowpisowym katalogu frontu, który ma ZEROWE pokrycie ID z backendem.
+    const der = derZCt({});
+    const matrix = computeDerReadinessMatrix(der);
+    const kody = (buildAggregatedReadiness(der).find((a) => a.axis === 'protection')?.blockers ?? [])
+      .map((b) => b.code);
+
+    expect(matrix.protection).toBe('partial');
+    expect(kody).toContain('der.ct_class.unresolved');
+  });
+
+  it('klasa PODANA jako dana modelu czyni os gotowa — bez zadnego katalogu w regule', () => {
+    // Kontrola, że dana z modelu wystarcza: ten sam identyfikator backendu, tylko
+    // z rozwiązaną klasą 5P10 obok.
+    const der = derZCt({ ct_accuracy_class: '5P10' });
+    const matrix = computeDerReadinessMatrix(der);
+
+    expect(matrix.protection).toBe('ready');
+  });
+
+  it('klasa POMIAROWA podana jako dana daje werdykt, nie brak danej', () => {
+    // Rozróżnienie, o które chodzi: „klasa nie jest zabezpieczeniowa" to WERDYKT
+    // (kod .invalid), a „klasy nie da się ustalić" to brak danej (kod .unresolved).
+    const der = derZCt({ ct_accuracy_class: '0.5' });
+    const kody = (buildAggregatedReadiness(der).find((a) => a.axis === 'protection')?.blockers ?? [])
+      .map((b) => b.code);
+
+    expect(kody).toContain('der.ct_class.invalid');
+    expect(kody).not.toContain('der.ct_class.unresolved');
+  });
+
+  it('warunek 87T czyta zastosowanie z DANEJ, a brak danej nie udaje spelnienia', () => {
+    // Transformator dedykowany 2 MVA wymaga rdzenia podwójnego (IEC 60255-13).
+    // Rdzeń podany jako pojedynczy → wymaganie zgłoszone; rdzeń nieznany → NIE
+    // zgłaszamy fałszywego naruszenia, bo braku danej nie wolno czytać jako „nie dual".
+    const zPojedynczym = derZCt({
+      connection_side: 'dedicated_transformer', nominal_power_kw: 2000,
+      ct_accuracy_class: '5P10', ct_application: 'protection',
+    });
+    const bezDanej = derZCt({
+      connection_side: 'dedicated_transformer', nominal_power_kw: 2000,
+      ct_accuracy_class: '5P10',
+    });
+
+    const kodyPojedynczy = (buildAggregatedReadiness(zPojedynczym)
+      .find((a) => a.axis === 'protection')?.blockers ?? []).map((b) => b.code);
+    const kodyBezDanej = (buildAggregatedReadiness(bezDanej)
+      .find((a) => a.axis === 'protection')?.blockers ?? []).map((b) => b.code);
+
+    expect(kodyPojedynczy).toContain('der.ct_87t_dual_core.required');
+    expect(kodyBezDanej).not.toContain('der.ct_87t_dual_core.required');
+  });
+
+  it('rdzen podwojny podany jako dana spelnia warunek 87T', () => {
+    const der = derZCt({
+      connection_side: 'dedicated_transformer', nominal_power_kw: 2000,
+      ct_accuracy_class: '5P10', ct_application: 'dual',
+    });
+    const kody = (buildAggregatedReadiness(der).find((a) => a.axis === 'protection')?.blockers ?? [])
+      .map((b) => b.code);
+
+    expect(kody).not.toContain('der.ct_87t_dual_core.required');
+  });
+});
