@@ -230,6 +230,111 @@ o właściwy eksport. Estymator zostaje wyłącznie jako ścieżka awaryjna, z j
 
 ---
 
+## 4A. Audyt rzeczywistego eksportu Shape — Tarnowo Podgórne (2026-07-27)
+
+Analiza wykonana bezpośrednio na plikach `.shp` / `.dbf` / `.prj` / `.cpg` z paczki dostarczonej
+przez właściciela. Pełny odczyt 1432 rekordów, bez próbkowania.
+
+### 4A.1 Co paczka zawiera
+
+| Cecha | Wartość |
+|---|---|
+| Obszar | Tarnowo Podgórne, pow. poznański; 8,89 × 4,64 km |
+| Zasięg | 52,4447–52,4911 N · 16,5773–16,7037 E (odwrotna transformacja z parametrów `.prj`) |
+| Układ | ETRS89 / PL-2000 strefa 7 (południk osiowy 21°, wschodnie 7 500 000) |
+| Kodowanie | UTF-8 (jawny `.cpg`) |
+| Warstwy | 20 plików Shape, w tym 17 elektrycznych |
+| Obiekty | 1377 elektrycznych + 55 informacyjnych |
+| Geometria | 180,4 km łącznie (SN kabel 89,5; SN napowietrzna 51,7; kabel wlz 17,0; 110 kV 19,6) |
+
+Warstwy odwzorowują dokładnie te pojęcia, którymi operuje nasz model: stacja słupowa
+i wnętrzowa (własna oraz obca), GPZ, punkt dystrybucyjny, **złącze rozgałęźne**, odłącznik
+i rozłącznik sieciowy, kabel, kabel wlz, odcinek linii napowietrznej, generator.
+
+Rozszyfrowana taksonomia `dp_otype` (podstawa profilu operatora z §6):
+
+| Kod | Obiekt | Kod | Obiekt |
+|---|---|---|---|
+| 700101 | Kabel | 702004 | Stacja słupowa |
+| 700102 | Odcinek linii napowietrznej | 702005 | Stacja wnętrzowa |
+| 700111 | Kabel wlz | 703000 | Punkt dystrybucyjny |
+| 702001 | Stacja GPZ | 704075 / 704077 / 704085 | Odłącznik / rozłącznik / inne urządzenie rozłączające |
+| 702002 / 702003 | Stacja słupowa / wnętrzowa obca | 709070 | Złącze rozgałęźne |
+| 710000 | Generator | 730000 | Obiekt informacyjny |
+
+`dp_subtype` koduje poziom napięcia: `6` = 15 kV, `9` = 110 kV, `13` = 220 kV, `16` = 400 kV.
+
+### 4A.2 Czego paczka nie zawiera — i to jest sedno
+
+**Wszystkie warstwy mają identyczny zestaw 11 kolumn systemowych Digpro. Ani jednego atrybutu
+inżynierskiego.** Brakuje: przekroju, materiału żyły, typu katalogowego, długości trasowej,
+nazwy i numeru obiektu, numeru obwodu, węzłów końcowych, stanu łączeniowego, danych
+transformatorów, impedancji i obciążalności.
+
+To jest eksport **warstwy rysunkowej**, nie modelu sieci — potwierdza to sama treść pola
+`sub_c_type`: „Kabel, 15 kV — Linia 1, **mapa**".
+
+Istotny trop: dołączone pliki `_info.csv` to słownik danych z kolumnami `Tabela` i `Pole`,
+które są **puste dla wszystkich pozycji**. Szablon eksportu ma więc gotowe miejsce na atrybuty
+z bazy — po prostu nie podpięto do niego ani jednego. To zmienia charakter prośby do operatora
+z „przygotujcie nam dane" na „uruchomcie ten sam eksport z podpiętymi kolumnami".
+
+### 4A.3 Trzy ustalenia, które zmieniają projekt
+
+**(1) `dp_oid` jest stabilnym kluczem złączenia.** 1369 unikalnych identyfikatorów na 1377
+rekordów elektrycznych; 8 duplikatów występuje wyłącznie w obiektach informacyjnych (jeden
+obiekt w reprezentacji punktowej, liniowej i poligonowej). Drugi eksport, ten z atrybutami,
+da się zestawić z geometrią jeden do jednego. **Nie trzeba prosić o wszystko od nowa.**
+
+**(2) Topologii nie da się odtworzyć bezpiecznie.** Eksport nie zawiera relacji „od węzła —
+do węzła". Jedyną drogą jest sklejanie końców odcinków po współrzędnych; wynik przemiatania
+tolerancji dla 949 odcinków SN i WN:
+
+| Tolerancja [m] | Końce wiszące | Komponenty spójne | Największy komponent [odc.] | Urządzeń trafionych w węzeł (z 428) |
+|---|---|---|---|---|
+| 0,01 | 882 | 431 | 35 | 124 |
+| 1 | 631 | 294 | 62 | 264 |
+| 2 | 477 | 202 | 152 | 307 |
+| 10 | 208 | 63 | 610 | 388 |
+
+Nie istnieje bezpieczny próg: przy 1 cm sieć rozpada się na 431 fragmentów, a przy 10 m skleja
+się kosztem łączenia obiektów niezwiązanych (sąsiednie kable w stacji, aparat z mufą, dwa
+niezależne ciągi wzdłuż tej samej drogi). Zysk i błąd rosną razem i nie są rozróżnialne.
+**To empiryczne potwierdzenie zasady zero z §2** — topologia z takiego pliku może być wyłącznie
+propozycją do zatwierdzenia przez człowieka.
+
+**(3) 7,8 % obiektów nie istnieje.** Pole `state_name` — jedyny atrybut merytoryczny w paczce —
+rozróżnia sieć istniejącą od planowanej, projektowanej i koncepcyjnej. Nieistniejących obiektów
+jest 108, a w kilometrach: **34,2 km kabla SN z 106,6 km**. Naiwny import zamodelowałby sieć
+docelową zamiast istniejącej. Szczególnie jaskrawe jest to dla kabla wlz: z 17,0 km istnieje
+1,25 km.
+
+Naturalne odwzorowanie: sieć istniejąca jako model bazowy, warianty rozwojowe jako osobne
+przypadki obliczeniowe — czyli dokładnie to, co architektura już wymusza (§7 pkt 6).
+
+### 4A.4 Uwaga o układzie współrzędnych
+
+Plik `.prj` deklaruje strefę 7 PL-2000, podczas gdy obszar (16,6° E) leży w nominalnym zakresie
+strefy 6. Parametry są wewnętrznie spójne z danymi — odwrotna transformacja daje prawidłową
+lokalizację — ale oznacza to pracę ~300 km od południka osiowego, co dokłada ok. 0,1 % skali
+odwzorowawczej. Praktyczne skutki: (a) narzędzia egzekwujące zasięg strefy mogą odrzucić plik,
+(b) długości liczone z geometrii są zawyżone o ok. 0,1 %, co dla 89,5 km kabla daje ~90 m.
+
+To dodatkowy argument za regułą z §3: **długość musi przyjść jako atrybut, nie z geometrii.**
+Geometria mapy to w dodatku trasa, a nie długość przewodu — bez zapasów i bez profilu pionowego.
+
+### 4A.5 Wniosek operacyjny — treść prośby do operatora
+
+1. Ten sam eksport Shape z podpiętymi atrybutami (przekrój, materiał, typ katalogowy, długość
+   trasowa, nazwa obiektu, numer obwodu) — szablon ma na nie gotowe miejsce.
+2. Relacje topologiczne: węzeł początkowy i końcowy odcinka. Jeśli Shape ich nie unosi —
+   tabela powiązań po `dp_oid`.
+3. Stany łączeniowe aparatów (gdzie jest punkt podziału sieci).
+4. Dane transformatorów w stacjach: moc, przekładnia, napięcie zwarcia.
+5. Pytanie kontrolne o eksport CIM/CGMES (§4.4) — czyni punkty 1–4 bezprzedmiotowymi.
+
+---
+
 ## 5. PDF — co realnie da się z niego wyciągnąć (uczciwie)
 
 Trzy klasy plików, trzy różne poziomy zwrotu z inwestycji:
