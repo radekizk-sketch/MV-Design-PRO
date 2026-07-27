@@ -57,7 +57,7 @@ def zrzut_data_uri(nazwa: str) -> str:
     return f"data:{mime};base64," + base64.b64encode(plik.read_bytes()).decode()
 
 
-STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…239</title>
+STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…240</title>
 <style>
 :root{--tlo:#f7f6f2;--karta:#fff;--tekst:#191814;--cichy:#5d594f;--linia:#dbd6c9;--akcent:#2e5f7a;
 --akcent-tlo:#e6eef3;--ok:#2f6b3f;--brak:#8c2f2f;--uwaga:#8a5a12}
@@ -100,7 +100,7 @@ padding:3px 7px;border-radius:2px;vertical-align:2px}
 </style>
 <div class="owijka">
 <header>
-<div class="nadtytul">Seria · V12K-216…239 · jedna doba</div>
+<div class="nadtytul">Seria · V12K-216…240 · jedna doba</div>
 <h1>Od schematu do jednej reguły: brak danej nie może stać się zerem</h1>
 <p class="cichy">Zrzuty żywej aplikacji, sieć wzorcowa 52 stacji · pomiar na renderze i na kodzie · 2026-07-27</p>
 </header>
@@ -231,6 +231,23 @@ Katalog VT przywrócony, lekcja zapisana w rejestrze: <em>inwentarz czytany prze
 zasada „mierz, nie zgaduj" — tyle że popełniona na własnym pomiarze.</p>
 </div>
 
+<h2>Narzędzie, którego CI nigdy nie uruchamiało</h2>
+<div class="karta">
+<p>Konfiguracja projektu ustawia <strong>mypy w trybie strict</strong>, instrukcja
+deweloperska wymienia go wśród poleceń — a <strong>żaden z ośmiu workflow go nie
+uruchamiał</strong>. Przez ten czas narosło <strong>273 błędy typów w 67 plikach</strong>
+(z 741 sprawdzanych). To ten sam wzorzec, który ta seria zamyka po stronie produktu —
+warstwa zabezpieczeń, punkt neutralny, kryterium IEC 60949, macierz gotowości —
+tyle że po stronie narzędzi: <em>zdolność bez wywołania</em>.</p>
+<p>Wpięcie <code>mypy src</code> wprost zrobiłoby CI trwale czerwone, a czerwone CI
+przestaje być sygnałem. Wykluczenie pliku albo <code>continue-on-error</code> byłoby
+maskowaniem długu. Zapadka robi trzecią rzecz: <strong>uruchamia mypy naprawdę</strong>
+i pilnuje, żeby licznik nie urósł ani o jeden błąd. Działa też w drugą stronę — po
+poprawie żąda obniżenia progu, bo bez utrwalenia poprawa cofa się po cichu.</p>
+<p class="cichy">Sprawdzone wstrzykniętą regresją: jedna funkcja bez adnotacji podnosi
+licznik 273 → 274 i zapadka odcina, nazywając plik i linię.</p>
+</div>
+
 <h2>Zamknięte na schemacie</h2>
 <div class="tab"><table>
 <thead><tr><th>Rejestr</th><th>Rzecz</th><th>Pomiar</th></tr></thead>
@@ -253,6 +270,8 @@ zasada „mierz, nie zgaduj" — tyle że popełniona na własnym pomiarze.</p>
 <td class="num">3 konwencje → <span class="lep">1</span></td></tr>
 <tr><td>V12K-239</td><td>Rdzeń CT wyprowadzany w katalogu · koniec katalogu atrapy</td>
 <td class="num">12 typów, <span class="lep">9</span> zabezp.</td></tr>
+<tr><td>V12K-240</td><td>Zapadka długu typów — mypy wreszcie biegnie w CI</td>
+<td class="num">273 błędy, próg <span class="lep">zamknięty</span></td></tr>
 </tbody></table></div>
 
 <div class="karta wycof">
@@ -487,7 +506,7 @@ pytest 1239 (aplikacja), 957 (API + analizy), 613 (solwery + API), 397 (katalog 
 <code>accept:sld-v3</code> 224 PASS / 0 FAIL; guard determinizmu SLD 0 naruszeń; guard parzystości
 69/69 encji; guard determinizmu materiału audytowego — dwie regeneracje sześciu zrzutów
 bez zmiany <em>ani jednego bajtu</em>; type-check, lint, guardy architektury, katalogu, UI
-i dokumentacji zielone. Dwadzieścia dziewięć commitów, każdy wypchnięty od razu po weryfikacji —
+i dokumentacji zielone. Trzydzieści jeden commitów, każdy wypchnięty od razu po weryfikacji —
 kontener cofnął migawkę osiem razy, ostatni raz o 10:40, i tylko dlatego nic nie przepadło.</p>
 <p class="cichy">Bramki sprawdzane wstrzykniętą regresją, nie zielonym wynikiem — dla niezmiennika
 motywu nadpisałem jeden zrzut bajtami drugiego i potwierdziłem, że test pada z komunikatem
