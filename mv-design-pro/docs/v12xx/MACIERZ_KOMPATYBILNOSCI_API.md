@@ -249,6 +249,7 @@ Data wejscia statusow: 2026-05-24.
 | `POST /api/cases/audit2-power-flow` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Przejsciowy tor rozplywu audit2. | solver input tests | Architekt solverow |
 | `POST /api/fault-loop/compute` | v12xx | aktywny | 2026-05-24 | - | Obliczenie petli zwarcia IEC 60364. | fault loop tests | Architekt solverow |
 | `POST /api/projects/{project_id}/cases/{case_id}/generators` | v12xx | aktywny | 2026-05-24 | - | Zapis zrodla/generatora do przypadku przez API projektowe. | generator API tests | Architekt OZE |
+| `PATCH /api/projects/{project_id}/cases/{case_id}/generators/{generator_ref:path}/bindings` | v12xx | aktywny | 2026-07-27 | - | Wiazania katalogowe i profile zgodnosci wytworcy (kanoniczna operacja set_der_catalog_bindings). Pominiecie pola zostawia wiazanie bez zmian, jawny null je usuwa. | test_generators_api.py (5 testow) + test_set_der_catalog_bindings.py | Architekt OZE |
 | `POST /api/runs/power-flow` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Przejsciowe uruchomienie rozplywu przez unified runs. | unified run tests | Architekt API |
 | `POST /api/runs/protection` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Przejsciowe uruchomienie zabezpieczen przez unified runs. | unified run tests | Projektant zabezpieczen |
 | `POST /api/runs/short-circuit` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Przejsciowe uruchomienie zwarc przez unified runs. | unified run tests | Architekt API |

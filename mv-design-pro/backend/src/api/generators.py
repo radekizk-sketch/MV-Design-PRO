@@ -63,6 +63,51 @@ class DerGeneratorCreateRequest(BaseModel):
         return stripped or None
 
 
+class DerCatalogBindingsRequest(BaseModel):
+    """Wiązania katalogowe i profile zgodności wytwórcy wybierane PO jego utworzeniu.
+
+    V12K-238 (pomiar: V12K-237). Kreator DER wysyła przy tworzeniu katalog urządzenia,
+    baterii i transformatora blokowego. Katalog zabezpieczeń, przekładniki CT/VT, dane
+    prądu zwarciowego, model dynamiczny i profile zgodności są wybierane później — i do
+    tej pory nie miały GDZIE spłynąć, bo konfigurator pisał wyłącznie do store
+    przeglądarki. Sześć osi gotowości opierało więc werdykt na danych, których model nie
+    zna, a które przepadały po odświeżeniu strony.
+
+    KAŻDE pole jest opcjonalne, ale ich brak i jawne ``null`` znaczą CO INNEGO: pole
+    pominięte zostawia wiązanie w modelu bez zmian, a ``null`` je USUWA (reguła gotowości
+    znów widzi brak danej). Dlatego pola nie mają wartości domyślnych podstawianych po
+    cichu — o rozróżnienie dba ``model_fields_set``.
+    """
+
+    protection_catalog_ref: str | None = None
+    ct_catalog_ref: str | None = None
+    vt_catalog_ref: str | None = None
+    fault_current_data_ref: str | None = None
+    dynamic_model_ref: str | None = None
+    nc_rfg_profile_ref: str | None = None
+    lvrt_curve_ref: str | None = None
+    hvrt_curve_ref: str | None = None
+    pf_curve_ref: str | None = None
+
+    @field_validator(
+        "protection_catalog_ref",
+        "ct_catalog_ref",
+        "vt_catalog_ref",
+        "fault_current_data_ref",
+        "dynamic_model_ref",
+        "nc_rfg_profile_ref",
+        "lvrt_curve_ref",
+        "hvrt_curve_ref",
+        "pf_curve_ref",
+    )
+    @classmethod
+    def _strip_or_none(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+
 def _canonical_variant(variant: DerConnectionVariant) -> Literal["nn_side", "block_transformer"]:
     if variant == "nn_side":
         return "nn_side"
@@ -401,6 +446,57 @@ async def create_der_generator(
             detail={
                 "code": result.get("error_code") or "generator.create_failed",
                 "message_pl": result.get("error") or "Nie udało się zapisać konfiguracji DER.",
+            },
+        )
+
+    if result.get("snapshot"):
+        try:
+            saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
+            result["snapshot"] = saved.model_dump(mode="json")
+        except Exception as exc:  # pragma: no cover - defensive validation guard
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": "api.snapshot_validation_failed",
+                    "message_pl": f"Błąd zapisu snapshotu ENM: {exc}",
+                },
+            ) from exc
+
+    return result
+
+
+@router.patch("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/bindings")
+async def set_der_bindings(
+    project_id: str,
+    case_id: str,
+    generator_ref: str,
+    req: DerCatalogBindingsRequest,
+    request: Request,
+) -> dict[str, Any]:
+    """Zapisz wiązania katalogowe i profile zgodności wytwórcy w kanonicznym ENM."""
+
+    _validate_project_case_context(request, project_id, case_id)
+
+    # WYŁĄCZNIE pola JAWNIE podane w żądaniu — pominięte zostawiają model bez zmian,
+    # jawne `null` usuwa wiązanie. Bez `model_fields_set` każde żądanie kasowałoby
+    # wszystkie niewymienione wiązania (cicha utrata danych projektowych).
+    payload: dict[str, Any] = {"generator_ref": generator_ref}
+    for pole in req.model_fields_set:
+        payload[pole] = getattr(req, pole)
+
+    enm = _get_enm(case_id)
+    resolved_name = resolve_operation_name("set_der_catalog_bindings")
+    result = execute_domain_operation(
+        enm_dict=enm.model_dump(mode="json"),
+        op_name=resolved_name,
+        payload=payload,
+    )
+    if result.get("error"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": result.get("error_code") or "der_bindings.failed",
+                "message_pl": result.get("error") or "Nie udało się zapisać wiązań wytwórcy.",
             },
         )
 

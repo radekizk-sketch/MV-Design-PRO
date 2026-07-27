@@ -251,3 +251,112 @@ def test_create_der_generator_accepts_materialized_enm_without_study_case(app_cl
     assert response.status_code == 201
     payload = response.json()
     assert payload["snapshot"]["generators"][0]["station_ref"] == "station/1"
+
+
+def _utworz_wytworce(app_client) -> tuple[str, str, str]:
+    """Projekt + przypadek + wytwórca PV w modelu; zwraca (project_id, case_id, ref)."""
+    project_id = str(uuid4())
+    case_id = str(uuid4())
+    _seed_station_enm(case_id)
+
+    response = app_client.post(
+        f"/api/projects/{project_id}/cases/{case_id}/generators",
+        json={
+            "station_ref": "station/1",
+            "der_kind": "PV",
+            "power_mw": 0.5,
+            "connection_variant": "nn_side",
+            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            "source_name": "PV wiązania",
+        },
+    )
+    assert response.status_code == 201
+    return project_id, case_id, response.json()["snapshot"]["generators"][0]["ref_id"]
+
+
+def _wiazania_z_modelu(app_client, case_id: str) -> dict:
+    persisted = app_client.get(f"/api/cases/{case_id}/enm")
+    assert persisted.status_code == 200
+    return persisted.json()["generators"][0].get("materialized_params", {})
+
+
+def test_wiazania_wytworcy_trafiaja_do_modelu_przez_endpoint(app_client) -> None:
+    """V12K-238: wybory z konfiguratora DER mają ścieżkę do modelu.
+
+    Przed tą kartą katalog zabezpieczeń, przekładniki CT/VT, dane prądu zwarciowego i
+    model dynamiczny żyły wyłącznie w store przeglądarki (pomiar: V12K-237) — sześć osi
+    gotowości opierało werdykt na danych, których model nie zna.
+    """
+    project_id, case_id, ref = _utworz_wytworce(app_client)
+
+    response = app_client.patch(
+        f"/api/projects/{project_id}/cases/{case_id}/generators/{ref}/bindings",
+        json={
+            "protection_catalog_ref": "rel_sepam_s20",
+            "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+            "vt_catalog_ref": "vt_15000_100_abb",
+            "fault_current_data_ref": "fc_pv_500",
+            "dynamic_model_ref": "dyn_pv_wecc",
+            "nc_rfg_profile_ref": "pse",
+        },
+    )
+
+    assert response.status_code == 200
+    params = _wiazania_z_modelu(app_client, case_id)
+    assert params["protection_catalog_ref"] == "rel_sepam_s20"
+    assert params["ct_catalog_ref"] == "ct_200_5_5p10_10va_abb"
+    assert params["vt_catalog_ref"] == "vt_15000_100_abb"
+    assert params["fault_current_data_ref"] == "fc_pv_500"
+    assert params["dynamic_model_ref"] == "dyn_pv_wecc"
+    assert params["profiles"]["nc_rfg_profile_ref"] == "pse"
+
+
+def test_pole_pominiete_w_zadaniu_nie_kasuje_wiazania_z_modelu(app_client) -> None:
+    """Pominięcie ≠ null. Bez tego rozróżnienia każda edycja jednego pola kasowałaby
+    pozostałe wiązania projektowe — cicha utrata danych."""
+    project_id, case_id, ref = _utworz_wytworce(app_client)
+    baza = f"/api/projects/{project_id}/cases/{case_id}/generators/{ref}/bindings"
+
+    assert app_client.patch(baza, json={"ct_catalog_ref": "ct_x"}).status_code == 200
+    assert app_client.patch(baza, json={"vt_catalog_ref": "vt_y"}).status_code == 200
+
+    params = _wiazania_z_modelu(app_client, case_id)
+    assert params["ct_catalog_ref"] == "ct_x"  # PRZEŻYŁO drugie żądanie
+    assert params["vt_catalog_ref"] == "vt_y"
+
+
+def test_jawny_null_usuwa_wiazanie(app_client) -> None:
+    """Jawne wyczyszczenie wiązania musi przywrócić BRAK DANEJ, a nie puste pole."""
+    project_id, case_id, ref = _utworz_wytworce(app_client)
+    baza = f"/api/projects/{project_id}/cases/{case_id}/generators/{ref}/bindings"
+
+    assert app_client.patch(baza, json={"ct_catalog_ref": "ct_x"}).status_code == 200
+    assert app_client.patch(baza, json={"ct_catalog_ref": None}).status_code == 200
+
+    assert "ct_catalog_ref" not in _wiazania_z_modelu(app_client, case_id)
+
+
+def test_wytworca_nieobecny_w_modelu_daje_blad_a_nie_cichy_zapis(app_client) -> None:
+    project_id, case_id, _ = _utworz_wytworce(app_client)
+
+    response = app_client.patch(
+        f"/api/projects/{project_id}/cases/{case_id}/generators/gen_nie_ma/bindings",
+        json={"ct_catalog_ref": "ct_x"},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "der_bindings.generator_not_found"
+
+
+def test_puste_zadanie_jest_odrzucone(app_client) -> None:
+    """Żądanie bez ani jednego wiązania nie może „przejść" — wywołujący musiałby wierzyć,
+    że coś zapisał."""
+    project_id, case_id, ref = _utworz_wytworce(app_client)
+
+    response = app_client.patch(
+        f"/api/projects/{project_id}/cases/{case_id}/generators/{ref}/bindings",
+        json={},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "der_bindings.payload_empty"

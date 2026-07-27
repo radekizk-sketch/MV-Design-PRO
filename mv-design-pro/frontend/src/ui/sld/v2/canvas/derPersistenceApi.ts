@@ -92,3 +92,55 @@ export async function postDerGeneratorConfig(
 
   return (await response.json()) as DomainOpResponseV1;
 }
+
+/**
+ * Wiązania katalogowe i profile zgodności wytwórcy wybierane PO jego utworzeniu
+ * (V12K-238, pomiar V12K-237).
+ *
+ * POMINIĘCIE ≠ `null`. Pole nieobecne w obiekcie zostawia wiązanie w modelu bez zmian,
+ * a jawne `null` je USUWA (reguła gotowości znów widzi brak danej). Dlatego nie wolno
+ * wysyłać tu pełnego obiektu z `null`-ami dla pól, których użytkownik nie dotknął —
+ * skasowałoby to jego wcześniejsze wybory.
+ */
+export interface DerCatalogBindingsRequest {
+  readonly protection_catalog_ref?: string | null;
+  readonly ct_catalog_ref?: string | null;
+  readonly vt_catalog_ref?: string | null;
+  readonly fault_current_data_ref?: string | null;
+  readonly dynamic_model_ref?: string | null;
+  readonly nc_rfg_profile_ref?: string | null;
+  readonly lvrt_curve_ref?: string | null;
+  readonly hvrt_curve_ref?: string | null;
+  readonly pf_curve_ref?: string | null;
+}
+
+/** Zapisz wiązania wytwórcy w modelu (kanoniczna operacja `set_der_catalog_bindings`). */
+export async function patchDerCatalogBindings(
+  projectId: string,
+  caseId: string,
+  generatorRef: string,
+  body: DerCatalogBindingsRequest,
+): Promise<DomainOpResponseV1> {
+  const endpoint =
+    `/api/projects/${projectId}/cases/${caseId}/generators/`
+    + `${encodeURIComponent(generatorRef)}/bindings`;
+  const response = await fetch(endpoint, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const detail = await response.json().catch(() => response.statusText);
+    const extracted = extractApiError(detail, response.status);
+    throw new DerPersistenceApiError(
+      response.status,
+      detail,
+      endpoint,
+      extracted.message,
+      extracted.code,
+    );
+  }
+
+  return (await response.json()) as DomainOpResponseV1;
+}

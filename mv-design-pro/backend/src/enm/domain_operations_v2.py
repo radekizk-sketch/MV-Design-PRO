@@ -3864,9 +3864,7 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
     """
     generator_ref = payload.get("generator_ref") or payload.get("source_ref")
     if not generator_ref:
-        return _error_response(
-            "Brak identyfikatora wytwórcy.", "der_bindings.generator_missing"
-        )
+        return _error_response("Brak identyfikatora wytwórcy.", "der_bindings.generator_missing")
 
     obecne_wiazania = {k: payload[k] for k in DER_BINDING_KEYS if k in payload}
     obecne_profile = {k: payload[k] for k in DER_PROFILE_KEYS if k in payload}
