@@ -97,3 +97,8 @@ jobs:
       - name: Catalog Metadata Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/catalog_metadata_guard.py
+      # V12K-229: parzystosc modelu ENM z lustrem TypeScript. Importuje modele,
+      # dlatego biegnie w katalogu backendu (jak readiness_consumption_guard).
+      - name: ENM Contract Parity Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/enm_contract_parity_guard.py

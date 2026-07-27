@@ -154,6 +154,20 @@ export interface OverheadLine extends BranchBase {
   endpoint_a_port?: PortRef | null;
   /** Jawny port endpointu B (od strony to_bus_ref). */
   endpoint_b_port?: PortRef | null;
+  /**
+   * V12K-229: materiał i przekrój żyły przewodu gołego. Backend niesie je od karty
+   * F-K1 faza 7, lustro NIE — a bez nich nie da się uzasadnić współczynnika k dla
+   * linii napowietrznej (dla przewodu gołego temperaturę graniczną wyznacza utrata
+   * wytrzymałości mechanicznej żyły i osprzęt, nie izolacja, której nie ma).
+   */
+  conductor_material?: string | null;
+  cross_section_mm2?: number | null;
+  /** Dane CIEPLNE żyły (IEC 60949) — jak w `Cable`. */
+  ith_1s_a?: number | null;
+  jth_1s_a_per_mm2?: number | null;
+  operating_temperature_c?: number | null;
+  short_circuit_temperature_c?: number | null;
+  thermal_source_ref?: string | null;
 }
 
 export interface Cable extends BranchBase {
@@ -174,12 +188,51 @@ export interface Cable extends BranchBase {
   return_conductor_jth_1s_a_per_mm2?: number | null;
   return_conductor_ith_1s_a?: number | null;
   rating?: BranchRating | null;
-  insulation?: 'XLPE' | 'PVC' | 'PAPER' | null;
+  /**
+   * V12K-229: dodane EPR. Backend przyjmuje `XLPE | EPR | PVC | PAPER`, a katalog SN
+   * ma 18 rekordów EPR — lustro deklarowało tę wartość jako NIEMOŻLIWĄ, choć backend
+   * ją zwraca. Rozjazd unii jest gorszy od brakującego pola: kod gałęziący się po
+   * izolacji „wyczerpująco" pomijał realny przypadek bez ostrzeżenia kompilatora.
+   */
+  insulation?: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | null;
   /** Jawny port endpointu A (od strony from_bus_ref). Opcjonalny dla
    *  wstecznej kompatybilności; brak → readiness blocker E030. */
   endpoint_a_port?: PortRef | null;
   /** Jawny port endpointu B (od strony to_bus_ref). */
   endpoint_b_port?: PortRef | null;
+  /**
+   * Dane CIEPLNE żyły fazowej (IEC 60949) — kryterium wytrzymałości zwarciowej
+   * przewodu. Backend niesie je od kart F-K1 (V12K-210/211), lustro NIE — więc
+   * front nie miał typowanego dostępu do danych, które model już przewozi.
+   * Wystarcza JEDNA z dwóch: Ith(1 s) wprost albo gęstość Jth(1 s) do przemnożenia
+   * przez przekrój.
+   */
+  ith_1s_a?: number | null;
+  jth_1s_a_per_mm2?: number | null;
+  /** Para temperatur uzasadniająca współczynnik k: robocza → graniczna zwarciowa. */
+  operating_temperature_c?: number | null;
+  short_circuit_temperature_c?: number | null;
+  /** Źródło danych cieplnych (norma / karta producenta). */
+  thermal_source_ref?: string | null;
+  /** Mufy kablowe na odcinku — punkty bez podziału topologii (brief 1 §4 pkt 4). */
+  cable_joints?: CableJoint[] | null;
+}
+
+/**
+ * Mufa kablowa — punkt na segmencie kabla SN bez podziału topologii.
+ * Lustro `enm/models.py::CableJoint`. Do V12K-229 pole `cable_joints` nie było w
+ * kontrakcie, więc adapter SLD czytał je przez rzutowanie `as unknown as`, ktore
+ * wylacza kontrole typow — dokladnie ten mechanizm przepuscil dwie zgadniete nazwy
+ * pol w V12K-226.
+ */
+export interface CableJoint {
+  id: string;
+  parent_segment_id: string;
+  /** Odległość od endpointu A [km]. */
+  position_km: number;
+  joint_type: 'mufa_termoutwardzalna' | 'mufa_zimna' | 'mufa_olejowa' | 'mufa_zywiczna';
+  catalog_ref?: string | null;
+  name?: string | null;
 }
 
 export interface SwitchBranch extends BranchBase {

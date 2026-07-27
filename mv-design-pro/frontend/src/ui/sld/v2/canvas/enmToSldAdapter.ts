@@ -5986,7 +5986,10 @@ function segmentTechnicalFields(segment: Branch): {
   const ratedVoltageKv = readRawKv('voltage_rating_kv') ?? readRawKv('rated_voltage_kv');
   const lengthRaw = readBranchLengthKm(segment);
   const lengthKm = Number.isFinite(lengthRaw) && lengthRaw > 0 ? lengthRaw : null;
-  const joints = (segment as unknown as { cable_joints?: unknown }).cable_joints;
+  // V12K-229: `cable_joints` jest w kontrakcie, wiec czytamy je z TYPU. Wczesniej
+  // pole brakowalo w lustrze TS i odczyt szedl przez `as unknown as`, ktore wylacza
+  // kontrole typow — ten sam mechanizm przepuscil dwie zgadniete nazwy pol (V12K-226).
+  const joints = segment.type === 'cable' ? segment.cable_joints : null;
   const hasJoint = Array.isArray(joints) && joints.length > 0;
   return {
     typeLabel: readCatalogTypeLabel(segment) ?? null,
