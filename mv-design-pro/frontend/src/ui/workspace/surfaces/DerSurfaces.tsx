@@ -36,11 +36,14 @@ import {
   PV_INVERTER_CATALOG,
   WIND_TURBINE_CATALOG,
   BLOCK_TRANSFORMER_CATALOG,
+  computeDerReadinessMatrix,
   getBlockTransformer,
   getNcRfgProfile,
+  selectAllDers,
   selectDerById,
   useStationDerStore,
 } from '../../network-build/station-der';
+import { wzbogacOKlaseCt } from '../../network-build/station-der/ctZKatalogu';
 import {
   PTPIREE_CERTIFIED_DEVICE_SOURCES,
   PTPIREE_CERTIFIED_INVERTERS,
@@ -290,35 +293,6 @@ function profileRecordFromGenerator(generator: Generator): Record<string, unknow
   };
 }
 
-function buildReadinessForGenerator(
-  generator: Generator,
-  catalogRef: string | null,
-  profiles: Record<string, unknown>,
-): DerReadinessMatrix {
-  void generator;
-  const hasCatalog = Boolean(catalogRef);
-  const hasNcRfg = Boolean(stringFromRecord(profiles, ['nc_rfg_profile_ref', 'nc_rfg', 'ncrfg']));
-  const hasFrt = Boolean(stringFromRecord(profiles, ['lvrt_curve_ref', 'lvrt']))
-    && Boolean(stringFromRecord(profiles, ['hvrt_curve_ref', 'hvrt']));
-  return {
-    ...EMPTY_DER_READINESS,
-    equipment: hasCatalog ? 'ready' : 'blocked',
-    sc_3f: hasCatalog ? 'partial' : 'blocked',
-    sc_1f: hasCatalog ? 'partial' : 'blocked',
-    sc_2f: hasCatalog ? 'partial' : 'blocked',
-    sc_2fg: hasCatalog ? 'partial' : 'blocked',
-    vdrop: hasCatalog ? 'ready' : 'blocked',
-    q_u: hasNcRfg ? 'ready' : 'blocked',
-    protection: hasCatalog ? 'partial' : 'blocked',
-    protection_selectivity: hasCatalog ? 'partial' : 'blocked',
-    frt: hasFrt ? 'ready' : 'blocked',
-    hvrt: hasFrt ? 'ready' : 'blocked',
-    nc_rfg: hasNcRfg ? 'ready' : 'blocked',
-    report_osd: hasNcRfg ? 'partial' : 'blocked',
-    report_technical: hasCatalog ? 'partial' : 'blocked',
-  };
-}
-
 function buildDerFromGenerator(
   generator: Generator | null | undefined,
   fallbackKind: DerKind,
@@ -362,7 +336,7 @@ function buildDerFromGenerator(
         ? 'missing_profile'
         : 'complete';
 
-  return {
+  const rekord: StationDerConnection = {
     id: generator.ref_id,
     project_id: 'snapshot',
     station_id: stationRef,
@@ -408,13 +382,20 @@ function buildDerFromGenerator(
     },
     nominal_power_kw: nominalPowerKw,
     completeness,
-    // Ta sama, SUROWA mapa profili, którą widzi rekord wyżej — dwie oceny tego samego
-    // wytwórcy nie mogą się rozjeżdżać (przed V12K-236 rekord dostawał profile domyślne,
-    // a ta funkcja surowe, więc jedna ocena mówiła „gotowe", druga „zablokowane").
-    readiness: buildReadinessForGenerator(generator, catalogRef, profiles),
+    // JEDNA regula gotowosci na tym ekranie (V12K-243). Wczesniej stal tu lokalny,
+    // slabszy duplikat (`buildReadinessForGenerator`): patrzyl wylacznie na obecnosc
+    // urzadzenia katalogowego i profili, wiec IGNOROWAL klase przekladnika, dane pradu
+    // zwarciowego, model dynamiczny, punkt przylaczenia i transformator blokowy —
+    // trzecia ocena tego samego wytworcy, rozjezdzajaca sie z kanoniczna.
+    // Ocena liczona na GOTOWYM rekordzie (nizej), zeby patrzyla na te sama, SUROWA
+    // mape profili i katalogow, ktora widzi reszta ekranu — dwie oceny tego samego
+    // wytworcy nie moga sie rozjezdzac (przed V12K-236 rekord dostawal profile
+    // domyslne, a ocena surowe, wiec jedna mowila „gotowe", druga „zablokowane").
+    readiness: EMPTY_DER_READINESS,
     created_at: '',
     updated_at: '',
   };
+  return { ...rekord, readiness: computeDerReadinessMatrix(rekord) };
 }
 
 function buildDerFromSurfaceContext(
@@ -631,6 +612,13 @@ interface KatalogiWiazan {
 
 function buildDerCards(
   der: StationDerConnection,
+  /**
+   * Macierz gotowosci liczona NA ZYWO z rekordu (V12K-243). Ekran czytal wczesniej pole
+   * `der.readiness` ZAPISANE na rekordzie — nikt go nie przeliczal po zmianie wiazan, wiec
+   * karta, w ktorej projektant NAPRAWIA brak, pokazywala werdykt sprzed naprawy. Diagnoza
+   * i naprawa siedzialy w jednej karcie i nie rozmawialy ze soba.
+   */
+  gotowosc: DerReadinessMatrix,
   edytorWiazan: JSX.Element,
 ): Partial<Record<DerCardId, JSX.Element>> {
   const ncRfg = der.profiles.nc_rfg_profile_ref
@@ -735,8 +723,8 @@ function buildDerCards(
           <FieldRow label="LVRT" value={rideThroughLabel('LVRT', der.profiles.lvrt_curve_ref)} />
           <FieldRow label="HVRT" value={rideThroughLabel('HVRT', der.profiles.hvrt_curve_ref)} />
           <FieldRow label="Model dynamiczny" value={dynamicModelLabel(der)} />
-          <FieldRow label="Status FRT" value={readinessPl(der.readiness.frt)} />
-          <FieldRow label="Status HVRT" value={readinessPl(der.readiness.hvrt)} />
+          <FieldRow label="Status FRT" value={readinessPl(gotowosc.frt)} />
+          <FieldRow label="Status HVRT" value={readinessPl(gotowosc.hvrt)} />
         </dl>
       </section>
     ),
@@ -753,7 +741,7 @@ function buildDerCards(
             label="Minimalna moc zwarciowa PCC"
             value={ncRfg ? `${moduleTypeLabel(der)}: wg profilu ${ncRfg.operator_code}` : 'wg profilu operatora'}
           />
-          <FieldRow label="Zgodność przyłączeniowa" value={readinessPl(der.readiness.nc_rfg)} />
+          <FieldRow label="Zgodność przyłączeniowa" value={readinessPl(gotowosc.nc_rfg)} />
         </dl>
       </section>
     ),
@@ -761,15 +749,15 @@ function buildDerCards(
       <section>
         <dl>
           <FieldRow label="Kompletność konfiguracji" value={completenessPl(der.completeness)} />
-          <FieldRow label="Zwarcie 3-fazowe" value={readinessPl(der.readiness.sc_3f)} />
-          <FieldRow label="Zwarcie doziemne" value={readinessPl(der.readiness.sc_1f)} />
-          <FieldRow label="Rozpływ mocy" value={readinessPl(der.readiness.vdrop)} />
-          <FieldRow label="Regulacja Q(U)" value={readinessPl(der.readiness.q_u)} />
-          <FieldRow label="Zabezpieczenia DER" value={readinessPl(der.readiness.protection)} />
-          <FieldRow label="Selektywność" value={readinessPl(der.readiness.protection_selectivity)} />
+          <FieldRow label="Zwarcie 3-fazowe" value={readinessPl(gotowosc.sc_3f)} />
+          <FieldRow label="Zwarcie doziemne" value={readinessPl(gotowosc.sc_1f)} />
+          <FieldRow label="Rozpływ mocy" value={readinessPl(gotowosc.vdrop)} />
+          <FieldRow label="Regulacja Q(U)" value={readinessPl(gotowosc.q_u)} />
+          <FieldRow label="Zabezpieczenia DER" value={readinessPl(gotowosc.protection)} />
+          <FieldRow label="Selektywność" value={readinessPl(gotowosc.protection_selectivity)} />
           <FieldRow label="Funkcje ANSI wymagane" value={derProtectionSummary()} />
-          <FieldRow label="Raport OSD" value={readinessPl(der.readiness.report_osd)} />
-          <FieldRow label="Raport techniczny" value={readinessPl(der.readiness.report_technical)} />
+          <FieldRow label="Raport OSD" value={readinessPl(gotowosc.report_osd)} />
+          <FieldRow label="Raport techniczny" value={readinessPl(gotowosc.report_technical)} />
         </dl>
         {edytorWiazan}
       </section>
@@ -1022,6 +1010,21 @@ function DerSurfaceShell({
   const setSnapshotPoZapisie = useSnapshotStore((state) => state.setSnapshot);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
 
+  // Gotowosc liczona NA ZYWO z rekordu, kanoniczna regula (V12K-243) — ta sama, ktorej
+  // uzywa router przy agregacji. Rekord wzbogacamy o klase przekladnika z REALNEGO
+  // katalogu, bo bez niej os zabezpieczen konczy sie kodem „klasy nie da sie ustalic"
+  // nawet dla przekladnika, ktory katalog zna (V12K-233/239).
+  const wszystkieDery = useStationDerStore((state) => selectAllDers(state));
+  const gotowosc = useMemo(() => {
+    if (!der) return EMPTY_DER_READINESS;
+    const wStacji = wszystkieDery.filter(
+      (inny) => inny.station_id === der.station_id && inny.id !== der.id,
+    ).length;
+    return computeDerReadinessMatrix(wzbogacOKlaseCt(der, katalogiWiazan.ct), {
+      otherDersInStation: wStacji,
+    });
+  }, [der, katalogiWiazan.ct, wszystkieDery]);
+
   const navigateToStation = useCallback(() => {
     if (!der?.station_id) return;
     openRouteSurface('E-13', {
@@ -1133,7 +1136,7 @@ function DerSurfaceShell({
           derId={derId ?? 'unselected'}
           derKind={derKind}
           stationContext={stationContext}
-          children={der ? buildDerCards(der, edytorWiazan) : undefined}
+          children={der ? buildDerCards(der, gotowosc, edytorWiazan) : undefined}
         />
       </div>
       {der && (

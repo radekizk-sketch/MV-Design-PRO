@@ -22,7 +22,7 @@ import tempfile
 # Sciezki liczone wzgledem WLASNEGO katalogu, nie przez liczenie poziomow w repo —
 # zrzut jest katalogiem obok, wiec przeniesienie calego `docs/audit/visual/` nic nie psuje.
 KATALOG = pathlib.Path(__file__).resolve().parent
-ZRZUTY = KATALOG / "sld_audyt"
+ZRZUTY = KATALOG
 WYJSCIE = (
     pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else KATALOG / "ocena_seria.html"
 )
@@ -30,14 +30,22 @@ WYJSCIE = (
 # Zrzut kadru calej sieci ORAZ kadry szczegolu (V12K-234) — bez tych drugich strona
 # obiecuje poziom detalu, ktorego kadr 52 stacji nie zawiera (declutter ukrywa 1135 opisow).
 OSADZONE = {
-    "ZRZUT_L2": "sld_L2_dark.png",
-    "ZRZUT_GPZ": "sld_szczegol_gpz.png",
-    "ZRZUT_STACJA": "sld_szczegol_stacja.png",
+    "ZRZUT_L2": "sld_audyt/sld_L2_dark.png",
+    "ZRZUT_GPZ": "sld_audyt/sld_szczegol_gpz.png",
+    "ZRZUT_STACJA": "sld_audyt/sld_szczegol_stacja.png",
+    # Ekran wytworcy po V12K-242/243 — zrzut ZYWEJ powierzchni E-21 z harnessu
+    # (`creator-harness.html?creator=wiazania`), nie makieta.
+    "ZRZUT_WIAZANIA": "kreatory/wiazania_oze.png",
+    "ZRZUT_PICKER": "kreatory/wiazania_oze_picker.png",
 }
 
 
 def zrzut_data_uri(nazwa: str) -> str:
-    """Zrzut jako data URI. JPEG przy dostepnym Pillow (mniejsza strona), inaczej PNG."""
+    """Zrzut jako data URI. JPEG przy dostepnym Pillow (mniejsza strona), inaczej PNG.
+
+    `nazwa` jest sciezka WZGLEDNA wzgledem `docs/audit/visual/`, bo material oceny nie
+    mieszka juz w jednym katalogu (SLD w `sld_audyt/`, ekrany w `kreatory/`).
+    """
     png = ZRZUTY / nazwa
     if not png.exists():
         raise SystemExit(f"brak zrzutu: {png}")
@@ -57,7 +65,7 @@ def zrzut_data_uri(nazwa: str) -> str:
     return f"data:{mime};base64," + base64.b64encode(plik.read_bytes()).decode()
 
 
-STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…240</title>
+STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…243</title>
 <style>
 :root{--tlo:#f7f6f2;--karta:#fff;--tekst:#191814;--cichy:#5d594f;--linia:#dbd6c9;--akcent:#2e5f7a;
 --akcent-tlo:#e6eef3;--ok:#2f6b3f;--brak:#8c2f2f;--uwaga:#8a5a12}
@@ -100,7 +108,7 @@ padding:3px 7px;border-radius:2px;vertical-align:2px}
 </style>
 <div class="owijka">
 <header>
-<div class="nadtytul">Seria · V12K-216…240 · jedna doba</div>
+<div class="nadtytul">Seria · V12K-216…243 · jedna doba</div>
 <h1>Od schematu do jednej reguły: brak danej nie może stać się zerem</h1>
 <p class="cichy">Zrzuty żywej aplikacji, sieć wzorcowa 52 stacji · pomiar na renderze i na kodzie · 2026-07-27</p>
 </header>
@@ -272,6 +280,12 @@ licznik 273 → 274 i zapadka odcina, nazywając plik i linię.</p>
 <td class="num">12 typów, <span class="lep">9</span> zabezp.</td></tr>
 <tr><td>V12K-240</td><td>Zapadka długu typów — mypy wreszcie biegnie w CI</td>
 <td class="num">273 błędy, próg <span class="lep">zamknięty</span></td></tr>
+<tr><td>V12K-241</td><td>Recenzja własnego diffu — pięć znalezisk, w tym referencje spoza katalogu</td>
+<td class="num">5 → <span class="lep">0</span></td></tr>
+<tr><td>V12K-242</td><td>Ekran wyboru wiązań wytwórcy — łańcuch dostał początek</td>
+<td class="num">0 → <span class="lep">3</span> kontrolki</td></tr>
+<tr><td>V12K-243</td><td>Ocena liczona na żywo · koniec trzeciej reguły · picker w palecie SCADA</td>
+<td class="num">3 reguły → <span class="lep">1</span></td></tr>
 </tbody></table></div>
 
 <div class="karta wycof">
@@ -483,12 +497,64 @@ konsumpcji” — nieprawda od czasu karty F-K2 (analiza, endpoint i UI istniej�
 wprowadza w błąd tak samo jak brak wpisu, więc go skorygowałem.</p>
 </div>
 
+<h2>Ekran, na którym projektant wreszcie <em>wybiera</em></h2>
+<figure><img src="ZRZUT_WIAZANIA" alt="Powierzchnia E-21: karta zakresu obliczeń z edytorem wiązań katalogowych" loading="lazy">
+<figcaption><strong>Wytwórca PV, karta „Zakres obliczeń” (zrzut żywej aplikacji).</strong>
+Nad kreską — werdykt każdej osi. Pod kreską — wiązania, których te osie dotyczą, z możliwością
+zmiany na miejscu.</figcaption></figure>
+
+<div class="karta">
+<p><strong>Łańcuch był budowany od tyłu i nie miał początku.</strong> Backend przyjmował wiązania
+kanoniczną operacją, odrzucał referencje spoza katalogu, katalog wyprowadzał rodzaj rdzenia
+z klasy wg IEC&nbsp;61869-2, reguła gotowości czytała wynik i nazywała braki — a ekran pokazywał
+to wszystko <em>wyłącznie do odczytu</em>. Pomiar: <strong>zero kontrolek wyboru</strong>.
+Projektant widział „wybierz wariant katalogowy” i nie miał gdzie wybrać.</p>
+<p>Zakres edytora jest świadomie ograniczony do trzech wiązań, dla których backend <em>ma</em>
+katalog. Dane prądu zwarciowego i model dynamiczny nie dostają pickera — lista, której backend
+nie zna, byłaby fabrykacją, a zapis i tak zostałby odrzucony. Brak jest <strong>nazwany</strong>
+razem z powodem, zamiast udawany atrapą.</p>
+</div>
+
+<figure><img src="ZRZUT_PICKER" alt="Wybór przekładnika napięciowego z katalogu backendu" loading="lazy">
+<figcaption><strong>Wybór z realnego katalogu.</strong> Ten sam picker, którego używają pozostałe
+ekrany — nie druga implementacja. Nazwa, producent i parametry pochodzą z backendu.</figcaption></figure>
+
+<h2>Zrzut żywego ekranu pokazał cztery rzeczy, których testy nie widziały</h2>
+<div class="karta otwarta">
+<ul>
+<li><strong>Pętla diagnoza → naprawa → ocena była przerwana.</strong> Karta czytała pole
+<code>readiness</code> <em>zapisane</em> na rekordzie, którego nikt nie przeliczał po zmianie
+wiązań. Projektant wybierał przekładnik i widział dokładnie ten sam werdykt, co przed wyborem —
+diagnoza i naprawa siedziały w jednej karcie i nie rozmawiały ze sobą. Teraz macierz liczy się
+na żywo regułą kanoniczną: klasa 5P10 jest zabezpieczeniowa, więc oś przechodzi z „zakres do
+przeliczenia” na „zakres kompletny” w tej samej chwili.</li>
+<li><strong>Trzecia ocena tego samego wytwórcy.</strong> Rekord budowany ze snapshotu dostawał
+gotowość z lokalnego, ręcznego duplikatu reguły — patrzył tylko na urządzenie katalogowe
+i profile, więc ignorował klasę przekładnika, dane zwarciowe, model dynamiczny, punkt
+przyłączenia i transformator blokowy. Duplikat usunięty.</li>
+<li><strong>Materiał dowodowy nie pokazywał aplikacji.</strong> Harness zrzutów ładował wyłącznie
+tokeny ui2, więc powierzchnia wychodziła surowym HTML-em — tekst szeryfowy, zero układu. Zrzut,
+który nie pokazuje tego, co widzi projektant, nie jest dowodem.</li>
+<li><strong>Wspólny picker: biały arkusz w ciemnym ekranie SCADA</strong> i polskie napisy bez
+ogonków („Ladowanie typow…”, „Ponow”) — w każdym ekranie, który go używa. Przeniesiony na paletę
+SCADA, napisy poprawione.</li>
+</ul>
+</div>
+
+<div class="karta">
+<p><strong>Jeden motyw, bo tak jest zmierzone.</strong> Powierzchnie <code>ui/**</code> stoją na
+palecie <code>scada</code> — stałe wartości hex, bez wariantu jasnego i bez zmiennych CSS. Motyw
+jasny obejmuje warstwę ui2. Ten ekran jest więc ciemny niezależnie od przełącznika, a test to
+<em>sprawdza</em> (porównanie tła panelu w obu motywach) zamiast milcząco pomijać drugi zrzut.</p>
+</div>
+
 <h2>Otwarte <span class="stan otw">do karty</span></h2>
 <div class="karta otwarta">
 <ul>
-<li><strong>F-K8 faza 2</strong> — relokacja samej oceny gotowości DER (533 linie) do backendu.
-Rozstrzygnięcie z fazy 1 obowiązuje: relokacja musi zachować oba poziomy oceny i ich złożenie,
-nie spłaszczać do jednego.</li>
+<li><strong>F-K8 faza 2</strong> — krok 2 (ekran wyboru wiązań) zamknięty w V12K-242/243.
+Zostaje relokacja samej oceny gotowości DER (533 linie) do backendu. Rozstrzygnięcie z fazy 1
+obowiązuje: relokacja musi zachować oba poziomy oceny i ich złożenie, nie spłaszczać do
+jednego.</li>
 <li><strong>Przekładnik dwurdzeniowy</strong> — warunek 87T czeka na realny typ katalogowy
 z dwoma rdzeniami oraz na współczynnik bezpieczeństwa Ksbn (IEC 61869). Dane producenta.</li>
 <li><strong>NOP</strong> — wskazanie <code>nop_station_ref</code> wymaga wiedzy, która magistrala

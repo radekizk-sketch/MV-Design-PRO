@@ -726,6 +726,84 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(useSnapshotStore.getState().snapshot).toEqual(snapshotPoZapisie);
   });
 
+  it('wybór przekładnika NATYCHMIAST zmienia werdykt osi zabezpieczeń (V12K-243)', async () => {
+    // PĘTLA DIAGNOZA → NAPRAWA → PONOWNA OCENA w jednej karcie. Ekran czytał pole
+    // `readiness` ZAPISANE na rekordzie, którego nikt nie przeliczał po zmianie wiązań:
+    // projektant wybierał przekładnik i widział ten sam werdykt, co przed wyborem.
+    // Do tego rekord ze snapshotu dostawał ocenę z LOKALNEGO, słabszego duplikatu reguły
+    // (bez klasy CT, danych zwarciowych, modelu dynamicznego) — trzecia ocena tego
+    // samego wytwórcy.
+    const typyCt = [
+      { id: 'ct_200_5_5p10_10va_abb', name: 'CT 200/5 A kl. 5P10 10 VA', accuracy_class: '5P10', application: 'protection' },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if ((init?.method ?? 'GET') === 'PATCH') {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              snapshot: null,
+              logical_views: {},
+              readiness: {},
+              fix_actions: [],
+              changes: {},
+              selection_hint: null,
+              audit_trail: [],
+              domain_events: [],
+              materialized_params: {},
+              layout: {},
+            }),
+          } as unknown as Response;
+        }
+        return {
+          ok: true,
+          json: async () => (String(url).includes('ct-types') ? typyCt : []),
+        } as unknown as Response;
+      }),
+    );
+
+    useAppStateStore.getState().setActiveProject('PRJ-1');
+    useAppStateStore.getState().setActiveCase('CASE-1');
+    useStationDerStore.getState().attachDer({
+      id: 'der_petla',
+      project_id: 'PRJ-1',
+      station_id: 'station_xyz',
+      der_kind: 'PV',
+      name: 'PV bez przekładnika prądowego',
+      connection_side: 'SN',
+      pcc_ref: 'pcc_y',
+      catalogs: {
+        device_catalog_ref: 'pv_inv_sma_2500',
+        protection_catalog_ref: 'ABB_REB670',
+        vt_catalog_ref: 'vt_10kv_100v_05_abb',
+      },
+      profiles: {},
+      nominal_power_kw: 2500,
+      created_at: FROZEN_NOW,
+    });
+
+    const uzytkownik = userEvent.setup();
+    render(<PvSourceSurface surface={makeSurface('der_petla')} />);
+    await uzytkownik.click(screen.getByTestId('der-card-tab-readiness'));
+
+    // PRZED: zabezpieczenie i przekładnik napięciowy są, prądowego brak → oś niepełna.
+    const wierszOsi = (await screen.findByText('Zabezpieczenia DER')).parentElement;
+    expect(wierszOsi?.textContent).toContain('zakres do przeliczenia');
+
+    await uzytkownik.click(screen.getByTestId('der-wiazanie-wybierz-ct_catalog_ref'));
+    await uzytkownik.click(await screen.findByText('CT 200/5 A kl. 5P10 10 VA'));
+
+    // PO: klasa 5P10 jest zabezpieczeniowa (IEC 61869-2) → oś kompletna, BEZ
+    // przeładowania ekranu. Gdyby ekran czytał zapisane pole, tekst by się nie zmienił.
+    await waitFor(() =>
+      expect(screen.getByText('Zabezpieczenia DER').parentElement?.textContent).toContain(
+        'zakres kompletny',
+      ),
+    );
+  });
+
   it('KPI Profil NC RfG wyświetla kreskę gdy brak profilu', () => {
     useStationDerStore.getState().attachDer({
       id: 'der_no_profile',

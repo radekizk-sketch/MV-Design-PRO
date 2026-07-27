@@ -64,3 +64,8 @@ mv-design-pro/artifacts/
 # Zrzuty ekranów kreatorów (artefakty regenerowalne przez e2e/creator-screenshot.spec)
 mv-design-pro/docs/audit/visual/kreatory/*.png
 mv-design-pro/docs/audit/visual/dokumentacja/*.png
+
+# Strona oceny — WYNIK generatora `generuj_strone_oceny.py` (zrzuty osadzone jako data URI).
+# Źródłem prawdy jest generator + zrzuty w repo, nie ten plik; po cofnięciu migawki
+# kontenera stronę odtwarza jedno uruchomienie.
+mv-design-pro/docs/audit/visual/ocena_seria.html

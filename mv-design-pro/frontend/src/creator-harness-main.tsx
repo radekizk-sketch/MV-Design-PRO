@@ -16,6 +16,12 @@
 
 import { createRoot } from 'react-dom/client';
 import './ui2/theme/tokens.css';
+// Warstwa `ui/**` (powierzchnie E-2x) stoi na Tailwindzie z `index.css`; bez tego
+// arkusza scena renderuje sie BEZ STYLOW i zrzut nie pokazuje tego, co widzi projektant.
+// Import jest globalny (Vite nie laduje CSS warunkowo), wiec sceny ui2 dostaja go tez —
+// maja wlasne tokeny i klasy, wiec kolizji nie ma, ale to jest powod, dla ktorego
+// arkusz jest tu wymieniony jawnie zamiast „przy okazji".
+import './index.css';
 // Scena „swiezosc" renderuje CaseBar poza AppShell — style paska ładuje shell.css.
 import './ui2/shell/shell.css';
 
@@ -64,6 +70,7 @@ import {
   useStationDerStore,
   type StationDerConnection,
 } from './ui/network-build/station-der';
+import { PvSourceSurface } from './ui/workspace/surfaces/DerSurfaces';
 import { HubDokumentacji } from './ui2/spaces/dokumentacja';
 import { PulpitProjektu } from './ui2/spaces/projekt';
 import { EkranCoWymagaUwagi } from './ui2/wyniki/co-wymaga-uwagi';
@@ -124,12 +131,18 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
   ],
   '/api/catalog/protection/device-types': [
     { id: 'rel-1', name_pl: 'Zabezpieczenie nadprądowe uniwersalne', vendor: 'SEL', model: '751A', rated_current_a: 5 },
+    { id: 'ABB_REB670', name_pl: 'ABB Relion REB670', params: { vendor: 'ABB', model: 'Relion REB670' } },
   ],
   '/api/catalog/ct-types': [
     { id: 'ct-1', name: 'CT 300/5', ratio_primary_a: 300, ratio_secondary_a: 5, accuracy_class: '5P20', burden_va: 15 },
+    // REALNE wpisy katalogu backendu (V12K-242) — scena „wiazania" pokazuje nazwy,
+    // ktore projektant zobaczy w zywej aplikacji, a nie etykiete zmyslona na potrzeby zrzutu.
+    { id: 'ct_200_5_5p10_10va_abb', name: 'CT 200/5 A kl. 5P10 10 VA', manufacturer: 'ABB', ratio_primary_a: 200, ratio_secondary_a: 5, accuracy_class: '5P10', burden_va: 10, application: 'protection', accuracy_limit_factor: 10 },
+    { id: 'ct_150_1_0_5_10va_abb', name: 'CT 150/1 A kl. 0.5 10 VA', manufacturer: 'ABB', ratio_primary_a: 150, ratio_secondary_a: 1, accuracy_class: '0.5', burden_va: 10, application: 'metering', accuracy_limit_factor: null },
   ],
   '/api/catalog/vt-types': [
     { id: 'vt-1', name: 'VT 15/0,1 kV', ratio_primary_v: 15000, ratio_secondary_v: 100, accuracy_class: '0.5' },
+    { id: 'vt_10kv_100v_05_abb', name: 'VT 10/0,1 kV kl. 0.5', manufacturer: 'ABB', ratio_primary_v: 10000, ratio_secondary_v: 100, accuracy_class: '0.5' },
   ],
 };
 
@@ -2877,6 +2890,39 @@ if (creator === 'arcflash') {
   useStudyCasesStore.setState({
     activeCase: { id: 'case-demo', name: 'Stan normalny', result_status: 'FRESH', results_valid: true } as never,
   } as never);
+} else if (creator === 'wiazania') {
+  // Scena „wiazania" (V12K-242): ekran wyboru wiazan katalogowych wytworcy —
+  // ostatnie ogniwo lancucha F-K8. Rekord celowo pokazuje TRZY stany naraz:
+  // zabezpieczenie i przekladnik pradowy przypisane (nazwa z realnego katalogu),
+  // przekladnik napieciowy pusty (polecenie wyboru). Projekt i przypadek ustawione,
+  // bo bez nich zapis jest zablokowany — i ekran musi to umiec pokazac.
+  useAppStateStore.setState({
+    activeProjectId: 'proj-demo',
+    activeProjectName: 'Przyłączenie farmy PV 8 MW',
+    activeCaseId: 'case-demo',
+    activeCaseName: 'Wariant zimowy',
+  } as never);
+  useStationDerStore.setState({
+    ders: {
+      'der-pv-1': derDemo({
+        id: 'der-pv-1',
+        der_kind: 'PV',
+        name: 'Farma PV 1 MW',
+        connection_side: 'SN',
+        pcc_ref: 'st-demo__szyna-sn__15',
+        lv_busbar_ref: null,
+        voltage_level_ref: null,
+        nominal_power_kw: 1000,
+        catalogs: {
+          ...EMPTY_DER_CATALOGS,
+          device_catalog_ref: 'pv-1',
+          protection_catalog_ref: 'ABB_REB670',
+          ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
+        },
+        profiles: { ...EMPTY_DER_PROFILES, nc_rfg_profile_ref: 'pse' },
+      }),
+    },
+  } as never);
 } else if (creator === 'frt') {
   // Scena „frt" (V-A): moduł DER z typem przekształtnika (selectAllDers) +
   // zakończony przebieg zwarciowy do doboru kontekstu siły sieci (T-B).
@@ -3192,6 +3238,29 @@ function Harness() {
       />
     );
   else if (creator === 'lom') node = <EkranLom trybZaawansowania="expert" />;
+  else if (creator === 'wiazania')
+    node = (
+      <PvSourceSurface
+        surface={
+          {
+            surfaceId: 'harness-wiazania',
+            screenCode: 'E-21',
+            titlePl: 'Źródło PV',
+            entityRef: 'der-pv-1',
+            entityType: null,
+            routeState: { payload: {} },
+            breadcrumbs: [],
+            supportsMiniSld: false,
+            supportsChildren: false,
+            sizeClass: 'C',
+            stackLevel: 0,
+            openMode: 'expand_workspace',
+            subjectKind: 'helper_context',
+            subjectRef: null,
+          } as never
+        }
+      />
+    );
   else if (creator === 'frt') node = <EkranFrt trybZaawansowania="expert" />;
   else if (creator === 'oltc') node = <EkranBadanOltc />;
   else if (creator === 'macierz') node = <MacierzNcRfg trybZaawansowania="expert" />;

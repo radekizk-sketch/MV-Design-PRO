@@ -204,6 +204,78 @@ test.describe('kreatory:screenshot', () => {
     }
   }
 
+  // Ekran wyboru wiązań katalogowych wytwórcy (V12K-242) — ostatnie ogniwo łańcucha
+  // F-K8. Zrzut jest dowodem, ale NIE jedynym: bramki przed nim sprawdzają, że ekran
+  // pokazuje trzy stany naraz (nazwa z katalogu / nazwa z katalogu / polecenie wyboru)
+  // i że picker realnie się otwiera. Zrzut ładnego, ale martwego ekranu byłby fałszem.
+  //
+  // JEDEN MOTYW, POMIAR ZAMIAST DOMYSŁU: powierzchnie `ui/**` stoją na palecie `scada`
+  // (tailwind.config.js, „V12 dark SCADA-tech palette") — stałe wartości hex bez wariantu
+  // jasnego i bez pośrednictwa zmiennych CSS. Motyw jasny (`--mvd-*`, tokens.css) obejmuje
+  // warstwę ui2. Ten ekran jest więc ciemny NIEZALEŻNIE od `data-theme` i test to
+  // SPRAWDZA (invariant poniżej) zamiast milcząco pomijać drugi motyw.
+  test('wiazania OZE — wybór z katalogu + niezmienniczość motywu', async ({ page }) => {
+    const errs: string[] = [];
+    const isNoise = (t: string): boolean =>
+      /favicon|Download the React DevTools|Failed to load resource/i.test(t);
+    page.on('console', (m) => {
+      if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
+    });
+    page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+
+    const tloPanelu = async (theme: string): Promise<string> => {
+      await page.goto(`${HARNESS_URL}?creator=wiazania&theme=${theme}`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 40000,
+      });
+      const root = page.locator('[data-testid="creator-harness-root"]').first();
+      await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
+      await page.getByTestId('der-card-tab-readiness').click();
+      await expect(page.getByTestId('der-wiazania-editor')).toBeVisible();
+      return page
+        .getByTestId('pv-source-surface')
+        .locator('.bg-scada-panel')
+        .first()
+        .evaluate((el) => getComputedStyle(el).backgroundColor);
+    };
+
+    await page.setViewportSize({ width: 1220, height: 900 });
+    const tloJasny = await tloPanelu('light');
+    const tloCiemny = await tloPanelu('dark');
+    expect(tloJasny, 'powierzchnie ui/** stoją na stałej palecie scada — motyw ich nie zmienia').toBe(
+      tloCiemny,
+    );
+
+    // Nazwy z REALNEGO katalogu dla przypisanych wiązań, polecenie wyboru dla pustego.
+    await expect(page.getByTestId('der-wiazanie-wartosc-protection_catalog_ref')).toHaveText(
+      'ABB Relion REB670',
+    );
+    await expect(page.getByTestId('der-wiazanie-wartosc-ct_catalog_ref')).toHaveText(
+      'CT 200/5 A kl. 5P10 10 VA',
+    );
+    await expect(page.getByTestId('der-wiazanie-wartosc-vt_catalog_ref')).toHaveText(
+      'wybierz wariant katalogowy',
+    );
+    // Kontekst projektu i przypadku jest kompletny → ostrzeżenie o blokadzie zapisu
+    // NIE może być widoczne (inaczej zrzut pokazywałby ekran w stanie zablokowanym).
+    await expect(page.getByTestId('der-wiazania-brak-kontekstu')).toHaveCount(0);
+    // Werdykt osi liczony na żywo z rekordu (V12K-243): przekładnika napięciowego brak,
+    // więc oś zabezpieczeń NIE może pokazywać zakresu kompletnego.
+    await expect(page.getByTestId('pv-source-surface')).toContainText('zakres do przeliczenia');
+
+    await page.waitForTimeout(300);
+    const root = page.locator('[data-testid="creator-harness-root"]').first();
+    await root.screenshot({ path: path.join(OUTPUT_DIR, 'wiazania_oze.png') });
+
+    // Picker otwiera się realnym klikiem i pokazuje typy z katalogu.
+    await page.getByTestId('der-wiazanie-wybierz-vt_catalog_ref').click();
+    await expect(page.getByText('VT 10/0,1 kV kl. 0.5')).toBeVisible({ timeout: 15000 });
+    await page.screenshot({ path: path.join(OUTPUT_DIR, 'wiazania_oze_picker.png') });
+
+    if (errs.length > 0) console.log(`[wiazania] errors:\n${errs.join('\n')}`);
+    expect(errs, 'no console/page errors for wiazania').toEqual([]);
+  });
+
   // Wykres teorii odbioru (trójkąt mocy) (V12K-069). GPZ (WykresSztywnosci) pokryty
   // testem jednostkowym; zrzut w harnessie wymaga pełniejszego zaszczepienia kontekstu
   // 7-krokowego kreatora GPZ (depth backlog standardu).
