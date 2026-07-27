@@ -42,7 +42,7 @@ function der(over: Partial<StationDerConnection> = {}): StationDerConnection {
     voltage_level_ref: null,
     catalogs: {
       device_catalog_ref: 'INV-1',
-      transformer_catalog_ref: null,
+      block_transformer_catalog_ref: null,
       protection_catalog_ref: 'REL-1',
       ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
       vt_catalog_ref: 'VT-1',

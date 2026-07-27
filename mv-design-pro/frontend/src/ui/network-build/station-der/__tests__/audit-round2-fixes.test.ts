@@ -55,7 +55,7 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
       device_catalog_ref: 'pv_inv_sma_2500',
       controller_catalog_ref: null,
       battery_catalog_ref: null,
-      transformer_catalog_ref: null,
+      block_transformer_catalog_ref: null,
       cable_catalog_ref: null,
       bay_catalog_ref: null,
       protection_catalog_ref: 'protection_der_basic',
@@ -132,7 +132,7 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       catalogs: {
         ...makeDer().catalogs,
         ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
-        transformer_catalog_ref: 'btr_pv_15_069_2500',
+        block_transformer_catalog_ref: 'btr_pv_15_069_2500',
       },
       ct_accuracy_class: '5P20',
       ct_application: 'protection', // rdzen POJEDYNCZY zabezpieczeniowy
@@ -153,7 +153,7 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       catalogs: {
         ...makeDer().catalogs,
         ct_catalog_ref: 'ct_dwurdzeniowy_z_karty_producenta',
-        transformer_catalog_ref: 'btr_pv_15_069_2500',
+        block_transformer_catalog_ref: 'btr_pv_15_069_2500',
       },
       ct_accuracy_class: '5P20',
       // Rdzen PODWOJNY jako DANA producenta. Katalog referencyjny nie ma dzis takiego
@@ -173,7 +173,7 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       catalogs: {
         ...makeDer().catalogs,
         ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
-        transformer_catalog_ref: 'btr_pv_15_04_1000',
+        block_transformer_catalog_ref: 'btr_pv_15_04_1000',
       },
       ct_accuracy_class: '5P20',
       ct_application: 'protection', // rdzen pojedynczy

@@ -1,0 +1,249 @@
+{
+  "kontrakt": "Gotowosc analityczna wytworcy (DER) — przypadki PARZYSTOSCI dwoch implementacji",
+  "wersja": "v1",
+  "dlaczego": [
+    "Regula gotowosci wytworcy zyje w DWOCH miejscach: kanonicznie w backendzie",
+    "(`domain/der_readiness.py`, V12K-244) i w warstwie warsztatu w przegladarce",
+    "(`ui/network-build/station-der/readiness.ts`), ktora ocenia rekord jeszcze",
+    "NIEZAPISANY w modelu. Dopoki obie istnieja, MUSZA dawac ten sam werdykt —",
+    "inaczej ocena zalezy od tego, kto pyta (precedens V12K-243: trzy oceny tego",
+    "samego wytworcy na jednym ekranie).",
+    "Ten plik jest ZRODLEM oczekiwan dla obu stosow: pytest czyta go w",
+    "`tests/domain/test_der_readiness_parity.py`, vitest w",
+    "`station-der/__tests__/readinessParity.test.ts`. Oczekiwania zapisano wprost",
+    "z normy i intencji, a nie zrzucono z ktorejkolwiek implementacji — zrzut",
+    "utrwalilby blad zamiast go wykryc.",
+    "Osie wymienione w `oczekiwane` sa sprawdzane; pozostale nie sa przedmiotem",
+    "danego przypadku (kazdy przypadek pilnuje jednej rzeczy)."
+  ],
+  "przypadki": [
+    {
+      "nazwa": "komplet danych — wszystkie osie gotowe",
+      "wejscie": {
+        "der_id": "DER-1",
+        "der_kind": "PV",
+        "connection_side": "SN",
+        "pcc_ref": "BUS-SN-1",
+        "nominal_power_kw": 1000.0,
+        "device_catalog_ref": "pv_inv_sma_2500",
+        "protection_catalog_ref": "ABB_REB670",
+        "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+        "vt_catalog_ref": "vt_10kv_100v_05_abb",
+        "ct_accuracy_class": "5P10",
+        "ct_application": "protection",
+        "fault_current_data_ref": "fc_pv_2500",
+        "dynamic_model_ref": "dyn_grid_following_pv",
+        "nc_rfg_profile_ref": "pse",
+        "lvrt_curve_ref": "lvrt_pse",
+        "hvrt_curve_ref": "hvrt_pse",
+        "other_ders_in_station": 1
+      },
+      "oczekiwane": {
+        "sc_3f": "ready",
+        "sc_1f": "ready",
+        "sc_2f": "ready",
+        "sc_2fg": "ready",
+        "vdrop": "ready",
+        "q_u": "ready",
+        "equipment": "ready",
+        "protection": "ready",
+        "protection_selectivity": "ready",
+        "frt": "ready",
+        "hvrt": "ready",
+        "nc_rfg": "ready",
+        "report_osd": "ready",
+        "report_technical": "ready"
+      },
+      "kody_blokad": {}
+    },
+    {
+      "nazwa": "brak skladowej zerowej — tylko zwarcia z ziemia (IEC 60909-3)",
+      "wejscie": {
+        "der_id": "DER-2",
+        "der_kind": "PV",
+        "connection_side": "SN",
+        "pcc_ref": "BUS-SN-1",
+        "nominal_power_kw": 1000.0,
+        "device_catalog_ref": "pv_inv_sma_2500",
+        "protection_catalog_ref": "ABB_REB670",
+        "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+        "vt_catalog_ref": "vt_10kv_100v_05_abb",
+        "ct_accuracy_class": "5P10",
+        "ct_application": "protection",
+        "fault_current_data_ref": null,
+        "dynamic_model_ref": "dyn_grid_following_pv",
+        "nc_rfg_profile_ref": "pse",
+        "lvrt_curve_ref": "lvrt_pse",
+        "hvrt_curve_ref": "hvrt_pse",
+        "other_ders_in_station": 1
+      },
+      "oczekiwane": {
+        "sc_3f": "ready",
+        "sc_2f": "ready",
+        "sc_1f": "partial",
+        "sc_2fg": "partial"
+      },
+      "kody_blokad": {
+        "sc_1f": ["der.fault_current_data.missing"],
+        "sc_2fg": ["der.fault_current_data.missing"]
+      }
+    },
+    {
+      "nazwa": "klasa przekladnika pomiarowa — WERDYKT, nie brak danej",
+      "wejscie": {
+        "der_id": "DER-3",
+        "der_kind": "PV",
+        "connection_side": "SN",
+        "pcc_ref": "BUS-SN-1",
+        "nominal_power_kw": 1000.0,
+        "device_catalog_ref": "pv_inv_sma_2500",
+        "protection_catalog_ref": "ABB_REB670",
+        "ct_catalog_ref": "ct_150_1_0_5_10va_abb",
+        "vt_catalog_ref": "vt_10kv_100v_05_abb",
+        "ct_accuracy_class": "0.5",
+        "ct_application": "metering",
+        "other_ders_in_station": 1
+      },
+      "oczekiwane": { "protection": "partial" },
+      "kody_blokad": { "protection": ["der.ct_class.invalid"] }
+    },
+    {
+      "nazwa": "klasa przekladnika nierozstrzygnieta — BRAK DANEJ z wlasnym kodem",
+      "wejscie": {
+        "der_id": "DER-4",
+        "der_kind": "PV",
+        "connection_side": "SN",
+        "pcc_ref": "BUS-SN-1",
+        "nominal_power_kw": 1000.0,
+        "device_catalog_ref": "pv_inv_sma_2500",
+        "protection_catalog_ref": "ABB_REB670",
+        "ct_catalog_ref": "ct_typ_bez_danych_katalogowych",
+        "vt_catalog_ref": "vt_10kv_100v_05_abb",
+        "ct_accuracy_class": null,
+        "ct_application": null,
+        "other_ders_in_station": 1
+      },
+      "oczekiwane": { "protection": "partial" },
+      "kody_blokad": { "protection": ["der.ct_class.unresolved"] }
+    },
+    {
+      "nazwa": "transformator dedykowany wybrany z katalogu — dowod aparatury gotowy",
+      "wejscie": {
+        "der_id": "DER-5",
+        "der_kind": "PV",
+        "connection_side": "dedicated_transformer",
+        "pcc_ref": "BUS-SN-1",
+        "nominal_power_kw": 1000.0,
+        "device_catalog_ref": "pv_inv_sma_2500",
+        "block_transformer_catalog_ref": "btr_pv_15_04_1000",
+        "other_ders_in_station": 1
+      },
+      "oczekiwane": { "equipment": "ready" },
+      "kody_blokad": {}
+    },
+    {
+      "nazwa": "transformator dedykowany bez wyboru — obnizone i NAZWANE",
+      "wejscie": {
+        "der_id": "DER-6",
+        "der_kind": "PV",
+        "connection_side": "dedicated_transformer",
+        "pcc_ref": "BUS-SN-1",
+        "nominal_power_kw": 1000.0,
+        "device_catalog_ref": "pv_inv_sma_2500",
+        "block_transformer_catalog_ref": null,
+        "other_ders_in_station": 1
+      },
+      "oczekiwane": { "equipment": "partial" },
+      "kody_blokad": { "equipment": ["der.dedicated_trafo.missing"] }
+    },
+    {
+      "nazwa": "87T wg IEC 60255-13 — transformator dedykowany 2,5 MVA bez rdzenia podwojnego",
+      "wejscie": {
+        "der_id": "DER-7",
+        "der_kind": "PV",
+        "connection_side": "dedicated_transformer",
+        "pcc_ref": "BUS-SN-1",
+        "nominal_power_kw": 2500.0,
+        "device_catalog_ref": "pv_inv_sma_2500",
+        "block_transformer_catalog_ref": "btr_pv_15_04_1000",
+        "protection_catalog_ref": "ABB_REB670",
+        "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+        "vt_catalog_ref": "vt_10kv_100v_05_abb",
+        "ct_accuracy_class": "5P10",
+        "ct_application": "protection",
+        "other_ders_in_station": 1
+      },
+      "oczekiwane": { "protection": "partial" },
+      "kody_blokad": { "protection": ["der.ct_87t_dual_core.required"] }
+    },
+    {
+      "nazwa": "anti-islanding — PV po stronie nN bez zabezpieczen (IEEE 1547 / NC RfG Art. 14)",
+      "wejscie": {
+        "der_id": "DER-8",
+        "der_kind": "PV",
+        "connection_side": "nN",
+        "pcc_ref": "BUS-NN-1",
+        "nominal_power_kw": 500.0,
+        "device_catalog_ref": "pv_inv_sma_2500",
+        "protection_catalog_ref": null,
+        "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+        "vt_catalog_ref": "vt_10kv_100v_05_abb",
+        "ct_accuracy_class": "5P10",
+        "ct_application": "protection",
+        "other_ders_in_station": 0
+      },
+      "oczekiwane": { "protection": "partial", "protection_selectivity": "blocked" },
+      "kody_blokad": {
+        "protection": ["der.protection.missing", "der.anti_islanding.required"]
+      }
+    },
+    {
+      "nazwa": "brak profilu operatora — zgodnosc, regulacja i FRT zablokowane",
+      "wejscie": {
+        "der_id": "DER-9",
+        "der_kind": "FW",
+        "connection_side": "SN",
+        "pcc_ref": "BUS-SN-2",
+        "nominal_power_kw": 2000.0,
+        "device_catalog_ref": "fw_turbina_2mw",
+        "nc_rfg_profile_ref": null,
+        "lvrt_curve_ref": null,
+        "hvrt_curve_ref": null,
+        "other_ders_in_station": 1
+      },
+      "oczekiwane": {
+        "nc_rfg": "blocked",
+        "q_u": "blocked",
+        "frt": "blocked",
+        "hvrt": "blocked",
+        "report_osd": "partial"
+      },
+      "kody_blokad": { "nc_rfg": ["der.nc_rfg.missing"] }
+    },
+    {
+      "nazwa": "pusty rekord — wszystko zablokowane, kazda os z powodem",
+      "wejscie": {
+        "der_id": "DER-10",
+        "der_kind": "BESS",
+        "connection_side": "nN",
+        "pcc_ref": null,
+        "nominal_power_kw": null,
+        "device_catalog_ref": null,
+        "other_ders_in_station": 0
+      },
+      "oczekiwane": {
+        "sc_3f": "blocked",
+        "vdrop": "blocked",
+        "equipment": "blocked",
+        "protection": "blocked",
+        "nc_rfg": "blocked",
+        "report_osd": "blocked"
+      },
+      "kody_blokad": {
+        "sc_3f": ["der.device_catalog.missing", "der.pcc.missing"],
+        "equipment": ["der.device_catalog.missing"],
+        "protection": ["der.protection.missing", "der.ct_vt.missing"]
+      }
+    }
+  ]
+}

@@ -133,7 +133,7 @@ export function validateHostingCapacity(args: {
  *    Naprawa A.1, IEC 60909-3).
  *  - VDROP: device_catalog_ref + pcc_ref + nominal_power_kw.
  *  - Q_U: nc_rfg_profile_ref.
- *  - EQUIPMENT: device_catalog_ref + (transformer_catalog_ref jeśli
+ *  - EQUIPMENT: device_catalog_ref + (block_transformer_catalog_ref jeśli
  *    dedicated_transformer).
  *  - PROTECTION: protection_catalog_ref + ct_catalog_ref + vt_catalog_ref.
  *  - PROTECTION_SELECTIVITY: protection + ≥1 inny DER w tej samej stacji.
@@ -187,7 +187,11 @@ export function computeDerReadinessMatrix(
     der.catalogs.ct_catalog_ref !== null && der.catalogs.vt_catalog_ref !== null;
   const hasPower = der.nominal_power_kw !== null;
   const requiresDedicatedTrafo = der.connection_side === 'dedicated_transformer';
-  const hasDedicatedTrafo = der.catalogs.transformer_catalog_ref !== null;
+  // V12K-244: czytamy pole, ktore ISTNIEJE w danych. Regula czytala wczesniej
+  // `transformer_catalog_ref` — pole deklarowane w kontrakcie, ale NIE ZAPISYWANE przez
+  // zadna sciezke produkcyjna (kreator, konfigurator stacji i odczyt ze snapshotu pisza
+  // `block_transformer_catalog_ref`). Warunek nie mial wiec szans byc spelniony.
+  const hasDedicatedTrafo = der.catalogs.block_transformer_catalog_ref !== null;
   // Naprawa A.1: dane zwarciowe składowych zerowej/ujemnej dla SC1F/SC2FG.
   const hasFaultCurrentData = der.catalogs.fault_current_data_ref !== null;
   // Naprawa A.5: model dynamiczny dla FRT/HVRT.
@@ -410,7 +414,7 @@ function buildBlockersForAxis(
       }
       if (
         der.connection_side === 'dedicated_transformer' &&
-        !der.catalogs.transformer_catalog_ref
+        !der.catalogs.block_transformer_catalog_ref
       ) {
         blockers.push({
           code: 'der.dedicated_trafo.missing',

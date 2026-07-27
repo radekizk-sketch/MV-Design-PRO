@@ -41,8 +41,6 @@ export interface DerCatalogSelections {
   readonly controller_catalog_ref: string | null;
   /** Bateria BESS (tylko BESS). */
   readonly battery_catalog_ref: string | null;
-  /** Transformator dedykowany jeśli connection_side='dedicated_transformer'. */
-  readonly transformer_catalog_ref: string | null;
   /** Kabel/linia wewnętrzna od PCC do urządzenia. */
   readonly cable_catalog_ref: string | null;
   /** Pole SN jeśli connection_side='SN'. */
@@ -64,7 +62,13 @@ export interface DerCatalogSelections {
    */
   readonly dynamic_model_ref: string | null;
   /**
-   * Pakiet H: catalog_ref do transformatora dedykowanego gdy connection_side='dedicated_transformer'.
+   * Transformator dedykowany (blokowy) z katalogu, gdy connection_side='dedicated_transformer'.
+   *
+   * V12K-244: to JEDYNE pole opisujące ten transformator. Kontrakt miał wcześniej DRUGIE
+   * pole o tym samym znaczeniu (`transformer_catalog_ref`), którego NIE ZAPISYWAŁA żadna
+   * ścieżka produkcyjna — a właśnie je czytała reguła gotowości. Skutek: oś „Dowód
+   * aparatury" dla wytwórcy z transformatorem dedykowanym była TRWALE „częściowo"
+   * z powodem „brak transformatora dedykowanego", mimo że projektant go wybrał.
    */
   readonly block_transformer_catalog_ref: string | null;
 }
@@ -74,7 +78,6 @@ export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
   ptpiree_certificate_ref: null,
   controller_catalog_ref: null,
   battery_catalog_ref: null,
-  transformer_catalog_ref: null,
   cable_catalog_ref: null,
   bay_catalog_ref: null,
   protection_catalog_ref: null,

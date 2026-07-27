@@ -100,11 +100,42 @@ describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
     expect(matrix.sc_3f).toBe('blocked');
   });
 
-  it('DER z dedicated_transformer ale bez transformer_catalog_ref → equipment partial', () => {
+  it('DER z dedicated_transformer ale bez block_transformer_catalog_ref → equipment partial', () => {
     const matrix = computeDerReadinessMatrix(
       makeDer({ connection_side: 'dedicated_transformer' }),
     );
     expect(matrix.equipment).toBe('partial');
+  });
+
+  it('DER z dedicated_transformer I WYBRANYM transformatorem blokowym → equipment ready (V12K-244)', () => {
+    // PRZYPADEK ROZSTRZYGAJACY, ktory do V12K-244 NIE MOGL przejsc: regula czytala pole
+    // `transformer_catalog_ref`, ktorego nie zapisywala zadna sciezka produkcyjna
+    // (kreator, konfigurator stacji i odczyt ze snapshotu pisza `block_transformer_catalog_ref`).
+    // Os „Dowod aparatury" byla wiec TRWALE „czesciowo" z powodem „brak transformatora
+    // dedykowanego" — dla wytworcy, ktoremu projektant ten transformator wybral.
+    const matrix = computeDerReadinessMatrix(
+      makeDer({
+        connection_side: 'dedicated_transformer',
+        catalogs: {
+          ...EMPTY_DER_CATALOGS,
+          device_catalog_ref: 'pv_inv_sma_2500',
+          block_transformer_catalog_ref: 'btr_pv_15_04_1000',
+        },
+      }),
+    );
+    expect(matrix.equipment).toBe('ready');
+    const osie = buildAggregatedReadiness(
+      makeDer({
+        connection_side: 'dedicated_transformer',
+        catalogs: {
+          ...EMPTY_DER_CATALOGS,
+          device_catalog_ref: 'pv_inv_sma_2500',
+          block_transformer_catalog_ref: 'btr_pv_15_04_1000',
+        },
+      }),
+    );
+    const equipment = osie.find((os) => os.axis === 'equipment');
+    expect(equipment?.blockers.map((b) => b.code)).not.toContain('der.dedicated_trafo.missing');
   });
 
   it('DER z protection + ct (5P20 zabezpieczeniowa) + vt → protection ready', () => {
@@ -312,7 +343,7 @@ describe('osie niesymetryczne: powod stanu „czesciowo" (V12K-226)', () => {
       voltage_level_ref: null,
       catalogs: {
         device_catalog_ref: 'INV-1',
-        transformer_catalog_ref: null,
+        block_transformer_catalog_ref: null,
         protection_catalog_ref: null,
         ct_catalog_ref: null,
         vt_catalog_ref: null,
@@ -445,7 +476,7 @@ describe('klasa przekladnika: DANA z modelu, nie szukanie w rownoleglym katalogu
       pcc_ref: 'BUS-1', bay_ref: 'BAY-1', lv_busbar_ref: null, connection_node_ref: null,
       nominal_power_kw: 500, voltage_level_ref: null,
       catalogs: {
-        device_catalog_ref: 'INV-1', transformer_catalog_ref: null,
+        device_catalog_ref: 'INV-1', block_transformer_catalog_ref: null,
         protection_catalog_ref: 'REL-1', ct_catalog_ref: 'ct_200_5_5p10_10va_abb',
         vt_catalog_ref: 'VT-1', fault_current_data_ref: 'FC-1', dynamic_model_ref: null,
       },
