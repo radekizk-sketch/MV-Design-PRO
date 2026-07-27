@@ -23,9 +23,9 @@ from domain.eligibility_models import (
 from enm.models import (
     Bus,
     EnergyNetworkModel,
-    GroundingConfig,
     ENMDefaults,
     ENMHeader,
+    GroundingConfig,
     Load,
     OverheadLine,
     Source,

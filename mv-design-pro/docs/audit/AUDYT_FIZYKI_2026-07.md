@@ -277,6 +277,57 @@ czasach odniesienia (`Ith_req²·t_k ≤ Icw²·t_cw`) już poprawnie zaimplemen
 `equipment_proof/generator.py::_check_ith`; brak fabrykacji Icw/Idyn przy braku danych
 katalogowych — honest FAIL zamiast wartości domyślnej.
 
+### Fala H — wytrzymałość zwarciowa przewodu (IEC 60949): wynik
+
+**H-1 (W3) — kryterium ZAKODOWANE, ale nigdy nie wywoływane w doborze kabla.**
+`_cable_candidates()` (ścieżka `api/grid_source_preview.py` → `propose_mv_cable`) nie
+przepisywała z rekordu katalogu ani `ith_1s_a`, ani `jth_1s_a_per_mm2`, mimo że
+`CableCandidate` te pola miał, a solver miał gotowe kryterium i gotowy komunikat
+odrzucenia `wytrzymalosc_zwarciowa_niewystarczajaca`.
+
+POMIAR PRZED: kryterium sprawdzalne dla **0 z 63** kandydatów kablowych.
+POMIAR PO: **55 z 63** kończy się werdyktem PASS/FAIL.
+
+Skutek inżynierski defektu: kandydat przechodził dobór na dwóch kryteriach
+(obciążalność długotrwała, spadek napięcia) i nikt nie sprawdzał trzeciego —
+normowego i w sieciach SN często wiążącego. Kabel poprawny prądowo i napięciowo
+mógł zostać zniszczony pierwszym zwarciem.
+
+**H-2 (W3) — osiem PRODUKCYJNYCH typów katalogu nie ma danych cieplnych.**
+YHAKXS AL 50/95/120/150/240 (Telefonika) oraz YHKXS CU 95/150/240 (Bitner,
+Telefonika) nie podają ani Ith(1 s), ani Jth(1 s). Podają natomiast materiał żyły
+i temperaturę zwarciową 250 °C.
+
+ROZSTRZYGNIĘCIE: k wyprowadzane ze wzoru IEC 60949 § 4, gdy katalog milczy o obu
+wielkościach. Granica wobec zakazu zgadywania: zakazane jest przyjęcie materiału,
+którego kabel nie podaje; dozwolone jest zastosowanie wzoru normy do materiału,
+który kabel **deklaruje** — stałe Qc/β/ρ₂₀ są tablicową własnością *nazwanego*
+materiału, tak samo jak ρ_Cu przy rezystancji żyły miedzianej.
+
+KONTROLA POPRAWNOŚCI WZORU wobec wartości, które **ten sam katalog** podaje wprost
+dla bliźniaczych typów (najmocniejszy dostępny dowód: liczba nie pochodzi z kodu,
+a musi zgodzić się z niezależnym zapisem tablicowym):
+
+| Materiał (XLPE 90→250 °C) | wzór IEC 60949 | katalog wprost | błąd |
+|---|---|---|---|
+| Aluminium | 94,553 A·√s/mm² | 94 | +0,59 % |
+| Miedź | 142,874 A·√s/mm² | 143 | −0,09 % |
+
+Wyniku **nie zaokrąglamy** do wartości tablicowych — to byłaby niejawna korekta.
+Zamiast tego źródło k jest zawsze nazwane (`zrodlo_k`), a dowód przy wyprowadzeniu
+pokazuje wzór i stałe, nie `k = Jth(1 s)`.
+
+**Pierwszeństwo katalogu jest bezwarunkowe** — także gdy wzór dałby wartość
+korzystniejszą. Karta producenta może uwzględniać ograniczenia, których rachunek
+adiabatyczny nie widzi (osprzęt, głowice, warunki ułożenia).
+
+**Pozostaje niesprawdzalnych 8 typów** — brakuje im temperatury roboczej (θ_i),
+a `CableType.max_temperature_c` ma domyślną wartość klasy 90,0, więc ścieżka
+obiektowa **maskuje** ten brak, podczas gdy ścieżka rekordowa raportuje go uczciwie.
+Wyprowadzenie θ_i z tego defaultu byłoby derywacją ze zgadniętej danej, więc tego
+nie robimy. Do uzupełnienia z kart producentów albo przez usunięcie defaultu —
+zapis długu, nie obejście.
+
 ## 7. Kryterium odbioru audytu
 
 Fala jest zamknięta, gdy:

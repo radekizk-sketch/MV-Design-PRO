@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import Literal
+from collections.abc import Sequence
+from typing import Any, Literal
 
 from enm.der_sn_validation import (
     DEFAULT_SIMULTANEITY_FACTOR,
@@ -34,6 +35,7 @@ from network_model.solvers.der_selection_preview import (
     CableSelectionInput,
     FieldApparatusCandidate,
     FieldApparatusSelectionInput,
+    RejectedCandidate,
     propose_block_transformer,
     propose_mv_cable,
     propose_mv_field_apparatus,
@@ -567,7 +569,9 @@ class DerSelectionPreviewResponse(BaseModel):
     field_apparatus: FieldApparatusSelectionResponse | None
 
 
-def _rejected_response(rejected) -> list[RejectedCandidateResponse]:
+def _rejected_response(
+    rejected: Sequence[RejectedCandidate],
+) -> list[RejectedCandidateResponse]:
     return [
         RejectedCandidateResponse(
             catalog_ref=item.catalog_ref,
@@ -604,6 +608,11 @@ def _block_transformer_candidates() -> tuple[BlockTransformerCandidate, ...]:
     return tuple(candidates)
 
 
+def _opcjonalna_liczba(value: Any) -> float | None:
+    """Liczba katalogowa albo None — brak danej nie moze stac sie zerem."""
+    return float(value) if value is not None else None
+
+
 def _cable_candidates() -> tuple[CableCandidate, ...]:
     candidates: list[CableCandidate] = []
     for record in get_all_cable_types():
@@ -628,6 +637,24 @@ def _cable_candidates() -> tuple[CableCandidate, ...]:
                     if params.get("voltage_rating_kv") is not None
                     else None
                 ),
+                # V12K-224: dane cieplne kandydata. Bez nich kryterium wytrzymalosci
+                # zwarciowej zyly (IEC 60949) bylo w doborze kabla ZAKODOWANE, ale
+                # nigdy nie odpalalo — zaden z 63 typow nie mial czym byc sprawdzony,
+                # a odrzucenie „wytrzymalosc_zwarciowa_niewystarczajaca" bylo martwe.
+                ith_1s_a=_opcjonalna_liczba(params.get("ith_1s_a")),
+                jth_1s_a_per_mm2=_opcjonalna_liczba(params.get("jth_1s_a_per_mm2")),
+                conductor_material=(
+                    str(params["conductor_material"])
+                    if params.get("conductor_material") is not None
+                    else None
+                ),
+                insulation=(
+                    str(params["insulation_type"])
+                    if params.get("insulation_type") is not None
+                    else None
+                ),
+                temp_operating_c=_opcjonalna_liczba(params.get("max_temperature_c")),
+                temp_short_circuit_c=_opcjonalna_liczba(params.get("short_circuit_temperature_c")),
             )
         )
     return tuple(candidates)

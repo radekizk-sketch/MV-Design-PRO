@@ -62,6 +62,112 @@ _CONDUCTOR_KIND_LABELS_PL = {
 
 _FORMULA_REF = "I_dop(t) = I_th(1s)·√(1 s / t);  S_min = I_th·√t / Jth(1s)"
 
+# --- Wyprowadzenie wspolczynnika k wg IEC 60949 (karta F-K1 faza 8) ----------
+#
+# DLACZEGO. Osiem PRODUKCYJNYCH typow kablowych katalogu (YHAKXS AL, YHKXS CU)
+# nie niesie ani Ith(1s), ani Jth(1s), a NIESIE material zyly oraz obie
+# temperatury (robocza 90 °C, zwarciowa 250 °C dla XLPE). Dla nich kryterium
+# cieplne konczylo sie werdyktem NIEDOSTEPNY — kabel realnie uzywany w sieci
+# pozostawal niesprawdzony, mimo ze norma pozwala k WYZNACZYC.
+#
+# GRANICA WOBEC ZAKAZU ZGADYWANIA (patrz `_build_k_justification`). Zakazane jest
+# podstawienie wartosci TYPOWEJ, gdy nie wiadomo, z czego kabel jest zrobiony.
+# Dozwolone — i to robi ten kod — jest WYPROWADZENIE k ze wzoru normy dla
+# materialu, ktory ten kabel DEKLARUJE, oraz dla jego wlasnej pary temperatur.
+# Stale Qc, beta, rho20 sa tablicowymi wlasnosciami NAZWANEGO materialu, nie
+# zalozeniem co do materialu — dokladnie tak, jak rho_Cu przy rezystancji zyly
+# miedzianej. Nieznany material albo brak temperatury = brak wyprowadzenia.
+#
+# WZOR (IEC 60949 § 4, rachunek adiabatyczny):
+#
+#     k = √( Qc·(beta + 20) / rho20 · ln((beta + theta_f) / (beta + theta_i)) )
+#
+# KONTROLA POPRAWNOSCI. Dla XLPE 90 → 250 °C wzor daje 94,55 (AL) i 142,87 (CU),
+# wobec 94 i 143, ktore katalog podaje wprost dla POZOSTALYCH typow — zgodnosc
+# do 0,6 %. Rozbieznosc to zaokraglenie wartosci tablicowych; NIE zaokraglamy
+# wyniku do nich, bo to byla by niejawna korekta. Zrodlo k jest zawsze nazwane
+# w sladzie (`zrodlo_k`), wiec projektant widzi, czy liczba jest katalogowa.
+#
+# Qc [J/(°C·mm³)], rho20 [Ω·mm], beta [°C] — IEC 60949, tablica stalych.
+_IEC60949_MATERIAL_CONSTANTS: dict[str, dict[str, float]] = {
+    "AL": {"qc": 2.5e-3, "rho20": 28.264e-6, "beta": 228.0},
+    "CU": {"qc": 3.45e-3, "rho20": 17.241e-6, "beta": 234.5},
+}
+
+# Nazwy materialu spotykane w katalogu -> klucz tablicy stalych. Rozszerzenie tej
+# mapy jest jedynym dozwolonym sposobem obslugi nowego materialu; milczace
+# potraktowanie nieznanej nazwy jako aluminium byloby zgadywaniem.
+_MATERIAL_ALIASES: dict[str, str] = {
+    "AL": "AL",
+    "ALUMINIUM": "AL",
+    "ALU": "AL",
+    "CU": "CU",
+    "COPPER": "CU",
+    "MIEDZ": "CU",
+    "MIEDŹ": "CU",
+}
+
+K_SOURCE_CATALOG = "KATALOG"
+K_SOURCE_DERIVED_IEC60949 = "WYPROWADZONE_IEC60949"
+
+_K_FORMULA_TEX = (
+    r"k = \sqrt{\frac{Q_c\,(\beta + 20)}{\rho_{20}}\,"
+    r"\ln\!\left(\frac{\beta + \theta_f}{\beta + \theta_i}\right)}"
+)
+
+
+@dataclass(frozen=True)
+class KDerivation:
+    """Wyprowadzenie k wg IEC 60949 — WHITE BOX, wszystkie skladniki jawne."""
+
+    k_a_s05_per_mm2: float
+    material_key: str
+    qc_j_per_c_mm3: float
+    rho20_ohm_mm: float
+    beta_c: float
+    temp_initial_c: float
+    temp_final_c: float
+    formula_tex: str = _K_FORMULA_TEX
+
+
+def derive_k_iec60949(
+    *,
+    conductor_material: str | None,
+    temp_operating_c: float | None,
+    temp_short_circuit_c: float | None,
+) -> KDerivation | None:
+    """Wyprowadz k [A·√s/mm²] z materialu zyly i pary temperatur (IEC 60949 § 4).
+
+    Zwraca ``None``, gdy ktorejkolwiek danej brakuje albo material nie jest
+    rozpoznany — wtedy kryterium konczy sie brakiem podstawy do oceny, nigdy
+    wartoscia zastepcza. ``theta_f`` musi byc wieksza od ``theta_i``, bo inaczej
+    zyla nie ma zapasu cieplnego i rachunek adiabatyczny nie ma sensu fizycznego.
+    """
+    if not conductor_material or temp_operating_c is None or temp_short_circuit_c is None:
+        return None
+    key = _MATERIAL_ALIASES.get(conductor_material.strip().upper())
+    if key is None:
+        return None
+    if temp_short_circuit_c <= temp_operating_c:
+        return None
+    stale = _IEC60949_MATERIAL_CONSTANTS[key]
+    beta = stale["beta"]
+    k = math.sqrt(
+        stale["qc"]
+        * (beta + 20.0)
+        / stale["rho20"]
+        * math.log((beta + temp_short_circuit_c) / (beta + temp_operating_c))
+    )
+    return KDerivation(
+        k_a_s05_per_mm2=k,
+        material_key=key,
+        qc_j_per_c_mm3=stale["qc"],
+        rho20_ohm_mm=stale["rho20"],
+        beta_c=beta,
+        temp_initial_c=temp_operating_c,
+        temp_final_c=temp_short_circuit_c,
+    )
+
 
 @dataclass(frozen=True)
 class ConductorThermalInput:
@@ -173,6 +279,22 @@ def check_conductor_thermal_withstand(
     ith = _positive(data.ith_a)
     duration = _positive(data.fault_duration_s)
     ith_1s = _positive(data.ith_1s_a)
+    jth = _positive(data.jth_1s_a_per_mm2)
+    section = _positive(data.cross_section_mm2)
+
+    # PIERWSZENSTWO KATALOGU (bezwarunkowe). Wyprowadzenie k wchodzi WYLACZNIE, gdy
+    # katalog milczy o obu wielkosciach — nigdy nie nadpisuje danej producenta,
+    # nawet gdy wzor dalby wartosc korzystniejsza.
+    k_derivation: KDerivation | None = None
+    if ith_1s is None and jth is None and section is not None:
+        k_derivation = derive_k_iec60949(
+            conductor_material=data.conductor_material,
+            temp_operating_c=data.temp_operating_c,
+            temp_short_circuit_c=data.temp_short_circuit_c,
+        )
+        if k_derivation is not None:
+            jth = k_derivation.k_a_s05_per_mm2
+            ith_1s = jth * section
 
     braki: list[str] = []
     if ith is None:
@@ -200,8 +322,6 @@ def check_conductor_thermal_withstand(
     utilization = ith / admissible
     margin = admissible - ith
 
-    jth = _positive(data.jth_1s_a_per_mm2)
-    section = _positive(data.cross_section_mm2)
     required_section = (ith * sqrt_t / jth) if jth is not None else None
 
     status = STATUS_PASS if ith <= admissible else STATUS_FAIL
@@ -258,7 +378,7 @@ def check_conductor_thermal_withstand(
             applied_section_mm2=section,
         ),
         standard_refs=STANDARD_REFS,
-        k_justification=_build_k_justification(data, jth),
+        k_justification=_build_k_justification(data, jth, k_derivation),
         white_box_trace=_build_white_box_trace(
             ith_a=ith,
             duration_s=duration,
@@ -273,7 +393,7 @@ def check_conductor_thermal_withstand(
             status=status,
             i2t=i2t,
             i2t_admissible=i2t_admissible,
-            k_justification=_build_k_justification(data, jth),
+            k_justification=_build_k_justification(data, jth, k_derivation),
         ),
     )
 
@@ -337,15 +457,45 @@ def _build_white_box_trace(
     braki_k = k_justification.get("braki_pl") or ()
     granica_pl = k_justification.get("granica_temperatury_pl")
 
+    # Krok 1 ma DWIE postacie, bo k ma dwa dopuszczalne pochodzenia. Gdy liczba jest
+    # wyprowadzona, dowod musi pokazac WZOR I STALE, a nie udawac odczyt z karty
+    # katalogowej — inaczej audytor nie odtworzy rachunku (karta F-K1 faza 8).
+    wyprowadzenie_k = k_justification.get("wyprowadzenie_k")
+    if wyprowadzenie_k:
+        k_formula_latex = "$$" + _K_FORMULA_TEX + "$$"
+        k_substitution = (
+            r"$$k = \sqrt{\frac{"
+            + _liczba_tex(wyprowadzenie_k["qc_j_per_c_mm3"] * 1e3)
+            + r"\cdot 10^{-3}\,("
+            + _liczba_tex(wyprowadzenie_k["beta_c"])
+            + r" + 20)}{"
+            + _liczba_tex(wyprowadzenie_k["rho20_ohm_mm"] * 1e6)
+            + r"\cdot 10^{-6}}\,\ln\!\left(\frac{"
+            + _liczba_tex(wyprowadzenie_k["beta_c"] + wyprowadzenie_k["temp_koncowa_c"])
+            + r"}{"
+            + _liczba_tex(wyprowadzenie_k["beta_c"] + wyprowadzenie_k["temp_poczatkowa_c"])
+            + r"}\right)} = "
+            + _liczba_tex(jth_1s_a_per_mm2 if jth_1s_a_per_mm2 is not None else 0.0)
+            + r"\ \frac{\mathrm{A}\sqrt{\mathrm{s}}}{\mathrm{mm^2}}$$"
+        )
+    else:
+        k_formula_latex = (
+            r"$$k = J_{th(1s)} \quad \left[\frac{\mathrm{A}\sqrt{\mathrm{s}}}"
+            r"{\mathrm{mm^2}}\right]$$"
+        )
+        k_substitution = (
+            r"$$k = " + _liczba_tex(jth_1s_a_per_mm2) + r"\ \frac{\mathrm{A}\sqrt{\mathrm{s}}}"
+            r"{\mathrm{mm^2}}$$"
+            if jth_1s_a_per_mm2 is not None
+            else ""
+        )
+
     kroki: list[dict[str, Any]] = [
         {
             "step": 1,
             "key": "conductor_thermal_k_factor",
             "title": "Współczynnik materiałowy k żyły",
-            "formula_latex": (
-                r"$$k = J_{th(1s)} \quad \left[\frac{\mathrm{A}\sqrt{\mathrm{s}}}"
-                r"{\mathrm{mm^2}}\right]$$"
-            ),
+            "formula_latex": k_formula_latex,
             "inputs": {
                 # Karta F-K1 faza 7: rodzaj przewodu jest daną wejściową uzasadnienia k —
                 # rozstrzyga, czy temperaturę graniczną wyznacza izolacja (kabel), czy
@@ -364,12 +514,7 @@ def _build_white_box_trace(
                     "label": "Temperatura końcowa (zwarciowa)",
                 },
             },
-            "substitution": (
-                r"$$k = " + _liczba_tex(jth_1s_a_per_mm2) + r"\ \frac{\mathrm{A}\sqrt{\mathrm{s}}}"
-                r"{\mathrm{mm^2}}$$"
-                if jth_1s_a_per_mm2 is not None
-                else ""
-            ),
+            "substitution": k_substitution,
             "result": {
                 "k_a_s05_per_mm2": {
                     "value": k_justification.get("k_a_s05_per_mm2"),
@@ -834,7 +979,9 @@ def _build_sensitivity(
 
 
 def _build_k_justification(
-    data: ConductorThermalInput, jth_1s_a_per_mm2: float | None
+    data: ConductorThermalInput,
+    jth_1s_a_per_mm2: float | None,
+    k_derivation: KDerivation | None = None,
 ) -> dict[str, Any]:
     """Uzasadnienie wspolczynnika k — bez niego liczby nie da sie zweryfikowac.
 
@@ -843,6 +990,13 @@ def _build_k_justification(
     do TEGO kabla, trzeba znac material zyly, izolacje i pare temperatur.
     Braki sa nazwane wprost — NIE podstawiamy wartosci typowej z tablic normy,
     bo zgadniete k falszuje werdykt bezpieczenstwa.
+
+    Gdy katalog milczy o Ith(1s) i Jth(1s), a niesie material oraz obie
+    temperatury, k jest WYPROWADZONE ze wzoru IEC 60949 (``k_derivation``) —
+    i wtedy ``zrodlo_k`` mowi to wprost, razem ze stalymi materialowymi uzytymi
+    w rachunku. To nie jest wartosc typowa „z tablicy": to wzor normy zastosowany
+    do danych TEGO przewodu. Projektant musi widziec te roznice, bo od niej
+    zalezy, czy liczbe wolno wstawic do dokumentacji bez karty producenta.
     """
     rodzaj = (data.conductor_kind or "").strip().upper() or None
     przewod_goly = rodzaj == CONDUCTOR_KIND_BARE
@@ -886,12 +1040,42 @@ def _build_k_justification(
     # Rodzaj wywnioskowany z izolacji (patrz wyzej) — kabel, bo przewod goly jej nie ma.
     rodzaj_wynikowy = rodzaj or (CONDUCTOR_KIND_CABLE if data.insulation else None)
 
-    return {
-        "k_a_s05_per_mm2": round(jth_1s_a_per_mm2, 3) if jth_1s_a_per_mm2 is not None else None,
-        "tozsamosc_pl": (
+    wyprowadzone = k_derivation is not None
+    if wyprowadzone:
+        assert k_derivation is not None  # mypy
+        tozsamosc_pl = (
+            "k WYPROWADZONE ze wzoru IEC 60949 § 4 dla materiału żyły i pary "
+            "temperatur podanych w karcie katalogowej tego przewodu — katalog nie "
+            "podaje ani Ith(1 s), ani Jth(1 s). Stałe materiałowe są tablicowe dla "
+            "zadeklarowanego materiału, nie założeniem co do materiału."
+        )
+        wyprowadzenie: dict[str, Any] | None = {
+            "wzor_tex": k_derivation.formula_tex,
+            "material_klucz": k_derivation.material_key,
+            "qc_j_per_c_mm3": k_derivation.qc_j_per_c_mm3,
+            "rho20_ohm_mm": k_derivation.rho20_ohm_mm,
+            "beta_c": k_derivation.beta_c,
+            "temp_poczatkowa_c": k_derivation.temp_initial_c,
+            "temp_koncowa_c": k_derivation.temp_final_c,
+            "norma": "IEC 60949 § 4",
+        }
+    else:
+        tozsamosc_pl = (
             "k = Jth(1 s) — gęstość prądu zwarciowego dla 1 s z karty katalogowej "
             "(prąd na 1 mm² przekroju wytrzymywany przez 1 s)."
+        )
+        wyprowadzenie = None
+
+    return {
+        "k_a_s05_per_mm2": round(jth_1s_a_per_mm2, 3) if jth_1s_a_per_mm2 is not None else None,
+        "zrodlo_k": (K_SOURCE_DERIVED_IEC60949 if wyprowadzone else K_SOURCE_CATALOG),
+        "zrodlo_k_pl": (
+            "wyprowadzone ze wzoru IEC 60949 (katalog nie podaje)"
+            if wyprowadzone
+            else "wartość katalogowa producenta"
         ),
+        "wyprowadzenie_k": wyprowadzenie,
+        "tozsamosc_pl": tozsamosc_pl,
         "rodzaj_przewodu": rodzaj_wynikowy,
         "rodzaj_przewodu_pl": (
             _CONDUCTOR_KIND_LABELS_PL.get(rodzaj_wynikowy) if rodzaj_wynikowy else None

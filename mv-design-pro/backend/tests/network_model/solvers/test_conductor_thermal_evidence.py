@@ -162,8 +162,18 @@ def test_kazde_kryterium_ma_podstawe_normowa_z_punktem() -> None:
 
 
 def test_wynik_niedostepny_nie_niesie_dowodu_ani_zalecen() -> None:
-    """Brak podstawy do rachunku = brak dowodu. Kroki „na sucho" udawalyby dowod."""
-    wynik = check_conductor_thermal_withstand(_wejscie(ith_1s_a=None, jth_1s_a_per_mm2=None))
+    """Brak podstawy do rachunku = brak dowodu. Kroki „na sucho" udawalyby dowod.
+
+    INTENCJA bez zmian. Zmienila sie definicja „braku podstawy" (V12K-224): od
+    wprowadzenia wyprowadzenia k wg IEC 60949 samo usuniecie Ith(1s) i Jth(1s) NIE
+    odbiera podstawy, bo k da sie policzyc z materialu zyly i pary temperatur, ktore
+    ta fixtura niesie. Zeby test nadal sprawdzal to, co mial sprawdzac, wejscie musi
+    byc pozbawione podstawy REALNIE — usuwamy tez material zyly (bez niego nie ma
+    stalych normowych i zgadywanie jest zakazane).
+    """
+    wynik = check_conductor_thermal_withstand(
+        _wejscie(ith_1s_a=None, jth_1s_a_per_mm2=None, conductor_material=None)
+    )
 
     assert wynik.status == "UNAVAILABLE"
     assert wynik.criteria == ()

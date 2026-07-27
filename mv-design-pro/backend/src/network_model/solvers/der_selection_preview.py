@@ -264,6 +264,13 @@ class CableCandidate:
     # przez przekroj. Brak obu = kryterium zwarciowe NIESPRAWDZALNE dla tego kandydata.
     ith_1s_a: float | None = None
     jth_1s_a_per_mm2: float | None = None
+    # Dane MATERIALOWE (V12K-224). Bez nich k nie ma uzasadnienia, a dla typow, ktore
+    # nie podaja ani Ith(1s), ani Jth(1s), nie da sie go wyprowadzic ze wzoru
+    # IEC 60949 — kryterium zwarciowe kandydata zostaje wtedy niesprawdzone.
+    conductor_material: str | None = None
+    insulation: str | None = None
+    temp_operating_c: float | None = None
+    temp_short_circuit_c: float | None = None
 
     def ith_1s(self) -> float | None:
         """Dopuszczalny prad cieplny dla 1 s [A] — wprost albo z gestosci i przekroju."""
@@ -452,6 +459,13 @@ def propose_mv_cable(data: CableSelectionInput) -> CableSelectionResult:
                     ith_1s_a=candidate.ith_1s(),
                     jth_1s_a_per_mm2=candidate.jth_1s_a_per_mm2,
                     cross_section_mm2=candidate.cross_section_mm2,
+                    # V12K-224: bez danych materialowych kandydat, ktory nie podaje
+                    # Jth wprost, nie da sie sprawdzic cieplnie — a wtedy przechodzi
+                    # dobor na dwoch kryteriach, o czym nikt nie informuje.
+                    conductor_material=candidate.conductor_material,
+                    insulation=candidate.insulation,
+                    temp_operating_c=candidate.temp_operating_c,
+                    temp_short_circuit_c=candidate.temp_short_circuit_c,
                 )
             )
             if thermal.status == STATUS_THERMAL_FAIL:
