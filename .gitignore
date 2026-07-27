@@ -50,7 +50,9 @@ htmlcov/
 *.egg
 venv/
 .env
-.claude/
+.claude/*
+!.claude/skills/
+.sol/
 .playwright-mcp/
 mv-design-pro/qa-*.png
 mv-design-ui-implementation-*.png
