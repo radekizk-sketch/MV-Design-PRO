@@ -74,7 +74,12 @@ export function isLabelReadableAtScale(cls: LabelClass, scale: number): boolean 
  */
 export function liczbaRysunkuPl(value: number): string {
   if (Number.isInteger(value)) return value.toFixed(0);
-  return value.toFixed(2).replace(/0$/, '').replace(/\.$/, '').replace('.', ',');
+  // Zera nieznaczace usuwane WSZYSTKIE, nie jedno: `replace(/0$/, '')` zostawialo
+  // „12,0" dla 11.999 i „0,0" dla 0.001 — a wartosc NIEZEROWA pokazana jako zero to
+  // dokladnie to, czego kanon zabrania. Po obcieciu zer moze zostac sama czesc
+  // calkowita (wtedy nie ma przecinka).
+  const dwaMiejsca = value.toFixed(2).replace(/0+$/, '').replace(/\.$/, '');
+  return dwaMiejsca.replace('.', ',');
 }
 
 const AVG_GLYPH_WIDTH_FACTOR = 0.62;

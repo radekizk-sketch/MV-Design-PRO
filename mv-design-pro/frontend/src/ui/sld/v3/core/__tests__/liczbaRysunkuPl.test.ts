@@ -34,6 +34,23 @@ describe('liczbaRysunkuPl — zapis polski bez zer nieznaczących', () => {
     expect(liczbaRysunkuPl(20.25)).toBe('20,25');
   });
 
+  it('usuwa WSZYSTKIE zera nieznaczące, nie jedno (przegląd kodu serii)', () => {
+    // POMIAR PRZED NAPRAWĄ (`replace(/0$/, '')` zamiast `/0+$/`): 11.999 → „12,0",
+    // 6.0000001 → „6,0", 20.004 → „20,0". Ostatni przypadek jest najgorszy: 0.001
+    // renderowało się jako „0,0", czyli wartość NIEZEROWA pokazana z fałszywą
+    // precyzją jako zero — rodzina błędów, którą ta seria zamyka.
+    expect(liczbaRysunkuPl(11.999)).toBe('12');
+    expect(liczbaRysunkuPl(6.0000001)).toBe('6');
+    expect(liczbaRysunkuPl(20.004)).toBe('20');
+    expect(liczbaRysunkuPl(0.001)).toBe('0');
+  });
+
+  it('zero znaczące ZOSTAJE — obcinamy zapis, nie cyfry danej', () => {
+    // Kontrola odwrotna: gdyby obcinanie poszło za daleko, „0,05" straciłoby cyfrę.
+    expect(liczbaRysunkuPl(0.05)).toBe('0,05');
+    expect(liczbaRysunkuPl(10.05)).toBe('10,05');
+  });
+
   it('nie zmienia geometrii: przecinek ma tę samą długość co kropka', () => {
     // Szerokość etykiety liczy się z DŁUGOŚCI tekstu (`measureLabelWidth`),
     // więc zmiana konwencji nie rusza układu ani hashy sceny.

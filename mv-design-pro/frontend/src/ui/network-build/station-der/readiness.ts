@@ -194,14 +194,12 @@ export function computeDerReadinessMatrix(
   const hasDynamicModel = der.catalogs.dynamic_model_ref !== null;
   // Naprawa eng.5: klasa CT musi byc zabezpieczeniowa (5P/10P) dla protection axis.
   //
-  // V12K-232: klasa przekladnika jest DANA, nie wynikiem szukania w katalogu wewnatrz
-  // reguly. Poprzednia wersja rozwiazywala `ct_catalog_ref` w LOKALNYM, piecio-wpisowym
-  // `CT_CATALOG` frontu, ktory ma ZEROWE pokrycie identyfikatorow z prawdziwym
-  // katalogiem backendu (`/api/catalog/ct-types`, 12 typow producenckich) — a to
-  // wlasnie z niego kreator pomiaru dodaje przekladnik do modelu. POMIAR: dla realnego
-  // `ct_200_5_5p10_10va_abb` (klasa 5P10, w pelni poprawna zabezpieczeniowo wg
-  // IEC 61869-2) os zabezpieczen konczyla sie stanem „czesciowo" z PUSTA lista
-  // powodow; dla syntetycznego `ct_200_5_5p20` z piatki frontu — „gotowa".
+  // V12K-232/239: klasa przekladnika jest DANA na rekordzie, a regula NIE ma wlasnego
+  // katalogu. Dane wypelnia warstwa znajaca prawdziwy katalog backendu
+  // (`/api/catalog/ct-types`, 12 typow producenckich — `ctZKatalogu.ts`), a rodzaj
+  // rdzenia wyprowadza sam katalog (`rdzen_ct_z_klasy`, IEC 61869-2). Rownolegly
+  // katalog syntetyczny frontu, na ktorym ta regula kiedys stala, zostal usuniety
+  // w V12K-239 — mial ZEROWE pokrycie identyfikatorow z katalogiem realnym.
   //
   // `ctKlasaNieznana` odroznia „klasa nie jest zabezpieczeniowa" od „klasy nie da sie
   // ustalic". Pierwsze jest werdyktem, drugie brakiem danej — i musi byc NAZWANE

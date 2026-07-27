@@ -79,18 +79,23 @@ export function wzbogacOKlaseCt(
 ): StationDerConnection {
   const ref = der.catalogs.ct_catalog_ref;
   if (!ref) return der;
-  if (der.ct_accuracy_class) return der;
 
+  // Klasa i rodzaj rdzenia to DWIE NIEZALEZNE dane — kazda uzupelniana osobno.
+  // Wczesniejsza wersja przerywala na obecnej klasie, wiec rekord z klasa (np. z
+  // materializacji katalogowej w modelu) NIGDY nie dostawal `ct_application`: po
+  // uzupelnieniu katalogu o typ dwurdzeniowy warunek 87T pozostalby trwale
+  // nierozstrzygalny, bez podania powodu.
   const typ = typyCt.find((t) => t.id === ref);
-  const klasa = klasaKanoniczna(typ?.accuracy_class);
-  if (klasa === null) return der;
+  const klasa = der.ct_accuracy_class ?? klasaKanoniczna(typ?.accuracy_class);
+  const zastosowanie = der.ct_application ?? zastosowanieZKatalogu(typ);
+  if (klasa === null && zastosowanie === null) return der;
 
   return {
     ...der,
-    ct_accuracy_class: klasa,
-    // Zastosowanie z KATALOGU (V12K-239) — dana obecna na rekordzie ma pierwszenstwo.
-    // Katalog bez tej danej zostawia pole puste, wiec regula zglosi brak, nie spelnienie.
-    ct_application: der.ct_application ?? zastosowanieZKatalogu(typ) ?? undefined,
+    // Dana obecna na rekordzie ma pierwszenstwo; katalog bez danej zostawia pole
+    // puste, wiec regula zglosi brak, a nie spelnienie warunku.
+    ...(klasa !== null ? { ct_accuracy_class: klasa } : {}),
+    ...(zastosowanie !== null ? { ct_application: zastosowanie } : {}),
   };
 }
 

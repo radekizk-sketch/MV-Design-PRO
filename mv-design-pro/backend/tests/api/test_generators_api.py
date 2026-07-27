@@ -292,9 +292,9 @@ def test_wiazania_wytworcy_trafiaja_do_modelu_przez_endpoint(app_client) -> None
     response = app_client.patch(
         f"/api/projects/{project_id}/cases/{case_id}/generators/{ref}/bindings",
         json={
-            "protection_catalog_ref": "rel_sepam_s20",
+            "protection_catalog_ref": "ACME_REX200_v1",
             "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
-            "vt_catalog_ref": "vt_15000_100_abb",
+            "vt_catalog_ref": "vt_10kv_100v_05_abb",
             "fault_current_data_ref": "fc_pv_500",
             "dynamic_model_ref": "dyn_pv_wecc",
             "nc_rfg_profile_ref": "pse",
@@ -303,9 +303,9 @@ def test_wiazania_wytworcy_trafiaja_do_modelu_przez_endpoint(app_client) -> None
 
     assert response.status_code == 200
     params = _wiazania_z_modelu(app_client, case_id)
-    assert params["protection_catalog_ref"] == "rel_sepam_s20"
+    assert params["protection_catalog_ref"] == "ACME_REX200_v1"
     assert params["ct_catalog_ref"] == "ct_200_5_5p10_10va_abb"
-    assert params["vt_catalog_ref"] == "vt_15000_100_abb"
+    assert params["vt_catalog_ref"] == "vt_10kv_100v_05_abb"
     assert params["fault_current_data_ref"] == "fc_pv_500"
     assert params["dynamic_model_ref"] == "dyn_pv_wecc"
     assert params["profiles"]["nc_rfg_profile_ref"] == "pse"
@@ -317,12 +317,14 @@ def test_pole_pominiete_w_zadaniu_nie_kasuje_wiazania_z_modelu(app_client) -> No
     project_id, case_id, ref = _utworz_wytworce(app_client)
     baza = f"/api/projects/{project_id}/cases/{case_id}/generators/{ref}/bindings"
 
-    assert app_client.patch(baza, json={"ct_catalog_ref": "ct_x"}).status_code == 200
-    assert app_client.patch(baza, json={"vt_catalog_ref": "vt_y"}).status_code == 200
+    assert (
+        app_client.patch(baza, json={"ct_catalog_ref": "ct_150_1_0_5_10va_abb"}).status_code == 200
+    )
+    assert app_client.patch(baza, json={"vt_catalog_ref": "vt_10kv_100v_05_abb"}).status_code == 200
 
     params = _wiazania_z_modelu(app_client, case_id)
-    assert params["ct_catalog_ref"] == "ct_x"  # PRZEŻYŁO drugie żądanie
-    assert params["vt_catalog_ref"] == "vt_y"
+    assert params["ct_catalog_ref"] == "ct_150_1_0_5_10va_abb"  # PRZEŻYŁO drugie żądanie
+    assert params["vt_catalog_ref"] == "vt_10kv_100v_05_abb"
 
 
 def test_jawny_null_usuwa_wiazanie(app_client) -> None:
@@ -330,7 +332,9 @@ def test_jawny_null_usuwa_wiazanie(app_client) -> None:
     project_id, case_id, ref = _utworz_wytworce(app_client)
     baza = f"/api/projects/{project_id}/cases/{case_id}/generators/{ref}/bindings"
 
-    assert app_client.patch(baza, json={"ct_catalog_ref": "ct_x"}).status_code == 200
+    assert (
+        app_client.patch(baza, json={"ct_catalog_ref": "ct_150_1_0_5_10va_abb"}).status_code == 200
+    )
     assert app_client.patch(baza, json={"ct_catalog_ref": None}).status_code == 200
 
     assert "ct_catalog_ref" not in _wiazania_z_modelu(app_client, case_id)
@@ -341,7 +345,7 @@ def test_wytworca_nieobecny_w_modelu_daje_blad_a_nie_cichy_zapis(app_client) -> 
 
     response = app_client.patch(
         f"/api/projects/{project_id}/cases/{case_id}/generators/gen_nie_ma/bindings",
-        json={"ct_catalog_ref": "ct_x"},
+        json={"ct_catalog_ref": "ct_150_1_0_5_10va_abb"},
     )
 
     assert response.status_code == 422

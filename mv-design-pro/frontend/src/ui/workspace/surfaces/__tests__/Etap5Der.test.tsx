@@ -3,7 +3,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../../app-state/store';
 import { EMPTY_DER_READINESS, useStationDerStore } from '../../../network-build/station-der';
@@ -33,6 +33,13 @@ function makeSurface(entityRef: string | null, payload: Record<string, unknown> 
 }
 
 describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
+  // Odpiecie podstawien MUSI byc w `afterEach`, nie na koncu ciala testu: nieudana
+  // asercja przerywa test przed sprzataniem i podstawiony `fetch` wyciekl by do
+  // kolejnych testow, sypiac je z powodow niezwiazanych z faktyczna regresja.
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
   beforeEach(() => {
     useAppStateStore.getState().reset();
     useStationDerStore.getState().reset();
@@ -555,7 +562,6 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     const surface = screen.getByTestId('pv-source-surface');
     expect(surface.textContent).not.toContain('Przekładnik CT: wybierz wariant katalogowy');
 
-    vi.unstubAllGlobals();
   });
 
   it('przypisany przekładnik SPOZA pobranego katalogu daje kreskę, nie polecenie wyboru (V12K-239)', async () => {
@@ -594,7 +600,6 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(wartosc).toContain(MISSING_DASH);
     expect(wartosc).not.toContain('wybierz wariant katalogowy');
 
-    vi.unstubAllGlobals();
   });
 
   it('KPI Profil NC RfG wyświetla kreskę gdy brak profilu', () => {

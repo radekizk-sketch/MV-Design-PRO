@@ -3843,6 +3843,43 @@ DER_PROFILE_KEYS: tuple[str, ...] = (
 )
 
 
+#: Wiazania, dla ktorych backend MA katalog i moze sprawdzic istnienie typu.
+#: `fault_current_data_ref` i `dynamic_model_ref` NIE sa tu wymienione, bo backend nie
+#: ma dla nich katalogu — ich sprawdzenie wymaga najpierw dostawcy danych, a udawanie
+#: walidacji bylo by gorsze niz jej brak (jawny dlug, karta w rejestrze).
+_KATALOGI_WIAZAN_DER: tuple[tuple[str, str], ...] = (
+    ("ct_catalog_ref", "get_ct_type"),
+    ("vt_catalog_ref", "get_vt_type"),
+    ("protection_catalog_ref", "get_protection_device_type"),
+)
+
+
+def _nieznane_referencje_katalogowe(wiazania: dict[str, Any]) -> list[str]:
+    """Referencje wskazujace na typ, ktorego NIE MA w katalogu (V12K-241).
+
+    Bez tej kontroli operacja przyjmowala dowolny lancuch i zapisywala go do modelu:
+    literowka albo referencja z wycofanej wersji katalogu stawala sie dana projektowa,
+    a regula gotowosci raportowala potem „brak danej" — nieodrozninalnie od „jeszcze
+    nie wybrano". Sciezka TWORZENIA wytworcy przechodzi przez polityke wiazania
+    katalogowego (`CATALOG_REQUIRED_OPERATIONS`), wiec sciezka AKTUALIZACJI nie moze
+    byc slabsza.
+
+    `None` (jawne wyczyszczenie wiazania) NIE jest sprawdzane — to usuniecie danej,
+    nie wskazanie typu.
+    """
+    from network_model.catalog import get_default_mv_catalog
+
+    katalog = get_default_mv_catalog()
+    nieznane: list[str] = []
+    for pole, metoda in _KATALOGI_WIAZAN_DER:
+        wartosc = wiazania.get(pole)
+        if wartosc is None or pole not in wiazania:
+            continue
+        if getattr(katalog, metoda)(str(wartosc)) is None:
+            nieznane.append(f"{pole}={wartosc}")
+    return nieznane
+
+
 def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Zapisz wiązania katalogowe i profile zgodności wytwórcy (DER) w modelu.
 
@@ -3871,6 +3908,13 @@ def set_der_catalog_bindings(enm: dict[str, Any], payload: dict[str, Any]) -> di
     if not obecne_wiazania and not obecne_profile:
         return _error_response(
             "Żadne wiązanie ani profil nie zostały podane.", "der_bindings.payload_empty"
+        )
+
+    nieznane = _nieznane_referencje_katalogowe(obecne_wiazania)
+    if nieznane:
+        return _error_response(
+            "Referencje katalogowe nie istnieja w katalogu: " + ", ".join(nieznane) + ".",
+            "der_bindings.catalog_ref_unknown",
         )
 
     new_enm = copy.deepcopy(enm)

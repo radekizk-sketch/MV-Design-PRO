@@ -58,9 +58,9 @@ class TestWiazaniaTrafiajaDoModelu:
         wynik = _wykonaj(
             {
                 "generator_ref": "gen_pv_1",
-                "protection_catalog_ref": "rel_sepam_s20",
+                "protection_catalog_ref": "ACME_REX200_v1",
                 "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
-                "vt_catalog_ref": "vt_15000_100_abb",
+                "vt_catalog_ref": "vt_10kv_100v_05_abb",
                 "fault_current_data_ref": "fc_pv_500",
                 "dynamic_model_ref": "dyn_pv_wecc",
             }
@@ -68,9 +68,9 @@ class TestWiazaniaTrafiajaDoModelu:
 
         assert wynik.get("error") is None
         params = _params(wynik)
-        assert params["protection_catalog_ref"] == "rel_sepam_s20"
+        assert params["protection_catalog_ref"] == "ACME_REX200_v1"
         assert params["ct_catalog_ref"] == "ct_200_5_5p10_10va_abb"
-        assert params["vt_catalog_ref"] == "vt_15000_100_abb"
+        assert params["vt_catalog_ref"] == "vt_10kv_100v_05_abb"
         assert params["fault_current_data_ref"] == "fc_pv_500"
         assert params["dynamic_model_ref"] == "dyn_pv_wecc"
         # Dane materializacji katalogowej urządzenia zostają nietknięte.
@@ -102,20 +102,22 @@ class TestWiazaniaTrafiajaDoModelu:
     def test_wytworca_wskazany_przez_id_a_nie_ref_id(self) -> None:
         enm = _enm_z_wytworca()
         enm["generators"][0]["ref_id"] = "inny_ref"
-        wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_ref": "ct_x"}, enm)
+        wynik = _wykonaj(
+            {"generator_ref": "gen_pv_1", "ct_catalog_ref": "ct_150_1_0_5_10va_abb"}, enm
+        )
 
         assert wynik.get("error") is None
-        assert _params(wynik)["ct_catalog_ref"] == "ct_x"
+        assert _params(wynik)["ct_catalog_ref"] == "ct_150_1_0_5_10va_abb"
 
 
 class TestZeroFabrykacji:
     def test_klucz_nieobecny_w_payloadzie_nie_dopisuje_niczego(self) -> None:
         # Kontrola kluczowa dla determinizmu: aktualizacja JEDNEGO wiązania nie może
         # wpisać `null` w pozostałe, bo puste pole udające wartość jest gorsze niż brak.
-        wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_ref": "ct_x"})
+        wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_ref": "ct_150_1_0_5_10va_abb"})
 
         params = _params(wynik)
-        assert params["ct_catalog_ref"] == "ct_x"
+        assert params["ct_catalog_ref"] == "ct_150_1_0_5_10va_abb"
         for klucz in (
             "protection_catalog_ref",
             "vt_catalog_ref",
@@ -127,7 +129,7 @@ class TestZeroFabrykacji:
 
     def test_jawny_null_USUWA_wiazanie_zamiast_zostawiac_puste_pole(self) -> None:
         enm = _enm_z_wytworca()
-        enm["generators"][0]["materialized_params"]["ct_catalog_ref"] = "ct_stary"
+        enm["generators"][0]["materialized_params"]["ct_catalog_ref"] = "ct_150_1_0_5_10va_abb"
         wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_ref": None}, enm)
 
         assert wynik.get("error") is None
@@ -152,11 +154,11 @@ class TestZeroFabrykacji:
 
 class TestGranice:
     def test_brak_identyfikatora_wytworcy(self) -> None:
-        wynik = _wykonaj({"ct_catalog_ref": "ct_x"})
+        wynik = _wykonaj({"ct_catalog_ref": "ct_150_1_0_5_10va_abb"})
         assert wynik.get("error_code") == "der_bindings.generator_missing"
 
     def test_wytworca_nieobecny_w_modelu_jest_bledem_a_nie_cichym_zapisem(self) -> None:
-        wynik = _wykonaj({"generator_ref": "gen_nie_ma", "ct_catalog_ref": "ct_x"})
+        wynik = _wykonaj({"generator_ref": "gen_nie_ma", "ct_catalog_ref": "ct_150_1_0_5_10va_abb"})
         assert wynik.get("error_code") == "der_bindings.generator_not_found"
 
     def test_operacja_jest_na_kanonicznej_bialej_liscie(self) -> None:
@@ -178,3 +180,49 @@ class TestGranice:
         drugi = _wykonaj(dict(payload))
 
         assert _params(pierwszy) == _params(drugi)
+
+
+class TestWiazanieMusiIstniecWKatalogu:
+    """V12K-241 (przeglad kodu serii): sciezka AKTUALIZACJI nie moze byc slabsza niz
+    sciezka TWORZENIA, ktora przechodzi przez polityke wiazania katalogowego."""
+
+    def test_nieistniejacy_typ_jest_odrzucony_zamiast_zapisany(self) -> None:
+        # POMIAR PRZED NAPRAWA: operacja zwracala error=None i zapisywala do modelu
+        # dowolny lancuch, wiec literowka stawala sie dana projektowa nieodrozninalna
+        # od „jeszcze nie wybrano".
+        wynik = _wykonaj(
+            {"generator_ref": "gen_pv_1", "ct_catalog_ref": "ct_TYP_KTORY_NIE_ISTNIEJE"}
+        )
+
+        assert wynik.get("error_code") == "der_bindings.catalog_ref_unknown"
+        assert "ct_TYP_KTORY_NIE_ISTNIEJE" in (wynik.get("error") or "")
+
+    def test_realny_typ_katalogu_przechodzi(self) -> None:
+        wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_ref": "ct_200_5_5p10_10va_abb"})
+
+        assert wynik.get("error") is None
+        assert _params(wynik)["ct_catalog_ref"] == "ct_200_5_5p10_10va_abb"
+
+    def test_jawny_null_NIE_jest_walidowany_bo_usuwa_dana(self) -> None:
+        # Kontrola granicy: `null` to usuniecie wiazania, nie wskazanie typu — nie wolno
+        # go odrzucic jako „nieznanej referencji".
+        enm = _enm_z_wytworca()
+        enm["generators"][0]["materialized_params"]["ct_catalog_ref"] = "ct_200_5_5p10_10va_abb"
+        wynik = _wykonaj({"generator_ref": "gen_pv_1", "ct_catalog_ref": None}, enm)
+
+        assert wynik.get("error") is None
+        assert "ct_catalog_ref" not in _params(wynik)
+
+    def test_wiazania_bez_katalogu_w_backendzie_przechodza_z_zapisanym_dlugiem(self) -> None:
+        # `fault_current_data_ref` i `dynamic_model_ref` NIE maja katalogu po stronie
+        # backendu, wiec nie sa sprawdzane. Udawanie walidacji byloby gorsze niz jej
+        # brak — ten test utrwala granice, zeby nie zniknela po cichu.
+        wynik = _wykonaj(
+            {
+                "generator_ref": "gen_pv_1",
+                "fault_current_data_ref": "fc_dowolne",
+                "dynamic_model_ref": "dyn_dowolne",
+            }
+        )
+
+        assert wynik.get("error") is None
