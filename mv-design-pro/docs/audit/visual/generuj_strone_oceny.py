@@ -57,7 +57,7 @@ def zrzut_data_uri(nazwa: str) -> str:
     return f"data:{mime};base64," + base64.b64encode(plik.read_bytes()).decode()
 
 
-STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…234</title>
+STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…235</title>
 <style>
 :root{--tlo:#f7f6f2;--karta:#fff;--tekst:#191814;--cichy:#5d594f;--linia:#dbd6c9;--akcent:#2e5f7a;
 --akcent-tlo:#e6eef3;--ok:#2f6b3f;--brak:#8c2f2f;--uwaga:#8a5a12}
@@ -100,7 +100,7 @@ padding:3px 7px;border-radius:2px;vertical-align:2px}
 </style>
 <div class="owijka">
 <header>
-<div class="nadtytul">Seria · V12K-216…234 · jedna doba</div>
+<div class="nadtytul">Seria · V12K-216…235 · jedna doba</div>
 <h1>Od schematu do jednej reguły: brak danej nie może stać się zerem</h1>
 <p class="cichy">Zrzuty żywej aplikacji, sieć wzorcowa 52 stacji · pomiar na renderze i na kodzie · 2026-07-27</p>
 </header>
@@ -129,14 +129,22 @@ intencji nie.</p>
 „GPZ Referencyjny 15 kV · Ekwiwalent sieci zasilającej · Sk″ 250 MVA · Ik″ 9,62 kA · 15 kV”.
 Te same dane, których w kadrze całej sieci nie było.</figcaption></figure>
 <figure><img src="ZRZUT_STACJA" alt="Kadr szczegółu: stacja na magistrali z polami" loading="lazy">
-<figcaption><strong>Stacja na magistrali z polami.</strong> Glify aparatów Q1/QE1/T1, opisy „pole
-liniowe” oraz tabliczka „Stacja L2-1 · S27 · 630 kVA” — dopiero przy tej skali kamery declutter
-przestaje je ukrywać.</figcaption></figure>
+<figcaption><strong>Stacja na magistrali z polami.</strong> Cztery pola z aparatami Q1/QE1
+i transformatorem T1, kierunki nad szyną („kier. S01”, „kier. S03”, „odg. S45”), tabliczka
+„Stacja T8 · S02 · 630 kVA · stacja odgałęźna · Szyna nN&nbsp;· 0,4&nbsp;kV · Odbiór ΣP 0,4 MW”.
+Dopiero przy tej skali kamery declutter przestaje to ukrywać — i dopiero tu widać, że zapis
+napięcia szyny nN był niespójny z resztą tabliczki (naprawione niżej).</figcaption></figure>
 <p>Kadr jest wycinkiem <strong>1:1</strong>, nie przeskalowanym zrzutem: przeskalowanie dodałoby
 rozmycie i <em>nadal</em> nie pokazałoby etykiet, bo declutter ukrywa je przy małej skali
 <strong>kamery</strong>, a nie przy małym rozmiarze pliku. Powiększenie robi więc kamera — i to
 realnym gestem: kółko nad punktem zainteresowania, ta sama ścieżka, którą ma projektant.
 Parametr w harnessie albo wymuszony stan kamery obszedłby ścieżkę, w której defekt może siedzieć.</p>
+<p class="cichy"><strong>Kadr jest mierzony, nie zgadywany.</strong> Zoom kotwiczy się na kursorze
+i rośnie wykładniczo, więc przy ośmiu krokach jeden piksel różnicy w punkcie gestu przesuwa obraz
+o kilkanaście. Test mierzy obwiednię symbolu i wymaganych opisów, dosuwa ją realnym
+przeciągnięciem i <em>asertuje, że każdy opis leży cały w kadrze</em> — bez tej asercji kadr może
+uciąć opis i nadal mieć poprawny rozmiar pliku. Tak właśnie straciłem „Sk” z „Sk″ 250 MVA”
+w pierwszej wersji; bramka wyłapała po drodze trzy kolejne błędy samego narzędzia.</p>
 
 <div class="karta">
 <p><strong>Fałszywy zarzut, który sam wycofałem.</strong> Pary zrzutów <code>*_light</code>
@@ -147,6 +155,45 @@ komentarz w <strong>sprawdzany niezmiennik</strong>: gdyby render zaczął reago
 asercja padnie i wymusi decyzję — albo zrzuty mają się różnić naprawdę, albo duplikat trzeba
 usunąć. Milcząca zmiana w żadną stronę nie przejdzie.</p>
 </div>
+
+<h2>Co kadry szczegółu natychmiast pokazały</h2>
+<p>Materiał, który zaczął pokazywać rysunek z bliska, przestał być ilustracją i stał się
+narzędziem. Na pierwszych dwóch kadrach zobaczyłem <strong>dwa defekty, których żaden
+z 3777 testów SLD nie widział</strong> — i oba ujawniły się <em>wyłącznie</em> dlatego, że
+kadr powiększa i przesuwa kanwę realnymi gestami, a nie wymuszonym stanem kamery.</p>
+<div class="karta">
+<p><strong>Przesuwanie rysunku zaznaczało tekst schematu.</strong> Kanwa nie deklarowała
+<code>user-select</code>, więc przeciągnięcie — gest <em>kamery</em> — było przez przeglądarkę
+rozumiane także jako zaznaczanie treści. Po jednym przeciągnięciu
+<code>window.getSelection()</code> zwracało „Stacja T8 …", a niebieskie prostokąty
+podświetlenia obejmowały <strong>całą tabliczkę stacji</strong>. Zabezpieczenie dotykowe
+istniało od początku; mysz nie miała żadnego. Defekt dotyczył każdego użycia kanwy.</p>
+</div>
+<div class="karta">
+<p><strong>Trzy konwencje zapisu liczby na jednym rysunku technicznym.</strong> W tej samej
+tabliczce stało „Szyna nN · 0.4 kV" (kropka) i „Odbiór ΣP 0,4 MW" (przecinek). Etykiety szyn
+wstawiały liczbę surowo, a dwie inne warstwy miały po własnej kopii reguły polskiej —
+i <em>wzorzec kontrolny legalizował kropkę</em>, czyli bramka chroniła zapis niezgodny
+z resztą rysunku. Teraz jedna funkcja; dwa miejsca dziesiętne, żeby szyna 0,69 kV nie stała
+się „0,7 kV" — zaokrąglenie napięcia znamionowego jest zmianą danej, nie zapisu.</p>
+<p class="cichy">Geometria nietknięta: szerokość etykiety liczy się z długości tekstu,
+a przecinek jest tak samo długi jak kropka — sprawdzone asercją równości szerokości.</p>
+</div>
+
+<h2>Trzy spostrzeżenia sprawdzone i odrzucone</h2>
+<div class="tab"><table>
+<thead><tr><th>Co wyglądało na defekt</th><th>Weryfikacja</th></tr></thead>
+<tbody>
+<tr><td>Kabel opisany „20 kV" wychodzi z szyny „15 kV"</td>
+<td>20 kV to napięcie <strong>znamionowe kabla</strong> (12/20 kV dla sieci 15 kV) i stoi na
+konwencjonalnym miejscu — za typem i przekrojem. Zmiana byłaby psuciem konwencji.</td></tr>
+<tr><td>Każde pole pokazuje <code>Q1</code> i <code>QE1</code></td>
+<td>Pola są rozróżnione opisem kierunku nad szyną („kier. S01", „kier. S03", „odg. S45"), więc
+wskazanie jest jednoznaczne. Prefiks pola w glifie poszerzyłby etykietę i ruszył geometrię —
+to zapisany dług z policzoną ceną, nie przeoczenie.</td></tr>
+<tr><td>Identyczne pary jasny/ciemny</td>
+<td>Decyzja projektowa, nie defekt — zamknięta sprawdzanym niezmiennikiem (wyżej).</td></tr>
+</tbody></table></div>
 
 <h2>Zamknięte na schemacie</h2>
 <div class="tab"><table>
@@ -166,6 +213,8 @@ usunąć. Milcząca zmiana w żadną stronę nie przejdzie.</p>
 <td class="num">57,7 Ω</td></tr>
 <tr><td>V12K-234</td><td>Kadry szczegółu w materiale oceny + niezmiennik motywu</td>
 <td class="num">testy 6 → <span class="lep">9</span></td></tr>
+<tr><td>V12K-235</td><td>Przesuwanie rysunku nie zaznacza tekstu · jeden zapis liczby</td>
+<td class="num">3 konwencje → <span class="lep">1</span></td></tr>
 </tbody></table></div>
 
 <div class="karta wycof">
@@ -400,7 +449,7 @@ pytest 1239 (aplikacja), 957 (API + analizy), 613 (solwery + API), 397 (katalog 
 <code>accept:sld-v3</code> 224 PASS / 0 FAIL; guard determinizmu SLD 0 naruszeń; guard parzystości
 69/69 encji; guard determinizmu materiału audytowego — dwie regeneracje sześciu zrzutów
 bez zmiany <em>ani jednego bajtu</em>; type-check, lint, guardy architektury, katalogu, UI
-i dokumentacji zielone. Dwadzieścia trzy commity, każdy wypchnięty od razu po weryfikacji —
+i dokumentacji zielone. Dwadzieścia sześć commitów, każdy wypchnięty od razu po weryfikacji —
 kontener cofnął migawkę osiem razy, ostatni raz o 10:40, i tylko dlatego nic nie przepadło.</p>
 <p class="cichy">Bramki sprawdzane wstrzykniętą regresją, nie zielonym wynikiem — dla niezmiennika
 motywu nadpisałem jeden zrzut bajtami drugiego i potwierdziłem, że test pada z komunikatem
