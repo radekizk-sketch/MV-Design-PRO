@@ -8,8 +8,9 @@ znosi te asymetrie: po cofnieciu migawki strone odtwarza jedno uruchomienie.
 Uzycie:
   python3 mv-design-pro/docs/audit/visual/generuj_strone_oceny.py [sciezka_wyjscia.html]
 
-Zrzut L2 (motyw ciemny) jest osadzany jako data URI — strona jest samowystarczalna,
-zgodnie z polityka bezpieczenstwa artefaktow (zero zadan do zewnetrznych hostow).
+Zrzuty (kadr L2 oraz dwa kadry szczegolu) sa osadzane jako data URI — strona jest
+samowystarczalna, zgodnie z polityka bezpieczenstwa artefaktow (zero zadan do zewnetrznych
+hostow).
 """
 
 import base64
@@ -21,35 +22,42 @@ import tempfile
 # Sciezki liczone wzgledem WLASNEGO katalogu, nie przez liczenie poziomow w repo —
 # zrzut jest katalogiem obok, wiec przeniesienie calego `docs/audit/visual/` nic nie psuje.
 KATALOG = pathlib.Path(__file__).resolve().parent
-ZRZUT_PNG = KATALOG / "sld_audyt" / "sld_L2_dark.png"
+ZRZUTY = KATALOG / "sld_audyt"
 WYJSCIE = (
     pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else KATALOG / "ocena_seria.html"
 )
 
+# Zrzut kadru calej sieci ORAZ kadry szczegolu (V12K-234) — bez tych drugich strona
+# obiecuje poziom detalu, ktorego kadr 52 stacji nie zawiera (declutter ukrywa 1135 opisow).
+OSADZONE = {
+    "ZRZUT_L2": "sld_L2_dark.png",
+    "ZRZUT_GPZ": "sld_szczegol_gpz.png",
+    "ZRZUT_STACJA": "sld_szczegol_stacja.png",
+}
 
-def zrzut_data_uri() -> str:
+
+def zrzut_data_uri(nazwa: str) -> str:
     """Zrzut jako data URI. JPEG przy dostepnym Pillow (mniejsza strona), inaczej PNG."""
-    if not ZRZUT_PNG.exists():
-        raise SystemExit(f"brak zrzutu: {ZRZUT_PNG}")
-    jpg = pathlib.Path(tempfile.gettempdir()) / "ocena_l2.jpg"
+    png = ZRZUTY / nazwa
+    if not png.exists():
+        raise SystemExit(f"brak zrzutu: {png}")
+    jpg = pathlib.Path(tempfile.gettempdir()) / f"ocena_{png.stem}.jpg"
     subprocess.run(
         [
             sys.executable,
             "-c",
-            f"from PIL import Image; Image.open(r'{ZRZUT_PNG}').convert('RGB')"
+            f"from PIL import Image; Image.open(r'{png}').convert('RGB')"
             f".save(r'{jpg}', quality=80, optimize=True)",
         ],
         check=False,
         capture_output=True,
     )
-    plik = jpg if jpg.exists() else ZRZUT_PNG
+    plik = jpg if jpg.exists() else png
     mime = "image/jpeg" if plik.suffix == ".jpg" else "image/png"
     return f"data:{mime};base64," + base64.b64encode(plik.read_bytes()).decode()
 
 
-ZRZUT = zrzut_data_uri()
-
-STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…233</title>
+STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…234</title>
 <style>
 :root{--tlo:#f7f6f2;--karta:#fff;--tekst:#191814;--cichy:#5d594f;--linia:#dbd6c9;--akcent:#2e5f7a;
 --akcent-tlo:#e6eef3;--ok:#2f6b3f;--brak:#8c2f2f;--uwaga:#8a5a12}
@@ -92,16 +100,53 @@ padding:3px 7px;border-radius:2px;vertical-align:2px}
 </style>
 <div class="owijka">
 <header>
-<div class="nadtytul">Seria · V12K-216…233 · jedna doba</div>
+<div class="nadtytul">Seria · V12K-216…234 · jedna doba</div>
 <h1>Od schematu do jednej reguły: brak danej nie może stać się zerem</h1>
 <p class="cichy">Zrzuty żywej aplikacji, sieć wzorcowa 52 stacji · pomiar na renderze i na kodzie · 2026-07-27</p>
 </header>
 
 <h2>Rysunek po serii SLD</h2>
-<figure><img src="ZRZUT_TU" alt="SLD poziom L2 po zmianach" loading="lazy">
-<figcaption><strong>L2 — pełny detal.</strong> Czerwień 110&nbsp;kV w GPZ, brak pyłu etykiet
-(declutter ukrył 1135 opisów nieczytelnych przy tej skali), legenda w lewym dolnym rogu niesie
-wiersz opisu sieci ze sposobem pracy punktu neutralnego.</figcaption></figure>
+<figure><img src="ZRZUT_L2" alt="SLD poziom L2, kadr całej sieci wzorcowej" loading="lazy">
+<figcaption><strong>L2, kadr całej sieci (52 stacje).</strong> Czerwień 110&nbsp;kV w GPZ jest
+widoczna, ale <strong>1135 opisów jest tu ukrytych</strong> przez declutter, a aparaty pól leżą
+poniżej rozdzielczości piksela. Ten kadr pokazuje <em>strukturę</em> — nie detal.</figcaption></figure>
+
+<div class="karta otwarta">
+<p><strong>Znalezisko z oględzin: materiał obiecywał detal, którego nie zawierał.</strong>
+Podpisywałem ten zrzut jako „L2 — obiekty i pola (+ detal stacji, aparaty, DER pełny)”. Przy kadrze
+obejmującym całą sieć skala kamery spada tak nisko, że próg czytelności (liczony w pikselach
+<em>ekranu</em>) kasuje wszystkie etykiety, legenda schodzi do nieczytelnej smugi, a aparaty pól
+nie mają nawet jednego piksela. Czyli w materiale nie było <strong>ani jednego</strong>
+z wymienionych elementów.</p>
+<p class="cichy">Sześć zielonych testów tego nie wykrywało, bo sprawdzały render i brak błędów
+konsoli — nie <em>czytelność tego, co mają pokazać</em>. Zieloną bramkę miałem, pokrycia
+intencji nie.</p>
+</div>
+
+<h2>Kadry szczegółu — dopiero tu widać poziom L2</h2>
+<figure><img src="ZRZUT_GPZ" alt="Kadr szczegółu: rozdzielnia GPZ 110/15 kV" loading="lazy">
+<figcaption><strong>Rozdzielnia GPZ 110/15&nbsp;kV.</strong> Opis źródła czyta się w całości:
+„GPZ Referencyjny 15 kV · Ekwiwalent sieci zasilającej · Sk″ 250 MVA · Ik″ 9,62 kA · 15 kV”.
+Te same dane, których w kadrze całej sieci nie było.</figcaption></figure>
+<figure><img src="ZRZUT_STACJA" alt="Kadr szczegółu: stacja na magistrali z polami" loading="lazy">
+<figcaption><strong>Stacja na magistrali z polami.</strong> Glify aparatów Q1/QE1/T1, opisy „pole
+liniowe” oraz tabliczka „Stacja L2-1 · S27 · 630 kVA” — dopiero przy tej skali kamery declutter
+przestaje je ukrywać.</figcaption></figure>
+<p>Kadr jest wycinkiem <strong>1:1</strong>, nie przeskalowanym zrzutem: przeskalowanie dodałoby
+rozmycie i <em>nadal</em> nie pokazałoby etykiet, bo declutter ukrywa je przy małej skali
+<strong>kamery</strong>, a nie przy małym rozmiarze pliku. Powiększenie robi więc kamera — i to
+realnym gestem: kółko nad punktem zainteresowania, ta sama ścieżka, którą ma projektant.
+Parametr w harnessie albo wymuszony stan kamery obszedłby ścieżkę, w której defekt może siedzieć.</p>
+
+<div class="karta">
+<p><strong>Fałszywy zarzut, który sam wycofałem.</strong> Pary zrzutów <code>*_light</code>
+i <code>*_dark</code> są <strong>bajtowo identyczne</strong> — wyglądało to na zepsuty motyw.
+Lektura harnessu pokazała decyzję projektową: kanwa v3 ma stałe tło techniczne, bo rysunek
+techniczny nie reaguje na motyw interfejsu. Zamiast zgłaszać nieistniejący defekt zamieniłem
+komentarz w <strong>sprawdzany niezmiennik</strong>: gdyby render zaczął reagować na motyw,
+asercja padnie i wymusi decyzję — albo zrzuty mają się różnić naprawdę, albo duplikat trzeba
+usunąć. Milcząca zmiana w żadną stronę nie przejdzie.</p>
+</div>
 
 <h2>Zamknięte na schemacie</h2>
 <div class="tab"><table>
@@ -119,6 +164,8 @@ wiersz opisu sieci ze sposobem pracy punktu neutralnego.</figcaption></figure>
 <tr><td>V12K-222</td><td>Wskaźnik ukrytych opisów do warstwy ekranu</td><td class="num">—</td></tr>
 <tr><td>V12K-223</td><td>Opis sieci w legendzie — punkt neutralny z <strong>wartością</strong></td>
 <td class="num">57,7 Ω</td></tr>
+<tr><td>V12K-234</td><td>Kadry szczegółu w materiale oceny + niezmiennik motywu</td>
+<td class="num">testy 6 → <span class="lep">9</span></td></tr>
 </tbody></table></div>
 
 <div class="karta wycof">
@@ -351,11 +398,19 @@ wymaga kart producentów.</li>
 bezpośrednio. Pomiary tej doby: vitest 2335 (ui2), 1546 (warsztat), 3777 (SLD, 200 plików);
 pytest 1239 (aplikacja), 957 (API + analizy), 613 (solwery + API), 397 (katalog + solwery);
 <code>accept:sld-v3</code> 224 PASS / 0 FAIL; guard determinizmu SLD 0 naruszeń; guard parzystości
-69/69 encji; type-check, lint, guardy architektury, katalogu, UI i dokumentacji zielone.
-Dwadzieścia dwa commity, każdy wypchnięty od razu po weryfikacji — kontener cofnął migawkę osiem
-razy, ostatni raz o 10:40, i tylko dlatego nic nie przepadło.</p>
+69/69 encji; guard determinizmu materiału audytowego — dwie regeneracje sześciu zrzutów
+bez zmiany <em>ani jednego bajtu</em>; type-check, lint, guardy architektury, katalogu, UI
+i dokumentacji zielone. Dwadzieścia trzy commity, każdy wypchnięty od razu po weryfikacji —
+kontener cofnął migawkę osiem razy, ostatni raz o 10:40, i tylko dlatego nic nie przepadło.</p>
+<p class="cichy">Bramki sprawdzane wstrzykniętą regresją, nie zielonym wynikiem — dla niezmiennika
+motywu nadpisałem jeden zrzut bajtami drugiego i potwierdziłem, że test pada z komunikatem
+wskazującym oba możliwe powody rozbieżności.</p>
 </div>
 """
 
-WYJSCIE.write_text(STRONA.replace("ZRZUT_TU", ZRZUT), encoding="utf-8")
+strona = STRONA
+for znacznik, nazwa in OSADZONE.items():
+    strona = strona.replace(znacznik, zrzut_data_uri(nazwa))
+
+WYJSCIE.write_text(strona, encoding="utf-8")
 print(f"strona zapisana: {WYJSCIE} ({WYJSCIE.stat().st_size // 1024} kB)")
