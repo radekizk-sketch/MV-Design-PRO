@@ -603,3 +603,77 @@ export function sumStationLoadImportKw(
   }
   return sumaMw * 1000;
 }
+
+// =============================================================================
+// Złożenie oceny DER z bramką MODELU (V12K-231, karta F-K8 faza 1)
+// =============================================================================
+
+/**
+ * Bramka modelu dla jednego typu analizy — wycinek odpowiedzi
+ * `GET /api/cases/{id}/analysis-eligibility` potrzebny do złożenia.
+ */
+export interface BramkaModelu {
+  readonly eligible: boolean;
+  readonly powody_pl: readonly string[];
+}
+
+/** Osie macierzy DER, dla których backend ma ODPOWIADAJĄCY gate modelu. */
+const OS_DO_TYPU_ANALIZY: Partial<Record<keyof DerReadinessMatrix, 'SC_3F' | 'SC_2F' | 'SC_1F'>> = {
+  sc_3f: 'SC_3F',
+  sc_2f: 'SC_2F',
+  sc_1f: 'SC_1F',
+};
+
+/**
+ * Złóż ocenę per-DER z bramką MODELU. Zwraca osie o statusie nie lepszym niż
+ * gorsza z dwóch ocen, z powodami z obu poziomów.
+ *
+ * DLACZEGO SKŁADAMY, A NIE PODMIENIAMY (rozstrzygnięcie karty F-K8). Obie oceny
+ * odpowiadają na RÓŻNE pytania i żadna nie zastępuje drugiej:
+ *
+ *  - macierz DER: „czy TEN wytwórca ma dane potrzebne do analizy" (katalog
+ *    urządzenia, punkt przyłączenia, model zwarciowy),
+ *  - bramka modelu (`analysis-eligibility`): „czy analiza da się policzyć na CAŁEJ
+ *    sieci" (np. SC_1F wymaga składowej zerowej gałęzi ORAZ modelu uziemienia
+ *    punktu neutralnego — bez tego prąd doziemny jest nieokreślony).
+ *
+ * DEFEKT, KTÓRY TO WYMUSIŁ: oś nazwana „SC1F" świeciła `ready` wyłącznie na
+ * podstawie danych per-DER, więc projektant czytał „analiza gotowa", a uruchomienie
+ * biegu było odrzucane bramką modelu. Rozjazd pogłębiła zmiana z tej doby, która
+ * podniosła brak modelu uziemienia z INFO do BLOKERA — słusznie fizycznie, ale
+ * macierz DER o tym nie wiedziała.
+ *
+ * Osie BEZ odpowiednika w bramce (`sc_2fg`, spadek napięcia, zabezpieczenia, FRT,
+ * raporty) zostają nietknięte — dopisanie im mapowania „po podobieństwie" byłoby
+ * zgadywaniem, a nie złożeniem faktów.
+ *
+ * `bramki` puste (ocena modelu jeszcze nie pobrana) NIE zmienia niczego: brak
+ * wiedzy o bramce nie może ani pogorszyć, ani polepszyć oceny per-DER.
+ */
+export function zlozZBramkaModelu(
+  osie: readonly AggregatedReadinessAxis[],
+  bramki: Readonly<Partial<Record<'SC_3F' | 'SC_2F' | 'SC_1F', BramkaModelu>>>,
+): AggregatedReadinessAxis[] {
+  return osie.map((os) => {
+    const typ = OS_DO_TYPU_ANALIZY[os.axis];
+    if (!typ) return os;
+    const bramka = bramki[typ];
+    if (!bramka || bramka.eligible) return os;
+
+    const powodyModelu = bramka.powody_pl.map((message_pl) => ({
+      code: 'model.analysis_ineligible',
+      message_pl: `Model: ${message_pl}`,
+      object_ref: '',
+      target_screen: 'engineering-readiness',
+      target_tab: 'list',
+    }));
+    return {
+      ...os,
+      // Gorsza z dwóch ocen. `not_applicable` / `no_module` zostawiamy — bramka
+      // modelu nie czyni analizy DOTYCZĄCĄ wytwórcy, którego ona nie dotyczy.
+      status:
+        os.status === 'not_applicable' || os.status === 'no_module' ? os.status : 'blocked',
+      blockers: [...os.blockers, ...powodyModelu],
+    };
+  });
+}

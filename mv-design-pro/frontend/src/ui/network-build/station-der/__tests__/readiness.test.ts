@@ -8,6 +8,8 @@ import {
   buildAggregatedReadiness,
   computeDerReadinessMatrix,
   sumStationLoadImportKw,
+  zlozZBramkaModelu,
+  type AggregatedReadinessAxis,
   emptyReadinessMatrix,
   READINESS_AXIS_LABELS_PL,
   summarizeReadiness,
@@ -357,5 +359,77 @@ describe('osie niesymetryczne: powod stanu „czesciowo" (V12K-226)', () => {
       const kody = (axes.find((a) => a.axis === nazwa)?.blockers ?? []).map((b) => b.code);
       expect(kody).not.toContain('der.fault_current_data.missing');
     }
+  });
+});
+
+describe('zlozZBramkaModelu — ocena DER + bramka modelu (V12K-231)', () => {
+  function osie(): AggregatedReadinessAxis[] {
+    return [
+      { axis: 'sc_3f', label_pl: 'SC3F', status: 'ready', blockers: [] },
+      { axis: 'sc_1f', label_pl: 'SC1F', status: 'ready', blockers: [] },
+      { axis: 'sc_2fg', label_pl: 'SC2FG', status: 'ready', blockers: [] },
+      { axis: 'protection', label_pl: 'Zabezpieczenia', status: 'ready', blockers: [] },
+    ];
+  }
+
+  it('bramka modelu ODRZUCAJACA psuje os, choc dane DER sa kompletne', () => {
+    // DEFEKT: os „SC1F" swiecila gotowa na danych per-DER, a bieg byl odrzucany
+    // bramka modelu (brak skladowej zerowej i modelu uziemienia punktu neutralnego).
+    const wynik = zlozZBramkaModelu(osie(), {
+      SC_1F: { eligible: false, powody_pl: ['brak modelu uziemienia punktu neutralnego'] },
+    });
+
+    const sc1f = wynik.find((a) => a.axis === 'sc_1f');
+    expect(sc1f?.status).toBe('blocked');
+    expect(sc1f?.blockers.map((b) => b.message_pl).join(' ')).toContain('uziemienia');
+    // Powod jest NAZWANY jako modelowy, bo naprawa jest na modelu, nie na tym DER.
+    expect(sc1f?.blockers[0]?.message_pl.startsWith('Model:')).toBe(true);
+  });
+
+  it('nie rusza osi bez odpowiednika w bramce (zero zgadywania mapowania)', () => {
+    // SC2FG nie ma typu w kontrakcie eligibility, zabezpieczenia tez nie. Dopisanie
+    // im mapowania „po podobienstwie" byloby zgadywaniem, nie zlozeniem faktow.
+    const wynik = zlozZBramkaModelu(osie(), {
+      SC_1F: { eligible: false, powody_pl: ['brak Z0'] },
+    });
+
+    expect(wynik.find((a) => a.axis === 'sc_2fg')?.status).toBe('ready');
+    expect(wynik.find((a) => a.axis === 'protection')?.status).toBe('ready');
+    expect(wynik.find((a) => a.axis === 'sc_3f')?.status).toBe('ready');
+  });
+
+  it('bramka DOPUSZCZAJACA nie polepsza ani nie psuje oceny per-DER', () => {
+    const wejscie = osie().map((a) =>
+      a.axis === 'sc_1f' ? { ...a, status: 'partial' as ReadinessAxisStatus } : a,
+    );
+    const wynik = zlozZBramkaModelu(wejscie, {
+      SC_1F: { eligible: true, powody_pl: [] },
+      SC_3F: { eligible: true, powody_pl: [] },
+    });
+
+    expect(wynik.find((a) => a.axis === 'sc_1f')?.status).toBe('partial');
+    expect(wynik.find((a) => a.axis === 'sc_3f')?.status).toBe('ready');
+  });
+
+  it('BRAK oceny modelu nie zmienia niczego — nie wiem nie znaczy zle', () => {
+    // Ta sama regula, co przy imporcie stacji (V12K-226): brak wiedzy nie moze
+    // udawac ani zgody, ani odmowy.
+    const wynik = zlozZBramkaModelu(osie(), {});
+
+    expect(wynik.map((a) => a.status)).toEqual(['ready', 'ready', 'ready', 'ready']);
+    expect(wynik.every((a) => a.blockers.length === 0)).toBe(true);
+  });
+
+  it('os NIEDOTYCZACA wytworcy zostaje niedotyczaca, mimo odrzucenia modelu', () => {
+    // Bramka modelu nie czyni analizy DOTYCZACA wytworcy, ktorego ona nie dotyczy —
+    // inaczej ekran pokazalby naprawe dla czegos, czego sie nie liczy.
+    const wejscie = osie().map((a) =>
+      a.axis === 'sc_1f' ? { ...a, status: 'not_applicable' as ReadinessAxisStatus } : a,
+    );
+    const wynik = zlozZBramkaModelu(wejscie, {
+      SC_1F: { eligible: false, powody_pl: ['brak Z0'] },
+    });
+
+    expect(wynik.find((a) => a.axis === 'sc_1f')?.status).toBe('not_applicable');
   });
 });

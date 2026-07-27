@@ -1,5 +1,7 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
+import { useAnalysisEligibilityStore, useEligibilityMatrix } from '../analysis-eligibility';
+
 import { useAppStateStore } from '../app-state';
 import { ResultsComparisonPage } from '../comparison/ResultsComparisonPage';
 import {
@@ -28,6 +30,8 @@ import {
   computeDerReadinessMatrix,
   summarizeReadiness,
   sumStationLoadImportKw,
+  zlozZBramkaModelu,
+  type BramkaModelu,
   useGenerateAudit2ProofPack,
   useGenerateAudit2Report,
   useRunAudit2PowerFlow,
@@ -1865,6 +1869,7 @@ function ComplianceSurface() {
 // zwarć warsztatu Wyników (brak powierzchni trasowej).
 
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const readiness = useSnapshotStore((state) => state.readiness);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const fixActions = useSnapshotStore((state) => state.fixActions);
@@ -1891,6 +1896,32 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
     return Array.from(rows.values());
   }, [readiness?.warnings, snapshot]);
 
+  // V12K-231 (karta F-K8 faza 1): BRAMKA MODELU z `analysis-eligibility`. Do tej pory
+  // ta ocena nie miala ZADNEGO konsumenta produkcyjnego — panel istnial, ale nikt go
+  // nie montowal, wiec `load()` nigdy sie nie wykonywalo. Skutek: os nazwana „SC1F"
+  // swiecila gotowa wylacznie na danych per-DER, a uruchomienie biegu bylo odrzucane
+  // bramka modelu (brak skladowej zerowej / modelu uziemienia punktu neutralnego).
+  const wczytajBramkiModelu = useAnalysisEligibilityStore((state) => state.load);
+  const macierzModelu = useEligibilityMatrix();
+  useEffect(() => {
+    if (!activeCaseId) return;
+    void wczytajBramkiModelu(activeCaseId);
+  }, [activeCaseId, wczytajBramkiModelu]);
+
+  const bramkiModelu = useMemo(() => {
+    const wynik: Partial<Record<'SC_3F' | 'SC_2F' | 'SC_1F', BramkaModelu>> = {};
+    for (const pozycja of macierzModelu) {
+      if (pozycja.analysis_type !== 'SC_3F'
+        && pozycja.analysis_type !== 'SC_2F'
+        && pozycja.analysis_type !== 'SC_1F') continue;
+      wynik[pozycja.analysis_type] = {
+        eligible: pozycja.status === 'ELIGIBLE',
+        powody_pl: pozycja.blockers.map((b) => b.message_pl),
+      };
+    }
+    return wynik;
+  }, [macierzModelu]);
+
   // Agregacja kontroli DER per stacja (Faza F).
   const derReadinessRows = allDers.map((der) => {
     const sameStationCount = allDers.filter((d) => d.station_id === der.station_id).length;
@@ -1901,7 +1932,10 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
       der,
       matrix,
       summary: summarizeReadiness(matrix),
-      axes: buildAggregatedReadiness(der, { otherDersInStation: sameStationCount - 1 }),
+      axes: zlozZBramkaModelu(
+        buildAggregatedReadiness(der, { otherDersInStation: sameStationCount - 1 }),
+        bramkiModelu,
+      ),
     };
   });
 
