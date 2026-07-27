@@ -168,7 +168,12 @@ miejscem jest więc **legenda / opis arkusza**, gdzie jest miejsce i gdzie nie k
 aparaturą pól. Próby wciśnięcia jej w warstwę geometrii musiały przegrać z wyroczniami
 pilnującymi czytelności — i dobrze, że przegrały.
 
-Kod trzech prób został **wycofany** (nie zostawiono martwych kolekcji ani nieużywanych
+**DOMKNIĘTE (V12K-223):** opis trafił do **legendy arkusza** jako nowy rodzaj wpisu
+`kind: 'note'` — wiersz opisu sieci bez glifu. Tekst z wartością składa kompozycja i podaje
+przez `scene.meta`, więc UI nie zna fizyki, a brak modelu uziemienia daje brak wiersza.
+Pomiar: `„Punkt neutralny: rezystor 57,7 Ω"` na obu sieciach.
+
+Kod trzech prób umiejscowienia przy symbolu został **wycofany** (nie zostawiono martwych kolekcji ani nieużywanych
 helperów). Tryb pracy nadal niesie **kształt glifu** (rezystor / dławik / połączenie
 bezpośrednie / przerwa dla sieci izolowanej), więc informacja jakościowa jest na rysunku —
 brakuje wyłącznie liczby. Domknięcie: rozbudowa bloku legendy o wiersze opisu sieci.

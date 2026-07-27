@@ -239,6 +239,11 @@ export interface SceneV3Meta {
    *  §16); współrzędne świata (kompozycja pass-2). `null`/brak = brak GPZ
    *  lub kompozycja pusta. */
   readonly gpzZone?: import('../compose/gpz').GpzZoneDecoration | null;
+  /** Opis punktu neutralnego sieci SN do LEGENDY arkusza (V12K-223) — tekst z
+   *  wartością parametru. `null`/brak = model uziemienia nieokreślony i legenda
+   *  nic o nim nie pisze. Kanwa NIE składa tego napisu sama: przychodzi gotowy
+   *  z kompozycji, więc UI nie zna fizyki. */
+  readonly neutralEarthingNotePl?: string | null;
   /** SCHEMAT-10 S7.6 (V12K-137, Z1): rekordy umieszczeń lateralów w packerze
    *  pionowym — audyt świateł pasm (raport przed/po, test kompresji). Addytywne,
    *  deterministyczne; puste dla scen bez lateralów. */
@@ -3510,6 +3515,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       stopNotes,
       sources: allSources,
       gpzZone: gpzComposition?.zone ?? null,
+      neutralEarthingNotePl: gpzComposition?.neutralEarthingNotePl ?? null,
       lateralShelves: packer.records(),
     },
   };

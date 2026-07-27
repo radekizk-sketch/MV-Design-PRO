@@ -15,7 +15,7 @@
 import type { ReactNode } from 'react';
 
 import { GRID } from '../core/grid';
-import { LABEL_TYPOGRAPHY } from '../core/text';
+import { LABEL_TYPOGRAPHY, labelLineHeight } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
@@ -37,7 +37,12 @@ const ZONE_STEP = 400;
 export const FRAME_MARGIN = 32;
 
 export interface SheetLegendEntry {
-  readonly kind: 'symbol' | 'line';
+  /** `note` (V12K-223) — wiersz OPISU SIECI bez glifu: sposób pracy punktu
+   *  neutralnego, poziomy napięć, podstawa normowa. Informacje o CAŁEJ sieci
+   *  przegrywały o miejsce z geometrią (trzy próby odrzucone przez bramki,
+   *  V12K-221) — legenda jest ich właściwym miejscem, bo tu nie konkurują
+   *  z aparaturą pól. */
+  readonly kind: 'symbol' | 'line' | 'note';
   readonly id: string;
   readonly labelPl: string;
 }
@@ -69,7 +74,7 @@ const DEFAULT_SYMBOL_LEGEND_IDS: readonly SymbolId[] = [
   'meter',
 ];
 
-function buildDefaultLegend(): readonly SheetLegendEntry[] {
+export function buildDefaultLegend(): readonly SheetLegendEntry[] {
   const symbolEntries: SheetLegendEntry[] = DEFAULT_SYMBOL_LEGEND_IDS.map((id) => ({
     kind: 'symbol',
     id,
@@ -164,6 +169,10 @@ export interface LegendRowLayout {
 }
 
 function legendEntryContentHeight(entry: SheetLegendEntry): number {
+  // `note` (V12K-223) nie ma glifu — jego wysokość to wiersz pisma, nie próbka
+  // symbolu; bez tego rozgałęzienia `SYMBOL_DEFS[id]` byłby `undefined` i layout
+  // wierszy sypałby się na NaN.
+  if (entry.kind === 'note') return labelLineHeight('t3');
   return entry.kind === 'symbol' ? SYMBOL_DEFS[entry.id as SymbolId].height : LEGEND_LINE_SAMPLE_HEIGHT;
 }
 
@@ -240,10 +249,14 @@ function SheetLegend(props: {
         const glyphY = Glyph ? y + (height - SYMBOL_DEFS[entry.id as SymbolId].height) / 2 : y;
         return (
           <g key={entry.id} data-testid={`sld-sheet-legend-item-${entry.id}`} data-parity-key={`legend-item-${entry.id}`}>
-            {Glyph ? <Glyph x={4} y={glyphY} /> : <LegendLineSample id={entry.id} centerY={centerY} />}
+            {entry.kind === 'note' ? null : Glyph ? (
+              <Glyph x={4} y={glyphY} />
+            ) : (
+              <LegendLineSample id={entry.id} centerY={centerY} />
+            )}
             <text
               data-parity-key={`legend-label-${entry.id}`}
-              x={LEGEND_GLYPH_COLUMN_WIDTH}
+              x={entry.kind === 'note' ? 4 : LEGEND_GLYPH_COLUMN_WIDTH}
               y={centerY}
               dominantBaseline="middle"
               fontFamily="sans-serif"

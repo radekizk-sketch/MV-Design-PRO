@@ -43,7 +43,7 @@ import {
   type PreviewSegment,
   type PreviewSymbol,
 } from '../compose/preview';
-import { SheetFrame } from '../sheet/Frame';
+import { SheetFrame, buildDefaultLegend } from '../sheet/Frame';
 import type { RouteVertex } from '../layout/route';
 import {
   boundingBoxOfRect,
@@ -2171,6 +2171,20 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       )
     : 0;
 
+  // LEGENDA + OPIS SIECI (V12K-223). Informacje o CAŁEJ sieci — sposób pracy
+  // punktu neutralnego z wartością — nie mieszczą się w geometrii rysunku
+  // (V12K-221: trzy próby odrzucone przez wyrocznie czytelności). Legenda jest
+  // ich miejscem. Napis przychodzi GOTOWY ze sceny; kanwa go nie składa, więc
+  // nie zna fizyki — a brak danej daje brak wiersza (zero fabrykacji).
+  const legendZOpisemSieci = useMemo(() => {
+    const opis = scene.meta.neutralEarthingNotePl;
+    if (!opis) return undefined;
+    return [
+      ...buildDefaultLegend(),
+      { kind: 'note' as const, id: 'sn-neutral-earthing', labelPl: opis },
+    ];
+  }, [scene.meta.neutralEarthingNotePl]);
+
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
   // F12-B pkt 5 (spec §10.1 ARCH-4, „LassoSelector"): informuje wołającego o
@@ -2288,6 +2302,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       <SheetFrame
         width={sheetSize.width}
         height={sheetSize.height}
+        legend={legendZOpisemSieci}
         scaleLabel="wg kamery"
         lodLabel={SCENE_LOD_LABELS_PL[effectiveLod]}
       >

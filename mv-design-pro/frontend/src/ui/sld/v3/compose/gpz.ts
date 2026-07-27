@@ -260,6 +260,11 @@ export interface GpzGridSourceInput {
 }
 
 export interface GpzComposition {
+  /** Opis punktu neutralnego sieci SN gotowy do LEGENDY arkusza (V12K-223) —
+   *  tekst z WARTOŚCIĄ parametru, np. „Punkt neutralny: rezystor 57,7 Ω".
+   *  `null` = model uziemienia nieokreślony, więc legenda nic nie pisze
+   *  (zero fabrykacji: „brak danej" to nie „sieć izolowana"). */
+  readonly neutralEarthingNotePl: string | null;
   readonly gpzId: string;
   readonly symbols: readonly ComposedGpzSymbolInstance[];
   readonly segments: readonly ComposedGpzSegment[];
@@ -1920,6 +1925,11 @@ export function composeGpz(
     protectionSegments,
     measurementSegments,
     zone,
+    // V12K-223: opis do LEGENDY arkusza. Zero fabrykacji — brak modelu
+    // uziemienia daje `null`, a legenda wtedy nic o nim nie pisze.
+    neutralEarthingNotePl: props.snNeutralEarthing
+      ? neutralEarthingLabelPl(props.snNeutralEarthing)
+      : null,
     bbox,
   };
 }
@@ -2105,3 +2115,38 @@ export function busbarTopologyOf(composition: GpzComposition, sectionId: string)
   return composition.sections.find((s) => s.sectionId === sectionId)?.busbarTopology;
 }
 
+/**
+ * Opis punktu neutralnego z WARTOŚCIĄ parametru — do LEGENDY arkusza (V12K-223).
+ *
+ * Projektant czyta ze schematu rząd prądu doziemnego, a ten wynika wprost z
+ * aparatu: rezystor ogranicza go do `U_f/R`, dławik kompensuje prąd pojemnościowy
+ * sieci. Sam napis „rezystor" tego nie mówi, więc liczba jest istotą tego opisu.
+ *
+ * Miejsce w legendzie, nie przy symbolu: to informacja o CAŁEJ sieci (jak poziomy
+ * napięć czy podstawa normowa), a trzy próby wciśnięcia jej w geometrię zostały
+ * odrzucone przez wyrocznie czytelności (V12K-221 — kolizja z obrysem aparatu,
+ * wyjście poza krawędź arkusza, kolizja z przewodem).
+ *
+ * Brak parametru pokazujemy jako sam tryb — nigdy wartości zastępczej.
+ */
+function neutralEarthingLabelPl(
+  e: NonNullable<GpzCanonicalRendererProps['snNeutralEarthing']>,
+): string {
+  if (e.kind === 'resistor') {
+    return e.rOhm != null
+      ? `Punkt neutralny: rezystor ${liczbaPl(e.rOhm)} Ω`
+      : 'Punkt neutralny: rezystor';
+  }
+  if (e.kind === 'coil') {
+    return e.xOhm != null
+      ? `Punkt neutralny: dławik ${liczbaPl(e.xOhm)} Ω`
+      : 'Punkt neutralny: dławik gaszący';
+  }
+  if (e.kind === 'direct') return 'Punkt neutralny: uziemiony bezpośrednio';
+  return 'Punkt neutralny: izolowany';
+}
+
+/** Liczba w zapisie polskim (przecinek dziesiętny, bez zer nieznaczących). */
+function liczbaPl(v: number): string {
+  return String(Math.round(v * 10) / 10).replace('.', ',');
+}

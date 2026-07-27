@@ -191,3 +191,40 @@ describe('V3 sheet — SheetFrame (treść: dzieci renderowane w obszarze rysunk
     expect(content?.querySelector('[data-testid="fake-scene"]')).toBeTruthy();
   });
 });
+
+describe('SheetFrame — wiersz opisu sieci w legendzie (V12K-223)', () => {
+  // Informacje o CAŁEJ sieci (sposób pracy punktu neutralnego, poziomy napięć)
+  // przegrywały o miejsce z geometrią — trzy próby wciśnięcia opisu przy symbolu
+  // odrzuciły wyrocznie czytelności (V12K-221). Legenda jest ich miejscem, bo tu
+  // nie konkurują z aparaturą pól.
+  it('wiersz `note` renderuje sam tekst, bez glifu i bez próbki linii', () => {
+    const { container } = render(
+      <SheetFrame
+        width={800}
+        height={600}
+        scaleLabel="1:1"
+        legend={[{ kind: 'note', id: 'sn-neutral-earthing', labelPl: 'Punkt neutralny: rezystor 57,7 Ω' }]}
+      >
+        <g />
+      </SheetFrame>,
+    );
+    const wiersz = container.querySelector('[data-testid="sld-sheet-legend-item-sn-neutral-earthing"]');
+    expect(wiersz).toBeTruthy();
+    expect(wiersz?.textContent).toContain('57,7 Ω');
+    // Brak glifu i próbki linii — wiersz opisu nie udaje pozycji symbolowej.
+    expect(wiersz?.querySelector('line')).toBeNull();
+    expect(wiersz?.querySelector('circle')).toBeNull();
+  });
+
+  it('wiersze legendy pozostają rozłączne po dołożeniu opisu (layout liczy wysokość pisma)', () => {
+    // `legendEntryContentHeight` musi znać rodzaj `note`, inaczej sięgnąłby po
+    // `SYMBOL_DEFS[id]` i layout posypałby się na NaN.
+    const wiersze = computeLegendRowLayout([
+      { kind: 'symbol', id: 'breaker', labelPl: 'Wyłącznik' },
+      { kind: 'note', id: 'opis', labelPl: 'Punkt neutralny: rezystor 57,7 Ω' },
+    ]);
+    expect(wiersze).toHaveLength(2);
+    for (const w of wiersze) expect(Number.isFinite(w.height)).toBe(true);
+    expect(wiersze[1].y).toBeGreaterThanOrEqual(wiersze[0].y + wiersze[0].height);
+  });
+});
