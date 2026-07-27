@@ -609,11 +609,17 @@ function ptpireeSourceSummary(): string {
   return `${getPtpireeSourceRecordCount()} pozycji źródłowych PTPiREE`;
 }
 
+/**
+ * Wiersz pola: etykieta NAD wartością na wąskim ekranie, obok wartości od `sm` w górę
+ * (karta E21-5, audyt E-21 pkt P12). Sztywna kolumna 170 px na telefonie zostawiała
+ * wartościom kilkadziesiąt pikseli i wypychała treść poza ekran — układ tabelaryczny
+ * wraca dopiero tam, gdzie jest na niego miejsce. Treść, kolejność i etykiety bez zmian.
+ */
 function FieldRow({ label, value }: { readonly label: string; readonly value: string }) {
   return (
-    <div className="grid grid-cols-[170px_1fr] gap-3 border-b border-scada-border/60 py-1.5 last:border-b-0">
+    <div className="grid grid-cols-1 gap-0.5 border-b border-scada-border/60 py-1.5 last:border-b-0 sm:grid-cols-[170px_1fr] sm:gap-3">
       <dt className="text-scada-muted">{label}</dt>
-      <dd className="font-medium text-scada-text">{value}</dd>
+      <dd className="break-words font-medium text-scada-text">{value}</dd>
     </div>
   );
 }

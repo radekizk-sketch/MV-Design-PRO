@@ -211,7 +211,10 @@ export function DerConfigurator(props: DerConfiguratorProps): JSX.Element {
             aria-selected={activeCard === id}
             onClick={() => setActiveCard(id)}
             className={
-              'whitespace-nowrap px-3 py-2 text-xs font-medium transition-colors '
+              // Próg dotykowy 44 px i brak kurczenia zakładek: pasek przewija się
+              // poziomo (overflow-x-auto na `nav`), zamiast ściskać etykiety do
+              // nieczytelnych kikutów na telefonie (karta E21-5).
+              'flex min-h-[44px] shrink-0 items-center whitespace-nowrap px-3 py-2 text-xs font-medium transition-colors '
               + (activeCard === id
                 ? 'border-b-2 border-scada-sn text-scada-text'
                 : 'border-b-2 border-transparent text-scada-muted hover:text-scada-text')

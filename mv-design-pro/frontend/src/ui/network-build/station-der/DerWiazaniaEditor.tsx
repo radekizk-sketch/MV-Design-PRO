@@ -198,7 +198,7 @@ export function DerWiazaniaEditor({
               </span>
               <button
                 type="button"
-                className="rounded border border-scada-border px-2 py-1 text-xs text-scada-text hover:bg-scada-surface disabled:opacity-50"
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-scada-border px-3 py-2 text-xs text-scada-text hover:bg-scada-surface disabled:opacity-50"
                 disabled={!kontekstKompletny || zapisywane !== null}
                 onClick={() => setOtwartyPicker(wiazanie)}
                 data-testid={`der-wiazanie-wybierz-${wiazanie.pole}`}
@@ -208,7 +208,7 @@ export function DerWiazaniaEditor({
               {ref !== null && (
                 <button
                   type="button"
-                  className="rounded border border-scada-border px-2 py-1 text-xs text-scada-muted hover:bg-scada-surface disabled:opacity-50"
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded border border-scada-border px-3 py-2 text-xs text-scada-muted hover:bg-scada-surface disabled:opacity-50"
                   disabled={!kontekstKompletny || zapisywane !== null}
                   onClick={() => void zapisz(wiazanie.pole, null)}
                   data-testid={`der-wiazanie-wyczysc-${wiazanie.pole}`}

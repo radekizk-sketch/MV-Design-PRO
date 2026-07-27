@@ -276,6 +276,136 @@ test.describe('kreatory:screenshot', () => {
     expect(errs, 'no console/page errors for wiazania').toEqual([]);
   });
 
+  // Układ mobilny powierzchni wytwórcy (karta E21-5, audyt E-21 pkt P12).
+  //
+  // BRAMKA MIERZY UKŁAD, NIE TREŚĆ. Zrzut ładnego ekranu na telefonie nic nie dowodzi,
+  // dopóki nie wiadomo, że (1) strona nie ucieka w bok, (2) w cel dotykowy da się
+  // trafić palcem (44×44 px wg WCAG 2.5.5 / wytycznych platform) i (3) wiersze pól
+  // faktycznie łamią się na telefonie, a na tablecie wracają do układu dwukolumnowego.
+  // Wszystkie trzy sprawdzenia czytają REALNĄ geometrię wyrenderowanego ekranu
+  // (`boundingBox`, `scrollWidth`), a nie klasy CSS — regresja układu ma być widoczna
+  // niezależnie od tego, którą klasą ktoś ją wprowadzi.
+  const WIDOKI_DOTYKOWE = [
+    { wariant: 'mobile', width: 390, height: 844, ukladPionowy: true },
+    { wariant: 'tablet', width: 768, height: 1024, ukladPionowy: false },
+  ] as const;
+
+  for (const widok of WIDOKI_DOTYKOWE) {
+    test(`wiazania OZE — uklad dotykowy (${widok.wariant})`, async ({ page }) => {
+      const errs: string[] = [];
+      const isNoise = (t: string): boolean =>
+        /favicon|Download the React DevTools|Failed to load resource/i.test(t);
+      page.on('console', (m) => {
+        if (m.type() === 'error' && !isNoise(m.text())) errs.push(m.text());
+      });
+      page.on('pageerror', (e) => errs.push(`PAGEERROR: ${e.message}`));
+
+      await page.setViewportSize({ width: widok.width, height: widok.height });
+      await page.goto(`${HARNESS_URL}?creator=wiazania&theme=dark`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 40000,
+      });
+      const root = page.locator('[data-testid="creator-harness-root"]').first();
+      await expect(root).toHaveAttribute('data-status', 'ready', { timeout: 15000 });
+
+      // Zakładki kart są przewijane poziomo we WŁASNYM pasku — dostęp do karty
+      // „Gotowość" nie może wymagać przewijania całej strony.
+      await page.getByTestId('der-card-tab-readiness').click();
+      await expect(page.getByTestId('der-wiazania-editor')).toBeVisible();
+
+      // (1) Strona jako całość NIE przewija się poziomo.
+      const poziom = await page.evaluate(() => ({
+        scrollWidth: document.documentElement.scrollWidth,
+        innerWidth: window.innerWidth,
+      }));
+      expect(
+        poziom.scrollWidth,
+        `strona przewija sie poziomo (${poziom.scrollWidth} > ${poziom.innerWidth}) w widoku ${widok.wariant}`,
+      ).toBeLessThanOrEqual(poziom.innerWidth + 1);
+
+      // (2) Próg dotykowy przycisku wyboru wiązania: 44 × 44 px.
+      const przyciskWyboru = page.getByTestId('der-wiazanie-wybierz-vt_catalog_ref');
+      const celDotykowy = await przyciskWyboru.boundingBox();
+      expect(celDotykowy, 'przycisk wyboru wiazania musi byc widoczny').not.toBeNull();
+      expect(
+        celDotykowy!.height,
+        `wysokosc celu dotykowego w widoku ${widok.wariant}`,
+      ).toBeGreaterThanOrEqual(44);
+      expect(
+        celDotykowy!.width,
+        `szerokosc celu dotykowego w widoku ${widok.wariant}`,
+      ).toBeGreaterThanOrEqual(44);
+
+      // (3) Zakładka karty też jest celem dotykowym.
+      const zakladka = await page.getByTestId('der-card-tab-readiness').boundingBox();
+      expect(zakladka, 'zakladka karty musi byc widoczna').not.toBeNull();
+      expect(
+        zakladka!.height,
+        `wysokosc zakladki karty w widoku ${widok.wariant}`,
+      ).toBeGreaterThanOrEqual(44);
+
+      // (3a) Pasek zakładek przewija się WE WŁASNYM zakresie. Samo sprawdzenie „strona
+      // nie przewija się w bok" tego nie łapie: panel karty jest kontenerem
+      // przewijanym, więc pasek bez własnego `overflow-x` po prostu przesuwa razem ze
+      // sobą treść karty — dojście do ostatniej zakładki zjeżdża całym ekranem w bok,
+      // a strona pozostaje „czysta". Mierzymy więc zachowanie: gdy zakładki są szersze
+      // niż pasek, pasek MUSI dać się przewinąć sam.
+      const pasekZakladek = page.getByTestId('pv-source-surface').locator('nav[role="tablist"]').first();
+      const przewijaniePaska = await pasekZakladek.evaluate((el) => {
+        const przed = el.scrollLeft;
+        el.scrollLeft = el.scrollWidth;
+        const poPrzewinieciu = el.scrollLeft;
+        el.scrollLeft = przed;
+        return { tresc: el.scrollWidth, okno: el.clientWidth, poPrzewinieciu };
+      });
+      if (przewijaniePaska.tresc > przewijaniePaska.okno) {
+        expect(
+          przewijaniePaska.poPrzewinieciu,
+          'pasek zakladek musi przewijac sie sam (inaczej przewija sie cala karta)',
+        ).toBeGreaterThan(0);
+      }
+
+      // (3b) Dojście do zakładki nie może wypchnąć treści karty poza lewą krawędź.
+      const trescKarty = await page.getByTestId('der-card-content-readiness').boundingBox();
+      expect(trescKarty, 'tresc karty musi byc widoczna').not.toBeNull();
+      expect(
+        trescKarty!.x,
+        'tresc karty zostala przesunieta w bok przy dojsciu do zakladki',
+      ).toBeGreaterThanOrEqual(-1);
+
+      // (4) Wiersz pola: etykieta NAD wartością na telefonie, obok wartości na tablecie.
+      const wiersz = page.locator('div:has(> dt:text-is("Stan konfiguracji"))').first();
+      const etykieta = await wiersz.locator('dt').boundingBox();
+      const wartosc = await wiersz.locator('dd').boundingBox();
+      expect(etykieta, 'etykieta wiersza musi byc widoczna').not.toBeNull();
+      expect(wartosc, 'wartosc wiersza musi byc widoczna').not.toBeNull();
+      if (widok.ukladPionowy) {
+        expect(
+          wartosc!.y,
+          'na telefonie wartosc stoi PONIZEJ etykiety (uklad jednokolumnowy)',
+        ).toBeGreaterThanOrEqual(etykieta!.y + etykieta!.height - 1);
+      } else {
+        expect(
+          wartosc!.x,
+          'na tablecie wartosc stoi OBOK etykiety (uklad dwukolumnowy)',
+        ).toBeGreaterThan(etykieta!.x + etykieta!.width - 1);
+        expect(
+          Math.abs(wartosc!.y - etykieta!.y),
+          'na tablecie etykieta i wartosc sa w tym samym wierszu',
+        ).toBeLessThanOrEqual(2);
+      }
+
+      await page.waitForTimeout(300);
+      await page.screenshot({
+        path: path.join(OUTPUT_DIR, `wiazania_oze_${widok.wariant}.png`),
+        fullPage: true,
+      });
+
+      if (errs.length > 0) console.log(`[wiazania/${widok.wariant}] errors:\n${errs.join('\n')}`);
+      expect(errs, `no console/page errors for wiazania/${widok.wariant}`).toEqual([]);
+    });
+  }
+
   // Wykres teorii odbioru (trójkąt mocy) (V12K-069). GPZ (WykresSztywnosci) pokryty
   // testem jednostkowym; zrzut w harnessie wymaga pełniejszego zaszczepienia kontekstu
   // 7-krokowego kreatora GPZ (depth backlog standardu).

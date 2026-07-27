@@ -3336,6 +3336,11 @@ function Harness() {
         ].includes(creator)
           ? 1400
           : 1180,
+        // Kadr zrzutu NIE MOŻE być szerszy od okna, inaczej scena telefonu/tabletu
+        // przewijałaby się poziomo z powodu samego harnessu i nie dałoby się zmierzyć,
+        // czy przewija się badana powierzchnia (karta E21-5). Przy szerokościach
+        // zrzutów desktopowych (≥1220 px) ograniczenie nie działa — kadr zostaje 1180/1400.
+        maxWidth: '100%',
         minHeight: 800,
         padding: 16,
         background: 'var(--mvd-bg, #07111c)',
