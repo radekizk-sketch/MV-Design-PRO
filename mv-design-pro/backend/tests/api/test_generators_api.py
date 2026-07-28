@@ -458,3 +458,74 @@ def test_protection_functions_zglasza_niezgodnosc_przeznaczenia_urzadzenia(app_c
     assert ostrzezenia, "aparat innej strefy musi dostac ostrzezenie o przeznaczeniu"
     assert "87BB" in ostrzezenia[0]
     assert dane["urzadzenie"]["nazwa"]
+
+
+def test_readiness_endpoint_wola_KANONICZNA_regule_domenowa(app_client) -> None:
+    """V12K-251: regula `domain/der_readiness.py` dostaje konsumenta produkcyjnego.
+
+    POMIAR PRZED: `grep -rln der_readiness backend/src` poza samym modulem = ZERO
+    trafien — 519 linii reguly utrzymywanych pod kontraktem parzystosci, wolanych
+    wylacznie przez testy, podczas gdy jedyna ocena widziana przez uzytkownika byla
+    liczona w przegladarce.
+    """
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id)
+
+    utworzenie = app_client.post(
+        f"/api/projects/{project_id}/cases/{case_id}/generators",
+        json={
+            "station_ref": "station/1",
+            "der_kind": "PV",
+            "power_mw": 0.5,
+            "connection_variant": "nn_side",
+            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            "source_name": "PV Stacja 1",
+            "nc_rfg_module": "A",
+        },
+    )
+    assert utworzenie.status_code == 201
+    generator_ref = utworzenie.json()["snapshot"]["generators"][0]["ref_id"]
+
+    odpowiedz = app_client.get(
+        f"/api/projects/{project_id}/cases/{case_id}/generators/{generator_ref}/readiness"
+    )
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    dane = odpowiedz.json()
+
+    # Kontrakt: 14 osi w stalej kolejnosci (determinizm odpowiedzi).
+    assert len(dane["macierz"]) == 14
+    assert len(dane["osie"]) == 14
+
+    # DWIE REPREZENTACJE JEDNEGO WERDYKTU MUSZA SIE ZGADZAC. Odpowiedz niesie macierz
+    # (os -> status) i liste osi z powodami; gdyby liczyly sie osobno, klient dostalby
+    # w jednym pakiecie dwa rozne werdykty o tym samym wytworcy — dokladnie rozjazd,
+    # ktory ta seria zamyka (V12K-243). Pierwsza wersja tego testu tego NIE lapala:
+    # splaszczenie macierzy do samych „ready" przechodzilo na zielono.
+    for os in dane["osie"]:
+        assert dane["macierz"][os["axis"]] == os["status"], (
+            f"macierz i lista osi rozjezdzaja sie na osi {os['axis']}"
+        )
+
+    # Kazda os niegotowa niesie NAZWANY powod — status bez powodu jest slepym zaulkiem.
+    for os in dane["osie"]:
+        if os["status"] in ("blocked", "partial"):
+            assert os["blockers"], f"os {os['axis']} bez nazwanego powodu"
+            for blokada in os["blockers"]:
+                assert blokada["code"].strip()
+                assert blokada["message_pl"].strip()
+
+    # Ten wytworca nie ma zabezpieczen ani przekladnikow, wiec os zabezpieczen NIE
+    # moze byc gotowa, a powod musi wskazywac brakujaca dana.
+    zabezpieczenia = next(os for os in dane["osie"] if os["axis"] == "protection")
+    assert zabezpieczenia["status"] != "ready"
+    assert zabezpieczenia["blockers"]
+
+    # Podsumowanie niesie licznik `total` OBOK statusow, wiec sumujemy same statusy
+    # (moja pierwsza asercja sumowala wszystko i liczyla `total` drugi raz — blad
+    # testu, nie reguly).
+    podsumowanie = dane["podsumowanie"]
+    assert podsumowanie["total"] == 14
+    assert (
+        podsumowanie["ready"] + podsumowanie["partial"] + podsumowanie["blocked"]
+        == podsumowanie["total"]
+    )

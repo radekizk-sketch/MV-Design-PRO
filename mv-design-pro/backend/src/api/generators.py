@@ -15,6 +15,12 @@ from domain.der_protection_functions import (
     dobierz_funkcje,
     ocen_urzadzenie,
 )
+from domain.der_readiness import (
+    macierz_gotowosci_der,
+    osie_gotowosci_der,
+    podsumuj_gotowosc,
+    wejscie_z_generatora,
+)
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm as _get_enm
@@ -667,3 +673,100 @@ async def get_der_protection_functions(
             **ocena.to_dict(),
         },
     }
+
+
+@router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/readiness")
+async def get_der_readiness(
+    project_id: str,
+    case_id: str,
+    generator_ref: str,
+    request: Request,
+) -> dict[str, Any]:
+    """Gotowosc analiz dla wytworcy — KANONICZNA regula domenowa (V12K-251).
+
+    DLACZEGO TEN ENDPOINT ISTNIEJE. Regula `domain/der_readiness.py` (519 linii)
+    powstala jako backendowy odpowiednik macierzy z frontu i byla utrzymywana pod
+    kontraktem parzystosci — ale POMIAR pokazal ZERO konsumentow produkcyjnych
+    (`grep -rln der_readiness backend/src` poza samym modulem), wiec wolaly ja
+    wylacznie testy. Zdolnosc bez wywolania: regula pilnowana, nikomu nie sluzaca,
+    a jedyna ocena widziana przez uzytkownika liczona w przegladarce.
+
+    Odpowiedz niesie statusy osi ORAZ NAZWANE powody (kody + komunikat + miejsce
+    naprawy) — bez powodow status jest slepym zaulkiem.
+
+    Klasa przekladnika przychodzi z KATALOGU (`CTType.to_dict`, IEC 61869-2), nie
+    ze zgadywania z identyfikatora: regula nie ma wlasnego katalogu.
+    """
+
+    _validate_project_case_context(request, project_id, case_id)
+    enm = _get_enm(case_id)
+    dane = enm.model_dump(mode="json")
+
+    generatory = dane.get("generators", [])
+    generator = next((g for g in generatory if g.get("ref_id") == generator_ref), None)
+    if generator is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "generator.not_found",
+                "message_pl": f"Wytwórca {generator_ref} nie istnieje w modelu.",
+            },
+        )
+
+    # Liczba INNYCH wytworcow w tej samej stacji — wejscie osi selektywnosci.
+    stacja = generator.get("station_ref")
+    inni = sum(
+        1 for g in generatory if g.get("ref_id") != generator_ref and g.get("station_ref") == stacja
+    )
+
+    klasa_ct, zastosowanie_ct = _klasa_przekladnika_z_katalogu(generator)
+    wejscie = wejscie_z_generatora(
+        generator,
+        other_ders_in_station=inni,
+        ct_accuracy_class=klasa_ct,
+        ct_application=zastosowanie_ct,
+    )
+    macierz = macierz_gotowosci_der(wejscie)
+    osie = osie_gotowosci_der(wejscie)
+
+    return {
+        "generator_ref": generator_ref,
+        "macierz": macierz,
+        "osie": [os.to_dict() for os in osie],
+        "podsumowanie": podsumuj_gotowosc(macierz),
+    }
+
+
+def _klasa_przekladnika_z_katalogu(
+    generator: dict[str, Any],
+) -> tuple[str | None, Any]:
+    """Klasa i zastosowanie przekladnika Z KATALOGU — regula ich nie zgaduje.
+
+    Brak wiazania albo typ nieznany katalogowi daje `(None, None)`, co regula zamienia
+    w kod `der.ct_class.unresolved` — „nie da sie ustalic" jest innym faktem niz
+    „klasa nie jest zabezpieczeniowa" (V12K-232).
+    """
+    from network_model.catalog import get_default_mv_catalog
+
+    zrodla = (
+        _slownik_pomocniczy(generator.get("materialized_params")),
+        _slownik_pomocniczy(generator.get("meta")),
+    )
+    ref = None
+    for zrodlo in zrodla:
+        wartosc = zrodlo.get("ct_catalog_ref")
+        if isinstance(wartosc, str) and wartosc.strip():
+            ref = wartosc
+            break
+    if ref is None:
+        return None, None
+
+    typ = get_default_mv_catalog().get_ct_type(ref)
+    if typ is None:
+        return None, None
+    jako_slownik = typ.to_dict()
+    return jako_slownik.get("accuracy_class"), jako_slownik.get("application")
+
+
+def _slownik_pomocniczy(wartosc: Any) -> dict[str, Any]:
+    return wartosc if isinstance(wartosc, dict) else {}
