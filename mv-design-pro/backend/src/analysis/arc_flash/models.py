@@ -664,17 +664,19 @@ class ArcFlashContext:
 
     project_name: str | None = None
     case_name: str | None = None
+    case_id: str | None = None
     run_timestamp: datetime | None = None
-    snapshot_id: str | None = None
-    trace_id: str | None = None
+    snapshot_hash: str | None = None
+    run_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "project_name": self.project_name,
             "case_name": self.case_name,
+            "case_id": self.case_id,
             "run_timestamp": self.run_timestamp.isoformat() if self.run_timestamp else None,
-            "snapshot_id": self.snapshot_id,
-            "trace_id": self.trace_id,
+            "snapshot_hash": self.snapshot_hash,
+            "run_id": self.run_id,
         }
 
 

@@ -55,6 +55,7 @@ import json
 import math
 from typing import Any
 
+from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow, _graph_id_from_ref
 from network_model.solvers.power_flow_inverter import InverterControl, lfsm_factor
 
@@ -383,11 +384,7 @@ def build_osd_response_view(
 
     return {
         "analysis": "osd_response",
-        "context": {
-            "trace_id": str(run.id),
-            "snapshot_id": run.snapshot_hash,
-            "case_name": str(run.case_id) if run.case_id else None,
-        },
+        "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
         "parameters": {
             "source_ref": source_ref,
             "source_name": source.get("name"),

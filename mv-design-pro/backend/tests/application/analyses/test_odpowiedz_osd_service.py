@@ -74,7 +74,7 @@ def test_view_structure() -> None:
     assert run.status == "FINISHED", run.error_message
     view = build_osd_response_view(run, source_ref=SOURCE, command="ograniczenie_p", p_limit_pct=50)
     assert view["analysis"] == "osd_response"
-    assert view["context"]["trace_id"] == str(run.id)
+    assert view["context"]["run_id"] == str(run.id)
     assert {"parameters", "input_hash", "source", "nodes", "losses", "whitebox"} <= set(view)
     assert view["source"]["ref_id"] == SOURCE
     assert view["source"]["bus_ref"] == "bus_sn_c"

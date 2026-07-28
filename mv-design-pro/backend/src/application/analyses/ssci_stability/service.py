@@ -45,10 +45,11 @@ def _context(
     run_id = run_record.get("run_id")
     return SsciStabilityContext(
         project_name=None,
-        case_name=str(case_id) if case_id else None,
+        case_name=None,
+        case_id=str(case_id) if case_id else None,
         run_timestamp=_parse_timestamp(run_record.get("created_at")),
-        snapshot_id=str(deterministic_hash) if deterministic_hash else None,
-        trace_id=str(run_id) if run_id else None,
+        snapshot_hash=str(deterministic_hash) if deterministic_hash else None,
+        run_id=str(run_id) if run_id else None,
     )
 
 

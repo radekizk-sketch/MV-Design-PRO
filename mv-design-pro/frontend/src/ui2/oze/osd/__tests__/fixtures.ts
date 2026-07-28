@@ -46,9 +46,10 @@ export function widokOsdFixture(): WidokOdpowiedziOsd {
   return {
     analysis: 'osd_response',
     context: {
-      trace_id: 'run-osd-1',
-      snapshot_id: 'snap-abc',
-      case_name: 'case-1',
+      run_id: 'run-osd-1',
+      snapshot_hash: 'snap-abc',
+      case_name: null,
+      case_id: 'case-1',
     },
     parameters: {
       source_ref: 'gen_sync',

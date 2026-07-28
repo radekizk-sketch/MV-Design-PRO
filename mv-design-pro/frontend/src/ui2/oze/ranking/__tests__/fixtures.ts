@@ -58,7 +58,7 @@ export function katalogFixture(): OdpowiedzKatalogNcRfg {
 export function widokRankinguFixture(): WidokZdolnosci {
   return {
     analysis: 'hosting_capacity',
-    context: { trace_id: 'run-lf-1', snapshot_id: 'snap-abc', case_name: 'case-1' },
+    context: { run_id: 'run-lf-1', snapshot_hash: 'snap-abc', case_id: 'case-1' },
     parameters: { step_mw: 0.5, max_steps: 40, candidate_bus_refs: ['bus-a', 'bus-b', 'bus-c'] },
     input_hash: 'a1b2c3d4e5f6',
     nodes: [

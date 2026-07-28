@@ -45,13 +45,24 @@ def test_guard_main_returns_zero_on_repo():
 
 
 def test_ui_allowlist_matches_measured_baseline():
-    """H-1 baseline (2026-07-22): exactly 22 raw physics-pattern hits in
-    frontend/src/ui/** (pre-allowlist, via scan_file which the allowlist never
-    touches), all classified 0 class-a (real physics) / 9 class-b (false
-    positive) / 9 class-c (justified catalog-constant exception, 18 distinct
-    lines). If this count changes, a new hit appeared and MUST be
-    re-classified explicitly (allowlisted with a reason, or fixed as a real
-    physics defect) -- never silently absorbed by a broader allowlist entry.
+    """Baseline (re-measured 2026-07-28, V12K-267): exactly 5 raw physics-pattern
+    hits in frontend/src/ui/** (pre-allowlist, via scan_file which the allowlist
+    never touches), all classified 0 class-a (real physics) / 5 class-b (false
+    positive) / 0 class-c (catalog-constant exception). If this count changes, a
+    new hit appeared and MUST be re-classified explicitly (allowlisted with a
+    reason, or fixed as a real physics defect) -- never silently absorbed by a
+    broader allowlist entry.
+
+    WHY THE NUMBER DROPPED (22 -> 5, and 18 -> 5 allowlist entries). The previous
+    baseline (H-1, 2026-07-22) counted 13 hits in
+    station-der/protection-catalogs.ts -- a VT (voltage transformer) catalog held
+    in the frontend. Commit dc525539 (V12K-257/258, "koniec rownoleglych
+    katalogow VT") moved that catalog to the backend, which is exactly the
+    direction this guard exists to push. The hits are gone because the code is
+    gone; the baseline is lowered by MEASUREMENT, not by widening tolerance.
+    Nobody re-measured after that card, so this test and
+    test_ui_allowlist_entries_are_not_stale were both red on the branch -- they
+    caught the drift correctly and were simply left unread.
     """
     scan_dir = ui_no_physics_guard.REPO_ROOT / "frontend" / "src" / "ui"
     raw = 0
@@ -61,7 +72,7 @@ def test_ui_allowlist_matches_measured_baseline():
         if ui_no_physics_guard._should_exclude_file(path):
             continue
         raw += len(ui_no_physics_guard.scan_file(path))
-    assert raw == 22
+    assert raw == 5
 
 
 def test_ui_allowlist_entries_are_not_stale():

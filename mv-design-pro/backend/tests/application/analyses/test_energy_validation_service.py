@@ -81,7 +81,7 @@ def test_real_pf_run_produces_all_check_types() -> None:
         "LOSS_BUDGET",
         "REACTIVE_BALANCE",
     }
-    assert view["context"]["trace_id"] == str(run.id)
+    assert view["context"]["run_id"] == str(run.id)
     assert view["summary"]["pass_count"] >= 1
 
 

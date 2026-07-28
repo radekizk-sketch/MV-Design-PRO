@@ -42,6 +42,7 @@ from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
 from application.analyses.energy_validation.service import build_energy_validation_view
+from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from enm.canonical_analysis import CanonicalRun, _execute_power_flow
 from enm.models import Generator
 
@@ -329,11 +330,7 @@ def build_hosting_capacity_view(
 
     return {
         "analysis": "hosting_capacity",
-        "context": {
-            "trace_id": str(run.id),
-            "snapshot_id": run.snapshot_hash,
-            "case_name": str(run.case_id) if run.case_id else None,
-        },
+        "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
         "parameters": {
             "step_mw": step_mw,
             "max_steps": max_steps,

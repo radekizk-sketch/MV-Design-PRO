@@ -18,10 +18,11 @@ export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
   analysis_id: '11111111-1111-1111-1111-111111111111',
   context: {
     project_name: 'Sieć testowa',
-    case_name: '22222222-2222-2222-2222-222222222222',
+    case_name: null,
+    case_id: '22222222-2222-2222-2222-222222222222',
     run_timestamp: '2026-07-16T10:00:00+00:00',
-    snapshot_id: 'snap-abc',
-    trace_id: '11111111-1111-1111-1111-111111111111',
+    snapshot_hash: 'snap-abc',
+    run_id: '11111111-1111-1111-1111-111111111111',
   },
   items: [
     {
@@ -79,10 +80,11 @@ export const WIARYGODNOSC_FIXTURE: WiarygodnoscResponse = {
 export const WALIDACJA_FIXTURE: WalidacjaResponse = {
   context: {
     project_name: 'Sieć testowa',
-    case_name: '22222222-2222-2222-2222-222222222222',
+    case_name: null,
+    case_id: '22222222-2222-2222-2222-222222222222',
     run_timestamp: '2026-07-16T10:05:00+00:00',
-    snapshot_id: 'snap-def',
-    trace_id: '33333333-3333-3333-3333-333333333333',
+    snapshot_hash: 'snap-def',
+    run_id: '33333333-3333-3333-3333-333333333333',
   },
   config: {
     loading_warn_pct: 80.0,
@@ -183,10 +185,11 @@ export const MIGOTANIE_FIXTURE: MigotanieResponse = {
   analysis_id: '44444444-4444-4444-4444-444444444444',
   context: {
     project_name: 'Sieć testowa',
-    case_name: '22222222-2222-2222-2222-222222222222',
+    case_name: null,
+    case_id: '22222222-2222-2222-2222-222222222222',
     run_timestamp: '2026-07-16T10:10:00+00:00',
-    snapshot_id: 'snap-ghi',
-    trace_id: '44444444-4444-4444-4444-444444444444',
+    snapshot_hash: 'snap-ghi',
+    run_id: '44444444-4444-4444-4444-444444444444',
   },
   config: {
     flicker_summation_exponent_m: 3,

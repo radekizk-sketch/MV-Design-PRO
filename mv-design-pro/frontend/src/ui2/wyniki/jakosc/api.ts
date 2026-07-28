@@ -31,10 +31,13 @@ import type { TraceStep } from '../../../ui/results-inspector/types';
 /** Kontekst przebiegu (pochodzenie wyniku) — pola opcjonalne. */
 export interface KontekstJakosci {
   readonly project_name: string | null;
+  /** Etykieta wariantu pracy, gdy znana; identyfikator jest w `case_id`. */
   readonly case_name: string | null;
+  readonly case_id: string | null;
   readonly run_timestamp: string | null;
-  readonly snapshot_id: string | null;
-  readonly trace_id: string | null;
+  readonly snapshot_hash: string | null;
+  /** Identyfikator PRZEBIEGU (dawniej mylnie `trace_id` — patrz V12K-267). */
+  readonly run_id: string | null;
 }
 
 /** Pojedyncza ocena wiarygodności Ik'' w węźle (verdict + identyfikacja węzła). */

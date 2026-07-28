@@ -156,7 +156,7 @@ function WynikObszaru({
           <>
             <div className="mvd-obszar-zal-para">
               <dt>{OBSZAR_STRINGS.zalPrzebieg}</dt>
-              <dd className="mvd-num">{dane.context.trace_id}</dd>
+              <dd className="mvd-num">{dane.context.run_id}</dd>
             </div>
             <div className="mvd-obszar-zal-para" data-testid="mvd-obszar-eksp-hash">
               <dt>{OBSZAR_STRINGS.zalIdentyfikatorSkrot}</dt>

@@ -182,7 +182,7 @@ def test_view_structure() -> None:
     run = _run(_compensation_enm(load_q_mvar=2.0, gen_p_mw=None))
     view = build_compensation_sizing_view(run, bus_ref="bus_pcc", cos_phi_min=0.95)
     assert view["analysis"] == "compensation_sizing"
-    assert view["context"]["trace_id"] == str(run.id)
+    assert view["context"]["run_id"] == str(run.id)
     assert {
         "parameters",
         "input_hash",

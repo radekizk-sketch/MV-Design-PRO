@@ -28,6 +28,7 @@ import math
 from typing import Any
 
 import numpy as np
+from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from enm.canonical_analysis import CanonicalRun
 from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
@@ -137,14 +138,7 @@ def _name_by_node(run: CanonicalRun) -> dict[str, str | None]:
 
 
 def _context(run: CanonicalRun) -> dict[str, Any]:
-    header = (run.snapshot or {}).get("header") or {}
-    return {
-        "project_name": str(header.get("name")) if header.get("name") else None,
-        "case_name": str(run.case_id) if run.case_id else None,
-        "run_timestamp": run.created_at.isoformat() if run.created_at else None,
-        "snapshot_id": run.snapshot_hash,
-        "trace_id": str(run.id),
-    }
+    return zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=True)
 
 
 def _prepare(

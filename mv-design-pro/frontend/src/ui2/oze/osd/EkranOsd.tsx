@@ -133,7 +133,7 @@ function WynikOsd({
             </div>
             <div className="mvd-osd-zal-para">
               <dt>{OSD_STRINGS.zalPrzebieg}</dt>
-              <dd className="mvd-num">{dane.context.trace_id}</dd>
+              <dd className="mvd-num">{dane.context.run_id}</dd>
             </div>
             <div className="mvd-osd-zal-para" data-testid="mvd-osd-eksp-hash">
               <dt>{OSD_STRINGS.zalIdentyfikatorSkrot}</dt>

@@ -49,6 +49,58 @@ def pytest_ignore_collect(collection_path, config):
     return True
 
 
+@pytest.fixture(autouse=True)
+def _izolowana_baza_przebiegow(tmp_path, monkeypatch):
+    """Każdy test dostaje WŁASNĄ bazę przebiegów kanonicznych (V12K-267).
+
+    DEFEKT, KTÓRY TO USUWA. ``canonical_run_repository`` rozwiązuje adres bazy
+    przez ``os.getenv("DATABASE_URL", "sqlite+pysqlite:///./mv_design_pro.db")``
+    i CACHUJE silnik w zmiennej modułu. Testy, które nie ustawiły ``DATABASE_URL``
+    same (a robiło to 12 plików na kilkaset), pisały do JEDNEGO pliku w katalogu
+    roboczym — wspólnego dla całej sesji testowej i TRWAŁEGO MIĘDZY URUCHOMIENIAMI
+    (plik urósł do 15 MB). Skutek zmierzony: sporadyczne
+    ``sqlalchemy.orm.exc.StaleDataError: UPDATE statement on table 'canonical_runs'
+    expected to update 1 row(s); 0 were matched`` — raz w
+    ``test_dowod_v12k040``, raz w ``test_odpowiedz_osd_service``, przy kolejnych
+    przebiegach zielono. Test, który przechodzi albo nie w zależności od tego, co
+    zostawił po sobie POPRZEDNI przebieg, nie jest bramką: mógł tak samo
+    przepuścić prawdziwą regresję. Łamie to też regułę determinizmu kanonu
+    („to samo wejście = ten sam wynik").
+
+    Fixture jest ``autouse``, bo izolacja nie może zależeć od tego, czy autor
+    testu o niej pamiętał. Testy ustawiające ``DATABASE_URL`` własnym
+    ``monkeypatch`` nadal wygrywają — nadpisują tę samą zmienną po nas.
+    """
+    if importlib.util.find_spec("sqlalchemy") is None:
+        yield
+        return
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        # Baza W PAMIĘCI ze wspólnym cache: izolacja bez kosztu tworzenia schematu
+        # na dysku (pomiar: 29 s wobec 80 s dla pliku tymczasowego, przy tym samym
+        # zestawie 531 testów). Nazwa bierze się z katalogu tymczasowego pytest,
+        # który jest unikalny per test — NIE z `id()` obiektu, bo identyfikatory
+        # bywają ponownie użyte po zwolnieniu pamięci i dwa testy mogłyby trafić
+        # na tę samą bazę. Baza znika, gdy zamknie się ostatnie połączenie
+        # (robi to `wyczysc_cache` w teardownie).
+        f"sqlite+pysqlite:///file:przebiegi-{tmp_path.name}" "?mode=memory&cache=shared&uri=true",
+    )
+
+    from infrastructure.persistence.repositories import canonical_run_repository as repo
+
+    def wyczysc_cache() -> None:
+        if repo._cached_engine is not None:
+            repo._cached_engine.dispose()
+        repo._cached_engine = None
+        repo._cached_session_factory = None
+        repo._cached_database_url = None
+
+    wyczysc_cache()
+    yield
+    wyczysc_cache()
+
+
 @pytest.fixture()
 def db_engine(tmp_path):
     if importlib.util.find_spec("sqlalchemy") is None:

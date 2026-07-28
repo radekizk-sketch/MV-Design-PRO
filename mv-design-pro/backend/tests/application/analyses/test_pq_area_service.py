@@ -162,7 +162,7 @@ def test_golden_run_produces_view_structure() -> None:
     assert run.status == "FINISHED", run.error_message
     view = build_pq_area_view(run, bus_ref="bus_sn_c", max_steps_p=2, max_steps_q=2)
     assert view["analysis"] == "pq_area"
-    assert view["context"]["trace_id"] == str(run.id)
+    assert view["context"]["run_id"] == str(run.id)
     assert view["bus_ref"] == "bus_sn_c"
     assert view["bus_name"] == "Stacja C SN"
     assert {"parameters", "input_hash", "vertices", "total_runs", "existing_generation"} <= set(

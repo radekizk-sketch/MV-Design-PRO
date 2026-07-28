@@ -301,9 +301,9 @@ export interface WezelZdolnosci {
 
 /** Kontekst przebiegu rozpływu, na którym oparto przegląd. */
 export interface KontekstZdolnosci {
-  readonly trace_id: string;
-  readonly snapshot_id: string | null;
-  readonly case_name: string | null;
+  readonly run_id: string;
+  readonly snapshot_hash: string | null;
+  readonly case_id: string | null;
 }
 
 /** Parametry przeglądu odesłane przez backend (echo wejścia). */
@@ -537,9 +537,9 @@ export interface WierzcholekObszaruPQ {
 
 /** Kontekst przebiegu rozpływu, na którym oparto siatkę P–Q. */
 export interface KontekstObszaruPQ {
-  readonly trace_id: string;
-  readonly snapshot_id: string | null;
-  readonly case_name: string | null;
+  readonly run_id: string;
+  readonly snapshot_hash: string | null;
+  readonly case_id: string | null;
 }
 
 /** Parametry siatki odesłane przez backend (echo wejścia + górne oszacowanie biegów). */
@@ -740,9 +740,9 @@ export type CharakterMocyBiernej = 'nadwzbudny' | 'podwzbudny';
 
 /** Kontekst przebiegu rozpływu, na którym oparto symulację odpowiedzi. */
 export interface KontekstOsd {
-  readonly trace_id: string;
-  readonly snapshot_id: string | null;
-  readonly case_name: string | null;
+  readonly run_id: string;
+  readonly snapshot_hash: string | null;
+  readonly case_id: string | null;
 }
 
 /**
@@ -1662,9 +1662,9 @@ export interface DoborKompensacji {
 
 /** Kontekst przebiegu, na którym oparto dobór. */
 export interface KontekstKompensacji {
-  readonly trace_id: string;
-  readonly snapshot_id: string | null;
-  readonly case_name: string | null;
+  readonly run_id: string;
+  readonly snapshot_hash: string | null;
+  readonly case_id: string | null;
 }
 
 /** Echo parametrów wejścia doboru (bus + wymagany cosφ + scenariusz nocny). */

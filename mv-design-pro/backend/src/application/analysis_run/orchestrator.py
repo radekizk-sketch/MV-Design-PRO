@@ -79,8 +79,9 @@ class AnalysisOrchestrator:
             project_name=project_name,
             case_name=case_name,
             run_timestamp=now_utc,
-            snapshot_id=None,
-            trace_id=run_id,
+            case_id=None,
+            snapshot_hash=None,
+            run_id=run_id,
         )
         ev_builder = EnergyValidationBuilder(context=ev_context)
         energy_validation = ev_builder.build(power_flow_result, graph, config)
@@ -89,6 +90,14 @@ class AnalysisOrchestrator:
         if include_voltage_profile:
             from analysis.normative.models import NormativeConfig
 
+            # UWAGA (V12K-267): `VoltageProfileContext` NIE zostaje przemianowany
+            # razem z kopertami widokow analiz. Nalezy do lancucha kontekstow
+            # kopiowanych „po nazwie pola" przez `getattr(ctx, "trace_id", None)`
+            # w builderach coverage_score/sensitivity/lf_sensitivity/recommendations
+            # oraz w raporcie PDF. Przemianowanie CZESCI tego lancucha nie zapala
+            # bledu — `getattr` z wartoscia domyslna po cichu podstawia `None`,
+            # czyli identyfikator znikalby z raportow bez sladu. Ten lancuch
+            # przemianowuje sie w calosci, osobna karta (patrz rejestr V12K-267).
             vp_context = VoltageProfileContext(
                 project_name=project_name,
                 case_name=case_name,

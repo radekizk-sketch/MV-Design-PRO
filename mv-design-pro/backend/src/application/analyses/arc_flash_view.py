@@ -47,10 +47,11 @@ def _context(run: CanonicalRun) -> ArcFlashContext:
     header = (run.snapshot or {}).get("header") or {}
     return ArcFlashContext(
         project_name=str(header.get("name")) if header.get("name") else None,
-        case_name=str(run.case_id) if run.case_id else None,
+        case_name=None,
+        case_id=str(run.case_id) if run.case_id else None,
         run_timestamp=run.created_at,
-        snapshot_id=run.snapshot_hash,
-        trace_id=str(run.id),
+        snapshot_hash=run.snapshot_hash,
+        run_id=str(run.id),
     )
 
 

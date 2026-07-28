@@ -566,9 +566,10 @@ class TestContext:
         ctx = EnergyValidationContext(
             project_name="Golden SN",
             case_name="Max load",
+            case_id=None,
             run_timestamp=datetime(2024, 1, 1, tzinfo=UTC),
-            snapshot_id="snap-001",
-            trace_id="run-001",
+            snapshot_hash="snap-001",
+            run_id="run-001",
         )
         graph = _build_simple_graph()
         pf = _build_pf_result(

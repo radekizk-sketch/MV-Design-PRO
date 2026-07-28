@@ -38,6 +38,7 @@ import json
 from typing import Any
 
 from application.analyses.grid_strength import IBG_GEN_TYPES, resolve_n_parallel
+from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
 
 # --- Stałe normatywne (KAŻDA ze źródłem powyżej w docstringu modułu) -----------
@@ -179,14 +180,7 @@ def _nominal_kv_by_bus(snapshot: dict[str, Any]) -> dict[str, float | None]:
 
 
 def _context(run: CanonicalRun) -> dict[str, Any]:
-    header = (run.snapshot or {}).get("header") or {}
-    return {
-        "project_name": str(header.get("name")) if header.get("name") else None,
-        "case_name": str(run.case_id) if run.case_id else None,
-        "run_timestamp": run.created_at.isoformat() if run.created_at else None,
-        "snapshot_id": run.snapshot_hash,
-        "trace_id": str(run.id),
-    }
+    return zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=True)
 
 
 def _step(symbol: str, formula_latex: str, substitution_pl: str, result_pl: str) -> dict[str, str]:

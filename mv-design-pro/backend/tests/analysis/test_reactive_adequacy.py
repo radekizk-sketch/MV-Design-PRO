@@ -39,9 +39,10 @@ def _ctx() -> ReactiveAdequacyContext:
     return ReactiveAdequacyContext(
         project_name="P",
         case_name="LF_BAZOWY",
+        case_id=None,
         run_timestamp=datetime(2026, 5, 29, tzinfo=UTC),
-        snapshot_id="snap-1",
-        trace_id="trace-1",
+        snapshot_hash="snap-1",
+        run_id="trace-1",
     )
 
 

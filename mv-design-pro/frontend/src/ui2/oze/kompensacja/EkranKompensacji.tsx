@@ -157,7 +157,7 @@ function WynikKompensacji({
           <>
             <div className="mvd-komp-zal-para">
               <dt>{T.zalPrzebieg}</dt>
-              <dd className="mvd-num">{dane.context.trace_id}</dd>
+              <dd className="mvd-num">{dane.context.run_id}</dd>
             </div>
             <div className="mvd-komp-zal-para" data-testid="mvd-komp-eksp-hash">
               <dt>{T.zalIdentyfikatorSkrot}</dt>

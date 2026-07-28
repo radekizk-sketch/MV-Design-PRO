@@ -88,6 +88,7 @@ import math
 from typing import Any
 from uuid import NAMESPACE_URL, uuid5
 
+from application.analyses.kontekst_widoku import zbuduj_kontekst_widoku
 from application.analyses.konwencja_mocy import (
     moc_kanoniczna_punktu,
     q_netto_po_kompensacji,
@@ -496,11 +497,7 @@ def build_compensation_sizing_view(
 
     return {
         "analysis": "compensation_sizing",
-        "context": {
-            "trace_id": str(run.id),
-            "snapshot_id": run.snapshot_hash,
-            "case_name": str(run.case_id) if run.case_id else None,
-        },
+        "context": zbuduj_kontekst_widoku(run, ze_znacznikiem_czasu=False),
         "parameters": {
             "bus_ref": bus_ref,
             "bus_name": bus.get("name"),

@@ -40,9 +40,10 @@ export function widokZdolnosciFixture(): WidokZdolnosci {
   return {
     analysis: 'hosting_capacity',
     context: {
-      trace_id: 'run-lf-1',
-      snapshot_id: 'snap-abc',
-      case_name: 'case-1',
+      run_id: 'run-lf-1',
+      snapshot_hash: 'snap-abc',
+      case_name: null,
+      case_id: 'case-1',
     },
     parameters: {
       step_mw: 0.5,

@@ -163,7 +163,7 @@ def test_golden_run_produces_view_structure() -> None:
     assert run.status == "FINISHED", run.error_message
     view = build_hosting_capacity_view(run)
     assert view["analysis"] == "hosting_capacity"
-    assert view["context"]["trace_id"] == str(run.id)
+    assert view["context"]["run_id"] == str(run.id)
     assert view["parameters"]["step_mw"] == 0.5
     assert view["parameters"]["max_steps"] == 40
     assert len(view["nodes"]) == 2

@@ -216,7 +216,7 @@ function WynikZdolnosci({
         <dl className="mvd-zdol-eksp" data-testid="mvd-zdol-eksp">
           <div className="mvd-zdol-eksp-para">
             <dt>{ZDOLNOSC_STRINGS.ekspPrzebieg}</dt>
-            <dd className="mvd-num">{dane.context.trace_id}</dd>
+            <dd className="mvd-num">{dane.context.run_id}</dd>
           </div>
           <div className="mvd-zdol-eksp-para">
             <dt>{ZDOLNOSC_STRINGS.ekspIdentyfikatorSkrot}</dt>

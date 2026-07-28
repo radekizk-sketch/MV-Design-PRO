@@ -45,9 +45,10 @@ export function widokKompensacjiFixture(): WidokDoboruKompensacji {
   return {
     analysis: 'compensation_sizing',
     context: {
-      trace_id: 'run-lf-1',
-      snapshot_id: 'snap-abc',
-      case_name: 'case-1',
+      run_id: 'run-lf-1',
+      snapshot_hash: 'snap-abc',
+      case_name: null,
+      case_id: 'case-1',
     },
     parameters: {
       bus_ref: 'bus-a',

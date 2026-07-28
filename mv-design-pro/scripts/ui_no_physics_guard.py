@@ -77,71 +77,16 @@ SCAN_DIRS = [
 # caught. Every entry carries its classification (b = false positive,
 # c = justified catalog-constant exception) and a one-line reason.
 ALLOWLIST: dict[tuple[str, int], str] = {
-    # protection-catalogs.ts — VT_CATALOG (VT = voltage transformer, IEC 61869-3).
-    # class b: label_pl is a display string for a catalog dropdown, not arithmetic.
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        368,
-    ): "b: label_pl string literal (VT nameplate text 'VT 15 kV/root3 / 100 V/root3 ...'), not arithmetic",
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        380,
-    ): "b: label_pl string literal (VT nameplate text), not arithmetic",
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        392,
-    ): "b: label_pl string literal (VT nameplate text), not arithmetic",
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        404,
-    ): "b: label_pl string literal (VT nameplate text), not arithmetic",
-    # class c: ratio_primary_kv / ratio_secondary_v are fixed VT ratios per
-    # IEC 61869-3 (rated primary/secondary voltage of a VT type is a standard
-    # constant, not derived from live network topology/state) — same class as
-    # the R2-resolved vtMultiWindingContract.ts STANDARD_SECONDARY_VOLTAGE_V
-    # ("100/root3 V = stala katalogowa IEC 61869-3, nie obliczenie fizyki").
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        369,
-    ): "c: VT catalog constant per IEC 61869-3 (ratio_primary_kv), see R2 precedent",
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        370,
-    ): "c: VT catalog constant per IEC 61869-3 (ratio_secondary_v), see R2 precedent",
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        381,
-    ): "c: VT catalog constant per IEC 61869-3 (ratio_primary_kv), see R2 precedent",
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        382,
-    ): "c: VT catalog constant per IEC 61869-3 (ratio_secondary_v), see R2 precedent",
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        393,
-    ): "c: VT catalog constant per IEC 61869-3 (ratio_primary_kv), see R2 precedent",
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        394,
-    ): "c: VT catalog constant per IEC 61869-3 (ratio_secondary_v), see R2 precedent",
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        405,
-    ): "c: VT catalog constant per IEC 61869-3 (ratio_primary_kv), see R2 precedent",
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        406,
-    ): "c: VT catalog constant per IEC 61869-3 (ratio_secondary_v), see R2 precedent",
-    # class c: selectVtForVoltage() converts a nominal system voltage (a
-    # discrete catalog-level input, e.g. 15/20 kV) to a per-phase value with
-    # the fixed IEC 61869-3 factor 1/root3 to filter VT_CATALOG — a catalog
-    # lookup/match, not a computation over network topology/state (no
-    # impedance, current, or power-flow term involved).
-    (
-        "frontend/src/ui/network-build/station-der/protection-catalogs.ts",
-        422,
-    ): "c: catalog-matching helper (selectVtForVoltage), fixed IEC 61869-3 factor, no network-state term",
-    # StationWizardStepContent.tsx — descriptive UI strings, no arithmetic.
+    # PONOWNY POMIAR 2026-07-28 (V12K-267). Bylo 18 wpisow / 22 surowych trafien,
+    # jest 5 wpisow / 5 trafien. Trzynascie wpisow wskazywalo na
+    # station-der/protection-catalogs.ts (katalog przekladnikow napieciowych VT).
+    # Ich przedmiot WYJECHAL Z UI do backendu w dc525539 (V12K-257/258, „koniec
+    # rownoleglych katalogow VT"), wiec wpisy przestaly odpowiadac
+    # czemukolwiek — a wyjatek, ktory nie wskazuje na istniejacy kod, przestaje
+    # byc weryfikowalny i zaczyna byc martwa zgoda na cokolwiek pod ta sciezka.
+    # Test `test_ui_allowlist_entries_are_not_stale` zlapal to poprawnie; nikt
+    # nie zaktualizowal pomiaru po tamtej karcie. Wszystkie 5 pozostalych
+    # trafien to klasa b (napis/komentarz), zero klasy a (realna fizyka).
     (
         "frontend/src/ui/network-build/station-wizard-v2/StationWizardStepContent.tsx",
         374,
