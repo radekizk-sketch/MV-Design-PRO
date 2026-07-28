@@ -98,7 +98,12 @@ const CATALOG_FIXTURES: Record<string, unknown> = {
     { id: 'ap-2', name: 'Rozłącznik LBS', device_kind: 'LOAD_SWITCH', u_n_kv: 17.5, i_n_a: 630, breaking_capacity_ka: 20 },
   ],
   '/api/catalog/switchgear-families': [
-    { switchgear_family_ref: 'zpue_rotoblok', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE' },
+    // DWA REKORDY CELOWO ROZNE (V12K-259). Pierwszy niesie `voltage_levels`, wiec scena
+    // cwiczy REALNY filtr napiec. Drugi go NIE MA — i to jest przypadek GRANICZNY, ktory
+    // wywracal caly kreator bialym ekranem (`voltage_levels.length` na `undefined`).
+    // Gdyby oba rekordy byly kompletne, usuniecie normalizacji w kliencie katalogu
+    // przechodziloby na zielono, a bramka pilnowalaby tylko szczesliwej sciezki.
+    { switchgear_family_ref: 'zpue_rotoblok', family_name: 'Rotoblok SVS', manufacturer_ref: 'ZPUE', voltage_levels: [15, 20] },
     { switchgear_family_ref: 'abb_unigear', family_name: 'UniGear ZS1', manufacturer_ref: 'ABB' },
   ],
   '/api/catalog/lv-apparatus-types': [

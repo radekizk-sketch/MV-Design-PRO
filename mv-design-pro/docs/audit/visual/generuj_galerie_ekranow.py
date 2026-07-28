@@ -13,6 +13,11 @@ z niego strone. Dzieki temu kazdy kadr jest renderem REALNYCH komponentow, a nie
 i kazdy powstal przy zielonych asercjach tresci (bez nich zrzut moglby pokazywac ekran
 w stanie bledu i nikt by tego nie zauwazyl).
 
+WYMAGA SWIEZYCH ZRZUTOW. Zrzuty nie sa trzymane w repozytorium (odtwarza je bramka),
+wiec przed generowaniem uruchom obie:
+  cd mv-design-pro/frontend
+  npx playwright test e2e/creator-screenshot.spec.ts e2e/wszystkie-sceny-screenshot.spec.ts
+
 Uzycie:
   python3 mv-design-pro/docs/audit/visual/generuj_galerie_ekranow.py [wyjscie.html]
 
@@ -37,7 +42,7 @@ SZEROKOSC_MAX = 1280
 JAKOSC = 72
 
 
-def _data_uri(nazwa: str) -> str:
+def _data_uri(nazwa: str, szerokosc: int | None = None, jakosc: int | None = None) -> str:
     """Zrzut jako data URI (JPEG). Brak pliku PRZERYWA generowanie.
 
     Cichy pominiecie brakujacego kadru dawaloby strone, ktora wyglada na kompletna,
@@ -46,13 +51,15 @@ def _data_uri(nazwa: str) -> str:
     png = KATALOG / nazwa
     if not png.exists():
         raise SystemExit(f"brak zrzutu: {png}")
-    jpg = pathlib.Path(tempfile.gettempdir()) / f"galeria_{png.stem}.jpg"
+    w = szerokosc or SZEROKOSC_MAX
+    q = jakosc or JAKOSC
+    jpg = pathlib.Path(tempfile.gettempdir()) / f"galeria_{png.stem}_{w}_{q}.jpg"
     kod = (
         "from PIL import Image;"
         f"i=Image.open(r'{png}').convert('RGB');"
-        f"w={SZEROKOSC_MAX};"
+        f"w={w};"
         "i=i.resize((w,round(i.height*w/i.width)),Image.LANCZOS) if i.width>w else i;"
-        f"i.save(r'{jpg}',quality={JAKOSC},optimize=True)"
+        f"i.save(r'{jpg}',quality={q},optimize=True)"
     )
     subprocess.run([sys.executable, "-c", kod], check=False, capture_output=True)
     plik = jpg if jpg.exists() else png
@@ -63,11 +70,21 @@ def _data_uri(nazwa: str) -> str:
 class Ekran:
     """Jeden kadr do oceny: plik, tytul, czego na nim szukac."""
 
-    def __init__(self, plik: str, tytul: str, szukaj: str, motyw: str | None = None) -> None:
+    def __init__(
+        self,
+        plik: str,
+        tytul: str,
+        szukaj: str,
+        motyw: str | None = None,
+        szerokosc: int | None = None,
+        jakosc: int | None = None,
+    ) -> None:
         self.plik = plik
         self.tytul = tytul
         self.szukaj = szukaj
         self.motyw = motyw
+        self.szerokosc = szerokosc
+        self.jakosc = jakosc
 
 
 class Grupa:
@@ -254,12 +271,118 @@ GRUPY: list[Grupa] = [
     ),
 ]
 
+
+#: Sceny harnessu zrzucane bramka `wszystkie-sceny-screenshot.spec.ts` (V12K-259).
+#: Tytul opisuje, co scena pokazuje; „czego szukac" celuje w to, co na tym ekranie
+#: rozstrzyga sie inzyniersko. Kadry sa mniejsze niz wiodace — to inwentarz, nie sesja.
+SCENY: list[tuple[str, str, str]] = [
+    ("pulpit", "Pulpit projektu",
+     "Lista projektów i wejście do pracy: czy stan projektu (dane / wyniki) jest widoczny "
+     "przed otwarciem."),
+    ("dokumentacja", "Hub dokumentacji",
+     "Dokumenty projektu i skróty do studiów: czy każdy kafel mówi, z czego powstanie "
+     "dokument i czego mu brakuje."),
+    ("zwarcia", "Wyniki zwarciowe",
+     "Ik″, ip, ith per węzeł z normą i przebiegiem, z którego pochodzą."),
+    ("zwarcia-rozplyw", "Rozpływ prądu zwarciowego w gałęziach",
+     "Wkład każdego źródła i kierunek — sedno doboru zabezpieczeń kierunkowych."),
+    ("rozplyw", "Wyniki rozpływu mocy",
+     "Napięcia węzłowe i obciążenia gałęzi; wartości spoza pasma muszą być oznaczone."),
+    ("wyniki-skladowe", "Zwarcie niesymetryczne — składowe symetryczne",
+     "Z₁/Z₂/Z₀ wprost z solvera; brak sieci zerowej ma być nazwany, nie pominięty."),
+    ("wyniki-zbieznosc", "Zbieżność rozpływu",
+     "Historia iteracji i kryterium zatrzymania — dowód, że wynik jest zbieżny, nie ucięty."),
+    ("wyniki-stan-fazowy", "Stan fazowy sieci SN",
+     "Asymetria napięć i prądów fazowych; podstawa oceny warunków pracy odbiorów."),
+    ("wyniki-stabilnosc", "Stabilność RMS",
+     "Przebiegi po zakłóceniu: czy oś czasu i wielkości mają jednostki i punkt odniesienia."),
+    ("przekaznik", "Karta przekaźnika i nastaw",
+     "Funkcje, nastawy i ich uzasadnienie — nastawa bez uzasadnienia nie jest projektem."),
+    ("macierz", "Macierz analiz przypadku",
+     "Które analizy mają komplet danych, a które są zablokowane i przez co."),
+    ("swiezosc", "Świeżość wyników",
+     "Czy wynik odpowiada obecnemu modelowi — status po zmianie musi być uczciwy."),
+    ("walidacja", "Walidacja energetyczna",
+     "Bilans mocy i ślad WHITE BOX per pozycja."),
+    ("uwaga", "Rejestr „co wymaga uwagi”",
+     "Zbiorcza lista braków z miejscem naprawy — wpis bez miejsca naprawy jest ślepy."),
+    ("porownanie", "Porównanie wariantów",
+     "A/B dwóch przypadków: co się zmieniło i jaki to ma skutek."),
+    ("estymacja", "Estymacja stanu (WLS)",
+     "Pomiar vs estymata i residua — podstawa oceny wiarygodności pomiarów."),
+    ("sila-sieci", "Siła sieci w punkcie przyłączenia",
+     "Sk″ i stosunek mocy zwarciowej do mocy źródła — kryterium przyłączeniowe."),
+    ("ssci", "Ryzyko interakcji podsynchronicznych (SSCI)",
+     "Ocena dla przekształtników przy słabej sieci."),
+    ("migotanie", "Migotanie światła (flicker)",
+     "Pst/Plt wobec limitów; wartość bez limitu nic nie mówi."),
+    ("cieplna", "Wytrzymałość cieplna przewodu",
+     "I²t przewodu wobec prądu zwarcia i czasu wyłączenia (IEC 60949)."),
+    ("lom", "Utrata sieci sztywnej (LoM)",
+     "Kryteria anty-wyspowe i ich czasy działania."),
+    ("frt", "Przejście przez zapad napięcia (FRT)",
+     "Obwiednia wymagana przez operatora wobec zdolności urządzenia."),
+    ("kompensacja", "Kompensacja mocy biernej — dobór",
+     "Zapotrzebowanie na Q i dobór stopni."),
+    ("kompensacja-wynik", "Kompensacja — wynik",
+     "Efekt na profilu napięcia i na tgφ w punkcie rozliczeniowym."),
+    ("zksn", "Zwarcie doziemne w sieci SN",
+     "Prąd doziemny wobec sposobu uziemienia punktu neutralnego."),
+    ("odbior-zgodnosc", "Zgodność odbioru",
+     "Warunki przyłączenia odbioru wobec parametrów sieci."),
+    ("pomiar", "Układ pomiarowy pola",
+     "Tor prądowy i napięciowy: co mierzy, czym i dla której funkcji."),
+    ("edycja-parametrow", "Edycja parametrów elementu",
+     "Które pola są danymi, a które pochodnymi — pochodna nie może być edytowalna."),
+    ("przypisanie-katalogu", "Przypisanie typu katalogowego",
+     "Wiązanie elementu z katalogiem i skutki dla analiz."),
+    ("odgalezienie", "Odgałęzienie magistrali",
+     "Punkt odgałęzienia i jego wpływ na topologię."),
+    ("slup-odgalezny", "Słup odgałęźny",
+     "Konstrukcja i osprzęt w punkcie odgałęzienia."),
+    ("pole-nn", "Pole nN stacji",
+     "Odpływy nN i ich zabezpieczenia."),
+    ("zrodlo", "Kreator źródła zasilania (GPZ)",
+     "Transformator, rodzina rozdzielnicy i pole liniowe. TU BYŁ BIAŁY EKRAN: rekord "
+     "katalogu bez listy napięć wywracał cały kreator — naprawione w V12K-259."),
+    ("zrodlo-dyspozycyjne", "Źródło dyspozycyjne",
+     "Agregat / UPS jako źródło: parametry zwarciowe i tryb pracy."),
+    ("oltc", "Badania regulacji OLTC",
+     "Sweep pozycji zaczepów, profil roczny i optymalizacja."),
+]
+
+
+def sceny_grupa() -> Grupa:
+    ekrany: list[Ekran] = []
+    for nazwa, tytul, szukaj in SCENY:
+        for motyw, etykieta in (("light", "motyw jasny"), ("dark", "motyw ciemny")):
+            ekrany.append(
+                Ekran(
+                    f"sceny/scena_{nazwa}_{motyw}.png",
+                    tytul,
+                    szukaj,
+                    etykieta,
+                    szerokosc=760,
+                    jakosc=58,
+                )
+            )
+    return Grupa(
+        "sceny",
+        "Pozostałe powierzchnie — inwentarz pełny",
+        "Trzydziesci piec scen, ktore harness renderowal od dawna, a bramka zrzutow "
+        "kadrowala ZERO z nich. Pierwsze uruchomienie nowej bramki znalazlo tu kreator "
+        "zrodla zasilania w stanie bialego ekranu. Kadry sa mniejsze niz wiodace — to "
+        "inwentarz do przegladu, nie sesja zdjeciowa.",
+        ekrany,
+    )
+
+
 POKRYCIE = [
     ("Konfigurator wytwórcy E-21 (desktop, telefon, tablet, picker)", "4", "tak"),
     ("Kreatory obiektów SN (pole, OZE 1–4, transformator, magistrala, kompensator, odbiór)", "20", "tak"),
     ("Arc Flash z ekranu obiektu", "2", "tak"),
     ("Schemat jednoliniowy L0/L1/L2 + dwa kadry szczegółu", "5", "tak — 8 plików, pary motywów identyczne"),
-    ("Wyniki, Zabezpieczenia, Dokumentacja, pulpit projektu", "0", "nie — patrz nota niżej"),
+    ("Wyniki, Zabezpieczenia, Dokumentacja, pulpit projektu i 31 dalszych scen", "70", "tak — bramka dodana w V12K-259"),
 ]
 
 
@@ -267,7 +390,7 @@ def figura(e: Ekran) -> str:
     motyw = f'<span class="motyw">{e.motyw}</span>' if e.motyw else ""
     return (
         '<figure class="kadr">'
-        f'<img src="{_data_uri(e.plik)}" alt="{e.tytul} — zrzut żywej aplikacji" loading="lazy">'
+        f'<img src="{_data_uri(e.plik, e.szerokosc, e.jakosc)}" alt="{e.tytul} — zrzut żywej aplikacji" loading="lazy">'
         f"<figcaption><strong>{e.tytul}</strong>{motyw}"
         f'<span class="szukaj">{e.szukaj}</span>'
         f'<code class="plik">{e.plik}</code></figcaption></figure>'
@@ -287,13 +410,14 @@ def sekcja(g: Grupa) -> str:
 
 def zbuduj() -> str:
     nawigacja = " ".join(
-        f'<a href="#{g.kotwica}">{g.tytul.split(" — ")[0].split(" · ")[0]}</a>' for g in GRUPY
+        f'<a href="#{g.kotwica}">{g.tytul.split(" — ")[0].split(" · ")[0]}</a>'
+        for g in [*GRUPY, sceny_grupa()]
     )
     wiersze = "\n".join(
         f'<tr><td>{obszar}</td><td class="num">{ile}</td><td>{zywy}</td></tr>'
         for obszar, ile, zywy in POKRYCIE
     )
-    sekcje = "\n".join(sekcja(g) for g in GRUPY)
+    sekcje = "\n".join(sekcja(g) for g in [*GRUPY, sceny_grupa()])
     return f"""<title>MV-DESIGN-PRO · ekrany do oceny</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
@@ -355,9 +479,9 @@ a{{color:var(--akcent)}}
 <div class="owijka">
 <header>
 <div class="nadtytul">Inwentarz ekranów · zrzuty żywej aplikacji · 2026-07-28</div>
-<h1>Wszystkie ekrany, które dziś renderuje żywa aplikacja</h1>
-<p class="cichy">31 kadrów (34 pliki — trzy pary motywów schematu są identyczne) z bramki
-Playwright na harnessie realnych komponentów · oba motywy ·
+<h1>Wszystkie ekrany, które renderuje żywa aplikacja</h1>
+<p class="cichy">101 kadrów ze 104 plików (trzy pary motywów schematu są bajtowo identyczne)
+· dwie bramki Playwright, 89 testów, wszystkie zielone · oba motywy ·
 gałąź <code>claude/power-network-design-ui-ir91mv</code></p>
 </header>
 
@@ -373,16 +497,17 @@ zdanie o tym, <em>czego na nim szukać</em>: to jest miejsce na uwagi z oględzi
 <tbody>{wiersze}</tbody>
 </table></div>
 
-<div class="karta otwarta">
-<p><strong>Czego tu NIE MA i dlaczego to mówię wprost.</strong> Bramka zrzutów obejmuje dziś
-konfigurator wytwórcy, kreatory obiektów, Arc Flash i schemat jednoliniowy. Powierzchnie
-Wyniki, Zabezpieczenia, Dokumentacja i pulpit projektu mają w repozytorium wyłącznie
-<strong>starsze</strong> zrzuty z lipcowych rund — nie są odtwarzane przez tę bramkę, więc
-nie wstawiam ich tutaj jako obrazu stanu na dziś. Pokazanie kadru z 10 lipca jako
-„aktualnego ekranu” byłoby dokładnie tym, czego ta strona ma nie robić.</p>
-<p class="cichy">To jest nazwany brak pokrycia, nie brak ekranów: te powierzchnie istnieją
-i mają testy jednostkowe. Brakuje im scen w harnessie zrzutów — i to jest następna karta
-w tym wątku.</p>
+<div class="karta">
+<p><strong>Poprzednia wersja tej strony miała tu nazwany brak — jest zamknięty.</strong>
+Pisałem, że Wyniki, Zabezpieczenia, Dokumentacja i pulpit projektu nie są odtwarzane przez
+bramkę zrzutów. Pomiar pokazał coś gorszego i lepszego naraz: harness renderował
+<strong>43 sceny</strong> żywych komponentów, a bramka kadrowała <strong>9</strong>.
+Trzydzieści cztery ekrany były utrzymywane i nigdy nieoglądane — zdolność bez konsumenta.</p>
+<p>Druga bramka kadruje teraz każdą scenę w obu motywach i sprawdza trzy rzeczy poza samym
+obrazem: czy scena dochodzi do stanu gotowego, czy render nie rzuca wyjątku i czy treść nie
+jest komunikatem o nieudanym pobraniu. <strong>Pierwsze uruchomienie znalazło biały ekran</strong>
+w kreatorze źródła zasilania (rekord katalogu bez listy napięć wywracał cały komponent) —
+defekt niewidoczny, dopóki tego ekranu nikt nie renderował w CI.</p>
 </div>
 
 {sekcje}
@@ -390,7 +515,10 @@ w tym wątku.</p>
 <section id="stan">
 <h2>Stan techniczny materiału</h2>
 <ul>
-<li>Zrzuty: <code>e2e/creator-screenshot.spec.ts</code>, 19 testów Playwright, wszystkie zielone.</li>
+<li>Zrzuty: <code>e2e/creator-screenshot.spec.ts</code> (19 testów) oraz
+<code>e2e/wszystkie-sceny-screenshot.spec.ts</code> (70 testów) — razem 89, wszystkie zielone.
+Druga bramka powstała w V12K-259 i przy pierwszym uruchomieniu znalazła biały ekran
+w kreatorze źródła zasilania.</li>
 <li>Strona odtwarzalna jedną komendą z repozytorium
 (<code>docs/audit/visual/generuj_galerie_ekranow.py</code>) — po cofnięciu migawki kontenera
 nie przepada.</li>

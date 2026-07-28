@@ -163,7 +163,28 @@ export async function fetchSwitchgearFamilies(
   const query = manufacturerRef
     ? `?manufacturer_ref=${encodeURIComponent(manufacturerRef)}`
     : '';
-  return fetchCatalogJson<SwitchgearFamily[]>(`/api/catalog/switchgear-families${query}`);
+  const rekordy = await fetchCatalogJson<SwitchgearFamily[]>(
+    `/api/catalog/switchgear-families${query}`,
+  );
+  return rekordy.map(znormalizujRodzine);
+}
+
+/**
+ * Domknięcie listy napięć rodziny rozdzielnic na WEJŚCIU danych (V12K-259).
+ *
+ * Kontrakt deklaruje `voltage_levels` jako pole wymagane, ale to deklaracja o TYPIE,
+ * nie gwarancja o ODPOWIEDZI SIECIOWEJ: rekord bez tego pola (starszy wpis, katalog
+ * odpowiadający częściowo, atrapa w scenie) przechodził do komponentu i wywracał CAŁY
+ * kreator źródła zasilania — `r.voltage_levels.length` na `undefined`, biały ekran bez
+ * granicy błędu. Sonda scen zrzutowych zobaczyła to jako jedyną scenę bez roota.
+ *
+ * Brak listy znaczy „nie zadeklarowano napięć", a nie „nie pasuje do żadnego" — dlatego
+ * pusta tablica: filtry traktują pustą listę jako brak przeciwwskazań (rodzina zostaje
+ * widoczna), zamiast po cichu usuwać ją z wyboru.
+ */
+function znormalizujRodzine(rekord: SwitchgearFamily): SwitchgearFamily {
+  if (Array.isArray(rekord?.voltage_levels)) return rekord;
+  return { ...rekord, voltage_levels: [] };
 }
 
 /** Lista kompletnych szablonów pól SN per producent/rodzina/funkcja pola. */

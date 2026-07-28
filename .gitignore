@@ -62,6 +62,11 @@ mv-design-pro/backend/.enm_store/
 mv-design-pro/artifacts/
 
 # Zrzuty ekranów kreatorów (artefakty regenerowalne przez e2e/creator-screenshot.spec)
+# Zrzuty scen (V12K-259): 70 plikow odtwarzanych jedna komenda
+# (`npx playwright test e2e/wszystkie-sceny-screenshot.spec.ts`), wiec nie trzymamy ich
+# w repozytorium — tak samo jak pozostalych kadrow kreatorow. Generator galerii mowi
+# wprost, ktorego pliku brakuje, zamiast po cichu wypuscic niepelna strone.
+mv-design-pro/docs/audit/visual/sceny/*.png
 mv-design-pro/docs/audit/visual/kreatory/*.png
 mv-design-pro/docs/audit/visual/dokumentacja/*.png
 # WYJĄTEK: zrzuty OSADZANE w stronie oceny (`generuj_strone_oceny.py` czyta je z dysku
