@@ -120,3 +120,78 @@ class TestKontraktTypu:
         assert d["accuracy_class"] is None
         assert d["application"] is None
         assert d["accuracy_limit_factor"] is None
+
+
+class TestDoborCieplnyIDynamiczny:
+    """V12K-254: katalog niesie dane do doboru cieplnego i dynamicznego CT.
+
+    Wlasciciel odrzucil rozwiazanie „czesc sprawdzen nazwiemy niewykonalnymi":
+    katalog nalezalo ROZBUDOWAC. Granica miedzy wyprowadzeniem a fabrykacja zostaje
+    jednak nietknieta — Idyn wynika z Ith norma, Fs dotyczy tylko rdzeni pomiarowych,
+    a rezystancja uzwojenia (dana czysto producencka) pozostaje `None`.
+    """
+
+    def test_wszystkie_typy_katalogowe_maja_prad_cieplny_i_dynamiczny(self) -> None:
+        from network_model.catalog.repository import get_default_mv_catalog
+
+        typy = [t.to_dict() for t in get_default_mv_catalog().list_ct_types()]
+        assert len(typy) == 12
+        bez_ith = [t["id"] for t in typy if t["ith_ka_1s"] is None]
+        bez_idyn = [t["id"] for t in typy if t["idyn_ka_peak"] is None]
+        assert bez_ith == [], f"typy bez pradu cieplnego: {bez_ith}"
+        assert bez_idyn == [], f"typy bez pradu dynamicznego: {bez_idyn}"
+
+    def test_idyn_jest_WYPROWADZONY_z_ith_wspolczynnikiem_normowym(self) -> None:
+        from network_model.catalog.types import WSPOLCZYNNIK_IDYN_DO_ITH, idyn_ct_z_ith
+
+        assert WSPOLCZYNNIK_IDYN_DO_ITH == 2.5
+        assert idyn_ct_z_ith(20.0) == 50.0
+        assert idyn_ct_z_ith(16.0) == 40.0
+        # Brak danej NIE zamienia sie w wartosc.
+        assert idyn_ct_z_ith(None) is None
+        assert idyn_ct_z_ith(0.0) is None
+
+    def test_wartosc_producenta_ma_PIERWSZENSTWO_nad_wyprowadzeniem(self) -> None:
+        from network_model.catalog.types import CTType
+
+        typ = CTType(
+            id="x",
+            name="x",
+            ratio_primary_a=200.0,
+            accuracy_class="5P10",
+            ith_ka_1s=20.0,
+            idyn_ka_peak=45.0,  # karta producenta odbiega od 2,5·Ith
+        )
+        assert typ.to_dict()["idyn_ka_peak"] == 45.0
+
+    def test_Fs_dotyczy_WYLACZNIE_rdzeni_pomiarowych(self) -> None:
+        # Rdzen zabezpieczeniowy ma zachowywac dokladnosc DO ALF, wiec Fs go nie dotyczy;
+        # podstawienie liczby mieszaloby dwa rozne pojecia normowe (IEC 61869-2).
+        from network_model.catalog.repository import get_default_mv_catalog
+
+        typy = [t.to_dict() for t in get_default_mv_catalog().list_ct_types()]
+        pomiarowe = [t for t in typy if t["application"] == "metering"]
+        zabezpieczeniowe = [t for t in typy if t["application"] == "protection"]
+        assert pomiarowe and zabezpieczeniowe
+        assert all(t["fs_safety_factor"] is not None for t in pomiarowe)
+        assert all(t["fs_safety_factor"] is None for t in zabezpieczeniowe)
+
+    def test_rezystancja_uzwojenia_zostaje_BRAKIEM_bez_karty_producenta(self) -> None:
+        # Rct nie ma wyprowadzenia normowego. Wpisanie liczby byloby fabrykacja —
+        # kryterium nasycenia liczy sie z obciazalnosci znamionowej (VA).
+        from network_model.catalog.repository import get_default_mv_catalog
+
+        typy = [t.to_dict() for t in get_default_mv_catalog().list_ct_types()]
+        assert all(t["rct_ohm"] is None for t in typy)
+        assert all(t["burden_va"] is not None for t in typy)
+
+    def test_prowieniencja_danych_jest_JAWNA_w_rekordzie(self) -> None:
+        # Wartosci odniesienia MUSZA byc rozpoznawalne jako odniesienia — inaczej
+        # projektant wzialby je za liczby z karty katalogowej wyrobu.
+        from network_model.catalog.repository import get_default_mv_catalog
+
+        for typ in get_default_mv_catalog().list_ct_types():
+            assert typ.verification_status == "REFERENCYJNY"
+            assert "IEC 61869-2" in (typ.source_reference or "")
+            assert "IEC 62271-200" in (typ.source_reference or "")
+            assert "karta producenta" in (typ.verification_note or "")

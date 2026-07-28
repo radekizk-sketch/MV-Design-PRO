@@ -577,8 +577,18 @@ def get_all_ct_types() -> list[dict]:
             "verification_note": verification_note,
         }
 
-    source_reference = "Katalog CT MV-DESIGN-PRO / IEC 61869 / dane referencyjne"
-    verification_note = "Rekord referencyjny do doboru CT; zakresy nalezy potwierdzic z karta producenta przed uzyciem produkcyjnym."
+    source_reference = (
+        "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzen, ALF, Idyn=2,5·Ith, Fs) "
+        "/ IEC 62271-200 (szereg wytrzymalosci rozdzielnicy SN)"
+    )
+    verification_note = (
+        "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANA wytrzymalosc "
+        "cieplna przekladnika w rozdzielnicy SN wg znormalizowanego szeregu "
+        "IEC 62271-200 (16 kA/1 s dla torow <= 150 A, 20 kA/1 s dla 200-1000 A, "
+        "25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg "
+        "znormalizowanej wartosci 10 dla rdzeni pomiarowych. Wartosci wlasciwe dla "
+        "konkretnego wyrobu potwierdza karta producenta."
+    )
     return [
         {
             "id": "ct_50_1_0_5_5va_arteche",
@@ -588,6 +598,8 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 1.0,
                 "accuracy_class": "0.5",
                 "burden_va": 5.0,
+                "ith_ka_1s": 16.0,
+                "fs_safety_factor": 10.0,
                 "manufacturer": "Arteche",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -605,6 +617,8 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 1.0,
                 "accuracy_class": "0.5",
                 "burden_va": 5.0,
+                "ith_ka_1s": 16.0,
+                "fs_safety_factor": 10.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -622,6 +636,8 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 1.0,
                 "accuracy_class": "0.5",
                 "burden_va": 10.0,
+                "ith_ka_1s": 16.0,
+                "fs_safety_factor": 10.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -639,6 +655,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P10",
                 "burden_va": 10.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -656,6 +673,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P10",
                 "burden_va": 10.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "Siemens",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -673,6 +691,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 15.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -690,6 +709,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 15.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "Schneider Electric",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -707,6 +727,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 20.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "Arteche",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -724,6 +745,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 20.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -741,6 +763,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 20.0,
+                "ith_ka_1s": 25.0,
                 "manufacturer": "Siemens",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -758,6 +781,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 30.0,
+                "ith_ka_1s": 25.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -775,6 +799,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "10P10",
                 "burden_va": 30.0,
+                "ith_ka_1s": 25.0,
                 "manufacturer": "Arteche",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",

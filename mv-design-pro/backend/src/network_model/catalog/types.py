@@ -2319,6 +2319,32 @@ def rdzen_ct_z_klasy(accuracy_class: str | None) -> str | None:
     return "metering"
 
 
+#: Znormalizowany stosunek pradu dynamicznego do cieplnego (IEC 61869-2).
+#:
+#: Norma ustala, ze prad dynamiczny (szczytowy, wytrzymywany elektrodynamicznie) rowna
+#: sie 2,5-krotnosci pradu cieplnego krotkotrwalego, o ile producent nie zadeklaruje
+#: inaczej. Dzieki temu Idyn NIE JEST osobna dana do zgadywania — wyprowadza sie go
+#: z Ith tak samo, jak rodzaj rdzenia i ALF wyprowadza sie z klasy (V12K-239).
+WSPOLCZYNNIK_IDYN_DO_ITH: float = 2.5
+
+#: Znormalizowane wartosci wspolczynnika bezpieczenstwa przyrzadowego Fs (IEC 61869-2).
+#: Dotyczy WYLACZNIE rdzeni pomiarowych: ogranicza prad wtorny przy zwarciu, chroniac
+#: przyrzady. Rdzen zabezpieczeniowy ma z definicji zachowywac dokladnosc DO ALF, wiec
+#: Fs go nie dotyczy i musi zostac `None` — podstawienie liczby mieszaloby dwa rozne
+#: pojecia normowe.
+WARTOSCI_FS: tuple[float, ...] = (5.0, 10.0)
+
+
+def idyn_ct_z_ith(ith_ka_1s: float | None) -> float | None:
+    """Prad dynamiczny wyprowadzony z pradu cieplnego (IEC 61869-2).
+
+    `None` na wejsciu daje `None` na wyjsciu: brak danej nie zamienia sie w wartosc.
+    """
+    if ith_ka_1s is None or ith_ka_1s <= 0:
+        return None
+    return round(ith_ka_1s * WSPOLCZYNNIK_IDYN_DO_ITH, 3)
+
+
 def alf_ct_z_klasy(accuracy_class: str | None) -> float | None:
     """Znamionowa graniczna liczba dokładności (ALF) rdzenia ZABEZPIECZENIOWEGO.
 
@@ -2361,6 +2387,20 @@ class CTType:
     accuracy_class: str | None = None
     burden_va: float | None = None
     manufacturer: str | None = None
+    #: Prad cieplny krotkotrwaly 1 s [kA] — wytrzymalosc CIEPLNA uzwojenia pierwotnego.
+    #: Dla rekordow referencyjnych rowny wymaganej wytrzymalosci rozdzielnicy, w ktorej
+    #: przekladnik ma pracowac (szereg znormalizowany IEC 62271-200); przed uzyciem
+    #: produkcyjnym potwierdzany karta producenta (`verification_status`).
+    ith_ka_1s: float | None = None
+    #: Prad dynamiczny (szczytowy) [kA]. `None` => wyprowadzany z `ith_ka_1s`
+    #: wspolczynnikiem 2,5 (IEC 61869-2); jawna wartosc producenta ma pierwszenstwo.
+    idyn_ka_peak: float | None = None
+    #: Wspolczynnik bezpieczenstwa przyrzadowego Fs — TYLKO rdzenie pomiarowe.
+    fs_safety_factor: float | None = None
+    #: Rezystancja uzwojenia wtornego [Ω] — dana WYLACZNIE producencka, bez wyprowadzenia
+    #: normowego. `None` znaczy „karta producenta jeszcze nie wczytana"; kryterium
+    #: nasycenia liczy sie wtedy z obciazalnosci znamionowej (VA), nie z rezystancji.
+    rct_ohm: float | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog CT MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -2381,6 +2421,12 @@ class CTType:
             # front (`ctZKatalogu.ts`), czyli norma żyła w warstwie prezentacji, a katalog
             # tej danej nie wystawiał. `None` znaczy „nie da się ustalić" (klasa nieznana
             # albo zapis złożony) i musi zostać `None` — brak wiedzy nie jest werdyktem.
+            "ith_ka_1s": self.ith_ka_1s,
+            # Idyn: wartosc producenta ma pierwszenstwo, w jej braku wyprowadzenie normowe
+            # 2,5 × Ith (IEC 61869-2) — ta sama zasada, co rodzaj rdzenia z klasy.
+            "idyn_ka_peak": self.idyn_ka_peak or idyn_ct_z_ith(self.ith_ka_1s),
+            "fs_safety_factor": self.fs_safety_factor,
+            "rct_ohm": self.rct_ohm,
             "application": rdzen_ct_z_klasy(self.accuracy_class),
             "accuracy_limit_factor": alf_ct_z_klasy(self.accuracy_class),
             **_catalog_metadata_to_dict(
@@ -2402,6 +2448,20 @@ class CTType:
             accuracy_class=data.get("accuracy_class"),
             burden_va=(float(data["burden_va"]) if data.get("burden_va") is not None else None),
             manufacturer=data.get("manufacturer"),
+            # V12K-254: dane doboru CIEPLNEGO i DYNAMICZNEGO. Bez tego mapowania pola
+            # istnialy w kontrakcie i w danych katalogu, a NIE DOCHODZILY do typu —
+            # zdolnosc bez wywolania w samym mapperze (POMIAR: `to_dict` zwracalo None
+            # dla wszystkich 12 wpisow, mimo ze plik katalogu mial wartosci).
+            ith_ka_1s=(float(data["ith_ka_1s"]) if data.get("ith_ka_1s") is not None else None),
+            idyn_ka_peak=(
+                float(data["idyn_ka_peak"]) if data.get("idyn_ka_peak") is not None else None
+            ),
+            fs_safety_factor=(
+                float(data["fs_safety_factor"])
+                if data.get("fs_safety_factor") is not None
+                else None
+            ),
+            rct_ohm=(float(data["rct_ohm"]) if data.get("rct_ohm") is not None else None),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog CT MV-DESIGN-PRO / dane referencyjne",
