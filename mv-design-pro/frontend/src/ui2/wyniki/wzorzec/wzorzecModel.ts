@@ -23,6 +23,12 @@ export interface NaglowekAnalizy {
   rewizjaModelu?: number;
   /** Rewizja modelu, przy której policzono wyniki (świeżość — FreshnessBadge). */
   rewizjaDanych?: number;
+  /**
+   * Wariant pracy, do którego należy wynik (V12K-264). Z nim ekran potrafi
+   * odpowiedzieć NA CO wynik jest nieaktualny — pobiera dziennik zmian modelu
+   * i pokazuje listę przyczyn zamiast samej pary rewizji.
+   */
+  caseId?: string;
 }
 
 /**
@@ -99,6 +105,12 @@ export interface EkranAnalizyProps {
   onEksport?: () => void;
   /** Akcja przeliczenia (pokazywana przy nieaktualnych wynikach). */
   onPrzelicz?: () => void;
+  /**
+   * Klik w element dotknięty zmianą, która unieważniła wynik (V12K-264) —
+   * ostatnie ogniwo drogi „werdykt → przyczyna → element modelu". Bez tej
+   * funkcji lista przyczyn pozostaje czytelna, ale nieklikalna.
+   */
+  onPokazElement?: (elementRef: string) => void;
   trybZaawansowania: import('../../shell/modeModel').AdvancementMode;
   /**
    * Który klucz kolumny identyfikuje wiersz (klucz React, stabilny przy sortowaniu).

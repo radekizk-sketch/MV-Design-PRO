@@ -100,6 +100,16 @@ def _build_assumptions(run: CanonicalRun) -> dict[str, Any]:
     }
 
 
+def _rewizja_modelu(run: CanonicalRun) -> int | None:
+    """Rewizja modelu z naglowka snapshotu biegu — bez zgadywania (V12K-264)."""
+    snapshot = run.snapshot or {}
+    header = snapshot.get("header") if isinstance(snapshot, dict) else None
+    if not isinstance(header, dict):
+        return None
+    rewizja = header.get("revision")
+    return rewizja if isinstance(rewizja, int) else None
+
+
 def build_analysis_case_context(run: CanonicalRun) -> dict[str, Any]:
     case_kind = _infer_case_kind(run)
     completeness_status = infer_completeness_status(run)
@@ -114,6 +124,19 @@ def build_analysis_case_context(run: CanonicalRun) -> dict[str, Any]:
         "case_kind": case_kind,
         "rodzaj_przypadku": case_kind,
         "snapshot_ref": run.snapshot_hash,
+        # V12K-264: LICZBOWA rewizja modelu, na ktorej policzono bieg — pole
+        # ADDYTYWNE, brane WPROST z naglowka snapshotu biegu (zero wyliczen).
+        #
+        # DLACZEGO TO BLOKOWALO CALY LANCUCH SWIEZOSCI. Kontrakt wynikow niosl
+        # tylko `snapshot_ref` (hash) i `result_status` (enum), wiec zaden ekran
+        # analizy nie mial LICZBY do porownania z `header.revision` modelu.
+        # `zwarciaModel.ts` i `rozplywAdapter.ts` opisuja to wprost i POMIJAJA
+        # znacznik swiezosci — a mapowanie enum→liczba byloby zgadywaniem. Bez tego
+        # pola `FreshnessBadge` nie pokazywal sie NIGDY, mimo ze istnial.
+        #
+        # Starszy bieg bez rewizji w snapshotcie → `None` (uczciwy brak; konsument
+        # pomija znacznik, tak jak dotad, zamiast dostac zmyslona liczbe).
+        "rewizja_modelu": _rewizja_modelu(run),
         "variant_ref": run.options.get("variant_ref"),
         "run_ref": str(run.id),
         "proof_pack_ref": resolve_proof_pack_ref(run),

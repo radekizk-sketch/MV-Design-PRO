@@ -2,13 +2,32 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 
 from enm.catalog_completion import complete_catalog_defaults
+from enm.dziennik_zmian import dopisz as dopisz_do_dziennika
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
+
+
+@dataclass(frozen=True)
+class ZrodloZmiany:
+    """Przyczyna nowej rewizji modelu — kanoniczna nazwa operacji + dotkniete elementy.
+
+    Wypelnia ja warstwa, ktora ZNA operacje (koncowka operacji domenowych), bo
+    `set_enm` widzi tylko rezultat. Pola listowe pochodza WPROST z
+    `changes.{created,updated,deleted}_element_ids` odpowiedzi operacji — zadna
+    z nich nie jest tu wyliczana ani zgadywana.
+    """
+
+    operacja: str | None
+    utworzone: tuple[str, ...] = ()
+    zmienione: tuple[str, ...] = ()
+    usuniete: tuple[str, ...] = ()
+
 
 _enm_store: dict[str, EnergyNetworkModel] = {}
 _DEFAULT_STORE_DIR = Path(__file__).resolve().parents[2] / ".enm_store"
@@ -88,8 +107,22 @@ def get_enm(case_id: str) -> EnergyNetworkModel:
     return _enm_store[case_id]
 
 
-def set_enm(case_id: str, enm: EnergyNetworkModel) -> EnergyNetworkModel:
-    """Persist an ENM snapshot with deterministic hash and revision management."""
+def set_enm(
+    case_id: str,
+    enm: EnergyNetworkModel,
+    *,
+    zrodlo_zmiany: ZrodloZmiany | None = None,
+) -> EnergyNetworkModel:
+    """Persist an ENM snapshot with deterministic hash and revision management.
+
+    `zrodlo_zmiany` (V12K-264) niesie PRZYCZYNE nowej rewizji do dziennika zmian —
+    to jedyne miejsce w systemie, w ktorym rewizja rosnie, wiec tylko tutaj wpis
+    moze powstac dokladnie raz na rewizje. Parametr jest OPCJONALNY i nie zmienia
+    zadnego hasha: dziennik jest zapisem rownoleglym (patrz `enm/dziennik_zmian.py`),
+    a nie polem modelu. Zapis bez zrodla trafia do dziennika z `operacja = None` —
+    projektant ma wiedziec, ze rewizja powstala, nawet gdy przyczyna nie zostala
+    zarejestrowana; cisza w tym miejscu bylaby luka w historii.
+    """
     enm, _ = complete_catalog_defaults(enm)
     existing = _enm_store.get(case_id)
     if existing is not None:
@@ -105,6 +138,15 @@ def set_enm(case_id: str, enm: EnergyNetworkModel) -> EnergyNetworkModel:
     enm.header.hash_sha256 = compute_enm_hash(enm)
     _enm_store[case_id] = enm
     _persist_enm(case_id, enm)
+    dopisz_do_dziennika(
+        case_id,
+        rewizja=enm.header.revision,
+        operacja=zrodlo_zmiany.operacja if zrodlo_zmiany else None,
+        utworzone=zrodlo_zmiany.utworzone if zrodlo_zmiany else (),
+        zmienione=zrodlo_zmiany.zmienione if zrodlo_zmiany else (),
+        usuniete=zrodlo_zmiany.usuniete if zrodlo_zmiany else (),
+        znacznik_czasu=enm.header.updated_at,
+    )
     return enm
 
 

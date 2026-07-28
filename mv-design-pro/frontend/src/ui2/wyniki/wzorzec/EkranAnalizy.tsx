@@ -14,6 +14,7 @@
 import './wzorzec.css';
 import '../../inspector/inspector.css';
 import { FreshnessBadge } from '../../inspector';
+import { PanelCoSieZmienilo } from '../../freshness';
 import { SekcjaZalozen } from './SekcjaZalozen';
 import { TabelaWynikow } from './TabelaWynikow';
 import { WZORZEC_STRINGS } from './strings';
@@ -28,6 +29,7 @@ export function EkranAnalizy({
   onOtworzDowod,
   onEksport,
   onPrzelicz,
+  onPokazElement,
   trybZaawansowania,
   kluczWiersza,
   onWybierzWiersz,
@@ -36,8 +38,14 @@ export function EkranAnalizy({
   wierszDecyzyjny,
   rodzajWiersza,
 }: EkranAnalizyProps) {
-  const { analizaPL, runId, rewizjaModelu, rewizjaDanych } = naglowek;
+  const { analizaPL, runId, rewizjaModelu, rewizjaDanych, caseId } = naglowek;
   const maSwiezosc = rewizjaModelu !== undefined && rewizjaDanych !== undefined;
+  // V12K-264: przyczyny unieważnienia pokazujemy TYLKO wtedy, gdy wynik faktycznie
+  // jest nieaktualny i wiadomo, o który wariant pracy zapytać. Panel przy aktualnym
+  // wyniku byłby szumem, a bez `caseId` nie ma czego pytać — i to jest brak danej,
+  // nie powód do zgadywania.
+  const pokazPrzyczyny =
+    maSwiezosc && caseId !== undefined && rewizjaDanych! < rewizjaModelu!;
   const trybEkspercki = trybZaawansowania === 'expert';
 
   return (
@@ -73,6 +81,14 @@ export function EkranAnalizy({
           </div>
         )}
       </header>
+
+      {pokazPrzyczyny && (
+        <PanelCoSieZmienilo
+          caseId={caseId!}
+          rewizjaDanych={rewizjaDanych!}
+          onPokazElement={onPokazElement}
+        />
+      )}
 
       <SekcjaZalozen zalozenia={zalozenia} />
 

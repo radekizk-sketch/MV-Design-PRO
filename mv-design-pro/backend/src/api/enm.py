@@ -26,9 +26,11 @@ from application.protection_read_model import build_protection_read_model
 from domain.canonical_operations import resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
 from enm.canonical_analysis import run_power_flow_now, run_short_circuit_now
+from enm.dziennik_zmian import wpisy_od as wpisy_dziennika_od
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
 from enm.severity import empty_severity_counts, is_failed_status
+from enm.store import ZrodloZmiany
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from enm.topology_ops import (
@@ -94,6 +96,34 @@ async def get_enm_v2_projection(case_id: str) -> dict[str, Any]:
     enm = _get_enm(case_id)
     projection = project_enm_v1_to_v2(enm)
     return projection.model_dump(mode="json")
+
+
+@router.get("/{case_id}/enm/dziennik-zmian")
+async def get_dziennik_zmian(case_id: str, od_rewizji: int = 0) -> dict[str, Any]:
+    """Zmiany modelu PO wskazanej rewizji — odpowiedz na „co uniewaznilo moj wynik".
+
+    V12K-264. Model niosl dotad wylacznie FAKT zmiany (`header.revision` rosnie,
+    przypadek dostaje `OUTDATED`), nigdy PRZYCZYNY. Projektant widzial „wyniki
+    nieaktualne" i musial sam odtworzyc, co zrobil miedzy biegiem a chwila obecna.
+
+    `od_rewizji` to rewizja modelu, NA KTOREJ policzono wynik — zwracamy wpisy o
+    rewizji wyzszej. `rewizja_biezaca` pozwala odbiorcy sprawdzic, czy wynik jest
+    aktualny, bez drugiego zapytania.
+
+    ZERO INTERPRETACJI: opisy pochodza z kanonu operacji, listy elementow wprost
+    z odpowiedzi operacji domenowej. Rewizja zapisana bez zarejestrowanej operacji
+    ma `operacja: null` i opis nazywajacy ten stan — nie jest ukrywana ani
+    uzupelniana zgadnieta nazwa.
+    """
+    enm = _get_enm(case_id)
+    wpisy = wpisy_dziennika_od(case_id, od_rewizji)
+    return {
+        "case_id": case_id,
+        "rewizja_biezaca": enm.header.revision,
+        "od_rewizji": od_rewizji,
+        "aktualny": enm.header.revision <= od_rewizji,
+        "wpisy": [w.to_dict() for w in wpisy],
+    }
 
 
 @router.put("/{case_id}/enm")
@@ -781,7 +811,18 @@ async def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]
     if result.get("snapshot") and not result.get("error"):
         try:
             new_enm = EnergyNetworkModel.model_validate(result["snapshot"])
-            saved = _set_enm(case_id, new_enm)
+            # V12K-264: PRZYCZYNA nowej rewizji idzie do dziennika zmian razem ze
+            # snapshotem. Nazwa operacji jest KANONICZNA (`resolve_operation_name`
+            # rozwiazuje aliasy), a listy elementow pochodza wprost z `changes`
+            # zwroconych przez operacje — nic tu nie jest wyliczane ani zgadywane.
+            zmiany = result.get("changes") or {}
+            zrodlo = ZrodloZmiany(
+                operacja=resolved_name,
+                utworzone=tuple(zmiany.get("created_element_ids") or ()),
+                zmienione=tuple(zmiany.get("updated_element_ids") or ()),
+                usuniete=tuple(zmiany.get("deleted_element_ids") or ()),
+            )
+            saved = _set_enm(case_id, new_enm, zrodlo_zmiany=zrodlo)
             result["snapshot"] = saved.model_dump(mode="json")
         except Exception as e:
             result["error"] = f"Błąd zapisu snapshot: {e}"

@@ -11,7 +11,6 @@ sprawdzalny, bo katalog ma rodzine faza-ziemia z uzwojeniem resztkowym.
 from __future__ import annotations
 
 import pytest
-
 from domain.dobor_przekladnika import (
     WymaganiaToruNapieciowego,
     sprawdz_dobor_vt,

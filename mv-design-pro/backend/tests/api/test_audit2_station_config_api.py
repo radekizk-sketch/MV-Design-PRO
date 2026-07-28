@@ -423,9 +423,7 @@ def test_dowod_VT_nie_udaje_zgodnosci_dla_typu_spoza_katalogu(app_client):
 
     res = app_client.post(f"/api/v1/projects/{pid}/audit2-station-config/_validate-all")
     assert res.status_code == 200
-    stacja = next(
-        s for s in res.json()["per_station"] if s["station_id"] == "station-vt"
-    )
+    stacja = next(s for s in res.json()["per_station"] if s["station_id"] == "station-vt")
     dowody = {
         d["details"]["bay_designation"]: d
         for d in stacja["proofs"]

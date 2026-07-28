@@ -502,9 +502,9 @@ def test_readiness_endpoint_wola_KANONICZNA_regule_domenowa(app_client) -> None:
     # ktory ta seria zamyka (V12K-243). Pierwsza wersja tego testu tego NIE lapala:
     # splaszczenie macierzy do samych „ready" przechodzilo na zielono.
     for os in dane["osie"]:
-        assert dane["macierz"][os["axis"]] == os["status"], (
-            f"macierz i lista osi rozjezdzaja sie na osi {os['axis']}"
-        )
+        assert (
+            dane["macierz"][os["axis"]] == os["status"]
+        ), f"macierz i lista osi rozjezdzaja sie na osi {os['axis']}"
 
     # Kazda os niegotowa niesie NAZWANY powod — status bez powodu jest slepym zaulkiem.
     for os in dane["osie"]:
