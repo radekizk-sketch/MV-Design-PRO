@@ -279,12 +279,73 @@ które są **puste dla wszystkich pozycji**. Szablon eksportu ma więc gotowe mi
 z bazy — po prostu nie podpięto do niego ani jednego. To zmienia charakter prośby do operatora
 z „przygotujcie nam dane" na „uruchomcie ten sam eksport z podpiętymi kolumnami".
 
-### 4A.3 Trzy ustalenia, które zmieniają projekt
+### 4A.3 Dane odzyskane z pól symbolicznych — sprostowanie do §4A.2
+
+Weryfikacja „czy przekroje nie są gdzieś zaszyte" dała odpowiedź jednoznacznie negatywną
+co do przekrojów, ale ujawniła dane merytoryczne w polach, które w pierwszym podejściu odpisałem
+jako czysto graficzne. **§4A.2 pozostaje w mocy co do parametrów elektrycznych; poniższe je uzupełnia.**
+
+**Dowód wyczerpania poszukiwań przekroju:**
+
+1. Archiwum: 120 plików, wyłącznie 6 rozszerzeń (`.shp`, `.shx`, `.dbf`, `.prj`, `.cpg`,
+   `_info.csv`). Brak metadanych (`.xml`, `.qmd`, `.lyr`, `.sld`) i brak plików memo
+   (`.dbt`, `.fpt`), w których DBF mógłby trzymać treść poza rekordem.
+2. Nagłówki DBF: `reclen == suma szerokości pól + 1` we **wszystkich 20 warstwach**,
+   ogon pliku = 1 bajt (znacznik `0x1A`). **Zero nieodczytanych bajtów, zero ukrytych pól.**
+3. Warstwy przewodowe mają dokładnie 11 pól. Wyliczyłem **pełny zbiór wartości każdego pola
+   we wszystkich 1432 rekordach** — żadne nie jest przekrojem ani oznaczeniem katalogowym.
+4. Wszystkie 20 plików `_info.csv`: tylko dwa zestawy pól (11 i 16), kolumny `Tabela` i `Pole`
+   **puste w 20 z 20**.
+
+**Znalezisko 1 — punkty normalnie otwarte SĄ w danych.** Osiem aparatów (5 odłączników,
+3 rozłączniki) niesie drugi komponent mapowy: `dp_ctype=4041`, `sub_c_type="Symbol rozłączenia"`,
+`font_id=DEC79PP`, współdzielący `dp_oid` z komponentem podstawowym. Potwierdzenie krzyżowe:
+niezależne pole `dp_dsp_flg=3` wskazuje 7 z tych samych 8 aparatów. Wszystkie są w stanie
+„Funkcjonujący", wszystkie leżą na przewodzie (0,38–2,84 m od końca przęsła) i są rozproszone
+po obszarze (mediana wzajemnej odległości 1,32 km) — rozkład spójny z punktami podziału ciągów,
+a nie z artefaktem rysunkowym.
+
+To odwzorowuje się wprost na `LineRun.nop_station_ref` i operację `set_normal_open_point`.
+
+**Znalezisko 2 — `font_id` koduje typ konstrukcyjny stacji i podtyp aparatu.** Odczyt
+potwierdzony niezależnie: dla stacji odwzorowanie `font_id` ↔ `dp_dsp_flg` jest **1:1 we
+wszystkich warstwach stacyjnych**, więc nie jest to interpretacja, tylko dwa kodowania tej samej
+cechy.
+
+| `font_id` | `dp_dsp_flg` | Liczba | Odpowiednik w `Substation.construction_type` |
+|---|---|---|---|
+| `M_SLUP` | 1005 | 49 | `slupowa` |
+| `M_KONT` | 1007 | 42 | `kontenerowa` |
+| `M_MIEJ` | 1001 | 41 | `wnetrzowa` (miejska) |
+| `M_WNETRZ` | 0 | 10 | `wnetrzowa` |
+| `M_WBUD` | 1015 | 7 | `wnetrzowa` (wbudowana) |
+| `M_WIEZ` | 1002 | 2 | `wnetrzowa` (wieżowa) |
+| `M_GPZ`, `M_GPZ1156` | 1041, 1042 | 2 | GPZ |
+
+Dla aparatów `font_id` niesie podtyp, a `dp_dsp_flg` stan — stąd brak zgodności 1:1:
+`ODL` 102, `ROZL` 43, **`ROZL_RADIO` 6 (rozłączniki sterowane radiowo)**, `INNE` 10.
+
+**Znalezisko 3 — sześć „generatorów" to mikroinstalacje fotowoltaiczne** (`font_id=MIKRO_SOL`,
+`font=FPPSYM`). Istotne dla oceny przyłączenia: w obszarze jest już czynne wytwarzanie rozproszone.
+
+**Ograniczenie `dp_dsp_flg` dla przewodów.** Wartości 111 (kabel) i 113 (kabel wlz) korelują
+ze stanem planowanym, ale **nie pokrywają się z nim dokładnie** (10 kabli „Projektowany" ma
+flagę 0). To flaga stylu rysunkowego, nie niezależne źródło informacji — a rozbieżność sama
+w sobie jest obserwacją o jakości danych. Jedynym wiarygodnym kryterium istnienia pozostaje
+`state_name`.
+
+### 4A.4 Trzy ustalenia, które zmieniają projekt
 
 **(1) `dp_oid` jest stabilnym kluczem złączenia.** 1369 unikalnych identyfikatorów na 1377
-rekordów elektrycznych; 8 duplikatów występuje wyłącznie w obiektach informacyjnych (jeden
-obiekt w reprezentacji punktowej, liniowej i poligonowej). Drugi eksport, ten z atrybutami,
-da się zestawić z geometrią jeden do jednego. **Nie trzeba prosić o wszystko od nowa.**
+rekordów elektrycznych. Drugi eksport, ten z atrybutami, da się zestawić z geometrią jeden
+do jednego. **Nie trzeba prosić o wszystko od nowa.**
+
+> **Sprostowanie (2026-07-27).** Wcześniejsza wersja tego akapitu przypisywała 8 duplikatów
+> `dp_oid` obiektom informacyjnym. To było błędne: w warstwach elektrycznych duplikaty to
+> dokładnie te aparaty, które mają drugi komponent „Symbol rozłączenia" (§4A.3, znalezisko 1).
+> Duplikaty w obiektach informacyjnych (24 sztuki) to osobne zjawisko i dotyczą warstw
+> nieelektrycznych. Klucz pozostaje użyteczny — złączenie należy wykonywać po parze
+> (`dp_oid`, `dp_ctype`), a nie po samym `dp_oid`.
 
 **(2) Topologii nie da się odtworzyć bezpiecznie.** Eksport nie zawiera relacji „od węzła —
 do węzła". Jedyną drogą jest sklejanie końców odcinków po współrzędnych; wynik przemiatania
@@ -312,7 +373,7 @@ docelową zamiast istniejącej. Szczególnie jaskrawe jest to dla kabla wlz: z 1
 Naturalne odwzorowanie: sieć istniejąca jako model bazowy, warianty rozwojowe jako osobne
 przypadki obliczeniowe — czyli dokładnie to, co architektura już wymusza (§7 pkt 6).
 
-### 4A.4 Uwaga o układzie współrzędnych
+### 4A.5 Uwaga o układzie współrzędnych
 
 Plik `.prj` deklaruje strefę 7 PL-2000, podczas gdy obszar (16,6° E) leży w nominalnym zakresie
 strefy 6. Parametry są wewnętrznie spójne z danymi — odwrotna transformacja daje prawidłową
@@ -323,7 +384,7 @@ odwzorowawczej. Praktyczne skutki: (a) narzędzia egzekwujące zasięg strefy mo
 To dodatkowy argument za regułą z §3: **długość musi przyjść jako atrybut, nie z geometrii.**
 Geometria mapy to w dodatku trasa, a nie długość przewodu — bez zapasów i bez profilu pionowego.
 
-### 4A.5 Czy da się przypiąć długość do odcinka — analiza rozstrzygająca
+### 4A.6 Czy da się przypiąć długość do odcinka — analiza rozstrzygająca
 
 Pytanie rozpada się na dwa niezależne: **ile mierzy narysowany obiekt** (rozstrzygalne)
 i **czym jest „odcinek"** (rozstrzygalne tylko częściowo).
@@ -342,7 +403,7 @@ nie szacunek — wynika z parametrów w `.prj`.
 | **B** | rozpiętość przęsła | 584 | 61,281 km | 100 % dwuwierzchołkowe, krętość dokładnie 1,0000, mediana przęsła 97,5 m |
 | **C** | linia prosta / uproszczona | 106 | 6,945 km | kable rysowane schematycznie (80 % kabla wlz) — wyłącznie wartość dolna |
 
-**Korekta obrazu z §4A.3.** Rozspójnienie na 431 komponentów było w znacznej mierze artefaktem
+**Korekta obrazu z §4A.4.** Rozspójnienie na 431 komponentów było w znacznej mierze artefaktem
 mieszania warstw. W obrębie jednej warstwy dopasowanie końców jest **ścisłe do 1 mm**:
 
 - napowietrzna 15 kV: 554 przęsła → 117 ciągów, w tym **99 bez rozgałęzień**; najdłuższy
@@ -378,13 +439,15 @@ niż 50 m od jakiegokolwiek przęsła — to w dużej mierze dwie rozdzielne sie
 wymaga jawnego narzutu zapasu** do uzgodnienia z operatorem, a 6,9 km klasy C należy odrzucić.
 Każda wartość zapisywana z `parameter_source` i śladem pochodzenia wg §8.
 
-### 4A.6 Wniosek operacyjny — treść prośby do operatora
+### 4A.7 Wniosek operacyjny — treść prośby do operatora
 
 1. Ten sam eksport Shape z podpiętymi atrybutami (przekrój, materiał, typ katalogowy, długość
    trasowa, nazwa obiektu, numer obwodu) — szablon ma na nie gotowe miejsce.
 2. Relacje topologiczne: węzeł początkowy i końcowy odcinka. Jeśli Shape ich nie unosi —
    tabela powiązań po `dp_oid`.
-3. Stany łączeniowe aparatów (gdzie jest punkt podziału sieci).
+3. Potwierdzenie 8 punktów podziału zidentyfikowanych z komponentu „Symbol rozłączenia"
+   (§4A.3) oraz odpowiedź, czy lista jest kompletna — czy każdy aparat otwarty jest tak
+   oznaczany, czy tylko część.
 4. Dane transformatorów w stacjach: moc, przekładnia, napięcie zwarcia.
 5. Pytanie kontrolne o eksport CIM/CGMES (§4.4) — czyni punkty 1–4 bezprzedmiotowymi.
 
