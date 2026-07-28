@@ -298,6 +298,12 @@ SCENY: list[tuple[str, str, str]] = [
      "Przebiegi po zakłóceniu: czy oś czasu i wielkości mają jednostki i punkt odniesienia."),
     ("przekaznik", "Karta przekaźnika i nastaw",
      "Funkcje, nastawy i ich uzasadnienie — nastawa bez uzasadnienia nie jest projektem."),
+    ("koordynacja", "Koordynacja zabezpieczeń i krzywe TCC",
+     "Nastawy z analizy, werdykty par i wykres log-log. Scena doprowadzona do POLICZONEGO "
+     "wyniku obnażyła pięć defektów naraz (V12K-262): wymyślona lokalizacja urządzenia "
+     "(`bus_1` spoza modelu), klon przepisujący cudze prądy, martwy klik „Wykonaj analizę”, "
+     "nastawa bez wartości opisana jako „Wyznaczona” i biały ekran przy niepełnej "
+     "odpowiedzi API."),
     ("macierz", "Macierz analiz przypadku",
      "Które analizy mają komplet danych, a które są zablokowane i przez co."),
     ("swiezosc", "Pasek zakresu obliczeń (panel, nie ekran)",

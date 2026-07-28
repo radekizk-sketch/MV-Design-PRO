@@ -82,3 +82,7 @@ mv-design-pro/test-results/
 # Źródłem prawdy jest generator + zrzuty w repo, nie ten plik; po cofnięciu migawki
 # kontenera stronę odtwarza jedno uruchomienie.
 mv-design-pro/docs/audit/visual/ocena_seria.html
+# Galeria ekranów — WYNIK `generuj_galerie_ekranow.py` (7,5 MiB zrzutów jako data URI).
+# Ta sama zasada, co wyżej: w repo trzymamy generator, nie jego wydruk. Reguła brakowała
+# od V12K-259 — plik był nietrackowany tylko dlatego, że nikt go nie dodał.
+mv-design-pro/docs/audit/visual/galeria_ekranow.html

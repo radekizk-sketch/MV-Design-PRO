@@ -160,3 +160,56 @@ describe('SekcjaNastaw — niedostępna nastawa jest STANEM, nie pustym polem', 
     expect(screen.queryByTestId('mvd-koordynacja-nastawy-brak')).toBeNull();
   });
 });
+
+/**
+ * V12K-262 — stan spoza kontraktu nie może czytać się jak nastawa WYZNACZONA.
+ *
+ * `WierszNastawy` sprawdzał `stan !== 'NIEDOSTEPNA'`, więc odpowiedź ze stanem
+ * spoza kontraktu (starsza wersja API, atrapa, proxy) renderowała się jako
+ * „Wyznaczona" — przy PUSTEJ wartości. To najgorszy możliwy kierunek awarii dla
+ * wielkości, którą nastawia się na przekaźniku.
+ */
+describe('SekcjaNastaw — stan spoza kontraktu jest odrzucany, nie zgadywany', () => {
+  it('odpowiedź ze stanem spoza kontraktu daje NAZWANY błąd, a nie „Wyznaczona"', async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        run_id: 'r1',
+        case_id: 'case-1',
+        analysis_type: 'protection.overcurrent.v0',
+        status: 'DONE',
+        prezentacja: {
+          kompletne: false,
+          brakujace: [],
+          kody_gotowosci: [],
+          podsumowanie_pl: 'x',
+          pozycje: [
+            {
+              klucz: 'i_pickup_51_a',
+              etykieta: 'I> (51)',
+              jednostka: 'A',
+              wartosc: null,
+              // Stan, którego kontrakt NIE zna.
+              stan: 'niewyznaczalna',
+              komunikat_pl: null,
+              powod_pl: null,
+              fix_action_id: null,
+              fix_navigation: null,
+            },
+          ],
+        },
+      }),
+    } as unknown as Response);
+
+    render(<SekcjaNastaw caseId="case-1" />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-koordynacja-nastawy-blad')).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/nieoczekiwany kształt/)).toBeInTheDocument();
+    // Żaden wiersz nie powstał — więc nic nie mogło się przedstawić jako wyznaczone.
+    expect(screen.queryByTestId('mvd-koordynacja-nastawa-i_pickup_51_a')).toBeNull();
+    expect(screen.queryByText(T.nastawyStanDostepna)).toBeNull();
+  });
+});

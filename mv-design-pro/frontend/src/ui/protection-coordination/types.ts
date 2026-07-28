@@ -275,7 +275,12 @@ export const LABELS = {
     applyTemplate: 'Zastosuj szablon',
     name: 'Nazwa',
     type: 'Typ',
-    location: 'Lokalizacja',
+    location: 'Lokalizacja (element modelu)',
+    // V12K-262: wybór z modelu zamiast wpisywania identyfikatora z ręki.
+    locationPrompt: '— wskaż element modelu —',
+    locationNoModel:
+      'Model przypadku nie jest wczytany — nie ma z czego wskazać elementu. '
+      + 'Wybierz aktywny wariant pracy, a lista szyn i gałęzi pojawi się tutaj.',
     settings: 'Nastawy',
     noDevices: 'Dodaj urządzenia zabezpieczeniowe',
     selectToEdit: 'Wybierz urządzenie do edycji',
@@ -482,6 +487,13 @@ export const LABELS = {
       + 'niesprawdzalna. Prąd maksymalny nie zastąpi minimalnego.',
     brakPraduRoboczego:
       'Brak prądu roboczego z rozpływu mocy — kryterium przeciążenia jest niesprawdzalne.',
+    // V12K-262: lokalizacja urządzenia to element modelu, nie tekst wpisany z ręki.
+    brakLokalizacji:
+      'Wskaż element modelu dla każdego zabezpieczenia — bez lokalizacji nie da się '
+      + 'przypisać prądów z biegu ani policzyć marginesów.',
+    brakModeluLokalizacji:
+      'Nie udało się pobrać modelu przypadku — lista elementów do wskazania jest pusta.',
+    lokalizacjaNieWskazana: 'lokalizacja niewskazana',
   },
 
   templates: {

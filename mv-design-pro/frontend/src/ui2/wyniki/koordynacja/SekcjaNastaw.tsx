@@ -52,6 +52,16 @@ function WierszNastawy({
   onUzupelnij: (przestrzen: SpaceId) => void;
 }) {
   const niedostepna = pozycja.stan === 'NIEDOSTEPNA';
+  // V12K-262: „dostępna" TYLKO przy jawnym `DOSTEPNA`. Wcześniej warunek brzmiał
+  // `stan !== 'NIEDOSTEPNA'`, więc każda wartość spoza kontraktu (starsze API,
+  // literówka, odpowiedź proxy) czytała się jako nastawa WYZNACZONA — kierunek
+  // awarii dokładnie odwrotny do wymaganego, bo ta liczba idzie do przekaźnika.
+  //
+  // Trzeci wariant renderu to ŚWIADOMA redundancja wobec walidacji w
+  // `nastawyApi.maObowiazkowyKsztalt` (ta odrzuca całą odpowiedź z nieznanym
+  // stanem). Nie usuwaj go jako „nieosiągalnego": jeśli walidacja kiedykolwiek
+  // zostanie poluzowana, to on trzyma kierunek awarii po bezpiecznej stronie.
+  const dostepna = pozycja.stan === 'DOSTEPNA';
   const przestrzen = niedostepna
     ? przestrzenDlaPanelu(pozycja.fix_navigation?.panel)
     : null;
@@ -80,8 +90,12 @@ function WierszNastawy({
               </button>
             ) : null}
           </div>
-        ) : (
+        ) : dostepna ? (
           <span data-tone="ok">{T.nastawyStanDostepna}</span>
+        ) : (
+          <span data-tone="warn" data-testid={`mvd-koordynacja-nastawa-${pozycja.klucz}-nieznany`}>
+            {T.nastawyStanNieznany}
+          </span>
         )}
       </td>
     </tr>

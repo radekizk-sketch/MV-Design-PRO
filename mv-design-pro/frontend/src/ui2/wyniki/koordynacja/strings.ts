@@ -45,4 +45,7 @@ export const KOORDYNACJA_STRINGS = {
   nastawyKolumnaStan: 'Stan',
   nastawyStanDostepna: 'Wyznaczona',
   nastawyUzupelnijDane: 'Uzupełnij dane',
+  // V12K-262: stan spoza kontraktu NIE MOŻE czytać się jak „wyznaczona" —
+  // nastawa trafia do przekaźnika, więc niepewność musi być widoczna.
+  nastawyStanNieznany: 'Stan nierozpoznany — nie traktuj tej wartości jak wyznaczonej',
 } as const;

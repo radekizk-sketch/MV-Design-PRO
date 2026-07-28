@@ -317,7 +317,7 @@ def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[Bl
                 "inverters",
             )
         if we.pcc_ref is None:
-            dodaj("der.pcc.missing", "Brak punktu przyłączenia PCC.", "topology")
+            dodaj("der.pcc.missing", "Brak punktu przyłączenia.", "topology")
         if os in ("sc_1f", "sc_2fg") and we.fault_current_data_ref is None:
             dodaj(
                 "der.fault_current_data.missing",

@@ -53,6 +53,9 @@ function wierszSC(cFactor: number, ikssKa: number) {
 
 function ustawKompletnyKontekst() {
   useAppStateStore.getState().setActiveProject('project-1', 'GPZ Wschód');
+  // Wariant pracy jest potrzebny od V12K-262: z niego pochodzi migawka modelu,
+  // czyli lista elementów, w których wolno umieścić zabezpieczenie.
+  useAppStateStore.getState().setActiveCase('case-1', 'Wariant bazowy');
   useExecutionRunsStore.setState({ runs: [DONE_SC_RUN] });
 }
 
@@ -200,14 +203,30 @@ describe('EkranKoordynacji — realna strona przy kompletnym kontekście', () =>
           json: async () => ({ run_id: 'run-sc-2', rows: [wierszSC(0.95, 3.1)] }),
         } as Response;
       }
+      // V12K-262: lokalizacja urządzenia pochodzi z MIGAWKI MODELU przypadku;
+      // `ref_id` jest tą samą przestrzenią nazw co `element_id` wiersza wyniku.
+      if (url === '/api/cases/case-1/enm') {
+        return {
+          ok: true,
+          status: 200,
+          json: async () => ({
+            buses: [{ id: 'b1', ref_id: 'bus_1', name: 'Szyna 1' }],
+            branches: [],
+            transformers: [],
+          }),
+        } as Response;
+      }
       throw new Error(`Niespodziewane wywołanie fetch: ${init?.method ?? 'GET'} ${url}`);
     });
     vi.stubGlobal('fetch', fetchMock);
 
     render(<EkranKoordynacji />);
 
-    // Realna ścieżka użytkownika: dodaj urządzenie, uruchom analizę.
+    // Realna ścieżka użytkownika: dodaj urządzenie, WSKAŻ element modelu
+    // (V12K-262 — ekran nie wymyśla już lokalizacji), zapisz, uruchom analizę.
     await user.click(screen.getByRole('button', { name: 'Dodaj urządzenie' }));
+    await user.selectOptions(await screen.findByTestId('device-location-select'), 'bus_1');
+    await user.click(screen.getByRole('button', { name: 'Zapisz konfigurację' }));
     await user.click(screen.getByTestId('run-analysis-button'));
 
     await waitFor(() => {
@@ -288,7 +307,11 @@ describe('EkranKoordynacji — nastawy z analizy (karta F-K5)', () => {
   });
 
   it('bez aktywnego przypadku sekcja nastaw się nie renderuje (nie ma czym zapytać)', () => {
+    // Kontekst kompletny POZA wariantem pracy — `ustawKompletnyKontekst` ustawia go
+    // od V12K-262 (migawka modelu), więc ten test musi go jawnie zdjąć: sprawdza
+    // dokładnie stan „projekt jest, przypadku nie ma".
     ustawKompletnyKontekst();
+    useAppStateStore.setState({ activeCaseId: null } as never);
     const fetchMock = vi.fn(async () => ({ ok: true, status: 200, json: async () => ({}) }) as Response);
     vi.stubGlobal('fetch', fetchMock);
 

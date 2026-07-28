@@ -65,7 +65,43 @@ export async function fetchNastawyPrzypadku(
   if (!response.ok) {
     throw new Error(await odczytajBlad(response));
   }
-  return (await response.json()) as NastawyResponse;
+  const payload: unknown = await response.json();
+  if (!maObowiazkowyKsztalt(payload)) {
+    // KSZTALT SPRAWDZANY, NIE ZAKLADANY (V12K-262; ta sama naprawa co V12K-252).
+    // Rzutowanie `as NastawyResponse` przepuszczalo KAZDA odpowiedz — starsza wersje
+    // API, atrape sceny, blad proxy — a pierwszy odczyt `prezentacja.kompletne`
+    // wywracal CALY ekran koordynacji bialym ekranem, bez granicy bledu. Sekcja ma
+    // pokazac nazwany powod, a reszta ekranu (krzywe TCC, werdykty par) ma dzialac.
+    throw new Error(
+      'Odpowiedź nastaw ma nieoczekiwany kształt — sprawdź wersję API zabezpieczeń.',
+    );
+  }
+  return payload;
+}
+
+const STANY_KONTRAKTU: readonly string[] = ['DOSTEPNA', 'NIEDOSTEPNA'];
+
+/** Minimalny kontrakt, bez ktorego sekcja nie ma czego pokazac. */
+function maObowiazkowyKsztalt(payload: unknown): payload is NastawyResponse {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return false;
+  const rekord = payload as Record<string, unknown>;
+  const prezentacja = rekord.prezentacja as Record<string, unknown> | undefined;
+  if (
+    typeof prezentacja !== 'object'
+    || prezentacja === null
+    || !Array.isArray(prezentacja.pozycje)
+    || typeof prezentacja.kompletne !== 'boolean'
+  ) {
+    return false;
+  }
+  // STAN JEST CZĘŚCIĄ KONTRAKTU (V12K-262). Pozycja z `stan` spoza
+  // `DOSTEPNA`/`NIEDOSTEPNA` to odpowiedź, której ta sekcja nie umie zinterpretować —
+  // a nastawa jest wielkością nastawianą na przekaźniku, więc lepiej nazwać
+  // rozjazd wersji API niż wyświetlić wiersz o nieznanym znaczeniu.
+  return prezentacja.pozycje.every((pozycja) => {
+    if (typeof pozycja !== 'object' || pozycja === null) return false;
+    return STANY_KONTRAKTU.includes((pozycja as Record<string, unknown>).stan as string);
+  });
 }
 
 async function odczytajBlad(response: Response): Promise<string> {

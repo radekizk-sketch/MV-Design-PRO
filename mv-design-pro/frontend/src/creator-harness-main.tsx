@@ -58,6 +58,7 @@ import { EkranPorownania } from './ui2/wyniki/porownanie';
 import { useResultsInspectorStore } from './ui/results-inspector/store';
 import { EkranFrt, EkranKompensacji, EkranLom, MacierzNcRfg } from './ui2/oze';
 import { EkranBadanOltc } from './ui2/wyniki/oltc';
+import { EkranKoordynacji } from './ui2/wyniki/koordynacja';
 import { EkranSkladowych } from './ui2/wyniki/skladowe';
 import { EkranZbieznosci } from './ui2/wyniki/zbieznosc';
 import { EkranStanuFazowego } from './ui2/wyniki/stan-fazowy';
@@ -439,6 +440,212 @@ const STABILNOSC_SLAD = {
   ],
 };
 
+/**
+ * Scena E-28 „Koordynacja zabezpieczeń" (V12K-262). Do tej pory ekran TCC nie miał
+ * ANI JEDNEJ sceny — najbardziej graficzny ekran systemu (krzywe czasowo-prądowe
+ * log-log, marginesy CTI, werdykty par) nie był widziany przez żadną bramkę.
+ *
+ * Łańcuch odtworzony w całości, bo ekran go WYMAGA i nie da się go obejść:
+ * zakończony bieg zwarciowy → wiersze wyniku dla szyn `bus_1`/`bus_2` → prądy
+ * koordynacji (zero losowania, F-K4) → analiza → wynik z krzywymi. Kadr powstaje
+ * po NATYWNYCH klikach (szablon urządzenia → uruchom analizę), a nie po wymuszeniu
+ * stanu store — inaczej zrzut dowodziłby działania atrapy, nie ekranu.
+ */
+/**
+ * Wiersze biegow zwarciowych sceny E-28.
+ *
+ * `element_id` to `ref_id` elementu ENM — DOKLADNIE ta przestrzen nazw, po ktorej
+ * `pradyZBiegow` dopasowuje prady do urzadzenia (`canonical_analysis`:
+ * `_build_snapshot_graph_element_context` ustawia `element_id = ref_id`).
+ *
+ * `c_factor` jest OBOWIAZKOWY: `podzielWierszeNaPrzypadki` klasyfikuje przypadek
+ * maksymalny/minimalny wylacznie po nim (IEC 60909: c_max = 1,10, c_min = 0,95),
+ * a koordynacja wymaga OBU. Wiersz bez `c_factor` nie trafia do zadnego zbioru —
+ * scena bez tego pola pokazywala uczciwy, ale pusty stan „brak pradow".
+ */
+const KOORD_WIERSZE_SC_MAX = [
+  {
+    target_id: 'gpz/sekcja_a/bus_sn', element_id: 'gpz/sekcja_a/bus_sn',
+    target_name: 'GPZ Wschod — szyna SN sekcja A',
+    ikss_ka: 8.4, ip_ka: 21.0, ith_ka: 8.4, sk_mva: 218.2,
+    fault_type: '3F', c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, flags: [],
+  },
+  {
+    target_id: 'stacja_s02/bus_sn', element_id: 'stacja_s02/bus_sn',
+    target_name: 'Stacja S02 — szyna SN',
+    ikss_ka: 3.1, ip_ka: 7.6, ith_ka: 3.1, sk_mva: 80.5,
+    fault_type: '3F', c_factor: 1.1, un_kv: 15.0, tk_s: 1.0, flags: [],
+  },
+];
+
+const KOORD_WIERSZE_SC_MIN = [
+  {
+    target_id: 'gpz/sekcja_a/bus_sn', element_id: 'gpz/sekcja_a/bus_sn',
+    target_name: 'GPZ Wschod — szyna SN sekcja A',
+    ikss_ka: 6.9, ip_ka: 17.2, ith_ka: 6.9, sk_mva: 179.3,
+    fault_type: '3F', c_factor: 0.95, un_kv: 15.0, tk_s: 1.0, flags: [],
+  },
+  {
+    target_id: 'stacja_s02/bus_sn', element_id: 'stacja_s02/bus_sn',
+    target_name: 'Stacja S02 — szyna SN',
+    ikss_ka: 2.4, ip_ka: 5.9, ith_ka: 2.4, sk_mva: 62.4,
+    fault_type: '3F', c_factor: 0.95, un_kv: 15.0, tk_s: 1.0, flags: [],
+  },
+];
+
+const KOORD_WYNIKI_GALEZI = {
+  run_id: 'run-lf-koord',
+  rows: [
+    {
+      branch_id: 'gpz/sekcja_a/bus_sn', element_id: 'gpz/sekcja_a/bus_sn',
+      name: 'Pole liniowe GPZ → S02',
+      from_bus: 'gpz/sekcja_a/bus_sn', to_bus: 'stacja_s02/bus_sn',
+      i_a: 154.0, s_mva: 4.0, p_mw: 3.9, q_mvar: 0.8, loading_pct: 38.5, flags: [],
+    },
+    {
+      branch_id: 'stacja_s02/bus_sn', element_id: 'stacja_s02/bus_sn',
+      name: 'Pole liniowe S02 → odbiory',
+      from_bus: 'stacja_s02/bus_sn', to_bus: 'stacja_s03/bus_sn',
+      i_a: 96.0, s_mva: 2.5, p_mw: 2.4, q_mvar: 0.5, loading_pct: 24.0, flags: [],
+    },
+  ],
+};
+
+/**
+ * Migawka modelu przypadku — zrodlo LISTY WYBORU lokalizacji (V12K-262).
+ * Tylko pola, ktore czyta `lokalizacjeKoordynacji`; `ref_id` zgodne z wierszami
+ * wynikow, bo to jedna przestrzen nazw.
+ */
+const KOORD_MIGAWKA_MODELU = {
+  header: { schema_version: '1.0', project_id: 'proj-demo' },
+  buses: [
+    {
+      id: 'b1', ref_id: 'gpz/sekcja_a/bus_sn', name: 'GPZ Wschod — szyna SN sekcja A',
+      voltage_kv: 15.0, phase_system: '3ph', tags: [], meta: {},
+    },
+    {
+      id: 'b2', ref_id: 'stacja_s02/bus_sn', name: 'Stacja S02 — szyna SN',
+      voltage_kv: 15.0, phase_system: '3ph', tags: [], meta: {},
+    },
+  ],
+  branches: [
+    {
+      id: 'l1', ref_id: 'lin/gpz_s02', name: 'Magistrala GPZ → S02',
+      from_bus_ref: 'gpz/sekcja_a/bus_sn', to_bus_ref: 'stacja_s02/bus_sn',
+      status: 'closed', type: 'line_overhead', tags: [], meta: {},
+    },
+  ],
+  transformers: [],
+  sources: [], loads: [], generators: [], substations: [], bays: [], junctions: [],
+  corridors: [], measurements: [], protection_assignments: [],
+};
+
+const KOORD_KRZYWA_NADRZEDNA = [
+  { current_a: 480, current_multiple: 1.0, time_s: 100 },
+  { current_a: 960, current_multiple: 2.0, time_s: 3.4 },
+  { current_a: 1920, current_multiple: 4.0, time_s: 1.05 },
+  { current_a: 3840, current_multiple: 8.0, time_s: 0.52 },
+  { current_a: 8400, current_multiple: 17.5, time_s: 0.33 },
+];
+
+const KOORD_KRZYWA_PODRZEDNA = [
+  { current_a: 240, current_multiple: 1.0, time_s: 100 },
+  { current_a: 480, current_multiple: 2.0, time_s: 1.9 },
+  { current_a: 960, current_multiple: 4.0, time_s: 0.58 },
+  { current_a: 1920, current_multiple: 8.0, time_s: 0.29 },
+  { current_a: 3100, current_multiple: 12.9, time_s: 0.22 },
+];
+
+const KOORD_WYNIK = {
+  run_id: 'run-koord-1',
+  project_id: 'proj-demo',
+  sensitivity_checks: [
+    {
+      device_id: 'dev-nadrzedne', analysis_current_a: 2900, pickup_current_a: 480,
+      sensitivity_ratio: 6.04, required_ratio: 1.5, verdict: 'PASS',
+      verdict_pl: 'Czułość zapewniona', notes_pl: 'Ik″ min 2,90 kA / I_pickup 480 A',
+    },
+    {
+      device_id: 'dev-podrzedne', analysis_current_a: 1200, pickup_current_a: 240,
+      sensitivity_ratio: 5.0, required_ratio: 1.5, verdict: 'PASS',
+      verdict_pl: 'Czułość zapewniona', notes_pl: 'Ik″ min 1,20 kA / I_pickup 240 A',
+    },
+  ],
+  selectivity_checks: [
+    {
+      upstream_device_id: 'dev-nadrzedne', downstream_device_id: 'dev-podrzedne',
+      analysis_current_a: 3100, t_upstream_s: 0.33, t_downstream_s: 0.22,
+      margin_s: 0.11, required_margin_s: 0.3, verdict: 'FAIL',
+      verdict_pl: 'Brak selektywności',
+      notes_pl: 'Margines CTI 0,11 s poniżej wymaganych 0,30 s przy Ik″ 3,10 kA',
+    },
+  ],
+  overload_checks: [
+    {
+      device_id: 'dev-nadrzedne', operating_current_a: 154, pickup_current_a: 480,
+      margin_ratio: 3.12, verdict: 'PASS', verdict_pl: 'Brak zadziałania',
+      notes_pl: 'I_robocze 154 A / I_pickup 480 A',
+    },
+    {
+      device_id: 'dev-podrzedne', operating_current_a: 154, pickup_current_a: 240,
+      margin_ratio: 1.56, verdict: 'PASS', verdict_pl: 'Brak zadziałania',
+      notes_pl: 'I_robocze 154 A / I_pickup 240 A',
+    },
+  ],
+  tcc_curves: [
+    {
+      device_id: 'dev-nadrzedne', device_name: 'Zabezpieczenie nadrzędne GPZ (50/51)',
+      curve_type: 'IEC_SI', pickup_current_a: 480, time_multiplier: 0.3,
+      color: '#2563eb', points: KOORD_KRZYWA_NADRZEDNA,
+    },
+    {
+      device_id: 'dev-podrzedne', device_name: 'Zabezpieczenie pola S02 (50/51)',
+      curve_type: 'IEC_SI', pickup_current_a: 240, time_multiplier: 0.18,
+      color: '#dc2626', points: KOORD_KRZYWA_PODRZEDNA,
+    },
+  ],
+  fault_markers: [
+    {
+      id: 'fm-3f', label_pl: 'Ik″ 3-fazowe (Stacja S02)', current_a: 3100,
+      fault_type: '3F', location: 'stacja_s02/bus_sn',
+    },
+    {
+      id: 'fm-1f', label_pl: 'Ik″ 1-fazowe (Stacja S02)', current_a: 1200,
+      fault_type: '1F', location: 'stacja_s02/bus_sn',
+    },
+  ],
+  overall_verdict: 'FAIL',
+  overall_verdict_pl: 'Brak selektywności w jednej parze',
+  created_at: '2026-07-28T08:10:00Z',
+  // `trace_steps` NIE JEST opcjonalne w kontrakcie (`CoordinationResult`) —
+  // backend zawsze je emituje (`protection_coordination.py`: `result.get(..., [])`).
+  // Scena bez tego pola wywracala CALY ekran bialym ekranem; od V12K-262 klient
+  // API nazywa taki rozjazd, a atrapa trzyma pelny ksztalt.
+  trace_steps: [
+    {
+      step: 'wejscia',
+      description_pl: 'Prądy zwarciowe z biegów c = 1,10 i c = 0,95; prąd roboczy z rozpływu.',
+      inputs: { ik_max_a: 8400, ik_min_a: 6900, i_rob_a: 154.0 },
+      outputs: { pary_do_sprawdzenia: 1 },
+    },
+    {
+      step: 'selektywnosc',
+      description_pl: 'Różnica czasów zadziałania pary przy prądzie zwarciowym odbioru.',
+      inputs: { t_nadrzedne_s: 0.33, t_podrzedne_s: 0.22 },
+      outputs: { delta_t_s: 0.11, wymagane_s: 0.3 },
+    },
+  ],
+  summary: {
+    total_devices: 2,
+    total_checks: 5,
+    sensitivity: { pass: 2, marginal: 0, fail: 0, error: 0 },
+    selectivity: { pass: 0, marginal: 0, fail: 1, error: 0 },
+    overload: { pass: 2, marginal: 0, fail: 0, error: 0 },
+    overall_verdict: 'FAIL',
+    overall_verdict_pl: 'Brak selektywności w jednej parze',
+  },
+};
+
 const DOBOR_FUNKCJI_WIAZANIA = {
   generator_ref: 'der-pv-1',
   bay_ref: 'bay-pv-1',
@@ -595,6 +802,73 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.includes('/power-flow-runs/')) return jsonOK(ZBIEZNOSC_HEADER);
   } else if (creator === 'wyniki-stan-fazowy') {
     if (url.includes('/results/phase-state')) return jsonOK(STAN_FAZOWY_WYNIK);
+  } else if (creator === 'koordynacja') {
+    // Dwa OSOBNE biegi zwarciowe (kanoniczny bieg liczy jeden scenariusz `c`):
+    // maksymalny dla selektywnosci, minimalny dla czulosci.
+    if (url.includes('/results/short-circuit')) {
+      const min = url.includes('run-sc-koord-min');
+      return jsonOK({
+        run_id: min ? 'run-sc-koord-min' : 'run-sc-koord-max',
+        rows: min ? KOORD_WIERSZE_SC_MIN : KOORD_WIERSZE_SC_MAX,
+      });
+    }
+    if (url.includes('/results/branches')) return jsonOK(KOORD_WYNIKI_GALEZI);
+    if (url.includes('/enm')) return jsonOK(KOORD_MIGAWKA_MODELU);
+    if (url.includes('/protection/overcurrent-settings')) {
+      // Kontrakt `api/protection_overcurrent_settings.py` → `NastawyResponse`.
+      // Dwie nastawy WYZNACZONE i jedna NIEWYZNACZALNA — bo tak wyglada realny
+      // przypadek: brak danej nie znika z tabeli, tylko niesie powod i miejsce naprawy.
+      return jsonOK({
+        case_id: 'case-demo',
+        run_id: 'run-sc-koord-max',
+        analysis_type: 'protection_overcurrent',
+        status: 'DONE',
+        prezentacja: {
+          kompletne: false,
+          kody_gotowosci: ['BRAK_ROZPLYWU_DLA_PRADU_ROBOCZEGO'],
+          podsumowanie_pl:
+            'Wyznaczono 2 z 3 nastaw. Brak prądu rozruchowego stopnia zwłocznego — '
+            + 'wymaga prądu roboczego toru z rozpływu.',
+          brakujace: ['i_pickup_51'],
+          pozycje: [
+            // `stan` MUSI byc z kontraktu backendu (`settings_presentation.py`:
+            // DOSTEPNA / NIEDOSTEPNA). Wczesniej scena podawala 'wyznaczona' /
+            // 'niewyznaczalna' i wiersz bez wartosci renderowal sie jako
+            // „Wyznaczona" — atrapa produkowala dokladnie ten falsz, ktory ekran
+            // ma wykluczac (V12K-262).
+            {
+              klucz: 'i_inst_50', etykieta: 'Prąd zadziałania stopnia bezzwłocznego (50)',
+              jednostka: 'A', wartosc: 2480, stan: 'DOSTEPNA',
+              komunikat_pl: null, powod_pl: null, fix_action_id: null, fix_navigation: null,
+            },
+            {
+              klucz: 'tms_51', etykieta: 'Mnożnik czasowy stopnia zwłocznego (51)',
+              jednostka: '-', wartosc: 0.3, stan: 'DOSTEPNA',
+              komunikat_pl: null, powod_pl: null, fix_action_id: null, fix_navigation: null,
+            },
+            {
+              klucz: 'i_pickup_51', etykieta: 'Prąd rozruchowy stopnia zwłocznego (51)',
+              jednostka: 'A', wartosc: null, stan: 'NIEDOSTEPNA',
+              komunikat_pl: 'Niedostepna — uzupelnij dane wejsciowe',
+              powod_pl: 'Brak prądu roboczego toru — uzupełnij rozpływ mocy dla tego wariantu.',
+              // `panel` — tego klucza czyta `przestrzenDlaPanelu`; `space` bylo
+              // wymyslona nazwa i akcja naprawcza w ogole by sie nie pojawila.
+              fix_action_id: 'uruchom_rozplyw', fix_navigation: { panel: 'analizy' },
+            },
+          ],
+        },
+      });
+    }
+    if (url.includes('/api/protection-coordination/') && url.endsWith('/run')) {
+      return jsonOK({ run_id: 'run-koord-1', ...KOORD_WYNIK.summary });
+    }
+    if (url.includes('/api/protection-coordination/') && url.endsWith('/tcc')) {
+      return jsonOK({ curves: KOORD_WYNIK.tcc_curves, fault_markers: KOORD_WYNIK.fault_markers });
+    }
+    if (url.includes('/api/protection-coordination/')) {
+      // Wynik pelny: pary, marginesy i krzywe z NAZWAMI urzadzen dodanych klikiem.
+      return jsonOK(KOORD_WYNIK);
+    }
   } else if (creator === 'odbior') {
     // Podglad pradu odbioru liczy SOLVER (I = S/(√3·U)). Bez tej atrapy scena pokazywala
     // baner awarii uslugi zamiast wyniku — a zrzut do oceny wygladalby jak zepsuty ekran
@@ -3187,6 +3461,41 @@ if (creator === 'arcflash') {
       } as unknown as ExecutionRun,
     ],
   } as never);
+} else if (creator === 'koordynacja') {
+  // Scena E-28 (V12K-262): ekran koordynacji WYMAGA zakonczonego biegu zwarciowego —
+  // bez niego pokazuje uczciwy stan zerowy. Prady koordynacji buduja sie z WIERSZY
+  // wyniku (F-K4: zero losowania), wiec scena zasiewa bieg i podmienia koncowki
+  // wynikow; urzadzenia dodaje sie NATYWNYM klikiem w tescie, nie wymuszeniem stanu.
+  useShellStore.setState({ advancementMode: 'expert' });
+  useAppStateStore.getState().setActiveProject('proj-demo', 'Przyłączenie farmy PV 8 MW');
+  useAppStateStore.getState().setActiveCase('case-demo', 'Wariant zimowy', null, 'FRESH');
+  useExecutionRunsStore.setState({
+    runs: [
+      {
+        id: 'run-sc-koord-max',
+        analysis_type: 'SC_3F',
+        status: 'DONE',
+        finished_at: '2026-07-28T08:00:00Z',
+        started_at: '2026-07-28T07:59:00Z',
+      } as unknown as ExecutionRun,
+      {
+        // Bieg MINIMALNY (c = 0,95) — bez niego czulosc jest niesprawdzalna, a
+        // `zbudujPradyKoordynacji` w ogole nie tworzy pozycji pradowej.
+        id: 'run-sc-koord-min',
+        analysis_type: 'SC_3F',
+        status: 'DONE',
+        finished_at: '2026-07-28T08:02:00Z',
+        started_at: '2026-07-28T08:01:00Z',
+      } as unknown as ExecutionRun,
+      {
+        id: 'run-lf-koord',
+        analysis_type: 'LOAD_FLOW',
+        status: 'DONE',
+        finished_at: '2026-07-28T08:05:00Z',
+        started_at: '2026-07-28T08:04:00Z',
+      } as unknown as ExecutionRun,
+    ],
+  } as never);
 } else if (creator === 'wyniki-stan-fazowy') {
   // Scena E-31 (karta Z-1): zakończony przebieg stanu fazowego (PHASE_STATE_SN).
   useShellStore.setState({ advancementMode: 'expert' });
@@ -3424,6 +3733,7 @@ function Harness() {
   else if (creator === 'frt') node = <EkranFrt trybZaawansowania="expert" />;
   else if (creator === 'oltc') node = <EkranBadanOltc />;
   else if (creator === 'macierz') node = <MacierzNcRfg trybZaawansowania="expert" />;
+  else if (creator === 'koordynacja') node = <EkranKoordynacji />;
   else if (creator === 'wyniki-skladowe') node = <EkranSkladowych />;
   else if (creator === 'wyniki-zbieznosc') node = <EkranZbieznosci />;
   else if (creator === 'wyniki-stan-fazowy') node = <EkranStanuFazowego />;

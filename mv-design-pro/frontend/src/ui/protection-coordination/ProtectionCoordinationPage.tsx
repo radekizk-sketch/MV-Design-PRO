@@ -46,9 +46,15 @@ import { TracePanel } from './TracePanel';
 import { TccInterpretationPanel } from './TccInterpretationPanel';
 import { useAppStateStore } from '../app-state/store';
 import { useExecutionRunsStore } from '../study-cases/runStore';
-import { fetchBranchResults, fetchShortCircuitResults } from '../results-inspector/api';
+import {
+  fetchBranchResults,
+  fetchCurrentCaseSnapshot,
+  fetchShortCircuitResults,
+} from '../results-inspector/api';
 import { podzielWierszeNaPrzypadki, zbudujPradyKoordynacji } from './pradyZBiegow';
 import type { BrakDanejPradowej } from './pradyZBiegow';
+import { lokalizacjeKoordynacji } from './lokalizacjeZModelu';
+import type { LokalizacjaModelu } from './lokalizacjeZModelu';
 
 // =============================================================================
 // Types
@@ -184,8 +190,21 @@ function DeviceListPanel({
                   onClick={() => onSelectDevice(device.id)}
                 >
                   <p className="font-medium text-slate-900">{device.name}</p>
-                  <p className="text-xs text-slate-500">
-                    {LABELS.deviceTypes[device.device_type]} | {device.location_element_id}
+                  <p
+                    className={
+                      device.location_element_id === ''
+                        ? 'text-xs text-amber-700'
+                        : 'text-xs text-slate-500'
+                    }
+                    data-testid={`device-location-${device.id}`}
+                  >
+                    {LABELS.deviceTypes[device.device_type]}
+                    {' | '}
+                    {/* V12K-262: pusta lokalizacja jest NAZWANA, nie przemilczana — inaczej
+                        wiersz wyglądałby jak związany z elementem o pustej nazwie. */}
+                    {device.location_element_id === ''
+                      ? LABELS.validation.lokalizacjaNieWskazana
+                      : device.location_element_id}
                   </p>
                 </button>
                 <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
@@ -435,6 +454,37 @@ export function ProtectionCoordinationPage() {
   });
   // F-K4 faza 3b: braki danych prądowych z biegów (uczciwy stan zamiast atrapy).
   const [brakiPradowe, setBrakiPradowe] = useState<readonly BrakDanejPradowej[]>([]);
+  // V12K-262: lista elementów, w których wolno umieścić zabezpieczenie — z MIGAWKI
+  // MODELU przypadku, nie z wyobraźni ekranu. `null` = migawki jeszcze nie ma
+  // (albo nie da się jej pobrać) i wtedy pole lokalizacji uczciwie o tym mówi.
+  const [lokalizacje, setLokalizacje] = useState<readonly LokalizacjaModelu[] | null>(null);
+  const [bladLokalizacji, setBladLokalizacji] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!caseId) {
+      setLokalizacje(null);
+      setBladLokalizacji(null);
+      return;
+    }
+    let anulowane = false;
+    void (async () => {
+      try {
+        const model = await fetchCurrentCaseSnapshot(caseId);
+        if (anulowane) return;
+        setLokalizacje(lokalizacjeKoordynacji(model));
+        setBladLokalizacji(null);
+      } catch (err) {
+        if (anulowane) return;
+        setLokalizacje(null);
+        setBladLokalizacji(
+          err instanceof Error ? err.message : LABELS.validation.brakModeluLokalizacji,
+        );
+      }
+    })();
+    return () => {
+      anulowane = true;
+    };
+  }, [caseId]);
 
   // F-K4 faza 3b: prądy wejściowe koordynacji pochodzą WYŁĄCZNIE z zakończonych
   // biegów obliczeniowych. Klasyfikacja przypadku (maksymalny / minimalny) idzie po
@@ -476,7 +526,10 @@ export function ProtectionCoordinationPage() {
       if (anulowane) return;
       const { max, min } = podzielWierszeNaPrzypadki(wierszeZwarciowe);
       const prady = zbudujPradyKoordynacji({
-        urzadzenia: state.devices,
+        // V12K-262: urządzenie bez wskazanego elementu pomijamy TUTAJ, żeby nie
+        // raportować mu „braku prądu zwarciowego" — prawdziwym brakiem jest
+        // lokalizacja, i to mówi osobna bramka. Dwa różne braki, dwa komunikaty.
+        urzadzenia: state.devices.filter((d) => d.location_element_id.trim() !== ''),
         wierszeMax: max,
         wierszeMin: min,
         wierszeGalezi,
@@ -502,7 +555,10 @@ export function ProtectionCoordinationPage() {
       id: crypto.randomUUID(),
       name: `Zabezpieczenie ${state.devices.length + 1}`,
       device_type: 'RELAY',
-      location_element_id: `bus_${state.devices.length + 1}`,
+      // V12K-262: lokalizacja PUSTA, nie wymyślona. Wcześniej powstawało tu
+      // `bus_${n+1}` — identyfikator, którego w modelu nie ma (patrz nagłówek
+      // `lokalizacjeZModelu.ts`). Element wskazuje projektant z listy modelu.
+      location_element_id: '',
       settings: {
         stage_51: { ...DEFAULT_STAGE_51 },
       },
@@ -528,29 +584,22 @@ export function ProtectionCoordinationPage() {
       const sourceDevice = prev.devices.find((d) => d.id === deviceId);
       if (!sourceDevice) return prev;
 
+      // V12K-262: klon kopiuje NASTAWY, nigdy lokalizację ani prądy.
+      // Wcześniej powstawał tu element `${ref}_copy` (nieistniejący w modelu),
+      // a na tę zmyśloną lokalizację PRZEPISYWANE były prądy zwarciowy i roboczy
+      // elementu źródłowego — czyli fabrykacja danych wejściowych analizy tym
+      // samym skutkiem, który F-K4 usunął z losowania prądów. Klon wymaga
+      // wskazania własnego elementu; prądy dociągnie efekt z biegów.
       const clonedDevice: ProtectionDevice = {
         ...sourceDevice,
         id: crypto.randomUUID(),
         name: `${sourceDevice.name} (kopia)`,
-        location_element_id: `${sourceDevice.location_element_id}_copy`,
+        location_element_id: '',
       };
-
-      const sourceFault = prev.faultCurrents.find(
-        (f) => f.location_id === sourceDevice.location_element_id
-      );
-      const sourceOperating = prev.operatingCurrents.find(
-        (o) => o.location_id === sourceDevice.location_element_id
-      );
 
       return {
         ...prev,
         devices: [...prev.devices, clonedDevice],
-        faultCurrents: sourceFault
-          ? [...prev.faultCurrents, { ...sourceFault, location_id: clonedDevice.location_element_id }]
-          : prev.faultCurrents,
-        operatingCurrents: sourceOperating
-          ? [...prev.operatingCurrents, { ...sourceOperating, location_id: clonedDevice.location_element_id }]
-          : prev.operatingCurrents,
         editingDeviceId: clonedDevice.id,
       };
     });
@@ -562,7 +611,8 @@ export function ProtectionCoordinationPage() {
       id: crypto.randomUUID(),
       name: template.name,
       device_type: template.device_type,
-      location_element_id: `bus_${state.devices.length + 1}`,
+      // V12K-262: jak w `handleAddDevice` — zero wymyślonych identyfikatorów.
+      location_element_id: '',
       settings: JSON.parse(JSON.stringify(template.settings)),
     };
 
@@ -573,7 +623,7 @@ export function ProtectionCoordinationPage() {
       editingDeviceId: newDevice.id,
       showTemplates: false,
     }));
-  }, [state.devices.length]);
+  }, []);
 
   // Remove device
   const handleRemoveDevice = useCallback((deviceId: string) => {
@@ -606,29 +656,38 @@ export function ProtectionCoordinationPage() {
 
   // Run analysis
   const handleRunAnalysis = useCallback(async () => {
+    // MARTWY KLIK — NAPRAWA (V12K-262). Wszystkie bramki poniżej ustawiały
+    // `error`, ale zostawiały `status: 'IDLE'`, a blok komunikatu renderuje się
+    // TYLKO gdy status ≠ IDLE. Projektant klikał „Wykonaj analizę koordynacji"
+    // i nie działo się NIC — ani wynik, ani powód odmowy. Odmowa uruchomienia
+    // jest stanem błędu i musi być widoczna (precedens: martwy lewy klik w SLD).
+    const odmow = (powod: string): void => {
+      setState((prev) => ({ ...prev, status: 'ERROR', error: powod }));
+    };
+
     if (!projectId) {
-      setState((prev) => ({
-        ...prev,
-        error: 'Wybierz aktywny projekt przed uruchomieniem koordynacji zabezpieczeń',
-      }));
+      odmow('Wybierz aktywny projekt przed uruchomieniem koordynacji zabezpieczeń');
       return;
     }
 
     if (state.devices.length === 0) {
-      setState((prev) => ({
-        ...prev,
-        error: LABELS.validation.minOneDevice,
-      }));
+      odmow(LABELS.validation.minOneDevice);
+      return;
+    }
+
+    // V12K-262: urządzenie bez wskazanego elementu modelu nie ma jak dostać prądów
+    // (dopasowanie idzie po `element_id` wiersza biegu). Wysłanie go do analizy
+    // dałoby werdykt policzony dla pustej lokalizacji — dlatego bramka jest tutaj,
+    // a komunikat mówi wprost, czego brakuje.
+    if (state.devices.some((d) => d.location_element_id.trim() === '')) {
+      odmow(LABELS.validation.brakLokalizacji);
       return;
     }
 
     // F-K4 faza 3b: bez prądów z biegu analiza policzyłaby marginesy na niczym.
     // Wcześniej ten warunek nie mógł zaistnieć, bo prądy były losowane.
     if (state.faultCurrents.length === 0) {
-      setState((prev) => ({
-        ...prev,
-        error: LABELS.validation.brakPradowZwarciowych,
-      }));
+      odmow(LABELS.validation.brakPradowZwarciowych);
       return;
     }
 
@@ -756,6 +815,7 @@ export function ProtectionCoordinationPage() {
             {/* Status */}
             {state.status !== 'IDLE' && (
               <div
+                data-testid="coordination-status"
                 className={`rounded p-3 text-sm ${
                   state.status === 'ERROR'
                     ? 'border border-rose-200 bg-rose-50 text-rose-700'
@@ -778,6 +838,8 @@ export function ProtectionCoordinationPage() {
                 onCancel={() =>
                   setState((prev) => ({ ...prev, editingDeviceId: null }))
                 }
+                lokalizacje={lokalizacje}
+                bladLokalizacji={bladLokalizacji}
               />
             ) : state.result ? (
               <div className="space-y-4">

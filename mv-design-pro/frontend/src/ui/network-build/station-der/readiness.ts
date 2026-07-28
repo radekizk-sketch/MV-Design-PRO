@@ -353,7 +353,7 @@ function buildBlockersForAxis(
       if (!der.pcc_ref) {
         blockers.push({
           code: 'der.pcc.missing',
-          message_pl: 'Brak punktu przyłączenia PCC.',
+          message_pl: 'Brak punktu przyłączenia.',
           object_ref: der.id,
           target_screen: derKindToScreen(der.der_kind),
           target_tab: 'topology',
