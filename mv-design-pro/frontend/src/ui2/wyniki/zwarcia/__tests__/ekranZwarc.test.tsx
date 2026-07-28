@@ -234,8 +234,19 @@ describe('EkranZwarc - realny dostawca wkladow (R3-B / K3-G3)', () => {
     // A -> kA (skalowanie prezentacji): 1234,5 A = 1,235 kA (format PL, 3 miejsca).
     expect(tabela.getByText('1,234')).toBeInTheDocument();
     // Endpoint dostal ref ENM aktywnego punktu (target_id pierwszego wiersza).
-    const [, init] = fetchMock.mock.calls[0];
-    expect(JSON.parse((init as RequestInit).body as string).fault_node_id).toBe(
+    //
+    // WYSZUKANIE PO ADRESIE, NIE PO KOLEJNOSCI (V12K-265). Asercja celowala w
+    // `calls[0]`, czyli zakladala, ze wklady sa PIERWSZYM zapytaniem ekranu. Gdy
+    // ekran zaczal dodatkowo pobierac kontrakt przebiegu (rewizja modelu dla
+    // znacznika swiezosci), pierwszy stal sie GET bez ciala i test padal na
+    // `init.body` — mimo ze sprawdzana wlasciwosc byla spelniona. Intencja dotyczy
+    // KONKRETNEJ koncowki, wiec szukamy jej po adresie.
+    const wywolanieWkladow = fetchMock.mock.calls.find(([url]) =>
+      String(url).includes('/api/proof/sc3f/contributions'),
+    );
+    expect(wywolanieWkladow, 'brak zapytania o wklady zwarciowe').toBeDefined();
+    const init = wywolanieWkladow![1] as RequestInit;
+    expect(JSON.parse(init.body as string).fault_node_id).toBe(
       shortCircuitResultsFixture().rows[0].target_id,
     );
     vi.unstubAllGlobals();

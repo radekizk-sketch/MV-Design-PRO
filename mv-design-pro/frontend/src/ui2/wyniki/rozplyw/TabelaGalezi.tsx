@@ -26,6 +26,7 @@ import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
 import { fetchWalidacjaEnergetyczna } from '../jakosc/api';
 import { rodzajPrzekroczeniaWalidacji, typElementuWalidacji } from '../jakosc/jakoscModel';
 import { ROZPLYW_STRINGS } from './strings';
+import { useSwiezoscNaglowka } from '../../freshness';
 import {
   KLUCZ_GALAZ,
   KOLUMNY_GALEZI,
@@ -87,6 +88,8 @@ export function TabelaGalezi({
   onWybierzWiersz,
 }: TabelaGaleziProps) {
   const { wynik, runId } = useWynikRozplywu();
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ, wspolnej derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
   const poprawWModelu = usePoprawWModelu();
   const obciazenia = useWalidacjaObciazen(runId);
 
@@ -107,7 +110,7 @@ export function TabelaGalezi({
   return (
     <div data-testid="mvd-rozplyw-galezie">
       <EkranAnalizy
-        naglowek={{ analizaPL: ROZPLYW_STRINGS.analizaGalezie, runId: runId ?? undefined }}
+        naglowek={{ analizaPL: ROZPLYW_STRINGS.analizaGalezie, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaRozplywu(wynik)}
         kolumny={KOLUMNY_GALEZI}
         wiersze={naWierszeGalezi(wynik.branch_results, obciazenia)}

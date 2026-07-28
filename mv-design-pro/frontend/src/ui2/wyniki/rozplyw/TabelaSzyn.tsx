@@ -12,6 +12,7 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
 import { ProfilNapiecChart } from './ProfilNapiecChart';
 import { ROZPLYW_STRINGS } from './strings';
+import { useSwiezoscNaglowka } from '../../freshness';
 import {
   KLUCZ_SZYNA,
   KOLUMNY_SZYN,
@@ -40,6 +41,8 @@ export function TabelaSzyn({
   onWybierzWiersz,
 }: TabelaSzynProps) {
   const { wynik, runId } = useWynikRozplywu();
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ, wspolnej derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
   const poprawWModelu = usePoprawWModelu();
 
   if (!wynik) {
@@ -56,7 +59,7 @@ export function TabelaSzyn({
   return (
     <div data-testid="mvd-rozplyw-szyny">
       <EkranAnalizy
-        naglowek={{ analizaPL: ROZPLYW_STRINGS.analiza, runId: runId ?? undefined }}
+        naglowek={{ analizaPL: ROZPLYW_STRINGS.analiza, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaRozplywu(wynik)}
         kolumny={KOLUMNY_SZYN}
         wiersze={naWierszeSzyn(wynik.bus_results)}

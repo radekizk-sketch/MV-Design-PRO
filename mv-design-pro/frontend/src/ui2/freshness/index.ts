@@ -12,3 +12,5 @@ export { PanelCoSieZmienilo } from './PanelCoSieZmienilo';
 export type { PanelCoSieZmieniloProps } from './PanelCoSieZmienilo';
 export { pobierzDziennikZmian, podsumowaniePl } from './dziennikApi';
 export type { DziennikZmian, WpisDziennika } from './dziennikApi';
+export { useSwiezoscNaglowka } from './useSwiezoscNaglowka';
+export type { SwiezoscNaglowka } from './useSwiezoscNaglowka';

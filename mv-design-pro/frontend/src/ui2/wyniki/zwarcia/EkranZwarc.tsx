@@ -24,6 +24,7 @@ import { RozplywZwarciowy } from './RozplywZwarciowy';
 import { WkladyZwarciowe } from './WkladyZwarciowe';
 import { WykresZwarc } from './WykresZwarc';
 import { ZWARCIA_STRINGS } from './strings';
+import { useSwiezoscNaglowka } from '../../freshness';
 import {
   KLUCZ_PUNKT,
   KOLUMNY_ZWARC,
@@ -59,6 +60,8 @@ export function EkranZwarc({
   wklady,
 }: EkranZwarcProps) {
   const { wynik, runId } = useWynikZwarciowy();
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ, wspolnej derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
   const rows = wynik?.rows ?? [];
   const [wybranyPunkt, setWybranyPunkt] = useState<string | null>(null);
   // Karta W-C pkt 6: selekcja + centrowanie + nawigacja + overlay rozpływu
@@ -103,7 +106,7 @@ export function EkranZwarc({
   return (
     <div data-testid="mvd-zwarcia-ekran">
       <EkranAnalizy
-        naglowek={{ analizaPL: ZWARCIA_STRINGS.analiza, runId: runId ?? undefined }}
+        naglowek={{ analizaPL: ZWARCIA_STRINGS.analiza, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaZwarc(wspolczynnikC, czasCieplnyS)}
         kolumny={KOLUMNY_ZWARC}
         wiersze={naWierszeZwarc(rows)}
