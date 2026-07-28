@@ -28,7 +28,6 @@ import {
   selectHvFusesForRating,
   DEVICE_WITHSTAND_CATALOG,
   validateDeviceWithstand,
-  isVtVoltageFactorValidForGrounding,
 } from '../protection-catalogs';
 import type { StationDerConnection } from '../types';
 
@@ -499,42 +498,17 @@ describe('eng.18 — Device withstand validation (I_dyn / I_th)', () => {
 });
 
 // =============================================================================
-// Pakiet F — eng.20 (VT voltage_factor validation per grounding)
+// Pakiet F — eng.20: regula PRZENIESIONA DO BACKENDU (V12K-256 / V12K-257)
 // =============================================================================
+//
+// Tu stalo szesc asercji na `isVtVoltageFactorValidForGrounding` — froncie kopii
+// reguly IEC 61869-3. Kopia miala progi ZANIZONE (1,5 przy uziemieniu przez rezystor,
+// 1,2 przy bezposrednim), wiec ekran moglby oglaszac zgodnosc tam, gdzie backend i
+// pakiet dowodowy mowia „niezgodne". Regula zostala usunieta z frontu; jej intencje
+// pilnuja teraz:
+//
+//   * `backend/tests/api/test_audit2_catalogs_api.py` — progi wg sposobu uziemienia,
+//   * `backend/tests/domain/test_dobor_przekladnika_napieciowego.py` — pelne kryterium
+//     wspolczynnika napieciowego wraz z ukladem pracy uzwojenia,
+//   * `WalidacjaVtPolaSekcja.test.tsx` — ze ekran PYTA backend, zamiast liczyc sam.
 
-describe('eng.20 — VT voltage_factor walidacja względem typu sieci', () => {
-  it('Sieć izolowana wymaga U_th = 1.9 (8h)', () => {
-    const ok_19 = isVtVoltageFactorValidForGrounding(1.9, 'isolated');
-    expect(ok_19.ok).toBe(true);
-
-    const fail_15 = isVtVoltageFactorValidForGrounding(1.5, 'isolated');
-    expect(fail_15.ok).toBe(false);
-    expect(fail_15.message_pl).toContain('izolowana');
-    expect(fail_15.message_pl).toContain('1.9');
-  });
-
-  it('Sieć skompensowana (Petersena) wymaga U_th = 1.9 (8h)', () => {
-    const ok_19 = isVtVoltageFactorValidForGrounding(1.9, 'petersen_coil');
-    expect(ok_19.ok).toBe(true);
-
-    const fail_15 = isVtVoltageFactorValidForGrounding(1.5, 'petersen_coil');
-    expect(fail_15.ok).toBe(false);
-    expect(fail_15.message_pl).toContain('Petersena');
-  });
-
-  it('Sieć R-grounded wymaga U_th ≥ 1.5 (30s)', () => {
-    const ok_15 = isVtVoltageFactorValidForGrounding(1.5, 'resistor_grounded');
-    expect(ok_15.ok).toBe(true);
-
-    const ok_19 = isVtVoltageFactorValidForGrounding(1.9, 'resistor_grounded');
-    expect(ok_19.ok).toBe(true);
-
-    const fail_12 = isVtVoltageFactorValidForGrounding(1.2, 'resistor_grounded');
-    expect(fail_12.ok).toBe(false);
-  });
-
-  it('Sieć directly-grounded akceptuje U_th = 1.2', () => {
-    const ok_12 = isVtVoltageFactorValidForGrounding(1.2, 'directly_grounded');
-    expect(ok_12.ok).toBe(true);
-  });
-});

@@ -151,6 +151,9 @@ export function WalidacjaVtPolaSekcja({
         <p
           key={wiersz.bayDesignation}
           data-testid={`vt-validation-${wiersz.bayDesignation}`}
+          // Znacznik maszynowy werdyktu: `true` / `false` / `nieustalone` — trzeci stan
+          // MUSI byc odrozalny, inaczej brak podstawy wygladalby jak zgodnosc.
+          data-vt-ok={wiersz.ok === null ? 'nieustalone' : String(wiersz.ok)}
           className={
             wiersz.ok === false
               ? 'text-xs text-scada-alarm'
