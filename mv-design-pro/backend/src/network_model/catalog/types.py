@@ -2476,6 +2476,51 @@ class CTType:
 # =============================================================================
 
 
+#: Znormalizowane wspolczynniki napieciowe VT i ich czasy (IEC 61869-3 tab. 2).
+#:
+#: Wspolczynnik napieciowy F_v mowi, jaka KROTNOSC napiecia znamionowego przekladnik
+#: wytrzymuje z zachowaniem dokladnosci — i przez JAKI CZAS. Dla uzwojenia pierwotnego
+#: pracujacego miedzy faza a ziemia w sieci MALOPRADOWEJ (izolowanej albo kompensowanej)
+#: zwarcie doziemne podnosi napiecie faz zdrowych do napiecia miedzyfazowego, czyli do
+#: 1,73·U_n/√3 — dlatego norma wymaga tam 1,9, a nie 1,5. Czas zalezy od tego, czy
+#: zwarcie doziemne jest WYLACZANE AUTOMATYCZNIE (30 s) czy dopuszcza sie prace z
+#: doziemieniem (8 h) — to dana projektowa, nie cecha przekladnika.
+WSPOLCZYNNIK_NAPIECIOWY_CIAGLY: float = 1.2
+WSPOLCZYNNIK_NAPIECIOWY_SIEC_UZIEMIONA: float = 1.5
+WSPOLCZYNNIK_NAPIECIOWY_SIEC_MALOPRADOWA: float = 1.9
+CZAS_WSPOLCZYNNIKA_KROTKI_S: float = 30.0
+CZAS_WSPOLCZYNNIKA_DLUGI_S: float = 8 * 3600.0
+
+
+def rodzaj_vt_z_klasy(accuracy_class: str | None) -> str | None:
+    """Rodzaj uzwojenia VT WYPROWADZONY z klasy dokladnosci (IEC 61869-3).
+
+    Podzial jest DEFINICYJNY, tak samo jak dla przekladnikow pradowych (V12K-239):
+    klasy z litera ``P`` (3P, 6P) opisuja uzwojenia ZABEZPIECZENIOWE — blad zdefiniowany
+    w calym zakresie od 5% U_n do F_v·U_n (IEC 61869-3 § 5.6.202) — a klasy liczbowe
+    (0,1 / 0,2 / 0,5 / 1,0 / 3,0) uzwojenia POMIAROWE, gdzie blad definiuje sie w waskim
+    otoczeniu napiecia znamionowego. Dlatego z klasy wolno wyprowadzic te wartosc.
+
+    Zapis zlozony (np. „0,5/3P") opisywalby DWA uzwojenia — nie da sie go rozstrzygnac
+    na jeden rodzaj, wiec rekordy dwuuzwojeniowe niosa klase uzwojenia zabezpieczeniowego
+    w ``accuracy_class`` i klase uzwojenia pomiarowego w ``accuracy_class_metering``.
+
+    Brak klasy albo klasa nierozpoznana daje ``None`` — „nie da sie ustalic".
+    """
+    if not accuracy_class:
+        return None
+    znormalizowana = accuracy_class.strip().upper()
+    if not znormalizowana or "/" in znormalizowana:
+        return None
+    if "P" in znormalizowana:
+        return "protection"
+    try:
+        float(znormalizowana.replace(",", "."))
+    except ValueError:
+        return None
+    return "metering"
+
+
 @dataclass(frozen=True)
 class VTType:
     """Immutable voltage transformer type.
@@ -2495,6 +2540,21 @@ class VTType:
     ratio_secondary_v: float = 100.0
     accuracy_class: str | None = None
     manufacturer: str | None = None
+    #: Klasa uzwojenia POMIAROWEGO w przekladniku dwuuzwojeniowym; `accuracy_class`
+    #: niesie wtedy klase uzwojenia zabezpieczeniowego. `None` = jedno uzwojenie.
+    accuracy_class_metering: str | None = None
+    #: Wspolczynnik napieciowy F_v (krotnosc U_n z zachowaniem dokladnosci).
+    #: Dla rekordow referencyjnych deklarowany wg IEC 61869-3 tab. 2 dla sieci
+    #: maloprądowej; przed uzyciem produkcyjnym potwierdzany karta producenta.
+    rated_voltage_factor: float | None = None
+    #: Czas, przez ktory F_v obowiazuje [s] — 30 s albo 8 h (IEC 61869-3 tab. 2).
+    voltage_factor_duration_s: float | None = None
+    #: Moc znamionowa uzwojenia [VA] — szereg znormalizowany IEC 61869-3.
+    burden_va: float | None = None
+    #: Czy przekladnik ma uzwojenie RESZTKOWE (trzecie) do pomiaru napiecia zerowego.
+    #: Dana KONSTRUKCYJNA — nie wyprowadza sie jej z klasy ani z przekladni. `None`
+    #: znaczy „karta producenta jeszcze nie wczytana", `False` — brak takiego uzwojenia.
+    has_residual_winding: bool | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog VT MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -2509,6 +2569,14 @@ class VTType:
             "ratio_secondary_v": self.ratio_secondary_v,
             "accuracy_class": self.accuracy_class,
             "manufacturer": self.manufacturer,
+            "accuracy_class_metering": self.accuracy_class_metering,
+            # Rodzaj uzwojenia jest WYPROWADZANY z klasy (IEC 61869-3), nie przechowywany
+            # osobno — jedno zrodlo prawdy, tak samo jak rdzen CT (V12K-239).
+            "application": rodzaj_vt_z_klasy(self.accuracy_class),
+            "rated_voltage_factor": self.rated_voltage_factor,
+            "voltage_factor_duration_s": self.voltage_factor_duration_s,
+            "burden_va": self.burden_va,
+            "has_residual_winding": self.has_residual_winding,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2527,6 +2595,26 @@ class VTType:
             ratio_secondary_v=float(data.get("ratio_secondary_v", 100.0)),
             accuracy_class=data.get("accuracy_class"),
             manufacturer=data.get("manufacturer"),
+            # Kazde nowe pole MUSI byc tu wymienione: jawny mapper milczaco gubi to,
+            # czego nie przepisze (precedens V12K-254 — dane byly w pliku, a katalog
+            # zwracal None dla wszystkich 12 wpisow).
+            accuracy_class_metering=data.get("accuracy_class_metering"),
+            rated_voltage_factor=(
+                float(data["rated_voltage_factor"])
+                if data.get("rated_voltage_factor") is not None
+                else None
+            ),
+            voltage_factor_duration_s=(
+                float(data["voltage_factor_duration_s"])
+                if data.get("voltage_factor_duration_s") is not None
+                else None
+            ),
+            burden_va=(float(data["burden_va"]) if data.get("burden_va") is not None else None),
+            has_residual_winding=(
+                bool(data["has_residual_winding"])
+                if data.get("has_residual_winding") is not None
+                else None
+            ),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog VT MV-DESIGN-PRO / dane referencyjne",

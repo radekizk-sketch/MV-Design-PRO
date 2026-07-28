@@ -1,4 +1,4 @@
-"""Dobor przekladnika pradowego pola wytworcy — kryteria normowe (karta E21-4).
+"""Dobor przekladnikow pola wytworcy — kryteria normowe (karta E21-4).
 
 DLACZEGO TEN MODUL ISTNIEJE. Ekran pokazywal przekladnik jako NAZWE katalogowa
 („CT 200/5 A kl. 5P10 10 VA") i nic wiecej. Wlasciciel wskazal, ze bez sprawdzenia
@@ -23,6 +23,17 @@ KRYTERIA (kazde z podstawa normowa i jawnym rachunkiem):
   6. Wytrzymalosc dynamiczna — Idyn >= ip (prad szczytowy z solwera).
   7. Prad wtorny      — 1 A / 5 A musi zgadzac sie z wejsciem przekaznika.
   8. Obciazalnosc     — moc znamionowa rdzenia >= obciazenie obwodu wtornego.
+
+KRYTERIA PRZEKLADNIKA NAPIECIOWEGO (`sprawdz_dobor_vt`, dane katalogu z V12K-255):
+  1. Napiecie pierwotne — przekladnia wobec napiecia sieci; rozpoznanie ukladu
+                          (miedzyfazowy vs faza-ziemia U_n/√3).
+  2. Rodzaj uzwojenia   — funkcje zabezpieczeniowe wymagaja klasy z litera P.
+  3. Wspolczynnik F_v   — 1,9 w sieci maloprądowej, 1,5 w bezposrednio uziemionej;
+                          czas (30 s / 8 h) zalezy od automatycznego wylaczania.
+  4. Napiecie wtorne    — 100 V / 110 V (albo /√3) wobec wejscia przekaznika.
+  5. Obciazalnosc       — moc znamionowa uzwojenia >= obciazenie obwodu.
+  6. Tor napiecia zerowego — otwarty trojkat wymaga ukladu faza-ziemia, uzwojenie
+                          resztkowe wymaga trzeciego uzwojenia w przekladniku.
 """
 
 from __future__ import annotations
@@ -387,3 +398,455 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
         )
 
     return WynikDoboru(kryteria=kryteria)
+
+
+# =============================================================================
+# PRZEKLADNIK NAPIECIOWY (VT)
+# =============================================================================
+
+#: Dopuszczalne odchylenie przekladni od wartosci wzorcowej przy rozpoznawaniu ukladu
+#: pracy (miedzyfazowy vs faza-ziemia) i przy zgodnosci napiecia wtornego.
+#:
+#: Pasmo jest CIASNE i taki jest zamysl: napiecia znamionowe przekladnikow to wartosci
+#: ZNORMALIZOWANE (100 V, 110 V, 100/√3 V), a nie pomiary — pasmo ma pokryc wylacznie
+#: zaokraglenia katalogowe (20000/√3 zapisane jako 11547,0; 100/√3 jako 57,7). Szersze
+#: pasmo uznawaloby 110 V za zgodne ze wejsciem 100 V, a to 10% bledu w kazdej nastawie
+#: napieciowej toru — dokladnie ten defekt wykryl test zgodnosci napiecia wtornego.
+TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ = 0.02
+
+#: Powyzej tej krotnosci napiecia sieci przekladnik jest nadwymiarowany — pomiar traci
+#: rozdzielczosc. Praktyka projektowa, nie wymaganie normy => INFORMACJA.
+PROG_NADWYMIAROWANIA_VT = 1.5
+
+#: Sieci, w ktorych zwarcie doziemne NIE jest ograniczane male impedancja punktu
+#: neutralnego: napiecie faz zdrowych rosnie do napiecia miedzyfazowego, wiec norma
+#: wymaga wspolczynnika napieciowego 1,9 (IEC 61869-3 tab. 2). „rezystor" jest tu
+#: swiadomie: siec uziemiona przez rezystor NIE jest siecia skutecznie uziemiona.
+UZIEMIENIA_WYMAGAJACE_19: frozenset[str] = frozenset({"izolowany", "cewka_petersena", "rezystor"})
+
+WSPOLCZYNNIK_SIEC_UZIEMIONA = 1.5
+WSPOLCZYNNIK_SIEC_MALOPRADOWA = 1.9
+CZAS_WSPOLCZYNNIKA_KROTKI_S = 30.0
+CZAS_WSPOLCZYNNIKA_DLUGI_S = 8 * 3600.0
+
+
+@dataclass(frozen=True)
+class WymaganiaToruNapieciowego:
+    """Fakty o torze napieciowym — z modelu, nigdy domyslne."""
+
+    #: Napiecie znamionowe sieci w tym punkcie [V] — z modelu (szyna pola).
+    napiecie_sieci_v: float | None = None
+    #: Sposob uziemienia punktu neutralnego — z modelu; „nieznany" znaczy NIEZNANY.
+    tryb_uziemienia: str | None = None
+    #: Czy zwarcie doziemne jest wylaczane automatycznie — dana PROJEKTOWA; decyduje
+    #: o CZASIE wspolczynnika napieciowego (30 s vs 8 h), nie o jego wartosci.
+    zwarcie_doziemne_wylaczane_automatycznie: bool | None = None
+    #: Napiecie wejscia przekaznika [V] (100 albo 110) — z karty urzadzenia.
+    napiecie_wejscia_przekaznika_v: float | None = None
+    #: Obciazenie obwodu wtornego [VA] — dana PROJEKTOWA.
+    obciazenie_obwodu_va: float | None = None
+    #: Zadeklarowane w modelu zrodlo napiecia zerowego: „otwarty_trojkat_vt",
+    #: „uzwojenie_resztkowe_vt", „obliczone" albo „brak".
+    zrodlo_napiecia_zerowego: str | None = None
+    #: Czy przekladnik ma zasilac funkcje zabezpieczeniowe.
+    dla_zabezpieczen: bool = True
+
+
+def _blisko(wartosc: float, wzorzec: float, tolerancja: float) -> bool:
+    if wzorzec <= 0:
+        return False
+    return abs(wartosc - wzorzec) / wzorzec <= tolerancja
+
+
+def _wymagany_wspolczynnik_napieciowy(tryb: str | None) -> float | None:
+    """Wymagana wartosc F_v wyprowadzona ze sposobu uziemienia (IEC 61869-3 tab. 2).
+
+    `None` = sposobu uziemienia nie ustalono; wymagania NIE zgadujemy (V12K-246:
+    domysl „bezposrednio uziemiony" zamienial brak danej w najmniej ostrozny werdykt).
+    """
+    if tryb is None or tryb == "nieznany":
+        return None
+    if tryb in UZIEMIENIA_WYMAGAJACE_19:
+        return WSPOLCZYNNIK_SIEC_MALOPRADOWA
+    if tryb == "bezposrednio_uziemiony":
+        return WSPOLCZYNNIK_SIEC_UZIEMIONA
+    return None
+
+
+def _czas_wspolczynnika_pl(czas_s: float | None) -> str | None:
+    if czas_s is None:
+        return None
+    if czas_s >= 3600.0:
+        return f"{czas_s / 3600.0:.0f} h"
+    return f"{czas_s:.0f} s"
+
+
+def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego) -> WynikDoboru:
+    """Zestaw kryteriow doboru przekladnika napieciowego dla podanego toru.
+
+    `przekladnik` to slownik z katalogu (`VTType.to_dict()`) — modul nie zalezy od klasy
+    katalogu i dziala tez na danych zmaterializowanych w modelu.
+    """
+
+    kryteria: list[Kryterium] = []
+    un_pierwotne = przekladnik.get("ratio_primary_v")
+    un_wtorne = przekladnik.get("ratio_secondary_v")
+    rodzaj = przekladnik.get("application")
+    fv = przekladnik.get("rated_voltage_factor")
+    czas_fv = przekladnik.get("voltage_factor_duration_s")
+    obciazalnosc = przekladnik.get("burden_va")
+    uzwojenie_resztkowe = przekladnik.get("has_residual_winding")
+
+    #: Uklad pracy uzwojenia pierwotnego rozpoznany z przekladni — potrzebny takze
+    #: kryterium toru napiecia zerowego, dlatego liczony raz.
+    uklad: str | None = None
+
+    # --- 1. Napiecie pierwotne wobec napiecia sieci ------------------------------
+    if tor.napiecie_sieci_v is None or un_pierwotne is None:
+        kryteria.append(
+            Kryterium(
+                kod="vt.napiecie_pierwotne",
+                nazwa_pl="Przekładnia wobec napięcia sieci",
+                podstawa_pl=(
+                    "Napięcie pierwotne odpowiada napięciu sieci (układ międzyfazowy) "
+                    "albo napięciu fazowemu U_n/√3 (układ faza–ziemia)."
+                ),
+                werdykt="brak_danych",
+                wymagane=_liczba(tor.napiecie_sieci_v, "V", 0),
+                dostepne=_liczba(un_pierwotne, "V", 0),
+                komentarz_pl="Brakuje napięcia sieci w tym punkcie albo przekładni.",
+            )
+        )
+    else:
+        faza_ziemia = tor.napiecie_sieci_v / math.sqrt(3.0)
+        if _blisko(un_pierwotne, faza_ziemia, TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ):
+            uklad = "faza_ziemia"
+        elif _blisko(un_pierwotne, tor.napiecie_sieci_v, TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ):
+            uklad = "miedzyfazowy"
+        elif un_pierwotne > tor.napiecie_sieci_v:
+            # Przekladnik przewymiarowany (np. na napiecie Um rozdzielnicy) — dopuszczalny,
+            # bo izolacja i F_v maja zapas; kosztem rozdzielczosci pomiaru.
+            uklad = "miedzyfazowy"
+        kryteria.append(
+            Kryterium(
+                kod="vt.napiecie_pierwotne",
+                nazwa_pl="Przekładnia wobec napięcia sieci",
+                podstawa_pl=(
+                    "Napięcie pierwotne odpowiada napięciu sieci (układ międzyfazowy) "
+                    "albo napięciu fazowemu U_n/√3 (układ faza–ziemia)."
+                ),
+                werdykt="spelnione" if uklad is not None else "niespelnione",
+                wymagane=(
+                    f"{tor.napiecie_sieci_v:.0f} V (międzyfazowo) "
+                    f"albo {faza_ziemia:.0f} V (faza–ziemia)"
+                ),
+                dostepne=_liczba(un_pierwotne, "V", 0),
+                komentarz_pl=(
+                    "Rozpoznany układ pracy: faza–ziemia (przekładnia U_n/√3)."
+                    if uklad == "faza_ziemia"
+                    else (
+                        "Rozpoznany układ pracy: międzyfazowy."
+                        if uklad == "miedzyfazowy"
+                        else "Napięcie pierwotne jest niższe od napięcia sieci — przekładnik "
+                        "pracowałby w przepięciu, a izolacja nie ma zapasu."
+                    )
+                ),
+            )
+        )
+        if uklad is not None and un_pierwotne > tor.napiecie_sieci_v * PROG_NADWYMIAROWANIA_VT:
+            kryteria.append(
+                Kryterium(
+                    kod="vt.nadwymiarowanie",
+                    nazwa_pl="Nadwymiarowanie przekładni",
+                    podstawa_pl=(
+                        "Przy dużym zapasie przekładni sygnał wtórny jest mały w stosunku "
+                        "do zakresu wejścia (praktyka projektowa, nie wymaganie normy)."
+                    ),
+                    werdykt="informacja",
+                    wymagane=f"≤ {PROG_NADWYMIAROWANIA_VT:.1f}× napięcia sieci",
+                    dostepne=f"{un_pierwotne / tor.napiecie_sieci_v:.2f}× napięcia sieci",
+                    komentarz_pl="Rozważ przekładnik dopasowany do napięcia sieci.",
+                )
+            )
+
+    # --- 2. Rodzaj uzwojenia -----------------------------------------------------
+    if tor.dla_zabezpieczen:
+        if rodzaj is None:
+            kryteria.append(
+                Kryterium(
+                    kod="vt.rodzaj_uzwojenia",
+                    nazwa_pl="Rodzaj uzwojenia",
+                    podstawa_pl=(
+                        "Funkcje zabezpieczeniowe wymagają uzwojenia zabezpieczeniowego "
+                        "— klasa z literą P (IEC 61869-3 § 5.6.202)."
+                    ),
+                    werdykt="brak_danych",
+                    dostepne=str(przekladnik.get("accuracy_class")),
+                    komentarz_pl=("Klasy dokładności nie da się rozstrzygnąć na rodzaj uzwojenia."),
+                )
+            )
+        else:
+            ok = rodzaj == "protection"
+            kryteria.append(
+                Kryterium(
+                    kod="vt.rodzaj_uzwojenia",
+                    nazwa_pl="Rodzaj uzwojenia",
+                    podstawa_pl=(
+                        "Funkcje zabezpieczeniowe wymagają uzwojenia zabezpieczeniowego "
+                        "— klasa z literą P (IEC 61869-3 § 5.6.202)."
+                    ),
+                    werdykt="spelnione" if ok else "niespelnione",
+                    wymagane="uzwojenie zabezpieczeniowe (klasa 3P albo 6P)",
+                    dostepne=str(przekladnik.get("accuracy_class")),
+                    komentarz_pl=(
+                        None
+                        if ok
+                        else "Uzwojenie pomiarowe ma zdefiniowaną dokładność tylko w "
+                        "otoczeniu napięcia znamionowego — przy zapadzie i przy "
+                        "przepięciu ziemnozwarciowym pomiar dla zabezpieczeń traci "
+                        "wiarygodność."
+                    ),
+                )
+            )
+
+    # --- 3. Wspolczynnik napieciowy F_v ------------------------------------------
+    wymagany_fv = _wymagany_wspolczynnik_napieciowy(tor.tryb_uziemienia)
+    wymagany_czas = (
+        None
+        if tor.zwarcie_doziemne_wylaczane_automatycznie is None
+        else (
+            CZAS_WSPOLCZYNNIKA_KROTKI_S
+            if tor.zwarcie_doziemne_wylaczane_automatycznie
+            else CZAS_WSPOLCZYNNIKA_DLUGI_S
+        )
+    )
+    # W sieci bezposrednio uziemionej norma podaje jeden czas (30 s) — zwarcie doziemne
+    # jest tam zwarciem wielkopradowym i musi byc wylaczone, wiec dana o automatyce
+    # nie jest potrzebna do rozstrzygniecia.
+    if wymagany_fv == WSPOLCZYNNIK_SIEC_UZIEMIONA:
+        wymagany_czas = CZAS_WSPOLCZYNNIKA_KROTKI_S
+    if wymagany_fv is None or fv is None or wymagany_czas is None or czas_fv is None:
+        brakujace: list[str] = []
+        if wymagany_fv is None:
+            brakujace.append(
+                "sposób uziemienia punktu neutralnego sieci (decyduje o wartości 1,5 albo 1,9)"
+            )
+        if wymagany_czas is None:
+            brakujace.append(
+                "informacja, czy zwarcie doziemne jest wyłączane automatycznie "
+                "(decyduje o czasie 30 s albo 8 h)"
+            )
+        if fv is None or czas_fv is None:
+            brakujace.append("współczynnik napięciowy przekładnika z karty producenta")
+        kryteria.append(
+            Kryterium(
+                kod="vt.wspolczynnik_napieciowy",
+                nazwa_pl="Współczynnik napięciowy",
+                podstawa_pl=(
+                    "F_v opisuje krotność napięcia znamionowego wytrzymywaną z "
+                    "zachowaniem dokładności; w sieci małoprądowej zwarcie doziemne "
+                    "podnosi napięcie faz zdrowych do międzyfazowego (IEC 61869-3 tab. 2)."
+                ),
+                werdykt="brak_danych",
+                dostepne=(
+                    None
+                    if fv is None
+                    else f"{fv:.1f} przez {_czas_wspolczynnika_pl(czas_fv) or 'czas nieznany'}"
+                ),
+                komentarz_pl="Brakuje: " + "; ".join(brakujace) + ".",
+            )
+        )
+    else:
+        ok_fv = fv >= wymagany_fv
+        ok_czas = czas_fv >= wymagany_czas
+        kryteria.append(
+            Kryterium(
+                kod="vt.wspolczynnik_napieciowy",
+                nazwa_pl="Współczynnik napięciowy",
+                podstawa_pl=(
+                    "F_v opisuje krotność napięcia znamionowego wytrzymywaną z "
+                    "zachowaniem dokładności; w sieci małoprądowej zwarcie doziemne "
+                    "podnosi napięcie faz zdrowych do międzyfazowego (IEC 61869-3 tab. 2)."
+                ),
+                werdykt="spelnione" if ok_fv and ok_czas else "niespelnione",
+                wymagane=f"{wymagany_fv:.1f} przez {_czas_wspolczynnika_pl(wymagany_czas)}",
+                dostepne=f"{fv:.1f} przez {_czas_wspolczynnika_pl(czas_fv)}",
+                komentarz_pl=(
+                    None
+                    if ok_fv and ok_czas
+                    else (
+                        "Zbyt niska krotność napięcia — przy zwarciu doziemnym rdzeń "
+                        "nasyci się, a pomiar napięcia przestanie być wiarygodny."
+                        if not ok_fv
+                        else "Krotność jest wystarczająca, ale deklarowana na krótszy "
+                        "czas niż czas trwania doziemienia w tej sieci."
+                    )
+                ),
+            )
+        )
+
+    # --- 4. Napiecie wtorne wobec wejscia przekaznika ----------------------------
+    if tor.napiecie_wejscia_przekaznika_v is None or un_wtorne is None:
+        kryteria.append(
+            Kryterium(
+                kod="vt.napiecie_wtorne",
+                nazwa_pl="Zgodność napięcia wtórnego z wejściem przekaźnika",
+                podstawa_pl=(
+                    "Napięcie wtórne musi odpowiadać wejściu napięciowemu urządzenia "
+                    "— wprost (układ międzyfazowy) albo przez √3 (faza–ziemia)."
+                ),
+                werdykt="brak_danych",
+                dostepne=_liczba(un_wtorne, "V", 1),
+                komentarz_pl="Brakuje danej o wejściu napięciowym wybranego urządzenia.",
+            )
+        )
+    else:
+        wejscie = tor.napiecie_wejscia_przekaznika_v
+        wprost = _blisko(un_wtorne, wejscie, TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
+        przez_3 = _blisko(un_wtorne, wejscie / math.sqrt(3.0), TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
+        kryteria.append(
+            Kryterium(
+                kod="vt.napiecie_wtorne",
+                nazwa_pl="Zgodność napięcia wtórnego z wejściem przekaźnika",
+                podstawa_pl=(
+                    "Napięcie wtórne musi odpowiadać wejściu napięciowemu urządzenia "
+                    "— wprost (układ międzyfazowy) albo przez √3 (faza–ziemia)."
+                ),
+                werdykt="spelnione" if wprost or przez_3 else "niespelnione",
+                wymagane=(
+                    f"{wejscie:.0f} V (międzyfazowo) albo "
+                    f"{wejscie / math.sqrt(3.0):.1f} V (faza–ziemia)"
+                ),
+                dostepne=_liczba(un_wtorne, "V", 1),
+                komentarz_pl=(
+                    None
+                    if wprost or przez_3
+                    else "Niezgodność napięcia wtórnego przekłada się wprost na błąd "
+                    "nastaw napięciowych w całym torze."
+                ),
+            )
+        )
+
+    # --- 5. Obciazalnosc obwodu wtornego -----------------------------------------
+    if tor.obciazenie_obwodu_va is None or obciazalnosc is None:
+        kryteria.append(
+            Kryterium(
+                kod="vt.obciazalnosc",
+                nazwa_pl="Obciążalność wobec obwodu wtórnego",
+                podstawa_pl="Moc znamionowa uzwojenia ≥ obciążenie obwodu (IEC 61869-3).",
+                werdykt="brak_danych",
+                dostepne=_liczba(obciazalnosc, "VA", 0),
+                komentarz_pl=(
+                    "Obciążenie obwodu napięciowego jest daną projektową — podaj sumę "
+                    "poboru urządzeń zasilanych z tego uzwojenia."
+                ),
+            )
+        )
+    else:
+        ok = obciazalnosc >= tor.obciazenie_obwodu_va
+        kryteria.append(
+            Kryterium(
+                kod="vt.obciazalnosc",
+                nazwa_pl="Obciążalność wobec obwodu wtórnego",
+                podstawa_pl="Moc znamionowa uzwojenia ≥ obciążenie obwodu (IEC 61869-3).",
+                werdykt="spelnione" if ok else "niespelnione",
+                wymagane=_liczba(tor.obciazenie_obwodu_va, "VA", 1),
+                dostepne=_liczba(obciazalnosc, "VA", 0),
+                komentarz_pl=(
+                    None
+                    if ok
+                    else "Przeciążone uzwojenie wychodzi z klasy dokładności — zmierzone "
+                    "napięcie będzie zaniżone."
+                ),
+            )
+        )
+
+    # --- 6. Tor napiecia zerowego ------------------------------------------------
+    # Kryterium powstaje TYLKO wtedy, gdy model deklaruje zrodlo napiecia zerowego.
+    # Jego BRAK jest nazwany w doborze funkcji zabezpieczeniowych (V12K-252) jako
+    # kwestia otwarta — powtarzanie go tutaj byloby szumem.
+    zrodlo = tor.zrodlo_napiecia_zerowego
+    if zrodlo in ("otwarty_trojkat_vt", "uzwojenie_resztkowe_vt", "obliczone"):
+        kryteria.append(_kryterium_toru_zerowego(zrodlo, uklad, uzwojenie_resztkowe))
+
+    return WynikDoboru(kryteria=kryteria)
+
+
+def _kryterium_toru_zerowego(
+    zrodlo: str, uklad: str | None, uzwojenie_resztkowe: bool | None
+) -> Kryterium:
+    """Czy wybrany przekladnik realizuje ZADEKLAROWANY w modelu tor napiecia zerowego.
+
+    Trzy zrodla to trzy rozne wymagania konstrukcyjne, nie synonimy:
+      * otwarty trojkat  — trzy przekladniki faza-ziemia, uzwojenia wtorne w otwartym
+                           trojkacie; nie wymaga trzeciego uzwojenia,
+      * uzwojenie resztkowe — wymaga TRZECIEGO uzwojenia w przekladniku (dana
+                           konstrukcyjna producenta),
+      * obliczone        — 3U0 sumowane numerycznie w urzadzeniu; wymaga pomiaru
+                           napiec fazowych, czyli ukladu faza-ziemia.
+    """
+    nazwa = "Realizacja toru napięcia zerowego"
+    podstawa = (
+        "Kryterium ziemnozwarciowe kierunkowe (67N) i zerowe nadnapięciowe (59N) "
+        "wymagają pomiaru 3U0 — jego droga musi istnieć w konstrukcji przekładnika."
+    )
+    if zrodlo == "uzwojenie_resztkowe_vt":
+        if uzwojenie_resztkowe is None:
+            return Kryterium(
+                kod="vt.tor_napiecia_zerowego",
+                nazwa_pl=nazwa,
+                podstawa_pl=podstawa,
+                werdykt="brak_danych",
+                wymagane="uzwojenie resztkowe (trzecie) w przekładniku",
+                komentarz_pl=(
+                    "Karta producenta tego typu nie mówi, czy uzwojenie resztkowe "
+                    "istnieje. W katalogu jest rodzina faza–ziemia z uzwojeniem "
+                    "resztkowym — wybierz typ z tej rodziny albo uzupełnij kartę."
+                ),
+            )
+        return Kryterium(
+            kod="vt.tor_napiecia_zerowego",
+            nazwa_pl=nazwa,
+            podstawa_pl=podstawa,
+            werdykt="spelnione" if uzwojenie_resztkowe else "niespelnione",
+            wymagane="uzwojenie resztkowe (trzecie) w przekładniku",
+            dostepne=(
+                "uzwojenie resztkowe" if uzwojenie_resztkowe else "brak uzwojenia resztkowego"
+            ),
+            komentarz_pl=(
+                None
+                if uzwojenie_resztkowe
+                else "Model deklaruje napięcie zerowe z uzwojenia resztkowego, a wybrany "
+                "typ go nie ma — kryterium kierunkowe nie miałoby sygnału."
+            ),
+        )
+
+    # Otwarty trojkat i pomiar obliczany wymagaja tego samego: pomiaru napiec fazowych.
+    wymagane = "układ faza–ziemia (przekładnia U_n/√3)"
+    if uklad is None:
+        return Kryterium(
+            kod="vt.tor_napiecia_zerowego",
+            nazwa_pl=nazwa,
+            podstawa_pl=podstawa,
+            werdykt="brak_danych",
+            wymagane=wymagane,
+            komentarz_pl=(
+                "Układu pracy przekładnika nie ustalono, bo nie zgadza się przekładnia "
+                "z napięciem sieci — najpierw rozstrzygnij kryterium przekładni."
+            ),
+        )
+    ok = uklad == "faza_ziemia"
+    return Kryterium(
+        kod="vt.tor_napiecia_zerowego",
+        nazwa_pl=nazwa,
+        podstawa_pl=podstawa,
+        werdykt="spelnione" if ok else "niespelnione",
+        wymagane=wymagane,
+        dostepne=("układ faza–ziemia" if ok else "układ międzyfazowy"),
+        komentarz_pl=(
+            None
+            if ok
+            else "Przekładnik międzyfazowy nie mierzy napięć fazowych, więc suma 3U0 "
+            "nie powstanie — ani w otwartym trójkącie, ani numerycznie w urządzeniu."
+        ),
+    )
