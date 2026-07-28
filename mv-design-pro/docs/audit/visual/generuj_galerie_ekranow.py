@@ -300,11 +300,13 @@ SCENY: list[tuple[str, str, str]] = [
      "Funkcje, nastawy i ich uzasadnienie — nastawa bez uzasadnienia nie jest projektem."),
     ("macierz", "Macierz analiz przypadku",
      "Które analizy mają komplet danych, a które są zablokowane i przez co."),
-    ("swiezosc", "Świeżość wyników",
-     "Czy wynik odpowiada obecnemu modelowi — status po zmianie musi być uczciwy."),
+    ("swiezosc", "Pasek zakresu obliczeń (panel, nie ekran)",
+     "Pasek nad powierzchniami: przypadek, stan modelu, gotowość i świeżość wyników. "
+     "Sprawdź spójność chipów między sobą — „Wyniki: nieaktualne” przy „Przypadków: 0” "
+     "to zestawienie, które trzeba umieć wytłumaczyć."),
     ("walidacja", "Walidacja energetyczna",
      "Bilans mocy i ślad WHITE BOX per pozycja."),
-    ("uwaga", "Rejestr „co wymaga uwagi”",
+    ("uwaga", "Rejestr „co wymaga uwagi” (panel, nie ekran)",
      "Zbiorcza lista braków z miejscem naprawy — wpis bez miejsca naprawy jest ślepy."),
     ("porownanie", "Porównanie wariantów",
      "A/B dwóch przypadków: co się zmieniło i jaki to ma skutek."),
@@ -368,10 +370,14 @@ def sceny_grupa() -> Grupa:
             )
     return Grupa(
         "sceny",
-        "Pozostałe powierzchnie — inwentarz pełny",
+        "Pozostałe powierzchnie i panele — inwentarz pełny",
         "Trzydziesci piec scen, ktore harness renderowal od dawna, a bramka zrzutow "
         "kadrowala ZERO z nich. Pierwsze uruchomienie nowej bramki znalazlo tu kreator "
-        "zrodla zasilania w stanie bialego ekranu. Kadry sa mniejsze niz wiodace — to "
+        "zrodla zasilania w stanie bialego ekranu, a scene odbioru z komunikatem awarii "
+        "uslugi obliczen. UWAGA NA CZYTANIE KADROW: czesc scen to PELNE POWIERZCHNIE "
+        "(np. rozplyw mocy), a czesc to POJEDYNCZE PANELE osadzane w powierzchniach "
+        "(pasek zakresu obliczen, rejestr uwag) — pusta przestrzen wokol panelu jest "
+        "wlasciwoscia sceny, nie brakiem ekranu. Kadry sa mniejsze niz wiodace: to "
         "inwentarz do przegladu, nie sesja zdjeciowa.",
         ekrany,
     )
