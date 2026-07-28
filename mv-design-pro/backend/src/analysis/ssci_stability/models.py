@@ -41,6 +41,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from analysis.odcisk_kontekstu import odcisk_kontekstu
+
 # --- Progi klasyfikacji (udokumentowane, NIE dostrajane pod test) -----------
 
 # Granica przecięcia modułów impedancji = granica stabilności bezwarunkowej
@@ -204,7 +206,7 @@ def compute_ssci_stability_id(
     ensure_ascii=False) z istotnych liczb i etykiet werdyktu.
     """
     payload = {
-        "context": context.to_dict() if context else None,
+        "context": odcisk_kontekstu(context),
         "gain_crossover_mag": float(gain_crossover_mag),
         "pm_risk_deg": float(pm_risk_deg),
         "pm_unstable_deg": float(pm_unstable_deg),

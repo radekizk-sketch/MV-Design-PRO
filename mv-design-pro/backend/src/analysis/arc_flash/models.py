@@ -77,6 +77,8 @@ from datetime import datetime
 from enum import Enum, StrEnum
 from typing import Any
 
+from analysis.odcisk_kontekstu import odcisk_kontekstu
+
 # ---------------------------------------------------------------------------
 # Markery, proweniencja i etykiety (maszynowo-czytelne, nienegocjowalne).
 # ---------------------------------------------------------------------------
@@ -801,7 +803,7 @@ def compute_arc_flash_id(
     Wzorzec ``compute_ssci_stability_id`` / ``compute_grid_strength_id``.
     """
     payload = {
-        "context": context.to_dict() if context else None,
+        "context": odcisk_kontekstu(context),
         "results": [
             {
                 "bus_ref": r.bus_ref,

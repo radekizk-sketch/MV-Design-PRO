@@ -69,6 +69,10 @@ class ReportContext:
     run_timestamp: datetime | None
     snapshot_id: str | None
     trace_id: str | None
+    #: Identyfikator PRZEBIEGU (V12K-269) — osobno od `trace_id`, ktory
+    #: identyfikuje ARTEFAKT dowodowy. Raport pokazuje oba, bo odpowiadaja na
+    #: dwa rozne pytania: „ktory bieg" i „ktory dowod".
+    run_id: str | None = None
 
 
 def export_p24_plus_report_pdf(
@@ -185,6 +189,7 @@ def export_p24_plus_report_pdf(
     draw_text(f"Case: {context.case_name or '—'}")
     draw_text(f"Run timestamp: {_format_timestamp(context.run_timestamp)}")
     draw_text(f"Snapshot ID: {context.snapshot_id or '—'}")
+    draw_text(f"Run ID: {context.run_id or '—'}")
     draw_text(f"Trace ID: {context.trace_id or '—'}")
     draw_text("Zakres: P11–P33, P24+")
     y -= section_spacing
@@ -398,6 +403,7 @@ def _resolve_context(
                 run_timestamp=getattr(ctx, "run_timestamp", None),
                 snapshot_id=getattr(ctx, "snapshot_id", None),
                 trace_id=getattr(ctx, "trace_id", None),
+                run_id=getattr(ctx, "run_id", None),
             )
     return ReportContext(
         project_name=None,
@@ -405,6 +411,7 @@ def _resolve_context(
         run_timestamp=None,
         snapshot_id=None,
         trace_id=None,
+        run_id=None,
     )
 
 

@@ -103,7 +103,14 @@ class AnalysisOrchestrator:
                 case_name=case_name,
                 run_timestamp=now_utc,
                 snapshot_id=None,
-                trace_id=run_id,
+                # V12K-269: `trace_id` to identyfikator ARTEFAKTU dowodowego
+                # (skrot tresci — `trace_emitters/deterministic_ids.py`), a tu
+                # znany jest wylacznie PRZEBIEG. Wpisanie run_id pod ta nazwa
+                # bylo klamstwem, ktore dodatkowo wciagalo zmiennosc per-przebieg
+                # do odcisku analizy. Artefakt na tym etapie NIE ISTNIEJE — i tak
+                # to mowimy, zamiast podstawiac cokolwiek.
+                trace_id=None,
+                run_id=run_id,
             )
             vp_builder = VoltageProfileBuilder(graph=graph, context=vp_context)
             normative_config = NormativeConfig(

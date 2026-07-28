@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from analysis.odcisk_kontekstu import odcisk_kontekstu
+
 
 @dataclass(frozen=True)
 class LFSensitivityContext:
@@ -15,6 +17,10 @@ class LFSensitivityContext:
     run_timestamp: datetime | None
     snapshot_id: str | None
     trace_id: str | None
+    #: Identyfikator PRZEBIEGU (V12K-269). Osobne pole, bo `trace_id` jest
+    #: identyfikatorem ARTEFAKTU dowodowego — dwa rozne pojecia nie moga
+    #: dzielic jednej nazwy. NIE wchodzi do odcisku analizy.
+    run_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -23,6 +29,7 @@ class LFSensitivityContext:
             "run_timestamp": self.run_timestamp.isoformat() if self.run_timestamp else None,
             "snapshot_id": self.snapshot_id,
             "trace_id": self.trace_id,
+            "run_id": self.run_id,
         }
 
 
@@ -73,7 +80,7 @@ def compute_lf_sensitivity_id(
     entries: Iterable[LFSensitivityEntry],
 ) -> str:
     payload = {
-        "context": context.to_dict() if context else None,
+        "context": odcisk_kontekstu(context),
         "delta_pct": float(delta_pct),
         "entries": [
             {

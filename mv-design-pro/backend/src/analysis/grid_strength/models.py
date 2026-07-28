@@ -26,6 +26,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from analysis.odcisk_kontekstu import odcisk_kontekstu
+
 # Domyślne progi klasyfikacji siły sieci (parametryzowalne w builderze).
 DEFAULT_WEAK_THRESHOLD = 3.0  # SCR < 3  → sieć słaba (ostrzeżenie, §8C.4)
 DEFAULT_VERY_WEAK_THRESHOLD = 2.0  # SCR < 2 → bardzo słaba (ryzyko niestabilności)
@@ -149,7 +151,7 @@ def compute_grid_strength_id(
 ) -> str:
     """Deterministyczny identyfikator analizy (SHA-256 kanonicznego payloadu)."""
     payload = {
-        "context": context.to_dict() if context else None,
+        "context": odcisk_kontekstu(context),
         "weak_threshold": float(weak_threshold),
         "very_weak_threshold": float(very_weak_threshold),
         "entries": [

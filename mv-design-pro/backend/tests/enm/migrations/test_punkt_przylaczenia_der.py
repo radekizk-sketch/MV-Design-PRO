@@ -47,9 +47,7 @@ def test_najstarszy_skrocony_klucz_tez_jest_przenoszony():
 
 def test_nazwa_kanoniczna_wygrywa_gdy_obie_sa_obecne():
     """Zapis nowszego kodu nie może zostać nadpisany pozostałością po starym."""
-    enm = _model(
-        _generator(materialized_params={"pcc_ref": "stara", KLUCZ_KANONICZNY: "nowa"})
-    )
+    enm = _model(_generator(materialized_params={"pcc_ref": "stara", KLUCZ_KANONICZNY: "nowa"}))
 
     zmigrowany, _ = migruj(enm)
 

@@ -119,6 +119,7 @@ def _build_context(
         run_timestamp=ctx.run_timestamp,
         snapshot_id=ctx.snapshot_id,
         trace_id=ctx.trace_id,
+        run_id=getattr(ctx, "run_id", None),
     )
 
 

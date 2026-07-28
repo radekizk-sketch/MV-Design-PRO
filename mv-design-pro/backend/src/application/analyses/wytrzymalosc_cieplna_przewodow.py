@@ -20,19 +20,24 @@ ZRODLA DANYCH (plik:linia w kodzie zrodlowym, stan na 2026-07-25):
   ``None``, a galaz nie ma zadnego wpisu, oznacza to realny zerowy przeplyw
   pradu zwarciowego przez ta galaz (solver pomija wpisy z ``i_contrib_a <= 0``,
   patrz ``short_circuit_iec60909.py:934``) - NIE jest to brak danych.
-- czas trwania zwarcia: ``ShortCircuitResult.tk_s`` - POJEDYNCZA wartosc dla
-  calego wyniku zwarciowego (parametr wejsciowy przypadku obliczeniowego,
-  wspolny dla calej sieci, uzyty tez do wyliczenia ``ith_a`` na poziomie wezla) -
-  ``network_model/solvers/short_circuit_iec60909.py:102``. UWAGA (znalezisko
-  karty): to jest zalozony/skonfigurowany czas obliczeniowy zwarcia, NIE
-  rozwiazana nastawa zabezpieczenia danej galezi. Mapa
-  galaz -> zabezpieczenie -> rzeczywisty czas zadzialania NIE ISTNIEJE w
-  ``application/analyses/protection/**`` (potwierdzone recon - brak takiego
-  ogniwa w kodzie na dzien karty). Modul przyjmuje ``sc_result.tk_s`` jako
-  wspolny czas dla wszystkich galezi tego wyniku; parametr
-  ``tk_s_by_branch`` pozwala nadpisac go per-galaz, gdy w przyszlosci powstanie
-  wiarygodne zrodlo czasu zadzialania zabezpieczenia danej galezi (rozszerzenie
-  addytywne, bez zmiany kontraktu).
+- czas trwania zwarcia: DWA zrodla, w jawnej kolejnosci pierwszenstwa.
+  (1) Czas WYZNACZONY Z NASTAW zabezpieczenia danej galezi -
+  ``application/analyses/protection/czas_wylaczenia_galezi.czasy_dla_modelu``,
+  podany tu przez ``tk_s_by_branch`` (patrz wywolanie ``mapa_tk_s_z_nastaw``
+  nizej w tym module). Galaz bez rozwiazanej nastawy jest w tej mapie
+  NIEOBECNA - i to jest celowe.
+  (2) Fallback: ``ShortCircuitResult.tk_s`` - POJEDYNCZA wartosc dla calego
+  wyniku zwarciowego (parametr wejsciowy przypadku, wspolny dla calej sieci,
+  uzyty tez do wyliczenia ``ith_a`` na poziomie wezla) -
+  ``network_model/solvers/short_circuit_iec60909.py:102``. To jest czas
+  ZALOZONY, nie rozwiazany; ``slad_czasu`` nazywa ten stan wprost, zeby
+  projektant wiedzial, ze ocenil galaz na wlasnym zalozeniu normowym.
+
+  UWAGA REDAKCYJNA (V12K-269): ten akapit mowil wczesniej, ze mapa
+  galaz -> zabezpieczenie -> czas zadzialania „NIE ISTNIEJE" i ze
+  ``tk_s_by_branch`` czeka na przyszle zrodlo. Ogniwo powstalo i JEST wpiete
+  (import ``czas_wylaczenia_galezi`` ponizej), a opis zostal nieaktualny -
+  czytajac go mozna bylo zbudowac drugi raz to, co juz dziala.
 - dane katalogowe przewodu (Ith(1s), Jth(1s), przekroj): resolwowane przez
   ``network_model.catalog.resolve_thermal_params(type_ref, is_cable, catalog)`` -
   ``network_model/catalog/resolver.py:282-333``.

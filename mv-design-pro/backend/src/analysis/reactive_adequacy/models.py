@@ -32,6 +32,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from analysis.odcisk_kontekstu import odcisk_kontekstu
+
 # Tolerancja nasycenia: rezerwa <= tej wartosci [Mvar] => zrodlo przy granicy Q.
 # Udokumentowana, NIE dostrajana pod test — domyslna liczbowa "blisko zera".
 DEFAULT_SATURATION_TOL_MVAR = 1.0e-3
@@ -273,7 +275,7 @@ def compute_reactive_adequacy_id(
     i etykiet werdyktu (bez tekstow ``why_pl`` / White Box — te sa pochodne).
     """
     payload = {
-        "context": context.to_dict() if context else None,
+        "context": odcisk_kontekstu(context),
         "saturation_tol_mvar": float(saturation_tol_mvar),
         "default_u_min_pu": float(default_u_min_pu),
         "default_u_max_pu": float(default_u_max_pu),

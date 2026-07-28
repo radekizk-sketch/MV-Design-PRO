@@ -7,6 +7,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
+from analysis.odcisk_kontekstu import odcisk_kontekstu
+
 
 class NormativeStatus(StrEnum):
     PASS = "PASS"
@@ -57,6 +59,10 @@ class NormativeContext:
     run_timestamp: datetime | None
     snapshot_id: str | None
     trace_id: str | None
+    #: Identyfikator PRZEBIEGU (V12K-269). Osobne pole, bo `trace_id` jest
+    #: identyfikatorem ARTEFAKTU dowodowego — dwa rozne pojecia nie moga
+    #: dzielic jednej nazwy. NIE wchodzi do odcisku analizy.
+    run_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -65,6 +71,7 @@ class NormativeContext:
             "run_timestamp": self.run_timestamp.isoformat() if self.run_timestamp else None,
             "snapshot_id": self.snapshot_id,
             "trace_id": self.trace_id,
+            "run_id": self.run_id,
         }
 
 
@@ -103,7 +110,7 @@ def compute_report_id(
 ) -> str:
     payload = {
         "config": config.to_dict(),
-        "context": context.to_dict(),
+        "context": odcisk_kontekstu(context),
         "proof_ids": sorted(proof_ids),
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))

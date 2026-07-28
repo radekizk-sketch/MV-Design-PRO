@@ -106,6 +106,7 @@ def _resolve_context(
                 run_timestamp=getattr(ctx, "run_timestamp", None),
                 snapshot_id=getattr(ctx, "snapshot_id", None),
                 trace_id=getattr(ctx, "trace_id", None),
+                run_id=getattr(ctx, "run_id", None),
             )
     if proofs:
         first = sorted(proofs, key=lambda doc: (doc.proof_type.value, doc.document_id.hex))[0]

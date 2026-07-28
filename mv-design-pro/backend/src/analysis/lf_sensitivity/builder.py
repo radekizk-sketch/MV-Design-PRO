@@ -96,6 +96,7 @@ def _resolve_context(
                 run_timestamp=getattr(ctx, "run_timestamp", None),
                 snapshot_id=getattr(ctx, "snapshot_id", None),
                 trace_id=getattr(ctx, "trace_id", None),
+                run_id=getattr(ctx, "run_id", None),
             )
     if proof_p32 is not None:
         header = proof_p32.header

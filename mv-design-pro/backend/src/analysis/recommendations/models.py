@@ -8,6 +8,8 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
+from analysis.odcisk_kontekstu import odcisk_kontekstu
+
 
 class RecommendationEffect(StrEnum):
     PASS = "PASS"
@@ -22,6 +24,10 @@ class RecommendationContext:
     run_timestamp: datetime | None
     snapshot_id: str | None
     trace_id: str | None
+    #: Identyfikator PRZEBIEGU (V12K-269). Osobne pole, bo `trace_id` jest
+    #: identyfikatorem ARTEFAKTU dowodowego — dwa rozne pojecia nie moga
+    #: dzielic jednej nazwy. NIE wchodzi do odcisku analizy.
+    run_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -30,6 +36,7 @@ class RecommendationContext:
             "run_timestamp": self.run_timestamp.isoformat() if self.run_timestamp else None,
             "snapshot_id": self.snapshot_id,
             "trace_id": self.trace_id,
+            "run_id": self.run_id,
         }
 
 
@@ -73,7 +80,7 @@ def compute_recommendation_id(
     alternatives: Iterable[RecommendationEntry],
 ) -> str:
     payload = {
-        "context": context.to_dict() if context else None,
+        "context": odcisk_kontekstu(context),
         "primary": _entry_payload(primary),
         "alternatives": [_entry_payload(entry) for entry in alternatives],
     }

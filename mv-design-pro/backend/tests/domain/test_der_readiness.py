@@ -75,7 +75,9 @@ class TestMacierzPodstawowa:
     def test_brak_pcc_blokuje_zwarcia(self) -> None:
         macierz = macierz_gotowosci_der(we(bus_przylaczenia_ref=None))
         assert macierz["sc_3f"] == "blocked"
-        assert "der.przylacze.missing" in kody(osie_gotowosci_der(we(bus_przylaczenia_ref=None)), "sc_3f")
+        assert "der.przylacze.missing" in kody(
+            osie_gotowosci_der(we(bus_przylaczenia_ref=None)), "sc_3f"
+        )
 
     def test_os_gotowa_nie_ma_zadnych_powodow(self) -> None:
         assert kody(osie_gotowosci_der(we()), "sc_3f") == []

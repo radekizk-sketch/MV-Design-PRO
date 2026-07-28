@@ -49,9 +49,9 @@ def test_wczytanie_projektu_ze_starym_kluczem_przenosi_go_pod_nazwe_kanoniczna()
 
     dane = wczytany.generators[0].materialized_params
     assert dane is not None
-    assert dane[KLUCZ_KANONICZNY] == "szyna-sn-7", (
-        "punkt przylaczenia zapisany stara nazwa musi byc widoczny po wczytaniu"
-    )
+    assert (
+        dane[KLUCZ_KANONICZNY] == "szyna-sn-7"
+    ), "punkt przylaczenia zapisany stara nazwa musi byc widoczny po wczytaniu"
     assert "pcc_ref" not in dane
 
 
