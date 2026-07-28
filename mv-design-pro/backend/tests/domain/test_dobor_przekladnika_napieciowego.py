@@ -23,7 +23,9 @@ from network_model.catalog.types import VTType
 def typ(id_katalogowy: str) -> dict:
     for wpis in get_all_vt_types():
         if wpis["id"] == id_katalogowy:
-            return VTType.from_dict({"id": wpis["id"], "name": wpis["name"], **wpis["params"]}).to_dict()
+            return VTType.from_dict(
+                {"id": wpis["id"], "name": wpis["name"], **wpis["params"]}
+            ).to_dict()
     raise AssertionError(f"brak wpisu katalogu: {id_katalogowy}")
 
 
@@ -40,7 +42,7 @@ def tor(**nadpisania) -> WymaganiaToruNapieciowego:
         "napiecie_sieci_v": 20000.0,
         "tryb_uziemienia": "cewka_petersena",
         "zwarcie_doziemne_wylaczane_automatycznie": False,
-        "napiecie_wejscia_przekaznika_v": 100.0,
+        "napiecia_wejsc_przekaznika_v": (100.0, 110.0),
         "obciazenie_obwodu_va": 20.0,
         "zrodlo_napiecia_zerowego": "brak",
         "dla_zabezpieczen": True,
@@ -64,7 +66,9 @@ class TestKatalogNiesieDaneDoboru:
         rodzina = [
             w
             for w in get_all_vt_types()
-            if VTType.from_dict({"id": w["id"], "name": w["name"], **w["params"]}).has_residual_winding
+            if VTType.from_dict(
+                {"id": w["id"], "name": w["name"], **w["params"]}
+            ).has_residual_winding
         ]
         assert len(rodzina) == 4, [w["id"] for w in rodzina]
 
@@ -88,7 +92,9 @@ class TestDoborKompletny:
         ]
 
     def test_kazde_kryterium_ma_JAWNY_RACHUNEK_i_podstawe(self) -> None:
-        wynik = sprawdz_dobor_vt(typ(VT_20KV_FZ), tor(zrodlo_napiecia_zerowego="uzwojenie_resztkowe_vt"))
+        wynik = sprawdz_dobor_vt(
+            typ(VT_20KV_FZ), tor(zrodlo_napiecia_zerowego="uzwojenie_resztkowe_vt")
+        )
         for k in wynik.kryteria:
             assert k.podstawa_pl.strip(), f"{k.kod} bez podstawy"
             if k.werdykt in ("spelnione", "niespelnione"):
@@ -106,7 +112,10 @@ class TestWspolczynnikNapieciowy:
         k = kryterium(
             sprawdz_dobor_vt(
                 typ(VT_20KV_3P),
-                tor(tryb_uziemienia="bezposrednio_uziemiony", zwarcie_doziemne_wylaczane_automatycznie=None),
+                tor(
+                    tryb_uziemienia="bezposrednio_uziemiony",
+                    zwarcie_doziemne_wylaczane_automatycznie=None,
+                ),
             ),
             "vt.wspolczynnik_napieciowy",
         )
@@ -131,9 +140,7 @@ class TestWspolczynnikNapieciowy:
 
     def test_brak_danej_o_automatyce_nazywa_dokladnie_ta_dana(self) -> None:
         k = kryterium(
-            sprawdz_dobor_vt(
-                typ(VT_20KV_3P), tor(zwarcie_doziemne_wylaczane_automatycznie=None)
-            ),
+            sprawdz_dobor_vt(typ(VT_20KV_3P), tor(zwarcie_doziemne_wylaczane_automatycznie=None)),
             "vt.wspolczynnik_napieciowy",
         )
         assert k.werdykt == "brak_danych"
@@ -182,7 +189,9 @@ class TestTorNapieciaZerowego:
     def test_uzwojenie_resztkowe_spelnione_tylko_dla_rodziny_ktora_je_ma(self) -> None:
         zadanie = tor(zrodlo_napiecia_zerowego="uzwojenie_resztkowe_vt")
         assert (
-            kryterium(sprawdz_dobor_vt(typ(VT_20KV_FZ), zadanie), "vt.tor_napiecia_zerowego").werdykt
+            kryterium(
+                sprawdz_dobor_vt(typ(VT_20KV_FZ), zadanie), "vt.tor_napiecia_zerowego"
+            ).werdykt
             == "spelnione"
         )
         k = kryterium(sprawdz_dobor_vt(typ(VT_20KV_3P), zadanie), "vt.tor_napiecia_zerowego")
@@ -192,7 +201,9 @@ class TestTorNapieciaZerowego:
     def test_otwarty_trojkat_wymaga_ukladu_faza_ziemia(self) -> None:
         zadanie = tor(zrodlo_napiecia_zerowego="otwarty_trojkat_vt")
         assert (
-            kryterium(sprawdz_dobor_vt(typ(VT_20KV_FZ), zadanie), "vt.tor_napiecia_zerowego").werdykt
+            kryterium(
+                sprawdz_dobor_vt(typ(VT_20KV_FZ), zadanie), "vt.tor_napiecia_zerowego"
+            ).werdykt
             == "spelnione"
         )
         k = kryterium(sprawdz_dobor_vt(typ(VT_20KV_3P), zadanie), "vt.tor_napiecia_zerowego")
@@ -235,7 +246,10 @@ class TestPozostaleKryteria:
 
     def test_niezgodne_napiecie_wtorne_jest_NIESPELNIONE(self) -> None:
         k = kryterium(
-            sprawdz_dobor_vt(typ("vt_20kv_110v_05_abb"), tor(dla_zabezpieczen=False)),
+            sprawdz_dobor_vt(
+                typ("vt_20kv_110v_05_abb"),
+                tor(dla_zabezpieczen=False, napiecia_wejsc_przekaznika_v=(100.0,)),
+            ),
             "vt.napiecie_wtorne",
         )
         assert k.werdykt == "niespelnione"

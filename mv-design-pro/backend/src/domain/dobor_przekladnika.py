@@ -62,8 +62,11 @@ class WymaganiaToru:
     ip_ka: float | None = None
     #: Czas trwania zwarcia przyjety do sprawdzenia cieplnego [s].
     czas_zwarcia_s: float | None = None
-    #: Prad wejscia przekaznika [A] (1 albo 5) — z karty urzadzenia.
-    prad_wejscia_przekaznika_a: float | None = None
+    #: Prady wejsc pomiarowych przekaznika [A] — z katalogu urzadzen. To ZBIOR
+    #: (typowo 1 A i 5 A), bo urzadzenie przyjmuje kilka wartosci znamionowych.
+    prady_wejsc_przekaznika_a: tuple[float, ...] | None = None
+    #: Pochodzenie powyzszej deklaracji (karta producenta / szereg preferowany normy).
+    zrodlo_wejsc_pl: str | None = None
     #: Obciazenie obwodu wtornego [VA] — dana PROJEKTOWA (przewody + przekaznik).
     obciazenie_obwodu_va: float | None = None
     #: Czy przekladnik ma zasilac funkcje zabezpieczeniowe.
@@ -333,29 +336,40 @@ def sprawdz_dobor_ct(przekladnik: dict[str, Any], tor: WymaganiaToru) -> WynikDo
         )
 
     # --- 7. Zgodnosc pradu wtornego z wejsciem przekaznika -----------------------
-    if tor.prad_wejscia_przekaznika_a is None or in_wtorny is None:
+    if not tor.prady_wejsc_przekaznika_a or in_wtorny is None:
         kryteria.append(
             Kryterium(
                 kod="ct.prad_wtorny",
                 nazwa_pl="Zgodność prądu wtórnego z wejściem przekaźnika",
-                podstawa_pl="Prąd wtórny przekładnika musi odpowiadać wejściu prądowemu urządzenia.",
+                podstawa_pl=(
+                    "Prąd wtórny przekładnika musi być jedną z wartości znamionowych "
+                    "wejścia prądowego urządzenia (IEC 60255-1)."
+                ),
                 werdykt="brak_danych",
                 dostepne=_liczba(in_wtorny, "A", 0),
                 komentarz_pl="Brakuje danej o wejściu prądowym wybranego urządzenia.",
             )
         )
     else:
-        spelnione = abs(in_wtorny - tor.prad_wejscia_przekaznika_a) < 1e-6
+        spelnione = any(abs(in_wtorny - w) < 1e-6 for w in tor.prady_wejsc_przekaznika_a)
+        wykaz = " / ".join(f"{w:.0f} A" for w in tor.prady_wejsc_przekaznika_a)
         kryteria.append(
             Kryterium(
                 kod="ct.prad_wtorny",
                 nazwa_pl="Zgodność prądu wtórnego z wejściem przekaźnika",
-                podstawa_pl="Prąd wtórny przekładnika musi odpowiadać wejściu prądowemu urządzenia.",
+                podstawa_pl=(
+                    "Prąd wtórny przekładnika musi być jedną z wartości znamionowych "
+                    "wejścia prądowego urządzenia (IEC 60255-1)."
+                ),
                 werdykt="spelnione" if spelnione else "niespelnione",
-                wymagane=_liczba(tor.prad_wejscia_przekaznika_a, "A", 0),
+                wymagane=wykaz,
                 dostepne=_liczba(in_wtorny, "A", 0),
                 komentarz_pl=(
-                    None
+                    (
+                        f"Podstawa danych o wejściu: {tor.zrodlo_wejsc_pl}."
+                        if tor.zrodlo_wejsc_pl
+                        else None
+                    )
                     if spelnione
                     else "Niezgodność prądu wtórnego oznacza błąd pomiaru w całym torze "
                     "zabezpieczeniowym."
@@ -441,8 +455,10 @@ class WymaganiaToruNapieciowego:
     #: Czy zwarcie doziemne jest wylaczane automatycznie — dana PROJEKTOWA; decyduje
     #: o CZASIE wspolczynnika napieciowego (30 s vs 8 h), nie o jego wartosci.
     zwarcie_doziemne_wylaczane_automatycznie: bool | None = None
-    #: Napiecie wejscia przekaznika [V] (100 albo 110) — z karty urzadzenia.
-    napiecie_wejscia_przekaznika_v: float | None = None
+    #: Napiecia wejsc pomiarowych przekaznika [V] — ZBIOR wartosci znamionowych.
+    napiecia_wejsc_przekaznika_v: tuple[float, ...] | None = None
+    #: Pochodzenie powyzszej deklaracji (karta producenta / szereg preferowany normy).
+    zrodlo_wejsc_pl: str | None = None
     #: Obciazenie obwodu wtornego [VA] — dana PROJEKTOWA.
     obciazenie_obwodu_va: float | None = None
     #: Zadeklarowane w modelu zrodlo napiecia zerowego: „otwarty_trojkat_vt",
@@ -686,41 +702,46 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
         )
 
     # --- 4. Napiecie wtorne wobec wejscia przekaznika ----------------------------
-    if tor.napiecie_wejscia_przekaznika_v is None or un_wtorne is None:
+    podstawa_wtorne = (
+        "Napięcie wtórne musi być jedną z wartości znamionowych wejścia napięciowego "
+        "urządzenia (IEC 60255-1) — wprost albo przez √3 w układzie faza–ziemia."
+    )
+    if not tor.napiecia_wejsc_przekaznika_v or un_wtorne is None:
         kryteria.append(
             Kryterium(
                 kod="vt.napiecie_wtorne",
                 nazwa_pl="Zgodność napięcia wtórnego z wejściem przekaźnika",
-                podstawa_pl=(
-                    "Napięcie wtórne musi odpowiadać wejściu napięciowemu urządzenia "
-                    "— wprost (układ międzyfazowy) albo przez √3 (faza–ziemia)."
-                ),
+                podstawa_pl=podstawa_wtorne,
                 werdykt="brak_danych",
                 dostepne=_liczba(un_wtorne, "V", 1),
                 komentarz_pl="Brakuje danej o wejściu napięciowym wybranego urządzenia.",
             )
         )
     else:
-        wejscie = tor.napiecie_wejscia_przekaznika_v
-        wprost = _blisko(un_wtorne, wejscie, TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
-        przez_3 = _blisko(un_wtorne, wejscie / math.sqrt(3.0), TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
+        pasuje = any(
+            _blisko(un_wtorne, w, TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
+            or _blisko(un_wtorne, w / math.sqrt(3.0), TOLERANCJA_PRZEKLADNI_NAPIECIOWEJ)
+            for w in tor.napiecia_wejsc_przekaznika_v
+        )
+        wykaz = " / ".join(
+            f"{w:.0f} V (albo {w / math.sqrt(3.0):.1f} V faza–ziemia)"
+            for w in tor.napiecia_wejsc_przekaznika_v
+        )
         kryteria.append(
             Kryterium(
                 kod="vt.napiecie_wtorne",
                 nazwa_pl="Zgodność napięcia wtórnego z wejściem przekaźnika",
-                podstawa_pl=(
-                    "Napięcie wtórne musi odpowiadać wejściu napięciowemu urządzenia "
-                    "— wprost (układ międzyfazowy) albo przez √3 (faza–ziemia)."
-                ),
-                werdykt="spelnione" if wprost or przez_3 else "niespelnione",
-                wymagane=(
-                    f"{wejscie:.0f} V (międzyfazowo) albo "
-                    f"{wejscie / math.sqrt(3.0):.1f} V (faza–ziemia)"
-                ),
+                podstawa_pl=podstawa_wtorne,
+                werdykt="spelnione" if pasuje else "niespelnione",
+                wymagane=wykaz,
                 dostepne=_liczba(un_wtorne, "V", 1),
                 komentarz_pl=(
-                    None
-                    if wprost or przez_3
+                    (
+                        f"Podstawa danych o wejściu: {tor.zrodlo_wejsc_pl}."
+                        if tor.zrodlo_wejsc_pl
+                        else None
+                    )
+                    if pasuje
                     else "Niezgodność napięcia wtórnego przekłada się wprost na błąd "
                     "nastaw napięciowych w całym torze."
                 ),

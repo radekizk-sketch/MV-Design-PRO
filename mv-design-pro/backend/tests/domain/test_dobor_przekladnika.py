@@ -49,7 +49,7 @@ def tor_kompletny(**nadpisania) -> WymaganiaToru:
         "ik_ka": 1.8,
         "ip_ka": 4.5,
         "czas_zwarcia_s": 1.0,
-        "prad_wejscia_przekaznika_a": 5.0,
+        "prady_wejsc_przekaznika_a": (1.0, 5.0),
         "obciazenie_obwodu_va": 7.5,
         "dla_zabezpieczen": True,
     }
@@ -141,7 +141,8 @@ class TestKryteriaToru:
     def test_rdzen_pomiarowy_do_zabezpieczen_jest_NIESPELNIONY(self) -> None:
         k = kryterium(
             sprawdz_dobor_ct(
-                CT_100_POMIAROWY, tor_kompletny(prad_roboczy_a=80.0, prad_wejscia_przekaznika_a=1.0)
+                CT_100_POMIAROWY,
+                tor_kompletny(prad_roboczy_a=80.0, prady_wejsc_przekaznika_a=(1.0,)),
             ),
             "ct.rodzaj_rdzenia",
         )
@@ -150,7 +151,7 @@ class TestKryteriaToru:
 
     def test_niezgodny_prad_wtorny_z_wejsciem_przekaznika(self) -> None:
         k = kryterium(
-            sprawdz_dobor_ct(CT_200_5P10, tor_kompletny(prad_wejscia_przekaznika_a=1.0)),
+            sprawdz_dobor_ct(CT_200_5P10, tor_kompletny(prady_wejsc_przekaznika_a=(1.0,))),
             "ct.prad_wtorny",
         )
         assert k.werdykt == "niespelnione"

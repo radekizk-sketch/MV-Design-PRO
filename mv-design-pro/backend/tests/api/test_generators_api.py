@@ -529,3 +529,112 @@ def test_readiness_endpoint_wola_KANONICZNA_regule_domenowa(app_client) -> None:
         podsumowanie["ready"] + podsumowanie["partial"] + podsumowanie["blocked"]
         == podsumowanie["total"]
     )
+
+
+def test_dobor_przekladnikow_jest_RACHUNKIEM_a_nie_nazwa_katalogowa(app_client) -> None:
+    """Endpoint doboru przekladnikow (karta E21-4, audyt E-21 pkt P9).
+
+    Ekran pokazywal przekladniki jako nazwy katalogowe. Wlasciciel: „bez sprawdzenia
+    przekladni, obciazalnosci cieplnej i dynamicznej, nasycenia oraz zgodnosci z
+    wejsciem przekaznika jego wybor nie ma wiarygodnosci inzynierskiej".
+
+    Test pilnuje trzech rzeczy naraz: (1) kazde kryterium ma podstawe normowa,
+    (2) prad roboczy toru przychodzi z SOLWERA (a nie z wlasnego wzoru w API),
+    (3) brak przebiegu zwarciowego zostaje NAZWANYM brakiem danej — nigdy zgodnoscia.
+    """
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id)
+
+    utworzenie = app_client.post(
+        f"/api/projects/{project_id}/cases/{case_id}/generators",
+        json={
+            "station_ref": "station/1",
+            "der_kind": "PV",
+            "power_mw": 0.5,
+            "connection_variant": "nn_side",
+            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            "source_name": "PV Stacja 1",
+            "nc_rfg_module": "A",
+        },
+    )
+    assert utworzenie.status_code == 201
+    generator_ref = utworzenie.json()["snapshot"]["generators"][0]["ref_id"]
+
+    wiazania = app_client.patch(
+        f"/api/projects/{project_id}/cases/{case_id}/generators/{generator_ref}/bindings",
+        json={
+            "ct_catalog_ref": "ct_200_5_5p10_10va_abb",
+            "vt_catalog_ref": "vt_20kv_100v_3p_abb",
+            "protection_catalog_ref": "ABB_REB670",
+        },
+    )
+    assert wiazania.status_code == 200, wiazania.text
+
+    odpowiedz = app_client.get(
+        f"/api/projects/{project_id}/cases/{case_id}"
+        f"/generators/{generator_ref}/instrument-transformers"
+    )
+    assert odpowiedz.status_code == 200, odpowiedz.text
+    dane = odpowiedz.json()
+
+    # Prad roboczy toru policzony przez kanoniczny solver I = S/(√3·U) — nie przez
+    # rownolegly wzor w warstwie API (reuzycie zamiast duplikacji).
+    assert dane["wejscia"]["prad_roboczy_a"] is not None
+    assert dane["wejscia"]["napiecie_sieci_v"] is not None
+
+    for gniazdo in ("przekladnik_pradowy", "przekladnik_napieciowy"):
+        wynik = dane[gniazdo]["wynik"]
+        assert wynik is not None, f"{gniazdo}: wiazanie jest, a doboru brak"
+        assert wynik["kryteria"], f"{gniazdo}: dobor bez ani jednego kryterium"
+        for kryterium in wynik["kryteria"]:
+            assert kryterium["podstawa_pl"].strip(), kryterium["kod"]
+            assert kryterium["werdykt"] in (
+                "spelnione",
+                "niespelnione",
+                "informacja",
+                "brak_danych",
+            )
+
+    # Bez zakonczonego przebiegu zwarciowego Ik'' i ip NIE ISTNIEJA — kryteria
+    # zwarciowe musza to nazwac, a dobor NIE MOZE byc potwierdzony.
+    assert dane["wejscia"]["ik_ka"] is None
+    assert dane["wejscia"]["run_ref_zwarciowy"] is None
+    prad = dane["przekladnik_pradowy"]["wynik"]
+    bez_danych = {k["kod"] for k in prad["kryteria"] if k["werdykt"] == "brak_danych"}
+    assert {"ct.alf", "ct.wytrzymalosc_cieplna", "ct.wytrzymalosc_dynamiczna"} <= bez_danych
+    assert prad["dobor_potwierdzony"] is False
+
+    # Wejscie pomiarowe urzadzenia przychodzi z katalogu WRAZ Z POCHODZENIEM danej —
+    # wartosc bez pochodzenia bylaby nieodroznialna od zmyslonej.
+    assert dane["wejscia"]["zrodlo_wejsc_urzadzenia"]
+    prad_wtorny = next(k for k in prad["kryteria"] if k["kod"] == "ct.prad_wtorny")
+    assert prad_wtorny["werdykt"] == "spelnione"
+    assert "szereg_preferowany" in (prad_wtorny["komentarz_pl"] or "")
+
+
+def test_dobor_przekladnikow_bez_wiazania_nie_udaje_werdyktu(app_client) -> None:
+    """Brak wiazania katalogowego to nie „dobor niespelniony" — to brak wyboru."""
+    project_id, case_id = _create_project_and_case(app_client)
+    _seed_station_enm(case_id)
+
+    utworzenie = app_client.post(
+        f"/api/projects/{project_id}/cases/{case_id}/generators",
+        json={
+            "station_ref": "station/1",
+            "der_kind": "PV",
+            "power_mw": 0.5,
+            "connection_variant": "nn_side",
+            "catalog_ref": "conv-pv-nn-0p5mw-0p4kv",
+            "source_name": "PV Stacja 1",
+            "nc_rfg_module": "A",
+        },
+    )
+    generator_ref = utworzenie.json()["snapshot"]["generators"][0]["ref_id"]
+
+    dane = app_client.get(
+        f"/api/projects/{project_id}/cases/{case_id}"
+        f"/generators/{generator_ref}/instrument-transformers"
+    ).json()
+
+    assert dane["przekladnik_pradowy"] == {"catalog_ref": None, "nazwa": None, "wynik": None}
+    assert dane["przekladnik_napieciowy"] == {"catalog_ref": None, "nazwa": None, "wynik": None}
