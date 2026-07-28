@@ -135,6 +135,21 @@ def main() -> int:
     for name, check_fn in checks:
         try:
             passed = check_fn()
+        except ImportError as e:
+            # BRAK ZALEZNOSCI TO NIE JEST NARUSZENIE DETERMINIZMU (V12K-263).
+            # Bez `pydantic` kazde sprawdzenie rzucalo ImportError, a guard konczyl
+            # sie komunikatem „TRACE DETERMINISM GUARD: VIOLATION DETECTED" z kodem 1.
+            # Regresja instalacji wygladala wiec identycznie jak regresja fizyki —
+            # najgorszy mozliwy falszywy alarm w guardzie determinizmu, bo uczy
+            # ignorowac jego czerwien. Kod 2 = problem srodowiska (konwencja
+            # `vulture_guard`), kod 1 = REALNE naruszenie.
+            print(
+                f"BRAK ZALEZNOSCI: {name} — {e}\n"
+                "Zainstaluj zaleznosci sprawdzenia (`pip install pydantic`) "
+                "i uruchom ponownie. To NIE jest naruszenie determinizmu.",
+                file=sys.stderr,
+            )
+            return 2
         except Exception as e:
             print(f"FAIL: {name} — {e}")
             passed = False

@@ -96,3 +96,127 @@ jobs:
       # Currently 0 violations (100% sync ports.json ↔ SVGs in P0.1).
       - name: Port binding (STRICT mode — ports.json schema)
         run: python scripts/port_binding_guard.py --strict
+
+      # =====================================================================
+      # V12K-263 — DOMKNIECIE LUKI „guard istnieje, ale nikt go nie uruchamia"
+      # =====================================================================
+      # POMIAR (2026-07-28): 75 guardow w `scripts/`, 35 wolanych w workflowach,
+      # 40 poza CI — z tego 29 ZIELONYCH na HEAD. Guard, ktory nigdy sie nie
+      # wykonuje, jest gorszy niz jego brak: daje pozor ochrony inwariantu, ktory
+      # w rzeczywistosci nie jest egzekwowany. Ten sam wniosek powolal ten workflow
+      # (audyt 2026-05-14) — luka po prostu odrosla.
+      #
+      # Ponizej 30 guardow spoza CI, zielonych na HEAD (w tym dwa NAPRAWIONE w tej
+      # karcie: `guard_ux_flow_v1` — trzecia kopia zakazu PCC stosowana do calego
+      # repo; `nn_source_menu_guard` — sprawdzal NAZWY plikow dostawcy zamiast
+      # zdolnosci). Laczny czas: ~12 s.
+      #
+      # `guard_diff_base.py` NIE jest tu wpiety — to wspolna BIBLIOTEKA guardow
+      # delta-owych, a nie guard; „przechodzil" tylko dlatego, ze uruchomiony
+      # samodzielnie nic nie robi.
+      #
+      # Siedem guardow scizki renderu SLD v2 ZOSTALO WYGASZONYCH (nie wyciszonych) —
+      # ich przedmiot usunal commit e231a068. Uzasadnienie i nastepcy w v3:
+      # `docs/v12xx/REJESTR_KONFLIKTOW.md`, wpis V12K-263.
+
+      # === Kontrakty API i operacji domenowych ===
+      - name: API lifecycle (macierz endpointow)
+        run: python scripts/api_lifecycle_guard.py
+
+      - name: Domain ops — jeden kanoniczny klient HTTP
+        run: python scripts/domain_ops_unified_guard.py
+
+      - name: Single entry point (CanonicalOpName)
+        run: python scripts/single_entry_point_guard.py
+
+      - name: Legacy public path
+        run: python scripts/legacy_public_path_guard.py
+
+      - name: Reference networks
+        run: python scripts/reference_networks_guard.py
+
+      # === Warstwy: zero fizyki i zero sladu w prezentacji ===
+      - name: UI — no physics (warstwa prezentacji)
+        run: python scripts/ui_no_physics_guard.py
+
+      - name: Trace v2 — brak wycieku do UI
+        run: python scripts/trace_ui_leak_guard.py
+
+      - name: Brak bezposrednich parametrow zwarcia
+        run: python scripts/no_direct_fault_params_guard.py
+
+      - name: Solver diff (hasze referencyjne solwerow)
+        run: python scripts/solver_diff_guard.py
+
+      # === UX: zywe akcje, uczciwe stany zerowe, jezyk ===
+      - name: Dead click (akcje bez obslugi)
+        run: python scripts/dead_click_guard.py
+
+      - name: Empty state CTA (stan zerowy z nastepnym krokiem)
+        run: python scripts/empty_state_cta_guard.py
+
+      - name: Tooltip coverage
+        run: python scripts/tooltip_coverage_guard.py
+
+      - name: Interaction matrix
+        run: python scripts/interaction_matrix_guard.py
+
+      - name: Brak surowych identyfikatorow w UI
+        run: python scripts/no_raw_ids_in_ui_guard.py
+
+      - name: Falszywe zero (brak danej pokazany jako 0,00)
+        run: python scripts/false_zero_guard.py --strict
+
+      - name: Jezyk backendu (zakazane terminy angielskie)
+        run: python scripts/language_guard.py
+
+      - name: Raport — flow roboczy, checklista, eksporty
+        run: python scripts/report_export_guard.py
+
+      - name: Menu zrodel nN (zdolnosci, nie nazwy plikow)
+        run: python scripts/nn_source_menu_guard.py
+
+      - name: Potwierdzenie sukcesu operacji kanonicznych
+        run: python scripts/success_toast_guard.py
+
+      # === SLD: struktura i zakres identyfikatorow warstw ===
+      - name: SLD — zakres SldLayerId (tylko renderer)
+        run: python scripts/sld_layer_id_scope_guard.py
+
+      - name: SLD — brak zewnetrznego mostu WE/WY
+        run: python scripts/sld_no_external_we_wy_bridge_guard.py
+
+      - name: SLD — stacja nie jest prostokatem
+        run: python scripts/station_not_rectangle_guard.py
+
+      - name: SLD — GPZ deklaruje strukture przemyslowa
+        run: python scripts/gpz_switchgear_guard.py
+
+      - name: SLD — kontrakt przylaczenia DER
+        run: python scripts/der_pcc_guard.py
+
+      # === Spojnosc UX Flow V1 + repozytorium ===
+      - name: UX Flow V1 (spojnosc dokumentu, testow i inwariantow)
+        run: python scripts/guard_ux_flow_v1.py
+
+      - name: Graf importow
+        run: python scripts/import_graph_guard.py
+
+      - name: Grep-zero (wzorce zakazane)
+        run: python scripts/grep_zero_guard.py
+
+      - name: Archiwum dokumentacji
+        run: python scripts/docs_archive_guard.py
+
+      - name: Spojnosc licznikow w dokumentacji
+        run: python scripts/docs_count_consistency_guard.py
+
+      # `vulture_guard` zwraca 2, gdy nie ma ani pakietu `vulture`, ani `poetry`
+      # (runner tego workflowu nie instaluje zaleznosci backendu). Bez tego kroku
+      # wpielibysmy guarda, ktory w CI zawsze pada — czyli dokladnie ten defekt,
+      # ktory ta zmiana usuwa.
+      - name: Zaleznosc vulture
+        run: pip install vulture
+
+      - name: Martwy kod backendu (vulture)
+        run: python scripts/vulture_guard.py

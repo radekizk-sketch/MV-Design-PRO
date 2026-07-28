@@ -88,6 +88,17 @@ jobs:
       - name: Fix Action Completeness Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/fix_action_completeness_guard.py
+      # V12K-263: oba guardy wymagaja zaleznosci backendu (`numpy` przez
+      # `application/reference_networks/computation.py`). Poza `poetry run`
+      # przerywaly sie ModuleNotFoundError, wiec nikt ich nie wpial i nigdy
+      # niczego nie bronily — mimo ze na HEAD sa ZIELONE. Ich miejsce jest tutaj,
+      # bo tylko ten workflow instaluje srodowisko backendu.
+      - name: Reference Networks Validation Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/reference_networks_validation_guard.py
+      - name: Solver Output Drift Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/solver_output_drift_guard.py
       - name: Audit Contract Guard
         working-directory: mv-design-pro
         run: python scripts/audit_contract_guard.py
