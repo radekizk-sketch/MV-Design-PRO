@@ -213,7 +213,10 @@ export function KreatorOdbioruNn() {
             <RzadWartosci etykieta={T.podgladS} wartosc={fmtKva(podglad.apparent_power_kva)} />
             <RzadWartosci etykieta={T.podgladZrodlo} wartosc={T.podgladZrodloWartosc} />
           </>
-        ) : (
+        ) : bladPodgladu ? null : (
+          /* Polecenie podania mocy i cosfi TYLKO wtedy, gdy naprawde ich brakuje.
+             Przy bledzie uslugi ten tekst przeczylby banerowi nad nim i wskazywalby
+             projektanta jako przyczyne cudzej awarii (V12K-260). */
           <p className="mvd-podsum-komunikat">{T.podgladBrak}</p>
         )}
       </KreatorPodsumowanie>

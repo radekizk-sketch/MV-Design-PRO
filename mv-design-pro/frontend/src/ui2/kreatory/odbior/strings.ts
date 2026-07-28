@@ -40,7 +40,11 @@ export const ODBIOR_STRINGS = {
   podgladZrodlo: 'Źródło wyniku',
   podgladZrodloWartosc: 'Obliczenie prądu po stronie serwera (R1)',
   podgladBrak: 'Podaj moc i cosφ, aby zobaczyć prąd odbioru.',
-  podgladBlad: 'Nie udało się wyznaczyć podglądu prądu.',
+  // Komunikat NAZYWA PRZYCZYNE (V12K-260). Poprzednia wersja mowila tylko, ze sie
+  // nie udalo, a pod spodem ekran dopisywal polecenie podania mocy i cosfi — przy
+  // mocy i cosfi JUZ PODANYCH. Projektant szukal brakujacego pola, ktorego nie brakowalo.
+  podgladBlad: 'Nie udało się wyznaczyć podglądu prądu — usługa obliczeń nie odpowiedziała. '
+    + 'Dane odbioru są kompletne; spróbuj ponownie albo sprawdź połączenie z backendem.',
 
   // Downstream.
   downstreamTytul: 'Co to uruchamia',

@@ -595,6 +595,22 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.includes('/power-flow-runs/')) return jsonOK(ZBIEZNOSC_HEADER);
   } else if (creator === 'wyniki-stan-fazowy') {
     if (url.includes('/results/phase-state')) return jsonOK(STAN_FAZOWY_WYNIK);
+  } else if (creator === 'odbior') {
+    // Podglad pradu odbioru liczy SOLVER (I = S/(√3·U)). Bez tej atrapy scena pokazywala
+    // baner awarii uslugi zamiast wyniku — a zrzut do oceny wygladalby jak zepsuty ekran
+    // (V12K-260). Wartosci odpowiadaja danym sceny: 50 kW, cosφ 0,93, 0,4 kV.
+    if (url.includes('/cable-rated-current-preview')) {
+      return jsonOK({
+        rated_current_a: 77.6,
+        apparent_power_kva: 53.8,
+        formula_ref: 'I = S / (√3·U)',
+        assumptions: [
+          'Uklad 3-fazowy symetryczny; wspolczynnik linii √3.',
+          'S = P / cosφ = 50,0 kW / 0,93 = 53,8 kVA.',
+          'U = 0,4 kV (napiecie szyny nN odplywu).',
+        ],
+      });
+    }
   } else if (creator === 'wiazania') {
     if (url.includes('/instrument-transformers')) return jsonOK(DOBOR_PRZEKLADNIKOW_WIAZANIA);
     if (url.includes('/protection-functions')) return jsonOK(DOBOR_FUNKCJI_WIAZANIA);

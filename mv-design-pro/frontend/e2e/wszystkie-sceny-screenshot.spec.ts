@@ -72,9 +72,13 @@ test.describe('sceny:screenshot', () => {
         // złożyła i nic nie wyrenderowała.
         const tresc = ((await root.textContent()) ?? '').replace(/\s+/g, ' ').trim();
         expect(tresc.length, `scena ${scena} wyrenderowała pustą treść`).toBeGreaterThan(80);
+        // WZORZEC SZEROKI CELOWO (V12K-260): pierwsza wersja lapala tylko „Nie udalo sie
+        // POBRAC", a scena odbioru pokazywala „Nie udalo sie WYZNACZYC podgladu pradu" —
+        // ten sam defekt, inne slowo, bramka niema. Kazda odmiana „nie udalo sie" na
+        // ekranie do oceny znaczy brakujaca atrape albo realna awarie.
         expect(
-          /Nie udało się pobrać/i.test(tresc),
-          `scena ${scena} pokazuje komunikat o nieudanym pobraniu — brakuje atrapy końcówki`,
+          /Nie udało się/i.test(tresc),
+          `scena ${scena} pokazuje komunikat o niepowodzeniu — brakuje atrapy końcówki`,
         ).toBe(false);
 
         await page.waitForTimeout(250);

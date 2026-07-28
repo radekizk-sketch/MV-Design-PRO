@@ -455,6 +455,16 @@ test.describe('kreatory:screenshot', () => {
 
         await page.getByTestId(`mvd-kreator-${c}-teoria`).locator('summary').click();
         await page.waitForTimeout(300);
+
+        // Ekran do oceny nie moze pokazywac niepowodzenia (V12K-260): scena odbioru
+        // pokazywala baner „Nie udalo sie wyznaczyc podgladu pradu" i pod nim polecenie
+        // podania mocy i cosfi, ktore byly podane. Zrzut wygladalby porzadnie mimo bledu.
+        const tresc = ((await root.textContent()) ?? '').replace(/\s+/g, ' ');
+        expect(
+          /Nie udało się/i.test(tresc),
+          `scena ${c}/${theme} pokazuje komunikat o niepowodzeniu`,
+        ).toBe(false);
+
         await root.screenshot({ path: path.join(OUTPUT_DIR, `kreator_${c}_teoria_${theme}.png`) });
 
         if (errs.length > 0) console.log(`[${c}/${theme}] errors:\n${errs.join('\n')}`);

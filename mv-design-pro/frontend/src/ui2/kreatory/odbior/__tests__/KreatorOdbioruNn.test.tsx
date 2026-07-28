@@ -45,9 +45,17 @@ vi.mock('../../../../ui/catalog/api', () => ({
     ]),
 }));
 
+/**
+ * Atrapa podglądu STEROWALNA per test (V12K-260). Wcześniej zwracała wyłącznie sukces,
+ * więc gałąź błędu nie była ćwiczona ani razu — a to w niej siedział defekt: ekran
+ * przy awarii usługi pokazywał polecenie podania mocy i cosφ, które były już podane.
+ */
+let podgladOdpowiada = true;
 vi.mock('../../../../ui/network-build/forms/cableVoltageDropApi', () => ({
   fetchCableRatedCurrent: () =>
-    Promise.resolve({ rated_current_a: 80.2, apparent_power_kva: 55.6, formula_ref: 'I=S/(√3U)', assumptions: [] }),
+    podgladOdpowiada
+      ? Promise.resolve({ rated_current_a: 80.2, apparent_power_kva: 55.6, formula_ref: 'I=S/(√3U)', assumptions: [] })
+      : Promise.reject(new Error('usługa nie odpowiada')),
 }));
 
 async function fill() {
@@ -58,6 +66,7 @@ async function fill() {
 
 describe('KreatorOdbioruNn — realna ścieżka', () => {
   beforeEach(() => {
+    podgladOdpowiada = true;
     appState.activeCaseId = 'case-1';
     context = { feeder_ref: 'feeder-1', bus_nn_ref: 'bus-nn', bus_voltage_kv: 0.4 };
     snapshotState.error = null;
@@ -104,6 +113,23 @@ describe('KreatorOdbioruNn — realna ścieżka', () => {
       wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('\\tan(\\arccos\\cos\\varphi)')),
     ).toBe(true);
     expect(screen.queryByTestId('math-fallback')).toBeNull();
+  });
+
+  it('awaria usługi podglądu NIE każe podawać danych, które są podane', async () => {
+    // Sedno V12K-260: dwa różne stany były zgniecione w jeden widok. Ekran pokazywał
+    // baner „nie udało się" i POD NIM polecenie „Podaj moc i cosφ" — przy mocy 50 kW
+    // i cosφ 0,93 widocznych obok. Projektant szukał brakującego pola, którego nie
+    // brakowało, zamiast ponowić albo sprawdzić połączenie.
+    podgladOdpowiada = false;
+    render(<KreatorOdbioruNn />);
+    await fill();
+
+    await waitFor(() => {
+      expect(screen.getByText(/usługa obliczeń nie odpowiedziała/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/Podaj moc i cosφ/i)).toBeNull();
+    // Komunikat mówi, CO ZROBIĆ — baner bez następnego kroku jest ślepym zaułkiem.
+    expect(screen.getByText(/spróbuj ponownie/i)).toBeInTheDocument();
   });
 
   it('uczciwy stan zerowy: bez odpływu zapis zablokowany', async () => {
