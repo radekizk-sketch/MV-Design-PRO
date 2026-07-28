@@ -323,7 +323,62 @@ odwzorowawczej. Praktyczne skutki: (a) narzędzia egzekwujące zasięg strefy mo
 To dodatkowy argument za regułą z §3: **długość musi przyjść jako atrybut, nie z geometrii.**
 Geometria mapy to w dodatku trasa, a nie długość przewodu — bez zapasów i bez profilu pionowego.
 
-### 4A.5 Wniosek operacyjny — treść prośby do operatora
+### 4A.5 Czy da się przypiąć długość do odcinka — analiza rozstrzygająca
+
+Pytanie rozpada się na dwa niezależne: **ile mierzy narysowany obiekt** (rozstrzygalne)
+i **czym jest „odcinek"** (rozstrzygalne tylko częściowo).
+
+**Łańcuch wyprowadzenia długości.** Długość płaska z polilinii → poprawka odwzorowawcza
+liczona punktowo dla każdego obiektu (`k = k₀(1 + x²/2R² + x⁴/24R⁴)`, `x` = odległość od
+południka osiowego) → długość terenowa. W zbiorze `k ∈ [1,0009679; 1,0010319]`; sumarycznie
+133,713 km z mapy odpowiada **133,580 km w terenie (−132,9 m)**. To poprawka **ścisła**,
+nie szacunek — wynika z parametrów w `.prj`.
+
+**Klasa wiarygodności podstawy geometrycznej** (tylko obiekty istniejące):
+
+| Klasa | Podstawa | Odcinków | Długość | Dowód z danych |
+|---|---|---|---|---|
+| **A** | trasa rzeczywista | 195 | 65,355 km | 18,6 wierzch./odcinek, odstęp 12,1 m, **krętość mediana 1,2186**, 90 % > 1,02 |
+| **B** | rozpiętość przęsła | 584 | 61,281 km | 100 % dwuwierzchołkowe, krętość dokładnie 1,0000, mediana przęsła 97,5 m |
+| **C** | linia prosta / uproszczona | 106 | 6,945 km | kable rysowane schematycznie (80 % kabla wlz) — wyłącznie wartość dolna |
+
+**Korekta obrazu z §4A.3.** Rozspójnienie na 431 komponentów było w znacznej mierze artefaktem
+mieszania warstw. W obrębie jednej warstwy dopasowanie końców jest **ścisłe do 1 mm**:
+
+- napowietrzna 15 kV: 554 przęsła → 117 ciągów, w tym **99 bez rozgałęzień**; najdłuższy
+  4,232 km / 35 przęseł,
+- 110 kV: jeden ciąg 13,419 km / 26 przęseł,
+- kabel: 242 komponenty z 275 obiektów (484 z 517 końców ma stopień 1) — **każdy kabel jest już
+  kompletnym przebiegiem, nie fragmentem**.
+
+Wniosek: dla sieci napowietrznej długość odcinka między rozgałęzieniami **jest wyprowadzalna**
+przez sumowanie przęseł. Realną granicą jest styk kabel↔linia: 69 % końców kabli leży dalej
+niż 50 m od jakiegokolwiek przęsła — to w dużej mierze dwie rozdzielne sieci.
+
+**Dowiązanie urządzeń do przewodu** (pomiar odległości do najbliższego końca):
+
+| Obiekt | Rozkład | Wniosek |
+|---|---|---|
+| Odłącznik sieciowy | 92 % ≤ 0,5 m (78 % w paśmie 0,1–0,5 m) | dowiązanie bezpieczne |
+| Stacja wnętrzowa / słupowa | ~70 % w paśmie 1–2 m, ogon do 5 m | stały offset symbolu; próg 2–3 m z weryfikacją |
+| Złącze rozgałęźne, punkt dystrybucyjny | rozrzut 0,1–50 m | wyłącznie ręcznie |
+
+**Czego z mapy wyprowadzić się nie da:**
+
+- **Trasa ≠ długość przewodu.** Dla kabla brakuje zapasu przy głowicach i muftach, wejść
+  i wyjść na głębokość układania oraz falowania w rowie — rzędu +1…3 %, nieobliczalne z danych.
+- **Szum digitalizacji zawyża długość.** Przy odstępie wierzchołków 12,1 m i błędzie położenia
+  σ = 0,5…1 m oczekiwane zawyżenie wynosi `σ²/s`, czyli +0,2…0,7 %. Działa przeciwnie do
+  brakującego zapasu, ale ich wzajemne zniesienie jest zbiegiem okoliczności, nie metodą —
+  nie wolno go traktować jako korekty.
+- **Przypisanie do nazwanej stacji** — w paczce nie ma ani jednej nazwy.
+
+**Bilans.** Ze 133,6 km sieci istniejącej długość da się odpowiedzialnie przypiąć do 126,6 km
+(95 %): **61,3 km klasy B nadaje się do obliczeń wprost** (błąd < 0,2 %), **65,4 km klasy A
+wymaga jawnego narzutu zapasu** do uzgodnienia z operatorem, a 6,9 km klasy C należy odrzucić.
+Każda wartość zapisywana z `parameter_source` i śladem pochodzenia wg §8.
+
+### 4A.6 Wniosek operacyjny — treść prośby do operatora
 
 1. Ten sam eksport Shape z podpiętymi atrybutami (przekrój, materiał, typ katalogowy, długość
    trasowa, nazwa obiektu, numer obwodu) — szablon ma na nie gotowe miejsce.
