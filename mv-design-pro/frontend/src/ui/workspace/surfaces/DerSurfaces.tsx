@@ -19,6 +19,7 @@ import {
   type DerStationContext,
 } from '../../network-build/der-configurator/DerConfigurator';
 import { DerWiazaniaEditor } from '../../network-build/station-der/DerWiazaniaEditor';
+import { FunkcjeZabezpieczenSekcja } from '../../network-build/station-der/FunkcjeZabezpieczenSekcja';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import {
   BESS_BATTERY_CATALOG,
@@ -660,6 +661,8 @@ function buildDerCards(
    */
   gotowosc: DerReadinessMatrix,
   edytorWiazan: JSX.Element,
+  /** Sekcja funkcji zabezpieczeniowych — wynik reguly domenowej (E21-3, pkt P7/P8). */
+  funkcjeZabezpieczen: JSX.Element,
 ): Partial<Record<DerCardId, JSX.Element>> {
   const ncRfg = der.profiles.nc_rfg_profile_ref
     ? NC_RFG_PROFILE_CATALOG.find((profile) => profile.id === der.profiles.nc_rfg_profile_ref)
@@ -797,6 +800,7 @@ function buildDerCards(
           <FieldRow label="Raport techniczny" value={readinessPl(gotowosc.report_technical)} />
         </dl>
         {edytorWiazan}
+        {funkcjeZabezpieczen}
       </section>
     ),
   };
@@ -1152,6 +1156,19 @@ function DerSurfaceShell({
     updateDerCatalogsWiazania,
   ]);
 
+  // Sekcja funkcji zabezpieczeniowych (E21-3): dobor liczy REGULA DOMENOWA, ekran go
+  // pokazuje. Zastapila stala liste 13 kodow ANSI, identyczna dla kazdej instalacji.
+  const sekcjaFunkcji = useMemo(() => {
+    if (!der) return <></>;
+    return (
+      <FunkcjeZabezpieczenSekcja
+        derId={der.id}
+        projectId={activeProjectId}
+        caseId={activeCaseId}
+      />
+    );
+  }, [activeCaseId, activeProjectId, der]);
+
   const stationContext: DerStationContext | undefined = useMemo(() => {
     if (!der) return undefined;
     const station = snapshot?.substations?.find(
@@ -1202,7 +1219,7 @@ function DerSurfaceShell({
           derId={derId ?? 'unselected'}
           derKind={derKind}
           stationContext={stationContext}
-          children={der ? buildDerCards(der, mocWytworcy, torWytworcy, gotowosc, edytorWiazan) : undefined}
+          children={der ? buildDerCards(der, mocWytworcy, torWytworcy, gotowosc, edytorWiazan, sekcjaFunkcji) : undefined}
         />
       </div>
       {der && (
