@@ -1169,19 +1169,18 @@ def validate_device_withstand(
 
 
 # =============================================================================
-# Phase 20: VT catalog lookup (mirror frontend protection-catalogs.ts VT_CATALOG)
+# Lookup VT -> wspolczynnik napieciowy — USUNIETY (V12K-258)
 # =============================================================================
 #
-# Mapping vt_id -> voltage_factor. Pelny katalog VT zostal zdefiniowany w
-# frontendowym `protection-catalogs.ts` (4 pozycje), ale dla walidacji backendowej
-# wystarczy lookup voltage_factor — wartosc 1.2/1.5/1.9 wg klasy.
-
-VT_CATALOG_FOR_FACTOR: dict[str, float] = {
-    "vt_15kv_100v_3p": 1.9,  # 3P klasa zabezpieczeniowa, 8h
-    "vt_20kv_100v_3p": 1.9,  # 3P klasa zabezpieczeniowa, 8h
-    "vt_15kv_100v_05": 1.2,  # 0.5 klasa pomiarowa, continuous
-    "vt_20kv_dual": 1.9,  # 3P + 0.5 dual, U_th wg 3P
-}
+# `VT_CATALOG_FOR_FACTOR` byl CZWARTA kopia danych o przekladnikach napieciowych:
+# odwzorowywal cztery SYNTETYCZNE identyfikatory z rownoleglego katalogu frontu
+# (usunietego w V12K-257) na wspolczynnik napieciowy. Wolajacy dopelnial go wartoscia
+# domyslna 1,9 dla kazdego nieznanego typu — czyli brak danej stawal sie liczba, na
+# ktorej PAKIET DOWODOWY oglaszal zgodnosc.
+#
+# Zrodlem tej danej jest teraz katalog VT (`VTType.rated_voltage_factor`, V12K-255);
+# brak typu albo brak danej w karcie daje `None`, a generator dowodu zamienia to
+# w dowod NIEZALICZONY z nazwanym powodem.
 
 
 def estimate_der_power_kw(

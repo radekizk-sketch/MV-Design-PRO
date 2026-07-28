@@ -371,7 +371,6 @@ def validate_all_audit2(
         generate_vt_grounding_validation_proof,
     )
     from network_model.catalog.audit2_catalogs import (
-        VT_CATALOG_FOR_FACTOR,
         estimate_der_power_kw,
         get_tap_changer,
     )
@@ -451,8 +450,12 @@ def validate_all_audit2(
                     )
                 )
                 for bay_id, vt_ref in (cfg.bay_vts or {}).items():
-                    # Real voltage_factor z catalogu VT (zamiast 1.9 hardcoded).
-                    vt_factor = VT_CATALOG_FOR_FACTOR.get(str(vt_ref), 1.9)
+                    # Wspolczynnik z REALNEGO katalogu VT (V12K-258). Poprzednio lookup
+                    # szedl do czteroelementowej mapy odwzorowujacej syntetyczne
+                    # identyfikatory frontu, a KAZDY nieznany typ dostawal 1,9 jako
+                    # wartosc domyslna — czyli brak danej stawal sie liczba, na ktorej
+                    # pakiet dowodowy oglaszal zgodnosc. `None` zostaje `None`.
+                    vt_factor = _wspolczynnik_napieciowy_typu(str(vt_ref))
                     proofs.append(
                         generate_vt_grounding_validation_proof(
                             bay_designation=str(bay_id),
@@ -487,3 +490,18 @@ def validate_all_audit2(
             "station_count": len(per_station_results),
             "per_station": per_station_results,
         }
+
+
+def _wspolczynnik_napieciowy_typu(vt_ref: str) -> float | None:
+    """Wspolczynnik napieciowy typu VT z KATALOGU — bez wartosci domyslnej.
+
+    Brak typu w katalogu albo brak danej w karcie daje `None`; generator dowodu
+    zamienia to w dowod NIEZALICZONY z nazwanym powodem, zamiast liczby z powietrza.
+    """
+    from network_model.catalog import get_default_mv_catalog
+
+    typ = get_default_mv_catalog().get_vt_type(vt_ref)
+    if typ is None:
+        return None
+    wartosc = typ.to_dict().get("rated_voltage_factor")
+    return float(wartosc) if isinstance(wartosc, int | float) else None

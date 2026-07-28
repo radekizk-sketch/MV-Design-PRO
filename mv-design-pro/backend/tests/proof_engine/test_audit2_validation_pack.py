@@ -242,3 +242,24 @@ def test_determinism_same_input_same_output():
         generated_at_iso="2026-04-01T00:00:00Z",
     )
     assert p1.to_dict() == p2.to_dict()
+
+
+def test_brak_wspolczynnika_daje_dowod_NIEZALICZONY_a_nie_domyslne_19() -> None:
+    """Nieznany wspolczynnik napieciowy nie moze stac sie liczba (V12K-258).
+
+    Wolajacy podstawial `VT_CATALOG_FOR_FACTOR.get(vt_ref, 1.9)` — czteroelementowa mapa
+    syntetycznych identyfikatorow frontu z wartoscia domyslna 1,9. Kazdy typ spoza tej
+    mapy (czyli KAZDY typ z realnego katalogu) dostawal wspolczynnik z powietrza, a
+    pakiet dowodowy oglaszal na tej podstawie ZGODNOSC. Brak danej musi byc widoczny
+    w dokumencie, bo dokument jest dowodem.
+    """
+    dowod = generate_vt_grounding_validation_proof(
+        bay_designation="J01",
+        vt_voltage_factor=None,
+        grounding_type="petersen_coil",
+    )
+    assert dowod.pass_status is False
+    assert "nieznany" in dowod.summary_pl.lower()
+    assert dowod.details["vt_voltage_factor"] is None
+    # Wzor bez danych nie jest dowodem — nie udajemy rachunku.
+    assert dowod.formulas_latex == []

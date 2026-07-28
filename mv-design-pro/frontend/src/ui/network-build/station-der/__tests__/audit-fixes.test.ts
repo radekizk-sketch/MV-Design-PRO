@@ -28,8 +28,6 @@ import {
   selectSpzCompatibleWithDer,
   isCtClassValidForProtection,
   isCtClassValidForMetering,
-  selectVtForVoltage,
-  VT_CATALOG,
   // Naprawa D
   validateHostingCapacity,
   computeDerReadinessMatrix,
@@ -326,8 +324,9 @@ describe('Naprawa C.6 — klasy CT (reguly normowe, bez katalogu syntetycznego)'
   // V12K-239: `CT_CATALOG` (5 wpisow syntetycznych) USUNIETY — po wpieciu klasy jako
   // DANEJ nie mial juz zadnego konsumenta produkcyjnego, a jego pokrycie identyfikatorow
   // z katalogiem realnym (12 typow) bylo ZEROWE, wiec test jego rozmiaru mierzyl atrape.
-  // `VT_CATALOG` ZOSTAJE: ma realnego konsumenta — picker w `StationConfigProtectionCard`
-  // (dlug zapisany osobno: picker wpisuje do modelu identyfikatory syntetyczne).
+  // `VT_CATALOG` USUNIETY (V12K-257): ten sam defekt co CT — identyfikatory syntetyczne
+  // wpisywane do modelu przez picker. Dlug zapisany wtedy osobno zostal splacony:
+  // picker bierze typy z katalogu backendu, a werdykt zgodnosci z jego reguly.
   // Tutaj zostaja reguly klasowe, ktore CZYTA regula gotowosci.
   it('isCtClassValidForProtection rozpoznaje 5P/10P', () => {
     expect(isCtClassValidForProtection('5P10')).toBe(true);
@@ -342,14 +341,20 @@ describe('Naprawa C.6 — klasy CT (reguly normowe, bez katalogu syntetycznego)'
     expect(isCtClassValidForMetering('5P10')).toBe(false);
   });
 
-  it('VT_CATALOG ma pozycje z 1.9 voltage_factor (zabezpieczenia)', () => {
-    const protectionVts = VT_CATALOG.filter((v) => v.voltage_factor === 1.9);
-    expect(protectionVts.length).toBeGreaterThan(0);
-  });
-
-  it('selectVtForVoltage(15kV) zwraca VT 15kV', () => {
-    const vts = selectVtForVoltage(15);
-    expect(vts.length).toBeGreaterThan(0);
+  it('front NIE MA wlasnego katalogu VT ani wlasnej reguly wspolczynnika (V12K-257)', async () => {
+    // Te dwa testy sprawdzaly wczesniej zawartosc `VT_CATALOG` i `selectVtForVoltage`
+    // — czyli istnienie ROWNOLEGLEGO katalogu czterech typow, ktorych identyfikatory
+    // nie istnialy w katalogu backendu, oraz TRZECIEJ kopii reguly IEC 61869-3
+    // (z progami zanizonymi tak, jak poprawil je V12K-256). Zapisany wybor byl
+    // referencja donikad, a werdykt móglby przeczyc backendowi i pakietowi dowodowemu.
+    //
+    // Intencja testu zostaje ta sama — pilnowac zrodla danych o przekladnikach —
+    // ale odwrocona: front ma ich NIE MIEC. Typy pochodza z `/api/catalog/vt-types`,
+    // werdykt z `/api/v1/catalog/audit2/validate-vt-grounding`.
+    const modul = (await import('../protection-catalogs')) as Record<string, unknown>;
+    expect(modul.VT_CATALOG).toBeUndefined();
+    expect(modul.selectVtForVoltage).toBeUndefined();
+    expect(modul.isVtVoltageFactorValidForGrounding).toBeUndefined();
   });
 
   it('rozlacznosc: zadna klasa nie jest jednoczesnie zabezpieczeniowa i pomiarowa', () => {

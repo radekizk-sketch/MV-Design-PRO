@@ -280,13 +280,39 @@ def generate_device_withstand_proof(
 def generate_vt_grounding_validation_proof(
     *,
     bay_designation: str,
-    vt_voltage_factor: float,
+    vt_voltage_factor: float | None,
     grounding_type: str,  # "isolated" | "petersen_coil" | "resistor_grounded" | "directly_grounded"
     proof_id: UUID | None = None,
     generated_at_iso: str = "1970-01-01T00:00:00Z",
 ) -> Audit2ProofResult:
-    """Dowod zgodnosci VT U_th z typem uziemienia neutralnego (IEC 61869-3)."""
+    """Dowod zgodnosci VT U_th z typem uziemienia neutralnego (IEC 61869-3).
+
+    `vt_voltage_factor is None` znaczy „nie da sie ustalic" i daje dowod NIEZALICZONY
+    z nazwanym powodem. Wczesniej wolajacy podstawial w tym miejscu 1,9 jako wartosc
+    domyslna (V12K-258): typ spoza katalogu dostawal wspolczynnik z powietrza, a pakiet
+    dowodowy oglaszal na tej podstawie zgodnosc.
+    """
     proof_id = proof_id or uuid4()
+    if vt_voltage_factor is None:
+        return Audit2ProofResult(
+            proof_id=proof_id,
+            proof_type="AUDIT2_VT_GROUNDING_VALIDATION",
+            pass_status=False,
+            summary_pl=(
+                "Wspolczynnik napieciowy przekladnika jest nieznany (typ spoza katalogu "
+                "albo karta bez tej danej) — zgodnosci ze sposobem uziemienia nie da sie "
+                "wykazac."
+            ),
+            details={
+                "bay_designation": bay_designation,
+                "vt_voltage_factor": None,
+                "grounding_type": grounding_type,
+                "ok": False,
+                "message_pl": "brak wspolczynnika napieciowego",
+            },
+            formulas_latex=[],
+            generated_at=generated_at_iso,
+        )
     if grounding_type not in {
         "isolated",
         "petersen_coil",

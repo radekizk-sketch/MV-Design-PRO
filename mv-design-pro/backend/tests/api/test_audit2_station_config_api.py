@@ -390,3 +390,53 @@ def test_persistence_round_trip_complex_der_spec(app_client):
     assert len(data["der_specs"]) == 2
     bess = next(s for s in data["der_specs"] if s["der_id"] == "der_002")
     assert sorted(bess["bess_operation_mode_refs"]) == ["mode_fcr_n", "mode_voltage_support"]
+
+
+def test_dowod_VT_nie_udaje_zgodnosci_dla_typu_spoza_katalogu(app_client):
+    """Nieznany typ VT daje dowod NIEZALICZONY, nie zgodnosc na wartosci domyslnej.
+
+    V12K-258: endpoint rozwiazywal `bay_vts` przez czteroelementowa mape syntetycznych
+    identyfikatorow frontu z fallbackiem `1.9` — wiec KAZDY typ spoza tej mapy (czyli
+    kazdy typ z realnego katalogu i kazda literowka) dostawal wspolczynnik z powietrza,
+    a pakiet dowodowy oglaszal na jego podstawie zgodnosc z siecia kompensowana.
+
+    Test sprawdza OBIE galezie na jednym pakiecie: realny typ katalogowy z F_v 1,9
+    przechodzi, typ nieistniejacy jest nazwany brakiem — inaczej bramka nie odroznialaby
+    naprawy od fallbacku.
+    """
+    pid = _create_project(app_client)
+    app_client.put(
+        f"/api/v1/projects/{pid}/audit2-station-config/station-vt",
+        json={
+            "mv_neutral_grounding_ref": "mng_petersen",
+            "tap_changer_refs": [],
+            "der_specs": [],
+            "transformer_tap_changers": {},
+            "bay_hv_fuses": {},
+            "bay_vts": {
+                "POLE-REALNE": "vt_20kv_fz_100_3_05_3p_siemens",
+                "POLE-WIDMO": "vt_20kv_dual",
+            },
+            "bay_device_withstand": {},
+        },
+    )
+
+    res = app_client.post(f"/api/v1/projects/{pid}/audit2-station-config/_validate-all")
+    assert res.status_code == 200
+    stacja = next(
+        s for s in res.json()["per_station"] if s["station_id"] == "station-vt"
+    )
+    dowody = {
+        d["details"]["bay_designation"]: d
+        for d in stacja["proofs"]
+        if d["proof_type"] == "AUDIT2_VT_GROUNDING_VALIDATION"
+    }
+
+    realny = dowody["POLE-REALNE"]
+    assert realny["pass_status"] is True
+    assert realny["details"]["vt_voltage_factor"] == 1.9
+
+    widmo = dowody["POLE-WIDMO"]
+    assert widmo["pass_status"] is False
+    assert widmo["details"]["vt_voltage_factor"] is None
+    assert "nieznany" in widmo["summary_pl"].lower()

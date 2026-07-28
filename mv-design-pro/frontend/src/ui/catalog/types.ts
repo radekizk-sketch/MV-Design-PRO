@@ -262,6 +262,16 @@ export interface VTCatalogType extends CatalogType {
   ratio_primary_v: number;
   ratio_secondary_v: number;
   accuracy_class?: string;
+  /** Klasa uzwojenia POMIAROWEGO w przekładniku dwuuzwojeniowym (V12K-255). */
+  accuracy_class_metering?: string | null;
+  /** Rodzaj uzwojenia wyprowadzony z klasy przez backend (IEC 61869-3). */
+  application?: string | null;
+  /** Współczynnik napięciowy F_v i czas jego obowiązywania (IEC 61869-3 tab. 2). */
+  rated_voltage_factor?: number | null;
+  voltage_factor_duration_s?: number | null;
+  burden_va?: number | null;
+  /** Czy przekładnik ma uzwojenie resztkowe do pomiaru napięcia zerowego. */
+  has_residual_winding?: boolean | null;
 }
 
 /**
