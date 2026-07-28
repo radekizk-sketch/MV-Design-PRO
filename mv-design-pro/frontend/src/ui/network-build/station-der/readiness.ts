@@ -5,7 +5,7 @@
  * + globalne dane stacji do jednolitego widoku w E-04, E-25/E-37, E-36.
  *
  * Zasada: nie wykonujemy fizyki — patrzymy na obecność `catalog_refs` /
- * `profile_refs` / `pcc_ref` i mapujemy na status osi.
+ * `profile_refs` / `bus_przylaczenia_ref` i mapujemy na status osi.
  *
  * Naprawy z drugiego audytu eksperckiego:
  *  - eng.5: CT klasa 5P/10P wymagana dla zabezpieczeń (IEC 61869-2)
@@ -128,10 +128,10 @@ export function validateHostingCapacity(args: {
  * i profile_refs. Brak danych → 'blocked', częściowy → 'partial', kompletny
  * → 'ready'. Reguły:
  *
- *  - SC3F: wymaga device_catalog_ref + pcc_ref.
+ *  - SC3F: wymaga device_catalog_ref + bus_przylaczenia_ref.
  *  - SC1F/SC2FG: dodatkowo wymaga fault_current_data_ref (R₀/X₀/Z₀Z₁ —
  *    Naprawa A.1, IEC 60909-3).
- *  - VDROP: device_catalog_ref + pcc_ref + nominal_power_kw.
+ *  - VDROP: device_catalog_ref + bus_przylaczenia_ref + nominal_power_kw.
  *  - Q_U: nc_rfg_profile_ref.
  *  - EQUIPMENT: device_catalog_ref + (block_transformer_catalog_ref jeśli
  *    dedicated_transformer).
@@ -178,7 +178,7 @@ export function computeDerReadinessMatrix(
 ): DerReadinessMatrix {
   const otherDers = context?.otherDersInStation ?? 0;
   const hasDevice = der.catalogs.device_catalog_ref !== null;
-  const hasPcc = der.pcc_ref !== null;
+  const hasPcc = der.bus_przylaczenia_ref !== null;
   const hasNcRfg = der.profiles.nc_rfg_profile_ref !== null;
   const hasLvrt = der.profiles.lvrt_curve_ref !== null;
   const hasHvrt = der.profiles.hvrt_curve_ref !== null;
@@ -350,9 +350,9 @@ function buildBlockersForAxis(
           target_tab: 'inverters',
         });
       }
-      if (!der.pcc_ref) {
+      if (!der.bus_przylaczenia_ref) {
         blockers.push({
-          code: 'der.pcc.missing',
+          code: 'der.przylacze.missing',
           message_pl: 'Brak punktu przyłączenia.',
           object_ref: der.id,
           target_screen: derKindToScreen(der.der_kind),

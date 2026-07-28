@@ -26,7 +26,7 @@ function der(over: Partial<StationDerConnection> = {}): StationDerConnection {
     der_kind: 'PV',
     name: 'Blok PV-01',
     connection_side: 'dedicated_transformer',
-    pcc_ref: 'BUS-SN-1',
+    bus_przylaczenia_ref: 'BUS-SN-1',
     bay_ref: 'BAY-1',
     transformer_ref: 'TR-1',
     lv_busbar_ref: 'BUS-NN-1',

@@ -10,6 +10,7 @@ from pathlib import Path
 from enm.catalog_completion import complete_catalog_defaults
 from enm.dziennik_zmian import dopisz as dopisz_do_dziennika
 from enm.hash import compute_enm_hash
+from enm.migrations.punkt_przylaczenia_der import migruj as migruj_punkt_przylaczenia
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
 
@@ -101,8 +102,17 @@ def get_enm(case_id: str) -> EnergyNetworkModel:
             )
             enm.header.hash_sha256 = compute_enm_hash(enm)
             _enm_store[case_id] = enm
+    # V12K-268: automigracja nazwy klucza punktu przyłączenia wytwórcy. Ta sama
+    # ścieżka co uzupełnianie domyślnych katalogowych poniżej — model naprawiony
+    # przy wczytaniu jest ZAPISYWANY, żeby migracja wykonała się RAZ, a nie przy
+    # każdym odczycie. Kolejność ma znaczenie: migracja idzie PRZED uzupełnianiem
+    # katalogu, bo reguły katalogowe mają widzieć już kanoniczne nazwy.
+    zmigrowany, zmieniona_nazwa = migruj_punkt_przylaczenia(_enm_store[case_id])
+    if zmieniona_nazwa:
+        _enm_store[case_id] = zmigrowany
+
     completed, changed = complete_catalog_defaults(_enm_store[case_id])
-    if changed:
+    if changed or zmieniona_nazwa:
         return set_enm(case_id, completed)
     return _enm_store[case_id]
 

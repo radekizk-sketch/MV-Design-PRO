@@ -930,7 +930,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
         der_kind: 'PV',
         name: 'PV S15',
         connection_side: 'nN',
-        pcc_ref: 'stn/station-15/nn_bus',
+        bus_przylaczenia_ref: 'stn/station-15/nn_bus',
         lv_busbar_ref: 'stn/station-15/nn_bus',
         voltage_level_ref: 'lv_0_4kV',
         catalogs: { device_catalog_ref: 'pv_inv_huawei_185' },

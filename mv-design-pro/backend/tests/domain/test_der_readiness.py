@@ -30,7 +30,7 @@ def we(**nadpisania) -> WejscieGotowosciDer:
         "der_id": "DER-1",
         "der_kind": "PV",
         "connection_side": "SN",
-        "pcc_ref": "BUS-SN-1",
+        "bus_przylaczenia_ref": "BUS-SN-1",
         "nominal_power_kw": 1000.0,
         "device_catalog_ref": "pv_inv_sma_2500",
         "protection_catalog_ref": "ABB_REB670",
@@ -73,9 +73,9 @@ class TestMacierzPodstawowa:
         assert "der.device_catalog.missing" in kody(osie, "sc_3f")
 
     def test_brak_pcc_blokuje_zwarcia(self) -> None:
-        macierz = macierz_gotowosci_der(we(pcc_ref=None))
+        macierz = macierz_gotowosci_der(we(bus_przylaczenia_ref=None))
         assert macierz["sc_3f"] == "blocked"
-        assert "der.pcc.missing" in kody(osie_gotowosci_der(we(pcc_ref=None)), "sc_3f")
+        assert "der.przylacze.missing" in kody(osie_gotowosci_der(we(bus_przylaczenia_ref=None)), "sc_3f")
 
     def test_os_gotowa_nie_ma_zadnych_powodow(self) -> None:
         assert kody(osie_gotowosci_der(we()), "sc_3f") == []
@@ -255,10 +255,14 @@ class TestMapowanieZGeneratora:
         assert wejscie.ct_catalog_ref is None
         assert wejscie.der_kind == "BESS"
 
-    def test_bus_ref_sluzy_za_pcc_dopiero_gdy_brak_jawnego(self) -> None:
+    def test_bus_ref_sluzy_za_przylacze_dopiero_gdy_brak_jawnego(self) -> None:
         jawny = wejscie_z_generatora(
-            {"ref_id": "g", "bus_ref": "bus-1", "materialized_params": {"pcc_ref": "pcc-jawny"}}
+            {
+                "ref_id": "g",
+                "bus_ref": "bus-1",
+                "materialized_params": {"bus_przylaczenia_ref": "szyna-jawna"},
+            }
         )
-        assert jawny.pcc_ref == "pcc-jawny"
+        assert jawny.bus_przylaczenia_ref == "szyna-jawna"
         domyslny = wejscie_z_generatora({"ref_id": "g", "bus_ref": "bus-1"})
-        assert domyslny.pcc_ref == "bus-1"
+        assert domyslny.bus_przylaczenia_ref == "bus-1"

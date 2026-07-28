@@ -330,8 +330,13 @@ function buildDerFromGenerator(
     ?? stringFromRecord(meta, ['station_ref', 'station_id'])
     ?? stringFromRecord(materialized, ['station_ref', 'station_id'])
     ?? '';
-  const pccRef = stringFromRecord(materialized, ['pcc_ref', 'pcc'])
-    ?? stringFromRecord(meta, ['pcc_ref', 'pcc'])
+  // V12K-268: nazwa kanoniczna PIERWSZA, zastane nazwy jako awaryjny odczyt.
+  // Automigracja przy wczytaniu modelu (`enm/migrations/punkt_przylaczenia_der.py`)
+  // przenosi klucz raz i na stale, ale rekord moze tu trafic takze sciezka, ktora
+  // magazynu nie dotyka (np. podglad importu) — wtedy stara nazwa musi byc nadal
+  // czytelna, inaczej gotowy projekt pokazalby brak przylaczenia.
+  const busPrzylaczeniaRef = stringFromRecord(materialized, ['bus_przylaczenia_ref', 'pcc_ref', 'pcc'])
+    ?? stringFromRecord(meta, ['bus_przylaczenia_ref', 'pcc_ref', 'pcc'])
     ?? generator.bus_ref
     ?? null;
   const transformerRef = generator.blocking_transformer_ref
@@ -356,7 +361,7 @@ function buildDerFromGenerator(
     generator.catalog_ref ?? stringFromRecord(materialized, ['device_catalog_ref']),
     nominalPowerKw,
   );
-  const completeness: DerCompleteness = !pccRef
+  const completeness: DerCompleteness = !busPrzylaczeniaRef
     ? 'no_pcc'
     : !catalogRef
       ? 'missing_catalog'
@@ -371,7 +376,7 @@ function buildDerFromGenerator(
     der_kind: fallbackKind,
     name: generator.name || generator.ref_id,
     connection_side: connectionSide,
-    pcc_ref: pccRef,
+    bus_przylaczenia_ref: busPrzylaczeniaRef,
     bay_ref: stringFromRecord(materialized, ['bay_ref']) ?? stringFromRecord(meta, ['bay_ref']),
     transformer_ref: transformerRef,
     lv_busbar_ref: lvBusbarRef,
@@ -450,7 +455,7 @@ function buildDerFromSurfaceContext(
     der_kind: fallbackKind,
     name: derName ?? surface.titlePl,
     connection_side: 'nN',
-    pcc_ref: null,
+    bus_przylaczenia_ref: null,
     bay_ref: null,
     transformer_ref: null,
     lv_busbar_ref: null,
@@ -690,7 +695,7 @@ function buildDerCards(
           <FieldRow label="Nazwa źródła" value={der.name} />
           <FieldRow
             label="Punkt przyłączenia"
-            value={assignedLabel(der.pcc_ref, 'PCC przypisany do toru przyłączenia')}
+            value={assignedLabel(der.bus_przylaczenia_ref, 'Punkt przyłączenia przypisany do toru')}
           />
           <FieldRow label="Moc pozycji (grupy)" value={mocGrupyPl(moc)} />
           <FieldRow label="Liczba jednostek" value={liczbaJednostekPl(moc)} />
@@ -872,7 +877,7 @@ function PvInverterCatalogPanel({
         der_kind: der.der_kind,
         name: der.name,
         connection_side: der.connection_side,
-        pcc_ref: der.pcc_ref,
+        bus_przylaczenia_ref: der.bus_przylaczenia_ref,
         bay_ref: der.bay_ref,
         transformer_ref: der.transformer_ref,
         lv_busbar_ref: der.lv_busbar_ref,
@@ -1104,7 +1109,7 @@ function DerSurfaceShell({
       poleSn: der.bay_ref
         ? snapshot?.bays?.find((bay) => bay.ref_id === der.bay_ref)?.name ?? der.bay_ref
         : null,
-      pcc: nazwaSzyny(der.pcc_ref),
+      pcc: nazwaSzyny(der.bus_przylaczenia_ref),
     });
   }, [der, snapshot]);
 
@@ -1220,7 +1225,7 @@ function DerSurfaceShell({
       stationName: publicStationName(snapshot ?? null, station ?? null, der.station_id),
       projectName: publicProjectName(projectName),
       connectionSide: der.connection_side,
-      pccRef: der.pcc_ref,
+      busPrzylaczeniaRef: der.bus_przylaczenia_ref,
       bayRef: der.bay_ref,
       transformerRef: der.transformer_ref,
       lvBusbarRef: der.lv_busbar_ref,

@@ -49,7 +49,7 @@ function makeDer(
     der_kind: 'PV',
     name: 'PV X',
     connection_side: 'SN',
-    pcc_ref: 'pcc_x',
+    bus_przylaczenia_ref: 'pcc_x',
     bay_ref: 'bay_x',
     transformer_ref: null,
     lv_busbar_ref: null,

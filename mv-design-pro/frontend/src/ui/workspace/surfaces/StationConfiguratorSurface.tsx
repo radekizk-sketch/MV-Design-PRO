@@ -382,7 +382,7 @@ function deriveStationDersFromSnapshot(
         regulation_profile_ref: readString(meta.regulation_profile_ref),
         pf_curve_ref: readString(meta.pf_curve_ref),
       };
-      const pccRef = readString(meta.pcc_ref) ?? generator.bus_ref;
+      const busPrzylaczeniaRef = readString(meta.bus_przylaczenia_ref) ?? generator.bus_ref;
       const voltageLevelRef = readString(meta.voltage_level_ref);
       return {
         id: generator.ref_id,
@@ -391,7 +391,7 @@ function deriveStationDersFromSnapshot(
         der_kind: kind,
         name: generatorDisplayName(generator, kind),
         connection_side: connectionSide,
-        pcc_ref: pccRef,
+        bus_przylaczenia_ref: busPrzylaczeniaRef,
         bay_ref: readString(meta.field_ref),
         transformer_ref: transformerRef,
         lv_busbar_ref: connectionSide === 'nN' ? generator.bus_ref : null,
@@ -406,7 +406,7 @@ function deriveStationDersFromSnapshot(
         unit_count: readNumber(meta.quantity) ?? readNumber(meta.n_parallel),
         completeness: computeDerCompleteness({
           connection_side: connectionSide,
-          pcc_ref: pccRef,
+          bus_przylaczenia_ref: busPrzylaczeniaRef,
           catalogs,
           profiles,
           voltage_level_ref: voltageLevelRef,
@@ -678,7 +678,7 @@ function inferDerBusVoltage(
   snapshot: EnergyNetworkModel | null,
   der: StationDerConnection,
 ): number | null {
-  const busRef = der.lv_busbar_ref ?? der.pcc_ref;
+  const busRef = der.lv_busbar_ref ?? der.bus_przylaczenia_ref;
   const bus = (snapshot?.buses ?? []).find((candidate) => candidate.ref_id === busRef);
   return typeof bus?.voltage_kv === 'number' ? bus.voltage_kv : null;
 }

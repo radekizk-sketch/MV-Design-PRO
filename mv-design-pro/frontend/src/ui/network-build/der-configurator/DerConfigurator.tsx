@@ -36,7 +36,7 @@ export interface DerStationContext {
     | 'at_zksn'
     | 'at_branch_pole'
     | 'at_cable_joint';
-  readonly pccRef?: string | null;
+  readonly busPrzylaczeniaRef?: string | null;
   readonly bayRef?: string | null;
   readonly transformerRef?: string | null;
   readonly lvBusbarRef?: string | null;

@@ -6282,7 +6282,7 @@ function buildDers(
         connectionKind: isBlockTransformerConnection ? 'der_block_transformer' : 'generic',
         derRef: gen.ref_id,
         transformerRef: blockTransformer?.ref_id ?? blockTransformer?.id ?? null,
-        pccRef: `${gen.ref_id}/pcc`,
+        busPrzylaczeniaRef: `${gen.ref_id}/pcc`,
       });
     }
   }

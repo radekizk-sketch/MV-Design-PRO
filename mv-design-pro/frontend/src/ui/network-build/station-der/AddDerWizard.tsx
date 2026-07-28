@@ -1117,7 +1117,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       derName: selections.derName,
       pccLabel: selections.pccLabel,
     });
-    const pccRef = `pcc_${stationId}_${selections.pccLabel.trim()}`;
+    const busPrzylaczeniaRef = `pcc_${stationId}_${selections.pccLabel.trim()}`;
     if (voltageMismatchWarning || transformerPowerWarning) {
       notify(voltageMismatchWarning ?? transformerPowerWarning ?? 'Konfiguracja DER wymaga korekty.', 'error');
       return;
@@ -1190,7 +1190,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         der_kind: derKind,
         name: selections.derName,
         connection_side: selections.connectionSide,
-        pcc_ref: pccRef,
+        bus_przylaczenia_ref: busPrzylaczeniaRef,
         bay_ref:
           selections.connectionSide === 'SN' ? `bay_${stationId}_${selections.bayName}` : null,
         lv_busbar_ref:

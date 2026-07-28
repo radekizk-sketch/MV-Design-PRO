@@ -43,7 +43,7 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
     der_kind: 'PV',
     name: 'Test DER',
     connection_side: 'SN',
-    pcc_ref: 'pcc_station-test_PCC-01',
+    bus_przylaczenia_ref: 'pcc_station-test_PCC-01',
     bay_ref: 'bay_station-test_Pole-01',
     lv_busbar_ref: null,
     transformer_ref: null,

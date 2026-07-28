@@ -154,7 +154,7 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     expect(ders[0].name).toBe('PV Test 1');
     expect(ders[0].der_kind).toBe('PV');
     expect(ders[0].connection_side).toBe('SN');
-    expect(ders[0].pcc_ref).toContain('PCC-01');
+    expect(ders[0].bus_przylaczenia_ref).toContain('PCC-01');
     expect(ders[0].bay_ref).toContain('Pole-PV-01');
     expect(ders[0].catalogs.device_catalog_ref).toBe('pv_inv_sma_2500');
     expect(ders[0].profiles.nc_rfg_profile_ref).toBe('ncrfg_pse');

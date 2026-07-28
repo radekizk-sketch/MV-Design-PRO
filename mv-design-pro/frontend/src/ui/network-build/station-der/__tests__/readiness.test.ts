@@ -33,7 +33,7 @@ function makeDer(
     der_kind: 'PV',
     name: 'PV Test',
     connection_side: 'SN',
-    pcc_ref: 'pcc_1',
+    bus_przylaczenia_ref: 'pcc_1',
     bay_ref: null,
     transformer_ref: null,
     lv_busbar_ref: null,
@@ -95,8 +95,8 @@ describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
     expect(matrix.equipment).toBe('blocked');
   });
 
-  it('DER bez pcc_ref → SC blocked', () => {
-    const matrix = computeDerReadinessMatrix(makeDer({ pcc_ref: null }));
+  it('DER bez bus_przylaczenia_ref → SC blocked', () => {
+    const matrix = computeDerReadinessMatrix(makeDer({ bus_przylaczenia_ref: null }));
     expect(matrix.sc_3f).toBe('blocked');
   });
 
@@ -196,7 +196,7 @@ describe('computeDerReadinessMatrix — agregacja gotowości DER', () => {
   });
 
   it('Report blocked gdy SC blocked', () => {
-    const matrix = computeDerReadinessMatrix(makeDer({ pcc_ref: null }));
+    const matrix = computeDerReadinessMatrix(makeDer({ bus_przylaczenia_ref: null }));
     expect(matrix.report_osd).toBe('blocked');
     expect(matrix.report_technical).toBe('blocked');
   });
@@ -335,7 +335,7 @@ describe('osie niesymetryczne: powod stanu „czesciowo" (V12K-226)', () => {
       station_id: 'ST-1',
       der_kind: 'PV',
       connection_side: 'mv_bay',
-      pcc_ref: 'BUS-1',
+      bus_przylaczenia_ref: 'BUS-1',
       bay_ref: 'BAY-1',
       lv_busbar_ref: null,
       connection_node_ref: null,
@@ -473,7 +473,7 @@ describe('klasa przekladnika: DANA z modelu, nie szukanie w rownoleglym katalogu
   function derZCt(over: Partial<StationDerConnection>): StationDerConnection {
     return {
       id: 'DER-1', station_id: 'ST-1', der_kind: 'PV', connection_side: 'mv_bay',
-      pcc_ref: 'BUS-1', bay_ref: 'BAY-1', lv_busbar_ref: null, connection_node_ref: null,
+      bus_przylaczenia_ref: 'BUS-1', bay_ref: 'BAY-1', lv_busbar_ref: null, connection_node_ref: null,
       nominal_power_kw: 500, voltage_level_ref: null,
       catalogs: {
         device_catalog_ref: 'INV-1', block_transformer_catalog_ref: null,

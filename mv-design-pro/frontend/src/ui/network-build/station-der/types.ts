@@ -176,7 +176,7 @@ export interface StationDerConnection {
   /** Konfiguracja przyłączenia. */
   readonly connection_side: ConnectionSide;
   /** Punkt wspólnego przyłączenia (PCC). Format: `{stationId}__{busbarId}__{nominal_kv}`. */
-  readonly pcc_ref: string | null;
+  readonly bus_przylaczenia_ref: string | null;
   /**
    * V12K-232: klasa dokladnosci i zastosowanie przypisanego przekladnika PRADOWEGO,
    * rozwiazane z PRAWDZIWEGO katalogu (`/api/catalog/ct-types`). Regula normowa
@@ -254,9 +254,9 @@ export interface StationDerConnection {
  */
 export function computeDerCompleteness(der: Pick<
   StationDerConnection,
-  'connection_side' | 'pcc_ref' | 'catalogs' | 'profiles' | 'voltage_level_ref'
+  'connection_side' | 'bus_przylaczenia_ref' | 'catalogs' | 'profiles' | 'voltage_level_ref'
 >): DerCompleteness {
-  if (!der.pcc_ref) return 'no_pcc';
+  if (!der.bus_przylaczenia_ref) return 'no_pcc';
   if (!der.catalogs.device_catalog_ref) return 'missing_catalog';
   if (!der.profiles.nc_rfg_profile_ref) return 'missing_profile';
   if (der.connection_side === 'nN' && !der.voltage_level_ref) return 'missing_catalog';

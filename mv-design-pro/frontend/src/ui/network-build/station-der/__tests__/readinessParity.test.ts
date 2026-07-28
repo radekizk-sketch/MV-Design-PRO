@@ -54,7 +54,7 @@ function derZPrzypadku(wejscie: Record<string, unknown>): StationDerConnection {
     der_kind: wejscie.der_kind as StationDerConnection['der_kind'],
     name: String(wejscie.der_id ?? 'DER'),
     connection_side: wejscie.connection_side as StationDerConnection['connection_side'],
-    pcc_ref: tekst('pcc_ref'),
+    bus_przylaczenia_ref: tekst('bus_przylaczenia_ref'),
     bay_ref: null,
     transformer_ref: null,
     lv_busbar_ref: null,

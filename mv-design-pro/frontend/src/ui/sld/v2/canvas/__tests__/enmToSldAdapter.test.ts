@@ -507,7 +507,7 @@ describe('enmToSldAdapter — adapter snapshot → SldCanvasV2', () => {
       transformerLabel: 'TR 15/0,69 kV 1250 kVA Dyn5',
       derRef: 'PV-BLOCK-1MW',
       transformerRef: 'TR-BLOCK-PV-1250',
-      pccRef: 'PV-BLOCK-1MW/pcc',
+      busPrzylaczeniaRef: 'PV-BLOCK-1MW/pcc',
     });
     expect(r.derConnections[0].pathPoints).toHaveLength(4);
     const station = r.stations.find((item) => item.id === 'STA-DER-BLOCK');

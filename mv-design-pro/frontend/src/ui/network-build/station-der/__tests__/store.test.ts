@@ -24,7 +24,7 @@ const SAMPLE_PV: Parameters<typeof useStationDerStore.getState>[0] extends never
   der_kind: 'PV',
   name: 'PV Centralna 1',
   connection_side: 'SN',
-  pcc_ref: 'pcc_001',
+  bus_przylaczenia_ref: 'pcc_001',
   bay_ref: 'bay_001',
   voltage_level_ref: 'lv_0_69kV',
   catalogs: {
@@ -63,7 +63,7 @@ describe('useStationDerStore — single source of truth E-13 ↔ DER', () => {
     expect(der.station_id).toBe('station_001');
     expect(der.der_kind).toBe('PV');
     expect(der.connection_side).toBe('SN');
-    expect(der.pcc_ref).toBe('pcc_001');
+    expect(der.bus_przylaczenia_ref).toBe('pcc_001');
     expect(der.completeness).toBe('complete');
     expect(der.created_at).toBe(FROZEN_NOW);
   });
@@ -112,10 +112,10 @@ describe('useStationDerStore — single source of truth E-13 ↔ DER', () => {
     expect(useStationDerStore.getState().ders[SAMPLE_PV.id].lv_busbar_ref).toBe('busbar_xyz');
   });
 
-  it('completeness = no_pcc gdy brak pcc_ref', () => {
+  it('completeness = no_pcc gdy brak bus_przylaczenia_ref', () => {
     const result = computeDerCompleteness({
       connection_side: 'SN',
-      pcc_ref: null,
+      bus_przylaczenia_ref: null,
       catalogs: { device_catalog_ref: 'x' } as never,
       profiles: { nc_rfg_profile_ref: 'y' } as never,
       voltage_level_ref: 'z',

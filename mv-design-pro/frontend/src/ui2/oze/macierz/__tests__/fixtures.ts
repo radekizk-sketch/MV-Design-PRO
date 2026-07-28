@@ -26,7 +26,7 @@ export function derFixture(over: Partial<StationDerConnection> & { id: string })
     der_kind,
     name: over.name ?? over.id,
     connection_side: over.connection_side ?? 'nN',
-    pcc_ref: over.pcc_ref ?? 'pcc_st-1_szyna-1',
+    bus_przylaczenia_ref: over.bus_przylaczenia_ref ?? 'pcc_st-1_szyna-1',
     bay_ref: over.bay_ref ?? null,
     transformer_ref: over.transformer_ref ?? null,
     lv_busbar_ref: over.lv_busbar_ref ?? null,

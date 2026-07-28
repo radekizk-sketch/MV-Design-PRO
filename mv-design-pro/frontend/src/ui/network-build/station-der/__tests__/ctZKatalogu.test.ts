@@ -34,7 +34,7 @@ function der(over: Partial<StationDerConnection> = {}): StationDerConnection {
     station_id: 'ST-1',
     der_kind: 'PV',
     connection_side: 'mv_bay',
-    pcc_ref: 'BUS-1',
+    bus_przylaczenia_ref: 'BUS-1',
     bay_ref: 'BAY-1',
     lv_busbar_ref: null,
     connection_node_ref: null,

@@ -32,6 +32,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from enm.migrations.punkt_przylaczenia_der import (
+    KLUCZ_KANONICZNY as KLUCZ_PUNKTU_PRZYLACZENIA,
+)
+
 StatusOsi = Literal["ready", "partial", "blocked", "not_applicable", "no_module"]
 StronaPrzylaczenia = Literal[
     "SN", "nN", "dedicated_transformer", "at_zksn", "at_branch_pole", "at_cable_joint"
@@ -101,7 +105,10 @@ class WejscieGotowosciDer:
     der_id: str
     der_kind: RodzajDer
     connection_side: StronaPrzylaczenia
-    pcc_ref: str | None = None
+    # V12K-268: punkt przylaczenia to SZYNA modelu, nie osobny byt — dawna nazwa
+    # tego pola niosla termin objety zakazem. Klucz w zapisanych danych migruje
+    # `enm/migrations/punkt_przylaczenia_der.py`.
+    bus_przylaczenia_ref: str | None = None
     nominal_power_kw: float | None = None
     device_catalog_ref: str | None = None
     # V12K-244: JEDNA nazwa transformatora dedykowanego — ta, ktora zapisuja sciezki
@@ -167,7 +174,7 @@ def macierz_gotowosci_der(we: WejscieGotowosciDer) -> dict[str, StatusOsi]:
     """
 
     ma_urzadzenie = we.device_catalog_ref is not None
-    ma_pcc = we.pcc_ref is not None
+    ma_przylacze = we.bus_przylaczenia_ref is not None
     ma_moc = we.nominal_power_kw is not None
     ma_nc_rfg = we.nc_rfg_profile_ref is not None
     ma_lvrt = we.lvrt_curve_ref is not None
@@ -187,10 +194,10 @@ def macierz_gotowosci_der(we: WejscieGotowosciDer) -> dict[str, StatusOsi]:
     wymaga_87t = trafo_dedykowany and (we.nominal_power_kw or 0.0) >= PROG_87T_KW
     ct_dwurdzeniowy = we.ct_application == "dual"
 
-    sc_3f: StatusOsi = "ready" if (ma_urzadzenie and ma_pcc) else "blocked"
+    sc_3f: StatusOsi = "ready" if (ma_urzadzenie and ma_przylacze) else "blocked"
     # Zwarcia Z UDZIALEM ZIEMI wymagaja skladowej zerowej (IEC 60909-3). Zwarcie
     # dwufazowe BEZ ziemi rozklada sie na Z₁ i Z₂, wiec danych Z₀ nie potrzebuje.
-    if not ma_urzadzenie or not ma_pcc:
+    if not ma_urzadzenie or not ma_przylacze:
         sc_niesymetryczne: StatusOsi = "blocked"
     elif not ma_dane_zwarciowe:
         sc_niesymetryczne = "partial"
@@ -198,9 +205,9 @@ def macierz_gotowosci_der(we: WejscieGotowosciDer) -> dict[str, StatusOsi]:
         sc_niesymetryczne = "ready"
     sc_2f: StatusOsi = sc_3f
 
-    if ma_urzadzenie and ma_pcc and ma_moc:
+    if ma_urzadzenie and ma_przylacze and ma_moc:
         vdrop: StatusOsi = "ready"
-    elif ma_urzadzenie or ma_pcc:
+    elif ma_urzadzenie or ma_przylacze:
         vdrop = "partial"
     else:
         vdrop = "blocked"
@@ -316,8 +323,8 @@ def _blokady_osi(os: str, we: WejscieGotowosciDer, status: StatusOsi) -> list[Bl
                 "Brak katalogu urządzenia (falownik / PCS / turbina).",
                 "inverters",
             )
-        if we.pcc_ref is None:
-            dodaj("der.pcc.missing", "Brak punktu przyłączenia.", "topology")
+        if we.bus_przylaczenia_ref is None:
+            dodaj("der.przylacze.missing", "Brak punktu przyłączenia.", "topology")
         if os in ("sc_1f", "sc_2fg") and we.fault_current_data_ref is None:
             dodaj(
                 "der.fault_current_data.missing",
@@ -499,7 +506,11 @@ def wejscie_z_generatora(
         der_id=str(generator.get("ref_id") or generator.get("id") or ""),
         der_kind=rodzaj,
         connection_side=strona,
-        pcc_ref=_tekst(zrodla, ("pcc_ref", "pcc")) or (generator.get("bus_ref") or None),
+        # Klucz kanoniczny; zastane nazwy sa przenoszone przy wczytaniu modelu
+        # (automigracja), wiec regula nie musi ich znac ani powielac.
+        bus_przylaczenia_ref=(
+            _tekst(zrodla, (KLUCZ_PUNKTU_PRZYLACZENIA,)) or (generator.get("bus_ref") or None)
+        ),
         nominal_power_kw=moc_kw,
         device_catalog_ref=(
             generator.get("catalog_ref") or _tekst(zrodla, ("device_catalog_ref",))

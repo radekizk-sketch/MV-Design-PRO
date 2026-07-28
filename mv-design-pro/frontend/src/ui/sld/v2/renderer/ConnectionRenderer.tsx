@@ -15,7 +15,7 @@ export interface ConnectionRendererProps {
   readonly connectionKind?: 'der_block_transformer' | 'der_nn' | 'generic';
   readonly derRef?: string | null;
   readonly transformerRef?: string | null;
-  readonly pccRef?: string | null;
+  readonly busPrzylaczeniaRef?: string | null;
   readonly viewportScale?: number;
   readonly onClick?: (id: string, kind: 'der_pcc_bay' | 'der_block_transformer') => void;
   readonly onDoubleClick?: (id: string, kind: 'der_pcc_bay' | 'der_block_transformer') => void;
@@ -61,7 +61,7 @@ export function ConnectionRenderer(props: ConnectionRendererProps): JSX.Element 
     connectionKind,
     derRef,
     transformerRef,
-    pccRef,
+    busPrzylaczeniaRef,
     viewportScale,
     onClick,
     onDoubleClick,
@@ -85,7 +85,7 @@ export function ConnectionRenderer(props: ConnectionRendererProps): JSX.Element 
     ? compactBlockTransformerLabel(transformerLabel)
     : null;
   const pccBayPoint = hasBlockTransformer ? pathPoints[1] ?? pathPoints[0] : null;
-  const pccSelectionRef = pccRef ?? derRef ?? id;
+  const pccSelectionRef = busPrzylaczeniaRef ?? derRef ?? id;
   const transformerSelectionRef = transformerRef ?? derRef ?? id;
   const transformerLabelWidth = capWorldDimension(110, viewportScale, 150, 58);
   const transformerLabelFont = capWorldDimension(8, viewportScale, 13, 4.8);
