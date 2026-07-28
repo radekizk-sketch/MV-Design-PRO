@@ -260,8 +260,13 @@ test.describe('kreatory:screenshot', () => {
     // NIE może być widoczne (inaczej zrzut pokazywałby ekran w stanie zablokowanym).
     await expect(page.getByTestId('der-wiazania-brak-kontekstu')).toHaveCount(0);
     // Werdykt osi liczony na żywo z rekordu (V12K-243): przekładnika napięciowego brak,
-    // więc oś zabezpieczeń NIE może pokazywać zakresu kompletnego.
-    await expect(page.getByTestId('pv-source-surface')).toContainText('zakres do przeliczenia');
+    // więc oś zabezpieczeń NIE może pokazywać kompletu danych — a POWÓD musi być nazwany.
+    // (Ta asercja szukała wcześniej frazy „zakres do przeliczenia" z wierszy gotowości,
+    // które macierz analiz zastąpiła w E21-2; sprawdzała więc tekst, którego już nie ma.)
+    await expect(page.getByTestId('macierz-status-protection')).toContainText('dane niepełne');
+    await expect(page.getByTestId('macierz-braki-protection')).toContainText(
+      'Brak przekładników',
+    );
 
     // DOBOR ZAMIAST NAZWY KATALOGOWEJ (E21-4, V12K-255). Ekran musi pokazac RACHUNEK:
     // wartosc wymagana przez tor obok wartosci dostepnej w typie — i uczciwie nazwac

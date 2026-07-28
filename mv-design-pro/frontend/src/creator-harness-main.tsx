@@ -434,6 +434,83 @@ const STABILNOSC_SLAD = {
   ],
 };
 
+const DOBOR_FUNKCJI_WIAZANIA = {
+  generator_ref: 'der-pv-1',
+  bay_ref: 'bay-pv-1',
+  fakty: {
+    connection_side: 'SN',
+    neutral_grounding_mode: 'cewka_petersena',
+    zero_sequence_current_source: 'przekladnik_ferrantiego',
+    zero_sequence_voltage_source: 'brak',
+  },
+  dobor: {
+    wymagane: [
+      {
+        kod: '50',
+        nazwa_pl: 'Nadprądowe bezzwłoczne (I>>)',
+        podstawa_pl: 'Szybkie wyłączenie zwarć międzyfazowych w polu wytwórcy (IEC 60255-151).',
+        chroniony_obiekt_pl: 'pole wytwórcy DER-1',
+        zrodlo_pomiaru_pl: 'przekładniki prądowe fazowe pola',
+      },
+      {
+        kod: '51',
+        nazwa_pl: 'Nadprądowe zwłoczne (I>)',
+        podstawa_pl: 'Rezerwa dla zwarć o mniejszym prądzie i przeciążeń toru.',
+        chroniony_obiekt_pl: 'pole wytwórcy DER-1',
+        zrodlo_pomiaru_pl: 'przekładniki prądowe fazowe pola',
+      },
+      {
+        kod: '50G',
+        nazwa_pl: 'Ziemnozwarciowe z przekładnika ziemnozwarciowego',
+        podstawa_pl:
+          'Prąd zerowy mierzony przekładnikiem obejmującym wszystkie żyły (rodzina G, '
+          + 'nie N — wynika z zadeklarowanego toru pomiaru).',
+        chroniony_obiekt_pl: 'pole wytwórcy DER-1',
+        zrodlo_pomiaru_pl: 'przekładnik ziemnozwarciowy (Ferrantiego)',
+      },
+      {
+        kod: '27',
+        nazwa_pl: 'Podnapięciowe',
+        podstawa_pl: 'Wykrycie pracy wyspowej i zapadu napięcia (NC RfG Art. 14).',
+        chroniony_obiekt_pl: 'wytwórca DER-1',
+        zrodlo_pomiaru_pl: 'przekładnik napięciowy pola',
+      },
+      {
+        kod: '81U',
+        nazwa_pl: 'Podczęstotliwościowe',
+        podstawa_pl: 'Zabezpieczenie anty-wyspowe częstotliwościowe (NC RfG Art. 13).',
+        chroniony_obiekt_pl: 'wytwórca DER-1',
+        zrodlo_pomiaru_pl: 'przekładnik napięciowy pola',
+      },
+    ],
+    kwestie_otwarte: [
+      {
+        kod: 'protection.zero_sequence_voltage_missing',
+        opis_pl: 'Model nie opisuje toru napięcia zerowego (otwarty trójkąt albo uzwojenie resztkowe).',
+        skutek_pl:
+          'Bez niego kryterium KIERUNKOWE ziemnozwarciowe (67N) nie jest wyprowadzane — '
+          + 'w sieci kompensowanej to ono rozstrzyga kierunek zwarcia.',
+      },
+      {
+        kod: 'protection.osd_requirements_not_modelled',
+        opis_pl: 'Model nie niesie wymagań zabezpieczeniowych operatora sieci.',
+        skutek_pl: 'Zweryfikuj listę z warunkami przyłączenia przed projektem nastaw.',
+      },
+    ],
+  },
+  urzadzenie: {
+    protection_catalog_ref: 'ABB_REB670',
+    nazwa: 'ABB Relion REB670',
+    brakujace_funkcje: ['50G', '81U'],
+    ostrzezenia_przeznaczenia: [
+      'ABB Relion REB670 deklaruje funkcję 87B (różnicowe szyn zbiorczych), która należy '
+      + 'do innej strefy zabezpieczeniowej niż pole wytwórcy — sprawdź, czy to właściwy '
+      + 'wybór dla tego pola.',
+    ],
+    pokrywa_wymagania: false,
+  },
+};
+
 const DOBOR_PRZEKLADNIKOW_WIAZANIA = {
   generator_ref: 'der-pv-1',
   bay_ref: 'bay-pv-1',
@@ -515,6 +592,7 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.includes('/results/phase-state')) return jsonOK(STAN_FAZOWY_WYNIK);
   } else if (creator === 'wiazania') {
     if (url.includes('/instrument-transformers')) return jsonOK(DOBOR_PRZEKLADNIKOW_WIAZANIA);
+    if (url.includes('/protection-functions')) return jsonOK(DOBOR_FUNKCJI_WIAZANIA);
   } else if (creator === 'wyniki-stabilnosc') {
     if (url.endsWith('/results/dynamic-stability')) return jsonOK(STABILNOSC_WYNIK);
     if (url.endsWith('/results/automation-trace')) return jsonOK(STABILNOSC_SLAD);
