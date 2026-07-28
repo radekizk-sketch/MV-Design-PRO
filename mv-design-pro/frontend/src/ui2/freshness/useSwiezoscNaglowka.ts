@@ -44,7 +44,11 @@ export interface SwiezoscNaglowka {
  * `naglowek={{ analizaPL, runId, ...useSwiezoscNaglowka(runId) }}`.
  */
 export function useSwiezoscNaglowka(runId: string | null | undefined): SwiezoscNaglowka {
-  const rewizjaModelu = useSnapshotStore((s) => s.snapshot?.header.revision);
+  // `header` TEZ jest opcjonalny (V12K-265): lancuch urwany na `snapshot?`
+  // wywracal ekran przy migawce bez naglowka — `Cannot read properties of
+  // undefined (reading 'revision')`. Znacznik swiezosci nie moze zabijac
+  // ekranu wynikow; brak naglowka to brak rewizji, nie awaria.
+  const rewizjaModelu = useSnapshotStore((s) => s.snapshot?.header?.revision);
   const caseId = useAppStateStore((s) => s.activeCaseId);
   const { data } = useAnalysisRunContract(runId ?? null);
 

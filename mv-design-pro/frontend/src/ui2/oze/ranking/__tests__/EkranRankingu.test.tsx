@@ -175,6 +175,13 @@ describe('EkranRankingu — tryb ekspercki (identyfikatory)', () => {
   it('tryb ekspercki odsłania kolumnę identyfikatora i identyfikator przebiegu', async () => {
     await zbudujRanking('expert');
     expect(screen.getByTestId('mvd-wyn-th-identyfikator')).toBeInTheDocument();
-    expect(screen.getByTestId('mvd-wyn-run-id')).toHaveTextContent('run-lf-1');
+    // Intencja BEZ ZMIAN: w trybie eksperckim widać identyfikator przebiegu.
+    // Zmieniło się ŹRÓDŁO (V12K-265): dawniej `context.trace_id` z odpowiedzi
+    // (fixture: 'run-lf-1'), dziś ten sam identyfikator, którym pytaliśmy o wynik
+    // (fixture: 'lf-run', patrz asercja zapytania wyżej). Nazwa `trace_id` w
+    // odpowiedzi kłamie — niesie `str(run.id)`, a nie skrót treści śladu — więc
+    // ekran nie może na niej stać. Zgodność nagłówka z zapytaniem jest tu
+    // mocniejszą asercją niż poprzednia.
+    expect(screen.getByTestId('mvd-wyn-run-id')).toHaveTextContent('lf-run');
   });
 });

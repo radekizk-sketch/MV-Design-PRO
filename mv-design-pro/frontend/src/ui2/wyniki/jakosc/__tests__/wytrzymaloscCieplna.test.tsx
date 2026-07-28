@@ -177,8 +177,16 @@ describe('SekcjaWytrzymaloscCieplna — realna ścieżka', () => {
     fetchMock.mockResolvedValue(odpowiedzOk(odpowiedz([pozycja()])));
     render(<SekcjaWytrzymaloscCieplna {...props()} />);
     await waitFor(() => expect(screen.getByTestId('mvd-jakosc-cieplna')).toBeTruthy());
-    const url = String(fetchMock.mock.calls[0][0]);
-    expect(url).toContain('/api/quality/conductor-thermal-withstand');
+    // WYSZUKANIE PO ADRESIE, NIE PO KOLEJNOSCI (V12K-265). Asercja celowala
+    // w `calls[0]`, czyli zakladala, ze ta koncowka jest PIERWSZYM zapytaniem
+    // sekcji. Gdy ekran zaczal dodatkowo pobierac kontrakt przebiegu (rewizja
+    // modelu dla znacznika swiezosci), pierwszy stal sie inny adres i test
+    // padal — mimo ze sprawdzana wlasciwosc byla spelniona. Intencja dotyczy
+    // KONKRETNEJ koncowki, nie kolejnosci zapytan.
+    const url = fetchMock.mock.calls
+      .map(([u]) => String(u))
+      .find((u) => u.includes('/api/quality/conductor-thermal-withstand'));
+    expect(url, 'brak zapytania do /api/quality/conductor-thermal-withstand').toBeDefined();
     expect(url).toContain('run_id=sc-1');
   });
 

@@ -47,6 +47,7 @@ import {
   wierszeRankingu,
 } from './rankingModel';
 import { RANKING_STRINGS, fmtMocMW, fmtNapieciaPara, fmtStratyKw } from './strings';
+import { useSwiezoscNaglowka } from '../../freshness';
 
 const DOMYSLNY_KROK_MW = 0.5;
 const DOMYSLNA_LICZBA_KROKOW = 40;
@@ -167,6 +168,7 @@ function SzczegolWezla({
 
 function WynikRankingu({
   dane,
+  runId,
   krokMw,
   liczbaKrokow,
   operatorNazwaPL,
@@ -175,6 +177,17 @@ function WynikRankingu({
   trybZaawansowania,
 }: {
   dane: WidokZdolnosci;
+  /**
+   * Identyfikator PRZEBIEGU (V12K-265).
+   *
+   * Naglowek bral go z `dane.context.trace_id`. Pole jest ZLE NAZWANE po stronie
+   * backendu: `hosting_capacity.py` wpisuje tam `str(run.id)`, a prawdziwe
+   * `trace_id` w tym systemie to skrot tresci artefaktu
+   * (`trace_emitters/deterministic_ids.py`), nie identyfikator biegu. Wartosc jest
+   * wiec dzis poprawna, ale nazwa klamie — nowy kod nie moze na niej stac.
+   * Rodzic zna `runId` z rejestru przebiegow i podaje go tu wprost.
+   */
+  runId: string | null;
   krokMw: number;
   liczbaKrokow: number;
   operatorNazwaPL: string;
@@ -183,6 +196,8 @@ function WynikRankingu({
   trybZaawansowania: AdvancementMode;
 }) {
   const [wybranyBusRef, setWybranyBusRef] = useState<string | null>(null);
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
 
   const kolumny = useMemo(() => kolumnyRankingu(), []);
   const wiersze = useMemo(
@@ -223,7 +238,13 @@ function WynikRankingu({
   return (
     <div data-testid="mvd-rank-wynik">
       <EkranAnalizy
-        naglowek={{ analizaPL: RANKING_STRINGS.analizaPL, runId: dane.context.trace_id }}
+        naglowek={{
+          analizaPL: RANKING_STRINGS.analizaPL,
+          // Ten sam identyfikator, ktorym pytalismy o wynik (linia `pobierzZdolnosc…`),
+          // a nie zle nazwane `context.trace_id` — patrz komentarz przy propsie.
+          runId: runId ?? undefined,
+          ...swiezosc,
+        }}
         zalozenia={zalozenia}
         kolumny={kolumny}
         wiersze={wiersze}
@@ -473,6 +494,7 @@ export function EkranRankingu({ trybZaawansowania }: EkranRankinguProps) {
           ) : (
             <WynikRankingu
               dane={stan.dane}
+              runId={runId}
               krokMw={krokMw}
               liczbaKrokow={liczbaKrokow}
               operatorNazwaPL={operatorNazwaPL}

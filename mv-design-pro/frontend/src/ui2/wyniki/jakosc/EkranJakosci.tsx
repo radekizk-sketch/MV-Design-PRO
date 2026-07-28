@@ -24,6 +24,7 @@ import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
 import { PanelDowoduCieplnego } from './PanelDowoduCieplnego';
+import { useSwiezoscNaglowka } from '../../freshness';
 import {
   fetchArcFlash,
   fetchMigotanie,
@@ -217,6 +218,8 @@ export function SekcjaWiarygodnosci({
   onEksport,
 }: SekcjaProps) {
   const runId = przebieg?.id ?? null;
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
   const { stan, dane } = useZasobJakosci<WiarygodnoscResponse>(runId, fetchWiarygodnoscZwarciowa);
   const [wybrany, setWybrany] = useState<string | null>(null);
 
@@ -264,7 +267,7 @@ export function SekcjaWiarygodnosci({
   return (
     <section data-testid="mvd-jakosc-wiarygodnosc">
       <EkranAnalizy
-        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaWiarygodnosc, runId: runId ?? undefined }}
+        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaWiarygodnosc, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaWiarygodnosci()}
         kolumny={KOLUMNY_WIARYGODNOSCI}
         wiersze={naWierszeWiarygodnosci(items)}
@@ -346,6 +349,8 @@ function SzczegolWiarygodnosci({
 
 export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, onEksport }: SekcjaProps) {
   const runId = przebieg?.id ?? null;
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
   const { stan, dane } = useZasobJakosci<WalidacjaResponse>(runId, fetchWalidacjaEnergetyczna);
   const [wybrany, setWybrany] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
@@ -394,7 +399,7 @@ export function SekcjaWalidacji({ przebieg, trybZaawansowania, onOtworzDowod, on
   return (
     <section data-testid="mvd-jakosc-walidacja">
       <EkranAnalizy
-        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaWalidacja, runId: runId ?? undefined }}
+        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaWalidacja, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaWalidacji(dane.config)}
         kolumny={KOLUMNY_WALIDACJI}
         wiersze={naWierszeWalidacji(items)}
@@ -679,6 +684,8 @@ export function SekcjaMigotania({
   onEksport,
 }: SekcjaProps) {
   const runId = przebieg?.id ?? null;
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
   const { stan, dane } = useZasobJakosci<MigotanieResponse>(runId, fetchMigotanie);
   const [wybrany, setWybrany] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
@@ -727,7 +734,7 @@ export function SekcjaMigotania({
   return (
     <section data-testid="mvd-jakosc-migotanie">
       <EkranAnalizy
-        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaMigotanie, runId: runId ?? undefined }}
+        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaMigotanie, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaMigotania(dane.config)}
         kolumny={KOLUMNY_MIGOTANIE}
         wiersze={naWierszeMigotania(buses)}
@@ -923,6 +930,8 @@ export function SekcjaArcFlash({
   onEksport,
 }: SekcjaProps) {
   const runId = przebieg?.id ?? null;
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
   const [odlegloscRobocza, setOdlegloscRobocza] = useState('');
   const [odstepElektrod, setOdstepElektrod] = useState('');
   const [czasWylaczenia, setCzasWylaczenia] = useState('');
@@ -1135,7 +1144,7 @@ export function SekcjaArcFlash({
             )}
           </div>
           <EkranAnalizy
-            naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaArcFlash, runId: runId ?? undefined }}
+            naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaArcFlash, runId: runId ?? undefined, ...swiezosc }}
             zalozenia={[]}
             kolumny={KOLUMNY_ARC_FLASH}
             wiersze={naWierszeArcFlash(wyniki)}
@@ -1218,6 +1227,8 @@ export function SekcjaWarunkowPrzylaczenia({
   onEksport,
 }: SekcjaProps) {
   const runId = przebieg?.id ?? null;
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
   const { stan, dane } = useZasobJakosci<WarunkiPrzylaczeniaResponse>(
     runId,
     fetchWarunkiPrzylaczenia,
@@ -1275,7 +1286,7 @@ export function SekcjaWarunkowPrzylaczenia({
   return (
     <section data-testid="mvd-jakosc-warunki">
       <EkranAnalizy
-        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaWarunki, runId: runId ?? undefined }}
+        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaWarunki, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaWarunkow(ocena)}
         kolumny={KOLUMNY_WARUNKOW}
         wiersze={naWierszeWarunkow(ocena.pozycje)}
@@ -1308,6 +1319,8 @@ export function SekcjaWytrzymaloscCieplna({
   onEksport,
 }: SekcjaProps) {
   const runId = przebieg?.id ?? null;
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
   const { stan, dane } = useZasobJakosci<WytrzymaloscCieplnaResponse>(
     runId,
     fetchWytrzymaloscCieplna,
@@ -1371,7 +1384,7 @@ export function SekcjaWytrzymaloscCieplna({
         </p>
       )}
       <EkranAnalizy
-        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaCieplna, runId: runId ?? undefined }}
+        naglowek={{ analizaPL: JAKOSC_STRINGS.sekcjaCieplna, runId: runId ?? undefined, ...swiezosc }}
         zalozenia={naZalozeniaCieplne(dane.fault_node_id, dane.tk_s, summary, dane.czasy_wylaczenia)}
         kolumny={KOLUMNY_CIEPLNE}
         wiersze={naWierszeCieplne(items)}

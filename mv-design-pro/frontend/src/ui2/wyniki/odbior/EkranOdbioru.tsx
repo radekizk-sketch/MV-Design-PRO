@@ -20,6 +20,7 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
 import { przebiegRozplywu } from '../jakosc';
+import { useSwiezoscNaglowka } from '../../freshness';
 import {
   postZgodnoscPowykonawcza,
   type WidokZgodnosci,
@@ -221,6 +222,8 @@ function WynikZgodnosci({
 }) {
   const [wybrany, setWybrany] = useState<string | null>(null);
   const poprawWModelu = usePoprawWModelu();
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
   const wierszeSelektora = useMemo(
     () =>
       new Map<string, WierszZgodnosci>(
@@ -244,7 +247,7 @@ function WynikZgodnosci({
   return (
     <div data-testid="mvd-odbior-wynik">
       <EkranAnalizy
-        naglowek={{ analizaPL: ODBIOR_STRINGS.tytul, runId }}
+        naglowek={{ analizaPL: ODBIOR_STRINGS.tytul, runId, ...swiezosc }}
         zalozenia={naZalozeniaZgodnosci(dane)}
         kolumny={KOLUMNY_ZGODNOSCI}
         wiersze={naWierszeZgodnosci(dane.wiersze)}

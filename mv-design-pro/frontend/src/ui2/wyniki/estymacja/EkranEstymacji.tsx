@@ -23,6 +23,7 @@ import './estymacja.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { akcjaNaprawcza, EkranAnalizy, usePoprawWModelu } from '../wzorzec';
+import { useSwiezoscNaglowka } from '../../freshness';
 import {
   fetchWymaganiaEstymacji,
   postEstymacjaStanu,
@@ -521,6 +522,8 @@ function WynikEstymacji({
   onOtworzDowod: (ref: string) => void;
 }) {
   const trybEkspercki = trybZaawansowania === 'expert';
+  // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ derywacji.
+  const swiezosc = useSwiezoscNaglowka(runId);
   const wezleZbioru = new Set<string>();
   dane.missing_data.forEach((m) => m.bus_refs.forEach((r) => wezleZbioru.add(r)));
   const brakiWezlow = [...wezleZbioru];
@@ -560,7 +563,7 @@ function WynikEstymacji({
       <PanelZlychDanych dane={dane} typy={typy} />
 
       <EkranAnalizy
-        naglowek={{ analizaPL: S.wezlyTytul, runId }}
+        naglowek={{ analizaPL: S.wezlyTytul, runId, ...swiezosc }}
         zalozenia={naZalozeniaEstymacji(dane)}
         kolumny={KOLUMNY_WEZLY}
         wiersze={naWierszeWezlow(dane.buses)}
@@ -572,7 +575,8 @@ function WynikEstymacji({
       <section className="mvd-est-pomiary-wynik" data-testid="mvd-est-pomiary-wynik">
         <h3 className="mvd-est-sekcja-tytul">{S.pomiaryWynikTytul}</h3>
         <EkranAnalizy
-          naglowek={{ analizaPL: S.pomiaryWynikTytul }}
+          // Druga tabela TEGO SAMEGO przebiegu — ta sama para rewizji (V12K-265).
+          naglowek={{ analizaPL: S.pomiaryWynikTytul, runId, ...swiezosc }}
           zalozenia={[]}
           kolumny={KOLUMNY_POMIARY}
           wiersze={naWierszePomiarow(dane.measurements, typy)}
