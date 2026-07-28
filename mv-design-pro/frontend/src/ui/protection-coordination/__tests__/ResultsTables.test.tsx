@@ -6,6 +6,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {
   VerdictBadge,
   SensitivityTable,
@@ -72,6 +73,21 @@ const mockSensitivityChecks: SensitivityCheck[] = [
     verdict: 'MARGINAL',
     verdict_pl: 'Graniczny',
     notes_pl: 'Niski margines',
+  },
+];
+
+const mockSelectivityChecksFail: SelectivityCheck[] = [
+  {
+    upstream_device_id: 'device-1',
+    downstream_device_id: 'device-2',
+    analysis_current_a: 3000,
+    t_upstream_s: 0.35,
+    t_downstream_s: 0.3,
+    margin_s: 0.05,
+    required_margin_s: 0.3,
+    verdict: 'FAIL',
+    verdict_pl: 'Brak selektywnosci',
+    notes_pl: 'Margines CTI ponizej wymaganego',
   },
 ];
 
@@ -252,6 +268,32 @@ describe('SelectivityTable', () => {
     );
     expect(screen.getByText('0.500')).toBeInTheDocument(); // margin_s
     expect(screen.getByText('0.300')).toBeInTheDocument(); // t_downstream_s
+  });
+
+  it('werdykt naruszenia ma WIDOCZNĄ akcję naprawczą, nie tylko klik w wiersz', async () => {
+    // V12K-261: naprawa istniała (klik w wiersz → edytor nastaw nadrzędnego, F-K4/Z4),
+    // ale była NIEWIDOCZNA: bez etykiety, bez przycisku, bez sygnału, że cokolwiek się
+    // stanie. Werdykt bez widocznego następnego kroku jest ślepym zaułkiem (FLOW §0.2).
+    const klik = vi.fn();
+    render(
+      <SelectivityTable checks={mockSelectivityChecksFail} devices={mockDevices} onRowClick={klik} />
+    );
+
+    const przycisk = screen.getByTestId('selectivity-fix-device-1');
+    expect(przycisk).toHaveTextContent(LABELS.checks.selectivity.fixSettings);
+    await userEvent.click(przycisk);
+    // Para idzie w komplecie: naprawa dotyczy STOPNIOWANIA, nie jednego aparatu.
+    expect(klik).toHaveBeenCalledWith('device-1', 'device-2');
+    // Jedno kliknięcie = jedno wywołanie (przycisk nie odpala też ścieżki wiersza).
+    expect(klik).toHaveBeenCalledTimes(1);
+  });
+
+  it('werdykt spełniony NIE dostaje akcji naprawczej', () => {
+    // Przycisk przy spełnionym marginesie CTI sugerowałby problem, którego nie ma.
+    render(
+      <SelectivityTable checks={mockSelectivityChecks} devices={mockDevices} onRowClick={vi.fn()} />
+    );
+    expect(screen.queryByTestId('selectivity-fix-device-1')).toBeNull();
   });
 
   it('should show empty state message when no checks', () => {

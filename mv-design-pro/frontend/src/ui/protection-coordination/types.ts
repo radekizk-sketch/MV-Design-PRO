@@ -336,6 +336,16 @@ export const LABELS = {
       analysisCurrent: 'Prąd analizy [A]',
       notes: 'Uwagi',
       minDevicesRequired: 'Wymaga minimum 2 urządzeń do sprawdzenia selektywności',
+      // Kolumna DZIALANIA (V12K-261). Do tej pory naprawa byla dostepna wylacznie
+      // przez KLIK W WIERSZ — bez etykiety, bez przycisku, bez informacji, ze cokolwiek
+      // sie stanie. Werdykt bez widocznego nastepnego kroku jest slepym zaulkiem
+      // (FLOW §0.2), a niewidoczna akcja to martwy klik z perspektywy projektanta.
+      action: 'Działanie',
+      fixSettings: 'Popraw nastawy',
+      fixSettingsTitle:
+        'Otwórz edytor nastaw zabezpieczenia NADRZĘDNEGO tej pary. Przy braku '
+        + 'selektywności koryguje się czas zabezpieczenia rezerwowego — podrzędne ma '
+        + 'zadziałać pierwsze (stopniowanie CTI).',
     },
     overload: {
       title: 'Przeciążalność',

@@ -241,6 +241,11 @@ export function SelectivityTable({
               <th className="px-4 py-2 text-center text-sm font-medium text-slate-700">
                 Werdykt
               </th>
+              {onRowClick && (
+                <th className="px-4 py-2 text-right text-sm font-medium text-slate-700">
+                  {labels.action}
+                </th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200">
@@ -284,6 +289,30 @@ export function SelectivityTable({
                 <td className="px-4 py-2 text-center">
                   <VerdictBadge verdict={check.verdict} notesPl={check.notes_pl} />
                 </td>
+                {onRowClick && (
+                  <td className="px-4 py-2 text-right">
+                    {/* WIDOCZNA akcja naprawcza (V12K-261). Klik w wiersz zostaje —
+                        przycisk go NIE zastępuje, tylko nazywa. `stopPropagation`,
+                        żeby jedno kliknięcie nie odpalało obu ścieżek.
+                        Akcja tylko przy WERDYKCIE NARUSZENIA: przy spełnionym
+                        marginesie CTI nie ma czego poprawiać, a przycisk sugerowałby
+                        problem, którego nie ma. */}
+                    {(check.verdict === 'FAIL' || check.verdict === 'MARGINAL') && (
+                      <button
+                        type="button"
+                        data-testid={`selectivity-fix-${check.upstream_device_id}`}
+                        title={labels.fixSettingsTitle}
+                        className="min-h-[44px] rounded border border-slate-300 px-3 py-1 text-sm text-slate-700 hover:bg-slate-100"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onRowClick(check.upstream_device_id, check.downstream_device_id);
+                        }}
+                      >
+                        {labels.fixSettings}
+                      </button>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
