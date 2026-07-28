@@ -19,6 +19,7 @@ import {
   type DerStationContext,
 } from '../../network-build/der-configurator/DerConfigurator';
 import { DerWiazaniaEditor } from '../../network-build/station-der/DerWiazaniaEditor';
+import { DoborPrzekladnikowSekcja } from '../../network-build/station-der/DoborPrzekladnikowSekcja';
 import { FunkcjeZabezpieczenSekcja } from '../../network-build/station-der/FunkcjeZabezpieczenSekcja';
 import { MacierzAnalizSekcja } from '../../network-build/station-der/MacierzAnalizSekcja';
 import { zlozMacierzAnaliz } from '../../network-build/station-der/macierzAnaliz';
@@ -669,6 +670,8 @@ function buildDerCards(
   funkcjeZabezpieczen: JSX.Element,
   /** Macierz analiz: po co · czego brakuje · stan wyniku · dzialanie (E21-2, P5/P10). */
   macierzAnaliz: JSX.Element,
+  /** Dobor przekladnikow: kryteria normowe z jawnym rachunkiem (E21-4, pkt P9). */
+  doborPrzekladnikow: JSX.Element,
 ): Partial<Record<DerCardId, JSX.Element>> {
   const ncRfg = der.profiles.nc_rfg_profile_ref
     ? NC_RFG_PROFILE_CATALOG.find((profile) => profile.id === der.profiles.nc_rfg_profile_ref)
@@ -804,6 +807,12 @@ function buildDerCards(
             slowa. Macierz pokazuje je wraz ze stanem wyniku i nastepnym krokiem. */}
         {macierzAnaliz}
         {edytorWiazan}
+        {/* DOBOR ZAMIAST NAZWY KATALOGOWEJ (E21-4, audyt E-21 pkt P9). Sam wpis
+            „CT 200/5 A kl. 5P10" nie mowil, czy przekladnik pasuje do tego toru:
+            przekladnia wobec pradu roboczego, nasycenie, wytrzymalosc cieplna i
+            dynamiczna, zgodnosc z wejsciem przekaznika. Teraz kazde kryterium ma
+            podstawe normowa i jawny rachunek — a brak danej jest widoczny. */}
+        {doborPrzekladnikow}
         {funkcjeZabezpieczen}
       </section>
     ),
@@ -1173,6 +1182,19 @@ function DerSurfaceShell({
     );
   }, [activeCaseId, activeProjectId, der]);
 
+  // Dobor przekladnikow (E21-4): kryteria normowe licza REGULA DOMENOWA na danych toru
+  // (prad roboczy z solvera, Ik''/ip z przebiegu zwarciowego) — ekran je pokazuje.
+  const sekcjaDoboru = useMemo(() => {
+    if (!der) return <></>;
+    return (
+      <DoborPrzekladnikowSekcja
+        derId={der.id}
+        projectId={activeProjectId}
+        caseId={activeCaseId}
+      />
+    );
+  }, [activeCaseId, activeProjectId, der]);
+
   // Macierz analiz (E21-2): osie z NAZWANYMI powodami z kanonicznej reguly frontu plus
   // przebiegi z magazynu wykonan. Rekord wzbogacony o klase przekladnika z katalogu,
   // zeby powody byly te same, ktore widzi reszta ekranu.
@@ -1238,7 +1260,16 @@ function DerSurfaceShell({
           derId={derId ?? 'unselected'}
           derKind={derKind}
           stationContext={stationContext}
-          children={der ? buildDerCards(der, mocWytworcy, torWytworcy, gotowosc, edytorWiazan, sekcjaFunkcji, sekcjaMacierzy) : undefined}
+          children={der ? buildDerCards(
+                der,
+                mocWytworcy,
+                torWytworcy,
+                gotowosc,
+                edytorWiazan,
+                sekcjaFunkcji,
+                sekcjaMacierzy,
+                sekcjaDoboru,
+              ) : undefined}
         />
       </div>
       {der && (
