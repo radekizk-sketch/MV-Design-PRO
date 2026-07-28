@@ -20,6 +20,10 @@ import {
 } from '../../network-build/der-configurator/DerConfigurator';
 import { DerWiazaniaEditor } from '../../network-build/station-der/DerWiazaniaEditor';
 import { FunkcjeZabezpieczenSekcja } from '../../network-build/station-der/FunkcjeZabezpieczenSekcja';
+import { MacierzAnalizSekcja } from '../../network-build/station-der/MacierzAnalizSekcja';
+import { zlozMacierzAnaliz } from '../../network-build/station-der/macierzAnaliz';
+import { buildAggregatedReadiness } from '../../network-build/station-der/readiness';
+import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import {
   BESS_BATTERY_CATALOG,
@@ -663,6 +667,8 @@ function buildDerCards(
   edytorWiazan: JSX.Element,
   /** Sekcja funkcji zabezpieczeniowych — wynik reguly domenowej (E21-3, pkt P7/P8). */
   funkcjeZabezpieczen: JSX.Element,
+  /** Macierz analiz: po co · czego brakuje · stan wyniku · dzialanie (E21-2, P5/P10). */
+  macierzAnaliz: JSX.Element,
 ): Partial<Record<DerCardId, JSX.Element>> {
   const ncRfg = der.profiles.nc_rfg_profile_ref
     ? NC_RFG_PROFILE_CATALOG.find((profile) => profile.id === der.profiles.nc_rfg_profile_ref)
@@ -790,15 +796,13 @@ function buildDerCards(
       <section>
         <dl>
           <FieldRow label="Stan konfiguracji" value={stanKonfiguracji(gotowosc).zdanie} />
-          <FieldRow label="Zwarcie 3-fazowe" value={readinessPl(gotowosc.sc_3f)} />
-          <FieldRow label="Zwarcie doziemne" value={readinessPl(gotowosc.sc_1f)} />
-          <FieldRow label="Rozpływ mocy" value={readinessPl(gotowosc.vdrop)} />
-          <FieldRow label="Regulacja Q(U)" value={readinessPl(gotowosc.q_u)} />
-          <FieldRow label="Zabezpieczenia DER" value={readinessPl(gotowosc.protection)} />
-          <FieldRow label="Selektywność" value={readinessPl(gotowosc.protection_selectivity)} />
-          <FieldRow label="Raport OSD" value={readinessPl(gotowosc.report_osd)} />
-          <FieldRow label="Raport techniczny" value={readinessPl(gotowosc.report_technical)} />
         </dl>
+        {/* MACIERZ ZAMIAST OSMIU OGOLNIKOW (E21-2, audyt E-21 pkt P5). Wiersze „os:
+            zakres kompletny / zakres do przeliczenia" nie mowily, czy analiza nie byla
+            uruchomiona, czy wynik utracil aktualnosc, czy brakuje danych wejsciowych.
+            Regula gotowosci miala NAZWANE powody — prezentacja je zgniatala do jednego
+            slowa. Macierz pokazuje je wraz ze stanem wyniku i nastepnym krokiem. */}
+        {macierzAnaliz}
         {edytorWiazan}
         {funkcjeZabezpieczen}
       </section>
@@ -1169,6 +1173,21 @@ function DerSurfaceShell({
     );
   }, [activeCaseId, activeProjectId, der]);
 
+  // Macierz analiz (E21-2): osie z NAZWANYMI powodami z kanonicznej reguly frontu plus
+  // przebiegi z magazynu wykonan. Rekord wzbogacony o klase przekladnika z katalogu,
+  // zeby powody byly te same, ktore widzi reszta ekranu.
+  const przebiegi = useExecutionRunsStore((state) => state.runs);
+  const sekcjaMacierzy = useMemo(() => {
+    if (!der) return <></>;
+    const wStacji = wszystkieDery.filter(
+      (inny) => inny.station_id === der.station_id && inny.id !== der.id,
+    ).length;
+    const osie = buildAggregatedReadiness(wzbogacOKlaseCt(der, katalogiWiazan.ct), {
+      otherDersInStation: wStacji,
+    });
+    return <MacierzAnalizSekcja wiersze={zlozMacierzAnaliz(osie, przebiegi)} />;
+  }, [der, katalogiWiazan.ct, przebiegi, wszystkieDery]);
+
   const stationContext: DerStationContext | undefined = useMemo(() => {
     if (!der) return undefined;
     const station = snapshot?.substations?.find(
@@ -1219,7 +1238,7 @@ function DerSurfaceShell({
           derId={derId ?? 'unselected'}
           derKind={derKind}
           stationContext={stationContext}
-          children={der ? buildDerCards(der, mocWytworcy, torWytworcy, gotowosc, edytorWiazan, sekcjaFunkcji) : undefined}
+          children={der ? buildDerCards(der, mocWytworcy, torWytworcy, gotowosc, edytorWiazan, sekcjaFunkcji, sekcjaMacierzy) : undefined}
         />
       </div>
       {der && (

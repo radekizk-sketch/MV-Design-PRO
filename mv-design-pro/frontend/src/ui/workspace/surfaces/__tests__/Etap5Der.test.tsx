@@ -119,8 +119,15 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getByText('HVRT')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('der-card-tab-readiness'));
-    expect(screen.getByText('Rozpływ mocy')).toBeInTheDocument();
-    expect(screen.getByText('Zabezpieczenia DER')).toBeInTheDocument();
+    // INTENCJA BEZ ZMIAN, INNA PREZENTACJA (E21-2): osie gotowosci pokazuje teraz
+    // macierz analiz z powodami i dzialaniem, a nie plaska lista dwoch ogolnikow.
+    // Sprawdzamy WIERSZE macierzy po osi, bo etykieta jest kontraktem reguly.
+    expect(screen.getByTestId('macierz-wiersz-vdrop')).toBeInTheDocument();
+    expect(screen.getByTestId('macierz-wiersz-protection')).toBeInTheDocument();
+    // Kazdy wiersz niesie POWOD („po co ta analiza") — tego plaska lista nie miala.
+    expect(screen.getByTestId('macierz-wiersz-vdrop').textContent).toContain(
+      'Spadek napięcia w torze przyłączenia',
+    );
     // V12K-245: uniwersalna lista funkcji ANSI ZNIKA z ekranu. Sklejala kody ze STALEJ
     // listy katalogu (13 z 24 pozycji z flaga `required_for_der`) — jedna i ta sama dla
     // KAZDEJ instalacji, niezalezna od topologii, uziemienia sieci, wymagan OSD
@@ -794,8 +801,17 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     await uzytkownik.click(screen.getByTestId('der-card-tab-readiness'));
 
     // PRZED: zabezpieczenie i przekładnik napięciowy są, prądowego brak → oś niepełna.
-    const wierszOsi = (await screen.findByText('Zabezpieczenia DER')).parentElement;
-    expect(wierszOsi?.textContent).toContain('zakres do przeliczenia');
+    // Werdykt osi zabezpieczen czytamy z wiersza macierzy (E21-2). „Dane niepelne"
+    // zastapilo „zakres do przeliczenia": mowi, ze problemem sa DANE, nie liczenie.
+    const wierszOsi = await screen.findByTestId('macierz-wiersz-protection');
+    expect(wierszOsi.textContent).toContain('dane niepełne');
+    // SEDNO E21-2: nie sam status, ale NAZWANE POWODY braku i konkretne dzialanie.
+    // Bez tej asercji wyciecie powodow z macierzy przechodzilo na zielono (injekcja Y).
+    const braki = screen.getByTestId('macierz-braki-protection');
+    expect(braki.textContent?.trim().length ?? 0).toBeGreaterThan(10);
+    expect(screen.getByTestId('macierz-dzialanie-protection').textContent).toBe(
+      'Uzupełnij brakujące dane',
+    );
 
     await uzytkownik.click(screen.getByTestId('der-wiazanie-wybierz-ct_catalog_ref'));
     await uzytkownik.click(await screen.findByText('CT 200/5 A kl. 5P10 10 VA'));
@@ -803,8 +819,8 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     // PO: klasa 5P10 jest zabezpieczeniowa (IEC 61869-2) → oś kompletna, BEZ
     // przeładowania ekranu. Gdyby ekran czytał zapisane pole, tekst by się nie zmienił.
     await waitFor(() =>
-      expect(screen.getByText('Zabezpieczenia DER').parentElement?.textContent).toContain(
-        'zakres kompletny',
+      expect(screen.getByTestId('macierz-wiersz-protection').textContent).toContain(
+        'dane kompletne',
       ),
     );
   });
