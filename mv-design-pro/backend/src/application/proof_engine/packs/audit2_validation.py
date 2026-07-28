@@ -317,8 +317,10 @@ def generate_vt_grounding_validation_proof(
         },
         formulas_latex=[
             r"$$U_{\text{th VT}} \geq U_{\text{required}}(\text{grounding})$$",
-            r"$$U_{\text{required}} = \begin{cases} 1.9 & \text{isolated/petersen (8h)} \\ "
-            r"1.5 & \text{R-grounded (30s)} \\ 1.2 & \text{directly grounded (continuous)} \end{cases}$$",
+            r"$$U_{\text{required}} = \begin{cases} 1.9 & \text{izolowana / kompensowana / "
+            r"przez rezystor (faza--ziemia)} \\ 1.5 & \text{bezpo\'srednio uziemiona "
+            r"(faza--ziemia, 30 s)} \\ 1.2 & \text{uzwojenie mi\k{e}dzyfazowe (ci\k{a}g\l{}e)} "
+            r"\end{cases}$$",
         ],
         generated_at=generated_at_iso,
     )

@@ -438,6 +438,9 @@ PROG_NADWYMIAROWANIA_VT = 1.5
 #: swiadomie: siec uziemiona przez rezystor NIE jest siecia skutecznie uziemiona.
 UZIEMIENIA_WYMAGAJACE_19: frozenset[str] = frozenset({"izolowany", "cewka_petersena", "rezystor"})
 
+#: Wspolczynnik ciagly — wystarcza przekladnikowi pracujacemu MIEDZY FAZAMI, bo zwarcie
+#: doziemne nie zmienia napiecia miedzyfazowego (IEC 61869-3 tab. 2).
+WSPOLCZYNNIK_CIAGLY = 1.2
 WSPOLCZYNNIK_SIEC_UZIEMIONA = 1.5
 WSPOLCZYNNIK_SIEC_MALOPRADOWA = 1.9
 CZAS_WSPOLCZYNNIKA_KROTKI_S = 30.0
@@ -474,12 +477,32 @@ def _blisko(wartosc: float, wzorzec: float, tolerancja: float) -> bool:
     return abs(wartosc - wzorzec) / wzorzec <= tolerancja
 
 
-def _wymagany_wspolczynnik_napieciowy(tryb: str | None) -> float | None:
-    """Wymagana wartosc F_v wyprowadzona ze sposobu uziemienia (IEC 61869-3 tab. 2).
+def wymagany_wspolczynnik_napieciowy(tryb: str | None, uklad: str | None = None) -> float | None:
+    """Wymagana wartosc F_v wg IEC 61869-3 tab. 2 — JEDYNE miejsce tej reguly.
 
-    `None` = sposobu uziemienia nie ustalono; wymagania NIE zgadujemy (V12K-246:
-    domysl „bezposrednio uziemiony" zamienial brak danej w najmniej ostrozny werdykt).
+    UKLAD PRACY DECYDUJE, ZANIM ZDECYDUJE UZIEMIENIE. Zwarcie doziemne podnosi napiecie
+    faz zdrowych WZGLEDEM ZIEMI — napiecie MIEDZYFAZOWE sie nie zmienia. Dlatego
+    przekladnik pracujacy miedzy fazami potrzebuje tylko wspolczynnika ciaglego (1,2),
+    niezaleznie od sposobu uziemienia sieci, a wymagania 1,5 i 1,9 dotycza wylacznie
+    uzwojenia pierwotnego pracujacego miedzy FAZA a ZIEMIA.
+
+    Dla ukladu faza-ziemia:
+      * siec maloprądowa (izolowana, kompensowana, uziemiona przez rezystor) => 1,9,
+      * siec bezposrednio (skutecznie) uziemiona => 1,5.
+
+    „rezystor" nalezy do rodziny 1,9 SWIADOMIE: siec uziemiona przez rezystor NIE jest
+    siecia skutecznie uziemiona — przy zwarciu doziemnym napiecie faz zdrowych rosnie
+    praktycznie do miedzyfazowego, wiec wymaganie 1,5 byloby zanizone. Tak brzmial
+    rozjazd V12K-256: `audit2_catalogs` mial wlasna, lagodniejsza wersje tej samej reguly.
+
+    `None` = nie da sie ustalic (nieznane uziemienie albo nierozpoznany uklad pracy);
+    wymagania NIE zgadujemy (V12K-246).
     """
+    if uklad == "miedzyfazowy":
+        return WSPOLCZYNNIK_CIAGLY
+    if uklad is None and tryb is not None and tryb != "nieznany":
+        # Uklad nierozpoznany: nie wiadomo, ktora rodzina wymagan obowiazuje.
+        return None
     if tryb is None or tryb == "nieznany":
         return None
     if tryb in UZIEMIENIA_WYMAGAJACE_19:
@@ -626,7 +649,7 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
             )
 
     # --- 3. Wspolczynnik napieciowy F_v ------------------------------------------
-    wymagany_fv = _wymagany_wspolczynnik_napieciowy(tor.tryb_uziemienia)
+    wymagany_fv = wymagany_wspolczynnik_napieciowy(tor.tryb_uziemienia, uklad)
     wymagany_czas = (
         None
         if tor.zwarcie_doziemne_wylaczane_automatycznie is None
@@ -641,9 +664,18 @@ def sprawdz_dobor_vt(przekladnik: dict[str, Any], tor: WymaganiaToruNapieciowego
     # nie jest potrzebna do rozstrzygniecia.
     if wymagany_fv == WSPOLCZYNNIK_SIEC_UZIEMIONA:
         wymagany_czas = CZAS_WSPOLCZYNNIKA_KROTKI_S
+    if wymagany_fv == WSPOLCZYNNIK_CIAGLY:
+        # Wspolczynnik ciagly obowiazuje bez ograniczenia czasu — kazda deklaracja
+        # producenta (30 s / 8 h) jest wobec niego wystarczajaca.
+        wymagany_czas = 0.0
     if wymagany_fv is None or fv is None or wymagany_czas is None or czas_fv is None:
         brakujace: list[str] = []
-        if wymagany_fv is None:
+        if wymagany_fv is None and uklad is None:
+            brakujace.append(
+                "układ pracy przekładnika (najpierw rozstrzygnij kryterium przekładni — "
+                "wymaganie 1,9 dotyczy uzwojenia faza–ziemia, nie międzyfazowego)"
+            )
+        elif wymagany_fv is None:
             brakujace.append(
                 "sposób uziemienia punktu neutralnego sieci (decyduje o wartości 1,5 albo 1,9)"
             )

@@ -1075,24 +1075,42 @@ def select_block_transformers_for_der(
 def is_vt_voltage_factor_valid_for_grounding(
     voltage_factor: float, grounding_type: GroundingType
 ) -> tuple[bool, str]:
-    """Naprawa eng.20: walidacja VT vs typ uziemienia. Zwraca (ok, message_pl)."""
-    if grounding_type in ("isolated", "petersen_coil"):
-        if voltage_factor < 1.9:
-            label = "izolowana" if grounding_type == "isolated" else "skompensowana (Petersena)"
-            return False, (
-                f"Siec {label} wymaga VT z U_th = 1.9 (8h, IEC 61869-3). "
-                f"Wybrany VT ma U_th = {voltage_factor}."
-            )
-        return True, ""
-    if grounding_type == "resistor_grounded":
-        if voltage_factor < 1.5:
-            return (
-                False,
-                f"Siec R-grounded wymaga VT z U_th >= 1.5 (30s). Wybrany VT ma U_th = {voltage_factor}.",
-            )
-        return True, ""
-    if voltage_factor < 1.2:
-        return False, "Siec directly-grounded wymaga VT z U_th >= 1.2 (continuous)."
+    """Walidacja F_v przekladnika napieciowego wobec uziemienia sieci (IEC 61869-3 tab. 2).
+
+    JEDNA REGULA, NIE DWIE (V12K-256). Ta funkcja miala wlasna, LAGODNIEJSZA wersje
+    wymagan: dopuszczala 1,5 w sieci uziemionej przez rezystor i 1,2 w bezposrednio
+    uziemionej. Siec uziemiona przez rezystor NIE jest siecia skutecznie uziemiona —
+    przy zwarciu doziemnym napiecie faz zdrowych rosnie praktycznie do miedzyfazowego,
+    wiec wymaganie 1,5 bylo zanizone; a 1,2 (ciagle) dotyczy przekladnika pracujacego
+    MIEDZY FAZAMI, nie faza-ziemia. Rozjazd byl grozny, bo ta funkcja zasila PAKIET
+    DOWODOWY — nizsze wymaganie trafialoby do dokumentu jako werdykt zgodnosci.
+
+    ZALOZENIE JAWNE: pytanie „czy F_v pasuje do uziemienia" ma sens WYLACZNIE dla
+    uzwojenia pierwotnego pracujacego miedzy faza a ziemia (miedzyfazowe nie widzi
+    wzrostu napiecia przy doziemieniu), dlatego regula jest wolana z tym ukladem.
+    """
+    from domain.dobor_przekladnika import wymagany_wspolczynnik_napieciowy
+
+    tryb = {
+        "isolated": "izolowany",
+        "petersen_coil": "cewka_petersena",
+        "resistor_grounded": "rezystor",
+        "directly_grounded": "bezposrednio_uziemiony",
+    }.get(grounding_type)
+    wymagany = wymagany_wspolczynnik_napieciowy(tryb, "faza_ziemia")
+    if wymagany is None:
+        return False, f"Nieznany typ uziemienia: {grounding_type}"
+    if voltage_factor < wymagany:
+        etykieta = {
+            "isolated": "izolowana",
+            "petersen_coil": "skompensowana (Petersena)",
+            "resistor_grounded": "uziemiona przez rezystor",
+            "directly_grounded": "bezposrednio uziemiona",
+        }[grounding_type]
+        return False, (
+            f"Siec {etykieta} wymaga VT (faza-ziemia) z U_th >= {wymagany} wg IEC 61869-3. "
+            f"Wybrany VT ma U_th = {voltage_factor}."
+        )
     return True, ""
 
 

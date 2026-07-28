@@ -263,6 +263,23 @@ test.describe('kreatory:screenshot', () => {
     // więc oś zabezpieczeń NIE może pokazywać zakresu kompletnego.
     await expect(page.getByTestId('pv-source-surface')).toContainText('zakres do przeliczenia');
 
+    // DOBOR ZAMIAST NAZWY KATALOGOWEJ (E21-4, V12K-255). Ekran musi pokazac RACHUNEK:
+    // wartosc wymagana przez tor obok wartosci dostepnej w typie — i uczciwie nazwac
+    // brak danej. Sam wpis „CT 200/5 A kl. 5P10" nie jest dowodem doboru.
+    await expect(page.getByTestId('kryterium-rachunek-ct.przekladnia')).toContainText(
+      'wymagane: 308.0 A',
+    );
+    await expect(page.getByTestId('kryterium-rachunek-ct.przekladnia')).toContainText(
+      'dostępne: 200.0 A',
+    );
+    await expect(page.getByTestId('kryterium-werdykt-ct.wytrzymalosc_cieplna')).toHaveText(
+      'brak danej',
+    );
+    // Zdanie podsumowujace NIE MOZE oglosic potwierdzenia przy niekompletnych danych.
+    await expect(page.getByTestId('dobor-przekladnik-pradowy-podsumowanie')).toContainText(
+      'niepotwierdzony',
+    );
+
     await page.waitForTimeout(300);
     const root = page.locator('[data-testid="creator-harness-root"]').first();
     await root.screenshot({ path: path.join(OUTPUT_DIR, 'wiazania_oze.png') });

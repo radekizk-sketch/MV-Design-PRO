@@ -434,6 +434,64 @@ const STABILNOSC_SLAD = {
   ],
 };
 
+const DOBOR_PRZEKLADNIKOW_WIAZANIA = {
+  generator_ref: 'der-pv-1',
+  bay_ref: 'bay-pv-1',
+  wejscia: {
+    napiecie_sieci_v: 15000.0,
+    prad_roboczy_a: 308.0,
+    ik_ka: null,
+    ip_ka: null,
+    run_ref_zwarciowy: null,
+    tryb_uziemienia: 'cewka_petersena',
+    zrodlo_napiecia_zerowego: 'brak',
+    zrodlo_wejsc_urzadzenia: 'szereg_preferowany_IEC_60255_1',
+  },
+  przekladnik_pradowy: {
+    catalog_ref: 'ct_200_5_5p10_10va_abb',
+    nazwa: 'CT 200/5 A kl. 5P10 10 VA',
+    wynik: {
+      kryteria: [
+        {
+          kod: 'ct.przekladnia',
+          nazwa_pl: 'Przekładnia wobec prądu roboczego toru',
+          podstawa_pl: 'Prąd pierwotny przekładnika musi pokryć prąd roboczy toru.',
+          werdykt: 'niespelnione',
+          wymagane: '308.0 A',
+          dostepne: '200.0 A',
+          komentarz_pl:
+            'Prąd roboczy przekracza prąd pierwotny — przekładnik pracowałby w '
+            + 'przeciążeniu, a pomiar byłby zafałszowany.',
+        },
+        {
+          kod: 'ct.rodzaj_rdzenia',
+          nazwa_pl: 'Rodzaj rdzenia',
+          podstawa_pl:
+            'Funkcje zabezpieczeniowe wymagają rdzenia zabezpieczeniowego (IEC 61869-2).',
+          werdykt: 'spelnione',
+          wymagane: 'rdzeń zabezpieczeniowy (klasa z literą P)',
+          dostepne: '5P10',
+          komentarz_pl: null,
+        },
+        {
+          kod: 'ct.wytrzymalosc_cieplna',
+          nazwa_pl: 'Wytrzymałość cieplna zwarciowa',
+          podstawa_pl: 'Ith ≥ Ik″·√tk — równoważność cieplna prądu zwarcia (IEC 61869-2).',
+          werdykt: 'brak_danych',
+          wymagane: null,
+          dostepne: '20.0 kA / 1 s',
+          komentarz_pl:
+            'Brakuje prądu zwarciowego, czasu jego trwania albo prądu cieplnego przekładnika.',
+        },
+      ],
+      dobor_potwierdzony: false,
+      liczba_niespelnionych: 1,
+      liczba_bez_danych: 1,
+    },
+  },
+  przekladnik_napieciowy: { catalog_ref: null, nazwa: null, wynik: null },
+};
+
 const originalFetch = window.fetch.bind(window);
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
@@ -455,6 +513,8 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
     if (url.includes('/power-flow-runs/')) return jsonOK(ZBIEZNOSC_HEADER);
   } else if (creator === 'wyniki-stan-fazowy') {
     if (url.includes('/results/phase-state')) return jsonOK(STAN_FAZOWY_WYNIK);
+  } else if (creator === 'wiazania') {
+    if (url.includes('/instrument-transformers')) return jsonOK(DOBOR_PRZEKLADNIKOW_WIAZANIA);
   } else if (creator === 'wyniki-stabilnosc') {
     if (url.endsWith('/results/dynamic-stability')) return jsonOK(STABILNOSC_WYNIK);
     if (url.endsWith('/results/automation-trace')) return jsonOK(STABILNOSC_SLAD);

@@ -520,6 +520,40 @@ razem z powodem, zamiast udawany atrapą.</p>
 <figcaption><strong>Wybór z realnego katalogu.</strong> Ten sam picker, którego używają pozostałe
 ekrany — nie druga implementacja. Nazwa, producent i parametry pochodzą z backendu.</figcaption></figure>
 
+<h2>Przekładnik przestał być nazwą, stał się doborem</h2>
+
+<div class="karta">
+<p><strong>Zarzut z odbioru brzmiał wprost:</strong> „bez sprawdzenia przekładni wobec prądu
+chronionego toru, obciążalności cieplnej i dynamicznej, nasycenia oraz zgodności z wejściem
+przekaźnika jego wybór nie ma wiarygodności inżynierskiej". Ekran pokazywał
+<em>CT&nbsp;200/5&nbsp;A kl.&nbsp;5P10 10&nbsp;VA</em> — i nic więcej. Nazwa katalogowa nie jest
+dowodem doboru.</p>
+<p><strong>Teraz każde kryterium ma podstawę normową i jawny rachunek:</strong> co wymaga tor
+obok tego, co daje typ. Przekładnia wobec prądu roboczego, rodzaj rdzenia, zapas do nasycenia
+(ALF), wytrzymałość cieplna I<sub>th</sub>&nbsp;≥&nbsp;I<sub>k</sub>″·√t<sub>k</sub>, wytrzymałość
+dynamiczna, zgodność z wejściem przekaźnika, obciążalność obwodu wtórnego — a po stronie
+napięciowej dodatkowo współczynnik napięciowy wobec sposobu uziemienia punktu neutralnego
+i realizacja toru napięcia zerowego 3U0.</p>
+<p><strong>Rozstrzygnięcie właściciela, które zmieniło zakres:</strong> pierwotnie proponowałem
+część sprawdzeń <em>nazwać niewykonalnymi</em>, bo katalog nie niósł prądu cieplnego, dynamicznego
+ani współczynnika bezpieczeństwa. Odpowiedź była jednoznaczna — „takie zachowanie jest
+niedopuszczalne, rozbudować katalogi maksymalnie". Katalogi rozbudowano: przekładniki prądowe
+o dane cieplne i dynamiczne, napięciowe z 9 do 13&nbsp;wpisów (w tym <strong>rodzina faza–ziemia
+z uzwojeniem resztkowym</strong>, bez której tor 3U0 dla kryteriów kierunkowych 67N pozostawałby
+na zawsze „nie do sprawdzenia"), katalog urządzeń o znamionowe wejścia pomiarowe.</p>
+<p><strong>Granica między wyprowadzeniem a fabrykacją została w danych, jawnie.</strong> Wartość
+normowa (I<sub>dyn</sub>&nbsp;=&nbsp;2,5·I<sub>th</sub>, rodzaj rdzenia z klasy) to wyprowadzenie.
+Wartość odniesienia (szereg IEC&nbsp;62271-200, współczynnik 1,9&nbsp;przez&nbsp;8&nbsp;h wg
+IEC&nbsp;61869-3, wejścia wg IEC&nbsp;60255-1) niesie prowieniencję i wymóg potwierdzenia kartą
+producenta — i ta prowieniencja jedzie z wartością aż do werdyktu na ekranie. Dana bez podstawy
+(rezystancja uzwojenia) zostaje pusta, a kryterium liczy się z obciążalności znamionowej.</p>
+<p><strong>Brak danej jest trzecim stanem.</strong> Zdanie „dobór potwierdzony" nie pada, dopóki
+którekolwiek kryterium nie ma kompletu danych — nawet gdy żadne nie jest niespełnione. Prądy
+zwarciowe pochodzą z <em>wiersza wyniku</em> przebiegu zwarciowego; brak zakończonego przebiegu
+jest nazwany wprost, zamiast zamienić się w zgodność. Dziesięć bramek tej serii zweryfikowano
+wstrzykniętą regresją: każda z dziesięciu psujących zmian dała czerwony test.</p>
+</div>
+
 <h2>Ten sam ekran na telefonie</h2>
 <figure><img src="ZRZUT_MOBILNY" alt="Powierzchnia E-21 na ekranie telefonu 390 px" loading="lazy">
 <figcaption><strong>390&nbsp;px, pełna szerokość.</strong> Etykieta nad wartością zamiast sztywnej

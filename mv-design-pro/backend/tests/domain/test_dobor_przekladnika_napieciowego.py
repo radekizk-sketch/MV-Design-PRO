@@ -103,15 +103,28 @@ class TestDoborKompletny:
 
 
 class TestWspolczynnikNapieciowy:
-    def test_siec_kompensowana_wymaga_1_9_przez_8_h(self) -> None:
+    """Wymaganie F_v zalezy NAJPIERW od ukladu pracy, potem od uziemienia (V12K-256).
+
+    Zwarcie doziemne podnosi napiecie faz zdrowych WZGLEDEM ZIEMI — miedzyfazowe zostaje
+    bez zmian. Dlatego przekladnik miedzyfazowy potrzebuje tylko wspolczynnika ciaglego,
+    a wymagania 1,5 i 1,9 dotycza wylacznie uzwojenia faza-ziemia. Testy sprawdzaja OBIE
+    galezie, bo pomylenie ich raz zaniza wymaganie, a raz je zawyza.
+    """
+
+    def test_przekladnik_MIEDZYFAZOWY_potrzebuje_tylko_wspolczynnika_ciaglego(self) -> None:
         k = kryterium(sprawdz_dobor_vt(typ(VT_20KV_3P), tor()), "vt.wspolczynnik_napieciowy")
+        assert k.werdykt == "spelnione"
+        assert "1.2" in (k.wymagane or "")
+
+    def test_uzwojenie_FAZA_ZIEMIA_w_sieci_kompensowanej_wymaga_1_9_przez_8_h(self) -> None:
+        k = kryterium(sprawdz_dobor_vt(typ(VT_20KV_FZ), tor()), "vt.wspolczynnik_napieciowy")
         assert k.werdykt == "spelnione"
         assert "1.9 przez 8 h" in (k.wymagane or "")
 
-    def test_siec_bezposrednio_uziemiona_wymaga_1_5_przez_30_s(self) -> None:
+    def test_faza_ziemia_w_sieci_bezposrednio_uziemionej_wymaga_1_5_przez_30_s(self) -> None:
         k = kryterium(
             sprawdz_dobor_vt(
-                typ(VT_20KV_3P),
+                typ(VT_20KV_FZ),
                 tor(
                     tryb_uziemienia="bezposrednio_uziemiony",
                     zwarcie_doziemne_wylaczane_automatycznie=None,
@@ -124,36 +137,47 @@ class TestWspolczynnikNapieciowy:
         assert "1.5 przez 30 s" in (k.wymagane or "")
 
     def test_siec_uziemiona_przez_rezystor_tez_wymaga_1_9(self) -> None:
-        # Siec uziemiona przez rezystor NIE jest siecia skutecznie uziemiona.
+        # Siec uziemiona przez rezystor NIE jest siecia skutecznie uziemiona — to byl
+        # rozjazd z `audit2_catalogs`, ktory dopuszczal tam 1,5 (V12K-256).
         k = kryterium(
-            sprawdz_dobor_vt(typ(VT_20KV_3P), tor(tryb_uziemienia="rezystor")),
+            sprawdz_dobor_vt(typ(VT_20KV_FZ), tor(tryb_uziemienia="rezystor")),
             "vt.wspolczynnik_napieciowy",
         )
         assert "1.9" in (k.wymagane or "")
 
     def test_nieznany_sposob_uziemienia_daje_BRAK_DANYCH_nie_zgodnosc(self) -> None:
-        wynik = sprawdz_dobor_vt(typ(VT_20KV_3P), tor(tryb_uziemienia="nieznany"))
+        wynik = sprawdz_dobor_vt(typ(VT_20KV_FZ), tor(tryb_uziemienia="nieznany"))
         k = kryterium(wynik, "vt.wspolczynnik_napieciowy")
         assert k.werdykt == "brak_danych"
         assert "sposób uziemienia" in (k.komentarz_pl or "")
         assert wynik.dobor_potwierdzony is False
 
+    def test_nierozpoznany_uklad_pracy_kieruje_do_kryterium_przekladni(self) -> None:
+        # 15 kV VT w sieci 20 kV: ani miedzyfazowy, ani faza-ziemia — dopoki uklad nie
+        # jest rozstrzygniety, nie wiadomo, ktora rodzina wymagan obowiazuje.
+        k = kryterium(
+            sprawdz_dobor_vt(typ("vt_15kv_100v_3p_abb"), tor()),
+            "vt.wspolczynnik_napieciowy",
+        )
+        assert k.werdykt == "brak_danych"
+        assert "układ pracy" in (k.komentarz_pl or "")
+
     def test_brak_danej_o_automatyce_nazywa_dokladnie_ta_dana(self) -> None:
         k = kryterium(
-            sprawdz_dobor_vt(typ(VT_20KV_3P), tor(zwarcie_doziemne_wylaczane_automatycznie=None)),
+            sprawdz_dobor_vt(typ(VT_20KV_FZ), tor(zwarcie_doziemne_wylaczane_automatycznie=None)),
             "vt.wspolczynnik_napieciowy",
         )
         assert k.werdykt == "brak_danych"
         assert "wyłączane automatycznie" in (k.komentarz_pl or "")
 
     def test_zbyt_niski_wspolczynnik_jest_NIESPELNIONY(self) -> None:
-        ubozszy = {**typ(VT_20KV_3P), "rated_voltage_factor": 1.5}
+        ubozszy = {**typ(VT_20KV_FZ), "rated_voltage_factor": 1.5}
         k = kryterium(sprawdz_dobor_vt(ubozszy, tor()), "vt.wspolczynnik_napieciowy")
         assert k.werdykt == "niespelnione"
         assert "nasyci" in (k.komentarz_pl or "")
 
     def test_wystarczajaca_krotnosc_na_zbyt_krotki_czas_jest_NIESPELNIONA(self) -> None:
-        krotki = {**typ(VT_20KV_3P), "voltage_factor_duration_s": 30.0}
+        krotki = {**typ(VT_20KV_FZ), "voltage_factor_duration_s": 30.0}
         k = kryterium(sprawdz_dobor_vt(krotki, tor()), "vt.wspolczynnik_napieciowy")
         assert k.werdykt == "niespelnione"
         assert "czas" in (k.komentarz_pl or "")
