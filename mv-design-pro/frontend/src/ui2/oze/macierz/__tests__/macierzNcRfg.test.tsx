@@ -313,3 +313,30 @@ describe('MacierzNcRfg — certyfikat zgodności (karta P39c)', () => {
     vi.restoreAllMocks();
   });
 });
+
+describe('MacierzNcRfg — wynik walidacji FRT z okna falownika (K5-B / H-3 pkt 4)', () => {
+  it('zapisany werdykt LVRT/HVRT modułu jest widoczny w podsumowaniu per moduł', async () => {
+    useNcRfgStore.getState().zapiszWynikFrt('pv-1', {
+      testKind: 'lvrt',
+      tekst: 'Model odzwierciedla wymagania profilu operatora',
+      istotnosc: 'ok',
+      operatorId: 'pse',
+    });
+    useNcRfgStore.getState().zapiszWynikFrt('pv-1', {
+      testKind: 'hvrt',
+      tekst: 'Moduł wypadł z pracy podczas zakłócenia',
+      istotnosc: 'err',
+      operatorId: 'pse',
+    });
+
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+
+    const lvrt = await screen.findByTestId('mvd-oze-frt-lvrt-pv-1');
+    expect(lvrt).toHaveTextContent(MACIERZ_STRINGS.wynikFrtLvrt);
+    expect(lvrt).toHaveTextContent('Model odzwierciedla wymagania profilu operatora');
+    const hvrt = screen.getByTestId('mvd-oze-frt-hvrt-pv-1');
+    expect(hvrt).toHaveTextContent('Moduł wypadł z pracy podczas zakłócenia');
+    // Moduł bez zapisanego wyniku nie dostaje wiersza FRT (zero atrapy).
+    expect(screen.queryByTestId('mvd-oze-frt-lvrt-bess-1')).not.toBeInTheDocument();
+  });
+});

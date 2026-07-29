@@ -46,6 +46,7 @@ export const ZDOLNOSC_STRINGS = {
   kolElement: 'Element wiążący',
   kolWartosc: 'Wartość',
   kolProg: 'Próg',
+  kolDzialania: 'Działania',
   kolIdentyfikatorWezla: 'Identyfikator węzła',
 
   // Kryteria wiążące (kind bez szczegółów)

@@ -250,3 +250,38 @@
   font-family: var(--mvd-font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+/* K5-B (H-3 pkt 2): sekcja przypisania krzywych zgodności do modułu DER */
+.mvd-krzywe-wiazania {
+  margin-top: 16px;
+  padding: 12px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mvd-krzywe-wiazania-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.mvd-krzywe-wiazania-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+.mvd-krzywe-wiazania-brak {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12.5px;
+}
+
+.mvd-krzywe-wiazania-blad {
+  margin: 0;
+  color: var(--mvd-err);
+  font-size: 12.5px;
+}

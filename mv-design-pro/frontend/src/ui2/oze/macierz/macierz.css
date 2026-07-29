@@ -431,3 +431,16 @@
 .mvd-oze-cert-braki h5 { margin: 0 0 6px; font-size: 13px; }
 .mvd-oze-cert-braki ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
 .mvd-oze-cert-widok { display: flex; flex-direction: column; gap: 10px; }
+
+/* K5-B: wynik walidacji FRT/HVRT przy module (kolor wg istotności werdyktu) */
+.mvd-oze-podsum-frt--ok {
+  color: var(--mvd-ok);
+}
+
+.mvd-oze-podsum-frt--warn {
+  color: var(--mvd-warn);
+}
+
+.mvd-oze-podsum-frt--err {
+  color: var(--mvd-err);
+}

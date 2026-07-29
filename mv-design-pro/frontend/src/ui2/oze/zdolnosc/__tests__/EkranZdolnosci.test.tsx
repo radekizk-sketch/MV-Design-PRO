@@ -165,3 +165,32 @@ describe('EkranZdolnosci — tryb ekspercki (identyfikatory)', () => {
     expect(eksp).toHaveTextContent('run-lf-1');
   });
 });
+
+describe('EkranZdolnosci — pętla wynik → model (K5-B / H-3 pkt 1)', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  it('„Przyłącz źródło w tym węźle" otwiera formularz add_converter_source z preselekcją bus_ref i przechodzi do przestrzeni Schemat', async () => {
+    const { useNetworkBuildStore } = await import('../../../../ui/network-build/networkBuildStore');
+    const { useShellStore } = await import('../../../shell/useShellStore');
+    pobierz.mockResolvedValue(widokZdolnosciFixture());
+    render(<EkranZdolnosci trybZaawansowania="basic" />);
+    fireEvent.click(screen.getByTestId('mvd-zdol-oblicz'));
+    await screen.findByTestId('mvd-zdol-wynik');
+
+    // Realna ścieżka: natywny klik akcji w wierszu węzła.
+    fireEvent.click(screen.getByTestId('mvd-zdol-przylacz-bus-a'));
+
+    const surface = useNetworkBuildStore.getState().activeSurface;
+    expect(surface?.routeState.payload?.delegate).toBe('operation_form');
+    expect(surface?.routeState.payload?.operation).toBe('add_converter_source');
+    const context = surface?.routeState.payload?.context as Record<string, unknown>;
+    expect(context.bus_ref).toBe('bus-a');
+    // Formularze operacji domenowych żyją na kanwie schematu.
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+
+    // Sprzątanie stanu współdzielonych store'ów (izolacja kolejnych testów pliku).
+    useNetworkBuildStore.getState().closeOperationForm();
+    useShellStore.getState().setActiveSpace('projekt');
+    window.location.hash = '';
+  });
+});

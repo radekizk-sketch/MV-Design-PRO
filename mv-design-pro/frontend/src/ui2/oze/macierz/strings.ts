@@ -55,6 +55,10 @@ export const MACIERZ_STRINGS = {
   wymogiSpelnione: 'Spełnione wymagane',
   perModul: 'Spełnione / wymagane',
   klasaModulu: 'Klasa modułu',
+  // K5-B (H-3 pkt 4): wynik walidacji FRT/HVRT zapisany z okna „Walidacja
+  // modelu falownika" (EkranFrt → ncRfgStore.zapiszWynikFrt).
+  wynikFrtLvrt: 'Walidacja LVRT',
+  wynikFrtHvrt: 'Walidacja HVRT',
 
   // Szczegół werdyktu
   szczegolTytul: 'Szczegół werdyktu',

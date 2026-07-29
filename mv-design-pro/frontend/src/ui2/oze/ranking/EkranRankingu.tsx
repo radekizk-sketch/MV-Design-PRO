@@ -37,6 +37,7 @@ import {
   wybierzPrzebiegRozplywu,
 } from '../zdolnosc/zdolnoscModel';
 import { fmtMW } from '../zdolnosc/strings';
+import { PrzylaczZrodloPrzycisk } from '../PrzylaczZrodloPrzycisk';
 import {
   KLUCZ_WIERSZA_RANKINGU,
   klasaNcRfg,
@@ -133,6 +134,15 @@ function SzczegolWezla({
         <dt>{RANKING_STRINGS.szczegolKlasa}</dt>
         <dd>{klasa !== null ? `${klasa.id} — ${klasa.description_pl}` : RANKING_STRINGS.kreska}</dd>
       </dl>
+
+      {/* K5-B (H-3 pkt 1): pętla ranking → model — formularz źródła OZE
+          z preselekcją wybranego węzła (bus_ref z odpowiedzi backendu). */}
+      <PrzylaczZrodloPrzycisk
+        busRef={wezel.bus_ref}
+        busName={wezel.bus_name ?? null}
+        zrodloAkcji="ranking_wezel"
+        testid="mvd-rank-przylacz"
+      />
 
       <div>
         <span className="mvd-rank-slad-tytul">{RANKING_STRINGS.sladTytul}</span>

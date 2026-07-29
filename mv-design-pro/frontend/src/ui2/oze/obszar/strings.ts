@@ -102,6 +102,25 @@ export const OBSZAR_STRINGS = {
   sladPasmo: 'pasmo Q',
   sladBrakPasma: 'brak pasma pracy (Q = 0 niedopuszczalne)',
 
+  // K5-B (H-3 pkt 3): akcja wyjściowa — zapis ograniczeń Q generatora
+  // (`GenLimits.q_min/q_max`) operacją `update_element_parameters`.
+  limityTytul: 'Zapisz ograniczenia Q modułu wytwórczego',
+  limityOpis:
+    'Wyznaczone pasmo Q trafia do ograniczeń generatora w modelu sieci '
+    + '(GenLimits.q_min/q_max) — czytają je rozpływ mocy i oceny zgodności.',
+  limityGenerator: 'Moduł wytwórczy w tym węźle',
+  limityBrakGeneratorow:
+    'W analizowanym węźle nie ma modułu wytwórczego — ograniczenia Q nie mają '
+    + 'gdzie spłynąć. Przyłącz źródło w tym węźle i wróć do zapisu.',
+  limityQMin: 'Q min',
+  limityQMax: 'Q max',
+  limityZapisz: 'Zapisz ograniczenia Q do modelu',
+  limityBrakPrzypadku:
+    'Brak aktywnego przypadku obliczeniowego — zapis do modelu niemożliwy.',
+  limityBrakWartosci: 'Podaj obie wartości ograniczeń Q (min i max).',
+  limityZapisano: 'Ograniczenia Q zapisane w modelu sieci',
+  limityBladZapisu: 'Nie udało się zapisać ograniczeń Q w modelu sieci',
+
   // Jednostki i wartości puste
   jednMW: 'MW',
   jednMvar: 'Mvar',

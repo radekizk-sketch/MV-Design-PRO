@@ -201,3 +201,90 @@ describe('EkranObszaruPQ — tryb ekspercki (identyfikatory)', () => {
     expect(screen.getByTestId('mvd-obszar-wynik')).toHaveTextContent('run-lf-1');
   });
 });
+
+describe('EkranObszaruPQ — zapis ograniczeń Q generatora (K5-B / H-3 pkt 3)', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  async function uruchomBieg() {
+    pobierzObszar.mockResolvedValue(widokObszaruFixture());
+    render(<EkranObszaruPQ trybZaawansowania="basic" />);
+    fireEvent.change(screen.getByTestId('mvd-obszar-wezel'), { target: { value: 'bus-a' } });
+    fireEvent.click(screen.getByTestId('mvd-obszar-oblicz'));
+    await screen.findByTestId('mvd-obszar-wynik');
+  }
+
+  it('węzeł bez modułu wytwórczego → uczciwy powód zamiast atrapy zapisu', async () => {
+    await uruchomBieg();
+    expect(screen.getByTestId('mvd-obszar-limity-brak-generatorow')).toHaveTextContent(
+      'nie ma modułu wytwórczego',
+    );
+    expect(screen.queryByTestId('mvd-obszar-limity-zapisz')).not.toBeInTheDocument();
+  });
+
+  it('zapis woła update_element_parameters z limitami SCALONYMI (P zostaje, Q z pól)', async () => {
+    const { useAppStateStore } = await import('../../../../ui/app-state');
+    const wykonaj = vi.fn().mockResolvedValue({ error: null });
+    useAppStateStore.setState({ activeCaseId: 'case-pq' } as never);
+    useSnapshotStore.setState({
+      snapshot: {
+        ...snapshotFixture(),
+        generators: [
+          {
+            ref_id: 'gen-1',
+            name: 'PV Szyna A',
+            bus_ref: 'bus-a',
+            p_mw: 1.0,
+            limits: { p_min_mw: 0.0, p_max_mw: 2.0 },
+          },
+        ],
+      },
+      executeDomainOperation: wykonaj,
+    } as never);
+
+    await uruchomBieg();
+
+    // Realna ścieżka: korekta wartości w polach + natywny klik zapisu.
+    fireEvent.change(screen.getByTestId('mvd-obszar-limity-qmin'), {
+      target: { value: '-1.5' },
+    });
+    fireEvent.change(screen.getByTestId('mvd-obszar-limity-qmax'), {
+      target: { value: '1.5' },
+    });
+    fireEvent.click(screen.getByTestId('mvd-obszar-limity-zapisz'));
+
+    await vi.waitFor(() =>
+      expect(wykonaj).toHaveBeenCalledWith('case-pq', 'update_element_parameters', {
+        element_ref: 'gen-1',
+        parameters: {
+          // Scalenie: granice P z modelu NIE giną przy zapisie pasma Q.
+          limits: { p_min_mw: 0.0, p_max_mw: 2.0, q_min_mvar: -1.5, q_max_mvar: 1.5 },
+        },
+      }),
+    );
+    expect(screen.queryByTestId('mvd-obszar-limity-blad')).not.toBeInTheDocument();
+    useAppStateStore.setState({ activeCaseId: null } as never);
+  });
+
+  it('odmowa backendu (np. bramka katalogowa) jest NAZWANA przy przycisku', async () => {
+    const { useAppStateStore } = await import('../../../../ui/app-state');
+    const wykonaj = vi.fn().mockResolvedValue({
+      error: 'Element fizyczny wymaga przypiętego katalogu.',
+    });
+    useAppStateStore.setState({ activeCaseId: 'case-pq' } as never);
+    useSnapshotStore.setState({
+      snapshot: {
+        ...snapshotFixture(),
+        generators: [{ ref_id: 'gen-1', name: 'PV Szyna A', bus_ref: 'bus-a', p_mw: 1.0 }],
+      },
+      executeDomainOperation: wykonaj,
+    } as never);
+
+    await uruchomBieg();
+    fireEvent.click(screen.getByTestId('mvd-obszar-limity-zapisz'));
+
+    expect(await screen.findByTestId('mvd-obszar-limity-blad')).toHaveTextContent(
+      'Element fizyczny wymaga przypiętego katalogu.',
+    );
+    useAppStateStore.setState({ activeCaseId: null } as never);
+  });
+});

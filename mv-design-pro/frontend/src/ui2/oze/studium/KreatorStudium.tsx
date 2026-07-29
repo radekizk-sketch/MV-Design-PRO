@@ -34,6 +34,7 @@ import {
   type ZadanieDokumentuStudium,
 } from '../api';
 import { wybierzPrzebiegRozplywu } from '../zdolnosc/zdolnoscModel';
+import { PrzylaczZrodloPrzycisk } from '../PrzylaczZrodloPrzycisk';
 import { klasyOperatora } from '../ranking/rankingModel';
 import { WykresObszaruChart } from '../obszar/WykresObszaruChart';
 import { punktyObszaru, krokiSladuObszar } from '../obszar/obszarModel';
@@ -260,6 +261,13 @@ function SzczegolWariantu({
         {trybEkspercki && (
           <span className="mvd-studium-szczegol-id mvd-num">{wariant.busRef}</span>
         )}
+        {/* K5-B (H-3 pkt 1): pętla studium → model — formularz źródła OZE
+            z preselekcją węzła wariantu (bus_ref z biegu studium). */}
+        <PrzylaczZrodloPrzycisk
+          busRef={wariant.busRef}
+          zrodloAkcji="studium_wariant"
+          testid="mvd-studium-przylacz"
+        />
       </header>
 
       <div className="mvd-studium-szczegol-blok">

@@ -19,6 +19,8 @@ import type { AdvancementMode } from '../../shell/modeModel';
 import { isModeAtLeast } from '../../shell/modeModel';
 import { SladWywodu, TabelaWynikow } from '../../wyniki/wzorzec';
 import { selectAllDers, useStationDerStore } from '../../../ui/network-build/station-der';
+import { notify } from '../../../ui/notifications/store';
+import { useNcRfgStore } from '../ncRfgStore';
 import {
   pobierzKatalogKlasNcRfg,
   pobierzTrajektorieFrt,
@@ -393,7 +395,31 @@ export function EkranFrt({ trybZaawansowania }: EkranFrtProps) {
               testid="mvd-frt-blad"
             />
           ) : (
-            <WynikTrajektorii dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+            <>
+              <WynikTrajektorii dane={stan.dane} trybZaawansowania={trybZaawansowania} />
+              {/* K5-B (H-3 pkt 4): pętla werdykt → zgodność. Klucz = id modułu
+                  DER (`wybranyModul`) — ta sama tożsamość co kolumny macierzy
+                  NC RfG (`zbudujModuly` → der.id). Werdykt POCHODZI z biegu
+                  (agregacja słownikowa pól solvera — `werdyktCalosciFrt`). */}
+              <button
+                type="button"
+                className="mvd-frt-oblicz"
+                title={FRT_STRINGS.zapiszWynikOpis}
+                onClick={() => {
+                  const werdykt = werdyktCalosciFrt(stan.dane);
+                  useNcRfgStore.getState().zapiszWynikFrt(wybranyModul, {
+                    testKind: stan.dane.test_kind,
+                    tekst: werdykt.tekst,
+                    istotnosc: werdykt.istotnosc,
+                    operatorId: stan.dane.operator.id,
+                  });
+                  notify(FRT_STRINGS.zapiszWynikZapisano, 'success');
+                }}
+                data-testid="mvd-frt-zapisz-wynik"
+              >
+                {FRT_STRINGS.zapiszWynik}
+              </button>
+            </>
           )}
 
           <SekcjaSekwencjiZapadow

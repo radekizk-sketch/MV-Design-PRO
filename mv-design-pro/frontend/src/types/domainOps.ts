@@ -48,6 +48,11 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_shunt_compensator_sn',
   'add_surge_arrester_sn',
   'add_nn_load',
+  // K5-B (H-3): nastawy trybu pracy źródła i profil dynamiczny — obie operacje
+  // ISTNIEJĄ w backendzie (V2_CANONICAL_OPS, enm/domain_operations_v2.py);
+  // brak wpisu tutaj czynił je niewywoływalnymi z UI (assertCanonicalOpName).
+  'set_source_operating_mode',
+  'set_dynamic_profile',
   'add_ct',
   'add_vt',
   'add_relay',
@@ -629,5 +634,39 @@ export interface DeleteGpzSectionPayload {
   substation_ref: string;
   side?: GpzSectionSide;
   section_id: string;
+}
+
+// =============================================================================
+// K5-B (H-3): tryb pracy źródła + profil dynamiczny (lustrzane odbicie
+// backendu: enm/domain_operations_v2.py `set_source_operating_mode` /
+// `set_dynamic_profile` — payload czytany kluczami `source_ref`/`mode` oraz
+// `element_ref`/`profile`).
+// =============================================================================
+
+/** Słownik trybów pracy źródła — 1:1 z `BaySourceEndpoint.operating_mode`
+ *  (enm/models.py) i walidacją read-modelu (`field_read_model._OPERATING_MODES`);
+ *  wartość spoza słownika jest przez read-model ignorowana (default „gotowosc"). */
+export type SourceOperatingMode =
+  | 'praca_sieciowa'
+  | 'ladowanie'
+  | 'rozladowanie'
+  | 'gotowosc'
+  | 'odstawione';
+
+export interface SetSourceOperatingModePayload {
+  source_ref: string;
+  mode: SourceOperatingMode;
+}
+
+/** Interpolacja profilu — backend domyślnie 'HOLD' (`set_dynamic_profile`). */
+export interface DynamicProfileSpec {
+  time_unit?: string;
+  points: ReadonlyArray<readonly [number, number]>;
+  interpolation?: string;
+}
+
+export interface SetDynamicProfilePayload {
+  element_ref: string;
+  profile: DynamicProfileSpec;
 }
 

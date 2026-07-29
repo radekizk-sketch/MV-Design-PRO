@@ -138,6 +138,24 @@ export const OSD_STRINGS = {
   zalIdentyfikatorZrodla: 'Identyfikator źródła',
   zalIdentyfikatorSkrot: 'Identyfikator wejścia (hash)',
 
+  // K5-B (H-3 pkt 5): akcja wyjściowa — utrwalenie trybu pracy źródła w modelu
+  // (kanoniczna operacja `set_source_operating_mode`).
+  trybTytul: 'Zapisz nastawy trybu pracy',
+  trybOpis:
+    'Wybrany tryb pracy źródła trafia do modelu sieci (operacja domenowa) — '
+    + 'czyta go widok pól stacji i konfiguracja przypadków.',
+  trybEtykieta: 'Tryb pracy źródła',
+  trybPracaSieciowa: 'Praca sieciowa',
+  trybLadowanie: 'Ładowanie',
+  trybRozladowanie: 'Rozładowanie',
+  trybGotowosc: 'Gotowość',
+  trybOdstawione: 'Odstawione',
+  trybZapisz: 'Zapisz nastawy trybu pracy',
+  trybBrakPrzypadku:
+    'Brak aktywnego przypadku obliczeniowego — zapis do modelu niemożliwy.',
+  trybZapisano: 'Tryb pracy źródła zapisany w modelu sieci',
+  trybBladZapisu: 'Nie udało się zapisać trybu pracy źródła w modelu sieci',
+
   // Jednostki i wartości puste
   jednMW: 'MW',
   jednMvar: 'Mvar',

@@ -113,6 +113,7 @@ export function MacierzNcRfg({
   const wynik = useNcRfgStore((s) => s.wynik);
   const bladBiegu = useNcRfgStore((s) => s.bladBiegu);
   const ostatnieWejscia = useNcRfgStore((s) => s.ostatnieWejscia);
+  const wynikiFrt = useNcRfgStore((s) => s.wynikiFrt);
   const zaladujKatalog = useNcRfgStore((s) => s.zaladujKatalog);
   const ustawOperator = useNcRfgStore((s) => s.ustawOperator);
   const przeprowadzTesty = useNcRfgStore((s) => s.przeprowadzTesty);
@@ -630,6 +631,10 @@ export function MacierzNcRfg({
             <div className="mvd-oze-podsum" data-testid="mvd-oze-podsum-moduly">
               {opisy.map((opis) => {
                 const p = podsumowanieModulu(opis, wynik);
+                // K5-B (H-3 pkt 4): wynik walidacji FRT/HVRT zapisany z okna
+                // „Walidacja modelu falownika" — ta sama tożsamość modułu
+                // (der.id), werdykt z biegu solvera trajektorii.
+                const frt = wynikiFrt[opis.derRef];
                 return (
                   <div key={opis.derRef} className="mvd-oze-podsum-poz">
                     <span className="mvd-oze-podsum-etyk">
@@ -641,6 +646,24 @@ export function MacierzNcRfg({
                         >
                           {' · '}
                           {MACIERZ_STRINGS.klasaModulu}: {p.moduleType}
+                        </span>
+                      ) : null}
+                      {frt?.lvrt ? (
+                        <span
+                          className={`mvd-oze-podsum-frt mvd-oze-podsum-frt--${frt.lvrt.istotnosc}`}
+                          data-testid={`mvd-oze-frt-lvrt-${opis.derRef}`}
+                        >
+                          {' · '}
+                          {MACIERZ_STRINGS.wynikFrtLvrt}: {frt.lvrt.tekst}
+                        </span>
+                      ) : null}
+                      {frt?.hvrt ? (
+                        <span
+                          className={`mvd-oze-podsum-frt mvd-oze-podsum-frt--${frt.hvrt.istotnosc}`}
+                          data-testid={`mvd-oze-frt-hvrt-${opis.derRef}`}
+                        >
+                          {' · '}
+                          {MACIERZ_STRINGS.wynikFrtHvrt}: {frt.hvrt.tekst}
                         </span>
                       ) : null}
                     </span>

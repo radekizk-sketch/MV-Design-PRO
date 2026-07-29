@@ -78,6 +78,27 @@ export const KRZYWE_STRINGS = {
   ekspTypId: 'Identyfikator typu katalogowego',
   ekspOperatorId: 'Identyfikator operatora',
 
+  // K5-B (H-3 pkt 2): akcja wyjściowa — przypisanie krzywych zgodności do
+  // wiązań modułu DER (PATCH .../generators/{ref}/bindings).
+  wiazaniaTytul: 'Przypisz krzywe zgodności do modułu wytwórczego',
+  wiazaniaOpis:
+    'Wybrane krzywe trafiają do wiązań modułu w modelu sieci (profile zgodności) — '
+    + 'czytają je osie gotowości FRT/HVRT i macierz wymogów NC RfG.',
+  wiazaniaModul: 'Moduł wytwórczy (DER)',
+  wiazaniaModulPodpowiedz: 'Moduł z modelu sieci, do którego trafią wybrane krzywe.',
+  wiazaniaBrakModulow:
+    'Brak modułów wytwórczych w modelu — dodaj źródło OZE, aby przypisać krzywe.',
+  wiazaniaKrzywaPf: 'Charakterystyka P(f)',
+  wiazaniaKrzywaLvrt: 'Krzywa LVRT',
+  wiazaniaKrzywaHvrt: 'Krzywa HVRT',
+  wiazaniaBezZmiany: '— bez zmiany —',
+  wiazaniaZapisz: 'Zapisz krzywe w wiązaniach modułu',
+  wiazaniaZadnaZmiana: 'Wybierz przynajmniej jedną krzywą do zapisania.',
+  wiazaniaBrakKontekstu:
+    'Wybierz projekt i przypadek obliczeniowy, aby zapisać wiązania w modelu.',
+  wiazaniaZapisano: 'Krzywe zapisane w wiązaniach modułu wytwórczego',
+  wiazaniaBladZapisu: 'Nie udało się zapisać wiązań modułu w modelu sieci',
+
   // Jednostki i wartości puste
   jednMW: 'MW',
   jednMvar: 'Mvar',
