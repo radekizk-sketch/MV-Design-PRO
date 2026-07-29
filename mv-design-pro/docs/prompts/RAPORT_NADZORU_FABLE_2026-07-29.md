@@ -48,11 +48,32 @@ klasa luki, którą mandat kazał zamknąć.
 
 **O5 · e2e nie było uruchamiane — i jest czerwone.** `npm run test:e2e`:
 **275 passed / 20 failed / 2 skipped, RC=1 (18,3 min)**. Stan zastany gałęzi
-(zmiany tej sesji są backend-only i nie dotykają mock-e2e). Padają m.in.
-`ux-feedback-loop` (7), bramki zrzutowe `fk1-*` (4) i `zwarcia-rozplyw` (2),
-`create-first-case`, `designer-flow-empty-state-cta`; specy realnego backendu
-(catalog-enforcement, sld-editor-real, industrial-template, branch-points) w trybie
-mock PADAJĄ zamiast się pominąć (higiena suity). Szczegółowy triaż w toku sesji.
+(zmiany tej sesji są backend-only). Uwaga metodyczna z triażu: `playwright-run.mjs`
+domyślnie ustawia `PLAYWRIGHT_REAL_BACKEND=1`, więc standardowy bieg JEST biegiem
+z realnym backendem. **Triaż per test (każdy padający odtworzony pojedynczo na żywym
+stosie): 19× realny rozjazd, 1× środowisko.** Grupy przyczyn:
+- **Specy nieaktualne względem zmienionego flow GPZ (9):** klik „Wstaw GPZ" tworzy
+  źródło BEZPOŚREDNIO (SldCanvasV3Workspace:1723), a specy czekają na formularze
+  (`add-grid-source-form`, `add-sn-bay-form`, `start-branch-form`,
+  `insert-station-form`…), których testidy istnieją już TYLKO w mockach testów
+  jednostkowych — cały `ux-feedback-loop` (7), `designer-flow-empty-state-cta`,
+  pośrednio `create-first-case` (nieaktualna asercja tekstu paska).
+- **Testidy formularzy, których nie ma w src (3):** `insert-branch-pole-form`,
+  `insert-zksn-form`, `insert-section-switch-form` (branch-points ×2,
+  catalog-enforcement).
+- **Sceny harnessu z niemockowanym fetch (4):** `creator=cieplna` i
+  `creator=zwarcia-rozplyw` wołają realne `/api/analysis-runs/run-sc-7|run-sc-th1-demo`
+  → 404 wpada do bramki „zero błędów konsoli" (fk1 ×2 motywy, zwarcia-rozpływ ×2).
+- **Strict-mode locator (2):** `getByText('Założenie przypadku')` trafia 2 wiersze
+  (fk1-czas-wyłączenia ×2 motywy).
+- **Możliwa regresja produktu (1):** po delete+continue+**reloadzie**
+  `sld-readiness-stack` (GuidedBuildActionPanel) w ogóle się nie renderuje —
+  spójne z centralną diagnozą hydratacji z audytu soczewek.
+- **Środowisko (1):** `industrial-template-mass-flow` — `execute` biegu SC na sieci
+  50 stacji trwa ~32 s (ręczny curl: HTTP 200/DONE), limit w specu 10 s.
+
+**Ścieżka krytyczna na realnym backendzie: `npm run test:e2e:real` → 1 passed,
+RC=0 (7,3 s).** §3.8 mandatu domknięte w obu wariantach.
 
 ## 2. CO POTWIERDZONE (pomiarem, nie opisem)
 
@@ -123,7 +144,7 @@ Pomiar kart: 23 testy zielone, ruff/black RC=0, mypy obu modułów czyste.
 | Diakrytyki ■ we wszystkich PDF | oględziny 2 wariantów strony tytułowej; 23× Helvetica, 0× registerFont | base-14/WinAnsi bez polskich glifów | karta: rejestracja TTF (DejaVu/Noto) + świadomy re-baseline determinizmu bajtowego PDF |
 | Kody projektowe w eksporcie PDF | „Raport P24+ …, Zakres: P11–P33", sekcje P20…P28 | raport powstał przed regułą; guardy nie skanują wyjścia PDF | karta: słownik etykiet PL + guard eksportów |
 | Fizyka w UI + katalog równoległy | `validateDeviceWithstand`, `DEVICE_WITHSTAND_CATALOG` (żywe) | wzorce guarda nie łapią √(t/t); stara powierzchnia | karta: przepiąć na `validateDeviceWithstandApi`, usunąć katalog z frontu, poszerzyć wzorce guarda |
-| e2e czerwone 20/297 + brak skip-gate dla speców realnego backendu | pełny bieg RC=1 | suita nieuruchamiana; brak gate'ów środowiska | triaż per spec (w toku) → karty naprawcze + gate `PLAYWRIGHT_REAL_BACKEND` |
+| e2e czerwone 20/297 | pełny bieg RC=1 + triaż per test (19 rozjazdów, 1 środowisko) | suita nieuruchamiana od tygodni → specy odjechały od flow GPZ; 4 sceny harnessu z niemockowanym fetch; 1 możliwa regresja hydratacji (`sld-readiness-stack` po reloadzie); 1 limit 10 s vs realne 32 s | karty: aktualizacja speców do flow wariantowego, mock fetch w 2 scenach, diagnoza readiness-stack po reloadzie (razem z H-0), podniesienie limitu execute |
 | Izolacja `.enm_store` połowiczna | tylko 4 pliki ustawiają `ENM_STORE_DIR`; `reset_enm_store()` kasuje wszystko | ta sama klasa co naprawiona dla przebiegów | karta: autouse fixture ENM_STORE_DIR per test |
 | Testy-nagrobki proof_pack + wyciek `app.state.uow_factory` | 2 testy 410 z kłamliwymi nazwami, ~70 linii martwego zasiewu | endpoint wygaszony, testy nie | karta higieny testów (+7 testów PODEJRZANYCH z audytu asercji) |
 | mypy 273 | pomiar sesji | dług historyczny | bez zmian — osobny program |
@@ -132,8 +153,10 @@ Pomiar kart: 23 testy zielone, ruff/black RC=0, mypy obu modułów czyste.
 
 ## 6. Stan zakazu scalenia
 
-§3 mandatu domknięte (wszystkie 10 punktów rozstrzygnięte pomiarem; pkt 8 — mock
-wykonany, real w toku sesji). ZAKAZ scalania do main/develop pozostaje W MOCY do czasu:
-zamknięcia triażu e2e i decyzji właściciela co do 20 czerwonych speców — bramka §6
-(„pełna regresja + guardy + determinizm") jest dziś spełniona na warstwie backend+frontend
-unit, a NIE jest spełniona na warstwie e2e.
+§3 mandatu domknięte — wszystkie 10 punktów rozstrzygnięte pomiarem, w tym pkt 8
+w obu wariantach (pełna suita RC=1 z triażem per test; ścieżka krytyczna real RC=0).
+ZAKAZ scalania do main/develop pozostaje W MOCY: bramka §6 jest spełniona na warstwie
+backend+frontend unit+guardy+determinizm, a NIE jest spełniona na warstwie e2e
+(20 czerwonych speców wymaga kart naprawczych — 19 rozjazdów spec↔produkt to praca
+znana co do przyczyny i miejsca, wyliczona w tabeli długu). Decyzja o kolejności
+(naprawa e2e przed scaleniem vs. scalenie z długiem nazwanym) należy do właściciela.
