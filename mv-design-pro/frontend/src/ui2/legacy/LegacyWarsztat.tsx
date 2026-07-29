@@ -29,6 +29,7 @@ import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../ui/selection/store';
 import { ROUTES, getRouteByHash, isAnalysisRouteAlias } from '../../ui/navigation';
 import type { SpaceId } from '../shell/spaces';
+import { NastepnyKrokSchematu } from '../spaces/schemat';
 import { LegacySurface } from './LegacySurface';
 import { LegacyPasekNarzedzi } from './LegacyPasekNarzedzi';
 
@@ -151,6 +152,14 @@ export function LegacyWarsztat(props: LegacyWarsztatProps) {
     && props.space !== 'wyniki'
     && props.space !== 'dokumentacja';
 
+  // K4-E2: jawne przejście E2→E3 — pasek „następnego kroku" nad kanwą schematu.
+  // Wyłącznie w przestrzeni „Schemat" z zawartością kanwy (trasa '' lub '#sld');
+  // trasy dedykowane (kreator stacji, scenariusze itd.) mają własny tor pracy.
+  const pokazNastepnyKrokSchematu =
+    props.space === 'schemat'
+    && !mainSurfaceExpanded
+    && (props.route === '' || props.route === ROUTES.SLD.hash);
+
   return (
     <div className="mvd-legacy-host">
       {/* Pasek przepływu pracy + modale funkcji globalnych (dawny AppShellV12). */}
@@ -162,6 +171,7 @@ export function LegacyWarsztat(props: LegacyWarsztatProps) {
           onSelectElement={(ref) => centerSldOnElement(ref)}
         />
       )}
+      {pokazNastepnyKrokSchematu && <NastepnyKrokSchematu />}
       <div className="mvd-legacy-warsztat-tresc">
         {mainSurfaceExpanded ? <WorkspaceSurfaceRouter region="main" /> : <TrasaLubPrzestrzen {...props} />}
       </div>

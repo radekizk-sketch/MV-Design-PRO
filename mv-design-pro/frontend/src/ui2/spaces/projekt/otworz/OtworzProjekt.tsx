@@ -15,7 +15,8 @@
 import { useState } from 'react';
 import '../pulpit.css';
 import './otworz.css';
-import { OTWORZ_STRINGS, PRZYKLADY } from './strings';
+import { OTWORZ_STRINGS } from './strings';
+import type { PrzykladDane } from './strings';
 import { CelProjektu } from './CelProjektu';
 import type { CelProjektuId } from './CelProjektu';
 import { ListaProjektow } from './ListaProjektow';
@@ -27,6 +28,13 @@ export interface OtworzProjektProps {
   projekty: ProjektWiersz[];
   /** Stan „ładowanie" listy istniejących projektów. */
   ladowanieProjektow?: boolean;
+  /**
+   * Gotowe przykłady (P-01…P-05) — sekcja renderuje się WYŁĄCZNIE przy
+   * niepustej liście (K4 §c, zero fabrykacji: wołający przekazuje przykłady
+   * tylko wtedy, gdy istnieje realny dostawca materializacji przykładu do
+   * projektu; domyślnie pusto = sekcja ukryta).
+   */
+  przyklady?: readonly PrzykladDane[];
   /** 2× klik / `Enter` / przycisk „Otwórz" na wierszu listy istniejących projektów. */
   onOtworzProjekt: (id: string) => void;
   /** Klik kafla celu (`CelProjektu`). */
@@ -38,6 +46,7 @@ export interface OtworzProjektProps {
 export function OtworzProjekt({
   projekty,
   ladowanieProjektow = false,
+  przyklady = [],
   onOtworzProjekt,
   onNowyProjekt,
   onWczytajPrzyklad,
@@ -52,21 +61,23 @@ export function OtworzProjekt({
 
       <CelProjektu onWybierzCel={onNowyProjekt} />
 
-      <section className="mvd-otworz-przyklady" aria-label={OTWORZ_STRINGS.przykladyTytul}>
-        <h3 className="mvd-pulpit-cases-title">{OTWORZ_STRINGS.przykladyTytul}</h3>
-        <div className="mvd-otworz-przyklady-grid">
-          {PRZYKLADY.map((p) => (
-            <Kafel
-              key={p.id}
-              tytul={p.nazwa}
-              onKlik={() => onWczytajPrzyklad(p.id)}
-              ariaLabel={`${p.nazwa}. ${p.opis}`}
-            >
-              <p className="mvd-otworz-przyklad-opis">{p.opis}</p>
-            </Kafel>
-          ))}
-        </div>
-      </section>
+      {przyklady.length > 0 && (
+        <section className="mvd-otworz-przyklady" aria-label={OTWORZ_STRINGS.przykladyTytul}>
+          <h3 className="mvd-pulpit-cases-title">{OTWORZ_STRINGS.przykladyTytul}</h3>
+          <div className="mvd-otworz-przyklady-grid">
+            {przyklady.map((p) => (
+              <Kafel
+                key={p.id}
+                tytul={p.nazwa}
+                onKlik={() => onWczytajPrzyklad(p.id)}
+                ariaLabel={`${p.nazwa}. ${p.opis}`}
+              >
+                <p className="mvd-otworz-przyklad-opis">{p.opis}</p>
+              </Kafel>
+            ))}
+          </div>
+        </section>
+      )}
 
       <ListaProjektow
         projekty={projekty}

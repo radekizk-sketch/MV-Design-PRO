@@ -119,6 +119,18 @@ async function mockCaseCreationApi(page: Page): Promise<void> {
       return;
     }
 
+    // Rejestr przebiegów aktywnego przypadku (kształt 1:1 z kontraktem
+    // GET /api/execution/study-cases/{caseId}/runs — listRuns oczekuje
+    // { runs, count }; catch-all '{}' maskował kontrakt i zatruwał store).
+    if (method === 'GET' && pathname === '/api/execution/study-cases/case-001/runs') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ runs: [], count: 0 }),
+      });
+      return;
+    }
+
     if (method === 'GET' && pathname === '/api/study-cases/project/proj-001/active') {
       await route.fulfill({
         status: projectCreated && caseCreated ? 200 : 204,

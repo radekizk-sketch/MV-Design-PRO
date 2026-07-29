@@ -145,6 +145,13 @@ export const useExecutionRunsStore = create<ExecutionRunsState>((set, get) => ({
     set({ isLoadingRuns: true, runError: null });
     try {
       const result = await api.listRuns(caseId);
+      // Kontrakt: { runs: ExecutionRun[] }. Odpowiedź bez tablicy NIE może
+      // zatruć store'u (pole `runs` jest typowane ExecutionRun[]; `undefined`
+      // wywracał każdego konsumenta iterującego, np. drzewo przebiegów
+      // powłoki — „runs is not iterable"). Błąd protokołu = ścieżka błędu.
+      if (!Array.isArray(result?.runs)) {
+        throw new Error('Niepoprawna odpowiedź listy przebiegów (brak pola runs)');
+      }
       set({ runs: result.runs, isLoadingRuns: false });
     } catch (err) {
       const message =

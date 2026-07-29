@@ -26,7 +26,7 @@ import { InspectorPanel } from './inspector';
 import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapter';
 import { emituj, subskrybuj, startEventBusAdapters } from './events';
 import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } from './search';
-import { PulpitProjektu } from './spaces/projekt';
+import { PulpitProjektu, OtworzProjektKontener } from './spaces/projekt';
 import { PanelGotowosci } from './spaces/gotowosc';
 import { ModelWarsztat } from './spaces/model';
 import { MenedzerPrzypadkow } from './spaces/obliczenia';
@@ -40,14 +40,10 @@ import { LegacyChrome } from './legacy/LegacyChrome';
 import { useLegacyOrchestrator } from './legacy/useLegacyOrchestrator';
 import { POZYCJE_MENU_LEGACY, useLegacyMenuActions } from './legacy/useLegacyMenuActions';
 import { useShellStore } from './shell/useShellStore';
+import { mostTrasyPrzestrzeni, przejdzDoPrzestrzeni } from './shell/przejsciaPrzestrzeni';
 import type { SpaceId } from './shell/spaces';
 import { useSnapshotStore } from '../ui/topology/snapshotStore';
 import { useAppStateStore } from '../ui/app-state';
-import {
-  navigateToAnalysis,
-  navigateToCaseConfig,
-  navigateToNetworkBuild,
-} from '../ui/navigation';
 import { AreaContextPanel } from '../ui/shell/context-panels';
 
 /** Panel kontekstu obszaru legacy (most E1.7c) — area-driven jak w starej ramie. */
@@ -120,16 +116,19 @@ export function AppRoot() {
     [],
   );
 
-  // Parytet trasy domyślnej (E1.7b): aktywny projekt → przestrzeń „Schemat" (SLD),
-  // jak domyślna trasa '' starego wejścia. Jednorazowo na życie powłoki.
+  // Parytet trasy domyślnej (E1.7b): aktywny projekt PRZY STARCIE powłoki →
+  // przestrzeń „Schemat" (SLD), jak domyślna trasa '' starego wejścia.
+  // Decyzja zapada RAZ, na montaż (K4/E1a): projekt utworzony/otwarty później
+  // z ekranu „Nowy / otwórz projekt" ma wylądować na pulpicie projektu
+  // (KOLEJNOSC_KROKOW_E1_E8 §P1 „dokąd dalej: pulpit"), nie na kanwie.
   const domyslnaPrzestrzenUstawiona = useRef(false);
   const setActiveSpaceStore = useShellStore((s) => s.setActiveSpace);
   useEffect(() => {
-    if (domyslnaPrzestrzenUstawiona.current || !activeProjectId) {
+    if (domyslnaPrzestrzenUstawiona.current) {
       return;
     }
     domyslnaPrzestrzenUstawiona.current = true;
-    if (useShellStore.getState().activeSpace === 'projekt') {
+    if (activeProjectId && useShellStore.getState().activeSpace === 'projekt') {
       setActiveSpaceStore('schemat');
     }
   }, [activeProjectId, setActiveSpaceStore]);
@@ -171,37 +170,11 @@ export function AppRoot() {
     setActiveSpace('projekt');
     window.location.hash = '#dashboard';
   };
-  // Most tras (E1.7c): JAWNY wybór przestrzeni ustawia trasę legacy — jedna
-  // prawda nawigacji (orkiestrator otwiera powierzchnie). Montaż zawartości
-  // NIE nawiguje, aby nie nadpisywać deep-linków (#analysis?run=..., itd.).
-  const mostTrasyPrzestrzeni = (space: SpaceId) => {
-    const stan = useAppStateStore.getState();
-    const runId = stan.activeRunId;
-    switch (space) {
-      case 'model':
-      case 'schemat':
-        navigateToNetworkBuild();
-        break;
-      case 'obliczenia':
-        navigateToCaseConfig({ caseId: stan.activeCaseId });
-        break;
-      case 'wyniki':
-        navigateToAnalysis({ runId });
-        break;
-      case 'dokumentacja':
-      case 'gotowosc':
-      case 'projekt':
-        // Zawartość sterowana store'ami/przestrzenią — bez zmiany trasy.
-        // F-E8.1: „Dokumentacja" ląduje na hubie prowadzącym (MostDokumentacji);
-        // dostawcy raportu/dowodu (E-37/E-36) otwierają karty huba przez
-        // openRouteSurface, nie auto-nawigacja do legacy generatora.
-        break;
-    }
-  };
-  const wybierzPrzestrzen = (space: SpaceId) => {
-    setActiveSpace(space);
-    mostTrasyPrzestrzeni(space);
-  };
+  // Most tras (E1.7c) wyniesiony do `shell/przejsciaPrzestrzeni.ts` (K4-E2):
+  // ta sama prawda nawigacji dla jawnego wyboru przestrzeni w AppShell i dla
+  // przejść „następnego kroku" (np. Schemat → Gotowość). `przejdzDoPrzestrzeni`
+  // = setActiveSpace + most (identyczna para wywołań jak dotychczas).
+  const wybierzPrzestrzen = przejdzDoPrzestrzeni;
   const wykonajPozycje = (pozycja: PozycjaWyszukiwania) => {
     if (pozycja.id.startsWith('przestrzen:')) {
       wybierzPrzestrzen(pozycja.id.slice('przestrzen:'.length) as SpaceId);
@@ -271,12 +244,19 @@ export function AppRoot() {
           }
           dokumentacja={<MostDokumentacji />}
           pulpit={
-            <PulpitProjektu
-              onNawiguj={wybierzPrzestrzen}
-              onOtworzProjekt={otworzPulpitProjektow}
-              onZaznaczPrzypadek={(id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'pulpit-projektu' })}
-              onOtworzPrzypadek={() => wybierzPrzestrzen('obliczenia')}
-            />
+            // E1a (K4): sekwencja pierwszego użycia — bez aktywnego projektu
+            // przestrzeń „Projekt" prowadzi ekranem „Nowy / otwórz projekt"
+            // (W-102, realne akcje API w kontenerze); z projektem — pulpit.
+            activeProjectId == null ? (
+              <OtworzProjektKontener />
+            ) : (
+              <PulpitProjektu
+                onNawiguj={wybierzPrzestrzen}
+                onOtworzProjekt={otworzPulpitProjektow}
+                onZaznaczPrzypadek={(id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'pulpit-projektu' })}
+                onOtworzPrzypadek={() => wybierzPrzestrzen('obliczenia')}
+              />
+            )
           }
         />
       }

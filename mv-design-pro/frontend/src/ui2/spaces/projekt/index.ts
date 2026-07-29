@@ -5,6 +5,7 @@
  */
 
 export { PulpitProjektu, type PulpitProjektuProps } from './PulpitProjektu';
+export { OtworzProjektKontener } from './otworz/OtworzProjektKontener';
 export { KafelModelu } from './KafelModelu';
 export { KafelGotowosci } from './KafelGotowosci';
 export { KafelOstatniegoPrzebiegu } from './KafelOstatniegoPrzebiegu';
