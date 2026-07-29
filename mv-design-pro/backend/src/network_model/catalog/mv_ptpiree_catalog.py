@@ -9,7 +9,6 @@ from .types import (
     normalize_ptpiree_key,
 )
 
-
 PTPIREE_SOURCE_PAGE_URL = "https://ptpiree.pl/kodeksy-sieci/wykaz-certyfikatow/"
 PTPIREE_WIPWC_13_PDF_URL = (
     "https://ptpiree.pl/wp-content/uploads/2026/05/2026-05-20-Wykaz-urzadzen_1.3.pdf"
@@ -199,9 +198,7 @@ def annotate_with_ptpiree_status(record: dict[str, Any]) -> dict[str, Any]:
                 "ptpiree_status": "POWIAZANY",
                 "ptpiree_certificate_ref": match["id"],
                 "ptpiree_document_number": match_params.get("document_number"),
-                "ptpiree_document_acceptance_date": match_params.get(
-                    "document_acceptance_date"
-                ),
+                "ptpiree_document_acceptance_date": match_params.get("document_acceptance_date"),
                 "ptpiree_wos_version": match_params.get("wos_version"),
                 "ptpiree_wipwc_version": match_params.get("wipwc_version"),
                 "ptpiree_ppm_scope": match_params.get("ppm_scope"),

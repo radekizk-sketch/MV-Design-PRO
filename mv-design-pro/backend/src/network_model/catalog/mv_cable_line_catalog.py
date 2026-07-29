@@ -43,6 +43,49 @@ JTH_AL_EPR = 94.0  # Aluminium + EPR (θb=90°C → θk=250°C)
 JTH_AL_OHL = 94.0  # Aluminium linie napowietrzne (AAC)
 JTH_AL_ST_OHL = 88.0  # Aluminium-stal linie napowietrzne (ACSR/AFL)
 
+# Temperatury GRANICZNE zyly przy zwarciu [°C] — druga polowa pary, ktora uzasadnia
+# wartosci jth powyzej (komentarze „θb=90°C → θk=250°C" mowily o nich od poczatku,
+# ale liczby nie byly danymi, tylko tekstem). Karta F-K1 faza 6: dowod obliczeniowy
+# musi pokazac obie temperatury, bo bez nich nie da sie zweryfikowac k.
+# Temperatura ROBOCZA zyly izolacji usieciowanej [°C] — pierwsza polowa pary (theta_b)
+# do TEMP_SHORT_CIRCUIT_XLPE_C. Dana normowa dla ZADEKLAROWANEJ izolacji (IEC 60502-2),
+# a nie wartosc typowa: katalog potwierdza ja jednoglosnie — wszystkie 37 typow XLPE i
+# 18 typow EPR, ktore te temperature podaja, podaja 90 °C. Osiem typow polskich
+# (YHAKXS/YHKXS) jej NIE podawalo, przez co kryterium IEC 60949 nie mialo pierwszej
+# temperatury i konczylo sie brakiem werdyktu (V12K-225).
+TEMP_OPERATING_XLPE_C = 90.0  # XLPE / EPR (IEC 60502-2)
+TEMP_SHORT_CIRCUIT_XLPE_C = 250.0  # XLPE / EPR, izolacja usieciowana (IEC 60502-2)
+TEMP_SHORT_CIRCUIT_PVC_C = 160.0  # PVC (IEC 60502-1 / PN-HD 60364-4-43 tab. 43A)
+
+# Temperatura ROBOCZA przewodu golego linii napowietrznej [°C] — pierwsza polowa pary
+# (theta_b). Rekordy linii niosly ja od poczatku w `max_temperature_c`; ta stala nazywa
+# ja wprost, zeby domkniecie pary bylo czytelne.
+TEMP_OPERATING_OHL_C = 70.0
+
+# Temperatury GRANICZNE przy zwarciu dla przewodow GOLYCH linii napowietrznych [°C].
+# Karta F-K1 faza 7. Dla przewodu golego granice wyznacza nie izolacja (jej nie ma),
+# lecz utrata wytrzymalosci mechanicznej zyly i dopuszczalna temperatura osprzetu:
+# - AAL/AAC (jednorodne aluminium, bez rdzenia stalowego) — 220 °C,
+# - AFL/ACSR (aluminium na rdzeniu stalowym) — 200 °C, granica ostrzejsza z uwagi na
+#   rdzen i zaciski.
+# Te pary NIE sa dobrane dowolnie: podstawione do wzoru IEC 60949 §3 (Al: K = 148
+# A·√s/mm², beta = 228 K) odtwarzaja stale JTH powyzej —
+#   70 -> 220 °C daje k = 94,50 (katalog: 94,0),
+#   70 -> 200 °C daje k = 89,05 (katalog: 88,0),
+# a katalog trzyma wartosc ROWNA albo NIZSZA od wzorowej, czyli nigdy optymistyczna.
+# Spojnosc pilnuje test `tests/network_model/solvers/test_line_thermal_chain.py`.
+TEMP_SHORT_CIRCUIT_OHL_AL_C = 220.0  # AAL / AAC (PN-E-05115 / IEC 61936-1)
+TEMP_SHORT_CIRCUIT_OHL_AL_ST_C = 200.0  # AFL / ACSR z rdzeniem stalowym
+
+# Odniesienie normowe pary temperatur przewodu golego (do uzasadnienia k w dowodzie).
+# UWAGA: ten napis TRAFIA DO UI (pole „Zrodlo" w dowodzie obliczeniowym), wiec ma
+# polskie znaki — konwencja ASCII-PL obowiazuje w rejestrach i komentarzach, nigdy w
+# tekstach widocznych dla projektanta.
+OHL_THERMAL_SOURCE_REFERENCE = (
+    "PN-E-05115 / IEC 61936-1 — temperatury graniczne przewodów gołych przy zwarciu; "
+    "k wg IEC 60949 § 3"
+)
+
 LINE_SOURCE_REFERENCE = "PN-EN 50182 / IEC 61089 / katalogi rodzin AAL, AFL 6 i AFL 2 dla sieci SN"
 CABLE_BASE_SOURCE_REFERENCE = (
     "IEC 60502-2 / IEC 60949 / matryca bazowych kabli SN 12/20 kV MV-DESIGN-PRO"
@@ -108,10 +151,14 @@ def _float_param(params: dict[str, Any], key: str) -> float | None:
     value = params.get(key)
     if isinstance(value, int | float):
         return float(value)
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
+    # Rekordy katalogu moga niesc liczbe jako tekst; wszystko inne (w tym brak
+    # klucza) daje None — brak danej nie moze stac sie zerem.
+    if isinstance(value, str):
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
 
 
 def _with_zero_sequence_parameters(record: dict[str, Any], *, kind: str) -> dict[str, Any]:
@@ -214,10 +261,36 @@ def _cable_family(record_id: str) -> str:
     return "TEST"
 
 
+def _with_line_short_circuit_temperature(record: dict[str, Any]) -> dict[str, Any]:
+    """Domyka pare temperatur przewodu GOLEGO (theta_b -> theta_k) wg materialu zyly.
+
+    Karta F-K1 faza 7. Rekordy linii niosly `jth_1s_a_per_mm2` i `max_temperature_c`
+    (theta_b), ale temperatura koncowa theta_k nie byla dana — istniala tylko jako
+    komentarz przy stalych JTH. Bez niej dowod obliczeniowy kryterium cieplnego nie
+    mogl uzasadnic wspolczynnika k dla linii napowietrznej i nazywal go „brakiem".
+
+    Przypisanie jest deterministyczne i wynika WYLACZNIE z materialu zyly zapisanego
+    w rekordzie — zaden material nieznany nie dostaje wartosci domyslnej (brak
+    pozostaje brakiem, zgodnie z zasada zero fabrykacji).
+    """
+    params = dict(record.get("params") or {})
+    material = str(params.get("conductor_material") or "").strip().upper()
+    temperatura_zwarciowa = {
+        "AL": TEMP_SHORT_CIRCUIT_OHL_AL_C,
+        "AL_ST": TEMP_SHORT_CIRCUIT_OHL_AL_ST_C,
+    }.get(material)
+    if temperatura_zwarciowa is not None:
+        params.setdefault("short_circuit_temperature_c", temperatura_zwarciowa)
+        params.setdefault("thermal_source_reference", OHL_THERMAL_SOURCE_REFERENCE)
+    return {"id": record["id"], "name": record["name"], "params": params}
+
+
 def _line_records_with_quality() -> list[dict[str, Any]]:
     production = [
         _with_catalog_quality(
-            _with_zero_sequence_parameters(record, kind="line"),
+            _with_line_short_circuit_temperature(
+                _with_zero_sequence_parameters(record, kind="line")
+            ),
             source_reference=LINE_SOURCE_REFERENCE,
             verification_status=CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value,
             catalog_status=CatalogStatus.PRODUKCYJNY_V1.value,
@@ -322,6 +395,7 @@ CABLE_XLPE_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 70,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.268,
@@ -340,6 +414,7 @@ CABLE_XLPE_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 120,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.153,
@@ -358,6 +433,7 @@ CABLE_XLPE_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.124,
@@ -376,6 +452,7 @@ CABLE_XLPE_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 185,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.099,
@@ -394,6 +471,7 @@ CABLE_XLPE_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 240,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.0754,
@@ -412,6 +490,7 @@ CABLE_XLPE_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 300,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.0601,
@@ -430,6 +509,7 @@ CABLE_XLPE_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 400,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.0470,
@@ -455,6 +535,7 @@ CABLE_XLPE_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 70,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.443,
@@ -473,6 +554,7 @@ CABLE_XLPE_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 120,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.253,
@@ -491,6 +573,7 @@ CABLE_XLPE_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.206,
@@ -509,6 +592,7 @@ CABLE_XLPE_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 185,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.164,
@@ -527,6 +611,7 @@ CABLE_XLPE_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 240,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.125,
@@ -545,6 +630,7 @@ CABLE_XLPE_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 300,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.100,
@@ -563,6 +649,7 @@ CABLE_XLPE_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 400,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.0778,
@@ -588,6 +675,7 @@ CABLE_XLPE_CU_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 70,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.268,
@@ -606,6 +694,7 @@ CABLE_XLPE_CU_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 120,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.153,
@@ -624,6 +713,7 @@ CABLE_XLPE_CU_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.124,
@@ -642,6 +732,7 @@ CABLE_XLPE_CU_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 185,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.099,
@@ -660,6 +751,7 @@ CABLE_XLPE_CU_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 240,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.0754,
@@ -678,6 +770,7 @@ CABLE_XLPE_CU_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 300,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.0601,
@@ -699,6 +792,7 @@ CABLE_XLPE_AL_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 70,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.443,
@@ -717,6 +811,7 @@ CABLE_XLPE_AL_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 120,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.253,
@@ -735,6 +830,7 @@ CABLE_XLPE_AL_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.206,
@@ -753,6 +849,7 @@ CABLE_XLPE_AL_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 185,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.164,
@@ -771,6 +868,7 @@ CABLE_XLPE_AL_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 240,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.125,
@@ -789,6 +887,7 @@ CABLE_XLPE_AL_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 300,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.100,
@@ -814,6 +913,7 @@ CABLE_EPR_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 70,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.268,
@@ -832,6 +932,7 @@ CABLE_EPR_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 120,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.153,
@@ -850,6 +951,7 @@ CABLE_EPR_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.124,
@@ -868,6 +970,7 @@ CABLE_EPR_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 185,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.099,
@@ -886,6 +989,7 @@ CABLE_EPR_CU_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 240,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.0754,
@@ -907,6 +1011,7 @@ CABLE_EPR_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 70,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.443,
@@ -925,6 +1030,7 @@ CABLE_EPR_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 120,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.253,
@@ -943,6 +1049,7 @@ CABLE_EPR_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.206,
@@ -961,6 +1068,7 @@ CABLE_EPR_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 185,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.164,
@@ -979,6 +1087,7 @@ CABLE_EPR_AL_1C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 240,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.125,
@@ -1000,6 +1109,7 @@ CABLE_EPR_CU_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 70,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.268,
@@ -1018,6 +1128,7 @@ CABLE_EPR_CU_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 120,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.153,
@@ -1036,6 +1147,7 @@ CABLE_EPR_CU_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.124,
@@ -1054,6 +1166,7 @@ CABLE_EPR_CU_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "CU",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 185,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.099,
@@ -1075,6 +1188,7 @@ CABLE_EPR_AL_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 70,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.443,
@@ -1093,6 +1207,7 @@ CABLE_EPR_AL_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 120,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.253,
@@ -1111,6 +1226,7 @@ CABLE_EPR_AL_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.206,
@@ -1129,6 +1245,7 @@ CABLE_EPR_AL_3C_BASE: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "EPR",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 185,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.164,
@@ -1590,6 +1707,7 @@ CABLE_NKT_TYPES: list[dict[str, Any]] = [
             "base_type_id": "cable-base-xlpe-al-1c-150",
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.206,
@@ -1611,6 +1729,7 @@ CABLE_NKT_TYPES: list[dict[str, Any]] = [
             "base_type_id": "cable-base-xlpe-al-1c-240",
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 240,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.125,
@@ -1632,6 +1751,7 @@ CABLE_NKT_TYPES: list[dict[str, Any]] = [
             "base_type_id": "cable-base-xlpe-al-3c-150",
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.206,
@@ -1660,6 +1780,7 @@ CABLE_TELEFONIKA_TYPES: list[dict[str, Any]] = [
             "base_type_id": "cable-base-xlpe-al-1c-150",
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.206,
@@ -1681,6 +1802,7 @@ CABLE_TELEFONIKA_TYPES: list[dict[str, Any]] = [
             "base_type_id": "cable-base-xlpe-al-1c-240",
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 240,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.125,
@@ -1702,6 +1824,7 @@ CABLE_TELEFONIKA_TYPES: list[dict[str, Any]] = [
             "base_type_id": "cable-base-xlpe-al-3c-120",
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 120,
             "number_of_cores": 3,
             "r_ohm_per_km": 0.253,
@@ -1730,6 +1853,7 @@ CABLE_ENEA_OPERATOR_STANDARD_TYPES: list[dict[str, Any]] = [
             "base_type_id": "cable-base-xlpe-al-1c-120",
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 120,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.253,
@@ -1751,6 +1875,7 @@ CABLE_ENEA_OPERATOR_STANDARD_TYPES: list[dict[str, Any]] = [
             "base_type_id": "cable-base-xlpe-al-1c-240",
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 240,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.125,
@@ -1772,6 +1897,7 @@ CABLE_ENEA_OPERATOR_STANDARD_TYPES: list[dict[str, Any]] = [
             "base_type_id": "cable-base-xlpe-al-1c-150",
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 150,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.206,
@@ -1793,6 +1919,7 @@ CABLE_ENEA_OPERATOR_STANDARD_TYPES: list[dict[str, Any]] = [
             "base_type_id": "cable-base-xlpe-al-1c-240",
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 240,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.125,
@@ -1814,6 +1941,7 @@ CABLE_INCOMPLETE_TYPES: list[dict[str, Any]] = [
         "params": {
             "conductor_material": "AL",
             "insulation_type": "XLPE",
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
             "cross_section_mm2": 120,
             "number_of_cores": 1,
             "r_ohm_per_km": 0.253,
@@ -2081,14 +2209,22 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
         "id": "cable-polish-yhakxs-1c-50",
         "name": "YHAKXS 1×50 12/20 kV (TF Kable)",
         "params": {
-            "kind": "CABLE", "type": "cable",
-            "voltage_rating_kv": 20.0, "cross_section_mm2": 50.0,
-            "number_of_cores": 1, "conductor_material": "AL",
+            "kind": "CABLE",
+            "type": "cable",
+            "voltage_rating_kv": 20.0,
+            "cross_section_mm2": 50.0,
+            "number_of_cores": 1,
+            "conductor_material": "AL",
             "insulation_type": "XLPE",
-            "r_ohm_per_km": 0.641, "x_ohm_per_km": 0.130,
-            "c_nf_per_km": 270.0, "rated_current_a": 160.0,
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
+            "r_ohm_per_km": 0.641,
+            "x_ohm_per_km": 0.130,
+            "c_nf_per_km": 270.0,
+            "rated_current_a": 160.0,
             "manufacturer": "TF Kable Telefonika",
-            "series": "YHAKXS", "standard": "PN-HD 620 S2",
+            "series": "YHAKXS",
+            "standard": "PN-HD 620 S2",
             "ptpire_certified": True,
         },
     },
@@ -2096,14 +2232,22 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
         "id": "cable-polish-yhakxs-1c-95",
         "name": "YHAKXS 1×95 12/20 kV (TF Kable)",
         "params": {
-            "kind": "CABLE", "type": "cable",
-            "voltage_rating_kv": 20.0, "cross_section_mm2": 95.0,
-            "number_of_cores": 1, "conductor_material": "AL",
+            "kind": "CABLE",
+            "type": "cable",
+            "voltage_rating_kv": 20.0,
+            "cross_section_mm2": 95.0,
+            "number_of_cores": 1,
+            "conductor_material": "AL",
             "insulation_type": "XLPE",
-            "r_ohm_per_km": 0.320, "x_ohm_per_km": 0.123,
-            "c_nf_per_km": 320.0, "rated_current_a": 230.0,
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
+            "r_ohm_per_km": 0.320,
+            "x_ohm_per_km": 0.123,
+            "c_nf_per_km": 320.0,
+            "rated_current_a": 230.0,
             "manufacturer": "TF Kable Telefonika",
-            "series": "YHAKXS", "standard": "PN-HD 620 S2",
+            "series": "YHAKXS",
+            "standard": "PN-HD 620 S2",
             "ptpire_certified": True,
         },
     },
@@ -2111,14 +2255,22 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
         "id": "cable-polish-yhakxs-1c-120",
         "name": "YHAKXS 1×120 12/20 kV (TF Kable)",
         "params": {
-            "kind": "CABLE", "type": "cable",
-            "voltage_rating_kv": 20.0, "cross_section_mm2": 120.0,
-            "number_of_cores": 1, "conductor_material": "AL",
+            "kind": "CABLE",
+            "type": "cable",
+            "voltage_rating_kv": 20.0,
+            "cross_section_mm2": 120.0,
+            "number_of_cores": 1,
+            "conductor_material": "AL",
             "insulation_type": "XLPE",
-            "r_ohm_per_km": 0.253, "x_ohm_per_km": 0.121,
-            "c_nf_per_km": 350.0, "rated_current_a": 265.0,
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
+            "r_ohm_per_km": 0.253,
+            "x_ohm_per_km": 0.121,
+            "c_nf_per_km": 350.0,
+            "rated_current_a": 265.0,
             "manufacturer": "TF Kable Telefonika",
-            "series": "YHAKXS", "standard": "PN-HD 620 S2",
+            "series": "YHAKXS",
+            "standard": "PN-HD 620 S2",
             "ptpire_certified": True,
         },
     },
@@ -2126,14 +2278,22 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
         "id": "cable-polish-yhakxs-1c-150",
         "name": "YHAKXS 1×150 12/20 kV (TF Kable)",
         "params": {
-            "kind": "CABLE", "type": "cable",
-            "voltage_rating_kv": 20.0, "cross_section_mm2": 150.0,
-            "number_of_cores": 1, "conductor_material": "AL",
+            "kind": "CABLE",
+            "type": "cable",
+            "voltage_rating_kv": 20.0,
+            "cross_section_mm2": 150.0,
+            "number_of_cores": 1,
+            "conductor_material": "AL",
             "insulation_type": "XLPE",
-            "r_ohm_per_km": 0.206, "x_ohm_per_km": 0.119,
-            "c_nf_per_km": 380.0, "rated_current_a": 300.0,
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
+            "r_ohm_per_km": 0.206,
+            "x_ohm_per_km": 0.119,
+            "c_nf_per_km": 380.0,
+            "rated_current_a": 300.0,
             "manufacturer": "TF Kable Telefonika",
-            "series": "YHAKXS", "standard": "PN-HD 620 S2",
+            "series": "YHAKXS",
+            "standard": "PN-HD 620 S2",
             "ptpire_certified": True,
         },
     },
@@ -2141,14 +2301,22 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
         "id": "cable-polish-yhakxs-1c-240",
         "name": "YHAKXS 1×240 12/20 kV (TF Kable)",
         "params": {
-            "kind": "CABLE", "type": "cable",
-            "voltage_rating_kv": 20.0, "cross_section_mm2": 240.0,
-            "number_of_cores": 1, "conductor_material": "AL",
+            "kind": "CABLE",
+            "type": "cable",
+            "voltage_rating_kv": 20.0,
+            "cross_section_mm2": 240.0,
+            "number_of_cores": 1,
+            "conductor_material": "AL",
             "insulation_type": "XLPE",
-            "r_ohm_per_km": 0.125, "x_ohm_per_km": 0.115,
-            "c_nf_per_km": 420.0, "rated_current_a": 380.0,
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
+            "r_ohm_per_km": 0.125,
+            "x_ohm_per_km": 0.115,
+            "c_nf_per_km": 420.0,
+            "rated_current_a": 380.0,
             "manufacturer": "TF Kable Telefonika",
-            "series": "YHAKXS", "standard": "PN-HD 620 S2",
+            "series": "YHAKXS",
+            "standard": "PN-HD 620 S2",
             "ptpire_certified": True,
         },
     },
@@ -2157,14 +2325,22 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
         "id": "cable-polish-yhkxs-1c-95",
         "name": "YHKXS 1×95 Cu 12/20 kV (TF Kable)",
         "params": {
-            "kind": "CABLE", "type": "cable",
-            "voltage_rating_kv": 20.0, "cross_section_mm2": 95.0,
-            "number_of_cores": 1, "conductor_material": "CU",
+            "kind": "CABLE",
+            "type": "cable",
+            "voltage_rating_kv": 20.0,
+            "cross_section_mm2": 95.0,
+            "number_of_cores": 1,
+            "conductor_material": "CU",
             "insulation_type": "XLPE",
-            "r_ohm_per_km": 0.193, "x_ohm_per_km": 0.122,
-            "c_nf_per_km": 320.0, "rated_current_a": 300.0,
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
+            "r_ohm_per_km": 0.193,
+            "x_ohm_per_km": 0.122,
+            "c_nf_per_km": 320.0,
+            "rated_current_a": 300.0,
             "manufacturer": "TF Kable Telefonika",
-            "series": "YHKXS", "standard": "PN-HD 620 S2",
+            "series": "YHKXS",
+            "standard": "PN-HD 620 S2",
             "ptpire_certified": True,
         },
     },
@@ -2172,14 +2348,22 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
         "id": "cable-polish-yhkxs-1c-150",
         "name": "YHKXS 1×150 Cu 12/20 kV (Bitner)",
         "params": {
-            "kind": "CABLE", "type": "cable",
-            "voltage_rating_kv": 20.0, "cross_section_mm2": 150.0,
-            "number_of_cores": 1, "conductor_material": "CU",
+            "kind": "CABLE",
+            "type": "cable",
+            "voltage_rating_kv": 20.0,
+            "cross_section_mm2": 150.0,
+            "number_of_cores": 1,
+            "conductor_material": "CU",
             "insulation_type": "XLPE",
-            "r_ohm_per_km": 0.124, "x_ohm_per_km": 0.119,
-            "c_nf_per_km": 380.0, "rated_current_a": 380.0,
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
+            "r_ohm_per_km": 0.124,
+            "x_ohm_per_km": 0.119,
+            "c_nf_per_km": 380.0,
+            "rated_current_a": 380.0,
             "manufacturer": "Bitner Kable",
-            "series": "YHKXS", "standard": "PN-HD 620 S2",
+            "series": "YHKXS",
+            "standard": "PN-HD 620 S2",
             "ptpire_certified": True,
         },
     },
@@ -2187,14 +2371,22 @@ CABLE_POLISH_PN_HD_620: list[dict[str, Any]] = [
         "id": "cable-polish-yhkxs-1c-240",
         "name": "YHKXS 1×240 Cu 12/20 kV (Bitner)",
         "params": {
-            "kind": "CABLE", "type": "cable",
-            "voltage_rating_kv": 20.0, "cross_section_mm2": 240.0,
-            "number_of_cores": 1, "conductor_material": "CU",
+            "kind": "CABLE",
+            "type": "cable",
+            "voltage_rating_kv": 20.0,
+            "cross_section_mm2": 240.0,
+            "number_of_cores": 1,
+            "conductor_material": "CU",
             "insulation_type": "XLPE",
-            "r_ohm_per_km": 0.076, "x_ohm_per_km": 0.115,
-            "c_nf_per_km": 420.0, "rated_current_a": 480.0,
+            "max_temperature_c": TEMP_OPERATING_XLPE_C,
+            "short_circuit_temperature_c": TEMP_SHORT_CIRCUIT_XLPE_C,
+            "r_ohm_per_km": 0.076,
+            "x_ohm_per_km": 0.115,
+            "c_nf_per_km": 420.0,
+            "rated_current_a": 480.0,
             "manufacturer": "Bitner Kable",
-            "series": "YHKXS", "standard": "PN-HD 620 S2",
+            "series": "YHKXS",
+            "standard": "PN-HD 620 S2",
             "ptpire_certified": True,
         },
     },

@@ -48,19 +48,32 @@ def validate_requirement(
 
 
 def _required_functions(req: ProtectionRequirementV0) -> set[str]:
+    """Funkcje, których wymaga zestaw nastaw.
+
+    V12K-189: nastawa ``None`` (niewyznaczalna z danych) NIE stawia wymagania
+    wobec aparatu — nie ma czym go sprawdzić. Doboru nie wolno wtedy oprzeć na
+    wartości zastępczej; brak nastawy jest widoczny w kodach gotowości.
+    """
     required: set[str] = set()
-    if req.i_inst_50_a > 0:
+    if _is_set(req.i_inst_50_a):
         required.add("50")
-    if req.i_pickup_51_a > 0 or req.tms_51 > 0:
+    if _is_set(req.i_pickup_51_a) or req.tms_51 > 0:
         required.add("51")
-    if req.i_inst_50n_a > 0:
+    if _is_set(req.i_inst_50n_a):
         required.add("50N")
-    if req.i_pickup_51n_a > 0 or req.tms_51n > 0:
+    if _is_set(req.i_pickup_51n_a) or req.tms_51n > 0:
         required.add("51N")
     return required
 
 
-def _in_range(value: float, minimum: float, maximum: float) -> bool:
+def _is_set(value: float | None) -> bool:
+    return value is not None and value > 0
+
+
+def _in_range(value: float | None, minimum: float, maximum: float) -> bool:
+    # Nastawa niewyznaczalna nie może naruszyć zakresu aparatu (V12K-189).
+    if value is None:
+        return True
     return minimum <= value <= maximum
 
 

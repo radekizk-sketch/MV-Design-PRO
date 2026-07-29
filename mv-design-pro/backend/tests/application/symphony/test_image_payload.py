@@ -73,7 +73,9 @@ def test_build_image_data_url_accepts_png_and_jpeg_files(tmp_path: Path) -> None
     assert not jpg_url.endswith("base64,")
 
 
-def test_filter_valid_image_content_skips_invalid_optional_image(caplog: pytest.LogCaptureFixture) -> None:
+def test_filter_valid_image_content_skips_invalid_optional_image(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     content = [
         {"type": "input_text", "text": "zostaje"},
         {"type": "input_image", "image_url": "data:image/png;base64,"},

@@ -19,6 +19,7 @@ import type {
   Branch,
   Bus,
   EnergyNetworkModel,
+  Source,
   Substation,
   Transformer,
 } from '../../../../types/enm';
@@ -31,14 +32,27 @@ import type {
   BayFieldRole,
   BayMeasurements,
   CanonicalGpzBay,
+  CanonicalGpzBusVt,
   CanonicalGpzCoupler,
   CanonicalGpzHvSection,
+  CanonicalGpzHvSystemSource,
   CanonicalGpzSection,
   CanonicalGpzTransformer,
   GpzCanonicalRendererProps,
   StatusFlag,
   SwitchState,
 } from '../renderer/GpzCanonicalRenderer';
+// F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ):
+// reużycie WPROST tych samych projekcji co stacje (`buildExplicitStationMiniBays`,
+// `enmToSldAdapter.ts`) — jedna prawda ENM Bay → aparat/adnotacja zabezpieczeń,
+// zero duplikacji logiki dopasowania `ProtectionAssignment`/`Measurement`.
+import {
+  projectBayPrimaryDevices,
+  resolveBayCtRatingAnnotations,
+  resolveBayProtectionMarking,
+  resolveBayVtMountings,
+} from './enmToSldAdapter';
+import { buildOltcAnnotation } from './oltcGlyph';
 
 /* =============================================================================
    Public API
@@ -66,7 +80,25 @@ export interface BuildCanonicalGpzOptions {
 export function buildCanonicalGpzProps(
   enm: Pick<
     EnergyNetworkModel,
-    'substations' | 'bays' | 'transformers' | 'buses' | 'generators' | 'branches'
+    | 'substations'
+    | 'bays'
+    | 'transformers'
+    | 'buses'
+    | 'generators'
+    | 'branches'
+    // F11.1 (spec §17.2/§18.3): rejestr device-ref — `protectionMarking`
+    // (`Bay.protection_ref` → `ProtectionAssignment`) i `ctRatingAnnotations`
+    // (`Measurement`) potrzebują tych dwóch kolekcji, dokładnie jak stacje
+    // (`buildExplicitStationMiniBays`, `enmToSldAdapter.ts`). Addytywne —
+    // istniejący wywołujący (`buildScene.ts`/`SldWorkspaceContainer.tsx`)
+    // przekazuje PEŁNY `EnergyNetworkModel`, więc żaden callsite nie wymaga
+    // zmiany.
+    | 'protection_assignments'
+    | 'measurements'
+    // F13.1 (spec §21.1, D3-1): derywacja kolumny WN gdy `gpz_hv_sections`
+    // puste czyta `snapshot.sources` (źródło systemowe na szynie GPZ) —
+    // addytywne, `buildScene.ts` przekazuje PEŁNY `EnergyNetworkModel`.
+    | 'sources'
   >,
   substationRef: string,
   options: BuildCanonicalGpzOptions,
@@ -88,8 +120,16 @@ export function buildCanonicalGpzProps(
     substation.transformer_refs?.includes(t.ref_id),
   );
 
+  // F11.1: kontekst rejestru device-ref przekazywany DALEJ do `buildBay` —
+  // WYŁĄCZNIE pola faktycznie czytane przez `resolveBayProtectionMarking`/
+  // `resolveBayCtRatingAnnotations` (`enmToSldAdapter.ts`).
+  const protectionCtx: Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements'> = {
+    protection_assignments: enm.protection_assignments ?? [],
+    measurements: enm.measurements ?? [],
+  };
+
   const allBranches = enm.branches ?? [];
-  const lvSections = buildLvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null);
+  const lvSections = buildLvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx);
   // Mapowanie sectionId po `bus_ref` z `substation.gpz_sections` — używane do
   // przypisania TR do sekcji wg `lv_bus_ref`.
   const sectionIdByLvBusRef = new Map<string, string>();
@@ -123,8 +163,74 @@ export function buildCanonicalGpzProps(
     alarms: options.alarms,
     transformers,
     sections: lvSections,
+    // V12K-219: sposób pracy punktu neutralnego sieci SN — z `Bus.grounding`
+    // szyny SN GPZ (jedyna szyna stacji o napięciu z pasma SN). Mapowanie 1:1
+    // z kanonu ENM, zero domysłu: brak `grounding` daje `null`, a schemat wtedy
+    // nie rysuje aparatu uziemiającego.
+    snNeutralEarthing: deriveSnNeutralEarthing(substation, enm.buses ?? []),
     couplers: buildCouplers(substation, allBays),
-    hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null),
+    hvSections: buildHvSections(substation, allBays, enm.buses ?? [], allBranches, overlay ?? null, protectionCtx),
+    // F13.1 (spec §21.1): derywacja WYŁĄCZNIE gdy `gpz_hv_sections` puste —
+    // ścieżka `hvSectionDefs` (niepuste) jest nadrzędna i NIE potrzebuje tego
+    // pola (renderer/compose czyta `hvSections` wprost w tej gałęzi).
+    hvSystemSource:
+      (substation.gpz_hv_sections ?? []).length === 0
+        ? deriveHvSystemSource(substation, enm.buses ?? [], allTransformers, enm.sources ?? [])
+        : null,
+    // ADAPTER-BUSREF: kanoniczny Bus ref szyny WN GPZ = jedyna szyna
+    // `voltage_kv > 60` w `Substation.bus_refs` (TA SAMA derywacja co
+    // `deriveHvSystemSource` pkt 2). `null` gdy brak szyny WN (uczciwy brak).
+    hvBusRef:
+      (enm.buses ?? []).find(
+        (b) => substation.bus_refs?.includes(b.ref_id) && b.voltage_kv > 60,
+      )?.ref_id ?? null,
+  };
+}
+
+/**
+ * F13.1 (SLD_CAD_SPEC_V3 §21.1, D3-1/D3-8/D3-10): wywodzi dane kolumny WN z
+ * relacji PIERWSZOKLASOWYCH ENM — zero zgadywania, brak KTÓREGOKOLWIEK z
+ * trzech rekordów (TR WN/SN, szyna WN, `Source` na szynie GPZ) ⇒ `null`
+ * (uczciwy brak, `compose/gpz.ts` NIE dopisuje etykiety/tabliczki danych).
+ *   1. TR WN/SN = `Substation.transformer_refs` → `snapshot.transformers`
+ *      z `uhv_kv > 60`.
+ *   2. szyna WN = wpis `Substation.bus_refs` → `snapshot.buses` z
+ *      `voltage_kv > 60`.
+ *   3. źródło systemowe = `snapshot.sources` z `bus_ref` ∈ `Substation.bus_refs`
+ *      (SN lub WN — obie należą do GPZ), nazwa z `meta.source_id` (fallback
+ *      `Source.name`).
+ */
+function deriveHvSystemSource(
+  gpz: Substation,
+  buses: readonly Bus[],
+  gpzTransformers: readonly Transformer[],
+  sources: readonly Source[],
+): CanonicalGpzHvSystemSource | null {
+  const hvTransformer = gpzTransformers.find((tr) => tr.uhv_kv > 60);
+  if (!hvTransformer) return null;
+
+  const hvBus = buses.find((b) => gpz.bus_refs?.includes(b.ref_id) && b.voltage_kv > 60);
+  if (!hvBus) return null;
+
+  const gpzBusRefs = new Set(gpz.bus_refs ?? []);
+  const source = sources.find((s) => s.bus_ref != null && gpzBusRefs.has(s.bus_ref));
+  if (!source) return null;
+
+  const name = readString(asRecord(source.meta)?.source_id) ?? readString(source.name);
+  if (!name) return null;
+
+  // Recenzja NO-GO 2026-07-17 pkt 2/3: napięcie tabliczki = szyna ŹRÓDŁA
+  // (spójność Sk″/Ik″/U), a strona zaczepu podąża za `Source.bus_ref` —
+  // ekwiwalent na szynach SN NIE jest rysowany jako przyłącze WN.
+  const sourceBus = buses.find((b) => b.ref_id === source.bus_ref) ?? null;
+  return {
+    sourceRef: source.ref_id,
+    name,
+    sk3Mva: source.sk3_mva ?? null,
+    ik3Ka: source.ik3_ka ?? null,
+    voltageKv: sourceBus?.voltage_kv ?? null,
+    sourceOnHvBus: source.bus_ref === hvBus.ref_id,
+    hvBusVoltageKv: hvBus.voltage_kv ?? null,
   };
 }
 
@@ -197,6 +303,15 @@ function mergeBaysWithFieldSpecs(station: Substation, bays: readonly Bay[]): Bay
       gpz_section_id: readString(spec.gpz_section_id),
       equipment_refs: readStringArray(spec.equipment_refs),
       protection_codes: readStringArray(spec.protection_codes),
+      // F11.1 (spec §17.2, rejestr device-ref w GPZ): `protection_ref` NIE
+      // był kopiowany na syntetyzowany `Bay` (znalezisko własne — pole
+      // ISTNIEJE na `field_spec` źródłowym, ale ginęło tu cicho), więc
+      // `resolveBayProtectionMarking` nigdy nie mogła rozwiązać
+      // `ProtectionAssignment` dla pól GPZ budowanych z `field_specs` — nawet
+      // gdy dane realnie niosły przypisanie. Naprawa u źródła (addytywna,
+      // zero zmiany zachowania na fixturze referencyjnej: `protection_ref`
+      // tam `null`).
+      protection_ref: readString(spec.protection_ref),
       bay_number: readString(spec.bay_number),
       feeder_short_name: readString(spec.feeder_short_name),
       outgoing_destination_ref: readString(spec.outgoing_destination_ref),
@@ -237,8 +352,16 @@ function buildTransformers(
       uhvKv: tr.uhv_kv,
       ulvKv: tr.ulv_kv,
       vectorGroup: tr.vector_group ?? null,
+      // Recenzja NO-GO 2026-07-17 pkt 4: uk%/Pk WPROST z ENM (materializacja
+      // katalogowa) — tabliczka TR na rysunku bez tych danych była modelowo
+      // niekompletna, mimo że model je NIÓSŁ.
+      ukPercent: tr.uk_percent ?? null,
+      pkKw: tr.pk_kw ?? null,
       lvSectionId: sectionIdByLvBusRef.get(tr.lv_bus_ref) ?? null,
       hvBusRef: tr.hv_bus_ref ?? null,
+      // SLD-02 (V12K-091): adnotacja OLTC/DETC z kanonicznego tap_changer
+      // (reuse buildOltcAnnotation; null gdy brak regulacji).
+      oltc: buildOltcAnnotation(tr.tap_changer),
     }));
 }
 
@@ -250,12 +373,18 @@ function extractTransformerDesignation(name: string | null | undefined, idx: num
   return `T${idx + 1}`;
 }
 
+/** F11.1: kontekst rejestru device-ref (`ProtectionAssignment`/`Measurement`),
+ *  wyłącznie pola faktycznie czytane przez `resolveBayProtectionMarking`/
+ *  `resolveBayCtRatingAnnotations` — wzorzec `BuildCanonicalGpzOptions`. */
+type ProtectionCtx = Pick<EnergyNetworkModel, 'protection_assignments' | 'measurements'>;
+
 function buildLvSections(
   gpz: Substation,
   bays: readonly Bay[],
   buses: readonly Bus[],
   branches: readonly Branch[],
   overlay: RawOverlayPayload | null,
+  protectionCtx: ProtectionCtx,
 ): CanonicalGpzSection[] {
   const sectionDefs = gpz.gpz_sections ?? [];
   const lvBays = bays.filter((b) => isLvBay(b, buses));
@@ -273,7 +402,11 @@ function buildLvSections(
       order: 1,
       label: 'S1',
       busVoltageKv: defaultBus?.voltage_kv ?? 15,
-      bays: lvBays.map((b) => buildBay(b, buses, branches, overlay)),
+      // ADAPTER-BUSREF: kanoniczny Bus ref sekcji syntetycznej = szyna SN GPZ
+      // (ta sama, z której czytamy `busVoltageKv`). `null` gdy brak.
+      busRef: defaultBus?.ref_id ?? null,
+      bays: lvBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
+      busVtMeasurements: busVtMeasurementsOf(defaultBus?.ref_id, protectionCtx),
     }];
   }
 
@@ -290,9 +423,29 @@ function buildLvSections(
         order: sec.order,
         label: sec.name ?? `S${idx + 1}`,
         busVoltageKv: bus?.voltage_kv ?? 15,
-        bays: sectionBays.map((b) => buildBay(b, buses, branches, overlay)),
+        // ADAPTER-BUSREF: kanoniczny Bus ref sekcji WPROST ze snapshotu
+        // (`gpz_sections[].bus_ref`) — prymat danych, zero parsowania refów sceny.
+        busRef: sec.bus_ref ?? null,
+        bays: sectionBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
+        busVtMeasurements: busVtMeasurementsOf(sec.bus_ref, protectionCtx),
       };
     });
+}
+
+/**
+ * Recenzja NO-GO 2026-07-17 pkt 12 (spec §12.5): VT SZYNY sekcji GPZ —
+ * `Measurement{measurement_type:'VT', bus_ref: szyna sekcji}` BEZ `bay_ref`
+ * (VT polowe żyją w `resolveBayVtArrangements`, osobny kanał). Zero danych
+ * = pusta lista (kompozycja nie fabrykuje pomiaru).
+ */
+function busVtMeasurementsOf(
+  busRef: string | null | undefined,
+  protectionCtx: ProtectionCtx,
+): CanonicalGpzBusVt[] {
+  if (!busRef) return [];
+  return (protectionCtx.measurements ?? [])
+    .filter((m) => m.measurement_type === 'VT' && m.bus_ref === busRef && !m.bay_ref)
+    .map((m) => ({ measurementRef: m.ref_id, arrangement: m.vt_arrangement ?? null }));
 }
 
 function assignBaysToLvSections(
@@ -332,6 +485,7 @@ function buildHvSections(
   buses: readonly Bus[],
   branches: readonly Branch[],
   overlay: RawOverlayPayload | null,
+  protectionCtx: ProtectionCtx,
 ): CanonicalGpzHvSection[] {
   const hvSectionDefs = gpz.gpz_hv_sections ?? [];
   if (hvSectionDefs.length === 0) {
@@ -350,7 +504,7 @@ function buildHvSections(
         order: sec.order,
         label: sec.name ?? `HV-${idx + 1}`,
         busVoltageKv: bus?.voltage_kv ?? 110,
-        bays: hvBays.map((b) => buildBay(b, buses, branches, overlay)),
+        bays: hvBays.map((b) => buildBay(b, buses, branches, overlay, protectionCtx)),
       };
     });
 }
@@ -360,6 +514,7 @@ function buildBay(
   _buses: readonly Bus[],
   branches: readonly Branch[],
   overlay: RawOverlayPayload | null,
+  protectionCtx: ProtectionCtx,
 ): CanonicalGpzBay {
   const fieldRole = mapBayRoleToFieldRole(bay.bay_role);
   const runtime = bay.runtime_state ?? null;
@@ -377,6 +532,19 @@ function buildBay(
     protectionCodes: bay.protection_codes ?? [],
     measurements: extractBayMeasurements(bay, fieldRole, branches, overlay),
     inManipulation: extractInManipulation(runtime),
+    // F11.1 (SLD_CAD_SPEC_V3 §17.2/§18.3/§20.1, rejestr device-ref w GPZ —
+    // parytet ze stacjami): TA SAMA projekcja co `buildExplicitStationMiniBays`
+    // (`enmToSldAdapter.ts`), reużyta wprost (zero duplikacji). Na fixturze
+    // referencyjnej `sldSubstrate52s` GPZ niesie 0 `Bay`/`primary_devices`/
+    // `protection_assignments`/`measurements` (pola syntetyzowane z
+    // `field_specs`, patrz `mergeBaysWithFieldSpecs`) — te trzy pola są tam
+    // WSZĘDZIE `undefined`, dowód „brak danych = brak rysunku" (spec §17.2).
+    primaryDevices: projectBayPrimaryDevices(bay),
+    protectionMarking: resolveBayProtectionMarking(bay, protectionCtx),
+    ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, protectionCtx),
+    // CTVT-RENDER (spec §20.2, parytet ze stacjami): TA SAMA projekcja montażu
+    // VT co `buildExplicitStationMiniBays` — reużyta wprost (zero duplikacji).
+    vtMountingAnnotations: resolveBayVtMountings(bay, protectionCtx),
   };
 }
 
@@ -595,4 +763,34 @@ function extractInManipulation(
     return Object.values(runtime.primary_device_states).some((s) => s.interlock_blocked === true);
   }
   return false;
+}
+
+/**
+ * Sposób pracy punktu neutralnego sieci SN z modelu (V12K-219).
+ *
+ * Szukamy szyny SN tej stacji (napięcie w pasmie SN: 1 kV < U ≤ 60 kV — ta sama
+ * granica co `hvBusRef` powyżej, tylko z drugiej strony) i przepisujemy jej
+ * `grounding`. Rozstrzygnięcie należy do MODELU: `isolated` to informacja
+ * inżynierska (sieć pracuje z izolowanym punktem neutralnym), a BRAK pola to
+ * brak danej — te dwa stany nie mogą się zlać, bo prąd zwarcia doziemnego różni
+ * się między konfiguracjami o rzędy wielkości.
+ */
+function deriveSnNeutralEarthing(
+  substation: Substation,
+  buses: readonly Bus[],
+): GpzCanonicalRendererProps['snNeutralEarthing'] {
+  const snBus = buses.find(
+    (b) => substation.bus_refs?.includes(b.ref_id) && b.voltage_kv > 1 && b.voltage_kv <= 60,
+  );
+  const g = snBus?.grounding;
+  if (!g) return null;
+  const kind =
+    g.type === 'resistor_grounded'
+      ? 'resistor'
+      : g.type === 'petersen_coil'
+        ? 'coil'
+        : g.type === 'directly_grounded'
+          ? 'direct'
+          : 'isolated';
+  return { kind, rOhm: g.r_ohm ?? undefined, xOhm: g.x_ohm ?? undefined };
 }

@@ -8,6 +8,7 @@ GPZ SN bus. NO-ORPHAN (CI #465): every physical station is reachable and emitted
 switch state — the normally-open switch is a structural link here (its open state is a render
 marker, not a topology cut).
 """
+
 from __future__ import annotations
 
 from collections import deque
@@ -106,7 +107,11 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
             for end in (br.get("from_bus_ref"), br.get("to_bus_ref")):
                 d_end = depth.get(end)
                 d_other = depth.get(
-                    br.get("to_bus_ref") if end == br.get("from_bus_ref") else br.get("from_bus_ref"),
+                    (
+                        br.get("to_bus_ref")
+                        if end == br.get("from_bus_ref")
+                        else br.get("from_bus_ref")
+                    ),
                     -1,
                 )
                 if d_end is not None and d_end > d_other:
@@ -188,7 +193,9 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
     heads = [st for st in stations if st["parent"] is None]
     gpz_sections = []
     for sec in gpz.get("gpz_sections", []) or []:
-        names = sec.get("line_field_names") or ([sec.get("line_field_name")] if sec.get("line_field_name") else [])
+        names = sec.get("line_field_names") or (
+            [sec.get("line_field_name")] if sec.get("line_field_name") else []
+        )
         gpz_sections.append(
             {
                 "name": sec.get("name", "Sekcja"),
@@ -199,7 +206,9 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
                         "to": heads[i]["id"] if i < len(heads) else None,
                         "to_name": heads[i]["name"] if i < len(heads) else None,
                     }
-                    for i in range(max(len(names), len(heads) if sec.get("order", 0) == 0 else 0, 1))
+                    for i in range(
+                        max(len(names), len(heads) if sec.get("order", 0) == 0 else 0, 1)
+                    )
                 ],
             }
         )
@@ -219,5 +228,8 @@ def distill_sld_network(enm: dict[str, Any]) -> dict[str, Any]:
             key=lambda e: (e["from"], e["to"]),
         ),
         "nop_station": ref_to_id.get(nop_station) if nop_station else None,
-        "voltages": sorted({110.0, *(st["sn_kv"] for st in stations), *(st["nn_kv"] for st in stations)}, reverse=True),
+        "voltages": sorted(
+            {110.0, *(st["sn_kv"] for st in stations), *(st["nn_kv"] for st in stations)},
+            reverse=True,
+        ),
     }

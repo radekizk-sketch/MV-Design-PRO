@@ -1,0 +1,99 @@
+/* Wspólne style wykresów charakterystyk kreatorów (V12K-067). Kolory wyłącznie przez
+   tokeny --mvd-* (theme-aware light/dark). Współdzielą to wszystkie wykresy w kreatorach. */
+
+.mvd-wykres-fig {
+  margin: 8px 0 4px;
+}
+
+.mvd-wykres-svg {
+  display: block;
+  width: 100%;
+  max-width: 440px;
+  height: auto;
+  background: var(--mvd-bg);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+}
+
+.mvd-wykres-cap {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+  margin: 6px 0 0;
+}
+
+.mvd-wykres-info {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-ink);
+  margin: 10px 0;
+}
+
+/* ---- elementy SVG ---- */
+.mvd-wykres-os {
+  stroke: var(--mvd-line);
+  stroke-width: 1.2;
+}
+
+.mvd-wykres-siatka {
+  stroke: var(--mvd-line);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.mvd-wykres-pasmo {
+  fill: var(--mvd-accent);
+  opacity: 0.12;
+}
+
+.mvd-wykres-pasmo-txt {
+  fill: var(--mvd-muted);
+  font-size: 9px;
+}
+
+.mvd-wykres-krzywa {
+  fill: none;
+  stroke: var(--mvd-accent);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.mvd-wykres-krzywa-przyklad {
+  fill: none;
+  stroke: var(--mvd-accent);
+  stroke-width: 2;
+  stroke-dasharray: 5 4;
+  opacity: 0.65;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.mvd-wykres-krzywa-lustro {
+  fill: none;
+  stroke: var(--mvd-muted);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 4;
+  opacity: 0.55;
+}
+
+.mvd-wykres-prog {
+  stroke: var(--mvd-err);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 3;
+  opacity: 0.7;
+}
+
+.mvd-wykres-punkt {
+  fill: var(--mvd-accent);
+}
+
+.mvd-wykres-etyk {
+  fill: var(--mvd-muted);
+  font-size: 10px;
+}
+
+.mvd-wykres-znak {
+  fill: var(--mvd-muted);
+  font-size: 9.5px;
+}

@@ -16,7 +16,15 @@ export const LOD_ZOOM_THRESHOLDS = {
   // > 3.0: LOD 4 (diagnostyka)
 } as const;
 
-/** Etykiety poziomow szczegolowosci widoczne dla projektanta. */
+/**
+ * Etykiety poziomow szczegolowosci widoczne dla projektanta.
+ *
+ * @deprecated SCHEMAT-10 S1 (V12K-135, macierz LOD §3): kanwa v3 ma JEDEN
+ * słownik 3-poziomowy `SCENE_LOD_LABELS_PL` (`ui/sld/v3/scene/buildScene.ts`)
+ * — nazwy z macierzy prawdy LOD. Ten 5-poziomowy słownik v2 NIE zasila już
+ * żadnej treści widocznej w v3 (usunięto rozjazd D1/D9 „dwa słowniki LOD").
+ * Zachowany wyłącznie dla wewnętrznej polityki warstw v2; nie używać w UI v3.
+ */
 export const LOD_LEVEL_LABELS_PL: Readonly<Record<LodLevel, string>> = {
   0: 'Topologia sieci',
   1: 'Odcinki i kierunki zasilania',
@@ -109,9 +117,15 @@ export function isVisibleAtLod(
  * Mapping 5 poziomów LOD na 4 etykiety produktowe.
  * Pozwala UI używać czytelnych nazw (overview/medium/detail/zoom-in)
  * bez zmiany istniejącej semantyki numerycznej.
+ *
+ * @deprecated SCHEMAT-10 S1 (V12K-135): kanwa v3 nie mapuje 5→4/5→3 — ma
+ * bezpośredni 3-poziomowy słownik `SCENE_LOD_LABELS_PL`. To mapowanie było
+ * źródłem rozjazdu D9 („mapowanie 5 nazw v2 → 3 sceny v3 gubi poziom
+ * operatorski"). Nie używać w UI v3.
  */
 export type LodLabel = 'overview' | 'medium' | 'detail' | 'zoom-in';
 
+/** @deprecated patrz `LodLabel` — SCHEMAT-10 S1 (V12K-135). */
 export function lodLabel(lod: LodLevel): LodLabel {
   if (lod === 0) return 'overview';
   if (lod === 1 || lod === 2) return 'medium';

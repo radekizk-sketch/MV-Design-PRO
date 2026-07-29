@@ -1,0 +1,296 @@
+/*
+ * Style okna „Wniosek OSD" (karta W-707 / E13). Kolory WYŁĄCZNIE przez tokeny
+ * --mvd-* (theme/tokens.css) — zero literałów hex (zgodność z guardem tokenów
+ * i trybem jasny/ciemny). Warstwa prezentacji — bez wpływu na dane. Przyciski
+ * (`.mvd-btn`, `.mvd-btn-glowny`) i klasa liczb (`.mvd-num`) współdzielone ze
+ * strumieniem OZE (macierz).
+ */
+
+.mvd-wniosek {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-wniosek-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-wniosek-tytul {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mvd-wniosek-sub {
+  margin: 0;
+  color: var(--mvd-muted);
+}
+
+.mvd-wniosek-formularz {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mvd-wniosek-sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+}
+
+.mvd-wniosek-sekcja-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.mvd-wniosek-pola {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.mvd-wniosek-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--mvd-muted);
+}
+
+.mvd-wniosek-pole--szerokie {
+  max-width: 480px;
+}
+
+.mvd-wniosek-pole input,
+.mvd-wniosek-pole select {
+  padding: 6px 8px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  color: var(--mvd-ink);
+  font: inherit;
+}
+
+.mvd-wniosek-pole input:focus,
+.mvd-wniosek-pole select:focus {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+.mvd-wniosek-opc {
+  font-style: normal;
+  color: var(--mvd-muted);
+  font-weight: 400;
+}
+
+.mvd-wniosek-pole-opis {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-wniosek-ncrfg-meta {
+  margin: 0;
+  font-size: 13px;
+}
+
+.mvd-wniosek-akcje {
+  display: flex;
+  gap: 8px;
+}
+
+.mvd-wniosek-ladowanie {
+  margin: 0;
+  color: var(--mvd-muted);
+}
+
+.mvd-wniosek-blad {
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-err);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+}
+
+.mvd-wniosek-braki {
+  padding: 12px 14px;
+  border: 1px solid var(--mvd-err);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+
+.mvd-wniosek-braki h4 {
+  margin: 0 0 6px;
+  color: var(--mvd-err);
+}
+
+.mvd-wniosek-braki ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.mvd-wniosek-wynik {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-panel);
+}
+
+.mvd-wniosek-wynik-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.mvd-wniosek-wynik-tytul {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.mvd-wniosek-wynik-projekt {
+  margin: 0;
+  color: var(--mvd-muted);
+}
+
+.mvd-wniosek-wynik-meta {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-wniosek-sek {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mvd-wniosek-sek-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--mvd-line);
+  padding-bottom: 4px;
+}
+
+.mvd-wniosek-dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+
+.mvd-wniosek-dl div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mvd-wniosek-dl dt {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-wniosek-dl dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.mvd-wniosek-walidacja {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 13px;
+  color: var(--mvd-muted);
+}
+
+.mvd-wniosek-walidacja-etyk {
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+
+.mvd-wniosek-tabela {
+  border-collapse: collapse;
+  width: 100%;
+  max-width: 480px;
+}
+
+.mvd-wniosek-tabela th,
+.mvd-wniosek-tabela td {
+  border: 1px solid var(--mvd-line);
+  padding: 6px 10px;
+  text-align: left;
+}
+
+.mvd-wniosek-tabela th {
+  color: var(--mvd-muted);
+  font-weight: 600;
+  width: 55%;
+}
+
+.mvd-wniosek-werdykt {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.mvd-wniosek-werdykt-ok {
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+
+.mvd-wniosek-werdykt-err {
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+}
+
+.mvd-wniosek-odeslanie {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-muted);
+}
+
+.mvd-wniosek-zalozenia {
+  margin: 0;
+  padding-left: 18px;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+.mvd-wniosek-zalozenia li {
+  margin-bottom: 4px;
+}
+
+.mvd-wniosek-odciski {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+
+.mvd-wniosek-odciski dt {
+  font-weight: 600;
+}
+
+.mvd-wniosek-odciski dd {
+  margin: 0;
+  word-break: break-all;
+}

@@ -24,13 +24,13 @@ export function MiniSldCard({ surface }: { surface: WorkspaceSurfaceDescriptor }
   return (
     <div
       data-testid="workspace-mini-sld"
-      className="rounded-xl border border-slate-200 bg-slate-950 px-4 py-3 text-slate-100 shadow-sm"
+      className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-900 shadow-sm"
     >
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Podgląd schematu</div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Podgląd schematu</div>
       <div className="mt-2 text-sm font-medium">
         Kontekst układu jest zsynchronizowany z głównym schematem.
       </div>
-      <div className="mt-1 text-xs text-slate-300">
+      <div className="mt-1 text-xs text-slate-600">
         Powiązany obiekt: {objectLabel}.
       </div>
     </div>

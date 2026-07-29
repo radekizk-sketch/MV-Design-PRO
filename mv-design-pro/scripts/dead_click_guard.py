@@ -225,7 +225,17 @@ def check_sld_v2_menu_path() -> list[str]:
     if missing:
         errors.append(f"SldContextMenuController missing token(s): {', '.join(missing)}")
 
-    workspace_content = read(SLD_V2_DIR / "canvas" / "SldWorkspaceContainer.tsx")
+    # F12-A (ARCH-3, spec SLD_CAD_SPEC_V3 par. 10.1): wykonawca akcji i jego
+    # tabele routingu (ACTION_TO_SCREEN / opByAction / ROADMAP / DELETE-labels)
+    # zostaly wyciagniete z SldWorkspaceContainer.tsx do WSPOLDZIELONEGO
+    # ui/sld/shared/sldActionExecutor.ts (jedna prawda dla v2 i v3). Guard
+    # czyta tabele Z NOWEGO zrodla i dodatkowo wymaga, by OBA workspace'y
+    # (v2 kontener + v3 SldCanvasV3Workspace) byly SPIETE z wykonawca
+    # (useSldActionExecutor) — wzmocnienie: przed F12-A guard pilnowal
+    # wylacznie v2.
+    executor_content = read(
+        FRONTEND_SRC / "ui" / "sld" / "shared" / "sldActionExecutor.ts"
+    )
     for token in [
         "buildSldOperationContext",
         "ACTION_TO_SCREEN",
@@ -233,14 +243,33 @@ def check_sld_v2_menu_path() -> list[str]:
         "openOperationForm",
         "openRouteSurface",
     ]:
-        if token not in workspace_content:
-            errors.append(f"SldWorkspaceContainer missing token: {token}")
+        if token not in executor_content:
+            errors.append(f"sldActionExecutor missing token: {token}")
 
-    op_ids = extract_string_set(workspace_content, "const opByAction")
-    screen_ids = extract_string_set(workspace_content, "const ACTION_TO_SCREEN")
-    hint_ids = extract_string_set(workspace_content, "const ACTION_ROADMAP_HINT_PL")
-    delete_ids = extract_string_set(workspace_content, "const DELETE_ACTION_OBJECT_LABEL_PL")
-    special_ids = {"add-source"}
+    # F12-C: kontener v2 USUNIETY (spec par. 10.1 ARCH-4) — jedyny workspace
+    # to SldCanvasV3Workspace; wymog spiecia z wykonawca zostaje.
+    for workspace_rel, workspace_path in [
+        (
+            "SldCanvasV3Workspace (v3)",
+            FRONTEND_SRC / "ui" / "sld" / "v3" / "canvas" / "SldCanvasV3Workspace.tsx",
+        ),
+    ]:
+        if "useSldActionExecutor" not in read(workspace_path):
+            errors.append(
+                f"{workspace_rel} nie jest spiety z wykonawca akcji (useSldActionExecutor)"
+            )
+
+    op_ids = extract_string_set(executor_content, "const opByAction")
+    screen_ids = extract_string_set(executor_content, "const ACTION_TO_SCREEN")
+    hint_ids = extract_string_set(executor_content, "const ACTION_ROADMAP_HINT_PL")
+    delete_ids = extract_string_set(executor_content, "const DELETE_ACTION_OBJECT_LABEL_PL")
+    # Dedykowane galezie wykonawcy poza tabelami routingu:
+    #  - 'add-source': skrot do E-13 karty DER (Faza G),
+    #  - 'show-ncrfg': deep-link do macierzy wymogow NC RfG ui2 (zakladka
+    #    'ncrfg' warsztatu Wynikow, karta P-1 — luka F-E7 zamknieta).
+    #  - 'show-results': deep-link do zakladki 'rozplyw' warsztatu Wynikow ui2
+    #    (karta D-2, decyzja wlasciciela — koniec celowania w legacy E-24).
+    special_ids = {"add-source", "show-ncrfg", "show-results"}
     covered = op_ids | screen_ids | hint_ids | delete_ids | special_ids
 
     # SLD actions that are rendered but have neither navigation, operation, hint,

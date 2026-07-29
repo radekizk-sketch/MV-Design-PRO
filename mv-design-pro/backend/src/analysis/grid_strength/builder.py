@@ -113,6 +113,7 @@ class GridStrengthBuilder:
                 why_pl=why,
                 missing_data=tuple(missing),
                 white_box=(),
+                modules=item.modules,
             )
 
         s_sc = float(item.s_sc_mva)  # type: ignore[arg-type]
@@ -167,6 +168,7 @@ class GridStrengthBuilder:
             why_pl=why,
             missing_data=(),
             white_box=white_box,
+            modules=item.modules,
         )
 
     def _build_wscr(

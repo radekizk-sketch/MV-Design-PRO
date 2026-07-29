@@ -24,14 +24,14 @@ slope_pu_per_pu representation as the Q(U) proof pack (single source of truth).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 import numpy as np
 
 _TOL = 1e-9
 
 
-class InverterMode(str, Enum):
+class InverterMode(StrEnum):
     Q_CONST = "Q_CONST"
     COSPHI_CONST = "COSPHI_CONST"
     COSPHI_P = "COSPHI_P"
@@ -263,6 +263,17 @@ def inverter_control_from_params(
         "COSPHI_P": InverterMode.COSPHI_P,
         "Q(U)": InverterMode.Q_U,
         "Q_U": InverterMode.Q_U,
+        # V12K-051 (G-OZE-PF): most języka — kanoniczny enum domeny/katalogu jest
+        # POLSKI (network_model/core/generator.ControlMode). Bez tego mapowania
+        # STALY_COS_PHI/Q_OD_U wpadały w default Q_CONST (pasywne) → wybór trybu
+        # regulacji OZE nie wpływał na rozpływ mocy (forward-phantom).
+        "STALY_COS_PHI": InverterMode.COSPHI_CONST,
+        "Q_OD_U": InverterMode.Q_U,
+        # P_OD_U = P(U): redukcja mocy czynnej przy przepięciu. W ustalonym punkcie
+        # pracy (V≈1 pu) krzywa nieaktywna → w steady-state PF traktowane jak pasywne
+        # (brak wpływu na Q). Pełny model P(U)-curtailment = osobna faza.
+        "P_OD_U": InverterMode.Q_CONST,
+        "WYLACZONE": InverterMode.Q_CONST,
     }
     mode = mode_map.get(mode_raw, InverterMode.Q_CONST)
 
@@ -294,6 +305,23 @@ def inverter_control_from_params(
         f0_hz=float(params.get("f0_hz", 50.0)),
     )
     if control.is_passive():
+        return None
+    # V12K-051 (G-OZE-PF): tryb nazwany, ale bez MATERIALNEGO efektu = pasywny → None.
+    # Konieczne przy moście języka: STALY_COS_PHI@unity / Q_OD_U bez nachylenia dają
+    # zerowe Q; zwrócenie None (zamiast control wymuszającego Q=0) zachowuje wynik
+    # PF bajt-w-bajt jak przed dodaniem aliasów (determinizm dla źródeł domyślnych).
+    _cosphi_zero = (
+        control.mode in (InverterMode.COSPHI_CONST, InverterMode.COSPHI_P)
+        and abs(control.q_over_p) < 1e-12
+        and not control.cosphi_p_points
+    )
+    _qu_zero = (
+        control.mode is InverterMode.Q_U
+        and abs(control.qu_slope_pu_per_pu) < 1e-12
+        and abs(control.qu_q_min_pu) < 1e-12
+        and abs(control.qu_q_max_pu) < 1e-12
+    )
+    if (_cosphi_zero or _qu_zero) and not control.has_frequency_dependence():
         return None
     validate_inverter_control(control)
     return control

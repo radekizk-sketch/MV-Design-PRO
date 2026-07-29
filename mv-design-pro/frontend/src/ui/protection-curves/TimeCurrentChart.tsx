@@ -403,7 +403,7 @@ export function TimeCurrentChart({
 
           {/* Fault current markers (vertical lines) */}
           {config.showFaultMarkers &&
-            faultMarkers.map((marker) => (
+            faultMarkers.map((marker, idx) => (
               <ReferenceLine
                 key={marker.id}
                 x={marker.current_a}
@@ -415,6 +415,13 @@ export function TimeCurrentChart({
                   position: 'top',
                   fill: '#dc2626',
                   fontSize: 10,
+                  // V12K-262: etykiety schodkowane po INDEKSIE markera. Wszystkie
+                  // stały na tej samej wysokości, więc dwa prądy zwarciowe w obrębie
+                  // jednej dekady osi log (typowo Ik″ 3-fazowy i 1-fazowy tego samego
+                  // punktu) nadpisywały się i żadnej nie dało się odczytać.
+                  // Przesunięcie zależy tylko od kolejności — render pozostaje
+                  // deterministyczny.
+                  dy: idx * 13,
                 }}
               />
             ))}

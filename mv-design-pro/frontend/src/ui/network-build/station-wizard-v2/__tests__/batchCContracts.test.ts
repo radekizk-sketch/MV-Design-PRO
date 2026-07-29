@@ -381,7 +381,7 @@ describe('Integration — Kreator KOMPLETNY 100% coverage', () => {
       'protection',    // krok 13 — protectionContract
       'ncrfg',         // krok 14 — ncRfgContract
       'infra',         // krok 15 — scadaInfrastructureContract
-      'network',       // krok 16 — shortCircuitNetworkContract
+      'network',       // krok 16 — analiza sieciowa (Ik3: solver backendu /api/solver/grid-source-preview)
       'readiness',     // krok 17 — readinessMatrixContract (ten plik)
     ];
     expect(stepsCovered).toHaveLength(17);

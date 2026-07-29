@@ -6,6 +6,7 @@ Sprawdza:
   3. _scan_file zwraca poprawne V1Reference.
   4. Real-repo smoke: brak V1 references na aktualnym repo.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -49,7 +50,7 @@ def test_v1_pattern_skips_v2_imports() -> None:
     lines = [
         "import { x } from '../../sld/v2/canvas/SldCanvasV2';",
         "import { y } from '../../sld/v2/renderer/GpzRenderer';",
-        "import { z } from '../../sld/v2/builder/CorridorLayout';",
+        "import { z } from '../../sld/v2/builder/BuildSequence';",
     ]
     for line in lines:
         matched = any(p.search(line) for p in V1_PATH_PATTERNS)

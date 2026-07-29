@@ -8,7 +8,9 @@ from api.analysis_run_exports import (
     build_analysis_run_export_payload,
     build_analysis_run_report_payload,
     build_analysis_run_trace_export_payload,
+    export_run_report_docx_response,
     export_run_report_json_response,
+    export_run_report_pdf_response,
     normalize_report_options,
 )
 from api.v125_contracts import build_export_artifact
@@ -116,6 +118,17 @@ def _build_sc_run() -> CanonicalRun:
                     "ikss_a": 4500.0,
                     "ip_a": 9200.0,
                     "ith_a": 4700.0,
+                    "ib_a": 4100.0,
+                    "ik_total_a": 4500.0,
+                    "ik_thevenin_a": 4400.0,
+                    "ik_inverters_a": 100.0,
+                    "zkk_ohm": {"re": 0.5, "im": 1.5},
+                    "rx_ratio": 0.3333333333,
+                    "kappa": 1.4,
+                    "c_factor": 1.1,
+                    "un_v": 15000.0,
+                    "tk_s": 1.0,
+                    "tb_s": 0.1,
                     "sk_mva": 125.0,
                     "short_circuit_type": "1F",
                     "analysis_type": "short_circuit_1f",
@@ -225,6 +238,62 @@ def test_build_analysis_run_report_payload_supports_short_circuit_runs() -> None
     assert payload["results"]["short_circuit"]["rows"][0]["proof_ref"].startswith(
         "proof:short-circuit:"
     )
+
+
+def test_report_payload_short_circuit_rows_carry_full_iec60909_balance() -> None:
+    """ZWARCIA-PRO F5: raport JSON niesie pelny bilans IEC 60909 z wierszy kanonicznych."""
+    payload = build_analysis_run_report_payload(
+        _build_sc_run(),
+        report_options={"sections": ["summary", "results"]},
+    )
+
+    row = payload["results"]["short_circuit"]["rows"][0]
+    assert row["rk_ohm"] == 0.5
+    assert row["xk_ohm"] == 1.5
+    assert abs(row["zk_ohm"] - 1.5811388300841898) < 1e-12
+    assert abs(row["xr_ratio"] - 3.0) < 1e-6
+    assert row["kappa"] == 1.4
+    assert row["c_factor"] == 1.1
+    assert row["un_kv"] == 15.0
+    assert row["tk_s"] == 1.0
+    assert row["tb_s"] == 0.1
+    assert row["ib_ka"] == 4.1
+    assert row["ik_ka"] == 4.5
+    assert abs(row["i2t_ka2s"] - 22.09) < 1e-9
+
+
+def test_export_run_report_docx_includes_full_iec60909_balance() -> None:
+    """ZWARCIA-PRO F5: tabela zwarciowa w DOCX zawiera pelny bilans IEC 60909 (1:1 z UI)."""
+    import io as _io
+
+    from docx import Document as _Document
+
+    response = export_run_report_docx_response(
+        _build_sc_run(),
+        filename_stem="analysis_report",
+        report_options={"sections": ["summary", "results"]},
+    )
+
+    document = _Document(_io.BytesIO(response.body))
+    text = "\n".join(paragraph.text for paragraph in document.paragraphs)
+    assert "Ik''=4.5 kA | ip=9.2 kA | Ith=4.7 kA | Ib=4.1 kA | Ik=4.5 kA | Sk''=125 MVA" in text
+    assert (
+        "Bilans IEC 60909: Rk=0.5 Ohm | Xk=1.5 Ohm | |Zk|=1.58114 Ohm | X/R=3 | kappa=1.4" in text
+    )
+    assert "c=1.1 | Un=15 kV | tk=1 s | tb=0.1 s | I2t=22.09 kA2s" in text
+
+
+def test_export_run_report_pdf_generates_for_short_circuit_run() -> None:
+    """ZWARCIA-PRO F5: raport PDF z pelnym bilansem generuje sie deterministycznie."""
+    response = export_run_report_pdf_response(
+        _build_sc_run(),
+        filename_stem="analysis_report",
+        report_options={"sections": ["summary", "results", "trace"]},
+    )
+
+    assert response.media_type == "application/pdf"
+    assert bytes(response.body).startswith(b"%PDF")
+    assert len(response.body) > 1000
 
 
 def _build_phase_state_run() -> CanonicalRun:

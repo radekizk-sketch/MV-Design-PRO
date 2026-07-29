@@ -17,14 +17,14 @@ INVARIANTS:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from network_model.core.snapshot import NetworkSnapshot
 
 
-class DeltaOverlayToken(str, Enum):
+class DeltaOverlayToken(StrEnum):
     """
     Semantic color tokens for UI rendering of delta overlays.
 

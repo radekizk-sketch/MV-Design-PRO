@@ -1,3 +1,5 @@
+import type { CtClass } from './protection-catalogs';
+
 /**
  * StationDer types — jednolity model danych łączący Stację SN/nN (E-13)
  * z konfiguratorami DER (PV E-21, BESS E-22, FW E-23).
@@ -39,8 +41,6 @@ export interface DerCatalogSelections {
   readonly controller_catalog_ref: string | null;
   /** Bateria BESS (tylko BESS). */
   readonly battery_catalog_ref: string | null;
-  /** Transformator dedykowany jeśli connection_side='dedicated_transformer'. */
-  readonly transformer_catalog_ref: string | null;
   /** Kabel/linia wewnętrzna od PCC do urządzenia. */
   readonly cable_catalog_ref: string | null;
   /** Pole SN jeśli connection_side='SN'. */
@@ -62,7 +62,13 @@ export interface DerCatalogSelections {
    */
   readonly dynamic_model_ref: string | null;
   /**
-   * Pakiet H: catalog_ref do transformatora dedykowanego gdy connection_side='dedicated_transformer'.
+   * Transformator dedykowany (blokowy) z katalogu, gdy connection_side='dedicated_transformer'.
+   *
+   * V12K-244: to JEDYNE pole opisujące ten transformator. Kontrakt miał wcześniej DRUGIE
+   * pole o tym samym znaczeniu (`transformer_catalog_ref`), którego NIE ZAPISYWAŁA żadna
+   * ścieżka produkcyjna — a właśnie je czytała reguła gotowości. Skutek: oś „Dowód
+   * aparatury" dla wytwórcy z transformatorem dedykowanym była TRWALE „częściowo"
+   * z powodem „brak transformatora dedykowanego", mimo że projektant go wybrał.
    */
   readonly block_transformer_catalog_ref: string | null;
 }
@@ -72,7 +78,6 @@ export const EMPTY_DER_CATALOGS: DerCatalogSelections = Object.freeze({
   ptpiree_certificate_ref: null,
   controller_catalog_ref: null,
   battery_catalog_ref: null,
-  transformer_catalog_ref: null,
   cable_catalog_ref: null,
   bay_catalog_ref: null,
   protection_catalog_ref: null,
@@ -171,7 +176,17 @@ export interface StationDerConnection {
   /** Konfiguracja przyłączenia. */
   readonly connection_side: ConnectionSide;
   /** Punkt wspólnego przyłączenia (PCC). Format: `{stationId}__{busbarId}__{nominal_kv}`. */
-  readonly pcc_ref: string | null;
+  readonly bus_przylaczenia_ref: string | null;
+  /**
+   * V12K-232: klasa dokladnosci i zastosowanie przypisanego przekladnika PRADOWEGO,
+   * rozwiazane z PRAWDZIWEGO katalogu (`/api/catalog/ct-types`). Regula normowa
+   * IEC 61869-2 (klasa 5P/10P dla zabezpieczen) oraz warunek 87T (rdzen podwojny)
+   * czytaja te DANE, a nie szukaja identyfikatora w rownoleglym katalogu frontu —
+   * tamten ma zerowe pokrycie ID z backendem, wiec dla realnego przekladnika regula
+   * nigdy nie mogla byc spelniona.
+   */
+  readonly ct_accuracy_class?: CtClass | null;
+  readonly ct_application?: 'protection' | 'metering' | 'dual' | null;
   /** Pole SN — jeśli `connection_side='SN'`. */
   readonly bay_ref: string | null;
   /** Transformator dedykowany — jeśli `connection_side='dedicated_transformer'`. */
@@ -195,8 +210,25 @@ export interface StationDerConnection {
   /** Profile zgodności i regulacji — z katalogów profili. */
   readonly profiles: DerProfileSelections;
 
-  /** Moc znamionowa AC w kW (deterministyczna projekcja z catalogs.device_catalog_ref). */
+  /**
+   * Moc znamionowa AC CAŁEJ pozycji w kW — tyle wnosi ten rekord do modelu.
+   *
+   * E21-1: operacja kanoniczna zapisuje do modelu `p_mw` = moc katalogowa jednostki
+   * × liczba sztuk, więc dla grupy falowników jest to moc GRUPY, nie jednostki.
+   * Rozbicie na jednostkę i liczbę sztuk daje `identyfikacjaMocy` — ekran ma pokazać
+   * oba poziomy, bo od nich zależą prądy robocze, dobór transformatora, CT i kategoria
+   * NC RfG.
+   */
   readonly nominal_power_kw: number | null;
+
+  /**
+   * Liczba jednostek wytwórczych w tej pozycji (`quantity` w modelu).
+   *
+   * `null` znaczy „model nie niesie tej danej" i MUSI zostać brakiem — podstawienie
+   * jednej sztuki zamieniałoby brak danej w wartość i fałszowało moc jednostkową
+   * (audyt E-21 pkt P2: sprzeczność 1 MW / 8 MW nie była nawet wykrywalna).
+   */
+  readonly unit_count: number | null;
 
   /** Status kompletności + macierz gotowości. */
   readonly completeness: DerCompleteness;
@@ -222,9 +254,9 @@ export interface StationDerConnection {
  */
 export function computeDerCompleteness(der: Pick<
   StationDerConnection,
-  'connection_side' | 'pcc_ref' | 'catalogs' | 'profiles' | 'voltage_level_ref'
+  'connection_side' | 'bus_przylaczenia_ref' | 'catalogs' | 'profiles' | 'voltage_level_ref'
 >): DerCompleteness {
-  if (!der.pcc_ref) return 'no_pcc';
+  if (!der.bus_przylaczenia_ref) return 'no_pcc';
   if (!der.catalogs.device_catalog_ref) return 'missing_catalog';
   if (!der.profiles.nc_rfg_profile_ref) return 'missing_profile';
   if (der.connection_side === 'nN' && !der.voltage_level_ref) return 'missing_catalog';

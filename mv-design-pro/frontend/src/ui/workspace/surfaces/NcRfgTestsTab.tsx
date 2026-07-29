@@ -113,10 +113,10 @@ const VERDICT_LABELS: Record<NcRfgVerdict, string> = {
 };
 
 const VERDICT_CLASS: Record<NcRfgVerdict, string> = {
-  pass: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-200',
-  fail: 'border-rose-400/50 bg-rose-500/10 text-rose-200',
-  no_data: 'border-amber-400/50 bg-amber-500/10 text-amber-100',
-  not_required: 'border-slate-600 bg-slate-800 text-slate-300',
+  pass: 'border-emerald-400/50 bg-emerald-500/10 text-emerald-700',
+  fail: 'border-rose-400/50 bg-rose-500/10 text-rose-700',
+  no_data: 'border-amber-400/50 bg-amber-500/10 text-amber-700',
+  not_required: 'border-slate-200 bg-slate-100 text-slate-600',
 };
 
 function parseOptionalNumber(value: string): number | null {
@@ -195,7 +195,7 @@ function CapabilityToggle({
   readonly onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="flex items-center gap-2 rounded border border-slate-700 bg-slate-950 px-3 py-2 text-xs text-slate-200">
+    <label className="flex items-center gap-2 rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
       <input
         type="checkbox"
         checked={checked}
@@ -217,12 +217,12 @@ function NumberInput({
   readonly onChange: (value: string) => void;
 }) {
   return (
-    <label className="block text-xs text-slate-300">
+    <label className="block text-xs text-slate-600">
       <span className="mb-1 block text-[11px] uppercase tracking-wide text-slate-500">{label}</span>
       <input
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-cyan-400"
+        className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900 outline-none focus:border-cyan-400"
       />
     </label>
   );
@@ -240,24 +240,24 @@ function AuditMatrix() {
   return (
     <section
       data-testid="ncrfg-audit-matrix"
-      className="rounded border border-slate-700 bg-slate-950 p-4"
+      className="rounded border border-slate-200 bg-white p-4"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-wide text-cyan-300">
+          <div className="text-xs font-semibold uppercase tracking-wide text-cyan-700">
             Matryca audytu specjalistycznego
           </div>
           <h4 className="mt-1 text-sm font-semibold">Kontrola każdego kroku flow</h4>
         </div>
-        <div className="rounded border border-slate-700 bg-slate-900 px-2 py-1 text-[11px] text-slate-300">
+        <div className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-600">
           6 ról / zero ukrytych wyjątków
         </div>
       </div>
       <div className="mt-3 grid gap-2 lg:grid-cols-2 xl:grid-cols-3">
         {AUDIT_ROLES.map((entry) => (
-          <div key={entry.role} className="rounded border border-slate-800 bg-slate-900 p-3">
-            <div className="text-xs font-semibold text-slate-100">{entry.role}</div>
-            <div className="mt-1 text-[11px] leading-5 text-slate-400">{entry.check}</div>
+          <div key={entry.role} className="rounded border border-slate-200 bg-slate-50 p-3">
+            <div className="text-xs font-semibold text-slate-900">{entry.role}</div>
+            <div className="mt-1 text-[11px] leading-5 text-slate-500">{entry.check}</div>
           </div>
         ))}
       </div>
@@ -269,17 +269,17 @@ function MissingDerState() {
   return (
     <section
       data-testid="ncrfg-empty-state"
-      className="rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-100"
+      className="rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-amber-700"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="max-w-3xl">
-          <div className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+          <div className="text-xs font-semibold uppercase tracking-wide text-amber-700">
             Brak układów DER do testów
           </div>
-          <h4 className="mt-1 text-base font-semibold text-amber-50">
+          <h4 className="mt-1 text-base font-semibold text-amber-800">
             Najpierw dodaj źródło z katalogu i przypisz profil NC RfG
           </h4>
-          <p className="mt-2 text-xs leading-5 text-amber-100/90">
+          <p className="mt-2 text-xs leading-5 text-amber-700">
             Pakiet PTPiREE jest zablokowany bez katalogowej mocy, falownika, PCC i profilu operatora.
             To nie jest błąd solvera, tylko brak danych wejściowych wymaganych do audytu zgodności.
           </p>
@@ -297,15 +297,15 @@ function MissingDerState() {
             type="button"
             data-testid="ncrfg-open-catalog"
             onClick={() => navigateToCatalog()}
-            className="rounded border border-amber-300/60 px-3 py-2 text-xs font-semibold text-amber-50 hover:bg-amber-300/10"
+            className="rounded border border-amber-300/60 px-3 py-2 text-xs font-semibold text-amber-700 hover:bg-amber-300/10"
           >
             Otwórz katalog falowników
           </button>
         </div>
       </div>
-      <div className="mt-4 overflow-x-auto rounded border border-amber-300/20 bg-slate-950/70">
+      <div className="mt-4 overflow-x-auto rounded border border-amber-300/20 bg-white">
         <table data-testid="ncrfg-blocker-table" className="min-w-full border-collapse text-left text-xs">
-          <thead className="bg-slate-900 text-[11px] uppercase tracking-wide text-amber-200">
+          <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-amber-700">
             <tr>
               <th className="border-b border-amber-300/20 px-3 py-2">Obszar</th>
               <th className="border-b border-amber-300/20 px-3 py-2">Status braków</th>
@@ -315,9 +315,9 @@ function MissingDerState() {
           <tbody>
             {EMPTY_BLOCKER_ROWS.map((row) => (
               <tr key={row.area} className="border-t border-amber-300/10">
-                <td className="px-3 py-2 font-semibold text-amber-50">{row.area}</td>
-                <td className="px-3 py-2 text-amber-100">{row.missing}</td>
-                <td className="px-3 py-2 text-amber-50">{row.action}</td>
+                <td className="px-3 py-2 font-semibold text-amber-800">{row.area}</td>
+                <td className="px-3 py-2 text-amber-700">{row.missing}</td>
+                <td className="px-3 py-2 text-amber-800">{row.action}</td>
               </tr>
             ))}
           </tbody>
@@ -325,11 +325,11 @@ function MissingDerState() {
       </div>
       <ol data-testid="ncrfg-flow-checklist" className="mt-4 grid gap-2 lg:grid-cols-5">
         {FLOW_STEPS.map((step, index) => (
-          <li key={step} className="rounded border border-amber-300/20 bg-slate-950/60 p-3">
-            <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-300">
+          <li key={step} className="rounded border border-amber-300/20 bg-white p-3">
+            <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
               Krok {index + 1}
             </div>
-            <div className="mt-1 text-xs leading-5 text-amber-50">{step}</div>
+            <div className="mt-1 text-xs leading-5 text-amber-800">{step}</div>
           </li>
         ))}
       </ol>
@@ -455,13 +455,13 @@ export function NcRfgTestsTab(): JSX.Element {
   const moduleResult = result?.modules[0] ?? null;
 
   return (
-    <div data-testid="ncrfg-tests-tab" className="space-y-4 text-slate-100">
-      <section className="rounded border border-slate-700 bg-slate-950 p-4">
+    <div data-testid="ncrfg-tests-tab" className="space-y-4 text-slate-900">
+      <section className="rounded border border-slate-200 bg-white p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-wide text-cyan-300">Testy NC RfG</div>
+            <div className="text-xs font-semibold uppercase tracking-wide text-cyan-700">Testy NC RfG</div>
             <h3 className="mt-1 text-base font-semibold">Pakiet symulacji zgodności PTPiREE</h3>
-            <p className="mt-1 max-w-3xl text-xs text-slate-300">
+            <p className="mt-1 max-w-3xl text-xs text-slate-600">
               Zakładka wykonuje pełny pakiet testów wymaganych procedurą PTPiREE v3.0 dla modułu PV/BESS/FW:
               częstotliwość, regulacje P/Q/cosφ/U, PMAX/PMIN, FRT/HVRT, odbudowę P, prąd bierny,
               komendy redukcji generacji i zdolności dodatkowe.
@@ -474,7 +474,7 @@ export function NcRfgTestsTab(): JSX.Element {
             disabled={Boolean(runDisabledReason)}
             title={runDisabledReason ?? 'Wykonaj pakiet testów zgodności NC RfG/PTPiREE dla wybranego DER.'}
             aria-label={runDisabledReason ?? 'Wykonaj testy NC RfG'}
-            className="rounded border border-cyan-400 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded border border-cyan-400 bg-cyan-500/15 px-3 py-2 text-xs font-semibold text-cyan-700 hover:bg-cyan-500/25 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {status === 'running' ? 'Trwają testy...' : 'Wykonaj testy NC RfG'}
           </button>
@@ -482,13 +482,13 @@ export function NcRfgTestsTab(): JSX.Element {
         {runDisabledReason ? (
           <div
             data-testid="ncrfg-run-disabled-reason"
-            className="mt-3 rounded border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-100"
+            className="mt-3 rounded border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700"
           >
             {runDisabledReason}
           </div>
         ) : null}
         {catalogError ? (
-          <div className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-100">
+          <div className="mt-3 rounded border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700">
             Katalog testów nie został pobrany: {catalogError}
           </div>
         ) : null}
@@ -500,15 +500,15 @@ export function NcRfgTestsTab(): JSX.Element {
         <MissingDerState />
       ) : (
         <section className="grid gap-4 xl:grid-cols-[420px_1fr]">
-          <div className="rounded border border-slate-700 bg-slate-950 p-4">
+          <div className="rounded border border-slate-200 bg-white p-4">
             <h4 className="text-sm font-semibold">Wejście testu</h4>
             <div className="mt-3 space-y-3">
-              <label className="block text-xs text-slate-300">
+              <label className="block text-xs text-slate-600">
                 <span className="mb-1 block text-[11px] uppercase tracking-wide text-slate-500">Układ DER</span>
                 <select
                   value={selectedDer?.id ?? ''}
                   onChange={(event) => setSelectedDerId(event.target.value)}
-                  className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-100"
+                  className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900"
                 >
                   {ders.map((der) => (
                     <option key={der.id} value={der.id}>
@@ -518,12 +518,12 @@ export function NcRfgTestsTab(): JSX.Element {
                 </select>
               </label>
               <div className="grid gap-3 md:grid-cols-2">
-                <label className="block text-xs text-slate-300">
+                <label className="block text-xs text-slate-600">
                   <span className="mb-1 block text-[11px] uppercase tracking-wide text-slate-500">Operator</span>
                   <select
                     value={operatorId}
                     onChange={(event) => setOperatorId(event.target.value)}
-                    className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-100"
+                    className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900"
                   >
                     {(catalog?.operators ?? [{ operator_id: 'enea', operator_name_pl: 'Enea Operator' }]).map((operator) => (
                       <option key={operator.operator_id} value={operator.operator_id}>
@@ -532,12 +532,12 @@ export function NcRfgTestsTab(): JSX.Element {
                     ))}
                   </select>
                 </label>
-                <label className="block text-xs text-slate-300">
+                <label className="block text-xs text-slate-600">
                   <span className="mb-1 block text-[11px] uppercase tracking-wide text-slate-500">Certyfikat</span>
                   <select
                     value={certificateStatus}
                     onChange={(event) => setCertificateStatus(event.target.value as NcRfgCertificateStatus)}
-                    className="w-full rounded border border-slate-700 bg-slate-950 px-2 py-1.5 text-xs text-slate-100"
+                    className="w-full rounded border border-slate-200 bg-white px-2 py-1.5 text-xs text-slate-900"
                   >
                     <option value="ptpiree_verified">PTPiREE zweryfikowany</option>
                     <option value="none">Brak certyfikatu</option>
@@ -570,7 +570,7 @@ export function NcRfgTestsTab(): JSX.Element {
             </div>
           </div>
 
-          <div className="rounded border border-slate-700 bg-slate-950 p-4">
+          <div className="rounded border border-slate-200 bg-white p-4">
             <h4 className="text-sm font-semibold">Zdolności techniczne</h4>
             <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
               {[
@@ -610,42 +610,42 @@ export function NcRfgTestsTab(): JSX.Element {
       ) : null}
 
       {moduleResult ? (
-        <section className="rounded border border-slate-700 bg-slate-950 p-4" data-testid="ncrfg-result">
+        <section className="rounded border border-slate-200 bg-white p-4" data-testid="ncrfg-result">
           <div className="grid gap-3 md:grid-cols-5">
             <div>
               <div className="text-[11px] uppercase text-slate-500">Status</div>
-              <div className="text-sm font-semibold text-slate-100">{moduleResult.overall_status}</div>
+              <div className="text-sm font-semibold text-slate-900">{moduleResult.overall_status}</div>
             </div>
             <div>
               <div className="text-[11px] uppercase text-slate-500">Typ PGM</div>
-              <div className="text-sm font-semibold text-slate-100">{moduleResult.module_type}</div>
+              <div className="text-sm font-semibold text-slate-900">{moduleResult.module_type}</div>
             </div>
             <div>
               <div className="text-[11px] uppercase text-slate-500">Wymagane</div>
-              <div className="text-sm font-semibold text-slate-100">{moduleResult.required_count}</div>
+              <div className="text-sm font-semibold text-slate-900">{moduleResult.required_count}</div>
             </div>
             <div>
               <div className="text-[11px] uppercase text-slate-500">PASS / FAIL</div>
-              <div className="text-sm font-semibold text-slate-100">{moduleResult.pass_count} / {moduleResult.fail_count}</div>
+              <div className="text-sm font-semibold text-slate-900">{moduleResult.pass_count} / {moduleResult.fail_count}</div>
             </div>
             <div>
               <div className="text-[11px] uppercase text-slate-500">Hash</div>
-              <div className="break-all text-[11px] text-slate-300">{result?.deterministic_hash}</div>
+              <div className="break-all text-[11px] text-slate-600">{result?.deterministic_hash}</div>
             </div>
           </div>
           <div className="mt-4 grid gap-2 xl:grid-cols-2">
             {moduleResult.tests.map((test) => (
-              <div key={test.test_id} className="rounded border border-slate-800 bg-slate-900 p-3">
+              <div key={test.test_id} className="rounded border border-slate-200 bg-slate-50 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="text-xs font-semibold text-slate-100">
+                  <div className="text-xs font-semibold text-slate-900">
                     {test.test_id} · {test.ability_pl}
                   </div>
                   <ResultBadge verdict={test.verdict} />
                 </div>
-                <div className="mt-1 text-[11px] text-slate-400">{test.required_reason_pl}</div>
-                <div className="mt-2 text-xs text-slate-300">{test.summary_pl}</div>
+                <div className="mt-1 text-[11px] text-slate-500">{test.required_reason_pl}</div>
+                <div className="mt-2 text-xs text-slate-600">{test.summary_pl}</div>
                 {test.fix_actions.length > 0 ? (
-                  <div className="mt-2 text-[11px] text-amber-100">
+                  <div className="mt-2 text-[11px] text-amber-700">
                     {test.fix_actions.join(' ')}
                   </div>
                 ) : null}
@@ -657,22 +657,22 @@ export function NcRfgTestsTab(): JSX.Element {
 
       {result ? (
         <section className="grid gap-4 xl:grid-cols-2">
-          <div className="rounded border border-slate-700 bg-slate-950 p-4">
+          <div className="rounded border border-slate-200 bg-white p-4">
             <h4 className="text-sm font-semibold">White Box</h4>
             <div className="mt-3 max-h-[360px] space-y-2 overflow-auto">
               {result.white_box_trace.slice(0, 20).map((step) => (
-                <div key={step.proof_ref} className="rounded border border-slate-800 bg-slate-900 p-2">
-                  <div className="text-xs font-semibold text-cyan-200">{step.test_id} · {step.key}</div>
-                  <div className="mt-1 text-[11px] text-slate-300">{step.formula}</div>
-                  <div className="mt-1 text-[11px] text-slate-400">{step.substitution}</div>
+                <div key={step.proof_ref} className="rounded border border-slate-200 bg-slate-50 p-2">
+                  <div className="text-xs font-semibold text-cyan-700">{step.test_id} · {step.key}</div>
+                  <div className="mt-1 text-[11px] text-slate-600">{step.formula}</div>
+                  <div className="mt-1 text-[11px] text-slate-500">{step.substitution}</div>
                   <div className="mt-1 text-[11px] text-slate-500">{step.unit_check}</div>
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded border border-slate-700 bg-slate-950 p-4">
+          <div className="rounded border border-slate-200 bg-white p-4">
             <h4 className="text-sm font-semibold">Raport PL</h4>
-            <pre className="mt-3 max-h-[360px] overflow-auto whitespace-pre-wrap rounded bg-slate-900 p-3 text-[11px] text-slate-200">
+            <pre className="mt-3 max-h-[360px] overflow-auto whitespace-pre-wrap rounded bg-slate-50 p-3 text-[11px] text-slate-700">
               {result.report_pl}
             </pre>
           </div>

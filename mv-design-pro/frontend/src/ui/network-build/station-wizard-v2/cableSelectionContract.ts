@@ -30,6 +30,12 @@
  *      Izw_p ≥ Ik2 (zwarcie 2-fazowe)
  */
 
+import {
+  fetchCableAmpacityDerating,
+  fetchCableRatedCurrent,
+  fetchCableVoltageDrop,
+} from '../forms/cableVoltageDropApi';
+
 /** Materiał żyły. */
 export type CableConductorMaterial = 'Cu' | 'Al' | 'AlAl';
 
@@ -40,34 +46,12 @@ export type CableInsulation = 'XLPE' | 'EPR' | 'PVC' | 'Paper';
 export type CableLayingType = 'ground' | 'air' | 'tray' | 'duct';
 
 /**
- * Współczynniki przelicznikowe dla doboru obciążalności.
- *
- * Wartości z Excel MT880 v3 + ENEA Standard "Dobór kabli SN" 2021-06-30.
+ * V12K-207 (karta F-K7): nazwa zestawu warunków ułożenia dla standardowego ułożenia
+ * 3 kabli w ziemi (odstęp 200 mm). WARTOŚCI współczynników są w backendzie
+ * (`cable_ampacity_derating`), bo są danymi doborowymi o udokumentowanej podstawie —
+ * kopia w warstwie prezentacji rozjeżdżała się z solverem doboru.
  */
-export interface CableDeratingFactors {
-  /**
-   * f1 — współczynnik gruntu (rezystywność termiczna / temperatura).
-   * Typowo 0.9 dla: ρ_grunt=1.5 K·m/W, obciążenie=0.7, T_grunt=20°C.
-   */
-  readonly f1_groundResistivity: number;
-  /**
-   * f2 — współczynnik liczby kabli w wiązce.
-   * Typowo 1.01 dla pojedynczego systemu w ziemi.
-   */
-  readonly f2_parallelCables: number;
-  /**
-   * kg5 — współczynnik dla 3 kabli ułożonych równolegle w 1 warstwie,
-   * odstęp 200 mm. Standardowo 0.82.
-   */
-  readonly kg5_parallelGroup: number;
-}
-
-/** Domyślne współczynniki dla standardowego ułożenia 3 kabli w ziemi. */
-export const DEFAULT_DERATING_GROUND_THREE_PHASE: CableDeratingFactors = {
-  f1_groundResistivity: 0.9,
-  f2_parallelCables: 1.01,
-  kg5_parallelGroup: 0.82,
-};
+export const LAYING_CONDITIONS_GROUND_THREE_CABLES = 'ziemia_3_kable_warstwa_200mm';
 
 /** Specyfikacja kabla SN z katalogu. */
 export interface CableCatalogEntry {
@@ -117,34 +101,54 @@ export const CABLE_REFERENCE_XRUHAKXS_120: CableCatalogEntry = {
 
 export interface AmpacityCheckInput {
   readonly cable: CableCatalogEntry;
-  readonly factors: CableDeratingFactors;
+  /**
+   * Nazwa zestawu warunków ułożenia z backendu (np.
+   * `LAYING_CONDITIONS_GROUND_THREE_CABLES`). Brak = warunki katalogowe.
+   */
+  readonly layingConditionsSet?: string;
   /** Prąd obliczeniowy długotrwały Iobl (A). */
   readonly designCurrentA: number;
 }
 
 export interface AmpacityCheckResult {
-  /** Idd × f1 × f2 × kg5 — efektywny prąd dopuszczalny. */
+  /** I′z = Idd × f_grunt × f_wiazka × f_grupa — z backendu, nie z UI. */
   readonly effectiveAmpacityA: number;
   readonly designCurrentA: number;
-  readonly factorsApplied: CableDeratingFactors;
+  /** Sumaryczny współczynnik korekcyjny przyjęty przez backend. */
+  readonly deratingTotal: number;
+  readonly deratingSet: string;
   readonly ok: boolean;
-  /** Procent wykorzystania (Iobl / I'dd × 100). */
+  /** Procent wykorzystania (Iobl / I′z × 100). */
   readonly utilizationPct: number;
+  /** Jawne założenie obciążalności (treść z backendu, do śladu w dokumentacji). */
+  readonly assumptionPl: string;
 }
 
-export function checkCableAmpacity(input: AmpacityCheckInput): AmpacityCheckResult {
-  const { cable, factors, designCurrentA } = input;
-  const effective =
-    cable.ratedAmpacityA *
-    factors.f1_groundResistivity *
-    factors.f2_parallelCables *
-    factors.kg5_parallelGroup;
+/**
+ * Kryterium obciążalności długotrwałej — liczone przez BACKEND (V12K-207, karta F-K7).
+ *
+ * Wcześniej ta funkcja mnożyła obciążalność katalogową przez współczynniki wprost w
+ * warstwie prezentacji. To jest kryterium doborowe (a nie formatowanie), więc łamało
+ * regułę braku fizyki w UI i miało własną kopię współczynników, niezależną od solvera
+ * doboru. Teraz rachunek jest jeden: `/api/solver/cable-ampacity-derating-preview`.
+ */
+export async function checkCableAmpacity(
+  input: AmpacityCheckInput,
+): Promise<AmpacityCheckResult> {
+  const { cable, layingConditionsSet, designCurrentA } = input;
+  const wynik = await fetchCableAmpacityDerating({
+    rated_ampacity_a: cable.ratedAmpacityA,
+    design_current_a: designCurrentA,
+    ...(layingConditionsSet ? { laying_conditions: { set_name: layingConditionsSet } } : {}),
+  });
   return {
-    effectiveAmpacityA: effective,
-    designCurrentA,
-    factorsApplied: factors,
-    ok: designCurrentA <= effective,
-    utilizationPct: (designCurrentA / effective) * 100,
+    effectiveAmpacityA: wynik.effective_ampacity_a,
+    designCurrentA: wynik.design_current_a,
+    deratingTotal: wynik.derating_total,
+    deratingSet: wynik.derating_set,
+    ok: wynik.ok,
+    utilizationPct: wynik.utilization_pct,
+    assumptionPl: wynik.assumption_pl,
   };
 }
 
@@ -171,19 +175,34 @@ export interface VoltageDropResult {
   readonly ok: boolean;
 }
 
-export function computeCableVoltageDrop(input: VoltageDropInput): VoltageDropResult {
+/**
+ * Spadek napięcia ΔU — dobór kabla.
+ *
+ * Fizyka (ΔU = √3·I·(R·cosφ + X·sinφ)) liczy się w backendzie (WHITE BOX);
+ * warstwa prezentacji tylko wysyła dane wejściowe i mapuje wynik. Werdykt `ok`
+ * to progowe porównanie ΔU% z limitem (interpretacja normatywna, nie fizyka).
+ */
+export async function computeCableVoltageDrop(
+  input: VoltageDropInput,
+  options: { signal?: AbortSignal } = {},
+): Promise<VoltageDropResult> {
   const { cable, lengthKm, currentA, cosPhi, lineVoltageV, limitPct } = input;
-  const sinPhi = Math.sqrt(1 - cosPhi * cosPhi);
-  const r = cable.resistanceOhmPerKm * lengthKm;
-  const x = cable.reactanceOhmPerKm * lengthKm;
-  // ΔU = √3 × I × (R·cosφ + X·sinφ) dla linii 3-fazowej.
-  const deltaU = Math.sqrt(3) * currentA * (r * cosPhi + x * sinPhi);
-  const pct = (deltaU / lineVoltageV) * 100;
+  const response = await fetchCableVoltageDrop(
+    {
+      current_a: currentA,
+      length_km: lengthKm,
+      r_ohm_per_km: cable.resistanceOhmPerKm,
+      x_ohm_per_km: cable.reactanceOhmPerKm,
+      cos_phi: cosPhi,
+      line_voltage_v: lineVoltageV,
+    },
+    options,
+  );
   return {
-    voltageDropV: deltaU,
-    voltageDropPct: pct,
+    voltageDropV: response.delta_u_v,
+    voltageDropPct: response.delta_u_pct,
     limitPct,
-    ok: pct <= limitPct,
+    ok: response.delta_u_pct <= limitPct,
   };
 }
 
@@ -231,8 +250,23 @@ export interface PowerCurrentInput {
   readonly lineVoltageV: number;
 }
 
-export function computeRatedCurrentFromPower(input: PowerCurrentInput): number {
-  // Sn = P / cosφ; I = Sn / (√3 × Un) dla układu 3-fazowego.
-  const apparentVa = (input.activePowerKw * 1000) / input.cosPhi;
-  return apparentVa / (Math.sqrt(3) * input.lineVoltageV);
+/**
+ * Prąd znamionowy z mocy przyłączeniowej.
+ *
+ * Fizyka (I = S_n/(√3·U); S_n = P/cosφ) liczy się w backendzie (WHITE BOX);
+ * warstwa prezentacji tylko wysyła dane wejściowe i odczytuje wynik.
+ */
+export async function computeRatedCurrentFromPower(
+  input: PowerCurrentInput,
+  options: { signal?: AbortSignal } = {},
+): Promise<number> {
+  const response = await fetchCableRatedCurrent(
+    {
+      active_power_kw: input.activePowerKw,
+      cos_phi: input.cosPhi,
+      line_voltage_v: input.lineVoltageV,
+    },
+    options,
+  );
+  return response.rated_current_a;
 }

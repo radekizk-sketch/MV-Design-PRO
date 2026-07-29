@@ -1,0 +1,433 @@
+/*
+ * Style okna „Macierz wymogów NC RfG per moduł" (karta P39). Kolory WYŁĄCZNIE
+ * przez tokeny --mvd-* (theme/tokens.css) — zero literałów hex. Liczby: font
+ * mono + tabular-nums (spójne z ui2/wyniki/wzorzec/wzorzec.css).
+ */
+
+.mvd-oze {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  color: var(--mvd-ink);
+  font-family: var(--mvd-font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px;
+}
+
+.mvd-oze :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+.mvd-oze-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- nagłówek ---- */
+.mvd-oze-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex-wrap: wrap;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  padding: 12px;
+}
+.mvd-oze-head-main {
+  flex: 1;
+  min-width: 240px;
+}
+.mvd-oze-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.mvd-oze-sub {
+  margin: 4px 0 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-oze-head-akcje {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+.mvd-oze-pola {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.mvd-oze-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-oze-pole select {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  color: var(--mvd-ink);
+  border-radius: 4px;
+  padding: 5px 8px;
+  font: inherit;
+}
+.mvd-oze-odcisk {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  word-break: break-all;
+}
+
+.mvd-btn {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.mvd-btn:hover:not(:disabled) {
+  border-color: var(--mvd-accent);
+}
+.mvd-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mvd-btn-glowny {
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  border-color: var(--mvd-accent);
+}
+
+/* ---- komunikaty ---- */
+.mvd-oze-info {
+  padding: 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-muted);
+}
+.mvd-oze-info h4 {
+  margin: 0 0 6px;
+  color: var(--mvd-ink);
+  font-size: 14px;
+}
+.mvd-oze-blad {
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-err);
+  border-radius: 6px;
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+  font-size: 12px;
+}
+
+/* ---- układ macierz + panel ---- */
+.mvd-oze-uklad {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .mvd-oze-uklad {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- macierz ---- */
+.mvd-oze-macierz-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  background: var(--mvd-panel);
+}
+.mvd-oze-macierz {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.mvd-oze-macierz th,
+.mvd-oze-macierz td {
+  border-bottom: 1px solid var(--mvd-line);
+  border-right: 1px solid var(--mvd-line);
+  padding: 6px 10px;
+  text-align: left;
+  vertical-align: top;
+}
+.mvd-oze-macierz thead th {
+  position: sticky;
+  top: 0;
+  background: var(--mvd-panel-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mvd-oze-col-test {
+  min-width: 220px;
+}
+.mvd-oze-modul-h {
+  min-width: 130px;
+}
+.mvd-oze-modul-nazwa {
+  font-weight: 600;
+}
+.mvd-oze-modul-meta {
+  margin-top: 2px;
+  font-weight: 400;
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-oze-macierz tbody tr:hover {
+  background: var(--mvd-sel);
+}
+.mvd-oze-test-nazwa {
+  font-weight: 600;
+}
+.mvd-oze-test-podstawa {
+  margin-top: 2px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+
+/* ---- komórki / werdykty ---- */
+.mvd-oze-komorka {
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  color: inherit;
+}
+.mvd-oze-komorka:hover {
+  outline: 1px solid var(--mvd-accent);
+}
+.mvd-oze-komorka[aria-pressed="true"] {
+  outline: 2px solid var(--mvd-accent);
+}
+.mvd-oze-komorka-pusta {
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+.mvd-oze-werdykt-ok {
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+.mvd-oze-werdykt-err {
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+}
+.mvd-oze-werdykt-warn {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+.mvd-oze-werdykt-neutralny {
+  background: var(--mvd-chip);
+  color: var(--mvd-muted);
+}
+
+/* ---- legenda ---- */
+.mvd-oze-legenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-oze-legenda-poz {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.mvd-oze-legenda-znak {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  display: inline-block;
+}
+
+/* ---- podsumowania ---- */
+.mvd-oze-podsum {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+.mvd-oze-podsum-poz {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-oze-podsum-etyk {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-oze-podsum-wart {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+/* ---- panel prawy (szczegół / moduł) ---- */
+.mvd-oze-panel {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  background: var(--mvd-panel);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-oze-panel h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-oze-panel-blok {
+  border: 1px solid var(--mvd-line);
+  border-radius: 5px;
+  padding: 8px;
+}
+.mvd-oze-panel-etyk {
+  font-size: 11px;
+  color: var(--mvd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mvd-oze-lista {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-oze-lista li {
+  font-size: 12px;
+}
+.mvd-oze-metryka {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 3px 0;
+}
+.mvd-oze-metryka:last-child {
+  border-bottom: none;
+}
+.mvd-oze-pochodzenie {
+  font-size: 10px;
+  color: var(--mvd-muted);
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+}
+.mvd-oze-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px;
+  font-size: 12px;
+}
+.mvd-oze-toggle input {
+  accent-color: var(--mvd-accent);
+}
+.mvd-oze-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+  margin-bottom: 6px;
+}
+.mvd-oze-field input {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  color: var(--mvd-ink);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font: inherit;
+}
+.mvd-oze-slad-btn {
+  align-self: flex-start;
+  border: 1px solid var(--mvd-accent);
+  background: none;
+  color: var(--mvd-accent);
+  border-radius: 4px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.mvd-oze-blokada {
+  border: 1px solid var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+  border-radius: 5px;
+  padding: 8px;
+  font-size: 12px;
+}
+
+/* ---- ślad WHITE BOX testu (inline, scalenie #5) ---- */
+.mvd-oze-slad-lista { list-style: decimal inside; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.mvd-oze-slad-krok { border: 1px solid var(--mvd-line); border-radius: 6px; padding: 8px 10px; background: var(--mvd-panel); }
+.mvd-oze-slad-pole { margin-top: 6px; }
+.mvd-oze-slad-pole:first-child { margin-top: 0; }
+.mvd-oze-slad-tresc { margin-top: 2px; }
+.mvd-oze-slad-tresc code { background: var(--mvd-panel-2); padding: 2px 6px; border-radius: 4px; }
+
+/* ---- certyfikat zgodności (podgląd + braki, karta P39c) ---- */
+.mvd-oze-cert {
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-panel);
+  box-shadow: var(--mvd-shadow);
+  padding: 12px 14px;
+  margin: 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-oze-cert-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.mvd-oze-cert-tytul { margin: 0; font-size: 14px; color: var(--mvd-ink); }
+.mvd-oze-cert-werdykt {
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.mvd-oze-cert-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+.mvd-oze-cert-meta div { display: flex; flex-direction: column; gap: 2px; }
+.mvd-oze-cert-meta dt { font-size: 11px; color: var(--mvd-muted); margin: 0; }
+.mvd-oze-cert-meta dd { margin: 0; color: var(--mvd-ink); font-size: 13px; }
+.mvd-oze-cert-braki {
+  border: 1px solid var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.mvd-oze-cert-braki h5 { margin: 0 0 6px; font-size: 13px; }
+.mvd-oze-cert-braki ul { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.mvd-oze-cert-widok { display: flex; flex-direction: column; gap: 10px; }

@@ -19,6 +19,7 @@ from api.canonical_run_views import (
     build_branch_results_response,
     build_bus_results_response,
     build_dynamic_stability_results_response,
+    build_dynamic_stability_time_series_response,
     build_extended_trace_response,
     build_phase_state_results_response,
     build_result_items,
@@ -29,6 +30,7 @@ from api.canonical_run_views import (
     build_source_compliance_results_response,
 )
 from api.dependencies import get_uow_factory
+from api.document_store import store_generated_document_from_response
 from application.analysis_run.read_model import build_trace_summary, canonicalize_json
 from enm.canonical_analysis import (
     CanonicalRun,
@@ -301,19 +303,33 @@ def _proof_latex_response(run: CanonicalRun) -> Response:
 
 
 @router.get("/analysis-runs/{run_id}/export/report/json")
-def export_analysis_run_report_json(run_id: UUID) -> Response:
+def export_analysis_run_report_json(
+    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+) -> Response:
     run = _require_canonical_run(run_id)
-    return export_run_report_json_response(
+    response = export_run_report_json_response(
         run,
         filename_stem=_analysis_run_filename_stem(run, "raport"),
     )
+    if zapisz_do_magazynu:
+        store_generated_document_from_response(
+            response,
+            project_ref=run.project_id,
+            doc_type="RAPORT",
+            doc_format="JSON",
+            source="analysis-run-report",
+            run_ref=str(run.id),
+        )
+    return response
 
 
 @router.get("/analysis-runs/{run_id}/export/report/docx")
-def export_analysis_run_report_docx(run_id: UUID) -> Response:
+def export_analysis_run_report_docx(
+    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+) -> Response:
     run = _require_canonical_run(run_id)
     try:
-        return export_run_report_docx_response(
+        response = export_run_report_docx_response(
             run,
             filename_stem=_analysis_run_filename_stem(run, "raport"),
         )
@@ -321,13 +337,25 @@ def export_analysis_run_report_docx(run_id: UUID) -> Response:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
+    if zapisz_do_magazynu:
+        store_generated_document_from_response(
+            response,
+            project_ref=run.project_id,
+            doc_type="RAPORT",
+            doc_format="DOCX",
+            source="analysis-run-report",
+            run_ref=str(run.id),
+        )
+    return response
 
 
 @router.get("/analysis-runs/{run_id}/export/report/pdf")
-def export_analysis_run_report_pdf(run_id: UUID) -> Response:
+def export_analysis_run_report_pdf(
+    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+) -> Response:
     run = _require_canonical_run(run_id)
     try:
-        return export_run_report_pdf_response(
+        response = export_run_report_pdf_response(
             run,
             filename_stem=_analysis_run_filename_stem(run, "raport"),
         )
@@ -335,13 +363,25 @@ def export_analysis_run_report_pdf(run_id: UUID) -> Response:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
+    if zapisz_do_magazynu:
+        store_generated_document_from_response(
+            response,
+            project_ref=run.project_id,
+            doc_type="RAPORT",
+            doc_format="PDF",
+            source="analysis-run-report",
+            run_ref=str(run.id),
+        )
+    return response
 
 
 @router.get("/analysis-runs/{run_id}/export/proof/json")
-def export_analysis_run_proof_json(run_id: UUID) -> Response:
+def export_analysis_run_proof_json(
+    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+) -> Response:
     run = _require_canonical_run(run_id)
     payload = canonicalize_json(build_analysis_run_trace_export_payload(run))
-    return Response(
+    response = Response(
         content=(
             payload
             if isinstance(payload, str)
@@ -352,22 +392,57 @@ def export_analysis_run_proof_json(run_id: UUID) -> Response:
             "Content-Disposition": f'attachment; filename="uzasadnienie_{run.id}.json"',
         },
     )
+    if zapisz_do_magazynu:
+        store_generated_document_from_response(
+            response,
+            project_ref=run.project_id,
+            doc_type="DOWOD",
+            doc_format="JSON",
+            source="analysis-run-proof",
+            run_ref=str(run.id),
+        )
+    return response
 
 
 @router.get("/analysis-runs/{run_id}/export/proof/latex")
-def export_analysis_run_proof_latex(run_id: UUID) -> Response:
-    return _proof_latex_response(_require_canonical_run(run_id))
+def export_analysis_run_proof_latex(
+    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+) -> Response:
+    run = _require_canonical_run(run_id)
+    response = _proof_latex_response(run)
+    if zapisz_do_magazynu:
+        store_generated_document_from_response(
+            response,
+            project_ref=run.project_id,
+            doc_type="DOWOD",
+            doc_format="LATEX",
+            source="analysis-run-proof",
+            run_ref=str(run.id),
+        )
+    return response
 
 
 @router.get("/analysis-runs/{run_id}/export/proof/pdf")
-def export_analysis_run_proof_pdf(run_id: UUID) -> Response:
+def export_analysis_run_proof_pdf(
+    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+) -> Response:
     run = _require_canonical_run(run_id)
     try:
-        return export_run_trace_pdf_response(run, filename_stem="uzasadnienie")
+        response = export_run_trace_pdf_response(run, filename_stem="uzasadnienie")
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
+    if zapisz_do_magazynu:
+        store_generated_document_from_response(
+            response,
+            project_ref=run.project_id,
+            doc_type="DOWOD",
+            doc_format="PDF",
+            source="analysis-run-proof",
+            run_ref=str(run.id),
+        )
+    return response
 
 
 @router.get("/analysis-runs/{run_id}/results/index")
@@ -399,6 +474,13 @@ def get_phase_state_results(run_id: UUID) -> dict[str, Any]:
 def get_dynamic_stability_results(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(
         build_dynamic_stability_results_response(_require_canonical_run(run_id))
+    )
+
+
+@router.get("/analysis-runs/{run_id}/results/dynamic-stability/time-series")
+def get_dynamic_stability_time_series(run_id: UUID) -> dict[str, Any]:
+    return canonicalize_json(
+        build_dynamic_stability_time_series_response(_require_canonical_run(run_id))
     )
 
 

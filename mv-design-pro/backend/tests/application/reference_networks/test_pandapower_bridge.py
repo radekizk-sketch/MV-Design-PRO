@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import pytest
-
 from application.reference_networks.builders.ieee_4bus import build_ieee_4bus_network
 from application.reference_networks.pandapower_bridge import (
     enm_to_pandapower_dict,

@@ -22,7 +22,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from .field_device import (
@@ -44,7 +44,7 @@ SWITCHGEAR_CONFIG_VERSION = "1.0"
 # =============================================================================
 
 
-class ConfigIssueSeverity(str, Enum):
+class ConfigIssueSeverity(StrEnum):
     """Waga problemu walidacji konfiguracji."""
 
     BLOCKER = "BLOCKER"
@@ -86,7 +86,7 @@ class ConfigValidationIssueV1:
 # =============================================================================
 
 
-class FixActionType(str, Enum):
+class FixActionType(StrEnum):
     """Typ akcji naprawczej."""
 
     NAVIGATE_TO_WIZARD_FIELD = "NAVIGATE_TO_WIZARD_FIELD"
@@ -347,7 +347,7 @@ def compute_config_hash(config: SwitchgearConfigV1) -> str:
 # =============================================================================
 
 
-class SwitchgearConfigValidationCode(str, Enum):
+class SwitchgearConfigValidationCode(StrEnum):
     """Stabilne kody walidacji konfiguracji rozdzielnicy."""
 
     CATALOG_REF_MISSING = "catalog.ref_missing"

@@ -7,12 +7,14 @@ Komunikaty po polsku.
 
 from __future__ import annotations
 
+import math
 import os
 
 import networkx as nx
 from pydantic import BaseModel
 
 from .fix_actions import FixAction
+from .interlock_rules import earthing_interlock_violation
 from .models import (
     Cable,
     EnergyNetworkModel,
@@ -540,6 +542,113 @@ class ENMValidator:
     # ------------------------------------------------------------------
 
     def _check_warnings(self, enm: EnergyNetworkModel, issues: list[ValidationIssue]) -> None:
+        # W033 (recenzja NO-GO 2026-07-17 pkt 2): spójność Sk''/Ik''/U źródła.
+        # Gdy źródło niesie JEDNOCZEŚNIE Sk'' i Ik'' oraz stoi na szynie ze
+        # znanym napięciem, musi zachodzić Ik'' = Sk''/(√3·U) — rozjazd > 5%
+        # oznacza, że dane pochodzą z RÓŻNYCH stron transformatora (podwójne
+        # liczenie impedancji TR) albo napięcie odniesienia jest błędne.
+        # IMPORTANT (nie blocker): model policzalny, ale prezentacja/dobór
+        # aparatury na takich danych byłyby fałszywe.
+        buses_by_ref = {bus.ref_id: bus for bus in enm.buses}
+        for source in enm.sources:
+            if not (source.sk3_mva and source.sk3_mva > 0 and source.ik3_ka and source.ik3_ka > 0):
+                continue
+            bus = buses_by_ref.get(source.bus_ref) if source.bus_ref else None
+            if bus is None or not bus.voltage_kv or bus.voltage_kv <= 0:
+                continue
+            expected_ik_ka = source.sk3_mva / (math.sqrt(3.0) * bus.voltage_kv)
+            if abs(source.ik3_ka - expected_ik_ka) / expected_ik_ka > 0.05:
+                issues.append(
+                    ValidationIssue(
+                        code="sources.sk_ik_voltage_inconsistent",
+                        severity=SEVERITY_IMPORTANT,
+                        message_pl=(
+                            f"Źródło '{source.ref_id}': Ik''={source.ik3_ka:.2f} kA nie zgadza się "
+                            f"z Sk''={source.sk3_mva:.0f} MVA przy U={bus.voltage_kv:g} kV "
+                            f"(oczekiwane Ik''=Sk''/(√3·U)={expected_ik_ka:.2f} kA). "
+                            f"Dane zwarciowe i napięcie odniesienia muszą dotyczyć TEJ SAMEJ szyny."
+                        ),
+                        element_refs=[source.ref_id],
+                        wizard_step_hint="K2",
+                        suggested_fix=(
+                            "Podaj Sk'' i Ik'' wyznaczone dla szyny, na której stoi źródło "
+                            "(bez podwójnego liczenia impedancji transformatora)."
+                        ),
+                        fix_action=FixAction(
+                            action_type="OPEN_MODAL",
+                            element_ref=source.ref_id,
+                            modal_type="SourceModal",
+                            payload_hint={"required": "short_circuit_params_consistent"},
+                        ),
+                    )
+                )
+
+        # W034 (recenzja NO-GO 2026-07-17 pkt 10): blokada uziemnik ↔ łącznik
+        # główny. Uziemnik ZAMKNIĘTY przy JEDNOCZEŚNIE zamkniętym łączniku
+        # toru głównego TEGO SAMEGO pola (CB/DS/LOAD_SWITCH) = niedozwolona
+        # kombinacja stanów (uziemienie toru pod napięciem) — klasyczna
+        # blokada mechaniczna/logiczna rozdzielnicy. Predykat wspólny z
+        # silnikiem zgodności referencyjnej: `enm/interlock_rules.py`
+        # (REFERENCE_ENGINE_SPEC_V1 §7 — jedna prawda logiki stanów).
+        for bay in enm.bays:
+            closed_es, closed_main = earthing_interlock_violation(bay)
+            if not closed_es or not closed_main:
+                continue
+            issues.append(
+                ValidationIssue(
+                    code="bays.earthing_interlock_violation",
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=(
+                        f"Pole '{bay.ref_id}': uziemnik "
+                        f"({', '.join(d.device_ref for d in closed_es)}) ZAMKNIĘTY przy "
+                        f"jednocześnie zamkniętym łączniku toru głównego "
+                        f"({', '.join(d.device_ref for d in closed_main)}) — niedozwolona "
+                        f"kombinacja stanów (uziemienie toru pod napięciem, blokada "
+                        f"rozdzielnicy)."
+                    ),
+                    element_refs=[bay.ref_id],
+                    wizard_step_hint="K5",
+                    suggested_fix=(
+                        "Otwórz łącznik główny pola przed zamknięciem uziemnika "
+                        "(albo skoryguj stany aparatów w danych pola)."
+                    ),
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=bay.ref_id,
+                        modal_type="BayModal",
+                        payload_hint={"required": "earthing_interlock"},
+                    ),
+                )
+            )
+
+        # W035 (Reference Engine V1, spec §6, V12K-060): walidacja referencyjna
+        # NA ŻYWO — profile pól IEC 62271 (required/one_of/forbidden/kolejność/
+        # aparat boczny w osi) + rodziny producentów dla pól związanych przez
+        # bay_template_ref. Tylko ścieżka danych (primary_devices niepuste);
+        # konwencja rysunkowa jest z definicji zgodna (parytet spec §8).
+        # Import LENIWY: reference_engine importuje enm.models — import
+        # modułowy tutaj tworzyłby cykl przy imporcie reference_engine przed
+        # pakietem enm (enm/__init__ importuje ten walidator).
+        from reference_engine.validation import reference_validation_issues
+
+        for finding in reference_validation_issues(enm):
+            issues.append(
+                ValidationIssue(
+                    code=finding.code,
+                    severity=SEVERITY_IMPORTANT,
+                    message_pl=finding.message_pl,
+                    element_refs=[finding.element_ref],
+                    wizard_step_hint="K5",
+                    suggested_fix=finding.suggested_fix,
+                    fix_action=FixAction(
+                        action_type="OPEN_MODAL",
+                        element_ref=finding.element_ref,
+                        modal_type="BayModal",
+                        payload_hint={"required": "reference_profile_compliance"},
+                    ),
+                )
+            )
+
         # W001: Brak Z₀ na linii
         for branch in enm.branches:
             if isinstance(branch, OverheadLine | Cable):

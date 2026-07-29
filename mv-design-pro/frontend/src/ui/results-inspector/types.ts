@@ -152,6 +152,26 @@ export interface BranchResults {
 // =============================================================================
 
 /**
+ * Wkład gałęziowy prądu zwarciowego (ZWARCIA-PRO F4, karta W-C; V12K-132) —
+ * jeden wpis per (źródło, gałąź) z FROZEN solvera (`ShortCircuitBranchContribution`):
+ * superpozycja falownikowa ORAZ rozpływ od źródła zastępczego (Thevenin / sieć
+ * nadrzędna, source_id="THEVENIN_GRID"), przeniesiony ADDYTYWNIE przez
+ * `build_short_circuit_results` (`_sc_rozplyw_galeziowy`: projekcja A→kA +
+ * nazwy z grafu przebiegu). Kierunek wprost z solvera: "from_to" | "to_from".
+ */
+export interface ShortCircuitBranchFlow {
+  branch_id: string;
+  branch_name: string;
+  source_id: string;
+  from_node_id: string;
+  from_node_name: string;
+  to_node_id: string;
+  to_node_name: string;
+  i_ka: number | null;
+  direction: string;
+}
+
+/**
  * Single short-circuit result row.
  */
 export interface ShortCircuitRow {
@@ -164,6 +184,53 @@ export interface ShortCircuitRow {
   sk_mva: number | null;
   fault_type: string | null;
   flags: string[];
+  // Pelny bilans IEC 60909 (ZWARCIA-PRO F1) — pola addytywne z wierszy
+  // kanonicznych (`build_short_circuit_results`); starsze wyniki bez pol.
+  rk_ohm?: number | null;
+  xk_ohm?: number | null;
+  zk_ohm?: number | null;
+  rx_ratio?: number | null;
+  xr_ratio?: number | null;
+  kappa?: number | null;
+  c_factor?: number | null;
+  un_kv?: number | null;
+  tk_s?: number | null;
+  tb_s?: number | null;
+  ib_ka?: number | null;
+  ik_ka?: number | null;
+  ik_thevenin_ka?: number | null;
+  ik_inverters_ka?: number | null;
+  i2t_ka2s?: number | null;
+  // Delta FROZEN V12K-128 (addytywnie): składowe symetryczne impedancji
+  // zastępczej WPROST z solvera (`ShortCircuitResult.to_dict` → z1/z2/z0_ohm),
+  // przeniesione do wiersza kanonicznego w `_sc_pelny_bilans`. Z1/Z2 dla
+  // wszystkich typów, Z0 tylko dla zwarć doziemnych (1F/2F+G). Complex {re, im}.
+  // Starszy wynik bez pól → null (uczciwy brak; ekran spada na ślad WHITE BOX).
+  z1_ohm?: { re: number; im: number } | null;
+  z2_ohm?: { re: number; im: number } | null;
+  z0_ohm?: { re: number; im: number } | null;
+  // GAP passthrough (V12K-128): wymóg i źródło sieci zerowej Z0 przeniesione do
+  // wiersza kanonicznego (dotąd tylko w proof_binding). Starszy wynik → brak/null.
+  requires_z0?: boolean | null;
+  z0_source?: string | null;
+  /**
+   * Rozpływ prądu zwarciowego w gałęziach (ZWARCIA-PRO F4, addytywnie;
+   * V12K-132): lista wpisów per (źródło, gałąź) — źródło zastępcze (Thevenin /
+   * sieć nadrzędna) ORAZ źródła falownikowe; pusta lista = policzono, brak
+   * prądu w gałęziach (sieć bez źródła zastępczego i bez falowników zasilających
+   * zwarcie); brak pola / null = starszy wynik (uczciwa kreska).
+   */
+  branch_contributions?: ShortCircuitBranchFlow[] | null;
+  // Werdykt raportowalności i wiązanie dowodu per punkt (karta P-3, addytywne
+  // lustro pól, które backend już wysyła w `build_short_circuit_results`,
+  // enm/canonical_analysis.py:1974-1985). Starsze zapisy typu bez pól → optional.
+  reporting_status?: string | null;
+  reporting_status_pl?: string | null;
+  proof_status?: string | null;
+  proof_status_pl?: string | null;
+  proof_ref?: string | null;
+  dopuszczalnosc_raportowa?: boolean;
+  reporting_limitations?: string[];
 }
 
 /**

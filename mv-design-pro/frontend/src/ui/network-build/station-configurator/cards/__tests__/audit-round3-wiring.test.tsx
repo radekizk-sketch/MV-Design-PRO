@@ -5,8 +5,8 @@
  * BESS_OPERATION_MODE) są rzeczywiście używane w UI, a nie tylko zdefiniowane.
  */
 
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 import { StationConfigTransformerCard } from '../StationConfigTransformerCard';
 import { StationConfigBaysCard } from '../StationConfigBaysCard';
@@ -126,7 +126,50 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
   });
 
   describe('ProtectionCard wire eng.18 + eng.20', () => {
-    it('renderuje walidację VT vs typ uziemienia (eng.20)', () => {
+    // Od V12K-257 karta NIE MA wlasnego katalogu VT ani wlasnej reguly: typy pobiera
+    // z `/api/catalog/vt-types`, werdykt z `/validate-vt-grounding`. Test podstawia
+    // obie odpowiedzi, zeby sprawdzic, co karta z nimi robi.
+    const TYPY_VT = [
+      { id: 'vt_20kv_100v_05_arteche', name: 'VT 20 kV / 100 V kl. 0.5', rated_voltage_factor: 1.2 },
+      {
+        id: 'vt_20kv_fz_100_3_05_3p_siemens',
+        name: 'VT 20 kV/√3 kl. 0,5/3P',
+        rated_voltage_factor: 1.9,
+      },
+    ];
+    const originalFetch = global.fetch;
+
+    beforeEach(() => {
+      global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url.includes('/api/catalog/vt-types')) {
+          return { ok: true, status: 200, json: async () => TYPY_VT } as Response;
+        }
+        if (url.includes('/validate-vt-grounding')) {
+          // Atrapa REGULY backendu: prog 1,9 dla sieci kompensowanej (V12K-256).
+          const body = JSON.parse(String(init?.body ?? '{}')) as { voltage_factor?: number };
+          const ok = Number(body.voltage_factor) >= 1.9;
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              ok,
+              message_pl: ok
+                ? ''
+                : 'Siec skompensowana (Petersena) wymaga VT (faza-ziemia) z U_th >= 1.9.',
+            }),
+          } as Response;
+        }
+        throw new Error(`nieoczekiwane zapytanie: ${url}`);
+      }) as unknown as typeof fetch;
+    });
+
+    afterEach(() => {
+      global.fetch = originalFetch;
+      vi.restoreAllMocks();
+    });
+
+    it('renderuje walidację VT vs typ uziemienia (eng.20)', async () => {
       render(
         <StationConfigProtectionCard
           relays={[
@@ -137,7 +180,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               functionsPl: ['50/51', '67N'],
               settingsCount: 4,
               selectivityStatus: 'kompletna',
-              vtCatalogRef: 'vt_15kv_100v_05', // klasa pomiarowa, U_th=1.2
+              vtCatalogRef: 'vt_20kv_100v_05_arteche', // realny typ katalogu, F_v 1,2
             },
           ]}
           automation={[]}
@@ -147,10 +190,10 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       );
 
       // Walidacja VT widoczna.
-      const validationSection = screen.getByTestId('vt-grounding-validation');
-      expect(validationSection).toBeDefined();
-      // Powinno być NOK ponieważ VT 1.2 nie pasuje do petersen_coil (wymaga 1.9).
-      const validation = screen.getByTestId('vt-validation-POLE-01');
+      expect(screen.getByTestId('vt-grounding-validation')).toBeDefined();
+      // Werdykt NOK, bo F_v 1,2 nie wystarcza w sieci kompensowanej — i to BACKEND
+      // tak mowi; karta pokazuje jego komunikat.
+      const validation = await screen.findByTestId('vt-validation-POLE-01');
       expect(validation.getAttribute('data-vt-ok')).toBe('false');
       expect(validation.textContent?.toLowerCase()).toContain('petersena');
     });
@@ -178,7 +221,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
       expect(validation.textContent).toContain('I_dyn');
     });
 
-    it('walidacja VT OK gdy U_th=1.9 dla sieci skompensowanej', () => {
+    it('walidacja VT OK gdy U_th=1.9 dla sieci skompensowanej', async () => {
       render(
         <StationConfigProtectionCard
           relays={[
@@ -189,7 +232,7 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
               functionsPl: ['67N'],
               settingsCount: 4,
               selectivityStatus: 'kompletna',
-              vtCatalogRef: 'vt_15kv_100v_3p', // U_th=1.9
+              vtCatalogRef: 'vt_20kv_fz_100_3_05_3p_siemens', // realny typ, F_v 1,9
             },
           ]}
           automation={[]}
@@ -198,8 +241,9 @@ describe('Pakiet G — wiring katalogów do UI cards', () => {
         />,
       );
 
-      const validation = screen.getByTestId('vt-validation-POLE-01');
-      expect(validation.getAttribute('data-vt-ok')).toBe('true');
+      await waitFor(() =>
+        expect(screen.getByTestId('vt-validation-POLE-01').getAttribute('data-vt-ok')).toBe('true'),
+      );
     });
   });
 });

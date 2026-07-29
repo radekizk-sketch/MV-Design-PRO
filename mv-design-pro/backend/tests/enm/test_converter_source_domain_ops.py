@@ -135,6 +135,67 @@ def test_add_converter_source_creates_generator_and_field_for_new_nn_field() -> 
     EnergyNetworkModel.model_validate(snapshot)
 
 
+def test_add_converter_source_persists_reactive_regulation_on_generator_meta() -> None:
+    """G-OZE-B3: cos_phi / qu_slope / P(f) statyzm+pasmo trafiają do meta generatora,
+    skąd kanoniczny PF buduje sterowanie falownika (V12K-063)."""
+    result = execute_domain_operation(
+        _station_enm(),
+        "add_converter_source",
+        {
+            "source_technology": "PV",
+            "connection_variant": "nn_side",
+            "station_ref": "st_1",
+            "bus_nn_ref": "bus_nn_1",
+            "placement": "NEW_FIELD",
+            "source_field": {
+                "source_field_kind": "PV",
+                "field_name": "Pole PV nN",
+                "catalog_binding": {
+                    "catalog_namespace": "APARAT_NN",
+                    "catalog_item_id": "ap-nn-630",
+                    "catalog_item_version": "2024.1",
+                    "materialize": True,
+                    "snapshot_mapping_version": "1.0",
+                },
+            },
+            "source_name": "Blok PV regulowany",
+            "quantity": 1,
+            "control_mode": "STALY_COS_PHI",
+            "cos_phi": 0.95,
+            "qu_slope_pu_per_pu": 4.0,
+            "qu_deadband_low_pu": 0.95,
+            "qu_deadband_high_pu": 1.05,
+            "frequency_droop_percent": 5.0,
+            "lfsm_deadband_hz": 0.2,
+            "power_setpoint_mw": 0.5,
+            "catalog_binding": {
+                "catalog_namespace": "CONVERTER",
+                "catalog_item_id": "conv-pv-1mw",
+                "catalog_item_version": "2024.1",
+                "materialize": True,
+                "snapshot_mapping_version": "1.0",
+            },
+            "materialized_params": {
+                "catalog_item_id": "conv-pv-1mw",
+                "catalog_item_version": "2024.1",
+                "un_kv": 0.4,
+                "pmax_mw": 0.5,
+                "sn_mva": 0.5,
+            },
+        },
+    )
+
+    assert not result.get("error"), result.get("error")
+    meta = result["snapshot"]["generators"][0]["meta"]
+    assert meta["cos_phi"] == 0.95
+    assert meta["qu_slope_pu_per_pu"] == 4.0
+    assert meta["qu_deadband_low_pu"] == 0.95
+    assert meta["qu_deadband_high_pu"] == 1.05
+    assert meta["frequency_droop_percent"] == 5.0
+    assert meta["lfsm_deadband_hz"] == 0.2
+    EnergyNetworkModel.model_validate(result["snapshot"])
+
+
 def test_add_converter_source_accepts_station_transformer_bound_by_buses() -> None:
     result = execute_domain_operation(
         _station_enm_with_bus_bound_transformer_only(),

@@ -206,6 +206,16 @@ export function buildBusSNContextMenu(
     }),
     action('add_ct', 'Dodaj przekładnik prądowy...', { enabled: edit, handler: handlers.onAddCT }),
     action('add_vt', 'Dodaj przekładnik napięciowy...', { enabled: edit, handler: handlers.onAddVT }),
+    action('add_shunt_compensator_sn', 'Dodaj baterię kondensatorów SN...', {
+      enabled: edit,
+      handler: handlers.onAddShuntCompensator,
+      actionKey: 'bus_sn_add_shunt_compensator',
+    }),
+    action('add_surge_arrester_sn', 'Dodaj ogranicznik przepięć SN...', {
+      enabled: edit,
+      handler: handlers.onAddSurgeArrester,
+      actionKey: 'bus_sn_add_surge_arrester',
+    }),
     sep('s2'),
     action('edit_voltage', 'Zmień napięcie szyny (kV)...', { enabled: edit, handler: handlers.onEditVoltage }),
     action('assign_catalog', 'Przypisz katalog szyny...', { enabled: edit, handler: handlers.onAssignCatalog }),

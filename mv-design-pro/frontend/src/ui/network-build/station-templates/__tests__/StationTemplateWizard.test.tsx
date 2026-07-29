@@ -184,6 +184,78 @@ describe('StationTemplateWizard', () => {
     });
   });
 
+  it('E3.2: bez initialTemplateId zachowanie bez zmian — start na kroku Kategoria', async () => {
+    render(<StationTemplateWizard />);
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-step-category').dataset.active).toBe('true');
+    });
+    expect(screen.queryByTestId('wizard-step-content-location')).toBeNull();
+  });
+
+  it('E3.2: z initialTemplateId startuje z zaznaczonym szablonem na kroku lokalizacji i pobiera pełną definicję', async () => {
+    render(<StationTemplateWizard initialTemplateId="tpl_sn_nn_630kva" />);
+    await waitFor(() => {
+      expect(screen.getByTestId('wizard-step-location').dataset.active).toBe('true');
+    });
+    expect(screen.getByTestId('wizard-step-content-location')).toBeTruthy();
+    expect(screen.queryByTestId('wizard-step-content-category')).toBeNull();
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith('/api/station-templates/tpl_sn_nn_630kva');
+    });
+  });
+
+  it('E3.2: podpowiedzi Z2 — dymek ⓘ pokazuje zakres/domyślną/źródło dla pól z danymi w schemacie', async () => {
+    render(<StationTemplateWizard targetSegmentRef="seg/abc/segment" />);
+    await waitFor(() => screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-params'));
+
+    // ParamInt (transformer_count) ma default/min/max w schemacie -> dymek z zakresem.
+    const liczbaTrHint = screen.getByTestId('hint-content-param-int-Liczba TR');
+    expect(liczbaTrHint.textContent).toContain('CO TO JEST');
+    expect(liczbaTrHint.textContent).toContain('ZAKRES TYPOWY');
+    expect(liczbaTrHint.textContent).toContain('1');
+    expect(liczbaTrHint.textContent).toContain('2');
+    expect(liczbaTrHint.textContent).toContain('SKĄD DOMYŚLNA');
+    expect(liczbaTrHint.textContent).toContain('szablon stacji');
+
+    // ChoiceSelect (transformer_ref) ma opcję default:true z namespace -> źródło z katalogu.
+    const typTrHint = screen.getByTestId(
+      'hint-content-choice-Typ transformatora (katalog PTPiRE)',
+    );
+    expect(typTrHint.textContent).toContain('TRAFO_SN_NN');
+    expect(typTrHint.textContent).toContain('TR 630 kVA');
+
+    // SelectStr (sn_manufacturer) ma listę opcji + sn_switchgear_default -> dymek.
+    fireEvent.click(screen.getByTestId('params-tab-sn_switchgear'));
+    const producentHint = screen.getByTestId('hint-content-select-Producent rozdzielni SN');
+    expect(producentHint.textContent).toContain('ZPUE_WLOSZCZOWA');
+    expect(producentHint.textContent).toContain('ELEKTROMETAL');
+  });
+
+  it('E3.2: pola bez danych w schemacie (puste opcje) nie dostają dymka Z2', async () => {
+    render(<StationTemplateWizard targetSegmentRef="seg/abc/segment" />);
+    await waitFor(() => screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('category-typowa_sn_nn'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('template-tpl_sn_nn_630kva'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    fireEvent.click(screen.getByTestId('wizard-next'));
+    await waitFor(() => screen.getByTestId('wizard-step-content-params'));
+
+    // nn_feeder_cb_options: [] w fixture -> brak opcji, brak dymka (zakaz fabrykowania treści).
+    fireEvent.click(screen.getByTestId('params-tab-nn_feeders'));
+    expect(
+      screen.queryByTestId('hint-icon-choice-Aparatura CB odpływów nN'),
+    ).toBeNull();
+  });
+
   it('protection tab shows E2Tango option with PTPiREE badge', async () => {
     render(<StationTemplateWizard targetSegmentRef="seg/x/segment" />);
     await waitFor(() => screen.getByTestId('category-typowa_sn_nn'));

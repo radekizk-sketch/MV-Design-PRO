@@ -566,9 +566,10 @@ class TestContext:
         ctx = EnergyValidationContext(
             project_name="Golden SN",
             case_name="Max load",
+            case_id=None,
             run_timestamp=datetime(2024, 1, 1, tzinfo=UTC),
-            snapshot_id="snap-001",
-            trace_id="run-001",
+            snapshot_hash="snap-001",
+            run_id="run-001",
         )
         graph = _build_simple_graph()
         pf = _build_pf_result(
@@ -830,3 +831,60 @@ class TestEnvelopeAdapter:
 
         adapter = get_run_envelope_adapter("energy_validation.v0")
         assert adapter is not None
+
+
+# ============================================================================
+# TestWhiteBoxTrace (R2-A / K3-G1)
+# ============================================================================
+
+
+class TestWhiteBoxTrace:
+    """Slad WHITE BOX per pozycja: wzor -> dane -> wynik -> progi -> werdykt."""
+
+    def test_computed_item_carries_full_derivation(self):
+        graph = _build_simple_graph()
+        pf = _build_pf_result(branch_current_ka={"line-1": 0.45})  # 90% -> WARNING
+        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        item = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING][0]
+        assert len(item.white_box) == 5
+        # R3-D: kroki strukturalne {tekst, latex} - wzor i podstawienie w LaTeX.
+        assert item.white_box[0]["tekst"].startswith("Wzor:")
+        assert r"\frac{|I|}{I_n}" in item.white_box[0]["latex"]
+        assert "0.4500 kA" in item.white_box[1]["tekst"]  # |I| z wyniku PF
+        assert "0.5000 kA" in item.white_box[1]["tekst"]  # I_n z danych galezi
+        assert item.white_box[1]["latex"] is None  # pochodzenie danych = tekst
+        assert "90.00 %" in item.white_box[2]["tekst"]
+        assert "= 90.00" in item.white_box[2]["latex"]  # podstawienie liczbowe
+        assert "ostrzezenie 80.0 %" in item.white_box[3]["tekst"]
+        assert item.white_box[4]["tekst"] == "Werdykt: OSTRZEZENIE"
+
+    def test_not_computed_item_has_empty_trace(self):
+        graph = _build_simple_graph()
+        pf = _build_pf_result(branch_current_ka={})
+        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        item = [i for i in view.items if i.check_type == EnergyCheckType.BRANCH_LOADING][0]
+        assert item.status == EnergyValidationStatus.NOT_COMPUTED
+        assert item.white_box == ()
+
+    def test_every_computed_item_has_trace_and_serializes(self):
+        graph = _build_simple_graph()
+        pf = _build_pf_result(
+            node_voltage_kv={"slack": 110.0, "bus-a": 109.5, "bus-b": 14.8},
+            branch_current_ka={"line-1": 0.1},
+        )
+        view = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        data = view.to_dict()
+        for item, item_dict in zip(view.items, data["items"], strict=True):
+            assert item_dict["white_box"] == list(item.white_box)
+            if item.status != EnergyValidationStatus.NOT_COMPUTED:
+                assert len(item.white_box) == 5
+                assert item.white_box[-1]["tekst"].startswith("Werdykt:")
+                assert item.white_box[0]["latex"]  # wzor zawsze w LaTeX
+        json.dumps(data)  # serializowalnosc
+
+    def test_trace_is_deterministic(self):
+        graph = _build_simple_graph()
+        pf = _build_pf_result(branch_current_ka={"line-1": 0.45})
+        a = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        b = EnergyValidationBuilder().build(pf, graph, DEFAULT_CONFIG)
+        assert [i.white_box for i in a.items] == [i.white_box for i in b.items]

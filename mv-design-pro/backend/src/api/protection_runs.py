@@ -14,8 +14,6 @@ Endpoints:
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 from uuid import UUID
 
@@ -23,6 +21,7 @@ from api.dependencies import get_uow_factory
 from application.protection_analysis import ProtectionAnalysisService
 from domain.protection_analysis import ProtectionRunStatus
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel
 
 router = APIRouter(tags=["protection-analysis"])

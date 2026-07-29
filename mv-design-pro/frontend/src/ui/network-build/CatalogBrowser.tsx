@@ -37,6 +37,7 @@ const NAMESPACE_ICONS: Record<CatalogNamespace, string> = {
   CT: 'CT',
   VT: 'VT',
   OGRANICZNIK_SN: 'OPN',
+  KOMPENSATOR_SN: 'KMP',
   OBCIAZENIE: 'LD',
   ZRODLO_NN_PV: 'PV',
   ZRODLO_NN_BESS: 'BESS',

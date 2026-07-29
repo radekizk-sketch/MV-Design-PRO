@@ -26,8 +26,20 @@ def build_iec60909_example_network() -> dict[str, Any]:
             "defaults": {},
         },
         "buses": [
-            {"ref_id": "BUS-HV", "id": "BUS-HV", "name": "BUS-HV 110kV", "u_n_kv": 110.0, "bus_kind": "slack"},
-            {"ref_id": "BUS-MV", "id": "BUS-MV", "name": "BUS-MV 33kV", "u_n_kv": 33.0, "bus_kind": "pq"},
+            {
+                "ref_id": "BUS-HV",
+                "id": "BUS-HV",
+                "name": "BUS-HV 110kV",
+                "u_n_kv": 110.0,
+                "bus_kind": "slack",
+            },
+            {
+                "ref_id": "BUS-MV",
+                "id": "BUS-MV",
+                "name": "BUS-MV 33kV",
+                "u_n_kv": 33.0,
+                "bus_kind": "pq",
+            },
         ],
         "branches": [],
         "transformers": [

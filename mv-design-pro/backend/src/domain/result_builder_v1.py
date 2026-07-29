@@ -95,6 +95,13 @@ _ELEMENT_TYPE_TO_KIND: dict[str, OverlayElementKind] = {
     "Generator": OverlayElementKind.GENERATOR,
     "inverter": OverlayElementKind.GENERATOR,
     "Inverter": OverlayElementKind.GENERATOR,
+    # LF-KONTRAKT (V12K-161): źródło (sieć zewnętrzna/GPZ, DER) wstrzykuje moc —
+    # najbliższy istniejący rodzaj overlay to GENERATOR (rozdział rodzajowy
+    # OverlayElementKind nie ma osobnego SOURCE; addytywne mapowanie, brak
+    # zmiany enumu schematu). Rodzaj etykiety frontendu ('source') wyprowadzany
+    # jest niezależnie z symbolu SLD, nie z tego pola.
+    "source": OverlayElementKind.GENERATOR,
+    "Source": OverlayElementKind.GENERATOR,
     "switch": OverlayElementKind.DEVICE,
     "Switch": OverlayElementKind.DEVICE,
     "breaker": OverlayElementKind.DEVICE,
@@ -267,6 +274,20 @@ def _extract_element_metrics(
         "loading_pct": ("LOADING_PCT", "%", "fixed1"),
         "i_a": ("I_A", "A", "fixed1"),
         "s_mva": ("S_MVA", "MVA", "fixed2"),
+        # LF-KONTRAKT (V12K-161): domknięcie kontraktu wyników rozpływu —
+        # wielkości pochodne (bilans węzła / różnica napięć) liczone w warstwie
+        # interpretacji kanonicznej (wzorzec loading_pct), ZERO fizyki tutaj.
+        # cosφ = |P|/|S|; ΔU = |U_from|−|U_to| (kV) oraz (u_from−u_to)·100 [%U_n].
+        "cos_phi": ("COS_PHI", "", "fixed2"),
+        "delta_u_kv": ("DELTA_U_KV", "kV", "fixed2"),
+        "delta_u_pct": ("DELTA_U_PCT", "%", "fixed2"),
+        # V12K-089: metryki overlay OLTC (pozycja koncowa zaczepu + liczba
+        # przelaczen) z `oltc_control`. Obecne tylko na transformatorach z
+        # regulacja — reszta bez zmian (determinizm). format_hint "fixed0"
+        # (calkowite) — z udokumentowanego slownika, obslugiwane przez
+        # frontendowy formatMetric (audyt F2 2026-07-21).
+        "tap_position": ("TAP_POSITION", "", "fixed0"),
+        "tap_switch_count": ("TAP_SWITCH_COUNT", "", "fixed0"),
     }
 
     for key, val in values.items():
@@ -319,6 +340,7 @@ def build_resultset_v1(
     readiness: dict[str, Any] | None = None,
     element_results_raw: list[dict[str, Any]] | None = None,
     global_results: dict[str, Any] | None = None,
+    run_finished_at: str | None = None,
 ) -> ResultSetV1:
     """
     Build a ResultSetV1 from run data, solver output, validation, and readiness.
@@ -332,6 +354,8 @@ def build_resultset_v1(
         readiness: Readiness snapshot dict (optional)
         element_results_raw: Pre-built element results list (optional)
         global_results: Global results dict (optional)
+        run_finished_at: UTC ISO timestamp of run completion (optional; provenance
+            metadata, excluded from deterministic signature)
 
     Returns:
         Frozen ResultSetV1 with deterministic signature and overlay payload.
@@ -415,6 +439,7 @@ def build_resultset_v1(
         analysis_type=analysis_type,
         solver_input_hash=solver_input_hash,
         created_at=created_at,
+        run_finished_at=run_finished_at,
         deterministic_signature="",  # populated after canonical payload hashing
         global_results=dict(sorted(merged_global.items())),
         element_results=element_results,
@@ -434,6 +459,7 @@ def build_resultset_v1(
         analysis_type=analysis_type,
         solver_input_hash=solver_input_hash,
         created_at=created_at,
+        run_finished_at=run_finished_at,
         deterministic_signature=signature,
         global_results=dict(sorted(merged_global.items())),
         element_results=element_results,

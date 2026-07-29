@@ -11,6 +11,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Pelna historia jest WYMAGANA: `tests/ci/test_guard_diff_base.py` sprawdza
+          # sciezke produkcyjna guardow delta-owych na REALNYM repozytorium, a klon
+          # glebokosci 1 nie ma ani `origin/main`, ani `HEAD~1` — guard poprawnie
+          # zglasza wtedy brak bazy (fail-closed), wiec test pada. Bez tego ustawienia
+          # workflow byl czerwony od V12K-199 na tym jednym tescie (V12K-205).
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -61,6 +68,11 @@ jobs:
       - name: Readiness Codes Guard
         working-directory: mv-design-pro
         run: python scripts/readiness_codes_guard.py
+      # V12K-206 (karta F-K6): guard KONSUMPCJI kodow gotowosci. Wymaga zaleznosci
+      # backendu (importuje rejestr), dlatego biegnie tu, a nie w workflow guardow.
+      - name: Readiness Consumption Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/readiness_consumption_guard.py
       - name: Catalog Binding Guard
         working-directory: mv-design-pro
         run: python scripts/catalog_binding_guard.py
@@ -76,6 +88,17 @@ jobs:
       - name: Fix Action Completeness Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/fix_action_completeness_guard.py
+      # V12K-263: oba guardy wymagaja zaleznosci backendu (`numpy` przez
+      # `application/reference_networks/computation.py`). Poza `poetry run`
+      # przerywaly sie ModuleNotFoundError, wiec nikt ich nie wpial i nigdy
+      # niczego nie bronily — mimo ze na HEAD sa ZIELONE. Ich miejsce jest tutaj,
+      # bo tylko ten workflow instaluje srodowisko backendu.
+      - name: Reference Networks Validation Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/reference_networks_validation_guard.py
+      - name: Solver Output Drift Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/solver_output_drift_guard.py
       - name: Audit Contract Guard
         working-directory: mv-design-pro
         run: python scripts/audit_contract_guard.py
@@ -85,3 +108,15 @@ jobs:
       - name: Catalog Metadata Guard
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/catalog_metadata_guard.py
+      # V12K-229: parzystosc modelu ENM z lustrem TypeScript. Importuje modele,
+      # dlatego biegnie w katalogu backendu (jak readiness_consumption_guard).
+      - name: ENM Contract Parity Guard
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/enm_contract_parity_guard.py
+      # V12K-240: zapadka dlugu typow. `pyproject.toml` konfiguruje mypy w trybie strict,
+      # ale ZADEN workflow go nie uruchamial — narzedzie skonfigurowane i nigdy nie
+      # wywolane. Zapadka uruchamia mypy naprawde i pilnuje, zeby liczba bledow nie
+      # urosla (dziala tez w druga strone: po poprawie zada obnizenia progu).
+      - name: Mypy Ratchet Guard (dlug typow nie rosnie)
+        working-directory: mv-design-pro/backend
+        run: poetry run python ../scripts/mypy_ratchet_guard.py

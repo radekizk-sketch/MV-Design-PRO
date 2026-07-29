@@ -81,27 +81,19 @@ def _bays_for_substation(enm: EnergyNetworkModel, substation_ref: str) -> list[B
     )
 
 
-def _transformers_for_substation(
-    enm: EnergyNetworkModel, substation_ref: str
-) -> list[Transformer]:
+def _transformers_for_substation(enm: EnergyNetworkModel, substation_ref: str) -> list[Transformer]:
     bus_refs = set()
     for s in enm.substations:
         if s.ref_id == substation_ref:
             bus_refs.update(s.bus_refs)
             break
     return sorted(
-        [
-            t
-            for t in enm.transformers
-            if t.hv_bus_ref in bus_refs or t.lv_bus_ref in bus_refs
-        ],
+        [t for t in enm.transformers if t.hv_bus_ref in bus_refs or t.lv_bus_ref in bus_refs],
         key=lambda t: t.ref_id,
     )
 
 
-def build_internal_sld(
-    substation_ref: str, enm: EnergyNetworkModel
-) -> InternalSldDTO | None:
+def build_internal_sld(substation_ref: str, enm: EnergyNetworkModel) -> InternalSldDTO | None:
     """Buduje wewnętrzny SLD stacji.
 
     Zwraca None jeżeli substation_ref nie istnieje w ENM.
@@ -146,9 +138,7 @@ def build_internal_sld(
     nn_switchgears: list[InternalNnSwitchgearDTO] = []
     for idx, nn_kv in enumerate(substation.nn_voltage_levels):
         feeders_count = sum(
-            1
-            for b in sub_bays
-            if b.bay_role in ("FEEDER", "OUT") and abs(nn_kv - 0.4) < 0.01
+            1 for b in sub_bays if b.bay_role in ("FEEDER", "OUT") and abs(nn_kv - 0.4) < 0.01
         )
         nn_switchgears.append(
             InternalNnSwitchgearDTO(
@@ -161,9 +151,7 @@ def build_internal_sld(
     # Ustal SN voltage z pierwszego bus_ref stacji
     sn_voltage_kv = 15.0
     if substation.bus_refs:
-        first_bus = next(
-            (b for b in enm.buses if b.ref_id == substation.bus_refs[0]), None
-        )
+        first_bus = next((b for b in enm.buses if b.ref_id == substation.bus_refs[0]), None)
         if first_bus:
             sn_voltage_kv = first_bus.voltage_kv
 

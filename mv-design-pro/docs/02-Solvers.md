@@ -86,3 +86,59 @@ if result.fallback_info:
 | 1.0 - 2.0 | Over-relaxation (SOR) | Szybsza zbieżność dla dobrze uwarunkowanych sieci |
 
 **Typowa optymalna wartość:** 1.4 - 1.8 dla większości sieci.
+
+## 5. Parametry transformatora — ZAKRES KONSUMPCJI i OGRANICZENIA MODELU
+
+> Nota faktograficzna (opisuje istniejące zachowanie, nie decyzję architektoniczną).
+> Dotyczy transformatorów `Transformer2W`, w tym TR blokowego DER
+> (rola `TRANSFORMATOR_BLOKOWY_DER`, program DOBÓR-OZE, kanon
+> `docs/sld/RECENZJA_DER_SN_DOBORY_2026-07.md` wym. 7+8). JEDEN model —
+> solver czyta parametry zmaterializowane z typu katalogowego (zakaz modelu
+> rysunkowego i osobnego obliczeniowego).
+
+Parametry tabliczkowe płyną z typu katalogowego przez materializację ENM
+(`enm/domain_operations*.py`) i wejście solvera
+(`solver_input/builder.py` → `TransformerPayload`) do rdzenia
+`network_model/core/branch.py` (`TransformerBranch`). Proweniencja każdego pola
+(w tym `vector_group`) jest w śladzie WHITE BOX wejścia solvera.
+
+### 5.1 Parametry KONSUMOWANE przez solvery produkcyjne
+
+| Parametr | Gdzie liczony | Jak wchodzi do fizyki |
+|----------|---------------|------------------------|
+| `uk_percent` | PF (NR/GS/FD), SC IEC 60909 | Impedancja szeregowa gałęzi: `z_pu = uk/100`; `X = √(z² − r²)` (`branch.py::get_short_circuit_impedance_pu` / `get_impedance_pu`). |
+| `pk_kw` (Pcu) | PF, SC IEC 60909 | Rezystancja szeregowa: `r_pu = (pk/1000)/Sn`. |
+| `tap_position`/`tap_changer` | PF (Y-bus) | Przekładnia odczepu (`get_tap_ratio`). |
+
+Prąd zwarciowy 3-fazowy (`compute_3ph_short_circuit`) liczy WYŁĄCZNIE składową
+zgodną z impedancji szeregowej TR (`uk`, `pk`) w Theveninie — to jest realna
+konsumpcja parametrów impedancyjnych TR blokowego.
+
+### 5.2 Ograniczenia — parametry NIESIONE przez model, ale NIE konsumowane w tej ścieżce
+
+Zapisane JAWNIE (zero fabrykacji — nie dorabiamy fizyki na skróty):
+
+1. **Układ połączeń (`vector_group`, np. Dyn5/Dyn11/YNyn)** — jest kanonicznym
+   PARAMETREM MODELU (katalog → payload → materializacja → snapshot → wejście
+   solvera) i podlega walidacji spójności z typem katalogowym
+   (`enm/der_sn_validation.py::validate_block_transformer_vector_group`, kod
+   `converter.der_sn.grupa_polaczen_niezgodna_z_katalogiem`). NIE jest jednak
+   konsumowany przez produkcyjny PF ani SC 3-fazowy: PF nie modeluje
+   przesunięcia fazowego grupy w Y-bus (`power_flow_newton_internal.py::_branch_admittance_pu`
+   — brak członu przesunięcia), a `compute_3ph_short_circuit` liczy tylko
+   składową zgodną (brak modelu składowej zerowej sterowanej grupą połączeń
+   ani zwarć niesymetrycznych 1-/2-fazowych z rozłożeniem faz wg grupy).
+   Konsekwencja dla analizy zabezpieczeń: przesunięcie faz i ścieżka składowej
+   zerowej wynikające z grupy NIE są dziś odwzorowane w wyniku solvera.
+2. **Gałąź magnesująca (`p0_kw`, `i0_percent`)** — niesiona przez model i wejście
+   solvera, ale produkcyjny PF ustawia bocznik TR na zero
+   (`_branch_admittance_pu` → `y_shunt = 0`), więc straty jałowe i prąd
+   magnesujący nie wchodzą do rozpływu. (Konsumuje je akademicki solver strat
+   `v126_academic.py`.)
+3. **Korekcja impedancji K_T wg IEC 60909** — solver SC nie stosuje współczynnika
+   korekcyjnego impedancji transformatora K_T; używa impedancji nominalnej
+   z `uk`/`pk`.
+
+Domknięcie tych ograniczeń wymaga rozszerzenia modelu solverów (składowa zerowa
+z grup połączeń, gałąź magnesująca, K_T) i jest DŁUGIEM MODELU do osobnej decyzji
+produktowej — nie obejściem w warstwie UI/analiz.

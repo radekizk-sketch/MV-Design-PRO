@@ -1,0 +1,194 @@
+/*
+ * Style drzewa kontekstowego (karta E1.2). Wyłącznie kolory przez tokeny
+ * `--mvd-*` (zero literałów hex — kryterium akceptacji §6.4).
+ */
+
+.mvd-tree-wrap {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  font-size: 12px;
+  color: var(--mvd-ink);
+}
+
+.mvd-tree-mode {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+  flex-wrap: wrap;
+}
+
+.mvd-tree-lbl {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--mvd-muted);
+  font-weight: 600;
+}
+
+.mvd-tree-mode-btn {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-muted);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.mvd-tree-mode-btn.mvd-on {
+  background: var(--mvd-sel);
+  color: var(--mvd-ink);
+  border-color: var(--mvd-accent);
+}
+
+.mvd-tree {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.mvd-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 0;
+  cursor: pointer;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.mvd-tree-row:hover {
+  background: var(--mvd-panel-2);
+}
+
+.mvd-tree-row.mvd-on {
+  background: var(--mvd-sel);
+}
+
+.mvd-tree-chevron {
+  width: 14px;
+  height: 14px;
+  border: none;
+  background: transparent;
+  color: var(--mvd-muted);
+  cursor: pointer;
+  padding: 0;
+  font-size: 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mvd-tree-chevron-spacer {
+  width: 14px;
+  flex-shrink: 0;
+}
+
+.mvd-tree-icon {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--mvd-muted);
+  flex-shrink: 0;
+}
+
+.mvd-tree-icon--projekt,
+.mvd-tree-icon--folder,
+.mvd-tree-icon--raport {
+  background: var(--mvd-accent);
+}
+
+.mvd-tree-icon--stacja,
+.mvd-tree-icon--szyna,
+.mvd-tree-icon--zrodlo,
+.mvd-tree-icon--transformator {
+  background: var(--mvd-ink);
+}
+
+.mvd-tree-icon--galaz,
+.mvd-tree-icon--odgalezienie {
+  background: var(--mvd-muted);
+  border-radius: 50%;
+}
+
+.mvd-tree-icon--izolowany {
+  background: var(--mvd-err);
+  border-radius: 50%;
+}
+
+.mvd-tree-icon--przypadek,
+.mvd-tree-icon--przebieg {
+  background: var(--mvd-ok);
+}
+
+.mvd-tree-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mvd-tree-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.mvd-tree-badge-blokady {
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+  border-radius: 8px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-family: var(--mvd-font-mono);
+}
+
+.mvd-tree-badge-ostrzezenia {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+  border-radius: 8px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-family: var(--mvd-font-mono);
+}
+
+.mvd-tree-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px 10px;
+  color: var(--mvd-muted);
+}
+
+.mvd-tree-empty-btn {
+  border: 1px solid var(--mvd-accent);
+  background: var(--mvd-panel);
+  color: var(--mvd-accent);
+  border-radius: 3px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mvd-tree-skeleton-row {
+  height: 14px;
+  margin: 4px 8px;
+  border-radius: 3px;
+  background: var(--mvd-panel-2);
+}
+
+.mvd-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}

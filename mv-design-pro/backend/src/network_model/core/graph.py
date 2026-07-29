@@ -9,6 +9,7 @@ spójności i znajdowania wysp.
 import networkx as nx
 
 from .branch import Branch
+from .grid_source import GridShortCircuitSource
 from .inverter import InverterSource
 from .machine import AsynchronousMachineSource, SynchronousMachineSource
 from .node import Node, NodeType
@@ -55,6 +56,10 @@ class NetworkGraph:
         # added to the Y-bus as a shunt (unlike inverters = bounded current sources).
         self.synchronous_machine_sources: dict[str, SynchronousMachineSource] = {}
         self.asynchronous_machine_sources: dict[str, AsynchronousMachineSource] = {}
+        # Zasilanie systemowe (IEC 60909-0 §3.2) — SEM za impedancją Z_Q, do
+        # Y-bus jako bocznik Y_Q = 1/Z_Q (jak maszyny wirujące i jak stamp
+        # źródła w sieci składowej zerowej).
+        self.grid_sc_sources: dict[str, GridShortCircuitSource] = {}
         self.switches: dict[str, Switch] = {}
         self.stations: dict[str, Station] = {}
         self._graph: nx.MultiGraph = nx.MultiGraph()
@@ -267,7 +272,9 @@ class NetworkGraph:
 
     def get_synchronous_machine_sources(self) -> list[SynchronousMachineSource]:
         """Active synchronous-machine sources, deterministically ordered by id."""
-        sources = [s for s in self.synchronous_machine_sources.values() if getattr(s, "in_service", True)]
+        sources = [
+            s for s in self.synchronous_machine_sources.values() if getattr(s, "in_service", True)
+        ]
         sources.sort(key=lambda s: s.id)
         return sources
 
@@ -281,7 +288,25 @@ class NetworkGraph:
 
     def get_asynchronous_machine_sources(self) -> list[AsynchronousMachineSource]:
         """Active asynchronous-machine sources, deterministically ordered by id."""
-        sources = [s for s in self.asynchronous_machine_sources.values() if getattr(s, "in_service", True)]
+        sources = [
+            s for s in self.asynchronous_machine_sources.values() if getattr(s, "in_service", True)
+        ]
+        sources.sort(key=lambda s: s.id)
+        return sources
+
+    # ── Zasilanie systemowe jako SC source (IEC 60909-0 §3.2). Rejestracja jak
+    # dla maszyn: walidacja węzła, deterministyczna kolejność po id. ──────────
+    def add_grid_sc_source(self, source: GridShortCircuitSource) -> None:
+        """Rejestruje zasilanie systemowe (SEM za Z_Q) w węźle przyłączenia."""
+        if source.id in self.grid_sc_sources:
+            raise ValueError(f"Źródło sieciowe o ID '{source.id}' już istnieje w grafie.")
+        if source.node_id not in self.nodes:
+            raise ValueError(f"Węzeł '{source.node_id}' nie istnieje w grafie.")
+        self.grid_sc_sources[source.id] = source
+
+    def get_grid_sc_sources(self) -> list[GridShortCircuitSource]:
+        """Czynne źródła sieciowe, deterministycznie posortowane po id."""
+        sources = [s for s in self.grid_sc_sources.values() if s.in_service]
         sources.sort(key=lambda s: s.id)
         return sources
 

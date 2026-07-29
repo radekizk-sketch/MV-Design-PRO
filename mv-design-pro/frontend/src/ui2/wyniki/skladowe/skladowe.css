@@ -1,0 +1,249 @@
+/*
+ * Ekran „Składowe symetryczne i sieć zerowa" (E-29) — wyłącznie tokeny powłoki
+ * (--mvd-*), oba motywy z automatu. Jedna skala promieni: 10px sekcja /
+ * 8px karta i wiersz / 999px chip. Siatka odstępów: 4 / 8 / 12 / 16.
+ */
+
+.mvd-skladowe {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-skladowe-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--mvd-accent);
+}
+
+/* --- Nagłówek -------------------------------------------------------------- */
+
+.mvd-skladowe-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-skladowe-head h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--mvd-ink);
+}
+
+.mvd-skladowe-cel {
+  margin: 4px 0 0;
+  max-width: 82ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+/* --- Stany ----------------------------------------------------------------- */
+
+.mvd-skladowe-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.mvd-skladowe-stan h4 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mvd-ink);
+}
+
+.mvd-skladowe-stan p {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+.mvd-skladowe-stan[data-tone='error'] {
+  border-color: var(--mvd-warn);
+}
+
+.mvd-skladowe-akcja {
+  align-self: flex-start;
+  margin-top: 4px;
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent-ink);
+  cursor: pointer;
+}
+
+.mvd-skladowe-akcja:hover {
+  filter: brightness(1.08);
+}
+
+.mvd-skladowe-akcja:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* --- Sekcje ----------------------------------------------------------------- */
+
+.mvd-skladowe-sekcja {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.mvd-skladowe-sekcja > h4 {
+  margin: 6px 0 8px;
+  font-size: 14px;
+  color: var(--mvd-ink);
+}
+
+.mvd-skladowe-nota {
+  margin: 0 0 12px;
+  max-width: 82ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-skladowe-siatka {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+  margin: 0 0 12px;
+}
+
+.mvd-skladowe-wartosc {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.mvd-skladowe-wartosc dt {
+  font: 600 10.5px/1.3 var(--mvd-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--mvd-muted);
+}
+
+.mvd-skladowe-wartosc dd {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--mvd-ink);
+  overflow-wrap: anywhere;
+}
+
+.mvd-skladowe-wzor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 8px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  overflow-x: auto;
+}
+
+.mvd-skladowe-brak {
+  margin: 0 0 8px;
+  max-width: 78ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-skladowe-brak-blok {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mvd-skladowe-lista {
+  margin: 0;
+  padding: 0 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mvd-ink);
+}
+
+.mvd-skladowe-dowod {
+  align-self: flex-start;
+  margin-top: 4px;
+  background: none;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+
+.mvd-skladowe-dowod:hover {
+  background: var(--mvd-sel);
+}
+
+.mvd-skladowe-dowod:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* --- Stopka ------------------------------------------------------------------ */
+
+.mvd-skladowe-stopka {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.mvd-skladowe-stopka p {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-skladowe-powrot {
+  align-self: flex-start;
+  margin-top: 2px;
+  background: none;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+
+.mvd-skladowe-powrot:hover {
+  background: var(--mvd-sel);
+}
+
+.mvd-skladowe-powrot:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}

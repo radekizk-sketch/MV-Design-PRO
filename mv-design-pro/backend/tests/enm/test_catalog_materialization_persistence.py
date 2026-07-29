@@ -76,9 +76,7 @@ class TestCatalogMaterializationPersistence:
         snapshot = _add_segment_with_catalog(snapshot, CATALOG_KABEL_ENEA_SN)
 
         branch = next(
-            branch
-            for branch in snapshot.get("branches", [])
-            if branch.get("type") == "cable"
+            branch for branch in snapshot.get("branches", []) if branch.get("type") == "cable"
         )
 
         assert branch["materialized_params"]["return_conductor_cross_section_mm2"] == 25

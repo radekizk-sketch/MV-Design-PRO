@@ -1,0 +1,140 @@
+{
+  "pack_id": "schneider_sm6",
+  "kind": "manufacturer",
+  "name_pl": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa)",
+  "version": "2026-07",
+  "status": "repo_verified",
+  "switchgear_family_ref": "SCHNEIDER__SM6_24",
+  "source_document_refs": [
+    "https://www.se.com/ww/en/product-range/933-sm6-24/",
+    "SM6 modular units — Air insulated switchgear up to 36kV (Schneider Electric, 2017 Catalog, 156 s.; kopia dystrybutora): https://filkab-eng.com/uploads/products/30/pdf/5f27c0379e84a_SM6%202017.pdf"
+  ],
+  "cell_configurations": [
+    {
+      "cell_code": "IM",
+      "name_pl": "Celka liniowa (rozłącznikowa)",
+      "apparatus": [
+        { "kind": "LOAD_SWITCH", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "CT", "requirement": "optional" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog SM6 2017 s. 44, sekcja „Basic equipment” (IM; wariant IMC: +1–3×CT; SA — opcja SM6-24 w celce 500 mm)"
+    },
+    {
+      "cell_code": "IMM",
+      "name_pl": "Celka rozłącznikowo-pomiarowa",
+      "apparatus": [
+        { "kind": "LOAD_SWITCH", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CT", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "VT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog SM6 2017 s. 44 (IMM: IM + 3×CT; 3×VT — opcja)"
+    },
+    {
+      "cell_code": "QM",
+      "name_pl": "Celka transformatorowa (kombinacja rozłącznik-bezpieczniki)",
+      "apparatus": [
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "LOAD_SWITCH", "requirement": "optional" },
+        { "kind": "CT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog SM6 2017 s. 46, „Basic equipment” (kombinacja z wybijakami DIN + ES górny i dolny; QMC: +CT; LOAD_SWITCH jako opcja zapisu = granularność modelowania kombinacji — notes_pl)"
+    },
+    {
+      "cell_code": "PM",
+      "name_pl": "Celka z rozłącznikiem i bezpiecznikami (bez kombinacji)",
+      "apparatus": [
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "LOAD_SWITCH", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog SM6 2017 s. 47, „Basic equipment”"
+    },
+    {
+      "cell_code": "DM1-A",
+      "name_pl": "Celka wyłącznikowa SF6",
+      "apparatus": [
+        { "kind": "CB", "requirement": "standard" },
+        { "kind": "DS", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "CT", "requirement": "optional" },
+        { "kind": "VT", "requirement": "optional" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog SM6 2017 s. 48, „Basic equipment” (CB SF1 + DS + ES górny i dolny; DM1-M: +3×CT; opcje: Sepam, 3×VT, SA)"
+    },
+    {
+      "cell_code": "CM",
+      "name_pl": "Celka pomiaru napięcia",
+      "apparatus": [
+        { "kind": "DS", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "VT", "requirement": "standard" }
+      ],
+      "source_pl": "Katalog SM6 2017 s. 54 (CM: DS+ES, 3× wkładki 6,3 A, 3×VT f–z; CM2: 2×VT międzyfazowe)"
+    },
+    {
+      "cell_code": "GBC-A",
+      "name_pl": "Celka pomiaru prądu i/lub napięcia w torze",
+      "apparatus": [
+        { "kind": "CT", "requirement": "standard" },
+        { "kind": "VT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog SM6 2017 s. 55 (1–3×CT; 2–3×VT — opcja)"
+    },
+    {
+      "cell_code": "GAM",
+      "name_pl": "Przyłącze kablowe dopływowe z uziemnikiem",
+      "apparatus": [
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog SM6 2017 s. 58 (GAM: +ES dolny 25 kA; GAM2 bez uziemnika)"
+    },
+    {
+      "cell_code": "GAM2",
+      "name_pl": "Przyłącze kablowe dopływowe (bez aparatu)",
+      "apparatus": [
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog SM6 2017 s. 58"
+    },
+    {
+      "cell_code": "SM",
+      "name_pl": "Celka odłącznikowa",
+      "apparatus": [
+        { "kind": "DS", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" }
+      ],
+      "source_pl": "Katalog SM6 2017 s. 59"
+    },
+    {
+      "cell_code": "TM",
+      "name_pl": "Celka transformatora potrzeb własnych",
+      "apparatus": [
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "VT", "requirement": "standard" }
+      ],
+      "source_pl": "Katalog SM6 2017 s. 59 (2× wkładki 6,3 A + 1×VT międzyfazowy jako trafo potrzeb własnych)"
+    },
+    {
+      "cell_code": "EMB",
+      "name_pl": "Uziemianie szyn (SM6-24)",
+      "apparatus": [{ "kind": "ES", "requirement": "standard" }],
+      "source_pl": "Katalog SM6 2017 s. 59"
+    }
+  ],
+  "notes_pl": "Rozdzielnica modułowa SN do 24 kV. Dane rodziny: SWITCHGEAR_FAMILY_REGISTRY (jedno źródło, SCHNEIDER__SM6_24). Skład celek wg jawnych sekcji katalogu „Basic equipment / Versions / Option” (research 2026-07-17, odczyt s. 44–59; raport: docs/audit/REFERENCE_ENGINE_RESEARCH_MANUFACTURER_CELLS_2026-07-17.md). Jednostki CVM/DMV/DMVL/DM1-S/DM1-W/DM1-Z/DM2/GEM/GFM/GUM/GMM/NSM/GBM/GIM istnieją w katalogu (s. 45, 49–53, 56–57) — nieprzeniesione w V1 (zakres, nie dostępność). KONWENCJA ZAPISU: kombinacja rozłącznik-bezpieczniki (QM/PM) modelowana jako FUSE albo LOAD_SWITCH+FUSE — LOAD_SWITCH jako opcja zapisu."
+}

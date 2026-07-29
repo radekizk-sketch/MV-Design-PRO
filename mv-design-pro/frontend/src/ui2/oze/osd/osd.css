@@ -1,0 +1,258 @@
+/*
+ * Style okna „Odpowiedź na polecenia OSD" (karta P40). Kolory WYŁĄCZNIE przez
+ * tokeny --mvd-* (theme/tokens.css) — zero literałów hex. Determinizm prezentacji:
+ * stałe wymiary, brak animacji zależnych od czasu.
+ */
+
+.mvd-osd {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--mvd-ink);
+}
+
+.mvd-osd-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-osd-tytul {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+.mvd-osd-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- stany (brak przebiegu / brak źródeł / idle / ładowanie / błąd) ---- */
+.mvd-osd-stan {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 12px;
+}
+.mvd-osd-stan--blad {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-osd-stan-title {
+  margin: 0;
+  font-weight: 600;
+}
+.mvd-osd-stan-desc {
+  margin: 4px 0 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- parametry biegu (dobór źródła + polecenia + parametrów) ---- */
+.mvd-osd-parametry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  box-shadow: var(--mvd-shadow);
+  padding: 12px;
+}
+.mvd-osd-param {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+.mvd-osd-param > label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+}
+.mvd-osd-param-pole {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mvd-osd-param-pole input {
+  width: 88px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  padding: 4px 6px;
+  font: inherit;
+}
+.mvd-osd-param select {
+  min-width: 180px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  padding: 4px 6px;
+  font: inherit;
+}
+.mvd-osd-param-pole input:focus,
+.mvd-osd-param select:focus {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-osd-param-jedn {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-osd-param-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 11px;
+  max-width: 220px;
+}
+
+.mvd-osd-oblicz {
+  align-self: flex-end;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 5px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  padding: 6px 14px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.mvd-osd-oblicz:hover {
+  filter: brightness(1.05);
+}
+.mvd-osd-oblicz:focus {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-osd-oblicz:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- karty porównania przed / po ---- */
+.mvd-osd-porownanie-tytul {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  margin: 8px 0 4px;
+}
+.mvd-osd-karty {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.mvd-osd-karta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 180px;
+  flex: 1 1 180px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 10px 12px;
+}
+.mvd-osd-karta-etyk {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+}
+.mvd-osd-karta-wiersze {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-osd-karta-para {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+.mvd-osd-karta-para > span:first-child {
+  color: var(--mvd-muted);
+}
+.mvd-osd-karta-delta {
+  font-weight: 600;
+}
+.mvd-osd-porownanie-komentarz {
+  margin: 4px 0 0;
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+
+/* ---- tabela napięć ---- */
+.mvd-osd-tabela-tytul {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  margin: 8px 0 4px;
+}
+
+/* ---- założenia (część wyniku) ---- */
+.mvd-osd-zalozenia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-osd-zal-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+}
+.mvd-osd-zal-para > dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+}
+.mvd-osd-zal-para > dd {
+  margin: 0;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+/* ---- ślad WHITE BOX ---- */
+.mvd-osd-slad-blok {
+  margin-top: 8px;
+}
+.mvd-osd-slad-btn {
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  padding: 2px 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+.mvd-osd-slad-btn:hover {
+  border-color: var(--mvd-accent);
+}
+.mvd-osd-slad-btn:focus {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-osd-slad-tytul {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+  margin: 6px 0 4px;
+}

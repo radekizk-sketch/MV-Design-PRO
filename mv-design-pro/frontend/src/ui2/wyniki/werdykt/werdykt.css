@@ -1,0 +1,248 @@
+/*
+ * Style ekranu „Werdykt projektowy" (karta F-K3). Kolory WYŁĄCZNIE przez tokeny
+ * --mvd-* (zero literałów hex), więc oba motywy działają bez osobnych reguł.
+ * Liczby: `.mvd-num` (mono + tabular-nums, współdzielone z wzorcem ekranu).
+ */
+
+.mvd-werdykt {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  color: var(--mvd-ink);
+  font-family: var(--mvd-font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px;
+}
+
+.mvd-werdykt :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* ---- nagłówek (cel jednym zdaniem) ---- */
+.mvd-werdykt-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-werdykt-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.mvd-werdykt-cel {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-werdykt-podtytul {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ---- werdykt całościowy ---- */
+.mvd-werdykt-glowny {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-left-width: 4px;
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  box-shadow: var(--mvd-shadow);
+}
+.mvd-werdykt-glowny-etykieta {
+  font-size: 14px;
+}
+.mvd-werdykt-glowny-opis {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-werdykt-glowny-liczby {
+  font-size: 12px;
+}
+
+/* ---- stany (trzy + „nie dotyczy") ---- */
+.mvd-werdykt-stan-spelnione {
+  border-left-color: var(--mvd-ok);
+}
+.mvd-werdykt-stan-naruszone {
+  border-left-color: var(--mvd-err);
+}
+.mvd-werdykt-stan-niesprawdzone {
+  border-left-color: var(--mvd-warn);
+}
+.mvd-werdykt-stan-nie-dotyczy {
+  border-left-color: var(--mvd-line);
+}
+
+tr.mvd-werdykt-stan-naruszone td.mvd-werdykt-stan {
+  color: var(--mvd-err);
+  font-weight: 600;
+}
+tr.mvd-werdykt-stan-niesprawdzone td.mvd-werdykt-stan {
+  color: var(--mvd-warn);
+  font-weight: 600;
+}
+tr.mvd-werdykt-stan-spelnione td.mvd-werdykt-stan {
+  color: var(--mvd-ok);
+}
+tr.mvd-werdykt-stan-nie-dotyczy td.mvd-werdykt-stan {
+  color: var(--mvd-muted);
+}
+
+/* ---- źródła danych ---- */
+.mvd-werdykt-zrodla-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.mvd-werdykt-zrodlo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  min-width: 180px;
+}
+.mvd-werdykt-zrodlo-uwaga {
+  border-color: var(--mvd-warn);
+}
+.mvd-werdykt-zrodlo-nazwa {
+  font-weight: 600;
+}
+.mvd-werdykt-zrodlo-stan {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- tabela kryteriów ---- */
+.mvd-werdykt-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.mvd-werdykt-tabela th,
+.mvd-werdykt-tabela td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-werdykt-tabela th {
+  color: var(--mvd-muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mvd-werdykt-tabela tr {
+  border-left: 3px solid transparent;
+}
+.mvd-werdykt-etap {
+  white-space: nowrap;
+  color: var(--mvd-muted);
+}
+.mvd-werdykt-kryterium {
+  display: table-cell;
+}
+.mvd-werdykt-kryterium-nazwa,
+.mvd-werdykt-kryterium-warunek,
+.mvd-werdykt-kryterium-norma,
+.mvd-werdykt-element,
+.mvd-werdykt-przyczyna-opis {
+  display: block;
+}
+.mvd-werdykt-kryterium-nazwa {
+  font-weight: 600;
+}
+.mvd-werdykt-kryterium-warunek,
+.mvd-werdykt-kryterium-norma {
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+.mvd-werdykt-element {
+  font-weight: 600;
+}
+.mvd-werdykt-przyczyna-opis {
+  color: var(--mvd-muted);
+}
+
+/* ---- akcja naprawcza (pętla decyzji) ---- */
+.mvd-werdykt-popraw {
+  border: 1px solid var(--mvd-accent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--mvd-accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+.mvd-werdykt-popraw:hover {
+  background: var(--mvd-sel);
+}
+
+/* ---- zakres poza automatem ---- */
+.mvd-werdykt-zakres-opis {
+  margin: 0 0 6px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-werdykt-zakres-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-werdykt-zakres-wpis {
+  display: grid;
+  grid-template-columns: 48px minmax(180px, 1fr) 2fr;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.mvd-werdykt-zakres-nazwa {
+  font-weight: 600;
+}
+.mvd-werdykt-zakres-powod {
+  color: var(--mvd-muted);
+}
+
+/* ---- stany zerowe i błędy ---- */
+.mvd-werdykt-pusty {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+}
+.mvd-werdykt-pusty-glowny {
+  margin: 0;
+}
+.mvd-werdykt-pusty-krok {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-werdykt-ladowanie {
+  margin: 0;
+  color: var(--mvd-muted);
+}
+.mvd-werdykt-blad {
+  margin: 0;
+  color: var(--mvd-err);
+}

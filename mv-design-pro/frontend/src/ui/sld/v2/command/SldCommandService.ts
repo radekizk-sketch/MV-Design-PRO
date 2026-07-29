@@ -21,7 +21,8 @@ export type SldElementKindForMenu =
   | 'branch_pole'
   | 'der_pv'
   | 'der_bess'
-  | 'der_fw';
+  | 'der_fw'
+  | 'der';
 
 export interface SldMenuAction {
   readonly id: string;
@@ -137,6 +138,30 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'show-frt-hvrt', labelPl: 'Pokaż krzywe FRT/HVRT', group: 'widok' },
     { id: 'show-ncrfg', labelPl: 'Pokaż zgodność przyłączeniową', group: 'widok' },
     { id: 'delete-fw', labelPl: 'Usuń farmę wiatrową', group: 'usun' },
+  ],
+  /**
+   * Karta SLD-P (GAP P-1 „menu kontekstowe DER na v3") — DER-MENU-V3: kanwa v3
+   * niesie TERAZ podtyp DER w `meta.derKind` (REALNA wartość `SldSourceView.
+   * kind` z łańcucha adaptera, `SldCanvasV3Workspace.elementKindForMenu`
+   * nagłówek), więc `pv`/`bess`/`wind` trafiają do PEŁNYCH kategorii
+   * `der_pv`/`der_bess`/`der_fw` wyżej (z `open-*-config`/`show-frt-hvrt`/
+   * `delete-*`) BEZ zgadywania. TEN generyczny rejestr `der` obsługuje
+   * WYŁĄCZNIE UCZCIWĄ DEGRADACJĘ: `generator` (brak osobnej kategorii w v2)
+   * oraz `unknown`/brak `derKind` (`Generator.gen_type` nierozpoznany/`null`
+   * — honest-unknown, `domain_no_guessing_guard`: NIGDY domysł podtypu). Niesie
+   * dwie akcje bez zależności od podtypu, z REALNYM celem w `useSldActionExecutor`
+   * (`shared/sldActionExecutor.ts`):
+   *  - `show-ncrfg` — TA SAMA etykieta/id co `der_pv`/`der_bess`/`der_fw`
+   *    wyżej (deep-link do macierzy wymogów NC RfG, karta P-1);
+   *  - `show-results` — wzorzec karty D-2 (deep-link do zakładki „Rozpływ"
+   *    warsztatu Wyników, preselekcja po ref klikniętego elementu).
+   * `open-*-config`/`show-frt-hvrt`/`delete-*` NIE są tu przeniesione (brak
+   * realnego ekranu docelowego bez znanego podtypu) — poprawna degradacja dla
+   * źródła nierozpoznanego, nie regresja v2.
+   */
+  der: [
+    { id: 'show-ncrfg', labelPl: 'Pokaż zgodność przyłączeniową', group: 'widok' },
+    { id: 'show-results', labelPl: 'Pokaż wyniki źródła OZE', group: 'widok' },
   ],
 };
 

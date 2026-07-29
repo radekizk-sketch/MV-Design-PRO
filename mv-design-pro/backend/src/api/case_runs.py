@@ -21,19 +21,18 @@ LAYER ALIGNMENT:
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 import hashlib
 import json
 import logging
+from collections.abc import Callable
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
 from api.dependencies import get_uow_factory
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("mv_design_pro.case_runs")
@@ -46,7 +45,7 @@ router = APIRouter(prefix="/api", tags=["case-runs"])
 # =============================================================================
 
 
-class FaultType(str, Enum):
+class FaultType(StrEnum):
     """IEC 60909 fault types."""
 
     THREE_PHASE = "3F"
@@ -55,7 +54,7 @@ class FaultType(str, Enum):
     TWO_PHASE_GROUND = "2F+G"
 
 
-class LoadFlowSolver(str, Enum):
+class LoadFlowSolver(StrEnum):
     """Available load flow solver algorithms."""
 
     NEWTON = "newton"
@@ -63,13 +62,13 @@ class LoadFlowSolver(str, Enum):
     FAST_DECOUPLED = "fast_decoupled"
 
 
-class ProtectionMethod(str, Enum):
+class ProtectionMethod(StrEnum):
     """Available protection grading methods."""
 
     HOPPEL = "hoppel"
 
 
-class CaseRunStatus(str, Enum):
+class CaseRunStatus(StrEnum):
     """Lifecycle states for a case run."""
 
     CREATED = "CREATED"
@@ -79,7 +78,7 @@ class CaseRunStatus(str, Enum):
     FAILED = "FAILED"
 
 
-class CaseRunAnalysisType(str, Enum):
+class CaseRunAnalysisType(StrEnum):
     """Analysis types supported by case-bound runs."""
 
     SHORT_CIRCUIT = "short_circuit"
@@ -370,10 +369,7 @@ def _run_to_detail(record: dict[str, Any]) -> dict[str, Any]:
 def _trace_steps_for_record(record: dict[str, Any]) -> list[dict[str, Any]]:
     """Build a deterministic audit trace from the persisted run metadata."""
     params = record.get("input_params") or {}
-    input_snapshot = [
-        {"name": key, "value": params[key]}
-        for key in sorted(params)
-    ]
+    input_snapshot = [{"name": key, "value": params[key]} for key in sorted(params)]
     return [
         {
             "step_id": "input-snapshot",

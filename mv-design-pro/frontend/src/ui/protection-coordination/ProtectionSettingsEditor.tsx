@@ -19,6 +19,8 @@ import type {
   CurveStandard,
 } from './types';
 import { LABELS, DEFAULT_CURVE_SETTINGS, DEFAULT_STAGE_51 } from './types';
+import { etykietaLokalizacji } from './lokalizacjeZModelu';
+import type { LokalizacjaModelu } from './lokalizacjeZModelu';
 
 // =============================================================================
 // Types
@@ -28,6 +30,14 @@ interface ProtectionSettingsEditorProps {
   device: ProtectionDevice;
   onChange: (device: ProtectionDevice) => void;
   onCancel: () => void;
+  /**
+   * Elementy modelu przypadku, w których wolno umieścić zabezpieczenie
+   * (V12K-262). `null` = migawki modelu nie ma — wtedy pole mówi o tym wprost
+   * zamiast udawać listę wyboru albo wpuszczać dowolny tekst.
+   */
+  lokalizacje?: readonly LokalizacjaModelu[] | null;
+  /** Powód, dla którego lista elementów jest niedostępna (komunikat backendu). */
+  bladLokalizacji?: string | null;
 }
 
 // =============================================================================
@@ -332,6 +342,8 @@ export function ProtectionSettingsEditor({
   device,
   onChange,
   onCancel,
+  lokalizacje = null,
+  bladLokalizacji = null,
 }: ProtectionSettingsEditorProps) {
   const [localDevice, setLocalDevice] = useState<ProtectionDevice>({ ...device });
 
@@ -398,17 +410,40 @@ export function ProtectionSettingsEditor({
           </select>
         </div>
 
-        {/* Location */}
+        {/* Location — element modelu, nie dowolny tekst (V12K-262).
+            Pole tekstowe pozwalało wpisać identyfikator, którego w modelu nie ma;
+            prądy koordynacji dopasowują się po `element_id` wiersza biegu, więc
+            każda literówka dawała cichy brak prądów przy „wypełnionym" polu. */}
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label
+            className="mb-1 block text-sm font-medium text-slate-700"
+            htmlFor="protection-device-location"
+          >
             {LABELS.devices.location}
           </label>
-          <input
-            type="text"
-            value={localDevice.location_element_id}
-            onChange={(e) => updateDevice({ location_element_id: e.target.value })}
-            className="w-full rounded border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
-          />
+          {lokalizacje !== null && lokalizacje.length > 0 ? (
+            <select
+              id="protection-device-location"
+              data-testid="device-location-select"
+              value={localDevice.location_element_id}
+              onChange={(e) => updateDevice({ location_element_id: e.target.value })}
+              className="w-full rounded border border-slate-300 px-3 py-2 focus:border-blue-500 focus:ring-blue-500"
+            >
+              <option value="">{LABELS.devices.locationPrompt}</option>
+              {lokalizacje.map((lokalizacja) => (
+                <option key={lokalizacja.refId} value={lokalizacja.refId}>
+                  {etykietaLokalizacji(lokalizacja)}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p
+              className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
+              data-testid="device-location-unavailable"
+            >
+              {bladLokalizacji ?? LABELS.devices.locationNoModel}
+            </p>
+          )}
         </div>
 
         {/* Manufacturer */}

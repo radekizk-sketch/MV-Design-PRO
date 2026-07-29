@@ -22,7 +22,8 @@ class TestNcRfgProfilesAvailable:
         assert len(ops) == 5
 
     @pytest.mark.parametrize(
-        "operator_id", ["pse", "energa", "tauron", "enea", "pge"],
+        "operator_id",
+        ["pse", "energa", "tauron", "enea", "pge"],
     )
     def test_load_each_profile(self, operator_id: str) -> None:
         profile = load_nc_rfg_profile(operator_id)

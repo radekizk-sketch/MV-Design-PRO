@@ -14,10 +14,16 @@ from typing import Any
 
 def build_cigre_mv_network() -> dict[str, Any]:
     """Simplified CIGRE MV 14-bus network."""
-    buses = [{"ref_id": f"BUS-{i:02d}", "id": f"BUS-{i:02d}",
-              "name": f"BUS-{i:02d}", "u_n_kv": 20.0,
-              "bus_kind": "slack" if i == 0 else "pq"}
-             for i in range(15)]
+    buses = [
+        {
+            "ref_id": f"BUS-{i:02d}",
+            "id": f"BUS-{i:02d}",
+            "name": f"BUS-{i:02d}",
+            "u_n_kv": 20.0,
+            "bus_kind": "slack" if i == 0 else "pq",
+        }
+        for i in range(15)
+    ]
 
     # Simple linear topology: BUS-00 -> BUS-01 -> ... -> BUS-14
     branches = [
@@ -58,8 +64,13 @@ def build_cigre_mv_network() -> dict[str, Any]:
             },
         ],
         "loads": [
-            {"ref_id": f"LOAD-{i:02d}", "id": f"LOAD-{i:02d}",
-             "bus": f"BUS-{i:02d}", "p_mw": 0.5, "q_mvar": 0.2}
+            {
+                "ref_id": f"LOAD-{i:02d}",
+                "id": f"LOAD-{i:02d}",
+                "bus": f"BUS-{i:02d}",
+                "p_mw": 0.5,
+                "q_mvar": 0.2,
+            }
             for i in range(1, 15)
         ],
         "generators": [

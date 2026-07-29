@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 from uuid import NAMESPACE_URL, uuid5
 
 from enm.canonical_analysis import list_runs_for_case
@@ -92,6 +92,27 @@ FUNCTION_TYPE_MAP: dict[str, dict[str, Any]] = {
         "required_inputs": ["3i0", "3u0"],
         "execution_mode": "wyzwolenie",
     },
+    # D10 (addytywnie): funkcje ochrony od pracy wyspowej (LoM).
+    "rocof_81R": {
+        "code": "81R",
+        "required_inputs": ["vt"],
+        "execution_mode": "wyzwolenie",
+    },
+    "vector_shift_78": {
+        "code": "78",
+        "required_inputs": ["vt"],
+        "execution_mode": "wyzwolenie",
+    },
+    "underfrequency_81U": {
+        "code": "81U",
+        "required_inputs": ["vt"],
+        "execution_mode": "wyzwolenie",
+    },
+    "overfrequency_81O": {
+        "code": "81O",
+        "required_inputs": ["vt"],
+        "execution_mode": "wyzwolenie",
+    },
 }
 
 
@@ -164,6 +185,8 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             source_endpoint=source_endpoint,
         )
 
+        bay_meta = bay.meta if isinstance(bay.meta, dict) else {}
+        switchgear_family_ref = bay_meta.get("switchgear_family_ref")
         base_model = BayBaseModel(
             bay_ref=bay.ref_id,
             bay_role=canonical_role,
@@ -178,6 +201,10 @@ def build_field_read_model(case_id: str, enm: EnergyNetworkModel) -> dict[str, A
             control_surface=control_surface,
             interlocks=interlocks,
             source_endpoint=source_endpoint,
+            bay_template_ref=bay.bay_template_ref,
+            switchgear_family_ref=(
+                switchgear_family_ref if isinstance(switchgear_family_ref, str) else None
+            ),
         )
 
         project_results = _build_project_results(
@@ -266,18 +293,42 @@ def _collect_bays(enm: EnergyNetworkModel) -> list[Bay]:
             ):
                 continue
 
+            spec_meta = dict(spec.get("meta") or {})
+            # Powiązania producenckie z field_spec (konwencja kreatora stacji) —
+            # dostępne w read-modelu pola (E-27/E-11) i przez Bay.bay_template_ref
+            # dla dalszych konsumentów (SLD internal_layout, Reference Engine).
+            switchgear_family_ref = spec.get("switchgear_family_ref")
+            manufacturer_ref = spec.get("manufacturer_ref")
+            if switchgear_family_ref and "switchgear_family_ref" not in spec_meta:
+                spec_meta["switchgear_family_ref"] = switchgear_family_ref
+            if manufacturer_ref and "manufacturer_ref" not in spec_meta:
+                spec_meta["manufacturer_ref"] = manufacturer_ref
+            # G-STK-8: ograniczniki przepięć pola (add_surge_arrester_sn) — kanał
+            # field_spec. Przenieś na Bay.meta, aby _build_primary_devices
+            # zaprojektował je na aparaty SURGE_ARRESTER (glif SLD).
+            spec_arresters = spec.get("surge_arresters")
+            if isinstance(spec_arresters, list) and "surge_arresters" not in spec_meta:
+                spec_meta["surge_arresters"] = spec_arresters
             bays_by_ref[field_ref] = Bay(
                 id=uuid5(NAMESPACE_URL, field_ref),
                 ref_id=field_ref,
                 name=spec.get("name") or field_ref,
                 tags=list(spec.get("tags") or []),
-                meta=dict(spec.get("meta") or {}),
+                meta=spec_meta,
                 bay_role=bay_role,
                 substation_ref=substation.ref_id,
                 bus_ref=bus_ref,
                 gpz_section_id=spec.get("gpz_section_id"),
                 equipment_refs=list(spec.get("equipment_refs") or []),
                 protection_ref=spec.get("protection_ref"),
+                protection_codes=list(spec.get("protection_codes") or []),
+                bay_template_ref=spec.get("bay_template_ref"),
+                # W1 (RECENZJA_L2 §1/§12.1, V12K-145): aparaty pierwotne pola
+                # zmaterializowane z szablonu kreatora na field_spec — przenieś na
+                # snapshot Bay, aby konsumenci Bay.primary_devices (read-model pola,
+                # reference_engine/compliance, interlock W034) i adapter SLD widzieli
+                # TĘ SAMĄ konfigurację. Puste = brak danych (ścieżka konwencji).
+                primary_devices=list(spec.get("primary_devices") or []),
             )
 
     return sorted(bays_by_ref.values(), key=lambda item: (item.substation_ref, item.ref_id))
@@ -380,6 +431,12 @@ def _build_primary_devices(
     transformers_by_bus: dict[str, list[Transformer]],
     generators_by_bus: dict[str, list[Generator]],
 ) -> list[BayPrimaryDevice]:
+    # W1 (RECENZJA_L2 §12.1, V12K-145): PRYMAT DANYCH nad przeliczeniem — jeśli
+    # pole niesie już zmaterializowane aparaty pierwotne (szablon kreatora,
+    # `_collect_bays`), użyj ICH (schemat = odwzorowanie konfiguracji kreatora),
+    # zamiast wnioskować z equipment. Puste = przelicz z equipment jak dotąd.
+    if bay.primary_devices:
+        return list(bay.primary_devices)
     devices: list[BayPrimaryDevice] = []
     for ref in sorted(bay.equipment_refs):
         branch = branches.get(ref)
@@ -450,6 +507,33 @@ def _build_primary_devices(
                 render_variant="kanoniczny",
             )
         )
+
+    # G-STK-8: ograniczniki przepięć z field_spec (Bay.meta["surge_arresters"]).
+    # Aparat gałęzi uziemiającej (GROUND_BRANCH, earthing_role=surge_ground) —
+    # rysowany na SLD (glif surge_arrester_10ka) i czytany przez most koordynacji
+    # izolacji IEC 60071. Zero domysłu: tylko gdy dane obecne.
+    bay_meta = bay.meta if isinstance(bay.meta, dict) else {}
+    raw_arresters = bay_meta.get("surge_arresters")
+    if isinstance(raw_arresters, list):
+        for item in raw_arresters:
+            if not isinstance(item, dict):
+                continue
+            device_ref = item.get("device_ref")
+            if not isinstance(device_ref, str) or not device_ref:
+                continue
+            catalog_ref = item.get("catalog_ref")
+            devices.append(
+                BayPrimaryDevice(
+                    device_ref=device_ref,
+                    catalog_ref=catalog_ref if isinstance(catalog_ref, str) else None,
+                    symbol_ref="symbol:surge_arrester_10ka",
+                    kind="SURGE_ARRESTER",
+                    placement="GROUND_BRANCH",
+                    is_controllable=False,
+                    render_variant="kanoniczny",
+                    earthing_role="surge_ground",
+                )
+            )
 
     devices.sort(key=lambda item: (item.placement, item.device_ref))
 
@@ -557,9 +641,10 @@ def _build_measurement_chain(
     measurements = measurements_by_bay.get(bay.ref_id, [])
     if not measurements:
         return None
-    ct_refs = [
-        measurement.ref_id for measurement in measurements if measurement.measurement_type == "CT"
+    ct_measurements = [
+        measurement for measurement in measurements if measurement.measurement_type == "CT"
     ]
+    ct_refs = [measurement.ref_id for measurement in ct_measurements]
     vt_refs = [
         measurement.ref_id for measurement in measurements if measurement.measurement_type == "VT"
     ]
@@ -572,13 +657,27 @@ def _build_measurement_chain(
     topology = "ct_vt" if ct_refs and vt_refs else "ct_only" if ct_refs else "vt_only"
     if uses_3u0 and topology == "ct_vt":
         topology = "ct_vt_3u0"
+    # F10.6 (SLD_CAD_SPEC_V3 §18.3, D3): wyczyszczenie heurystyki —
+    # dawniej `"suma_ct" if uses_3i0 else "brak"` ZAWSZE zgadywało 3×CT
+    # sumujące, nigdy przekładnik Ferrantiego, dla KAŻDEGO pola z jakimkolwiek
+    # CT. Teraz czytamy `Measurement.ct_arrangement` (dana projektowa); brak
+    # danych o układzie = uczciwe "brak", NIE zgadywanie (WHITE BOX,
+    # domain_no_guessing_guard).
+    if any(m.ct_arrangement == "ferranti" for m in ct_measurements):
+        zero_sequence_current_source: Literal[
+            "suma_ct", "przekladnik_ferrantiego", "zewnetrzne", "brak"
+        ] = "przekladnik_ferrantiego"
+    elif any(m.ct_arrangement == "3xCT" for m in ct_measurements):
+        zero_sequence_current_source = "suma_ct"
+    else:
+        zero_sequence_current_source = "brak"
     return BayMeasurementChain(
         chain_ref=f"measurement-chain:{bay.ref_id}",
         ct_refs=ct_refs,
         vt_refs=vt_refs,
         uses_3i0=uses_3i0,
         uses_3u0=uses_3u0,
-        zero_sequence_current_source="suma_ct" if uses_3i0 else "brak",
+        zero_sequence_current_source=zero_sequence_current_source,
         zero_sequence_voltage_source="otwarty_trojkat_vt" if uses_3u0 else "brak",
         topology=topology,
         measurement_sets=[
@@ -713,6 +812,34 @@ def _setting_to_function_state(
                 key="krzywa",
                 value=setting.curve_type,
                 unit=None,
+                quality="reczne",
+            )
+        )
+    # D10 (addytywnie): nastawy funkcji LoM (df/dt, przesunięcie wektora, próg f).
+    if setting.threshold_hz_s is not None:
+        settings.append(
+            ProtectionSettingValue(
+                key="df_dt",
+                value=setting.threshold_hz_s,
+                unit="Hz/s",
+                quality="reczne",
+            )
+        )
+    if setting.threshold_deg is not None:
+        settings.append(
+            ProtectionSettingValue(
+                key="przesuniecie_wektora",
+                value=setting.threshold_deg,
+                unit="deg",
+                quality="reczne",
+            )
+        )
+    if setting.threshold_hz is not None:
+        settings.append(
+            ProtectionSettingValue(
+                key="prog_czestotliwosci",
+                value=setting.threshold_hz,
+                unit="Hz",
                 quality="reczne",
             )
         )
@@ -873,6 +1000,24 @@ def _resolve_integrity_status(
     return "po_migracji"
 
 
+_OPERATING_MODES = {"praca_sieciowa", "ladowanie", "rozladowanie", "gotowosc", "odstawione"}
+
+
+def _generator_operating_mode(generator: Generator) -> str:
+    """F11.3 (dyrektywa D2, finał F9.6b): tryb pracy źródła z REALNEGO kanału
+    danych — `Generator.meta['operating_mode']`, zapisywanego operacją
+    domenową `set_source_operating_mode` (domain_operations_v2.py). Poprzednio
+    ta funkcja wpisywała stałą "gotowosc" IGNORUJĄC istniejącą daną (fabrykacja
+    jednolitego stanu — znalezisko F10.6). Wartość spoza słownika/nieobecna →
+    default modelu "gotowosc" (deklarowany default Pydantic `BaySourceEndpoint.
+    operating_mode`, semantyka modelu — nie zgadywanie read-modelu)."""
+    meta = getattr(generator, "meta", None) or {}
+    mode = meta.get("operating_mode")
+    if isinstance(mode, str) and mode in _OPERATING_MODES:
+        return mode
+    return "gotowosc"
+
+
 def _build_source_endpoint(
     bay: Bay,
     generators_by_bus: dict[str, list[Generator]],
@@ -881,6 +1026,7 @@ def _build_source_endpoint(
     if not generators:
         return None
     generator = generators[0]
+    operating_mode = _generator_operating_mode(generator)
     if generator.gen_type == "bess":
         return BaySourceEndpoint(
             source_kind="BESS",
@@ -889,7 +1035,7 @@ def _build_source_endpoint(
             block_transformer_ref=generator.blocking_transformer_ref,
             requires_vt=True,
             requires_synchrocheck=False,
-            operating_mode="gotowosc",
+            operating_mode=operating_mode,
         )
     if generator.gen_type in {"wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig"}:
         return BaySourceEndpoint(
@@ -898,7 +1044,7 @@ def _build_source_endpoint(
             block_transformer_ref=generator.blocking_transformer_ref,
             requires_vt=True,
             requires_synchrocheck=True,
-            operating_mode="gotowosc",
+            operating_mode=operating_mode,
         )
     return BaySourceEndpoint(
         source_kind="PV",
@@ -906,7 +1052,7 @@ def _build_source_endpoint(
         block_transformer_ref=generator.blocking_transformer_ref,
         requires_vt=True,
         requires_synchrocheck=False,
-        operating_mode="gotowosc",
+        operating_mode=operating_mode,
     )
 
 
@@ -1169,7 +1315,13 @@ def _resolve_neutral_grounding_mode(
             return _map_grounding_type(transformer.hv_neutral)
         if transformer.lv_neutral is not None:
             return _map_grounding_type(transformer.lv_neutral)
-    return "nieznany" if not sources else "bezposrednio_uziemiony"
+    # V12K-246: brak danych o punkcie neutralnym to „nieznany", NIE „bezposrednio
+    # uziemiony". Poprzedni domysl zamienial BRAK DANEJ w najmniej ostrozny werdykt:
+    # w sieci bezposrednio uziemionej prad zwarcia doziemnego jest duzy i mierzalny
+    # kryterium nadpradowym, wiec dobor zabezpieczen NIE zglaszal potrzeby kryterium
+    # kierunkowego — a polskie sieci SN sa w wiekszosci kompensowane albo uziemione
+    # przez rezystor. Obecnosc zrodla na szynie nie mowi NIC o sposobie uziemienia.
+    return "nieznany"
 
 
 def _map_grounding_type(grounding: GroundingConfig) -> str:

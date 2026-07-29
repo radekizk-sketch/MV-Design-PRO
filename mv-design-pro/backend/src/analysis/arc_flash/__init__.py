@@ -18,7 +18,8 @@ Warstwa OBLICZENIA / interpretacji (Z15): odczytuje gotowy wynik zwarciowy
 granicę łuku oraz kategorię ŚOI z pełnym wywodem White Box. NIE liczy fizyki
 solvera, NIE importuje solvera (granica warstw, arch_guard).
 
-Zakres ważności IEEE 1584-2018: 208 V–15 kV, I_bf 500 A–106 kA. Poza zakresem
+Zakres ważności IEEE 1584-2018: 208 V–15 kV; I_bf zależny od klasy napięcia —
+500 A–106 kA dla U<=600 V, 200 A–65 kA dla 600 V<U<=15 kV. Poza zakresem
 (zwł. > 15 kV) — ODRĘBNA metoda Ralpha Lee (postać zamknięta, jawnie oznaczona,
 NIE jako IEEE 1584).
 
@@ -50,8 +51,10 @@ from analysis.arc_flash.models import (
     OSD_ARC_FLASH_BLOCKER_CODE,
     PPE_CATEGORY_INCOMPLETE,
     PRODUCTION_NFPA_70E_PPE_TABLE,
-    VALIDITY_IBF_MAX_KA,
-    VALIDITY_IBF_MIN_KA,
+    VALIDITY_IBF_MAX_KA_HV,
+    VALIDITY_IBF_MAX_KA_LV,
+    VALIDITY_IBF_MIN_KA_HV,
+    VALIDITY_IBF_MIN_KA_LV,
     VALIDITY_VOLTAGE_MAX_KV,
     VALIDITY_VOLTAGE_MIN_KV,
     ArcCurrentCoeffs,
@@ -91,8 +94,10 @@ __all__ = [
     "PPE_CATEGORY_INCOMPLETE",
     "PRODUCTION_IEEE_1584_TABLE",
     "PRODUCTION_NFPA_70E_PPE_TABLE",
-    "VALIDITY_IBF_MAX_KA",
-    "VALIDITY_IBF_MIN_KA",
+    "VALIDITY_IBF_MAX_KA_HV",
+    "VALIDITY_IBF_MAX_KA_LV",
+    "VALIDITY_IBF_MIN_KA_HV",
+    "VALIDITY_IBF_MIN_KA_LV",
     "VALIDITY_VOLTAGE_MAX_KV",
     "VALIDITY_VOLTAGE_MIN_KV",
     "ArcCurrentCoeffs",

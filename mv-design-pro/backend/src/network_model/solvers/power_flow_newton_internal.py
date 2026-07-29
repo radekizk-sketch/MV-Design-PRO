@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections import deque
 from collections.abc import Iterable
 from dataclasses import asdict
 from typing import Any
@@ -24,6 +25,101 @@ from network_model.solvers.power_flow_zip import (
     zip_factor,
     zip_factor_derivative,
 )
+
+
+def transformer_clock_number(vector_group: str | None) -> int | None:
+    """Clock number k of an IEC vector group label (``'Dyn11'`` -> ``11``).
+
+    The clock number is the trailing integer of the vector-group string, taken
+    modulo 12. Returns ``None`` when no digits are present (e.g. a bare ``'Dyn'``
+    or an empty string) so callers can treat the transformer as having no
+    defined phase displacement.
+    """
+    if not vector_group:
+        return None
+    digits = "".join(c for c in vector_group if c.isdigit())
+    if not digits:
+        return None
+    return int(digits) % 12
+
+
+def transformer_phase_shift_rad(vector_group: str | None) -> float:
+    """Phase displacement θ [rad] the vector group imposes on the LV (``to``)
+    side relative to the HV (``from``) side, with positive = LV leads HV.
+
+    SM-2 (V12K-180). IEC convention: the clock number k puts the LV phasor at
+    ``k`` o'clock, i.e. lagging the HV phasor by ``k·30°``. Equivalently the LV
+    leads the HV by ``−k·30°``, normalised to the principal range (−180°, 180°]:
+
+        Dyn11 → +30°   Dyn1 → −30°   Dyn5 → −150°   Dyn7 → +150°   Yy0/Dyn0 → 0°
+
+    Returns ``0.0`` when the clock number is undefined. This θ is the shift that
+    appears on every node behind the transformer in a balanced power flow; the
+    magnitudes |V| are unaffected (it is a rotation of the downstream reference).
+    """
+    k = transformer_clock_number(vector_group)
+    if k is None:
+        return 0.0
+    deg = -(k * 30.0)
+    # normalise to the principal range (-180, 180]
+    deg = ((deg + 180.0) % 360.0) - 180.0
+    return float(np.deg2rad(deg))
+
+
+def _seed_phase_shift_angles(
+    graph: NetworkGraph, node_list: list[str], slack_node_id: str
+) -> dict[str, float]:
+    """SM-2 (V12K-180): cumulative vector-group phase displacement [rad] of each
+    bus relative to the slack, following the path through the network.
+
+    A flat start seeded with these angles lands next to the physically shifted
+    solution (Dyn11 → +30° behind each transformer, accumulating through cascaded
+    transformers), which keeps Newton robust when large group shifts (e.g. Dyn5 →
+    −150°) would otherwise pull a flat 0° start toward a spurious low-voltage
+    root. Seeding only moves the starting point — the converged |V|/θ are the
+    same solution. Traversal is deterministic (BFS from the slack, neighbours in
+    sorted order); only closed switches conduct, matching the Y-bus.
+    """
+    from network_model.core.switch import SwitchState
+
+    node_set = set(node_list)
+    seed = {node_id: 0.0 for node_id in node_list}
+    if slack_node_id not in node_set:
+        return seed
+
+    adjacency: dict[str, list[tuple[str, float]]] = {node_id: [] for node_id in node_list}
+    for branch in graph.branches.values():
+        if not branch.in_service:
+            continue
+        u, v = branch.from_node_id, branch.to_node_id
+        if u not in node_set or v not in node_set:
+            continue
+        theta = 0.0
+        if isinstance(branch, TransformerBranch):
+            # from = HV, to = LV: angle[to] = angle[from] + θ (LV leads HV).
+            theta = transformer_phase_shift_rad(branch.vector_group)
+        adjacency[u].append((v, theta))
+        adjacency[v].append((u, -theta))
+    for switch in graph.switches.values():
+        if not switch.in_service or switch.state != SwitchState.CLOSED:
+            continue
+        u, v = switch.from_node_id, switch.to_node_id
+        if u not in node_set or v not in node_set:
+            continue
+        adjacency[u].append((v, 0.0))
+        adjacency[v].append((u, 0.0))
+
+    visited = {slack_node_id}
+    queue: deque[str] = deque([slack_node_id])
+    while queue:
+        current = queue.popleft()
+        for neighbour, delta in sorted(adjacency[current]):
+            if neighbour in visited:
+                continue
+            seed[neighbour] = seed[current] + delta
+            visited.add(neighbour)
+            queue.append(neighbour)
+    return seed
 
 
 def _apply_zip_jacobian_v2(
@@ -189,9 +285,11 @@ def build_ybus_pu(
     node_ids_sorted = sorted(graph.nodes.keys())
     node_id_to_index_full = {node_id: idx for idx, node_id in enumerate(node_ids_sorted)}
 
-    ybus_ohm, applied_taps = _build_ybus_ohm(graph, node_id_to_index_full, tap_ratios)
-
     slack_voltage_kv = graph.nodes[slack_node_id].voltage_level
+
+    ybus_ohm, applied_taps, applied_phase_shifts = _build_ybus_ohm(
+        graph, node_id_to_index_full, tap_ratios, slack_voltage_kv
+    )
     ybus_note = ""
     ybus_source = "network_model.solvers.power_flow_newton_internal.build_ybus_pu"
 
@@ -214,6 +312,9 @@ def build_ybus_pu(
         "n": int(len(island_nodes_sorted)),
         "node_index_map": node_id_to_index,
         "note": ybus_note,
+        # SM-2 (V12K-180): white-box record of transformer vector-group phase
+        # displacements applied to the Y-bus (empty when no group shifts angles).
+        "applied_phase_shifts": applied_phase_shifts,
     }
 
     return ybus_pu, node_id_to_index, trace_info, applied_taps, applied_shunts
@@ -292,6 +393,13 @@ def build_initial_voltage(
             mag = node.voltage_magnitude if node.voltage_magnitude is not None else 1.0
             angle = node.voltage_angle if node.voltage_angle is not None else 0.0
             v[idx] = mag * np.exp(1j * angle)
+    else:
+        # SM-2 (V12K-180): seed flat-start angles with the cumulative vector-group
+        # phase displacement from the slack, so the start sits near the physically
+        # shifted solution. Converged values are unchanged; robustness improves.
+        seed_angles = _seed_phase_shift_angles(graph, node_list, slack_node_id)
+        for node_id, idx in node_index_map.items():
+            v[idx] = np.exp(1j * (slack_angle_rad + seed_angles[node_id]))
 
     slack_idx = node_index_map[slack_node_id]
     v[slack_idx] = slack_u_pu * np.exp(1j * slack_angle_rad)
@@ -703,19 +811,30 @@ def compute_branch_flows(
         if branch.to_node_id not in node_voltage:
             continue
 
-        tap_ratio = 1.0
-        if tap_ratios and branch_id in tap_ratios:
-            tap_ratio = tap_ratios[branch_id]
-        y_series, y_shunt = _branch_admittance_pu(branch, z_base)
+        # V12K-187: przekładnia i baza napięciowa TAK SAMO jak w Y-bus — inaczej
+        # przepływy nie są spójne z rozwiązanymi napięciami (patrz
+        # `_resolve_tap_ratio` i `_base_scale`).
+        tap_ratio, _tap_source = _resolve_tap_ratio(graph, branch, tap_ratios or {})
+        y_series, y_shunt = _branch_admittance_pu(
+            branch, z_base * _base_scale(graph, branch.to_node_id, slack_voltage_kv)
+        )
         if y_series is None:
             continue
 
         v_from = node_voltage[branch.from_node_id]
         v_to = node_voltage[branch.to_node_id]
 
-        if isinstance(branch, TransformerBranch) and tap_ratio != 1.0:
-            i_from = (v_from / (tap_ratio**2)) * y_series - (v_to / tap_ratio) * y_series
-            i_to = -(v_from / tap_ratio) * y_series + v_to * y_series
+        # SM-2 (V12K-180): same complex-tap model as the Y-bus so branch flows
+        # stay power-balance-consistent with the solved (phase-shifted) voltages.
+        theta_shift = 0.0
+        if isinstance(branch, TransformerBranch):
+            theta_shift = transformer_phase_shift_rad(branch.vector_group)
+
+        if isinstance(branch, TransformerBranch) and (tap_ratio != 1.0 or theta_shift != 0.0):
+            e_pos = np.exp(1j * theta_shift)
+            e_neg = np.exp(-1j * theta_shift)
+            i_from = (v_from / (tap_ratio**2)) * y_series - (v_to / tap_ratio) * e_neg * y_series
+            i_to = -(v_from / tap_ratio) * e_pos * y_series + v_to * y_series
         else:
             y_shunt_val = y_shunt if y_shunt is not None else 0j
             i_from = (v_from - v_to) * y_series + v_from * y_shunt_val
@@ -760,12 +879,99 @@ def _find_duplicates(values: list[str]) -> set[str]:
     return duplicates
 
 
+def _base_scale(graph: NetworkGraph, node_id: str, reference_kv: float) -> float:
+    """Iloraz baz impedancyjnych: z_base(węzeł) / z_base(odniesienie) = (U/U_ref)².
+
+    V12K-187. ``_build_ybus_ohm`` składa admitancje w SIEMENSACH, każdą liczoną
+    NA WŁASNYM poziomie napięcia gałęzi, a ``build_ybus_pu`` mnożyła całą macierz
+    przez JEDNO ``z_base`` z napięcia slacka. Dla sieci jednonapięciowej to
+    poprawne; przy wielu poziomach napięcia gałęzie spoza poziomu slacka
+    dostawały impedancję zaniżoną o (U_gałęzi/U_slack)². Skalujemy więc każdą
+    gałąź jej WŁASNYM ilorazem baz, zanim macierz przejdzie przez wspólne
+    ``z_base`` — dla sieci o jednym napięciu iloraz wynosi dokładnie 1.0, więc
+    Y-bus pozostaje BIT-IDENTYCZNA (mnożenie przez 1.0 jest w IEEE-754 dokładne).
+
+    Baza mocy skraca się w ilorazie, więc funkcja jej nie potrzebuje.
+    """
+    if reference_kv is None or reference_kv <= 0.0:
+        return 1.0
+    node = graph.nodes.get(node_id)
+    if node is None or node.voltage_level <= 0.0:
+        return 1.0
+    return (node.voltage_level / reference_kv) ** 2
+
+
+def _off_nominal_tap(graph: NetworkGraph, branch: TransformerBranch) -> float:
+    """Przekładnia POZA-ZNAMIONOWA transformatora: rzeczywista / bazowa.
+
+    V12K-187 (spójnie z V12K-186 w sieci zwarciowej): gdy napięcia znamionowe
+    szyn nie są w stosunku równym przekładni z tabliczki, model wymaga idealnego
+    transformatora o przekładni a = (U_hv_TR/U_szyny_HV)/(U_lv_TR/U_szyny_LV).
+    Szyny zgodne z tabliczką ⇒ a = 1.0 dokładnie ⇒ zero zmian w macierzy.
+    """
+    hv = graph.nodes.get(branch.from_node_id)
+    lv = graph.nodes.get(branch.to_node_id)
+    if hv is None or lv is None or hv.voltage_level <= 0.0 or lv.voltage_level <= 0.0:
+        return 1.0
+    return (branch.voltage_hv_kv / hv.voltage_level) / (branch.voltage_lv_kv / lv.voltage_level)
+
+
+def _resolve_tap_ratio(
+    graph: NetworkGraph, branch: Branch, tap_ratios: dict[str, float]
+) -> tuple[float, str | None]:
+    """Efektywna przekładnia gałęzi w modelu per-unit + źródło zaczepu.
+
+    JEDNO miejsce rozstrzygania przekładni dla całego rozpływu — Y-bus i tor
+    przepływów gałęziowych muszą widzieć TĘ SAMĄ wartość, inaczej przepływy
+    przestają być spójne z rozwiązanymi napięciami. Do V12K-187 Y-bus czytała
+    zaczep z modelu (``tap_changer`` / ``tap_position``), a przepływy WYŁĄCZNIE
+    z nakładki ``tap_ratios``, więc bilans rozjeżdżał się przy pracującym OLTC.
+
+    Kolejność źródeł zaczepu (bez zmian): kanoniczny ``tap_changer`` (to jego
+    pozycją steruje pętla regulacji OLTC) → ``tap_position`` → nakładka →
+    ``get_tap_ratio()``. Na końcu dochodzi przekładnia POZA-ZNAMIONOWA szyn.
+    """
+    tap_ratio = 1.0
+    tap_source: str | None = None
+    if isinstance(branch, TransformerBranch):
+        tc = branch.tap_changer
+        if tc is not None and tc.is_active():
+            # V12K-045: canonical tap changer drives the ratio (its position
+            # is what the OLTC control loop mutates). get_tap_ratio() honours
+            # the regulated winding.
+            tap_ratio = branch.get_tap_ratio()
+            if tap_ratio != 1.0:
+                tap_source = "core"
+        elif branch.tap_position != 0:
+            tap_ratio = branch.get_tap_ratio()
+            tap_source = "core"
+        elif branch.id in tap_ratios:
+            tap_ratio = tap_ratios[branch.id]
+            tap_source = "overlay"
+        else:
+            tap_ratio = branch.get_tap_ratio()
+            if tap_ratio != 1.0:
+                tap_source = "core"
+        # V12K-187: do zaczepu dochodzi przekładnia POZA-ZNAMIONOWA wynikająca
+        # z różnicy między tabliczką a napięciami znamionowymi szyn (spójnie z
+        # siecią zwarciową, V12K-186). Szyny zgodne z tabliczką ⇒ czynnik 1.0.
+        tap_ratio = tap_ratio * _off_nominal_tap(graph, branch)
+    elif branch.id in tap_ratios:
+        tap_ratio = tap_ratios[branch.id]
+        tap_source = "overlay"
+    return tap_ratio, tap_source
+
+
 def _build_ybus_ohm(
-    graph: NetworkGraph, node_id_to_index: dict[str, int], tap_ratios: dict[str, float]
-) -> tuple[np.ndarray, list[dict[str, Any]]]:
+    graph: NetworkGraph,
+    node_id_to_index: dict[str, int],
+    tap_ratios: dict[str, float],
+    reference_kv: float = 0.0,
+) -> tuple[np.ndarray, list[dict[str, Any]], list[dict[str, Any]]]:
     size = len(node_id_to_index)
     y_bus = np.zeros((size, size), dtype=complex)
     applied_taps: list[dict[str, Any]] = []
+    applied_phase_shifts: list[dict[str, Any]] = []
 
     # K30-14 NO-GO #10 (singular Jacobian fix): closed switches connect buses
     # topologically ale dotychczas NIE wstawiały do Y-bus admittance. Buses
@@ -788,10 +994,11 @@ def _build_ybus_ohm(
         to_idx = node_id_to_index.get(switch.to_node_id)
         if from_idx is None or to_idx is None:
             continue
-        y_bus[from_idx, to_idx] -= Y_CLOSED_SWITCH
-        y_bus[to_idx, from_idx] -= Y_CLOSED_SWITCH
-        y_bus[from_idx, from_idx] += Y_CLOSED_SWITCH
-        y_bus[to_idx, to_idx] += Y_CLOSED_SWITCH
+        y_switch = Y_CLOSED_SWITCH * _base_scale(graph, switch.to_node_id, reference_kv)
+        y_bus[from_idx, to_idx] -= y_switch
+        y_bus[to_idx, from_idx] -= y_switch
+        y_bus[from_idx, from_idx] += y_switch
+        y_bus[to_idx, to_idx] += y_switch
 
     for branch in graph.branches.values():
         if not branch.in_service:
@@ -801,23 +1008,15 @@ def _build_ybus_ohm(
         to_idx = node_id_to_index[branch.to_node_id]
 
         y_series, y_shunt = _get_branch_admittances_ohm(branch)
+        # V12K-187: admitancja jest liczona na WŁASNYM poziomie napięcia gałęzi
+        # (linia — napięcie szyn, transformator — strona LV, czyli węzeł `to`),
+        # więc odnosimy ją do bazy tego węzła, zanim macierz przejdzie przez
+        # wspólne z_base slacka. Sieć jednonapięciowa: iloraz = 1.0 (bez zmian).
+        branch_scale = _base_scale(graph, branch.to_node_id, reference_kv)
+        y_series = y_series * branch_scale
+        y_shunt = y_shunt * branch_scale
 
-        tap_ratio = 1.0
-        tap_source = None
-        if isinstance(branch, TransformerBranch):
-            if branch.tap_position != 0:
-                tap_ratio = branch.get_tap_ratio()
-                tap_source = "core"
-            elif branch.id in tap_ratios:
-                tap_ratio = tap_ratios[branch.id]
-                tap_source = "overlay"
-            else:
-                tap_ratio = branch.get_tap_ratio()
-                if tap_ratio != 1.0:
-                    tap_source = "core"
-        elif branch.id in tap_ratios:
-            tap_ratio = tap_ratios[branch.id]
-            tap_source = "overlay"
+        tap_ratio, tap_source = _resolve_tap_ratio(graph, branch, tap_ratios)
 
         if tap_ratio <= 0:
             raise ValueError(f"Tap ratio must be > 0 for branch '{branch.id}'")
@@ -831,11 +1030,43 @@ def _build_ybus_ohm(
                 }
             )
 
-        if tap_ratio != 1.0 and isinstance(branch, TransformerBranch):
+        # SM-2 (V12K-180): vector-group phase displacement θ (LV leads HV).
+        # Consumed here — the phase-shifting-transformer complex-ratio model in
+        # the LF Y-bus. θ = 0 (e.g. Yy0) reduces byte-for-byte to the previous
+        # off-nominal-tap stamping. from = HV (tapped side), to = LV.
+        theta_shift = 0.0
+        if isinstance(branch, TransformerBranch):
+            theta_shift = transformer_phase_shift_rad(branch.vector_group)
+
+        if isinstance(branch, TransformerBranch) and (tap_ratio != 1.0 or theta_shift != 0.0):
+            # Complex tap t = |t|·e^{-jθ} (MATPOWER convention; |t| = off-nominal
+            # tap on the HV/from side). Phase-shifting-transformer stamping:
+            #   Y_ff = y/|t|²          Y_ft = -y/|t|·e^{-jθ}
+            #   Y_tf = -y/|t|·e^{+jθ}  Y_tt = y
+            # gives, at no load, v_to = (1/|t|)·e^{+jθ}·v_from → the LV node
+            # leads the HV node by θ (Dyn11 → +30°). The off-diagonal asymmetry
+            # is physical for a phase shifter.
+            e_pos = np.exp(1j * theta_shift)
+            e_neg = np.exp(-1j * theta_shift)
             y_bus[from_idx, from_idx] += y_series / (tap_ratio**2)
-            y_bus[from_idx, to_idx] += -y_series / tap_ratio
-            y_bus[to_idx, from_idx] += -y_series / tap_ratio
+            y_bus[from_idx, to_idx] += -y_series / tap_ratio * e_neg
+            y_bus[to_idx, from_idx] += -y_series / tap_ratio * e_pos
             y_bus[to_idx, to_idx] += y_series
+            if theta_shift != 0.0:
+                clock = transformer_clock_number(branch.vector_group)
+                t_complex = tap_ratio * e_neg
+                applied_phase_shifts.append(
+                    {
+                        "branch_id": branch.id,
+                        "vector_group": branch.vector_group,
+                        "clock_number": clock,
+                        "phase_shift_deg": float(np.rad2deg(theta_shift)),
+                        "phase_shift_rad": float(theta_shift),
+                        "tap_abs": float(tap_ratio),
+                        "tap_complex_real": float(t_complex.real),
+                        "tap_complex_imag": float(t_complex.imag),
+                    }
+                )
         else:
             y_bus[from_idx, to_idx] -= y_series
             y_bus[to_idx, from_idx] -= y_series
@@ -843,7 +1074,7 @@ def _build_ybus_ohm(
             y_bus[from_idx, from_idx] += y_series + y_shunt
             y_bus[to_idx, to_idx] += y_series + y_shunt
 
-    return y_bus, applied_taps
+    return y_bus, applied_taps, applied_phase_shifts
 
 
 def _get_branch_admittances_ohm(branch: Branch) -> tuple[complex, complex]:

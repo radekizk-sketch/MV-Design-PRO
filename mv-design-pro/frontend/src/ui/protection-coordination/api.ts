@@ -42,6 +42,28 @@ export async function runCoordinationAnalysis(
 }
 
 /**
+ * Kolekcje wyniku koordynacji, których ekran używa BEZ warunku (liczniki zakładek,
+ * tabele werdyktów, krzywe). Brak którejkolwiek w odpowiedzi wywracał CAŁĄ stronę
+ * białym ekranem — `result?.trace_steps.length` chroniło tylko przed `result === null`,
+ * a nie przed brakującym polem (V12K-262; ta sama klasa awarii co V12K-252
+ * w `nastawyApi`). Lepiej nazwać rozjazd wersji API niż stracić ekran.
+ */
+const KOLEKCJE_WYNIKU: readonly string[] = [
+  'sensitivity_checks',
+  'selectivity_checks',
+  'overload_checks',
+  'tcc_curves',
+  'fault_markers',
+  'trace_steps',
+];
+
+function maKompletneKolekcje(payload: unknown): payload is CoordinationResult {
+  if (typeof payload !== 'object' || payload === null || Array.isArray(payload)) return false;
+  const rekord = payload as Record<string, unknown>;
+  return KOLEKCJE_WYNIKU.every((klucz) => Array.isArray(rekord[klucz]));
+}
+
+/**
  * Get full coordination analysis result.
  */
 export async function getCoordinationResult(
@@ -54,7 +76,17 @@ export async function getCoordinationResult(
     throw new Error(error.detail || `HTTP ${response.status}`);
   }
 
-  return response.json();
+  const payload: unknown = await response.json();
+  if (!maKompletneKolekcje(payload)) {
+    const brakujace = KOLEKCJE_WYNIKU.filter(
+      (klucz) => !Array.isArray((payload as Record<string, unknown>)?.[klucz]),
+    );
+    throw new Error(
+      'Wynik koordynacji ma niepełny kształt — brak kolekcji: '
+      + `${brakujace.join(', ')}. Sprawdź wersję API zabezpieczeń.`,
+    );
+  }
+  return payload;
 }
 
 /**

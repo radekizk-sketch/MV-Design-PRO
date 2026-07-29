@@ -119,6 +119,9 @@ def _build_context(
         run_timestamp=ctx.run_timestamp,
         snapshot_id=ctx.snapshot_id,
         trace_id=ctx.trace_id,
+        # Dostęp bezpośredni (bez getattr z domyślną): brak pola w kontekście
+        # źródłowym ma wybuchnąć tutaj, nie stać się cichym None (V12K-267).
+        run_id=ctx.run_id,
     )
 
 

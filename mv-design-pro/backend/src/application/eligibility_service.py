@@ -166,7 +166,7 @@ class EligibilityService:
         self._check_source_z0(enm, blockers)
 
         # C3: Earthing/grounding model availability
-        self._check_earthing_model(enm, blockers, info)
+        self._check_earthing_model(enm, blockers)
 
         return build_eligibility_result(
             analysis_type=AnalysisType.SC_1F,
@@ -536,12 +536,37 @@ class EligibilityService:
     def _check_earthing_model(
         enm: EnergyNetworkModel,
         blockers: list[AnalysisEligibilityIssue],
-        info: list[AnalysisEligibilityIssue],
     ) -> None:
-        """Check earthing/grounding model availability for SC_1F.
+        """Sprawdza dostępność modelu uziemienia punktu neutralnego dla SC_1F.
 
-        If no bus has grounding config and no transformer has neutral config,
-        emit a blocker that earthing model is not yet available.
+        DLACZEGO BLOKADA, A NIE INFORMACJA (V12K-219). Prąd zwarcia jednofazowego
+        wg IEC 60909 wynosi ``I″k1 = √3·c·Un / |Z1 + Z2 + Z0|`` — a ``Z0`` sieci
+        SN jest ZDOMINOWANA przez sposób pracy punktu neutralnego:
+
+        * sieć **izolowana** — ``Z0`` pojemnościowa, prąd doziemny to prąd
+          pojemnościowy ``I_C = 3·ω·C0·U_f`` (rząd dziesiątek amperów),
+        * sieć **kompensowana** (dławik Petersena) — ``L_p`` równolegle z ``C0``,
+          w rezonansie zostaje prąd resztkowy (rząd pojedynczych amperów),
+        * uziemienie przez **rezystor** — prąd ograniczony konstrukcyjnie
+          (rząd setek amperów),
+        * uziemienie **bezpośrednie** — prąd porównywalny z trójfazowym (kA).
+
+        Rozpiętość między siecią kompensowaną a bezpośrednio uziemioną sięga
+        TRZECH RZĘDÓW WIELKOŚCI, więc bez tej danej wynik nie jest „przybliżony",
+        tylko dowolny. Od niego zależą dalej: czułość i dobór zabezpieczeń
+        ziemnozwarciowych (51N/67N), napięcia dotykowe na uziomach stacji
+        (PN-EN 50522) i wymagana rezystancja uziomu.
+
+        HISTORIA POPRAWKI: kod powstał jako INFO, gdy komunikat mówił „funkcja
+        w przygotowaniu" (audyt 2026-05-28). Po przeformułowaniu na „brak danych"
+        severity została INFO przez przeoczenie, mimo że docstring od początku
+        zapowiadał blokadę. Stan sprzed poprawki dopuszczał uruchomienie SC_1F
+        bez podstawy fizycznej — to fabrykacja wyniku, nie ułatwienie.
+
+        Model uziemienia uznajemy za obecny, gdy niesie go SZYNA (``bus.grounding``)
+        ALBO punkt neutralny transformatora (``hv_neutral``/``lv_neutral``) — w
+        praktyce krajowej punkt neutralny sieci SN uziemia się właśnie po stronie
+        dolnej transformatora GPZ, więc obie drogi są równoprawne.
         """
         has_grounding = any(bus.grounding is not None for bus in enm.buses)
         has_trafo_neutral = any(
@@ -550,10 +575,10 @@ class EligibilityService:
         )
 
         if not has_grounding and not has_trafo_neutral and enm.buses:
-            info.append(
+            blockers.append(
                 AnalysisEligibilityIssue(
                     code="ELIG_SC1_EARTHING_MODEL_INCOMPLETE",
-                    severity=IssueSeverity.INFO,
+                    severity=IssueSeverity.BLOCKER,
                     message_pl=(
                         "Dane niekompletne: brak modelu uziemienia. "
                         "Zwarcie jednofazowe wymaga sposobu uziemienia punktu "

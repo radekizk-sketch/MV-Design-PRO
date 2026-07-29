@@ -74,30 +74,19 @@ def _resolve_inverter(
         return DerDynamicResolution(
             profile=INVERTER_DYNAMIC_PROFILES[explicit_profile_id],
             source="explicit_profile_id",
-            rationale_pl=(
-                f"Wskazany profil '{explicit_profile_id}' znaleziony w rejestrze."
-            ),
+            rationale_pl=(f"Wskazany profil '{explicit_profile_id}' znaleziony w rejestrze."),
         )
-    if (
-        catalog_dynamic_profile_id
-        and catalog_dynamic_profile_id in INVERTER_DYNAMIC_PROFILES
-    ):
+    if catalog_dynamic_profile_id and catalog_dynamic_profile_id in INVERTER_DYNAMIC_PROFILES:
         return DerDynamicResolution(
             profile=INVERTER_DYNAMIC_PROFILES[catalog_dynamic_profile_id],
             source="catalog_entry_dynamic_profile_id",
-            rationale_pl=(
-                f"Wpis katalogu wskazuje profil '{catalog_dynamic_profile_id}'."
-            ),
+            rationale_pl=(f"Wpis katalogu wskazuje profil '{catalog_dynamic_profile_id}'."),
         )
 
     if der_kind == "PV":
-        default_profile = (
-            DEFAULT_PV_GFM if control_mode == "grid_forming" else DEFAULT_PV_GFL
-        )
+        default_profile = DEFAULT_PV_GFM if control_mode == "grid_forming" else DEFAULT_PV_GFL
     else:
-        default_profile = (
-            DEFAULT_BESS_GFM if control_mode == "grid_forming" else DEFAULT_BESS_GFL
-        )
+        default_profile = DEFAULT_BESS_GFM if control_mode == "grid_forming" else DEFAULT_BESS_GFL
 
     return DerDynamicResolution(
         profile=default_profile,
@@ -119,20 +108,13 @@ def _resolve_wind(
         return DerDynamicResolution(
             profile=WIND_DYNAMIC_PROFILES[explicit_profile_id],
             source="explicit_profile_id",
-            rationale_pl=(
-                f"Wskazany profil turbiny '{explicit_profile_id}'."
-            ),
+            rationale_pl=(f"Wskazany profil turbiny '{explicit_profile_id}'."),
         )
-    if (
-        catalog_dynamic_profile_id
-        and catalog_dynamic_profile_id in WIND_DYNAMIC_PROFILES
-    ):
+    if catalog_dynamic_profile_id and catalog_dynamic_profile_id in WIND_DYNAMIC_PROFILES:
         return DerDynamicResolution(
             profile=WIND_DYNAMIC_PROFILES[catalog_dynamic_profile_id],
             source="catalog_entry_dynamic_profile_id",
-            rationale_pl=(
-                f"Wpis katalogu turbiny wskazuje profil '{catalog_dynamic_profile_id}'."
-            ),
+            rationale_pl=(f"Wpis katalogu turbiny wskazuje profil '{catalog_dynamic_profile_id}'."),
         )
 
     converter_to_default: dict[str, WindTurbineDynamicProfile] = {
@@ -194,9 +176,7 @@ def resolve_der_dynamic_profile(
 
 def list_all_profile_ids() -> list[str]:
     """Lista wszystkich znanych profile_id (deterministyczna kolejność)."""
-    return sorted(
-        list(INVERTER_DYNAMIC_PROFILES.keys()) + list(WIND_DYNAMIC_PROFILES.keys())
-    )
+    return sorted(list(INVERTER_DYNAMIC_PROFILES.keys()) + list(WIND_DYNAMIC_PROFILES.keys()))
 
 
 def get_profile(profile_id: str) -> DerDynamicProfile:
@@ -206,9 +186,7 @@ def get_profile(profile_id: str) -> DerDynamicProfile:
     if profile_id in WIND_DYNAMIC_PROFILES:
         return WIND_DYNAMIC_PROFILES[profile_id]
     available = ", ".join(list_all_profile_ids())
-    raise KeyError(
-        f"Profil dynamiczny '{profile_id}' nieznany. Dostępne: {available}"
-    )
+    raise KeyError(f"Profil dynamiczny '{profile_id}' nieznany. Dostępne: {available}")
 
 
 # Re-export używany przez konsumentów

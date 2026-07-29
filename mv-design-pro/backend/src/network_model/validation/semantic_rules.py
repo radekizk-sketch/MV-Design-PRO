@@ -286,9 +286,7 @@ def rule_no_orphan_branch_points(enm: dict) -> list[ValidationIssue]:
     usuwaniu segmentów bez kaskadowego usuwania ich rozgałęźników.
     """
     issues: list[ValidationIssue] = []
-    branch_ids = {b.get("id") for b in _branches(enm)} | {
-        b.get("ref_id") for b in _branches(enm)
-    }
+    branch_ids = {b.get("id") for b in _branches(enm)} | {b.get("ref_id") for b in _branches(enm)}
     branch_ids.discard(None)
     for bp in _branch_points(enm):
         parent_seg = bp.get("parent_segment_id")

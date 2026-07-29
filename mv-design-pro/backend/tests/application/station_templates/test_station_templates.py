@@ -24,9 +24,9 @@ def test_all_10_categories_present() -> None:
     counts = count_by_category()
     expected_categories = {c.value for c in TemplateCategory}
     actual_categories = set(counts.keys())
-    assert actual_categories == expected_categories, (
-        f"Missing categories: {expected_categories - actual_categories}"
-    )
+    assert (
+        actual_categories == expected_categories
+    ), f"Missing categories: {expected_categories - actual_categories}"
 
 
 def test_category_breakdown_per_plan() -> None:
@@ -47,7 +47,7 @@ def test_category_breakdown_per_plan() -> None:
 def test_each_template_has_required_fields() -> None:
     """Every template must have id, name_pl, category, schema."""
     for t in list_templates():
-        assert t.id, f"Template missing id"
+        assert t.id, "Template missing id"
         assert t.id.startswith("tpl_"), f"Template id must start with 'tpl_': {t.id}"
         assert t.name_pl, f"Template {t.id} missing name_pl"
         assert t.description_pl, f"Template {t.id} missing description_pl"
@@ -139,17 +139,28 @@ def test_nc_rfg_type_set_for_oze_templates() -> None:
     )
     for cat in oze_categories:
         for t in list_templates_by_category(cat):
-            assert t.nc_rfg_type in ("A", "B", "C", "D"), (
-                f"{t.id} ({cat.value}): NC RfG type missing"
-            )
+            assert t.nc_rfg_type in (
+                "A",
+                "B",
+                "C",
+                "D",
+            ), f"{t.id} ({cat.value}): NC RfG type missing"
 
 
 def test_protection_options_use_e2tango_or_known_vendors() -> None:
     """Protection options must reference real device IDs (K30-16 catalog)."""
-    valid_vendors = {"ELEKTROMETAL", "SIEMENS", "ABB", "SCHNEIDER", "SEL", "GE",
-                     "ZPAS", "ELESTER", "ENERGOTEST", "ZIAD"}
+    valid_vendors = {
+        "ELEKTROMETAL",
+        "SIEMENS",
+        "ABB",
+        "SCHNEIDER",
+        "SEL",
+        "GE",
+        "ZPAS",
+        "ELESTER",
+        "ENERGOTEST",
+        "ZIAD",
+    }
     for t in list_templates():
         for prot in t.schema.sn_bay_protection_options:
-            assert prot.vendor in valid_vendors, (
-                f"{t.id}: unknown vendor '{prot.vendor}'"
-            )
+            assert prot.vendor in valid_vendors, f"{t.id}: unknown vendor '{prot.vendor}'"

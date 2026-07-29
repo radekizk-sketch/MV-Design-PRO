@@ -10,9 +10,8 @@ zgodnie z regułami derywacji jednostek z rejestru równań.
 
 from __future__ import annotations
 
-from typing import Any
-
 from dataclasses import dataclass
+from typing import Any
 
 from application.proof_engine.types import UnitCheckResult
 
@@ -187,6 +186,17 @@ class UnitVerifier:
             "rule": "— · — · kA = kA",
             "inputs": {"μ": "—", "q": "—", "I_k''": "kA"},
             "output": "kA",
+        },
+        # Pełny bilans punktu zwarcia: I_b(t_b) oraz I²t (karta S-C, 2026-07-22)
+        "EQ_SC3F_014": {
+            "rule": "kA · — = kA",
+            "inputs": {"I_k''": "kA", "κ": "—", "t_b": "s"},
+            "output": "kA",
+        },
+        "EQ_SC3F_015": {
+            "rule": "kA² · s = kA²s",
+            "inputs": {"I_th": "kA", "t_k": "s"},
+            "output": "kA²s",
         },
         # SC1 Post-Fault (§4.1)
         "EQ_SC1_001": {

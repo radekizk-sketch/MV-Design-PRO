@@ -1,0 +1,101 @@
+/*
+ * Tokeny powłoki MV-DESIGN-PRO — Program UI/UX 2026-07 (okno W-110).
+ *
+ * Prefiks --mvd-* jest wyłączną własnością powłoki (karta koordynacyjna SLD-01):
+ * kolory schematu (--sld-*) NIE są tutaj duplikowane.
+ *
+ * Motywy (nazwy zamrożone, wspólne z wątkiem SLD):
+ *   dark_scada       — ciemny (dyspozytorski), domyślny dla ekranu
+ *   light_technical  — jasny (techniczny), obowiązuje dla druku/eksportu
+ *
+ * Wartości palety odwzorowują zatwierdzoną makietę U0.6 v6.
+ * Oba bloki motywów definiują IDENTYCZNY zbiór kluczy --mvd-* (parytet).
+ */
+
+:root {
+  /* Wymiary powłoki — niezależne od motywu. */
+  --mvd-rail-width: 48px;
+  --mvd-left-min: 200px;
+  --mvd-left-max: 320px;
+  --mvd-left-default: 240px;
+  --mvd-right-min: 280px;
+  --mvd-right-max: 560px;
+  --mvd-right-default: 320px;
+  --mvd-titlebar-height: 44px;
+  --mvd-statusbar-height: 28px;
+}
+
+/* Motyw jasny (techniczny) — jednocześnie wartości domyślne :root. */
+:root,
+:root[data-theme="light_technical"] {
+  --mvd-bg: #F6F7F8;
+  --mvd-panel: #FFFFFF;
+  --mvd-panel-2: #EEF1F4;
+  --mvd-line: #D4DAE1;
+  --mvd-ink: #1C2732;
+  --mvd-muted: #5A6B7C;
+  --mvd-accent: #1F7FB5;
+  --mvd-accent-ink: #FFFFFF;
+  --mvd-ok: #1E7E4B;
+  --mvd-warn: #9A6A14;
+  --mvd-err: #B3382F;
+  --mvd-ok-bg: #E2F3E9;
+  --mvd-warn-bg: #F8EEDA;
+  --mvd-err-bg: #F9E4E2;
+  --mvd-chip: #E7EDF2;
+  --mvd-sel: #DDEBF5;
+  --mvd-shadow: 0 1px 3px rgba(20, 30, 40, 0.10);
+  --mvd-focus: #1F7FB5;
+  --mvd-font-sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --mvd-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+}
+
+/* Motyw ciemny (dyspozytorski). */
+:root[data-theme="dark_scada"] {
+  --mvd-bg: #0D131A;
+  --mvd-panel: #141C25;
+  --mvd-panel-2: #101820;
+  --mvd-line: #26313E;
+  --mvd-ink: #D3DDE7;
+  --mvd-muted: #7E90A2;
+  --mvd-accent: #41A8DE;
+  --mvd-accent-ink: #08222F;
+  --mvd-ok: #3DBE7B;
+  --mvd-warn: #E3A63C;
+  --mvd-err: #DD5A52;
+  --mvd-ok-bg: #12291D;
+  --mvd-warn-bg: #2C2210;
+  --mvd-err-bg: #2E1512;
+  --mvd-chip: #1B2631;
+  --mvd-sel: #173142;
+  --mvd-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --mvd-focus: #41A8DE;
+  --mvd-font-sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  --mvd-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+}
+
+/* Preferencja systemowa (ciemny) gdy użytkownik nie wybrał motywu jawnie. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --mvd-bg: #0D131A;
+    --mvd-panel: #141C25;
+    --mvd-panel-2: #101820;
+    --mvd-line: #26313E;
+    --mvd-ink: #D3DDE7;
+    --mvd-muted: #7E90A2;
+    --mvd-accent: #41A8DE;
+    --mvd-accent-ink: #08222F;
+    --mvd-ok: #3DBE7B;
+    --mvd-warn: #E3A63C;
+    --mvd-err: #DD5A52;
+    --mvd-ok-bg: #12291D;
+    --mvd-warn-bg: #2C2210;
+    --mvd-err-bg: #2E1512;
+    --mvd-chip: #1B2631;
+    --mvd-sel: #173142;
+    --mvd-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --mvd-focus: #41A8DE;
+    --mvd-font-sans: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    --mvd-font-mono: ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;
+  }
+}

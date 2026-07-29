@@ -1,0 +1,444 @@
+/*
+ * Style kreatora studium przyłączenia (ui2/oze/studium, karta P35). Kolory
+ * WYŁĄCZNIE przez tokeny --mvd-* (theme/tokens.css) — zero literałów hex.
+ * Determinizm prezentacji: stałe wymiary, brak animacji zależnych od czasu.
+ * Tabela przeglądu korzysta ze stylów wspólnego wzorca (`ui2/wyniki/wzorzec`);
+ * tu wyłącznie ramka kreatora, pasek kroków, pola i postęp.
+ */
+
+.mvd-studium {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--mvd-ink);
+}
+
+.mvd-studium-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-studium-tytul {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+.mvd-studium-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- pasek kroków (roving tabindex) ---- */
+.mvd-studium-kroki {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mvd-studium-krok-poz {
+  flex: 1 1 160px;
+}
+.mvd-studium-krok {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  cursor: pointer;
+  text-align: left;
+}
+.mvd-studium-krok.mvd-on {
+  border-color: var(--mvd-accent);
+  box-shadow: var(--mvd-shadow);
+}
+.mvd-studium-krok-numer {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--mvd-bg);
+  border: 1px solid var(--mvd-line);
+  font-size: 12px;
+}
+.mvd-studium-krok.mvd-on .mvd-studium-krok-numer {
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  border-color: var(--mvd-accent);
+}
+.mvd-studium-krok-tytul {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* ---- panel kroku ---- */
+.mvd-studium-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  box-shadow: var(--mvd-shadow);
+  padding: 12px;
+}
+.mvd-studium-panel-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-studium-hint {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* ---- stany (instrukcja / błąd) ---- */
+.mvd-studium-stan {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-bg);
+  padding: 12px;
+}
+.mvd-studium-stan--blad {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-studium-stan-title {
+  margin: 0;
+  font-weight: 600;
+}
+.mvd-studium-stan-desc {
+  margin: 4px 0 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- pola formularza ---- */
+.mvd-studium-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 460px;
+}
+.mvd-studium-pole > label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.mvd-studium-pole select {
+  padding: 4px 6px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+}
+.mvd-studium-pole-uwaga {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+
+.mvd-studium-typ-dane {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 16px;
+  font-size: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  padding: 8px;
+  max-width: 460px;
+}
+.mvd-studium-typ-para {
+  display: contents;
+}
+.mvd-studium-typ-para dt {
+  color: var(--mvd-muted);
+}
+.mvd-studium-typ-para dd {
+  margin: 0;
+}
+
+/* ---- węzły (multi-wybór) ---- */
+.mvd-studium-wezly {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  padding: 8px;
+  max-width: 460px;
+}
+.mvd-studium-wezly > legend {
+  font-size: 12px;
+  font-weight: 600;
+}
+.mvd-studium-wezly-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.mvd-studium-wezel-opcja {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+/* ---- przycisk uruchomienia + bieg ---- */
+.mvd-studium-uruchom {
+  align-self: flex-start;
+  padding: 6px 14px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 4px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-studium-uruchom:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mvd-studium-biegnie {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- postęp per wariant/faza ---- */
+.mvd-studium-postep {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-studium-postep-wariant {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-studium-postep-naglowek {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.mvd-studium-postep-nazwa {
+  font-weight: 600;
+}
+.mvd-studium-postep-id {
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+.mvd-studium-postep-fazy {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mvd-studium-faza {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 12px;
+}
+.mvd-studium-faza-nazwa {
+  min-width: 180px;
+}
+.mvd-studium-faza-status {
+  font-weight: 600;
+}
+.mvd-studium-faza--gotowe .mvd-studium-faza-status {
+  color: var(--mvd-ok);
+}
+.mvd-studium-faza--blad .mvd-studium-faza-status {
+  color: var(--mvd-err);
+}
+.mvd-studium-faza--w-toku .mvd-studium-faza-status {
+  color: var(--mvd-accent);
+}
+.mvd-studium-faza-blad {
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+
+/* ---- szczegół wariantu ---- */
+.mvd-studium-szczegol {
+  margin-top: 10px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-bg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-studium-szczegol-naglowek {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.mvd-studium-szczegol-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-studium-szczegol-id {
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+.mvd-studium-szczegol-blok {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-studium-szczegol-podtytul {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mvd-studium-szczegol-brak {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- nawigacja ---- */
+.mvd-studium-nawigacja {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mvd-studium-naw {
+  padding: 6px 14px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-studium-naw:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- dokument studium (akcja + podgląd + pobrania) ---- */
+.mvd-studium-dok-akcja {
+  display: flex;
+}
+.mvd-studium-dok {
+  margin-top: 4px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-bg);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-studium-dok-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.mvd-studium-dok-tytul {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-studium-dok-braki-lista {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  font-size: 12px;
+}
+.mvd-studium-dok-widok {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-studium-dok-meta {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 16px;
+  font-size: 12px;
+}
+.mvd-studium-dok-meta > div {
+  display: contents;
+}
+.mvd-studium-dok-meta dt {
+  color: var(--mvd-muted);
+}
+.mvd-studium-dok-meta dd {
+  margin: 0;
+}
+.mvd-studium-dok-podtytul {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+}
+.mvd-studium-dok-tabela-wrap {
+  overflow-x: auto;
+}
+.mvd-studium-dok-tabela {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+.mvd-studium-dok-tabela th,
+.mvd-studium-dok-tabela td {
+  border: 1px solid var(--mvd-line);
+  padding: 4px 8px;
+  text-align: left;
+}
+.mvd-studium-dok-tabela th {
+  background: var(--mvd-panel);
+  font-weight: 600;
+}
+.mvd-studium-dok-bledy {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-studium-dok-blad-wezel {
+  font-weight: 600;
+}
+.mvd-studium-dok-zalozenia {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+  line-height: 1.5;
+}
+.mvd-studium-dok-pobrania {
+  display: flex;
+  gap: 8px;
+}

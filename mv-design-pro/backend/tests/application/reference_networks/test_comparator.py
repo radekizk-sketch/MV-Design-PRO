@@ -6,11 +6,9 @@ from application.reference_networks.comparator import (
     ElementComparison,
     build_validation_report,
     compare_power_flow,
-    compare_power_flow_branches,
     compare_short_circuit,
 )
 from application.reference_networks.expected_values import (
-    ExpectedBranchPF,
     ExpectedBusPF,
     ExpectedShortCircuit,
     ExpectedValues,
@@ -96,9 +94,7 @@ class TestBuildValidationReport:
     """Aggregate report logic."""
 
     def test_all_pass_gives_overall_pass(self) -> None:
-        pf_comp = (
-            ElementComparison("B1", "v_pu", 1.0, 1.0, 1e-3, 0.0, 0.0, "PASS"),
-        )
+        pf_comp = (ElementComparison("B1", "v_pu", 1.0, 1.0, 1e-3, 0.0, 0.0, "PASS"),)
         report = build_validation_report(
             network_id="test",
             network_name_pl="Test Network",

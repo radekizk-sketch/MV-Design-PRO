@@ -21,7 +21,9 @@ export type CatalogNamespace =
   | 'ZABEZPIECZENIE'
   | 'CT'
   | 'VT'
-  | 'OBCIAZENIE';
+  | 'OBCIAZENIE'
+  | 'KOMPENSATOR_SN'
+  | 'OGRANICZNIK_SN';
 
 export type CatalogGateMode = 'required' | 'topology_allowed_without_catalog';
 
@@ -40,6 +42,8 @@ const CATALOG_REQUIRED_OPERATIONS: Record<string, CatalogNamespace> = {
   add_relay: 'ZABEZPIECZENIE',
   add_ct: 'CT',
   add_vt: 'VT',
+  add_shunt_compensator_sn: 'KOMPENSATOR_SN',
+  add_surge_arrester_sn: 'OGRANICZNIK_SN',
 };
 
 function resolveCanonicalOperationName(operationId: string): CanonicalOpName | null {
@@ -68,7 +72,14 @@ export function catalogGateMode(operationId: string): CatalogGateMode | undefine
   if (canonicalOp === null || !(canonicalOp in CATALOG_REQUIRED_OPERATIONS)) {
     return undefined;
   }
-  if (canonicalOp === 'add_grid_source_sn' || canonicalOp === 'add_sn_bay') {
+  if (
+    canonicalOp === 'add_grid_source_sn'
+    || canonicalOp === 'add_sn_bay'
+    // Kreator ui2 obsługuje wybór katalogu wewnętrznie (jak GPZ) — otwórz kreator,
+    // nie CatalogPicker; katalog-first wymusza sam kreator i backend.
+    || canonicalOp === 'add_shunt_compensator_sn'
+    || canonicalOp === 'add_surge_arrester_sn'
+  ) {
     return 'topology_allowed_without_catalog';
   }
   return 'required';
@@ -90,6 +101,8 @@ export function catalogNamespaceLabel(ns: CatalogNamespace): string {
     CT: 'Przekladnik pradowy',
     VT: 'Przekladnik napieciowy',
     OBCIAZENIE: 'Obciazenie',
+    KOMPENSATOR_SN: 'Bateria kondensatorów SN',
+    OGRANICZNIK_SN: 'Ogranicznik przepięć SN',
   };
   return labels[ns];
 }

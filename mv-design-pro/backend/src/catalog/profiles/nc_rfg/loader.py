@@ -76,9 +76,7 @@ class NcRfgProfile(BaseModel):
     p_recovery_after_fault: NcRfgPRecovery
     compliance_tests: list[NcRfgComplianceTest]
 
-    def classify_module(
-        self, p_max_kw: float, voltage_kv: float
-    ) -> NcRfgModuleType | None:
+    def classify_module(self, p_max_kw: float, voltage_kv: float) -> NcRfgModuleType | None:
         """Klasyfikuje moduł wytwórczy do kategorii A/B/C/D."""
         for mt in self.module_types:
             if p_max_kw < mt.threshold_kw_min:

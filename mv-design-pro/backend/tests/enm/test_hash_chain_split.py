@@ -25,7 +25,6 @@ from enm.hash import (
 )
 from enm.models import (
     Bus,
-    Cable,
     EnergyNetworkModel,
     ENMHeader,
     OverheadLine,

@@ -35,6 +35,9 @@ from application.proof_engine.types import (
     QUInput,
 )
 from application.proof_engine.unit_verifier import UnitVerifier
+from network_model.solvers.short_circuit_asymmetrical_quantities import (
+    compute_sc1_asymmetrical_quantities,
+)
 
 # =============================================================================
 # Fixtures
@@ -70,6 +73,9 @@ def sc3f_test_input() -> SC3FInput:
         tk_s=1.0,
         m_factor=1.0,
         n_factor=0.0,
+        # Karta S-C (2026-07-22): pełny bilans — I_b(t_b) z FROZEN wyniku solvera.
+        ib_ka=2.722,
+        tb_s=0.1,
     )
 
 
@@ -104,7 +110,21 @@ def vdrop_test_input() -> VDROPInput:
 
 @pytest.fixture
 def sc1_test_input() -> SC1Input:
-    """Fixture: minimalne dane SC1 dla testów."""
+    """Fixture: minimalne dane SC1 dla testów.
+
+    Wielkości fizyczne liczy solver (NOT-A-SOLVER, V12K-118) —
+    generator dowodu jest czystym formatterem.
+    """
+    quantities = compute_sc1_asymmetrical_quantities(
+        fault_type="ONE_PHASE_TO_GROUND",
+        u_n_kv=15.0,
+        c_factor=1.10,
+        u_prefault_kv=8.660,
+        z1_ohm=complex(0.5, 1.2),
+        z2_ohm=complex(0.5, 1.2),
+        z0_ohm=complex(0.8, 2.4),
+        a_operator=complex(-0.5, 0.8660),
+    )
     return SC1Input(
         project_name="Test Project",
         case_name="Test Case SC1",
@@ -119,6 +139,7 @@ def sc1_test_input() -> SC1Input:
         z2_ohm=complex(0.5, 1.2),
         z0_ohm=complex(0.8, 2.4),
         a_operator=complex(-0.5, 0.8660),
+        quantities=quantities,
     )
 
 
@@ -184,18 +205,21 @@ class TestSC3FProofGenerator:
 
         Model Anti-Double-Counting: A1 (c tylko w EQ_SC3F_004)
 
-        Kroki obowiązkowe (Model A1):
+        Kroki obowiązkowe (Model A1 + karta S-C 2026-07-22 — zmiana wersjonowana
+        zatwierdzona przez właściciela: kroki I_b(t_b) i I²t w kanonie dowodu):
         1. Thevenin
         2. I_k''
         3. κ (kappa)
         4. i_p
         5. I_dyn (OBOWIĄZKOWY)
-        6. I_th (OBOWIĄZKOWY)
-        7. S_k''
+        6. I_b(t_b) — wartość z FROZEN wyniku solvera
+        7. I_th (OBOWIĄZKOWY)
+        8. I²t = I_th²·t_k
+        9. S_k''
         """
         proof = ProofGenerator.generate_sc3f_proof(sc3f_test_input)
 
-        assert len(proof.steps) == 7
+        assert len(proof.steps) == 9
 
         step_titles = [s.title_pl.lower() for s in proof.steps]
 
@@ -207,8 +231,59 @@ class TestSC3FProofGenerator:
         assert any("κ" in t or "kappa" in t or "współczynnik udaru" in t for t in step_titles)
         assert any("i_p" in t or "prąd udarowy" in t for t in step_titles)
         assert any("i_dyn" in t or "prąd dynamiczny" in t for t in step_titles)
+        assert any("prąd wyłączeniowy i_b" in t for t in step_titles)
         assert any("i_th" in t or "prąd cieplny" in t for t in step_titles)
+        assert any("energia cieplna" in t for t in step_titles)
         assert any("s_k''" in t or "moc zwarciowa" in t for t in step_titles)
+
+    def test_sc3f_proof_ib_and_i2t_steps(self, sc3f_test_input: SC3FInput):
+        """Kroki I_b(t_b) i I²t (karta S-C): kolejność, wartości i wywód."""
+        proof = ProofGenerator.generate_sc3f_proof(sc3f_test_input)
+
+        eq_ids = [s.equation.equation_id for s in proof.steps]
+        # I_b po I_dyn, przed I_th; I²t po I_th, przed S_k''.
+        assert eq_ids == [
+            "EQ_SC3F_003",
+            "EQ_SC3F_004",
+            "EQ_SC3F_005",
+            "EQ_SC3F_006",
+            "EQ_SC3F_008a",
+            "EQ_SC3F_014",
+            "EQ_SC3F_008",
+            "EQ_SC3F_015",
+            "EQ_SC3F_007",
+        ]
+
+        step_ib = proof.steps[5]
+        # Wartość I_b czytana z wejścia (FROZEN wynik solvera) — nie liczona.
+        assert step_ib.result.value == pytest.approx(2.722)
+        assert step_ib.result.unit == "kA"
+        # Wywód dyplomowy: podstawienie niesie t_a oraz człon e^{-t_b/t_a}.
+        assert "t_a" in step_ib.substitution_latex
+        assert "I_b" in step_ib.substitution_latex
+
+        step_i2t = proof.steps[7]
+        assert step_i2t.result.value == pytest.approx(2.722**2 * 1.0)
+        assert step_i2t.result.unit == "kA²s"
+        assert "I^2t" in step_i2t.substitution_latex
+
+    def test_sc3f_proof_legacy_input_without_ib_omits_step(self, sc3f_test_input: SC3FInput):
+        """Kontrakt addytywny: wejście bez ib_ka/tb_s → uczciwy brak kroku I_b.
+
+        Intencja: starsze ścieżki wywołań (bez pełnego bilansu) nie zgadują
+        wartości I_b — dowód ma 8 kroków (bez EQ_SC3F_014), bez klucza ib_ka.
+        """
+        from dataclasses import replace
+
+        legacy = replace(sc3f_test_input, ib_ka=None, tb_s=None)
+        proof = ProofGenerator.generate_sc3f_proof(legacy)
+
+        assert len(proof.steps) == 8
+        eq_ids = {s.equation.equation_id for s in proof.steps}
+        assert "EQ_SC3F_014" not in eq_ids
+        assert "EQ_SC3F_015" in eq_ids  # I²t liczy się z ith+tk (zawsze obecne)
+        assert "ib_ka" not in proof.summary.key_results
+        assert "i2t_ka2s" in proof.summary.key_results
 
     def test_sc3f_proof_step_numbers_are_sequential(self, sc3f_test_input: SC3FInput):
         """Numery kroków są sekwencyjne od 1."""
@@ -236,7 +311,16 @@ class TestSC3FProofGenerator:
         """Kluczowe wyniki są obecne w podsumowaniu."""
         proof = ProofGenerator.generate_sc3f_proof(sc3f_test_input)
 
-        required_keys = ["ikss_ka", "ip_ka", "idyn_ka", "ith_ka", "sk_mva", "kappa"]
+        required_keys = [
+            "ikss_ka",
+            "ip_ka",
+            "idyn_ka",
+            "ith_ka",
+            "ib_ka",
+            "i2t_ka2s",
+            "sk_mva",
+            "kappa",
+        ]
 
         for key in required_keys:
             assert key in proof.summary.key_results, f"Missing key result: {key}"
@@ -338,7 +422,7 @@ class TestSC3FProofWithMachines:
 
     def test_appends_machine_steps(self, sc3f_with_machines: SC3FInput):
         proof = ProofGenerator.generate_sc3f_proof(sc3f_with_machines)
-        assert len(proof.steps) > 7  # 7 aggregate + machine steps
+        assert len(proof.steps) > 9  # 9 aggregate (karta S-C: + I_b, I²t) + machine steps
         eq_ids = {s.equation.equation_id for s in proof.steps}
         assert "EQ_SC3F_011" in eq_ids  # μ (decay)
         assert "EQ_SC3F_012" in eq_ids  # q (asynchronous present)
@@ -370,10 +454,11 @@ class TestSC3FProofWithMachines:
         nums = [s.step_number for s in proof.steps]
         assert nums == list(range(1, len(proof.steps) + 1))
 
-    def test_without_machines_still_seven_steps(self, sc3f_test_input: SC3FInput):
-        # Regression: machine_result=None ⇒ the original 7-step proof, unchanged.
+    def test_without_machines_still_aggregate_steps_only(self, sc3f_test_input: SC3FInput):
+        # Regression: machine_result=None ⇒ the aggregate-only proof (9 steps
+        # after karta S-C: + I_b, I²t), no machine section.
         proof = ProofGenerator.generate_sc3f_proof(sc3f_test_input)
-        assert len(proof.steps) == 7
+        assert len(proof.steps) == 9
         assert "ib_machines_ka" not in proof.summary.key_results
 
     def test_determinism_with_machines(self, sc3f_with_machines: SC3FInput):
@@ -682,6 +767,8 @@ class TestEquationRegistry:
             "EQ_SC3F_007",
             "EQ_SC3F_008",
             "EQ_SC3F_008a",
+            "EQ_SC3F_014",
+            "EQ_SC3F_015",
         ]
 
         for eq_id in required_ids:
@@ -792,7 +879,7 @@ class TestIntegration:
         json_dict = json.loads(json_str)
 
         assert "steps" in json_dict
-        assert len(json_dict["steps"]) == 7
+        assert len(json_dict["steps"]) == 9
         assert json_dict["proof_type"] == "SC3F_IEC60909"
 
         # Verify LaTeX generation

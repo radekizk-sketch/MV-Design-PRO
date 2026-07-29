@@ -10,10 +10,10 @@
       "sc_type": "3F",
       "ikss_a": 28401.878,
       "ip_a": 49752.719,
-      "ith_a": 28401.878,
+      "ith_a": 28500.711,
       "sk_mva": 983.87,
       "rtol": 0.001,
-      "note": "3-phase fault at BUS-01, direct IEC 60909 / pandapower calc_sc fixture"
+      "note": "3-phase fault at BUS-01, direct IEC 60909 / pandapower calc_sc fixture RE-BASELINE ith_a (audyt fizyki fala G, 2026-07): poprzednia wartosc byla DOSLOWNA KOPIA ikss_a, bo rdzenny solver liczyl ith_a = ikss*sqrt(t_k) (niezgodne wymiarowo; przy t_k = 1 s dawalo ith = ikss). Poprawna formula IEC 60909-0 par. 4.7/12: I_th = I''k*sqrt(m+n). Rachunek kontrolny niezalezny od kodu: kappa = ip/(sqrt2*ikss) = 1.2387, ln(kappa-1) = -1.4326; dla t_k = 1 s i f = 50 Hz m = (exp(4*f*t_k*ln)-1)/(2*f*t_k*ln) = 0.006981, n = 1 (zwarcie daleko od generatora), wiec I_th = ikss*sqrt(1.006981) = 28500.84 A wobec 28500.71 A z solvera (0.0004 % roznicy z zaokraglenia kappa w rachunku recznym). Male m jest tu fizycznie poprawne: przy kappa = 1.24 (znaczne R/X) skladowa DC zanika szybko, wiec przez 1 s prad cieplny jest tylko o 0.35 % wiekszy od Ikss."
     }
   ],
   "dynamic_samples": []

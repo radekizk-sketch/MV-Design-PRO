@@ -15,6 +15,12 @@
 // Main component
 export { PropertyGrid } from './PropertyGrid';
 
+// Container (single/multi dispatch + catalog assignment via domain operation)
+export { PropertyGridContainer } from './PropertyGridContainer';
+
+// Element data shape for multi-edit
+export type { ElementData } from './multi-edit-helpers';
+
 // Validation display components
 export {
   ValidationBadge,

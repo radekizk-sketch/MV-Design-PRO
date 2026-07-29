@@ -32,13 +32,42 @@ from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Sol
 
 def _slack_line_bus() -> NetworkGraph:
     g = NetworkGraph()
-    g.add_node(Node(id="GPZ", name="GPZ", node_type=NodeType.SLACK, voltage_level=15.0,
-                    active_power=0.0, reactive_power=0.0, voltage_magnitude=1.0, voltage_angle=0.0))
-    g.add_node(Node(id="B", name="B", node_type=NodeType.PQ, voltage_level=15.0,
-                    active_power=0.0, reactive_power=0.0))
-    g.add_branch(LineBranch(id="L", name="L", branch_type=BranchType.LINE, from_node_id="GPZ",
-                            to_node_id="B", r_ohm_per_km=0.45, x_ohm_per_km=0.90, b_us_per_km=0.0,
-                            length_km=1.0, rated_current_a=0.0))
+    g.add_node(
+        Node(
+            id="GPZ",
+            name="GPZ",
+            node_type=NodeType.SLACK,
+            voltage_level=15.0,
+            active_power=0.0,
+            reactive_power=0.0,
+            voltage_magnitude=1.0,
+            voltage_angle=0.0,
+        )
+    )
+    g.add_node(
+        Node(
+            id="B",
+            name="B",
+            node_type=NodeType.PQ,
+            voltage_level=15.0,
+            active_power=0.0,
+            reactive_power=0.0,
+        )
+    )
+    g.add_branch(
+        LineBranch(
+            id="L",
+            name="L",
+            branch_type=BranchType.LINE,
+            from_node_id="GPZ",
+            to_node_id="B",
+            r_ohm_per_km=0.45,
+            x_ohm_per_km=0.90,
+            b_us_per_km=0.0,
+            length_km=1.0,
+            rated_current_a=0.0,
+        )
+    )
     return g
 
 
@@ -49,20 +78,46 @@ def _ikss(graph: NetworkGraph, bus: str = "B", c: float = 1.1) -> float:
 
 
 def _sync(node_id: str = "B") -> SynchronousMachineSource:
-    return SynchronousMachineSource(id="G", name="GEN", node_id=node_id, sr_mva=5.0, ur_kv=15.0,
-                                    xd_subtransient_pu=0.15, cos_phi_r=0.8, c_max=1.1)
+    return SynchronousMachineSource(
+        id="G",
+        name="GEN",
+        node_id=node_id,
+        sr_mva=5.0,
+        ur_kv=15.0,
+        xd_subtransient_pu=0.15,
+        cos_phi_r=0.8,
+        c_max=1.1,
+    )
 
 
 def _async(node_id: str = "B") -> AsynchronousMachineSource:
-    return AsynchronousMachineSource(id="M", name="MOT", node_id=node_id, pr_mw=2.0, ur_kv=15.0,
-                                     cos_phi_r=0.85, efficiency=0.95, i_lr_ratio=5.0, pole_pairs=2)
+    return AsynchronousMachineSource(
+        id="M",
+        name="MOT",
+        node_id=node_id,
+        pr_mw=2.0,
+        ur_kv=15.0,
+        cos_phi_r=0.85,
+        efficiency=0.95,
+        i_lr_ratio=5.0,
+        pole_pairs=2,
+    )
 
 
 def _dfig(node_id: str = "B") -> AsynchronousMachineSource:
     # Same machine as _async, but flagged DFIG (wind Type 3) — crowbar → induction machine.
-    return AsynchronousMachineSource(id="M", name="DFIG", node_id=node_id, pr_mw=2.0, ur_kv=15.0,
-                                     cos_phi_r=0.85, efficiency=0.95, i_lr_ratio=5.0, pole_pairs=2,
-                                     wind_type_3=True)
+    return AsynchronousMachineSource(
+        id="M",
+        name="DFIG",
+        node_id=node_id,
+        pr_mw=2.0,
+        ur_kv=15.0,
+        cos_phi_r=0.85,
+        efficiency=0.95,
+        i_lr_ratio=5.0,
+        pole_pairs=2,
+        wind_type_3=True,
+    )
 
 
 # ── Determinism / additivity ────────────────────────────────────────────────
@@ -198,11 +253,47 @@ def test_q_factor_curves():
 # ── Small-motor omission (§6.6) ──────────────────────────────────────────────
 def test_small_motor_negligible():
     g = _slack_line_bus()
-    g.add_asynchronous_machine_source(AsynchronousMachineSource(
-        id="m", name="tiny", node_id="B", pr_mw=0.05, ur_kv=15.0, cos_phi_r=0.85,
-        efficiency=0.90, i_lr_ratio=5.0, pole_pairs=1))
+    g.add_asynchronous_machine_source(
+        AsynchronousMachineSource(
+            id="m",
+            name="tiny",
+            node_id="B",
+            pr_mw=0.05,
+            ur_kv=15.0,
+            cos_phi_r=0.85,
+            efficiency=0.90,
+            i_lr_ratio=5.0,
+            pole_pairs=1,
+        )
+    )
     res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
     assert res.motors_negligible is True  # ≤ 5 % of total I″k
+
+
+# ── WHITE BOX: liczby reguly malych silnikow (ZWARCIA-PRO F3 pkt 9, addytywne) ─
+def test_white_box_exposes_small_motor_rule_values():
+    """white_box eksponuje wartosc obliczona (suma I''k,M async) i prog 0.05*I''k
+    uzyte w werdykcie `motors_negligible` — audyt 1:1, bez zmiany istniejacych pol."""
+    g = _slack_line_bus()
+    g.add_synchronous_machine_source(_sync())
+    g.add_asynchronous_machine_source(_async())
+    res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+    wb = res.white_box
+    async_partial = sum(c.ikss_partial_a for c in res.contributions if not c.is_synchronous_machine)
+    assert wb["ikss_async_machines_a"] == pytest.approx(async_partial, rel=1e-12)
+    assert wb["small_motor_limit_a"] == pytest.approx(0.05 * wb["ikss_total_a"], rel=1e-12)
+    assert res.motors_negligible == (wb["ikss_async_machines_a"] <= wb["small_motor_limit_a"])
+
+
+def test_white_box_small_motor_values_only_synchronous():
+    """Siec bez silnikow asynchronicznych: wartosc obliczona = 0, prog > 0, regula
+    spelniona (silniki pomijalne) — uczciwe zera, nie brak pol."""
+    g = _slack_line_bus()
+    g.add_synchronous_machine_source(_sync())
+    res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+    assert res.white_box["ikss_async_machines_a"] == 0.0
+    assert res.white_box["small_motor_limit_a"] > 0.0
+    assert res.motors_negligible is True
 
 
 # ── Determinism of the module ────────────────────────────────────────────────
@@ -210,4 +301,46 @@ def test_module_deterministic():
     g = _slack_line_bus()
     g.add_synchronous_machine_source(_sync())
     g.add_asynchronous_machine_source(_async())
-    assert compute_machine_contributions(g, "B").to_dict() == compute_machine_contributions(g, "B").to_dict()
+    assert (
+        compute_machine_contributions(g, "B").to_dict()
+        == compute_machine_contributions(g, "B").to_dict()
+    )
+
+
+# ── Wywod dyplomowy WHITE BOX per maszyna (zasada 2026-07-22) ─────────────────
+def test_wywod_synchronous_full_derivation():
+    """Kazdy krok wywodu: wzor ogolny -> podstawienie liczbowe -> wynik (KaTeX)."""
+    g = _slack_line_bus()
+    g.add_synchronous_machine_source(_sync())
+    res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+    c = res.contributions[0]
+    kroki = list(c.wywod)
+    assert all(set(k) == {"tekst", "latex"} for k in kroki)
+    latexy = " ".join(k["latex"] for k in kroki if k["latex"])
+    # Impedancja z modulem; wzor superpozycji Z-bus; podstawienie z c = 1.10.
+    assert r"|Z''_m| =" in latexy
+    assert r"I''_{k,m} = \frac{c\,|Z_{mk}|}{|Z_{kk}|\,|Z_m|}" in latexy
+    assert r"\frac{1.10 \cdot" in latexy
+    # Krotnosc z podstawieniem i mu z krzywej t_min = 0.10 s (0.62 + 0.72 e^-0.32k).
+    assert rf"= {c.ratio_ik_ir:.2f}" in latexy
+    assert r"\mu = 0.62 + 0.72\,e^{-0.32" in latexy
+    # Ib z pelnym podstawieniem mu * q * I''k = wynik.
+    assert rf"{c.mu:.3f} \cdot {c.q:.3f} \cdot {c.ikss_partial_a / 1000.0:.3f}" in latexy
+    assert rf"= {c.ib_a / 1000.0:.3f}\;\mathrm{{kA}}" in latexy
+    # Serializacja niesie wywod (kontrakt addytywny).
+    assert res.to_dict()["contributions"][0]["wywod"] == kroki
+
+
+def test_wywod_asynchronous_q_curve_and_dfig_note():
+    g = _slack_line_bus()
+    g.add_asynchronous_machine_source(_dfig())
+    res = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+    c = res.contributions[0]
+    latexy = " ".join(k["latex"] for k in c.wywod if k["latex"])
+    teksty = " ".join(k["tekst"] for k in c.wywod)
+    # Krzywa q dla t_min = 0.10 s: q = 0.57 + 0.12 ln m, z podstawieniem m.
+    assert r"q = 0.57 + 0.12\,\ln" in latexy
+    assert "crowbar" in teksty
+    # Determinizm wywodu.
+    res2 = compute_machine_contributions(g, "B", c_factor=1.1, t_min_s=0.10)
+    assert list(res2.contributions[0].wywod) == list(c.wywod)

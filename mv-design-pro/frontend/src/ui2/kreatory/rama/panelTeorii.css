@@ -1,0 +1,66 @@
+/* PanelTeorii — standard „must-have" ramy kreatorów (V12K-066). Kolory wyłącznie
+   przez tokeny --mvd-* (theme-aware light/dark). */
+
+.mvd-teoria {
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  background: var(--mvd-panel);
+  margin-top: 8px;
+}
+
+.mvd-teoria-summary {
+  cursor: pointer;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  user-select: none;
+  list-style: none; /* usuń natywny marker (uniknij podwójnego trójkąta) */
+}
+
+.mvd-teoria-summary::-webkit-details-marker {
+  display: none;
+}
+
+.mvd-teoria-summary::before {
+  content: '▸ ';
+}
+
+.mvd-teoria[open] .mvd-teoria-summary::before {
+  content: '▾ ';
+}
+
+.mvd-teoria-summary:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+.mvd-teoria-body {
+  padding: 4px 12px 14px;
+  border-top: 1px solid var(--mvd-line);
+}
+
+.mvd-teoria-opis {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-ink);
+  margin: 10px 0;
+}
+
+.mvd-teoria-wymog {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mvd-ink);
+  background: var(--mvd-chip);
+  border-left: 3px solid var(--mvd-accent);
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 10px 0 6px;
+}
+
+.mvd-teoria-podstawa {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+  margin: 6px 0 0;
+}

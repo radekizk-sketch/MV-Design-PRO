@@ -41,8 +41,10 @@ from analysis.arc_flash.models import (
     MM_PER_INCH,
     PPE_CATEGORY_INCOMPLETE,
     PRODUCTION_NFPA_70E_PPE_TABLE,
-    VALIDITY_IBF_MAX_KA,
-    VALIDITY_IBF_MIN_KA,
+    VALIDITY_IBF_MAX_KA_HV,
+    VALIDITY_IBF_MAX_KA_LV,
+    VALIDITY_IBF_MIN_KA_HV,
+    VALIDITY_IBF_MIN_KA_LV,
     VALIDITY_VOLTAGE_MAX_KV,
     VALIDITY_VOLTAGE_MIN_KV,
     ArcCurrentCoeffs,
@@ -72,6 +74,11 @@ _ENCLOSURE_HIGH_MM = 1244.6
 # Domyślny ekwiwalentny wymiar obudowy gdy wymiarów nie podano: publiczna
 # „typowa" obudowa 20 cali = 508 mm (gałąź dim<508 → 20" w modelu Tab. 7).
 _DEFAULT_BOX_INCH = _ENCLOSURE_LOW_MM / MM_PER_INCH  # 20"
+# Tab.6 IEEE 1584-2018: dla konfiguracji VCB WYSOKOŚĆ obudowy > 1244,6 mm ma
+# STAŁY limit ekwiwalentny 49" (NIE rośnie dalej wg transformacji eq.11/12,
+# w przeciwieństwie do szerokości i do wysokości VCBB/HCB). Publiczna stała
+# modelu rozmiaru obudowy, nie współczynnik regresji energii.
+_VCB_HEIGHT_CAP_INCH = 49.0
 
 
 def _round(value: float | None, digits: int = 4) -> float | None:
@@ -201,10 +208,21 @@ class ArcFlashBuilder:
 
     @staticmethod
     def _within_validity(i_bf_ka: float, voltage_kv: float) -> bool:
-        return (
-            VALIDITY_VOLTAGE_MIN_KV <= voltage_kv <= VALIDITY_VOLTAGE_MAX_KV
-            and VALIDITY_IBF_MIN_KA <= i_bf_ka <= VALIDITY_IBF_MAX_KA
-        )
+        """Zakres ważności IEEE 1584-2018 — I_bf ZALEŻNY od klasy napięcia.
+
+        Norma (i referencyjna implementacja open-source rwl/arcflash,
+        ``i_arc.rs::i_arc()``) NIE używa jednego wspólnego przedziału I_bf dla
+        LV i HV: dla U<=600 V zakres to 500 A-106 kA, dla 600 V<U<=15 kV —
+        200 A-65 kA. Jeden wspólny przedział (poprzedni stan kodu) błędnie
+        kwalifikował punkty SN z I_bf 200-500 A jako "poza zakresem" i punkty
+        z I_bf 65-106 kA jako "w zakresie" — dla narzędzia SN to błąd bramki
+        na głównym zakresie zastosowania.
+        """
+        if not (VALIDITY_VOLTAGE_MIN_KV <= voltage_kv <= VALIDITY_VOLTAGE_MAX_KV):
+            return False
+        if voltage_kv <= float(VoltageAnchor.V600.value):
+            return VALIDITY_IBF_MIN_KA_LV <= i_bf_ka <= VALIDITY_IBF_MAX_KA_LV
+        return VALIDITY_IBF_MIN_KA_HV <= i_bf_ka <= VALIDITY_IBF_MAX_KA_HV
 
     # --- ścieżka IEEE 1584-2018 -----------------------------------------
 
@@ -218,6 +236,44 @@ class ArcFlashBuilder:
         gap: float,
         working_distance: float,
     ) -> ArcFlashResult:
+        """Rozdziela na ścieżkę LV (U<=600 V, Eq.25, bez interpolacji kotew) i HV
+        (600 V<U<=15 kV, interpolacja trzech kotew 600/2700/14300 V).
+
+        Norma NIE interpoluje między kotwami dla układów <=600 V — liczy prąd
+        łuku pośredni przy kotwie 600 V (Eq.1), po czym KORYGUJE go do
+        RZECZYWISTEGO napięcia układu (Eq.25). Zweryfikowane wobec referencyjnej
+        implementacji open-source rwl/arcflash (``equations.rs::i_arc_final_lv``,
+        ``e_afb.rs::e_afb`` gałąź ``IArc::LowVoltage``).
+        """
+        if voltage <= float(VoltageAnchor.V600.value):
+            return self._ieee_1584_result_lv(
+                item,
+                i_bf=i_bf,
+                voltage=voltage,
+                arc_time=arc_time,
+                gap=gap,
+                working_distance=working_distance,
+            )
+        return self._ieee_1584_result_hv(
+            item,
+            i_bf=i_bf,
+            voltage=voltage,
+            arc_time=arc_time,
+            gap=gap,
+            working_distance=working_distance,
+        )
+
+    def _ieee_1584_result_hv(
+        self,
+        item: ArcFlashInput,
+        *,
+        i_bf: float,
+        voltage: float,
+        arc_time: float,
+        gap: float,
+        working_distance: float,
+    ) -> ArcFlashResult:
+        """Ścieżka HV/SN (600 V<U<=15 kV): interpolacja trzech kotew napięcia."""
         cfg = item.electrode_config
         enc_type = item.enclosure_type
         table = self._table
@@ -412,6 +468,222 @@ class ArcFlashBuilder:
             white_box=tuple(steps),
         )
 
+    # --- ścieżka LV (U<=600 V): Eq.1 @ kotwa 600 V + korekcja Eq.25 ------
+
+    def _ieee_1584_result_lv(
+        self,
+        item: ArcFlashInput,
+        *,
+        i_bf: float,
+        voltage: float,
+        arc_time: float,
+        gap: float,
+        working_distance: float,
+    ) -> ArcFlashResult:
+        """Ścieżka LV/niskie napięcie (U<=600 V) — BEZ interpolacji kotew.
+
+        Norma IEEE 1584-2018 dla U<=600 V liczy prąd łuku pośredni I_arc,600
+        przy kotwie 600 V (Eq.1, Tab.1), po czym KORYGUJE go do RZECZYWISTEGO
+        napięcia układu (Eq.25, postać zamknięta, publiczna — bez tablicy).
+        Energia (Eq.6, Tab.3 — wiersz 600 V) używa I_arc,600 (NIESKORYGOWANY,
+        Eq.1) w członie x3 i I_arc SKORYGOWANEGO (Eq.25) w członie x4 —
+        zweryfikowane wobec referencyjnej implementacji open-source
+        rwl/arcflash (``equations.rs::intermediate_e``, gałąź LV).
+
+        Bez korekcji Eq.25 układ 208 V liczyłby się TAK, jakby miał 600 V —
+        błąd energii incydentu rzędu dziesiątek procent (np. ok. 46% zawyżenia
+        prądu łuku dla typowego przypadku 208 V/20 kA/32 mm — patrz test
+        reprodukujący defekt w tests/analysis/test_arc_flash.py).
+        """
+        cfg = item.electrode_config
+        enc_type = item.enclosure_type
+        table = self._table
+
+        if not table.is_complete_for(cfg, enc_type):
+            return self._incomplete_table_result(item, table.missing_for(cfg, enc_type))
+
+        arc_time_ms = arc_time * 1000.0
+        steps: list[WhiteBoxStep] = []
+
+        arc_coeffs_600 = table.arc_entry(cfg, VoltageAnchor.V600)
+        i_arc_600 = self._arc_current_at_anchor(i_bf, gap, arc_coeffs_600)
+        i_arc = self._arc_current_final_lv(voltage, i_arc_600, i_bf)
+
+        var_cf = self._arc_variation_cf(voltage, table.variation_entry(cfg))
+        i_arc_min = i_arc * (1.0 - 0.5 * var_cf)
+        steps.append(
+            WhiteBoxStep(
+                symbol="I_arc",
+                formula_latex=(
+                    r"I_{arc,600} = 10^{k_1+k_2\lg I_{bf}+k_3\lg G}\cdot"
+                    r"\sum_{i} k_{i}\,I_{bf}^{\,p_i}\quad(\text{Eq.1, kotwa }600\text{ V});\quad"
+                    r"I_{arc} = \left[\left(\tfrac{0{,}6}{U}\right)^{2}"
+                    r"\!\left(\tfrac{1}{I_{arc,600}^{2}}-\tfrac{0{,}6^{2}-U^{2}}"
+                    r"{0{,}6^{2}\,I_{bf}^{2}}\right)\right]^{-1/2}\quad(\text{Eq.25});\quad"
+                    r"I_{arc,min}=I_{arc}(1-0{,}5\,\mathrm{VarCf})"
+                ),
+                substitution_pl=(
+                    f"I_bf={_round(i_bf)} kA, G={_round(gap)} mm, U={_round(voltage)} kV "
+                    f"[{cfg.value}, ścieżka LV — U<=600 V, BEZ interpolacji kotew]; "
+                    f"I_arc,600(Eq.1)={_round(i_arc_600)} kA; VarCf={_round(var_cf)}"
+                ),
+                result_pl=(
+                    f"I_arc = {_round(i_arc)} kA (Eq.25, skorygowany do U={_round(voltage)} kV), "
+                    f"I_arc_min = {_round(i_arc_min)} kA "
+                    "(IEEE 1584-2018, współczynniki open-source)"
+                ),
+                unit_check_pl=(
+                    "I_bf,I_arc,I_arc,600 w kA; G w mm; U w kV; Eq.25 koryguje prąd łuku "
+                    "kotwy 600 V do RZECZYWISTEGO napięcia układu (≤600 V)."
+                ),
+                table_ref=(
+                    f"I_arc,600[{cfg.value},V600] (Tab.1) = open_source_IEEE_1584; "
+                    "Eq.25 publiczna postać zamknięta (bez tablicy)"
+                ),
+            )
+        )
+
+        cf = self._enclosure_correction(item, table.enclosure_entry(enc_type, cfg))
+        steps.append(
+            WhiteBoxStep(
+                symbol="CF",
+                formula_latex=(
+                    r"CF = b_1\,EES^2 + b_2\,EES + b_3 \quad"
+                    r"(CF=1 \text{ w otwartym powietrzu; } CF=1/x \text{ obudowa płytka})"
+                ),
+                substitution_pl=(
+                    f"konfiguracja {cfg.value} "
+                    f"({'w obudowie ' + enc_type.value if cfg.is_boxed else 'otwarte powietrze'})"
+                ),
+                result_pl=f"CF = {_round(cf)}",
+                unit_check_pl="CF bezwymiarowe; EES w calach; mnożnik energii dla obudowy.",
+                table_ref=(
+                    f"CF[{enc_type.value},{cfg.value}] (Tab.7) = open_source_IEEE_1584"
+                    if cfg.is_boxed
+                    else "CF = 1 (otwarte powietrze, brak wpisu tablicy)"
+                ),
+            )
+        )
+
+        energy_coeffs_600 = table.energy_entry(cfg, VoltageAnchor.V600)
+        incident_energy_jcm2 = self._incident_energy_lv(
+            i_bf,
+            i_arc,
+            i_arc_600,
+            gap,
+            arc_time_ms,
+            working_distance,
+            cf,
+            energy_coeffs_600,
+        )
+        incident_energy_cal = incident_energy_jcm2 / JOULE_PER_CAL_CM2
+        steps.append(
+            WhiteBoxStep(
+                symbol="E",
+                formula_latex=(
+                    r"E = \tfrac{12{,}552}{50}\,t\cdot 10^{\,x_2+x_3+x_4+x_5}\;;\quad "
+                    r"x_3 = k_3\,I_{arc,600}/\mathrm{denom}(I_{bf})\;;\quad "
+                    r"x_4 = k_{11}\lg I_{bf}+k_{13}\lg I_{arc}+\lg(1/CF)\;[\mathrm{J/cm^2}]"
+                ),
+                substitution_pl=(
+                    f"I_bf={_round(i_bf)} kA, I_arc,600={_round(i_arc_600)} kA (nieskorygowany, "
+                    f"człon x3), I_arc={_round(i_arc)} kA (Eq.25, człon x4), G={_round(gap)} mm, "
+                    f"t={_round(arc_time_ms)} ms, D={_round(working_distance)} mm, CF={_round(cf)} "
+                    f"[wiersz kotwy 600 V, U rzeczywiste={_round(voltage)} kV]"
+                ),
+                result_pl=(
+                    f"E = {_round(incident_energy_jcm2)} J/cm² = "
+                    f"{_round(incident_energy_cal)} cal/cm² "
+                    "(IEEE 1584-2018, współczynniki open-source)"
+                ),
+                unit_check_pl=(
+                    "E w J/cm² (t w ms, D w mm); 1/4,184 J/cm²→cal/cm²; BEZ interpolacji "
+                    "po U (ścieżka LV liczy bezpośrednio dla U rzeczywistego)."
+                ),
+                table_ref=f"E[{cfg.value},V600] (Tab.3) = open_source_IEEE_1584",
+            )
+        )
+
+        afb = self._arc_flash_boundary_lv(working_distance, incident_energy_jcm2, energy_coeffs_600)
+        steps.append(
+            WhiteBoxStep(
+                symbol="AFB",
+                formula_latex=(
+                    r"D_{AFB} = \left(\frac{5{,}0208}{E/D^{k_{12}}}\right)^{1/k_{12}}"
+                    r"\quad(\text{wiersz 600 V});\quad 5{,}0208\,\mathrm{J/cm^2}=1{,}2\,\mathrm{cal/cm^2}"
+                ),
+                substitution_pl=(
+                    f"E_próg = {INCIDENT_ENERGY_AFB_CAL_CM2} cal/cm² = "
+                    f"{_round(INCIDENT_ENERGY_AFB_JOULE_CM2)} J/cm²; "
+                    f"U={_round(voltage)} kV, D={_round(working_distance)} mm"
+                ),
+                result_pl=(f"AFB = {_round(afb)} mm (IEEE 1584-2018, współczynniki open-source)"),
+                unit_check_pl="D_AFB w mm; odległość, na której E spada do 1,2 cal/cm².",
+                table_ref=(
+                    f"E[{cfg.value},V600] (odwrócone wzgl. D) (Tab.3) = open_source_IEEE_1584; "
+                    "próg 1,2 cal/cm² publiczny"
+                ),
+            )
+        )
+
+        ppe, ppe_prov = self._ppe_category(incident_energy_cal)
+        steps.append(
+            WhiteBoxStep(
+                symbol="ŚOI",
+                formula_latex=r"\text{kategoria} = f_{NFPA\,70E}(E)",
+                substitution_pl=(
+                    f"E = {_round(incident_energy_cal)} cal/cm²; tablica progów NFPA 70E: "
+                    + ("PUSTA (dane niekompletne)" if self._ppe_table.is_empty else "wypełniona")
+                ),
+                result_pl=f"kategoria ŚOI = {ppe}",
+                unit_check_pl="E w cal/cm² → kategoria (klasyfikacja jakościowa NFPA 70E).",
+                table_ref=(
+                    f"{ARC_FLASH_COEFF_MISSING_MARKER} (tablice NFPA 70E)"
+                    if self._ppe_table.is_empty
+                    else f"progi ŚOI = {self._ppe_table.provenance.value}"
+                ),
+            )
+        )
+
+        why = (
+            f"Arc Flash LV (konfiguracja {cfg.value}, IEEE 1584-2018, U<=600 V — Eq.25): "
+            f"prąd łuku I_arc,600 (Eq.1) ≈ {_round(i_arc_600, 2)} kA skorygowany do U="
+            f"{_round(voltage, 2)} kV ⇒ I_arc ≈ {_round(i_arc, 2)} kA "
+            f"(I_arc_min ≈ {_round(i_arc_min, 2)} kA), energia incydentu E ≈ "
+            f"{_round(incident_energy_cal, 2)} cal/cm² na odległości roboczej, granica łuku "
+            f"AFB ≈ {_round(afb, 1)} mm, kategoria ŚOI = {ppe}. {ARC_FLASH_OPEN_SOURCE_CAVEAT_PL}."
+        )
+
+        return ArcFlashResult(
+            bus_ref=item.bus_ref,
+            status=ArcFlashStatus.COMPUTED_IEEE_1584_OPEN_SOURCE,
+            method=ArcFlashMethod.IEEE_1584_2018,
+            electrode_config=cfg.value,
+            i_bf_ka=_round(i_bf),
+            voltage_kv=_round(voltage),
+            arc_time_s=_round(arc_time),
+            conductor_gap_mm=_round(gap),
+            working_distance_mm=_round(working_distance),
+            coefficient_table_provenance=table.provenance.value,
+            coefficient_table_marker=None,
+            provenance=ARC_FLASH_OPEN_SOURCE_PROVENANCE,
+            provenance_caveat_pl=ARC_FLASH_OPEN_SOURCE_CAVEAT_PL,
+            source_urls=table.source_urls or ARC_FLASH_SOURCE_URLS,
+            i_arc_ka=_round(i_arc),
+            i_arc_min_ka=_round(i_arc_min),
+            i_arc_at_anchors_ka={"V600": _round(i_arc_600)},
+            arc_variation_cf=_round(var_cf),
+            enclosure_correction_cf=_round(cf),
+            incident_energy_cal_cm2=_round(incident_energy_cal),
+            incident_energy_joule_cm2=_round(incident_energy_jcm2),
+            arc_flash_boundary_mm=_round(afb),
+            ppe_category=ppe,
+            ppe_table_provenance=ppe_prov,
+            why_pl=why,
+            missing_data=(),
+            white_box=tuple(steps),
+        )
+
     # --- ścieżka Ralpha Lee (poza zakresem IEEE 1584-2018) ---------------
 
     def _ralph_lee_result(
@@ -492,11 +764,16 @@ class ArcFlashBuilder:
             )
         )
 
+        ibf_range_pl = (
+            f"{VALIDITY_IBF_MIN_KA_LV * 1000:.0f} A–{VALIDITY_IBF_MAX_KA_LV:.0f} kA (U<=600 V)"
+            if voltage <= float(VoltageAnchor.V600.value)
+            else f"{VALIDITY_IBF_MIN_KA_HV * 1000:.0f} A–{VALIDITY_IBF_MAX_KA_HV:.0f} kA (600 V<U<=15 kV)"
+        )
         why = (
             f"POZA zakresem ważności IEEE 1584-2018 (U={_round(voltage, 2)} kV, "
             f"I_bf={_round(i_bf, 2)} kA; zakres: {VALIDITY_VOLTAGE_MIN_KV*1000:.0f} V–"
-            f"{VALIDITY_VOLTAGE_MAX_KV:.0f} kV, {VALIDITY_IBF_MIN_KA*1000:.0f} A–"
-            f"{VALIDITY_IBF_MAX_KA:.0f} kA). Zastosowano {ARC_FLASH_RALPH_LEE_LABEL}: "
+            f"{VALIDITY_VOLTAGE_MAX_KV:.0f} kV, I_bf {ibf_range_pl} dla tej klasy napięcia). "
+            f"Zastosowano {ARC_FLASH_RALPH_LEE_LABEL}: "
             f"E ≈ {_round(e_lee, 2)} cal/cm², AFB ≈ {_round(afb_lee, 1)} mm, ŚOI = {ppe}. "
             "To NIE jest wynik IEEE 1584 — metoda Lee jest teoretyczna (maksymalna moc łuku)."
         )
@@ -653,6 +930,26 @@ class ArcFlashBuilder:
             + k[6]
         )
 
+    @staticmethod
+    def _arc_current_final_lv(voltage_kv: float, i_arc_600_ka: float, i_bf_ka: float) -> float:
+        """Prąd łuku SKORYGOWANY do rzeczywistego napięcia LV (IEEE 1584-2018, Eq 25).
+
+        I_arc = [ (0,6/U)^2 · (1/I_arc,600^2 − (0,6^2−U^2)/(0,6^2·I_bf^2)) ]^(−1/2)
+
+        gdzie ``I_arc,600`` to wartość POŚREDNIA z Eq.1 (kotwa 600 V, Tab.1), ``U``
+        to RZECZYWISTE napięcie układu [kV] (U<=0,6 kV — NIE kotwa), ``I_bf`` prąd
+        zwarcia bolted [kA]. Stała postać zamknięta (publiczna, bez tablicy
+        regresji) — stosowana WYŁĄCZNIE dla U<=600 V. Bez tej korekcji układ 208 V
+        liczyłby się tak, jakby miał dokładnie 600 V (błąd rzędu dziesiątek %).
+        Zweryfikowane wobec referencyjnej implementacji open-source rwl/arcflash
+        (``equations.rs::i_arc_final_lv``).
+        """
+        x1 = (0.6 / voltage_kv) ** 2
+        x2 = 1.0 / i_arc_600_ka**2
+        x3 = (0.6**2 - voltage_kv**2) / (0.6**2 * i_bf_ka**2)
+        x4 = math.sqrt(x1 * (x2 - x3))
+        return float(1.0 / x4)
+
     @classmethod
     def _incident_energy_at_anchor(
         cls,
@@ -676,6 +973,12 @@ class ArcFlashBuilder:
         Współczynniki ``c.k`` = k1..k13 z TABLICY (t w ms, D w mm).
         """
         assert c.k is not None and len(c.k) == 13
+        # Guard dodatniości argumentów log10 (obronny): I_bf i D są zapewnione
+        # dodatnie przez _missing_inputs; I_arc jest wielkością obliczoną, a CF
+        # mnożnikiem — w modelu IEEE 1584 (w zakresie ważności) obie są dodatnie.
+        # Jawny guard zamienia ewentualną domenę log10 na czytelny warunek.
+        assert i_arc_ka > 0.0, "I_arc musi być dodatni dla log10 (model IEEE 1584)"
+        assert cf > 0.0, "CF musi być dodatni dla log10(1/CF)"
         k = c.k
         x1 = INCIDENT_ENERGY_TIME_FACTOR * arc_time_ms
         x2 = k[0] + k[1] * math.log10(gap_mm)
@@ -690,6 +993,49 @@ class ArcFlashBuilder:
         )
         x3 = (k[2] * i_arc_ka) / denom
         x4 = k[10] * math.log10(i_bf_ka) + k[12] * math.log10(i_arc_ka) + math.log10(1.0 / cf)
+        x5 = k[11] * math.log10(working_distance_mm)
+        return float(x1 * 10.0 ** (x2 + x3 + x4 + x5))
+
+    @classmethod
+    def _incident_energy_lv(
+        cls,
+        i_bf_ka: float,
+        i_arc_final_ka: float,
+        i_arc_600_ka: float,
+        gap_mm: float,
+        arc_time_ms: float,
+        working_distance_mm: float,
+        cf: float,
+        c: IncidentEnergyCoeffs,
+    ) -> float:
+        """Energia incydentu E [J/cm²] dla ścieżki LV (IEEE 1584-2018, Eq 6).
+
+        Jak :meth:`_incident_energy_at_anchor`, ALE z DWOMA różnymi wartościami
+        prądu łuku: człon x3 (licznik) używa ``i_arc_600_ka`` (Eq.1, NIESKORYGOWANY
+        — wartość pośrednia przy kotwie 600 V), człon x4 (log) używa
+        ``i_arc_final_ka`` (Eq.25, SKORYGOWANY do rzeczywistego napięcia układu).
+        To rozróżnienie jest częścią normy dla U<=600 V — zweryfikowane wobec
+        referencyjnej implementacji open-source rwl/arcflash
+        (``equations.rs::intermediate_e``, gałąź ``i_arc_600.is_some()``).
+        """
+        assert c.k is not None and len(c.k) == 13
+        assert i_arc_final_ka > 0.0, "I_arc musi być dodatni dla log10 (model IEEE 1584)"
+        assert i_arc_600_ka > 0.0, "I_arc,600 musi być dodatni (Eq.1, kotwa 600 V)"
+        assert cf > 0.0, "CF musi być dodatni dla log10(1/CF)"
+        k = c.k
+        x1 = INCIDENT_ENERGY_TIME_FACTOR * arc_time_ms
+        x2 = k[0] + k[1] * math.log10(gap_mm)
+        denom = (
+            k[3] * i_bf_ka**7
+            + k[4] * i_bf_ka**6
+            + k[5] * i_bf_ka**5
+            + k[6] * i_bf_ka**4
+            + k[7] * i_bf_ka**3
+            + k[8] * i_bf_ka**2
+            + k[9] * i_bf_ka
+        )
+        x3 = (k[2] * i_arc_600_ka) / denom
+        x4 = k[10] * math.log10(i_bf_ka) + k[12] * math.log10(i_arc_final_ka) + math.log10(1.0 / cf)
         x5 = k[11] * math.log10(working_distance_mm)
         return float(x1 * 10.0 ** (x2 + x3 + x4 + x5))
 
@@ -711,10 +1057,10 @@ class ArcFlashBuilder:
         assert c.b is not None and len(c.b) == 3  # gwarantowane przez is_complete_for
         b = c.b
         height_in = ArcFlashBuilder._equivalent_dimension_inch(
-            item.enclosure_height_mm, item.voltage_kv, cfg, enc_type
+            item.enclosure_height_mm, item.voltage_kv, cfg, enc_type, is_height=True
         )
         width_in = ArcFlashBuilder._equivalent_dimension_inch(
-            item.enclosure_width_mm, item.voltage_kv, cfg, enc_type
+            item.enclosure_width_mm, item.voltage_kv, cfg, enc_type, is_height=False
         )
         ees_in = (height_in + width_in) / 2.0
         x = b[0] * ees_in**2 + b[1] * ees_in + b[2]
@@ -728,15 +1074,26 @@ class ArcFlashBuilder:
         voltage_kv: float | None,
         cfg: ElectrodeConfig,
         enc_type: EnclosureType,
+        *,
+        is_height: bool,
     ) -> float:
-        """Ekwiwalentny wymiar obudowy [cale] wg progów IEEE 1584-2018 (Tab. 7 / model).
+        """Ekwiwalentny wymiar obudowy [cale] wg progów IEEE 1584-2018 (Tab. 6 / model).
 
         Progi publiczne (ramy modelu, nie współczynniki):
           - dim < 508 mm   : typowa → 20" (508 mm); płytka → faktyczny wymiar (mm→in).
-          - 508..660,4 mm  : dim·0,03937 (mm→in bezpośrednio).
-          - 660,4..1244,6  : transformacja eq.11/12 z V_oc i parametrami (a,b) konfiguracji.
-          - > 1244,6 mm    : clamp do 1244,6 mm w transformacji eq.11/12.
+          - 508..660,4 mm  : dim·0,03937 (mm→in bezpośrednio) — dla OBU wymiarów.
+          - 660,4..1244,6 mm:
+              * WYSOKOŚĆ, konfiguracja VCB → dim·0,03937 (mm→in bezpośrednio,
+                BEZ transformacji eq.11/12 — Tab.6 wyróżnia VCB dla wysokości).
+              * inne przypadki (szerokość dowolnej konfiguracji, wysokość
+                VCBB/HCB) → transformacja eq.11/12 z V_oc i parametrami (a,b).
+          - > 1244,6 mm:
+              * WYSOKOŚĆ, konfiguracja VCB → STAŁY limit 49" (Tab.6; NIE
+                eq.11/12 — wysokość VCB nie rośnie dalej z wymiarem/napięciem).
+              * inne przypadki → eq.11/12 przy dim=1244,6 mm (clamp).
         Brak wymiaru ⇒ publiczna „typowa" obudowa 20" (508 mm).
+        Zweryfikowane wobec referencyjnej implementacji open-source rwl/arcflash
+        (``cubicle.rs::calc_cf``, gałęzie ``height``/``width``).
         """
         if dim_mm is None or dim_mm <= 0.0:
             return _DEFAULT_BOX_INCH
@@ -746,8 +1103,14 @@ class ArcFlashBuilder:
             return dim_mm / MM_PER_INCH
         if dim_mm <= _ENCLOSURE_MID_MM:
             return dim_mm / MM_PER_INCH
-        clamped = min(dim_mm, _ENCLOSURE_HIGH_MM)
-        return ArcFlashBuilder._eq_11_12_inch(clamped, voltage_kv, cfg)
+        vcb_height = is_height and cfg is ElectrodeConfig.VCB
+        if dim_mm <= _ENCLOSURE_HIGH_MM:
+            if vcb_height:
+                return dim_mm / MM_PER_INCH
+            return ArcFlashBuilder._eq_11_12_inch(dim_mm, voltage_kv, cfg)
+        if vcb_height:
+            return _VCB_HEIGHT_CAP_INCH  # Tab.6: wysokość VCB > 1244,6 mm -> stały limit 49"
+        return ArcFlashBuilder._eq_11_12_inch(_ENCLOSURE_HIGH_MM, voltage_kv, cfg)
 
     @staticmethod
     def _eq_11_12_inch(dim_mm: float, voltage_kv: float | None, cfg: ElectrodeConfig) -> float:
@@ -787,6 +1150,25 @@ class ArcFlashBuilder:
             f = e_jcm2 / working_distance_mm**k12
             afb_anchors[anchor.name] = (INCIDENT_ENERGY_AFB_JOULE_CM2 / f) ** (1.0 / k12)
         return cls._interpolate_anchor(voltage_kv, afb_anchors)
+
+    @staticmethod
+    def _arc_flash_boundary_lv(
+        working_distance_mm: float,
+        e_jcm2: float,
+        c: IncidentEnergyCoeffs,
+    ) -> float:
+        """Granica łuku AFB [mm] dla ścieżki LV — BEZ interpolacji kotew.
+
+        D_AFB = (5,0208 / (E/D^k12))^(1/k12), k12 z wiersza kotwy 600 V (Tab.3) —
+        ta sama odwrócona zależność co :meth:`_arc_flash_boundary`, ale liczona
+        RAZ (energia LV jest już bezpośrednio dla rzeczywistego U, bez interpolacji
+        po napięciu — zweryfikowane wobec rwl/arcflash ``equations.rs::
+        intermediate_afb_from_e`` wywołanego z gałęzi ``IArc::LowVoltage``).
+        """
+        assert c.k is not None and len(c.k) == 13
+        k12 = c.k[11]
+        f = e_jcm2 / working_distance_mm**k12
+        return (INCIDENT_ENERGY_AFB_JOULE_CM2 / f) ** (1.0 / k12)
 
     @staticmethod
     def _interpolate_anchor(voltage_kv: float, anchor_values: dict[str, float]) -> float:

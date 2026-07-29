@@ -1,0 +1,136 @@
+{
+  "pack_id": "siemens_8djh",
+  "kind": "manufacturer",
+  "name_pl": "Siemens — rozdzielnica SN 8DJH (RMU, SF6)",
+  "version": "2026-07",
+  "status": "repo_verified",
+  "switchgear_family_ref": "SIEMENS__8DJH",
+  "source_document_refs": [
+    "https://www.siemens.com/en-us/products/energy/medium-voltage/medium-voltage-switchgear/8djh-36.html",
+    "Switchgear Type 8DJH for Secondary Distribution Systems up to 24 kV, Gas-Insulated — Katalog Siemens HA 40.2 (36 s.): https://assets.new.siemens.com/siemens/assets/api/uuid:60f3dbd7588876438a66d3503921eedeadc95ad2/8djhcompact-en-cataloge.pdf"
+  ],
+  "cell_configurations": [
+    {
+      "cell_code": "K",
+      "name_pl": "Pole kablowe (przyłączeniowe, bez łącznika)",
+      "apparatus": [
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" },
+        { "kind": "CT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog HA 40.2 s. 10 (schemat jednokreskowy; „Components shown in dotted lines can be used optionally” — s. 14)"
+    },
+    {
+      "cell_code": "K(E)",
+      "name_pl": "Pole kablowe z uziemnikiem szybkim",
+      "apparatus": [
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" },
+        { "kind": "CT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog HA 40.2 s. 10"
+    },
+    {
+      "cell_code": "R",
+      "name_pl": "Pole liniowe pierścieniowe (rozłącznikowe)",
+      "apparatus": [
+        { "kind": "LOAD_SWITCH", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" },
+        { "kind": "CT", "requirement": "optional" },
+        { "kind": "VT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog HA 40.2 s. 10 i s. 19 (rozłącznik trójpołożeniowy CLOSED–OPEN–EARTHED z ES make-proof; wariant R(500): VT 4MT3/CT 4MC63 jako opcje — s. 10)"
+    },
+    {
+      "cell_code": "T",
+      "name_pl": "Pole transformatorowe (rozłącznik z bezpiecznikami)",
+      "apparatus": [
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "LOAD_SWITCH", "requirement": "optional" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" },
+        { "kind": "CT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog HA 40.2 s. 10 i s. 19 (kombinacja rozłącznik–bezpieczniki wg IEC 62271-105; LOAD_SWITCH jako opcja zapisu = granularność modelowania kombinacji — notes_pl)"
+    },
+    {
+      "cell_code": "L",
+      "name_pl": "Pole wyłącznikowe",
+      "apparatus": [
+        { "kind": "CB", "requirement": "standard" },
+        { "kind": "DS", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "ES", "requirement": "optional" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" },
+        { "kind": "CT", "requirement": "optional" },
+        { "kind": "VT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog HA 40.2 s. 11 (CB próżniowy + odłącznik trójpołożeniowy z uziemieniem — funkcja uziemnika w DS trójpołożeniowym, stąd ES jako opcja zapisu; L(500): VT/CT opcje)"
+    },
+    {
+      "cell_code": "S",
+      "name_pl": "Sprzęgło rozłącznikowe (sekcjonowanie szyn)",
+      "apparatus": [
+        { "kind": "LOAD_SWITCH", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "VT", "requirement": "optional" },
+        { "kind": "CT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog HA 40.2 s. 11 (S/S(500)/S(620); wariant 500: VT/CT opcje)"
+    },
+    {
+      "cell_code": "H",
+      "name_pl": "Sprzęgło z bezpiecznikami",
+      "apparatus": [
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "LOAD_SWITCH", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog HA 40.2 s. 11"
+    },
+    {
+      "cell_code": "V",
+      "name_pl": "Sprzęgło wyłącznikowe",
+      "apparatus": [
+        { "kind": "CB", "requirement": "standard" },
+        { "kind": "DS", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "VT", "requirement": "standard" },
+        { "kind": "CT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog HA 40.2 s. 12 (wariant „design option with current transformer” — CT opcja)"
+    },
+    {
+      "cell_code": "E",
+      "name_pl": "Uziemianie szyn zbiorczych",
+      "apparatus": [
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "VT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog HA 40.2 s. 12 (E; wariant E(500): +VT)"
+    },
+    {
+      "cell_code": "M(430)",
+      "name_pl": "Pomiar napięcia szyn (za bezpiecznikami)",
+      "apparatus": [
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "VT", "requirement": "standard" }
+      ],
+      "source_pl": "Katalog HA 40.2 s. 12"
+    },
+    {
+      "cell_code": "M(840)",
+      "name_pl": "Pole pomiarowe rozliczeniowe (przedział powietrzny)",
+      "apparatus": [
+        { "kind": "CT", "requirement": "standard" },
+        { "kind": "VT", "requirement": "standard" }
+      ],
+      "source_pl": "Katalog HA 40.2 s. 13 (CT+VT żywiczne, 4 układy przyłączy)"
+    }
+  ],
+  "notes_pl": "Ring Main Unit SF6 sealed-for-life, 12–24 kV, 630 A; bloki RMU (KT, RRT, RRRL, RRT-RRT itd.) = sekwencje pól (katalog s. 14). Dane rodziny: SWITCHGEAR_FAMILY_REGISTRY (jedno źródło). Słownik aparatów rodziny NIE zawiera CT/VT jako aparatów standardowych — przekładniki w 8DJH występują jako opcje pól (Ferrantiego na kablach, 4MT3/4MC63 w wariantach 500 mm). KONWENCJE ZAPISU: kombinacja rozłącznik-bezpieczniki (pole T/H) modelowana jako FUSE albo LOAD_SWITCH+FUSE — LOAD_SWITCH jako opcja zapisu; odłącznik trójpołożeniowy z funkcją uziemienia (pole L) zapisany jako DS standard + ES opcja zapisu. Research 2026-07-17 (odczyt schematów s. 10–13 + tekst s. 19; raport: docs/audit/REFERENCE_ENGINE_RESEARCH_MANUFACTURER_CELLS_2026-07-17.md)."
+}

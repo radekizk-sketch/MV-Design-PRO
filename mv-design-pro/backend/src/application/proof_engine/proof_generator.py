@@ -66,6 +66,8 @@ from application.proof_engine.equation_registry import (
     EQ_SC3F_011,
     EQ_SC3F_012,
     EQ_SC3F_013,
+    EQ_SC3F_014,
+    EQ_SC3F_015,
     EQ_VDROP_001,
     EQ_VDROP_002,
     EQ_VDROP_003,
@@ -100,6 +102,11 @@ from network_model.solvers.machine_sc_iec60909 import (
     MachinePartialContribution,
     MachineShortCircuitResult,
 )
+from network_model.solvers.short_circuit_asymmetrical_quantities import (
+    SC1AsymmetricalQuantities,
+    normalize_sc1_fault_type,
+)
+from network_model.solvers.short_circuit_core import OMEGA_50HZ
 
 if TYPE_CHECKING:
     from network_model.catalog import CatalogRepository
@@ -150,6 +157,12 @@ class SC3FInput:
     # generator dołącza per-maszyna kroki μ / q / i_b. None ⇒ brak sekcji maszynowej.
     machine_result: MachineShortCircuitResult | None = None
 
+    # Prąd wyłączeniowy I_b przy t_b (karta S-C, 2026-07-22) — wartości z FROZEN
+    # wyniku solvera (ib_a, tb_s), addytywnie. None ⇒ dowód bez kroku I_b
+    # (starsze wejścia; uczciwy brak, zero zgadywania).
+    ib_ka: float | None = None
+    tb_s: float | None = None
+
     @classmethod
     def from_short_circuit_result(
         cls,
@@ -164,7 +177,18 @@ class SC3FInput:
         Konwersje jednostek:
         - V → kV: / 1000
         - A → kA: / 1000
+
+        Audyt fizyki fala G (2026-07): m_factor/n_factor są niesione z
+        WYNIKU solvera (``result.m_factor``/``result.n_factor``, faktycznie
+        użyte do policzenia ``ith_a = ikss*sqrt(m+n)``), NIE z domyślnych
+        placeholderów (1,0 / 0,0) — inaczej wywód White Box (krok Ith,
+        EQ_SC3F_008) pokazywałby podstawienie niespójne z wyświetlaną
+        liczbą ith_ka za każdym razem, gdy tk_s różni się od wartości, przy
+        której m+n≈1. Starsze wyniki solvera (sprzed delty, m_factor=None)
+        ⇒ honest fallback na (1,0; 0,0) — bez zmyślania, jawnie oznaczony.
         """
+        m_factor = result.m_factor if result.m_factor is not None else 1.0
+        n_factor = result.n_factor if result.n_factor is not None else 0.0
         return cls(
             project_name=project_name,
             case_name=case_name,
@@ -182,6 +206,10 @@ class SC3FInput:
             kappa=result.kappa,
             rx_ratio=result.rx_ratio,
             tk_s=result.tk_s,
+            m_factor=m_factor,
+            n_factor=n_factor,
+            ib_ka=result.ib_a / 1000.0,
+            tb_s=result.tb_s,
         )
 
 
@@ -283,6 +311,13 @@ class SC1Input:
     tk_s: float = 1.0
     m_factor: float = 1.0
     n_factor: float = 0.0
+
+    # Wielkości POLICZONE w warstwie solverów (V12K-118, NOT-A-SOLVER):
+    # komplet Z_ekw / prądów składowych i fazowych / I″k / κ / i_p / I_dyn / I_th
+    # z compute_sc1_asymmetrical_quantities. Pole addytywne (default None dla
+    # zgodności konstruktora), ale WYMAGANE przez generate_sc1_proof —
+    # proof engine nie liczy fizyki, wyłącznie formatuje kroki dowodu.
+    quantities: SC1AsymmetricalQuantities | None = None
 
 
 class ProofGenerator:
@@ -504,14 +539,18 @@ class ProofGenerator:
 
         Model Anti-Double-Counting: A1 (c tylko w EQ_SC3F_004)
 
-        Kroki obowiązkowe (BINDING):
+        Kroki obowiązkowe (BINDING; karta S-C 2026-07-22 — zmiana wersjonowana
+        zatwierdzona przez właściciela: kroki I_b(t_b) i I²t w kanonie dowodu):
         1. Impedancja Thevenina (z solvera)
         2. Początkowy prąd zwarciowy I_k'' (c TUTAJ — jedyne miejsce)
         3. Współczynnik udaru κ
         4. Prąd udarowy i_p
         5. Prąd dynamiczny I_dyn (OBOWIĄZKOWY)
-        6. Prąd cieplny I_th (OBOWIĄZKOWY)
-        7. Moc zwarciowa S_k''
+        6. Prąd wyłączeniowy I_b przy t_b (gdy wejście niesie ib_ka/tb_s —
+           wartość z FROZEN wyniku solvera; starsze wejścia → uczciwy brak kroku)
+        7. Prąd cieplny I_th (OBOWIĄZKOWY)
+        8. Energia cieplna I²t = I_th²·t_k (krok formatujący wielkości obecne)
+        9. Moc zwarciowa S_k''
 
         Args:
             data: Dane wejściowe SC3FInput
@@ -596,29 +635,64 @@ class ProofGenerator:
         steps.append(step_5)
 
         # =====================================================================
-        # Krok 6: Prąd cieplny I_th (OBOWIĄZKOWY)
+        # Krok 6: Prąd wyłączeniowy I_b przy t_b (karta S-C, 2026-07-22) —
+        # wartość z FROZEN wyniku solvera (ib_a/tb_s); wejście bez tych pól
+        # (starsze ścieżki) → uczciwy brak kroku, zero zgadywania.
+        # =====================================================================
+        if data.ib_ka is not None and data.tb_s is not None:
+            step_number += 1
+            steps.append(
+                cls._create_sc3f_step_ib(
+                    step_number=step_number,
+                    ikss_ka=data.ikss_ka,
+                    kappa=data.kappa,
+                    tb_s=data.tb_s,
+                    r_th=r_th,
+                    x_th=x_th,
+                    ib_ka=data.ib_ka,
+                )
+            )
+
+        # =====================================================================
+        # Krok 7: Prąd cieplny I_th (OBOWIĄZKOWY)
         # =====================================================================
         step_number += 1
-        step_6 = cls._create_sc3f_step_ith(
+        step_ith = cls._create_sc3f_step_ith(
             step_number=step_number,
             ikss_ka=data.ikss_ka,
             m_factor=data.m_factor,
             n_factor=data.n_factor,
             ith_ka=data.ith_ka,
         )
-        steps.append(step_6)
+        steps.append(step_ith)
 
         # =====================================================================
-        # Krok 7: Moc zwarciowa S_k''
+        # Krok 8: Energia cieplna I²t = I_th²·t_k (IEC 60909-0 § 12) — krok
+        # formatujący wielkości już obecne w dowodzie (ith, tk); ta sama
+        # projekcja co kanoniczny pełny bilans wierszy wyników (i2t_ka2s).
+        # =====================================================================
+        i2t_ka2s = data.ith_ka**2 * data.tk_s
+        step_number += 1
+        steps.append(
+            cls._create_sc3f_step_i2t(
+                step_number=step_number,
+                ith_ka=data.ith_ka,
+                tk_s=data.tk_s,
+                i2t_ka2s=i2t_ka2s,
+            )
+        )
+
+        # =====================================================================
+        # Krok 9: Moc zwarciowa S_k''
         # =====================================================================
         step_number += 1
-        step_7 = cls._create_sc3f_step_sk(
+        step_sk = cls._create_sc3f_step_sk(
             step_number=step_number,
             u_n_kv=data.u_n_kv,
             ikss_ka=data.ikss_ka,
             sk_mva=data.sk_mva,
         )
-        steps.append(step_7)
+        steps.append(step_sk)
 
         # =====================================================================
         # Sekcja maszynowa (IEC 60909 §6.6) — per-maszyna μ / q / i_b, gdy sieć
@@ -648,9 +722,12 @@ class ProofGenerator:
             "ip_ka": ProofValue.create("i_p", data.ip_ka, "kA", "ip_ka"),
             "idyn_ka": ProofValue.create("I_{dyn}", idyn_ka, "kA", "idyn_ka"),
             "ith_ka": ProofValue.create("I_{th}", data.ith_ka, "kA", "ith_ka"),
+            "i2t_ka2s": ProofValue.create("I^2t", i2t_ka2s, "kA²s", "i2t_ka2s"),
             "sk_mva": ProofValue.create("S_k''", data.sk_mva, "MVA", "sk_mva"),
             "kappa": ProofValue.create("\\kappa", data.kappa, "—", "kappa"),
         }
+        if data.ib_ka is not None and data.tb_s is not None:
+            key_results["ib_ka"] = ProofValue.create("I_b", data.ib_ka, "kA", "ib_ka")
         if data.machine_result is not None and data.machine_result.contributions:
             key_results["ib_machines_ka"] = ProofValue.create(
                 "i_{b,maszyny}", ib_machines_ka, "kA", "ib_machines_ka"
@@ -693,13 +770,18 @@ class ProofGenerator:
         artifact_id: UUID | None = None,
     ) -> ProofDocument:
         """
-        Generuje dowód SC1 (zwarcia asymetryczne) — FULL MATH.
+        Generuje dowód SC1 (zwarcia asymetryczne) — czysty formatter (§4.1).
 
         Zawiera OBOWIĄZKOWE wyniki (§4.1):
         - I″k (początkowy prąd zwarciowy)
         - ip (prąd udarowy)
         - I_th (prąd cieplny równoważny)
         - I_dyn (prąd dynamiczny)
+
+        NOT-A-SOLVER (V12K-118): wszystkie wielkości fizyczne pochodzą z
+        ``data.quantities`` policzonych w warstwie solverów
+        (``network_model/solvers/short_circuit_asymmetrical_quantities``);
+        generator wyłącznie buduje kroki dowodu (wzór → podstawienie → wynik).
         """
         if artifact_id is None:
             artifact_id = uuid4()
@@ -708,44 +790,29 @@ class ProofGenerator:
         proof_type = cls._map_sc1_proof_type(fault_type)
         step_order = EquationRegistry.get_sc1_step_order(fault_type)
 
-        z_equiv = cls._compute_sc1_equiv_impedance(
-            fault_type=fault_type,
-            z1=data.z1_ohm,
-            z2=data.z2_ohm,
-            z0=data.z0_ohm,
-        )
+        if data.quantities is None:
+            raise ValueError(
+                "SC1Input.quantities jest wymagane — proof engine nie liczy fizyki "
+                "(NOT-A-SOLVER); wielkości zwarciowe SC1 liczy solver "
+                "network_model/solvers/short_circuit_asymmetrical_quantities."
+            )
+        quantities = data.quantities
+        if quantities.fault_type != fault_type:
+            raise ValueError(
+                f"SC1Input.quantities policzone dla typu {quantities.fault_type}, "
+                f"a dowód dotyczy typu {fault_type}"
+            )
 
-        i1, i2, i0 = cls._compute_sc1_sequence_currents(
-            fault_type=fault_type,
-            u_prefault_kv=data.u_prefault_kv,
-            z_equiv=z_equiv,
-            z2=data.z2_ohm,
-            z0=data.z0_ohm,
-        )
-
-        ia, ib, ic = cls._compute_sc1_phase_currents(
-            a_operator=data.a_operator,
-            i0=i0,
-            i1=i1,
-            i2=i2,
-        )
-
-        # Post-fault quantities (§4.1 MANDATORY: I″k, ip, I_th, I_dyn)
-        ikss_ka = cls._compute_sc1_ikss(
-            fault_type=fault_type,
-            c_factor=data.c_factor,
-            u_n_kv=data.u_n_kv,
-            z_equiv=z_equiv,
-        )
-
-        r_equiv = z_equiv.real
-        x_equiv = z_equiv.imag
-        rx_ratio = r_equiv / x_equiv if x_equiv != 0 else 0.0
-        kappa = 1.02 + 0.98 * math.exp(-3.0 * rx_ratio)
-        ip_ka = kappa * math.sqrt(2.0) * ikss_ka
-        idyn_ka = ip_ka
-        sqrt_mn = math.sqrt(data.m_factor + data.n_factor)
-        ith_ka = ikss_ka * sqrt_mn
+        z_equiv = quantities.z_equiv_ohm
+        i1, i2, i0 = quantities.i1_ka, quantities.i2_ka, quantities.i0_ka
+        ia, ib, ic = quantities.ia_ka, quantities.ib_ka, quantities.ic_ka
+        ikss_ka = quantities.ikss_ka
+        r_equiv = quantities.r_equiv_ohm
+        x_equiv = quantities.x_equiv_ohm
+        kappa = quantities.kappa
+        ip_ka = quantities.ip_ka
+        idyn_ka = quantities.idyn_ka
+        ith_ka = quantities.ith_ka
 
         steps: list[ProofStep] = []
         step_number = 0
@@ -895,98 +962,8 @@ class ProofGenerator:
 
     @staticmethod
     def _normalize_sc1_fault_type(fault_type: str) -> str:
-        mapping = {
-            "ONE_PHASE_TO_GROUND": "SC1FZ",
-            "TWO_PHASE": "SC2F",
-            "TWO_PHASE_TO_GROUND": "SC2FZ",
-            "SC1FZ": "SC1FZ",
-            "SC2F": "SC2F",
-            "SC2FZ": "SC2FZ",
-        }
-        if fault_type not in mapping:
-            raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
-        return mapping[fault_type]
-
-    @staticmethod
-    def _compute_sc1_equiv_impedance(
-        *,
-        fault_type: str,
-        z1: complex,
-        z2: complex,
-        z0: complex,
-    ) -> complex:
-        if fault_type == "SC1FZ":
-            return z1 + z2 + z0
-        if fault_type == "SC2F":
-            return z1 + z2
-        if fault_type == "SC2FZ":
-            denominator = z2 + z0
-            if denominator == 0:
-                raise ValueError("Z2 + Z0 = 0; cannot compute 2F–Z equivalent impedance")
-            return z1 + (z2 * z0) / denominator
-        raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
-
-    @staticmethod
-    def _compute_sc1_sequence_currents(
-        *,
-        fault_type: str,
-        u_prefault_kv: float,
-        z_equiv: complex,
-        z2: complex,
-        z0: complex,
-    ) -> tuple[complex, complex, complex]:
-        if z_equiv == 0:
-            raise ValueError("Z_k = 0; cannot compute sequence currents")
-        i1 = u_prefault_kv / z_equiv
-        if fault_type == "SC1FZ":
-            return i1, i1, i1
-        if fault_type == "SC2F":
-            return i1, -i1, 0.0
-        if fault_type == "SC2FZ":
-            denominator = z2 + z0
-            if denominator == 0:
-                raise ValueError("Z2 + Z0 = 0; cannot compute 2F–Z sequence currents")
-            i2 = -(z0 / denominator) * i1
-            i0 = -(z2 / denominator) * i1
-            return i1, i2, i0
-        raise ValueError(f"Unsupported SC1 fault type: {fault_type}")
-
-    @staticmethod
-    def _compute_sc1_phase_currents(
-        *,
-        a_operator: complex,
-        i0: complex,
-        i1: complex,
-        i2: complex,
-    ) -> tuple[complex, complex, complex]:
-        a = a_operator
-        a2 = a**2
-        ia = i0 + i1 + i2
-        ib = i0 + a2 * i1 + a * i2
-        ic = i0 + a * i1 + a2 * i2
-        return ia, ib, ic
-
-    @staticmethod
-    def _compute_sc1_ikss(
-        *,
-        fault_type: str,
-        c_factor: float,
-        u_n_kv: float,
-        z_equiv: complex,
-    ) -> float:
-        """
-        I″k for asymmetrical faults per IEC 60909-0:2016.
-
-        - 1F-Z: I″k1 = √3·c·Un / |Z_k|  (eq. 29)
-        - 2F:   I″k2 = c·Un / |Z_k|       (eq. 23)
-        - 2F-Z: I″k2E = c·Un / |Z_k|
-        """
-        z_abs = abs(z_equiv)
-        if z_abs == 0:
-            raise ValueError("Z_k = 0; cannot compute I″k")
-        if fault_type == "SC1FZ":
-            return math.sqrt(3.0) * c_factor * u_n_kv / z_abs
-        return c_factor * u_n_kv / z_abs
+        # Mapowanie nazw (nie fizyka) — jedno źródło w module solverowym SC1.
+        return normalize_sc1_fault_type(fault_type)
 
     # =========================================================================
     # SC1 Post-Fault Step Builders (§4.1 — MANDATORY)
@@ -1328,6 +1305,7 @@ class ProofGenerator:
         if equation is None:
             raise ValueError(f"Missing equation definition for {equation_id}")
 
+        input_values: tuple[ProofValue, ...]
         if equation_id == "EQ_SC1_003":
             substitution = (
                 f"Z_k = {cls._format_complex_latex(z1, 'Ω')} + "
@@ -1882,6 +1860,130 @@ class ProofGenerator:
         )
 
     @classmethod
+    def _create_sc3f_step_ib(
+        cls,
+        step_number: int,
+        ikss_ka: float,
+        kappa: float,
+        tb_s: float,
+        r_th: float,
+        x_th: float,
+        ib_ka: float,
+    ) -> ProofStep:
+        """Krok 6: Prąd wyłączeniowy I_b przy t_b (karta S-C, 2026-07-22).
+
+        Wartość I_b pochodzi z FROZEN wyniku solvera (ib_a) — proof engine NIE
+        liczy fizyki. Wielkości pośrednie podstawienia (t_a, e^{-t_b/t_a})
+        odtwarzane WYŁĄCZNIE do prezentacji wywodu (wzór → podstawienie →
+        wynik), identycznie jak człon e^{-3R/X} w kroku κ; lustro formuły
+        WHITE BOX solvera (klucz trace: Ib).
+        """
+        equation = EQ_SC3F_014
+
+        # Prezentacyjne odtworzenie podstawienia solvera (short_circuit_core):
+        # t_a = X_th/(ω·R_th); R/X niedodatnie ⇒ t_a = 0 ⇒ e^{-t_b/t_a} = 0.
+        ta_s = 0.0 if r_th <= 0 or x_th <= 0 else x_th / (OMEGA_50HZ * r_th)
+        exp_factor = 0.0 if ta_s <= 0 else math.exp(-tb_s / ta_s)
+
+        input_values = (
+            ProofValue.create("I_k''", ikss_ka, "kA", "ikss_ka"),
+            ProofValue.create("\\kappa", kappa, "—", "kappa"),
+            ProofValue.create("t_b", tb_s, "s", "tb_s"),
+        )
+
+        if ta_s > 0:
+            substitution = (
+                f"t_a = \\frac{{X_{{th}}}}{{\\omega \\cdot R_{{th}}}} = "
+                f"\\frac{{{x_th:.4f}}}{{{OMEGA_50HZ:.4f} \\cdot {r_th:.4f}}} = "
+                f"{ta_s:.6f}\\,\\text{{s}} \\\\ "
+                f"I_b = {ikss_ka:.4f} \\cdot \\sqrt{{1 + \\left(({kappa:.4f} - 1) \\cdot "
+                f"e^{{-{tb_s:.4f}/{ta_s:.6f}}}\\right)^2}} = "
+                f"{ikss_ka:.4f} \\cdot \\sqrt{{1 + \\left({kappa - 1.0:.4f} \\cdot "
+                f"{exp_factor:.4f}\\right)^2}} = {ib_ka:.4f}\\,\\text{{kA}}"
+            )
+        else:
+            substitution = (
+                f"t_a = 0 \\quad (R_{{th}} \\leq 0 \\ \\text{{lub}} \\ X_{{th}} \\leq 0) "
+                f"\\Rightarrow e^{{-t_b/t_a}} = 0 \\Rightarrow "
+                f"I_b = I_k'' = {ib_ka:.4f}\\,\\text{{kA}}"
+            )
+
+        result = ProofValue.create("I_b", ib_ka, "kA", "ib_ka")
+
+        unit_check = UnitVerifier.verify_equation(
+            equation.equation_id,
+            {"I_k''": "kA", "κ": "—", "t_b": "s"},
+            "kA",
+        )
+
+        return ProofStep(
+            step_id=ProofStep.generate_step_id("SC3F", step_number),
+            step_number=step_number,
+            title_pl=equation.name_pl,
+            equation=equation,
+            input_values=input_values,
+            substitution_latex=substitution,
+            result=result,
+            unit_check=unit_check,
+            source_keys={
+                "I_k''": "ikss_ka",
+                "κ": "kappa",
+                "t_b": "tb_s",
+                "I_b": "ib_ka",
+            },
+        )
+
+    @classmethod
+    def _create_sc3f_step_i2t(
+        cls,
+        step_number: int,
+        ith_ka: float,
+        tk_s: float,
+        i2t_ka2s: float,
+    ) -> ProofStep:
+        """Krok 8: Energia cieplna I²t = I_th²·t_k (IEC 60909-0 § 12).
+
+        Krok formatujący wielkości już obecne w dowodzie (I_th, t_k) — ta sama
+        projekcja co kanoniczny pełny bilans wierszy wyników (i2t_ka2s).
+        """
+        equation = EQ_SC3F_015
+
+        input_values = (
+            ProofValue.create("I_{th}", ith_ka, "kA", "ith_ka"),
+            ProofValue.create("t_k", tk_s, "s", "tk_s"),
+        )
+
+        substitution = (
+            f"I^2t = {ith_ka:.4f}^2 \\cdot {tk_s:.4f} = "
+            f"{ith_ka**2:.4f} \\cdot {tk_s:.4f} = "
+            f"{i2t_ka2s:.4f}\\,\\text{{kA}}^2\\text{{s}}"
+        )
+
+        result = ProofValue.create("I^2t", i2t_ka2s, "kA²s", "i2t_ka2s")
+
+        unit_check = UnitVerifier.verify_equation(
+            equation.equation_id,
+            {"I_th": "kA", "t_k": "s"},
+            "kA²s",
+        )
+
+        return ProofStep(
+            step_id=ProofStep.generate_step_id("SC3F", step_number),
+            step_number=step_number,
+            title_pl=equation.name_pl,
+            equation=equation,
+            input_values=input_values,
+            substitution_latex=substitution,
+            result=result,
+            unit_check=unit_check,
+            source_keys={
+                "I_th": "ith_ka",
+                "t_k": "tk_s",
+                "I^2t": "i2t_ka2s",
+            },
+        )
+
+    @classmethod
     def _create_sc3f_step_ith(
         cls,
         step_number: int,
@@ -1890,7 +1992,7 @@ class ProofGenerator:
         n_factor: float,
         ith_ka: float,
     ) -> ProofStep:
-        """Krok 6: Prąd cieplny I_th (OBOWIĄZKOWY)."""
+        """Krok 7: Prąd cieplny I_th (OBOWIĄZKOWY)."""
         equation = EQ_SC3F_008
 
         sqrt_mn = math.sqrt(m_factor + n_factor)
@@ -3831,7 +3933,7 @@ class ProofGenerator:
         key_results: dict[str, ProofValue] = {}
         counterfactual_diff: dict[str, ProofValue] = {}
 
-        def _add_pair(key: str, symbol: str):
+        def _add_pair(key: str, symbol: str) -> None:
             val_a = proof_a.summary.key_results.get(key)
             val_b = proof_b.summary.key_results.get(key)
             if not val_a or not val_b:

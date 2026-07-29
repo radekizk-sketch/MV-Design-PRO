@@ -15,7 +15,7 @@ export function NotFoundPage({ attemptedRoute, onReturnHome, onReportIssue }: No
     <div
       role="alert"
       aria-live="polite"
-      className="flex h-full w-full flex-col items-center justify-center gap-6 bg-slate-950 p-12 text-slate-200"
+      className="flex h-full w-full flex-col items-center justify-center gap-6 bg-white p-12 text-slate-700"
       data-testid="screen-not-found"
     >
       <div className="flex flex-col items-center gap-2">
@@ -23,12 +23,12 @@ export function NotFoundPage({ attemptedRoute, onReturnHome, onReportIssue }: No
           404
         </div>
         <h1 className="text-2xl font-semibold">Nie znaleziono ekranu</h1>
-        <p className="max-w-md text-center text-sm text-slate-400">
+        <p className="max-w-md text-center text-sm text-slate-500">
           Ścieżka, której szukasz, nie istnieje albo została przeniesiona w nowszej wersji aplikacji.
         </p>
         {attemptedRoute ? (
           <code
-            className="rounded bg-slate-800 px-3 py-1 text-xs text-slate-300"
+            className="rounded bg-slate-100 px-3 py-1 text-xs text-slate-600"
             data-testid="attempted-route"
           >
             {attemptedRoute}
@@ -49,7 +49,7 @@ export function NotFoundPage({ attemptedRoute, onReturnHome, onReportIssue }: No
           <button
             type="button"
             onClick={onReportIssue}
-            className="rounded-lg border border-slate-700 px-5 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-500"
+            className="rounded-lg border border-slate-200 px-5 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-500"
             data-testid="report-issue"
           >
             Zgłoś błąd

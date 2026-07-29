@@ -25,18 +25,42 @@ def build_protection_input(
     )
 
 
+# Granica biegu minimalnego/maksymalnego wg współczynnika napięciowego c
+# (IEC 60909-0, Tabela 1): c_max ≥ 1,0 → gałąź maksymalna (wytrzymałość
+# aparatury), c_min < 1,0 → gałąź minimalna (czułość zabezpieczeń).
+_C_MIN_UPPER_BOUND = 1.0
+
+
 def _build_fault_levels(sc_result: ShortCircuitResult) -> dict[str, Any]:
+    """Poziomy zwarciowe dla doboru nastaw — z ROZRÓŻNIENIEM gałęzi min/max.
+
+    V12K-189: adapter wystawiał wyłącznie ``ik_max_3ph``, a kalkulator nastaw
+    czytał ``ik_min_3ph`` — klucz, którego NIGDY nie było. Nastawa bezzwłoczna
+    I>> (50) zawsze wpadała więc w wartość zastępczą (5× nastawa rozruchowa), co
+    ukrywało rozjazd kontraktu między producentem a konsumentem danych. Po
+    usunięciu wartości zastępczych rozjazd ujawnił się natychmiast.
+
+    Nastawę I>> wyznacza się od prądu zwarciowego MINIMALNEGO (zabezpieczenie ma
+    zadziałać także przy najsłabszym zwarciu), a wytrzymałość aparatury sprawdza
+    prądem MAKSYMALNYM — to dwa różne biegi tego samego solvera, rozróżniane
+    współczynnikiem ``c``. Wynik trafia więc do klucza odpowiadającego swojej
+    gałęzi; klucz drugiej gałęzi zostaje ``None`` (uczciwy brak, nie podstawienie).
+    """
     fault_levels: dict[str, Any] = {
         "ik_max_3ph": None,
+        "ik_min_3ph": None,
+        "ik_max_1ph": None,
         "ik_min_1ph": None,
         "ip": sc_result.ip_a,
         "ith": sc_result.ith_a,
         "sk": sc_result.sk_mva,
+        "c_factor": float(sc_result.c_factor),
     }
+    is_min_branch = float(sc_result.c_factor) < _C_MIN_UPPER_BOUND
     if sc_result.short_circuit_type == ShortCircuitType.THREE_PHASE:
-        fault_levels["ik_max_3ph"] = sc_result.ikss_a
+        fault_levels["ik_min_3ph" if is_min_branch else "ik_max_3ph"] = sc_result.ikss_a
     if sc_result.short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
-        fault_levels["ik_min_1ph"] = sc_result.ikss_a
+        fault_levels["ik_min_1ph" if is_min_branch else "ik_max_1ph"] = sc_result.ikss_a
     return fault_levels
 
 

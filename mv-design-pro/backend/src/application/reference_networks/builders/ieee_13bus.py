@@ -19,20 +19,32 @@ def build_ieee_13bus_network() -> dict[str, Any]:
     """Return ENM-like dict for IEEE 13-bus distribution feeder."""
     # Bus naming per Kersting 2001: 650, 632, 633, 634, 645, 646, 671, 692, 675, 680, 684, 652, 611
     bus_ids = [
-        "BUS-650", "BUS-632", "BUS-633", "BUS-634",
-        "BUS-645", "BUS-646", "BUS-671", "BUS-692",
-        "BUS-675", "BUS-680", "BUS-684", "BUS-652", "BUS-611",
+        "BUS-650",
+        "BUS-632",
+        "BUS-633",
+        "BUS-634",
+        "BUS-645",
+        "BUS-646",
+        "BUS-671",
+        "BUS-692",
+        "BUS-675",
+        "BUS-680",
+        "BUS-684",
+        "BUS-652",
+        "BUS-611",
     ]
     buses = []
     for i, bid in enumerate(bus_ids):
         voltage = 4.16 if "634" not in bid else 0.48  # 634 is LV
-        buses.append({
-            "ref_id": bid,
-            "id": bid,
-            "name": bid,
-            "u_n_kv": voltage,
-            "bus_kind": "slack" if i == 0 else "pq",
-        })
+        buses.append(
+            {
+                "ref_id": bid,
+                "id": bid,
+                "name": bid,
+                "u_n_kv": voltage,
+                "bus_kind": "slack" if i == 0 else "pq",
+            }
+        )
 
     # Radial topology (simplified Kersting):
     branches = [
@@ -51,18 +63,20 @@ def build_ieee_13bus_network() -> dict[str, Any]:
     ]
     branch_list = []
     for bid, fbus, tbus, r_pu, x_pu, length in branches:
-        branch_list.append({
-            "ref_id": bid,
-            "id": bid,
-            "name": bid,
-            "branch_type": "LineBranch",
-            "from_bus": fbus,
-            "to_bus": tbus,
-            "r_pu": r_pu,
-            "x_pu": x_pu,
-            "b_pu": 0.0,
-            "length_km": length / 1000.0,
-        })
+        branch_list.append(
+            {
+                "ref_id": bid,
+                "id": bid,
+                "name": bid,
+                "branch_type": "LineBranch",
+                "from_bus": fbus,
+                "to_bus": tbus,
+                "r_pu": r_pu,
+                "x_pu": x_pu,
+                "b_pu": 0.0,
+                "length_km": length / 1000.0,
+            }
+        )
 
     # Per Kersting load schedule (Table I) - approximated as balanced 3-phase
     loads = [

@@ -487,8 +487,7 @@ class TestSizeSavings:
             branches=[{"id": f"b{i}", "from": f"n{i}", "to": f"n{i+1}"} for i in range(49)],
             study_cases=[{"id": f"sc{i}", "name": f"Przypadek {i}"} for i in range(20)],
             study_results=[
-                {"id": f"r{i}", "value": i * 2.2}
-                for i in range(30)  # zmienione wyniki
+                {"id": f"r{i}", "value": i * 2.2} for i in range(30)  # zmienione wyniki
             ],
         )
 

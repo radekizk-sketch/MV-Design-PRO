@@ -2161,7 +2161,9 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
     s.add_bus("SN_PCC", _PVBESS_SN_KV)
     s.add_line(SR_IN, "GPZ", "SN_PCC", _GRID_INFEED_R, _GRID_INFEED_X)
 
-    def _add_sources(prefix: str, bus: str, count: int, kva: float, src_type: str, un_kv: float) -> None:
+    def _add_sources(
+        prefix: str, bus: str, count: int, kva: float, src_type: str, un_kv: float
+    ) -> None:
         for i in range(count):
             node = f"{prefix}{i + 1}"
             s.add_bus(node, un_kv)
@@ -2171,23 +2173,63 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
 
     if variant == "bus":
         s.add_bus("PV_NN", _PVBESS_PV_NN_KV)
-        s.add_transformer("sr/branch/tr-pv", "SN_PCC", "PV_NN", hv_kv=_PVBESS_SN_KV,
-                          lv_kv=_PVBESS_PV_NN_KV, uk_percent=6.0, rated_mva=_PVBESS_PV_TR_MVA, x_over_r=4.5)
-        _add_sources("PV_INV", "PV_NN", _PVBESS_PV_INV_COUNT, _PVBESS_PV_INV_KVA, "PV", _PVBESS_PV_NN_KV)
+        s.add_transformer(
+            "sr/branch/tr-pv",
+            "SN_PCC",
+            "PV_NN",
+            hv_kv=_PVBESS_SN_KV,
+            lv_kv=_PVBESS_PV_NN_KV,
+            uk_percent=6.0,
+            rated_mva=_PVBESS_PV_TR_MVA,
+            x_over_r=4.5,
+        )
+        _add_sources(
+            "PV_INV", "PV_NN", _PVBESS_PV_INV_COUNT, _PVBESS_PV_INV_KVA, "PV", _PVBESS_PV_NN_KV
+        )
         s.add_load("PV_NN", p_mw=12.0 / 1000.0, q_mvar=0.01)  # potrzeby własne PV
         s.add_bus("BESS_NN", _PVBESS_BESS_NN_KV)
-        s.add_transformer("sr/branch/tr-bess", "SN_PCC", "BESS_NN", hv_kv=_PVBESS_SN_KV,
-                          lv_kv=_PVBESS_BESS_NN_KV, uk_percent=6.0, rated_mva=_PVBESS_BESS_TR_MVA, x_over_r=4.5)
-        _add_sources("BESS_PCS", "BESS_NN", _PVBESS_BESS_PCS_COUNT, _PVBESS_BESS_PCS_KVA, "BESS", _PVBESS_BESS_NN_KV)
+        s.add_transformer(
+            "sr/branch/tr-bess",
+            "SN_PCC",
+            "BESS_NN",
+            hv_kv=_PVBESS_SN_KV,
+            lv_kv=_PVBESS_BESS_NN_KV,
+            uk_percent=6.0,
+            rated_mva=_PVBESS_BESS_TR_MVA,
+            x_over_r=4.5,
+        )
+        _add_sources(
+            "BESS_PCS",
+            "BESS_NN",
+            _PVBESS_BESS_PCS_COUNT,
+            _PVBESS_BESS_PCS_KVA,
+            "BESS",
+            _PVBESS_BESS_NN_KV,
+        )
         s.add_load("BESS_NN", p_mw=10.0 / 1000.0, q_mvar=0.01)  # potrzeby własne BESS (HVAC/BMS)
-        buses = [("SN_PCC", _PVBESS_SN_KV, 16.0), ("PV_NN", _PVBESS_PV_NN_KV, 50.0),
-                 ("BESS_NN", _PVBESS_BESS_NN_KV, 50.0)]
+        buses = [
+            ("SN_PCC", _PVBESS_SN_KV, 16.0),
+            ("PV_NN", _PVBESS_PV_NN_KV, 50.0),
+            ("BESS_NN", _PVBESS_BESS_NN_KV, 50.0),
+        ]
     else:  # ac — wspólna szyna nN za jednym trafem
         s.add_bus("NN", _PVBESS_PV_NN_KV)
-        s.add_transformer(SR_TR, "SN_PCC", "NN", hv_kv=_PVBESS_SN_KV, lv_kv=_PVBESS_PV_NN_KV,
-                          uk_percent=6.0, rated_mva=_PVBESS_AC_TR_MVA, x_over_r=4.5)
-        _add_sources("PV_INV", "NN", _PVBESS_PV_INV_COUNT, _PVBESS_PV_INV_KVA, "PV", _PVBESS_PV_NN_KV)
-        _add_sources("BESS_PCS", "NN", _PVBESS_BESS_PCS_COUNT, _PVBESS_BESS_PCS_KVA, "BESS", _PVBESS_PV_NN_KV)
+        s.add_transformer(
+            SR_TR,
+            "SN_PCC",
+            "NN",
+            hv_kv=_PVBESS_SN_KV,
+            lv_kv=_PVBESS_PV_NN_KV,
+            uk_percent=6.0,
+            rated_mva=_PVBESS_AC_TR_MVA,
+            x_over_r=4.5,
+        )
+        _add_sources(
+            "PV_INV", "NN", _PVBESS_PV_INV_COUNT, _PVBESS_PV_INV_KVA, "PV", _PVBESS_PV_NN_KV
+        )
+        _add_sources(
+            "BESS_PCS", "NN", _PVBESS_BESS_PCS_COUNT, _PVBESS_BESS_PCS_KVA, "BESS", _PVBESS_PV_NN_KV
+        )
         s.add_load("NN", p_mw=20.0 / 1000.0, q_mvar=0.02)  # wspólne potrzeby własne
         buses = [("SN_PCC", _PVBESS_SN_KV, 16.0), ("NN", _PVBESS_PV_NN_KV, 50.0)]
 
@@ -2253,27 +2295,64 @@ def _build_g4_pvbess(variant: str) -> dict[str, Any]:
         )
     ]
     if variant == "bus":
-        fields.append(_field(f"{pfx}-tr-pv", role="transformer",
-            kind=f"POLE TRAFO PV · {_PVBESS_PV_TR_MVA:.2f} MVA · 15/{_PVBESS_PV_NN_KV} kV",
-            abb_cell="SDC", on_bus="SN_PCC",
-            source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:pole_trafo_PV", interface_protection=False))
-        fields.append(_field(f"{pfx}-tr-bess", role="transformer",
-            kind=f"POLE TRAFO BESS · {_PVBESS_BESS_TR_MVA:.2f} MVA · 15/{_PVBESS_BESS_NN_KV} kV",
-            abb_cell="SDC", on_bus="SN_PCC",
-            source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:pole_trafo_BESS", interface_protection=False))
+        fields.append(
+            _field(
+                f"{pfx}-tr-pv",
+                role="transformer",
+                kind=f"POLE TRAFO PV · {_PVBESS_PV_TR_MVA:.2f} MVA · 15/{_PVBESS_PV_NN_KV} kV",
+                abb_cell="SDC",
+                on_bus="SN_PCC",
+                source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:pole_trafo_PV",
+                interface_protection=False,
+            )
+        )
+        fields.append(
+            _field(
+                f"{pfx}-tr-bess",
+                role="transformer",
+                kind=f"POLE TRAFO BESS · {_PVBESS_BESS_TR_MVA:.2f} MVA · 15/{_PVBESS_BESS_NN_KV} kV",
+                abb_cell="SDC",
+                on_bus="SN_PCC",
+                source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:pole_trafo_BESS",
+                interface_protection=False,
+            )
+        )
     else:
-        fields.append(_field(f"{pfx}-tr", role="transformer",
-            kind=f"POLE TRAFO · {_PVBESS_AC_TR_MVA:.2f} MVA · 15/{_PVBESS_PV_NN_KV} kV",
-            abb_cell="SDC", on_bus="SN_PCC",
-            source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:pole_trafo_wspolny", interface_protection=False))
+        fields.append(
+            _field(
+                f"{pfx}-tr",
+                role="transformer",
+                kind=f"POLE TRAFO · {_PVBESS_AC_TR_MVA:.2f} MVA · 15/{_PVBESS_PV_NN_KV} kV",
+                abb_cell="SDC",
+                on_bus="SN_PCC",
+                source_ref="enm:Bay.bay_role=TRANSFORMATOR;std:pole_trafo_wspolny",
+                interface_protection=False,
+            )
+        )
     for i in range(_PVBESS_PV_INV_COUNT):
-        fields.append(_field(f"{pfx}-pv{i + 1}", role="source",
-            kind=f"FALOWNIK PV {i + 1} · {_PVBESS_PV_INV_KVA:.0f} kW", abb_cell="SDC", on_bus=pv_bus,
-            source_ref=f"enm:Generator.gen_type=pv_inverter;std:falownik_{i + 1}", interface_protection=False))
+        fields.append(
+            _field(
+                f"{pfx}-pv{i + 1}",
+                role="source",
+                kind=f"FALOWNIK PV {i + 1} · {_PVBESS_PV_INV_KVA:.0f} kW",
+                abb_cell="SDC",
+                on_bus=pv_bus,
+                source_ref=f"enm:Generator.gen_type=pv_inverter;std:falownik_{i + 1}",
+                interface_protection=False,
+            )
+        )
     for i in range(_PVBESS_BESS_PCS_COUNT):
-        fields.append(_field(f"{pfx}-pcs{i + 1}", role="source",
-            kind=f"PCS BESS {i + 1} · {_PVBESS_BESS_PCS_KVA:.0f} kW (2-kier.)", abb_cell="SDC", on_bus=bess_bus,
-            source_ref=f"enm:Generator.gen_type=bess;std:pcs_{i + 1}", interface_protection=False))
+        fields.append(
+            _field(
+                f"{pfx}-pcs{i + 1}",
+                role="source",
+                kind=f"PCS BESS {i + 1} · {_PVBESS_BESS_PCS_KVA:.0f} kW (2-kier.)",
+                abb_cell="SDC",
+                on_bus=bess_bus,
+                source_ref=f"enm:Generator.gen_type=bess;std:pcs_{i + 1}",
+                interface_protection=False,
+            )
+        )
 
     # Per-bus IBG tag (turns-ratio referral incl. cross-terms) is set consistently by
     # _oze_sc_bus / _ibg_referred_a (audit F-1) — no manual per-bus overwrite needed.
@@ -2943,8 +3022,14 @@ def build_g9_gpo() -> dict[str, Any]:
     # current REFERRED to 15 kV through the turns ratio (F-1) — now a PHYSICAL trafo in the path.
     s.add_bus("PV_NN", _NN_KV)
     s.add_transformer(
-        "sr/branch/tr-pv", "SN_PCC", "PV_NN", hv_kv=_BASE_KV, lv_kv=_NN_KV,
-        uk_percent=6.0, rated_mva=2.5, x_over_r=4.5,
+        "sr/branch/tr-pv",
+        "SN_PCC",
+        "PV_NN",
+        hv_kv=_BASE_KV,
+        lv_kv=_NN_KV,
+        uk_percent=6.0,
+        rated_mva=2.5,
+        x_over_r=4.5,
     )
     s.add_inverter("PV_NN", rated_kva=pv_kva, un_kv=_NN_KV, k_sc=_IBG_K, source_type="PV")
     s.add_load("PV_NN", p_mw=-pv_kva / 1000.0, q_mvar=0.0)
@@ -2957,12 +3042,23 @@ def build_g9_gpo() -> dict[str, Any]:
     # contribution at 15 kV is DAMPED by the transformer impedance (was overstated on the bus).
     s.add_bus("WIND_NN", _WINDA_LV_KV)
     s.add_transformer(
-        "sr/branch/tr-wind", "SN_PCC", "WIND_NN", hv_kv=_BASE_KV, lv_kv=_WINDA_LV_KV,
-        uk_percent=6.0, rated_mva=2.0, x_over_r=4.5,
+        "sr/branch/tr-wind",
+        "SN_PCC",
+        "WIND_NN",
+        hv_kv=_BASE_KV,
+        lv_kv=_WINDA_LV_KV,
+        uk_percent=6.0,
+        rated_mva=2.0,
+        x_over_r=4.5,
     )
     s.add_asynchronous_machine(
-        "WIND_NN", pr_mw=async_mw, ur_kv=_WINDA_LV_KV, cos_phi_r=0.85, efficiency=0.95,
-        i_lr_ratio=6.0, pole_pairs=2,
+        "WIND_NN",
+        pr_mw=async_mw,
+        ur_kv=_WINDA_LV_KV,
+        cos_phi_r=0.85,
+        efficiency=0.95,
+        i_lr_ratio=6.0,
+        pole_pairs=2,
     )
     s.add_load("WIND_NN", p_mw=-async_mw, q_mvar=0.0)
     p_export_kw = pv_kva + sync_mw * 1000.0 + async_mw * 1000.0
@@ -2998,28 +3094,47 @@ def build_g9_gpo() -> dict[str, Any]:
             "g9-line", un_kv=_BASE_KV, protection_codes=_PROTECTION_BY_MACHINE["MIXED"]
         ),
         _field(
-            "g9-pv", role="source", kind="PV — falownik (IBG)", abb_cell="SDC", on_bus="PV_NN",
+            "g9-pv",
+            role="source",
+            kind="PV — falownik (IBG)",
+            abb_cell="SDC",
+            on_bus="PV_NN",
             source_ref="enm:Generator.gen_type=pv_inverter;std:IEC_60909_6_7",
-            interface_protection=False, source_kind="IBG",
+            interface_protection=False,
+            source_kind="IBG",
             protection_codes=["anti-islanding", "81U", "81O", "27", "59"],
         ),
         _field(
-            "g9-sync", role="source", kind="Agregat synchroniczny", abb_cell="SDC", on_bus="SN_PCC",
+            "g9-sync",
+            role="source",
+            kind="Agregat synchroniczny",
+            abb_cell="SDC",
+            on_bus="SN_PCC",
             source_ref="enm:Generator.gen_type=synchronous;std:IEC_60909_6_3",
-            interface_protection=False, source_kind="SYNCHRONOUS",
+            interface_protection=False,
+            source_kind="SYNCHRONOUS",
             protection_codes=["87G", "40", "32", "64", "46", "21", "25", "27", "59", "81"],
         ),
         _field(
-            "g9-async", role="source", kind="Wiatr — generator async", abb_cell="SDC", on_bus="WIND_NN",
+            "g9-async",
+            role="source",
+            kind="Wiatr — generator async",
+            abb_cell="SDC",
+            on_bus="WIND_NN",
             source_ref="enm:Generator.gen_type=wind_async;std:IEC_60909_6_7",
-            interface_protection=False, source_kind="ASYNCHRONOUS",
+            interface_protection=False,
+            source_kind="ASYNCHRONOUS",
             protection_codes=["46", "47", "49", "51", "37", "32"],
         ),
     ]
     return _oze_companion(
         "G9-GPO",
         substrate=s,
-        buses=[("SN_PCC", _BASE_KV, 25.0), ("PV_NN", _NN_KV, 65.0), ("WIND_NN", _WINDA_LV_KV, 50.0)],
+        buses=[
+            ("SN_PCC", _BASE_KV, 25.0),
+            ("PV_NN", _NN_KV, 65.0),
+            ("WIND_NN", _WINDA_LV_KV, 50.0),
+        ],
         pcc_bus="SN_PCC",
         source=src,
         fields=fields,

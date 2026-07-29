@@ -4,11 +4,10 @@ Tests for Earthing / Ground Fault SN Proof Pack (V12K-015).
 Verifies the standalone pack wrapper over generate_earthing_ground_fault_proof.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
-
 from application.proof_engine.packs.earthing_ground_fault_sn import (
     EarthingGroundFaultPackInput,
     generate_earthing_ground_fault_pack,
@@ -24,7 +23,7 @@ def earthing_pack_input() -> EarthingGroundFaultPackInput:
     return EarthingGroundFaultPackInput(
         project_name="Test Project",
         case_name="1F-Z resistor grounding",
-        run_timestamp=datetime(2026, 5, 13, 12, 0, 0, tzinfo=timezone.utc),
+        run_timestamp=datetime(2026, 5, 13, 12, 0, 0, tzinfo=UTC),
         solver_version="earthing-mvp-1.0",
         fault_location="bus_station_01",
         fault_type="1F-Z",
@@ -55,12 +54,8 @@ def test_earthing_pack_is_deterministic(
     import json
 
     artifact_id = UUID("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
-    proof_1 = generate_earthing_ground_fault_pack(
-        earthing_pack_input, artifact_id=artifact_id
-    )
-    proof_2 = generate_earthing_ground_fault_pack(
-        earthing_pack_input, artifact_id=artifact_id
-    )
+    proof_1 = generate_earthing_ground_fault_pack(earthing_pack_input, artifact_id=artifact_id)
+    proof_2 = generate_earthing_ground_fault_pack(earthing_pack_input, artifact_id=artifact_id)
 
     data_1 = json.loads(export_to_json(proof_1))
     data_2 = json.loads(export_to_json(proof_2))
@@ -106,7 +101,7 @@ def test_earthing_pack_missing_data_does_not_compute() -> None:
     bare_input = EarthingGroundFaultPackInput(
         project_name="Test",
         case_name="missing data",
-        run_timestamp=datetime(2026, 5, 13, tzinfo=timezone.utc),
+        run_timestamp=datetime(2026, 5, 13, tzinfo=UTC),
         solver_version="v1",
     )
     document = generate_earthing_ground_fault_pack(bare_input)

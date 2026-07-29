@@ -62,6 +62,23 @@
 ### Plany
 - [plan/PLAN_E2E_INDUSTRIAL_2026-05.md](./plan/PLAN_E2E_INDUSTRIAL_2026-05.md) — plan E2E klasy przemysłowej
 - [plan/PLAN_SLD_REWORK.md](./plan/PLAN_SLD_REWORK.md) — fazowany plan reworku SLD (F1–F5)
+- [plan/PLAN_PRZEBUDOWY_10X_2026-07.md](./plan/PLAN_PRZEBUDOWY_10X_2026-07.md) — program inżynieryjny 10x (F0–F4)
+
+### Program UI/UX 2026-07 (AKTYWNY)
+- [uiux/PROGRAM_UIUX_2026-07.md](./uiux/PROGRAM_UIUX_2026-07.md) — program przebudowy UI/UX do klasy ETAP/PowerFactory (fazy U0–U5; clean-room UI)
+- [uiux/INWENTARZ_FUNKCJI_2026-07.md](./uiux/INWENTARZ_FUNKCJI_2026-07.md) — WIĄŻĄCY inwentarz funkcji obliczeniowych + macierz pokrycia UI
+- [uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md](./uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md) — gramatyka interakcji całej aplikacji + rejestr okien (każde okno od nowa)
+- [uiux/SPEC_KREATORY_2026-07.md](./uiux/SPEC_KREATORY_2026-07.md) — kreatory: zero pustych pól, podpowiedzi inżynierskie, gotowe przykłady
+- [uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md](./uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md) — powiązanie warstw: propagacja model→schemat→gotowość→wyniki→raporty, wspólna selekcja, świeżość rewizji
+- [uiux/SPEC_UKLAD_PANELI_2026-07.md](./uiux/SPEC_UKLAD_PANELI_2026-07.md) — układ paneli lewy/środkowy/prawy + tryby zaawansowania (Podstawowy/Rozszerzony/Ekspercki)
+- [uiux/SZABLONY_STACJI_2026-07.md](./uiux/SZABLONY_STACJI_2026-07.md) — taksonomia szablonów stacji (role A–E, cel ≥ 80) + przeglądarka w kreatorze
+- [uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md](./uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md) — rozszerzenia P1–P22 dla inżyniera (zatwierdzone zasadą „na max")
+- [uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md](./uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md) — audyt rady specjalistów: rozbudowa każdego okna + delta rejestru
+- [uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md](./uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md) — karta styku z wątkiem SLD (tokeny motywów)
+- [uiux/PROMPT_ZARZADCA_FABLE_UIUX.md](./uiux/PROMPT_ZARZADCA_FABLE_UIUX.md) — prompt zarządcy programu (orkiestracja wykonawców)
+
+> Rozgraniczenie wątków: rework SLD (PLAN_SLD_REWORK) biegnie w osobnej sesji; Program UI/UX
+> nie modyfikuje `ui/sld*`/`engine/sld-layout` — styk wyłącznie przez karty koordynacyjne.
 
 ---
 

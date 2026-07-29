@@ -42,12 +42,13 @@ describe('TypePicker', () => {
       />,
     );
 
-    expect(await screen.findByText('Nie udalo sie pobrac typow katalogowych')).toBeInTheDocument();
+    // Polskie napisy z diakrytykami (V12K-243) — komunikat bez ogonkow byl usterka tekstu UI.
+    expect(await screen.findByText('Nie udało się pobrać typów katalogowych')).toBeInTheDocument();
     expect(
       screen.getByText('Backend katalogów nie odpowiada. Uruchom API i spróbuj ponownie.'),
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ponow' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ponów' }));
 
     await waitFor(() => {
       expect(

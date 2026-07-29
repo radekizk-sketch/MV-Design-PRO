@@ -22,6 +22,7 @@ import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNetworkBuildStore } from '../networkBuildStore';
 import { buildOperationContext } from '../operationContext';
 import { useElementStatusDot } from '../liveReadiness';
+import { useShellStore } from '../../../ui2/shell/useShellStore';
 
 function bayRoleLabel(role: string): string {
   switch (role) {
@@ -98,6 +99,8 @@ export function BayCard({ elementId }: { elementId: string }) {
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
   const openInspectorPanel = useNetworkBuildStore((state) => state.openInspectorPanel);
   const closeObjectCard = useNetworkBuildStore((state) => state.closeObjectCard);
+  const setWynikiTab = useShellStore((state) => state.setWynikiTab);
+  const setActiveSpace = useShellStore((state) => state.setActiveSpace);
   const { itemsByBayRef, itemsByBayId, isLoading: isFieldLoading } = useFieldReadModel();
 
   const directFieldItem = useMemo(
@@ -638,9 +641,14 @@ export function BayCard({ elementId }: { elementId: string }) {
     openInspectorPanel('field_protection', inspectorElementId, 'BaySN');
   }, [inspectorElementId, openInspectorPanel]);
 
+  // P-1: „Wkłady źródeł" mają realnego dostawcę w warsztacie Wyników —
+  // zakładka zwarć (sekcja „Wkłady do zwarcia", rozbicie maszynowe per punkt
+  // zwarcia). Deep-link wzorcem V12K-106 zamiast panelu inspektora, który
+  // renderował zastępczy kontrakt analizy E-33.
   const handleOpenSourceContributions = useCallback(() => {
-    openInspectorPanel('field_source_contributions', inspectorElementId, 'BaySN');
-  }, [inspectorElementId, openInspectorPanel]);
+    setWynikiTab('zwarcia');
+    setActiveSpace('wyniki');
+  }, [setActiveSpace, setWynikiTab]);
 
   const handleOpenEarthFault = useCallback(() => {
     openInspectorPanel('field_earth_fault', inspectorElementId, 'BaySN');

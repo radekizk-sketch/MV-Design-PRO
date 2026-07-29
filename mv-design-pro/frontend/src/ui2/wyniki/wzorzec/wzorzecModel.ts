@@ -1,0 +1,150 @@
+/*
+ * Model danych WSPÓLNEGO WZORCA EKRANU ANALIZY (karta E8.1 / W-606).
+ *
+ * Fundament wszystkich okien wyników U3/U4 (rozpływ, zwarcia, analizy specjalne,
+ * OZE). Wzorzec jest W PEŁNI STEROWANY PROPSAMI — te typy opisują PROJEKCJĘ
+ * jednego wyniku analizy przekazywaną z zewnątrz (adaptera konkretnej analizy).
+ * Zero fizyki, zero wyliczeń, zero wołań API/store'ów w tej warstwie.
+ *
+ * Struktura okna (W-606): nagłówek (analiza + świeżość + akcje) → ZAŁOŻENIA
+ * (część wyniku, W-602) → TABELA wyników (kolumny deklaratywne) → WYKRES (slot).
+ * Każda liczba niesie semantykę `ValueRow` (2× klik → dowód gdy `dowodRef`).
+ */
+
+import type { ReactNode } from 'react';
+
+/** Nagłówek ekranu analizy. */
+export interface NaglowekAnalizy {
+  /** Nazwa analizy po polsku (pierwszy plan). */
+  analizaPL: string;
+  /** Identyfikator przebiegu — pokazywany WYŁĄCZNIE w trybie eksperckim. */
+  runId?: string;
+  /** Bieżąca rewizja modelu (do oceny świeżości wyników). */
+  rewizjaModelu?: number;
+  /** Rewizja modelu, przy której policzono wyniki (świeżość — FreshnessBadge). */
+  rewizjaDanych?: number;
+  /**
+   * Wariant pracy, do którego należy wynik (V12K-264). Z nim ekran potrafi
+   * odpowiedzieć NA CO wynik jest nieaktualny — pobiera dziennik zmian modelu
+   * i pokazuje listę przyczyn zamiast samej pary rewizji.
+   */
+  caseId?: string;
+}
+
+/**
+ * Wiersz sekcji ZAŁOŻENIA — jedna dana wejściowa/parametr przebiegu.
+ * „Założenia są częścią wyniku" (W-602): każda liczba wyniku ma tu swój kontekst.
+ */
+export interface WierszZalozenia {
+  etykieta: string;
+  wartosc: string | number;
+  jednostka?: string;
+  /** Pochodzenie/uwaga — pokazywane w dymku (`title`). */
+  uwaga?: string;
+}
+
+/**
+ * Wartość pojedynczej komórki tabeli — semantyka `ValueRow`.
+ * `wartosc` jest zwykle wstępnie sformatowanym łańcuchem (adapter formatuje
+ * deterministycznie); `sortKey` daje poprawne sortowanie liczbowe mimo formatu.
+ */
+export interface WartoscKomorki {
+  wartosc: string | number;
+  jednostka?: string;
+  /** Odwołanie do dowodu WHITE BOX (2× klik → onOtworzDowod). */
+  dowodRef?: string;
+  /** Przekroczony próg → tag ostrzegawczy (próg wyznacza adapter, nie wzorzec). */
+  ostrzezenie?: boolean;
+  /** Klucz sortowania liczbowego, gdy `wartosc` jest sformatowanym łańcuchem. */
+  sortKey?: number;
+}
+
+/** Wyrównanie treści kolumny. */
+export type WyrownanieKolumny = 'lewo' | 'prawo';
+
+/** Deklaratywna definicja kolumny tabeli wyników (karta E8.1 §2). */
+export interface DefinicjaKolumny {
+  /** Klucz pola w wierszu danych (`WierszTabeli[klucz]`). */
+  klucz: string;
+  /** Etykieta nagłówka po polsku. */
+  etykieta: string;
+  /** Jednostka fizyczna (pokazywana w nagłówku, zawsze gdy dotyczy). */
+  jednostka?: string;
+  /** Wartości liczbowe → mono + tabular-nums (domyślnie wyrównanie do prawej). */
+  mono?: boolean;
+  /** Wyrównanie treści (domyślnie: `prawo` dla mono, `lewo` dla tekstu). */
+  wyrownanie?: WyrownanieKolumny;
+  /** Kolumna sortowalna (domyślnie true). */
+  sortowalna?: boolean;
+  /** Kolumna identyfikatora — widoczna WYŁĄCZNIE w trybie eksperckim. */
+  tylkoEkspercki?: boolean;
+}
+
+/** Jeden wiersz tabeli: mapowanie klucz kolumny → wartość komórki. */
+export type WierszTabeli = Record<string, WartoscKomorki>;
+
+/** Kierunek sortowania kolumny. */
+export type KierunekSortowania = 'rosnaco' | 'malejaco';
+
+/** Aktywne sortowanie tabeli (null = kolejność źródłowa, stabilna). */
+export interface StanSortowania {
+  klucz: string;
+  kierunek: KierunekSortowania;
+}
+
+/** Props głównego komponentu wzorca (karta E8.1 §2). */
+export interface EkranAnalizyProps {
+  naglowek: NaglowekAnalizy;
+  zalozenia: WierszZalozenia[];
+  kolumny: DefinicjaKolumny[];
+  wiersze: WierszTabeli[];
+  /** Slot wykresu (opcjonalny) — np. profil napięcia (Recharts). */
+  wykres?: ReactNode;
+  onOtworzDowod: (ref: string) => void;
+  /** Eksport przez callback (stopka) — brak = brak przycisku. */
+  onEksport?: () => void;
+  /** Akcja przeliczenia (pokazywana przy nieaktualnych wynikach). */
+  onPrzelicz?: () => void;
+  /**
+   * Klik w element dotknięty zmianą, która unieważniła wynik (V12K-264) —
+   * ostatnie ogniwo drogi „werdykt → przyczyna → element modelu". Bez tej
+   * funkcji lista przyczyn pozostaje czytelna, ale nieklikalna.
+   */
+  onPokazElement?: (elementRef: string) => void;
+  trybZaawansowania: import('../../shell/modeModel').AdvancementMode;
+  /**
+   * Który klucz kolumny identyfikuje wiersz (klucz React, stabilny przy sortowaniu).
+   * Domyślnie: klucz pierwszej kolumny.
+   */
+  kluczWiersza?: string;
+  /**
+   * Natywny wybór wiersza (delta API — TODO-KARTA E8.2): klik/Enter na wierszu
+   * woła callback z wartością klucza wiersza. Brak = tabela bez wyboru.
+   */
+  onWybierzWiersz?: (klucz: string) => void;
+  /** Wartość klucza aktualnie wybranego wiersza (podświetlenie + aria-selected). */
+  wybranyWiersz?: string | null;
+  /**
+   * Pętla decyzji (F-E6.1): akcja „Popraw w modelu" na wierszach z
+   * przekroczeniem (dowolna komórka `ostrzezenie`). Wołana z kluczem wiersza
+   * (= ref elementu). Brak = kolumna decyzji niepokazywana (zero zmiany
+   * dzisiejszego zachowania ekranów nie-konsumujących).
+   */
+  onPoprawWModelu?: (klucz: string) => void;
+  /**
+   * Predykat decydujący, czy DANY wiersz z przekroczeniem jest „naprawialny
+   * w modelu" (F-E6.2). Domyślnie (brak predykatu) przycisk pokazuje się na
+   * KAŻDYM wierszu z ostrzeżeniem. Screeny, w których część przekroczeń dotyczy
+   * agregatów systemowych bez elementu modelu (np. bilans strat `target_id=network`),
+   * podają predykat, by NIE renderować martwego przycisku na tych wierszach.
+   * Wołany z kluczem wiersza (tą samą wartością co `onPoprawWModelu`).
+   */
+  wierszDecyzyjny?: (klucz: string) => boolean;
+  /**
+   * Rodzaj przekroczenia DANEGO wiersza (K1 / F-E6.3): steruje etykietą i opisem
+   * przycisku decyzji przez rejestr `akcjeNaprawcze.ts` (etykieta kontekstowa
+   * wyłącznie tam, gdzie akcja różni się od generycznej — §0.5). Brak propsa
+   * lub `undefined` dla wiersza = etykieta generyczna (zachowanie 1:1).
+   */
+  rodzajWiersza?: (klucz: string) => import('./akcjeNaprawcze').RodzajPrzekroczenia | undefined;
+}

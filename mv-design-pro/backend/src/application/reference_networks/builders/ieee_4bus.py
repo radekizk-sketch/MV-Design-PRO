@@ -37,7 +37,13 @@ def build_ieee_4bus_network() -> dict[str, Any]:
             "defaults": {},
         },
         "buses": [
-            {"ref_id": "BUS-1", "id": "BUS-1", "name": "BUS-1", "u_n_kv": 132.0, "bus_kind": "slack"},
+            {
+                "ref_id": "BUS-1",
+                "id": "BUS-1",
+                "name": "BUS-1",
+                "u_n_kv": 132.0,
+                "bus_kind": "slack",
+            },
             {"ref_id": "BUS-2", "id": "BUS-2", "name": "BUS-2", "u_n_kv": 132.0, "bus_kind": "pq"},
             {"ref_id": "BUS-3", "id": "BUS-3", "name": "BUS-3", "u_n_kv": 132.0, "bus_kind": "pq"},
             {"ref_id": "BUS-4", "id": "BUS-4", "name": "BUS-4", "u_n_kv": 132.0, "bus_kind": "pv"},

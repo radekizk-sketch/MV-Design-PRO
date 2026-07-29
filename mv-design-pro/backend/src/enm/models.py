@@ -61,11 +61,34 @@ class ProtectionSetting(BaseModel):
         "earth_fault_51N",
         "directional_67",
         "directional_67N",
+        # D10 (addytywnie): funkcje ochrony od pracy wyspowej (Loss of Mains).
+        # Rozszerzenie WYŁĄCZNIE dodaje literały — istniejące dokumenty ENM bez
+        # tych typów walidują się bez zmian.
+        "rocof_81R",
+        "vector_shift_78",
+        "underfrequency_81U",
+        "overfrequency_81O",
     ]
     threshold_a: float | None = None
     time_delay_s: float | None = None
     curve_type: Literal["DT", "IEC_SI", "IEC_VI", "IEC_EI", "IEC_LI"] | None = None
+    time_multiplier: float | None = None
+    """Mnożnik czasowy (TMS) dla charakterystyk odwrotnych IEC 60255 (SI/VI/EI/LTI).
+
+    Addytywne, opcjonalne (default None). Dokumenty ENM bez tego pola walidują się
+    bez zmian, a serializacja z ``exclude_none`` pomija je dla istniejących nastaw —
+    determinizm dotychczasowych payloadów pozostaje nienaruszony. Wymagany do
+    wyznaczenia krzywej I-t dla charakterystyk odwrotnych (nie dotyczy DT).
+    """
     is_directional: bool = False
+    # D10 (addytywnie, opcjonalne — default None): nastawy funkcji LoM.
+    # Zachowanie istniejących typów funkcji NIE zmienia się (pola pozostają None).
+    threshold_hz_s: float | None = None
+    """Nastawa df/dt [Hz/s] dla ROCOF (81R)."""
+    threshold_deg: float | None = None
+    """Nastawa przesunięcia wektora [°] dla funkcji 78."""
+    threshold_hz: float | None = None
+    """Próg częstotliwościowy [Hz] dla 81U/81O."""
 
 
 # ---------------------------------------------------------------------------
@@ -98,6 +121,20 @@ class ENMDefaults(BaseModel):
     frequency_hz: float = 50.0
     unit_system: Literal["SI"] = "SI"
     sn_nominal_kv: float | None = None
+
+
+class ConnectionConditions(BaseModel):
+    """Warunki przyłączenia z dokumentu OSD (dane WEJŚCIOWE projektu, nie wynik).
+
+    Karta K2 programu FLOW EKSPERT+ (GAP B1/B2 audytu FLOW): statyczny limit
+    mocy z umowy/warunków przyłączeniowych + wymagany współczynnik mocy +
+    opis trybu pracy przyłącza (tekst z dokumentu OSD — bez zgadywania enuma).
+    Wszystkie pola opcjonalne (blok addytywny — istniejące payloady bez zmian).
+    """
+
+    moc_przylaczeniowa_mw: float | None = Field(default=None, gt=0)
+    wymagany_cos_phi: float | None = Field(default=None, gt=0, le=1)
+    tryb_pracy: str | None = None
 
 
 class ENMHeader(BaseModel):
@@ -163,6 +200,22 @@ class OverheadLine(BranchBase):
     r0_ohm_per_km: float | None = None
     x0_ohm_per_km: float | None = None
     b0_siemens_per_km: float | None = None
+    # Karta F-K1 faza 7: dane cieplne i materialowe PRZEWODU GOLEGO. Model niosl
+    # dotad wylacznie impedancje i obciazalnosc — a poniewaz pydantic domyslnie
+    # IGNORUJE nadmiarowe pola, dane cieplne z materializacji katalogowej byly cicho
+    # POLYKANE. Objaw: kryterium IEC 60949 dla kazdej linii napowietrznej konczylo
+    # sie werdyktem NIEDOSTEPNY, mimo ze katalog mial Jth(1 s) od poczatku.
+    # Pola opcjonalne (blok addytywny) — dokumenty bez nich walidowaly sie i walidują dalej.
+    conductor_material: str | None = None
+    cross_section_mm2: float | None = None
+    jth_1s_a_per_mm2: float | None = None
+    ith_1s_a: float | None = None
+    # Para temperatur uzasadniajaca k. Dla przewodu GOLEGO granice wyznacza utrata
+    # wytrzymalosci mechanicznej zyly i osprzet, nie izolacja — dlatego linia nie ma
+    # (i nie moze miec) pola `insulation`.
+    operating_temperature_c: float | None = None
+    short_circuit_temperature_c: float | None = None
+    thermal_source_ref: str | None = None
     rating: BranchRating | None = None
     # PR-3 rebuild SLD: jawne porty endpointów (opcjonalne, automigracja w PR-3)
     endpoint_a_port: PortRef | None = None
@@ -186,8 +239,22 @@ class Cable(BranchBase):
     return_conductor_r_ohm_per_km_20c: float | None = None
     return_conductor_jth_1s_a_per_mm2: float | None = None
     return_conductor_ith_1s_a: float | None = None
+    # Karta F-K1 faza 3: wytrzymalosc cieplna zwarciowa ZYLY FAZOWEJ (IEC 60949).
+    # Model niosl dotad wylacznie dane zyly POWROTNEJ; kryterium cieplne przewodu
+    # nie mialo z czego liczyc pradu dopuszczalnego. Pola opcjonalne — brak = dana
+    # nieznana, nigdy zero.
+    jth_1s_a_per_mm2: float | None = None
+    ith_1s_a: float | None = None
     rating: BranchRating | None = None
-    insulation: Literal["XLPE", "PVC", "PAPER"] | None = None
+    # EPR dolozony w karcie F-K1 faza 6: katalog SN ma 18 rekordow z ta izolacja,
+    # a model ich NIE PRZYJMOWAL — materializacja takiego kabla wywracala walidacje
+    # dokumentu. Defekt byl niewidoczny, dopoki izolacja nie trafila do modelu.
+    insulation: Literal["XLPE", "EPR", "PVC", "PAPER"] | None = None
+    # Karta F-K1 faza 6 (Calculation Evidence): para temperatur uzasadniajaca k.
+    # Addytywne, opcjonalne — dokumenty bez tych pol walidowaly sie i walidują dalej.
+    operating_temperature_c: float | None = None
+    short_circuit_temperature_c: float | None = None
+    thermal_source_ref: str | None = None
     # PR-3 rebuild SLD: jawne porty endpointów (opcjonalne, automigracja w PR-3)
     endpoint_a_port: PortRef | None = None
     endpoint_b_port: PortRef | None = None
@@ -216,8 +283,40 @@ Branch = Annotated[
 
 
 # ---------------------------------------------------------------------------
-# Transformer
+# Transformer + tap changer (V12K-045)
 # ---------------------------------------------------------------------------
+
+
+class LineDropCompensation(BaseModel):
+    """Line-drop compensation (LDC) for an OLTC regulator [Ω]."""
+
+    enabled: bool = False
+    r_ohm: float = 0.0
+    x_ohm: float = 0.0
+
+
+class TapChanger(BaseModel):
+    """Canonical tap-changer state on a transformer — single source of truth.
+
+    Additive/optional: a transformer without a tap_changer keeps the legacy
+    tap_position/tap_step_percent behaviour. None is excluded from the ENM
+    fingerprint (model_dump exclude_none), so existing fixtures are unchanged.
+    """
+
+    regulation_type: Literal["NONE", "DETC", "OLTC"] = "NONE"
+    regulated_winding: Literal["HV", "LV"] = "HV"
+    neutral_position: int = 0
+    current_position: int = 0
+    min_position: int = 0
+    max_position: int = 0
+    step_percent: float = 0.0
+    control_mode: Literal["MANUAL", "AUTOMATIC", "PROFILE", "REMOTE"] = "MANUAL"
+    voltage_setpoint_kv: float | None = None
+    deadband_kv: float | None = None
+    delay_seconds: float | None = None
+    controlled_bus_ref: str | None = None
+    line_drop_compensation: LineDropCompensation | None = None
+    catalog_ref: str | None = None
 
 
 class Transformer(ENMElement):
@@ -233,10 +332,18 @@ class Transformer(ENMElement):
     vector_group: str | None = None
     hv_neutral: GroundingConfig | None = None
     lv_neutral: GroundingConfig | None = None
+    # G-STK-6: liczba identycznych jednostek pracujących równolegle w polu
+    # transformatorowym. None/1 = pojedynczy transformator (bez zmiany fizyki).
+    # Agregacja: n jednostek → impedancja zastępcza Z/n (mapper skaluje Sn×n).
+    n_parallel: int | None = None
     tap_position: int | None = None
     tap_min: int | None = None
     tap_max: int | None = None
     tap_step_percent: float | None = None
+    # V12K-045: canonical tap-changer (single source of truth). Additive/optional;
+    # None excluded from ENM fingerprint (exclude_none). The legacy tap_* fields
+    # above remain for backward compatibility.
+    tap_changer: TapChanger | None = None
     catalog_ref: str | None = None
     catalog_namespace: str | None = None
     parameter_source: Literal["CATALOG", "OVERRIDE"] | None = None
@@ -469,6 +576,63 @@ class Measurement(ENMElement):
     source_mode: Literal["KATALOG", "MIGRACJA", "EKSPERCKI_RECZNY"] | None = None
     materialized_params: dict | None = None
     overrides: list[ParameterOverride] = []
+    # F10.6 (SLD_CAD_SPEC_V3 §18.3, D3, V12K-036): układ pomiarowy CT —
+    # 3×CT fazowe vs przekładnik sumujący/Ferranti dla składowej zerowej I0.
+    # WYŁĄCZNIE dla measurement_type=='CT'; None = dana niedostarczona (WHITE
+    # BOX — konsument NIE zgaduje, patrz `application/field_read_model.py`
+    # `_build_measurement_chain`, wyczyszczenie heurystyki F10.4/F10.6).
+    ct_arrangement: Literal["3xCT", "ferranti"] | None = None
+    # F10.6 (SLD_CAD_SPEC_V3 §20.2, D4): układ VT — otwarty trójkąt (do
+    # pomiaru 3U0, warunek konieczny dla 67N kierunkowego ziemnozwarciowego)
+    # vs gwiazda. WYŁĄCZNIE dla measurement_type=='VT'; None = dana
+    # niedostarczona (dotychczasowe uproszczenie §20.2 pozostaje w mocy).
+    vt_arrangement: Literal["open_delta", "star"] | None = None
+    # CTVT-MODEL (W5/V12K-173): liczba rdzeni przekładnika prądowego (rdzeń =
+    # osobne uzwojenie wtórne, każdy o własnej klasie/mocy — np. rdzeń pomiarowy
+    # 0,2S + rdzeń zabezpieczeniowy 5P10). Dane PRODUCENTA (tabliczka CT wg
+    # IEC 61869-2); WYŁĄCZNIE dla measurement_type=='CT'. `gt=0` = liczba
+    # rdzeni musi być dodatnia. None = dana niedostarczona przez producenta
+    # (uczciwy brak, ZERO fabrykacji — konsument NIE zgaduje). Oś ODRĘBNA od
+    # `ct_arrangement` (3×CT vs Ferranti opisuje układ dla I0, `ct_cores`
+    # opisuje liczbę uzwojeń wtórnych każdego przekładnika).
+    ct_cores: int | None = Field(default=None, gt=0)
+    # CTVT-MODEL (W5/V12K-173): typ montażu przekładnika napięciowego — szynowy
+    # (`bus`, VT na szynach zbiorczych) vs kablowy (`cable`, VT w polu
+    # kablowym/na głowicy). Dane PRODUCENTA/projektowe rozdzielni; WYŁĄCZNIE
+    # dla measurement_type=='VT'. Oś ODRĘBNA od `vt_arrangement`
+    # (open_delta/star = oś składowej zerowej 3U0; `vt_mounting` = lokalizacja
+    # fizyczna montażu). None = dana niedostarczona (uczciwy brak, ZERO
+    # fabrykacji).
+    vt_mounting: Literal["bus", "cable"] | None = None
+
+    @model_validator(mode="after")
+    def _validate_arrangement_matches_measurement_type(self) -> Measurement:
+        """F10.6: `ct_arrangement`/`vt_arrangement` to dane WYŁĄCZNIE dla
+        odpowiadającego `measurement_type` — zero niejednoznaczności (WHITE
+        BOX, `domain_no_guessing_guard`)."""
+        if self.ct_arrangement is not None and self.measurement_type != "CT":
+            raise ValueError(
+                f"Measurement '{self.ref_id}': ct_arrangement wymaga measurement_type='CT'."
+            )
+        if self.vt_arrangement is not None and self.measurement_type != "VT":
+            raise ValueError(
+                f"Measurement '{self.ref_id}': vt_arrangement wymaga measurement_type='VT'."
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_ctvt_variant_matches_measurement_type(self) -> Measurement:
+        """CTVT-MODEL: `ct_cores`/`vt_mounting` to dane WYŁĄCZNIE dla
+        odpowiadającego `measurement_type` — CT nie ma montażu VT, a VT nie ma
+        rdzeni CT (spójność osi, WHITE BOX, `domain_no_guessing_guard`).
+        Dodatnia liczba rdzeni jest egzekwowana przez `Field(gt=0)`."""
+        if self.ct_cores is not None and self.measurement_type != "CT":
+            raise ValueError(f"Measurement '{self.ref_id}': ct_cores wymaga measurement_type='CT'.")
+        if self.vt_mounting is not None and self.measurement_type != "VT":
+            raise ValueError(
+                f"Measurement '{self.ref_id}': vt_mounting wymaga measurement_type='VT'."
+            )
+        return self
 
 
 # ---------------------------------------------------------------------------
@@ -482,6 +646,13 @@ class ProtectionAssignment(ENMElement):
     breaker_ref: str
     ct_ref: str | None = None
     vt_ref: str | None = None
+    # F10.6 (SLD_CAD_SPEC_V3 §20.2, D5, V12K-036): CT dodatkowe strefy
+    # różnicowej (87T wymaga CT po OBU stronach transformatora — `ct_ref`
+    # niesie JEDEN CT, ta lista niesie pozostałe CT granicy strefy). Pusta
+    # lista = strefa różnicowa 2×CT NIE jest modelowana (dana niedostarczona,
+    # nie błąd — `protectionFunctionTopologyGaps` degraduje do dotychczasowego
+    # uproszczenia „obecność transformatora" gdy lista pusta).
+    ct_refs_secondary: list[str] = []
     device_type: Literal[
         "overcurrent",
         "earth_fault",
@@ -733,6 +904,16 @@ class Bay(ENMElement):
     # (Invariant 9). Field forward-deklarowany — typ BayRuntimeState w
     # późniejszej sekcji modułu.
     runtime_state: BayRuntimeState | None = None
+    # Recenzja NO-GO 2026-07-17 pkt 9/10 (spec §12.5): aparaty PIERWOTNE pola
+    # NA SNAPSHOTCIE ENM — domknięcie STOP-notatki F9.2 (frontend
+    # `enmToSldAdapter.ts::BayWithOptionalPrimaryDevices` czyta to pole
+    # DEFENSYWNIE od F9.2 — „projekcja aktywuje się automatycznie, gdy backend
+    # zacznie serializować"). Dotąd `primary_devices` istniało wyłącznie na
+    # `BayBaseModel`/`BayCanonicalModel` (kanał field-view) — walidator blokad
+    # uziemnika (W034, validator.py) i identyfikatory globalne aparatów
+    # wymagają tych danych na snapshotcie. Puste = dana niedostarczona
+    # (ścieżka konwencji rysunku, zero domysłu).
+    primary_devices: list[BayPrimaryDevice] = []
 
 
 # ---------------------------------------------------------------------------
@@ -786,6 +967,9 @@ class BayPrimaryDevice(BaseModel):
         "GENERATOR_FW",
         "PCS",
         "BATTERY",
+        # F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): ogranicznik przepięć — rysowany
+        # WYŁĄCZNIE gdy pochodzi z danych (zero konwencji/zgadywania, §12.4).
+        "SURGE_ARRESTER",
     ]
     placement: Literal["UPSTREAM", "MIDSTREAM", "DOWNSTREAM", "OFF_PATH", "GROUND_BRANCH"]
     section_side: Literal["LEFT", "CENTER", "RIGHT"] | None = None
@@ -793,6 +977,27 @@ class BayPrimaryDevice(BaseModel):
     render_variant: str | None = None
     switch_state: BaySwitchState | None = None
     operating_state: BayOperatingState | None = None
+    # F10.6 (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035): identyfikator PER-APARAT
+    # (np. "Q1", "QE1", "T1") jako DANA projektowa — gdy obecny, ma pierwszeństwo
+    # nad fallbackiem konwencji (`compose/apparatusSequence.ts::apparatusIdentifiers`,
+    # `data-designation-source="konwencja"`). None = dana niedostarczona,
+    # render pozostaje przy konwencji ze znacznikiem źródła.
+    designation: str | None = None
+    # Recenzja NO-GO 2026-07-17 pkt 10 (spec §12.5): TYPOLOGIA uziemienia —
+    # WYŁĄCZNIE dla kind="ES" (albo gałęzi uziemiającej SA): uziemnik pola /
+    # uziemienie ekranów kabla / konstrukcji / punktu neutralnego / gałąź
+    # ogranicznika. None = dana niedostarczona (rysunek: generyczny uziemnik,
+    # zero domysłu).
+    earthing_role: (
+        Literal[
+            "field_earth",
+            "cable_screen",
+            "structure",
+            "neutral_point",
+            "surge_ground",
+        ]
+        | None
+    ) = None
 
 
 class BayMeasurements(BaseModel):
@@ -1057,6 +1262,11 @@ class BayBaseModel(BaseModel):
         ]
         | None
     ) = None
+    # Powiązania producenckie pola (Reference Engine): szablon pola i rodzina
+    # rozdzielnicy. Opcjonalne i addytywne — None wykluczane z odcisku ENM
+    # (exclude_none). Nie wypełniać na istniejących fixture'ach.
+    bay_template_ref: str | None = None
+    switchgear_family_ref: str | None = None
 
 
 class BayShortCircuitSourceContribution(BaseModel):
@@ -1102,6 +1312,14 @@ class BayEarthFaultPath(BaseModel):
     closure_path_elements: list[str] = []
     transformer_contribution_ref: str | None = None
     grounding_device_ref: str | None = None
+    # EARTHING-1 (most produkcyjny SC_1F -> uziemienia): dane PROJEKTOWE uziomu
+    # potrzebne do napiec dotykowego/krokowego (PN-EN 50522). Addytywne, None =
+    # dana niedostarczona (ZERO zgadywania — brak => readiness fix-action,
+    # pack nie liczy). Nie sa fizyka: to wejscie projektowe (rezystancja uziomu
+    # z pomiaru rezystywnosci gruntu; wspolczynnik podzialu r z torow powrotnych
+    # ekran/OPGW). Prad doziemny I''k1 pochodzi z solvera SC_1F.
+    earth_electrode_resistance_ohm: float | None = None  # R_u = Z_E [Ω]
+    earth_return_split_factor: float | None = None  # r (0..1): udzial wracajacy uziomem
 
 
 class BayVerificationResult(BaseModel):

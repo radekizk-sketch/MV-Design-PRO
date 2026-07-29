@@ -306,6 +306,54 @@ class TestResultSetSignatureDeterminism:
         assert rs1.created_at != rs2.created_at
         assert rs1.deterministic_signature == rs2.deterministic_signature
 
+    def test_run_finished_at_populated_when_provided(
+        self,
+        sample_run_id,
+        sample_solver_input_hash,
+    ):
+        """OVERLAY-TIMESTAMP: run_finished_at flows through the builder into the contract."""
+        rs = build_resultset_v1(
+            run_id=sample_run_id,
+            analysis_type="SC_3F",
+            solver_input_hash=sample_solver_input_hash,
+            run_finished_at="2026-07-24T10:15:30+00:00",
+        )
+        assert rs.run_finished_at == "2026-07-24T10:15:30+00:00"
+
+    def test_run_finished_at_defaults_to_none(
+        self,
+        sample_run_id,
+        sample_solver_input_hash,
+    ):
+        """OVERLAY-TIMESTAMP: absent completion time is honestly None (no fabrication)."""
+        rs = build_resultset_v1(
+            run_id=sample_run_id,
+            analysis_type="SC_3F",
+            solver_input_hash=sample_solver_input_hash,
+        )
+        assert rs.run_finished_at is None
+
+    def test_signature_excludes_run_finished_at(
+        self,
+        sample_run_id,
+        sample_solver_input_hash,
+    ):
+        """OVERLAY-TIMESTAMP: run completion time is provenance metadata — NOT in signature."""
+        rs_with = build_resultset_v1(
+            run_id=sample_run_id,
+            analysis_type="SC_3F",
+            solver_input_hash=sample_solver_input_hash,
+            run_finished_at="2026-07-24T10:15:30+00:00",
+        )
+        rs_without = build_resultset_v1(
+            run_id=sample_run_id,
+            analysis_type="SC_3F",
+            solver_input_hash=sample_solver_input_hash,
+            run_finished_at=None,
+        )
+        assert rs_with.run_finished_at != rs_without.run_finished_at
+        assert rs_with.deterministic_signature == rs_without.deterministic_signature
+
     def test_element_order_does_not_affect_signature(
         self,
         sample_run_id,
@@ -709,6 +757,11 @@ class TestResultContractV1Api:
         assert "legend" in data["overlay_payload"]
         assert "warnings" in data["overlay_payload"]
         assert len(data["deterministic_signature"]) == 64
+        # OVERLAY-TIMESTAMP: a FINISHED run carries a real completion timestamp
+        # (from CanonicalRun.finished_at) — provenance metadata, not fabricated.
+        assert data["run_finished_at"] is not None
+        assert isinstance(data["run_finished_at"], str)
+        assert data["run_finished_at"].strip() != ""
 
     def test_get_resultset_v1_run_not_done(self, client, case_id):
         """GET /api/execution/runs/{id}/results/v1 returns 409 for PENDING run."""
@@ -835,3 +888,45 @@ class TestComputeDeterministicSignature:
         d1 = {"a": 1, "deterministic_signature": "abc"}
         d2 = {"a": 1, "deterministic_signature": "xyz"}
         assert compute_deterministic_signature(d1) == compute_deterministic_signature(d2)
+
+
+class TestOltcOverlayMetrics:
+    """V12K-089: metryki overlay OLTC (pozycja końcowa + liczba przełączeń)
+    surfacowane w resultset_v1 z element values (additive, tylko dla regulacji)."""
+
+    def test_tap_metrics_surface_when_present(self):
+        rs = build_resultset_v1(
+            run_id=str(uuid4()),
+            analysis_type="LOAD_FLOW",
+            solver_input_hash="h",
+            element_results_raw=[
+                {
+                    "element_ref": "TR1",
+                    "element_type": "Branch",
+                    "values": {"p_from_mw": 1.0, "tap_position": 3, "tap_switch_count": 4},
+                }
+            ],
+        )
+        codes = {m.code for m in rs.overlay_payload.elements["TR1"].metrics.values()}
+        assert "TAP_POSITION" in codes
+        assert "TAP_SWITCH_COUNT" in codes
+        tap = rs.overlay_payload.elements["TR1"].metrics["TAP_POSITION"]
+        assert tap.value == 3
+        assert rs.overlay_payload.elements["TR1"].metrics["TAP_SWITCH_COUNT"].value == 4
+
+    def test_no_tap_metrics_for_branch_without_oltc(self):
+        rs = build_resultset_v1(
+            run_id=str(uuid4()),
+            analysis_type="LOAD_FLOW",
+            solver_input_hash="h",
+            element_results_raw=[
+                {
+                    "element_ref": "LINE1",
+                    "element_type": "Branch",
+                    "values": {"p_from_mw": 1.0},
+                }
+            ],
+        )
+        codes = {m.code for m in rs.overlay_payload.elements["LINE1"].metrics.values()}
+        assert "TAP_POSITION" not in codes
+        assert "TAP_SWITCH_COUNT" not in codes

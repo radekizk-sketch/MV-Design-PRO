@@ -21,6 +21,7 @@
 
 import { create } from 'zustand';
 import type { OverlayPayloadV1 } from './overlayTypes';
+import type { ShortCircuitFlowOverlayInput } from './ShortCircuitFlowOverlayAdapter';
 
 /**
  * V12 Overlay kinds — discrete categories driven by work-mode.
@@ -60,6 +61,18 @@ interface OverlayStoreState {
   enabled: boolean;
 
   /**
+   * Karta S-B (ZWARCIA-PRO pkt 7) — kanał KIERUNKU rozpływu prądu
+   * zwarciowego: wejście adaptera W-C (`ShortCircuitFlowOverlayInput`,
+   * wiersz kanoniczny `branch_contributions` z kierunkiem "from_to"/
+   * "to_from" per wpis), którego `OverlayPayloadV1` (lustro backendu 1:1)
+   * NIE niesie. Konsument: kanwa v3 (`SldCanvasV3Workspace` →
+   * `buildFaultFlowOverlayFromScene` → strzałki `FaultContributionArrow`).
+   * `null` = brak rozpływu zwarciowego do pokazania (strzałki wyłączone).
+   * Czysty holder danych backendu — zero fizyki, zero interpretacji.
+   */
+  faultFlow: ShortCircuitFlowOverlayInput | null;
+
+  /**
    * V12 — set of overlay kinds currently visible.
    * Lexically sorted (deterministic). Driven by V12OverlayModeController.
    */
@@ -67,9 +80,16 @@ interface OverlayStoreState {
 
   /**
    * Load overlay payload for a specific run.
-   * Replaces any existing overlay completely.
+   * Replaces any existing overlay completely (including faultFlow —
+   * wołający chcący strzałek kierunku woła `loadFaultFlow` PO `loadOverlay`).
    */
   loadOverlay: (payload: OverlayPayloadV1) => void;
+
+  /**
+   * Karta S-B: załaduj kanał kierunku rozpływu zwarciowego (po
+   * `loadOverlay` tego samego przebiegu — patrz `pokazNaSchemacie.ts`).
+   */
+  loadFaultFlow: (input: ShortCircuitFlowOverlayInput) => void;
 
   /**
    * Clear all overlay state.
@@ -98,6 +118,7 @@ const initialState = {
   overlay: null as OverlayPayloadV1 | null,
   enabled: true,
   visibleOverlays: [] as ReadonlyArray<OverlayKind>,
+  faultFlow: null as ShortCircuitFlowOverlayInput | null,
 };
 
 /**
@@ -125,7 +146,15 @@ export const useOverlayStore = create<OverlayStoreState>((set) => ({
       activeRunId: payload.run_id,
       overlay: payload,
       enabled: true,
+      // Invariant „loading new overlay replaces ALL previous state":
+      // kanał kierunku CUDZEGO przebiegu nie może przeżyć podmiany overlay
+      // (np. orkiestrator legacy ładuje wynik LF ⇒ strzałki SC znikają).
+      faultFlow: null,
     });
+  },
+
+  loadFaultFlow: (input) => {
+    set({ faultFlow: input });
   },
 
   clearOverlay: () => {

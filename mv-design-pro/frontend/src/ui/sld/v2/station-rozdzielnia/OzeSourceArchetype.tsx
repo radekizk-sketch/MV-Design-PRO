@@ -365,7 +365,7 @@ function BusResults(props: { vf: OzeVfBus; sc: OzeScBus; x: number; y: number })
 export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element {
   const { companion, stationCode, name, detail, onFieldClick, x = 0, y = 0 } = props;
   const src = companion.source;
-  const pccRef = companion.pcc_bus_ref;
+  const busPrzylaczeniaRef = companion.pcc_bus_ref;
   const boundary = companion.boundary;
   // The producer installation = a busbar with a CONNECTION field (interface
   // protection, looking at the grid → boundary) + a SOURCE field (→ transformer
@@ -394,15 +394,15 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   const collector = src.collector;
   const isWind = !!collector;
   const turbineFields = isWind
-    ? companion.fields.filter((f) => f.role === 'source' && f.on_bus_ref === pccRef)
+    ? companion.fields.filter((f) => f.role === 'source' && f.on_bus_ref === busPrzylaczeniaRef)
     : [];
 
   // nN tier: the source feeders (≥1) sit on a bus DIFFERENT from the PCC (behind a
   // step-up transformer). The tier carries an optional main breaker (Q1), the
   // inverter source feeders (≥3 for Buk 1, NOT one block) + the own-needs load.
-  const srcOnOtherBus = companion.fields.find((f) => f.role === 'source' && f.on_bus_ref !== pccRef);
+  const srcOnOtherBus = companion.fields.find((f) => f.role === 'source' && f.on_bus_ref !== busPrzylaczeniaRef);
   const nnBusRef = q1Field?.on_bus_ref ?? srcOnOtherBus?.on_bus_ref;
-  const nnTier = nnBusRef && nnBusRef !== pccRef
+  const nnTier = nnBusRef && nnBusRef !== busPrzylaczeniaRef
     ? {
         nnKv: companion.voltage_flow.buses[nnBusRef]?.un_kv ?? 0.8,
         feeders: companion.fields.filter(
@@ -418,7 +418,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
   const busY = 0;
   const busX1 = -W / 2;
   const busX2 = W / 2;
-  const busKv = companion.voltage_flow.buses[pccRef]?.un_kv ?? 15;
+  const busKv = companion.voltage_flow.buses[busPrzylaczeniaRef]?.un_kv ?? 15;
   const busColor = busColorForVoltage(busKv);
   // Per-bus result blocks widen when the source is a rotating machine and carries a
   // per-machine SC breakdown (§6.6), so stacked bus blocks do not overlap. IBG
@@ -474,7 +474,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
       data-technology={src.technology}
       data-nc-class={src.nc_rfg_class}
       data-control-mode={src.control_mode}
-      data-pcc={pccRef}
+      data-pcc={busPrzylaczeniaRef}
       data-boundary={boundary.variant}
       data-converged={String(companion.converged)}
       transform={`translate(${x}, ${y})`}
@@ -511,7 +511,7 @@ export function OzeSourceArchetype(props: OzeSourceArchetypeProps): JSX.Element 
       )}
 
       {/* ─── PRODUCER busbar (PCC) ─── */}
-      <line x1={busX1} y1={busY} x2={busX2} y2={busY} stroke={busColor} strokeWidth={4} data-testid={`oze-busbar-${pccRef}`} />
+      <line x1={busX1} y1={busY} x2={busX2} y2={busY} stroke={busColor} strokeWidth={4} data-testid={`oze-busbar-${busPrzylaczeniaRef}`} />
       <line x1={busX2} y1={busY - 5} x2={busX2} y2={busY + 5} stroke={busColor} strokeWidth={2} />
       {detail !== 'far' && (
         <text x={busX2 + 4} y={busY + 3} fill={COLOR_TEXT_SECONDARY} fontFamily={FONT_MONO} fontSize={7} fontWeight={700}>

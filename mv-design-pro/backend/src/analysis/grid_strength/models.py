@@ -26,6 +26,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from analysis.odcisk_kontekstu import odcisk_kontekstu
+
 # Domyślne progi klasyfikacji siły sieci (parametryzowalne w builderze).
 DEFAULT_WEAK_THRESHOLD = 3.0  # SCR < 3  → sieć słaba (ostrzeżenie, §8C.4)
 DEFAULT_VERY_WEAK_THRESHOLD = 2.0  # SCR < 2 → bardzo słaba (ryzyko niestabilności)
@@ -40,18 +42,38 @@ VERDICT_NO_DATA = "brak danych"
 class GridStrengthContext:
     project_name: str | None
     case_name: str | None
+    case_id: str | None
     run_timestamp: datetime | None
-    snapshot_id: str | None
-    trace_id: str | None
+    snapshot_hash: str | None
+    run_id: str | None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "project_name": self.project_name,
             "case_name": self.case_name,
+            "case_id": self.case_id,
             "run_timestamp": self.run_timestamp.isoformat() if self.run_timestamp else None,
-            "snapshot_id": self.snapshot_id,
-            "trace_id": self.trace_id,
+            "snapshot_hash": self.snapshot_hash,
+            "run_id": self.run_id,
         }
+
+
+@dataclass(frozen=True)
+class BusSourceModule:
+    """Moduł źródłowy (generator IBG) przyłączony do węzła — metadana opisowa.
+
+    ADDYTYWNE (P47b): pozwala warstwie prezentacji odwzorować moduł na węzeł
+    przyłączenia. NIE bierze udziału w fizyce ani w odcisku analizy — służy
+    wyłącznie mapowaniu moduł→węzeł w pulpicie OZE.
+
+    - ``ref`` ← ``Generator.ref_id`` ze snapshotu,
+    - ``name`` ← ``Generator.name`` (o ile obecne w snapshocie),
+    - ``sn_mva`` ← udział mocy zainstalowanej modułu [MVA] (``None`` gdy nieznana).
+    """
+
+    ref: str
+    name: str | None
+    sn_mva: float | None
 
 
 @dataclass(frozen=True)
@@ -67,6 +89,7 @@ class BusStrengthInput:
     nominal_kv: float | None
     s_sc_mva: float | None
     s_installed_mva: float | None
+    modules: tuple[BusSourceModule, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -91,6 +114,7 @@ class BusStrengthEntry:
     why_pl: str
     missing_data: tuple[str, ...]
     white_box: tuple[WhiteBoxStep, ...]
+    modules: tuple[BusSourceModule, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -127,7 +151,7 @@ def compute_grid_strength_id(
 ) -> str:
     """Deterministyczny identyfikator analizy (SHA-256 kanonicznego payloadu)."""
     payload = {
-        "context": context.to_dict() if context else None,
+        "context": odcisk_kontekstu(context),
         "weak_threshold": float(weak_threshold),
         "very_weak_threshold": float(very_weak_threshold),
         "entries": [

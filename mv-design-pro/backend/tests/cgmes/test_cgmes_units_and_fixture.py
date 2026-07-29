@@ -154,3 +154,84 @@ class TestThirdPartyFixture:
     def test_fixture_runs_validator(self) -> None:
         result = import_from_eq_tp(_EQ_FIXTURE.encode("utf-8"), _TP_FIXTURE.encode("utf-8"))
         assert result.validation is not None
+
+
+# ---------------------------------------------------------------------------
+# V12K-228: brak profilu stanu ustalonego
+# ---------------------------------------------------------------------------
+
+_EQ_Z_ODBIOREM_BEZ_MOCY = f"""<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF {_NS}>
+  <cim:BaseVoltage rdf:ID="bv15">
+    <cim:BaseVoltage.nominalVoltage>15000</cim:BaseVoltage.nominalVoltage>
+  </cim:BaseVoltage>
+  <cim:ConnectivityNode rdf:ID="cn_a">
+    <cim:IdentifiedObject.name>NodeA</cim:IdentifiedObject.name>
+  </cim:ConnectivityNode>
+  <cim:EnergyConsumer rdf:ID="ec1">
+    <cim:IdentifiedObject.name>Odbior-1</cim:IdentifiedObject.name>
+  </cim:EnergyConsumer>
+  <cim:Terminal rdf:ID="ec1_t1">
+    <cim:ACDCTerminal.sequenceNumber>1</cim:ACDCTerminal.sequenceNumber>
+    <cim:Terminal.ConductingEquipment rdf:resource="urn:uuid:ec1"/>
+  </cim:Terminal>
+</rdf:RDF>
+"""
+
+_EQ_Z_ODBIOREM_Z_MOCA = _EQ_Z_ODBIOREM_BEZ_MOCY.replace(
+    "<cim:IdentifiedObject.name>Odbior-1</cim:IdentifiedObject.name>",
+    "<cim:IdentifiedObject.name>Odbior-1</cim:IdentifiedObject.name>\n"
+    "    <cim:EnergyConsumer.p>400000</cim:EnergyConsumer.p>\n"
+    "    <cim:EnergyConsumer.q>150000</cim:EnergyConsumer.q>",
+)
+
+_TP_Z_ODBIOREM = f"""<?xml version="1.0" encoding="utf-8"?>
+<rdf:RDF {_NS}>
+  <cim:TopologicalNode rdf:ID="tn_a">
+    <cim:IdentifiedObject.name>NodeA</cim:IdentifiedObject.name>
+    <cim:TopologicalNode.BaseVoltage rdf:resource="urn:uuid:bv15"/>
+    <cim:TopologicalNode.ConnectivityNodes rdf:resource="urn:uuid:cn_a"/>
+  </cim:TopologicalNode>
+  <cim:Terminal rdf:about="urn:uuid:ec1_t1">
+    <cim:Terminal.ConnectivityNode rdf:resource="urn:uuid:cn_a"/>
+    <cim:Terminal.TopologicalNode rdf:resource="urn:uuid:tn_a"/>
+  </cim:Terminal>
+</rdf:RDF>
+"""
+
+
+class TestBrakProfiluStanuUstalonego:
+    """Moc odbioru nalezy w CGMES do profilu SteadyStateHypothesis, nie do EQ/TP.
+
+    Import bez tego profilu podstawial za brak ZERO, wiec siec wygladala na
+    NIEOBCIAZONA, a rozplyw i spadki napiecia dawaly bezuzytecznie optymistyczny
+    wynik bez zadnego sygnalu, ze danych nie bylo.
+    """
+
+    def test_brak_mocy_odbioru_jest_NAZWANY_w_ostrzezeniach(self) -> None:
+        result = import_from_eq_tp(
+            _EQ_Z_ODBIOREM_BEZ_MOCY.encode("utf-8"), _TP_Z_ODBIOREM.encode("utf-8")
+        )
+
+        assert result.enm is not None
+        # Element wchodzi do modelu (topologia nie moze przepadac), ale z ostrzezeniem.
+        assert len(result.enm.loads) == 1
+        assert result.enm.loads[0].p_mw == pytest.approx(0.0)
+
+        tekst = " ".join(result.warnings)
+        assert "stanu ustalonego" in tekst
+        assert "Odbior-1" in tekst
+        assert "0 MW" in tekst
+
+    def test_odbior_z_moca_NIE_generuje_tego_ostrzezenia(self) -> None:
+        """Kontrola odwrotna: bez niej ostrzezenie moglo by wisiec zawsze i nic nie
+        znaczyc. RACHUNEK RECZNY: 400 000 W = 0,4 MW; 150 000 var = 0,15 Mvar.
+        """
+        result = import_from_eq_tp(
+            _EQ_Z_ODBIOREM_Z_MOCA.encode("utf-8"), _TP_Z_ODBIOREM.encode("utf-8")
+        )
+
+        assert result.enm is not None
+        assert result.enm.loads[0].p_mw == pytest.approx(0.4)
+        assert result.enm.loads[0].q_mvar == pytest.approx(0.15)
+        assert not any("stanu ustalonego" in w for w in result.warnings)

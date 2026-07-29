@@ -7,7 +7,7 @@
 import { create } from 'zustand';
 import type { DiagnosticSeverity } from './types';
 
-type InspectorTab = 'tree' | 'diagnostics' | 'preflight' | 'diff';
+type InspectorTab = 'tree' | 'diagnostics' | 'preflight' | 'diff' | 'reference';
 
 interface EnmInspectorState {
   /** Aktualnie wybrany tab */

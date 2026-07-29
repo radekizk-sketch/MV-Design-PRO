@@ -11,6 +11,36 @@
 
 ---
 
+## 0. PROGRAM „SCHEMAT-10" (2026-07-22 — AKTYWNY, nadrzędny nad dalszymi sekcjami)
+
+Dyrektywa właściciela 2026-07-22 (ocena stanu: **2/10**, niespójne LOD). Kanon rundy:
+`docs/sld/PROMPT_RUNDA_SCHEMAT_10_2026-07.md` (12 defektów D1–D12 + §0bis rozjazd);
+audyt wiążący z macierzą prawdy LOD i przyczynami źródłowymi:
+`docs/sld/AUDYT_SCHEMATOW_OD_ZERA_2026-07.md`. Historyczne fazy F1–F5 poniżej
+pozostają referencją (F1 symbole — wykonane w v3; F2/F3 zrealizowane inaczej
+przez SPEC V3); wykonawczo obowiązują fazy S1–S5:
+
+| Faza | Zakres (skrót — pełny w audycie §5) | Zależy od | Status |
+|---|---|---|---|
+| S1 Gramatyka stacji | jedna rodzina glifów stacji/GPZ z kotwicą L0→L1→L2; likwidacja osobnych gałęzi świata w buildScene (jedna geometria korytarzy); JEDEN słownik LOD (koniec mapowania v2 5→3); footprint kolumny per LOD (D12) | — | ✅ 2026-07-22 (scalone, weryfikacja Fable: 170 plików/3274, guardy, test JEDNA KOTWICA) |
+| S2 Silnik etykiet | rezerwacja miejsca + detekcja kolizji (wyrocznia testowa „zero kolizji"); hierarchia typografii (D10); gęstość (D3); słownik PL enumów (D4); manhattanizacja dołączeń (D5) | S1 | ✅ 2026-07-22 (scalone; wyrocznie zero-kolizji/ortogonalności/enumów NA STAŁE w suicie; pomiar L0/L1/L2 = 0/0/0; GAP: emisja 1× typu kabla/korytarz na L1 = decyzja wizualna do S4/S5) |
+| S3 Kolor + sekcje | tabela semantyki koloru jako tokeny kanwy (D8); znaczniki sekcji/NOP kotwiczone do renderu szyny per LOD (D7); GPZ w gramatyce stacji (D6) | S1 | ✅ 2026-07-22 (scalone; tokeny colorTokens.ts = jedno źródło 26→1; NOP różowy kotwiczony per LOD z testem pozycji; GPZ na tych samych tokenach; goldeny NIETKNIĘTE; GAP: geometryczny collapse GPZ → S5) |
+| S4 Motyw + kadr | D11 (decyzja właściciela: SCADA-dark + jasny wariant w eksporcie — AskUserQuestion przed startem — decyzja domyślna R1 przyjęta); fit-do-treści | S1–S3 | ✅ 2026-07-22 (scalone; jeden tor eksportu SVG: klon → kadr bbox treści+margines ramki → paleta LIGHT_TECHNICAL_V3 z kluczami 1:1 z colorTokens; ekran dark NIETKNIĘTY, goldeny NIETKNIĘTE; test martwe pola ≤20% na L0/L1; GAP: realny PNG/PDF v3 = osobna karta) |
+| S5 Goldeny + dowód | wymiana goldenów jednym commitem; sekwencja zoom ≥3 kroki; macierz parytetu funkcji (overlaye, strzałki, znacznik, menu, edycja, kreatory, deep-linki) | S1–S4 | Fable osobiście |
+
+Rozszerzenie 2026-07-22 (recenzja ekspercka layoutu — `docs/sld/RECENZJA_EKSPERCKA_LAYOUT_2026-07.md`, WIĄŻĄCA):
+
+| Faza | Zakres (mapowanie pkt recenzji) | Zależy od | Status |
+|---|---|---|---|
+| S6 Silnik layoutu P0 | compact tree layout (pkt 11) + piony proporcjonalne (2) + minimalizacja długości/załamań (3) + global tree balancing (9) + odstępy górnego pasa +20–35% (1) + stałe światło (7) + eliminacja pustych przestrzeni z miarą (10) + rytm wg szerokości poddrzewa (8) | S1–S3 | ✅ 2026-07-22 CZĘŚCIOWO (scalony FUNDAMENT POMIAROWY: 18 metryk z realnej geometrii, bramki layout_cost_probe/sheet_fill_probe w accept, testy, dowód wizualny s6-l*; geometria bajt-identyczna, 0 goldenów; diagnoza: inkDensity 0,7–1,2%, crossings 13/24 — dźwignia w S7. WARUNKI ODBIORU z redukcją metryk (koszt↓, Σpionów↓, arkusz↑, crossings=0) OBOWIĄZUJĄ S7; plan S7.1–S7.6 w docs/sld/S6_METRYKI_LAYOUT_2026-07.md §5) |
+| S7 Layout P1 | globalne rozmieszczanie opisów — przemieszczanie zamiast tylko odrzucania (15); klastry podobnych gałęzi (6); optymalizacja wydruku A0/A1 (12, po S4) + PEŁNY silnik footprint-driven S7.1–S7.6 (compact comb, piony proporcjonalne, balancing, funkcja kosztu, migracja LayoutResult, rozdzielone światła) — WARUNKI_ODBIORU_S6 w całości | S6, S4 | karta wykonawcy (w locie) |
+| S8 Płynność LOD P2 | płynne przejścia między L0/L1/L2 (13; kotwice STAŁE — rozstrzygnięcie w recenzji: adaptacyjny jest detal, nie layout) | S6 | do zlecenia |
+
+Rygor per faza: pełna regresja `ui/sld`+`sld-overlay`, sld_determinism,
+overlay_no_physics, forbidden_ui_terms, zrzuty żywej aplikacji do oceny właściciela.
+
+---
+
 ## 1. Cel
 
 Doprowadzić SLD z aktualnego stanu **5/10 (proof-of-concept)** do **9/10 (klasa przemysłowa)**. Eliminacja wyglądu „atrapy z klocków" przez 5 fazowanych przebudów (F1–F5).
@@ -352,6 +382,60 @@ System SLD osiąga „klasa przemysłowa" (9/10) gdy wszystkie poniższe są ✅
 - [ ] Manual review inżyniera SN: 4 sieci × 2 motywy × 4 LOD = 32 widoków, ocena ≥ 9/10
 - [ ] CI guards: `port_binding_guard`, `sld_determinism_guards`, `station_not_rectangle` PASS
 - [ ] Eksport deterministyczny: SHA-256 stabilny
+
+---
+
+## 11. Przebiegi dedykowane (poza fazami F1–F5)
+
+### 11.1 Wizual OLTC w v3 compose — ✅ WYKONANE (2026-07-21, V12K-091)
+
+**Kontekst:** dyrektywa właściciela „OLTC v3 jako osobny, dedykowany przebieg SLD
+rework". Domknięcie znaleziska V12K-090 (glif OLTC z V12K-086 żył tylko w martwym
+v2 GpzSwitchgearRenderer, nierenderowany w produkcyjnym SLD v3).
+
+**Zakres (addytywny, READ-ONLY, ZERO fizyki):**
+- `CanonicalGpzTransformer.oltc?: OltcGlyphAnnotation | null` (typ transformatora sceny v3).
+- Populacja `oltc: buildOltcAnnotation(tr.tap_changer)` w `enmToCanonicalGpzAdapter.buildTransformers`
+  (reuse czystej funkcji V12K-086, dane z modelu `tap_changer`).
+- `compose/gpz.ts`: wiersz tabliczki TR `"${kind} ${positionLabel} · ${modeLabel}"`
+  (+ `U_zad` gdy AUTO z nastawą), `labelClass t3`, dokładany WYŁĄCZNIE gdy `oltc`
+  obecny (uczciwy brak regulacji → brak wiersza) + klucz parytetu `gpz.transformer.oltc`.
+
+**Pliki:** `ui/sld/v2/renderer/GpzCanonicalRenderer.tsx`,
+`ui/sld/v2/canvas/enmToCanonicalGpzAdapter.ts`, `ui/sld/v3/compose/gpz.ts`.
+
+**DoD:** ✅ type-check czysty · ✅ `compose/__tests__/gpz.test.ts` +3 (AUTO+U_zad,
+DETC MAN, brak regulacji) · ✅ regresja SLD v3 compose + v2 (124 pliki, 2308 passed) ·
+✅ guardy `sld_determinism_guards`/`overlay_no_physics`/`no_codenames` zielone ·
+✅ FROZEN/determinizm nietknięte (fixtury bez OLTC bez zmian). Overlay wynikowy OLTC
+(badge post-calc) → §11.2 niżej.
+
+### 11.2 Badge wynikowy OLTC na SLD v3 (F4) — ✅ WYKONANE (2026-07-21, V12K-092)
+
+**Kontekst:** dyrektywa właściciela „F4" — domknięcie łańcucha OLTC „do ostatniego
+klika". Tabliczka (V12K-091) pokazuje NASTAWĘ z modelu; badge = WYNIK po load-flow
+(pozycja końcowa zaczepu + liczba przełączeń). Rozwiązanie mismatchu bayRef↔branch_id
+(V12K-090): symbol `transformer2W` sceny v3 ma `meta.ownerRef = transformerRef =
+ENM ref_id = element_ref` gałęzi w resultset_v1 — tożsamość zgodna (mismatch dotyczył
+aparatów POLA TR, nie symbolu transformatora).
+
+**Zakres (READ-ONLY, ZERO fizyki, addytywny — ten sam wzorzec co flow overlay):**
+- `overlay.ts`: `TransformerOltcOverlay` + `buildOltcOverlayFromScene` (allowlista
+  LOAD_FLOW, metryki `TAP_POSITION`/`TAP_SWITCH_COUNT`, brak → brak badge) + wyrocznia
+  `oltcOverlayTracesToPayload`.
+- `SldCanvasV3Workspace.tsx`: `buildOltcOverlayForSnapshot` (3 LOD, `useRaw
+  ResultOverlayStore`) + `oltcByOwnerRef` w overlay.
+- `SldCanvasV3.tsx`: `computeOltcBadgePlacements` + `SceneOltcBadgeNode` (warstwa
+  `sld-v3-oltc-overlay`, filtr `resultOverlays`).
+
+Dane: solver `oltc_control` → resultset_v1 (V12K-089) → raw store → v3 canvas.
+PowerFlowResult FROZEN nietknięty.
+
+**DoD:** ✅ type-check czysty · ✅ `overlay.test.ts` +7 · `sldCanvasV3.test.tsx` +5 ·
+✅ regresja SLD v3 + sld-overlay · ✅ guardy `sld_determinism`/`overlay_no_physics`/
+`trace_ui_leak`/`no_codenames` zielone · ✅ FROZEN/determinizm nietknięte. Tożsamość
+backend↔frontend zweryfikowana u źródła (`_build_snapshot_graph_element_context`:
+`element_id = trafo.ref_id`). Domyka łańcuch OLTC: model→solver→resultset→SLD wynik.
 
 ---
 

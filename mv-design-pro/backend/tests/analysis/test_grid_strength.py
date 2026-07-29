@@ -22,9 +22,10 @@ def _ctx() -> GridStrengthContext:
     return GridStrengthContext(
         project_name="P",
         case_name="ZWARCIOWY_MAKS",
+        case_id=None,
         run_timestamp=datetime(2026, 5, 28, tzinfo=UTC),
-        snapshot_id="snap-1",
-        trace_id="trace-1",
+        snapshot_hash="snap-1",
+        run_id="trace-1",
     )
 
 

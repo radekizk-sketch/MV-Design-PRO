@@ -13,6 +13,7 @@ Sprawdza:
 Buduje minimalny ENM (GPZ + grid source + 1 segment kabla) używając tych
 samych katalogów co `test_mv_general_workflow_e2e.py`.
 """
+
 from __future__ import annotations
 
 import copy
@@ -47,17 +48,25 @@ def op(snap: dict, name: str, payload: dict) -> dict:
 def _build_gpz_with_segment() -> tuple[dict, str]:
     """Buduje ENM ze szkieletem GPZ + 1 segment magistrali. Zwraca (snapshot, segment_id)."""
     snap = _empty_enm()
-    snap = op(snap, "add_grid_source_sn", {
-        "voltage_kv": 15.0,
-        "sk3_mva": 250.0,
-    })
-    snap = op(snap, "continue_trunk_segment_sn", {
-        "segment": {
-            "rodzaj": "LINIA_NAPOWIETRZNA",
-            "dlugosc_m": 500.0,
-            "catalog_ref": CATALOG_LINE_70,
+    snap = op(
+        snap,
+        "add_grid_source_sn",
+        {
+            "voltage_kv": 15.0,
+            "sk3_mva": 250.0,
         },
-    })
+    )
+    snap = op(
+        snap,
+        "continue_trunk_segment_sn",
+        {
+            "segment": {
+                "rodzaj": "LINIA_NAPOWIETRZNA",
+                "dlugosc_m": 500.0,
+                "catalog_ref": CATALOG_LINE_70,
+            },
+        },
+    )
     seg_id = next(b["ref_id"] for b in snap["branches"] if b.get("type") == "line_overhead")
     return snap, seg_id
 
@@ -70,13 +79,17 @@ def _exec_op(snap: dict, name: str, payload: dict) -> dict[str, Any]:
 def test_dry_run_returns_preview_metadata() -> None:
     """dry_run=True → response.dry_run=True + preview.{inserted_station_id, halves, electrical_impact}."""
     snap, seg_id = _build_gpz_with_segment()
-    response = _exec_op(snap, "insert_station_on_segment_sn", {
-        "segment_id": seg_id,
-        "dry_run": True,
-        "station": {"name": "Stacja Preview", "station_type": "inline", "nn_voltage_kv": 0.4},
-        "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-        "nn_voltage_kv": 0.4,
-    })
+    response = _exec_op(
+        snap,
+        "insert_station_on_segment_sn",
+        {
+            "segment_id": seg_id,
+            "dry_run": True,
+            "station": {"name": "Stacja Preview", "station_type": "inline", "nn_voltage_kv": 0.4},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+        },
+    )
     assert response.get("error") is None, response.get("error")
     assert response.get("dry_run") is True
     preview = response.get("preview")
@@ -98,13 +111,17 @@ def test_dry_run_does_not_mutate_original_enm() -> None:
     original_substations_count = len(snap["substations"])
     original_branches_count = len(snap["branches"])
 
-    _exec_op(snap, "insert_station_on_segment_sn", {
-        "segment_id": seg_id,
-        "dry_run": True,
-        "station": {"name": "Stacja Preview", "station_type": "inline", "nn_voltage_kv": 0.4},
-        "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-        "nn_voltage_kv": 0.4,
-    })
+    _exec_op(
+        snap,
+        "insert_station_on_segment_sn",
+        {
+            "segment_id": seg_id,
+            "dry_run": True,
+            "station": {"name": "Stacja Preview", "station_type": "inline", "nn_voltage_kv": 0.4},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+        },
+    )
 
     # Snapshot nieruszony in-place.
     assert json.dumps(snap, sort_keys=True) == original_snapshot_json
@@ -115,13 +132,17 @@ def test_dry_run_does_not_mutate_original_enm() -> None:
 def test_dry_run_preview_returns_no_snapshot() -> None:
     """dry_run=True → response NIE zawiera klucza 'snapshot' (read-only preview)."""
     snap, seg_id = _build_gpz_with_segment()
-    response = _exec_op(snap, "insert_station_on_segment_sn", {
-        "segment_id": seg_id,
-        "dry_run": True,
-        "station": {"name": "X", "station_type": "inline", "nn_voltage_kv": 0.4},
-        "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-        "nn_voltage_kv": 0.4,
-    })
+    response = _exec_op(
+        snap,
+        "insert_station_on_segment_sn",
+        {
+            "segment_id": seg_id,
+            "dry_run": True,
+            "station": {"name": "X", "station_type": "inline", "nn_voltage_kv": 0.4},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+        },
+    )
     assert "snapshot" not in response
     # Ale są readiness/logical_views/changes (info dla operatora).
     assert "readiness" in response or "preview" in response
@@ -137,9 +158,14 @@ def test_apply_inserts_station_with_id_matching_preview() -> None:
         "nn_voltage_kv": 0.4,
     }
     # 1. Dry-run preview — bierzemy 2 niezależne kopie żeby preview NIE wpływał na apply.
-    preview_response = _exec_op(copy.deepcopy(snap), "insert_station_on_segment_sn", {
-        **payload_base, "dry_run": True,
-    })
+    preview_response = _exec_op(
+        copy.deepcopy(snap),
+        "insert_station_on_segment_sn",
+        {
+            **payload_base,
+            "dry_run": True,
+        },
+    )
     assert preview_response.get("error") is None
     preview_id = preview_response["preview"]["inserted_station_id"]
 
@@ -150,7 +176,9 @@ def test_apply_inserts_station_with_id_matching_preview() -> None:
     apply_substations_after = {s["ref_id"] for s in new_snap["substations"]}
     original_substations_before = {s["ref_id"] for s in snap["substations"]}
     new_stations = apply_substations_after - original_substations_before
-    assert len(new_stations) == 1, f"Apply utworzyło {len(new_stations)} nowych stacji (oczekiwana 1)"
+    assert (
+        len(new_stations) == 1
+    ), f"Apply utworzyło {len(new_stations)} nowych stacji (oczekiwana 1)"
     apply_id = next(iter(new_stations))
 
     # KRYTYCZNE: ID z preview == ID z apply (operator widzi ten sam ID w obu wywołaniach).
@@ -170,9 +198,14 @@ def test_apply_creates_changes_consistent_with_preview() -> None:
         "nn_voltage_kv": 0.4,
     }
 
-    preview = _exec_op(copy.deepcopy(snap), "insert_station_on_segment_sn", {
-        **payload_base, "dry_run": True,
-    })["preview"]
+    preview = _exec_op(
+        copy.deepcopy(snap),
+        "insert_station_on_segment_sn",
+        {
+            **payload_base,
+            "dry_run": True,
+        },
+    )["preview"]
     apply_response = _exec_op(copy.deepcopy(snap), "insert_station_on_segment_sn", payload_base)
     created_ids = set(apply_response["changes"]["created_element_ids"])
     affected_in_preview = set(preview["electrical_impact"]["affected_object_refs"])
@@ -187,12 +220,16 @@ def test_apply_creates_changes_consistent_with_preview() -> None:
 def test_apply_without_dry_run_default_unchanged_behavior() -> None:
     """Apply bez `dry_run` (default False) zachowuje istniejące zachowanie."""
     snap, seg_id = _build_gpz_with_segment()
-    apply_response = _exec_op(snap, "insert_station_on_segment_sn", {
-        "segment_id": seg_id,
-        "station": {"name": "Apply", "station_type": "inline", "nn_voltage_kv": 0.4},
-        "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
-        "nn_voltage_kv": 0.4,
-    })
+    apply_response = _exec_op(
+        snap,
+        "insert_station_on_segment_sn",
+        {
+            "segment_id": seg_id,
+            "station": {"name": "Apply", "station_type": "inline", "nn_voltage_kv": 0.4},
+            "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
+            "nn_voltage_kv": 0.4,
+        },
+    )
     assert apply_response.get("error") is None
     # Apply zachowuje pełne response keys.
     assert "snapshot" in apply_response

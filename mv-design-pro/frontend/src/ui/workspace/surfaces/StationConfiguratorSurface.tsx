@@ -145,8 +145,13 @@ function readAddDerKindRequest(value: unknown): AddDerKindRequest | null {
   return value === 'PV' || value === 'BESS' || value === 'FW' ? value : null;
 }
 
-const DEFAULT_NC_RFG_PROFILE_REF = 'ncrfg_enea';
-const DEFAULT_LV_VOLTAGE_REF = 'lv_0_4kV';
+// ZERO DOMYSLNEGO OPERATORA I NAPIECIA (V12K-245, dokonczenie V12K-236).
+// Ten ekran podstawial wytworcy BEZ profilu w modelu zestaw ENEA (`ncrfg_enea`) oraz
+// poziom napiecia 0,4 kV. Kazdy z pieciu obslugiwanych OSD ma wlasne krzywe LVRT/HVRT
+// i wlasne wymagania Q(U), wiec podstawienie fabrykowalo OPERATORA — dana, ktorej model
+// nie niesie. Backend takiego domyslu nie robi (`load_nc_rfg_profile` odrzuca nieznanego
+// operatora wyjatkiem). V12K-236 usunelo ten domysl z powierzchni E-2x, ale TU zostal —
+// inwentarz miejsc byl niepelny. Brak zostaje BRAKIEM i nazywa go regula gotowosci.
 const DEFAULT_BRANCH_CABLE_SEGMENT = {
   rodzaj: 'KABEL',
   dlugosc_m: 1000,
@@ -373,16 +378,12 @@ function deriveStationDersFromSnapshot(
       const profiles = {
         ...EMPTY_DER_PROFILES,
         nc_rfg_profile_ref:
-          readString(meta.nc_rfg_profile_ref)
-          ?? readString(meta.operator_profile_ref)
-          ?? DEFAULT_NC_RFG_PROFILE_REF,
+          readString(meta.nc_rfg_profile_ref) ?? readString(meta.operator_profile_ref),
         regulation_profile_ref: readString(meta.regulation_profile_ref),
         pf_curve_ref: readString(meta.pf_curve_ref),
       };
-      const pccRef = readString(meta.pcc_ref) ?? generator.bus_ref;
-      const voltageLevelRef = connectionSide === 'nN'
-        ? readString(meta.voltage_level_ref) ?? DEFAULT_LV_VOLTAGE_REF
-        : readString(meta.voltage_level_ref);
+      const busPrzylaczeniaRef = readString(meta.bus_przylaczenia_ref) ?? generator.bus_ref;
+      const voltageLevelRef = readString(meta.voltage_level_ref);
       return {
         id: generator.ref_id,
         project_id: projectId ?? 'project-from-enm',
@@ -390,7 +391,7 @@ function deriveStationDersFromSnapshot(
         der_kind: kind,
         name: generatorDisplayName(generator, kind),
         connection_side: connectionSide,
-        pcc_ref: pccRef,
+        bus_przylaczenia_ref: busPrzylaczeniaRef,
         bay_ref: readString(meta.field_ref),
         transformer_ref: transformerRef,
         lv_busbar_ref: connectionSide === 'nN' ? generator.bus_ref : null,
@@ -400,9 +401,12 @@ function deriveStationDersFromSnapshot(
         catalogs,
         profiles,
         nominal_power_kw: Math.round(generator.p_mw * 1000),
+        // Liczba jednostek z modelu (`quantity`) — bez niej moc grupy i moc jednostki
+        // sa nierozroznialne (audyt E-21 pkt P2).
+        unit_count: readNumber(meta.quantity) ?? readNumber(meta.n_parallel),
         completeness: computeDerCompleteness({
           connection_side: connectionSide,
-          pcc_ref: pccRef,
+          bus_przylaczenia_ref: busPrzylaczeniaRef,
           catalogs,
           profiles,
           voltage_level_ref: voltageLevelRef,
@@ -674,7 +678,7 @@ function inferDerBusVoltage(
   snapshot: EnergyNetworkModel | null,
   der: StationDerConnection,
 ): number | null {
-  const busRef = der.lv_busbar_ref ?? der.pcc_ref;
+  const busRef = der.lv_busbar_ref ?? der.bus_przylaczenia_ref;
   const bus = (snapshot?.buses ?? []).find((candidate) => candidate.ref_id === busRef);
   return typeof bus?.voltage_kv === 'number' ? bus.voltage_kv : null;
 }

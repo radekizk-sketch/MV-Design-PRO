@@ -59,6 +59,7 @@ def get_resultset_v1(run_id: str) -> dict[str, Any]:
         readiness=rs_dict.get("readiness_snapshot", {}),
         element_results_raw=element_results_raw,
         global_results=rs_dict.get("global_results", {}),
+        run_finished_at=run.finished_at.isoformat() if run.finished_at else None,
     )
     return json.loads(result_v1.model_dump_json())
 

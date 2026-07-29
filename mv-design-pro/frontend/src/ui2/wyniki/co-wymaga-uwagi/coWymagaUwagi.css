@@ -1,0 +1,140 @@
+/*
+ * Style rejestru „Co wymaga uwagi" (karta A1 / V12K-098). Kolory WYŁĄCZNIE przez
+ * tokeny --mvd-* (zero literałów hex). Liczby: font mono + tabular-nums (`.mvd-num`,
+ * współdzielone z wzorcem ekranu analizy).
+ */
+
+.mvd-cwu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  color: var(--mvd-ink);
+  font-family: var(--mvd-font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px;
+}
+
+.mvd-cwu :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* ---- nagłówek (cel jednym zdaniem) ---- */
+.mvd-cwu-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-cwu-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.mvd-cwu-cel {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- podsumowanie ---- */
+.mvd-cwu-podsumowanie {
+  margin: 0;
+  font-weight: 600;
+  color: var(--mvd-warn);
+}
+
+/* ---- lista przekroczeń ---- */
+.mvd-cwu-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-cwu-pozycja {
+  display: grid;
+  grid-template-columns: minmax(120px, max-content) minmax(80px, max-content) 1fr max-content max-content;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-left: 3px solid var(--mvd-warn);
+  border-radius: 8px;
+  box-shadow: var(--mvd-shadow);
+}
+.mvd-cwu-analiza {
+  color: var(--mvd-muted);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.mvd-cwu-element {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mvd-cwu-opis {
+  color: var(--mvd-ink);
+  min-width: 0;
+}
+.mvd-cwu-wartosc {
+  color: var(--mvd-warn);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mvd-cwu-popraw {
+  background: none;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 3px 12px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.mvd-cwu-popraw:hover {
+  background: var(--mvd-sel);
+}
+
+/* ---- stany zerowe (uczciwe rozróżnienie źródła) ---- */
+.mvd-cwu-pusty {
+  padding: 24px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 10px;
+  background: var(--mvd-panel);
+}
+.mvd-cwu-pusty.mvd-cwu-ok {
+  border-color: var(--mvd-accent);
+}
+.mvd-cwu-pusty-glowny {
+  margin: 0 0 4px;
+  font-weight: 600;
+}
+.mvd-cwu-pusty-krok {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+@media (max-width: 720px) {
+  .mvd-cwu-pozycja {
+    grid-template-columns: 1fr max-content;
+    grid-template-areas:
+      "analiza analiza"
+      "element wartosc"
+      "opis opis"
+      "popraw popraw";
+    gap: 4px 12px;
+  }
+  .mvd-cwu-analiza { grid-area: analiza; }
+  .mvd-cwu-element { grid-area: element; }
+  .mvd-cwu-wartosc { grid-area: wartosc; text-align: right; }
+  .mvd-cwu-opis { grid-area: opis; }
+  .mvd-cwu-popraw { grid-area: popraw; justify-self: start; margin-top: 4px; }
+}

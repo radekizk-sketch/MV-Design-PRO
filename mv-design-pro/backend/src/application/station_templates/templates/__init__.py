@@ -13,15 +13,15 @@ from application.station_templates.templates.wiatrowe import WIATROWE_TEMPLATES
 from application.station_templates.templates.zksn_wnetrzowe import ZKSN_WNETRZOWE_TEMPLATES
 
 ALL_TEMPLATES: tuple[StationTemplate, ...] = (
-    *TYPOWE_SN_NN_TEMPLATES,         # 10
-    *SLUPOWE_TEMPLATES,              # 6
-    *ZKSN_WNETRZOWE_TEMPLATES,       # 8
-    *PROSUMENT_PV_TEMPLATES,         # 6
-    *FARMY_PV_TEMPLATES,             # 5
-    *BESS_TEMPLATES,                 # 5
-    *HYBRYDOWE_TEMPLATES,            # 5
-    *PRZEMYSLOWE_TEMPLATES,          # 5
-    *WIATROWE_TEMPLATES,             # 4
-    *SEKCYJNE_TEMPLATES,             # 3
+    *TYPOWE_SN_NN_TEMPLATES,  # 10
+    *SLUPOWE_TEMPLATES,  # 6
+    *ZKSN_WNETRZOWE_TEMPLATES,  # 8
+    *PROSUMENT_PV_TEMPLATES,  # 6
+    *FARMY_PV_TEMPLATES,  # 5
+    *BESS_TEMPLATES,  # 5
+    *HYBRYDOWE_TEMPLATES,  # 5
+    *PRZEMYSLOWE_TEMPLATES,  # 5
+    *WIATROWE_TEMPLATES,  # 4
+    *SEKCYJNE_TEMPLATES,  # 3
 )
 # Total: 57 templates

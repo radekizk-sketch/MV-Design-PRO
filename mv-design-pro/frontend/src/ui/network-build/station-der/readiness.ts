@@ -5,7 +5,7 @@
  * + globalne dane stacji do jednolitego widoku w E-04, E-25/E-37, E-36.
  *
  * Zasada: nie wykonujemy fizyki — patrzymy na obecność `catalog_refs` /
- * `profile_refs` / `pcc_ref` i mapujemy na status osi.
+ * `profile_refs` / `bus_przylaczenia_ref` i mapujemy na status osi.
  *
  * Naprawy z drugiego audytu eksperckiego:
  *  - eng.5: CT klasa 5P/10P wymagana dla zabezpieczeń (IEC 61869-2)
@@ -13,7 +13,7 @@
  *  - eng.11: anti-islanding (27/59/81U/81O) wymagane dla DER po stronie nN
  */
 
-import { CT_CATALOG, isCtClassValidForProtection } from './protection-catalogs';
+import { isCtClassValidForProtection, type CtClass } from './protection-catalogs';
 import {
   EMPTY_DER_READINESS,
   type DerReadinessMatrix,
@@ -128,12 +128,12 @@ export function validateHostingCapacity(args: {
  * i profile_refs. Brak danych → 'blocked', częściowy → 'partial', kompletny
  * → 'ready'. Reguły:
  *
- *  - SC3F: wymaga device_catalog_ref + pcc_ref.
+ *  - SC3F: wymaga device_catalog_ref + bus_przylaczenia_ref.
  *  - SC1F/SC2FG: dodatkowo wymaga fault_current_data_ref (R₀/X₀/Z₀Z₁ —
  *    Naprawa A.1, IEC 60909-3).
- *  - VDROP: device_catalog_ref + pcc_ref + nominal_power_kw.
+ *  - VDROP: device_catalog_ref + bus_przylaczenia_ref + nominal_power_kw.
  *  - Q_U: nc_rfg_profile_ref.
- *  - EQUIPMENT: device_catalog_ref + (transformer_catalog_ref jeśli
+ *  - EQUIPMENT: device_catalog_ref + (block_transformer_catalog_ref jeśli
  *    dedicated_transformer).
  *  - PROTECTION: protection_catalog_ref + ct_catalog_ref + vt_catalog_ref.
  *  - PROTECTION_SELECTIVITY: protection + ≥1 inny DER w tej samej stacji.
@@ -146,13 +146,39 @@ export function validateHostingCapacity(args: {
  * at_cable_joint), zabezpieczenia kierunkowe (67/67N) są wymagane —
  * sprawdzane jako warning w protection axis (Naprawa B.2).
  */
+/**
+ * Klasa dokladnosci przekladnika prądowego przypisanego do wytwórcy, albo `null`.
+ *
+ * KOLEJNOSC ZRODEL (V12K-232). (1) DANA z modelu — pole `ct_accuracy_class` na
+ * rekordzie wytwórcy, wypełniane przez warstwę, która zna PRAWDZIWY katalog
+ * (`/api/catalog/ct-types`). (2) Przejściowo katalog lokalny frontu — ma tylko pięć
+ * wpisów i ZEROWE pokrycie identyfikatorów z katalogiem backendu, więc dla realnych
+ * przekładników nic nie znajdzie; zostaje wyłącznie po to, żeby nie zepsuć ścieżek,
+ * które nadal używają tamtych identyfikatorów. Docelowo (F-K8 faza 2) źródłem jest
+ * wyłącznie dana, a katalog lokalny znika razem z relokacją oceny do backendu.
+ *
+ * `null` przy PODANYM `ct_catalog_ref` znaczy „klasy nie da się ustalić" — i to jest
+ * inny fakt niż „klasa nie jest zabezpieczeniowa". Pierwszy to brak danej, drugi to
+ * werdykt; mieszanie ich dało milczące „częściowo" bez powodu.
+ */
+function ctKlasaZDanej(der: StationDerConnection): CtClass | null {
+  return der.ct_accuracy_class ?? null;
+}
+
+/** Zastosowanie przekładnika (zabezpieczenia / pomiar / dwurdzeniowy) — jak wyżej. */
+function ctZastosowanieZDanej(
+  der: StationDerConnection,
+): 'protection' | 'metering' | 'dual' | null {
+  return der.ct_application ?? null;
+}
+
 export function computeDerReadinessMatrix(
   der: StationDerConnection,
   context?: { readonly otherDersInStation?: number },
 ): DerReadinessMatrix {
   const otherDers = context?.otherDersInStation ?? 0;
   const hasDevice = der.catalogs.device_catalog_ref !== null;
-  const hasPcc = der.pcc_ref !== null;
+  const hasPcc = der.bus_przylaczenia_ref !== null;
   const hasNcRfg = der.profiles.nc_rfg_profile_ref !== null;
   const hasLvrt = der.profiles.lvrt_curve_ref !== null;
   const hasHvrt = der.profiles.hvrt_curve_ref !== null;
@@ -161,29 +187,39 @@ export function computeDerReadinessMatrix(
     der.catalogs.ct_catalog_ref !== null && der.catalogs.vt_catalog_ref !== null;
   const hasPower = der.nominal_power_kw !== null;
   const requiresDedicatedTrafo = der.connection_side === 'dedicated_transformer';
-  const hasDedicatedTrafo = der.catalogs.transformer_catalog_ref !== null;
+  // V12K-244: czytamy pole, ktore ISTNIEJE w danych. Regula czytala wczesniej
+  // `transformer_catalog_ref` — pole deklarowane w kontrakcie, ale NIE ZAPISYWANE przez
+  // zadna sciezke produkcyjna (kreator, konfigurator stacji i odczyt ze snapshotu pisza
+  // `block_transformer_catalog_ref`). Warunek nie mial wiec szans byc spelniony.
+  const hasDedicatedTrafo = der.catalogs.block_transformer_catalog_ref !== null;
   // Naprawa A.1: dane zwarciowe składowych zerowej/ujemnej dla SC1F/SC2FG.
   const hasFaultCurrentData = der.catalogs.fault_current_data_ref !== null;
   // Naprawa A.5: model dynamiczny dla FRT/HVRT.
   const hasDynamicModel = der.catalogs.dynamic_model_ref !== null;
-  // Naprawa eng.5: klasa CT musi być zabezpieczeniowa (5P/10P) dla protection axis.
-  const ctValidForProtection = (() => {
-    if (!der.catalogs.ct_catalog_ref) return false;
-    const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
-    if (!ct) return false;
-    return isCtClassValidForProtection(ct.accuracy_class);
-  })();
+  // Naprawa eng.5: klasa CT musi byc zabezpieczeniowa (5P/10P) dla protection axis.
+  //
+  // V12K-232/239: klasa przekladnika jest DANA na rekordzie, a regula NIE ma wlasnego
+  // katalogu. Dane wypelnia warstwa znajaca prawdziwy katalog backendu
+  // (`/api/catalog/ct-types`, 12 typow producenckich — `ctZKatalogu.ts`), a rodzaj
+  // rdzenia wyprowadza sam katalog (`rdzen_ct_z_klasy`, IEC 61869-2). Rownolegly
+  // katalog syntetyczny frontu, na ktorym ta regula kiedys stala, zostal usuniety
+  // w V12K-239 — mial ZEROWE pokrycie identyfikatorow z katalogiem realnym.
+  //
+  // `ctKlasaNieznana` odroznia „klasa nie jest zabezpieczeniowa" od „klasy nie da sie
+  // ustalic". Pierwsze jest werdyktem, drugie brakiem danej — i musi byc NAZWANE
+  // (patrz `buildBlockersForAxis`), nigdy milczacym „czesciowo".
+  // Nierozstrzygnieta klasa NIE spelnia warunku (bezpieczniej: „nie wiem" nie jest
+  // „spelnione"), ale powod jest NAZWANY w `buildBlockersForAxis` — os nie moze byc
+  // niegotowa w milczeniu.
+  const ctKlasa = ctKlasaZDanej(der);
+  const ctValidForProtection = ctKlasa !== null && isCtClassValidForProtection(ctKlasa);
   // Naprawa eng.6: CT dual-core wymagany jeśli mamy dedicated_transformer
   // o mocy ≥ 1.6 MVA (próg dla 87T per IEC 60255-13). Dual-core = klasa 5P/10P
   // + 0,5/0,2 łączone (oznaczone application='dual' w katalogu CT).
   const requires87T =
     der.connection_side === 'dedicated_transformer' &&
     (der.nominal_power_kw ?? 0) >= 1600;
-  const ctIsDualCore = (() => {
-    if (!der.catalogs.ct_catalog_ref) return false;
-    const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
-    return ct?.application === 'dual';
-  })();
+  const ctIsDualCore = ctZastosowanieZDanej(der) === 'dual';
   // Naprawa eng.11: anti-islanding (27/59/81U/81O) — egzekwowane przez
   // buildBlockersForAxis dla protection axis (po nN/ZK/słupie/mufie).
 
@@ -314,13 +350,33 @@ function buildBlockersForAxis(
           target_tab: 'inverters',
         });
       }
-      if (!der.pcc_ref) {
+      if (!der.bus_przylaczenia_ref) {
         blockers.push({
-          code: 'der.pcc.missing',
-          message_pl: 'Brak punktu przyłączenia PCC.',
+          code: 'der.przylacze.missing',
+          message_pl: 'Brak punktu przyłączenia.',
           object_ref: der.id,
           target_screen: derKindToScreen(der.der_kind),
           target_tab: 'topology',
+        });
+      }
+      // V12K-226: osie NIESYMETRYCZNE potrzebują składowej zerowej (Naprawa A.1,
+      // IEC 60909-3), a status to uwzględniał — brakowało tylko POWODU na liście.
+      // Skutek: oś SC1F/SC2F/SC2FG z kompletnym urządzeniem i PWP kończyła się
+      // stanem „częściowo" z PUSTĄ listą blokerów, czyli projektant widział
+      // „niegotowe" bez żadnej akcji naprawczej (ślepy zaułek w torze pracy).
+      // Tylko zwarcia Z UDZIAŁEM ZIEMI potrzebują składowej zerowej. Zwarcie
+      // dwufazowe bez ziemi rozkłada się na składową zgodną i przeciwną (Z₁, Z₂),
+      // więc żądanie od niego danych Z₀ byłoby FAŁSZYWYM BRAKIEM — status w tym
+      // pliku ma to poprawnie (`sc2f = sc3f`), lista blokerów musi się zgadzać.
+      if ((axis === 'sc_1f' || axis === 'sc_2fg') && !der.catalogs.fault_current_data_ref) {
+        blockers.push({
+          code: 'der.fault_current_data.missing',
+          message_pl:
+            'Brak modelu zwarciowego urządzenia (R₀/X₀/Z₀·Z₁⁻¹) — bez składowej '
+            + 'zerowej zwarcia niesymetrycznego nie da się policzyć.',
+          object_ref: der.id,
+          target_screen: derKindToScreen(der.der_kind),
+          target_tab: 'ncrfg',
         });
       }
       break;
@@ -358,7 +414,7 @@ function buildBlockersForAxis(
       }
       if (
         der.connection_side === 'dedicated_transformer' &&
-        !der.catalogs.transformer_catalog_ref
+        !der.catalogs.block_transformer_catalog_ref
       ) {
         blockers.push({
           code: 'der.dedicated_trafo.missing',
@@ -391,12 +447,27 @@ function buildBlockersForAxis(
       }
       // Naprawa eng.5: CT klasa musi być zabezpieczeniowa.
       if (der.catalogs.ct_catalog_ref) {
-        const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
-        if (ct && !isCtClassValidForProtection(ct.accuracy_class)) {
+        const klasa = ctKlasaZDanej(der);
+        if (klasa === null) {
+          // V12K-232: brak rozstrzygnięcia klasy MUSI być nazwany. Wcześniej ta gałąź
+          // milczała, więc oś kończyła się stanem „częściowo" z PUSTĄ listą powodów —
+          // dokładnie dla przekładników z PRAWDZIWEGO katalogu, bo reguła szukała ich
+          // identyfikatorów w równoległym katalogu frontu (zerowe pokrycie ID).
+          blockers.push({
+            code: 'der.ct_class.unresolved',
+            message_pl:
+              'Nie ustalono klasy dokładności przypisanego przekładnika prądowego, '
+              + 'więc warunku klasy zabezpieczeniowej 5P/10P (IEC 61869-2) nie da się '
+              + 'sprawdzić. Uzupełnij dane katalogowe przekładnika w modelu.',
+            object_ref: der.id,
+            target_screen: derKindToScreen(der.der_kind),
+            target_tab: 'topology',
+          });
+        } else if (!isCtClassValidForProtection(klasa)) {
           blockers.push({
             code: 'der.ct_class.invalid',
             message_pl:
-              `Klasa CT "${ct.accuracy_class}" jest pomiarowa, nie zabezpieczeniowa. `
+              `Klasa CT "${klasa}" jest pomiarowa, nie zabezpieczeniowa. `
               + `Wymagana klasa 5P/10P (IEC 61869-2). Wybierz przekładnik typu protection.`,
             object_ref: der.id,
             target_screen: derKindToScreen(der.der_kind),
@@ -410,8 +481,8 @@ function buildBlockersForAxis(
         (der.nominal_power_kw ?? 0) >= 1600
       ) {
         if (der.catalogs.ct_catalog_ref) {
-          const ct = CT_CATALOG.find((c) => c.id === der.catalogs.ct_catalog_ref);
-          if (ct && ct.application !== 'dual') {
+          const zastosowanie = ctZastosowanieZDanej(der);
+          if (zastosowanie !== null && zastosowanie !== 'dual') {
             blockers.push({
               code: 'der.ct_87t_dual_core.required',
               message_pl:
@@ -530,4 +601,130 @@ export function summarizeReadiness(matrix: DerReadinessMatrix): {
 /** Pomocnicza projekcja na pełen empty matrix. */
 export function emptyReadinessMatrix(): DerReadinessMatrix {
   return { ...EMPTY_DER_READINESS };
+}
+
+// =============================================================================
+// Import mocy stacji — dana wejściowa oceny kierunku przepływu (V12K-226)
+// =============================================================================
+
+/**
+ * Suma mocy czynnej ODBIORÓW przypisanych do stacji [kW], albo `null`, gdy
+ * przypisania nie da się ustalić.
+ *
+ * DLACZEGO TA FUNKCJA ISTNIEJE (defekt, który ją wymusił). Ekran liczył import
+ * stacji w miejscu wywołania, dwoma ZGADNIĘTYMI nazwami pól pod rzutowaniem
+ * `as`, które wyłączyło kontrolę typów: filtrował odbiory po `station_ref`
+ * (tego pola `Load` nie ma — należy do źródła z wariantem `nn_side`) i sumował
+ * `nominal_power_kw ?? 0` (tego pola `Load` też nie ma — niesie `p_mw`).
+ * Oba rzutowania dawały `undefined`, więc lista odbiorów była ZAWSZE pusta,
+ * a import ZAWSZE zerowy. Ocena kierunku przepływu dzieli eksport przez import,
+ * a przy imporcie zerowym stosunek jest nieskończony — więc KAŻDA stacja z DER
+ * dostawała werdykt „krytyczny eksport" z żądaniem studium NC RfG ramp-down
+ * i uzgodnienia z OSD, niezależnie od rzeczywistych odbiorów.
+ *
+ * PRZYPISANIE ODBIORU DO STACJI idzie prawdziwą drogą modelu: `Substation`
+ * niesie `bus_refs`, a `Load` niesie `bus_ref` — odbiór należy do stacji, gdy
+ * jego szyna jest jedną z szyn tej stacji.
+ *
+ * `null` ZNACZY „NIE WIEM", NIE „ZERO". Brak snapshotu albo stacja nieobecna w
+ * modelu daje `null`, a wtedy oceny kierunku przepływu NIE WOLNO policzyć:
+ * zero importu jest twierdzeniem o sieci (stacja bez odbiorów, cała generacja
+ * idzie na eksport), a nie zapisem braku wiedzy.
+ */
+export function sumStationLoadImportKw(
+  snapshot: {
+    readonly substations?: ReadonlyArray<{ readonly ref_id?: string; readonly bus_refs?: readonly string[] }>;
+    readonly loads?: ReadonlyArray<{ readonly bus_ref?: string; readonly p_mw?: number }>;
+  } | null,
+  stationId: string,
+): number | null {
+  if (!snapshot) return null;
+  const stacja = (snapshot.substations ?? []).find((s) => s.ref_id === stationId);
+  if (!stacja) return null;
+  const szyny = new Set(stacja.bus_refs ?? []);
+  if (szyny.size === 0) return null;
+
+  let sumaMw = 0;
+  for (const odbior of snapshot.loads ?? []) {
+    if (odbior.bus_ref === undefined || !szyny.has(odbior.bus_ref)) continue;
+    // `p_mw` jest w kontrakcie wymagane; brak wartości oznacza model niezgodny z
+    // kontraktem, więc nie zgadujemy zera — cały import staje się nieznany.
+    if (typeof odbior.p_mw !== 'number' || !Number.isFinite(odbior.p_mw)) return null;
+    sumaMw += odbior.p_mw;
+  }
+  return sumaMw * 1000;
+}
+
+// =============================================================================
+// Złożenie oceny DER z bramką MODELU (V12K-231, karta F-K8 faza 1)
+// =============================================================================
+
+/**
+ * Bramka modelu dla jednego typu analizy — wycinek odpowiedzi
+ * `GET /api/cases/{id}/analysis-eligibility` potrzebny do złożenia.
+ */
+export interface BramkaModelu {
+  readonly eligible: boolean;
+  readonly powody_pl: readonly string[];
+}
+
+/** Osie macierzy DER, dla których backend ma ODPOWIADAJĄCY gate modelu. */
+const OS_DO_TYPU_ANALIZY: Partial<Record<keyof DerReadinessMatrix, 'SC_3F' | 'SC_2F' | 'SC_1F'>> = {
+  sc_3f: 'SC_3F',
+  sc_2f: 'SC_2F',
+  sc_1f: 'SC_1F',
+};
+
+/**
+ * Złóż ocenę per-DER z bramką MODELU. Zwraca osie o statusie nie lepszym niż
+ * gorsza z dwóch ocen, z powodami z obu poziomów.
+ *
+ * DLACZEGO SKŁADAMY, A NIE PODMIENIAMY (rozstrzygnięcie karty F-K8). Obie oceny
+ * odpowiadają na RÓŻNE pytania i żadna nie zastępuje drugiej:
+ *
+ *  - macierz DER: „czy TEN wytwórca ma dane potrzebne do analizy" (katalog
+ *    urządzenia, punkt przyłączenia, model zwarciowy),
+ *  - bramka modelu (`analysis-eligibility`): „czy analiza da się policzyć na CAŁEJ
+ *    sieci" (np. SC_1F wymaga składowej zerowej gałęzi ORAZ modelu uziemienia
+ *    punktu neutralnego — bez tego prąd doziemny jest nieokreślony).
+ *
+ * DEFEKT, KTÓRY TO WYMUSIŁ: oś nazwana „SC1F" świeciła `ready` wyłącznie na
+ * podstawie danych per-DER, więc projektant czytał „analiza gotowa", a uruchomienie
+ * biegu było odrzucane bramką modelu. Rozjazd pogłębiła zmiana z tej doby, która
+ * podniosła brak modelu uziemienia z INFO do BLOKERA — słusznie fizycznie, ale
+ * macierz DER o tym nie wiedziała.
+ *
+ * Osie BEZ odpowiednika w bramce (`sc_2fg`, spadek napięcia, zabezpieczenia, FRT,
+ * raporty) zostają nietknięte — dopisanie im mapowania „po podobieństwie" byłoby
+ * zgadywaniem, a nie złożeniem faktów.
+ *
+ * `bramki` puste (ocena modelu jeszcze nie pobrana) NIE zmienia niczego: brak
+ * wiedzy o bramce nie może ani pogorszyć, ani polepszyć oceny per-DER.
+ */
+export function zlozZBramkaModelu(
+  osie: readonly AggregatedReadinessAxis[],
+  bramki: Readonly<Partial<Record<'SC_3F' | 'SC_2F' | 'SC_1F', BramkaModelu>>>,
+): AggregatedReadinessAxis[] {
+  return osie.map((os) => {
+    const typ = OS_DO_TYPU_ANALIZY[os.axis];
+    if (!typ) return os;
+    const bramka = bramki[typ];
+    if (!bramka || bramka.eligible) return os;
+
+    const powodyModelu = bramka.powody_pl.map((message_pl) => ({
+      code: 'model.analysis_ineligible',
+      message_pl: `Model: ${message_pl}`,
+      object_ref: '',
+      target_screen: 'engineering-readiness',
+      target_tab: 'list',
+    }));
+    return {
+      ...os,
+      // Gorsza z dwóch ocen. `not_applicable` / `no_module` zostawiamy — bramka
+      // modelu nie czyni analizy DOTYCZĄCĄ wytwórcy, którego ona nie dotyczy.
+      status:
+        os.status === 'not_applicable' || os.status === 'no_module' ? os.status : 'blocked',
+      blockers: [...os.blockers, ...powodyModelu],
+    };
+  });
 }

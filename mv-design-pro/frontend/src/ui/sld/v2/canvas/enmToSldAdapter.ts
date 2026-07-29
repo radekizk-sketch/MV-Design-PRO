@@ -21,6 +21,8 @@
 
 import type {
   BayDeviceState,
+  BayPrimaryDevice,
+  BayPrimaryPlacement,
   BayRuntimeState,
   BaySwitchState,
   Cable,
@@ -35,7 +37,10 @@ import type {
   Bay,
   GPZSection,
   Transformer,
+  ProtectionAssignment,
+  Measurement,
 } from '../../../../types/enm';
+import { buildOltcAnnotation } from './oltcGlyph';
 import type { GpzRendererProps } from '../renderer/GpzRenderer';
 import type { SectionRendererProps } from '../renderer/SectionRenderer';
 import {
@@ -53,8 +58,12 @@ import {
 } from '../renderer/MiniBlockFootprints';
 import {
   miniBlockStationPortOffsets,
+  type BayPrimaryDeviceView,
+  type BayProtectionMarkingView,
+  type CtRatingAnnotationView,
   type MiniBlockBayDescriptor,
   type MiniBlockDerBadge,
+  type VtMountingAnnotationView,
 } from '../renderer/MiniBlockRmuRenderer';
 import type { DerRendererProps } from '../renderer/DerRenderer';
 import type { ConnectionRendererProps } from '../renderer/ConnectionRenderer';
@@ -311,6 +320,13 @@ interface CableRunRendererPropsLight {
       insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | 'OVERHEAD' | 'UNKNOWN';
       conductor: 'Al' | 'Cu' | 'AlSt' | 'UNKNOWN';
     };
+    /** RECOVERY step 5 (connection_contract / §16): jawna TOŻSAMOŚĆ terminali
+     *  tego odcinka wprost z ENM — każda renderowana krawędź jest
+     *  terminal-to-terminal (busRef = szyna ENM, ownerRef = stacja właściciel).
+     *  Geometria końcówek pochodzi z pozycji tych terminali, nie z gołych
+     *  współrzędnych slotowych. */
+    fromTerminal?: SegmentTerminalRef;
+    toTerminal?: SegmentTerminalRef;
   }>;
   label?: string;
   segmentLabels?: ReadonlyArray<{
@@ -318,6 +334,24 @@ interface CableRunRendererPropsLight {
     text: string;
     x: number;
     y: number;
+    /** Rozmieszczona globalnym declutterem adaptera — renderer nie przesuwa. */
+    preplaced?: boolean;
+    /** W3-KABLE-ETYKIETY §7/§6: STRUKTURALNE dane techniczne odcinka (nie
+     *  sparsowany string) — WYŁĄCZNIE z modelu/katalogu, dla złożenia etykiety
+     *  L2 w v3 (`layout/lineLabel.ts`). Brak danej = pole nieobecne (zero
+     *  fabrykacji). `text` (wyżej) pozostaje L1/base dla v2. */
+    technical?: {
+      /** Etykieta typu z katalogu z żyły×przekrój, bez długości. */
+      typeLabel: string | null;
+      /** Napięcie znamionowe kabla [kV] (`voltage_rating_kv`), null gdy brak. */
+      ratedVoltageKv: number | null;
+      /** Długość odcinka [km] (`length_km`), null gdy brak. */
+      lengthKm: number | null;
+      /** Odcinek napowietrzny (rozróżnienie zakończeń §6). */
+      overhead: boolean;
+      /** ENM niesie złącze kablowe (mufę) na odcinku (`cable_joints` niepuste). */
+      hasJoint: boolean;
+    };
   }>;
   pendingEndpoint?: boolean;
   /** True gdy któryś z segmentów (Cable / OverheadLine) ma brak
@@ -367,11 +401,30 @@ interface CableRunRendererPropsLight {
 
 type RunPoint = { x: number; y: number };
 
+/** RECOVERY step 5: named terminal of a rendered cable segment (from ENM).
+ *  Exported (SLD V3 F3, spec §16): `v3/layout/route.ts` carries this same
+ *  identity through routing untouched — zero cienia modelu, jeden typ. */
+export interface SegmentTerminalRef {
+  /** ENM bus ref of this endpoint (the electrical node). */
+  readonly busRef: string | null;
+  /** Owning station ref if the bus resolves to a station; null for a GPZ/pole
+   *  bus or an inline splice terminal. */
+  readonly ownerRef: string | null;
+}
+
 function isCableLikeBranch(b: Branch): boolean {
   return b.type === 'cable' || b.type === 'line_overhead';
 }
 
 function isMediumVoltageNetworkBranch(snapshot: EnergyNetworkModel, branch: Branch): boolean {
+  // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): gałęzie WEWNĘTRZNE toru DER-SN
+  // (kabel SN od TR blokowego, `meta.der_role` obecny — W2b) NIE należą do
+  // magistrali sieci: tor DER rysuje `compose/station.ts` POD polem źródłowym
+  // (kabel→TR blokowy→szyna nN producenta→źródło). Bez tego wykluczenia kabel
+  // od szyny nN-producenta trafiłby do projekcji ciągów liniowych jako stray
+  // odcinek magistrali (zaśmiecenie topologii, reguła 4). Poprawka end-to-end —
+  // dotyczy TAKŻE realnych snapshotów W2b, nie tylko fixtur testowych.
+  if (typeof (branch.meta as { der_role?: unknown } | undefined)?.der_role === 'string') return false;
   const voltages = [readBusVoltageKv(snapshot, branch.from_bus_ref), readBusVoltageKv(snapshot, branch.to_bus_ref)]
     .filter((value): value is number => value !== null);
   if (voltages.length === 0) return true;
@@ -518,6 +571,97 @@ export interface SldDataPayload {
    *  `buildSldDataFromSnapshot`; the per-segment direction/energization on
    *  `cableRuns`/`stations` then come from THAT solver result (one truth). */
   readonly powerFlow: SldPowerFlowCaseHeader | null;
+  /** F9.2 (SLD_CAD_SPEC_V3 §13.1): wszystkie widoczne źródła sieci — sieć
+   *  zewnętrzna (`Source` ENM, każdy `model` reprezentuje równanie
+   *  zastępcze zasilania zewnętrznego) + DER (`Generator` PV/BESS/wind/
+   *  generator synchroniczny). Nie zawiera GPZ jako odrębnej pozycji — GPZ
+   *  (kontener rozdzielni) jest już widoczny przez `gpzs`; ten widok
+   *  wylicza POJEDYNCZE elementy źródłowe ENM. Patrz `buildSources()`.
+   *  Opcjonalne pole (reguła F9.2: zmiany w kontrakcie współdzielonym
+   *  adaptera TYLKO addytywne) — zawsze wypełnione (możliwe `[]`) przez
+   *  `buildSldDataFromSnapshot`/`EMPTY_SLD_DATA`. */
+  readonly sources?: readonly SldSourceView[];
+}
+
+/**
+ * F9.2 (SLD_CAD_SPEC_V3 §13.1/§13.2) — jedno widoczne źródło sieci.
+ * Projekcja WYŁĄCZNIE z danych ENM (`Source`, `Generator`) — zero zgadywania.
+ */
+export interface SldSourceView {
+  readonly id: string;
+  /** F8b-1 (f92-2, SLD_CAD_REBUILD_PLAN_V3.md §F9.2 konsekwencja): `'unknown'`
+   *  dodany dla `Generator.gen_type` nierozpoznanego/`null` — WCZEŚNIEJ
+   *  taki generator był CICHO wykluczany z listy (`buildSources` filtrował
+   *  `null`), co naruszało „źródło nieznanego typu NIE może zginąć bez
+   *  śladu" (patrz `missingData` niżej). Zero zgadywania: `'unknown'` nie
+   *  jest fabrykacją realnego rodzaju, tylko jego HONEST brakiem. */
+  readonly kind: 'external_grid' | 'pv' | 'bess' | 'generator' | 'wind' | 'unknown';
+  /** Punkt przyłączenia — bus (Source) albo stacja/pole (Generator), wg tego,
+   *  co ENM faktycznie niesie dla danego elementu. */
+  readonly connectionRef: string;
+  /** Moc znamionowa [MW], gdy ENM ją niesie. `Source` (zastępcze zasilanie
+   *  zewnętrzne) NIE ma mocy znamionowej w ENM — tylko moc/prąd zwarciowy
+   *  (Sk''/Ik''), co jest INNĄ wielkością fizyczną; dlatego zawsze `undefined`
+   *  dla `kind='external_grid'` (żadna wartość SC nie jest tu podstawiana). */
+  readonly ratedPower?: number | null;
+  /** Stan operacyjny źródła (§13.3). F11.3 (finał F9.6b): dla DER czytany z
+   *  REALNEGO kanału `Generator.meta['operating_mode']` (zapis: operacja
+   *  domenowa `set_source_operating_mode`, backend `domain_operations_v2.py`;
+   *  odczyt read-modelu: `field_read_model._generator_operating_mode`) przez
+   *  UDOKUMENTOWANĄ regułę `OPERATING_MODE_TO_SOURCE_STATE` (spec §13.3 —
+   *  reguła białoskrzynkowa, nie heurystyka). Brak/wartość spoza słownika ⇒
+   *  `undefined` (uczciwy brak — ZERO nakładki, zero zgadywania).
+   *  `maintenance`/`fault` NIE są wywodliwe z tego kanału (ENM nie niesie
+   *  serwisu/awarii na poziomie źródła — ustalenie 8 audytu
+   *  `SLD_POWER_PATH_AUDIT_2026-07.md` pozostaje w mocy dla tych dwóch) —
+   *  literały zostają w unii jako kontrakt §13.3, dziś nigdy nie nadawane.
+   *  `Source` (sieć zewnętrzna) nie ma trybu pracy w ENM ⇒ zawsze `undefined`. */
+  readonly operationalState?: 'energized' | 'standby' | 'disconnected' | 'maintenance' | 'fault';
+  /** F8b-1 (f92-2): `true`, gdy ten wpis reprezentuje dane niekompletne
+   *  (dziś: `kind='unknown'` — `Generator.gen_type` nierozpoznany/`null`).
+   *  Ta sama konwencja nazwy co `StationOnRunRendererProps.missingData`. */
+  readonly missingData?: boolean;
+  /** GS-4 (`GRAMATYKA_MINI_RMU_2026-07.md`, recenzja 2026-07-23): strona
+   *  przyłączenia DER względem transformatora stacji, z REALNEJ szyny ENM
+   *  (`Generator.bus_ref` → `Bus.voltage_kv`): >0,5 kV ⇒ `'sn'` (pole SN),
+   *  0<U≤0,5 kV ⇒ `'nn'` (źródło ZA transformatorem, strona nN), brak
+   *  szyny/napięcia ⇒ `'unknown'` (uczciwy brak — NIGDY zgadywanie strony).
+   *  Próg 0,5 kV = ISTNIEJĄCA konwencja klasyfikacji szyn nN stacji (K30-37 /
+   *  recenzja NO-GO 2026-07-17 pkt 6, `buildStationProps`) — jedna reguła,
+   *  nie nowa heurystyka. Nadawane WYŁĄCZNIE dla DER (`Generator`);
+   *  `external_grid` nie niesie tego pola (zasilanie sieciowe nie jest DER
+   *  stacji — pozycjonuje je `compose/gpz.ts`). */
+  readonly connectionSide?: 'sn' | 'nn' | 'unknown';
+  /** W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07): kompletny tor DER przyłączonego
+   *  po stronie SN zmaterializowany jako REALNE elementy ENM (W2b). Obecny
+   *  WYŁĄCZNIE, gdy `Generator.connection_variant==='block_transformer'` ∧
+   *  `blocking_transformer_ref` (tor z TR blokowym); `undefined` dla źródeł bez
+   *  toru (nn / stare dane / generator synchroniczny WPROST na SN, przypadek 4).
+   *  Struktura LUSTRZANA `StationDerSourceInput.chain` (v3 `compose/sourceKind`,
+   *  celowo BEZ importu v3 do v2 — wzór `connectionSide`; parytet strukturalny
+   *  pilnuje `scene/buildScene.ts` przy projekcji na `StationDerSourceInput`). */
+  readonly derChain?: SldDerSnChain;
+}
+
+/** W2c: tor DER-SN — LUSTRO `DerSnChain` (v3 `compose/sourceKind.ts`), bez
+ *  importu v3 do v2 (wzór `connectionSide`). Projekcja z REALNYCH elementów
+ *  ENM: TR blokowy (rola `TRANSFORMATOR_BLOKOWY_DER`), szyna nN producenta
+ *  (`der_role==='producer_lv_bus'`), kabel SN, pole źródłowe SN. */
+export interface SldDerSnChain {
+  readonly mvFieldRef: string;
+  readonly blockTransformer: {
+    readonly ref: string;
+    readonly role: string;
+    readonly primaryVoltageKv?: number;
+    readonly secondaryVoltageKv?: number;
+  };
+  readonly producerLvBus: {
+    readonly ref: string;
+    readonly voltageKv?: number;
+    readonly lvSwitchgearVariant?: string;
+  };
+  readonly cableRef?: string;
+  readonly unitCount?: number;
 }
 
 export interface SldPowerFlowCaseHeader {
@@ -564,6 +708,7 @@ const EMPTY_SLD_DATA: SldDataPayload = Object.freeze({
   }),
   supplyPath: EMPTY_SUPPLY_PATH_FROZEN,
   powerFlow: null,
+  sources: [],
 });
 
 // =============================================================================
@@ -710,11 +855,26 @@ export function buildSldDataFromSnapshot(
   if (layout) {
     stations = applyLayoutToStations(stations, layout);
     gpzs = applyLayoutToGpzs(gpzs, layout);
-    cableRuns = buildCableRuns(snapshot, logicalViews, stations);
+    // R2: punkty wyjścia magistral z węzłów GPZ (prawa krawędź bloku, środek
+    // wysokości) — magistrala rysuje się OD GPZ, nie od slotowej głowicy.
+    const trunkOriginByOwner = new Map<string, RunPoint>();
+    for (const gpz of gpzs) {
+      const node = layout.nodeByRef.get(gpz.id);
+      if (node) {
+        trunkOriginByOwner.set(gpz.id, { x: node.x + node.width, y: node.y + node.height / 2 });
+      }
+    }
+    cableRuns = buildCableRuns(snapshot, logicalViews, stations, trunkOriginByOwner);
     branchPoints = buildBranchPointMarkers(snapshot, cableRuns, stations);
   }
 
+  // Plan CAD/SCADA K3/K4: globalne rozmieszczenie etykiet odcinków — jeden pass
+  // nad WSZYSTKIMI ciągami z keep-outami stacji i ramki GPZ (declutter per-run
+  // nie widzi cudzych etykiet). Renderer respektuje `preplaced`.
+  cableRuns = declutterAllRunLabelsGlobal(cableRuns, stations, gpzs, branchPoints);
+
   const { ders, derConnections } = buildDers(snapshot, stations);
+  const sources = buildSources(snapshot);
   const supplyPath = buildSupplyPathHighlight(snapshot);
   const topologyProjection = buildSldTopologyProjection(snapshot, {
     gpzs,
@@ -804,6 +964,7 @@ export function buildSldDataFromSnapshot(
     branchPoints,
     ders,
     derConnections,
+    sources,
     topologyCorridors: topologyProjection.topologyCorridors,
     topologyRuns: topologyProjection.topologyRuns,
     terminalBindings: topologyProjection.terminalBindings,
@@ -962,6 +1123,7 @@ function buildTopologyRuns(
         id: run.id,
         kind: run.run_kind,
         label: safeTopologyRunLabel(run, index),
+        lineName: rawTopologyRunLineName(run),
         corridorId: `corridor-${run.id}`,
         laneIndex,
         orderInRun: index,
@@ -1303,6 +1465,23 @@ function compactPublicLabel(text: string): string {
     .replace(/\s{2,}/g, ' ')
     .trim();
   return cleaned || 'układ SN';
+}
+
+/**
+ * F10.2 (SLD_CAD_SPEC_V3 §19.2, D2): `LineRun.name` SUROWY — ODDZIELNE od
+ * `safeTopologyRunLabel` niżej (ten ZAWSZE syntetyzuje bezpieczny fallback,
+ * np. „Ciąg SN 01", do UI ogólnego). Zwraca `null`, gdy dana nieobecna LUB
+ * wygląda na ref/hash programistyczny (nie czytelną nazwę) — ŻADNEJ
+ * syntezy fallbacku, bo podpis pola liniowego (§19.2) MUSI odróżnić „mam
+ * realną nazwę linii" od „nie mam" (degradacja do samego kierunku, zero
+ * fabrykacji numeru).
+ */
+function rawTopologyRunLineName(run: SldLineRunForLayout): string | null {
+  const raw = typeof run.name === 'string' ? run.name.trim() : '';
+  if (!raw) return null;
+  if (/^(seg|ref|hash)\//i.test(raw)) return null;
+  if (/[a-f0-9]{24,}/i.test(raw)) return null;
+  return raw;
 }
 
 function safeTopologyRunLabel(run: SldLineRunForLayout, index: number): string {
@@ -2169,8 +2348,8 @@ function buildHvSectionsFromEnm(args: BuildHvFromEnmArgs): GpzSectionDescriptor[
       return {
         sectionId: section.section_id,
         order: section.order,
-        name: section.name ?? `Sekcja HV ${section.order}`,
-        sectionLabel: section.line_field_name ?? `S${section.order}`,
+        name: section.name ?? `Sekcja HV ${section.order + 1}`,
+        sectionLabel: section.line_field_name ?? `S${section.order + 1}`,
         busVoltageKv: sectionVoltageKv,
         bays: sectionBays.map((bay) =>
           bayDescriptorFromEnm(bay, branches, substations, gpz),
@@ -2228,6 +2407,8 @@ function synthesizeHvSections(args: SynthesizeHvArgs): GpzSectionDescriptor[] {
     feederName: `TR${idx + 1}`,
     bayNumber: `${(idx + 1) * 2}`,
     hasMissingRequiredDevice: false,
+    /* SLD-02: glif OLTC/DETC z kanonicznego tap_changer (READ-ONLY). */
+    oltc: buildOltcAnnotation(tr.tap_changer) ?? undefined,
     /* energization/cbState/dsState undefined — patrz wyżej. */
   }));
 
@@ -2323,8 +2504,8 @@ function sectionFromGpzSection(
   return {
     sectionId: sec.section_id,
     order: sec.order,
-    name: sec.name ?? `Sekcja ${sec.order}`,
-    sectionLabel: sec.name ?? `S${sec.order}`,
+    name: sec.name ?? `Sekcja ${sec.order + 1}`,
+    sectionLabel: sec.name ?? `S${sec.order + 1}`,
     busVoltageKv: sectionVoltageKv,
     bays: bayDescriptors,
   };
@@ -2813,7 +2994,12 @@ function buildSections(snapshot: EnergyNetworkModel): SectionRendererProps[] {
         id: `${gpz.ref_id}__${sec.section_id}`,
         x: SECTION_X_BASE + idx * SECTION_PITCH,
         y: Y_SECTIONS,
-        number: sec.order,
+        // E11: user-facing section number = 1-based POSITION in the sorted list
+        // (`idx + 1`), never the raw `order` field (whose 0-/1-based convention
+        // is inconsistent across the model and leaked "Sekcja 0"). Prefer the
+        // domain name as the display label when present.
+        number: idx + 1,
+        displayLabel: sec.name ?? undefined,
         busVoltageKv: voltageKv,
         bayCount,
       });
@@ -2921,9 +3107,19 @@ function normalizeLineRunForLayout(
   const normalizedSegmentRefs = lineRunSegmentRefs(lineRun);
   const seenSegmentRefs = new Set<string>();
   const expandedSegmentRefs = normalizedSegmentRefs.flatMap((segmentRef) => {
+    const splitFromBranchPoints = splitSegmentRefsByParent.get(segmentRef);
+    // R2: odcinek cięty ŁĄCZNIKAMI (nie branch-pointami) rozwija się po
+    // przyrostkach `_L`/`_R` z realnych gałęzi ENM (rekurencyjnie).
+    const splitBySuffix = [...branchByRef.keys()]
+      .filter((ref) => ref.startsWith(`${segmentRef}_`))
+      .sort((a, b) => a.localeCompare(b));
     const refs = branchByRef.has(segmentRef)
       ? [segmentRef]
-      : [...(splitSegmentRefsByParent.get(segmentRef) ?? [segmentRef])];
+      : splitFromBranchPoints
+        ? [...splitFromBranchPoints]
+        : splitBySuffix.length > 0
+          ? splitBySuffix
+          : [segmentRef];
     return refs.filter((ref) => {
       if (seenSegmentRefs.has(ref)) return false;
       seenSegmentRefs.add(ref);
@@ -2982,6 +3178,28 @@ function lineRunKindLayoutRank(kind: SldLineRunForLayout['run_kind']): number {
   }
 }
 
+/**
+ * R2: deklarowany odcinek ciągu (`seg/<h>/segment`) może być ROZCIĘTY
+ * łącznikami na warianty `_L`/`_R` (rekurencyjnie: `_L_R_L`...). Rysujemy
+ * RZECZYWISTE gałęzie ENM: ref bazowy rozwija się do wszystkich połówek
+ * w porządku leksykalnym (_L przed _R — zgodnie z orientacją odcinka).
+ */
+function expandSegmentRefToBranches(
+  segmentRef: string,
+  branches: readonly Branch[],
+): Branch[] {
+  const exact = branches.filter((branch) => branch.ref_id === segmentRef);
+  if (exact.length > 0) return exact;
+  return branches
+    .filter((branch) => branch.ref_id.startsWith(`${segmentRef}_`))
+    .sort((a, b) => a.ref_id.localeCompare(b.ref_id));
+}
+
+/** Ref bazowy odcinka (bez przyrostków cięcia łącznikiem `_L`/`_R`). */
+function baseSegmentRef(segmentRef: string): string {
+  return segmentRef.replace(/(_[LR])+$/, '');
+}
+
 function buildSldLineRunsForLayout(
   snapshot: EnergyNetworkModel,
   fieldStationByRef: ReadonlyMap<string, Substation>,
@@ -2991,11 +3209,39 @@ function buildSldLineRunsForLayout(
   const branchByRef = new Map(cables.map((branch) => [branch.ref_id, branch]));
   const splitSegmentRefsByParent = splitSegmentRefsByParentFromBranchPoints(snapshot, branchByRef);
   const explicitRuns = (snapshot.line_runs ?? [])
-    .map((lineRun) => normalizeLineRunForLayout(lineRun, branchByRef, splitSegmentRefsByParent));
+    .map((lineRun) => normalizeLineRunForLayout(lineRun, branchByRef, splitSegmentRefsByParent))
+    .map((run) => {
+      // R2: gdy line_run nie deklaruje stacji, wyprowadź je z KOŃCÓWEK
+      // rzeczywistych odcinków (kolejność elektryczna) — stacje ciągu nie mogą
+      // zależeć od resztkowego korytarza.
+      if (run.stations.length > 0) return run;
+      const inferred = inferStationRefsForSegments(
+        run.segments.map((seg) => seg.segment_ref),
+        branchByRef,
+        fieldStationByRef,
+      );
+      // Stacja-RODZIC odgałęzienia (origin) leży na ciągu macierzystym — nie
+      // jest stacją TEGO ciągu (jej obecność fałszowałaby koniec ciągu i
+      // gasiła marker oczekującego zakończenia).
+      const firstSegmentRef = [...run.segments].sort((a, b) => a.order - b.order)[0]?.segment_ref;
+      const firstBranch = firstSegmentRef ? branchByRef.get(firstSegmentRef) : undefined;
+      const originOwner = run.branch_origin_station_ref
+        ? resolveFieldStationRefForBus(fieldStationByRef, run.branch_origin_station_ref)
+          ?? ownerStationRefFromFieldRef(run.branch_origin_station_ref)
+        : run.run_kind === 'branch'
+          ? resolveFieldStationRefForBus(fieldStationByRef, firstBranch?.from_bus_ref)
+          : null;
+      const stations = inferred.filter((stationRef) => stationRef !== originOwner);
+      return {
+        ...run,
+        stations: stations.map((substation_ref, order) => ({ substation_ref, order: order + 1 })),
+      };
+    });
   const coveredSegments = new Set<string>();
   for (const run of explicitRuns) {
     for (const segmentRef of lineRunSegmentRefs(run)) {
       coveredSegments.add(segmentRef);
+      coveredSegments.add(baseSegmentRef(segmentRef));
     }
   }
 
@@ -3003,7 +3249,12 @@ function buildSldLineRunsForLayout(
     .sort((a, b) => a.ref_id.localeCompare(b.ref_id))
     .flatMap((corridor, corridorIndex): SldLineRunForLayout[] => {
       const segmentRefs = (corridor.ordered_segment_refs ?? [])
-        .filter((segmentRef) => !coveredSegments.has(segmentRef));
+        .filter((segmentRef) =>
+          !coveredSegments.has(segmentRef) && !coveredSegments.has(baseSegmentRef(segmentRef))
+          // ref z przestrzeni łączników (`sw/...` = punkt NO korytarza) nie jest
+          // odcinkiem do rysowania — nie tworzy ciągu resztkowego (gramatyka
+          // ref_id ENM, nie heurystyka nazw)
+          && !segmentRef.startsWith('sw/'));
       if (segmentRefs.length === 0) return [];
       for (const segmentRef of segmentRefs) coveredSegments.add(segmentRef);
       const stationRefs = uniqueStrings([
@@ -3187,6 +3438,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         totalGenerationKw: stationSldDetails.totalGenerationKw,
         alarmSeverity: stationSldDetails.alarmSeverity,
         busVoltageKv: stationSldDetails.mainBusVoltageKv,
+        nnVoltageKv: stationSldDetails.nnVoltageKv,
+        aggregatedLvLoad: stationSldDetails.aggregatedLvLoad,
         transformerVectorGroup: stationSldDetails.transformerVectorGroup,
         ...(isNop ? { isNop: true } : {}),
         ...(cumKm > 0 ? { distanceFromGpzKm: Math.round(cumKm * 100) / 100 } : {}),
@@ -3227,6 +3480,8 @@ function buildStations(snapshot: EnergyNetworkModel): StationOnRunRendererProps[
         totalGenerationKw: stationSldDetails.totalGenerationKw,
         alarmSeverity: stationSldDetails.alarmSeverity,
         busVoltageKv: stationSldDetails.mainBusVoltageKv,
+        nnVoltageKv: stationSldDetails.nnVoltageKv,
+        aggregatedLvLoad: stationSldDetails.aggregatedLvLoad,
         transformerVectorGroup: stationSldDetails.transformerVectorGroup,
       });
       stationSequence += 1;
@@ -3253,6 +3508,13 @@ interface StationMiniBlockDetails {
    *  spośród buses zakotwiczonych do tej stacji. Renderer dobiera tint koloru
    *  szyny zgodnie z konwencją dyspozytorską (WN/SN/nN). */
   readonly mainBusVoltageKv: number | null;
+  /** Recenzja NO-GO 2026-07-17 pkt 6: napięcie szyny nN [kV] z rekordu
+   *  `Bus` (voltage_kv <= 0.5) — `null` gdy stacja nie niesie szyny nN. */
+  readonly nnVoltageKv: number | null;
+  /** Recenzja NO-GO 2026-07-17 pkt 6: zagregowany odbiór nN (suma
+   *  `Load` × quantity na szynach nN) — `null` = zero rekordów (granica
+   *  modelu, nie zero mocy). */
+  readonly aggregatedLvLoad: { readonly pMw: number; readonly qMvar: number; readonly count: number } | null;
   /** K30-62: vector group transformatora (np. "Dyn5", "Yd11"). Real
    *  industrial SLD pokazuje vector group obok TR symbol per IEC 60076-1. */
   readonly transformerVectorGroup: string | null;
@@ -3296,20 +3558,38 @@ function buildStationMiniBlockDetails(
 
   // K30-15.3: zsumuj load + DER generation po stronie transformatora stacji.
   // DER z transformatorem blokowym ma osobny tor i nie obciaza TR SN/nN stacji.
+  // F10.3 FIX (§18.4): `Bus` (ENM `backend/src/enm/models.py:131`) NIE MA pola
+  // `substation_ref` — to pole istnieje na Bay/Branch/innych elementach, nie
+  // na Bus. Poprzednia pętla filtrowała `snapshot.buses` po nieistniejącym
+  // polu (rzutowanie `as {substation_ref?}` maskowało to na etapie typów) —
+  // `stationBusRefs` był ZAWSZE pusty, więc `mainBusVoltageKv` był ZAWSZE
+  // `null` i `totalLoadKw` ZAWSZE `0` dla KAŻDEJ stacji SN/nN (potwierdzone na
+  // `sldSubstrate52s.enm.json`: 0/315 busów niesie `substation_ref`, mimo że
+  // `Substation.bus_refs` poprawnie wskazuje `sn_bus`/`nn_bus` z realnym
+  // `voltage_kv`). Poprawny klucz złączenia = `Substation.bus_refs[]` →
+  // `Bus.ref_id` (ten sam wzorzec co `stationBusRefMap` wyżej, linia ~1969).
   const stationBusRefs = new Set<string>();
+  const busByRef = new Map((snapshot.buses ?? []).map((bus) => [bus.ref_id, bus]));
   // K30-37: znajdź główną szynę SN stacji (najwyższe voltage_kv > 0.5 kV).
   // 0.4 kV LV-side wykluczamy z "main" — main = SN bus.
   let mainBusVoltageKv: number | null = null;
-  for (const bus of snapshot.buses ?? []) {
-    const scopedBus = bus as { substation_ref?: string; ref_id: string; voltage_kv?: number };
-    if (scopedBus.substation_ref === station.ref_id || scopedBus.substation_ref === station.id) {
-      stationBusRefs.add(scopedBus.ref_id);
-      const v = scopedBus.voltage_kv;
-      if (typeof v === 'number' && Number.isFinite(v) && v > 0.5) {
-        if (mainBusVoltageKv == null || v > mainBusVoltageKv) {
-          mainBusVoltageKv = v;
-        }
+  // Recenzja NO-GO 2026-07-17 pkt 6 (spec §12.5): szyna nN stacji — napięcie
+  // z REKORDU szyny (voltage_kv <= 0.5 ⇒ strona nN) + zbiór refów szyn nN
+  // do agregacji odbiorów niżej.
+  let nnVoltageKv: number | null = null;
+  const nnBusRefs = new Set<string>();
+  for (const busRef of station.bus_refs ?? []) {
+    const bus = busByRef.get(busRef);
+    if (!bus) continue;
+    stationBusRefs.add(bus.ref_id);
+    const v = bus.voltage_kv;
+    if (typeof v === 'number' && Number.isFinite(v) && v > 0.5) {
+      if (mainBusVoltageKv == null || v > mainBusVoltageKv) {
+        mainBusVoltageKv = v;
       }
+    } else if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+      nnBusRefs.add(bus.ref_id);
+      if (nnVoltageKv == null || v > nnVoltageKv) nnVoltageKv = v;
     }
   }
   const totalLoadKw = Math.round(
@@ -3317,6 +3597,20 @@ function buildStationMiniBlockDetails(
       .filter((l) => stationBusRefs.has(l.bus_ref))
       .reduce((acc, l) => acc + (l.p_mw ?? 0) * 1000, 0)
   );
+  // Recenzja NO-GO 2026-07-17 pkt 6: ZAGREGOWANY odbiór nN — WYŁĄCZNIE
+  // rekordy `Load` na szynach nN tej stacji (× quantity). `null` gdy ZERO
+  // rekordów (jawna granica modelu — kompozycja pisze to na rysunku).
+  const lvLoads = (snapshot.loads ?? []).filter((l) => nnBusRefs.has(l.bus_ref));
+  const aggregatedLvLoad = lvLoads.length > 0
+    ? lvLoads.reduce(
+        (acc, l) => ({
+          pMw: acc.pMw + (l.p_mw ?? 0) * (l.quantity ?? 1),
+          qMvar: acc.qMvar + (l.q_mvar ?? 0) * (l.quantity ?? 1),
+          count: acc.count + 1,
+        }),
+        { pMw: 0, qMvar: 0, count: 0 },
+      )
+    : null;
   const totalGenerationKw = Math.round(
     (snapshot.generators ?? [])
       .filter(
@@ -3344,6 +3638,8 @@ function buildStationMiniBlockDetails(
     totalGenerationKw,
     alarmSeverity,
     mainBusVoltageKv,
+    nnVoltageKv,
+    aggregatedLvLoad,
     transformerVectorGroup: inferTransformerVectorGroup(snapshot, transformerRefs),
   };
 }
@@ -3423,6 +3719,24 @@ function buildExplicitStationMiniBays(
         cbState: states.cb,
         dsState: states.ds,
         esState: states.es,
+        primaryDevices: projectBayPrimaryDevices(bay),
+        // F9.9 (SLD_CAD_SPEC_V3 §17.2): `Bay.protection_codes`/`protection_ref`
+        // żyją WPROST na snapshot `Bay` (w przeciwieństwie do `primary_devices`
+        // — patrz docstring `resolveBayProtectionMarking` powyżej), więc ta
+        // projekcja jest AKTYWNA już dziś, gdy ENM niesie dane (nie czeka na
+        // domknięcie osobnego kanału field-view).
+        protectionMarking: resolveBayProtectionMarking(bay, snapshot),
+        meteringMeasurementRef: resolveBayMeteringMeasurementRef(bay, snapshot),
+        meteringQuantity: resolveBayMeteringQuantity(bay, snapshot),
+        // F10.4 (SLD_CAD_SPEC_V3 §18.3): adnotacja przekładni CT — patrz
+        // docstring `resolveBayCtRatingAnnotations` poniżej.
+        ctRatingAnnotations: resolveBayCtRatingAnnotations(bay, snapshot),
+        // F10.6 (SLD_CAD_SPEC_V3 §20.2, D4): układ VT — patrz docstring
+        // `resolveBayVtArrangements` poniżej.
+        vtArrangements: resolveBayVtArrangements(bay, snapshot),
+        // CTVT-RENDER (SLD_CAD_SPEC_V3 §20.2): adnotacja montażu VT — patrz
+        // docstring `resolveBayVtMountings` poniżej (oś odrębna od układu VT).
+        vtMountingAnnotations: resolveBayVtMountings(bay, snapshot),
       };
     });
 
@@ -3501,6 +3815,18 @@ interface StationFieldSpec {
   readonly protection_ref?: string | null;
   readonly tags: readonly string[];
   readonly meta: Record<string, unknown>;
+  /** W1 (RECENZJA_L2 §1/§12.1, V12K-145): aparaty PIERWOTNE pola
+   *  zmaterializowane z szablonu kreatora na backendzie (`_build_field_spec`
+   *  → `template_primary_devices`). Gdy niepuste — tor pierwotny rysowany
+   *  Z DANYCH (kolejność/stan/uziemnik bocznie/głowica), a nie z jednego
+   *  fallbacku konwencji §12.4. `undefined` = pole bez danych → konwencja. */
+  readonly primary_devices?: readonly BayPrimaryDevice[];
+  /** W1c (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwaga 10): identyfikator
+   *  KONFIGURACJI pola (backend `_build_field_spec` → `config_ref_for_template`).
+   *  Stabilny, deterministyczny — niesiony do meta sceny, żeby render nie
+   *  zgadywał wyposażenia z typu/roli pola (tożsamość konfiguracji jest DANĄ).
+   *  `undefined` gdy pole bez szablonu kanonicznego. */
+  readonly config_id?: string;
 }
 
 function buildStationMiniBaysFromFieldSpecs(
@@ -3520,6 +3846,15 @@ function buildStationMiniBaysFromFieldSpecs(
         cbState: states.cb,
         dsState: states.ds,
         esState: states.es,
+        // W1 (RECENZJA_L2 §1/§12.1, V12K-145): tor pierwotny Z DANYCH gdy pole
+        // niesie zmaterializowane aparaty (szablon kreatora, backend
+        // `template_primary_devices`). Reużycie `projectBayPrimaryDevices` —
+        // JEDNA prawda sortowania/projekcji dla ścieżki field_specs i legacy
+        // bays[]. `undefined` gdy brak danych → konwencja §12.4 (zero regresu).
+        primaryDevices: projectBayPrimaryDevices({ primary_devices: spec.primary_devices }),
+        // W1c (uwaga 10): identyfikator konfiguracji pola przepisany 1:1 z
+        // field_spec (backend) do read-modelu bloku — dalej do meta sceny.
+        configId: spec.config_id,
       };
     });
 }
@@ -3538,8 +3873,86 @@ function readStationFieldSpecs(station: Substation): StationFieldSpec[] {
       protection_ref: getString(raw.protection_ref),
       tags: getStringArray(raw.tags),
       meta: isPlainRecord(raw.meta) ? raw.meta : {},
+      primary_devices: parseStationFieldPrimaryDevices(raw.primary_devices),
+      config_id: getString(raw.config_id),
     }))
     .filter((spec) => Boolean(spec.field_ref || spec.bus_ref || spec.equipment_refs.length > 0));
+}
+
+/** Dozwolone typy aparatu pierwotnego (lustro `BayPrimaryDeviceKind`, ENM). */
+const PRIMARY_DEVICE_KINDS: ReadonlySet<string> = new Set<string>([
+  'CB', 'LOAD_SWITCH', 'DS', 'ES', 'CT', 'VT', 'CABLE_HEAD', 'TRANSFORMER_DEVICE',
+  'FUSE', 'GENERATOR_PV', 'GENERATOR_BESS', 'GENERATOR_FW', 'PCS', 'BATTERY', 'SURGE_ARRESTER',
+]);
+
+/** Dozwolone położenia aparatu (lustro `BayPrimaryPlacement`, ENM). */
+const PRIMARY_DEVICE_PLACEMENTS: ReadonlySet<string> = new Set<string>([
+  'UPSTREAM', 'MIDSTREAM', 'DOWNSTREAM', 'OFF_PATH', 'GROUND_BRANCH',
+]);
+
+/**
+ * W1 (RECENZJA_L2 §1/§12.1, V12K-145): parsuje DEFENSYWNIE listę aparatów
+ * pierwotnych z surowego `field_spec.primary_devices` (backend
+ * `_build_field_spec`/`template_primary_devices`) na kształt `BayPrimaryDevice`.
+ * Odrzuca wpisy bez `device_ref`/`symbol_ref`/`kind`/`placement` mapowalnych
+ * na kontrakt ENM (zero domysłu — brak danych = brak aparatu). `undefined` gdy
+ * pole nie niesie żadnego prawidłowego aparatu (ścieżka konwencji §12.4).
+ */
+function parseStationFieldPrimaryDevices(value: unknown): readonly BayPrimaryDevice[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const devices: BayPrimaryDevice[] = [];
+  for (const raw of value) {
+    if (!isPlainRecord(raw)) continue;
+    const deviceRef = getString(raw.device_ref);
+    const symbolRef = getString(raw.symbol_ref);
+    const kind = getString(raw.kind);
+    const placement = getString(raw.placement);
+    if (!deviceRef || !symbolRef || !kind || !placement) continue;
+    if (!PRIMARY_DEVICE_KINDS.has(kind) || !PRIMARY_DEVICE_PLACEMENTS.has(placement)) continue;
+    const sectionSide = getString(raw.section_side);
+    const device: BayPrimaryDevice = {
+      device_ref: deviceRef,
+      symbol_ref: symbolRef,
+      kind: kind as BayPrimaryDevice['kind'],
+      placement: placement as BayPrimaryDevice['placement'],
+      is_controllable: raw.is_controllable === true,
+    };
+    const linkedRef = getString(raw.linked_ref);
+    if (linkedRef) device.linked_ref = linkedRef;
+    const catalogRef = getString(raw.catalog_ref);
+    if (catalogRef) device.catalog_ref = catalogRef;
+    const renderVariant = getString(raw.render_variant);
+    if (renderVariant) device.render_variant = renderVariant;
+    const designation = getString(raw.designation);
+    if (designation) device.designation = designation;
+    if (sectionSide === 'LEFT' || sectionSide === 'CENTER' || sectionSide === 'RIGHT') {
+      device.section_side = sectionSide;
+    }
+    const earthingRole = getString(raw.earthing_role);
+    if (
+      earthingRole === 'field_earth' ||
+      earthingRole === 'cable_screen' ||
+      earthingRole === 'structure' ||
+      earthingRole === 'neutral_point' ||
+      earthingRole === 'surge_ground'
+    ) {
+      device.earthing_role = earthingRole;
+    }
+    if (isPlainRecord(raw.switch_state)) {
+      const actualState = getString(raw.switch_state.actual_state);
+      const controlMode = getString(raw.switch_state.control_mode);
+      if (actualState && controlMode) {
+        device.switch_state = {
+          actual_state: actualState as NonNullable<BayPrimaryDevice['switch_state']>['actual_state'],
+          control_mode: controlMode as NonNullable<BayPrimaryDevice['switch_state']>['control_mode'],
+          communication_ok: raw.switch_state.communication_ok === true,
+          interlock_blocked: raw.switch_state.interlock_blocked === true,
+        };
+      }
+    }
+    devices.push(device);
+  }
+  return devices.length > 0 ? devices : undefined;
 }
 
 function compareStationFieldSpecs(a: StationFieldSpec, b: StationFieldSpec): number {
@@ -3765,6 +4178,269 @@ function bayRuntimeSwitchStates(bay: Bay): {
     else if (k.includes('es') || k.includes('earth') || k.includes('uziemnik')) es = state;
   }
   return { cb, ds, es };
+}
+
+// =============================================================================
+// F9.2 (SLD_CAD_SPEC_V3 §12.1) — projekcja Bay.primary_devices
+// =============================================================================
+
+/**
+ * W1 (RECENZJA_L2 §1/§12.1, V12K-145) — DOMKNIĘCIE STOP-notatki F9.2. Backend
+ * SERIALIZUJE dziś `primary_devices` na `Bay(ENMElement)` w
+ * `EnergyNetworkModel` (`backend/src/enm/models.py:855`) — zmaterializowane z
+ * szablonu kreatora (`template_primary_devices`) przez `_build_field_spec`
+ * (`domain_operations.py`) i przeniesione na snapshot Bay przez
+ * `field_read_model._collect_bays`. Adapter czyta je z DWÓCH ścieżek snapshotu:
+ *  - `snapshot.bays[]` (legacy Bay ENM) — `projectBayPrimaryDevices(bay)` niżej;
+ *  - `substation.meta.field_specs[].primary_devices` (stacje SN z kreatora,
+ *    realna ścieżka produkcyjna) — `buildStationMiniBaysFromFieldSpecs` reużywa
+ *    TĘ SAMĄ `projectBayPrimaryDevices` (jedna prawda sortowania/projekcji).
+ * `BayWithOptionalPrimaryDevices` pozostaje jako alias historyczny (`Bay` już
+ * niesie opcjonalne `primary_devices` — `types/enm.ts`); projekcja zwraca
+ * `undefined` dla pól bez danych (ścieżka konwencji §12.4, zero regresu).
+ */
+export type BayWithOptionalPrimaryDevices = Bay & {
+  readonly primary_devices?: readonly BayPrimaryDevice[];
+};
+
+const PRIMARY_DEVICE_PLACEMENT_ORDER: Readonly<Record<BayPrimaryPlacement, number>> = {
+  UPSTREAM: 0,
+  MIDSTREAM: 1,
+  DOWNSTREAM: 2,
+  OFF_PATH: 3,
+  GROUND_BRANCH: 4,
+};
+
+function simplifyPrimaryDeviceSwitchState(
+  actualState: BayDeviceState | null | undefined,
+): 'closed' | 'open' | 'unknown' {
+  switch (actualState) {
+    case 'zamkniety':
+    case 'zamkniety_naped_rozbrojony':
+      return 'closed';
+    case 'otwarty':
+    case 'otwarty_naped_rozbrojony':
+      return 'open';
+    default:
+      return 'unknown';
+  }
+}
+
+/**
+ * Projekcja `Bay.primary_devices` → `BayPrimaryDeviceView[]`, posortowana wg
+ * `placement` (UPSTREAM→MIDSTREAM→DOWNSTREAM→OFF_PATH→GROUND_BRANCH) ze
+ * stabilnym tie-breakerem = kolejność źródłowa z ENM (indeks w tablicy).
+ * `undefined` gdy pole nie niesie `primary_devices` (ścieżka konwencji §12.4).
+ * W1 (V12K-145): AKTYWNA na realnych snapshotach — Bay ENM oraz field_specs
+ * niosą zmaterializowane aparaty kreatora (patrz nota `BayWithOptional
+ * PrimaryDevices` powyżej). Parametr zwężony do `{primary_devices?}` — wołana
+ * z pełnym `Bay` (bays[]) ORAZ z lekkim `{primary_devices}` (field_specs).
+ *
+ * F11.1 (SLD_CAD_SPEC_V3 §17.2/§20.1, rejestr device-ref w GPZ): eksportowana
+ * — `v2/canvas/enmToCanonicalGpzAdapter.ts` reużywa TĘ SAMĄ funkcję dla
+ * `CanonicalGpzBay.primaryDevices` (jedna prawda stacja↔GPZ, zero duplikacji).
+ */
+export function projectBayPrimaryDevices(
+  bay: { readonly primary_devices?: readonly BayPrimaryDevice[] | null },
+): readonly BayPrimaryDeviceView[] | undefined {
+  const devices = bay.primary_devices;
+  if (!devices || devices.length === 0) return undefined;
+  return devices
+    .map((device, sourceIndex) => ({ device, sourceIndex }))
+    .sort((a, b) => {
+      const placementDelta =
+        PRIMARY_DEVICE_PLACEMENT_ORDER[a.device.placement] - PRIMARY_DEVICE_PLACEMENT_ORDER[b.device.placement];
+      return placementDelta !== 0 ? placementDelta : a.sourceIndex - b.sourceIndex;
+    })
+    .map(({ device }): BayPrimaryDeviceView => ({
+      kind: device.kind,
+      placement: device.placement,
+      sectionSide: device.section_side ?? null,
+      deviceRef: device.device_ref,
+      switchState: device.switch_state
+        ? simplifyPrimaryDeviceSwitchState(device.switch_state.actual_state)
+        : undefined,
+      // F9.9 (SLD_CAD_SPEC_V3 §17.2): `linked_ref` — dla CT/VT wskazuje
+      // `Measurement.ref_id` (patrz `BayProtectionMarkingView` docstring).
+      linkedRef: device.linked_ref ?? undefined,
+      // F10.6 (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035): identyfikator per-aparat
+      // jako dana projektowa — patrz `BayPrimaryDeviceView.designation`.
+      designation: device.designation ?? undefined,
+    }));
+}
+
+// =============================================================================
+// F9.9 (SLD_CAD_SPEC_V3 §17.2) — projekcja oznaczenia zabezpieczeń.
+// =============================================================================
+
+/**
+ * Projekcja adnotacji zabezpieczeń JEDNEGO pola (§17.2, zero zgadywania):
+ * `Bay.protection_codes` (WYŁĄCZNIE gdy niepuste — inaczej `undefined`, „brak
+ * danych = brak oznaczenia") + `Bay.protection_ref` rozwiązany na
+ * `ProtectionAssignment` w `snapshot.protection_assignments` (SUROWE refy
+ * `breaker_ref`/`ct_ref` — dopasowanie na aparat NARYSOWANEGO stosu dzieje
+ * się w `compose/protectionMarking.ts`, ten adapter nie zna geometrii).
+ * Zgodnie z modelem `Bay(ENMElement)` (`backend/src/enm/models.py:701-714`) —
+ * w PRZECIWIEŃSTWIE do `primary_devices` (errata E1/V12K-030), `protection_codes`
+ * i `protection_ref` żyją WPROST na snapshot `Bay`, nie na field-view — bez
+ * defensywnego szwu (kanał danych już domknięty).
+ *
+ * F11.1 (SLD_CAD_SPEC_V3 §17.2/§20.1, rejestr device-ref w GPZ): eksportowana,
+ * `snapshot` zwężony do `Pick<..., 'protection_assignments'>` (jedyne pole
+ * faktycznie czytane) — `v2/canvas/enmToCanonicalGpzAdapter.ts` reużywa TĘ
+ * SAMĄ funkcję dla `CanonicalGpzBay.protectionMarking` bez potrzeby całego
+ * `EnergyNetworkModel` (adapter GPZ dostaje węższy `Pick`, patrz
+ * `BuildCanonicalGpzOptions`/`buildCanonicalGpzProps`).
+ */
+export function resolveBayProtectionMarking(
+  bay: Bay,
+  snapshot: Pick<EnergyNetworkModel, 'protection_assignments'>,
+): BayProtectionMarkingView | undefined {
+  const codes = bay.protection_codes ?? [];
+  if (codes.length === 0) return undefined;
+  const assignment = bay.protection_ref
+    ? (snapshot.protection_assignments ?? []).find(
+        (pa: ProtectionAssignment) => pa.ref_id === bay.protection_ref || pa.id === bay.protection_ref,
+      )
+    : undefined;
+  return {
+    codes,
+    breakerRef: assignment?.breaker_ref,
+    ctRef: assignment?.ct_ref ?? undefined,
+    // F10.6 (SLD_CAD_SPEC_V3 §20.2, D5, V12K-036): CT dodatkowe strefy
+    // różnicowej (87T) — `undefined` gdy puste (dana strefy niedostarczona,
+    // patrz `BayProtectionMarkingView.ctRefsSecondary` docstring).
+    ctRefsSecondary:
+      assignment?.ct_refs_secondary && assignment.ct_refs_secondary.length > 0
+        ? assignment.ct_refs_secondary
+        : undefined,
+  };
+}
+
+/**
+ * F10.6 (SLD_CAD_SPEC_V3 §20.2, D4, V12K-036): projekcja układu VT
+ * (`Measurement.vt_arrangement`) WSZYSTKICH pomiarów VT tego pola —
+ * `undefined` gdy ŻADEN VT pola nie niesie tej danej (67N degraduje do
+ * dotychczasowego uproszczenia F10.5, patrz `protectionTopologyValidation.ts`).
+ */
+function resolveBayVtArrangements(
+  bay: Bay,
+  snapshot: EnergyNetworkModel,
+): readonly ('open_delta' | 'star')[] | undefined {
+  const arrangements = new Set<'open_delta' | 'star'>();
+  for (const m of snapshot.measurements ?? []) {
+    if (m.measurement_type === 'VT' && m.bay_ref === bay.ref_id && m.vt_arrangement != null) {
+      arrangements.add(m.vt_arrangement);
+    }
+  }
+  if (arrangements.size === 0) return undefined;
+  return [...arrangements].sort();
+}
+
+/**
+ * Projekcja kotwicy miernika (§17.2): `Measurement.purpose==='metering'`
+ * powiązany z tym polem przez `bay_ref`. `undefined` gdy brak takiego
+ * pomiaru (§17.2 „brak danych = brak oznaczenia").
+ */
+function resolveBayMeteringMeasurementRef(
+  bay: Bay,
+  snapshot: EnergyNetworkModel,
+): string | undefined {
+  const measurement = (snapshot.measurements ?? []).find(
+    (m: Measurement) => m.purpose === 'metering' && m.bay_ref === bay.ref_id,
+  );
+  return measurement?.ref_id;
+}
+
+/**
+ * Recenzja NO-GO 2026-07-17 pkt 11: mierzona wielkość miernika — z
+ * `measurement_type` TEGO SAMEGO pomiaru co `resolveBayMeteringMeasurementRef`
+ * (CT⇒„A", VT⇒„V"). Zero domysłu: brak pomiaru ⇒ `undefined`.
+ */
+function resolveBayMeteringQuantity(
+  bay: Bay,
+  snapshot: EnergyNetworkModel,
+): 'A' | 'V' | undefined {
+  const measurement = (snapshot.measurements ?? []).find(
+    (m: Measurement) => m.purpose === 'metering' && m.bay_ref === bay.ref_id,
+  );
+  if (!measurement) return undefined;
+  return measurement.measurement_type === 'VT' ? 'V' : 'A';
+}
+
+/**
+ * F10.4 (SLD_CAD_SPEC_V3 §18.3, CT opisany — część BEZ-DOMAIN): projekcja
+ * adnotacji przekładni CT tego pola — WSZYSTKIE `Measurement{measurement_type:
+ * 'CT', bay_ref}` pomiary tego pola, niezależnie od `purpose` (§18.3 dotyczy
+ * KAŻDEGO CT toru głównego, nie tylko rozliczeniowego — w przeciwieństwie do
+ * `resolveBayMeteringMeasurementRef` wyżej, który filtruje WYŁĄCZNIE
+ * `purpose==='metering'` dla miernika „M"). Identyfikator = `Measurement.name`
+ * (pole engineering-friendly — `ref_id` jest technicznym slugiem, wzorzec
+ * §19.2 „numer/nazwa linii" = `.name`, NIE `.ref_id`). Przekładnia = surowe
+ * `rating.ratio_primary`/`ratio_secondary` sformatowane jako „primary/
+ * secondary" (CZYSTE formatowanie — zero zaokrągleń/fizyki). Dopasowanie na
+ * KONKRETNY aparat NARYSOWANEGO stosu (`linked_ref` match) dzieje się w
+ * `compose/protectionMarking.ts` `resolveCtRatingAnnotations` (adapter nie
+ * zna geometrii — wzorzec `resolveBayProtectionMarking`). `undefined` gdy
+ * pole nie ma żadnego CT (brak danych = brak oznaczenia, §18.3 dosłownie).
+ * F10.6 (D3, V12K-036): układ pomiarowy (`Measurement.ct_arrangement`)
+ * przekazywany 1:1 jako `arrangement` — `undefined` gdy dana niedostarczona
+ * (adnotacja rysuje sam identyfikator+przekładnię, zero zgadywania).
+ *
+ * F11.1 (SLD_CAD_SPEC_V3 §18.3, rejestr device-ref w GPZ): eksportowana,
+ * `snapshot` zwężony do `Pick<..., 'measurements'>` — `v2/canvas/
+ * enmToCanonicalGpzAdapter.ts` reużywa TĘ SAMĄ funkcję dla
+ * `CanonicalGpzBay.ctRatingAnnotations` (jedna prawda stacja↔GPZ).
+ */
+export function resolveBayCtRatingAnnotations(
+  bay: Bay,
+  snapshot: Pick<EnergyNetworkModel, 'measurements'>,
+): readonly CtRatingAnnotationView[] | undefined {
+  const measurements = (snapshot.measurements ?? []).filter(
+    (m: Measurement) => m.measurement_type === 'CT' && m.bay_ref === bay.ref_id,
+  );
+  if (measurements.length === 0) return undefined;
+  return measurements.map((m) => ({
+    measurementRef: m.ref_id,
+    identifier: m.name,
+    ratioText: `${m.rating.ratio_primary}/${m.rating.ratio_secondary}`,
+    arrangement: m.ct_arrangement ?? undefined,
+    // W5 (§12–15/uwaga 7): przeznaczenie CT (pomiarowy/zabezpieczeniowy/łączony)
+    // 1:1 z `Measurement.purpose` — dana wariantu, zero domysłu. Kanał
+    // geometrycznie neutralny (patrz `CtRatingAnnotationView.purpose`).
+    purpose: m.purpose,
+    // CTVT-RENDER (CTVT-MODEL/V12K-176): liczba rdzeni CT 1:1 z
+    // `Measurement.ct_cores` — dana producenta (IEC 61869-2), doklejana do
+    // etykiety WYŁĄCZNIE gdy obecna (`undefined` gdy `null`/brak — uczciwy brak,
+    // zero fabrykacji). Domyka konsumenta-render danej wprowadzonej w V12K-176.
+    cores: m.ct_cores ?? undefined,
+  }));
+}
+
+/**
+ * CTVT-RENDER (SLD_CAD_SPEC_V3 §20.2, CTVT-MODEL/V12K-176): projekcja adnotacji
+ * montażu VT (`Measurement.vt_mounting`) WSZYSTKICH pomiarów VT tego pola z
+ * ustawioną daną. `undefined` gdy pole nie ma żadnego VT niosącego `vt_mounting`
+ * (brak danych = brak oznaczenia, §20.2 dosłownie). Dopasowanie na aparat
+ * NARYSOWANEGO stosu (compose) — TA SAMA reguła co `resolveBayCtRatingAnnotations`
+ * (identyfikator = `Measurement.name`, kotwica przez `linked_ref`). Domyka
+ * konsumenta-render danej `vt_mounting` wprowadzonej w V12K-176. Oś odrębna od
+ * `resolveBayVtArrangements` (open_delta/star = 3U0).
+ */
+export function resolveBayVtMountings(
+  bay: Bay,
+  snapshot: Pick<EnergyNetworkModel, 'measurements'>,
+): readonly VtMountingAnnotationView[] | undefined {
+  const measurements = (snapshot.measurements ?? []).filter(
+    (m: Measurement) =>
+      m.measurement_type === 'VT' && m.bay_ref === bay.ref_id && m.vt_mounting != null,
+  );
+  if (measurements.length === 0) return undefined;
+  return measurements.map((m) => ({
+    measurementRef: m.ref_id,
+    identifier: m.name,
+    mounting: m.vt_mounting as 'bus' | 'cable',
+  }));
 }
 
 function mapStationBayRoleToMiniRole(fieldRole: MiniBlockBayDescriptor['fieldRole']): MiniBlockBayDescriptor['fieldRole'] {
@@ -4244,23 +4920,453 @@ function averageRunPoints(points: readonly RunPoint[]): RunPoint {
   };
 }
 
+// =============================================================================
+// R2 — ROUTER KORYTARZOWY (przebudowa globalna 2026-07).
+//
+// Diagnoza inżynierska: dotychczasowa geometria ciągów zakładała 1 segment =
+// 1 stacja i „zamiatała" stacje po współrzędnej X per rząd (snake). Realny ciąg
+// magistralny ma między stacjami zaciski pośrednie (kilka odcinków na jeden
+// przelot), a kolejność rysowania MUSI być elektryczna (kolejność odcinków
+// z line_run/korytarza), nie geometryczna. Skutkiem starego założenia były
+// skosy przez stacje i etykiety odcinków rozrzucone poza własnym torem.
+//
+// Nowa zasada (jak w dokumentacji projektowej OSD):
+//  1. KOTWICE ciągu = rzeczywiste końcówki KAŻDEGO odcinka (from_bus/to_bus →
+//     stacja albo zacisk pośredni), w kolejności elektrycznej.
+//  2. Zaciski pośrednie (bez stacji) dostają deterministyczne pozycje na rzędzie
+//     poprzedniej znanej kotwicy, rozłożone równomiernie do następnej znanej.
+//  3. Każdy przeskok kotwica→kotwica jest ORTOGONALNY: ten sam rząd = pozioma;
+//     ta sama kolumna = pionowa; zmiana rzędu = wzdłuż rzędu do kolumny celu,
+//     potem pion (opuszczenie w kolumnie stacji docelowej). Start z punktu
+//     źródłowego (głowica pola GPZ / stacja-rodzic odgałęzienia) = pion do
+//     rzędu celu, potem poziom.
+//  4. Ścieżka odcinka = przeskok jego końcówek; etykieta odcinka leży na JEGO
+//     torze (najdłuższy poziomy pododcinek). Tor całego ciągu = konkatenacja.
+// =============================================================================
+
+interface CorridorAnchor {
+  ref: string;
+  kind: 'origin' | 'station' | 'terminal';
+  x: number;
+  y: number;
+  station?: StationOnRunRendererProps;
+}
+
+interface CorridorRunGeometry {
+  readonly pathPoints: RunPoint[];
+  readonly segmentPaths: NonNullable<CableRunRendererPropsLight['segmentPaths']>;
+  readonly segmentLabels: NonNullable<CableRunRendererPropsLight['segmentLabels']>;
+}
+
+/** Ortogonalny przeskok kotwica→kotwica (reguła 3 routera korytarzowego). */
+function corridorHopPath(from: CorridorAnchor, to: CorridorAnchor): RunPoint[] {
+  const F = { x: from.x, y: from.y };
+  const T = { x: to.x, y: to.y };
+  if (Math.abs(F.y - T.y) <= 0.5) return [F, T];
+  if (Math.abs(F.x - T.x) <= 0.5) return [F, T];
+  if (from.kind === 'origin') {
+    // start ciągu: pion z punktu źródłowego do rzędu celu, potem poziom
+    return [F, { x: F.x, y: T.y }, T];
+  }
+  // zmiana rzędu między kotwicami: wzdłuż rzędu do kolumny celu, potem pion
+  return [F, { x: T.x, y: F.y }, T];
+}
+
+/**
+ * Tożsamość terminala (busRef + owner) z końcówki gałęzi ENM. WSPÓLNA dla toru
+ * korytarzowego i fallbacku slotowego — każdy renderowany odcinek jest wtedy
+ * terminal-to-terminal (from_bus → to_bus), bez krawędzi „tylko-współrzędne"
+ * (§16, E03).
+ */
+function segmentTerminalOf(
+  busRef: string | null | undefined,
+  fieldStationByRef: ReadonlyMap<string, Substation>,
+): SegmentTerminalRef {
+  return {
+    busRef: busRef ?? null,
+    ownerRef: busRef
+      ? (resolveFieldStationRefForBus(fieldStationByRef, busRef)
+        ?? ownerStationRefFromFieldRef(busRef))
+      : null,
+  };
+}
+
+/**
+ * Zbuduj geometrię ciągu z RZECZYWISTYCH końcówek odcinków (reguły 1-4).
+ * Zwraca null, gdy nie udało się zbudować łańcucha (np. brak odcinków) —
+ * wtedy wołający zachowuje geometrię dotychczasową.
+ */
+function buildCorridorRunGeometry(
+  runSegments: readonly Branch[],
+  runStations: readonly StationOnRunRendererProps[],
+  stationByRef: ReadonlyMap<string, StationOnRunRendererProps>,
+  fieldStationByRef: ReadonlyMap<string, Substation>,
+  origin: RunPoint,
+): CorridorRunGeometry | null {
+  if (runSegments.length === 0) return null;
+
+  // --- reguła 1: łańcuch kotwic w kolejności elektrycznej -------------------
+  const anchors: CorridorAnchor[] = [
+    { ref: '__origin__', kind: 'origin', x: origin.x, y: origin.y },
+  ];
+  /** indeksy kotwic (from, to) per odcinek — w kolejności runSegments */
+  const hops: Array<{ fromIdx: number; toIdx: number }> = [];
+  let cursorRef: string | null = null;
+  for (const segment of runSegments) {
+    const aStationRef = resolveFieldStationRefForBus(fieldStationByRef, segment.from_bus_ref);
+    const bStationRef = resolveFieldStationRefForBus(fieldStationByRef, segment.to_bus_ref);
+    const aRef = aStationRef ?? segment.from_bus_ref ?? `__a_${anchors.length}`;
+    const bRef = bStationRef ?? segment.to_bus_ref ?? `__b_${anchors.length}`;
+    let nextRef: string;
+    let nextStationRef: string | null;
+    if (cursorRef === null || aRef === cursorRef) {
+      nextRef = bRef;
+      nextStationRef = bStationRef;
+      if (cursorRef === null) cursorRef = aRef;
+    } else if (bRef === cursorRef) {
+      nextRef = aRef;
+      nextStationRef = aStationRef;
+    } else {
+      // rozjazd danych (odcinek nie kontynuuje łańcucha) — kontynuuj od `to`,
+      // deterministycznie; brak zgadywania pozycji (kotwica jak każda inna)
+      nextRef = bRef;
+      nextStationRef = bStationRef;
+    }
+    const station = nextStationRef ? stationByRef.get(nextStationRef) : undefined;
+    anchors.push({
+      ref: nextRef,
+      kind: station ? 'station' : 'terminal',
+      x: station ? station.x : Number.NaN,
+      y: station ? stationRunY(station) : Number.NaN,
+      ...(station ? { station } : {}),
+    });
+    hops.push({ fromIdx: anchors.length - 2, toIdx: anchors.length - 1 });
+    cursorRef = nextRef;
+  }
+
+  // --- fuzja z deklaracją line_run.stations[] --------------------------------
+  // Modele aliasowe wiążą stacje ciągu deklaracją stations[] (kolejność
+  // elektryczna), a końcówki odcinków używają szyn-aliasów nie rozwiązywalnych
+  // prefiksem. Niedopasowane stacje z deklaracji przypisujemy KOLEJNO do
+  // nierozwiązanych kotwic w porządku łańcucha — bez zgadywania (obie listy są
+  // w kolejności elektrycznej).
+  const matchedStationIds = new Set(
+    anchors.filter((a) => a.station).map((a) => a.station!.id),
+  );
+  const unmatchedStations = runStations.filter((st) => !matchedStationIds.has(st.id));
+  if (unmatchedStations.length > 0) {
+    let fuseIdx = 0;
+    for (const anchor of anchors) {
+      if (fuseIdx >= unmatchedStations.length) break;
+      if (anchor.kind !== 'terminal') continue;
+      const st = unmatchedStations[fuseIdx];
+      fuseIdx += 1;
+      anchor.kind = 'station';
+      anchor.station = st;
+      anchor.x = st.x;
+      anchor.y = stationRunY(st);
+    }
+  }
+
+  // --- reguła 2: pozycje zacisków pośrednich (interpolacja na rzędzie) ------
+  const known = (a: CorridorAnchor): boolean => Number.isFinite(a.x) && Number.isFinite(a.y);
+  let i = 1;
+  while (i < anchors.length) {
+    if (known(anchors[i])) {
+      i += 1;
+      continue;
+    }
+    // maksymalny blok nieznanych [i .. j-1]; K1 = anchors[i-1], K2 = anchors[j]
+    let j = i;
+    while (j < anchors.length && !known(anchors[j])) j += 1;
+    const k1 = anchors[i - 1];
+    const k2 = j < anchors.length ? anchors[j] : null;
+    const count = j - i;
+    if (k2) {
+      const rowY = k1.kind === 'origin' ? k2.y : k1.y;
+      for (let m = 0; m < count; m += 1) {
+        const t = (m + 1) / (count + 1);
+        anchors[i + m].x = k1.x + (k2.x - k1.x) * t;
+        anchors[i + m].y = rowY;
+      }
+    } else if (k1.kind === 'origin') {
+      // ciąg oczekujący (bez żadnej stacji): geometria zgodna z kontraktem
+      // odcinka oczekującego (pendingRunEndX) — rozłożona równomiernie;
+      // rząd 80 px pod głowicą.
+      const total = pendingRunEndX(k1.x, count) - k1.x;
+      for (let m = 0; m < count; m += 1) {
+        anchors[i + m].x = k1.x + (total * (m + 1)) / count;
+        anchors[i + m].y = k1.y + STATION_RUN_TRUNK_OFFSET_Y;
+      }
+    } else {
+      // Ogon za ostatnią stacją (trasa do kolejnego zacisku): przedłuż wzdłuż
+      // ORIENTACJI ostatniego przęsła — magistrala pozioma → w prawo; odczep
+      // pionowy → w dół (grzebień). Orientację czytamy z poprzedniej znanej
+      // kotwicy (k0 → k1). Bez tego ogon odczepu skręcał w bok (artefakt).
+      let k0: CorridorAnchor | null = null;
+      for (let b = i - 2; b >= 0; b -= 1) {
+        if (known(anchors[b])) { k0 = anchors[b]; break; }
+      }
+      const vertical = k0 !== null && Math.abs(k1.y - k0.y) > Math.abs(k1.x - k0.x);
+      if (vertical) {
+        const dirY = k0 !== null && k1.y < k0.y ? -1 : 1;
+        for (let m = 0; m < count; m += 1) {
+          anchors[i + m].x = k1.x;
+          anchors[i + m].y = k1.y + dirY * POST_STATION_SEGMENT_PITCH * (m + 1);
+        }
+      } else {
+        const base = (k1.station ? stationOutputX(k1.station) : null) ?? k1.x;
+        for (let m = 0; m < count; m += 1) {
+          anchors[i + m].x = base + POST_STATION_SEGMENT_PITCH * (m + 1);
+          anchors[i + m].y = k1.y;
+        }
+      }
+    }
+    i = j;
+  }
+
+  // --- doprecyzowanie wejść/wyjść stacji na przeskokach poziomych -----------
+  // (linia zatrzymuje się na kolumnie WE, wychodzi z kolumny WY — jak na
+  // schemacie dyspozytorskim; przeskoki pionowe zostają w osi stacji)
+  const hopFromX = (from: CorridorAnchor, to: CorridorAnchor): number => {
+    if (!from.station || Math.abs(from.y - to.y) > 0.5) return from.x;
+    const exit = to.x >= from.x ? stationOutputX(from.station) : stationInputX(from.station);
+    return exit ?? from.x;
+  };
+  const hopToX = (from: CorridorAnchor, to: CorridorAnchor): number => {
+    if (!to.station) return to.x;
+    // Strona wejścia (kolumna WE/WY) obowiązuje, gdy OSTATNI pododcinek
+    // przeskoku jest poziomy: ten sam rząd, albo start z punktu źródłowego
+    // (pion z głowicy, potem poziom do stacji). Pion kończący (zmiana rzędu
+    // między kotwicami) schodzi w osi stacji.
+    const sameRow = Math.abs(from.y - to.y) <= 0.5;
+    const horizontalFinal = sameRow || (from.kind === 'origin' && Math.abs(from.x - to.x) > 0.5);
+    if (horizontalFinal) {
+      const entry = from.x <= to.x ? stationInputX(to.station) : stationOutputX(to.station);
+      return entry ?? to.x;
+    }
+    return to.x;
+  };
+
+  const segmentPaths: Array<{
+    segmentRef: string;
+    pathPoints: RunPoint[];
+    variant?: { insulation: 'XLPE' | 'EPR' | 'PVC' | 'PAPER' | 'OVERHEAD' | 'UNKNOWN'; conductor: 'Al' | 'Cu' | 'AlSt' | 'UNKNOWN' };
+    fromTerminal?: SegmentTerminalRef;
+    toTerminal?: SegmentTerminalRef;
+  }> = [];
+  const terminalOf = (busRef: string | null | undefined): SegmentTerminalRef =>
+    segmentTerminalOf(busRef, fieldStationByRef);
+  const pathPoints: RunPoint[] = [];
+  const pushPoint = (p: RunPoint): void => {
+    const last = pathPoints[pathPoints.length - 1];
+    if (last && Math.abs(last.x - p.x) <= 0.5 && Math.abs(last.y - p.y) <= 0.5) return;
+    pathPoints.push(p);
+  };
+  runSegments.forEach((segment, index) => {
+    const { fromIdx, toIdx } = hops[index];
+    const from = anchors[fromIdx];
+    const to = anchors[toIdx];
+    const fx = hopFromX(from, to);
+    const tx = hopToX(from, to);
+    const hop = corridorHopPath(
+      { ...from, x: fx },
+      { ...to, x: tx },
+    );
+    segmentPaths.push({
+      segmentRef: segment.ref_id,
+      pathPoints: hop,
+      variant: inferCableVariant(segment),
+      // Terminal-to-terminal identity straight from the ENM branch endpoints —
+      // this rendered edge provably connects from_bus → to_bus (§16, E03).
+      fromTerminal: terminalOf(segment.from_bus_ref),
+      toTerminal: terminalOf(segment.to_bus_ref),
+    });
+    hop.forEach(pushPoint);
+  });
+
+  // --- etykiety odcinków na WŁASNYM torze (dedupe jak K30-52) ---------------
+  let previousLabel: string | null = null;
+  const segmentLabels: Array<NonNullable<CableRunRendererPropsLight['segmentLabels']>[number]> = [];
+  runSegments.forEach((segment, index) => {
+    const label = buildCableRunLabel([segment], classifySegmentKind(segment));
+    if (label === previousLabel) return;
+    previousLabel = label;
+    const point = segmentLabelPointFromPath(segmentPaths[index].pathPoints, index);
+    segmentLabels.push({
+      segmentRef: segment.ref_id,
+      text: label,
+      x: point.x,
+      y: point.y,
+      technical: segmentTechnicalFields(segment),
+    });
+  });
+
+  // Tor całego ciągu: usuń punkty współliniowe (czysta polilinia — tylko
+  // zmiany kierunku), jak na rysunku technicznym.
+  const collapsed: RunPoint[] = [];
+  for (const p of pathPoints) {
+    const n = collapsed.length;
+    if (n >= 2) {
+      const a = collapsed[n - 2];
+      const b = collapsed[n - 1];
+      const collinearH = Math.abs(a.y - b.y) <= 0.5 && Math.abs(b.y - p.y) <= 0.5;
+      const collinearV = Math.abs(a.x - b.x) <= 0.5 && Math.abs(b.x - p.x) <= 0.5;
+      if (collinearH || collinearV) {
+        collapsed[n - 1] = p;
+        continue;
+      }
+    }
+    collapsed.push(p);
+  }
+
+  return { pathPoints: collapsed, segmentPaths, segmentLabels };
+}
+
+// =============================================================================
+// GLOBALNY declutter etykiet odcinków (plan CAD/SCADA — K3/K4)
+// =============================================================================
+// Declutter per-run w CableRunRenderer nie widzi INNYCH ciągów ani etykiet
+// stacji — stąd kolizje cross-run w paśmie magistrali i etykieta↔stacja
+// (dowód: sonda kolizji z SLD_CAD_SCADA_QUALITY_PLAN.md §3, baseline 106).
+// Ten pass działa NAD WSZYSTKIMI ciągami w adapterze (jedyne miejsce, które zna
+// pełny świat: ciągi + stacje + GPZ), deterministycznie (stała kolejność,
+// ograniczona pętla lane'ów, zero losowości). Zmienia WYŁĄCZNIE x/y etykiet
+// (metadane opisu) — geometria torów/terminali (§16) nietknięta.
+
+const GLOBAL_LABEL_HEIGHT = 16;
+const GLOBAL_LABEL_LANE_STEP = 18;
+const GLOBAL_LABEL_MAX_LANES = 30;
+// Strefa zajęta stacji przy lod2 (mini-RMU): porty WE/WY/ODG nad szyną + blok
+// + nazwa/kod/kVA/nN poniżej. Szer./dół lustrzane do STATION_KEEP_CLEAR_* w
+// CableRunRenderer (116/248); góra poszerzona o pas tekstów portów.
+// Szerokość obejmuje najszerszy wariant (RMU·O: WE/WY/ODG/TR — 4 kolumny portów
+// + teksty ról wystające poza kolumnę); węższy 116 zostawiał ogon 'ODG'/'WY'
+// poza strefą (sonda: pary „YAKXS…↔ODG/WY").
+const GLOBAL_STATION_KEEPOUT_HALF_WIDTH = 150;
+const GLOBAL_STATION_KEEPOUT_ABOVE = 96;
+const GLOBAL_STATION_KEEPOUT_BELOW = 248;
+// Słup/węzeł odgałęźny (branch point): porty WE/WY/ODG na osi magistrali,
+// teksty ról nad osią — mniejsza koperta niż stacja.
+const GLOBAL_BRANCHPOINT_KEEPOUT_HALF_WIDTH = 90;
+const GLOBAL_BRANCHPOINT_KEEPOUT_ABOVE = 96;
+const GLOBAL_BRANCHPOINT_KEEPOUT_BELOW = 60;
+// Konserwatywna koperta ramki kanonicznego GPZ (header 320 + rozdzielnia LV);
+// wysokość z tych samych stałych, z których liczona jest ramka.
+const GLOBAL_GPZ_KEEPOUT_WIDTH = CANONICAL_HEADER_WIDTH + 640;
+const GLOBAL_GPZ_KEEPOUT_HEIGHT =
+  CANONICAL_LV_BLOCK_Y + CANONICAL_LV_BAY_HEIGHT + CANONICAL_PAGE_PADDING;
+
+interface GlobalLabelRect {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+}
+
+/** Ta sama kalibracja szerokości co `estimateLabelWidth` w CableRunRenderer. */
+function globalLabelWidth(text: string): number {
+  return Math.max(52, Math.min(220, text.length * 7.2));
+}
+
+function globalRectsOverlap(a: GlobalLabelRect, b: GlobalLabelRect): boolean {
+  return a.x < b.x + b.width && a.x + a.width > b.x
+    && a.y < b.y + b.height && a.y + a.height > b.y;
+}
+
+function globalLabelRectAt(x: number, y: number, text: string): GlobalLabelRect {
+  const width = globalLabelWidth(text);
+  return { x: x - width / 2, y: y - GLOBAL_LABEL_HEIGHT / 2 - 2, width, height: GLOBAL_LABEL_HEIGHT + 4 };
+}
+
+function declutterAllRunLabelsGlobal(
+  runs: CableRunRendererPropsLight[],
+  stations: ReadonlyArray<{ readonly x: number; readonly y: number }>,
+  gpzs: ReadonlyArray<{ readonly x: number; readonly y: number }>,
+  branchPoints: ReadonlyArray<{ readonly x: number; readonly y: number }> = [],
+): CableRunRendererPropsLight[] {
+  const keepOuts: GlobalLabelRect[] = [];
+  for (const st of stations) {
+    keepOuts.push({
+      x: st.x - GLOBAL_STATION_KEEPOUT_HALF_WIDTH,
+      y: st.y - GLOBAL_STATION_KEEPOUT_ABOVE,
+      width: GLOBAL_STATION_KEEPOUT_HALF_WIDTH * 2,
+      height: GLOBAL_STATION_KEEPOUT_ABOVE + GLOBAL_STATION_KEEPOUT_BELOW,
+    });
+  }
+  for (const bp of branchPoints) {
+    keepOuts.push({
+      x: bp.x - GLOBAL_BRANCHPOINT_KEEPOUT_HALF_WIDTH,
+      y: bp.y - GLOBAL_BRANCHPOINT_KEEPOUT_ABOVE,
+      width: GLOBAL_BRANCHPOINT_KEEPOUT_HALF_WIDTH * 2,
+      height: GLOBAL_BRANCHPOINT_KEEPOUT_ABOVE + GLOBAL_BRANCHPOINT_KEEPOUT_BELOW,
+    });
+  }
+  for (const gpz of gpzs) {
+    keepOuts.push({
+      x: gpz.x - 24,
+      y: gpz.y - 24,
+      width: GLOBAL_GPZ_KEEPOUT_WIDTH + 48,
+      height: GLOBAL_GPZ_KEEPOUT_HEIGHT + 48,
+    });
+  }
+  const placed: GlobalLabelRect[] = [];
+  const isFree = (rect: GlobalLabelRect): boolean =>
+    !placed.some((p) => globalRectsOverlap(rect, p))
+    && !keepOuts.some((k) => globalRectsOverlap(rect, k));
+  return runs.map((run) => {
+    const labels = run.segmentLabels;
+    if (!labels || labels.length === 0) return run;
+    const segmentLabels = labels.map((label) => {
+      // Lane'y symetrycznie od pozycji bazowej: 0, -1, +1, -2, +2, … (świat px).
+      let chosenY = label.y;
+      let found = false;
+      for (let lane = 0; lane <= GLOBAL_LABEL_MAX_LANES && !found; lane += 1) {
+        for (const sign of lane === 0 ? [1] : [-1, 1]) {
+          const y = label.y + sign * lane * GLOBAL_LABEL_LANE_STEP;
+          if (isFree(globalLabelRectAt(label.x, y, label.text))) {
+            chosenY = y;
+            found = true;
+            break;
+          }
+        }
+      }
+      // Brak wolnego lane'a (skrajna gęstość): eskaluj deterministycznie W GÓRĘ
+      // ponad zajęte pasmo — nadal bez losowości, bez ukrywania danych.
+      if (!found) {
+        let y = label.y - (GLOBAL_LABEL_MAX_LANES + 1) * GLOBAL_LABEL_LANE_STEP;
+        while (!isFree(globalLabelRectAt(label.x, y, label.text))) {
+          y -= GLOBAL_LABEL_LANE_STEP;
+        }
+        chosenY = y;
+      }
+      placed.push(globalLabelRectAt(label.x, chosenY, label.text));
+      return { ...label, y: chosenY, preplaced: true };
+    });
+    return { ...run, segmentLabels };
+  });
+}
+
 function buildCableRuns(
   snapshot: EnergyNetworkModel,
   logicalViews: LogicalViewsV1 | null,
   stations: readonly StationOnRunRendererProps[],
+  trunkOriginByOwner?: ReadonlyMap<string, RunPoint>,
 ): CableRunRendererPropsLight[] {
   const branches = (snapshot.branches ?? [])
     .filter((branch) => isCableLikeBranch(branch) && isMediumVoltageNetworkBranch(snapshot, branch));
-  const lineRuns = buildSldLineRunsForLayout(snapshot, collectFieldStationByRef(snapshot));
+  const fieldStationByRef = collectFieldStationByRef(snapshot);
+  const lineRuns = buildSldLineRunsForLayout(snapshot, fieldStationByRef);
   const stationByRef = new Map(stations.map((station) => [station.id, station]));
   const runs: CableRunRendererPropsLight[] = [];
 
   if (lineRuns.length > 0) {
     lineRuns.forEach((lineRun, idx) => {
       const segmentRefs = lineRunSegmentRefs(lineRun);
+      // R2: odcinek deklarowany rozwija się do RZECZYWISTYCH gałęzi (połówki
+      // cięte łącznikami) — geometria i etykiety liczą się z realnych odcinków.
       const runSegments = segmentRefs
-        .map((segmentRef) => branches.find((branch) => branch.ref_id === segmentRef))
-        .filter((branch): branch is Branch => Boolean(branch));
+        .flatMap((segmentRef) => expandSegmentRefToBranches(segmentRef, branches));
       const firstSegment = runSegments[0] ?? branches[0] ?? null;
       const segmentKind = firstSegment ? classifySegmentKind(firstSegment) : 'cable_sn';
       const runStations = [...lineRun.stations]
@@ -4319,47 +5425,44 @@ function buildCableRuns(
       const segmentLabels = extraLabels.length > 0
         ? [...baseSegmentLabels, ...extraLabels]
         : baseSegmentLabels;
-      const segmentPaths = buildRunSegmentPaths(
-        runSegments,
-        runStations,
-        startX,
-        y,
-        terminalX,
-        sourcePoint,
-      );
 
       const portStatus = detectMissingEndpointPorts(runSegments);
-      // K30-10: snake routing pathPoints przy multi-row layout. Jeśli stations
-      // są w ≥2 rows (detected by unique Y values), buduj zigzag path z U-turns.
-      const uniqueYs = [...new Set(runStations.map((s) => s.y - STATION_RUN_TRUNK_OFFSET_Y))].sort((a, b) => a - b);
-      let snakePoints: { x: number; y: number }[];
-      if (uniqueYs.length > 1) {
-        // Stacje pogrupowane per row Y. Per row: cable goes left↔right zgodnie z
-        // station X positions (snake reverses kierunek w parzystych rzędach).
-        const firstPoint = sourcePoint ?? { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y };
-        snakePoints = [firstPoint, { x: startX, y: uniqueYs[0] }];
-        uniqueYs.forEach((rowY, rowIdx) => {
-          const stationsInRow = runStations.filter((s) => (s.y - STATION_RUN_TRUNK_OFFSET_Y) === rowY);
-          if (stationsInRow.length === 0) return;
-          const xs = stationsInRow.map((s) => s.x);
-          const minX = Math.min(...xs);
-          const maxX = Math.max(...xs);
-          // Cable enters row z lewej (rowIdx parzysty) lub prawej (rowIdx nieparzysty) — snake direction
-          const enterX = rowIdx % 2 === 0 ? minX : maxX;
-          const exitX = rowIdx % 2 === 0 ? maxX : minX;
-          // jeśli to nie pierwszy row, dodaj vertical jump z poprzedniej Y
-          if (rowIdx > 0) snakePoints.push({ x: enterX, y: rowY });
-          else snakePoints[snakePoints.length - 1] = { x: enterX, y: rowY };
-          // horizontal traverse
-          snakePoints.push({ x: exitX, y: rowY });
-        });
-      } else {
-        snakePoints = [
-          sourcePoint ?? { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y },
-          { x: startX, y },
-          { x: terminalX, y },
-        ];
-      }
+      // R2 — router korytarzowy: kotwice z RZECZYWISTYCH końcówek odcinków,
+      // kolejność elektryczna, trasowanie ortogonalne (zero skosów). Gdy nie
+      // da się zbudować łańcucha — uczciwy fallback do geometrii slotowej.
+      // R2: początek magistrali w RZECZYWISTYM węźle GPZ (z układu drzewa),
+      // nie w slotowej głowicy — magistrala musi WYCHODZIĆ z GPZ na rysunku.
+      const firstSegmentOwner = runSegments.length > 0
+        ? (resolveFieldStationRefForBus(fieldStationByRef, runSegments[0].from_bus_ref)
+          ?? ownerStationRefFromFieldRef(runSegments[0].from_bus_ref ?? ''))
+        : null;
+      const gpzOrigin = firstSegmentOwner ? trunkOriginByOwner?.get(firstSegmentOwner) : undefined;
+      // Ciąg resztkowy (korytarz z odcinkami spoza jawnych line_runs) może
+      // zaczynać się w stacji sieci — wtedy początek toru = ta stacja, nie
+      // slotowa głowica GPZ (zero „wiszących" początków).
+      const firstSegmentStation = firstSegmentOwner ? stationByRef.get(firstSegmentOwner) : undefined;
+      const stationOrigin = firstSegmentStation
+        ? { x: firstSegmentStation.x, y: firstSegmentStation.y }
+        : undefined;
+      const origin = sourcePoint ?? gpzOrigin ?? stationOrigin ?? { x: startX, y: GPZ_FIELD_CABLE_HEAD_Y };
+      const corridorGeometry = buildCorridorRunGeometry(
+        runSegments,
+        runStations,
+        stationByRef,
+        fieldStationByRef,
+        origin,
+      );
+      const segmentPaths = corridorGeometry
+        ? corridorGeometry.segmentPaths
+        : buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX, sourcePoint, fieldStationByRef);
+      const runPathPoints = corridorGeometry
+        ? corridorGeometry.pathPoints
+        : [origin, { x: startX, y }, { x: terminalX, y }];
+      const effectiveSegmentLabels = corridorGeometry
+        ? (extraLabels.length > 0
+          ? [...corridorGeometry.segmentLabels, ...extraLabels]
+          : corridorGeometry.segmentLabels)
+        : segmentLabels;
       runs.push({
         id: lineRun.id,
         runKind: lineRun.run_kind,
@@ -4367,11 +5470,11 @@ function buildCableRuns(
         segmentRefs: runSegments.map((segment) => segment.ref_id),
         segmentPaths,
         label: buildCableRunLabel(runSegments.length > 0 ? runSegments : firstSegment ? [firstSegment] : [], segmentKind),
-        segmentLabels,
+        segmentLabels: effectiveSegmentLabels,
         pendingEndpoint: !hasResolvedRunEndpoint(snapshot, runSegments, runStations),
         missingEndpointPort: portStatus.missing,
         missingPortSegmentRefs: portStatus.missingSegmentRefs,
-        pathPoints: snakePoints,
+        pathPoints: runPathPoints,
         voltageKv,
       });
     });
@@ -4409,7 +5512,7 @@ function buildCableRuns(
         ? Math.max(endX + postStationSegmentCount * POST_STATION_SEGMENT_PITCH, startX + STATION_PITCH)
         : endX;
       const segmentLabels = buildRunSegmentLabels(runSegments, runStations, startX, y, terminalX);
-      const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX);
+      const segmentPaths = buildRunSegmentPaths(runSegments, runStations, startX, y, terminalX, null, fieldStationByRef);
       const portStatus = detectMissingEndpointPorts(runSegments);
       const voltageKv = inferRunVoltageKv(snapshot, runSegments);
       // K30-10: snake routing dla synthesized line_runs (multi-row case).
@@ -4473,7 +5576,7 @@ function buildCableRuns(
         : pendingRunEndX(xStart, segments.length);
       const segmentKind = classifySegmentKind(segments[0]);
       const segmentLabels = buildRunSegmentLabels(segments, stationsOnRun, xStart, y, xEnd);
-      const segmentPaths = buildRunSegmentPaths(segments, stationsOnRun, xStart, y, xEnd);
+      const segmentPaths = buildRunSegmentPaths(segments, stationsOnRun, xStart, y, xEnd, null, fieldStationByRef);
 
       const portStatus = detectMissingEndpointPorts(segments);
       const voltageKv = inferRunVoltageKv(snapshot, segments);
@@ -4515,7 +5618,7 @@ function buildCableRuns(
         runKind: 'branch',
         segmentKind,
         segmentRefs: segments.map((segment) => segment.ref_id),
-        segmentPaths: buildRunSegmentPaths(segments, [], xStart, yBranch, xEnd),
+        segmentPaths: buildRunSegmentPaths(segments, [], xStart, yBranch, xEnd, null, fieldStationByRef),
         label: buildCableRunLabel(segments, segmentKind),
         segmentLabels: buildRunSegmentLabels(segments, [], xStart, yBranch, xEnd),
         missingEndpointPort: portStatus.missing,
@@ -4542,7 +5645,7 @@ function buildCableRuns(
       : pendingRunEndX(xStart, 1);
     const segmentKind = classifySegmentKind(b);
     const segmentLabels = buildRunSegmentLabels([b], stationsOnRun, xStart, y, xEnd);
-    const segmentPaths = buildRunSegmentPaths([b], stationsOnRun, xStart, y, xEnd);
+    const segmentPaths = buildRunSegmentPaths([b], stationsOnRun, xStart, y, xEnd, null, fieldStationByRef);
     const portStatus = detectMissingEndpointPorts([b]);
     const voltageKv = inferRunVoltageKv(snapshot, [b]);
     runs.push({
@@ -4680,6 +5783,7 @@ function buildRunSegmentLabels(
       text: label,
       x: point.x,
       y: point.y,
+      technical: segmentTechnicalFields(segment),
     }];
   });
 }
@@ -4691,6 +5795,7 @@ function buildRunSegmentPaths(
   y: number,
   terminalX: number,
   sourcePoint: RunPoint | null = null,
+  fieldStationByRef?: ReadonlyMap<string, Substation>,
 ): NonNullable<CableRunRendererPropsLight['segmentPaths']> {
   return segments.map((segment, index) => {
     return {
@@ -4705,6 +5810,14 @@ function buildRunSegmentPaths(
         sourcePoint,
       ),
       variant: inferCableVariant(segment),
+      // §16: tor slotowy (fallback) też jest terminal-to-terminal — końcówki
+      // z gałęzi ENM (from_bus → to_bus), identyczna tożsamość jak w korytarzu.
+      ...(fieldStationByRef
+        ? {
+            fromTerminal: segmentTerminalOf(segment.from_bus_ref, fieldStationByRef),
+            toTerminal: segmentTerminalOf(segment.to_bus_ref, fieldStationByRef),
+          }
+        : {}),
     };
   });
 }
@@ -4848,6 +5961,43 @@ function stationOutputX(station: StationOnRunRendererProps | undefined): number 
 
 function distinctCatalogLabels(segments: readonly Branch[]): string[] {
   return [...new Set(segments.map(readCatalogTypeLabel).filter((label): label is string => Boolean(label)))];
+}
+
+/**
+ * W3-KABLE-ETYKIETY §7/§6: STRUKTURALNE dane techniczne JEDNEGO odcinka do
+ * złożenia etykiety L2 w v3 (`layout/lineLabel.ts`). WYŁĄCZNIE z modelu/
+ * katalogu; brakująca dana ⇒ `null`/`false` (zero fabrykacji). Reużywa
+ * istniejące czytniki katalogu (`readCatalogTypeLabel`, `readBranchCatalogData`).
+ */
+function segmentTechnicalFields(segment: Branch): {
+  typeLabel: string | null;
+  ratedVoltageKv: number | null;
+  lengthKm: number | null;
+  overhead: boolean;
+  hasJoint: boolean;
+} {
+  const materialized = readBranchCatalogData(segment);
+  // Napięcie znamionowe: surowa liczba (bez Math.round — zachowaj 10,5 kV).
+  const readRawKv = (key: string): number | null => {
+    const raw = materialized?.[key];
+    const value = typeof raw === 'number' ? raw : typeof raw === 'string' ? Number(raw) : NaN;
+    return Number.isFinite(value) && value > 0 ? value : null;
+  };
+  const ratedVoltageKv = readRawKv('voltage_rating_kv') ?? readRawKv('rated_voltage_kv');
+  const lengthRaw = readBranchLengthKm(segment);
+  const lengthKm = Number.isFinite(lengthRaw) && lengthRaw > 0 ? lengthRaw : null;
+  // V12K-229: `cable_joints` jest w kontrakcie, wiec czytamy je z TYPU. Wczesniej
+  // pole brakowalo w lustrze TS i odczyt szedl przez `as unknown as`, ktore wylacza
+  // kontrole typow — ten sam mechanizm przepuscil dwie zgadniete nazwy pol (V12K-226).
+  const joints = segment.type === 'cable' ? segment.cable_joints : null;
+  const hasJoint = Array.isArray(joints) && joints.length > 0;
+  return {
+    typeLabel: readCatalogTypeLabel(segment) ?? null,
+    ratedVoltageKv,
+    lengthKm,
+    overhead: classifySegmentKind(segment) === 'overhead_line_sn',
+    hasJoint,
+  };
 }
 
 function stationsForConnectionY(
@@ -5132,7 +6282,7 @@ function buildDers(
         connectionKind: isBlockTransformerConnection ? 'der_block_transformer' : 'generic',
         derRef: gen.ref_id,
         transformerRef: blockTransformer?.ref_id ?? blockTransformer?.id ?? null,
-        pccRef: `${gen.ref_id}/pcc`,
+        busPrzylaczeniaRef: `${gen.ref_id}/pcc`,
       });
     }
   }
@@ -5174,6 +6324,211 @@ function mapGenTypeToDerKind(gen: Generator): DerRendererProps['kind'] | null {
     default:
       return null;
   }
+}
+
+// =============================================================================
+// F9.2 (SLD_CAD_SPEC_V3 §13.1/§13.2) — widoczne źródła sieci (SldSourceView)
+// =============================================================================
+
+/**
+ * Mapuje `Generator.gen_type` (ENM) na kind `SldSourceView`. Osobna tabela od
+ * `mapGenTypeToDerKind` (DerRendererProps używa 'PV'/'BESS'/'FW' — inny
+ * słownik niż SldSourceView), ale ta sama zasada: `gen_type` nieznany/`null`
+ * ⇒ `null` (element wykluczony z widoku źródeł — zero zgadywania), NIE
+ * domyślny kind. Różnica względem DER-badge: `synchronous` mapuje na
+ * `'generator'` tutaj (dziś NIE rysowany jako DER wcale, `mapGenTypeToDerKind`
+ * nie ma dla niego case'u — patrz raport F9.2, STOP-notatka).
+ */
+/**
+ * F8b-1 (f92-2): zawsze zwraca `SldSourceView['kind']` — `'unknown'` dla
+ * `gen_type` nierozpoznanego/`null` (WCZEŚNIEJ `null`, co `buildSources`
+ * używał jako sygnał do wykluczenia generatora z listy — spłacone niżej).
+ */
+function mapGeneratorToSourceKind(gen: Generator): SldSourceView['kind'] {
+  switch (gen.gen_type) {
+    case 'pv_inverter':
+      return 'pv';
+    case 'bess':
+      return 'bess';
+    case 'synchronous':
+      return 'generator';
+    case 'wind_inverter':
+    case 'fw_pmsg':
+    case 'fw_dfig':
+    case 'fw_scig':
+      return 'wind';
+    default:
+      return 'unknown';
+  }
+}
+
+/**
+ * F11.3 (spec §13.3, finał F9.6b) — UDOKUMENTOWANA reguła tryb pracy →
+ * stan operacyjny źródła (§13.3: „białoskrzynkowa reguła wywodzenia
+ * zdefiniowana tu (nie heurystyka)"). Klucze = pełny słownik operacji
+ * domenowej `set_source_operating_mode` (backend `enm/models.py`
+ * `BaySourceEndpoint.operating_mode`, kanał zapisu `Generator.meta
+ * ['operating_mode']`):
+ *  - `praca_sieciowa`/`ladowanie`/`rozladowanie` ⇒ `energized` (źródło
+ *    czynnie wymienia moc z siecią — kierunek wymiany nie zmienia stanu
+ *    „pod napięciem, w pracy");
+ *  - `gotowosc` ⇒ `standby` (przyłączone, nie wymienia mocy);
+ *  - `odstawione` ⇒ `disconnected` (odstawione z ruchu).
+ * `maintenance`/`fault` NIE mają klucza — nie są wywodliwe z tego kanału
+ * (patrz docstring `SldSourceView.operationalState`). Wartość spoza słownika
+ * (korupcja/literówka) NIE przecieka — `generatorOperationalState` zwraca
+ * `undefined` (ta sama semantyka co backendowy `_generator_operating_mode`,
+ * który odrzuca wartości spoza `_OPERATING_MODES`).
+ */
+const OPERATING_MODE_TO_SOURCE_STATE: Readonly<
+  Record<string, NonNullable<SldSourceView['operationalState']>>
+> = {
+  praca_sieciowa: 'energized',
+  ladowanie: 'energized',
+  rozladowanie: 'energized',
+  gotowosc: 'standby',
+  odstawione: 'disconnected',
+};
+
+/** F11.3 (spec §13.3): odczyt `Generator.meta['operating_mode']` przez regułę
+ *  `OPERATING_MODE_TO_SOURCE_STATE` — brak pola / nie-string / wartość spoza
+ *  słownika ⇒ `undefined` (uczciwy brak, zero fabrykacji stanu). */
+function generatorOperationalState(gen: Generator): SldSourceView['operationalState'] {
+  const raw = gen.meta?.['operating_mode'];
+  if (typeof raw !== 'string') return undefined;
+  return OPERATING_MODE_TO_SOURCE_STATE[raw];
+}
+
+/**
+ * Projekcja `SldDataPayload.sources` — WYŁĄCZNIE z `snapshot.sources`
+ * (`Source` ENM — sieć zewnętrzna, każdy `model` to inna reprezentacja tego
+ * samego zjawiska: zastępcze zasilanie zewnętrzne) i `snapshot.generators`
+ * (DER: PV/BESS/wind/generator synchroniczny). GPZ (`Substation`) NIE
+ * generuje tu odrębnej pozycji — kontener rozdzielni GPZ jest już widoczny
+ * przez `gpzs`; ten widok wylicza pojedyncze elementy źródłowe ENM (zgodnie
+ * z `Source.substation_ref`, GPZ i jego `Source` to inne obiekty ENM).
+ * Deterministyczne: kolejność = kolejność źródłowa `snapshot.sources` +
+ * `snapshot.generators` (stabilna dla tego samego snapshotu).
+ */
+function buildSources(snapshot: EnergyNetworkModel): SldSourceView[] {
+  const gridSources: SldSourceView[] = (snapshot.sources ?? []).map((source): SldSourceView => ({
+    id: source.ref_id,
+    kind: 'external_grid',
+    connectionRef: source.bus_ref,
+    ratedPower: undefined,
+    operationalState: undefined,
+  }));
+
+  // F8b-1 (f92-2): WSZYSTKIE generatory dają wpis — `kind='unknown'` +
+  // `missingData=true` dla `gen_type` nierozpoznanego/`null`, NIE cichy
+  // wykluczenie (poprzednie zachowanie: `.filter` odrzucał `null`, źródło
+  // „ginęło bez śladu" — naruszenie spec §13.1 „każda scena renderuje
+  // WSZYSTKIE punkty zasilania jako widoczne symbole źródeł").
+  // GS-4: strona przyłączenia względem TR — z REALNEJ szyny generatora
+  // (`bus_ref` → `voltage_kv`, próg 0,5 kV jak klasyfikacja szyn nN stacji);
+  // brak szyny/napięcia ⇒ 'unknown' (zero zgadywania strony).
+  const busVoltageByRef = new Map<string, number>();
+  for (const bus of snapshot.buses ?? []) {
+    if (typeof bus.ref_id === 'string' && typeof bus.voltage_kv === 'number') {
+      busVoltageByRef.set(bus.ref_id, bus.voltage_kv);
+    }
+  }
+  // W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07, semantyka `connectionSide`):
+  // strona = POZIOM NAPIĘCIA PUNKTU PRZYŁĄCZENIA do sieci nadrzędnej, NIE
+  // napięcie szyny WŁASNEJ falownika. Dla wariantów z dedykowanym polem SN
+  // (`block_transformer`/`DEDICATED_MV_CONNECTION`/`SOURCE_CONNECTION_STATION`)
+  // falownik siedzi na szynie nN PRODUCENTA (0,4 kV), ale przyłącza się do SN
+  // przez TR blokowy — więc `'sn'` (inaczej klasyfikacja z `bus_ref`→
+  // `voltage_kv` dawałaby fałszywe `'nn'`, przez co L0 rysowałby DER „za TR"
+  // zamiast markera przy szynie SN — kłamstwo topologiczne, reguła 4/7).
+  // `nn_side` (za TR STACJI) ⇒ `'nn'`; pozostałe/brak wariantu ⇒ fallback z
+  // napięcia szyny (istniejąca konwencja GS-4, próg 0,5 kV).
+  const derConnectionSide = (gen: Generator): NonNullable<SldSourceView['connectionSide']> => {
+    if (isDedicatedMvDerConnection(gen.connection_variant)) return 'sn';
+    if (gen.connection_variant === 'nn_side' || gen.connection_variant === 'LV_BEHIND_STATION_TRANSFORMER') {
+      return 'nn';
+    }
+    const v = gen.bus_ref ? busVoltageByRef.get(gen.bus_ref) : undefined;
+    if (typeof v !== 'number' || !Number.isFinite(v) || v <= 0) return 'unknown';
+    return v > 0.5 ? 'sn' : 'nn';
+  };
+  const derSources: SldSourceView[] = (snapshot.generators ?? []).map((gen): SldSourceView => {
+    const kind = mapGeneratorToSourceKind(gen);
+    const chain = buildDerSnChain(snapshot, gen);
+    return {
+      id: gen.ref_id,
+      kind,
+      connectionRef: gen.station_ref ?? gen.bus_ref,
+      ratedPower: gen.limits?.p_max_mw ?? gen.p_mw ?? null,
+      // F11.3 (spec §13.3): realny kanał `Generator.meta['operating_mode']`
+      // przez udokumentowaną regułę (patrz `generatorOperationalState` wyżej).
+      operationalState: generatorOperationalState(gen),
+      missingData: kind === 'unknown' ? true : undefined,
+      connectionSide: derConnectionSide(gen),
+      // W2c: tor DER-SN (TR blokowy + szyna nN producenta + kabel + pole SN) —
+      // obecny WYŁĄCZNIE gdy snapshot niesie zmaterializowane elementy (W2b).
+      derChain: chain,
+    };
+  });
+
+  return [...gridSources, ...derSources];
+}
+
+/**
+ * W2c (POLECENIE_DER_SN_TOPOLOGIA_2026-07, reguły 1–7): projekcja kompletnego
+ * toru DER przyłączonego po stronie SN z REALNYCH elementów ENM (W2b). Zwraca
+ * `undefined`, gdy generator NIE jest wariantem z TR blokowym LUB gdy któregoś
+ * elementu toru brak w snapshotcie (stare dane / generator synchroniczny WPROST
+ * na SN — przypadek 4): wtedy scena stosuje uczciwą degradację W2 + stopNote
+ * `der.sn.torNiepelny` (ZERO fabrykacji — nie dorysowujemy elementów, których
+ * snapshot nie niesie). Reguła 5: TR blokowy to OSOBNY element z WŁASNYM
+ * `ref_id`/rolą — projektowany jako taki, nigdy współdzielony z TR stacji.
+ */
+function buildDerSnChain(snapshot: EnergyNetworkModel, gen: Generator): SldDerSnChain | undefined {
+  if (!isDedicatedMvDerConnection(gen.connection_variant)) return undefined;
+  const blockTrRef = gen.blocking_transformer_ref;
+  if (!blockTrRef) return undefined;
+  const blockTr = (snapshot.transformers ?? []).find(
+    (t) => t.ref_id === blockTrRef || t.id === blockTrRef,
+  );
+  if (!blockTr) return undefined;
+  const role = getString(blockTr.meta?.catalog_role);
+  // Reguła 5: tylko element o roli TR blokowego DER wchodzi do toru (odróżnienie
+  // od TR stacji — inaczej scena mogłaby wpiąć źródło przez TR odbiorczy, reg. 4).
+  if (role !== 'TRANSFORMATOR_BLOKOWY_DER') return undefined;
+  const mvFieldRef = getString(gen.meta?.der_mv_field_ref);
+  if (!mvFieldRef) return undefined;
+  const producerBus = (snapshot.buses ?? []).find((b) => b.ref_id === gen.bus_ref || b.id === gen.bus_ref);
+  if (!producerBus) return undefined;
+
+  // Kabel SN: gałąź typu `cable` wychodząca ze strony SN TR blokowego
+  // (`from_bus_ref === blockTr.hv_bus_ref` = szyna SN TR blokowego). Opcjonalny —
+  // brak realnego kabla ⇒ ownerRef syntetyczny w kompozycji (odcinek rysunkowy).
+  const cable = (snapshot.branches ?? []).find(
+    (b) => b.type === 'cable' && b.from_bus_ref === blockTr.hv_bus_ref,
+  );
+
+  const lvVariant = getString(producerBus.meta?.lv_switchgear_variant);
+  const unitCount = (typeof gen.n_parallel === 'number' && gen.n_parallel > 1)
+    ? gen.n_parallel
+    : (typeof gen.quantity === 'number' && gen.quantity > 1 ? gen.quantity : undefined);
+
+  return {
+    mvFieldRef,
+    blockTransformer: {
+      ref: blockTr.ref_id,
+      role,
+      primaryVoltageKv: typeof blockTr.uhv_kv === 'number' ? blockTr.uhv_kv : undefined,
+      secondaryVoltageKv: typeof blockTr.ulv_kv === 'number' ? blockTr.ulv_kv : undefined,
+    },
+    producerLvBus: {
+      ref: producerBus.ref_id,
+      voltageKv: typeof producerBus.voltage_kv === 'number' ? producerBus.voltage_kv : undefined,
+      lvSwitchgearVariant: lvVariant || undefined,
+    },
+    cableRef: cable?.ref_id,
+    unitCount,
+  };
 }
 
 /**

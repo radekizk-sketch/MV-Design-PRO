@@ -210,12 +210,22 @@ export const ReadinessLivePanel: React.FC<ReadinessLivePanelProps> = ({
       INFO: 2,
     };
 
+    // V12K-206 (karta F-K6, znalezisko Z8): przy równym poziomie kolejność napraw
+    // wyznacza KANONICZNY PRIORYTET z rejestru kodów gotowości (1 = najpilniejsze),
+    // a nie alfabet kodu — alfabet nie ma nic wspólnego z pilnością naprawy. Zgłoszenie
+    // bez odwzorowania na kanon nie dostaje priorytetu domyślnego (nie znamy jego
+    // pilności), więc idzie na koniec grupy; kod ASC zostaje jako ostatnie kryterium,
+    // żeby lista pozostała deterministyczna.
+    const BEZ_PRIORYTETU = Number.MAX_SAFE_INTEGER;
     const result: GroupedIssues[] = [];
     for (const group of groupOrder) {
       const groupIssues = groupMap.get(group)!;
       groupIssues.sort((a, b) => {
         const sevDiff = severityOrder[a.severity] - severityOrder[b.severity];
         if (sevDiff !== 0) return sevDiff;
+        const prioDiff =
+          (a.canonical_priority ?? BEZ_PRIORYTETU) - (b.canonical_priority ?? BEZ_PRIORYTETU);
+        if (prioDiff !== 0) return prioDiff;
         return a.code.localeCompare(b.code);
       });
 

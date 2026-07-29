@@ -24,6 +24,7 @@ from importlib.util import find_spec
 from io import BytesIO
 
 from analysis.coverage_score.models import CoverageScoreView
+from analysis.koperta_kontekstu import pola_koperty
 from analysis.lf_sensitivity.models import (
     LFSensitivityDriver,
     LFSensitivityEntry,
@@ -69,6 +70,10 @@ class ReportContext:
     run_timestamp: datetime | None
     snapshot_id: str | None
     trace_id: str | None
+    #: Identyfikator PRZEBIEGU (V12K-269) — osobno od `trace_id`, ktory
+    #: identyfikuje ARTEFAKT dowodowy. Raport pokazuje oba, bo odpowiadaja na
+    #: dwa rozne pytania: „ktory bieg" i „ktory dowod".
+    run_id: str | None = None
 
 
 def export_p24_plus_report_pdf(
@@ -185,6 +190,7 @@ def export_p24_plus_report_pdf(
     draw_text(f"Case: {context.case_name or '—'}")
     draw_text(f"Run timestamp: {_format_timestamp(context.run_timestamp)}")
     draw_text(f"Snapshot ID: {context.snapshot_id or '—'}")
+    draw_text(f"Run ID: {context.run_id or '—'}")
     draw_text(f"Trace ID: {context.trace_id or '—'}")
     draw_text("Zakres: P11–P33, P24+")
     y -= section_spacing
@@ -219,12 +225,7 @@ def export_p24_plus_report_pdf(
         draw_text("Top 5 najbardziej krytycznych BUS:", bold=True)
         for rank, row in enumerate(_top_critical_buses(voltage_profile.rows), start=1):
             draw_wrapped(
-                "Rank {rank}: BUS {bus} | Δ%={delta} | Status={status}".format(
-                    rank=rank,
-                    bus=row.bus_id,
-                    delta=_format_percent(row.delta_pct),
-                    status=row.status.value,
-                )
+                f"Rank {rank}: BUS {row.bus_id} | Δ%={_format_percent(row.delta_pct)} | Status={row.status.value}"
             )
         draw_text("Tabela (BUS, Unom, U, Δ%, Status):", bold=True)
         for row in voltage_profile.rows:
@@ -397,19 +398,14 @@ def _resolve_context(
         normative_report.context if normative_report else None,
     ):
         if ctx is not None:
-            return ReportContext(
-                project_name=getattr(ctx, "project_name", None),
-                case_name=getattr(ctx, "case_name", None),
-                run_timestamp=getattr(ctx, "run_timestamp", None),
-                snapshot_id=getattr(ctx, "snapshot_id", None),
-                trace_id=getattr(ctx, "trace_id", None),
-            )
+            return ReportContext(**pola_koperty(ctx))
     return ReportContext(
         project_name=None,
         case_name=None,
         run_timestamp=None,
         snapshot_id=None,
         trace_id=None,
+        run_id=None,
     )
 
 
@@ -510,22 +506,14 @@ def _build_summary_lines(
     else:
         summary = voltage_profile.summary
         lines.append(
-            "P21: FAIL={fail}, WARNING={warn}, NOT COMPUTED={nc}".format(
-                fail=summary.fail_count,
-                warn=summary.warning_count,
-                nc=summary.not_computed_count,
-            )
+            f"P21: FAIL={summary.fail_count}, WARNING={summary.warning_count}, NOT COMPUTED={summary.not_computed_count}"
         )
     if protection_insight is None:
         lines.append("P22a: brak analizy zabezpieczeń.")
     else:
         summary = protection_insight.summary
         lines.append(
-            "P22a: FAIL={fail}, WARNING={warn}, NOT_EVALUATED={ne}".format(
-                fail=summary.count_fail,
-                warn=summary.count_warning,
-                ne=summary.count_not_evaluated,
-            )
+            f"P22a: FAIL={summary.count_fail}, WARNING={summary.count_warning}, NOT_EVALUATED={summary.count_not_evaluated}"
         )
     if protection_curves_it is None:
         lines.append("P22: brak krzywych I–t.")
@@ -538,21 +526,13 @@ def _build_summary_lines(
         lines.append("P25: brak analizy wrażliwości.")
     else:
         lines.append(
-            "P25: entries={entries}, top_drivers={drivers}, not_computed={nc}".format(
-                entries=len(sensitivity.entries),
-                drivers=len(sensitivity.top_drivers),
-                nc=sensitivity.summary.not_computed_count,
-            )
+            f"P25: entries={len(sensitivity.entries)}, top_drivers={len(sensitivity.top_drivers)}, not_computed={sensitivity.summary.not_computed_count}"
         )
     if lf_sensitivity is None:
         lines.append("P33: brak wrażliwości napięć.")
     else:
         lines.append(
-            "P33: entries={entries}, top_drivers={drivers}, not_computed={nc}".format(
-                entries=len(lf_sensitivity.entries),
-                drivers=len(lf_sensitivity.top_drivers),
-                nc=lf_sensitivity.summary.not_computed_count,
-            )
+            f"P33: entries={len(lf_sensitivity.entries)}, top_drivers={len(lf_sensitivity.top_drivers)}, not_computed={lf_sensitivity.summary.not_computed_count}"
         )
     if recommendations is None:
         lines.append("P26: brak rekomendacji.")

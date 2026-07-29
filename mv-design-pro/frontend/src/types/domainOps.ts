@@ -17,37 +17,14 @@ export interface DomainOpEnvelope {
 }
 
 // --- Canonical operation names ---
-export type CanonicalOpName =
-  | 'add_grid_source_sn'
-  | 'add_sn_bay'
-  | 'continue_trunk_segment_sn'
-  | 'insert_station_on_segment_sn'
-  | 'append_station_on_endpoint'
-  | 'insert_branch_pole_on_segment_sn'
-  | 'insert_zksn_on_segment_sn'
-  | 'start_branch_segment_sn'
-  | 'insert_section_switch_sn'
-  | 'connect_secondary_ring_sn'
-  | 'set_normal_open_point'
-  | 'add_transformer_sn_nn'
-  | 'assign_catalog_to_element'
-  | 'update_element_parameters'
-  // Operacje nN / źródła
-  | 'add_nn_outgoing_field'
-  | 'add_converter_source'
-  | 'add_genset_nn'
-  | 'add_ups_nn'
-  | 'add_nn_load'
-  | 'add_ct'
-  | 'add_vt'
-  | 'add_relay'
-  // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
-  | 'add_gpz_section'
-  | 'update_gpz_section'
-  | 'delete_gpz_section'
-  | 'delete_element'
-  | 'refresh_snapshot';
-
+//
+// JEDNO źródło prawdy: tablica poniżej. Typ `CanonicalOpName` jest z niej WYPROWADZONY.
+// Wcześniej typ (unia) i tablica runtime były zapisane osobno, a `satisfies readonly
+// CanonicalOpName[]` pilnowało tylko JEDNEGO kierunku (tablica ⊆ unia). Nazwa obecna w unii,
+// ale pominięta w tablicy, przechodziła kontrolę typów i kompilację, a w runtime
+// `assertCanonicalOpName` odrzucał ją wyjątkiem — kontrolka w UI była martwa mimo poprawnego
+// handlera w backendzie (tak zginęły `add_shunt_compensator_sn` i `add_surge_arrester_sn`).
+// Wyprowadzenie typu z tablicy usuwa tę klasę błędu: rozjazd jest niewyrażalny.
 export const CANONICAL_OPERATION_NAMES = [
   'add_grid_source_sn',
   'add_sn_bay',
@@ -63,20 +40,28 @@ export const CANONICAL_OPERATION_NAMES = [
   'add_transformer_sn_nn',
   'assign_catalog_to_element',
   'update_element_parameters',
+  // Operacje nN / źródła
   'add_nn_outgoing_field',
   'add_converter_source',
   'add_genset_nn',
   'add_ups_nn',
+  'add_shunt_compensator_sn',
+  'add_surge_arrester_sn',
   'add_nn_load',
   'add_ct',
   'add_vt',
   'add_relay',
+  // Warunki przyłączenia OSD (nagłówek modelu, krok E1 flow projektanta)
+  'set_connection_conditions',
+  // Phase 0B-3: CRUD GPZ sekcji (StationCard editor)
   'add_gpz_section',
   'update_gpz_section',
   'delete_gpz_section',
   'delete_element',
   'refresh_snapshot',
-] as const satisfies readonly CanonicalOpName[];
+] as const;
+
+export type CanonicalOpName = (typeof CANONICAL_OPERATION_NAMES)[number];
 
 const CANONICAL_OPERATION_SET = new Set<string>(CANONICAL_OPERATION_NAMES);
 
@@ -402,6 +387,87 @@ export interface SourceNN {
 
 export type SourcePlacement = 'NEW_FIELD' | 'EXISTING_FIELD';
 
+// --- DER-SN topology contract (W2b-DANE, POLECENIE_DER_SN_TOPOLOGIA_2026-07) ---
+// Lustro kontraktu backendu (DerTopologyPayload). Kompletny tor DER po stronie SN:
+// szyna nN producenta → TR blokowy (osobny element) → kabel SN → pole źródłowe SN.
+export type DerConnectionLevel = 'nn' | 'sn';
+export type LvSwitchgearVariant =
+  | 'none'
+  | 'single-bus'
+  | 'multi-feeder'
+  | 'combiner'
+  | 'integrated-skid';
+export type DerMvSwitchingDevice = 'CB' | 'LBS';
+
+// D1 wymaganie 9: jawny „sposób przyłączenia" DER (kanon RECENZJA_DER_SN_DOBORY_2026-07).
+// Mapowany JAWNIE na connection_level/has_block_transformer/has_manufacturer_lv_switchgear;
+// walidacja spójności zapada w backendzie (der_sn_validation).
+export type DerConnectionMethod =
+  | 'der_za_tr_stacji'
+  | 'der_z_tr_blokowym'
+  | 'der_bezposrednio_sn'
+  | 'der_przez_rozdzielnie_producenta';
+
+export interface DerBlockTransformerSpec {
+  rated_power_mva: number | null;
+  primary_voltage_kv: number | null;
+  secondary_voltage_kv: number | null;
+  uk_percent: number | null;
+  vector_group: string | null;
+  /** @deprecated Pole kompatybilności; kanonicznie używaj catalog_binding. */
+  catalog_ref?: string | null;
+  catalog_binding: CatalogBindingPayload | null;
+  // D1 wymaganie 5: dopuszczalne obciążenie (przeciążalność) TR [pu]; brak → backend 1,0.
+  loadability_pu?: number | null;
+}
+
+export interface DerMvFieldConfigurationSpec {
+  switching_device: DerMvSwitchingDevice;
+  ct: boolean;
+  vt: boolean;
+  earthing_switch: boolean;
+  surge_arrester: boolean;
+  protection_relay: boolean;
+  cable_head: boolean;
+  field_name: string | null;
+  bay_template_ref: string | null;
+  apparatus_catalog_binding: CatalogBindingPayload | null;
+  cable_catalog_ref: string | null;
+  cable_catalog_binding: CatalogBindingPayload | null;
+  cable_length_km: number | null;
+  /**
+   * V12K-207 (karta F-K7): warunki UŁOŻENIA kabla przyjęte w doborze obciążalności —
+   * ADDYTYWNE (brak/null → backend przyjmuje warunki katalogowe, czyli zachowanie
+   * dotychczasowe co do bitu). Nazwa zestawu jest WALIDOWANA przy wejściu do modelu.
+   */
+  cable_laying_conditions?: DerCableLayingConditionsPayload | null;
+}
+
+/** Opis warunków ułożenia kabla: nazwa zestawu albo współczynniki własne z opisem. */
+export interface DerCableLayingConditionsPayload {
+  set_name: string;
+  f_grunt?: number;
+  f_wiazka?: number;
+  f_grupa?: number;
+  opis_pl?: string;
+}
+
+export interface DerTopologyPayload {
+  connection_level: DerConnectionLevel;
+  inverter_output_voltage_kv: number | null;
+  has_manufacturer_lv_switchgear: boolean;
+  lv_switchgear_variant: LvSwitchgearVariant;
+  has_block_transformer: boolean;
+  block_transformer: DerBlockTransformerSpec | null;
+  has_dedicated_mv_field: boolean;
+  mv_field_configuration: DerMvFieldConfigurationSpec | null;
+  mv_bus_ref: string | null;
+  // D1 wymaganie 9: jawny „sposób przyłączenia" (ADDYTYWNY — brak → dotychczasowe zachowanie).
+  connection_method?: DerConnectionMethod | null;
+  // D1 wymaganie 5: współczynnik jednoczesności źródeł na wspólnym torze [pu]; brak → backend 1,0.
+  simultaneity_factor?: number | null;
+}
+
 export interface AddConverterSourcePayload {
   source_technology: ConverterSourceTechnology;
   connection_variant: ConverterConnectionVariant;
@@ -426,6 +492,8 @@ export interface AddConverterSourcePayload {
   blocking_transformer_ref: string | null;
   catalog_binding: CatalogBindingPayload | null;
   materialized_params: Record<string, unknown> | null;
+  // W2b-DANE: kompletny tor DER-SN (ADDYTYWNY — brak = dotychczasowe zachowanie).
+  der_topology?: DerTopologyPayload | null;
 }
 
 export interface AddGensetNNPayload {
@@ -483,6 +551,10 @@ export interface AddSnBayPayload {
   apparatus_kind?: 'BREAKER' | 'DISCONNECTOR' | 'LOAD_SWITCH' | 'MEASUREMENT' | null;
   gpz_section_id?: string | null;
   catalog_binding?: CatalogBindingPayload | null;
+  // V12K-058 (G-POLE-R): powiązanie z szablonem pola producenta (Reference Engine).
+  switchgear_family_ref?: string | null;
+  bay_template_ref?: string | null;
+  manufacturer_ref?: string | null;
 }
 
 export interface ContinueTrunkSegmentSNPayload {

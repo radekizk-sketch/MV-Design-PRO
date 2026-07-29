@@ -230,10 +230,12 @@ class TestAddGridSourceSNDuplicate:
         assert not result2.get("error"), result2.get("error")
         snapshot2 = result2["snapshot"]
         assert _count(snapshot2, "sources") == 2
-        assert len([s for s in snapshot2.get("substations", []) if s.get("station_type") == "gpz"]) == 2
+        assert (
+            len([s for s in snapshot2.get("substations", []) if s.get("station_type") == "gpz"])
+            == 2
+        )
         source_ids = {
-            (source.get("meta") or {}).get("source_id")
-            for source in snapshot2.get("sources", [])
+            (source.get("meta") or {}).get("source_id") for source in snapshot2.get("sources", [])
         }
         assert source_ids == {"gpz-a", "gpz-b"}
 
@@ -528,9 +530,49 @@ class TestInsertStationCreatesStructure:
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         inserted_station = next(
-            sub for sub in result["snapshot"].get("substations", []) if sub.get("ref_id", "").startswith("stn/")
+            sub
+            for sub in result["snapshot"].get("substations", [])
+            if sub.get("ref_id", "").startswith("stn/")
         )
         assert inserted_station["name"] == "Stacja S17 K PV+cos phi reg"
+
+    def test_insert_station_nn_earthing_feeds_grounding_consumer(self):
+        """G-STK-1: nn_earthing → GroundingConfig na transformatorze → konsument has_grounding.
+
+        Dowód „do ostatniego klika": uziemienie punktu neutralnego skonfigurowane w
+        operacji spływa do transformatora, waliduje się przez `EnergyNetworkModel`
+        (Pydantic `GroundingConfig`) i jest widoczne dla bramki eligibility
+        (`any(trafo.lv_neutral is not None ...)`) — zero wyspy.
+        """
+        _, snapshot = _build_gpz_plus_segments(1)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        result = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "nn_earthing": {"lv_system": "TN-C-S", "neutral_point": "directly_grounded"},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        # Waliduje się przez model (GroundingConfig) i konsument widzi uziemienie.
+        enm = EnergyNetworkModel.model_validate(result["snapshot"])
+        has_grounding = any(
+            trafo.lv_neutral is not None or trafo.hv_neutral is not None
+            for trafo in enm.transformers
+        )
+        assert has_grounding, "Uziemienie neutralne niewidoczne dla konsumenta (wyspa)"
+        grounded = next(t for t in enm.transformers if t.lv_neutral is not None)
+        assert grounded.lv_neutral.type == "directly_grounded"
 
 
 class TestNnFieldAdapters:
@@ -567,6 +609,255 @@ class TestNnFieldAdapters:
         assert field_specs_after[-1]["field_ref"] == result["changes"]["created_element_ids"][0]
         assert field_specs_after[-1]["bay_role"] == "OUT"
         assert field_specs_after[-1]["meta"]["apparatus_kind"] == "BREAKER"
+
+    def test_add_sn_bay_binds_producer_bay_template(self):
+        """G-POLE-R (V12K-058): pole SN wiąże szablon pola producenta (parytet ze stacją/GPZ).
+
+        Refy producenta trafiają na field_spec (nie tylko surowy aparat) — koniec
+        równoległej, płytkiej ścieżki.
+        """
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        bus_ref = substation["bus_refs"][0]
+
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": bus_ref,
+                "station_ref": substation["ref_id"],
+                "bay_role": "OUT",
+                "field_name": "Pole odpływowe (szablon producenta)",
+                "switchgear_family_ref": "abb_unigear_zs1",
+                "bay_template_ref": "abb_unigear_zs1__liniowe_odplywowe",
+                "manufacturer_ref": "abb",
+                "protection_ref": "rel_50_51_67",
+            },
+        )
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        substation_after = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])
+        spec = substation_after["meta"]["field_specs"][-1]
+        assert spec["bay_template_ref"] == "abb_unigear_zs1__liniowe_odplywowe"
+        assert spec["switchgear_family_ref"] == "abb_unigear_zs1"
+        assert spec["manufacturer_ref"] == "abb"
+        assert spec["protection_ref"] == "rel_50_51_67"
+
+    def test_add_sn_bay_materializes_primary_devices_from_canonical_template(self):
+        """W1 (RECENZJA_L2 §1/§12.1, V12K-145): pole z KANONICZNEGO szablonu
+        kreatora materializuje aparaty pierwotne (Bay.primary_devices) na
+        field_spec — domyka łańcuch danych „kreator → ENM → adapter SLD → scena".
+        Kolejność = pozycja szablonu (od szyny w dół); zero fabrykacji.
+        """
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "IN",
+                "field_name": "Pole liniowe (szablon kanoniczny)",
+                "bay_template_ref": "bay_template_line_in",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        substation_after = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])
+        spec = substation_after["meta"]["field_specs"][-1]
+        devices = spec.get("primary_devices")
+        assert devices, "field_spec MUSI nieść zmaterializowane aparaty pierwotne"
+        # Kanoniczny tor liniowy §12.2: DS_szyn → CB → CT → DS_lin → ES → głowica.
+        assert [d["kind"] for d in devices] == [
+            "DS",
+            "CB",
+            "CT",
+            "DS",
+            "ES",
+            "CABLE_HEAD",
+        ]
+        assert [d["placement"] for d in devices] == [
+            "UPSTREAM",
+            "MIDSTREAM",
+            "MIDSTREAM",
+            "DOWNSTREAM",
+            "GROUND_BRANCH",
+            "DOWNSTREAM",
+        ]
+        # Uziemnik z jawną typologią (uziemnik pola, nie ekran/neutral).
+        es = next(d for d in devices if d["kind"] == "ES")
+        assert es["earthing_role"] == "field_earth"
+        # Aparaty łączeniowe sterowalne, głowica/CT/ES niesterowalne (bez fabrykacji stanu).
+        by_kind = {d["kind"]: d for d in devices}
+        assert by_kind["CB"]["is_controllable"] is True
+        assert by_kind["CABLE_HEAD"]["is_controllable"] is False
+        assert by_kind["CT"]["is_controllable"] is False
+
+    def test_add_sn_bay_primary_devices_deterministic(self):
+        """Determinizm (kanon §7): ten sam wejściowy ENM + ta sama operacja →
+        identyczne aparaty pierwotne (device_ref z pozycji, zero losowości)."""
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        payload = {
+            "bus_ref": substation["bus_refs"][0],
+            "station_ref": substation["ref_id"],
+            "bay_role": "IN",
+            "field_name": "Pole liniowe det",
+            "bay_template_ref": "bay_template_line_in",
+            "apparatus_kind": "BREAKER",
+        }
+        first = execute_domain_operation(
+            enm_dict=copy.deepcopy(gpz_snapshot), op_name="add_sn_bay", payload=dict(payload)
+        )
+        second = execute_domain_operation(
+            enm_dict=copy.deepcopy(gpz_snapshot), op_name="add_sn_bay", payload=dict(payload)
+        )
+        spec1 = _find_by_ref(first["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        spec2 = _find_by_ref(second["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert spec1["primary_devices"] == spec2["primary_devices"]
+
+    def test_add_sn_bay_apparatus_kind_overrides_main_switch(self):
+        """W1: wybór aparatu głównego z kreatora (apparatus_kind) różnicuje pole
+        wyłącznikowe (CB) od rozłącznikowego (LOAD_SWITCH) — koniec jednego
+        uniwersalnego szablonu. CB szablonu → LOAD_SWITCH; reszta bez zmian."""
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "IN",
+                "field_name": "Pole rozłącznikowe",
+                "bay_template_ref": "bay_template_line_in",
+                "apparatus_kind": "LOAD_SWITCH",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        kinds = [d["kind"] for d in spec["primary_devices"]]
+        assert "LOAD_SWITCH" in kinds
+        assert "CB" not in kinds
+        # Uziemnik/CT/głowica niezmienione (override dotyczy TYLKO aparatu głównego).
+        assert kinds == ["DS", "LOAD_SWITCH", "CT", "DS", "ES", "CABLE_HEAD"]
+
+    def test_add_sn_bay_no_template_no_primary_devices(self):
+        """Wsteczna zgodność: pole bez kanonicznego szablonu NIE zyskuje
+        primary_devices (ścieżka konwencji §12.4 na SLD, zero regresu)."""
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "OUT",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert "primary_devices" not in spec
+
+    def test_add_sn_bay_without_producer_refs_stays_backward_compatible(self):
+        """Bez refów producenta field_spec nie zyskuje kluczy producenckich (determinizm).
+
+        Rola pomiarowa nie ma wymaganych funkcji zabezpieczeniowych → brak protection_codes.
+        """
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "MEASUREMENT",
+                "apparatus_kind": "MEASUREMENT",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert "bay_template_ref" not in spec
+        assert "switchgear_family_ref" not in spec
+        assert "protection_codes" not in spec
+
+    def test_add_sn_bay_tr_materializes_protection_codes(self):
+        """Audyt V12K-059 (B): pole transformatorowe materializuje wymagane funkcje
+        zabezpieczeniowe (Bay.protection_codes) z kanonu — domyka ogniwo szablon/rola →
+        koordynacja/LoM/glify SLD (G-POLE-R związał tylko refy danych).
+        """
+        from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
+
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "TR",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert spec["protection_codes"] == list(TRANSFORMER_BAY_PROTECTION_CODES)
+
+    def test_add_sn_bay_feeder_role_materializes_canonical_protection_codes(self):
+        """Rola odpływowa materializuje kanoniczny zestaw feeder (PTPiREE/IEC 60255):
+        nadprądowe 51/50, ziemnozwarciowe 51N, kierunkowe ziemnozwarciowe 67N.
+        """
+        from network_model.catalog.bay_templates import BAY_PROTECTION_CODES_BY_ROLE
+
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "OUT",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert spec["protection_codes"] == BAY_PROTECTION_CODES_BY_ROLE["OUT"]
+
+    def test_add_sn_bay_oze_role_materializes_nc_rfg_interface(self):
+        """Rola źródłowa OZE materializuje interfejs przyłączeniowy NC RfG (67/67N/27/59/81/df/dt)."""
+        from network_model.catalog.bay_templates import OZE_INTERFACE_BAY_PROTECTION_CODES
+
+        gpz_snapshot = _add_grid_source(_empty_enm())["snapshot"]
+        substation = gpz_snapshot["substations"][0]
+        result = execute_domain_operation(
+            enm_dict=gpz_snapshot,
+            op_name="add_sn_bay",
+            payload={
+                "bus_ref": substation["bus_refs"][0],
+                "station_ref": substation["ref_id"],
+                "bay_role": "OZE",
+                "apparatus_kind": "BREAKER",
+            },
+        )
+        spec = _find_by_ref(result["snapshot"], "substations", substation["ref_id"])["meta"][
+            "field_specs"
+        ][-1]
+        assert spec["protection_codes"] == list(OZE_INTERFACE_BAY_PROTECTION_CODES)
 
     def test_add_nn_outgoing_field_uses_station_meta_instead_of_legacy_bays(self):
         _, snapshot = _build_gpz_plus_segments(1)
@@ -879,9 +1170,9 @@ class TestNnFieldAdapters:
         err = result.get("error_code")
         # Auto-resolve dziala gdy NIE jest block_transformer_missing.
         # Mozliwe inne errors (catalog, voltage_mismatch) sa OK.
-        assert err != "generator.block_transformer_missing", (
-            f"V12K-022 auto-resolve nie zadzialal: {err}"
-        )
+        assert (
+            err != "generator.block_transformer_missing"
+        ), f"V12K-022 auto-resolve nie zadzialal: {err}"
 
     def test_v12k_022_block_transformer_ambiguous_with_multiple_trs(self):
         """V12K-022: station with multiple transformers -> ambiguous error."""
@@ -1242,10 +1533,7 @@ class TestPVBESSTransformerGate:
         )
         assert result_station.get("snapshot") is not None, f"Error: {result_station.get('error')}"
         s = result_station["snapshot"]
-        voltage_by_bus = {
-            bus["ref_id"]: bus.get("voltage_kv", 999)
-            for bus in s.get("buses", [])
-        }
+        voltage_by_bus = {bus["ref_id"]: bus.get("voltage_kv", 999) for bus in s.get("buses", [])}
         station = next(
             candidate
             for candidate in s["substations"]
@@ -1255,9 +1543,7 @@ class TestPVBESSTransformerGate:
         assert station.get("transformer_refs"), "Fixture musi mieć transformator stacyjny"
 
         nn_bus_refs = [
-            ref
-            for ref in station.get("bus_refs", [])
-            if voltage_by_bus.get(ref, 999) < 1
+            ref for ref in station.get("bus_refs", []) if voltage_by_bus.get(ref, 999) < 1
         ]
         assert nn_bus_refs, "Fixture musi mieć szynę nN stacji"
 
@@ -1704,6 +1990,114 @@ class TestStationTypeDSectional:
         assert (
             len(bus_refs) >= 2
         ), f"Type D station should have >= 2 section buses, got {len(bus_refs)}: {bus_refs}"
+
+        # G-STK-5: REALNE dwie sekcje szyny SN + sprzęgło (nie „sprzęgło w powietrzu").
+        voltage_by_bus = {b["ref_id"]: b.get("voltage_kv") for b in s.get("buses", [])}
+        sn_sections = [ref for ref in bus_refs if voltage_by_bus.get(ref) == 15.0]  # obie sekcje SN
+        assert len(sn_sections) == 2, f"Sekcyjna musi mieć 2 sekcje szyny SN, jest {sn_sections}"
+        # Sprzęgło (bus_coupler, zamknięte) łączy obie sekcje SN.
+        couplers = [
+            br
+            for br in s.get("branches", [])
+            if br.get("type") == "bus_coupler"
+            and {br.get("from_bus_ref"), br.get("to_bus_ref")} == set(sn_sections)
+        ]
+        assert len(couplers) == 1, "Brak sprzęgła między sekcjami SN"
+        assert couplers[0]["status"] == "closed", "Sprzęgło normalnie zamknięte (ciągłość)"
+        # Prawy odcinek magistrali wychodzi z sekcji B (nie z sekcji A).
+        coupler = couplers[0]
+        section_b = coupler["to_bus_ref"]
+        right_segments = [
+            br
+            for br in s.get("branches", [])
+            if br.get("from_bus_ref") == section_b and br.get("type") in ("cable", "line_overhead")
+        ]
+        assert right_segments, "Prawy odcinek musi wychodzić z sekcji B"
+        # Pole SPRZEGLO powiązane z realnym sprzęgłem (nie zdublowany aparat).
+        specs = station.get("meta", {}).get("field_specs", [])
+        coupler_spec = next(
+            (sp for sp in specs if (sp.get("meta") or {}).get("field_role") == "SPRZEGLO"), None
+        )
+        assert coupler_spec is not None
+        assert coupler["ref_id"] in coupler_spec.get("equipment_refs", [])
+
+
+class TestInsertStationFieldTemplateBinding:
+    """PS-1/PS-2: insert propaguje szablon producenta + materializuje protection_codes."""
+
+    def test_insert_fields_bind_template_and_protection_codes(self):
+        from network_model.catalog.bay_templates import (
+            BAY_PROTECTION_CODES_BY_ROLE,
+            TRANSFORMER_BAY_PROTECTION_CODES,
+        )
+
+        _, snapshot = _build_gpz_plus_segments(1)
+        first_seg = _get_first_segment_ref(snapshot)
+
+        result = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "station_type": "sectional",
+                "insert_at": {"value": 0.5},
+                "station": {
+                    "sn_voltage_kv": 15.0,
+                    "nn_voltage_kv": 0.4,
+                    "switchgear": {
+                        "manufacturer_ref": "abb",
+                        "switchgear_family_ref": "abb_unigear_zs1",
+                    },
+                },
+                # Pola z wyborem szablonu producenta (jak z kreatora ui2).
+                "sn_fields": [
+                    {
+                        "field_role": "LINIA_IN",
+                        "manufacturer_ref": "abb",
+                        "switchgear_family_ref": "abb_unigear_zs1",
+                        "bay_template_ref": "abb_unigear_zs1__liniowe_doplywowe",
+                    },
+                    {
+                        "field_role": "LINIA_OUT",
+                        "manufacturer_ref": "abb",
+                        "bay_template_ref": "abb_unigear_zs1__liniowe_odplywowe",
+                    },
+                    {
+                        "field_role": "SPRZEGLO",
+                        "manufacturer_ref": "abb",
+                        "bay_template_ref": "abb_unigear_zs1__sprzeglowe",
+                    },
+                    {"field_role": "TRANSFORMATOROWE", "manufacturer_ref": "abb"},
+                ],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
+        station = next(
+            sub
+            for sub in result["snapshot"]["substations"]
+            if sub.get("ref_id", "").startswith("stn/")
+        )
+        specs = {
+            (sp.get("meta") or {}).get("field_role"): sp for sp in station["meta"]["field_specs"]
+        }
+
+        # PS-2: pole SPRZĘGŁO materializuje kody zabezpieczeń COUPLER (51/50).
+        coupler = specs["SPRZEGLO"]
+        assert coupler["protection_codes"] == BAY_PROTECTION_CODES_BY_ROLE["COUPLER"]
+        # PS-1: szablon producenta + refy przeniesione na field_spec (nie zgubione).
+        assert coupler["bay_template_ref"] == "abb_unigear_zs1__sprzeglowe"
+        assert coupler["manufacturer_ref"] == "abb"
+
+        # TR: kody transformatorowe (87T/51/50/...) z kanonu.
+        tr = specs["TRANSFORMATOROWE"]
+        assert tr["protection_codes"] == list(TRANSFORMER_BAY_PROTECTION_CODES)
+
+        # IN: kody liniowe (51/50/51N).
+        assert specs["LINIA_IN"]["protection_codes"] == BAY_PROTECTION_CODES_BY_ROLE["IN"]
 
 
 # ===========================================================================

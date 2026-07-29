@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -92,7 +93,10 @@ def test_no_todo_fixme_in_catalog_first_critical_paths() -> None:
                 path.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1
             ):
                 stripped = line.strip()
-                if "TODO" in stripped or "FIXME" in stripped:
+                # Granice słów, nie substring — naiwne `"TODO" in` łapało
+                # polskie „meTODOlogia" (fałszywy trafień, lasso.test.ts) i
+                # trzymało ten test permanentnie czerwonym (2026-07-17).
+                if re.search(r"\b(?:TODO|FIXME)\b", stripped):
                     violations.append(f"{path.relative_to(REPO_ROOT)}:{line_no}: {stripped}")
     assert not violations, "Wykryto TODO/FIXME w krytycznych ścieżkach:\n" + "\n".join(
         violations[:20]
@@ -102,9 +106,25 @@ def test_no_todo_fixme_in_catalog_first_critical_paths() -> None:
 def test_catalog_optional_language_is_absent_in_active_modals() -> None:
     targets = [
         REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "GridSourceModal.tsx",
-        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "TrunkContinueModal.tsx",
+        # Ciąg SN: kanoniczny kreator ui2 (retirowany TrunkContinueModal/ContinueTrunkForm).
+        REPO_ROOT
+        / "frontend"
+        / "src"
+        / "ui2"
+        / "kreatory"
+        / "magistrala"
+        / "KreatorMagistralaSn.tsx",
+        REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory" / "magistrala" / "strings.ts",
         REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "SectionSwitchModal.tsx",
-        REPO_ROOT / "frontend" / "src" / "ui" / "topology" / "modals" / "RingCloseModal.tsx",
+        # Pierścień SN: kanoniczny kreator ui2 (retirowany RingCloseModal/ConnectRingForm, G-RING).
+        REPO_ROOT
+        / "frontend"
+        / "src"
+        / "ui2"
+        / "kreatory"
+        / "pierscien"
+        / "KreatorPierscienia.tsx",
+        REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory" / "pierscien" / "strings.ts",
     ]
     violations: list[str] = []
     forbidden_fragments = ['placeholder="opcjonalnie"', "Brak katalogu nie blokuje"]

@@ -19,8 +19,6 @@ CANONICAL ALIGNMENT:
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 
 from api.dependencies import get_uow_factory
@@ -34,6 +32,7 @@ from domain.protection_comparison import (
     ProtectionRunNotFoundError,
 )
 from fastapi import APIRouter, Depends, HTTPException, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/protection-comparisons", tags=["protection-comparison"])

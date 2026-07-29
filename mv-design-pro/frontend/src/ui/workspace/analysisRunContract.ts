@@ -28,6 +28,16 @@ export interface AnalysisCaseContextContract {
   assumptions: Record<string, string | null>;
   lineage: Record<string, string | null>;
   reproducibility: AnalysisCaseContextReproducibility | null;
+  /**
+   * LICZBOWA rewizja modelu, na której policzono bieg (V12K-264).
+   *
+   * Bez niej wspólny `FreshnessBadge` nie miał czego porównać z `header.revision`
+   * bieżącego modelu i był POMIJANY na każdym ekranie analizy — kontrakt niósł
+   * tylko `snapshotRef` (hash) i status enum, a mapowanie enum→liczba byłoby
+   * zgadywaniem. `null` = bieg bez rewizji w migawce (uczciwy brak: konsument
+   * pomija znacznik, zamiast dostać zmyśloną liczbę).
+   */
+  rewizjaModelu: number | null;
 }
 
 export interface AnalysisRunTraceSummary {
@@ -321,7 +331,18 @@ function normalizeAnalysisCaseContext(value: unknown): AnalysisCaseContextContra
     assumptions: normalizeRecord(raw.assumptions),
     lineage: normalizeRecord(raw.lineage),
     reproducibility: normalizeReproducibility(raw.reproducibility),
+    rewizjaModelu: normalizeLiczbaCalkowita(raw.rewizja_modelu),
   };
+}
+
+/**
+ * Liczba całkowita albo `null` — bez rzutowania i bez konwersji z tekstu.
+ *
+ * Rewizja modelu jest podstawą oceny świeżości wyniku; napis „7" przepuszczony
+ * jako liczba dawałby porównanie, które czasem działa, a czasem cicho zawodzi.
+ */
+function normalizeLiczbaCalkowita(value: unknown): number | null {
+  return typeof value === 'number' && Number.isInteger(value) ? value : null;
 }
 
 function normalizeExportArtifact(value: unknown): ExportArtifact | null {

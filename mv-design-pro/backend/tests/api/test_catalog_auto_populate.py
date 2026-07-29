@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 
 def _make_client() -> TestClient:
     from api.main import app
+
     return TestClient(app)
 
 

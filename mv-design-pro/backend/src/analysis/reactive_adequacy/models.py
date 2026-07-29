@@ -32,6 +32,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from analysis.odcisk_kontekstu import odcisk_kontekstu
+
 # Tolerancja nasycenia: rezerwa <= tej wartosci [Mvar] => zrodlo przy granicy Q.
 # Udokumentowana, NIE dostrajana pod test — domyslna liczbowa "blisko zera".
 DEFAULT_SATURATION_TOL_MVAR = 1.0e-3
@@ -50,17 +52,19 @@ VERDICT_NO_DATA = "dane niekompletne"
 class ReactiveAdequacyContext:
     project_name: str | None
     case_name: str | None
+    case_id: str | None
     run_timestamp: datetime | None
-    snapshot_id: str | None
-    trace_id: str | None
+    snapshot_hash: str | None
+    run_id: str | None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "project_name": self.project_name,
             "case_name": self.case_name,
+            "case_id": self.case_id,
             "run_timestamp": self.run_timestamp.isoformat() if self.run_timestamp else None,
-            "snapshot_id": self.snapshot_id,
-            "trace_id": self.trace_id,
+            "snapshot_hash": self.snapshot_hash,
+            "run_id": self.run_id,
         }
 
 
@@ -193,12 +197,26 @@ class VoltageViolationEntry:
 
 
 @dataclass(frozen=True)
+class SourceQContribution:
+    """Wkład pojedynczego zrodla do sumy netto Q (rozbicie ``net_source_q_mvar``).
+
+    ``q_mvar`` to ``Q_actual`` zrodla z wyniku power-flow (znak: >0 generacja,
+    <0 absorpcja). Suma ``q_mvar`` po liscie = ``net_source_q_mvar``.
+    """
+
+    ref: str
+    q_mvar: float
+
+
+@dataclass(frozen=True)
 class ReactiveBalance:
     q_generated_mvar: float | None  # suma Q wstrzykiwanej przez zrodla (>0)
     q_absorbed_by_sources_mvar: float | None  # suma |Q| absorbowanej przez zrodla
     q_load_mvar: float | None  # suma Q pobranej przez odbiory
     net_source_q_mvar: float | None  # suma Q_actual wszystkich zrodel (netto)
     white_box: tuple[WhiteBoxStep, ...]
+    # ADDYTYWNIE: rozbicie sumy netto na wklady per zrodlo (ref, Q_actual).
+    source_q_actuals: tuple[SourceQContribution, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -257,7 +275,7 @@ def compute_reactive_adequacy_id(
     i etykiet werdyktu (bez tekstow ``why_pl`` / White Box — te sa pochodne).
     """
     payload = {
-        "context": context.to_dict() if context else None,
+        "context": odcisk_kontekstu(context),
         "saturation_tol_mvar": float(saturation_tol_mvar),
         "default_u_min_pu": float(default_u_min_pu),
         "default_u_max_pu": float(default_u_max_pu),

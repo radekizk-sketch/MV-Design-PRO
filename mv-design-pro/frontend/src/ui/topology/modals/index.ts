@@ -11,8 +11,6 @@ export { ExpertOverrides } from './ExpertOverrides';
 // Modale źródeł nN (FAZA 2/6 — UI 10/10 ABSOLUTE++)
 export { PVInverterModal } from './PVInverterModal';
 export { BESSInverterModal } from './BESSInverterModal';
-export { GensetModal } from './GensetModal';
-export { UPSModal } from './UPSModal';
 
 export type { NodeFormData } from './NodeModal';
 export type { BranchFormData } from './BranchModal';
@@ -27,18 +25,10 @@ export type { OverrideEntry } from './ExpertOverrides';
 // Typy formularzy źródeł nN
 export type { PVInverterFormData } from './PVInverterModal';
 export type { BESSInverterFormData } from './BESSInverterModal';
-export type { GensetFormData } from './GensetModal';
-export type { UPSFormData } from './UPSModal';
 
 // Modale wizarda SN
 export { GridSourceModal } from './GridSourceModal';
-export { TrunkContinueModal } from './TrunkContinueModal';
-export { RingCloseModal } from './RingCloseModal';
 export { SectionSwitchModal } from './SectionSwitchModal';
-export { NOPModal } from './NOPModal';
 
 export type { GridSourceFormData } from './GridSourceModal';
-export type { TrunkContinueFormData, SegmentKind } from './TrunkContinueModal';
-export type { RingCloseFormData, RingSegmentKind } from './RingCloseModal';
 export type { SectionSwitchFormData, SwitchKind, SwitchState } from './SectionSwitchModal';
-export type { NOPFormData, NOPCandidate, NOPType } from './NOPModal';

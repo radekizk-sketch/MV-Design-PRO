@@ -20,8 +20,18 @@ import math
 import uuid
 
 import numpy as np
-from network_model.core.branch import BranchType, LineBranch, TransformerBranch
+from network_model.catalog.types import ConverterKind
+from network_model.core.branch import (
+    BranchType,
+    LineBranch,
+    LineDropCompensation,
+    TapChanger,
+    TransformerBranch,
+)
 from network_model.core.graph import NetworkGraph
+from network_model.core.grid_source import GridShortCircuitSource
+from network_model.core.inverter import InverterSource
+from network_model.core.machine import AsynchronousMachineSource, SynchronousMachineSource
 from network_model.core.node import Node, NodeType
 from network_model.core.switch import Switch, SwitchState, SwitchType
 from network_model.core.ybus import AdmittanceMatrixBuilder
@@ -35,14 +45,62 @@ from .models import (
     Cable,
     EnergyNetworkModel,
     FuseBranch,
+    Generator,
     OverheadLine,
     SwitchBranch,
 )
 
 
-def _ref_to_uuid(ref_id: str) -> str:
-    """Deterministic UUID-like string from ref_id (for mapping stability)."""
+def ref_to_graph_id(ref_id: str) -> str:
+    """Identyfikator elementu w grafie domenowym dla ``ref_id`` modelu ENM.
+
+    Publiczne wejscie do TEGO SAMEGO przelozenia, ktorego uzywa mapowanie modelu
+    na graf. Potrzebne warstwie analiz, ktora wiaze wpisy modelu odwolujace sie do
+    ``ref_id`` (np. ``ProtectionAssignment.breaker_ref``) z elementami grafu — bez
+    tego kazdy konsument powielalby regule identyfikatorow i rozjechalby sie z
+    mapowaniem przy pierwszej jej zmianie.
+    """
     return str(uuid.uuid5(uuid.NAMESPACE_DNS, ref_id))
+
+
+# Alias historyczny uzywany wewnatrz tego modulu (jedna implementacja powyzej).
+_ref_to_uuid = ref_to_graph_id
+
+
+def _map_tap_changer(tap_changer, ref_to_node_id: dict[str, str]) -> TapChanger | None:
+    """Project an ENM TapChanger onto the domain TapChanger (V12K-045).
+
+    Resolves ``controlled_bus_ref`` (a bus ref_id) to the domain node id so the
+    LF OLTC loop can read the controlled bus voltage. Returns None when absent
+    (legacy behaviour preserved).
+    """
+    if tap_changer is None:
+        return None
+    ldc = tap_changer.line_drop_compensation
+    return TapChanger(
+        regulation_type=tap_changer.regulation_type,
+        regulated_winding=tap_changer.regulated_winding,
+        neutral_position=tap_changer.neutral_position,
+        current_position=tap_changer.current_position,
+        min_position=tap_changer.min_position,
+        max_position=tap_changer.max_position,
+        step_percent=tap_changer.step_percent,
+        control_mode=tap_changer.control_mode,
+        voltage_setpoint_kv=tap_changer.voltage_setpoint_kv,
+        deadband_kv=tap_changer.deadband_kv,
+        delay_seconds=tap_changer.delay_seconds,
+        controlled_bus_id=(
+            ref_to_node_id.get(tap_changer.controlled_bus_ref)
+            if tap_changer.controlled_bus_ref is not None
+            else None
+        ),
+        line_drop_compensation=(
+            LineDropCompensation(enabled=ldc.enabled, r_ohm=ldc.r_ohm, x_ohm=ldc.x_ohm)
+            if ldc is not None
+            else None
+        ),
+        catalog_ref=tap_changer.catalog_ref,
+    )
 
 
 def _source_positive_impedance_ohm(source, bus_voltage_kv: float) -> complex | None:
@@ -88,19 +146,30 @@ def _add_series_admittance(
     y_bus[to_idx, to_idx] += y_series_pu
 
 
-def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np.ndarray:
-    """
-    Build the zero-sequence Z-bus from ENM fields without mutating the graph.
+def _assemble_zero_sequence_y0(
+    enm: EnergyNetworkModel, graph: NetworkGraph
+) -> tuple[AdmittanceMatrixBuilder, dict[str, int], int, np.ndarray, list[dict]]:
+    """Składa macierz Y0 (składowej zerowej) z pól ENM + ślad WHITE BOX.
 
-    The returned matrix uses the same merged node order as
-    ``AdmittanceMatrixBuilder(graph)`` so it can be passed directly as
-    ``z0_bus`` to the IEC 60909 single-phase and two-phase-ground solvers.
+    Rozbicie po elementach (linie/kable, źródła, transformatory wg grupy
+    połączeń) — kolejność deterministyczna (sort po ref_id). Transformatory
+    stampowane wg tablicy połączeń sekwencji zerowej (SM-3, V12K-181):
+    grupa wektorowa + uziemienie punktów neutralnych decydują o ciągłości /
+    przerwie / boczniku do ziemi prądu zerowego.
     """
+    from network_model.whitebox.tracer import WhiteBoxTracer
+
+    from .zero_sequence_transformer import (
+        ZeroSeqConnection,
+        build_transformer_zero_seq_model,
+    )
+
     builder = AdmittanceMatrixBuilder(graph)
     builder.build()
     node_index = builder.node_id_to_index
     size = len(set(node_index.values()))
     y0_bus = np.zeros((size, size), dtype=complex)
+    tracer = WhiteBoxTracer()
 
     ref_to_node_id = {bus.ref_id: _ref_to_uuid(bus.ref_id) for bus in enm.buses}
     bus_voltage = {bus.ref_id: bus.voltage_kv for bus in enm.buses}
@@ -128,6 +197,60 @@ def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np
             z_ohm=z0_ohm,
             z_base_ohm=z_base_ohm,
         )
+        tracer.add(
+            key=f"z0_line[{branch.ref_id}]",
+            title=f"Gałąź {branch.name or branch.ref_id}: impedancja zerowa (szeregowa)",
+            formula_latex=r"Z_{0,line} = (r_0 + jx_0)\cdot \ell",
+            inputs={
+                "ref_id": branch.ref_id,
+                "r0_ohm_per_km": branch.r0_ohm_per_km,
+                "x0_ohm_per_km": branch.x0_ohm_per_km,
+                "length_km": branch.length_km,
+            },
+            substitution=f"Z0 = {z0_ohm.real:.6g} + j{z0_ohm.imag:.6g} Ω (szereg {from_id}↔{to_id})",
+            result={"z0_ohm": z0_ohm},
+        )
+
+        # Audyt fizyki fala F (V12K): pojemność doziemna linii/kabla (B0) jako
+        # bocznik do ziemi w modelu π (jak susceptancja zgodna w Y1 — patrz
+        # AdmittanceMatrixBuilder._get_branch_admittances_pu, split /2 na
+        # każdy koniec). Przed tą kartą B0 było CAŁKOWICIE pomijane w sieci
+        # składowej zerowej SC_1F/2F+G — dla sieci o punkcie neutralnym
+        # izolowanym/skompensowanym (Petersen) ta pojemność jest DOMINUJĄCĄ
+        # drogą powrotu prądu doziemnego (fizycznie: prąd pojemnościowy,
+        # IEC 60909-0 / PN-EN 50522), więc jej brak fałszywie eliminował
+        # jedyną realną ścieżkę I0 (macierz osobliwa lub Z0 zaniżone o brakujący
+        # bocznik). ``b0_siemens_per_km`` jest już w S/km (NIE μS/km — w
+        # odróżnieniu od ``b_us_per_km`` zgodnej, patrz nazwa pola i
+        # v126_academic._neutral_earthing: brak przelicznika 1e-6 tamże).
+        # Zero fabrykacji: gdy b0 brak, bocznik pomijany (bez zmiany, jak dla
+        # r0/x0 wyżej) — NIE podstawiamy zera znaczącego fizycznie.
+        if branch.b0_siemens_per_km is not None:
+            y0_shunt_total_s = branch.b0_siemens_per_km * branch.length_km
+            y0_shunt_total_pu = complex(0.0, y0_shunt_total_s * z_base_ohm)
+            y0_shunt_per_end_pu = y0_shunt_total_pu / 2.0
+            y0_bus[from_idx, from_idx] += y0_shunt_per_end_pu
+            y0_bus[to_idx, to_idx] += y0_shunt_per_end_pu
+            tracer.add(
+                key=f"z0_line_shunt[{branch.ref_id}]",
+                title=(
+                    f"Gałąź {branch.name or branch.ref_id}: pojemność doziemna "
+                    "(bocznik B0, model π)"
+                ),
+                formula_latex=r"Y_{0,sh} = j B_0 \cdot \ell;\quad Y_{0,sh,end} = Y_{0,sh}/2",
+                inputs={
+                    "ref_id": branch.ref_id,
+                    "b0_siemens_per_km": branch.b0_siemens_per_km,
+                    "length_km": branch.length_km,
+                    "z_base_ohm": z_base_ohm,
+                },
+                substitution=(
+                    f"B0={branch.b0_siemens_per_km:.6g} S/km · {branch.length_km:.6g} km = "
+                    f"{y0_shunt_total_s:.6g} S; Y0_sh,end(pu) = "
+                    f"j{y0_shunt_per_end_pu.imag:.6g} (na {from_id} i {to_id})"
+                ),
+                result={"y0_shunt_per_end_pu": y0_shunt_per_end_pu},
+            )
 
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_id = ref_to_node_id.get(source.bus_ref)
@@ -145,14 +268,42 @@ def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np
             )
         idx = node_index[bus_id]
         y0_bus[idx, idx] += 1.0 / (z0_ohm / builder.get_zbase_ohm(bus_id))
+        tracer.add(
+            key=f"z0_source[{source.ref_id}]",
+            title=f"Źródło {source.name or source.ref_id}: impedancja zerowa (bocznik do ziemi)",
+            formula_latex=r"Y_{0,src} = 1 / (Z_{0,src}/Z_{base})",
+            inputs={"ref_id": source.ref_id, "z0_ohm": z0_ohm},
+            substitution=f"Z0(src) = {z0_ohm.real:.6g} + j{z0_ohm.imag:.6g} Ω (bocznik {bus_id})",
+            result={"z0_ohm": z0_ohm},
+        )
 
-    # Source impedance mapping creates virtual ground nodes in the positive
-    # graph. They are not physical ENM buses, so ground them in Z0 to avoid an
-    # isolated row without changing the real bus impedances.
-    for node in graph.nodes.values():
-        idx = node_index.get(node.id)
-        if idx is not None and node.name.startswith("GND ("):
-            y0_bus[idx, idx] += complex(1e6, 0.0)
+    # SM-3 (V12K-181): transformatory w sieci składowej zerowej wg grupy połączeń.
+    # Przed tą kartą całkowicie pomijane — grupa wektorowa nie sterowała ścieżką
+    # I0. Stamp: SERIES_THROUGH → gałąź HV↔LV; HV/LV_SHUNT_GROUND → bocznik do
+    # ziemi na danym zacisku; OPEN → brak wkładu (droga zablokowana, np. trójkąt).
+    transformer_trace: list[dict] = []
+    for trafo in sorted(enm.transformers, key=lambda t: t.ref_id):
+        hv_id = ref_to_node_id.get(trafo.hv_bus_ref)
+        lv_id = ref_to_node_id.get(trafo.lv_bus_ref)
+        if hv_id not in node_index or lv_id not in node_index:
+            continue
+        model = build_transformer_zero_seq_model(trafo)
+        transformer_trace.extend(model.trace)
+        if model.z0_pu is None or model.z0_pu == 0:
+            continue
+        y_pu = 1.0 / model.z0_pu
+        if model.connection == ZeroSeqConnection.SERIES_THROUGH:
+            hv_idx = node_index[hv_id]
+            lv_idx = node_index[lv_id]
+            if hv_idx != lv_idx:
+                y0_bus[hv_idx, lv_idx] -= y_pu
+                y0_bus[lv_idx, hv_idx] -= y_pu
+                y0_bus[hv_idx, hv_idx] += y_pu
+                y0_bus[lv_idx, lv_idx] += y_pu
+        elif model.connection == ZeroSeqConnection.HV_SHUNT_GROUND:
+            y0_bus[node_index[hv_id], node_index[hv_id]] += y_pu
+        elif model.connection == ZeroSeqConnection.LV_SHUNT_GROUND:
+            y0_bus[node_index[lv_id], node_index[lv_id]] += y_pu
 
     # Zero-sequence paths can be intentionally blocked by transformer vector
     # groups. Such nodes are uncoupled in Z0 and must not make SN-side 1F/2F+G
@@ -162,10 +313,204 @@ def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np
         if np.allclose(y0_bus[idx, :], 0.0) and np.allclose(y0_bus[:, idx], 0.0):
             y0_bus[idx, idx] += complex(1e6, 0.0)
 
+    return builder, node_index, size, y0_bus, tracer.to_list() + transformer_trace
+
+
+def build_zero_sequence_zbus(enm: EnergyNetworkModel, graph: NetworkGraph) -> np.ndarray:
+    """
+    Build the zero-sequence Z-bus from ENM fields without mutating the graph.
+
+    The returned matrix uses the same merged node order as
+    ``AdmittanceMatrixBuilder(graph)`` so it can be passed directly as
+    ``z0_bus`` to the IEC 60909 single-phase and two-phase-ground solvers.
+
+    SM-3 (V12K-181): transformatory wchodzą do sieci składowej zerowej wg grupy
+    połączeń wektorowych (patrz ``zero_sequence_transformer``). Sieci bez
+    transformatorów z grupą zachowują wynik sprzed karty (TR bez ``vector_group``
+    → połączenie OTWARTE, brak wkładu).
+
+    Audyt fizyki fala F (V12K): rangowanie JAWNE przez SVD (``matrix_rank``)
+    przed inwersją. ``np.linalg.inv`` NIE gwarantuje ``LinAlgError`` dla macierzy
+    rangowo-niedomiarowej (np. sieć izolowana bez żadnej pojemności doziemnej
+    B0 — podsieć „unosi się" bez odniesienia do ziemi): LU z pivotingiem
+    częściowym potrafi „odwrócić" taką macierz, dając ogromne, fizycznie
+    bezsensowne Z0 (rząd 1e15+ Ω) zamiast czytelnego błędu. To byłoby CICHĄ
+    fabrykacją wyniku — zakazaną. Jawne sprawdzenie rangi wyłapuje ten
+    przypadek niezależnie od tego, czy LU akurat zgłosi wyjątek.
+    """
+    _, _, size, y0_bus, _ = _assemble_zero_sequence_y0(enm, graph)
+    if np.linalg.matrix_rank(y0_bus) < size:
+        raise ValueError(
+            "Zero-sequence Y-bus is singular; cannot compute Z0-bus "
+            "(sieć bez drogi powrotu prądu zerowego do ziemi — brak uziemienia "
+            "punktu neutralnego i brak pojemności doziemnej B0 na liniach/kablach; "
+            "dla sieci izolowanej podaj b0_siemens_per_km, by uwzględnić prąd "
+            "pojemnościowy doziemienia)"
+        )
     try:
         return np.linalg.inv(y0_bus)
     except np.linalg.LinAlgError as exc:
         raise ValueError("Zero-sequence Y-bus is singular; cannot compute Z0-bus") from exc
+
+
+def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> list[dict]:
+    """Ślad WHITE BOX budowy sieci składowej zerowej — rozbicie po elementach
+    (linie/kable, źródła, transformatory z decyzją grupy połączeń). ADDYTYWNE."""
+    _, _, _, _, trace = _assemble_zero_sequence_y0(enm, graph)
+    return trace
+
+
+# G-SCM (V12K-054): classification of enm.generators.gen_type onto the IEC 60909
+# short-circuit source model. Full converters (§6.7 bounded current source) →
+# InverterSource; rotating machines → voltage-behind-Z″ (§6.3 synchronous / §6.7
+# asynchronous, incl. DFIG Type 3 crowbar).
+_INVERTER_GEN_TYPES: dict[str, ConverterKind] = {
+    "pv_inverter": ConverterKind.PV,
+    "bess": ConverterKind.BESS,
+    "wind_inverter": ConverterKind.WIND,
+    "fw_pmsg": ConverterKind.WIND,  # full-converter (Type 4) PMSG wind
+}
+# gen_type → wind_type_3 flag (DFIG crowbar relabelling; §6.7 math unchanged).
+_ASYNC_GEN_TYPES: dict[str, bool] = {
+    "fw_dfig": True,  # Type 3 DFIG: crowbar → induction machine
+    "fw_scig": False,  # squirrel-cage induction generator
+}
+
+
+def _gen_quantity(gen: Generator) -> int:
+    """Number of parallel units the generator element represents (≥ 1)."""
+    q = gen.quantity or gen.n_parallel or 1
+    return q if q >= 1 else 1
+
+
+def _gen_rated_apparent_mva(
+    gen: Generator, mp: dict, *, cos_phi_fallback: float = 1.0
+) -> float | None:
+    """Total rated apparent power S_r [MVA] of the installation for SC.
+
+    Prefers the catalog per-unit ``sn_mva`` × parallel count; otherwise falls back
+    to |p_mw|/cosφ (|p_mw| is already the installation total). Returns None when no
+    positive rating can be established (→ the source is skipped, never fabricated).
+    """
+    sn = mp.get("sn_mva")
+    if isinstance(sn, int | float) and sn > 0:
+        # CONVENTION: materialized ``sn_mva`` is PER-UNIT (catalog nameplate) and the
+        # installation total is sn_mva × parallel count — matching how ``p_mw`` is
+        # stored (per-unit power × quantity). A producer that ever stores a TOTAL
+        # ``sn_mva`` would double-count here; keep sn_mva per-unit at the source.
+        return float(sn) * _gen_quantity(gen)
+    p = abs(gen.p_mw)
+    if p <= 0:
+        return None
+    cf = cos_phi_fallback if cos_phi_fallback and cos_phi_fallback > 0 else 1.0
+    return p / cf
+
+
+def _gen_rated_voltage_kv(
+    gen: Generator, mp: dict, bus_voltage_by_ref: dict[str, float]
+) -> float | None:
+    """Rated voltage U_r [kV]: catalog ``un_kv`` if present, else the bus voltage."""
+    un = mp.get("un_kv")
+    if isinstance(un, int | float) and un > 0:
+        return float(un)
+    v = bus_voltage_by_ref.get(gen.bus_ref)
+    return v if v and v > 0 else None
+
+
+def _add_generator_sc_sources(
+    enm: EnergyNetworkModel,
+    graph: NetworkGraph,
+    ref_to_node_id: dict[str, str],
+) -> None:
+    """G-SCM (V12K-054): wire ``enm.generators`` as IEC 60909 short-circuit sources.
+
+    Closes the forward-phantom where DER/machines placed by the designer contributed
+    ZERO fault current: the mapping injected only their P/Q into the load-flow graph
+    and never added an SC source, so ``ShortCircuitIEC60909Solver`` (which reads
+    ``graph.get_inverter_sources()`` and the machine shunts) saw nothing. Each
+    generator becomes the IEC-correct SC source for its ``gen_type``.
+
+    Zero fabrication: a source is built ONLY from a real nameplate (rated power +
+    voltage). The decay/reactance factors (x″d, k_sc, I_LR) use the domain models'
+    documented IEC-typical defaults (``core/machine.py`` / ``core/inverter.py``) —
+    WHITE BOX, the same defaulting pattern as the external-source ``rx`` ratio.
+    Deterministic: iteration is id-sorted and each source id is the generator ref_id.
+    A no-op when there are no generators, so machine-free networks keep a
+    byte-identical SC Y-bus (the ybus machine shunt / inverter superposition are
+    themselves no-ops without sources).
+    """
+    bus_voltage_by_ref = {b.ref_id: b.voltage_kv for b in enm.buses}
+    for gen in sorted(enm.generators, key=lambda g: g.ref_id):
+        gen_type = gen.gen_type
+        if gen_type is None:
+            continue
+        node_id = ref_to_node_id.get(gen.bus_ref)
+        if node_id is None:
+            continue
+        mp = gen.materialized_params or {}
+        un_kv = _gen_rated_voltage_kv(gen, mp, bus_voltage_by_ref)
+        if un_kv is None:
+            continue
+
+        if gen_type in _INVERTER_GEN_TYPES:
+            sr_mva = _gen_rated_apparent_mva(gen, mp)
+            if sr_mva is None:
+                continue
+            in_rated_a = sr_mva * 1.0e6 / (math.sqrt(3.0) * un_kv * 1.0e3)
+            k_sc = mp.get("k_sc")
+            graph.add_inverter_source(
+                InverterSource(
+                    id=gen.ref_id,
+                    name=gen.name,
+                    node_id=node_id,
+                    type_ref=gen.catalog_ref,
+                    converter_kind=_INVERTER_GEN_TYPES[gen_type],
+                    in_rated_a=in_rated_a,
+                    k_sc=float(k_sc) if isinstance(k_sc, int | float) and k_sc > 0 else 1.1,
+                    contributes_negative_sequence=True,
+                    contributes_zero_sequence=False,
+                )
+            )
+        elif gen_type == "synchronous":
+            cos_phi = mp.get("cos_phi") or mp.get("cos_phi_r")
+            cos_phi_r = (
+                float(cos_phi) if isinstance(cos_phi, int | float) and 0 < cos_phi <= 1 else 0.8
+            )
+            sr_mva = _gen_rated_apparent_mva(gen, mp, cos_phi_fallback=cos_phi_r)
+            if sr_mva is None or sr_mva <= 0:
+                continue
+            xd = mp.get("xd_subtransient_pu")
+            sync_kwargs: dict = {
+                "id": gen.ref_id,
+                "name": gen.name,
+                "node_id": node_id,
+                "sr_mva": sr_mva,
+                "ur_kv": un_kv,
+                "cos_phi_r": cos_phi_r,
+            }
+            if isinstance(xd, int | float) and xd > 0:
+                sync_kwargs["xd_subtransient_pu"] = float(xd)
+            graph.add_synchronous_machine_source(SynchronousMachineSource(**sync_kwargs))
+        elif gen_type in _ASYNC_GEN_TYPES:
+            # Rated mechanical power P_rM is approximated by the electrical |p_mw|
+            # (they differ by η·cosφ). Acceptable for F1 with IEC-typical model
+            # defaults; a dedicated catalog nameplate (P_rM, I_LR, pole pairs) is
+            # F-follow. AsynchronousMachineSource derives S_rM = P_rM/(η·cosφ).
+            pr_mw = abs(gen.p_mw)
+            if pr_mw <= 0:
+                continue
+            i_lr = mp.get("i_lr_ratio")
+            async_kwargs: dict = {
+                "id": gen.ref_id,
+                "name": gen.name,
+                "node_id": node_id,
+                "pr_mw": pr_mw,
+                "ur_kv": un_kv,
+                "wind_type_3": _ASYNC_GEN_TYPES[gen_type],
+            }
+            if isinstance(i_lr, int | float) and i_lr > 0:
+                async_kwargs["i_lr_ratio"] = float(i_lr)
+            graph.add_asynchronous_machine_source(AsynchronousMachineSource(**async_kwargs))
 
 
 def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
@@ -270,6 +615,26 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 b_us_per_km=b_us_per_km,
                 length_km=branch.length_km,
                 rated_current_a=rated_a if rated_a > 0 else 1.0,
+                # Karta F-K1 faza 3: przeniesienie danych cieplnych ZYLY FAZOWEJ do
+                # grafu. Bez tego ogniwa kryterium wytrzymalosci zwarciowej przewodu
+                # nie mialo w warstwie analizy z czego liczyc pradu dopuszczalnego
+                # (graf nie niesie odniesienia katalogowego, a `type_ref` swiadomie
+                # pozostaje niewypelniony, bo steruje precedencja impedancji).
+                # Karta F-K1 faza 7: te same pola niesie juz LINIA NAPOWIETRZNA
+                # (wczesniej mial je tylko kabel), wiec kryterium cieplne obejmuje
+                # caly model — kable i przewody gole.
+                ith_1s_a=getattr(branch, "ith_1s_a", None),
+                jth_1s_a_per_mm2=getattr(branch, "jth_1s_a_per_mm2", None),
+                cross_section_mm2=getattr(branch, "cross_section_mm2", None),
+                # Karta F-K1 faza 6: dane materialowe zyly do UZASADNIENIA k w
+                # dowodzie obliczeniowym. `getattr` z None zostaje, bo `insulation`
+                # ma sens wylacznie dla kabla — przewod goly izolacji NIE MA i to
+                # jest poprawna informacja, nie brak danej (patrz `conductor_kind`).
+                conductor_material=getattr(branch, "conductor_material", None),
+                insulation=getattr(branch, "insulation", None),
+                operating_temperature_c=getattr(branch, "operating_temperature_c", None),
+                short_circuit_temperature_c=getattr(branch, "short_circuit_temperature_c", None),
+                thermal_source_ref=getattr(branch, "thermal_source_ref", None),
             )
             graph.add_branch(lb)
 
@@ -312,6 +677,11 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         if hv_id is None or lv_id is None:
             continue
 
+        tap_changer = _map_tap_changer(trafo.tap_changer, ref_to_node_id)
+        # G-STK-6: n identycznych jednostek równoległych → impedancja zastępcza
+        # Z/n. Solver liczy Z z Sn i uk (Z = uk%·Un²/Sn), więc agregat = Sn×n daje
+        # dokładnie Z/n. Domyślnie n=1 (bez zmiany dla istniejących modeli).
+        n_parallel = trafo.n_parallel or 1
         tb = TransformerBranch(
             id=_ref_to_uuid(trafo.ref_id),
             name=trafo.name,
@@ -319,7 +689,7 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             from_node_id=hv_id,
             to_node_id=lv_id,
             in_service=True,
-            rated_power_mva=trafo.sn_mva,
+            rated_power_mva=trafo.sn_mva * n_parallel,
             voltage_hv_kv=trafo.uhv_kv,
             voltage_lv_kv=trafo.ulv_kv,
             uk_percent=trafo.uk_percent,
@@ -329,12 +699,19 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
             vector_group=trafo.vector_group or "Dyn11",
             tap_position=trafo.tap_position or 0,
             tap_step_percent=trafo.tap_step_percent or 2.5,
+            tap_changer=tap_changer,
         )
         graph.add_branch(tb)
 
-    # 4. Sources → virtual ground node + impedance branch
-    #    The SC solver needs the source impedance in the Y-bus matrix.
-    #    IEC 60909: Z_source = U_n² / Sk'' (at source bus voltage).
+    # 4. Sources → zasilanie systemowe: SEM za impedancją Z_Q (IEC 60909-0 §3.2).
+    #    W metodzie Z-bus to bocznik Y_Q = 1/Z_Q w węźle przyłączenia — tak samo
+    #    jak maszyny wirujące (§6.3/§6.7) i tak jak stamp źródła w sieci składowej
+    #    zerowej niżej w tym pliku. Wcześniej mapowanie tworzyło wirtualny węzeł
+    #    ziemi i gałąź „Z_source"; szyna źródła jest jednak węzłem SLACK, a ten był
+    #    w macierzy SC uziemiany admitancją idealną (1e6 pu), co ZWIERAŁO Z_Q i
+    #    czyniło z niej wiszący, bezużyteczny odgałęzienie (V12K-184). Skutek:
+    #    moc zwarciowa sieci zasilającej nie wchodziła do obliczeń wcale.
+    #    IEC 60909: Z_Q = U_n² / Sk'' (przy napięciu szyny źródła).
     for source in sorted(enm.sources, key=lambda s: s.ref_id):
         bus_node_id = ref_to_node_id.get(source.bus_ref)
         if bus_node_id is None:
@@ -366,32 +743,18 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         if r_ohm == 0 and x_ohm == 0:
             continue
 
-        # Create virtual ground node (PQ with zero load)
-        gnd_node_id = _ref_to_uuid(f"_gnd_{source.ref_id}")
-        gnd_node = Node(
-            id=gnd_node_id,
-            name=f"GND ({source.name})",
-            node_type=NodeType.PQ,
-            voltage_level=bus_voltage_kv,
-            active_power=0.0,
-            reactive_power=0.0,
+        graph.add_grid_sc_source(
+            GridShortCircuitSource(
+                id=_ref_to_uuid(f"_zsrc_{source.ref_id}"),
+                name=source.name or source.ref_id,
+                node_id=bus_node_id,
+                z_ohm=complex(r_ohm, x_ohm),
+            )
         )
-        graph.add_node(gnd_node)
 
-        # Create impedance branch: ground → source bus
-        src_branch = LineBranch(
-            id=_ref_to_uuid(f"_zsrc_{source.ref_id}"),
-            name=f"Z_source ({source.name})",
-            branch_type=BranchType.LINE,
-            from_node_id=gnd_node_id,
-            to_node_id=bus_node_id,
-            in_service=True,
-            r_ohm_per_km=r_ohm,
-            x_ohm_per_km=x_ohm,
-            b_us_per_km=0.0,
-            length_km=1.0,
-            rated_current_a=1.0,
-        )
-        graph.add_branch(src_branch)
+    # 5. Generators (DER / rotating machines) → IEC 60909 SC sources (G-SCM, V12K-054).
+    #    Without this the designer's PV/BESS/wind/synchronous sources contributed only
+    #    P/Q to the load flow and ZERO fault current to the short circuit.
+    _add_generator_sc_sources(enm, graph, ref_to_node_id)
 
     return graph

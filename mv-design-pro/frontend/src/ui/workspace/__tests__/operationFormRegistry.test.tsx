@@ -33,15 +33,15 @@ describe('OPERATION_FORM_REGISTRY', () => {
     );
   });
 
-  it('add_ct i add_vt używają wspólnego AddMeasurementForm', () => {
+  it('add_ct i add_vt używają wspólnego KreatorPomiaru', () => {
     expect(OPERATION_FORM_REGISTRY.add_ct).toBe(OPERATION_FORM_REGISTRY.add_vt);
   });
 
-  it('add_genset_nn i add_ups_nn używają wspólnego AddDispatchableSourceForm', () => {
+  it('add_genset_nn i add_ups_nn używają wspólnego KreatorZrodloDyspozycyjne', () => {
     expect(OPERATION_FORM_REGISTRY.add_genset_nn).toBe(OPERATION_FORM_REGISTRY.add_ups_nn);
   });
 
-  it('connect_secondary_ring_sn i set_normal_open_point używają ConnectRingForm', () => {
+  it('connect_secondary_ring_sn i set_normal_open_point używają KreatorPierscienia', () => {
     expect(OPERATION_FORM_REGISTRY.connect_secondary_ring_sn).toBe(
       OPERATION_FORM_REGISTRY.set_normal_open_point,
     );

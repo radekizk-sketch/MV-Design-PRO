@@ -1,0 +1,289 @@
+/*
+ * Style okna „Zdolność przyłączeniowa" (karta P2). Kolory WYŁĄCZNIE przez tokeny
+ * --mvd-* (theme/tokens.css) — zero literałów hex. Determinizm prezentacji:
+ * stałe wymiary, brak animacji zależnych od czasu.
+ */
+
+.mvd-zdol {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--mvd-ink);
+}
+
+.mvd-zdol-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-zdol-tytul {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+.mvd-zdol-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- stany (brak przebiegu / idle / ładowanie / błąd) ---- */
+.mvd-zdol-stan {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 12px;
+}
+.mvd-zdol-stan--blad {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-zdol-stan-title {
+  margin: 0;
+  font-weight: 600;
+}
+.mvd-zdol-stan-desc {
+  margin: 4px 0 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- parametry biegu ---- */
+.mvd-zdol-parametry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  box-shadow: var(--mvd-shadow);
+  padding: 12px;
+}
+.mvd-zdol-param {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+.mvd-zdol-param > label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+}
+.mvd-zdol-param-pole {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mvd-zdol-param-pole input {
+  width: 88px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  padding: 4px 6px;
+  font: inherit;
+}
+.mvd-zdol-param-pole input:focus {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-zdol-param-jedn {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-zdol-param-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 11px;
+  max-width: 220px;
+}
+
+.mvd-zdol-wezly {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 5px;
+  padding: 6px 8px;
+  min-width: 220px;
+}
+.mvd-zdol-wezly > legend {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+  padding: 0 4px;
+}
+.mvd-zdol-wezly-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+.mvd-zdol-wezel-opcja {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mvd-zdol-oblicz {
+  align-self: flex-end;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 5px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  padding: 6px 14px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.mvd-zdol-oblicz:hover {
+  filter: brightness(1.05);
+}
+.mvd-zdol-oblicz:focus {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* ---- tabela per węzeł ---- */
+.mvd-zdol-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.mvd-zdol-tabela th,
+.mvd-zdol-tabela td {
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 6px 8px;
+  text-align: right;
+  vertical-align: top;
+}
+.mvd-zdol-tabela th {
+  color: var(--mvd-muted);
+  font-weight: 600;
+  text-align: right;
+  white-space: nowrap;
+}
+.mvd-zdol-tabela th:first-child,
+.mvd-zdol-td-tekst {
+  text-align: left;
+}
+.mvd-zdol-wezel-nazwa {
+  font-weight: 600;
+}
+.mvd-zdol-wezel-id {
+  margin-left: 6px;
+  color: var(--mvd-muted);
+  font-size: 11px;
+}
+
+/* ---- ślad scenariuszy ---- */
+.mvd-zdol-slad-btn {
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  padding: 2px 8px;
+  margin-right: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+.mvd-zdol-slad-btn:hover {
+  border-color: var(--mvd-accent);
+}
+.mvd-zdol-slad-btn:focus {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-zdol-slad-wiersz > td {
+  background: var(--mvd-bg);
+}
+.mvd-zdol-slad-tytul {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+  margin-bottom: 4px;
+}
+.mvd-zdol-slad-lista {
+  list-style: decimal;
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-zdol-slad-poz {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+}
+.mvd-zdol-slad-moc {
+  min-width: 96px;
+}
+.mvd-zdol-slad-status {
+  font-weight: 600;
+}
+.mvd-zdol-slad-status--ok {
+  color: var(--mvd-ok);
+}
+.mvd-zdol-slad-status--err {
+  color: var(--mvd-err);
+}
+.mvd-zdol-slad-element {
+  color: var(--mvd-muted);
+}
+
+/* ---- wykres ---- */
+.mvd-zdol-wykres-blok {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+.mvd-zdol-wykres-tytul {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  margin: 0 0 4px;
+}
+.mvd-zdol-wykres-dymek {
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 4px 8px;
+  font-size: 12px;
+  box-shadow: var(--mvd-shadow);
+}
+
+/* ---- szczegół ekspercki ---- */
+.mvd-zdol-eksp {
+  margin: 8px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-zdol-eksp-para {
+  display: flex;
+  gap: 8px;
+}
+.mvd-zdol-eksp-para > dt {
+  font-weight: 600;
+}
+.mvd-zdol-eksp-para > dd {
+  margin: 0;
+  word-break: break-all;
+}

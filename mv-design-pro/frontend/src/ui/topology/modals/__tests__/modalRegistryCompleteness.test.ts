@@ -41,13 +41,13 @@ describe('Operation surface registry', () => {
 
   it('finds known entries by canonical op', () => {
     expect(getOperationSurfaceByOp('insert_section_switch_sn')?.componentName).toBe(
-      'InsertSectionSwitchForm',
+      'KreatorLacznikaSekcyjnego',
     );
     expect(getOperationSurfaceByOp('set_normal_open_point')?.componentName).toBe(
-      'ConnectRingForm',
+      'KreatorPierscienia',
     );
     expect(getOperationSurfaceByOp('add_sn_bay')?.componentName).toBe(
-      'AddSnBayForm',
+      'KreatorPolaSn',
     );
   });
 

@@ -44,10 +44,17 @@ Struktura modelu (IEEE 1584-2018, publiczna — parametryzowana tablicą):
   - Kategoria ŚOI — mapowanie progów NFPA 70E (granice tablicowe; dane NFPA
     NIE są dostarczone → mapowanie pozostaje „dane niekompletne").
 
-Zakres ważności IEEE 1584-2018: 208 V–15 kV, I_bf 500 A–106 kA. POZA zakresem
-(zwłaszcza > 15 kV) — ODRĘBNA ścieżka metody Ralpha Lee (teoretyczna metoda
-maksymalnej mocy łuku), JAWNIE oznaczona jako Ralph Lee (NIE jako IEEE 1584).
-Metoda Lee to publiczna postać zamknięta (bez tablicy) — zaimplementowana.
+Zakres ważności IEEE 1584-2018: 208 V–15 kV; I_bf ZALEŻNY od klasy napięcia —
+500 A–106 kA dla U<=600 V (LV), 200 A–65 kA dla 600 V<U<=15 kV (HV/SN, główny
+zakres tego narzędzia). POZA zakresem (zwłaszcza > 15 kV) — ODRĘBNA ścieżka
+metody Ralpha Lee (teoretyczna metoda maksymalnej mocy łuku), JAWNIE oznaczona
+jako Ralph Lee (NIE jako IEEE 1584). Metoda Lee to publiczna postać zamknięta
+(bez tablicy) — zaimplementowana.
+
+Ścieżka LV (U<=600 V) NIE interpoluje między kotwami napięcia — liczy prąd
+łuku pośredni przy kotwie 600 V (Eq.1), po czym KORYGUJE go do RZECZYWISTEGO
+napięcia układu (Eq.25, publiczna postać zamknięta). Bez tej korekcji układ
+208 V liczyłby się TAK, jakby miał 600 V (błąd rzędu dziesiątek procent).
 
 Konfiguracje elektrod IEEE 1584-2018 (5):
   VCB  — pionowe pręty w obudowie (Vertical Conductors in a Box).
@@ -67,8 +74,10 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any
+
+from analysis.odcisk_kontekstu import odcisk_kontekstu
 
 # ---------------------------------------------------------------------------
 # Markery, proweniencja i etykiety (maszynowo-czytelne, nienegocjowalne).
@@ -116,7 +125,7 @@ ARC_FLASH_SOURCE_URLS: tuple[str, ...] = (
 )
 
 
-class ArcFlashStatus(str, Enum):
+class ArcFlashStatus(StrEnum):
     """Status WYNIKU Arc Flash — odrębna oś od jakości danych wejściowych.
 
     Oś ODRĘBNA od :class:`solver_input.provenance.FieldQuality` (jakość DANYCH
@@ -179,14 +188,14 @@ _STATUS_LABEL_PL: dict[ArcFlashStatus, str] = {
 }
 
 
-class ArcFlashMethod(str, Enum):
+class ArcFlashMethod(StrEnum):
     """Metoda obliczeniowa zastosowana dla punktu."""
 
     IEEE_1584_2018 = "IEEE_1584_2018"
     RALPH_LEE = "RALPH_LEE"
 
 
-class ElectrodeConfig(str, Enum):
+class ElectrodeConfig(StrEnum):
     """Pięć konfiguracji elektrod IEEE 1584-2018."""
 
     VCB = "VCB"  # pionowe pręty w obudowie
@@ -201,7 +210,7 @@ class ElectrodeConfig(str, Enum):
         return self in (ElectrodeConfig.VCB, ElectrodeConfig.VCBB, ElectrodeConfig.HCB)
 
 
-class EnclosureType(str, Enum):
+class EnclosureType(StrEnum):
     """Typ obudowy dla korekcji rozmiaru (IEEE 1584-2018, Tab. 7)."""
 
     TYPICAL = "Typical"  # obudowa typowa
@@ -249,10 +258,20 @@ MM_PER_INCH = 25.4
 
 # Zakres ważności IEEE 1584-2018 (jawne ograniczenia specyfikacji, fakty —
 # nie dane twórcze). Poza zakresem → ścieżka Ralpha Lee.
+#
+# UWAGA (audyt fizyki, fala G, 2026-07): zakres I_bf jest RÓŻNY dla układów
+# LV (U<=600 V) i HV/SN (600 V<U<=15 kV) — norma NIE używa jednego wspólnego
+# przedziału (poprzedni kod błędnie stosował 500 A-106 kA do OBU klas, co dla
+# SN — GŁÓWNEGO zastosowania tego narzędzia — błędnie kwalifikowało punkty z
+# I_bf 200-500 A jako "poza zakresem" i punkty z I_bf 65-106 kA jako "w
+# zakresie"; zweryfikowane wobec referencyjnej implementacji open-source
+# rwl/arcflash, i_arc.rs::i_arc()).
 VALIDITY_VOLTAGE_MIN_KV = 0.208  # 208 V
 VALIDITY_VOLTAGE_MAX_KV = 15.0  # 15 kV
-VALIDITY_IBF_MIN_KA = 0.5  # 500 A
-VALIDITY_IBF_MAX_KA = 106.0  # 106 kA
+VALIDITY_IBF_MIN_KA_LV = 0.5  # 500 A (208 V-600 V)
+VALIDITY_IBF_MAX_KA_LV = 106.0  # 106 kA (208 V-600 V)
+VALIDITY_IBF_MIN_KA_HV = 0.2  # 200 A (600 V<U<=15 kV — zakres SN tego narzędzia)
+VALIDITY_IBF_MAX_KA_HV = 65.0  # 65 kA (600 V<U<=15 kV — zakres SN tego narzędzia)
 
 
 # ---------------------------------------------------------------------------
@@ -260,7 +279,7 @@ VALIDITY_IBF_MAX_KA = 106.0  # 106 kA
 # ---------------------------------------------------------------------------
 
 
-class TableProvenance(str, Enum):
+class TableProvenance(StrEnum):
     """Proweniencja ŹRÓDŁA tablicy współczynników (oś normatywna/open-source).
 
     To NIE jest :class:`FieldQuality` (jakość danych pojedynczego pola karty):
@@ -647,17 +666,19 @@ class ArcFlashContext:
 
     project_name: str | None = None
     case_name: str | None = None
+    case_id: str | None = None
     run_timestamp: datetime | None = None
-    snapshot_id: str | None = None
-    trace_id: str | None = None
+    snapshot_hash: str | None = None
+    run_id: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "project_name": self.project_name,
             "case_name": self.case_name,
+            "case_id": self.case_id,
             "run_timestamp": self.run_timestamp.isoformat() if self.run_timestamp else None,
-            "snapshot_id": self.snapshot_id,
-            "trace_id": self.trace_id,
+            "snapshot_hash": self.snapshot_hash,
+            "run_id": self.run_id,
         }
 
 
@@ -782,7 +803,7 @@ def compute_arc_flash_id(
     Wzorzec ``compute_ssci_stability_id`` / ``compute_grid_strength_id``.
     """
     payload = {
-        "context": context.to_dict() if context else None,
+        "context": odcisk_kontekstu(context),
         "results": [
             {
                 "bus_ref": r.bus_ref,
@@ -889,8 +910,10 @@ __all__ = [
     "OSD_ARC_FLASH_BLOCKER_CODE",
     "PPE_CATEGORY_INCOMPLETE",
     "PRODUCTION_NFPA_70E_PPE_TABLE",
-    "VALIDITY_IBF_MAX_KA",
-    "VALIDITY_IBF_MIN_KA",
+    "VALIDITY_IBF_MAX_KA_HV",
+    "VALIDITY_IBF_MAX_KA_LV",
+    "VALIDITY_IBF_MIN_KA_HV",
+    "VALIDITY_IBF_MIN_KA_LV",
     "VALIDITY_VOLTAGE_MAX_KV",
     "VALIDITY_VOLTAGE_MIN_KV",
     "ArcCurrentCoeffs",

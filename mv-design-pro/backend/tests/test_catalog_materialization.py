@@ -180,7 +180,9 @@ class TestMaterialization:
         assert result.solver_fields["r_ohm_per_km"] == cable.r_ohm_per_km
         assert "return_conductor_cross_section_mm2" in result.solver_fields
 
-    def test_materialize_cable_return_conductor_from_catalog(self, catalog: CatalogRepository) -> None:
+    def test_materialize_cable_return_conductor_from_catalog(
+        self, catalog: CatalogRepository
+    ) -> None:
         """Zyla powrotna kabla jest materializowana z rekordu katalogowego."""
         binding = CatalogBinding(
             catalog_namespace="KABEL_SN",

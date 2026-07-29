@@ -41,6 +41,8 @@ export type {
   ProtectionComputedValue,
   ProtectionFunctionCode,
   ProtectionFunctionSummary,
+  ProtectionFunctionItCurve,
+  ProtectionItCurvePoint,
   ProtectionSetpointBasis,
   ProtectionSetpoint,
   ProtectionSetpointOperator,
@@ -102,6 +104,18 @@ export const SETPOINT_OPERATOR_LABELS_PL = {
 } satisfies Record<ProtectionSetpointOperator, string>;
 
 export { useProtectionAssignment, useProtectionAssignments } from './useProtectionAssignment';
+export { useProtectionView } from './useProtectionView';
+export type { ProtectionViewHook } from './useProtectionView';
+export {
+  assignmentsForElement,
+  fetchProtectionView,
+  EMPTY_PROTECTION_VIEW,
+} from './protection-view';
+export type {
+  ProtectionViewResponse,
+  ProtectionViewAssignment,
+  ProtectionViewStatus,
+} from './protection-view';
 export {
   useSanityChecks,
   useSanityChecksByElement,

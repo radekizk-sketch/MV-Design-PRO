@@ -8,11 +8,10 @@ Verifies the standalone pack wrapper over ProofGenerator.generate_vdrop_proof:
 - Eksport compatibility (JSON + LaTeX + DOCX via InspectorExporter)
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import UUID
 
 import pytest
-
 from application.proof_engine.packs.vdrop import (
     VDROPPackInput,
     VDROPPackSegment,
@@ -31,7 +30,7 @@ def vdrop_pack_input() -> VDROPPackInput:
         case_name="VDROP MVP single segment",
         source_bus_id="bus_gpz_sn",
         target_bus_id="bus_station_01",
-        run_timestamp=datetime(2026, 5, 13, 12, 0, 0, tzinfo=timezone.utc),
+        run_timestamp=datetime(2026, 5, 13, 12, 0, 0, tzinfo=UTC),
         solver_version="vdrop-mvp-1.0",
         segments=[
             VDROPPackSegment(
@@ -110,7 +109,7 @@ def test_vdrop_pack_empty_segments_raises() -> None:
         case_name="empty",
         source_bus_id="b1",
         target_bus_id="b2",
-        run_timestamp=datetime(2026, 5, 13, tzinfo=timezone.utc),
+        run_timestamp=datetime(2026, 5, 13, tzinfo=UTC),
         solver_version="v1",
         segments=[],
         u_source_kv=15.0,

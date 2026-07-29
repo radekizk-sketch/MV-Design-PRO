@@ -555,6 +555,20 @@ export interface ReadinessIssue {
   wizard_step_id?: WizardSurfaceStepId | null;
   suggested_fix: string | null;
   fix_action: FixAction | null;
+  /**
+   * V12K-206 (karta F-K6, znalezisko Z8): kanoniczna treść kodu gotowości.
+   * Backend dokłada te pola TYLKO tam, gdzie odwzorowanie kodu walidatora na kanon
+   * jest rzetelne (ten sam warunek) — brak pól znaczy „ten warunek nie ma kodu
+   * kanonicznego", a nie „można podstawić najbliższy". Priorytet i akcja pochodzą
+   * z jednego rejestru, więc panel gotowości, raport i rejestr mówią to samo.
+   */
+  canonical_code?: string;
+  canonical_level?: 'BLOCKER' | 'WARNING' | 'INFO';
+  canonical_priority?: number;
+  canonical_area?: string;
+  canonical_message_pl?: string;
+  canonical_fix_action_id?: string | null;
+  canonical_fix_navigation?: Record<string, string> | null;
 }
 
 /**

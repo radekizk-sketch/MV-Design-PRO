@@ -14,7 +14,7 @@
  * Test integruje kontrakty z wszystkich 17 kroków Kreatora — symuluje
  * przepływ inżyniera przez cały flow.
  */
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   STATION_WIZARD_STEPS,
@@ -36,7 +36,7 @@ import {
 } from '../interlockingRules';
 import {
   CABLE_REFERENCE_XRUHAKXS_120,
-  DEFAULT_DERATING_GROUND_THREE_PHASE,
+  LAYING_CONDITIONS_GROUND_THREE_CABLES,
   checkCableAmpacity,
   computeCableVoltageDrop,
   computeRatedCurrentFromPower,
@@ -50,9 +50,6 @@ import {
   computeTransformerNominalCurrents,
   computeInrushCurrent,
 } from '../transformerContract';
-import {
-  analyzeFullShortCircuit,
-} from '../shortCircuitNetworkContract';
 import {
   computeEarthingRequirement,
   permittedFaultVoltageVfromDurationS,
@@ -68,6 +65,79 @@ import {
   checkMandatoryStepsCompleted,
   type ReadinessAxisState,
 } from '../readinessMatrixContract';
+
+// Fizyka ΔU / prądu znamionowego liczy się w backendzie; mock końcówek solvera
+// odwzorowuje kontrakt 1:1 (kształt jak `CableVoltageDropResponse` /
+// `CableRatedCurrentResponse`).
+function cableSolverResponse(url: string, body: Record<string, number>) {
+  if (url.endsWith('/api/solver/cable-ampacity-derating-preview')) {
+    // V12K-207: korekta obciazalnosci liczy sie w backendzie. Wspolczynniki zestawu
+    // „ziemia, 3 kable, 200 mm": 0,90 · 1,01 · 0,82 = 0,74538 (dowod liczbowy reguly
+    // w backendzie: tests/network_model/solvers/test_cable_ampacity_derating.py).
+    const total = 0.9 * 1.01 * 0.82;
+    const effective = body.rated_ampacity_a * total;
+    return {
+      rated_ampacity_a: body.rated_ampacity_a,
+      effective_ampacity_a: effective,
+      design_current_a: body.design_current_a,
+      derating_total: total,
+      derating_set: 'ziemia_3_kable_warstwa_200mm',
+      utilization_pct: (body.design_current_a / effective) * 100,
+      ok: body.design_current_a <= effective,
+      formula_ref: "I'z = Iz · f_grunt · f_wiazka · f_grupa;  I_obl ≤ I'z",
+      assumption_pl: 'Obciazalnosc skorygowana dla warunkow ulozenia (mock kontraktu).',
+    };
+  }
+  if (url.endsWith('/api/solver/transformer-rated-currents-preview')) {
+    const apparentVa = body.rated_power_kva * 1000;
+    return {
+      primary_current_a: apparentVa / (Math.sqrt(3) * body.primary_voltage_kv * 1000),
+      secondary_current_a: apparentVa / (Math.sqrt(3) * body.secondary_voltage_kv * 1000),
+      formula_ref: 'I = S_n / (√3·U_n)',
+      assumptions: ['Uklad 3-fazowy symetryczny; wspolczynnik linii √3.'],
+    };
+  }
+  if (url.endsWith('/api/solver/cable-rated-current-preview')) {
+    const apparentVa = (body.active_power_kw * 1000) / body.cos_phi;
+    return {
+      rated_current_a: apparentVa / (Math.sqrt(3) * body.line_voltage_v),
+      apparent_power_kva: apparentVa / 1000,
+      formula_ref: 'I = S_n / (√3·U);  S_n = P / cosφ',
+      assumptions: ['Uklad 3-fazowy symetryczny; wspolczynnik linii √3.'],
+    };
+  }
+  const sinPhi = Math.sqrt(1 - body.cos_phi ** 2);
+  const rTotal = body.r_ohm_per_km * body.length_km;
+  const xTotal = body.x_ohm_per_km * body.length_km;
+  const resistive = Math.sqrt(3) * body.current_a * rTotal * body.cos_phi;
+  const reactive = Math.sqrt(3) * body.current_a * xTotal * sinPhi;
+  const deltaU = resistive + reactive;
+  return {
+    delta_u_v: deltaU,
+    delta_u_pct: (deltaU / body.line_voltage_v) * 100,
+    r_total_ohm: rTotal,
+    x_total_ohm: xTotal,
+    delta_u_resistive_v: resistive,
+    delta_u_reactive_v: reactive,
+    formula_ref: 'ΔU = √3·I·(R·cosφ + X·sinφ)',
+    assumptions: ['Uklad 3-fazowy symetryczny; wspolczynnik linii √3.'],
+  };
+}
+
+beforeEach(() => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const body = JSON.parse(String(init?.body ?? '{}')) as Record<string, number>;
+      return { ok: true, json: async () => cableSolverResponse(url, body) } as Response;
+    }),
+  );
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('Designer Flow End-to-End — naturalny flow projektanta', () => {
   it('FLOW 1-17: Pełen flow Kreatora Stacji KOMPLETNEGO przez wszystkie 17 kroków', () => {
@@ -88,26 +158,27 @@ describe('Designer Flow End-to-End — naturalny flow projektanta', () => {
     expect(visitedSteps[16]).toBe('readiness');
   });
 
-  it('FLOW 1 (Przyłączenie SN): Dobór kabla z mocy przyłączeniowej', () => {
+  it('FLOW 1 (Przyłączenie SN): Dobór kabla z mocy przyłączeniowej', async () => {
     // Excel MT880 v3 reference: P=4000 kW, cosφ=0.95, U=15 kV → In ≈ 162 A.
-    const inA = computeRatedCurrentFromPower({
+    const inA = await computeRatedCurrentFromPower({
       activePowerKw: 4000,
       cosPhi: 0.95,
       lineVoltageV: 15000,
     });
     expect(inA).toBeCloseTo(162.06, 1);
 
-    // Dobór kabla XRUHAKXS 120 mm² — sprawdź obciążalność.
-    const ampacityCheck = checkCableAmpacity({
+    // Dobór kabla XRUHAKXS 120 mm² — obciążalność po korekcie warunków ułożenia
+    // (V12K-207: rachunek w backendzie, warstwa prezentacji tylko pyta i pokazuje).
+    const ampacityCheck = await checkCableAmpacity({
       cable: CABLE_REFERENCE_XRUHAKXS_120,
-      factors: DEFAULT_DERATING_GROUND_THREE_PHASE,
+      layingConditionsSet: LAYING_CONDITIONS_GROUND_THREE_CABLES,
       designCurrentA: inA,
     });
     expect(ampacityCheck.ok).toBe(true);
     expect(ampacityCheck.effectiveAmpacityA).toBeCloseTo(212.43, 1);
 
     // Sprawdź ΔU% dla 520 m linii zasilającej.
-    const vdrop = computeCableVoltageDrop({
+    const vdrop = await computeCableVoltageDrop({
       cable: CABLE_REFERENCE_XRUHAKXS_120,
       lengthKm: 0.520,
       currentA: inA,
@@ -162,12 +233,12 @@ describe('Designer Flow End-to-End — naturalny flow projektanta', () => {
     expect(burden.ok).toBe(true);
   });
 
-  it('FLOW 8 (Transformator): TR 630 kVA + inrush + protection', () => {
+  it('FLOW 8 (Transformator): TR 630 kVA + inrush + protection', async () => {
     const t = TRANSFORMER_REFERENCE_CATALOG[0];
     expect(t.ratedPowerKva).toBe(630);
-    const { primaryNominalA } = computeTransformerNominalCurrents(t);
+    const { primaryNominalA } = await computeTransformerNominalCurrents(t);
     expect(primaryNominalA).toBeCloseTo(24.25, 1);
-    const inrush = computeInrushCurrent(t);
+    const inrush = await computeInrushCurrent(t);
     expect(inrush).toBeGreaterThan(200); // 10× In ≈ 242 A
   });
 
@@ -202,27 +273,10 @@ describe('Designer Flow End-to-End — naturalny flow projektanta', () => {
     expect(moduleB.some((r) => r.article === 'Art. 15.2')).toBe(true);
   });
 
-  it('FLOW 16 (Analiza sieciowa): IEC 60909-0 SC + Ith/Idyn', () => {
-    const analysis = analyzeFullShortCircuit({
-      system: {
-        shortCircuitPowerMva: 270.43,
-        nominalVoltageKv: 15,
-        rxRatio: 0.1,
-        voltageFactor: 1.10,
-      },
-      cable: {
-        r0_ohm_per_km: 0.125, x0_ohm_per_km: 0.115, lengthKm: 4.55,
-      },
-      faultDurationSec: 0.36,
-      nFactor: 1.0,
-    });
-    // Excel MT880 v3: Ik3 ≈ 6.04 kA w PCC.
-    expect(analysis.currents.ik3_ka).toBeGreaterThan(5.5);
-    expect(analysis.currents.ik3_ka).toBeLessThan(6.5);
-    // κ ≈ 1.27 dla R/X = 0.46.
-    expect(analysis.kappa).toBeGreaterThan(1.1);
-    expect(analysis.kappa).toBeLessThan(1.5);
-  });
+  // Analiza sieciowa (Ik3 IEC 60909-0) NIE liczy się w UI — zdolność podglądu
+  // zwarcia dostarcza realny solver backendu `POST /api/solver/grid-source-preview`
+  // (relokacja martwego łańcucha Ik3 z kreatora, karta R2). Parytet i walidacja
+  // pokryte testami backendu solvera zwarciowego.
 
   it('FLOW 17 (Readiness): 29-osiowa macierz + can-run flags', () => {
     const matrix = buildReadinessMatrix();

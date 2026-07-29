@@ -16,11 +16,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class EnergyCheckType(str, Enum):
+class EnergyCheckType(StrEnum):
     BRANCH_LOADING = "BRANCH_LOADING"
     TRANSFORMER_LOADING = "TRANSFORMER_LOADING"
     VOLTAGE_DEVIATION = "VOLTAGE_DEVIATION"
@@ -28,7 +28,7 @@ class EnergyCheckType(str, Enum):
     REACTIVE_BALANCE = "REACTIVE_BALANCE"
 
 
-class EnergyValidationStatus(str, Enum):
+class EnergyValidationStatus(StrEnum):
     PASS = "PASS"
     WARNING = "WARNING"
     FAIL = "FAIL"
@@ -47,6 +47,12 @@ class EnergyValidationItem:
     margin_pct: float | None
     status: EnergyValidationStatus
     why_pl: str
+    # Slad WHITE BOX per pozycja (R2-A / K3-G1; struktura R3-D): krotka krokow
+    # {"tekst": str, "latex": str | None}. `latex` obecny dla wzoru i
+    # podstawienia (kanon Proof Engine: matematyka w LaTeX, UI renderuje KaTeX);
+    # `tekst` zawsze (raporty/eksport ASCII). Addytywnie, domyslnie pusty
+    # (pozycje NOT_COMPUTED bez wywodu - powod niesie why_pl).
+    white_box: tuple[dict, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -63,17 +69,19 @@ class EnergyValidationSummary:
 class EnergyValidationContext:
     project_name: str | None
     case_name: str | None
+    case_id: str | None
     run_timestamp: datetime | None
-    snapshot_id: str | None
-    trace_id: str | None
+    snapshot_hash: str | None
+    run_id: str | None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "project_name": self.project_name,
             "case_name": self.case_name,
+            "case_id": self.case_id,
             "run_timestamp": (self.run_timestamp.isoformat() if self.run_timestamp else None),
-            "snapshot_id": self.snapshot_id,
-            "trace_id": self.trace_id,
+            "snapshot_hash": self.snapshot_hash,
+            "run_id": self.run_id,
         }
 
 

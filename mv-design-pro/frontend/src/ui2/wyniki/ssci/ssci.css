@@ -1,0 +1,358 @@
+/*
+ * Style okna „Stabilność SSCI" (ui2/wyniki/ssci). Kolory WYŁĄCZNIE przez tokeny
+ * --mvd-* — zero literałów hex (zgodność z trybem jasny/ciemny). Warstwa
+ * prezentacji — bez wpływu na dane.
+ */
+
+.mvd-ssci {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-ssci-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mvd-ssci-tytul {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+.mvd-ssci-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+.mvd-ssci-run {
+  font-size: 12px;
+  color: var(--mvd-muted);
+  word-break: break-all;
+}
+
+.mvd-ssci-sekcja-tytul {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-ssci-pole-opis {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--mvd-muted);
+}
+
+/* ---- panele stanu (brak przypadku / ładowanie / błąd) ---- */
+.mvd-ssci-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-muted);
+}
+.mvd-ssci-stan--blad {
+  border-style: solid;
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-ssci-stan-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-ssci-stan-desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- akcja główna ---- */
+.mvd-ssci-akcja-sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-ssci-akcje {
+  display: flex;
+}
+.mvd-ssci-oblicz {
+  padding: 8px 16px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-ssci-oblicz:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.mvd-ssci-oblicz:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* ---- chip werdyktu ---- */
+.mvd-ssci-werdykt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-ssci-werdykt-glowny {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.mvd-ssci-werdykt-etyk {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+.mvd-ssci-werdykt-meta {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-ssci-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel-2);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mvd-ink);
+}
+.mvd-ssci-chip--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-ssci-chip--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-ssci-chip--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-ssci-chip--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+
+/* ---- tag statusu ---- */
+.mvd-ssci-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid var(--mvd-line);
+  color: var(--mvd-ink);
+  background: var(--mvd-panel-2);
+}
+.mvd-ssci-tag--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-ssci-tag--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-ssci-tag--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-ssci-tag--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+
+/* ---- uzasadnienie ---- */
+.mvd-ssci-dlaczego-tresc {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-ink);
+  line-height: 1.5;
+}
+
+/* ---- metryki (grid) ---- */
+.mvd-ssci-metryki-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.mvd-ssci-metryka {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-ssci-metryka--ok {
+  border-color: var(--mvd-ok);
+}
+.mvd-ssci-metryka--warn {
+  border-color: var(--mvd-warn);
+}
+.mvd-ssci-metryka--err {
+  border-color: var(--mvd-err);
+}
+.mvd-ssci-metryka--neutral {
+  border-color: var(--mvd-line);
+}
+.mvd-ssci-metryka-etyk {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-ssci-metryka-wartosc {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--mvd-ink);
+}
+.mvd-ssci-metryka-opis {
+  font-size: 11px;
+  color: var(--mvd-muted);
+  line-height: 1.4;
+}
+
+/* ---- proweniencja ---- */
+.mvd-ssci-prov {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-ssci-prov-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mvd-ssci-prov-etyk {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-ssci-prov-tag-pl {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-ink);
+}
+.mvd-ssci-prov-pola {
+  margin: 0;
+  font-size: 11px;
+  color: var(--mvd-muted);
+  word-break: break-word;
+}
+
+/* ---- braki (uczciwość) ---- */
+.mvd-ssci-braki {
+  padding: 12px 14px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-ssci-braki-lista {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--mvd-ink);
+  word-break: break-word;
+}
+
+/* ---- ślad WHITE BOX ---- */
+.mvd-ssci-slad-blok {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-ssci-slad-btn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-ssci-slad-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-ssci-slad-tytul {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-ssci-slad-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.mvd-ssci-slad-tabela th,
+.mvd-ssci-slad-tabela td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+  text-align: left;
+  vertical-align: top;
+  color: var(--mvd-ink);
+}
+.mvd-ssci-slad-tabela th {
+  color: var(--mvd-muted);
+  font-weight: 600;
+}
+
+/* ---- tryb ekspercki (metadane) ---- */
+.mvd-ssci-eksp {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px 16px;
+  margin: 12px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-ssci-eksp-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-ssci-eksp-para dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-ssci-eksp-para dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-ink);
+  word-break: break-all;
+}
+
+/* ---- pętla decyzji (F-K4): ryzyko SSCI → szyna przyłączenia w modelu ---- */
+.mvd-ssci-popraw {
+  border: 1px solid var(--mvd-accent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--mvd-accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 3px 9px;
+}
+.mvd-ssci-popraw:hover {
+  background: var(--mvd-sel);
+}

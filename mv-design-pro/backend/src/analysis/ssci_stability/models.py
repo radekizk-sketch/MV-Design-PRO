@@ -41,6 +41,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from analysis.odcisk_kontekstu import odcisk_kontekstu
+
 # --- Progi klasyfikacji (udokumentowane, NIE dostrajane pod test) -----------
 
 # Granica przecięcia modułów impedancji = granica stabilności bezwarunkowej
@@ -85,17 +87,19 @@ SSCI_OPTIONAL_FIELDS: tuple[str, ...] = (
 class SsciStabilityContext:
     project_name: str | None
     case_name: str | None
+    case_id: str | None
     run_timestamp: datetime | None
-    snapshot_id: str | None
-    trace_id: str | None
+    snapshot_hash: str | None
+    run_id: str | None
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "project_name": self.project_name,
             "case_name": self.case_name,
+            "case_id": self.case_id,
             "run_timestamp": self.run_timestamp.isoformat() if self.run_timestamp else None,
-            "snapshot_id": self.snapshot_id,
-            "trace_id": self.trace_id,
+            "snapshot_hash": self.snapshot_hash,
+            "run_id": self.run_id,
         }
 
 
@@ -202,7 +206,7 @@ def compute_ssci_stability_id(
     ensure_ascii=False) z istotnych liczb i etykiet werdyktu.
     """
     payload = {
-        "context": context.to_dict() if context else None,
+        "context": odcisk_kontekstu(context),
         "gain_crossover_mag": float(gain_crossover_mag),
         "pm_risk_deg": float(pm_risk_deg),
         "pm_unstable_deg": float(pm_unstable_deg),

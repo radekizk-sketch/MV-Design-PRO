@@ -5,11 +5,12 @@
  * Naprawa eng.18: walidacja Idyn/Ith aparatury (IEC 60909).
  */
 
-import {
-  VT_CATALOG,
-  isVtVoltageFactorValidForGrounding,
-  validateDeviceWithstand,
-} from '../../station-der/protection-catalogs';
+import { useEffect, useState } from 'react';
+
+import { fetchVtTypes } from '../../../catalog/api';
+import type { VTCatalogType } from '../../../catalog/types';
+import { validateDeviceWithstand } from '../../station-der/protection-catalogs';
+import { WalidacjaVtPolaSekcja } from './WalidacjaVtPolaSekcja';
 
 export interface ProtectionRow {
   readonly relayId: string;
@@ -77,27 +78,25 @@ export function StationConfigProtectionCard(
     onChangeVt,
   } = props;
 
-  // Naprawa eng.20: walidacja VT vs typ uziemienia.
-  const vtValidationRows = mvNeutralGroundingType
-    ? relays
-        .filter((r) => r.vtCatalogRef)
-        .map((r) => {
-          const vt = VT_CATALOG.find((v) => v.id === r.vtCatalogRef);
-          if (!vt) return null;
-          const validation = isVtVoltageFactorValidForGrounding(
-            vt.voltage_factor,
-            mvNeutralGroundingType,
-          );
-          return {
-            bayDesignation: r.bayDesignation,
-            vtLabel: vt.label_pl,
-            voltageFactor: vt.voltage_factor,
-            ok: validation.ok,
-            message_pl: validation.message_pl,
-          };
-        })
-        .filter((r): r is NonNullable<typeof r> => r !== null)
-    : [];
+  // WYBOR Z KATALOGU BACKENDU, NIE Z LOKALNEJ LISTY (V12K-257). Poprzednia wersja
+  // oferowala cztery typy zapisane w pliku frontu; ich identyfikatory nie istnialy
+  // w katalogu backendu, wiec zapisany wybor byl referencja donikad — dobor
+  // przekladnika (V12K-255) widzial „typ nieznany katalogowi".
+  const [typyVt, setTypyVt] = useState<readonly VTCatalogType[] | null>(null);
+  useEffect(() => {
+    if (!onChangeVt) return;
+    let aktualne = true;
+    void fetchVtTypes()
+      .then((typy) => {
+        if (aktualne) setTypyVt(typy);
+      })
+      .catch(() => {
+        if (aktualne) setTypyVt([]);
+      });
+    return () => {
+      aktualne = false;
+    };
+  }, [onChangeVt]);
 
   // Naprawa eng.18: walidacja wytrzymałości aparatury.
   const withstandValidations = (deviceWithstandRows ?? []).map((row) => ({
@@ -154,9 +153,9 @@ export function StationConfigProtectionCard(
                         className="rounded border border-scada-border bg-scada-bg px-1 py-0.5 text-[10px]"
                       >
                         <option value="">—</option>
-                        {VT_CATALOG.map((v) => (
+                        {(typyVt ?? []).map((v) => (
                           <option key={v.id} value={v.id}>
-                            {v.label_pl}
+                            {v.name}
                           </option>
                         ))}
                       </select>
@@ -188,31 +187,13 @@ export function StationConfigProtectionCard(
         </div>
       </div>
 
-      {vtValidationRows.length > 0 && (
-        <div data-testid="vt-grounding-validation" className="space-y-1">
-          <div className="text-[10px] font-medium text-scada-muted">
-            Walidacja VT vs typ uziemienia neutralnego (IEC 61869-3)
-          </div>
-          <div className="grid grid-cols-1 gap-1">
-            {vtValidationRows.map((row) => (
-              <div
-                key={row.bayDesignation}
-                data-testid={`vt-validation-${row.bayDesignation}`}
-                data-vt-ok={String(row.ok)}
-                className={
-                  'rounded border px-2 py-1 text-[11px] '
-                  + (row.ok
-                    ? 'border-emerald-700 bg-emerald-950/20 text-emerald-200'
-                    : 'border-rose-700 bg-rose-950/20 text-rose-200')
-                }
-              >
-                <span className="font-mono">{row.bayDesignation}</span>: VT U_th={row.voltageFactor}
-                {row.ok ? ' · OK' : ' · ' + row.message_pl}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <WalidacjaVtPolaSekcja
+        pola={relays.map((r) => ({
+          bayDesignation: r.bayDesignation,
+          vtCatalogRef: r.vtCatalogRef ?? null,
+        }))}
+        typUziemienia={mvNeutralGroundingType}
+      />
 
       {withstandValidations.length > 0 && (
         <div data-testid="device-withstand-validation" className="space-y-1">

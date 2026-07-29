@@ -9,7 +9,7 @@ the bus), which canonical_analysis then passes into PQSpec.zip_coeffs. Constant
 from __future__ import annotations
 
 from enm.mapping import map_enm_to_network_graph
-from enm.models import Bus, ENMHeader, EnergyNetworkModel, Load
+from enm.models import Bus, EnergyNetworkModel, ENMHeader, Load
 
 
 def _enm(loads: list[Load]) -> EnergyNetworkModel:
@@ -37,7 +37,14 @@ def test_zip_load_materialized_params_reach_node() -> None:
         p_mw=2.0,
         q_mvar=0.5,
         model="zip",
-        materialized_params={"a_p": 1.0, "b_p": 0.0, "c_p": 0.0, "a_q": 1.0, "b_q": 0.0, "c_q": 0.0},
+        materialized_params={
+            "a_p": 1.0,
+            "b_p": 0.0,
+            "c_p": 0.0,
+            "a_q": 1.0,
+            "b_q": 0.0,
+            "c_q": 0.0,
+        },
     )
     node = _node(_enm([load]))
     assert node.zip_coeffs is not None
@@ -54,7 +61,14 @@ def test_zip_aggregation_is_power_weighted_across_loads() -> None:
         p_mw=2.0,
         q_mvar=0.0,
         model="zip",
-        materialized_params={"a_p": 1.0, "b_p": 0.0, "c_p": 0.0, "a_q": 1.0, "b_q": 0.0, "c_q": 0.0},
+        materialized_params={
+            "a_p": 1.0,
+            "b_p": 0.0,
+            "c_p": 0.0,
+            "a_q": 1.0,
+            "b_q": 0.0,
+            "c_q": 0.0,
+        },
     )
     cp = Load(ref_id="l2", name="Lp", bus_ref="b1", p_mw=1.0, q_mvar=0.0)
     node = _node(_enm([cz, cp]))

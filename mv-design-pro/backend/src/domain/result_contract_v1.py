@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -47,7 +47,7 @@ RESULT_CONTRACT_VERSION = "1.0"
 # ---------------------------------------------------------------------------
 
 
-class OverlaySeverity(str, Enum):
+class OverlaySeverity(StrEnum):
     """Severity levels for overlay elements and badges."""
 
     INFO = "INFO"
@@ -56,7 +56,7 @@ class OverlaySeverity(str, Enum):
     BLOCKER = "BLOCKER"
 
 
-class OverlayMetricSource(str, Enum):
+class OverlayMetricSource(StrEnum):
     """Source of an overlay metric value."""
 
     SOLVER = "solver"
@@ -64,7 +64,7 @@ class OverlayMetricSource(str, Enum):
     READINESS = "readiness"
 
 
-class OverlayElementKind(str, Enum):
+class OverlayElementKind(StrEnum):
     """Kind of element in overlay."""
 
     BUS = "bus"
@@ -298,7 +298,7 @@ class ResultSetV1(BaseModel):
 
     INVARIANTS:
     - contract_version = "1.0" (bump = new model)
-    - deterministic_signature = SHA-256 of canonical JSON (excludes created_at)
+    - deterministic_signature = SHA-256 of canonical JSON (excludes created_at, run_finished_at)
     - overlay_payload is ALWAYS present (may be sparse)
     - element_results sorted by element_ref
     - global_results sorted by key
@@ -320,6 +320,13 @@ class ResultSetV1(BaseModel):
     created_at: str = Field(
         default="",
         description="UTC ISO timestamp (NOT in deterministic signature)",
+    )
+    run_finished_at: str | None = Field(
+        default=None,
+        description=(
+            "UTC ISO timestamp of run completion (CanonicalRun.finished_at). "
+            "Presentation-only provenance metadata; NOT in deterministic signature."
+        ),
     )
     deterministic_signature: str = Field(
         default="",
@@ -386,13 +393,13 @@ def compute_deterministic_signature(result_set_dict: dict[str, Any]) -> str:
     """
     Compute SHA-256 of canonical result set JSON.
 
-    Excludes transient fields: created_at, deterministic_signature.
+    Excludes transient fields: created_at, run_finished_at, deterministic_signature.
     Sort keys + deterministic list ordering.
     """
     sig_data = {
         k: v
         for k, v in result_set_dict.items()
-        if k not in ("created_at", "deterministic_signature")
+        if k not in ("created_at", "run_finished_at", "deterministic_signature")
     }
     canonical = _canonicalize(sig_data)
     payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"), default=str)

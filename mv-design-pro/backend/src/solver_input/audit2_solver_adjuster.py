@@ -97,7 +97,9 @@ def compute_audit2_adjustments(audit2_extensions: dict[str, Any] | None) -> Audi
         reserved_pct = float(mode.get("reserved_capacity_percent", 0))
         # Kwota rezerwy zalezy od mocy DER — przy 1MW i 50% rezerwy = 500kW.
         # Uzywamy mediany 1MW (deterministic; real wartosc dolaczana w innym kontekscie).
-        bess_p_reserved[der_id] = bess_p_reserved.get(der_id, 0) + reserved_pct * 10  # 10 = 1000kW * 1%
+        bess_p_reserved[der_id] = (
+            bess_p_reserved.get(der_id, 0) + reserved_pct * 10
+        )  # 10 = 1000kW * 1%
 
     # 3. P(f) droop per DER (NC RfG Art. 13/15).
     pf_droops: dict[str, float] = {}
@@ -126,8 +128,8 @@ def compute_audit2_adjustments(audit2_extensions: dict[str, Any] | None) -> Audi
                 # uk = sqrt(uR² + uX²); uR = pk / sn * 100; uX = sqrt(uk² - uR²)
                 u_r_pct = (btr.pk_kw / btr.sn_kva) * 100
                 u_k_pct = btr.uk_percent
-                u_x_sq = u_k_pct ** 2 - u_r_pct ** 2
-                u_x_pct = u_x_sq ** 0.5 if u_x_sq > 0 else 0
+                u_x_sq = u_k_pct**2 - u_r_pct**2
+                u_x_pct = u_x_sq**0.5 if u_x_sq > 0 else 0
                 block_z[der_id] = {
                     "r_pu": u_r_pct / 100,
                     "x_pu": u_x_pct / 100,
@@ -186,12 +188,18 @@ def apply_audit2_to_network_model(
 
     # 1. Tap-changer: per-transformer mapping z `transformer_to_tap_changer`.
     tr_to_tc = pf_ext.get("transformer_to_tap_changer") or {}
-    branches = getattr(graph, "branches", None) or (graph.get("branches") if isinstance(graph, dict) else None) or {}
+    branches = (
+        getattr(graph, "branches", None)
+        or (graph.get("branches") if isinstance(graph, dict) else None)
+        or {}
+    )
     if isinstance(branches, dict):
         branches_iter = branches.items()
     else:
         # Sometimes graph.branches is a list — try to extract by id.
-        branches_iter = [(getattr(b, "id", None) or getattr(b, "ref_id", None), b) for b in branches]
+        branches_iter = [
+            (getattr(b, "id", None) or getattr(b, "ref_id", None), b) for b in branches
+        ]
 
     for tr_id, tc_dict in tr_to_tc.items():
         # Try lookup by branch id, ref_id, or type_ref.
@@ -221,7 +229,11 @@ def apply_audit2_to_network_model(
 
         applied["tap_position_changes"][str(tr_id)] = {
             "new_tap_position": new_pos,
-            "step_percent": target_branch.tap_step_percent if hasattr(target_branch, "tap_step_percent") else None,
+            "step_percent": (
+                target_branch.tap_step_percent
+                if hasattr(target_branch, "tap_step_percent")
+                else None
+            ),
             "tap_changer_id": tc_dict.get("id"),
         }
 
@@ -273,7 +285,7 @@ def apply_audit2_to_network_model(
             graph["z0_z1_ratio"] = z0_z1_value
         else:
             try:
-                setattr(graph, "z0_z1_ratio", z0_z1_value)
+                graph.z0_z1_ratio = z0_z1_value
             except (AttributeError, TypeError):
                 pass  # frozen dataclass / immutable — skip silently
 

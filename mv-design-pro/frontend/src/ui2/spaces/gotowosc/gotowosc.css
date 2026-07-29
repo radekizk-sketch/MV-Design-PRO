@@ -1,0 +1,420 @@
+/*
+ * Style przestrzeni „Gotowość" (W-401/W-402, karta E6.1). Kolory WYŁĄCZNIE
+ * przez tokeny --mvd-* (theme/tokens.css) — zero literałów hex. Liczby: font
+ * mono + tabular-nums (spójne z `spaces/projekt/pulpit.css`).
+ */
+
+.mvd-gotowosc {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  color: var(--mvd-ink);
+  font-family: var(--mvd-font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 4px;
+}
+
+.mvd-gotowosc :focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+.mvd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- nagłówek ---- */
+.mvd-gotowosc-head {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-gotowosc-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.mvd-gotowosc-sub {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-gotowosc-podsumowanie {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---- tag waga (blokada / ostrzeżenie) ---- */
+.mvd-problem-tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  white-space: nowrap;
+}
+.mvd-problem-tag-blokada {
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+}
+.mvd-problem-tag-ostrzezenie {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- stan pozytywny: wszystko gotowe ---- */
+.mvd-gotowosc-ok {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 6px;
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+.mvd-gotowosc-ok-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+.mvd-gotowosc-ok-desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- sekcja „Następny krok" (F-E3: bramka zielona → przejście do obliczeń) ---- */
+.mvd-gotowosc-nastepny {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-gotowosc-nastepny-tresc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.mvd-gotowosc-nastepny-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mvd-accent);
+}
+.mvd-gotowosc-nastepny-opis {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mvd-ink);
+}
+.mvd-gotowosc-nastepny-akcja {
+  flex-shrink: 0;
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 6px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-accent-ink);
+  cursor: pointer;
+}
+.mvd-gotowosc-nastepny-akcja:hover {
+  filter: brightness(1.08);
+}
+
+/* ---- filtry ---- */
+.mvd-gotowosc-filtry {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.mvd-select,
+.mvd-input {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 5px 8px;
+  border-radius: 4px;
+  font: inherit;
+}
+.mvd-btn {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.mvd-btn:hover {
+  border-color: var(--mvd-accent);
+}
+
+/* ---- lista sekcji celów ---- */
+.mvd-gotowosc-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-cel-sekcja {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  overflow: hidden;
+}
+.mvd-cel-naglowek {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+.mvd-cel-naglowek:hover {
+  background: var(--mvd-sel);
+}
+.mvd-cel-tytul {
+  font-weight: 600;
+  flex: 1;
+}
+.mvd-cel-liczniki {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.mvd-cel-postep {
+  color: var(--mvd-muted);
+  font-size: 11.5px;
+}
+.mvd-cel-zwijak {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mvd-cel-tresc {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-cel-brak {
+  margin: 0;
+  padding: 12px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- wiersz problemu ---- */
+.mvd-problem-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-problem-row:last-child {
+  border-bottom: none;
+}
+.mvd-problem-select {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mvd-problem-select:disabled {
+  cursor: default;
+}
+.mvd-problem-desc {
+  flex: 1;
+  min-width: 0;
+}
+.mvd-problem-element {
+  color: var(--mvd-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.mvd-problem-kod {
+  color: var(--mvd-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.mvd-problem-brak-akcji {
+  color: var(--mvd-muted);
+  font-size: 11.5px;
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* ---- stan pusty / ładowanie / błąd ---- */
+.mvd-gotowosc-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 32px 16px;
+  color: var(--mvd-muted);
+}
+.mvd-gotowosc-state-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-gotowosc-state-desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- sekcja „Ocena zgodności referencyjnej" (Reference Engine V1) ---- */
+.mvd-ref-sekcja {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  overflow: hidden;
+}
+.mvd-ref-tresc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 10px 10px;
+}
+.mvd-ref-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-ref-stan {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12.5px;
+}
+.mvd-ref-stan-blad {
+  color: var(--mvd-err);
+}
+.mvd-ref-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.mvd-ref-tabela th {
+  text-align: left;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+  color: var(--mvd-muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.mvd-ref-tabela td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+  vertical-align: top;
+}
+.mvd-ref-num {
+  text-align: right;
+}
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mvd-muted {
+  color: var(--mvd-muted);
+}
+.mvd-ref-rozwin {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--mvd-ink);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.mvd-ref-score {
+  font-weight: 600;
+}
+.mvd-ref-score-ok {
+  color: var(--mvd-ok);
+}
+.mvd-ref-score-warn {
+  color: var(--mvd-warn);
+}
+.mvd-ref-score-err {
+  color: var(--mvd-err);
+}
+.mvd-ref-score-nd {
+  color: var(--mvd-muted);
+}
+.mvd-ref-checks-cell {
+  background: var(--mvd-panel-2);
+}
+.mvd-ref-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.mvd-ref-check {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+}
+.mvd-ref-check-ok {
+  color: var(--mvd-ok);
+}
+.mvd-ref-check-err {
+  color: var(--mvd-err);
+}
+.mvd-ref-check-el {
+  color: var(--mvd-muted);
+}
+.mvd-ref-check-msg {
+  color: var(--mvd-ink);
+}

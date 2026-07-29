@@ -1,29 +1,23 @@
 #!/usr/bin/env python3
 """ResultSetContractGuard — chroni kontrakty ResultSet v1 SC/Protection przed zmianami."""
-import subprocess
 import sys
+
+from guard_diff_base import zmienione_pliki
 
 PROTECTED_FILES = [
     "backend/src/application/result_mapping/sc_to_resultset_v1.py",
     "backend/src/application/result_mapping/protection_to_resultset_v1.py",
 ]
 
-def get_changed_files() -> list[str]:
-    try:
-        result = subprocess.run(
-            ["git", "diff", "--name-only", "origin/main...HEAD"],
-            capture_output=True, text=True, check=True,
-        )
-        return [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
-    except subprocess.CalledProcessError:
-        result = subprocess.run(
-            ["git", "diff", "--name-only", "HEAD~1"],
-            capture_output=True, text=True, check=True,
-        )
-        return [line.strip() for line in result.stdout.strip().split("\n") if line.strip()]
 
 def main() -> int:
-    changed = get_changed_files()
+    # Baza porownania z odpornego helpera: brak bazy => JAWNY blad, nigdy
+    # ciche „nic sie nie zmienilo" (patrz scripts/guard_diff_base.py).
+    wynik = zmienione_pliki()
+    if not wynik.ok:
+        print(wynik.powod_bledu)
+        return 1
+    changed = list(wynik.pliki or ())
     violations = []
     for path in changed:
         for protected in PROTECTED_FILES:
@@ -41,6 +35,7 @@ def main() -> int:
 
     print("OK [ResultSetContractGuard]: Kontrakty ResultSet v1 niezmienione.")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

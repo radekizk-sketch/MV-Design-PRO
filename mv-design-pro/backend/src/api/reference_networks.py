@@ -439,7 +439,8 @@ def nc_rfg_compliance(network_id: str) -> NcRfgComplianceResponse:
         "Anti-islanding enabled": all(g.get("anti_islanding_enabled", False) for g in generators),
         "NC RfG certified": all(g.get("nc_rfg_certified", False) for g in generators),
         "All DER on PV/BESS/inverter type": all(
-            "inverter" in str(g.get("gen_kind", "")).lower() or "residential" in str(g.get("gen_kind", "")).lower()
+            "inverter" in str(g.get("gen_kind", "")).lower()
+            or "residential" in str(g.get("gen_kind", "")).lower()
             for g in generators
         ),
         "At least one DER present": len(generators) >= 1,

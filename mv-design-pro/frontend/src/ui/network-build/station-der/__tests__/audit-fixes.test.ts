@@ -20,15 +20,11 @@ import {
   getMvNeutralGrounding,
   // Naprawa C
   PROTECTION_FUNCTION_CATALOG,
-  CT_CATALOG,
-  VT_CATALOG,
   SPZ_CATALOG,
   SZR_CATALOG,
   selectRequiredProtectionFunctionsForDer,
   selectRequiredProtectionFunctionsForGrounding,
   getProtectionFunctionByAnsiCode,
-  selectCtForCurrent,
-  selectVtForVoltage,
   selectSpzCompatibleWithDer,
   isCtClassValidForProtection,
   isCtClassValidForMetering,
@@ -53,7 +49,7 @@ function makeDer(
     der_kind: 'PV',
     name: 'PV X',
     connection_side: 'SN',
-    pcc_ref: 'pcc_x',
+    bus_przylaczenia_ref: 'pcc_x',
     bay_ref: 'bay_x',
     transformer_ref: null,
     lv_busbar_ref: null,
@@ -324,13 +320,14 @@ describe('Naprawa C.1 — ANSI function catalog', () => {
   });
 });
 
-describe('Naprawa C.6 — CT/VT catalog', () => {
-  it('CT_CATALOG ma ≥4 pozycje z różnymi klasami', () => {
-    expect(CT_CATALOG.length).toBeGreaterThanOrEqual(4);
-    const classes = new Set(CT_CATALOG.map((c) => c.accuracy_class));
-    expect(classes.size).toBeGreaterThanOrEqual(3);
-  });
-
+describe('Naprawa C.6 — klasy CT (reguly normowe, bez katalogu syntetycznego)', () => {
+  // V12K-239: `CT_CATALOG` (5 wpisow syntetycznych) USUNIETY — po wpieciu klasy jako
+  // DANEJ nie mial juz zadnego konsumenta produkcyjnego, a jego pokrycie identyfikatorow
+  // z katalogiem realnym (12 typow) bylo ZEROWE, wiec test jego rozmiaru mierzyl atrape.
+  // `VT_CATALOG` USUNIETY (V12K-257): ten sam defekt co CT — identyfikatory syntetyczne
+  // wpisywane do modelu przez picker. Dlug zapisany wtedy osobno zostal splacony:
+  // picker bierze typy z katalogu backendu, a werdykt zgodnosci z jego reguly.
+  // Tutaj zostaja reguly klasowe, ktore CZYTA regula gotowosci.
   it('isCtClassValidForProtection rozpoznaje 5P/10P', () => {
     expect(isCtClassValidForProtection('5P10')).toBe(true);
     expect(isCtClassValidForProtection('10P20')).toBe(true);
@@ -344,21 +341,28 @@ describe('Naprawa C.6 — CT/VT catalog', () => {
     expect(isCtClassValidForMetering('5P10')).toBe(false);
   });
 
-  it('selectCtForCurrent filtruje po prądzie pierwotnym', () => {
-    const cts = selectCtForCurrent(150, 'protection');
-    // CT 200/5 i CT 300/5 i CT 500/5 powinny pasować (>= 150A)
-    expect(cts.length).toBeGreaterThan(0);
-    expect(cts.every((ct) => ct.ratio_primary_a >= 150)).toBe(true);
+  it('front NIE MA wlasnego katalogu VT ani wlasnej reguly wspolczynnika (V12K-257)', async () => {
+    // Te dwa testy sprawdzaly wczesniej zawartosc `VT_CATALOG` i `selectVtForVoltage`
+    // — czyli istnienie ROWNOLEGLEGO katalogu czterech typow, ktorych identyfikatory
+    // nie istnialy w katalogu backendu, oraz TRZECIEJ kopii reguly IEC 61869-3
+    // (z progami zanizonymi tak, jak poprawil je V12K-256). Zapisany wybor byl
+    // referencja donikad, a werdykt móglby przeczyc backendowi i pakietowi dowodowemu.
+    //
+    // Intencja testu zostaje ta sama — pilnowac zrodla danych o przekladnikach —
+    // ale odwrocona: front ma ich NIE MIEC. Typy pochodza z `/api/catalog/vt-types`,
+    // werdykt z `/api/v1/catalog/audit2/validate-vt-grounding`.
+    const modul = (await import('../protection-catalogs')) as Record<string, unknown>;
+    expect(modul.VT_CATALOG).toBeUndefined();
+    expect(modul.selectVtForVoltage).toBeUndefined();
+    expect(modul.isVtVoltageFactorValidForGrounding).toBeUndefined();
   });
 
-  it('VT_CATALOG ma pozycje z 1.9 voltage_factor (zabezpieczenia)', () => {
-    const protectionVts = VT_CATALOG.filter((v) => v.voltage_factor === 1.9);
-    expect(protectionVts.length).toBeGreaterThan(0);
-  });
-
-  it('selectVtForVoltage(15kV) zwraca VT 15kV', () => {
-    const vts = selectVtForVoltage(15);
-    expect(vts.length).toBeGreaterThan(0);
+  it('rozlacznosc: zadna klasa nie jest jednoczesnie zabezpieczeniowa i pomiarowa', () => {
+    // Kontrola odwrotna do obu regul naraz — bez niej mozna by je „naprawic" tak, ze
+    // obie zwracaja true i os zabezpieczen przechodzi na przekladniku pomiarowym.
+    for (const klasa of ['0.2', '0.5', '1.0', '5P10', '5P20', '10P10', '10P20'] as const) {
+      expect(isCtClassValidForProtection(klasa) && isCtClassValidForMetering(klasa)).toBe(false);
+    }
   });
 });
 

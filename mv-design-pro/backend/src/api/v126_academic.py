@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID
 
+from application.analyses.ssci_stability import build_ssci_stability_view
 from application.v126_artifacts import build_v126_proof_artifact, build_v126_report_artifact
 from enm.store import get_enm
 from fastapi import APIRouter, HTTPException, status
@@ -46,7 +47,9 @@ def _now_iso() -> str:
 def _require_run(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any]:
     run = _runs.get(str(run_id))
     if run is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono uruchomienia V12.6.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Nie znaleziono uruchomienia V12.6."
+        )
     if run["analysis_type"] != analysis_type.value:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -55,7 +58,9 @@ def _require_run(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, Any
     return run
 
 
-def _with_parameter_payloads(model: V126AcademicInput, parameters: dict[str, Any]) -> V126AcademicInput:
+def _with_parameter_payloads(
+    model: V126AcademicInput, parameters: dict[str, Any]
+) -> V126AcademicInput:
     update: dict[str, Any] = {"parameters": parameters}
     if isinstance(parameters.get("earthing"), dict):
         update["earthing"] = V126EarthingInput.model_validate(parameters["earthing"])
@@ -98,7 +103,9 @@ def run_v126_analysis(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Przypadek nie ma committed ENM z węzłami. V12.6 nie uruchamia obliczeń z draftu UI.",
         )
-    model = _with_parameter_payloads(build_v126_input_from_enm(enm, parameters=request.parameters), request.parameters)
+    model = _with_parameter_payloads(
+        build_v126_input_from_enm(enm, parameters=request.parameters), request.parameters
+    )
     result = _solver.run(analysis_type, model)
     run_id = UUID(hex=result["deterministic_hash"][:32])
     run_record = {
@@ -155,6 +162,31 @@ def get_v126_trace(run_id: UUID, analysis_type: V126AnalysisType) -> dict[str, A
         "deterministic_hash": result["deterministic_hash"],
         "steps": result["white_box_trace"],
     }
+
+
+@router.get("/analysis-runs/{run_id}/results/v126/ssci_impedance/stability")
+def get_v126_ssci_stability(run_id: UUID) -> dict[str, Any]:
+    """Werdykt stabilności SSCI (kryterium impedancyjne Nyquista) dla gotowego
+    przebiegu ``ssci_impedance``.
+
+    Warstwa analizy (Sun 2011 / Wen 2016) odczytuje tablice Z_grid(f)/Z_conv(f)/L(f)
+    z przebiegu i wydaje werdykt (stabilny / ryzyko SSCI / niestabilny / brak danych)
+    z metrykami (max|L|, margines różnicy faz, częstotliwość winna, bliskość −1,
+    okrążenia) i wywodem White Box. ZERO fizyki w API — analiza tylko interpretuje
+    gotowy wynik solvera. Uczciwy stan zerowy: brak przekształtnika/DER lub braki
+    karty falownika → werdykt „brak danych" (bez fabrykacji).
+
+    404 gdy przebieg nie istnieje; 409 gdy rodzaj przebiegu to nie ``ssci_impedance``;
+    422 gdy przebieg nie niesie payloadu solvera SSCI.
+    """
+    run = _require_run(run_id, V126AnalysisType.SSCI_IMPEDANCE)
+    try:
+        return build_ssci_stability_view(run)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
 
 
 @router.get("/analysis-runs/{run_id}/results/v126/{analysis_type}/proof")

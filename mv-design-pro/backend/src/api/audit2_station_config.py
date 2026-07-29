@@ -16,14 +16,13 @@ Endpointy (UPSERT pattern):
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from typing import Any
 from uuid import UUID, uuid4
 
 from api.dependencies import get_uow_factory
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.models import StationAudit2ConfigORM
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel, Field
 
 router = APIRouter(
@@ -111,21 +110,21 @@ def _aggregate_loads_per_station_for_project(*, uow, project_id: UUID) -> dict[s
         # p_mw -> konwersja * 1000.
         p_kw_value: float | None = None
         if hasattr(load, "nominal_power_kw"):
-            v = getattr(load, "nominal_power_kw")
+            v = load.nominal_power_kw
             if v is not None:
                 try:
                     p_kw_value = float(v)
                 except (TypeError, ValueError):
                     p_kw_value = None
         if p_kw_value is None and hasattr(load, "p_kw"):
-            v = getattr(load, "p_kw")
+            v = load.p_kw
             if v is not None:
                 try:
                     p_kw_value = float(v)
                 except (TypeError, ValueError):
                     p_kw_value = None
         if p_kw_value is None and hasattr(load, "p_mw"):
-            v = getattr(load, "p_mw")
+            v = load.p_mw
             if v is not None:
                 try:
                     p_kw_value = float(v) * 1000.0  # MW -> kW
@@ -244,9 +243,7 @@ def upsert_station_audit2_config(
             transformer_tap_changers=dict(body.transformer_tap_changers),
             bay_hv_fuses=dict(body.bay_hv_fuses),
             bay_vts=dict(body.bay_vts),
-            bay_device_withstand={
-                k: v.model_dump() for k, v in body.bay_device_withstand.items()
-            },
+            bay_device_withstand={k: v.model_dump() for k, v in body.bay_device_withstand.items()},
         )
         uow.session.add(new_row)
         uow.session.flush()
@@ -374,7 +371,6 @@ def validate_all_audit2(
         generate_vt_grounding_validation_proof,
     )
     from network_model.catalog.audit2_catalogs import (
-        VT_CATALOG_FOR_FACTOR,
         estimate_der_power_kw,
         get_tap_changer,
     )
@@ -388,9 +384,7 @@ def validate_all_audit2(
         )
         # Phase 49: pobierz aktywny snapshot projektu, aby obliczyc real
         # p_import_kw (loady) dla hosting capacity validation.
-        loads_per_station = _aggregate_loads_per_station_for_project(
-            uow=uow, project_id=project_id
-        )
+        loads_per_station = _aggregate_loads_per_station_for_project(uow=uow, project_id=project_id)
 
         per_station_results: list[dict[str, Any]] = []
         all_pass = True
@@ -445,17 +439,23 @@ def validate_all_audit2(
                 grounding_type = (
                     "isolated"
                     if grounding == "mng_isolated"
-                    else "petersen_coil"
-                    if grounding == "mng_petersen"
-                    else "resistor_grounded"
-                    if grounding.startswith("mng_resistor")
-                    else "directly_grounded"
-                    if grounding == "mng_directly"
-                    else "isolated"
+                    else (
+                        "petersen_coil"
+                        if grounding == "mng_petersen"
+                        else (
+                            "resistor_grounded"
+                            if grounding.startswith("mng_resistor")
+                            else "directly_grounded" if grounding == "mng_directly" else "isolated"
+                        )
+                    )
                 )
                 for bay_id, vt_ref in (cfg.bay_vts or {}).items():
-                    # Real voltage_factor z catalogu VT (zamiast 1.9 hardcoded).
-                    vt_factor = VT_CATALOG_FOR_FACTOR.get(str(vt_ref), 1.9)
+                    # Wspolczynnik z REALNEGO katalogu VT (V12K-258). Poprzednio lookup
+                    # szedl do czteroelementowej mapy odwzorowujacej syntetyczne
+                    # identyfikatory frontu, a KAZDY nieznany typ dostawal 1,9 jako
+                    # wartosc domyslna — czyli brak danej stawal sie liczba, na ktorej
+                    # pakiet dowodowy oglaszal zgodnosc. `None` zostaje `None`.
+                    vt_factor = _wspolczynnik_napieciowy_typu(str(vt_ref))
                     proofs.append(
                         generate_vt_grounding_validation_proof(
                             bay_designation=str(bay_id),
@@ -464,7 +464,7 @@ def validate_all_audit2(
                         )
                     )
             # Device withstand (per bay).
-            for bay_id, spec in (cfg.bay_device_withstand or {}).items():
+            for spec in (cfg.bay_device_withstand or {}).values():
                 if isinstance(spec, dict):
                     proofs.append(
                         generate_device_withstand_proof(
@@ -490,3 +490,18 @@ def validate_all_audit2(
             "station_count": len(per_station_results),
             "per_station": per_station_results,
         }
+
+
+def _wspolczynnik_napieciowy_typu(vt_ref: str) -> float | None:
+    """Wspolczynnik napieciowy typu VT z KATALOGU — bez wartosci domyslnej.
+
+    Brak typu w katalogu albo brak danej w karcie daje `None`; generator dowodu
+    zamienia to w dowod NIEZALICZONY z nazwanym powodem, zamiast liczby z powietrza.
+    """
+    from network_model.catalog import get_default_mv_catalog
+
+    typ = get_default_mv_catalog().get_vt_type(vt_ref)
+    if typ is None:
+        return None
+    wartosc = typ.to_dict().get("rated_voltage_factor")
+    return float(wartosc) if isinstance(wartosc, int | float) else None

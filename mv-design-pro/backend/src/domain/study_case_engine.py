@@ -32,7 +32,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Protocol
 from uuid import uuid4
 
@@ -41,7 +41,7 @@ from uuid import uuid4
 # =============================================================================
 
 
-class ScenarioType(str, Enum):
+class ScenarioType(StrEnum):
     """
     Scenario type for study case calculations.
 
@@ -55,7 +55,7 @@ class ScenarioType(str, Enum):
     PROTECTION = "PROTECTION"  # Protection coordination
 
 
-class OperatingMode(str, Enum):
+class OperatingMode(StrEnum):
     """
     Operating mode for study case calculations.
 
@@ -67,7 +67,7 @@ class OperatingMode(str, Enum):
     MAINTENANCE = "MAINTENANCE"  # Maintenance outage scenario
 
 
-class ResultStatus(str, Enum):
+class ResultStatus(StrEnum):
     """Result status for a study case (industrial-grade)."""
 
     NONE = "NONE"  # No calculations performed
@@ -75,7 +75,7 @@ class ResultStatus(str, Enum):
     OUTDATED = "OUTDATED"  # Results need recalculation
 
 
-class ComparisonVerdict(str, Enum):
+class ComparisonVerdict(StrEnum):
     """Verdict from comparing two runs."""
 
     IDENTICAL = "IDENTICAL"  # No meaningful difference

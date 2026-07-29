@@ -1,0 +1,303 @@
+/*
+ * Okno „Przebiegi obliczeń" (przestrzeń „Obliczenia", W-503, karta E7.2).
+ * Wyłącznie tokeny --mvd-* (parytet motywów jasny/ciemny). Współdzielone
+ * prymitywy (`.mvd-tag*`, `.mvd-num`, `.mvd-btn`) powtórzone lokalnie zgodnie
+ * ze wzorcem pozostałych przestrzeni (`obliczenia/przypadki.css`, karta E7.1).
+ */
+
+.mvd-przebiegi {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+}
+.mvd-przebiegi-pusto {
+  padding: 24px;
+  color: var(--mvd-muted);
+}
+
+/* ---- nagłówek ---- */
+.mvd-przebiegi-naglowek {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+.mvd-przebiegi-tytul {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+.mvd-przebiegi-podtytul {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+/* ---- treść: lista + szczegóły ---- */
+.mvd-przebiegi-tresc {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(360px, 1.2fr) minmax(320px, 1fr);
+  gap: 0;
+}
+.mvd-przebiegi-lista {
+  border-right: 1px solid var(--mvd-line);
+  overflow: auto;
+  padding: 12px;
+}
+.mvd-przebiegi-szczegoly {
+  overflow: auto;
+  padding: 16px;
+}
+
+/* ---- tabela listy ---- */
+.mvd-przebiegi-scroll {
+  overflow-x: auto;
+}
+.mvd-przebiegi-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.mvd-przebiegi-tabela th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-przebiegi-wiersz {
+  cursor: pointer;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-przebiegi-wiersz:hover {
+  background: var(--mvd-panel-2);
+}
+.mvd-przebiegi-wiersz.mvd-on {
+  background: var(--mvd-sel);
+}
+.mvd-przebiegi-tabela td {
+  padding: 7px 8px;
+  vertical-align: middle;
+}
+.mvd-przebiegi-czas {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--mvd-muted);
+}
+.mvd-przebiegi-puste {
+  padding: 16px;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+/* ---- szczegóły przebiegu ---- */
+.mvd-przebieg-szczegoly {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.mvd-przebieg-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.mvd-przebieg-tytul {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.mvd-przebieg-sekcja {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 12px;
+  background: var(--mvd-panel);
+}
+.mvd-przebieg-sekcja-tytul {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.mvd-przebieg-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.mvd-przebieg-tabela th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-przebieg-tabela td {
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--mvd-line);
+}
+.mvd-przebieg-pochodzenie {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-wkrotce {
+  font-style: italic;
+}
+.mvd-wkrotce-wartosc {
+  color: var(--mvd-muted);
+}
+.mvd-przebieg-blad {
+  color: var(--mvd-err);
+  font-size: 13px;
+}
+
+/* ---- sekcja „Kontrakt analizy" (zwijana) ---- */
+.mvd-przebieg-kontrakt-tytul {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.mvd-przebieg-kontrakt[open] .mvd-przebieg-kontrakt-tytul {
+  margin-bottom: 8px;
+}
+.mvd-przebieg-kontrakt-grupy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.mvd-przebieg-kontrakt-grupa-tytul {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-przebieg-kontrakt-stan {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-muted);
+}
+.mvd-przebieg-akcje {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ---- sekcja „Następny krok" (F-E4: przebieg DONE → przejście do Wyników) ---- */
+.mvd-przebieg-nastepny {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-przebieg-nastepny-tresc {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.mvd-przebieg-nastepny-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mvd-accent);
+}
+.mvd-przebieg-nastepny-opis {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mvd-ink);
+}
+.mvd-przebieg-nastepny-akcja {
+  flex-shrink: 0;
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 6px 16px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-accent-ink);
+  cursor: pointer;
+}
+.mvd-przebieg-nastepny-akcja:hover {
+  filter: brightness(1.08);
+}
+
+/* ---- prymitywy współdzielone ---- */
+.mvd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mvd-tag {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+}
+.mvd-tag-ok {
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+.mvd-tag-warn {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+.mvd-tag-mut {
+  background: var(--mvd-chip);
+  color: var(--mvd-muted);
+}
+.mvd-tag-err {
+  background: var(--mvd-err-bg);
+  color: var(--mvd-err);
+}
+.mvd-btn {
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 6px 12px;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mvd-btn:hover {
+  background: var(--mvd-panel-2);
+}
+.mvd-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mvd-btn-primary {
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  border-color: var(--mvd-accent);
+}

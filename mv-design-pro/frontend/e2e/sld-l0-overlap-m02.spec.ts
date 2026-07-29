@@ -46,12 +46,17 @@ test.describe('sld:M-02:l0-overlap (render-based)', () => {
     const harnessRoot = page.locator('[data-testid="sld-harness-root"]').first();
     await expect(harnessRoot).toHaveAttribute('data-status', 'ready', { timeout: 20000 });
 
-    const canvas = page.locator('[data-testid="sld-canvas-v2"]').first();
+    const canvas = page.locator('[data-testid="sld-canvas-v3"]').first();
     await expect(canvas).toBeVisible({ timeout: 15000 });
     // Let auto-fit + viewport transform settle before measuring.
     await page.waitForTimeout(900);
 
-    const blockLocator = page.locator('[data-testid^="sld-v2-station-overview-block-"]');
+    // v3 (adaptacja po F12-C): blok L0 = glif `stationCollapsed` (kontur
+    // kwadratu stacji, spec §3/F6b) — dawny testid sld-v2-station-overview-block-*
+    // zniknął z kasacją renderu v2. Legenda arkusza wyłączona (glif wzorcowy).
+    const blockLocator = page.locator(
+      'xpath=//*[@data-symbol-canon="stationCollapsed"][not(ancestor::*[@data-testid="sld-sheet-legend"])]',
+    );
     const count = await blockLocator.count();
     // Sanity: the substrate must render its full station set as L0 blocks.
     expect(count, 'expected >=50 L0 station blocks on the substrate').toBeGreaterThanOrEqual(50);

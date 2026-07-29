@@ -141,7 +141,7 @@ współbieżność z F1), domknięcia przemysłowe SLD z backlogu K30.
 
 ## 6. Tabele zadań
 
-### F0 (5 zadań)
+### F0 (6 zadań)
 | # | Zadanie | Akceptacja | Effort |
 |---|---|---|---|
 | F0.1 | Baseline mypy + bramka no-new-errors w CI | canary-PR z nowym błędem = czerwone CI | M |
@@ -149,6 +149,7 @@ współbieżność z F1), domknięcia przemysłowe SLD z backlogu K30.
 | F0.3 | Tiering 79 guardów (rejestr + wpięcie tier-1) | 100% tier-1 blokujących; lista tier-3 do kasacji | M |
 | F0.4 | Semantyka ≥N w guardach liczników doc | dodanie testu nie psuje CI | S |
 | F0.5 | Charakteryzacja §4.1–4.4 | snapshot OpenAPI + goldeny E2E + testy ścieżek błędów w repo | L |
+| F0.6 | **WYKONANE 2026-07-25 (V12K-199).** Reanimacja workflowu „P0 Extended Guards" — padał tracebackiem na 3. z 15 kroków (guardy delta-owe wołały `git diff origin/main...HEAD` i `git diff HEAD~1` z `check=True`, a checkout bez `fetch-depth: 0` nie ma żadnego z tych refów), więc **12 guardów nigdy się w CI nie wykonało**: overlay no-physics, determinizm trace i scenariuszy, terminologia UI, forbidden terms, mojibake, kanon V12.xx, kontrakt severity, schemat ResultSet, port binding. Pomiar: 561 biegów workflowu, w próbce 30 najnowszych zero sukcesów; zero biegów na `main`. | wspólny helper `scripts/guard_diff_base.py` (fail-closed z przyczyną, nigdy wyjątek) + `fetch-depth: 0` + test regresyjny odtwarzający klon głębokości 1; wszystkie 15 kroków zielone lokalnie | S |
 
 ### F1 (6 zadań)
 | # | Zadanie | Akceptacja | Effort |

@@ -153,17 +153,20 @@ describe('InspectorEngineeringView', () => {
   });
 
   it('pokazuje kanoniczne etykiety dla stacji i układu PV/BESS/FW', () => {
+    // Odbudowa 2026-07-17 (dług: test wykluczony w vite.config zamiast
+    // naprawiony). Intencja BEZ ZMIAN: etykiety kanoniczne PL, zero przecieku
+    // surowych enumów (mv_lv/nn_side). Asercje dopasowane do obecnej
+    // struktury: podtytuł nagłówka = rola układu + REALNY wariant
+    // przyłączenia z ENM (naprawa hardkodu „PV za transformatorem SN/nN",
+    // który kłamał dla farmy wiatrowej na nn_side — regresja złapana przy
+    // odbudowie tego testu).
     render(<InspectorEngineeringView />);
 
     expect(
       screen.getAllByText((content) => content.includes('Układ') && content.includes('wiatrowej')).length,
     ).toBeGreaterThan(0);
-    expect(screen.getByText('Po stronie nN stacji')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        (content) => content.startsWith('Oznaczenie') && content.includes('układu'),
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByText('Układ farmy wiatrowej - Po stronie nN stacji')).toBeInTheDocument();
+    expect(screen.getByText('Po stronie nN stacji (przez TR SN/nN)')).toBeInTheDocument();
     expect(screen.getByText('Wymagany wariant katalogowy układu PV/BESS/FW')).toBeInTheDocument();
     expect(screen.queryByText('mv_lv')).not.toBeInTheDocument();
     expect(screen.queryByText('nn_side')).not.toBeInTheDocument();
@@ -244,11 +247,22 @@ describe('InspectorEngineeringView', () => {
     );
   });
 
-  it('opisuje zrodlo przeksztaltnikowe po roli semantycznej zamiast po generator.gen_type', () => {
+  it('opisuje zrodlo przeksztaltnikowe po roli semantycznej, gdy ENM nie rozstrzyga (gen_type nieznany)', () => {
+    // Odbudowa 2026-07-17 — ROZSTRZYGNIĘCIE kontraktu (ENM-first): gdy rekord
+    // `Generator` w ENM NIESIE `gen_type`, wygrywa ENM (źródło prawdy modelu),
+    // nie rola semantyczna selekcji — stary wariant tego testu żądał odwrotnie
+    // (selekcja PV_INVERTER miała przykryć gen_type=wind_inverter), co
+    // przeczyło hierarchii prawdy V12K. Rola semantyczna selekcji rozstrzyga
+    // WYŁĄCZNIE, gdy selekcja nie rozwiązuje się do rekordu generatora ENM —
+    // wtedy komponent NIE zgaduje po gen_type (bo go nie ma), tylko honoruje
+    // semantykę (tu: PV zamiast domysłu „farma wiatrowa" z jedynego rekordu).
+    // Id celowo BEZ członów gramatyki ścieżek wewnątrz-stacyjnych
+    // (`/pv/`, `/internal-bay/` — te kieruje buildInternalStationElementSections)
+    // — selekcja ma reprezentować źródło NIEROZWIĄZYWALNE do rekordu ENM.
     mockSelectedElements = [{
-      id: 'gen-1',
-      type: 'Generator',
-      name: 'Farma wiatrowa 1',
+      id: 'zrodlo_pv_inverter_001',
+      type: 'PVInverter',
+      name: 'Falownik PV 1',
       semanticHash: 'semantic:v2',
       semanticElementKind: 'SOURCE',
       semanticEngineeringRole: 'PV_INVERTER',
@@ -257,12 +271,11 @@ describe('InspectorEngineeringView', () => {
 
     render(<InspectorEngineeringView />);
 
-    expect(screen.getAllByText('Źródło przekształtnikowe PV').length).toBeGreaterThan(0);
-    expect(screen.getByText('PV_INVERTER')).toBeInTheDocument();
-    expect(screen.getByText('Moc czynna')).toBeInTheDocument();
+    expect(screen.getAllByText((content) => content.includes('Układ PV')).length).toBeGreaterThan(0);
     expect(
-      screen.queryByText((content) => content.includes('FW') && content.includes('przekszta')),
+      screen.queryByText((content) => content.includes('farmy wiatrowej')),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText('wind_inverter')).not.toBeInTheDocument();
   });
 
   it('renderuje pole SN z kanonicznego field read-modelu zamiast z lokalnych heurystyk', () => {
@@ -840,13 +853,19 @@ describe('InspectorEngineeringView', () => {
 
     render(<InspectorEngineeringView />);
 
+    // Odbudowa 2026-07-17: etykiety dopasowane do obecnego kanonu karty pola
+    // („Sterowanie i uzależnienia" zamiast „…i blokady"; dostępność
+    // sterowania/pomiarów zamiast „Łączność ograniczona"; „Tor
+    // ziemnozwarciowy" zamiast wiersza „Źródło 3I0") — intencja BEZ ZMIAN:
+    // pole renderowane WYŁĄCZNIE z kanonicznego read-modelu.
     expect(screen.getByText('Rola kanoniczna')).toBeInTheDocument();
     expect(screen.getAllByText('Pole liniowe wyjściowe').length).toBeGreaterThan(0);
     expect(screen.getByText('Stan ruchowy pola')).toBeInTheDocument();
-    expect(screen.getByText('Łączność ograniczona')).toBeInTheDocument();
+    expect(screen.getByText('Dostępność sterowania')).toBeInTheDocument();
+    expect(screen.getByText('Częściowo dostępne')).toBeInTheDocument();
     expect(screen.getByText('Tor pomiarowy')).toBeInTheDocument();
-    expect(screen.getByText('Źródło 3I0')).toBeInTheDocument();
-    expect(screen.getByText('Sterowanie i blokady')).toBeInTheDocument();
+    expect(screen.getByText('Tor ziemnozwarciowy')).toBeInTheDocument();
+    expect(screen.getByText('Sterowanie i uzależnienia')).toBeInTheDocument();
     expect(screen.getByText('Wyniki projektowe pola')).toBeInTheDocument();
     expect(screen.getByText('Wkłady źródeł w zwarciu')).toBeInTheDocument();
     expect(screen.getByText('Wywód pola')).toBeInTheDocument();
@@ -869,7 +888,7 @@ describe('InspectorEngineeringView', () => {
 
     expect(screen.getByText('Kontrakt pola')).toBeInTheDocument();
     expect(
-      screen.getByText('Brak kanonicznego modelu pola dla wybranego elementu.'),
+      screen.getByText('Kanoniczny model pola nie jest dostępny dla wybranego elementu.'),
     ).toBeInTheDocument();
     expect(screen.queryByText('Aparaty pierwotne')).not.toBeInTheDocument();
     expect(screen.queryByTestId('bay-svg-renderer')).not.toBeInTheDocument();

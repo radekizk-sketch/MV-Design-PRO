@@ -577,8 +577,18 @@ def get_all_ct_types() -> list[dict]:
             "verification_note": verification_note,
         }
 
-    source_reference = "Katalog CT MV-DESIGN-PRO / IEC 61869 / dane referencyjne"
-    verification_note = "Rekord referencyjny do doboru CT; zakresy nalezy potwierdzic z karta producenta przed uzyciem produkcyjnym."
+    source_reference = (
+        "Katalog CT MV-DESIGN-PRO / IEC 61869-2 (rdzen, ALF, Idyn=2,5·Ith, Fs) "
+        "/ IEC 62271-200 (szereg wytrzymalosci rozdzielnicy SN)"
+    )
+    verification_note = (
+        "Rekord referencyjny do doboru CT. Ith podano jako WYMAGANA wytrzymalosc "
+        "cieplna przekladnika w rozdzielnicy SN wg znormalizowanego szeregu "
+        "IEC 62271-200 (16 kA/1 s dla torow <= 150 A, 20 kA/1 s dla 200-1000 A, "
+        "25 kA/1 s dla >= 1200 A); Idyn wyprowadzany normowo (2,5·Ith), Fs wg "
+        "znormalizowanej wartosci 10 dla rdzeni pomiarowych. Wartosci wlasciwe dla "
+        "konkretnego wyrobu potwierdza karta producenta."
+    )
     return [
         {
             "id": "ct_50_1_0_5_5va_arteche",
@@ -588,6 +598,8 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 1.0,
                 "accuracy_class": "0.5",
                 "burden_va": 5.0,
+                "ith_ka_1s": 16.0,
+                "fs_safety_factor": 10.0,
                 "manufacturer": "Arteche",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -605,6 +617,8 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 1.0,
                 "accuracy_class": "0.5",
                 "burden_va": 5.0,
+                "ith_ka_1s": 16.0,
+                "fs_safety_factor": 10.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -622,6 +636,8 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 1.0,
                 "accuracy_class": "0.5",
                 "burden_va": 10.0,
+                "ith_ka_1s": 16.0,
+                "fs_safety_factor": 10.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -639,6 +655,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P10",
                 "burden_va": 10.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -656,6 +673,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P10",
                 "burden_va": 10.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "Siemens",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -673,6 +691,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 15.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -690,6 +709,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 15.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "Schneider Electric",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -707,6 +727,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 20.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "Arteche",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -724,6 +745,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 20.0,
+                "ith_ka_1s": 20.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -741,6 +763,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 20.0,
+                "ith_ka_1s": 25.0,
                 "manufacturer": "Siemens",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -758,6 +781,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "5P20",
                 "burden_va": 30.0,
+                "ith_ka_1s": 25.0,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -775,6 +799,7 @@ def get_all_ct_types() -> list[dict]:
                 "ratio_secondary_a": 5.0,
                 "accuracy_class": "10P10",
                 "burden_va": 30.0,
+                "ith_ka_1s": 25.0,
                 "manufacturer": "Arteche",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -803,8 +828,25 @@ def get_all_vt_types() -> list[dict]:
             "verification_note": verification_note,
         }
 
-    source_reference = "Katalog VT MV-DESIGN-PRO / IEC 61869 / dane referencyjne"
-    verification_note = "Rekord referencyjny do doboru VT; zakresy nalezy potwierdzic z karta producenta przed uzyciem produkcyjnym."
+    source_reference = "Katalog VT MV-DESIGN-PRO / IEC 61869-3 / dane referencyjne"
+    verification_note = (
+        "Rekord referencyjny do doboru VT. Wspolczynnik napieciowy 1,9 przez 8 h jest "
+        "WARTOSCIA DEKLAROWANA wg IEC 61869-3 tab. 2 dla sieci maloprądowej (izolowanej "
+        "albo kompensowanej) bez automatycznego wylaczania zwarcia doziemnego — takie sa "
+        "polskie sieci SN. Moc znamionowa 30 VA pochodzi z szeregu znormalizowanego "
+        "IEC 61869-3. Oba parametry oraz obecnosc uzwojenia resztkowego nalezy potwierdzic "
+        "karta producenta przed uzyciem produkcyjnym (verification_status)."
+    )
+    verification_note_fz = (
+        "Rekord referencyjny rodziny FAZA-ZIEMIA z uzwojeniem RESZTKOWYM (trzecim), "
+        "ktora w sieci SN realizuje pomiar napiecia zerowego 3U0 dla kryteriow "
+        "ziemnozwarciowych kierunkowych (67N) i nadnapieciowych zerowych (59N). "
+        "Uzwojenie pierwotne pracuje miedzy faza a ziemia, dlatego przekladnia jest "
+        "U_n/√3, a wspolczynnik napieciowy musi wynosic 1,9 (IEC 61869-3 tab. 2): "
+        "przy zwarciu doziemnym napiecie faz zdrowych rosnie do napiecia miedzyfazowego. "
+        "Klasy, moc i obecnosc uzwojenia resztkowego potwierdzic karta producenta."
+    )
+
     return [
         {
             "id": "vt_10kv_100v_05_abb",
@@ -813,6 +855,10 @@ def get_all_vt_types() -> list[dict]:
                 "ratio_primary_v": 10000.0,
                 "ratio_secondary_v": 100.0,
                 "accuracy_class": "0.5",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": False,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -829,6 +875,10 @@ def get_all_vt_types() -> list[dict]:
                 "ratio_primary_v": 15000.0,
                 "ratio_secondary_v": 100.0,
                 "accuracy_class": "0.5",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": False,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -845,6 +895,10 @@ def get_all_vt_types() -> list[dict]:
                 "ratio_primary_v": 15000.0,
                 "ratio_secondary_v": 100.0,
                 "accuracy_class": "3P",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": False,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -861,6 +915,10 @@ def get_all_vt_types() -> list[dict]:
                 "ratio_primary_v": 20000.0,
                 "ratio_secondary_v": 100.0,
                 "accuracy_class": "0.5",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": False,
                 "manufacturer": "Arteche",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -877,6 +935,10 @@ def get_all_vt_types() -> list[dict]:
                 "ratio_primary_v": 20000.0,
                 "ratio_secondary_v": 100.0,
                 "accuracy_class": "3P",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": False,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -893,6 +955,10 @@ def get_all_vt_types() -> list[dict]:
                 "ratio_primary_v": 24000.0,
                 "ratio_secondary_v": 100.0,
                 "accuracy_class": "0.5",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": False,
                 "manufacturer": "Siemens",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -909,6 +975,10 @@ def get_all_vt_types() -> list[dict]:
                 "ratio_primary_v": 24000.0,
                 "ratio_secondary_v": 100.0,
                 "accuracy_class": "3P",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": False,
                 "manufacturer": "Schneider Electric",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -925,6 +995,10 @@ def get_all_vt_types() -> list[dict]:
                 "ratio_primary_v": 15000.0,
                 "ratio_secondary_v": 110.0,
                 "accuracy_class": "0.5",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": False,
                 "manufacturer": "Ormazabal",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
@@ -941,12 +1015,100 @@ def get_all_vt_types() -> list[dict]:
                 "ratio_primary_v": 20000.0,
                 "ratio_secondary_v": 110.0,
                 "accuracy_class": "0.5",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": False,
                 "manufacturer": "ABB",
                 **_quality_meta(
                     verification_status="REFERENCYJNY",
                     source_reference=source_reference,
                     catalog_status="REFERENCYJNY_V1",
                     verification_note=verification_note,
+                ),
+            },
+        },
+        {
+            "id": "vt_10kv_fz_100_3_05_3p_abb",
+            "name": "VT 10 kV/√3 / 100/√3 + 100/3 V kl. 0,5/3P",
+            "params": {
+                "ratio_primary_v": 5773.5,
+                "ratio_secondary_v": 57.7,
+                "accuracy_class": "3P",
+                "accuracy_class_metering": "0.5",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": True,
+                "manufacturer": "ABB",
+                **_quality_meta(
+                    verification_status="REFERENCYJNY",
+                    source_reference=source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=verification_note_fz,
+                ),
+            },
+        },
+        {
+            "id": "vt_15kv_fz_100_3_05_3p_arteche",
+            "name": "VT 15 kV/√3 / 100/√3 + 100/3 V kl. 0,5/3P",
+            "params": {
+                "ratio_primary_v": 8660.3,
+                "ratio_secondary_v": 57.7,
+                "accuracy_class": "3P",
+                "accuracy_class_metering": "0.5",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": True,
+                "manufacturer": "Arteche",
+                **_quality_meta(
+                    verification_status="REFERENCYJNY",
+                    source_reference=source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=verification_note_fz,
+                ),
+            },
+        },
+        {
+            "id": "vt_20kv_fz_100_3_05_3p_siemens",
+            "name": "VT 20 kV/√3 / 100/√3 + 100/3 V kl. 0,5/3P",
+            "params": {
+                "ratio_primary_v": 11547.0,
+                "ratio_secondary_v": 57.7,
+                "accuracy_class": "3P",
+                "accuracy_class_metering": "0.5",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": True,
+                "manufacturer": "Siemens",
+                **_quality_meta(
+                    verification_status="REFERENCYJNY",
+                    source_reference=source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=verification_note_fz,
+                ),
+            },
+        },
+        {
+            "id": "vt_24kv_fz_100_3_05_3p_schneider",
+            "name": "VT 24 kV/√3 / 100/√3 + 100/3 V kl. 0,5/3P",
+            "params": {
+                "ratio_primary_v": 13856.4,
+                "ratio_secondary_v": 57.7,
+                "accuracy_class": "3P",
+                "accuracy_class_metering": "0.5",
+                "rated_voltage_factor": 1.9,
+                "voltage_factor_duration_s": 28800.0,
+                "burden_va": 30.0,
+                "has_residual_winding": True,
+                "manufacturer": "Schneider Electric",
+                **_quality_meta(
+                    verification_status="REFERENCYJNY",
+                    source_reference=source_reference,
+                    catalog_status="REFERENCYJNY_V1",
+                    verification_note=verification_note_fz,
                 ),
             },
         },

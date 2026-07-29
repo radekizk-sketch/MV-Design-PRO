@@ -19,6 +19,14 @@ import sys
 from pathlib import Path
 
 
+# Lokalna prawda kreatora — identyfikatory wlasnego modelu w warstwie prezentacji.
+#
+# GRANICE SLOWA SA OBOWIAZKOWE (V12K-263). Wzorzec bez `\b` lapal `ownModel` WEWNATRZ
+# `pendingKnownModel` (…Kn|ownModel) i zglaszal lokalna prawde tam, gdzie jej nie ma.
+# Ostrzezenie-widmo jest gorsze niz jego brak: uczy ignorowac wyniki straznika.
+WZORZEC_LOKALNEJ_PRAWDY = r"\b(?:localModel|wizardModel|ownModel)\b"
+
+
 def main() -> int:
     root = Path(__file__).resolve().parent.parent
     errors: list[str] = []
@@ -69,7 +77,7 @@ def main() -> int:
             try:
                 content = ts_file.read_text(encoding="utf-8")
                 # Check for local model state (anti-pattern)
-                if re.search(r'localModel|wizardModel|ownModel', content):
+                if re.search(WZORZEC_LOKALNEJ_PRAWDY, content):
                     warnings.append(
                         f"OSTRZEŻENIE: Możliwa lokalna prawda w {ts_file.relative_to(root)}"
                     )
@@ -78,7 +86,7 @@ def main() -> int:
         for tsx_file in frontend_src.rglob("*.tsx"):
             try:
                 content = tsx_file.read_text(encoding="utf-8")
-                if re.search(r'localModel|wizardModel|ownModel', content):
+                if re.search(WZORZEC_LOKALNEJ_PRAWDY, content):
                     warnings.append(
                         f"OSTRZEŻENIE: Możliwa lokalna prawda w {tsx_file.relative_to(root)}"
                     )
@@ -121,36 +129,31 @@ def main() -> int:
                     f"TODO w krytycznej ścieżce: {f.name}:{line_no}: {line[:80]}"
                 )
 
-    # 7. Check no PCC in repo (grep-zero)
-    for src_dir in [root / "backend" / "src", root / "frontend" / "src"]:
-        if src_dir.exists():
-            for py_file in src_dir.rglob("*.py"):
-                try:
-                    content = py_file.read_text(encoding="utf-8")
-                    if re.search(r'\bPCC\b', content) and 'grep-zero' not in content:
-                        errors.append(
-                            f"ZAKAZ PCC: Znaleziono 'PCC' w {py_file.relative_to(root)}"
-                        )
-                except (UnicodeDecodeError, PermissionError):
-                    pass
-            for ts_file in src_dir.rglob("*.ts"):
-                try:
-                    content = ts_file.read_text(encoding="utf-8")
-                    if re.search(r'\bPCC\b', content) and 'grep guard' not in content.lower() and 'zakazanych' not in content.lower() and 'forbidden' not in content.lower():
-                        errors.append(
-                            f"ZAKAZ PCC: Znaleziono 'PCC' w {ts_file.relative_to(root)}"
-                        )
-                except (UnicodeDecodeError, PermissionError):
-                    pass
-            for tsx_file in src_dir.rglob("*.tsx"):
-                try:
-                    content = tsx_file.read_text(encoding="utf-8")
-                    if re.search(r'\bPCC\b', content) and 'grep guard' not in content.lower() and 'zakazanych' not in content.lower() and 'forbidden' not in content.lower():
-                        errors.append(
-                            f"ZAKAZ PCC: Znaleziono 'PCC' w {tsx_file.relative_to(root)}"
-                        )
-                except (UnicodeDecodeError, PermissionError):
-                    pass
+    # 7. Zakaz PCC — JEDNA regula, delegowana do `pcc_zero_guard`.
+    #
+    # KONFLIKT ROZSTRZYGNIETY (V12K-263). Ten straznik mial WLASNA, TRZECIA kopie
+    # zakazu i stosowal ja do CALEGO repozytorium — takze do frontendu. Na HEAD
+    # dawalo to 63 bledy i straznik nie mogl przejsc, wiec nigdy nie zostal wpiety
+    # do CI: „mamy straznika" bylo pozorem, nie zabezpieczeniem.
+    #
+    # Kanon zakazuje PCC jako ENCJI MODELU (CLAUDE.md: „Forbidden Terms in Core
+    # Model"), a nie jako slowa w interfejsie. Potwierdzaja to trzy niezalezne
+    # zrodla: (a) `pcc_zero_guard` — jedyna wersja wpieta w CI — skanuje wylacznie
+    # `backend/src`; (b) `forbidden_ui_terms_guard`, ktory rzadzi terminologia UI,
+    # jest ZIELONY przy 173 wystapieniach PCC we froncie; (c) `pcc_ref` w
+    # `domain/der_readiness.py` wskazuje REALNA szyne modelu, a nie fikcyjny wezel —
+    # czyli zakazana encja nie istnieje.
+    #
+    # Skutek: zamiast czwartej kopii reguly wolamy oryginal. Rozjazd kopii tej samej
+    # reguly byl juz zrodlem defektu (V12K-256), wiec kopii nie mnozymy.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        from pcc_zero_guard import scan_backend_src  # noqa: PLC0415
+    except ImportError as exc:  # pragma: no cover — brak skryptu = blad repozytorium
+        errors.append(f"BRAK: nie mozna zaladowac `pcc_zero_guard` ({exc})")
+    else:
+        for naruszenie in scan_backend_src():
+            errors.append(f"ZAKAZ PCC (encja modelu): {naruszenie.strip()}")
 
     # 8. Check canonical operation names in API
     api_file = root / "backend" / "src" / "api" / "enm.py"

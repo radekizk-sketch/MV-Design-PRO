@@ -24,7 +24,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # ---------------------------------------------------------------------------
@@ -32,7 +32,7 @@ from typing import Any
 # ---------------------------------------------------------------------------
 
 
-class ReadinessAreaV1(str, Enum):
+class ReadinessAreaV1(StrEnum):
     """Obszar gotowosci — grupy problemow w kreatorze."""
 
     CATALOGS = "CATALOGS"
@@ -44,7 +44,7 @@ class ReadinessAreaV1(str, Enum):
     ANALYSIS = "ANALYSIS"
 
 
-class ReadinessPriority(str, Enum):
+class ReadinessPriority(StrEnum):
     """Priorytet problemu gotowosci."""
 
     BLOCKER = "BLOCKER"

@@ -172,6 +172,14 @@ function formatConnectionSideForReview(
 
 interface WizardSelections {
   connectionSide: ConnectionSide | null;
+  /**
+   * Liczba jednostek wytwórczych w tej pozycji (V12K-249).
+   *
+   * Do tej pory kreator wysyłał na sztywno `quantity: 1`, więc farmy 8 × 1 MW NIE DAŁO
+   * SIĘ w modelu wyrazić — a moc pozycji, prądy robocze, dobór transformatora, CT
+   * i kategoria NC RfG zależą właśnie od iloczynu.
+   */
+  unitCount: number;
   voltageLevelRef: string | null;
   pccLabel: string;
   bayName: string;
@@ -196,6 +204,7 @@ const EMPTY_SELECTIONS: WizardSelections = {
   bayName: '',
   deviceCatalogRef: null,
   batteryCatalogRef: null,
+  unitCount: 1,
   ncRfgProfileRef: null,
   lvrtCurveRef: null,
   hvrtCurveRef: null,
@@ -206,7 +215,12 @@ const EMPTY_SELECTIONS: WizardSelections = {
 };
 
 const DEFAULT_LV_VOLTAGE_LEVEL_REF = 'lv_0_4kV';
-const DEFAULT_NC_RFG_PROFILE_REF = 'ncrfg_enea';
+// ZERO PRESELEKCJI OPERATORA (V12K-245). Krok „profil" podstawial wczesniej zestaw ENEA
+// (profil + krzywe LVRT/HVRT + P(f)), wiec projektant mogl przejsc dalej JEDNYM klikiem,
+// nie podejmujac decyzji — a wybor OSD wynika z lokalizacji przylaczenia i determinuje
+// krzywe FRT oraz wymagania Q(U). Bramka kroku i tak wymaga profilu, wiec usuniecie
+// preselekcji zamienia „domyslnie ENEA" na „wybierz operatora" — bez zadnej straty
+// funkcji, za to bez fabrykacji danej projektowej.
 
 const STATION_TRANSFORMER_CATALOG: readonly StationTransformerCatalogItem[] = [
   { id: 'tr-sn-nn-15-04-63kva-dyn11', label_pl: 'TR SN/nN 15/0,4 kV 63 kVA Dyn11', sn_mva: 0.063, hv_kv: 15, lv_kv: 0.4 },
@@ -281,26 +295,6 @@ function applyPointDefaults(
   return next;
 }
 
-function applyProfileDefaults(selections: WizardSelections): WizardSelections {
-  if (selections.ncRfgProfileRef && selections.lvrtCurveRef && selections.hvrtCurveRef) {
-    return selections;
-  }
-  const profile = NC_RFG_PROFILE_CATALOG.find((entry) => entry.id === DEFAULT_NC_RFG_PROFILE_REF)
-    ?? NC_RFG_PROFILE_CATALOG[0];
-  if (!profile) return selections;
-  const lvrtCurveRef = selectLvrtCurvesForProfile(profile.id)[0]?.id ?? null;
-  const hvrtCurveRef = selectHvrtCurvesForProfile(profile.id)[0]?.id ?? null;
-  const pfCurveRef = PF_CURVE_CATALOG.find(
-    (curve) => curve.operator_code === profile.operator_code,
-  )?.id ?? null;
-  return {
-    ...selections,
-    ncRfgProfileRef: profile.id,
-    lvrtCurveRef,
-    hvrtCurveRef,
-    pfCurveRef,
-  };
-}
 
 function readRefList(value: unknown): string[] {
   return Array.isArray(value)
@@ -974,9 +968,6 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
     const idx = STEPS.indexOf(step);
     if (idx < STEPS.length - 1) {
       const nextStep = STEPS[idx + 1];
-      if (nextStep === 'profile') {
-        setSelections((current) => applyProfileDefaults(current));
-      }
       setStep(nextStep);
     }
   }, [step]);
@@ -1126,7 +1117,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       derName: selections.derName,
       pccLabel: selections.pccLabel,
     });
-    const pccRef = `pcc_${stationId}_${selections.pccLabel.trim()}`;
+    const busPrzylaczeniaRef = `pcc_${stationId}_${selections.pccLabel.trim()}`;
     if (voltageMismatchWarning || transformerPowerWarning) {
       notify(voltageMismatchWarning ?? transformerPowerWarning ?? 'Konfiguracja DER wymaga korekty.', 'error');
       return;
@@ -1138,6 +1129,23 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
 
     const device = deviceCatalog.find((d) => d.id === selections.deviceCatalogRef);
     const nominalPowerKw = device && 'nominal_power_kw' in device ? device.nominal_power_kw : null;
+    // ZERO PODSTAWIANIA MOCY (V12K-249). Poprzednio brak mocy katalogowej dawał
+    // `power_mw: (nominalPowerKw ?? 500) / 1000` — czyli 500 kW WPISANE DO MODELU jako
+    // moc wytwórcy. To nie była wartość domyślna interfejsu, tylko sfabrykowana dana
+    // projektowa, od której zależą wszystkie obliczenia sieciowe. Brak mocy zatrzymuje
+    // zapis z nazwanym powodem.
+    if (nominalPowerKw === null || !(nominalPowerKw > 0)) {
+      notify(
+        'Wybrane urządzenie nie ma w katalogu mocy znamionowej, więc mocy pozycji nie da '
+        + 'się wyznaczyć. Wybierz urządzenie z kompletną tabliczką albo uzupełnij katalog.',
+        'error',
+      );
+      return;
+    }
+    const liczbaJednostek = Math.max(1, Math.round(selections.unitCount || 1));
+    // Model trzyma moc CAŁEJ pozycji (backend mnoży moc katalogową przez liczbę sztuk,
+    // gdy nie dostanie mocy jawnej) — wysyłamy iloczyn, żeby obie strony mówiły to samo.
+    const mocGrupyKw = nominalPowerKw * liczbaJednostek;
     const backendCatalogRef = resolveBackendCatalogRef(
       derKind,
       selections.connectionSide,
@@ -1159,7 +1167,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
       const response = await postDerGeneratorConfig(projectId, effectiveCaseId, {
         station_ref: stationId,
         der_kind: derKind,
-        power_mw: (nominalPowerKw ?? 500) / 1000,
+        power_mw: mocGrupyKw / 1000,
         connection_variant: toBackendConnectionVariant(selections.connectionSide),
         catalog_ref: backendCatalogRef,
         block_transformer_catalog_ref:
@@ -1167,7 +1175,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
             ? effectiveBlockTransformerCatalogRef
             : null,
         source_name: selections.derName,
-        quantity: 1,
+        quantity: liczbaJednostek,
         nc_rfg_module: resolveNcRfgModule(selections),
       });
 
@@ -1182,7 +1190,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
         der_kind: derKind,
         name: selections.derName,
         connection_side: selections.connectionSide,
-        pcc_ref: pccRef,
+        bus_przylaczenia_ref: busPrzylaczeniaRef,
         bay_ref:
           selections.connectionSide === 'SN' ? `bay_${stationId}_${selections.bayName}` : null,
         lv_busbar_ref:
@@ -1193,7 +1201,8 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
             : null,
         connection_node_ref: connectionNodeRef,
         voltage_level_ref: selections.voltageLevelRef,
-        nominal_power_kw: nominalPowerKw,
+        nominal_power_kw: mocGrupyKw,
+        unit_count: liczbaJednostek,
         catalogs: {
           device_catalog_ref: selections.deviceCatalogRef,
           battery_catalog_ref: selections.batteryCatalogRef,
@@ -1642,6 +1651,29 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 ]}
                 testId="add-der-device"
               />
+              {/* Liczba jednostek (V12K-249): dana, bez ktorej moc pozycji i moc
+                  jednostki sa nierozroznialne, a farma 8 × 1 MW nie jest wyrazalna. */}
+              <label className="mt-2 flex flex-col gap-1 text-xs text-scada-muted">
+                Liczba jednostek
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={selections.unitCount}
+                  onChange={(event) =>
+                    setSelections((s) => ({
+                      ...s,
+                      unitCount: Math.max(1, Math.round(Number(event.target.value) || 1)),
+                    }))
+                  }
+                  className="min-h-[44px] rounded border border-scada-border bg-scada-bg px-3 py-2 text-sm text-scada-text"
+                  data-testid="add-der-unit-count"
+                />
+                <span className="text-[11px]">
+                  Moc pozycji = moc jednostki × liczba jednostek. Od tego iloczynu zależą
+                  prądy robocze, dobór transformatora i przekładników oraz kategoria NC RfG.
+                </span>
+              </label>
               <div
                 data-testid="add-der-device-results"
                 className="max-h-72 overflow-y-auto rounded border border-scada-border bg-scada-bg text-[11px]"

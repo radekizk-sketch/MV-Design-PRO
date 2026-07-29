@@ -1,0 +1,304 @@
+/*
+ * Style okna „Praca wyspowa" (ochrona LoM, karta U4 P46). Kolory WYŁĄCZNIE przez
+ * tokeny --mvd-* — zero literałów hex (zgodność z guardem tokenów i trybem
+ * jasny/ciemny). Uzupełnia wzorzec (`wzorzec.css`) o: panele stanu, chipy
+ * podsumowania, kolorowane tagi statusu, panel szczegółu pola (porównania checks),
+ * moduły bez pola i źródła normatywne. Warstwa prezentacji — bez wpływu na dane.
+ */
+
+.mvd-lom {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-lom-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-lom-tytul {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mvd-lom-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+/* ---- panele stanu ---- */
+.mvd-lom-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-muted);
+}
+.mvd-lom-stan--blad {
+  border-style: solid;
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-lom-stan-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-lom-stan-desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- podsumowanie (chipy) ---- */
+.mvd-lom-podsumowanie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.mvd-lom-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 999px;
+  background: var(--mvd-panel);
+}
+.mvd-lom-chip-liczba {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mvd-ink);
+}
+.mvd-lom-chip-etykieta {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-lom-chip--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-lom-chip--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-lom-chip--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-lom-chip--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+
+/* ---- tag statusu ---- */
+.mvd-lom-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid var(--mvd-line);
+  color: var(--mvd-ink);
+  background: var(--mvd-panel-2);
+}
+.mvd-lom-tag--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-lom-tag--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-lom-tag--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-lom-tag--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+
+/* ---- panel szczegółu pola ---- */
+.mvd-lom-szczegol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-lom-szczegol--pusty {
+  border-style: dashed;
+  color: var(--mvd-muted);
+}
+.mvd-lom-szczegol-brak {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-muted);
+}
+.mvd-lom-szczegol-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mvd-lom-szczegol-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-lom-szczegol-sekcja-tytul {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+
+/* ---- porównania (checks) ---- */
+.mvd-lom-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-lom-check {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+}
+.mvd-lom-check-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mvd-lom-check-tytul {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-lom-check-dane {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px 16px;
+  margin: 0;
+}
+.mvd-lom-check-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-lom-check-para dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-lom-check-para dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-ink);
+}
+.mvd-lom-check-msg {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mvd-ink);
+}
+
+/* ---- listy modułów ---- */
+.mvd-lom-moduly {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  color: var(--mvd-ink);
+}
+
+/* ---- moduły bez pola / źródła normatywne ---- */
+.mvd-lom-bez-pola,
+.mvd-lom-zrodla {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+}
+.mvd-lom-bez-pola-tytul,
+.mvd-lom-zrodla-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.mvd-lom-bez-pola-opis {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-muted);
+}
+.mvd-lom-zrodla-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+.mvd-lom-zrodlo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-lom-zrodlo-okno {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-lom-zrodlo-cytat {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+/* ---- tryb ekspercki ---- */
+.mvd-lom-eksp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  margin: 0;
+  padding: 8px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 8px;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-lom-eksp-para {
+  display: flex;
+  gap: 8px;
+}
+.mvd-lom-eksp-para dd {
+  margin: 0;
+  font-family: var(--mvd-font-mono);
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}

@@ -1,0 +1,114 @@
+{
+  "pack_id": "abb_safering",
+  "kind": "manufacturer",
+  "name_pl": "ABB — rozdzielnica SN SafeRing (RMU, SF6)",
+  "version": "2026-07",
+  "status": "repo_verified",
+  "switchgear_family_ref": "ABB__SAFERING",
+  "source_document_refs": [
+    "https://electrification.us.abb.com/products/switchgear/safering-gas-insulated-ring-main-unit",
+    "SafeRing/SafePlus 12-24kV — Gas-insulated ring main unit SafeRing and Compact switchgear SafePlus (katalog ABB 9AKK107492A6537, 128 s.): https://search.abb.com/library/Download.aspx?DocumentID=9AKK107492A6537&DocumentPartId="
+  ],
+  "cell_configurations": [
+    {
+      "cell_code": "C",
+      "name_pl": "Moduł liniowy (rozłącznikowy)",
+      "apparatus": [
+        { "kind": "LOAD_SWITCH", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "CT", "requirement": "optional" },
+        { "kind": "VT", "requirement": "optional" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog ABB 9AKK107492A6537 §7.2 s. 26–28 (rozłącznik trójpołożeniowy z ES, przepusty Interface C; combisensory CT/VT i SA — opcje s. 20)"
+    },
+    {
+      "cell_code": "F",
+      "name_pl": "Moduł transformatorowy bezpiecznikowy (rozłącznik-bezpieczniki)",
+      "apparatus": [
+        { "kind": "FUSE", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "LOAD_SWITCH", "requirement": "optional" },
+        { "kind": "SURGE_ARRESTER", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog ABB 9AKK107492A6537 §7.3 s. 29–31 (kombinacja rozłącznik-bezpieczniki + 2×ES sprzężone; LOAD_SWITCH jako opcja zapisu = granularność modelowania kombinacji — patrz notes_pl)"
+    },
+    {
+      "cell_code": "V",
+      "name_pl": "Moduł wyłącznikowy (próżniowy 200/630 A)",
+      "apparatus": [
+        { "kind": "CB", "requirement": "standard" },
+        { "kind": "DS", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" },
+        { "kind": "CT", "requirement": "optional" },
+        { "kind": "VT", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog ABB 9AKK107492A6537 §7.4 s. 32–34 (CB próżniowy + trójpołożeniowy odłącznik/uziemnik; CT Ferrantiego standard tylko przy 200 A — tu jako opcja, patrz notes_pl)"
+    },
+    {
+      "cell_code": "Sl",
+      "name_pl": "Sprzęgło rozłącznikowe (sekcjonowanie szyn)",
+      "apparatus": [
+        { "kind": "LOAD_SWITCH", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" }
+      ],
+      "source_pl": "Katalog ABB 9AKK107492A6537 §7.8 s. 37"
+    },
+    {
+      "cell_code": "Sv",
+      "name_pl": "Sprzęgło wyłącznikowe (z modułem wzniosu Br)",
+      "apparatus": [
+        { "kind": "CB", "requirement": "standard" },
+        { "kind": "DS", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" }
+      ],
+      "source_pl": "Katalog ABB 9AKK107492A6537 §7.9 s. 38–39"
+    },
+    {
+      "cell_code": "D",
+      "name_pl": "Przyłącze kablowe bezpośrednie",
+      "apparatus": [{ "kind": "CABLE_HEAD", "requirement": "standard" }],
+      "source_pl": "Katalog ABB 9AKK107492A6537 §7.11 s. 40"
+    },
+    {
+      "cell_code": "De",
+      "name_pl": "Przyłącze kablowe bezpośrednie z uziemnikiem",
+      "apparatus": [
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "standard" }
+      ],
+      "source_pl": "Katalog ABB 9AKK107492A6537 §7.12 s. 41–42"
+    },
+    {
+      "cell_code": "Be",
+      "name_pl": "Uziemianie szyn zbiorczych",
+      "apparatus": [{ "kind": "ES", "requirement": "standard" }],
+      "source_pl": "Katalog ABB 9AKK107492A6537 §7.13 s. 43"
+    },
+    {
+      "cell_code": "CB",
+      "name_pl": "Pole wyłącznikowe pełne (dopływ/rozdział, 630/1250 A)",
+      "apparatus": [
+        { "kind": "CB", "requirement": "standard" },
+        { "kind": "DS", "requirement": "standard" },
+        { "kind": "ES", "requirement": "standard" },
+        { "kind": "CABLE_HEAD", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog ABB 9AKK107492A6537 §7.14 s. 44–45"
+    },
+    {
+      "cell_code": "M",
+      "name_pl": "Moduł pomiarowy",
+      "apparatus": [
+        { "kind": "CT", "requirement": "standard" },
+        { "kind": "VT", "requirement": "standard" },
+        { "kind": "FUSE", "requirement": "optional" }
+      ],
+      "source_pl": "Katalog ABB 9AKK107492A6537 §7.15 s. 46–47 (2–3×CT + 3×VT; bezpieczniki pierwotne VT — opcja)"
+    }
+  ],
+  "notes_pl": "Ring Main Unit SF6 sealed-for-life, 12–24 kV, 630 A; konfiguracje RMU DeF/CCF/CCCF/CCFF/DeV/CCV/CCCV/CCVV/CCC/CCCC = sekwencje modułów (katalog s. 20–22). Dane rodziny: SWITCHGEAR_FAMILY_REGISTRY (jedno źródło). KONWENCJE ZAPISU celek (research 2026-07-17, raport: docs/audit/REFERENCE_ENGINE_RESEARCH_MANUFACTURER_CELLS_2026-07-17.md): (1) kombinacja rozłącznik-bezpieczniki modelowana w ENM jako FUSE albo LOAD_SWITCH+FUSE — stąd LOAD_SWITCH w module F jako opcja zapisu; (2) CT Ferrantiego w module V jest standardem katalogowym tylko dla wariantu 200 A — zapisany jako opcja, żeby wariant 630 A nie generował fałszywego braku; (3) trójpołożeniowy odłącznik/uziemnik zapisany jako DS+ES. SURGE_ARRESTER = opcja przedziału kablowego (s. 20)."
+}

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from network_model.catalog.mv_cable_line_catalog import (
+    TEMP_OPERATING_XLPE_C,
     get_all_cable_types,
     get_all_line_types,
     get_cable_catalog_quality_summary,
@@ -34,8 +35,7 @@ def test_mv_cable_catalog_has_industrial_series_width() -> None:
     assert summary["liczba_kabli_testowych"] == 1
     # K30-22: + POLISH family (YHAKXS, YHKXS)
     assert "POLISH" in summary["rodziny_kabli"] or any(
-        f.startswith("POLISH") or "YHAKXS" in f or "YHKXS" in f
-        for f in summary["rodziny_kabli"]
+        f.startswith("POLISH") or "YHAKXS" in f or "YHKXS" in f for f in summary["rodziny_kabli"]
     ), f"Polish PN-HD family missing: {summary['rodziny_kabli']}"
     # Cross-sections: baseline + 50, 95 (new)
     assert 50 in summary["przekroje_kabli_mm2"]
@@ -59,7 +59,7 @@ def test_polish_pn_hd_620_cables_present() -> None:
     yhakxs = [c for c in polish_cables if "yhakxs" in c["id"]]
     yhkxs = [c for c in polish_cables if "yhkxs" in c["id"]]
     assert len(yhakxs) == 5  # 50/95/120/150/240 Al
-    assert len(yhkxs) == 3   # 95/150/240 Cu
+    assert len(yhkxs) == 3  # 95/150/240 Cu
     for c in polish_cables:
         params = c["params"]
         assert params.get("ptpire_certified") is True
@@ -103,3 +103,40 @@ def test_mv_cable_records_have_explicit_quality_metadata() -> None:
             "CZESCIOWO_ZWERYFIKOWANY",
             "ZWERYFIKOWANY",
         }
+
+
+def test_kazdy_typ_kablowy_niesie_pare_temperatur_do_kryterium_cieplnego() -> None:
+    """V12K-225: bez PARY temperatur kryterium IEC 60949 nie ma czego podstawic.
+
+    Osiem typow polskich (YHAKXS/YHKXS) podawalo tylko temperature zwarciowa, a
+    temperatura robocza „istniala" wylacznie jako domyslna wartosc dataclassy
+    `CableType.max_temperature_c = 90.0` — sciezka rekordowa zglaszala brak, sciezka
+    obiektowa go maskowala. Ten test pilnuje, zeby kolejny dodany typ nie wrocil do
+    tego stanu: brak temperatury w REKORDZIE oznacza kryterium bez werdyktu.
+    """
+    bez_pary: list[str] = []
+    for item in get_all_cable_types():
+        params = item["params"]
+        if params.get("max_temperature_c") is None or (
+            params.get("short_circuit_temperature_c") is None
+        ):
+            bez_pary.append(str(item["id"]))
+
+    assert bez_pary == [], (
+        "typy kablowe bez pary temperatur (kryterium cieplne bez werdyktu): " f"{bez_pary}"
+    )
+
+
+def test_temperatura_robocza_izolacji_usieciowanej_jest_jednoglosna() -> None:
+    """Kontrola SPOJNOSCI, nie wartosci: stala TEMP_OPERATING_XLPE_C ma sens tylko
+    wtedy, gdy katalog nie ma dla tej izolacji drugiej temperatury roboczej. Gdyby
+    pojawil sie typ XLPE z inna theta_b, nazwana stala przestala by byc prawda o
+    katalogu i uzupelnienie osmiu rekordow trzeba by przemyslec na nowo.
+    """
+    temperatury_usieciowane = {
+        params["max_temperature_c"]
+        for params in (item["params"] for item in get_all_cable_types())
+        if params.get("insulation_type") in {"XLPE", "EPR"}
+    }
+
+    assert temperatury_usieciowane == {TEMP_OPERATING_XLPE_C}

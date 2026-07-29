@@ -12,7 +12,6 @@ Verifies:
 import math
 
 import pytest
-
 from network_model.solvers.fault_loop_iec60364 import (
     C_MAX_LV,
     C_MIN_LV,
@@ -247,7 +246,9 @@ class TestErrorLogging:
     z fault_node_id + reason — batch fault scan ma audit trail bez
     try/except scaffold."""
 
-    def test_invalid_u_nom_emits_warning_with_node_id(self, caplog: pytest.LogCaptureFixture) -> None:
+    def test_invalid_u_nom_emits_warning_with_node_id(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         bad = FaultLoopInput(
             fault_node_id="bus_LV_42",
             u_nom_v=0.0,

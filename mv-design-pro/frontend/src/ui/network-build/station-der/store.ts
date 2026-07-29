@@ -39,7 +39,7 @@ export interface AttachDerInput {
   readonly der_kind: DerKindUnified;
   readonly name: string;
   readonly connection_side: ConnectionSide;
-  readonly pcc_ref?: string | null;
+  readonly bus_przylaczenia_ref?: string | null;
   readonly bay_ref?: string | null;
   readonly transformer_ref?: string | null;
   readonly lv_busbar_ref?: string | null;
@@ -49,6 +49,8 @@ export interface AttachDerInput {
   readonly catalogs?: Partial<DerCatalogSelections>;
   readonly profiles?: Partial<DerProfileSelections>;
   readonly nominal_power_kw?: number | null;
+  /** Liczba jednostek (`quantity` w modelu); brak danej zostaje brakiem. */
+  readonly unit_count?: number | null;
   readonly created_at?: string;
 }
 
@@ -67,7 +69,7 @@ export interface StationDerState {
       Pick<
         StationDerConnection,
         | 'connection_side'
-        | 'pcc_ref'
+        | 'bus_przylaczenia_ref'
         | 'bay_ref'
         | 'transformer_ref'
         | 'lv_busbar_ref'
@@ -76,6 +78,7 @@ export interface StationDerState {
         | 'voltage_level_ref'
         | 'name'
         | 'nominal_power_kw'
+        | 'unit_count'
       >
     >,
     nowIso?: string,
@@ -100,7 +103,7 @@ export const useStationDerStore = create<StationDerState>((set) => ({
       der_kind: input.der_kind,
       name: input.name,
       connection_side: input.connection_side,
-      pcc_ref: input.pcc_ref ?? null,
+      bus_przylaczenia_ref: input.bus_przylaczenia_ref ?? null,
       bay_ref: input.bay_ref ?? null,
       transformer_ref: input.transformer_ref ?? null,
       lv_busbar_ref: input.lv_busbar_ref ?? null,
@@ -110,9 +113,10 @@ export const useStationDerStore = create<StationDerState>((set) => ({
       catalogs,
       profiles,
       nominal_power_kw: input.nominal_power_kw ?? null,
+      unit_count: input.unit_count ?? null,
       completeness: computeDerCompleteness({
         connection_side: input.connection_side,
-        pcc_ref: input.pcc_ref ?? null,
+        bus_przylaczenia_ref: input.bus_przylaczenia_ref ?? null,
         catalogs,
         profiles,
         voltage_level_ref: input.voltage_level_ref ?? null,
@@ -144,7 +148,7 @@ export const useStationDerStore = create<StationDerState>((set) => ({
         catalogs: nextCatalogs,
         completeness: computeDerCompleteness({
           connection_side: der.connection_side,
-          pcc_ref: der.pcc_ref,
+          bus_przylaczenia_ref: der.bus_przylaczenia_ref,
           catalogs: nextCatalogs,
           profiles: der.profiles,
           voltage_level_ref: der.voltage_level_ref,
@@ -165,7 +169,7 @@ export const useStationDerStore = create<StationDerState>((set) => ({
         profiles: nextProfiles,
         completeness: computeDerCompleteness({
           connection_side: der.connection_side,
-          pcc_ref: der.pcc_ref,
+          bus_przylaczenia_ref: der.bus_przylaczenia_ref,
           catalogs: der.catalogs,
           profiles: nextProfiles,
           voltage_level_ref: der.voltage_level_ref,
@@ -185,7 +189,7 @@ export const useStationDerStore = create<StationDerState>((set) => ({
         ...patch,
         completeness: computeDerCompleteness({
           connection_side: patch.connection_side ?? der.connection_side,
-          pcc_ref: patch.pcc_ref ?? der.pcc_ref,
+          bus_przylaczenia_ref: patch.bus_przylaczenia_ref ?? der.bus_przylaczenia_ref,
           catalogs: der.catalogs,
           profiles: der.profiles,
           voltage_level_ref: patch.voltage_level_ref ?? der.voltage_level_ref,

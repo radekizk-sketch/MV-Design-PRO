@@ -401,6 +401,9 @@ function mapInspectorPanelMeta(
     case 'field_measurements':
       return { screenCode: 'E-11', sizeClass: 'B', titlePl: 'Pomiary pola', route: 'sld', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_source_contributions':
+      // P-1: bez wywołujących — BayCard „Wkłady źródeł" prowadzi deep-linkiem
+      // do zakładki zwarć warsztatu Wyników (realny dostawca); wpis zostaje
+      // dla wyczerpującego switcha po unii kindów panelu.
       return { screenCode: 'E-33', sizeClass: 'B', titlePl: 'Wkłady źródeł', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };
     case 'field_earth_fault':
       return { screenCode: 'E-29', sizeClass: 'B', titlePl: 'Siec zerowa i skladowe symetryczne', route: 'analysis', openMode: 'replace_right_panel', supportsMiniSld: true, stackLevel: 2 };

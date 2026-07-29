@@ -1,6 +1,18 @@
 # SLD_VISUAL_REGRESSION_CONTRACT — Kontrakt visual regression w CI
 
-**Status:** AKTUALNY (P0.10 SLD F5 scaffolding 2026-05-13)
+**Status:** HISTORYCZNY (zamknięty 2026-07-17). Kontrakt opisywał mechanizm
+P0.10/F5 dla renderu sprzed przebudowy v3: workflow
+`sld-visual-regression.yml` leżał w martwym katalogu
+`mv-design-pro/.github/workflows/` (GitHub czyta wyłącznie `.github/workflows`
+w korzeniu repo — NIGDY nie wykonany), spec `sld_industrial_visual.spec.ts`
+celował w nieroutowany `SLDViewPage` (`#sld-view` renderuje dziś
+`SldCanvasV3Workspace`, F12-C) i testid `sld-canvas-root` nieobecny w v3,
+a baseline'y istniały wyłącznie dla platformy win32. Workflow, spec i
+snapshoty USUNIĘTE. Rolę regresji wizualnej SLD pełni program v3:
+`npm run accept:sld-v3` (wyrocznie geometrii per LOD) + rendery-artefakty CI
+`sld-determinism.yml` + rendery odbioru `docs/sld/renders/v3/`
+(`sld_v3_render_roles.mjs`). Treść niżej zachowana jako zapis historyczny.
+
 **Wersja:** 1.0
 **Powiązane:**
 - `docs/sld/SLD_VISUAL_ACCEPTANCE_CRITERIA.md` AC-11

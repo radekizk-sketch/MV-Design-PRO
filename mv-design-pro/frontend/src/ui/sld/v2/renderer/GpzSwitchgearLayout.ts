@@ -106,7 +106,7 @@ export function computeSwitchgearLayout(
     labels.push({
       sectionId: section.sectionId,
       x: cursor,
-      text: section.sectionLabel ?? `S${section.order}`,
+      text: section.sectionLabel ?? `S${section.order + 1}`,
     });
 
     section.bays.forEach((bay) => {

@@ -1,0 +1,2940 @@
+{
+  "canonical": [
+    {
+      "bay_role": "FEEDER",
+      "config_ref": "kanoniczny:bay_template_aux",
+      "field_role": "FEEDER",
+      "group": "specjalne",
+      "main_path": true,
+      "name": "Pole potrzeb własnych",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_aux::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "kanoniczny:bay_template_aux::dev::1",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_aux::dev::2",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "67N"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_aux"
+    },
+    {
+      "bay_role": "COUPLER",
+      "config_ref": "kanoniczny:bay_template_coupler",
+      "field_role": "SPRZEGLO",
+      "group": "sprzeglowe",
+      "main_path": true,
+      "name": "Pole sprzęgłowe",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_coupler::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_coupler::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "Q2",
+          "device_ref": "kanoniczny:bay_template_coupler::dev::2",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_coupler::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_coupler"
+    },
+    {
+      "bay_role": "OZE",
+      "config_ref": "kanoniczny:bay_template_der_bess",
+      "field_role": "OZE",
+      "group": "OZE",
+      "main_path": true,
+      "name": "Pole źródłowe BESS",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_der_bess::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_der_bess::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_der_bess::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_der_bess::dev::3",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        },
+        {
+          "designation": "Q2",
+          "device_ref": "kanoniczny:bay_template_der_bess::dev::4",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_der_bess::dev::5",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_der_bess::dev::6",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "protection_codes": [
+        "67",
+        "67N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "df/dt",
+        "anti-islanding"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_der_bess"
+    },
+    {
+      "bay_role": "OZE",
+      "config_ref": "kanoniczny:bay_template_der_fw",
+      "field_role": "OZE",
+      "group": "OZE",
+      "main_path": true,
+      "name": "Pole źródłowe FW",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_der_fw::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_der_fw::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_der_fw::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_der_fw::dev::3",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        },
+        {
+          "designation": "Q2",
+          "device_ref": "kanoniczny:bay_template_der_fw::dev::4",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_der_fw::dev::5",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_der_fw::dev::6",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "protection_codes": [
+        "67",
+        "67N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "df/dt",
+        "anti-islanding"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_der_fw"
+    },
+    {
+      "bay_role": "OZE",
+      "config_ref": "kanoniczny:bay_template_der_pv",
+      "field_role": "OZE",
+      "group": "OZE",
+      "main_path": true,
+      "name": "Pole źródłowe PV",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_der_pv::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_der_pv::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_der_pv::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_der_pv::dev::3",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        },
+        {
+          "designation": "Q2",
+          "device_ref": "kanoniczny:bay_template_der_pv::dev::4",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_der_pv::dev::5",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_der_pv::dev::6",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "protection_codes": [
+        "67",
+        "67N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "df/dt",
+        "anti-islanding"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_der_pv"
+    },
+    {
+      "bay_role": "IN",
+      "config_ref": "kanoniczny:bay_template_line_in",
+      "field_role": "LINIA_IN",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wejściowe",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_line_in::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_line_in::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_line_in::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "Q2",
+          "device_ref": "kanoniczny:bay_template_line_in::dev::3",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_line_in::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_line_in::dev::5",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_line_in"
+    },
+    {
+      "bay_role": "OUT",
+      "config_ref": "kanoniczny:bay_template_line_out",
+      "field_role": "LINIA_OUT",
+      "group": "liniowe",
+      "main_path": true,
+      "name": "Pole liniowe wyjściowe",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_line_out::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_line_out::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_line_out::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "Q2",
+          "device_ref": "kanoniczny:bay_template_line_out::dev::3",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_line_out::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:bay_template_line_out::dev::5",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "67N"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_line_out"
+    },
+    {
+      "bay_role": "MEASUREMENT",
+      "config_ref": "kanoniczny:bay_template_measurement",
+      "field_role": "POMIAROWE",
+      "group": "pomiarowe",
+      "main_path": true,
+      "name": "Pole pomiarowe",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_measurement::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:bay_template_measurement::dev::1",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_measurement::dev::2",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "protection_codes": [],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_measurement"
+    },
+    {
+      "bay_role": "FEEDER",
+      "config_ref": "kanoniczny:bay_template_reserve",
+      "field_role": "FEEDER",
+      "group": "specjalne",
+      "main_path": true,
+      "name": "Pole rezerwowe",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_reserve::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_reserve::dev::1",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "protection_codes": [
+        "51",
+        "50",
+        "51N",
+        "67N"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_reserve"
+    },
+    {
+      "bay_role": "TR",
+      "config_ref": "kanoniczny:bay_template_transformer",
+      "field_role": "TRANSFORMATOROWE",
+      "group": "transformatorowe",
+      "main_path": true,
+      "name": "Pole transformatorowe",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:bay_template_transformer::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:bay_template_transformer::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:bay_template_transformer::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "Q2",
+          "device_ref": "kanoniczny:bay_template_transformer::dev::3",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:bay_template_transformer::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "TR",
+          "device_ref": "kanoniczny:bay_template_transformer::dev::5",
+          "is_controllable": false,
+          "kind": "TRANSFORMER_DEVICE",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:transformer_device"
+        }
+      ],
+      "protection_codes": [
+        "87T",
+        "51",
+        "50",
+        "51N",
+        "Buchholz",
+        "temp",
+        "ciśnienie"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": "bay_template_transformer"
+    },
+    {
+      "bay_role": "OZE",
+      "config_ref": "kanoniczny:mv_source_cb",
+      "field_role": "OZE",
+      "group": "OZE",
+      "main_path": true,
+      "name": "Pole źródłowe SN (wyłącznikowe)",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:mv_source_cb::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:mv_source_cb::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:mv_source_cb::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "Q2",
+          "device_ref": "kanoniczny:mv_source_cb::dev::3",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:mv_source_cb::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "kanoniczny:mv_source_cb::dev::5",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:mv_source_cb::dev::6",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "protection_codes": [
+        "67",
+        "67N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "df/dt",
+        "anti-islanding"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": null
+    },
+    {
+      "bay_role": "OZE",
+      "config_ref": "kanoniczny:mv_source_lbs",
+      "field_role": "OZE",
+      "group": "OZE",
+      "main_path": true,
+      "name": "Pole źródłowe SN (rozłącznikowe)",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "kanoniczny:mv_source_lbs::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "kanoniczny:mv_source_lbs::dev::1",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "kanoniczny:mv_source_lbs::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "kanoniczny:mv_source_lbs::dev::3",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        },
+        {
+          "designation": "Q2",
+          "device_ref": "kanoniczny:mv_source_lbs::dev::4",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q9",
+          "device_ref": "kanoniczny:mv_source_lbs::dev::5",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "kanoniczny:mv_source_lbs::dev::6",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "kanoniczny:mv_source_lbs::dev::7",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "protection_codes": [
+        "67",
+        "67N",
+        "27",
+        "59",
+        "81U",
+        "81O",
+        "df/dt",
+        "anti-islanding"
+      ],
+      "renderable": true,
+      "source": "kanoniczny",
+      "template_id": null
+    }
+  ],
+  "gaps": {
+    "field_types_without_template": [
+      "bateria_kondensatorow",
+      "generator_synchroniczny"
+    ],
+    "manufacturer_packs_without_cell_configurations": [
+      "elektrometal_e2alpha"
+    ],
+    "producer_non_renderable_cells": []
+  },
+  "producer": [
+    {
+      "bay_role": null,
+      "cell_code": "Be",
+      "config_ref": "producent:abb_safering:Be",
+      "field_role": null,
+      "group": "specjalne",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": false,
+      "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka Be (Uziemianie szyn zbiorczych)",
+      "pack_id": "abb_safering",
+      "primary_devices": [
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_safering:Be::dev::0",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "C",
+      "config_ref": "producent:abb_safering:C",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka C (Moduł liniowy (rozłącznikowy))",
+      "pack_id": "abb_safering",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "producent:abb_safering:C::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:abb_safering:C::dev::1",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:abb_safering:C::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_safering:C::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:abb_safering:C::dev::4",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:abb_safering:C::dev::5",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "CB",
+      "config_ref": "producent:abb_safering:CB",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka CB (Pole wyłącznikowe pełne (dopływ/rozdział, 630/1250 A))",
+      "pack_id": "abb_safering",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:abb_safering:CB::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "producent:abb_safering:CB::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:abb_safering:CB::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_safering:CB::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "D",
+      "config_ref": "producent:abb_safering:D",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka D (Przyłącze kablowe bezpośrednie)",
+      "pack_id": "abb_safering",
+      "primary_devices": [
+        {
+          "designation": "GK",
+          "device_ref": "producent:abb_safering:D::dev::0",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "De",
+      "config_ref": "producent:abb_safering:De",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka De (Przyłącze kablowe bezpośrednie z uziemnikiem)",
+      "pack_id": "abb_safering",
+      "primary_devices": [
+        {
+          "designation": "GK",
+          "device_ref": "producent:abb_safering:De::dev::0",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_safering:De::dev::1",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "F",
+      "config_ref": "producent:abb_safering:F",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka F (Moduł transformatorowy bezpiecznikowy (rozłącznik-bezpieczniki))",
+      "pack_id": "abb_safering",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "producent:abb_safering:F::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "producent:abb_safering:F::dev::1",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:abb_safering:F::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_safering:F::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:abb_safering:F::dev::4",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "M",
+      "config_ref": "producent:abb_safering:M",
+      "field_role": null,
+      "group": "pomiarowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka M (Moduł pomiarowy)",
+      "pack_id": "abb_safering",
+      "primary_devices": [
+        {
+          "designation": "F1",
+          "device_ref": "producent:abb_safering:M::dev::0",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:abb_safering:M::dev::1",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:abb_safering:M::dev::2",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "Sl",
+      "config_ref": "producent:abb_safering:Sl",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka Sl (Sprzęgło rozłącznikowe (sekcjonowanie szyn))",
+      "pack_id": "abb_safering",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "producent:abb_safering:Sl::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_safering:Sl::dev::1",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "Sv",
+      "config_ref": "producent:abb_safering:Sv",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka Sv (Sprzęgło wyłącznikowe (z modułem wzniosu Br))",
+      "pack_id": "abb_safering",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:abb_safering:Sv::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "producent:abb_safering:Sv::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_safering:Sv::dev::2",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "V",
+      "config_ref": "producent:abb_safering:V",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN SafeRing (RMU, SF6) — celka V (Moduł wyłącznikowy (próżniowy 200/630 A))",
+      "pack_id": "abb_safering",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:abb_safering:V::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "producent:abb_safering:V::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:abb_safering:V::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:abb_safering:V::dev::3",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_safering:V::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:abb_safering:V::dev::5",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "BT",
+      "config_ref": "producent:abb_unigear:BT",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka BT (Sprzęgło wyłącznikowe (para z polem wzniosu R))",
+      "pack_id": "abb_unigear",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:abb_unigear:BT::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "producent:abb_unigear:BT::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "producent:abb_unigear:BT::dev::2",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:abb_unigear:BT::dev::3",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_unigear:BT::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:abb_unigear:BT::dev::5",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "DF",
+      "config_ref": "producent:abb_unigear:DF",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka DF (Pole rozłącznikowe z bezpiecznikami)",
+      "pack_id": "abb_unigear",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:abb_unigear:DF::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "producent:abb_unigear:DF::dev::1",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "producent:abb_unigear:DF::dev::2",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:abb_unigear:DF::dev::3",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_unigear:DF::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "IF",
+      "config_ref": "producent:abb_unigear:IF",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka IF (Pole dopływowe/odpływowe z wyłącznikiem wysuwnym)",
+      "pack_id": "abb_unigear",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:abb_unigear:IF::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "producent:abb_unigear:IF::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "producent:abb_unigear:IF::dev::2",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:abb_unigear:IF::dev::3",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:abb_unigear:IF::dev::4",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_unigear:IF::dev::5",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:abb_unigear:IF::dev::6",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:abb_unigear:IF::dev::7",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "IFD",
+      "config_ref": "producent:abb_unigear:IFD",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka IFD (Pole dopływowe/odpływowe bezpośrednie (bez wyłącznika))",
+      "pack_id": "abb_unigear",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:abb_unigear:IFD::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "producent:abb_unigear:IFD::dev::1",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:abb_unigear:IFD::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:abb_unigear:IFD::dev::3",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_unigear:IFD::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:abb_unigear:IFD::dev::5",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "M",
+      "config_ref": "producent:abb_unigear:M",
+      "field_role": null,
+      "group": "pomiarowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka M (Pole pomiarowe (wysuwny VT z bezpiecznikami))",
+      "pack_id": "abb_unigear",
+      "primary_devices": [
+        {
+          "designation": "F1",
+          "device_ref": "producent:abb_unigear:M::dev::0",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_unigear:M::dev::1",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:abb_unigear:M::dev::2",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "OFM",
+      "config_ref": "producent:abb_unigear:OFM",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka OFM (Pole odpływowe z pomiarem na szynach)",
+      "pack_id": "abb_unigear",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:abb_unigear:OFM::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "producent:abb_unigear:OFM::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "producent:abb_unigear:OFM::dev::2",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:abb_unigear:OFM::dev::3",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:abb_unigear:OFM::dev::4",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_unigear:OFM::dev::5",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:abb_unigear:OFM::dev::6",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "RM",
+      "config_ref": "producent:abb_unigear:RM",
+      "field_role": null,
+      "group": "pomiarowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "ABB — rozdzielnica SN UniGear ZS1 (wysuwna, powietrzna) — celka RM (Wznios szynowy z pomiarem)",
+      "pack_id": "abb_unigear",
+      "primary_devices": [
+        {
+          "designation": "F1",
+          "device_ref": "producent:abb_unigear:RM::dev::0",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:abb_unigear:RM::dev::1",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:abb_unigear:RM::dev::2",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "CM",
+      "config_ref": "producent:schneider_sm6:CM",
+      "field_role": null,
+      "group": "pomiarowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka CM (Celka pomiaru napięcia)",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:schneider_sm6:CM::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "producent:schneider_sm6:CM::dev::1",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:schneider_sm6:CM::dev::2",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:schneider_sm6:CM::dev::3",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "DM1-A",
+      "config_ref": "producent:schneider_sm6:DM1-A",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka DM1-A (Celka wyłącznikowa SF6)",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:schneider_sm6:DM1-A::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "producent:schneider_sm6:DM1-A::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:schneider_sm6:DM1-A::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:schneider_sm6:DM1-A::dev::3",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:schneider_sm6:DM1-A::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:schneider_sm6:DM1-A::dev::5",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:schneider_sm6:DM1-A::dev::6",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "EMB",
+      "config_ref": "producent:schneider_sm6:EMB",
+      "field_role": null,
+      "group": "specjalne",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": false,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka EMB (Uziemianie szyn (SM6-24))",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "QE1",
+          "device_ref": "producent:schneider_sm6:EMB::dev::0",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "GAM",
+      "config_ref": "producent:schneider_sm6:GAM",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka GAM (Przyłącze kablowe dopływowe z uziemnikiem)",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "GK",
+          "device_ref": "producent:schneider_sm6:GAM::dev::0",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:schneider_sm6:GAM::dev::1",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:schneider_sm6:GAM::dev::2",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "GAM2",
+      "config_ref": "producent:schneider_sm6:GAM2",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka GAM2 (Przyłącze kablowe dopływowe (bez aparatu))",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "GK",
+          "device_ref": "producent:schneider_sm6:GAM2::dev::0",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:schneider_sm6:GAM2::dev::1",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "GBC-A",
+      "config_ref": "producent:schneider_sm6:GBC-A",
+      "field_role": null,
+      "group": "pomiarowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka GBC-A (Celka pomiaru prądu i/lub napięcia w torze)",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "T1",
+          "device_ref": "producent:schneider_sm6:GBC-A::dev::0",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:schneider_sm6:GBC-A::dev::1",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "IM",
+      "config_ref": "producent:schneider_sm6:IM",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka IM (Celka liniowa (rozłącznikowa))",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "producent:schneider_sm6:IM::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:schneider_sm6:IM::dev::1",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:schneider_sm6:IM::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:schneider_sm6:IM::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:schneider_sm6:IM::dev::4",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "IMM",
+      "config_ref": "producent:schneider_sm6:IMM",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka IMM (Celka rozłącznikowo-pomiarowa)",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "producent:schneider_sm6:IMM::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:schneider_sm6:IMM::dev::1",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:schneider_sm6:IMM::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:schneider_sm6:IMM::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:schneider_sm6:IMM::dev::4",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "PM",
+      "config_ref": "producent:schneider_sm6:PM",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka PM (Celka z rozłącznikiem i bezpiecznikami (bez kombinacji))",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "producent:schneider_sm6:PM::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "producent:schneider_sm6:PM::dev::1",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:schneider_sm6:PM::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:schneider_sm6:PM::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "QM",
+      "config_ref": "producent:schneider_sm6:QM",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka QM (Celka transformatorowa (kombinacja rozłącznik-bezpieczniki))",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "producent:schneider_sm6:QM::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "producent:schneider_sm6:QM::dev::1",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:schneider_sm6:QM::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:schneider_sm6:QM::dev::3",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:schneider_sm6:QM::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "SM",
+      "config_ref": "producent:schneider_sm6:SM",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka SM (Celka odłącznikowa)",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:schneider_sm6:SM::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:schneider_sm6:SM::dev::1",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:schneider_sm6:SM::dev::2",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "TM",
+      "config_ref": "producent:schneider_sm6:TM",
+      "field_role": null,
+      "group": "pomiarowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Schneider Electric — rozdzielnica SN SM6-24 (modułowa) — celka TM (Celka transformatora potrzeb własnych)",
+      "pack_id": "schneider_sm6",
+      "primary_devices": [
+        {
+          "designation": "F1",
+          "device_ref": "producent:schneider_sm6:TM::dev::0",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:schneider_sm6:TM::dev::1",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "E",
+      "config_ref": "producent:siemens_8djh:E",
+      "field_role": null,
+      "group": "specjalne",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": false,
+      "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka E (Uziemianie szyn zbiorczych)",
+      "pack_id": "siemens_8djh",
+      "primary_devices": [
+        {
+          "designation": "QE1",
+          "device_ref": "producent:siemens_8djh:E::dev::0",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:siemens_8djh:E::dev::1",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "H",
+      "config_ref": "producent:siemens_8djh:H",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka H (Sprzęgło z bezpiecznikami)",
+      "pack_id": "siemens_8djh",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "producent:siemens_8djh:H::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "producent:siemens_8djh:H::dev::1",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:siemens_8djh:H::dev::2",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "K",
+      "config_ref": "producent:siemens_8djh:K",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka K (Pole kablowe (przyłączeniowe, bez łącznika))",
+      "pack_id": "siemens_8djh",
+      "primary_devices": [
+        {
+          "designation": "T1",
+          "device_ref": "producent:siemens_8djh:K::dev::0",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:siemens_8djh:K::dev::1",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:siemens_8djh:K::dev::2",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "K(E)",
+      "config_ref": "producent:siemens_8djh:K(E)",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka K(E) (Pole kablowe z uziemnikiem szybkim)",
+      "pack_id": "siemens_8djh",
+      "primary_devices": [
+        {
+          "designation": "T1",
+          "device_ref": "producent:siemens_8djh:K(E)::dev::0",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:siemens_8djh:K(E)::dev::1",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:siemens_8djh:K(E)::dev::2",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:siemens_8djh:K(E)::dev::3",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "L",
+      "config_ref": "producent:siemens_8djh:L",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka L (Pole wyłącznikowe)",
+      "pack_id": "siemens_8djh",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:siemens_8djh:L::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "producent:siemens_8djh:L::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:siemens_8djh:L::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:siemens_8djh:L::dev::3",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:siemens_8djh:L::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:siemens_8djh:L::dev::5",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:siemens_8djh:L::dev::6",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "M(430)",
+      "config_ref": "producent:siemens_8djh:M(430)",
+      "field_role": null,
+      "group": "pomiarowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka M(430) (Pomiar napięcia szyn (za bezpiecznikami))",
+      "pack_id": "siemens_8djh",
+      "primary_devices": [
+        {
+          "designation": "F1",
+          "device_ref": "producent:siemens_8djh:M(430)::dev::0",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:siemens_8djh:M(430)::dev::1",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "M(840)",
+      "config_ref": "producent:siemens_8djh:M(840)",
+      "field_role": null,
+      "group": "pomiarowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka M(840) (Pole pomiarowe rozliczeniowe (przedział powietrzny))",
+      "pack_id": "siemens_8djh",
+      "primary_devices": [
+        {
+          "designation": "T1",
+          "device_ref": "producent:siemens_8djh:M(840)::dev::0",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:siemens_8djh:M(840)::dev::1",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "R",
+      "config_ref": "producent:siemens_8djh:R",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka R (Pole liniowe pierścieniowe (rozłącznikowe))",
+      "pack_id": "siemens_8djh",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "producent:siemens_8djh:R::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:siemens_8djh:R::dev::1",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:siemens_8djh:R::dev::2",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:siemens_8djh:R::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:siemens_8djh:R::dev::4",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:siemens_8djh:R::dev::5",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "S",
+      "config_ref": "producent:siemens_8djh:S",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka S (Sprzęgło rozłącznikowe (sekcjonowanie szyn))",
+      "pack_id": "siemens_8djh",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "producent:siemens_8djh:S::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:siemens_8djh:S::dev::1",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:siemens_8djh:S::dev::2",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:siemens_8djh:S::dev::3",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "T",
+      "config_ref": "producent:siemens_8djh:T",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka T (Pole transformatorowe (rozłącznik z bezpiecznikami))",
+      "pack_id": "siemens_8djh",
+      "primary_devices": [
+        {
+          "designation": "Q0",
+          "device_ref": "producent:siemens_8djh:T::dev::0",
+          "is_controllable": true,
+          "kind": "LOAD_SWITCH",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:load_switch"
+        },
+        {
+          "designation": "F1",
+          "device_ref": "producent:siemens_8djh:T::dev::1",
+          "is_controllable": false,
+          "kind": "FUSE",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:fuse"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:siemens_8djh:T::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "GK",
+          "device_ref": "producent:siemens_8djh:T::dev::3",
+          "is_controllable": false,
+          "kind": "CABLE_HEAD",
+          "placement": "DOWNSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cable_head"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:siemens_8djh:T::dev::4",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "Z1",
+          "device_ref": "producent:siemens_8djh:T::dev::5",
+          "earthing_role": "surge_ground",
+          "is_controllable": false,
+          "kind": "SURGE_ARRESTER",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:surge_arrester"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    },
+    {
+      "bay_role": null,
+      "cell_code": "V",
+      "config_ref": "producent:siemens_8djh:V",
+      "field_role": null,
+      "group": "liniowe",
+      "group_derivation": "sygnatura_aparatury",
+      "main_path": true,
+      "name": "Siemens — rozdzielnica SN 8DJH (RMU, SF6) — celka V (Sprzęgło wyłącznikowe)",
+      "pack_id": "siemens_8djh",
+      "primary_devices": [
+        {
+          "designation": "Q1",
+          "device_ref": "producent:siemens_8djh:V::dev::0",
+          "is_controllable": true,
+          "kind": "DS",
+          "placement": "UPSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ds"
+        },
+        {
+          "designation": "Q0",
+          "device_ref": "producent:siemens_8djh:V::dev::1",
+          "is_controllable": true,
+          "kind": "CB",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:cb"
+        },
+        {
+          "designation": "T1",
+          "device_ref": "producent:siemens_8djh:V::dev::2",
+          "is_controllable": false,
+          "kind": "CT",
+          "placement": "MIDSTREAM",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:ct"
+        },
+        {
+          "designation": "QE1",
+          "device_ref": "producent:siemens_8djh:V::dev::3",
+          "earthing_role": "field_earth",
+          "is_controllable": false,
+          "kind": "ES",
+          "placement": "GROUND_BRANCH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:es"
+        },
+        {
+          "designation": "T2",
+          "device_ref": "producent:siemens_8djh:V::dev::4",
+          "is_controllable": false,
+          "kind": "VT",
+          "placement": "OFF_PATH",
+          "render_variant": "kanoniczny",
+          "symbol_ref": "symbol:vt"
+        }
+      ],
+      "renderable": true,
+      "source": "producencki"
+    }
+  ],
+  "special_configurations": {
+    "producer_pathless_cells": [
+      "producent:abb_safering:Be",
+      "producent:schneider_sm6:EMB",
+      "producent:siemens_8djh:E"
+    ]
+  }
+}

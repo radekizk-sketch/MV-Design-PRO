@@ -15,6 +15,9 @@ from application.proof_engine.proof_generator import ProofGenerator, SC1Input
 from application.proof_engine.proof_inspector.exporters import export_to_tex
 from application.proof_engine.serialization import proof_document_from_dict
 from application.proof_engine.unit_verifier import UnitVerifier
+from network_model.solvers.short_circuit_asymmetrical_quantities import (
+    compute_sc1_asymmetrical_quantities,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 GOLDEN_ROOT = ROOT / "golden" / "sc_asymmetrical"
@@ -69,13 +72,33 @@ def _canonicalize_proof(proof) -> tuple[str, str]:
     return json_text, tex_text
 
 
+def _sc1_input(fault_type: str, case_name: str) -> SC1Input:
+    kwargs = _base_kwargs()
+    # Wielkości fizyczne liczy solver (NOT-A-SOLVER, V12K-118) —
+    # generator dowodu jest czystym formatterem.
+    quantities = compute_sc1_asymmetrical_quantities(
+        fault_type=fault_type,
+        u_n_kv=kwargs["u_n_kv"],
+        c_factor=kwargs["c_factor"],
+        u_prefault_kv=kwargs["u_prefault_kv"],
+        z1_ohm=kwargs["z1_ohm"],
+        z2_ohm=kwargs["z2_ohm"],
+        z0_ohm=kwargs["z0_ohm"],
+        a_operator=kwargs["a_operator"],
+        m_factor=kwargs["m_factor"],
+        n_factor=kwargs["n_factor"],
+    )
+    return SC1Input(
+        fault_type=fault_type,
+        case_name=case_name,
+        quantities=quantities,
+        **kwargs,
+    )
+
+
 def _generate_case(case_key: str):
     proof = ProofGenerator.generate_sc1_proof(
-        SC1Input(
-            fault_type=FAULT_CASES[case_key],
-            case_name=f"Golden Case {case_key}",
-            **_base_kwargs(),
-        )
+        _sc1_input(FAULT_CASES[case_key], f"Golden Case {case_key}")
     )
     return _canonicalize_proof(proof)
 
@@ -99,9 +122,7 @@ def test_matches_golden_artifacts(case_key: str):
 
 @pytest.mark.parametrize("fault_type", ["ONE_PHASE_TO_GROUND", "TWO_PHASE", "TWO_PHASE_TO_GROUND"])
 def test_mandatory_outputs_present_and_not_none(fault_type: str):
-    proof = ProofGenerator.generate_sc1_proof(
-        SC1Input(fault_type=fault_type, case_name="Mandatory outputs", **_base_kwargs())
-    )
+    proof = ProofGenerator.generate_sc1_proof(_sc1_input(fault_type, "Mandatory outputs"))
     for key in ("ikss_ka", "kappa", "ip_ka", "ith_ka", "idyn_ka"):
         assert key in proof.summary.key_results
         assert proof.summary.key_results[key].value is not None

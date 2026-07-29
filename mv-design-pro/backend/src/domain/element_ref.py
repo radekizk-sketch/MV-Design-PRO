@@ -24,14 +24,14 @@ ALIGNMENT:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 # ---------------------------------------------------------------------------
 # ElementTypeV1 — canonical element type enum
 # ---------------------------------------------------------------------------
 
 
-class ElementTypeV1(str, Enum):
+class ElementTypeV1(StrEnum):
     """Typ elementu w systemie — kanoniczny enum.
 
     Odpowiada OverlayElementKind z result_contract_v1.py
@@ -55,7 +55,7 @@ class ElementTypeV1(str, Enum):
     JUNCTION = "JUNCTION"
 
 
-class ElementScopeV1(str, Enum):
+class ElementScopeV1(StrEnum):
     """Zakres elementu — do walidacji, nie do logiki.
 
     Uzyj do asercji typu: 'ten elementId powinien istniec w danym scope'.

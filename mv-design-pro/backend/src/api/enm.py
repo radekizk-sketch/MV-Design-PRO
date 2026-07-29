@@ -19,14 +19,18 @@ from typing import Any
 from uuid import UUID
 
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
+from application.analyses.fault_loop.service import build_station_fault_loop_view
 from application.eligibility_service import EligibilityService
 from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
 from domain.canonical_operations import resolve_operation_name
+from domain.readiness_bridge import opis_kanoniczny
 from enm.canonical_analysis import run_power_flow_now, run_short_circuit_now
+from enm.dziennik_zmian import wpisy_od as wpisy_dziennika_od
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
 from enm.severity import empty_severity_counts, is_failed_status
+from enm.store import ZrodloZmiany
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from enm.topology_ops import (
@@ -92,6 +96,34 @@ async def get_enm_v2_projection(case_id: str) -> dict[str, Any]:
     enm = _get_enm(case_id)
     projection = project_enm_v1_to_v2(enm)
     return projection.model_dump(mode="json")
+
+
+@router.get("/{case_id}/enm/dziennik-zmian")
+async def get_dziennik_zmian(case_id: str, od_rewizji: int = 0) -> dict[str, Any]:
+    """Zmiany modelu PO wskazanej rewizji — odpowiedz na „co uniewaznilo moj wynik".
+
+    V12K-264. Model niosl dotad wylacznie FAKT zmiany (`header.revision` rosnie,
+    przypadek dostaje `OUTDATED`), nigdy PRZYCZYNY. Projektant widzial „wyniki
+    nieaktualne" i musial sam odtworzyc, co zrobil miedzy biegiem a chwila obecna.
+
+    `od_rewizji` to rewizja modelu, NA KTOREJ policzono wynik — zwracamy wpisy o
+    rewizji wyzszej. `rewizja_biezaca` pozwala odbiorcy sprawdzic, czy wynik jest
+    aktualny, bez drugiego zapytania.
+
+    ZERO INTERPRETACJI: opisy pochodza z kanonu operacji, listy elementow wprost
+    z odpowiedzi operacji domenowej. Rewizja zapisana bez zarejestrowanej operacji
+    ma `operacja: null` i opis nazywajacy ten stan — nie jest ukrywana ani
+    uzupelniana zgadnieta nazwa.
+    """
+    enm = _get_enm(case_id)
+    wpisy = wpisy_dziennika_od(case_id, od_rewizji)
+    return {
+        "case_id": case_id,
+        "rewizja_biezaca": enm.header.revision,
+        "od_rewizji": od_rewizji,
+        "aktualny": enm.header.revision <= od_rewizji,
+        "wpisy": [w.to_dict() for w in wpisy],
+    }
 
 
 @router.put("/{case_id}/enm")
@@ -186,6 +218,17 @@ async def get_enm_field_view(case_id: str) -> dict[str, Any]:
     return build_field_read_model(case_id, enm)
 
 
+@router.get("/{case_id}/enm/station-fault-loop")
+async def get_station_fault_loop(case_id: str, station_ref: str) -> dict[str, Any]:
+    """Pętla zwarcia u źródła stacji (nN) z modelu (G-STK-4).
+
+    Domyka łańcuch uziemienia: układ sieci nN + impedancja transformatora →
+    Ik/Z_loop u źródła (IEC 60364-4-41). Read-only; solver liczy fizykę.
+    """
+    enm = _get_enm(case_id)
+    return build_station_fault_loop_view(enm, station_ref)
+
+
 # ---------------------------------------------------------------------------
 # Engineering Readiness (aggregated UX endpoint)
 # ---------------------------------------------------------------------------
@@ -215,10 +258,16 @@ async def get_engineering_readiness(case_id: str) -> dict[str, Any]:
             "message_pl": issue.message_pl,
             "wizard_step_hint": issue.wizard_step_hint,
             "suggested_fix": issue.suggested_fix,
-            "fix_action": (
-                issue.fix_action.model_dump(mode="json") if issue.fix_action else None
-            ),
+            "fix_action": (issue.fix_action.model_dump(mode="json") if issue.fix_action else None),
         }
+        # V12K-206 (karta F-K6, znalezisko Z8): DROGA kanonu do UI. Kanoniczny rejestr
+        # kodow gotowosci nie mial dotad zadnego konsumenta w czasie dzialania — sygnal
+        # szedl wylacznie z walidatora ENM, w innej przestrzeni nazw. Pola kanoniczne sa
+        # ADDYTYWNE i wystepuja TYLKO tam, gdzie odwzorowanie jest rzetelne (ten sam
+        # warunek); brak odwzorowania nie podstawia cudzej tresci.
+        kanon = opis_kanoniczny(issue.code)
+        if kanon is not None:
+            item.update(kanon)
         issues_out.append(item)
 
     by_severity = empty_severity_counts()
@@ -356,14 +405,10 @@ _OP_DISPATCH = {
         data.get("ref_id", ""),
     ),
     "create_measurement": lambda enm, data: create_measurement(enm, data),
-    "delete_measurement": lambda enm, data: delete_measurement(
-        enm, data.get("ref_id", "")
-    ),
+    "delete_measurement": lambda enm, data: delete_measurement(enm, data.get("ref_id", "")),
     "attach_protection": lambda enm, data: attach_protection(enm, data),
     "update_protection": lambda enm, data: update_protection(enm, data),
-    "detach_protection": lambda enm, data: detach_protection(
-        enm, data.get("ref_id", "")
-    ),
+    "detach_protection": lambda enm, data: detach_protection(enm, data.get("ref_id", "")),
 }
 
 
@@ -546,9 +591,7 @@ async def run_short_circuit(case_id: str, request: Request) -> dict[str, Any]:
         "case_id": case_id,
         "enm_revision": enm.header.revision,
         "enm_hash": compute_enm_hash(enm),
-        "analysis_type": (run.raw_result or {}).get(
-            "analysis_type", "short_circuit_3f"
-        ),
+        "analysis_type": (run.raw_result or {}).get("analysis_type", "short_circuit_3f"),
         "short_circuit_type": (run.raw_result or {}).get("short_circuit_type", "3F"),
         "reporting_status": (run.raw_result or {}).get("reporting_status"),
         "proof_status": (run.raw_result or {}).get("proof_status"),
@@ -611,9 +654,7 @@ async def get_wizard_state(case_id: str) -> dict[str, Any]:
 
 
 @router.post("/{case_id}/wizard/apply-step")
-async def wizard_apply_step(
-    case_id: str, req: WizardStepRequestModel
-) -> dict[str, Any]:
+async def wizard_apply_step(case_id: str, req: WizardStepRequestModel) -> dict[str, Any]:
     """Atomic step application: preconditions → mutate → postconditions.
 
     If preconditions fail → original ENM unchanged, success=False.
@@ -770,7 +811,18 @@ async def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]
     if result.get("snapshot") and not result.get("error"):
         try:
             new_enm = EnergyNetworkModel.model_validate(result["snapshot"])
-            saved = _set_enm(case_id, new_enm)
+            # V12K-264: PRZYCZYNA nowej rewizji idzie do dziennika zmian razem ze
+            # snapshotem. Nazwa operacji jest KANONICZNA (`resolve_operation_name`
+            # rozwiazuje aliasy), a listy elementow pochodza wprost z `changes`
+            # zwroconych przez operacje — nic tu nie jest wyliczane ani zgadywane.
+            zmiany = result.get("changes") or {}
+            zrodlo = ZrodloZmiany(
+                operacja=resolved_name,
+                utworzone=tuple(zmiany.get("created_element_ids") or ()),
+                zmienione=tuple(zmiany.get("updated_element_ids") or ()),
+                usuniete=tuple(zmiany.get("deleted_element_ids") or ()),
+            )
+            saved = _set_enm(case_id, new_enm, zrodlo_zmiany=zrodlo)
             result["snapshot"] = saved.model_dump(mode="json")
         except Exception as e:
             result["error"] = f"Błąd zapisu snapshot: {e}"

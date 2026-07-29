@@ -1,6 +1,17 @@
 /**
  * GpzCanonicalRenderer — Phase R2 Operator-Grade Rebuild (clean-room).
  *
+ * STATUS (konsolidacja 2026-07): AKTYWNY podstawowy renderer GPZ. `SldCanvasV2`
+ * renderuje go bezpośrednio z kanonicznych propsów ENM (bez down-mappingu). Jest
+ * kompletny tam, gdzie stary `GpzSwitchgearRenderer` miał lukę F1-P0: topologia
+ * szyn single/double/ring, brak direct-110kV-TR-tie / direct-SN-tie, klucze
+ * parity. Jego testy (noDirectTie / busbarTopology / visualParityChecklist) po
+ * przełączeniu strzegą TERAZ ŻYWEJ ścieżki renderu. `GpzSwitchgearRenderer`
+ * pozostaje tylko jako fallback `GpzRenderer` (LOD ≥ 1, brak canonical props).
+ *
+ * `GpzCanonicalRendererProps` + typy `CanonicalGpz*` są kanonicznym kontraktem
+ * propsów GPZ, konsumowanym przez adaptery ENM i SldWorkspaceContainer.
+ *
  * Pełen renderer GPZ klasy SCADA OSD (Mikronika MIKRA II / Sygnity / PSE-Energa).
  *
  * NIE MODYFIKUJE legacy GpzRenderer.tsx ani GpzSwitchgearRenderer.tsx.
@@ -46,6 +57,13 @@ import {
   type GpzApparatusKind,
   type GpzApparatusSelection,
 } from './gpzApparatusSelection';
+import type {
+  BayPrimaryDeviceView,
+  BayProtectionMarkingView,
+  CtRatingAnnotationView,
+  VtMountingAnnotationView,
+} from './MiniBlockRmuRenderer';
+import type { OltcGlyphAnnotation } from './GpzSwitchgearTypes';
 
 /* =============================================================================
    Domain types (z ENM, projected to canonical SLD)
@@ -64,9 +82,26 @@ import {
  */
 export type CanonicalGpzBusbarTopology = 'single' | 'double' | 'ring';
 
+/** Recenzja NO-GO 2026-07-17 pkt 12 (spec §12.5): pomiar napięcia SZYNY
+ *  sekcji GPZ — `Measurement{measurement_type:'VT', bus_ref: szyna sekcji,
+ *  bez bay_ref}`. `arrangement`: gwiazda = pomiar U; otwarty trójkąt =
+ *  źródło 3U₀ (zabezpieczenia ziemnozwarciowe kierunkowe). */
+export interface CanonicalGpzBusVt {
+  readonly measurementRef: string;
+  readonly arrangement: 'open_delta' | 'star' | null;
+}
+
 export interface CanonicalGpzSection {
   /** Stable id z ENM (`Substation.gpz_sections[].section_id`). */
   readonly sectionId: string;
+  /** ADAPTER-BUSREF (dług W4/R2/V12K-163): KANONICZNY ref Bus ENM tej sekcji
+   *  (`Substation.gpz_sections[].bus_ref` — TA SAMA szyna, z której adapter
+   *  czyta `busVoltageKv`). Prymat danych: NIE parsujemy refów sceny, mapowanie
+   *  bierzemy WPROST ze snapshotu. Metadana WYŁĄCZNIE do powiązania szyny
+   *  sekcji GPZ z wynikami/energizacją (klucz `payload.elements` = `Bus.ref_id`)
+   *  — `sectionId` (identyfikator sceny) pozostaje NIETKNIĘTY. `null`/brak gdy
+   *  snapshot nie niesie `bus_ref` (uczciwy brak, zero fabrykacji). */
+  readonly busRef?: string | null;
   /** Order w rozdzielni (1-N). */
   readonly order: number;
   /** Etykieta widoczna ("S1"/"S2"/...). */
@@ -77,6 +112,10 @@ export interface CanonicalGpzSection {
   readonly bays: readonly CanonicalGpzBay[];
   /** Topologia szyny (single/double/ring). Default: `single`. */
   readonly busbarTopology?: CanonicalGpzBusbarTopology;
+  /** Recenzja NO-GO pkt 12: VT szyny sekcji (RÓWNOLEGLE do szyny, nigdy w
+   *  torze — §18.2 `vt_parallel_probe`). Puste/brak = dana nieobecna
+   *  (zero fabrykacji pomiaru). */
+  readonly busVtMeasurements?: readonly CanonicalGpzBusVt[];
 }
 
 export interface CanonicalGpzBay {
@@ -112,6 +151,36 @@ export interface CanonicalGpzBay {
   readonly measurements?: BayMeasurements | null;
   /** Flag: pole w stanie manipulacji. */
   readonly inManipulation?: boolean;
+  /** F11.1 (SLD_CAD_SPEC_V3 §17.2/§20.1, rejestr device-ref w GPZ — parytet ze
+   *  stacjami): uporządkowana lista aparatów pola z ENM `Bay.primary_devices`
+   *  (wzorzec `MiniBlockBayDescriptor.primaryDevices`/`projectBayPrimaryDevices`,
+   *  `v2/canvas/enmToSldAdapter.ts`) — `undefined` gdy ENM nie niesie tej danej
+   *  dla pola (dziś ZAWSZE `undefined` na fixturze referencyjnej, STOP-notatka
+   *  F9.2 — kontrakt gotowy pod przyszłą serializację backendu, identycznie jak
+   *  dla stacji). Kompozycja GPZ (`v3/compose/gpz.ts`) dopasowuje tę listę do
+   *  STAŁEGO szablonu aparatów pola WYŁĄCZNIE gdy sekwencja się DOKŁADNIE
+   *  zgadza (zero częściowego/domyślnego przypisania) — patrz
+   *  `primaryDeviceItemsForTemplate`. */
+  readonly primaryDevices?: readonly BayPrimaryDeviceView[];
+  /** F11.1 (spec §17.2): adnotacja zabezpieczeń tego pola — WYŁĄCZNIE
+   *  `Bay.protection_ref` rozwiązany na `ProtectionAssignment` (SUROWE refy
+   *  ENM, wzorzec `MiniBlockBayDescriptor.protectionMarking`/
+   *  `resolveBayProtectionMarking`). `undefined` gdy `Bay.protection_codes`
+   *  puste/nieobecne. Kody w tym polu MAJĄ PIERWSZEŃSTWO nad `protectionCodes`
+   *  (wyżej) w kompozycji v3 — oba pola niosą tę samą listę, gdy oba obecne
+   *  (jedno źródło ENM); `protectionCodes` zostaje NIETKNIĘTE (konsumenci v2/
+   *  legacy). */
+  readonly protectionMarking?: BayProtectionMarkingView;
+  /** F11.1 (spec §18.3): adnotacje przekładni CT tego pola — wzorzec
+   *  `MiniBlockBayDescriptor.ctRatingAnnotations`/`resolveBayCtRatingAnnotations`.
+   *  `undefined` gdy pole nie niesie żadnego CT z `Measurement.rating` obecnym
+   *  (brak danych = brak oznaczenia, §18.3 dosłownie). */
+  readonly ctRatingAnnotations?: readonly CtRatingAnnotationView[];
+  /** CTVT-RENDER (spec §20.2): adnotacje montażu VT tego pola — wzorzec
+   *  `MiniBlockBayDescriptor.vtMountingAnnotations`/`resolveBayVtMountings`.
+   *  `undefined` gdy pole nie niesie żadnego VT z `Measurement.vt_mounting`
+   *  obecnym (brak danych = brak oznaczenia, §20.2). */
+  readonly vtMountingAnnotations?: readonly VtMountingAnnotationView[];
 }
 
 /**
@@ -159,11 +228,22 @@ export interface CanonicalGpzTransformer {
   readonly uhvKv: number;
   readonly ulvKv: number;
   readonly vectorGroup: string | null; // "Dyn11" itp.
+  /** Recenzja NO-GO 2026-07-17 pkt 4: napięcie zwarcia uk% i straty
+   *  obciążeniowe Pk [kW] z ENM (`Transformer.uk_percent`/`pk_kw`,
+   *  materializowane z katalogu) — tabliczka TR bez nich jest modelowo
+   *  niekompletna. Nullable: starzy wołający (testy jednostkowe v2) mogą
+   *  ich nie nieść — wtedy wiersz tabliczki po prostu nie powstaje. */
+  readonly ukPercent?: number | null;
+  readonly pkKw?: number | null;
   /** Sekcja SN do której podłączony jest dolny zacisk TR. null gdy mapowanie
    *  nie istnieje — renderer ustawia TR na środku kanwy (legacy). */
   readonly lvSectionId?: string | null;
   /** Ref szyny HV (110 kV) — do oznaczenia kierunku zasilania. */
   readonly hvBusRef?: string | null;
+  /** Adnotacja regulacji zaczepów (OLTC/DETC, pozycja, tryb, U_zad) z modelu
+   *  `Transformer.tap_changer` (karta SLD-02, V12K-091). null/undefined =
+   *  brak regulacji (tabliczka bez wiersza OLTC). READ-ONLY, zero fizyki. */
+  readonly oltc?: OltcGlyphAnnotation | null;
 }
 
 export interface CanonicalGpzHvSection {
@@ -174,7 +254,56 @@ export interface CanonicalGpzHvSection {
   readonly bays: readonly CanonicalGpzBay[];
 }
 
+/**
+ * F13.1 (SLD_CAD_SPEC_V3 §21.1, D3-1/D3-8/D3-10): źródło systemowe WN,
+ * wywiedzione WYŁĄCZNIE z relacji pierwszoklasowych ENM (`Source` na szynie
+ * GPZ — SN lub WN — z danymi zwarciowymi), używane gdy `gpz_hv_sections` jest
+ * PUSTE (ścieżka derywacji, adapter `enmToCanonicalGpzAdapter.ts`). `sourceRef`
+ * koresponduje z `SldSourceView.id` (`Source.ref_id`, `v2/canvas/enmToSldAdapter.ts`
+ * `buildSources`) — `compose/gpz.ts` dopasowuje istniejący glif `gridSource`
+ * (zaczepiony przez ODDZIELNY kanał `gridSources`, buildScene.ts) po tym
+ * refie, żeby dopisać etykietę nazwy + tabliczkę danych, zero duplikatu
+ * symbolu/mechanizmu ciągłości (spec §13.1/§14.1 wyrocznie zostają nietknięte).
+ */
+export interface CanonicalGpzHvSystemSource {
+  readonly sourceRef: string;
+  /** `Source.meta.source_id` (preferowane) albo `Source.name` — NIGDY placeholder. */
+  readonly name: string;
+  readonly sk3Mva: number | null;
+  readonly ik3Ka: number | null;
+  /** Napięcie SZYNY ŹRÓDŁA (`Bus.voltage_kv` szyny z `Source.bus_ref`) —
+   *  recenzja NO-GO właściciela 2026-07-17 pkt 2: dawna semantyka („zawsze
+   *  strona WN") sklejała Sk″/Ik″ ekwiwalentu 15 kV z napięciem 110 kV w
+   *  jawnie sprzeczną trójkę (Ik″=Sk″/(√3·U) nie zachodziło). Tabliczka
+   *  danych zwarciowych MUSI być spójna wewnętrznie — napięcie zawsze z
+   *  szyny, na której źródło faktycznie siedzi w modelu. */
+  readonly voltageKv: number | null;
+  /** `true` ⇔ `Source.bus_ref` to szyna WN GPZ — wtedy przyłącze systemowe
+   *  wieńczy kolumnę WN (§21.1). `false` = EKWIWALENT na szynach SN —
+   *  symbol źródła i tabliczka przy szynie SN (mieszanie wariantów pełnego
+   *  i uproszczonego w jednym rysunku ZAKAZANE — recenzja pkt 3). */
+  readonly sourceOnHvBus: boolean;
+  /** Napięcie SZYNY WN GPZ (`Bus.voltage_kv` szyny `voltage_kv > 60`) —
+   *  osobne od `voltageKv` (szyna ŹRÓDŁA), bo etykieta „Szyna WN · V kV"
+   *  musi czytać napięcie SZYNY WN także gdy źródło to ekwiwalent SN
+   *  (regres wykryty renderem: „Szyna WN · 15 kV" po zmianie semantyki
+   *  `voltageKv` — recenzja NO-GO 2026-07-17 pkt 2/3). */
+  readonly hvBusVoltageKv: number | null;
+}
+
 export interface GpzCanonicalRendererProps {
+  /** Sposób pracy punktu neutralnego sieci SN (V12K-219) — wyprowadzony z
+   *  `Bus.grounding` szyny SN GPZ. `null`/brak = model uziemienia nieokreślony
+   *  i wtedy schemat NIE rysuje niczego (zero domysłu: „brak danej" to nie to
+   *  samo co „sieć izolowana", a pomyłka zmienia prąd doziemny o rzędy
+   *  wielkości). Rysowany przy szynie, bo przy transformatorze o dolnej stronie
+   *  w trójkącie (Yd11) punkt neutralny na transformatorze NIE ISTNIEJE —
+   *  wytwarza go transformator uziemiający wpięty do szyny. */
+  readonly snNeutralEarthing?: {
+    readonly kind: 'resistor' | 'coil' | 'direct' | 'isolated';
+    readonly rOhm?: number;
+    readonly xOhm?: number;
+  } | null;
   readonly id: string;
   readonly x: number;
   readonly y: number;
@@ -192,6 +321,16 @@ export interface GpzCanonicalRendererProps {
   readonly alarms?: GpzAlarmFlags;
   /** HV side: 110 kV bus + pola HV liniowe + pola TR. Brak → tylko LV. */
   readonly hvSections?: readonly CanonicalGpzHvSection[];
+  /** F13.1 (spec §21.1): źródło systemowe WN wywiedzione z relacji
+   *  pierwszoklasowych gdy `hvSections` puste — `null`/`undefined` gdy
+   *  KTÓRYKOLWIEK z trzech rekordów (TR WN/SN, szyna WN, `Source` na szynie
+   *  GPZ) nieobecny (uczciwy brak, adapter NIE zgaduje). */
+  readonly hvSystemSource?: CanonicalGpzHvSystemSource | null;
+  /** ADAPTER-BUSREF (dług W4/R2/V12K-163): KANONICZNY ref Bus ENM szyny WN
+   *  (jedna szyna GPZ z `voltage_kv > 60` w `Substation.bus_refs`). Metadana do
+   *  powiązania rysowanej szyny WN (`${id}#hv-bus`) z wynikami/energizacją —
+   *  identyfikator sceny NIETKNIĘTY. `null`/brak gdy snapshot nie ma szyny WN. */
+  readonly hvBusRef?: string | null;
   /** Transformatory NA OSI (T1...Tn). */
   readonly transformers: readonly CanonicalGpzTransformer[];
   /** LV side: ≥1 sekcja 15 kV. */

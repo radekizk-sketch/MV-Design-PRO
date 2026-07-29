@@ -57,7 +57,10 @@ def _simulate_scenario(
         else:
             # Linear voltage recovery in 100ms
             recovery_progress = min(1.0, (t - fault_end) / 0.1)
-            v = scenario.voltage_dip_depth_pu + (1.0 - scenario.voltage_dip_depth_pu) * recovery_progress
+            v = (
+                scenario.voltage_dip_depth_pu
+                + (1.0 - scenario.voltage_dip_depth_pu) * recovery_progress
+            )
 
         # Iq reactive injection (FRT requirement: K · ΔV)
         # K = 2.0 (typical for FRT mode), saturated at ±1.0 p.u.
@@ -94,11 +97,7 @@ def _simulate_scenario(
             stayed_connected = False
 
         # P recovery detection
-        if (
-            t > fault_end
-            and p_recovery_time is None
-            and p_filt >= p_recovered_threshold
-        ):
+        if t > fault_end and p_recovery_time is None and p_filt >= p_recovered_threshold:
             p_recovery_time = t - fault_end
 
     # Margin do krzywej profilu (uproszczone: minimum (V - LVRT_curve) w czasie)

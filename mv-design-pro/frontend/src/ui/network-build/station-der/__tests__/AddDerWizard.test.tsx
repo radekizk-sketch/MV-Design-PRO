@@ -154,7 +154,7 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     expect(ders[0].name).toBe('PV Test 1');
     expect(ders[0].der_kind).toBe('PV');
     expect(ders[0].connection_side).toBe('SN');
-    expect(ders[0].pcc_ref).toContain('PCC-01');
+    expect(ders[0].bus_przylaczenia_ref).toContain('PCC-01');
     expect(ders[0].bay_ref).toContain('Pole-PV-01');
     expect(ders[0].catalogs.device_catalog_ref).toBe('pv_inv_sma_2500');
     expect(ders[0].profiles.nc_rfg_profile_ref).toBe('ncrfg_pse');
@@ -346,7 +346,7 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('krok profilu startuje z kompletnym domyĹ›lnym pakietem NC RfG operatora', () => {
+  it('krok profilu NIE preselekcjonuje operatora — Dalej zablokowane do wyboru', () => {
     render(
       <AddDerWizard isOpen stationId="s" stationName="S" derKind="PV" projectId="p" onClose={vi.fn()} />,
     );
@@ -360,12 +360,12 @@ describe('AddDerWizard â€” 5-krokowy guided flow', () => {
     fireEvent.change(screen.getByTestId('add-der-device'), { target: { value: 'pv_inv_sma_2500' } });
     fireEvent.click(screen.getByTestId('add-der-next'));
 
-    expect((screen.getByTestId('add-der-ncrfg') as HTMLSelectElement).value).toBe('ncrfg_enea');
-    expect((screen.getByTestId('add-der-lvrt') as HTMLSelectElement).value).toBe('lvrt_enea_b');
-    expect((screen.getByTestId('add-der-hvrt') as HTMLSelectElement).value).toBe('hvrt_enea_b');
-    expect((screen.getByTestId('add-der-lvrt') as HTMLSelectElement).disabled).toBe(false);
-    expect((screen.getByTestId('add-der-hvrt') as HTMLSelectElement).disabled).toBe(false);
-    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(false);
+    // INTENCJA ZACHOWANA, KANON ZMIENIONY (V12K-245): krok profilu jest DECYZJA, nie
+    // formalnoscia. Preselekcja jednego z pieciu OSD (ENEA) pozwalala przejsc dalej jednym
+    // klikiem i zapisac w modelu operatora, ktorego projektant nigdy nie wybral — a wybor
+    // OSD wynika z lokalizacji przylaczenia i determinuje krzywe FRT oraz wymagania Q(U).
+    expect((screen.getByTestId('add-der-ncrfg') as HTMLSelectElement).value).toBe('');
+    expect((screen.getByTestId('add-der-next') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('profil Enea automatycznie wybiera dostepne krzywe LVRT/HVRT i odblokowuje Dalej', () => {

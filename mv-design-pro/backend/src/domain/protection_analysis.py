@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 from uuid import UUID, uuid4
 
@@ -25,7 +25,7 @@ from uuid import UUID, uuid4
 # =============================================================================
 
 
-class TripState(str, Enum):
+class TripState(StrEnum):
     """Protection device trip evaluation state."""
 
     TRIPS = "TRIPS"  # Device will trip for given fault current
@@ -33,7 +33,7 @@ class TripState(str, Enum):
     INVALID = "INVALID"  # Evaluation could not complete (missing data, unsupported curve)
 
 
-class ProtectionRunStatus(str, Enum):
+class ProtectionRunStatus(StrEnum):
     """Status of a protection analysis run."""
 
     CREATED = "CREATED"

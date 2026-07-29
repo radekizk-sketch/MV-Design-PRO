@@ -336,155 +336,29 @@ export const PROTECTION_FUNCTION_CATALOG: ReadonlyArray<ProtectionFunctionItem> 
 /** Klasa CT wg IEC 61869-2 (zabezpieczenia: 5P/10P; pomiary: 0,2/0,5/1,0). */
 export type CtClass = '0.2' | '0.5' | '1.0' | '5P10' | '5P20' | '10P10' | '10P20';
 
-export interface CtCatalogItem {
-  readonly id: string;
-  readonly catalog_namespace: 'ct';
-  readonly catalog_version: string;
-  readonly label_pl: string;
-  readonly ratio_primary_a: number;
-  readonly ratio_secondary_a: number;
-  readonly burden_va: number;
-  readonly accuracy_class: CtClass;
-  /** Współczynnik bezpieczeństwa zabezpieczeń (Ksbn — IEC 61869). */
-  readonly safety_factor?: number;
-  /** Stosowanie: zabezpieczenia, pomiary, lub uniwersalne. */
-  readonly application: 'protection' | 'metering' | 'dual';
-}
 
-export const CT_CATALOG: ReadonlyArray<CtCatalogItem> = Object.freeze([
-  {
-    id: 'ct_100_5_5p10',
-    catalog_namespace: 'ct',
-    catalog_version: '2024.1',
-    label_pl: 'CT 100/5 A · 5P10 · 15 VA (zabezpieczenia)',
-    ratio_primary_a: 100,
-    ratio_secondary_a: 5,
-    burden_va: 15,
-    accuracy_class: '5P10',
-    safety_factor: 10,
-    application: 'protection',
-  },
-  {
-    id: 'ct_200_5_5p20',
-    catalog_namespace: 'ct',
-    catalog_version: '2024.1',
-    label_pl: 'CT 200/5 A · 5P20 · 30 VA (zabezpieczenia)',
-    ratio_primary_a: 200,
-    ratio_secondary_a: 5,
-    burden_va: 30,
-    accuracy_class: '5P20',
-    safety_factor: 20,
-    application: 'protection',
-  },
-  {
-    id: 'ct_500_5_10p20',
-    catalog_namespace: 'ct',
-    catalog_version: '2024.1',
-    label_pl: 'CT 500/5 A · 10P20 · 30 VA (zabezpieczenia)',
-    ratio_primary_a: 500,
-    ratio_secondary_a: 5,
-    burden_va: 30,
-    accuracy_class: '10P20',
-    safety_factor: 20,
-    application: 'protection',
-  },
-  {
-    id: 'ct_50_5_05',
-    catalog_namespace: 'ct',
-    catalog_version: '2024.1',
-    label_pl: 'CT 50/5 A · 0,5 · 10 VA (pomiar handlowy)',
-    ratio_primary_a: 50,
-    ratio_secondary_a: 5,
-    burden_va: 10,
-    accuracy_class: '0.5',
-    application: 'metering',
-  },
-  {
-    id: 'ct_300_5_dual',
-    catalog_namespace: 'ct',
-    catalog_version: '2024.1',
-    label_pl: 'CT 300/5 A · 5P10 + 0,5 · 30 VA (uniwersalny dwurdzeniowy)',
-    ratio_primary_a: 300,
-    ratio_secondary_a: 5,
-    burden_va: 30,
-    accuracy_class: '5P10',
-    safety_factor: 10,
-    application: 'dual',
-  },
-]);
 
 // =============================================================================
-// 3. VtCatalog (Przekładniki napięciowe — Naprawa C.6)
+// 3. VtCatalog — USUNIETY (V12K-257)
 // =============================================================================
+//
+// Ten plik trzymal cztery typy przekladnikow napieciowych (`VT_CATALOG`), regule
+// zgodnosci ze sposobem uziemienia (`isVtVoltageFactorValidForGrounding`) i dobor
+// po napieciu (`selectVtForVoltage`). Wszystkie trzy byly KOPIAMI:
+//
+//   * identyfikatory typow (`vt_20kv_dual` i pokrewne) NIE ISTNIALY w katalogu
+//     backendu, a karta zabezpieczen zapisywala je do modelu — dobor przekladnika
+//     (V12K-255) widzial „typ nieznany katalogowi" i nie mial czego sprawdzic,
+//   * regula byla TRZECIA kopia wymagan IEC 61869-3 tab. 2, z progami zanizonymi
+//     dokladnie tak, jak poprawil je V12K-256 w backendzie (1,5 przy uziemieniu
+//     przez rezystor, 1,2 przy bezposrednim) — ekran moglby wiec pokazac „zgodne"
+//     tam, gdzie backend i pakiet dowodowy mowia „niezgodne".
+//
+// Zrodlem typow jest `/api/catalog/vt-types`, zrodlem werdyktu
+// `/api/v1/catalog/audit2/validate-vt-grounding` (patrz `WalidacjaVtPolaSekcja`).
 
-/** Klasa VT wg IEC 61869-3 (zabezpieczenia: 3P/6P; pomiary: 0,2/0,5/1,0). */
-export type VtClass = '0.2' | '0.5' | '1.0' | '3P' | '6P';
 
-export interface VtCatalogItem {
-  readonly id: string;
-  readonly catalog_namespace: 'vt';
-  readonly catalog_version: string;
-  readonly label_pl: string;
-  readonly ratio_primary_kv: number;
-  readonly ratio_secondary_v: number;
-  readonly burden_va: number;
-  readonly accuracy_class: VtClass;
-  /** Współczynnik napięciowy U_th (1.5 lub 1.9 × Un / 8h dla 1.9). */
-  readonly voltage_factor: 1.2 | 1.5 | 1.9;
-  /** Stosowanie. */
-  readonly application: 'protection' | 'metering' | 'dual';
-}
 
-export const VT_CATALOG: ReadonlyArray<VtCatalogItem> = Object.freeze([
-  {
-    id: 'vt_15kv_100v_3p',
-    catalog_namespace: 'vt',
-    catalog_version: '2024.1',
-    label_pl: 'VT 15 kV/√3 / 100 V/√3 · 3P · 50 VA (zabezpieczenia)',
-    ratio_primary_kv: 15 / Math.sqrt(3),
-    ratio_secondary_v: 100 / Math.sqrt(3),
-    burden_va: 50,
-    accuracy_class: '3P',
-    voltage_factor: 1.9,
-    application: 'protection',
-  },
-  {
-    id: 'vt_20kv_100v_3p',
-    catalog_namespace: 'vt',
-    catalog_version: '2024.1',
-    label_pl: 'VT 20 kV/√3 / 100 V/√3 · 3P · 50 VA (zabezpieczenia)',
-    ratio_primary_kv: 20 / Math.sqrt(3),
-    ratio_secondary_v: 100 / Math.sqrt(3),
-    burden_va: 50,
-    accuracy_class: '3P',
-    voltage_factor: 1.9,
-    application: 'protection',
-  },
-  {
-    id: 'vt_15kv_100v_05',
-    catalog_namespace: 'vt',
-    catalog_version: '2024.1',
-    label_pl: 'VT 15 kV/√3 / 100 V/√3 · 0,5 · 30 VA (pomiar handlowy)',
-    ratio_primary_kv: 15 / Math.sqrt(3),
-    ratio_secondary_v: 100 / Math.sqrt(3),
-    burden_va: 30,
-    accuracy_class: '0.5',
-    voltage_factor: 1.2,
-    application: 'metering',
-  },
-  {
-    id: 'vt_20kv_dual',
-    catalog_namespace: 'vt',
-    catalog_version: '2024.1',
-    label_pl: 'VT 20 kV/√3 / 2×100 V/√3 · 3P + 0,5 · 60 VA (uniwersalny)',
-    ratio_primary_kv: 20 / Math.sqrt(3),
-    ratio_secondary_v: 100 / Math.sqrt(3),
-    burden_va: 60,
-    accuracy_class: '3P',
-    voltage_factor: 1.9,
-    application: 'dual',
-  },
-]);
 
 // =============================================================================
 // 4. SpzCatalog (Auto-reclosing 79 — Naprawa C.3)
@@ -622,29 +496,7 @@ export function getProtectionFunctionByAnsiCode(
   return PROTECTION_FUNCTION_CATALOG.find((f) => f.ansi_code === code) ?? null;
 }
 
-/** Zwraca CT na podstawie wymaganego prądu pierwotnego (zaokrąglenie w górę). */
-export function selectCtForCurrent(
-  primaryCurrentA: number,
-  application: 'protection' | 'metering' | 'dual' = 'protection',
-): readonly CtCatalogItem[] {
-  return CT_CATALOG.filter(
-    (ct) =>
-      (ct.application === application || ct.application === 'dual')
-      && ct.ratio_primary_a >= primaryCurrentA,
-  );
-}
 
-/** Zwraca VT na podstawie wymaganego napięcia pierwotnego. */
-export function selectVtForVoltage(
-  primaryVoltageKv: number,
-  application: 'protection' | 'metering' | 'dual' = 'protection',
-): readonly VtCatalogItem[] {
-  return VT_CATALOG.filter(
-    (vt) =>
-      (vt.application === application || vt.application === 'dual')
-      && Math.abs(vt.ratio_primary_kv - primaryVoltageKv / Math.sqrt(3)) < 1.0,
-  );
-}
 
 /** Zwraca SPZ kompatybilne z DER (Naprawa C.3). */
 export function selectSpzCompatibleWithDer(): readonly SpzCatalogItem[] {
@@ -660,49 +512,6 @@ export function isCtClassValidForMetering(ctClass: CtClass): boolean {
   return ['0.2', '0.5', '1.0'].includes(ctClass);
 }
 
-/**
- * Naprawa eng.20: walidacja voltage_factor VT vs typu sieci (uziemienia neutralnego).
- * Sieci skompensowane (Petersena) i izolowane wymagają VT z U_th = 1.9 (8h).
- * Sieci R-grounded mogą używać 1.5 (30s).
- * Sieci HV (≥110kV) mogą używać 1.2 (continuous).
- */
-export function isVtVoltageFactorValidForGrounding(
-  voltageFactor: 1.2 | 1.5 | 1.9,
-  groundingType: 'isolated' | 'petersen_coil' | 'resistor_grounded' | 'directly_grounded',
-): { ok: boolean; message_pl: string } {
-  switch (groundingType) {
-    case 'isolated':
-    case 'petersen_coil':
-      if (voltageFactor < 1.9) {
-        return {
-          ok: false,
-          message_pl:
-            `Sieć ${groundingType === 'isolated' ? 'izolowana' : 'skompensowana (Petersena)'} `
-            + `wymaga VT z współczynnikiem napięciowym U_th = 1.9 (8h, IEC 61869-3). `
-            + `Wybrany VT ma U_th = ${voltageFactor}.`,
-        };
-      }
-      return { ok: true, message_pl: '' };
-    case 'resistor_grounded':
-      if (voltageFactor < 1.5) {
-        return {
-          ok: false,
-          message_pl:
-            `Sieć R-grounded wymaga VT z U_th ≥ 1.5 (30s). `
-            + `Wybrany VT ma U_th = ${voltageFactor}.`,
-        };
-      }
-      return { ok: true, message_pl: '' };
-    case 'directly_grounded':
-      if (voltageFactor < 1.2) {
-        return {
-          ok: false,
-          message_pl: `Sieć directly-grounded wymaga VT z U_th ≥ 1.2 (continuous).`,
-        };
-      }
-      return { ok: true, message_pl: '' };
-  }
-}
 
 // =============================================================================
 // 7. HvFuseCatalog (Naprawa eng.17 — audyt zabezpieczeń)

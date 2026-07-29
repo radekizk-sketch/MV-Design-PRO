@@ -43,7 +43,7 @@ METHODOLOGY (from lecture materials):
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 from uuid import uuid4
 
@@ -145,6 +145,27 @@ class LineOvercurrentSettingAnalyzer:
             selectivity=selectivity,
             sensitivity=sensitivity,
             thermal=thermal,
+            trace_steps=trace_steps,
+        )
+
+        # Step 7b: Konflikt kryteriów — werdykt CZĄSTKOWY musi mówić prawdę.
+        #
+        # V12K-188: kryteria selektywności i czułości wyznaczają PRZECIWSTAWNE
+        # granice tego samego nastawienia (dół z selektywności, góra z czułości/
+        # termiki). Dotąd każde z nich zwracało PASS na podstawie samego faktu, że
+        # dane wejściowe są dodatnie — nigdy nie porównywały granic ze sobą. Przy
+        # PUSTYM oknie (I_min > I_max), czyli gdy ŻADNA nastawa nie spełnia obu
+        # warunków naraz, raport pokazywał „Selektywność: PASS" i „Czułość: PASS"
+        # obok werdyktu ogólnego FAIL — projektant nie miał z czego odczytać, które
+        # kryteria się wykluczają i o ile. Werdykt ogólny był poprawny (bramka
+        # `window_valid`), więc defekt nie fałszował decyzji, ale czynił ją
+        # nieczytelną — a to jest dokładnie ta informacja, która prowadzi do zmiany
+        # przekroju, nastawy czasowej albo podziału odcinka.
+        selectivity, sensitivity, thermal = self._mark_window_conflict(
+            selectivity=selectivity,
+            sensitivity=sensitivity,
+            thermal=thermal,
+            setting_window=setting_window,
             trace_steps=trace_steps,
         )
 
@@ -653,6 +674,69 @@ class LineOvercurrentSettingAnalyzer:
             limiting_criterion_min="selectivity",
             limiting_criterion_max=limiting_max,
         )
+
+    def _mark_window_conflict(
+        self,
+        *,
+        selectivity: SelectivityCriterionResult,
+        sensitivity: SensitivityCriterionResult,
+        thermal: ThermalCriterionResult,
+        setting_window: SettingWindow,
+        trace_steps: list[dict[str, Any]],
+    ) -> tuple[SelectivityCriterionResult, SensitivityCriterionResult, ThermalCriterionResult]:
+        """Oznacz kryteria, które wykluczają się nawzajem (puste okno nastaw).
+
+        Zwraca krotkę (selektywność, czułość, termika) — niezmienioną, gdy okno
+        jest poprawne. Przy pustym oknie FAIL dostaje kryterium wyznaczające dolną
+        granicę (selektywność) oraz to, które wyznaczyło granicę górną; drugie z
+        górnych pozostaje bez zmian, bo nie ono ogranicza. Kryterium bez danych
+        (ERROR) nie jest nadpisywane — brak danych to inna sytuacja niż konflikt.
+        """
+        if setting_window.window_valid:
+            return selectivity, sensitivity, thermal
+
+        deficit_a = setting_window.i_min_primary_a - setting_window.i_max_primary_a
+        conflict_pl = (
+            f"Konflikt kryteriów: dolna granica {setting_window.i_min_primary_a / 1000:.2f} kA "
+            f"(selektywność) przewyższa górną {setting_window.i_max_primary_a / 1000:.2f} kA "
+            f"({'czułość' if setting_window.limiting_criterion_max == 'sensitivity' else 'termika'})"
+            f" o {deficit_a / 1000:.2f} kA — żadna nastawa I>> nie spełnia obu warunków."
+        )
+
+        def _fail(result: Any) -> Any:
+            if result.verdict == LineOvercurrentVerdict.ERROR:
+                return result
+            return replace(
+                result,
+                verdict=LineOvercurrentVerdict.FAIL,
+                notes_pl=f"{result.notes_pl} {conflict_pl}",
+            )
+
+        selectivity = _fail(selectivity)
+        if setting_window.limiting_criterion_max == "sensitivity":
+            sensitivity = _fail(sensitivity)
+        else:
+            thermal = _fail(thermal)
+
+        trace_steps.append(
+            {
+                "step": "setting_window_conflict",
+                "description_pl": "Konflikt kryteriów nastawy I>>",
+                "inputs": {
+                    "i_min_primary_a": setting_window.i_min_primary_a,
+                    "i_max_primary_a": setting_window.i_max_primary_a,
+                    "limiting_criterion_max": setting_window.limiting_criterion_max,
+                },
+                "outputs": {
+                    "deficit_a": deficit_a,
+                    "selectivity_verdict": selectivity.verdict.value,
+                    "sensitivity_verdict": sensitivity.verdict.value,
+                    "thermal_verdict": thermal.verdict.value,
+                    "notes_pl": conflict_pl,
+                },
+            }
+        )
+        return selectivity, sensitivity, thermal
 
     def _calculate_overall_verdict(
         self,

@@ -30,6 +30,15 @@ export interface SldTopologyRun {
   readonly id: string;
   readonly kind: SldTopologyRunKind;
   readonly label: string;
+  /** F10.2 (SLD_CAD_SPEC_V3 §19.2, D2): `LineRun.name` SUROWY (przycięty,
+   *  odfiltrowany od refów/hashy programistycznych) — `null` gdy dana
+   *  nieobecna LUB nie wygląda na czytelną nazwę. ODDZIELNE od `label`
+   *  (który ZAWSZE syntetyzuje bezpieczny fallback, np. „Ciąg SN 01", do
+   *  UI ogólnego — pomieszanie realnej nazwy z syntetycznym fallbackiem w
+   *  podpisie pola liniowego naruszałoby WHITE BOX/zero zgadywania,
+   *  spec §19.2 „brak danych linii = sam kier. ⟨kod⟩", nie fabrykowany
+   *  numer). Konsument: `v3/scene/buildScene.ts` `buildLineRunShims`. */
+  readonly lineName: string | null;
   readonly corridorId: string;
   readonly laneIndex: number;
   readonly orderInRun: number;

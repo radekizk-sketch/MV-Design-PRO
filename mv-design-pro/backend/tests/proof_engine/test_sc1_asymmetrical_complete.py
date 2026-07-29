@@ -28,6 +28,9 @@ from application.proof_engine.packs.sc_asymmetrical import (
 )
 from application.proof_engine.proof_generator import ProofGenerator, SC1Input
 from application.proof_engine.types import ProofType
+from network_model.solvers.short_circuit_asymmetrical_quantities import (
+    compute_sc1_asymmetrical_quantities,
+)
 
 # =============================================================================
 # Test Fixtures
@@ -68,6 +71,21 @@ def _make_sc1_input(fault_type: str, **kwargs) -> SC1Input:
         "n_factor": 0.0,
     }
     defaults.update(kwargs)
+    if "quantities" not in defaults:
+        # Wielkości fizyczne liczy solver (NOT-A-SOLVER, V12K-118) —
+        # generator dowodu jest czystym formatterem.
+        defaults["quantities"] = compute_sc1_asymmetrical_quantities(
+            fault_type=defaults["fault_type"],
+            u_n_kv=defaults["u_n_kv"],
+            c_factor=defaults["c_factor"],
+            u_prefault_kv=defaults["u_prefault_kv"],
+            z1_ohm=defaults["z1_ohm"],
+            z2_ohm=defaults["z2_ohm"],
+            z0_ohm=defaults["z0_ohm"],
+            a_operator=defaults["a_operator"],
+            m_factor=defaults["m_factor"],
+            n_factor=defaults["n_factor"],
+        )
     return SC1Input(**defaults)
 
 

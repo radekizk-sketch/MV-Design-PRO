@@ -1,0 +1,330 @@
+/*
+ * Ekran „Stabilność dynamiczna" (E-32) — wyłącznie tokeny powłoki (--mvd-*),
+ * oba motywy z automatu. Jedna skala promieni: 10px sekcja / 8px karta /
+ * 999px chip. Siatka odstępów: 4 / 8 / 12 / 16.
+ */
+
+.mvd-stabilnosc {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-stabilnosc-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--mvd-accent);
+}
+
+/* --- Nagłówek -------------------------------------------------------------- */
+
+.mvd-stabilnosc-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-stabilnosc-head h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--mvd-ink);
+}
+
+.mvd-stabilnosc-cel {
+  margin: 4px 0 0;
+  max-width: 82ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+/* --- Stany ----------------------------------------------------------------- */
+
+.mvd-stabilnosc-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.mvd-stabilnosc-stan h4 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mvd-ink);
+}
+
+.mvd-stabilnosc-stan p {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+.mvd-stabilnosc-stan[data-tone='error'] {
+  border-color: var(--mvd-warn);
+}
+
+.mvd-stabilnosc-akcja {
+  align-self: flex-start;
+  margin-top: 4px;
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent-ink);
+  cursor: pointer;
+}
+
+.mvd-stabilnosc-akcja:hover {
+  filter: brightness(1.08);
+}
+
+.mvd-stabilnosc-akcja:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* --- Sekcje ----------------------------------------------------------------- */
+
+.mvd-stabilnosc-sekcja {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.mvd-stabilnosc-sekcja > h4 {
+  margin: 6px 0 8px;
+  font-size: 14px;
+  color: var(--mvd-ink);
+}
+
+.mvd-stabilnosc-sekcja[data-werdykt='UNSTABLE'] {
+  border-color: var(--mvd-warn);
+}
+
+.mvd-stabilnosc-nota {
+  margin: 0 0 12px;
+  max-width: 82ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-stabilnosc-siatka {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 0 0 8px;
+}
+
+.mvd-stabilnosc-wartosc {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.mvd-stabilnosc-wartosc dt {
+  font: 600 10.5px/1.3 var(--mvd-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--mvd-muted);
+}
+
+.mvd-stabilnosc-wartosc dd {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--mvd-ink);
+  overflow-wrap: anywhere;
+}
+
+.mvd-stabilnosc-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font: 600 10.5px/1.6 var(--mvd-font-mono);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.mvd-stabilnosc-chip[data-stan='ok'] {
+  background: var(--mvd-ok-bg);
+  color: var(--mvd-ok);
+}
+
+.mvd-stabilnosc-chip[data-stan='brak'] {
+  background: var(--mvd-warn-bg);
+  color: var(--mvd-warn);
+}
+
+/* --- Tabele ------------------------------------------------------------------ */
+
+.mvd-stabilnosc-tabela {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0 0 12px;
+  font-size: 12.5px;
+}
+
+.mvd-stabilnosc-tabela th {
+  text-align: left;
+  padding: 6px 12px;
+  font: 600 10.5px/1.3 var(--mvd-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--mvd-muted);
+  border-bottom: 1px solid var(--mvd-line);
+}
+
+.mvd-stabilnosc-tabela td {
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--mvd-line);
+  color: var(--mvd-ink);
+}
+
+/* --- Przyciski (ślad / dowód / powrót) --------------------------------------- */
+
+.mvd-stabilnosc-dowod {
+  align-self: flex-start;
+  margin: 0 8px 8px 0;
+  background: none;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+
+.mvd-stabilnosc-dowod:hover {
+  background: var(--mvd-sel);
+}
+
+.mvd-stabilnosc-dowod:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* --- Przebieg czasowy (wykres U(t)/f(t)) ------------------------------------- */
+
+.mvd-stabilnosc-wykres-tytul {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-text);
+}
+
+.mvd-stabilnosc-serie {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 8px;
+}
+
+.mvd-stabilnosc-serie-tytul {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+
+.mvd-stabilnosc-serie-btn {
+  background: none;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+
+.mvd-stabilnosc-serie-btn[aria-pressed='false'] {
+  color: var(--mvd-muted);
+  opacity: 0.6;
+}
+
+.mvd-stabilnosc-serie-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+.mvd-stabilnosc-wykres-dymek {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--mvd-text);
+}
+
+/* --- Stopka ------------------------------------------------------------------ */
+
+.mvd-stabilnosc-stopka {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.mvd-stabilnosc-stopka p {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-stabilnosc-powrot {
+  align-self: flex-start;
+  margin-top: 2px;
+  background: none;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+
+.mvd-stabilnosc-powrot:hover {
+  background: var(--mvd-sel);
+}
+
+.mvd-stabilnosc-powrot:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* ---- pętla decyzji (F-K4 faza 3): utrata stabilności → element w modelu ---- */
+.mvd-stabilnosc-popraw {
+  margin-top: 8px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--mvd-accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 4px 10px;
+}
+.mvd-stabilnosc-popraw:hover {
+  background: var(--mvd-sel);
+}

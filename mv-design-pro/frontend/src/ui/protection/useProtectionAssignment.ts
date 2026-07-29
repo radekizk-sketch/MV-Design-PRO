@@ -3,29 +3,31 @@
  *
  * Hook adaptera do pobierania przypisań zabezpieczeń do elementów.
  *
- * STATUS: API adapter placeholder.
+ * ŹRÓDŁO DANYCH (Audyt E, E-5):
+ * Realny endpoint read modelu `GET /api/cases/{caseId}/enm/protection-view`
+ * (backend `application/protection_read_model`). Hook `useProtectionView`
+ * pobiera widok dla aktywnego case'u, a `assignmentsForElement` filtruje
+ * przypisania po `elementId` zaznaczonego elementu. Brak przypisania ⇒
+ * pusta lista (uczciwy stan zerowy). ZERO fizyki w UI — wartości z backendu.
  *
- * UWAGA:
- * Runtime nie pokazuje przypisań testowych. Po rozszerzeniu modelu NetworkModel
- * lub dodaniu endpointu API, implementacja zostanie zaktualizowana.
- *
- * DOCELOWA IMPLEMENTACJA:
- * - Opcja A: Pobieranie z NetworkModel (jeśli model zostanie rozszerzony)
- * - Opcja B: Osobny endpoint API: GET /api/projects/{id}/protection-assignments
- * - Opcja C: Dane osadzone w Protection Case Config
+ * Bulk (`useProtectionAssignments`) dla nakładki SLD nadal czeka na
+ * dedykowany endpoint zbiorczy — patrz komentarz przy tym hooku niżej.
  */
 
 import { useMemo } from 'react';
 import type { ElementProtectionAssignment } from './element-assignment';
 import { PROTECTION_ASSIGNMENT_FIXTURES } from './element-assignment';
+import { useProtectionView } from './useProtectionView';
+import { assignmentsForElement } from './protection-view';
 
 // =============================================================================
 // Configuration
 // =============================================================================
 
 /**
- * Fixture data are kept for tests only. Runtime hooks must not create
- * protection assignments that are not present in project data/API.
+ * Fixture data are kept for the SLD-overlay bulk hook (tests/Storybook only).
+ * Runtime hooks must not create protection assignments that are not present
+ * in project data/API.
  */
 const USE_FIXTURE_DATA = false;
 
@@ -73,30 +75,22 @@ interface UseProtectionAssignmentResult {
 export function useProtectionAssignment(
   elementId: string | null | undefined
 ): UseProtectionAssignmentResult {
-  // Memoized filter dla stabilności referencji
-  const assignments = useMemo(() => {
-    if (!elementId) return [];
+  // Realny read model zabezpieczeń dla aktywnego case'u (E-5).
+  const { data, isLoading, error } = useProtectionView();
 
-    if (USE_FIXTURE_DATA) {
-      // Fixture data tylko dla testów i Storybook — nigdy w production runtime.
-      return PROTECTION_ASSIGNMENT_FIXTURES.filter((a) => a.element_id === elementId);
-    }
-
-    // Endpoint GET /api/projects/{id}/protection-assignments nie jest jeszcze
-    // udostępniony w publicznej warstwie API. Zwracamy pustą tablicę — UI
-    // pokaże "brak przypisań" w panelu zabezpieczeń elementu. Implementacja
-    // pełnej integracji wymaga: (a) dodania endpointu w api/, (b) zastąpienia
-    // tej tablicy wywołaniem fetch z obsługą loading/error state.
-    return [];
-  }, [elementId]);
+  // Filtr po elemencie — stabilna referencja dla renderu.
+  const assignments = useMemo(
+    () => assignmentsForElement(data, elementId),
+    [data, elementId]
+  );
 
   const hasProtection = assignments.length > 0;
 
   return {
     assignments,
     hasProtection,
-    isLoading: false, // Fixture data nie wymaga ładowania
-    error: null,
+    isLoading,
+    error,
   };
 }
 

@@ -322,11 +322,23 @@ class NcRfgPtpireeSolver:
             return True, "Test wymuszony w programie szczegółowym."
         if module_type in definition.default_for_modules:
             return True, f"Wymagany dla modułu typu {module_type}."
-        if definition.test_id == "T01" and module.module_family == "SyPGM" and module.certificate_status != "ptpiree_verified":
+        if (
+            definition.test_id == "T01"
+            and module.module_family == "SyPGM"
+            and module.certificate_status != "ptpiree_verified"
+        ):
             return True, "Wymagany dla SyPGM typu A/B przy braku certyfikatu."
-        if definition.test_id == "T12" and module.certificate_status != "ptpiree_verified" and module_type in {"A", "B"}:
+        if (
+            definition.test_id == "T12"
+            and module.certificate_status != "ptpiree_verified"
+            and module_type in {"A", "B"}
+        ):
             return True, "Wymagany dla zaprzestania generacji przy braku certyfikatu."
-        if definition.test_id == "T13" and module.certificate_status != "ptpiree_verified" and module_type == "B":
+        if (
+            definition.test_id == "T13"
+            and module.certificate_status != "ptpiree_verified"
+            and module_type == "B"
+        ):
             return True, "Wymagany dla zmniejszenia generacji przy braku certyfikatu typu B."
         if definition.test_id == "T18" and (
             module.island_operation_required
@@ -348,7 +360,9 @@ class NcRfgPtpireeSolver:
         reason: str,
     ) -> NcRfgPtpireeTestResult:
         if not module.has_pf_droop or module.droop_percent is None or module.dead_band_hz is None:
-            return self._missing(definition, required, reason, "Brak droop P(f) albo martwej strefy częstotliwości.")
+            return self._missing(
+                definition, required, reason, "Brak droop P(f) albo martwej strefy częstotliwości."
+            )
         droop_ref = profile.frequency_response.pf_droop_percent
         dead_ref = profile.frequency_response.dead_band_hz
         frequency_hz = 50.6 if definition.test_id in {"T01", "T03"} else 49.4
@@ -360,7 +374,8 @@ class NcRfgPtpireeSolver:
         dead_ok = module.dead_band_hz <= dead_ref + 0.05
         recovery_ok = definition.test_id != "T04" or (
             module.ramp_rate_pct_per_min is not None
-            and module.ramp_rate_pct_per_min >= 0.5 * profile.frequency_response.ramp_rate_pct_per_min
+            and module.ramp_rate_pct_per_min
+            >= 0.5 * profile.frequency_response.ramp_rate_pct_per_min
         )
         ok = droop_ok and dead_ok and recovery_ok and delta_p_kw >= 0
         ref = trace.add(
@@ -406,20 +421,31 @@ class NcRfgPtpireeSolver:
         reason: str,
     ) -> NcRfgPtpireeTestResult:
         if not module.active_power_control_enabled or module.ramp_rate_pct_per_min is None:
-            return self._missing(definition, required, reason, "Brak aktywnej regulacji mocy czynnej lub rampy.")
+            return self._missing(
+                definition, required, reason, "Brak aktywnej regulacji mocy czynnej lub rampy."
+            )
         target_kw = 0.5 * module.p_max_kw
         delta_kw = module.p_max_kw - target_kw
         ramp_kw_per_min = module.p_max_kw * module.ramp_rate_pct_per_min / 100.0
         settling_min = delta_kw / max(ramp_kw_per_min, 1e-9)
-        limit_min = delta_kw / max(module.p_max_kw * profile.frequency_response.ramp_rate_pct_per_min / 100.0, 1e-9)
+        limit_min = delta_kw / max(
+            module.p_max_kw * profile.frequency_response.ramp_rate_pct_per_min / 100.0, 1e-9
+        )
         ok = settling_min <= max(limit_min * 2.0, 0.1)
         ref = trace.add(
             definition.test_id,
             "active_power_ramp",
             "t_set = |P0-Pset| / (Pmax * r/100)",
-            {"p0_kw": module.p_max_kw, "p_set_kw": target_kw, "ramp_pct_per_min": module.ramp_rate_pct_per_min},
+            {
+                "p0_kw": module.p_max_kw,
+                "p_set_kw": target_kw,
+                "ramp_pct_per_min": module.ramp_rate_pct_per_min,
+            },
             f"t = {delta_kw:.3f} / {ramp_kw_per_min:.3f}",
-            {"settling_time_min": _round(settling_min, 4), "reference_time_min": _round(limit_min, 4)},
+            {
+                "settling_time_min": _round(settling_min, 4),
+                "reference_time_min": _round(limit_min, 4),
+            },
             "kW / (kW/min) = min.",
         )
         return self._ok_fail(
@@ -451,14 +477,27 @@ class NcRfgPtpireeSolver:
                 definition.test_id,
                 "power_factor_range",
                 "cosφ_min,module <= cosφ_min,profile",
-                {"cos_phi_min_module": module.cos_phi_min, "cos_phi_min_profile": reactive.cos_phi_min},
+                {
+                    "cos_phi_min_module": module.cos_phi_min,
+                    "cos_phi_min_profile": reactive.cos_phi_min,
+                },
                 f"{module.cos_phi_min:.3f} <= {reactive.cos_phi_min:.3f}",
                 {"ok": ok},
                 "cosφ jest bezwymiarowy.",
             )
-            return self._ok_fail(definition, required, reason, ok, "Sprawdzono zakres cosφ.", {"cos_phi_min": module.cos_phi_min}, [ref])
+            return self._ok_fail(
+                definition,
+                required,
+                reason,
+                ok,
+                "Sprawdzono zakres cosφ.",
+                {"cos_phi_min": module.cos_phi_min},
+                [ref],
+            )
         if definition.test_id in {"T06", "T07"} and not module.has_qu_curve:
-            return self._missing(definition, required, reason, "Brak krzywej Q(U) albo trybu regulacji Q.")
+            return self._missing(
+                definition, required, reason, "Brak krzywej Q(U) albo trybu regulacji Q."
+            )
         if module.q_range_pct_pn_min is None or module.q_range_pct_pn_max is None:
             return self._missing(definition, required, reason, "Brak zakresu Q/Pn modułu.")
         required_min = reactive.q_range_pct_pn_min
@@ -504,7 +543,9 @@ class NcRfgPtpireeSolver:
             label = "PMAX"
         else:
             if module.p_min_kw is None:
-                return self._missing(definition, required, reason, "Brak deklarowanej wartości PMIN.")
+                return self._missing(
+                    definition, required, reason, "Brak deklarowanej wartości PMIN."
+                )
             measured_kw = module.p_min_kw
             ok = 0 <= measured_kw < module.p_max_kw
             label = "PMIN"
@@ -537,9 +578,15 @@ class NcRfgPtpireeSolver:
         required: bool,
         reason: str,
     ) -> NcRfgPtpireeTestResult:
-        enabled = module.stop_generation_enabled if definition.test_id == "T12" else module.reduction_generation_enabled
+        enabled = (
+            module.stop_generation_enabled
+            if definition.test_id == "T12"
+            else module.reduction_generation_enabled
+        )
         if not enabled or module.ramp_rate_pct_per_min is None:
-            return self._missing(definition, required, reason, "Brak funkcji zdalnej komendy P albo rampy wykonania.")
+            return self._missing(
+                definition, required, reason, "Brak funkcji zdalnej komendy P albo rampy wykonania."
+            )
         target_kw = 0.0 if definition.test_id == "T12" else 0.2 * module.p_max_kw
         delta_kw = module.p_max_kw - target_kw
         ramp_kw_per_min = module.p_max_kw * module.ramp_rate_pct_per_min / 100.0
@@ -553,7 +600,11 @@ class NcRfgPtpireeSolver:
             "t_cmd = |P0-Pcmd| / (Pmax * r/100)",
             {"target_kw": target_kw, "ramp_pct_per_min": module.ramp_rate_pct_per_min},
             f"t = {delta_kw:.3f} / {ramp_kw_per_min:.3f}",
-            {"execution_time_min": _round(execution_min, 4), "reference_time_min": _round(reference_min, 4), "ok": ok},
+            {
+                "execution_time_min": _round(execution_min, 4),
+                "reference_time_min": _round(reference_min, 4),
+                "ok": ok,
+            },
             "kW / (kW/min) = min.",
         )
         return self._ok_fail(
@@ -564,7 +615,11 @@ class NcRfgPtpireeSolver:
             f"Komenda zdalna P: czas wykonania {_round(execution_min, 3)} min.",
             {"execution_time_min": _round(execution_min, 4), "target_kw": _round(target_kw, 3)},
             [ref],
-            ["Uzupełnij funkcję zdalnego ograniczania generacji w sterowniku/SCADA."] if not ok else [],
+            (
+                ["Uzupełnij funkcję zdalnego ograniczania generacji w sterowniku/SCADA."]
+                if not ok
+                else []
+            ),
         )
 
     def _ride_through_test(
@@ -602,7 +657,10 @@ class NcRfgPtpireeSolver:
             definition.test_id,
             "ride_through_envelope",
             formula,
-            {"curve_points": [point.model_dump() for point in curve], "has_dynamic_model": module.has_dynamic_model},
+            {
+                "curve_points": [point.model_dump() for point in curve],
+                "has_dynamic_model": module.has_dynamic_model,
+            },
             f"U_sim = {simulated_voltage:.3f} p.u., U_lim = {limiting.voltage_pu:.3f} p.u.",
             {"margin_pu": _round(margin, 6), "critical_time_s": limiting.time_s, "ok": ok},
             "p.u. - p.u. = p.u.",
@@ -615,7 +673,11 @@ class NcRfgPtpireeSolver:
             f"{'LVRT' if is_lvrt else 'HVRT'}: margines {_round(margin, 4)} p.u. w punkcie {limiting.time_s}s.",
             {"margin_pu": _round(margin, 6), "critical_time_s": limiting.time_s},
             [ref],
-            ["Wybierz profil FRT/HVRT i zwalidowany model dynamiczny urządzenia."] if not ok else [],
+            (
+                ["Wybierz profil FRT/HVRT i zwalidowany model dynamiczny urządzenia."]
+                if not ok
+                else []
+            ),
         )
 
     def _p_recovery_test(
@@ -628,7 +690,9 @@ class NcRfgPtpireeSolver:
         reason: str,
     ) -> NcRfgPtpireeTestResult:
         if module.p_recovery_time_s is None:
-            return self._missing(definition, required, reason, "Brak czasu odbudowy mocy czynnej po FRT.")
+            return self._missing(
+                definition, required, reason, "Brak czasu odbudowy mocy czynnej po FRT."
+            )
         required_time = profile.p_recovery_after_fault.p_recovery_time_s
         ok = module.p_recovery_time_s <= required_time
         ref = trace.add(
@@ -660,7 +724,9 @@ class NcRfgPtpireeSolver:
         reason: str,
     ) -> NcRfgPtpireeTestResult:
         if module.reactive_current_gain is None:
-            return self._missing(definition, required, reason, "Brak wzmocnienia prądu biernego K_FRT.")
+            return self._missing(
+                definition, required, reason, "Brak wzmocnienia prądu biernego K_FRT."
+            )
         voltage_drop_pu = 0.5
         iq_pu = min(1.0, module.reactive_current_gain * voltage_drop_pu)
         ok = module.reactive_current_gain >= 2.0 and iq_pu >= 1.0 - 1e-9
@@ -668,7 +734,10 @@ class NcRfgPtpireeSolver:
             definition.test_id,
             "reactive_current_injection",
             "Iq = min(1.0, K_FRT * ΔU)",
-            {"reactive_current_gain": module.reactive_current_gain, "voltage_drop_pu": voltage_drop_pu},
+            {
+                "reactive_current_gain": module.reactive_current_gain,
+                "voltage_drop_pu": voltage_drop_pu,
+            },
             f"Iq = min(1.0, {module.reactive_current_gain:.3f} * {voltage_drop_pu:.3f})",
             {"iq_pu": _round(iq_pu, 4), "ok": ok},
             "p.u. * p.u./p.u. = p.u.",
@@ -702,7 +771,15 @@ class NcRfgPtpireeSolver:
         }
         active = {key: capable for key, (req, capable) in required_flags.items() if req}
         if not active:
-            return self._result(definition, required, reason, "not_required", "Nie wskazano wymaganej zdolności dodatkowej.", {}, [])
+            return self._result(
+                definition,
+                required,
+                reason,
+                "not_required",
+                "Nie wskazano wymaganej zdolności dodatkowej.",
+                {},
+                [],
+            )
         ok = all(active.values())
         ref = trace.add(
             definition.test_id,
@@ -721,7 +798,13 @@ class NcRfgPtpireeSolver:
             "Sprawdzono wymagane zdolności dodatkowe programu szczegółowego.",
             {"active_capabilities": active},
             [ref],
-            ["Uzupełnij wymagane zdolności: praca wyspowa, black start albo tłumienie oscylacji."] if not ok else [],
+            (
+                [
+                    "Uzupełnij wymagane zdolności: praca wyspowa, black start albo tłumienie oscylacji."
+                ]
+                if not ok
+                else []
+            ),
         )
 
     def _observability_test(
@@ -737,7 +820,10 @@ class NcRfgPtpireeSolver:
             definition.test_id,
             "observability",
             "status = SCADA && rejestrator zakłóceń",
-            {"has_scada": module.has_scada_communication, "has_recorder": module.has_disturbance_recorder},
+            {
+                "has_scada": module.has_scada_communication,
+                "has_recorder": module.has_disturbance_recorder,
+            },
             f"{module.has_scada_communication} && {module.has_disturbance_recorder}",
             {"ok": ok},
             "Wartości logiczne bez jednostek.",
@@ -748,9 +834,16 @@ class NcRfgPtpireeSolver:
             reason,
             ok,
             "Zweryfikowano obserwowalność i rejestrację zakłóceń.",
-            {"has_scada": module.has_scada_communication, "has_recorder": module.has_disturbance_recorder},
+            {
+                "has_scada": module.has_scada_communication,
+                "has_recorder": module.has_disturbance_recorder,
+            },
             [ref],
-            ["Dodaj komunikację SCADA i rejestrator zakłóceń do konfiguracji DER."] if not ok else [],
+            (
+                ["Dodaj komunikację SCADA i rejestrator zakłóceń do konfiguracji DER."]
+                if not ok
+                else []
+            ),
         )
 
     def _harmonics_test(
@@ -782,7 +875,13 @@ class NcRfgPtpireeSolver:
             f"THD_U źródła: {module.harmonic_thdu_percent:.2f}%.",
             {"thdu_percent": module.harmonic_thdu_percent},
             [ref],
-            ["Uruchom pełną analizę harmonicznych E-40 albo wybierz urządzenie o niższej emisji."] if not ok else [],
+            (
+                [
+                    "Uruchom pełną analizę harmonicznych E-40 albo wybierz urządzenie o niższej emisji."
+                ]
+                if not ok
+                else []
+            ),
         )
 
     def _missing(
@@ -865,6 +964,8 @@ class NcRfgPtpireeSolver:
             )
             for test in module.tests:
                 if test.required or test.verdict != "not_required":
-                    lines.append(f"- {test.test_id} {test.ability_pl}: {test.verdict} - {test.summary_pl}")
+                    lines.append(
+                        f"- {test.test_id} {test.ability_pl}: {test.verdict} - {test.summary_pl}"
+                    )
             lines.append("")
         return "\n".join(lines).strip()

@@ -137,14 +137,44 @@ def test_validate_vt_grounding_petersen_19_ok(app_client):
     assert body["ok"] is True
 
 
-def test_validate_vt_grounding_directly_12_ok(app_client):
-    res = app_client.post(
+def test_validate_vt_grounding_directly_wymaga_15_nie_12(app_client):
+    """Sieć bezpośrednio uziemiona: VT faza–ziemia wymaga 1,5 przez 30 s (V12K-256).
+
+    Ten test twierdzil wczesniej, ze wystarczy 1,2 — bo `audit2_catalogs` mial WLASNA,
+    lagodniejsza wersje reguly IEC 61869-3 tab. 2. Wspolczynnik 1,2 (ciagly) dotyczy
+    przekladnika pracujacego MIEDZY FAZAMI, ktory przy zwarciu doziemnym nie widzi
+    wzrostu napiecia; uzwojenie faza-ziemia w sieci skutecznie uziemionej potrzebuje
+    1,5 przez 30 s. Regula jest teraz jedna (`domain/dobor_przekladnika`), a to
+    sprawdzenie pilnuje, ze lagodniejszy wariant nie wroci — trafialby do PAKIETU
+    DOWODOWEGO jako werdykt zgodnosci.
+    """
+    zanizone = app_client.post(
         "/api/v1/catalog/audit2/validate-vt-grounding",
         json={"voltage_factor": 1.2, "grounding_type": "directly_grounded"},
     )
-    assert res.status_code == 200
-    body = res.json()
-    assert body["ok"] is True
+    assert zanizone.status_code == 200
+    assert zanizone.json()["ok"] is False
+    assert "1.5" in zanizone.json()["message_pl"]
+
+    wystarczajace = app_client.post(
+        "/api/v1/catalog/audit2/validate-vt-grounding",
+        json={"voltage_factor": 1.5, "grounding_type": "directly_grounded"},
+    )
+    assert wystarczajace.json()["ok"] is True
+
+
+def test_validate_vt_grounding_rezystor_wymaga_19(app_client):
+    """Sieć uziemiona przez rezystor NIE jest siecią skutecznie uziemioną (V12K-256).
+
+    Poprzednia wersja reguly dopuszczala tam 1,5. Przy zwarciu doziemnym napiecie faz
+    zdrowych rosnie praktycznie do miedzyfazowego, wiec wymaganie 1,5 bylo zanizone.
+    """
+    res = app_client.post(
+        "/api/v1/catalog/audit2/validate-vt-grounding",
+        json={"voltage_factor": 1.5, "grounding_type": "resistor_grounded"},
+    )
+    assert res.json()["ok"] is False
+    assert "1.9" in res.json()["message_pl"]
 
 
 def test_validate_device_withstand_within_limits(app_client):

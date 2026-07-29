@@ -326,6 +326,16 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "return_conductor_ith_1s_a",
             "rating",
             "insulation",
+            # Karta F-K1 faza 3/6: dane cieplne ZYLY FAZOWEJ i para temperatur
+            # uzasadniajaca wspolczynnik k. Biala lista pol gubila je po drodze,
+            # wiec kryterium cieplne widzialo kabel zmaterializowany z katalogu
+            # jako „bez danych cieplnych" — defekt niewidoczny, bo zaden test nie
+            # szedl droga operacja domenowa -> model -> graf az do tych pol.
+            "jth_1s_a_per_mm2",
+            "ith_1s_a",
+            "operating_temperature_c",
+            "short_circuit_temperature_c",
+            "thermal_source_ref",
         ):
             if key in data:
                 branch_data[key] = data[key]
@@ -456,10 +466,12 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "vector_group",
             "hv_neutral",
             "lv_neutral",
+            "n_parallel",
             "tap_position",
             "tap_min",
             "tap_max",
             "tap_step_percent",
+            "tap_changer",
             "catalog_ref",
             "catalog_namespace",
             "source_mode",

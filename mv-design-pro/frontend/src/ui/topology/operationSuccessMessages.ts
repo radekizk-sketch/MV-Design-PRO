@@ -68,6 +68,12 @@ export const OPERATION_SUCCESS_MESSAGES: Record<string, string> = {
   rename_element: 'Zmieniono nazwę elementu',
   set_label: 'Ustawiono etykietę',
   export_project_artifacts: 'Wyeksportowano pakiet projektu',
+  // V12K-263: dwie operacje kanoniczne kończyły się BEZ własnego potwierdzenia.
+  // Fallback („Operacja zakończona powodzeniem") nie mówił, CO się zmieniło, więc
+  // projektant nie miał sygnału, że zapisały się akurat warunki przyłączenia albo
+  // wiązania katalogowe wytwórcy — a obie zmieniają wynik analiz.
+  set_connection_conditions: 'Zapisano warunki przyłączenia OSD',
+  set_der_catalog_bindings: 'Zapisano wiązania katalogowe wytwórcy',
   // DER variants (nN bus/feeder/source-field)
   bus_nn_add_converter_source_pv: 'Dodano PV na szynie nN',
   bus_nn_add_converter_source_bess: 'Dodano magazyn BESS na szynie nN',

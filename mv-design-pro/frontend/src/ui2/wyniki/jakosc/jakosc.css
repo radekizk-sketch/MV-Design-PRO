@@ -1,0 +1,545 @@
+/*
+ * Style okna „Jakość wyników" (karta E8.4 / W-607). Kolory WYŁĄCZNIE przez tokeny
+ * --mvd-* — zero literałów hex. Uzupełnia wzorzec (`wzorzec.css`) o: układ dwóch
+ * sekcji, panele stanu (brak przebiegu / ładowanie / błąd), chipy podsumowania,
+ * kolorowane tagi statusu oraz panel szczegółu wiersza (uzasadnienie why_pl).
+ */
+
+.mvd-jakosc {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ---- panele stanu (brak przebiegu / ładowanie / błąd) ---- */
+.mvd-jakosc-sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-jakosc-sekcja-tytul {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 16px;
+  border: 1px dashed var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-stan--blad {
+  border-style: solid;
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-jakosc-stan-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-stan-desc {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ---- podsumowanie (chipy liczbowe) ---- */
+.mvd-jakosc-podsumowanie {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.mvd-jakosc-chip {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 999px;
+  background: var(--mvd-panel);
+}
+.mvd-jakosc-chip-liczba {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-chip-etykieta {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-chip--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-jakosc-chip--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-jakosc-chip--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-jakosc-chip--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+
+/* ---- tag statusu (kolorowany) ---- */
+.mvd-jakosc-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid var(--mvd-line);
+  color: var(--mvd-ink);
+  background: var(--mvd-panel-2);
+}
+.mvd-jakosc-tag--ok {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+.mvd-jakosc-tag--warn {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+.mvd-jakosc-tag--err {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-jakosc-tag--neutral {
+  border-color: var(--mvd-line);
+  background: var(--mvd-panel-2);
+}
+
+/* ---- panel szczegółu wiersza (uzasadnienie why_pl) ---- */
+.mvd-jakosc-szczegol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-jakosc-szczegol--pusty {
+  border-style: dashed;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-szczegol-brak {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-szczegol-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mvd-jakosc-szczegol-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-szczegol-id {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-szczegol-dane {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px 16px;
+  margin: 0;
+}
+.mvd-jakosc-szczegol-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-jakosc-szczegol-para dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-szczegol-para dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-szczegol-why {
+  margin: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--mvd-line);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--mvd-ink);
+}
+
+/* ---- sekcja migotania: nagłówki podsekcji, moduły, ślad WHITE BOX ---- */
+.mvd-jakosc-szczegol-sekcja-tytul {
+  margin: 8px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-mig-moduly {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-jakosc-mig-modul {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+}
+.mvd-jakosc-mig-modul-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.mvd-jakosc-mig-modul-info {
+  margin: 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-slad-blok {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.mvd-jakosc-slad-btn {
+  align-self: flex-start;
+  padding: 6px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel-2);
+  color: var(--mvd-ink);
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-jakosc-slad-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-jakosc-slad-tytul {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-slad {
+  list-style: decimal;
+  margin: 8px 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.mvd-jakosc-slad-krok {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-jakosc-slad-etyk {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+
+/* --- Sekcja Arc Flash (IEEE 1584-2018) — audyt V12K-059 poz. A --- */
+.mvd-jakosc-af-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border: 1px solid var(--mvd-border);
+  border-radius: 8px;
+  background: var(--mvd-surface);
+}
+.mvd-jakosc-af-form-opis {
+  font-size: 12px;
+  color: var(--mvd-muted);
+  margin: 0;
+}
+.mvd-jakosc-af-form-pola {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.mvd-jakosc-af-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--mvd-ink);
+  min-width: 150px;
+}
+.mvd-jakosc-af-pole input,
+.mvd-jakosc-af-pole select {
+  padding: 6px 8px;
+  border: 1px solid var(--mvd-border);
+  border-radius: 6px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  font-size: 13px;
+}
+.mvd-jakosc-af-pole input:focus-visible,
+.mvd-jakosc-af-pole select:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-jakosc-af-licz {
+  align-self: flex-start;
+  padding: 8px 16px;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-accent);
+  color: var(--mvd-on-accent, #fff);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-jakosc-af-licz:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-jakosc-szczegol-uwaga {
+  font-size: 12px;
+  color: var(--mvd-warn, var(--mvd-muted));
+  margin: 6px 0 0;
+}
+
+/* Nagłówek ryzyka Arc Flash (najgorszy przypadek) */
+.mvd-jakosc-af-podsum {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 16px;
+  margin: 12px 0;
+  padding: 10px 14px;
+  border: 1px solid var(--mvd-line);
+  border-left: 3px solid var(--mvd-accent);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-jakosc-af-podsum-glowna {
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-af-podsum-braki {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-af-podsum-soi {
+  font-size: 12px;
+  color: var(--mvd-ink);
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+.mvd-jakosc-af-podsum-soi-chip {
+  padding: 1px 7px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  background: var(--mvd-panel);
+}
+
+/* Eksport raportu Arc Flash (PDF/DOCX) */
+.mvd-jakosc-af-raport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--mvd-line);
+}
+.mvd-jakosc-af-raport-tytul {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-jakosc-af-raport-btn {
+  padding: 7px 14px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mvd-jakosc-af-raport-btn:hover:not(:disabled) {
+  border-color: var(--mvd-accent);
+}
+.mvd-jakosc-af-raport-btn:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-jakosc-af-raport-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.mvd-jakosc-af-raport-stan {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+.mvd-jakosc-af-raport-blad {
+  color: var(--mvd-err);
+}
+
+/* Podpowiedź nad dowodem kryterium cieplnego (karta F-K1 faza 5): stan „nie
+   wybrano gałęzi" i błąd pobrania — uczciwy komunikat zamiast pustego panelu. */
+.mvd-jakosc-dowod-podpowiedz {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+/* --- Dowód obliczeniowy kryterium cieplnego (karta F-K1 faza 6) ---------- */
+.mvd-cieplny-dowod {
+  margin-top: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--mvd-panel);
+}
+.mvd-cieplny-dowod-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.mvd-cieplny-dowod-tytul {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+/* Werdykt niesie ikonę I tekst — kolor jest tylko wzmocnieniem, nigdy nośnikiem. */
+.mvd-cieplny-werdykt {
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.mvd-cieplny-werdykt--pass {
+  color: var(--mvd-ok);
+}
+.mvd-cieplny-werdykt--fail {
+  color: var(--mvd-err);
+}
+.mvd-cieplny-werdykt--unavailable {
+  color: var(--mvd-muted);
+}
+.mvd-cieplny-akcja {
+  margin-left: auto;
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.mvd-cieplny-akcja:hover {
+  border-color: var(--mvd-accent);
+}
+.mvd-cieplny-akcja:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+.mvd-cieplny-bilans {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px 16px;
+  margin: 0 0 12px;
+}
+.mvd-cieplny-bilans dt {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-cieplny-bilans dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.mvd-cieplny-sekcja {
+  margin-top: 14px;
+}
+.mvd-cieplny-sekcja h4 {
+  margin: 0 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.mvd-cieplny-opis {
+  margin: 0 0 8px;
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+.mvd-cieplny-brak {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--mvd-warn, var(--mvd-err));
+}
+/* Tabele dowodu bywają szersze od panelu — przewijają się we własnym boksie,
+   żeby strona nigdy nie jechała w poziomie. */
+.mvd-cieplny-tabela {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.mvd-cieplny-tabela th,
+.mvd-cieplny-tabela td {
+  border-bottom: 1px solid var(--mvd-line);
+  padding: 4px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+.mvd-cieplny-tabela td.mvd-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.mvd-cieplny-tabela td.mvd-mono {
+  font-family: var(--mvd-mono, ui-monospace, monospace);
+}
+.mvd-cieplny-normy {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+}
+.mvd-cieplny-normy li {
+  margin-bottom: 4px;
+}
+
+/* Ostrzeżenie o wyniku sprzed zmiany modelu (karta F-K1 faza 6, uwaga 12).
+   Liczby ze starego biegu wyglądają identycznie jak aktualne — komunikat musi
+   być nad tabelą, zanim ktoś je odczyta jako obowiązujące. */
+.mvd-jakosc-nieaktualne {
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--mvd-warn, var(--mvd-err));
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--mvd-warn, var(--mvd-err));
+}

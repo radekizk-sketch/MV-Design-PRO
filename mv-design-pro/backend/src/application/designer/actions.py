@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 
-class ActionType(str, Enum):
+class ActionType(StrEnum):
     SHORT_CIRCUIT = "run_short_circuit"
     POWER_FLOW = "run_power_flow"
     ANALYSIS = "run_analysis"

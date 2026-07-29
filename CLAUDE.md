@@ -249,6 +249,8 @@ Authority order (highest first). Updated 2026-05-13 per conflict resolution V12K
 
 In case of conflict: higher priority wins. Conflicts must be recorded in `docs/v12xx/REJESTR_KONFLIKTOW.md`. The latest canon documents (DOC_INVENTORY_2026-05, AUDYT_BRAKI_2026-05, PLAN_E2E_INDUSTRIAL_2026-05, SLD_INDUSTRIAL_SPEC_v1) live under `mv-design-pro/docs/audit/` and `mv-design-pro/docs/plan/` and `mv-design-pro/docs/sld/`.
 
+Active operational programs (2026-07, subordinate to the canon above): `mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md` (UI/UX rebuild, with the BINDING functional inventory `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`), `mv-design-pro/docs/plan/PLAN_SLD_REWORK.md` (SLD — separate thread), `mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md` (engineering 10x). See "Active programs" in Project Status below.
+
 ## Architecture Layer Boundaries (CRITICAL)
 
 ```
@@ -482,6 +484,7 @@ python scripts/dialog_completeness_guard.py       # Dialog contract completeness
 python scripts/nn_source_menu_guard.py            # Source menu guard
 python scripts/guard_ux_flow_v1.py                # UX flow v1 compliance
 python scripts/interaction_matrix_guard.py        # Interaction matrix validation
+python scripts/ui_no_physics_guard.py             # No network physics in ui2/** presentation layer
 
 # Physics separation guards
 python scripts/overlay_no_physics_guard.py        # Overlay layer physics prohibition
@@ -495,7 +498,6 @@ python scripts/no_direct_fault_params_guard.py    # No direct fault param inject
 python scripts/sld_determinism_guards.py          # SLD rendering determinism
 python scripts/trace_determinism_guard.py         # Trace output determinism
 python scripts/fault_scenarios_determinism_guard.py # Fault scenario determinism
-python scripts/results_workspace_determinism_guard.py # Results workspace determinism
 
 # Schema guards
 python scripts/resultset_v1_schema_guard.py       # ResultSet v1 schema compliance
@@ -640,24 +642,41 @@ The Proof Engine generates mathematical proofs from solver results:
 - PDF (`proof.pdf`)
 - DOCX
 
-## Project Status (as of 2026-05)
+## Project Status (as of 2026-07)
+
+**Binding functional inventory:** `mv-design-pro/docs/uiux/INWENTARZ_FUNKCJI_2026-07.md` —
+single source of truth for the solver/analysis/API/UI surface. Where this file's structure
+snapshot (above) and the inventory differ, the inventory wins.
 
 The system is fully functional with:
-- 4 solvers (IEC 60909 SC, NR/GS/FD Power Flow)
-- 8+ proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage)
-- 12+ analysis modules (Protection, Voltage, Normative, Coverage, Sensitivity, Comparison, Recommendations)
-- Full frontend: SLD editor (industrial ETAP/ABB/DIgSILENT grade), Results Browser, Case Manager, Proof Inspector, Protection Diagnostics
-- 1600+ backend tests
-- Project import/export (ZIP, deterministic, versioned)
-- CAD geometry editing in SLD
-- PDF/DOCX report generation
-- ENM v1.0 (EnergyNetworkModel)
-- Active work: K30 SLD industrial-quality session (see `PLANS.md` § 3 and `mv-design-pro/docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`). Current branch: `codex/k30-der-persistence`.
-  - SLD detail drawer (K30-71..98): right-side click-driven panel, real bay/apparatus/DER wiring, tab navigation, ARIA, breadcrumbs
-  - OSD acceptance items (K30-99..101): title block signature + SEP qualifications, revision table, SldPowerBalancePanel (bilans mocy do wniosku przyłączeniowego)
-  - Schematic quality fixes (K30-102..107): open-point marker, transformer earthing ⏚, vector group + tap-changer, power-flow arrows, cable head ▲, mufa kablowa
-  - RMU symbol audit (K30-108..127): IEC 60617-7-13 compliant DS/CB/ES, CT/SA/VT, earthing scheme badge (TN/IT/TT), LOD apparatus stack, label truncation, cellular visual
-  - K30 handoff snapshot: `mv-design-pro/docs/audit/K30_SESSION_HANDOFF_2026-05-16.md`
+- 18 solver modules (IEC 60909 SC + machine SC, NR/GS/FD/unbalanced Power Flow, inverter/ZIP
+  models, IEC 60364 fault loop, IEC 60255 protection, NC RfG/PTPiREE, FRT/HVRT, RMS stability,
+  WLS state estimation, phase state SN, grid source preview, V12.6 academic)
+- 8+ proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage, V12.6 academic)
+- 19 analysis modules (incl. Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds,
+  Energy Validation — see inventory)
+- Full frontend (63 UI modules): SLD editor, Results, Study Cases, Proof Inspector, Protection, NC RfG tests
+- ~5,400 backend test functions; ~7,350 frontend tests (537 files); 79 guard scripts
+- Project import/export (ZIP, deterministic, versioned), CAD geometry editing in SLD,
+  PDF/DOCX report generation, ENM v1.0 (EnergyNetworkModel)
+
+### Active programs (2026-07) — three programs, unified thread (2026-07-21)
+1. **Program UI/UX klasy przemysłowej** (`mv-design-pro/docs/uiux/PROGRAM_UIUX_2026-07.md`,
+   phases U0–U5; orchestration: `docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md`).
+   Branch: `claude/power-network-design-ui-ir91mv`.
+2. **SLD rework F1–F5** (`mv-design-pro/docs/plan/PLAN_SLD_REWORK.md`) —
+   `frontend/src/ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**`.
+3. **Engineering 10x program F0–F4** (`mv-design-pro/docs/plan/PLAN_PRZEBUDOWY_10X_2026-07.md`) —
+   CI gates, auth/perimeter, concurrency, god-file containment.
+
+**Twarda granica wątków ZNIESIONA (dyrektywa właściciela 2026-07-21: „twarda granica
+wątków usunięta … działaj enduro end").** Jeden wątek prowadzi wszystkie trzy programy
+end-to-end — wolno edytować `ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**` oraz
+warstwy 10x w tej samej sesji/PR. Nie ma już zakazu kolizji cross-thread ani obowiązku
+kart koordynacyjnych między wątkami; łańcuch domykamy do ostatniego klika bez odkładania
+zmian SLD/10x do „osobnego wątku". Rygor jakości bez zmian: pełna regresja właściwej
+warstwy + guardy + determinizm + FROZEN/golden nietknięte przed scaleniem.
+Historical K30 handoff: `mv-design-pro/docs/audit/K30_SESSION_HANDOFF_2026-05-16.md`.
 
 ## Common Tasks
 
@@ -728,7 +747,6 @@ python scripts/trace_ui_leak_guard.py
 python scripts/sld_determinism_guards.py
 python scripts/trace_determinism_guard.py
 python scripts/fault_scenarios_determinism_guard.py
-python scripts/results_workspace_determinism_guard.py
 python scripts/resultset_v1_schema_guard.py
 
 # Validation & contracts
@@ -762,6 +780,110 @@ python scripts/vulture_guard.py
 11. **ALWAYS** consult `docs/spec/` before architectural changes
 12. **ALWAYS** run relevant guards before pushing changes
 13. **ALWAYS** consult `POWERFACTORY_COMPLIANCE.md` when adding/modifying network model elements
+
+## Zero-Debt Rule (BINDING — dyrektywa właściciela, 2026-07-17)
+
+Każdy wykryty defekt, dług techniczny, bug lub brak naprawiasz **end-to-end,
+od razu, bez pytania o pozwolenie** — dotyczy to również znalezisk ubocznych
+(guard czerwony na HEAD, wykluczony test, martwy kod, nieaktualny dokument,
+workflow CI, który nigdy się nie wykonał, niespójność danych szablonu).
+
+Zasady wykonania:
+1. **Wykluczenie ≠ naprawa.** Nie wolno maskować długu (exclude w konfigu
+   testów, `continue-on-error`, skip, komentarz „do naprawy później").
+   Nowe wykluczenie wymaga uzasadnienia w commicie i wpisu długu w execplanie.
+   **Każdy NAPOTKANY błąd naprawiasz — także pre-existing, nie tylko własny
+   (dyrektywa właściciela 2026-07-21: „masz naprawiać wszystkie napotkane
+   błędy").** Błąd typów/lint/test/guard, który zobaczyłeś przy swojej pracy
+   (nawet jeśli był w repo przed Twoją zmianą), naprawiasz u źródła w tej samej
+   kolejce — nie wolno go pominąć argumentem „był wcześniej" ani „poza moim
+   zakresem". Jedyny wyjątek to dług nienaprawialny w bieżącej sesji (pkt 4) —
+   wtedy wpis do execplanu z pomiarem i planem, nigdy cicho.
+2. **Naprawa u źródła.** Test czerwony z powodu regresji komponentu ⇒ napraw
+   komponent, nie asercję. Test czerwony z powodu zmiany kanonu ⇒ przepisz
+   test do obecnego kanonu z zachowaniem intencji (i zapisz intencję w
+   komentarzu).
+3. **Weryfikacja end-to-end przed commitem**: pełna regresja właściwego
+   stosu, kody wyjścia łapane BEZPOŚREDNIO (nigdy `cmd | tail; echo $?` —
+   pipe zwraca kod ostatniego członu); pętle oczekiwania bez samodopasowania
+   `pgrep -f` (sentinel w pliku wyników zamiast wzorca tekstowego procesu).
+4. **Dług nienaprawialny w bieżącej sesji** (wymaga decyzji produktowej,
+   danych, których nie ma, albo przekracza sesję) — wpis do execplanu z
+   pomiarem, przyczyną i planem, nigdy cicho.
+5. **Test maskujący defekt produktu = dwa defekty** (dyrektywa właściciela,
+   2026-07-17). Gdy test „przechodzi" tylko dzięki obejściu realnej ścieżki
+   użytkownika (syntetyczny `dispatchEvent` zamiast natywnego klika,
+   wymuszony stan store zamiast interakcji, sztuczny fixture omijający
+   walidację) — naprawiasz OBA: defekt produktu u źródła ORAZ test, żeby
+   ćwiczył realną ścieżkę (inaczej regresja naprawy będzie niewykrywalna).
+   Precedens: martwy lewy klik w elementy kanwy SLD (capture-on-pointerdown
+   przekierowywał click na tło) był latami niewidoczny, bo wszystkie specy
+   klikały syntetycznie. Nowy test interakcji ZAWSZE zaczyna od ścieżki
+   natywnej; syntetyczny event wymaga uzasadnienia w komentarzu.
+
+## Dyrektywy właściciela — projektowanie i wdrażanie (BINDING)
+
+Skumulowane, wiążące zasady właściciela (dyrektywy 2026-07-17…19). Obowiązują
+łącznie z Zero-Debt powyżej i kanonem V12.xx.
+
+1. **Wizja globalna end-to-end (2026-07-19).** Każdy element planujesz i wdrażasz
+   z wizją całego łańcucha — „do ostatniego klika w systemie": od kontraktu danych,
+   przez backend, warstwę domenową i API, po UI i miejsce, GDZIE dane są dalej
+   wykorzystywane (SLD, analizy, zabezpieczenia, raporty, oceny zgodności). Przed
+   budową ustalasz: skąd dane pochodzą, jak się wiążą, gdzie spływają. Nigdy nie
+   buduj wyspy — buduj ogniwo łańcucha.
+
+2. **Opcja MAX, bez spłycania (2026-07-18).** Realizujesz maksymalny, kompletny
+   zakres funkcji — bez skracania, upraszczania „na później", ukrywania opcji.
+   „Wszystko, co potrzebne, rozbuduj". Kompletność wyprowadzasz z rzeczywistego
+   kontraktu backendu/domeny (a nie z wygody UI).
+
+3. **Zero fabrykacji (phantom rule).** Każda opcja/kontrolka UI MUSI mapować na
+   realne pole/operację backendu. Kontrolka, którą backend ignoruje, jest zakazana
+   (to „phantom"). Jeśli brakuje pokrycia w backendzie — rozbudowujesz backend
+   (osobnym, przetestowanym krokiem), nie udajesz działania. Wynik liczbowy zawsze
+   z solvera/backendu — ZERO fizyki w UI.
+
+4. **Nigdy nic na potem — braki uzupełniasz end-to-end (2026-07-18).** Wykryty brak
+   (zdolność bez dostawcy, brak powiązania, luka w łańcuchu) naprawiasz od razu, w
+   tej samej kolejce. Rejestr „do zlecenia" nie jest poczekalnią.
+
+5. **Audyt szerokiego grona ekspertów przed przebudową od zera (2026-07-18).** Dla
+   zadań jakościowych („zadanie dla fable, opcja max") najpierw wielosoczewkowy
+   audyt ekspercki (projektant sieci, zwarciowiec, zabezpieczenia, rozdzielnie,
+   katalogi/Reference Engine, przyłączenia/OZE, UX/IA), potem projekt i wdrożenie.
+   Wynik audytu zapisujesz jako wiążący dokument w `docs/uiux/`.
+
+6. **FLOW projektanta — stare ekrany nie są kanoniczne (2026-07-18).** Projektujesz
+   od etapu pracy inżyniera (E1–E8), wg kontraktu ekranu prowadzącego (cel jednym
+   zdaniem · tor pracy z akcjami naprawczymi · uczciwe stany zerowe · jawny następny
+   krok · język inżynierski: po co / z czego / co daje). Kanon V12.xx = rejestr
+   ZDOLNOŚCI, nie ekranów; `componentKey` jest metadaną dostawcy (podmiana Opcja 1).
+   Szczegóły: `mv-design-pro/docs/uiux/FLOW_PROJEKTANTA_2026-07.md`.
+
+7. **Reużycie zamiast duplikacji.** Wykorzystujesz istniejącą infrastrukturę
+   (szablony pól producentów / Reference Engine, gotowe pickery, kontrakty
+   kreatora stacji), zamiast tworzyć równoległe rozwiązania. „Po to było robione,
+   żeby to wykorzystać".
+
+8. **Pokazuj ekrany do oceny po każdym etapie (2026-07-18).** Po każdym scalonym
+   etapie UI publikujesz zrzuty ŻYWEJ aplikacji (oba motywy) na stałej stronie oceny
+   i traktujesz uwagi z oględzin jako karty naprawcze.
+
+9. **Rola: Fable zarządza, wykonawcy wykonują.** Piszesz karty z §0 rozstrzygnięć +
+   bramkami, delegujesz do wykonawców (worktree, commit BEZ push), niezależnie
+   weryfikujesz, cherry-pickujesz, uruchamiasz pełne potwierdzenia i pushujesz.
+   Wyjątek: zadania jakościowe oznaczone „tylko dla fable / opcja max" robisz osobiście.
+
+10. **Pełna autonomia.** Działasz jak architekt bez zatrzymywania: dzielisz zadania,
+    zlecasz kolejne karty, nie pytasz o pozwolenie. Ulepszasz i usuwasz braki/dług/błędy
+    aż do pełnego wdrożenia end-to-end. Myślisz jak inżynier projektujący sieci
+    energetyczne. Wyjątek: realne rozstrzygnięcia produktowe (AskUserQuestion).
+
+11. **Weryfikacja end-to-end przed scaleniem.** Zmiana warstwy → pełna regresja tej
+    warstwy (backend pytest, frontend vitest), type-check, lint, właściwe guardy,
+    determinizm/hash. Kontrakty FROZEN i determinizm nietknięte (nowe pola addytywne,
+    `exclude_none`; seed bez zmian dla istniejących payloadów).
 
 ## Escalation
 

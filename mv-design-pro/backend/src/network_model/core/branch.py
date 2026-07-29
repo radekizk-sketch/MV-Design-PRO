@@ -233,6 +233,42 @@ class LineBranch(Branch):
     rated_current_a: float = 0.0
     type_ref: str | None = None
     impedance_override: LineImpedanceOverride | None = None
+    # Karta F-K1 faza 3: wytrzymalosc cieplna zwarciowa ZYLY FAZOWEJ (IEC 60949).
+    # Dane, nie odniesienie — swiadomie NIE przez `type_ref`, bo ten steruje
+    # precedencja impedancji (`impedance_override > type_ref > instance`), wiec
+    # wypelnienie go po to, by dosiegnac danych cieplnych, zmienialoby ZRODLO
+    # impedancji, czyli fizyke rozplywu i zwarcia. Tu przenosimy wylacznie
+    # wielkosci cieplne, zmaterializowane z katalogu w warstwie domenowej.
+    # Brak wartosci = kryterium cieplne NIESPRAWDZALNE (kod gotowosci), nie zero.
+    ith_1s_a: float | None = None
+    jth_1s_a_per_mm2: float | None = None
+    cross_section_mm2: float | None = None
+    # Karta F-K1 faza 6 (Calculation Evidence): dane MATERIALOWE zyly. Nie wchodza
+    # do zadnego rachunku — sluza UZASADNIENIU wspolczynnika k = Jth(1 s), bez
+    # ktorego werdyktu cieplnego nie da sie niezaleznie zweryfikowac.
+    conductor_material: str | None = None
+    insulation: str | None = None
+    operating_temperature_c: float | None = None
+    short_circuit_temperature_c: float | None = None
+    thermal_source_ref: str | None = None
+
+    def get_thermal_ith_1s_a(self) -> float | None:
+        """Dopuszczalny prad cieplny zyly dla 1 s [A] — wprost albo z gestosci.
+
+        Ta sama zasada, ktorej uzywa `catalog/resolver.py::get_ith_1s()`: Ith(1s)
+        podane wprost ma pierwszenstwo, w przeciwnym razie liczymy je z gestosci
+        pradu i przekroju. Zwraca None, gdy nie ma podstawy — nigdy zera.
+        """
+        if self.ith_1s_a is not None and self.ith_1s_a > 0.0:
+            return self.ith_1s_a
+        if (
+            self.jth_1s_a_per_mm2 is not None
+            and self.jth_1s_a_per_mm2 > 0.0
+            and self.cross_section_mm2 is not None
+            and self.cross_section_mm2 > 0.0
+        ):
+            return self.jth_1s_a_per_mm2 * self.cross_section_mm2
+        return None
 
     @classmethod
     def _from_dict(cls, data: dict[str, Any], branch_type: BranchType) -> "LineBranch":
@@ -268,6 +304,11 @@ class LineBranch(Branch):
             rated_current_a=float(data.get("rated_current_a", 0.0)),
             type_ref=_parse_type_ref(data),
             impedance_override=_parse_impedance_override(data),
+            # F-K1 faza 3: brak klucza => None (dana nieznana), nigdy 0.0 — zero
+            # bylaby fabrykacja wytrzymalosci cieplnej rownej zeru.
+            ith_1s_a=_parse_dodatnia(data.get("ith_1s_a")),
+            jth_1s_a_per_mm2=_parse_dodatnia(data.get("jth_1s_a_per_mm2")),
+            cross_section_mm2=_parse_dodatnia(data.get("cross_section_mm2")),
         )
 
     def validate(self) -> bool:
@@ -360,6 +401,16 @@ class LineBranch(Branch):
         )
         if self.impedance_override is not None:
             result["impedance_override"] = self.impedance_override.to_dict()
+        # F-K1 faza 3: pola cieplne dolaczane WYLACZNIE gdy sa znane (exclude-None),
+        # wiec payload galezi bez danych cieplnych jest bajt-w-bajt jak przed delta —
+        # hashe, goldeny i determinizm istniejacych modeli pozostaja nietkniete.
+        for klucz, wartosc in (
+            ("ith_1s_a", self.ith_1s_a),
+            ("jth_1s_a_per_mm2", self.jth_1s_a_per_mm2),
+            ("cross_section_mm2", self.cross_section_mm2),
+        ):
+            if wartosc is not None:
+                result[klucz] = float(wartosc)
         return result
 
     def get_total_impedance(self) -> complex:
@@ -469,6 +520,151 @@ class LineBranch(Branch):
         )
 
 
+@dataclass(frozen=True)
+class LineDropCompensation:
+    """Line-drop compensation (LDC) settings for an OLTC regulator.
+
+    The regulator compensates the estimated voltage drop from the transformer
+    to a remote load center using R + jX of the feeder [Ω].
+    """
+
+    enabled: bool = False
+    r_ohm: float = 0.0
+    x_ohm: float = 0.0
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"enabled": self.enabled, "r_ohm": self.r_ohm, "x_ohm": self.x_ohm}
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "LineDropCompensation":
+        return cls(
+            enabled=bool(data.get("enabled", False)),
+            r_ohm=float(data.get("r_ohm", 0.0)),
+            x_ohm=float(data.get("x_ohm", 0.0)),
+        )
+
+
+@dataclass(frozen=True)
+class TapChanger:
+    """Canonical tap-changer state — single source of truth on a transformer.
+
+    Holds the full regulation contract (regulated winding, position range,
+    control mode, AVR setpoint/deadband/delay, line-drop compensation,
+    controlled bus). No module keeps a local copy; every consumer reads this.
+
+    Backward compatibility: a transformer without a TapChanger (``None``) keeps
+    the legacy behaviour driven by ``tap_position``/``tap_step_percent``.
+
+    Sign convention (matches the LF Y-bus, which puts the off-nominal tap on the
+    HV/from side):
+        tau = 1 + (current_position - neutral_position) * step_percent / 100
+        regulated_winding == "HV"  -> from-side factor t = tau
+        regulated_winding == "LV"  -> from-side factor t = 1 / tau
+    """
+
+    regulation_type: str = "NONE"  # NONE | DETC | OLTC
+    regulated_winding: str = "HV"  # HV | LV
+    neutral_position: int = 0
+    current_position: int = 0
+    min_position: int = 0
+    max_position: int = 0
+    step_percent: float = 0.0
+    control_mode: str = "MANUAL"  # MANUAL | AUTOMATIC | PROFILE | REMOTE
+    voltage_setpoint_kv: float | None = None
+    deadband_kv: float | None = None
+    delay_seconds: float | None = None
+    controlled_bus_id: str | None = None
+    line_drop_compensation: LineDropCompensation | None = None
+    catalog_ref: str | None = None
+
+    def is_active(self) -> bool:
+        """True when the regulator represents a real tap changer (not NONE)."""
+        return self.regulation_type in ("DETC", "OLTC")
+
+    def is_automatic(self) -> bool:
+        """True when an OLTC actively regulates (AUTOMATIC/PROFILE/REMOTE)."""
+        return self.regulation_type == "OLTC" and self.control_mode in (
+            "AUTOMATIC",
+            "PROFILE",
+            "REMOTE",
+        )
+
+    def tau(self, position: int | None = None) -> float:
+        """Off-nominal turns factor at ``position`` (default current position)."""
+        pos = self.current_position if position is None else position
+        return 1.0 + (pos - self.neutral_position) * self.step_percent / 100.0
+
+    def from_side_tap_factor(self, position: int | None = None) -> float:
+        """Off-nominal ratio referred to the HV/from side (Y-bus convention)."""
+        tau = self.tau(position)
+        if tau == 0:
+            raise ValueError("Tap factor tau must be non-zero")
+        return tau if self.regulated_winding == "HV" else 1.0 / tau
+
+    def clamp_position(self, position: int) -> int:
+        """Clamp a candidate position to [min_position, max_position]."""
+        return max(self.min_position, min(self.max_position, position))
+
+    def with_position(self, position: int) -> "TapChanger":
+        """Return a copy at ``position`` (clamped to the valid range)."""
+        return replace(self, current_position=self.clamp_position(position))
+
+    def to_dict(self) -> dict[str, Any]:
+        result: dict[str, Any] = {
+            "regulation_type": self.regulation_type,
+            "regulated_winding": self.regulated_winding,
+            "neutral_position": self.neutral_position,
+            "current_position": self.current_position,
+            "min_position": self.min_position,
+            "max_position": self.max_position,
+            "step_percent": self.step_percent,
+            "control_mode": self.control_mode,
+        }
+        if self.voltage_setpoint_kv is not None:
+            result["voltage_setpoint_kv"] = self.voltage_setpoint_kv
+        if self.deadband_kv is not None:
+            result["deadband_kv"] = self.deadband_kv
+        if self.delay_seconds is not None:
+            result["delay_seconds"] = self.delay_seconds
+        if self.controlled_bus_id is not None:
+            result["controlled_bus_id"] = self.controlled_bus_id
+        if self.line_drop_compensation is not None:
+            result["line_drop_compensation"] = self.line_drop_compensation.to_dict()
+        if self.catalog_ref is not None:
+            result["catalog_ref"] = self.catalog_ref
+        return result
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "TapChanger":
+        ldc_raw = data.get("line_drop_compensation")
+        return cls(
+            regulation_type=str(data.get("regulation_type", "NONE")),
+            regulated_winding=str(data.get("regulated_winding", "HV")),
+            neutral_position=int(data.get("neutral_position", 0)),
+            current_position=int(data.get("current_position", 0)),
+            min_position=int(data.get("min_position", 0)),
+            max_position=int(data.get("max_position", 0)),
+            step_percent=float(data.get("step_percent", 0.0)),
+            control_mode=str(data.get("control_mode", "MANUAL")),
+            voltage_setpoint_kv=_opt_float(data.get("voltage_setpoint_kv")),
+            deadband_kv=_opt_float(data.get("deadband_kv")),
+            delay_seconds=_opt_float(data.get("delay_seconds")),
+            controlled_bus_id=(
+                str(data["controlled_bus_id"])
+                if data.get("controlled_bus_id") is not None
+                else None
+            ),
+            line_drop_compensation=(
+                LineDropCompensation.from_dict(ldc_raw) if isinstance(ldc_raw, dict) else None
+            ),
+            catalog_ref=(str(data["catalog_ref"]) if data.get("catalog_ref") is not None else None),
+        )
+
+
+def _opt_float(value: Any) -> float | None:
+    return None if value is None else float(value)
+
+
 @dataclass
 class TransformerBranch(Branch):
     """
@@ -512,6 +708,9 @@ class TransformerBranch(Branch):
     tap_position: int = 0
     tap_step_percent: float = 2.5
     type_ref: str | None = None
+    # V12K-045: canonical tap-changer state (single source of truth). None keeps
+    # the legacy tap_position/tap_step_percent behaviour byte-for-byte.
+    tap_changer: TapChanger | None = None
 
     @classmethod
     def _from_dict(cls, data: dict[str, Any]) -> "TransformerBranch":
@@ -550,6 +749,11 @@ class TransformerBranch(Branch):
             tap_position=int(data.get("tap_position", 0)),
             tap_step_percent=float(data.get("tap_step_percent", 2.5)),
             type_ref=_parse_type_ref(data),
+            tap_changer=(
+                TapChanger.from_dict(data["tap_changer"])
+                if isinstance(data.get("tap_changer"), dict)
+                else None
+            ),
         )
 
     def validate(self) -> bool:
@@ -746,6 +950,61 @@ class TransformerBranch(Branch):
         """
         return self.get_ikss_lv_ka(self.get_voltage_factor_c_min())
 
+    def get_relative_reactance_xt(self) -> float:
+        """
+        IEC 60909-0 relative reactance x_T of the transformer, on its own ratings.
+
+        Formula:
+            x_T = X_T / (U_rT² / S_rT)
+
+        Because ``get_short_circuit_reactance_pu()`` already expresses X_T in
+        per-unit on the transformer rated base (Z_base_rT = U_rT² / S_rT), that
+        per-unit reactance IS x_T by definition. Returned dimensionless.
+
+        Returns:
+            Relative reactance x_T [pu on rated base].
+        """
+        return self.get_short_circuit_reactance_pu()
+
+    def get_kt_correction_factor(self) -> float:
+        """
+        IEC 60909-0 §3.3.3 impedance correction factor K_T for a *network*
+        (two-winding) transformer.
+
+        Formula:
+            K_T = 0.95 · c_max / (1 + 0.6 · x_T)
+
+        where x_T is the transformer relative reactance on its own ratings
+        (``get_relative_reactance_xt``) and c_max is the IEC 60909 voltage factor
+        (Table 1) related to the nominal voltage of the network connected to the
+        LOW-voltage side of the network transformer
+        (``get_voltage_factor_c_max``). K_T is computed EXPLICITLY here (WHITE
+        BOX) — never baked into a constant.
+
+        Returns:
+            Impedance correction factor K_T [dimensionless].
+        """
+        x_t = self.get_relative_reactance_xt()
+        c_max = self.get_voltage_factor_c_max()
+        return 0.95 * c_max / (1.0 + 0.6 * x_t)
+
+    def get_short_circuit_impedance_pu_corrected(self) -> complex:
+        """
+        IEC 60909-0 §3.3.3 corrected short-circuit impedance of a network
+        transformer, in per-unit on the transformer ratings:
+
+            Z_TK = K_T · (R_T + j·X_T)
+
+        This is the impedance the IEC 60909 short-circuit network (Y-bus / Z-bus)
+        must use for network transformers. The uncorrected
+        ``get_short_circuit_impedance_pu`` stays available for callers outside the
+        SC network correction (e.g. rated-current context).
+
+        Returns:
+            Complex corrected per-unit impedance Z_TK = K_T · Z_T.
+        """
+        return self.get_kt_correction_factor() * self.get_short_circuit_impedance_pu()
+
     def to_dict(self) -> dict[str, Any]:
         """
         Convert the transformer branch to a dictionary.
@@ -771,6 +1030,10 @@ class TransformerBranch(Branch):
                 "type_ref": self.type_ref,
             }
         )
+        # exclude_none: only emit tap_changer when set, so existing transformer
+        # serialization stays byte-identical (determinism preserved).
+        if self.tap_changer is not None:
+            result["tap_changer"] = self.tap_changer.to_dict()
         return result
 
     def get_impedance_pu(self, base_mva: float = 100.0) -> complex:
@@ -831,14 +1094,32 @@ class TransformerBranch(Branch):
 
     def get_tap_ratio(self) -> float:
         """
-        Calculate the tap ratio based on current tap position.
+        Off-nominal tap ratio referred to the HV/from side (Y-bus convention).
 
-        Formula: t = 1 + tap_position * tap_step_percent / 100
+        When a canonical ``tap_changer`` is present and active, the factor is
+        derived from it (honouring the regulated winding). Otherwise the legacy
+        formula ``t = 1 + tap_position * tap_step_percent / 100`` is used, so
+        transformers without a tap changer behave byte-for-byte as before.
 
         Returns:
-            Tap ratio (dimensionless).
+            Off-nominal tap ratio (dimensionless).
         """
+        if self.tap_changer is not None and self.tap_changer.is_active():
+            return self.tap_changer.from_side_tap_factor()
         return 1.0 + self.tap_position * self.tap_step_percent / 100.0
+
+    def effective_ratio(self) -> float:
+        """
+        Physical HV:LV turns ratio including the current tap position.
+
+        ``effective_ratio = turns_ratio * off_nominal_tap_factor``. This is the
+        single ratio consumers (reports, SLD display, CGMES) should read; the LF
+        Y-bus uses only the off-nominal factor (:meth:`get_tap_ratio`).
+
+        Returns:
+            Effective turns ratio (dimensionless).
+        """
+        return self.get_turns_ratio() * self.get_tap_ratio()
 
     def resolve_nameplate(self, catalog: CatalogRepository | None = None) -> TransformerType:
         """
@@ -909,6 +1190,22 @@ class TransformerBranch(Branch):
             p0_kw=nameplate.p0_kw or 0.0,
             vector_group=nameplate.vector_group or "",
         )
+
+
+def _parse_dodatnia(value: Any) -> float | None:
+    """Liczba dodatnia albo None (karta F-K1 faza 3).
+
+    Wielkosci cieplne przewodu: brak klucza, wartosc nieliczbowa oraz wartosc
+    niedodatnia oznaczaja BRAK DANEJ, nie zero. Zero wytrzymalosci cieplnej byloby
+    fabrykacja i dawaloby werdykt FAIL dla kazdego przewodu.
+    """
+    if value is None:
+        return None
+    try:
+        liczba = float(value)
+    except (TypeError, ValueError):
+        return None
+    return liczba if liczba > 0.0 else None
 
 
 def _parse_type_ref(data: dict[str, Any]) -> str | None:

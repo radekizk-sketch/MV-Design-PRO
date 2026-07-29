@@ -10,12 +10,12 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
 
-class ProofType(str, Enum):
+class ProofType(StrEnum):
     """Typ dowodu matematycznego."""
 
     SC3F_IEC60909 = "SC3F_IEC60909"
@@ -38,7 +38,7 @@ class ProofType(str, Enum):
     AUDIT2_VT_GROUNDING_VALIDATION = "AUDIT2_VT_GROUNDING_VALIDATION"
 
 
-class LoadElementKind(str, Enum):
+class LoadElementKind(StrEnum):
     """Rodzaj elementu dla P15: LINE, CABLE, TRANSFORMER."""
 
     LINE = "LINE"
@@ -46,7 +46,7 @@ class LoadElementKind(str, Enum):
     TRANSFORMER = "TRANSFORMER"
 
 
-class LossesEnergyTargetKind(str, Enum):
+class LossesEnergyTargetKind(StrEnum):
     """Rodzaj elementu dla P17: LINE, CABLE, TRANSFORMER, AGGREGATE."""
 
     LINE = "LINE"

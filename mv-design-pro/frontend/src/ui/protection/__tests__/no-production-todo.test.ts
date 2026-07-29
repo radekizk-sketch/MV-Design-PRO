@@ -26,10 +26,11 @@ describe('protection module — brak produkcyjnych TODO (Etap 8)', () => {
       expect(content).not.toMatch(/TODO:\s*Implementacja/);
     });
 
-    it(`${file} dokumentuje brak endpointu zamiast TODO`, () => {
+    it(`${file} odwoluje sie do endpointu API zamiast TODO`, () => {
       const fullPath = path.join(PROTECTION_DIR, file);
       const content = fs.readFileSync(fullPath, 'utf-8');
-      // Wymagamy że plik wyjaśnia że endpoint nie jest dostępny.
+      // Wymagamy, aby plik odwoływał się do endpointu API (real bądź planowany
+      // bulk), a nie ukrywał braku implementacji pod TODO.
       expect(content).toMatch(/endpoint/i);
     });
   }

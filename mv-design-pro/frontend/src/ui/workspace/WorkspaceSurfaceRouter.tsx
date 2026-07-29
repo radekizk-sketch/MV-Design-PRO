@@ -1,5 +1,9 @@
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 
+import { useAnalysisEligibilityStore, useEligibilityMatrix } from '../analysis-eligibility';
+import { fetchCtTypes } from '../catalog/api';
+import type { CTCatalogType } from '../catalog/types';
+
 import { useAppStateStore } from '../app-state';
 import { ResultsComparisonPage } from '../comparison/ResultsComparisonPage';
 import {
@@ -27,17 +31,26 @@ import {
   buildAggregatedReadiness,
   computeDerReadinessMatrix,
   summarizeReadiness,
+  sumStationLoadImportKw,
+  wzbogacDeryOKlaseCt,
+  zlozZBramkaModelu,
+  type BramkaModelu,
   useGenerateAudit2ProofPack,
   useGenerateAudit2Report,
   useRunAudit2PowerFlow,
   useStationAudit2ConfigList,
   validateHostingCapacityExport,
 } from '../network-build/station-der';
-import { SldWorkspaceContainer } from '../sld/v2/canvas/SldWorkspaceContainer';
+import { SldCanvasV3Workspace } from '../sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from './surfaces/ProjectDashboardSurface';
-import { FrtHvrtCurves, type NcRfgProfileId } from '../protection-curves/FrtHvrtCurves';
-import { TimeCurrentChart } from '../protection-curves/TimeCurrentChart';
-import type { ProtectionCurve, FaultMarker } from '../protection-curves/types';
+import { EkranFrt } from '../../ui2/oze/frt';
+import { EkranZabezpieczenAutomatyki } from '../../ui2/model/zabezpieczenia-automatyka';
+import { EkranKoordynacji } from '../../ui2/wyniki/koordynacja';
+import { EkranSkladowych } from '../../ui2/wyniki/skladowe';
+import { EkranStabilnosci } from '../../ui2/wyniki/stabilnosc';
+import { EkranStanuFazowego } from '../../ui2/wyniki/stan-fazowy';
+import { EkranZbieznosci } from '../../ui2/wyniki/zbieznosc';
+import { useShellStore } from '../../ui2/shell/useShellStore';
 import {
   exportReport,
   exportProofPack,
@@ -61,7 +74,6 @@ import { V126AcademicSurface } from './surfaces/V126AcademicSurface';
 import { NcRfgTestsTab } from './surfaces/NcRfgTestsTab';
 import {
   AnalysisSurfaceComparisonWizard,
-  AnalysisSurfaceSensitivityTab,
   AuditTrailSurface,
   ReportSurfaceOsdAndProfileActions,
 } from './routerExtensionSurfaces';
@@ -72,7 +84,6 @@ import {
   buildRecordRows,
   buildSummaryRows,
   buildTraceSummaryRows,
-  formatCompletenessStatus,
   formatContractValue,
   resolveSurfaceRunId,
   useAnalysisRunContract,
@@ -112,7 +123,6 @@ import {
 import {
   auditProofPackStatus,
   resolveLatestCompletedRun,
-  generateIec60255SiCurvePoints,
   displayScopeLabel,
   resolveRunLabel,
 } from './routerPureHelpers';
@@ -417,8 +427,6 @@ function displayAnalysisTabLabel(tabId: string | null | undefined): string {
       return 'Porównanie przebiegów';
     case 'ncrfg-tests':
       return 'Testy NC RfG';
-    case 'sensitivity':
-      return 'Analiza wrażliwości';
     case 'comparison_wizard':
       return 'Porównanie A/B';
     default:
@@ -828,32 +836,32 @@ function AnalysisDataTable({
   return (
     <div className="space-y-3" data-testid="analysis-results-table-view">
       <div>
-        <h4 className="text-sm font-semibold text-slate-100">{title}</h4>
-        <p className="mt-1 text-xs text-slate-400">{description}</p>
+        <h4 className="text-sm font-semibold text-slate-900">{title}</h4>
+        <p className="mt-1 text-xs text-slate-500">{description}</p>
       </div>
-      <div className="overflow-x-auto rounded-lg border border-slate-700/80">
+      <div className="overflow-x-auto rounded-lg border border-slate-200">
         <table className="min-w-full border-collapse text-left text-xs" data-testid="analysis-results-table">
-          <thead className="bg-slate-900/80 text-[11px] uppercase tracking-[0.12em] text-slate-300">
+          <thead className="bg-slate-100 text-[11px] uppercase tracking-[0.12em] text-slate-600">
             <tr>
-              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Typ</th>
-              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Obiekt</th>
-              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">U_n / wariant</th>
-              <th className="min-w-[260px] border-b border-slate-700 px-3 py-2">Dane wejściowe</th>
-              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Wynik 1</th>
-              <th className="whitespace-nowrap border-b border-slate-700 px-3 py-2">Wynik 2</th>
-              <th className="min-w-[210px] border-b border-slate-700 px-3 py-2">Status</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Typ</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Obiekt</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">U_n / wariant</th>
+              <th className="min-w-[260px] border-b border-slate-200 px-3 py-2">Dane wejściowe</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Wynik 1</th>
+              <th className="whitespace-nowrap border-b border-slate-200 px-3 py-2">Wynik 2</th>
+              <th className="min-w-[210px] border-b border-slate-200 px-3 py-2">Status</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-800 text-slate-200">
+          <tbody className="divide-y divide-slate-200 text-slate-700">
             {rows.map((row) => (
-              <tr key={row.key} className="hover:bg-slate-900/60">
-                <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-100">{row.type}</td>
+              <tr key={row.key} className="hover:bg-slate-50">
+                <td className="whitespace-nowrap px-3 py-2 font-semibold text-slate-900">{row.type}</td>
                 <td className="px-3 py-2">{row.name}</td>
                 <td className="whitespace-nowrap px-3 py-2">{row.voltage}</td>
-                <td className="px-3 py-2 text-slate-300">{row.input}</td>
+                <td className="px-3 py-2 text-slate-600">{row.input}</td>
                 <td className="whitespace-nowrap px-3 py-2">{row.resultA}</td>
                 <td className="whitespace-nowrap px-3 py-2">{row.resultB}</td>
-                <td className="px-3 py-2 text-amber-100">{row.status}</td>
+                <td className="px-3 py-2 text-amber-700">{row.status}</td>
               </tr>
             ))}
           </tbody>
@@ -882,15 +890,15 @@ function AnalysisContextSummary({ surface }: { surface: WorkspaceSurfaceDescript
   ];
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-700/80" data-testid="analysis-context-table">
+    <div className="overflow-x-auto rounded-lg border border-slate-200" data-testid="analysis-context-table">
       <table className="min-w-full border-collapse text-left text-xs">
-        <tbody className="divide-y divide-slate-800">
+        <tbody className="divide-y divide-slate-200">
           {rows.map((row) => (
             <tr key={row.label}>
-              <th className="w-52 bg-slate-900/70 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-slate-400">
+              <th className="w-52 bg-slate-100 px-3 py-2 text-[11px] uppercase tracking-[0.12em] text-slate-500">
                 {row.label}
               </th>
-              <td className="px-3 py-2 text-slate-100">{row.value}</td>
+              <td className="px-3 py-2 text-slate-900">{row.value}</td>
             </tr>
           ))}
         </tbody>
@@ -903,6 +911,16 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const projectName = useAppStateStore((state) => state.activeProjectName);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
+  const setWynikiTab = useShellStore((state) => state.setWynikiTab);
+  const setActiveSpace = useShellStore((state) => state.setActiveSpace);
+  // P-1: zdolności E-33 (wkłady źródeł) i E-34 (weryfikacja cieplna/dynamiczna)
+  // mają realnego dostawcę w warsztacie Wyników — zakładka zwarć (sekcja
+  // „Wkłady do zwarcia" + panel „Bilans IEC 60909"). Deep-link zakładki
+  // (wzorzec V12K-106) zamiast zastępczego kontraktu analizy.
+  const openShortCircuitWorkbench = () => {
+    setWynikiTab('zwarcia');
+    setActiveSpace('wyniki');
+  };
   const executionRuns = useExecutionRunsStore((state) => state.runs);
   const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
   const snapshot = useSnapshotStore((state) => state.snapshot);
@@ -971,14 +989,6 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
             }
           />
           <SurfaceActionButton
-            label="Charakterystyki FRT/LVRT/HVRT"
-            onClick={() =>
-              openChildSurface('analysis', {
-                screenCode: 'E-26',
-              })
-            }
-          />
-          <SurfaceActionButton
             label="Rozpływ mocy NR/GS/FD"
             onClick={() =>
               openChildSurface('analysis', {
@@ -1004,19 +1014,11 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
           />
           <SurfaceActionButton
             label="Wkłady źródeł rozszerzone"
-            onClick={() =>
-              openChildSurface('analysis', {
-                screenCode: 'E-33',
-              })
-            }
+            onClick={openShortCircuitWorkbench}
           />
           <SurfaceActionButton
             label="Weryfikacja cieplna i dynamiczna"
-            onClick={() =>
-              openChildSurface('analysis', {
-                screenCode: 'E-34',
-              })
-            }
+            onClick={openShortCircuitWorkbench}
           />
           <SurfaceActionButton
             label="Testy NC RfG"
@@ -1027,15 +1029,6 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
                 titlePl: 'Testy NC RfG',
                 sizeClass: 'C',
                 supportsMiniSld: true,
-              })
-            }
-          />
-          <SurfaceActionButton
-            label="Analiza wrażliwości"
-            onClick={() =>
-              openChildSurface('analysis', {
-                screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
-                tabId: 'sensitivity',
               })
             }
           />
@@ -1058,8 +1051,6 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       <SectionCard title="Bieżący widok analityki" eyebrow="Wyniki">
         {activeAnalysisTab === 'compare' ? (
           <ResultsComparisonPage runHistory={comparisonRunHistory} />
-        ) : activeAnalysisTab === 'sensitivity' ? (
-          <AnalysisSurfaceSensitivityTab />
         ) : activeAnalysisTab === 'comparison_wizard' ? (
           <AnalysisSurfaceComparisonWizard />
         ) : activeAnalysisTab === 'ncrfg-tests' ? (
@@ -1070,7 +1061,7 @@ function AnalysisSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
               runId={effectiveRunId}
               selectedElement={selectedElement}
               candidateRefs={proofCandidateRefs}
-              className="rounded-lg border border-slate-700/80 bg-white p-4"
+              className="rounded-lg border border-slate-200 bg-white p-4"
             />
             <ProofLatexPanel runId={effectiveRunId} />
           </div>
@@ -1105,6 +1096,8 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const session = useNetworkBuildStore((state) => state.surfaceSessions[surface.surfaceId] ?? null);
   const openChildSurface = useChildSurfaceLauncher(surface);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  const setWynikiTab = useShellStore((state) => state.setWynikiTab);
+  const setActiveSpace = useShellStore((state) => state.setActiveSpace);
   const [scope, setScope] = useState<'siec' | 'ciag' | 'stacja' | 'pole' | 'zrodlo'>('siec');
   const [detailLevel, setDetailLevel] = useState<'standard' | 'pelny'>('standard');
   // Phase 11: integracja audit2 report.
@@ -1219,7 +1212,6 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const readinessBlockers = readiness?.blockers ?? [];
   const hasCompletedRun = Boolean(activeRunId && isCompletedAnalysisRunStatus(runContract?.status));
   const hasSolverTrace = Boolean(runContract?.traceSummary);
-  const sourceContributionSurfaceDefinition = SURFACE_REGISTRY['E-33'];
   const openProofSurface = () =>
     openChildSurface('E-36', {
       screenCode: 'E-36',
@@ -1236,14 +1228,13 @@ function ReportSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
       sizeClass: 'C',
       supportsMiniSld: true,
     });
-  const openSourceContributionsSurface = () =>
-    openChildSurface('E-33', {
-      screenCode: 'E-33',
-      titlePl: sourceContributionSurfaceDefinition.titlePl,
-      sizeClass: 'C',
-      openMode: 'replace_right_panel',
-      supportsMiniSld: sourceContributionSurfaceDefinition.supportsMiniSld,
-    });
+  // P-1: „Wkłady źródeł" mają realnego dostawcę w warsztacie Wyników —
+  // zakładka zwarć (sekcja „Wkłady do zwarcia"); deep-link wzorcem V12K-106
+  // zamiast zastępczego kontraktu analizy E-33.
+  const openSourceContributionsSurface = () => {
+    setWynikiTab('zwarcia');
+    setActiveSpace('wyniki');
+  };
   const openProtectionSurface = () =>
     openChildSurface('analysis', {
       screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
@@ -1859,113 +1850,29 @@ function VariantsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   );
 }
 
-function ComplianceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  // Iteracja 13: wybór profilu NC RfG + wykres FRT/HVRT (Recharts).
-  const [profileId, setProfileId] = useState<NcRfgProfileId>('PSE');
+function ComplianceSurface() {
+  // Wygaszenie E-26 (Opcja 1, karta U5_E14 / plan wygaszania §3c): ekran
+  // kanoniczny E-26 „Charakterystyki FRT/LVRT/HVRT" ZOSTAJE, dostawcą UI jest
+  // teraz `EkranFrt` (ui2, superset — dobór modułu+operatora, realny bieg
+  // trajektorii z backendu, werdykt), zamiast dawnego statycznego widoku
+  // krzywych z zaślepką `no_module`. Tryb zaawansowania ze wspólnego store'a
+  // powłoki (Zustand globalny; identycznie jak zakładka `frt` warsztatu wyników).
+  const trybZaawansowania = useShellStore((state) => state.advancementMode);
   return (
     <div data-testid="compliance-surface" className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <SectionCard
-        title="Krzywe FRT/LVRT/HVRT — profil operatora"
-        eyebrow="E-26 · Zgodność przyłączeniowa NC RfG"
-      >
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <span className="text-xs text-slate-500">Profil:</span>
-          {(['PSE', 'Energa', 'Tauron', 'Enea', 'PGE'] as const).map((id) => (
-            <button
-              key={id}
-              type="button"
-              data-testid={`compliance-profile-${id}`}
-              data-active={profileId === id}
-              onClick={() => setProfileId(id)}
-              className={
-                'rounded-full border px-3 py-1 text-xs font-medium '
-                + (profileId === id
-                  ? 'border-slate-900 bg-slate-900 text-white'
-                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100')
-              }
-            >
-              {id}
-            </button>
-          ))}
-        </div>
-        <FrtHvrtCurves profileId={profileId} />
-        <p className="mt-3 text-xs text-slate-500">
-          Krzywe NC RfG Annex II: dolna obwiednia LVRT (czerwony) — DER musi
-          pozostać dołączone, jeśli przebieg napięcia jest powyżej krzywej.
-          Górna obwiednia HVRT (niebieski) — analogicznie. Trajektoria U(t)
-          z solvera FRT/HVRT renderowana po uruchomieniu obliczeń (status
-          backendu: <code>no_module</code> do czasu pełnego wdrożenia
-          numerycznego solvera RMS).
-        </p>
-      </SectionCard>
-      <AnalysisContractPanel
-        surface={surface}
-        title="Kontrakt zgodności przyłączeniowej"
-        eyebrow="Pochodzenie danych"
-        focusTitle="Kontrakt FRT"
-        focusRowsBuilder={(contract) => [
-          { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
-          { label: 'Wariant', value: formatContractValue(contract.analysisCaseContext?.variantRef) },
-          { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-          { label: 'Model IBG / OZE', value: formatContractValue(contract.analysisCaseContext?.assumptions['ibg_assumptions_ref']) },
-          { label: 'Założenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
-          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
-        ]}
-      />
+      <EkranFrt trybZaawansowania={trybZaawansowania} />
     </div>
   );
 }
 
-function PhaseStateSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  return (
-    <div className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <AnalysisContractPanel
-        surface={surface}
-        title="Stan fazowy SN"
-        eyebrow="Analiza fazowa"
-        focusTitle="Kontrakt stanu fazowego"
-        focusRowsBuilder={(contract) => [
-          { label: 'Identyfikator przypadku', value: formatContractValue(contract.analysisCaseContext?.caseRef) },
-          { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
-          { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-          { label: 'Brama jakości', value: formatContractValue(contract.analysisCaseContext?.qualityGate) },
-          { label: 'Kompletność zgodności przejściowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
-        ]}
-        showAssumptions
-        showLineage
-        showReproducibility
-        showSummary={false}
-        showTraceSummary={false}
-      />
-    </div>
-  );
-}
-
-function DynamicStabilitySurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  return (
-    <div className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <AnalysisContractPanel
-        surface={surface}
-        title="Stabilność dynamiczna"
-        eyebrow="Dynamika"
-        focusTitle="Kontrakt stabilności"
-        focusRowsBuilder={(contract) => [
-          { label: 'Scenariusz zakłócenia', value: formatContractValue(contract.analysisCaseContext?.assumptions['fault_scenario_ref']) },
-          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
-          { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
-          { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-          { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-        ]}
-      />
-    </div>
-  );
-}
-
+// Moduł kontraktu analizy (`wyniki/kontrakt-analizy`, karta F-E5a) WYGASZONY
+// po fali P-1…P-3: wszystkie dawne kody kontraktu mają realnych dostawców —
+// E-29 `wyniki/skladowe`, E-30 `wyniki/zbieznosc`, E-31 `wyniki/stan-fazowy`,
+// E-32 `wyniki/stabilnosc`, a E-33/E-34 prowadzą deep-linkiem do zakładki
+// zwarć warsztatu Wyników (brak powierzchni trasowej).
 
 function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDescriptor }) {
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const readiness = useSnapshotStore((state) => state.readiness);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const fixActions = useSnapshotStore((state) => state.fixActions);
@@ -1992,9 +1899,59 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
     return Array.from(rows.values());
   }, [readiness?.warnings, snapshot]);
 
+  // V12K-231 (karta F-K8 faza 1): BRAMKA MODELU z `analysis-eligibility`. Do tej pory
+  // ta ocena nie miala ZADNEGO konsumenta produkcyjnego — panel istnial, ale nikt go
+  // nie montowal, wiec `load()` nigdy sie nie wykonywalo. Skutek: os nazwana „SC1F"
+  // swiecila gotowa wylacznie na danych per-DER, a uruchomienie biegu bylo odrzucane
+  // bramka modelu (brak skladowej zerowej / modelu uziemienia punktu neutralnego).
+  const wczytajBramkiModelu = useAnalysisEligibilityStore((state) => state.load);
+  const macierzModelu = useEligibilityMatrix();
+  useEffect(() => {
+    if (!activeCaseId) return;
+    void wczytajBramkiModelu(activeCaseId);
+  }, [activeCaseId, wczytajBramkiModelu]);
+
+  const bramkiModelu = useMemo(() => {
+    const wynik: Partial<Record<'SC_3F' | 'SC_2F' | 'SC_1F', BramkaModelu>> = {};
+    for (const pozycja of macierzModelu) {
+      if (pozycja.analysis_type !== 'SC_3F'
+        && pozycja.analysis_type !== 'SC_2F'
+        && pozycja.analysis_type !== 'SC_1F') continue;
+      wynik[pozycja.analysis_type] = {
+        eligible: pozycja.status === 'ELIGIBLE',
+        powody_pl: pozycja.blockers.map((b) => b.message_pl),
+      };
+    }
+    return wynik;
+  }, [macierzModelu]);
+
+  // V12K-233: klasa przekladnika z PRAWDZIWEGO katalogu jako DANA dla reguly normowej.
+  // Pola `ct_accuracy_class`/`ct_application` byly w kontrakcie i w regule od V12K-232,
+  // ale nikt ich nie wypelnial — wiec dla kazdego realnego przekladnika os zabezpieczen
+  // zostawala „czesciowo" z kodem `der.ct_class.unresolved`. Katalog pobieramy RAZ dla
+  // ekranu; dopoki go nie ma, regula nadal zglasza brak danej (nie zgadujemy klasy).
+  const [typyCt, setTypyCt] = useState<readonly CTCatalogType[]>([]);
+  useEffect(() => {
+    let aktualne = true;
+    void fetchCtTypes()
+      .then((typy) => {
+        if (aktualne) setTypyCt(typy);
+      })
+      .catch(() => {
+        // Blad pobrania NIE moze udawac pustego katalogu z werdyktem — pola zostaja
+        // niewypelnione, wiec regula zglosi brak danej, tak jak przed pobraniem.
+        if (aktualne) setTypyCt([]);
+      });
+    return () => {
+      aktualne = false;
+    };
+  }, []);
+
+  const deryZKlasaCt = useMemo(() => wzbogacDeryOKlaseCt(allDers, typyCt), [allDers, typyCt]);
+
   // Agregacja kontroli DER per stacja (Faza F).
-  const derReadinessRows = allDers.map((der) => {
-    const sameStationCount = allDers.filter((d) => d.station_id === der.station_id).length;
+  const derReadinessRows = deryZKlasaCt.map((der) => {
+    const sameStationCount = deryZKlasaCt.filter((d) => d.station_id === der.station_id).length;
     const matrix = computeDerReadinessMatrix(der, {
       otherDersInStation: sameStationCount - 1,
     });
@@ -2002,32 +1959,45 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
       der,
       matrix,
       summary: summarizeReadiness(matrix),
-      axes: buildAggregatedReadiness(der, { otherDersInStation: sameStationCount - 1 }),
+      axes: zlozZBramkaModelu(
+        buildAggregatedReadiness(der, { otherDersInStation: sameStationCount - 1 }),
+        bramkiModelu,
+      ),
     };
   });
 
   // Naprawa eng.15: walidacja hosting capacity (export vs import) per stacja.
+  //
+  // V12K-226: import stacji liczy `sumStationLoadImportKw` na REALNYCH polach
+  // kontraktu (Substation.bus_refs ∋ Load.bus_ref, moc z `p_mw`). Poprzednia wersja
+  // filtrowała odbiory po `station_ref` i sumowała `nominal_power_kw ?? 0` — obu pól
+  // `Load` NIE MA, a rzutowania `as` wyłączyły kontrolę typów, więc import był
+  // ZAWSZE zerowy i KAŻDA stacja z DER dostawała werdykt „krytyczny eksport".
+  //
+  // Import NIEZNANY (brak snapshotu, stacja nieobecna w modelu) NIE jest zerem:
+  // wtedy oceny nie liczymy wcale, bo zero importu jest twierdzeniem o sieci.
   const hostingCapacityRows = useMemo(() => {
     const stationIds = Array.from(new Set(allDers.map((d) => d.station_id)));
-    return stationIds.map((stationId) => {
+    return stationIds.flatMap((stationId) => {
       const stationDers = allDers.filter((d) => d.station_id === stationId);
       const p_export_kw = stationDers.reduce((sum, d) => sum + (d.nominal_power_kw ?? 0), 0);
-      // Suma odbiorow dla stacji ze snapshotu (jezeli dostepne).
-      const allLoads = (snapshot?.loads ?? []) as readonly unknown[];
-      const stationLoads = allLoads.filter((l) => {
-        const lo = l as { station_ref?: string };
-        return lo.station_ref === stationId;
-      });
-      const p_import_kw = stationLoads.reduce((sum: number, l) => {
-        const lo = l as { nominal_power_kw?: number };
-        return sum + (lo.nominal_power_kw ?? 0);
-      }, 0);
-      return validateHostingCapacityExport({
-        station_id: stationId,
-        p_export_kw,
-        p_import_kw,
-      });
+      const p_import_kw = sumStationLoadImportKw(snapshot, stationId);
+      if (p_import_kw === null) return [];
+      return [
+        validateHostingCapacityExport({
+          station_id: stationId,
+          p_export_kw,
+          p_import_kw,
+        }),
+      ];
     });
+  }, [allDers, snapshot]);
+
+  // Stacje, dla ktorych oceny kierunku przeplywu NIE DA SIE policzyc — pokazywane
+  // wprost, zeby brak nie wygladal na brak problemu (kontrakt uczciwych stanow zerowych).
+  const hostingCapacityNieznane = useMemo(() => {
+    const stationIds = Array.from(new Set(allDers.map((d) => d.station_id)));
+    return stationIds.filter((stationId) => sumStationLoadImportKw(snapshot, stationId) === null);
   }, [allDers, snapshot]);
 
   const fixActionByElement = (elementRef: string | null) => {
@@ -2104,7 +2074,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
 
       {!readiness && (
         <SectionCard title="Przegląd techniczny do odświeżenia" eyebrow="Wymagana operacja">
-          <p className="text-sm text-slate-300">
+          <p className="text-sm text-slate-600">
             Wykonaj operację projektową albo odśwież widok, aby system
             odtworzył przegląd techniczny układu.
           </p>
@@ -2253,6 +2223,34 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
       )}
 
       {/* Naprawa eng.15: hosting capacity export check per stacja. */}
+      {hostingCapacityNieznane.length > 0 && (
+        <SectionCard
+          title={`Kierunek przepływu — nie sprawdzono dla ${hostingCapacityNieznane.length} stacji`}
+          eyebrow="NC RfG Art. 17"
+        >
+          {/*
+            V12K-226: brak oceny musi być WIDOCZNY. Milczenie w tym miejscu czytałoby się
+            jako „bez zastrzeżeń", a przyczyną jest brak danej: odbiorów nie da się
+            przypisać do stacji (stacja nieobecna w modelu albo brak szyn).
+          */}
+          <div data-testid="hosting-capacity-nieznane" className="space-y-2">
+            {hostingCapacityNieznane.map((stationId) => (
+              <div
+                key={stationId}
+                data-testid={`hosting-capacity-nieznane-${stationId}`}
+                className="rounded border border-slate-600 bg-slate-900/40 p-3 text-sm text-slate-300"
+              >
+                <div className="font-semibold">Stacja: {stationId}</div>
+                <div className="mt-1 text-[11px]">
+                  Nie sprawdzono kierunku przepływu — w modelu nie da się przypisać odbiorów
+                  do tej stacji (brak stacji albo brak przypisanych szyn). Uzupełnij model,
+                  aby ocenić eksport wobec importu.
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
       {hostingCapacityRows.length > 0 && (
         <SectionCard
           title={`Hosting capacity (export vs import) — ${hostingCapacityRows.length} stacji`}
@@ -2298,124 +2296,10 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
 // Funkcja jest pure (deterministyczna) — używana wyłącznie do podglądu UI;
 // rzeczywiste punkty krzywej z solvera protection_iec60255 (backend) zastępują
 // tę tablicę gdy są dostępne.
-// generateIec60255SiCurvePoints moved to routerPureHelpers.ts
-
-function ProtectionCoordinationSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  // Iteracja 14: TCC chart preview z 2 demonstracyjnymi krzywymi
-  // (nadrzędna 51 + podrzędna 50/51) zgodnie z IEC 60255 SI.
-  const sampleCurves: ProtectionCurve[] = useMemo(
-    () => [
-      {
-        id: 'demo-upstream-51',
-        name_pl: 'Nadrzędne 51 (sekcja GPZ)',
-        standard: 'IEC',
-        curve_type: 'SI',
-        pickup_current_a: 600,
-        time_multiplier: 0.5,
-        color: '#dc2626',
-        enabled: true,
-        points: generateIec60255SiCurvePoints(600, 0.5),
-      },
-      {
-        id: 'demo-downstream-51',
-        name_pl: 'Podrzędne 51 (pole liniowe)',
-        standard: 'IEC',
-        curve_type: 'SI',
-        pickup_current_a: 250,
-        time_multiplier: 0.2,
-        color: '#2563eb',
-        enabled: true,
-        points: generateIec60255SiCurvePoints(250, 0.2),
-      },
-    ],
-    [],
-  );
-  const sampleFaults: FaultMarker[] = useMemo(
-    () => [
-      {
-        id: 'sc3f-bus-end',
-        label_pl: 'Zwarcie 3F na końcu ciągu (Ik" = 4,8 kA)',
-        current_a: 4800,
-        fault_type: '3F',
-        location: 'Stacja końcowa',
-      },
-      {
-        id: 'sc1f-bus-end',
-        label_pl: 'Zwarcie 1F doziemne (Ik1 = 1,2 kA)',
-        current_a: 1200,
-        fault_type: '1F',
-        location: 'Stacja końcowa',
-      },
-    ],
-    [],
-  );
-
-  return (
-    <div data-testid="protection-coordination-surface" className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <AnalysisContractPanel
-        surface={surface}
-        title="Koordynacja zabezpieczeń"
-        eyebrow="E-28 · Zabezpieczenia"
-        focusTitle="Kontrakt koordynacji"
-        focusRowsBuilder={(contract) => [
-          { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
-          { label: 'Uziemienie', value: formatContractValue(contract.analysisCaseContext?.assumptions['grounding_assumptions_ref']) },
-          { label: 'Temperatura', value: formatContractValue(contract.analysisCaseContext?.assumptions['temperature_assumptions_ref']) },
-          { label: 'Kompletność zgodności przejściowej', value: formatContractValue(contract.analysisCaseContext?.completenessLegacy) },
-        ]}
-      />
-      <SectionCard title="Wykres TCC (czasowo-prądowy)" eyebrow="Krzywe IEC 60255">
-        <div data-testid="protection-coordination-tcc" className="space-y-2">
-          <TimeCurrentChart curves={sampleCurves} faultMarkers={sampleFaults} />
-          <p className="text-xs text-slate-500">
-            Krzywe referencyjne (IEC 60255 SI) pokazują oś i skalę log-log.
-            Punkty krzywej (CurvePoint[]) są prezentowane jako dane wejściowe
-            modułu zabezpieczeń, a tabela jest widokiem tylko do odczytu.
-          </p>
-          <p className="text-xs text-slate-500">
-            Markery zwarciowe (Ik″ 3F i Ik 1F) ilustrują typowe punkty pracy.
-            Aktywne obliczenie:{' '}
-            {surface.routeState.payload?.runId ? 'wybrane obliczenie aktywne.' : 'nie wybrano obliczenia.'}
-          </p>
-        </div>
-      </SectionCard>
-      <SectionCard title="Selektywność i marginesy" eyebrow="Wynik">
-        <p className="text-sm text-slate-300">
-          Selektywność zabezpieczeń jest mierzona w marginesach numerycznych
-          (Δt, Δprąd) — zgodnie z PROTECTION_CANONICAL_ARCHITECTURE bez
-          werdyktów OK/FAIL. Pełna analiza par nadrzędne ↔ podrzędne wymaga
-          uzgodnienia w E-27 (Ustawienia zabezpieczeń).
-        </p>
-      </SectionCard>
-    </div>
-  );
-}
-
-function SymmetricalComponentsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  const selectedElement = useSelectionStore((state) => state.selectedElements[0] ?? null);
-  const snapshot = useSnapshotStore((state) => state.snapshot);
-
-  return (
-    <div className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <AnalysisContractPanel
-        surface={surface}
-        title="Skladowe symetryczne i siec zerowa"
-        eyebrow="Skladowe"
-        focusTitle="Kontekst Z0"
-        focusRowsBuilder={(contract) => [
-          { label: 'Obiekt', value: resolveSurfaceObjectLabel(surface, snapshot, selectedElement) },
-          { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-          { label: 'Uziemienie', value: formatContractValue(contract.analysisCaseContext?.assumptions['grounding_assumptions_ref']) },
-          { label: 'Stan łączników', value: formatContractValue(contract.analysisCaseContext?.assumptions['switching_state_ref']) },
-          { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-        ]}
-      />
-    </div>
-  );
-}
+// ProtectionCoordinationSurface (atrapa z demonstracyjnymi krzywymi IEC 60255
+// liczonymi w UI) USUNIĘTA w karcie F-E5b. Dostawcą E-28 jest realna strona
+// `ProtectionCoordinationPage` opakowana ramą prowadzącą ui2 `EkranKoordynacji`
+// (renderowana w `renderSurfaceBody`, case 'E-28').
 
 function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const isPublicCatalogScreen = surface.screenCode === 'E-38';
@@ -2510,69 +2394,6 @@ function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }
   );
 }
 
-function SourceContributionsSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  return (
-    <div className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <AnalysisContractPanel
-        surface={surface}
-        title="Wkłady źródeł rozszerzone"
-        eyebrow="Wkłady źródeł"
-        focusTitle="Kontrakt źródeł"
-        focusRowsBuilder={(contract) => [
-          { label: 'Rodzaj przypadku', value: formatContractValue(contract.analysisCaseContext?.caseKind) },
-          { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
-          { label: 'Założenia obciążeń', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
-          { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-          { label: 'Projekt', value: formatContractValue(contract.analysisCaseContext?.lineage['project_ref']) },
-        ]}
-      />
-    </div>
-  );
-}
-
-function ThermalDynamicSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  return (
-    <div className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <AnalysisContractPanel
-        surface={surface}
-        title="Weryfikacja cieplna i dynamiczna toru"
-        eyebrow="Ocena toru"
-        focusTitle="Kontrakt toru"
-        focusRowsBuilder={(contract) => [
-          { label: 'Temperatura', value: formatContractValue(contract.analysisCaseContext?.assumptions['temperature_assumptions_ref']) },
-          { label: 'Założenia obciążeń', value: formatContractValue(contract.analysisCaseContext?.assumptions['load_assumptions_ref']) },
-          { label: 'Założenia źródeł', value: formatContractValue(contract.analysisCaseContext?.assumptions['source_assumptions_ref']) },
-          { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-          { label: 'Kompletność', value: formatCompletenessStatus(contract.analysisCaseContext?.completeness ?? null) },
-        ]}
-      />
-    </div>
-  );
-}
-
-function ConvergenceSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  return (
-    <div className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <AnalysisContractPanel
-        surface={surface}
-        title="Zbieżność rozpływu i sterowanie zaczepami"
-        eyebrow="Rozpływ mocy"
-        focusTitle="Kontrakt solvera"
-        focusRowsBuilder={(contract) => [
-          { label: 'Typ analizy', value: formatContractValue(contract.analysisType) },
-          { label: 'Ważność wyniku', value: formatContractValue(contract.resultsValid) },
-          { label: 'Założenia OLTC', value: formatContractValue(contract.analysisCaseContext?.assumptions['transformer_tap_assumptions_ref']) },
-          { label: 'Wersja układu', value: formatContractValue(contract.analysisCaseContext?.snapshotRef) },
-          { label: 'Zakres stosowalności', value: formatContractValue(contract.analysisCaseContext?.applicabilityScope) },
-        ]}
-      />
-    </div>
-  );
-}
-
 function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const executionRuns = useExecutionRunsStore((state) => state.runs);
@@ -2626,7 +2447,7 @@ function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
         runId={activeRunId}
         selectedElement={selectedElement}
         candidateRefs={proofCandidateRefs}
-        className="rounded-lg border border-slate-700/80 bg-white p-4"
+        className="rounded-lg border border-slate-200 bg-white p-4"
       />
       <ProofLatexPanel runId={activeRunId} />
       {allDers.length > 0 && (
@@ -3104,31 +2925,46 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'E-04':
       return <ModelGapsSurface surface={surface} />;
     case 'E-28':
-      return <ProtectionCoordinationSurface surface={surface} />;
+      return <EkranKoordynacji />;
     case 'E-29':
-      return <SymmetricalComponentsSurface surface={surface} />;
+      // E-29 „Składowe symetryczne i sieć zerowa" — REALNY ekran ui2 (karta P-3):
+      // bilans FROZEN solvera + składowe Z1/Z2/Z0 ze śladu WHITE BOX + uziemienie
+      // punktu neutralnego z zamrożonej wersji układu (koniec dostawcy zastępczego).
+      return <EkranSkladowych />;
     case 'E-26':
-      return <ComplianceSurface surface={surface} />;
+      return <ComplianceSurface />;
     case 'E-27':
-      return <ProtectionCoordinationSurface surface={surface} />;
+      // E-27 „Zabezpieczenia i automatyka" to INNA zdolność niż E-28 „Koordynacja
+      // zabezpieczeń" (rejestr: odrębny componentKey / trasa / etykieta). Karta
+      // E-27 dostarcza REALNY ekran przeglądowy oparty na read-modelu pola
+      // (koniec phantoma i tymczasowego dostawcy kontraktu analizy z F-E5b).
+      return <EkranZabezpieczenAutomatyki />;
     case 'E-30':
-      return <ConvergenceSurface surface={surface} />;
+      // E-30 „Zbieżność rozpływu i zaczepy" — REALNY ekran (karta P-2):
+      // werdykt zbieżności + bilans przebiegu + ślad pętli OLTC + założenia
+      // zaczepów modelu (koniec zastępczego dostawcy kontraktu analizy).
+      return <EkranZbieznosci />;
     case 'E-31':
-      return <PhaseStateSurface surface={surface} />;
+      // E-31 „Stan fazowy SN" — REALNY ekran (karta P-2): napięcia/prądy
+      // fazowe celu + asymetrie z werdyktem z flag solvera (koniec
+      // zastępczego dostawcy kontraktu analizy).
+      return <EkranStanuFazowego />;
     case 'E-32':
-      return <DynamicStabilitySurface surface={surface} />;
-    case 'E-33':
-      return <SourceContributionsSurface surface={surface} />;
-    case 'E-34':
-      return <ThermalDynamicSurface surface={surface} />;
+      // E-32 „Stabilność dynamiczna" — REALNY ekran ui2 (karta P-3): scenariusz
+      // zakłócenia → werdykt backendu → wielkości z kryteriami → ślad automatyki.
+      return <EkranStabilnosci />;
+    // E-33/E-34 (P-1): zdolności prowadzą do realnego dostawcy — zakładki
+    // zwarć warsztatu Wyników (deep-link `setWynikiTab('zwarcia')` z huba
+    // analiz, nawigacji analitycznej i raportu) — brak powierzchni trasowej.
     case 'E-36':
       return <ProofSurface surface={surface} />;
     case 'E-01':
       // Etap 1 dostawy: E-01 (Główne środowisko pracy SLD) renderuje się
       // domyślnie jako children CanonicalLayout w App.tsx. Gdy ktoś otworzy
-      // E-01 jako rozszerzoną powierzchnię (openRouteSurface('E-01')), również
-      // renderujemy SldWorkspaceContainer dla spójności kontraktu shellu.
-      return <SldWorkspaceContainer />;
+      // E-01 jako rozszerzoną powierzchnię (openRouteSurface('E-01')),
+      // renderujemy TEN SAM, jedyny render — F12-C (spec §10.1 ARCH-4):
+      // ścieżka renderu v2 i punkt decyzji hosta USUNIĘTE, zgodnie z App.tsx.
+      return <SldCanvasV3Workspace />;
     case 'E-00':
       // Etap 2 dostawy: Pulpit projektu (lista projektów + nowy projekt).
       return <ProjectDashboardSurface />;

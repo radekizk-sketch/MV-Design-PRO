@@ -9,7 +9,7 @@
  * §6.5.
  *
  * Komponent nie jest jeszcze podłączony do shellu — służy jako gotowy
- * fundament UI, który będzie wpinany do `InsertStationForm` / nowej
+ * fundament UI, który będzie wpinany do `KreatorStacjiSnNn` (ui2) / nowej
  * powierzchni E-?? po decyzji architektonicznej.
  */
 import { clsx } from 'clsx';

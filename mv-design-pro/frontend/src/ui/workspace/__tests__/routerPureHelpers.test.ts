@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   auditProofPackStatus,
   resolveLatestCompletedRun,
-  generateIec60255SiCurvePoints,
 } from '../routerPureHelpers';
 
 describe('auditProofPackStatus', () => {
@@ -52,32 +51,7 @@ describe('resolveLatestCompletedRun', () => {
   });
 });
 
-describe('generateIec60255SiCurvePoints', () => {
-  it('zwraca 9 punktów (1.05x do 100x pickup)', () => {
-    const points = generateIec60255SiCurvePoints(100, 0.1);
-    expect(points).toHaveLength(9);
-  });
-
-  it('current_a = pickup × multiple', () => {
-    const points = generateIec60255SiCurvePoints(100, 0.1);
-    expect(points[0].current_a).toBeCloseTo(105, 0);
-    expect(points[points.length - 1].current_a).toBe(10000);
-  });
-
-  it('time monotonicznie maleje z multiple', () => {
-    const points = generateIec60255SiCurvePoints(100, 0.5);
-    for (let i = 1; i < points.length; i++) {
-      expect(points[i].time_s).toBeLessThanOrEqual(points[i - 1].time_s);
-    }
-  });
-
-  it('time cap na 60s dla niskich krotności', () => {
-    const points = generateIec60255SiCurvePoints(100, 10);
-    expect(points[0].time_s).toBeLessThanOrEqual(60);
-  });
-
-  it('TMS=0 → wszystkie czasy = 0', () => {
-    const points = generateIec60255SiCurvePoints(100, 0);
-    expect(points.every((p) => p.time_s === 0)).toBe(true);
-  });
-});
+// Testy generateIec60255SiCurvePoints USUNIĘTE w karcie F-E5b wraz z generatorem:
+// fizyka krzywej IEC 60255 nie należy do warstwy prezentacji (krzywe TCC
+// dostarcza backend). Świadomie NIE przeniesione do testów backendu — intencją
+// karty jest usunięcie fizyki z UI, nie jej duplikacja.

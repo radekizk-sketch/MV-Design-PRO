@@ -22,6 +22,11 @@ from application.stability.dynamic_stability import (
     FaultClearSourceState,
     evaluate_fault_clear_dynamic_stability,
 )
+from application.stability.voltage_trajectory import (
+    TrajectoryGenerationParams,
+    generate_voltage_trajectory,
+)
+from enm.element_kind import rodzaj_elementu, zbuduj_indeks_rodzajow
 from enm.hash import compute_enm_hash
 from enm.mapping import build_zero_sequence_zbus, map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
@@ -45,7 +50,12 @@ from network_model.solvers.power_flow_gauss_seidel import (
     GaussSeidelOptions,
     PowerFlowGaussSeidelSolver,
 )
+from network_model.solvers.power_flow_inverter import (
+    InverterControl,
+    inverter_control_from_params,
+)
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
+from network_model.solvers.power_flow_oltc import solve_with_oltc
 from network_model.solvers.power_flow_result import build_power_flow_result_v1
 from network_model.solvers.power_flow_types import (
     PowerFlowInput,
@@ -735,10 +745,33 @@ def _execute_dynamic_stability(run: CanonicalRun) -> None:
     proof_ref = _dynamic_stability_proof_ref(run=run, scenario_id=stability_result.scenario_id)
     result_payload = stability_result.to_dict()
     topology_payload = topology_effect.to_dict()
+    # Szereg czasowy U(t)/f(t) przebiegu — istniejący, deterministyczny generator
+    # trajektorii FRT (application/stability/voltage_trajectory.py) sparametryzowany
+    # scenariuszem wyłączenia zwarcia. ZERO nowej fizyki: równania modelu odbudowy
+    # napięcia/częstotliwości nietknięte, tu jedynie wystawiamy istniejący przebieg.
+    # Przechowywane addytywnie (klucz `time_series` obok `result`) — starsze biegi
+    # bez tego klucza; osobny endpoint wystawia go na żądanie (nie pompuje wyniku).
+    trajectory = generate_voltage_trajectory(
+        TrajectoryGenerationParams(
+            clearing_time_ms=scenario.clearing_time_ms,
+            post_fault_voltage_pu=scenario.source_state.post_fault_voltage_pu,
+            post_fault_frequency_pu=scenario.source_state.post_fault_frequency_pu,
+        )
+    )
+    time_series_payload = {
+        "time_unit": "s",
+        "criteria_version": stability_result.criteria_version,
+        "quantities": [
+            {"key": "voltage_pu", "label_pl": "Napięcie", "unit": "p.u."},
+            {"key": "frequency_pu", "label_pl": "Częstotliwość", "unit": "p.u."},
+        ],
+        "points": [point.to_dict() for point in trajectory],
+    }
     run.raw_result = {
         "analysis_type": "dynamic_stability",
         "scenario": scenario.to_dict(),
         "result": result_payload,
+        "time_series": time_series_payload,
         "automation_trace": automation_trace.to_dict(),
         "topology_effect": topology_payload,
         "proof_ref": proof_ref,
@@ -871,12 +904,16 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
     ]
 
     for node_id in reportable_fault_node_ids:
+        # ZWARCIA-PRO F4 (karta W-C): wkłady gałęziowe FROZEN solvera są liczone
+        # ZAWSZE w torze kanonicznym (opcja addytywna solvera — nie zmienia
+        # żadnej istniejącej wielkości ani śladu White Box; osobna superpozycja).
         if short_circuit_type == ShortCircuitType.THREE_PHASE:
             result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
                 graph=graph,
                 fault_node_id=node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
+                include_branch_contributions=True,
             )
         elif short_circuit_type == ShortCircuitType.SINGLE_PHASE_GROUND:
             result = ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
@@ -885,6 +922,7 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
                 c_factor=c_factor,
                 tk_s=tk_s,
                 z0_bus=z0_bus,
+                include_branch_contributions=True,
             )
         elif short_circuit_type == ShortCircuitType.TWO_PHASE:
             result = ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
@@ -892,6 +930,7 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
                 fault_node_id=node_id,
                 c_factor=c_factor,
                 tk_s=tk_s,
+                include_branch_contributions=True,
             )
         else:
             result = ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
@@ -900,6 +939,7 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
                 c_factor=c_factor,
                 tk_s=tk_s,
                 z0_bus=z0_bus,
+                include_branch_contributions=True,
             )
         payload = result.to_dict()
         node_trace_step_refs: list[int] = []
@@ -945,6 +985,11 @@ def _execute_short_circuit(run: CanonicalRun) -> None:
                 "proof_binding": reportability,
                 "dopuszczalnosc_raportowa": True,
                 "reporting_limitations": reportability["reporting_limitations"],
+                # GAP passthrough (V12K-128): domknięcie kontraktu read-only —
+                # wymóg i źródło Z0 na poziomie pozycji wyniku (dotąd wyłącznie
+                # w `proof_binding`, gubione w wierszu kanonicznym).
+                "requires_z0": reportability["requires_z0"],
+                "z0_source": reportability["z0_source"],
             }
         )
         rows.append(payload)
@@ -1049,6 +1094,79 @@ def _solve_power_flow_with_method(
         )
         return PowerFlowFastDecoupledSolver().solve(pf_input, fd_options)
     raise ValueError(f"Nieznany tryb rozpływu mocy: {solver_method}")
+
+
+def _first_oltc_branch_id(pf_input: PowerFlowInput) -> str | None:
+    """First transformer with a tap changer (stable order by branch id)."""
+    from network_model.core.branch import TransformerBranch
+
+    graph = pf_input.typed_graph()
+    ids = sorted(
+        b.id
+        for b in graph.branches.values()
+        if isinstance(b, TransformerBranch) and b.tap_changer is not None
+    )
+    return ids[0] if ids else None
+
+
+def _run_oltc_study(
+    study: str,
+    pf_input: PowerFlowInput,
+    solve_once,
+    run_options: dict[str, Any],
+) -> tuple[str, dict[str, Any]] | None:
+    """Dispatch an opt-in OLTC study (V12K-046) on the current pf_input.
+
+    Returns ``(raw_result_key, payload_dict)`` or None when not applicable.
+    """
+    from network_model.solvers.power_flow_oltc_studies import (
+        ProfilePoint,
+        optimize_tap_positions,
+        run_annual_oltc_profile,
+        sweep_tap_positions,
+    )
+
+    branch_id = run_options.get("oltc_branch_id") or _first_oltc_branch_id(pf_input)
+
+    if study == "annual_profile":
+        raw_profile = run_options.get("oltc_load_profile") or []
+        profile = [
+            ProfilePoint(
+                label=str(p.get("label", f"t{i}")),
+                load_scale=float(p.get("load_scale", 1.0)),
+            )
+            for i, p in enumerate(raw_profile)
+        ]
+        if not profile:
+            return None
+        result = run_annual_oltc_profile(pf_input, solve_once, profile)
+        return ("oltc_annual_profile", result.to_dict())
+
+    if branch_id is None:
+        return None
+
+    if study == "sweep":
+        positions = run_options.get("oltc_sweep_positions")
+        result = sweep_tap_positions(
+            pf_input,
+            solve_once,
+            branch_id=branch_id,
+            positions=positions,
+        )
+        return ("oltc_sweep", result.to_dict())
+
+    if study == "optimize":
+        result = optimize_tap_positions(
+            pf_input,
+            solve_once,
+            branch_id=branch_id,
+            objective=str(run_options.get("oltc_objective", "minimize_losses")),
+            target_kv=run_options.get("oltc_target_kv"),
+            switch_penalty_mw_per_step=float(run_options.get("oltc_switch_penalty_mw", 0.0)),
+        )
+        return ("oltc_optimization", result.to_dict())
+
+    return None
 
 
 def _maybe_load_audit2_extensions(
@@ -1166,6 +1284,87 @@ def _build_shunt_specs_from_snapshot(snapshot: dict[str, Any], base_mva: float) 
     return specs
 
 
+def _oze_opt_float(value: Any) -> float | None:
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int | float):
+        return float(value)
+    return None
+
+
+def _build_converter_control_by_node(
+    snapshot: dict[str, Any], base_mva: float
+) -> dict[str, InverterControl]:
+    """G-OZE-PF (V12K-051): mapuje węzły OZE → InverterControl dla kanonicznego PF.
+
+    Domyka forward-phantom: dotąd kanoniczny run budował PQSpec bez inverter_control,
+    więc wybór trybu regulacji (Q(U)/cosφ) nie wpływał na rozpływ mocy. Reużycie
+    `inverter_control_from_params` (most języka Polish→InverterMode już w mapperze).
+
+    Determinizm: dołączamy WYŁĄCZNIE realnie aktywne regulacje (cosφ≠1 albo nachylenie
+    Q(U)≠0). Źródła pasywne / unity / bez nowych pól → brak wpisu → PQSpec bez
+    inverter_control → wynik bajt-w-bajt jak dotąd (istniejące snapshoty nietknięte).
+    """
+    out: dict[str, InverterControl] = {}
+    for gen in snapshot.get("generators") or []:
+        if not isinstance(gen, dict):
+            continue
+        bus_ref = gen.get("bus_ref")
+        if not isinstance(bus_ref, str) or not bus_ref.strip():
+            continue
+        meta = gen.get("meta") if isinstance(gen.get("meta"), dict) else {}
+        mode = str(meta.get("control_mode") or gen.get("control_mode") or "").upper()
+        cosphi = _oze_opt_float(meta.get("cos_phi"))
+        qu_slope = _oze_opt_float(meta.get("qu_slope_pu_per_pu"))
+        # V12K-062 (G-OZE-B): statyzm P(f)/LFSM z generatora → lfsm_droop_pct. Realnie
+        # aktywny przy odchyłce częstotliwości studium (przy 50 Hz brak wpływu → determinizm).
+        lfsm_droop = _oze_opt_float(meta.get("frequency_droop_percent"))
+        active = False
+        if mode in ("STALY_COS_PHI", "COSPHI_CONST", "COSPHI_P", "COSPHI(P)"):
+            active = cosphi is not None and abs(cosphi - 1.0) > 1e-9
+        elif mode in ("Q_OD_U", "Q_U", "Q(U)"):
+            active = qu_slope is not None and abs(qu_slope) > 1e-12
+        # P(f)/LFSM droop aktywuje węzeł niezależnie od trybu Q (statyzm częstotliwościowy).
+        if lfsm_droop is not None and abs(lfsm_droop) > 1e-12:
+            active = True
+        if not active:
+            continue
+        params: dict[str, Any] = {"control_mode": mode}
+        if cosphi is not None:
+            params["cosphi"] = cosphi
+        if qu_slope is not None:
+            params["qu_slope_pu_per_pu"] = qu_slope
+            # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości Q(U) [pu U] — zakres, w którym
+            # Q=0 (NC RfG). Brak → domyślny punkt 1.0/1.0 (reakcja natychmiastowa).
+            qu_db_low = _oze_opt_float(meta.get("qu_deadband_low_pu"))
+            qu_db_high = _oze_opt_float(meta.get("qu_deadband_high_pu"))
+            if qu_db_low is not None:
+                params["qu_deadband_low_pu"] = qu_db_low
+            if qu_db_high is not None:
+                params["qu_deadband_high_pu"] = qu_db_high
+        if lfsm_droop is not None:
+            params["lfsm_droop_pct"] = lfsm_droop
+            lfsm_deadband = _oze_opt_float(meta.get("lfsm_deadband_hz"))
+            if lfsm_deadband is not None:
+                params["lfsm_deadband_hz"] = lfsm_deadband
+            if bool(meta.get("lfsm_allow_increase")):
+                params["lfsm_allow_increase"] = True
+        qmin = _oze_opt_float(meta.get("q_min_mvar"))
+        qmax = _oze_opt_float(meta.get("q_max_mvar"))
+        if qmin is not None:
+            params["qmin_mvar"] = qmin
+        if qmax is not None:
+            params["qmax_mvar"] = qmax
+        pmax = _oze_opt_float(gen.get("p_mw"))
+        if pmax is not None:
+            params["pmax_mw"] = abs(pmax)
+        sn = _oze_opt_float(gen.get("sn_mva")) or _oze_opt_float(meta.get("sn_mva"))
+        control = inverter_control_from_params(params, base_mva, sn)
+        if control is not None:
+            out[_graph_id_from_ref(bus_ref.strip())] = control
+    return out
+
+
 def _execute_power_flow(run: CanonicalRun) -> None:
     graph = _load_graph(run)
     graph_element_context = _build_snapshot_graph_element_context(run.snapshot or {})
@@ -1179,11 +1378,27 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         raise ValueError("Brak wezla bilansujacego SLACK w kanonicznym snapshotcie ENM")
     slack_node_id = slack_nodes[0]
 
+    # G-OZE-PF (V12K-051): regulacja falownika OZE dla kanonicznego PF (Q(U)/cosφ).
+    # base_mva potrzebne przed budową PQSpec, aby przeliczyć limity/nachylenie na pu.
+    base_mva = float(run.options.get("base_mva", 100.0))
+    converter_control_by_node = _build_converter_control_by_node(run.snapshot or {}, base_mva)
+
     pq_specs = [
         PQSpec(
             node_id=node_id,
-            p_mw=float(node.active_power or 0.0),
-            q_mvar=float(node.reactive_power or 0.0),
+            inverter_control=converter_control_by_node.get(node_id),
+            # F9.8 WHITE BOX: `node.active_power`/`node.reactive_power` (built by
+            # `enm.mapping`) use the GENERATION convention (positive = injection
+            # into the bus; a pure load is negative — see mapping.py, pinned by
+            # test_enm_mapping.py and consumed by analysis/boundary/identifier.py).
+            # `PQSpec.p_mw`/`q_mvar` are consumed by
+            # `power_flow_newton_internal.build_power_spec_v2`, which negates them
+            # again expecting the LOAD convention (positive = consumption). This is
+            # the single conversion point gen->load at the PQSpec construction
+            # boundary; do NOT change the sign convention in mapping.py or in the
+            # solver (both are correct/frozen on their own terms).
+            p_mw=-float(node.active_power or 0.0),
+            q_mvar=-float(node.reactive_power or 0.0),
             # ADR-011 (Z-ZIP-04): aggregated ZIP coefficients for the bus (None
             # => constant power). Solver reduces to classic PQ when None.
             zip_coeffs=node.zip_coeffs,
@@ -1197,7 +1412,7 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         max_iter=int(run.options.get("max_iterations", run.options.get("max_iter", 30))),
         trace_level=str(run.options.get("trace_level", "full")),
     )
-    base_mva = float(run.options.get("base_mva", 100.0))
+    # base_mva obliczone wyżej (przed PQSpec — potrzebne dla regulacji falownika OZE).
     # Phase 41: opt-in integracja audit2 z istniejacym pipeline'em.
     # Jesli run.options zawiera audit2_project_id + audit2_station_id, ladujemy
     # config z DB i aplikujemy adjustments do graph PRZED solverem.
@@ -1229,22 +1444,35 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     requested_solver_method = _normalize_power_flow_solver_method(
         run.options.get("solver_method") or run.options.get("method")
     )
-    solution = _solve_power_flow_with_method(
-        pf_input,
-        options,
-        run.options,
-        requested_solver_method,
-    )
+
+    # V12K-045 (OLTC F2): wrap the single-shot solve with the automatic OLTC
+    # control loop. Networks without automatic OLTC regulators solve exactly
+    # once (oltc_trace is None) — determinism preserved.
+    def _solve_once(pfi: PowerFlowInput):
+        return _solve_power_flow_with_method(
+            pfi,
+            options,
+            run.options,
+            requested_solver_method,
+        )
+
+    solution, oltc_trace = solve_with_oltc(pf_input, _solve_once)
     solver_method = str(getattr(solution, "solver_method", requested_solver_method))
     proof_ref = _power_flow_proof_ref(run=run, solver_method=solver_method)
     reporting_status = "reportable" if solution.converged else "not_reportable"
     proof_status = "complete" if solution.converged else "partial"
 
+    # WHITE BOX (K3, następstwo F9.8): PQSpec niesie konwencję OBCIĄŻENIOWĄ
+    # (p_mw > 0 = pobór — jedyny punkt konwersji gen→load powyżej), a kontrakt
+    # FROZEN ``BusResult.p_injected_mw`` to INJEKCJA (ujemna = pobór,
+    # ``power_flow_result.py:35``) — jak moc slacka niżej. Stąd negacja przy
+    # montażu wyniku; bez niej szyny PQ miałyby znak odwrotny do slacka i do
+    # udokumentowanego kontraktu (defekt ujawniony rekalibracją K3).
     node_p_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
     node_q_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
     for pq in pf_input.pq:
-        node_p_injected_pu[pq.node_id] = pq.p_mw / base_mva
-        node_q_injected_pu[pq.node_id] = pq.q_mvar / base_mva
+        node_p_injected_pu[pq.node_id] = -pq.p_mw / base_mva
+        node_q_injected_pu[pq.node_id] = -pq.q_mvar / base_mva
     node_p_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.real)
     node_q_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.imag)
 
@@ -1320,6 +1548,20 @@ def _execute_power_flow(run: CanonicalRun) -> None:
             },
         },
     }
+    # V12K-045 (OLTC F2): surface the regulator decision trace only when the
+    # OLTC control loop actually ran (additive — non-OLTC runs unchanged).
+    if oltc_trace is not None:
+        run.raw_result["oltc_control"] = oltc_trace
+
+    # V12K-046 (OLTC G1/G2/G3): opt-in OLTC studies computed on the same pf_input
+    # (reuse — no duplicated input builder). Additive: only when requested via
+    # run.options["oltc_study"]; the engines restore the tap state they mutate.
+    oltc_study = run.options.get("oltc_study")
+    if oltc_study:
+        study_result = _run_oltc_study(oltc_study, pf_input, _solve_once, run.options)
+        if study_result is not None:
+            run.raw_result[study_result[0]] = study_result[1]
+
     run.white_box_trace = _build_power_flow_trace_steps(solution)
     run.power_flow_trace = {
         "solver_version": f"load-flow-{solver_method}-v1",
@@ -1353,6 +1595,8 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         "final_iterations_count": solution.iterations,
         "catalog_context": _build_snapshot_catalog_context(run.snapshot or {}),
     }
+    if oltc_trace is not None:
+        run.power_flow_trace["oltc_control"] = oltc_trace
 
 
 def _build_power_flow_trace_steps(solution) -> list[dict[str, Any]]:
@@ -1466,7 +1710,18 @@ def build_results_index(run: CanonicalRun) -> dict[str, Any]:
                     {"key": "ikss_ka", "label_pl": "Ik''", "unit": "kA"},
                     {"key": "ip_ka", "label_pl": "ip", "unit": "kA"},
                     {"key": "ith_ka", "label_pl": "Ith", "unit": "kA"},
+                    {"key": "ib_ka", "label_pl": "Ib", "unit": "kA"},
+                    {"key": "ik_ka", "label_pl": "Ik", "unit": "kA"},
                     {"key": "sk_mva", "label_pl": "Sk''", "unit": "MVA"},
+                    {"key": "rk_ohm", "label_pl": "Rk", "unit": "ohm"},
+                    {"key": "xk_ohm", "label_pl": "Xk", "unit": "ohm"},
+                    {"key": "zk_ohm", "label_pl": "|Zk|", "unit": "ohm"},
+                    {"key": "xr_ratio", "label_pl": "X/R"},
+                    {"key": "kappa", "label_pl": "kappa"},
+                    {"key": "c_factor", "label_pl": "c"},
+                    {"key": "un_kv", "label_pl": "Un", "unit": "kV"},
+                    {"key": "tk_s", "label_pl": "tk", "unit": "s"},
+                    {"key": "i2t_ka2s", "label_pl": "I2t", "unit": "kA2s"},
                     {"key": "reporting_status", "label_pl": "Status raportowy"},
                     {"key": "proof_status", "label_pl": "Status uzasadnienia"},
                     {"key": "proof_ref", "label_pl": "Identyfikator uzasadnienia"},
@@ -1609,16 +1864,52 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
     result_v1 = raw_result.get("result_v1", {})
     graph_branches = (raw_result.get("graph") or {}).get("branches", {})
     branch_current_ka = raw_result.get("branch_current_ka", {})
+    node_voltage_kv = raw_result.get("node_voltage_kv", {})
+    # LF-KONTRAKT (V12K-161): mapa napięć węzłów w p.u. (z FROZEN
+    # ``result_v1.bus_results``) — potrzebna do deterministycznej pochodnej ΔU%
+    # (różnica potencjałów końców gałęzi), analogicznie jak ``loading_pct``
+    # korzysta z prądu i obciążalności. Zero nowej fizyki: solver już policzył
+    # napięcia węzłów, tu WYŁĄCZNIE ich różnica.
+    node_u_pu = {
+        b["bus_id"]: b.get("v_pu")
+        for b in result_v1.get("bus_results", [])
+        if b.get("bus_id") is not None
+    }
     rows = []
     for item in result_v1.get("branch_results", []):
         branch_id = item["branch_id"]
         branch = graph_branches.get(branch_id, {})
         i_ka = branch_current_ka.get(branch_id)
         i_a = i_ka * 1000.0 if i_ka is not None else None
-        s_mva = math.sqrt(item.get("p_from_mw", 0.0) ** 2 + item.get("q_from_mvar", 0.0) ** 2)
+        p_from = item.get("p_from_mw", 0.0)
+        q_from = item.get("q_from_mvar", 0.0)
+        s_mva = math.sqrt(p_from**2 + q_from**2)
         rated_current_a = branch.get("rated_current_a")
         loading_pct = (
             (i_a / rated_current_a * 100.0) if i_a is not None and rated_current_a else None
+        )
+        # LF-KONTRAKT (V12K-161): współczynnik mocy gałęzi — pochodna |P|/|S|
+        # (wzorzec loading_pct). Bez znaku (cosφ jako moduł); gałąź jałowa
+        # (S=0) ⇒ None (uczciwy brak, nie 0/0).
+        cos_phi = (abs(p_from) / s_mva) if s_mva > 0.0 else None
+        # LF-KONTRAKT (V12K-161): spadek napięcia ΔU na gałęzi (linia/kabel) —
+        # różnica potencjałów końców z wyniku solvera. Wartość [kV] =
+        # |U_from|−|U_to|; procent = (u_from−u_to)·100 [% U_n] (różnica w p.u.
+        # jest już znormalizowana do napięcia znamionowego). Brak któregoś
+        # napięcia ⇒ None (uczciwy brak).
+        from_node = branch.get("from_node_id", "")
+        to_node = branch.get("to_node_id", "")
+        u_from_kv = node_voltage_kv.get(from_node)
+        u_to_kv = node_voltage_kv.get(to_node)
+        delta_u_kv = (
+            (u_from_kv - u_to_kv) if (u_from_kv is not None and u_to_kv is not None) else None
+        )
+        u_from_pu = node_u_pu.get(from_node)
+        u_to_pu = node_u_pu.get(to_node)
+        delta_u_pct = (
+            ((u_from_pu - u_to_pu) * 100.0)
+            if (u_from_pu is not None and u_to_pu is not None)
+            else None
         )
         flags: list[str] = []
         if loading_pct is not None and loading_pct > 100.0:
@@ -1635,6 +1926,17 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
                 "p_mw": item.get("p_from_mw"),
                 "q_mvar": item.get("q_from_mvar"),
                 "loading_pct": loading_pct,
+                # LF-KONTRAKT (V12K-161): pass-through składowych strat/końca „to"
+                # WPROST z FROZEN ``PowerFlowBranchResult`` (już policzone przez
+                # solver, tu bez zmian) + pochodne cosφ/ΔU. Straty transformatora
+                # (LOSSES_P_MW) domknięte — dotąd branch_row ich nie niósł.
+                "p_to_mw": item.get("p_to_mw"),
+                "q_to_mvar": item.get("q_to_mvar"),
+                "losses_p_mw": item.get("losses_p_mw"),
+                "losses_q_mvar": item.get("losses_q_mvar"),
+                "cos_phi": cos_phi,
+                "delta_u_kv": delta_u_kv,
+                "delta_u_pct": delta_u_pct,
                 "synthetic": branch.get("synthetic"),
                 "graph_role": branch.get("graph_role"),
                 "flags": flags,
@@ -1644,10 +1946,103 @@ def build_branch_results(run: CanonicalRun) -> dict[str, Any]:
     return {"run_id": str(run.id), "rows": rows}
 
 
+def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
+    """Pelny bilans IEC 60909 punktu zwarcia (program ZWARCIA-PRO F1, addytywnie).
+
+    Wszystkie wielkosci pochodza z FROZEN solvera (ShortCircuitResult.to_dict);
+    tutaj WYLACZNIE deterministyczne projekcje jednostek i wielkosci pochodnych
+    zdefiniowanych norma (klasa przeksztalcen jak A->kA, zero fizyki):
+    - |Zk| = sqrt(Rk^2 + Xk^2) — modul impedancji Thevenina policzonej przez solver,
+    - X/R = 1/(R/X) — odwrotnosc stosunku z solvera (kappa liczy solver),
+    - I2t = Ith^2 * tk — definicja pradu zastepczego cieplnego (IEC 60909-0 par. 12).
+    Starsze wyniki bez pol -> None (uczciwe braki, kontrakt addytywny).
+    """
+    zkk = item.get("zkk_ohm") or {}
+    rk = zkk.get("re")
+    xk = zkk.get("im")
+    zk = math.hypot(rk, xk) if rk is not None and xk is not None else None
+    rx = item.get("rx_ratio")
+    xr = (1.0 / rx) if rx else None
+    ith_a = item.get("ith_a")
+    tk_s = item.get("tk_s")
+    i2t_ka2s = ((ith_a / 1000.0) ** 2 * tk_s) if ith_a is not None and tk_s is not None else None
+    un_v = item.get("un_v")
+    return {
+        "rk_ohm": rk,
+        "xk_ohm": xk,
+        "zk_ohm": zk,
+        "rx_ratio": rx,
+        "xr_ratio": xr,
+        "kappa": item.get("kappa"),
+        "c_factor": item.get("c_factor"),
+        "un_kv": (un_v / 1000.0) if un_v is not None else None,
+        "tk_s": tk_s,
+        "tb_s": item.get("tb_s"),
+        "ib_ka": _amps_to_ka(item.get("ib_a")),
+        "ik_ka": _amps_to_ka(item.get("ik_total_a")),
+        "ik_thevenin_ka": _amps_to_ka(item.get("ik_thevenin_a")),
+        "ik_inverters_ka": _amps_to_ka(item.get("ik_inverters_a")),
+        "i2t_ka2s": i2t_ka2s,
+        # Delta FROZEN V12K-128 (addytywnie): składowe symetryczne impedancji
+        # zastępczej WPROST z solvera (`ShortCircuitResult.to_dict` → z1/z2/z0_ohm
+        # jako complex {re, im}). Z1/Z2 dla wszystkich typów, Z0 tylko dla zwarć
+        # doziemnych (1F/2F+G). Zero fizyki — czysta projekcja pass-through.
+        # Starsze wyniki bez pól → None (uczciwy brak, kontrakt addytywny).
+        "z1_ohm": item.get("z1_ohm"),
+        "z2_ohm": item.get("z2_ohm"),
+        "z0_ohm": item.get("z0_ohm"),
+    }
+
+
+def _sc_rozplyw_galeziowy(
+    item: dict[str, Any],
+    graph_nodes: dict[str, Any],
+    graph_branches: dict[str, Any],
+) -> list[dict[str, Any]] | None:
+    """Rozpływ prądu zwarciowego w gałęziach (ZWARCIA-PRO F4, karta W-C, addytywnie).
+
+    Przenosi `branch_contributions` FROZEN solvera do wiersza kanonicznego. Od
+    V12K-132 (pkt 7 karty właściciela) lista niesie wkłady OBU rodzin źródeł:
+    superpozycja falownikowa (`_build_branch_contributions_for_inverters`) ORAZ
+    rozpływ prądu od źródła zastępczego (Thevenin / sieć nadrzędna,
+    `_build_branch_contributions_for_thevenin`, source_id="THEVENIN_GRID").
+    WYŁĄCZNIE projekcje prezentacyjne (A→kA, nazwy z grafu przebiegu) — zero
+    fizyki. Kierunek ("from_to"/"to_from") wprost z solvera. Sort deterministyczny
+    (branch_id, source_id). Starsze wyniki bez pola → None (uczciwy brak);
+    pusta lista = policzono, brak wkładów w żadnej gałęzi (sieć bez źródła
+    zastępczego i bez falowników niosących prąd).
+    """
+    raw = item.get("branch_contributions")
+    if raw is None:
+        return None
+    flows: list[dict[str, Any]] = []
+    for entry in raw:
+        branch_id = entry.get("branch_id")
+        branch = graph_branches.get(branch_id, {})
+        from_id = entry.get("from_node_id")
+        to_id = entry.get("to_node_id")
+        flows.append(
+            {
+                "branch_id": branch_id,
+                "branch_name": branch.get("name") or branch_id,
+                "source_id": entry.get("source_id"),
+                "from_node_id": from_id,
+                "from_node_name": graph_nodes.get(from_id, {}).get("name") or from_id,
+                "to_node_id": to_id,
+                "to_node_name": graph_nodes.get(to_id, {}).get("name") or to_id,
+                "i_ka": _amps_to_ka(entry.get("i_contrib_a")),
+                "direction": entry.get("direction"),
+            }
+        )
+    flows.sort(key=lambda flow: (flow["branch_id"] or "", flow["source_id"] or ""))
+    return flows
+
+
 def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         return {"run_id": str(run.id), "rows": []}
     graph_nodes = ((run.raw_result or {}).get("graph") or {}).get("nodes", {})
+    graph_branches = ((run.raw_result or {}).get("graph") or {}).get("branches", {})
     rows = []
     for item in (run.raw_result or {}).get("results", []):
         target_id = item.get("fault_node_id")
@@ -1661,7 +2056,16 @@ def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
                 "ip_ka": _amps_to_ka(item.get("ip_a")),
                 "ith_ka": _amps_to_ka(item.get("ith_a")),
                 "sk_mva": item.get("sk_mva"),
+                **_sc_pelny_bilans(item),
+                # ZWARCIA-PRO F4 (karta W-C): rozpływ prądu zwarciowego w gałęziach
+                # (pole addytywne — starsze wyniki bez pola → None).
+                "branch_contributions": _sc_rozplyw_galeziowy(item, graph_nodes, graph_branches),
                 "fault_type": item.get("short_circuit_type"),
+                # GAP passthrough (V12K-128): wymóg/źródło sieci zerowej Z0 przenoszone
+                # do wiersza kanonicznego (konsument read-only wie, czy Z0 dotyczy i
+                # skąd pochodzi). Starszy wynik bez pól → None (uczciwy brak).
+                "requires_z0": item.get("requires_z0"),
+                "z0_source": item.get("z0_source"),
                 "analysis_type": item.get("analysis_type")
                 or (run.raw_result or {}).get("analysis_type"),
                 "reporting_status": item.get("reporting_status")
@@ -1733,11 +2137,23 @@ def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
     result = (run.raw_result or {}).get("result") or {}
     if not result:
         return {"run_id": str(run.id), "rows": []}
+    # Karta F-K4 faza 3: wynik niesie IDENTYFIKATORY elementow, ale nie ich RODZAJ,
+    # a bez rodzaju warstwa prezentacji nie moze zaznaczyc elementu w modelu (petla
+    # decyzji „od wyniku do przyczyny" byla przez to niemozliwa). Rozstrzygamy rodzaj
+    # ze snapshotu biegu — addytywnie, bez dotykania kontraktu solvera. Brak wpisu w
+    # snapshocie daje None, nigdy rodzaj domyslny (zero zgadywania).
+    # `getattr`, bo widok jest wolany takze na atrapach biegu w testach kontraktu
+    # (SimpleNamespace bez snapshotu) — brak snapshotu daje pusty indeks, czyli None.
+    indeks_rodzajow = zbuduj_indeks_rodzajow(getattr(run, "snapshot", None))
     return {
         "run_id": str(run.id),
         "rows": [
             {
                 **result,
+                "source_kind": rodzaj_elementu(result.get("source_id"), indeks=indeks_rodzajow),
+                "faulted_element_kind": rodzaj_elementu(
+                    result.get("faulted_element_id"), indeks=indeks_rodzajow
+                ),
                 "proof_ref": (run.raw_result or {}).get("proof_ref"),
                 "proof_status": (run.raw_result or {}).get("proof_status"),
                 "proof_status_pl": (run.raw_result or {}).get("proof_status_pl"),
@@ -1749,6 +2165,36 @@ def build_dynamic_stability_results(run: CanonicalRun) -> dict[str, Any]:
                 "reporting_limitations": (run.raw_result or {}).get("reporting_limitations", []),
             }
         ],
+    }
+
+
+def build_dynamic_stability_time_series(run: CanonicalRun) -> dict[str, Any]:
+    """Szereg czasowy przebiegu stabilności (U(t)/f(t)) — na żądanie.
+
+    Zwraca przebieg zapisany w `raw_result.time_series` dla biegów, które go
+    posiadają. Starsze biegi (sprzed wystawienia szeregu) → `has_time_series=False`
+    z pustym przebiegiem (uczciwy stan zerowy w UI). Nie wchodzi do domyślnej
+    odpowiedzi wyników — endpoint dedykowany, by nie pompować rozmiaru payloadu.
+    """
+    empty: dict[str, Any] = {
+        "run_id": str(run.id),
+        "has_time_series": False,
+        "time_unit": "s",
+        "quantities": [],
+        "points": [],
+    }
+    if run.analysis_type != "dynamic_stability":
+        return empty
+    time_series = (run.raw_result or {}).get("time_series")
+    if not time_series or not time_series.get("points"):
+        return empty
+    return {
+        "run_id": str(run.id),
+        "has_time_series": True,
+        "time_unit": time_series.get("time_unit", "s"),
+        "criteria_version": time_series.get("criteria_version"),
+        "quantities": list(time_series.get("quantities") or []),
+        "points": list(time_series.get("points") or []),
     }
 
 
@@ -1815,13 +2261,23 @@ def _build_snapshot_graph_element_context(
         if not ref_id:
             continue
         tags = raw_bus.get("tags") or []
-        meta = raw_bus.get("meta") if isinstance(raw_bus.get("meta"), dict) else {}
-        skip_short_circuit_target = (
-            "helper_bus" in tags
-            or ("/section/" in ref_id and ref_id.endswith("/bus_sn"))
-            or meta.get("render_on_sld") is False
-            or meta.get("show_in_project_tree") is False
-        )
+        # Celem zwarcia jest KAZDA szyna modelu poza jawnie pomocniczymi
+        # (tag `helper_bus` — wezly podzialu magistrali i punkty techniczne,
+        # ktore nie sa fizyczna szyna rozdzielni).
+        #
+        # V12K-184 — usuniete dwa bledne kryteria:
+        #  1. `"/section/" in ref_id and ref_id.endswith("/bus_sn")` wykluczalo
+        #     GLOWNA szyne sekcji SN GPZ (`add_grid_source_sn`) — czyli punkt, w
+        #     ktorym moc zwarciowa jest podstawa doboru rozdzielni (Icw/Idyn pol)
+        #     i nastaw zabezpieczen. Dowod: companion sieci demonstracyjnej mial
+        #     14 szyn wynikowych i ANI JEDNEJ szyny GPZ. Reguly na wzorzec
+        #     ref_id nie ma w zadnym kontrakcie — byla ad-hoc.
+        #  2. `render_on_sld` / `show_in_project_tree` to atrybuty PREZENTACJI;
+        #     sterowanie nimi zakresem obliczen odwraca separacje warstw (o tym,
+        #     czy liczymy zwarcie, decyduje rola elektryczna wezla, nie jego
+        #     widocznosc na schemacie). Szyny, ktore te flagi mialy wylaczyc, i
+        #     tak nosza `helper_bus`.
+        skip_short_circuit_target = "helper_bus" in tags
         node_context[_graph_id_from_ref(ref_id)] = {
             "element_id": ref_id,
             "element_type": "BUS",
@@ -1853,24 +2309,9 @@ def _build_snapshot_graph_element_context(
             "synthetic": False,
         }
 
-    for raw_source in snapshot.get("sources") or []:
-        if not isinstance(raw_source, dict):
-            continue
-        ref_id = str(raw_source.get("ref_id") or "")
-        if not ref_id:
-            continue
-        node_context[_graph_id_from_ref(f"_gnd_{ref_id}")] = {
-            "element_id": ref_id,
-            "element_type": "SOURCE",
-            "synthetic": True,
-            "graph_role": "SOURCE_GROUND",
-        }
-        branch_context[_graph_id_from_ref(f"_zsrc_{ref_id}")] = {
-            "element_id": ref_id,
-            "element_type": "SOURCE",
-            "synthetic": True,
-            "graph_role": "SOURCE_IMPEDANCE",
-        }
+    # Zasilanie systemowe nie tworzy juz wezla/galezi w grafie — od V12K-184 jest
+    # bocznikiem Y_Q = 1/Z_Q w wezle przylaczenia (IEC 60909-0 §3.2), wiec nie ma
+    # syntetycznych elementow do opisania w kontekscie snapshotu.
 
     return {
         "nodes": node_context,
@@ -2166,6 +2607,105 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
                     "reporting_status": raw_result.get("reporting_status"),
                 }
             )
+        # F9.6 (c): resultset v1 nie niosla elementow galeziowych dla
+        # LOAD_FLOW (luka wykryta w F9.5) - flow_overlay_probe (spec Sec14.2)
+        # czyta P_MW/Q_Mvar/I_A z overlay.elements[ref].metrics, ktore
+        # domain/result_builder_v1.py::_extract_element_metrics wyprowadza
+        # z kluczy "p_from_mw"/"q_from_mvar"/"i_a" w `values`. build_branch_
+        # results() (WHITE BOX, uzywana identycznie przez inny endpoint,
+        # api/canonical_run_views.py::build_branch_results_response) zwraca
+        # "p_mw"/"q_mvar" - aliasujemy do kluczy rozpoznawanych przez mape
+        # metryk (juz istniejacych tam dla p_injected_mw/p_from_mw), bez
+        # zmiany build_branch_results ani PowerFlowResult (Frozen Result API,
+        # rule 6 - to jest wylacznie interpretacja istniejacego wyniku).
+        # V12K-089 (OLTC overlay wynikowy): pozycja koncowa zaczepu i liczba
+        # przelaczen z `oltc_control` na gałęzi transformatora — dane overlay
+        # (glif OLTC odswiezony po obliczeniu). Additive/exclude_none: tylko dla
+        # transformatorow z realna regulacja (final_positions), reszta bez zmian
+        # (determinizm zachowany). Interpretacja istniejacego wyniku solvera —
+        # PowerFlowResult FROZEN nietkniety.
+        _oltc_ctrl = raw_result.get("oltc_control") or {}
+        _oltc_final = _oltc_ctrl.get("final_positions") or {}
+        _oltc_switches = _oltc_ctrl.get("switch_counts") or {}
+        for branch_row in build_branch_results(run).get("rows", []):
+            _branch_id = branch_row.get("branch_id")
+            _values: dict[str, Any] = {
+                **branch_row,
+                "p_from_mw": branch_row.get("p_mw"),
+                "q_from_mvar": branch_row.get("q_mvar"),
+            }
+            if _branch_id in _oltc_final:
+                _values["tap_position"] = _oltc_final[_branch_id]
+                if _branch_id in _oltc_switches:
+                    _values["tap_switch_count"] = _oltc_switches[_branch_id]
+            element_results.append(
+                {
+                    "element_ref": branch_row.get("element_id") or branch_row.get("branch_id"),
+                    "element_type": "Branch",
+                    "solver_ref": branch_row.get("branch_id"),
+                    "values": _values,
+                    "proof_ref": raw_result.get("proof_ref"),
+                    "proof_status": raw_result.get("proof_status"),
+                    "reporting_status": raw_result.get("reporting_status"),
+                }
+            )
+        # LF-KONTRAKT (V12K-161): emisja metryk wtrysku źródeł/DER (P/Q/S/cosφ)
+        # w element_results — dotąd ścieżka PF wystawiała TYLKO Bus+Branch, więc
+        # frontendowy szablon `load_flow.source` (resultLabelTemplates.ts) nie
+        # miał danych. Wartość = BILANS WĘZŁA źródłowego: injekcja netto w węźle,
+        # w którym stoi źródło, WPROST z FROZEN wyniku solvera
+        # (``result_v1.bus_results[node].p_injected_mw/q_injected_mvar`` —
+        # konwencja injekcyjna: +generacja/wtłaczanie). Dla węzła bilansującego
+        # jest to moc sieci zewnętrznej (slack_power), dla węzła PQ z DER —
+        # injekcja netto węzła. S i cosφ to deterministyczne wielkości pochodne
+        # (wzorzec loading_pct: |S|=hypot(P,Q), cosφ=|P|/|S|) — ZERO nowej
+        # fizyki, ZERO heurystyk. Ref = ref_id źródła (przestrzeń refów overlay
+        # identyczna z symbolem SLD źródła/DER). Sortowanie element_results
+        # (po element_ref) w builderze niżej — determinizm zachowany.
+        _bus_injection: dict[str, tuple[Any, Any]] = {
+            b["bus_id"]: (b.get("p_injected_mw"), b.get("q_injected_mvar"))
+            for b in result_v1.get("bus_results", [])
+            if b.get("bus_id") is not None
+        }
+        snapshot = run.snapshot or {}
+        _source_rows: list[dict[str, Any]] = []
+        for _collection in ("sources", "generators"):
+            for _src in snapshot.get(_collection) or []:
+                if not isinstance(_src, dict):
+                    continue
+                _src_ref = str(_src.get("ref_id") or "")
+                _bus_ref = str(_src.get("bus_ref") or "")
+                if not _src_ref or not _bus_ref:
+                    continue
+                _p, _q = _bus_injection.get(_graph_id_from_ref(_bus_ref), (None, None))
+                if _p is None and _q is None:
+                    continue
+                _p_val = float(_p) if _p is not None else 0.0
+                _q_val = float(_q) if _q is not None else 0.0
+                _s_val = math.hypot(_p_val, _q_val)
+                _src_values: dict[str, Any] = {
+                    "p_injected_mw": _p,
+                    "q_injected_mvar": _q,
+                    "s_mva": _s_val,
+                    "bus_ref": _bus_ref,
+                }
+                if _s_val > 0.0:
+                    _src_values["cos_phi"] = abs(_p_val) / _s_val
+                _source_rows.append(
+                    {
+                        "element_ref": _src_ref,
+                        "element_type": "Source",
+                        "solver_ref": _graph_id_from_ref(_bus_ref),
+                        "values": _src_values,
+                        "proof_ref": raw_result.get("proof_ref"),
+                        "proof_status": raw_result.get("proof_status"),
+                        "reporting_status": raw_result.get("reporting_status"),
+                    }
+                )
+        # Sort deterministyczny po ref źródła (niezależny od kolejności kolekcji
+        # w snapshocie) — sygnatura wyników liczona nad kolejnością listy.
+        _source_rows.sort(key=lambda r: r["element_ref"])
+        element_results.extend(_source_rows)
         global_results = {
             **(result_v1.get("summary", {}) or {}),
             "analysis_type": "load_flow",
@@ -2177,6 +2717,17 @@ def build_execution_result_set(run: CanonicalRun) -> dict[str, Any]:
             "applicability_status": raw_result.get("applicability_status"),
             "dopuszczalnosc_raportowa": raw_result.get("dopuszczalnosc_raportowa", False),
         }
+        # V12K-045/046 (OLTC H2): surface the regulator trace and study results so
+        # the UI can read them from the run result set. Additive — each key is
+        # present only when the corresponding feature ran (determinism preserved).
+        for oltc_key in (
+            "oltc_control",
+            "oltc_sweep",
+            "oltc_annual_profile",
+            "oltc_optimization",
+        ):
+            if raw_result.get(oltc_key) is not None:
+                global_results[oltc_key] = raw_result[oltc_key]
     elif run.analysis_type == "phase_state_sn":
         phase_rows = build_phase_state_results(run).get("rows", [])
         for row in phase_rows:

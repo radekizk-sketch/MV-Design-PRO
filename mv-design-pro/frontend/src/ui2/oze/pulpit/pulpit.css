@@ -1,0 +1,112 @@
+/*
+ * Style pulpitu instalacji OZE (karta P47). Kolory WYŁĄCZNIE przez tokeny
+ * --mvd-* (theme/tokens.css) — zero literałów hex. Uzupełnia współdzielone
+ * klasy z macierz.css (mvd-oze, mvd-oze-panel, mvd-oze-komorka, werdykty).
+ */
+
+.mvd-oze-pulpit-uklad {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .mvd-oze-pulpit-uklad {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ---- lewa lista modułów ---- */
+.mvd-oze-pulpit-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  box-shadow: var(--mvd-shadow);
+  background: var(--mvd-panel);
+  padding: 8px;
+}
+.mvd-oze-pulpit-lista-h {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+  padding: 2px 4px 6px;
+}
+.mvd-oze-pulpit-poz {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  text-align: left;
+  border: 1px solid var(--mvd-line);
+  border-radius: 5px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 8px;
+  cursor: pointer;
+  font: inherit;
+}
+.mvd-oze-pulpit-poz:hover {
+  border-color: var(--mvd-accent);
+}
+.mvd-oze-pulpit-poz[aria-pressed="true"] {
+  border-color: var(--mvd-accent);
+  background: var(--mvd-sel);
+}
+.mvd-oze-pulpit-poz-nazwa {
+  font-weight: 600;
+  font-size: 12.5px;
+}
+.mvd-oze-pulpit-poz-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+.mvd-oze-pulpit-poz-klasa {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+
+/* ---- prawa karta modułu ---- */
+.mvd-oze-pulpit-panel {
+  min-width: 0;
+}
+.mvd-oze-pulpit-karta {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* ---- listy wpisów analiz (węzły siły sieci / źródła adekwatności Q) ----
+   Reużywają kafelka `mvd-oze-slad-krok`, ale bez numeracji kroków wywodu. */
+.mvd-oze-analiza-lista {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ---- wyróżnienie wiersza węzła powiązanego z wybranym modułem (P47b) ----
+   Obwódka tokenem --mvd-accent; zero literałów kolorów. */
+.mvd-oze-wyrozniony {
+  outline: 2px solid var(--mvd-accent);
+  outline-offset: 1px;
+  border-radius: 5px;
+  background: var(--mvd-sel);
+}
+.mvd-oze-wyroznienie-brak {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  color: var(--mvd-muted);
+}
+.mvd-oze-wyroznienie-wezel {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  color: var(--mvd-ink);
+}

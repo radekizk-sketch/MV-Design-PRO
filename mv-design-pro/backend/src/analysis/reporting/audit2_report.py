@@ -17,8 +17,7 @@ INVARIANTS:
 
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from io import BytesIO
 from typing import Any
 
@@ -110,6 +109,7 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
     'PDF rendering unavailable' z metadata jako tekst.
     """
     try:
+        from reportlab.lib import colors as rl_colors
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet
         from reportlab.lib.units import cm
@@ -120,7 +120,6 @@ def render_audit2_report_pdf(ctx: Audit2ReportContext) -> bytes:
             Table,
             TableStyle,
         )
-        from reportlab.lib import colors as rl_colors
     except ImportError:
         # Placeholder gdy reportlab niedostepny.
         return render_audit2_report_text(ctx).encode("utf-8")
@@ -256,7 +255,7 @@ def render_audit2_report_docx(ctx: Audit2ReportContext) -> bytes:
             tbl.rows[i].cells[1].text = str(p.get("summary_pl", ""))[:300]
 
     # Style: Helvetica 10pt for all paragraphs.
-    for section in doc.sections:
+    for _section in doc.sections:
         for para in doc.paragraphs:
             for run in para.runs:
                 if not run.font.name:

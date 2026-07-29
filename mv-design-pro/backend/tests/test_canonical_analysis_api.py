@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import math
 import zipfile
 from datetime import UTC, datetime
 from uuid import uuid4
@@ -215,6 +216,48 @@ def test_domain_operation_snapshot_feeds_analysis_result_and_trace(client: TestC
     assert short_circuit_payload["analysis_case_context"]["case_ref"] == case_id
     assert short_circuit_payload["rows"]
     assert all("element_id" in row for row in short_circuit_payload["rows"])
+    # Pelny bilans IEC 60909 (ZWARCIA-PRO F1): wielkosci FROZEN solvera
+    # przechodza do wierszy kanonicznych (Rk/Xk/|Zk|/X/R/kappa/c/Un/tk/Ib/I2t).
+    wiersz = short_circuit_payload["rows"][0]
+    for pole in (
+        "rk_ohm",
+        "xk_ohm",
+        "zk_ohm",
+        "rx_ratio",
+        "xr_ratio",
+        "kappa",
+        "c_factor",
+        "un_kv",
+        "tk_s",
+        "ib_ka",
+        "ik_ka",
+        "i2t_ka2s",
+    ):
+        assert pole in wiersz, pole
+        assert wiersz[pole] is not None, pole
+    assert wiersz["zk_ohm"] == pytest.approx(
+        math.hypot(wiersz["rk_ohm"], wiersz["xk_ohm"]), rel=1e-9
+    )
+    assert wiersz["xr_ratio"] == pytest.approx(1.0 / wiersz["rx_ratio"], rel=1e-9)
+    assert wiersz["i2t_ka2s"] == pytest.approx(wiersz["ith_ka"] ** 2 * wiersz["tk_s"], rel=1e-9)
+    assert wiersz["kappa"] > 1.0
+    assert wiersz["c_factor"] == pytest.approx(1.10, abs=0.01)
+    # ZWARCIA-PRO F4 (karta W-C): pole addytywne rozpływu gałęziowego obecne w
+    # każdym wierszu; sieć bez falowników → pusta lista (policzono, brak wkładów
+    # falownikowych — kontrakt solvera, zero fabrykacji).
+    for row in short_circuit_payload["rows"]:
+        assert "branch_contributions" in row
+        assert isinstance(row["branch_contributions"], list)
+    # Delta FROZEN V12K-128 (addytywnie): składowe symetryczne Z1/Z2/Z0 wprost
+    # z solvera. Bieg 3F → Z1/Z2 obecne jako complex {re, im}, Z0 nie dotyczy.
+    for pole in ("z1_ohm", "z2_ohm"):
+        assert isinstance(wiersz[pole], dict), pole
+        assert "re" in wiersz[pole] and "im" in wiersz[pole], pole
+    assert wiersz["z0_ohm"] is None
+    # GAP passthrough (V12K-128): wymóg/źródło sieci zerowej Z0 w wierszu
+    # kanonicznym. 3F → Z0 nie dotyczy.
+    assert wiersz["requires_z0"] is False
+    assert wiersz["z0_source"] == "NOT_APPLICABLE"
 
     trace_details = client.get(f"/api/analysis-runs/{run_id}/results/trace")
     assert trace_details.status_code == 200
@@ -345,6 +388,177 @@ def test_analysis_run_snapshot_completes_legacy_station_catalog_loads(
     assert {load["parameter_source"] for load in loads} == {"CATALOG"}
 
 
+def _seed_short_circuit_enm_with_inverter(case_id: str) -> None:
+    """ENM: GPZ na szynie głównej + falownik PV na szynie odbioru (kabel między).
+
+    Zwarcie na szynie głównej → wkład falownika płynie kablem (branch flow),
+    więc wiersz kanoniczny tego punktu niesie niepusty rozpływ gałęziowy.
+    """
+    from enm.models import EnergyNetworkModel
+    from enm.store import set_enm
+
+    set_enm(
+        case_id,
+        EnergyNetworkModel.model_validate(
+            {
+                "header": {
+                    "name": "SC rozplyw galeziowy",
+                    "enm_version": "1.0",
+                    "defaults": {"frequency_hz": 50, "unit_system": "SI"},
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "updated_at": "2024-01-01T00:00:00Z",
+                    "revision": 1,
+                    "hash_sha256": "",
+                },
+                "buses": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000401",
+                        "ref_id": "bus-main",
+                        "name": "Szyna glowna",
+                        "tags": [],
+                        "meta": {},
+                        "voltage_kv": 15.0,
+                        "phase_system": "3ph",
+                    },
+                    {
+                        "id": "00000000-0000-0000-0000-000000000402",
+                        "ref_id": "bus-oze",
+                        "name": "Szyna OZE",
+                        "tags": [],
+                        "meta": {},
+                        "voltage_kv": 15.0,
+                        "phase_system": "3ph",
+                    },
+                ],
+                "branches": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000403",
+                        "ref_id": "branch-oze",
+                        "name": "Kabel OZE",
+                        "tags": [],
+                        "meta": {},
+                        "type": "cable",
+                        "from_bus_ref": "bus-main",
+                        "to_bus_ref": "bus-oze",
+                        "status": "closed",
+                        "catalog_ref": "KABEL_SN_TEST",
+                        "parameter_source": "CATALOG",
+                        "length_km": 0.5,
+                        "r_ohm_per_km": 0.253,
+                        "x_ohm_per_km": 0.073,
+                        "b_siemens_per_km": 2.6e-07,
+                        "rating": {"in_a": 270.0},
+                    }
+                ],
+                "sources": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000404",
+                        "tags": [],
+                        "meta": {},
+                        **gpz_source_record(
+                            ref_id="src-grid",
+                            name="Zasilanie GPZ",
+                            bus_ref="bus-main",
+                            voltage_kv=15.0,
+                            sk3_mva=250.0,
+                            rx_ratio=0.10,
+                        ),
+                    }
+                ],
+                "loads": [],
+                "transformers": [],
+                "generators": [
+                    {
+                        "id": "00000000-0000-0000-0000-000000000405",
+                        "ref_id": "gen-pv",
+                        "name": "Falownik PV",
+                        "tags": [],
+                        "meta": {},
+                        "bus_ref": "bus-oze",
+                        "p_mw": 1.0,
+                        "q_mvar": 0.0,
+                        "gen_type": "pv_inverter",
+                        # Wariant z trafem w torze (Decision #14) — walidator E028/E029
+                        # dopuszcza przyłącze SN; mapowanie SC czyta nameplate (p_mw).
+                        "connection_variant": "DEDICATED_MV_CONNECTION",
+                    }
+                ],
+                "substations": [],
+                "bays": [],
+                "junctions": [],
+                "corridors": [],
+                "measurements": [],
+                "protection_assignments": [],
+                "branch_points": [],
+            }
+        ),
+    )
+
+
+def test_short_circuit_rows_carry_branch_flow_contributions(client: TestClient) -> None:
+    """ZWARCIA-PRO F4 (karta W-C): rozpływ prądu zwarciowego w gałęziach.
+
+    Tor kanoniczny woła FROZEN solver z include_branch_contributions=True, a
+    `build_short_circuit_results` przenosi wkłady gałęziowe ADDYTYWNIE do
+    wierszy (projekcja A→kA + nazwy z grafu przebiegu, kierunek z solvera).
+    Determinizm: ponowny odczyt daje bajtowo identyczne wiersze.
+    """
+    case_id = str(uuid4())
+    _seed_short_circuit_enm_with_inverter(case_id)
+
+    create_run = client.post(
+        f"/api/execution/study-cases/{case_id}/runs",
+        json={"analysis_type": "SC_3F", "solver_input": {}},
+    )
+    assert create_run.status_code == 201
+    run_id = create_run.json()["id"]
+    execute_run = client.post(f"/api/execution/runs/{run_id}/execute")
+    assert execute_run.status_code == 200
+    assert execute_run.json()["status"] == "DONE"
+
+    response = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit")
+    assert response.status_code == 200
+    rows = response.json()["rows"]
+    assert rows
+
+    # Pole addytywne obecne w KAŻDYM wierszu (lista — opcja policzona).
+    for row in rows:
+        assert "branch_contributions" in row
+        assert isinstance(row["branch_contributions"], list)
+
+    # Punkt zwarcia na szynie głównej: wkład falownika z szyny OZE płynie kablem.
+    row_main = next(row for row in rows if row["target_name"] == "Szyna glowna")
+    flows = row_main["branch_contributions"]
+    assert flows, "wkład falownika musi płynąć kablem do punktu zwarcia"
+    for flow in flows:
+        for pole in (
+            "branch_id",
+            "branch_name",
+            "source_id",
+            "from_node_id",
+            "from_node_name",
+            "to_node_id",
+            "to_node_name",
+            "i_ka",
+            "direction",
+        ):
+            assert pole in flow, pole
+        assert flow["i_ka"] > 0
+        assert flow["direction"] in {"from_to", "to_from"}
+    assert any(flow["branch_name"] == "Kabel OZE" for flow in flows)
+    assert any(flow["source_id"] == "gen-pv" for flow in flows)
+
+    # Istniejące wielkości punktu (FROZEN + bilans F1) nietknięte — obecne i dodatnie.
+    assert row_main["ikss_ka"] is not None and row_main["ikss_ka"] > 0
+    assert row_main["ip_ka"] is not None and row_main["ip_ka"] > 0
+    assert row_main["zk_ohm"] is not None and row_main["zk_ohm"] > 0
+
+    # Determinizm odczytu: drugi odczyt → identyczny payload wierszy.
+    response2 = client.get(f"/api/analysis-runs/{run_id}/results/short-circuit")
+    assert response2.status_code == 200
+    assert response2.json()["rows"] == rows
+
+
 def test_analysis_creation_requires_canonical_enm_snapshot(client: TestClient) -> None:
     case_id = str(uuid4())
 
@@ -461,6 +675,207 @@ def test_power_flow_read_and_export_endpoints_use_canonical_run(client: TestClie
     assert "[Content_Types].xml" in names
     assert "xl/workbook.xml" in names
     assert "xl/worksheets/sheet1.xml" in names
+
+
+def test_resultset_v1_includes_branch_elements_for_load_flow(client: TestClient) -> None:
+    """F9.6 (c): `build_execution_result_set` musi wolac `build_branch_results`
+    dla PF, inaczej `/api/execution/runs/{id}/results/v1` nie niesie elementow
+    galeziowych i nakladka przeplywu mocy (F9.5, spec Sec14.2) buduje sie pusta
+    na kazdym realnym przebiegu. Sieć referencyjna: `bus-main` (zrodlo) ->
+    `branch-load` (kabel, from_bus_ref=bus-main) -> `bus-load` (odbior)."""
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
+    assert run_response.status_code == 200
+    run_id = run_response.json()["run_id"]
+
+    # Wartosc referencyjna: ten sam run, inny (juz istniejacy, przetestowany
+    # gdzie indziej) endpoint galeziowy — `build_branch_results_response`.
+    reference_response = client.get(f"/api/analysis-runs/{run_id}/results/branches")
+    assert reference_response.status_code == 200
+    reference_row = next(
+        row for row in reference_response.json()["rows"] if row["element_id"] == "branch-load"
+    )
+
+    resultset_response = client.get(f"/api/execution/runs/{run_id}/results/v1")
+    assert resultset_response.status_code == 200
+    resultset_payload = resultset_response.json()
+
+    branch_elements = [
+        er for er in resultset_payload["element_results"] if er["element_type"] == "Branch"
+    ]
+    assert branch_elements, "resultset v1 musi niesc elementy galeziowe dla LOAD_FLOW"
+    branch_refs = {er["element_ref"] for er in branch_elements}
+    assert "branch-load" in branch_refs
+
+    # F9.6 (f) — dowod PRZEPUSZCZENIA (nie fabrykacji) na realnych danych:
+    # `values` w resultset v1 MUSZA byc DOKLADNIE tym, co juz zwraca
+    # `build_branch_results` (ten sam run, inny endpoint) — zero podmiany
+    # znaku/wartosci przy dolozeniu petli w `build_execution_result_set`.
+    # NAPRAWIONE w F9.8 (2026-07-15): znalezisko powyzej (znak `p_from_mw`
+    # ujemny dla zrodlo->odbior, sprzeczny z fizyka) bylo objawem podwojnej
+    # negacji w `canonical_analysis.py::_execute_power_flow` (PQSpec budowany
+    # wprost z `Node.active_power`, ktory jest w konwencji generacyjnej, a
+    # solver oczekuje konwencji obciazeniowej). Naprawiono konwersja gen->load
+    # NA GRANICY budowy PQSpec (`p_mw=-float(node.active_power or 0.0)`,
+    # analogicznie q). Dowod fizyczny na realnych danych ponizej w
+    # `test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct`.
+    branch_load_values = next(
+        er["values"] for er in branch_elements if er["element_ref"] == "branch-load"
+    )
+    assert branch_load_values["p_mw"] == pytest.approx(reference_row["p_mw"])
+    assert branch_load_values["q_mvar"] == pytest.approx(reference_row["q_mvar"])
+    assert branch_load_values["i_a"] == pytest.approx(reference_row["i_a"])
+    assert branch_load_values["p_mw"] != 0.0
+    assert branch_load_values["i_a"] > 0.0
+
+    overlay_elements = resultset_payload["overlay_payload"]["elements"]
+    assert "branch-load" in overlay_elements
+    branch_metrics = overlay_elements["branch-load"]["metrics"]
+    assert branch_metrics["P_MW"]["value"] == pytest.approx(branch_load_values["p_mw"])
+    assert branch_metrics["Q_Mvar"]["value"] == pytest.approx(branch_load_values["q_mvar"])
+    assert branch_metrics["I_A"]["value"] == pytest.approx(branch_load_values["i_a"])
+
+
+def test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct(
+    client: TestClient,
+) -> None:
+    """F9.8: independent physical proof of the correct sign convention on real
+    resultset v1 data (closes F9.6 (f) / F9.5 arrow-direction finding).
+
+    Network: `bus-main` (slack, source) -[branch-load, from=bus-main,
+    to=bus-load]-> `bus-load` (pure PQ load, p_mw=1.2, q_mvar=0.35). Basic
+    circuit theory (independent of any internal solver sign convention):
+    active power flowing INTO a bus that only consumes power (no local
+    generation) must have `p_from_mw > 0` in the branch's own from->to
+    orientation, and the source-side bus (held at the slack setpoint) must sit
+    at a strictly higher |V| than the loaded bus downstream of a resistive/
+    inductive cable (voltage drop in the direction of flow). This does not
+    depend on re-deriving the PQSpec sign convention — it only uses the
+    physical fact that a load sink cannot be a net source.
+    """
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
+    assert run_response.status_code == 200
+    run_id = run_response.json()["run_id"]
+
+    resultset_response = client.get(f"/api/execution/runs/{run_id}/results/v1")
+    assert resultset_response.status_code == 200
+    resultset_payload = resultset_response.json()
+
+    branch_elements = {
+        er["element_ref"]: er
+        for er in resultset_payload["element_results"]
+        if er["element_type"] == "Branch"
+    }
+    bus_elements = {
+        er["element_ref"]: er
+        for er in resultset_payload["element_results"]
+        if er["element_type"] == "Bus"
+    }
+
+    branch_values = branch_elements["branch-load"]["values"]
+    # Power must flow FROM the source TOWARDS the load (from_bus_ref=bus-main,
+    # to_bus_ref=bus-load) — a pure sink cannot backfeed its only supply.
+    assert branch_values["p_from_mw"] > 0.0, (
+        "expected p_from_mw > 0 (source -> load); got "
+        f"{branch_values['p_from_mw']} — sign convention regression"
+    )
+
+    v_main = bus_elements["bus-main"]["values"]["u_pu"]
+    v_load = bus_elements["bus-load"]["values"]["u_pu"]
+    assert v_load < v_main, (
+        f"expected voltage drop towards the load (v_pu(bus-load)={v_load} < "
+        f"v_pu(bus-main)={v_main})"
+    )
+
+
+def test_resultset_v1_load_flow_emits_source_injection_and_derived_branch_metrics(
+    client: TestClient,
+) -> None:
+    """LF-KONTRAKT (V12K-161): domknięcie kontraktu wyników rozpływu.
+
+    Sieć referencyjna (`_seed_power_flow_enm`): `src-grid` (sieć zewnętrzna GPZ)
+    @ `bus-main` (slack) -[`branch-load`, kabel]-> `bus-load` (odbior 1,2 MW /
+    0,35 Mvar). Dowodzimy NA REALNYCH DANYCH, że:
+      (a) element_results niesie wiersz źródła `src-grid` z P/Q/S/cosφ, a P jest
+          bilansem węzła źródłowego: P_src ≈ P_load + straty czynne gałęzi;
+      (b) S = hypot(P,Q) i cosφ = |P|/S dokładnie (pochodne, nie fabrykacja);
+      (c) gałąź niesie straty czynne (LOSSES_P_MW) oraz pochodne ΔU% i cosφ,
+          a ΔU% = (u_from − u_to)·100 z napięć węzłów wyniku solvera.
+    """
+    case_id = str(uuid4())
+    _seed_power_flow_enm(client, case_id)
+
+    run_response = client.post(f"/api/cases/{case_id}/runs/power-flow")
+    assert run_response.status_code == 200
+    run_id = run_response.json()["run_id"]
+
+    payload = client.get(f"/api/execution/runs/{run_id}/results/v1").json()
+    element_results = payload["element_results"]
+
+    sources = {er["element_ref"]: er for er in element_results if er["element_type"] == "Source"}
+    buses = {er["element_ref"]: er for er in element_results if er["element_type"] == "Bus"}
+    branches = {er["element_ref"]: er for er in element_results if er["element_type"] == "Branch"}
+
+    # (a) źródło wyemitowane, injekcja dodatnia (generacja do sieci).
+    assert "src-grid" in sources, "resultset v1 musi niesc wiersz zrodla dla LOAD_FLOW"
+    src_values = sources["src-grid"]["values"]
+    p_src = src_values["p_injected_mw"]
+    q_src = src_values["q_injected_mvar"]
+    s_src = src_values["s_mva"]
+    assert p_src > 0.0, f"zrodlo zasilajace odbior musi wtlaczac P>0, jest {p_src}"
+
+    # (b) wielkosci pochodne DOKLADNIE ze wzorow (zero heurystyk).
+    assert s_src == pytest.approx(math.hypot(p_src, q_src))
+    assert src_values["cos_phi"] == pytest.approx(abs(p_src) / s_src)
+
+    # (a cd.) bilans wezla zrodlowego: P_src = P_odbioru + straty czynne galezi.
+    branch_values = branches["branch-load"]["values"]
+    losses_p = branch_values["losses_p_mw"]
+    assert losses_p is not None and losses_p > 0.0
+    assert p_src == pytest.approx(1.2 + losses_p, rel=1e-6)
+
+    # (c) straty biernej tez obecne (pass-through FROZEN), oraz cosφ galezi.
+    assert branch_values["losses_q_mvar"] is not None
+    assert branch_values["cos_phi"] == pytest.approx(
+        abs(branch_values["p_mw"]) / branch_values["s_mva"]
+    )
+
+    # (c cd.) ΔU% = (u_from − u_to)·100 z napiec wezlow wyniku solvera; spadek
+    # w kierunku odbioru (bus-load ponizej bus-main).
+    u_main = buses["bus-main"]["values"]["u_pu"]
+    u_load = buses["bus-load"]["values"]["u_pu"]
+    assert branch_values["delta_u_pct"] == pytest.approx((u_main - u_load) * 100.0)
+    assert branch_values["delta_u_pct"] > 0.0
+    # ΔU[kV] spojne z napieciami wezlow (u_kv) z tych samych wierszy Bus.
+    ukv_main = buses["bus-main"]["values"]["u_kv"]
+    ukv_load = buses["bus-load"]["values"]["u_kv"]
+    assert branch_values["delta_u_kv"] == pytest.approx(ukv_main - ukv_load)
+
+
+def test_resultset_v1_load_flow_source_and_branch_metrics_are_deterministic(
+    client: TestClient,
+) -> None:
+    """LF-KONTRAKT (V12K-161): dwa niezalezne biegi tej samej sieci ⇒ identyczne
+    wiersze zrodla i galezi (Rule 7 determinizm; addytywne pola nie psuja
+    powtarzalnosci)."""
+    values_by_run = []
+    for _ in range(2):
+        case_id = str(uuid4())
+        _seed_power_flow_enm(client, case_id)
+        run_id = client.post(f"/api/cases/{case_id}/runs/power-flow").json()["run_id"]
+        payload = client.get(f"/api/execution/runs/{run_id}/results/v1").json()
+        picked = {
+            er["element_ref"]: er["values"]
+            for er in payload["element_results"]
+            if er["element_ref"] in ("src-grid", "branch-load")
+        }
+        values_by_run.append(picked)
+    assert values_by_run[0] == values_by_run[1]
 
 
 def test_canonical_run_persists_outside_process_memory(client: TestClient) -> None:
@@ -593,6 +1008,26 @@ def test_dynamic_stability_run_exposes_results_and_automation_trace(client: Test
     automation_payload = automation_trace.json()
     assert len(automation_payload["rows"]) == 5
     assert automation_payload["rows"][-1]["event_type"] == "DYNAMIC_STABILITY_EVALUATED"
+
+    # Domyślna odpowiedź wyników NIE niesie szeregu czasowego (na żądanie).
+    assert "time_series" not in stability_payload["rows"][0]
+
+    # Szereg czasowy przebiegu — osobny endpoint, na żądanie.
+    time_series = client.get(f"/api/analysis-runs/{run_id}/results/dynamic-stability/time-series")
+    assert time_series.status_code == 200
+    ts_payload = time_series.json()
+    assert ts_payload["has_time_series"] is True
+    assert ts_payload["time_unit"] == "s"
+    assert {q["key"] for q in ts_payload["quantities"]} == {"voltage_pu", "frequency_pu"}
+    assert {q["unit"] for q in ts_payload["quantities"]} == {"p.u."}
+    assert len(ts_payload["points"]) > 0
+    assert set(ts_payload["points"][0].keys()) == {"t_s", "voltage_pu", "frequency_pu"}
+
+    # Determinizm: powtórne pobranie daje bajt-w-bajt identyczny przebieg.
+    time_series_repeat = client.get(
+        f"/api/analysis-runs/{run_id}/results/dynamic-stability/time-series"
+    )
+    assert time_series_repeat.json()["points"] == ts_payload["points"]
 
 
 def test_source_compliance_run_exposes_reportable_statuses(client: TestClient) -> None:

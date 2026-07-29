@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 from datetime import UTC
 from typing import Any
 
 from api.dependencies import get_uow_factory
 from fastapi import APIRouter, Depends, Query
+from infrastructure.persistence.unit_of_work import UnitOfWork
 
 router = APIRouter(prefix="/analysis-runs", tags=["analysis-runs"])
 

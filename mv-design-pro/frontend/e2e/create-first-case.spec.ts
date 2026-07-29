@@ -159,6 +159,19 @@ test('utworzenie pierwszego projektu przechodzi deterministycznie do E-01 bez fr
 
   await page.goto('/#dashboard', { waitUntil: 'commit' });
 
+  // Naprawa 2026-07-17 (diagnoza fałszywego „niedeterminizmu"): spec nie
+  // czekał na start aplikacji — przy zimnym starcie dev-serwera pierwsza
+  // asercja (10 s) mijała ZANIM pulpit się zamontował, a snapshot błędu
+  // (robiony przy timeout) pokazywał już pełny render, co czytało się jak
+  // wyścig powierzchni. Przepływ pulpitu (dashboard-new-project → dialog
+  // „Metadane projektu") istnieje w całości — brakowało wyłącznie
+  // deterministycznej bramki startowej `app-ready` (wzorzec pozostałych
+  // speców).
+  await page.waitForSelector('[data-testid="app-ready"]', {
+    state: 'attached',
+    timeout: 30_000,
+  });
+
   await expect(page.getByTestId('project-dashboard-surface')).toBeVisible();
   await page.getByTestId('dashboard-new-project').click();
 
@@ -166,9 +179,9 @@ test('utworzenie pierwszego projektu przechodzi deterministycznie do E-01 bez fr
   await page.getByTestId('project-metadata-name').fill('Projekt 1');
   await page.getByTestId('project-metadata-save').click();
 
-  await expect(page.getByTestId('sld-workspace-container')).toBeVisible();
+  await expect(page.getByTestId('sld-canvas-v3-workspace')).toBeVisible();
   await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Projekt 1');
-  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('nie wybrano');
+  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('do obliczenia');
   await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 
   const uniqueWarnCount = guards.warningCounts.size;

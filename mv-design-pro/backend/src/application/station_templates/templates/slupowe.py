@@ -52,7 +52,9 @@ def _slupowa(
             transformer_options=TR_OPTIONS_SMALL,
             sn_switchgear_manufacturers=("ZPUE_WLOSZCZOWA", "ELEKTROMETAL"),
             sn_switchgear_default="ZPUE_WLOSZCZOWA",
-            sn_bays_count=TemplateParamInt(default=1, min_value=1, max_value=2, label_pl="Liczba pól SN"),
+            sn_bays_count=TemplateParamInt(
+                default=1, min_value=1, max_value=2, label_pl="Liczba pól SN"
+            ),
             sn_bay_roles=(BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
             nn_feeders_count=TemplateParamInt(

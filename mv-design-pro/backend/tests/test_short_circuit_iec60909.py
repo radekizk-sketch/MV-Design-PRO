@@ -303,6 +303,19 @@ def test_sk_matches_formula():
 
 
 def test_post_processing_quantities_match_ikss_formula():
+    """RE-BASELINE (audyt fizyki, fala G, 2026-07): poprzedni test utrwalał
+    defekt W1 (pominięte współczynniki m,n) — zakładał ``ith_a = ikss*sqrt(tk_s)``,
+    formułę WYMIAROWO NIESPÓJNĄ (sqrt(tk_s) ma jednostkę sqrt(s), a I_th musi być
+    prądem [A]) i sprzeczną z udokumentowaną normą (``docs/proof/
+    NORMATIVE_COMPLETION_PACK_IEC_60909.md`` §4.7, ``docs/proof_engine/
+    EQUATIONS_IEC60909_SC3F.md`` EQ_SC3F_008: I_th = I_k''·sqrt(m+n)).
+
+    Poprawna formuła (IEC 60909-0 §4.7/§12): I_th = I_k''·sqrt(m+n), gdzie m to
+    postać zamknięta (norma, publiczna — jak już istniejący wzór na kappa w tym
+    samym solverze): m = 1/(2f·tk·ln(κ-1))·(exp(4f·tk·ln(κ-1))-1) dla κ>1,
+    n=1 (daleko od generatora — udokumentowane uproszczenie modelu, patrz
+    ``_thermal_mn_factors`` w ``short_circuit_core.py``).
+    """
     graph = build_transformer_only_graph()
     tb_s = 0.1
     tk_s = 0.4
@@ -318,7 +331,12 @@ def test_post_processing_quantities_match_ikss_formula():
     rx_ratio = math.inf if result.zkk_ohm.imag == 0 else result.zkk_ohm.real / result.zkk_ohm.imag
     kappa = 1.02 + 0.98 * math.exp(-3.0 * rx_ratio)
     ip_expected = kappa * math.sqrt(2.0) * result.ikss_a
-    ith_expected = result.ikss_a * math.sqrt(tk_s)
+    # Rachunek kontrolny m,n (IEC 60909-0 §12, postać zamknięta na kappa/tk/f=50Hz).
+    f_hz = 50.0
+    ln_term = math.log(kappa - 1.0)
+    m_expected = (math.exp(4.0 * f_hz * tk_s * ln_term) - 1.0) / (2.0 * f_hz * tk_s * ln_term)
+    n_expected = 1.0
+    ith_expected = result.ikss_a * math.sqrt(m_expected + n_expected)
     sk_expected = (math.sqrt(3.0) * result.un_v * result.ikss_a) / 1_000_000.0
 
     omega = 2.0 * math.pi * 50.0
@@ -330,6 +348,8 @@ def test_post_processing_quantities_match_ikss_formula():
 
     assert result.kappa == pytest.approx(kappa, rel=1e-12, abs=0.0)
     assert result.ip_a == pytest.approx(ip_expected, rel=1e-12, abs=0.0)
+    assert result.m_factor == pytest.approx(m_expected, rel=1e-12, abs=0.0)
+    assert result.n_factor == pytest.approx(n_expected, rel=1e-12, abs=0.0)
     assert result.ith_a == pytest.approx(ith_expected, rel=1e-12, abs=0.0)
     assert result.sk_mva == pytest.approx(sk_expected, rel=1e-12, abs=0.0)
     assert result.ib_a == pytest.approx(ib_expected, rel=1e-12, abs=0.0)
@@ -414,7 +434,23 @@ def test_increasing_rx_ratio_reduces_kappa_and_ip():
         assert high.ip_a <= low.ip_a
 
 
-def test_ith_scales_with_time():
+def test_ith_approaches_ikss_as_time_grows_not_scales_with_sqrt_time():
+    """RE-BASELINE (audyt fizyki, fala G, 2026-07): poprzedni test — nazwany
+    "scales_with_time" — utrwalał defekt W1: asercja ``ith_a(t=4s) ==
+    2*ikss`` zakładała ``I_th = I_k''*sqrt(t_k)``, formułę wymiarowo
+    niespójną (sqrt(sekundy) pomnożone przez prąd NIE daje prądu) i fizycznie
+    absurdalną (dłuższy czas trwania zwarcia NIE zwiększa "prądu
+    równoważnego cieplnie" bez ograniczeń — Ith jest MIARĄ AMPLITUDY prądu,
+    ograniczoną w pobliżu I_k'', nie skumulowaną energią).
+
+    Poprawna fizyka (IEC 60909-0 §4.7/§12, I_th = I_k''*sqrt(m+n), n=1 daleko
+    od generatora): składowa DC (m) ZANIKA z czasem, więc I_th MALEJE w
+    stronę I_k'' (nie rośnie) wraz z wydłużeniem t_k. Rachunek kontrolny na
+    fixture ``build_transformer_only_graph()`` (c=1,0; kappa≈1,9251):
+        t_k=1 s: m≈0,12841 → I_th/I_k''≈sqrt(1,12841)≈1,06227
+        t_k=4 s: m≈0,03210 → I_th/I_k''≈sqrt(1,03210)≈1,01592
+    (wartości zweryfikowane niezależnym wywołaniem solvera przed napisaniem
+    tego testu — patrz raport audytu fala G)."""
     graph = build_transformer_only_graph()
 
     result_t1 = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
@@ -430,8 +466,20 @@ def test_ith_scales_with_time():
         tk_s=4.0,
     )
 
-    assert result_t1.ith_a == pytest.approx(result_t1.ikss_a, rel=1e-12, abs=0.0)
-    assert result_t4.ith_a == pytest.approx(2.0 * result_t4.ikss_a, rel=1e-12, abs=0.0)
+    # I_th zawsze >= I_k'' (m,n >= 0) i NIGDY nie podwaja sie z 4x dluzszym t_k
+    # (dowod, ze defekt sqrt(tk_s) zostal usuniety, nie tylko przemianowany).
+    assert result_t1.ith_a >= result_t1.ikss_a
+    assert result_t4.ith_a >= result_t4.ikss_a
+    assert result_t4.ith_a != pytest.approx(2.0 * result_t4.ikss_a, rel=1e-6)
+    # Dluzszy t_k -> mniejszy udzial skladowej DC (m) -> I_th BLIZEJ I_k'' (maleje).
+    assert result_t4.ith_a < result_t1.ith_a
+    # Rachunek kontrolny dokladnych wartosci (m z postaci zamknietej IEC 60909-0).
+    ratio_t1 = result_t1.ith_a / result_t1.ikss_a
+    ratio_t4 = result_t4.ith_a / result_t4.ikss_a
+    assert ratio_t1 == pytest.approx(1.06227, abs=2e-5)
+    assert ratio_t4 == pytest.approx(1.01592, abs=2e-5)
+    assert result_t1.m_factor is not None and result_t1.m_factor > result_t4.m_factor  # type: ignore[operator]
+    assert result_t1.n_factor == pytest.approx(1.0) and result_t4.n_factor == pytest.approx(1.0)
 
 
 def test_zkk_from_inverse_ybus():
@@ -513,10 +561,15 @@ def test_white_box_trace_has_expected_steps():
 
     for result in (res_3ph, res_1ph):
         assert isinstance(result.white_box_trace, list)
-        assert len(result.white_box_trace) >= 7
-        keys = [step["key"] for step in result.white_box_trace[:7]]
+        # IEC 60909-0 §3.3.3 (V12K-177): the SC trace now opens with an explicit
+        # K_T correction step per network transformer (KT[<id>]), followed by the
+        # canonical fault-quantity steps. Intent preserved: the 7 standard steps
+        # appear in order, located by the "Zk" anchor instead of index 0.
+        assert any(step["key"] == "KT[T1]" for step in result.white_box_trace)
+        zk_index = next(i for i, step in enumerate(result.white_box_trace) if step["key"] == "Zk")
+        keys = [step["key"] for step in result.white_box_trace[zk_index : zk_index + 7]]
         assert keys == ["Zk", "Ikss", "kappa", "Ip", "Ib", "Ith", "Sk"]
-        for step in result.white_box_trace[:7]:
+        for step in result.white_box_trace[zk_index : zk_index + 7]:
             assert {
                 "key",
                 "title",
@@ -526,7 +579,7 @@ def test_white_box_trace_has_expected_steps():
                 "result",
             } <= step.keys()
 
-        z_step = result.white_box_trace[0]
+        z_step = result.white_box_trace[zk_index]
         z_result = z_step["result"]
         assert z_step["key"] == "Zk"
         assert set(z_result) >= {"z_equiv_ohm", "r_ohm", "x_ohm", "z_equiv_abs_ohm"}
@@ -534,7 +587,7 @@ def test_white_box_trace_has_expected_steps():
         assert z_result["x_ohm"] == pytest.approx(z_result["z_equiv_ohm"].imag)
         assert z_result["z_equiv_abs_ohm"] == pytest.approx(abs(z_result["z_equiv_ohm"]))
 
-        z_dict = result.to_dict()["white_box_trace"][0]["result"]
+        z_dict = result.to_dict()["white_box_trace"][zk_index]["result"]
         assert z_dict["z_equiv_ohm"]["re"] == pytest.approx(z_result["r_ohm"])
         assert z_dict["z_equiv_ohm"]["im"] == pytest.approx(z_result["x_ohm"])
         assert z_dict["z_equiv_abs_ohm"] == pytest.approx(z_result["z_equiv_abs_ohm"])
@@ -708,8 +761,20 @@ def test_contributions_contains_grid_and_inverters():
     contrib_b = find_contribution(result.contributions, "INV-B")
 
     assert grid.i_contrib_a == pytest.approx(result.ik_thevenin_a, rel=1e-12, abs=0.0)
-    assert contrib_a.i_contrib_a == pytest.approx(inv_a.k_sc * inv_a.in_rated_a, rel=1e-12, abs=0.0)
+    # INTENCJA (bez zmian): lista wkładów zawiera sieć + oba falowniki, a udziały
+    # sumują się do 1. RE-BASELINE (V12K-184): wkład falownika jest PRZENOSZONY do
+    # węzła zwarcia — I_k = I_j·|Z_kj/Z_kk|·(U_j/U_k). Wcześniej wchodził 1:1 w
+    # amperach, więc falownik 110 kV oddawał do zwarcia 20 kV tyle samo amperów,
+    # co jest złamaniem zasady zachowania mocy.
+    # INV-B stoi W węźle zwarcia (B, 20 kV) → współczynnik = 1 (bez zmiany).
     assert contrib_b.i_contrib_a == pytest.approx(inv_b.k_sc * inv_b.in_rated_a, rel=1e-12, abs=0.0)
+    # INV-A stoi w węźle A (110 kV); w tej sieci Z_BA/Z_BB ≈ 1 (wspólna gałąź
+    # odniesienia 1e9 Ω dominuje), więc przeniesienie to czysta przekładnia
+    # 110/20 = 5,5: 1,2·50 A = 60 A (110 kV) → 330 A (20 kV).
+    # Dowód niezmienniczości mocy: √3·110 kV·60 A = √3·20 kV·330 A = 11,43 MVA.
+    assert contrib_a.i_contrib_a == pytest.approx(
+        inv_a.k_sc * inv_a.in_rated_a * (110.0 / 20.0), rel=1e-9, abs=0.0
+    )
     total_share = sum(contrib.share for contrib in result.contributions)
     assert total_share == pytest.approx(1.0, rel=1e-12, abs=0.0)
 
@@ -794,3 +859,368 @@ def test_branch_contributions_basic():
 
     assert result.branch_contributions is not None
     assert len(result.branch_contributions) > 0
+
+
+def test_branch_contributions_option_does_not_change_existing_fields():
+    """ZWARCIA-PRO F4 (karta W-C): opcja wkładów gałęziowych jest CZYSTO addytywna.
+
+    Włączenie include_branch_contributions nie może zmienić ŻADNEJ istniejącej
+    wielkości wyniku ani śladu White Box (determinizm istniejących pól) —
+    inaczej tor kanoniczny nie mógłby jej włączyć bez naruszenia FROZEN.
+    """
+    graph_off = build_transformer_only_graph()
+    graph_on = build_transformer_only_graph()
+    for graph in (graph_off, graph_on):
+        graph.add_inverter_source(create_inverter_source("INV-BC", "A", in_rated_a=50.0, k_sc=1.1))
+
+    base = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph_off,
+        fault_node_id="B",
+        c_factor=1.0,
+        tk_s=1.0,
+    ).to_dict()
+    with_bc = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph_on,
+        fault_node_id="B",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    ).to_dict()
+
+    assert base.pop("branch_contributions") is None
+    assert with_bc.pop("branch_contributions"), "opcja włączona → niepusta lista wkładów"
+    # V12K-132 (pkt 7): ślad WHITE BOX rozpływu Thevenina jest SPRZĘŻONY z opcją
+    # wkładów gałęziowych (obecny WYŁĄCZNIE gdy je liczymy) — addytywny, jak
+    # branch_contributions. Poza tą parą payload musi być bajt-w-bajt identyczny.
+    assert "branch_flow_trace" not in base
+    assert with_bc.pop("branch_flow_trace"), "opcja włączona → niepusty ślad rozpływu"
+    assert with_bc == base
+
+
+def test_branch_contributions_with_closed_switch_merged_nodes():
+    """Regresja (karta W-C, Zero-Debt): zamknięty łącznik scala węzły — wektor
+    iniekcji wkładów gałęziowych MUSI mieć wymiar macierzy Z-bus (liczba
+    reprezentantów), nie liczbę wszystkich węzłów. Przed naprawą: matmul
+    mismatch dla KAŻDEJ sieci z zamkniętym łącznikiem przy
+    include_branch_contributions=True.
+    """
+    from network_model.core.switch import Switch, SwitchState
+
+    graph = build_transformer_only_graph()
+    # Węzeł scalony z "B" zamkniętym łącznikiem: len(node_id_to_index) > wymiar Z-bus.
+    graph.add_node(create_pq_node("B2", 20.0))
+    graph.add_switch(
+        Switch(
+            id="SW1",
+            name="Łącznik B-B2",
+            from_node_id="B",
+            to_node_id="B2",
+            state=SwitchState.CLOSED,
+        )
+    )
+    graph.add_inverter_source(create_inverter_source("INV-SW", "A", in_rated_a=50.0, k_sc=1.1))
+
+    result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph,
+        fault_node_id="B",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+
+    assert result.branch_contributions is not None
+    assert len(result.branch_contributions) > 0
+
+
+# -----------------------------------------------------------------------------
+# V12K-132 (pkt 7 karty właściciela): rozpływ prądu zwarciowego od źródła
+# zastępczego (Thevenin / sieć nadrzędna) w gałęziach — WHITE BOX.
+# -----------------------------------------------------------------------------
+
+THEVENIN_GRID_SOURCE_ID = "THEVENIN_GRID"
+
+
+def create_slack_node(node_id: str, voltage_level: float) -> Node:
+    return Node(
+        id=node_id,
+        name=f"Slack {node_id}",
+        node_type=NodeType.SLACK,
+        voltage_level=voltage_level,
+        active_power=0.0,
+        reactive_power=0.0,
+        voltage_magnitude=1.0,
+        voltage_angle=0.0,
+    )
+
+
+def create_line_branch(
+    branch_id: str,
+    from_node_id: str,
+    to_node_id: str,
+    r_ohm_per_km: float,
+    x_ohm_per_km: float,
+    length_km: float = 1.0,
+) -> LineBranch:
+    return LineBranch(
+        id=branch_id,
+        name=f"Line {branch_id}",
+        branch_type=BranchType.LINE,
+        from_node_id=from_node_id,
+        to_node_id=to_node_id,
+        r_ohm_per_km=r_ohm_per_km,
+        x_ohm_per_km=x_ohm_per_km,
+        b_us_per_km=0.0,
+        length_km=length_km,
+        rated_current_a=0.0,
+    )
+
+
+def build_slack_radial_graph() -> NetworkGraph:
+    """Sieć promieniowa z realnym źródłem zastępczym (SLACK): A(110) → TX → B(20)
+    → linia → C(20). Węzeł zwarcia C jest zwykłą szyną (bez bocznika) — bilans
+    rozpływu Thevenina domyka się dokładnie."""
+    graph = NetworkGraph()
+    graph.add_node(create_slack_node("A", 110.0))
+    graph.add_node(create_pq_node("B", 20.0))
+    graph.add_node(create_pq_node("C", 20.0))
+    graph.add_branch(
+        create_transformer_branch(
+            "T1",
+            "A",
+            "B",
+            rated_power_mva=25.0,
+            voltage_hv_kv=110.0,
+            voltage_lv_kv=20.0,
+            uk_percent=10.0,
+            pk_kw=120.0,
+        )
+    )
+    graph.add_branch(create_line_branch("L1", "B", "C", r_ohm_per_km=0.5, x_ohm_per_km=0.4))
+    return graph
+
+
+def build_z_bus_local(graph: NetworkGraph) -> np.ndarray:
+    builder = AdmittanceMatrixBuilder(graph)
+    y_bus = builder.build()
+    return np.linalg.inv(y_bus)
+
+
+def _thevenin_entries(result):
+    return [
+        bc for bc in (result.branch_contributions or []) if bc.source_id == THEVENIN_GRID_SOURCE_ID
+    ]
+
+
+def _net_inflow_to_fault(result, fault_node_id: str) -> float:
+    """Suma (netto) prądów gałęziowych Thevenina WCHODZĄCYCH do węzła zwarcia."""
+    total = 0.0
+    for bc in _thevenin_entries(result):
+        into_fault = (bc.to_node_id == fault_node_id and bc.direction == "from_to") or (
+            bc.from_node_id == fault_node_id and bc.direction == "to_from"
+        )
+        out_of_fault = (bc.from_node_id == fault_node_id and bc.direction == "from_to") or (
+            bc.to_node_id == fault_node_id and bc.direction == "to_from"
+        )
+        if into_fault:
+            total += bc.i_contrib_a
+        elif out_of_fault:
+            total -= bc.i_contrib_a
+    return total
+
+
+def test_thevenin_branch_flow_present_for_grid_source():
+    """Sieć z realnym źródłem zastępczym → rozpływ Thevenina obecny w gałęziach."""
+    graph = build_slack_radial_graph()
+    result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph,
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+    thev = _thevenin_entries(result)
+    assert thev, "sieć ze SLACK musi nieść rozpływ prądu zastępczego (Thevenin)"
+    # Kierunek fizyczny: prąd płynie DO węzła zwarcia (L1: B→C).
+    l1 = next(bc for bc in thev if bc.branch_id == "L1")
+    assert l1.direction == "from_to"
+
+
+@pytest.mark.parametrize("fault_node_id", ["B", "C"])
+def test_thevenin_branch_flow_balances_with_ik_thevenin(fault_node_id):
+    """SUMA KONTROLNA (§0): rozpływ Thevenina bilansuje się z Ik''(Thevenin) w
+    punkcie zwarcia — Σ prądów gałęziowych wchodzących do węzła = ik_thevenin_a.
+    Tolerancja numeryczna jawna (KCL domyka się do precyzji maszynowej)."""
+    graph = build_slack_radial_graph()
+    result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph,
+        fault_node_id=fault_node_id,
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+    assert result.ik_thevenin_a > 0
+    inflow = _net_inflow_to_fault(result, fault_node_id)
+    assert inflow == pytest.approx(result.ik_thevenin_a, rel=1e-9, abs=1e-6)
+
+
+@pytest.mark.parametrize(
+    "compute",
+    [
+        lambda g, n: ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+            graph=g,
+            fault_node_id=n,
+            c_factor=1.0,
+            tk_s=1.0,
+            include_branch_contributions=True,
+        ),
+        lambda g, n: ShortCircuitIEC60909Solver.compute_2ph_short_circuit(
+            graph=g,
+            fault_node_id=n,
+            c_factor=1.0,
+            tk_s=1.0,
+            include_branch_contributions=True,
+        ),
+        lambda g, n: ShortCircuitIEC60909Solver.compute_1ph_short_circuit(
+            graph=g,
+            fault_node_id=n,
+            c_factor=1.0,
+            tk_s=1.0,
+            z0_bus=build_z_bus_local(g) * 3.0,
+            include_branch_contributions=True,
+        ),
+        lambda g, n: ShortCircuitIEC60909Solver.compute_2ph_ground_short_circuit(
+            graph=g,
+            fault_node_id=n,
+            c_factor=1.0,
+            tk_s=1.0,
+            z0_bus=build_z_bus_local(g) * 3.0,
+            include_branch_contributions=True,
+        ),
+    ],
+)
+def test_thevenin_branch_flow_all_fault_types_balance(compute):
+    """Wszystkie 4 typy zwarcia obsługiwane w torze kanonicznym niosą rozpływ
+    Thevenina bilansujący się z Ik''(Thevenin) danego typu."""
+    graph = build_slack_radial_graph()
+    result = compute(graph, "C")
+    assert result.ik_thevenin_a > 0
+    assert _thevenin_entries(result), "każdy typ zwarcia musi nieść rozpływ Thevenina"
+    inflow = _net_inflow_to_fault(result, "C")
+    assert inflow == pytest.approx(result.ik_thevenin_a, rel=1e-9, abs=1e-6)
+
+
+def test_thevenin_branch_flow_deterministic():
+    """Determinizm (§0): dwa biegi na identycznym wejściu → identyczne rozpływy
+    Thevenina i ślad WHITE BOX (bajt-w-bajt po serializacji)."""
+    r1 = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=build_slack_radial_graph(),
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    ).to_dict()
+    r2 = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=build_slack_radial_graph(),
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    ).to_dict()
+    assert r1["branch_contributions"] == r2["branch_contributions"]
+    assert r1["branch_flow_trace"] == r2["branch_flow_trace"]
+
+
+def test_thevenin_addition_preserves_inverter_entries_byte_for_byte():
+    """ADDYTYWNOŚĆ (§0): dodanie toru Thevenina NIE zmienia wkładów falownikowych
+    — wpisy source_id != THEVENIN_GRID są BAJT-W-BAJT identyczne z wynikiem
+    dotychczasowej metody `_build_branch_contributions_for_inverters`."""
+    graph = build_slack_radial_graph()
+    # Falownik w węźle B (≠ węzeł zwarcia C) — jego superpozycja niesie prąd
+    # w gałęzi L1 (B→C); zwarcie na C.
+    graph.add_inverter_source(create_inverter_source("INV-B", "B", in_rated_a=80.0, k_sc=1.2))
+
+    result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph,
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+    inverter_entries = [
+        bc.to_dict()
+        for bc in (result.branch_contributions or [])
+        if bc.source_id != THEVENIN_GRID_SOURCE_ID
+    ]
+    expected = [
+        bc.to_dict()
+        for bc in ShortCircuitIEC60909Solver._build_branch_contributions_for_inverters(
+            graph, "C", ShortCircuitType.THREE_PHASE
+        )
+    ]
+    assert inverter_entries == expected
+    # Oba tory obecne: falownikowy ORAZ Thevenina.
+    assert inverter_entries, "wkłady falownikowe obecne"
+    assert _thevenin_entries(result), "wkłady Thevenina obecne"
+
+
+def test_thevenin_branch_flow_with_closed_switch_balances():
+    """Regresja V12K-120 (rozszerzona na tor Thevenina): zamknięty łącznik scala
+    węzły — rozpływ Thevenina MUSI liczyć się (wektor iniekcji o wymiarze Z-bus
+    reprezentantów) i wciąż bilansować z Ik''(Thevenin)."""
+    from network_model.core.switch import Switch, SwitchState
+
+    graph = build_slack_radial_graph()
+    graph.add_node(create_pq_node("C2", 20.0))
+    graph.add_switch(
+        Switch(
+            id="SW1",
+            name="Łącznik C-C2",
+            from_node_id="C",
+            to_node_id="C2",
+            state=SwitchState.CLOSED,
+        )
+    )
+    result = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=graph,
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+    assert _thevenin_entries(result), "sieć z zamkniętym łącznikiem: rozpływ Thevenina obecny"
+    inflow = _net_inflow_to_fault(result, "C")
+    assert inflow == pytest.approx(result.ik_thevenin_a, rel=1e-9, abs=1e-6)
+
+
+def test_branch_flow_trace_is_whitebox():
+    """WHITE BOX (§0): ślad rozpływu Thevenina zawiera krok iniekcji, krok per
+    gałąź (z napięciami węzłowymi i współczynnikiem podziału) oraz sumę
+    kontrolną bilansu (KCL). Obecny WYŁĄCZNIE gdy liczono wkłady gałęziowe."""
+    off = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=build_slack_radial_graph(),
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+    )
+    assert off.branch_flow_trace is None
+    assert "branch_flow_trace" not in off.to_dict()
+
+    on = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph=build_slack_radial_graph(),
+        fault_node_id="C",
+        c_factor=1.0,
+        tk_s=1.0,
+        include_branch_contributions=True,
+    )
+    trace = on.to_dict()["branch_flow_trace"]
+    keys = {step["key"] for step in trace}
+    assert "thevenin_flow_setup" in keys
+    assert "thevenin_flow_balance" in keys
+    assert any(k.startswith("thevenin_flow_L1") for k in keys)
+    setup = next(s for s in trace if s["key"] == "thevenin_flow_setup")
+    v_nodes = setup["result"]["v_nodes_pu"]
+    assert isinstance(v_nodes, list) and all("re" in v and "im" in v for v in v_nodes)
+    balance = next(s for s in trace if s["key"] == "thevenin_flow_balance")
+    assert balance["result"]["sum_into_fault_a"] == pytest.approx(
+        on.ik_thevenin_a, rel=1e-9, abs=1e-6
+    )

@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from src.application.sld.internal_layout import build_internal_sld
 from src.application.sld.topology_classifier import (
     classify_station_topology,
@@ -24,7 +22,9 @@ def _header() -> ENMHeader:
     return ENMHeader(name="test")
 
 
-def _make_port(kind: str, sub_ref: str = "sub_1", bay_ref: str = "bay_1", suffix: str = "p") -> Port:
+def _make_port(
+    kind: str, sub_ref: str = "sub_1", bay_ref: str = "bay_1", suffix: str = "p"
+) -> Port:
     return Port(
         id=f"{sub_ref}:{bay_ref}:{suffix}",
         kind=kind,  # type: ignore[arg-type]

@@ -79,8 +79,9 @@ class AnalysisOrchestrator:
             project_name=project_name,
             case_name=case_name,
             run_timestamp=now_utc,
-            snapshot_id=None,
-            trace_id=run_id,
+            case_id=None,
+            snapshot_hash=None,
+            run_id=run_id,
         )
         ev_builder = EnergyValidationBuilder(context=ev_context)
         energy_validation = ev_builder.build(power_flow_result, graph, config)
@@ -89,12 +90,26 @@ class AnalysisOrchestrator:
         if include_voltage_profile:
             from analysis.normative.models import NormativeConfig
 
+            # UWAGA (V12K-267): `VoltageProfileContext` NIE zostaje przemianowany
+            # razem z kopertami widokow analiz — nalezy do lancucha kontekstow
+            # dowodowo-raportowych. Od domkniecia V12K-267 lancuch kopiuje sie
+            # JAWNYM, typowanym przepisem `analysis.koperta_kontekstu.pola_koperty`
+            # (dostep bezposredni, bez wartosci domyslnych): czesciowe
+            # przemianowanie zapala AttributeError/mypy w miejscu kopii, wiec
+            # przemianowanie calosci jest bezpieczne, gdy zajdzie potrzeba.
             vp_context = VoltageProfileContext(
                 project_name=project_name,
                 case_name=case_name,
                 run_timestamp=now_utc,
                 snapshot_id=None,
-                trace_id=run_id,
+                # V12K-269: `trace_id` to identyfikator ARTEFAKTU dowodowego
+                # (skrot tresci — `trace_emitters/deterministic_ids.py`), a tu
+                # znany jest wylacznie PRZEBIEG. Wpisanie run_id pod ta nazwa
+                # bylo klamstwem, ktore dodatkowo wciagalo zmiennosc per-przebieg
+                # do odcisku analizy. Artefakt na tym etapie NIE ISTNIEJE — i tak
+                # to mowimy, zamiast podstawiac cokolwiek.
+                trace_id=None,
+                run_id=run_id,
             )
             vp_builder = VoltageProfileBuilder(graph=graph, context=vp_context)
             normative_config = NormativeConfig(

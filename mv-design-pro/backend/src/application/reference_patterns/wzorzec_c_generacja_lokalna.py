@@ -41,7 +41,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -77,7 +77,7 @@ PATTERN_C_FIXTURES_SUBDIR = "wzorzec_c_generacja_lokalna"
 # =============================================================================
 
 
-class TypGeneracji(str, Enum):
+class TypGeneracji(StrEnum):
     """Typ źródła generacji lokalnej."""
 
     PV = "PV"

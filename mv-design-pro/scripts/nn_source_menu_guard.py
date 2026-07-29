@@ -95,11 +95,36 @@ REQUIRED_MINIMUM_OPTION_KEYS = [
 # Required modal files for nN sources
 # ---------------------------------------------------------------------------
 
-REQUIRED_MODALS = [
-    "PVInverterModal.tsx",
-    "BESSInverterModal.tsx",
-    "GensetModal.tsx",
-    "UPSModal.tsx",
+# ZDOLNOSC, NIE PLIK DOSTAWCY (V12K-263).
+#
+# Guard wymagal `GensetModal.tsx` i `UPSModal.tsx` w `ui/topology/modals`. Oba
+# zostaly SWIADOMIE zastapione jednym kreatorem ui2 „Zrodlo dyspozycyjne nN
+# (agregat / UPS)", ktory obsluguje `DispatchableKind = GENSET | UPS` i zapisuje
+# przez `add_genset_nn` / `add_ups_nn` — kontrakt payloadu bez zmian (mowi o tym
+# wprost naglowek `zrodloDyspozycyjneModel.ts`). Guard sprawdzal wiec NAZWE
+# DOSTAWCY, a nie istnienie zdolnosci: byl czerwony przy KOMPLETNEJ funkcji.
+#
+# Kanon V12.xx jest rejestrem ZDOLNOSCI, nie ekranow (`componentKey` to metadana
+# dostawcy). Dlatego kazda pozycja to teraz para: opis zdolnosci + sciezki, ktore
+# moga jej dostarczyc. Wystarczy JEDNA istniejaca — podmiana dostawcy nie lamie
+# guarda, ale usuniecie zdolnosci owszem.
+DOSTAWCY_ZRODEL_NN: list[tuple[str, list[str]]] = [
+    (
+        "falownik PV na nN",
+        ["frontend/src/ui/topology/modals/PVInverterModal.tsx"],
+    ),
+    (
+        "magazyn BESS na nN",
+        ["frontend/src/ui/topology/modals/BESSInverterModal.tsx"],
+    ),
+    (
+        "agregat pradotworczy / UPS na nN",
+        [
+            "frontend/src/ui2/kreatory/zrodlo-dyspozycyjne/zrodloDyspozycyjneModel.ts",
+            "frontend/src/ui/topology/modals/GensetModal.tsx",
+            "frontend/src/ui/topology/modals/UPSModal.tsx",
+        ],
+    ),
 ]
 
 # ---------------------------------------------------------------------------
@@ -275,22 +300,22 @@ def check_english_labels(content: str) -> list[Violation]:
 
 
 def check_required_modals() -> list[Violation]:
-    """Verify that all required nN source modal files exist."""
+    """Kazda zdolnosc zrodla nN ma co najmniej jednego zyjacego dostawce UI."""
     violations = []
-    for modal_file in REQUIRED_MODALS:
-        modal_path = MODALS_DIR / modal_file
-        if not modal_path.exists():
+    for zdolnosc, sciezki in DOSTAWCY_ZRODEL_NN:
+        zywe = [
+            p
+            for p in (REPO_ROOT / s for s in sciezki)
+            if p.exists() and p.stat().st_size >= 100
+        ]
+        if not zywe:
             violations.append(
                 Violation(
                     category="MISSING_MODAL",
-                    message=f"Brakuje pliku modalnego: {modal_file} w {MODALS_DIR.relative_to(REPO_ROOT)}",
-                )
-            )
-        elif modal_path.stat().st_size < 100:
-            violations.append(
-                Violation(
-                    category="EMPTY_MODAL",
-                    message=f"Plik {modal_file} jest pusty lub zbyt mały (<100 bajtów)",
+                    message=(
+                        f"Brak dostawcy UI dla zdolnosci: {zdolnosc}. "
+                        f"Sprawdzone sciezki: {', '.join(sciezki)}"
+                    ),
                 )
             )
     return violations

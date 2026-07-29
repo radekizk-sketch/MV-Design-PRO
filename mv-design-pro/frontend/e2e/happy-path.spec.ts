@@ -9,7 +9,7 @@ async function waitForAppReady(page: Page): Promise<void> {
     state: 'attached',
     timeout: 15000,
   });
-  await expect(page.locator('[data-testid="top-bar-v12"]')).toBeVisible();
+  await expect(page.locator('[data-testid="mvd-titlebar"]')).toBeVisible();
 }
 
 async function seedTestState(page: Page): Promise<void> {
@@ -30,14 +30,14 @@ test.describe('UI Integration E2E Happy Path', () => {
   });
 
   test('renders canonical active case bar and mode indicator', async ({ page }) => {
-    await expect(page.locator('[data-testid="top-bar-v12"]')).toBeVisible();
-    await expect(page.locator('[data-testid="ctx-project"]')).toContainText('Projekt Testowy');
-    await expect(page.locator('[data-testid="ctx-wariant"]')).toContainText('Zakres Testowy 3F');
-    await expect(page.locator('[data-testid="top-bar-calculate"]')).toBeVisible();
+    await expect(page.locator('[data-testid="mvd-titlebar"]')).toBeVisible();
+    await expect(page.locator('[data-testid="mvd-casebar-project"]')).toContainText('Projekt Testowy');
+    await expect(page.locator('[data-testid="mvd-casebar-chip"]')).toContainText('Zakres Testowy 3F');
+    await expect(page.locator('[data-testid="mvd-calculate"]')).toBeVisible();
   });
 
   test('opens canonical variants helper surface z active case bar', async ({ page }) => {
-    await page.locator('[data-testid="ctx-wariant"]').click();
+    await page.locator('[data-testid="mvd-casebar-chip"]').click();
 
     await expect(page).toHaveURL(/#variants(\?|$)/);
     const surface = page.locator('[data-testid="workspace-surface-panel"]');
@@ -49,12 +49,12 @@ test.describe('UI Integration E2E Happy Path', () => {
   test('switches shell mode on canonical analytical routes', async ({ page }) => {
     await page.goto('/#analysis');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="top-bar-v12"]')).toBeVisible();
+    await expect(page.locator('[data-testid="mvd-titlebar"]')).toBeVisible();
     await expect(page.locator('[data-testid="workflow-context-strip"]')).toHaveCount(0);
 
     await page.goto('/#proof');
     await waitForAppReady(page);
-    await expect(page.locator('[data-testid="top-bar-v12"]')).toBeVisible();
+    await expect(page.locator('[data-testid="mvd-titlebar"]')).toBeVisible();
     await expect(page.locator('[data-testid="workflow-context-strip"]')).toHaveCount(0);
 
     await page.goto('/');
@@ -85,7 +85,7 @@ test.describe('Context Bar Synchronization', () => {
   });
 
   test('keeps calculate action visible and mode consistent while navigating', async ({ page }) => {
-    const calculateButton = page.locator('[data-testid="top-bar-calculate"]');
+    const calculateButton = page.locator('[data-testid="mvd-calculate"]');
     await expect(calculateButton).toBeVisible();
 
     await page.goto('/#analysis');

@@ -135,10 +135,49 @@ export interface PowerFlowIterationTrace {
 }
 
 /**
+ * Single OLTC regulator entry from the automatic tap-control loop trace.
+ * Backend source (1:1): `network_model/solvers/power_flow_oltc.py:124-137`
+ * (`trace["regulators"]` entries).
+ */
+export interface OltcRegulatorTrace {
+  branch_id: string;
+  regulated_winding: 'HV' | 'LV';
+  controlled_bus_id: string;
+  setpoint_kv: number | null;
+  deadband_kv: number | null;
+  initial_position: number;
+  min_position: number;
+  max_position: number;
+}
+
+/**
+ * OLTC automatic voltage-regulation trace (`oltc_control`), attached to the
+ * power flow trace when the run contained automatic tap regulators.
+ * Backend source (1:1): `network_model/solvers/power_flow_oltc.py:124-217`
+ * (final shape incl. `final_positions`/`initial_positions`/`switch_counts`),
+ * wired into the trace at `enm/canonical_analysis.py:1565-1566`.
+ */
+export interface OltcControlTrace {
+  regulators: OltcRegulatorTrace[];
+  converged: boolean;
+  iterations_count: number;
+  switch_counts: Record<string, number>;
+  total_switch_count: number;
+  final_positions: Record<string, number>;
+  initial_positions: Record<string, number>;
+}
+
+/**
  * Complete power flow trace (PowerFlowTrace from backend).
  */
 export interface PowerFlowTrace {
   solver_version: string;
+  /**
+   * Solver method token from the backend trace (`enm/canonical_analysis.py:1535`):
+   * 'newton-raphson' | 'gauss-seidel' | 'fast-decoupled'. Additive/optional —
+   * older cached traces may not carry it.
+   */
+  solver_method?: string;
   input_hash: string;
   snapshot_id: string | null;
   case_id: string | null;
@@ -155,6 +194,11 @@ export interface PowerFlowTrace {
   iterations: PowerFlowIterationTrace[];
   converged: boolean;
   final_iterations_count: number;
+  /**
+   * OLTC control-loop trace — present ONLY when the run had automatic tap
+   * regulators (`enm/canonical_analysis.py:1565-1566`, additive/optional).
+   */
+  oltc_control?: OltcControlTrace;
 }
 
 // =============================================================================

@@ -83,6 +83,16 @@ interface SldExportFormatMenuProps {
   className?: string;
   onExported?: (filename: string, format: SldExportFormat) => void;
   onError?: (message: string) => void;
+  /** SCHEMAT-10 S4 (V12K-135/136): nadpisuje domyślną ścieżkę SVG (v2
+   *  `downloadSldSvgBySelector` — substytucja WYŁĄCZNIE `currentColor`,
+   *  `exportSvg.ts`). Kanwa v3 koduje kolor jako hex konkretny (nie
+   *  `currentColor`), więc dostarcza WŁASNĄ funkcję (paleta pełnej tabeli
+   *  tokenów + kadr fit-do-treści, `v3/export/exportPalette.ts` +
+   *  `exportFrame.ts`) — inaczej dropdown reklamowałby „SVG (light_technical)"
+   *  bez realnego pokrycia (phantom). Zwraca nazwę pliku jak
+   *  `downloadSldSvg`, albo `null` gdy nie ma czego eksportować. Brak propa =
+   *  zachowanie v2 sprzed tej karty (zero zmiany dla wołających v2). */
+  onExportSvgOverride?: () => string | null;
 }
 
 function downloadText(content: string, filename: string, mime: string): void {
@@ -113,6 +123,7 @@ export function SldExportFormatMenu({
   className,
   onExported,
   onError,
+  onExportSvgOverride,
 }: SldExportFormatMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<SldExportFormat | null>(null);
@@ -125,8 +136,9 @@ export function SldExportFormatMenu({
       const filename = buildFileName(projectName, caseLabel, descriptor.extension);
 
       if (format === 'svg') {
-        const out =
-          svgRef?.current != null
+        const out = onExportSvgOverride
+          ? onExportSvgOverride()
+          : svgRef?.current != null
             ? downloadSldSvg(svgRef.current, { projectName, caseLabel })
             : downloadSldSvgBySelector(svgSelector, { projectName, caseLabel });
         if (out === null) {

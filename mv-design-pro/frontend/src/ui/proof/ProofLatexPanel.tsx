@@ -86,17 +86,17 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
   return (
     <section
       data-testid="proof-latex-panel"
-      className="space-y-3 rounded-lg border border-slate-700/80 bg-slate-950/70 p-4 text-slate-100"
+      className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 text-slate-900"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-300">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-700">
             Pełny wywód matematyczny
           </div>
-          <h3 className="mt-1 text-base font-semibold text-white">
+          <h3 className="mt-1 text-base font-semibold text-slate-900">
             Uzasadnienie inżynierskie w LaTeX
           </h3>
-          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-300">
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-600">
             Widok pokazuje źródłowy dokument `.tex` pobrany z zamrożonego artefaktu backendowego.
             Warstwa UI niczego nie przelicza i nie uzupełnia ręcznie.
           </p>
@@ -108,7 +108,7 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
             data-testid="proof-latex-refresh"
             onClick={() => loadLatex()}
             disabled={!runId || state.status === 'loading'}
-            className="rounded border border-slate-600 px-3 py-1.5 text-xs font-semibold text-slate-100 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Odśwież
           </button>
@@ -117,7 +117,7 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
             data-testid="proof-latex-copy"
             onClick={copyLatex}
             disabled={state.status !== 'ready' || !state.source}
-            className="rounded border border-cyan-500/70 px-3 py-1.5 text-xs font-semibold text-cyan-100 hover:bg-cyan-950 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded border border-cyan-500/70 px-3 py-1.5 text-xs font-semibold text-cyan-700 hover:bg-cyan-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Kopiuj LaTeX
           </button>
@@ -136,42 +136,42 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
       {!runId ? (
         <div
           data-testid="proof-latex-empty"
-          className="rounded border border-amber-500/40 bg-amber-950/30 px-3 py-2 text-sm text-amber-100"
+          className="rounded border border-amber-500/40 bg-amber-50 px-3 py-2 text-sm text-amber-700"
         >
           Nie wybrano ostatniego obliczenia. Najpierw wykonaj obliczenia albo otwórz wynik z historii.
         </div>
       ) : state.status === 'loading' ? (
         <div
           data-testid="proof-latex-loading"
-          className="rounded border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-300"
+          className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600"
         >
           Pobieram pełny dokument LaTeX z backendowego śladu obliczeń.
         </div>
       ) : state.status === 'error' ? (
         <div
           data-testid="proof-latex-error"
-          className="rounded border border-rose-500/50 bg-rose-950/30 px-3 py-2 text-sm text-rose-100"
+          className="rounded border border-rose-500/50 bg-rose-50 px-3 py-2 text-sm text-rose-700"
         >
           Nie udało się pobrać pełnego wywodu LaTeX: {state.error}
         </div>
       ) : (
         <>
           <div className="grid gap-2 text-xs md:grid-cols-4">
-            <div className="rounded border border-slate-700 bg-slate-900 px-3 py-2">
+            <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="text-[10px] uppercase tracking-widest text-slate-500">Format</div>
-              <div className="mt-1 font-semibold text-slate-100">LaTeX `.tex`</div>
+              <div className="mt-1 font-semibold text-slate-900">LaTeX `.tex`</div>
             </div>
-            <div className="rounded border border-slate-700 bg-slate-900 px-3 py-2">
+            <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="text-[10px] uppercase tracking-widest text-slate-500">Liczba linii</div>
-              <div className="mt-1 font-semibold text-slate-100">{lineCount}</div>
+              <div className="mt-1 font-semibold text-slate-900">{lineCount}</div>
             </div>
-            <div className="rounded border border-slate-700 bg-slate-900 px-3 py-2">
+            <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="text-[10px] uppercase tracking-widest text-slate-500">Rozmiar</div>
-              <div className="mt-1 font-semibold text-slate-100">{byteSize}</div>
+              <div className="mt-1 font-semibold text-slate-900">{byteSize}</div>
             </div>
-            <div className="rounded border border-slate-700 bg-slate-900 px-3 py-2">
+            <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="text-[10px] uppercase tracking-widest text-slate-500">Plik</div>
-              <div className="mt-1 break-all font-semibold text-slate-100">{filename}</div>
+              <div className="mt-1 break-all font-semibold text-slate-900">{filename}</div>
             </div>
           </div>
 
@@ -180,8 +180,8 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
               data-testid="proof-latex-copy-status"
               className={
                 copyStatus === 'copied'
-                  ? 'rounded border border-emerald-500/50 bg-emerald-950/30 px-3 py-2 text-xs text-emerald-100'
-                  : 'rounded border border-amber-500/50 bg-amber-950/30 px-3 py-2 text-xs text-amber-100'
+                  ? 'rounded border border-emerald-500/50 bg-emerald-50 px-3 py-2 text-xs text-emerald-700'
+                  : 'rounded border border-amber-500/50 bg-amber-50 px-3 py-2 text-xs text-amber-700'
               }
             >
               {copyStatus === 'copied'
@@ -192,7 +192,7 @@ export function ProofLatexPanel({ runId }: ProofLatexPanelProps): JSX.Element {
 
           <pre
             data-testid="proof-latex-source"
-            className="max-h-[62vh] overflow-auto whitespace-pre rounded border border-slate-700 bg-[#05070b] p-4 font-mono text-[11px] leading-5 text-slate-100"
+            className="max-h-[62vh] overflow-auto whitespace-pre rounded border border-slate-200 bg-slate-50 p-4 font-mono text-[11px] leading-5 text-slate-900"
             aria-label="Pełne źródło LaTeX uzasadnienia inżynierskiego"
           >
             {state.source}

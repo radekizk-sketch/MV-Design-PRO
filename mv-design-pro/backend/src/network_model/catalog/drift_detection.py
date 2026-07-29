@@ -23,11 +23,11 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class DriftSeverity(str, Enum):
+class DriftSeverity(StrEnum):
     """Severity of catalog drift."""
 
     BREAKING = "BREAKING"  # solver_fields changed — results invalid

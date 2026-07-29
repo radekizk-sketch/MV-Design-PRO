@@ -18,7 +18,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-
 # =============================================================================
 # 1. BESS Operation Mode Catalog (eng.10)
 # =============================================================================
@@ -341,6 +340,33 @@ TAP_CHANGER_CATALOG: tuple[TapChangerItem, ...] = (
 
 def get_tap_changer(tc_id: str) -> TapChangerItem | None:
     return next((tc for tc in TAP_CHANGER_CATALOG if tc.id == tc_id), None)
+
+
+def tap_changer_fields_from_catalog(
+    item: TapChangerItem, *, current_position: int | None = None
+) -> dict:
+    """Materialize canonical TapChanger fields from a catalog type (V12K-045).
+
+    Returns a plain dict compatible with both the ENM and domain ``TapChanger``
+    constructors (reuse, no duplication). Positions are symmetric around the
+    neutral position: ``+/-(tap_count - 1) // 2`` steps.
+
+    Returns a pure dict (no import of the model layer) to avoid an import cycle.
+    """
+    half_span = (item.tap_count - 1) // 2
+    neutral = item.neutral_position
+    is_oltc = item.type == "oltc"
+    return {
+        "regulation_type": "OLTC" if is_oltc else "DETC",
+        "regulated_winding": "HV" if item.regulated_side == "hv" else "LV",
+        "neutral_position": neutral,
+        "current_position": neutral if current_position is None else current_position,
+        "min_position": neutral - half_span,
+        "max_position": neutral + half_span,
+        "step_percent": item.step_percent,
+        "control_mode": "AUTOMATIC" if (is_oltc and item.supports_avr) else "MANUAL",
+        "catalog_ref": item.id,
+    }
 
 
 # =============================================================================
@@ -1049,24 +1075,42 @@ def select_block_transformers_for_der(
 def is_vt_voltage_factor_valid_for_grounding(
     voltage_factor: float, grounding_type: GroundingType
 ) -> tuple[bool, str]:
-    """Naprawa eng.20: walidacja VT vs typ uziemienia. Zwraca (ok, message_pl)."""
-    if grounding_type in ("isolated", "petersen_coil"):
-        if voltage_factor < 1.9:
-            label = "izolowana" if grounding_type == "isolated" else "skompensowana (Petersena)"
-            return False, (
-                f"Siec {label} wymaga VT z U_th = 1.9 (8h, IEC 61869-3). "
-                f"Wybrany VT ma U_th = {voltage_factor}."
-            )
-        return True, ""
-    if grounding_type == "resistor_grounded":
-        if voltage_factor < 1.5:
-            return (
-                False,
-                f"Siec R-grounded wymaga VT z U_th >= 1.5 (30s). Wybrany VT ma U_th = {voltage_factor}.",
-            )
-        return True, ""
-    if voltage_factor < 1.2:
-        return False, "Siec directly-grounded wymaga VT z U_th >= 1.2 (continuous)."
+    """Walidacja F_v przekladnika napieciowego wobec uziemienia sieci (IEC 61869-3 tab. 2).
+
+    JEDNA REGULA, NIE DWIE (V12K-256). Ta funkcja miala wlasna, LAGODNIEJSZA wersje
+    wymagan: dopuszczala 1,5 w sieci uziemionej przez rezystor i 1,2 w bezposrednio
+    uziemionej. Siec uziemiona przez rezystor NIE jest siecia skutecznie uziemiona —
+    przy zwarciu doziemnym napiecie faz zdrowych rosnie praktycznie do miedzyfazowego,
+    wiec wymaganie 1,5 bylo zanizone; a 1,2 (ciagle) dotyczy przekladnika pracujacego
+    MIEDZY FAZAMI, nie faza-ziemia. Rozjazd byl grozny, bo ta funkcja zasila PAKIET
+    DOWODOWY — nizsze wymaganie trafialoby do dokumentu jako werdykt zgodnosci.
+
+    ZALOZENIE JAWNE: pytanie „czy F_v pasuje do uziemienia" ma sens WYLACZNIE dla
+    uzwojenia pierwotnego pracujacego miedzy faza a ziemia (miedzyfazowe nie widzi
+    wzrostu napiecia przy doziemieniu), dlatego regula jest wolana z tym ukladem.
+    """
+    from domain.dobor_przekladnika import wymagany_wspolczynnik_napieciowy
+
+    tryb = {
+        "isolated": "izolowany",
+        "petersen_coil": "cewka_petersena",
+        "resistor_grounded": "rezystor",
+        "directly_grounded": "bezposrednio_uziemiony",
+    }.get(grounding_type)
+    wymagany = wymagany_wspolczynnik_napieciowy(tryb, "faza_ziemia")
+    if wymagany is None:
+        return False, f"Nieznany typ uziemienia: {grounding_type}"
+    if voltage_factor < wymagany:
+        etykieta = {
+            "isolated": "izolowana",
+            "petersen_coil": "skompensowana (Petersena)",
+            "resistor_grounded": "uziemiona przez rezystor",
+            "directly_grounded": "bezposrednio uziemiona",
+        }[grounding_type]
+        return False, (
+            f"Siec {etykieta} wymaga VT (faza-ziemia) z U_th >= {wymagany} wg IEC 61869-3. "
+            f"Wybrany VT ma U_th = {voltage_factor}."
+        )
     return True, ""
 
 
@@ -1125,19 +1169,18 @@ def validate_device_withstand(
 
 
 # =============================================================================
-# Phase 20: VT catalog lookup (mirror frontend protection-catalogs.ts VT_CATALOG)
+# Lookup VT -> wspolczynnik napieciowy — USUNIETY (V12K-258)
 # =============================================================================
 #
-# Mapping vt_id -> voltage_factor. Pelny katalog VT zostal zdefiniowany w
-# frontendowym `protection-catalogs.ts` (4 pozycje), ale dla walidacji backendowej
-# wystarczy lookup voltage_factor — wartosc 1.2/1.5/1.9 wg klasy.
-
-VT_CATALOG_FOR_FACTOR: dict[str, float] = {
-    "vt_15kv_100v_3p": 1.9,  # 3P klasa zabezpieczeniowa, 8h
-    "vt_20kv_100v_3p": 1.9,  # 3P klasa zabezpieczeniowa, 8h
-    "vt_15kv_100v_05": 1.2,  # 0.5 klasa pomiarowa, continuous
-    "vt_20kv_dual": 1.9,  # 3P + 0.5 dual, U_th wg 3P
-}
+# `VT_CATALOG_FOR_FACTOR` byl CZWARTA kopia danych o przekladnikach napieciowych:
+# odwzorowywal cztery SYNTETYCZNE identyfikatory z rownoleglego katalogu frontu
+# (usunietego w V12K-257) na wspolczynnik napieciowy. Wolajacy dopelnial go wartoscia
+# domyslna 1,9 dla kazdego nieznanego typu — czyli brak danej stawal sie liczba, na
+# ktorej PAKIET DOWODOWY oglaszal zgodnosc.
+#
+# Zrodlem tej danej jest teraz katalog VT (`VTType.rated_voltage_factor`, V12K-255);
+# brak typu albo brak danej w karcie daje `None`, a generator dowodu zamienia to
+# w dowod NIEZALICZONY z nazwanym powodem.
 
 
 def estimate_der_power_kw(

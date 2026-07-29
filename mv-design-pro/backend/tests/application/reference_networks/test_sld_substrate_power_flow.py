@@ -18,18 +18,11 @@ import uuid
 
 import pytest
 from application.reference_networks.sld_substrate_power_flow import (
+    _build_power_flow_input,
     compute_substrate_power_flow,
 )
-from enm.mapping import map_enm_to_network_graph
 from enm.models import EnergyNetworkModel
-from network_model.core.node import NodeType
 from network_model.solvers.power_flow_newton import solve_power_flow_physics
-from network_model.solvers.power_flow_types import (
-    PowerFlowInput,
-    PowerFlowOptions,
-    PQSpec,
-    SlackSpec,
-)
 
 from tests.reference_networks.sld_substrate_52s import build_sld_substrate_52s
 
@@ -98,29 +91,29 @@ def test_direction_matches_solver_sign(companion: dict) -> None:
 
     Re-runs the frozen solver here and checks the companion did not invent or flip
     any direction — the companion is a faithful projection of the solver result.
+
+    F9.8 note: this used to hand-duplicate the ``PQSpec`` construction inline
+    (map ENM -> graph -> PQSpec by hand), which silently carried the SAME
+    reversed-sign bug as production (`p_mw=float(node.active_power or 0.0)`
+    without the gen->load conversion) — so the test was self-consistent WITH
+    the bug and blind to it (both sides negated twice, cancelling out). It now
+    reuses the single production input builder (`_build_power_flow_input`,
+    already fixed at the PQSpec construction boundary in F9.8) instead of a
+    second hand-rolled copy of the sign convention, so this test verifies
+    wiring fidelity (does `compute_substrate_power_flow`'s direction/threshold
+    logic match a raw re-solve of the SAME correct input) rather than
+    re-deriving — and risking re-breaking — the sign convention itself.
+    Independent, topology-derived physical proof of the correct sign (not
+    dependent on any internal PQSpec convention) lives in
+    ``test_shunt_capacitor_d06c.py::test_power_flow_capacitor_raises_bus_voltage``
+    (absolute v_pu<1.0 behind an inductive load) and
+    ``test_canonical_analysis_api.py::test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct``
+    (p_from_mw>0 source->load and v_pu(load)<v_pu(slack) on a minimal,
+    hand-verified 2-bus network).
     """
     enm = EnergyNetworkModel.model_validate(build_sld_substrate_52s()["enm"])
-    graph = map_enm_to_network_graph(enm)
-    slack = sorted(n for n, node in graph.nodes.items() if node.node_type == NodeType.SLACK)[0]
-    pq = [
-        PQSpec(
-            node_id=n,
-            p_mw=float(node.active_power or 0.0),
-            q_mvar=float(node.reactive_power or 0.0),
-            zip_coeffs=node.zip_coeffs,
-        )
-        for n, node in sorted(graph.nodes.items())
-        if node.node_type == NodeType.PQ and n != slack
-    ]
-    solution = solve_power_flow_physics(
-        PowerFlowInput(
-            graph=graph,
-            base_mva=100.0,
-            slack=SlackSpec(node_id=slack, u_pu=1.0, angle_rad=0.0),
-            pq=pq,
-            options=PowerFlowOptions(tolerance=1e-8, max_iter=30, trace_level="basic"),
-        )
-    )
+    pf_input, _slack = _build_power_flow_input(enm)
+    solution = solve_power_flow_physics(pf_input)
     eps = 1.0e-3
     for branch in enm.branches:
         graph_id = str(uuid.uuid5(uuid.NAMESPACE_DNS, branch.ref_id))

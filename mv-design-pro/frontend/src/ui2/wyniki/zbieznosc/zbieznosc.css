@@ -1,0 +1,323 @@
+/*
+ * Ekran „Zbieżność rozpływu i zaczepy" (E-30) — wyłącznie tokeny powłoki
+ * (--mvd-*), oba motywy z automatu. Skala promieni i odstępów jak
+ * kontrakt-analizy.css (10px sekcja / 8px wiersz / 999px chip; 4/8/12/16).
+ */
+
+.mvd-zbieznosc {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-zbieznosc-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--mvd-accent);
+}
+
+/* --- Nagłówek obszaru ----------------------------------------------------- */
+
+.mvd-zbieznosc-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-zbieznosc-head h3 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  line-height: 1.25;
+  color: var(--mvd-ink);
+}
+
+.mvd-zbieznosc-cel {
+  margin: 4px 0 0;
+  max-width: 82ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+/* --- Stany zerowe / ładowanie / błąd -------------------------------------- */
+
+.mvd-zbieznosc-stan {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.mvd-zbieznosc-stan h4 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--mvd-ink);
+}
+
+.mvd-zbieznosc-stan p {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-muted);
+}
+
+.mvd-zbieznosc-stan[data-tone='error'] {
+  border-color: var(--mvd-warn);
+}
+
+.mvd-zbieznosc-akcja {
+  align-self: flex-start;
+  margin-top: 4px;
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent-ink);
+  cursor: pointer;
+}
+
+.mvd-zbieznosc-akcja:hover {
+  filter: brightness(1.08);
+}
+
+.mvd-zbieznosc-akcja:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 2px;
+}
+
+/* --- Werdykt zbieżności ---------------------------------------------------- */
+
+.mvd-zbieznosc-werdykt {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  background: var(--mvd-panel);
+}
+
+.mvd-zbieznosc-werdykt[data-werdykt='zbiezny'] {
+  border-color: var(--mvd-ok);
+  background: var(--mvd-ok-bg);
+}
+
+.mvd-zbieznosc-werdykt[data-werdykt='niezbiezny'] {
+  border-color: var(--mvd-warn);
+  background: var(--mvd-warn-bg);
+}
+
+.mvd-zbieznosc-werdykt h4 {
+  margin: 2px 0 0;
+  font-size: 15px;
+  color: var(--mvd-ink);
+}
+
+.mvd-zbieznosc-werdykt p {
+  margin: 0;
+  max-width: 80ch;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--mvd-ink);
+}
+
+.mvd-zbieznosc-instrukcja {
+  color: var(--mvd-muted);
+}
+
+/* --- Sekcje danych ---------------------------------------------------------- */
+
+.mvd-zbieznosc-sekcja {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.mvd-zbieznosc-sekcja > h4 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  color: var(--mvd-ink);
+}
+
+.mvd-zbieznosc-nota {
+  margin: 0 0 8px;
+  max-width: 80ch;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-zbieznosc-siatka {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+
+.mvd-zbieznosc-pozycja {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+
+.mvd-zbieznosc-pozycja dt {
+  font: 600 10.5px/1.3 var(--mvd-font-mono);
+  letter-spacing: 0.06em;
+  color: var(--mvd-muted);
+}
+
+.mvd-zbieznosc-pozycja dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+
+.mvd-zbieznosc-jedn {
+  font-size: 11px;
+  color: var(--mvd-muted);
+}
+
+/* --- Tabele (OLTC / założenia modelu / ślad iteracji) ---------------------- */
+
+.mvd-zbieznosc-tabela-wrap {
+  overflow-x: auto;
+  margin-top: 4px;
+}
+
+.mvd-zbieznosc-tabela {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12px;
+}
+
+.mvd-zbieznosc-tabela th,
+.mvd-zbieznosc-tabela td {
+  border: 1px solid var(--mvd-line);
+  padding: 5px 8px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.mvd-zbieznosc-tabela th {
+  background: var(--mvd-chip);
+  color: var(--mvd-muted);
+  font-weight: 600;
+}
+
+.mvd-zbieznosc-tabela td:first-child,
+.mvd-zbieznosc-tabela th:first-child {
+  text-align: left;
+}
+
+.mvd-zbieznosc-id {
+  font-family: var(--mvd-font-mono);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.mvd-zbieznosc-slad-przelacznik {
+  background: none;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+
+.mvd-zbieznosc-slad-przelacznik:hover {
+  background: var(--mvd-sel);
+}
+
+/* --- Następny krok ---------------------------------------------------------- */
+
+.mvd-zbieznosc-stopka {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.mvd-zbieznosc-stopka p {
+  margin: 0;
+  max-width: 78ch;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-zbieznosc-stopka-akcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.mvd-zbieznosc-nastepny {
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent-ink);
+  cursor: pointer;
+}
+
+.mvd-zbieznosc-nastepny:hover {
+  filter: brightness(1.08);
+}
+
+.mvd-zbieznosc-powrot {
+  background: none;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+
+.mvd-zbieznosc-powrot:hover {
+  background: var(--mvd-sel);
+}
+
+.mvd-zbieznosc-nastepny:focus-visible,
+.mvd-zbieznosc-powrot:focus-visible,
+.mvd-zbieznosc-slad-przelacznik:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+/* ---- wskazanie elementu (F-K4): transformator z tabeli zaczepów ---- */
+.mvd-zbieznosc-popraw {
+  border: 1px solid var(--mvd-accent);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--mvd-accent);
+  cursor: pointer;
+  font: inherit;
+  padding: 2px 8px;
+  white-space: nowrap;
+}
+.mvd-zbieznosc-popraw:hover {
+  background: var(--mvd-sel);
+}

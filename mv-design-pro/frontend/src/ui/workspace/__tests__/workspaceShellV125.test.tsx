@@ -7,6 +7,7 @@ import { useReadinessLiveStore } from '../../engineering-readiness/readinessLive
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { useShellStore } from '../../../ui2/shell/useShellStore';
 import { renderWithQueryClient } from '../../../test/queryClientTestUtils';
 
 // Faza 8: WorkspaceSurfaceRouter teraz uzywa hookow audit2 (React Query).
@@ -158,8 +159,8 @@ vi.mock('../../comparison/ResultsComparisonPage', () => ({
   ResultsComparisonPage: () => <div data-testid="results-comparison-page">CMP</div>,
 }));
 
-vi.mock('../../network-build/forms/AddGridSourceForm', () => ({
-  AddGridSourceForm: () => (
+vi.mock('../../../ui2/kreatory/zrodlo', () => ({
+  KreatorZrodloZasilania: () => (
     <div data-testid="add-grid-source-form">Formularz dodania GPZ do modelu sieci</div>
   ),
 }));
@@ -173,12 +174,13 @@ describe('workspace shell V12.5 surfaces', () => {
     useExecutionRunsStore.getState().reset();
     useSnapshotStore.getState().reset();
     useReadinessLiveStore.getState().clear();
+    useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
   });
 
-  it('renderuje formularz operacji GPZ zamiast statycznego edytora E-10', () => {
+  it('renderuje formularz operacji GPZ w regionie głównym (pełna szerokość) zamiast statycznego edytora E-10', () => {
     useNetworkBuildStore.getState().openOperationForm('add_grid_source_sn');
 
-    render(<WorkspaceSurfaceRouter region="panel" />);
+    render(<WorkspaceSurfaceRouter region="main" />);
 
     expect(screen.getByRole('heading', { level: 2, name: 'Dodaj źródło zasilania GPZ' })).toBeInTheDocument();
     expect(screen.getByTestId('add-grid-source-form')).toBeInTheDocument();
@@ -195,16 +197,23 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="main" />);
 
+    // F-E5a → P-2: E-30 renderuje REALNY ekran ui2 `EkranZbieznosci`
+    // (koniec zastępczego dostawcy kontraktu analizy). Zachowana intencja
+    // testu: nagłówek kanoniczny (SurfaceHeader, h2 z titlePl) + nagłówek
+    // obszaru ekranu (h3), bez surowych kodów E-\d+ ani placeholderów.
+    // Bez aktywnego projektu ekran pokazuje UCZCIWY stan zerowy z akcją.
     expect(
       screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-30'].titlePl }),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('workspace-mini-sld')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-zbieznosc')).toBeInTheDocument();
+    expect(screen.queryByTestId('workspace-mini-sld')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 3, name: /Zbieżność rozpływu/i })).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-zbieznosc-brak-projektu')).toBeInTheDocument();
     expect(screen.queryByText(/^E-\d+/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Powierzchnia pomocnicza/i)).not.toBeInTheDocument();
   });
 
-  it('renderuje panelowy surface E-31 z analysis_case_context aktywnego runu', async () => {
+  it('renderuje panelowy surface E-31 jako realny ekran stanu fazowego', () => {
     useAppStateStore.getState().setActiveRun('run-1');
     useNetworkBuildStore.getState().openRouteSurface('E-31', {
       titlePl: SURFACE_REGISTRY['E-31'].titlePl,
@@ -218,13 +227,15 @@ describe('workspace shell V12.5 surfaces', () => {
 
     render(<WorkspaceSurfaceRouter region="panel" />);
 
+    // F-E5a → P-2: E-31 renderuje REALNY ekran ui2 `EkranStanuFazowego`
+    // (koniec zastępczego dostawcy kontraktu analizy). Intencja testu:
+    // nagłówek kanoniczny (h2 z titlePl) + realny ekran; bez aktywnego
+    // projektu — UCZCIWY stan zerowy z akcją naprawczą, bez surowych kodów.
     expect(screen.getByRole('heading', { level: 2, name: SURFACE_REGISTRY['E-31'].titlePl })).toBeInTheDocument();
-    expect(await screen.findByText('pf source nominal')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-stan-fazowy')).toBeInTheDocument();
+    expect(screen.getByTestId('mvd-fazowy-brak-projektu')).toBeInTheDocument();
     expect(screen.queryByText('proof-pack-1')).not.toBeInTheDocument();
-    expect(screen.getAllByText('Zapisane w śladzie audytu').length).toBeGreaterThan(0);
-    expect(
-      screen.queryByText(/Kontrakt przypadku musi wskazywac aktywne zalozenia zrodlowe/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/^E-\d+/)).not.toBeInTheDocument();
   });
 
   it('renderuje surface E-37 z kontraktem eksportu dla aktywnego runu', async () => {
@@ -530,12 +541,9 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
 
   it.each([
     ['Koordynacja zabezpieczeń', 'E-28'],
-    ['Charakterystyki FRT/LVRT/HVRT', 'E-26'],
     ['Rozpływ mocy NR/GS/FD', 'E-30'],
     ['Stan fazowy SN', 'E-31'],
     ['Stabilność dynamiczna', 'E-32'],
-    ['Wkłady źródeł rozszerzone', 'E-33'],
-    ['Weryfikacja cieplna i dynamiczna', 'E-34'],
   ] as const)(
     'launcher "%s" otwiera %s z kanonicznym title/class/tab',
     async (label, screenCode) => {
@@ -557,9 +565,37 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
     },
   );
 
+  // P-1: zdolności E-33/E-34 prowadzą do realnego dostawcy — zakładki zwarć
+  // warsztatu Wyników (deep-link setWynikiTab, wzorzec V12K-106) — zamiast
+  // zastępczego kontraktu analizy na powierzchni trasowej.
+  it.each([
+    ['Wkłady źródeł rozszerzone'],
+    ['Weryfikacja cieplna i dynamiczna'],
+  ] as const)(
+    'launcher "%s" prowadzi deep-linkiem do zakładki zwarć warsztatu Wyników (P-1)',
+    async (label) => {
+      const user = userEvent.setup();
+      useShellStore.setState({ activeSpace: 'schemat' });
+      useNetworkBuildStore.getState().openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
+        subjectKind: 'analysis_run',
+        subjectRef: 'run-1',
+      });
+
+      render(<WorkspaceSurfaceRouter region="main" />);
+
+      await user.click(screen.getByRole('button', { name: label }));
+
+      expect(useShellStore.getState().wynikiTab).toBe('zwarcia');
+      expect(useShellStore.getState().activeSpace).toBe('wyniki');
+      // Powierzchnia trasowa bez zmian — deep-link nie otwiera kontraktu E-33/E-34.
+      expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe(
+        ANALYSIS_SURFACE_SCREEN_CODE,
+      );
+    },
+  );
+
   it.each([
     ['Uzasadnienie inżynierskie', 'E-36'],
-    ['Wkłady źródeł', 'E-33'],
   ] as const)(
     'launcher raportowy "%s" otwiera %s z kanonicznym title/class/tab',
     async (label, screenCode) => {
@@ -580,6 +616,25 @@ I_{k}'' = \frac{c \cdot U_n}{\left|Z_k\right|}
       expect(activeSurface?.tabId).toBe(SCREEN_MATRIX[screenCode].defaultTabId);
     },
   );
+
+  it('launcher raportowy "Wkłady źródeł" prowadzi deep-linkiem do zakładki zwarć warsztatu Wyników (P-1)', async () => {
+    const user = userEvent.setup();
+    useShellStore.setState({ activeSpace: 'dokumentacja' });
+    useNetworkBuildStore.getState().openRouteSurface(REPORT_SURFACE_SCREEN_CODE, {
+      subjectKind: 'report',
+      subjectRef: 'report-1',
+    });
+
+    render(<WorkspaceSurfaceRouter region="main" />);
+
+    await user.click(screen.getByRole('button', { name: 'Wkłady źródeł' }));
+
+    expect(useShellStore.getState().wynikiTab).toBe('zwarcia');
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe(
+      REPORT_SURFACE_SCREEN_CODE,
+    );
+  });
 });
 
 describe('WorkspaceOperationalBar', () => {

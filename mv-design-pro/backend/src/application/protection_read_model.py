@@ -35,6 +35,13 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from protection.curves.iec_curves import (
+    IEC_CURVE_LABELS_PL,
+    MIN_TRIPPING_TIME_S,
+    IECCurveParams,
+    IECCurveType,
+    generate_iec_curve_points,
+)
 
 DEVICE_KIND_MAP = {
     "overcurrent": "RELAY_OVERCURRENT",
@@ -52,6 +59,15 @@ CURVE_TYPE_MAP = {
     "IEC_EI": "EI",
     "IEC_LI": "LTI",
 }
+
+# Próbkowanie krzywej I-t dla charakterystyki niezależnej (DT):
+# charakterystyka jest płaska, więc dwa punkty krańcowe w pełni ją opisują.
+_IT_CURVE_DEFINITE_NUM_POINTS = 2
+# Charakterystyki odwrotne (SI/VI/EI/LTI) są krzywoliniowe — do wiernego
+# odwzorowania w inspektorze potrzeba gęstego, logarytmicznego próbkowania.
+_IT_CURVE_INVERSE_NUM_POINTS = 64
+# Zakres prądu jako wielokrotność progu (In>) dla generatora punktów solvera.
+_IT_CURVE_CURRENT_RANGE = (1.1, 20.0)
 
 FUNCTION_META = {
     "overcurrent_50": {
@@ -83,6 +99,28 @@ FUNCTION_META = {
         "code": "DIRECTIONAL_OC",
         "ansi": ("67N",),
         "label_pl": "Ziemnozwarciowa kierunkowa",
+    },
+    # D10 (addytywnie): funkcje ochrony od pracy wyspowej (LoM). Kody spójne z
+    # sanity_checks (ROCOF, UNDERFREQUENCY, OVERFREQUENCY).
+    "rocof_81R": {
+        "code": "ROCOF",
+        "ansi": ("81R",),
+        "label_pl": "Szybkość zmian częstotliwości (df/dt)",
+    },
+    "vector_shift_78": {
+        "code": "VECTOR_SHIFT",
+        "ansi": ("78",),
+        "label_pl": "Przesunięcie wektora napięcia",
+    },
+    "underfrequency_81U": {
+        "code": "UNDERFREQUENCY",
+        "ansi": ("81U",),
+        "label_pl": "Podczęstotliwościowa (f<)",
+    },
+    "overfrequency_81O": {
+        "code": "OVERFREQUENCY",
+        "ansi": ("81O",),
+        "label_pl": "Nadczęstotliwościowa (f>)",
     },
 }
 
@@ -462,18 +500,24 @@ def _build_functions(
 
         setpoint = _build_setpoint(setting, base_values)
         computed = compute_from_setpoint(setpoint, base_values)
-        frontend_functions.append(
-            {
-                "code": meta["code"],
-                "ansi": list(meta["ansi"]),
-                "label_pl": meta["label_pl"],
-                "setpoint": setpoint.to_dict(),
-                "computed": computed.to_dict() if computed is not None else None,
-                "time_delay_s": setting.time_delay_s,
-                "curve_type": setting.curve_type,
-                "notes_pl": "Funkcja kierunkowa" if setting.is_directional else None,
-            }
-        )
+        # Funkcje bezzwłoczne (I>>/Io>>) rozpoznajemy po kodzie meta — dla nich
+        # brak zwłoki jest cechą, nie brakiem danych (S-1).
+        instantaneous = meta["code"] in {"OVERCURRENT_INST", "EARTH_FAULT_INST"}
+        it_curve, it_curve_missing = _build_it_curve(setting, instantaneous=instantaneous)
+        function_payload: dict[str, Any] = {
+            "code": meta["code"],
+            "ansi": list(meta["ansi"]),
+            "label_pl": meta["label_pl"],
+            "setpoint": setpoint.to_dict(),
+            "computed": computed.to_dict() if computed is not None else None,
+            "time_delay_s": setting.time_delay_s,
+            "curve_type": setting.curve_type,
+            "it_curve": it_curve,
+            "notes_pl": "Funkcja kierunkowa" if setting.is_directional else None,
+        }
+        if it_curve_missing:
+            function_payload["it_curve_missing_data"] = it_curve_missing
+        frontend_functions.append(function_payload)
         sanity_functions.append(
             SanityProtectionFunctionSummary(
                 code=meta["code"],
@@ -487,6 +531,101 @@ def _build_functions(
         )
 
     return frontend_functions, sanity_functions
+
+
+def _build_it_curve(
+    setting: ProtectionSetting,
+    *,
+    instantaneous: bool = False,
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """Zbuduj krzywą czasowo-prądową (I-t) dla nastawy z solvera IEC 60255.
+
+    Wartości czasu (t_s) pochodzą WYŁĄCZNIE z solvera
+    (``protection.curves.iec_curves``) — read model niczego nie liczy sam.
+
+    - Charakterystyka niezależna (DT) jest w pełni wyznaczona przez próg (In>)
+      i zwłokę czasową → zwracamy płaską krzywą (TMS nie dotyczy).
+    - Funkcja bezzwłoczna (I>>/Io>>, ANSI 50/50N) z natury NIE ma zwłoki
+      zamierzonej: działa w minimalnym czasie własnym przekaźnika. Brak
+      ``time_delay_s`` NIE jest wtedy „brakiem danych" — używamy podłogi
+      czasowej solvera (``MIN_TRIPPING_TIME_S``), by krzywa była płaska przy
+      t≈0, a nie przy literalnym t_s=0 (nieprzedstawialnym na osi log-log).
+    - Charakterystyki odwrotne (SI/VI/EI/LTI) wymagają nastawy TMS
+      (``ProtectionSetting.time_multiplier``): gdy jest podana → liczymy krzywą
+      solverem z tym mnożnikiem; gdy jej brak → zwracamy brak danych
+      (``time_multiplier``) zamiast fabrykować mnożnik czasowy.
+
+    Zwraca krotkę ``(krzywa | None, lista_brakujących_danych)``.
+    """
+    missing: list[str] = []
+
+    pickup_a = setting.threshold_a
+    if pickup_a is None or pickup_a <= 0:
+        missing.append("pickup_current")
+
+    curve_type = setting.curve_type
+    if curve_type:
+        solver_code = CURVE_TYPE_MAP.get(str(curve_type), "DT")
+    else:
+        solver_code = "DT"
+
+    time_multiplier: float | None = None
+    # Zwłoka niezależna przekazywana do solvera (DT). Dla funkcji bezzwłocznej
+    # bez skonfigurowanej zwłoki = minimalny czas własny (podłoga solvera).
+    definite_time_s = setting.time_delay_s
+    if solver_code == "DT":
+        curve_kind = "DEFINITE"
+        num_points = _IT_CURVE_DEFINITE_NUM_POINTS
+        if setting.time_delay_s is None:
+            if instantaneous:
+                definite_time_s = MIN_TRIPPING_TIME_S
+            else:
+                missing.append("definite_time")
+        elif instantaneous and setting.time_delay_s <= 0:
+            # Bezzwłoczna z zerową zwłoką → podłoga (nie generujemy t_s=0).
+            definite_time_s = MIN_TRIPPING_TIME_S
+    else:
+        curve_kind = "INVERSE"
+        num_points = _IT_CURVE_INVERSE_NUM_POINTS
+        tms = setting.time_multiplier
+        if tms is None or tms <= 0:
+            # TMS wymagany dla charakterystyki odwrotnej — brak danych, nie fabrykujemy.
+            missing.append("time_multiplier")
+        else:
+            time_multiplier = tms
+
+    if missing:
+        return None, missing
+
+    assert pickup_a is not None  # zapewnione przez powyższą walidację missing
+
+    params = IECCurveParams.get_standard_params(IECCurveType(solver_code))
+    raw_points = generate_iec_curve_points(
+        curve_params=params,
+        pickup_current_a=pickup_a,
+        # TMS (mnożnik czasowy) tylko dla krzywych odwrotnych; DT ignoruje ten
+        # parametr, więc przekazujemy neutralne 1.0 dla spójności wywołania.
+        time_multiplier=time_multiplier if time_multiplier is not None else 1.0,
+        current_range=_IT_CURVE_CURRENT_RANGE,
+        num_points=num_points,
+        definite_time_s=definite_time_s,
+    )
+    points = [{"i_a": point["current_a"], "t_s": point["time_s"]} for point in raw_points]
+    if not points:
+        return None, ["it_curve_points"]
+
+    return (
+        {
+            "standard": "IEC_60255",
+            "curve_kind": curve_kind,
+            "curve_code": solver_code,
+            "curve_label_pl": IEC_CURVE_LABELS_PL.get(solver_code, solver_code),
+            "pickup_a": pickup_a,
+            "time_multiplier": time_multiplier,
+            "points": points,
+        },
+        [],
+    )
 
 
 def _build_setpoint(setting: ProtectionSetting, base_values: Any) -> ProtectionSetpoint:
@@ -599,7 +738,9 @@ def _build_overcurrent_setting(
         "pickup_in_multiplier": setpoint.get("basis") == "IN" and pickup_a is None,
         "trip_time_s": function.get("time_delay_s"),
         "characteristic": CURVE_TYPE_MAP.get(function.get("curve_type"), "DT"),
-        "tms": None,
+        # TMS spójny z krzywą I-t (E-3): realny mnożnik czasowy z it_curve dla
+        # charakterystyk odwrotnych; None dla DT/braku (bez zgadywania).
+        "tms": (function.get("it_curve") or {}).get("time_multiplier"),
         "instantaneous": instantaneous,
     }
 

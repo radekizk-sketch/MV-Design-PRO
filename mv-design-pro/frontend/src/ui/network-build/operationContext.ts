@@ -126,6 +126,40 @@ export function buildOperationContext({
         context.station_ref = elementContext.stationRef;
       }
       break;
+    case 'add_shunt_compensator_sn': {
+      if (elementType === 'Bus') {
+        context.bus_ref = elementId;
+        const bus = snapshot?.buses?.find(
+          (candidate) => candidate.ref_id === elementId || candidate.id === elementId,
+        );
+        if (bus) {
+          context.bus_name = bus.name ?? undefined;
+          if (typeof bus.voltage_kv === 'number' && bus.voltage_kv > 0) {
+            context.bus_voltage_kv = bus.voltage_kv;
+          }
+        }
+      }
+      break;
+    }
+    case 'add_surge_arrester_sn': {
+      // G-STK-8: ogranicznik stawiamy w polu SN; launch z pola (bay) lub z szyny
+      // (backend dobiera pierwsze pole na szynie). Zero fabrykacji — refy z selekcji.
+      if (elementType === 'BaySN') {
+        context.field_ref = elementId;
+      } else if (elementType === 'Bus') {
+        context.bus_ref = elementId;
+        const bus = snapshot?.buses?.find(
+          (candidate) => candidate.ref_id === elementId || candidate.id === elementId,
+        );
+        if (bus) {
+          context.bus_name = bus.name ?? undefined;
+          if (typeof bus.voltage_kv === 'number' && bus.voltage_kv > 0) {
+            context.bus_voltage_kv = bus.voltage_kv;
+          }
+        }
+      }
+      break;
+    }
     case 'add_converter_source': {
       const sourceTechnology = typeof extraContext.source_technology === 'string'
         ? extraContext.source_technology.trim().toUpperCase()

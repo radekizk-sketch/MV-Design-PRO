@@ -34,6 +34,13 @@ class ShortCircuitPostProcessResult:
     ith_a: float
     ib_a: float
     sk_mva: float
+    # Audyt fizyki fala G (2026-07): wspolczynniki cieplne m (skladowa DC) i n
+    # (skladowa AC) faktycznie uzyte do policzenia ith_a = ikss*sqrt(m+n) —
+    # niesione addytywnie, zeby biale-skrzynkowy wywod (proof engine) mogl
+    # pokazac PRAWDZIWE m,n zamiast domyslnych placeholderow. Patrz
+    # _thermal_mn_factors ponizej.
+    m_factor: float = 0.0
+    n_factor: float = 1.0
 
 
 def build_zbus(graph: NetworkGraph) -> tuple[AdmittanceMatrixBuilder, np.ndarray]:
@@ -113,6 +120,55 @@ def compute_ikss(
     return (c_factor * un_v * voltage_factor) / abs(z_equiv)
 
 
+def _thermal_mn_factors(kappa: float, tk_s: float, f_hz: float = 50.0) -> tuple[float, float]:
+    """Wspolczynniki cieplne m (skladowa DC) i n (skladowa AC) — IEC 60909-0 §4.7/§12.
+
+    I_th = I_k'' * sqrt(m + n) (norma; patrz rowniez
+    docs/proof/NORMATIVE_COMPLETION_PACK_IEC_60909.md §4.7 i
+    docs/proof_engine/EQUATIONS_IEC60909_SC3F.md EQ_SC3F_008 — TA SAMA formula
+    jest juz udokumentowana jako wiazaca i uzyta w proof_generator.py dla
+    SC1/SC3F, ale do audytu fizyki fala G (2026-07) NIE byla uzyta tutaj — ten
+    rdzenny solver liczyl ith_a = ikss*sqrt(tk_s), co jest niezgodne
+    wymiarowo (sqrt(tk_s) ma jednostke sqrt(s), nie jest bezwymiarowe) i
+    fizycznie (Ith rosloby bez ograniczen z czasem trwania zwarcia zamiast
+    pozostac ograniczone w poblizu Ikss).
+
+    m — postac zamknieta (norma, powszechnie cytowana rowniez w publicznych
+    przewodnikach inzynierskich IEC 60909, NIE tablica wspolczynnikow objeta
+    prawem autorskim — jak juz istniejaca formula kappa w tym samym module):
+        m = 1/(2*f*tk*ln(kappa-1)) * (exp(4*f*tk*ln(kappa-1)) - 1),  kappa > 1
+    kappa<=1 (brak skladowej DC, tj. R/X->inf) -> m=0.
+
+    n — skladowa okresowa (AC decay). n=1 dla zwarc DALEKO OD GENERATORA
+    (brak zaniku skladowej okresowej — zalozenie stale w tym module, ktory
+    nie modeluje zanikania reaktancji synchronicznej/podprzejsciowej
+    generatorow w oknie tk_s). Dla zwarc BLISKO GENERATORA n<1 wymaga
+    krzywych normowych I_k''/I_rG (dane generatora poza sygnatura tej
+    funkcji) — udokumentowane jako ograniczenie modelu (audyt fizyki fala G,
+    2026-07; sprawa do decyzji produktowej, patrz raport audytu).
+    """
+    if tk_s <= 0.0:
+        return 0.0, 1.0
+    if kappa <= 1.0:
+        return 0.0, 1.0
+    ln_term = math.log(kappa - 1.0)
+    if abs(ln_term) < 1e-9:
+        # kappa -> 2.0 (R/X -> 0): ln_term -> 0, formula ma usuwalna osobliwosc
+        # 0/0. Granica (regula de l'Hopitala / rozwiniecie Taylora pierwszego
+        # rzedu wzgledem ln_term): m -> 2.0. Zweryfikowane numerycznie
+        # (kappa=1.999999 -> m=1.99980...).
+        return 2.0, 1.0
+    denom = 2.0 * f_hz * tk_s * ln_term
+    exponent = 4.0 * f_hz * tk_s * ln_term
+    if exponent < -700:
+        m = -1.0 / denom
+    elif exponent > 700:
+        m = math.inf
+    else:
+        m = (math.exp(exponent) - 1.0) / denom
+    return max(m, 0.0), 1.0
+
+
 def compute_post_fault_quantities(
     *,
     ikss: float,
@@ -133,7 +189,8 @@ def compute_post_fault_quantities(
     else:
         kappa = 1.02 + 0.98 * math.exp(exp_arg)
     ip_a = kappa * math.sqrt(2.0) * ikss
-    ith_a = ikss * math.sqrt(tk_s)
+    m_factor, n_factor = _thermal_mn_factors(kappa, tk_s)
+    ith_a = ikss * math.sqrt(m_factor + n_factor)
     sk_mva = (math.sqrt(3.0) * un_v * ikss) / 1_000_000.0
 
     r_ohm = z_equiv.real
@@ -152,4 +209,6 @@ def compute_post_fault_quantities(
         ith_a=ith_a,
         ib_a=ib_a,
         sk_mva=sk_mva,
+        m_factor=m_factor,
+        n_factor=n_factor,
     )

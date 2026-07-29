@@ -39,16 +39,12 @@ class ReportReadinessAdapter:
     ) -> None:
         self._readiness = readiness_service or CalculationReadinessService()
 
-    def is_ready_for_osd_report(
-        self, enm: EnergyNetworkModel
-    ) -> ReportReadinessStatus:
+    def is_ready_for_osd_report(self, enm: EnergyNetworkModel) -> ReportReadinessStatus:
         """Raport OSD wymaga power_flow + short_circuit kompletnych."""
         report = self._readiness.evaluate_single(enm, "report_osd")
         return self._to_status("osd", report)
 
-    def is_ready_for_technical_report(
-        self, enm: EnergyNetworkModel
-    ) -> ReportReadinessStatus:
+    def is_ready_for_technical_report(self, enm: EnergyNetworkModel) -> ReportReadinessStatus:
         """Raport techniczny wymaga 5 podstawowych typów obliczeń."""
         report = self._readiness.evaluate_single(enm, "report_technical")
         return self._to_status("technical", report)

@@ -19,7 +19,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from uuid import UUID
 
 from api.dependencies import get_uow_factory
@@ -36,7 +36,7 @@ router = APIRouter(prefix="/api/projects", tags=["projects"])
 # =============================================================================
 
 
-class ProjectMode(str, Enum):
+class ProjectMode(StrEnum):
     """Tryb projektu - AS-IS (weryfikacja) vs TO-BE (projektowanie)."""
 
     AS_IS = "AS-IS"
@@ -266,9 +266,7 @@ def update_project(
             project,
             name=body.name if body.name is not None else project.name,
             description=(
-                body.description
-                if "description" in body.model_fields_set
-                else project.description
+                body.description if "description" in body.model_fields_set else project.description
             ),
             mode=body.mode.value if body.mode is not None else project.mode,
             voltage_level_kv=(
@@ -276,7 +274,9 @@ def update_project(
                 if body.voltage_level_kv is not None
                 else project.voltage_level_kv
             ),
-            frequency_hz=body.frequency_hz if body.frequency_hz is not None else project.frequency_hz,
+            frequency_hz=(
+                body.frequency_hz if body.frequency_hz is not None else project.frequency_hz
+            ),
             updated_at=datetime.now(UTC),
         )
         uow.projects.update(updated, commit=False)

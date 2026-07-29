@@ -215,7 +215,11 @@ describe('InspectorEngineeringView - PV za transformatorem SN/nN', () => {
 
     expect(screen.getByText('Elektrometal e2TANGO-400')).toBeInTheDocument();
     expect(screen.getByText('wyłącznik nN źródła PV')).toBeInTheDocument();
-    expect(screen.getByText('PV za transformatorem SN/nN', { exact: false })).toBeInTheDocument();
+    // 2026-07-17: podtytuł nagłówka = rola układu + REALNY wariant
+    // przyłączenia z ENM (fixture: connection_variant='nn_side' →
+    // „Po stronie nN stacji"), nie dawny hardkod „PV za transformatorem
+    // SN/nN" (kłamał dla ról nie-PV i wariantów innych niż blokowy).
+    expect(screen.getAllByText('Po stronie nN stacji', { exact: false }).length).toBeGreaterThan(0);
     expect(screen.queryByText('pv-1')).not.toBeInTheDocument();
     expect(screen.queryByText('conv-pv-nn-0p5mw-0p4kv')).not.toBeInTheDocument();
   });

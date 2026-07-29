@@ -17,16 +17,11 @@ INVARIANTS:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
 from network_model.catalog.audit2_catalogs import (
     get_bess_operation_mode,
-    get_block_transformer,
-    get_device_withstand,
-    get_mv_neutral_grounding,
-    get_pf_curve,
     get_tap_changer,
     is_vt_voltage_factor_valid_for_grounding,
     validate_device_withstand,
@@ -285,14 +280,45 @@ def generate_device_withstand_proof(
 def generate_vt_grounding_validation_proof(
     *,
     bay_designation: str,
-    vt_voltage_factor: float,
+    vt_voltage_factor: float | None,
     grounding_type: str,  # "isolated" | "petersen_coil" | "resistor_grounded" | "directly_grounded"
     proof_id: UUID | None = None,
     generated_at_iso: str = "1970-01-01T00:00:00Z",
 ) -> Audit2ProofResult:
-    """Dowod zgodnosci VT U_th z typem uziemienia neutralnego (IEC 61869-3)."""
+    """Dowod zgodnosci VT U_th z typem uziemienia neutralnego (IEC 61869-3).
+
+    `vt_voltage_factor is None` znaczy „nie da sie ustalic" i daje dowod NIEZALICZONY
+    z nazwanym powodem. Wczesniej wolajacy podstawial w tym miejscu 1,9 jako wartosc
+    domyslna (V12K-258): typ spoza katalogu dostawal wspolczynnik z powietrza, a pakiet
+    dowodowy oglaszal na tej podstawie zgodnosc.
+    """
     proof_id = proof_id or uuid4()
-    if grounding_type not in {"isolated", "petersen_coil", "resistor_grounded", "directly_grounded"}:
+    if vt_voltage_factor is None:
+        return Audit2ProofResult(
+            proof_id=proof_id,
+            proof_type="AUDIT2_VT_GROUNDING_VALIDATION",
+            pass_status=False,
+            summary_pl=(
+                "Wspolczynnik napieciowy przekladnika jest nieznany (typ spoza katalogu "
+                "albo karta bez tej danej) — zgodnosci ze sposobem uziemienia nie da sie "
+                "wykazac."
+            ),
+            details={
+                "bay_designation": bay_designation,
+                "vt_voltage_factor": None,
+                "grounding_type": grounding_type,
+                "ok": False,
+                "message_pl": "brak wspolczynnika napieciowego",
+            },
+            formulas_latex=[],
+            generated_at=generated_at_iso,
+        )
+    if grounding_type not in {
+        "isolated",
+        "petersen_coil",
+        "resistor_grounded",
+        "directly_grounded",
+    }:
         return Audit2ProofResult(
             proof_id=proof_id,
             proof_type="AUDIT2_VT_GROUNDING_VALIDATION",
@@ -307,8 +333,7 @@ def generate_vt_grounding_validation_proof(
         proof_id=proof_id,
         proof_type="AUDIT2_VT_GROUNDING_VALIDATION",
         pass_status=ok,
-        summary_pl=message
-        or f"OK: VT U_th={vt_voltage_factor} pasuje do sieci {grounding_type}.",
+        summary_pl=message or f"OK: VT U_th={vt_voltage_factor} pasuje do sieci {grounding_type}.",
         details={
             "bay_designation": bay_designation,
             "vt_voltage_factor": vt_voltage_factor,
@@ -318,8 +343,10 @@ def generate_vt_grounding_validation_proof(
         },
         formulas_latex=[
             r"$$U_{\text{th VT}} \geq U_{\text{required}}(\text{grounding})$$",
-            r"$$U_{\text{required}} = \begin{cases} 1.9 & \text{isolated/petersen (8h)} \\ "
-            r"1.5 & \text{R-grounded (30s)} \\ 1.2 & \text{directly grounded (continuous)} \end{cases}$$",
+            r"$$U_{\text{required}} = \begin{cases} 1.9 & \text{izolowana / kompensowana / "
+            r"przez rezystor (faza--ziemia)} \\ 1.5 & \text{bezpo\'srednio uziemiona "
+            r"(faza--ziemia, 30 s)} \\ 1.2 & \text{uzwojenie mi\k{e}dzyfazowe (ci\k{a}g\l{}e)} "
+            r"\end{cases}$$",
         ],
         generated_at=generated_at_iso,
     )

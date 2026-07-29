@@ -207,6 +207,95 @@ describe('M-09 L2 full apparatus + ports without overlap', () => {
   });
 });
 
+// --- SCHEMAT-10 S1 (V12K-135, D12) footprint kolumny per LOD ----------------
+
+describe('SCHEMAT-10 S1 (V12K-135, D12): footprint kolumny wymiarowany pod treść (bez martwych pól / bez kolizji)', () => {
+  const resultL2 = engine.layout(snapshot, 'topological', 'L2');
+  const trunkStations = resultL2.nodes; // korzenie L0 (bloki stacji) na magistrali
+
+  it('pola L2 sąsiednich stacji NIE nachodzą na siebie (krok kolumny ≥ najszersza treść)', () => {
+    // Przed S1: krok kolumny = STAŁY footprint bloku L0 (120px) + gap. Treść
+    // L1/L2 (rząd pól) bywa SZERSZA niż 120 → pola sąsiadów nachodziły przy
+    // zbliżeniu (defekt niewidoczny w starych testach — sprawdzały tylko bloki
+    // L0, nie pola cross-stacyjne). Po S1: krok = max(blok L0, najszersza treść)
+    // + gap → zero nachodzenia pól między stacjami. Miara: horyzontalne bboxy
+    // TREŚCI stacji (pola + aparaty) są rozłączne w X między różnymi stacjami.
+    interface XSpan { ref: string; minX: number; maxX: number; cy: number }
+    const spans: XSpan[] = trunkStations.map((s) => {
+      const fields = (s.children ?? []) as NodeGeometry[];
+      const xs = fields.flatMap((f) => [f.x, f.x + f.width]);
+      const minX = xs.length ? Math.min(...xs) : s.x;
+      const maxX = xs.length ? Math.max(...xs) : s.x + s.width;
+      return { ref: s.ref, minX, maxX, cy: s.y + s.height / 2 };
+    });
+    // Porównaj tylko stacje w TYM SAMYM pasmie poziomym (ta sama oś magistrali).
+    let overlaps = 0;
+    const sample: string[] = [];
+    for (let i = 0; i < spans.length; i += 1) {
+      for (let j = i + 1; j < spans.length; j += 1) {
+        if (Math.abs(spans[i].cy - spans[j].cy) > 1) continue; // różne pasma
+        const ox = Math.min(spans[i].maxX, spans[j].maxX) - Math.max(spans[i].minX, spans[j].minX);
+        if (ox > 0.5) {
+          overlaps += 1;
+          if (sample.length < 5) sample.push(`${spans[i].ref} ∩ ${spans[j].ref} = ${ox.toFixed(1)}`);
+        }
+      }
+    }
+    expect(overlaps, `nachodzenia pól cross-stacyjne: ${sample.join('; ')}`).toBe(0);
+  });
+
+  it('kadr wypełniony treścią ≥ próg (bbox treści / bbox arkusza — brak martwych pól)', () => {
+    // D12 „martwe kadry": krok kolumny wymiarowany DOKŁADNIE pod najgęstszą
+    // treść + gap (nie arbitralnie większa stała), więc treść wypełnia kadr.
+    // Miara: suma szerokości TREŚCI kolumn magistrali / rozpiętość X bbox-a
+    // magistrali ≥ próg (reszta to zaplanowane gapy między kolumnami, nie
+    // martwe pole). Próg 0.5 = co najmniej połowa szerokości magistrali to
+    // treść stacji (przy jednolitym kroku i realnej fixturze z polami).
+    const onTrunk = trunkStations.filter((s) => Math.abs((s.y + s.height / 2) - (trunkStations[0].y + trunkStations[0].height / 2)) <= 1);
+    expect(onTrunk.length).toBeGreaterThan(3);
+    const contentW = onTrunk.reduce((sum, s) => {
+      const fields = (s.children ?? []) as NodeGeometry[];
+      const xs = fields.flatMap((f) => [f.x, f.x + f.width]);
+      const w = xs.length ? Math.max(...xs) - Math.min(...xs) : s.width;
+      return sum + w;
+    }, 0);
+    const spanMin = Math.min(...onTrunk.map((s) => s.x));
+    const spanMax = Math.max(...onTrunk.map((s) => s.x + s.width));
+    const fill = contentW / Math.max(1, spanMax - spanMin);
+    expect(fill, `wypełnienie kadru treścią = ${fill.toFixed(3)}`).toBeGreaterThanOrEqual(0.5);
+  });
+});
+
+// --- SCHEMAT-10 S1 (V12K-135) JEDNA KOTWICA (layout engine: jedna geometria) --
+
+describe('SCHEMAT-10 S1 (V12K-135): jedna kotwica — środek stacji IDENTYCZNY na L0/L1/L2 (projekcja LOD)', () => {
+  it('każda stacja ma IDENTYCZNY środek (x,y,w,h) na L0/L1/L2 (zoom = szczegół, nie przemeblowanie)', () => {
+    // Silnik layoutu buduje JEDNĄ zagnieżdżoną geometrię i PROJEKTUJE LOD
+    // (przycina dzieci) — więc blok stacji (a więc jego środek) jest niezmienny
+    // między poziomami z konstrukcji. Ten test PILNUJE tego kontraktu (regresja
+    // „trzech światów" byłaby natychmiast czerwona).
+    const center = (lod: LodLevel): Map<string, string> => {
+      const r = engine.layout(snapshot, 'topological', lod);
+      const m = new Map<string, string>();
+      for (const s of r.nodes) {
+        m.set(s.ref, `${(s.x + s.width / 2).toFixed(3)},${(s.y + s.height / 2).toFixed(3)},${s.width.toFixed(3)},${s.height.toFixed(3)}`);
+      }
+      return m;
+    };
+    const c0 = center('L0');
+    const c1 = center('L1');
+    const c2 = center('L2');
+    expect(c0.size).toBeGreaterThanOrEqual(52);
+    const drift: string[] = [];
+    for (const [ref, p0] of c0) {
+      if (c1.get(ref) !== p0 || c2.get(ref) !== p0) {
+        drift.push(`${ref}: L0=${p0} L1=${c1.get(ref)} L2=${c2.get(ref)}`);
+      }
+    }
+    expect(drift, `kotwice dryfują:\n${drift.slice(0, 5).join('\n')}`).toEqual([]);
+  });
+});
+
 // --- Structure invariants ---------------------------------------------------
 
 describe('structure invariants (one nested truth)', () => {

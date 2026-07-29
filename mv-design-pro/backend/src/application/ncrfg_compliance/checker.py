@@ -218,26 +218,16 @@ class NcRfgComplianceChecker:
                     ),
                 )
             # FRT/HVRT: uruchamiamy podpięty silnik RMS dla scenariusza testowego
-            from src.network_model.solvers.frt_hvrt import (
-                FrtHvrtSolverAdapter,
-                FrtHvrtSolverInput,
-                FrtScenario,
-            )
+            from src.application.ncrfg_compliance.frt_input import build_frt_hvrt_input
+            from src.network_model.solvers.frt_hvrt import FrtHvrtSolverAdapter
 
             adapter = FrtHvrtSolverAdapter()
-            test_kind = "lvrt" if test_id == "T1" else "hvrt"
-            voltage_dip = 0.05 if test_kind == "lvrt" else 1.30
-            scenario = FrtScenario(
-                scenario_id=f"{test_id}_{der_data.der_ref}",
-                test_kind=test_kind,
-                voltage_dip_depth_pu=voltage_dip,
-                fault_duration_s=0.15,
-                target_der_ref=der_data.der_ref,
-            )
+            test_kind: Literal["lvrt", "hvrt"] = "lvrt" if test_id == "T1" else "hvrt"
             result = adapter.run(
-                FrtHvrtSolverInput(
-                    enm_ref="ncrfg_test",
-                    scenarios=[scenario],
+                build_frt_hvrt_input(
+                    der_data.der_ref,
+                    test_kind,
+                    scenario_id=f"{test_id}_{der_data.der_ref}",
                 ),
             )
             if result.scenario_results and result.scenario_results[0].stayed_connected:

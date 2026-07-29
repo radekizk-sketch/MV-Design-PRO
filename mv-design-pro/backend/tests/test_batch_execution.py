@@ -472,6 +472,111 @@ class TestComparisonDeltaMath:
         assert comparison.deltas_global["sk_mva"].abs == pytest.approx(10.0)
         assert comparison.deltas_global["sk_mva"].rel == pytest.approx(0.2)
 
+        # Skalarny zkk_ohm niesie wyłącznie moduł — pochodna zk_ohm liczona,
+        # składowych Rk/Xk uczciwie brak (karta S-C).
+        assert "zk_ohm" in comparison.deltas_global
+        assert comparison.deltas_global["zk_ohm"].abs == pytest.approx(0.1)
+        assert "rk_ohm" not in comparison.deltas_global
+        assert "xk_ohm" not in comparison.deltas_global
+
+    def test_build_comparison_full_balance_deltas(self):
+        """Karta S-C: addytywne delty pełnego bilansu (rk/xk/zk, X/R, I²t).
+
+        zkk_ohm w postaci {"re","im"} (kształt mapowania resultset_v1) nie może
+        wywracać porównania (naprawa u źródła: rzut na moduł zamiast TypeError).
+        """
+        base_rs = build_result_set(
+            run_id=uuid4(),
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            validation_snapshot={},
+            readiness_snapshot={},
+            element_results=[],
+            global_results={
+                "ikss_a": 1000.0,
+                "ith_a": 1100.0,
+                "tk_s": 1.0,
+                "rx_ratio": 0.25,
+                "zkk_ohm": {"re": 0.3, "im": 0.4},
+            },
+        )
+        other_rs = build_result_set(
+            run_id=uuid4(),
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            validation_snapshot={},
+            readiness_snapshot={},
+            element_results=[],
+            global_results={
+                "ikss_a": 1200.0,
+                "ith_a": 2200.0,
+                "tk_s": 1.0,
+                "rx_ratio": 0.5,
+                "zkk_ohm": {"re": 0.6, "im": 0.8},
+            },
+        )
+
+        comparison = build_comparison(
+            study_case_id=uuid4(),
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            base_scenario_id=uuid4(),
+            other_scenario_id=uuid4(),
+            base_result_set=base_rs,
+            other_result_set=other_rs,
+        )
+
+        deltas = comparison.deltas_global
+        # zkk_ohm (dict) → delta modułu |Zk| (0.5 → 1.0) zamiast TypeError.
+        assert deltas["zkk_ohm"].abs == pytest.approx(0.5)
+        # Składowe i moduł pełnego bilansu.
+        assert deltas["rk_ohm"].base == pytest.approx(0.3)
+        assert deltas["rk_ohm"].abs == pytest.approx(0.3)
+        assert deltas["xk_ohm"].abs == pytest.approx(0.4)
+        assert deltas["zk_ohm"].abs == pytest.approx(0.5)
+        # X/R = 1/(R/X): 4.0 → 2.0.
+        assert deltas["xr_ratio"].base == pytest.approx(4.0)
+        assert deltas["xr_ratio"].abs == pytest.approx(-2.0)
+        # I²t = (Ith/1000)²·tk: 1.21 → 4.84 kA²s.
+        assert deltas["i2t_ka2s"].base == pytest.approx(1.21)
+        assert deltas["i2t_ka2s"].abs == pytest.approx(3.63)
+
+    def test_build_comparison_older_results_without_sources_skip_derived(self):
+        """Starszy wynik bez pól źródłowych → uczciwy brak delty pochodnej."""
+        base_rs = build_result_set(
+            run_id=uuid4(),
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            validation_snapshot={},
+            readiness_snapshot={},
+            element_results=[],
+            global_results={"ikss_a": 1000.0},
+        )
+        other_rs = build_result_set(
+            run_id=uuid4(),
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            validation_snapshot={},
+            readiness_snapshot={},
+            element_results=[],
+            global_results={
+                "ikss_a": 1200.0,
+                "ith_a": 2200.0,
+                "tk_s": 1.0,
+                "rx_ratio": 0.5,
+                "zkk_ohm": {"re": 0.6, "im": 0.8},
+            },
+        )
+
+        comparison = build_comparison(
+            study_case_id=uuid4(),
+            analysis_type=ExecutionAnalysisType.SC_3F,
+            base_scenario_id=uuid4(),
+            other_scenario_id=uuid4(),
+            base_result_set=base_rs,
+            other_result_set=other_rs,
+        )
+
+        deltas = comparison.deltas_global
+        assert "ikss_a" in deltas
+        for key in ("rk_ohm", "xk_ohm", "zk_ohm", "xr_ratio", "i2t_ka2s"):
+            assert key not in deltas
+
     def test_build_comparison_element_deltas(self):
         """build_comparison computes per-element deltas."""
         run_id_base = uuid4()

@@ -24,9 +24,27 @@ def build_oze_pv_bess_network() -> dict[str, Any]:
             "defaults": {},
         },
         "buses": [
-            {"ref_id": "BUS-1", "id": "BUS-1", "name": "Slack 110kV", "u_n_kv": 110.0, "bus_kind": "slack"},
-            {"ref_id": "BUS-2", "id": "BUS-2", "name": "MV bus with DER", "u_n_kv": 15.0, "bus_kind": "pq"},
-            {"ref_id": "BUS-3", "id": "BUS-3", "name": "Load bus", "u_n_kv": 15.0, "bus_kind": "pq"},
+            {
+                "ref_id": "BUS-1",
+                "id": "BUS-1",
+                "name": "Slack 110kV",
+                "u_n_kv": 110.0,
+                "bus_kind": "slack",
+            },
+            {
+                "ref_id": "BUS-2",
+                "id": "BUS-2",
+                "name": "MV bus with DER",
+                "u_n_kv": 15.0,
+                "bus_kind": "pq",
+            },
+            {
+                "ref_id": "BUS-3",
+                "id": "BUS-3",
+                "name": "Load bus",
+                "u_n_kv": 15.0,
+                "bus_kind": "pq",
+            },
         ],
         "branches": [
             {

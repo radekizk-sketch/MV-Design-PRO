@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from enm.models import EnergyNetworkModel
 from pydantic import BaseModel, Field
 
 
-class V126AnalysisType(str, Enum):
+class V126AnalysisType(StrEnum):
     POWER_QUALITY_HARMONICS = "power_quality_harmonics"
     SSCI_IMPEDANCE = "ssci_impedance"
     VOLTAGE_STABILITY = "voltage_stability"
@@ -161,6 +161,145 @@ class V126RunRequest(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
 
 
+_STANDARD_UM_KV: tuple[float, ...] = (12.0, 17.5, 24.0, 36.0)
+
+
+def _nearest_standard_um_kv(nominal_kv: float) -> float:
+    """Najbliższe znormalizowane napięcie najwyższe urządzenia U_m ≥ napięcie znamionowe szyny.
+
+    IEC 60071-1 typoszereg SN. Nie fabrykuje danych ogranicznika — jedynie
+    przypisuje poziom izolacji do poziomu napięcia szyny (mapowanie normowe).
+    """
+    for u_m in _STANDARD_UM_KV:
+        if nominal_kv <= u_m:
+            return u_m
+    return _STANDARD_UM_KV[-1]
+
+
+def _grounding_type_to_network_neutral(grounding_type: str | None) -> str | None:
+    """Mapowanie typu uziemienia punktu neutralnego SN na kategorię TOV solvera.
+
+    IEC 60071: sieć izolowana/skompensowana (Petersen) — ogranicznik widzi
+    napięcie ~międzyfazowe przy doziemieniu → "isolated"; sieć skutecznie
+    uziemiona (rezystor/bezpośrednio) → "earthed". None gdy brak danych
+    (bez fabrykacji — solver użyje własnej udokumentowanej wartości domyślnej).
+    """
+    if grounding_type in ("isolated", "petersen_coil"):
+        return "isolated"
+    if grounding_type in ("resistor_grounded", "directly_grounded"):
+        return "earthed"
+    return None
+
+
+def build_v126_insulation_from_enm(enm: EnergyNetworkModel) -> list[V126InsulationInput]:
+    """Most model → koordynacja izolacji IEC 60071 (G-STK-7).
+
+    Dla każdego ogranicznika przepięć w modelu (aparat pierwotny pola
+    ``kind == "SURGE_ARRESTER"``) buduje wejście ``V126InsulationInput``,
+    aby analiza ``insulation_coordination`` (_insulation) liczyła margines BIL
+    z DANYCH MODELU, nie z ręcznych parametrów. Zero fabrykacji:
+
+    - parametry ogranicznika (MCOV/U_res/TOV/energia) z rekordu katalogu
+      ``mv_surge_arrester_catalog`` po ``catalog_ref`` — gdy brak karty,
+      pola pozostają ``None`` (solver wykonuje dobór wstępny, udokumentowany);
+    - U_m z karty katalogowej albo z poziomu napięcia szyny (typoszereg IEC);
+    - ``network_neutral`` z uziemienia punktu neutralnego (szyna lub
+      transformator) — gdy brak danych, kontraktowa wartość domyślna.
+
+    Deduplikacja per (szyna, ``catalog_ref``) — ograniczniki fazowe w jednym
+    miejscu dają jedno wejście koordynacji. Kolejność deterministyczna
+    (kolejność pól w modelu).
+    """
+    from network_model.catalog.mv_surge_arrester_catalog import get_all_surge_arrester_types
+
+    catalog: dict[str, dict[str, Any]] = {
+        str(record["id"]): record["params"] for record in get_all_surge_arrester_types()
+    }
+    bus_by_ref = {bus.ref_id: bus for bus in enm.buses}
+
+    def _resolve_network_neutral(bus_ref: str) -> str | None:
+        bus = bus_by_ref.get(bus_ref)
+        if bus is not None and bus.grounding is not None:
+            mapped = _grounding_type_to_network_neutral(bus.grounding.type)
+            if mapped is not None:
+                return mapped
+        for transformer in enm.transformers:
+            if transformer.lv_bus_ref == bus_ref and transformer.lv_neutral is not None:
+                mapped = _grounding_type_to_network_neutral(transformer.lv_neutral.type)
+                if mapped is not None:
+                    return mapped
+            if transformer.hv_bus_ref == bus_ref and transformer.hv_neutral is not None:
+                mapped = _grounding_type_to_network_neutral(transformer.hv_neutral.type)
+                if mapped is not None:
+                    return mapped
+        return None
+
+    rows: list[V126InsulationInput] = []
+    seen: set[tuple[str, str | None]] = set()
+
+    def _emit(bus_ref: str, catalog_ref: str | None) -> None:
+        bus = bus_by_ref.get(bus_ref)
+        if bus is None:
+            return
+        dedup_key = (bus_ref, catalog_ref)
+        if dedup_key in seen:
+            return
+        params = catalog.get(catalog_ref) if catalog_ref else None
+        if params is None and bus.voltage_kv < 1.0:
+            # Ogranicznik nN bez karty katalogowej — poza zakresem koordynacji
+            # izolacji SN (IEC 60071 SN). Pomiń, aby nie fabrykować U_m SN.
+            return
+        seen.add(dedup_key)
+        neutral = _resolve_network_neutral(bus_ref)
+        if params is not None:
+            rows.append(
+                V126InsulationInput(
+                    location_bus_ref=bus_ref,
+                    u_m_kv=float(params["u_m_kv"]),
+                    network_neutral=neutral or "isolated",
+                    arrester_mcov_kv=float(params["mcov_kv"]),
+                    arrester_residual_10ka_kv=float(params["u_residual_at_10ka_kv"]),
+                    predicted_tov_kv=float(params["tov_10s_kv"]),
+                    predicted_energy_kj_per_kv=float(params["energy_absorption_kj_per_kv"]),
+                )
+            )
+        else:
+            rows.append(
+                V126InsulationInput(
+                    location_bus_ref=bus_ref,
+                    u_m_kv=_nearest_standard_um_kv(bus.voltage_kv),
+                    network_neutral=neutral or "isolated",
+                )
+            )
+
+    # Kanał 1: aparaty pierwotne na Bay (bezpośrednia serializacja / read-model).
+    for bay in enm.bays:
+        for device in bay.primary_devices:
+            if device.kind == "SURGE_ARRESTER":
+                _emit(bay.bus_ref, device.catalog_ref)
+
+    # Kanał 2: field_specs stacji (kanoniczna ścieżka operacji add_surge_arrester_sn,
+    # G-STK-8). Ograniczniki żyją na field_spec — ten sam kanał czyta read-model pola
+    # (glif SLD). Parytet: most widzi ograniczniki z obu kanałów, deduplikacja wspólna.
+    for substation in enm.substations:
+        field_specs = substation.meta.get("field_specs")
+        if not isinstance(field_specs, list):
+            continue
+        for spec in field_specs:
+            if not isinstance(spec, dict):
+                continue
+            spec_bus_ref = spec.get("bus_ref")
+            arresters = spec.get("surge_arresters")
+            if not isinstance(spec_bus_ref, str) or not isinstance(arresters, list):
+                continue
+            for item in arresters:
+                if isinstance(item, dict):
+                    ref = item.get("catalog_ref")
+                    _emit(spec_bus_ref, ref if isinstance(ref, str) else None)
+
+    return rows
+
+
 def build_v126_input_from_enm(
     enm: EnergyNetworkModel,
     *,
@@ -304,5 +443,6 @@ def build_v126_input_from_enm(
         transformers=transformers,
         harmonic_sources=harmonic_sources,
         converters=converters,
+        insulation=build_v126_insulation_from_enm(enm),
         parameters=parameters or {},
     )

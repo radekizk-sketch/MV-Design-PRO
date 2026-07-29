@@ -75,7 +75,7 @@ describe('NcRfgTestsTab', () => {
       der_kind: 'PV',
       name: 'PV S01',
       connection_side: 'SN',
-      pcc_ref: 'pcc-pv-1',
+      bus_przylaczenia_ref: 'pcc-pv-1',
       voltage_level_ref: '15 kV',
       nominal_power_kw: 500,
       catalogs: {

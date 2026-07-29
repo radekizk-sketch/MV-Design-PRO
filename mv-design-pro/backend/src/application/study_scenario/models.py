@@ -5,7 +5,7 @@ import json
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import NAMESPACE_URL, UUID, uuid5
 
@@ -15,7 +15,7 @@ NAMESPACE_RUN = uuid5(NAMESPACE_URL, "mv-design-pro:run")
 NAMESPACE_SNAPSHOT = uuid5(NAMESPACE_URL, "mv-design-pro:snapshot")
 
 
-class ScenarioType(str, Enum):
+class ScenarioType(StrEnum):
     NORMAL = "NORMAL"
     N_1 = "N-1"
     MAINTENANCE = "MAINTENANCE"
@@ -23,7 +23,7 @@ class ScenarioType(str, Enum):
     USER_DEFINED = "USER_DEFINED"
 
 
-class RunStatus(str, Enum):
+class RunStatus(StrEnum):
     COMPLETE = "COMPLETE"
     NOT_COMPUTED = "NOT COMPUTED"
 

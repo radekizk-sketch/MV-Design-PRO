@@ -8,13 +8,16 @@
 
 import type { MouseEvent } from 'react';
 
+import type { BayPrimaryDeviceKind, BayPrimaryPlacement } from '../../../../types/enm';
 import {
+  COLOR_BG,
   COLOR_BUS_LV,
   COLOR_DEVICE_CLOSED,
   COLOR_DEVICE_CLOSED_BORDER,
   COLOR_LINE_PRIMARY,
   COLOR_PANEL_RAISED,
   COLOR_SELECTION,
+  COLOR_TEXT_MUTED,
   COLOR_TEXT_PRIMARY,
   COLOR_TEXT_SECONDARY,
   FONT_SANS,
@@ -42,6 +45,7 @@ import {
   ApparatusSwitchDisconnector,
   ApparatusTransformerSymbol,
 } from './GpzApparatusSymbols';
+import { DerSourceSymbol } from './DerRenderer';
 
 // =============================================================================
 // Constants
@@ -72,6 +76,114 @@ type SymbolClickHandler = (elementId: string) => (e: MouseEvent<SVGGElement>) =>
 // Public types
 // =============================================================================
 
+/**
+ * F9.2 (SLD_CAD_SPEC_V3 §12.1) — jeden aparat pola, uporządkowany wg fizycznej
+ * ścieżki mocy. Projekcja `Bay.primary_devices` (ENM) — patrz
+ * `enmToSldAdapter.ts` `projectBayPrimaryDevices()` dla reguł sortowania i
+ * STOP-notatki o dostępności danych.
+ */
+export interface BayPrimaryDeviceView {
+  readonly kind: BayPrimaryDeviceKind;
+  readonly placement: BayPrimaryPlacement;
+  readonly sectionSide?: 'LEFT' | 'CENTER' | 'RIGHT' | null;
+  readonly deviceRef: string;
+  /** Uproszczony stan (mirror `cbState`/`dsState`/`esState` vocabulary).
+   *  `undefined` gdy ENM nie niesie `switch_state` dla tego aparatu. */
+  readonly switchState?: 'closed' | 'open' | 'unknown';
+  /** F9.9 (SLD_CAD_SPEC_V3 §17.2): `BayPrimaryDevice.linked_ref` — dla
+   *  aparatów pomiarowych (CT/VT) wskazuje `Measurement.ref_id` (wzorzec
+   *  potwierdzony w `backend/src/application/field_read_model.py:488`).
+   *  Fundament dopasowania kotwicy miernika „M" (`compose/protectionMarking.ts`
+   *  `resolveMeterAnchor`) — `undefined` gdy ENM nie niesie `linked_ref`. */
+  readonly linkedRef?: string;
+  /** F10.6 (SLD_CAD_SPEC_V3 §19.1, D1, V12K-035): identyfikator PER-APARAT
+   *  jako DANA projektowa (`BayPrimaryDevice.designation`) — ma pierwszeństwo
+   *  nad fallbackiem konwencji `apparatusIdentifiers` (`compose/
+   *  apparatusSequence.ts`). `undefined` gdy ENM nie niesie tej danej dla
+   *  aparatu (render pozostaje przy konwencji, znacznik
+   *  `data-designation-source="konwencja"`). */
+  readonly designation?: string;
+}
+
+/**
+ * F9.9 (SLD_CAD_SPEC_V3 §17.2) — adnotacja zabezpieczeń JEDNEGO pola,
+ * projekcja `Bay.protection_codes` + `Bay.protection_ref` →
+ * `ProtectionAssignment` (`v2/canvas/enmToSldAdapter.ts`
+ * `resolveBayProtectionMarking`). `codes` jest ZAWSZE niepuste (adapter
+ * zwraca `undefined` dla całego pola, gdy `Bay.protection_codes` jest puste —
+ * §17.2 „brak danych = brak oznaczenia"). `breakerRef`/`ctRef` to SUROWE
+ * referencje ENM (`ProtectionAssignment.breaker_ref`/`ct_ref`) — dopasowanie
+ * na KONKRETNY aparat NARYSOWANEGO stosu dzieje się w `compose/
+ * protectionMarking.ts` (adapter nie zna geometrii/kolejności rysowania).
+ */
+export interface BayProtectionMarkingView {
+  readonly codes: readonly string[];
+  readonly breakerRef?: string;
+  readonly ctRef?: string;
+  /** F10.6 (SLD_CAD_SPEC_V3 §20.2, D5, V12K-036): `ProtectionAssignment.
+   *  ct_refs_secondary` — CT dodatkowe strefy różnicowej (87T). `undefined`/
+   *  puste = strefa 2×CT NIE jest modelowana (dotychczasowe uproszczenie
+   *  §20.2 „obecność transformatora" pozostaje w mocy, `compose/
+   *  protectionTopologyValidation.ts`). */
+  readonly ctRefsSecondary?: readonly string[];
+}
+
+/**
+ * F10.4 (SLD_CAD_SPEC_V3 §18.3) — adnotacja JEDNEGO aparatu CT toru głównego:
+ * identyfikator (`Measurement.name` — pole engineering-friendly, ODRÓŻNIONE
+ * od `ref_id` technicznego, wzorzec identyczny z §19.2 „numer/nazwa linii" —
+ * `Cable`/`OverheadLine.name`) + przekładnia sformatowana z `Measurement.
+ * rating.ratio_primary`/`ratio_secondary` (np. „300/5" — CZYSTE formatowanie,
+ * zero fizyki/zaokrągleń). BEZ-DOMAIN: oba pola źródłowe (`name`, `rating`)
+ * JUŻ ISTNIEJĄ w ENM (`backend/src/enm/models.py:455-470`) — układ pomiarowy
+ * (3×CT fazowe / Ferranti-I0, `arrangement` niżej) to F10.6 (D3, DOMAIN,
+ * `Measurement.ct_arrangement`). Dopasowanie na aparat CT NARYSOWANEGO stosu przez
+ * `measurementRef === BayPrimaryDevice.linked_ref` (wzorzec
+ * `meteringMeasurementRef`/`resolveMeterAnchor`, `compose/protectionMarking.ts`).
+ */
+export interface CtRatingAnnotationView {
+  readonly measurementRef: string;
+  readonly identifier: string;
+  readonly ratioText: string;
+  /** F10.6 (SLD_CAD_SPEC_V3 §18.3, D3, V12K-036): układ pomiarowy —
+   *  `Measurement.ct_arrangement`. `undefined` gdy dana niedostarczona (WHITE
+   *  BOX — adnotacja rysuje sam identyfikator+przekładnię bez członu układu,
+   *  §18.3 „zero zgadywania"). */
+  readonly arrangement?: '3xCT' | 'ferranti';
+  /** CTVT-RENDER (CTVT-MODEL/V12K-176): liczba rdzeni CT (osobne uzwojenia
+   *  wtórne, tabliczka IEC 61869-2) z `Measurement.ct_cores`. Doklejona jako
+   *  DODATKOWY człon etykiety (`ctRatingLabelText`, „… · N rdz.") WYŁĄCZNIE gdy
+   *  dana obecna — `undefined` gdy `Measurement.ct_cores` nieobecne (zero zmiany
+   *  tekstu/szerokości względem F10.4/F10.6, uczciwy brak). Oś odrębna od
+   *  `arrangement`. */
+  readonly cores?: number;
+  /** W5 (RECENZJA_L2_POLA_WYPOSAZENIE_2026-07 §12–15/uwaga 7 „CT pomiarowy vs
+   *  zabezpieczeniowy") — przeznaczenie CT z `Measurement.purpose`. Wariant CT
+   *  Z DANYCH, nie z domysłu: `undefined` gdy pomiar nie niesie `purpose`
+   *  (uczciwy brak, rejestr braków — §0.2 karty W5). Kanał GEOMETRYCZNIE
+   *  NEUTRALNY: przenoszony na `OwnedLabel.ctPurpose` → atrybut DOM
+   *  `data-ct-purpose` (audyt), NIE dokładany do tekstu etykiety (zero zmiany
+   *  szerokości/kotwic — inwariant W5 „geometria bez dryfu"). */
+  readonly purpose?: 'protection' | 'metering' | 'combined';
+}
+
+/**
+ * CTVT-RENDER (CTVT-MODEL/V12K-176, SLD_CAD_SPEC_V3 §20.2) — adnotacja montażu
+ * JEDNEGO aparatu VT toru bocznego: identyfikator (`Measurement.name`, wzorzec
+ * `CtRatingAnnotationView`) + typ montażu z `Measurement.vt_mounting`
+ * (szynowy/kablowy). Dana producenta/projektowa — WYŁĄCZNIE gdy `vt_mounting`
+ * obecne (adapter `resolveBayVtMountings` pomija VT bez tej danej, §20.2 „zero
+ * zgadywania"). Dopasowanie na aparat VT NARYSOWANEGO stosu przez
+ * `measurementRef === BayPrimaryDevice.linked_ref` (TA SAMA reguła co
+ * `resolveMeterAnchor`/`resolveCtRatingAnnotations`). Oś odrębna od
+ * `vtArrangements` (open_delta/star = oś 3U0, `protectionTopologyValidation`).
+ */
+export interface VtMountingAnnotationView {
+  readonly measurementRef: string;
+  readonly identifier: string;
+  readonly mounting: 'bus' | 'cable';
+}
+
 export interface MiniBlockBayDescriptor {
   readonly bayRef: string;
   readonly fieldRole: FieldRole;
@@ -84,6 +196,47 @@ export interface MiniBlockBayDescriptor {
   readonly dsState?: 'closed' | 'open' | 'unknown';
   /** K30-63: stan ES (uziemnika). Default 'open' (rest position). */
   readonly esState?: 'closed' | 'open' | 'unknown';
+  /** F9.2 (SLD_CAD_SPEC_V3 §12.1): uporządkowana lista aparatów pola z
+   *  `Bay.primary_devices` (ENM), gdy dane niepuste. `undefined` gdy pole nie
+   *  niesie `primary_devices` — konwencja-wg-roli (§12.4, fallback rysunkowy)
+   *  NIE jest projektowana tutaj (poza zakresem F9.2, patrz F9.3). */
+  readonly primaryDevices?: readonly BayPrimaryDeviceView[];
+  /** W1c (RECENZJA_MACIERZ_WYPOSAZENIA_2026-07 uwaga 10): identyfikator
+   *  KONFIGURACJI pola — stabilny, deterministyczny (backend `config_ref`).
+   *  Niesiony do meta sceny (`configId`) przez `compose/station.ts`, żeby render
+   *  nie zgadywał wyposażenia z typu pola. `undefined` gdy pole bez szablonu. */
+  readonly configId?: string;
+  /** F9.9 (SLD_CAD_SPEC_V3 §17.2): adnotacja zabezpieczeń tego pola —
+   *  `undefined` gdy `Bay.protection_codes` puste/nieobecne (brak danych =
+   *  brak oznaczenia, §17.2 dosłownie). */
+  readonly protectionMarking?: BayProtectionMarkingView;
+  /** F9.9 (SLD_CAD_SPEC_V3 §17.2): `Measurement.ref_id` pomiaru
+   *  `purpose==='metering'` powiązanego z tym polem (`bay_ref`) — `undefined`
+   *  gdy brak takiego pomiaru. Dopasowanie na aparat stosu (miernik „M")
+   *  przez `linkedRef` w `compose/protectionMarking.ts`. */
+  readonly meteringMeasurementRef?: string;
+  /** Recenzja NO-GO 2026-07-17 pkt 11: mierzona WIELKOŚĆ miernika — z
+   *  `Measurement.measurement_type` pomiaru rozliczeniowego (CT⇒prąd „A",
+   *  VT⇒napięcie „V"). Glif miernika pokazuje literę wielkości zamiast
+   *  mylącego „M" (odczytywanego jako napęd silnikowy). `undefined` = dana
+   *  nieznana, glif zostaje przy „M" + rozstrzygnięcie w legendzie. */
+  readonly meteringQuantity?: 'A' | 'V';
+  /** F10.4 (SLD_CAD_SPEC_V3 §18.3): adnotacje przekładni CT tego pola —
+   *  JEDNA pozycja per aparat CT z `Measurement.rating` obecnym. `undefined`
+   *  gdy pole nie niesie żadnego CT z ratingiem (brak danych = brak
+   *  oznaczenia, §18.3 dosłownie — zero „z domysłu"). */
+  readonly ctRatingAnnotations?: readonly CtRatingAnnotationView[];
+  /** F10.6 (SLD_CAD_SPEC_V3 §20.2, D4, V12K-036): `Measurement.
+   *  vt_arrangement` WSZYSTKICH VT tego pola (wartości niepuste, deduplikowane).
+   *  `undefined`/puste = dana układu VT niedostarczona dla ŻADNEGO VT pola —
+   *  `protectionFunctionTopologyGaps` (`compose/protectionTopologyValidation.ts`)
+   *  degraduje 67N do dotychczasowego uproszczenia (sama obecność VT). */
+  readonly vtArrangements?: readonly ('open_delta' | 'star')[];
+  /** CTVT-RENDER (SLD_CAD_SPEC_V3 §20.2, CTVT-MODEL/V12K-176): adnotacje montażu
+   *  VT tego pola — JEDNA pozycja per aparat VT z `Measurement.vt_mounting`
+   *  obecnym. `undefined` gdy pole nie niesie żadnego VT z montażem (brak danych
+   *  = brak oznaczenia, §20.2 — zero „z domysłu"; adapter `resolveBayVtMountings`). */
+  readonly vtMountingAnnotations?: readonly VtMountingAnnotationView[];
 }
 
 export interface MiniBlockDerBadge {
@@ -419,27 +572,28 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
               y={-OVERVIEW_HEIGHT / 2}
               width={OVERVIEW_WIDTH}
               height={OVERVIEW_HEIGHT}
-              rx={3}
-              ry={3}
-              fill="#07111C"
-              opacity={props.selected ? 0.26 : 0.08}
+              fill="transparent"
+              opacity={props.selected ? 1 : 0}
               stroke={props.selected ? COLOR_SELECTION : 'transparent'}
               strokeWidth={props.selected ? 1.4 : 0}
+              strokeDasharray={props.selected ? '5 4' : undefined}
               data-parity-key="station.mini.body.hitarea"
             />
+            {/* Granica stacji: cienki obrys przerywany, ostre rogi, bez
+                wypełnienia (język rysunku zamiast karty). */}
             <rect
               x={-RMU_W / 2 - 5}
               y={busY - 31}
               width={RMU_W + 10}
               height={77}
-              rx={3}
-              ry={3}
-              fill="#07111C"
-              fillOpacity={0.12}
-              stroke="#13435A"
-              strokeWidth={1}
+              fill="none"
+              stroke={COLOR_TEXT_MUTED}
+              strokeWidth={0.8}
+              strokeDasharray="6 4"
+              opacity={0.55}
               data-testid={`sld-v2-mini-rmu-overview-enclosure-${props.id}`}
               data-element-kind="rmu_enclosure"
+              data-cad-role="station_boundary_dashed"
             />
             <line
               data-testid={`sld-v2-mini-rmu-sn-row-${props.id}`}
@@ -640,19 +794,8 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 data-overview-label-scale={codeScale.toFixed(2)}
                 transform={`translate(0, 24) scale(${codeScale})`}
               >
-                <rect
-                  x={-codeLabelWidth / 2}
-                  y={-8}
-                  width={codeLabelWidth}
-                  height={16}
-                  rx={2}
-                  ry={2}
-                  fill="#07111C"
-                  stroke={snBusColor}
-                  strokeWidth={0.4}
-                  opacity={0.92}
-                />
                 <text
+                  data-code-label-width={codeLabelWidth}
                   x={0}
                   y={1}
                   textAnchor="middle"
@@ -662,6 +805,9 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                   fontSize={12}
                   fontWeight={900}
                   letterSpacing={0}
+                  paintOrder="stroke"
+                  stroke={COLOR_SCADA_SHADOW}
+                  strokeWidth={2.4}
                 >
                   {code}
                 </text>
@@ -690,33 +836,16 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 data-block-transformer={hasDerBlockTransformer ? 'true' : 'false'}
                 transform={`translate(${OVERVIEW_WIDTH / 2 - 11}, ${OVERVIEW_HEIGHT / 2 - 12})`}
               >
-                {derMarkerShape === 'hexagon' && (
-                  <polygon
-                    points="0,-5 4.3,-2.5 4.3,2.5 0,5 -4.3,2.5 -4.3,-2.5"
-                    fill={derSummary.color}
-                    stroke="#07111C"
+                <g data-marker-shape={derMarkerShape}>
+                  <DerSourceSymbol
+                    cx={0}
+                    cy={0}
+                    half={5}
+                    kind={props.derBadges.find((badge) => badge.count > 0)?.kind ?? 'PV'}
+                    stroke={derSummary.color}
                     strokeWidth={1}
                   />
-                )}
-                {derMarkerShape === 'square' && (
-                  <rect
-                    x={-4.5}
-                    y={-4.5}
-                    width={9}
-                    height={9}
-                    fill={derSummary.color}
-                    stroke="#07111C"
-                    strokeWidth={1}
-                  />
-                )}
-                {derMarkerShape === 'triangle' && (
-                  <polygon
-                    points="0,-5 5,4 -5,4"
-                    fill={derSummary.color}
-                    stroke="#07111C"
-                    strokeWidth={1}
-                  />
-                )}
+                </g>
                 {hasDerBlockTransformer && (
                   <g
                     data-testid={`sld-v2-mini-rmu-overview-${props.id}-der-block-transformer`}
@@ -790,17 +919,21 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 data-element-kind="rmu_enclosure"
                 data-layout-role="station_switchgear_frame"
               >
+                {/* Granica stacji: cienka linia PRZERYWANA, ostre rogi, bez
+                    wypełnienia — konwencja rysunkowa CAD (obrys obiektu),
+                    zamiast karty-kafla. */}
                 <rect
                   x={layout.busLeft - 20}
                   y={COMPACT_TERRAIN_PORT_Y + 10}
                   width={(layout.busRight - layout.busLeft) + 40}
                   height={layout.busY - COMPACT_TERRAIN_PORT_Y + 104}
-                  rx={2}
-                  ry={2}
-                  fill="transparent"
-                  stroke="transparent"
-                  strokeWidth={0}
+                  fill="none"
+                  stroke={COLOR_TEXT_MUTED}
+                  strokeWidth={0.8}
+                  strokeDasharray="6 4"
+                  opacity={0.55}
                   pointerEvents="none"
+                  data-cad-role="station_boundary_dashed"
                 />
               </g>
             )}
@@ -816,13 +949,14 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
                 data-gap-right={externalBridgeGap.right}
                 pointerEvents="none"
               >
+                {/* Maska w kolorze kanwy — niewidoczna przerwa toru, nie
+                    czarny prostokąt (dopasowanie do COLOR_BG). */}
                 <rect
                   x={externalBridgeGap.left}
                   y={externalBridgeGap.y - 13}
                   width={externalBridgeGap.right - externalBridgeGap.left}
                   height={26}
-                  fill="#0A0E14"
-                  fillOpacity={0.98}
+                  fill={COLOR_BG}
                   stroke="none"
                   strokeWidth={0}
                   data-role="external_trunk_visual_cut"
@@ -1188,8 +1322,10 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         const nopText = props.isNop ? '#FF333D' : '#7EC8FF';
         return (
           <g data-testid={`sld-v2-mini-station-code-${props.id}`} data-is-nop={props.isNop ? 'true' : 'false'} transform={`translate(0, ${headerBadgeY})`}>
-            <rect x={-22} y={-13} width={44} height={18} rx={2} ry={2} fill="#0A1018" stroke={nopRing} strokeWidth={props.isNop ? 1.8 : 1.2} opacity={0.95} />
-            <text x={0} y={1} textAnchor="middle" fill={nopText} fontFamily={FONT_SANS} fontSize={stationCodeFontSize} fontWeight={900} letterSpacing={0.8}>
+            {/* Kod stacji jako tekst rysunkowy (bez badge-boxa) — język CAD,
+                nie chip UI. Halo (paintOrder stroke) = konwencja SCADA na
+                ciemnym tle, nie tło-pigułka. */}
+            <text x={0} y={1} textAnchor="middle" fill={nopText} fontFamily={FONT_SANS} fontSize={stationCodeFontSize} fontWeight={900} letterSpacing={0.8} paintOrder="stroke" stroke={COLOR_SCADA_SHADOW} strokeWidth={2.5} data-badge-ring={nopRing}>
               {code}
             </text>
             {props.isNop && (
@@ -1212,18 +1348,6 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           data-feeders-count={props.nnFeedersCount}
           transform={`translate(${nnCountBadgeX}, ${headerBadgeY})`}
         >
-          <rect
-            x={-15}
-            y={-13}
-            width={30}
-            height={18}
-            rx={2}
-            ry={2}
-            fill="#0D2818"
-            stroke="#4EC9B0"
-            strokeWidth={1}
-            opacity={0.95}
-          />
           <text
             x={0}
             y={1}
@@ -1232,6 +1356,9 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
             fontFamily={FONT_SANS}
             fontSize={nnCountFontSize}
             fontWeight={900}
+            paintOrder="stroke"
+            stroke={COLOR_SCADA_SHADOW}
+            strokeWidth={2}
           >
             {`${props.nnFeedersCount} nN`}
           </text>
@@ -1274,16 +1401,14 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
        *  vs hybrid PV+BESS 1500 kW visible bezpośrednio. */}
       {showDetailedBadges && props.totalLoadKw && props.totalLoadKw > 0 && (
         <g data-testid={`sld-v2-mini-station-load-${props.id}`} transform={`translate(-28, ${auxBadgeY})`}>
-          <rect x={-22} y={-9} width={44} height={16} rx={2} ry={2} fill="#5A2A1E" stroke="#FF8B5C" strokeWidth={1} />
-          <text x={0} y={2} textAnchor="middle" fill="#FF8B5C" fontFamily={FONT_SANS} fontSize={auxBadgeFontSize} fontWeight={900}>
+          <text x={0} y={2} textAnchor="middle" fill="#FF8B5C" fontFamily={FONT_SANS} fontSize={auxBadgeFontSize} fontWeight={900} paintOrder="stroke" stroke={COLOR_SCADA_SHADOW} strokeWidth={2}>
             L {props.totalLoadKw >= 1000 ? `${(props.totalLoadKw / 1000).toFixed(1)}MW` : `${props.totalLoadKw}kW`}
           </text>
         </g>
       )}
       {showDetailedBadges && props.totalGenerationKw != null && props.totalGenerationKw > 0 && (
         <g data-testid={`sld-v2-mini-station-gen-${props.id}`} transform={`translate(28, ${auxBadgeY})`}>
-          <rect x={-22} y={-9} width={44} height={16} rx={2} ry={2} fill="#1E4A2A" stroke="#7EE0B5" strokeWidth={1} />
-          <text x={0} y={2} textAnchor="middle" fill="#7EE0B5" fontFamily={FONT_SANS} fontSize={auxBadgeFontSize} fontWeight={900}>
+          <text x={0} y={2} textAnchor="middle" fill="#7EE0B5" fontFamily={FONT_SANS} fontSize={auxBadgeFontSize} fontWeight={900} paintOrder="stroke" stroke={COLOR_SCADA_SHADOW} strokeWidth={2}>
             G {props.totalGenerationKw >= 1000 ? `${(props.totalGenerationKw / 1000).toFixed(1)}MW` : `${props.totalGenerationKw}kW`}
           </text>
         </g>
@@ -1297,10 +1422,10 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
         x={0}
         y={labelTypeY}
         textAnchor="middle"
-        fill={COLOR_SELECTION}
+        fill={COLOR_TEXT_SECONDARY}
         fontFamily={FONT_SANS}
         fontSize={typeFontSize}
-        fontWeight={800}
+        fontWeight={700}
         paintOrder="stroke"
         stroke={COLOR_SCADA_SHADOW}
         strokeWidth={showPvCircuit ? 1.2 : 3}
@@ -1352,16 +1477,6 @@ export function MiniBlockRmuRenderer(props: MiniBlockRmuRendererProps): JSX.Elem
           OSD wymaga do procedur manewrów + testów impedancji. */}
       {variant !== 'overview' && props.earthingScheme && (
         <g data-testid={`sld-v2-mini-rmu-earthing-scheme-${props.id}`}>
-          <rect
-            x={-22}
-            y={labelPowerY + (props.transformerVectorGroup ? 18 : 6)}
-            width={44}
-            height={11}
-            fill="#0E1822"
-            stroke="#7EE0B5"
-            strokeWidth={0.8}
-            rx={2}
-          />
           <text
             x={0}
             y={labelPowerY + (props.transformerVectorGroup ? 26 : 14)}
@@ -1735,17 +1850,15 @@ function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): J
         style={clickHandler ? { cursor: 'pointer' } : undefined}
       >
         <title>{`Pole ${roleLabel} ${bay.designation}`}</title>
+        {/* Pole = oś z symbolami, nie panel: rect zostaje wyłącznie jako
+            niewidoczny hit-area (bez wypełnienia/tintu — język rysunku). */}
         <rect
           x={x - 16}
           y={portY + 9}
           width={32}
           height={busY - portY + 34}
-          rx={2}
-          ry={2}
-          fill="#07111C"
-          fillOpacity={0.22}
-          stroke="#1B5068"
-          strokeWidth={0.7}
+          fill="transparent"
+          stroke="none"
           pointerEvents="all"
           data-hit-area="true"
           data-testid={`sld-v2-mini-rmu-compact-field-cell-${stationId}-${bay.bayRef}`}
@@ -1801,19 +1914,8 @@ function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): J
         <g
           data-testid={`sld-v2-mini-rmu-compact-port-caption-${stationId}-${bay.bayRef}`}
           data-label-placement="above_terrain_port"
+          data-caption-width={portCaptionWidth}
         >
-          <rect
-            x={x - portCaptionWidth / 2}
-            y={labelY - 9}
-            width={portCaptionWidth}
-            height={12}
-            rx={2}
-            ry={2}
-            fill="#07111C"
-            fillOpacity={0.88}
-            stroke="#1B5068"
-            strokeWidth={0.7}
-          />
           <text
             x={x}
             y={labelY}
@@ -1877,12 +1979,8 @@ function CompactDirectionalBayColumn(props: CompactDirectionalBayColumnProps): J
           y={busY - 5}
           width={36}
           height={96}
-          rx={2}
-          ry={2}
-          fill="#07111C"
-          fillOpacity={0.22}
-          stroke="#1B5068"
-          strokeWidth={0.7}
+          fill="transparent"
+          stroke="none"
           pointerEvents="all"
           data-hit-area="true"
           data-testid={`sld-v2-mini-rmu-compact-field-cell-${stationId}-${bay.bayRef}`}
@@ -2111,18 +2209,16 @@ function PvConnectionTree(props: PvConnectionTreeProps): JSX.Element {
       data-element-kind="pv_nn_connection_tree"
       data-element-id={`${stationId}/pv/nn-connection`}
     >
+      {/* Przedział PV/nN: granica przerywana bez wypełnienia (CAD), ostre rogi. */}
       <rect
         x={-86}
         y={baseY + 1}
         width={172}
         height={76}
-        fill="#120F05"
-        fillOpacity={0.44}
+        fill="none"
         stroke="#6F5A17"
         strokeWidth={0.8}
         strokeDasharray="4 3"
-        rx={2}
-        ry={2}
         data-parity-key="station.pv.nn_compartment"
       />
       <line x1={0} y1={baseY - 16} x2={0} y2={lvBusY} stroke={COLOR_DER_PV} strokeWidth={2.2} />
@@ -2149,12 +2245,8 @@ function PvConnectionTree(props: PvConnectionTreeProps): JSX.Element {
               y={breakerY - 5}
               width={36}
               height={44}
-              fill="#161507"
-              fillOpacity={0.78}
-              stroke="#9A7A1B"
-              strokeWidth={0.8}
-              rx={2}
-              ry={2}
+              fill="none"
+              stroke="none"
               data-parity-key="station.pv.nn_feeder.cell"
             />
             <line x1={x} y1={lvBusY} x2={x} y2={inverterY} stroke={COLOR_DER_PV} strokeWidth={1.8} />
@@ -2288,63 +2380,9 @@ function DerBadges(props: DerBadgesProps): JSX.Element {
             data-testid={`sld-v2-mini-rmu-der-badge-${badge.kind}`}
             data-parity-key="station.mini.der_badge"
           >
-            {badge.kind === 'PV' && (
-              <>
-                <polygon
-                  points={`${cx},${cy - 10} ${cx + 8.66},${cy - 5} ${cx + 8.66},${cy + 5} ${cx},${cy + 10} ${cx - 8.66},${cy + 5} ${cx - 8.66},${cy - 5}`}
-                  fill={fill}
-                  stroke={COLOR_LINE_PRIMARY}
-                  strokeWidth={1.2}
-                />
-                {/* K30-67: IEC 60617 inverter sinusoid wave (PV cell→AC) */}
-                <path
-                  d={`M ${cx - 5} ${cy} Q ${cx - 2.5} ${cy - 3} ${cx} ${cy} T ${cx + 5} ${cy}`}
-                  fill="none"
-                  stroke="#0A0E14"
-                  strokeWidth={0.9}
-                  strokeLinecap="round"
-                />
-              </>
-            )}
-            {badge.kind === 'BESS' && (
-              <>
-                <rect
-                  x={cx - 9}
-                  y={cy - 9}
-                  width={18}
-                  height={18}
-                  fill={fill}
-                  stroke={COLOR_LINE_PRIMARY}
-                  strokeWidth={1.2}
-                />
-                {/* K30-67: IEC 60617 battery inverter sinusoid (DC→AC) */}
-                <path
-                  d={`M ${cx - 6} ${cy + 4} Q ${cx - 3} ${cy + 1} ${cx} ${cy + 4} T ${cx + 6} ${cy + 4}`}
-                  fill="none"
-                  stroke="#0A0E14"
-                  strokeWidth={0.9}
-                  strokeLinecap="round"
-                />
-                {/* K30-67: dwa pionowe paski = symbol baterii nad sinusoidą */}
-                <line x1={cx - 3} y1={cy - 6} x2={cx - 3} y2={cy - 1} stroke="#0A0E14" strokeWidth={1.4} />
-                <line x1={cx + 3} y1={cy - 6} x2={cx + 3} y2={cy - 1} stroke="#0A0E14" strokeWidth={1.4} />
-              </>
-            )}
-            {badge.kind === 'FW' && (
-              <>
-                <polygon
-                  points={`${cx},${cy - 10} ${cx + 9},${cy + 6} ${cx - 9},${cy + 6}`}
-                  fill={fill}
-                  stroke={COLOR_LINE_PRIMARY}
-                  strokeWidth={1.2}
-                />
-                {/* K30-67: śmigło wiatrowe IEC 60617 (3-bladed propeller mini) */}
-                <circle cx={cx} cy={cy + 1} r={1.5} fill="#0A0E14" />
-                <line x1={cx} y1={cy + 1} x2={cx} y2={cy - 4} stroke="#0A0E14" strokeWidth={1} strokeLinecap="round" />
-                <line x1={cx} y1={cy + 1} x2={cx + 4} y2={cy + 4} stroke="#0A0E14" strokeWidth={1} strokeLinecap="round" />
-                <line x1={cx} y1={cy + 1} x2={cx - 4} y2={cy + 4} stroke="#0A0E14" strokeWidth={1} strokeLinecap="round" />
-              </>
-            )}
+            {/* Symbol źródła IEC 60617 (kontur w kolorze typu, wnętrze kanwy)
+                zamiast wypełnionego kształtu-kafla (redesign 2026-07 §1c). */}
+            <DerSourceSymbol cx={cx} cy={cy} half={9} kind={badge.kind} stroke={fill} strokeWidth={1.2} />
             <title>{`${badge.kind}: ${badge.count} szt.`}</title>
             {/* K30-67: label przeniesiony pod symbol (IEC 60617 nie ma labels
                 wewnątrz symbol — wewnątrz jest sinusoida/strzałka). */}

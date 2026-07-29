@@ -49,9 +49,7 @@ def _eval_k1(enm: dict[str, Any]) -> StepState:
         else (
             StepStatus.COMPLETE
             if completion == 100
-            else StepStatus.PARTIAL
-            if completion > 0
-            else StepStatus.EMPTY
+            else StepStatus.PARTIAL if completion > 0 else StepStatus.EMPTY
         )
     )
     return StepState(step_id="K1", status=status, completion_percent=completion, issues=issues)
@@ -94,9 +92,7 @@ def _eval_k2(enm: dict[str, Any]) -> StepState:
         else (
             StepStatus.COMPLETE
             if completion >= 90
-            else StepStatus.PARTIAL
-            if completion > 0
-            else StepStatus.EMPTY
+            else StepStatus.PARTIAL if completion > 0 else StepStatus.EMPTY
         )
     )
     return StepState(

@@ -15,7 +15,14 @@
  * Inrush — prąd włączenia transformatora pod napięcie:
  *   Iinrush ≈ 8-12 × In (max przy zerowym przepływie)
  *   Tk ≈ 0.1-0.5 s (czas zaniku do 90%)
+ *
+ * Fizyka prądów znamionowych (I = S_n/(√3·U_n)) liczy się WYŁĄCZNIE w backendzie
+ * (WHITE BOX) — warstwa prezentacji woła końcówkę
+ * `POST /api/solver/transformer-rated-currents-preview` i tylko prezentuje wynik.
+ * Wzorzec zgodny z relokacją doboru kabla (karta R1).
  */
+
+import { fetchTransformerRatedCurrents } from '../forms/transformerRatedCurrentsApi';
 
 export type TransformerCoolingType =
   | 'ONAN'      // Oil Natural Air Natural
@@ -130,28 +137,47 @@ export const TRANSFORMER_REFERENCE_CATALOG: readonly TransformerCatalogEntry[] =
   },
 ];
 
-/**
- * Wyznaczenie prądu znamionowego po stronie pierwotnej i wtórnej.
- */
-export function computeTransformerNominalCurrents(t: TransformerCatalogEntry): {
+export interface TransformerNominalCurrents {
   readonly primaryNominalA: number;
   readonly secondaryNominalA: number;
-} {
-  // In = Sn / (√3 × Un)
-  const i1 = (t.ratedPowerKva * 1000) / (Math.sqrt(3) * t.primaryVoltageKv * 1000);
-  const i2 = (t.ratedPowerKva * 1000) / (Math.sqrt(3) * t.secondaryVoltageKv * 1000);
+}
+
+/**
+ * Wyznaczenie prądu znamionowego po stronie pierwotnej i wtórnej.
+ *
+ * Fizyka (In = S_n/(√3·U_n)) liczy się w backendzie (WHITE BOX); warstwa
+ * prezentacji tylko wysyła dane katalogowe i odczytuje gotowe wartości.
+ * NIGDY nie liczy lokalnie — brak odpowiedzi backendu = uczciwy błąd, nie fallback.
+ */
+export async function computeTransformerNominalCurrents(
+  t: TransformerCatalogEntry,
+  options: { signal?: AbortSignal } = {},
+): Promise<TransformerNominalCurrents> {
+  const response = await fetchTransformerRatedCurrents(
+    {
+      rated_power_kva: t.ratedPowerKva,
+      primary_voltage_kv: t.primaryVoltageKv,
+      secondary_voltage_kv: t.secondaryVoltageKv,
+    },
+    options,
+  );
   return {
-    primaryNominalA: i1,
-    secondaryNominalA: i2,
+    primaryNominalA: response.primary_current_a,
+    secondaryNominalA: response.secondary_current_a,
   };
 }
 
 /**
  * Prąd inrush (maksymalny):
  *   Iinrush = inrushFactor × In1
+ *
+ * Krotność inrush to stała katalogowa; prąd znamionowy In1 pochodzi z backendu.
  */
-export function computeInrushCurrent(t: TransformerCatalogEntry): number {
-  const { primaryNominalA } = computeTransformerNominalCurrents(t);
+export async function computeInrushCurrent(
+  t: TransformerCatalogEntry,
+  options: { signal?: AbortSignal } = {},
+): Promise<number> {
+  const { primaryNominalA } = await computeTransformerNominalCurrents(t, options);
   return t.inrushFactor * primaryNominalA;
 }
 
@@ -180,12 +206,13 @@ export interface TransformerProtectionResult {
   readonly ctRatingOk: boolean;
 }
 
-export function evaluateTransformerProtection(
+export async function evaluateTransformerProtection(
   input: TransformerProtectionInput,
-): TransformerProtectionResult {
+  options: { signal?: AbortSignal } = {},
+): Promise<TransformerProtectionResult> {
   const { transformer, fuseRatingA, ctPrimaryRatingA } = input;
-  const { primaryNominalA } = computeTransformerNominalCurrents(transformer);
-  const inrush = computeInrushCurrent(transformer);
+  const { primaryNominalA } = await computeTransformerNominalCurrents(transformer, options);
+  const inrush = transformer.inrushFactor * primaryNominalA;
   // Bezpiecznik: musi wytrzymać inrush (nieprzepalenie przy załączeniu).
   // Typowo: fuse min = 2 × In1; max = 4-6 × In1.
   const fuseInrushOk = fuseRatingA >= 2 * primaryNominalA;

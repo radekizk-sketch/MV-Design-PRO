@@ -207,7 +207,7 @@ async function createProjectAndOpenSld(page: Page): Promise<void> {
   await expect(page.getByRole('dialog', { name: 'Metadane projektu' })).toBeVisible();
   await page.getByTestId('project-metadata-name').fill('UX 10/10 demo');
   await page.getByTestId('project-metadata-save').click();
-  await expect(page.getByTestId('sld-workspace-container')).toBeVisible();
+  await expect(page.getByTestId('sld-canvas-v3-workspace')).toBeVisible();
   await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 }
 
@@ -243,10 +243,15 @@ test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / tooltip)', 
     // Submit formularza GPZ (katalog auto-wybrany z mocka source-system-types).
     await page.getByTestId('add-grid-source-form').getByRole('button', { name: 'Zapisz GPZ' }).click();
 
-    // C2: toast sukcesu widoczny z komunikatem PL.
-    const toast = page.getByTestId('notification-toast').first();
+    // C2: toast sukcesu widoczny z komunikatem PL. Asercja po TREŚCI, nie po
+    // pozycji w stosie — `first()` łapał starszy toast („Utworzono projekt…"),
+    // gdy ten nie zdążył zniknąć przed pojawieniem się toastu GPZ (wyścig
+    // auto-dismiss, flake wyłącznie pod obciążeniem pełnej baterii).
+    const toast = page
+      .getByTestId('notification-toast')
+      .filter({ hasText: 'Dodano źródło zasilające GPZ' })
+      .first();
     await expect(toast).toBeVisible({ timeout: 10000 });
-    await expect(toast).toContainText('Dodano źródło zasilające GPZ');
 
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
   });

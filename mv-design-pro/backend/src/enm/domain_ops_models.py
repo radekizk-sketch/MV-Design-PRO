@@ -952,7 +952,22 @@ class AddSnBayPayload(_FrozenBase):
     """Sekcja GPZ, jeśli pole dotyczy konkretnej sekcji."""
 
     catalog_binding: dict[str, Any] | None = None
-    """Kanoniczne powiązanie katalogowe aparatu SN."""
+    """Kanoniczne powiązanie katalogowe aparatu SN (fallback ekspercki)."""
+
+    # V12K-058 (G-POLE-R): powiązanie pola z szablonem producenta — parytet z kreatorem
+    # stacji/GPZ (append_station_on_endpoint, add_grid_source_sn). Refy trafiają na
+    # field_spec przez _build_field_spec; protection wywodzi backend z szablonu.
+    switchgear_family_ref: str | None = None
+    """Rodzina rozdzielnicy producenta (Reference Engine)."""
+
+    bay_template_ref: str | None = None
+    """Szablon pola producenta (CompleteMvBayTemplate) dla roli/BayKind."""
+
+    manufacturer_ref: str | None = None
+    """Producent (metadana szablonu/rodziny)."""
+
+    protection_ref: str | None = None
+    """Referencja zabezpieczenia polowego (gdy jawnie wskazana)."""
 
 
 class ConverterSourceFieldPayload(_FrozenBase):
@@ -961,6 +976,88 @@ class ConverterSourceFieldPayload(_FrozenBase):
     source_field_kind: Literal["PV", "BESS", "FW"]
     field_name: str | None = None
     catalog_binding: dict[str, Any] | None = None
+
+
+class DerBlockTransformerSpec(_FrozenBase):
+    """TR blokowy DER — OSOBNY element modelu (≠ transformator stacji), katalog-first.
+
+    Napięcia toru: strona pierwotna = SN stacji (HV), strona wtórna = wyjście
+    falownika/rozdzielni producenta (LV). Katalog TRAFO_SN_NN dostarcza fizykę
+    solvera; jawne pola walidują spójność napięć i stanowią bazę materializacji.
+    """
+
+    rated_power_mva: float | None = None
+    primary_voltage_kv: float | None = None
+    secondary_voltage_kv: float | None = None
+    uk_percent: float | None = None
+    vector_group: str | None = None
+    catalog_ref: str | None = None
+    catalog_binding: dict[str, Any] | None = None
+    loadability_pu: float | None = None
+    """Dopuszczalne obciążenie (przeciążalność) TR blokowego [pu]. Brak → domyślnie 1,0
+    (konserwatywnie, PN-EN 60076-7). Konsumowane przez walidację mocy TR (D1 wymaganie 5)."""
+
+
+class DerMvFieldConfigurationSpec(_FrozenBase):
+    """Wyposażenie dedykowanego pola źródłowego SN DER (łańcuch W1, katalog-first).
+
+    Każde pole mapuje 1:1 na obecność aparatu pierwotnego pola albo na wymaganą
+    funkcję zabezpieczeniową (protection_relay → Bay.protection_codes). Kabel SN
+    (odcinek przyłączeniowy TR blokowy → pole SN) materializowany z katalogu kabli.
+    """
+
+    switching_device: Literal["CB", "LBS"] = "CB"
+    ct: bool = True
+    vt: bool = False
+    earthing_switch: bool = True
+    surge_arrester: bool = False
+    protection_relay: bool = True
+    cable_head: bool = True
+    field_name: str | None = None
+    bay_template_ref: str | None = None
+    apparatus_catalog_binding: dict[str, Any] | None = None
+    cable_catalog_ref: str | None = None
+    cable_catalog_binding: dict[str, Any] | None = None
+    cable_length_km: float | None = None
+
+
+class DerTopologyPayload(_FrozenBase):
+    """Kontrakt kompletnego toru DER przyłączonego po stronie SN (kanon
+    POLECENIE_DER_SN_TOPOLOGIA_2026-07). ADDYTYWNY: brak `der_topology` w payloadzie
+    add_converter_source = dotychczasowe zachowanie (wariant A/nn bez zmian).
+
+    connection_level='sn' + has_block_transformer materializuje pełny tor:
+    szyna nN producenta → TR blokowy (osobny element) → kabel SN → pole źródłowe SN
+    → szyna SN stacji. Zakaz wyprowadzania obecności TR wyłącznie z connection_level.
+    """
+
+    connection_level: Literal["nn", "sn"]
+    inverter_output_voltage_kv: float | None = None
+    has_manufacturer_lv_switchgear: bool = False
+    lv_switchgear_variant: Literal[
+        "none", "single-bus", "multi-feeder", "combiner", "integrated-skid"
+    ] = "none"
+    has_block_transformer: bool = False
+    block_transformer: DerBlockTransformerSpec | None = None
+    has_dedicated_mv_field: bool = False
+    mv_field_configuration: DerMvFieldConfigurationSpec | None = None
+    mv_bus_ref: str | None = None
+    """Szyna SN stacji, do której przypina się dedykowane pole źródłowe SN."""
+    connection_method: (
+        Literal[
+            "der_za_tr_stacji",
+            "der_z_tr_blokowym",
+            "der_bezposrednio_sn",
+            "der_przez_rozdzielnie_producenta",
+        ]
+        | None
+    ) = None
+    """D1 wymaganie 9: jawny „sposób przyłączenia" DER. ADDYTYWNY (brak → dotychczasowe
+    zachowanie). Mapowany JAWNIE na connection_level/has_block_transformer/
+    has_manufacturer_lv_switchgear z walidacją spójności (der_sn_validation)."""
+    simultaneity_factor: float | None = None
+    """Współczynnik jednoczesności źródeł na wspólnym torze [pu]. Brak → domyślnie 1,0
+    (konserwatywnie). Konsumowany przez walidację mocy TR (D1 wymaganie 5)."""
 
 
 class AddConverterSourcePayload(_FrozenBase):
@@ -979,12 +1076,35 @@ class AddConverterSourcePayload(_FrozenBase):
     power_setpoint_mw: float | None = None
     q_min_mvar: float | None = None
     q_max_mvar: float | None = None
+    # V12K-063 (G-OZE-B3): nachylenie Q(U) [pu Q na pu U] — wartość rządząca trybem Q_OD_U;
+    # bez niej wybór trybu Q(U) był pasywny (phantom). Konsumowany przez kanoniczny PF.
+    qu_slope_pu_per_pu: float | None = None
+    # V12K-064 (G-OZE-B4): napięciowe pasmo nieczułości charakterystyki Q(U) [pu U] —
+    # zakres napięcia, w którym Q=0 (NC RfG). Brak → domyślnie punkt 1.0/1.0 (reakcja
+    # natychmiastowa). Konsumowany przez kanoniczny PF falownika (q_from_voltage).
+    qu_deadband_low_pu: float | None = None
+    qu_deadband_high_pu: float | None = None
+    # V12K-062 (G-OZE-B): statyzm P(f)/LFSM [%Pn na %f] — regulacja mocy czynnej od
+    # częstotliwości; realnie konsumowany przez kanoniczny PF falownika (lfsm_droop_pct).
+    frequency_droop_percent: float | None = None
+    # V12K-063: pasmo nieczułości P(f)/LFSM [Hz] (np. 0.2 Hz → LFSM-O od 50.2 Hz).
+    lfsm_deadband_hz: float | None = None
+    # V12K-087 (G-OZE-B2): jawne deklaracje zdolności FRT (NC RfG) — czy jednostka
+    # ma zaprogramowaną charakterystykę przejścia przez zanik (LVRT) i przepięcie
+    # (HVRT). Nie da się wyprowadzić z karty katalogowej (envelope Q tylko), więc
+    # deklaruje je projektant. Konsumowane przez most zgodności NC RfG
+    # (build_der_compliance_from_generator → NcRfgComplianceChecker). Brak → False.
+    has_lvrt_curve: bool | None = None
+    has_hvrt_curve: bool | None = None
     bess_mode: str | None = None
     soc_min_percent: float | None = None
     soc_max_percent: float | None = None
     blocking_transformer_ref: str | None = None
     catalog_binding: dict[str, Any] | None = None
     materialized_params: dict[str, Any] | None = None
+    # W2b-DANE: kompletny tor DER-SN (kanon POLECENIE_DER_SN_TOPOLOGIA_2026-07).
+    # ADDYTYWNY — brak pola = dotychczasowe zachowanie (wariant nn/A bez zmian).
+    der_topology: DerTopologyPayload | None = None
 
 
 class AddGensetNNPayload(_FrozenBase):

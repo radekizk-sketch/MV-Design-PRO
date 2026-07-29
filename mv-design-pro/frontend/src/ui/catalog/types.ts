@@ -79,6 +79,27 @@ export interface TransformerType extends CatalogType {
 }
 
 /**
+ * Tap-changer catalog type (OLTC/DETC).
+ * Source: backend TapChangerItem dataclass (audit2 catalog, eng.13).
+ */
+export interface TapChangerCatalogType {
+  id: string;
+  catalog_namespace: string;
+  catalog_version: string;
+  label_pl: string;
+  type: 'oltc' | 'detc';
+  neutral_position: number;
+  tap_count: number;
+  step_percent: number;
+  range_percent: number;
+  regulated_side: 'hv' | 'lv';
+  switching_time_s: number;
+  operations_before_maintenance_thousand: number;
+  supports_avr: boolean;
+  applicable_to: string[];
+}
+
+/**
  * Switch Equipment Type.
  * Source: backend SwitchEquipmentType dataclass.
  */
@@ -216,6 +237,21 @@ export interface CTCatalogType extends CatalogType {
   ratio_secondary_a: number;
   accuracy_class?: string;
   burden_va?: number;
+  /**
+   * Rodzaj rdzenia WYPROWADZONY z klasy w katalogu (IEC 61869-2, V12K-239): klasa
+   * z literą P ⇒ `protection`, klasa liczbowa ⇒ `metering`. `null`/brak = nie da się
+   * ustalić (klasa nieznana albo zapis złożony opisujący dwa rdzenie).
+   *
+   * `dual` katalog referencyjny wystawi dopiero z DANĄ producenta o konstrukcji
+   * dwurdzeniowej — dziś żaden z 12 typów jej nie ma, więc warunek 87T pozostaje
+   * nierozstrzygalny (jawny brak danych, nie luka kontraktu).
+   */
+  application?: 'protection' | 'metering' | 'dual' | null;
+  /**
+   * Znamionowa graniczna liczba dokładności rdzenia zabezpieczeniowego (ALF, liczba po
+   * literze P — IEC 61869-2 § 3.4.201). Rdzeń pomiarowy jej nie ma (`null`).
+   */
+  accuracy_limit_factor?: number | null;
 }
 
 /**
@@ -226,6 +262,16 @@ export interface VTCatalogType extends CatalogType {
   ratio_primary_v: number;
   ratio_secondary_v: number;
   accuracy_class?: string;
+  /** Klasa uzwojenia POMIAROWEGO w przekładniku dwuuzwojeniowym (V12K-255). */
+  accuracy_class_metering?: string | null;
+  /** Rodzaj uzwojenia wyprowadzony z klasy przez backend (IEC 61869-3). */
+  application?: string | null;
+  /** Współczynnik napięciowy F_v i czas jego obowiązywania (IEC 61869-3 tab. 2). */
+  rated_voltage_factor?: number | null;
+  voltage_factor_duration_s?: number | null;
+  burden_va?: number | null;
+  /** Czy przekładnik ma uzwojenie resztkowe do pomiaru napięcia zerowego. */
+  has_residual_winding?: boolean | null;
 }
 
 /**
@@ -325,6 +371,16 @@ export interface SurgeArresterCatalogType extends CatalogType {
 }
 
 /**
+ * Shunt capacitor bank type (KOMPENSATOR_SN).
+ * Source: backend ShuntCapacitorType dataclass.
+ */
+export interface ShuntCapacitorCatalogType extends CatalogType {
+  rated_mvar: number;
+  rated_kv: number;
+  loss_kw?: number | null;
+}
+
+/**
  * PTPiREE certificate snapshot record.
  * Source: backend PtpireeGeneratorCertificate dataclass.
  */
@@ -412,6 +468,7 @@ export type CatalogNamespace =
   | 'CT'
   | 'VT'
   | 'OGRANICZNIK_SN'
+  | 'KOMPENSATOR_SN'
   | 'OBCIAZENIE'
   | 'ZRODLO_NN_PV'
   | 'ZRODLO_NN_BESS'
@@ -429,7 +486,7 @@ export type TypeCategory = 'LINE' | 'CABLE' | 'TRANSFORMER' | 'SWITCH_EQUIPMENT'
   | 'CONVERTER' | 'MEASUREMENT_TRANSFORMER' | 'PROTECTION_DEVICE'
   | 'LV_CABLE' | 'LOAD' | 'MV_APPARATUS' | 'LV_APPARATUS'
   | 'CT' | 'VT' | 'PV_INVERTER' | 'BESS_INVERTER' | 'SYSTEM_SOURCE'
-  | 'SURGE_ARRESTER' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
+  | 'SURGE_ARRESTER' | 'SHUNT_CAPACITOR' | 'PTPIREE_CERTIFICATE' | 'BRANCH_POLE' | 'ZKSN';
 
 /**
  * Type reference in element (points to catalog).

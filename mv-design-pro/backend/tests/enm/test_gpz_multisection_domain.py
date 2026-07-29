@@ -97,9 +97,13 @@ def test_add_grid_source_sn_persists_multisection_gpz_contract():
     assert field_by_section[sections[0]["section_id"]]["name"] == "Pole liniowe A"
     assert field_by_section[sections[1]["section_id"]]["name"] == "Pole liniowe B"
     assert sections[0]["line_fields_count"] == 1
-    assert sections[0]["line_field_refs"] == [field_by_section[sections[0]["section_id"]]["field_ref"]]
+    assert sections[0]["line_field_refs"] == [
+        field_by_section[sections[0]["section_id"]]["field_ref"]
+    ]
     assert sections[1]["line_fields_count"] == 1
-    assert sections[1]["line_field_refs"] == [field_by_section[sections[1]["section_id"]]["field_ref"]]
+    assert sections[1]["line_field_refs"] == [
+        field_by_section[sections[1]["section_id"]]["field_ref"]
+    ]
 
     couplers = [branch for branch in snapshot["branches"] if branch.get("type") == "bus_coupler"]
     assert len(couplers) == 1
@@ -260,3 +264,172 @@ def test_add_sn_bay_updates_existing_gpz_field_instead_of_appending_new_field():
     assert fields[0]["meta"]["field_status"] == "CONFIGURED_FOR_TRUNK"
     assert len(updated["branches"]) == 1
     assert updated["branches"][0]["meta"]["field_ref"] == field_ref
+
+
+def test_add_grid_source_sn_wiaze_rodzine_szablon_i_zabezpieczenie_pola():
+    """Globalna integracja: rodzina rozdzielnicy + szablon pola + zabezpieczenie
+    spływają na field_specs (widok pola / SLD / ocena zgodności / E-27)."""
+    result = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ Referencyjny",
+            "voltage_kv": 15.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "sections_count": 1,
+            "switchgear_family_ref": "ABB__SAFERING",
+            "manufacturer_ref": "ABB",
+            "gpz_sections": [
+                {
+                    "order": 0,
+                    "name": "Sekcja A",
+                    "bays": [
+                        {
+                            "name": "Pole odpływowe 1",
+                            "bay_role": "LINIA_ODG",
+                            "bay_template_ref": "ABB__SAFERING__LINE_OUT",
+                            "protection_ref": "prot/pole/1",
+                        },
+                        {
+                            "name": "Pole odpływowe 2",
+                            "bay_role": "LINIA_ODG",
+                            "bay_template_ref": "ABB__SAFERING__LINE_OUT",
+                        },
+                    ],
+                },
+            ],
+            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+        },
+    )
+
+    assert result.get("error") in (None, "")
+    snapshot = result["snapshot"]
+    substation = snapshot["substations"][0]
+    # Rodzina/producent na stacji.
+    assert substation["meta"]["switchgear_family_ref"] == "ABB__SAFERING"
+    assert substation["meta"]["manufacturer_ref"] == "ABB"
+
+    specs = substation["meta"]["field_specs"]
+    assert len(specs) == 2  # bays[] wyznacza liczbę pól
+    first, second = specs
+    # Szablon producenta + rodzina jako klucze TOP-LEVEL field_spec (konwencja
+    # kreatora stacji) — spójne źródło dla read-modelu pola i projekcji do Bay.
+    assert first["bay_template_ref"] == "ABB__SAFERING__LINE_OUT"
+    assert first["switchgear_family_ref"] == "ABB__SAFERING"
+    assert first["manufacturer_ref"] == "ABB"
+    assert first["bay_role"] == "LINIA_ODG"
+    # Powiązanie z zabezpieczeniem polowym.
+    assert first["protection_ref"] == "prot/pole/1"
+    assert second["protection_ref"] is None
+
+
+def test_add_grid_source_sn_bez_rodziny_zachowuje_dotychczasowy_kontrakt():
+    """Kompatybilność wsteczna: bez rodziny/szablonu field_specs nie niosą kluczy
+    producenckich (exclude_none — determinizm istniejących payloadów zachowany)."""
+    result = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ Klasyczny",
+            "voltage_kv": 15.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "sections_count": 1,
+            "gpz_sections": [{"order": 0, "name": "Sekcja A", "line_fields_count": 1}],
+            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+        },
+    )
+    assert result.get("error") in (None, "")
+    substation = result["snapshot"]["substations"][0]
+    assert "switchgear_family_ref" not in substation["meta"]
+    spec = substation["meta"]["field_specs"][0]
+    assert "bay_template_ref" not in spec
+    assert "switchgear_family_ref" not in spec
+
+
+def test_add_grid_source_sn_bez_oltc_nie_niesie_tap_changer():
+    """Bez żądania regulacji transformatory GPZ nie mają tap_changer (kompat.)."""
+    result = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ Bez OLTC",
+            "voltage_kv": 15.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "sections_count": 1,
+            "gpz_sections": [{"order": 0, "name": "Sekcja A", "line_fields_count": 1}],
+            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+        },
+    )
+    assert result.get("error") in (None, "")
+    trafo = result["snapshot"]["transformers"][0]
+    assert trafo.get("tap_changer") in (None, {}) or "tap_changer" not in trafo
+
+
+def test_add_grid_source_sn_materializuje_oltc_na_kazdym_transformatorze():
+    """OLTC z kreatora GPZ → kanoniczny tap_changer per transformator, regulujący
+    własną szynę SN, mapowany na model domenowy i widoczny dla pętli OLTC."""
+    result = execute_domain_operation(
+        enm_dict=_empty_enm(),
+        op_name="add_grid_source_sn",
+        payload={
+            "source_name": "GPZ z OLTC",
+            "voltage_kv": 15.0,
+            "catalog_ref": CATALOG_ZRODLO_SN,
+            "sections_count": 2,
+            "gpz_sections": [
+                {"order": 0, "name": "Sekcja A", "line_fields_count": 1},
+                {"order": 1, "name": "Sekcja B", "line_fields_count": 1},
+            ],
+            "grounding": {"type": "resistor_grounded", "r_ohm": 12.0},
+            "transformer_count": 2,
+            # OLTC z katalogu + jawne nastawy (zero fabrykacji — każde pole realne).
+            "transformer_regulation_type": "OLTC",
+            "transformer_tap_changer_catalog_ref": "tc_oltc_110sn_19_125",
+            "transformer_control_mode": "AUTOMATIC",
+            "transformer_voltage_setpoint_kv": 15.3,
+            "transformer_deadband_kv": 0.2,
+            "transformer_delay_seconds": 30.0,
+            "transformer_ldc_enabled": True,
+            "transformer_ldc_r_ohm": 0.5,
+            "transformer_ldc_x_ohm": 1.2,
+        },
+    )
+    assert result.get("error") in (None, "")
+    snapshot = result["snapshot"]
+    transformers = snapshot["transformers"]
+    assert len(transformers) == 2
+
+    sections = snapshot["substations"][0]["gpz_sections"]
+    section_bus_by_id = {s["section_id"]: s["bus_ref"] for s in sections}
+
+    for trafo in transformers:
+        tc = trafo["tap_changer"]
+        assert tc["regulation_type"] == "OLTC"
+        assert tc["regulated_winding"] == "HV"
+        assert tc["control_mode"] == "AUTOMATIC"
+        assert tc["min_position"] == -9
+        assert tc["max_position"] == 9
+        assert tc["step_percent"] == 1.25
+        assert tc["voltage_setpoint_kv"] == 15.3
+        assert tc["deadband_kv"] == 0.2
+        assert tc["delay_seconds"] == 30.0
+        assert tc["line_drop_compensation"]["enabled"] is True
+        assert tc["catalog_ref"] == "tc_oltc_110sn_19_125"
+        # Each transformer regulates its own SN busbar (section LV bus).
+        assert tc["controlled_bus_ref"] == section_bus_by_id[trafo["meta"]["gpz_section_id"]]
+
+    # Flows end-to-end: ENM -> domain graph -> canonical TapChanger visible.
+    from enm.mapping import map_enm_to_network_graph
+    from enm.models import EnergyNetworkModel
+    from network_model.core.branch import TransformerBranch
+
+    graph = map_enm_to_network_graph(EnergyNetworkModel.model_validate(snapshot))
+    regs = [
+        b
+        for b in graph.branches.values()
+        if isinstance(b, TransformerBranch) and b.tap_changer is not None
+    ]
+    assert len(regs) == 2
+    for reg in regs:
+        assert reg.tap_changer.is_automatic()
+        assert reg.tap_changer.controlled_bus_id is not None

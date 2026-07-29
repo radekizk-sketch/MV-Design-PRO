@@ -36,9 +36,9 @@ class PowerFlowIterationTrace:
     norm_mismatch: float
     max_mismatch_pu: float
     jacobian: dict[str, list[list[float]]] | None = None  # {J1_dP_dTheta, J2_dP_dV, ...}
-    delta_state: dict[
-        str, dict[str, float]
-    ] | None = None  # {bus_id: {delta_theta_rad, delta_v_pu}}
+    delta_state: dict[str, dict[str, float]] | None = (
+        None  # {bus_id: {delta_theta_rad, delta_v_pu}}
+    )
     state_next: dict[str, dict[str, float]] | None = None  # {bus_id: {v_pu, theta_rad}}
     damping_used: float = 1.0
     step_norm: float = 0.0

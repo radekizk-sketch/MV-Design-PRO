@@ -13,53 +13,60 @@
 
 import type { ComponentType, ReactNode } from 'react';
 import type { CanonicalOpName } from '../../types/domainOps';
-import { AddConverterSourceForm } from '../network-build/forms/AddConverterSourceForm';
-import { AddDispatchableSourceForm } from '../network-build/forms/AddDispatchableSourceForm';
-import { AddGridSourceForm } from '../network-build/forms/AddGridSourceForm';
-import { AddMeasurementForm } from '../network-build/forms/AddMeasurementForm';
-import { AddNnLoadForm } from '../network-build/forms/AddNnLoadForm';
-import { AddNnOutgoingFieldForm } from '../network-build/forms/AddNnOutgoingFieldForm';
-import { AddRelayForm } from '../network-build/forms/AddRelayForm';
-import { AddSnBayForm } from '../network-build/forms/AddSnBayForm';
-import { AddTransformerForm } from '../network-build/forms/AddTransformerForm';
-import { AssignCatalogForm } from '../network-build/forms/AssignCatalogForm';
-import { ConnectRingForm } from '../network-build/forms/ConnectRingForm';
-import { ContinueTrunkForm } from '../network-build/forms/ContinueTrunkForm';
-import { InsertBranchPoleForm } from '../network-build/forms/InsertBranchPoleForm';
-import { InsertSectionSwitchForm } from '../network-build/forms/InsertSectionSwitchForm';
-import { InsertStationForm } from '../network-build/forms/InsertStationForm';
-import { InsertZksnForm } from '../network-build/forms/InsertZksnForm';
-import { StartBranchForm } from '../network-build/forms/StartBranchForm';
-import { UpdateElementParametersForm } from '../network-build/forms/UpdateElementParametersForm';
+import { KreatorKompensatoraSn } from '../../ui2/kreatory/kompensator';
+import { KreatorOdgalezienia } from '../../ui2/kreatory/odgalezienie';
+import { KreatorOgranicznikaSn } from '../../ui2/kreatory/ogranicznik';
+import { KreatorLacznikaSekcyjnego } from '../../ui2/kreatory/lacznik';
+import { KreatorMagistralaSn } from '../../ui2/kreatory/magistrala';
+import { KreatorOdbioruNn } from '../../ui2/kreatory/odbior';
+import { KreatorPierscienia } from '../../ui2/kreatory/pierscien';
+import { KreatorPolaSn } from '../../ui2/kreatory/pole';
+import { KreatorSlupaOdgaleznego } from '../../ui2/kreatory/slup-odgalezny';
+import { KreatorStacjiSnNn } from '../../ui2/kreatory/stacja';
+import { KreatorTransformatoraSnNn } from '../../ui2/kreatory/transformator';
+import { KreatorZksn } from '../../ui2/kreatory/zksn';
+import { KreatorZrodloDyspozycyjne } from '../../ui2/kreatory/zrodlo-dyspozycyjne';
+import { KreatorZrodloZasilania } from '../../ui2/kreatory/zrodlo';
+import { KreatorZrodlaOze } from '../../ui2/kreatory/zrodlo-oze';
+import { KreatorEdycjiParametrow } from '../../ui2/kreatory/edycja-parametrow';
+import { KreatorPolaNn } from '../../ui2/kreatory/pole-nn';
+import { KreatorPomiaru } from '../../ui2/kreatory/pomiar';
+import { KreatorPrzekaznika } from '../../ui2/kreatory/przekaznik';
+import { KreatorPrzypisaniaKatalogu } from '../../ui2/kreatory/przypisanie-katalogu';
 
 /**
  * Mapowanie CanonicalOpName → React component formularza.
  * `null` znaczy "operacja nie ma formularza" (np. delete_element, refresh_snapshot).
  */
 export const OPERATION_FORM_REGISTRY: Readonly<Record<CanonicalOpName, ComponentType | null>> = {
-  add_grid_source_sn: AddGridSourceForm,
-  add_sn_bay: AddSnBayForm,
-  continue_trunk_segment_sn: ContinueTrunkForm,
-  insert_station_on_segment_sn: InsertStationForm,
-  append_station_on_endpoint: InsertStationForm,
-  insert_branch_pole_on_segment_sn: InsertBranchPoleForm,
-  insert_zksn_on_segment_sn: InsertZksnForm,
-  start_branch_segment_sn: StartBranchForm,
-  insert_section_switch_sn: InsertSectionSwitchForm,
-  connect_secondary_ring_sn: ConnectRingForm,
-  set_normal_open_point: ConnectRingForm,
-  add_transformer_sn_nn: AddTransformerForm,
-  assign_catalog_to_element: AssignCatalogForm,
-  update_element_parameters: UpdateElementParametersForm,
-  add_nn_outgoing_field: AddNnOutgoingFieldForm,
-  add_converter_source: AddConverterSourceForm,
-  add_genset_nn: AddDispatchableSourceForm,
-  add_ups_nn: AddDispatchableSourceForm,
-  add_nn_load: AddNnLoadForm,
-  add_ct: AddMeasurementForm,
-  add_vt: AddMeasurementForm,
-  add_relay: AddRelayForm,
-  // Operacje bez formularza (delete, refresh, GPZ sections CRUD)
+  add_grid_source_sn: KreatorZrodloZasilania,
+  add_sn_bay: KreatorPolaSn,
+  continue_trunk_segment_sn: KreatorMagistralaSn,
+  insert_station_on_segment_sn: KreatorStacjiSnNn,
+  append_station_on_endpoint: KreatorStacjiSnNn,
+  insert_branch_pole_on_segment_sn: KreatorSlupaOdgaleznego,
+  insert_zksn_on_segment_sn: KreatorZksn,
+  start_branch_segment_sn: KreatorOdgalezienia,
+  insert_section_switch_sn: KreatorLacznikaSekcyjnego,
+  connect_secondary_ring_sn: KreatorPierscienia,
+  set_normal_open_point: KreatorPierscienia,
+  add_transformer_sn_nn: KreatorTransformatoraSnNn,
+  assign_catalog_to_element: KreatorPrzypisaniaKatalogu,
+  update_element_parameters: KreatorEdycjiParametrow,
+  add_nn_outgoing_field: KreatorPolaNn,
+  add_converter_source: KreatorZrodlaOze,
+  add_genset_nn: KreatorZrodloDyspozycyjne,
+  add_ups_nn: KreatorZrodloDyspozycyjne,
+  add_shunt_compensator_sn: KreatorKompensatoraSn,
+  add_surge_arrester_sn: KreatorOgranicznikaSn,
+  add_nn_load: KreatorOdbioruNn,
+  add_ct: KreatorPomiaru,
+  add_vt: KreatorPomiaru,
+  add_relay: KreatorPrzekaznika,
+  // Operacje bez formularza modalnego (delete, refresh, GPZ sections CRUD oraz warunki
+  // przyłączenia OSD — te mają formularz inline w kaflu pulpitu projektu, nie w oknie
+  // kreatora: `ui2/spaces/projekt/KafelPrzylaczenia.tsx`).
+  set_connection_conditions: null,
   delete_element: null,
   refresh_snapshot: null,
   add_gpz_section: null,

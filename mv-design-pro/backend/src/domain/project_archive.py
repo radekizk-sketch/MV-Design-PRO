@@ -20,7 +20,7 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # ============================================================================
@@ -77,7 +77,7 @@ class ArchiveStructureError(ArchiveError):
 # ============================================================================
 
 
-class ArchiveImportStatus(str, Enum):
+class ArchiveImportStatus(StrEnum):
     """Status importu archiwum."""
 
     SUCCESS = "SUCCESS"

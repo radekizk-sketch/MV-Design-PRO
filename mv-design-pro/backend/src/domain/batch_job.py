@@ -25,14 +25,14 @@ import hashlib
 import json
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
 
 from domain.execution import ExecutionAnalysisType
 
 
-class BatchJobStatus(str, Enum):
+class BatchJobStatus(StrEnum):
     """Batch job lifecycle status."""
 
     PENDING = "PENDING"

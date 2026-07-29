@@ -3,7 +3,6 @@
 import os
 
 import pytest
-
 from enm.models import (
     Bay,
     Bus,

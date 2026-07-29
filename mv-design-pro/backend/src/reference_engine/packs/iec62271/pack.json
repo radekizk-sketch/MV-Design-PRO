@@ -1,0 +1,137 @@
+{
+  "pack_id": "iec62271",
+  "kind": "norm",
+  "name_pl": "IEC 62271-200 — rozdzielnice SN w osłonach metalowych (profile pól + blokady)",
+  "version": "1.0.0",
+  "status": "repo_verified",
+  "source_document_refs": [
+    "IEC 62271-200 (rozdzielnice prądu przemiennego w osłonach metalowych na napięcia znamionowe powyżej 1 kV do 52 kV)",
+    "SLD_CAD_SPEC_V3.md §12 (kompozycja celki pola wg fizycznej ścieżki mocy)",
+    "SLD_CAD_SPEC_V3.md §18.1 (aparaty boczne ES/VT/SA poza osią toru)"
+  ],
+  "field_profiles": [
+    {
+      "profile_id": "line_breaker",
+      "name_pl": "Pole liniowe wyłącznikowe (GPZ / rozdzielnice wyłącznikowe)",
+      "required": ["DS", "CB", "CT", "ES", "CABLE_HEAD"],
+      "one_of_groups": [],
+      "optional": ["VT", "SURGE_ARRESTER"],
+      "forbidden": ["TRANSFORMER_DEVICE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["DS", "CB", "CT", "DS", "CABLE_HEAD"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
+      "notes_pl": "Odłącznik szynowy → wyłącznik → przekładnik prądowy → odłącznik liniowy → (uziemnik bocznie) → głowica kablowa."
+    },
+    {
+      "profile_id": "rmu_line",
+      "name_pl": "Pole liniowe RMU (stacje SN/nN, technologia rozłącznikowa)",
+      "required": ["ES", "CABLE_HEAD"],
+      "one_of_groups": [["LOAD_SWITCH", "CB"]],
+      "optional": ["DS", "CT", "VT", "SURGE_ARRESTER"],
+      "forbidden": ["TRANSFORMER_DEVICE", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["DS", "LOAD_SWITCH", "CB", "CT", "DS", "CABLE_HEAD"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
+      "notes_pl": "Funkcja łączeniowa toru: rozłącznik ALBO wyłącznik (wariant wyłącznikowy = świadomy wybór rozdzielnicy, recenzja NO-GO pkt 5 / V12K-031-A)."
+    },
+    {
+      "profile_id": "rmu_transformer",
+      "name_pl": "Pole transformatorowe RMU (stacje SN/nN, rozłącznik z bezpiecznikami)",
+      "required": ["ES", "TRANSFORMER_DEVICE"],
+      "one_of_groups": [["FUSE", "CB"]],
+      "optional": ["DS", "LOAD_SWITCH", "CT", "VT", "SURGE_ARRESTER", "CABLE_HEAD"],
+      "forbidden": ["GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["DS", "LOAD_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
+      "notes_pl": "Zabezpieczenie transformatora: bezpieczniki (rozłącznik z bezpiecznikami) ALBO wyłącznik (recenzja NO-GO pkt 5/6)."
+    },
+    {
+      "profile_id": "transformer_fuse",
+      "name_pl": "Pole transformatorowe bezpiecznikowe (poza RMU)",
+      "required": ["DS", "FUSE", "TRANSFORMER_DEVICE"],
+      "one_of_groups": [],
+      "optional": ["ES", "CT", "VT", "SURGE_ARRESTER", "CABLE_HEAD"],
+      "forbidden": ["GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["DS", "LOAD_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
+      "notes_pl": "Słownik konwencji §12.4: DS → bezpiecznik → TR2W."
+    },
+    {
+      "profile_id": "transformer_breaker",
+      "name_pl": "Pole transformatorowe wyłącznikowe (GPZ)",
+      "required": ["DS", "CB", "TRANSFORMER_DEVICE"],
+      "one_of_groups": [],
+      "optional": ["CT", "ES", "VT", "SURGE_ARRESTER", "CABLE_HEAD"],
+      "forbidden": ["GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["DS", "LOAD_SWITCH", "CB", "FUSE", "CT", "DS", "CABLE_HEAD", "TRANSFORMER_DEVICE"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
+      "notes_pl": "Kanoniczny szablon kreatora bay_template_transformer: DS → CB → CT → DS → (ES bocznie) → TR."
+    },
+    {
+      "profile_id": "measurement",
+      "name_pl": "Pole pomiarowe",
+      "required": ["DS", "VT"],
+      "one_of_groups": [],
+      "optional": ["ES", "SURGE_ARRESTER"],
+      "forbidden": ["TRANSFORMER_DEVICE", "CABLE_HEAD", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["DS"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
+      "notes_pl": "Boczny tor pomiarowy z przekładnikami napięciowymi (VT z definicji poza osią toru, §18.1)."
+    },
+    {
+      "profile_id": "coupler",
+      "name_pl": "Pole sprzęgłowe (sprzęgło sekcyjne)",
+      "required": ["DS", "CB"],
+      "one_of_groups": [],
+      "optional": ["CT", "ES"],
+      "forbidden": ["TRANSFORMER_DEVICE", "CABLE_HEAD", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "canonical_order": ["DS", "CB", "CT", "DS"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
+      "notes_pl": "Łącznik dwóch sekcji szyny SN."
+    },
+    {
+      "profile_id": "der_source",
+      "name_pl": "Pole źródłowe OZE (PV / BESS / FW)",
+      "required": ["DS", "CB", "CABLE_HEAD"],
+      "one_of_groups": [],
+      "optional": ["CT", "VT", "ES", "SURGE_ARRESTER", "GENERATOR_PV", "GENERATOR_BESS", "GENERATOR_FW", "PCS", "BATTERY"],
+      "forbidden": ["TRANSFORMER_DEVICE"],
+      "canonical_order": ["DS", "CB", "CT", "DS", "CABLE_HEAD"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
+      "notes_pl": "Przyłączenie źródła OZE; transformator blokowy leży poza polem rozdzielczym (rysowany po stronie źródła)."
+    },
+    {
+      "profile_id": "reserve",
+      "name_pl": "Pole rezerwowe",
+      "required": ["DS"],
+      "one_of_groups": [],
+      "optional": ["ES"],
+      "forbidden": ["TRANSFORMER_DEVICE"],
+      "canonical_order": ["DS"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
+      "notes_pl": "Przygotowane miejsce dla przyszłego przyłączenia."
+    },
+    {
+      "profile_id": "aux",
+      "name_pl": "Pole potrzeb własnych",
+      "required": ["DS", "FUSE"],
+      "one_of_groups": [],
+      "optional": ["ES", "CABLE_HEAD"],
+      "forbidden": [],
+      "canonical_order": ["DS", "FUSE", "CABLE_HEAD"],
+      "lateral_only": ["ES", "VT", "SURGE_ARRESTER"],
+      "notes_pl": "Zasilanie urządzeń pomocniczych stacji."
+    }
+  ],
+  "connection_rules": [
+    {
+      "rule_id": "iec62271.interlock.es_vs_main",
+      "description_pl": "Blokada uziemnika: uziemnik ZAMKNIĘTY przy jednocześnie zamkniętym łączniku toru głównego tego samego pola = niedozwolona kombinacja stanów (uziemienie toru pod napięciem).",
+      "implemented": true
+    },
+    {
+      "rule_id": "iec62271.line_bay.dedicated_per_feeder",
+      "description_pl": "Każde wyprowadzenie na sieć terenową ma dedykowane pole liniowe (z jednego pola liniowego nigdy nie wychodzą dwa kable). Egzekwowane w warstwie domenowej operacji topologicznych (kanon 2026-07-17), nie w silniku zgodności.",
+      "implemented": false
+    }
+  ],
+  "notes_pl": "Profile pól = semantyka walidacyjna kanonu SLD_CAD_SPEC_V3 §12.4 osadzona w praktyce rozdzielnic wg IEC 62271-200. Słownik konwencji frontendu i kanoniczne szablony kreatora są implementacjami tych profili (parytet egzekwowany testami, spec Reference Engine §8)."
+}

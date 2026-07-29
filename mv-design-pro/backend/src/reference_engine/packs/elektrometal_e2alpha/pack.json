@@ -1,0 +1,17 @@
+{
+  "pack_id": "elektrometal_e2alpha",
+  "kind": "manufacturer",
+  "name_pl": "Elektrometal Energetyka — rozdzielnica SN e²ALPHA (+ sterowniki polowe e²TANGO)",
+  "version": "2026-05",
+  "status": "repo_verified",
+  "switchgear_family_ref": "ELEKTROMETAL__E2ALPHA",
+  "source_document_refs": [
+    "https://elektrometal-energetyka.pl/rozdzielnice-sn-e²alpha/",
+    "https://elektrometal.eu/catalogs/mining/products/pl/357rozdzielnice-sredniego-napiecia.pdf"
+  ],
+  "protection_control_refs": [
+    "https://www.elektrometal-energetyka.pl/wp-content/uploads/2020/12/Karta-katalogowa-e2TANGO-K-3.2.8.pdf",
+    "https://elektrometal-energetyka.pl/e²tango-mv-protection-relays/e²tango-bay-controllers-60080010001200/"
+  ],
+  "notes_pl": "KOREKTA FAKTOGRAFICZNA (spec Reference Engine §11): e²TANGO to rodzina STEROWNIKÓW POLOWYCH / zabezpieczeń Elektrometal Energetyka (K-3.2.8, e²TANGO-600/800/1000/1200), NIE rodzina rozdzielnic. Rodziną rozdzielnic SN producenta jest e²ALPHA (katalog: ELEKTROMETAL__E2ALPHA, repo_verified). Dane elektryczne rodziny (napięcia 12/17.5/24 kV, prądy, dozwolone pola i aparaty) mają jedno źródło: SWITCHGEAR_FAMILY_REGISTRY — pakiet ich nie kopiuje. USTALENIE Z LEKTURY KART (research 2026-07-17: K-1.2.2 s. 5–6, K-11.1.1, katalog Rozwiązania K-0.2.11 s. ~21–22): producent publikuje LISTĘ TYPÓW pól (zasilające, liniowe, dopływowo-odpływowe, sprzęgłowe wył./odcinacza, pomiaru napięcia, wzniosu, potrzeb własnych, silnikowe i in.), ale NIE publikuje składu aparatowego per typ pola ani schematów jednokreskowych typowych pól — dlatego pakiet ŚWIADOMIE nie niesie cell_configurations (zakaz uzupełniania przez analogię do innych producentów; skład wymaga DTR/projektu wykonawczego albo zapytania do producenta). Fakty pośrednie z kart: człon wysuwny z wyłącznikiem próżniowym e²BRAVO (630–4000 A, do 40 kA), blokady członu/uziemnika/drzwi, odłączniki systemowe w wariancie 2S."
+}

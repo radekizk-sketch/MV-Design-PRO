@@ -43,9 +43,21 @@ def _make_minimal_header() -> ENMHeader:
 @pytest.mark.parametrize(
     "kind",
     [
-        "sn_input", "sn_output", "sn_branch", "sn_transformer", "sn_measurement",
-        "sn_der_pv", "sn_der_bess", "sn_der_fw", "sn_coupler", "sn_reserve",
-        "nn_feeder", "nn_load", "nn_der_pv", "nn_der_bess", "nn_der_fw",
+        "sn_input",
+        "sn_output",
+        "sn_branch",
+        "sn_transformer",
+        "sn_measurement",
+        "sn_der_pv",
+        "sn_der_bess",
+        "sn_der_fw",
+        "sn_coupler",
+        "sn_reserve",
+        "nn_feeder",
+        "nn_load",
+        "nn_der_pv",
+        "nn_der_bess",
+        "nn_der_fw",
     ],
 )
 def test_port_all_15_kinds(kind: str) -> None:
@@ -84,7 +96,8 @@ def test_port_ref_simple() -> None:
 
 
 @pytest.mark.parametrize(
-    "location", ["bay", "bus", "der_terminal", "branch_point"],
+    "location",
+    ["bay", "bus", "der_terminal", "branch_point"],
 )
 def test_connection_node_locations(location: str) -> None:
     cn = ConnectionNode(
@@ -134,8 +147,15 @@ def test_cable_with_endpoints_and_joints() -> None:
         endpoint_a_port=PortRef(port_id="sub_gpz:bay_1:sn_output"),
         endpoint_b_port=PortRef(port_id="sub_st1:bay_1:sn_input"),
         cable_joints=[
-            CableJoint(id="cj1", parent_segment_id="cab_1", position_km=1.0, joint_type="mufa_zimna"),
-            CableJoint(id="cj2", parent_segment_id="cab_1", position_km=2.0, joint_type="mufa_termoutwardzalna"),
+            CableJoint(
+                id="cj1", parent_segment_id="cab_1", position_km=1.0, joint_type="mufa_zimna"
+            ),
+            CableJoint(
+                id="cj2",
+                parent_segment_id="cab_1",
+                position_km=2.0,
+                joint_type="mufa_termoutwardzalna",
+            ),
         ],
     )
     assert cable.endpoint_a_port is not None
@@ -283,7 +303,8 @@ def test_line_run_main_trunk() -> None:
 
 
 @pytest.mark.parametrize(
-    "run_kind", ["main_trunk", "branch", "ring", "loop"],
+    "run_kind",
+    ["main_trunk", "branch", "ring", "loop"],
 )
 def test_line_run_4_kinds(run_kind: str) -> None:
     lr = LineRun(
@@ -411,10 +432,34 @@ def test_migration_v_ports_001_idempotent() -> None:
             Substation(ref_id="sub_gpz", name="GPZ", station_type="gpz"),
         ],
         bays=[
-            Bay(ref_id="bay_in", name="Bay IN", bay_role="IN", substation_ref="sub_gpz", bus_ref="bus_1"),
-            Bay(ref_id="bay_out", name="Bay OUT", bay_role="OUT", substation_ref="sub_gpz", bus_ref="bus_1"),
-            Bay(ref_id="bay_tr", name="Bay TR", bay_role="TR", substation_ref="sub_gpz", bus_ref="bus_1"),
-            Bay(ref_id="bay_oze", name="Bay OZE", bay_role="OZE", substation_ref="sub_gpz", bus_ref="bus_1"),
+            Bay(
+                ref_id="bay_in",
+                name="Bay IN",
+                bay_role="IN",
+                substation_ref="sub_gpz",
+                bus_ref="bus_1",
+            ),
+            Bay(
+                ref_id="bay_out",
+                name="Bay OUT",
+                bay_role="OUT",
+                substation_ref="sub_gpz",
+                bus_ref="bus_1",
+            ),
+            Bay(
+                ref_id="bay_tr",
+                name="Bay TR",
+                bay_role="TR",
+                substation_ref="sub_gpz",
+                bus_ref="bus_1",
+            ),
+            Bay(
+                ref_id="bay_oze",
+                name="Bay OZE",
+                bay_role="OZE",
+                substation_ref="sub_gpz",
+                bus_ref="bus_1",
+            ),
         ],
     )
 
@@ -499,7 +544,10 @@ def test_station_template_registry_has_9_templates() -> None:
     assert len(STATION_TEMPLATE_REGISTRY) == 9
     templates = list_station_templates()
     assert {t.topological_type for t in templates} == {
-        "końcowa", "przelotowa", "odgałęźna", "sekcyjna",
+        "końcowa",
+        "przelotowa",
+        "odgałęźna",
+        "sekcyjna",
     }
 
 

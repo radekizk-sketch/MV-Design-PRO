@@ -1,6 +1,8 @@
 """Tests for ENM Pydantic v2 models — schema validation, discriminated union, required fields."""
 
+import pytest
 from enm.models import (
+    BayPrimaryDevice,
     Bus,
     Cable,
     EnergyNetworkModel,
@@ -12,6 +14,7 @@ from enm.models import (
     SwitchBranch,
     Transformer,
 )
+from pydantic import ValidationError
 
 
 class TestBus:
@@ -141,6 +144,39 @@ class TestSource:
         )
         assert src.model == "short_circuit_power"
         assert src.sk3_mva == 220.0
+
+
+class TestBayPrimaryDevice:
+    """F9.6 (SLD_CAD_SPEC_V3 §12.5, V12K-028): SURGE_ARRESTER kind."""
+
+    def test_surge_arrester_kind_accepted(self):
+        device = BayPrimaryDevice(
+            device_ref="sa_1",
+            symbol_ref="surge_arrester_1",
+            kind="SURGE_ARRESTER",
+            placement="DOWNSTREAM",
+        )
+        assert device.kind == "SURGE_ARRESTER"
+
+    def test_surge_arrester_kind_json_roundtrip(self):
+        device = BayPrimaryDevice(
+            device_ref="sa_1",
+            symbol_ref="surge_arrester_1",
+            kind="SURGE_ARRESTER",
+            placement="DOWNSTREAM",
+        )
+        data = device.model_dump(mode="json")
+        restored = BayPrimaryDevice.model_validate(data)
+        assert restored.kind == "SURGE_ARRESTER"
+
+    def test_unknown_kind_rejected(self):
+        with pytest.raises(ValidationError):
+            BayPrimaryDevice(
+                device_ref="x_1",
+                symbol_ref="x",
+                kind="NOT_A_REAL_KIND",
+                placement="DOWNSTREAM",
+            )
 
 
 class TestENM:

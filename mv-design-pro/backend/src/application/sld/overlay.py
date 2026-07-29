@@ -13,11 +13,11 @@ BoundaryNode (Point of Common Coupling) identification is handled by Analysis la
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class ResultStatus(str, Enum):
+class ResultStatus(StrEnum):
     """
     Result freshness status (per ui_canonical_parity.md § B.2).
 

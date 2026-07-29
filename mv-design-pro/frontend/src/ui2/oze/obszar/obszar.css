@@ -1,0 +1,218 @@
+/*
+ * Style okna „Obszar bezpiecznej pracy P–Q" (karta P30). Kolory WYŁĄCZNIE przez
+ * tokeny --mvd-* (theme/tokens.css) — zero literałów hex. Determinizm prezentacji:
+ * stałe wymiary, brak animacji zależnych od czasu.
+ */
+
+.mvd-obszar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  color: var(--mvd-ink);
+}
+
+.mvd-obszar-naglowek {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.mvd-obszar-tytul {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+}
+.mvd-obszar-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- stany (brak przebiegu / idle / ładowanie / błąd) ---- */
+.mvd-obszar-stan {
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  padding: 12px;
+}
+.mvd-obszar-stan--blad {
+  border-color: var(--mvd-err);
+  background: var(--mvd-err-bg);
+}
+.mvd-obszar-stan-title {
+  margin: 0;
+  font-weight: 600;
+}
+.mvd-obszar-stan-desc {
+  margin: 4px 0 0;
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+
+/* ---- parametry biegu ---- */
+.mvd-obszar-parametry {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+  box-shadow: var(--mvd-shadow);
+  padding: 12px;
+}
+.mvd-obszar-param {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+.mvd-obszar-param > label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+}
+.mvd-obszar-param-pole {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mvd-obszar-param-pole input {
+  width: 88px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  padding: 4px 6px;
+  font: inherit;
+}
+.mvd-obszar-param select {
+  min-width: 180px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-bg);
+  color: var(--mvd-ink);
+  padding: 4px 6px;
+  font: inherit;
+}
+.mvd-obszar-param-pole input:focus,
+.mvd-obszar-param select:focus {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-obszar-param-jedn {
+  color: var(--mvd-muted);
+  font-size: 12px;
+}
+.mvd-obszar-param-opis {
+  margin: 0;
+  color: var(--mvd-muted);
+  font-size: 11px;
+  max-width: 220px;
+}
+
+.mvd-obszar-oblicz {
+  align-self: flex-end;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 5px;
+  background: var(--mvd-accent);
+  color: var(--mvd-accent-ink);
+  padding: 6px 14px;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+}
+.mvd-obszar-oblicz:hover {
+  filter: brightness(1.05);
+}
+.mvd-obszar-oblicz:focus {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-obszar-oblicz:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ---- założenia (część wyniku) ---- */
+.mvd-obszar-zalozenia {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  background: var(--mvd-panel);
+}
+.mvd-obszar-zal-para {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+}
+.mvd-obszar-zal-para > dt {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+}
+.mvd-obszar-zal-para > dd {
+  margin: 0;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+/* ---- wykres ---- */
+.mvd-obszar-wykres-blok {
+  overflow-x: auto;
+  margin-top: 8px;
+}
+.mvd-obszar-wykres-tytul {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mvd-muted);
+  margin: 0 0 4px;
+}
+.mvd-obszar-wykres-dymek {
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+  padding: 4px 8px;
+  font-size: 12px;
+  box-shadow: var(--mvd-shadow);
+}
+
+/* ---- ślad zredukowany ---- */
+.mvd-obszar-slad-blok {
+  margin-top: 8px;
+}
+.mvd-obszar-slad-btn {
+  border: 1px solid var(--mvd-line);
+  border-radius: 4px;
+  background: var(--mvd-chip);
+  color: var(--mvd-ink);
+  padding: 2px 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+.mvd-obszar-slad-btn:hover {
+  border-color: var(--mvd-accent);
+}
+.mvd-obszar-slad-btn:focus {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+.mvd-obszar-slad-tytul {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mvd-muted);
+  margin: 6px 0 4px;
+}

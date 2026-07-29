@@ -89,11 +89,31 @@ def _valid_enm_payload_with_helper_terminal(name: str) -> dict:
             "phase_system": "3ph",
         }
     )
+    # Szyna POMOCNICZA o kształcie refu sekcji GPZ. V12K-184: „techniczność" musi
+    # być wyrażona W DANYCH (tag `helper_bus`), a nie wywnioskowana ze wzorca
+    # `ref_id` — bo PRAWDZIWA szyna sekcji SN GPZ (z `add_grid_source_sn`) ma
+    # dokładnie taki sam ref_id, puste tagi i pustą meta, więc reguła na wzorzec
+    # ścieżki wykluczała z celów zwarcia główną szynę rozdzielni (patrz szyna
+    # `gpz/real/section/001/bus_sn` niżej, która MUSI być raportowana).
     payload["buses"].append(
         {
             "id": "00000000-0000-0000-0000-000000000005",
             "ref_id": "gpz/test/section/001/bus_sn",
             "name": "Szyna techniczna sekcji GPZ",
+            "tags": ["helper_bus"],
+            "meta": {},
+            "voltage_kv": 15,
+            "phase_system": "3ph",
+        }
+    )
+    # Kontrola dodatnia: REALNA szyna sekcji SN GPZ — bez tagów, bez meta.
+    # Jest głównym punktem doboru aparatury rozdzielni, więc MUSI trafić do
+    # wyników zwarciowych.
+    payload["buses"].append(
+        {
+            "id": "00000000-0000-0000-0000-000000000007",
+            "ref_id": "gpz/real/section/001/bus_sn",
+            "name": "Szyna GPZ S1 15 kV",
             "tags": [],
             "meta": {},
             "voltage_kv": 15,
@@ -124,6 +144,21 @@ def _valid_enm_payload_with_helper_terminal(name: str) -> dict:
             "meta": {"render_on_sld": False, "show_in_project_tree": False},
             "from_bus_ref": "b1",
             "to_bus_ref": "gpz/test/section/001/bus_sn",
+            "status": "closed",
+            "type": "breaker",
+            "r_ohm": 0.0,
+            "x_ohm": 0.0,
+        }
+    )
+    payload["branches"].append(
+        {
+            "id": "00000000-0000-0000-0000-000000000008",
+            "ref_id": "brk_real_section_bus",
+            "name": "Lacznik szyny GPZ",
+            "tags": [],
+            "meta": {},
+            "from_bus_ref": "b1",
+            "to_bus_ref": "gpz/real/section/001/bus_sn",
             "status": "closed",
             "type": "breaker",
             "r_ohm": 0.0,
@@ -181,8 +216,14 @@ def test_short_circuit_does_not_report_helper_field_terminals():
     assert result.raw_result is not None
     rows = build_short_circuit_results(result)["rows"]
     assert rows
-    assert "b_helper" not in {row["element_id"] for row in rows}
-    assert "gpz/test/section/001/bus_sn" not in {row["element_id"] for row in rows}
+    reported = {row["element_id"] for row in rows}
+    # Szyny POMOCNICZE (jawny tag `helper_bus`) nie są celem zwarcia…
+    assert "b_helper" not in reported
+    assert "gpz/test/section/001/bus_sn" not in reported
+    # …ale realna szyna sekcji SN GPZ JEST (V12K-184: kryterium to tag w danych,
+    # nie wzorzec ref_id ani flagi prezentacyjne — inaczej z wyników znikał punkt,
+    # w którym liczy się moc zwarciową dla doboru rozdzielni).
+    assert "gpz/real/section/001/bus_sn" in reported
     assert all(row["target_name"] != "Zacisk techniczny" for row in rows)
     assert all(row["target_name"] != "Szyna techniczna sekcji GPZ" for row in rows)
 
@@ -211,11 +252,26 @@ def test_execute_run_supports_1f_when_z0_is_committed_in_enm():
     assert result.raw_result["results"][0]["proof_ref"].startswith("proof:short-circuit:")
     assert result.raw_result["results"][0]["proof_binding"]["z0_source"] == "ENM_COMMITTED"
     assert "z0_ohm" in result.raw_result["results"][0]["white_box_trace"][0]["inputs"]
+    # Delta FROZEN V12K-128 (addytywnie): składowe symetryczne w pozycji wyniku
+    # (nie tylko w śladzie). Bieg doziemny 1F → pełen komplet Z1/Z2/Z0.
+    item0 = result.raw_result["results"][0]
+    for pole in ("z1_ohm", "z2_ohm", "z0_ohm"):
+        assert isinstance(item0[pole], dict), pole
+        assert "re" in item0[pole] and "im" in item0[pole], pole
+    # GAP passthrough (V12K-128): wymóg/źródło Z0 na poziomie pozycji wyniku.
+    assert item0["requires_z0"] is True
+    assert item0["z0_source"] == "ENM_COMMITTED"
 
     rows = build_short_circuit_results(result)["rows"]
     assert rows[0]["reporting_status"] == "reportable"
     assert rows[0]["proof_status"] == "complete"
     assert rows[0]["dopuszczalnosc_raportowa"] is True
+    # Delta FROZEN V12K-128: składowe Z1/Z2/Z0 + GAP passthrough w wierszu
+    # kanonicznym (konsument read-only ma komplet bilansu i wymóg Z0).
+    for pole in ("z1_ohm", "z2_ohm", "z0_ohm"):
+        assert isinstance(rows[0][pole], dict), pole
+    assert rows[0]["requires_z0"] is True
+    assert rows[0]["z0_source"] == "ENM_COMMITTED"
 
     execution_set = build_execution_result_set(result)
     assert execution_set["analysis_type"] == "SC_1F"
@@ -252,8 +308,13 @@ def test_execute_run_supports_2fg_when_z0_is_committed_in_enm():
 
 
 def test_short_circuit_type_accepts_sc2fg_alias_from_ui():
-    assert _short_circuit_type_from_options({"fault_type": "2FG"}) is ShortCircuitType.TWO_PHASE_GROUND
-    assert _short_circuit_type_from_options({"fault_type": "SC2FG"}) is ShortCircuitType.TWO_PHASE_GROUND
+    assert (
+        _short_circuit_type_from_options({"fault_type": "2FG"}) is ShortCircuitType.TWO_PHASE_GROUND
+    )
+    assert (
+        _short_circuit_type_from_options({"fault_type": "SC2FG"})
+        is ShortCircuitType.TWO_PHASE_GROUND
+    )
 
 
 def test_create_1f_run_blocks_without_committed_z0():

@@ -1,0 +1,407 @@
+/*
+ * Hub „Dokumentacja" (runda R2 — uproszczony, „minimum informacji – maksimum
+ * decyzji"). Wyłącznie tokeny powłoki (--mvd-*), oba motywy z automatu. Jedna
+ * skala promieni: 10px sekcja / 8px karta / 999px chip. Odstępy: 4 / 8 / 12 / 16.
+ */
+
+.mvd-dok {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-head h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-head p {
+  margin: 0;
+  max-width: 72ch;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-dok-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--mvd-accent);
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Q1: pasek statusu obliczeń ------------------------------------------- */
+
+.mvd-dok-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.mvd-dok-status-ok,
+.mvd-dok-status-brak {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mvd-dok-status-brak {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.mvd-dok-status-kropka {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--mvd-ok);
+  flex: none;
+}
+
+.mvd-dok-status-txt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  font-size: 13.5px;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-status-meta {
+  font-size: 12.5px;
+  color: var(--mvd-muted);
+}
+
+/* --- Q2: sekcja dokumentów ------------------------------------------------ */
+
+.mvd-dok-sekcja {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.mvd-dok-grupa > h4 {
+  margin: 10px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-grupa:first-of-type > h4 {
+  margin-top: 6px;
+}
+
+.mvd-dok-karty {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px;
+}
+
+.mvd-dok-karta {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-left-width: 3px;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.mvd-dok-karta[data-akcent='accent'] { border-left-color: var(--mvd-accent); }
+.mvd-dok-karta[data-akcent='formalny'] { border-left-color: var(--mvd-warn); }
+.mvd-dok-karta[data-akcent='neutralny'] { border-left-color: var(--mvd-muted); }
+
+.mvd-dok-karta[data-wyroznione='true'] {
+  background: linear-gradient(180deg, var(--mvd-warn-bg) 0%, var(--mvd-panel-2) 44%);
+  border-color: var(--mvd-warn);
+}
+
+.mvd-dok-karta-glowa {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mvd-dok-karta-ikona {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--mvd-line);
+}
+.mvd-dok-karta-ikona[data-akcent='accent'] { color: var(--mvd-accent); background: var(--mvd-sel); border-color: transparent; }
+.mvd-dok-karta-ikona[data-akcent='formalny'] { color: var(--mvd-warn); background: var(--mvd-warn-bg); border-color: transparent; }
+.mvd-dok-karta-ikona[data-akcent='neutralny'] { color: var(--mvd-muted); background: var(--mvd-chip); }
+
+.mvd-dok-karta-tytul {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.mvd-dok-karta-tytul h5 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-karta-formalny {
+  font: 700 9.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--mvd-warn);
+}
+
+.mvd-dok-karta-opis {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--mvd-muted);
+}
+
+.mvd-dok-karta-zawartosc {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mvd-dok-meta-k {
+  font: 600 10px/1.4 var(--mvd-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--mvd-muted);
+}
+
+.mvd-dok-sekcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.mvd-dok-tag {
+  font-size: 11.5px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+  color: var(--mvd-ink);
+}
+
+/* --- Magazyn dokumentów (cykl życia; karta F-E8.3) ----------------------- */
+
+.mvd-dok-karta-magazyn {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mvd-dok-rekordy {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.mvd-dok-rekord {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 5px 9px;
+  border-radius: 6px;
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+}
+
+.mvd-dok-rekord-meta {
+  font: 500 11.5px/1.4 var(--mvd-font-mono);
+  color: var(--mvd-ink);
+}
+
+.mvd-dok-rekord-akcje {
+  display: inline-flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.mvd-dok-rekord-akcja {
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 3px 10px;
+}
+.mvd-dok-rekord-akcja--podglad {
+  color: var(--mvd-muted);
+  border-color: var(--mvd-line);
+}
+.mvd-dok-rekord-akcja:hover { filter: brightness(1.08); }
+.mvd-dok-rekord-akcja:focus-visible { outline: 2px solid var(--mvd-focus); outline-offset: 2px; }
+
+.mvd-dok-chip {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 9px;
+  font: 600 10.5px/1.6 var(--mvd-font-mono);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.mvd-dok-chip--ok { background: var(--mvd-ok-bg); color: var(--mvd-ok); }
+.mvd-dok-chip--brak { background: var(--mvd-warn-bg); color: var(--mvd-warn); }
+
+.mvd-dok-karta-stopka {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 4px;
+}
+
+.mvd-dok-otworz {
+  background: var(--mvd-accent);
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 5px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent-ink);
+  cursor: pointer;
+}
+.mvd-dok-otworz[data-akcent='formalny'] { background: var(--mvd-warn); border-color: var(--mvd-warn); }
+.mvd-dok-otworz[data-akcent='neutralny'] {
+  background: none;
+  border-color: var(--mvd-accent);
+  color: var(--mvd-accent);
+}
+.mvd-dok-otworz:hover { filter: brightness(1.08); }
+.mvd-dok-otworz:focus-visible { outline: 2px solid var(--mvd-focus); outline-offset: 2px; }
+
+.mvd-dok-formaty-mini {
+  font: 500 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.02em;
+  color: var(--mvd-muted);
+}
+
+/* --- Akcja naprawcza (status „brak") -------------------------------------- */
+
+.mvd-dok-akcja {
+  background: none;
+  border: 1px solid var(--mvd-accent);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+.mvd-dok-akcja:hover { background: var(--mvd-sel); }
+.mvd-dok-akcja:focus-visible { outline: 2px solid var(--mvd-focus); outline-offset: 1px; }
+
+/* --- Q3: pasek procesu ---------------------------------------------------- */
+
+.mvd-dok-proces {
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+
+.mvd-dok-proces-tor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 8px;
+}
+
+.mvd-dok-proces-el {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mvd-dok-proces-str {
+  color: var(--mvd-muted);
+  font-size: 13px;
+}
+
+.mvd-dok-proces-krok {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--mvd-line);
+  background: var(--mvd-panel-2);
+  font-size: 12.5px;
+  color: var(--mvd-muted);
+  white-space: nowrap;
+}
+
+.mvd-dok-proces-kropka {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--mvd-line);
+  flex: none;
+}
+
+.mvd-dok-proces-krok[data-stan='zrobiony'] {
+  color: var(--mvd-ok);
+  border-color: transparent;
+  background: var(--mvd-ok-bg);
+}
+.mvd-dok-proces-krok[data-stan='zrobiony'] .mvd-dok-proces-kropka { background: var(--mvd-ok); }
+
+.mvd-dok-proces-krok[data-stan='aktywny'] {
+  color: var(--mvd-accent);
+  border-color: var(--mvd-accent);
+  background: var(--mvd-sel);
+  font-weight: 650;
+}
+.mvd-dok-proces-krok[data-stan='aktywny'] .mvd-dok-proces-kropka { background: var(--mvd-accent); }
+
+/* --- Pasek powrotu (widok dostawcy dokumentu) ----------------------------- */
+
+.mvd-dok-powrot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--mvd-line);
+  background: var(--mvd-panel);
+}
+
+.mvd-dok-powrot button {
+  background: none;
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--mvd-accent);
+  cursor: pointer;
+}
+.mvd-dok-powrot button:hover { background: var(--mvd-sel); }
+.mvd-dok-powrot button:focus-visible { outline: 2px solid var(--mvd-focus); outline-offset: 1px; }

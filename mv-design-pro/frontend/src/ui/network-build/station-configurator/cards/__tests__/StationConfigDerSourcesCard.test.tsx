@@ -25,7 +25,7 @@ function makeDer(
     der_kind: 'PV',
     name: 'PV Centralna',
     connection_side: 'SN',
-    pcc_ref: 'pcc_1',
+    bus_przylaczenia_ref: 'pcc_1',
     bay_ref: 'bay_1',
     transformer_ref: null,
     lv_busbar_ref: null,

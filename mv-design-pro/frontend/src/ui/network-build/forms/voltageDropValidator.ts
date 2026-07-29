@@ -11,6 +11,9 @@
  *   - X: ~0.10 Ω/km dla SN
  */
 
+import { fetchCableVoltageDrop } from './cableVoltageDropApi';
+import type { FlowDirection, ReactiveCharacter } from './cableVoltageDropApi';
+
 export interface VoltageDropInput {
   loadCurrentA: number;
   cableLengthKm: number;
@@ -20,6 +23,12 @@ export interface VoltageDropInput {
   systemVoltageKv: number;
   maxDropPercent?: number;
   isMotorLoad?: boolean;
+  /**
+   * Karta F-K5 (dług V12K-190): kierunek mocy czynnej i charakter mocy biernej.
+   * Brak pól = odbiór indukcyjny, czyli zachowanie sprzed karty co do bitu.
+   */
+  flowDirection?: FlowDirection;
+  reactiveCharacter?: ReactiveCharacter;
 }
 
 export type DropVerdict = 'ok' | 'warning' | 'error';
@@ -30,12 +39,25 @@ export interface VoltageDropResult {
   voltageDropPercent: number;
   message: string;
   recommendation?: string;
+  /** True ⇒ napięcie ROŚNIE (przyłączenie generacji), a nie spada. */
+  isVoltageRise?: boolean;
 }
 
 const DEFAULT_MAX_DROP_PERCENT = 5;
 const MOTOR_MAX_DROP_PERCENT = 8;
 
-export function calculateVoltageDrop(input: VoltageDropInput): VoltageDropResult {
+/**
+ * Walidacja spadku napięcia.
+ *
+ * Fizyka ΔU liczy się w backendzie (WHITE BOX); ta funkcja waliduje dane
+ * wejściowe (bez fizyki), wysyła je do końcówki i buduje werdykt z gotowego
+ * ΔU% (progowe porównanie z limitem to interpretacja normatywna, nie fizyka).
+ * Brak backendu = uczciwy komunikat PL, NIGDY lokalne liczenie.
+ */
+export async function calculateVoltageDrop(
+  input: VoltageDropInput,
+  options: { signal?: AbortSignal } = {},
+): Promise<VoltageDropResult> {
   const {
     loadCurrentA,
     cableLengthKm,
@@ -45,6 +67,8 @@ export function calculateVoltageDrop(input: VoltageDropInput): VoltageDropResult
     systemVoltageKv,
     maxDropPercent,
     isMotorLoad = false,
+    flowDirection = 'load',
+    reactiveCharacter = 'inductive',
   } = input;
 
   if (cableLengthKm <= 0 || loadCurrentA <= 0 || systemVoltageKv <= 0) {
@@ -65,11 +89,37 @@ export function calculateVoltageDrop(input: VoltageDropInput): VoltageDropResult
     };
   }
 
-  const sinPhi = Math.sqrt(1 - cosPhi ** 2);
-  const totalImpedance =
-    cableResistanceOhmPerKm * cosPhi + cableReactanceOhmPerKm * sinPhi;
-  const voltageDropV = Math.sqrt(3) * loadCurrentA * cableLengthKm * totalImpedance;
-  const voltageDropPercent = Math.round((voltageDropV / (systemVoltageKv * 1000)) * 10000) / 100;
+  let voltageDropV: number;
+  let voltageDropPercent: number;
+  let isVoltageRise = false;
+  try {
+    const response = await fetchCableVoltageDrop(
+      {
+        current_a: loadCurrentA,
+        length_km: cableLengthKm,
+        r_ohm_per_km: cableResistanceOhmPerKm,
+        x_ohm_per_km: cableReactanceOhmPerKm,
+        cos_phi: cosPhi,
+        line_voltage_v: systemVoltageKv * 1000,
+        flow_direction: flowDirection,
+        reactive_character: reactiveCharacter,
+      },
+      options,
+    );
+    voltageDropV = response.delta_u_v;
+    voltageDropPercent = Math.round(response.delta_u_pct * 100) / 100;
+    isVoltageRise = response.is_voltage_rise === true;
+  } catch (error) {
+    return {
+      verdict: 'error',
+      voltageDropV: 0,
+      voltageDropPercent: 0,
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Podgląd spadku napięcia niedostępny — backend solvera nie odpowiedział.',
+    };
+  }
 
   const limit = maxDropPercent ?? (isMotorLoad ? MOTOR_MAX_DROP_PERCENT : DEFAULT_MAX_DROP_PERCENT);
   const warningLimit = limit * 0.8;
@@ -78,18 +128,26 @@ export function calculateVoltageDrop(input: VoltageDropInput): VoltageDropResult
   let message: string;
   let recommendation: string | undefined;
 
-  if (voltageDropPercent > limit) {
+  // F-K5: limit dotyczy MODUŁU zmiany napięcia. Przed kartą porównanie szło po
+  // wartości ze znakiem, więc WZROST (ΔU% < 0) nigdy nie mógł naruszyć limitu —
+  // przy przyłączaniu generacji to właśnie wzrost jest ograniczeniem wiodącym.
+  const zmianaModul = Math.abs(voltageDropPercent);
+  const nazwaZmiany = isVoltageRise ? 'Wzrost napięcia' : 'Spadek napięcia';
+
+  if (zmianaModul > limit) {
     verdict = 'error';
-    message = `Spadek napięcia ${voltageDropPercent.toFixed(2)}% przekracza dopuszczalny ${limit}% (PN-IEC 60364-5-52).`;
-    recommendation = `Zwiększ przekrój kabla lub skróć trasę. Zalecany przekrój: ${Math.ceil((voltageDropPercent / limit) * 100)}% obecnego.`;
-  } else if (voltageDropPercent > warningLimit) {
+    message = `${nazwaZmiany} ${zmianaModul.toFixed(2)}% przekracza dopuszczalny ${limit}% (PN-IEC 60364-5-52).`;
+    recommendation = isVoltageRise
+      ? 'Zwiększ przekrój kabla, skróć trasę albo zmień charakterystykę Q(U) falownika (pobór Q tłumi wzrost).'
+      : `Zwiększ przekrój kabla lub skróć trasę. Zalecany przekrój: ${Math.ceil((zmianaModul / limit) * 100)}% obecnego.`;
+  } else if (zmianaModul > warningLimit) {
     verdict = 'warning';
-    message = `Spadek napięcia ${voltageDropPercent.toFixed(2)}% blisko limitu ${limit}%.`;
+    message = `${nazwaZmiany} ${zmianaModul.toFixed(2)}% blisko limitu ${limit}%.`;
     recommendation = 'Rozważ większy przekrój dla bezpiecznego marginesu (≤80% limitu).';
   } else {
     verdict = 'ok';
-    message = `Spadek napięcia ${voltageDropPercent.toFixed(2)}% w normie (limit ${limit}%).`;
+    message = `${nazwaZmiany} ${zmianaModul.toFixed(2)}% w normie (limit ${limit}%).`;
   }
 
-  return { verdict, voltageDropV, voltageDropPercent, message, recommendation };
+  return { verdict, voltageDropV, voltageDropPercent, message, recommendation, isVoltageRise };
 }

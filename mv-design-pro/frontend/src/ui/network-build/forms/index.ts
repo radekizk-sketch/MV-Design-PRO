@@ -1,20 +1,10 @@
 /**
  * Network Build Forms — barrel export.
  *
- * Formularze operacji domenowych renderowane inline w panelu inspektora.
+ * Po kartach P-4/P-5 (FLOW PROJEKTANTA, 2026-07-22) wszystkie legacy
+ * formularze operacji domenowych zostaly zastapione kreatorami ui2
+ * (`ui2/kreatory/**`). Zostal wylacznie baner walidacji kabla (reuzywany
+ * przez kreatory przez wlasny import bezposredni).
  */
 
-export { AddGridSourceForm } from './AddGridSourceForm';
-export { AddSnBayForm } from './AddSnBayForm';
-export { ContinueTrunkForm } from './ContinueTrunkForm';
-export { InsertStationForm } from './InsertStationForm';
-export { InsertBranchPoleForm } from './InsertBranchPoleForm';
-export { InsertZksnForm } from './InsertZksnForm';
-export { StartBranchForm } from './StartBranchForm';
-export { ConnectRingForm } from './ConnectRingForm';
-export { InsertSectionSwitchForm } from './InsertSectionSwitchForm';
-export { AddTransformerForm } from './AddTransformerForm';
-export { AddConverterSourceForm } from './AddConverterSourceForm';
-
-export { AssignCatalogForm } from './AssignCatalogForm';
-export { UpdateElementParametersForm } from './UpdateElementParametersForm';
+export { CableValidationBanner } from './CableValidationBanner';

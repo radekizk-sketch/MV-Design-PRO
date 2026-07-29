@@ -67,7 +67,8 @@ def test_switchgear_catalog_has_industrial_series_width() -> None:
 def test_polish_ptpire_apparatus_marked_certified() -> None:
     """K30-22: ZPUE + Elektrometal entries must have ptpire_certified=True."""
     polish = [
-        t for t in get_all_switch_equipment_types()
+        t
+        for t in get_all_switch_equipment_types()
         if t["params"].get("manufacturer") in {"ZPUE Włoszczowa", "Elektrometal"}
     ]
     assert len(polish) == 12, f"Expected 12 Polish apparatus, got {len(polish)}"

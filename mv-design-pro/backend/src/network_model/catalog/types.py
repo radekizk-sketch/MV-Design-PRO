@@ -302,6 +302,69 @@ def _card_schema_kwargs(data: dict[str, Any]) -> dict[str, Any]:
 
 
 # =============================================================================
+# P-Q CAPABILITY CURVE ("krzywa zdolnosci P-Q falownika") — optional, additive.
+# A deterministic list of (p_mw, q_min_mvar, q_max_mvar) points, ascending by
+# p_mw, describing the manufacturer's reactive-power envelope at rated voltage.
+# Optional (None) so existing published converter types round-trip unchanged.
+# Consumed only by the coverage-verification service (application layer, zero
+# physics). NOT a solver field.
+# =============================================================================
+
+
+def _validate_pq_curve(pq_curve: tuple[tuple[float, float, float], ...]) -> None:
+    """Validate a P-Q capability curve; raise ValueError on malformed input.
+
+    Rules: at least one point; each point is (p_mw, q_min_mvar, q_max_mvar) with
+    p_mw >= 0 and q_min_mvar <= q_max_mvar; points strictly ascending by p_mw.
+    """
+    if not pq_curve:
+        raise ValueError("Krzywa P-Q falownika nie moze byc pusta.")
+    prev_p: float | None = None
+    for point in pq_curve:
+        if len(point) != 3:
+            raise ValueError(
+                "Punkt krzywej P-Q musi miec 3 wartosci (p_mw, q_min_mvar, q_max_mvar), "
+                f"otrzymano: {point!r}."
+            )
+        p_mw, q_min_mvar, q_max_mvar = point
+        if p_mw < 0:
+            raise ValueError(f"Moc czynna punktu krzywej P-Q musi byc >= 0, otrzymano p_mw={p_mw}.")
+        if q_min_mvar > q_max_mvar:
+            raise ValueError(
+                "Punkt krzywej P-Q wymaga q_min_mvar <= q_max_mvar, otrzymano "
+                f"q_min_mvar={q_min_mvar} > q_max_mvar={q_max_mvar} (p_mw={p_mw})."
+            )
+        if prev_p is not None and p_mw <= prev_p:
+            raise ValueError(
+                "Punkty krzywej P-Q musza byc uporzadkowane rosnaco po p_mw, "
+                f"otrzymano p_mw={p_mw} po p_mw={prev_p}."
+            )
+        prev_p = p_mw
+
+
+def _pq_curve_to_list(
+    pq_curve: tuple[tuple[float, float, float], ...] | None,
+) -> list[list[float]] | None:
+    """Serialize a P-Q curve to a JSON-stable list of [p, q_min, q_max] rows."""
+    if pq_curve is None:
+        return None
+    return [[float(p), float(q_min), float(q_max)] for p, q_min, q_max in pq_curve]
+
+
+def _pq_curve_from_raw(
+    raw: Any,
+) -> tuple[tuple[float, float, float], ...] | None:
+    """Parse a P-Q curve from a dict value (round-trips _pq_curve_to_list).
+
+    Arity is not enforced here so that malformed rows surface the explicit
+    Polish message from ``_validate_pq_curve`` (called in __post_init__).
+    """
+    if raw is None:
+        return None
+    return tuple(tuple(float(v) for v in point) for point in raw)  # type: ignore[misc]
+
+
+# =============================================================================
 # CATALOG BINDING — canonical binding contract
 # =============================================================================
 
@@ -409,6 +472,12 @@ class LineType:
     # Thermal data for short-circuit analysis
     ith_1s_a: float | None = None
     jth_1s_a_per_mm2: float | None = None
+    # Karta F-K1 faza 7: druga polowa pary temperatur, ktora UZASADNIA k = Jth(1 s).
+    # Dla przewodu GOLEGO granice wyznacza utrata wytrzymalosci mechanicznej zyly i
+    # dopuszczalna temperatura osprzetu (nie izolacja — jej nie ma). Bez tego pola
+    # dowod obliczeniowy kryterium cieplnego nazywal k dla linii „bez uzasadnienia".
+    short_circuit_temperature_c: float | None = None
+    thermal_source_reference: str | None = None
     # Manufacturer type linking
     base_type_id: str | None = None
     trade_name: str | None = None
@@ -475,6 +544,8 @@ class LineType:
             "b0_siemens_per_km": self.b0_siemens_per_km,
             "ith_1s_a": self.ith_1s_a,
             "jth_1s_a_per_mm2": self.jth_1s_a_per_mm2,
+            "short_circuit_temperature_c": self.short_circuit_temperature_c,
+            "thermal_source_reference": self.thermal_source_reference,
             "base_type_id": self.base_type_id,
             "trade_name": self.trade_name,
             "dane_cieplne_kompletne": self.dane_cieplne_kompletne,
@@ -520,6 +591,12 @@ class LineType:
                 if data.get("jth_1s_a_per_mm2") is not None
                 else None
             ),
+            short_circuit_temperature_c=(
+                float(data["short_circuit_temperature_c"])
+                if data.get("short_circuit_temperature_c") is not None
+                else None
+            ),
+            thermal_source_reference=data.get("thermal_source_reference"),
             base_type_id=data.get("base_type_id"),
             trade_name=data.get("trade_name"),
             **_catalog_metadata_kwargs(
@@ -580,6 +657,11 @@ class CableType:
     x0_ohm_per_km: float | None = None
     b0_siemens_per_km: float | None = None
     max_temperature_c: float = 90.0
+    # Karta F-K1 faza 6: temperatura GRANICZNA zyly przy zwarciu [°C]. Razem z
+    # `max_temperature_c` (temperatura robocza) tworzy pare, ktora uzasadnia
+    # wspolczynnik k = Jth(1 s). Bez niej projektant nie zweryfikuje, czy przyjete
+    # k pasuje do tego kabla. None = dana nie zostala podana w karcie katalogowej.
+    short_circuit_temperature_c: float | None = None
     number_of_cores: int = 1
     # Thermal data for short-circuit analysis
     ith_1s_a: float | None = None
@@ -683,6 +765,7 @@ class CableType:
             "x0_ohm_per_km": self.x0_ohm_per_km,
             "b0_siemens_per_km": self.b0_siemens_per_km,
             "max_temperature_c": self.max_temperature_c,
+            "short_circuit_temperature_c": self.short_circuit_temperature_c,
             "number_of_cores": self.number_of_cores,
             "ith_1s_a": self.ith_1s_a,
             "jth_1s_a_per_mm2": self.jth_1s_a_per_mm2,
@@ -747,6 +830,11 @@ class CableType:
                 else None
             ),
             max_temperature_c=float(data.get("max_temperature_c", 90.0)),
+            short_circuit_temperature_c=(
+                float(data["short_circuit_temperature_c"])
+                if data.get("short_circuit_temperature_c") is not None
+                else None
+            ),
             number_of_cores=int(data.get("number_of_cores", 1)),
             ith_1s_a=(float(data["ith_1s_a"]) if data.get("ith_1s_a") is not None else None),
             jth_1s_a_per_mm2=(
@@ -1028,6 +1116,18 @@ class ConverterType:
     pn_ac_mw: float | None = None  # Pn,AC (moc znamionowa AC)
     p_connection_mw: float | None = None  # Pprzylacz (moc przylaczeniowa)
     p_achievable_mw: float | None = None  # Posiagl (moc osiagalna)
+    # Optional P-Q capability curve ("krzywa zdolnosci P-Q"): ascending-by-p_mw
+    # points (p_mw, q_min_mvar, q_max_mvar) at rated voltage. Validated in
+    # __post_init__. None => no curve declared (published types round-trip
+    # byte-identically). Consumed only by pq_coverage (application, zero physics).
+    pq_curve: tuple[tuple[float, float, float], ...] | None = None
+    # Optional flicker emission coefficient c(psi_k) from the converter's grid-
+    # compliance certificate (methodology IEC 61400-21-1; assessment per
+    # IEC/TR 61000-3-7). Dimensionless, strictly > 0. Consumed only by the
+    # flicker-assessment service (application layer, zero physics) as
+    # Pst_i = c * Sn / Ssc. None => not declared, so published converter types
+    # round-trip byte-identically. NOT a solver field.
+    flicker_c: float | None = None
     # Per-card data-quality override ("karta falownika" provenance). A serialized
     # {field_name -> CardFieldStatus.to_dict()} map declaring, per field, how
     # trustworthy each value is (DATASHEET / ESTIMATED / SYSTEM_DEFAULT). Stored as
@@ -1049,6 +1149,16 @@ class ConverterType:
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def __post_init__(self) -> None:
+        """Validate optional additive fields (P-Q curve, flicker coefficient)."""
+        if self.pq_curve is not None:
+            _validate_pq_curve(self.pq_curve)
+        if self.flicker_c is not None and self.flicker_c <= 0:
+            raise ValueError(
+                "Wspolczynnik emisji migotania flicker_c musi byc > 0, "
+                f"otrzymano flicker_c={self.flicker_c}."
+            )
 
     def validate_power_hierarchy(self) -> None:
         """Assert Pzainst >= Pn,AC >= Pprzylacz >= Posiagl for the fields present.
@@ -1096,6 +1206,12 @@ class ConverterType:
             # Per-card data-quality override: emitted only when set so published
             # converters (card_field_status=None) stay byte-identical.
             **({"card_field_status": self.card_field_status} if self.card_field_status else {}),
+            # P-Q capability curve: emitted only when declared so converters
+            # without a curve (pq_curve=None) stay byte-identical.
+            **({"pq_curve": _pq_curve_to_list(self.pq_curve)} if self.pq_curve else {}),
+            # Flicker emission coefficient: emitted only when declared so converters
+            # without it (flicker_c=None) round-trip byte-identically.
+            **({"flicker_c": self.flicker_c} if self.flicker_c is not None else {}),
             "ptpiree_status": self.ptpiree_status,
             "ptpiree_certificate_ref": self.ptpiree_certificate_ref,
             "ptpiree_document_number": self.ptpiree_document_number,
@@ -1151,6 +1267,8 @@ class ConverterType:
                 if data.get("card_field_status")
                 else None
             ),
+            pq_curve=_pq_curve_from_raw(data.get("pq_curve")),
+            flicker_c=(float(data["flicker_c"]) if data.get("flicker_c") is not None else None),
             ptpiree_status=data.get("ptpiree_status"),
             ptpiree_certificate_ref=data.get("ptpiree_certificate_ref"),
             ptpiree_document_number=data.get("ptpiree_document_number"),
@@ -1419,22 +1537,6 @@ def normalize_ptpiree_key(value: Any) -> str:
     for separator in ("-", "_", "/", "\\", "(", ")", ",", ";", ":"):
         text = text.replace(separator, " ")
     return " ".join(text.upper().split())
-
-    text = str(value or "").strip().upper()
-    replacements = {
-        "Ą": "A",
-        "Ć": "C",
-        "Ę": "E",
-        "Ł": "L",
-        "Ń": "N",
-        "Ó": "O",
-        "Ś": "S",
-        "Ź": "Z",
-        "Ż": "Z",
-    }
-    for src, dst in replacements.items():
-        text = text.replace(src, dst)
-    return " ".join(text.replace("-", " ").replace("_", " ").split())
 
 
 @dataclass(frozen=True)
@@ -2178,6 +2280,92 @@ class LVApparatusType:
 # =============================================================================
 
 
+def rdzen_ct_z_klasy(accuracy_class: str | None) -> str | None:
+    """Rodzaj rdzenia przekładnika WYPROWADZONY z klasy dokładności (IEC 61869-2).
+
+    Podział jest DEFINICYJNY, nie umowny: klasy z literą ``P`` opisują rdzenie
+    ZABEZPIECZENIOWE — błąd zdefiniowany przy wielokrotności prądu znamionowego
+    (IEC 61869-2 § 5.6.2) — a klasy liczbowe (0,1 / 0,2 / 0,5 / 1 / 3 / 5) rdzenie
+    POMIAROWE, gdzie błąd definiuje się przy prądzie znamionowym. Dlatego z klasy wolno
+    wyprowadzić tę wartość: jest własnością NAZWANEJ rzeczy, nie założeniem o rzeczy
+    (ta sama klasa derywacji, co stałe IEC 60949 z materiału żyły — V12K-224).
+
+    ``dual`` NIE JEST tu nigdy zwracane. Rdzeń podwójny to cecha KONSTRUKCYJNA
+    przekładnika (dwa niezależne rdzenie: zabezpieczeniowy + pomiarowy), której nie da
+    się wywnioskować z jednej klasy — wymaga danej producenta. Klasa złożona
+    (np. „5P10/0,5") opisywałaby dwa rdzenie, ale katalog referencyjny takiego wpisu nie
+    ma (pomiar V12K-239: 12 typów, zero zapisów złożonych).
+
+    Brak klasy albo klasa nierozpoznana daje ``None`` — „nie da się ustalić", nie
+    „przyjmijmy pomiarowy".
+    """
+    if not accuracy_class:
+        return None
+    znormalizowana = accuracy_class.strip().upper()
+    if not znormalizowana:
+        return None
+    if "/" in znormalizowana:
+        # Zapis złożony opisuje DWA rdzenie — konstrukcja, nie jedna klasa. Bez danej
+        # producenta o rdzeniach nie zgadujemy (patrz wyżej).
+        return None
+    if "P" in znormalizowana:
+        return "protection"
+    # Klasa pomiarowa jest liczbą (0.2 / 0.5 / 1.0 / 3 / 5) — cokolwiek innego zostaje
+    # nierozpoznane, zamiast wpadać do „pomiarowy" jako gałąź domyślna.
+    try:
+        float(znormalizowana.replace(",", "."))
+    except ValueError:
+        return None
+    return "metering"
+
+
+#: Znormalizowany stosunek pradu dynamicznego do cieplnego (IEC 61869-2).
+#:
+#: Norma ustala, ze prad dynamiczny (szczytowy, wytrzymywany elektrodynamicznie) rowna
+#: sie 2,5-krotnosci pradu cieplnego krotkotrwalego, o ile producent nie zadeklaruje
+#: inaczej. Dzieki temu Idyn NIE JEST osobna dana do zgadywania — wyprowadza sie go
+#: z Ith tak samo, jak rodzaj rdzenia i ALF wyprowadza sie z klasy (V12K-239).
+WSPOLCZYNNIK_IDYN_DO_ITH: float = 2.5
+
+#: Znormalizowane wartosci wspolczynnika bezpieczenstwa przyrzadowego Fs (IEC 61869-2).
+#: Dotyczy WYLACZNIE rdzeni pomiarowych: ogranicza prad wtorny przy zwarciu, chroniac
+#: przyrzady. Rdzen zabezpieczeniowy ma z definicji zachowywac dokladnosc DO ALF, wiec
+#: Fs go nie dotyczy i musi zostac `None` — podstawienie liczby mieszaloby dwa rozne
+#: pojecia normowe.
+WARTOSCI_FS: tuple[float, ...] = (5.0, 10.0)
+
+
+def idyn_ct_z_ith(ith_ka_1s: float | None) -> float | None:
+    """Prad dynamiczny wyprowadzony z pradu cieplnego (IEC 61869-2).
+
+    `None` na wejsciu daje `None` na wyjsciu: brak danej nie zamienia sie w wartosc.
+    """
+    if ith_ka_1s is None or ith_ka_1s <= 0:
+        return None
+    return round(ith_ka_1s * WSPOLCZYNNIK_IDYN_DO_ITH, 3)
+
+
+def alf_ct_z_klasy(accuracy_class: str | None) -> float | None:
+    """Znamionowa graniczna liczba dokładności (ALF) rdzenia ZABEZPIECZENIOWEGO.
+
+    Dla klas ``⟨błąd⟩P⟨ALF⟩`` liczba po literze ``P`` JEST znamionową graniczną liczbą
+    dokładności (IEC 61869-2 § 3.4.201): 5P10 ⇒ ALF 10, 10P20 ⇒ ALF 20. To odczyt
+    oznaczenia, nie oszacowanie — dlatego wolno go wyprowadzić.
+
+    Rdzeń pomiarowy ALF nie ma (ma współczynnik bezpieczeństwa przyrządowego F_s, który
+    jest osobną daną znamionową producenta i NIE wynika z klasy) — dla klas liczbowych
+    zwracane jest ``None``.
+    """
+    if rdzen_ct_z_klasy(accuracy_class) != "protection":
+        return None
+    assert accuracy_class is not None  # gwarantowane przez `rdzen_ct_z_klasy`
+    _, _, po_p = accuracy_class.strip().upper().partition("P")
+    try:
+        return float(po_p.replace(",", "."))
+    except ValueError:
+        return None
+
+
 @dataclass(frozen=True)
 class CTType:
     """Immutable current transformer type.
@@ -2199,6 +2387,20 @@ class CTType:
     accuracy_class: str | None = None
     burden_va: float | None = None
     manufacturer: str | None = None
+    #: Prad cieplny krotkotrwaly 1 s [kA] — wytrzymalosc CIEPLNA uzwojenia pierwotnego.
+    #: Dla rekordow referencyjnych rowny wymaganej wytrzymalosci rozdzielnicy, w ktorej
+    #: przekladnik ma pracowac (szereg znormalizowany IEC 62271-200); przed uzyciem
+    #: produkcyjnym potwierdzany karta producenta (`verification_status`).
+    ith_ka_1s: float | None = None
+    #: Prad dynamiczny (szczytowy) [kA]. `None` => wyprowadzany z `ith_ka_1s`
+    #: wspolczynnikiem 2,5 (IEC 61869-2); jawna wartosc producenta ma pierwszenstwo.
+    idyn_ka_peak: float | None = None
+    #: Wspolczynnik bezpieczenstwa przyrzadowego Fs — TYLKO rdzenie pomiarowe.
+    fs_safety_factor: float | None = None
+    #: Rezystancja uzwojenia wtornego [Ω] — dana WYLACZNIE producencka, bez wyprowadzenia
+    #: normowego. `None` znaczy „karta producenta jeszcze nie wczytana"; kryterium
+    #: nasycenia liczy sie wtedy z obciazalnosci znamionowej (VA), nie z rezystancji.
+    rct_ohm: float | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog CT MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -2214,6 +2416,19 @@ class CTType:
             "accuracy_class": self.accuracy_class,
             "burden_va": self.burden_va,
             "manufacturer": self.manufacturer,
+            # V12K-239: rodzaj rdzenia i ALF WYPROWADZONE z klasy w JEDNYM miejscu —
+            # katalogu. Wcześniej regułę „litera P ⇒ rdzeń zabezpieczeniowy" miał tylko
+            # front (`ctZKatalogu.ts`), czyli norma żyła w warstwie prezentacji, a katalog
+            # tej danej nie wystawiał. `None` znaczy „nie da się ustalić" (klasa nieznana
+            # albo zapis złożony) i musi zostać `None` — brak wiedzy nie jest werdyktem.
+            "ith_ka_1s": self.ith_ka_1s,
+            # Idyn: wartosc producenta ma pierwszenstwo, w jej braku wyprowadzenie normowe
+            # 2,5 × Ith (IEC 61869-2) — ta sama zasada, co rodzaj rdzenia z klasy.
+            "idyn_ka_peak": self.idyn_ka_peak or idyn_ct_z_ith(self.ith_ka_1s),
+            "fs_safety_factor": self.fs_safety_factor,
+            "rct_ohm": self.rct_ohm,
+            "application": rdzen_ct_z_klasy(self.accuracy_class),
+            "accuracy_limit_factor": alf_ct_z_klasy(self.accuracy_class),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2233,6 +2448,20 @@ class CTType:
             accuracy_class=data.get("accuracy_class"),
             burden_va=(float(data["burden_va"]) if data.get("burden_va") is not None else None),
             manufacturer=data.get("manufacturer"),
+            # V12K-254: dane doboru CIEPLNEGO i DYNAMICZNEGO. Bez tego mapowania pola
+            # istnialy w kontrakcie i w danych katalogu, a NIE DOCHODZILY do typu —
+            # zdolnosc bez wywolania w samym mapperze (POMIAR: `to_dict` zwracalo None
+            # dla wszystkich 12 wpisow, mimo ze plik katalogu mial wartosci).
+            ith_ka_1s=(float(data["ith_ka_1s"]) if data.get("ith_ka_1s") is not None else None),
+            idyn_ka_peak=(
+                float(data["idyn_ka_peak"]) if data.get("idyn_ka_peak") is not None else None
+            ),
+            fs_safety_factor=(
+                float(data["fs_safety_factor"])
+                if data.get("fs_safety_factor") is not None
+                else None
+            ),
+            rct_ohm=(float(data["rct_ohm"]) if data.get("rct_ohm") is not None else None),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog CT MV-DESIGN-PRO / dane referencyjne",
@@ -2245,6 +2474,51 @@ class CTType:
 # =============================================================================
 # VT TYPE (Przekładnik napięciowy)
 # =============================================================================
+
+
+#: Znormalizowane wspolczynniki napieciowe VT i ich czasy (IEC 61869-3 tab. 2).
+#:
+#: Wspolczynnik napieciowy F_v mowi, jaka KROTNOSC napiecia znamionowego przekladnik
+#: wytrzymuje z zachowaniem dokladnosci — i przez JAKI CZAS. Dla uzwojenia pierwotnego
+#: pracujacego miedzy faza a ziemia w sieci MALOPRADOWEJ (izolowanej albo kompensowanej)
+#: zwarcie doziemne podnosi napiecie faz zdrowych do napiecia miedzyfazowego, czyli do
+#: 1,73·U_n/√3 — dlatego norma wymaga tam 1,9, a nie 1,5. Czas zalezy od tego, czy
+#: zwarcie doziemne jest WYLACZANE AUTOMATYCZNIE (30 s) czy dopuszcza sie prace z
+#: doziemieniem (8 h) — to dana projektowa, nie cecha przekladnika.
+WSPOLCZYNNIK_NAPIECIOWY_CIAGLY: float = 1.2
+WSPOLCZYNNIK_NAPIECIOWY_SIEC_UZIEMIONA: float = 1.5
+WSPOLCZYNNIK_NAPIECIOWY_SIEC_MALOPRADOWA: float = 1.9
+CZAS_WSPOLCZYNNIKA_KROTKI_S: float = 30.0
+CZAS_WSPOLCZYNNIKA_DLUGI_S: float = 8 * 3600.0
+
+
+def rodzaj_vt_z_klasy(accuracy_class: str | None) -> str | None:
+    """Rodzaj uzwojenia VT WYPROWADZONY z klasy dokladnosci (IEC 61869-3).
+
+    Podzial jest DEFINICYJNY, tak samo jak dla przekladnikow pradowych (V12K-239):
+    klasy z litera ``P`` (3P, 6P) opisuja uzwojenia ZABEZPIECZENIOWE — blad zdefiniowany
+    w calym zakresie od 5% U_n do F_v·U_n (IEC 61869-3 § 5.6.202) — a klasy liczbowe
+    (0,1 / 0,2 / 0,5 / 1,0 / 3,0) uzwojenia POMIAROWE, gdzie blad definiuje sie w waskim
+    otoczeniu napiecia znamionowego. Dlatego z klasy wolno wyprowadzic te wartosc.
+
+    Zapis zlozony (np. „0,5/3P") opisywalby DWA uzwojenia — nie da sie go rozstrzygnac
+    na jeden rodzaj, wiec rekordy dwuuzwojeniowe niosa klase uzwojenia zabezpieczeniowego
+    w ``accuracy_class`` i klase uzwojenia pomiarowego w ``accuracy_class_metering``.
+
+    Brak klasy albo klasa nierozpoznana daje ``None`` — „nie da sie ustalic".
+    """
+    if not accuracy_class:
+        return None
+    znormalizowana = accuracy_class.strip().upper()
+    if not znormalizowana or "/" in znormalizowana:
+        return None
+    if "P" in znormalizowana:
+        return "protection"
+    try:
+        float(znormalizowana.replace(",", "."))
+    except ValueError:
+        return None
+    return "metering"
 
 
 @dataclass(frozen=True)
@@ -2266,6 +2540,21 @@ class VTType:
     ratio_secondary_v: float = 100.0
     accuracy_class: str | None = None
     manufacturer: str | None = None
+    #: Klasa uzwojenia POMIAROWEGO w przekladniku dwuuzwojeniowym; `accuracy_class`
+    #: niesie wtedy klase uzwojenia zabezpieczeniowego. `None` = jedno uzwojenie.
+    accuracy_class_metering: str | None = None
+    #: Wspolczynnik napieciowy F_v (krotnosc U_n z zachowaniem dokladnosci).
+    #: Dla rekordow referencyjnych deklarowany wg IEC 61869-3 tab. 2 dla sieci
+    #: maloprądowej; przed uzyciem produkcyjnym potwierdzany karta producenta.
+    rated_voltage_factor: float | None = None
+    #: Czas, przez ktory F_v obowiazuje [s] — 30 s albo 8 h (IEC 61869-3 tab. 2).
+    voltage_factor_duration_s: float | None = None
+    #: Moc znamionowa uzwojenia [VA] — szereg znormalizowany IEC 61869-3.
+    burden_va: float | None = None
+    #: Czy przekladnik ma uzwojenie RESZTKOWE (trzecie) do pomiaru napiecia zerowego.
+    #: Dana KONSTRUKCYJNA — nie wyprowadza sie jej z klasy ani z przekladni. `None`
+    #: znaczy „karta producenta jeszcze nie wczytana", `False` — brak takiego uzwojenia.
+    has_residual_winding: bool | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog VT MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -2280,6 +2569,14 @@ class VTType:
             "ratio_secondary_v": self.ratio_secondary_v,
             "accuracy_class": self.accuracy_class,
             "manufacturer": self.manufacturer,
+            "accuracy_class_metering": self.accuracy_class_metering,
+            # Rodzaj uzwojenia jest WYPROWADZANY z klasy (IEC 61869-3), nie przechowywany
+            # osobno — jedno zrodlo prawdy, tak samo jak rdzen CT (V12K-239).
+            "application": rodzaj_vt_z_klasy(self.accuracy_class),
+            "rated_voltage_factor": self.rated_voltage_factor,
+            "voltage_factor_duration_s": self.voltage_factor_duration_s,
+            "burden_va": self.burden_va,
+            "has_residual_winding": self.has_residual_winding,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2298,6 +2595,26 @@ class VTType:
             ratio_secondary_v=float(data.get("ratio_secondary_v", 100.0)),
             accuracy_class=data.get("accuracy_class"),
             manufacturer=data.get("manufacturer"),
+            # Kazde nowe pole MUSI byc tu wymienione: jawny mapper milczaco gubi to,
+            # czego nie przepisze (precedens V12K-254 — dane byly w pliku, a katalog
+            # zwracal None dla wszystkich 12 wpisow).
+            accuracy_class_metering=data.get("accuracy_class_metering"),
+            rated_voltage_factor=(
+                float(data["rated_voltage_factor"])
+                if data.get("rated_voltage_factor") is not None
+                else None
+            ),
+            voltage_factor_duration_s=(
+                float(data["voltage_factor_duration_s"])
+                if data.get("voltage_factor_duration_s") is not None
+                else None
+            ),
+            burden_va=(float(data["burden_va"]) if data.get("burden_va") is not None else None),
+            has_residual_winding=(
+                bool(data["has_residual_winding"])
+                if data.get("has_residual_winding") is not None
+                else None
+            ),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog VT MV-DESIGN-PRO / dane referencyjne",
@@ -2638,6 +2955,22 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "return_conductor_r_ohm_per_km_20c",
             "return_conductor_jth_1s_a_per_mm2",
             "return_conductor_ith_1s_a",
+            # Karta F-K1 faza 3: wytrzymalosc cieplna ZYLY FAZOWEJ (IEC 60949).
+            # Kontrakt niosl dotad wylacznie dane zyly POWROTNEJ, wiec kryterium
+            # cieplne przewodu nie mialo z czego liczyc dopuszczalnego pradu.
+            "jth_1s_a_per_mm2",
+            "ith_1s_a",
+            # Karta F-K1 faza 6 (Calculation Evidence): dane, ktore UZASADNIAJA
+            # wspolczynnik k = Jth(1 s). Bez pary temperatur i rodzaju izolacji
+            # projektant nie zweryfikuje, czy przyjeta wartosc pasuje do kabla.
+            "insulation_type",
+            "max_temperature_c",
+            "short_circuit_temperature_c",
+            # Karta F-K1 faza 7: ODNIESIENIE NORMOWE danych cieplnych. Pole
+            # `thermal_source_ref` istnialo w modelu, grafie i dowodzie od fazy 6, ale
+            # zaden kontrakt go nie wypelnial — dowod pokazywal „zrodlo: —", czyli
+            # kontrolke bez dostawcy. Zrodlem jest metadana jakosci rekordu katalogu.
+            "source_reference",
             "r0_ohm_per_km",
             "x0_ohm_per_km",
             "b0_siemens_per_km",
@@ -2662,12 +2995,29 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "r0_ohm_per_km",
             "x0_ohm_per_km",
             "b0_siemens_per_km",
+            # Karta F-K1 faza 7: dane cieplne i materialowe PRZEWODU GOLEGO. Kontrakt
+            # niosl dotad wylacznie impedancje i obciazalnosc, wiec kryterium cieplne
+            # IEC 60949 dla KAZDEJ linii napowietrznej konczylo sie werdyktem
+            # NIEDOSTEPNY — mimo ze katalog mial Jth(1 s) od poczatku. Kabel dostal
+            # to ogniwo w fazie 3/6; linia byla dlugiem zapisanym z pomiarem.
+            "voltage_rating_kv",
+            "conductor_material",
+            "cross_section_mm2",
+            "jth_1s_a_per_mm2",
+            "ith_1s_a",
+            "max_temperature_c",
+            "short_circuit_temperature_c",
+            "thermal_source_reference",
+            "source_reference",
+            "trade_name",
         ),
         ui_fields=(
             ("r_ohm_per_km", "R [Ω/km] @20°C", "Ω/km"),
             ("x_ohm_per_km", "X [Ω/km]", "Ω/km"),
             ("b_us_per_km", "B [μS/km]", "μS/km"),
             ("rated_current_a", "In [A]", "A"),
+            ("cross_section_mm2", "Przekrój", "mm²"),
+            ("jth_1s_a_per_mm2", "Jth(1 s)", "A·√s/mm²"),
         ),
     ),
     CatalogNamespace.TRAFO_SN_NN.value: MaterializationContract(
@@ -2679,6 +3029,9 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             "uk_percent",
             "p0_kw",
             "pk_kw",
+            # I0 (prąd jałowy) — parametr solverowy TR (req 8: uk/Pcu/P0/I0 wprost do solvera).
+            # Bez niego gałąź magnesująca nie miała danych źródłowych z katalogu.
+            "i0_percent",
             "vector_group",
         ),
         ui_fields=(
@@ -2686,6 +3039,7 @@ MATERIALIZATION_CONTRACTS: dict[str, MaterializationContract] = {
             ("uk_percent", "uk%", "%"),
             ("p0_kw", "P0 [kW]", "kW"),
             ("pk_kw", "Pk [kW]", "kW"),
+            ("i0_percent", "I0 [%]", "%"),
             ("vector_group", "Grupa połączeń", ""),
         ),
     ),

@@ -2,7 +2,7 @@
 
 **Version:** 5.1
 **Status:** LIVING DOCUMENT
-**Last updated:** 2026-05-24 (V12.6 academic end-to-end closure)
+**Last updated:** 2026-07-17 (Reference Engine V1 — globalna integracja referencji SLD, V12K-060)
 **Reference (canon):** [`docs/v12xx/KANON_V12_XX.md`](docs/v12xx/KANON_V12_XX.md) (binding), [`docs/system/`](docs/system/) (binding specs), [`SYSTEM_SPEC.md`](SYSTEM_SPEC.md) (executive overview).
 **Reference (archive):** [`docs/spec/`](docs/spec/) — historical V11 reference; not source of truth.
 **Active work:** see § 3 and [`docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md`](docs/plan/PLAN_E2E_INDUSTRIAL_2026-05.md).
@@ -12,11 +12,14 @@
 ## 1. Project Status Summary
 
 MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system with:
-- 4 solvers (IEC 60909 SC, NR/GS/FD Power Flow)
-- 8+ proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage)
-- 12+ analysis modules (Protection, Voltage, Normative, Coverage, Sensitivity, Comparison, Recommendations)
-- Full frontend: SLD editor, Results Browser, Case Manager, Proof Inspector, Protection Diagnostics
-- 1600+ backend tests
+- 18 solver modules (IEC 60909 SC + machine SC, NR/GS/FD/unbalanced Power Flow, inverter/ZIP models,
+  IEC 60364 fault loop, IEC 60255 protection, NC RfG/PTPiREE, FRT/HVRT, RMS stability, WLS state
+  estimation — binding inventory: `docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`)
+- 8+ proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage, V12.6 academic)
+- 19 analysis modules (Protection, Voltage, Normative, Coverage, Sensitivity, Comparison,
+  Recommendations, Arc Flash, Grid Strength, Reactive Adequacy, SSCI, Sanity Bounds, Energy Validation, …)
+- Full frontend (63 UI modules — see binding inventory)
+- ~5,400 backend test functions; ~7,350 frontend tests (537 files); 79 guard scripts
 - Project import/export (ZIP, deterministic, versioned)
 - CAD geometry editing in SLD
 - PDF/DOCX report generation
@@ -77,6 +80,901 @@ MV-DESIGN-PRO is a functional Medium Voltage network design and analysis system 
 ---
 
 ## 3. Active Work
+
+### 3.-2 Sesja 2026-07-22 — ZWARCIA-PRO + zasada wywodów KaTeX (zamknięte programy)
+
+Pełny zapis: `docs/v12xx/REJESTR_KONFLIKTOW.md` V12K-098…V12K-120; dokumenty BINDING:
+`docs/uiux/ZASADA_WYWODOW_KATEX_I_TYPOGRAFII_2026-07.md`, `docs/uiux/PROGRAM_ZWARCIA_PRO_2026-07.md`,
+`docs/uiux/PROMPT_FABLE_FLOW_EKSPERT_2026-07.md`.
+
+- [x] FLOW EKSPERT+ rundy 1–3 (V12K-101…112): akcje kontekstowe, świeżość, warunki OSD,
+      dowodyRef, ślady WHITE BOX, kompensacja deep-link, obciążalność w rozpływie,
+      wkłady zwarciowe, dowody porównań A/B, LaTeX/KaTeX w śladach
+- [x] Zasada wywodów KaTeX + typografii (BINDING, V12K-113/114): wywód dyplomowy
+      (wzór→podstawienie→wynik) budowany w warstwie liczącej; 2 kroje + font matematyczny;
+      rollout T-A (36 wzorów w kreatorach), T-B (audyt 15 ekranów, fonty 16→0),
+      T-C (wywody OLTC/LoM/FRT)
+- [x] Program ZWARCIA-PRO F1–F5 (V12K-115…118, 120): pełny bilans IEC 60909 end-to-end,
+      wkłady PRO, White Box sekcyjny + panel walidacji IEC, sync SLD + rozpływ prądu
+      (+ FIX pre-existing solvera dla scalonych węzłów), parytet raportów PDF/DOCX/JSON
+- [x] Runda dowodowa (V12K-119): 12 ekranów z otwartym wywodem akademickim,
+      stała strona `docs/audit/visual/dowody/` (24 PNG, spec-y z twardymi asercjami)
+- [ ] W toku (karty S-A/S-B/S-C): likwidacja duplikacji fizyki w dowodzie SC1,
+      strzałki kierunku przepływu na SLD, trzy delty zatwierdzone przez właściciela
+      (kroki Ib/I²t w dowodzie SC3F, porównanie I²t w doborze aparatów, delty bilansu
+      w porównaniach A/B)
+
+### 3.-1 Program UI/UX klasy przemysłowej 2026-07 (ACTIVE)
+
+Objective: przebudowa całego UI/UX do klasy ETAP/PowerFactory wg
+[`docs/uiux/PROGRAM_UIUX_2026-07.md`](docs/uiux/PROGRAM_UIUX_2026-07.md) (fazy U0–U5),
+zakres funkcjonalny gwarantowany przez
+[`docs/uiux/INWENTARZ_FUNKCJI_2026-07.md`](docs/uiux/INWENTARZ_FUNKCJI_2026-07.md),
+orkiestracja wg [`docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md`](docs/uiux/PROMPT_ZARZADCA_FABLE_UIUX.md).
+Gałąź programu: `claude/power-network-design-ui-ir91mv`.
+
+Progress:
+- [x] U0.1 Inwentarz funkcji + macierz pokrycia (2026-07-15; bilans: 8 funkcji bez UI, ~17 częściowych)
+- [x] U0.2 Rejestracja programu (INDEX.md, PLANS.md, CLAUDE.md, naprawa dryfu README)
+- [x] U0.3 Weryfikacja wpięcia API (2026-07-15): 4 analizy NIEWPIĘTE do API (arc_flash,
+      grid_strength, reactive_adequacy, state_estimation WLS), 13 modułów API niezamontowanych
+      w aplikacji — szczegóły w inwentarzu §4 i §6
+- [x] U0.4 Porządkowanie PLANS.md — sekcje 5.0–5.9 → `docs/audit/archive/PLANS_SESJE_SLD_2026-05.md`
+- [x] U0.5 Karta koordynacyjna tokenów motywów z wątkiem SLD (`docs/uiux/KARTA_KOORDYNACJI_SLD_01_TOKENY.md`)
+- [x] U0.7 Model interakcji całej aplikacji + rejestr okien W-101…W-703
+      (`docs/uiux/MODEL_INTERAKCJI_APLIKACJI_2026-07.md`; mandat clean-room UI — decyzja
+      właściciela 2026-07-15: każde okno i każda interakcja od nowa)
+- [x] U0.8 Specyfikacja kreatorów (`docs/uiux/SPEC_KREATORY_2026-07.md`) — dyrektywa
+      właściciela 2026-07-15: maksymalna szczegółowość, zero pustych pól, podpowiedź
+      inżynierska przy każdym polu, gotowe przykłady P-01…P-05 z kompletem danych
+- [x] U0.9 Zasada języka (dyrektywa właściciela 2026-07-15): w całym interfejsie wyłącznie
+      polski język techniczny, zakaz surowych identyfikatorów z kodu w tekstach
+      pierwszoplanowych (MODEL_INTERAKCJI §2.7); egzekwowanie — rozszerzenie
+      `ui_terminology_guard` (obowiązkowa karta w U1)
+- [x] U0.10 Specyfikacja powiązania warstw (`docs/uiux/SPEC_POWIAZANIA_WARSTW_2026-07.md`) —
+      dyrektywa właściciela 2026-07-15: wszystkie warstwy powiązane wielowarstwowo (kreator →
+      schemat → drzewo → gotowość → ważność wyników → raporty z jednego zdarzenia); magistrala
+      zdarzeń + selekcja globalna + kontrakt świeżości rewizji; scenariusz akceptacyjny e2e w §7
+- [x] U0.11 Taksonomia szablonów stacji (`docs/uiux/SZABLONY_STACJI_2026-07.md`) — dyrektywa
+      właściciela 2026-07-15: grupy logiczne A–E (zasilanie / dystrybucja / odbiorcze / OZE /
+      specjalne), stan zastany 57+ szablonów w 10 kategoriach, delta do dodania (GPZ, RS,
+      abonenckie, kompensacja, rezerwa zasilania), cel ≥ 80; przeglądarka szablonów w kreatorze
+- [x] U0.12 Propozycje rozszerzeń P1–P22 (`docs/uiux/PROPOZYCJE_ROZSZERZEN_2026-07.md`) —
+      ZATWIERDZONE zasadą „na max" (decyzja właściciela 2026-07-15); kolejność: U3 (P3, P4,
+      P20), U4 (P1, P2, P5, P6, P9, P10, P13–P15, P18), po U4/U5 (reszta + grupa III)
+- [x] U0.13 Zasada „ZAWSZE NA MAX" (Program §2.0, decyzja właściciela 2026-07-15): braki
+      rozbudowujemy od razu, delta backendowa w zakresie programu (w granicach kanonu fizyki);
+      gotowce w pełni edytowalne + szablony użytkownika (SPEC_KREATORY Z4, SZABLONY §4a)
+- [x] U0.14 Układ paneli (`docs/uiux/SPEC_UKLAD_PANELI_2026-07.md`) — dyrektywa właściciela
+      2026-07-15: lewy (nawigacja+kontekst, zwijany do listwy ikon) / środkowy (warsztat,
+      karty + podział widoku) / prawy (inspektor: zakładki, akordeon, pinezka, chowany) +
+      panel dolny + tryby Podstawowy/Rozszerzony/Ekspercki na mode-gate (ukrywanie okien
+      zaawansowanych; wyszukiwarka poleceń znajduje wszystko)
+- [x] U0.16 Propozycje rundy 3 P23–P38 (poziom profesorski: niepewność wyników, walidacja
+      metodą niezależną, rejestr założeń, analiza wymiarowa, profile czasowe, skan N-1,
+      wrażliwości węzłowe, obszary P–Q, kaskada zasilania, optymalizacja NOP, projekt uziomu,
+      ograniczniki, studium przyłączenia, strategie BESS, migotanie, walidacja modelu
+      falownika) — zatwierdzone zasadą „na max"; kolejność po U5 wg delty backendowej
+- [x] U0.15 Audyt rady specjalistów (`docs/uiux/AUDYT_RADY_SPECJALISTOW_2026-07.md`) —
+      dyrektywa właściciela 2026-07-15: 13 perspektyw eksperckich, rozbudowa każdego okna
+      rejestru (konkretne wymagania per ekran), delta rejestru +16 okien (W-105…W-707)
+      z trybami minimalnymi; rozbudowy = wymagania kart zadań (pominięcie tylko za zgodą)
+- [x] U0.6 Makiety IA — ZATWIERDZONE przez właściciela 2026-07-15 („Akceptujemy") — 7 punktów:
+      układ powłoki, kolejność przestrzeni, gramatyka interakcji, motywy, kreatory zero pustych
+      pól, powiązanie warstw, układ paneli z trybami. **FAZA U0 ZAMKNIĘTA.**
+- [x] U0.17 Runda 4 P39–P47: maksymalna rozbudowa specjalisty OZE / NC RfG (dyrektywa
+      właściciela 2026-07-15) + priorytet strumienia OZE w kolejności realizacji
+- [ ] U1 W TOKU (od 2026-07-15): karty w `docs/uiux/karty/`
+      - [x] E1.1 Powłoka W-110 + tokeny `--mvd-*` (wykonawca Opus; pełny vitest 7388 pass;
+            zintegrowane `a75b7e9`)
+      - [x] E15.1 Magistrala zdarzeń (wykonawca Sonnet; pełny vitest 7393 pass; pokrycie
+            gałęzi bus.ts 100%; zintegrowane `39a833b`; TODO-KARTA `selekcja.zrodlo`
+            rozstrzygnięte: okna emitują selekcję z prawdziwym źródłem, adapter = fallback)
+      - [x] E1.2 Drzewa kontekstowe (Sonnet; pełny vitest 7434 pass; zintegrowane `878bbbc`)
+      - [x] E1.3 Inspektor kontekstowy (Opus; pełny vitest 7445 pass; zintegrowane `e92928a`)
+      - [x] Weryfikacja łączna zarządcy: 553 pliki / 7534 testy pass na drzewie E1.1+E1.2+E1.3+E15.1
+      - [x] E1.4 Integracja powłoki (zarządca): AppRoot + drzewa w lewym panelu + inspektor
+            + magistrala + klient /api/health; test integracyjny scenariusza powiązania warstw;
+            188 testów ui2; decyzje TODO-KARTA zapisane w karcie E1.4 §2;
+            pełny vitest po integracji: 7538 pass (potwierdzone 2026-07-15)
+      - [x] E1.5 Wyszukiwarka poleceń W-105 (Sonnet; pełny vitest 7579 pass; 41 testów;
+            zintegrowane `357ec04`)
+      - [x] E2.1 Pulpit projektu W-101 (Opus; pełny vitest 7577 pass; 39 testów;
+            zintegrowane `07fe669`; kafle bez źródła danych = stan „wkrótce" z TODO-KARTA)
+      - [x] Scalenie zarządcy #2: CommandPalette pod Ctrl+K (slot renderSearchDialog
+            w AppShell zamiast szkieletu), pulpit jako warsztat przestrzeni „Projekt",
+            provider obiektów wyszukiwarki ze snapshotu, akcje przestrzeni/obiektów
+            (nawigacja + selekcja przez magistralę), 270 testów ui2
+      - [x] E1.6 Guard językowy: wykrywanie identyfikatorów snake_case w stringach UI ui2
+            (canary czerwony/zielony; self-test 6/6; `1f3263e`)
+      - [x] E15.2 Kontrakt świeżości (Sonnet; 17 testów; zintegrowane `3661fe2`; TODO-KARTA:
+            para rewizji dla stanu początkowego OUTDATED — decyzja: uczciwa etykieta bez pary
+            do czasu zdarzenia magistrali; filtracja per przypadek = przy E7)
+      - [x] KOREKTA RZETELNOŚCI: bieg potwierdzający scalenia #2 raportowany wcześniej jako
+            zielony był FAŁSZYWYM greenem (kod wyjścia potoku `| tail`, nie vitest) — wykrył to
+            wykonawca E15.2 (czerwony test fixture pulpitu: brak kolekcji corridors/measurements/
+            protection_assignments). Naprawione: fixture uzupełniony (270→287 testów ui2 zielone
+            z pipefail); procedura zarządcy od teraz z `set -o pipefail`
+      - [x] E2.2 Nowy/otwórz projekt W-102 (Sonnet; 30 testów; pełny bieg u wykonawcy zielony
+            poza znanym błędem fixture naprawionym w `ed09d54`; zintegrowane `056b157`;
+            TODO-KARTA: brak store'a projektów — lista przez props, hook przy wpięciu)
+      - [x] E1.7 Przełączenie powłoki (Opus, dekompozycja a/b/c po STOP-raporcie):
+            E1.7a ekstrakcja orkiestracji z App.tsx do headless hooka (1457→397 linii;
+            pełny vitest 7673; e2e 173 pass, tor krytyczny zielony; `2274d72`) ·
+            E1.7b parytet kontraktu testid + LegacySurface + flaga wejścia (vitest 7685
+            — potwierdzone niezależnie przez zarządcę; e2e identyczne z baseline;
+            `103b03a`) · E1.7c NOWA POWŁOKA DOMYŚLNA + kasacja starej ramy
+            (−5595 linii, App.tsx/AppShellV12/CanonicalLayout/stara nawigacja usunięte;
+            e2e 180 pass / 2 fail pre-existing env; 3 spec-y zmigrowane z intencją;
+            `3693c01`). **FAZA U1 ZAMKNIĘTA 2026-07-15.**
+      - [x] V12K-026 RESOLVED: słownik nowej IA („przypadek obliczeniowy", „kreator");
+            guard terminologii zielony w całym repo (naprawione 2 zastane naruszenia)
+- [ ] U2 W TOKU (2026-07-16): E3.1 przeglądarka szablonów (82 t.) · E3.2 preselekcja+Z2 ·
+        E6.1 panel gotowości wg celów (61 t.) · E7.1 menedżer przypadków (38 t.) ·
+        E7.2 przebiegi W-503 (43 t.) · E4.1 katalog+karta techniczna (44 t.) + 4 scalenia.
+        Przestrzenie w pełni na nowej powłoce: Projekt, Gotowość, Obliczenia (3/7);
+        Model = warsztat 3 zakładki (schemat/szablony/katalog). Pełny bieg: 7894 pass.
+- [ ] U3 W TOKU (2026-07-16): E8.1 wspólny wzorzec ekranu analizy + rozpływ szyn
+        (Opus; 50 testów — wzorzec 27 + rozpływ 23; pełny vitest u wykonawcy 7944 pass
+        z pipefail; ui2 655 pass u zarządcy; zintegrowane `fd630d8`; TODO-KARTA:
+        wirtualizacja >500 wierszy, świeżość liczbowa w TabelaSzyn, dowód per-szyna,
+        wpięcie store'u). Karta E8.2 (zwarcia W-604) zarejestrowana `0cbdbb1`.
+        Scalenie U3 #1 (zarządca): WynikiWarsztat — przestrzeń „Wyniki" z zakładkami
+        „Rozpływ mocy" (TabelaSzyn, nowa powłoka) + „Pozostałe analizy" (most #analysis
+        renderowany WEWNĄTRZ zakładki; powierzchnia rozwinięta nie przykrywa warsztatu
+        w tej przestrzeni); wpięcie store'u rozpływu (zamyka TODO-KARTA E8.1 #4:
+        selectRun+loadResults na `wyniki-gotowe` i przy montażu, tylko LOAD_FLOW/DONE);
+        14 testów; ui2 669 pass; potwierdzenie pełne 596/7958 na `0374eee`.
+        E8.2 okno wyników zwarciowych W-604 (Opus; 37 testów; pełny vitest u wykonawcy
+        7981 pass z pipefail; zintegrowane `9c0bf6a`; TODO-KARTA: wybór wiersza we wzorcu,
+        wkłady w kontrakcie wyników [delta backendowa], świeżość liczbowa, c/czas przez
+        props). Scalenie U3 #2 (zarządca): zakładka „Zwarcia" w WynikiWarsztat +
+        `useWpiecieWynikow` (rozpływ i zwarcia; SC_* → inspektor wyników), założenia
+        zwarciowe c/czas z konfiguracji aktywnego przypadku tylko przy zgodności
+        przebieg↔przypadek; 18 testów przestrzeni; ui2 710 pass. Karty zarejestrowane:
+        E9.1 dowód W-608 (`79e3f27`, delegowana), P39 macierz NC RfG (`0e9ef7f`, U4/OZE).
+        E9.1 przegląd dowodu (Opus; 40 testów; kanon 5 pól, MathBlock z ui/proof,
+        selekcja 'dowod' przez magistralę; zintegrowane `05577bf`; ui2 750 pass).
+        NAPRAWA REGRESJI E2E (wykryta pierwszym biegiem e2e od E1.7c, na świeżym
+        kontenerze): katalog `ui2/spaces/model/szablony/api/` z E3.1 wpadał w mock
+        speców `page.route('**/api/**')` — vite serwował moduł jako JSON i aplikacja
+        nie startowała w 24 specach (kreator stacji, ux-feedback, designer-flow,
+        pierwszy przypadek). Fix: moduł spłaszczony do `szablonyClient.ts` (`f43df1a`)
+        + expect.timeout 10→20 s (rozruch ~12 s na wolniejszym kontenerze, `3f033fb`)
+        + baseline'y wizualne chromium-linux (`55a0afc`, `eeb6046`). Wynik: e2e
+        179 pass / 2 znane środowiskowe / 15 skip + zaktualizowana migawka = parytet
+        baseline E1.7c. Procedura: po każdym biegu e2e przywracać PNG w docs/audit
+        (baseline'y win32 nadpisywane lokalnymi renderami).
+        Scalenie U3 #3: zakładka „Dowód obliczeń" w warsztacie wyników (E9.1 spięte
+        ze śladem przez inspektor wyników, leniwe ładowanie; 2×klik → dowód w nowej
+        powłoce; `42d7e79`; pełny bieg 8046 pass). Scalenie U3 #4: natywny wybór
+        wiersza we wzorcu (delta API; zamyka TODO E8.2 A; `b5ae89b`; ui2 758).
+        Karta E12.1 porównanie A/B rozpływu W-609 zarejestrowana (`115a225`).
+- [ ] U4 OTWARTE strumieniem OZE (2026-07-16): P39 macierz wymogów NC RfG (Opus;
+        33 testy; pełny vitest u wykonawcy 8079 pass ZERO failed; zintegrowane
+        `a626f90`; napięcie przyłączenia WYŁĄCZNIE z modelu/katalogu — stan
+        „brak danych" zamiast 15 kV z powietrza; USTALONE: backend klasyfikuje
+        moduły A/B/C/D sam (`engine.py:235`) — delta backendowa rdzenia zbędna;
+        TODO-KARTA: certyfikat zgodności projektu E13/W-707, wpięcie do pulpitu
+        OZE P47, wyświetlenie klasy modułu w podsumowaniu).
+        Scalenie #5 (zarządca): macierz NC RfG jako zakładka „Zgodność NC RfG"
+        warsztatu wyników (W-614/N6) + ślad WHITE BOX testu INLINE w szczególe
+        werdyktu (wzory ASCII solvera — świadomie bez KaTeX; zero martwych
+        klików; `d1910d7`). Pełny bieg na spokojnym drzewie: 8082 pass, exit 0.
+        E12.1 porównanie A/B rozpływu W-609 (Opus; 35 testów; pełny vitest
+        u wykonawcy 8115 pass ZERO failed; zintegrowane `f1b219d`; źródło listy
+        przebiegów: /projects/{id}/power-flow-runs — id zgodne z endpointem
+        porównań; TODO-KARTA: porównanie zwarć, nakładka delta na SLD przez
+        kartę koordynacyjną, nazwa przypadku w etykiecie przebiegu, eksport).
+        Scalenie #6 (zarządca): zakładka „Porównanie A/B" w warsztacie wyników
+        (bez projektu — uczciwy stan pusty); ui2 829 pass; pełny bieg 8118 pass.
+        P47 pulpit instalacji OZE (Opus; 26 testów; pełny vitest u wykonawcy
+        8144 pass ZERO failed; zintegrowane `7c551fb`; wspólny store biegu NC RfG
+        macierz↔pulpit; USTALONE: DER nie niesie pojemności magazynu [kWh] —
+        sekcja BESS tylko z realnych referencji katalogowych; TODO-KARTA:
+        wpięcie API grid_strength/reactive_adequacy = osobna karta delty).
+        Scalenie #7 (zarządca): zakładka „Pulpit OZE" w warsztacie wyników
+        (`8e74937`; ui2 856 pass). Pełny bieg: 8145 pass.
+        „NA MAX" (dyrektywa 2026-07-16): braki P47 w realizacji — karty D1 (delta
+        backendowa: API grid_strength/reactive_adequacy; wykonawca pracuje,
+        pliki gotowe, czeka na pełny pytest) i P47a (pulpit: magazyn z katalogu
+        e_kwh + sekcje analiz) zarejestrowane `0076882`. USTALONE: pojemność
+        magazynu JEST w katalogu konwerterów (mv_converter_catalog.py:232) +
+        końcówka /api/catalog/converter-types istnieje. Kolejna luka tego wzorca:
+        sanity_bounds i energy_validation też bez API (karta D2 po scaleniu D1).
+        E8.3 tabela gałęzi rozpływu (Sonnet; 28 testów; pełny vitest u wykonawcy
+        8173 pass ZERO failed; zintegrowane `6e70741`). Scalenie #8: EkranRozplywu
+        (podzakładki Szyny/Gałęzie) w zakładce Rozpływ (`e06d9ab`; ui2 884 pass;
+        pełny vitest 8173 potwierdzony).
+        D1 API analiz OZE (Opus; 29 testów; końcówki /api/oze-analysis/
+        grid-strength i /reactive-adequacy; pełny pytest 5725 pass ZERO failed —
+        potwierdzony też przez zarządcę na scalonym drzewie; zintegrowane
+        `9c2d6d6`; NOTA: pre-existing naruszenia ruff/black w nietkniętych
+        plikach repo — poza zakresem, CI ich nie egzekwuje; TODO-KARTA:
+        n_parallel przy mocy IBG, q_actual z wyniku PF per źródło).
+        D2 API jakości wyników (Opus; 26 testów; końcówki /api/quality/
+        sanity-bounds i /energy-validation; pełny pytest 5750 pass ZERO failed —
+        potwierdzony przez zarządcę na scalonym drzewie; zintegrowane `dbd044f`;
+        serwis energy_validation jako pakiet service.py — kolizja nazw
+        rozstrzygnięta jawnie). Karta E8.4 okno jakości wyników W-607 `3c68d7d`;
+        P47a pulpit OZE na max (Opus; 39 testów; pełny vitest u wykonawcy 8204
+        pass ZERO failed; zintegrowane `3f0c44e`; ui2 915 pass u zarządcy;
+        USTALONE: referencje magazynów `conv-bess-*` = item_id katalogu
+        konwerterów, `bess_bat_*` poza nim → jawny stan nieodnalezienia; ślad
+        SCR w ASCII spójnie z NC RfG; TODO-KARTA: mapowanie moduł→węzeł dla
+        podświetlenia, konwencja formatera energii; ZAOBSERWOWANE: przejściowy
+        szum testowy AnonymizationProvider/navigation — flaky do obserwacji).
+        E8.4 okno jakości wyników W-607 (Opus; 46 testów; pełny vitest
+        u wykonawcy 8219 pass ZERO failed; zintegrowane `d3c86c6`; pełny słownik
+        rodzajów kontroli PL; why_pl w panelu szczegółu — decyzja dostępności).
+        Scalenie #9: zakładka „Jakość wyników" w warsztacie (`121ea74`; ui2 962
+        pass). ŁAŃCUCH „NA MAX" DOMKNIĘTY: luka → D1/D2 (backend) → P47a/E8.4
+        (okna) — zero pozostawionego długu z dyrektywy 2026-07-16.
+        Łączny pełny vitest po #9: 624 pliki / 8251 pass, exit 0 (`688d0ce`).
+        BAZY: frontend 8251, backend 5750. NASTĘPNY KROK (strumień OZE wg
+        kolejności): P2 hosting capacity — rekonesans wykazał, że silnik istnieje
+        TYLKO jako dowód eksportowy per stacja (audit2_station_config.py:371-420,
+        Phase 23) + enum V126; okno sieciowe P2 wymaga najpierw głębokiego
+        rekonesansu kształtu dowodu i decyzji: ekspozycja per stacja vs delta
+        analizy sieciowej. Potem P19 ranking punktów przyłączenia i P41 krzywe
+        P–Q producenta (delta katalogowa).
+        ROZSTRZYGNIĘTE: D3 hosting capacity (Opus; 25 testów; końcówka
+        /api/oze-analysis/hosting-capacity — deterministyczny przegląd
+        scenariuszy na kanonicznej ścieżce _execute_power_flow, ocena
+        EnergyValidationBuilder; pełny pytest 5775 pass ZERO failed potwierdzony
+        przez zarządcę; zintegrowane `234777c`; guard load_flow_no_heuristics
+        zielony). P2 okno zdolności przyłączeniowej (Opus; 33 testy; pełny
+        vitest u wykonawcy 8284 pass ZERO failed; zintegrowane `df5f5fc`).
+        Scalenie #10: zakładka „Zdolność przyłączeniowa" w warsztacie
+        (`95eb5af`; ui2 996 pass). NASTĘPNE: P19 ranking punktów przyłączenia
+        (konsumuje D3 + NC RfG + straty), P41 krzywe P–Q (delta katalogowa).
+        UWAGA IA: warsztat wyników ma 10 zakładek — do audytu rady (grupowanie
+        OZE) przy najbliższym przeglądzie fazowym.
+        D3a straty/napięcia scenariuszy (Sonnet; +8 testów; PRZEJĘTE przez
+        zarządcę po zawieszeniu wykonawcy — weryfikacja i commit w worktree;
+        zintegrowane `d683d45`; pełny pytest 5783 pass ZERO failed potwierdzony).
+        Karty D3a/P19 `7cb7ae9`. P19 ranking punktów przyłączenia (Opus;
+        33 testy; pełny vitest u wykonawcy 8318 pass ZERO failed; zintegrowane
+        `91860d1`; klasa NC RfG WŁĄCZONA — progi klas A/B/C/D są w katalogu
+        operatorów loader.py:17-25, mapowanie słownikowe 1:1 z classify_module;
+        koszt przyłącza jawnie pominięty — strumień kosztorysanta).
+        Scalenie #11: zakładka „Ranking przyłączeń" (`3c2fcbd`; ui2 1029 pass;
+        pełny vitest 8318 potwierdzony).
+        D4 krzywe P–Q w katalogu (Opus; 26 testów; pole pq_curve addytywne +
+        serwis pq_coverage + końcówka; pełny pytest 5809 pass ZERO failed
+        potwierdzony; guardy katalogowe zielone; zintegrowane `5806855`).
+        P41 okno krzywych P–Q (Opus; 27 testów; pełny vitest u wykonawcy 8345
+        pass; zintegrowane `9537b68`). Scalenie #12: zakładka „Krzywe P–Q"
+        (`dac4c82`; ui2 1056 pass). STRUMIEŃ OZE — KOMPLET PIERWSZEJ FALI:
+        P39→P47→P47a→P2→P19→P41 zrealizowane end-to-end (backend+okna+powłoka).
+        Kolejne fale wg kolejności właściciela: P30→P35→P38→P40→P42→P43→P46→P37.
+        Pełny vitest kompletu fali: 632 pliki / 8345 pass (exit 0).
+        Scalenie #13 — przegląd IA: zakładki warsztatu wyników pogrupowane
+        („Analizy sieci" / „OZE i przyłączenia"; jeden tablist, testidy bez
+        zmian, klawiatura = kolejność wizualna; `288d7a6`; ui2 1056 pass;
+        pełny vitest 8345 potwierdzony).
+        FALA 2 OZE: D5 obszar bezpiecznej pracy P–Q węzła (Opus; 30 testów;
+        końcówka /api/oze-analysis/pq-area — siatka P×Q anchored w Q=0 na
+        wzorcu D3; recon Q generatora rozstrzygnięty dowodowo mapping.py:201;
+        pełny pytest 5839 pass ZERO failed potwierdzony; zintegrowane
+        `5a7aac6`). P30 okno obszaru P–Q (Opus; 34 testy; pełny vitest
+        u wykonawcy 8379 pass ZERO failed; zintegrowane `567317c`; nakładka
+        krzywej producenta na pasmo sieci — jeden wykres). Scalenie #14:
+        zakładka „Obszar pracy P–Q" w grupie OZE (`ad46c40`; ui2 1090 pass).
+        NASTĘPNE FALI 2: P35 studium przyłączenia (kreator spinający analizy),
+        P38 walidacja modelu falownika.
+        P30 potwierdzone pełnym biegiem 8379. P35 kreator studium przyłączenia
+        (Opus; 30 testów; 4 kroki wg SPEC_KREATORY z hintami PL i prefill;
+        sekwencja analiz odporna na błąd wariantu; przegląd zbiorczy reużyciem
+        rankingu/obszaru/zdolności; pełny vitest u wykonawcy 8409 pass ZERO
+        failed; zintegrowane `cedd170`). Scalenie #15: zakładka „Studium
+        przyłączenia" (`7f5511c`; ui2 1120 pass). TODO-KARTY: dokument studium
+        (E13), nawigacja między zakładkami warsztatu.
+        P35 potwierdzone pełnym biegiem 8409. D6 API trajektorii FRT/HVRT
+        z obwiednią (Opus; 17 testów; refaktor wydzielający budowę wejścia
+        z ncrfg_compliance/checker.py — 49 testów zgodności bez regresji;
+        PRZEJĘTE przez zarządcę po zawieszeniu; zintegrowane `2472c7b`;
+        pełny pytest 5856 pass ZERO failed potwierdzony). P38 okno walidacji
+        modelu falownika (Opus; 36 testów; pełny vitest u wykonawcy 8445 pass
+        ZERO failed; zintegrowane `b5f658b`; UCZCIWE rozstrzygnięcie: D6 nie
+        echo-uje głębokości zapadu/czasu trwania — kolumna „Napięcie skrajne"
+        z trajektorii zamiast fabrykacji; rekomendacja echa parametrów w D6).
+        Scalenie #16: zakładka „Walidacja falownika" (`2f70995`; ui2 1156 pass).
+        FALA 2 OZE KOMPLETNA: P30→P35→P38 end-to-end (D5/D6 + okna + powłoka);
+        pełny vitest 8445 potwierdzony (po restarcie kontenera — push przetrwał,
+        bieg powtórzony). FALA 3: D7 symulacja odpowiedzi na polecenia OSD
+        (Opus; 28 testów; dwa biegi bazowy-vs-polecenie; PRZEJĘTE po
+        zatrzymaniu wykonawcy — bramki dokończone przez zarządcę; zintegrowane
+        `0c6c0ed`; pełny pytest 5884 pass ZERO failed potwierdzony). P40 okno
+        odpowiedzi OSD (Opus; 28 testów; PRZEJĘTE po braku odpowiedzi monitora
+        — bramki zweryfikowane w worktree przez zarządcę: ui2 1184 pass, guardy
+        zielone; zintegrowane `232c062`). Scalenie #17: zakładka „Polecenia OSD"
+        (`518802d`). PROCEDURA WZMOCNIONA: po każdym powiadomieniu wykonawcy
+        sprawdzać żywotność procesu (ps) i przejmować bez czekania na monitor.
+        Pełny vitest po #17: 8473 pass. D8 dobór kompensacji (Opus; 27 testów;
+        pełny pytest u wykonawcy 5910 pass ZERO failed; zintegrowane `47fbeb5`).
+        ESKALACJA D8 (2026-07-17): podejrzenie konwencji znaku shunt/przepływów
+        gałęzi (kompensacja „pogarsza" cosφ odbioru indukcyjnego w odczycie
+        q_from) — okno P42 WSTRZYMANE do rozstrzygnięcia; karta diagnostyczna
+        K1 (read-only, przypadek minimalny z rachunkiem ręcznym WHITE BOX)
+        delegowana. Zmiana solvera/enm — jeśli potwierdzona — poza programem
+        UI/UX (decyzja właściciela/wątku 10x).
+        K1 ROZSTRZYGNIĘTE (2026-07-17): znak susceptancji shunt POPRAWNY
+        (zgodny z ładownością linii; dowód liczbowy); defekt = interpretacja
+        cosφ z przepływów gałęzi w D8 + niespójność konwencji znaku Q wyników
+        (slack_q/q_from/q_to) — zarejestrowane jako V12K-027 (wysoki; FROZEN
+        API — decyzja właścicieli solvera). Testy diagnostyczne scalone
+        `7b3ce58` (pełny pytest u wykonawcy 5915 pass). P42 okno pozostaje
+        WSTRZYMANE do rozstrzygnięcia V12K-027.
+        PROCEDURA: wykonawcy backendowi zawieszają się po pełnym pytest (3
+        przypadki) — zarządca przejmuje: weryfikacja w worktree + commit
+        w imieniu wykonawcy (bez oczekiwania na raport).
+        POTWIERDZENIE po scaleniu K1 (2026-07-17): pełny pytest na drzewie
+        głównym 5915 passed, 0 failed (651 s).
+        FALA 3 ciąg dalszy (2026-07-17): karta D9 (P43 — sekwencje zapadów
+        FRT + kontekst SCR; wsparcie ride-through z magazynu POZA ZAKRESEM,
+        wymaga modelu magazynu w FROZEN solverze FRT — decyzja właścicieli
+        solvera) i karta D10 (P46 — ochrona LoM: ROCOF/przesunięcie wektora,
+        addytywne rozszerzenie ProtectionSetting, koordynacja z SPZ)
+        delegowane równolegle do wykonawców Opus (worktree).
+        SCALENIE #18 (2026-07-17): D9+D10+D11 (karta D11 = P37 migotanie
+        IEC 61000-3-7, addytywne pole flicker_c w ConverterType,
+        GET /api/quality/flicker). Restart kontenera zabił pełne pytest
+        wszystkich trzech wykonawców — zarządca przejął: bramki celowane
+        w worktree (D9 29, D10 21, D11 29 pass), ruff/black/mypy czyste,
+        commity w imieniu wykonawców, cherry-pick bez konfliktów
+        (83d1ed7, c684b23, 27b3cb8), 79 testów celowanych na drzewie
+        głównym, 11 guardów OK (catalog_* pod venv poetry — systemowy
+        python bez networkx to fałszywy FAIL). Konfirmacja pełnym pytest
+        w tle. UWAGA: worktree wykonawców mogą mieć świeży pusty venv
+        poetry — bramki uruchamiać venv drzewa głównego (D2vgvUMQ).
+        POTWIERDZENIE #18 (2026-07-17): pełny pytest 5986 passed, 0 failed
+        (605 s) — nowa baza backendu 5986. Pierwsza próba konfirmacji padła
+        na PEŁNYM DYSKU (100%) — sprzątnięto ~28 GB (worktree poprzednich
+        fal + osierocone venv poetry); procedura: przy niepowodzeniu tła
+        najpierw `df -h`. Okna frontendowe P43/P46/P37 delegowane (karta
+        U4_P43_P46_P37_OKNA); monitoring żywotności wykonawcy co 10 min
+        (dyspozycja właściciela).
+        SCALENIE #19 (2026-07-17): okna fali 3 (8f1d6c1) — sekcja
+        „Sekwencja zapadów" w EkranFrt (edytor zapadów + kontekst SCR),
+        nowa zakładka warsztatu „Praca wyspowa" (lom, EkranLom), sekcja
+        „Migotanie i szybkie zmiany napięcia" w EkranJakosci. Wykonawca
+        zakończył z pełnym raportem (pełny vitest w worktree 8510 pass,
+        0 failed; +37 netto). Weryfikacja zarządcy na drzewie scalonym:
+        149 testów celowanych, type-check, lint, 4 guardy UI — zielone.
+        Konfirmacja pełnym vitest w tle. TODO-KARTA: selektory
+        run_id/bus_ref kontekstu siły sieci w sekcji sekwencji FRT
+        (klient je przyjmuje; ekran FRT nie ma dziś źródła przebiegów).
+        POTWIERDZENIE #19 (2026-07-17): pełny vitest na drzewie scalonym
+        8510 passed, 0 failed (510 s) — nowa baza frontendu 8510.
+        Karta D12 (P45 — zgodność powykonawcza) delegowana.
+        SCALENIE #20 (2026-07-17): D12 — raport zgodności powykonawczej
+        (POST /api/quality/as-built-compliance; porównanie 1:1 pomiar↔wynik
+        FROZEN rozpływu, bez estymacji WLS; Q po |wartości| do V12K-027;
+        DECYZJA: tolerancje wyłącznie JAWNE — EN 50160 nie mapuje odchyłki
+        pomiar↔model, domyślna wartość byłaby heurystyką). Wykonawca
+        zakończył z raportem (pełny pytest 6021 pass, 0 failed); weryfikacja
+        zarządcy: 35 celowanych + 4 guardy OK. Konfirmacja w tle.
+        POTWIERDZENIE #20 (2026-07-17): pełny pytest na drzewie scalonym
+        6021 passed, 0 failed (611 s) — nowa baza backendu 6021. Okno P45
+        (zakładka „Zgodność powykonawcza") delegowane.
+        SCALENIE #21 (2026-07-17): okno P45 (2dc2ff2) — zakładka „Zgodność
+        powykonawcza" (moduł ui2/wyniki/odbior: wybór przebiegu PF, CSV lub
+        edytor wierszy, jawne tolerancje, raport z werdyktami i śladem).
+        PRZEJĘCIE: wykonawca zatrzymał się w trakcie pełnego vitest
+        (osierocony potok stdout — proces ubity przez zarządcę); bramki
+        zweryfikowane przez zarządcę w worktree (56 celowanych, type-check,
+        lint, 3 guardy UI + codenames), commit w imieniu wykonawcy,
+        cherry-pick, po scaleniu ponowna weryfikacja (56 + type-check).
+        Konfirmacja pełnym vitest w tle. WNIOSEK PROCEDURALNY: wykonawcy
+        mają uruchamiać pełne suity Z PRZEKIEROWANIEM DO PLIKU (np.
+        `npm test > pelny_vitest.log 2>&1`), nie na goły potok.
+        POTWIERDZENIE #21 (2026-07-17): pełny vitest 8536 passed, 0 failed
+        (530 s) — nowa baza frontendu 8536. FALA 3 KOMPLETNA: P43/P46/P37/
+        P45 (backend + okna); P42 wstrzymane (V12K-027), P44 czeka na P27.
+        Następny krok: konsolidacja rejestru TODO-KART (drobne delty
+        backend + frontend dwiema kartami).
+        SCALENIE #22 (2026-07-17): D13 konsolidacja TODO backendu (17d49ae →
+        cherry-pick) — n_parallel w mocy IBG (grid_strength + migotanie,
+        `resolve_n_parallel`), q_actual per źródło w adekwatności Q
+        (addytywnie, fingerprint nietknięty), echo parametrów scenariusza
+        FRT. Wykonawca: pełny pytest 6027 pass, 0 failed (log do pliku —
+        procedura działa). Zarządca: 73 celowane + 4 guardy OK, push.
+        Konfirmacja w tle. Karta TODO-front OZE w realizacji.
+        SCALENIE #23 (2026-07-17): TODO-front OZE (f617f76 → cherry-pick) —
+        selektory run_id/bus_ref kontekstu SCR w sekwencji zapadów FRT,
+        klasa modułu A/B/C/D w macierzy NC RfG, nazwa przypadku w etykietach
+        porównania A/B, testy graniczne formatera energii (formater sam
+        istniał z P47a — bez duplikacji). Wykonawca: pełny vitest 8553 pass,
+        0 failed. Zarządca: 393 celowane + type-check + lint + 4 guardy OK,
+        push. Konfirmacje #22 (pytest) i #23 (vitest) w tle.
+        POTWIERDZENIE #22 (2026-07-17): pełny pytest 6027 passed, 0 failed
+        (620 s) — nowa baza backendu 6027.
+        POTWIERDZENIE #23 (2026-07-17): pełny vitest 8553 passed, 0 failed
+        (649 plików) — nowa baza frontendu 8553. BAZY: backend 6027,
+        frontend 8553. Karta D14 (certyfikat zgodności NC RfG, E13)
+        delegowana.
+        SCALENIE #24 (2026-07-17): D14 certyfikat zgodności projektu NC RfG
+        (1a769f8 → cherry-pick) — POST /api/oze-analysis/
+        compliance-certificate (JSON) i .docx (deterministyczny bajtowo,
+        make_docx_bytes_deterministic); USTALONE: źródłem werdyktów jest
+        NcRfgPtpireeSolver (ta sama ścieżka co macierz, engine.py:208) —
+        ncrfg_compliance.checker to starszy silnik statyczny, nieużyty;
+        braki (no_data) blokują generację z listą PL, werdykt negatywny
+        nie blokuje. PDF = świadome TODO (determinizm bajtowy reportlab
+        wymaga osobnej normalizacji metadanych). Wykonawca: pełny pytest
+        6043 pass, 0 failed. Zarządca: 16 celowanych + 5 guardów OK, push.
+        Konfirmacja w tle. TODO-KARTA: przycisk certyfikatu w macierzy
+        NC RfG (frontend) + PDF certyfikatu.
+        POTWIERDZENIE #24 (2026-07-17): pełny pytest 6043 passed, 0 failed
+        (603 s) — nowa baza backendu 6043. Karta P39c (przycisk certyfikatu
+        w macierzy) delegowana.
+        SCALENIE #25 (2026-07-17): P39c certyfikat w macierzy NC RfG
+        (c4d7571 → cherry-pick) — przycisk z podglądem, lista braków 422
+        (CertyfikatBrakiError, detail jako obiekt), pobranie DOCX;
+        ncRfgStore.ostatnieWejscia gwarantuje żądanie 1:1 z zakończonym
+        biegiem (uzasadnione odstępstwo). Wykonawca: pełny vitest 8564
+        pass, 0 failed. Zarządca: 364 celowane + type-check + lint +
+        4 guardy OK, push. Konfirmacja w tle.
+        SCALENIE #26 (2026-07-17): D15 generator wniosku OSD (b656c04 →
+        cherry-pick) — POST /api/oze-analysis/osd-application (JSON+DOCX
+        deterministyczny; bilans z walidacji energetycznej PF, zwarcia
+        punktu z SC, zgodność NC RfG ścieżką D14; schemat SLD i W-702
+        z uczciwymi adnotacjami; bramka braków 422 PL). PRZEJĘCIE: wykonawca
+        zawieszony po pełnym pytest (6066 pass, 0 failed w jego logu) —
+        zarządca: lint+mypy+23 celowane w worktree, commit w jego imieniu,
+        cherry-pick, 23+5 guardów na drzewie głównym, push.
+        AWARIA KONFIRMACJI #25: pełny vitest padł w połowie (10:17, bez
+        podsumowania — najpewniej ubity przy równoległym pełnym pytest
+        D15); restart sekwencyjny (vitest → pytest) w tle. PROCEDURA:
+        nie puszczać dwóch pełnych suit RÓWNOLEGLE.
+        POTWIERDZENIE #25r (2026-07-17): pełny vitest 8564 passed, 0 failed
+        — nowa baza frontendu 8564. Okno W-707 (zakładka „Wniosek OSD")
+        delegowane. PROCEDURA: worktree wykonawcy sprzątać dopiero po
+        wygaśnięciu agenta (późny raport D15 zastał usunięty worktree —
+        bez utraty danych, commit zarządcy wcześniejszy).
+        POTWIERDZENIE #26 (2026-07-17): pełny pytest 6066 passed, 0 failed
+        (704 s) — nowa baza backendu 6066. BAZY: backend 6066, frontend
+        8564.
+        SCALENIE #27 (2026-07-17): okno W-707 „Wniosek OSD" (76f27e0 →
+        cherry-pick) — nowa zakładka warsztatu (grupa OZE za osd), moduł
+        ui2/oze/wniosek (formularz PF+SC+węzeł+identyfikacja, run_request
+        z ncRfgStore.ostatnieWejscia, sekcje wniosku, braki 422, DOCX).
+        Wykonawca: pełny vitest 8588 pass, 0 failed (+24). Zarządca:
+        55 celowanych + type-check + lint + 4 guardy OK, push.
+        Konfirmacja w tle. ŁAŃCUCH E13 DOMKNIĘTY: certyfikat (D14/P39c)
+        + wniosek OSD (D15/W-707) — backend i okna.
+        POTWIERDZENIE #27 (2026-07-17): pełny vitest 8588 passed, 0 failed
+        (652 plików) — BAZY: backend 6066, frontend 8588.
+        SCALENIE #28 (2026-07-17): E12.2 porównanie A/B zwarć (05aa2c0 →
+        cherry-pick) — tryb zwarciowy w zakładce porównań (selektory SC,
+        tabela A/B/Δ per punkt Ik''/ip/Ith/Sk, osierocone punkty „tylko
+        A/B"). RECON: obie ścieżki backendu niepełne (comparison/service
+        _compare_short_circuit:136-176 agreguje do jednej delty;
+        domain/sc_comparison build_comparison:224-227 cicho pomija punkty
+        bez odpowiednika) → zastosowano dopuszczoną klauzulą STOP
+        prezentacyjną różnicę wartości backendu (trio(), komentarz).
+        Wykonawca: pełny vitest 8610 pass, 0 failed (+22). Zarządca:
+        62 celowane + type-check + lint + 4 guardy OK, push. Konfirmacja
+        w tle. TODO-KARTA (delta backendowa, opcjonalna): delty zwarciowe
+        per punkt z jawnym znacznikiem osieroconych w ScComparisonService.
+        POTWIERDZENIE #28 (2026-07-17): pełny vitest 8610 passed, 0 failed
+        — BAZY: backend 6066, frontend 8610.
+        SCALENIE #29 (2026-07-17): wirtualizacja tabel wyników (dc4ce13 →
+        cherry-pick) — ręczne okno w TabelaWynikow powyżej 500 wierszy
+        (33 px/wiersz z wyliczeniem z wzorzec.css, przekładki, determinizm
+        scrollTop, kontrakt propsów nietknięty, zero nowych zależności;
+        poniżej progu DOM 1:1). Wykonawca: pełny vitest 8622 pass,
+        0 failed (+12). Zarządca: 90 celowanych + type-check + lint +
+        4 guardy OK, push. Konfirmacja w tle.
+        POTWIERDZENIE #29 (2026-07-17): pełny vitest 8622 passed, 0 failed
+        — BAZY: backend 6066, frontend 8622.
+        SCALENIE #30 (2026-07-17): D16 eksport PDF certyfikatu i wniosku
+        OSD (77be560 → cherry-pick) — końcówki .pdf z bramką braków;
+        DETERMINIZM BAJTOWY osiągnięty (canvas invariant=1 +
+        pageCompression=0, mocniejszy niż precedens treściowy repo);
+        renderery obok serwisów D14/D15 (spójnie z DOCX tych dokumentów).
+        Wykonawca: pełny pytest 6082 pass, 0 failed (+16); wyścig
+        commit/przejęcie rozstrzygnięty na korzyść wykonawcy (77be560,
+        bez utraty danych). Zarządca: 55 celowanych + 4 guardy OK, push.
+        Konfirmacja w tle.
+        POTWIERDZENIE #30 (2026-07-17): pełny pytest 6082 passed, 0 failed
+        (695 s) — BAZY: backend 6082, frontend 8622.
+        SCALENIE #31 (2026-07-17): P47b mapowanie moduł→węzeł (e303880 →
+        cherry-pick) — addytywna lista modułów per węzeł w widoku siły
+        sieci (analysis/grid_strength builder+serializer+modele) + klik
+        modułu w pulpicie podświetla wiersze węzła w sekcjach SilySieci/
+        AdekwatnosciQ (odznaczenie, adnotacja PL dla modułu bez węzła).
+        PRZEJĘCIE po zatrzymaniu wykonawcy w trakcie pełnego pytest
+        (bieg do pliku przeżył; 6089 pass) — zarządca dokończył: pełny
+        vitest w worktree 8634 pass, 0 failed, bramki, commit w imieniu
+        wykonawcy. Zarządca po scaleniu: 19+74 celowanych + type-check +
+        7 guardów OK, push. Konfirmacje sekwencyjne w tle.
+        POTWIERDZENIE #31 (2026-07-17): pełny vitest 8634 passed, 0 failed
+        + pełny pytest 6089 passed, 0 failed (675 s) — BAZY: backend 6089,
+        frontend 8634. Rejestr TODO-KART strumienia OZE domknięty poza
+        pozycjami dużymi (wygaszanie zakładek mostu, property grid E5.x,
+        dokument studium — osobne karty).
+        PLAN WYGASZANIA MOSTU WYNIKÓW (2026-07-17): wiążący dokument
+        docs/uiux/PLAN_WYGASZANIA_MOSTU_WYNIKI.md — inwentarz 20+
+        powierzchni (grupy A pokryte / B do migracji / C nie-wynikowe),
+        fale W1–W5, zasada pokrycia 1:1 przed wygaszeniem trasy.
+        SCALENIE #32 (2026-07-17): D17 dokument studium przyłączeniowego
+        (05f3125 → cherry-pick) — POST /api/oze-analysis/connection-study
+        (+.docx/.pdf, determinizm bajtowy); serwerowa kompozycja sekwencji
+        kreatora (hosting→pq-area→pq-coverage per wariant, serwisy
+        bezpośrednio); błąd wariantu nie przerywa dokumentu; klasa NC RfG
+        z backendowego classify_module (loader.py:79 — źródło prawdy,
+        frontendowy klasaNcRfg to lustro 1:1). Wykonawca: pełny pytest
+        6112 pass, 0 failed (+23). Zarządca: 23 celowane + 5 guardów OK,
+        push. Konfirmacja w tle.
+        POTWIERDZENIE #32 (2026-07-17): pełny pytest 6112 passed, 0 failed
+        (673 s) — BAZY: backend 6112, frontend 8634. Karta P35b (okno
+        dokumentu studium w kreatorze) delegowana.
+        SCALENIE #33 (2026-07-17): P35b dokument studium w kreatorze
+        (205ad3b → cherry-pick) — akcja z podglądem, sekcjami błędów
+        wariantów, brakami 422 i pobraniami DOCX/PDF; parametry żądania
+        snapshotowane ze stanu zakończonego biegu (nie z formularza).
+        Wykonawca: pełny vitest 8647 pass, 0 failed (+13). Zarządca:
+        43 celowane + type-check + lint + 4 guardy OK, push. Konfirmacja
+        w tle. DOKUMENTY E13 KOMPLETNE end-to-end: certyfikat + wniosek
+        OSD + dokument studium (backend JSON/DOCX/PDF + okna).
+        POTWIERDZENIE #33 (2026-07-17): pełny vitest 8647 passed, 0 failed
+        — BAZY: backend 6112, frontend 8647. Karta W1 (kontrakt analizy
+        w panelu przebiegów — fala W1 wygaszania mostu) delegowana.
+        SCALENIE #34 (2026-07-17): W1 kontrakt analizy w panelu przebiegów
+        (aa33b73 → cherry-pick) — trzy grupy kontraktu (parytet 1:1
+        z panelami mostu E-29/E-34/zbieżność przez REUŻYCIE hooka
+        i formaterów analysisRunContract.ts, zero importu komponentów
+        mostu); rejestr W1 w PLAN_WYGASZANIA_MOSTU_WYNIKI.md wypełniony.
+        Wykonawca: pełny vitest 8656 pass, 0 failed (+9). Zarządca:
+        90 celowanych + type-check + lint + 4 guardy OK, push.
+        Konfirmacja w tle.
+        POTWIERDZENIE #34 (2026-07-17): pełny vitest 8656 passed, 0 failed
+        — BAZY: backend 6112, frontend 8656.
+        SCALENIE #35 / FALA W2 (2026-07-17, zarządca — mikro-delta):
+        rekonesans wykazał, że Convergence i SourceContributions to te
+        same cienkie panele kontraktu co W1 (dane wkładów od dawna
+        w EkranZwarc) — dodano dwa wiersze parytetu („Rodzaj przypadku",
+        „Projekt") + test przez realny formater mostu; rejestr W2
+        w planie wygaszania wypełniony. 91 celowanych + bramki OK, push.
+        Konfirmacja w tle.
+        POTWIERDZENIE #35 (2026-07-17): pełny vitest 8657 passed, 0 failed
+        — BAZY: backend 6112, frontend 8657. REKONESANS W3: PhaseState
+        i DynamicStability to też cienkie panele kontraktu (router);
+        Zksn/V126Academic/Fw/Bess/Der żyją w osobnych plikach surfaces/
+        (potencjalnie pełne) — karta W3: parytet cienkich + klasyfikacja
+        pełnych do decyzji W4.
+        SCALENIE #36 / FALA W3 (2026-07-17): parytet ostatnich cienkich
+        paneli (74d1055 → cherry-pick) — grupa „Stany i warianty"
+        (caseRef, qualityGate, completenessLegacy, fault_scenario_ref);
+        KLASYFIKACJA: Zksn → Grupa C (konfigurator modelu, opis planu
+        był błędny), V126Academic → pełna powierzchnia (DECYZJA
+        WŁAŚCICIELA w W4: migrować/zostawić/osobna przestrzeń),
+        Fw/Bess/Der → konfiguratory OZE Grupa C (wyniki pokryte pulpitem).
+        WSZYSTKIE cienkie panele Grupy B pokryte (W1+W2+W3). Wykonawca:
+        pełny vitest 8663 pass, 0 failed (+6). Zarządca: 97 celowanych +
+        bramki OK, push. Konfirmacja w tle. Pozostaje W5 (wygaszenie tras
+        dublujących po weryfikacji Grupy A) i decyzja właściciela W4.
+        POTWIERDZENIE #36 (2026-07-17): pełny vitest 8663 passed, 0 failed
+        — BAZY: backend 6112, frontend 8663.
+        AUDYT W5a SCALONY (5ce64e4→cherry-pick, 2026-07-17): pełne tabele
+        pokrycia Grupy A w raporcie wykonawcy + skrót w planie wygaszania.
+        WERDYKTY: ComplianceSurface → WYGASIĆ (rdzeń krzywych FRT pokryty
+        SUPERSETEM EkranFrt; KOREKTA MAPOWANIA: macierz NC RfG pokrywa
+        NcRfgTestsTab, nie E-26); AnalysisSurface → rdzeń pokryty, blokuje
+        tylko STUB „analizy wrażliwości" (pusty panel, entries=[]);
+        ProofSurface → przegląd dowodu pokryty, akcje audit2 (generator
+        pakietów, rozpływ rozszerzony) BEZ odpowiednika — DECYZJA
+        WŁAŚCICIELA (migracja do Dokumentacja/Obliczenia vs most).
+        SCALENIE #37 / W5b-K1 (2026-07-17, zarządca — mikro-delta):
+        trzy wiersze kontraktu domykające luki audytu (Wariant, Model
+        IBG/OZE, Wersja katalogu z reproducibility) + test; 98 celowanych
+        + bramki OK, push. Konfirmacja w tle. DO DECYZJI WŁAŚCICIELA:
+        W5b (wygaszenie trasy E-26 Compliance — gotowe do wykonania;
+        AnalysisSurface — uznanie stubu wrażliwości; ProofSurface — los
+        akcji audit2) i W4 (V126Academic).
+        POTWIERDZENIE #37 (2026-07-17): pełny vitest 8664 passed, 0 failed
+        — BAZY: backend 6112, frontend 8664. Wszystkie wykonywalne bez
+        decyzji właściciela fale epiki wygaszania domknięte.
+        SCALENIE #38 / E5.x (2026-07-17): zakładka „Właściwości" modelu
+        (077ef75 → cherry-pick) — PropertyGridContainer mostu reużyty
+        (chirurgiczny export), selekcja z ui/selection, zapis WYŁĄCZNIE
+        istniejącą operacją domenową update_element_parameters (parytet
+        z InspectorEngineeringView), multi-edit, stan pusty PL.
+        Wykonawca: pełny vitest 8674 pass, 0 failed (+10). Zarządca:
+        203 celowane + 5 guardów UI OK, push. Konfirmacja w tle.
+        POTWIERDZENIE #38 (2026-07-17): pełny vitest 8674 passed, 0 failed
+        — BAZY: backend 6112, frontend 8674. REJESTR DUŻYCH POZYCJI
+        WYKONYWALNYCH BEZ DECYZJI WŁAŚCICIELA — PUSTY. Otwarte wyłącznie
+        punkty decyzyjne: V12K-027 (→P42), W5b/W4 (trasy mostu:
+        E-26 gotowe, stub wrażliwości, akcje audit2, V126Academic),
+        P44 (po P27).
+        V12K-027 ROZSTRZYGNIĘTE — OPCJA B (2026-07-17, decyzja właściciela
+        po dowodzie liczbowym zarządcy na rzeczywistym solverze). Dowód:
+        LF spójny (Slack_Q≡Q_from, bilans I²X), napięcie rośnie z baterią,
+        defekt w interpretacji surowego q_to jako zapotrzebowania (linia
+        dobor_kompensacji.py:246/250, cosφ:257); adapter (interpretacja)
+        naprawia bez zmiany FROZEN API. SCALENIE #39 / K2 (f44d90e →
+        cherry-pick): adapter `konwencja_mocy.py` (czysta interpretacja,
+        ZERO mutacji PowerFlowResult), rozdział DWÓCH wielkości w DTO D8
+        (cosfi_przekroju vs cosfi_punktu — dobór na punkcie), trwały test
+        diagnostyczny `test_dowod_v12k027.py` (produkcyjna ścieżka
+        execute_run; Wymóg 3: bus/branch/summary identyczne przed/po
+        adapterze), 7 testów kontraktowych. K1 read-only zachowany (twarda
+        prawda solvera 0,666624/0,496668/0,312428 pod cosfi_przekroju).
+        PRZEJĘCIE po restarcie kontenera (wykonawca zabity na 83% pytest;
+        dorobek przeżył): zarządca zweryfikował diff K1 + adapter, commit
+        w imieniu wykonawcy, 45 celowanych + full 6126 pass + 4 guardy.
+        Trzy warunki scalenia właściciela SPEŁNIONE. Następny krok:
+        okno P42 (frontend) z rozdziałem obu cosφ w UI. Konfirmacja #39
+        w tle.
+        POTWIERDZENIE #39 (2026-07-17): pełny pytest 6126 passed, 0 failed
+        (685 s) — BAZY: backend 6126, frontend 8674. Okno P42 (dobór
+        kompensacji, rozdział cosφ przekroju/punktu w UI) delegowane.
+        DECYZJE WŁAŚCICIELA — ZAMKNIĘCIE EPIKI WYGASZANIA (2026-07-17):
+        D1=A wygasić E-26 · D2=A wygasić AnalysisSurface (stub wrażliwości
+        niedostarczony) · D3=A audit2 zostaje w moście · D4=A V126Academic
+        zostaje · D5=B P27/P44 odłożone (planować PO wygaszaniu). WIĄŻĄCA
+        BRAMKA PARYTETU przed usunięciem KAŻDEJ trasy (6 warunków:
+        100% kontraktu, identyczny payload API, identyczne wyniki, brak
+        utraty akcji, brak regresji UI, E2E+regresja OK) —
+        docs/uiux/PLAN_WYGASZANIA_MOSTU_WYNIKI.md §3a-3b. RECON: E-26 to
+        DZIECKO AnalysisSurface (przycisk FRT/LVRT/HVRT, kanon ekranów
+        screenCanonRegistry.ts:658, macierz pokrycia) — wygaszenie dotyka
+        typu ScreenCode i kanonu → refaktor za Bramką Parytetu z E2E.
+        Kolejność: W5b-1 (E-26) → W5b-2 (AnalysisSurface); delegacja PO
+        scaleniu P42 (jeden ciężki strumień frontendu naraz — zakaz dwóch
+        pełnych suit/E2E równolegle). METODA = OPCJA 1 (właściciel „rób
+        lepiej niż teraz"): wygasić tylko implementację/trasę legacy,
+        ekran kanoniczny zostaje z nowym dostawcą UI (E-26→EkranFrt),
+        ZERO zmian zamrożonego kanonu.
+        SCALENIE #40 / P42 (c521103 → cherry-pick): okno „Dobór
+        kompensacji" — rozdział DWÓCH cosφ w UI (kolumna DECYZYJNA =
+        cosφ punktu kompensowanego; cosφ przekroju = informacyjna;
+        test dowodowy: kandydat cosφ_przekroju 0,55 ale cosφ_punktu 0,97
+        → „spełnia", dobór sterowany punktem = Wymóg 2 właściciela).
+        Wykonawca: pełny vitest 8690 pass, 0 failed (+16). Zarządca:
+        48 celowanych + 7 guardów OK, push. STRUMIEŃ V12K-027 DOMKNIĘTY
+        end-to-end (K2 backend + P42 okno). Konfirmacja #40 w tle.
+        POTWIERDZENIE #40 (2026-07-17): pełny vitest 8690 passed, 0 failed
+        — BAZY: backend 6126, frontend 8690. Karta W5b-1 (wygaszenie E-26,
+        Opcja 1, za Bramką Parytetu + STOP-guard kanonu) delegowana.
+        SCALENIE #41 / W5b-1 (9cc9ba4 → cherry-pick, E-26=A, „nic nie
+        wstrzymuj"): usunięty redundantny przycisk mostu FRT/LVRT/HVRT
+        (punkt wejścia legacy), kanon nietknięty, EkranFrt dostawcą.
+        Bramka Parytetu 1-5 zielona; E2E niesprawdzalny w worktree
+        (uczciwie); 181 testów kanonu + bramki OK. STOP-GUARD: E-26
+        osiągalne z SLD → PEŁNE wygaszenie = karta koordynacyjna wątku
+        SLD (TODO). Zarządca: cherry-pick + kanon zielony + push.
+        USUNIĘTY DŁUG API-LIFECYCLE (2026-07-17, dyrektywa „usuwaj dług"):
+        23 końcówki tej sesji (oze-analysis/* + quality/* + warianty
+        .docx/.pdf) zarejestrowane w MACIERZ_KOMPATYBILNOSCI_API.md
+        (Wersja/Data/Zakres/Testy/Właściciel/Status); `api_lifecycle_guard`
+        ZIELONY (był czerwony całą sesję — guard nie był w liście bramek,
+        mój process gap). WPIĘCIE DO BRAMEK: api_lifecycle_guard +
+        v12xx_canon_guard dodane do stałej listy bramek kart backendowych.
+        POZOSTAŁY, PRE-EXISTING DŁUG (nie z tej sesji): v12xx_canon_guard
+        czerwony na `[dark-scada-missing-file] App.tsx` — motyw dark-SCADA
+        (markery nie istnieją nigdzie; migracja main.tsx→AppRoot) — osobna
+        karta.
+        SCALENIE #42 / dark-SCADA (78d12a9 → cherry-pick, „nic nie
+        wstrzymuj"): diagnoza = regresja migracji ui2 (motyw zdefiniowany
+        w całości: index.css/exportTheme/BaySvgRenderer, ale klasa
+        mv-dark-scada nieaktywna — App.tsx skasowany). Naprawa: nowy cienki
+        App.tsx (korzeń motywu mv-dark-scada + data-ui-theme=dark-scada)
+        opakowuje AppRoot; main.tsx renderuje App. `v12xx_canon_guard`
+        exit 0 (CAŁY dług kanonu tej rundy USUNIĘTY). Wykonawca: pełny
+        vitest 8690 pass, 0 failed. Zarządca: canon guard zielony +
+        celowany + type-check + lint, push. Konfirmacja #42 w tle.
+        E-26 pełne wygaszenie = TODO wątku SLD (U5_E14_SLD_KOORD_E26).
+        POZOSTAJE (D6): W5b-2 AnalysisSurface (Opcja 1, sprawdzić wejścia
+        SLD przed usunięciem trasy).
+        POTWIERDZENIE #42 (2026-07-17): pełny vitest 8690 passed, 0 failed
+        — bazy 6126/8690 (W5b-1 + dark-SCADA potwierdzone).
+        SCALENIE #43 / W5b-2 (5a0116d → cherry-pick): stub „Analiza
+        wrażliwości" usunięty (przycisk + widok + komponent + test stubu
+        z intencją D2); STOP-guard zweryfikowany NEGATYWNIE ('sensitivity'
+        nie figuruje w kanonie ani jego testach — czyste usunięcie); trasa
+        E-35 i fixActions zachowane wg karty; kanon nietknięty,
+        v12xx_canon_guard exit 0. Wykonawca: pełny vitest 8689 pass,
+        0 failed. Zarządca: 177 celowanych + canon + dead_click + push.
+        ZGŁOSZONE OSIEROCENIE: SensitivityPanel.tsx + sensitivityAnalyzer.ts
+        (ui/sensitivity) bez konsumenta w UI po wygaszeniu taba (mention,
+        nie delete — decyzja właściciela o pełnym usunięciu osobno).
+        EPIKA WYGASZANIA: D1+D2 wykonane (Opcja 1); D3/D4 zostają; W5
+        route-retirement E-26 czeka na wątek SLD.
+        W5b-3 / PEŁNE WYGASZENIE E-26 + USUNIĘCIE SIEROT (2026-07-18, po
+        konsolidacji wątków — dyrektywa „działaj jak architekt, usuwaj dług"):
+        konsolidacja (merge 75a70d3f) zniosła granicę wątków, więc domknięto
+        E-26 w tej sesji. `WorkspaceSurfaceRouter` `case 'E-26'` → `EkranFrt`
+        (ui2 superset) zamiast `ComplianceSurface`; komponent + import
+        FrtHvrtCurves/NcRfgProfileId usunięte; componentKey kanonu
+        'ComplianceSurface'→'EkranFrt' (metadana dostawcy, nie klucz routera);
+        kanon E-26 (label/area/testId/transitions) nietknięty, v12xx_canon
+        exit 0. Akcje SLD show-frt-hvrt/show-ncrfg celują w E-26 (=EkranFrt,
+        realny backend — bez regresji). USUNIĘTO cały katalog ui/sensitivity/
+        (Zero-Debt + D2=A): bez konsumenta ORAZ sensitivityAnalyzer liczył
+        FIZYKĘ w prezentacji (linearyzacja deltaU=dUdP·P+dUdQ·Q) — naruszenie
+        granicy warstw. Karta U5_E14 ZAMKNIĘTA. Bramki: type-check, lint 0,
+        celowany 215/215, guardy exit 0; pełny vitest w konfirmacji. KONFIRMACJA #43 ODROCZONA
+        świadomie do scaleń REF-A/REF-B (dwóch wykonawców w pełnych suitach
+        — jedna konfirmacja łączna zamiast serializowania trzech).
+        INTEGRACJA REFERENCE ENGINE V1 (zlecenie właściciela 2026-07-17,
+        HANDOFF z wątku SLD): Faza 0 — kontrakty skonsumowane BAJTOWO
+        z gałęzi SLD (types/api enm-inspector + mirrory ui/sld/reference,
+        parity zweryfikowany diffem); Faza 0.5 — wspólny klient
+        ui2/referencje/api.ts (reeksport + packs wg §1.1, 5 testów mock
+        fetch); pkt 2.5 słownik IA (SLOWNIK_IA_2026-07.md) + pkt 2.6
+        rezerwa RenderProfileId w useShellStore — GOTOWE. Pkt 2.1+2.2
+        (REF-A: Gotowość) i 2.3+2.4+2.7 (REF-B: inspektor+kreator) —
+        wykonawcy w toku. Backend nie istnieje na tej gałęzi — testy
+        mockiem fetch wg wymogu HANDOFF §3.4 (uczciwie w raporcie).
+  - [ ] U3 dalsze / U4–U5 wg programu
+
+Rozgraniczenie ZNIESIONE (dyrektywa właściciela 2026-07-21 „twarda granica wątków usunięta …
+działaj enduro end", rejestr V12K-084): jeden wątek prowadzi UI/UX + rework SLD
+(`docs/plan/PLAN_SLD_REWORK.md`) + Engineering 10x end-to-end w tej samej sesji/PR. Wolno
+edytować `ui/sld/**`, `sld-editor/**`, `engine/sld-layout/**` oraz warstwy 10x; klauzule
+„wątek SLD V12K-060 / karta cross-thread" w starszych rejestrach są bezprzedmiotowe —
+łańcuch domykamy do ostatniego klika (w tym glify/rendering SLD) bez odkładania. Rygor
+jakości bez zmian (pełna regresja warstwy + guardy + determinizm + FROZEN/golden nietknięte).
+
+### 3.-2 SLD v3 CAD/SCADA — program ZAMKNIĘTY + likwidacja długów repo (2026-07-17)
+
+Gałąź `claude/sld-schema-cad-scada-rqvz73`. Przebudowa SLD do jakości CAD/SCADA
+zakończona w całości: fazy F1–F11 (spec `docs/sld/SLD_CAD_SPEC_V3.md`,
+wykonanie `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md`), F12 (rozstrzygnięcia
+ARCH + kasacja ścieżki renderu v2, −16,5k linii), D3/F13 (kanon energetyczny:
+GPZ WN/SN jako dominanta §21, mostki skrzyżowań i kropka węzłowa §22.1, pas
+ochronny szyn + wejście przez głowicę od dołu §22.3, grubość magistrali §22.4
+— audyt `docs/sld/SLD_ENGINEERING_CANON_AUDIT_D3_2026-07.md`, macierz wyroczni
+`docs/sld/SLD_V3_ACCEPTANCE.md` §5, `npm run accept:sld-v3` ALL PASS L0/L1/L2).
+
+Dyrektywa stała właściciela (2026-07-17): każdy defekt/dług/bug naprawiany
+end-to-end bez pytania. Wykonana likwidacja długów (szczegóły: execplan,
+sekcja „Po programie"): martwe workflowy CI aktywowane, klaster legacy ui/sld
+skasowany (−11,7k linii), lista wykluczeń vitest wyzerowana (odbudowa testu
+inspektora złapała 2 realne regresje komponentu), spójność elektryczna
+szablonów DER (zgubiona moc, TR 3.15 MVA, strona nN za katalogiem),
+test_no_todo_fixme i docs_count trwale zielone.
+
+Runda 8 (2026-07-17, dyrektywa właściciela „Globalna integracja referencji
+SLD" — 12 punktów): REFERENCE ENGINE V1 (spec WIĄŻĄCA
+`docs/sld/REFERENCE_ENGINE_SPEC_V1.md`, ruling V12K-060). Backend
+`src/reference_engine/` z 8 wersjonowanymi pakietami JSON (iec60617 —
+słownik symboli, iec62271 — 10 profili pól required/one_of/forbidden/
+kolejność/aparaty boczne + blokada uziemnika wspólnym predykatem z W034,
+elektrometal_e2alpha, siemens_8djh, schneider_sm6, abb_unigear,
+abb_safering — ref do katalogu rodzin bez kopii danych, osd_enea);
+walidacja NA ŻYWO w walidatorze ENM (kody `reference.bays.*`, ścieżka
+danych, FixAction BayModal); kreator filtrowany słownikiem rodziny
+(SafeRing/8DJH bez CT); silnik zgodności ✓/✗ + Reference Score per pakiet
+(API `/api/reference/*`); frontend: mirror pakietów z parytetem BAJTOWYM,
+parytet słownika §12.4 z profilami (testy z sabotażami), zakładka
+„Referencje" Inspektora ENM. Katalog +Schneider Electric/SM6-24
+(repo_verified). Korekta faktograficzna: e²TANGO = sterowniki polowe (nie
+rozdzielnica) — pakiet Elektrometal oparty na e²ALPHA. Runda 8b (dyrektywa
+„zlec podwykonawca, zarządzaj, weryfikuj"): 2 podwykonawców research +
+integracja — pakiet osd_enea@2026-02 z pełnej lektury 4 dokumentów Enea
+Operator (5 reguł implemented: stacja kompaktowa podstawą, zakaz słupowej
+z kablowym podejściem SN, granice mocy TR 630/400 kVA, skład 1×TR+1–4
+liniowe, pomiar U/I pól zdalnie sterowanych TELE §6.4.1; kwalifikacja do
+telemechaniki NIEUREGULOWANA w standardzie — ustalenie z lektury); 40
+konfiguracji celek z oficjalnych katalogów (SafeRing/8DJH/SM6/UniGear) +
+family.cell_match + test kreator↔celki; e²ALPHA uczciwie bez celek
+(producent nie publikuje składu per typ pola). Dług pozostały: wzorniki
+GRAFICZNE producentów (zlokalizowane legendy symboli w katalogach — punkt
+startu). Szczegóły: execplan runda 8/8b. PRZEKAZANIE do wątku UI/UX
+(zlecenie właściciela 2026-07-17): kontrakt koordynacyjny
+`docs/sld/REFERENCE_ENGINE_UI_HANDOFF_2026-07.md` — prezentacja Reference
+Score/ostrzeżeń/✓✗ per element/pickera rodzin w nowej powłoce; kontrakty
+API + reguły twarde + potwierdzenia (wzorzec kontraktu 2026-07-15).
+
+Runda 7 (2026-07-17, „zaprojektuj i wykonaj end-to-end" — 7 pozycji PLAN
+recenzji NO-GO): szablony technologiczne pól (RMU-liniowe rozłącznik+ES+
+głowica, RMU-trafo z uziemnikiem; nowy glif rozłącznika IEC 60617; wyrocznia
+bay_template_probe z negatywem; korekta klas sylwetek V12K-031-A); tor za TR
+domknięty (wiersze „Szyna nN · 0.4 kV" + odbiór ΣP/ΣQ z rekordów Load albo
+jawna granica modelu; strzałka odbioru na szynie nN); identyfikatory globalne
+S01.F01.Q2 w inspektorze + serializacja Bay.primary_devices na snapshotcie
+(domknięcie V12K-030); walidator blokady uziemnika W034 + pole domeny
+earthing_role; VT/3U0 szyn GPZ z danych Measurement; etykiety kabli z parą
+końców „GPZ ↔ S01 — typ · długość"; pkt 16 (skala) — pomiar próby kompakcji
+wykazał potrzebę lustrzanej kompozycji wiersza (plan). Szczegóły + statusy:
+`docs/sld/SLD_REVIEW_NO_GO_2026-07-17.md`, execplan runda 7.
+
+Runda 6 (2026-07-17, recenzja NO-GO właściciela — 16 punktów, rejestr WIĄŻĄCY
+`docs/sld/SLD_REVIEW_NO_GO_2026-07-17.md`): naprawy GLOBALNE (spec/generator/
+domena/walidator): objazd magistrali poza granicą strefy GPZ (+3×GRID, warunek
+z pasem ±2×GRID); strona zaczepu źródła za `Source.bus_ref` — ekwiwalent SN na
+szynie SN z tabliczką w napięciu WŁASNEJ szyny + wiersz „Ekwiwalent sieci
+zasilającej" (koniec fałszu „Sk″ 250/Ik″ 9,62 przy 110 kV"), walidator domeny
+`sources.sk_ik_voltage_inconsistent` (Ik″=Sk″/(√3·U) ±5%); tabliczka TR z
+uk%/Pk z ENM; typ stacji terminalnej z topologii („stacja końcowa" gdy drugi
+koniec wisi, stopNote); numeracja pól GPZ F01/FT1 jako ostatni fallback;
+kotwica QE przy WŁASNYM uziemniku; legenda + głowica/źródło/koniec otwarty,
+miernik z literą wielkości (A/V z danych pomiaru); unikatowe domyślne nazwy
+stacji z kodem Sxx u źródła (backend). Regres złapany renderem: „Szyna WN ·
+15 kV" → osobny kanał `hvBusVoltageKv`. Pozycje PLAN (szablony technologiczne
+pól RMU, odbiory 0,4 kV, globalne ID aparatów, typologia uziemień, pomiary
+U/3U0, etykiety przy trasie, skala kompozycji) — projekt w rejestrze recenzji.
+
+Runda 4-5 (2026-07-17, odbiór „100% klasy przemysłowej" + korekta kanonu):
+FEEDERY Z PÓL GPZ wykonane end-to-end — wiersz feederu ze stacjami / bieg
+otwarty, `meta.stationCount` liczy stacje faktycznie narysowane, render DoD
+`docs/audit/visual/sld_gpz_feeder_L2.png`. KOREKTA KANONU (dyrektywa
+właściciela: „z jednego pola liniowego nigdy nie wychodzą dwa kable — każde
+wyprowadzenie ma dedykowane pole"): pierwotny T-zaczep przy wspólnym polu był
+herezją inżynierską i został usunięty; naprawa u ŹRÓDŁA w domenie —
+`start_branch_segment_sn` z GPZ przydziela DEDYKOWANE pole liniowe (wolne albo
+nowe; limit sekcji; relacja dwustronna pole↔korytarz — spec §21.3), scena
+rysuje feeder wyłącznie z jego pola (brak pola ⇒ stopNote), a korytarz
+magistrali omija pas portów innych pól. Świadomie poza zakresem (F6b): wiele
+GPZ i odgałęzienia zagnieżdżone (jawne stopNotes). Wcześniej w tej rundzie:
+odmaskowanie klików e2e (Zero-Debt pkt 5) ujawniło i naprawiło nieklikalną
+kreskę toru (hitbox 12 px) i martwy lewy klik (pointer-capture).
+
+Runda 3 (2026-07-17, „Wykonaj"): OBIE ostatnie luki v3 zamknięte end-to-end
+(szczegóły + pomiary: execplan, sekcja „Dług otwarty… ZAMKNIĘTE"):
+(1) §16-v3 biegi OTWARTE + tożsamość łańcucha — realne segmenty ENM bez
+następnika (13 ogonów na fixturze referencyjnej, dotąd niewidocznych) rysowane
+do słupka terminalnego z etykietą „koniec otwarty"; przęsła wieloczłonowe
+niosą kawałek per segment ENM (klik/nakładka per człon); wyrocznia
+`open_terminal_probe` + 21 testów na fixturach z realnego backendu;
+(2) program P-A — nakładka rozpływu deklaruje pochodzenie na kanwie
+(badge case_ref/zbieżność) i niesie atrybuty solverowe na odcinkach/symbolach;
+`sld-pa-powerflow-tor` 6/6, `sld-editor-real-backend-flex` 2/2. Przy okazji
+naprawione DWA defekty produktu: martwy lewy klik w elementy kanwy
+(pointer-capture przekierowywał click na tło) i selekcja transformatora
+(bay-ref zamiast realnego refu + odporność na modele z pustym `bays`).
+
+### 3.-1 ESKALACJA (2026-07-15): odwrócony znak mocy w canonical PF pipeline — NAPRAWIONE (F9.8, tego samego dnia)
+
+Podczas F9.6 przebudowy SLD v3 (`docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md` § F9.8) wykryto i
+NIEZALEŻNIE POTWIERDZONO (reprodukcja z dwóch ścieżek) pre-istniejącą podwójną negację znaku mocy:
+`mapping.py` buduje `Node.active_power` w konwencji generacyjnej, `canonical_analysis.py:1185`
+przekazuje ją wprost do `PQSpec.p_mw`, a solver (`build_power_spec_v2`) neguje ponownie, oczekując
+konwencji obciążeniowej. Skutek: obciążenia wchodzą do rozpływu jako generacja — odwrócone znaki
+`p_from_mw`/`q_from_mvar` i błędny profil napięcia (rośnie za obciążeniem) w KAŻDYM realnym
+przebiegu LOAD_FLOW przez canonical pipeline. Istniejące testy nie łapią błędu (asercje wyłącznie
+względne/samo-spójne). Solver niskopoziomowy jest POPRAWNY — błąd leży w warstwie przygotowania
+wejścia (`canonical_analysis.py`, `sld_substrate_power_flow.py`). Plan naprawy (wiążący kształt,
+zalecony przez recenzję): § F9.8 w `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md`.
+**STATUS: NAPRAWIONE w rundzie F9.8 (2026-07-15, recenzja APPROVE z niezależną reprodukcją):**
+konwersja gen→load na granicy budowy PQSpec (`canonical_analysis.py`, `sld_substrate_power_flow.py`),
+solver i mapping nietknięte; dowód topologiczny w
+`test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct`; asercje bezwzględne
+dodane tam, gdzie testy były samo-spójne z błędem. Szczegóły i liczby przed/po: § F9.8 execplanu.
+
+**NASTĘPSTWA W WĄTKU UI — REKALIBRACJA K3 (konsolidacja gałęzi, 2026-07-17,
+karta `docs/uiux/karty/U4_K3_REKALIBRACJA_PO_F98.md`):** F9.8 był pierwotną
+przyczyną anomalii V12K-040 (cosφ z przepływu gałęzi malał po dodaniu baterii)
+— po scaleniu wątku SLD do gałęzi UI 22 testy diagnostyczne K1/K2/D8/D7
+wymagały rekalibracji do nowej (fizycznie poprawnej) prawdy liczbowej.
+Wykonano: (1) adapter `konwencja_mocy.py` — reguła odwzorowania tożsamość →
+NEGACJA końca incydentnego; (2) `dobor_kompensacji.py` — odzysk zapotrzebowania
+`Q_load = Q_przekroju + Q_cap_eff` (po F9.8 przepływ zawiera efekt baterii;
+anomalia shuntu ZNIKŁA); (3) wartości odniesienia w testach przemierzone
+(m.in. `v_load=0,989299<1`, `slack_q=+0,509650`, kompensacja PODNOSI cosφ
+przekroju 0,894427→0,999976); (4) wykryty i naprawiony DEFEKT NASTĘPCZY F9.8:
+`canonical_analysis.py:1256` montował `p_injected_mw` szyn PQ w konwencji
+poboru wbrew FROZEN kontraktowi („ujemna = pobór", `power_flow_result.py:35`)
+— negacja przy montażu wyniku; dowód: 3 testy D7 (`test_odpowiedz_osd_service`)
+kodujące udokumentowaną konwencję przechodzą bez zmian asercji. Decyzja
+właściciela V12K-040 (opcja B: adapter + rozdział cosφ przekroju/punktu)
+pozostaje w mocy; adnotacje w `REJESTR_KONFLIKTOW.md` (V12K-040) i karcie K2.
+
+**ZASADA FLOW PROJEKTANTA (dyrektywa właściciela 2026-07-18 — OSTRA):**
+stare ekrany (`ui/**`, most) NIE są wzorcem docelowym ani „kanonicznymi
+dostawcami" — kanon V12.xx to rejestr ZDOLNOŚCI (rozstrzygnięcie V12K-041);
+każdy nowy ekran projektowany OD ETAPU FLOW projektanta (E1–E8) wg kontraktu
+ekranu prowadzącego (cel · tor pracy z akcjami naprawczymi · uczciwe stany
+zerowe · następny krok · język inżynierski). Specyfikacja WIĄŻĄCA:
+`docs/uiux/FLOW_PROJEKTANTA_2026-07.md`; program §2.4; priorytety przebudów
+wg bólu inżyniera na etapach (F-E5 analizy → F-E8 dokumentacja → F-E6 pętla
+decyzji → F-E1 pulpit projektu → F-E3/E4 następny krok → F-E7 wejścia SLD).
+Wzorce referencyjne: EkranAnalizTechnicznych (hub E5), EkranFrt (E-26).
 
 ### 3.0.0 V12.6 academic end-to-end closure (completed)
 
@@ -369,6 +1267,41 @@ Następne PR-y (PR-5..PR-16) — patrz pełen plan `/root/.claude/plans/jeste-ur
 
 ---
 
+### 3.4 SLD v3 — przebudowa CAD/SCADA wg SLD_CAD_SPEC_V3 (2026-07, dyrektywy D1+D2 WDROŻONE)
+
+**Branch:** `claude/sld-schema-cad-scada-rqvz73` · **Plan:** `docs/execplans/SLD_CAD_REBUILD_PLAN_V3.md` · **Spec (wiążąca):** `docs/sld/SLD_CAD_SPEC_V3.md`
+
+Program F1–F11 zamknięty (2026-07-16). Zakres wdrożony:
+- **Pipeline v3** (measure→bands→columns→route→label, GRID=8, LOD 0/1/2, determinizm) + kanwa
+  `SldCanvasV3` z kamerą (pan/zoom/pinch, histereza LOD, fit per LOD — k4 rozwiązane F8a).
+- **Dyrektywa D1** (oznaczenie zabezpieczeń jak na schemacie referencyjnym ABB): przekaźnik-okrąg
+  z kodami funkcji, wyłącznik „52"-kwadrat, tor wyzwalania (dash 4-2), linia pomiarowa CT→przekaźnik
+  (dash 2-2), miernik „M" z legendą dyskryminującą — spec §17/§20, GPZ objęty od F11.1.
+- **Dyrektywa D2** (9 ustaleń inżynierskich): ciągły tor z opisanymi zakończeniami (§18.6), pola
+  funkcjonalnie bez WE/WY (§19.4), Q per aparat (§19.1), typ stacji z topologii (§19.5), symbole
+  IEC ze stanem + szyny „Sekcja N · V kV" (§19.2/§19.3), uziemnik LATERALNIE z blokadą w legendzie
+  (§18.1), CT opisane/powiązane + VT równolegle (§18.2/§18.3), rozdzielone linie pomiar/TRIP +
+  walidacja topologiczna 67N/87T/51N (§20.1/§20.2), adnotacje nie zasłaniają toru (§20.3).
+- **Uczciwość danych**: naprawy fabrykacji u źródła (podwójna negacja znaku mocy w canonical PF —
+  §3.-1 wyżej; heurystyka zero_sequence; stała operating_mode → realny kanał `Generator.meta`,
+  F11.3 backend+frontend §13.3); brak danych = brak rysunku + stopNote/missingData.
+- **Wyrocznie jako bramki CI**: `npm run accept:sld-v3` — 30+ sond per LOD, każda z testem
+  negatywnym; macierz finalna: `docs/sld/SLD_V3_ACCEPTANCE.md` §5. Baseline'y §15.1:
+  12120/41000/54104 (nie-rosnące), symbolWire=0 (twardy).
+- **Parytet F8c (F11.4)**: drawer szczegółów, menu kontekstowe, paleta DER, konsolidacja
+  useMeasuredSize — dostarczone na v3; **usunięcie renderu v2 POZOSTAJE BRAMKOWANE** trzema
+  pozycjami dla właściciela (wykonawca akcji menu; geometria ręczna CAD — decyzja spec-first;
+  Conscious Split — produkcyjnie nieosiągalny, decyzja produktowa) — szczegóły: wpis F11.4 planu.
+- **Koordynacja z wątkiem UI**: kontrakt `docs/sld/SLD_PROTECTION_MARKING_COORDINATION_2026-07.md`;
+  kolizja identyfikatorów V12K-026 zarejestrowana (V12K-032, propozycja renumeracji przy scaleniu).
+
+Bramki końcowe: frontend 551 plików / 7790 testów PASS; backend 5720 PASS (1 pre-existing fail
+`test_no_todo_fixme_in_catalog_first_critical_paths`, poza zakresem); accept ALL PASS; guardy
+(sld_determinism/arch/no_codenames/dead_click/overlay_no_physics/forbidden_ui_terms/docs) PASS.
+Rendery odbioru: `docs/sld/renders/v3/` (odświeżone 2026-07-16).
+
+---
+
 ### 3.6 P0 implementation sprint (2026-05-13)
 
 Zrealizowane w jednym dniu (**20 commitów po cleanupie** — sprint kontynuowany):
@@ -627,617 +1560,8 @@ Current truth: this PLANS.md document.
 
 ---
 
-## 5.0 Sesja Audytu Wizualnego (28 commitów, branch claude/cleanup-documentation-sld-7zVRd)
 
-### Wyniki pętli 11 iteracji (zespół 5 specjalistów)
+## 9. Archiwum sesji operacyjnych
 
-| Iter | Projektant | CAD | SCADA | Wizual | Whitebox | Średnia | GO/5 |
-|------|-----------|-----|-------|--------|----------|---------|------|
-| i=1 | 1.0 | 0.0 | 2.5 | 3.0 | 1.0 | **1.35** | 0/5 |
-| i=2 | 4.0 | 3.0 | 5.5 | 5.0 | 3.0 | **4.10** | 0/5 |
-| i=5 | 4.5 | 6.5 | 6.0 | ✓ 8.0 | 4.0 | **5.78** | 1/5 |
-| i=7 | 4.5 | ✓ 8.5 | 6.0 | 8.0 | 4.0 | **6.28** | 2/5 |
-| i=9 | 4.5 | 8.5 | ✓ 7.5 | 8.0 | 4.0 | **6.58** | 3/5 |
-| i=10 | 5.5 | 8.5 | 7.5 | 8.0 | ✓ 7.0 | **7.18** | 4/5 |
-| i=11 | ✓ 7.0 | 8.5 | 7.5 | 8.0 | 7.0 | **7.625** | **5/5 ✓** |
-
-Postęp: 1.35 → 7.625/10 (+6.275 pkt, ~465% wzrost).
-
-### Dostarczone UI komponenty (rozwiązane blokery)
-
-1. **Grid ETAP-grade + rulers** (CAD blocker iter 5-7):
-   - `frontend/src/index.css` — sld-canvas-grid: dot-grid 20×20 + minor 20×20 + major 100×100 + intersection markers + origin axes Y=0
-   - .sld-canvas-ruler-top (18px high) + .sld-canvas-ruler-left (24px wide) z tickami px co 20+100
-
-2. **LayerTogglePanel** (SCADA blocker iter 9):
-   - `frontend/src/ui/sld/v2/lod/LayerTogglePanel.tsx` (11 testów)
-   - 13 warstw z LAYER_IDS + LAYER_LABELS_PL + LOD badge + Reset CTA + override marker
-   - Integracja w SldWorkspaceContainer — floating dock prawy dolny
-
-3. **ProofPacksPanel** (Whitebox blocker iter 10):
-   - `frontend/src/ui/sld/v2/proof/ProofPacksPanel.tsx` (10 testów)
-   - 8 canonical proof packs (SC3F, VDROP, Equipment, PF, Losses, Protection, Earthing, LF Voltage)
-   - Status states (blocked / requires / available) z gating na hasNetworkModel
-   - Floating dock lewy dolny
-
-4. **NetworkHierarchyTree** (Projektant blocker iter 11):
-   - `frontend/src/ui/sld/v2/domain/NetworkHierarchyTree.tsx` (12 testów)
-   - Tree-view GPZ → Sekcja → Pole + Ciągi liniowe + Źródła OZE
-   - Collapsible per node, onSelectNode callback
-   - Defensive mapping snapshot → EnmInputForHierarchy
-   - Floating dock lewy górny
-
-5. **Fix dead-clicks topbar** (iter 8):
-   - Nakładka/Analizy/Eksport disabled gdy snapshot.buses[].length===0
-   - Polish tooltip "Wymaga modelu sieci (dodaj GPZ)"
-
-6. **SLD_STROKE_PX hierarchy tokens** (AC-01 iter 4):
-   - `frontend/src/ui/sld/v2/theme/tokens.ts` — transmission/transformer/busbar/trunk/branch/detail (5/4/4/3/2/1.5)
-
-7. **WCAG fix** (iter 3): "Zabezp." → "Zabezpieczenia" w areaRegistry
-
-### Pozostałe blokery do osiągnięcia 10/10 (~92 OD)
-
-- **Mostek katalog → symbol → SLD renderer** (Projektant warunek pełen GO, ~10 OD)
-- **Wizard kroki** (K3 simple/advanced toggle, K1 operator selector, K7 split-preview commit, ~7 OD = P0.9)
-- **Port-based routing F2** (~25 OD = P0.3) — LayoutEngine hierarchical-port-based, 100% edges port-based
-- **Theme switcher F4** (~20 OD = P0.7) — dark_scada/light_technical CSS variables + overlay SC/PF/Protection + SVG/PDF eksport vector
-- **LOD 5 poziomów + GpzSwitchgearRenderer refaktor** (~15 OD = P0.6)
-- **Fault-loop NN solver** (~15 OD = P0.5) — backend solver + FE FaultLoopResultPanel
-- **VDROP/Earthing proof packs golden tests** (~5 OD = część P0.4)
-- **CI visual regression** (~8 OD = P0.10) — Playwright toHaveScreenshot, 60 snapshotów
-- **Protection SI-100 FE "Uruchom Protection"** (~5 OD = P0.2)
-- **Symbol library expansion** (~5 OD = P0.1) — 54 → ≥50 z parity ≥90%
-- **DoD acceptance**: 67/67 guards, 32 views ≥9/10, performance 500ms/50ms benchmark
-
-### Foundation z poprzedniej sesji (13 commitów)
-
-- `lodScaling.ts` — LOD-aware font/stroke/symbol/padding (37 testów)
-- `fault_loop_iec60364` envelope adapter — P0.5 step 3 (10 testów)
-- 4 audit fixes (labelPositioning unresolved, exportSvg `<style>` block, fault_loop logger, lodScaling non-physics clarification)
-- 6 nowych modułów coverage (BuildSequence 31, HierarchicalLayout 17, HierarchyTree 21, routing 23, slot 28, overlayStore 21, tokens 15, RunButton 20)
-- ~244 nowych testów łącznie
-
-
----
-
-## 5.1 Iter 12 — REAL SCHEMAT AUDIT (BREAKTHROUGH + REGRES)
-
-Po commicie 8a817f4 (auto-load activeCaseId) canvas pierwszy raz pokazuje
-REALNY schemat (svg=46, emptyState=0). Zespół 5 specjalistów wykonał
-audyt REAL state vs prev (placeholder).
-
-### Wyniki vs poprzednie iteracje (placeholder vs real)
-
-| Iter | Specjalista | Placeholder ocena | REAL ocena | Δ |
-|------|-------------|-------------------|------------|---|
-| 12   | Projektant  | 7.0               | 6.5        | -0.5 |
-| 12   | CAD         | 8.5               | 7.5        | -1.0 |
-| 12   | SCADA       | 7.5               | 7.0        | -0.5 |
-| 12   | Wizualny    | 8.0               | 7.0        | -1.0 |
-| 12   | Whitebox    | 7.0               | 7.5        | +0.5 |
-|      | Średnia     | 7.625             | 7.03       | -0.6 |
-
-Wniosek: poprzednie oceny 7.625/10 były FALSE-POSITIVE — zespół oceniał
-puste UI shell + Layers/ProofPacks panels, NIE realny schemat elektrotechniczny.
-
-### Ujawnione krytyczne blokery (po pokazaniu real schematu)
-
-A. PROJEKTANT SN/WN (PN-EN 60617 violation):
-   - Brak galwanicznego ciągu 110 kV → TR1 → Sekcja 1/II
-     (pixel region x=620-700, y=250-470 — TR1 wisi w powietrzu)
-   - Sekcja II ma tylko etykietę, brak pól Q1/Q8/T1/Q9
-     (asymetria rozdzielni dwusekcyjnej)
-   - Kabel SN 750 m wychodzi z nieistniejących pól
-
-B. CAD INDUSTRIAL:
-   - Pole TR1 symbol aparatów ~12 px (min ETAP/DIgSILENT = 24 px)
-   - Kabel czerwony nieortogonalny w punkcie wejścia do RMU
-     (skos pixel x=890-920)
-   - Labelki kabli nakładają się na geometrię (x=700-830, y=645)
-   - Drzewo modelu + Gotowość overlay nakładają się na ruler
-
-C. SCADA:
-   - Czerwony kabel przerywany sugeruje "fault/alarm" w trybie design
-     (mylące semantycznie dla operatora)
-   - Brak legendy stanów (energized/de-energized/fault)
-   - Brak severity coloring Blokady=7 / Ostrzeżenia=5
-
-D. WIZUALNY/WCAG:
-   - "Pole TR1" label kontrast ~3.2:1 (WCAG AA wymaga 4.5:1)
-   - Etykiety aparatów Q1/Q8/T1/Q9 + "Pole TR1" przy ~10-11 px
-     (WCAG min 12 px dla content text)
-   - Kolizja "System 110 kV" + ">110 kV" (x=240-340)
-
-E. WHITEBOX:
-   - Brak widocznego ID elementów (TR1 etykieta vs bus_id/branch_id)
-   - Sekcja II bez pól = trace gap dla tej szyny — NetworkValidator
-     powinien flagować
-
-### Następne sesje wymagane
-
-P0 KRYTYCZNE (rework rendererów):
-- SldLayoutPipeline faza 5 routing — wymusić ortogonalne busbar ↔ TR ↔ section
-- StationBlockBuilder — Sekcja II adapter snapshot→props symmetric per Sekcja 1
-- Min symbol size 24 px @ LOD2 — adaptacja SymbolRenderer scale
-- Min font 12 px content per WCAG (theme tokens override per LOD)
-
-P0 BLOKERY UX:
-- Reserved gutters dla rulers (top 20 px, left 30 px) — przesunąć overlays
-- Legenda stanów (design vs operational) — usunąć fault-style w trybie design
-- Severity coloring Blokady (czerwone) / Ostrzeżenia (żółte)
-
-P0 ENM VALIDATION:
-- NetworkValidator powinien wykrywać "section without bays" warning
-- Element ID overlay / tooltip dla audit trail
-
-
----
-
-## 5.2 Sesja kontynuowana — E2E backend pipeline COMPLETE (12/14)
-
-### GN01 deterministyczny seeder + audyt (iter 16-22, 50 commitów total)
-
-Kompletna ścieżka audytowalna **GN01 baseline**:
-
-```
-1. Project + Study Case (K1)
-2. GPZ 110/15 kV (K2)
-3. Sekcja II SN (K3)
-4. Pole Q01 LINE_OUT (K4)
-5. Kabel SN EPR Al 1C 150 / 1500m (K5)
-6. Stacja inline MV/LV (K6) — TR 1000 kVA + 3 pola SN + sekcja nN
-7. Odgałęzienie 800m z ZKSN.BRANCH_1 (K7)
-8. ZKSN RSN-6 (K8) — przelotowy 2-port BRANCH_1/BRANCH_2
-9. (opcjonalne) — station configurator details
-10. PV inverter 0.5 MW @ 0.4 kV (K10) — add_converter_source nn_side
-11. OZE setpoints (K11) — update_element_parameters z limits.{cos_phi_min/max, q_min/max, p_max_mw}
-12. (opcjonalne) — Katalog drag-from-katalog UI
-13. 6 SOLVER ANALIZ (K13) — wszystkie DONE:
-    • SC_3F (IEC 60909)
-    • SC_2F
-    • LOAD_FLOW (Newton-Raphson)
-    • PHASE_STATE_SN
-    • DYNAMIC_STABILITY (FRT/LVRT)
-    • SOURCE_COMPLIANCE (NC RfG)
-14. 6 EKSPORT FORMATÓW (K14) — wszystkie HTTP 200:
-    • proof/json    106 KB (z white_box_trace)
-    • proof/latex   16 KB
-    • proof/pdf     10 KB (5 stron)
-    • report/json   69 KB
-    • report/pdf    3 KB
-    • report/docx   37 KB (python-docx)
-    TOTAL: 243 KB deterministic
-```
-
-### ENM final state (revision 10)
-
-- bus_count: 13 (110/15 kV system + sekcje SN + nN + ZKSN + connections)
-- branch_count: 10 (TR + kable SN split przez ZKSN + odgałęzienie)
-- source_count: 1 (GPZ Sk3 4000 MVA)
-- generator_count: 1 (PV setpoints P=0.4 MW, cos_phi 0.9-1.0)
-- transformer_count: 2 (TR1 GPZ + TR400 stacja)
-
-### Rozpoznane konwencje catalog binding (8 wzorców)
-
-1. **Synthesized**: grid_source, sn_bay, kabel, station — namespace z operation+context
-2. **Explicit namespace**: branch_points (`mv_branch_points`)
-3. **Voltage-matched**: converter_source (`source_technology`→ ZRODLO_NN_PV/BESS/FW)
-4. **Allowlist update**: generators allowlist {name, p_mw, q_mvar, limits, n_parallel, meta, in_service}
-5. **From_ref format**: element_ref + port_id z `.` separator (np. `bp/{hash}/zksn.BRANCH_1`)
-6. **Branch port naming**: ZKSN = BRANCH_1/BRANCH_2 (2 porty), słup_rozg = BRANCH (1 port)
-7. **Catalog voltage matching**: catalog napięcie MUSI match target_bus voltage (V_match z error converter.voltage_mismatch)
-8. **Catalog status hierarchy**: PRODUKCYJNY_V1 > REFERENCYJNY_V1 > CANDIDATE > REQUIRES_SOURCE
-
-### Pokrycie DoD (P0 priorytety)
-
-- ✓ **P0.8 DOCX export** (37 KB python-docx, polski raport) — KOMPLETNY
-- ✓ **P0.4 częściowo** — 4/8 proof packs DONE (SC_3F, SC_2F, LF, PHASE_STATE_SN, DYN, SRC_COMP);
-  VDROP/Earthing/Equipment/Losses unimplemented (~10 OD)
-- ✓ **Frozen API + WHITE BOX + Determinism** — wszystkie 3 invariants V12.xx canon
-- ⏸ P0.1 Symbol library (32→≥50, ~10 OD)
-- ⏸ P0.2 Protection SI-100 FE Uruchom Protection (template_ref binding ~5 OD)
-- ⏸ P0.3 LayoutEngine port-based F2 (~25 OD)
-- ⏸ P0.5 Fault-loop NN solver (~15 OD)
-- ⏸ P0.6 LOD refactor + renderer wiring lodToFontSize (~15 OD)
-- ⏸ P0.7 Theme F4 (~20 OD)
-- ⏸ P0.9 Wizard improvements (~7 OD)
-- ⏸ P0.10 CI visual regression (~8 OD)
-
-### Wymagane następne sesje (~90 OD)
-
-Per stop hook estimate: ~30-40 OD rendering rework + ~50 OD pozostałe P0.
-Branch 50 commitów ready do dalszej pracy.
-
-
----
-
-## 5.3 Iter 23 — REWIZJA stop hook estimate (proof packs JUŻ KOMPLETNE)
-
-Po sweep weryfikacyjnym `tests/proof_engine/` odkryto że **stop hook
-estimate był BŁĘDNY** w stwierdzeniu "P0.4 VDROP/Earthing/Equipment/
-Losses unimplemented".
-
-### Stan faktyczny proof_engine/packs/ (9 packs + 291 testów PASS)
-
-```
-backend/src/application/proof_engine/packs/
-├── audit2_validation.py
-├── earthing_ground_fault_sn.py    ← P0.4 EARTHING (KOMPLETNY)
-├── p14_power_flow.py              ← PF (KOMPLETNY)
-├── p16_losses.py                  ← LOSSES (KOMPLETNY)
-├── phase_state_sn.py
-├── protection_settings.py          ← PROTECTION (KOMPLETNY)
-├── qu_regulation.py
-├── sc_asymmetrical.py              ← SC_3F (KOMPLETNY)
-└── vdrop.py                        ← P0.4 VDROP (KOMPLETNY)
-```
-
-### Test coverage (poetry run pytest tests/proof_engine/)
-
-- 291 testów PASS w 1.47s
-- `test_vdrop_pack.py`: 6/6 PASS (per V12K-015 standalone wrapper)
-- `test_earthing_pack.py`: PASS
-- `test_*` dla pozostałych packs: PASS
-
-### Pokrycie DoD (rewizja po iter 23)
-
-DoD wymaga: "8 pakietów dowodów deterministycznych (SC3F/VDROP/Equipment/
-PF/Losses/Protection/Earthing/LF Voltage)".
-
-Stan faktyczny:
-- ✓ SC3F (sc_asymmetrical) — KOMPLETNY
-- ✓ VDROP — KOMPLETNY (test_vdrop_pack 6/6 PASS)
-- ✓ Equipment (audit2_validation) — KOMPLETNY
-- ✓ PF (p14_power_flow) — KOMPLETNY
-- ✓ Losses (p16_losses) — KOMPLETNY
-- ✓ Protection (protection_settings) — KOMPLETNY
-- ✓ Earthing (earthing_ground_fault_sn) — KOMPLETNY
-- ⏸ LF Voltage — pack nie istnieje jako osobny plik (może być częścią
-  p14_power_flow lub vdrop). Wymaga weryfikacji.
-
-7/8 proof packs UDOWODNIONE jako KOMPLETNE.
-
-### Rewizja całkowitego OD estimate
-
-Stop hook szacował ~80-90 OD pozostałe. Po rewizji:
-- P0.4 VDROP/Earthing: NIE potrzeba 10 OD (już KOMPLETNE) — wykreślone
-- P0.8 DOCX: ✓ KOMPLETNY (37 KB DOCX zweryfikowany w iter 21)
-- Faktycznie pozostałe OD: ~70 OD (bez P0.4 i P0.8)
-
-Branch 52 commitów ready. Cel 10/10 wymaga jeszcze tylko ~70 OD
-(NIE 90 OD per stop hook).
-
-
----
-
-## 5.4 Iter 24 — P0.6 LOD Renderer Wiring Foundation (53 commit)
-
-Zaadresowany krytyczny gap wykryty w iter 12 REAL audit Whitebox:
-"lodToFontSize/lodToSymbolScale/lodToStrokeWidth są zdefiniowane ale
- ŻADEN renderer ich nie używa".
-
-### Dostarczone
-
-1. **SldLodContext.tsx** (NOWY) — React Context propagacja LOD:
-   - Default LOD=2 (standard) gdy provider brak (backwards compat)
-   - Helpers: getFontSize(role), getStrokeWidth(role), getSymbolScale()
-   - Wrapper SldLodProvider z lod prop
-
-2. **SldLodContext.test.tsx** (NOWY) — 7 testów:
-   - Default context bez Provider (LOD=2 fallback)
-   - 5 parametrized testów LOD 0..4 (font/stroke values dokładne)
-   - Re-render z różnym LOD propaguje correctly
-
-3. **Wiring w SldCanvasV2.tsx**:
-   - <SldLodProvider lod={lod}> opakowuje <svg> root
-   - Wszystkie zagnieżdżone rendery dziedziczą LOD bez prop drilling
-   - Type-check OK (import + provider w return)
-
-4. **Wiring w GpzCanonicalRenderer.tsx TrFieldColumn**:
-   - "Pole TR1" label: fontSize={getFontSize('bayName')} zamiast hardcoded 11
-   - Iter 24 PROOF OF CONCEPT — pozostałe ~20 spotów hardcoded fontSize
-     mogą być wired analogicznie w iter 25+
-
-### Regression
-
-- 617/617 testów PASS (lod + renderer + canvas)
-- Type-check OK
-- Brak zmian w semantyce (font size LOD-2 standard = pre-iter 24)
-
-### Pozostałe spots do wire (iter 25+ follow-up)
-
-W `GpzCanonicalRenderer.tsx` (20 hardcoded fontSize 10-12):
-- HV section labels (linie 421, 564, 858)
-- ApparatusText (linia 1002)
-- LV bays / transformer labels (1378, 1450, 1543, 1546, 1549)
-- Apparatus question marks (1592, 1609, 1632)
-- Misc labels (1656, 1694, 1714, 1743, 1748)
-
-Wszystkie obecnie 10-12 px = OK per WCAG min 10. Wire wymagałby
-przemapowania role per kontekst (bayName/deviceQ/parameter/badge).
-Zostaje jako bounded follow-up — nie blokuje funkcjonalności.
-
-### P0.6 Status (rewizja po iter 24)
-
-- ✓ Tokens (lodScaling.ts) — KOMPLETNE (iter 13)
-- ✓ Tests (39 lodScaling + 7 LodContext) — KOMPLETNE
-- ✓ Foundation (SldLodContext + Provider) — KOMPLETNE (iter 24)
-- ✓ 1 spot wired (TrFieldColumn "Pole TR1") — proof of concept
-- ⏸ Systematic sweep (~20 spotów GpzCanonical + ~5 inne) — ~5 OD follow-up
-- ⏸ GpzSwitchgearRenderer split 3392 → 6 plików ≤ 500 — ~10 OD (oddzielny ticket)
-
-P0.6 foundation DONE. Pozostałe ~15 OD systematic sweep + refactor.
-
----
-
-## 5.5 Iter 25-26 — P0.1 + P0.5 status revision (56 commitów)
-
-### P0.1 Symbol Library — JUŻ KOMPLETNY (verified iter 25)
-
-Stop hook szacował "32 → ≥50". Faktycznie:
-- **54 SVG plików** w `frontend/src/ui/sld/canonical_symbols/`
-- **54 entries** w `ports.json`
-- **100% parity** (brak orphanów w żadną stronę)
-
-P0.1: ✓ DONE.
-
-### P0.5 Fault-loop NN API — KOMPLETNY (iter 26)
-
-Solver + builder + envelope adapter istniały. Iter 26 dodał:
-- ✓ **API endpoint `POST /api/fault-loop/compute`**
-- ✓ Pydantic schemas + Polish error messages + WHITE BOX trace
-- ✓ Smoke test: z_loop {re:0.0404, im:0.0298, |Z|:0.0502Ω}
-
-P0.5 backend: ✓ DONE.
-
-### Rewizja P0 status (6/10 KOMPLETNE)
-
-| P0 | Status | OD |
-|---|---|---|
-| P0.1 Symbol library 54/50 100% | ✓ | 0 |
-| P0.2 Protection SI-100 backend | ✓ (FE ~5) | 5 |
-| P0.3 LayoutEngine port-based F2 | ⏸ | 25 |
-| P0.4 VDROP+Earthing proof packs | ✓ | 0 |
-| P0.5 Fault-loop NN backend API | ✓ (FE ~3) | 3 |
-| P0.6 LOD foundation | ✓ (sweep ~15) | 15 |
-| P0.7 Theme F4 | ⏸ | 20 |
-| P0.8 DOCX export | ✓ | 0 |
-| P0.9 Wizard improvements | ⏸ | 7 |
-| P0.10 CI visual regression | ⏸ | 8 |
-
-**Sumarycznie: 6/10 P0 priorytety KOMPLETNE.** Pozostałe ~83 OD.
-
-
----
-
-## 5.6 Iter 27 — P0.9 Wizard improvements (verified existing state)
-
-Sweep weryfikacyjny K1+K3+K7 (per P0.9 spec).
-
-### K3 — toggle "Uproszczony" / "Zaawansowany"
-
-**JUŻ ISTNIEJE** w `CreateCaseDialog.tsx:225-226`:
-```tsx
-<option value="simplified">Uproszczony — moc zwarciowa po stronie SN</option>
-<option value="advanced">Zaawansowany — model 110 kV + TR + GPZ</option>
-```
-Plus integracja w types.ts ScInputMode + sc_input_mode propagacja
-do study_case.config.
-
-K3: ✓ DONE (verified).
-
-### K1 — selektor operatora default ENEA
-
-**JUŻ ISTNIEJE** w `study-cases/types.ts`:
-```typescript
-export type OperatorProfileId = 'enea' | 'energa' | 'pge' | 'pse' | 'tauron';
-
-DEFAULT_CASE_CONFIG = {
-  operator_profile_id: 'enea',  // default per /goal V12K
-  ...
-};
-```
-Dropdown selector w CreateCaseDialog.tsx:185.
-
-K1: ✓ DONE (verified).
-
-### K7 — split-preview commit/cancel
-
-**PURE FUNCTION JEST** (`builder/splitLinePreview.ts` + 31 testów),
-**UI KOMPONENT BRAKUJE** (`SplitPreviewModal` lub overlay z commit/cancel
-buttons).
-
-K7: ⏸ ~3 OD (UI modal + integracja z SldWorkspaceContainer).
-
-### P0.9 Status
-
-- ✓ K3 toggle simplified/advanced — DONE
-- ✓ K1 operator default ENEA — DONE
-- ⏸ K7 split-preview commit/cancel UI — ~3 OD follow-up
-
-**P0.9 backend foundation: DONE.** Tylko K7 UI modal pozostaje (~3 OD).
-
-### Rewizja P0 status (po iter 27 sweep)
-
-| P0 | Status |
-|---|---|
-| P0.1 Symbol library 54/50 100% parity | ✓ |
-| P0.2 Protection SI-100 backend | ✓ (FE ~5) |
-| P0.3 LayoutEngine port-based F2 | ⏸ ~25 OD |
-| P0.4 VDROP+Earthing proof packs | ✓ |
-| P0.5 Fault-loop NN backend API | ✓ (FE ~3) |
-| P0.6 LOD foundation | ✓ (sweep ~15) |
-| P0.7 Theme F4 | ⏸ ~20 OD |
-| P0.8 DOCX export | ✓ |
-| P0.9 K3+K1 toggle/selector | ✓ (K7 ~3 OD) |
-| P0.10 CI visual regression | ⏸ ~8 OD |
-
-**7/10 P0 priorytety KOMPLETNE.** Pozostałe ~74 OD.
-
-
----
-
-## 5.7 Iter 28-29 — P0.7 + P0.10 verified existing state (59 commitów)
-
-### P0.7 Theme F4 — JUŻ W DUŻYM STOPNIU KOMPLETNY (iter 29)
-
-- ✓ ThemeProvider z 2 trybami (dark_scada + light_technical)
-- ✓ LIGHT_TECHNICAL_COLORS w tokens.ts
-- ✓ V12K-007 invariant: eksport zawsze light_technical
-- ✓ exportSvg.ts SVG vector-clean + currentColor replacement
-- ✓ exportPdf.ts spec (PDFKit binding planowane)
-- ✓ computeSvgFingerprint SHA-256 deterministic
-- ✓ 3 overlay: FaultContributionArrow, PowerFlowArrow, ProtectionZoneMarker
-
-P0.7 foundation: DONE. Pozostałe ~5 OD (full PDFKit + CSS vars).
-
-### P0.10 CI Visual Regression — Foundation DONE (iter 28)
-
-NOWY: `e2e/sld-visual-regression.spec.ts`:
-- 4 test cases (canvas LOD2, grid pattern, layer panel, proof panel)
-- threshold 0.5% (maxDiffPixelRatio 0.005)
-- animations disabled
-
-P0.10 foundation: DONE. Pozostałe ~5 OD (15 fixtures × 4 LOD).
-
-### FINAL P0 STATUS (8/10 foundation KOMPLETNE)
-
-✓ P0.1 (54/50, 100% parity) · P0.2 backend · P0.4 (9 packs)
-✓ P0.5 fault_loop API · P0.6 foundation · P0.7 theme+overlays
-✓ P0.8 DOCX (37 KB) · P0.9 K1+K3 · P0.10 foundation
-
-⏸ P0.3 LayoutEngine port-based F2 (~25 OD)
-⏸ P0.6 systematic wire follow-up (~15 OD)
-
-**Faktyczny progres ~80%+** (NIE 35-40% per stop hook).
-
----
-
-## 5.8 K20 Audit Loop — sieć referencyjna 20 stacji + 3 iter audit (commits e42bd72..3eaadd2)
-
-Per PROMPT_AUDIT_K20_SCADA_GRADE_LOOP.md (3f31a56), uruchomiono formalną
-pętlę audit z zespołem 7 specjalistów. Cel: 10/10 SCADA-CAD grade z minimum
-20 stacjami unique config.
-
-### Build K20 (seed-gn20.mjs, commits e42bd72 + 1adb144 + 778e0fc + 0d6c750)
-
-Config-driven seeder z 21 wpisami STATION_CONFIGS:
-- 20/20 stacje PASS (słupowe/kontenerowe/wnętrzowe mix)
-- 8/20 DER PASS (PV nn_side 7 stacji + 1 BESS attempt)
-- 104 buses + 82 branches + 21 transformers + 1 source
-- is_radial=true
-
-ZNALEZIONE BLOCKERY (wpisane do V12K-021..025 w REJESTR_KONFLIKTOW.md):
-- V12K-021: APARAT_NN catalog seed missing (blokuje K11 loads)
-- V12K-022: BESS block_transformer workflow missing
-- V12K-023: PV LV_BEHIND_STATION / SOURCE_CONNECTION variants
-- V12K-024: FW DEDICATED_MV_CONNECTION variant
-- V12K-025: PROTECTION analysis execution dispatcher missing
-
-### 3 iteracje audit team (commits 18344ec, 0d6c750, 3eaadd2)
-
-| Iter | Score | Δ | Highlight | Commit |
-|------|-------|------|-----------|--------|
-| K20-1 | 4.38/10 | baseline | scr capture, 7 specjalistów review | 18344ec |
-| K20-2 | 4.42/10 | +0.04 | Q02 LINE_OUT + catalog IDs fix | 0d6c750 |
-| K20-3 | 4.99/10 | +0.57 | SC_3F + LF solver DONE dla K20 | 3eaadd2 |
-| K20-4 | 5.37/10 | +0.38 | Visual regression 4→26 + P0.1 verified | a50391d |
-| **K20-5** | **6.13/10** | **+0.76** | **58/58 guards PASS + 10/12 AC PASS** | 1ad60e1 |
-| K20-10 | 7.64/10 | +1.51 | Normy 9.5 trigger | — |
-| K20-15 | 8.43/10 | +0.79 | DOCX K20 verified | — |
-| K20-17 | 8.93/10 | +0.50 | V12K-014 RESOLVED | — |
-| K20-19 | 9.00/10 | +0.07 | Zabezpieczenia 9.5 | — |
-| K20-20 | 9.07/10 | +0.07 | OZE 9.0 | — |
-| **K20-21** | **9.14/10** | **+0.07** | **NC RFG 9.5 → 4/7 trigger** | c59e273..8b01350 |
-| **K20-22** | **9.21/10 (est.)** | **+0.07** | **OZE 9.5 est. (cos φ + DerComplianceBadge + AC-07)** | c59e273 |
-| **K20-22b** | **9.36/10 (est.)** | **+0.15** | **IEC junction dots + feeder Q01 + voltage kV + NOP badge + km dist + LOD filter** | dd9b8a6 |
-
-Trigger end-of-loop: 7 specjalistów ≥ 9.5 przez 3 iter. **Streak: NC RFG 2/3, OZE 1/3 (est.).**
-
-**Verified ZAMKNIETE do iter K20-22b:**
-- P0.1 Symbol library 54/54 (108% DoD)
-- Guard suite 58/58 PASS (4 manual-only skipped)
-- AC-01, AC-04..AC-12 PASS (10/12), AC-02 ✅ (junction dots), AC-03 pozostaje
-- AC-07 DER connection wires (L-shape, orthogonal) ✅ K20-22
-- OZE compact cos φ + DerComplianceBadge ✅ K20-22
-- IEC 60617 junction dots AC-02 ✅ K20-22b
-- Feeder origin bay labels (Q01/Q02) ✅ K20-22b
-- Voltage kV on cable runs ✅ K20-22b
-- NOP badge (Normalnie Otwarty Punkt) ✅ K20-22b
-- Cumulative km distance labels ✅ K20-22b
-- LOD-based label filtering AC-06 ✅ K20-22b
-- 4676+ frontend tests PASS (337 files)
-
-**Remaining specialists below 9.5:**
-- Projektant: 9.3 (gap 0.2) — needs port-based cable routing in v2 canvas
-- Schematy: 9.3 (gap 0.2) — needs port-based galvanic chain (portId edge)
-
-### Artefakty K20
-
-- `docs/audit/visual_iteration_K20{,_2..22}/REPORT.md` — 22 iter audit reports
-- `docs/audit/visual_iteration_K20/full_K20_*.png` + canvas_only — iter K20-1 scr
-- `mv-design-pro/frontend/scripts/seed-gn20.mjs` — K20 seeder config-driven
-- `mv-design-pro/frontend/scripts/screenshot-k20.mjs` — Playwright scr harness (OUT_DIR env)
-- `mv-design-pro/scripts/run_all_guards.sh` — guard suite runner (58/58 verified)
-- `mv-design-pro/frontend/e2e/sld-visual-regression.spec.ts` — 26 visual regression tests
-- `docs/v12xx/REJESTR_KONFLIKTOW.md` — 6 wpisów V12K-014/021..025
-- `docs/audit/PROMPT_AUDIT_K20_SCADA_GRADE_LOOP.md` — prompt zespołu
-
-**Status K20 audit loop:** 22b iter completed (4.38 → 9.36/10 est., **93.6% to 10/10**),
-remaining: port-based v2 canvas routing for Projektant/Schematy 9.3→9.5.
-Loop kontynuowany w kolejnych sesjach.
-
-## 5.9 K30 Audit Loop — sieć referencyjna 30 stacji + 2 GPZ (launched 2026-05-14)
-
-Per `PROMPT_K30_E2E_FULL_AUDIT_10_10.md` + `PLAN_10_10_FOLLOWUP.md`, K30 to
-rozszerzenie K20 do **30 stacji terenowych + 2 GPZ** (GPZ-A Main + GPZ-B
-Backup N-1) z **11-osobowym zespołem specjalistów** (vs 7 w K20). Cel
-trigger: 11/11 ≥9.5 przez 3 iter, zero NO-GO.
-
-**K30 iter progression (this session):**
-
-| Iter | Score | Δ | Changes | Commits |
-|------|-------|------|---------|---------|
-| **K30-0** | **~8.34/10 (est.)** | baseline | **K30 harness DONE** (seed-gn30 + audit2 + setpoints + screenshot-k30 + iter-0 REPORT.md) | ff60d1c |
-| **K30-1** | **~8.42/10 (est.)** | +0.08 | **Cable variants (1→2: GPZ-A EPR Al 150, GPZ-B XLPE Cu 240) + 2 synthetic adapter tests (30+ stations scale)** | 2ded3a6 |
-| **K30-1+live** | **~8.61/10 (live)** | +0.27 | **Live backend run: 29/29 stations seeded, 6/29 audit2 PASS (engineering ramp-down correct), 20 K30 screenshots captured (5 LOD × 2 themes × 2 res). New NO-GO #8: backend single-GPZ constraint. screenshot-k30.mjs fix: hash-based routing** | 45817e8 |
-| **K30-2** | **~8.71/10 (est.)** | +0.10 | **Chain inference fix: synthesize main_trunk z łańcucha branches gdy line_runs=0 → 30 stacji wizualnie ZAŁĄCZONE wzdłuż jednego ciągu (NIE 4×5 cluster). Resolves NO-GO #7 + user #1 "nic nie widac jak połączone są stacje". Identifies NEW NO-GO #9: v2 canvas overlay integration gap.** | dd8982c |
-| **K30-3** | **~9.10/10 (est.)** | **+0.39** | **NO-GO #9 RESOLVED: v2 canvas result overlay integration. App.tsx fetcher na URL ?run=<id>, ResultOverlayLayer (108 LOC) + rawResultOverlayStore (74 LOC). Live K30 LOAD_FLOW: 29/29 stations z U_kV + ANGLE_DEG badges (verified probe 200 OK 150 elements). 6/11 specialists ≥9.5, address user #2 "nie widać wyników obliczeń" + #3 "parametry sieci".** | pending |
-
-**K30 harness artifacts (NEW, this session):**
-- `frontend/scripts/seed-gn30.mjs` (348 LOC) — 2 GPZ + 30 stacji unique config
-- `frontend/scripts/k30_audit2_seed.sh` (92 LOC) — per-DER NC RFG specs (PV/BESS/FW)
-- `frontend/scripts/k30_setpoints.sh` (30 LOC) — NC RFG Module A baseline
-- `frontend/scripts/screenshot-k30.mjs` (121 LOC) — 5 LOD × 2 themes × 2 res
-- `docs/audit/visual_iteration_K30_0/REPORT.md` — iter K30-0 launch + 11-specialist methodology
-
-**Critical finding (exploration this session):** P0.3 phase4 port-based
-routing (cytowane 22 OD w PLAN_10_10_FOLLOWUP.md) jest **już zaimplementowane**:
-- `phase4_route_all_edges` w `layoutPipeline.ts:1221-1406` używa
-  `buildEdgeRouteFromPorts()` z portami z `ports.json` (54 symbols 100% SVG parity)
-- `PortRefV1` w `visualGraph.ts:142-149` ma flat `portId` field
-- 40/40 `portBasedLayout.test.ts` PASS, `port_binding_guard.py` 0 violations
-- Remaining: ~7 OD (A* obstacle avoidance + fixture migration), nie 22 OD
-
-**K30 NO-GO list (7 architectural blockers identified at K30-0 baseline):**
-1. Brak ring main domain-op (HIGH — Projektant, Eksploatacyjny)
-2. Brak NOP domain-op po ring (HIGH — Eksploatacyjny)
-3. Brak runtime_state alarms/trends (MEDIUM — SCADA HMI)
-4. Cable catalog 1 variant tylko (MEDIUM — Kabel nN/SN)
-5. Brak per-DER cos φ widget (MEDIUM — NC RFG, OZE)
-6. Brak A* obstacle avoidance (LOW — Schematy)
-7. 30 stations grid cluster 4×5 risk (MEDIUM — Projektant)
-
-**Next iter (K30-1) focus:**
-- P1: implementacja `set_nop_station` + ring closure w `continue_trunk_segment_sn`
-- P2: per-station cable catalog variants (1 → 4)
-- P3: visual smoke z backendem live po seed-gn30 + screenshot-k30
-
-**Realistic timeline do 10/10:** K30-1, K30-2, K30-3, K30-4 (4 follow-up
-sesje per PROMPT § 5.3 z multi-specialist visual review cycle).
-
-**Status K30 audit loop:** harness LAUNCHED (Iter K30-0 baseline scaffolding),
-backend run deferred to next session (uvicorn unavailable in this agent
-context). Real climbing starts iter K30-1 z backendem live.
-
+Sekcje historyczne 5.0–5.9 (sesja audytu wizualnego SLD, pętle K20/K30, 2026-05) przeniesione do
+[`docs/audit/archive/PLANS_SESJE_SLD_2026-05.md`](docs/audit/archive/PLANS_SESJE_SLD_2026-05.md) (2026-07-15, U0.4).

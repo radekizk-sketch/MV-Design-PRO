@@ -8,6 +8,7 @@ Pełen e2e test (dry_run preview vs apply equivalence) wymaga catalog setup
 i jest osobnym scenariuszem w test_mv_general_workflow_e2e.py (Phase 0C
 test plan).
 """
+
 from __future__ import annotations
 
 from typing import Any

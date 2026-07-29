@@ -161,7 +161,7 @@ class BoundaryIdentifier:
         sources = case_params.get("sources") or []
         loads = case_params.get("loads") or []
 
-        net_injection: dict[str, float] = {node_id: 0.0 for node_id in graph.nodes}
+        net_injection: dict[str, float] = dict.fromkeys(graph.nodes, 0.0)
 
         for source in sources:
             if not source.get("in_service", True):

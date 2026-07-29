@@ -25,6 +25,7 @@ from enm.models import (
     EnergyNetworkModel,
     ENMDefaults,
     ENMHeader,
+    GroundingConfig,
     Load,
     OverheadLine,
     Source,
@@ -159,11 +160,25 @@ def _ready_enm_with_load() -> EnergyNetworkModel:
 
 
 def _ready_enm_with_z0() -> EnergyNetworkModel:
-    """Valid ENM with Z0 data for SC_1F eligibility."""
+    """Valid ENM with Z0 data for SC_1F eligibility.
+
+    V12K-219: fixtura niesie też MODEL UZIEMIENIA punktu neutralnego. Same
+    impedancje zerowe gałęzi NIE wystarczają do zwarcia doziemnego — prąd
+    składowej zerowej musi mieć DROGĘ POWROTU, a wyznacza ją sposób pracy
+    punktu neutralnego (tu: sieć skompensowana dławikiem Petersena, typowa dla
+    krajowych sieci SN o znacznym udziale kabli). Przed tą poprawką fixtura
+    utrwalała niepełny kontrakt fizyczny „Z0 gałęzi wystarcza do SC_1F".
+    """
     bus2 = Bus(ref_id="bus_sn2", name="Szyna SN2", voltage_kv=15.0)
+    uziemiona_szyna = Bus(
+        ref_id="bus_sn",
+        name="Szyna SN",
+        voltage_kv=15.0,
+        grounding=GroundingConfig(type="petersen_coil", x_ohm=180.0),
+    )
     return EnergyNetworkModel(
         header=_header("Ready with Z0"),
-        buses=[_valid_bus(), bus2],
+        buses=[uziemiona_szyna, bus2],
         sources=[_valid_source_with_z0()],
         branches=[_valid_branch(with_z0=True, with_catalog=True)],
         loads=[_valid_load()],
@@ -723,3 +738,62 @@ class TestExecutionEngineEligibilityGating:
             eligibility=eligibility,
         )
         assert run.status == RunStatus.PENDING
+
+
+class TestEligibilitySc1EarthingModel:
+    """SC_1F wymaga modelu uziemienia punktu neutralnego (V12K-219).
+
+    DLACZEGO TA KLASA ISTNIEJE. Bramka `_check_earthing_model` nie miała ŻADNEGO
+    testu, a jej severity była INFO mimo docstringu zapowiadającego blokadę —
+    czyli system dopuszczał uruchomienie zwarcia jednofazowego bez podstawy
+    fizycznej. Prąd I″k1 zależy od Z0, a Z0 sieci SN jest zdominowana przez
+    sposób pracy punktu neutralnego: od prądu resztkowego sieci kompensowanej
+    (pojedyncze ampery) po prąd rzędu kA przy uziemieniu bezpośrednim. Bez tej
+    danej wynik nie jest przybliżony, tylko dowolny.
+    """
+
+    @staticmethod
+    def _sc1_row(enm: EnergyNetworkModel):
+        readiness = _validate_and_readiness(enm)
+        matrix = EligibilityService().compute_matrix(
+            enm=enm, readiness=readiness, case_id="case-earthing"
+        )
+        return next(r for r in matrix.matrix if r.analysis_type == AnalysisType.SC_1F)
+
+    def test_brak_modelu_uziemienia_blokuje_sc1f(self):
+        row = self._sc1_row(_ready_enm())
+        assert row.status == EligibilityStatus.INELIGIBLE
+        assert "ELIG_SC1_EARTHING_MODEL_INCOMPLETE" in [b.code for b in row.blockers]
+
+    def test_uziemienie_na_szynie_odblokowuje_sc1f(self):
+        """Pierwsza z dwóch równoprawnych dróg: konfiguracja uziemienia szyny."""
+        bus = Bus(
+            ref_id="bus_sn",
+            name="Szyna SN",
+            voltage_kv=15.0,
+            grounding=GroundingConfig(type="petersen_coil", x_ohm=180.0),
+        )
+        enm = EnergyNetworkModel(
+            header=_header("Uziemienie na szynie"),
+            buses=[bus],
+            sources=[_valid_source()],
+        )
+        assert "ELIG_SC1_EARTHING_MODEL_INCOMPLETE" not in [
+            b.code for b in self._sc1_row(enm).blockers
+        ]
+
+    def test_punkt_neutralny_transformatora_odblokowuje_sc1f(self):
+        """Druga droga — w praktyce krajowej TA WŁAŚCIWA: punkt neutralny sieci SN
+        uziemia się po stronie dolnej transformatora GPZ, nie na szynie."""
+        bus2 = Bus(ref_id="bus_nn", name="Szyna nN", voltage_kv=0.4)
+        trafo = _valid_transformer()
+        trafo = trafo.model_copy(update={"lv_neutral": {"type": "petersen_coil", "x_ohm": 180.0}})
+        enm = EnergyNetworkModel(
+            header=_header("Punkt neutralny transformatora"),
+            buses=[_valid_bus(), bus2],
+            sources=[_valid_source()],
+            transformers=[trafo],
+        )
+        assert "ELIG_SC1_EARTHING_MODEL_INCOMPLETE" not in [
+            b.code for b in self._sc1_row(enm).blockers
+        ]

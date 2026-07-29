@@ -182,7 +182,7 @@ test.describe('Designer flow — empty-state CTA (audit 2026-05-19 wymaganie #1)
     await page.getByTestId('project-metadata-save').click();
 
     // Workspace SLD i empty state.
-    await expect(page.getByTestId('sld-workspace-container')).toBeVisible();
+    await expect(page.getByTestId('sld-canvas-v3-workspace')).toBeVisible();
     await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 
     // KLUCZOWE: 2 nowe CTA są jawnie widoczne i etykietowane po polsku.

@@ -78,6 +78,12 @@ def _converter_record(
     filter_l_pu: float | None = None,
     filter_r_pu: float | None = None,
     card_field_status: dict[str, dict[str, Any]] | None = None,
+    # Optional P-Q capability curve: ascending-by-p_mw points
+    # (p_mw, q_min_mvar, q_max_mvar). Added to params only when provided.
+    pq_curve: tuple[tuple[float, float, float], ...] | None = None,
+    # Optional flicker emission coefficient c(psi_k) [-], > 0. Added to params
+    # only when provided so records without it stay byte-identical.
+    flicker_c: float | None = None,
 ) -> dict[str, Any]:
     params: dict[str, Any] = {
         "kind": kind,
@@ -119,6 +125,12 @@ def _converter_record(
             params[card_key] = card_value
     if card_field_status is not None:
         params["card_field_status"] = card_field_status
+    if pq_curve is not None:
+        params["pq_curve"] = [
+            [float(p), float(q_min), float(q_max)] for p, q_min, q_max in pq_curve
+        ]
+    if flicker_c is not None:
+        params["flicker_c"] = flicker_c
     return {"id": item_id, "name": name, "params": params}
 
 
@@ -132,6 +144,16 @@ _BANDWIDTH_LITERATURE_REF = (
     "IEEE Std 1547-2018"
 )
 
+# Flicker emission coefficient c(psi_k): methodology reference. Public inverter
+# datasheets rarely publish c(psi_k), so the reference cards carry a conservative
+# typical-class ANALYTICAL value tagged ESTIMATED (never DATASHEET) with this
+# citation, to be confirmed against the device grid-compliance certificate.
+_FLICKER_LITERATURE_REF = (
+    "Wspolczynnik emisji migotania c(psi_k) — wartosc analityczna klasy "
+    "(konserwatywnie), do potwierdzenia karta zgodnosci sieciowej urzadzenia; "
+    "metodyka pomiaru: IEC 61400-21-1:2019; ocena emisji: IEC/TR 61000-3-7:2008"
+)
+
 
 def _reference_card_field_status(
     *,
@@ -139,14 +161,16 @@ def _reference_card_field_status(
     rating_fields: tuple[str, ...],
     power_hierarchy_fields: tuple[str, ...] = (),
     bandwidth_fields: tuple[str, ...] = (),
+    flicker_fields: tuple[str, ...] = (),
 ) -> dict[str, dict[str, Any]]:
     """Build a per-card data-quality override declaring explicit provenance.
 
     Ratings / power-hierarchy taken from the named datasheet => DATASHEET (with
     ``source_ref`` = the datasheet). Controller bandwidths => ESTIMATED with a
-    literature citation (never DATASHEET — anti-fabrication). The returned map is
-    the serialized {field_name -> CardFieldStatus.to_dict()} form consumed by
-    solver_input.provenance.resolve_card_field_quality_map.
+    literature citation (never DATASHEET — anti-fabrication). Flicker coefficient
+    => ESTIMATED (typical-class analytical value, methodology citation). The
+    returned map is the serialized {field_name -> CardFieldStatus.to_dict()} form
+    consumed by solver_input.provenance.resolve_card_field_quality_map.
     """
     status: dict[str, dict[str, Any]] = {}
     for name in rating_fields + power_hierarchy_fields:
@@ -161,6 +185,13 @@ def _reference_card_field_status(
             "quality": "ESTIMATED",
             "source_ref": _BANDWIDTH_LITERATURE_REF,
             "note": "oszacowanie pasma regulatora; wartosc typowa dla klasy, nie z karty technicznej",
+        }
+    for name in flicker_fields:
+        status[name] = {
+            "field_name": name,
+            "quality": "ESTIMATED",
+            "source_ref": _FLICKER_LITERATURE_REF,
+            "note": "wartosc analityczna klasy (konserwatywnie), do potwierdzenia karta zgodnosci",
         }
     return status
 
@@ -1126,11 +1157,24 @@ _REFERENCE_PV_STRING = _converter_record(
     control_delay_ms=0.5,
     filter_l_pu=0.08,  # string PV LCL: niska indukcyjnosc, wysoka f_sw (typowa)
     filter_r_pu=0.005,
+    # Krzywa P-Q: prostokat +/-0.6*Sn az do zwezenia przy p_max (limit S).
+    # Profil referencyjny do potwierdzenia karta producenta.
+    pq_curve=(
+        (0.0, -0.129, 0.129),
+        (0.108, -0.129, 0.129),
+        (0.172, -0.129, 0.129),
+        (0.215, -0.043, 0.043),
+    ),
+    # Wspolczynnik emisji migotania c(psi_k) [-] — wartosc analityczna klasy
+    # (falownik string PV, praca ciagla, emisja niska), do potwierdzenia karta
+    # zgodnosci; ESTIMATED (patrz card_field_status).
+    flicker_c=0.30,
     card_field_status=_reference_card_field_status(
         datasheet_ref="Karta techniczna Huawei SUN2000-215KTL-H3 (solar.huawei.com)",
         rating_fields=_REFERENCE_RATING_FIELDS,
         power_hierarchy_fields=_REFERENCE_POWER_HIERARCHY_FIELDS,
         bandwidth_fields=_REFERENCE_BANDWIDTH_FIELDS,
+        flicker_fields=("flicker_c",),
     ),
 )
 
@@ -1160,11 +1204,24 @@ _REFERENCE_PV_CENTRAL = _converter_record(
     control_delay_ms=0.6,
     filter_l_pu=0.10,  # central PV LCL: wyzsza indukcyjnosc, nizsza f_sw (typowa)
     filter_r_pu=0.004,
+    # Krzywa P-Q: prostokat +/-0.6*Sn az do zwezenia przy p_max (limit S).
+    # Profil referencyjny do potwierdzenia karta producenta.
+    pq_curve=(
+        (0.0, -1.89, 1.89),
+        (1.575, -1.89, 1.89),
+        (2.52, -1.89, 1.89),
+        (3.15, -0.63, 0.63),
+    ),
+    # Wspolczynnik emisji migotania c(psi_k) [-] — wartosc analityczna klasy
+    # (falownik central PV, praca ciagla, emisja niska), do potwierdzenia karta
+    # zgodnosci; ESTIMATED (patrz card_field_status).
+    flicker_c=0.30,
     card_field_status=_reference_card_field_status(
         datasheet_ref="Karta techniczna Sungrow SG3150U-MV (sungrowpower.com)",
         rating_fields=_REFERENCE_RATING_FIELDS,
         power_hierarchy_fields=_REFERENCE_POWER_HIERARCHY_FIELDS,
         bandwidth_fields=_REFERENCE_BANDWIDTH_FIELDS,
+        flicker_fields=("flicker_c",),
     ),
 )
 
@@ -1195,11 +1252,24 @@ _REFERENCE_BESS_PCS = _converter_record(
     control_delay_ms=0.5,
     filter_l_pu=0.10,  # BESS PCS LCL: typowa indukcyjnosc filtra magazynu
     filter_r_pu=0.003,
+    # Krzywa P-Q: prostokat +/-0.6*Sn az do zwezenia przy p_max (limit S).
+    # Profil referencyjny do potwierdzenia karta producenta.
+    pq_curve=(
+        (0.0, -1.2, 1.2),
+        (1.0, -1.2, 1.2),
+        (1.6, -1.2, 1.2),
+        (2.0, -0.4, 0.4),
+    ),
+    # Wspolczynnik emisji migotania c(psi_k) [-] — wartosc analityczna klasy
+    # (PCS BESS, praca ciagla), do potwierdzenia karta zgodnosci; ESTIMATED
+    # (patrz card_field_status).
+    flicker_c=0.35,
     card_field_status=_reference_card_field_status(
         datasheet_ref="Karta techniczna Sungrow SC2000UD-MV PCS (sungrowpower.com)",
         rating_fields=_REFERENCE_RATING_FIELDS,
         power_hierarchy_fields=_REFERENCE_POWER_HIERARCHY_FIELDS,
         bandwidth_fields=_REFERENCE_BANDWIDTH_FIELDS,
+        flicker_fields=("flicker_c",),
     ),
 )
 

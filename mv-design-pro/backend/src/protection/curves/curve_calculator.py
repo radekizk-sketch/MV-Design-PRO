@@ -14,7 +14,7 @@ WHITE BOX: All calculation steps are exposed for auditability.
 """
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from .iec_curves import (
@@ -31,14 +31,14 @@ from .ieee_curves import (
 )
 
 
-class CurveStandard(str, Enum):
+class CurveStandard(StrEnum):
     """Protection curve standard."""
 
     IEC = "IEC"  # IEC 60255
     IEEE = "IEEE"  # IEEE C37.112
 
 
-class CoordinationStatus(str, Enum):
+class CoordinationStatus(StrEnum):
     """Coordination analysis result status."""
 
     COORDINATED = "COORDINATED"  # Skoordynowane

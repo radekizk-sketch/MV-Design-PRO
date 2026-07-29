@@ -275,7 +275,12 @@ export const LABELS = {
     applyTemplate: 'Zastosuj szablon',
     name: 'Nazwa',
     type: 'Typ',
-    location: 'Lokalizacja',
+    location: 'Lokalizacja (element modelu)',
+    // V12K-262: wybór z modelu zamiast wpisywania identyfikatora z ręki.
+    locationPrompt: '— wskaż element modelu —',
+    locationNoModel:
+      'Model przypadku nie jest wczytany — nie ma z czego wskazać elementu. '
+      + 'Wybierz aktywny wariant pracy, a lista szyn i gałęzi pojawi się tutaj.',
     settings: 'Nastawy',
     noDevices: 'Dodaj urządzenia zabezpieczeniowe',
     selectToEdit: 'Wybierz urządzenie do edycji',
@@ -336,6 +341,16 @@ export const LABELS = {
       analysisCurrent: 'Prąd analizy [A]',
       notes: 'Uwagi',
       minDevicesRequired: 'Wymaga minimum 2 urządzeń do sprawdzenia selektywności',
+      // Kolumna DZIALANIA (V12K-261). Do tej pory naprawa byla dostepna wylacznie
+      // przez KLIK W WIERSZ — bez etykiety, bez przycisku, bez informacji, ze cokolwiek
+      // sie stanie. Werdykt bez widocznego nastepnego kroku jest slepym zaulkiem
+      // (FLOW §0.2), a niewidoczna akcja to martwy klik z perspektywy projektanta.
+      action: 'Działanie',
+      fixSettings: 'Popraw nastawy',
+      fixSettingsTitle:
+        'Otwórz edytor nastaw zabezpieczenia NADRZĘDNEGO tej pary. Przy braku '
+        + 'selektywności koryguje się czas zabezpieczenia rezerwowego — podrzędne ma '
+        + 'zadziałać pierwsze (stopniowanie CTI).',
     },
     overload: {
       title: 'Przeciążalność',
@@ -461,6 +476,24 @@ export const LABELS = {
     timePositive: 'Czas musi być dodatni',
     minOneDevice: 'Dodaj przynajmniej jedno urządzenie',
     invalidConfig: 'Nieprawidłowa konfiguracja',
+    // F-K4 faza 3b: prądy koordynacji pochodzą WYŁĄCZNIE z zakończonych biegów
+    // (wcześniej powstawały z Math.random() — patrz `pradyZBiegow.ts`).
+    brakPradowZwarciowych:
+      'Brak prądów zwarciowych z biegu obliczeniowego — koordynacja nie ma na czym oprzeć '
+      + 'marginesów. Uruchom analizę zwarciową dla przypadku maksymalnego (c = 1,10) '
+      + 'i minimalnego (c = 0,95).',
+    brakPraduMinimalnego:
+      'Brak biegu zwarciowego minimalnego (c = 0,95) — czułość zabezpieczeń jest '
+      + 'niesprawdzalna. Prąd maksymalny nie zastąpi minimalnego.',
+    brakPraduRoboczego:
+      'Brak prądu roboczego z rozpływu mocy — kryterium przeciążenia jest niesprawdzalne.',
+    // V12K-262: lokalizacja urządzenia to element modelu, nie tekst wpisany z ręki.
+    brakLokalizacji:
+      'Wskaż element modelu dla każdego zabezpieczenia — bez lokalizacji nie da się '
+      + 'przypisać prądów z biegu ani policzyć marginesów.',
+    brakModeluLokalizacji:
+      'Nie udało się pobrać modelu przypadku — lista elementów do wskazania jest pusta.',
+    lokalizacjaNieWskazana: 'lokalizacja niewskazana',
   },
 
   templates: {

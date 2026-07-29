@@ -12,6 +12,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import type { OverlayPayloadV1 } from '../overlayTypes';
+import type { ShortCircuitFlowOverlayInput } from '../ShortCircuitFlowOverlayAdapter';
 import {
   ALL_OVERLAY_KINDS,
   useOverlayStore,
@@ -197,5 +198,63 @@ describe('ALL_OVERLAY_KINDS', () => {
 
   it('is frozen (immutable)', () => {
     expect(Object.isFrozen(ALL_OVERLAY_KINDS)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Karta S-B (ZWARCIA-PRO pkt 7) — kanał KIERUNKU rozpływu zwarciowego
+// (`faultFlow`): holder danych backendu dla strzałek kanwy v3.
+// ---------------------------------------------------------------------------
+
+function makeFaultFlow(runId = 'run_sc'): ShortCircuitFlowOverlayInput {
+  return {
+    run_id: runId,
+    fault_type: '3F',
+    fault_element_ref: 'EL-GPZ',
+    flows: [
+      {
+        branch_id: 'BR-1',
+        branch_name: 'Kabel testowy',
+        source_id: 'ZR-1',
+        from_node_id: 'W-A',
+        from_node_name: 'Węzeł A',
+        to_node_id: 'W-B',
+        to_node_name: 'Węzeł B',
+        i_ka: 0.245,
+        direction: 'from_to',
+      },
+    ],
+  };
+}
+
+describe('overlayStore — faultFlow (karta S-B, kanał kierunku rozpływu zwarciowego)', () => {
+  it('starts with faultFlow=null (strzałki wyłączone)', () => {
+    expect(useOverlayStore.getState().faultFlow).toBeNull();
+  });
+
+  it('loadFaultFlow sets the channel (dane 1:1, bez transformacji)', () => {
+    const input = makeFaultFlow('run_sc_1');
+    useOverlayStore.getState().loadFaultFlow(input);
+    expect(useOverlayStore.getState().faultFlow).toEqual(input);
+  });
+
+  it('loadOverlay CLEARS faultFlow (invariant „replaces ALL previous state" — kanał cudzego przebiegu nie przeżywa podmiany overlay)', () => {
+    useOverlayStore.getState().loadFaultFlow(makeFaultFlow('run_sc_1'));
+    useOverlayStore.getState().loadOverlay(makePayload('run_lf_2'));
+    expect(useOverlayStore.getState().faultFlow).toBeNull();
+  });
+
+  it('sekwencja pokazNaSchemacie: loadOverlay → loadFaultFlow ⇒ oba kanały tego samego przebiegu obecne', () => {
+    useOverlayStore.getState().loadOverlay(makePayload('run_sc_1'));
+    useOverlayStore.getState().loadFaultFlow(makeFaultFlow('run_sc_1'));
+    const state = useOverlayStore.getState();
+    expect(state.activeRunId).toBe('run_sc_1');
+    expect(state.faultFlow?.run_id).toBe('run_sc_1');
+  });
+
+  it('clearOverlay resets faultFlow to null', () => {
+    useOverlayStore.getState().loadFaultFlow(makeFaultFlow());
+    useOverlayStore.getState().clearOverlay();
+    expect(useOverlayStore.getState().faultFlow).toBeNull();
   });
 });

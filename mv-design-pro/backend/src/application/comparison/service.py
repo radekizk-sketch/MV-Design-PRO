@@ -167,13 +167,52 @@ class ComparisonService:
         zth_a = self._parse_complex(payload_a.get("zkk_ohm", {"re": 0.0, "im": 0.0}))
         zth_b = self._parse_complex(payload_b.get("zkk_ohm", {"re": 0.0, "im": 0.0}))
 
+        # Karta S-C (2026-07-22): addytywne delty pełnego bilansu — ta sama
+        # klasa przekształceń co kanoniczny bilans (X/R = 1/(R/X),
+        # I²t = (Ith/1000)²·tk). Starszy payload bez pól → None (uczciwy brak).
+        xr_a = self._payload_xr_ratio(payload_a)
+        xr_b = self._payload_xr_ratio(payload_b)
+        xr_ratio_delta = (
+            NumericDelta.compute(xr_a, xr_b) if xr_a is not None and xr_b is not None else None
+        )
+
+        i2t_a = self._payload_i2t_ka2s(payload_a)
+        i2t_b = self._payload_i2t_ka2s(payload_b)
+        i2t_delta = (
+            NumericDelta.compute(i2t_a, i2t_b) if i2t_a is not None and i2t_b is not None else None
+        )
+
         return ShortCircuitComparison(
             ikss_delta=NumericDelta.compute(ikss_a, ikss_b),
             sk_delta=NumericDelta.compute(sk_a, sk_b),
             zth_delta=ComplexDelta.compute(zth_a, zth_b),
             ip_delta=NumericDelta.compute(ip_a, ip_b),
             ith_delta=NumericDelta.compute(ith_a, ith_b),
+            xr_ratio_delta=xr_ratio_delta,
+            i2t_delta=i2t_delta,
         )
+
+    @staticmethod
+    def _payload_xr_ratio(payload: dict[str, Any]) -> float | None:
+        """X/R = 1/(R/X) z payloadu SC (rx_ratio z FROZEN wyniku); brak/0 → None."""
+        rx = payload.get("rx_ratio")
+        if isinstance(rx, int | float) and not isinstance(rx, bool) and rx != 0.0:
+            return 1.0 / float(rx)
+        return None
+
+    @staticmethod
+    def _payload_i2t_ka2s(payload: dict[str, Any]) -> float | None:
+        """I²t = (Ith/1000)²·tk [kA²s] z payloadu SC; brak pól → None."""
+        ith_a = payload.get("ith_a")
+        tk_s = payload.get("tk_s")
+        if (
+            isinstance(ith_a, int | float)
+            and not isinstance(ith_a, bool)
+            and isinstance(tk_s, int | float)
+            and not isinstance(tk_s, bool)
+        ):
+            return (float(ith_a) / 1000.0) ** 2 * float(tk_s)
+        return None
 
     def _compare_power_flow(
         self,

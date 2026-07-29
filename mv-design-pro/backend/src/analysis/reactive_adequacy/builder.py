@@ -40,6 +40,7 @@ from analysis.reactive_adequacy.models import (
     ReactiveAdequacySummary,
     ReactiveAdequacyView,
     ReactiveBalance,
+    SourceQContribution,
     SourceReactiveEntry,
     SourceReactiveInput,
     VoltageViolationEntry,
@@ -374,6 +375,13 @@ class ReactiveAdequacyBuilder:
     ) -> ReactiveBalance:
         q_actuals = [float(s.q_actual_mvar) for s in sources if s.q_actual_mvar is not None]
         q_loads = [float(load.q_mvar) for load in loads if load.q_mvar is not None]
+        # Rozbicie sumy netto na wklady per zrodlo (kolejnosc jak ``sources`` —
+        # posortowana po ``ref`` przez ``build`` — determinizm).
+        source_contribs = tuple(
+            SourceQContribution(ref=s.ref, q_mvar=_round(float(s.q_actual_mvar)))
+            for s in sources
+            if s.q_actual_mvar is not None
+        )
 
         if not q_actuals and not q_loads:
             return ReactiveBalance(
@@ -413,6 +421,7 @@ class ReactiveAdequacyBuilder:
             q_load_mvar=q_load,
             net_source_q_mvar=net_source,
             white_box=white_box,
+            source_q_actuals=source_contribs,
         )
 
     # --- rezerwa systemowa ----------------------------------------------

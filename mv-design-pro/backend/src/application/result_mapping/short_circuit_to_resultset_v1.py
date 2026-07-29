@@ -153,7 +153,7 @@ def _build_global_results(
         float(sr.un_v) / 1000.0 if sr.un_v else None,
         float(sr.ikss_a) / 1000.0,
     ).to_dict()
-    return {
+    global_results: dict[str, Any] = {
         "analysis_type": analysis_type.value,
         "short_circuit_type": sr.short_circuit_type.value,
         "fault_node_id": sr.fault_node_id,
@@ -176,3 +176,12 @@ def _build_global_results(
         "white_box_steps_count": len(sr.white_box_trace),
         "ikss_sanity": ikss_sanity,
     }
+    # Delta FROZEN V12K-128 (addytywnie): składowe symetryczne Z1/Z2/Z0 wprost
+    # z wyniku solvera. Dołączane tylko gdy policzone (Z1/Z2 dla wszystkich typów,
+    # Z0 dla zwarć doziemnych 1F/2F+G). `global_results` ma additionalProperties:true
+    # (kontrakt ResultSet v1) — pole addytywne, starszy wynik bez pól → pominięte.
+    for seq_key in ("z1_ohm", "z2_ohm", "z0_ohm"):
+        seq_val = getattr(sr, seq_key, None)
+        if seq_val is not None:
+            global_results[seq_key] = {"re": float(seq_val.real), "im": float(seq_val.imag)}
+    return global_results

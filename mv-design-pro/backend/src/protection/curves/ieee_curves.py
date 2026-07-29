@@ -18,11 +18,11 @@ WHITE BOX: All intermediate values are exposed for auditability.
 
 import math
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class IEEECurveType(str, Enum):
+class IEEECurveType(StrEnum):
     """
     IEEE C37.112 standard curve types.
 

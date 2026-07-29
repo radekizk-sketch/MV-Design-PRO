@@ -358,7 +358,10 @@ class TestDomainOperationsBranchPointSchemaValid:
         refreshed = execute_domain_operation(snap, "refresh_snapshot", {})
 
         assert refreshed.get("error") in (None, "")
-        assert all(bus["ref_id"] != "bus/legacy-orphan/branch_end" for bus in refreshed["snapshot"]["buses"])
+        assert all(
+            bus["ref_id"] != "bus/legacy-orphan/branch_end"
+            for bus in refreshed["snapshot"]["buses"]
+        )
         blocker_codes = {b.get("code") for b in refreshed.get("readiness", {}).get("blockers", [])}
         assert "E003" not in blocker_codes
 
@@ -397,7 +400,9 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert bp.branch_point_type == "branch_pole"
         assert bp.ref_id == enm1.branch_points[0].ref_id
 
-    def test_catalog_completion_materializes_legacy_zksn_as_switchgear_without_transformer(self) -> None:
+    def test_catalog_completion_materializes_legacy_zksn_as_switchgear_without_transformer(
+        self,
+    ) -> None:
         enm = EnergyNetworkModel(
             header=ENMHeader(name="legacy_zksn", defaults=ENMDefaults(sn_nominal_kv=15.0)),
             branch_points=[
@@ -484,9 +489,7 @@ class TestDomainOperationsBranchPointSchemaValid:
         assert seg_id not in {branch["ref_id"] for branch in snap["branches"]}
 
         split_segments = [
-            branch
-            for branch in snap["branches"]
-            if branch["ref_id"] in main_segment_refs
+            branch for branch in snap["branches"] if branch["ref_id"] in main_segment_refs
         ]
         assert len(split_segments) == 2
         assert {branch["type"] for branch in split_segments} == {"line_overhead"}
@@ -519,11 +522,15 @@ class TestDomainOperationsBranchPointSchemaValid:
         branch_ref = result["selection_hint"]["element_id"]
         assert result["selection_hint"]["element_type"] == "branch"
 
-        branch_segment = next(branch for branch in snap["branches"] if branch["ref_id"] == branch_ref)
+        branch_segment = next(
+            branch for branch in snap["branches"] if branch["ref_id"] == branch_ref
+        )
         assert branch_segment["type"] == "line_overhead"
         assert branch_segment["from_bus_ref"] == bp["ports"]["BRANCH"][0]
 
-        updated_bp = next(point for point in snap["branch_points"] if point["ref_id"] == bp["ref_id"])
+        updated_bp = next(
+            point for point in snap["branch_points"] if point["ref_id"] == bp["ref_id"]
+        )
         assert updated_bp["branch_occupied"]["BRANCH"] == branch_ref
 
         branch_runs = [

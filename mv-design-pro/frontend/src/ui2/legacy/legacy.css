@@ -1,0 +1,37 @@
+/* Most legacy (E1.7b/c) — opakowania montażu starych powierzchni w warsztacie. */
+
+.mvd-legacy-host {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Wypełnia warsztat: treść właściwa (pasek narzędzi/baner zachowują naturalną
+   wysokość) oraz pojedyncze montaże powierzchni (oprawa z jednym dzieckiem). */
+.mvd-legacy-host > .mvd-legacy-warsztat-tresc,
+.mvd-legacy-host > :only-child {
+  flex: 1;
+  min-height: 0;
+}
+
+.mvd-legacy-warsztat-tresc {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.mvd-legacy-warsztat-tresc > * {
+  flex: 1;
+  min-height: 0;
+}
+
+.mvd-legacy-obliczenia {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+}
+
+/* Scalenie U2 #3: warsztat obliczeń — nowe okno + most historii przebiegów. */
+.mvd-obliczenia-warsztat { display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 0; overflow: auto; padding: 12px; }

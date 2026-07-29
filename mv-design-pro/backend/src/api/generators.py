@@ -7,7 +7,26 @@ from typing import Any, Literal
 from uuid import UUID
 
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
+from application.analyses.protection.catalog.catalog_store import list_devices
+from application.field_read_model import build_field_read_model
 from domain.canonical_operations import resolve_operation_name
+from domain.der_protection_functions import (
+    FaktyPolaWytworcy,
+    dobierz_funkcje,
+    ocen_urzadzenie,
+)
+from domain.der_readiness import (
+    macierz_gotowosci_der,
+    osie_gotowosci_der,
+    podsumuj_gotowosc,
+    wejscie_z_generatora,
+)
+from domain.dobor_przekladnika import (
+    WymaganiaToru,
+    WymaganiaToruNapieciowego,
+    sprawdz_dobor_ct,
+    sprawdz_dobor_vt,
+)
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
 from enm.store import get_enm as _get_enm
@@ -57,6 +76,51 @@ class DerGeneratorCreateRequest(BaseModel):
     )
     @classmethod
     def _strip_optional_strings(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        return stripped or None
+
+
+class DerCatalogBindingsRequest(BaseModel):
+    """Wiązania katalogowe i profile zgodności wytwórcy wybierane PO jego utworzeniu.
+
+    V12K-238 (pomiar: V12K-237). Kreator DER wysyła przy tworzeniu katalog urządzenia,
+    baterii i transformatora blokowego. Katalog zabezpieczeń, przekładniki CT/VT, dane
+    prądu zwarciowego, model dynamiczny i profile zgodności są wybierane później — i do
+    tej pory nie miały GDZIE spłynąć, bo konfigurator pisał wyłącznie do store
+    przeglądarki. Sześć osi gotowości opierało więc werdykt na danych, których model nie
+    zna, a które przepadały po odświeżeniu strony.
+
+    KAŻDE pole jest opcjonalne, ale ich brak i jawne ``null`` znaczą CO INNEGO: pole
+    pominięte zostawia wiązanie w modelu bez zmian, a ``null`` je USUWA (reguła gotowości
+    znów widzi brak danej). Dlatego pola nie mają wartości domyślnych podstawianych po
+    cichu — o rozróżnienie dba ``model_fields_set``.
+    """
+
+    protection_catalog_ref: str | None = None
+    ct_catalog_ref: str | None = None
+    vt_catalog_ref: str | None = None
+    fault_current_data_ref: str | None = None
+    dynamic_model_ref: str | None = None
+    nc_rfg_profile_ref: str | None = None
+    lvrt_curve_ref: str | None = None
+    hvrt_curve_ref: str | None = None
+    pf_curve_ref: str | None = None
+
+    @field_validator(
+        "protection_catalog_ref",
+        "ct_catalog_ref",
+        "vt_catalog_ref",
+        "fault_current_data_ref",
+        "dynamic_model_ref",
+        "nc_rfg_profile_ref",
+        "lvrt_curve_ref",
+        "hvrt_curve_ref",
+        "pf_curve_ref",
+    )
+    @classmethod
+    def _strip_or_none(cls, value: str | None) -> str | None:
         if value is None:
             return None
         stripped = value.strip()
@@ -418,3 +482,513 @@ async def create_der_generator(
             ) from exc
 
     return result
+
+
+@router.patch("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/bindings")
+async def set_der_bindings(
+    project_id: str,
+    case_id: str,
+    generator_ref: str,
+    req: DerCatalogBindingsRequest,
+    request: Request,
+) -> dict[str, Any]:
+    """Zapisz wiązania katalogowe i profile zgodności wytwórcy w kanonicznym ENM."""
+
+    _validate_project_case_context(request, project_id, case_id)
+
+    # WYŁĄCZNIE pola JAWNIE podane w żądaniu — pominięte zostawiają model bez zmian,
+    # jawne `null` usuwa wiązanie. Bez `model_fields_set` każde żądanie kasowałoby
+    # wszystkie niewymienione wiązania (cicha utrata danych projektowych).
+    payload: dict[str, Any] = {"generator_ref": generator_ref}
+    for pole in req.model_fields_set:
+        payload[pole] = getattr(req, pole)
+
+    enm = _get_enm(case_id)
+    resolved_name = resolve_operation_name("set_der_catalog_bindings")
+    result = execute_domain_operation(
+        enm_dict=enm.model_dump(mode="json"),
+        op_name=resolved_name,
+        payload=payload,
+    )
+    if result.get("error"):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail={
+                "code": result.get("error_code") or "der_bindings.failed",
+                "message_pl": result.get("error") or "Nie udało się zapisać wiązań wytwórcy.",
+            },
+        )
+
+    if result.get("snapshot"):
+        try:
+            saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
+            result["snapshot"] = saved.model_dump(mode="json")
+        except Exception as exc:  # pragma: no cover - defensive validation guard
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": "api.snapshot_validation_failed",
+                    "message_pl": f"Błąd zapisu snapshotu ENM: {exc}",
+                },
+            ) from exc
+
+    return result
+
+
+def _fakty_pola_wytworcy(
+    generator: dict[str, Any],
+    sciezka_zwarcia: dict[str, Any] | None,
+) -> FaktyPolaWytworcy:
+    """Zloz fakty o polu wytworcy z modelu — bez ani jednej wartosci domyslnej.
+
+    Sciezka zwarcia doziemnego pochodzi z KANONICZNEGO odczytu pola
+    (`build_field_read_model`), a nie z rownoleglego wyprowadzenia — dwa opisy tego
+    samego pola rozjezdzalyby sie (precedens V12K-243).
+    """
+
+    zmaterializowane = generator.get("materialized_params") or {}
+    meta = generator.get("meta") or {}
+    if not isinstance(zmaterializowane, dict):
+        zmaterializowane = {}
+    if not isinstance(meta, dict):
+        meta = {}
+
+    wariant = generator.get("connection_variant")
+    strona = {
+        "DEDICATED_MV_CONNECTION": "dedicated_transformer",
+        "block_transformer": "dedicated_transformer",
+        "SOURCE_CONNECTION_STATION": "SN",
+    }.get(wariant if isinstance(wariant, str) else "", "nN")
+
+    rodzaj = {
+        "pv_inverter": "PV",
+        "bess": "BESS",
+        "wind_inverter": "FW",
+        "fw_pmsg": "FW",
+        "fw_dfig": "FW",
+        "fw_scig": "FW",
+    }.get(generator.get("gen_type") or "", "PV")
+
+    p_mw = generator.get("p_mw")
+    sciezka = sciezka_zwarcia or {}
+    return FaktyPolaWytworcy(
+        der_id=str(generator.get("ref_id") or ""),
+        der_kind=rodzaj,  # type: ignore[arg-type]
+        connection_side=strona,
+        nominal_power_kw=(p_mw * 1000.0 if isinstance(p_mw, int | float) else None),
+        block_transformer_catalog_ref=(
+            zmaterializowane.get("block_transformer_catalog_ref")
+            or meta.get("block_transformer_catalog_ref")
+        ),
+        # Brak opisu sciezki zwarcia doziemnego zostaje BRAKIEM: regula zamieni go
+        # w nazwana kwestie otwarta, zamiast wybrac rodzine funkcji za projektanta.
+        neutral_grounding_mode=sciezka.get("neutral_grounding_mode") or "nieznany",
+        zero_sequence_current_source=sciezka.get("zero_sequence_current_source") or "brak",
+        zero_sequence_voltage_source=sciezka.get("zero_sequence_voltage_source") or "brak",
+    )
+
+
+def _sciezka_zwarcia_dla_pola(
+    case_id: str, enm: EnergyNetworkModel, bay_ref: str | None
+) -> dict[str, Any] | None:
+    if not bay_ref:
+        return None
+    model_pol = build_field_read_model(case_id, enm)
+    for pozycja in model_pol.get("items", []):
+        if pozycja.get("bay_ref") == bay_ref:
+            wyniki = pozycja.get("project_results") or {}
+            return wyniki.get("earth_fault_path")
+    return None
+
+
+def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | None, str]:
+    """Funkcje deklarowane przez wybrane urzadzenie + jego nazwa do komunikatu."""
+    if not protection_ref:
+        return None, "wybrane urządzenie"
+    for urzadzenie in list_devices():
+        if urzadzenie.device_id == protection_ref:
+            nazwa = f"{urzadzenie.vendor} {urzadzenie.model}".strip()
+            return tuple(urzadzenie.functions_supported), nazwa or protection_ref
+    return None, protection_ref
+
+
+@router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/protection-functions")
+async def get_der_protection_functions(
+    project_id: str,
+    case_id: str,
+    generator_ref: str,
+    request: Request,
+) -> dict[str, Any]:
+    """Wymagane funkcje zabezpieczeniowe pola wytworcy + ocena wybranego urzadzenia.
+
+    ZERO FIZYKI I ZERO NASTAW: odpowiedz mowi, JAKIE funkcje sa wymagane, CZYM je
+    zmierzyc i CZY wybrane urzadzenie je realizuje. Nastawy licza moduly koordynacji.
+    """
+
+    _validate_project_case_context(request, project_id, case_id)
+    enm = _get_enm(case_id)
+    dane = enm.model_dump(mode="json")
+
+    generator = next(
+        (g for g in dane.get("generators", []) if g.get("ref_id") == generator_ref),
+        None,
+    )
+    if generator is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "generator.not_found",
+                "message_pl": f"Wytwórca {generator_ref} nie istnieje w modelu.",
+            },
+        )
+
+    zmaterializowane = generator.get("materialized_params") or {}
+    meta = generator.get("meta") or {}
+    bay_ref = None
+    for zrodlo in (zmaterializowane, meta):
+        if isinstance(zrodlo, dict) and isinstance(zrodlo.get("bay_ref"), str):
+            bay_ref = zrodlo["bay_ref"]
+            break
+
+    sciezka = _sciezka_zwarcia_dla_pola(case_id, enm, bay_ref)
+    fakty = _fakty_pola_wytworcy(generator, sciezka)
+    dobor = dobierz_funkcje(fakty)
+
+    protection_ref = None
+    for zrodlo in (zmaterializowane, meta):
+        if isinstance(zrodlo, dict) and isinstance(zrodlo.get("protection_catalog_ref"), str):
+            protection_ref = zrodlo["protection_catalog_ref"]
+            break
+
+    funkcje_urzadzenia, nazwa_urzadzenia = _funkcje_urzadzenia(protection_ref)
+    ocena = ocen_urzadzenie(dobor.kody(), funkcje_urzadzenia, nazwa_urzadzenia=nazwa_urzadzenia)
+
+    return {
+        "generator_ref": generator_ref,
+        "bay_ref": bay_ref,
+        "fakty": {
+            "connection_side": fakty.connection_side,
+            "neutral_grounding_mode": fakty.neutral_grounding_mode,
+            "zero_sequence_current_source": fakty.zero_sequence_current_source,
+            "zero_sequence_voltage_source": fakty.zero_sequence_voltage_source,
+        },
+        "dobor": dobor.to_dict(),
+        "urzadzenie": {
+            "protection_catalog_ref": protection_ref,
+            "nazwa": nazwa_urzadzenia if protection_ref else None,
+            **ocena.to_dict(),
+        },
+    }
+
+
+@router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/readiness")
+async def get_der_readiness(
+    project_id: str,
+    case_id: str,
+    generator_ref: str,
+    request: Request,
+) -> dict[str, Any]:
+    """Gotowosc analiz dla wytworcy — KANONICZNA regula domenowa (V12K-251).
+
+    DLACZEGO TEN ENDPOINT ISTNIEJE. Regula `domain/der_readiness.py` (519 linii)
+    powstala jako backendowy odpowiednik macierzy z frontu i byla utrzymywana pod
+    kontraktem parzystosci — ale POMIAR pokazal ZERO konsumentow produkcyjnych
+    (`grep -rln der_readiness backend/src` poza samym modulem), wiec wolaly ja
+    wylacznie testy. Zdolnosc bez wywolania: regula pilnowana, nikomu nie sluzaca,
+    a jedyna ocena widziana przez uzytkownika liczona w przegladarce.
+
+    Odpowiedz niesie statusy osi ORAZ NAZWANE powody (kody + komunikat + miejsce
+    naprawy) — bez powodow status jest slepym zaulkiem.
+
+    Klasa przekladnika przychodzi z KATALOGU (`CTType.to_dict`, IEC 61869-2), nie
+    ze zgadywania z identyfikatora: regula nie ma wlasnego katalogu.
+    """
+
+    _validate_project_case_context(request, project_id, case_id)
+    enm = _get_enm(case_id)
+    dane = enm.model_dump(mode="json")
+
+    generatory = dane.get("generators", [])
+    generator = next((g for g in generatory if g.get("ref_id") == generator_ref), None)
+    if generator is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "generator.not_found",
+                "message_pl": f"Wytwórca {generator_ref} nie istnieje w modelu.",
+            },
+        )
+
+    # Liczba INNYCH wytworcow w tej samej stacji — wejscie osi selektywnosci.
+    stacja = generator.get("station_ref")
+    inni = sum(
+        1 for g in generatory if g.get("ref_id") != generator_ref and g.get("station_ref") == stacja
+    )
+
+    klasa_ct, zastosowanie_ct = _klasa_przekladnika_z_katalogu(generator)
+    wejscie = wejscie_z_generatora(
+        generator,
+        other_ders_in_station=inni,
+        ct_accuracy_class=klasa_ct,
+        ct_application=zastosowanie_ct,
+    )
+    macierz = macierz_gotowosci_der(wejscie)
+    osie = osie_gotowosci_der(wejscie)
+
+    return {
+        "generator_ref": generator_ref,
+        "macierz": macierz,
+        "osie": [os.to_dict() for os in osie],
+        "podsumowanie": podsumuj_gotowosc(macierz),
+    }
+
+
+@router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/instrument-transformers")
+async def get_der_instrument_transformers(
+    project_id: str,
+    case_id: str,
+    generator_ref: str,
+    request: Request,
+) -> dict[str, Any]:
+    """Dobor przekladnikow pola wytworcy — kryteria normowe z jawnym rachunkiem.
+
+    DLACZEGO. Ekran pokazywal przekladniki jako NAZWY katalogowe. Audyt E-21 (pkt P9):
+    „bez sprawdzenia przekladni wobec pradu chronionego toru, obciazalnosci cieplnej i
+    dynamicznej, nasycenia oraz zgodnosci z wejsciem przekaznika jego wybor nie ma
+    wiarygodnosci inzynierskiej".
+
+    SKAD DANE (zero wartosci domyslnych, zero fizyki w tej warstwie):
+      * typ przekladnika    — katalog (`CTType`/`VTType`, dane doboru z V12K-254/255),
+      * prad roboczy toru   — SOLVER `compute_transformer_rated_currents` (I = S/(√3·U)),
+      * Ik'' oraz ip        — WIERSZ WYNIKU zwarciowego dla szyny pola (solver IEC 60909);
+                              brak zakonczonego przebiegu zostaje BRAKIEM DANEJ,
+      * sposob uziemienia i tor napiecia zerowego — kanoniczny odczyt pola,
+      * wejscia pomiarowe urzadzenia — katalog urzadzen (z pochodzeniem deklaracji).
+    """
+
+    _validate_project_case_context(request, project_id, case_id)
+    enm = _get_enm(case_id)
+    dane = enm.model_dump(mode="json")
+
+    generator = next(
+        (g for g in dane.get("generators", []) if g.get("ref_id") == generator_ref),
+        None,
+    )
+    if generator is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": "generator.not_found",
+                "message_pl": f"Wytwórca {generator_ref} nie istnieje w modelu.",
+            },
+        )
+
+    zrodla = (
+        _slownik_pomocniczy(generator.get("materialized_params")),
+        _slownik_pomocniczy(generator.get("meta")),
+    )
+    bay_ref = _pierwsza_wartosc(zrodla, "bay_ref")
+    sciezka = _sciezka_zwarcia_dla_pola(case_id, enm, bay_ref) or {}
+
+    napiecie_v = _napiecie_szyny_v(dane, generator.get("bus_ref"))
+    prad_roboczy = _prad_roboczy_pola_a(generator, napiecie_v)
+    ik_ka, ip_ka, run_ref = _prady_zwarciowe_szyny(case_id, generator.get("bus_ref"))
+    prady_wejsc, napiecia_wejsc, zrodlo_wejsc = _wejscia_urzadzenia(
+        _pierwsza_wartosc(zrodla, "protection_catalog_ref")
+    )
+
+    tor_pradowy = WymaganiaToru(
+        prad_roboczy_a=prad_roboczy,
+        ik_ka=ik_ka,
+        ip_ka=ip_ka,
+        # Czas trwania zwarcia przyjety do sprawdzenia cieplnego jest DANA PROJEKTOWA
+        # (nastawa stopnia rezerwowego). Model jej nie niesie, wiec zostaje brakiem —
+        # regula nazwie go wprost, zamiast podstawic 1 s „bo tak sie zwykle przyjmuje".
+        czas_zwarcia_s=None,
+        prady_wejsc_przekaznika_a=prady_wejsc,
+        obciazenie_obwodu_va=None,
+        zrodlo_wejsc_pl=zrodlo_wejsc,
+        dla_zabezpieczen=True,
+    )
+    tor_napieciowy = WymaganiaToruNapieciowego(
+        napiecie_sieci_v=napiecie_v,
+        tryb_uziemienia=sciezka.get("neutral_grounding_mode") or "nieznany",
+        zwarcie_doziemne_wylaczane_automatycznie=None,
+        napiecia_wejsc_przekaznika_v=napiecia_wejsc,
+        obciazenie_obwodu_va=None,
+        zrodlo_napiecia_zerowego=sciezka.get("zero_sequence_voltage_source") or "brak",
+        zrodlo_wejsc_pl=zrodlo_wejsc,
+        dla_zabezpieczen=True,
+    )
+
+    ct_ref = _pierwsza_wartosc(zrodla, "ct_catalog_ref")
+    vt_ref = _pierwsza_wartosc(zrodla, "vt_catalog_ref")
+    return {
+        "generator_ref": generator_ref,
+        "bay_ref": bay_ref,
+        "wejscia": {
+            "napiecie_sieci_v": napiecie_v,
+            "prad_roboczy_a": prad_roboczy,
+            "ik_ka": ik_ka,
+            "ip_ka": ip_ka,
+            "run_ref_zwarciowy": run_ref,
+            "tryb_uziemienia": tor_napieciowy.tryb_uziemienia,
+            "zrodlo_napiecia_zerowego": tor_napieciowy.zrodlo_napiecia_zerowego,
+            "zrodlo_wejsc_urzadzenia": zrodlo_wejsc,
+        },
+        "przekladnik_pradowy": _dobor_przekladnika(ct_ref, "ct", tor_pradowy),
+        "przekladnik_napieciowy": _dobor_przekladnika(vt_ref, "vt", tor_napieciowy),
+    }
+
+
+def _pierwsza_wartosc(zrodla: tuple[dict[str, Any], ...], pole: str) -> str | None:
+    for zrodlo in zrodla:
+        wartosc = zrodlo.get(pole)
+        if isinstance(wartosc, str) and wartosc.strip():
+            return wartosc
+    return None
+
+
+def _napiecie_szyny_v(dane: dict[str, Any], bus_ref: Any) -> float | None:
+    if not isinstance(bus_ref, str):
+        return None
+    for szyna in dane.get("buses", []):
+        if szyna.get("ref_id") == bus_ref:
+            kv = szyna.get("voltage_kv")
+            return float(kv) * 1000.0 if isinstance(kv, int | float) else None
+    return None
+
+
+def _prad_roboczy_pola_a(generator: dict[str, Any], napiecie_v: float | None) -> float | None:
+    """Prad roboczy toru — Z SOLWERA, nie z wlasnego wzoru w warstwie API.
+
+    `compute_transformer_rated_currents` jest kanonicznym dostawca przeliczenia
+    I = S/(√3·U) (WHITE BOX: wzor + zalozenia). Reuzycie zamiast rownoleglego
+    rachunku — dwa wzory na to samo rozjezdzaja sie (precedens V12K-243).
+    """
+    from network_model.solvers.transformer_rated_currents import (
+        TransformerRatedCurrentsInput,
+        compute_transformer_rated_currents,
+    )
+
+    p_mw = generator.get("p_mw")
+    if not isinstance(p_mw, int | float) or p_mw <= 0 or not napiecie_v or napiecie_v <= 0:
+        return None
+    napiecie_kv = napiecie_v / 1000.0
+    wynik = compute_transformer_rated_currents(
+        TransformerRatedCurrentsInput(
+            rated_power_kva=float(p_mw) * 1000.0,
+            primary_voltage_kv=napiecie_kv,
+            secondary_voltage_kv=napiecie_kv,
+        )
+    )
+    return wynik.primary_current_a
+
+
+def _prady_zwarciowe_szyny(
+    case_id: str, bus_ref: Any
+) -> tuple[float | None, float | None, str | None]:
+    """Ik'' i ip dla szyny pola z OSTATNIEGO zakonczonego przebiegu zwarciowego.
+
+    Brak przebiegu albo brak wiersza dla tej szyny zwraca `(None, None, None)` —
+    regula zamieni to w nazwany brak danej („uruchom analize zwarciowa"), a nie w
+    zgodnosc. Zadnego sumowania wkladow: suma prądow zwarciowych nalezy do solwera.
+    """
+    from enm.canonical_analysis import build_short_circuit_results, list_runs_for_case
+
+    if not isinstance(bus_ref, str):
+        return None, None, None
+    przebiegi = [
+        run
+        for run in list_runs_for_case(case_id)
+        if run.analysis_type == "short_circuit_sn" and run.status == "FINISHED"
+    ]
+    for run in sorted(przebiegi, key=lambda r: r.created_at, reverse=True):
+        for wiersz in build_short_circuit_results(run).get("rows", []):
+            if wiersz.get("fault_type") not in (None, "3F", "three_phase"):
+                continue
+            if bus_ref in (wiersz.get("target_id"), wiersz.get("element_id")):
+                return wiersz.get("ikss_ka"), wiersz.get("ip_ka"), str(run.id)
+    return None, None, None
+
+
+def _wejscia_urzadzenia(
+    protection_ref: str | None,
+) -> tuple[tuple[float, ...] | None, tuple[float, ...] | None, str | None]:
+    if not protection_ref:
+        return None, None, None
+    for urzadzenie in list_devices():
+        if urzadzenie.device_id == protection_ref:
+            return (
+                urzadzenie.rated_current_inputs_a,
+                urzadzenie.rated_voltage_inputs_v,
+                urzadzenie.rated_inputs_source,
+            )
+    return None, None, None
+
+
+def _dobor_przekladnika(
+    ref: str | None,
+    rodzaj: Literal["ct", "vt"],
+    tor: WymaganiaToru | WymaganiaToruNapieciowego,
+) -> dict[str, Any]:
+    """Dobor dla wiazania katalogowego; brak wiazania NIE jest bledem doboru."""
+    from network_model.catalog import get_default_mv_catalog
+
+    if ref is None:
+        return {"catalog_ref": None, "nazwa": None, "wynik": None}
+    katalog = get_default_mv_catalog()
+    typ = katalog.get_ct_type(ref) if rodzaj == "ct" else katalog.get_vt_type(ref)
+    if typ is None:
+        return {"catalog_ref": ref, "nazwa": None, "wynik": None}
+    jako_slownik = typ.to_dict()
+    wynik = (
+        sprawdz_dobor_ct(jako_slownik, tor)
+        if rodzaj == "ct" and isinstance(tor, WymaganiaToru)
+        else (
+            sprawdz_dobor_vt(jako_slownik, tor)
+            if isinstance(tor, WymaganiaToruNapieciowego)
+            else None
+        )
+    )
+    return {
+        "catalog_ref": ref,
+        "nazwa": jako_slownik.get("name"),
+        "typ": jako_slownik,
+        "wynik": wynik.to_dict() if wynik is not None else None,
+    }
+
+
+def _klasa_przekladnika_z_katalogu(
+    generator: dict[str, Any],
+) -> tuple[str | None, Any]:
+    """Klasa i zastosowanie przekladnika Z KATALOGU — regula ich nie zgaduje.
+
+    Brak wiazania albo typ nieznany katalogowi daje `(None, None)`, co regula zamienia
+    w kod `der.ct_class.unresolved` — „nie da sie ustalic" jest innym faktem niz
+    „klasa nie jest zabezpieczeniowa" (V12K-232).
+    """
+    from network_model.catalog import get_default_mv_catalog
+
+    zrodla = (
+        _slownik_pomocniczy(generator.get("materialized_params")),
+        _slownik_pomocniczy(generator.get("meta")),
+    )
+    ref = None
+    for zrodlo in zrodla:
+        wartosc = zrodlo.get("ct_catalog_ref")
+        if isinstance(wartosc, str) and wartosc.strip():
+            ref = wartosc
+            break
+    if ref is None:
+        return None, None
+
+    typ = get_default_mv_catalog().get_ct_type(ref)
+    if typ is None:
+        return None, None
+    jako_slownik = typ.to_dict()
+    return jako_slownik.get("accuracy_class"), jako_slownik.get("application")
+
+
+def _slownik_pomocniczy(wartosc: Any) -> dict[str, Any]:
+    return wartosc if isinstance(wartosc, dict) else {}

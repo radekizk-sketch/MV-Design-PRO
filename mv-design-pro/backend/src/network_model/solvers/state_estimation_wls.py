@@ -42,7 +42,7 @@ import hashlib
 import json
 import math
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -63,7 +63,7 @@ SYNTHETIC_VALIDATION_MARKER = (
 )
 
 
-class MeasurementType(str, Enum):
+class MeasurementType(StrEnum):
     """Typy pomiarów obsługiwane przez estymator (Abur & Expósito §2.2)."""
 
     V_MAGNITUDE = "V_MAGNITUDE"  # |V_i| — moduł napięcia węzła [pu]
@@ -200,6 +200,10 @@ class StateEstimationResult:
     m_measurements: int
     validation_status: str
     estimate_id: str
+    # Rezydua końcowe r̂ = z − h(x̂) przy estymacie (m). Liczone z TEGO SAMEGO
+    # wektora, z którego pochodzą znormalizowane rezydua (bad_data), więc r i r_N
+    # są spójne (ten sam iterat). Zawsze obecne — niezależnie od śladu WHITE BOX.
+    final_residuals: tuple[float, ...] = ()
     solver_version: str = STATE_ESTIMATION_WLS_VERSION
     note: str = ""
 
@@ -211,6 +215,7 @@ class StateEstimationResult:
             "v_angles_rad": list(self.v_angles_rad),
             "objective_j": self.objective_j,
             "bad_data": self.bad_data.to_dict(),
+            "final_residuals": list(self.final_residuals),
             "n_states": self.n_states,
             "m_measurements": self.m_measurements,
             "validation_status": self.validation_status,
@@ -748,11 +753,36 @@ def estimate_wls(
                 "(rank(H) < n). Estymacja przerwana (brak zgadywania)."
             ) from exc
         # Warunek liczby uwarunkowania — ostrzeżenie o słabej obserwowalności.
-        cond = float(np.linalg.cond(gain_g))
+        # Warunek liczby uwarunkowania — bramka słabej obserwowalności.
+        #
+        # Liczbę uwarunkowania mierzymy na macierzy RÓWNOWAŻONEJ (symetryczne
+        # skalowanie Jacobiego G_s = D⁻¹ G D⁻¹, D = diag(√G_ii)), bo surowe
+        # cond(G) w sieci wielonapięciowej mierzy przede wszystkim ROZRZUT
+        # SKALI kolumn (θ w radianach vs |V| w pu; admitancje szyn 110/15/0,4 kV
+        # różniące się o rzędy wielkości), a nie obserwowalność układu.
+        # Równoważenie jest transformacją DOKŁADNĄ (zero heurystyk, zero
+        # korekcji wyniku) i standardową diagnostyką w estymacji stanu —
+        # równania normalne G = HᵀWH z definicji podnoszą cond(H) do kwadratu,
+        # więc próg nałożony na surową G odrzuca układy w pełni obserwowalne.
+        #
+        # V12K-184: bramka na surowej G była krucha. Sieć wzorcowa (110/15/0,4 kV)
+        # dawała cond_raw = 8,99e11 — 11 % pod progiem 1e12 — i ten margines
+        # brał się z trzech pomiarów na WIRTUALNYM węźle ziemi źródła. Po
+        # usunięciu tej fikcji z modelu (zasilanie systemowe = bocznik Y_Q)
+        # cond_raw = 1,059e12 przekraczało próg o 5,9 % i przerywało estymację
+        # układu obserwowalnego. Po równoważeniu: 1,28e11 → 2,52e11, obie
+        # wartości z ~4x zapasem, a bramka mierzy to, co ma mierzyć.
+        # G SUROWA pozostaje bez zmian w śladzie White Box i w analizie złych
+        # danych (g_inv) — kontrakt wyniku nietknięty.
+        cond_raw = float(np.linalg.cond(gain_g))
+        scale = np.sqrt(np.abs(np.diag(gain_g)))
+        scale[scale == 0.0] = 1.0
+        cond = float(np.linalg.cond(gain_g / np.outer(scale, scale)))
         if not math.isfinite(cond) or cond > 1e12:
             raise ObservabilityError(
-                f"Macierz zysku G źle uwarunkowana (cond={cond:.3e}): "
-                "układ praktycznie nieobserwowalny. Estymacja przerwana."
+                f"Macierz zysku G źle uwarunkowana (cond={cond:.3e} po "
+                f"równoważeniu, cond surowa={cond_raw:.3e}): układ praktycznie "
+                "nieobserwowalny. Estymacja przerwana."
             )
 
         delta_x = g_inv @ rhs
@@ -831,6 +861,7 @@ def estimate_wls(
         m_measurements=m,
         validation_status=status,
         estimate_id=estimate_id,
+        final_residuals=tuple(round(float(x), 12) for x in final_residual),
         note=note,
     )
 

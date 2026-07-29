@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { renderWithQueryClient as render } from '../../../test/queryClientTestUtils';
 
 import { useAppStateStore } from '../../app-state';
@@ -46,9 +46,22 @@ describe('routerExtensionSurfaces', () => {
       expect(document.body.textContent).toMatch(/historia|operac/i);
     });
   });
+
+  // F12-C (spec par. 10.1 ARCH-4): sciezka renderu v2 i host USUNIETE —
+  // E-01 jako rozszerzona powierzchnia renderuje bezposrednio JEDYNY render
+  // (SldCanvasV3Workspace), spojnie z App.tsx.
+  describe('SldCanvasV3Workspace jako E-01 (WorkspaceSurfaceRouter drugi punkt osadzenia)', () => {
+    it('renderuje SldCanvasV3Workspace dla rozszerzonej powierzchni E-01', () => {
+      useNetworkBuildStore.setState({
+        activeSurface: buildSurface('E-01', 'Środowisko pracy SLD'),
+      });
+      const { container } = render(<WorkspaceSurfaceRouter region="main" />);
+      expect(container.querySelector('[data-testid="sld-canvas-v3-workspace"]')).toBeTruthy();
+    });
+  });
 });
 
-describe('AnalysisSurfaceComparisonWizard / SensitivityTab (component-level)', () => {
+describe('AnalysisSurfaceComparisonWizard (component-level)', () => {
   it('AnalysisSurfaceComparisonWizard pokazuje empty state gdy <2 runs', async () => {
     const { AnalysisSurfaceComparisonWizard } = await import('../routerExtensionSurfaces');
     const { render } = await import('@testing-library/react');
@@ -56,11 +69,6 @@ describe('AnalysisSurfaceComparisonWizard / SensitivityTab (component-level)', (
     expect(container.textContent).toMatch(/Brak dostępnych przebiegów/i);
   });
 
-  it('AnalysisSurfaceSensitivityTab renderuje SensitivityPanel z empty state', async () => {
-    const { AnalysisSurfaceSensitivityTab } = await import('../routerExtensionSurfaces');
-    const { render } = await import('@testing-library/react');
-    const { container } = render(<AnalysisSurfaceSensitivityTab />);
-    // SensitivityPanel always renders status header
-    expect(container.textContent).toMatch(/Czułość|sensitivity|wrażliwość/i);
-  });
+  // Test AnalysisSurfaceSensitivityTab usunięty w W5b-2: stub niedostarczony,
+  // decyzja właściciela D2 2026-07-17 (tab "sensitivity" wygaszony w E-35).
 });

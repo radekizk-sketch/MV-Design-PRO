@@ -214,6 +214,49 @@ export interface ProtectionComputedValue {
 // =============================================================================
 
 /**
+ * Pojedynczy punkt krzywej czasowo-prądowej (I-t).
+ *
+ * WYŁĄCZNIE widok danych z backendu (solver IEC 60255) — ZERO fizyki w UI.
+ * Kształt zgodny z serializacją `protection_read_model._build_it_curve`.
+ */
+export interface ProtectionItCurvePoint {
+  /** Prąd [A] */
+  i_a: number;
+
+  /** Czas zadziałania [s] */
+  t_s: number;
+}
+
+/**
+ * Krzywa czasowo-prądowa (I-t) pojedynczej funkcji nadprądowej.
+ *
+ * Read-only widok danych z backendu (`settings_summary.functions[].it_curve`).
+ * Punkty pochodzą z solvera IEC 60255 — UI ich nie liczy.
+ */
+export interface ProtectionFunctionItCurve {
+  /** Norma krzywej (np. "IEC_60255") */
+  standard: string;
+
+  /** Rodzaj charakterystyki */
+  curve_kind: 'DEFINITE' | 'INVERSE';
+
+  /** Kod krzywej solvera (np. "DT", "SI", "VI", "EI", "LTI") */
+  curve_code: string;
+
+  /** Etykieta polska krzywej */
+  curve_label_pl: string;
+
+  /** Prąd rozruchowy (pickup) [A] */
+  pickup_a: number;
+
+  /** Mnożnik czasowy (TMS) — null gdy nie dotyczy/nieznany */
+  time_multiplier: number | null;
+
+  /** Punkty krzywej z solvera */
+  points: ProtectionItCurvePoint[];
+}
+
+/**
  * Podsumowanie funkcji zabezpieczeniowej.
  *
  * Zawiera:
@@ -241,6 +284,18 @@ export interface ProtectionFunctionSummary {
 
   /** Charakterystyka czasowa (np. "IEC SI", "IEC VI", "ANSI EI") */
   curve_type?: string;
+
+  /**
+   * Krzywa czasowo-prądowa (I-t) z solvera IEC 60255.
+   * `null`/brak → brak danych (patrz `it_curve_missing_data`).
+   */
+  it_curve?: ProtectionFunctionItCurve | null;
+
+  /**
+   * Powody braku krzywej I-t (kody z backendu, np. "time_multiplier").
+   * Obecne tylko gdy `it_curve` niedostępna.
+   */
+  it_curve_missing_data?: string[];
 
   /** Notatki (np. dla SPZ: parametry cyklu) */
   notes_pl?: string;

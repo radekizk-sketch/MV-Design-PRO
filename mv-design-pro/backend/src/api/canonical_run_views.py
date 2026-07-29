@@ -25,6 +25,7 @@ from enm.canonical_analysis import (
     build_branch_results,
     build_bus_results,
     build_dynamic_stability_results,
+    build_dynamic_stability_time_series,
     build_extended_trace,
     build_phase_state_results,
     build_results_index,
@@ -411,6 +412,12 @@ def build_phase_state_results_response(run: CanonicalRun) -> dict[str, Any]:
 
 def build_dynamic_stability_results_response(run: CanonicalRun) -> dict[str, Any]:
     payload = build_dynamic_stability_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
+
+
+def build_dynamic_stability_time_series_response(run: CanonicalRun) -> dict[str, Any]:
+    payload = build_dynamic_stability_time_series(run)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 

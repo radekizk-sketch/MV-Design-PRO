@@ -119,12 +119,20 @@ class AdmittanceMatrixBuilder:
             if from_idx == to_idx:
                 continue
 
-            y_series_pu, y_shunt_pu = self._get_branch_admittances_pu(branch)
+            y_series_pu, y_shunt_pu, ratio = self._get_branch_admittances_pu(branch)
 
-            y_bus[from_idx, to_idx] -= y_series_pu
-            y_bus[to_idx, from_idx] -= y_series_pu
+            # Model gałęzi z przekładnią POZA-ZNAMIONOWĄ `a` (idealny transformator
+            # po stronie `from`, admitancja odniesiona do strony `to`):
+            #     Y[f,f] += y/a²   Y[f,t] -= y/a   Y[t,f] -= y/a   Y[t,t] += y
+            # Dla `a = 1` (linie, kable i transformatory dopasowane do baz napięciowych
+            # węzłów, bez zaczepu) wzór redukuje się do symetrycznego wpisu sprzed
+            # V12K-186 — dzielenie przez 1.0 jest w IEEE-754 dokładne, więc takie
+            # sieci mają Y-bus BIT-IDENTYCZNY.
+            y_off = y_series_pu / ratio
+            y_bus[from_idx, to_idx] -= y_off
+            y_bus[to_idx, from_idx] -= y_off
 
-            y_bus[from_idx, from_idx] += y_series_pu + y_shunt_pu
+            y_bus[from_idx, from_idx] += y_series_pu / (ratio * ratio) + y_shunt_pu
             y_bus[to_idx, to_idx] += y_series_pu + y_shunt_pu
 
         if ground_slack_buses:
@@ -139,20 +147,40 @@ class AdmittanceMatrixBuilder:
 
     def _ground_slack_buses(self, y_bus: np.ndarray) -> None:
         """
-        Dodaje admitancje bocznikowe (do ziemi) dla wezlow SLACK.
+        Dodaje admitancje bocznikowe (do ziemi) dla wezlow zasilajacych.
 
-        Wezel SLACK (szyna nieskonczona) ma zerowa impedancje wewnetrzna
-        → nieskonczona admitancja bocznikowa. W praktyce stosuje sie
-        duza wartosc (1e6 pu) zapewniajaca referencje napiecia.
+        Zasilanie systemowe (IEC 60909-0 §3.2) to SEM ZA impedancja Z_Q — w
+        metodzie Z-bus bocznik Y_Q = 1/Z_Q w wezle przylaczenia. Uziemienie
+        tego samego wezla admitancja idealna ZWIERALOBY Z_Q i dawalo szyne
+        nieskonczona (V12K-184): Ik'' na szynie GPZ rosl do wartosci
+        ograniczonej wylacznie impedancja linii/kabli, a moc zwarciowa
+        zrodla (Sk'') nie wchodzila do obliczen wcale.
+
+        Referencje napiecia admitancja idealna (1e6 pu) stosujemy WYLACZNIE
+        dla wezla SLACK BEZ zadeklarowanej impedancji zrodla — model szyny
+        nieskonczonej jest wtedy jedyna dostepna informacja.
         """
+        grid_y_pu: dict[int, complex] = {}
+        for src in self._graph.get_grid_sc_sources():
+            idx = self._node_id_to_index.get(src.node_id)
+            if idx is None or src.z_ohm == 0:
+                continue
+            z_base = self.get_zbase_ohm(src.node_id)
+            grid_y_pu[idx] = grid_y_pu.get(idx, 0j) + z_base / src.z_ohm
+
         y_slack_pu = complex(1e6, 0.0)
         seen_indices: set[int] = set()
         for node in self._graph.nodes.values():
             if node.node_type == NodeType.SLACK:
                 idx = self._node_id_to_index.get(node.id)
                 if idx is not None and idx not in seen_indices:
-                    y_bus[idx, idx] += y_slack_pu
+                    y_bus[idx, idx] += grid_y_pu.get(idx, y_slack_pu)
                     seen_indices.add(idx)
+        # Zasilania systemowe w wezlach nie-SLACK (np. druga sekcja GPZ) tez sa
+        # SEM za Z_Q — deterministyczna kolejnosc po indeksie.
+        for idx in sorted(grid_y_pu):
+            if idx not in seen_indices:
+                y_bus[idx, idx] += grid_y_pu[idx]
 
     def _add_machine_shunts(self, y_bus: np.ndarray) -> None:
         """Add rotating-machine SC sources as shunt admittances Y″ = 1/Z″ (IEC 60909
@@ -162,9 +190,7 @@ class AdmittanceMatrixBuilder:
         machine sources exist, so machine-free networks keep a byte-identical Y-bus."""
         machines: list[tuple[str, complex]] = [
             (m.node_id, m.z_internal_ohm) for m in self._graph.get_synchronous_machine_sources()
-        ] + [
-            (m.node_id, m.z_internal_ohm) for m in self._graph.get_asynchronous_machine_sources()
-        ]
+        ] + [(m.node_id, m.z_internal_ohm) for m in self._graph.get_asynchronous_machine_sources()]
         for node_id, z_internal_ohm in machines:
             idx = self._node_id_to_index.get(node_id)
             if idx is None or abs(z_internal_ohm) == 0.0:
@@ -177,9 +203,12 @@ class AdmittanceMatrixBuilder:
         vn_kv = self._graph.nodes[node_id].voltage_level
         return vn_kv**2 / S_BASE_MVA
 
-    def _get_branch_admittances_pu(self, branch: Branch) -> tuple[complex, complex]:
+    def _get_branch_admittances_pu(self, branch: Branch) -> tuple[complex, complex, float]:
         """
-        Zwraca admitancje w per-unit (Y_series_pu, Y_shunt_per_end_pu).
+        Zwraca (Y_series_pu, Y_shunt_per_end_pu, przekładnia_poza_znamionowa).
+
+        Trzeci element to przekładnia `a` modelu z idealnym transformatorem po
+        stronie `from`; dla linii i kabli zawsze 1.0.
         """
         if isinstance(branch, LineBranch):
             vn_kv = self._graph.nodes[branch.from_node_id].voltage_level
@@ -192,15 +221,45 @@ class AdmittanceMatrixBuilder:
             y_shunt_total_s = branch.get_shunt_admittance()
             y_shunt_total_pu = y_shunt_total_s * z_base
             y_shunt_per_end_pu = y_shunt_total_pu / 2.0
-            return y_series_pu, y_shunt_per_end_pu
+            return y_series_pu, y_shunt_per_end_pu, 1.0
 
         if isinstance(branch, TransformerBranch):
-            z_pu_sn = branch.get_short_circuit_impedance_pu()
-            z_pu_base = z_pu_sn * (S_BASE_MVA / branch.rated_power_mva)
+            # IEC 60909-0 §3.3.3: network transformers enter the short-circuit
+            # network with the corrected impedance Z_TK = K_T · (R_T + jX_T).
+            # This builder is the IEC 60909 SC/Z-bus network (grounds slack,
+            # adds machine shunts); power flow uses a separate Y-bus builder, so
+            # the K_T correction stays confined to short-circuit.
+            z_pu_sn = branch.get_short_circuit_impedance_pu_corrected()
+            # ZMIANA BAZY (V12K-186). `z_pu_sn` jest w per-unit na bazie WŁASNEJ
+            # transformatora: mocy `rated_power_mva` i napięcia `voltage_lv_kv`.
+            # Macierz pracuje na bazie systemowej: `S_BASE_MVA` i napięciu
+            # ZNAMIONOWYM WĘZŁA. Przeliczenie wymaga OBU członów:
+            #     z_pu_sys = z_pu_sn · (S_BASE/S_r) · (U_lv_TR / U_bazowe_szyny_LV)²
+            # Człon napięciowy był pominięty, co przy transformatorze katalogowym
+            # 110/15 kV na szynie 15,75 kV zawyżało |Z| o (15,75/15)² = 1,1025 i
+            # ZANIŻAŁO Ik″ o 9,3 % — cicho, bo walidator porównuje napięcia szyn
+            # tylko względem siebie (HV ≥ LV), nigdy z tabliczką transformatora.
+            u_base_hv = self._graph.nodes[branch.from_node_id].voltage_level
+            u_base_lv = self._graph.nodes[branch.to_node_id].voltage_level
+            if u_base_hv > 0.0 and u_base_lv > 0.0:
+                v_scale = branch.voltage_lv_kv / u_base_lv
+                # Przekładnia poza-znamionowa: stosunek przekładni RZECZYWISTEJ
+                # (tabliczka × zaczep) do przekładni BAZOWEJ (napięcia węzłów).
+                # `get_tap_ratio()` to kanoniczne źródło zaczepu — TapChanger, gdy
+                # jest, inaczej `1 + poz·krok%` — TA SAMA metoda, z której korzysta
+                # rozpływ mocy, więc obie analizy widzą JEDEN transformator.
+                ratio = ((branch.voltage_hv_kv / u_base_hv) / v_scale) * branch.get_tap_ratio()
+            else:
+                # Węzeł bez napięcia znamionowego: brak podstawy do zmiany bazy —
+                # zostaje zachowanie sprzed V12K-186 (walidator i tak zgłasza błąd
+                # `voltage_level <= 0`, więc solver nie powinien tu dotrzeć).
+                v_scale = 1.0
+                ratio = branch.get_tap_ratio()
+            z_pu_base = z_pu_sn * (S_BASE_MVA / branch.rated_power_mva) * (v_scale * v_scale)
             if z_pu_base == 0:
                 raise ZeroDivisionError("Cannot compute transformer admittance: impedance is zero")
             y_series_pu = 1.0 / z_pu_base
             y_shunt_per_end_pu = 0.0 + 0.0j
-            return y_series_pu, y_shunt_per_end_pu
+            return y_series_pu, y_shunt_per_end_pu, ratio
 
         raise ValueError(f"Unsupported branch type: {branch.branch_type}")

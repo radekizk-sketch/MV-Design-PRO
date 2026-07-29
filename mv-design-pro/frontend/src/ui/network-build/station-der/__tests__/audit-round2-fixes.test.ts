@@ -28,7 +28,6 @@ import {
   selectHvFusesForRating,
   DEVICE_WITHSTAND_CATALOG,
   validateDeviceWithstand,
-  isVtVoltageFactorValidForGrounding,
 } from '../protection-catalogs';
 import type { StationDerConnection } from '../types';
 
@@ -44,7 +43,7 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
     der_kind: 'PV',
     name: 'Test DER',
     connection_side: 'SN',
-    pcc_ref: 'pcc_station-test_PCC-01',
+    bus_przylaczenia_ref: 'pcc_station-test_PCC-01',
     bay_ref: 'bay_station-test_Pole-01',
     lv_busbar_ref: null,
     transformer_ref: null,
@@ -55,11 +54,11 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
       device_catalog_ref: 'pv_inv_sma_2500',
       controller_catalog_ref: null,
       battery_catalog_ref: null,
-      transformer_catalog_ref: null,
+      block_transformer_catalog_ref: null,
       cable_catalog_ref: null,
       bay_catalog_ref: null,
       protection_catalog_ref: 'protection_der_basic',
-      ct_catalog_ref: 'ct_200_5_5p20',
+      ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
       vt_catalog_ref: 'vt_15kv_100v_3p',
       fault_current_data_ref: null,
       dynamic_model_ref: null,
@@ -85,11 +84,17 @@ function makeDer(overrides: Partial<StationDerConnection> = {}): StationDerConne
 
 describe('eng.5 — CT klasa musi być zabezpieczeniowa (5P/10P)', () => {
   it('CT z klasą 5P20 (zabezpieczeniowa) → protection ready', () => {
+    // V12K-239: regula czyta DANE na rekordzie (`ct_accuracy_class`/`ct_application`),
+    // ktore warstwa wyzej wypelnia z PRAWDZIWEGO katalogu. Test podaje je wprost —
+    // wczesniej liczyl na rozwiazanie ID w lokalnym katalogu syntetycznym, ktory mial
+    // zerowe pokrycie z katalogiem realnym (czyli sprawdzal atrape).
     const der = makeDer({
       catalogs: {
         ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_200_5_5p20', // 5P20
+        ct_catalog_ref: 'ct_400_5_5p20_15va_abb', // realny typ ABB
       },
+      ct_accuracy_class: '5P20',
+      ct_application: 'protection',
     });
     const matrix = computeDerReadinessMatrix(der);
     expect(matrix.protection).toBe('ready');
@@ -99,8 +104,10 @@ describe('eng.5 — CT klasa musi być zabezpieczeniowa (5P/10P)', () => {
     const der = makeDer({
       catalogs: {
         ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_50_5_05', // klasa 0,5 — pomiarowa
+        ct_catalog_ref: 'ct_50_1_0_5_5va_arteche', // realny typ Arteche
       },
+      ct_accuracy_class: '0.5',
+      ct_application: 'metering',
     });
     const matrix = computeDerReadinessMatrix(der);
     expect(matrix.protection).toBe('partial');
@@ -123,9 +130,11 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       nominal_power_kw: 2500, // ≥ 1600
       catalogs: {
         ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_200_5_5p20', // single-core protection
-        transformer_catalog_ref: 'btr_pv_15_069_2500',
+        ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
+        block_transformer_catalog_ref: 'btr_pv_15_069_2500',
       },
+      ct_accuracy_class: '5P20',
+      ct_application: 'protection', // rdzen POJEDYNCZY zabezpieczeniowy
     });
     const matrix = computeDerReadinessMatrix(der);
     expect(matrix.protection).toBe('partial');
@@ -142,9 +151,14 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       nominal_power_kw: 2500,
       catalogs: {
         ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_300_5_dual', // dual-core
-        transformer_catalog_ref: 'btr_pv_15_069_2500',
+        ct_catalog_ref: 'ct_dwurdzeniowy_z_karty_producenta',
+        block_transformer_catalog_ref: 'btr_pv_15_069_2500',
       },
+      ct_accuracy_class: '5P20',
+      // Rdzen PODWOJNY jako DANA producenta. Katalog referencyjny nie ma dzis takiego
+      // typu (pomiar V12K-239: 12 typow, zero dwurdzeniowych — test w backendzie pilnuje
+      // tej granicy), wiec ten test opisuje warunek 87T po uzupelnieniu katalogu.
+      ct_application: 'dual',
     });
     const matrix = computeDerReadinessMatrix(der);
     expect(matrix.protection).toBe('ready');
@@ -157,9 +171,11 @@ describe('eng.6 — Dual-core CT dla 87T (transformator dedykowany ≥ 1.6 MVA)'
       nominal_power_kw: 1000, // < 1600
       catalogs: {
         ...makeDer().catalogs,
-        ct_catalog_ref: 'ct_200_5_5p20', // single-core
-        transformer_catalog_ref: 'btr_pv_15_04_1000',
+        ct_catalog_ref: 'ct_400_5_5p20_15va_abb',
+        block_transformer_catalog_ref: 'btr_pv_15_04_1000',
       },
+      ct_accuracy_class: '5P20',
+      ct_application: 'protection', // rdzen pojedynczy
     });
     const matrix = computeDerReadinessMatrix(der);
     expect(matrix.protection).toBe('ready');
@@ -482,42 +498,17 @@ describe('eng.18 — Device withstand validation (I_dyn / I_th)', () => {
 });
 
 // =============================================================================
-// Pakiet F — eng.20 (VT voltage_factor validation per grounding)
+// Pakiet F — eng.20: regula PRZENIESIONA DO BACKENDU (V12K-256 / V12K-257)
 // =============================================================================
+//
+// Tu stalo szesc asercji na `isVtVoltageFactorValidForGrounding` — froncie kopii
+// reguly IEC 61869-3. Kopia miala progi ZANIZONE (1,5 przy uziemieniu przez rezystor,
+// 1,2 przy bezposrednim), wiec ekran moglby oglaszac zgodnosc tam, gdzie backend i
+// pakiet dowodowy mowia „niezgodne". Regula zostala usunieta z frontu; jej intencje
+// pilnuja teraz:
+//
+//   * `backend/tests/api/test_audit2_catalogs_api.py` — progi wg sposobu uziemienia,
+//   * `backend/tests/domain/test_dobor_przekladnika_napieciowego.py` — pelne kryterium
+//     wspolczynnika napieciowego wraz z ukladem pracy uzwojenia,
+//   * `WalidacjaVtPolaSekcja.test.tsx` — ze ekran PYTA backend, zamiast liczyc sam.
 
-describe('eng.20 — VT voltage_factor walidacja względem typu sieci', () => {
-  it('Sieć izolowana wymaga U_th = 1.9 (8h)', () => {
-    const ok_19 = isVtVoltageFactorValidForGrounding(1.9, 'isolated');
-    expect(ok_19.ok).toBe(true);
-
-    const fail_15 = isVtVoltageFactorValidForGrounding(1.5, 'isolated');
-    expect(fail_15.ok).toBe(false);
-    expect(fail_15.message_pl).toContain('izolowana');
-    expect(fail_15.message_pl).toContain('1.9');
-  });
-
-  it('Sieć skompensowana (Petersena) wymaga U_th = 1.9 (8h)', () => {
-    const ok_19 = isVtVoltageFactorValidForGrounding(1.9, 'petersen_coil');
-    expect(ok_19.ok).toBe(true);
-
-    const fail_15 = isVtVoltageFactorValidForGrounding(1.5, 'petersen_coil');
-    expect(fail_15.ok).toBe(false);
-    expect(fail_15.message_pl).toContain('Petersena');
-  });
-
-  it('Sieć R-grounded wymaga U_th ≥ 1.5 (30s)', () => {
-    const ok_15 = isVtVoltageFactorValidForGrounding(1.5, 'resistor_grounded');
-    expect(ok_15.ok).toBe(true);
-
-    const ok_19 = isVtVoltageFactorValidForGrounding(1.9, 'resistor_grounded');
-    expect(ok_19.ok).toBe(true);
-
-    const fail_12 = isVtVoltageFactorValidForGrounding(1.2, 'resistor_grounded');
-    expect(fail_12.ok).toBe(false);
-  });
-
-  it('Sieć directly-grounded akceptuje U_th = 1.2', () => {
-    const ok_12 = isVtVoltageFactorValidForGrounding(1.2, 'directly_grounded');
-    expect(ok_12.ok).toBe(true);
-  });
-});

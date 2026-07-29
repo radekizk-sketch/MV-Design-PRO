@@ -20,7 +20,9 @@ import type {
   ProtectionDeviceType,
   SourceSystemCatalogType,
   SwitchEquipmentType,
+  ShuntCapacitorCatalogType,
   SurgeArresterCatalogType,
+  TapChangerCatalogType,
   TransformerType,
   TypeCategory,
   VTCatalogType,
@@ -77,6 +79,7 @@ export type CatalogListItem =
   | SourceSystemCatalogType
   | BranchPointCatalogType
   | SurgeArresterCatalogType
+  | ShuntCapacitorCatalogType
   | PtpireeGeneratorCertificateCatalogType;
 
 const DECATALOGING_BLOCKED_MESSAGE =
@@ -160,7 +163,28 @@ export async function fetchSwitchgearFamilies(
   const query = manufacturerRef
     ? `?manufacturer_ref=${encodeURIComponent(manufacturerRef)}`
     : '';
-  return fetchCatalogJson<SwitchgearFamily[]>(`/api/catalog/switchgear-families${query}`);
+  const rekordy = await fetchCatalogJson<SwitchgearFamily[]>(
+    `/api/catalog/switchgear-families${query}`,
+  );
+  return rekordy.map(znormalizujRodzine);
+}
+
+/**
+ * Domknięcie listy napięć rodziny rozdzielnic na WEJŚCIU danych (V12K-259).
+ *
+ * Kontrakt deklaruje `voltage_levels` jako pole wymagane, ale to deklaracja o TYPIE,
+ * nie gwarancja o ODPOWIEDZI SIECIOWEJ: rekord bez tego pola (starszy wpis, katalog
+ * odpowiadający częściowo, atrapa w scenie) przechodził do komponentu i wywracał CAŁY
+ * kreator źródła zasilania — `r.voltage_levels.length` na `undefined`, biały ekran bez
+ * granicy błędu. Sonda scen zrzutowych zobaczyła to jako jedyną scenę bez roota.
+ *
+ * Brak listy znaczy „nie zadeklarowano napięć", a nie „nie pasuje do żadnego" — dlatego
+ * pusta tablica: filtry traktują pustą listę jako brak przeciwwskazań (rodzina zostaje
+ * widoczna), zamiast po cichu usuwać ją z wyboru.
+ */
+function znormalizujRodzine(rekord: SwitchgearFamily): SwitchgearFamily {
+  if (Array.isArray(rekord?.voltage_levels)) return rekord;
+  return { ...rekord, voltage_levels: [] };
 }
 
 /** Lista kompletnych szablonów pól SN per producent/rodzina/funkcja pola. */
@@ -183,6 +207,10 @@ export async function fetchCableTypes(): Promise<CableType[]> {
 
 export async function fetchTransformerTypes(): Promise<TransformerType[]> {
   return fetchCatalogJson<TransformerType[]>('/api/catalog/transformer-types');
+}
+
+export async function fetchTapChangers(): Promise<TapChangerCatalogType[]> {
+  return fetchCatalogJson<TapChangerCatalogType[]>('/api/v1/catalog/audit2/tap-changers');
 }
 
 export async function fetchSwitchEquipmentTypes(): Promise<SwitchEquipmentType[]> {
@@ -215,6 +243,10 @@ export async function fetchVtTypes(): Promise<VTCatalogType[]> {
 
 export async function fetchSurgeArresterTypes(): Promise<SurgeArresterCatalogType[]> {
   return fetchCatalogJson<SurgeArresterCatalogType[]>('/api/catalog/surge-arrester-types');
+}
+
+export async function fetchShuntCapacitorTypes(): Promise<ShuntCapacitorCatalogType[]> {
+  return fetchCatalogJson<ShuntCapacitorCatalogType[]>('/api/catalog/shunt-capacitor-types');
 }
 
 export async function fetchPtpireeGeneratorCertificates(): Promise<PtpireeGeneratorCertificateCatalogType[]> {
@@ -272,6 +304,13 @@ export async function fetchConverterTypes(): Promise<ConverterType[]> {
       pmax_mw: item.p_max_kw / 1000,
       cosphi_min: item.cos_phi_min,
       cosphi_max: item.cos_phi_max,
+      // Certyfikat PTPiREE — z rekordu katalogowego (backend annotate_with_ptpiree_status)
+      // → materialized_params + ocena zgodności NC RfG. Bez tego link certyfikatu ginął.
+      ptpiree_status: item.ptpiree_status,
+      ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
+      ptpiree_document_number: item.ptpiree_document_number ?? null,
+      ptpiree_wos_version: item.ptpiree_wos_version ?? null,
+      ptpiree_source_url: item.ptpiree_source_url ?? null,
     }];
   });
   const bessConverters: ConverterType[] = bessTypes.flatMap((item) => {
@@ -286,6 +325,11 @@ export async function fetchConverterTypes(): Promise<ConverterType[]> {
       sn_mva: (item.s_n_kva ?? Math.max(item.p_charge_kw, item.p_discharge_kw)) / 1000,
       pmax_mw: item.p_discharge_kw / 1000,
       e_kwh: item.e_kwh,
+      ptpiree_status: item.ptpiree_status,
+      ptpiree_certificate_ref: item.ptpiree_certificate_ref ?? null,
+      ptpiree_document_number: item.ptpiree_document_number ?? null,
+      ptpiree_wos_version: item.ptpiree_wos_version ?? null,
+      ptpiree_source_url: item.ptpiree_source_url ?? null,
     }];
   });
 
@@ -455,6 +499,9 @@ export async function fetchTypesByCategory(category: TypeCategory): Promise<Cata
       break;
     case 'SURGE_ARRESTER':
       types = await fetchSurgeArresterTypes();
+      break;
+    case 'SHUNT_CAPACITOR':
+      types = await fetchShuntCapacitorTypes();
       break;
     case 'PTPIREE_CERTIFICATE':
       types = await fetchPtpireeGeneratorCertificates();

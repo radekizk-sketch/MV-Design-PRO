@@ -111,11 +111,35 @@ SIEMENS = Manufacturer(
     ),
 )
 
+SCHNEIDER_ELECTRIC = Manufacturer(
+    manufacturer_ref="SCHNEIDER_ELECTRIC",
+    name="Schneider Electric SE",
+    normalized_code="SCHNEIDER",
+    country="FR",
+    status="requires_catalog",
+    source_refs=[],
+    lifecycle_status="current",
+    verified_at=None,
+    catalog_policy_pl=(
+        "Dane techniczne mogą pochodzić wyłącznie z oficjalnych kart "
+        "produktów Schneider Electric lub dokumentacji zatwierdzonej przez "
+        "producenta. Rodziny produktowe (SM6, RM6, Premset itp.) wymagają "
+        "weryfikacji wersji katalogu."
+    ),
+    notes_pl=(
+        "Międzynarodowy producent rozdzielnic SN. Dodany w programie "
+        "Reference Engine V1 (REFERENCE_ENGINE_SPEC_V1.md) — rodzina SM6-24 "
+        "w rejestrze rodzin ze statusem repo_verified. Status producenta "
+        "requires_catalog do czasu zatwierdzenia oficjalnych kart PDF."
+    ),
+)
+
 _STARTING_MANUFACTURERS: tuple[Manufacturer, ...] = (
     ZPUE_WLOSZCZOWA,
     ELEKTROMETAL,
     ABB,
     SIEMENS,
+    SCHNEIDER_ELECTRIC,
 )
 
 # ---------------------------------------------------------------------------
@@ -136,9 +160,7 @@ def get_manufacturer(manufacturer_ref: str) -> Manufacturer:
     """Pobiera producenta po ref. Raises KeyError gdy brak."""
     if manufacturer_ref not in MANUFACTURER_REGISTRY:
         available = ", ".join(sorted(MANUFACTURER_REGISTRY.keys()))
-        raise KeyError(
-            f"Unknown manufacturer_ref: {manufacturer_ref}. Available: {available}"
-        )
+        raise KeyError(f"Unknown manufacturer_ref: {manufacturer_ref}. Available: {available}")
     return MANUFACTURER_REGISTRY[manufacturer_ref]
 
 

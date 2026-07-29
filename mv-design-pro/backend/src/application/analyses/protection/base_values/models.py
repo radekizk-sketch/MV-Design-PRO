@@ -18,7 +18,7 @@ Ten moduł definiuje struktury danych dla:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 # =============================================================================
@@ -26,7 +26,7 @@ from typing import Any, Literal
 # =============================================================================
 
 
-class BaseValueSourceUn(str, Enum):
+class BaseValueSourceUn(StrEnum):
     """
     Źródło wartości Un (napięcie odniesienia).
 
@@ -42,7 +42,7 @@ class BaseValueSourceUn(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class BaseValueSourceIn(str, Enum):
+class BaseValueSourceIn(StrEnum):
     """
     Źródło wartości In (prąd odniesienia).
 
@@ -65,7 +65,7 @@ class BaseValueSourceIn(str, Enum):
 # =============================================================================
 
 
-class ProtectedElementType(str, Enum):
+class ProtectedElementType(StrEnum):
     """
     Typ elementu chronionego.
     """
@@ -79,7 +79,7 @@ class ProtectedElementType(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 
-class TransformerSide(str, Enum):
+class TransformerSide(StrEnum):
     """
     Strona transformatora (dla określenia In).
 
@@ -230,7 +230,7 @@ class BaseValues:
 # =============================================================================
 
 
-class ProtectionSetpointBasis(str, Enum):
+class ProtectionSetpointBasis(StrEnum):
     """
     Baza dla nastawy (źródło odniesienia).
 
@@ -246,7 +246,7 @@ class ProtectionSetpointBasis(str, Enum):
     ABS = "ABS"
 
 
-class ProtectionSetpointOperator(str, Enum):
+class ProtectionSetpointOperator(StrEnum):
     """
     Operator porównania dla nastawy.
 

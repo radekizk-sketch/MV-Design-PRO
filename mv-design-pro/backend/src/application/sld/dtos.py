@@ -11,12 +11,12 @@ PowerFactory Alignment (per sld_rules.md, wizard_screens.md, ui_canonical_parity
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
 
-class SldOperatingMode(str, Enum):
+class SldOperatingMode(StrEnum):
     """
     SLD operating mode (per wizard_screens.md § 1.2, sld_rules.md § C).
 
@@ -30,7 +30,7 @@ class SldOperatingMode(str, Enum):
     RESULT_VIEW = "RESULT_VIEW"
 
 
-class SldResultStatus(str, Enum):
+class SldResultStatus(StrEnum):
     """
     Result freshness status (per ui_canonical_parity.md § B.2).
 

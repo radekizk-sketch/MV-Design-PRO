@@ -663,7 +663,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-frt-lvrt-hvrt',
     canonicalRoute: '/workspace/sources/frt-lvrt-hvrt',
     legacyAliases: ['frt', 'source_compliance', 'old:E-30'],
-    componentKey: 'ComplianceSurface',
+    componentKey: 'EkranFrt',
     testId: 'screen-E-26-frt-lvrt-hvrt',
     implemented: true,
     requiresProject: true,
@@ -686,7 +686,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-zabezpieczenia-automatyka',
     canonicalRoute: '/workspace/protection-automation',
     legacyAliases: ['protection_automation'],
-    componentKey: 'ProtectionAutomationSurface',
+    componentKey: 'EkranZabezpieczenAutomatyki', // dostawca ui2 (metadana, karta E-27; realny ekran zamiast phantoma)
     testId: 'screen-E-27-protection-automation',
     implemented: true,
     requiresProject: true,
@@ -709,7 +709,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-koordynacja-zabezpieczen',
     canonicalRoute: '/workspace/protection-coordination',
     legacyAliases: ['protection_coordination', 'old:E-28'],
-    componentKey: 'ProtectionCoordinationSurface',
+    componentKey: 'EkranKoordynacji', // dostawca ui2 (metadana, F-E5b; realna strona zamiast atrapy)
     testId: 'screen-E-28-protection-coordination',
     implemented: true,
     requiresProject: true,
@@ -732,7 +732,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-siec-zerowa',
     canonicalRoute: '/workspace/results/zero-sequence',
     legacyAliases: ['symmetrical_components', 'zero_sequence', 'old:E-29'],
-    componentKey: 'SymmetricalComponentsSurface',
+    componentKey: 'EkranSkladowych', // realny dostawca ui2 (karta P-3; podmiana Opcja 1)
     testId: 'screen-E-29-zero-sequence',
     implemented: true,
     requiresProject: true,
@@ -755,7 +755,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-rozplyw-mocy',
     canonicalRoute: '/workspace/results/load-flow',
     legacyAliases: ['load_flow', 'power_flow', 'convergence', 'old:E-34'],
-    componentKey: 'ConvergenceOltcSurface',
+    componentKey: 'EkranZbieznosci', // dostawca ui2 (metadana, karta P-2; realny ekran zbieżności)
     testId: 'screen-E-30-load-flow',
     implemented: true,
     requiresProject: true,
@@ -778,7 +778,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-stan-fazowy',
     canonicalRoute: '/workspace/results/phase-state-sn',
     legacyAliases: ['phase_state_sn', 'assumptions_quality', 'old:E-31'],
-    componentKey: 'AssumptionsQualitySurface',
+    componentKey: 'EkranStanuFazowego', // dostawca ui2 (metadana, karta P-2; realny ekran stanu fazowego)
     testId: 'screen-E-31-phase-state-sn',
     implemented: true,
     requiresProject: true,
@@ -801,7 +801,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-stabilnosc-dynamiczna',
     canonicalRoute: '/workspace/results/dynamic-stability',
     legacyAliases: ['dynamic_stability'],
-    componentKey: 'DynamicStabilitySurface',
+    componentKey: 'EkranStabilnosci', // realny dostawca ui2 (karta P-3; podmiana Opcja 1)
     testId: 'screen-E-32-dynamic-stability',
     implemented: true,
     requiresProject: true,
@@ -824,7 +824,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-wklady-zrodel',
     canonicalRoute: '/workspace/results/source-contributions',
     legacyAliases: ['source_contributions', 'old:E-32'],
-    componentKey: 'SourceContributionsSurface',
+    componentKey: 'EkranZwarc', // dostawca ui2 — zakładka zwarć warsztatu Wyników, deep-link (karta P-1)
     testId: 'screen-E-33-source-contributions',
     implemented: true,
     requiresProject: true,
@@ -847,7 +847,7 @@ export const SCREEN_CANON_REGISTRY: Readonly<Record<CanonScreenId, ScreenCanonDe
     icon: 'ikona-ekran-weryfikacja-cieplna-dynamiczna',
     canonicalRoute: '/workspace/results/thermal-dynamic',
     legacyAliases: ['thermal_dynamic', 'old:E-33'],
-    componentKey: 'ThermalDynamicSurface',
+    componentKey: 'EkranZwarc', // dostawca ui2 — zakładka zwarć warsztatu Wyników, deep-link (karta P-1)
     testId: 'screen-E-34-thermal-dynamic',
     implemented: true,
     requiresProject: true,

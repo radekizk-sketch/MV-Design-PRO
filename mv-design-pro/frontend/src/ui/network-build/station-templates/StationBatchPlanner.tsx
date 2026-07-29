@@ -105,6 +105,58 @@ function rowStatus(
   return { status: 'gotowe', missingFields };
 }
 
+/**
+ * Edycje projektanta w wierszu planu (V12K-208). Trzymane OSOBNO od wierszy, bo plan
+ * jest przebudowywany za kazdym razem, gdy zmieni sie zestaw szablonow, lista odcinkow
+ * albo liczba wierszy — a wpis projektanta musi te przebudowe przezyc.
+ */
+export interface BatchRowOverride {
+  readonly lengthM?: number | null;
+  readonly medium?: BatchMedium;
+  readonly catalogProfile?: string;
+}
+
+/**
+ * Naloz edycje projektanta na swiezo zbudowany plan i PRZELICZ status wiersza.
+ *
+ * Status musi byc liczony po nalozeniu, bo od dlugosci zalezy werdykt „brak dlugosci":
+ * gdyby zostal status z budowy planu, wiersz z wyzerowana dlugoscia wygladalby na gotowy.
+ */
+export function applyRowOverrides(
+  plan: readonly StationBatchPlanRow[],
+  overrides: Readonly<Record<string, BatchRowOverride>>,
+): StationBatchPlanRow[] {
+  return plan.map((row) => {
+    const override = overrides[row.rowId];
+    if (!override) return row;
+    const lengthM = override.lengthM !== undefined ? override.lengthM : row.lengthM;
+    const statusInfo = rowStatus(
+      row.templateId
+        ? {
+            id: row.templateId,
+            name_pl: row.templateName,
+            category: row.category,
+            description_pl: '',
+            use_case_pl: '',
+            nc_rfg_type: null,
+            tags: [],
+            icon: '',
+          }
+        : null,
+      row.targetSegmentRef,
+      lengthM,
+    );
+    return {
+      ...row,
+      lengthM,
+      medium: override.medium ?? row.medium,
+      catalogProfile: override.catalogProfile ?? row.catalogProfile,
+      status: statusInfo.status,
+      missingFields: statusInfo.missingFields,
+    };
+  });
+}
+
 export function buildStationBatchPlan(
   templates: readonly StationTemplateSummary[],
   segmentRefs: readonly string[],
@@ -170,6 +222,7 @@ export function StationBatchPlanner({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rows, setRows] = useState<StationBatchPlanRow[]>([]);
+  const [overrides, setOverrides] = useState<Readonly<Record<string, BatchRowOverride>>>({});
   const [applying, setApplying] = useState(false);
   const [appliedCount, setAppliedCount] = useState(0);
 
@@ -195,9 +248,14 @@ export function StationBatchPlanner({
     };
   }, []);
 
+  // V12K-208: przebudowa planu NIE MOZE wymazac edycji projektanta. Wiersze powstaja
+  // przed dojsciem szablonow (bez szablonu maja status „brak szablonu"), wiec projektant
+  // moze zaczac uzupelniac dlugosci, a spoznione `setTemplates` przestawialo wtedy caly
+  // plan od zera — jego wpisy przepadaly BEZ SLOWA. Nadpisania trzymamy osobno i
+  // nakladamy na swiezo zbudowany plan.
   useEffect(() => {
-    setRows(buildStationBatchPlan(templates, segmentRefs, targetCount));
-  }, [segmentRefs, targetCount, templates]);
+    setRows(applyRowOverrides(buildStationBatchPlan(templates, segmentRefs, targetCount), overrides));
+  }, [segmentRefs, targetCount, templates, overrides]);
 
   const readyRows = rows.filter((row) => row.status === 'gotowe');
   const missingRows = rows.length - readyRows.length;
@@ -210,31 +268,20 @@ export function StationBatchPlanner({
         ? `Plan ma ${missingRows} wierszy z brakami. Uzupełnij odcinki docelowe i długości.`
         : null;
 
+  // Kazda edycja idzie do `overrides`, a nie wprost do `rows` — inaczej nastepna
+  // przebudowa planu (dojscie szablonow, zmiana liczby wierszy) ja gubi.
   const updateLength = (rowId: string, value: string) => {
     const parsed = Number(value);
-    setRows((current) => current.map((row) => {
-      if (row.rowId !== rowId) return row;
-      const lengthM = Number.isFinite(parsed) ? parsed : null;
-      const statusInfo = rowStatus(row.templateId ? {
-        id: row.templateId,
-        name_pl: row.templateName,
-        category: row.category,
-        description_pl: '',
-        use_case_pl: '',
-        nc_rfg_type: null,
-        tags: [],
-        icon: '',
-      } : null, row.targetSegmentRef, lengthM);
-      return { ...row, lengthM, status: statusInfo.status, missingFields: statusInfo.missingFields };
-    }));
+    const lengthM = Number.isFinite(parsed) ? parsed : null;
+    setOverrides((current) => ({ ...current, [rowId]: { ...current[rowId], lengthM } }));
   };
 
   const updateMedium = (rowId: string, medium: BatchMedium) => {
-    setRows((current) => current.map((row) => (row.rowId === rowId ? { ...row, medium } : row)));
+    setOverrides((current) => ({ ...current, [rowId]: { ...current[rowId], medium } }));
   };
 
   const updateCatalogProfile = (rowId: string, catalogProfile: string) => {
-    setRows((current) => current.map((row) => (row.rowId === rowId ? { ...row, catalogProfile } : row)));
+    setOverrides((current) => ({ ...current, [rowId]: { ...current[rowId], catalogProfile } }));
   };
 
   const applyPlan = async () => {
@@ -302,7 +349,9 @@ export function StationBatchPlanner({
         <button
           type="button"
           className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50"
-          onClick={() => setRows(buildStationBatchPlan(templates, segmentRefs, targetCount))}
+          // „Odtwórz plan" musi porzucić TAKŻE nadpisania — inaczej przycisk odtwarzania
+          // zwracałby plan z poprzednimi edycjami i nie robił tego, co obiecuje.
+          onClick={() => setOverrides({})}
         >
           Odtwórz plan {targetCount} stacji
         </button>

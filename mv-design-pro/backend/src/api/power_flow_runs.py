@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from infrastructure.persistence.unit_of_work import UnitOfWork
-
 import io
 import math
 import zipfile
+from collections.abc import Callable
 from typing import Any
 from uuid import UUID
 from xml.sax.saxutils import escape
@@ -32,6 +30,7 @@ from enm.canonical_analysis import execute_run as execute_canonical_run
 from enm.canonical_analysis import get_run as get_canonical_run
 from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_for_project
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["power-flow"])

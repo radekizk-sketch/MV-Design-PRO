@@ -41,7 +41,10 @@ class TestRunResultState:
 
     def test_result_state_string_conversion(self):
         """RunResultState must be string-convertible."""
-        assert str(RunResultState.NONE) == "RunResultState.NONE"
+        # Kanon py3.11 StrEnum (UP042): str(member) zwraca wartosc czlonu,
+        # nie "Klasa.CZLON" jak dawne (str, Enum). Intencja testu (string-convertible
+        # + rownosc z wartoscia) zachowana; produkcja uzywa .value/porownania, nie repr.
+        assert str(RunResultState.NONE) == "NONE"
         assert RunResultState.FRESH == "FRESH"
 
 
@@ -183,6 +186,88 @@ class TestShortCircuitComparison:
         assert "zth_delta" in d
         assert "ip_delta" in d
         assert "ith_delta" in d
+        # Karta S-C: pola addytywne zawsze w słowniku; bez danych → None.
+        assert d["xr_ratio_delta"] is None
+        assert d["i2t_delta"] is None
+
+
+class TestShortCircuitFullBalanceDeltas:
+    """Karta S-C (2026-07-22): addytywne delty X/R oraz I²t w P10b.
+
+    Delty Rk/Xk/|Zk| pełnego bilansu niesie zth_delta (delta_re/delta_im/
+    delta_magnitude) — tu weryfikujemy nowe pochodne z tej samej klasy
+    przekształceń (X/R = 1/(R/X), I²t = (Ith/1000)²·tk).
+    """
+
+    @staticmethod
+    def _service():
+        from application.comparison.service import ComparisonService
+
+        return ComparisonService(uow_factory=lambda: None)
+
+    @staticmethod
+    def _results(payload):
+        return [{"result_type": "short_circuit", "payload": payload}]
+
+    def test_full_payloads_produce_xr_and_i2t_deltas(self):
+        service = self._service()
+        payload_a = {
+            "ikss_a": 10000.0,
+            "sk_mva": 100.0,
+            "ip_a": 25000.0,
+            "ith_a": 11000.0,
+            "tk_s": 1.0,
+            "rx_ratio": 0.25,
+            "zkk_ohm": {"re": 0.3, "im": 0.4},
+        }
+        payload_b = {
+            "ikss_a": 12000.0,
+            "sk_mva": 120.0,
+            "ip_a": 30000.0,
+            "ith_a": 22000.0,
+            "tk_s": 1.0,
+            "rx_ratio": 0.5,
+            "zkk_ohm": {"re": 0.6, "im": 0.8},
+        }
+
+        comp = service._compare_short_circuit(
+            self._results(payload_a), self._results(payload_b), uuid4(), uuid4()
+        )
+
+        assert comp.xr_ratio_delta is not None
+        assert comp.xr_ratio_delta.value_a == pytest.approx(4.0)
+        assert comp.xr_ratio_delta.value_b == pytest.approx(2.0)
+        assert comp.i2t_delta is not None
+        assert comp.i2t_delta.value_a == pytest.approx(121.0)
+        assert comp.i2t_delta.value_b == pytest.approx(484.0)
+        # Delty Rk/Xk/|Zk| — przez zth_delta (bez duplikacji pól).
+        assert comp.zth_delta.delta_re == pytest.approx(0.3)
+        assert comp.zth_delta.delta_im == pytest.approx(0.4)
+        assert comp.zth_delta.delta_magnitude == pytest.approx(0.5)
+
+    def test_older_payload_without_sources_gives_none(self):
+        service = self._service()
+        older = {"ikss_a": 10000.0, "sk_mva": 100.0, "ip_a": 25000.0, "ith_a": 11000.0}
+        newer = {
+            "ikss_a": 12000.0,
+            "sk_mva": 120.0,
+            "ip_a": 30000.0,
+            "ith_a": 22000.0,
+            "tk_s": 1.0,
+            "rx_ratio": 0.5,
+            "zkk_ohm": {"re": 0.6, "im": 0.8},
+        }
+
+        comp = service._compare_short_circuit(
+            self._results(older), self._results(newer), uuid4(), uuid4()
+        )
+
+        # Uczciwy brak: jedna strona bez pól źródłowych → delta None.
+        assert comp.xr_ratio_delta is None
+        assert comp.i2t_delta is None
+        d = comp.to_dict()
+        assert d["xr_ratio_delta"] is None
+        assert d["i2t_delta"] is None
 
 
 class TestPowerFlowComparison:
