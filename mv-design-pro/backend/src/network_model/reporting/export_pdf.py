@@ -16,6 +16,8 @@ import textwrap
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from network_model.reporting.czcionki import zarejestruj_czcionki
+
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_result import PowerFlowResultV1
     from network_model.solvers.power_flow_trace import PowerFlowTrace
@@ -107,15 +109,15 @@ class _PDFLayout:
 
     def draw_title(self, text: str) -> None:
         """Draw centered title text."""
-        self.c.setFont("Helvetica-Bold", 16)
-        w = self.c.stringWidth(text, "Helvetica-Bold", 16)
+        self.c.setFont("DejaVuSans-Bold", 16)
+        w = self.c.stringWidth(text, "DejaVuSans-Bold", 16)
         self.c.drawString((self.page_width - w) / 2, self.y, text)
         self.y -= 10 * mm
 
     def draw_subtitle(self, text: str) -> None:
         """Draw centered subtitle text."""
-        self.c.setFont("Helvetica", 10)
-        w = self.c.stringWidth(text, "Helvetica", 10)
+        self.c.setFont("DejaVuSans", 10)
+        w = self.c.stringWidth(text, "DejaVuSans", 10)
         if w > self.content_width:
             # Wrap if too wide
             self.c.drawString(self.left_margin, self.y, text[:100])
@@ -126,7 +128,7 @@ class _PDFLayout:
     def draw_heading(self, text: str, font_size: int = 14) -> None:
         """Draw a section heading."""
         self.check_page_break(30)
-        self.c.setFont("Helvetica-Bold", font_size)
+        self.c.setFont("DejaVuSans-Bold", font_size)
         self.c.drawString(self.left_margin, self.y, text)
         self.y -= self.line_height + 3 * mm
 
@@ -135,7 +137,7 @@ class _PDFLayout:
     ) -> None:
         """Draw text at current y position and advance."""
         self.check_page_break(self.line_height)
-        font = "Helvetica-Bold" if bold else "Helvetica"
+        font = "DejaVuSans-Bold" if bold else "DejaVuSans"
         self.c.setFont(font, font_size)
         self.c.drawString(x or self.left_margin, self.y, text)
         self.y -= self.line_height
@@ -143,7 +145,7 @@ class _PDFLayout:
     def draw_kv_row(self, label: str, value: str) -> None:
         """Draw a key-value pair at fixed columns."""
         self.check_page_break(self.line_height)
-        self.c.setFont("Helvetica", 10)
+        self.c.setFont("DejaVuSans", 10)
         self.c.drawString(self.left_margin, self.y, label)
         self.c.drawString(self.left_margin + 55 * mm, self.y, value)
         self.y -= self.line_height
@@ -157,7 +159,7 @@ class _PDFLayout:
     ) -> None:
         """Draw a table row with given column widths."""
         self.check_page_break(self.line_height)
-        font = "Helvetica-Bold" if bold else "Helvetica"
+        font = "DejaVuSans-Bold" if bold else "DejaVuSans"
         self.c.setFont(font, font_size)
         x = self.left_margin
         for i, val in enumerate(values):
@@ -218,7 +220,8 @@ def generate_sc_report_pdf(
     if not isinstance(data, dict):
         raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
-    c = canvas.Canvas(str(out), pagesize=A4)
+    zarejestruj_czcionki()
+    c = canvas.Canvas(str(out), pagesize=A4, invariant=1, pageCompression=0)
     lay = _PDFLayout(c)
 
     # =========================================================================
@@ -463,7 +466,8 @@ def generate_pf_report_pdf(
     if not isinstance(data, dict):
         raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
-    c = canvas.Canvas(str(out), pagesize=A4)
+    zarejestruj_czcionki()
+    c = canvas.Canvas(str(out), pagesize=A4, invariant=1, pageCompression=0)
     lay = _PDFLayout(c)
 
     # =========================================================================

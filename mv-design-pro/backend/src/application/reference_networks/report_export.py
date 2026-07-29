@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from application.reference_networks.comparator import ValidationReport
+from network_model.reporting.czcionki import ustaw_czcionki_stylow, zarejestruj_czcionki
 
 
 def to_json(report: ValidationReport, path: Path | str | None = None) -> str:
@@ -35,8 +36,16 @@ def to_pdf_bytes(report: ValidationReport) -> bytes:
         raise ImportError("reportlab is required for PDF export") from exc
 
     buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, title=f"Raport walidacji - {report.network_id}")
+    zarejestruj_czcionki()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        title=f"Raport walidacji - {report.network_id}",
+        invariant=1,
+        pageCompression=0,
+    )
     styles = getSampleStyleSheet()
+    ustaw_czcionki_stylow(styles)
     story: list[Any] = []
 
     # Title block
@@ -89,7 +98,7 @@ def to_pdf_bytes(report: ValidationReport) -> bytes:
             [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0d1117")),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), "DejaVuSans-Bold"),
                 ("ALIGN", (1, 0), (-1, -1), "CENTER"),
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.gray),
             ]
@@ -119,7 +128,7 @@ def to_pdf_bytes(report: ValidationReport) -> bytes:
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#0d1117")),
                     ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                    ("FONTNAME", (0, 0), (-1, 0), "DejaVuSans-Bold"),
                     ("FONTSIZE", (0, 0), (-1, -1), 7),
                     ("GRID", (0, 0), (-1, -1), 0.3, colors.gray),
                 ]

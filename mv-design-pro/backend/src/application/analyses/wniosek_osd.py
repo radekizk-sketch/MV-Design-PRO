@@ -46,6 +46,7 @@ from application.analyses.certyfikat_zgodnosci import (
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.grid_strength import _installed_mva_by_bus
 from enm.canonical_analysis import CanonicalRun, build_short_circuit_results
+from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from network_model.solvers.ncrfg_ptpiree import NcRfgPtpireeRunResult
 from pydantic import BaseModel, Field
@@ -454,12 +455,14 @@ def render_wniosek_pdf(view: dict) -> bytes:
 
     Determinizm bajtowy: canvas z ``invariant=1`` (stały ``CreationDate`` i ``ID``
     dokumentu) oraz ``pageCompression=0`` — dwa wywołania na tym samym widoku dają
-    identyczne bajty. Fonty Helvetica jak istniejące raporty PDF (bez nowych zasobów).
+    identyczne bajty. Czcionki DejaVu Sans (polskie diakrytyki) rejestrowane wspólnym
+    modułem ``network_model.reporting.czcionki`` (subset TTF jest deterministyczny).
     """
     if not _PDF_AVAILABLE:  # pragma: no cover
         raise ImportError("Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab")
 
     buffer = BytesIO()
+    zarejestruj_czcionki()
     c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
     left_margin = 25 * mm
@@ -483,7 +486,7 @@ def render_wniosek_pdf(view: dict) -> bytes:
 
     def para(text: str, *, size: int = 10, bold: bool = False, indent: float = 0.0) -> None:
         nonlocal y
-        font = "Helvetica-Bold" if bold else "Helvetica"
+        font = "DejaVuSans-Bold" if bold else "DejaVuSans"
         for line in simpleSplit(text, font, size, content_width - indent):
             ensure(line_height)
             c.setFont(font, size)
@@ -492,7 +495,7 @@ def render_wniosek_pdf(view: dict) -> bytes:
             y -= line_height
 
     # Tytuł (wyśrodkowany).
-    c.setFont("Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
     c.drawCentredString(page_width / 2, y, str(view["tytul"]))
     y -= 10 * mm
 
@@ -548,7 +551,7 @@ def render_wniosek_pdf(view: dict) -> bytes:
     label_col = content_width * 0.6
     for etykieta, wartosc in wiersze:
         ensure(line_height)
-        c.setFont("Helvetica", 10)
+        c.setFont("DejaVuSans", 10)
         c.setFillColorRGB(0, 0, 0)
         c.drawString(left_margin, y, str(etykieta))
         c.drawString(left_margin + label_col, y, str(wartosc))

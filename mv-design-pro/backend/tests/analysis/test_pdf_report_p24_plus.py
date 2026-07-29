@@ -160,7 +160,9 @@ def _sample_protection_insight() -> ProtectionInsightView:
             dynamic_margin_pct=None,
             thermal_margin_pct=None,
             selectivity_status=ProtectionSelectivityStatus.NOT_EVALUATED,
-            why_pl="Brak danych w raporcie P20.",
+            # Intencja: dane wejściowe bez kodów projektowych (reguła
+            # "No Codenames in Exports" obejmuje też artefakty testowe).
+            why_pl="Brak danych w raporcie oceny normatywnej.",
         ),
     )
     summary = ProtectionInsightSummary(
@@ -221,7 +223,9 @@ def _sample_normative_report() -> NormativeReport:
             limit_unit=None,
             margin=None,
             why_pl="Brak danych selektywności.",
-            requires=("proof:P18", "selectivity_margin"),
+            # Intencja: realny token requires to proof_type.value (jak w
+            # analysis/normative/evaluator.py), bez kodów projektowych.
+            requires=("PROTECTION_OVERCURRENT", "selectivity_margin"),
         ),
     )
     return NormativeReport(report_id="report-001", context=context, items=items)

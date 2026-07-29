@@ -4,6 +4,7 @@ from importlib.util import find_spec
 from io import BytesIO
 
 from analysis.protection_curves_it.models import ProtectionCurvesITView
+from network_model.reporting.czcionki import zarejestruj_czcionki
 
 _PDF_AVAILABLE = find_spec("reportlab") is not None
 
@@ -31,6 +32,7 @@ def render_protection_curves_pdf(view: ProtectionCurvesITView) -> bytes:
 
     rl_config.invariant = 1
     output = BytesIO()
+    zarejestruj_czcionki()
     c = canvas.Canvas(
         output,
         pagesize=A4,
@@ -39,7 +41,7 @@ def render_protection_curves_pdf(view: ProtectionCurvesITView) -> bytes:
     )
     c.setCreator("MV-DESIGN-PRO PDF Renderer")
     c.setAuthor("MV-DESIGN-PRO")
-    c.setTitle("Krzywe I–t (ETAP++)")
+    c.setTitle("Krzywe czasowo-prądowe I–t")
     c.setSubject("Krzywe czasowo-prądowe — audit-grade")
 
     page_width, page_height = A4
@@ -60,26 +62,26 @@ def render_protection_curves_pdf(view: ProtectionCurvesITView) -> bytes:
     def draw_heading(text: str, size: int = 12) -> None:
         nonlocal y
         check_page_break(12 * mm)
-        c.setFont("Helvetica-Bold", size)
+        c.setFont("DejaVuSans-Bold", size)
         c.drawString(left, y, text)
         y -= line_height
 
     def draw_text(text: str, size: int = 10, bold: bool = False) -> None:
         nonlocal y
-        font = "Helvetica-Bold" if bold else "Helvetica"
+        font = "DejaVuSans-Bold" if bold else "DejaVuSans"
         c.setFont(font, size)
         c.drawString(left, y, text)
         y -= line_height
 
     def draw_wrapped(text: str, size: int = 9) -> None:
         nonlocal y
-        c.setFont("Helvetica", size)
+        c.setFont("DejaVuSans", size)
         max_width = right - left
         words = str(text).split()
         line = ""
         for word in words:
             candidate = f"{line} {word}".strip()
-            if c.stringWidth(candidate, "Helvetica", size) <= max_width:
+            if c.stringWidth(candidate, "DejaVuSans", size) <= max_width:
                 line = candidate
             else:
                 check_page_break(line_height)
@@ -91,14 +93,14 @@ def render_protection_curves_pdf(view: ProtectionCurvesITView) -> bytes:
             c.drawString(left, y, line)
             y -= line_height
 
-    draw_heading("Krzywe I–t (ETAP++)", size=14)
+    draw_heading("Krzywe czasowo-prądowe I–t", size=14)
     draw_text(f"BUS: {view.bus_id}")
     draw_text(f"Primary: {view.primary_device_id}")
     draw_text(f"Backup: {view.backup_device_id or '—'}")
     draw_text(f"Status: {view.normative_status.value}")
     draw_wrapped(view.why_pl)
 
-    draw_heading("Reguły normatywne (P20)")
+    draw_heading("Reguły normatywne")
     for rule_id in _P18_RULE_IDS:
         margin = view.margins_pct.get(rule_id)
         margin_text = f"{margin:.2f}%" if margin is not None else "—"

@@ -46,6 +46,7 @@ from application.analyses.pq_coverage import build_pq_coverage_view
 from catalog.profiles.nc_rfg.loader import NcRfgProfile
 from enm.canonical_analysis import CanonicalRun
 from network_model.catalog.types import ConverterType
+from network_model.reporting.czcionki import zarejestruj_czcionki
 from network_model.reporting.docx_determinism import make_docx_bytes_deterministic
 from pydantic import BaseModel, Field
 
@@ -564,12 +565,14 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
 
     Determinizm bajtowy: canvas z ``invariant=1`` (stały ``CreationDate`` i ``ID``
     dokumentu) oraz ``pageCompression=0`` — dwa wywołania na tym samym widoku dają
-    identyczne bajty. Fonty Helvetica jak istniejące raporty PDF (bez nowych zasobów).
+    identyczne bajty. Czcionki DejaVu Sans (polskie diakrytyki) rejestrowane wspólnym
+    modułem ``network_model.reporting.czcionki`` (subset TTF jest deterministyczny).
     """
     if not _PDF_AVAILABLE:  # pragma: no cover
         raise ImportError("Eksport PDF wymaga reportlab. Zainstaluj: pip install reportlab")
 
     buffer = BytesIO()
+    zarejestruj_czcionki()
     c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
     left_margin = 25 * mm
@@ -593,7 +596,7 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
 
     def para(text: str, *, size: int = 10, bold: bool = False, indent: float = 0.0) -> None:
         nonlocal y
-        font = "Helvetica-Bold" if bold else "Helvetica"
+        font = "DejaVuSans-Bold" if bold else "DejaVuSans"
         for line in simpleSplit(text, font, size, content_width - indent):
             ensure(line_height)
             c.setFont(font, size)
@@ -602,7 +605,7 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
             y -= line_height
 
     # Tytuł (wyśrodkowany).
-    c.setFont("Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
     c.drawCentredString(page_width / 2, y, str(view["tytul"]))
     y -= 10 * mm
 
@@ -675,7 +678,7 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
     ]
     naglowki = ["Węzeł", "Identyfikator", "Moc [MW]", "Klasa", "Pokrycie", "Pasmo Q"]
     ensure(line_height)
-    c.setFont("Helvetica-Bold", 9)
+    c.setFont("DejaVuSans-Bold", 9)
     col_x = left_margin
     for i, label in enumerate(naglowki):
         c.drawString(col_x, y, label)
@@ -691,11 +694,11 @@ def render_dokument_studium_pdf(view: dict) -> bytes:
             wiersz["pasmo_q_pl"] if wiersz["pasmo_q_pl"] is not None else "—",
         ]
         wrapped = [
-            simpleSplit(cell, "Helvetica", 9, kolumny[i] - 2 * mm) for i, cell in enumerate(cells)
+            simpleSplit(cell, "DejaVuSans", 9, kolumny[i] - 2 * mm) for i, cell in enumerate(cells)
         ]
         row_lines = max(len(w) for w in wrapped)
         ensure(line_height * row_lines)
-        c.setFont("Helvetica", 9)
+        c.setFont("DejaVuSans", 9)
         col_x = left_margin
         for i, lines in enumerate(wrapped):
             for j, line in enumerate(lines):

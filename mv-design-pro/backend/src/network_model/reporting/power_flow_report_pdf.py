@@ -16,6 +16,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from network_model.reporting.czcionki import zarejestruj_czcionki
+
 if TYPE_CHECKING:
     from network_model.solvers.power_flow_result import PowerFlowResultV1
     from network_model.solvers.power_flow_trace import PowerFlowTrace
@@ -94,7 +96,8 @@ def export_power_flow_result_to_pdf(
         raise ValueError(f"result.to_dict() must return a dict, got {type(data).__name__}")
 
     # Create PDF canvas
-    c = canvas.Canvas(str(output_path), pagesize=A4)
+    zarejestruj_czcionki()
+    c = canvas.Canvas(str(output_path), pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
 
     # Margins and layout
@@ -118,7 +121,7 @@ def export_power_flow_result_to_pdf(
     def draw_text(text: str, x: float, font_size: int = 10, bold: bool = False) -> None:
         """Draw text at current y position and move y down."""
         nonlocal y
-        font_name = "Helvetica-Bold" if bold else "Helvetica"
+        font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
         c.setFont(font_name, font_size)
         c.drawString(x, y, text)
         y -= line_height
@@ -132,7 +135,7 @@ def export_power_flow_result_to_pdf(
     ) -> None:
         """Draw a simple table row."""
         nonlocal y
-        font_name = "Helvetica-Bold" if bold else "Helvetica"
+        font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
         c.setFont(font_name, font_size)
         current_x = x
         for i, val in enumerate(values):
@@ -143,13 +146,13 @@ def export_power_flow_result_to_pdf(
 
     # 1) Title
     report_title = title if title else "Raport rozplywu mocy"
-    c.setFont("Helvetica-Bold", 16)
-    title_width = c.stringWidth(report_title, "Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
+    title_width = c.stringWidth(report_title, "DejaVuSans-Bold", 16)
     c.drawString((page_width - title_width) / 2, y, report_title)
     y -= 10 * mm
 
     # 2) Parameters line
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     params = [
         f"Status: {'Zbiezny' if data.get('converged') else 'Niezbiezny'}",
         f"Iteracje: {data.get('iterations_count', '—')}",
@@ -157,7 +160,7 @@ def export_power_flow_result_to_pdf(
         f"Moc bazowa: {data.get('base_mva', 100)} MVA",
     ]
     params_text = " | ".join(params)
-    params_width = c.stringWidth(params_text, "Helvetica", 10)
+    params_width = c.stringWidth(params_text, "DejaVuSans", 10)
     c.drawString((page_width - params_width) / 2, y, params_text)
     y -= line_height
 
@@ -199,7 +202,7 @@ def export_power_flow_result_to_pdf(
 
     for label, value in summary_fields:
         y = check_page_break(line_height)
-        c.setFont("Helvetica", 10)
+        c.setFont("DejaVuSans", 10)
         c.drawString(label_x, y, label)
         c.drawString(value_x, y, value)
         y -= line_height
@@ -240,11 +243,11 @@ def export_power_flow_result_to_pdf(
 
         if len(bus_results) > 30:
             y = check_page_break(line_height)
-            c.setFont("Helvetica-Oblique", 9)
+            c.setFont("DejaVuSans-Oblique", 9)
             c.drawString(left_margin, y, f"... oraz {len(bus_results) - 30} dodatkowych wezlow")
             y -= line_height
     else:
-        c.setFont("Helvetica-Oblique", 10)
+        c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak wynikow wezlowych.")
         y -= line_height
 
@@ -284,11 +287,11 @@ def export_power_flow_result_to_pdf(
 
         if len(branch_results) > 30:
             y = check_page_break(line_height)
-            c.setFont("Helvetica-Oblique", 9)
+            c.setFont("DejaVuSans-Oblique", 9)
             c.drawString(left_margin, y, f"... oraz {len(branch_results) - 30} dodatkowych galezi")
             y -= line_height
     else:
-        c.setFont("Helvetica-Oblique", 10)
+        c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak wynikow galeziowych.")
         y -= line_height
 
@@ -313,7 +316,7 @@ def export_power_flow_result_to_pdf(
 
         for label, value in trace_fields:
             y = check_page_break(line_height)
-            c.setFont("Helvetica", 10)
+            c.setFont("DejaVuSans", 10)
             c.drawString(label_x, y, label)
             c.drawString(value_x, y, value)
             y -= line_height
@@ -386,7 +389,8 @@ def export_power_flow_comparison_to_pdf(
         raise ValueError(f"comparison must be a dict, got {type(comparison).__name__}")
 
     # Create PDF canvas
-    c = canvas.Canvas(str(output_path), pagesize=A4)
+    zarejestruj_czcionki()
+    c = canvas.Canvas(str(output_path), pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
 
     left_margin = 25 * mm
@@ -407,22 +411,22 @@ def export_power_flow_comparison_to_pdf(
 
     def draw_text(text: str, x: float, font_size: int = 10, bold: bool = False) -> None:
         nonlocal y
-        font_name = "Helvetica-Bold" if bold else "Helvetica"
+        font_name = "DejaVuSans-Bold" if bold else "DejaVuSans"
         c.setFont(font_name, font_size)
         c.drawString(x, y, text)
         y -= line_height
 
     # 1) Title
     report_title = title if title else "Raport porownania rozplywu mocy"
-    c.setFont("Helvetica-Bold", 16)
-    title_width = c.stringWidth(report_title, "Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
+    title_width = c.stringWidth(report_title, "DejaVuSans-Bold", 16)
     c.drawString((page_width - title_width) / 2, y, report_title)
     y -= 10 * mm
 
     # Subtitle
     subtitle = f"Run A: {comparison.get('run_a_id', '—')[:8]}... | Run B: {comparison.get('run_b_id', '—')[:8]}..."
-    c.setFont("Helvetica", 10)
-    subtitle_width = c.stringWidth(subtitle, "Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
+    subtitle_width = c.stringWidth(subtitle, "DejaVuSans", 10)
     c.drawString((page_width - subtitle_width) / 2, y, subtitle)
     y -= line_height
 
@@ -451,7 +455,7 @@ def export_power_flow_comparison_to_pdf(
 
     for label, value in summary_fields:
         y = check_page_break(line_height)
-        c.setFont("Helvetica", 10)
+        c.setFont("DejaVuSans", 10)
         c.drawString(label_x, y, label)
         c.drawString(value_x, y, value)
         y -= line_height
@@ -470,10 +474,10 @@ def export_power_flow_comparison_to_pdf(
         for issue in ranking[:20]:
             y = check_page_break(line_height * 2)
             severity = severity_labels.get(issue.get("severity", 1), "?")
-            c.setFont("Helvetica-Bold", 9)
+            c.setFont("DejaVuSans-Bold", 9)
             c.drawString(left_margin, y, f"[{severity}] {issue.get('issue_code', '—')}")
             y -= line_height
-            c.setFont("Helvetica", 9)
+            c.setFont("DejaVuSans", 9)
             c.drawString(
                 left_margin + 10 * mm,
                 y,
@@ -482,11 +486,11 @@ def export_power_flow_comparison_to_pdf(
             y -= line_height
 
         if len(ranking) > 20:
-            c.setFont("Helvetica-Oblique", 9)
+            c.setFont("DejaVuSans-Oblique", 9)
             c.drawString(left_margin, y, f"... oraz {len(ranking) - 20} dodatkowych problemow")
             y -= line_height
     else:
-        c.setFont("Helvetica-Oblique", 10)
+        c.setFont("DejaVuSans-Oblique", 10)
         c.drawString(left_margin, y, "Brak wykrytych problemow.")
         y -= line_height
 

@@ -31,6 +31,7 @@ from enm.canonical_analysis import get_run as get_canonical_run
 from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_for_project
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel, Field
 
 router = APIRouter(tags=["power-flow"])
@@ -631,23 +632,24 @@ def export_power_flow_run_pdf(run_id: UUID):
     white_box_trace = bundle.get("white_box_trace") or []
 
     buffer = io.BytesIO()
-    canvas_obj = canvas.Canvas(buffer, pagesize=A4)
+    zarejestruj_czcionki()
+    canvas_obj = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
     left_margin = 25 * mm
     top_margin = page_height - 25 * mm
     y = top_margin
     line_height = 5 * mm
 
-    canvas_obj.setFont("Helvetica-Bold", 16)
+    canvas_obj.setFont("DejaVuSans-Bold", 16)
     title = "Raport rozplywu mocy"
     canvas_obj.drawString(
-        (page_width - canvas_obj.stringWidth(title, "Helvetica-Bold", 16)) / 2,
+        (page_width - canvas_obj.stringWidth(title, "DejaVuSans-Bold", 16)) / 2,
         y,
         title,
     )
     y -= 10 * mm
 
-    canvas_obj.setFont("Helvetica", 10)
+    canvas_obj.setFont("DejaVuSans", 10)
     status_text = (
         f"Status: {'Zbiezny' if result.get('converged') else 'Niezbiezny'} | "
         f"Iteracje: {result.get('iterations_count', '—')} | "
@@ -656,11 +658,11 @@ def export_power_flow_run_pdf(run_id: UUID):
     canvas_obj.drawString(left_margin, y, status_text)
     y -= 8 * mm
 
-    canvas_obj.setFont("Helvetica-Bold", 14)
+    canvas_obj.setFont("DejaVuSans-Bold", 14)
     canvas_obj.drawString(left_margin, y, "Podsumowanie")
     y -= 6 * mm
 
-    canvas_obj.setFont("Helvetica", 10)
+    canvas_obj.setFont("DejaVuSans", 10)
     summary = result.get("summary", {})
     summary_lines = [
         f"Wezel bilansujacy: {result.get('slack_bus_id', '—')}",
@@ -675,10 +677,10 @@ def export_power_flow_run_pdf(run_id: UUID):
         y -= line_height
 
     y -= 5 * mm
-    canvas_obj.setFont("Helvetica-Bold", 12)
+    canvas_obj.setFont("DejaVuSans-Bold", 12)
     canvas_obj.drawString(left_margin, y, "Kontekst katalogowy")
     y -= 5 * mm
-    canvas_obj.setFont("Helvetica", 8)
+    canvas_obj.setFont("DejaVuSans", 8)
     if catalog_context_lines:
         canvas_obj.drawString(
             left_margin,
@@ -692,16 +694,16 @@ def export_power_flow_run_pdf(run_id: UUID):
             if y < 30 * mm:
                 canvas_obj.showPage()
                 y = top_margin
-                canvas_obj.setFont("Helvetica", 8)
+                canvas_obj.setFont("DejaVuSans", 8)
     else:
         canvas_obj.drawString(left_margin, y, "Brak jawnego kontekstu katalogowego.")
         y -= line_height
 
     y -= 5 * mm
-    canvas_obj.setFont("Helvetica-Bold", 12)
+    canvas_obj.setFont("DejaVuSans-Bold", 12)
     canvas_obj.drawString(left_margin, y, "White Box")
     y -= 5 * mm
-    canvas_obj.setFont("Helvetica", 8)
+    canvas_obj.setFont("DejaVuSans", 8)
     if white_box_trace:
         for step in white_box_trace[:10]:
             title = step.get("title") or step.get("key") or "Krok"
@@ -714,7 +716,7 @@ def export_power_flow_run_pdf(run_id: UUID):
             if y < 30 * mm:
                 canvas_obj.showPage()
                 y = top_margin
-                canvas_obj.setFont("Helvetica", 8)
+                canvas_obj.setFont("DejaVuSans", 8)
         if len(white_box_trace) > 10:
             canvas_obj.drawString(
                 left_margin,
@@ -727,11 +729,11 @@ def export_power_flow_run_pdf(run_id: UUID):
         y -= line_height
 
     y -= 5 * mm
-    canvas_obj.setFont("Helvetica-Bold", 12)
+    canvas_obj.setFont("DejaVuSans-Bold", 12)
     canvas_obj.drawString(left_margin, y, "Wyniki wezlowe (top 20)")
     y -= 5 * mm
 
-    canvas_obj.setFont("Helvetica", 9)
+    canvas_obj.setFont("DejaVuSans", 9)
     for bus in result.get("bus_results", [])[:20]:
         text = (
             f"{str(bus.get('bus_id', '—'))[:12]}: "

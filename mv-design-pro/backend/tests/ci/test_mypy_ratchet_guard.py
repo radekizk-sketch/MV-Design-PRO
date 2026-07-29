@@ -29,9 +29,10 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     modul = _zaladuj_guard()
 
     # Próg musi być liczbą ZMIERZONĄ, nie zaokrągloną „na oko" — stąd asercja na
-    # konkretną wartość z pomiaru zakładającego zapadkę.
-    assert modul.BASELINE_ERRORS == 273
-    assert modul.BASELINE_FILES == 67
+    # konkretną wartość z pomiaru. K7-A (2026-07-29): naprawa 15 błędów typów
+    # u źródła w dotkniętych rendererach PDF ⇒ pomiar 273/67 → 258/65.
+    assert modul.BASELINE_ERRORS == 258
+    assert modul.BASELINE_FILES == 65
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:
@@ -44,10 +45,10 @@ def test_guard_jest_wpiety_do_workflow_ci() -> None:
 @pytest.mark.parametrize(
     ("bledy", "oczekiwany_kod"),
     [
-        (273, 0),  # stan zmierzony — przechodzi
-        (274, 1),  # dług urósł o jeden — zapadka odcina
+        (258, 0),  # stan zmierzony (K7-A) — przechodzi
+        (259, 1),  # dług urósł o jeden — zapadka odcina
         (300, 1),  # dług urósł znacząco
-        (272, 1),  # dług zmalał — zapadka żąda utrwalenia poprawy
+        (257, 1),  # dług zmalał — zapadka żąda utrwalenia poprawy
         (0, 1),  # wszystko naprawione, ale próg nieobniżony
     ],
 )
@@ -58,7 +59,7 @@ def test_prog_odcina_w_obie_strony(
     monkeypatch.setattr(
         modul,
         "uruchom_mypy",
-        lambda: (bledy, 67, f"Found {bledy} errors in 67 files"),
+        lambda: (bledy, 65, f"Found {bledy} errors in 65 files"),
     )
 
     assert modul.main() == oczekiwany_kod

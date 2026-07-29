@@ -27,6 +27,7 @@ from application.reference_patterns import (
     run_pattern_a,
 )
 from fastapi import APIRouter, HTTPException
+from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel
 
 router = APIRouter(
@@ -305,7 +306,8 @@ async def export_pattern_result_pdf(fixture_file: str):
 
     # Create PDF in memory
     buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
+    zarejestruj_czcionki()
+    c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
 
     left_margin = 25 * mm
@@ -314,29 +316,29 @@ async def export_pattern_result_pdf(fixture_file: str):
     line_height = 5 * mm
 
     # Title
-    c.setFont("Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
     title = f"Raport wzorca odniesienia: {data['name_pl']}"
     c.drawString(left_margin, y, title)
     y -= 10 * mm
 
     # Verdict banner
-    c.setFont("Helvetica-Bold", 14)
+    c.setFont("DejaVuSans-Bold", 14)
     verdict_text = f"Werdykt: {data['verdict']}"
     c.drawString(left_margin, y, verdict_text)
     y -= 6 * mm
 
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     c.drawString(left_margin, y, data["verdict_description_pl"])
     y -= 6 * mm
     c.drawString(left_margin, y, data["summary_pl"])
     y -= 10 * mm
 
     # Checks section
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont("DejaVuSans-Bold", 12)
     c.drawString(left_margin, y, "Sprawdzenia")
     y -= 6 * mm
 
-    c.setFont("Helvetica", 9)
+    c.setFont("DejaVuSans", 9)
     for check in data.get("checks", []):
         status_text = f"[{check['status']}] {check['name_pl']}: {check['description_pl']}"
         # Truncate if too long
@@ -351,11 +353,11 @@ async def export_pattern_result_pdf(fixture_file: str):
     y -= 5 * mm
 
     # Artifacts section
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont("DejaVuSans-Bold", 12)
     c.drawString(left_margin, y, "Wartosci posrednie")
     y -= 6 * mm
 
-    c.setFont("Helvetica", 9)
+    c.setFont("DejaVuSans", 9)
     artifacts = data.get("artifacts", {})
     artifact_items = [
         ("Czas zwarcia sumaryczny (tk)", artifacts.get("tk_total_s"), "s"),
@@ -386,11 +388,11 @@ async def export_pattern_result_pdf(fixture_file: str):
     # Trace section (summary)
     trace = data.get("trace", [])
     if trace:
-        c.setFont("Helvetica-Bold", 12)
+        c.setFont("DejaVuSans-Bold", 12)
         c.drawString(left_margin, y, f"Slad obliczen ({len(trace)} krokow)")
         y -= 6 * mm
 
-        c.setFont("Helvetica", 8)
+        c.setFont("DejaVuSans", 8)
         for step in trace[:20]:  # Limit to first 20 steps
             step_text = f"{step['step']}: {step['description_pl']}"
             if len(step_text) > 90:
@@ -407,7 +409,7 @@ async def export_pattern_result_pdf(fixture_file: str):
 
     # Footer
     y = 15 * mm
-    c.setFont("Helvetica", 8)
+    c.setFont("DejaVuSans", 8)
     c.drawString(left_margin, y, "Wygenerowano przez MV-DESIGN PRO — Wzorce odniesienia")
 
     c.save()

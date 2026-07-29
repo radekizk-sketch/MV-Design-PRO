@@ -19,6 +19,8 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from network_model.reporting.czcionki import ustaw_czcionki_stylow, zarejestruj_czcionki
+
 if TYPE_CHECKING:
     from network_model.proof.power_flow_proof_document import (
         IterationProofSection,
@@ -723,6 +725,7 @@ def export_proof_to_pdf_simple(
     output_path = Path(path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
+    zarejestruj_czcionki()
     doc = SimpleDocTemplate(
         str(output_path),
         pagesize=A4,
@@ -730,9 +733,12 @@ def export_proof_to_pdf_simple(
         leftMargin=2 * cm,
         topMargin=2 * cm,
         bottomMargin=2 * cm,
+        invariant=1,
+        pageCompression=0,
     )
 
     styles = getSampleStyleSheet()
+    ustaw_czcionki_stylow(styles)
     title_style = styles["Title"]
     heading_style = styles["Heading1"]
     styles["Heading2"]
@@ -760,7 +766,7 @@ def export_proof_to_pdf_simple(
             [
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                 ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
-                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (0, -1), "DejaVuSans-Bold"),
             ]
         )
     )
@@ -782,7 +788,7 @@ def export_proof_to_pdf_simple(
             [
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                 ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
-                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (0, -1), "DejaVuSans-Bold"),
             ]
         )
     )
@@ -804,7 +810,7 @@ def export_proof_to_pdf_simple(
             [
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                 ("BACKGROUND", (0, 0), (0, -1), colors.lightgrey),
-                ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (0, -1), "DejaVuSans-Bold"),
             ]
         )
     )
@@ -833,7 +839,7 @@ def export_proof_to_pdf_simple(
             [
                 ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
                 ("BACKGROUND", (0, 0), (-1, 0), colors.lightgrey),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), "DejaVuSans-Bold"),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
             ]
         )

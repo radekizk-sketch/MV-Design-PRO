@@ -37,6 +37,7 @@ from domain.power_flow_comparison import (
 )
 from fastapi import APIRouter, Depends, HTTPException, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
+from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/power-flow-comparisons", tags=["power-flow-comparison"])
@@ -576,7 +577,8 @@ def export_power_flow_comparison_pdf(
 
     # Create PDF in memory
     buffer = io.BytesIO()
-    c = canvas.Canvas(buffer, pagesize=A4)
+    zarejestruj_czcionki()
+    c = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=0)
     page_width, page_height = A4
 
     left_margin = 25 * mm
@@ -585,23 +587,23 @@ def export_power_flow_comparison_pdf(
     line_height = 5 * mm
 
     # Title
-    c.setFont("Helvetica-Bold", 16)
+    c.setFont("DejaVuSans-Bold", 16)
     title = "Raport porownania rozplywu mocy"
-    c.drawString((page_width - c.stringWidth(title, "Helvetica-Bold", 16)) / 2, y, title)
+    c.drawString((page_width - c.stringWidth(title, "DejaVuSans-Bold", 16)) / 2, y, title)
     y -= 10 * mm
 
     # Subtitle
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     subtitle = f"Run A: {comparison.get('run_a_id', '—')[:8]}... | Run B: {comparison.get('run_b_id', '—')[:8]}..."
     c.drawString(left_margin, y, subtitle)
     y -= 8 * mm
 
     # Summary
-    c.setFont("Helvetica-Bold", 14)
+    c.setFont("DejaVuSans-Bold", 14)
     c.drawString(left_margin, y, "Podsumowanie")
     y -= 6 * mm
 
-    c.setFont("Helvetica", 10)
+    c.setFont("DejaVuSans", 10)
     summary = comparison.get("summary", {})
     summary_lines = [
         f"Liczba szyn: {summary.get('total_buses', '—')}",
@@ -618,14 +620,14 @@ def export_power_flow_comparison_pdf(
     y -= 5 * mm
 
     # Ranking
-    c.setFont("Helvetica-Bold", 12)
+    c.setFont("DejaVuSans-Bold", 12)
     c.drawString(left_margin, y, "Ranking problemow (top 15)")
     y -= 5 * mm
 
     ranking = comparison.get("ranking", [])
     severity_labels = {5: "Krytyczny", 4: "Powazny", 3: "Sredni", 2: "Drobny", 1: "Info"}
 
-    c.setFont("Helvetica", 9)
+    c.setFont("DejaVuSans", 9)
     for issue in ranking[:15]:
         severity = severity_labels.get(issue.get("severity", 1), "?")
         text = (

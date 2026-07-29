@@ -11,12 +11,10 @@ Wymagania:
 - Export DOCX/JSON deterministyczny dla tego samego wejscia
 - SHA256 plikow identyczne miedzy run1/run2
 
-UWAGA: PDF export (reportlab) jest NON-DETERMINISTIC binarnie z powodu:
-- Wewnetrznych timestampow PDF
-- Roznych identyfikatorow obiektow PDF
-- Metadanych produkcji PDF
-Testy PDF sa oznaczone jako xfail z dokumentacja tego ograniczenia.
-Tresc dokumentu jest deterministyczna, ale format binarny nie.
+PDF export: renderery przeszly na canvas(invariant=1, pageCompression=0)
+(K7-A 2026-07-29) — staly CreationDate/ID dokumentu, brak kompresji strumieni.
+Eksport PDF jest odtad BINARNIE deterministyczny; testy PDF asertuja
+identycznosc SHA-256 wprost (dawne xfail zdjete — maska dlugu usunieta).
 
 CANONICAL ALIGNMENT:
 - NOT-A-SOLVER: Testy nie modyfikuja solvera ani eksporterow
@@ -312,25 +310,14 @@ class TestJSONExportDeterminism:
 # =============================================================================
 
 
-# Reason for xfail: reportlab includes non-deterministic metadata in PDF files
-# (creation timestamps, internal object IDs, production metadata).
-# The document CONTENT is deterministic, but the binary format is not.
-# This is a known limitation of PDF generation libraries.
-PDF_XFAIL_REASON = (
-    "PDF export binarnie niedeterministyczny: reportlab dodaje timestampy i "
-    "wewnetrzne ID obiektow do pliku PDF. Tresc dokumentu jest deterministyczna."
-)
-
-
+# INTENCJA (K7-A 2026-07-29): renderery PDF uzywaja invariant=1 +
+# pageCompression=0, wiec eksport jest binarnie deterministyczny — dawne
+# xfail (maska dlugu: timestampy/ID reportlab) zostaly zdjete, a asercje
+# SHA-256 obowiazuja twardo. Regresja determinizmu = czerwony test.
 @pytest.mark.skipif(not _PDF_AVAILABLE, reason="reportlab not installed")
 class TestPDFExportDeterminism:
-    """E2E: Deterministycznosc eksportu PDF.
+    """E2E: Deterministycznosc eksportu PDF (binarna, SHA-256)."""
 
-    UWAGA: Testy oznaczone xfail z powodu ograniczenia reportlab.
-    PDF zawiera wewnetrzne timestampy i ID obiektow, ktore sa niedeterministyczne.
-    """
-
-    @pytest.mark.xfail(reason=PDF_XFAIL_REASON, strict=False)
     def test_pdf_export_identical_twice(self) -> None:
         """2x eksport PDF -> identyczne pliki."""
         graph = _create_test_network()
@@ -367,7 +354,6 @@ class TestPDFExportDeterminism:
                 f"PDF export nie deterministyczny\n" f"Hash 1: {hash_1}\nHash 2: {hash_2}"
             )
 
-    @pytest.mark.xfail(reason=PDF_XFAIL_REASON, strict=False)
     def test_pdf_export_without_trace_deterministic(self) -> None:
         """PDF bez trace jest deterministyczny."""
         graph = _create_test_network()
@@ -386,7 +372,6 @@ class TestPDFExportDeterminism:
 
             assert hash_1 == hash_2, "PDF bez trace nie deterministyczny"
 
-    @pytest.mark.xfail(reason=PDF_XFAIL_REASON, strict=False)
     def test_pdf_export_all_solvers_deterministic(self) -> None:
         """PDF export deterministyczny dla wszystkich solverow."""
         graph = _create_test_network()
@@ -623,7 +608,6 @@ class TestFullWorkflowDeterminism:
                 )
 
     @pytest.mark.skipif(not _PDF_AVAILABLE, reason="reportlab not installed")
-    @pytest.mark.xfail(reason=PDF_XFAIL_REASON, strict=False)
     def test_full_workflow_pdf_newton_raphson(self) -> None:
         """Pelny workflow: NR -> PDF export -> deterministyczny."""
         graph = _create_test_network()

@@ -32,8 +32,11 @@ BACKEND = ROOT / "backend"
 #: Zmierzony stan długu typów w chwili założenia zapadki (V12K-240, 2026-07-27).
 #: Ta liczba MA MALEĆ. Podniesienie jej wymaga uzasadnienia w commicie i wpisu w rejestrze
 #: — inaczej zapadka przestaje być zapadką.
-BASELINE_ERRORS = 273
-BASELINE_FILES = 67
+# K7-A (2026-07-29): naprawa 15 bledow u zrodla w dotknietych rendererach PDF
+# (protection_report_pdf: typ colors list[str | None]; arc_flash_report: typowana
+# lista energii) — prog obnizony 273->258, 67->65.
+BASELINE_ERRORS = 258
+BASELINE_FILES = 65
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 WZORZEC_SUKCESU = re.compile(r"Success: no issues found")
