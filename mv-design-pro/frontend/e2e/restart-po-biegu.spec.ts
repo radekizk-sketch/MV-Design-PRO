@@ -252,19 +252,14 @@ async function otworzZakladkeZwarc(page: Page): Promise<void> {
   await page.getByTestId('mvd-wyniki-zakladka-zwarcia').click();
 }
 
-// ZNANY DEFEKT H-0 (hydratacja): przestrzenie nie hydratują z serwera po
-// restarcie przeglądarki — rejestr przebiegów (`useExecutionRunsStore.runs`)
-// i aktywny przebieg nie są odtwarzane z backendu po `page.reload()`
-// (`useWpiecieWynikow` nie ma czego załadować; nikt nie woła
-// `setActiveStudyCaseId`/`loadRuns` przy starcie), więc ekran zwarć wraca do
-// stanu zerowego mimo zakończonego biegu na serwerze. Naprawa = karta K2;
-// po naprawie Playwright wymusi zdjęcie tej flagi (unexpected pass).
+// DEFEKT H-0 (hydratacja) NAPRAWIONY w K2: powłoka hydratuje stan zależny
+// z serwera po restarcie przeglądarki — `useHydratacjaPowloki`
+// (src/ui2/shell/useHydratacjaPowloki.ts, wpięty w AppRoot) odtwarza rejestr
+// zakresów (`loadCases`/`loadActiveCase`) i rejestr przebiegów
+// (`setActiveStudyCaseId` → `loadRuns`), a `useWpiecieWynikow` ponawia
+// ładowanie wyniku, gdy rejestr przebiegów doładuje się PO montażu
+// (deps: `aktywnyRodzaj`). Ten spec jest bramką regresji tej naprawy.
 test('po restarcie przeglądarki przestrzeń wyników nadal pokazuje wynik przebiegu (bramka K2)', async ({ page, request }) => {
-  // Zweryfikowany punkt upadku (K1, 2026-07-29): cała faza PRZED restartem
-  // przechodzi (bieg z klika „Oblicz", tabela zwarć + bilans + rewizja modelu
-  // widoczne); pada dokładnie asercja po `page.reload()` — ekran zwarć wraca
-  // do stanu zerowego (`mvd-zwarcia-ekran-pusty`). To jest bramka K2.
-  test.fail();
   test.setTimeout(240000);
 
   const caseId = await createCaseFromUi(page, request);

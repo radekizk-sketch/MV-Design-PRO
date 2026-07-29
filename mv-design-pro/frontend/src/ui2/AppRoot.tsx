@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AppShell } from './shell/AppShell';
 import { useBackendHealth } from './shell/backendHealth';
+import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
 import { ContextTree, useCasesTree, useRunsTree, useTopologyTree } from './nav';
 import { InspectorPanel } from './inspector';
 import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapter';
@@ -94,6 +95,12 @@ export function AppRoot() {
   const obiekt = useObiektInspektora(zaznaczonyId);
   const { status: backendStatus, reconnect } = useBackendHealth();
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
+
+  // K2 (defekt H-0): hydratacja stanu zależnego z serwera po zimnym starcie
+  // (zakresy obliczeń, rejestr przebiegów, migawka przy reconnect) — bez tego
+  // restart przeglądarki cofał przestrzenie do stanu zerowego mimo danych na
+  // serwerze.
+  useHydratacjaPowloki(backendStatus);
 
   // E1.7a w nowej powłoce: ta sama orkiestracja (hydracja z URL, trasy legacy,
   // powierzchnie, obliczenia) działa w OBU wejściach — zero duplikacji logiki.

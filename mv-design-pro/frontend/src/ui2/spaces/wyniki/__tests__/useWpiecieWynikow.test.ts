@@ -81,6 +81,27 @@ describe('useWpiecieWynikow — montaż', () => {
     expect(selectRunSc).not.toHaveBeenCalled();
   });
 
+  it('rejestr przebiegów doładowany PO montażu (hydratacja K2): wynik ładowany', async () => {
+    // INTENCJA (K2, defekt H-0): po zimnym starcie activeRunId pochodzi z URL,
+    // a rejestr przebiegów hydratuje z serwera PO montażu hooka — ładowanie
+    // musi zostać ponowione, gdy rejestr się pojawi (deps: aktywnyRodzaj).
+    useAppStateStore.setState({ activeRunId: 'run-sc-3' });
+    const { result, rerender } = renderHook(() => useWpiecieWynikow());
+    expect(result.current.aktywnyRodzaj).toBeNull();
+    expect(selectRunSc).not.toHaveBeenCalled();
+
+    act(() => {
+      useExecutionRunsStore.setState({
+        runs: [przebiegFixture({ id: 'run-sc-3', analysis_type: 'SC_3F' })],
+      });
+    });
+    rerender();
+
+    expect(result.current.aktywnyRodzaj).toBe('zwarcie');
+    await waitFor(() => expect(selectRunSc).toHaveBeenCalledWith('run-sc-3'));
+    await waitFor(() => expect(loadShortCircuitResults).toHaveBeenCalledTimes(1));
+  });
+
   it('przebieg niezakończony (RUNNING): bez ładowania', () => {
     useExecutionRunsStore.setState({
       runs: [przebiegFixture({ id: 'run-lf-2', status: 'RUNNING' })],
