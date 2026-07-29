@@ -45,7 +45,11 @@ test.describe('F-K1 faza 5 — czas wyłączenia i dowód kryterium cieplnego', 
 
       // Kadr 1 — tabela oceny z kolumnami czasu i jego źródła.
       await expect(page.getByText('Nastawa zabezpieczenia')).toBeVisible();
-      await expect(page.getByText('Założenie przypadku')).toBeVisible();
+      // „Założenie przypadku" występuje w DWÓCH wierszach (fixture sceny:
+      // czasy_wylaczenia.z_zalozenia = 2 — gałąź L-02 i linia napowietrzna
+      // L-03 obie biorą czas z założenia przypadku). Intencja: kolumna
+      // „Źródło czasu" nazywa założenie przypadku — wystarczy pierwszy wiersz.
+      await expect(page.getByText('Założenie przypadku').first()).toBeVisible();
       await page.screenshot({
         path: path.join(OUTPUT_DIR, `fk1_czas_ocena_${theme}.png`),
         fullPage: true,

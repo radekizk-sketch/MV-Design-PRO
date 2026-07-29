@@ -49,13 +49,13 @@ async function createProjectAndCase(
   request: APIRequestContext,
 ): Promise<{ projectId: string; projectName: string; caseId: string; caseName: string }> {
   const suffix = Date.now().toString(36);
-  const projectName = `E2E przemysĹ‚owy ${suffix}`;
-  const caseName = `Przypadek 50 szablonĂłw ${suffix}`;
+  const projectName = `E2E przemysłowy ${suffix}`;
+  const caseName = `Przypadek 50 szablonów ${suffix}`;
 
   const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
     data: {
       name: projectName,
-      description: 'PeĹ‚na Ĺ›cieĹĽka E2E: 50 szablonĂłw, analizy, dowody, raporty',
+      description: 'Pełna ścieżka E2E: 50 szablonów, analizy, dowody, raporty',
       mode: 'TO-BE',
       voltage_level_kv: 15.0,
       frequency_hz: 50.0,
@@ -196,20 +196,29 @@ async function openCaseInUi(
 
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
-  await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|BieĹĽÄ…cy zestaw/);
+  await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
   await expect(page.getByTestId('canonical-layout')).toBeVisible();
 }
 
 async function waitForAnalysisRunIndex(
   request: APIRequestContext,
   runId: string,
-  timeoutMs = 30000,
+  // Pomiar 2026-07-29 (karta K1/D): budowa results/index dla sieci 50 stacji
+  // trwa po stronie backendu 39,9–45,4 s (log uvicorn) — 120 s daje ~2,5×
+  // zapasu na wolniejszy przebieg CI.
+  timeoutMs = 120000,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let lastStatus = 0;
   let lastBody = '';
   while (Date.now() < deadline) {
-    const response = await request.get(`${BACKEND_BASE}/api/analysis-runs/${runId}/results/index`);
+    // Jawny timeout żądania: fixture `request` dziedziczy actionTimeout 10 s
+    // z playwright.config.ts, a pierwszy GET blokuje się na synchronicznej
+    // budowie indeksu (~40 s) — bez tego klient ucina żądanie w połowie pracy.
+    const response = await request.get(
+      `${BACKEND_BASE}/api/analysis-runs/${runId}/results/index`,
+      { timeout: 90000 },
+    );
     lastStatus = response.status();
     if (response.ok()) {
       return;
@@ -217,14 +226,20 @@ async function waitForAnalysisRunIndex(
     lastBody = await response.text();
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
-  throw new Error(`results/index niedostÄ™pny dla runu ${runId}: ${lastStatus} ${lastBody}`);
+  throw new Error(`results/index niedostępny dla runu ${runId}: ${lastStatus} ${lastBody}`);
 }
 
-test('peĹ‚ny przepĹ‚yw przemysĹ‚owy: 50 szablonĂłw stacji, OZE, analizy, dowody i eksporty', async ({
+test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody i eksporty', async ({
   page,
   request,
 }) => {
-  test.setTimeout(180000);
+  // Pomiar 2026-07-29 (karta K1/D): 50× apply (do 10,8 s/szt. pod obciążeniem)
+  // + wykonanie SC_3F (~30 s) + budowa results/index (~45 s) + eksporty
+  // (report/json 223–236 s, proof/json 58 s, proof/latex 44 s) + rozpływ + UI
+  // ≈ 10–11 min realnego czasu — 900 s daje zapas na wolniejszy przebieg CI.
+  // Koszt eksportów to własność backendu (kandydat na kartę wydajnościową),
+  // nie do zamaskowania krótszym limitem testu.
+  test.setTimeout(900000);
 
   const seed = await createProjectAndCase(request);
   const templatesResponse = await request.get(`${BACKEND_BASE}/api/station-templates`);
@@ -257,6 +272,9 @@ test('peĹ‚ny przepĹ‚yw przemysĹ‚owy: 50 szablonĂłw stacji, OZE, anali
           params_override: {},
           catalog_profile: null,
         },
+        // Pomiar 2026-07-29 (karta K1/D): apply na rosnącej sieci sięga 10,8 s
+        // (log uvicorn) — dziedziczony actionTimeout 10 s ucinał żądanie.
+        timeout: 30000,
       },
     );
     expect(applyResponse.ok(), `${template.id}: ${await applyResponse.text()}`).toBeTruthy();
@@ -292,7 +310,7 @@ test('peĹ‚ny przepĹ‚yw przemysĹ‚owy: 50 szablonĂłw stacji, OZE, anali
     segment: {
       rodzaj: 'KABEL',
       dlugosc_m: 180,
-      name: 'OdgaĹ‚Ä™zienie kontrolne 50 szablonĂłw',
+      name: 'Odgałęzienie kontrolne 50 szablonów',
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
     },
   });
@@ -314,12 +332,28 @@ test('peĹ‚ny przepĹ‚yw przemysĹ‚owy: 50 szablonĂłw stacji, OZE, anali
   expect(scRunResponse.ok(), await scRunResponse.text()).toBeTruthy();
   const scRun = (await scRunResponse.json()) as { id: string };
 
+  // Pomiar 2026-07-29 (karta K1/D): synchroniczny POST /execute dla sieci
+  // 50 stacji + OZE trwa realnie ~32 s na tym kontenerze — domyślny limit
+  // żądania API (30 s) ucinał odpowiedź tuż przed końcem obliczeń.
+  // 90 s = ~3× zmierzonego czasu (zapas na wolniejszy przebieg CI).
   const executeRunResponse = await request.post(
     `${BACKEND_BASE}/api/execution/runs/${scRun.id}/execute`,
+    { timeout: 90000 },
   );
   expect(executeRunResponse.ok(), await executeRunResponse.text()).toBeTruthy();
   await waitForAnalysisRunIndex(request, scRun.id);
 
+  // Pomiary 2026-07-29 (karta K1/D, log uvicorn + curl, sieć 50 stacji):
+  // report/json 172–236 s i **729,8 MB** treści, proof/json 58 s / 13,2 MB,
+  // proof/latex 44 s / 5,1 MB, trace 3–4 s — eksporty liczone synchronicznie
+  // bez cache (druga próba trwa tyle samo). 360 s = ~1,5× najdłuższego pomiaru.
+  // Treść czytamy jako Buffer: report/json przekracza limit stringa Node
+  // (0x1fffffe8 ≈ 512 MiB), więc `response.text()` wywala się zanim dojdzie do
+  // asercji. Rozmiar raportu to własność backendu (kandydat na kartę
+  // wydajnościową eksportu), nie do zamaskowania pominięciem endpointu.
+  // Treść dowodów bierzemy z TEGO SAMEGO pobrania (bez drugiego GET po
+  // ~1 min/eksport — asercje bez zmian).
+  const exportBodies = new Map<string, Buffer>();
   for (const endpoint of [
     `/api/analysis-runs/${scRun.id}/results/index`,
     `/api/analysis-runs/${scRun.id}/trace`,
@@ -327,19 +361,21 @@ test('peĹ‚ny przepĹ‚yw przemysĹ‚owy: 50 szablonĂłw stacji, OZE, anali
     `/api/analysis-runs/${scRun.id}/export/proof/json`,
     `/api/analysis-runs/${scRun.id}/export/proof/latex`,
   ]) {
-    const response = await request.get(`${BACKEND_BASE}${endpoint}`);
-    expect(response.ok(), `${endpoint}: ${await response.text()}`).toBeTruthy();
+    const response = await request.get(`${BACKEND_BASE}${endpoint}`, { timeout: 360000 });
+    const body = await response.body();
+    expect(
+      response.ok(),
+      `${endpoint}: ${response.ok() ? '' : body.subarray(0, 2048).toString('utf-8')}`,
+    ).toBeTruthy();
+    // Do dalszych asercji trzymamy wyłącznie dowody (MB), nie raport (setki MB).
+    if (endpoint.includes('/export/proof/')) exportBodies.set(endpoint, body);
   }
-  const proofJsonResponse = await request.get(
-    `${BACKEND_BASE}/api/analysis-runs/${scRun.id}/export/proof/json`,
-  );
-  const proofJsonText = await proofJsonResponse.text();
+  const proofJsonText =
+    exportBodies.get(`/api/analysis-runs/${scRun.id}/export/proof/json`)?.toString('utf-8') ?? '';
   expect(proofJsonText).toContain('"I_dyn"');
   expect(proofJsonText).toContain('"I_th"');
-  const proofLatexResponse = await request.get(
-    `${BACKEND_BASE}/api/analysis-runs/${scRun.id}/export/proof/latex`,
-  );
-  const proofLatexText = await proofLatexResponse.text();
+  const proofLatexText =
+    exportBodies.get(`/api/analysis-runs/${scRun.id}/export/proof/latex`)?.toString('utf-8') ?? '';
   expect(proofLatexText).toContain('I_dyn');
   expect(proofLatexText).toContain('I_th');
 

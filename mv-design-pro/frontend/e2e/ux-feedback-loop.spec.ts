@@ -7,7 +7,8 @@
  *   C2 — toast sukcesu (notification-toast) po operacji domenowej
  *   C3 — globalny banner walidacji semantycznej (semantic-issues-banner)
  *        gdy backend zwróci semantic_issues
- *   C4 — tooltip inżynierski (help-tooltip) na polu formularza GPZ
+ *   C4 — inżynierska pomoc pola w kreatorze GPZ (dawny ukryty help-tooltip →
+ *        dziś widoczna pomoc `.mvd-pole-pomoc`, FLOW §0.3)
  *
  * Mock backend — nie wymaga uruchomionego serwera Python. Pokrywa
  * pełen łańcuch: projekt → case → snapshot → katalog → domain-ops.
@@ -211,23 +212,48 @@ async function createProjectAndOpenSld(page: Page): Promise<void> {
   await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 }
 
-test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / tooltip)', () => {
-  test('C4: formularz GPZ pokazuje tooltip inżynierski (help-tooltip)', async ({ page }) => {
+/**
+ * Przepisane na bieżący flow (karta K1/B, 2026-07-29): klik CTA „Wstaw GPZ"
+ * otwiera dziś 7-krokowy kreator ui2 `KreatorZrodloZasilania`
+ * (`operationFormRegistry`: add_grid_source_sn → mvd-kreator-zrodlo), a nie
+ * dawny `add-grid-source-form`. Zapis wykonuje się przyciskiem
+ * `mvd-kreator-zrodlo-zapisz` (katalog auto-wybrany z mocka source-system-types).
+ */
+async function openGpzCreator(page: Page): Promise<void> {
+  await page.getByTestId('sld-empty-state-insert-gpz').click();
+  await expect(page.getByTestId('mvd-kreator-zrodlo')).toBeVisible();
+}
+
+/**
+ * Przejście na krok 2 („Źródło i strona WN") realnym klikiem „Dalej" i czekanie
+ * na auto-wybór pozycji katalogowej (mock: src-sys-1) — dopiero wtedy walidacja
+ * `zapisz` ma komplet danych (catalog_ref + Sk″ + R/X z katalogu).
+ */
+async function przejdzNaKrokZrodlaIZaczekajNaKatalog(page: Page): Promise<void> {
+  await page.getByTestId('mvd-kreator-zrodlo-dalej').click();
+  await expect(page.getByTestId('mvd-kreator-zrodlo-katalog-select')).toHaveValue('src-sys-1');
+}
+
+test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / pomoc pola)', () => {
+  test('C4: kreator GPZ pokazuje inżynierską pomoc pola (po co / z czego / co daje)', async ({ page }) => {
     const guards = installConsoleGuards(page);
     await mockBackend(page);
     await createProjectAndOpenSld(page);
 
-    // Klik CTA „Wstaw GPZ" → otwiera AddGridSourceForm (op add_grid_source_sn).
-    await page.getByTestId('sld-empty-state-insert-gpz').click();
-    await expect(page.getByTestId('add-grid-source-form')).toBeVisible();
+    // INTENCJA BEZ ZMIAN (C4): pole formularza GPZ niesie inżynierskie
+    // wyjaśnienie. Nośnik się zmienił: ukryty `help-tooltip` (przycisk „Pokaż
+    // wyjaśnienie pola") został zastąpiony pomocą WIDOCZNĄ wprost pod polem
+    // (FLOW §0.3, ui2/kreatory/rama/pola.tsx: „każde pole może nieść widoczną
+    // pomoc … zamiast ukrytego tooltipa" — klasa .mvd-pole-pomoc).
+    await openGpzCreator(page);
 
-    // C4: co najmniej jeden tooltip inżynierski jest wyrenderowany w formularzu.
-    const tooltip = page.getByTestId('help-tooltip').first();
-    await expect(tooltip).toBeVisible();
-
-    // Tooltip ujawnia treść po interakcji (hover/click trigger).
-    const trigger = tooltip.getByRole('button', { name: 'Pokaż wyjaśnienie pola' });
-    await expect(trigger).toBeVisible();
+    const pomoc = page.locator('.mvd-pole-pomoc').first();
+    await expect(pomoc).toBeVisible();
+    // Konkretna treść inżynierska kroku 1 (strings.ts: napiecieSnPomoc) —
+    // nie sama obecność kontenera.
+    await expect(
+      page.getByText('Napięcie nominalne szyn SN. Wpływa na dobór katalogu transformatorów i kabli.'),
+    ).toBeVisible();
 
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
   });
@@ -237,16 +263,17 @@ test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / tooltip)', 
     await mockBackend(page);
     await createProjectAndOpenSld(page);
 
-    await page.getByTestId('sld-empty-state-insert-gpz').click();
-    await expect(page.getByTestId('add-grid-source-form')).toBeVisible();
+    await openGpzCreator(page);
+    await przejdzNaKrokZrodlaIZaczekajNaKatalog(page);
 
-    // Submit formularza GPZ (katalog auto-wybrany z mocka source-system-types).
-    await page.getByTestId('add-grid-source-form').getByRole('button', { name: 'Zapisz GPZ' }).click();
+    // Zapis kreatora (operacja domenowa add_grid_source_sn — mock domain-ops
+    // zwraca snapshot z GPZ).
+    await page.getByTestId('mvd-kreator-zrodlo-zapisz').click();
 
-    // C2: toast sukcesu widoczny z komunikatem PL. Asercja po TREŚCI, nie po
-    // pozycji w stosie — `first()` łapał starszy toast („Utworzono projekt…"),
-    // gdy ten nie zdążył zniknąć przed pojawieniem się toastu GPZ (wyścig
-    // auto-dismiss, flake wyłącznie pod obciążeniem pełnej baterii).
+    // C2 (intencja bez zmian): toast sukcesu widoczny z komunikatem PL.
+    // Asercja po TREŚCI, nie po pozycji w stosie — `first()` łapał starszy
+    // toast („Utworzono projekt…"), gdy ten nie zdążył zniknąć przed
+    // pojawieniem się toastu GPZ (wyścig auto-dismiss).
     const toast = page
       .getByTestId('notification-toast')
       .filter({ hasText: 'Dodano źródło zasilające GPZ' })
@@ -261,11 +288,13 @@ test.describe('UX 10/10 — dowód w przeglądarce (toast / banner / tooltip)', 
     await mockBackend(page, { withSemanticIssues: true });
     await createProjectAndOpenSld(page);
 
-    await page.getByTestId('sld-empty-state-insert-gpz').click();
-    await expect(page.getByTestId('add-grid-source-form')).toBeVisible();
-    await page.getByTestId('add-grid-source-form').getByRole('button', { name: 'Zapisz GPZ' }).click();
+    await openGpzCreator(page);
+    await przejdzNaKrokZrodlaIZaczekajNaKatalog(page);
+    await page.getByTestId('mvd-kreator-zrodlo-zapisz').click();
 
-    // C3: globalny banner walidacji semantycznej widoczny z treścią ostrzeżenia.
+    // C3 (intencja bez zmian): globalny banner walidacji semantycznej widoczny
+    // z treścią ostrzeżenia (SemanticIssuesBanner w warsztacie, store:
+    // lastSemanticIssues z odpowiedzi domain-ops).
     const banner = page.getByTestId('semantic-issues-banner');
     await expect(banner).toBeVisible({ timeout: 10000 });
     await expect(banner).toContainText('pola odpływowego');
@@ -294,8 +323,16 @@ async function openOperationForm(
   );
 }
 
-test.describe('UX 10/10 — pełne pokrycie etapów (tooltip + toast per formularz)', () => {
-  test('Etap Pola SN: formularz + tooltip aparatu (PN-EN 62271)', async ({ page }) => {
+/**
+ * Przepisane na bieżący flow (karta K1/B, 2026-07-29): operacje domenowe
+ * otwierają dziś kreatory ui2 (`operationFormRegistry`), a nie dawne formularze
+ * `add-sn-bay-form` / `start-branch-form` / `insert-station-form` /
+ * `add-der-wizard`. Intencja per test bez zmian: formularz etapu renderuje się
+ * i niesie inżynierski feedback (dawny ukryty `help-tooltip` → dziś widoczna
+ * pomoc pola `.mvd-pole-pomoc` albo panel teorii `PanelTeorii`, FLOW §0.3).
+ */
+test.describe('UX 10/10 — pełne pokrycie etapów (pomoc inżynierska per kreator)', () => {
+  test('Etap Pola SN: kreator pola + teoria aparatu (PN-EN 62271)', async ({ page }) => {
     const guards = installConsoleGuards(page);
     await mockBackend(page);
     await createProjectAndOpenSld(page);
@@ -307,14 +344,19 @@ test.describe('UX 10/10 — pełne pokrycie etapów (tooltip + toast per formula
       apparatus_kind: 'BREAKER',
     });
 
-    await expect(page.getByTestId('add-sn-bay-form')).toBeVisible();
-    // C4 per-etap: tooltip inżynierski aparatu (wyłącznik/odłącznik/rozłącznik wg PN-EN 62271).
-    await expect(page.getByTestId('help-tooltip').first()).toBeVisible();
+    // add_sn_bay → KreatorPolaSn (ui2). Intencja „tooltip aparatu wg PN-EN
+    // 62271": nośnikiem normy jest dziś PanelTeorii kroku pola — rozwijany
+    // NATYWNYM klikiem w <summary> (details/summary, bez syntetycznych zdarzeń).
+    await expect(page.getByTestId('mvd-kreator-pole')).toBeVisible();
+    const teoria = page.getByTestId('mvd-kreator-pole-teoria');
+    await expect(teoria).toBeVisible();
+    await teoria.locator('summary').click();
+    await expect(teoria).toContainText('PN-EN 62271');
 
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
   });
 
-  test('Etap Segmenty: formularz odgałęzienia + tooltip długości kabla', async ({ page }) => {
+  test('Etap Segmenty: kreator odgałęzienia + pomoc długości odcinka', async ({ page }) => {
     const guards = installConsoleGuards(page);
     await mockBackend(page);
     await createProjectAndOpenSld(page);
@@ -326,14 +368,19 @@ test.describe('UX 10/10 — pełne pokrycie etapów (tooltip + toast per formula
       terminal_voltage_label: 'SN',
     });
 
-    await expect(page.getByTestId('start-branch-form')).toBeVisible();
-    // C4 per-etap: tooltip inżynierski długości kabla (cable_length).
-    await expect(page.getByTestId('help-tooltip').first()).toBeVisible();
+    // start_branch_segment_sn → KreatorOdgalezienia (ui2). Intencja „tooltip
+    // długości kabla": pomoc pola długości jest dziś WIDOCZNA wprost pod polem
+    // (strings.ts: dlugoscPomoc), nie ukryta za triggerem.
+    await expect(page.getByTestId('mvd-kreator-odgalezienie')).toBeVisible();
+    await expect(page.getByTestId('mvd-kreator-odgalezienie-dlugosc')).toBeVisible();
+    await expect(
+      page.getByText('Długość pierwszego odcinka [km] — wpływa na spadek napięcia i straty.'),
+    ).toBeVisible();
 
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
   });
 
-  test('Etap Stacje: formularz wstawienia stacji renderuje się', async ({ page }) => {
+  test('Etap Stacje: kreator wstawienia stacji renderuje się', async ({ page }) => {
     const guards = installConsoleGuards(page);
     await mockBackend(page);
     await createProjectAndOpenSld(page);
@@ -343,13 +390,14 @@ test.describe('UX 10/10 — pełne pokrycie etapów (tooltip + toast per formula
       position_on_segment: 0.5,
     });
 
-    // Formularz stacji renderuje się w realnej przeglądarce bez crash.
-    await expect(page.getByTestId('insert-station-form')).toBeVisible({ timeout: 10000 });
+    // insert_station_on_segment_sn → KreatorStacjiSnNn (ui2) — renderuje się
+    // w realnej przeglądarce bez crash (intencja bez zmian).
+    await expect(page.getByTestId('mvd-kreator-stacja')).toBeVisible({ timeout: 10000 });
 
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
   });
 
-  test('Etap OZE/DER: wizard DER + tooltip NC RfG/FRT', async ({ page }) => {
+  test('Etap OZE/DER: kreator źródła OZE renderuje się (technologia + FRT)', async ({ page }) => {
     const guards = installConsoleGuards(page);
     await mockBackend(page);
     await createProjectAndOpenSld(page);
@@ -359,9 +407,11 @@ test.describe('UX 10/10 — pełne pokrycie etapów (tooltip + toast per formula
       connection_side: 'SN',
     });
 
-    // Wizard DER renderuje się; tooltip inżynierski (FRT/anti-islanding) na kroku profilu.
-    const wizard = page.getByTestId('add-der-wizard').or(page.getByTestId('add-converter-source-form'));
-    await expect(wizard.first()).toBeVisible({ timeout: 10000 });
+    // add_converter_source → KreatorZrodlaOze (ui2). Intencja „wizard DER
+    // renderuje się z feedbackiem inżynierskim": krok technologii widoczny
+    // od razu (sekcja mvd-kreator-oze-tech).
+    await expect(page.getByTestId('mvd-kreator-oze')).toBeVisible({ timeout: 10000 });
+    await expect(page.getByTestId('mvd-kreator-oze-tech')).toBeVisible();
 
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);
   });

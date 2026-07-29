@@ -891,6 +891,46 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   } else if (creator === 'wyniki-stabilnosc') {
     if (url.endsWith('/results/dynamic-stability')) return jsonOK(STABILNOSC_WYNIK);
     if (url.endsWith('/results/automation-trace')) return jsonOK(STABILNOSC_SLAD);
+  } else if (creator === 'cieplna' || creator === 'zwarcia-rozplyw') {
+    // Kontrakt przebiegu dla znacznika świeżości nagłówka (V12K-264):
+    // `useSwiezoscNaglowka` → `useAnalysisRunContract` woła GET /api/analysis-runs/<id>
+    // (scena „cieplna": run-sc-7; scena „zwarcia-rozplyw": run-sc-th1-demo).
+    // Bez tej atrapy zapytanie leciało do `originalFetch` i 404 wpadał do bramki
+    // „zero błędów konsoli" speców zrzutowych (karta K1/A). Kształt 1:1 z kontraktem
+    // backendu `analysis_case_context.py` — `rewizja_modelu` LICZBOWE (V12K-264:
+    // normalizator odrzuca tekst; brak = null, nigdy zero). Pozostałe URL-e sceny
+    // przechodzą dalej do niegate'owanych atrap (conductor-thermal-withstand itd.).
+    if (url.includes('/api/analysis-runs/')) {
+      const runId = creator === 'cieplna' ? 'run-sc-7' : 'run-sc-th1-demo';
+      return jsonOK({
+        id: runId,
+        analysis_type: 'SC',
+        status: 'FINISHED',
+        result_status: 'VALID',
+        results_valid: true,
+        created_at: '2026-07-20T10:00:00Z',
+        finished_at: '2026-07-20T10:00:05Z',
+        input_hash: 'h-demo',
+        summary_json: {},
+        trace_summary: null,
+        analysis_case_context: {
+          case_ref: 'case-demo',
+          case_kind: 'auto',
+          snapshot_ref: 'sha256:h-demo',
+          rewizja_modelu: 1,
+          variant_ref: null,
+          run_ref: runId,
+          proof_pack_ref: null,
+          quality_gate: 'passed',
+          applicability_scope: [],
+          completeness: 'complete',
+          missing_prerequisites: [],
+          assumptions: {},
+          lineage: {},
+          reproducibility: null,
+        },
+      });
+    }
   }
 
   for (const [key, body] of Object.entries(CATALOG_FIXTURES)) {

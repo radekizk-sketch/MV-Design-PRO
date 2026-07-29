@@ -193,11 +193,15 @@ test.describe('Designer flow — empty-state CTA (audit 2026-05-19 wymaganie #1)
     await expect(ctaSecondary).toBeVisible();
     await expect(ctaSecondary).toHaveText(/Przeglądaj katalogi techniczne/);
 
-    // Klik primary CTA → empty state pozostaje (bo brak GPZ w snapshocie),
-    // ale operacja zostaje propagowana. Test sprawdza brak crash + brak
-    // błędów konsoli (deterministyczność flow).
+    // Klik primary CTA → operacja `add_grid_source_sn` zostaje propagowana.
+    // INTENCJA BEZ ZMIAN (audit 2026-05-19 §7.2 pakiet A): CTA prowadzi do
+    // formularza tej operacji. Bieżący flow (karta K1/B, 2026-07-29): zamiast
+    // dawnego `add-grid-source-form` otwiera się pełnoekranowy kreator ui2
+    // `KreatorZrodloZasilania` (operationFormRegistry → mvd-kreator-zrodlo),
+    // który ZASTĘPUJE widok kanwy — empty state nie jest już widoczny.
+    // Test nadal sprawdza brak crash + brak błędów konsoli (determinizm flow).
     await ctaPrimary.click();
-    await expect(page.getByTestId('sld-empty-state')).toBeVisible();
+    await expect(page.getByTestId('mvd-kreator-zrodlo')).toBeVisible();
 
     // Brak błędów konsoli i nieobsłużonych wyjątków.
     expect(guards.pageErrors, `pageerror: ${guards.pageErrors.join('\n')}`).toEqual([]);

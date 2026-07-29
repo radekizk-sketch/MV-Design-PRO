@@ -211,12 +211,6 @@ async function getBusRefs(request: APIRequestContext, caseId: string): Promise<s
   return (enm.buses ?? []).map((bus) => bus.ref_id);
 }
 
-async function expectInlineCatalogError(container: ReturnType<Page['getByTestId']>): Promise<void> {
-  const error = container.locator('.text-red-600').first();
-  await expect(error).toBeVisible();
-  await expect(error).toContainText(/katalog/i);
-}
-
 test.describe('Catalog-First Enforcement - realny backend', () => {
   test.skip(process.env.PLAYWRIGHT_REAL_BACKEND !== '1', 'Ten pakiet wymaga realnego backendu.');
 
@@ -231,19 +225,35 @@ test.describe('Catalog-First Enforcement - realny backend', () => {
   });
 
   test('formularz lacznika sekcyjnego blokuje wstawienie bez katalogu', async ({ page, request }) => {
+    // Przepisane na bieżący flow (karta K1/C, 2026-07-29): przycisk
+    // `btn-insert-switch` otwiera dziś kreator ui2 `KreatorLacznikaSekcyjnego`
+    // (operationFormRegistry: insert_section_switch_sn → mvd-kreator-lacznik),
+    // nie dawny `insert-section-switch-form` z przyciskiem „Zastosuj".
+    // INTENCJA BEZ ZMIAN: ślepe wstawienie łącznika jest niemożliwe — kreator
+    // wymaga aparatu z katalogu (pole katalogowe + kontrola gotowości
+    // „Do konfiguracji"), a zapis bez kompletnego kontekstu jest twardo
+    // ZABLOKOWANY (przycisk zapisu wyłączony; wejście z panelu procesu nie
+    // niesie odcinka). Bramkę katalogową samego backendu pokrywa w tym pliku
+    // test „backend odrzuca insert_section_switch_sn bez katalogu".
     await createCaseFromUi(page, request);
     await page.getByTestId('left-panel-mode-readiness').click();
     await expect(page.getByTestId('process-panel')).toBeVisible();
 
     await page.getByTestId('btn-insert-switch').click();
-    const form = page.getByTestId('insert-section-switch-form');
-    await expect(form).toBeVisible();
+    const kreator = page.getByTestId('mvd-kreator-lacznik');
+    await expect(kreator).toBeVisible();
 
-    await page.getByPlaceholder('np. SW-001').fill('SW-E2E-001');
-    await page.getByPlaceholder(/sekcyjny/i).fill('Lacznik testowy');
-    await page.getByRole('button', { name: 'Zastosuj' }).click();
+    // Konfiguracja jest katalog-first: pole wyboru aparatu z katalogu SN
+    // widoczne, a kontrola gotowości uczciwie raportuje brak aparatu.
+    await expect(page.getByTestId('mvd-kreator-lacznik-katalog')).toBeVisible();
+    await expect(page.getByTestId('mvd-kreator-lacznik-gotowosc')).toContainText('Do konfiguracji');
 
-    await expectInlineCatalogError(form);
+    // Realna ścieżka projektanta: nazwa uzupełniona, katalog celowo pominięty —
+    // zapis pozostaje zablokowany (disabled), więc ślepe wstawienie nie ma drogi.
+    await page.getByTestId('mvd-kreator-lacznik-nazwa').fill('Lacznik testowy');
+    await expect(page.getByTestId('mvd-kreator-lacznik-zapisz')).toBeDisabled();
+    // Stopka kreatora nazywa powód blokady (brak wskazanego odcinka SN).
+    await expect(page.getByTestId('mvd-kreator-walidacja')).toBeVisible();
   });
 
   test('przycisk domkniecia pierscienia jest nieaktywny bez kandydatow ringu', async ({ page, request }) => {

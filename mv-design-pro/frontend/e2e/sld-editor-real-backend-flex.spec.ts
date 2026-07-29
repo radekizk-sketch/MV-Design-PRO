@@ -383,7 +383,24 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
 
   await reloadEditorPage(page);
   await capture(page, testInfo, '04-after-delete-and-continue');
-  await expect(page.getByTestId('sld-readiness-stack')).toBeVisible();
+  // Przepisane (karta K1/E, 2026-07-29). DIAGNOZA: to NIE defekt hydratacji
+  // H-0 — testid `sld-readiness-stack` żyje wyłącznie w GuidedBuildActionPanel,
+  // a ten panel od migracji na powłokę ui2 NIE jest montowany NIGDZIE
+  // (świadoma decyzja, rejestr wygaszania — `ui2/legacy/LegacyInspektor.tsx`:
+  // „panel prowadzenia budowy (GuidedBuildActionPanel) nie jest mostkowany…
+  // pełne przejęcie = karty U2"). Panel nie pojawiłby się także BEZ reloadu.
+  // INTENCJA BEZ ZMIAN: po delete+continue+reloadzie powłoka pokazuje
+  // strukturę układu odzwierciedlającą realny model (nie stan zerowy).
+  // Bieżący nośnik: pasek kontekstu przepływu pracy nad kanwą
+  // (`WorkflowContextStrip` — faza budowy + metryki Szyny/Odcinki SN/Stacje).
+  const strip = page.getByTestId('workflow-context-strip');
+  await expect(strip).toBeVisible();
+  await expect(page.getByTestId('workflow-build-phase')).toBeVisible();
+  // 'Kontrola:' renderuje się TYLKO przy niepustej topologii (hasTopologyElements)
+  // — dowodzi, że po reloadzie model został odtworzony z backendu.
+  await expect(strip).toContainText('Kontrola:');
+  await expect(strip).toContainText('Odcinki SN');
+  await expect(strip).toContainText('Stacje');
 });
 
 test('real backend supports flexible operation order combinations', async ({ page, request }) => {

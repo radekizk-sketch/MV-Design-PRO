@@ -181,7 +181,10 @@ test('utworzenie pierwszego projektu przechodzi deterministycznie do E-01 bez fr
 
   await expect(page.getByTestId('sld-canvas-v3-workspace')).toBeVisible();
   await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Projekt 1');
-  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('do obliczenia');
+  // Intencja bez zmian: pasek komunikuje, że świeżo utworzony zakres nie ma
+  // jeszcze wyników. Dawny pasek pisał „do obliczenia"; dzisiejszy CaseBar ui2
+  // (shell/strings.ts: resultsNone) niesie ten sam sens chipem „Wyniki: brak".
+  await expect(page.locator('[data-testid="active-case-bar"]')).toContainText('Wyniki: brak');
   await expect(page.getByTestId('sld-empty-state')).toBeVisible();
 
   const uniqueWarnCount = guards.warningCounts.size;
