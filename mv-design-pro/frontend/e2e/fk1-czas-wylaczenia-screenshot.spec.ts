@@ -27,8 +27,15 @@ async function otworzScene(page: Page, theme: string): Promise<void> {
   page.on('pageerror', (err) => bledy.push(String(err)));
   (page as unknown as { _bledy: string[] })._bledy = bledy;
 
-  await page.goto(`${HARNESS_URL}?creator=cieplna&theme=${theme}`, { waitUntil: 'networkidle' });
-  await page.waitForSelector('[data-status="ready"]');
+  // `networkidle` jest zawodne przy zimnym dev-serverze Vite (pierwsza
+  // kompilacja harnessu przekracza domyślne 15 s nawigacji) — defekt
+  // pre-existing naprawiony w K3 wg wzorca bramki scen
+  // (wszystkie-sceny-screenshot): domcontentloaded + jawny znacznik gotowości.
+  await page.goto(`${HARNESS_URL}?creator=cieplna&theme=${theme}`, {
+    waitUntil: 'domcontentloaded',
+    timeout: 40000,
+  });
+  await page.waitForSelector('[data-status="ready"]', { timeout: 15000 });
   await expect(page.getByTestId('mvd-jakosc-cieplna')).toBeVisible();
 }
 

@@ -296,6 +296,69 @@ describe('WynikiWarsztat — zakładki', () => {
     expect(screen.queryByTestId('most-pozostale')).not.toBeInTheDocument();
   });
 
+  it('hydratacja K2 (K3-A4): rejestr przebiegów doładowany PO montażu przełącza zakładkę z mostu na rodzaj przebiegu', () => {
+    // Zimny start: rejestr pusty → zakładka startowa 'pozostałe' (most).
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-pozostale')).toHaveAttribute('aria-selected', 'true');
+    // Hydratacja K2: rejestr przebiegów + aktywny przebieg spływają z serwera.
+    act(() => {
+      useExecutionRunsStore.setState({
+        runs: [przebiegFixture({ id: 'run-sc-9', analysis_type: 'SC_3F' })],
+      });
+      useAppStateStore.setState({ activeRunId: 'run-sc-9' });
+    });
+    // Zakładka DOCHODZI do rodzaju przebiegu — użytkownik nic nie wybierał.
+    expect(screen.getByTestId('mvd-wyniki-zakladka-zwarcia')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('hydratacja K2 (K3-A4): rozpływ po hydratacji przełącza na zakładkę „Rozpływ mocy"', () => {
+    render(<WynikiWarsztat {...props()} />);
+    act(() => {
+      useExecutionRunsStore.setState({ runs: [przebiegFixture({ id: 'run-lf-9' })] });
+      useAppStateStore.setState({ activeRunId: 'run-lf-9' });
+    });
+    expect(screen.getByTestId('mvd-wyniki-zakladka-rozplyw')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('K3-A4: ręczny wybór zakładki ma pierwszeństwo — hydratacja go nie nadpisuje', () => {
+    render(<WynikiWarsztat {...props()} />);
+    // Użytkownik świadomie wchodzi na „Dowód obliczeń" przed hydratacją.
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-dowod'));
+    act(() => {
+      useExecutionRunsStore.setState({
+        runs: [przebiegFixture({ id: 'run-sc-9', analysis_type: 'SC_3F' })],
+      });
+      useAppStateStore.setState({ activeRunId: 'run-sc-9' });
+    });
+    // Zakładka wybrana ręcznie zostaje — zero zaskakującego przełączania.
+    expect(screen.getByTestId('mvd-wyniki-zakladka-dowod')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('K3-A4: deep-link zakładki (wynikiTab) też ma pierwszeństwo przed hydratacją', () => {
+    useShellStore.setState({ wynikiTab: 'porownanie' });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-porownanie')).toHaveAttribute('aria-selected', 'true');
+    act(() => {
+      useExecutionRunsStore.setState({
+        runs: [przebiegFixture({ id: 'run-sc-9', analysis_type: 'SC_3F' })],
+      });
+      useAppStateStore.setState({ activeRunId: 'run-sc-9' });
+    });
+    expect(screen.getByTestId('mvd-wyniki-zakladka-porownanie')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('zakładkowi dostawcy kart huba E-29…E-32 (K3-A3): cztery zakładki renderują ekrany ui2', () => {
+    render(<WynikiWarsztat {...props()} />);
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-zbieznosc'));
+    expect(screen.getByTestId('mvd-zbieznosc')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-skladowe'));
+    expect(screen.getByTestId('mvd-skladowe')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-stan-fazowy'));
+    expect(screen.getByTestId('mvd-stan-fazowy')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-stabilnosc'));
+    expect(screen.getByTestId('mvd-stabilnosc')).toBeInTheDocument();
+  });
+
   it('klik przełącza zakładki (rozpływ → zwarcia → most)', () => {
     render(<WynikiWarsztat {...props()} />);
     fireEvent.click(screen.getByTestId('mvd-wyniki-zakladka-rozplyw'));

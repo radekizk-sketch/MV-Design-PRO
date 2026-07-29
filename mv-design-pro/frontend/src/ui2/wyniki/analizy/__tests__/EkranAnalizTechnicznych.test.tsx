@@ -166,6 +166,27 @@ describe('EkranAnalizTechnicznych — hub po przebudowie', () => {
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 
+  // K3-A3: karty E-29…E-32 mają realnych dostawców zakładkowych w warsztacie
+  // Wyników (wzorzec E-33/E-34) — deep-link zakładki zamiast powierzchni mostu.
+  for (const [testid, zakladka] of [
+    ['mvd-analizy-karta-skladowe', 'skladowe'],
+    ['mvd-analizy-karta-zbieznosc', 'zbieznosc'],
+    ['mvd-analizy-karta-fazowy', 'stan-fazowy'],
+    ['mvd-analizy-karta-stabilnosc', 'stabilnosc'],
+  ] as const) {
+    it(`karta ${testid} (K3-A3) prowadzi do zakładki „${zakladka}" warsztatu Wyników (klik natywny)`, async () => {
+      const user = userEvent.setup();
+      render(<EkranAnalizTechnicznych />);
+      await user.click(
+        within(screen.getByTestId(testid)).getByRole('button', { name: 'Otwórz' }),
+      );
+      expect(useShellStore.getState().wynikiTab).toBe(zakladka);
+      expect(useShellStore.getState().activeSpace).toBe('wyniki');
+      // Bez powierzchni trasowej mostu — dostawcą jest zakładka ui2.
+      expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+    });
+  }
+
   it('widoki klasyczne otwierają jawne taby powierzchni analiz (parytet mostu)', async () => {
     const user = userEvent.setup();
     render(<EkranAnalizTechnicznych />);

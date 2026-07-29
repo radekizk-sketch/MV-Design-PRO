@@ -315,7 +315,11 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   await expect(page).toHaveURL(new RegExp(`#analysis\\?run=${runId}`));
   await expect(page.getByTestId('canonical-layout')).toBeVisible();
-  await expect(page.getByTestId('workspace-surface-main')).toBeVisible();
+  // K3-A1 (jedno lądowisko wyników): trasa #analysis ustawia przestrzeń
+  // „Wyniki" — lądowiskiem jest warsztat ui2 (zakładki), nie rozwinięta
+  // powierzchnia mostu z testid `workspace-surface-main` (intencja bez zmian:
+  // deep-link z runId prowadzi do żywego widoku wyników).
+  await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
   // PR-5c: stary embedded SLD wygaszony — nowy SLD v2 jest osobnym surface'em
   // (testowane oddzielnie w v2/geometry/__tests__/layoutEngine.substrate.test.ts).
 
@@ -323,7 +327,10 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
     window.location.hash = `#proof?run=${targetRunId}`;
   }, runId);
   await expect(page).toHaveURL(new RegExp(`#proof\\?run=${runId}`));
-  await expect(page.getByTestId('workspace-surface-main')).toBeVisible();
+  // K3: przestrzeń „Wyniki" pozostaje lądowiskiem (alias #proof nie wybija
+  // z warsztatu; powierzchnię śladu mostu otwiera orkiestrator w zakładce
+  // „Pozostałe analizy" — zakładkowy dowód ui2 prowadzi Ctrl+K „proof").
+  await expect(page.getByTestId('mvd-wyniki-warsztat')).toBeVisible();
   // PR-5c: stary panel "Przebieg obliczeń analizy" wygaszony razem z proof inspector v1.
 
   // Krok 8: Realne wyniki backend

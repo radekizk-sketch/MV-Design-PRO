@@ -18,20 +18,15 @@ import {
   navigateToAnalysis,
   navigateToCaseConfig,
   navigateToCatalog,
-  navigateToCompare,
   navigateToNetworkBuild,
-  navigateToProof,
   navigateToReport,
   navigateToResultsProtection,
   navigateToSwitchgear,
   navigateToVariants,
 } from '../../ui/navigation';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
-import {
-  ANALYSIS_SURFACE_SCREEN_CODE,
-  ANALYSIS_ROUTE_DEFAULT_TAB,
-  REPORT_SURFACE_SCREEN_CODE,
-} from '../../ui/workspace/types';
+import { useShellStore } from '../shell/useShellStore';
+import { REPORT_SURFACE_SCREEN_CODE } from '../../ui/workspace/types';
 
 function openSldOverlayFromCurrentContext(): void {
   if (typeof window === 'undefined') {
@@ -79,6 +74,10 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
+  // K3-A2: akcje z zakładkowym dostawcą ui2 (wyniki/porównanie/dowód) prowadzą
+  // do warsztatu przestrzeni „Wyniki" zamiast powierzchni trasowych mostu.
+  const setActiveSpace = useShellStore((state) => state.setActiveSpace);
+  const setWynikiTab = useShellStore((state) => state.setWynikiTab);
   const effectiveRunId = activeRunId ?? executionActiveRunId;
 
   return useCallback((actionId: string) => {
@@ -110,23 +109,17 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         break;
       case 'results':
       case 'analysis':
-        openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
-          titlePl: 'Analizy techniczne',
-          tabId: ANALYSIS_ROUTE_DEFAULT_TAB,
-          entityRef: getCurrentSearchParams().get('sel'),
-          subjectKind: 'analysis_run',
-          subjectRef: effectiveRunId,
-          payload: {
-            runId: effectiveRunId,
-            legacyRoute: ROUTES.ANALYSIS.hash,
-            selectedName: getCurrentSearchParams().get('name'),
-            selectedType: getCurrentSearchParams().get('type'),
-          },
-        });
+        // K3-A2: lądowisko = warsztat ui2 (activeSpace 'wyniki'); trasa
+        // #analysis pozostaje (deep-link + powierzchnia mostu w zakładce
+        // „Pozostałe analizy" — otwiera ją orkiestrator z hasha, bez
+        // dublowania openRouteSurface tutaj).
+        setActiveSpace('wyniki');
         navigateToAnalysis({ runId: effectiveRunId });
         break;
       case 'compare':
-        navigateToCompare({ runId: effectiveRunId });
+        // K3-A2: zakładka ui2 „Porównanie A/B" zamiast trasy mostu #compare.
+        setWynikiTab('porownanie');
+        setActiveSpace('wyniki');
         break;
       case 'report':
       case 'export':
@@ -161,9 +154,14 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         break;
       case 'proof':
       case 'whitebox':
-        navigateToProof({ runId: effectiveRunId });
+        // K3-A2: zakładka ui2 „Dowód obliczeń" (kontekst = aktywny przebieg,
+        // gdy jest) zamiast trasy mostu #proof.
+        setWynikiTab('dowod', effectiveRunId);
+        setActiveSpace('wyniki');
         break;
       case 'protection':
+        // ZOSTAJE w moście (K3 §A pkt 4): brak zakładkowego odpowiednika ui2
+        // dla wyników zabezpieczeń — trasa #protection-results bez zmian.
         navigateToResultsProtection({ runId: effectiveRunId });
         break;
       case 'run-sc-3f':
@@ -186,5 +184,7 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
     effectiveRunId,
     openRouteSurface,
     setActiveArea,
+    setActiveSpace,
+    setWynikiTab,
   ]);
 }

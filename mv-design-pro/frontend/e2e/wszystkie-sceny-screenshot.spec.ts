@@ -81,6 +81,30 @@ test.describe('sceny:screenshot', () => {
           `scena ${scena} pokazuje komunikat o niepowodzeniu — brakuje atrapy końcówki`,
         ).toBe(false);
 
+        // K3-B4: znacznik świeżości nagłówka MUSI być na ekranie, nie tylko
+        // w kodzie — bramka treści dla jednej sceny AKTUALNEJ (zwarcia:
+        // migawka rev. 1 = wynik rev. 1) i wariantu NIEAKTUALNEGO (cieplna:
+        // migawka rev. 2, wynik rev. 1 + panel przyczyn z dziennika zmian).
+        // Dług nazwany (meldunek K3): sceny jakosc/ranking bez asercji badge
+        // — osobna karta.
+        if (scena === 'zwarcia') {
+          const badge = page.locator('[data-mvd-fresh]').first();
+          await expect(badge, 'scena zwarcia: brak znacznika świeżości').toHaveAttribute(
+            'data-mvd-fresh',
+            'ok',
+          );
+          await expect(badge).toContainText('aktualne');
+        }
+        if (scena === 'cieplna') {
+          const badge = page.locator('[data-mvd-fresh="stale"]').first();
+          await expect(badge, 'scena cieplna: brak znacznika NIEAKTUALNE').toBeVisible();
+          await expect(badge).toContainText('nieaktualne (rew. 1 → 2)');
+          await expect(page.getByTestId('mvd-co-sie-zmienilo')).toBeVisible();
+          await expect(page.getByTestId('mvd-zmiany-podsumowanie')).toContainText(
+            'Wynik trzeba przeliczyć',
+          );
+        }
+
         await page.waitForTimeout(250);
         await root.screenshot({ path: path.join(OUTPUT_DIR, `scena_${scena}_${theme}.png`) });
 

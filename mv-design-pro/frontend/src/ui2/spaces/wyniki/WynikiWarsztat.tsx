@@ -6,7 +6,10 @@
  * (powierzchnia trasowa #analysis — zabezpieczenia, porównania, E10+).
  *
  * Zakładka startowa wg rodzaju aktywnego przebiegu (rozpływ/zwarcie/most);
- * wyliczana przy montażu — bez zaskakującego przełączania w trakcie pracy.
+ * wyliczana przy montażu i AKTUALIZOWANA po hydratacji K2 (rejestr przebiegów
+ * doładowuje się z serwera PO montażu — zimny start nie może utknąć na moście),
+ * ale wyłącznie dopóki użytkownik nie wybrał zakładki sam (ręczny wybór i
+ * deep-link mają pierwszeństwo — K3-A4, zero zaskakującego przełączania).
  * 2×klik na wartości z dowodem przełącza na zakładkę „Dowód obliczeń"
  * (okno E9.1; fokus kroku wg elementu = TODO-KARTA w DowodPrzebiegu).
  *
@@ -42,9 +45,13 @@ import {
 } from '../../oze';
 import { EkranJakosci } from '../../wyniki/jakosc';
 import { EkranEstymacji } from '../../wyniki/estymacja';
+import { EkranSkladowych } from '../../wyniki/skladowe';
 import { EkranSsci } from '../../wyniki/ssci';
+import { EkranStabilnosci } from '../../wyniki/stabilnosc';
+import { EkranStanuFazowego } from '../../wyniki/stan-fazowy';
 import { EkranOdbioru } from '../../wyniki/odbior';
 import { EkranPorownania } from '../../wyniki/porownanie';
+import { EkranZbieznosci } from '../../wyniki/zbieznosc';
 import { DowodPrzebiegu } from './DowodPrzebiegu';
 import { useWpiecieWynikow } from './useWpiecieWynikow';
 import { WYNIKI_WARSZTAT_STRINGS as T } from './strings';
@@ -55,13 +62,17 @@ const ZAKLADKI = [
   { id: 'co-wymaga-uwagi', etykieta: T.zakladkaCoWymagaUwagi },
   { id: 'rozplyw', etykieta: T.zakladkaRozplyw },
   { id: 'regulacja-oltc', etykieta: T.zakladkaRegulacjaOltc },
+  { id: 'zbieznosc', etykieta: T.zakladkaZbieznosc },
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
+  { id: 'skladowe', etykieta: T.zakladkaSkladowe },
   { id: 'dowod', etykieta: T.zakladkaDowod },
   { id: 'jakosc', etykieta: T.zakladkaJakosc },
   { id: 'porownanie', etykieta: T.zakladkaPorownanie },
   { id: 'odbior', etykieta: T.zakladkaOdbior },
   { id: 'estymacja', etykieta: T.zakladkaEstymacja },
+  { id: 'stan-fazowy', etykieta: T.zakladkaStanFazowy },
   { id: 'ssci', etykieta: T.zakladkaSsci },
+  { id: 'stabilnosc', etykieta: T.zakladkaStabilnosc },
   { id: 'ncrfg', etykieta: T.zakladkaNcRfg },
   { id: 'pulpit-oze', etykieta: T.zakladkaPulpitOze },
   { id: 'zdolnosc', etykieta: T.zakladkaZdolnosc },
@@ -87,13 +98,17 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
       'co-wymaga-uwagi',
       'rozplyw',
       'regulacja-oltc',
+      'zbieznosc',
       'zwarcia',
+      'skladowe',
       'dowod',
       'jakosc',
       'porownanie',
       'odbior',
       'estymacja',
+      'stan-fazowy',
       'ssci',
+      'stabilnosc',
       'pozostale',
     ],
   },
@@ -165,6 +180,17 @@ export function WynikiWarsztat({
   const [zakladka, setZakladka] = useState<ZakladkaId>(
     aktywnyRodzaj === 'rozplyw' ? 'rozplyw' : aktywnyRodzaj === 'zwarcie' ? 'zwarcia' : 'pozostale',
   );
+  // K3-A4: po zimnym starcie rejestr przebiegów hydratuje z serwera PO montażu
+  // (K2, useHydratacjaPowloki) — `aktywnyRodzaj` zmienia się z null na
+  // 'rozplyw'/'zwarcie', a zakładka z inicjalizatora zostawała na moście.
+  // Dopóki użytkownik nie wybrał zakładki sam (klik/klawiatura/deep-link),
+  // doprowadzamy ją do rodzaju aktywnego przebiegu; ręczny wybór wygrywa.
+  const [zakladkaWybranaRecznie, setZakladkaWybranaRecznie] = useState(false);
+  useEffect(() => {
+    if (zakladkaWybranaRecznie) return;
+    if (aktywnyRodzaj === 'rozplyw') setZakladka('rozplyw');
+    else if (aktywnyRodzaj === 'zwarcie') setZakladka('zwarcia');
+  }, [aktywnyRodzaj, zakladkaWybranaRecznie]);
   // Deep-link między-przestrzenny (np. hub Dokumentacji → generator studium OZE):
   // jednorazowe żądanie ze shell store; walidujemy id i czyścimy po konsumpcji.
   // R2-B: żądanie może nieść kontekst elementu (`wynikiTabElement`) —
@@ -185,6 +211,8 @@ export function WynikiWarsztat({
     if (!wynikiTab) return;
     if (ZAKLADKI.some((z) => z.id === wynikiTab)) {
       setZakladka(wynikiTab as ZakladkaId);
+      // K3-A4: deep-link = jawny wybór celu — hydratacja K2 nie może go nadpisać.
+      setZakladkaWybranaRecznie(true);
       if (wynikiTab === 'kompensacja' && wynikiTabElement) {
         setElementKompensacji(wynikiTabElement);
       }
@@ -212,6 +240,8 @@ export function WynikiWarsztat({
   // wskazanie z porównania nie może zalegać (izolacja kontekstu, R3-C).
   const przejdzDoZakladki = (id: ZakladkaId) => {
     if (id === 'dowod') setPrzebiegDowodu(null);
+    // K3-A4: ręczny wybór użytkownika — hydratacja K2 przestaje sterować zakładką.
+    setZakladkaWybranaRecznie(true);
     setZakladka(id);
   };
 
@@ -270,6 +300,12 @@ export function WynikiWarsztat({
           />
         )}
         {zakladka === 'regulacja-oltc' && <EkranBadanOltc />}
+        {/* K3-A3: zakładkowi dostawcy kart huba E-29…E-32 (parytet E-33/E-34) —
+            ekrany ui2 czytają store'y same (bez propsów, uczciwe stany zerowe). */}
+        {zakladka === 'zbieznosc' && <EkranZbieznosci />}
+        {zakladka === 'skladowe' && <EkranSkladowych />}
+        {zakladka === 'stan-fazowy' && <EkranStanuFazowego />}
+        {zakladka === 'stabilnosc' && <EkranStabilnosci />}
         {zakladka === 'zwarcia' && (
           <EkranZwarc
             trybZaawansowania={trybZaawansowania}

@@ -15,6 +15,7 @@ import { render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useLegacyOrchestrator, type LegacyOrchestratorApi } from '../useLegacyOrchestrator';
+import { useShellStore } from '../../shell/useShellStore';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -84,6 +85,9 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
       })),
     );
     window.location.hash = '';
+    // K3-A1: przestrzeń powłoki wraca do domyślnej — testy lądowiska wyników
+    // muszą mierzyć zmianę wywołaną trasą, nie stan zastany z poprzednich testów.
+    useShellStore.setState({ activeSpace: 'projekt' });
     useAppStateStore.setState(initialAppState, true);
     useExecutionRunsStore.setState(initialExecutionState, true);
     useSnapshotStore.setState(initialSnapshotState, true);
@@ -188,5 +192,50 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     await waitFor(() => {
       expect(useAppStateStore.getState().activeMode).toBe('RESULT_VIEW');
     });
+  });
+
+  // K3-A1 (jedno lądowisko wyników): trasa wyników ustawia przestrzeń 'wyniki' —
+  // bez tego zimny deep-link #analysis?run=… i DONE-owe navigateToResults
+  // renderowały most legacy (warsztat ui2 wymaga activeSpace='wyniki').
+  it('#analysis (K3-A1): trasa wyników ustawia przestrzeń powłoki na „wyniki"', async () => {
+    window.location.hash = '#analysis?run=abc';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    });
+  });
+
+  it('#results / #power-flow-results (aliasy wyników): również lądują w przestrzeni „wyniki"', async () => {
+    window.location.hash = '#results';
+    render(<Probe />);
+    await waitFor(() => {
+      expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    });
+  });
+
+  it('#sld NIE zmienia przestrzeni (zakres K3-A1 celowo wąski — bez pętli mostu tras)', async () => {
+    window.location.hash = '#sld';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(lastApi?.route).toBe('#sld');
+    });
+    expect(useShellStore.getState().activeSpace).toBe('projekt');
+  });
+
+  it('#protection-results zostaje w moście (bez zakładki ui2 — przestrzeń bez zmian)', async () => {
+    window.location.hash = '#protection-results';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe(
+        ANALYSIS_SURFACE_SCREEN_CODE,
+      );
+    });
+    expect(useShellStore.getState().activeSpace).toBe('projekt');
   });
 });

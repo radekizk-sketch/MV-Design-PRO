@@ -781,6 +781,25 @@ const DOBOR_PRZEKLADNIKOW_WIAZANIA = {
   przekladnik_napieciowy: { catalog_ref: null, nazwa: null, wynik: null },
 };
 
+/**
+ * K3-B2: scena → identyfikator przebiegu, którego kontrakt (GET
+ * /api/analysis-runs/<id>) zasila znacznik świeżości nagłówka. Wartości
+ * odpowiadają 1:1 runId z zasiewu store'ów danej sceny (niżej w pliku);
+ * scena „cieplna" celowo dostaje wynik na rev. 1 przy migawce rev. 2
+ * (wariant NIEAKTUALNY, K3-B3).
+ */
+const RUN_KONTRAKT_SCENY: Record<string, string> = {
+  cieplna: 'run-sc-7',
+  'zwarcia-rozplyw': 'run-sc-th1-demo',
+  zwarcia: 'run-sc-2',
+  rozplyw: 'run-lf-1',
+  walidacja: 'run-lf-1',
+  estymacja: 'run-lf-6',
+  'odbior-zgodnosc': 'run-lf-5',
+  arcflash: 'run-sc-1',
+  migotanie: 'run-sc-5',
+};
+
 const originalFetch = window.fetch.bind(window);
 window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
@@ -891,46 +910,74 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   } else if (creator === 'wyniki-stabilnosc') {
     if (url.endsWith('/results/dynamic-stability')) return jsonOK(STABILNOSC_WYNIK);
     if (url.endsWith('/results/automation-trace')) return jsonOK(STABILNOSC_SLAD);
-  } else if (creator === 'cieplna' || creator === 'zwarcia-rozplyw') {
-    // Kontrakt przebiegu dla znacznika świeżości nagłówka (V12K-264):
-    // `useSwiezoscNaglowka` → `useAnalysisRunContract` woła GET /api/analysis-runs/<id>
-    // (scena „cieplna": run-sc-7; scena „zwarcia-rozplyw": run-sc-th1-demo).
-    // Bez tej atrapy zapytanie leciało do `originalFetch` i 404 wpadał do bramki
-    // „zero błędów konsoli" speców zrzutowych (karta K1/A). Kształt 1:1 z kontraktem
-    // backendu `analysis_case_context.py` — `rewizja_modelu` LICZBOWE (V12K-264:
-    // normalizator odrzuca tekst; brak = null, nigdy zero). Pozostałe URL-e sceny
-    // przechodzą dalej do niegate'owanych atrap (conductor-thermal-withstand itd.).
-    if (url.includes('/api/analysis-runs/')) {
-      const runId = creator === 'cieplna' ? 'run-sc-7' : 'run-sc-th1-demo';
-      return jsonOK({
-        id: runId,
-        analysis_type: 'SC',
-        status: 'FINISHED',
-        result_status: 'VALID',
-        results_valid: true,
-        created_at: '2026-07-20T10:00:00Z',
-        finished_at: '2026-07-20T10:00:05Z',
-        input_hash: 'h-demo',
-        summary_json: {},
-        trace_summary: null,
-        analysis_case_context: {
-          case_ref: 'case-demo',
-          case_kind: 'auto',
-          snapshot_ref: 'sha256:h-demo',
-          rewizja_modelu: 1,
-          variant_ref: null,
-          run_ref: runId,
-          proof_pack_ref: null,
-          quality_gate: 'passed',
-          applicability_scope: [],
-          completeness: 'complete',
-          missing_prerequisites: [],
-          assumptions: {},
-          lineage: {},
-          reproducibility: null,
+  }
+
+  // Kontrakt przebiegu dla znacznika świeżości nagłówka (V12K-264, rozszerzenie
+  // K3-B2 na wszystkie sceny wynikowe z runId): `useSwiezoscNaglowka` →
+  // `useAnalysisRunContract` woła GET /api/analysis-runs/<id>. Bez atrapy
+  // zapytanie leciało do `originalFetch`, 404 wpadał do bramki „zero błędów
+  // konsoli" speców zrzutowych (karta K1/A), a znacznik świeżości nie renderował
+  // się w żadnej scenie. Kształt 1:1 z kontraktem backendu
+  // `analysis_case_context.py` — `rewizja_modelu` LICZBOWE (V12K-264:
+  // normalizator odrzuca tekst; brak = null, nigdy zero). Dopasowanie JAWNE
+  // (endsWith pełnego adresu kontraktu) — pod-końcówki `/results/...`,
+  // `/snapshot` itd. przechodzą dalej do atrap per scena.
+  const runKontraktuSceny = RUN_KONTRAKT_SCENY[creator];
+  if (runKontraktuSceny && url.endsWith(`/api/analysis-runs/${runKontraktuSceny}`)) {
+    return jsonOK({
+      id: runKontraktuSceny,
+      analysis_type: runKontraktuSceny.startsWith('run-lf') ? 'LOAD_FLOW' : 'SC',
+      status: 'FINISHED',
+      result_status: 'VALID',
+      results_valid: true,
+      created_at: '2026-07-20T10:00:00Z',
+      finished_at: '2026-07-20T10:00:05Z',
+      input_hash: 'h-demo',
+      summary_json: {},
+      trace_summary: null,
+      analysis_case_context: {
+        case_ref: 'case-demo',
+        case_kind: 'auto',
+        snapshot_ref: 'sha256:h-demo',
+        rewizja_modelu: 1,
+        variant_ref: null,
+        run_ref: runKontraktuSceny,
+        proof_pack_ref: null,
+        quality_gate: 'passed',
+        applicability_scope: [],
+        completeness: 'complete',
+        missing_prerequisites: [],
+        assumptions: {},
+        lineage: {},
+        reproducibility: null,
+      },
+    });
+  }
+  // K3-B3: scena „cieplna" = wariant NIEAKTUALNY (migawka rev. 2, wynik na
+  // rev. 1) — panel „Co się zmieniło" (`PanelCoSieZmienilo` → `pobierzDziennikZmian`)
+  // pyta GET /api/cases/<case>/enm/dziennik-zmian?od_rewizji=1. Kształt 1:1
+  // z kontraktem `DziennikZmian` (frontend `freshness/dziennikApi.ts`,
+  // backend `enm/dziennik_zmian.py`): jedna zmiana rev. 1→2 (spójnie z
+  // `rewizja_biezaca: 2`), wpis PL z elementem klikalnym.
+  if (creator === 'cieplna' && url.includes('/enm/dziennik-zmian')) {
+    return jsonOK({
+      case_id: 'case-demo',
+      rewizja_biezaca: 2,
+      od_rewizji: 1,
+      aktualny: false,
+      wpisy: [
+        {
+          rewizja: 2,
+          znacznik_czasu: '2026-07-27T09:41:00Z',
+          operacja: 'update_element_parameters',
+          opis_pl: 'Zmieniono parametry odcinka magistrali SN (długość 2500 m → 2800 m).',
+          utworzone: [],
+          zmienione: ['odc-linia-7'],
+          usuniete: [],
+          liczba_elementow: 1,
         },
-      });
-    }
+      ],
+    });
   }
 
   for (const [key, body] of Object.entries(CATALOG_FIXTURES)) {
@@ -3077,7 +3124,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
 useAppStateStore.setState({ activeCaseId: 'case-demo' } as never);
 useSnapshotStore.setState({
   snapshot: {
-    header: { name: 'Projekt demonstracyjny' },
+    // K3-B1: rewizja modelu w migawce globalnej — bez niej znacznik świeżości
+    // nagłówka (`useSwiezoscNaglowka` → `snapshot.header.revision`) nie renderował
+    // się w ŻADNEJ scenie mimo kontraktu przebiegu z `rewizja_modelu`. Sceny z
+    // własnym zasiewem migawki (dokumentacja rev. 7, pulpit rev. 9, zbieżność —
+    // ZBIEZNOSC_SNAPSHOT, cieplna rev. 2 = wariant NIEAKTUALNY) nadpisują ją niżej.
+    header: { name: 'Projekt demonstracyjny', revision: 1 },
     substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
     transformers: [],
     buses: [
@@ -3654,6 +3706,25 @@ if (creator === 'arcflash') {
     field: 'r_pct',
     value: '0.55',
   });
+} else if (creator === 'cieplna') {
+  // K3-B3: wariant NIEAKTUALNY znacznika świeżości — migawka w rew. 2, a
+  // kontrakt przebiegu run-sc-7 niesie `rewizja_modelu: 1` (atrapa wyżej) →
+  // nagłówek pokazuje „nieaktualne (rew. 1 → 2)" + panel „Co się zmieniło"
+  // z atrapy dziennika zmian. Kształt migawki = zasiew globalny (ta sama sieć).
+  useSnapshotStore.setState({
+    snapshot: {
+      header: { name: 'Projekt demonstracyjny', revision: 2 },
+      substations: [{ ref_id: 'st-demo', name: 'Rozdzielnia GPZ-01', bus_refs: ['bus-sn-demo', 'bus-nn-demo'] }],
+      transformers: [],
+      buses: [
+        { ref_id: 'bus-sn-demo', name: 'Szyna SN', voltage_kv: 15 },
+        { ref_id: 'bus-nn-demo', name: 'Szyna nN', voltage_kv: 0.4 },
+      ],
+      sources: [],
+      loads: [],
+      bays: [],
+    },
+  } as never);
 } else {
   // Kontekst operacji (szyna/stacja) dla kreatorów pole/OZE/transformator.
   const op =

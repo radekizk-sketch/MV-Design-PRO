@@ -71,6 +71,7 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
         zrodlo: 'zakończony przebieg rozpływu mocy (wynik i ślad solvera)',
         wymaga: 'rozplywowy',
         testid: 'mvd-analizy-karta-zbieznosc',
+        zakladkaWynikow: 'zbieznosc',
       },
       {
         ekran: 'E-31',
@@ -79,6 +80,7 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
         zrodlo: 'zakończony przebieg analizy stanu fazowego SN',
         wymaga: 'fazowy',
         testid: 'mvd-analizy-karta-fazowy',
+        zakladkaWynikow: 'stan-fazowy',
       },
       {
         ekran: 'E-32',
@@ -87,6 +89,7 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
         zrodlo: 'zakończony przebieg analizy stabilności dynamicznej (scenariusz „wyłączenie zwarcia")',
         wymaga: 'dowolny',
         testid: 'mvd-analizy-karta-stabilnosc',
+        zakladkaWynikow: 'stabilnosc',
       },
     ],
   },
@@ -100,6 +103,7 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
         zrodlo: 'zakończony przebieg zwarcia niesymetrycznego (IEC 60909) — wiersze, ślad WHITE BOX i wersja układu',
         wymaga: 'zwarciowy',
         testid: 'mvd-analizy-karta-skladowe',
+        zakladkaWynikow: 'skladowe',
       },
       {
         ekran: 'E-33',

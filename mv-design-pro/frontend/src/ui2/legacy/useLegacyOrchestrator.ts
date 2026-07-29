@@ -41,6 +41,7 @@ import {
 } from '../../ui/navigation';
 import { notify } from '../../ui/notifications/store';
 import { sanitizePublicReadinessMessage } from '../../ui/shared/publicReadinessMessage';
+import { useShellStore } from '../shell/useShellStore';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../ui/selection/store';
 import type { AreaId } from '../../ui/navigation/areaRegistry';
@@ -48,7 +49,6 @@ import type { SelectedElement } from '../../ui/types';
 import type { DomainOpResponseV1, EnergyNetworkModel } from '../../types/enm';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
-  ANALYSIS_ROUTE_DEFAULT_TAB,
   REPORT_SURFACE_SCREEN_CODE,
 } from '../../ui/workspace/types';
 
@@ -435,7 +435,7 @@ export interface LegacyOrchestratorApi {
   route: string;
   /** Uruchomienie obliczeń dla aktywnego zakresu (dawne App.handleCalculate). */
   handleCalculate: () => Promise<void>;
-  /** Przejście do kanonicznej powierzchni wyników E-24 (dawne App.handleViewResults). */
+  /** Przejście do wyników — warsztat ui2 przez trasę #analysis (K3-A1). */
   handleViewResults: () => void;
 }
 
@@ -738,6 +738,29 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
       setActiveMode('MODEL_EDIT');
     }
   }, [route, setActiveMode]);
+
+  // K3-A1 (jedno lądowisko wyników): warsztat przestrzeni „Wyniki" renderuje
+  // się wyłącznie przy activeSpace='wyniki' (LegacyWarsztat), a sam hash tego
+  // NIE ustawiał — zimny deep-link `#analysis?run=…` i DONE-owe
+  // `navigateToResults` lądowały w moście legacy (hub E-35). Zakres tras
+  // CELOWO wąski: #analysis + aliasy wyników (#results, #power-flow-results).
+  // #proof/#compare mają zakładki ui2 (Ctrl+K ustawia je bez zmiany trasy),
+  // a #protection-results zostaje w moście (brak zakładki ui2 — K3 §A).
+  // Bez pętli z mostem tras AppRoot: `mostTrasyPrzestrzeni` działa tylko przy
+  // JAWNYM wyborze przestrzeni (AppShell.selectSpace), nie przy zmianie store'a,
+  // a ustawienie tej samej przestrzeni po hashu jest idempotentne.
+  useEffect(() => {
+    if (
+      route === ROUTES.ANALYSIS.hash
+      || route === '#results'
+      || route === '#power-flow-results'
+    ) {
+      const shell = useShellStore.getState();
+      if (shell.activeSpace !== 'wyniki') {
+        shell.setActiveSpace('wyniki');
+      }
+    }
+  }, [hashVersion, route]);
 
   useEffect(() => {
     if (!activeCaseId || snapshot || snapshotError) {
@@ -1113,25 +1136,14 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
   ]);
 
   /**
-   * Navigate to canonical E-24 results surface.
+   * Przejście do wyników (dawne App.handleViewResults). K3-A1: trasa
+   * #analysis ustawia przestrzeń 'wyniki' (efekt wyżej) — lądowiskiem jest
+   * warsztat ui2; powierzchnię mostu w zakładce „Pozostałe analizy" otwiera
+   * efekt trasowy orkiestratora (bez dublowania openRouteSurface tutaj).
    */
   const handleViewResults = useCallback(() => {
-    const params = getCurrentSearchParams();
-    openRouteSurface(ANALYSIS_SURFACE_SCREEN_CODE, {
-      titlePl: 'Analizy techniczne',
-      tabId: ANALYSIS_ROUTE_DEFAULT_TAB,
-      entityRef: params.get('sel'),
-      subjectKind: 'analysis_run',
-      subjectRef: effectiveRunId,
-      payload: {
-        runId: effectiveRunId,
-        legacyRoute: ROUTES.ANALYSIS.hash,
-        selectedName: params.get('name'),
-        selectedType: params.get('type'),
-      },
-    });
     navigateToResults({ runId: effectiveRunId });
-  }, [effectiveRunId, navigateToResults, openRouteSurface]);
+  }, [effectiveRunId, navigateToResults]);
 
   return { route, handleCalculate, handleViewResults };
 }
