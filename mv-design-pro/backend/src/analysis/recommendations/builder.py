@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 
+from analysis.koperta_kontekstu import pola_koperty
 from analysis.normative.models import NormativeReport, NormativeStatus
 from analysis.protection_curves_it.models import ProtectionCurvesITView
 from analysis.protection_insight.models import ProtectionInsightView
@@ -100,14 +101,7 @@ def _resolve_context(
         protection_curves_it.context if protection_curves_it else None,
     ):
         if ctx is not None:
-            return RecommendationContext(
-                project_name=getattr(ctx, "project_name", None),
-                case_name=getattr(ctx, "case_name", None),
-                run_timestamp=getattr(ctx, "run_timestamp", None),
-                snapshot_id=getattr(ctx, "snapshot_id", None),
-                trace_id=getattr(ctx, "trace_id", None),
-                run_id=getattr(ctx, "run_id", None),
-            )
+            return RecommendationContext(**pola_koperty(ctx))
     if proofs:
         first = sorted(proofs, key=lambda doc: (doc.proof_type.value, doc.document_id.hex))[0]
         header = first.header

@@ -4,6 +4,8 @@ DLACZEGO (V12K-268, decyzja właściciela: „pełna zmiana z migracją zapisu")
 Rekordy wytwórców trzymały odniesienie do szyny przyłączenia pod kluczami
 nazwami objętymi ZAKAZEM (``pcc_ref``, starsze ``pcc``) w ``materialized_params``
 i ``meta`` — zakaz spisany w CLAUDE.md, „Forbidden Terms in Core Model".
+Od weryfikacji nadzoru 2026-07-29 migracja obejmuje elementy WSZYSTKICH
+kolekcji modelu (nie tylko ``generators``) — patrz ``_elementy_modelu``.
 Powód zakazu: punkt przyłączenia nie jest osobnym bytem fizycznym — jest to SZYNA
 (``Bus``), do której wytwórca jest przyłączony. Sama zmiana nazwy pola w kodzie nie
 wystarczyłaby: klucz siedzi w ZAPISANYCH danych projektów, więc kod czytający
@@ -27,6 +29,7 @@ zawierają tego klucza (zmierzone), więc determinizm testów pozostaje nietkni�
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from typing import Any
 
 from enm.models import EnergyNetworkModel
@@ -63,10 +66,35 @@ def _przenies_w_slowniku(dane: dict[str, Any] | None) -> bool:
     return zmieniono
 
 
+def _slowniki_elementu(element: Any) -> tuple[dict[str, Any] | None, ...]:
+    """Słowniki danych elementu, w których zakazany klucz mógł zostać zapisany."""
+    return (
+        getattr(element, "materialized_params", None),
+        getattr(element, "meta", None),
+    )
+
+
+def _elementy_modelu(enm: EnergyNetworkModel) -> Iterator[Any]:
+    """Elementy WSZYSTKICH kolekcji modelu, w stałej kolejności pól.
+
+    Zakres rozszerzony z ``generators`` na całość (weryfikacja nadzoru
+    2026-07-29): jedyny historyczny producent klucza pisał wyłącznie do
+    ``generators[].meta`` (zmierzone w historii), ale zakaz dotyczy NAZWY
+    w zapisanych danych — dane mogły powstać także ręczną edycją albo importem,
+    więc migracja domyka całą warstwę zapisu, nie jedną kolekcję. Iteracja po
+    polach modelu jest deterministyczna (kolejność deklaracji) i obejmuje
+    kolekcje dodane w przyszłości bez zmiany tego pliku.
+    """
+    for nazwa_pola in type(enm).model_fields:
+        wartosc = getattr(enm, nazwa_pola)
+        if isinstance(wartosc, list):
+            yield from wartosc
+
+
 def wymaga_migracji(enm: EnergyNetworkModel) -> bool:
-    """Czy którykolwiek wytwórca trzyma jeszcze odniesienie pod starą nazwą."""
-    for generator in enm.generators:
-        for dane in (generator.materialized_params, generator.meta):
+    """Czy którykolwiek element modelu trzyma jeszcze odniesienie pod starą nazwą."""
+    for element in _elementy_modelu(enm):
+        for dane in _slowniki_elementu(element):
             if isinstance(dane, dict) and any(k in dane for k in KLUCZE_ZASTANE):
                 return True
     return False
@@ -84,9 +112,8 @@ def migruj(enm: EnergyNetworkModel) -> tuple[EnergyNetworkModel, bool]:
 
     zmigrowany = enm.model_copy(deep=True)
     zmieniono = False
-    for generator in zmigrowany.generators:
-        if _przenies_w_slowniku(generator.materialized_params):
-            zmieniono = True
-        if _przenies_w_slowniku(generator.meta):
-            zmieniono = True
+    for element in _elementy_modelu(zmigrowany):
+        for dane in _slowniki_elementu(element):
+            if _przenies_w_slowniku(dane):
+                zmieniono = True
     return zmigrowany, zmieniono

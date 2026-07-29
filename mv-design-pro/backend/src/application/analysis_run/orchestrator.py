@@ -91,13 +91,12 @@ class AnalysisOrchestrator:
             from analysis.normative.models import NormativeConfig
 
             # UWAGA (V12K-267): `VoltageProfileContext` NIE zostaje przemianowany
-            # razem z kopertami widokow analiz. Nalezy do lancucha kontekstow
-            # kopiowanych „po nazwie pola" przez `getattr(ctx, "trace_id", None)`
-            # w builderach coverage_score/sensitivity/lf_sensitivity/recommendations
-            # oraz w raporcie PDF. Przemianowanie CZESCI tego lancucha nie zapala
-            # bledu — `getattr` z wartoscia domyslna po cichu podstawia `None`,
-            # czyli identyfikator znikalby z raportow bez sladu. Ten lancuch
-            # przemianowuje sie w calosci, osobna karta (patrz rejestr V12K-267).
+            # razem z kopertami widokow analiz — nalezy do lancucha kontekstow
+            # dowodowo-raportowych. Od domkniecia V12K-267 lancuch kopiuje sie
+            # JAWNYM, typowanym przepisem `analysis.koperta_kontekstu.pola_koperty`
+            # (dostep bezposredni, bez wartosci domyslnych): czesciowe
+            # przemianowanie zapala AttributeError/mypy w miejscu kopii, wiec
+            # przemianowanie calosci jest bezpieczne, gdy zajdzie potrzeba.
             vp_context = VoltageProfileContext(
                 project_name=project_name,
                 case_name=case_name,

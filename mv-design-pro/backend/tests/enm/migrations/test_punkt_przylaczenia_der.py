@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pytest
 from enm.migrations.punkt_przylaczenia_der import KLUCZ_KANONICZNY, migruj, wymaga_migracji
-from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader, Generator
+from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader, Generator, Load, Source
 
 
 def _model(*generatory: Generator) -> EnergyNetworkModel:
@@ -87,3 +87,48 @@ def test_pusta_wartosc_starego_klucza_nie_tworzy_pustego_przypisania(pusta):
     assert zmieniono is True
     assert "pcc_ref" not in dane
     assert KLUCZ_KANONICZNY not in dane
+
+
+def test_stary_klucz_w_innych_kolekcjach_tez_jest_przenoszony():
+    """Zakaz dotyczy NAZWY w zapisanych danych — każdej kolekcji, nie tylko wytwórców.
+
+    Rozszerzenie z weryfikacji nadzoru 2026-07-29: żaden producent nigdy nie
+    pisał tych kluczy poza ``generators`` (zmierzone w historii), ale dane mogły
+    powstać ręczną edycją albo importem — sonda na realnej ścieżce zapisu
+    pokazała, że klucz podłożony w ``sources[]``/``loads[]`` przeżywał migrację.
+    """
+    enm = EnergyNetworkModel(
+        header=ENMHeader(name="Test", defaults=ENMDefaults()),
+        sources=[
+            Source(
+                ref_id="src-1",
+                name="GPZ",
+                bus_ref="bus-1",
+                model="external_grid",
+                materialized_params={"pcc_ref": "szyna-gpz"},
+            )
+        ],
+        loads=[
+            Load(
+                ref_id="load-1",
+                name="Odbiór",
+                bus_ref="bus-1",
+                p_mw=0.2,
+                q_mvar=0.05,
+                meta={"pcc": "szyna-odb"},
+            )
+        ],
+    )
+
+    assert wymaga_migracji(enm) is True
+    zmigrowany, zmieniono = migruj(enm)
+
+    assert zmieniono is True
+    zrodlo = zmigrowany.sources[0].materialized_params
+    assert zrodlo is not None
+    assert zrodlo[KLUCZ_KANONICZNY] == "szyna-gpz"
+    assert "pcc_ref" not in zrodlo
+    odbior = zmigrowany.loads[0].meta
+    assert odbior is not None
+    assert odbior[KLUCZ_KANONICZNY] == "szyna-odb"
+    assert "pcc" not in odbior
