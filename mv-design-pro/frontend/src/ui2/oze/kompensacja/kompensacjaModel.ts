@@ -1,7 +1,7 @@
 /*
  * Model i adaptery okna „Dobór kompensacji" (karta P42, D8). Czyste, read-only
  * odwzorowanie odpowiedzi końcówki compensation-sizing (`../api`) na struktury
- * prezentacji (kolumny/wiersze wzorca tabeli + ślad WHITE BOX). Zero fizyki, zero
+ * prezentacji (kolumny/wiersze wzorca tabeli + ślad pełnej jawności obliczeń). Zero fizyki, zero
  * ocen lokalnych — wszystkie wielkości i werdykty pochodzą WYŁĄCZNIE z backendu.
  * Zero mutacji, zero wołań API stąd.
  *
@@ -13,7 +13,7 @@
  *  - kolumny INFORMACYJNE = „cosφ przekroju sieciowego" (dzień/noc) — bez werdyktu,
  *    wyraźnie odsunięte za kolumnę werdyktu; NIE sterują doborem.
  *
- * Ślad WHITE BOX dopasowany ADAPTEREM (nie kopią) do kontraktu `SladAnalizy` z
+ * Ślad obliczeń dopasowany ADAPTEREM (nie kopią) do kontraktu `SladAnalizy` z
  * pulpitu (`KrokSladuSily`: symbol → formula_latex → substitution_pl → result_pl).
  */
 
@@ -119,14 +119,16 @@ export function wierszeTabeliKompensacji(
 }
 
 // ---------------------------------------------------------------------------
-// Ślad WHITE BOX — adapter do kontraktu `SladAnalizy` (KrokSladuSily)
+// Ślad pełnej jawności obliczeń — adapter do kontraktu `SladAnalizy` (KrokSladuSily)
 // ---------------------------------------------------------------------------
 
 /**
  * Adapter śladu doboru → kroki `SladAnalizy` (KrokSladuSily). Pięć kroków: źródło
  * P/Q, cosφ punktu (podstawa doboru), cosφ przekroju (informacyjne), konwencja
- * kanoniczna znaku, decyzja architektoniczna. Treści (opisy) pochodzą WPROST z
- * backendu; formuły to zapis symboliczny (ASCII), spójnie ze śladem pulpitu OZE.
+ * kanoniczna znaku, decyzja doboru. Treści (opisy) pochodzą WPROST z backendu;
+ * formuły to czysty LaTeX renderowany KaTeX-em (dyrektywa właściciela 2026-07-29);
+ * kroki konwencji i decyzji są opisowe (bez wzoru — `formula_latex` puste, treść
+ * z backendu może nieść wzory inline `$...$` renderowane przez `TekstZWzorami`).
  */
 export function krokiSladuKompensacji(whitebox: WhiteboxKompensacji): KrokSladuSily[] {
   const noc = whitebox.night_scenario ?? T.sladNocPominiety;
@@ -151,13 +153,13 @@ export function krokiSladuKompensacji(whitebox: WhiteboxKompensacji): KrokSladuS
     },
     {
       symbol: T.sladSymbolKonwencja,
-      formula_latex: T.sladWzorKonwencja,
+      formula_latex: '',
       substitution_pl: '',
       result_pl: whitebox.konwencja_kanoniczna,
     },
     {
       symbol: T.sladSymbolDecyzja,
-      formula_latex: T.sladWzorDecyzja,
+      formula_latex: '',
       substitution_pl: '',
       result_pl: whitebox.decyzja,
     },

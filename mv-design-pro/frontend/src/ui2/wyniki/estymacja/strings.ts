@@ -144,7 +144,7 @@ export const ESTYMACJA_STRINGS = {
   flagaOk: '—',
 
   // Ślad WHITE BOX (tryb ekspercki)
-  sladTytul: 'Ślad obliczeń WLS (WHITE BOX)',
+  sladTytul: 'Ślad obliczeń WLS (pełna jawność)',
   sladPokaz: 'Pokaż ślad obliczeń',
   sladUkryj: 'Ukryj ślad obliczeń',
   sladKolIteracja: 'Iteracja',
@@ -153,7 +153,7 @@ export const ESTYMACJA_STRINGS = {
   sladKolNormKroku: 'Norma kroku ‖Δx‖',
   sladMacierze:
     'Jakobian H, macierz zysku G, wektor rezyduów r, przyrost Δx i stan x '
-    + 'dostępne w każdej iteracji śladu (kontrakt WHITE BOX).',
+    + 'dostępne w każdej iteracji śladu (kontrakt pełnej jawności obliczeń).',
   ekspEstymateId: 'Identyfikator estymaty',
   ekspWersjaSolvera: 'Wersja solvera',
   ekspWalidacja: 'Status walidacji',

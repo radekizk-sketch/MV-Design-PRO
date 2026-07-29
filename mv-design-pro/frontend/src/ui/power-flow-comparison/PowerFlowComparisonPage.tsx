@@ -513,13 +513,13 @@ function TracePanel({ trace, isLoading, onLoad }: TracePanelProps) {
             </dd>
           </div>
           <div>
-            <dt className="text-slate-500">Input hash A</dt>
+            <dt className="text-slate-500">Odcisk wejścia A</dt>
             <dd className="font-mono text-xs text-slate-800">
               {truncateId(trace.input_hash_a, 16)}
             </dd>
           </div>
           <div>
-            <dt className="text-slate-500">Input hash B</dt>
+            <dt className="text-slate-500">Odcisk wejścia B</dt>
             <dd className="font-mono text-xs text-slate-800">
               {truncateId(trace.input_hash_b, 16)}
             </dd>

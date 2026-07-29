@@ -658,7 +658,7 @@ export function NcRfgTestsTab(): JSX.Element {
       {result ? (
         <section className="grid gap-4 xl:grid-cols-2">
           <div className="rounded border border-slate-200 bg-white p-4">
-            <h4 className="text-sm font-semibold">White Box</h4>
+            <h4 className="text-sm font-semibold">Pełna jawność obliczeń</h4>
             <div className="mt-3 max-h-[360px] space-y-2 overflow-auto">
               {result.white_box_trace.slice(0, 20).map((step) => (
                 <div key={step.proof_ref} className="rounded border border-slate-200 bg-slate-50 p-2">

@@ -102,6 +102,11 @@ jobs:
       - name: Audit Contract Guard
         working-directory: mv-design-pro
         run: python scripts/audit_contract_guard.py
+      # K10 (dyrektywa 2026-07-29): zero kodów rejestru/nazw API/ścieżek plików
+      # w treści widocznej dla inżyniera (stringi UI + pola śladów analiz).
+      - name: UI Production Codes Guard
+        working-directory: mv-design-pro
+        run: python scripts/ui_production_codes_guard.py
       - name: Repo Hygiene Guard
         working-directory: mv-design-pro
         run: python scripts/repo_hygiene_guard.py

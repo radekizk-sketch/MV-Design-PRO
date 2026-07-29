@@ -252,7 +252,7 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
               <div className="text-xs">{run.status}</div>
             </div>
             <div>
-              <div className="text-[11px] uppercase text-slate-500">Hash deterministyczny</div>
+              <div className="text-[11px] uppercase text-slate-500">Odcisk deterministyczny</div>
               <div className="break-all text-xs">{run.deterministic_hash}</div>
             </div>
           </div>
@@ -274,7 +274,7 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
           </section>
 
           <section className="rounded border border-slate-200 bg-white p-4 text-slate-900">
-            <h3 className="text-sm font-semibold">White Box</h3>
+            <h3 className="text-sm font-semibold">Pełna jawność obliczeń</h3>
             <div className="mt-3 space-y-2">
               {traceRows.slice(0, 8).map((step) => (
                 <div key={String(step.proof_ref)} className="rounded border border-slate-200 bg-slate-50 p-2">
@@ -298,7 +298,7 @@ export function V126AcademicSurface({ surface }: { surface: WorkspaceSurfaceDesc
                 <div className="mt-1 break-all text-xs">{proof.proof_id}</div>
               </div>
               <div className="rounded border border-slate-200 bg-slate-50 p-2">
-                <div className="text-[11px] uppercase text-slate-500">Hash dowodu</div>
+                <div className="text-[11px] uppercase text-slate-500">Odcisk dowodu</div>
                 <div className="mt-1 break-all text-xs">{proof.proof_hash}</div>
               </div>
               <div className="rounded border border-slate-200 bg-slate-50 p-2">

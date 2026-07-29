@@ -85,11 +85,11 @@ export const OBSZAR_STRINGS = {
   zalMaxP: 'Maks. liczba kroków P',
   zalMaxQ: 'Maks. liczba kroków Q',
   zalBiegi: 'Liczba biegów rozpływu (wykonane / górny limit)',
-  zalIdentyfikatorSkrot: 'Identyfikator wejścia (hash)',
+  zalIdentyfikatorSkrot: 'Identyfikator wejścia (skrót)',
   zalPrzebieg: 'Identyfikator przebiegu',
 
   // Ślad WHITE BOX (zredukowany)
-  sladTytul: 'Ślad siatki scenariuszy (WHITE BOX)',
+  sladTytul: 'Ślad siatki scenariuszy (pełna jawność obliczeń)',
   sladPokaz: 'Pokaż ślad siatki',
   sladUkryj: 'Ukryj ślad siatki',
   sladSymbolSiatka: 'siatka',

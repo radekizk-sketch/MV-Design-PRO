@@ -26,7 +26,7 @@ export const OSD_STRINGS = {
   wyborZrodloWybierz: '— wybierz źródło —',
   wyborZrodloOpis:
     'Co to jest: źródło (generator/falownik) w bieżącym modelu, które wykona '
-    + 'polecenie. Skąd wartości: lista źródeł pochodzi ze snapshotu przebiegu rozpływu. '
+    + 'polecenie. Skąd wartości: lista źródeł pochodzi z wersji modelu przebiegu rozpływu. '
     + 'Konsekwencja: nadpisany zostanie wyłącznie nastaw tego źródła.',
   wyborPolecenie: 'Rodzaj polecenia',
   wyborPolecenieOpis:
@@ -119,7 +119,7 @@ export const OSD_STRINGS = {
   kolDeltaU: 'ΔU',
 
   // Ślad WHITE BOX
-  sladTytul: 'Ślad symulacji (WHITE BOX)',
+  sladTytul: 'Ślad symulacji (pełna jawność obliczeń)',
   sladPokaz: 'Pokaż ślad symulacji',
   sladUkryj: 'Ukryj ślad symulacji',
   sladSymbolNastaw: 'nastaw',
@@ -136,7 +136,7 @@ export const OSD_STRINGS = {
   zalWezelZrodla: 'Węzeł źródła',
   zalPrzebieg: 'Identyfikator przebiegu',
   zalIdentyfikatorZrodla: 'Identyfikator źródła',
-  zalIdentyfikatorSkrot: 'Identyfikator wejścia (hash)',
+  zalIdentyfikatorSkrot: 'Identyfikator wejścia (skrót)',
 
   // K5-B (H-3 pkt 5): akcja wyjściowa — utrwalenie trybu pracy źródła w modelu
   // (kanoniczna operacja `set_source_operating_mode`).

@@ -1,6 +1,6 @@
 /*
  * EkranKompensacji — okno „Dobór kompensacji" (karta U4 P42 / D8, strumień OZE).
- * Wybór węzła (ze snapshotu — wzorzec `obszar/EkranObszaruPQ`) + przebiegu rozpływu
+ * Wybór węzła (z wersji modelu — wzorzec `obszar/EkranObszaruPQ`) + przebiegu rozpływu
  * (LOAD_FLOW/DONE — `wybierzPrzebiegRozplywu`) + wymaganego cosφ min + przełącznika
  * scenariusza nocnego → JAWNY bieg `GET /api/oze-analysis/compensation-sizing` →
  * prezentacja:
@@ -9,7 +9,8 @@
  *   3. tabela kandydatów na wzorcu `TabelaWynikow` — kolumna decyzyjna = cosφ punktu
  *      kompensowanego (werdykt `spelnia`, tag tokenowy), cosφ przekroju informacyjnie,
  *   4. werdykt doboru (pierwszy spełniający lub uczciwy „brak doboru" z powodem PL),
- *   5. rozwijany ślad WHITE BOX (reużyty `SladAnalizy` z pulpitu).
+ *   5. rozwijany ślad pełnej jawności obliczeń (reużyty `SladAnalizy` z pulpitu,
+ *      wzory KaTeX — dyrektywa właściciela 2026-07-29).
  *
  * Zero fizyki, zero ocen lokalnych — wielkości, werdykty i powody pochodzą WYŁĄCZNIE
  * z backendu. Identyfikatory (bus_ref, input_hash, trace_id) wyłącznie w trybie
@@ -98,7 +99,8 @@ function NotaCosfi({ konwencja }: { konwencja: string }) {
       </p>
       <p className="mvd-komp-nota-konwencja" data-testid="mvd-komp-nota-konwencja">
         <strong>{T.notaKonwencjaTytul}: </strong>
-        <code>{konwencja}</code>
+        {/* Konwencja z backendu niesie wzory inline `$...$` — render KaTeX. */}
+        <code><TekstZWzorami tekst={konwencja} /></code>
       </p>
     </section>
   );

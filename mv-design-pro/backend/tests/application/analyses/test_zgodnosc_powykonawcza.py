@@ -122,7 +122,7 @@ def test_u_poza_tolerancja_rachunek() -> None:
 
 
 def test_u_przeliczenie_kv_z_upu() -> None:
-    # Model U = u_pu × U_n = 1.02 × 15 = 15.30 kV (jawne w śladzie).
+    # Model U = u · U_n = 1.02 × 15 = 15.30 kV (jawne w śladzie).
     view = build_zgodnosc_powykonawcza_view(
         _standardowy_run(),
         [_pomiar("bus_a", "U", 15.30, "kV")],
@@ -130,7 +130,9 @@ def test_u_przeliczenie_kv_z_upu() -> None:
     )
     wiersz = view["wiersze"][0]
     assert wiersz["wartosc_model"] == 15.3
-    assert any("u_pu × U_n" in krok for krok in wiersz["slad_pl"])
+    # K10: asercja na semantykę kroku (przeliczenie U = u · U_n jawne w śladzie),
+    # nie na nazwę pola kontraktu.
+    assert any("U = u · U_n" in krok for krok in wiersz["slad_pl"])
     assert wiersz["werdykt"] == "w tolerancji"
 
 
@@ -164,7 +166,7 @@ def test_p_poza_tolerancja() -> None:
 
 
 def test_q_po_wartosci_bezwzglednej_v12k040() -> None:
-    # Model Q_from = -0.6 (znak nieinterpretowany); pomiar +0.62 →
+    # Model |Q| na początku gałęzi = |-0.6| (znak nieinterpretowany); pomiar +0.62 →
     # |0.62| - |−0.6| = 0.02 → 0.02/0.6 = 3.333% < 5% → w tolerancji.
     view = build_zgodnosc_powykonawcza_view(
         _standardowy_run(),
@@ -176,7 +178,9 @@ def test_q_po_wartosci_bezwzglednej_v12k040() -> None:
     assert wiersz["odchylka_bezwzgledna"] == pytest.approx(0.02, abs=1e-6)
     assert wiersz["odchylka_pct"] == pytest.approx(3.333333, abs=1e-6)
     assert wiersz["werdykt"] == "w tolerancji"
-    assert any("V12K-040" in z for z in view["zalozenia_pl"])
+    # K10: intencja bez zmian — założenia mają jawnie deklarować porównanie Q po
+    # wartości bezwzględnej; kod rejestru nie może pojawiać się w treści dla inżyniera.
+    assert any("wartości bezwzględnej" in z and "znaku mocy biernej" in z for z in view["zalozenia_pl"])
 
 
 # --------------------------------------------------------------------------

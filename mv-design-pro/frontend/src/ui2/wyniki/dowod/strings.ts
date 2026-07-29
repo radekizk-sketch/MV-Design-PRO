@@ -11,7 +11,7 @@ export const DOWOD_STRINGS = {
   // Stan pusty (przebieg bez śladu obliczeń)
   brakSladu: 'Przebieg bez śladu obliczeń',
   brakSladuOpis:
-    'Ten przebieg nie zawiera śladu WHITE BOX — brak kroków do wyświetlenia. Uruchom obliczenie, aby zobaczyć rozpisany dowód.',
+    'Ten przebieg nie zawiera śladu obliczeń — brak kroków do wyświetlenia. Uruchom obliczenie, aby zobaczyć rozpisany dowód.',
 
   // Stan ładowania
   ladowanie: 'Wczytywanie śladu obliczeń…',

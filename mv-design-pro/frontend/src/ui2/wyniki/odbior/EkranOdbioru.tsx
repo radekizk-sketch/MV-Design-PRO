@@ -39,6 +39,7 @@ import {
   type TrybWejscia,
   type WierszEdytora,
 } from './odbiorModel';
+import { TekstZWzorami } from '../../kreatory/rama';
 import {
   JEDNOSTKA_WIELKOSCI,
   ODBIOR_STRINGS,
@@ -193,7 +194,8 @@ function SzczegolWiersza({
               <ol className="mvd-odbior-slad">
                 {wiersz.slad_pl.map((linia, i) => (
                   <li key={i} className="mvd-odbior-slad-krok mvd-num">
-                    {linia}
+                    {/* Kroki śladu z backendu: wzory inline `$...$` → KaTeX. */}
+                    <TekstZWzorami tekst={linia} />
                   </li>
                 ))}
               </ol>

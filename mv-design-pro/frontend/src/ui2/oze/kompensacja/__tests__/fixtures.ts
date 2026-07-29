@@ -142,20 +142,31 @@ export function widokKompensacjiFixture(): WidokDoboruKompensacji {
       cosfi_przekroju_noc: null,
     },
     powod_braku: null,
+    // K10: ślad 1:1 z `application/analyses/dobor_kompensacji.py` — semantyka
+    // po polsku, wzory wyłącznie LaTeX `$...$` (zero kodów produkcji).
     whitebox: {
       pq_source:
-        'wypadkowy przepływ gałęzi zasilających punkt z branch_results solvera '
-        + '(koniec przy punkcie, suma po gałęziach incydentnych) przełożony na znak '
-        + 'kanoniczny przez adapter konwencji (application/analyses/konwencja_mocy.py)',
+        'wypadkowy przepływ gałęzi zasilających punkt z wyniku rozpływu '
+        + '(koniec przy punkcie, suma po gałęziach incydentnych) przełożony '
+        + 'na znak kanoniczny przez adapter konwencji mocy biernej',
       cosfi_przekroju:
-        'cosφ przepływu w przekroju sieciowym = |P| / √(P² + Q_przekroju²); '
-        + 'opisuje przekrój sieci, NIE stopień skompensowania odbioru',
+        'cosφ przepływu w przekroju sieciowym: '
+        + '$\\cos\\varphi_{\\text{przekroju}} = \\dfrac{|P|}{\\sqrt{P^{2} + '
+        + 'Q_{\\text{przekroju}}^{2}}}$; opisuje przekrój sieci, '
+        + 'NIE stopień skompensowania odbioru',
       cosfi_punktu:
-        'cosφ punktu kompensowanego = |P| / √(P² + Q_netto²), Q_netto = Q_load − Q_cap_eff, '
-        + 'Q_cap_eff = Σ(rated_mvar) · V² (model kondensatora z katalogu, nie fizyka pola); '
-        + 'PODSTAWA DOBORU',
-      konwencja_kanoniczna: 'P>0 pobór czynnej, Q>0 pobór indukcyjnej, Q<0 pojemnościowa',
-      decyzja: 'V12K-040 opcja B — PowerFlowResult FROZEN, adapter interpretacyjny',
+        'cosφ punktu kompensowanego: '
+        + '$\\cos\\varphi_{\\text{punktu}} = \\dfrac{|P|}{\\sqrt{P^{2} + '
+        + 'Q_{\\text{netto}}^{2}}}$, $Q_{\\text{netto}} = Q_{\\text{odb}} - '
+        + 'Q_{\\text{bat}}$, $Q_{\\text{bat}} = \\sum Q_{\\text{zn}} \\cdot V^{2}$ '
+        + '(moc znamionowa baterii z katalogu, nie fizyka pola); PODSTAWA DOBORU',
+      konwencja_kanoniczna:
+        '$P>0$ — pobór mocy czynnej, $Q>0$ — pobór mocy biernej (indukcyjny), '
+        + '$Q<0$ — moc pojemnościowa',
+      decyzja:
+        'wynik rozpływu pozostaje nienaruszony (tylko odczyt); znak mocy '
+        + 'biernej interpretuje adapter konwencji — dobór nie modyfikuje '
+        + 'solvera ani wyniku',
       candidate_count: 3,
       night_scenario: null,
     },

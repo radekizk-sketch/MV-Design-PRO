@@ -12,7 +12,7 @@ export const KRZYWE_STRINGS = {
   tytul: 'Krzywe zdolności P–Q',
   opisWstep:
     'Porównanie krzywej zdolności P–Q producenta z prostokątnym wymaganiem zakresu '
-    + 'mocy biernej operatora OSD (NC RfG) — punkt po punkcie, z jawnym śladem WHITE BOX.',
+    + 'mocy biernej operatora OSD (NC RfG) — punkt po punkcie, z jawnym śladem obliczeń.',
 
   // Dobór typu i operatora
   wyborTyp: 'Typ falownika (katalog)',
@@ -68,7 +68,7 @@ export const KRZYWE_STRINGS = {
   legendaWymMin: 'Wymaganie Q min',
 
   // Ślad WHITE BOX
-  sladTytul: 'Ślad weryfikacji (WHITE BOX)',
+  sladTytul: 'Ślad weryfikacji (pełna jawność obliczeń)',
   sladPokaz: 'Pokaż ślad weryfikacji',
   sladUkryj: 'Ukryj ślad weryfikacji',
   sladSymbolWymaganie: 'wymaganie',

@@ -169,7 +169,9 @@ def test_wywod_has_formula_data_substitution_and_verdict() -> None:
     assert margin is not None
     assert any(f"m_{{U}} = {margin:.6f}" in latex for latex in latexy)
     # Kroki danych i werdyktu tekstowe (latex=None).
-    assert kroki[0]["latex"] is None and "wejscie solvera FROZEN" in kroki[0]["tekst"]
+    # K10: asercja na semantykę kroku (echo wejścia solvera), nie na nazwę
+    # kontraktu — treść dla inżyniera bez nazw API.
+    assert kroki[0]["latex"] is None and "echo wejscia solvera" in kroki[0]["tekst"]
     assert kroki[-1]["latex"] is None and kroki[-1]["tekst"].startswith("Werdykt:")
     assert sc["werdykt_pl"] in kroki[-1]["tekst"]
 
@@ -180,7 +182,9 @@ def test_wywod_module_dropped_is_honest_without_margin_math() -> None:
     kroki = _wywod_scenariusza(_scenario_result(False, 0.5), None, _WERDYKT_MODUL_WYPADL)
     # Bez podstawien marginesu — uczciwy opis wypadniecia i werdykt tekstowy.
     assert all(k["latex"] is None for k in kroki)
-    assert any("stayed_connected = false" in k["tekst"] for k in kroki)
+    # K10: semantyka zamiast nazwy pola API — krok ma uczciwie mówić o utracie
+    # pracy ciągłej modułu.
+    assert any("nie utrzymal sie w pracy" in k["tekst"] for k in kroki)
     assert kroki[-1]["tekst"] == f"Werdykt: {_WERDYKT_MODUL_WYPADL}."
 
 
@@ -188,7 +192,9 @@ def test_wywod_margin_none_is_honest() -> None:
     from application.analyses.frt_trajektorie import _wywod_scenariusza
 
     kroki = _wywod_scenariusza(_scenario_result(True, None), None, _WERDYKT_W_OBWIEDNI)
-    assert any("margin_to_curve_pu = null" in k["tekst"] for k in kroki)
+    # K10: semantyka zamiast nazwy pola API — krok ma uczciwie mówić o braku
+    # marginesu w wyniku solvera.
+    assert any("nie zwrocil marginesu do krzywej" in k["tekst"] for k in kroki)
     assert kroki[-1]["tekst"] == f"Werdykt: {_WERDYKT_W_OBWIEDNI}."
 
 

@@ -512,23 +512,38 @@ def build_compensation_sizing_view(
         "candidates": candidates,
         "dobor": dobor,
         "powod_braku": powod,
+        # Ślad pełnej jawności obliczeń: semantyka po polsku, matematyka wyłącznie
+        # LaTeX w delimiterach $...$ (konwencja Proof Engine; dyrektywa właściciela
+        # 2026-07-29 — zero kodów rejestru, nazw API i ścieżek plików w treści
+        # widocznej dla inżyniera).
         "whitebox": {
             "pq_source": (
-                "wypadkowy przepływ gałęzi zasilających punkt z branch_results solvera "
-                "(koniec przy punkcie, suma po gałęziach incydentnych) przełożony na znak "
-                "kanoniczny przez adapter konwencji (application/analyses/konwencja_mocy.py)"
+                "wypadkowy przepływ gałęzi zasilających punkt z wyniku rozpływu "
+                "(koniec przy punkcie, suma po gałęziach incydentnych) przełożony "
+                "na znak kanoniczny przez adapter konwencji mocy biernej"
             ),
             "cosfi_przekroju": (
-                "cosφ przepływu w przekroju sieciowym = |P| / √(P² + Q_przekroju²); "
-                "opisuje przekrój sieci, NIE stopień skompensowania odbioru"
+                r"cosφ przepływu w przekroju sieciowym: "
+                r"$\cos\varphi_{\text{przekroju}} = \dfrac{|P|}{\sqrt{P^{2} + "
+                r"Q_{\text{przekroju}}^{2}}}$; opisuje przekrój sieci, "
+                "NIE stopień skompensowania odbioru"
             ),
             "cosfi_punktu": (
-                "cosφ punktu kompensowanego = |P| / √(P² + Q_netto²), "
-                "Q_netto = Q_load − Q_cap_eff, Q_cap_eff = Σ(rated_mvar) · V² "
-                "(model kondensatora z katalogu, nie fizyka pola); PODSTAWA DOBORU"
+                r"cosφ punktu kompensowanego: "
+                r"$\cos\varphi_{\text{punktu}} = \dfrac{|P|}{\sqrt{P^{2} + "
+                r"Q_{\text{netto}}^{2}}}$, $Q_{\text{netto}} = Q_{\text{odb}} - "
+                r"Q_{\text{bat}}$, $Q_{\text{bat}} = \sum Q_{\text{zn}} \cdot V^{2}$ "
+                "(moc znamionowa baterii z katalogu, nie fizyka pola); PODSTAWA DOBORU"
             ),
-            "konwencja_kanoniczna": "P>0 pobór czynnej, Q>0 pobór indukcyjnej, Q<0 pojemnościowa",
-            "decyzja": "V12K-040 opcja B — PowerFlowResult FROZEN, adapter interpretacyjny",
+            "konwencja_kanoniczna": (
+                "$P>0$ — pobór mocy czynnej, $Q>0$ — pobór mocy biernej (indukcyjny), "
+                "$Q<0$ — moc pojemnościowa"
+            ),
+            "decyzja": (
+                "wynik rozpływu pozostaje nienaruszony (tylko odczyt); znak mocy "
+                "biernej interpretuje adapter konwencji — dobór nie modyfikuje "
+                "solvera ani wyniku"
+            ),
             "candidate_count": len(candidates),
             "night_scenario": (
                 "moc czynna generatorów = 0 (moc bierna bez zmian)" if uwzglednij_noc else None

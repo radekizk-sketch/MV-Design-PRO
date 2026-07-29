@@ -67,7 +67,7 @@ export function SldCanonPresetG2({ companion }: { companion: SldOzeArchetypeComp
       {/* ── header ── */}
       <text x={620} y={42} textAnchor="middle" fill="#F4F6F8" fontFamily={SANS} fontSize={22} fontWeight={800}>{title}</text>
       <text x={620} y={70} textAnchor="middle" fill={AMBER} fontFamily={SANS} fontSize={13} fontWeight={700}>{subtitle}</text>
-      <text x={1140} y={104} textAnchor="end" fill={CYAN} fontFamily={SANS} fontSize={11} fontWeight={700}>WYNIKI w węźle — ze solwera (czas rzecz.) · klik węzeł → White Box</text>
+      <text x={1140} y={104} textAnchor="end" fill={CYAN} fontFamily={SANS} fontSize={11} fontWeight={700}>WYNIKI w węźle — ze solwera (czas rzecz.) · klik węzeł → pełna jawność obliczeń</text>
 
       {/* ── przyłącze (sieć OSD → odbiorca): fuse → LICZNIK (granica) → wył. główny ── */}
       {lbl(connX, 122, 'SIEĆ OSD nN', TXT2, 12, 700, 'middle')}

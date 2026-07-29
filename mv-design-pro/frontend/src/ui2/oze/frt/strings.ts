@@ -150,7 +150,7 @@ export const FRT_STRINGS = {
   sekwKontekstMocZainstalowana: 'Moc zainstalowana źródeł',
   sekwKontekstWezel: 'Węzeł przyłączenia',
   sekwKontekstWerdykt: 'Ocena siły sieci',
-  sekwKontekstSladTytul: 'Ślad obliczeń (WHITE BOX)',
+  sekwKontekstSladTytul: 'Ślad obliczeń (pełna jawność)',
   sekwKontekstSladPokaz: 'Pokaż ślad obliczeń',
   sekwKontekstSladUkryj: 'Ukryj ślad obliczeń',
   sekwEkspHash: 'Odcisk wejścia (SHA-256)',

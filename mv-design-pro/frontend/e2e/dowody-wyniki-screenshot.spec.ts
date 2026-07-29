@@ -66,8 +66,17 @@ async function prowadzScene(page: Page, scena: Scena): Promise<void> {
     await expect(tabela).toContainText('Bateria SN 0,6 Mvar / 15 kV');
     await expect(page.getByTestId('mvd-komp-dobor-nazwa')).toContainText('0,6 Mvar');
     await page.getByTestId('mvd-komp-slad-otworz').click();
-    await expect(page.getByTestId('mvd-komp-slad')).toContainText('PODSTAWA DOBORU');
-    await expect(page.getByTestId('mvd-komp-slad')).toContainText('Q_netto = Q_load − Q_cap_eff');
+    const slad = page.getByTestId('mvd-komp-slad');
+    await expect(slad).toContainText('PODSTAWA DOBORU');
+    // K10: wzory śladu renderowane KaTeX-em (dawna asercja na ASCII
+    // „Q_netto = Q_load − Q_cap_eff" — intencja bez zmian: ślad pokazuje
+    // wzór na Q_netto, teraz jako LaTeX). Dowód renderu: elementy .katex.
+    expect(await slad.locator('.katex').count()).toBeGreaterThanOrEqual(3);
+    // Zero kodów produkcji i anglicyzmów w treści dla inżyniera (bramka K10).
+    const tekstSladu = (await slad.textContent()) ?? '';
+    for (const zakazany of ['V12K', 'WHITE BOX', 'PowerFlowResult', 'FROZEN', 'branch_results', 'snapshot', 'hash']) {
+      expect(tekstSladu, `ślad doboru zawiera zakazany token: ${zakazany}`).not.toContain(zakazany);
+    }
   } else if (scena === 'sila-sieci') {
     // Wynik SCR/WSCR z zasianego przebiegu zwarciowego → otwarte OBA wywody:
     // systemowy (WSCR) i węzłowy (słaby węzeł SZ-FW1).

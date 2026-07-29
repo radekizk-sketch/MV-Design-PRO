@@ -69,7 +69,7 @@ export const ZDOLNOSC_STRINGS = {
   sladNiezbiezny: 'Niezbieżny',
 
   // Tryb ekspercki
-  ekspIdentyfikatorSkrot: 'Identyfikator wejścia (hash)',
+  ekspIdentyfikatorSkrot: 'Identyfikator wejścia (skrót)',
   ekspPrzebieg: 'Identyfikator przebiegu',
 
   // Jednostki i wartości puste

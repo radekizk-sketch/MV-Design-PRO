@@ -168,7 +168,7 @@ class PowerFlowInterpretationBuilder:
             )
 
             # Evidence reference
-            evidence_ref = f"PowerFlowResult.node_u_mag_pu[{bus_id}], run_id={run_id}"
+            evidence_ref = f"wynik rozpływu — moduł napięcia węzła '{bus_id}' (bieg {run_id})"
 
             findings.append(
                 VoltageFinding(
@@ -289,7 +289,9 @@ class PowerFlowInterpretationBuilder:
             )
 
             # Evidence reference
-            evidence_ref = f"PowerFlowResult.branch_s_from/to_mva[{branch_id}], run_id={run_id}"
+            evidence_ref = (
+                f"wynik rozpływu — moce pozorne końców gałęzi '{branch_id}' (bieg {run_id})"
+            )
 
             findings.append(
                 BranchLoadingFinding(
@@ -469,9 +471,9 @@ class PowerFlowInterpretationBuilder:
         )
 
         data_sources = (
-            f"PowerFlowResult.node_u_mag_pu (run_id={run_id})",
-            f"PowerFlowResult.branch_s_from_mva (run_id={run_id})",
-            f"PowerFlowResult.branch_s_to_mva (run_id={run_id})",
+            f"wynik rozpływu — moduły napięć węzłów (bieg {run_id})",
+            f"wynik rozpływu — moc pozorna początków gałęzi (bieg {run_id})",
+            f"wynik rozpływu — moc pozorna końców gałęzi (bieg {run_id})",
         )
 
         return InterpretationTrace(

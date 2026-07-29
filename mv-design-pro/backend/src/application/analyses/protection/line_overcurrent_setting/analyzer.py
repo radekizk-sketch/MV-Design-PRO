@@ -249,7 +249,7 @@ class LineOvercurrentSettingAnalyzer:
         if i_min_primary > 0 and ik_max_next > 0:
             verdict = LineOvercurrentVerdict.PASS
             notes_pl = (
-                f"Selektywność: I_nast >= {kb:.2f} × {ik_max_next/1000:.2f} kA = "
+                f"Selektywność: I_nast ≥ {kb:.2f} × {ik_max_next/1000:.2f} kA = "
                 f"{i_min_primary/1000:.2f} kA (strona pierwotna)"
             )
         else:
@@ -260,7 +260,7 @@ class LineOvercurrentSettingAnalyzer:
             {
                 "step": "selectivity_criterion",
                 "description_pl": "Kryterium selektywności I>>",
-                "formula": "I_nast >= kb × Ik_max(next) / θi",
+                "formula": r"I_{nast} \ge k_{b} \cdot I_{k,max(nast)} / \vartheta_{i}",
                 "inputs": {
                     "kb": kb,
                     "ik_max_next_protection_a": ik_max_next,
@@ -319,7 +319,7 @@ class LineOvercurrentSettingAnalyzer:
         if i_max_primary > 0 and ik_min > 0:
             verdict = LineOvercurrentVerdict.PASS
             notes_pl = (
-                f"Czułość: I_nast <= {ik_min/1000:.2f} kA / {kc:.2f} = "
+                f"Czułość: I_nast ≤ {ik_min/1000:.2f} kA / {kc:.2f} = "
                 f"{i_max_primary/1000:.2f} kA (strona pierwotna)"
             )
         else:
@@ -330,7 +330,7 @@ class LineOvercurrentSettingAnalyzer:
             {
                 "step": "sensitivity_criterion",
                 "description_pl": "Kryterium czułości I>>",
-                "formula": "I_nast <= Ik_min(busbars) / (kc × θi)",
+                "formula": r"I_{nast} \le I_{k,min(szyny)} / (k_{c} \cdot \vartheta_{i})",
                 "inputs": {
                     "kc": kc,
                     "ik_min_busbars_a": ik_min,
@@ -400,7 +400,7 @@ class LineOvercurrentSettingAnalyzer:
         if i_max_primary > 0 and ithn > 0:
             verdict = LineOvercurrentVerdict.PASS
             notes_pl = (
-                f"Kryterium cieplne: I_nast <= {kbth:.2f} × {ithn/1000:.2f} kA / √{tk:.2f}s = "
+                f"Kryterium cieplne: I_nast ≤ {kbth:.2f} × {ithn/1000:.2f} kA / √{tk:.2f}s = "
                 f"{kbth:.2f} × {ithdop/1000:.2f} kA = {i_max_primary/1000:.2f} kA"
             )
         else:
@@ -411,7 +411,7 @@ class LineOvercurrentSettingAnalyzer:
             {
                 "step": "thermal_criterion",
                 "description_pl": "Kryterium wytrzymałości cieplnej I>>",
-                "formula": "I_nast <= kbth × Ithn / (sqrt(tk) × θi)",
+                "formula": r"I_{nast} \le k_{bth} \cdot I_{thn} / (\sqrt{t_{k}} \cdot \vartheta_{i})",
                 "inputs": {
                     "kbth": kbth,
                     "ithn_a": ithn,

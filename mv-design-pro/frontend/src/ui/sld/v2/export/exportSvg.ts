@@ -82,7 +82,7 @@ export function normalizeSvgForExport(
   // poda dark_scada — to byłby błąd contractowy).
   if (mode !== 'light_technical') {
     throw new Error(
-      `exportSvg: V12K-007 invariant violated — eksport SVG MUSI być w trybie light_technical, otrzymano '${mode}'.`,
+      `exportSvg: naruszony inwariant kanonu eksportu — eksport SVG MUSI być w trybie light_technical, otrzymano '${mode}'.`,
     );
   }
 

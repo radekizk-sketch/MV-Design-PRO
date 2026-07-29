@@ -155,7 +155,7 @@ export function buildPdfExportSpec(
   const mode = options.mode ?? 'light_technical';
   if (mode !== 'light_technical') {
     throw new Error(
-      `exportPdf: V12K-007 invariant violated — eksport PDF MUSI być w trybie light_technical, otrzymano '${mode}'.`,
+      `exportPdf: naruszony inwariant kanonu eksportu — eksport PDF MUSI być w trybie light_technical, otrzymano '${mode}'.`,
     );
   }
 

@@ -117,7 +117,7 @@ export function FaultLoopResultPanel({
 
       <footer
         className="mt-1 border-t border-scada-border pt-1 text-[10px] text-scada-muted"
-        aria-label="WHITE BOX trace info"
+        aria-label="Informacja o śladzie obliczeń (pełna jawność)"
       >
         Trace: {result.white_box_trace.length} kroków obliczeniowych (audytowalny).
       </footer>

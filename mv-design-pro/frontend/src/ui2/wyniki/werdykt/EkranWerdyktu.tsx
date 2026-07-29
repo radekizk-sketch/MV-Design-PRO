@@ -36,6 +36,7 @@ import { WERDYKT_STRINGS as T } from './strings';
 import { akcjaNaprawcza, usePoprawWModelu } from '../wzorzec';
 import { useAppStateStore } from '../../../ui/app-state';
 import './werdykt.css';
+import { TekstZWzorami } from '../../kreatory/rama';
 
 export function EkranWerdyktu() {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
@@ -159,7 +160,8 @@ export function EkranWerdyktu() {
                     <td className="mvd-werdykt-kryterium">
                       <span className="mvd-werdykt-kryterium-nazwa">{pozycja.nazwa_pl}</span>
                       <span className="mvd-werdykt-kryterium-warunek mvd-num">
-                        {pozycja.warunek_pl}
+                        {/* Warunek kryterialny z backendu: wzory inline `$...$` → KaTeX. */}
+                        <TekstZWzorami tekst={pozycja.warunek_pl} />
                       </span>
                       <span className="mvd-werdykt-kryterium-norma">{pozycja.norma_pl}</span>
                     </td>

@@ -76,7 +76,7 @@ def test_requirement_scales_with_pn() -> None:
 def test_whitebox_trace_present() -> None:
     c = _converter(((0.0, -0.5, 0.5), (1.0, -0.5, 0.5)))
     trace = build_pq_coverage_view(c, _PROFILE)["slad_whitebox"]
-    assert "wzor" in trace and "q_wym_min" in trace["wzor"]
+    assert "wzor" in trace and r"q_{\text{wym,min}}" in trace["wzor"]
     assert trace["dane"]["liczba_punktow_krzywej"] == 2
     assert len(trace["podstawienie"]) == 2
     assert "POKRYTE" in trace["wynik"]

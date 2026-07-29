@@ -286,7 +286,9 @@ def test_trace_contains_data_sources(
     trace = result.trace
 
     assert len(trace.data_sources) > 0
-    assert any("node_u_mag_pu" in src for src in trace.data_sources)
+    # K10: odnośniki źródłowe są semantyczne (bez nazw klas kontraktu) —
+    # intencja bez zmian: ślad wskazuje napięcia węzłów z wyniku rozpływu.
+    assert any("moduły napięć węzłów" in src for src in trace.data_sources)
 
 
 # =============================================================================

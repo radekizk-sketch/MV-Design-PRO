@@ -84,14 +84,14 @@ def _wywod_scenariusza(
             _krok(
                 f"Scenariusz {scenario.scenario_id} ({scenario.test_kind.upper()}): "
                 f"napiecie zaklocenia {scenario.voltage_dip_depth_pu:.4f} p.u. "
-                f"przez {scenario.fault_duration_s:.4f} s (wejscie solvera FROZEN frt_hvrt)."
+                f"przez {scenario.fault_duration_s:.4f} s (echo wejscia solvera prob FRT/HVRT)."
             )
         )
     if not scenario_result.stayed_connected:
         kroki.append(
             _krok(
-                "Dane: modul nie utrzymal sie w pracy (stayed_connected = false, "
-                "pole wyniku solvera) — marginesy nie podlegaja ocenie."
+                "Dane: modul nie utrzymal sie w pracy podczas zaklocenia "
+                "(pole wyniku solvera) — marginesy nie podlegaja ocenie."
             )
         )
         kroki.append(_krok(f"Werdykt: {werdykt}."))
@@ -107,16 +107,16 @@ def _wywod_scenariusza(
     if margin_pu is None:
         kroki.append(
             _krok(
-                "Dane: solver nie zwrocil marginesu do krzywej "
-                "(margin_to_curve_pu = null) — werdykt na podstawie stayed_connected."
+                "Dane: solver nie zwrocil marginesu do krzywej (brak wartosci w "
+                "wyniku) — werdykt na podstawie utrzymania sie modulu w pracy."
             )
         )
         kroki.append(_krok(f"Werdykt: {werdykt}."))
         return kroki
     kroki.append(
         _krok(
-            f"Dane: margines z solvera m_U = {margin_pu:.6f} p.u. "
-            f"(FrtScenarioResult.margin_to_curve_pu), liczba punktow trajektorii: "
+            f"Dane: margines z wyniku solvera m_U = {margin_pu:.6f} p.u., "
+            f"liczba punktow trajektorii: "
             f"{len(scenario_result.trajectory)}."
         )
     )

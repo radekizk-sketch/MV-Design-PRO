@@ -111,7 +111,7 @@ def export_power_flow_result_to_json(
             sort_keys=True,
         )
     except (TypeError, ValueError) as e:
-        raise ValueError(f"Failed to serialize PowerFlowResult to JSON: {e}") from e
+        raise ValueError(f"Serializacja wyniku rozpływu do JSON nie powiodła się: {e}") from e
 
     # Write to file with UTF-8 encoding
     output_path.write_text(json_content, encoding="utf-8")
@@ -183,7 +183,7 @@ def export_power_flow_results_to_jsonl(
             json_line = json.dumps(line_payload, ensure_ascii=False, sort_keys=True)
         except (TypeError, ValueError) as e:
             raise ValueError(
-                f"Record {idx}: Failed to serialize PowerFlowResult to JSON: {e}"
+                f"Rekord {idx}: serializacja wyniku rozpływu do JSON nie powiodła się: {e}"
             ) from e
 
         lines.append(json_line)

@@ -121,15 +121,19 @@ describe('EkranKompensacji — rozdział dwóch cosφ + baseline (wymóg właśc
       'cosφ przekroju sieciowego',
     );
     // Nota konwencji kanonicznej (P>0 pobór / Q>0 indukcyjny / Q<0 pojemnościowy) widoczna.
-    expect(screen.getByTestId('mvd-komp-nota-konwencja')).toHaveTextContent(
-      'P>0 pobór czynnej, Q>0 pobór indukcyjnej, Q<0 pojemnościowa',
-    );
-    // Zasada wywodów KaTeX (2026-07-22): bilans Q_netto = Q_load − Q_cap_eff w nocie
-    // oraz Q_cap_eff = 0 w komentarzu baseline renderuje KaTeX, nie surowy tekst.
+    // K10: asercja na semantykę (treść z backendu niesie wzory `$P>0$` renderowane
+    // KaTeX-em), nie na dawny surowy literał ASCII.
+    const notaKonwencji = screen.getByTestId('mvd-komp-nota-konwencja');
+    expect(notaKonwencji).toHaveTextContent('pobór mocy czynnej');
+    expect(notaKonwencji).toHaveTextContent('moc pojemnościowa');
+    // Zasada wywodów KaTeX (2026-07-22): bilans Q_netto = Q_odb − Q_bat w nocie
+    // oraz Q_bat = 0 w komentarzu baseline renderuje KaTeX, nie surowy tekst.
+    // K10: symbole ujednolicone ze śladem backendu (Q_odb/Q_bat zamiast
+    // anglicyzmów Q_load/Q_cap_eff) — intencja asercji bez zmian.
     const wzory = screen.getAllByTestId('math-rendered');
     expect(wzory.length).toBeGreaterThanOrEqual(2);
     expect(
-      wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('Q_{\\mathrm{netto}}')),
+      wzory.some((w) => (w.getAttribute('data-latex') ?? '').includes('Q_{\\text{netto}}')),
     ).toBe(true);
     expect(screen.queryByTestId('math-fallback')).toBeNull();
   });

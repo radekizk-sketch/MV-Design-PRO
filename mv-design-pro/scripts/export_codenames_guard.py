@@ -80,6 +80,17 @@ CODENAME_PATTERN = re.compile(r"(?<![\w])[pP](?!0\b)\d+\+?(?![\w])")
 # Porównawcze nazwy produktowe w treści eksportu (ETAP, ETAP+, ETAP++).
 PRODUCT_PATTERN = re.compile(r"\bETAP\+{0,2}(?![\w])")
 
+# Rozszerzenie K10 (dyrektywa 2026-07-29): kody rejestru, nazwy klas/API
+# kontraktu wyników i ścieżki plików źródłowych nie mogą trafiać do treści
+# eksportów. Kody rejestru flagowane zawsze (granica słowa z lewej — nazwy
+# handlowe typu "HV12K-3H" to nie kody); nazwy API i ścieżki wyłącznie w
+# PROZIE (literał z odstępem), żeby nie flagować kluczy kontraktu danych.
+REGISTRY_CODE_PATTERN = re.compile(r"(?<![A-Za-z0-9])V12K-\d+")
+API_NAME_PATTERN = re.compile(
+    r"\b(PowerFlowResult|ShortCircuitResult|ResultSet|FROZEN|branch_results|bus_results)\b"
+)
+SOURCE_PATH_PATTERN = re.compile(r"\b[\w.]+/[\w.]+\.(?:py|ts|tsx)\b")
+
 ALLOWED_TECHNICAL_TOKENS = {"p50", "p75", "p90", "p95", "p99"}
 
 # (ścieżka względna repo, nr linii, token) -> uzasadnienie.
@@ -142,6 +153,11 @@ def scan_file(path: Path) -> list[Violation]:
             if t.lower() not in ALLOWED_TECHNICAL_TOKENS
         ]
         tokens += PRODUCT_PATTERN.findall(text)
+        # K10: kody rejestru zawsze; nazwy API/ścieżki tylko w prozie (odstęp).
+        tokens += REGISTRY_CODE_PATTERN.findall(text)
+        if any(ch.isspace() for ch in text.strip()):
+            tokens += [m.group(0) for m in API_NAME_PATTERN.finditer(text)]
+            tokens += [m.group(0) for m in SOURCE_PATH_PATTERN.finditer(text)]
         for token in tokens:
             if ALLOWLIST.get((rel, node.lineno, token)):
                 continue

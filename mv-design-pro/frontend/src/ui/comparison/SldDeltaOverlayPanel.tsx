@@ -238,7 +238,7 @@ const ComparisonDetail: React.FC<ComparisonDetailProps> = React.memo(
           <span className="font-mono text-slate-600 truncate">
             {comparison.other_scenario_id.slice(0, 12)}...
           </span>
-          <span className="text-slate-500">Hash wejscia:</span>
+          <span className="text-slate-500">Odcisk wejścia:</span>
           <span className="font-mono text-slate-600 truncate">
             {comparison.input_hash.slice(0, 24)}...
           </span>
