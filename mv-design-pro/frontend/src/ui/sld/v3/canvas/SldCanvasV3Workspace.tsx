@@ -101,6 +101,7 @@ import { useDerDragDrop, DerPaletteButton, type DerDragKind } from '../../v2/can
 import {
   SldContextMenuController,
   type SldContextMenuRequest,
+  type SldMenuContext,
 } from '../../../context-menu/SldContextMenuController';
 import { getMenuActions, type SldElementKindForMenu } from '../../v2/command/SldCommandService';
 import { selectStationDistributionTransformers } from '../../../network-build/stationTransformerSelection';
@@ -1292,11 +1293,35 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       }
       const menuKind = elementKindForMenu(meta?.elementKind, meta?.derKind);
       if (!menuKind) return;
-      const id = meta?.ownerRef ?? elementIdFromTestId(testId);
+      // K5-A: szyna GPZ niesie KANONICZNY Bus ref w `meta.busRef`
+      // (ADAPTER-BUSREF) — preferowany nad kompozytem sceny
+      // (`${sectionId}#bus-primary`), żeby operacje domenowe menu sekcji
+      // (add_sn_bay / add_shunt_compensator_sn / add_surge_arrester_sn)
+      // dostały realny ref ENM. Pozostałe elementy: bez zmiany.
+      const id = meta?.busRef ?? meta?.ownerRef ?? elementIdFromTestId(testId);
       setContextRequest({ kind: menuKind, elementId: id, clientX, clientY });
     },
     [],
   );
+  // K5-A: kontekst dostępności akcji menu — dla stacji sprawdzamy realne FK
+  // `substation.bus_refs` → szyna nN (0 < U < 1 kV); bez stacji/żądania =
+  // `undefined` (brak danych, zero zgadywania — akcje bez blokady).
+  const contextMenuAvailability = useMemo<SldMenuContext | undefined>(() => {
+    if (!contextRequest || contextRequest.kind !== 'station' || !contextRequest.elementId) {
+      return undefined;
+    }
+    const station = (snapshot?.substations ?? []).find(
+      (candidate) => candidate.ref_id === contextRequest.elementId || candidate.id === contextRequest.elementId,
+    );
+    if (!station) return undefined;
+    const hasNnBus = (station.bus_refs ?? []).some((busRef) => {
+      const bus = (snapshot?.buses ?? []).find(
+        (candidate) => candidate.ref_id === busRef || candidate.id === busRef,
+      );
+      return bus != null && bus.voltage_kv > 0 && bus.voltage_kv < 1;
+    });
+    return { stationHasNnBus: hasNnBus };
+  }, [contextRequest, snapshot]);
   // F11.4-B / ARCH-3 (spec §10.1: „wykonawca akcji domenowych na v3: BRAMKA
   // REALNA, wdrażana"): `onAction` woła TEN SAM wykonawca co v2
   // (`useSldActionExecutor`, `shared/sldActionExecutor.ts`) — nawigacja
@@ -1770,6 +1795,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       <SldContextMenuController
         request={contextRequest}
         mode={activeMode}
+        context={contextMenuAvailability}
         onAction={handleContextMenuAction}
         onClose={closeContextMenu}
       />

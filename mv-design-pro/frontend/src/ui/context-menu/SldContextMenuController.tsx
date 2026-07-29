@@ -40,6 +40,8 @@ export interface SldMenuContext {
   readonly stationHasFreeBay?: boolean;
   readonly hasResults?: boolean;
   readonly apparatusKind?: string;
+  /** K5-A: czy stacja ma szynę nN (warunek agregatu/UPS w menu stacji). */
+  readonly stationHasNnBus?: boolean;
 }
 
 export interface SldContextMenuControllerProps {

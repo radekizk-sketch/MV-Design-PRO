@@ -270,6 +270,47 @@ describe('EkranKompensacji — tryb ekspercki i ślad', () => {
   });
 });
 
+describe('EkranKompensacji — pętla werdykt → kreator kompensatora (K5-A / H-3 pkt 6)', () => {
+  beforeEach(ustawGotowyRozplyw);
+
+  it('akcja przy werdykcie otwiera kreator add_shunt_compensator_sn z kontekstem szyny doboru i przechodzi do przestrzeni Schemat', async () => {
+    const { useNetworkBuildStore } = await import('../../../../ui/network-build/networkBuildStore');
+    const { useShellStore } = await import('../../../shell/useShellStore');
+    pobierzDobor.mockResolvedValue(widokKompensacjiFixture());
+    render(<EkranKompensacji trybZaawansowania="basic" />);
+    fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
+    fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
+    await screen.findByTestId('mvd-komp-wynik');
+
+    // Realna ścieżka: natywny klik akcji przy werdykcie doboru.
+    fireEvent.click(screen.getByTestId('mvd-komp-dobor-kreator'));
+
+    const surface = useNetworkBuildStore.getState().activeSurface;
+    expect(surface?.routeState.payload?.delegate).toBe('operation_form');
+    expect(surface?.routeState.payload?.operation).toBe('add_shunt_compensator_sn');
+    const context = surface?.routeState.payload?.context as Record<string, unknown>;
+    expect(context.bus_ref).toBe('bus-a');
+    expect(context.bus_name).toBe('Szyna A');
+    expect(context.bus_voltage_kv).toBe(15);
+    // Formularze operacji domenowych żyją na kanwie schematu.
+    expect(useShellStore.getState().activeSpace).toBe('schemat');
+
+    // Sprzątanie stanu współdzielonych store'ów (izolacja kolejnych testów pliku).
+    useNetworkBuildStore.getState().closeOperationForm();
+    useShellStore.getState().setActiveSpace('projekt');
+    window.location.hash = '';
+  });
+
+  it('brak doboru: akcja kreatora nie jest renderowana (zero martwych klików)', async () => {
+    pobierzDobor.mockResolvedValue(widokBrakDoboruFixture());
+    render(<EkranKompensacji trybZaawansowania="basic" />);
+    fireEvent.change(screen.getByTestId('mvd-komp-wezel'), { target: { value: 'bus-a' } });
+    fireEvent.click(screen.getByTestId('mvd-komp-oblicz'));
+    await screen.findByTestId('mvd-komp-wynik');
+    expect(screen.queryByTestId('mvd-komp-dobor-kreator')).not.toBeInTheDocument();
+  });
+});
+
 describe('EkranKompensacji — pre-selekcja węzła z deep-linku (R2-B)', () => {
   beforeEach(ustawGotowyRozplyw);
 

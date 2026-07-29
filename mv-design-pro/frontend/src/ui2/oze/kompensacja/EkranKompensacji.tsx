@@ -28,6 +28,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import './kompensacja.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
+import { useNetworkBuildStore } from '../../../ui/network-build/networkBuildStore';
+import { przejdzDoPrzestrzeni } from '../../shell/przejsciaPrzestrzeni';
 import { useSnapshotStore, selectBusOptions } from '../../../ui/topology/snapshotStore';
 import { TabelaWynikow } from '../../wyniki/wzorzec';
 // Zasada wywodów KaTeX: wzory w notach/komentarzach renderuje TekstZWzorami (MathInline).
@@ -115,6 +117,23 @@ function WynikKompensacji({
 }) {
   const trybEkspercki = trybZaawansowania === 'expert';
   const [sladWidoczny, setSladWidoczny] = useState(false);
+  const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
+
+  // K5-A (H-3 pkt 6): pętla werdykt → model. Kreator baterii kondensatorów SN
+  // dostaje kontekst szyny doboru (bus_ref/nazwa/napięcie — REALNE wartości
+  // z odpowiedzi backendu, zero fabrykacji); formularze operacji domenowych
+  // żyją na kanwie schematu, więc przechodzimy do przestrzeni „Schemat".
+  const otworzKreatorKompensatora = () => {
+    openOperationForm('add_shunt_compensator_sn', {
+      bus_ref: dane.parameters.bus_ref,
+      ...(dane.parameters.bus_name ? { bus_name: dane.parameters.bus_name } : {}),
+      ...(typeof dane.parameters.bus_voltage_kv === 'number' && dane.parameters.bus_voltage_kv > 0
+        ? { bus_voltage_kv: dane.parameters.bus_voltage_kv }
+        : {}),
+      source: 'kompensacja_werdykt',
+    });
+    przejdzDoPrzestrzeni('schemat');
+  };
 
   const uwzglednijNoc = dane.parameters.uwzglednij_noc;
   const kolumny = useMemo(() => kolumnyTabeliKompensacji(uwzglednijNoc), [uwzglednijNoc]);
@@ -256,6 +275,15 @@ function WynikKompensacji({
             )}
           </dl>
           <p className="mvd-komp-komentarz">{T.doborPodstawa}</p>
+          <button
+            type="button"
+            className="mvd-komp-dobor-kreator"
+            title={T.doborOtworzKreatorOpis}
+            onClick={otworzKreatorKompensatora}
+            data-testid="mvd-komp-dobor-kreator"
+          >
+            {T.doborOtworzKreator}
+          </button>
         </section>
       ) : (
         <section className="mvd-komp-dobor mvd-komp-dobor--brak" data-testid="mvd-komp-brak-doboru">

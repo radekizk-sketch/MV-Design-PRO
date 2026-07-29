@@ -108,6 +108,11 @@ export const KOMPENSACJA_STRINGS = {
   doborPodstawa:
     'Dobór sterowany wyłącznie wielkością cosφ punktu kompensowanego; cosφ przekroju '
     + 'sieciowego pokazany obok jako wielkość informacyjna.',
+  // K5-A (H-3 pkt 6): pętla werdykt → kreator modelu (add_shunt_compensator_sn).
+  doborOtworzKreator: 'Dobierz kompensator na tej szynie',
+  doborOtworzKreatorOpis:
+    'Otwiera kreator baterii kondensatorów SN z kontekstem tej szyny (przestrzeń Schemat) — '
+    + 'zapis to realna operacja modelu add_shunt_compensator_sn.',
   brakDoboruTytul: 'Brak doboru',
 
   // Założenia

@@ -176,6 +176,11 @@ export const DRAWER_ACTION_LABEL_PL: Readonly<Record<string, string>> = {
   'start-branch': 'Rozpocznij odgałęzienie',
   'add-source': 'Dodaj PV/BESS/FW',
   'add-load': 'Dodaj odbiór nN',
+  // K5-A (H-4): nowe wejścia kreatorów z menu/drawera kanwy.
+  'add-compensator': 'Dodaj kompensator',
+  'add-arrester': 'Dodaj ogranicznik przepięć',
+  'add-genset': 'Dodaj agregat nN',
+  'add-ups': 'Dodaj UPS nN',
   'insert-station': 'Zakończ odcinek stacją',
   'insert-zksn': 'Zakończ odcinek w ZK SN',
   'insert-pole': 'Zakończ odcinek słupem',
@@ -210,6 +215,30 @@ interface SldOperationAction {
   readonly op: NetworkBuildOperationName;
   readonly context: Record<string, unknown>;
   readonly messagePl: string;
+}
+
+/** K5-A: kompozyt sceny `${stationRef}#sn-bus` → kanoniczny Bus ref przez
+ *  realne FK `substation.bus_refs` (szyna SN: U > 1 kV). Ref bez kompozytu
+ *  lub nierozwiązywalny wraca bez zmian (uczciwa degradacja — kreator pokaże
+ *  brak szyny albo odmowę backendu, zero fabrykowanego refu). */
+function resolveCanonicalSectionBusRef(
+  elementId: string,
+  snapshot: EnergyNetworkModel | null,
+): string {
+  const marker = elementId.indexOf('#');
+  if (marker <= 0 || elementId.slice(marker + 1) !== 'sn-bus') return elementId;
+  const stationRef = elementId.slice(0, marker);
+  const station = (snapshot?.substations ?? []).find(
+    (candidate) => candidate.ref_id === stationRef || candidate.id === stationRef,
+  );
+  if (!station) return elementId;
+  const snBusRef = (station.bus_refs ?? []).find((busRef) => {
+    const bus = (snapshot?.buses ?? []).find(
+      (candidate) => candidate.ref_id === busRef || candidate.id === busRef,
+    );
+    return bus != null && bus.voltage_kv > 1;
+  });
+  return snBusRef ?? elementId;
 }
 
 export function elementTypeForSldKind(kind: SldElementKindForMenu): ElementType | null {
@@ -266,6 +295,15 @@ function operationOpenMessage(op: NetworkBuildOperationName, actionId: string): 
       return 'Otwieram formularz dodania obciążenia nN.';
     case 'set_normal_open_point':
       return 'Otwieram formularz punktu normalnie otwartego.';
+    // K5-A (H-4): komunikaty nowych wejść menu kanwy.
+    case 'add_shunt_compensator_sn':
+      return 'Otwieram formularz baterii kondensatorów SN.';
+    case 'add_surge_arrester_sn':
+      return 'Otwieram formularz ogranicznika przepięć SN.';
+    case 'add_genset_nn':
+      return 'Otwieram formularz agregatu prądotwórczego nN.';
+    case 'add_ups_nn':
+      return 'Otwieram formularz zasilacza UPS nN.';
     default:
       return 'Otwieram formularz operacji domenowej.';
   }
@@ -289,10 +327,24 @@ export function buildSldOperationContext(
   if (!elementId) return null;
 
   const apparatusSelection = kind === 'apparatus' ? parseGpzApparatusSelectionId(elementId) : null;
-  const operationElementId = apparatusSelection ? apparatusSelection.bayRef : elementId;
-  const operationKind: SldElementKindForMenu = apparatusSelection ? 'bay' : kind;
+  let operationElementId = apparatusSelection ? apparatusSelection.bayRef : elementId;
+  let operationKind: SldElementKindForMenu = apparatusSelection ? 'bay' : kind;
   if (kind === 'apparatus' && actionId === 'extend-trunk' && apparatusSelection?.apparatusKind !== 'cable_head') {
     return null;
+  }
+  // K5-A: ogranicznik z aparatu BEZ kompozytu `bayRef#kind` (scena v3 niesie
+  // w `elementId` ref POLA macierzystego — `meta.ownerRef = bayRef`,
+  // `scene/buildScene.ts`; ta sama konwencja co gałąź nawigacyjna
+  // `ACTION_TO_SCREEN` niżej) — operacja add_surge_arrester_sn dostaje
+  // kontekst pola (field_ref), nie aparatu.
+  if (actionId === 'add-arrester' && operationKind === 'apparatus') {
+    operationKind = 'bay';
+  }
+  // K5-A: szyna SN stacji na scenie v3 to kompozyt `${stationRef}#sn-bus` —
+  // rozwiązujemy kanoniczny Bus ref realnym FK `substation.bus_refs`
+  // (szyna GPZ niesie kanoniczny ref już z `meta.busRef` w Workspace).
+  if (kind === 'section' && (actionId === 'add-compensator' || actionId === 'add-arrester')) {
+    operationElementId = resolveCanonicalSectionBusRef(operationElementId, snapshot);
   }
 
   const elementType = elementTypeForSldKind(operationKind);
@@ -312,6 +364,13 @@ export function buildSldOperationContext(
     'insert-sectional': 'insert_section_switch_sn',
     'add-load': 'add_nn_load',
     'set-switch-state': 'set_normal_open_point',
+    // K5-A (H-4): trzy kreatory-wyspy dostają wejścia z żywego menu kanwy —
+    // realne operacje domenowe (operationFormRegistry + operationContext już
+    // je obsługują; brakowało WYŁĄCZNIE tych wpisów).
+    'add-compensator': 'add_shunt_compensator_sn',
+    'add-arrester': 'add_surge_arrester_sn',
+    'add-genset': 'add_genset_nn',
+    'add-ups': 'add_ups_nn',
   };
   const op = opByAction[actionId];
   if (!op) return null;

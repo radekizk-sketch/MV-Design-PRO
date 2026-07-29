@@ -313,7 +313,10 @@ def build_steps(
                     "src/ui/network-build/__tests__/networkBuildStore.test.ts",
                     "src/ui/network-build/__tests__/gpzAddSnBayFamilyFlow.test.ts",
                     "src/ui/network-build/__tests__/networkBuildStore.routeSurfaces.test.ts",
-                    "src/ui/context-menu/__tests__/catalogGate.test.ts",
+                    # K5-A: bramka katalogowa = ZDOLNOSC, nie plik dostawcy (V12K-263):
+                    # catalogGate.ts (martwa sciezka EngineeringContextMenu) skasowany,
+                    # zdolnosc zyje w elementCatalogRegistry.requiresCatalogBinding.
+                    "src/ui/catalog/__tests__/elementCatalogRegistry.test.ts",
                     "src/ui/protection-results/__tests__/ProtectionResultsInspectorPage.test.tsx",
                     "src/ui/network-build/__tests__/contextMenuConverterEntry.test.ts",
                     "src/ui/network-build/__tests__/converterSourceEntryPoints.test.tsx",

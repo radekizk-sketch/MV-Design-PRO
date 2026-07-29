@@ -45,6 +45,9 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
   ],
   section: [
     { id: 'add-bay', labelPl: 'Dodaj pole SN', group: 'budowa' },
+    /* K5-A (H-4): wejście do kreatora baterii kondensatorów SN — realna
+     * operacja add_shunt_compensator_sn (bus_ref = kliknięta szyna). */
+    { id: 'add-compensator', labelPl: 'Dodaj kompensator mocy biernej', group: 'budowa' },
     { id: 'show-sc-data', labelPl: 'Pokaż dane zwarciowe źródła', group: 'widok' },
     { id: 'show-readiness', labelPl: 'Pokaż kontrolę konfiguracji', group: 'widok' },
   ],
@@ -54,6 +57,9 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'configure-cts-vts', labelPl: 'Skonfiguruj przekładniki', group: 'edycja' },
     { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', group: 'edycja' },
     { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
+    /* K5-A (H-4): ogranicznik przepięć na field_spec pola — realna operacja
+     * add_surge_arrester_sn (field_ref = kliknięte pole). */
+    { id: 'add-arrester', labelPl: 'Dodaj ogranicznik przepięć', group: 'budowa' },
     /* Phase 0B (operator-grade SLD plan v2): Append-on-Endpoint workflow */
     { id: 'append-station-on-endpoint', labelPl: 'Zakończ ciąg w stacji', group: 'budowa' },
     { id: 'set-switch-state', labelPl: 'Zmień stan łącznika', group: 'edycja' },
@@ -68,6 +74,9 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'configure-cts-vts', labelPl: 'Skonfiguruj przekładniki', group: 'edycja' },
     { id: 'configure-protection', labelPl: 'Skonfiguruj zabezpieczenia', group: 'edycja' },
     { id: 'extend-trunk', labelPl: 'Wyprowadź ciąg główny z głowicy', group: 'budowa' },
+    /* K5-A (H-4): aparat sceny niesie ref pola macierzystego (bayRef) —
+     * ta sama operacja add_surge_arrester_sn co z menu pola. */
+    { id: 'add-arrester', labelPl: 'Dodaj ogranicznik przepięć', group: 'budowa' },
     { id: 'show-results', labelPl: 'Pokaż wyniki aparatu', group: 'widok' },
     { id: 'show-rationale', labelPl: 'Pokaż uzasadnienie inżynierskie', group: 'widok' },
   ],
@@ -105,6 +114,10 @@ export const SLD_MENU_REGISTRY: Readonly<Record<SldElementKindForMenu, readonly 
     { id: 'start-branch', labelPl: 'Rozpocznij odgałęzienie', group: 'budowa' },
     { id: 'add-source', labelPl: 'Dodaj źródło PV/BESS/FW z katalogu', group: 'budowa' },
     { id: 'add-load', labelPl: 'Dodaj obciążenie nN', group: 'budowa' },
+    /* K5-A (H-4): źródła dyspozycyjne nN stacji — realne operacje
+     * add_genset_nn / add_ups_nn (kreator „Źródło dyspozycyjne nN"). */
+    { id: 'add-genset', labelPl: 'Dodaj agregat prądotwórczy nN', group: 'budowa' },
+    { id: 'add-ups', labelPl: 'Dodaj zasilacz UPS nN', group: 'budowa' },
     { id: 'show-readiness', labelPl: 'Pokaż konfigurację stacji', group: 'widok' },
     { id: 'show-results', labelPl: 'Pokaż wyniki stacji', group: 'widok' },
     { id: 'delete-station', labelPl: 'Usuń stację', group: 'usun' },
@@ -177,6 +190,9 @@ export function getMenuActions(
     readonly stationHasFreeBay?: boolean;
     readonly hasResults?: boolean;
     readonly apparatusKind?: string;
+    /** K5-A: czy stacja ma szynę nN (realne FK substation.bus_refs → bus nN);
+     *  `false` blokuje agregat/UPS z uczciwym powodem, `undefined` = brak danych. */
+    readonly stationHasNnBus?: boolean;
   },
 ): SldMenuAction[] {
   const baseActions = SLD_MENU_REGISTRY[kind];
@@ -204,6 +220,16 @@ export function getMenuActions(
         ...a,
         disabled: true,
         disabledReasonPl: 'Pole nie jest końcem ciągu. Najpierw wyprowadź ciąg lub wybierz endpoint.',
+      };
+    }
+    /* K5-A: agregat/UPS przyłączają się do szyny nN stacji — stacja bez szyny
+     * nN (brak bloku nN/transformatora) dostaje uczciwą blokadę zamiast
+     * kreatora bez możliwego zapisu. */
+    if ((a.id === 'add-genset' || a.id === 'add-ups') && kind === 'station' && ctx.stationHasNnBus === false) {
+      return {
+        ...a,
+        disabled: true,
+        disabledReasonPl: 'Stacja nie ma szyny nN. Najpierw dodaj transformator SN/nN z rozdzielnicą nN.',
       };
     }
     if (a.id === 'start-branch' && kind === 'station' && ctx.stationHasFreeBay === false) {

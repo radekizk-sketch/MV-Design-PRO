@@ -153,6 +153,12 @@ const LOD_CROSSFADE_DURATION = '0.18s';
 export interface SldElementClickMeta {
   readonly ownerRef?: string;
   readonly elementKind?: PreviewElementKind;
+  /** K5-A: KANONICZNY Bus ref szyny (segmenty `elementKind==='bus'` GPZ —
+   *  `meta.busResultRef`, ADAPTER-BUSREF). `ownerRef` szyn to kompozyt sceny
+   *  (`${sectionId}#bus-primary` itd.) — operacje domenowe (np.
+   *  add_shunt_compensator_sn) potrzebują realnego refu ENM. `undefined`
+   *  dla symboli i segmentów bez kanonicznego refu szyny. */
+  readonly busRef?: string;
   /** DER-MENU-V3 (Karta SLD-P, GAP P-1): rodzaj DER z `PreviewElementMeta.
    *  derKind` (REALNA wartość łańcucha, WYŁĄCZNIE dla `elementKind==='der'`) —
    *  konsument to `SldCanvasV3Workspace.elementKindForMenu` (wybór kategorii
@@ -406,7 +412,13 @@ function SceneSegmentNode(props: {
   const flowSeg = segResultRef != null
     ? overlay?.flowByOwnerRef?.[segResultRef]
     : undefined;
-  const segmentClickMeta: SldElementClickMeta = { ownerRef: segment.meta?.ownerRef, elementKind: segment.meta?.elementKind };
+  const segmentClickMeta: SldElementClickMeta = {
+    ownerRef: segment.meta?.ownerRef,
+    elementKind: segment.meta?.elementKind,
+    // K5-A: kanoniczny Bus ref szyny (GPZ `busResultRef`) — patrz docstring
+    // `SldElementClickMeta.busRef`; `undefined` dla segmentów nie-szynowych.
+    busRef: segment.meta?.busResultRef,
+  };
   // F13.2 (spec §22.1): mostki liczone deterministycznie z przecięć sceny —
   // geometria sceny (punkty/porty/bbox/baseline'y §15.1) NIETKNIĘTA, mostek
   // to wyłącznie kształt ścieżki SVG w miejscu przelotu bez połączenia.

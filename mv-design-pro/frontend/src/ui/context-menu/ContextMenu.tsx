@@ -12,7 +12,7 @@
  * - Keyboard navigation
  */
 
-import { Fragment, useEffect, useRef, useCallback } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useCallback, useState } from 'react';
 import { clsx } from 'clsx';
 import { getOperatingModeLabel, normalizeOperatingMode } from '../operatingMode';
 import type { ContextMenuAction, ElementType, OperatingMode } from '../types';
@@ -50,6 +50,27 @@ export function ContextMenu({
 }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const runtimeMode = normalizeOperatingMode(mode);
+
+  // K5-A (defekt złapany natywną ścieżką e2e): menu otwarte przy krawędzi
+  // ekranu wychodziło poza viewport — pozycje przy dolnej/prawej krawędzi
+  // czyniły akcje NIEKLIKALNYMI (martwy klik mimo poprawnego handlera).
+  // Po zmierzeniu realnego rozmiaru menu dociskamy je do okna (useLayoutEffect
+  // — korekta przed malowaniem, bez migotania).
+  const [pozycja, setPozycja] = useState<{ left: number; top: number }>({ left: x, top: y });
+  useLayoutEffect(() => {
+    if (!isOpen) return;
+    const el = menuRef.current;
+    if (!el) {
+      setPozycja({ left: x, top: y });
+      return;
+    }
+    const rect = el.getBoundingClientRect();
+    const margines = 8;
+    setPozycja({
+      left: Math.max(margines, Math.min(x, window.innerWidth - rect.width - margines)),
+      top: Math.max(margines, Math.min(y, window.innerHeight - rect.height - margines)),
+    });
+  }, [isOpen, x, y]);
 
   // Close on click outside
   useEffect(() => {
@@ -90,11 +111,11 @@ export function ContextMenu({
 
   if (!isOpen) return null;
 
-  // Adjust position to stay within viewport
+  // Pozycja docelowa: żądany punkt kliknięcia dociśnięty do viewportu (wyżej).
   const style: React.CSSProperties = {
     position: 'fixed',
-    left: x,
-    top: y,
+    left: pozycja.left,
+    top: pozycja.top,
     zIndex: 1000,
   };
 
