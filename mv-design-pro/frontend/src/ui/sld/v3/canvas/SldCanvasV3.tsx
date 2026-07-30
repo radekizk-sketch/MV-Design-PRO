@@ -239,6 +239,19 @@ export interface SldCanvasV3Props {
    *  `onElementClick`/`onElementDoubleClick`, zero zmiany geometrii/logiki
    *  kamery. Brak propa = brak nasłuchu (kanwa działa jak dziś). */
   readonly onCameraChange?: (transform: ViewportTransform, lod: SceneLod) => void;
+  /** K11-A (dyrektywa SLD-first 2026-07-30): sygnał JAWNEGO dopasowania widoku
+   *  — inkrementacja wartości wywołuje pełny refit kamery do bieżącego celu
+   *  fitu (ta sama akcja 'refit' co przy zmianie sieci, k3). Kamera pozostaje
+   *  stanem wewnętrznym kanwy; wołający (przycisk „Dopasuj widok" w
+   *  workspace) nie zna transformu, tylko żąda dopasowania. Brak propa =
+   *  zachowanie jak dotychczas. */
+  readonly fitSignal?: number;
+  /** K11-A: CEL fitu kamery. 'tresc' (domyślnie) = bbox elementów SIECI
+   *  (symbole/odcinki z `meta.ownerRef`) — inżynier od pierwszej sekundy
+   *  widzi topologię w maksymalnym kadrze, bez marginesów arkusza i legendy.
+   *  'arkusz' = pełny bbox sceny (rama rysunkowa z tabliczką) — jawna akcja
+   *  widoku. Geometria sceny NIETKNIĘTA — zmienia się wyłącznie viewBox. */
+  readonly fitTarget?: 'tresc' | 'arkusz';
   /** Karta S8 (płynność przejść LOD, P2): włącza krótki crossfade warstwy
    *  detalu przy ZMIANIE LOD (wejście nowego szczegółu z opacity 0→1, natywne
    *  SVG `<animate>`, SMIL — wzorzec repo, patrz znacznik pulse niżej; zero
@@ -1961,6 +1974,43 @@ function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: num
  *  SCHEMAT-10 S4 (V12K-135/136, D12 reszta): eksportowana (dawniej lokalna)
  *  — `v3/export/exportFrame.ts` reużywa DOKŁADNIE tę samą formułę dla kadru
  *  fit-do-treści eksportu (0 duplikacji marginesu treści). */
+/** K11-A: bbox TREŚCI SIECI sceny — wyłącznie elementy z `ownerRef`
+ *  (symbole aparatów/stacji + odcinki torów), bez mebli arkusza (legenda,
+ *  rama, tabliczka), z rezerwą na wiersze podpisu stacji (4 rzędy t2 pod
+ *  symbolem) i tytuł GPZ (1 rząd t1). Prostokątów etykiet nie włączamy
+ *  wprost: tytuł strefy GPZ i legenda leżą przy krawędzi obwiedni
+ *  dekoracyjnej i przywracałyby kadr quasi-arkusza (zmierzone 2026-07-30:
+ *  wypełnienie osi 0,84 → 0,72). Scena bez elementów ⇒ null (wołający
+ *  fituje do pełnego bboxa sceny). Eksportowana — testy kamery liczą
+ *  oczekiwany cel fitu TĄ SAMĄ funkcją. */
+export function contentBoundingBoxOf(scene: SceneV3): BoundingBox | null {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const s of scene.symbols) {
+    if (!s.meta?.ownerRef) continue;
+    const def = SYMBOL_DEFS[s.symbolId];
+    minX = Math.min(minX, s.x);
+    minY = Math.min(minY, s.y);
+    maxX = Math.max(maxX, s.x + def.width);
+    maxY = Math.max(maxY, s.y + def.height);
+  }
+  for (const seg of scene.segments) {
+    if (!seg.meta?.ownerRef) continue;
+    for (const p of seg.points) {
+      minX = Math.min(minX, p.x);
+      minY = Math.min(minY, p.y);
+      maxX = Math.max(maxX, p.x);
+      maxY = Math.max(maxY, p.y);
+    }
+  }
+  if (!Number.isFinite(minX) || maxX - minX <= 0 || maxY - minY <= 0) return null;
+  maxY += 4 * labelLineHeight('t2') + 8;
+  minY -= labelLineHeight('t1') + 8;
+  return { minX, minY, maxX, maxY };
+}
+
 export function sheetSizeFor(scene: SceneV3): { readonly width: number; readonly height: number } {
   return {
     width: Math.max(scene.bbox.x + scene.bbox.width, 0),
@@ -1988,7 +2038,8 @@ function toLocalPoint(svg: SVGSVGElement | null, clientX: number, clientY: numbe
 export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const {
     snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
-    layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true,
+    layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true, fitSignal,
+    fitTarget = 'tresc',
   } = props;
 
   // F8a — ROZSTRZYGNIĘCIE k4/k3 (REBUILD_PLAN_V3 §F8, SLD_V3_ACCEPTANCE.md §3):
@@ -2017,7 +2068,20 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // domyślnie (produkcja, brak override) LOD2 (najpełniejsza scena), jak
   // dawniej.
   const fitTargetLod: SceneLod = lodOverride ?? 2;
-  const fitBbox = lodBboxes[fitTargetLod];
+
+  const contentBboxByLod = useMemo<Readonly<Record<SceneLod, BoundingBox | null>>>(
+    () => ({
+      0: contentBoundingBoxOf(sceneByLod[0]),
+      1: contentBoundingBoxOf(sceneByLod[1]),
+      2: contentBoundingBoxOf(sceneByLod[2]),
+    }),
+    [sceneByLod],
+  );
+
+  const fitBbox =
+    fitTarget === 'arkusz'
+      ? lodBboxes[fitTargetLod]
+      : contentBboxByLod[fitTargetLod] ?? lodBboxes[fitTargetLod];
 
   // F12-C (E15/E16 parytet z v2, spec §10 „kamera mobilna (portrait focus na
   // GPZ)"): środek bloku GPZ jako punkt fokusu kamery mobilnej — liczony ze
@@ -2068,6 +2132,19 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     // chwili montażu) — poprawne nawet gdy width/height zmieniły się w tym
     // samym renderze co snapshot/lodOverride.
   }, [snapshot, lodOverride]);
+
+  // K11-A: jawne „Dopasuj widok" — refit na inkrementację sygnału (bez zmiany
+  // świata; pomija montaż, bo stan startowy już zfitowany).
+  const skippedInitialFitSignal = useRef(true);
+  useEffect(() => {
+    if (skippedInitialFitSignal.current) {
+      skippedInitialFitSignal.current = false;
+      return;
+    }
+    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint });
+    // Wyłącznie sygnał steruje tym efektem — refit czyta AKTUALNE bboxy/viewport.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitSignal]);
 
   // (k3) 'resize' gdy zmienia się TYLKO viewport (width/height) — świat ten
   // sam, kamera zachowuje pan/zoom użytkownika i tylko dostosowuje punkt

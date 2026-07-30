@@ -214,10 +214,14 @@ async function waitForAnalysisRunIndex(
   while (Date.now() < deadline) {
     // Jawny timeout żądania: fixture `request` dziedziczy actionTimeout 10 s
     // z playwright.config.ts, a pierwszy GET blokuje się na synchronicznej
-    // budowie indeksu (~40 s) — bez tego klient ucina żądanie w połowie pracy.
+    // budowie indeksu (zmierzone 2026-07-30: 49 s na BEZCZYNNEJ maszynie
+    // 4-rdzeniowej; pod własnym obciążeniem specu >90 s) — bez zapasu klient
+    // ucina żądanie w połowie pracy, a osierocona budowa głodzi kolejne specy.
+    // DŁUG PRODUKTOWY (nazwany, rejestr): indeks liczony przy KAŻDYM GET
+    // zamiast utrwalany przy zakończeniu biegu.
     const response = await request.get(
       `${BACKEND_BASE}/api/analysis-runs/${runId}/results/index`,
-      { timeout: 90000 },
+      { timeout: 240000 },
     );
     lastStatus = response.status();
     if (response.ok()) {
@@ -239,7 +243,9 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   // ≈ 10–11 min realnego czasu — 900 s daje zapas na wolniejszy przebieg CI.
   // Koszt eksportów to własność backendu (kandydat na kartę wydajnościową),
   // nie do zamaskowania krótszym limitem testu.
-  test.setTimeout(900000);
+  // Budzet calego przeplywu: zmierzone 2026-07-30 na 4-rdzeniowej maszynie —
+  // sam eksport raportu JSON dla 50 stacji to 298 s na BEZCZYNNYM backendzie.
+  test.setTimeout(1800000);
 
   const seed = await createProjectAndCase(request);
   const templatesResponse = await request.get(`${BACKEND_BASE}/api/station-templates`);
@@ -335,10 +341,11 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   // Pomiar 2026-07-29 (karta K1/D): synchroniczny POST /execute dla sieci
   // 50 stacji + OZE trwa realnie ~32 s na tym kontenerze — domyślny limit
   // żądania API (30 s) ucinał odpowiedź tuż przed końcem obliczeń.
-  // 90 s = ~3× zmierzonego czasu (zapas na wolniejszy przebieg CI).
+  // 240 s = ~5× czasu zmierzonego na bezczynnej maszynie (49 s) — zapas na
+  // wspolbiezne obciazenie wlasne specu i wolniejszy przebieg CI.
   const executeRunResponse = await request.post(
     `${BACKEND_BASE}/api/execution/runs/${scRun.id}/execute`,
-    { timeout: 90000 },
+    { timeout: 240000 },
   );
   expect(executeRunResponse.ok(), await executeRunResponse.text()).toBeTruthy();
   await waitForAnalysisRunIndex(request, scRun.id);
@@ -361,7 +368,7 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
     `/api/analysis-runs/${scRun.id}/export/proof/json`,
     `/api/analysis-runs/${scRun.id}/export/proof/latex`,
   ]) {
-    const response = await request.get(`${BACKEND_BASE}${endpoint}`, { timeout: 360000 });
+    const response = await request.get(`${BACKEND_BASE}${endpoint}`, { timeout: 600000 });
     const body = await response.body();
     expect(
       response.ok(),

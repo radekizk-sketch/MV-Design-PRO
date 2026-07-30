@@ -47,7 +47,10 @@ export const DEFAULT_LAYOUT: PanelLayoutState = {
   leftWidth: LEFT_DEFAULT,
   rightWidth: RIGHT_DEFAULT,
   leftCollapsed: false,
-  rightCollapsed: false,
+  // K11-A (dyrektywa SLD-first 2026-07-30): inspektor bez zawartości nie
+  // zabiera przestrzeni roboczej — otwiera go selekcja albo powierzchnia
+  // panelowa (useInspektorZaZawartoscia), nie sam montaż powłoki.
+  rightCollapsed: true,
 };
 
 export function clampLeftWidth(width: number): number {
@@ -88,6 +91,8 @@ interface ShellState {
   setRightWidth: (space: SpaceId, width: number) => void;
   toggleLeftCollapsed: (space: SpaceId) => void;
   toggleRightCollapsed: (space: SpaceId) => void;
+  /** K11-A: jawne ustawienie zwinięcia inspektora (automat za zawartością). */
+  setRightCollapsed: (space: SpaceId, collapsed: boolean) => void;
   resetLayout: (space: SpaceId) => void;
 
   openBottomPanel: (tab: BottomPanelTab) => void;
@@ -151,6 +156,12 @@ export const useShellStore = create<ShellState>()(
             rightCollapsed: !layoutFor(state, space).rightCollapsed,
           }),
         })),
+
+      setRightCollapsed: (space, collapsed) =>
+        set((state) => {
+          if (layoutFor(state, space).rightCollapsed === collapsed) return state;
+          return { layoutBySpace: patchLayout(state, space, { rightCollapsed: collapsed }) };
+        }),
 
       resetLayout: (space) =>
         set((state) => {

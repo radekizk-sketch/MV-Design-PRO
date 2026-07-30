@@ -21,6 +21,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppShell } from './shell/AppShell';
 import { useBackendHealth } from './shell/backendHealth';
 import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
+import { useInspektorZaZawartoscia } from './shell/useInspektorZaZawartoscia';
 import { ContextTree, useCasesTree, useRunsTree, useTopologyTree } from './nav';
 import { InspectorPanel } from './inspector';
 import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapter';
@@ -97,6 +98,9 @@ export function AppRoot() {
   // restart przeglądarki cofał przestrzenie do stanu zerowego mimo danych na
   // serwerze.
   useHydratacjaPowloki(backendStatus);
+  // K11-A (SLD-first): inspektor podąża za zawartością — pusty nie zabiera
+  // przestrzeni roboczej; otwiera go selekcja albo powierzchnia panelowa.
+  useInspektorZaZawartoscia();
 
   // E1.7a w nowej powłoce: ta sama orkiestracja (hydracja z URL, trasy legacy,
   // powierzchnie, obliczenia) działa w OBU wejściach — zero duplikacji logiki.

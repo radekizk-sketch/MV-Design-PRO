@@ -79,6 +79,7 @@ import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ElementType } from '../../../types';
 import { useAppStateStore } from '../../../app-state';
 import { useSelectionStore } from '../../../selection';
+import { updateUrlWithSelection } from '../../../navigation/urlState';
 import { useSnapshotStore } from '../../../topology/snapshotStore';
 import { buildSupplyPathHighlight, isElementEnergized, type SupplyPathHighlight } from '../../v2/canvas/SupplyPathHighlighter';
 import {
@@ -1193,6 +1194,26 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // WEWNĄTRZ `SldDetailDrawer` (K30-88, zachowanie reużyte bez zmian).
   const [detailDrawerData, setDetailDrawerData] = useState<SldDetailDrawerData | null>(null);
   const closeDetailDrawer = useCallback(() => setDetailDrawerData(null), []);
+
+  // K11-A (dyrektywa SLD-first): Escape ZDEJMUJE selekcję — kanoniczny gest
+  // odznaczenia (dotąd nie istniał ŻADEN: inspektor raz otwarty nie miał drogi
+  // powrotu do stanu „bez zaznaczenia"). Kolejność zamykania: szuflada
+  // szczegółów i menu kontekstowe mają WŁASNE obsługi Escape — tu działamy
+  // wyłącznie, gdy nic nadrzędnego nie jest otwarte. Czyszczenie MUSI objąć
+  // też URL (ta sama para co orkiestracja nawigacji) — inaczej synchronizacja
+  // adresu natychmiast przywraca selekcję z hasha.
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== 'Escape') return;
+      if (detailDrawerData !== null) return;
+      const store = useSelectionStore.getState();
+      if (store.selectedElements.length === 0) return;
+      store.clearSelection();
+      updateUrlWithSelection(null);
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [detailDrawerData]);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
   const setSnapshot = useSnapshotStore((state) => state.setSnapshot);
@@ -1375,6 +1396,10 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // networkHierarchyFromSnapshot.ts`, zero zmiany zachowania).
   const networkHierarchy = useMemo(() => buildNetworkHierarchyFromSnapshot(snapshot), [snapshot]);
   const [hierarchyPanelOpen, setHierarchyPanelOpen] = useState(false);
+  // K11-A: jawne „Dopasuj widok" — inkrementacja żąda refitu kamery kanwy;
+  // cel: treść sieci (domyślnie) albo cały arkusz (jawna akcja widoku).
+  const [fitSignal, setFitSignal] = useState(0);
+  const [fitTarget, setFitTarget] = useState<'tresc' | 'arkusz'>('tresc');
 
   // F12-B pkt 3 (spec §10.1 ARCH-4, „ProofPacksPanel"): `hasNetworkModel` —
   // TA SAMA definicja co v2 `!isEmpty` (`SldWorkspaceContainer.tsx`:
@@ -1695,6 +1720,8 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           layerVisibility={layerVisibility}
           onResultLabelActivate={handleResultLabelActivate}
           onCameraChange={handleCameraChange}
+          fitSignal={fitSignal}
+          fitTarget={fitTarget}
         />
       ) : null}
 
@@ -1859,6 +1886,40 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           caseLabel={undefined}
           onExportSvgOverride={handleExportSvg}
         />
+      </div>
+
+      {/* K11-A: jawne dopasowanie widoku do treści sieci (dyrektywa SLD-first)
+          — użyteczne po ręcznym pan/zoom; automat fituje przy otwarciu i po
+          zmianie sieci. Własny dok pod dokiem eksportu — zero kolizji z
+          centrowaną paletą DER. */}
+      <div
+        className="pointer-events-auto absolute right-3 top-12 z-30 flex items-center gap-1"
+        data-testid="sld-v3-view-dock"
+      >
+        <button
+          type="button"
+          onClick={() => {
+            setFitTarget('tresc');
+            setFitSignal((s) => s + 1);
+          }}
+          data-testid="sld-v3-fit-view"
+          title="Dopasuj widok do sieci"
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          ⌖ Dopasuj widok
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setFitTarget('arkusz');
+            setFitSignal((s) => s + 1);
+          }}
+          data-testid="sld-v3-fit-sheet"
+          title="Pokaż cały arkusz rysunkowy"
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          Cały arkusz
+        </button>
       </div>
 
       {/* F12-B pkt 2 (spec §10.1 ARCH-4, „NetworkHierarchyTree"): dok

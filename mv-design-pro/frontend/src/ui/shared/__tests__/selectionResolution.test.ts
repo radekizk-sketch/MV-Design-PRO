@@ -157,4 +157,39 @@ describe('selectionResolution', () => {
     expect(resolved?.name).toContain('PV Q2');
     expect(resolved?.name).not.toContain('stn/');
   });
+
+  it('resolves GPZ namespace children (bay/transformer refs SIBLING to .../substation) instead of dropping selection', () => {
+    // K11-A (naprawa u źródła w tej samej sesji — zasada bezwzględna
+    // właściciela 2026-07-30): dzieci GPZ żyją OBOK refu stacji
+    // (`gpz/⟨skrót⟩/bay/…` vs `gpz/⟨skrót⟩/substation`), więc dopasowanie
+    // wyłącznie po pełnym prefiksie refu stacji zerowało selekcję aparatów
+    // pól GPZ tuż po kliknięciu (inspektor nigdy się nie otwierał).
+    const zGpz = {
+      ...(snapshot as unknown as Record<string, unknown>),
+      substations: [
+        {
+          id: 'gpz/abc123/substation',
+          ref_id: 'gpz/abc123/substation',
+          name: 'GPZ Poznań',
+          tags: [],
+          meta: {},
+          station_type: 'gpz',
+          bus_refs: [],
+          transformer_refs: [],
+        },
+      ],
+    } as unknown as EnergyNetworkModel;
+
+    const resolved = resolveSelectedElementFromSnapshot(
+      zGpz,
+      'gpz/abc123/bay/001/001',
+      null,
+      'BaySN',
+    );
+
+    expect(resolved).not.toBeNull();
+    expect(resolved).toMatchObject({ id: 'gpz/abc123/bay/001/001', type: 'BaySN' });
+    expect(resolved?.name).toContain('GPZ');
+    expect(resolved?.name).not.toContain('gpz/');
+  });
 });

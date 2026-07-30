@@ -29,6 +29,7 @@ import {
   computeFlowOverlayPlacements,
   computeOltcBadgePlacements,
   computeResultLabelPlacements,
+  contentBoundingBoxOf,
   layoutResultLabels,
   flowOverlayGeometry,
   formatFlowLabelPl,
@@ -616,9 +617,18 @@ function viewBoxOf(container: HTMLElement): string {
 }
 
 describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie zawsze LOD2)', () => {
-  it('lodOverride=0: viewBox startowy dopasowany do bboxa L0, RÓŻNY od dopasowania do L2 (dawny defekt „mały rysunek w rogu")', () => {
-    const bbox0 = boundingBoxOfRect(buildSceneV3(enm, 0).bbox);
-    const bbox2 = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
+  // K11-A (dyrektywa SLD-first 2026-07-30): domyślny CEL fitu to bbox TREŚCI
+  // sieci (`contentBoundingBoxOf` — elementy z ownerRef + rezerwy podpisów),
+  // nie pełny bbox sceny z meblami arkusza. INTENCJA testów bez zmian:
+  // lodOverride wybiera ŚWIAT (L0 ≠ L2), a fit celuje w treść tego świata.
+  const contentFitBbox = (lod: 0 | 2) => {
+    const scena = buildSceneV3(enm, lod);
+    return contentBoundingBoxOf(scena) ?? boundingBoxOfRect(scena.bbox);
+  };
+
+  it('lodOverride=0: viewBox startowy dopasowany do treści L0, RÓŻNY od dopasowania do L2 (dawny defekt „mały rysunek w rogu")', () => {
+    const bbox0 = contentFitBbox(0);
+    const bbox2 = contentFitBbox(2);
     const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
     const expectedFitToL0 = cameraViewBox(computeInitialCameraState(bbox0, viewportSize).transform, viewportSize);
     const expectedWrongFitToL2 = cameraViewBox(computeInitialCameraState(bbox2, viewportSize).transform, viewportSize);
@@ -630,8 +640,8 @@ describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie za
     expect(actual).not.toBe(expectedWrongFitToL2);
   });
 
-  it('lodOverride=2 (lub brak override — domyślny cel fitu = LOD2): viewBox dopasowany do bboxa L2, jak dawniej', () => {
-    const bbox2 = boundingBoxOfRect(buildSceneV3(enm, 2).bbox);
+  it('lodOverride=2 (lub brak override — domyślny cel fitu = LOD2): viewBox dopasowany do treści L2', () => {
+    const bbox2 = contentFitBbox(2);
     const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
     const expectedFitToL2 = cameraViewBox(computeInitialCameraState(bbox2, viewportSize).transform, viewportSize);
 

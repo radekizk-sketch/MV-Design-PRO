@@ -22,7 +22,7 @@ import { CaseBar } from './CaseBar';
 import { PanelLayout } from './PanelLayout';
 import { StatusBar } from './StatusBar';
 import { SpaceNav } from './SpaceNav';
-import { useShellStore, type BottomPanelTab } from './useShellStore';
+import { DEFAULT_LAYOUT, useShellStore, type BottomPanelTab } from './useShellStore';
 import { useThemeModeStore, applyThemeMode } from '../theme/themeMode';
 import { useShellCaseInfo, useShellStatusInfo, type BackendStatus } from './shellStatus';
 import { SPACES, type SpaceId } from './spaces';
@@ -118,10 +118,13 @@ export function AppShell({
     modelRevision,
   });
 
-  const leftWidth = layout?.leftWidth ?? 240;
-  const rightWidth = layout?.rightWidth ?? 320;
-  const leftCollapsed = layout?.leftCollapsed ?? false;
-  const rightCollapsed = layout?.rightCollapsed ?? false;
+  // K11-A: JEDNA prawda wartości domyślnych układu (DEFAULT_LAYOUT) — lokalne
+  // fallbacki rozjeżdżały się z magazynem (inspektor „otwarty" mimo domyślnego
+  // zwinięcia, bo brak wpisu przestrzeni omijał domyślne store'a).
+  const leftWidth = layout?.leftWidth ?? DEFAULT_LAYOUT.leftWidth;
+  const rightWidth = layout?.rightWidth ?? DEFAULT_LAYOUT.rightWidth;
+  const leftCollapsed = layout?.leftCollapsed ?? DEFAULT_LAYOUT.leftCollapsed;
+  const rightCollapsed = layout?.rightCollapsed ?? DEFAULT_LAYOUT.rightCollapsed;
 
   const [searchOpen, setSearchOpen] = useState(false);
 

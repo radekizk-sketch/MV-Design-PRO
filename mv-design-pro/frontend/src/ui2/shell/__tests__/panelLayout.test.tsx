@@ -63,7 +63,9 @@ describe('useShellStore — trwałość układu per przestrzeń (mock storage)',
     useShellStore.getState().resetLayout('projekt');
     const layout = useShellStore.getState().getLayout('projekt');
     expect(layout.leftWidth).toBe(LEFT_DEFAULT);
-    expect(layout.rightCollapsed).toBe(false);
+    // K11-A (SLD-first): domyślnie inspektor ZWINIĘTY — pusty panel nie zabiera
+    // przestrzeni roboczej (otwiera go zawartość: selekcja/powierzchnia panelowa).
+    expect(layout.rightCollapsed).toBe(true);
   });
 });
 
@@ -98,13 +100,15 @@ describe('AppShell — zwijanie/rozwijanie paneli', () => {
     expect(container.querySelector('.mvd-rail')).not.toBeNull();
   });
 
-  it('przycisk i skrót Ctrl+I chowają prawy panel (inspektor)', () => {
+  it('przycisk i skrót Ctrl+I przełączają prawy panel (inspektor)', () => {
+    // K11-A: start ZWINIĘTY (pusty inspektor nie zabiera przestrzeni) —
+    // intencja testu bez zmian: przycisk i Ctrl+I przełączają widoczność.
     render(<AppShell />);
-    expect(screen.getByTestId('mvd-inspector')).not.toHaveAttribute('hidden');
-    fireEvent.click(screen.getByTestId('mvd-toggle-right'));
     expect(screen.getByTestId('mvd-inspector')).toHaveAttribute('hidden');
-    fireEvent.keyDown(window, { key: 'i', ctrlKey: true });
+    fireEvent.click(screen.getByTestId('mvd-toggle-right'));
     expect(screen.getByTestId('mvd-inspector')).not.toHaveAttribute('hidden');
+    fireEvent.keyDown(window, { key: 'i', ctrlKey: true });
+    expect(screen.getByTestId('mvd-inspector')).toHaveAttribute('hidden');
   });
 
   it('„Przywróć układ domyślny" z menu Widok resetuje szerokość', () => {
