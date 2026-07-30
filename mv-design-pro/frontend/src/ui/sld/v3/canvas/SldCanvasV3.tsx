@@ -141,6 +141,12 @@ const FAULT_ARROW_MIN_RUN = 2 * FLOW_ARROW_LENGTH;
  *  jeden „tick" typowej myszy, deltaY≈100, daje ~16% zmiany skali). */
 const WHEEL_ZOOM_SENSITIVITY = 0.0015;
 
+/** K11-B: odsunięcie komunikatu o ukrytych opisach od dolnej krawędzi widoku
+ *  [px ekranu]. Wartość = pas zajmowany przez doki dolne kanwy (`bottom-3`
+ *  = 12 px marginesu + przycisk `h-7` = 28 px), żeby komunikat nie chował się
+ *  pod przyciskiem „Warstwy"/„Dowody". Patrz render niżej. */
+const HIDDEN_LABELS_HINT_BOTTOM_PX = 52;
+
 /** Karta S8 (P2, płynność przejść LOD): czas trwania crossfade warstwy detalu
  *  przy zmianie LOD [s] — wyłącznie prezentacyjne, zero wpływu na determinizm
  *  danych (natywny SMIL `<animate>`, markup statyczny niezależny od czasu; ta
@@ -2680,13 +2686,20 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
        * warstwy ekranu. Kompensujemy skalę kamery: rozmiar pisma i marginesy
        * dzielimy przez `scale`, a kotwiczymy w rogu WIDOKU (prawy dolny róg
        * viewBoxu), nie arkusza. Efekt: stała wielkość na ekranie niezależnie od
-       * zoomu, dokładnie jak pasek stanu. */}
+       * zoomu, dokładnie jak pasek stanu.
+       *
+       * K11-B: odsunięty od dolnej krawędzi o WYSOKOŚĆ PASA DOKÓW
+       * (`HIDDEN_LABELS_HINT_BOTTOM_PX`). Dawne 12 px kotwiczyło komunikat
+       * DOKŁADNIE pod przyciskiem „Warstwy" (dok prawy-dolny: `bottom-3` +
+       * przycisk h-7 ⇒ pas 40 px) — na zrzucie odbiorczym K11-B połowa zdania
+       * była zasłonięta. Komunikat o UKRYTEJ treści, który sam jest zasłonięty,
+       * nie informuje o niczym. */}
       {hiddenUnreadableLabels > 0 && Number.isFinite(camera.transform.scale) && camera.transform.scale > 0 && (
         <text
           data-testid="sld-v3-hidden-labels-hint"
           data-hidden-count={hiddenUnreadableLabels}
-          x={screenToWorld({ x: width - 12, y: height - 12 }, camera.transform).x}
-          y={screenToWorld({ x: width - 12, y: height - 12 }, camera.transform).y}
+          x={screenToWorld({ x: width - 12, y: height - HIDDEN_LABELS_HINT_BOTTOM_PX }, camera.transform).x}
+          y={screenToWorld({ x: width - 12, y: height - HIDDEN_LABELS_HINT_BOTTOM_PX }, camera.transform).y}
           textAnchor="end"
           fontFamily="sans-serif"
           fontSize={12 / camera.transform.scale}
