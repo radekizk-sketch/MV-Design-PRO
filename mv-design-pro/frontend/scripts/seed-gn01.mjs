@@ -298,10 +298,11 @@ async function main() {
               transformer: {
                 transformer_catalog_ref: 'tr-sn-nn-15-04-1000kva-dyn11',
               },
+              // B-12: aparat KAŻDEGO pola SN wskazany JAWNIE z katalogu APARAT_SN.
               sn_fields: [
-                { field_role: 'LINIA_IN', bay_template_ref: 'tpl-line-in' },
-                { field_role: 'LINIA_OUT', bay_template_ref: 'tpl-line-out' },
-                { field_role: 'TRANSFORMATOROWE', bay_template_ref: 'tpl-tr' },
+                { field_role: 'LINIA_IN', bay_template_ref: 'tpl-line-in', apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a' },
+                { field_role: 'LINIA_OUT', bay_template_ref: 'tpl-line-out', apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a' },
+                { field_role: 'TRANSFORMATOROWE', bay_template_ref: 'tpl-tr', apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a' },
               ],
             },
           },

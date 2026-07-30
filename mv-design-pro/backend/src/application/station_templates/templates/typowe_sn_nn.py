@@ -10,6 +10,7 @@ from application.station_templates._choices import (
     CT_OPTIONS,
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
+    SN_APPARATUS_OPTIONS,
     TR_OPTIONS_LARGE,
     TR_OPTIONS_MEDIUM,
     TR_OPTIONS_SMALL,
@@ -63,6 +64,7 @@ def _typowa(
             ),
             sn_bay_roles=_base_bay_roles(),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
+            sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
             nn_feeders_count=TemplateParamInt(
                 default=default_feeders,
                 min_value=1,

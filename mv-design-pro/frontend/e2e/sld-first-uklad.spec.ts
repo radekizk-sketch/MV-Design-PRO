@@ -112,6 +112,8 @@ async function utworzProjektISiec(request: APIRequestContext): Promise<{
   const segmentRefs = op.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
   expect(segmentRefs.length).toBeGreaterThan(0);
   await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
     insert_at: { value: 0.5 },

@@ -102,6 +102,8 @@ def test_dry_run_param_accepted_returns_preview() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja Preview", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
             "dry_run": True,
@@ -129,6 +131,8 @@ def test_dry_run_does_not_mutate_original() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "X", "station_type": "terminal"},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
             "nn_voltage_kv": 0.4,
@@ -163,6 +167,8 @@ def test_rejects_endpoint_not_found() -> None:
         snap,
         {
             "endpoint_bus_ref": "bus/nonexistent",
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "X", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
         },
@@ -191,6 +197,8 @@ def test_rejects_endpoint_not_free() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "X", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
         },
@@ -204,6 +212,8 @@ def test_rejects_invalid_station_type() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "X", "station_type": "garbage_type"},
             "nn_voltage_kv": 0.4,
         },
@@ -217,6 +227,8 @@ def test_rejects_zero_nn_voltage() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "X", "station_type": "terminal"},
             "nn_voltage_kv": 0.0,
         },
@@ -235,6 +247,8 @@ def test_minimal_station_creates_substation_and_bay_in() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja Końcowa", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
         },
@@ -263,6 +277,8 @@ def test_minimal_station_does_not_create_transformer() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
         },
@@ -284,6 +300,8 @@ def test_full_station_creates_transformer_and_nn_bus() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja Pełna", "station_type": "terminal"},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
             "nn_voltage_kv": 0.4,
@@ -324,6 +342,8 @@ def test_endpoint_append_materializes_requested_station_sn_fields_without_splitt
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "run_ref": snap.get("corridors", [{}])[-1].get("ref_id"),
             "station": {
                 "name": "Stacja Przelotowa",
@@ -443,6 +463,8 @@ def test_continue_trunk_from_appended_station_uses_line_field_terminal_not_stati
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "run_ref": snap.get("corridors", [{}])[-1].get("ref_id"),
             "station": {
                 "name": "Stacja Przelotowa 2",
@@ -534,6 +556,8 @@ def test_endpoint_append_updates_existing_line_run_with_station() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "run_ref": run_ref,
             "station": {"name": "Stacja W Ciągu", "station_type": "inline"},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
@@ -559,6 +583,8 @@ def test_deterministic_seed_same_input_same_id() -> None:
     snap, endpoint = _build_gpz_with_endpoint()
     payload = {
         "endpoint_bus_ref": endpoint,
+        # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+        "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "station": {"name": "DET Stacja", "station_type": "terminal"},
         "nn_voltage_kv": 0.4,
     }
@@ -585,6 +611,8 @@ def test_endpoint_bus_retagged_to_substation_bus() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "X", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
         },
@@ -602,6 +630,8 @@ def test_station_appended_on_endpoint_event_emitted() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "X", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
         },
@@ -624,6 +654,8 @@ def test_addytywna_operacja_nie_modyfikuje_innych_stacji() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "X", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
         },
@@ -648,6 +680,8 @@ def test_dispatcher_routes_append_station_on_endpoint() -> None:
         "append_station_on_endpoint",
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Disp", "station_type": "terminal"},
             "nn_voltage_kv": 0.4,
         },
@@ -700,6 +734,8 @@ def test_endpoint_append_pv_nn_block_materializes_source_and_nn_fields() -> None
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja PV append", "station_type": "terminal"},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
             "nn_voltage_kv": 0.4,
@@ -758,6 +794,8 @@ def test_endpoint_append_nn_earthing_materializes_neutral_grounding() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja uziem append", "station_type": "terminal"},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
             "nn_voltage_kv": 0.4,
@@ -790,6 +828,8 @@ def test_endpoint_append_station_auxiliary_materializes_nn_load() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja PW append", "station_type": "terminal"},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
             "nn_voltage_kv": 0.4,
@@ -824,6 +864,8 @@ def test_endpoint_append_parallel_transformers_aggregate_impedance() -> None:
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja 2xTR append", "station_type": "terminal"},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630, "n_parallel": 2},
             "nn_voltage_kv": 0.4,
@@ -851,6 +893,8 @@ def test_endpoint_append_without_nn_earthing_leaves_transformer_neutral_unset() 
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja bez uziem", "station_type": "terminal"},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
             "nn_voltage_kv": 0.4,
@@ -876,6 +920,8 @@ def test_endpoint_append_load_nn_block_creates_fields_without_generator() -> Non
         snap,
         {
             "endpoint_bus_ref": endpoint,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Stacja LOAD append", "station_type": "terminal"},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
             "nn_voltage_kv": 0.4,

@@ -9,6 +9,7 @@ from application.station_templates._choices import (
     DER_PV_NN,
     NN_CB_OPTIONS,
     PROT_FEEDER_OPTIONS,
+    SN_APPARATUS_OPTIONS,
     TR_OPTIONS_SMALL,
     VT_OPTIONS,
 )
@@ -46,6 +47,7 @@ def _prosument(
             ),
             sn_bay_roles=(BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),),
             sn_bay_protection_options=PROT_FEEDER_OPTIONS,
+            sn_bay_apparatus_options=SN_APPARATUS_OPTIONS,
             nn_feeders_count=TemplateParamInt(
                 default=2, min_value=1, max_value=4, label_pl="Liczba odpływów nN"
             ),

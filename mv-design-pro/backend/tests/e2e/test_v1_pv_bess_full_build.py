@@ -151,6 +151,8 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
         "insert_station_on_segment_sn",
         {
             "segment_ref": seg_for_station_1,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station_type": "B",
             "insert_at": {"value": 0.4},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "Stacja-1"},
@@ -176,6 +178,8 @@ def _build_full_pv_bess_network() -> dict[str, Any]:
         "insert_station_on_segment_sn",
         {
             "segment_ref": seg_for_station_2,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4, "name": "Stacja-2"},

@@ -128,6 +128,13 @@ class TemplateSchema:
     )
     sn_bay_roles: tuple[BayRoleSpec, ...] = ()
     sn_bay_protection_options: tuple[ProtectionRelaySpec, ...] = ()
+    sn_bay_apparatus_options: tuple[CatalogChoice, ...] = ()
+    """Aparatura pól SN dostępna w szablonie (APARAT_SN) — B-12.
+
+    Wskazanie aparatu należy do szablonu/projektanta; operacja domenowa NIE
+    dobiera go sama. Rola z własnymi `apparatus_options` ma pierwszeństwo przed
+    tą listą wspólną. Pusta lista ⇒ szablon nie da się zastosować bez jawnego
+    `params_override['sn_bay_apparatus_ref']` (jawny błąd, nie domysł)."""
 
     # nN side
     nn_feeders_count: TemplateParamInt = field(
@@ -207,6 +214,7 @@ def _schema_to_dict(schema: TemplateSchema) -> dict:
         "sn_bay_protection_options": [
             _protection_to_dict(p) for p in schema.sn_bay_protection_options
         ],
+        "sn_bay_apparatus_options": [_choice_to_dict(c) for c in schema.sn_bay_apparatus_options],
         "nn_feeders_count": _param_int_to_dict(schema.nn_feeders_count),
         "nn_feeder_cb_options": [_choice_to_dict(c) for c in schema.nn_feeder_cb_options],
         "nn_load_default_kw": _param_float_to_dict(schema.nn_load_default_kw),

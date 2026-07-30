@@ -74,6 +74,15 @@ def apply_template_to_case(
     )
 
     sn_bay_roles = _resolve_sn_bay_roles(template, sn_bays_count)
+    # B-12: aparat pola SN pochodzi z JAWNEGO wskazania (override projektanta →
+    # opcje roli → wspólne opcje szablonu). Brak wskazania = błąd szablonu,
+    # nigdy zaszyty typ.
+    sn_field_specs = _resolve_sn_field_specs(
+        template,
+        bay_roles=sn_bay_roles,
+        overrides=overrides,
+        catalog_profile=catalog_profile,
+    )
     cb_catalog = overrides.get("nn_feeder_cb_ref") or _cascade_manufacturer_choice(
         template.schema.nn_feeder_cb_options, catalog_profile
     )
@@ -102,7 +111,7 @@ def apply_template_to_case(
         "transformer": {
             "transformer_catalog_ref": transformer_ref,
         },
-        "sn_fields": sn_bay_roles,
+        "sn_fields": sn_field_specs,
         "nn_block": {
             "outgoing_feeders_nn_count": max(0, nn_feeders_requested),
             "outgoing_feeders_nn": nn_feeder_specs,
@@ -556,6 +565,65 @@ def _converter_apparent_power_mva(catalog_ref: object) -> float | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed > 0 else None
+
+
+#: Kody ról pól SN szablonu → role kontraktu operacji `insert_station_on_segment_sn`
+#: (te same pary co `_role_str_map` w `enm.domain_operations`; role spoza mapy
+#: przechodzą bez zmiany — operacja traktuje je jak pole odpływowe).
+_TEMPLATE_ROLE_TO_FIELD_ROLE = {
+    "IN": "LINIA_IN",
+    "OUT": "LINIA_OUT",
+    "FEEDER": "LINIA_ODG",
+    "TR": "TRANSFORMATOROWE",
+    "COUPLER": "SPRZEGLO",
+}
+
+
+def _resolve_sn_field_specs(
+    template: StationTemplate,
+    *,
+    bay_roles: list[str],
+    overrides: dict[str, Any],
+    catalog_profile: str | None,
+) -> list[dict[str, Any]]:
+    """Pola SN szablonu z JAWNYM aparatem per pole (B-12).
+
+    Kolejność wyboru aparatu: `params_override['sn_bay_apparatus_ref']` →
+    `apparatus_options` roli (kaskada producenta) → wspólne
+    `sn_bay_apparatus_options` szablonu (kaskada producenta). Brak wskazania ⇒
+    `TemplateApplyError` — operacja domenowa nie zgaduje aparatu.
+    """
+    override_ref = overrides.get("sn_bay_apparatus_ref")
+    role_specs = {r.role: r for r in template.schema.sn_bay_roles}
+    specs: list[dict[str, Any]] = []
+    for role in bay_roles:
+        apparatus_ref: str | None = None
+        if isinstance(override_ref, str) and override_ref.strip():
+            apparatus_ref = override_ref.strip()
+        else:
+            role_spec = role_specs.get(role)
+            role_options = getattr(role_spec, "apparatus_options", ()) if role_spec else ()
+            apparatus_ref = _cascade_manufacturer_choice(
+                role_options, catalog_profile
+            ) or _cascade_manufacturer_choice(
+                template.schema.sn_bay_apparatus_options, catalog_profile
+            )
+        if not apparatus_ref:
+            raise TemplateApplyError(
+                code="template.sn_bay_apparatus_missing",
+                message_pl=(
+                    f"Szablon '{template.id}' nie wskazuje aparatu dla pola SN o roli "
+                    f"'{role}'. Uzupełnij listę aparatury szablonu albo podaj "
+                    "'sn_bay_apparatus_ref' w parametrach."
+                ),
+            )
+        specs.append(
+            {
+                "field_role": _TEMPLATE_ROLE_TO_FIELD_ROLE.get(role, role),
+                "apparatus_catalog_ref": apparatus_ref,
+            }
+        )
+    return specs
 
 
 def _resolve_sn_bay_roles(template: StationTemplate, count: int) -> list[str]:

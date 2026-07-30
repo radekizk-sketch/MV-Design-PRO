@@ -320,6 +320,8 @@ test('real backend SLD editor flow: source -> trunk -> station -> branch -> upda
   await capture(page, testInfo, '02b-segment-catalog-reassigned');
 
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[1],
     station_type: 'B',
     insert_at: { value: 0.5 },
@@ -450,6 +452,8 @@ test('real backend supports flexible operation order combinations', async ({ pag
   const targetSegment = snapshot.snapshot?.corridors?.[0]?.ordered_segment_refs?.[1];
   expect(targetSegment).toBeTruthy();
   await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: targetSegment,
     station_type: 'B',
     insert_at: { value: 0.45 },

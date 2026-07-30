@@ -356,6 +356,11 @@ class SNFieldSpec(_FrozenBase):
     catalog_bindings: CatalogBindings | None = None
     """Opcjonalne powiązania katalogowe aparatury."""
 
+    apparatus_catalog_ref: str | None = None
+    """Aparat pola z katalogu APARAT_SN (B-12) — wskazanie WYMAGANE przez operację
+    (albo wspólne `field_apparatus_catalog_ref` payloadu). Operacja nie dobiera
+    aparatu samodzielnie: brak wskazania kończy się błędem walidacji."""
+
     cell_type: (
         Literal[
             "SDC",
@@ -772,6 +777,10 @@ class InsertStationOnSegmentSNPayload(_FrozenBase):
 
     sn_fields: list[SNFieldSpec]
     """Lista pól SN rozdzielnicy."""
+
+    field_apparatus_catalog_ref: str | None = None
+    """Wspólny aparat pól SN z katalogu APARAT_SN (B-12) — używany, gdy pole nie
+    ma własnego `apparatus_catalog_ref`."""
 
     transformer: TransformerSpec
     """Specyfikacja transformatora SN/nN."""

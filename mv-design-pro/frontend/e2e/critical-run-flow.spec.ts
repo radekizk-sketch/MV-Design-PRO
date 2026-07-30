@@ -184,6 +184,8 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
 
   // Krok 3: Wstawienie stacji SN/nN
   op = await executeDomainOp(request, caseId, 'insert_station_on_segment_sn', {
+    // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
     insert_at: { value: 0.5 },

@@ -3947,6 +3947,43 @@ def _apply_transformer_parallelism(
         tr_data["n_parallel"] = n
 
 
+def _sn_field_apparatus_catalog_ref(
+    field_spec: dict[str, Any],
+    payload_default_ref: str | None,
+) -> str | None:
+    """Referencja katalogowa aparatu pola SN — WYŁĄCZNIE z jawnego wskazania (B-12).
+
+    Kolejność: `apparatus_catalog_ref` pola → wspólny
+    `field_apparatus_catalog_ref` payloadu. Brak obu ⇒ ``None`` i JAWNY błąd
+    walidacji u wołającego. Dawny zaszyty typ wyłącznika (fallback) był
+    fabrykacją decyzji projektowej — aparat wybiera projektant z katalogu
+    APARAT_SN, nie operacja domenowa.
+    """
+    raw = field_spec.get("apparatus_catalog_ref")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return payload_default_ref
+
+
+def _payload_field_apparatus_catalog_ref(payload: dict[str, Any]) -> str | None:
+    """Wspólna referencja aparatu pól SN z payloadu operacji (B-12)."""
+    raw = payload.get("field_apparatus_catalog_ref")
+    if isinstance(raw, str) and raw.strip():
+        return raw.strip()
+    return None
+
+
+def _field_apparatus_missing_error(*, index: int, field_role: str, code: str) -> dict[str, Any]:
+    """Jawny błąd walidacji: pole SN bez wskazanego aparatu (B-12)."""
+    rola = field_role.strip() or "bez roli"
+    return _error_response(
+        f"Pole SN nr {index + 1} (rola: {rola}) nie ma wskazanego aparatu. "
+        "Wskaż pozycję katalogu APARAT_SN w polu 'apparatus_catalog_ref' tego pola "
+        "albo wspólną dla wszystkich pól w 'field_apparatus_catalog_ref'.",
+        code,
+    )
+
+
 def _materialize_station_auxiliary_load(
     new_enm: dict[str, Any],
     payload: dict[str, Any],
@@ -4276,6 +4313,18 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 ["LINIA_IN", "TRANSFORMATOROWE"],
             )
         ]
+    # B-12: aparat KAŻDEGO pola SN musi być wskazany jawnie (katalog APARAT_SN).
+    # Walidacja przed jakąkolwiek zmianą modelu — brak referencji kończy operację
+    # błędem ze wskazaniem pola, nigdy domysłem.
+    payload_field_apparatus_ref = _payload_field_apparatus_catalog_ref(payload)
+    for idx, field_spec in enumerate(sn_fields):
+        if _sn_field_apparatus_catalog_ref(field_spec, payload_field_apparatus_ref) is None:
+            return _field_apparatus_missing_error(
+                index=idx,
+                field_role=str(field_spec.get("field_role", "")),
+                code="station.insert.field_apparatus_ref_missing",
+            )
+
     # The semantic station_type stored in substation record
     substation_semantic_type = substation_type_map.get(station_type_raw, "mv_lv")
     station_display_name = (
@@ -4578,11 +4627,15 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         )
         terminal_bus_ref = _make_id("stn", station_seed, f"sn_field_terminal/{idx:03d}")
         breaker_ref = _make_id("stn", station_seed, f"sn_field_breaker/{idx:03d}")
-        breaker_catalog_ref = (
-            field_spec.get("apparatus_catalog_ref")
-            or payload.get("field_apparatus_catalog_ref")
-            or "sw-cb-abb-vd4-17kv-630a"
+        breaker_catalog_ref = _sn_field_apparatus_catalog_ref(
+            field_spec, payload_field_apparatus_ref
         )
+        if breaker_catalog_ref is None:
+            return _field_apparatus_missing_error(
+                index=idx,
+                field_role=field_role,
+                code="station.insert.field_apparatus_ref_missing",
+            )
 
         result = create_node(
             new_enm,
@@ -4630,7 +4683,12 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                     "render_on_sld": False,
                     "show_in_project_tree": False,
                     "requires_catalog_binding": False,
-                    "catalog_message": "Aparat pola SN dobrany z katalogu APARAT_SN.",
+                    # Komunikat opisuje STAN RZECZYWISTY (B-12): aparat pochodzi
+                    # z jawnego wskazania projektanta, nie z domyślnego typu.
+                    "catalog_message": (
+                        "Aparat pola SN z jawnie wskazanej pozycji katalogu APARAT_SN: "
+                        f"{breaker_catalog_ref}."
+                    ),
                 },
             },
         )
@@ -7250,6 +7308,20 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         if equipment_refs:
             return None, equipment_refs
 
+        # B-12: aparat pola SN WYŁĄCZNIE z jawnego wskazania (katalog APARAT_SN).
+        apparatus_catalog_ref = _sn_field_apparatus_catalog_ref(
+            spec, _payload_field_apparatus_catalog_ref(payload)
+        )
+        if apparatus_catalog_ref is None:
+            return (
+                _field_apparatus_missing_error(
+                    index=ordinal - 1,
+                    field_role=field_role,
+                    code="station.append.field_apparatus_ref_missing",
+                ),
+                [],
+            )
+
         terminal_ref = _make_id("bus", seed, f"sn_field_terminal/{ordinal:03d}")
         apparatus_ref = _make_id("stn", seed, f"sn_field_apparatus/{ordinal:03d}")
         terminal_result = create_node(
@@ -7290,11 +7362,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 "status": "closed",
                 "r_ohm": 0.0,
                 "x_ohm": 0.0,
-                "catalog_ref": (
-                    spec.get("apparatus_catalog_ref")
-                    or payload.get("field_apparatus_catalog_ref")
-                    or "sw-cb-abb-vd4-17kv-630a"
-                ),
+                "catalog_ref": apparatus_catalog_ref,
                 "catalog_namespace": "APARAT_SN",
                 "tags": ["station_field_device"],
                 "meta": {
@@ -7306,7 +7374,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                     "render_on_sld": False,
                     "show_in_project_tree": False,
                     "requires_catalog_binding": False,
-                    "catalog_message": "Aparat pola SN dobrany z katalogu APARAT_SN.",
+                    # Komunikat opisuje STAN RZECZYWISTY (B-12).
+                    "catalog_message": (
+                        "Aparat pola SN z jawnie wskazanej pozycji katalogu APARAT_SN: "
+                        f"{apparatus_catalog_ref}."
+                    ),
                 },
             },
         )

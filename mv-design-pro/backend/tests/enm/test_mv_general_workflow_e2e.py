@@ -69,6 +69,8 @@ def op(snap: dict, name: str, payload: dict) -> dict:
 
 
 _STATION_CATALOG_PAYLOAD = {
+    # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+    "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
     "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
     "station": {"nn_voltage_kv": 0.4},
     "nn_voltage_kv": 0.4,
@@ -908,6 +910,8 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "insert_station_on_segment_sn",
             {
                 "segment_id": seg_id,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "name": "Stacja PV za transformatorem",
                 "station_type": "terminal",
                 "station": {"nn_voltage_kv": 0.4},

@@ -82,6 +82,8 @@ async function buildProject() {
     segment_id: segRefs[segRefs.length - 1], station_type: 'B', insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
     sn_fields: ['IN', 'OUT', 'FEEDER'],
+    // B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
     transformer: { create: true, catalog_binding: bind('TRAFO_SN_NN', TRAFO_ID) },
   });
   const station = (op.snapshot?.substations ?? []).find((s) => s.ref_id.includes('/station'));

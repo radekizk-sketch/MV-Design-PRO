@@ -84,6 +84,8 @@ def test_dry_run_returns_preview_metadata() -> None:
         "insert_station_on_segment_sn",
         {
             "segment_id": seg_id,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "dry_run": True,
             "station": {"name": "Stacja Preview", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
@@ -116,6 +118,8 @@ def test_dry_run_does_not_mutate_original_enm() -> None:
         "insert_station_on_segment_sn",
         {
             "segment_id": seg_id,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "dry_run": True,
             "station": {"name": "Stacja Preview", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
@@ -137,6 +141,8 @@ def test_dry_run_preview_returns_no_snapshot() -> None:
         "insert_station_on_segment_sn",
         {
             "segment_id": seg_id,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "dry_run": True,
             "station": {"name": "X", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
@@ -153,6 +159,8 @@ def test_apply_inserts_station_with_id_matching_preview() -> None:
     snap, seg_id = _build_gpz_with_segment()
     payload_base = {
         "segment_id": seg_id,
+        # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+        "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "station": {"name": "Stacja DET", "station_type": "inline", "nn_voltage_kv": 0.4},
         "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
         "nn_voltage_kv": 0.4,
@@ -193,6 +201,8 @@ def test_apply_creates_changes_consistent_with_preview() -> None:
     snap, seg_id = _build_gpz_with_segment()
     payload_base = {
         "segment_id": seg_id,
+        # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+        "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
         "station": {"name": "Stacja CHANGES", "station_type": "inline", "nn_voltage_kv": 0.4},
         "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
         "nn_voltage_kv": 0.4,
@@ -225,6 +235,8 @@ def test_apply_without_dry_run_default_unchanged_behavior() -> None:
         "insert_station_on_segment_sn",
         {
             "segment_id": seg_id,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station": {"name": "Apply", "station_type": "inline", "nn_voltage_kv": 0.4},
             "transformer": {"transformer_catalog_ref": CATALOG_TRAFO_630},
             "nn_voltage_kv": 0.4,

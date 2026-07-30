@@ -63,9 +63,11 @@ def preview_station_template(
         raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
 
     from application.station_templates.apply import (
+        TemplateApplyError,
         _cascade_manufacturer_choice,
         _first_default_choice,
         _resolve_sn_bay_roles,
+        _resolve_sn_field_specs,
         _resolve_station_type,
         _resolve_transformer_ref_for_template,
     )
@@ -118,6 +120,20 @@ def preview_station_template(
             }
         )
 
+    bay_roles = _resolve_sn_bay_roles(template, sn_bays_count)
+    # B-12: podgląd pokazuje JAWNIE dobrany aparat per pole (albo błąd szablonu).
+    try:
+        sn_field_specs = _resolve_sn_field_specs(
+            template,
+            bay_roles=bay_roles,
+            overrides=dict(overrides),
+            catalog_profile=profile,
+        )
+    except TemplateApplyError as exc:
+        raise HTTPException(
+            status_code=422, detail={"code": exc.code, "message_pl": exc.message_pl}
+        ) from exc
+
     return {
         "template_id": template.id,
         "template_name_pl": template.name_pl,
@@ -129,7 +145,8 @@ def preview_station_template(
             "transformer_ref": transformer_ref,
             "transformer_count": transformer_count,
             "sn_bays_count": sn_bays_count,
-            "sn_bay_roles": _resolve_sn_bay_roles(template, sn_bays_count),
+            "sn_bay_roles": bay_roles,
+            "sn_fields": sn_field_specs,
             "sn_manufacturer": sn_manufacturer,
             "nn_feeders_count": nn_feeders_count,
             "nn_feeder_cb_ref": cb_catalog,

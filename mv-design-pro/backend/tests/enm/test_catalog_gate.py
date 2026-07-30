@@ -216,6 +216,8 @@ class TestCatalogGateInsertStation:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": seg_ref,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "A",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -242,6 +244,8 @@ class TestCatalogGateInsertStation:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": seg_ref,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "A",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -269,6 +273,8 @@ class TestCatalogGateInsertStation:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": seg_ref,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "A",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.69},
@@ -296,6 +302,8 @@ class TestCatalogGateInsertStation:
             op_name="insert_station_on_segment_sn",
             payload={
                 "segment_ref": seg_ref,
+                # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
                 "station_type": "A",
                 "insert_at": {"value": 0.5},
                 "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
@@ -784,6 +792,8 @@ def test_catalog_gate_rejects_malformed_bindings(malformed_binding):
         op_name="insert_station_on_segment_sn",
         payload={
             "segment_ref": seg_ref,
+            # B-12: aparat pól SN wskazany JAWNIE (operacja nie dobiera go sama).
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
             "station_type": "A",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
