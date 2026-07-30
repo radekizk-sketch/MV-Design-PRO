@@ -35,7 +35,10 @@ BACKEND = ROOT / "backend"
 # K7-A (2026-07-29): naprawa 15 bledow u zrodla w dotknietych rendererach PDF
 # (protection_report_pdf: typ colors list[str | None]; arc_flash_report: typowana
 # lista energii) — prog obnizony 273->258, 67->65.
-BASELINE_ERRORS = 258
+# K14 (2026-07-30): rozdzielenie rozplywu galeziowego od artefaktu biegu wymusilo
+# JAWNE typy wejscia projekcji rozplywu (`_sc_rozplyw_galeziowy`, `_wpis_grafu`,
+# `_odtworz_wklady_galeziowe`) — 4 bledy mniej u zrodla, prog obnizony 258->254.
+BASELINE_ERRORS = 254
 BASELINE_FILES = 65
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
