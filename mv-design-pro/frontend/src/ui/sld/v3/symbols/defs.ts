@@ -199,6 +199,42 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
   ], 'Miernik'),
 };
 
+/**
+ * K11-B (karta K11-B §0.2, dyrektywa właściciela z oceny ekranu 2/10 —
+ * „minimalny rozmiar renderowania symboli"): PRÓG ROZPOZNAWALNOŚCI symbolu w
+ * pikselach EKRANU.
+ *
+ * Odpowiednik `MIN_READABLE_LABEL_SCREEN_PX` (`core/text.ts`, 6 px) dla
+ * rysunku aparatu. Wyższy niż próg pisma, bo aparat komunikuje TREŚĆ
+ * KSZTAŁTEM (przerwa styku odłącznika, poprzeczka rozłącznika, prostokąt
+ * wyłącznika — `symbols/glyphs.tsx`): pismo poniżej progu jest nieczytelne,
+ * ale kształt poniżej progu jest MYLĄCY — odłącznik i wyłącznik zlewają się w
+ * tę samą plamkę, a projektant czyta z rysunku aparat, którego tam nie ma.
+ * 8 px = dwukrotność siatki GRID w skali 1:1; przy najmniejszym gabarycie
+ * biblioteki (16 px świata) odpowiada skali 0,5.
+ *
+ * Egzekwowane STRUKTURALNIE przez progi LOD kamery (`canvas/camera.ts`
+ * `DEFAULT_LOD_THRESHOLDS`), NIE przez skalowanie glifu: poniżej skali, przy
+ * której aparat schodzi pod ten próg, kamera przełącza REPREZENTACJĘ na
+ * zgrubniejszą (stacja jako mini-RMU 48 px zamiast rozwiniętych pól), zamiast
+ * rysować ten sam glif mniejszy. Dowód: `canvas/__tests__/minSymbolSize.contract.test.ts`.
+ */
+export const MIN_SYMBOL_SCREEN_PX = 8;
+
+/**
+ * Najmniejszy gabaryt (min z szerokości i wysokości) w zbiorze symboli —
+ * JEDNA prawda pomiaru dla progu wyżej i dla testu kontraktowego. Pusty zbiór
+ * ⇒ `Infinity` (brak symboli nie jest naruszeniem progu).
+ */
+export function smallestSymbolExtent(ids: Iterable<SymbolId>): number {
+  let min = Infinity;
+  for (const id of ids) {
+    const def = SYMBOL_DEFS[id];
+    min = Math.min(min, def.width, def.height);
+  }
+  return min;
+}
+
 /** Szyna zbiorcza — długość z treści (P1), więc fabryka, nie stała definicja. */
 export interface BusbarDef {
   readonly length: number;

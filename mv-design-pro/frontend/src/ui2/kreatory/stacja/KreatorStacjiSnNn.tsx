@@ -720,8 +720,10 @@ export function KreatorStacjiSnNn() {
             if (odpowiedz) return odpowiedz;
             // Brak odpowiedzi = błąd transportu/wersji snapshotu zapisany w store —
             // pokazujemy komunikat backendu zamiast ogólnego „brak odpowiedzi".
+            // Jawny wariant `BladTransportuKroku` (`stacjaSekwencja.ts`) zamiast
+            // fabrykowania odpowiedzi domenowej z jednym polem (naprawa TS2352).
             const bladStore = useSnapshotStore.getState().error;
-            return bladStore ? ({ error: bladStore } as typeof odpowiedz) : odpowiedz;
+            return bladStore ? { bladTransportu: bladStore } : null;
           });
           if (wynik.bladOperacji) {
             // Stacja JEST zapisana — komunikat mówi dokładnie, co się nie udało.

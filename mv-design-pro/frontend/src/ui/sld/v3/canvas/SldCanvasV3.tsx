@@ -260,6 +260,15 @@ export interface SldCanvasV3Props {
    *  'arkusz' = pełny bbox sceny (rama rysunkowa z tabliczką) — jawna akcja
    *  widoku. Geometria sceny NIETKNIĘTA — zmienia się wyłącznie viewBox. */
   readonly fitTarget?: 'tresc' | 'arkusz';
+  /** K11-B (karta K11-B §0.1, minimapa): ŻĄDANIE PRZENIESIENIA KADRU na punkt
+   *  świata (współrzędne w świecie AKTUALNEGO LOD kamery — tym samym, w którym
+   *  liczony jest `viewBox`, patrz `canvas/minimap.ts`). `seq` (monotoniczny
+   *  licznik wołającego) odróżnia kolejne żądania o TYM SAMYM punkcie —
+   *  wzorzec identyczny z `fitSignal` wyżej: kamera zostaje stanem wewnętrznym,
+   *  wołający nie zna transformu, tylko żąda przeniesienia. Akcja `'center'`
+   *  (`camera.ts`) jest CZYSTĄ translacją: skala i LOD nietknięte, geometria
+   *  sceny nietknięta. Brak propa = zachowanie jak dotychczas. */
+  readonly centerRequest?: { readonly x: number; readonly y: number; readonly seq: number } | null;
   /** Karta S8 (płynność przejść LOD, P2): włącza krótki crossfade warstwy
    *  detalu przy ZMIANIE LOD (wejście nowego szczegółu z opacity 0→1, natywne
    *  SVG `<animate>`, SMIL — wzorzec repo, patrz znacznik pulse niżej; zero
@@ -2047,7 +2056,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const {
     snapshot, width, height, overlay, onElementClick, onElementDoubleClick, onElementContextMenu, lodOverride,
     layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true, fitSignal,
-    fitTarget = 'tresc',
+    fitTarget = 'tresc', centerRequest,
   } = props;
 
   // F8a — ROZSTRZYGNIĘCIE k4/k3 (REBUILD_PLAN_V3 §F8, SLD_V3_ACCEPTANCE.md §3):
@@ -2152,6 +2161,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint });
     // Wyłącznie sygnał steruje tym efektem — refit czyta AKTUALNE bboxy/viewport.
   }, [fitSignal]);
+
+  // K11-B: przeniesienie kadru z minimapy — CZYSTA translacja kamery (skala i
+  // LOD nietknięte). Efekt reaguje WYŁĄCZNIE na `seq` (wzorzec `fitSignal`),
+  // żeby powtórzone wskazanie tego samego punktu też przeniosło kadr; brak
+  // żądania (montaż/`null`) nie robi nic.
+  useEffect(() => {
+    if (!centerRequest) return;
+    dispatch({ type: 'center', worldPoint: { x: centerRequest.x, y: centerRequest.y } });
+    // Zależność wyłącznie od `seq` — współrzędne czytane w chwili wywołania
+    // (identyczna dyscyplina jak w efekcie `fitSignal` wyżej).
+  }, [centerRequest?.seq]);
 
   // (k3) 'resize' gdy zmienia się TYLKO viewport (width/height) — świat ten
   // sam, kamera zachowuje pan/zoom użytkownika i tylko dostosowuje punkt

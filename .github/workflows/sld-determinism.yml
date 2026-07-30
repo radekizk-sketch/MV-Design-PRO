@@ -20,6 +20,13 @@ jobs:
       - name: Run SLD v2 determinism guards
         run: python mv-design-pro/scripts/sld_determinism_guards.py
 
+      # K11-B (dyrektywa właściciela z oceny ekranu 2/10, wymóg 3): LOD nie
+      # może ukryć toru przepływu energii ani aparatów ciągłości — asercja
+      # STATYCZNA na kontrakcie klas toru prądowego (poziom (b) strażnika;
+      # poziom (a) to test kontraktowy uruchamiany w jobie vitest niżej).
+      - name: Run SLD LOD continuity guard (K11-B)
+        run: python mv-design-pro/scripts/sld_lod_continuity_guard.py
+
   sld-contract-tests:
     name: SLD Contract Tests (Vitest)
     runs-on: ubuntu-latest
@@ -69,6 +76,20 @@ jobs:
       - name: Run Ports contract tests (PR-3/4)
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v2/core/__tests__/ports.test.ts --reporter=verbose
+
+      # K11-B: wyrocznia DYNAMICZNA ciągłości toru na sieci referencyjnej —
+      # dla KAŻDEGO LOD tor od źródła przez magistralę do każdej stacji jest
+      # wyrysowany (z sekcją regresji wstrzykniętej, która dowodzi, że gryzie).
+      - name: Run SLD v3 LOD continuity contract tests (K11-B)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/scene/__tests__/lodContinuity.test.ts --reporter=verbose
+
+      # K11-B: minimalny rozmiar renderowania symboli — żaden poziom szczegółu
+      # nie jest aktywny przy skali, przy której jego symbole schodzą poniżej
+      # progu rozpoznawalności.
+      - name: Run SLD v3 minimum symbol size contract tests (K11-B)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/minSymbolSize.contract.test.ts --reporter=verbose
 
       - name: Run SLD v3 render-odbiór acceptance (F7/F8b-2)
         working-directory: mv-design-pro/frontend

@@ -144,7 +144,21 @@ import {
   type CanvasLayerVisibility,
   type L2SublayerId,
 } from './layers';
-import type { ViewportTransform } from './camera';
+import { cameraViewBox, type ViewportTransform } from './camera';
+// K11-B (karta K11-B §0.1): minimapa/nawigator — geometria w `./minimap`
+// (czyste funkcje, testowalne bez DOM), rysunek w `./SldMinimapPanel`.
+import {
+  minimapPointToWorld,
+  minimapProjectionOf,
+  minimapShapesOf,
+  parseCameraViewBox,
+  worldRectToMinimap,
+  type MinimapProjection,
+  type MinimapRect,
+  type MinimapShape,
+} from './minimap';
+import { SldMinimapPanel } from './SldMinimapPanel';
+import type { V3Rect } from '../core/grid';
 import { buildSceneV3, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import type { PreviewElementKind } from '../compose/preview';
 import type { DerSourceKind } from '../compose/sourceKind';
@@ -1579,16 +1593,75 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // `SldCanvasV3` nie eksponuje swojej sceny wewnętrznej (stan prywatny od
   // F6b) — ten sam kompromis co `handleExportSvg`: przebudowa SCENY (nie
   // modelu) z `snapshot`, czysta funkcja, tania względem repaintu kanwy.
-  const legendScene = useMemo<SceneV3 | null>(() => {
-    if (!snapshot) return null;
-    const lod = lodOverride ?? cameraState?.lod ?? 2;
-    return buildSceneV3(snapshot, lod);
-  }, [snapshot, lodOverride, cameraState]);
+  //
+  // K11-B: scena AKTYWNEGO LOD jest teraz WSPÓŁDZIELONA (legenda + prostokąt
+  // kadru minimapy potrzebują dokładnie tego samego) — stąd neutralna nazwa.
+  // NAPRAWA U ŹRÓDŁA (Zero-Debt, dług znaleziony przy tej karcie): memo miało
+  // w zależnościach CAŁY `cameraState`, który zmienia się przy KAŻDEJ zmianie
+  // transformu — czyli przy każdej klatce pan/zoom przebudowywana była cała
+  // scena (765 symboli / 690 odcinków na sieci referencyjnej), choć jej treść
+  // zależy WYŁĄCZNIE od poziomu szczegółu. Zależność zawężona do rozwiązanego
+  // `activeLod`; treść memo bez zmian.
+  const activeLod: SceneLod = lodOverride ?? cameraState?.lod ?? 2;
+  const activeLodScene = useMemo<SceneV3 | null>(
+    () => (snapshot ? buildSceneV3(snapshot, activeLod) : null),
+    [snapshot, activeLod],
+  );
   const legendEntries = useMemo<readonly SheetLegendEntry[]>(
-    () => (legendScene ? computeProjectLegendEntries(legendScene) : []),
-    [legendScene],
+    () => (activeLodScene ? computeProjectLegendEntries(activeLodScene) : []),
+    [activeLodScene],
   );
   const [legendPanelOpen, setLegendPanelOpen] = useState(false);
+
+  // -------------------------------------------------------------------------
+  // K11-B (karta K11-B §0.1, dyrektywa właściciela z oceny ekranu 2/10):
+  // MINIMAPA (nawigator) — projekcja TEJ SAMEJ sceny, interakcja WYŁĄCZNIE na
+  // kamerze.
+  //
+  // Scena nawigatora: `buildSceneV3(snapshot, 0)` — poziom NAJZGRUBSZY (stacje
+  // jako mini-RMU + magistrala + laterale), ten sam builder co kanwa, czysty i
+  // memoizowany na `snapshot` (wzorzec `buildEnergizationOverlay` wyżej w tym
+  // pliku). Zero drugiej prawdy geometrii: nawigator nie zna ENM.
+  //
+  // Prostokąt kadru: liczony z `viewBox` kamery — DOKŁADNIE tą samą funkcją
+  // (`cameraViewBox`), której kanwa używa do narysowania siebie, na tym samym
+  // transformie (`cameraState`) i tym samym viewporcie (`size`). Nie ma tu
+  // drugiego modelu kamery: workspace odczytuje stan, nie liczy go.
+  // -------------------------------------------------------------------------
+  const [minimapOpen, setMinimapOpen] = useState(false);
+  const [centerRequest, setCenterRequest] = useState<{ readonly x: number; readonly y: number; readonly seq: number } | null>(null);
+  const minimapScene = useMemo<SceneV3 | null>(
+    () => (snapshot ? buildSceneV3(snapshot, 0) : null),
+    [snapshot],
+  );
+  const minimapProjection = useMemo<MinimapProjection | null>(
+    () => (minimapScene ? minimapProjectionOf(minimapScene.bbox) : null),
+    [minimapScene],
+  );
+  const minimapShapes = useMemo<readonly MinimapShape[]>(
+    () => (minimapScene && minimapProjection ? minimapShapesOf(minimapScene, minimapProjection) : []),
+    [minimapScene, minimapProjection],
+  );
+  /** Kadr kamery w świecie AKTYWNEGO LOD — `null` przed pierwszym pomiarem
+   *  kamery/układu (uczciwy brak: nie rysujemy zgadywanego prostokąta). */
+  const cameraWorldRect = useMemo<V3Rect | null>(() => {
+    if (!cameraState || size.width <= 0 || size.height <= 0) return null;
+    return parseCameraViewBox(cameraViewBox(cameraState.transform, size));
+  }, [cameraState, size]);
+  const minimapFrame = useMemo<MinimapRect | null>(() => {
+    if (!minimapProjection || !cameraWorldRect || !activeLodScene) return null;
+    return worldRectToMinimap(cameraWorldRect, activeLodScene.bbox, minimapProjection);
+  }, [minimapProjection, cameraWorldRect, activeLodScene]);
+  /** Wskazanie w panelu → punkt świata aktywnego LOD → żądanie `'center'` do
+   *  kamery. JEDYNE wyjście minimapy: współrzędna. Skala/LOD/scena nietknięte. */
+  const handleMinimapNavigate = useCallback(
+    (point: { readonly x: number; readonly y: number }) => {
+      if (!minimapProjection || !activeLodScene) return;
+      const world = minimapPointToWorld(point, activeLodScene.bbox, minimapProjection);
+      setCenterRequest((prev) => ({ x: world.x, y: world.y, seq: (prev?.seq ?? 0) + 1 }));
+    },
+    [minimapProjection, activeLodScene],
+  );
   // Domyślnie WYŁĄCZONA (karta §0.4) — eksport bez legendy jest zachowaniem
   // dotychczasowym (zero zmiany domyślnej dla wołających istniejących).
   const [includeLegendInExport, setIncludeLegendInExport] = useState(false);
@@ -1614,9 +1687,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // zasila OBA punkty wejścia (button + dropdown) bez duplikacji.
   const handleExportSvg = useCallback((): string | null => {
     const svgEl = containerRef.current?.querySelector<SVGSVGElement>('svg[data-testid="sld-canvas-v3"]');
-    if (!svgEl || !snapshot) return null;
-    const lod = lodOverride ?? cameraState?.lod ?? 2;
-    const scene = buildSceneV3(snapshot, lod);
+    // K11-B: TA SAMA scena aktywnego LOD co legenda (`activeLodScene` wyżej) —
+    // dawniej ta funkcja budowała ją drugi raz TĄ SAMĄ formułą; scalone w jedno
+    // źródło (dyrektywa właściciela 7 „reużycie zamiast duplikacji").
+    const scene = activeLodScene;
+    if (!svgEl || !scene) return null;
     const clone = svgEl.cloneNode(true) as SVGSVGElement;
     applyContentFitFrame(clone, scene);
     // K12 (KARTA_K12 §0.4): opcja „Dołącz legendę" — kanwa ekranowa NIGDY nie
@@ -1655,7 +1730,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     link.click();
     URL.revokeObjectURL(url);
     return filename;
-  }, [snapshot, lodOverride, cameraState, includeLegendInExport]);
+  }, [activeLodScene, includeLegendInExport]);
 
   // F12-B pkt 5: lasso — nakładka screen-space AKTYWNA (pointer-events: auto)
   // WYŁĄCZNIE gdy Shift wciśnięty (albo trwa przeciągnięcie rozpoczęte pod
@@ -1877,6 +1952,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           onCameraChange={handleCameraChange}
           fitSignal={fitSignal}
           fitTarget={fitTarget}
+          centerRequest={centerRequest}
         />
       ) : null}
 
@@ -2107,9 +2183,49 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           >
             {legendPanelOpen ? '▾ Legenda' : `▸ Legenda (${legendEntries.length})`}
           </button>
+          {/* K11-B (karta K11-B §0.1): przełącznik nawigatora — TEN SAM dok
+              widoku co „Dopasuj widok"/„Cały arkusz"/„Legenda" (jedno miejsce
+              na sterowanie WIDOKIEM; panel nawigatora rozwija się w wolnym
+              dolnym-środkowym obszarze kanwy, patrz komentarz przy doku
+              nawigatora niżej). Nieaktywny, gdy sieci nie ma — uczciwie
+              wyłączony zamiast otwierać pusty panel. */}
+          <button
+            type="button"
+            onClick={() => setMinimapOpen((prev) => !prev)}
+            data-testid="sld-v3-minimap-toggle"
+            aria-expanded={minimapOpen}
+            disabled={minimapProjection === null}
+            aria-label={minimapOpen ? 'Zamknij nawigator schematu' : 'Otwórz nawigator schematu'}
+            title={minimapOpen ? 'Zamknij nawigator' : 'Nawigator — podgląd całej sieci z bieżącym kadrem'}
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {minimapOpen ? '▾ Nawigator' : '▸ Nawigator'}
+          </button>
         </div>
         {legendPanelOpen && <SldV3LegendPanel entries={legendEntries} />}
       </div>
+
+      {/* K11-B (karta K11-B §0.1): DOK NAWIGATORA — dolny-ŚRODEK kanwy.
+          Przegląd zajętości rogów (ten plik, doki wyżej/niżej): lewy-górny =
+          drzewo układu, prawy-górny = eksport + dok widoku, lewy-dolny =
+          dowody inżynierskie, prawy-DOLNY = warstwy i filtry wyników, górny-
+          środek = paleta PV/BESS/FW. Wolny pozostaje wyłącznie pas dolny-
+          środkowy — i tam siada nawigator (rozwijany, domyślnie zwinięty, więc
+          w stanie domyślnym nie zabiera schematowi ani piksela). z-index 20 =
+          ten sam poziom co doki narożne. */}
+      {minimapOpen && minimapProjection && minimapFrame && (
+        <div
+          className="pointer-events-auto absolute bottom-3 left-1/2 z-20 -translate-x-1/2"
+          data-testid="sld-v3-minimap-dock"
+        >
+          <SldMinimapPanel
+            projection={minimapProjection}
+            shapes={minimapShapes}
+            frame={minimapFrame}
+            onNavigate={handleMinimapNavigate}
+          />
+        </div>
+      )}
 
       {/* F12-B pkt 2 (spec §10.1 ARCH-4, „NetworkHierarchyTree"): dok
           lewy-górny. */}

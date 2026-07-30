@@ -5821,13 +5821,26 @@ export interface SourceConnectivityGap {
  * render), zmierzone <0.5s dla całej fixtury referencyjnej na WSZYSTKICH
  * LOD łącznie.
  */
-export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectivityGap[] {
-  const sourceIndices: number[] = [];
-  scene.symbols.forEach((s, i) => {
-    if (s.meta?.elementKind === 'der' || s.meta?.elementKind === 'source') sourceIndices.push(i);
-  });
-  if (sourceIndices.length === 0) return [];
+/**
+ * Indeks SPÓJNOŚCI ELEKTRYCZNEJ sceny — składowe spójności odcinków i symboli
+ * wg reguł 1-3 opisanych przy `sourceConnectivityGaps` niżej.
+ *
+ * WYDZIELONY (K11-B) z `sourceConnectivityGaps` BEZ ZMIANY SEMANTYKI, żeby
+ * druga wyrocznia ciągłości (`scene/lodContinuity.ts` — „na KAŻDYM LOD tor od
+ * źródła do każdej stacji jest wyrysowany") liczyła spójność DOKŁADNIE tak
+ * samo, zamiast powielać reguły dotyku/portów/stosu pola (dyrektywa
+ * właściciela 7 „reużycie zamiast duplikacji"). Równoważność wydzielenia
+ * pilnują istniejące testy `source_connectivity_probe` (w tym negatywny test
+ * toru wyzwalania).
+ */
+export interface SceneConnectivityIndex {
+  /** Korzeń składowej spójności odcinka `scene.segments[i]`. */
+  segmentRoot(i: number): number;
+  /** Korzeń składowej spójności symbolu `scene.symbols[i]`. */
+  symbolRoot(i: number): number;
+}
 
+export function sceneConnectivityIndex(scene: SceneV3): SceneConnectivityIndex {
   const segCount = scene.segments.length;
   const symCount = scene.symbols.length;
   const dsu = new SceneDisjointSet(segCount + symCount);
@@ -5876,14 +5889,29 @@ export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectiv
     for (let k = 1; k < indices.length; k++) dsu.union(symNode(indices[0]), symNode(indices[k]));
   });
 
+  return {
+    segmentRoot: (i: number) => dsu.find(segNode(i)),
+    symbolRoot: (i: number) => dsu.find(symNode(i)),
+  };
+}
+
+export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectivityGap[] {
+  const sourceIndices: number[] = [];
+  scene.symbols.forEach((s, i) => {
+    if (s.meta?.elementKind === 'der' || s.meta?.elementKind === 'source') sourceIndices.push(i);
+  });
+  if (sourceIndices.length === 0) return [];
+
+  const connectivity = sceneConnectivityIndex(scene);
+
   const busRoots = new Set<number>();
   scene.segments.forEach((seg, si) => {
-    if (seg.meta?.kind === 'bus' || seg.meta?.kind === 'busGpz') busRoots.add(dsu.find(segNode(si)));
+    if (seg.meta?.kind === 'bus' || seg.meta?.kind === 'busGpz') busRoots.add(connectivity.segmentRoot(si));
   });
 
   const gaps: SourceConnectivityGap[] = [];
   sourceIndices.forEach((mi) => {
-    if (!busRoots.has(dsu.find(symNode(mi)))) {
+    if (!busRoots.has(connectivity.symbolRoot(mi))) {
       gaps.push({ sourceId: scene.symbols[mi].meta?.ownerRef ?? `#symbol-${mi}` });
     }
   });

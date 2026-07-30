@@ -390,3 +390,79 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe('SldCanvasV3Workspace — K11-B: minimapa (nawigator) na żądanie', () => {
+  it('domyślnie nawigator jest ZWINIĘTY — schemat nie traci ani piksela', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    expect(screen.queryByTestId('sld-v3-minimap-dock')).toBeNull();
+    expect(screen.queryByTestId('sld-v3-minimap-panel')).toBeNull();
+    // Przełącznik żyje w TYM SAMYM doku widoku co „Dopasuj widok"/„Legenda"
+    // (jedno miejsce na sterowanie widokiem — scalony dok K11-A/K12).
+    const dock = screen.getByTestId('sld-v3-view-dock');
+    expect(within(dock).getByTestId('sld-v3-minimap-toggle')).toBeInTheDocument();
+  });
+
+  it('rozwinięcie pokazuje nawigator z kształtami REALNEJ sceny i prostokątem kadru', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    fireEvent.click(screen.getByTestId('sld-v3-minimap-toggle'));
+
+    const panel = screen.getByTestId('sld-v3-minimap-panel');
+    expect(panel).toBeInTheDocument();
+    const svg = within(panel).getByTestId('sld-v3-minimap-svg');
+    // Kształty pochodzą ze sceny LOD 0 — liczba węzłów rysunku odpowiada
+    // liczbie elementów tej sceny (nawigator niczego nie dorysowuje).
+    const sceneL0 = buildSceneV3(enm, 0);
+    expect(svg.querySelectorAll('polyline').length).toBe(
+      sceneL0.segments.filter((s) => s.points.length >= 2).length,
+    );
+    // Prostokąty: symbole sceny + prostokąt przycięcia (clipPath) + kadr.
+    expect(svg.querySelectorAll('rect').length).toBe(sceneL0.symbols.length + 2);
+    expect(within(panel).getByTestId('sld-v3-minimap-frame')).toBeInTheDocument();
+  });
+
+  it('wskazanie w nawigatorze PRZESUWA kadr kamery, NIE zmieniając skali (kontrakt K11-B §0.1)', () => {
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    fireEvent.click(screen.getByTestId('sld-v3-minimap-toggle'));
+
+    const canvas = container.querySelector('[data-testid="sld-canvas-v3"]')!;
+    const przed = canvas.getAttribute('viewBox')!.split(/\s+/).map(Number);
+
+    const svg = screen.getByTestId('sld-v3-minimap-svg');
+    // jsdom nie liczy layoutu — podajemy prostokąt panelu jawnie, żeby
+    // przeliczenie punktu było realne (sama ścieżka kodu produkcyjnego).
+    vi.spyOn(svg, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, left: 0, top: 0, right: 260, bottom: 100, width: 260, height: 100,
+      toJSON: () => ({}),
+    } as DOMRect);
+    // UZASADNIENIE ZDARZENIA SYNTETYCZNEGO (CLAUDE.md §5 „test maskujący
+    // defekt produktu"): jsdom w tym środowisku NIE implementuje
+    // `PointerEvent` (zweryfikowane empirycznie, patrz nota metodologiczna w
+    // `sldCanvasV3.test.tsx`), więc `fireEvent.pointerDown` gubi
+    // `clientX/clientY/button` — handler produkcyjny odrzuciłby zdarzenie z
+    // `button === undefined` i test „przechodziłby" nie ćwicząc niczego.
+    // Budujemy więc `MouseEvent` typu `pointerdown`, który TE POLA NIESIE:
+    // wołany jest DOKŁADNIE ten sam handler produkcyjny (`onPointerDown`
+    // panelu), z realnymi współrzędnymi. Ścieżkę w pełni NATYWNĄ (prawdziwy
+    // PointerEvent przeglądarki) ćwiczy `e2e/sld-minimapa.spec.ts` klikiem
+    // Playwrighta — ten test pilnuje kontraktu jednostkowego, tamten realnej
+    // ścieżki użytkownika.
+    fireEvent(svg, new MouseEvent('pointerdown', { bubbles: true, clientX: 230, clientY: 40, button: 0 }));
+
+    const po = canvas.getAttribute('viewBox')!.split(/\s+/).map(Number);
+    // Kadr się PRZESUNĄŁ…
+    expect(po[0]).not.toBeCloseTo(przed[0], 3);
+    // …a jego ROZMIAR (czyli skala kamery) jest bez zmian.
+    expect(po[2]).toBeCloseTo(przed[2], 6);
+    expect(po[3]).toBeCloseTo(przed[3], 6);
+  });
+
+  it('zwinięcie (drugi klik) chowa nawigator — dok zostaje', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const toggle = screen.getByTestId('sld-v3-minimap-toggle');
+    fireEvent.click(toggle);
+    expect(screen.getByTestId('sld-v3-minimap-panel')).toBeInTheDocument();
+    fireEvent.click(toggle);
+    expect(screen.queryByTestId('sld-v3-minimap-panel')).toBeNull();
+    expect(screen.getByTestId('sld-v3-minimap-toggle')).toBeInTheDocument();
+  });
+});

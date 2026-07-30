@@ -165,6 +165,27 @@ export interface WynikSekwencji {
 }
 
 /**
+ * Kanał BŁĘDU TRANSPORTU kroku sekwencji: wołający (kreator stacji) nie dostał
+ * odpowiedzi domenowej, ale ZNA komunikat, który backend/warstwa transportu
+ * zapisała w store — i chce go pokazać zamiast ogólnego „nie zwróciła
+ * odpowiedzi".
+ *
+ * NAPRAWA U ŹRÓDŁA (Zero-Debt, czerwony `type-check` na HEAD — TS2352 w
+ * `KreatorStacjiSnNn.tsx`): dotąd wołający próbował TO SAMO osiągnąć rzutując
+ * `{ error }` na `DomainOpResponseV1` (`as typeof odpowiedz`, gdzie po
+ * zawężeniu `typeof odpowiedz` to `null`) — czyli FABRYKOWAŁ odpowiedź
+ * domenową z jednym polem, co kompilator słusznie odrzucał. Zamiast tłumić
+ * błąd rzutowaniem, kontrakt kroku dostaje JAWNY drugi wariant: albo
+ * odpowiedź domenowa, albo opisany błąd transportu. Zero zmiany zachowania
+ * dla wołających, którzy tego wariantu nie używają.
+ */
+export interface BladTransportuKroku {
+  readonly bladTransportu: string;
+}
+
+export type OdpowiedzKroku = DomainOpResponseV1 | BladTransportuKroku;
+
+/**
  * Wykonuje sekwencję po zapisie stacji. Przerywa na pierwszym błędzie i zwraca
  * komunikat backendu — bez ukrywania częściowego skutku (dług B-3).
  */
@@ -173,7 +194,7 @@ export async function wykonajSekwencje(
   wykonaj: (
     operacja: string,
     payload: Record<string, unknown>,
-  ) => Promise<DomainOpResponseV1 | null>,
+  ) => Promise<OdpowiedzKroku | null>,
 ): Promise<WynikSekwencji> {
   let wykonane = 0;
   let ostatnia: DomainOpResponseV1 | null = null;
@@ -185,6 +206,9 @@ export async function wykonajSekwencje(
         bladOperacji: `Operacja ${krok.operacja} nie zwróciła odpowiedzi.`,
         ostatniaOdpowiedz: ostatnia,
       };
+    }
+    if ('bladTransportu' in odpowiedz) {
+      return { wykonane, bladOperacji: odpowiedz.bladTransportu, ostatniaOdpowiedz: ostatnia };
     }
     if (odpowiedz.error) {
       return { wykonane, bladOperacji: odpowiedz.error, ostatniaOdpowiedz: odpowiedz };
