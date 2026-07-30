@@ -47,6 +47,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/analysis-runs/{run_id}/results/index` | v12xx | aktywny | 2026-04-24 | - | Indeks wynikow dla UI. | result index tests | Architekt wynikow |
 | `GET /api/analysis-runs/{run_id}/results/phase-state` | v12xx | aktywny | 2026-04-25 | - | Wyniki stanu fazowego SN z proof i statusem raportowym. | canonical analysis API tests, report export tests | Architekt solverow |
 | `GET /api/analysis-runs/{run_id}/results/short-circuit` | v12xx | aktywny | 2026-04-24 | - | Wyniki zwarciowe dla raportu i SLD, razem z `proof_ref`, `proof_status` i `reporting_status` dla 1F/2F+Z. | short circuit result tests, report export tests | Architekt solverow |
+| `GET /api/analysis-runs/{run_id}/results/short-circuit/rozplyw` | v12xx | aktywny | 2026-07-30 | - | Rozplyw galeziowy JEDNEGO punktu zwarcia na zadanie (`target_id` w zapytaniu) - wiersze zbiorcze nie niosa juz rozplywu (V12K-281/K13). | short circuit rozplyw API tests | Architekt solverow |
 | `GET /api/analysis-runs/{run_id}/results/source-compliance` | v12xx | aktywny | 2026-04-25 | - | Wyniki zgodnosci zrodla z profilem operatora wraz z proof i raportowalnoscia. | canonical analysis API tests, report export tests | Architekt OZE |
 | `GET /api/analysis-runs/{run_id}/results/trace` | v12xx | aktywny | 2026-04-24 | - | Slad danych wynikow. | trace tests | Architekt wynikow |
 | `GET /api/analysis-runs/{run_id}/results/v126/ssci_impedance/stability` | v12.6 | aktywny | 2026-07-21 | - | Werdykt stabilnosci SSCI (kryterium impedancyjne Nyquista, Sun 2011 / Wen 2016) z gotowego przebiegu ssci_impedance; warstwa analizy interpretuje frozen wynik solvera (ZERO fizyki w API). | v126 SSCI stability API tests | Architekt solverow |
@@ -73,6 +74,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/cases/{case_id}/wizard/can-proceed` | legacy | deprecated | 2026-04-24 | koniec M2 | Przejscie kreatora utrzymane jako adapter odczytowy; kanoniczny zapis idzie przez operacje domenowe ENM. | wizard migration tests | Architekt migracji |
 | `GET /api/cases/{case_id}/wizard/state` | legacy | deprecated | 2026-04-24 | koniec M2 | Stan kreatora; nie jest prawda domenowa. | wizard state tests | Architekt migracji |
 | `GET /api/catalog/bess-inverter-types` | v12xx | aktywny | 2026-04-24 | - | Katalog falownikow BESS. | catalog tests | Administrator katalogow |
+| `GET /api/catalog/bay-protection-codes` | v12xx | aktywny | 2026-07-30 | - | Kanoniczne funkcje zabezpieczeniowe wymagane dla rol pol SN (readout kreatora stacji; jedno zrodlo prawdy z operacjami domenowymi, K9-B). | catalog tests | Administrator katalogow |
 | `GET /api/catalog/branch-point-types` | v12xx | aktywny | 2026-04-24 | - | Katalog punktow rozgaleznych. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/cable-types` | v12xx | aktywny | 2026-04-24 | - | Katalog kabli SN. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/ct-types` | v12xx | aktywny | 2026-04-24 | - | Katalog przekladnikow pradowych. | catalog tests | Administrator katalogow |
