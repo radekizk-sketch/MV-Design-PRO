@@ -71,6 +71,11 @@ async function executeDomainOp(
         payload,
       },
     },
+    // Jawny limit: domyślne 10 s actionTimeout bywa za krótkie pod obciążeniem
+    // pełnej suity (równolegli workerzy dzielą backend) — ten sam wzorzec i
+    // powód co w e2e/legenda-na-zadanie.spec.ts (zmierzone: POST /api/projects
+    // przekroczył 10 s w pełnym biegu 318 testów).
+    timeout: 30000,
   });
 
   expect(response.ok()).toBeTruthy();
@@ -94,6 +99,8 @@ async function createProjectAndCase(
       voltage_level_kv: 15.0,
       frequency_hz: 50.0,
     },
+    // Jawny limit — patrz komentarz w `executeDomainOp`.
+    timeout: 30000,
   });
   expect(projectResponse.ok()).toBeTruthy();
   const project = (await projectResponse.json()) as { id: string };
@@ -106,6 +113,8 @@ async function createProjectAndCase(
       config: {},
       set_active: true,
     },
+    // Jawny limit — patrz komentarz w `executeDomainOp`.
+    timeout: 30000,
   });
   expect(caseResponse.ok()).toBeTruthy();
   const studyCase = (await caseResponse.json()) as { id: string };
@@ -231,7 +240,11 @@ async function zbudujSiecGotowaDoObliczen(
 
   let readiness: { ready: boolean; issues?: Array<{ code: string; element_ref?: string | null }> } | null = null;
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const readinessResponse = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/engineering-readiness`);
+    const readinessResponse = await request.get(
+      `${BACKEND_BASE}/api/cases/${caseId}/engineering-readiness`,
+      // Jawny limit — patrz komentarz w `executeDomainOp`.
+      { timeout: 30000 },
+    );
     expect(readinessResponse.ok()).toBeTruthy();
     readiness = (await readinessResponse.json()) as typeof readiness;
     if (readiness?.ready) break;
@@ -266,7 +279,8 @@ async function uruchomBiegPrzezApi(
 ): Promise<string> {
   const createRunResponse = await request.post(
     `${BACKEND_BASE}/api/execution/study-cases/${caseId}/runs`,
-    { data: { analysis_type: analysisType } },
+    // Jawny limit — patrz komentarz w `executeDomainOp`.
+    { data: { analysis_type: analysisType }, timeout: 30000 },
   );
   expect(createRunResponse.ok(), await createRunResponse.text()).toBeTruthy();
   const run = (await createRunResponse.json()) as { id: string };

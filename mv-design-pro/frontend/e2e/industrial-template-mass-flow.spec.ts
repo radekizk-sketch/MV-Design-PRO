@@ -203,27 +203,34 @@ async function openCaseInUi(
 async function waitForAnalysisRunIndex(
   request: APIRequestContext,
   runId: string,
-  // Pomiar 2026-07-29 (karta K1/D): budowa results/index dla sieci 50 stacji
-  // trwa po stronie backendu 39,9–45,4 s (log uvicorn) — 120 s daje ~2,5×
-  // zapasu na wolniejszy przebieg CI.
-  timeoutMs = 120000,
+  // DWA zmierzone konteksty (2026-07-30, po naprawie V12K-281): w IZOLACJI
+  // pierwszy GET = 4,0 s (jednorazowa budowa kontekstu biegu + deserializacja
+  // artefaktu; było 49 s). W PEŁNEJ suicie e2e (318 testów, współdzielone CPU,
+  // baza urośnięta o sieci setek testów) ten sam GET przekroczył 60 s —
+  // pozostały koszt (deserializacja pełnego artefaktu przy KAŻDYM odczycie
+  // biegu, rosnący z bazą) = karta wydajności persystencji (rejestr, dług
+  // nazwany). 240 s budżetu pętli pokrywa oba konteksty.
+  timeoutMs = 240000,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   let lastStatus = 0;
   let lastBody = '';
   while (Date.now() < deadline) {
-    // Jawny timeout żądania: fixture `request` dziedziczy actionTimeout 10 s
-    // z playwright.config.ts, a pierwszy GET płaci jednorazową budowę kontekstu
-    // biegu. Po naprawie V12K-281 (K13: skrót artefaktu i materializacja
-    // katalogowa liczone raz per treść) zmierzone 2026-07-30: 4,0 s na
-    // bezczynnej maszynie 4-rdzeniowej (było 49 s) — limit 60 s daje ~15×
-    // zapasu na wolniejszy przebieg CI. Pozostały koszt stały (deserializacja
-    // pełnego artefaktu przy każdym odczycie biegu) = karta wydajności
-    // persystencji (rejestr, dług nazwany).
-    const response = await request.get(
-      `${BACKEND_BASE}/api/analysis-runs/${runId}/results/index`,
-      { timeout: 60000 },
-    );
+    // Jawny timeout żądania (fixture `request` dziedziczy actionTimeout 10 s
+    // z playwright.config.ts). Timeout POJEDYNCZEGO żądania to w tej pętli
+    // stan „jeszcze nie gotowe", nie porażka specu — łapiemy i ponawiamy do
+    // zewnętrznego budżetu (bez tego jeden przeciążony GET wywala cały spec).
+    let response;
+    try {
+      response = await request.get(
+        `${BACKEND_BASE}/api/analysis-runs/${runId}/results/index`,
+        { timeout: 120000 },
+      );
+    } catch {
+      lastStatus = 0;
+      lastBody = 'timeout żądania (backend pod obciążeniem)';
+      continue;
+    }
     lastStatus = response.status();
     if (response.ok()) {
       return;
