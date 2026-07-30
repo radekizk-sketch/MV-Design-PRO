@@ -31,7 +31,8 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # Próg musi być liczbą ZMIERZONĄ, nie zaokrągloną „na oko" — stąd asercja na
     # konkretną wartość z pomiaru. K7-A (2026-07-29): naprawa 15 błędów typów
     # u źródła w dotkniętych rendererach PDF ⇒ pomiar 273/67 → 258/65.
-    assert modul.BASELINE_ERRORS == 258
+    # K14 (2026-07-30): jawne typy wejścia projekcji rozpływu gałęziowego ⇒ 258 → 254.
+    assert modul.BASELINE_ERRORS == 254
     assert modul.BASELINE_FILES == 65
 
 
@@ -45,10 +46,10 @@ def test_guard_jest_wpiety_do_workflow_ci() -> None:
 @pytest.mark.parametrize(
     ("bledy", "oczekiwany_kod"),
     [
-        (258, 0),  # stan zmierzony (K7-A) — przechodzi
-        (259, 1),  # dług urósł o jeden — zapadka odcina
+        (254, 0),  # stan zmierzony (K14) — przechodzi
+        (255, 1),  # dług urósł o jeden — zapadka odcina
         (300, 1),  # dług urósł znacząco
-        (257, 1),  # dług zmalał — zapadka żąda utrwalenia poprawy
+        (253, 1),  # dług zmalał — zapadka żąda utrwalenia poprawy
         (0, 1),  # wszystko naprawione, ale próg nieobniżony
     ],
 )

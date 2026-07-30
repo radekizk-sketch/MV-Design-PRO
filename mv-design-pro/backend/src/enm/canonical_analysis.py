@@ -5,7 +5,7 @@ import json
 import math
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from uuid import NAMESPACE_DNS, UUID, uuid4, uuid5
 
 from application.automation.trace import (
@@ -302,23 +302,7 @@ class CanonicalRun:
 KOLUMNY_CIEZKIE_BIEGU = ("snapshot", "raw_result", "white_box_trace", "power_flow_trace")
 
 #: Wartość jeszcze nie pobrana z bazy (odróżniona od pustej: `None`, `{}`, `[]`).
-_NIEZALADOWANA: Any = object()
-
-
-def _leniwa_kolumna(nazwa: str) -> property:
-    prywatna = f"_leniwa_{nazwa}"
-
-    def getter(self: Any) -> Any:
-        wartosc = getattr(self, prywatna)
-        if wartosc is _NIEZALADOWANA:
-            self._doladuj_kolumny_ciezkie()
-            wartosc = getattr(self, prywatna)
-        return wartosc
-
-    def setter(self: Any, wartosc: Any) -> None:
-        setattr(self, prywatna, wartosc)
-
-    return property(getter, setter)
+_NIEZALADOWANA = object()
 
 
 class CanonicalRunZListy(CanonicalRun):
@@ -344,31 +328,102 @@ class CanonicalRunZListy(CanonicalRun):
     odpowiedź; nie zmyślamy treści z pamięci.
     """
 
-    snapshot = _leniwa_kolumna("snapshot")
-    raw_result = _leniwa_kolumna("raw_result")
-    white_box_trace = _leniwa_kolumna("white_box_trace")
-    power_flow_trace = _leniwa_kolumna("power_flow_trace")
-
-    def __init__(self, **pola_lekkie: Any) -> None:
-        super().__init__(snapshot={}, **pola_lekkie)
+    def __init__(
+        self,
+        *,
+        id: UUID,
+        case_id: str,
+        project_id: str | None,
+        analysis_type: str,
+        status: str,
+        created_at: datetime,
+        snapshot_hash: str,
+        input_hash: str,
+        validation: dict[str, Any],
+        readiness: dict[str, Any],
+        options: dict[str, Any],
+        started_at: datetime | None,
+        finished_at: datetime | None,
+        error_message: str | None,
+        result_status: str,
+    ) -> None:
+        self._leniwe: dict[str, object] = {}
+        super().__init__(
+            id=id,
+            case_id=case_id,
+            project_id=project_id,
+            analysis_type=analysis_type,
+            status=status,
+            created_at=created_at,
+            snapshot_hash=snapshot_hash,
+            input_hash=input_hash,
+            snapshot={},
+            validation=validation,
+            readiness=readiness,
+            options=options,
+            started_at=started_at,
+            finished_at=finished_at,
+            error_message=error_message,
+            result_status=result_status,
+        )
+        # Konstruktor rodzica ustawił kolumny ciężkie na wartości domyślne przez
+        # settery; oznaczamy je jako NIEZAŁADOWANE (nie „puste").
         for nazwa in KOLUMNY_CIEZKIE_BIEGU:
-            setattr(self, f"_leniwa_{nazwa}", _NIEZALADOWANA)
+            self._leniwe[nazwa] = _NIEZALADOWANA
+
+    def _wartosc_ciezka(self, nazwa: str) -> object:
+        wartosc = self._leniwe[nazwa]
+        if wartosc is _NIEZALADOWANA:
+            self._doladuj_kolumny_ciezkie()
+            wartosc = self._leniwe[nazwa]
+        return wartosc
 
     def _doladuj_kolumny_ciezkie(self) -> None:
         with canonical_run_repository_scope() as repository:
             kolumny = repository.get_heavy_columns(self.id)
-        puste: dict[str, Any] = {
+        puste: dict[str, object] = {
             "snapshot": {},
             "raw_result": None,
             "white_box_trace": [],
             "power_flow_trace": None,
         }
-        wartosci = kolumny if kolumny is not None else puste
+        wartosci: dict[str, object] = dict(kolumny) if kolumny is not None else puste
         for nazwa in KOLUMNY_CIEZKIE_BIEGU:
-            prywatna = f"_leniwa_{nazwa}"
             # Wartość ustawiona jawnie przez konsumenta ma pierwszeństwo przed bazą.
-            if getattr(self, prywatna) is _NIEZALADOWANA:
-                setattr(self, prywatna, wartosci[nazwa])
+            if self._leniwe[nazwa] is _NIEZALADOWANA:
+                self._leniwe[nazwa] = wartosci[nazwa]
+
+    @property
+    def snapshot(self) -> dict[str, Any]:
+        return cast(dict[str, Any], self._wartosc_ciezka("snapshot"))
+
+    @snapshot.setter
+    def snapshot(self, wartosc: dict[str, Any]) -> None:
+        self._leniwe["snapshot"] = wartosc
+
+    @property
+    def raw_result(self) -> dict[str, Any] | None:
+        return cast(dict[str, Any] | None, self._wartosc_ciezka("raw_result"))
+
+    @raw_result.setter
+    def raw_result(self, wartosc: dict[str, Any] | None) -> None:
+        self._leniwe["raw_result"] = wartosc
+
+    @property
+    def white_box_trace(self) -> list[dict[str, Any]]:
+        return cast(list[dict[str, Any]], self._wartosc_ciezka("white_box_trace"))
+
+    @white_box_trace.setter
+    def white_box_trace(self, wartosc: list[dict[str, Any]]) -> None:
+        self._leniwe["white_box_trace"] = wartosc
+
+    @property
+    def power_flow_trace(self) -> dict[str, Any] | None:
+        return cast(dict[str, Any] | None, self._wartosc_ciezka("power_flow_trace"))
+
+    @power_flow_trace.setter
+    def power_flow_trace(self, wartosc: dict[str, Any] | None) -> None:
+        self._leniwe["power_flow_trace"] = wartosc
 
 
 def _save_run(run: CanonicalRun) -> None:
