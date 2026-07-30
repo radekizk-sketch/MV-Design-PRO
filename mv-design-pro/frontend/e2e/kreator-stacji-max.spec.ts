@@ -136,6 +136,10 @@ async function otworzAplikacje(page: Page, request: APIRequestContext): Promise<
     );
   }, { projectId, projectName, caseId, caseName });
 
+  // Stanowisko projektanta: kreator otwiera się w panelu warsztatu obok kanwy —
+  // przy 1280 px panel wychodzi poza widok. Ustawiamy szerokość realnego
+  // stanowiska (1600×1000), tak jak w zrzutach dokumentacyjnych.
+  await page.setViewportSize({ width: 1600, height: 1000 });
   await page.goto('/', { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
   return { caseId };
