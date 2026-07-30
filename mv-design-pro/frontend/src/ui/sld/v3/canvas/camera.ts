@@ -120,7 +120,7 @@ export interface LodThresholds {
  *  a więc L1 rysował pełne rozwinięcie 53 stacji (765 symboli) jako gąszcz
  *  plamek poniżej progu rozpoznawalności — dokładnie objaw z oceny ekranu.
  *  Próg 0,6 wyprowadzony ODWROTNIE, z bramy tej warstwy:
- *  `l0Max = MIN_SYMBOL_SCREEN_PX / (najmniejszy gabarytt · (1−margin))
+ *  `l0Max = MIN_SYMBOL_SCREEN_PX / (najmniejszy gabaryt · (1−margin))
  *         = 8 / (16 · 0,85) = 0,588` → zaokrąglone w GÓRĘ do 0,6.
  *  Glif mini-RMU nie przestaje przez to być kalibrowany: 48 px świata przy
  *  skali przeglądu 0,12 dalej daje 5,78 px (V12K-137) — L0 pozostaje
