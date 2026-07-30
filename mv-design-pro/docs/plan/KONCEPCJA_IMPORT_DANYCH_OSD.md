@@ -439,10 +439,61 @@ niż 50 m od jakiegokolwiek przęsła — to w dużej mierze dwie rozdzielne sie
 wymaga jawnego narzutu zapasu** do uzgodnienia z operatorem, a 6,9 km klasy C należy odrzucić.
 Każda wartość zapisywana z `parameter_source` i śladem pochodzenia wg §8.
 
-### 4A.7 Wniosek operacyjny — treść prośby do operatora
+### 4A.7 Dlaczego atrybutów nie ma — mechanizm ustalony (2026-07-28)
 
-1. Ten sam eksport Shape z podpiętymi atrybutami (przekrój, materiał, typ katalogowy, długość
-   trasowa, nazwa obiektu, numer obwodu) — szablon ma na nie gotowe miejsce.
+Rozpoznanie formatów wymiany dpPower dało dowód, a nie hipotezę.
+
+**Okno eksportu Shape w dpPower zawiera przycisk „Välj objekttyper och attribut"**
+(wybierz typy obiektów i atrybuty). Dla każdego zaznaczonego typu przycisk „Välj" otwiera
+konfigurację *„vilka attribut som ska exporteras"* — które atrybuty mają zostać wyeksportowane.
+Konfigurację można **zapisać jako szablon i udostępnić** do powtarzalnych eksportów.
+
+Dokumentacja opisuje też strukturę manifestu atrybutów towarzyszącego eksportowi — siedem
+kolumn: pole DBF, tabela, nazwa pola, opis, typ obiektu, typ komponentu, komponent powtarzalny.
+**To jest dokładnie nagłówek naszych plików `_info.csv`** (§4A.2):
+
+```
+Pole DBF;Tabela;Pole;Opis;Typ obiektu;Typ komponentu;Komponent powtarzalny;Pochodzenie;
+```
+
+Wniosek jest jednoznaczny: **puste kolumny `Tabela` i `Pole` w 20 z 20 plików oznaczają, że
+w oknie eksportu nie zaznaczono żadnego atrybutu.** Jedenaście pól `dp_*` to systemowy zestaw
+domyślny, który wychodzi zawsze. Brak przekrojów nie jest ograniczeniem formatu ani systemu —
+to niezaznaczone pola w oknie dialogowym. Poprawka leży po stronie konfiguracji eksportu
+i jest zapisywalna jako szablon.
+
+**Ocena pozostałych formatów wymiany:**
+
+| Format | Kierunek | Ocena dla naszego celu |
+|---|---|---|
+| **Shape z zaznaczonymi atrybutami** | imp./eksp. | **Właściwy.** Zachowuje zweryfikowaną geometrię, stany, punkty podziału i typy stacji; złączenie po `(dp_oid, dp_ctype)`. |
+| CIM/CGMES | niepotwierdzony | Gdyby istniał — najkrótsza droga (gotowy importer w repo). |
+| `Geo data (.dpt)` | imp./eksp. | Unosi `attr1…attr10` oraz `linjenr` (przynależność wierzchołków). Wymaga legendy pól. |
+| **DPS** | imp./eksp. | **Niewłaściwy instrument.** Patrz niżej. |
+| Geodos, Trimble, GSI, Marit, PXY, TXY, HP-17, STP | imp./eksp. | Formaty geodezyjne: numer punktu, kod obiektu, X, Y, Z. **Bez atrybutów pozageometrycznych.** |
+
+**DPS — dlaczego odpada.** Tabela formatów opisuje DPS jako „dane geo z atrybutami", a jego
+przeznaczeniem jest wymiana z klientem terenowym `dpFieldmap` w trybie offline, gdzie technik
+ogląda **i edytuje** obiekty bez połączenia — co funkcjonalnie wymaga, by atrybuty z nim
+podróżowały. Problem leży gdzie indziej: **eksport DPS działa na zbiorze zmian, nie na sieci.**
+Dokumentacja funkcji mówi wprost o zapisie „części lub całości bieżącego zbioru zmian"
+(*förändringsset*), a jedyne dwie opcje to grafika swobodna albo cały zbiór zmian.
+
+Praktyczny skutek jest poważny: plik DPS od operatora zawierałby to, co akurat jest w edycji —
+a zbiór zmian to typowo **nowe prace projektowe**, czyli dokładnie te obiekty planowane
+i koncepcyjne, przed którymi ostrzega §4A.4 (34,2 km nieistniejącego kabla). Ryzyko otrzymania
+pliku, który wygląda bogato, a opisuje sieć nieistniejącą, jest realne.
+
+Dodatkowo struktura rekordu DPS **nie jest publikowana** w dokumentacji Digpro — parsowanie
+wymagałoby inżynierii wstecznej. Wykonalne (tak powstał czytnik SHP/DBF użyty w tym audycie),
+ale niepotrzebne, skoro właściwa droga to jedno okno dialogowe.
+
+### 4A.8 Wniosek operacyjny — treść prośby do operatora
+
+1. Ten sam eksport Shape, ale z zaznaczonymi atrybutami w oknie „wybierz typy obiektów
+   i atrybuty" (§4A.7) — przekrój, materiał, typ katalogowy, długość trasowa, nazwa obiektu,
+   numer obwodu. Prosić o **zapisanie konfiguracji jako szablonu**, żeby kolejne eksporty
+   nie wymagały powtarzania ustawień.
 2. Relacje topologiczne: węzeł początkowy i końcowy odcinka. Jeśli Shape ich nie unosi —
    tabela powiązań po `dp_oid`.
 3. Potwierdzenie 8 punktów podziału zidentyfikowanych z komponentu „Symbol rozłączenia"
