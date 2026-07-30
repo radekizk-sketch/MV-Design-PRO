@@ -26,7 +26,7 @@ import {
   fetchCtTypes,
   fetchManufacturers,
   fetchMvApparatusTypes,
-  fetchProtectionDeviceTypes,
+  fetchMvProtectionDeviceTypes,
   fetchSwitchgearFamilies,
   fetchTransformerTypes,
   fetchVtTypes,
@@ -129,6 +129,7 @@ import { PodgladRozdzielnicySn } from './PodgladRozdzielnicySn';
 import { pobierzPodgladStacji, type PodgladStacji } from './stacjaPodglad';
 import {
   polaUtworzonejStacji,
+  refUtworzonejStacji,
   wykonajSekwencje,
   zbudujSekwencjeWyposazenia,
   type WyposazeniePola,
@@ -423,7 +424,7 @@ export function KreatorStacjiSnNn() {
     Promise.all([
       fetchCtTypes(),
       fetchVtTypes(),
-      fetchProtectionDeviceTypes(),
+      fetchMvProtectionDeviceTypes(),
       fetchBayProtectionCodes(),
     ])
       .then(([ct, vt, relays, kody]) => {
@@ -446,20 +447,21 @@ export function KreatorStacjiSnNn() {
     };
   }, []);
 
-  const producenciDobrani = useMemo(() => producenciUzywalni(producenci), [producenci]);
+  const producenciDobrani = useMemo(
+    () => producenciUzywalni(producenci, szablony),
+    [producenci, szablony],
+  );
   const rodzinyDobrane = useMemo(
     () => rodzinyDlaProducenta(rodziny, dane.manufacturer_ref, kontekst.snVoltageKv),
     [dane.manufacturer_ref, kontekst.snVoltageKv, rodziny],
   );
 
-  // Kompletne szablony pól per producent (filtr niekompletnych przez API + model).
+  // Kompletne szablony pól — WSZYSTKICH producentów, raz. Lista producentów
+  // kroku pól wynika z dostępności kompletnych szablonów (`producenciUzywalni`),
+  // więc musi być znana ZANIM projektant wybierze producenta.
   useEffect(() => {
-    if (!dane.manufacturer_ref) {
-      setSzablony([]);
-      return;
-    }
     let cancelled = false;
-    fetchCompleteBayTemplates(dane.manufacturer_ref)
+    fetchCompleteBayTemplates()
       .then((t) => {
         if (!cancelled) setSzablony(Array.isArray(t) ? t : []);
       })
@@ -471,7 +473,7 @@ export function KreatorStacjiSnNn() {
     return () => {
       cancelled = true;
     };
-  }, [dane.manufacturer_ref]);
+  }, []);
 
   // Domyślny producent = pierwszy używalny (parytet legacy), gdy brak wyboru.
   useEffect(() => {
@@ -708,16 +710,19 @@ export function KreatorStacjiSnNn() {
 
         // Sekwencja po zapisie stacji: CT → VT → zabezpieczenie per pole
         // (dług B-3: backend nie przyjmuje ich w operacji stacyjnej).
-        const stationRef =
-          (response.changes?.created_element_ids ?? []).find((ref) => ref.includes('/station'))
-          ?? null;
+        const stationRef = refUtworzonejStacji(response);
         const polaStacji = polaUtworzonejStacji(response, stationRef);
         const kroki = zbudujSekwencjeWyposazenia(polaStacji, wyposazenieSekwencji);
         let ostatnia = response;
         if (kroki.length > 0) {
-          const wynik = await wykonajSekwencje(kroki, (operacja, payload) =>
-            executeDomainOperation(activeCaseId, operacja, payload),
-          );
+          const wynik = await wykonajSekwencje(kroki, async (operacja, payload) => {
+            const odpowiedz = await executeDomainOperation(activeCaseId, operacja, payload);
+            if (odpowiedz) return odpowiedz;
+            // Brak odpowiedzi = błąd transportu/wersji snapshotu zapisany w store —
+            // pokazujemy komunikat backendu zamiast ogólnego „brak odpowiedzi".
+            const bladStore = useSnapshotStore.getState().error;
+            return bladStore ? ({ error: bladStore } as typeof odpowiedz) : odpowiedz;
+          });
           if (wynik.bladOperacji) {
             // Stacja JEST zapisana — komunikat mówi dokładnie, co się nie udało.
             setBladGlobalny(
@@ -817,13 +822,22 @@ export function KreatorStacjiSnNn() {
                 ),
               )
             : domyslneWpisyPol(stationType, szablonyRola, aparatRef);
+        // Propozycje szablonu przyjmujemy TYLKO wtedy, gdy pozycja istnieje w
+        // katalogu, który waliduje odpowiednia operacja (add_ct/add_vt/add_relay).
+        // Szablony stacji wskazują zabezpieczenia z biblioteki ANALITYCZNEJ
+        // koordynacji (np. EM_E2TANGO_600), a operacja modelu waliduje katalog MV
+        // (przestrzeń ZABEZPIECZENIE) — dopóki oba katalogi nie zostaną
+        // ujednolicone (dług nazwany), nie wolno podstawiać pozycji, której
+        // backend nie przyjmie.
+        const wKatalogu = (ref: string | null, lista: ReadonlyArray<{ id: string }>) =>
+          ref && lista.some((t) => t.id === ref) ? ref : null;
         const wyposazenie = Object.fromEntries(
           pola.map((pole) => [
             pole.id,
             {
-              ct_catalog_ref: wypelnienie.ctRef,
-              vt_catalog_ref: wypelnienie.vtRef,
-              relay_catalog_ref: wypelnienie.przekaznikRef,
+              ct_catalog_ref: wKatalogu(wypelnienie.ctRef, ctTypy),
+              vt_catalog_ref: wKatalogu(wypelnienie.vtRef, vtTypy),
+              relay_catalog_ref: wKatalogu(wypelnienie.przekaznikRef, przekazniki),
               relay_type: 'NADPRADOWY',
             },
           ]),
@@ -846,7 +860,7 @@ export function KreatorStacjiSnNn() {
     } catch (e) {
       setBladSzablonow(e instanceof Error ? e.message : T.szablonBlad);
     }
-  }, [aparatDomyslny, szablonyRola, wybranySzablonId]);
+  }, [aparatDomyslny, ctTypy, przekazniki, szablonyRola, vtTypy, wybranySzablonId]);
 
   const pracujOdZera = useCallback(() => {
     setWybranySzablonId('');
@@ -1416,10 +1430,14 @@ export function KreatorStacjiSnNn() {
                       etykieta={T.pomiarPrzekaznik}
                       wartosc={wpis?.relay_catalog_ref ?? null}
                       onZmiana={(v) => zmienWyposazenie(pole.id, { relay_catalog_ref: v })}
-                      opcje={przekazniki.map((t) => ({
-                        id: t.id,
-                        etykieta: t.vendor ? `${t.vendor} · ${t.name}` : t.name,
-                      }))}
+                      opcje={przekazniki.map((t) => {
+                        // Katalog MV podaje `name_pl`; biblioteka analityczna `name`.
+                        const nazwa = t.name_pl ?? t.name ?? t.id;
+                        return {
+                          id: t.id,
+                          etykieta: t.vendor ? `${t.vendor} · ${nazwa}` : nazwa,
+                        };
+                      })}
                       status={bladPomiaru ? 'error' : 'ready'}
                       placeholder={T.polePlaceholder}
                       pomoc={T.pomiarPrzekaznikPomoc}

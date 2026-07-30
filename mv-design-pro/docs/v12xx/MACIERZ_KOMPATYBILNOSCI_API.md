@@ -75,6 +75,7 @@ Data wylaczenia dla deprecated: koniec M2, o ile wiersz nie wskazuje inaczej.
 | `GET /api/cases/{case_id}/wizard/state` | legacy | deprecated | 2026-04-24 | koniec M2 | Stan kreatora; nie jest prawda domenowa. | wizard state tests | Architekt migracji |
 | `GET /api/catalog/bess-inverter-types` | v12xx | aktywny | 2026-04-24 | - | Katalog falownikow BESS. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/bay-protection-codes` | v12xx | aktywny | 2026-07-30 | - | Kanoniczne funkcje zabezpieczeniowe wymagane dla rol pol SN (readout kreatora stacji; jedno zrodlo prawdy z operacjami domenowymi, K9-B). | catalog tests | Administrator katalogow |
+| `GET /api/catalog/mv-protection-device-types` | v12xx | aktywny | 2026-07-30 | - | Zabezpieczenia z kanonicznego katalogu MV (przestrzen ZABEZPIECZENIE) - te same pozycje, ktore przyjmuje brama katalogowa `add_relay` (K9-B). | catalog tests | Administrator katalogow |
 | `GET /api/catalog/branch-point-types` | v12xx | aktywny | 2026-04-24 | - | Katalog punktow rozgaleznych. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/cable-types` | v12xx | aktywny | 2026-04-24 | - | Katalog kabli SN. | catalog tests | Administrator katalogow |
 | `GET /api/catalog/ct-types` | v12xx | aktywny | 2026-04-24 | - | Katalog przekladnikow pradowych. | catalog tests | Administrator katalogow |

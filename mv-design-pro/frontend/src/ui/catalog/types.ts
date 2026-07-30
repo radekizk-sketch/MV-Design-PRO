@@ -161,6 +161,11 @@ export interface MeasurementTransformerType extends CatalogType {
  * Source: backend ProtectionDeviceType dataclass.
  */
 export interface ProtectionDeviceType extends CatalogType {
+  /**
+   * Nazwa polska rekordu z KANONICZNEGO katalogu MV (`/mv-protection-device-types`).
+   * Biblioteka analityczna koordynacji zwraca `name`; katalog MV — `name_pl`.
+   */
+  name_pl?: string;
   vendor?: string;
   model?: string;
   series?: string;

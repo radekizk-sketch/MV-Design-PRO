@@ -143,7 +143,8 @@ export function isUsableManufacturer(manufacturer: Manufacturer): boolean {
 
 export function isUsableSwitchgearFamily(family: SwitchgearFamily): boolean {
   return (
-    (family.status === 'verified' && family.source_refs.length > 0)
+    ((family.status === 'verified' || family.status === 'repo_verified')
+      && family.source_refs.length > 0)
     || family.status === 'user_defined'
   );
 }

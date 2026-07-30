@@ -31,7 +31,18 @@ export interface SwitchgearFamily {
     | 'kontenerowa'
     | 'prefabrykowana'
     | 'unknown';
-  readonly status: 'verified' | 'user_defined' | 'requires_catalog' | 'deprecated';
+  /**
+   * Status weryfikacji rodziny. `repo_verified` = dane z publicznej strony
+   * produktowej producenta zweryfikowane w repozytorium katalogu — TAKI status
+   * wystawia katalog referencyjny dla wszystkich rodzin (`switchgear/families.py`),
+   * a poprzedni typ go nie znał, więc UI nie pokazywało ŻADNEJ rodziny.
+   */
+  readonly status:
+    | 'verified'
+    | 'repo_verified'
+    | 'user_defined'
+    | 'requires_catalog'
+    | 'deprecated';
   readonly source_refs: readonly string[];
   readonly notes_pl: string | null;
 }

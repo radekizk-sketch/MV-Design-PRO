@@ -45,6 +45,19 @@ interface SpecPola {
 }
 
 /**
+ * Referencja stacji utworzonej przez operację: przecięcie `created_element_ids`
+ * z rekordami stacji snapshotu. Odporne na różne wzorce identyfikatorów obu
+ * operacji (`stn/…/station` przy podziale, `sub/…/substation` przy dopięciu na
+ * końcu) — bez zgadywania po kształcie tekstu.
+ */
+export function refUtworzonejStacji(response: DomainOpResponseV1 | null): string | null {
+  const utworzone = new Set(response?.changes?.created_element_ids ?? []);
+  const substations = (response?.snapshot?.substations ?? []) as Array<{ ref_id?: string }>;
+  const stacja = substations.find((s) => typeof s.ref_id === 'string' && utworzone.has(s.ref_id));
+  return stacja?.ref_id ?? null;
+}
+
+/**
  * Referencje pól SN utworzonej stacji, w kolejności zapisu — z odpowiedzi
  * operacji (`substations[].meta.field_specs`). Zwraca pary rola→ref.
  */
@@ -56,9 +69,10 @@ export function polaUtworzonejStacji(
     ref_id?: string;
     meta?: { field_specs?: SpecPola[] } | null;
   }>;
+  const utworzone = new Set(response?.changes?.created_element_ids ?? []);
   const station = stationRef
     ? substations.find((s) => s.ref_id === stationRef)
-    : substations.find((s) => String(s.ref_id ?? '').includes('/station'));
+    : substations.find((s) => typeof s.ref_id === 'string' && utworzone.has(s.ref_id));
   const specs = station?.meta?.field_specs ?? [];
   const wynik: Array<{ field_role: string; field_ref: string }> = [];
   for (const spec of specs) {

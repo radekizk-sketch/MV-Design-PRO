@@ -641,9 +641,31 @@ export function aparatyDlaPola(
     .sort((a, b) => a.u_n_kv - b.u_n_kv || a.i_n_a - b.i_n_a || a.id.localeCompare(b.id));
 }
 
-/** Producenci używalni w konfiguratorze (kolejność katalogowa, tylko kompletni). */
-export function producenciUzywalni(manufacturers: readonly Manufacturer[]): Manufacturer[] {
-  return orderManufacturers([...manufacturers]).filter(isUsableManufacturer);
+/**
+ * Producenci używalni w kreatorze stacji: ci, którzy MAJĄ kompletne szablony pól
+ * (kolejność katalogowa). Kreator wiąże pole z szablonem producenta — decyduje
+ * więc dostępność szablonów, a nie status rekordu producenta.
+ *
+ * Poprzednia reguła (`isUsableManufacturer`: status „verified") wykluczała
+ * WSZYSTKICH producentów katalogu referencyjnego (mają status
+ * `requires_catalog`, choć ich pakiety pól są `repo_verified`) — lista była
+ * pusta, więc kroku rozdzielnicy NIE dawało się domknąć w żywej aplikacji.
+ * Producenci ze statusem „verified"/„user_defined" pozostają używalni nawet
+ * bez pobranych szablonów (dane własne projektanta).
+ */
+export function producenciUzywalni(
+  manufacturers: readonly Manufacturer[],
+  szablony: readonly CompleteMvBayTemplateSummary[] = [],
+): Manufacturer[] {
+  const zeSzablonami = new Set(
+    szablony
+      .filter((t) => isCompleteSourceStatus(t.source_status))
+      .map((t) => t.manufacturer_ref)
+      .filter((ref): ref is string => Boolean(ref)),
+  );
+  return orderManufacturers([...manufacturers]).filter(
+    (m) => zeSzablonami.has(m.manufacturer_ref) || isUsableManufacturer(m),
+  );
 }
 
 /** Rodziny rozdzielnicy zgodne z producentem i napięciem SN szyny (parytet legacy). */

@@ -159,7 +159,7 @@ vi.mock('../../../../ui/catalog/api', () => ({
     Promise.resolve([
       { id: 'vt-15-100', name: 'VT 15 kV/100 V', ratio_primary_v: 15000, ratio_secondary_v: 100 },
     ]),
-  fetchProtectionDeviceTypes: () =>
+  fetchMvProtectionDeviceTypes: () =>
     Promise.resolve([{ id: 'relay-1', name: 'Przekaźnik nadprądowy', vendor: 'ABB' }]),
   fetchBayProtectionCodes: () =>
     Promise.resolve({

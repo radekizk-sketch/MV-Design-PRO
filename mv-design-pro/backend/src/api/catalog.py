@@ -417,6 +417,20 @@ def list_bay_protection_codes() -> dict[str, list[str]]:
     return {role: list(codes) for role, codes in BAY_PROTECTION_CODES_BY_ROLE.items()}
 
 
+@router.get("/mv-protection-device-types")
+def list_mv_protection_device_types() -> list[dict[str, Any]]:
+    """Zabezpieczenia z KANONICZNEGO katalogu MV (przestrzeń `ZABEZPIECZENIE`).
+
+    To ta sama lista, którą waliduje brama katalogowa operacji `add_relay`
+    (`materialization`: `get_protection_device_type`). Końcówka
+    `/protection/device-types` zwraca inny zbiór — bibliotekę analityczną
+    koordynacji zabezpieczeń — więc kreator, który z niej korzystał, oferował
+    pozycje odrzucane potem przez operację (fabrykacja wyboru). Kreatory
+    budujące model wybierają WYŁĄCZNIE stąd.
+    """
+    return [item.to_dict() for item in get_default_mv_catalog().list_protection_device_types()]
+
+
 @router.get("/protection/device-types")
 def list_protection_device_types(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),

@@ -234,6 +234,16 @@ export async function fetchLoadTypes(): Promise<LoadCatalogType[]> {
 }
 
 /**
+ * Zabezpieczenia z KANONICZNEGO katalogu MV (przestrzeń `ZABEZPIECZENIE`) —
+ * dokładnie te pozycje, które przyjmuje operacja `add_relay`. Lista
+ * `fetchProtectionDeviceTypes` (biblioteka analityczna koordynacji) NIE nadaje
+ * się do budowy modelu: jej pozycje brama katalogowa odrzuca.
+ */
+export async function fetchMvProtectionDeviceTypes(): Promise<ProtectionDeviceType[]> {
+  return fetchCatalogJson<ProtectionDeviceType[]>('/api/catalog/mv-protection-device-types');
+}
+
+/**
  * Kanoniczne kody funkcji zabezpieczeniowych wymaganych dla ról pól SN
  * (readout z backendu — bez kopiowania tablicy do frontendu).
  */
