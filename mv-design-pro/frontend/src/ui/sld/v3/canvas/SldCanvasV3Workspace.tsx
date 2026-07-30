@@ -2019,35 +2019,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         )}
       </div>
 
-      {/* K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): dok widoku kanwy
-          — dolny-środek (jedyny róg/oś BEZ istniejącego doku: górny-środek =
-          paleta DER, oba górne rogi = eksport/drzewo układu, oba dolne rogi =
-          dowody/warstwy). UWAGA STANU BAZOWEGO (meldunek K12): karta
-          zakładała, że ten dok JUŻ ISTNIEJE z przyciskami „Dopasuj widok"/
-          „Cały arkusz" (K11-A) — w bazie TEGO worktree (`origin/main`
-          `0efee335`) K11-A NIE jest scalone (żyje na osobnej, niescalonej
-          gałęzi nadzorcy), więc dok jest tworzony OD ZERA z WYŁĄCZNIE
-          przyciskiem legendy. Gdy K11-A scali fit-view/fit-sheet, ich
-          przyciski dołączają do TEGO SAMEGO doku (ta sama nazwa testid). */}
-      <div
-        className="pointer-events-auto absolute bottom-3 z-30 flex flex-col items-center gap-1"
-        data-testid="sld-v3-view-dock"
-        style={{ left: '50%', transform: 'translateX(-50%)' }}
-      >
-        <button
-          type="button"
-          onClick={() => setLegendPanelOpen((prev) => !prev)}
-          data-testid="sld-v3-legend-toggle"
-          aria-expanded={legendPanelOpen}
-          aria-label={legendPanelOpen ? 'Zamknij legendę symboli' : `Otwórz legendę symboli (${legendEntries.length})`}
-          title={legendPanelOpen ? 'Zamknij legendę' : `Legenda symboli i linii (${legendEntries.length})`}
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
-        >
-          {legendPanelOpen ? '▾ Legenda' : `▴ Legenda (${legendEntries.length})`}
-        </button>
-        {legendPanelOpen && <SldV3LegendPanel entries={legendEntries} />}
-      </div>
-
       {/* F12-B pkt 1 (spec §10.1 ARCH-4, „SldExportFormatMenu — eksport
           SVG/PNG"): dok prawy-górny — paleta DER zajmuje górny-środek, zero
           kolizji. */}
@@ -2091,35 +2062,53 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       {/* K11-A: jawne dopasowanie widoku do treści sieci (dyrektywa SLD-first)
           — użyteczne po ręcznym pan/zoom; automat fituje przy otwarciu i po
           zmianie sieci. Własny dok pod dokiem eksportu — zero kolizji z
-          centrowaną paletą DER. */}
+          centrowaną paletą DER.
+          K12 (dyrektywa 2026-07-30, scalenie nadzorcy): TEN SAM dok niesie
+          przycisk legendy na żądanie — legenda nie żyje już na stałe na
+          schemacie; panel rozwija się POD rzędem przycisków (wyrównany do
+          prawej), żeby nie poszerzać rzędu o 280 px treści. */}
       <div
-        className="pointer-events-auto absolute right-3 top-12 z-30 flex items-center gap-1"
+        className="pointer-events-auto absolute right-3 top-12 z-30 flex flex-col items-end gap-1"
         data-testid="sld-v3-view-dock"
       >
-        <button
-          type="button"
-          onClick={() => {
-            setFitTarget('tresc');
-            setFitSignal((s) => s + 1);
-          }}
-          data-testid="sld-v3-fit-view"
-          title="Dopasuj widok do sieci"
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
-        >
-          ⌖ Dopasuj widok
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setFitTarget('arkusz');
-            setFitSignal((s) => s + 1);
-          }}
-          data-testid="sld-v3-fit-sheet"
-          title="Pokaż cały arkusz rysunkowy"
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
-        >
-          Cały arkusz
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setFitTarget('tresc');
+              setFitSignal((s) => s + 1);
+            }}
+            data-testid="sld-v3-fit-view"
+            title="Dopasuj widok do sieci"
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            ⌖ Dopasuj widok
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFitTarget('arkusz');
+              setFitSignal((s) => s + 1);
+            }}
+            data-testid="sld-v3-fit-sheet"
+            title="Pokaż cały arkusz rysunkowy"
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            Cały arkusz
+          </button>
+          <button
+            type="button"
+            onClick={() => setLegendPanelOpen((prev) => !prev)}
+            data-testid="sld-v3-legend-toggle"
+            aria-expanded={legendPanelOpen}
+            aria-label={legendPanelOpen ? 'Zamknij legendę symboli' : `Otwórz legendę symboli (${legendEntries.length})`}
+            title={legendPanelOpen ? 'Zamknij legendę' : `Legenda symboli i linii (${legendEntries.length})`}
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            {legendPanelOpen ? '▾ Legenda' : `▸ Legenda (${legendEntries.length})`}
+          </button>
+        </div>
+        {legendPanelOpen && <SldV3LegendPanel entries={legendEntries} />}
       </div>
 
       {/* F12-B pkt 2 (spec §10.1 ARCH-4, „NetworkHierarchyTree"): dok
