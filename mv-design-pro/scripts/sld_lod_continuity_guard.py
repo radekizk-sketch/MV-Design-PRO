@@ -189,7 +189,17 @@ def main() -> int:
                 continue
             if "isLabelReadableAtScale" not in line:
                 continue
-            if "label" not in line.lower():
+            # Import to nie użycie (nazwa stoi samotnie w liście importu).
+            if stripped.startswith("import ") or re.fullmatch(r"isLabelReadableAtScale,?", stripped):
+                continue
+            # Nazwa samej funkcji zawiera „Label", więc szukanie słowa w CAŁEJ
+            # linii zawsze trafiało — czyli ten warunek nie mógł nigdy zapalić
+            # się na czerwono (strażnik dający fałszywą pewność jest gorszy niż
+            # jego brak). Usuwamy nazwę funkcji i pytamy o RESZTĘ linii: czy
+            # argument/kontekst wywołania mówi o etykiecie (`label.labelClass`,
+            # `scene.labels`), czy o czymś innym (symbol/odcinek).
+            reszta = line.replace("isLabelReadableAtScale", "")
+            if "label" not in reszta.lower():
                 violations.append(
                     "GUARD 5: próg czytelności użyty poza kontekstem etykiety — "
                     f"{CANVAS_MODULE.relative_to(REPO_ROOT)}:{line_no}"
