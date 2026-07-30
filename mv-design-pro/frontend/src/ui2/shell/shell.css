@@ -265,6 +265,16 @@
 
 .mvd-center {
   min-width: 0;
+  /* K11-B (naprawa długu zastanego u źródła — Zero-Debt): element siatki ma
+     domyślnie `min-height: auto`, więc mimo `overflow: auto` NIE kurczył się
+     poniżej rozmiaru swojej treści — zamiast przewijać się w środku, rozpychał
+     całą powłokę w dół (zmierzone: dokument 1124 px w oknie 900 px, doki dolne
+     kanwy SLD i 179 px rysunku poza oknem, bez możliwości przewinięcia, bo
+     `body { overflow: hidden }`). `min-height: 0` przywraca kontrakt kolumny
+     przewijalnej: region mieści się w torze siatki, a nadmiar treści przewija
+     się WEWNĄTRZ niego. Bliźniacza połowa naprawy: definitywna wysokość
+     korzenia motywu (`App.tsx`, `h-screen`). */
+  min-height: 0;
   overflow: auto;
   background: var(--mvd-bg);
   padding: 16px;
