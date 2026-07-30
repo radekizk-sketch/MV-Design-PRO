@@ -213,15 +213,16 @@ async function waitForAnalysisRunIndex(
   let lastBody = '';
   while (Date.now() < deadline) {
     // Jawny timeout żądania: fixture `request` dziedziczy actionTimeout 10 s
-    // z playwright.config.ts, a pierwszy GET blokuje się na synchronicznej
-    // budowie indeksu (zmierzone 2026-07-30: 49 s na BEZCZYNNEJ maszynie
-    // 4-rdzeniowej; pod własnym obciążeniem specu >90 s) — bez zapasu klient
-    // ucina żądanie w połowie pracy, a osierocona budowa głodzi kolejne specy.
-    // DŁUG PRODUKTOWY (nazwany, rejestr): indeks liczony przy KAŻDYM GET
-    // zamiast utrwalany przy zakończeniu biegu.
+    // z playwright.config.ts, a pierwszy GET płaci jednorazową budowę kontekstu
+    // biegu. Po naprawie V12K-281 (K13: skrót artefaktu i materializacja
+    // katalogowa liczone raz per treść) zmierzone 2026-07-30: 4,0 s na
+    // bezczynnej maszynie 4-rdzeniowej (było 49 s) — limit 60 s daje ~15×
+    // zapasu na wolniejszy przebieg CI. Pozostały koszt stały (deserializacja
+    // pełnego artefaktu przy każdym odczycie biegu) = karta wydajności
+    // persystencji (rejestr, dług nazwany).
     const response = await request.get(
       `${BACKEND_BASE}/api/analysis-runs/${runId}/results/index`,
-      { timeout: 240000 },
+      { timeout: 60000 },
     );
     lastStatus = response.status();
     if (response.ok()) {
@@ -237,15 +238,12 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   page,
   request,
 }) => {
-  // Pomiar 2026-07-29 (karta K1/D): 50× apply (do 10,8 s/szt. pod obciążeniem)
-  // + wykonanie SC_3F (~30 s) + budowa results/index (~45 s) + eksporty
-  // (report/json 223–236 s, proof/json 58 s, proof/latex 44 s) + rozpływ + UI
-  // ≈ 10–11 min realnego czasu — 900 s daje zapas na wolniejszy przebieg CI.
-  // Koszt eksportów to własność backendu (kandydat na kartę wydajnościową),
-  // nie do zamaskowania krótszym limitem testu.
-  // Budzet calego przeplywu: zmierzone 2026-07-30 na 4-rdzeniowej maszynie —
-  // sam eksport raportu JSON dla 50 stacji to 298 s na BEZCZYNNYM backendzie.
-  test.setTimeout(1800000);
+  // Pomiar 2026-07-30 PO naprawie V12K-281 (K13) na bezczynnej maszynie
+  // 4-rdzeniowej: cały przepływ 3,2 min (było 9,8 min), w tym indeks 4,0 s
+  // (było 49 s), raport JSON 0,9 MiB / 4,6 s (było 729,8 MB / 254 s),
+  // proof/json 5,0 s (było 28 s), proof/latex 4,7 s (było 38 s).
+  // 900 s ≈ 4,5× zmierzonego czasu — zapas na wolniejszy przebieg CI.
+  test.setTimeout(900000);
 
   const seed = await createProjectAndCase(request);
   const templatesResponse = await request.get(`${BACKEND_BASE}/api/station-templates`);
@@ -341,8 +339,8 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   // Pomiar 2026-07-29 (karta K1/D): synchroniczny POST /execute dla sieci
   // 50 stacji + OZE trwa realnie ~32 s na tym kontenerze — domyślny limit
   // żądania API (30 s) ucinał odpowiedź tuż przed końcem obliczeń.
-  // 240 s = ~5× czasu zmierzonego na bezczynnej maszynie (49 s) — zapas na
-  // wspolbiezne obciazenie wlasne specu i wolniejszy przebieg CI.
+  // 240 s = ~7× pomiaru — zapas na współbieżne obciążenie własne specu
+  // i wolniejszy przebieg CI (obliczenie solvera, nie tor eksportu K13).
   const executeRunResponse = await request.post(
     `${BACKEND_BASE}/api/execution/runs/${scRun.id}/execute`,
     { timeout: 240000 },
@@ -350,16 +348,13 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   expect(executeRunResponse.ok(), await executeRunResponse.text()).toBeTruthy();
   await waitForAnalysisRunIndex(request, scRun.id);
 
-  // Pomiary 2026-07-29 (karta K1/D, log uvicorn + curl, sieć 50 stacji):
-  // report/json 172–236 s i **729,8 MB** treści, proof/json 58 s / 13,2 MB,
-  // proof/latex 44 s / 5,1 MB, trace 3–4 s — eksporty liczone synchronicznie
-  // bez cache (druga próba trwa tyle samo). 360 s = ~1,5× najdłuższego pomiaru.
-  // Treść czytamy jako Buffer: report/json przekracza limit stringa Node
-  // (0x1fffffe8 ≈ 512 MiB), więc `response.text()` wywala się zanim dojdzie do
-  // asercji. Rozmiar raportu to własność backendu (kandydat na kartę
-  // wydajnościową eksportu), nie do zamaskowania pominięciem endpointu.
-  // Treść dowodów bierzemy z TEGO SAMEGO pobrania (bez drugiego GET po
-  // ~1 min/eksport — asercje bez zmian).
+  // Pomiary 2026-07-30 PO naprawie V12K-281 (K13, sieć 50 stacji, bezczynna
+  // maszyna): report/json 0,9 MiB / 4,6 s (przed naprawą 729,8 MB / 254 s —
+  // każdy wiersz zbiorczy niósł pełny iloczyn źródło×gałąź rozpływu),
+  // proof/json 12,6 MiB / 5,0 s, proof/latex 4,8 MiB / 4,7 s, trace 8,7 MiB /
+  // 4,7 s. Limit 120 s ≈ 25× najdłuższego pomiaru. Treść czytamy jako Buffer
+  // (odporność na duże eksporty niezależnie od limitu stringa Node); treść
+  // dowodów bierzemy z TEGO SAMEGO pobrania.
   const exportBodies = new Map<string, Buffer>();
   for (const endpoint of [
     `/api/analysis-runs/${scRun.id}/results/index`,
@@ -368,12 +363,27 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
     `/api/analysis-runs/${scRun.id}/export/proof/json`,
     `/api/analysis-runs/${scRun.id}/export/proof/latex`,
   ]) {
-    const response = await request.get(`${BACKEND_BASE}${endpoint}`, { timeout: 600000 });
+    const startMs = Date.now();
+    const response = await request.get(`${BACKEND_BASE}${endpoint}`, { timeout: 120000 });
     const body = await response.body();
+    // Pomiar diagnostyczny (V12K-281, K13): rozmiar i czas KAŻDEGO eksportu w
+    // logu biegu — kalibracja limitów specu ma się opierać na liczbach z logu,
+    // nie na wrażeniu.
+    console.log(
+      `[pomiar] ${endpoint}: ${(body.byteLength / 1048576).toFixed(1)} MiB w ${Date.now() - startMs} ms`,
+    );
     expect(
       response.ok(),
       `${endpoint}: ${response.ok() ? '' : body.subarray(0, 2048).toString('utf-8')}`,
     ).toBeTruthy();
+    // V12K-281 (K13): bramka regresji rozmiaru raportu — wiersze zwarciowe
+    // raportu NIE niosą rozpływu gałęziowego per wiersz (iloczyn źródło×gałąź
+    // dawał tu 729,8 MB); powrót rozpływu do wierszy zbiorczych ma być
+    // CZERWONY. Limit 100 MB = wielokrotność zmierzonego rozmiaru po naprawie
+    // (rząd MB) i ~1/7 rozmiaru defektu.
+    if (endpoint.includes('/export/report/json')) {
+      expect(body.byteLength).toBeLessThan(100 * 1024 * 1024);
+    }
     // Do dalszych asercji trzymamy wyłącznie dowody (MB), nie raport (setki MB).
     if (endpoint.includes('/export/proof/')) exportBodies.set(endpoint, body);
   }

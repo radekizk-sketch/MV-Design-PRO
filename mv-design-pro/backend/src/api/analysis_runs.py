@@ -26,6 +26,7 @@ from api.canonical_run_views import (
     build_results_index_response,
     build_run_trace_payload,
     build_short_circuit_results_response,
+    build_short_circuit_rozplyw_response,
     build_sld_overlay,
     build_source_compliance_results_response,
 )
@@ -463,6 +464,22 @@ def get_branch_results(run_id: UUID) -> dict[str, Any]:
 @router.get("/analysis-runs/{run_id}/results/short-circuit")
 def get_short_circuit_results(run_id: UUID) -> dict[str, Any]:
     return canonicalize_json(build_short_circuit_results_response(_require_canonical_run(run_id)))
+
+
+@router.get("/analysis-runs/{run_id}/results/short-circuit/rozplyw")
+def get_short_circuit_rozplyw(run_id: UUID, target_id: str = Query(...)) -> dict[str, Any]:
+    # V12K-281 (K13): rozpływ gałęziowy JEDNEGO punktu zwarcia na żądanie —
+    # wiersze zbiorcze `/results/short-circuit` nie niosą już rozpływu
+    # (iloczyn źródło×gałąź per wiersz dawał odpowiedź/raport 730 MB).
+    # `target_id` jako parametr zapytania: refy węzłów ENM zawierają ukośniki.
+    run = _require_canonical_run(run_id)
+    try:
+        return canonicalize_json(build_short_circuit_rozplyw_response(run, target_id))
+    except KeyError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Brak punktu zwarcia {target_id} w wynikach obliczenia {run_id}",
+        ) from exc
 
 
 @router.get("/analysis-runs/{run_id}/results/phase-state")

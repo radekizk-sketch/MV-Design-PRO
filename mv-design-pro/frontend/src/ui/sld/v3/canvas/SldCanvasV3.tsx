@@ -2143,7 +2143,6 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     }
     dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint });
     // Wyłącznie sygnał steruje tym efektem — refit czyta AKTUALNE bboxy/viewport.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitSignal]);
 
   // (k3) 'resize' gdy zmienia się TYLKO viewport (width/height) — świat ten

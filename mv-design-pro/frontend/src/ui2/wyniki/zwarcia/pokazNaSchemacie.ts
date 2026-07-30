@@ -22,7 +22,7 @@
 import { useCallback } from 'react';
 
 import { navigateToSld } from '../../../ui/navigation/routes';
-import type { ShortCircuitRow } from '../../../ui/results-inspector/types';
+import type { ShortCircuitBranchFlow, ShortCircuitRow } from '../../../ui/results-inspector/types';
 import { useSelectionStore } from '../../../ui/selection';
 import { adaptShortCircuitFlowToOverlay } from '../../../ui/sld-overlay';
 import { useOverlayStore } from '../../../ui/sld-overlay/overlayStore';
@@ -32,10 +32,15 @@ import { useOverlayStore } from '../../../ui/sld-overlay/overlayStore';
  * Ref i nazwa pochodzą z wiersza kanonicznego (element_id/target_id,
  * target_name); typ elementu punktu zwarcia = szyna (`Bus` — punkty zwarcia
  * toru kanonicznego to węzły sieci).
+ *
+ * V12K-281 (K13): rozpływ gałęziowy przychodzi JAWNYM parametrem (dostawca na
+ * żądanie `useRozplywZwarciowy` w ekranie) — wiersze zbiorcze nie niosą już
+ * rozpływu; pole wiersza zostaje torem zapasowym (mock/starszy pełny zapis).
  */
 export function usePokazZwarcieNaSchemacie(): (
   row: ShortCircuitRow,
   runId: string | null,
+  rozplyw?: readonly ShortCircuitBranchFlow[] | null,
 ) => void {
   const selectElement = useSelectionStore((s) => s.selectElement);
   const centerSldOnElement = useSelectionStore((s) => s.centerSldOnElement);
@@ -43,18 +48,23 @@ export function usePokazZwarcieNaSchemacie(): (
   const loadFaultFlow = useOverlayStore((s) => s.loadFaultFlow);
 
   return useCallback(
-    (row: ShortCircuitRow, runId: string | null) => {
+    (
+      row: ShortCircuitRow,
+      runId: string | null,
+      rozplyw?: readonly ShortCircuitBranchFlow[] | null,
+    ) => {
       const ref = row.element_id ?? row.target_id;
       selectElement({ id: ref, type: 'Bus', name: row.target_name ?? ref });
       centerSldOnElement(ref);
       if (runId) {
-        // Overlay rozpływu: wpisy wiersza (lub sam znacznik punktu zwarcia,
-        // gdy starszy wynik nie niesie rozpływu — uczciwie bez gałęzi).
+        // Overlay rozpływu: wpisy z dostawcy na żądanie (lub z pola wiersza —
+        // tor zapasowy), a gdy rozpływ niedostępny (starszy wynik) — sam
+        // znacznik punktu zwarcia, uczciwie bez gałęzi.
         const wejscie = {
           run_id: runId,
           fault_type: row.fault_type,
           fault_element_ref: ref,
-          flows: row.branch_contributions ?? [],
+          flows: [...(rozplyw ?? row.branch_contributions ?? [])],
         };
         loadOverlay(adaptShortCircuitFlowToOverlay(wejscie));
         // Karta S-B: kanał KIERUNKU dla strzałek kanwy v3 (loadOverlay wyżej

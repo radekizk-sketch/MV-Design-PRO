@@ -30,6 +30,7 @@ from enm.canonical_analysis import (
     build_phase_state_results,
     build_results_index,
     build_short_circuit_results,
+    build_short_circuit_rozplyw,
     build_source_compliance_results,
 )
 
@@ -448,6 +449,14 @@ def build_branch_results_response(run: CanonicalRun) -> dict[str, Any]:
 
 def build_short_circuit_results_response(run: CanonicalRun) -> dict[str, Any]:
     payload = build_short_circuit_results(run)
+    payload["analysis_case_context"] = build_analysis_case_context(run)
+    return payload
+
+
+def build_short_circuit_rozplyw_response(run: CanonicalRun, target_id: str) -> dict[str, Any]:
+    # V12K-281 (K13): rozpływ gałęziowy jednego punktu zwarcia na żądanie —
+    # wiersze zbiorcze nie niosą już rozpływu (raport/odpowiedź 730 MB).
+    payload = build_short_circuit_rozplyw(run, target_id)
     payload["analysis_case_context"] = build_analysis_case_context(run)
     return payload
 

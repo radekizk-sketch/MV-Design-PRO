@@ -332,4 +332,17 @@ test('po DONE klik „Oblicz" z przestrzeni obliczeń ląduje w ui2 z zakładką
   await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible({ timeout: 20000 });
   await expect(page.getByTestId('mvd-zwarcia-ekran-pusty')).toHaveCount(0);
   await expect(page.getByTestId('mvd-zwarcia-bilans')).toBeVisible();
+
+  // V12K-281 (K13): wiersze zbiorcze wyniku NIE niosą już rozpływu gałęziowego
+  // (iloczyn źródło×gałąź per wiersz dawał odpowiedź 730 MB dla 50 stacji) —
+  // sekcja rozpływu pobiera dane wybranego punktu ENDPOINTEM NA ŻĄDANIE.
+  // Bramka: realny bieg → sekcja pokazuje wpisy (tabela), NIE stan
+  // „niedostępny" (regresja dostawcy) ani „pusty" (sieć MA źródło zastępcze,
+  // więc rozpływ od sieci nadrzędnej istnieje).
+  await expect(page.getByTestId('mvd-zwarcia-rozplyw')).toBeVisible();
+  await expect(page.getByTestId('mvd-zwarcia-rozplyw').locator('table')).toBeVisible({
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('mvd-zwarcia-rozplyw-brak')).toHaveCount(0);
+  await expect(page.getByTestId('mvd-zwarcia-rozplyw-pusty')).toHaveCount(0);
 });

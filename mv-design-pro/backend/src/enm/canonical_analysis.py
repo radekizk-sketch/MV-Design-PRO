@@ -2038,7 +2038,9 @@ def _sc_rozplyw_galeziowy(
     return flows
 
 
-def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
+def build_short_circuit_results(
+    run: CanonicalRun, *, include_rozplyw: bool = False
+) -> dict[str, Any]:
     if run.analysis_type != "short_circuit_sn":
         return {"run_id": str(run.id), "rows": []}
     graph_nodes = ((run.raw_result or {}).get("graph") or {}).get("nodes", {})
@@ -2059,7 +2061,17 @@ def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
                 **_sc_pelny_bilans(item),
                 # ZWARCIA-PRO F4 (karta W-C): rozpływ prądu zwarciowego w gałęziach
                 # (pole addytywne — starsze wyniki bez pola → None).
-                "branch_contributions": _sc_rozplyw_galeziowy(item, graph_nodes, graph_branches),
+                # V12K-281 (K13): lista wierszy zbiorczych domyślnie BEZ rozpływu —
+                # pełny rozpływ to iloczyn źródło×gałąź per wiersz (zmierzone
+                # 104 wiersze × 11 506 wpisów = raport 730 MB). Rozpływ JEDNEGO
+                # punktu na żądanie: `build_short_circuit_rozplyw`; dostępność
+                # sygnalizuje flaga niżej (odróżnia starszy wynik bez pola).
+                "branch_contributions": (
+                    _sc_rozplyw_galeziowy(item, graph_nodes, graph_branches)
+                    if include_rozplyw
+                    else None
+                ),
+                "branch_contributions_available": item.get("branch_contributions") is not None,
                 "fault_type": item.get("short_circuit_type"),
                 # GAP passthrough (V12K-128): wymóg/źródło sieci zerowej Z0 przenoszone
                 # do wiersza kanonicznego (konsument read-only wie, czy Z0 dotyczy i
@@ -2087,6 +2099,34 @@ def build_short_circuit_results(run: CanonicalRun) -> dict[str, Any]:
         )
     rows.sort(key=lambda row: row["target_id"] or "")
     return {"run_id": str(run.id), "rows": rows}
+
+
+def build_short_circuit_rozplyw(run: CanonicalRun, target_id: str) -> dict[str, Any]:
+    """Rozpływ prądu zwarciowego JEDNEGO punktu zwarcia na żądanie (V12K-281, K13).
+
+    Lista wierszy zbiorczych (`build_short_circuit_results`) nie niesie już
+    rozpływu (iloczyn źródło×gałąź per wiersz dawał raport 730 MB); konsument
+    (tabela rozpływu, nakładka na schemacie) pobiera rozpływ WYBRANEGO punktu
+    tym budowniczym. Ta sama projekcja prezentacyjna co dotąd
+    (`_sc_rozplyw_galeziowy` — A→kA, nazwy z grafu przebiegu, sort
+    deterministyczny). `branch_contributions=None` = starszy wynik bez pola
+    (uczciwy brak). Nieznany punkt → KeyError (API tłumaczy na 404).
+    """
+    if run.analysis_type != "short_circuit_sn":
+        raise KeyError(f"Przebieg nie jest analiza zwarciowa: {run.id}")
+    raw_result = run.raw_result or {}
+    graph_nodes = (raw_result.get("graph") or {}).get("nodes", {})
+    graph_branches = (raw_result.get("graph") or {}).get("branches", {})
+    for item in raw_result.get("results", []):
+        if item.get("fault_node_id") == target_id:
+            return {
+                "run_id": str(run.id),
+                "target_id": target_id,
+                "branch_contributions": _sc_rozplyw_galeziowy(
+                    item, graph_nodes, graph_branches
+                ),
+            }
+    raise KeyError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
 
 
 def build_phase_state_results(run: CanonicalRun) -> dict[str, Any]:

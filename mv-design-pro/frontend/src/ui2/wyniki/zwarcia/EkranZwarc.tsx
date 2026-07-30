@@ -17,7 +17,7 @@ import { useMemo, useState } from 'react';
 import './zwarcia.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy } from '../wzorzec';
-import { useWkladyZwarciowe } from './api';
+import { useRozplywZwarciowy, useWkladyZwarciowe } from './api';
 import { BilansIEC } from './BilansIEC';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
 import { RozplywZwarciowy } from './RozplywZwarciowy';
@@ -30,7 +30,6 @@ import {
   KOLUMNY_ZWARC,
   naWierszeZwarc,
   naZalozeniaZwarc,
-  rozplywDlaWiersza,
   useWynikZwarciowy,
   type WkladZwarciowy,
 } from './zwarciaModel';
@@ -80,6 +79,13 @@ export function EkranZwarc({
   // pierwszeństwo — wtedy hook nie pobiera (punkt=null).
   const wkladyPobrane = useWkladyZwarciowe(wklady ? null : aktywnyPunkt);
 
+  // V12K-281 (K13): rozpływ gałęziowy wybranego punktu NA ŻĄDANIE — wiersze
+  // zbiorcze nie niosą już rozpływu (odpowiedź 730 MB dla 50 stacji); dane
+  // z pola wiersza (mock/starszy pełny zapis) mają pierwszeństwo, inaczej
+  // dostawca pobiera rozpływ punktu z endpointu (cache per punkt).
+  const wierszDlaRozplywu = rows.find((r) => r.target_id === aktywnyPunkt) ?? rows[0] ?? null;
+  const rozplyw = useRozplywZwarciowy(runId, wierszDlaRozplywu);
+
   if (!wynik || rows.length === 0) {
     return (
       <div className="mvd-wyn" data-testid="mvd-zwarcia-ekran-pusty">
@@ -124,7 +130,7 @@ export function EkranZwarc({
           type="button"
           className="mvd-zwarcia-wykres-btn"
           data-testid="mvd-zwarcia-pokaz-sld"
-          onClick={() => pokazNaSchemacie(wierszAktywny, runId)}
+          onClick={() => pokazNaSchemacie(wierszAktywny, runId, rozplyw)}
         >
           {ZWARCIA_STRINGS.pokazNaSchemacie}
         </button>
@@ -134,7 +140,7 @@ export function EkranZwarc({
 
       <RozplywZwarciowy
         punktNazwa={nazwaAktywnego}
-        flows={rozplywDlaWiersza(wierszAktywny)}
+        flows={rozplyw}
         trybZaawansowania={trybZaawansowania}
         onOtworzDowod={onOtworzDowod}
       />

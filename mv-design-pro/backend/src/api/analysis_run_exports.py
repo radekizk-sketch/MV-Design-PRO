@@ -236,7 +236,10 @@ def build_analysis_run_report_payload(
 
     payload: dict[str, Any] = {
         "report_type": "analysis_run_report",
-        "report_version": "2.0.0",
+        # 2.1.0 (V12K-281, K13): wiersze `results.short_circuit.rows` bez
+        # `branch_contributions` (+ flaga `branch_contributions_available`) —
+        # rozpływ per punkt zwarcia dostępny endpointem na żądanie.
+        "report_version": "2.1.0",
         "title": _analysis_title(run),
         "report_options": normalized_options,
         "analysis_case_context": analysis_case_context,
@@ -382,7 +385,9 @@ def build_analysis_run_export_payload(run: CanonicalRun) -> dict[str, Any]:
         )
         return {
             "report_type": "short_circuit_result",
-            "report_version": "1.1.0",
+            # 1.2.0 (V12K-281, K13): wiersze `short_circuit_results.rows` bez
+            # `branch_contributions` (+ flaga dostępności) — patrz raport 2.1.0.
+            "report_version": "1.2.0",
             "analysis_case_context": analysis_case_context,
             "proof_pack_ref": resolve_proof_pack_ref(run),
             "export_artifact": build_export_artifact(run, export_kind="json"),
