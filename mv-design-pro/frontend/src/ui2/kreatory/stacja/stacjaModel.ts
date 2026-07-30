@@ -39,7 +39,11 @@ import type {
   TopologicalStationKind,
 } from '../../../ui/network-build/forms/InsertStationFormHelpers';
 import type { CompleteMvBayTemplateSummary } from '../../../ui/catalog/BayTemplatePicker';
-import type { CatalogNamespace, ConverterType } from '../../../ui/catalog/types';
+import type {
+  CatalogNamespace,
+  ConverterType,
+  MVApparatusCatalogType,
+} from '../../../ui/catalog/types';
 import type { Manufacturer } from '../../../ui/catalog/manufacturer';
 import type { SwitchgearFamily } from '../../../ui/catalog/SwitchgearFamilyPicker';
 import type { TransformerType } from '../../../ui/catalog/types';
@@ -89,9 +93,59 @@ export type PunktNeutralny =
   | 'petersen_coil'
   | 'isolated';
 
+/** Typ konstrukcji stacji (B-5) — parytet z `Substation.construction_type`. */
+export type TypKonstrukcji =
+  | 'wnetrzowa'
+  | 'kontenerowa'
+  | 'slupowa'
+  | 'prefabrykowana'
+  | 'inna';
+
+/**
+ * Wpis edytowalnej listy pól SN (krok „Pola rozdzielnicy SN"). `id` jest tylko
+ * kluczem UI (stabilna kolejność przy dodawaniu/usuwaniu); do backendu idą
+ * `field_role`, szablon pola i JAWNY aparat (B-12).
+ */
+export interface PoleSnWpis {
+  id: string;
+  field_role: SnFieldRole;
+  bay_template_ref: string | null;
+  apparatus_catalog_ref: string | null;
+}
+
+/** Wyposażenie pomiarowo-zabezpieczeniowe pola (krok „Pomiar i zabezpieczenia"). */
+export interface WyposazeniePolaWpis {
+  ct_catalog_ref: string | null;
+  vt_catalog_ref: string | null;
+  relay_catalog_ref: string | null;
+  relay_type: string;
+}
+
+/** Rodzaje zabezpieczeń pola przyjmowane przez operację `add_relay`. */
+export const RODZAJE_ZABEZPIECZEN: readonly string[] = [
+  'NADPRADOWY',
+  'ZIEMNOZWARCIOWY',
+  'KIERUNKOWY_NADPRADOWY',
+  'ODLEGLOSCIOWY',
+  'ROZNICOWY',
+];
+
 export interface StacjaFormData {
   station_type: TypStacji;
   station_name: string;
+  /** Oznaczenie stacji na dokumentacji (B-4) — np. „ST-15/0,4-01". */
+  designation: string;
+  /** Typ konstrukcji stacji (B-5); puste = nie deklarowany (pole addytywne). */
+  construction_type: TypKonstrukcji | '';
+  /** Szablon startowy (krok 0) — wyłącznie ślad pochodzenia wypełnienia. */
+  template_id: string | null;
+  template_name: string;
+  /** Edytowalna lista pól SN (krok 3). Pusta = użyj domyślnych ról rodzaju stacji. */
+  pola: PoleSnWpis[];
+  /** Wyposażenie pól (krok 4), kluczowane identyfikatorem wpisu pola. */
+  wyposazenie: Record<string, WyposazeniePolaWpis>;
+  /** Miejsce wstawienia stacji w metrach od początku odcinka (krok 7); puste = środek. */
+  insert_at_m: string;
   /** Konfiguracja strony nN (odbiorcza vs źródło PV za transformatorem). */
   nn_configuration: NnConfiguration;
   /** Układ sieci nN (uziemienie) — G-STK-1. */
@@ -113,6 +167,11 @@ export interface StacjaFormData {
   switchgear_family_ref: string | null;
   /** Ręczny wybór szablonu pola per rola (nadpisuje dobór automatyczny). */
   bay_template_refs: Partial<Record<SnFieldRole, string>>;
+  /**
+   * Aparat pola per rola (katalog APARAT_SN) — B-12. Wymagany dla każdego pola:
+   * operacja domenowa nie dobiera aparatu, brak wskazania = błąd walidacji.
+   */
+  sn_field_apparatus_refs: Partial<Record<SnFieldRole, string>>;
   /** Moc potrzeb własnych stacji [kW] — tekst PL; puste = brak odbioru (G-STK-3). */
   station_auxiliary_kw: string;
   /** cosφ potrzeb własnych — tekst PL; steruje mocą bierną odbioru. */
@@ -129,6 +188,13 @@ export interface BladPola {
 export const DANE_DOMYSLNE: StacjaFormData = {
   station_type: 'branch',
   station_name: '',
+  designation: '',
+  construction_type: '',
+  template_id: null,
+  template_name: '',
+  pola: [],
+  wyposazenie: {},
+  insert_at_m: '',
   nn_configuration: 'LOAD_NN',
   // Domyślnie TN-C-S z bezpośrednio uziemionym punktem neutralnym — typowy układ
   // dystrybucyjny nN (PN-HD 60364). Projektant zmienia świadomie.
@@ -142,6 +208,7 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   manufacturer_ref: '',
   switchgear_family_ref: null,
   bay_template_refs: {},
+  sn_field_apparatus_refs: {},
   station_auxiliary_kw: '',
   station_auxiliary_cosphi: '0,95',
   transformer_units: 1,
@@ -249,6 +316,13 @@ export function walidujFormularz(
     errors.push({
       field: 'sn_fields',
       message: 'Dobierz kompletny szablon rozdzielnicy SN dla każdego pola stacji.',
+    });
+  }
+  // B-12: aparat pola jest decyzją projektanta — backend go NIE dobiera.
+  if (snFields !== undefined && !czyAparaturaKompletna(snFields)) {
+    errors.push({
+      field: 'sn_field_apparatus_refs',
+      message: 'Dobierz aparat z katalogu SN dla każdego pola rozdzielnicy.',
     });
   }
   return errors;
@@ -458,12 +532,14 @@ export function zbudujPolaSn(
   stationType: TypStacji,
   templatesByRole: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>>,
   choice: StationSwitchgearChoice,
+  apparatusByRole: Partial<Record<SnFieldRole, string>> = {},
 ): StationSnFieldTemplate[] {
   return buildStationSnFieldsHelper(
     stationType as TopologicalStationKind,
     templatesByRole,
     choice,
     SN_FIELD_ROLE_TO_BAY_KIND,
+    apparatusByRole,
   );
 }
 
@@ -473,6 +549,96 @@ export function czyRozdzielnicaKompletna(snFields: readonly StationSnFieldTempla
     snFields.length > 0
     && snFields.every((f) => Boolean(f.bay_template_ref) && isCompleteSourceStatus(f.source_status))
   );
+}
+
+/**
+ * Domyślna lista pól SN dla rodzaju stacji (krok 3 startuje z niej, a projektant
+ * dodaje/usuwa pola). Szablon i aparat wypełniane doborem katalogowym; oba
+ * pozostają edytowalne.
+ */
+export function domyslneWpisyPol(
+  stationType: TypStacji,
+  szablonyRola: Partial<Record<SnFieldRole, CompleteMvBayTemplateSummary>>,
+  aparatDomyslny: string | null,
+): PoleSnWpis[] {
+  return rolePolaStacji(stationType).map((rola, index) => ({
+    id: `pole-${index + 1}-${rola}`,
+    field_role: rola,
+    bay_template_ref: szablonyRola[rola]?.template_ref ?? null,
+    apparatus_catalog_ref: aparatDomyslny,
+  }));
+}
+
+/** Nowy wpis pola (dodanie pola w kroku 3). */
+export function nowyWpisPola(
+  rola: SnFieldRole,
+  szablonRef: string | null,
+  aparatRef: string | null,
+  kolejny: number,
+): PoleSnWpis {
+  return {
+    id: `pole-${kolejny}-${rola}`,
+    field_role: rola,
+    bay_template_ref: szablonRef,
+    apparatus_catalog_ref: aparatRef,
+  };
+}
+
+/**
+ * Buduje pola SN payloadu z EDYTOWALNEJ listy wpisów (krok 3). Status
+ * kompletności szablonu odczytujemy z katalogu szablonów (bez zgadywania:
+ * nieznany szablon = `requires_catalog`).
+ */
+export function zbudujPolaSnZWpisow(
+  wpisy: readonly PoleSnWpis[],
+  choice: StationSwitchgearChoice,
+  szablony: readonly CompleteMvBayTemplateSummary[],
+): StationSnFieldTemplate[] {
+  return wpisy.map((wpis) => {
+    const szablon = wpis.bay_template_ref
+      ? szablony.find((t) => t.template_ref === wpis.bay_template_ref) ?? null
+      : null;
+    return {
+      field_role: wpis.field_role,
+      bay_kind: SN_FIELD_ROLE_TO_BAY_KIND[wpis.field_role],
+      manufacturer_ref: choice.manufacturerRef,
+      switchgear_family_ref: choice.switchgearFamilyRef,
+      bay_template_ref: wpis.bay_template_ref,
+      source_status: szablon?.source_status ?? 'requires_catalog',
+      source_refs: szablon?.source_refs ?? [],
+      apparatus_catalog_ref: wpis.apparatus_catalog_ref,
+      catalog_bindings: szablon
+        ? {
+            switchgear_template: {
+              catalog_namespace: 'ROZDZIELNICA_SN',
+              catalog_item_id: szablon.template_ref,
+              manufacturer_ref: choice.manufacturerRef,
+              switchgear_family_ref: choice.switchgearFamilyRef,
+              source_status: szablon.source_status,
+            },
+          }
+        : null,
+    };
+  });
+}
+
+/** Czy każde pole ma wskazany aparat z katalogu APARAT_SN (B-12). */
+export function czyAparaturaKompletna(snFields: readonly StationSnFieldTemplate[]): boolean {
+  return snFields.length > 0 && snFields.every((f) => Boolean(f.apparatus_catalog_ref?.trim()));
+}
+
+/**
+ * Aparaty SN zdatne dla pola stacji: wyłączniki/rozłączniki/odłączniki o napięciu
+ * znamionowym pokrywającym napięcie szyny SN. Filtr katalogowy (porównanie napięć),
+ * ZERO fizyki — parametry i tak materializuje katalog po stronie backendu.
+ */
+export function aparatyDlaPola(
+  aparaty: readonly MVApparatusCatalogType[],
+  snVoltageKv: number,
+): MVApparatusCatalogType[] {
+  return aparaty
+    .filter((a) => !(snVoltageKv > 0) || a.u_n_kv + 1e-6 >= snVoltageKv)
+    .sort((a, b) => a.u_n_kv - b.u_n_kv || a.i_n_a - b.i_n_a || a.id.localeCompare(b.id));
 }
 
 /** Producenci używalni w konfiguratorze (kolejność katalogowa, tylko kompletni). */
@@ -624,6 +790,9 @@ export function zbudujPayload(
       station_type: data.station_type,
       station_role: 'STACJA_SN_NN',
       ...(nazwa ? { station_name: nazwa } : {}),
+      // B-4/B-5: pola tożsamości stacji — addytywne, tylko gdy wypełnione.
+      ...(data.designation.trim() ? { designation: data.designation.trim() } : {}),
+      ...(data.construction_type ? { construction_type: data.construction_type } : {}),
       // Napięcie SN tylko gdy znane z rzeczywistej szyny (>0). Nieznane →
       // pomijamy, backend ustala z szyny odcinka/terminala (jedno źródło prawdy,
       // zero fabrykacji — P2/P3).
@@ -660,10 +829,17 @@ export function zbudujPayload(
       ...(kontekst.runRef ? { run_ref: kontekst.runRef } : {}),
     };
   }
+  // Punkt wstawienia: metry od początku odcinka (jeśli projektant podał) albo
+  // udział z kontekstu wskazania. Przeliczenie metr↔udział należy do BACKENDU
+  // (tryb `ODLEGLOSC_OD_POCZATKU_M` operacji) — UI niczego nie liczy.
+  const metry = liczbaDodatniaPL(data.insert_at_m);
   return {
     ...commonPayload,
     segment_id: kontekst.segmentId,
-    insert_at: { mode: 'RATIO', value: kontekst.positionOnSegment },
+    insert_at:
+      metry !== null
+        ? { mode: 'ODLEGLOSC_OD_POCZATKU_M', value: metry }
+        : { mode: 'RATIO', value: kontekst.positionOnSegment },
   };
 }
 

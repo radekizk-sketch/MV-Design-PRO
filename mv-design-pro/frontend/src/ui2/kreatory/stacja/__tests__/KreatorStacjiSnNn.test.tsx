@@ -149,10 +149,137 @@ vi.mock('../../../../ui/catalog/api', () => ({
       },
     ]),
   fetchCompleteBayTemplates: () => Promise.resolve(SZABLONY),
+  // Krok „Pomiar i zabezpieczenia" (K9-B): przekładniki, zabezpieczenia i
+  // kanoniczne kody funkcji per rola pola — readouty z backendu.
+  fetchCtTypes: () =>
+    Promise.resolve([
+      { id: 'ct-400-5', name: 'CT 400/5', ratio_primary_a: 400, ratio_secondary_a: 5, accuracy_class: '5P20' },
+    ]),
+  fetchVtTypes: () =>
+    Promise.resolve([
+      { id: 'vt-15-100', name: 'VT 15 kV/100 V', ratio_primary_v: 15000, ratio_secondary_v: 100 },
+    ]),
+  fetchProtectionDeviceTypes: () =>
+    Promise.resolve([{ id: 'relay-1', name: 'Przekaźnik nadprądowy', vendor: 'ABB' }]),
+  fetchBayProtectionCodes: () =>
+    Promise.resolve({
+      IN: ['51', '50', '51N'],
+      OUT: ['51', '50', '51N', '67N'],
+      TR: ['87T', '51'],
+      FEEDER: ['51'],
+      COUPLER: ['51'],
+    }),
+  // B-12: katalog aparatury SN — aparat pola wskazuje projektant, backend go nie dobiera.
+  fetchMvApparatusTypes: () =>
+    Promise.resolve([
+      {
+        id: 'sw-cb-abb-vd4-17kv-630a',
+        name: 'ABB VD4 17,5 kV 630 A',
+        device_kind: 'WYLACZNIK',
+        u_n_kv: 17.5,
+        i_n_a: 630,
+      },
+      {
+        id: 'sw-cb-abb-vd4-24kv-1250a',
+        name: 'ABB VD4 24 kV 1250 A',
+        device_kind: 'WYLACZNIK',
+        u_n_kv: 24,
+        i_n_a: 1250,
+      },
+    ]),
 }));
 
+vi.mock('../../../../ui/network-build/station-templates/api', () => ({
+  fetchStationTemplates: () =>
+    Promise.resolve({
+      templates: [
+        {
+          id: 'tpl_farma_pv_1mw',
+          name_pl: 'Farma PV 1 MW',
+          category: 'farma_pv',
+          description_pl: 'Szablon testowy',
+          use_case_pl: '',
+          nc_rfg_type: 'B',
+          tags: [],
+          icon: 'station-pv-farm',
+        },
+      ],
+      total: 1,
+    }),
+  fetchStationTemplate: (id: string) =>
+    Promise.resolve({
+      id,
+      name_pl: 'Farma PV 1 MW',
+      category: 'farma_pv',
+      description_pl: 'Szablon testowy',
+      use_case_pl: '',
+      nc_rfg_type: 'B',
+      tags: [],
+      icon: 'station-pv-farm',
+      schema: {
+        sn_bay_apparatus_options: [
+          {
+            catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
+            label_pl: 'ABB VD4',
+            namespace: 'APARAT_SN',
+            default: true,
+            badge_pl: null,
+          },
+        ],
+        sn_bay_protection_options: [
+          {
+            device_catalog_ref: 'relay-1',
+            label_pl: 'Przekaźnik',
+            vendor: 'ABB',
+            settings_template_id: 'tpl',
+            badge_pl: null,
+          },
+        ],
+        ct_options: [
+          { catalog_ref: 'ct-400-5', label_pl: 'CT 400/5', namespace: 'CT', default: true, badge_pl: null },
+        ],
+        vt_options: [
+          { catalog_ref: 'vt-15-100', label_pl: 'VT', namespace: 'VT', default: true, badge_pl: null },
+        ],
+      },
+    }),
+  previewStationTemplate: () =>
+    Promise.resolve({
+      template_id: 'tpl_farma_pv_1mw',
+      template_name_pl: 'Farma PV 1 MW',
+      category: 'farma_pv',
+      nc_rfg_type: 'B',
+      station_type: 'inline',
+      catalog_profile_applied: null,
+      effective_config: {
+        transformer_ref: 'trafo-630-15-04',
+        transformer_count: 1,
+        sn_bays_count: 2,
+        sn_bay_roles: ['IN', 'MEASUREMENT'],
+        sn_fields: [
+          { field_role: 'LINIA_IN', apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a' },
+          { field_role: 'LINIA_ODG', apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a' },
+        ],
+        sn_manufacturer: 'ZPUE_WLOSZCZOWA',
+        nn_feeders_count: 2,
+        nn_feeder_cb_ref: 'cb_nn_400a',
+        protection_relay_ref: 'relay-1',
+        der_total_count: 0,
+        der_mix: [],
+      },
+      estimated_elements_count: 6,
+    }),
+}));
+
+/** Krok kreatora wybierany natywnym klikiem w nagłówek kroku (rama kreatorów). */
+async function przejdzDoKroku(tytul: string) {
+  await userEvent.click(screen.getByRole('button', { name: new RegExp(tytul) }));
+}
+
 async function przejdzDoTransformatora() {
-  await userEvent.click(screen.getByTestId('mvd-kreator-stacja-dalej'));
+  // Kreator startuje od kroku „Szablon" (K9-B) — przechodzimy natywnym klikiem
+  // w nagłówek kroku transformatora (ścieżka „od zera", bez szablonu).
+  await przejdzDoKroku('Transformator i strona nN');
   await waitFor(() => {
     expect(screen.getByTestId('mvd-kreator-stacja-katalog')).toBeInTheDocument();
   });
@@ -167,8 +294,8 @@ async function wybierzTyp() {
 }
 
 async function przejdzIWybierzRozdzielnice() {
-  // transformator → rozdzielnica (natywny klik „Dalej").
-  await userEvent.click(screen.getByTestId('mvd-kreator-stacja-dalej'));
+  // transformator → pola rozdzielnicy (natywny klik w nagłówek kroku).
+  await przejdzDoKroku('Pola rozdzielnicy SN');
   await waitFor(() => {
     const producent = screen.getByTestId('mvd-kreator-stacja-producent') as HTMLSelectElement;
     expect(producent.querySelector('option[value="ZPUE_WLOSZCZOWA"]')).not.toBeNull();
@@ -294,9 +421,8 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     await przejdzDoTransformatora();
     await wybierzTyp();
     await przejdzIWybierzRozdzielnice();
-    // rozdzielnica → nn → uziemienie (natywne kliki „Dalej").
-    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-dalej'));
-    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-dalej'));
+    // pola → uziemienie (natywny klik w nagłówek kroku ramy kreatorów).
+    await przejdzDoKroku('Uziemienie i punkt neutralny');
     await waitFor(() => {
       expect(screen.getByTestId('mvd-kreator-stacja-uklad-nn')).toBeInTheDocument();
     });
@@ -317,6 +443,9 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorStacjiSnNn />);
 
+    // Kreator startuje od kroku „Szablon" — rodzaj stacji ustawiamy po przejściu
+    // do jego kroku (klik natywny w nagłówek).
+    await przejdzDoKroku('Rodzaj i umiejscowienie');
     await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-typ'), 'sectional');
     await przejdzDoTransformatora();
     await wybierzTyp();
@@ -527,8 +656,8 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     await przejdzDoTransformatora();
     await wybierzTyp();
     await przejdzIWybierzRozdzielnice();
-    // rozdzielnica → Blok nN (natywny klik „Dalej").
-    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-dalej'));
+    // pola → Blok nN (natywny klik w nagłówek kroku ramy kreatorów).
+    await przejdzDoKroku('Blok nN');
     await waitFor(() => {
       expect(screen.getByTestId('mvd-kreator-stacja-odplywy')).toBeInTheDocument();
     });
@@ -574,6 +703,9 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
   it('uczciwy stan zerowy: brak miejsca osadzenia → blokada zapisu', async () => {
     context = {};
     render(<KreatorStacjiSnNn />);
+    // Uczciwy stan zerowy pokazuje krok „Rodzaj i umiejscowienie" (kreator
+    // startuje od kroku „Szablon").
+    await przejdzDoKroku('Rodzaj i umiejscowienie');
     expect(screen.getByTestId('mvd-kreator-stacja-brak')).toBeInTheDocument();
     // waitFor domyka efekty katalogu (producenci/rodziny/szablony) w act.
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());

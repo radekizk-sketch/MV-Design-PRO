@@ -402,6 +402,21 @@ def list_complete_bay_templates_endpoint(
     return [t.model_dump(mode="json") for t in templates]
 
 
+@router.get("/bay-protection-codes")
+def list_bay_protection_codes() -> dict[str, list[str]]:
+    """Kanoniczne funkcje zabezpieczeniowe wymagane dla ról pól SN (readout).
+
+    Jedno źródło prawdy: `BAY_PROTECTION_CODES_BY_ROLE` (PTPiREE/IRiESD +
+    IEC 60255) — to samo, z którego korzystają operacje domenowe budujące pola.
+    Endpoint istnieje po to, by kreator stacji pokazywał kody BEZ kopiowania
+    tablicy do frontendu (zero równoległej definicji). Pole pomiarowe ma listę
+    pustą — uczciwy brak funkcji wyzwalających, nie luka danych.
+    """
+    from network_model.catalog.bay_templates import BAY_PROTECTION_CODES_BY_ROLE
+
+    return {role: list(codes) for role, codes in BAY_PROTECTION_CODES_BY_ROLE.items()}
+
+
 @router.get("/protection/device-types")
 def list_protection_device_types(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),

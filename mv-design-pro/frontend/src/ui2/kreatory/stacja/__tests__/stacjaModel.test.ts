@@ -27,6 +27,7 @@ import {
   walidujFormularz,
   wymaganeNapiecieNn,
   wyznaczTryb,
+  czyAparaturaKompletna,
   zabezpieczenieZrodla,
   zbudujPayload,
   zbudujPolaSn,
@@ -59,6 +60,15 @@ const SZABLONY_KOMPLET: CompleteMvBayTemplateSummary[] = [
   szablon({ template_ref: 'tpl-coupler', bay_kind: 'sprzeglowe_poprzeczne', bay_role: 'COUPLER' }),
 ];
 
+/** Aparat pola per rola (B-12) — jawne wskazanie z katalogu APARAT_SN. */
+const APARATY_ROL = {
+  LINIA_IN: 'sw-cb-abb-vd4-17kv-630a',
+  LINIA_OUT: 'sw-cb-abb-vd4-17kv-630a',
+  LINIA_ODG: 'sw-cb-abb-vd4-17kv-630a',
+  TRANSFORMATOROWE: 'sw-cb-abb-vd4-17kv-630a',
+  SPRZEGLO: 'sw-cb-abb-vd4-17kv-630a',
+} as const;
+
 function rozdzielnica(stationType: StacjaFormData['station_type'] = 'branch'): WyborRozdzielnicy {
   const byRole = szablonyPerRola(SZABLONY_KOMPLET, stationType, {});
   return {
@@ -66,10 +76,16 @@ function rozdzielnica(stationType: StacjaFormData['station_type'] = 'branch'): W
     manufacturerName: 'ZPUE Włoszczowa',
     familyRef: 'ZPUE_ROTOBLOK',
     familyName: 'Rotoblok',
-    snFields: zbudujPolaSn(stationType, byRole, {
-      manufacturerRef: 'ZPUE_WLOSZCZOWA',
-      switchgearFamilyRef: 'ZPUE_ROTOBLOK',
-    }),
+    snFields: zbudujPolaSn(
+      stationType,
+      byRole,
+      {
+        manufacturerRef: 'ZPUE_WLOSZCZOWA',
+        switchgearFamilyRef: 'ZPUE_ROTOBLOK',
+      },
+      // B-12: aparat pola wskazany jawnie dla każdej roli.
+      APARATY_ROL,
+    ),
   };
 }
 
@@ -227,6 +243,33 @@ describe('stacjaModel — walidacja', () => {
     expect(
       walidujFormularz(dane(), rozdzielnica('branch').snFields).some((e) => e.field === 'sn_fields'),
     ).toBe(false);
+  });
+
+  it('blokuje zapis, gdy pole nie ma wskazanego aparatu (B-12)', () => {
+    // Intencja: operacja domenowa NIE dobiera aparatu pola (usunięty fallback),
+    // więc kreator musi wymusić jawne wskazanie z katalogu APARAT_SN.
+    const byRole = szablonyPerRola(SZABLONY_KOMPLET, 'branch', {});
+    const bezAparatu = zbudujPolaSn('branch', byRole, {
+      manufacturerRef: 'ZPUE_WLOSZCZOWA',
+      switchgearFamilyRef: 'ZPUE_ROTOBLOK',
+    });
+    expect(czyAparaturaKompletna(bezAparatu)).toBe(false);
+    expect(
+      walidujFormularz(dane(), bezAparatu).some((e) => e.field === 'sn_field_apparatus_refs'),
+    ).toBe(true);
+    expect(czyAparaturaKompletna(rozdzielnica('branch').snFields)).toBe(true);
+    expect(
+      walidujFormularz(dane(), rozdzielnica('branch').snFields).some(
+        (e) => e.field === 'sn_field_apparatus_refs',
+      ),
+    ).toBe(false);
+  });
+
+  it('payload niesie jawny aparat per pole (B-12)', () => {
+    const payload = zbudujPayload(dane(), kontekst(), rozdzielnica('branch'));
+    const snFields = payload.sn_fields as Array<{ apparatus_catalog_ref: string | null }>;
+    expect(snFields.length).toBeGreaterThan(0);
+    expect(snFields.every((f) => f.apparatus_catalog_ref === 'sw-cb-abb-vd4-17kv-630a')).toBe(true);
   });
 
   it('ogranicza liczbę odpływów do zakresu', () => {

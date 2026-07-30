@@ -233,6 +233,14 @@ export async function fetchLoadTypes(): Promise<LoadCatalogType[]> {
   return fetchCatalogJson<LoadCatalogType[]>('/api/catalog/load-types');
 }
 
+/**
+ * Kanoniczne kody funkcji zabezpieczeniowych wymaganych dla ról pól SN
+ * (readout z backendu — bez kopiowania tablicy do frontendu).
+ */
+export async function fetchBayProtectionCodes(): Promise<Record<string, string[]>> {
+  return fetchCatalogJson<Record<string, string[]>>('/api/catalog/bay-protection-codes');
+}
+
 export async function fetchCtTypes(): Promise<CTCatalogType[]> {
   return fetchCatalogJson<CTCatalogType[]>('/api/catalog/ct-types');
 }

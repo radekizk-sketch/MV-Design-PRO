@@ -71,6 +71,8 @@ export interface TemplateSchema {
   sn_bays_count: TemplateParamInt;
   sn_bay_roles: readonly BayRoleSpec[];
   sn_bay_protection_options: readonly ProtectionRelaySpec[];
+  /** Aparatura pól SN wskazana przez szablon (APARAT_SN) — B-12. */
+  sn_bay_apparatus_options: readonly CatalogChoice[];
   nn_feeders_count: TemplateParamInt;
   nn_feeder_cb_options: readonly CatalogChoice[];
   nn_load_default_kw: TemplateParamFloat;
@@ -187,6 +189,8 @@ export interface PreviewTemplateResult {
     transformer_count: number;
     sn_bays_count: number;
     sn_bay_roles: readonly string[];
+    /** Pola SN z JAWNIE wskazanym aparatem (B-12) — gotowe do payloadu operacji. */
+    sn_fields: readonly { field_role: string; apparatus_catalog_ref: string }[];
     sn_manufacturer: string;
     nn_feeders_count: number;
     nn_feeder_cb_ref: string | null;

@@ -8,12 +8,129 @@ export const STACJA_STRINGS = {
     + '(koniec odcinka lub świadomy podział) wynika ze wskazanego miejsca na schemacie.',
   odznaka: 'Nowa stacja',
 
+  krokSzablon: 'Szablon startowy',
   krokRodzaj: 'Rodzaj i umiejscowienie',
   krokTransformator: 'Transformator i strona nN',
   krokRozdzielnica: 'Rozdzielnica SN',
+  krokPola: 'Pola rozdzielnicy SN',
+  krokPomiar: 'Pomiar i zabezpieczenia pól',
   krokNn: 'Blok nN',
   krokUziemienie: 'Uziemienie i punkt neutralny',
+  krokPodglad: 'Podgląd skutków',
   krokZapis: 'Podsumowanie i zapis',
+
+  // Krok 0 — szablon startowy.
+  szablonOpis:
+    'Zacznij od gotowego szablonu stacji z biblioteki albo od zera. Szablon WYPEŁNIA formularz '
+    + '(transformator, pola SN z aparatem, odpływy nN, propozycje CT/VT i zabezpieczeń) — każdą '
+    + 'wartość zmienisz w kolejnych krokach.',
+  szablonKategoria: 'Kategoria szablonu',
+  szablonKategoriaPomoc: 'Kategorie pochodzą z biblioteki szablonów stacji (backend).',
+  szablonWybor: 'Szablon stacji',
+  szablonWyborPlaceholder: '— pracuj od zera (bez szablonu) —',
+  szablonWyborPomoc:
+    'Wybór wypełnia formularz wartościami szablonu. „Od zera" jest równoprawne — kreator '
+    + 'startuje wtedy domyślnymi polami rodzaju stacji.',
+  szablonZastosuj: 'Wypełnij formularz szablonem',
+  szablonWyczysc: 'Pracuj od zera',
+  szablonWybrany: 'Szablon użyty do wypełnienia',
+  szablonBrakWyboru: 'Bez szablonu (praca od zera)',
+  szablonBlad: 'Nie udało się pobrać biblioteki szablonów stacji.',
+  szablonPusty: 'Ta kategoria nie zawiera szablonów.',
+  szablonZastosowany: 'Formularz wypełniony z szablonu — wszystkie pola pozostają edytowalne.',
+  szablonLiczbaPol: 'Pola SN z szablonu',
+  szablonTransformator: 'Transformator z szablonu',
+  szablonOdplywy: 'Odpływy nN z szablonu',
+
+  // Krok — oznaczenie i konstrukcja stacji (B-4/B-5).
+  oznaczenie: 'Oznaczenie stacji',
+  oznaczeniePlaceholder: 'np. ST-15/0,4-01',
+  oznaczeniePomoc:
+    'Oznaczenie z dokumentacji projektowej (schemat, tabela stacji). Puste — stacja bez oznaczenia.',
+  konstrukcja: 'Typ konstrukcji stacji',
+  konstrukcjaOpcje: [
+    { id: '', etykieta: '— nie deklaruję —' },
+    { id: 'wnetrzowa', etykieta: 'Wnętrzowa (budynek)' },
+    { id: 'kontenerowa', etykieta: 'Kontenerowa' },
+    { id: 'slupowa', etykieta: 'Słupowa' },
+    { id: 'prefabrykowana', etykieta: 'Prefabrykowana' },
+    { id: 'inna', etykieta: 'Inna' },
+  ],
+  konstrukcjaPomoc:
+    'Rodzaj obudowy/konstrukcji stacji — spływa do modelu stacji (drzewo projektu, karta '
+    + 'techniczna, dobór osprzętu).',
+
+  // Krok 3 — edytowalna lista pól SN.
+  polaOpis:
+    'Lista pól rozdzielnicy SN stacji. Dodaj lub usuń pole, ustaw jego rolę, szablon producenta '
+    + 'i aparat łączeniowy z katalogu. Aparat jest wymagany dla każdego pola — system go NIE dobiera.',
+  polaDodaj: 'Dodaj pole',
+  polaUsun: 'Usuń pole',
+  polaRola: 'Rola pola',
+  polaSzablon: 'Szablon pola (producent)',
+  polaPuste: 'Stacja nie ma żadnego pola SN — dodaj co najmniej jedno pole.',
+  polaLicznik: (n: number) => `Pola SN: ${n}`,
+
+  // Krok 4 — pomiar i zabezpieczenia pól.
+  pomiarOpis:
+    'Przekładniki i zabezpieczenie pola. Zapis wykonuje sekwencję operacji: stacja → CT → VT → '
+    + 'zabezpieczenie (backend nie przyjmuje dziś tych elementów w jednej operacji stacyjnej — '
+    + 'dług B-3 prowadzony osobno). Przekładnie pochodzą z pozycji katalogowej.',
+  pomiarCt: 'Przekładnik prądowy CT',
+  pomiarCtPomoc: 'Przekładnia i klasa z katalogu CT. Puste — pole bez przekładnika prądowego.',
+  pomiarVt: 'Przekładnik napięciowy VT',
+  pomiarVtPomoc: 'Przekładnia z katalogu VT. Puste — pole bez przekładnika napięciowego.',
+  pomiarPrzekaznik: 'Zabezpieczenie pola',
+  pomiarPrzekaznikPomoc:
+    'Urządzenie zabezpieczeniowe z katalogu. Zabezpieczenia nadprądowe/ziemnozwarciowe wymagają '
+    + 'CT w tym samym polu (walidacja backendu).',
+  pomiarRodzaj: 'Rodzaj zabezpieczenia',
+  pomiarRodzajOpcje: [
+    { id: 'NADPRADOWY', etykieta: 'Nadprądowy (50/51)' },
+    { id: 'ZIEMNOZWARCIOWY', etykieta: 'Ziemnozwarciowy (50N/51N)' },
+    { id: 'KIERUNKOWY_NADPRADOWY', etykieta: 'Kierunkowy nadprądowy (67)' },
+    { id: 'ODLEGLOSCIOWY', etykieta: 'Odległościowy (21)' },
+    { id: 'ROZNICOWY', etykieta: 'Różnicowy (87)' },
+  ],
+  pomiarBrak: 'Brak pól SN — wróć do kroku pól rozdzielnicy.',
+  pomiarKody: 'Kody zabezpieczeń pola',
+  pomiarKodyBrak: 'Szablon pola nie deklaruje kodów zabezpieczeń.',
+  pomiarKatalogBlad: 'Nie udało się pobrać katalogu przekładników/zabezpieczeń.',
+  pomiarPrzekladnia: 'Przekładnia',
+  pomiarSekwencja: (n: number) => `Operacje po zapisie stacji: ${n}`,
+
+  // Krok 7 — podgląd skutków.
+  podgladOpis:
+    'Podgląd wykonuje TĘ SAMĄ operację w trybie próbnym (bez zapisu) i pokazuje skutki wyliczone '
+    + 'przez backend: punkt podziału odcinka, długości części i elementy, których zmiana dotyczy.',
+  podgladOdswiez: 'Przelicz podgląd',
+  podgladBrakKontekstu: 'Wskaż miejsce osadzenia stacji, aby policzyć podgląd.',
+  podgladLadowanie: 'Backend liczy skutki operacji…',
+  podgladBlad: 'Nie udało się policzyć podglądu skutków.',
+  podgladStacja: 'Identyfikator stacji (po zapisie)',
+  podgladPodzial: 'Punkt podziału odcinka',
+  podgladDlugoscA: 'Długość części przed stacją',
+  podgladDlugoscB: 'Długość części za stacją',
+  podgladElementy: 'Elementy objęte zmianą',
+  podgladWyniki: 'Wyniki unieważnione zmianą',
+  podgladBraki: 'Dane brakujące po operacji',
+  podgladPusty: 'Brak podglądu — uruchom przeliczenie.',
+  insertAt: 'Odległość stacji od początku odcinka [m]',
+  insertAtPlaceholder: 'np. 250',
+  insertAtPomoc:
+    'Puste — punkt wskazany na schemacie. Podana wartość idzie do operacji jako odległość '
+    + 'w metrach; przeliczenie na udział długości wykonuje backend z danych odcinka.',
+
+  // Krok 8 — łańcuchowanie po zapisie.
+  dalejTytul: 'Następny krok po zapisie',
+  dalejOpcje: [
+    { id: 'nic', etykieta: 'Zakończ — wróć do schematu' },
+    { id: 'pierscien', etykieta: 'Domknij pierścień (połącz z inną stacją)' },
+    { id: 'nop', etykieta: 'Wskaż punkt normalnie otwarty (NOP)' },
+  ],
+  dalejPomoc:
+    'Po zapisie kreator może od razu otworzyć kolejną operację na nowej stacji — bez szukania '
+    + 'jej na schemacie.',
 
   // Krok 1 — rodzaj.
   typStacji: 'Rodzaj stacji',
@@ -156,6 +273,14 @@ export const STACJA_STRINGS = {
   rodzinaPlaceholder: '— rodzina standardowa producenta —',
   poleRoliPomoc: 'Kompletny szablon pola z katalogu producenta (rozłącznik, przekładniki, zabezpieczenia).',
   polePlaceholder: '— dobór automatyczny —',
+  aparatPola: 'Aparat pola',
+  aparatPolaPomoc:
+    'Aparat łączeniowy pola z katalogu SN (wyłącznik, rozłącznik, odłącznik). Wskazanie jest '
+    + 'wymagane — system nie dobiera aparatu za projektanta.',
+  aparatPolaPlaceholder: '— wskaż aparat z katalogu —',
+  aparatBlad: 'Nie udało się pobrać katalogu aparatury SN.',
+  brakAparatow:
+    'Katalog aparatury SN nie zawiera pozycji na napięcie szyny. Uzupełnij katalog APARAT_SN.',
   podgladTytul: 'Podgląd pól rozdzielnicy SN',
   brakProducenta: 'Wybierz producenta rozdzielnicy SN, aby dobrać pola stacji.',
   brakRodzin: 'Producent nie udostępnia rodzin dla napięcia SN szyny — użyty pakiet standardowy.',
