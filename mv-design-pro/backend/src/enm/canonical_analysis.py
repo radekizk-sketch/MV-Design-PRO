@@ -297,6 +297,80 @@ class CanonicalRun:
         }
 
 
+#: Kolumny CIĘŻKIE biegu: artefakt wyniku, ślad White Box, ślad rozpływu mocy
+#: i snapshot modelu. Listy biegów ich nie pobierają (K14).
+KOLUMNY_CIEZKIE_BIEGU = ("snapshot", "raw_result", "white_box_trace", "power_flow_trace")
+
+#: Wartość jeszcze nie pobrana z bazy (odróżniona od pustej: `None`, `{}`, `[]`).
+_NIEZALADOWANA: Any = object()
+
+
+def _leniwa_kolumna(nazwa: str) -> property:
+    prywatna = f"_leniwa_{nazwa}"
+
+    def getter(self: Any) -> Any:
+        wartosc = getattr(self, prywatna)
+        if wartosc is _NIEZALADOWANA:
+            self._doladuj_kolumny_ciezkie()
+            wartosc = getattr(self, prywatna)
+        return wartosc
+
+    def setter(self: Any, wartosc: Any) -> None:
+        setattr(self, prywatna, wartosc)
+
+    return property(getter, setter)
+
+
+class CanonicalRunZListy(CanonicalRun):
+    """Bieg z listy: kolumny ciężkie dociągane dopiero przy pierwszym dostępie.
+
+    DEFEKT, KTÓRY TO USUWA (K14, dług nazwany w V12K-281). `list_by_case` /
+    `list_by_project` pobierały PEŁNE wiersze biegów — z artefaktem wyniku,
+    śladem White Box i snapshotem modelu — choć większość konsumentów list
+    czyta wyłącznie pola lekkie (status, rodzaj analizy, znaczniki czasu).
+    Zmierzone na sieci 50 stacji: `list_by_project` przy 5 biegach = 18–27 s,
+    z czego niemal całość to deserializacja artefaktów, których nikt w tym
+    widoku nie otwierał.
+
+    KONTRAKT PUBLICZNY BEZ ZMIAN: to nadal `CanonicalRun` z tymi samymi polami
+    i tymi samymi wartościami. Zmienia się wyłącznie MOMENT odczytu kolumn
+    ciężkich — konsument, który po nie sięgnie (np. widok podsumowania biegu),
+    dostaje je dokładnie takie jak dotąd, kosztem jednego zapytania po id biegu.
+    Zapytanie pobiera WSZYSTKIE kolumny ciężkie naraz, więc kolejne dostępy są
+    darmowe.
+
+    Bieg skasowany między listowaniem a dostępem → wartości puste (`None`/`{}`/
+    `[]`): dla nieistniejącego biegu nie ma artefaktu i tak brzmi uczciwa
+    odpowiedź; nie zmyślamy treści z pamięci.
+    """
+
+    snapshot = _leniwa_kolumna("snapshot")
+    raw_result = _leniwa_kolumna("raw_result")
+    white_box_trace = _leniwa_kolumna("white_box_trace")
+    power_flow_trace = _leniwa_kolumna("power_flow_trace")
+
+    def __init__(self, **pola_lekkie: Any) -> None:
+        super().__init__(snapshot={}, **pola_lekkie)
+        for nazwa in KOLUMNY_CIEZKIE_BIEGU:
+            setattr(self, f"_leniwa_{nazwa}", _NIEZALADOWANA)
+
+    def _doladuj_kolumny_ciezkie(self) -> None:
+        with canonical_run_repository_scope() as repository:
+            kolumny = repository.get_heavy_columns(self.id)
+        puste: dict[str, Any] = {
+            "snapshot": {},
+            "raw_result": None,
+            "white_box_trace": [],
+            "power_flow_trace": None,
+        }
+        wartosci = kolumny if kolumny is not None else puste
+        for nazwa in KOLUMNY_CIEZKIE_BIEGU:
+            prywatna = f"_leniwa_{nazwa}"
+            # Wartość ustawiona jawnie przez konsumenta ma pierwszeństwo przed bazą.
+            if getattr(self, prywatna) is _NIEZALADOWANA:
+                setattr(self, prywatna, wartosci[nazwa])
+
+
 def _save_run(run: CanonicalRun) -> None:
     with canonical_run_repository_scope() as repository:
         repository.save(run)

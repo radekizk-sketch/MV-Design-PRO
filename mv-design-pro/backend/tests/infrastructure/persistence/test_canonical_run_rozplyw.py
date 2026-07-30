@@ -153,7 +153,7 @@ def _wiersze_rozplywu(run_id: UUID) -> dict[str, Any]:
                 CanonicalRunBranchFlowORM.contributions_json,
             ).where(CanonicalRunBranchFlowORM.run_id == run_id)
         ).all()
-    return {fault_node_id: wpisy for fault_node_id, wpisy in rows}
+    return dict(rows)
 
 
 def _kanonicznie(value: Any) -> str:
@@ -364,7 +364,9 @@ def test_wynik_bez_wkladow_zostaje_uczciwym_brakiem() -> None:
     assert zapisany is not None
     assert _wiersze_rozplywu(run.id) == {}
     assert pobierz_rozplyw_biegu(zapisany, "bus-main") is None
-    assert build_short_circuit_results(zapisany)["rows"][0]["branch_contributions_available"] is False
+    assert (
+        build_short_circuit_results(zapisany)["rows"][0]["branch_contributions_available"] is False
+    )
     assert build_short_circuit_rozplyw(zapisany, "bus-main")["branch_contributions"] is None
     # Nieznany punkt zwarcia → brak, nie wyjątek z magazynu rozpływu.
     assert pobierz_rozplyw_biegu(zapisany, "bus-nieznana") is None

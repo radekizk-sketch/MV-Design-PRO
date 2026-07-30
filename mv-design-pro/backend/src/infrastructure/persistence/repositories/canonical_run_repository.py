@@ -84,6 +84,30 @@ def _niesie_znacznik_rozplywu(raw_result: dict[str, Any] | None) -> bool:
     return any(isinstance(item, dict) and item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU) for item in results)
 
 
+#: Kolumny LEKKIE biegu — jedyne, które pobierają listy biegów (K14). Kolumny
+#: ciężkie (`snapshot_json`, `raw_result_json`, `white_box_trace_json`,
+#: `power_flow_trace_json`) świadomie NIE są tu wymienione: listowanie biegów
+#: deserializowało artefakty wszystkich biegów projektu, choć widoki listowe
+#: czytają wyłącznie te pola. Konsument, który sięgnie po pole ciężkie, dostaje
+#: je bez zmian — dociągane pojedynczym zapytaniem po id biegu.
+_KOLUMNY_LEKKIE = (
+    CanonicalRunORM.id,
+    CanonicalRunORM.case_id,
+    CanonicalRunORM.project_id,
+    CanonicalRunORM.analysis_type,
+    CanonicalRunORM.status,
+    CanonicalRunORM.result_status,
+    CanonicalRunORM.created_at,
+    CanonicalRunORM.started_at,
+    CanonicalRunORM.finished_at,
+    CanonicalRunORM.snapshot_hash,
+    CanonicalRunORM.input_hash,
+    CanonicalRunORM.validation_json,
+    CanonicalRunORM.readiness_json,
+    CanonicalRunORM.options_json,
+    CanonicalRunORM.error_message,
+)
+
 _DEFAULT_DATABASE_URL = "sqlite+pysqlite:///./mv_design_pro.db"
 _cached_database_url: str | None = None
 _cached_engine: Engine | None = None
@@ -204,12 +228,11 @@ class CanonicalRunRepository:
 
     def list_by_case(self, case_id: str) -> list[CanonicalRun]:
         stmt = (
-            select(CanonicalRunORM)
+            select(*_KOLUMNY_LEKKIE)
             .where(CanonicalRunORM.case_id == case_id)
             .order_by(CanonicalRunORM.created_at.desc(), CanonicalRunORM.id.desc())
         )
-        rows = self._session.execute(stmt).scalars().all()
-        return [self._to_domain(row) for row in rows]
+        return [self._to_domain_lekki(row) for row in self._session.execute(stmt).all()]
 
     def list_by_project(
         self,
@@ -218,14 +241,31 @@ class CanonicalRunRepository:
         analysis_type: str | None = None,
     ) -> list[CanonicalRun]:
         stmt = (
-            select(CanonicalRunORM)
+            select(*_KOLUMNY_LEKKIE)
             .where(CanonicalRunORM.project_id == project_id)
             .order_by(CanonicalRunORM.created_at.desc(), CanonicalRunORM.id.desc())
         )
         if analysis_type is not None:
             stmt = stmt.where(CanonicalRunORM.analysis_type == analysis_type)
-        rows = self._session.execute(stmt).scalars().all()
-        return [self._to_domain(row) for row in rows]
+        return [self._to_domain_lekki(row) for row in self._session.execute(stmt).all()]
+
+    def get_heavy_columns(self, run_id: UUID) -> dict[str, Any] | None:
+        """Kolumny ciężkie JEDNEGO biegu (dociąganie leniwe z list; brak biegu → None)."""
+        stmt = select(
+            CanonicalRunORM.snapshot_json,
+            CanonicalRunORM.raw_result_json,
+            CanonicalRunORM.white_box_trace_json,
+            CanonicalRunORM.power_flow_trace_json,
+        ).where(CanonicalRunORM.id == run_id)
+        row = self._session.execute(stmt).one_or_none()
+        if row is None:
+            return None
+        return {
+            "snapshot": row.snapshot_json or {},
+            "raw_result": row.raw_result_json,
+            "white_box_trace": list(row.white_box_trace_json or []),
+            "power_flow_trace": row.power_flow_trace_json,
+        }
 
     def clear_all(self) -> None:
         # Rozpływ najpierw: w Postgresie klucz obcy z ON DELETE CASCADE zrobiłby to
@@ -257,6 +297,28 @@ class CanonicalRunRepository:
             raw_result=row.raw_result_json,
             white_box_trace=list(row.white_box_trace_json or []),
             power_flow_trace=row.power_flow_trace_json,
+        )
+
+    def _to_domain_lekki(self, row: Any) -> CanonicalRun:
+        """Bieg z listy: pola lekkie z zapytania, ciężkie dociągane przy dostępie."""
+        from enm.canonical_analysis import CanonicalRunZListy
+
+        return CanonicalRunZListy(
+            id=row.id,
+            case_id=row.case_id,
+            project_id=row.project_id,
+            analysis_type=row.analysis_type,
+            status=row.status,
+            created_at=ensure_utc(row.created_at),
+            snapshot_hash=row.snapshot_hash,
+            input_hash=row.input_hash,
+            validation=row.validation_json or {},
+            readiness=row.readiness_json or {},
+            options=row.options_json or {},
+            started_at=ensure_utc(row.started_at),
+            finished_at=ensure_utc(row.finished_at),
+            error_message=row.error_message,
+            result_status=row.result_status,
         )
 
     def _to_orm(self, run: CanonicalRun, lekki_artefakt: dict[str, Any] | None) -> CanonicalRunORM:
