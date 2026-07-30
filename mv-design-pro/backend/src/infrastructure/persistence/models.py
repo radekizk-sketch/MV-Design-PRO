@@ -483,6 +483,40 @@ class CanonicalRunORM(Base):
     )
 
 
+class CanonicalRunBranchFlowORM(Base):
+    """Rozpływ prądu zwarciowego JEDNEGO punktu zwarcia — osobno od artefaktu biegu.
+
+    DEFEKT, KTÓRY TO USUWA (dług nazwany w V12K-281, zmierzony na sieci 50 stacji):
+    zapisany artefakt biegu zwarciowego trzymał PEŁNY rozpływ gałęziowy w jednej
+    kolumnie JSON (`canonical_runs.raw_result_json`) — 104 punkty zwarcia × 11 506
+    wpisów iloczynu źródło×gałąź. Każdy odczyt biegu (a więc i każdy widok listy
+    biegów) deserializował całość, choć konsument potrzebuje rozpływu JEDNEGO
+    wybranego punktu.
+
+    Treść wpisów jest BAJTOWO ta sama, co dotąd w `results[].branch_contributions`:
+    surowe wkłady FROZEN solvera (`ShortCircuitResult.branch_contributions`), bez
+    żadnej projekcji. Zmienia się wyłącznie MIEJSCE przechowywania — determinizm i
+    kontrakty wyników nietknięte.
+
+    Wiersz jest zapisywany w TEJ SAMEJ transakcji co bieg (repozytorium biegów), więc
+    nie istnieje stan „bieg zapisany, rozpływ zgubiony".
+    """
+
+    __tablename__ = "canonical_run_branch_flows"
+    __table_args__ = (Index("ix_canonical_run_branch_flows_run_id", "run_id"),)
+
+    run_id: Mapped[UUID] = mapped_column(
+        GUID(),
+        ForeignKey("canonical_runs.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    #: Identyfikator węzła zwarcia w grafie przebiegu (`results[].fault_node_id`).
+    fault_node_id: Mapped[str] = mapped_column(String(512), primary_key=True)
+    contributions_json: Mapped[list[dict[str, Any]]] = mapped_column(
+        DeterministicJSON(), nullable=False
+    )
+
+
 class AnalysisRunIndexORM(Base):
     __tablename__ = "analysis_runs_index"
     __table_args__ = (
