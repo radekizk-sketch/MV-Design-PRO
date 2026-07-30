@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from collections.abc import Iterator
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from infrastructure.persistence.db import (
@@ -12,13 +12,76 @@ from infrastructure.persistence.db import (
     init_db,
     session_scope,
 )
-from infrastructure.persistence.models import CanonicalRunORM
+from infrastructure.persistence.models import CanonicalRunBranchFlowORM, CanonicalRunORM
 from infrastructure.persistence.time_utils import ensure_utc
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 if TYPE_CHECKING:
     from enm.canonical_analysis import CanonicalRun
+
+#: Klucz surowych wkładów gałęziowych FROZEN solvera w wierszu wyniku zwarciowego.
+KLUCZ_ROZPLYWU = "branch_contributions"
+#: Znacznik: rozpływ dla tego punktu zwarcia ISTNIEJE i leży w osobnej tabeli.
+#: Odróżnia zapis rozdzielony od starszego wyniku policzonego BEZ wkładów.
+KLUCZ_DOSTEPNOSCI_ROZPLYWU = "branch_contributions_available"
+
+
+def _rozdziel_rozplyw(
+    raw_result: dict[str, Any] | None,
+) -> tuple[dict[str, Any] | None, dict[str, list[Any]]]:
+    """Artefakt biegu → (artefakt BEZ rozpływu, rozpływ per punkt zwarcia).
+
+    Rozpływ gałęziowy to iloczyn źródło×gałąź liczony dla KAŻDEGO punktu zwarcia
+    (zmierzone na sieci 50 stacji: 104 punkty × 11 506 wpisów), a konsument
+    potrzebuje rozpływu jednego wybranego punktu. Przy zapisie wycinamy go z
+    artefaktu i kierujemy do osobnej tabeli — wpisy są przenoszone BAJTOWO,
+    bez żadnej projekcji.
+
+    Wiersz bez identyfikatora punktu zwarcia zostaje z rozpływem inline: nie ma
+    czym zaadresować wiersza tabeli, a ciche zgubienie danych jest zakazane.
+    Wartość ``None`` (solver policzony bez wkładów) zostaje jak była — to
+    uczciwy brak, nie rozpływ do przeniesienia.
+    """
+    if not isinstance(raw_result, dict):
+        return raw_result, {}
+    results = raw_result.get("results")
+    if not isinstance(results, list):
+        return raw_result, {}
+
+    rozplyw: dict[str, list[Any]] = {}
+    wiersze: list[Any] = []
+    wyciete = False
+    for item in results:
+        if not isinstance(item, dict) or item.get(KLUCZ_ROZPLYWU) is None:
+            wiersze.append(item)
+            continue
+        fault_node_id = str(item.get("fault_node_id") or "")
+        if not fault_node_id:
+            wiersze.append(item)
+            continue
+        rozplyw[fault_node_id] = item[KLUCZ_ROZPLYWU]
+        wiersze.append(
+            {
+                **{key: value for key, value in item.items() if key != KLUCZ_ROZPLYWU},
+                KLUCZ_DOSTEPNOSCI_ROZPLYWU: True,
+            }
+        )
+        wyciete = True
+
+    if not wyciete:
+        return raw_result, {}
+    return {**raw_result, "results": wiersze}, rozplyw
+
+
+def _niesie_znacznik_rozplywu(raw_result: dict[str, Any] | None) -> bool:
+    """Czy artefakt jest zapisem rozdzielonym (rozpływ trzyma osobna tabela)."""
+    if not isinstance(raw_result, dict):
+        return False
+    results = raw_result.get("results")
+    if not isinstance(results, list):
+        return False
+    return any(isinstance(item, dict) and item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU) for item in results)
 
 
 _DEFAULT_DATABASE_URL = "sqlite+pysqlite:///./mv_design_pro.db"
@@ -61,12 +124,16 @@ class CanonicalRunRepository:
         self._session = session
 
     def create(self, run: CanonicalRun) -> None:
-        self._session.add(self._to_orm(run))
+        lekki_artefakt, rozplyw = _rozdziel_rozplyw(run.raw_result)
+        self._session.add(self._to_orm(run, lekki_artefakt))
+        self._zapisz_rozplyw(run, rozplyw)
 
     def save(self, run: CanonicalRun) -> None:
+        lekki_artefakt, rozplyw = _rozdziel_rozplyw(run.raw_result)
         row = self._session.get(CanonicalRunORM, run.id)
         if row is None:
-            self._session.add(self._to_orm(run))
+            self._session.add(self._to_orm(run, lekki_artefakt))
+            self._zapisz_rozplyw(run, rozplyw)
             return
 
         row.case_id = run.case_id
@@ -84,9 +151,48 @@ class CanonicalRunRepository:
         row.readiness_json = run.readiness
         row.options_json = run.options
         row.error_message = run.error_message
-        row.raw_result_json = run.raw_result
+        row.raw_result_json = lekki_artefakt
         row.white_box_trace_json = run.white_box_trace
         row.power_flow_trace_json = run.power_flow_trace
+        self._zapisz_rozplyw(run, rozplyw)
+
+    def _zapisz_rozplyw(self, run: CanonicalRun, rozplyw: dict[str, list[Any]]) -> None:
+        """Zapisz rozpływ biegu W TEJ SAMEJ transakcji co bieg (bez stanów pośrednich).
+
+        Tabela odzwierciedla to, co mówi ZAPISYWANY artefakt:
+        - niesie rozpływ inline → tabela dostaje dokładnie ten rozpływ (pełna wymiana),
+        - niesie sam znacznik dostępności (artefakt odczytany z bazy i zapisany
+          ponownie, np. przy zmianie statusu) → tabela BEZ ZMIAN, bo to ona jest
+          magazynem rozpływu; kasowanie byłoby cichą utratą danych,
+        - nie niesie ani rozpływu, ani znacznika (bieg bez wyniku, przeliczany
+          od nowa, wynik bez wkładów) → tabela czyszczona, żeby nie została
+          osierocona treść po poprzednim wykonaniu tego samego biegu.
+        """
+        if not rozplyw and _niesie_znacznik_rozplywu(run.raw_result):
+            return
+        self._session.execute(
+            delete(CanonicalRunBranchFlowORM).where(CanonicalRunBranchFlowORM.run_id == run.id)
+        )
+        for fault_node_id, wpisy in sorted(rozplyw.items()):
+            self._session.add(
+                CanonicalRunBranchFlowORM(
+                    run_id=run.id,
+                    fault_node_id=fault_node_id,
+                    contributions_json=wpisy,
+                )
+            )
+
+    def get_branch_flows(self, run_id: UUID, fault_node_id: str) -> list[Any] | None:
+        """Rozpływ JEDNEGO punktu zwarcia z osobnej tabeli (brak wpisu → None).
+
+        Jedyne wejście do magazynu rozpływu; warstwa domenowa woła je przez
+        `enm.canonical_analysis.pobierz_rozplyw_biegu` (jedna prawda dostępu).
+        """
+        stmt = select(CanonicalRunBranchFlowORM.contributions_json).where(
+            CanonicalRunBranchFlowORM.run_id == run_id,
+            CanonicalRunBranchFlowORM.fault_node_id == fault_node_id,
+        )
+        return self._session.execute(stmt).scalar_one_or_none()
 
     def exists(self, run_id: UUID) -> bool:
         stmt = select(CanonicalRunORM.id).where(CanonicalRunORM.id == run_id)
@@ -122,6 +228,10 @@ class CanonicalRunRepository:
         return [self._to_domain(row) for row in rows]
 
     def clear_all(self) -> None:
+        # Rozpływ najpierw: w Postgresie klucz obcy z ON DELETE CASCADE zrobiłby to
+        # sam, ale SQLite (tor deweloperski/e2e) nie egzekwuje kluczy obcych bez
+        # PRAGMA — bez tego zostawałyby wiersze osierocone.
+        self._session.execute(delete(CanonicalRunBranchFlowORM))
         self._session.execute(delete(CanonicalRunORM))
 
     def _to_domain(self, row: CanonicalRunORM) -> CanonicalRun:
@@ -149,7 +259,7 @@ class CanonicalRunRepository:
             power_flow_trace=row.power_flow_trace_json,
         )
 
-    def _to_orm(self, run: CanonicalRun) -> CanonicalRunORM:
+    def _to_orm(self, run: CanonicalRun, lekki_artefakt: dict[str, Any] | None) -> CanonicalRunORM:
         return CanonicalRunORM(
             id=run.id,
             case_id=run.case_id,
@@ -167,7 +277,7 @@ class CanonicalRunRepository:
             readiness_json=run.readiness,
             options_json=run.options,
             error_message=run.error_message,
-            raw_result_json=run.raw_result,
+            raw_result_json=lekki_artefakt,
             white_box_trace_json=run.white_box_trace,
             power_flow_trace_json=run.power_flow_trace,
         )

@@ -33,6 +33,8 @@ from enm.models import EnergyNetworkModel
 from enm.store import get_enm
 from enm.validator import ENMValidator
 from infrastructure.persistence.repositories.canonical_run_repository import (
+    KLUCZ_DOSTEPNOSCI_ROZPLYWU,
+    KLUCZ_ROZPLYWU,
     canonical_run_repository_scope,
 )
 from network_model.core.node import NodeType
@@ -313,6 +315,32 @@ def has_run(run_id: UUID) -> bool:
 def get_run(run_id: UUID) -> CanonicalRun | None:
     with canonical_run_repository_scope() as repository:
         return repository.get(run_id)
+
+
+def pobierz_rozplyw_biegu(run: CanonicalRun, fault_node_id: str) -> list[dict[str, Any]] | None:
+    """Surowe wkłady gałęziowe solvera dla punktu zwarcia — JEDNA prawda dostępu.
+
+    Kolejność źródeł (pierwsze, które ma treść, wygrywa):
+    1. rozpływ INLINE w artefakcie biegu — świeżo policzony bieg trzymany w pamięci
+       ORAZ zapis sprzed rozdzielenia artefaktu (ZGODNOŚĆ WSTECZNA: stare bazy
+       czytane bez migracji danych),
+    2. osobna tabela rozpływu (zapis rozdzielony — artefakt niesie tylko znacznik
+       dostępności, treść leży obok).
+
+    Brak w obu źródłach → ``None``: uczciwy brak (solver policzony bez wkładów albo
+    nieznany punkt zwarcia), nigdy pusta lista udająca „policzono zero".
+    """
+    for item in (run.raw_result or {}).get("results", []):
+        if not isinstance(item, dict) or item.get("fault_node_id") != fault_node_id:
+            continue
+        inline = item.get(KLUCZ_ROZPLYWU)
+        if inline is not None:
+            return list(inline)
+        if not item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU):
+            return None
+        with canonical_run_repository_scope() as repository:
+            return repository.get_branch_flows(run.id, fault_node_id)
+    return None
 
 
 def list_runs_for_case(case_id: str) -> list[CanonicalRun]:
@@ -1994,8 +2022,17 @@ def _sc_pelny_bilans(item: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _wpis_grafu(mapa: dict[str, Any], klucz: object) -> dict[str, Any]:
+    """Wpis grafu przebiegu dla identyfikatora (brak albo brak identyfikatora → pusty).
+
+    Zachowanie identyczne jak `mapa.get(klucz, {})` — klucz spoza mapy (w tym
+    `None`) daje pusty wpis; jawny warunek zamiast ukrytej zgodności typów.
+    """
+    return mapa.get(klucz, {}) if isinstance(klucz, str) else {}
+
+
 def _sc_rozplyw_galeziowy(
-    item: dict[str, Any],
+    raw: list[dict[str, Any]] | None,
     graph_nodes: dict[str, Any],
     graph_branches: dict[str, Any],
 ) -> list[dict[str, Any]] | None:
@@ -2011,14 +2048,17 @@ def _sc_rozplyw_galeziowy(
     (branch_id, source_id). Starsze wyniki bez pola → None (uczciwy brak);
     pusta lista = policzono, brak wkładów w żadnej gałęzi (sieć bez źródła
     zastępczego i bez falowników niosących prąd).
+
+    K14: wejściem są SUROWE wpisy solvera podane przez `pobierz_rozplyw_biegu`
+    (jedna prawda dostępu: artefakt inline albo osobna tabela rozpływu) — ta
+    funkcja odpowiada wyłącznie za projekcję prezentacyjną.
     """
-    raw = item.get("branch_contributions")
     if raw is None:
         return None
     flows: list[dict[str, Any]] = []
     for entry in raw:
         branch_id = entry.get("branch_id")
-        branch = graph_branches.get(branch_id, {})
+        branch = _wpis_grafu(graph_branches, branch_id)
         from_id = entry.get("from_node_id")
         to_id = entry.get("to_node_id")
         flows.append(
@@ -2027,15 +2067,25 @@ def _sc_rozplyw_galeziowy(
                 "branch_name": branch.get("name") or branch_id,
                 "source_id": entry.get("source_id"),
                 "from_node_id": from_id,
-                "from_node_name": graph_nodes.get(from_id, {}).get("name") or from_id,
+                "from_node_name": _wpis_grafu(graph_nodes, from_id).get("name") or from_id,
                 "to_node_id": to_id,
-                "to_node_name": graph_nodes.get(to_id, {}).get("name") or to_id,
+                "to_node_name": _wpis_grafu(graph_nodes, to_id).get("name") or to_id,
                 "i_ka": _amps_to_ka(entry.get("i_contrib_a")),
                 "direction": entry.get("direction"),
             }
         )
     flows.sort(key=lambda flow: (flow["branch_id"] or "", flow["source_id"] or ""))
     return flows
+
+
+def _rozplyw_dostepny(item: dict[str, Any]) -> bool:
+    """Czy dla tego punktu zwarcia rozpływ ISTNIEJE (niezależnie od miejsca zapisu).
+
+    Dwa równoważne świadectwa: rozpływ inline (świeży bieg / zapis sprzed
+    rozdzielenia artefaktu) albo znacznik zapisu rozdzielonego (treść w osobnej
+    tabeli). Brak obu = solver policzył bez wkładów — uczciwy brak.
+    """
+    return item.get(KLUCZ_ROZPLYWU) is not None or bool(item.get(KLUCZ_DOSTEPNOSCI_ROZPLYWU))
 
 
 def build_short_circuit_results(
@@ -2067,11 +2117,13 @@ def build_short_circuit_results(
                 # punktu na żądanie: `build_short_circuit_rozplyw`; dostępność
                 # sygnalizuje flaga niżej (odróżnia starszy wynik bez pola).
                 "branch_contributions": (
-                    _sc_rozplyw_galeziowy(item, graph_nodes, graph_branches)
+                    _sc_rozplyw_galeziowy(
+                        pobierz_rozplyw_biegu(run, target_id), graph_nodes, graph_branches
+                    )
                     if include_rozplyw
                     else None
                 ),
-                "branch_contributions_available": item.get("branch_contributions") is not None,
+                "branch_contributions_available": _rozplyw_dostepny(item),
                 "fault_type": item.get("short_circuit_type"),
                 # GAP passthrough (V12K-128): wymóg/źródło sieci zerowej Z0 przenoszone
                 # do wiersza kanonicznego (konsument read-only wie, czy Z0 dotyczy i
@@ -2111,6 +2163,9 @@ def build_short_circuit_rozplyw(run: CanonicalRun, target_id: str) -> dict[str, 
     (`_sc_rozplyw_galeziowy` — A→kA, nazwy z grafu przebiegu, sort
     deterministyczny). `branch_contributions=None` = starszy wynik bez pola
     (uczciwy brak). Nieznany punkt → KeyError (API tłumaczy na 404).
+
+    K14: treść rozpływu bierze `pobierz_rozplyw_biegu` (artefakt inline albo
+    osobna tabela) — kontrakt odpowiedzi bez zmian.
     """
     if run.analysis_type != "short_circuit_sn":
         raise KeyError(f"Przebieg nie jest analiza zwarciowa: {run.id}")
@@ -2123,7 +2178,7 @@ def build_short_circuit_rozplyw(run: CanonicalRun, target_id: str) -> dict[str, 
                 "run_id": str(run.id),
                 "target_id": target_id,
                 "branch_contributions": _sc_rozplyw_galeziowy(
-                    item, graph_nodes, graph_branches
+                    pobierz_rozplyw_biegu(run, target_id), graph_nodes, graph_branches
                 ),
             }
     raise KeyError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
