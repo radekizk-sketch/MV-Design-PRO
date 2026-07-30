@@ -1630,9 +1630,12 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // -------------------------------------------------------------------------
   const [minimapOpen, setMinimapOpen] = useState(false);
   const [centerRequest, setCenterRequest] = useState<{ readonly x: number; readonly y: number; readonly seq: number } | null>(null);
+  // Scena nawigatora liczona TYLKO gdy panel jest rozwinięty — zwinięty
+  // nawigator nie kosztuje ani jednego przebiegu buildera (memo przeliczane
+  // przy zmianie sieci, nie per-klatkę).
   const minimapScene = useMemo<SceneV3 | null>(
-    () => (snapshot ? buildSceneV3(snapshot, 0) : null),
-    [snapshot],
+    () => (snapshot && minimapOpen ? buildSceneV3(snapshot, 0) : null),
+    [snapshot, minimapOpen],
   );
   const minimapProjection = useMemo<MinimapProjection | null>(
     () => (minimapScene ? minimapProjectionOf(minimapScene.bbox) : null),
@@ -2194,7 +2197,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
             onClick={() => setMinimapOpen((prev) => !prev)}
             data-testid="sld-v3-minimap-toggle"
             aria-expanded={minimapOpen}
-            disabled={minimapProjection === null}
+            disabled={snapshot === null}
             aria-label={minimapOpen ? 'Zamknij nawigator schematu' : 'Otwórz nawigator schematu'}
             title={minimapOpen ? 'Zamknij nawigator' : 'Nawigator — podgląd całej sieci z bieżącym kadrem'}
             className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40"
