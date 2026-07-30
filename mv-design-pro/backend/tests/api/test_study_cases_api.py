@@ -146,8 +146,5 @@ def test_protection_config_second_put_replaces_device_setting(app_client) -> Non
     get_resp = app_client.get(f"/api/study-cases/{case_id}/protection-config")
     assert get_resp.status_code == 200
     odczyt = get_resp.json()["overrides"]
-    assert (
-        odczyt["coordination_device:dev-1"]["settings"]["stage_51"]["pickup_current_a"]
-        == 180.0
-    )
+    assert odczyt["coordination_device:dev-1"]["settings"]["stage_51"]["pickup_current_a"] == 180.0
     assert odczyt["TMS"] == {"value": 0.3}

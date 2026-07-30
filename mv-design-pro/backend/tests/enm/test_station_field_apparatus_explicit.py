@@ -154,9 +154,7 @@ def test_insert_station_uses_explicit_apparatus_ref_per_field() -> None:
     result = execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)
     assert result.get("error") is None, result.get("error")
     breakers = [
-        b
-        for b in result["snapshot"]["branches"]
-        if "station_field_device" in (b.get("tags") or [])
+        b for b in result["snapshot"]["branches"] if "station_field_device" in (b.get("tags") or [])
     ]
     assert len(breakers) == 3
     refs = {b["meta"]["field_role"]: b["catalog_ref"] for b in breakers}
@@ -184,9 +182,7 @@ def test_append_station_uses_explicit_apparatus_ref() -> None:
     )
     assert result.get("error") is None, result.get("error")
     apparatus = [
-        b
-        for b in result["snapshot"]["branches"]
-        if "station_field_device" in (b.get("tags") or [])
+        b for b in result["snapshot"]["branches"] if "station_field_device" in (b.get("tags") or [])
     ]
     assert apparatus, "Operacja nie utworzyła aparatu pola SN"
     assert all(b["catalog_ref"] == APARAT_SN_ALT for b in apparatus)

@@ -1698,7 +1698,7 @@ class TestOverridesAffectRunResult:
             parameters={"A": 0.14, "B": 0.02},
         )
 
-    def _evaluate(self, overrides: dict) -> "ProtectionResult":
+    def _evaluate(self, overrides: dict) -> ProtectionResult:
         from application.protection_analysis.engine import build_device_from_template
 
         device = build_device_from_template(
@@ -1755,7 +1755,5 @@ class TestOverridesAffectRunResult:
         assert bez_nadpisania.evaluations[0].trip_state == TripState.NO_TRIP
         assert bez_nadpisania.evaluations[0].i_pickup_a == 200.0
 
-        z_nadpisaniem = self._evaluate(
-            {**wpis_koordynacji, "I>": {"value": 100.0, "unit": "A"}}
-        )
+        z_nadpisaniem = self._evaluate({**wpis_koordynacji, "I>": {"value": 100.0, "unit": "A"}})
         assert z_nadpisaniem.evaluations[0].trip_state == TripState.TRIPS

@@ -42,7 +42,7 @@ def test_guard_czerwony_na_kodzie_rejestru_w_sladzie(tmp_path: Path) -> None:
     """Wstrzyknięta regresja: kod V12K-* w polu śladu analizy -> RC=1."""
     plik = tmp_path / "analiza_regresja.py"
     plik.write_text(
-        'def widok() -> dict:\n'
+        "def widok() -> dict:\n"
         '    return {"decyzja": "V12K-040 opcja B — adapter interpretacyjny"}\n',
         encoding="utf-8",
     )

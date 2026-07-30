@@ -180,7 +180,9 @@ def test_q_po_wartosci_bezwzglednej_v12k040() -> None:
     assert wiersz["werdykt"] == "w tolerancji"
     # K10: intencja bez zmian — założenia mają jawnie deklarować porównanie Q po
     # wartości bezwzględnej; kod rejestru nie może pojawiać się w treści dla inżyniera.
-    assert any("wartości bezwzględnej" in z and "znaku mocy biernej" in z for z in view["zalozenia_pl"])
+    assert any(
+        "wartości bezwzględnej" in z and "znaku mocy biernej" in z for z in view["zalozenia_pl"]
+    )
 
 
 # --------------------------------------------------------------------------
