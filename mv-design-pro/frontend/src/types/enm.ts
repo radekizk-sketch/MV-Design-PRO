@@ -471,6 +471,8 @@ export interface Substation extends ENMElement {
   gpz_hv_sections?: GPZSection[] | null;
   /** V12K-230: rodzaj konstrukcji stacji (wplywa na dobor aparatury i osprzetu). */
   construction_type?: 'wnetrzowa' | 'kontenerowa' | 'slupowa' | 'prefabrykowana' | 'inna' | null;
+  /** B-4: oznaczenie stacji na dokumentacji (np. "ST-15/0,4-01"). Addytywne. */
+  designation?: string | null;
   /** Porty zewnetrzne stacji (kontrakt topologii). */
   external_ports?: Port[] | null;
   /** Poziomy napiec nN obslugiwane przez stacje [kV]. */

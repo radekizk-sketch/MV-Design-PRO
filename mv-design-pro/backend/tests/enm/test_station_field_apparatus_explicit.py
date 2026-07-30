@@ -192,3 +192,70 @@ def test_append_station_uses_explicit_apparatus_ref() -> None:
     assert all(b["catalog_ref"] == APARAT_SN_ALT for b in apparatus)
 
 
+# ---------------------------------------------------------------------------
+# 3. B-4/B-5 — oznaczenie i typ konstrukcji stacji
+# ---------------------------------------------------------------------------
+
+
+def test_insert_station_stores_designation_and_construction_type() -> None:
+    snap, segment_ref, _ = _build_trunk_with_segment()
+    payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
+    payload["station"]["designation"] = "ST-15/0,4-01"
+    payload["station"]["construction_type"] = "kontenerowa"
+    result = execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)
+    assert result.get("error") is None, result.get("error")
+    station = next(
+        s for s in result["snapshot"]["substations"] if str(s["ref_id"]).endswith("/station")
+    )
+    assert station["designation"] == "ST-15/0,4-01"
+    assert station["construction_type"] == "kontenerowa"
+    # Model waliduje się jako ENM (pola pierwszej klasy, nie meta).
+    EnergyNetworkModel.model_validate(result["snapshot"])
+
+
+def test_append_station_stores_designation_and_construction_type() -> None:
+    snap, _, terminal_bus_ref = _build_trunk_with_segment()
+    result = execute_domain_operation(
+        copy.deepcopy(snap),
+        "append_station_on_endpoint",
+        {
+            "endpoint_bus_ref": terminal_bus_ref,
+            "station": {
+                "name": "Stacja końcowa",
+                "station_type": "terminal",
+                "designation": "ST-15/0,4-09",
+                "construction_type": "slupowa",
+            },
+            "nn_voltage_kv": 0.4,
+            "field_apparatus_catalog_ref": APARAT_SN,
+        },
+    )
+    assert result.get("error") is None, result.get("error")
+    station = next(
+        s for s in result["snapshot"]["substations"] if s.get("designation") == "ST-15/0,4-09"
+    )
+    assert station["construction_type"] == "slupowa"
+
+
+def test_station_rejects_unknown_construction_type() -> None:
+    snap, segment_ref, _ = _build_trunk_with_segment()
+    payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
+    payload["station"]["construction_type"] = "podziemna"
+    response = execute_domain_operation(
+        copy.deepcopy(snap), "insert_station_on_segment_sn", payload
+    )
+    assert response.get("error_code") == "station.construction_type_invalid"
+    assert "podziemna" in (response.get("error") or "")
+
+
+def test_station_without_identity_fields_keeps_record_unchanged() -> None:
+    """Addytywność: bez oznaczenia/typu konstrukcji rekord nie zyskuje pól."""
+    snap, segment_ref, _ = _build_trunk_with_segment()
+    payload = _insert_payload(segment_ref, field_apparatus_catalog_ref=APARAT_SN)
+    result = execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)
+    assert result.get("error") is None, result.get("error")
+    station = next(
+        s for s in result["snapshot"]["substations"] if str(s["ref_id"]).endswith("/station")
+    )
+    assert station.get("designation") is None
+    assert station.get("construction_type") is None

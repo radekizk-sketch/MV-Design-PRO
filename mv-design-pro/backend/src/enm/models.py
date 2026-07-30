@@ -845,6 +845,11 @@ class Substation(ENMElement):
     construction_type: (
         Literal["wnetrzowa", "kontenerowa", "slupowa", "prefabrykowana", "inna"] | None
     ) = None
+    # B-4: oznaczenie stacji na dokumentacji (np. "ST-15/0,4-01"). Opcjonalne i
+    # addytywne — None wykluczane z odcisku ENM (exclude_none), więc istniejące
+    # fixture'y i hashe pozostają nietknięte. Konsumenci: drzewo projektu,
+    # kreator stacji, karta techniczna.
+    designation: str | None = None
 
 
 class GPZSection(BaseModel):

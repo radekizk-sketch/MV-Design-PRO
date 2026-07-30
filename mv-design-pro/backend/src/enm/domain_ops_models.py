@@ -735,6 +735,14 @@ class StationSpec(_FrozenBase):
     station_name: str | None = None
     """Opcjonalna nazwa stacji."""
 
+    designation: str | None = None
+    """Oznaczenie stacji na dokumentacji, np. „ST-15/0,4-01" (B-4). Addytywne."""
+
+    construction_type: (
+        Literal["wnetrzowa", "kontenerowa", "slupowa", "prefabrykowana", "inna"] | None
+    ) = None
+    """Typ konstrukcji stacji (B-5) — parytet z `enm.models.Substation`. Addytywny."""
+
     sn_voltage_kv: float
     """Napięcie strony SN [kV]."""
 

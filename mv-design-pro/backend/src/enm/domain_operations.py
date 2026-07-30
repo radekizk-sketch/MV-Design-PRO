@@ -3984,6 +3984,46 @@ def _field_apparatus_missing_error(*, index: int, field_role: str, code: str) ->
     )
 
 
+#: Dozwolone typy konstrukcji stacji (B-5) — parytet z `enm.models.Substation`
+#: i katalogiem szablonów stacji (`network_model.catalog.station_templates`).
+_STATION_CONSTRUCTION_TYPES = (
+    "wnetrzowa",
+    "kontenerowa",
+    "slupowa",
+    "prefabrykowana",
+    "inna",
+)
+
+
+def _station_identity_fields(
+    station: dict[str, Any],
+    payload: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Pola tożsamości stacji: oznaczenie (B-4) i typ konstrukcji (B-5).
+
+    Addytywne: brak wartości ⇒ pusty słownik (klucze nie trafiają do rekordu,
+    więc odcisk ENM istniejących zapisów pozostaje bez zmian). Typ konstrukcji
+    spoza listy kończy operację jawnym błędem — zero domysłu.
+    Zwraca ``(pola, blad)``.
+    """
+    fields: dict[str, Any] = {}
+    raw_designation = station.get("designation") or payload.get("designation")
+    if isinstance(raw_designation, str) and raw_designation.strip():
+        fields["designation"] = raw_designation.strip()
+
+    raw_construction = station.get("construction_type") or payload.get("construction_type")
+    if isinstance(raw_construction, str) and raw_construction.strip():
+        construction = raw_construction.strip()
+        if construction not in _STATION_CONSTRUCTION_TYPES:
+            return fields, _error_response(
+                f"Typ konstrukcji stacji '{construction}' jest nieprawidłowy. "
+                f"Dozwolone: {', '.join(_STATION_CONSTRUCTION_TYPES)}.",
+                "station.construction_type_invalid",
+            )
+        fields["construction_type"] = construction
+    return fields, None
+
+
 def _materialize_station_auxiliary_load(
     new_enm: dict[str, Any],
     payload: dict[str, Any],
@@ -4313,6 +4353,11 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 ["LINIA_IN", "TRANSFORMATOROWE"],
             )
         ]
+    # B-4/B-5: oznaczenie i typ konstrukcji stacji (addytywne pola tożsamości).
+    station_identity, identity_error = _station_identity_fields(station, payload)
+    if identity_error is not None:
+        return identity_error
+
     # B-12: aparat KAŻDEGO pola SN musi być wskazany jawnie (katalog APARAT_SN).
     # Walidacja przed jakąkolwiek zmianą modelu — brak referencji kończy operację
     # błędem ze wskazaniem pola, nigdy domysłem.
@@ -4755,6 +4800,7 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             "bus_refs": [sn_bus_id, sn_bus_b_id] if is_sectional else [sn_bus_id],
             "transformer_refs": [],
             "tags": [],
+            **station_identity,
             "meta": {
                 "station_type_sn": station_type,
                 "station_type_semantic": station_type_raw,
@@ -7117,6 +7163,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             "station.append.voltage_missing",
         )
 
+    # B-4/B-5: oznaczenie i typ konstrukcji stacji (addytywne pola tożsamości).
+    station_identity, identity_error = _station_identity_fields(station_payload, payload)
+    if identity_error is not None:
+        return identity_error
+
     if nn_voltage_kv <= 0:
         return _error_response(
             "Brak napi?cia nN stacji. Podaj `nn_voltage_kv` > 0.",
@@ -7414,6 +7465,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         "bus_refs": [endpoint_bus_ref],
         "transformer_refs": [],
         "tags": [],
+        **station_identity,
         "meta": {
             "created_by": "append_station_on_endpoint",
             "station_type_semantic": station_type_raw,
