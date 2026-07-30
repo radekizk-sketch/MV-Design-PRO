@@ -43,7 +43,7 @@ import {
   type PreviewSegment,
   type PreviewSymbol,
 } from '../compose/preview';
-import { SheetFrame, buildDefaultLegend } from '../sheet/Frame';
+import { SheetFrame, type SheetLegendEntry } from '../sheet/Frame';
 import type { RouteVertex } from '../layout/route';
 import {
   boundingBoxOfRect,
@@ -87,6 +87,14 @@ import {
  *  źródło prawdy (D8: te literały istniały zdublowane też w
  *  `compose/sourceKind.ts` — patrz komentarze tam). Zero zmiany wartości. */
 const SLD_V3_BACKGROUND = CANVAS_BACKGROUND;
+/** K12 (KARTA_K12): legenda NIE jest domyślną treścią kanwy ekranowej —
+ *  referencja STABILNA (module-level, nie nowa tablica per render) przekazana
+ *  jawnie do `SheetFrame`, żeby `props.legend ?? buildDefaultLegend()` NIE
+ *  spadła na fallback z 12 pozycjami (`[]` nie jest `null`/`undefined`, więc
+ *  `??` go nie dotyka — `SheetFrame` renderuje wtedy ZERO grupy legendy, patrz
+ *  `sheet/Frame.tsx`). Legenda „na żądanie"/eksport z legendą: patrz
+ *  `SldCanvasV3Workspace.tsx` + `sheet/projectLegend.ts`. */
+const SLD_V3_CANVAS_LEGEND: readonly SheetLegendEntry[] = [];
 /** Nakładka energizacji (spec §6 P5): kolor akcentu, NIE geometria. */
 const OVERLAY_ENERGIZED_STROKE = HIGHLIGHT_COLOR.energized;
 const OVERLAY_DEENERGIZED_STROKE = HIGHLIGHT_COLOR.deenergized;
@@ -2259,19 +2267,17 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       )
     : 0;
 
-  // LEGENDA + OPIS SIECI (V12K-223). Informacje o CAŁEJ sieci — sposób pracy
-  // punktu neutralnego z wartością — nie mieszczą się w geometrii rysunku
-  // (V12K-221: trzy próby odrzucone przez wyrocznie czytelności). Legenda jest
-  // ich miejscem. Napis przychodzi GOTOWY ze sceny; kanwa go nie składa, więc
-  // nie zna fizyki — a brak danej daje brak wiersza (zero fabrykacji).
-  const legendZOpisemSieci = useMemo(() => {
-    const opis = scene.meta.neutralEarthingNotePl;
-    if (!opis) return undefined;
-    return [
-      ...buildDefaultLegend(),
-      { kind: 'note' as const, id: 'sn-neutral-earthing', labelPl: opis },
-    ];
-  }, [scene.meta.neutralEarthingNotePl]);
+  // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda symboli NIE
+  // jest już domyślną treścią kanwy — zabierała miejsce, była cięższa
+  // wizualnie niż sama sieć i pokazywała symbole nieobecne w projekcie
+  // (dawniej: `buildDefaultLegend()` stały zestaw 12 symboli + opis sieci
+  // V12K-223, ZAWSZE identyczny niezależnie od zawartości). `SheetFrame`
+  // dostaje jawnie PUSTĄ listę — nie renderuje grupy legendy wcale (patrz
+  // `sheet/Frame.tsx`). Legenda „na żądanie" (panel doku widoku kanwy) i
+  // eksport z opcją „Dołącz legendę" liczą treść z REALNEJ sceny przez
+  // `computeProjectLegendEntries` (`sheet/projectLegend.ts`) w
+  // `SldCanvasV3Workspace.tsx` — w tym opis punktu neutralnego (V12K-223),
+  // dawniej doklejany tu bezwarunkowo, dziś częścią tej samej funkcji.
 
   const viewBox = cameraViewBox(camera.transform, viewportSize);
 
@@ -2396,7 +2402,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       <SheetFrame
         width={sheetSize.width}
         height={sheetSize.height}
-        legend={legendZOpisemSieci}
+        legend={SLD_V3_CANVAS_LEGEND}
         scaleLabel="wg kamery"
         lodLabel={SCENE_LOD_LABELS_PL[effectiveLod]}
       >

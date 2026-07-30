@@ -178,6 +178,18 @@ import {
 } from './resultLabels';
 import { formatContractValue } from '../../../workspace/analysisRunContract';
 import { formatDateTime } from '../../../workspace/routerDisplayHelpers';
+// K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda „na żądanie" —
+// panel doku widoku kanwy (`sld-v3-view-dock`) + opcja eksportu „Dołącz
+// legendę". Treść liczona z REALNEJ sceny (`computeProjectLegendEntries`,
+// zero fabrykacji), rysunek panelu reużywa `SYMBOL_GLYPHS` (te same glify co
+// scena), rysunek eksportu reużywa `SheetLegend` (`sheet/Frame.tsx`) przez
+// `renderToStaticMarkup` — JEDNO źródło renderu legendy dla arkusza/eksportu.
+import { renderToStaticMarkup } from 'react-dom/server';
+import { SheetLegend, type SheetLegendEntry } from '../sheet/Frame';
+import { computeProjectLegendEntries } from '../sheet/projectLegend';
+import { SYMBOL_GLYPHS } from '../symbols/glyphs';
+import { sheetSizeFor } from './SldCanvasV3';
+import type { SymbolId } from '../symbols/defs';
 
 const MIN_CANVAS_WIDTH_PX = 320;
 const MIN_CANVAS_HEIGHT_PX = 240;
@@ -878,6 +890,103 @@ function SldV3LayerTogglePanel(props: {
 }
 
 // ---------------------------------------------------------------------------
+// K12 (KARTA_K12, dyrektywa właściciela 2026-07-30) — panel LEGENDY na
+// żądanie. WZORZEC 1:1 z `SldV3LayerTogglePanel` (nakładka HTML, styl doku,
+// „panel pomocy" — §0.3 karty daje wybór między nakładką NA kanwie SVG a
+// panelem pomocy odrębnym od sceny; wybrany WARIANT PANELU: zero zmiany
+// geometrii/DOM sceny SVG przy otwarciu/zamknięciu, zero ryzyka determinizmu
+// sceny). Treść WYŁĄCZNIE z `computeProjectLegendEntries` (zero fabrykacji —
+// symbol nieobecny w projekcie nie ma tu wiersza). Wiersze symboli renderują
+// PRAWDZIWY glif (`SYMBOL_GLYPHS`, ten sam co scena) — nie ikonę zastępczą.
+// ---------------------------------------------------------------------------
+
+/** Miniatura glifu symbolu w wierszu panelu — TEN SAM komponent `SYMBOL_GLYPHS`
+ *  co scena (zero duplikacji rysunku), w małym własnym `<svg>` przyciętym do
+ *  bboxa symbolu (`SYMBOL_DEFS[id]`) + margines 2px, żeby obrys nie ucinał
+ *  krawędzi glifu (np. `earthSwitch` uziom na `y=height`). */
+function LegendPanelGlyph(props: { readonly id: SymbolId }): JSX.Element {
+  const def = SYMBOL_DEFS[props.id];
+  const Glyph = SYMBOL_GLYPHS[props.id];
+  return (
+    <svg
+      width={24}
+      height={24}
+      viewBox={`-2 -2 ${def.width + 4} ${def.height + 4}`}
+      className="shrink-0 text-scada-text"
+      aria-hidden="true"
+    >
+      <Glyph x={0} y={0} />
+    </svg>
+  );
+}
+
+/** Miniatura próbki linii (kabel / koniec otwarty) — reprezentacja PROSTA
+ *  (nie 1:1 z `LegendLineSample` prywatnym w `sheet/Frame.tsx`, patrz
+ *  komentarz tamtej funkcji o eksporcie): panel HTML jest podglądem
+ *  pomocniczym, autorytatywny rysunek (dla druku/eksportu) reużywa
+ *  `SheetLegend` wprost (`handleExportSvg`). */
+function LegendPanelLineSample(props: { readonly id: string }): JSX.Element {
+  return (
+    <svg width={24} height={24} viewBox="0 0 28 16" className="shrink-0 text-scada-text" aria-hidden="true">
+      <line x1={0} y1={8} x2={props.id === 'openTerminal' ? 22 : 28} y2={8} stroke="currentColor" strokeWidth={1.6} />
+      {props.id === 'openTerminal' && (
+        <line x1={22} y1={2} x2={22} y2={14} stroke="currentColor" strokeWidth={1.6} />
+      )}
+    </svg>
+  );
+}
+
+function SldV3LegendPanel(props: {
+  readonly entries: readonly SheetLegendEntry[];
+  readonly className?: string;
+}): JSX.Element {
+  const { entries, className } = props;
+  return (
+    <section
+      className={[
+        'flex max-h-[min(70vh,480px)] w-[280px] flex-col gap-1 overflow-y-auto rounded border border-scada-border bg-scada-panel/95 p-2 text-[11px] text-scada-text shadow-lg',
+        className ?? '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      aria-label="Legenda symboli i linii obecnych w projekcie"
+      data-testid="sld-v3-legend-panel"
+    >
+      <header className="border-b border-scada-border pb-1 font-semibold uppercase tracking-wider text-scada-muted">
+        Legenda ({entries.length})
+      </header>
+      {entries.length === 0 ? (
+        // Uczciwy stan zerowy (dyrektywa właściciela: „uczciwe stany zerowe")
+        // — scena bez symboli/odcinków (projekt pusty) NIE dostaje fabrykowanej
+        // treści zastępczej.
+        <p className="py-1 text-scada-muted" data-testid="sld-v3-legend-panel-empty">
+          Brak symboli do objaśnienia — projekt jest pusty.
+        </p>
+      ) : (
+        <ul className="flex flex-col gap-1">
+          {entries.map((entry) => (
+            <li
+              key={entry.id}
+              className="flex items-center gap-2 py-0.5"
+              data-testid={`sld-v3-legend-panel-item-${entry.id}`}
+            >
+              {entry.kind === 'symbol' ? (
+                <LegendPanelGlyph id={entry.id as SymbolId} />
+              ) : entry.kind === 'line' ? (
+                <LegendPanelLineSample id={entry.id} />
+              ) : (
+                <span className="w-6 shrink-0" aria-hidden="true" />
+              )}
+              <span>{entry.labelPl}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // R3 (RECENZJA_WARSTWA_WYNIKOWA_2026-07 §wym.17) — panel FILTRÓW warstwy
 // wynikowej. WZORZEC 1:1 z `SldV3LayerTogglePanel` (checkboxy, PL, reset) —
 // osobny stan/zakres (wielkości P/Q/S/I/U/obciążenie · klasy źródła/TR/linie/
@@ -1463,6 +1572,27 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     setCameraState((prev) => (prev && prev.transform === transform && prev.lod === lod ? prev : { transform, lod }));
   }, []);
 
+  // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda „na żądanie".
+  // Scena WŁASNA tej funkcji (WZORZEC 1:1 z `handleExportSvg` niżej — TA SAMA
+  // formuła rozwiązania LOD, `lodOverride ?? cameraState?.lod ?? 2` — panel i
+  // eksport-z-legendą liczą TĘ SAMĄ treść z TEGO SAMEGO poziomu szczegółu).
+  // `SldCanvasV3` nie eksponuje swojej sceny wewnętrznej (stan prywatny od
+  // F6b) — ten sam kompromis co `handleExportSvg`: przebudowa SCENY (nie
+  // modelu) z `snapshot`, czysta funkcja, tania względem repaintu kanwy.
+  const legendScene = useMemo<SceneV3 | null>(() => {
+    if (!snapshot) return null;
+    const lod = lodOverride ?? cameraState?.lod ?? 2;
+    return buildSceneV3(snapshot, lod);
+  }, [snapshot, lodOverride, cameraState]);
+  const legendEntries = useMemo<readonly SheetLegendEntry[]>(
+    () => (legendScene ? computeProjectLegendEntries(legendScene) : []),
+    [legendScene],
+  );
+  const [legendPanelOpen, setLegendPanelOpen] = useState(false);
+  // Domyślnie WYŁĄCZONA (karta §0.4) — eksport bez legendy jest zachowaniem
+  // dotychczasowym (zero zmiany domyślnej dla wołających istniejących).
+  const [includeLegendInExport, setIncludeLegendInExport] = useState(false);
+
   // F12-B pkt 1 (spec §10.1 ARCH-4, „SldExportFormatMenu — eksport SVG/PNG"):
   // TEN SAM wzorzec co v2 `handleExportSvg` (`SldWorkspaceContainer.tsx`),
   // selektor kanwy v3 (`sld-canvas-v3` zamiast `sld-canvas-v2`).
@@ -1489,6 +1619,31 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     const scene = buildSceneV3(snapshot, lod);
     const clone = svgEl.cloneNode(true) as SVGSVGElement;
     applyContentFitFrame(clone, scene);
+    // K12 (KARTA_K12 §0.4): opcja „Dołącz legendę" — kanwa ekranowa NIGDY nie
+    // rysuje legendy (`SldCanvasV3` → `legend={[]}`), więc klon jest z
+    // definicji BEZ niej; gdy zaznaczone, dorysowujemy ją WYŁĄCZNIE na
+    // KLONIE (kadr eksportu), licząc treść z TEJ SAMEJ sceny/LOD co reszta
+    // eksportu (zero rozjazdu między tym, co widać w podglądzie panelu, a
+    // tym, co trafia do pliku). Reużycie `SheetLegend` (`sheet/Frame.tsx`,
+    // TA SAMA funkcja, co arkusz drukowany) przez `renderToStaticMarkup` —
+    // zero duplikacji rysunku glifów/próbek linii między torem ekranu i
+    // eksportu (dyrektywa właściciela pkt 7 „reużycie zamiast duplikacji").
+    if (includeLegendInExport) {
+      const entries = computeProjectLegendEntries(scene);
+      if (entries.length > 0) {
+        const sheetHeight = sheetSizeFor(scene).height;
+        const legendMarkup = renderToStaticMarkup(<SheetLegend entries={entries} sheetHeight={sheetHeight} />);
+        const parsedLegend = new DOMParser().parseFromString(
+          `<svg xmlns="http://www.w3.org/2000/svg">${legendMarkup}</svg>`,
+          'image/svg+xml',
+        );
+        const legendNode = parsedLegend.documentElement.firstElementChild;
+        const drawingArea = clone.querySelector('[data-testid="sld-sheet-drawing-area"]');
+        if (legendNode && drawingArea && clone.ownerDocument) {
+          drawingArea.appendChild(clone.ownerDocument.importNode(legendNode, true));
+        }
+      }
+    }
     const serializer = new XMLSerializer();
     const svgStr = toLightTechnicalExportSvg(serializer.serializeToString(clone));
     const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
@@ -1500,7 +1655,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     link.click();
     URL.revokeObjectURL(url);
     return filename;
-  }, [snapshot, lodOverride, cameraState]);
+  }, [snapshot, lodOverride, cameraState, includeLegendInExport]);
 
   // F12-B pkt 5: lasso — nakładka screen-space AKTYWNA (pointer-events: auto)
   // WYŁĄCZNIE gdy Shift wciśnięty (albo trwa przeciągnięcie rozpoczęte pod
@@ -1864,6 +2019,35 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         )}
       </div>
 
+      {/* K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): dok widoku kanwy
+          — dolny-środek (jedyny róg/oś BEZ istniejącego doku: górny-środek =
+          paleta DER, oba górne rogi = eksport/drzewo układu, oba dolne rogi =
+          dowody/warstwy). UWAGA STANU BAZOWEGO (meldunek K12): karta
+          zakładała, że ten dok JUŻ ISTNIEJE z przyciskami „Dopasuj widok"/
+          „Cały arkusz" (K11-A) — w bazie TEGO worktree (`origin/main`
+          `0efee335`) K11-A NIE jest scalone (żyje na osobnej, niescalonej
+          gałęzi nadzorcy), więc dok jest tworzony OD ZERA z WYŁĄCZNIE
+          przyciskiem legendy. Gdy K11-A scali fit-view/fit-sheet, ich
+          przyciski dołączają do TEGO SAMEGO doku (ta sama nazwa testid). */}
+      <div
+        className="pointer-events-auto absolute bottom-3 z-30 flex flex-col items-center gap-1"
+        data-testid="sld-v3-view-dock"
+        style={{ left: '50%', transform: 'translateX(-50%)' }}
+      >
+        <button
+          type="button"
+          onClick={() => setLegendPanelOpen((prev) => !prev)}
+          data-testid="sld-v3-legend-toggle"
+          aria-expanded={legendPanelOpen}
+          aria-label={legendPanelOpen ? 'Zamknij legendę symboli' : `Otwórz legendę symboli (${legendEntries.length})`}
+          title={legendPanelOpen ? 'Zamknij legendę' : `Legenda symboli i linii (${legendEntries.length})`}
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          {legendPanelOpen ? '▾ Legenda' : `▴ Legenda (${legendEntries.length})`}
+        </button>
+        {legendPanelOpen && <SldV3LegendPanel entries={legendEntries} />}
+      </div>
+
       {/* F12-B pkt 1 (spec §10.1 ARCH-4, „SldExportFormatMenu — eksport
           SVG/PNG"): dok prawy-górny — paleta DER zajmuje górny-środek, zero
           kolizji. */}
@@ -1886,6 +2070,22 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           caseLabel={undefined}
           onExportSvgOverride={handleExportSvg}
         />
+        {/* K12 (KARTA_K12 §0.4): opcja „Dołącz legendę" — domyślnie WYŁĄCZONA.
+            Steruje WYŁĄCZNIE `handleExportSvg` (jedyny dziś funkcjonalny kanał
+            eksportu SVG — button + dropdown „SVG (light_technical)" powyżej
+            współdzielą TĘ SAMĄ implementację), zero wpływu na kanwę ekranową. */}
+        <label
+          className="flex h-7 cursor-pointer items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] text-scada-text shadow-lg"
+          title="Dołącz legendę symboli i linii do eksportowanego pliku SVG"
+        >
+          <input
+            type="checkbox"
+            checked={includeLegendInExport}
+            onChange={(event) => setIncludeLegendInExport(event.target.checked)}
+            data-testid="sld-v3-export-include-legend"
+          />
+          Dołącz legendę
+        </label>
       </div>
 
       {/* K11-A: jawne dopasowanie widoku do treści sieci (dyrektywa SLD-first)

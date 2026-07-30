@@ -74,26 +74,36 @@ const DEFAULT_SYMBOL_LEGEND_IDS: readonly SymbolId[] = [
   'meter',
 ];
 
+/**
+ * Etykieta PL wpisu legendy dla danego symbolu — z adnotacją rozstrzygającą
+ * dla ES/miernika (patrz komentarze niżej). Wyekstrahowane (K12, KARTA_K12):
+ * `sheet/projectLegend.ts` (panel „Legenda" na żądanie kanwy v3 + eksport z
+ * legendą) reużywa TĘ SAMĄ regułę etykiet, zamiast duplikować przypadki
+ * specjalne ES/miernika.
+ */
+export function legendLabelForSymbol(id: SymbolId): string {
+  // F10.1 (spec §18.1, DEC-1): blokada logiczna uziemnika (zakaz
+  // zamknięcia ES na tor pod napięciem) = adnotacja KONWENCYJNA —
+  // konwencja dotyczy każdego ES jednakowo, więc jej miejscem jest
+  // LEGENDA arkusza (powtarzanie 120× przy każdym symbolu to szum
+  // graficzny i źródło kolizji — zweryfikowane wyroczniami; decyzja
+  // nadzorcy F10.1). F10.5 (spec §20.4): TEN SAM wzorzec dla miernika —
+  // legenda rozstrzyga jednoznaczność „M" (nie napęd silnikowy).
+  if (id === 'earthSwitch') return `${SYMBOL_DEFS[id].labelPl} (blokada zamkn. na tor pod napięciem)`;
+  if (id === 'meter') {
+    // Recenzja NO-GO 2026-07-17 pkt 11: „M" mylące — glif niesie literę
+    // mierzonej wielkości (A prąd z CT / V napięcie z VT), legenda to
+    // rozstrzyga (nie napęd silnikowy — F10.5 §20.4 zostaje w mocy).
+    return 'Miernik — litera = wielkość (A prąd / V napięcie); nie napęd silnikowy';
+  }
+  return SYMBOL_DEFS[id].labelPl;
+}
+
 export function buildDefaultLegend(): readonly SheetLegendEntry[] {
   const symbolEntries: SheetLegendEntry[] = DEFAULT_SYMBOL_LEGEND_IDS.map((id) => ({
     kind: 'symbol',
     id,
-    // F10.1 (spec §18.1, DEC-1): blokada logiczna uziemnika (zakaz
-    // zamknięcia ES na tor pod napięciem) = adnotacja KONWENCYJNA —
-    // konwencja dotyczy każdego ES jednakowo, więc jej miejscem jest
-    // LEGENDA arkusza (powtarzanie 120× przy każdym symbolu to szum
-    // graficzny i źródło kolizji — zweryfikowane wyroczniami; decyzja
-    // nadzorcy F10.1). F10.5 (spec §20.4): TEN SAM wzorzec dla miernika —
-    // legenda rozstrzyga jednoznaczność „M" (nie napęd silnikowy).
-    labelPl:
-      id === 'earthSwitch'
-        ? `${SYMBOL_DEFS[id].labelPl} (blokada zamkn. na tor pod napięciem)`
-        : id === 'meter'
-          // Recenzja NO-GO 2026-07-17 pkt 11: „M" mylące — glif niesie literę
-          // mierzonej wielkości (A prąd z CT / V napięcie z VT), legenda to
-          // rozstrzyga (nie napęd silnikowy — F10.5 §20.4 zostaje w mocy).
-          ? 'Miernik — litera = wielkość (A prąd / V napięcie); nie napęd silnikowy'
-          : SYMBOL_DEFS[id].labelPl,
+    labelPl: legendLabelForSymbol(id),
   }));
   return [
     ...symbolEntries,
@@ -224,7 +234,15 @@ function LegendLineSample(props: { readonly id: string; readonly centerY: number
   );
 }
 
-function SheetLegend(props: {
+/**
+ * Eksportowane (K12, KARTA_K12): reużywane WPROST przez tor eksportu SVG
+ * (`SldCanvasV3Workspace.handleExportSvg`, opcja „Dołącz legendę") — markup
+ * legendy dla eksportu jest renderowany TĄ SAMĄ funkcją (`renderToStatic
+ * Markup`), zero duplikacji rysunku glifów/próbek linii między kanwą
+ * ekranową (gdzie legenda dziś NIE jest częścią sceny — `SheetFrame` wołany
+ * z `legend={[]}`) a plikiem eksportu.
+ */
+export function SheetLegend(props: {
   readonly entries: readonly SheetLegendEntry[];
   readonly sheetHeight: number;
 }): JSX.Element {
@@ -439,7 +457,15 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
             {`Ukryto ${hiddenLabelCount} ${hiddenLabelCount === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`}
           </text>
         ) : null}
-        <SheetLegend entries={legend} sheetHeight={height} />
+        {/* K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda NIE jest
+         *  już domyślną treścią arkusza — `legend` puste (wołający, `SldCanvasV3`,
+         *  przekazuje `[]` na kanwie ekranowej) renderuje ZERO grupy w DOM
+         *  (nie tylko pustą grupę), żeby nieobecność była jednoznaczna dla
+         *  wyroczni/testów DOM. Wołający z realną treścią (eksport z opcją
+         *  „Dołącz legendę", panel na żądanie przez `SheetLegend` eksportowany
+         *  wyżej, oraz WŁASNE testy `SheetFrame` bez propa `legend` — fallback
+         *  `buildDefaultLegend()`) dostają grupę jak dotąd. */}
+        {legend.length > 0 && <SheetLegend entries={legend} sheetHeight={height} />}
         <g data-testid="sld-sheet-content" data-parity-key="sheet-content">
           {children}
         </g>

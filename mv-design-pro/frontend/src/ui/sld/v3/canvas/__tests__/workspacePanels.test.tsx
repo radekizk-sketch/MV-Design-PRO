@@ -290,3 +290,103 @@ describe('SldCanvasV3Workspace — W5 §18: podwarstwy L2 przełączalne (widocz
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// K12 (KARTA_K12, dyrektywa właściciela 2026-07-30) — legenda symboli „na
+// żądanie": NIE na stałym widoku kanwy, dok `sld-v3-view-dock` otwiera panel,
+// treść panelu WYŁĄCZNIE z fixtury realnej (zero fabrykacji — patrz też
+// wyrocznie czystej funkcji `sheet/__tests__/projectLegend.test.ts`).
+// ---------------------------------------------------------------------------
+
+describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
+  it('domyślnie (bez interakcji) legenda NIE jest częścią kanwy — brak grupy `sld-sheet-legend` w DOM', () => {
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    expect(container.querySelector('[data-testid="sld-sheet-legend"]')).toBeNull();
+    // Dok istnieje i przycisk informuje o liczbie wpisów — fixtura ma
+    // symbole/odcinki, więc panel nie byłby pusty, gdyby otworzyć.
+    const toggle = screen.getByTestId('sld-v3-legend-toggle');
+    expect(toggle).toBeInTheDocument();
+    expect(toggle.textContent).toMatch(/Legenda \(\d+\)/);
+  });
+
+  it('otwarcie panelu (dok `sld-v3-view-dock`) pokazuje WYŁĄCZNIE symbole obecne w fixturze — fixtura ma agregat (loads[]), więc "Odbiór (zagregowany)" jest obecny', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    expect(screen.queryByTestId('sld-v3-legend-panel')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('sld-v3-legend-toggle'));
+
+    const panel = screen.getByTestId('sld-v3-legend-panel');
+    expect(panel).toBeInTheDocument();
+    const scene = buildSceneV3(enm, 2);
+    const presentIds = new Set(scene.symbols.map((s) => s.symbolId));
+    // Fixtura `sldSubstrate52s` niesie 20 rekordów `Load` — agregat 0,4 kV
+    // jest naprawdę na scenie, więc panel MUSI go objaśnić (zero fabrykacji
+    // działa w OBIE strony: nie pokazuje NIEobecnych, ale też nie gubi
+    // OBECNYCH).
+    expect(presentIds.has('loadArrow')).toBe(true);
+    expect(within(panel).getByTestId('sld-v3-legend-panel-item-loadArrow')).toBeInTheDocument();
+    // Każdy wpis symbolu w panelu odpowiada symbolowi REALNIE obecnemu na scenie.
+    for (const item of panel.querySelectorAll('[data-testid^="sld-v3-legend-panel-item-"]')) {
+      const id = item.getAttribute('data-testid')!.replace('sld-v3-legend-panel-item-', '');
+      if (id === 'cable' || id === 'openTerminal' || id === 'sn-neutral-earthing') continue;
+      expect(presentIds.has(id as never)).toBe(true);
+    }
+  });
+
+  it('"overhead" (linia napowietrzna) NIGDY nie pojawia się w panelu — v3 nie renderuje tego stylu linii (fałszywy wpis byłby fabrykacją)', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    fireEvent.click(screen.getByTestId('sld-v3-legend-toggle'));
+    expect(screen.queryByTestId('sld-v3-legend-panel-item-overhead')).toBeNull();
+  });
+
+  it('zamknięcie panelu (drugi klik) przywraca kanwę do stanu bez legendy — dok zostaje, panel znika', () => {
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const toggle = screen.getByTestId('sld-v3-legend-toggle');
+
+    fireEvent.click(toggle);
+    expect(screen.getByTestId('sld-v3-legend-panel')).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(screen.queryByTestId('sld-v3-legend-panel')).toBeNull();
+  });
+
+  it('opcja eksportu „Dołącz legendę" domyślnie WYŁĄCZONA — eksport SVG bez legendy (zgodność wsteczna)', () => {
+    const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const RealBlob = globalThis.Blob;
+    const blobCtorSpy = vi.fn((parts: BlobPart[], options?: BlobPropertyBag) => new RealBlob(parts, options));
+    vi.stubGlobal('Blob', blobCtorSpy);
+
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const checkbox = screen.getByTestId('sld-v3-export-include-legend') as HTMLInputElement;
+    expect(checkbox.checked).toBe(false);
+
+    fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
+    expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
+    const svgStr = String(blobCtorSpy.mock.calls[0][0][0]);
+    expect(svgStr).not.toContain('sld-sheet-legend');
+
+    vi.unstubAllGlobals();
+  });
+
+  it('opcja eksportu „Dołącz legendę" zaznaczona ⇒ plik SVG niesie grupę legendy z etykietą obecnego symbolu (np. transformator)', () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
+    const RealBlob = globalThis.Blob;
+    const blobCtorSpy = vi.fn((parts: BlobPart[], options?: BlobPropertyBag) => new RealBlob(parts, options));
+    vi.stubGlobal('Blob', blobCtorSpy);
+
+    render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    fireEvent.click(screen.getByTestId('sld-v3-export-include-legend'));
+    fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
+
+    const svgStr = String(blobCtorSpy.mock.calls[0][0][0]);
+    expect(svgStr).toContain('sld-sheet-legend');
+    expect(svgStr).toContain('Transformator SN/nN');
+    // Kanwa EKRANOWA (nie eksportowany string) zostaje BEZ legendy — opcja
+    // eksportu nie włącza legendy na żywym widoku.
+    expect(document.querySelector('[data-testid="sld-sheet-legend"]')).toBeNull();
+
+    vi.unstubAllGlobals();
+  });
+});
