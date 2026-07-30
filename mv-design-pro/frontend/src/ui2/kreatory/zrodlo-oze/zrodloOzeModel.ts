@@ -25,7 +25,9 @@ import type {
   DerMvSwitchingDevice,
   DerTopologyPayload,
   LvSwitchgearVariant,
+  SourceOperatingMode,
 } from '../../../types/domainOps';
+import type { DerCatalogBindingsRequest } from '../../../ui/sld/v2/canvas/derPersistenceApi';
 
 const CANONICAL_CATALOG_VERSION = 'v12.5';
 
@@ -145,6 +147,26 @@ export interface OzeFormData {
   bess_mode: TrybBess;
   soc_min_percent: number | null;
   soc_max_percent: number | null;
+  // K9-A O12: wskazanie istniejącego pola odpływowego nN wprost w kreatorze
+  // (operacja czyta existing_field_ref przy placement=EXISTING_FIELD).
+  existing_field_ref: string | null;
+  // K9-A O5: tryb pracy źródła — zapis osobną operacją po utworzeniu elementu;
+  // null = bez wskazania (operacja pomijana, odczyt pola przyjmuje gotowość).
+  operating_mode: SourceOperatingMode | null;
+  // K9-A O2/O3 (krok „Aparatura pola"): wiązania katalogowe wytwórcy — zapis
+  // po utworzeniu elementu (walidacja katalogowa TYLKO dla ct/vt/zabezpieczenia;
+  // dane zwarciowe i model dynamiczny jawnie bez walidacji katalogowej).
+  ct_catalog_ref: string | null;
+  vt_catalog_ref: string | null;
+  protection_catalog_ref: string | null;
+  fault_current_data_ref: string | null;
+  dynamic_model_ref: string | null;
+  // K9-A O4 (krok „Zgodność przyłączeniowa"): profile NC RfG — podsłownik
+  // profili wytwórcy w modelu.
+  nc_rfg_profile_ref: string | null;
+  lvrt_curve_ref: string | null;
+  hvrt_curve_ref: string | null;
+  pf_curve_ref: string | null;
 }
 
 export interface BladPolaOze {
@@ -177,6 +199,17 @@ export const DANE_DOMYSLNE: OzeFormData = {
   bess_mode: 'PEAK_SHAVING',
   soc_min_percent: null,
   soc_max_percent: null,
+  existing_field_ref: null,
+  operating_mode: null,
+  ct_catalog_ref: null,
+  vt_catalog_ref: null,
+  protection_catalog_ref: null,
+  fault_current_data_ref: null,
+  dynamic_model_ref: null,
+  nc_rfg_profile_ref: null,
+  lvrt_curve_ref: null,
+  hvrt_curve_ref: null,
+  pf_curve_ref: null,
 };
 
 function parseQuantity(value: number): number {
@@ -213,7 +246,11 @@ export function walidujFormularz(
     if (!kontekst.bus_nn_ref?.trim()) {
       errors.push({ field: 'bus_nn_ref', message: 'Wskaż szynę nN rozdzielni dla przyłączenia bezpośredniego.' });
     }
-    if (data.placement === 'EXISTING_FIELD' && !kontekst.existing_field_ref?.trim()) {
+    if (
+      data.placement === 'EXISTING_FIELD'
+      && !data.existing_field_ref?.trim()
+      && !kontekst.existing_field_ref?.trim()
+    ) {
       errors.push({ field: 'existing_field_ref', message: 'Wskaż istniejące pole odpływowe nN.' });
     }
     if (data.placement === 'NEW_FIELD' && !data.apparatus_catalog_ref?.trim()) {
@@ -313,7 +350,9 @@ export function zbudujPayload(
     der_topology: derTopology ?? undefined,
     placement: isBlock ? undefined : data.placement,
     existing_field_ref:
-      !isBlock && data.placement === 'EXISTING_FIELD' ? kontekst.existing_field_ref : undefined,
+      !isBlock && data.placement === 'EXISTING_FIELD'
+        ? data.existing_field_ref?.trim() || kontekst.existing_field_ref
+        : undefined,
     source_field:
       !isBlock && data.placement === 'NEW_FIELD'
         ? {
@@ -370,6 +409,88 @@ export const SUGEROWANE = {
   socMinPercent: 10,
   socMaxPercent: 90,
 } as const;
+
+// ===========================================================================
+// K9-A: sekwencja zapisu po utworzeniu elementu (wiązania → tryb pracy → limity).
+// Każdy builder zwraca null, gdy projektant niczego nie wybrał — etap sekwencji
+// jest wtedy pomijany (zero fabrykacji: nie wysyłamy pustych żądań).
+// ===========================================================================
+
+/**
+ * Wiązania aparaturowe + profile zgodności wytwórcy — kontrakt „pominięcie ≠ null":
+ * wysyłamy WYŁĄCZNIE pola z wyborem projektanta (w przepływie tworzenia nie ma
+ * wcześniejszych wiązań do czyszczenia, więc jawne null nigdy tu nie występuje).
+ */
+export function zbudujWiazaniaDer(data: OzeFormData): DerCatalogBindingsRequest | null {
+  const wiazania: DerCatalogBindingsRequest = {
+    ...(data.ct_catalog_ref?.trim() ? { ct_catalog_ref: data.ct_catalog_ref.trim() } : {}),
+    ...(data.vt_catalog_ref?.trim() ? { vt_catalog_ref: data.vt_catalog_ref.trim() } : {}),
+    ...(data.protection_catalog_ref?.trim()
+      ? { protection_catalog_ref: data.protection_catalog_ref.trim() }
+      : {}),
+    ...(data.fault_current_data_ref?.trim()
+      ? { fault_current_data_ref: data.fault_current_data_ref.trim() }
+      : {}),
+    ...(data.dynamic_model_ref?.trim() ? { dynamic_model_ref: data.dynamic_model_ref.trim() } : {}),
+    ...(data.nc_rfg_profile_ref?.trim() ? { nc_rfg_profile_ref: data.nc_rfg_profile_ref.trim() } : {}),
+    ...(data.lvrt_curve_ref?.trim() ? { lvrt_curve_ref: data.lvrt_curve_ref.trim() } : {}),
+    ...(data.hvrt_curve_ref?.trim() ? { hvrt_curve_ref: data.hvrt_curve_ref.trim() } : {}),
+    ...(data.pf_curve_ref?.trim() ? { pf_curve_ref: data.pf_curve_ref.trim() } : {}),
+  };
+  return Object.keys(wiazania).length > 0 ? wiazania : null;
+}
+
+/**
+ * Limity mocy biernej wytwórcy do pola `limits` elementu (konsument: analiza
+ * adekwatności mocy biernej). Limity mocy czynnej (p_min/p_max) NIE są wysyłane —
+ * model je deklaruje, ale żadna analiza ich nie konsumuje (dług nazwany w karcie).
+ */
+export function zbudujLimityBierne(
+  data: OzeFormData,
+): { q_min_mvar?: number; q_max_mvar?: number } | null {
+  const limity = {
+    ...(data.q_min_mvar !== null ? { q_min_mvar: data.q_min_mvar } : {}),
+    ...(data.q_max_mvar !== null ? { q_max_mvar: data.q_max_mvar } : {}),
+  };
+  return Object.keys(limity).length > 0 ? limity : null;
+}
+
+/** Etap sekwencji zapisu — do uczciwej prezentacji przebiegu (co zapisane, co padło). */
+export interface EtapSekwencjiZapisu {
+  readonly id: 'zrodlo' | 'wiazania' | 'tryb' | 'limity';
+  readonly etykieta: string;
+  readonly stan: 'zapisane' | 'blad' | 'pominiete';
+  readonly komunikat?: string;
+}
+
+/** Minimalny kształt odpowiedzi operacji potrzebny do wyłuskania refu wytwórcy. */
+export interface OdpowiedzZWytworca {
+  readonly selection_hint?: { readonly element_id?: string | null } | null;
+  readonly changes?: { readonly created_element_ids?: readonly string[] } | null;
+  readonly snapshot?: { readonly generators?: ReadonlyArray<{ readonly ref_id?: string }> } | null;
+}
+
+/**
+ * Ref UTWORZONEGO WYTWÓRCY z odpowiedzi operacji — do sekwencji zapisu.
+ * Wskazanie selekcji może dotyczyć POLA (spec w metadanych stacji), a operacje
+ * sekwencji (wiązania, tryb pracy, limity) działają na GENERATORZE: bierzemy
+ * pierwszy utworzony ref obecny w kolekcji wytwórców migawki. Bez migawki
+ * (odpowiedź okrojona) przyjmujemy pierwszy utworzony ref.
+ */
+export function refUtworzonegoWytworcy(response: OdpowiedzZWytworca | null): string | null {
+  if (!response) return null;
+  const utworzone = (response.changes?.created_element_ids ?? []).filter(
+    (ref): ref is string => typeof ref === 'string' && ref.trim().length > 0,
+  );
+  const generatory = response.snapshot?.generators;
+  if (!generatory) {
+    return utworzone[0] ?? response.selection_hint?.element_id ?? null;
+  }
+  const refyGeneratorow = new Set(
+    generatory.map((g) => g.ref_id).filter((ref): ref is string => typeof ref === 'string'),
+  );
+  return utworzone.find((ref) => refyGeneratorow.has(ref)) ?? null;
+}
 
 /** Tryb Q wybrany, ale bez wartości rządzącej → regulacja pasywna (ostrzeżenie gotowości). */
 export function trybQWymagaWartosci(data: OzeFormData): boolean {

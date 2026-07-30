@@ -64,10 +64,13 @@ test.describe('kreatory:screenshot', () => {
     }
   }
 
-  // Wszystkie 4 ekrany konfiguracji kreatora OZE (technologia → falownik →
-  // regulacja → podsumowanie), z wypełnionymi danymi, w obu motywach.
+  // Wszystkie ekrany konfiguracji kreatora OZE, z wypełnionymi danymi, w obu
+  // motywach. INTENCJA: dokumentacyjny zrzut KAŻDEGO kroku toru pracy. K9-A
+  // przebudowała kreator do pełnego toru (technologia → falownik → aparatura
+  // pola → zgodność przyłączeniowa → regulacja → podsumowanie) — spec idzie
+  // po obecnym kanonie kroków.
   for (const theme of THEMES) {
-    test(`oze — 4 kroki konfiguracji (${theme})`, async ({ page }) => {
+    test(`oze — kroki konfiguracji, pełny tor (${theme})`, async ({ page }) => {
       const errs: string[] = [];
       const isNoise = (t: string): boolean =>
         /favicon|Download the React DevTools|Failed to load resource/i.test(t);
@@ -100,9 +103,30 @@ test.describe('kreatory:screenshot', () => {
       await page.getByTestId('mvd-kreator-oze-liczba').fill('12');
       await shot(2);
 
-      // Krok 3 — regulacja mocy biernej i czynnej (wartości rządzące + P(f)/LFSM).
+      // Krok 3 — aparatura pola (K9-A): CT/VT/zabezpieczenie z katalogu.
+      await page.getByTestId('mvd-kreator-oze-dalej').click();
+      await expect(page.getByTestId('mvd-kreator-oze-aparatura')).toBeVisible();
+      const ctWybor = page.getByTestId('mvd-kreator-oze-aparatura-ct');
+      await expect(ctWybor.locator('option').nth(1)).toBeAttached({ timeout: 15000 });
+      await ctWybor.selectOption('ct_200_5_5p10_10va_abb');
+      await page.getByTestId('mvd-kreator-oze-aparatura-vt').selectOption('vt-1');
+      await page.getByTestId('mvd-kreator-oze-aparatura-zabezpieczenie').selectOption('rel-1');
+      await shot(3);
+
+      // Krok 4 — zgodność przyłączeniowa (K9-A): profile NC RfG/LVRT/HVRT/PF.
+      await page.getByTestId('mvd-kreator-oze-dalej').click();
+      await expect(page.getByTestId('mvd-kreator-oze-zgodnosc')).toBeVisible();
+      await page.getByTestId('mvd-kreator-oze-zgodnosc-profil').selectOption('ncrfg_pse');
+      await page.getByTestId('mvd-kreator-oze-zgodnosc-lvrt').selectOption('lvrt_pse_b');
+      await page.getByTestId('mvd-kreator-oze-zgodnosc-hvrt').selectOption('hvrt_pse_b');
+      await page.getByTestId('mvd-kreator-oze-zgodnosc-pf').selectOption('pf_pse_b');
+      await shot(4);
+
+      // Krok 5 — regulacja mocy biernej i czynnej (wartości rządzące + P(f)/LFSM
+      // + tryb pracy źródła z K9-A).
       await page.getByTestId('mvd-kreator-oze-dalej').click();
       await expect(page.getByTestId('mvd-kreator-oze-tryb')).toBeVisible();
+      await page.getByTestId('mvd-kreator-oze-tryb-pracy').selectOption('praca_sieciowa');
       await page.getByTestId('mvd-kreator-oze-tryb').selectOption('Q_OD_U');
       await page.getByTestId('mvd-kreator-oze-qu-slope').fill('4');
       await page.getByTestId('mvd-kreator-oze-qu-db-low').fill('0.95');
@@ -114,12 +138,12 @@ test.describe('kreatory:screenshot', () => {
       await page.getByTestId('mvd-kreator-oze-deadband').fill('0.2');
       // Rozwiń panel teorii + charakterystyki NC RfG (G-OZE-B5), by zrzut pokazał wykresy.
       await page.getByTestId('mvd-kreator-oze-teoria').locator('summary').click();
-      await shot(3);
+      await shot(5);
 
-      // Krok 4 — podsumowanie i zapis.
+      // Krok 6 — podsumowanie i zapis.
       await page.getByTestId('mvd-kreator-oze-dalej').click();
       await expect(page.getByTestId('mvd-kreator-oze-zapis')).toBeVisible();
-      await shot(4);
+      await shot(6);
 
       if (errs.length > 0) console.log(`[oze/${theme}] errors:\n${errs.join('\n')}`);
       expect(errs, `no console/page errors for oze kroki/${theme}`).toEqual([]);

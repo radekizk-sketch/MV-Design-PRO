@@ -15,6 +15,7 @@ import { useCallback } from 'react';
 
 import { navigateToSld } from '../../../ui/navigation/routes';
 import { useSelectionStore } from '../../../ui/selection';
+import { resolveSelectedElementFromSnapshot } from '../../../ui/shared/selectionResolution';
 import type { DomainOpResponseV1 } from '../../../types/enm';
 import type { ElementType } from '../../../ui/types';
 
@@ -59,6 +60,32 @@ export function refZOperacji(response: DomainOpResponseV1 | null): string | null
   );
 }
 
+/**
+ * Ref do SELEKCJI — pierwszy kandydat z odpowiedzi (wskazanie backendu, potem
+ * elementy utworzone), który jest ROZWIĄZYWALNY w migawce modelu z tej samej
+ * odpowiedzi (K9-A, naprawa u źródła). Wskazanie niekanoniczne (np. ref
+ * specyfikacji pola w metadanych stacji) wybierane wprost wywalało selekcję:
+ * kanonikalizacja selekcji zeruje wybór i SKŁADA stos powierzchni, zamykając
+ * otwarty kreator w trakcie pracy — podsumowanie po zapisie nigdy nie było
+ * widoczne w żywej aplikacji. Brak kandydata kanonicznego ⇒ null (bez selekcji).
+ */
+export function kanonicznyRefZOperacji(response: DomainOpResponseV1 | null): string | null {
+  if (!response) return null;
+  const kandydaci = [
+    response.selection_hint?.element_id ?? null,
+    ...(response.changes?.created_element_ids ?? []),
+  ].filter((ref): ref is string => typeof ref === 'string' && ref.trim().length > 0);
+  if (kandydaci.length === 0) return null;
+  const snapshot = response.snapshot ?? null;
+  // Bez migawki w odpowiedzi nie da się kanonikalizować — zachowujemy dotychczasowe
+  // wskazanie (żaden znany dostawca nie zwraca selection_hint bez migawki).
+  if (!snapshot) return kandydaci[0];
+  for (const ref of kandydaci) {
+    if (resolveSelectedElementFromSnapshot(snapshot, ref)) return ref;
+  }
+  return null;
+}
+
 export interface SelekcjaFallback {
   /** Typ elementu użyty, gdy backend nie zwróci `selection_hint.element_type`. */
   type: ElementType;
@@ -79,9 +106,17 @@ export function useSelekcjaPoOperacji(): (
 
   return useCallback(
     (response: DomainOpResponseV1 | null, fallback: SelekcjaFallback) => {
-      const ref = refZOperacji(response);
+      // WYŁĄCZNIE ref kanoniczny w migawce odpowiedzi — selekcja niekanoniczna
+      // składa stos powierzchni i zamyka otwarty kreator (patrz kanonicznyRefZOperacji).
+      const ref = kanonicznyRefZOperacji(response);
       if (ref) {
-        const typ = mapujTypElementu(response?.selection_hint?.element_type, fallback.type);
+        // Typ ze wskazania backendu dotyczy refu ze wskazania; dla kandydata
+        // zastępczego (element utworzony) typ nadaje kreator (fallback).
+        const typZeWskazania =
+          ref === response?.selection_hint?.element_id
+            ? response?.selection_hint?.element_type
+            : null;
+        const typ = mapujTypElementu(typZeWskazania, fallback.type);
         selectElement({ id: ref, type: typ, name: fallback.name });
         if (response?.selection_hint?.zoom_to !== false) {
           centerSldOnElement(ref);
