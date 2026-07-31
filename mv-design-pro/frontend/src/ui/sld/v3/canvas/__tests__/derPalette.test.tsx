@@ -42,6 +42,20 @@ const fixturePath = resolve(
 );
 const enm = (JSON.parse(readFileSync(fixturePath, 'utf8')) as { readonly enm: EnergyNetworkModel }).enm;
 
+/**
+ * KD-8 poz. 2: pas narzędzi kanwy jest JEDNYM rzędem — przy wąskiej kanwie
+ * (te testy renderują 800 px) grupy o niższej randze są ZWINIĘTE do menu
+ * „Narzędzia", zamiast nachodzić na sąsiadów. Użytkownik sięga po nie jednym
+ * klikiem w to menu i test idzie DOKŁADNIE tą samą drogą — nie zakłada, że
+ * kontrolka jest zawsze w pasie (założenie, które maskowałoby zwinięcie).
+ */
+function rozwinZwinieteNarzedzia(): void {
+  const menu = screen.queryByTestId('sld-v3-toolbar-menu-toggle');
+  if (menu && screen.queryByTestId('sld-v3-toolbar-menu') === null) {
+    fireEvent.click(menu);
+  }
+}
+
 beforeEach(() => {
   useSnapshotStore.getState().reset();
   useSelectionStore.getState().clearSelection();
@@ -57,6 +71,7 @@ describe('SldCanvasV3Workspace — F8c pkt 4: paleta DER', () => {
     expect(stationOwnerRef).toBeTruthy();
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
+    rozwinZwinieteNarzedzia();
 
     fireEvent.click(screen.getByTestId('der-palette-btn-PV'));
     expect(screen.getByTestId('sld-v3-der-cancel')).toBeTruthy();
@@ -78,6 +93,7 @@ describe('SldCanvasV3Workspace — F8c pkt 4: paleta DER', () => {
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
 
+    rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('der-palette-btn-BESS'));
     expect(screen.getByTestId('sld-v3-der-cancel')).toBeTruthy();
 

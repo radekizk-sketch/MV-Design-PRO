@@ -22,6 +22,20 @@ import { useSelectionStore } from '../../../../selection';
 import { SldCanvasV3Workspace } from '../SldCanvasV3Workspace';
 import { useRawResultOverlayStore } from '../../../../sld-overlay/rawResultOverlayStore';
 
+/**
+ * KD-8 poz. 2: pas narzędzi kanwy jest JEDNYM rzędem — przy wąskiej kanwie
+ * (te testy renderują 800 px) grupy o niższej randze są ZWINIĘTE do menu
+ * „Narzędzia", zamiast nachodzić na sąsiadów. Użytkownik sięga po nie jednym
+ * klikiem w to menu i test idzie DOKŁADNIE tą samą drogą — nie zakłada, że
+ * kontrolka jest zawsze w pasie (założenie, które maskowałoby zwinięcie).
+ */
+function rozwinZwinieteNarzedzia(): void {
+  const menu = screen.queryByTestId('sld-v3-toolbar-menu-toggle');
+  if (menu && screen.queryByTestId('sld-v3-toolbar-menu') === null) {
+    fireEvent.click(menu);
+  }
+}
+
 beforeEach(() => {
   // jsdom nie implementuje URL.createObjectURL/revokeObjectURL — shim przed
   // spy (ten sam wzorzec co `v2/export/__tests__/SldExportButton.test.tsx`).
@@ -76,6 +90,7 @@ describe('SldCanvasV3Workspace — F12-B pkt 1: eksport SVG', () => {
     vi.stubGlobal('Blob', blobCtorSpy);
 
     render(<SldCanvasV3Workspace width={800} height={600} />);
+    rozwinZwinieteNarzedzia();
 
     const exportBtn = screen.getByTestId('sld-v3-export-svg');
     expect(exportBtn).toBeInTheDocument();
@@ -96,6 +111,7 @@ describe('SldCanvasV3Workspace — F12-B pkt 1: eksport SVG', () => {
 
   it('SldExportFormatMenu (wielo-format) jest zamontowane obok przycisku SVG', () => {
     render(<SldCanvasV3Workspace width={800} height={600} />);
+    rozwinZwinieteNarzedzia();
     expect(screen.getByTestId('sld-v3-export-dock')).toBeInTheDocument();
     // SldExportFormatMenu — komponent standalone z v2/export, reużyty wprost;
     // dropdown trigger istnieje w tym samym doku.
@@ -358,6 +374,7 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     vi.stubGlobal('Blob', blobCtorSpy);
 
     render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    rozwinZwinieteNarzedzia();
     const checkbox = screen.getByTestId('sld-v3-export-include-legend') as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
 
@@ -377,6 +394,7 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     vi.stubGlobal('Blob', blobCtorSpy);
 
     render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('sld-v3-export-include-legend'));
     fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
 

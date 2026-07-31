@@ -170,6 +170,12 @@ import { toLightTechnicalExportSvg } from '../export/exportPalette';
 // KD-8 poz. 1: eksport przepisuje kolory z palety EKRANU (motyw projektanta)
 // na paletę DOKUMENTOWĄ — arkusz do dokumentacji nie zależy od motywu.
 import { SldPaletteContext, sldPaletteForTheme } from '../theme/palette';
+// KD-8 poz. 2: deterministyczny układ JEDNEJ warstwy narzędzi kanwy.
+import {
+  isToolbarGroupExpanded,
+  layoutCanvasToolbar,
+  type CanvasToolbarGroupId,
+} from './toolbarLayout';
 import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
 import {
   buildFaultFlowOverlayFromScene,
@@ -1186,12 +1192,28 @@ function SldV3ResultFilterPanel(props: {
   );
 }
 
+/**
+ * KD-8 poz. 2 — TOŻSAMOŚĆ grup pasa narzędzi po scaleniu doków. Zachowane
+ * `data-testid` sprzed scalenia: grupa to TA SAMA jednostka funkcjonalna co
+ * dawny dok (te same kontrolki, te same akcje), zmieniło się wyłącznie jej
+ * miejsce w układzie — kontrakty testów i specy e2e nie mają powodu się ruszać.
+ */
+const TESTID_GRUPY: Readonly<Record<CanvasToolbarGroupId, string>> = {
+  drzewo: 'sld-v3-hierarchy-tree-dock',
+  uklady: 'sld-v3-der-palette',
+  widok: 'sld-v3-view-dock',
+  eksport: 'sld-v3-export-dock',
+};
+
 export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Element {
   const { width: widthOverride, height: heightOverride, lodOverride } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   // KD-8 poz. 1: paleta MOTYWU EKRANU — źródło substytucji przy eksporcie
   // (ten sam sterownik motywu co kanwa: `useThemeModeStore`).
   const screenPalette = sldPaletteForTheme(useThemeModeStore((state) => state.mode));
+  // KD-8 poz. 2: menu zwiniętych grup narzędzi (otwierane klikiem, jak każdy
+  // inny panel doku) — stan LOKALNY prezentacji.
+  const [toolbarMenuOpen, setToolbarMenuOpen] = useState(false);
   const size = useMeasuredSize(
     containerRef,
     1024,
@@ -1959,6 +1981,160 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     [handleElementClick],
   );
 
+  /**
+   * KD-8 poz. 2 — ZAWARTOŚĆ grup pasa narzędzi. Te same kontrolki i te same
+   * uchwyty zdarzeń co przed scaleniem doków (zero nowych akcji, zero
+   * martwych klików); zmieniło się WYŁĄCZNIE miejsce, w którym są osadzone —
+   * grupa rozwinięta rysuje je w pasie, zwinięta w menu „Narzędzia".
+   */
+  // KD-8 poz. 2: układ pasa narzędzi wyliczony z REALNEJ szerokości kanwy —
+  // czysta funkcja, więc ta sama szerokość zawsze daje ten sam układ.
+  const ukladPaska = useMemo(() => layoutCanvasToolbar(size.width), [size.width]);
+
+  const zawartoscGrup: Readonly<Record<CanvasToolbarGroupId, JSX.Element>> = {
+    drzewo: (
+      <>
+        <button
+          type="button"
+          onClick={() => setHierarchyPanelOpen((prev) => !prev)}
+          data-testid="sld-v3-hierarchy-tree-toggle"
+          aria-label={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Otwórz drzewo układu'}
+          title={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Drzewo układu sieci'}
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          {hierarchyPanelOpen ? '◂ Drzewo układu' : '▸ Drzewo układu'}
+        </button>
+        {hierarchyPanelOpen && (
+          <NetworkHierarchyTree hierarchy={networkHierarchy} className="w-[240px]" />
+        )}
+      </>
+    ),
+    uklady: (
+      <>
+        <span style={{ fontSize: 9, color: '#7E8790', marginRight: 4, fontWeight: 700, letterSpacing: 0.5 }}>
+          UKŁADY PV/BESS/FW:
+        </span>
+        {(['PV', 'BESS', 'FW'] as DerDragKind[]).map((kind) => (
+          <DerPaletteButton
+            key={kind}
+            kind={kind}
+            onStart={derDrag.startDrag}
+            disabled={derDrag.state !== null && derDrag.state.kind !== kind}
+            active={derDrag.state?.kind === kind}
+          />
+        ))}
+        {derDrag.state && (
+          <span style={{ fontSize: 9, color: '#B9C2CC', marginLeft: 4 }}>
+            ▸ Wskaż stację dla {derDrag.state.kind}
+            <button
+              type="button"
+              data-testid="sld-v3-der-cancel"
+              onClick={derDrag.cancel}
+              style={{ marginLeft: 6, color: '#F25F5F', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              Anuluj
+            </button>
+          </span>
+        )}
+      </>
+    ),
+    widok: (
+      <>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => {
+              setFitTarget('tresc');
+              setFitSignal((s) => s + 1);
+            }}
+            data-testid="sld-v3-fit-view"
+            title="Dopasuj widok do sieci"
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            ⌖ Dopasuj widok
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setFitTarget('arkusz');
+              setFitSignal((s) => s + 1);
+            }}
+            data-testid="sld-v3-fit-sheet"
+            title="Pokaż cały arkusz rysunkowy"
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            Cały arkusz
+          </button>
+          <button
+            type="button"
+            onClick={() => setLegendPanelOpen((prev) => !prev)}
+            data-testid="sld-v3-legend-toggle"
+            aria-expanded={legendPanelOpen}
+            aria-label={legendPanelOpen ? 'Zamknij legendę symboli' : `Otwórz legendę symboli (${legendEntries.length})`}
+            title={legendPanelOpen ? 'Zamknij legendę' : `Legenda symboli i linii (${legendEntries.length})`}
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+          >
+            {legendPanelOpen ? '▾ Legenda' : `▸ Legenda (${legendEntries.length})`}
+          </button>
+          {/* K11-B (karta K11-B §0.1): przełącznik nawigatora — TEN SAM dok
+              widoku co „Dopasuj widok"/„Cały arkusz"/„Legenda" (jedno miejsce
+              na sterowanie WIDOKIEM; panel nawigatora rozwija się w wolnym
+              dolnym-środkowym obszarze kanwy, patrz komentarz przy doku
+              nawigatora niżej). Nieaktywny, gdy sieci nie ma — uczciwie
+              wyłączony zamiast otwierać pusty panel. */}
+          <button
+            type="button"
+            onClick={() => setMinimapOpen((prev) => !prev)}
+            data-testid="sld-v3-minimap-toggle"
+            aria-expanded={minimapOpen}
+            disabled={snapshot === null}
+            aria-label={minimapOpen ? 'Zamknij nawigator schematu' : 'Otwórz nawigator schematu'}
+            title={minimapOpen ? 'Zamknij nawigator' : 'Nawigator — podgląd całej sieci z bieżącym kadrem'}
+            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {minimapOpen ? '▾ Nawigator' : '▸ Nawigator'}
+          </button>
+        </div>
+        {legendPanelOpen && <SldV3LegendPanel entries={legendEntries} />}
+      </>
+    ),
+    eksport: (
+      <>
+        <button
+          type="button"
+          onClick={handleExportSvg}
+          data-testid="sld-v3-export-svg"
+          title="Eksportuj schemat SLD jako plik SVG"
+          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
+        >
+          ↓ SVG
+        </button>
+        <SldExportFormatMenu
+          svgSelector='svg[data-testid="sld-canvas-v3"]'
+          projectName={undefined}
+          caseLabel={undefined}
+          onExportSvgOverride={handleExportSvg}
+        />
+        {/* K12 (KARTA_K12 §0.4): opcja „Dołącz legendę" — domyślnie WYŁĄCZONA.
+            Steruje WYŁĄCZNIE `handleExportSvg` (jedyny dziś funkcjonalny kanał
+            eksportu SVG — button + dropdown „SVG (light_technical)" powyżej
+            współdzielą TĘ SAMĄ implementację), zero wpływu na kanwę ekranową. */}
+        <label
+          className="flex h-7 cursor-pointer items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] text-scada-text shadow-lg"
+          title="Dołącz legendę symboli i linii do eksportowanego pliku SVG"
+        >
+          <input
+            type="checkbox"
+            checked={includeLegendInExport}
+            onChange={(event) => setIncludeLegendInExport(event.target.checked)}
+            data-testid="sld-v3-export-include-legend"
+          />
+          Dołącz legendę
+        </label>
+      </>
+    ),
+  };
+
   return (
     <div
       ref={containerRef}
@@ -2087,151 +2263,82 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         onClose={closeContextMenu}
       />
 
-      {/* F8c pkt 4: paleta DER — TEN SAM wygląd/przyciski co v2 (`DerPaletteButton`
-          reużyty wprost, patrz v2 `sld-v2-der-palette`), zamontowana
-          bezwarunkowo (v3 nie ma dziś odpowiednika `canPlaceDerOnStation`/
-          wyboru stacji z v2 — poza zakresem tego zadania, DODATEK czysto
-          addytywny). */}
+      {/* KD-8 poz. 2 — JEDNA WARSTWA NARZĘDZI KANWY.
+
+          Dawniej: cztery niezależne doki pozycjonowane bezwzględnie (drzewo
+          lewy-górny, paleta PV/BESS/FW środek-góra, eksport prawy-górny, widok
+          prawy-drugi-rząd). Każdy znał tylko własny róg, więc przy węższej
+          kanwie chip „↓ SVG" nachodził na „+ BESS", a trzy rzędy pływających
+          kontrolek zachodziły na siebie (ocena właściciela).
+
+          Teraz: JEDEN rząd (flex) — grupy są jego elementami, więc nachodzenie
+          jest niemożliwe z konstrukcji układu. O tym, które grupy zostają
+          rozwinięte, decyduje CZYSTA funkcja `layoutCanvasToolbar(szerokość)`
+          (`canvas/toolbarLayout.ts`); grupy, które się nie mieszczą, zwijają
+          się do menu „Narzędzia" — nigdy nie nakładają. Panele rozwijane
+          (drzewo, legenda) otwierają się POD swoją grupą, w tej samej
+          kolumnie. */}
       <div
-        className="pointer-events-auto absolute top-3 z-30 flex items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 py-1 shadow-lg"
-        data-testid="sld-v3-der-palette"
-        style={{ left: '50%', transform: 'translateX(-50%)' }}
+        className="pointer-events-none absolute left-3 right-3 top-3 z-30 flex items-start gap-2"
+        data-testid="sld-v3-toolbar"
+        data-toolbar-collapsed={ukladPaska.collapsed.join(',') || 'brak'}
       >
-        <span style={{ fontSize: 9, color: '#7E8790', marginRight: 4, fontWeight: 700, letterSpacing: 0.5 }}>
-          UKŁADY PV/BESS/FW:
-        </span>
-        {(['PV', 'BESS', 'FW'] as DerDragKind[]).map((kind) => (
-          <DerPaletteButton
-            key={kind}
-            kind={kind}
-            onStart={derDrag.startDrag}
-            disabled={derDrag.state !== null && derDrag.state.kind !== kind}
-            active={derDrag.state?.kind === kind}
-          />
-        ))}
-        {derDrag.state && (
-          <span style={{ fontSize: 9, color: '#B9C2CC', marginLeft: 4 }}>
-            ▸ Wskaż stację dla {derDrag.state.kind}
+        {isToolbarGroupExpanded(ukladPaska, 'drzewo') && (
+          <div className="pointer-events-auto flex flex-col items-start gap-1" data-testid={TESTID_GRUPY.drzewo} data-toolbar-group="drzewo">
+            {zawartoscGrup.drzewo}
+          </div>
+        )}
+        {isToolbarGroupExpanded(ukladPaska, 'uklady') && (
+          <div className="pointer-events-auto flex flex-col items-start gap-1" data-testid={TESTID_GRUPY.uklady} data-toolbar-group="uklady">
+            {zawartoscGrup.uklady}
+          </div>
+        )}
+        {/* Rozpychacz: grupy sterowania widokiem i eksportem trzymają się prawej
+            krawędzi kanwy, tak jak przed scaleniem doków. */}
+        <div className="flex-1" aria-hidden="true" />
+        {isToolbarGroupExpanded(ukladPaska, 'widok') && (
+          <div className="pointer-events-auto flex flex-col items-end gap-1" data-testid={TESTID_GRUPY.widok} data-toolbar-group="widok">
+            {zawartoscGrup.widok}
+          </div>
+        )}
+        {isToolbarGroupExpanded(ukladPaska, 'eksport') && (
+          <div className="pointer-events-auto flex flex-col items-end gap-1" data-testid={TESTID_GRUPY.eksport} data-toolbar-group="eksport">
+            {zawartoscGrup.eksport}
+          </div>
+        )}
+        {ukladPaska.collapsed.length > 0 && (
+          <div className="pointer-events-auto relative flex flex-col items-end gap-1" data-toolbar-group="menu">
             <button
               type="button"
-              data-testid="sld-v3-der-cancel"
-              onClick={derDrag.cancel}
-              style={{ marginLeft: 6, color: '#F25F5F', background: 'none', border: 'none', cursor: 'pointer' }}
+              onClick={() => setToolbarMenuOpen((prev) => !prev)}
+              data-testid="sld-v3-toolbar-menu-toggle"
+              aria-expanded={toolbarMenuOpen}
+              aria-label={toolbarMenuOpen ? 'Zamknij menu narzędzi kanwy' : 'Otwórz menu narzędzi kanwy'}
+              title="Narzędzia kanwy zwinięte przy tej szerokości"
+              className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
             >
-              Anuluj
+              {toolbarMenuOpen ? '▾ Narzędzia' : '▸ Narzędzia'}
             </button>
-          </span>
+            {toolbarMenuOpen && (
+              <div
+                className="flex flex-col items-end gap-2 rounded border border-scada-border bg-scada-panel p-2 shadow-lg"
+                data-testid="sld-v3-toolbar-menu"
+              >
+                {ukladPaska.collapsed.map((id) => (
+                  <div
+                    key={id}
+                    className="flex flex-col items-end gap-1"
+                    data-testid={TESTID_GRUPY[id]}
+                    data-toolbar-group={id}
+                    data-toolbar-group-collapsed={id}
+                  >
+                    {zawartoscGrup[id]}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
-      </div>
-
-      {/* F12-B pkt 1 (spec §10.1 ARCH-4, „SldExportFormatMenu — eksport
-          SVG/PNG"): dok prawy-górny — paleta DER zajmuje górny-środek, zero
-          kolizji. */}
-      <div
-        className="pointer-events-auto absolute right-3 top-3 z-30 flex items-center gap-1"
-        data-testid="sld-v3-export-dock"
-      >
-        <button
-          type="button"
-          onClick={handleExportSvg}
-          data-testid="sld-v3-export-svg"
-          title="Eksportuj schemat SLD jako plik SVG"
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
-        >
-          ↓ SVG
-        </button>
-        <SldExportFormatMenu
-          svgSelector='svg[data-testid="sld-canvas-v3"]'
-          projectName={undefined}
-          caseLabel={undefined}
-          onExportSvgOverride={handleExportSvg}
-        />
-        {/* K12 (KARTA_K12 §0.4): opcja „Dołącz legendę" — domyślnie WYŁĄCZONA.
-            Steruje WYŁĄCZNIE `handleExportSvg` (jedyny dziś funkcjonalny kanał
-            eksportu SVG — button + dropdown „SVG (light_technical)" powyżej
-            współdzielą TĘ SAMĄ implementację), zero wpływu na kanwę ekranową. */}
-        <label
-          className="flex h-7 cursor-pointer items-center gap-1 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] text-scada-text shadow-lg"
-          title="Dołącz legendę symboli i linii do eksportowanego pliku SVG"
-        >
-          <input
-            type="checkbox"
-            checked={includeLegendInExport}
-            onChange={(event) => setIncludeLegendInExport(event.target.checked)}
-            data-testid="sld-v3-export-include-legend"
-          />
-          Dołącz legendę
-        </label>
-      </div>
-
-      {/* K11-A: jawne dopasowanie widoku do treści sieci (dyrektywa SLD-first)
-          — użyteczne po ręcznym pan/zoom; automat fituje przy otwarciu i po
-          zmianie sieci. Własny dok pod dokiem eksportu — zero kolizji z
-          centrowaną paletą DER.
-          K12 (dyrektywa 2026-07-30, scalenie nadzorcy): TEN SAM dok niesie
-          przycisk legendy na żądanie — legenda nie żyje już na stałe na
-          schemacie; panel rozwija się POD rzędem przycisków (wyrównany do
-          prawej), żeby nie poszerzać rzędu o 280 px treści. */}
-      <div
-        className="pointer-events-auto absolute right-3 top-12 z-30 flex flex-col items-end gap-1"
-        data-testid="sld-v3-view-dock"
-      >
-        <div className="flex items-center gap-1">
-          <button
-            type="button"
-            onClick={() => {
-              setFitTarget('tresc');
-              setFitSignal((s) => s + 1);
-            }}
-            data-testid="sld-v3-fit-view"
-            title="Dopasuj widok do sieci"
-            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
-          >
-            ⌖ Dopasuj widok
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setFitTarget('arkusz');
-              setFitSignal((s) => s + 1);
-            }}
-            data-testid="sld-v3-fit-sheet"
-            title="Pokaż cały arkusz rysunkowy"
-            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
-          >
-            Cały arkusz
-          </button>
-          <button
-            type="button"
-            onClick={() => setLegendPanelOpen((prev) => !prev)}
-            data-testid="sld-v3-legend-toggle"
-            aria-expanded={legendPanelOpen}
-            aria-label={legendPanelOpen ? 'Zamknij legendę symboli' : `Otwórz legendę symboli (${legendEntries.length})`}
-            title={legendPanelOpen ? 'Zamknij legendę' : `Legenda symboli i linii (${legendEntries.length})`}
-            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
-          >
-            {legendPanelOpen ? '▾ Legenda' : `▸ Legenda (${legendEntries.length})`}
-          </button>
-          {/* K11-B (karta K11-B §0.1): przełącznik nawigatora — TEN SAM dok
-              widoku co „Dopasuj widok"/„Cały arkusz"/„Legenda" (jedno miejsce
-              na sterowanie WIDOKIEM; panel nawigatora rozwija się w wolnym
-              dolnym-środkowym obszarze kanwy, patrz komentarz przy doku
-              nawigatora niżej). Nieaktywny, gdy sieci nie ma — uczciwie
-              wyłączony zamiast otwierać pusty panel. */}
-          <button
-            type="button"
-            onClick={() => setMinimapOpen((prev) => !prev)}
-            data-testid="sld-v3-minimap-toggle"
-            aria-expanded={minimapOpen}
-            disabled={snapshot === null}
-            aria-label={minimapOpen ? 'Zamknij nawigator schematu' : 'Otwórz nawigator schematu'}
-            title={minimapOpen ? 'Zamknij nawigator' : 'Nawigator — podgląd całej sieci z bieżącym kadrem'}
-            className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {minimapOpen ? '▾ Nawigator' : '▸ Nawigator'}
-          </button>
-        </div>
-        {legendPanelOpen && <SldV3LegendPanel entries={legendEntries} />}
       </div>
 
       {/* K11-B (karta K11-B §0.1): DOK NAWIGATORA — dolny-ŚRODEK kanwy.
@@ -2256,26 +2363,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
         </div>
       )}
 
-      {/* F12-B pkt 2 (spec §10.1 ARCH-4, „NetworkHierarchyTree"): dok
-          lewy-górny. */}
-      <div
-        className="pointer-events-auto absolute left-3 top-3 z-20 flex flex-col items-start gap-1"
-        data-testid="sld-v3-hierarchy-tree-dock"
-      >
-        <button
-          type="button"
-          onClick={() => setHierarchyPanelOpen((prev) => !prev)}
-          data-testid="sld-v3-hierarchy-tree-toggle"
-          aria-label={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Otwórz drzewo układu'}
-          title={hierarchyPanelOpen ? 'Zamknij drzewo układu' : 'Drzewo układu sieci'}
-          className="h-7 rounded border border-scada-border bg-scada-panel/95 px-2 font-mono-eng text-[10px] font-semibold text-scada-text shadow-lg hover:bg-scada-hover-nav"
-        >
-          {hierarchyPanelOpen ? '◂ Drzewo układu' : '▸ Drzewo układu'}
-        </button>
-        {hierarchyPanelOpen && (
-          <NetworkHierarchyTree hierarchy={networkHierarchy} className="w-[240px]" />
-        )}
-      </div>
 
       {/* F12-B pkt 3 (spec §10.1 ARCH-4, „ProofPacksPanel"): dok lewy-dolny. */}
       <div

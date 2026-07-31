@@ -59,6 +59,20 @@ function branchLoadingPayload(value: number, runId: string, analysisType = 'load
   };
 }
 
+/**
+ * KD-8 poz. 2: pas narzędzi kanwy jest JEDNYM rzędem — przy wąskiej kanwie
+ * (te testy renderują 800 px) grupy o niższej randze są ZWINIĘTE do menu
+ * „Narzędzia", zamiast nachodzić na sąsiadów. Użytkownik sięga po nie jednym
+ * klikiem w to menu i test idzie DOKŁADNIE tą samą drogą — nie zakłada, że
+ * kontrolka jest zawsze w pasie (założenie, które maskowałoby zwinięcie).
+ */
+function rozwinZwinieteNarzedzia(): void {
+  const menu = screen.queryByTestId('sld-v3-toolbar-menu-toggle');
+  if (menu && screen.queryByTestId('sld-v3-toolbar-menu') === null) {
+    fireEvent.click(menu);
+  }
+}
+
 beforeEach(() => {
   // jsdom shim (jak workspacePanels.test.tsx).
   // @ts-expect-error jsdom shim
@@ -167,6 +181,7 @@ describe('R4 — eksport warstwy wynikowej bez utraty pozycji (wym. 18)', () => 
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
 
+    rozwinZwinieteNarzedzia();
     fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
     const svgStr = String(blobCtorSpy.mock.calls[0][0][0]);
     vi.unstubAllGlobals();
