@@ -313,7 +313,18 @@ const EXPECTED_STATION_COUNT = 53;
 // przyłączenia od szyny. Wzrost jest kosztem NOWEJ TREŚCI rysunku, nie regresją
 // układu — aparat stoi obok sekcji (poza pasem pól), a trasa ma jeden róg, bo
 // biegnie poziomo od lewego końca szyny i schodzi pionowo do aparatu.
-const VERTICAL_LENGTH_BASELINE = { 0: 22944, 1: 39888, 2: 39888 };
+  // KD-8 poz. 5 (2026-07-31, CELOWA aktualizacja baseline): PODNIESIONY
+  // 22896/39888/39888 → 23232/40224/40224 (+336 px pionów JEDNOLICIE na LOD).
+  // Przyczyna dokładna: prześwit etykiety napięcia szyny od TORU urósł z GRID
+  // (8 px) do BUSBAR_LABEL_PATH_CLEARANCE (16 px), a rezerwacja pasma
+  // (`stationBusbarLabelHeight`) urosła razem z nim — 42 wiersze stacji z
+  // polami SN na fixturze referencyjnej × 8 px = 336 px. Odstępstwo od reguły
+  // „nie-rosnąca" (§15.1 „redukcja jest ograniczeniem MIĘKKIM") ŚWIADOME i tej
+  // samej klasy co F10.3: czytelność podpisu szyny ma pierwszeństwo przed
+  // minimalizacją pionów. Dowód braku regresji układu: `accept:sld-v3` ALL PASS
+  // (w tym nowa sonda `busbar_label_clearance_probe` — 55 etykiet szyn,
+  // 0 naruszeń) oraz zero nowych kolizji etykieta↔etykieta/symbol/przewód.
+const VERTICAL_LENGTH_BASELINE = { 0: 23232, 1: 40224, 2: 40224 };
 
 /**
  * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):
@@ -389,7 +400,14 @@ const BEND_COUNT_BASELINE = { 0: 40, 1: 168, 2: 168 };
 // (S6 §6) — bbox rośnie o REALNĄ treść (dłuższe, kompletne etykiety), nie o pustą
 // rezerwę. Podłoga = NOWA zmierzona wartość minus ~0.00005 na jitter metryk
 // tekstu (ta sama reguła co S7-P1/P4). Korekta per liczba.
-const SHEET_FILL_FLOOR = { 0: 0.01374, 1: 0.02223, 2: 0.02281 };
+// KD-8 poz. 5 (2026-07-31, CELOWA korekta podłogi L2): OBNIŻONA 0.02281 →
+// 0.02275. Przyczyna: pasmo etykiety szyny urosło o 8 px na wiersz stacji
+// (prześwit podpisu od toru — patrz `VERTICAL_LENGTH_BASELINE` wyżej), więc
+// bbox arkusza rośnie o REALNĄ treść (czytelny podpis), a udział pokrytych
+// komórek spada marginalnie: zmierzone L2 0.022805 (L0 0.013808 i L1 0.022240
+// zostają nad dotychczasową podłogą — bez korekty). Podłoga = NOWA zmierzona
+// wartość minus ~0.00005 na jitter metryk tekstu (ta sama reguła co S7-P1/P4).
+const SHEET_FILL_FLOOR = { 0: 0.01374, 1: 0.02223, 2: 0.02275 };
 
 /**
  * F9.7 (dług F9.3(b), spec §11.4 `wire_probe` rozszerzony o symbole —

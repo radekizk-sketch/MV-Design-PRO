@@ -94,9 +94,20 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // wewnętrzne GPZ zastąpione dwoma pionami reprezentacji zwiniętej).
     // L1/L2 BEZ ZMIAN — zwinięcie nie rusza geometrii świata (kompozycja
     // geometryczna GPZ liczona przy pełnym szczególe na każdym LOD).
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22896);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(39888);
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(39888);
+    // KD-8 poz. 5 (2026-07-31, CELOWA aktualizacja baseline): PODNIESIONY
+    // 22896/39888/39888 → 23232/40224/40224 (+336 px pionów JEDNOLICIE na LOD).
+    // Przyczyna dokładna: prześwit etykiety napięcia szyny od TORU urósł z GRID
+    // (8 px) do BUSBAR_LABEL_PATH_CLEARANCE (16 px), a rezerwacja pasma
+    // (`stationBusbarLabelHeight`) urosła razem z nim — 42 wiersze stacji z
+    // polami SN na fixturze referencyjnej × 8 px = 336 px. Odstępstwo od reguły
+    // „nie-rosnąca" (§15.1 „redukcja jest ograniczeniem MIĘKKIM") ŚWIADOME i tej
+    // samej klasy co F10.3: czytelność podpisu szyny ma pierwszeństwo przed
+    // minimalizacją pionów. Dowód braku regresji układu: `accept:sld-v3` ALL PASS
+    // (w tym nowa sonda `busbar_label_clearance_probe` — 55 etykiet szyn,
+    // 0 naruszeń) oraz zero nowych kolizji etykieta↔etykieta/symbol/przewód.
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(23232);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(40224);
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(40224);
   });
 
   it('determinizm: rekordy pasm identyczne w dwóch biegach (fixtura referencyjna, L2)', () => {
