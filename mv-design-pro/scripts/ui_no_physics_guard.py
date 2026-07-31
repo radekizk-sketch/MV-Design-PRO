@@ -182,8 +182,11 @@ ALLOWLIST: dict[tuple[str, int], str] = {
         1225,
     ): "b: kontynuacja wielolinijkowego komentarza JSX ({/* ... */}) — poza zasięgiem reguł pomijania, które widzą pojedynczą linię",
     (
+        # KD-1 (2026-07-31): numer wiersza zdryfował po wcześniejszych edycjach
+        # pliku — guard był CZERWONY na gałęzi bazowej. Wpis dotyczy TEGO SAMEGO
+        # napisu (opis analizy w katalogu ekranów), tylko pod aktualnym wierszem.
         "frontend/src/ui/workspace/WorkspaceSurfaceRouter.tsx",
-        2694,
+        2633,
     ): "b: opis analizy w katalogu ekranów ('IEC 60909, Ik″/ip/Ith z śladem Y-bus') — napis",
     (
         "frontend/src/ui2/wyniki/zwarcia/api.ts",
