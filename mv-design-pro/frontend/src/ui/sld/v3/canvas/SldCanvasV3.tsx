@@ -52,6 +52,8 @@ import {
   computeInitialCameraState,
   pointerDistance,
   pointerMidpoint,
+  refScaleFor,
+  zoomFactorToEnterNextLod,
   type BoundingBox,
   type ViewportTransform,
 } from './camera';
@@ -2392,6 +2394,38 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     return () => svg.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
+  /**
+   * KD-5 — ROZWINIĘCIE ZWINIĘTEGO BLOKU: klik (a więc i dwuklik, którego
+   * pierwszy człon jest klikiem) w blok GPZ na L0 przenosi kadr na blok i
+   * zbliża DOKŁADNIE do progu wejścia na następny poziom szczegółu.
+   *
+   * Reużyta ISTNIEJĄCA nawigacja kamery — zero nowego toru: akcja `'center'`
+   * (ta sama, którą wywołuje minimapa) + akcja `'zoom'` ze współczynnikiem
+   * z `zoomFactorToEnterNextLod` (progi z tej samej tabeli, co histereza
+   * kamery). Przełączenie LOD i przeliczenie skali robi `cameraReducer`, jak
+   * przy zwykłym kółku myszy.
+   *
+   * Bramka `camera.lod !== 0`: rozwijamy WYŁĄCZNIE z poziomu przeglądowego —
+   * drugi człon dwukliku (kamera jest już na L1) nie doda kolejnego skoku.
+   */
+  const expandCollapsedBlock = useCallback(
+    (symbol: PreviewSymbol) => {
+      if (camera.lod !== 0) return;
+      const def = SYMBOL_DEFS[symbol.symbolId];
+      dispatch({ type: 'center', worldPoint: { x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 } });
+      const factor = zoomFactorToEnterNextLod(
+        refScaleFor(camera.transform.scale, camera.lod, camera.lodBboxes),
+        camera.lod,
+      );
+      if (factor > 1) {
+        // Kursor = ŚRODEK viewportu: po `'center'` blok leży dokładnie tam,
+        // więc zoom „do kursora" utrzymuje go w kadrze (zero dryfu).
+        dispatch({ type: 'zoom', cursor: { x: viewportSize.width / 2, y: viewportSize.height / 2 }, factor });
+      }
+    },
+    [camera, viewportSize],
+  );
+
   return (
     <svg
       ref={svgRef}
@@ -2503,13 +2537,23 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         <g data-testid="sld-v3-symbols">
           {scene.symbols.map((symbol, index) => {
             if (!isLayerVisible(layerIdForElementMeta(symbol.meta), layerVisibility)) return null;
+            // KD-5: blok GPZ zwinięty jest jedynym symbolem, w którym klik
+            // NIESIE też nawigację (rozwinięcie = zbliżenie do progu LOD) —
+            // obok zwykłej selekcji, która działa jak dla każdego elementu.
+            const rozwijalny = symbol.symbolId === 'gpzCollapsed';
+            const klik = rozwijalny
+              ? (testId: string, meta?: SldElementClickMeta) => {
+                  expandCollapsedBlock(symbol);
+                  onElementClick?.(testId, meta);
+                }
+              : onElementClick;
             return (
               <SceneSymbolNode
                 key={`symbol-${index}`}
                 symbol={symbol}
                 index={index}
                 overlay={effectiveOverlay}
-                onElementClick={onElementClick}
+                onElementClick={klik}
                 onElementDoubleClick={onElementDoubleClick}
                 onElementContextMenu={onElementContextMenu}
               />

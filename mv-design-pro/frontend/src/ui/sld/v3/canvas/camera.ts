@@ -205,6 +205,35 @@ export function lodFromScaleWithHysteresis(
 }
 
 /**
+ * KD-5 — WSPÓŁCZYNNIK ZOOMU do przekroczenia progu WEJŚCIA na poziom wyższy
+ * niż `fromLod`. Potrzebny dla jednej interakcji: klik/dwuklik w ZWINIĘTY blok
+ * GPZ ma go rozwinąć, a rozwinięcie jest własnością POZIOMU SZCZEGÓŁU, nie
+ * osobnego trybu — więc „rozwiń" znaczy dokładnie „zbliż do progu".
+ *
+ * Zero nowego toru: wynik podaje się istniejącej akcji `'zoom'`
+ * (`cameraReducer`), która sama przełączy LOD histerezą (`lodFromScaleWith
+ * Hysteresis`) i zmapuje skalę (`applyLodScaleMapping`). Próg czytany z TEJ
+ * SAMEJ tabeli `DEFAULT_LOD_THRESHOLDS` i marginesu `LOD_HYSTERESIS_MARGIN`,
+ * co histereza kamery — brak drugiego systemu progów (rozstrzygnięcie karty).
+ *
+ * `1` (brak zoomu) gdy: poziom najwyższy (nie ma czego rozwijać), `refScale`
+ * już powyżej progu wejścia, albo dane zdegenerowane — funkcja NIGDY nie
+ * oddala (współczynnik < 1 byłby cofnięciem, nie rozwinięciem).
+ */
+export function zoomFactorToEnterNextLod(
+  refScale: number,
+  fromLod: SceneLod,
+  thresholds: LodThresholds = DEFAULT_LOD_THRESHOLDS,
+  margin: number = LOD_HYSTERESIS_MARGIN,
+): number {
+  if (fromLod >= 2) return 1;
+  if (!Number.isFinite(refScale) || refScale <= 0) return 1;
+  const target = (fromLod === 0 ? thresholds.l0Max : thresholds.l1Max) * (1 + margin);
+  const factor = target / refScale;
+  return factor > 1 ? factor : 1;
+}
+
+/**
  * F8a-2 — FIX-1: przelicza surową skalę kamery (natywną dla świata `lod`,
  * bo `applyLodScaleMapping` przelicza `transform.scale` przy KAŻDYM
  * przejściu tak, by pozostał natywny dla NOWEGO świata) do `refScale` —
