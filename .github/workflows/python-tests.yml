@@ -42,6 +42,17 @@ jobs:
       - name: Run pytest
         working-directory: mv-design-pro/backend
         run: poetry run pytest -q
+      # KD-9: testy WLASNE guardow leza w `mv-design-pro/scripts`, czyli POZA
+      # `testpaths = ["tests"]` backendu — `poetry run pytest -q` powyzej nigdy
+      # ich nie zbieral, a zaden workflow ich nie wolal. 10 plikow / 71 testow
+      # bylo martwych od powstania: znaleziono to przy naprawie
+      # `api_lifecycle_guard.py`, ktorego test kontraktu jest wlasnie w tym
+      # zbiorze. Jeden z tych testow zdazyl w tym czasie zgnic (rejestr decyzji
+      # w atrapie nie nadazyl za kanonem V12D-036) — nikt tego nie widzial,
+      # bo test sie nie wykonywal. Czas biegu: ~2 s.
+      - name: Testy guardow (mv-design-pro/scripts, poza testpaths backendu)
+        working-directory: mv-design-pro/backend
+        run: poetry run python -m pytest -q ../scripts
       - name: Run audit2 backend integration tests (Phase 8-30)
         working-directory: mv-design-pro/backend
         run: |

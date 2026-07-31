@@ -101,6 +101,7 @@ def test_decision_register_accepts_required_decisions(tmp_path, monkeypatch) -> 
 | V12D-033 | zatwierdzona | UI / SLD / OZE | UI carries `fw_pmsg`, fw_dfig and fw_scig. | UI OZE closure. | Architekt UI/UX |
 | V12D-034 | zatwierdzona | API / EAZ | Removed public `protection-engine/v1` routes. | EAZ API closure. | Architekt API |
 | V12D-035 | zatwierdzona | governance / testy | Coverage matrix lives in `MACIERZ_POKRYCIA_END_TO_END.md`. | E2E closure. | Architekt testow |
+| V12D-036 | zatwierdzona | UI / dark SCADA | Screen theme is enforced by root `mv-dark-scada`. | Dark SCADA closure. | Architekt UI/UX |
 """,
     )
     monkeypatch.setattr(guard, "DECISION_REGISTER_PATH", register_path)
