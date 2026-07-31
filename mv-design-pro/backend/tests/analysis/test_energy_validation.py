@@ -603,13 +603,13 @@ class TestGoldenNetworkIntegration:
 
     @pytest.fixture()
     def golden_graph(self):
-        import sys
-        from pathlib import Path
-
-        tests_dir = str(Path(__file__).resolve().parents[1])
-        if tests_dir not in sys.path:
-            sys.path.insert(0, tests_dir)
-        from golden.golden_network_sn import build_golden_network
+        # KD-9: import przez PELNA nazwe pakietu testowego. Wczesniej ten fixture
+        # dokladal katalog `tests/` na POCZATEK `sys.path`, przez co pakiet testowy
+        # `tests/reference_engine/` przeslanial zrodlowy `src/reference_engine/` —
+        # kazdy bieg czesciowy obejmujacy ten plik konczyl sie fantomowym
+        # `ModuleNotFoundError: No module named 'reference_engine.validation'`
+        # w leniwym imporcie `enm/validator.py`.
+        from tests.golden.golden_network_sn import build_golden_network
 
         return build_golden_network()
 

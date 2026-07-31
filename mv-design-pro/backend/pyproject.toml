@@ -101,6 +101,26 @@ warn_return_any = false
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+# CIENIOWANIE PAKIETOW ZRODLOWYCH PRZEZ TESTOWE (KD-9, dlug z KD-6).
+# Domyslny tryb `prepend` wstrzykuje katalog bazowy KAZDEGO modulu testowego na
+# poczatek `sys.path` i nadaje modulom nazwy wyprowadzone z pakietu testowego.
+# Skutek zmierzony na HEAD: bieg CZESCIOWY
+# `pytest tests/analysis tests/application/analyses` dawal 108 FANTOMOWYCH
+# porazek (`ModuleNotFoundError: No module named 'reference_engine.validation'`),
+# bo katalog `tests/` trafial na sciezke przed `src/`, a `tests/reference_engine/`
+# przeslanial pakiet zrodlowy `src/reference_engine/`. Pelny bieg byl zielony,
+# wiec CI tego nie widzialo — kazdy bieg czesciowy dawal falszywy obraz.
+# `importlib` nadaje modulom testowym nazwy wyprowadzone z PELNEJ sciezki wzgledem
+# rootdir (`tests.analysis.test_x`) i NIE modyfikuje `sys.path`, wiec przestrzen
+# importu zrodel jest odizolowana od ukladu katalogow testowych. Korzen backendu
+# dokladamy jawnie w `tests/conftest.py` (import `tests.*` musi dzialac).
+#
+# UWAGA: tryb importu NIE ma wlasnego klucza ini — pytest wystawia go wylacznie
+# jako opcje wiersza polecen `--import-mode` (dest=importmode). Klucz
+# `importmode = "importlib"` w tej sekcji jest CICHO IGNOROWANY (pytest zglasza
+# tylko `PytestConfigWarning: Unknown config option`), dlatego wchodzi przez
+# `addopts` — inaczej caly ten zapis bylby dekoracja bez skutku.
+addopts = "--import-mode=importlib"
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]

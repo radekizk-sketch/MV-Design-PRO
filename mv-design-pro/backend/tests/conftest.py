@@ -11,6 +11,18 @@ import pytest
 backend_src = Path(__file__).parents[1] / "src"
 sys.path.insert(0, str(backend_src))
 
+# Korzen backendu na sciezce — WYMAGANY przez tryb importu `importlib`
+# (pyproject: `[tool.pytest.ini_options] addopts = "--import-mode=importlib"`;
+# tryb NIE ma wlasnego klucza ini, wiec wchodzi przez addopts). Tryb `importlib` celowo
+# NIE dopisuje niczego do `sys.path` (to wlasnie ta samowolka powodowala
+# cieniowanie pakietow zrodlowych przez testowe), a 58 modulow testowych importuje
+# wspoldzielone budowniczki przez `from tests.<pakiet> import ...`. Dopisujemy
+# wiec dokladnie JEDEN katalog — korzen backendu — zamiast pozwalac pytestowi
+# wstrzykiwac katalog bazowy kazdego modulu testowego z osobna.
+backend_root = Path(__file__).parents[1]
+if str(backend_root) not in sys.path:
+    sys.path.insert(0, str(backend_root))
+
 
 def _install_httpx_testclient_compat() -> None:
     """Bridge starlette<=0.27 TestClient onto httpx>=0.28 for backend tests."""

@@ -29,10 +29,14 @@ from application.sld.network_graph_to_sld import (
     convert_graph_to_sld_payload,
 )
 
-# Import golden network
-golden_dir = Path(__file__).parents[2] / "golden"
-sys.path.insert(0, str(golden_dir.parent))
-from golden.golden_network_sn import build_golden_network, get_golden_network_statistics
+# Import golden network przez PELNA nazwe pakietu testowego (KD-9). Wczesniej
+# ten modul dokladal katalog `tests/` na poczatek `sys.path`, co czynilo z
+# `tests/reference_engine/` i `tests/enm/` pakiety przeslaniajace pakiety
+# zrodlowe o tych samych nazwach.
+from tests.golden.golden_network_sn import (
+    build_golden_network,
+    get_golden_network_statistics,
+)
 
 # ---------------------------------------------------------------------------
 # Fixtures
