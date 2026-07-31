@@ -44,6 +44,8 @@ import {
   wierszeTabeliObszaru,
 } from './obszarModel';
 import { OBSZAR_STRINGS, fmtMWObszar, fmtMvarObszar } from './strings';
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 const DOMYSLNY_STEP_P_MW = 0.5;
 const DOMYSLNY_STEP_Q_MVAR = 0.25;
@@ -65,11 +67,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -78,6 +84,7 @@ function StanPanel({
     >
       <p className="mvd-obszar-stan-title">{komunikat}</p>
       {opis && <p className="mvd-obszar-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }

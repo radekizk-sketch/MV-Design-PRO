@@ -22,7 +22,8 @@ import { AppShell } from './shell/AppShell';
 import { useBackendHealth } from './shell/backendHealth';
 import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
 import { useInspektorZaZawartoscia } from './shell/useInspektorZaZawartoscia';
-import { ContextTree, useCasesTree, useRunsTree, useTopologyTree } from './nav';
+import { ContextTree, NAV_STRINGS, useCasesTree, useRunsTree, useTopologyTree } from './nav';
+import type { AkcjaPusty } from './nav';
 import { InspectorPanel } from './inspector';
 import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapter';
 import { emituj, subskrybuj, startEventBusAdapters } from './events';
@@ -56,6 +57,38 @@ function PanelKontekstuObszaru() {
 /** Prawdziwe źródło selekcji emitowane przez drzewo powłoki (decyzja E1.4 §2.1). */
 const ZRODLO_DRZEWO_KONTEKSTOWE = 'drzewo-kontekstowe';
 
+/**
+ * Akcja pustego drzewa per przestrzeń (K6 / H-5): slot `akcjaPusty` istniał
+ * w `ContextTree` od karty E1.2, ale NIKT go nie podawał — puste drzewo mówiło
+ * tylko „Brak elementów". Każda akcja woła REALNY cel:
+ * - „Model" (brak topologii)     → przestrzeń „Schemat" (kanwa budowy sieci),
+ * - „Obliczenia" (brak przypadków) → dialog „Nowy przypadek" (żądanie powłoki
+ *   konsumowane przez `MenedzerPrzypadkow`),
+ * - „Wyniki" (brak przebiegów)   → przestrzeń „Obliczenia", gdzie żyje jawny
+ *   przycisk „Uruchom obliczenie" (dźwignia 2 tej samej karty).
+ */
+function akcjaPustegoDrzewa(space: SpaceId): AkcjaPusty | undefined {
+  if (space === 'model') {
+    return {
+      etykieta: NAV_STRINGS.pustyModelAkcja,
+      onKlik: () => przejdzDoPrzestrzeni('schemat'),
+    };
+  }
+  if (space === 'obliczenia') {
+    return {
+      etykieta: NAV_STRINGS.pustyObliczeniaAkcja,
+      onKlik: () => useShellStore.getState().setZadanieNowyPrzypadek(true),
+    };
+  }
+  if (space === 'wyniki') {
+    return {
+      etykieta: NAV_STRINGS.pustyWynikiAkcja,
+      onKlik: () => przejdzDoPrzestrzeni('obliczenia'),
+    };
+  }
+  return undefined;
+}
+
 function DrzewoPrzestrzeni({
   space,
   zaznaczonyId,
@@ -80,6 +113,7 @@ function DrzewoPrzestrzeni({
       onZaznacz={(id) => onZaznacz(id)}
       onOtworz={(id) => onZaznacz(id)}
       filtrProblemy={false}
+      akcjaPusty={akcjaPustegoDrzewa(space)}
     />
   );
 }

@@ -45,6 +45,8 @@ import {
   type OpcjaZrodlaOsd,
 } from './osdModel';
 import { OSD_STRINGS, etykietaPoleceniaOsd } from './strings';
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 const DOMYSLNY_LIMIT_P_PCT = 60;
 const DOMYSLNA_Q_MVAR = 0;
@@ -77,11 +79,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -90,6 +96,7 @@ function StanPanel({
     >
       <p className="mvd-osd-stan-title">{komunikat}</p>
       {opis && <p className="mvd-osd-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }

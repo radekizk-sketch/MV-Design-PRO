@@ -48,6 +48,8 @@ import {
   wierszeTabeliKompensacji,
 } from './kompensacjaModel';
 import { KOMPENSACJA_STRINGS as T, fmtCosfiKomp, fmtKvKomp, fmtMvarKomp } from './strings';
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 const DOMYSLNY_COSFI_MIN = 0.95;
 
@@ -66,11 +68,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -79,6 +85,7 @@ function StanPanel({
     >
       <p className="mvd-komp-stan-title">{komunikat}</p>
       {opis && <p className="mvd-komp-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }

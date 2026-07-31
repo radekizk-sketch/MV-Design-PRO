@@ -28,6 +28,8 @@ import {
   statusLomPL,
   type IstotnoscTaguLom,
 } from './strings';
+import { PrzyciskAkcjiStanu, useAkcjaPrzejdzDoPrzypadkow } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 type StanZasobu = 'brakPrzypadku' | 'ladowanie' | 'blad' | 'gotowe';
 
@@ -65,11 +67,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -78,6 +84,7 @@ function StanPanel({
     >
       <p className="mvd-lom-stan-title">{komunikat}</p>
       {opis && <p className="mvd-lom-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }
@@ -264,6 +271,8 @@ export interface EkranLomProps {
 export function EkranLom({ trybZaawansowania }: EkranLomProps) {
   const aktywnyPrzypadek = useActiveCase();
   const caseId = aktywnyPrzypadek?.id ?? null;
+  // K6 / H-5: bez aktywnego zakresu obliczeń jedyny sensowny krok to jego wybór.
+  const akcjaPrzypadki = useAkcjaPrzejdzDoPrzypadkow();
 
   const [stan, setStan] = useState<StanZasobu>(caseId ? 'ladowanie' : 'brakPrzypadku');
   const [dane, setDane] = useState<WidokOchronyLom | null>(null);
@@ -307,6 +316,7 @@ export function EkranLom({ trybZaawansowania }: EkranLomProps) {
           opis={LOM_STRINGS.brakPrzypadkuOpis}
           wariant="info"
           testid="mvd-lom-brak-przypadku"
+          akcja={akcjaPrzypadki}
         />
       ) : stan === 'ladowanie' ? (
         <StanPanel komunikat={LOM_STRINGS.ladowanie} wariant="info" testid="mvd-lom-ladowanie" />

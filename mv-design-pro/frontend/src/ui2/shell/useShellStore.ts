@@ -81,10 +81,18 @@ interface ShellState {
    * kontekst (żadnych zalegających refów). NIE persystowany.
    */
   wynikiTabElement: string | null;
+  /**
+   * Jednorazowe żądanie otwarcia dialogu „Nowy przypadek" w przestrzeni
+   * „Obliczenia" (K6 / H-5 — akcja pustego drzewa przypadków). Wzorzec 1:1 jak
+   * `wynikiTab`: ustawia wołający, konsumuje i czyści menedżer przypadków.
+   * NIE persystowane (żądanie chwili, nie preferencja układu).
+   */
+  zadanieNowyPrzypadek: boolean;
 
   setActiveSpace: (space: SpaceId) => void;
   setAdvancementMode: (mode: AdvancementMode) => void;
   setWynikiTab: (tab: string | null, element?: string | null) => void;
+  setZadanieNowyPrzypadek: (zadanie: boolean) => void;
 
   getLayout: (space: SpaceId) => PanelLayoutState;
   setLeftWidth: (space: SpaceId, width: number) => void;
@@ -124,12 +132,14 @@ export const useShellStore = create<ShellState>()(
       layoutBySpace: {},
       wynikiTab: null,
       wynikiTabElement: null,
+      zadanieNowyPrzypadek: false,
 
       setActiveSpace: (space) => set({ activeSpace: space }),
       setAdvancementMode: (mode) => set({ advancementMode: mode }),
       // Kontekst elementu żyje i gaśnie razem z żądaniem zakładki (element
       // domyślnie null — istniejące wywołania `setWynikiTab(tab)` działają 1:1).
       setWynikiTab: (tab, element = null) => set({ wynikiTab: tab, wynikiTabElement: element }),
+      setZadanieNowyPrzypadek: (zadanie) => set({ zadanieNowyPrzypadek: zadanie }),
 
       getLayout: (space) => layoutFor(get(), space),
 

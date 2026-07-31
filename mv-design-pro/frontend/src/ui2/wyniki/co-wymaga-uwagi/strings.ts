@@ -20,8 +20,24 @@ export const CO_WYMAGA_UWAGI_STRINGS = {
   siecWNormieKrok: 'Możesz domknąć dokumentację lub porównać warianty.',
   // Źródła analiz
   analizaRozplyw: 'Rozpływ mocy',
+  /** Kryteria projektowe zebrane przez backend z wielu biegów (K6 / H-5 pkt 5). */
+  analizaWerdykt: 'Werdykt projektowy',
   // Opisy przekroczeń (rozpływ — napięcie)
   opisNapiecieWysokie: 'Napięcie powyżej dopuszczalnego zakresu',
   opisNapiecieNiskie: 'Napięcie poniżej dopuszczalnego zakresu',
+  /** Brak zbieżności rozpływu — wynik nie jest rozwiązaniem sieci. */
+  opisBrakZbieznosci: 'Rozpływ mocy nie osiągnął zbieżności — wynik nie jest rozwiązaniem sieci',
+  /** Pozycja bez pojedynczego elementu modelu (agregat systemowy). */
+  elementCalaSiec: 'Cała sieć',
+  iteracje: (n: number) => `${n} iteracji`,
+  naruszen: (n: number) => `Naruszeń: ${n}`,
   jednPU: 'p.u.',
+  // Akcja adresowa dla pozycji bez elementu modelu (okno diagnostyki).
+  otworzDiagnostyke: 'Otwórz diagnostykę zbieżności',
+  otworzDiagnostykeOpis: 'Przechodzi do okna „Zbieżność" — ślad iteracji i przyczyna zatrzymania.',
+  // Stan „sieć w normie" — jawne następne kroki (K6 / H-5 pkt 3).
+  dokumentacjaAkcja: 'Domknij dokumentację',
+  dokumentacjaAkcjaOpis: 'Otwiera przestrzeń „Dokumentacja" — raport i dowód obliczeń.',
+  porownanieAkcja: 'Porównaj warianty',
+  porownanieAkcjaOpis: 'Otwiera okno porównania A/B przebiegów tego projektu.',
 } as const;

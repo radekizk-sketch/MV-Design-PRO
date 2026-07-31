@@ -20,6 +20,16 @@ export { WZORZEC_STRINGS } from './strings';
 export { usePoprawWModelu } from './usePoprawWModelu';
 export { akcjaNaprawcza, AKCJA_GENERYCZNA } from './akcjeNaprawcze';
 export type { RodzajPrzekroczenia, AkcjaNaprawcza, CelAkcjiNaprawczej } from './akcjeNaprawcze';
+export {
+  AKCJE_STANU_ZEROWEGO_STRINGS,
+  useAkcjaDodajZrodloOze,
+  useAkcjaOtworzDokumentacje,
+  useAkcjaPorownajWarianty,
+  useAkcjaPrzejdzDoPrzypadkow,
+  useAkcjaUruchomObliczenie,
+} from './akcjeStanuZerowego';
+export type { AkcjaStanuZerowego } from './akcjeStanuZerowego';
+export { PrzyciskAkcjiStanu } from './PrzyciskAkcjiStanu';
 export type {
   EkranAnalizyProps,
   NaglowekAnalizy,

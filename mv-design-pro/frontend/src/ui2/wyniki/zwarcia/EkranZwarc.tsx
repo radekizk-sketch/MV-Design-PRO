@@ -16,7 +16,7 @@
 import { useMemo, useState } from 'react';
 import './zwarcia.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy } from '../wzorzec';
+import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
 import { useRozplywZwarciowy, useWkladyZwarciowe } from './api';
 import { BilansIEC } from './BilansIEC';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
@@ -66,6 +66,9 @@ export function EkranZwarc({
   // Karta W-C pkt 6: selekcja + centrowanie + nawigacja + overlay rozpływu
   // (reużycie wzorca V12K-073 — wspólny store selekcji, produkcyjny store overlay).
   const pokazNaSchemacie = usePokazZwarcieNaSchemacie();
+  // K6 / H-5: uczciwy stan zerowy Z AKCJĄ — brak wyniku zwarciowego prowadzi
+  // WPROST do uruchomienia przebiegu zwarciowego (ten sam tor co „Oblicz").
+  const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
 
   // Domyślnie wybrany pierwszy punkt (deterministycznie, kolejność źródłowa).
   const aktywnyPunkt = useMemo(() => {
@@ -92,6 +95,7 @@ export function EkranZwarc({
         <div className="mvd-zwarcia-pusty">
           <p className="mvd-zwarcia-pusty-title">{ZWARCIA_STRINGS.brakWyniku}</p>
           <p className="mvd-zwarcia-pusty-desc">{ZWARCIA_STRINGS.brakWynikuOpis}</p>
+          <PrzyciskAkcjiStanu akcja={akcjaBiegu} testid="mvd-zwarcia-pusty" />
         </div>
       </div>
     );

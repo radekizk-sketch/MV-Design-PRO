@@ -49,6 +49,8 @@ import {
   wielkoscPL,
   type IstotnoscWerdyktu,
 } from './strings';
+import { PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
+import type { AkcjaStanuZerowego } from '../wzorzec';
 
 const WIELKOSCI: readonly WielkoscPomiaru[] = ['U', 'P', 'Q'];
 
@@ -92,11 +94,15 @@ function StanPanel({
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -105,6 +111,7 @@ function StanPanel({
     >
       <p className="mvd-odbior-stan-title">{komunikat}</p>
       {opis && <p className="mvd-odbior-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }
@@ -513,6 +520,9 @@ export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruP
   const runs = useExecutionRunsStore((s) => s.runs);
   const activeRunId = useExecutionRunsStore((s) => s.activeRunId);
   const przebieg = useMemo(() => przebiegRozplywu(runs, activeRunId), [runs, activeRunId]);
+  // K6 / H-5: zgodność powykonawcza porównuje pomiary z wynikiem rozpływu —
+  // stan zerowy uruchamia brakujący przebieg zamiast tylko o nim informować.
+  const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
 
   const [tryb, setTryb] = useState<TrybWejscia>('wiersze');
   const [csv, setCsv] = useState('');
@@ -581,6 +591,7 @@ export function EkranOdbioru({ trybZaawansowania, onOtworzDowod }: EkranOdbioruP
           opis={ODBIOR_STRINGS.brakPrzebieguOpis}
           wariant="info"
           testid="mvd-odbior-brak-przebiegu"
+          akcja={akcjaBiegu}
         />
       </div>
     );

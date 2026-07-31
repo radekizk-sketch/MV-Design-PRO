@@ -53,6 +53,7 @@ import {
   nazwaPlikuCertyfikatu,
 } from './strings';
 
+import { PrzyciskAkcjiStanu, useAkcjaDodajZrodloOze } from '../../wyniki/wzorzec';
 import './macierz.css';
 
 interface EdycjaModulu {
@@ -104,6 +105,8 @@ export function MacierzNcRfg({
 }: MacierzNcRfgProps): JSX.Element {
   const ders = useStationDerStore((state) => selectAllDers(state));
   const opisyBazowe = useMemo(() => zbudujModuly(ders), [ders]);
+  // K6 / H-5: stan zerowy strumienia OZE prowadzi do dodania modulu wytworczego.
+  const akcjaZrodlo = useAkcjaDodajZrodloOze();
 
   // Stan biegu NC RfG — wspólny store (widoczny również w pulpicie instalacji OZE).
   const katalog = useNcRfgStore((s) => s.katalog);
@@ -498,6 +501,9 @@ export function MacierzNcRfg({
         <section className="mvd-oze-info" data-testid="mvd-oze-pusty">
           <h4>{MACIERZ_STRINGS.brakModulow}</h4>
           <p>{MACIERZ_STRINGS.brakModulowOpis}</p>
+          {/* K6 / H-5: bez modułu wytwórczego nie ma czego testować —
+              stan zerowy otwiera formularz źródła OZE na kanwie schematu. */}
+          <PrzyciskAkcjiStanu akcja={akcjaZrodlo} testid="mvd-oze-pusty" />
         </section>
       ) : (
         <div className="mvd-oze-uklad">

@@ -18,6 +18,8 @@ import { KrokDowodu } from './KrokDowodu';
 import { SpisKrokow } from './SpisKrokow';
 import { DOWOD_STRINGS } from './strings';
 import { mapujKroki } from './dowodModel';
+import { PrzyciskAkcjiStanu } from '../wzorzec';
+import type { AkcjaStanuZerowego } from '../wzorzec';
 
 export interface PrzegladDowoduProps {
   /** Nazwa analizy po polsku (pierwszy plan). */
@@ -29,6 +31,11 @@ export interface PrzegladDowoduProps {
   trybZaawansowania: AdvancementMode;
   /** Ślad w trakcie ładowania (sterowane propsami). */
   ladowanie?: boolean;
+  /**
+   * Akcja stanu zerowego (K6 / H-5) — realny następny krok, gdy nie ma czego
+   * dowodzić (brak przebiegu ze śladem). Sterowana propsami jak reszta okna.
+   */
+  akcjaPusty?: AkcjaStanuZerowego;
 }
 
 export function PrzegladDowodu({
@@ -37,6 +44,7 @@ export function PrzegladDowodu({
   inputHash,
   trybZaawansowania,
   ladowanie,
+  akcjaPusty,
 }: PrzegladDowoduProps) {
   const model = useMemo(() => mapujKroki(kroki), [kroki]);
   const [wybrany, setWybrany] = useState(0);
@@ -56,6 +64,7 @@ export function PrzegladDowodu({
         <div className="mvd-dowod-pusty">
           <p className="mvd-dowod-pusty-title">{DOWOD_STRINGS.brakSladu}</p>
           <p className="mvd-dowod-pusty-desc">{DOWOD_STRINGS.brakSladuOpis}</p>
+          <PrzyciskAkcjiStanu akcja={akcjaPusty} testid="mvd-dowod-pusty" />
         </div>
       </div>
     );

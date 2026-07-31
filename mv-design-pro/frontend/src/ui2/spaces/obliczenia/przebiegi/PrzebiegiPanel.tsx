@@ -37,6 +37,7 @@ import {
 } from './adapters/przebiegiAdapter';
 import { WierszPrzebiegu } from './WierszPrzebiegu';
 import { SzczegolyPrzebiegu } from './SzczegolyPrzebiegu';
+import { UruchomObliczenie } from '../UruchomObliczenie';
 import { PRZEBIEGI_STRINGS as T } from './strings';
 import './przebiegi.css';
 
@@ -85,16 +86,22 @@ export function PrzebiegiPanel({ trybZaawansowania, onPokazWyniki }: PrzebiegiPa
       </span>
 
       <header className="mvd-przebiegi-naglowek">
-        <h2 className="mvd-przebiegi-tytul">{T.tytul}</h2>
-        <p className="mvd-przebiegi-podtytul">{T.podtytul}</p>
+        <div className="mvd-przebiegi-naglowek-tekst">
+          <h2 className="mvd-przebiegi-tytul">{T.tytul}</h2>
+          <p className="mvd-przebiegi-podtytul">{T.podtytul}</p>
+        </div>
+        {/* K6 / H-5 dźwignia 2: jawny start przebiegu w przestrzeni „Obliczenia" —
+            zamyka ślepy zaułek wskazówek „Przejdź do obliczeń". */}
+        <UruchomObliczenie />
       </header>
 
       <div className="mvd-przebiegi-tresc">
         <section className="mvd-przebiegi-lista" aria-label={T.tytul}>
           {wiersze.length === 0 ? (
-            <p className="mvd-przebiegi-puste" data-testid="mvd-przebiegi-lista-pusta">
-              {T.brakPrzebiegow}
-            </p>
+            <div className="mvd-przebiegi-puste" data-testid="mvd-przebiegi-lista-pusta">
+              <p>{T.brakPrzebiegow}</p>
+              <UruchomObliczenie testid="mvd-przebiegi-uruchom-pusty" />
+            </div>
           ) : (
             <div className="mvd-przebiegi-scroll">
               <table className="mvd-przebiegi-tabela">

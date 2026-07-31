@@ -121,6 +121,12 @@
   color: var(--mvd-muted);
   font-size: 12px;
 }
+/* K6 / H-5: dwa jawne następne kroki stanu „sieć w normie". */
+.mvd-cwu-pusty-akcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 
 @media (max-width: 720px) {
   .mvd-cwu-pozycja {

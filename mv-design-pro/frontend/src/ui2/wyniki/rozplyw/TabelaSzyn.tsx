@@ -9,7 +9,12 @@
 
 import './rozplyw.css';
 import type { AdvancementMode } from '../../shell/modeModel';
-import { EkranAnalizy, usePoprawWModelu } from '../wzorzec';
+import {
+  EkranAnalizy,
+  PrzyciskAkcjiStanu,
+  useAkcjaUruchomObliczenie,
+  usePoprawWModelu,
+} from '../wzorzec';
 import { ProfilNapiecChart } from './ProfilNapiecChart';
 import { ROZPLYW_STRINGS } from './strings';
 import { useSwiezoscNaglowka } from '../../freshness';
@@ -44,6 +49,9 @@ export function TabelaSzyn({
   // V12K-264/265: znacznik swiezosci + panel przyczyn z JEDNEJ, wspolnej derywacji.
   const swiezosc = useSwiezoscNaglowka(runId);
   const poprawWModelu = usePoprawWModelu();
+  // K6 / H-5: uczciwy stan zerowy Z AKCJĄ — brak wyniku rozpływu prowadzi
+  // WPROST do uruchomienia przebiegu rozpływu (ten sam tor co „Oblicz").
+  const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
 
   if (!wynik) {
     return (
@@ -51,6 +59,7 @@ export function TabelaSzyn({
         <div className="mvd-rozplyw-pusty">
           <p className="mvd-rozplyw-pusty-title">{ROZPLYW_STRINGS.brakWyniku}</p>
           <p className="mvd-rozplyw-pusty-desc">{ROZPLYW_STRINGS.brakWynikuOpis}</p>
+          <PrzyciskAkcjiStanu akcja={akcjaBiegu} testid="mvd-rozplyw-pusty" />
         </div>
       </div>
     );

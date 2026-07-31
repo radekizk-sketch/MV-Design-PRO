@@ -23,7 +23,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import './porownanie.css';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
-import { SekcjaZalozen, TabelaWynikow, usePoprawWModelu } from '../wzorzec';
+import {
+  PrzyciskAkcjiStanu,
+  SekcjaZalozen,
+  TabelaWynikow,
+  useAkcjaUruchomObliczenie,
+  usePoprawWModelu,
+} from '../wzorzec';
 import { stronaDowodu } from './dowodPorownania';
 import {
   createPowerFlowComparison,
@@ -135,6 +141,10 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
     () => new Map(przypadki.map((c) => [c.id, c.name])),
     [przypadki],
   );
+
+  // K6 / H-5: porównanie potrzebuje przebiegów — stan zerowy uruchamia
+  // brakujący przebieg rozpływu zamiast tylko informować o jego braku.
+  const akcjaBiegu = useAkcjaUruchomObliczenie('LOAD_FLOW');
 
   const [runA, setRunA] = useState('');
   const [runB, setRunB] = useState('');
@@ -257,6 +267,7 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
           <div className="mvd-por-pusty" data-testid="mvd-por-brak-przebiegow">
             <p className="mvd-por-pusty-title">{POROWNANIE_STRINGS.brakPrzebiegow}</p>
             <p className="mvd-por-pusty-desc">{POROWNANIE_STRINGS.brakPrzebiegowOpis}</p>
+            <PrzyciskAkcjiStanu akcja={akcjaBiegu} testid="mvd-por-brak-przebiegow" />
           </div>
         )}
         {stanListy === 'gotowe' && przebiegi.length > 0 && (

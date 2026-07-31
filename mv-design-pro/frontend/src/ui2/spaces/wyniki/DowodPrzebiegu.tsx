@@ -20,6 +20,7 @@ import { useEffect } from 'react';
 
 import type { AdvancementMode } from '../../shell/modeModel';
 import { PrzegladDowodu } from '../../wyniki/dowod';
+import { useAkcjaUruchomObliczenie } from '../../wyniki/wzorzec';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useResultsInspectorStore } from '../../../ui/results-inspector/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
@@ -63,6 +64,12 @@ export function DowodPrzebiegu({ trybZaawansowania, wskazanyRunId = null }: Dowo
   const przebieg = runId ? przebiegi.find((r) => r.id === runId) : undefined;
   const analizaPL = przebieg ? ANALYSIS_TYPE_LABELS[przebieg.analysis_type] : T.dowodBezPrzebiegu;
   const kroki = selectedRunId === runId ? slad?.white_box_trace ?? [] : [];
+  // K6 / H-5: bez przebiegu nie ma czego dowodzić — stan zerowy uruchamia bieg
+  // rodzaju aktywnego przebiegu (a bez przebiegu: zwarciowy, jak domyślna
+  // analiza powłoki), zamiast zostawiać puste okno bez wyjścia.
+  const akcjaPusty = useAkcjaUruchomObliczenie(
+    przebieg?.analysis_type === 'LOAD_FLOW' ? 'LOAD_FLOW' : 'SC_3F',
+  );
 
   return (
     <PrzegladDowodu
@@ -71,6 +78,7 @@ export function DowodPrzebiegu({ trybZaawansowania, wskazanyRunId = null }: Dowo
       inputHash={selectedRunId === runId ? slad?.input_hash : undefined}
       trybZaawansowania={trybZaawansowania}
       ladowanie={ladowanie}
+      akcjaPusty={akcjaPusty}
     />
   );
 }

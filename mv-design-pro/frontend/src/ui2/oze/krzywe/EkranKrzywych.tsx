@@ -68,17 +68,23 @@ interface KatalogPQ {
   readonly typy: OpcjaTypuPQ[];
   readonly operatorzy: OpcjaOperatoraPQ[];
 }
+import { PrzyciskAkcjiStanu } from '../../wyniki/wzorzec';
+import type { AkcjaStanuZerowego } from '../../wyniki/wzorzec';
 
 function StanPanel({
   komunikat,
   opis,
   wariant,
   testid,
+  akcja,
 }: {
   komunikat: string;
   opis?: string;
   wariant: 'info' | 'blad';
   testid: string;
+  /* K6 / H-5: slot akcji stanu zerowego — realny następny krok (bieg obliczeń,
+     nawigacja, formularz operacji). Brak akcji = panel czysto informacyjny. */
+  akcja?: AkcjaStanuZerowego;
 }) {
   return (
     <div
@@ -87,6 +93,7 @@ function StanPanel({
     >
       <p className="mvd-krzywe-stan-title">{komunikat}</p>
       {opis && <p className="mvd-krzywe-stan-desc">{opis}</p>}
+      <PrzyciskAkcjiStanu akcja={akcja} testid={testid} />
     </div>
   );
 }

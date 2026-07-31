@@ -29,7 +29,7 @@ import { getStudyCase } from '../../ui/study-cases/api';
 import { getProject } from '../../ui/projects/api';
 import { adaptRawOverlayToTyped, useOverlayStore } from '../../ui/sld-overlay';
 import { useRawResultOverlayStore } from '../../ui/sld-overlay/rawResultOverlayStore';
-import type { ExecutionAnalysisType, ExecutionRun } from '../../ui/study-cases/types';
+import type { ExecutionAnalysisType } from '../../ui/study-cases/types';
 import {
   ROUTES,
   getCurrentHashRoute,
@@ -39,8 +39,16 @@ import {
   resolveAnalysisRouteAliasTab,
   useUrlSelectionSync,
 } from '../../ui/navigation';
-import { notify } from '../../ui/notifications/store';
-import { sanitizePublicReadinessMessage } from '../../ui/shared/publicReadinessMessage';
+// K6 (H-5 dźwignia 2): tor wykonania przebiegu żyje w przestrzeni „Obliczenia"
+// (JEDNA prawda dla menu, paska tytułowego i akcji stanów zerowych ekranów
+// wyników). Tu pozostaje wyłącznie delegacja z rodzajem z `activeAnalysisType`.
+import {
+  fetchAnalysisRunHealth,
+  isFailedAnalysisRun,
+  isUuid,
+  uruchomObliczenie,
+  type AnalysisRunHealth,
+} from '../spaces/obliczenia/uruchomObliczenie';
 import { useShellStore } from '../shell/useShellStore';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../ui/selection/store';
@@ -51,12 +59,6 @@ import {
   ANALYSIS_SURFACE_SCREEN_CODE,
   REPORT_SURFACE_SCREEN_CODE,
 } from '../../ui/workspace/types';
-
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function isUuid(value: string | null | undefined): value is string {
-  return typeof value === 'string' && UUID_RE.test(value);
-}
 
 export function useActiveProjectName(): string | null {
   const store = useAppStateStore();
@@ -76,24 +78,6 @@ function mapAnalysisTypeToExecutionType(
   }
 }
 
-type AnalysisRunHealth = {
-  status?: string | null;
-  result_status?: string | null;
-  results_valid?: boolean | null;
-  error_message?: string | null;
-  not_found?: boolean | null;
-};
-
-function isFailedAnalysisRun(run?: ExecutionRun | null, health?: AnalysisRunHealth | null): boolean {
-  const executionStatus = run?.status?.toUpperCase();
-  const canonicalStatus = health?.status?.toUpperCase();
-  const resultStatus = health?.result_status?.toUpperCase();
-
-  return executionStatus === 'FAILED'
-    || canonicalStatus === 'FAILED'
-    || resultStatus === 'FAILED';
-}
-
 function hasRenderableRunResults(health: AnalysisRunHealth | null): boolean {
   if (!health || health.not_found) {
     return false;
@@ -110,34 +94,6 @@ function hasRenderableRunResults(health: AnalysisRunHealth | null): boolean {
   }
 
   return health.results_valid === true;
-}
-
-function isTerminalExecutionRun(run: ExecutionRun): boolean {
-  return run.status === 'DONE' || run.status === 'FAILED';
-}
-
-async function fetchAnalysisRunHealth(runId: string): Promise<AnalysisRunHealth | null> {
-  try {
-    const response = await fetch(`/api/analysis-runs/${runId}`);
-    if (response.status === 404) {
-      return {
-        status: 'NOT_FOUND',
-        result_status: 'NONE',
-        results_valid: false,
-        error_message: 'RUN_NOT_FOUND',
-        not_found: true,
-      };
-    }
-    if (!response.ok) {
-      return null;
-    }
-    return {
-      ...((await response.json()) as AnalysisRunHealth),
-      not_found: false,
-    };
-  } catch {
-    return null;
-  }
 }
 
 function isAnalysisRunMissing(health: AnalysisRunHealth | null): boolean {
@@ -166,25 +122,6 @@ function clearRunParamFromCurrentHash(routeRunId: string): boolean {
     `${window.location.pathname}${window.location.search}${nextHash}`,
   );
   return true;
-}
-
-function analysisRunFailureMessage(): string {
-  return 'Obliczenia nie zakończyły się wynikiem. Sprawdź konfigurację układu i dane katalogowe.';
-}
-
-async function waitForExecutionRunTerminalState(
-  initialRun: ExecutionRun,
-  pollRunStatus: (runId: string) => Promise<ExecutionRun>,
-): Promise<ExecutionRun> {
-  let current = initialRun;
-  for (let attempt = 0; attempt < 24; attempt += 1) {
-    if (isTerminalExecutionRun(current)) {
-      return current;
-    }
-    await new Promise((resolve) => window.setTimeout(resolve, 750));
-    current = await pollRunStatus(current.id);
-  }
-  return current;
 }
 
 function isResultsRoute(route: string): boolean {
@@ -451,8 +388,6 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
   const activeArea = useAppStateStore((state) => state.activeArea);
   const activeProjectId = useAppStateStore((state) => state.activeProjectId);
   const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  const activeCaseName = useAppStateStore((state) => state.activeCaseName);
-  const activeCaseKind = useAppStateStore((state) => state.activeCaseKind);
   const activeAnalysisType = useAppStateStore((state) => state.activeAnalysisType);
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const activeSnapshotId = useAppStateStore((state) => state.activeSnapshotId);
@@ -463,14 +398,11 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
   const setActiveCaseResultStatus = useAppStateStore((state) => state.setActiveCaseResultStatus);
   const executionActiveRunId = useExecutionRunsStore((state) => state.activeRunId);
   const setExecutionActiveRun = useExecutionRunsStore((state) => state.setActiveRun);
-  const readiness = useSnapshotStore((state) => state.readiness);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const snapshotError = useSnapshotStore((state) => state.error);
   const refreshSnapshotFromBackend = useSnapshotStore((state) => state.refreshFromBackend);
   const setSnapshotFromResponse = useSnapshotStore((state) => state.setSnapshot);
   const resetSnapshotStore = useSnapshotStore((state) => state.reset);
-  const createAndExecuteRun = useExecutionRunsStore((state) => state.createAndExecuteRun);
-  const pollRunStatus = useExecutionRunsStore((state) => state.pollRunStatus);
   const projectName = useActiveProjectName();
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const clearRouteManagedSurface = useNetworkBuildStore((state) => state.clearRouteManagedSurface);
@@ -1056,84 +988,15 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
     });
   }, [openRouteSurface]);
 
+  /**
+   * Uruchomienie obliczeń dla aktywnego zakresu — delegacja do JEDNEJ prawdy
+   * toru wykonania (`spaces/obliczenia/uruchomObliczenie`). Rodzaj analizy
+   * pochodzi z `activeAnalysisType` (menu / pasek tytułowy / wyszukiwarka);
+   * ekrany wyników wołają ten sam tor z rodzajem WPROST (K6 / H-5).
+   */
   const handleCalculate = useCallback(async () => {
-    if (!activeCaseId) {
-      notify('Wybierz aktywny zakres obliczeń.', 'error');
-      return;
-    }
-
-    if (readiness && !readiness.ready) {
-      const firstBlocker = readiness.blockers?.[0];
-      notify(
-        firstBlocker
-          ? sanitizePublicReadinessMessage(firstBlocker.message_pl)
-          : 'Dokończ konfigurację układu przed analizą.',
-        'warning',
-      );
-      return;
-    }
-
-    try {
-      const analysisType = mapAnalysisTypeToExecutionType(activeAnalysisType);
-      let caseIdForRun = activeCaseId;
-      if (!isUuid(caseIdForRun)) {
-        caseIdForRun = crypto.randomUUID();
-        setActiveCase(
-          caseIdForRun,
-          activeCaseName ?? 'Zwarcie maksymalne IEC 60909',
-          activeCaseKind ?? 'ShortCircuitCase',
-          'NONE',
-        );
-      }
-      const createdRun = await createAndExecuteRun(caseIdForRun, { analysis_type: analysisType });
-      const run = await waitForExecutionRunTerminalState(createdRun, pollRunStatus);
-      const runHealth = await fetchAnalysisRunHealth(run.id);
-      setActiveRun(run.id);
-
-      if (isFailedAnalysisRun(run, runHealth)) {
-        setActiveCaseResultStatus('NONE');
-        notify(analysisRunFailureMessage(), 'error');
-        return;
-      }
-
-      if (run.status !== 'DONE') {
-        setActiveCaseResultStatus('NONE');
-        notify('Obliczenia są nadal wykonywane. Wyniki zostaną pokazane po zakończeniu solvera.', 'info');
-        return;
-      }
-
-      setActiveCaseResultStatus('FRESH');
-      try {
-        const response = await fetch(`/api/analysis-runs/${run.id}/snapshot`);
-        if (response.ok) {
-          const payload = (await response.json()) as { snapshot_id?: unknown };
-          if (typeof payload.snapshot_id === 'string' && payload.snapshot_id.trim()) {
-            setActiveSnapshot(payload.snapshot_id);
-          }
-        }
-      } catch {
-        // Wyniki pozostają dostępne; panel statusu pokaże brak wersji modelu, jeśli backend jej nie zwróci.
-      }
-      notify('Obliczenie zakończone. Otwieram wyniki.', 'success');
-      navigateToResults({ runId: run.id });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Błąd wykonania obliczeń';
-      notify(message, 'error');
-    }
-  }, [
-    activeAnalysisType,
-    activeCaseId,
-    activeCaseKind,
-    activeCaseName,
-    createAndExecuteRun,
-    navigateToResults,
-    pollRunStatus,
-    readiness,
-    setActiveCase,
-    setActiveCaseResultStatus,
-    setActiveRun,
-    setActiveSnapshot,
-  ]);
+    await uruchomObliczenie(mapAnalysisTypeToExecutionType(activeAnalysisType));
+  }, [activeAnalysisType]);
 
   /**
    * Przejście do wyników (dawne App.handleViewResults). K3-A1: trasa

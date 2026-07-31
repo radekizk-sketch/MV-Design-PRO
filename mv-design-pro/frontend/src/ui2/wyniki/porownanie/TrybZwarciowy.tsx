@@ -23,7 +23,7 @@ import { useCallback, useMemo, useState } from 'react';
 import './porownanie.css';
 import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
-import { TabelaWynikow } from '../wzorzec';
+import { PrzyciskAkcjiStanu, TabelaWynikow, useAkcjaUruchomObliczenie } from '../wzorzec';
 import { stronaDowodu } from './dowodPorownania';
 import { fetchShortCircuitResults } from '../../../ui/results-inspector/api';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
@@ -52,6 +52,8 @@ export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
   // automatyzmu/ładowania z tego okna).
   const runs = useExecutionRunsStore((s) => s.runs);
   const przebiegi = useMemo(() => przebiegiZwarciowe(runs), [runs]);
+  // K6 / H-5: brak przebiegów zwarciowych do porównania → uruchom bieg.
+  const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
 
   // Nazwa przypadku po `study_case_id` — read-only ze store'u przypadków.
   const przypadki = useStudyCasesStore((s) => s.cases);
@@ -130,6 +132,7 @@ export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
           <div className="mvd-por-pusty" data-testid="mvd-porz-brak-przebiegow">
             <p className="mvd-por-pusty-title">{SZ.brakPrzebiegow}</p>
             <p className="mvd-por-pusty-desc">{SZ.brakPrzebiegowOpis}</p>
+            <PrzyciskAkcjiStanu akcja={akcjaBiegu} testid="mvd-porz-brak-przebiegow" />
           </div>
         ) : (
           <>
