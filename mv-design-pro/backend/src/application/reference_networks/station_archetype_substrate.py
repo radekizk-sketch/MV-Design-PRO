@@ -24,7 +24,7 @@ carries real power across the transformation boundary; the magnitudes the
 renderer shows are the solver's branch active power, not a recomputation.
 
 Run ``python -m
-src.application.reference_networks.station_archetype_substrate --write`` to
+application.reference_networks.station_archetype_substrate --write`` to
 (re)generate the companion TS module the frontend imports. Without ``--write`` it
 prints the companions as JSON to stdout.
 """
