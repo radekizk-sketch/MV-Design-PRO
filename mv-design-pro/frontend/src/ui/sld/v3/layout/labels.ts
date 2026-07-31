@@ -50,7 +50,7 @@
  * potrzebny a nieobecny).
  */
 
-import { GRID, rectsOverlap, snapToGrid, type V3Rect } from '../core/grid';
+import { GRID, rectsOverlap, snapDown, snapToGrid, type V3Rect } from '../core/grid';
 import { labelLineHeight, measureLabelWidth, type LabelClass } from '../core/text';
 
 /** Właściciel etykiety (spec §4, tabela slotów). */
@@ -408,38 +408,56 @@ export interface SimpleAnchoredOwnerInput {
    *  przenoszone 1:1 na `OwnedLabel.ctPurpose`. WYŁĄCZNIE dla adnotacji CT
    *  (`ownerKind:'protection'`); `undefined` dla reszty. */
   readonly ctPurpose?: 'protection' | 'metering' | 'combined';
+  /** KD-8 poz. 5: PRZEŚWIT slotu od kotwicy [px świata]. Domyślnie `GRID` (8) —
+   *  tyle wystarcza etykiecie zakotwiczonej na SYMBOLU (symbol ma własny bbox,
+   *  a wyrocznia etykieta↔symbol pilnuje rozłączności). Etykieta zakotwiczona
+   *  na TORZE (napięcie szyny) potrzebuje więcej: 8 px świata przy skali
+   *  przeglądowej to ~4 px ekranu, więc podpis „Sekcja 1 · 15 kV" siadał na
+   *  szynie (pomiar zrzutu odbiorczego KD-5: prześwit 7 px świata). */
+  readonly clearance?: number;
 }
 
 function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel {
   const width = measureLabelWidth(owner.text, owner.labelClass);
   const height = labelLineHeight(owner.labelClass);
+  const przeswit = owner.clearance ?? GRID;
   let x: number;
   let y: number;
   switch (owner.placement) {
     case 'above':
       x = owner.anchor.x - width / 2;
-      y = owner.anchor.y - GRID - height;
+      y = owner.anchor.y - przeswit - height;
       break;
     case 'below':
       x = owner.anchor.x - width / 2;
-      y = owner.anchor.y + GRID;
+      y = owner.anchor.y + przeswit;
       break;
     case 'left':
-      x = owner.anchor.x - GRID - width;
+      x = owner.anchor.x - przeswit - width;
       y = owner.anchor.y - height / 2;
       break;
     case 'right':
-      x = owner.anchor.x + GRID;
+      x = owner.anchor.x + przeswit;
       y = owner.anchor.y - height / 2;
       break;
   }
+  // KD-8 poz. 5: przy JAWNIE zadeklarowanym prześwicie przyciąganie do siatki
+  // idzie ZAWSZE OD kotwicy (w górę dla „above", w lewo dla „left" itd.), a nie
+  // do najbliższego węzła — inaczej zaokrąglenie zjada do połowy oczka i slot
+  // ląduje bliżej toru, niż deklaruje kontrakt (pomiar: 16 zadeklarowane → 15
+  // po `snapToGrid`). Bez deklaracji prześwitu zachowanie jest DOKŁADNIE takie
+  // jak dotąd (`snapToGrid` w obu osiach), więc geometria pozostałych etykiet
+  // się nie rusza.
+  const jawnyPrzeswit = owner.clearance !== undefined;
+  const snapX = jawnyPrzeswit && owner.placement === 'left' ? snapDown : snapToGrid;
+  const snapY = jawnyPrzeswit && owner.placement === 'above' ? snapDown : snapToGrid;
   return {
     ownerRef: owner.ownerRef,
     ownerKind: owner.ownerKind,
     labelClass: owner.labelClass,
     text: owner.text,
     slotIndex: 1,
-    rect: { x: snapToGrid(x), y: snapToGrid(y), width, height },
+    rect: { x: snapX(x), y: snapY(y), width, height },
     // Z3 (spec §12.1): passthrough pochodzenia identyfikatora aparatu (tylko
     // etykiety `ownerKind:'apparatus'` niosą wartość; reszta `undefined`).
     ...(owner.designationSource !== undefined ? { designationSource: owner.designationSource } : {}),

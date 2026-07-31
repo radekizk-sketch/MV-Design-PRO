@@ -137,3 +137,16 @@ export const MIN_JUNCTION_CLEARANCE = 2 * GRID;
  *  zejścia o `GRID` (8 px) — to zmierzona, egzekwowana dziś minimalna
  *  separacja odrębnych wyjść pól. Rola §5: `MIN_FIELD_EXIT_CLEARANCE`. */
 export const MIN_FIELD_EXIT_CLEARANCE = GRID;
+
+/**
+ * KD-8 poz. 5 — PRZEŚWIT ETYKIETY ZAKOTWICZONEJ NA TORZE (napięcie szyny).
+ *
+ * Etykieta zakotwiczona na SYMBOLU wystarcza sobie z `GRID` (8 px świata):
+ * symbol ma własny bbox, a wyrocznia etykieta↔symbol pilnuje rozłączności.
+ * Etykieta zakotwiczona na PRZEWODZIE nie ma takiej ochrony — przewód jest
+ * kreską bez bboxu, więc slot z prześwitem `GRID` siadał na szynie: pomiar
+ * zrzutu odbiorczego KD-5 dał 7 px świata prześwitu, co przy skali przeglądowej
+ * (~0,5) daje ~3,5 px ekranu, czyli styk. Podwojony rytm siatki (16 px świata)
+ * daje ~8 px ekranu przy tej samej skali — podpis czyta się jako OSOBNY od toru.
+ */
+export const BUSBAR_LABEL_PATH_CLEARANCE = 2 * GRID;

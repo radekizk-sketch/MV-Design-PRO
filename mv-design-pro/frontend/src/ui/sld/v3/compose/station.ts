@@ -62,6 +62,7 @@ import { labelLineHeight, measureLabelWidth } from '../core/text';
 import { SYMBOL_DEFS, type SymbolDef, type SymbolId } from '../symbols/defs';
 import type { SwitchState } from '../symbols/glyphs';
 import type { RoutePort, RouteVertex } from '../layout/route';
+import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
 import {
   apparatusIdentifierLeftReserve,
   bayColumnRequiredWidth,
@@ -760,6 +761,7 @@ function composeDerSnChain(
         labelClass: 't2',
         anchor: { x: centerX - GRID, y: lvY },
         placement: 'left',
+        clearance: BUSBAR_LABEL_PATH_CLEARANCE,
       });
     }
   }
@@ -1418,6 +1420,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
         y: busAxisY - stationPortCaptionHeight(station),
       },
       placement: 'above',
+      // KD-8 poz. 5: prześwit toru (etykieta zakotwiczona na osi szyny).
+      clearance: BUSBAR_LABEL_PATH_CLEARANCE,
     });
   }
 

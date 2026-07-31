@@ -17,7 +17,12 @@
  */
 
 import { GRID, snapUp } from '../core/grid';
-import { MIN_FIELD_CLEARANCE, MIN_GLYPH_CLEARANCE, MIN_LABEL_CLEARANCE } from './clearances';
+import {
+  BUSBAR_LABEL_PATH_CLEARANCE,
+  MIN_FIELD_CLEARANCE,
+  MIN_GLYPH_CLEARANCE,
+  MIN_LABEL_CLEARANCE,
+} from './clearances';
 import { labelLineHeight, liczbaRysunkuPl, measureLabelWidth } from '../core/text';
 import type { MiniBlockBayDescriptor } from '../../v2/renderer/MiniBlockRmuRenderer';
 import {
@@ -128,7 +133,13 @@ export function stationBusbarLabelText(busVoltageKv: number | null | undefined):
  *  gdy nieobecny) — TA SAMA wartość co `PORT_CAPTION_BUS_CLEARANCE`, oba są
  *  światłem etykiety §5 `MIN_LABEL_CLEARANCE` (`layout/clearances.ts`, `GRID`);
  *  nazwana osobno dla czytelności (§4 „prześwit" per para etykiet). */
-export const STATION_BUSBAR_LABEL_GAP = MIN_LABEL_CLEARANCE;
+/** KD-8 poz. 5: prześwit etykiety szyny URÓSŁ do `BUSBAR_LABEL_PATH_CLEARANCE`
+ *  (etykieta stoi nad TOREM, nie nad symbolem — patrz `layout/clearances.ts`),
+ *  więc REZERWACJA musi urosnąć razem z nim. Rozjazd measure↔compose oznaczałby
+ *  etykietę wystającą z własnego pasma w pasmo sąsiada (i przegraną w
+ *  declutterze — dokładnie to zmierzył test przęseł GPZ↔S01 przy pierwszym
+ *  podejściu do tej karty). */
+export const STATION_BUSBAR_LABEL_GAP = BUSBAR_LABEL_PATH_CLEARANCE;
 
 /** F10.3 (spec §18.4): wysokość DODATKOWA pasma B2 na wiersz etykiety szyny
  *  SN (t2, `stationBusbarLabelText`) — jeden wiersz t2 + prześwit, NAD

@@ -5684,6 +5684,81 @@ export function noLabelWireCollisions(scene: SceneV3): boolean {
 }
 
 // ---------------------------------------------------------------------------
+// KD-8 poz. 5 — WYROCZNIA PRZEŚWITU etykiet zakotwiczonych na TORZE.
+//
+// `labelWireCollisions` wyżej łapie PRZECIĘCIE (tekst przez linię). Defekt z
+// oceny właściciela był o klasę subtelniejszy: podpis „Sekcja 1 · 15 kV" nie
+// przecinał szyny, tylko STYKAŁ się z nią — 7 px świata prześwitu, przy skali
+// przeglądowej ~3,5 px ekranu. Wyrocznia przecięć była zielona, a rysunek
+// nieczytelny. Ta wyrocznia mierzy PRZEŚWIT, nie przecięcie, i dotyczy etykiet
+// napięcia szyny (jedyna klasa zakotwiczona wprost na torze mocy).
+// ---------------------------------------------------------------------------
+
+export interface LabelPathClearanceGap {
+  readonly ownerRef: string;
+  readonly text: string;
+  /** Zmierzony prześwit [px świata] do najbliższego odcinka toru mocy. */
+  readonly clearance: number;
+  readonly segmentOwnerRef: string | undefined;
+}
+
+/** Rodzaje odcinków POZA torem mocy — adnotacje wolno prowadzić blisko tekstu. */
+const ANNOTATION_KINDS_FOR_CLEARANCE = new Set(['leader', 'protectionTrip', 'measurementLink']);
+
+/** Odległość prostokąta od odcinka ortogonalnego (0 = styk/przecięcie). */
+function rectSegmentClearance(
+  rect: V3Rect,
+  a: { readonly x: number; readonly y: number },
+  b: { readonly x: number; readonly y: number },
+): number {
+  const dx = Math.max(Math.min(a.x, b.x) - (rect.x + rect.width), rect.x - Math.max(a.x, b.x), 0);
+  const dy = Math.max(Math.min(a.y, b.y) - (rect.y + rect.height), rect.y - Math.max(a.y, b.y), 0);
+  return Math.hypot(dx, dy);
+}
+
+/**
+ * busbar_label_clearance_probe (KD-8 poz. 5): każda etykieta `busbar-voltage`
+ * trzyma od toru mocy prześwit ≥ `minClearance`. Czysta geometria sceny —
+ * zero zależności od kamery i motywu.
+ */
+export function busbarLabelPathClearanceGaps(
+  scene: SceneV3,
+  minClearance: number,
+): readonly LabelPathClearanceGap[] {
+  const gaps: LabelPathClearanceGap[] = [];
+  for (const label of scene.labels) {
+    if (label.ownerKind !== 'busbar-voltage') continue;
+    let najmniejszy = Number.POSITIVE_INFINITY;
+    let winny: string | undefined;
+    for (const segment of scene.segments) {
+      if (segment.meta?.kind && ANNOTATION_KINDS_FOR_CLEARANCE.has(segment.meta.kind)) continue;
+      const pts = segment.points;
+      for (let i = 1; i < pts.length; i++) {
+        const d = rectSegmentClearance(label.rect, pts[i - 1], pts[i]);
+        if (d < najmniejszy) {
+          najmniejszy = d;
+          winny = segment.meta?.ownerRef;
+        }
+      }
+    }
+    if (Number.isFinite(najmniejszy) && najmniejszy < minClearance) {
+      gaps.push({
+        ownerRef: label.ownerRef,
+        text: label.text,
+        clearance: Number(najmniejszy.toFixed(3)),
+        segmentOwnerRef: winny,
+      });
+    }
+  }
+  return gaps;
+}
+
+/** BRAMKA KD-8 poz. 5: żadna etykieta szyny nie siada na torze. */
+export function allBusbarLabelsClearOfPath(scene: SceneV3, minClearance: number): boolean {
+  return busbarLabelPathClearanceGaps(scene, minClearance).length === 0;
+}
+
+// ---------------------------------------------------------------------------
 // SCHEMAT-10 S2 (V12K-135, audyt §1 D2 + §3 wiersz „Etykiety"): WYROCZNIA
 // ZERO-KOLIZJI tekst↔tekst i tekst↔symbol na CAŁEJ scenie. `overlapProbe`
 // (`layout/labels.ts`, F4) sprawdzał to samo, ale WYŁĄCZNIE na etykietach

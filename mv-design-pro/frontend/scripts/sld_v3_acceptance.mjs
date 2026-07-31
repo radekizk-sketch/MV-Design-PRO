@@ -52,6 +52,7 @@ import {
   noBranchWithoutAccent,
   noForbiddenDirectionTokens,
   noLabelWireCollisions,
+  busbarLabelPathClearanceGaps,
   noProtectionAnnotationAtLod0,
   noSceneSymbolOverlaps,
   noSymbolWireCollisions,
@@ -88,7 +89,11 @@ import {
   LOCAL_DENSITY_WINDOW_CELLS,
   minParallelCableClearance,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
-import { MIN_PARALLEL_CABLE_CLEARANCE, TOP_LEVEL_FIELD_CLEARANCE } from '../src/ui/sld/v3/layout/clearances.ts';
+import {
+  BUSBAR_LABEL_PATH_CLEARANCE,
+  MIN_PARALLEL_CABLE_CLEARANCE,
+  TOP_LEVEL_FIELD_CLEARANCE,
+} from '../src/ui/sld/v3/layout/clearances.ts';
 import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
 import { SEGMENT_STROKE_WIDTH } from '../src/ui/sld/v3/compose/preview.tsx';
@@ -637,6 +642,16 @@ for (const lod of LODS) {
     'noLabelWireCollisions (D3/k6): zero kolizji etykieta↔przewód',
     noLabelWireCollisions(scene) && wireHits.length === 0,
     `kolizje=${wireHits.length}`,
+  );
+
+  // -- KD-8 poz. 5: PRZEŚWIT etykiet szyn od toru (nie przecięcie — styk) ----
+  const clearanceGaps = busbarLabelPathClearanceGaps(scene, BUSBAR_LABEL_PATH_CLEARANCE);
+  check(
+    `busbar_label_clearance_probe (KD-8 poz. 5): każda etykieta szyny trzyma od toru ≥ ${BUSBAR_LABEL_PATH_CLEARANCE}px świata`,
+    clearanceGaps.length === 0,
+    clearanceGaps.length === 0
+      ? `etykiety_szyn=${scene.labels.filter((l) => l.ownerKind === 'busbar-voltage').length} naruszenia=0`
+      : clearanceGaps.map((g) => `${g.text}=${g.clearance}px`).join(', '),
   );
 
   // -- W3 §5: światła równoległych kabli -------------------------------------

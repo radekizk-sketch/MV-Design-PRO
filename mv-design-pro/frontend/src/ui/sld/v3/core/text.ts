@@ -33,17 +33,23 @@ export const LABEL_TYPOGRAPHY: Readonly<Record<LabelClass, LabelTypography>> = {
  * poziomu detalu, bo fit-to-content dużej sieci schodzi poniżej wszystkich
  * progów histerezy LOD (`canvas/camera.ts`), dla których dobierano rozmiary.
  *
- * 6 px to granica, przy której pojedyncze znaki są jeszcze rozróżnialne jako
- * kształty. Wartość ŚWIADOMIE niższa niż dolna granica komfortu czytania z
- * modelu histerezy (t2 ≈ 11 px ekranu przy wejściu w L2): tam chodzi o
- * czytanie łańcuchów parametrów, tu wyłącznie o to, czy element jest jeszcze
- * pismem, czy już artefaktem.
+ * KD-8 poz. 5 — PRÓG PODNIESIONY 6 → 9 px (ocena właściciela: „opisy przy
+ * zoomie rozwinięcia nieczytelne mimo mechanizmu »Ukryto N opisów«").
+ * Dawne 6 px było granicą, przy której znak jest jeszcze ROZRÓŻNIALNY JAKO
+ * KSZTAŁT — a to za mało: rysunek techniczny ma być CZYTANY, nie oglądany.
+ * Przy 6 px etykieta t4 („Sekcja 1 · 15 kV" ma 8 px świata) przechodziła próg
+ * już przy skali 0,75, gdzie realnie zlewa się w szary pasek — dokładnie to
+ * właściciel zobaczył na zrzucie rozwinięcia GPZ. 9 px to dolna granica, przy
+ * której cyfry i wielkie litery polskiego zapisu rysunkowego („15 kV",
+ * „Sekcja 1") są rozpoznawalne bez powiększania; nadal ŚWIADOMIE niżej niż
+ * komfort czytania łańcuchów parametrów z modelu histerezy (t2 ≈ 11 px ekranu
+ * przy wejściu w L2) — tam chodzi o czytanie ciągiem, tu o pojedynczy odczyt.
  *
  * Egzekwowane w WARSTWIE RENDERU (`canvas/SldCanvasV3.tsx`), nie w scenie:
  * scena musi zostać deterministyczna (te same wejścia = ten sam hash), a próg
  * zależy od kamery, która do sceny nie należy.
  */
-export const MIN_READABLE_LABEL_SCREEN_PX = 6;
+export const MIN_READABLE_LABEL_SCREEN_PX = 9;
 
 /** Czy etykieta danej klasy jest czytelna przy tej skali kamery [px ekranu na
  *  jednostkę świata]. Skala niewiarygodna (≤0, NaN — np. viewport 0×0 przed

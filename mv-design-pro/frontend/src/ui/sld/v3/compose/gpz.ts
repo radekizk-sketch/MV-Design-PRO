@@ -47,6 +47,7 @@ import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import type { VoltageClass } from '../theme/colorTokens';
 import type { SwitchState } from '../symbols/glyphs';
 import { APPARATUS_STACK_VERTICAL_GAP } from '../layout/apparatusStack';
+import { BUSBAR_LABEL_PATH_CLEARANCE } from '../layout/clearances';
 import type { RoutePort, RouteVertex } from '../layout/route';
 import {
   colorSegmentLabelRows,
@@ -1021,6 +1022,8 @@ export function composeGpz(
       labelClass: 't2',
       anchor: { x: busLeftX, y: snBusY },
       placement: 'above',
+      // KD-8 poz. 5: etykieta siada NAD torem szyny — prześwit toru, nie symbolu.
+      clearance: BUSBAR_LABEL_PATH_CLEARANCE,
     });
     tag(['gpz.section.label']);
 
@@ -1667,6 +1670,7 @@ export function composeGpz(
         labelClass: 't2',
         anchor: { x: busLeft, y: hvBusY },
         placement: 'above',
+        clearance: BUSBAR_LABEL_PATH_CLEARANCE,
       });
       tag(['gpz.bus.hv.label']);
     }
