@@ -54,6 +54,30 @@ def _copy_catalog_quality(record: dict) -> dict:
     return quality
 
 
+#: Czas odniesienia prądu wytrzymywanego krótkotrwale w katalogu aparatury SN.
+#: Konwencja katalogu jest zapisana w jego nagłówku ("icw_ka [kA] — prad
+#: wytrzymywany krotkotrwale 1s"), więc czas NIE jest tu zgadywany — jest
+#: odczytem jednostki, w której zapisano daną.
+_ICW_CZAS_ODNIESIENIA_S = 1.0
+
+
+def _dodatnia(wartosc: object) -> float | None:
+    """Liczba dodatnia albo ``None`` — zero w katalogu znaczy „nie dotyczy”.
+
+    Bezpiecznik topikowy ma ``icw_ka = 0.0`` (nie ma wytrzymałości
+    krótkotrwałej — przepala się), a uziemnik ``ik_ka = 0.0`` (nie łączy
+    prądów zwarciowych). Przepisanie takiego zera jako znamiona dałoby werdykt
+    „nie wytrzymuje” tam, gdzie kryterium w ogóle nie istnieje.
+    """
+    if wartosc is None:
+        return None
+    try:
+        liczba = float(wartosc)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return None
+    return liczba if liczba > 0 else None
+
+
 def _derive_mv_apparatus_records(
     switch_equipment_records: Iterable[dict],
 ) -> list[dict]:
@@ -68,6 +92,7 @@ def _derive_mv_apparatus_records(
     derived: list[dict] = []
     for record in switch_equipment_records:
         params = dict(record.get("params") or {})
+        icw_ka = _dodatnia(params.get("icw_ka"))
         derived.append(
             {
                 "id": record.get("id"),
@@ -80,7 +105,17 @@ def _derive_mv_apparatus_records(
                     "u_n_kv": params.get("un_kv"),
                     "i_n_a": params.get("in_a"),
                     "breaking_capacity_ka": params.get("ik_ka"),
-                    "making_capacity_ka": params.get("icw_ka"),
+                    # KD-6 poz. 1: prąd wytrzymywany krótkotrwale (Icw) to
+                    # WYTRZYMAŁOŚĆ CIEPLNA aparatu — trafia w pole I_th razem ze
+                    # swoim czasem odniesienia. Prąd załączalny szczytowy
+                    # (making capacity) jest INNĄ wielkością (wartość szczytowa
+                    # przy załączeniu na zwarcie) i do tej chwili niósł tu kopię
+                    # Icw, czyli wartość SKUTECZNĄ pod nazwą szczytowej. Zostaje
+                    # `None`, dopóki karty producentów nie wniosą jej wprost —
+                    # brak danej jest uczciwszy niż dana o cudzym znaczeniu.
+                    "making_capacity_ka": None,
+                    "i_th_ka": icw_ka,
+                    "i_th_duration_s": (_ICW_CZAS_ODNIESIENIA_S if icw_ka is not None else None),
                     "manufacturer": params.get("manufacturer"),
                     **_copy_catalog_quality(record),
                 },

@@ -2133,6 +2133,35 @@ class ShuntCapacitorType:
 # MV APPARATUS TYPE (APARAT_SN) — aparaty łączeniowe SN
 # =============================================================================
 
+#: Znormalizowany stosunek prądu dynamicznego (szczytowego) do prądu
+#: wytrzymywanego krótkotrwale dla APARATURY ROZDZIELCZEJ SN przy 50 Hz:
+#: I_dyn = 2,5 · I_th (IEC 62271-1 § 4.101 / PN-EN 62271-200 — szereg
+#: wytrzymałości rozdzielnicy SN; ta sama relacja, którą katalog CT stosuje na
+#: podstawie IEC 61869-2, ale wyprowadzona z INNEJ normy i dlatego zapisana
+#: osobno — dwie liczby 2,5 o różnych podstawach normatywnych nie mogą dzielić
+#: jednej stałej, bo cytat przestałby być prawdziwy).
+#:
+#: Dzięki tej relacji I_dyn NIE JEST daną do zgadywania: pozycja bez jawnej
+#: wartości producenta dostaje wartość WYPROWADZONĄ, oznaczoną pochodzeniem
+#: ``derived_iec62271`` (KD-6 poz. 1). Brak I_th ⇒ brak I_dyn (``None``).
+WSPOLCZYNNIK_IDYN_DO_ITH_APARAT_SN: float = 2.5
+
+#: Pochodzenie danej wytrzymałościowej pozycji APARAT_SN.
+POCHODZENIE_PRODUCENT = "producent"
+POCHODZENIE_REFERENCYJNY = "referencyjny"
+POCHODZENIE_DERYWACJA_IEC62271 = "derived_iec62271"
+
+
+def idyn_aparatu_sn_z_ith(ith_ka: float | None) -> float | None:
+    """Prąd dynamiczny aparatu SN wyprowadzony z prądu wytrzymywanego krótkotrwale.
+
+    ``None`` na wejściu daje ``None`` na wyjściu: brak danej nie zamienia się
+    w wartość (ta sama zasada, co ``idyn_ct_z_ith`` dla przekładników).
+    """
+    if ith_ka is None or ith_ka <= 0:
+        return None
+    return round(ith_ka * WSPOLCZYNNIK_IDYN_DO_ITH_APARAT_SN, 3)
+
 
 @dataclass(frozen=True)
 class MVApparatusType:
@@ -2147,6 +2176,10 @@ class MVApparatusType:
         breaking_capacity_ka: Breaking capacity [kA] (optional).
         making_capacity_ka: Making capacity [kA] (optional).
         manufacturer: Manufacturer (optional).
+        i_th_ka: Prąd wytrzymywany krótkotrwale [kA] — DANA TABLICZKOWA aparatu.
+        i_th_duration_s: Czas odniesienia prądu cieplnego [s] (zwykle 1 s).
+        i_dyn_ka: Prąd dynamiczny szczytowy [kA] — jawna wartość producenta;
+            ``None`` ⇒ wyprowadzenie normowe 2,5 · I_th w ``to_dict``.
     """
 
     id: str
@@ -2157,11 +2190,40 @@ class MVApparatusType:
     breaking_capacity_ka: float | None = None
     making_capacity_ka: float | None = None
     manufacturer: str | None = None
+    #: KD-6 poz. 1 — ZNAMIONA WYTRZYMAŁOŚCI ZWARCIOWEJ aparatu. To dane
+    #: TABLICZKOWE (karta katalogowa producenta), więc ich miejscem jest pozycja
+    #: katalogu, nie konfiguracja stacji: bez nich pole z aparatem z modelu nie
+    #: dawało się sprawdzić i cały tor kończył się „nieustalone".
+    #: ``None`` znaczy „karta katalogowa tej danej nie niesie" i MUSI zostać
+    #: ``None`` — przelicznik z prądu łączeniowego (``ik_ka``) byłby zgadywaniem.
+    i_th_ka: float | None = None
+    i_th_duration_s: float | None = None
+    i_dyn_ka: float | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury SN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
+
+    def pochodzenie_i_th(self) -> str | None:
+        """Skąd pochodzi I_th tej pozycji (``None`` = danej nie ma).
+
+        Rekord z NAZWANYM producentem niesie odczyt z karty katalogowej;
+        rekord bez producenta (szereg generyczny PN-EN 62271) niesie wartość
+        REFERENCYJNĄ normy. Rozróżnienie jest odczytem metadanych pozycji, nie
+        oceną — dlatego wolno je wyprowadzić.
+        """
+        if self.i_th_ka is None:
+            return None
+        return POCHODZENIE_PRODUCENT if self.manufacturer else POCHODZENIE_REFERENCYJNY
+
+    def pochodzenie_i_dyn(self) -> str | None:
+        """Skąd pochodzi I_dyn tej pozycji (``None`` = danej nie da się ustalić)."""
+        if self.i_dyn_ka is not None:
+            return POCHODZENIE_PRODUCENT if self.manufacturer else POCHODZENIE_REFERENCYJNY
+        if idyn_aparatu_sn_z_ith(self.i_th_ka) is None:
+            return None
+        return POCHODZENIE_DERYWACJA_IEC62271
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -2173,6 +2235,16 @@ class MVApparatusType:
             "breaking_capacity_ka": self.breaking_capacity_ka,
             "making_capacity_ka": self.making_capacity_ka,
             "manufacturer": self.manufacturer,
+            # Znamiona wytrzymałości: wartość producenta ma pierwszeństwo, w jej
+            # braku wyprowadzenie normowe 2,5 · I_th (IEC 62271-1) — z JAWNYM
+            # pochodzeniem, żeby odbiorca wiedział, co czyta.
+            "i_th_ka": self.i_th_ka,
+            "i_th_duration_s": self.i_th_duration_s,
+            "i_th_pochodzenie": self.pochodzenie_i_th(),
+            "i_dyn_ka": (
+                self.i_dyn_ka if self.i_dyn_ka is not None else idyn_aparatu_sn_z_ith(self.i_th_ka)
+            ),
+            "i_dyn_pochodzenie": self.pochodzenie_i_dyn(),
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2201,6 +2273,22 @@ class MVApparatusType:
                 else None
             ),
             manufacturer=data.get("manufacturer"),
+            # KD-6 poz. 1: znamiona wytrzymałości wczytywane WPROST (bez wartości
+            # domyślnej) — dokument bez tych pól zostaje przy `None`.
+            i_th_ka=(float(data["i_th_ka"]) if data.get("i_th_ka") is not None else None),
+            i_th_duration_s=(
+                float(data["i_th_duration_s"]) if data.get("i_th_duration_s") is not None else None
+            ),
+            # Wartość WYPROWADZONA nie wraca jako wartość producenta: zapis
+            # `to_dict` niesie wynik derywacji razem z jej pochodzeniem, więc
+            # przy odczycie odrzucamy go i pozwalamy wyprowadzić się na nowo
+            # (inaczej obieg zapis→odczyt awansowałby derywację na tabliczkę).
+            i_dyn_ka=(
+                float(data["i_dyn_ka"])
+                if data.get("i_dyn_ka") is not None
+                and data.get("i_dyn_pochodzenie") != POCHODZENIE_DERYWACJA_IEC62271
+                else None
+            ),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog aparatury SN MV-DESIGN-PRO / karty katalogowe producentow",
