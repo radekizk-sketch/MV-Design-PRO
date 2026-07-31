@@ -89,6 +89,7 @@ import {
   domyslneWpisyPol,
   nowyWpisPola,
   zbudujPolaSnZWpisow,
+  zbudujWyposazeniePolaDoPayloadu,
   czyRozdzielnicaKompletna,
   czyZrodloNn,
   doborTransformatorow,
@@ -127,13 +128,7 @@ import {
 } from './stacjaModel';
 import { PodgladRozdzielnicySn } from './PodgladRozdzielnicySn';
 import { pobierzPodgladStacji, type PodgladStacji } from './stacjaPodglad';
-import {
-  polaUtworzonejStacji,
-  refUtworzonejStacji,
-  wykonajSekwencje,
-  zbudujSekwencjeWyposazenia,
-  type WyposazeniePola,
-} from './stacjaSekwencja';
+import { refUtworzonejStacji } from './stacjaOdpowiedz';
 import { KATEGORIE_SZABLONOW, wypelnienieZSzablonu } from './stacjaSzablony';
 import { STACJA_STRINGS as T } from './strings';
 
@@ -539,6 +534,19 @@ export function KreatorStacjiSnNn() {
     });
   }, [aparatDomyslny, szablonyRola]);
 
+  /**
+   * Wyposażenie pól (krok 4) per WPIS pola — jedzie w TEJ SAMEJ operacji co
+   * stacja (B-3). Przekładnie CT/VT pochodzą z pozycji katalogowej, parametry
+   * materializuje backend (zero fizyki w UI).
+   */
+  const wyposazenieDoPayloadu = useMemo(() => {
+    const mapa: Record<string, Record<string, unknown> | null> = {};
+    for (const pole of dane.pola) {
+      mapa[pole.id] = zbudujWyposazeniePolaDoPayloadu(dane.wyposazenie[pole.id], ctTypy, vtTypy);
+    }
+    return mapa;
+  }, [ctTypy, dane.pola, dane.wyposazenie, vtTypy]);
+
   const snFields = useMemo(
     () =>
       zbudujPolaSnZWpisow(
@@ -548,8 +556,15 @@ export function KreatorStacjiSnNn() {
           switchgearFamilyRef: dane.switchgear_family_ref,
         },
         szablonyWyboru,
+        wyposazenieDoPayloadu,
       ),
-    [dane.manufacturer_ref, dane.pola, dane.switchgear_family_ref, szablonyWyboru],
+    [
+      dane.manufacturer_ref,
+      dane.pola,
+      dane.switchgear_family_ref,
+      szablonyWyboru,
+      wyposazenieDoPayloadu,
+    ],
   );
   const rozdzielnicaKompletna = czyRozdzielnicaKompletna(snFields);
   const aparaturaKompletna = czyAparaturaKompletna(snFields);
@@ -644,39 +659,18 @@ export function KreatorStacjiSnNn() {
     [dane.manufacturer_ref, dane.switchgear_family_ref, selectedFamily, selectedManufacturer, snFields],
   );
 
-  /** Wyposażenie pól przekazywane do sekwencji operacji po zapisie stacji. */
-  const wyposazenieSekwencji = useMemo<WyposazeniePola[]>(
+  /**
+   * Liczba elementów wyposażenia w payloadzie stacji (B-3) — informacja „co
+   * powstanie razem ze stacją", liczona z TEGO SAMEGO payloadu, który jedzie do
+   * backendu (nie z osobnego zestawienia).
+   */
+  const liczbaElementowWyposazenia = useMemo(
     () =>
-      dane.pola.map((pole) => {
-        const wpis = dane.wyposazenie[pole.id];
-        const ct = wpis?.ct_catalog_ref ? ctTypy.find((t) => t.id === wpis.ct_catalog_ref) : null;
-        const vt = wpis?.vt_catalog_ref ? vtTypy.find((t) => t.id === wpis.vt_catalog_ref) : null;
-        return {
-          field_role: pole.field_role,
-          ct_catalog_ref: wpis?.ct_catalog_ref ?? null,
-          ct_ratio_primary_a: ct?.ratio_primary_a ?? null,
-          ct_ratio_secondary_a: ct?.ratio_secondary_a ?? null,
-          vt_catalog_ref: wpis?.vt_catalog_ref ?? null,
-          vt_ratio_primary_v: vt?.ratio_primary_v ?? null,
-          vt_ratio_secondary_v: vt?.ratio_secondary_v ?? null,
-          relay_catalog_ref: wpis?.relay_catalog_ref ?? null,
-          relay_type: wpis?.relay_type ?? 'NADPRADOWY',
-        };
-      }),
-    [ctTypy, dane.pola, dane.wyposazenie, vtTypy],
-  );
-
-  const liczbaOperacjiWyposazenia = useMemo(
-    () =>
-      wyposazenieSekwencji.reduce(
-        (suma, w) =>
-          suma
-          + (w.ct_catalog_ref ? 1 : 0)
-          + (w.vt_catalog_ref ? 1 : 0)
-          + (w.relay_catalog_ref ? 1 : 0),
+      Object.values(wyposazenieDoPayloadu).reduce(
+        (suma, wyposazenie) => suma + (wyposazenie ? Object.keys(wyposazenie).length : 0),
         0,
       ),
-    [wyposazenieSekwencji],
+    [wyposazenieDoPayloadu],
   );
 
   const zapiszStacje = useCallback(
@@ -708,36 +702,14 @@ export function KreatorStacjiSnNn() {
           return;
         }
 
-        // Sekwencja po zapisie stacji: CT → VT → zabezpieczenie per pole
-        // (dług B-3: backend nie przyjmuje ich w operacji stacyjnej).
+        // B-3: wyposażenie pól (CT/VT/zabezpieczenie) powstało W TEJ SAMEJ
+        // operacji co stacja — nie ma już sekwencji po zapisie ani stanu
+        // połowicznego „wykonano N z M". Błąd wyposażenia = błąd całej operacji,
+        // obsłużony wyżej (`response.error`), bez zapisanej stacji.
         const stationRef = refUtworzonejStacji(response);
-        const polaStacji = polaUtworzonejStacji(response, stationRef);
-        const kroki = zbudujSekwencjeWyposazenia(polaStacji, wyposazenieSekwencji);
-        let ostatnia = response;
-        if (kroki.length > 0) {
-          const wynik = await wykonajSekwencje(kroki, async (operacja, payload) => {
-            const odpowiedz = await executeDomainOperation(activeCaseId, operacja, payload);
-            if (odpowiedz) return odpowiedz;
-            // Brak odpowiedzi = błąd transportu/wersji snapshotu zapisany w store —
-            // pokazujemy komunikat backendu zamiast ogólnego „brak odpowiedzi".
-            // Jawny wariant `BladTransportuKroku` (`stacjaSekwencja.ts`) zamiast
-            // fabrykowania odpowiedzi domenowej z jednym polem (naprawa TS2352).
-            const bladStore = useSnapshotStore.getState().error;
-            return bladStore ? { bladTransportu: bladStore } : null;
-          });
-          if (wynik.bladOperacji) {
-            // Stacja JEST zapisana — komunikat mówi dokładnie, co się nie udało.
-            setBladGlobalny(
-              `Stacja zapisana, ale wyposażenie pól nie zostało dokończone `
-              + `(wykonano ${wynik.wykonane} z ${kroki.length} operacji): ${wynik.bladOperacji}`,
-            );
-            return;
-          }
-          if (wynik.ostatniaOdpowiedz) ostatnia = wynik.ostatniaOdpowiedz;
-        }
 
         closeForm();
-        selekcjaPoOperacji(ostatnia, {
+        selekcjaPoOperacji(response, {
           type: 'Station',
           name: daneEff.station_name.trim() || kontekst.stationName.trim() || 'Stacja SN/nN',
         });
@@ -767,7 +739,6 @@ export function KreatorStacjiSnNn() {
       rozdzielnica,
       selekcjaPoOperacji,
       snFields,
-      wyposazenieSekwencji,
     ],
   );
 
@@ -1478,8 +1449,8 @@ export function KreatorStacjiSnNn() {
             })
           )}
           <RzadWartosci
-            etykieta={T.pomiarSekwencja(liczbaOperacjiWyposazenia)}
-            wartosc={String(liczbaOperacjiWyposazenia)}
+            etykieta={T.pomiarWyposazenieRazem(liczbaElementowWyposazenia)}
+            wartosc={String(liczbaElementowWyposazenia)}
           />
         </KreatorSekcja>
       ) : null}
@@ -1726,8 +1697,8 @@ export function KreatorStacjiSnNn() {
               }
             />
             <RzadWartosci
-              etykieta={T.pomiarSekwencja(liczbaOperacjiWyposazenia)}
-              wartosc={String(liczbaOperacjiWyposazenia)}
+              etykieta={T.pomiarWyposazenieRazem(liczbaElementowWyposazenia)}
+              wartosc={String(liczbaElementowWyposazenia)}
             />
           </KreatorSiatka>
 

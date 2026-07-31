@@ -585,14 +585,81 @@ export function nowyWpisPola(
 }
 
 /**
+ * Wiązanie katalogowe pozycji wyposażenia pola — TEN SAM kształt, którego
+ * oczekuje brama katalogowa operacji `add_ct`/`add_vt`/`add_relay`.
+ */
+function bindingWyposazenia(namespace: string, itemId: string): Record<string, unknown> {
+  return {
+    catalog_namespace: namespace,
+    catalog_item_id: itemId,
+    catalog_item_version: '2024.1',
+    materialize: true,
+    snapshot_mapping_version: '1.0',
+  };
+}
+
+/**
+ * Wyposażenie pomiarowo-zabezpieczeniowe JEDNEGO pola (krok 4) → payload
+ * operacji stacyjnej (B-3, tor atomowy). Przekładnie CT/VT pochodzą z POZYCJI
+ * KATALOGOWEJ (parametry materializuje backend — zero fizyki w UI); pozycja
+ * niewskazana = brak elementu, nigdy domysł.
+ *
+ * Zwraca `null`, gdy pole nie ma wskazanego żadnego elementu — wtedy operacja
+ * stacyjna nie dostaje klucza `equipment` i zachowuje się jak dotąd.
+ */
+export function zbudujWyposazeniePolaDoPayloadu(
+  wpis: WyposazeniePolaWpis | undefined,
+  ctTypy: readonly { id: string; ratio_primary_a: number; ratio_secondary_a: number }[],
+  vtTypy: readonly { id: string; ratio_primary_v: number; ratio_secondary_v: number }[],
+): Record<string, unknown> | null {
+  if (!wpis) return null;
+  const equipment: Record<string, unknown> = {};
+
+  const ct = wpis.ct_catalog_ref ? ctTypy.find((t) => t.id === wpis.ct_catalog_ref) : null;
+  if (wpis.ct_catalog_ref && ct) {
+    equipment.ct = {
+      catalog_ref: wpis.ct_catalog_ref,
+      catalog_binding: bindingWyposazenia('CT', wpis.ct_catalog_ref),
+      ratio_primary_a: ct.ratio_primary_a,
+      ratio_secondary_a: ct.ratio_secondary_a,
+    };
+  }
+
+  const vt = wpis.vt_catalog_ref ? vtTypy.find((t) => t.id === wpis.vt_catalog_ref) : null;
+  if (wpis.vt_catalog_ref && vt) {
+    equipment.vt = {
+      catalog_ref: wpis.vt_catalog_ref,
+      catalog_binding: bindingWyposazenia('VT', wpis.vt_catalog_ref),
+      ratio_primary_v: vt.ratio_primary_v,
+      ratio_secondary_v: vt.ratio_secondary_v,
+    };
+  }
+
+  if (wpis.relay_catalog_ref) {
+    equipment.relay = {
+      catalog_ref: wpis.relay_catalog_ref,
+      catalog_binding: bindingWyposazenia('ZABEZPIECZENIE', wpis.relay_catalog_ref),
+      relay_type: wpis.relay_type,
+    };
+  }
+
+  return Object.keys(equipment).length > 0 ? equipment : null;
+}
+
+/**
  * Buduje pola SN payloadu z EDYTOWALNEJ listy wpisów (krok 3). Status
  * kompletności szablonu odczytujemy z katalogu szablonów (bez zgadywania:
  * nieznany szablon = `requires_catalog`).
+ *
+ * B-3: wyposażenie pola (krok 4) jedzie W TYM SAMYM wpisie pola — dopasowanie
+ * po identyfikatorze wpisu, nie po roli (dwa pola tej samej roli dostają swoje
+ * wyposażenie, bez zgadywania kolejności).
  */
 export function zbudujPolaSnZWpisow(
   wpisy: readonly PoleSnWpis[],
   choice: StationSwitchgearChoice,
   szablony: readonly CompleteMvBayTemplateSummary[],
+  wyposazenie: Readonly<Record<string, Record<string, unknown> | null>> = {},
 ): StationSnFieldTemplate[] {
   return wpisy.map((wpis) => {
     const szablon = wpis.bay_template_ref
@@ -618,6 +685,7 @@ export function zbudujPolaSnZWpisow(
             },
           }
         : null,
+      ...(wyposazenie[wpis.id] ? { equipment: wyposazenie[wpis.id] as Record<string, unknown> } : {}),
     };
   });
 }

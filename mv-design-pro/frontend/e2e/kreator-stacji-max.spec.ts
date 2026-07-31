@@ -277,10 +277,27 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
 
   // ---------------------------------------------------------------- krok 8
   await przejdzDoKroku(page, 'Podsumowanie i zapis');
+  // B-3: zapis ma być JEDNĄ operacją domenową — stacja RAZEM z wyposażeniem pól.
+  // Nagrywamy realne żądania zapisu (bez dry_run), żeby powrót do sekwencji
+  // add_ct/add_vt/add_relay po zapisie był CZERWONY.
+  const operacjeZapisu: string[] = [];
+  page.on('request', (request_) => {
+    if (!request_.url().includes('/enm/domain-ops') || request_.method() !== 'POST') return;
+    const body = request_.postData() ?? '';
+    if (body.includes('"dry_run":true')) return;
+    operacjeZapisu.push(body);
+  });
   const zapisz = page.getByTestId('mvd-kreator-stacja-zapisz');
   await expect(zapisz).toBeEnabled({ timeout: 20000 });
   await zapisz.click();
   await expect(page.getByTestId('mvd-kreator-stacja')).toHaveCount(0, { timeout: 60000 });
+
+  expect(operacjeZapisu, 'zapis stacji = dokładnie jedna operacja domenowa').toHaveLength(1);
+  expect(operacjeZapisu[0]).toContain('insert_station_on_segment_sn');
+  expect(operacjeZapisu[0]).toContain('"equipment"');
+  for (const sekwencyjna of ['"add_ct"', '"add_vt"', '"add_relay"']) {
+    expect(operacjeZapisu.join('\n')).not.toContain(sekwencyjna);
+  }
 
   // ------------------------------------------------------- asercje przez API
   const enm = await pobierzEnm(request, caseId);
@@ -303,7 +320,8 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   // Zmiana z pickera trafiła do modelu.
   expect(aparaty.some((a) => a.catalog_ref === APARAT_ZMIENIONY)).toBe(true);
 
-  // Krok 4: CT/VT/zabezpieczenie obecne w modelu (sekwencja po zapisie stacji).
+  // Krok 4: CT/VT/zabezpieczenie obecne w modelu — utworzone W TEJ SAMEJ
+  // operacji co stacja (B-3; dawniej sekwencja osobnych operacji po zapisie).
   const pomiary = enm.measurements ?? [];
   expect(pomiary.some((m) => m.measurement_type === 'CT')).toBe(true);
   expect(pomiary.some((m) => m.measurement_type === 'VT')).toBe(true);

@@ -1,7 +1,7 @@
 """
 Operacje domenowe V1 — budowa sieci SN od GPZ z SLD na żywo.
 
-Kanoniczny zestaw operacji semantycznych kompozytuj?cych niskopoziomowe CRUD
+Kanoniczny zestaw operacji semantycznych kompozytujących niskopoziomowe CRUD
 z topology_ops.py w spójne przepływy domenowe.
 
 DETERMINISTYCZNE: identyczne wejście → identyczny wynik.
@@ -360,7 +360,7 @@ def _extract_catalog_binding_namespace(catalog_binding: object) -> str | None:
 
 
 def _extract_catalog_binding_version(catalog_binding: object) -> str | None:
-    """Odczytaj wersj? katalogu z payloadu binding."""
+    """Odczytaj wersję katalogu z payloadu binding."""
     if not isinstance(catalog_binding, dict):
         return None
 
@@ -629,7 +629,7 @@ def _resolve_gpz_wn_sn_transformer_catalog_ref(
         (
             "Transformator WN/SN GPZ wymaga pozycji katalogowej. "
             f"Brak domyślnego rekordu dla 110/{voltage_key} kV {power_key} MVA. "
-            f"Dost?pne rekordy: {supported}."
+            f"Dostępne rekordy: {supported}."
         ),
         "source.transformer_catalog_ref_missing",
     )
@@ -1175,7 +1175,7 @@ def _ensure_line_run_for_corridor(
         normalized_kind = "main_trunk"
     line_run = {
         "id": corridor_ref,
-        "name": corridor.get("name") if isinstance(corridor.get("name"), str) else "Ci?g SN",
+        "name": corridor.get("name") if isinstance(corridor.get("name"), str) else "Ciąg SN",
         "run_kind": normalized_kind,
         "starting_bay_ref": start_bay,
         "starting_port_ref": start_port,
@@ -1534,7 +1534,7 @@ def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
                 blockers.append(
                     {
                         "code": "branch_point.invalid_parent_medium",
-                        "message_pl": f"{bp_label} wymaga poprawnego odcinka nadrz?dnego.",
+                        "message_pl": f"{bp_label} wymaga poprawnego odcinka nadrzędnego.",
                         "element_ref": bp_ref,
                         "severity": "BLOKUJACE",
                     }
@@ -2438,7 +2438,7 @@ def _compute_materialized_params(enm: dict[str, Any]) -> dict[str, Any]:
 
     Każdy segment z catalog_ref ma skopiowane parametry.
     Jeśli dostępny jest katalog (CatalogRepository), parametry są
-    rozwi?zywane z katalogu (precedence: catalog > instance).
+    rozwiązywane z katalogu (precedence: catalog > instance).
     """
     lines_sn: dict[str, Any] = {}
     transformers_sn_nn: dict[str, Any] = {}
@@ -2783,7 +2783,7 @@ def _resolve_manual_source_equivalent(
         z_abs = math.hypot(r_ohm, x_ohm)
         if z_abs <= 0:
             return _error_response(
-                "Impedancja zast?pcza GPZ musi by? dodatnia.",
+                "Impedancja zastępcza GPZ musi być dodatnia.",
                 "source.manual_equivalent_incomplete",
             )
 
@@ -2871,7 +2871,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         ]
     if sections_count < 1 or sections_count > 4:
         return _error_response(
-            "GPZ musi mie? od 1 do 4 sekcji szyn SN.",
+            "GPZ musi mieć od 1 do 4 sekcji szyn SN.",
             "source.invalid_sections_count",
         )
     transformer_count = _read_gpz_transformer_count(payload, sections_count)
@@ -2890,7 +2890,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             return _error_response(
                 (
                     "Sekcja GPZ "
-                    f"{index + 1} musi mie? od 1 do {MAX_GPZ_LINE_FIELDS_PER_SECTION} "
+                    f"{index + 1} musi mieć od 1 do {MAX_GPZ_LINE_FIELDS_PER_SECTION} "
                     "pól liniowych odpływowych."
                 ),
                 "source.invalid_line_fields_count",
@@ -2902,7 +2902,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         voltage_kv = enm.get("header", {}).get("defaults", {}).get("sn_nominal_kv")
     if voltage_kv is None or voltage_kv <= 0:
         return _error_response(
-            "Brak napi?cia znamionowego SN: podaj voltage_kv w payloadzie lub ustaw "
+            "Brak napięcia znamionowego SN: podaj voltage_kv w payloadzie lub ustaw "
             "defaults.sn_nominal_kv w nagłówku ENM.",
             "source.missing_voltage",
         )
@@ -3984,6 +3984,105 @@ def _field_apparatus_missing_error(*, index: int, field_role: str, code: str) ->
     )
 
 
+# ---------------------------------------------------------------------------
+# B-3 — wyposażenie pomiarowo-zabezpieczeniowe pola W TEJ SAMEJ operacji
+# ---------------------------------------------------------------------------
+
+#: Kolejność zakładania wyposażenia pola: CT → VT → zabezpieczenie. Zabezpieczenie
+#: wiąże CT/VT TEGO SAMEGO pola (`add_relay` szuka ich po `bay_ref`), więc musi
+#: powstać jako ostatnie.
+_KOLEJNOSC_WYPOSAZENIA_POLA = (
+    ("ct", "add_ct", "przekładnika prądowego CT"),
+    ("vt", "add_vt", "przekładnika napięciowego VT"),
+    ("relay", "add_relay", "zabezpieczenia"),
+)
+
+
+def _wyposazenie_pola_z_wpisu(field_spec: Any) -> dict[str, Any]:
+    """Wyposażenie pola z wpisu `sn_fields[i].equipment` (brak → pusty słownik).
+
+    B-3: pole payloadu jest ADDYTYWNE i opcjonalne — wołający, który go nie
+    podaje, dostaje dokładnie dotychczasowe zachowanie operacji stacyjnej.
+    """
+    if not isinstance(field_spec, dict):
+        return {}
+    equipment = field_spec.get("equipment")
+    if not isinstance(equipment, dict):
+        return {}
+    return {
+        klucz: wartosc
+        for klucz, wartosc in equipment.items()
+        if isinstance(wartosc, dict) and wartosc
+    }
+
+
+def _zastosuj_wyposazenie_pol(
+    new_enm: dict[str, Any],
+    wyposazenie_pol: list[tuple[str, str, dict[str, Any]]],
+    *,
+    kod_bledu: str,
+) -> tuple[dict[str, Any], list[str], list[dict[str, Any]]] | dict[str, Any]:
+    """Zakłada CT/VT/zabezpieczenie pól W TEJ SAMEJ migawce co stacja (B-3).
+
+    DŁUG, KTÓRY TO ZAMYKA (B-3, nazwany w V12K-283): kreator stacji zapisywał
+    stację JEDNĄ operacją, a wyposażenie pól dokładał SEKWENCJĄ osobnych operacji
+    `add_ct`/`add_vt`/`add_relay` po zapisie. Gdy krok pośredni zawiódł (brak
+    pozycji katalogowej, pole bez wyłącznika), model zostawał w stanie połowicznym
+    — stacja zapisana, wyposażenie częściowe — a kreator mógł tylko uczciwie
+    zameldować „wykonano N z M".
+
+    Tu wyposażenie powstaje na TEJ SAMEJ, jeszcze niezapisanej migawce co stacja:
+    błąd któregokolwiek elementu kończy CAŁĄ operację błędem, więc do zapisu
+    trafia albo stacja z kompletnym wyposażeniem, albo nic. Reużyte są DOKŁADNIE
+    te same handlery operacji (`domain_operations_v2`) — te same bramy katalogowe,
+    ta sama materializacja, zero równoległej implementacji. Payload pola jest
+    przekazywany bez zmian (wołający steruje wszystkim, co przyjmuje operacja),
+    domykany wyłącznie o `bay_ref` utworzonego pola.
+
+    Zwraca ``(migawka, utworzone_refy, zdarzenia)`` albo odpowiedź błędu.
+    """
+    if not wyposazenie_pol:
+        return new_enm, [], []
+
+    from enm.domain_operations_v2 import add_ct, add_relay, add_vt
+
+    handlery = {"add_ct": add_ct, "add_vt": add_vt, "add_relay": add_relay}
+    utworzone: list[str] = []
+    zdarzenia: list[dict[str, Any]] = []
+
+    for field_ref, field_role, equipment in wyposazenie_pol:
+        for klucz, nazwa_operacji, etykieta in _KOLEJNOSC_WYPOSAZENIA_POLA:
+            dane = equipment.get(klucz)
+            if not isinstance(dane, dict) or not dane:
+                continue
+            odpowiedz = handlery[nazwa_operacji](new_enm, {**dane, "bay_ref": field_ref})
+            blad = odpowiedz.get("error")
+            if blad:
+                rola = field_role.strip() or "bez roli"
+                return _error_response(
+                    f"Pole {rola} ({field_ref}) — nie udało się dodać {etykieta}: {blad}",
+                    str(odpowiedz.get("error_code") or kod_bledu),
+                )
+            migawka = odpowiedz.get("snapshot")
+            if not isinstance(migawka, dict):
+                return _error_response(
+                    f"Pole {field_role} ({field_ref}) — operacja {nazwa_operacji} "
+                    "nie zwróciła migawki modelu.",
+                    kod_bledu,
+                )
+            new_enm = migawka
+            utworzone.extend(
+                ref
+                for ref in (odpowiedz.get("changes") or {}).get("created_element_ids", [])
+                if isinstance(ref, str)
+            )
+            for zdarzenie in odpowiedz.get("domain_events") or []:
+                if isinstance(zdarzenie, dict):
+                    zdarzenia.append({**zdarzenie, "field_ref": field_ref})
+
+    return new_enm, utworzone, zdarzenia
+
+
 #: Dozwolone typy konstrukcji stacji (B-5) — parytet z `enm.models.Substation`
 #: i katalogiem szablonów stacji (`network_model.catalog.station_templates`).
 _STATION_CONSTRUCTION_TYPES = (
@@ -4415,14 +4514,14 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 break
         if not sn_voltage_kv or sn_voltage_kv <= 0:
             return _error_response(
-                "Brak napi?cia SN stacji. Podaj sn_voltage_kv lub upewnij si?, "
+                "Brak napięcia SN stacji. Podaj sn_voltage_kv lub upewnij się, "
                 "że szyna źródłowa segmentu ma zdefiniowane napięcie.",
                 "station.insert.sn_voltage_missing",
             )
 
     if not nn_voltage_kv or nn_voltage_kv <= 0:
         return _error_response(
-            "Brak napi?cia nN stacji. Podaj nn_voltage_kv.",
+            "Brak napięcia nN stacji. Podaj nn_voltage_kv.",
             "station.insert.nn_voltage_missing",
         )
 
@@ -4648,6 +4747,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         "SPRZEGLO": "COUPLER",
     }
     field_specs: list[dict[str, Any]] = []
+    # B-3: wyposażenie pomiarowo-zabezpieczeniowe wskazane per pole w payloadzie —
+    # zakładane W TEJ SAMEJ migawce, po utworzeniu wszystkich pól stacji.
+    wyposazenie_pol: list[tuple[str, str, dict[str, Any]]] = []
     # Wiązanie szablonu producenta + kody zabezpieczeń pola — PARYTET z add_sn_bay
     # i append (PS-1/PS-2). Wspólny resolver (reużycie, zero fabrykacji).
     from enm.domain_operations_v2 import _resolve_bay_template_protection_codes
@@ -4744,6 +4846,10 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
             )
         new_enm = result.enm
         created.append(breaker_ref)
+
+        wyposazenie_pola = _wyposazenie_pola_z_wpisu(field_spec)
+        if wyposazenie_pola:
+            wyposazenie_pol.append((field_ref, field_role, wyposazenie_pola))
 
         field_specs.append(
             _build_field_spec(
@@ -4976,8 +5082,22 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         {"event_seq": ev_seq, "event_type": "LOGICAL_VIEWS_UPDATED", "element_id": stn_id}
     )
 
+    # B-3: CT/VT/zabezpieczenia pól w TEJ SAMEJ migawce co stacja (atomowo).
+    wynik_wyposazenia = _zastosuj_wyposazenie_pol(
+        new_enm,
+        wyposazenie_pol,
+        kod_bledu="station.insert.field_equipment_failed",
+    )
+    if isinstance(wynik_wyposazenia, dict):
+        return wynik_wyposazenia
+    new_enm, wyposazenie_created, wyposazenie_events = wynik_wyposazenia
+    created.extend(wyposazenie_created)
+    for zdarzenie in wyposazenie_events:
+        ev_seq += 1
+        events.append({**zdarzenie, "event_seq": ev_seq})
+
     audit.append(
-        {"step": ev_seq, "action": f"Wstawiono stacj? typ {station_type}", "element_id": stn_id}
+        {"step": ev_seq, "action": f"Wstawiono stację typ {station_type}", "element_id": stn_id}
     )
 
     response = _response(
@@ -5109,7 +5229,7 @@ def _build_split_preview_metadata(
     }
 
     # Invalidated results — wyniki run/proof które staną się stale po split
-    # Heurystyka: znajdujemy results powi?zane z source_segment albo z connected buses.
+    # Heurystyka: znajdujemy results powiązane z source_segment albo z connected buses.
     invalidated_results: list[dict[str, Any]] = []
     affected_proof_packs: list[dict[str, Any]] = []
 
@@ -5526,7 +5646,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
 
     Wymaga jawnego from_ref (port BRANCH na stacji lub branch-poincie).
     from_bus_ref jest obsługiwane wyłącznie jako pole kompatybilności
-    i musi mapowa? si? 1:1 do bus_ref rozwi?zanego z from_ref.
+    i musi mapować się 1:1 do bus_ref rozwiązanego z from_ref.
     """
     from_ref = payload.get("from_ref")
     from_bus_ref = payload.get("from_bus_ref")
@@ -5577,7 +5697,7 @@ def start_branch_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dic
         and payload.get("from_bus_ref") != from_bus_ref
     ):
         return _error_response(
-            "Pole from_bus_ref nie zgadza si? z bus_ref wynikaj?cym z from_ref.",
+            "Pole from_bus_ref nie zgadza się z bus_ref wynikającym z from_ref.",
             "branch_connection.source_not_branch_capable",
         )
 
@@ -5854,7 +5974,7 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
             break
     if not voltage_kv or voltage_kv <= 0:
         return _error_response(
-            f"Szyna '{from_bus_ref}' nie ma napi?cia znamionowego.",
+            f"Szyna '{from_bus_ref}' nie ma napięcia znamionowego.",
             "switch.from_bus_voltage_missing",
         )
 
@@ -6424,7 +6544,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
             catalog_ref = parameters.get("catalog_ref")
             if catalog_ref is None or (isinstance(catalog_ref, str) and not catalog_ref.strip()):
                 return _error_response(
-                    "Element fizyczny wymaga przypi?tego katalogu.", "catalog.ref_required"
+                    "Element fizyczny wymaga przypiętego katalogu.", "catalog.ref_required"
                 )
 
         effective_source_mode = parameters.get("source_mode", current_element.get("source_mode"))
@@ -6448,7 +6568,7 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
             if effective_source_mode == "KATALOG":
                 if not isinstance(materialized, dict) or not materialized:
                     return _error_response(
-                        "materialized_params musi by? kompletne dla source_mode=KATALOG.",
+                        "materialized_params musi być kompletne dla source_mode=KATALOG.",
                         "catalog.ref_required",
                     )
                 required_keys = {"branch_point_type", "parent_segment_id", "ports"}
@@ -6772,7 +6892,7 @@ def _find_substation(enm: dict[str, Any], substation_ref: str) -> dict[str, Any]
 
 
 def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Dodaje GPZ sekcj? (LV lub HV) do istniej?cej stacji typu 'gpz'.
+    """Dodaje GPZ sekcję (LV lub HV) do istniejącej stacji typu 'gpz'.
 
     Payload:
       substation_ref: str        — ID stacji GPZ
@@ -6868,7 +6988,7 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
 
 
 def update_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
-    """Aktualizuje istniej?c? sekcj? GPZ (jej name, order, bus_ref, *_coupler_ref).
+    """Aktualizuje istniejącą sekcję GPZ (jej name, order, bus_ref, *_coupler_ref).
 
     Payload:
       substation_ref: str
@@ -7025,7 +7145,7 @@ def delete_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     audit = [
         {
             "step": 1,
-            "action": f"Usuni?to sekcj? {side.upper()} '{section_id}'",
+            "action": f"Usunięto sekcję {side.upper()} '{section_id}'",
             "element_id": section_id,
         }
     ]
@@ -7067,7 +7187,7 @@ def _bus_is_free_terminal(enm: dict[str, Any], bus_ref: str) -> bool:
     """Czy szyna jest wolnym terminalem (helper_bus + topology_terminal)?
 
     Wolny terminal = nie jest przypisany do żadnej Substation (poza GPZ),
-    nie ma innych branch wychodz?cych, ma tag 'topology_terminal'.
+    nie ma innych branch wychodzących, ma tag 'topology_terminal'.
     """
     bus = None
     for b in enm.get("buses", []):
@@ -7111,7 +7231,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
 
     Determinizm: stacja generuje stabilny ID z seed = endpoint_bus_ref + station.name.
     Operacja addytywna — nie modyfikuje istniejących Bus, Branch ani innych
-    Substation. Endpoint_bus staje si? pierwsz? szyn? SN nowej stacji.
+    Substation. Endpoint_bus staje się pierwszą szyną SN nowej stacji.
     """
     dry_run = bool(payload.get("dry_run", False))
     endpoint_bus_ref = payload.get("endpoint_bus_ref")
@@ -7131,7 +7251,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     if not endpoint_bus_ref:
         return _error_response(
             "Brak identyfikatora terminala. Podaj `endpoint_bus_ref` lub `run_ref` "
-            "z istniej?cym corridor.",
+            "z istniejącym corridor.",
             "station.append.endpoint_missing",
         )
 
@@ -7159,7 +7279,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     sn_voltage_kv = endpoint_bus.get("voltage_kv")
     if not sn_voltage_kv or sn_voltage_kv <= 0:
         return _error_response(
-            f"Szyna '{endpoint_bus_ref}' nie ma napi?cia znamionowego.",
+            f"Szyna '{endpoint_bus_ref}' nie ma napięcia znamionowego.",
             "station.append.voltage_missing",
         )
 
@@ -7170,7 +7290,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
 
     if nn_voltage_kv <= 0:
         return _error_response(
-            "Brak napi?cia nN stacji. Podaj `nn_voltage_kv` > 0.",
+            "Brak napięcia nN stacji. Podaj `nn_voltage_kv` > 0.",
             "station.append.nn_voltage_missing",
         )
 
@@ -7226,6 +7346,8 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
 
     field_role_counts: dict[str, int] = {}
     field_specs: list[dict[str, Any]] = []
+    # B-3: wyposażenie pól z payloadu — zakładane w TEJ SAMEJ migawce co stacja.
+    wyposazenie_pol: list[tuple[str, str, dict[str, Any]]] = []
     for index, field in enumerate(sn_fields, start=1):
         field_role = str(field.get("field_role") or "").strip()
         bay_role = sn_field_role_to_bay_role.get(field_role)
@@ -7241,6 +7363,9 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             bay_ref = f"bay/{seed}/{field_role.lower()}_{role_index}"
         field_manufacturer_ref = field.get("manufacturer_ref")
         field_bay_template_ref = field.get("bay_template_ref")
+        wyposazenie_pola = _wyposazenie_pola_z_wpisu(field)
+        if wyposazenie_pola:
+            wyposazenie_pol.append((f"field/{seed}/{index}", field_role, wyposazenie_pola))
         field_specs.append(
             {
                 "field_ref": f"field/{seed}/{index}",
@@ -7484,7 +7609,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         }
     )
 
-    # Step 3: Bay(IN) wskazuj?cy na endpoint_bus
+    # Step 3: Bay(IN) wskazujący na endpoint_bus
     bay_in_spec = _field_spec_for_bay_ref(bay_in_ref) or _field_spec_for_role("LINIA_IN")
     bay_in_materialization, bay_in_equipment_refs = _materialize_sn_field_apparatus(
         spec=bay_in_spec,
@@ -7794,6 +7919,20 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         line_run = _ensure_line_run_for_corridor(new_enm, effective_run_ref)
         _append_line_run_station(line_run, substation_ref)
 
+    # B-3: CT/VT/zabezpieczenia pól w TEJ SAMEJ migawce co stacja (atomowo).
+    wynik_wyposazenia = _zastosuj_wyposazenie_pol(
+        new_enm,
+        wyposazenie_pol,
+        kod_bledu="station.append.field_equipment_failed",
+    )
+    if isinstance(wynik_wyposazenia, dict):
+        return wynik_wyposazenia
+    new_enm, wyposazenie_created, wyposazenie_events = wynik_wyposazenia
+    created.extend(wyposazenie_created)
+    for zdarzenie in wyposazenie_events:
+        ev_seq += 1
+        events.append({**zdarzenie, "event_seq": ev_seq})
+
     # Audit + emit STATION_APPENDED_ON_ENDPOINT
     audit.append(
         {
@@ -7885,7 +8024,7 @@ def execute_domain_operation(
 
     if handler is None:
         return _error_response(
-            f"Nieznana operacja: '{op_name}'. Dost?pne: {', '.join(sorted(CANONICAL_OPS))}",
+            f"Nieznana operacja: '{op_name}'. Dostępne: {', '.join(sorted(CANONICAL_OPS))}",
             "dispatcher.unknown_operation",
         )
 

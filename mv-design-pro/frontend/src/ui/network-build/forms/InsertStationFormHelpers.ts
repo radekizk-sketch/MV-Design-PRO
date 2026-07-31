@@ -594,6 +594,13 @@ export interface StationSnFieldTemplate {
    * sama, więc brak referencji kończy zapis jawnym błędem walidacji.
    */
   apparatus_catalog_ref: string | null;
+  /**
+   * Wyposażenie pomiarowo-zabezpieczeniowe pola (B-3) — payload operacji
+   * `add_ct`/`add_vt`/`add_relay` pod kluczami `ct`/`vt`/`relay`. Wskazane
+   * wyposażenie powstaje w TEJ SAMEJ operacji i migawce co stacja (atomowo);
+   * pominięcie pola zachowuje dotychczasowy tor (operacje osobne).
+   */
+  equipment?: Record<string, unknown>;
 }
 
 export function buildStationSnFields(

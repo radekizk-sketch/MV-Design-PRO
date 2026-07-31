@@ -380,6 +380,17 @@ class SNFieldSpec(_FrozenBase):
     domyślnie None, więc jest wykluczany z deterministycznego odcisku ENM
     (exclude_none). Nie wypełniać na istniejących fixture'ach."""
 
+    equipment: dict[str, Any] | None = None
+    """Wyposażenie pomiarowo-zabezpieczeniowe pola (B-3) — addytywne i opcjonalne.
+
+    Klucze `ct`, `vt`, `relay` niosą DOKŁADNIE payload operacji `add_ct`/`add_vt`/
+    `add_relay` (bez `bay_ref` — operacja stacyjna dopina referencję utworzonego
+    pola). Wskazanie wyposażenia sprawia, że powstaje ono w TEJ SAMEJ operacji i
+    migawce co stacja: błąd któregokolwiek elementu kończy całą operację (koniec
+    stanu połowicznego „stacja zapisana, wyposażenie częściowe"). Pominięcie pola
+    zachowuje dotychczasowe zachowanie — wyposażenie zakładane osobnymi
+    operacjami."""
+
 
 class TransformerSpec(_FrozenBase):
     """Specyfikacja transformatora SN/nN w stacji.

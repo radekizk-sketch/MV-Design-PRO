@@ -97,7 +97,9 @@ export const STACJA_STRINGS = {
   pomiarKodyBrak: 'Szablon pola nie deklaruje kodów zabezpieczeń.',
   pomiarKatalogBlad: 'Nie udało się pobrać katalogu przekładników/zabezpieczeń.',
   pomiarPrzekladnia: 'Przekładnia',
-  pomiarSekwencja: (n: number) => `Operacje po zapisie stacji: ${n}`,
+  // B-3: wyposażenie powstaje RAZEM ze stacją (jedna operacja) — etykieta mówi
+  // o zawartości zapisu, nie o osobnych krokach po zapisie.
+  pomiarWyposazenieRazem: (n: number) => `Elementy tworzone razem ze stacją: ${n}`,
 
   // Krok 7 — podgląd skutków.
   podgladOpis:

@@ -317,6 +317,60 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
     return _binding_from_ref(_explicit_namespace(payload), payload.get("catalog_ref"))
 
 
+#: Operacje stacyjne, które mogą założyć wyposażenie pól w tej samej migawce (B-3).
+_STATION_OPERATIONS_WITH_FIELD_EQUIPMENT: frozenset[str] = frozenset(
+    {
+        "insert_station_on_segment_sn",
+        "append_station_on_endpoint",
+    }
+)
+
+#: Klucz wyposażenia pola → operacja, której bramę katalogową ma przejść.
+_FIELD_EQUIPMENT_OPERATIONS: tuple[tuple[str, str], ...] = (
+    ("ct", "add_ct"),
+    ("vt", "add_vt"),
+    ("relay", "add_relay"),
+)
+
+
+def _validate_field_equipment_bindings(
+    operation: str,
+    payload: dict[str, Any],
+) -> CatalogPolicyError | None:
+    """B-3: brama katalogowa wyposażenia pól wskazanego w operacji stacyjnej.
+
+    PARYTET TORÓW: CT/VT/zabezpieczenie zakładane W OPERACJI STACYJNEJ przechodzi
+    DOKŁADNIE tę samą bramę katalogową co wołane osobno `add_ct`/`add_vt`/
+    `add_relay`. Bez tego ta sama pozycja katalogowa byłaby sprawdzana w jednym
+    torze, a w drugim nie — czyli tor atomowy byłby furtką omijającą katalog.
+    """
+    if operation not in _STATION_OPERATIONS_WITH_FIELD_EQUIPMENT:
+        return None
+
+    sn_fields = payload.get("sn_fields")
+    if not isinstance(sn_fields, list):
+        return None
+
+    for index, field in enumerate(sn_fields, start=1):
+        if not isinstance(field, dict):
+            continue
+        equipment = field.get("equipment")
+        if not isinstance(equipment, dict):
+            continue
+        for klucz, nazwa_operacji in _FIELD_EQUIPMENT_OPERATIONS:
+            dane = equipment.get(klucz)
+            if not isinstance(dane, dict) or not dane:
+                continue
+            blad, _ = validate_and_materialize_catalog_binding(nazwa_operacji, dane)
+            if blad is not None:
+                return CatalogPolicyError(
+                    code=blad.code,
+                    message_pl=f"Pole SN nr {index}: {blad.message_pl}",
+                    errors=blad.errors,
+                )
+    return None
+
+
 def validate_and_materialize_catalog_binding(
     operation: str,
     payload: dict[str, Any],
@@ -327,6 +381,10 @@ def validate_and_materialize_catalog_binding(
       - CatalogPolicyError when operation must be rejected
       - materialized solver params (dry-run) when binding is valid and resolvable
     """
+    equipment_error = _validate_field_equipment_bindings(operation, payload)
+    if equipment_error is not None:
+        return equipment_error, {}
+
     if operation not in CATALOG_REQUIRED_OPERATIONS:
         return None, {}
 
@@ -341,7 +399,7 @@ def validate_and_materialize_catalog_binding(
                     {
                         "code": "catalog.ref_required",
                         "message_pl": (
-                            "Ręczny odpowiednik GPZ musi być kompletny albo naleĹĽy podać "
+                            "Ręczny odpowiednik GPZ musi być kompletny albo należy podać "
                             "'catalog_binding'."
                         ),
                     }

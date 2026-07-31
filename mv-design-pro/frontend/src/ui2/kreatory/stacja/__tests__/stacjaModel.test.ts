@@ -31,6 +31,8 @@ import {
   zabezpieczenieZrodla,
   zbudujPayload,
   zbudujPolaSn,
+  zbudujPolaSnZWpisow,
+  zbudujWyposazeniePolaDoPayloadu,
   type KontekstStacji,
   type StacjaFormData,
   type WyborRozdzielnicy,
@@ -699,5 +701,69 @@ describe('stacjaModel — formatery', () => {
     expect(fmtKv(0.4)).toBe('0.400 kV');
     expect(fmtMva(0.63)).toBe('0.63 MVA');
     expect(fmtMva(null)).toBe('—');
+  });
+});
+
+
+describe('B-3 — wyposażenie pola w payloadzie operacji stacyjnej', () => {
+  const CT = [{ id: 'ct-400-5', ratio_primary_a: 400, ratio_secondary_a: 5 }];
+  const VT = [{ id: 'vt-15-100', ratio_primary_v: 15000, ratio_secondary_v: 100 }];
+
+  it('brak wskazań = brak klucza wyposażenia (tor sekwencyjny bez zmian)', () => {
+    expect(zbudujWyposazeniePolaDoPayloadu(undefined, CT, VT)).toBeNull();
+    expect(
+      zbudujWyposazeniePolaDoPayloadu(
+        { ct_catalog_ref: null, vt_catalog_ref: null, relay_catalog_ref: null, relay_type: 'NADPRADOWY' },
+        CT,
+        VT,
+      ),
+    ).toBeNull();
+  });
+
+  it('przekładnie CT/VT pochodzą z POZYCJI KATALOGOWEJ (zero fizyki w UI)', () => {
+    const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+      {
+        ct_catalog_ref: 'ct-400-5',
+        vt_catalog_ref: 'vt-15-100',
+        relay_catalog_ref: 'relay-1',
+        relay_type: 'ZIEMNOZWARCIOWY',
+      },
+      CT,
+      VT,
+    );
+    expect(wyposazenie?.ct).toMatchObject({
+      catalog_ref: 'ct-400-5',
+      ratio_primary_a: 400,
+      ratio_secondary_a: 5,
+    });
+    expect(wyposazenie?.vt).toMatchObject({ ratio_primary_v: 15000, ratio_secondary_v: 100 });
+    expect(wyposazenie?.relay).toMatchObject({
+      catalog_ref: 'relay-1',
+      relay_type: 'ZIEMNOZWARCIOWY',
+    });
+  });
+
+  it('pozycja spoza katalogu nie tworzy przekładnika (zero fabrykacji przekładni)', () => {
+    const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
+      { ct_catalog_ref: 'ct-nieznany', vt_catalog_ref: null, relay_catalog_ref: null, relay_type: 'NADPRADOWY' },
+      CT,
+      VT,
+    );
+    expect(wyposazenie).toBeNull();
+  });
+
+  it('wyposażenie trafia do WŁAŚCIWEGO wpisu pola (dopasowanie po identyfikatorze)', () => {
+    const pola = zbudujPolaSnZWpisow(
+      [
+        { id: 'pole-1', field_role: 'LINIA_ODG', bay_template_ref: null, apparatus_catalog_ref: 'ap-1' },
+        { id: 'pole-2', field_role: 'LINIA_ODG', bay_template_ref: null, apparatus_catalog_ref: 'ap-1' },
+      ],
+      { manufacturerRef: 'ZPUE_WLOSZCZOWA', switchgearFamilyRef: null },
+      [],
+      { 'pole-2': { ct: { catalog_ref: 'ct-400-5' } } },
+    );
+    // Dwa pola TEJ SAMEJ roli — wyposażenie nie może „przeskoczyć" na pierwsze.
+    expect(pola[0].equipment).toBeUndefined();
+    expect(pola[1].equipment).toEqual({ ct: { catalog_ref: 'ct-400-5' } });
   });
 });

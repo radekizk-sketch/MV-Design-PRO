@@ -414,6 +414,66 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     expect(snFields.map((f) => f.field_role)).toEqual(['LINIA_IN', 'TRANSFORMATOROWE']);
   });
 
+  it('B-3: wyposażenie pola jedzie W TEJ SAMEJ operacji co stacja (bez sekwencji po zapisie)', async () => {
+    executeDomainOperationMock.mockResolvedValue({ error: null });
+    render(<KreatorStacjiSnNn />);
+
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+    await przejdzIWybierzRozdzielnice();
+
+    // Krok „Pomiar i zabezpieczenia": natywny wybór CT/VT/przekaźnika 1. pola.
+    await przejdzDoKroku('Pomiar i zabezpieczenia');
+    await waitFor(() => {
+      const ct = screen.getByTestId('mvd-kreator-stacja-ct-1') as HTMLSelectElement;
+      expect(ct.querySelector('option[value="ct-400-5"]')).not.toBeNull();
+    });
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-ct-1'), 'ct-400-5');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-vt-1'), 'vt-15-100');
+    await userEvent.selectOptions(screen.getByTestId('mvd-kreator-stacja-przekaznik-1'), 'relay-1');
+
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-zapisz'));
+
+    await waitFor(() => expect(executeDomainOperationMock).toHaveBeenCalled());
+    // JEDNA operacja: brak osobnych add_ct/add_vt/add_relay po zapisie (B-3).
+    expect(executeDomainOperationMock).toHaveBeenCalledTimes(1);
+    const [, operacja, payload] = executeDomainOperationMock.mock.calls[0] as [
+      string,
+      string,
+      Record<string, unknown>,
+    ];
+    expect(operacja).toBe('insert_station_on_segment_sn');
+
+    const snFields = payload.sn_fields as Array<{
+      field_role: string;
+      equipment?: Record<string, Record<string, unknown>>;
+    }>;
+    // Wyposażenie przy WŁAŚCIWYM polu (pierwszym), pozostałe pola bez klucza.
+    expect(snFields[0].equipment?.ct).toMatchObject({
+      catalog_ref: 'ct-400-5',
+      // Przekładnia z pozycji katalogowej — UI niczego nie liczy.
+      ratio_primary_a: 400,
+      ratio_secondary_a: 5,
+      catalog_binding: expect.objectContaining({
+        catalog_namespace: 'CT',
+        catalog_item_id: 'ct-400-5',
+      }),
+    });
+    expect(snFields[0].equipment?.vt).toMatchObject({
+      catalog_ref: 'vt-15-100',
+      ratio_primary_v: 15000,
+      ratio_secondary_v: 100,
+    });
+    expect(snFields[0].equipment?.relay).toMatchObject({
+      catalog_ref: 'relay-1',
+      relay_type: 'NADPRADOWY',
+      catalog_binding: expect.objectContaining({ catalog_namespace: 'ZABEZPIECZENIE' }),
+    });
+    expect(snFields.slice(1).every((f) => f.equipment === undefined)).toBe(true);
+
+    expect(closeFormMock).toHaveBeenCalled();
+  });
+
   it('krok uziemienia: natywny wybór układu IT + punktu izolowanego → nn_earthing w payloadzie (G-STK-1)', async () => {
     executeDomainOperationMock.mockResolvedValue({ error: null });
     render(<KreatorStacjiSnNn />);
