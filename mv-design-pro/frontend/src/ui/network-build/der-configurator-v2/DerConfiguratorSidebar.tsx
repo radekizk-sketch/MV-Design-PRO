@@ -37,18 +37,18 @@ export function DerConfiguratorSidebar(props: DerConfiguratorSidebarProps): JSX.
       data-density={density}
       aria-label="DER Configurator — nawigacja sekcji"
       className={clsx(
-        'flex h-full shrink-0 flex-col overflow-y-auto border-r border-[#1a2a3a] bg-[#080e18]',
+        'flex h-full shrink-0 flex-col overflow-y-auto border-r border-scada-border bg-scada-bg',
         isCompact ? 'w-[240px]' : 'w-[320px]',
       )}
     >
-      <div className="border-b border-[#1a2a3a] px-3 py-2">
-        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#4a6a8a]">
+      <div className="border-b border-scada-border px-3 py-2">
+        <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-scada-muted">
           DER Configurator v2
         </div>
         <div className="mt-0.5 text-[11px] font-semibold text-scada-text">
           {DER_KIND_LABEL_PL[derKind]}
         </div>
-        <div className="mt-0.5 text-[10px] text-[#4a6a8a]">
+        <div className="mt-0.5 text-[10px] text-scada-muted">
           10 sekcji · 22-osiowa macierz gotowości
         </div>
       </div>
@@ -72,20 +72,20 @@ export function DerConfiguratorSidebar(props: DerConfiguratorSidebarProps): JSX.
               className={clsx(
                 'flex w-full items-center gap-2 px-3 py-2 text-left transition-colors',
                 isActive
-                  ? 'bg-[#00d4ff10] text-[#00d4ff]'
-                  : 'text-[#8a9aaa] hover:bg-[#0b1725] hover:text-scada-text',
+                  ? 'bg-sygnal-info-tlo/6 text-sygnal-info-tusz'
+                  : 'text-scada-muted hover:bg-scada-bg hover:text-scada-text',
               )}
             >
               <span
                 className={clsx(
                   'grid h-5 w-5 shrink-0 place-items-center rounded text-[10px] font-bold',
                   isActive
-                    ? 'bg-[#00d4ff] text-[#001f2a]'
+                    ? 'bg-sygnal-info text-scada-bg'
                     : isCompleted
                       ? 'bg-emerald-500/20 text-emerald-300'
                       : isError
                         ? 'bg-red-500/20 text-red-300'
-                        : 'bg-[#0a1420] text-[#4a6a8a]',
+                        : 'bg-scada-bg text-scada-muted',
                 )}
               >
                 {isCompleted ? '✓' : isError ? '!' : section.n}
@@ -99,7 +99,7 @@ export function DerConfiguratorSidebar(props: DerConfiguratorSidebarProps): JSX.
         })}
       </div>
 
-      <div className="border-t border-[#1a2a3a] px-3 py-2 text-[10px] text-[#4a6a8a]">
+      <div className="border-t border-scada-border px-3 py-2 text-[10px] text-scada-muted">
         Źródło: DER Engineering v2 (bundle KWranPTV)
       </div>
     </nav>

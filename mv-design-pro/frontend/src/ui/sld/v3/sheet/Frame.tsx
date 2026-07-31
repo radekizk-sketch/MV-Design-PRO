@@ -18,14 +18,12 @@ import { GRID } from '../core/grid';
 import { LABEL_TYPOGRAPHY, labelLineHeight } from '../core/text';
 import { SYMBOL_DEFS, type SymbolId } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
-import { BASE_STROKE, CANVAS_BACKGROUND } from '../theme/colorTokens';
+import { useSldPalette } from '../theme/palette';
 
-/** Kolor bazowy rysunku w trybie SCADA (spec §2/§6) — nakładki koloru
- *  napięcia/energizacji są zakresem F6 (`SldCanvasV3.tsx`), nie ramki arkusza.
- *  SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
- *  źródło prawdy, ta sama wartość co dotąd. */
-const SHEET_STROKE = BASE_STROKE;
-const SHEET_BACKGROUND = CANVAS_BACKGROUND;
+/* Kolor bazowy rysunku (spec §2/§6) — nakładki koloru napięcia/energizacji są
+ * zakresem `SldCanvasV3.tsx`, nie ramki arkusza. KD-8 poz. 1: ramka arkusza,
+ * strefy i legenda biorą tusz/tło z palety MOTYWU (kontekst kanwy), a nie ze
+ * stałej modułu — arkusz jasny musi być realnie jasny. */
 
 /** Strefy referencyjne co 400px (spec §2). */
 const ZONE_STEP = 400;
@@ -206,6 +204,7 @@ export function computeLegendRowLayout(entries: readonly SheetLegendEntry[]): re
 }
 
 function LegendLineSample(props: { readonly id: string; readonly centerY: number }): JSX.Element {
+  const palette = useSldPalette();
   const dash = props.id === 'overhead' ? '6 3 1 3' : undefined;
   if (props.id === 'openTerminal') {
     // Recenzja NO-GO 2026-07-17 pkt 11: próbka „koniec otwarty" = odcinek
@@ -214,8 +213,8 @@ function LegendLineSample(props: { readonly id: string; readonly centerY: number
     // legendy nie odpowiadałby glifowi na rysunku.
     return (
       <g data-testid={`sld-sheet-legend-line-${props.id}`} data-parity-key={`legend-line-${props.id}`}>
-        <line x1={0} y1={props.centerY} x2={22} y2={props.centerY} stroke={SHEET_STROKE} strokeWidth={1.6} />
-        <line x1={22} y1={props.centerY - 6} x2={22} y2={props.centerY + 6} stroke={SHEET_STROKE} strokeWidth={1.6} />
+        <line x1={0} y1={props.centerY} x2={22} y2={props.centerY} stroke={palette.baseStroke} strokeWidth={1.6} />
+        <line x1={22} y1={props.centerY - 6} x2={22} y2={props.centerY + 6} stroke={palette.baseStroke} strokeWidth={1.6} />
       </g>
     );
   }
@@ -227,7 +226,7 @@ function LegendLineSample(props: { readonly id: string; readonly centerY: number
       y1={props.centerY}
       x2={28}
       y2={props.centerY}
-      stroke={SHEET_STROKE}
+      stroke={palette.baseStroke}
       strokeWidth={1.6}
       strokeDasharray={dash}
     />
@@ -246,6 +245,7 @@ export function SheetLegend(props: {
   readonly entries: readonly SheetLegendEntry[];
   readonly sheetHeight: number;
 }): JSX.Element {
+  const palette = useSldPalette();
   const rows = computeLegendRowLayout(props.entries);
   // D1b (F6c): legenda w DOLNYM-lewym rogu arkusza, nie górnym — górny-lewy
   // róg zajmuje GPZ (scena zaczyna się w originie arkusza; sekcja WN i
@@ -280,7 +280,7 @@ export function SheetLegend(props: {
               fontFamily="sans-serif"
               fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
               fontWeight={LABEL_TYPOGRAPHY.t3.fontWeight}
-              fill={SHEET_STROKE}
+              fill={palette.baseStroke}
             >
               {entry.labelPl}
             </text>
@@ -292,6 +292,7 @@ export function SheetLegend(props: {
 }
 
 function ZoneMarkers(props: { readonly width: number; readonly height: number }): JSX.Element {
+  const palette = useSldPalette();
   const colCount = Math.max(1, Math.ceil(props.width / ZONE_STEP));
   const rowCount = Math.max(1, Math.ceil(props.height / ZONE_STEP));
   const cols = Array.from({ length: colCount }, (_, i) => i);
@@ -312,7 +313,7 @@ function ZoneMarkers(props: { readonly width: number; readonly height: number })
             fontFamily="sans-serif"
             fontSize={LABEL_TYPOGRAPHY.t1.fontSize}
             fontWeight={LABEL_TYPOGRAPHY.t1.fontWeight}
-            fill={SHEET_STROKE}
+            fill={palette.baseStroke}
           >
             {i + 1}
           </text>
@@ -333,7 +334,7 @@ function ZoneMarkers(props: { readonly width: number; readonly height: number })
             fontFamily="sans-serif"
             fontSize={LABEL_TYPOGRAPHY.t1.fontSize}
             fontWeight={LABEL_TYPOGRAPHY.t1.fontWeight}
-            fill={SHEET_STROKE}
+            fill={palette.baseStroke}
           >
             {letter}
           </text>
@@ -348,7 +349,7 @@ function ZoneMarkers(props: { readonly width: number; readonly height: number })
           y1={0}
           x2={i * ZONE_STEP}
           y2={-6}
-          stroke={SHEET_STROKE}
+          stroke={palette.baseStroke}
           strokeWidth={1}
         />
       ))}
@@ -360,7 +361,7 @@ function ZoneMarkers(props: { readonly width: number; readonly height: number })
           y1={i * ZONE_STEP}
           x2={-6}
           y2={i * ZONE_STEP}
-          stroke={SHEET_STROKE}
+          stroke={palette.baseStroke}
           strokeWidth={1}
         />
       ))}
@@ -381,6 +382,7 @@ const DEFAULT_TITLE_BLOCK_FOOTPRINT = { width: 360, height: 220 };
  * wynikiem pomiaru DOM).
  */
 export function SheetFrame(props: SheetFrameProps): JSX.Element {
+  const palette = useSldPalette();
   const { width, height, scaleLabel, lodLabel, hiddenLabelCount, titleBlock, children } = props;
   const legend = props.legend ?? buildDefaultLegend();
   const titleBlockOrigin = props.titleBlockOrigin ?? {
@@ -398,7 +400,7 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
       width={svgWidth}
       height={svgHeight}
       viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-      style={{ background: SHEET_BACKGROUND }}
+      style={{ background: palette.canvasBackground }}
     >
       <g data-testid="sld-sheet-drawing-area" data-parity-key="sheet-drawing-area" transform={`translate(${FRAME_MARGIN}, ${FRAME_MARGIN})`}>
         <rect
@@ -409,7 +411,7 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
           width={width}
           height={height}
           fill="none"
-          stroke={SHEET_STROKE}
+          stroke={palette.baseStroke}
           strokeWidth={1.5}
         />
         <ZoneMarkers width={width} height={height} />
@@ -422,7 +424,7 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
           fontFamily="sans-serif"
           fontSize={LABEL_TYPOGRAPHY.t2.fontSize}
           fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
-          fill={SHEET_STROKE}
+          fill={palette.baseStroke}
         >
           {`Skala ${scaleLabel}`}
         </text>
@@ -436,7 +438,7 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
             fontFamily="sans-serif"
             fontSize={LABEL_TYPOGRAPHY.t2.fontSize}
             fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
-            fill={SHEET_STROKE}
+            fill={palette.baseStroke}
           >
             {`Widok: ${lodLabel}`}
           </text>
@@ -452,7 +454,7 @@ export function SheetFrame(props: SheetFrameProps): JSX.Element {
             fontFamily="sans-serif"
             fontSize={LABEL_TYPOGRAPHY.t2.fontSize}
             fontWeight={LABEL_TYPOGRAPHY.t2.fontWeight}
-            fill={SHEET_STROKE}
+            fill={palette.baseStroke}
           >
             {`Ukryto ${hiddenLabelCount} ${hiddenLabelCount === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`}
           </text>

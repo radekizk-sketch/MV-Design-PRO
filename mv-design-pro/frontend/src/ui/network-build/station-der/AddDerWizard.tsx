@@ -2014,7 +2014,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               onClick={handleCreate}
               disabled={isCreating}
               data-testid="add-der-create"
-              className="rounded bg-scada-sn px-4 py-1.5 text-xs font-medium text-scada-bg hover:bg-yellow-300 disabled:cursor-wait disabled:opacity-60"
+              className="rounded bg-scada-sn px-4 py-1.5 text-xs font-medium text-scada-bg hover:brightness-110 disabled:cursor-wait disabled:opacity-60"
             >
               {isCreating ? 'Tworzenie w modelu sieci...' : `Utwórz ${DER_KIND_LABELS[derKind]}`}
             </button>
@@ -2024,7 +2024,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               onClick={goNext}
               disabled={!canGoNext}
               data-testid="add-der-next"
-              className="rounded bg-scada-sn px-3 py-1.5 text-xs font-medium text-scada-bg hover:bg-yellow-300 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded bg-scada-sn px-3 py-1.5 text-xs font-medium text-scada-bg hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Dalej →
             </button>

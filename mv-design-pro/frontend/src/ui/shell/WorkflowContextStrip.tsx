@@ -218,7 +218,7 @@ export function WorkflowContextStrip({
     return (
       <div
         data-testid="workflow-context-strip"
-        className="flex h-[48px] shrink-0 items-center border-b border-scada-border bg-[#0c1822] px-3"
+        className="flex h-[48px] shrink-0 items-center border-b border-scada-border bg-scada-bg px-3"
       >
         {pendingKnownModel ? (
           <div
@@ -278,7 +278,7 @@ export function WorkflowContextStrip({
   return (
     <div
       data-testid="workflow-context-strip"
-      className="flex h-[48px] shrink-0 items-center border-b border-scada-border bg-[#0c1822] px-3"
+      className="flex h-[48px] shrink-0 items-center border-b border-scada-border bg-scada-bg px-3"
     >
       <div className="flex min-w-0 flex-1 items-center">
         <div
@@ -399,7 +399,7 @@ function WorkflowAction({
       <span className="text-scada-muted">{icon}</span>
       <span className="text-[10px] leading-none">{label}</span>
       {badge !== undefined && (
-        <span className="absolute -right-1 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-[#111827]">
+        <span className="absolute -right-1 top-0 grid h-4 min-w-4 place-items-center rounded-full bg-amber-500 px-1 text-[9px] font-bold text-scada-bg">
           {badge}
         </span>
       )}

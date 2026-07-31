@@ -167,6 +167,10 @@ import { SldCanvasV3, type SldElementClickMeta } from './SldCanvasV3';
 // dla toru eksportu — patrz nagłówki `export/exportPalette.ts`/`exportFrame.ts`.
 import { applyContentFitFrame } from '../export/exportFrame';
 import { toLightTechnicalExportSvg } from '../export/exportPalette';
+// KD-8 poz. 1: eksport przepisuje kolory z palety EKRANU (motyw projektanta)
+// na paletę DOKUMENTOWĄ — arkusz do dokumentacji nie zależy od motywu.
+import { SldPaletteContext, sldPaletteForTheme } from '../theme/palette';
+import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
 import {
   buildFaultFlowOverlayFromScene,
   buildFlowOverlayFromScene,
@@ -1185,6 +1189,9 @@ function SldV3ResultFilterPanel(props: {
 export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Element {
   const { width: widthOverride, height: heightOverride, lodOverride } = props;
   const containerRef = useRef<HTMLDivElement>(null);
+  // KD-8 poz. 1: paleta MOTYWU EKRANU — źródło substytucji przy eksporcie
+  // (ten sam sterownik motywu co kanwa: `useThemeModeStore`).
+  const screenPalette = sldPaletteForTheme(useThemeModeStore((state) => state.mode));
   const size = useMeasuredSize(
     containerRef,
     1024,
@@ -1722,7 +1729,14 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       const entries = computeProjectLegendEntries(scene);
       if (entries.length > 0) {
         const sheetHeight = sheetSizeFor(scene).height;
-        const legendMarkup = renderToStaticMarkup(<SheetLegend entries={entries} sheetHeight={sheetHeight} />);
+        // KD-8 poz. 1: legenda dorysowana do KLONU musi powstać w palecie
+        // EKRANU (tej samej, co reszta klonu) — dopiero pełny markup jest
+        // przepisywany na paletę dokumentową jednym przebiegiem niżej.
+        const legendMarkup = renderToStaticMarkup(
+          <SldPaletteContext.Provider value={screenPalette}>
+            <SheetLegend entries={entries} sheetHeight={sheetHeight} />
+          </SldPaletteContext.Provider>,
+        );
         const parsedLegend = new DOMParser().parseFromString(
           `<svg xmlns="http://www.w3.org/2000/svg">${legendMarkup}</svg>`,
           'image/svg+xml',
@@ -1735,7 +1749,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
       }
     }
     const serializer = new XMLSerializer();
-    const svgStr = toLightTechnicalExportSvg(serializer.serializeToString(clone));
+    const svgStr = toLightTechnicalExportSvg(serializer.serializeToString(clone), screenPalette);
     const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const filename = 'schemat_sld.svg';
@@ -1745,7 +1759,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     link.click();
     URL.revokeObjectURL(url);
     return filename;
-  }, [activeLodScene, includeLegendInExport]);
+  }, [activeLodScene, includeLegendInExport, screenPalette]);
 
   // F12-B pkt 5: lasso — nakładka screen-space AKTYWNA (pointer-events: auto)
   // WYŁĄCZNIE gdy Shift wciśnięty (albo trwa przeciągnięcie rozpoczęte pod

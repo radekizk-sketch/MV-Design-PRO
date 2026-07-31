@@ -1,9 +1,16 @@
 /**
- * SCHEMAT-10 S4 (V12K-135/136) — wariant JASNY tokenów koloru kanwy v3,
- * WYŁĄCZNIE dla toru eksportu SVG
- * (`docs/plan/HANDOFF_KONTYNUACJA_2026-07-22.md` §2 R1 — decyzja ZAMKNIĘTA:
- * kanwa na ekranie ZAWSZE SCADA-dark, jasny wariant techniczny WYŁĄCZNIE w
- * eksporcie/wydruku; `docs/sld/AUDYT_SCHEMATOW_OD_ZERA_2026-07.md` §1 D11).
+ * SCHEMAT-10 S4 (V12K-135/136) — paleta DOKUMENTOWA arkusza (jasna,
+ * drukowalna) dla toru eksportu SVG.
+ *
+ * KD-8 poz. 1 (2026-07-31) — ZMIANA ZAKRESU DECYZJI. Dawne rozstrzygnięcie
+ * („kanwa na ekranie ZAWSZE SCADA-dark, jasny wariant WYŁĄCZNIE w eksporcie",
+ * `docs/plan/HANDOFF_KONTYNUACJA_2026-07-22.md` §2 R1 +
+ * `docs/sld/AUDYT_SCHEMATOW_OD_ZERA_2026-07.md` §1 D11) zostało NADPISANE
+ * dyrektywą właściciela: ekran ma DWA motywy, więc kanwa też
+ * (`theme/palette.ts`). Rola TEGO modułu jest odtąd węższa i ostrzejsza:
+ * arkusz eksportowany wychodzi w palecie DOKUMENTOWEJ niezależnie od motywu,
+ * na którym pracował projektant — dlatego substytucja przyjmuje paletę ekranu
+ * PARAMETREM (`source`), zamiast zakładać, że ekran jest ciemny.
  *
  * SAME KLUCZE co `theme/colorTokens.ts` (dark) — wartości jasne, drukowalne
  * (tło białe, tor SN zielony/nN granatowy przyciemnione dla kontrastu na
@@ -49,11 +56,10 @@
  * jako hex czy `rgb()`.
  */
 import {
-  BASE_STROKE,
-  CANVAS_BACKGROUND,
-  HIGHLIGHT_COLOR,
+  DARK_SCADA_SLD_PALETTE,
   STATE_COLOR,
-  VOLTAGE_COLOR,
+  type HighlightKey,
+  type SldPalette,
   type VoltageClass,
 } from '../theme/colorTokens';
 import type { FaultFlowColorToken } from '../../../sld-overlay/ShortCircuitFlowOverlayAdapter';
@@ -88,7 +94,7 @@ const EXPORT_STATE_COLOR: Readonly<Record<keyof typeof STATE_COLOR, string>> = {
   nop: EXPORT_NOP_RED,
 };
 
-const EXPORT_HIGHLIGHT_COLOR: Readonly<Record<keyof typeof HIGHLIGHT_COLOR, string>> = {
+const EXPORT_HIGHLIGHT_COLOR: Readonly<Record<HighlightKey, string>> = {
   energized: '#1E7A46',
   deenergized: '#6B7684',
   standby: '#8A6D00',
@@ -131,54 +137,67 @@ export const LIGHT_TECHNICAL_V3 = {
 // pilnowane twardym fail niżej, nie cichym nadpisaniem).
 // ---------------------------------------------------------------------------
 
-function buildHexSubstitutionMap(): ReadonlyMap<string, string> {
+function buildHexSubstitutionMap(source: SldPalette): ReadonlyMap<string, string> {
   const pairs: readonly (readonly [string, string])[] = [
-    [CANVAS_BACKGROUND, EXPORT_BACKGROUND],
-    [BASE_STROKE, EXPORT_INK],
-    [VOLTAGE_COLOR.hv, EXPORT_VOLTAGE_COLOR.hv],
-    [VOLTAGE_COLOR.sn, EXPORT_VOLTAGE_COLOR.sn],
-    [VOLTAGE_COLOR.nn, EXPORT_VOLTAGE_COLOR.nn],
-    [STATE_COLOR.closed, EXPORT_STATE_COLOR.closed],
-    [STATE_COLOR.open, EXPORT_STATE_COLOR.open],
-    [STATE_COLOR.nop, EXPORT_STATE_COLOR.nop],
-    [HIGHLIGHT_COLOR.energized, EXPORT_HIGHLIGHT_COLOR.energized],
-    [HIGHLIGHT_COLOR.deenergized, EXPORT_HIGHLIGHT_COLOR.deenergized],
-    [HIGHLIGHT_COLOR.standby, EXPORT_HIGHLIGHT_COLOR.standby],
-    [HIGHLIGHT_COLOR.maintenance, EXPORT_HIGHLIGHT_COLOR.maintenance],
-    [HIGHLIGHT_COLOR.flow, EXPORT_HIGHLIGHT_COLOR.flow],
-    [HIGHLIGHT_COLOR.oltc, EXPORT_HIGHLIGHT_COLOR.oltc],
-    [HIGHLIGHT_COLOR.fault, EXPORT_HIGHLIGHT_COLOR.fault],
-    [HIGHLIGHT_COLOR.faultWarning, EXPORT_HIGHLIGHT_COLOR.faultWarning],
-    [HIGHLIGHT_COLOR.faultOk, EXPORT_HIGHLIGHT_COLOR.faultOk],
-    [HIGHLIGHT_COLOR.selection, EXPORT_HIGHLIGHT_COLOR.selection],
+    [source.canvasBackground, EXPORT_BACKGROUND],
+    [source.baseStroke, EXPORT_INK],
+    [source.voltage.hv, EXPORT_VOLTAGE_COLOR.hv],
+    [source.voltage.sn, EXPORT_VOLTAGE_COLOR.sn],
+    [source.voltage.nn, EXPORT_VOLTAGE_COLOR.nn],
+    [source.state.closed, EXPORT_STATE_COLOR.closed],
+    [source.state.open, EXPORT_STATE_COLOR.open],
+    [source.state.nop, EXPORT_STATE_COLOR.nop],
+    [source.highlight.energized, EXPORT_HIGHLIGHT_COLOR.energized],
+    [source.highlight.deenergized, EXPORT_HIGHLIGHT_COLOR.deenergized],
+    [source.highlight.standby, EXPORT_HIGHLIGHT_COLOR.standby],
+    [source.highlight.maintenance, EXPORT_HIGHLIGHT_COLOR.maintenance],
+    [source.highlight.flow, EXPORT_HIGHLIGHT_COLOR.flow],
+    [source.highlight.oltc, EXPORT_HIGHLIGHT_COLOR.oltc],
+    [source.highlight.fault, EXPORT_HIGHLIGHT_COLOR.fault],
+    [source.highlight.faultWarning, EXPORT_HIGHLIGHT_COLOR.faultWarning],
+    [source.highlight.faultOk, EXPORT_HIGHLIGHT_COLOR.faultOk],
+    [source.highlight.resultLabel, EXPORT_HIGHLIGHT_COLOR.resultLabel],
+    [source.highlight.resultStale, EXPORT_HIGHLIGHT_COLOR.resultStale],
+    [source.highlight.selection, EXPORT_HIGHLIGHT_COLOR.selection],
   ];
   const map = new Map<string, string>();
-  for (const [dark, light] of pairs) {
-    const existing = map.get(dark);
-    if (existing !== undefined && existing !== light) {
+  for (const [screen, doc] of pairs) {
+    const existing = map.get(screen);
+    if (existing !== undefined && existing !== doc) {
       throw new Error(
-        `exportPalette: kolizja substytucji — dark ${dark} mapuje na dwa różne cele jasne` +
-          ` ('${existing}' i '${light}').`,
+        `exportPalette: kolizja substytucji — kolor ekranu ${screen} mapuje na dwa różne cele` +
+          ` dokumentowe ('${existing}' i '${doc}').`,
       );
     }
-    map.set(dark, light);
+    map.set(screen, doc);
   }
   return map;
 }
 
-const HEX_SUBSTITUTION_MAP = buildHexSubstitutionMap();
-
-/** Podmiana WSZYSTKICH wystąpień hex ciemnych na jasne — dark hex istnieje w
- *  markupie v3 WYŁĄCZNIE jako wartość atrybutu SVG (`fill="#.."`/`stroke="#.."`),
- *  NIGDY jako CSS `style` (patrz nagłówek pliku) — prosta podmiana literału
- *  jest bezpieczna (długość/format hex 7-znakowy wyklucza kolizję z treścią
- *  etykiet PL czy testId). */
-export function substituteExportHexColors(svgMarkup: string): string {
-  let out = svgMarkup;
-  for (const [dark, light] of HEX_SUBSTITUTION_MAP) {
-    out = out.split(dark).join(light);
-  }
-  return out;
+/**
+ * Podmiana WSZYSTKICH wystąpień koloru EKRANU na kolor DOKUMENTU — hex istnieje
+ * w markupie v3 WYŁĄCZNIE jako wartość atrybutu SVG (`fill="#.."`/`stroke="#.."`),
+ * NIGDY jako CSS `style` (patrz nagłówek pliku).
+ *
+ * KD-8 poz. 1: źródłem jest paleta MOTYWU, na którym pracował projektant
+ * (parametr `source`, domyślnie dyspozytorska) — arkusz wychodzi w palecie
+ * dokumentowej NIEZALEŻNIE od motywu ekranu.
+ *
+ * Podmiana idzie JEDNYM przebiegiem (alternatywa regexowa), a nie serią
+ * `split/join`: cel jednej pary bywa źródłem innej (np. `#0B0F14` to tusz
+ * jasnego ekranu I tło ciemnej kanwy), więc kolejne przebiegi mogłyby
+ * podmienić wynik poprzedniego. Jeden przebieg = każdy fragment przepisany
+ * dokładnie raz.
+ */
+export function substituteExportHexColors(
+  svgMarkup: string,
+  source: SldPalette = DARK_SCADA_SLD_PALETTE,
+): string {
+  const map = buildHexSubstitutionMap(source);
+  const keys = [...map.keys()].sort((a, b) => b.length - a.length || a.localeCompare(b));
+  if (keys.length === 0) return svgMarkup;
+  const pattern = new RegExp(keys.map((k) => k.replace('#', '\\#')).join('|'), 'g');
+  return svgMarkup.replace(pattern, (hit) => map.get(hit) ?? hit);
 }
 
 /** Wstrzykuje jawny prostokąt tła (jasny) zaraz po KAŻDYM otwierającym tagu
@@ -224,8 +243,11 @@ export function rewriteFaultFlowStyleColors(svgMarkup: string): string {
  * (`SldCanvasV3Workspace.handleExportSvg`), wołana PO serializacji klonu SVG
  * (`XMLSerializer`) — render ekranowy NIETKNIĘTY (funkcja czysta na string).
  */
-export function toLightTechnicalExportSvg(rawSvgMarkup: string): string {
+export function toLightTechnicalExportSvg(
+  rawSvgMarkup: string,
+  source: SldPalette = DARK_SCADA_SLD_PALETTE,
+): string {
   const withBackground = injectExportBackground(rawSvgMarkup);
   const withFaultColors = rewriteFaultFlowStyleColors(withBackground);
-  return substituteExportHexColors(withFaultColors);
+  return substituteExportHexColors(withFaultColors, source);
 }

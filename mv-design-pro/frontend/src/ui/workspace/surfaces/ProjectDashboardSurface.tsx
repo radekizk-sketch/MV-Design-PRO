@@ -196,7 +196,7 @@ export function ProjectDashboardSurface(): JSX.Element {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="rounded bg-scada-sn px-4 py-1.5 text-sm font-medium text-scada-bg hover:bg-yellow-300"
+            className="rounded bg-scada-sn px-4 py-1.5 text-sm font-medium text-scada-bg hover:brightness-110"
             data-testid="dashboard-new-project"
           >
             Nowy projekt
@@ -249,7 +249,7 @@ export function ProjectDashboardSurface(): JSX.Element {
             <button
               type="button"
               onClick={() => setCreateOpen(true)}
-              className="mt-4 rounded bg-scada-sn px-4 py-1.5 text-sm font-medium text-scada-bg hover:bg-yellow-300"
+              className="mt-4 rounded bg-scada-sn px-4 py-1.5 text-sm font-medium text-scada-bg hover:brightness-110"
             >
               Załóż pierwszy projekt
             </button>
@@ -301,7 +301,7 @@ export function ProjectDashboardSurface(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => handleOpenProject(project)}
-                  className="flex-1 rounded bg-scada-sn px-3 py-1.5 text-sm font-medium text-scada-bg hover:bg-yellow-300"
+                  className="flex-1 rounded bg-scada-sn px-3 py-1.5 text-sm font-medium text-scada-bg hover:brightness-110"
                   data-testid={`dashboard-open-${project.id}`}
                 >
                   Otwórz

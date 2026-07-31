@@ -25,8 +25,8 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
 import { SYMBOL_DEFS } from '../symbols/defs';
-import { SYMBOL_GLYPHS, V3_STROKE_BASE } from '../symbols/glyphs';
-import { SOURCE_STATE_OVERLAY_COLOR, type DerSourceKind } from '../compose/sourceKind';
+import { SYMBOL_GLYPHS } from '../symbols/glyphs';
+import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
 import {
   isLabelReadableAtScale,
   LABEL_TYPOGRAPHY,
@@ -78,17 +78,18 @@ import {
 import {
   baseSegmentStrokeColor,
   baseSymbolStrokeColor,
-  CANVAS_BACKGROUND,
-  HIGHLIGHT_COLOR,
   resultSeverityColor,
   resultSeverityRank,
-  BASE_STROKE,
+  type SldPalette,
 } from '../theme/colorTokens';
+// KD-8 poz. 1: kanwa NIE zna już jednej palety — czyta paletę MOTYWU przez
+// kontekst (dostawca niżej w `SldCanvasV3`), a węzły sceny biorą ją hakiem.
+import { SldPaletteContext, sldPaletteForTheme, useSldPalette } from '../theme/palette';
+import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
 
 /** SCHEMAT-10 S3 (V12K-135): wartości TERAZ z `theme/colorTokens.ts` — JEDNO
  *  źródło prawdy (D8: te literały istniały zdublowane też w
  *  `compose/sourceKind.ts` — patrz komentarze tam). Zero zmiany wartości. */
-const SLD_V3_BACKGROUND = CANVAS_BACKGROUND;
 /** K12 (KARTA_K12): legenda NIE jest domyślną treścią kanwy ekranowej —
  *  referencja STABILNA (module-level, nie nowa tablica per render) przekazana
  *  jawnie do `SheetFrame`, żeby `props.legend ?? buildDefaultLegend()` NIE
@@ -97,13 +98,9 @@ const SLD_V3_BACKGROUND = CANVAS_BACKGROUND;
  *  `sheet/Frame.tsx`). Legenda „na żądanie"/eksport z legendą: patrz
  *  `SldCanvasV3Workspace.tsx` + `sheet/projectLegend.ts`. */
 const SLD_V3_CANVAS_LEGEND: readonly SheetLegendEntry[] = [];
-/** Nakładka energizacji (spec §6 P5): kolor akcentu, NIE geometria. */
-const OVERLAY_ENERGIZED_STROKE = HIGHLIGHT_COLOR.energized;
-const OVERLAY_DEENERGIZED_STROKE = HIGHLIGHT_COLOR.deenergized;
 /** F9.5 (spec §14.2): kolor nakładki przepływu mocy — ODRĘBNY od energizacji
  *  (zielony = „pod napięciem", cyjan = „kierunek/wartości przepływu"), żeby
  *  operator nie mylił dwóch wymiarów nakładki na tym samym odcinku. */
-const FLOW_OVERLAY_COLOR = HIGHLIGHT_COLOR.flow;
 /** Gabaryt grota strzałki przepływu [px świata] — mniejszy niż GRID×2, żeby
  *  grot nie dominował nad symbolami toru (spec §6 hierarchia graficzna). */
 const FLOW_ARROW_LENGTH = 12;
@@ -124,18 +121,17 @@ const FLOW_LABEL_OFFSET_RIGHT = 12;
 /** F4/SLD (V12K-092): kolor badge wynikowego OLTC — bursztyn, ODRĘBNY od
  *  energizacji (zielony) i przepływu (cyjan): trzeci wymiar nakładki
  *  (stan regulacji zaczepów po obliczeniu), operator nie myli warstw. */
-const OLTC_OVERLAY_COLOR = HIGHLIGHT_COLOR.oltc;
 /** Karta S-B (ZWARCIA-PRO pkt 7): kolory strzałek rozpływu prądu zwarciowego
  *  per token tercylowy adaptera W-C (`faultFlowColorTokenForWeight` — jedna
  *  prawda klasyfikacji; tu wyłącznie mapowanie token→barwa dla ciemnego tła
  *  SCADA). Rodzina czerwieni — semantyka zwarcia, ODRĘBNA od energizacji
  *  (zielony) i przepływu mocy (cyjan); kolizja z nakładkami LF niemożliwa
  *  (allowlisty LOAD_FLOW wyłączają flow/OLTC dla przebiegu SC). */
-const FAULT_FLOW_TOKEN_COLOR: Readonly<Record<FaultFlowColorToken, string>> = {
-  critical: HIGHLIGHT_COLOR.fault,
-  warning: HIGHLIGHT_COLOR.faultWarning,
-  ok: HIGHLIGHT_COLOR.faultOk,
-};
+function faultFlowColor(token: FaultFlowColorToken, palette: SldPalette): string {
+  if (token === 'critical') return palette.highlight.fault;
+  if (token === 'warning') return palette.highlight.faultWarning;
+  return palette.highlight.faultOk;
+}
 /** Minimalna długość biegu dla strzałki zwarciowej [px świata] — grot
  *  prymitywu (`8 + strokeWidth`, max ~13) nie może dominować nad biegiem. */
 const FAULT_ARROW_MIN_RUN = 2 * FLOW_ARROW_LENGTH;
@@ -291,9 +287,9 @@ export interface SldCanvasV3Props {
   readonly animateLodTransitions?: boolean;
 }
 
-function strokeForEnergization(energized: boolean | undefined): string | undefined {
-  if (energized === true) return OVERLAY_ENERGIZED_STROKE;
-  if (energized === false) return OVERLAY_DEENERGIZED_STROKE;
+function strokeForEnergization(energized: boolean | undefined, palette: SldPalette): string | undefined {
+  if (energized === true) return palette.highlight.energized;
+  if (energized === false) return palette.highlight.deenergized;
   return undefined;
 }
 
@@ -325,6 +321,7 @@ function SceneSymbolNode(props: {
     | undefined;
 }): JSX.Element {
   const { symbol, index, overlay, onElementClick, onElementDoubleClick, onElementContextMenu } = props;
+  const palette = useSldPalette();
   const def = SYMBOL_DEFS[symbol.symbolId];
   const Glyph = SYMBOL_GLYPHS[symbol.symbolId];
   const testId = symbolTestId(symbol, index);
@@ -346,8 +343,8 @@ function SceneSymbolNode(props: {
   // energizacja > NOP/napięcie (patrz nagłówek `theme/colorTokens.ts`).
   const sourceState = symbol.meta?.operationalState;
   const stroke = sourceState
-    ? SOURCE_STATE_OVERLAY_COLOR[sourceState]
-    : strokeForEnergization(energizedSym) ?? baseSymbolStrokeColor(symbol.symbolId, symbol.meta);
+    ? sourceStateOverlayColor(sourceState, palette)
+    : strokeForEnergization(energizedSym, palette) ?? baseSymbolStrokeColor(symbol.symbolId, symbol.meta, palette);
   const clickMeta: SldElementClickMeta = { ownerRef: symbol.meta?.ownerRef, elementKind: symbol.meta?.elementKind, derKind: symbol.meta?.derKind };
   return (
     <g
@@ -414,6 +411,8 @@ function SceneSegmentNode(props: {
     | undefined;
 }): JSX.Element | null {
   const { segment, index, overlay, sceneCrossings, onElementClick, onElementContextMenu } = props;
+  // Hak PRZED wyjściem warunkowym (reguła haków Reacta) — paleta motywu.
+  const palette = useSldPalette();
   if (segment.points.length < 2) return null;
   const testId = segmentTestId(segment, index);
   const kind = segment.meta?.kind ?? 'sn';
@@ -442,7 +441,7 @@ function SceneSegmentNode(props: {
   // SCHEMAT-10 S3 (V12K-135, D8): brak nakładki ⇒ kolor BAZOWY z tabeli §3
   // (napięcie: 110 biały/SN zielony/nN niebieski — `baseSegmentStrokeColor`),
   // NIE uniformalny `V3_STROKE_BASE` jak przed S3 (patrz `theme/colorTokens.ts`).
-  const stroke = strokeForEnergization(energizedSeg) ?? baseSegmentStrokeColor(segment.meta);
+  const stroke = strokeForEnergization(energizedSeg, palette) ?? baseSegmentStrokeColor(segment.meta, palette);
   // Program P-A (spec §14.2): atrybuty solverowe na odcinku — CZYSTY ODCZYT
   // nakładki (zero fizyki w kanwie), kanał diagnostyczny/E2E jak
   // `data-owner-ref`. Brak wpisu nakładki = brak atrybutu (uczciwe „nie
@@ -806,6 +805,7 @@ export function computeFlowOverlayPlacements(
 
 function SceneFlowPlacementNode(props: { readonly placement: FlowPlacement }): JSX.Element {
   const { placement } = props;
+  const palette = useSldPalette();
   const typo = LABEL_TYPOGRAPHY.t4;
   return (
     <g
@@ -817,7 +817,7 @@ function SceneFlowPlacementNode(props: { readonly placement: FlowPlacement }): J
       <polygon
         data-testid={`sld-v3-flow-arrow-${placement.segmentIndex}`}
         points={placement.arrowPoints}
-        fill={FLOW_OVERLAY_COLOR}
+        fill={palette.highlight.flow}
       />
       {placement.label ? (
         <text
@@ -826,7 +826,7 @@ function SceneFlowPlacementNode(props: { readonly placement: FlowPlacement }): J
           y={placement.labelY}
           textAnchor="middle"
           dominantBaseline="middle"
-          fill={FLOW_OVERLAY_COLOR}
+          fill={palette.highlight.flow}
           fontFamily="sans-serif"
           fontSize={typo.fontSize}
           fontWeight={typo.fontWeight}
@@ -916,13 +916,14 @@ export function computeFaultFlowPlacements(
 
 function SceneFaultFlowNode(props: { readonly placement: FaultFlowPlacement }): JSX.Element {
   const { placement } = props;
+  const palette = useSldPalette();
   return (
     <g
       data-testid={`sld-v3-fault-flow-${placement.segmentIndex}`}
       data-fault-owner-ref={placement.ownerRef}
       data-fault-forward={placement.forward ? 'true' : 'false'}
       data-fault-color-token={placement.colorToken}
-      style={{ color: FAULT_FLOW_TOKEN_COLOR[placement.colorToken] }}
+      style={{ color: faultFlowColor(placement.colorToken, palette) }}
     >
       <FaultContributionArrow
         fromXy={placement.fromXy}
@@ -958,7 +959,6 @@ function SceneFaultFlowNode(props: { readonly placement: FaultFlowPlacement }): 
  *  rozpływu zwarciowego wyżej (`FAULT_FLOW_TOKEN_COLOR.critical`): adapter
  *  W-C oznacza punkt zwarcia zawsze jako `visual_state: 'CRITICAL'`, więc
  *  znacznik nie ma własnej skali tercylowej — jeden token, jeden kolor. */
-const FAULT_POINT_MARKER_COLOR = FAULT_FLOW_TOKEN_COLOR.critical;
 /** Promień kropki statycznej [px świata] — rząd wielkości grota strzałki
  *  zwarciowej (`FLOW_ARROW_LENGTH=12`), żeby znacznik nie dominował nad
  *  symbolami sceny. */
@@ -1028,6 +1028,8 @@ export function computeFaultPointMarkerPlacement(
  */
 function SceneFaultPointMarkerNode(props: { readonly placement: FaultPointMarkerPlacement }): JSX.Element {
   const { placement } = props;
+  const palette = useSldPalette();
+  const faultPointColor = palette.highlight.fault;
   return (
     <g data-testid="sld-v3-fault-point-marker" data-fault-point-owner-ref={placement.ownerRef}>
       <circle
@@ -1035,7 +1037,7 @@ function SceneFaultPointMarkerNode(props: { readonly placement: FaultPointMarker
         cx={placement.x}
         cy={placement.y}
         r={FAULT_POINT_MARKER_DOT_RADIUS}
-        fill={FAULT_POINT_MARKER_COLOR}
+        fill={faultPointColor}
       />
       <circle
         data-testid="sld-v3-fault-point-marker-pulse"
@@ -1043,7 +1045,7 @@ function SceneFaultPointMarkerNode(props: { readonly placement: FaultPointMarker
         cy={placement.y}
         r={FAULT_POINT_MARKER_DOT_RADIUS}
         fill="none"
-        stroke={FAULT_POINT_MARKER_COLOR}
+        stroke={faultPointColor}
         strokeWidth={2}
       >
         <animate
@@ -1126,6 +1128,7 @@ export function computeOltcBadgePlacements(
 
 function SceneOltcBadgeNode(props: { readonly placement: OltcBadgePlacement; readonly index: number }): JSX.Element {
   const { placement, index } = props;
+  const palette = useSldPalette();
   const typo = LABEL_TYPOGRAPHY.t4;
   return (
     <g data-testid={`sld-v3-oltc-badge-${index}`} data-oltc-owner-ref={placement.ownerRef}>
@@ -1135,8 +1138,8 @@ function SceneOltcBadgeNode(props: { readonly placement: OltcBadgePlacement; rea
         width={placement.width}
         height={placement.height}
         rx={2}
-        fill={SLD_V3_BACKGROUND}
-        stroke={OLTC_OVERLAY_COLOR}
+        fill={palette.canvasBackground}
+        stroke={palette.highlight.oltc}
         strokeWidth={1}
       />
       <text
@@ -1145,7 +1148,7 @@ function SceneOltcBadgeNode(props: { readonly placement: OltcBadgePlacement; rea
         y={placement.y + placement.height / 2}
         textAnchor="middle"
         dominantBaseline="middle"
-        fill={OLTC_OVERLAY_COLOR}
+        fill={palette.highlight.oltc}
         fontFamily="sans-serif"
         fontSize={typo.fontSize}
         fontWeight={typo.fontWeight}
@@ -1170,7 +1173,6 @@ function SceneOltcBadgeNode(props: { readonly placement: OltcBadgePlacement; rea
 // etykiet wyników (anty-dryf, deterministycznie po ownerRef posortowanym).
 // ---------------------------------------------------------------------------
 
-const RESULT_LABEL_COLOR = HIGHLIGHT_COLOR.resultLabel;
 /** Odstęp etykiety wyniku od kotwicy [px świata]. */
 const RESULT_LABEL_GAP = GRID / 2;
 const RESULT_LABEL_MARGIN = 2;
@@ -1642,7 +1644,6 @@ export function computeResultLabelPlacements(
   return layoutResultLabels(scene, resultLabelsByOwnerRef, extraObstacles, lod).placements;
 }
 
-const RESULT_STALE_COLOR = HIGHLIGHT_COLOR.resultStale;
 
 /** R3 (wym. 9) — znacznik TEKSTOWY przekroczenia (kolor DODATKIEM, nie jedynym
  *  nośnikiem): „⚠” obok wartości, gdy severity to przekroczenie. */
@@ -1655,14 +1656,15 @@ function SceneResultLabelNode(props: {
   readonly onActivate: ((ownerRef: string, kind: ResultLabelKind) => void) | undefined;
 }): JSX.Element {
   const { placement, index, stale, onActivate } = props;
+  const palette = useSldPalette();
   const typo = LABEL_TYPOGRAPHY.t4;
   const lineH = labelLineHeight('t4');
   // R2 (wym. 8): wyniki nieaktualne ⇒ etykieta wyszarzona i oznaczona, ale
   // NIE ukryta (inżynier ma widzieć, że wartości są stare). Staleness ma
   // PIERWSZEŃSTWO nad progiem severity (wym. 9): wartości stare nie mogą
   // „krzyczeć” kolorem przekroczenia z nieaktualnego biegu.
-  const severityColor = stale ? null : resultSeverityColor(placement.severity);
-  const color = stale ? RESULT_STALE_COLOR : severityColor ?? RESULT_LABEL_COLOR;
+  const severityColor = stale ? null : resultSeverityColor(placement.severity, palette);
+  const color = stale ? palette.highlight.resultStale : severityColor ?? palette.highlight.resultLabel;
   const exceeded = !stale && severityColor != null;
   const interactive = Boolean(onActivate);
   const activate = onActivate ? () => onActivate(placement.ownerRef, placement.kind) : undefined;
@@ -1705,7 +1707,7 @@ function SceneResultLabelNode(props: {
         width={placement.width}
         height={placement.height}
         rx={2}
-        fill={SLD_V3_BACKGROUND}
+        fill={palette.canvasBackground}
         stroke={color}
         strokeWidth={1}
         strokeDasharray={stale ? '3 2' : undefined}
@@ -1767,12 +1769,13 @@ function SceneResultAggregateNode(props: {
   readonly provenanceText: string | undefined;
 }): JSX.Element {
   const { aggregate, index, stale, expanded, onToggle, onActivate, provenanceText } = props;
+  const palette = useSldPalette();
   const typo = LABEL_TYPOGRAPHY.t4;
   const lineH = labelLineHeight('t4');
   // R3 (wym. 9): marker skupiska w kolorze NAJGROŹNIEJSZEGO severity członka
   // (staleness ma pierwszeństwo). Kolor DODATKIEM (znacznik „⚠” gdy przekroczenie).
-  const aggSeverityColor = stale ? null : resultSeverityColor(aggregate.severity);
-  const color = stale ? RESULT_STALE_COLOR : aggSeverityColor ?? RESULT_LABEL_COLOR;
+  const aggSeverityColor = stale ? null : resultSeverityColor(aggregate.severity, palette);
+  const color = stale ? palette.highlight.resultStale : aggSeverityColor ?? palette.highlight.resultLabel;
   const aggExceeded = !stale && aggSeverityColor != null;
   const popoverRowH = lineH + 2;
   const memberText = (m: ResultLabelAggregateMember): string =>
@@ -1819,7 +1822,7 @@ function SceneResultAggregateNode(props: {
           width={aggregate.width}
           height={aggregate.height}
           rx={2}
-          fill={SLD_V3_BACKGROUND}
+          fill={palette.canvasBackground}
           stroke={color}
           strokeWidth={1}
           strokeDasharray={stale ? '3 2' : undefined}
@@ -1845,7 +1848,7 @@ function SceneResultAggregateNode(props: {
             width={popoverW}
             height={popoverH}
             rx={2}
-            fill={SLD_V3_BACKGROUND}
+            fill={palette.canvasBackground}
             stroke={color}
             strokeWidth={1}
           />
@@ -1857,7 +1860,7 @@ function SceneResultAggregateNode(props: {
               y={popoverY + GRID / 4 + popoverRowH * 0.5}
               textAnchor="start"
               dominantBaseline="middle"
-              fill={RESULT_LABEL_COLOR}
+              fill={palette.highlight.resultLabel}
               fontFamily="sans-serif"
               fontSize={typo.fontSize}
               fontWeight={typo.fontWeight}
@@ -1867,8 +1870,8 @@ function SceneResultAggregateNode(props: {
           )}
           {aggregate.members.map((m, i) => {
             const rowY = popoverY + popoverRowH * (headerRows + i);
-            const memberSeverityColor = stale ? null : resultSeverityColor(m.severity);
-            const rowColor = stale ? RESULT_STALE_COLOR : memberSeverityColor ?? RESULT_LABEL_COLOR;
+            const memberSeverityColor = stale ? null : resultSeverityColor(m.severity, palette);
+            const rowColor = stale ? palette.highlight.resultStale : memberSeverityColor ?? palette.highlight.resultLabel;
             const rowExceeded = !stale && memberSeverityColor != null;
             const activateMember = onActivate ? () => onActivate(m.ownerRef, m.kind) : undefined;
             return (
@@ -1930,6 +1933,7 @@ function SceneResultAggregateNode(props: {
  *  warstwa liczb ma co pokazać. Zero fizyki, zero zgadywania — sam sygnał. */
 function ResultStaleBannerNode(props: { readonly x: number; readonly y: number }): JSX.Element {
   const { x, y } = props;
+  const palette = useSldPalette();
   const typo = LABEL_TYPOGRAPHY.t4;
   const lineH = labelLineHeight('t4');
   const text = '⚠ wyniki nieaktualne';
@@ -1937,13 +1941,13 @@ function ResultStaleBannerNode(props: { readonly x: number; readonly y: number }
   const height = lineH + GRID / 2;
   return (
     <g data-testid="sld-v3-result-stale-badge">
-      <rect x={x} y={y} width={width} height={height} rx={2} fill={SLD_V3_BACKGROUND} stroke={RESULT_STALE_COLOR} strokeWidth={1} strokeDasharray="3 2" />
+      <rect x={x} y={y} width={width} height={height} rx={2} fill={palette.canvasBackground} stroke={palette.highlight.resultStale} strokeWidth={1} strokeDasharray="3 2" />
       <text
         x={x + width / 2}
         y={y + GRID / 4 + lineH * 0.5}
         textAnchor="middle"
         dominantBaseline="middle"
-        fill={RESULT_STALE_COLOR}
+        fill={palette.highlight.resultStale}
         fontFamily="sans-serif"
         fontSize={typo.fontSize}
         fontWeight={typo.fontWeight}
@@ -1956,6 +1960,7 @@ function ResultStaleBannerNode(props: { readonly x: number; readonly y: number }
 
 function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: number }): JSX.Element {
   const { label, index } = props;
+  const palette = useSldPalette();
   const typo = LABEL_TYPOGRAPHY[label.labelClass];
   const cx = label.rect.x + label.rect.width / 2;
   const cy = label.rect.y + label.rect.height / 2;
@@ -1972,7 +1977,7 @@ function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: num
         <path
           d={pointsToPath([label.leader.from, label.leader.to])}
           fill="none"
-          stroke={V3_STROKE_BASE}
+          stroke={palette.baseStroke}
           strokeWidth={SEGMENT_STROKE_WIDTH.leader}
           strokeDasharray="2 2"
         />
@@ -1983,7 +1988,7 @@ function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: num
         textAnchor="middle"
         dominantBaseline="middle"
         transform={textTransform}
-        fill={V3_STROKE_BASE}
+        fill={palette.baseStroke}
         fontFamily="sans-serif"
         fontSize={typo.fontSize}
         fontWeight={typo.fontWeight}
@@ -2118,6 +2123,14 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true, fitSignal,
     fitTarget = 'tresc', centerRequest,
   } = props;
+
+  // KD-8 poz. 1: JEDEN sterownik motywu (`useThemeModeStore`) wybiera paletę
+  // rysunku; węzły sceny czytają ją kontekstem (`useSldPalette`), więc kolor
+  // nie jest już stałą modułu. Scena (geometria) pozostaje nietknięta —
+  // paleta NIE wchodzi do `buildSceneV3`, dlatego hash geometrii jest
+  // niezależny od motywu (dowód: `theme/__tests__/palette.test.ts`).
+  const themeMode = useThemeModeStore((state) => state.mode);
+  const palette = useMemo(() => sldPaletteForTheme(themeMode), [themeMode]);
 
   // F8a — ROZSTRZYGNIĘCIE k4/k3 (REBUILD_PLAN_V3 §F8, SLD_V3_ACCEPTANCE.md §3):
   // scena liczona dla WSZYSTKICH trzech LOD naraz (nie tylko `effectiveLod`) —
@@ -2490,10 +2503,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   );
 
   return (
+    <SldPaletteContext.Provider value={palette}>
     <svg
       ref={svgRef}
       data-testid="sld-canvas-v3"
       data-scene-lod={effectiveLod}
+      data-theme-mode={themeMode}
       width={width}
       height={height}
       viewBox={viewBox}
@@ -2503,7 +2518,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       // rysunku niebieskie prostokąty podświetlenia — widoczne na zrzucie audytu
       // V12K-234 na całej tabliczce stacji („Stacja T8 / S02 / 630 kVA / …").
       // `touchAction: 'none'` załatwia to samo dla dotyku, ale nie dla myszy.
-      style={{ background: SLD_V3_BACKGROUND, touchAction: 'none', userSelect: 'none' }}
+      style={{ background: palette.canvasBackground, touchAction: 'none', userSelect: 'none' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -2541,7 +2556,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             width={scene.meta.gpzZone.width}
             height={scene.meta.gpzZone.height}
             fill="none"
-            stroke={V3_STROKE_BASE}
+            stroke={palette.baseStroke}
             strokeWidth={1.2}
             strokeDasharray="12 6"
             opacity={0.7}
@@ -2743,7 +2758,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           // Kolor konturu: gdy znany status zbieżności — sygnalizuj (zbieżny/nie);
           // gdy sam moduł+przebieg (workspace) — neutralny kolor warstwy przepływu.
           const strokeColor =
-            prov.converged === false ? HIGHLIGHT_COLOR.fault : FLOW_OVERLAY_COLOR;
+            prov.converged === false ? palette.highlight.fault : palette.highlight.flow;
           return (
             <g
               data-testid="sld-v3-overlay-provenance"
@@ -2758,7 +2773,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 y={GRID}
                 width={boxW}
                 height={boxH}
-                fill={SLD_V3_BACKGROUND}
+                fill={palette.canvasBackground}
                 stroke={strokeColor}
                 strokeWidth={1}
                 rx={2}
@@ -2769,7 +2784,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                   data-testid={`sld-v3-overlay-provenance-row-${i}`}
                   x={badgeX + GRID}
                   y={GRID + 0.4 * GRID + rowH * (i + 0.5)}
-                  fill={i === 0 && caseLine ? strokeColor : RESULT_LABEL_COLOR}
+                  fill={i === 0 && caseLine ? strokeColor : palette.highlight.resultLabel}
                   fontFamily="sans-serif"
                   fontSize={LABEL_TYPOGRAPHY.t3.fontSize}
                   dominantBaseline="middle"
@@ -2811,12 +2826,13 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           fontFamily="sans-serif"
           fontSize={12 / camera.transform.scale}
           fontWeight={600}
-          fill={BASE_STROKE}
+          fill={palette.baseStroke}
           opacity={0.75}
         >
           {`Ukryto ${hiddenUnreadableLabels} ${hiddenUnreadableLabels === 1 ? 'opis' : 'opisów'} — przybliż, aby zobaczyć`}
         </text>
       )}
     </svg>
+    </SldPaletteContext.Provider>
   );
 }
