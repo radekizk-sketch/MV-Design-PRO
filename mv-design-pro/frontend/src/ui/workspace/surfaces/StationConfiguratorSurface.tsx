@@ -10,6 +10,7 @@
  * `useUpdateStationAudit2Config` (React Query, optimistic updates).
  */
 
+import { atrybutRoliAkcji, klasaAkcji } from '../../shared/akcjeStanow';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAppStateStore } from '../../app-state';
 
@@ -1361,13 +1362,19 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
             className="flex flex-col items-stretch gap-2 sm:items-end"
             data-testid="station-network-actions"
           >
+            {/* KD-8 poz. 4: JEDEN system stanów akcji panelu (`shared/akcjeStanow.ts`).
+                Dokładnie JEDNA akcja pierwszorzędna — kontynuacja ciągu SN, bo
+                to nią prowadzi tor budowy sieci; pozostałe są drugorzędne i
+                NIE niosą własnych barw (rodzaj układu rozróżnia etykieta, nie
+                kolor obrysu). Stan nieaktywny ma zawsze tę samą klasę. */}
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={handleContinueTrunk}
                 disabled={!continuationContext}
                 title={continuationBlockReason ?? 'Kontynuuj ciąg główny z wolnego portu SN stacji.'}
-                className="rounded border border-scada-sn bg-scada-sn px-3 py-1.5 text-xs font-bold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:brightness-100"
+                className={klasaAkcji('pierwszorzedna', !continuationContext)}
+                {...atrybutRoliAkcji('pierwszorzedna')}
                 data-testid="station-continue-trunk"
               >
                 Kontynuuj ciąg SN ze stacji
@@ -1377,7 +1384,8 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
                 onClick={handleStartBranch}
                 disabled={!branchStartContext}
                 title={branchBlockReason ?? 'Rozpocznij odgałęzienie z wolnego pola SN stacji.'}
-                className="rounded border border-sygnal-ok px-3 py-1.5 text-xs font-semibold text-sygnal-ok-tusz transition hover:bg-sygnal-ok-tlo disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:bg-transparent"
+                className={klasaAkcji('drugorzedna', !branchStartContext)}
+                {...atrybutRoliAkcji('drugorzedna')}
                 data-testid="station-start-branch"
               >
                 Rozpocznij odgałęzienie
@@ -1385,7 +1393,9 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
               <button
                 type="button"
                 onClick={() => handleAddDer('PV')}
-                className="rounded border border-sygnal-uwaga px-3 py-1.5 text-xs font-semibold text-sygnal-uwaga-tusz transition hover:bg-sygnal-uwaga-tlo"
+                title="Dodaj układ fotowoltaiczny do tej stacji."
+                className={klasaAkcji('drugorzedna')}
+                {...atrybutRoliAkcji('drugorzedna')}
                 data-testid="station-add-pv-shortcut"
               >
                 Dodaj PV
@@ -1393,7 +1403,9 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
               <button
                 type="button"
                 onClick={() => handleAddDer('BESS')}
-                className="rounded border border-sygnal-info px-3 py-1.5 text-xs font-semibold text-sygnal-info-tusz transition hover:bg-sygnal-info-tlo"
+                title="Dodaj magazyn energii do tej stacji."
+                className={klasaAkcji('drugorzedna')}
+                {...atrybutRoliAkcji('drugorzedna')}
                 data-testid="station-add-bess-shortcut"
               >
                 Dodaj BESS
@@ -1401,7 +1413,9 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
               <button
                 type="button"
                 onClick={() => handleAddDer('FW')}
-                className="rounded border border-sygnal-ok px-3 py-1.5 text-xs font-semibold text-sygnal-ok-tusz transition hover:bg-sygnal-ok-tlo"
+                title="Dodaj farmę wiatrową do tej stacji."
+                className={klasaAkcji('drugorzedna')}
+                {...atrybutRoliAkcji('drugorzedna')}
                 data-testid="station-add-fw-shortcut"
               >
                 Dodaj FW
