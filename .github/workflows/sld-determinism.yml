@@ -103,6 +103,13 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/gpzCollapsedExpand.test.tsx --reporter=verbose
 
+      # KD-7: kontrakt kadru — cała rysowana treść (symbole, tory i PODPISY)
+      # mieści się w kadrze z pełnym marginesem fitu, a cel fitu żyje w świecie
+      # arkusza (scena + margines ramki).
+      - name: Run SLD v3 content frame contract tests (KD-7)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/kadrTresci.contract.test.tsx --reporter=verbose
+
       - name: Run SLD v3 render-odbiór acceptance (F7/F8b-2)
         working-directory: mv-design-pro/frontend
         run: npm run accept:sld-v3
