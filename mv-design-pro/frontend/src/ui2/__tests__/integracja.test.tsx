@@ -103,6 +103,12 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
             json: async () => ({ projects: [], total: 0 }),
           } as unknown as Response;
         }
+        if (url.includes('/enm/topology/summary')) {
+          // KD-1: drzewo topologii dostaje dane Z SERWERA (`useZasilanieDrzewaTopologii`)
+          // — scena zasila TEN endpoint zamiast wstrzykiwac store'a bezposrednio,
+          // wiec test ćwiczy realna sciezke danych powloki.
+          return { ok: true, status: 200, json: async () => summaryZGpz() } as unknown as Response;
+        }
         if (url.includes('/api/study-cases/project/') && url.endsWith('/active')) {
           return { ok: true, status: 204, json: async () => null } as unknown as Response;
         }
@@ -122,6 +128,10 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
       useAppStateStore.setState({
         activeProjectId: 'projekt-testowy-id',
         activeProjectName: 'projekt-testowy',
+        // KD-1: topologia jest danymi PRZYPADKU — bez aktywnego przypadku
+        // powloka uczciwie nie ma czego pokazac w drzewie.
+        activeCaseId: 'przypadek-testowy-id',
+        activeCaseName: 'Wariant bazowy',
       });
     });
   });

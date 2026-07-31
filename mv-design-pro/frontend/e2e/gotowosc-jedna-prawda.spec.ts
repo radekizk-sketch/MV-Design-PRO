@@ -44,7 +44,18 @@ type DomainOpResponse = {
 type ReadinessResponse = {
   ready: boolean;
   by_severity?: Record<string, number>;
-  issues?: Array<{ code: string; element_ref?: string | null; severity?: string }>;
+  issues?: Array<{
+    code: string;
+    element_ref?: string | null;
+    element_refs?: string[];
+    severity?: string;
+  }>;
+};
+
+type TopologySummary = {
+  spine?: Array<{ bus_ref: string }>;
+  lateral_roots?: string[];
+  adjacency?: Array<{ bus_ref: string; neighbor_ref: string }>;
 };
 
 function buildCatalogBinding(catalogNamespace: string, catalogItemId: string) {
@@ -150,7 +161,11 @@ async function otworzPowlokeZKontekstem(
   }, seed);
 
   await page.goto('/', { waitUntil: 'commit' });
-  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+  // 90 s: PIERWSZE wejscie w biegu uruchamia zimny transform vite dev calego
+  // grafu modulow (zmierzone na tym kontenerze: >30 s, kolejne wejscia ~2 s).
+  // To budzet rozruchu narzedzia, nie asercja produktu — asercje maja wlasne,
+  // krotkie limity, wiec realne zwisy UI nadal sa lapane.
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
 }
 
 async function przeladujPowloke(page: Page): Promise<void> {
@@ -181,6 +196,34 @@ function blokadySerwera(gotowosc: ReadinessResponse): number {
   return gotowosc.by_severity?.BLOCKER ?? 0;
 }
 
+/** Szyny widoczne w drzewie topologii (te same, na których siadają liczniki). */
+async function szynyDrzewa(request: APIRequestContext, caseId: string): Promise<Set<string>> {
+  const response = await request.get(`${BACKEND_BASE}/api/cases/${caseId}/enm/topology/summary`);
+  expect(response.ok()).toBeTruthy();
+  const summary = (await response.json()) as TopologySummary;
+  const refy = new Set<string>();
+  for (const wezel of summary.spine ?? []) refy.add(wezel.bus_ref);
+  for (const ref of summary.lateral_roots ?? []) refy.add(ref);
+  for (const wpis of summary.adjacency ?? []) {
+    refy.add(wpis.bus_ref);
+    refy.add(wpis.neighbor_ref);
+  }
+  return refy;
+}
+
+/**
+ * Rozwija grupy drzewa topologii („Magistrala (od GPZ)", „Węzły izolowane") —
+ * liczniki siedza na WEZLACH, wiec bez rozwiniecia nie sa wyrenderowane.
+ * Klik w chevron = ta sama kontrolka, ktorej uzywa inzynier (klik natywny).
+ */
+async function rozwinGrupyDrzewa(page: Page): Promise<void> {
+  for (const grupa of ['magistrala', 'izolowane']) {
+    const chevron = page.getByTestId(`mvd-tree-chevron-${grupa}`);
+    if ((await chevron.count()) === 0) continue;
+    if ((await chevron.textContent())?.includes('▸')) await chevron.click();
+  }
+}
+
 test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gasną razem po naprawie', async ({
   page,
   request,
@@ -190,64 +233,93 @@ test('drzewo topologii i panel gotowości pokazują TĘ SAMĄ blokadę — i gas
   const seed = await createProjectAndCase(request);
   await otworzPowlokeZKontekstem(page, seed);
 
-  // --- Sieć Z BLOKADĄ: odcinki bez przypisanego typu katalogowego ------------
+  // --- Sieć gotowa: GPZ + dwa odcinki katalogowe ----------------------------
   await executeDomainOp(request, seed.caseId, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
     rx_ratio: 0.1,
     catalog_binding: buildCatalogBinding('ZRODLO_SN', SOURCE_ID),
   });
-  const op = await executeDomainOp(request, seed.caseId, 'continue_trunk_segment_sn', {
-    segment: { rodzaj: 'KABEL', dlugosc_m: 300, name: 'Odcinek 1' },
-  });
-  const segmenty = op.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
-  expect(segmenty.length).toBeGreaterThan(0);
+  let op: DomainOpResponse | null = null;
+  for (const [idx, dlugosc] of [300, 250].entries()) {
+    op = await executeDomainOp(request, seed.caseId, 'continue_trunk_segment_sn', {
+      segment: {
+        rodzaj: 'KABEL',
+        dlugosc_m: dlugosc,
+        name: `Odcinek ${idx + 1}`,
+        catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
+      },
+    });
+  }
+  const segmenty = op?.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
+  expect(segmenty.length).toBeGreaterThan(1);
 
-  // ŹRÓDŁO 1 (serwer): gotowość ma blokady, w tym blokady konkretnych elementów.
+  // --- BLOKADA GOTOWOŚCI: łącznik normalnie otwarty odcina ciąg od źródła ---
+  // (realna sytuacja projektowa: NOP na pierwszym odcinku ⇒ wyspa bez zasilania,
+  // walidator zwraca blokadę E003 wskazującą SZYNY — czyli węzły drzewa.)
+  await executeDomainOp(request, seed.caseId, 'set_normal_open_point', {
+    switch_ref: segmenty[0],
+  });
+
+  // ŹRÓDŁO 1 (serwer): blokada istnieje i wskazuje szyny obecne w drzewie.
   const gotowoscPrzed = await pobierzGotowosc(request, seed.caseId);
   expect(gotowoscPrzed.ready).toBe(false);
   expect(blokadySerwera(gotowoscPrzed)).toBeGreaterThan(0);
-  const blokadyZElementem = (gotowoscPrzed.issues ?? []).filter(
-    (i) => i.severity === 'BLOCKER' && i.element_ref,
-  );
-  expect(blokadyZElementem.length).toBeGreaterThan(0);
+
+  const szyny = await szynyDrzewa(request, seed.caseId);
+  const blokadyNaSzynach = new Set<string>();
+  for (const issue of gotowoscPrzed.issues ?? []) {
+    if (issue.severity !== 'BLOCKER') continue;
+    for (const ref of [issue.element_ref, ...(issue.element_refs ?? [])]) {
+      if (ref && szyny.has(ref)) blokadyNaSzynach.add(ref);
+    }
+  }
+  expect(blokadyNaSzynach.size).toBeGreaterThan(0);
 
   await przeladujPowloke(page);
 
-  // ŹRÓDŁO 2 (drzewo topologii przestrzeni „Model") — licznik NIEZEROWY.
+  // ŹRÓDŁO 2 (drzewo topologii przestrzeni „Model") — licznik NIEZEROWY na tej
+  // samej szynie, o której mówi serwer. Przed KD-1 badge NIE POJAWIAL sie nigdy.
   await page.getByRole('button', { name: /^Model sieci \d$/ }).click();
-  const badge = page.locator('[data-testid^="mvd-tree-badge-"]');
-  await expect(badge.first()).toBeVisible({ timeout: 20000 });
-  const liczbaWDrzewie = await badge.count();
-  expect(liczbaWDrzewie).toBeGreaterThan(0);
+  await rozwinGrupyDrzewa(page);
+  const pierwszaSzyna = [...blokadyNaSzynach].sort()[0];
+  const badge = page.getByTestId(`mvd-tree-badge-${pierwszaSzyna}`);
+  await expect(badge).toBeVisible({ timeout: 20000 });
+  // Jeden problem = JEDEN wpis (regresja podwojnego liczenia element_ref/element_refs).
+  await expect(badge.locator('.mvd-tree-badge-blokady')).toHaveText('1');
 
-  // ŹRÓDŁO 3 (panel gotowości) — ta sama liczba blokad co u serwera.
-  await page.getByRole('button', { name: /^Gotowość \d$/ }).click();
+  // ŹRÓDŁO 3 (chrom powłoki) — ta sama liczba blokad co u serwera.
   await expect(page.getByTestId('mvd-casebar-readiness')).toContainText(
     String(blokadySerwera(gotowoscPrzed)),
   );
+
+  // Zrzut do oceny właściciela: DRZEWO topologii z licznikiem blokad na węźle
+  // (przed KD-1 ten znacznik nie pojawiał się nigdy — liczniki były zerowe).
   await zrzutObuMotywow(page, 'gotowosc-drzewo');
 
-  // --- NAPRAWA blokady: przypisanie typu katalogowego odcinkom ---------------
-  for (const issue of blokadyZElementem) {
-    await executeDomainOp(request, seed.caseId, 'assign_catalog_to_element', {
-      element_ref: issue.element_ref,
-      catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
-    });
-  }
+  // ŹRÓDŁO 4 (panel gotowości) — liczy DOKŁADNIE tyle blokad co serwer.
+  await page.getByRole('button', { name: /^Gotowość \d$/ }).click();
+  await expect(page.getByTestId('mvd-gotowosc-panel')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId('mvd-gotowosc-blokady-calkowite')).toHaveText(
+    String(blokadySerwera(gotowoscPrzed)),
+  );
+
+  // --- NAPRAWA blokady: zamkniecie lacznika przywraca zasilanie ciagu -------
+  await executeDomainOp(request, seed.caseId, 'update_element_parameters', {
+    element_ref: segmenty[0],
+    parameters: { status: 'closed' },
+  });
 
   const gotowoscPo = await pobierzGotowosc(request, seed.caseId);
-  const blokadyPo = blokadySerwera(gotowoscPo);
-  expect(blokadyPo).toBeLessThan(blokadySerwera(gotowoscPrzed));
+  expect(blokadySerwera(gotowoscPo)).toBe(0);
 
   await przeladujPowloke(page);
   await page.getByRole('button', { name: /^Model sieci \d$/ }).click();
+  await rozwinGrupyDrzewa(page);
 
-  // Obie prawdy idą razem: mniej blokad u serwera ⇒ mniej znaczników w drzewie.
-  await expect
-    .poll(async () => badge.count(), { timeout: 20000 })
-    .toBeLessThan(liczbaWDrzewie);
-  await expect(page.getByTestId('mvd-casebar-readiness')).toContainText(
-    blokadyPo > 0 ? String(blokadyPo) : 'brak uwag',
-  );
+  // Obie prawdy gasna RAZEM: licznik znika z drzewa, chrom przestaje liczyc blokady.
+  await expect(page.getByTestId(`mvd-tree-badge-${pierwszaSzyna}`)).toHaveCount(0, {
+    timeout: 20000,
+  });
+  await expect(page.getByTestId('mvd-casebar-readiness')).not.toContainText('blokad');
 });
