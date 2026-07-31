@@ -14,7 +14,7 @@
  * Wzorzec seedu i wejścia do kreatora: e2e/kreator-oze-max.spec.ts (K9-A) oraz
  * e2e/ux-feedback-loop.spec.ts (`__mvdpOpenOperationForm`).
  */
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { test, expect, type APIRequestContext, type Page, type Response } from '@playwright/test';
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
@@ -22,6 +22,37 @@ const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
 const CATALOG_VERSION = '2024.1';
 /** Aparat inny niż domyślny pierwszy z listy — dowód realnej zmiany z pickera. */
 const APARAT_ZMIENIONY = 'sw-cb-abb-vd4-24kv-1250a';
+
+/**
+ * Predykat odpowiedzi bilansu wtórnego CT/VT: łapie TO żądanie, które niesie
+ * KOMPLET obwodu (przekrój + moc aparatów), a nie pierwsze z brzegu. Każde pole
+ * formularza wysyła własne żądanie, więc bez tego filtra test czytałby wynik
+ * policzony dla obwodu bez przekroju — a ten jest (poprawnie) niedostępny:
+ * backend zwraca wtedy kod gotowości, nie zmyśloną moc.
+ */
+function bilansZKompletem(
+  sciezka: string,
+  oczekiwane: { przekroj: number; mocVa: number },
+): (response: Response) => boolean {
+  return (response) => {
+    if (!response.url().includes(sciezka) || response.request().method() !== 'POST') return false;
+    const surowe = response.request().postData();
+    if (!surowe) return false;
+    let payload: {
+      przekroj_przewodu_mm2?: number | null;
+      obciazenia_aparatow?: Array<{ moc_va?: number }>;
+    };
+    try {
+      payload = JSON.parse(surowe);
+    } catch {
+      return false;
+    }
+    return (
+      payload.przekroj_przewodu_mm2 === oczekiwane.przekroj
+      && (payload.obciazenia_aparatow ?? []).some((a) => a.moc_va === oczekiwane.mocVa)
+    );
+  };
+}
 
 let opCounter = 0;
 let entityCounter = 0;
@@ -215,8 +246,14 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   await expect(page.getByTestId('mvd-kreator-stacja-szablon')).toBeVisible();
   await page.getByTestId('mvd-kreator-stacja-szablon-kategoria').selectOption('farma_pv');
   const wyborSzablonu = page.getByTestId('mvd-kreator-stacja-szablon-wybor');
-  await expect(wyborSzablonu.locator('option')).not.toHaveCount(1, { timeout: 20000 });
-  const idSzablonu = await wyborSzablonu.locator('option').nth(1).getAttribute('value');
+  // Szablon WBUDOWANY, wskazany po etykiecie źródła — nie „drugi z listy".
+  // Lista miesza bibliotekę wbudowaną z szablonami użytkownika (B-8) i obie
+  // dojeżdżają osobnymi żądaniami; pozycja nr 1 bywała szablonem zapisanym w
+  // poprzednim przebiegu, który wypełniał formularz TYMI SAMYMI wartościami, co
+  // dalsze kroki — wpisy stawały się bezczynne i test mierzył cudzy stan.
+  const szablonWbudowany = wyborSzablonu.locator('option', { hasText: '(wbudowany)' }).first();
+  await expect(szablonWbudowany).toHaveCount(1, { timeout: 20000 });
+  const idSzablonu = await szablonWbudowany.getAttribute('value');
   expect(idSzablonu).toBeTruthy();
   await wyborSzablonu.selectOption(idSzablonu!);
   await page.getByTestId('mvd-kreator-stacja-szablon-zastosuj').click();
@@ -268,14 +305,19 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   // ------------------------------------------------- KD-3: bilans CT/VT
   // Dane obwodu wtórnego wpisane NATYWNIE; werdykt przychodzi z końcówki
   // solvera (`/api/solver/ct-burden-check`) — zero fizyki w prezentacji.
-  const odpowiedzBilansuCt = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/solver/ct-burden-check')
-      && response.request().method() === 'POST',
-    { timeout: 30000 },
-  );
+  // Każde pole obwodu wysyła własne żądanie, więc czekamy na TO, które niesie
+  // KOMPLET danych. Wcześniejsze (sama długość, bez przekroju) jest uczciwie
+  // niedostępne — backend zwraca kod gotowości zamiast zmyślonej mocy.
   await page.getByTestId('mvd-kreator-stacja-ct-dlugosc-1').fill('25');
   await page.getByTestId('mvd-kreator-stacja-ct-przekroj-1').fill('4');
+  // Nasłuch zakładany TUŻ PRZED ostatnim polem: to ono domyka komplet danych i
+  // wyzwala żądanie, na które czekamy. Zakładanie go przed całą trójką sprzęgało
+  // limit oczekiwania z czasem wpisywania (pod obciążeniem maszyny potrafiło
+  // wyczerpać budżet, zanim żądanie w ogóle poleciało).
+  const odpowiedzBilansuCt = page.waitForResponse(
+    bilansZKompletem('/api/solver/ct-burden-check', { przekroj: 4, mocVa: 3.5 }),
+    { timeout: 30000 },
+  );
   await page.getByTestId('mvd-kreator-stacja-ct-moc-1').fill('3.5');
   const surowaOdpowiedzCt = await odpowiedzBilansuCt;
   const bilansCt = (await surowaOdpowiedzCt.json()) as {
@@ -290,14 +332,12 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
   const oczekiwanaMoc = bilansCt.moc_obliczeniowa_va!.toFixed(3).replace('.', ',');
   await expect(sekcjaCt).toContainText(`${oczekiwanaMoc} VA`);
 
-  const odpowiedzBilansuVt = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/solver/vt-burden-check')
-      && response.request().method() === 'POST',
-    { timeout: 30000 },
-  );
   await page.getByTestId('mvd-kreator-stacja-vt-dlugosc-1').fill('40');
   await page.getByTestId('mvd-kreator-stacja-vt-przekroj-1').fill('2.5');
+  const odpowiedzBilansuVt = page.waitForResponse(
+    bilansZKompletem('/api/solver/vt-burden-check', { przekroj: 2.5, mocVa: 12 }),
+    { timeout: 30000 },
+  );
   await page.getByTestId('mvd-kreator-stacja-vt-moc-1').fill('12');
   const surowaOdpowiedzVt = await odpowiedzBilansuVt;
   const bilansVt = (await surowaOdpowiedzVt.json()) as {
@@ -423,7 +463,11 @@ test('K9-B: kreator stacji MAX — szablon → pola → CT/VT/przekaźnik → po
 
   // KD-3 (B-2): zaczepy zapisane w TEJ SAMEJ operacji co stacja — kanoniczny
   // podzespół `tap_changer`, bez osobnej operacji po zapisie.
-  const trafo = (enm.transformers ?? []).find((t) => t.ref_id.includes('/transformer'));
+  // Transformator STACJI, nie GPZ: model ma oba, a `ref_id` transformatora GPZ
+  // (`gpz/…/transformer/001/wn_sn`) też zawiera „/transformer" — filtr po samym
+  // fragmencie łapał pierwszy z listy (GPZ, bez regulacji) i mierzył nie ten
+  // element co trzeba. Prefiks `stn/` jest jednoznaczny.
+  const trafo = (enm.transformers ?? []).find((t) => t.ref_id.startsWith('stn/'));
   expect(trafo, 'transformator stacji powstał').toBeTruthy();
   expect(trafo?.tap_changer?.regulation_type).toBe('DETC');
   expect(trafo?.tap_changer?.current_position).toBe(-1);

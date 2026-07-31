@@ -45,7 +45,6 @@ const TRASY_NADRZEDNE: ReadonlySet<string> = new Set([
 export function mostTrasyPrzestrzeni(space: SpaceId): void {
   const stan = useAppStateStore.getState();
   switch (space) {
-    case 'model':
     case 'schemat':
       navigateToNetworkBuild();
       break;
@@ -55,6 +54,7 @@ export function mostTrasyPrzestrzeni(space: SpaceId): void {
     case 'wyniki':
       navigateToAnalysis({ runId: stan.activeRunId });
       break;
+    case 'model':
     case 'dokumentacja':
     case 'gotowosc':
     case 'projekt':
@@ -64,6 +64,15 @@ export function mostTrasyPrzestrzeni(space: SpaceId): void {
       // openRouteSurface, nie auto-nawigacja do legacy generatora.
       // K4-E2: trasa nadrzędna (np. '#sld') nadpisałaby zawartość przestrzeni —
       // czyścimy ją, aby przestrzeń wygrała.
+      //
+      // KD-3 (Zero-Debt, naprawa u źródła): „Model sieci" NALEŻY do tej grupy.
+      // Wcześniej dzielił gałąź ze „Schematem" i ustawiał trasę `#sld`, a ta w
+      // `LegacyWarsztat.TrasaLubPrzestrzen` jest rozpatrywana PRZED zawartością
+      // przestrzeni — więc jawny wybór „Model sieci" z nawigacji pokazywał kanwę
+      // schematu, a WARSZTAT MODELU (właściwości · szablony · KATALOG) był
+      // nieosiągalny kliknięciem. Widać go było wyłącznie przy zimnym starcie z
+      // pustym hashem, dlatego defekt przetrwał: testy montowały `ModelWarsztat`
+      // bezpośrednio, zamiast wchodzić realną ścieżką nawigacji.
       if (typeof window !== 'undefined' && TRASY_NADRZEDNE.has(getCurrentHashRoute())) {
         window.location.hash = '';
       }

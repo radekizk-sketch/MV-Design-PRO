@@ -11,9 +11,34 @@
  * Sceny NIE są atrapami — aplikacja rozmawia z prawdziwym API na portach
  * prywatnych (`PLAYWRIGHT_BACKEND_URL` / `PLAYWRIGHT_FRONTEND_URL`).
  */
-import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
+import { test, expect, type APIRequestContext, type Page, type Response } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
+
+/** Odpowiedź bilansu wtórnego dla obwodu KOMPLETNEGO (przekrój + moc aparatów). */
+function bilansZKompletem(
+  sciezka: string,
+  oczekiwane: { przekroj: number; mocVa: number },
+): (response: Response) => boolean {
+  return (response) => {
+    if (!response.url().includes(sciezka) || response.request().method() !== 'POST') return false;
+    const surowe = response.request().postData();
+    if (!surowe) return false;
+    let payload: {
+      przekroj_przewodu_mm2?: number | null;
+      obciazenia_aparatow?: Array<{ moc_va?: number }>;
+    };
+    try {
+      payload = JSON.parse(surowe);
+    } catch {
+      return false;
+    }
+    return (
+      payload.przekroj_przewodu_mm2 === oczekiwane.przekroj
+      && (payload.obciazenia_aparatow ?? []).some((a) => a.moc_va === oczekiwane.mocVa)
+    );
+  };
+}
 
 const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:8000';
 const OUTPUT_DIR = path.resolve(process.cwd(), '../docs/audit/visual/flow-ekspert');
@@ -186,7 +211,7 @@ for (const motyw of MOTYWY) {
 
     // ------------------------------------------------ 1. Katalog (L-16)
     await page.getByRole('button', { name: /^Model sieci \d$/ }).click();
-    await page.getByRole('button', { name: /^Katalog$/ }).first().click();
+    await page.getByTestId('mvd-model-zakladka-katalog').click();
     await expect(page.getByRole('button', { name: 'Przekładniki prądowe' })).toBeVisible({
       timeout: 20000,
     });
@@ -202,6 +227,9 @@ for (const motyw of MOTYWY) {
     expect(fs.existsSync(sciezkaKatalog)).toBe(true);
 
     // ------------------------------------------------ 2. Zaczepy (B-2)
+    // Powrót na kanwę schematu: formularze operacji domenowych (kreator stacji)
+    // żyją na niej, a aktywna przestrzeń jest utrwalana i przeżywa przeładowanie.
+    await page.getByRole('button', { name: /^Schemat \(SLD\) \d$/ }).click();
     const segmentId = await zbudujMagistrale(request, caseId);
     await page.reload({ waitUntil: 'commit' });
     await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
@@ -230,20 +258,23 @@ for (const motyw of MOTYWY) {
     const vtId = await vt1.locator('option').nth(1).getAttribute('value');
     await vt1.selectOption(vtId!);
 
-    const bilansCt = page.waitForResponse(
-      (r) => r.url().includes('/api/solver/ct-burden-check') && r.request().method() === 'POST',
-      { timeout: 30000 },
-    );
+    // Zrzut ma pokazać POLICZONY bilans, więc czekamy na odpowiedź dla obwodu
+    // KOMPLETNEGO (każde pole wysyła własne żądanie; te wcześniejsze są uczciwie
+    // niedostępne — backend zwraca kod gotowości zamiast zmyślonej mocy).
     await page.getByTestId('mvd-kreator-stacja-ct-dlugosc-1').fill('25');
     await page.getByTestId('mvd-kreator-stacja-ct-przekroj-1').fill('4');
-    await page.getByTestId('mvd-kreator-stacja-ct-moc-1').fill('3.5');
-    await bilansCt;
-    const bilansVt = page.waitForResponse(
-      (r) => r.url().includes('/api/solver/vt-burden-check') && r.request().method() === 'POST',
+    const bilansCt = page.waitForResponse(
+      bilansZKompletem('/api/solver/ct-burden-check', { przekroj: 4, mocVa: 3.5 }),
       { timeout: 30000 },
     );
+    await page.getByTestId('mvd-kreator-stacja-ct-moc-1').fill('3.5');
+    await bilansCt;
     await page.getByTestId('mvd-kreator-stacja-vt-dlugosc-1').fill('40');
     await page.getByTestId('mvd-kreator-stacja-vt-przekroj-1').fill('2.5');
+    const bilansVt = page.waitForResponse(
+      bilansZKompletem('/api/solver/vt-burden-check', { przekroj: 2.5, mocVa: 12 }),
+      { timeout: 30000 },
+    );
     await page.getByTestId('mvd-kreator-stacja-vt-moc-1').fill('12');
     await bilansVt;
     await expect(page.getByTestId('mvd-kryteria-ct-1')).toBeVisible({ timeout: 20000 });
