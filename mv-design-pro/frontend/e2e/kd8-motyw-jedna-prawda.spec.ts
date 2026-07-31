@@ -223,6 +223,12 @@ async function eksportujSvg(page: Page): Promise<string> {
       return oryginal(obj);
     };
   });
+  // KD-8 poz. 2: przy tej szerokości kanwy grupa „Eksport" bywa ZWINIĘTA do
+  // menu „Narzędzia" — sięgamy po nią tą samą drogą co użytkownik.
+  if (await page.getByTestId('sld-v3-export-svg').count() === 0) {
+    await page.getByTestId('sld-v3-toolbar-menu-toggle').click();
+    await expect(page.getByTestId('sld-v3-toolbar-menu')).toBeVisible();
+  }
   await page.getByTestId('sld-v3-export-svg').click();
   await page.waitForFunction(() => (window as unknown as { __kd8Blob?: string }).__kd8Blob !== undefined, undefined, {
     timeout: 15000,
