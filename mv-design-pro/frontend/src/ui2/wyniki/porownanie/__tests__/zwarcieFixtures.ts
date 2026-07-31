@@ -6,6 +6,7 @@
 
 import type { ExecutionRun, ExecutionAnalysisType, RunStatus } from '../../../../ui/study-cases/types';
 import type { ShortCircuitResults, ShortCircuitRow } from '../../../../ui/results-inspector/types';
+import type { PunktPorownaniaZwarciowego } from '../zwarciaPorownanieApi';
 
 export function przebiegFixture(over: Partial<ExecutionRun> = {}): ExecutionRun {
   return {
@@ -40,6 +41,23 @@ export function wynikScFixture(over: Partial<ShortCircuitResults> = {}): ShortCi
   return {
     run_id: 'sc-run-a',
     rows: [wierszSc()],
+    ...over,
+  };
+}
+
+/**
+ * Punkt porównania zwarciowego 1:1 z kontraktem końcówki
+ * `POST /api/short-circuit-comparisons` (karta KD-3 poz. 11). Delty są POLAMI
+ * ODPOWIEDZI, nie wyliczeniem — fixture może je ustawić NIEZALEŻNIE od wartości
+ * A i B, dzięki czemu test wykrywa, gdyby prezentacja liczyła je sama.
+ */
+export function punktPorownania(
+  over: Partial<PunktPorownaniaZwarciowego> = {},
+): PunktPorownaniaZwarciowego {
+  return {
+    target_id: 'BUS-GPZ',
+    target_name: 'Szyna GPZ',
+    obecny_w: 'AB',
     ...over,
   };
 }

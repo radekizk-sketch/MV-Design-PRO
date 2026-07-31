@@ -3,34 +3,19 @@
  * (karta E12.2). Read-only; zero fizyki, zero mutacji, zero wołań API/store'ów
  * w tym pliku (klient i store czytane w `TrybZwarciowy`).
  *
- * ROZSTRZYGNIĘCIE RECON (karta §2.1 — ścieżka danych delt) — plik:linia:
- *   Backend ma DWIE ścieżki porównań, ale ŻADNA nie daje PEŁNYCH delt zwarciowych
- *   per punkt zgodnych z wymaganiami karty (per węzeł + uczciwe oznaczenie punktów
- *   bez odpowiednika):
- *   1. `api/comparison.py` → `application/comparison/service.py:_compare_short_circuit`
- *      (136-176): zwraca POJEDYNCZĄ, ZAGREGOWANĄ deltę SC (jeden ikss/ip/ith/sk
- *      z jednego payloadu na przebieg) — NIE per węzeł. Odrzucone.
- *   2. `api/batch_execution.py` → `ScComparisonService` → `domain/sc_comparison.py`
- *      `build_comparison` (216-249): liczy delty per element (`deltas_by_source`),
- *      ALE punkty bez odpowiednika w drugim przebiegu są CICHO POMIJANE
- *      (linie 224-227: `if base_er is None or other_er is None: continue`) —
- *      kontrakt nie niesie żadnego znacznika osieroconego punktu, więc karta §2.2
- *      („wiersze bez odpowiednika … uczciwie oznaczone") nie może być spełniona.
- *      Odrzucone jako niepełne.
- *   WNIOSEK (karta §2.1, klauzula STOP): korzystamy z DOPUSZCZONEJ prezentacyjnej
- *   różnicy dwóch wartości JUŻ zwróconych przez backend dla tych samych punktów.
- *   Źródło A i B to per-punktowe wyniki zwarciowe każdego przebiegu
- *   (`ShortCircuitRow`: `ui/results-inspector/types.ts` — ikss_ka, ip_ka,
- *   ith_ka, sk_mva oraz addytywny pełny bilans F1: rk/xk/zk_ohm, xr_ratio,
- *   i2t_ka2s — karta S-C, tryb ekspercki; endpoint
- *   `/analysis-runs/{runId}/results/short-circuit`, `ui/results-inspector/api.ts:107`).
- *   Delta B−A liczona WYŁĄCZNIE do prezentacji w `trio()` — jedyne dozwolone
- *   działanie liczbowe w UI (No-Physics), opisane komentarzem. Punkty bez
- *   odpowiednika: sufiks „(tylko A)"/„(tylko B)", brak Δ. Starsze wyniki bez pól
- *   bilansu → uczciwe kreski.
+ * DELTY LICZY BACKEND (karta KD-3, pozycja 11 — dług V12K-290). Wcześniej ten
+ * plik odejmował dwie wartości i dzielił je przez siebie, żeby pokazać procent —
+ * czyli arytmetyka na wynikach solvera w warstwie prezentacji. Dokładnie ta sama
+ * klasa, którą dla porównań ROZPŁYWU zamknęła luka L-13 (karta KD-2).
+ *
+ * Teraz źródłem jest `POST /api/short-circuit-comparisons`
+ * (`backend/src/api/zwarcia_porownania.py` → `domain/zwarcia_porownanie.py`):
+ * odpowiedź niesie wartości A i B ORAZ delty bezwzględne i względne per punkt,
+ * a punkt bez odpowiednika ma jawny znacznik obecności (`obecny_w`). Tutaj
+ * zostaje wyłącznie FORMATOWANIE: liczba → napis z jednostką, brak → kreska.
  */
 
-import type { ShortCircuitRow } from '../../../ui/results-inspector/types';
+import type { PunktPorownaniaZwarciowego } from './zwarciaPorownanieApi';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import { ANALYSIS_TYPE_LABELS } from '../../../ui/study-cases/types';
 import type { DefinicjaKolumny, WartoscKomorki, WierszTabeli } from '../wzorzec';
@@ -138,7 +123,7 @@ export function etykietaPrzebieguZwarciowego(
 }
 
 // ---------------------------------------------------------------------------
-// Adapter czysty: dwa zestawy wyników per punkt → wiersze tabeli wzorca
+// Adapter czysty: punkty porównania Z BACKENDU → wiersze tabeli wzorca
 // ---------------------------------------------------------------------------
 
 interface Trojka {
@@ -148,32 +133,34 @@ interface Trojka {
 }
 
 /**
- * Komórka wartości źródłowej lub „—" przy braku danej (null w kontrakcie).
- * Wartość obecna dostaje `dowodRef` strony (R3-C: 2×klik → dowód WŁAŚCIWEGO
- * przebiegu, patrz `dowodPorownania.ts`); kreska nie ma wartości, więc nie ma
- * też dowodu (zero martwych klików).
+ * Komórka wartości źródłowej lub „—" przy braku danej (pole nieobecne w
+ * odpowiedzi). Wartość obecna dostaje `dowodRef` strony (R3-C: 2×klik → dowód
+ * WŁAŚCIWEGO przebiegu, patrz `dowodPorownania.ts`); kreska nie ma wartości,
+ * więc nie ma też dowodu (zero martwych klików).
  */
 function komorka(
-  wartosc: number | null,
+  wartosc: number | null | undefined,
   format: (n: number) => string,
   dowodRef: string,
 ): WartoscKomorki {
-  return wartosc === null
+  return typeof wartosc !== 'number'
     ? { wartosc: SZ.kreska }
     : { wartosc: format(wartosc), sortKey: wartosc, dowodRef };
 }
 
 /**
- * Trójka A · B · Δ dla jednej wielkości. Delta B−A liczona TU jest JEDYNYM
- * dozwolonym działaniem liczbowym w UI (karta E12.2 §2.1 — prezentacyjna różnica
- * dwóch wartości już zwróconych przez backend). Gdy brakuje którejkolwiek strony
- * (punkt bez odpowiednika lub null w kontrakcie) — Δ pozostaje „—" (bez zgadywania).
+ * Trójka A · B · Δ dla jednej wielkości. FORMATOWANIE, nie rachunek: delta
+ * bezwzględna i względna przychodzą GOTOWE z backendu (`delta_*`,
+ * `delta_*_percent`) — prezentacja nie odejmuje i nie dzieli. Brak pola w
+ * odpowiedzi (punkt bez odpowiednika, A = 0, starszy wynik) daje kreskę.
  * Komórka Δ jest ZAWSZE bez `dowodRef` (R3-C): różnica nie ma pojedynczego
  * wywodu WHITE BOX — nie istnieje ślad „przebiegu Δ".
  */
 function trio(
-  va: number | null,
-  vb: number | null,
+  va: number | null | undefined,
+  vb: number | null | undefined,
+  delta: number | null | undefined,
+  deltaProcent: number | null | undefined,
   format: (n: number) => string,
   formatDelty: (n: number) => string,
   refA: string,
@@ -181,49 +168,114 @@ function trio(
 ): Trojka {
   const a = komorka(va, format, refA);
   const b = komorka(vb, format, refB);
-  if (va === null || vb === null) {
+  if (typeof delta !== 'number') {
     return { a, b, d: { wartosc: SZ.kreska } };
   }
-  const abs = vb - va;
-  const pct = va !== 0 ? (abs / va) * 100 : null;
-  return { a, b, d: { wartosc: `${formatDelty(abs)}${fmtDeltaProcent(pct)}`, sortKey: abs } };
+  const procent = typeof deltaProcent === 'number' ? deltaProcent : null;
+  return { a, b, d: { wartosc: `${formatDelty(delta)}${fmtDeltaProcent(procent)}`, sortKey: delta } };
 }
 
 /**
- * Łączy per-punktowe wyniki dwóch przebiegów (A, B) po `target_id` i buduje
- * wiersze tabeli wzorca. Kolejność wierszy: unia identyfikatorów posortowana
- * rosnąco (deterministycznie). Punkt obecny tylko w jednym przebiegu dostaje
- * sufiks „(tylko A)"/„(tylko B)" i puste Δ — uczciwe oznaczenie (karta §2.2).
+ * Buduje wiersze tabeli wzorca z punktów porównania zwróconych przez backend.
+ * Kolejność wierszy pochodzi z odpowiedzi (backend sortuje deterministycznie).
+ * Punkt obecny tylko po jednej stronie ma znacznik `obecny_w` i dostaje sufiks
+ * „(tylko A)"/„(tylko B)" oraz puste Δ — uczciwe oznaczenie (karta §2.2).
  */
 export function naWierszePunktowZwarciowych(
-  rowsA: ShortCircuitRow[],
-  rowsB: ShortCircuitRow[],
+  punkty: readonly PunktPorownaniaZwarciowego[],
 ): WierszTabeli[] {
-  const mapaA = new Map(rowsA.map((r) => [r.target_id, r]));
-  const mapaB = new Map(rowsB.map((r) => [r.target_id, r]));
-  const klucze = Array.from(new Set([...mapaA.keys(), ...mapaB.keys()])).sort();
+  return punkty.map((p) => {
+    const sufiks = p.obecny_w === 'A' ? SZ.tylkoA : p.obecny_w === 'B' ? SZ.tylkoB : '';
+    const refA = refDowoduPorownania('A', p.target_id);
+    const refB = refDowoduPorownania('B', p.target_id);
 
-  return klucze.map((k) => {
-    const ra = mapaA.get(k) ?? null;
-    const rb = mapaB.get(k) ?? null;
-    const nazwa = ra?.target_name ?? rb?.target_name ?? k;
-    const sufiks = ra && !rb ? SZ.tylkoA : !ra && rb ? SZ.tylkoB : '';
-    const refA = refDowoduPorownania('A', k);
-    const refB = refDowoduPorownania('B', k);
-
-    const ikss = trio(ra?.ikss_ka ?? null, rb?.ikss_ka ?? null, fmtKA, fmtDeltaKA, refA, refB);
-    const ip = trio(ra?.ip_ka ?? null, rb?.ip_ka ?? null, fmtKA, fmtDeltaKA, refA, refB);
-    const ith = trio(ra?.ith_ka ?? null, rb?.ith_ka ?? null, fmtKA, fmtDeltaKA, refA, refB);
-    const sk = trio(ra?.sk_mva ?? null, rb?.sk_mva ?? null, fmtMVA, fmtDeltaMVA, refA, refB);
-    // Pełny bilans IEC 60909 (karta S-C): pola addytywne wierszy kanonicznych
-    // (ZWARCIA-PRO F1); starszy wynik bez pól → null → uczciwa kreska bez Δ.
-    const rk = trio(ra?.rk_ohm ?? null, rb?.rk_ohm ?? null, fmtOhm, fmtDeltaOhm, refA, refB);
-    const xk = trio(ra?.xk_ohm ?? null, rb?.xk_ohm ?? null, fmtOhm, fmtDeltaOhm, refA, refB);
-    const zk = trio(ra?.zk_ohm ?? null, rb?.zk_ohm ?? null, fmtOhm, fmtDeltaOhm, refA, refB);
-    const xr = trio(ra?.xr_ratio ?? null, rb?.xr_ratio ?? null, fmtXR, fmtDeltaXR, refA, refB);
+    const ikss = trio(
+      p.ikss_ka_a,
+      p.ikss_ka_b,
+      p.delta_ikss_ka,
+      p.delta_ikss_percent,
+      fmtKA,
+      fmtDeltaKA,
+      refA,
+      refB,
+    );
+    const ip = trio(
+      p.ip_ka_a,
+      p.ip_ka_b,
+      p.delta_ip_ka,
+      p.delta_ip_percent,
+      fmtKA,
+      fmtDeltaKA,
+      refA,
+      refB,
+    );
+    const ith = trio(
+      p.ith_ka_a,
+      p.ith_ka_b,
+      p.delta_ith_ka,
+      p.delta_ith_percent,
+      fmtKA,
+      fmtDeltaKA,
+      refA,
+      refB,
+    );
+    const sk = trio(
+      p.sk_mva_a,
+      p.sk_mva_b,
+      p.delta_sk_mva,
+      p.delta_sk_percent,
+      fmtMVA,
+      fmtDeltaMVA,
+      refA,
+      refB,
+    );
+    // Pełny bilans IEC 60909 (karta S-C) — tryb ekspercki; starszy wynik bez
+    // pól nie ma ich też w odpowiedzi porównania → uczciwa kreska bez Δ.
+    const rk = trio(
+      p.rk_ohm_a,
+      p.rk_ohm_b,
+      p.delta_rk_ohm,
+      p.delta_rk_percent,
+      fmtOhm,
+      fmtDeltaOhm,
+      refA,
+      refB,
+    );
+    const xk = trio(
+      p.xk_ohm_a,
+      p.xk_ohm_b,
+      p.delta_xk_ohm,
+      p.delta_xk_percent,
+      fmtOhm,
+      fmtDeltaOhm,
+      refA,
+      refB,
+    );
+    const zk = trio(
+      p.zk_ohm_a,
+      p.zk_ohm_b,
+      p.delta_zk_ohm,
+      p.delta_zk_percent,
+      fmtOhm,
+      fmtDeltaOhm,
+      refA,
+      refB,
+    );
+    const xr = trio(
+      p.xr_ratio_a,
+      p.xr_ratio_b,
+      p.delta_xr_ratio,
+      p.delta_xr_percent,
+      fmtXR,
+      fmtDeltaXR,
+      refA,
+      refB,
+    );
     const i2t = trio(
-      ra?.i2t_ka2s ?? null,
-      rb?.i2t_ka2s ?? null,
+      p.i2t_ka2s_a,
+      p.i2t_ka2s_b,
+      p.delta_i2t_ka2s,
+      p.delta_i2t_percent,
       fmtKA2s,
       fmtDeltaKA2s,
       refA,
@@ -231,7 +283,7 @@ export function naWierszePunktowZwarciowych(
     );
 
     return {
-      punkt: { wartosc: `${nazwa}${sufiks}` },
+      punkt: { wartosc: `${p.target_name}${sufiks}` },
       ikssA: ikss.a,
       ikssB: ikss.b,
       ikssD: ikss.d,

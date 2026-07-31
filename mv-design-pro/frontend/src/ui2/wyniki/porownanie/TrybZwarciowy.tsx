@@ -4,11 +4,11 @@
  * JAWNE uruchomienie porównania („Porównaj przebiegi") i tabela punktów zwarcia
  * z wielkościami A · B · Δ (Ik", ip, Ith, Sk).
  *
- * Granice (NOT-A-SOLVER / karta §2.1): fronton NIE liczy fizyki. Wartości A i B
- * pochodzą z backendu (per-punktowe wyniki zwarciowe każdego przebiegu); jedyne
- * działanie liczbowe w UI to prezentacyjna różnica B−A (patrz `zwarciePorownanieModel`
- * — rozstrzygnięcie RECON i uzasadnienie). Zero automatyzmu: porównanie rusza
- * wyłącznie po kliknięciu.
+ * Granice (NOT-A-SOLVER): fronton NIE liczy NICZEGO. Wartości A i B ORAZ delty
+ * (bezwzględne i względne) pochodzą z jednej końcówki porównania
+ * `POST /api/short-circuit-comparisons` — karta KD-3 poz. 11 przeniosła rachunek
+ * różnic do domeny (dług V12K-290; wcześniej ekran odejmował i dzielił sam).
+ * Zero automatyzmu: porównanie rusza wyłącznie po kliknięciu.
  *
  * Dowody (R3-C / K3-G2): wartość z kolumny A otwiera dowód przebiegu A,
  * z kolumny B — przebiegu B, przez deep-link z kontekstem
@@ -25,7 +25,7 @@ import { isModeAtLeast, type AdvancementMode } from '../../shell/modeModel';
 import { useShellStore } from '../../shell/useShellStore';
 import { PrzyciskAkcjiStanu, TabelaWynikow, useAkcjaUruchomObliczenie } from '../wzorzec';
 import { stronaDowodu } from './dowodPorownania';
-import { fetchShortCircuitResults } from '../../../ui/results-inspector/api';
+import { pobierzPorownanieZwarciowe } from './zwarciaPorownanieApi';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
 import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
@@ -86,11 +86,9 @@ export function TrybZwarciowy({ trybZaawansowania }: TrybZwarciowyProps) {
     setWiersze(null);
     setParaPorownana(null);
     try {
-      const [wynikA, wynikB] = await Promise.all([
-        fetchShortCircuitResults(runA),
-        fetchShortCircuitResults(runB),
-      ]);
-      setWiersze(naWierszePunktowZwarciowych(wynikA.rows, wynikB.rows));
+      // KD-3 poz. 11: delty liczy BACKEND — ekran odczytuje gotowe pola.
+      const porownanie = await pobierzPorownanieZwarciowe(runA, runB);
+      setWiersze(naWierszePunktowZwarciowych(porownanie.punkty));
       setParaPorownana({ a: runA, b: runB });
       setStan('bezczynny');
     } catch (err) {

@@ -51,6 +51,7 @@ from api.switchgear_config import router as switchgear_config_router
 from api.unified_runs import router as unified_runs_router
 from api.v126_academic import router as v126_academic_router
 from api.xlsx_import import router as xlsx_import_router
+from api.zwarcia_porownania import router as zwarcia_porownania_router
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from infrastructure.persistence.db import (
@@ -121,6 +122,7 @@ app.include_router(der_sn_documents_router)
 app.include_router(diagnostics_router)
 app.include_router(document_store_router)
 app.include_router(equipment_checks_router)
+app.include_router(zwarcia_porownania_router)
 app.include_router(equipment_proof_pack_router)
 app.include_router(health_router)
 app.include_router(ncrfg_ptpiree_tests_router)
