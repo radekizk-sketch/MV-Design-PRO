@@ -504,3 +504,34 @@ def test_append_station_field_equipment_binding_checked_by_gate() -> None:
     blad, _ = validate_and_materialize_catalog_binding("append_station_on_endpoint", payload)
     assert blad is not None
     assert "Pole SN nr 1" in blad.message_pl
+
+
+# ---------------------------------------------------------------------------
+# KD-6 (Zero-Debt): domyślna nazwa zabezpieczenia bez REFERENCJI pola
+# ---------------------------------------------------------------------------
+
+
+def test_domyslna_nazwa_zabezpieczenia_uzywa_nazwy_pola_nie_referencji() -> None:
+    """Identyfikator maszynowy nie może wyjść na strefę pierwszoplanową.
+
+    Nazwa zabezpieczenia trafia do uzasadnienia czasu wyłączenia pokazywanego
+    na ekranie wyników zwarciowych (karta KD-6). Sklejona z `field_ref`
+    pokazywała tam „stn/08489…/sn_field/000".
+    """
+    snap, segment_ref, _ = _build_trunk_with_segment()
+    payload = _insert_payload(
+        segment_ref,
+        [
+            {"field_role": "LINIA_IN", "equipment": _wyposazenie()},
+            {"field_role": "LINIA_OUT"},
+            {"field_role": "TRANSFORMATOROWE"},
+        ],
+    )
+
+    result = execute_domain_operation(copy.deepcopy(snap), "insert_station_on_segment_sn", payload)
+
+    assert result.get("error") is None, result.get("error")
+    przypisanie = result["snapshot"]["protection_assignments"][0]
+    nazwa = str(przypisanie["name"])
+    assert "/" not in nazwa, f"Nazwa niesie referencję maszynową: {nazwa}"
+    assert nazwa.startswith("Zabezpieczenie pola ")

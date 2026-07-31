@@ -129,6 +129,23 @@ def _update_field_spec(
                     return
 
 
+def _nazwa_pola(enm: dict[str, Any], field_ref: str) -> str:
+    """Czytelna nazwa pola do NAZW ELEMENTÓW pokazywanych użytkownikowi.
+
+    KD-6 (Zero-Debt): domyślna nazwa zabezpieczenia sklejała się z REFERENCJĄ
+    pola („Zabezpieczenie pola stn/08489…/sn_field/000"), więc identyfikator
+    maszynowy wychodził na strefę pierwszoplanową — widać go było w uzasadnieniu
+    czasu wyłączenia na ekranie wyników zwarciowych. Nazwa pola jest w modelu;
+    referencja zostaje wyłącznie awaryjnym opisem, gdy pole nazwy nie ma.
+    """
+    record = _field_record(enm, field_ref)
+    if isinstance(record, dict):
+        nazwa = record.get("name")
+        if isinstance(nazwa, str) and nazwa.strip():
+            return nazwa.strip()
+    return field_ref
+
+
 def _field_bus_ref(enm: dict[str, Any], field_ref: str) -> str | None:
     record = _field_record(enm, field_ref)
     bus_ref = record.get("bus_ref") if isinstance(record, dict) else None
@@ -704,7 +721,7 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         enm,
         {
             "ref_id": protection_ref,
-            "name": payload.get("name") or f"Zabezpieczenie pola {field_ref}",
+            "name": payload.get("name") or f"Zabezpieczenie pola {_nazwa_pola(enm, field_ref)}",
             "breaker_ref": breaker_ref,
             "ct_ref": ct_ref,
             "vt_ref": vt_ref,

@@ -32,16 +32,27 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    branches?: Array<{ ref_id: string }>;
+    branches?: Array<{ ref_id: string; type?: string }>;
     transformers?: Array<{ ref_id: string }>;
     substations?: Array<{ ref_id: string; bus_refs?: string[] }>;
   };
+};
+
+type WidokWytrzymalosci = {
+  status: string;
+  pola: Array<{
+    pole: string;
+    zrodlo: 'model' | 'konfiguracja';
+    komunikat_pl: string;
+    czas_wylaczenia: { zrodlo: string | null };
+  }>;
 };
 
 type WierszZwarcia = {
   target_id: string;
   element_id?: string;
   target_name?: string | null;
+  ikss_ka?: number | null;
   ip_ka: number | null;
   ith_ka: number | null;
 };
@@ -87,18 +98,23 @@ async function czekajNaWynik(request: APIRequestContext, runId: string): Promise
   throw new Error(`Wynik biegu ${runId} nie pojawił się w czasie budżetu.`);
 }
 
-test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury pola', async ({
-  page,
-  request,
-}) => {
-  test.setTimeout(240000);
+type Kontekst = {
+  project: { id: string; name: string };
+  studyCase: { id: string; name: string };
+  stationRef: string;
+  busRefy: string[];
+};
 
-  // --- Projekt + przypadek ---------------------------------------------------
+/** Projekt + przypadek + sieć ze stacją (aparat pola WSKAZANY z katalogu APARAT_SN). */
+async function zbudujProjektZeStacja(
+  request: APIRequestContext,
+  opis: string,
+): Promise<Kontekst> {
   const znacznik = String(Date.now());
   const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
     data: {
       name: `Ogniwo aparatura ${znacznik}`,
-      description: 'Bramka KD-4: wynik zwarciowy → wytrzymałość aparatury',
+      description: opis,
       mode: 'TO-BE',
       voltage_level_kv: 15.0,
       frequency_hz: 50.0,
@@ -119,7 +135,6 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   expect(caseResponse.ok()).toBeTruthy();
   const studyCase = (await caseResponse.json()) as { id: string; name: string };
 
-  // --- Sieć ze stacją --------------------------------------------------------
   await domainOp(request, studyCase.id, 'add_grid_source_sn', {
     voltage_kv: 15.0,
     sk3_mva: 250.0,
@@ -157,8 +172,16 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   const busRefy = stacja!.bus_refs ?? [];
   expect(busRefy.length).toBeGreaterThan(0);
 
-  // Katalogi gałęzi/transformatorów (żeby bieg był policzalny).
-  for (const branch of op.snapshot?.branches ?? []) {
+  // Katalogi gałęzi/transformatorów (żeby bieg był policzalny). Kategoria
+  // katalogu MUSI pasować do rodzaju gałęzi — pozycję KABEL_SN dostają
+  // wyłącznie odcinki liniowe. Wcześniej ta pętla przypisywała kabel TAKŻE
+  // aparatom pól, kasując po cichu ich wiązanie APARAT_SN (defekt zastany
+  // naprawiony u źródła w karcie KD-6: `catalog.namespace_mismatch`).
+  const odcinki = (op.snapshot?.branches ?? []).filter(
+    (branch) => branch.type === 'cable' || branch.type === 'line_overhead',
+  );
+  expect(odcinki.length, 'Sieć musi mieć odcinki liniowe do policzenia biegu').toBeGreaterThan(0);
+  for (const branch of odcinki) {
     await domainOp(request, studyCase.id, 'assign_catalog_to_element', {
       element_ref: branch.ref_id,
       catalog_binding: catalogBinding('KABEL_SN', CABLE_ID),
@@ -183,6 +206,52 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
     });
   }
 
+  return { project, studyCase, stationRef, busRefy };
+}
+
+/** Bieg zwarciowy przypadku + wiersz punktu leżącego na szynie stacji. */
+async function policzZwarcie(
+  request: APIRequestContext,
+  kontekst: Kontekst,
+): Promise<{ runId: string; punkt: WierszZwarcia }> {
+  const createRun = await request.post(
+    `${BACKEND_BASE}/api/execution/study-cases/${kontekst.studyCase.id}/runs`,
+    { data: { analysis_type: 'SC_3F' } },
+  );
+  expect(createRun.ok()).toBeTruthy();
+  const run = (await createRun.json()) as { id: string };
+  const executeRun = await request.post(`${BACKEND_BASE}/api/execution/runs/${run.id}/execute`);
+  expect(executeRun.ok()).toBeTruthy();
+  await czekajNaWynik(request, run.id);
+
+  const wynikResponse = await request.get(
+    `${BACKEND_BASE}/api/analysis-runs/${run.id}/results/short-circuit`,
+  );
+  expect(wynikResponse.ok()).toBeTruthy();
+  const wynik = (await wynikResponse.json()) as { rows: WierszZwarcia[] };
+  const wiersze = wynik.rows.filter((r) => r.ip_ka !== null && r.ith_ka !== null);
+  expect(wiersze.length).toBeGreaterThan(0);
+
+  const punkt = wiersze.find((r) => kontekst.busRefy.includes(r.element_id ?? r.target_id));
+  expect(
+    punkt,
+    'Wynik biegu musi zawierać punkt zwarcia leżący na szynie badanej stacji.',
+  ).toBeTruthy();
+  return { runId: run.id, punkt: punkt! };
+}
+
+test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury pola', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(240000);
+
+  const kontekst = await zbudujProjektZeStacja(
+    request,
+    'Bramka KD-4: wynik zwarciowy → wytrzymałość aparatury',
+  );
+  const { project, studyCase, stationRef } = kontekst;
+
   // --- Aparatura pola w konfiguracji stacji (źródło aparatu i czasu) ---------
   const configResponse = await request.put(
     `${BACKEND_BASE}/api/v1/projects/${project.id}/audit2-station-config/${encodeURIComponent(stationRef)}`,
@@ -205,31 +274,8 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   );
   expect(configResponse.ok()).toBeTruthy();
 
-  // --- Bieg zwarciowy --------------------------------------------------------
-  const createRun = await request.post(
-    `${BACKEND_BASE}/api/execution/study-cases/${studyCase.id}/runs`,
-    { data: { analysis_type: 'SC_3F' } },
-  );
-  expect(createRun.ok()).toBeTruthy();
-  const run = (await createRun.json()) as { id: string };
-  const executeRun = await request.post(`${BACKEND_BASE}/api/execution/runs/${run.id}/execute`);
-  expect(executeRun.ok()).toBeTruthy();
-  await czekajNaWynik(request, run.id);
-
-  // Prądy punktu zwarcia — PROSTO Z WYNIKU (źródło asercji, nie ekran).
-  const wynikResponse = await request.get(
-    `${BACKEND_BASE}/api/analysis-runs/${run.id}/results/short-circuit`,
-  );
-  expect(wynikResponse.ok()).toBeTruthy();
-  const wynik = (await wynikResponse.json()) as { rows: WierszZwarcia[] };
-  const wiersze = wynik.rows.filter((r) => r.ip_ka !== null && r.ith_ka !== null);
-  expect(wiersze.length).toBeGreaterThan(0);
-
-  const punktStacji = wiersze.find((r) => busRefy.includes(r.element_id ?? r.target_id));
-  expect(
-    punktStacji,
-    'Wynik biegu musi zawierać punkt zwarcia leżący na szynie badanej stacji.',
-  ).toBeTruthy();
+  // --- Bieg zwarciowy (prądy punktu = ŹRÓDŁO asercji, nie ekran) -------------
+  const { runId, punkt: punktStacji } = await policzZwarcie(request, kontekst);
 
   // Werdykt referencyjny: TA SAMA końcówka, prądy z wyniku, czas z konfiguracji.
   const werdyktResponse = await request.post(
@@ -237,8 +283,8 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
     {
       data: {
         device_id: APARAT_ID,
-        i_peak_calculated_ka: punktStacji!.ip_ka,
-        i_thermal_calculated_ka: punktStacji!.ith_ka,
+        i_peak_calculated_ka: punktStacji.ip_ka,
+        i_thermal_calculated_ka: punktStacji.ith_ka,
         t_clearing_s: CZAS_WYLACZENIA_S,
       },
     },
@@ -252,16 +298,16 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
     projectName: project.name,
     caseId: studyCase.id,
     caseName: studyCase.name,
-    runId: run.id,
+    runId,
   });
 
-  await page.goto(`/#analysis?run=${run.id}`, { waitUntil: 'commit' });
+  await page.goto(`/#analysis?run=${runId}`, { waitUntil: 'commit' });
   await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
   await page.getByRole('tab', { name: /Zwarcia/ }).click();
   await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible({ timeout: 30000 });
 
   // Wybór punktu zwarcia = NATYWNY klik wiersza tabeli punktów.
-  const nazwaPunktu = punktStacji!.target_name ?? punktStacji!.target_id;
+  const nazwaPunktu = punktStacji.target_name ?? punktStacji.target_id;
   await page.getByRole('row', { name: new RegExp(escapeRegExp(nazwaPunktu)) }).first().click();
 
   // Sekcja ogniwa pokazuje prądy TEGO punktu jako wejścia.
@@ -282,6 +328,91 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   // Werdykt na ekranie = werdykt backendu dla prądów z biegu (nie literał UI).
   await expect(wierszWerdyktu).toHaveAttribute('data-withstand-ok', String(werdykt.ok));
   await expect(wierszWerdyktu).toContainText(werdykt.message_pl);
+});
+
+test('ogniwo: stacja BEZ ręcznej konfiguracji — werdykty z MODELU (KD-6)', async ({
+  page,
+  request,
+}) => {
+  test.setTimeout(240000);
+
+  // SEDNO KARTY KD-6: żadnego zapisu `bay_device_withstand`. Aparat pola
+  // pochodzi z pozycji katalogu APARAT_SN wskazanej przy wstawianiu stacji,
+  // więc werdykt MUSI powstać bez ręcznego konfigurowania czegokolwiek.
+  const kontekst = await zbudujProjektZeStacja(
+    request,
+    'Bramka KD-6: werdykty wytrzymałości z modelu, bez konfiguracji stacji',
+  );
+  const { project, studyCase, stationRef } = kontekst;
+
+  // Kontrola: konfiguracja stacji NIE ISTNIEJE (404 = brak zapisu).
+  const konfiguracja = await request.get(
+    `${BACKEND_BASE}/api/v1/projects/${project.id}/audit2-station-config/${encodeURIComponent(stationRef)}`,
+  );
+  expect(
+    konfiguracja.status(),
+    'Ten scenariusz sprawdza tor MODELOWY — konfiguracji stacji nie może być.',
+  ).toBe(404);
+
+  const { runId, punkt: punktStacji } = await policzZwarcie(request, kontekst);
+
+  // ODPOWIEDŹ REFERENCYJNA: ta sama końcówka, prądy z wyniku biegu. Asercje
+  // ekranu idą PRZECIW NIEJ, nie przeciw literałom UI.
+  const widokResponse = await request.post(
+    `${BACKEND_BASE}/api/cases/${studyCase.id}/enm/wytrzymalosc-aparatury`,
+    {
+      data: {
+        station_ref: stationRef,
+        i_peak_ka: punktStacji.ip_ka,
+        i_thermal_ka: punktStacji.ith_ka,
+        ik_ka: punktStacji.ikss_ka ?? null,
+      },
+    },
+  );
+  expect(widokResponse.ok()).toBeTruthy();
+  const widok = (await widokResponse.json()) as WidokWytrzymalosci;
+  expect(widok.status).toBe('OK');
+  expect(widok.pola.length, 'Stacja z aparatami w modelu musi dać wiersze werdyktu').toBeGreaterThan(
+    0,
+  );
+  expect(widok.pola.every((p) => p.zrodlo === 'model')).toBeTruthy();
+
+  // --- Aplikacja: ekran zwarć → wybór punktu → weryfikacja aparatury ---------
+  await ustawKontekst(page, {
+    projectId: project.id,
+    projectName: project.name,
+    caseId: studyCase.id,
+    caseName: studyCase.name,
+    runId,
+  });
+
+  await page.goto(`/#analysis?run=${runId}`, { waitUntil: 'commit' });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
+  await page.getByRole('tab', { name: /Zwarcia/ }).click();
+  await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible({ timeout: 30000 });
+
+  const nazwaPunktu = punktStacji.target_name ?? punktStacji.target_id;
+  await page.getByRole('row', { name: new RegExp(escapeRegExp(nazwaPunktu)) }).first().click();
+  await page.getByTestId('mvd-zwarcia-aparatura-sprawdz').click();
+
+  const werdykty = page.getByTestId('mvd-zwarcia-aparatura-werdykty');
+  await expect(werdykty).toBeVisible({ timeout: 30000 });
+
+  for (const pole of widok.pola) {
+    const wiersz = page.getByTestId(`mvd-zwarcia-aparatura-pole-${pole.pole}`);
+    await expect(wiersz).toBeVisible();
+    // ŹRÓDŁO aparatu widoczne jako dana maszynowa — inżynier musi wiedzieć,
+    // że ocenia aparat z modelu, a nie z własnego wpisu.
+    await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
+    // Werdykt na ekranie = werdykt backendu (cytat, nie własne słowa ekranu).
+    await expect(wiersz).toContainText(pole.komunikat_pl);
+    // Rozbicie czasu wyłączenia: oba człony przy werdykcie (WHITE BOX).
+    const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pole.pole}`);
+    await expect(czas).toHaveAttribute(
+      'data-zrodlo-czasu',
+      pole.czas_wylaczenia.zrodlo ?? 'nieustalony',
+    );
+  }
 });
 
 function escapeRegExp(value: string): string {

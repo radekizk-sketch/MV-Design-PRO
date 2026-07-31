@@ -675,6 +675,36 @@ def _infer_catalog_namespace_for_element(element: dict[str, Any]) -> str | None:
     return None
 
 
+#: Kategorie katalogu dopuszczalne dla danego RODZAJU gałęzi.
+#:
+#: KD-6 (Zero-Debt): `assign_catalog_to_element` przyjmował DOWOLNĄ kategorię dla
+#: dowolnej gałęzi, więc wyłącznik pola dawało się przepiąć na pozycję katalogu
+#: KABEL_SN. Skutek nie był kosmetyczny: wiązanie APARAT_SN, którego operacja
+#: stacyjna WYMAGA (B-12), znikało po cichu, a materializacja wpisywałaby
+#: parametry kabla (r/x na km, obciążalność) w aparat łączeniowy. Wykryte przy
+#: budowie ogniwa „wynik zwarciowy → wytrzymałość aparatury": stacja traciła
+#: aparaty pól po przypisaniu katalogów gałęziom.
+_NAMESPACE_DOZWOLONE_DLA_GALEZI: dict[str, frozenset[str]] = {
+    "cable": frozenset({"KABEL_SN", "KABEL_NN"}),
+    "line_overhead": frozenset({"LINIA_SN"}),
+    "breaker": frozenset({"APARAT_SN", "APARAT_NN"}),
+    "switch": frozenset({"APARAT_SN", "APARAT_NN"}),
+    "bus_coupler": frozenset({"APARAT_SN", "APARAT_NN"}),
+    "disconnector": frozenset({"APARAT_SN", "APARAT_NN"}),
+    "fuse": frozenset({"APARAT_SN", "APARAT_NN"}),
+}
+
+
+def _namespace_pasuje_do_galezi(element: dict[str, Any], namespace: str | None) -> bool:
+    """Czy kategoria katalogu odpowiada RODZAJOWI gałęzi (kabel ≠ wyłącznik)."""
+    if not namespace:
+        return True
+    dozwolone = _NAMESPACE_DOZWOLONE_DLA_GALEZI.get(str(element.get("type")))
+    if dozwolone is None:
+        return True
+    return namespace in dozwolone
+
+
 def _resolve_catalog_ref(catalog_ref: object, catalog_binding: object) -> str | None:
     """Rozwiąż catalog_ref z jawnego pola albo z catalog_binding.catalog_item_id.
 
@@ -6575,6 +6605,14 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
             or _extract_catalog_binding_namespace(catalog_binding)
             or _infer_catalog_namespace_for_element(target_element)
         )
+        if coll == "branches" and not _namespace_pasuje_do_galezi(
+            target_element, catalog_namespace
+        ):
+            return _error_response(
+                f"Kategoria katalogu '{catalog_namespace}' nie pasuje do gałęzi rodzaju "
+                f"'{target_element.get('type')}' — wskaż pozycję właściwej kategorii.",
+                "catalog.namespace_mismatch",
+            )
         if catalog_namespace:
             target_element["catalog_namespace"] = catalog_namespace
 

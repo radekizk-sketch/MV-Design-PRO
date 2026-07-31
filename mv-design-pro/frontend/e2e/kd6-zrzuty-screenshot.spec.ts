@@ -1,12 +1,14 @@
 /**
- * Zrzuty ŻYWEJ aplikacji dla karty KD-4 (bramka 5, dyrektywa właściciela #8):
- *  - ogniwo: werdykty wytrzymałości aparatury przy wybranym punkcie zwarcia,
- *  - parytet L-15: generator raportu w powłoce (skład dokumentu).
+ * Zrzuty ŻYWEJ aplikacji dla karty KD-6 (bramka 5, dyrektywa właściciela #8):
+ *  - ogniwo z werdyktami wytrzymałości aparatury pochodzącymi z MODELU
+ *    (żadnej ręcznej konfiguracji stacji — aparat z pozycji katalogu APARAT_SN),
+ *  - rozbicie czasu wyłączenia wyprowadzonego z NASTAW zabezpieczeń pola.
  * Oba motywy. Zrzut = jedyny dowód wyglądu na stronie oceny.
  *
- * Scena jest REALNA: projekt + przypadek + sieć ze stacją + zapisana aparatura
- * pól + policzony bieg zwarciowy na backendzie (te same operacje, co spec
- * bramki 1) — żadnego harnessu i żadnych zaszczepionych wyników.
+ * Scena jest REALNA: projekt + przypadek + sieć ze stacją, której pole liniowe
+ * dostaje CT i przekaźnik z nastawami W TEJ SAMEJ operacji stacyjnej (B-3),
+ * plus policzony bieg zwarciowy — żadnego harnessu i żadnych zaszczepionych
+ * wyników.
  */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
 import * as path from 'node:path';
@@ -20,9 +22,10 @@ const BACKEND_BASE = process.env.PLAYWRIGHT_BACKEND_URL ?? 'http://127.0.0.1:800
 const CABLE_ID = 'cable-tfk-yakxs-3x120';
 const TRAFO_ID = 'tr-sn-nn-15-04-630kva-dyn11';
 const SOURCE_ID = 'src-gpz-15kv-250mva-rx010';
+const APARAT_POLA_ID = 'sw-cb-abb-vd4-17kv-630a';
+const CT_ID = 'ct_400_5_5p20_15va_abb';
+const PRZEKAZNIK_ID = 'ACME_REX100_v1';
 const CATALOG_VERSION = '2024.1';
-const APARAT_ID = 'wstd_breaker_vacuum_15_25';
-const POLE = 'P-01';
 
 const THEMES = [
   { id: 'light', mode: 'light_technical' },
@@ -48,6 +51,7 @@ interface Scena {
   caseName: string;
   runId: string;
   punktNazwa: string;
+  polaZWerdyktem: string[];
 }
 
 function catalogBinding(namespace: string, itemId: string) {
@@ -70,7 +74,7 @@ async function domainOp(
       snapshot_base_hash: '',
       operation: {
         name,
-        idempotency_key: `e2e-zrzut-${name}-${String(++opCounter).padStart(4, '0')}`,
+        idempotency_key: `e2e-kd6-${name}-${String(++opCounter).padStart(4, '0')}`,
         payload,
       },
     },
@@ -95,8 +99,8 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
   const znacznik = String(Date.now());
   const projectResponse = await request.post(`${BACKEND_BASE}/api/projects`, {
     data: {
-      name: `Zrzuty KD-4 ${znacznik}`,
-      description: 'Scena zrzutów: ogniwo aparatury + generator raportu',
+      name: `Zrzuty KD-6 ${znacznik}`,
+      description: 'Bramka KD-6: werdykty z modelu + rozbicie czasu wyłączenia',
       mode: 'TO-BE',
       voltage_level_kv: 15.0,
       frequency_hz: 50.0,
@@ -108,7 +112,7 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
   const caseResponse = await request.post(`${BACKEND_BASE}/api/study-cases`, {
     data: {
       project_id: project.id,
-      name: `Przypadek zrzutów ${znacznik}`,
+      name: `Przypadek KD-6 ${znacznik}`,
       description: '',
       config: {},
       set_active: true,
@@ -123,6 +127,7 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     rx_ratio: 0.1,
     catalog_binding: catalogBinding('ZRODLO_SN', SOURCE_ID),
   });
+
   let op: DomainOpResponse = {};
   for (const [idx, length] of [300, 250].entries()) {
     op = await domainOp(request, studyCase.id, 'continue_trunk_segment_sn', {
@@ -135,26 +140,50 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     });
   }
   const segmentRefs = op.snapshot?.corridors?.[0]?.ordered_segment_refs ?? [];
+  expect(segmentRefs.length).toBeGreaterThan(0);
+
+  // Stacja z aparatem pola z katalogu APARAT_SN ORAZ z wyposażeniem pola
+  // (CT + przekaźnik z NASTAWAMI) — czas wyłączenia ma się wziąć z nastaw.
   op = await domainOp(request, studyCase.id, 'insert_station_on_segment_sn', {
-    field_apparatus_catalog_ref: 'sw-cb-abb-vd4-17kv-630a',
+    field_apparatus_catalog_ref: APARAT_POLA_ID,
     segment_id: segmentRefs[segmentRefs.length - 1],
     station_type: 'B',
     insert_at: { value: 0.5 },
     station: { sn_voltage_kv: 15.0, nn_voltage_kv: 0.4 },
-    sn_fields: ['IN', 'OUT'],
+    sn_fields: [
+      {
+        field_role: 'LINIA_IN',
+        equipment: {
+          ct: { catalog_ref: CT_ID, ratio_primary_a: 400.0, ratio_secondary_a: 5.0 },
+          relay: {
+            catalog_ref: PRZEKAZNIK_ID,
+            relay_type: 'NADPRADOWY',
+            settings: [
+              {
+                function_type: 'overcurrent_51',
+                threshold_a: 400.0,
+                curve_type: 'DT',
+                time_delay_s: 0.3,
+              },
+            ],
+          },
+        },
+      },
+      'OUT',
+    ],
     transformer: { create: true, catalog_binding: catalogBinding('TRAFO_SN_NN', TRAFO_ID) },
   });
+
   const stacja = (op.snapshot?.substations ?? []).find((s) => s.ref_id.includes('/station'));
+  expect(stacja?.ref_id).toBeTruthy();
   const stationRef = stacja!.ref_id;
   const busRefy = stacja!.bus_refs ?? [];
 
-  // Kategoria katalogu MUSI pasować do rodzaju gałęzi: KABEL_SN dostają
-  // WYŁĄCZNIE odcinki liniowe (aparat pola ma wiązanie APARAT_SN, którego nie
-  // wolno nadpisać — `catalog.namespace_mismatch`, KD-6).
-  const odcinkiLiniowe = (op.snapshot?.branches ?? []).filter(
-    (branch) => branch.type === 'cable' || branch.type === 'line_overhead',
-  );
-  for (const branch of odcinkiLiniowe) {
+  // Kategoria katalogu MUSI pasować do rodzaju gałęzi — KABEL_SN wyłącznie dla
+  // odcinków liniowych (aparat pola zachowuje wiązanie APARAT_SN).
+  for (const branch of (op.snapshot?.branches ?? []).filter(
+    (b) => b.type === 'cable' || b.type === 'line_overhead',
+  )) {
     await domainOp(request, studyCase.id, 'assign_catalog_to_element', {
       element_ref: branch.ref_id,
       catalog_binding: catalogBinding('KABEL_SN', CABLE_ID),
@@ -179,26 +208,6 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     });
   }
 
-  const configResponse = await request.put(
-    `${BACKEND_BASE}/api/v1/projects/${project.id}/audit2-station-config/${encodeURIComponent(stationRef)}`,
-    {
-      data: {
-        mv_neutral_grounding_ref: null,
-        tap_changer_refs: [],
-        der_specs: [],
-        bay_device_withstand: {
-          [POLE]: {
-            device_id: APARAT_ID,
-            i_peak_calculated_ka: 1.0,
-            i_thermal_calculated_ka: 1.0,
-            t_clearing_s: 0.5,
-          },
-        },
-      },
-    },
-  );
-  expect(configResponse.ok()).toBeTruthy();
-
   const createRun = await request.post(
     `${BACKEND_BASE}/api/execution/study-cases/${studyCase.id}/runs`,
     { data: { analysis_type: 'SC_3F' } },
@@ -213,12 +222,35 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     `${BACKEND_BASE}/api/analysis-runs/${run.id}/results/short-circuit`,
   );
   const wynik = (await wynikResponse.json()) as {
-    rows: Array<{ target_id: string; element_id?: string; target_name?: string | null; ip_ka: number | null }>;
+    rows: Array<{
+      target_id: string;
+      element_id?: string;
+      target_name?: string | null;
+      ikss_ka?: number | null;
+      ip_ka: number | null;
+      ith_ka: number | null;
+    }>;
   };
   const punkt = wynik.rows.find(
     (r) => r.ip_ka !== null && busRefy.includes(r.element_id ?? r.target_id),
   );
   expect(punkt, 'Scena zrzutu wymaga punktu zwarcia na szynie stacji.').toBeTruthy();
+
+  // Oznaczenia pól z odpowiedzi końcówki — zrzut ma pokazać TO, co widzi ekran.
+  const widokResponse = await request.post(
+    `${BACKEND_BASE}/api/cases/${studyCase.id}/enm/wytrzymalosc-aparatury`,
+    {
+      data: {
+        station_ref: stationRef,
+        i_peak_ka: punkt!.ip_ka,
+        i_thermal_ka: punkt!.ith_ka,
+        ik_ka: punkt!.ikss_ka ?? null,
+      },
+    },
+  );
+  expect(widokResponse.ok()).toBeTruthy();
+  const widok = (await widokResponse.json()) as { pola: Array<{ pole: string }> };
+  expect(widok.pola.length).toBeGreaterThan(0);
 
   return {
     projectId: project.id,
@@ -227,6 +259,7 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
     caseName: studyCase.name,
     runId: run.id,
     punktNazwa: punkt!.target_name ?? punkt!.target_id,
+    polaZWerdyktem: widok.pola.map((p) => p.pole),
   };
 }
 
@@ -268,17 +301,17 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-test.describe('kd4:zrzuty', () => {
+test.describe('kd6:zrzuty', () => {
   test.beforeAll(() => {
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
   });
 
   for (const { id, mode } of THEMES) {
-    test(`ogniwo aparatura — ${id}`, async ({ page, request }) => {
+    test(`ogniwo z modelu + rozbicie czasu wyłączenia — ${id}`, async ({ page, request }) => {
       test.setTimeout(240000);
       const scena = await zbudujScene(request);
 
-      await page.setViewportSize({ width: 1360, height: 980 });
+      await page.setViewportSize({ width: 1360, height: 1040 });
       await otworz(page, scena, mode, `/#analysis?run=${scena.runId}`);
       await page.getByRole('tab', { name: /Zwarcia/ }).click();
       await expect(page.getByTestId('mvd-zwarcia-ekran')).toBeVisible({ timeout: 30000 });
@@ -290,32 +323,18 @@ test.describe('kd4:zrzuty', () => {
       const sekcja = page.getByTestId('mvd-zwarcia-aparatura');
       await sekcja.scrollIntoViewIfNeeded();
       await page.getByTestId('mvd-zwarcia-aparatura-sprawdz').click();
-      await expect(page.getByTestId(`mvd-zwarcia-aparatura-pole-${POLE}`)).toBeVisible({
-        timeout: 30000,
-      });
 
-      await sekcja.screenshot({ path: path.join(OUTPUT_DIR, `ogniwo-aparatura-${id}.png`) });
-    });
+      const pierwszePole = scena.polaZWerdyktem[0];
+      const wiersz = page.getByTestId(`mvd-zwarcia-aparatura-pole-${pierwszePole}`);
+      await expect(wiersz).toBeVisible({ timeout: 30000 });
+      // Werdykt MUSI pochodzić z modelu — inaczej zrzut dokumentowałby co innego.
+      await expect(wiersz).toHaveAttribute('data-zrodlo', 'model');
 
-    test(`parytet generator raportu — ${id}`, async ({ page, request }) => {
-      test.setTimeout(240000);
-      const scena = await zbudujScene(request);
+      await sekcja.screenshot({ path: path.join(OUTPUT_DIR, `kd6-ogniwo-model-${id}.png`) });
 
-      await page.setViewportSize({ width: 1360, height: 980 });
-      await otworz(page, scena, mode, '/');
-      await page.getByRole('button', { name: /^Dokumentacja/ }).click();
-      await page
-        .getByTestId('mvd-dok-karta-raport')
-        .getByRole('button', { name: 'Otwórz generator' })
-        .click();
-      const okno = page.getByTestId('mvd-generator-raportu');
-      await expect(okno).toBeVisible({ timeout: 30000 });
-      await page.getByTestId('mvd-generator-profil').selectOption('audytowy');
-      await page.getByTestId('mvd-generator-poziom').selectOption('pelny');
-      await page.getByTestId('mvd-generator-sekcja-summary').check();
-      await page.getByTestId('mvd-generator-sekcja-results').check();
-
-      await okno.screenshot({ path: path.join(OUTPUT_DIR, `parytet-raport-${id}.png`) });
+      const czas = page.getByTestId(`mvd-zwarcia-aparatura-czas-${pierwszePole}`);
+      await expect(czas).toBeVisible();
+      await czas.screenshot({ path: path.join(OUTPUT_DIR, `kd6-tclearing-${id}.png`) });
     });
   }
 });

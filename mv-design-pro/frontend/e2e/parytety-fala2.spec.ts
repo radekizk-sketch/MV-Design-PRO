@@ -117,7 +117,13 @@ async function przygotujKontekst(request: APIRequestContext): Promise<Kontekst> 
       },
     });
   }
-  for (const branch of op.snapshot?.branches ?? []) {
+  // Kategoria katalogu MUSI pasować do rodzaju gałęzi: KABEL_SN dostają
+  // WYŁĄCZNIE odcinki liniowe (aparat pola ma wiązanie APARAT_SN, którego nie
+  // wolno nadpisać — `catalog.namespace_mismatch`, KD-6).
+  const odcinkiLiniowe = (op.snapshot?.branches ?? []).filter(
+    (branch) => branch.type === 'cable' || branch.type === 'line_overhead',
+  );
+  for (const branch of odcinkiLiniowe) {
     await domainOp(request, studyCase.id, 'assign_catalog_to_element', {
       element_ref: branch.ref_id,
       catalog_binding: catalogBinding('KABEL_SN', CABLE_ID),

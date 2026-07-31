@@ -35,7 +35,7 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    branches?: Array<{ ref_id: string }>;
+    branches?: Array<{ ref_id: string; type?: string }>;
     transformers?: Array<{ ref_id: string }>;
   };
 };
@@ -175,7 +175,15 @@ async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: st
     },
   });
 
-  for (const branch of op.snapshot?.branches ?? []) {
+  // Kategoria katalogu MUSI pasować do rodzaju gałęzi: pozycję KABEL_SN dostają
+  // WYŁĄCZNIE odcinki liniowe. Ta pętla przypisywała wcześniej kabel TAKŻE
+  // aparatom pól, kasując po cichu ich wiązanie APARAT_SN — backend to
+  // przyjmował (defekt zastany naprawiony u źródła w KD-6:
+  // `catalog.namespace_mismatch`), więc spec nigdy tego nie zauważył.
+  const odcinkiLiniowe = (op.snapshot?.branches ?? []).filter(
+    (branch) => branch.type === 'cable' || branch.type === 'line_overhead',
+  );
+  for (const branch of odcinkiLiniowe) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: branch.ref_id,
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),

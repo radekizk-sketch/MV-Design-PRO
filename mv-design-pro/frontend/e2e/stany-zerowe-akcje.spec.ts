@@ -44,7 +44,7 @@ type DomainOpResponse = {
   error?: string | null;
   snapshot?: {
     corridors?: Array<{ ordered_segment_refs?: string[] }>;
-    branches?: Array<{ ref_id: string }>;
+    branches?: Array<{ ref_id: string; type?: string }>;
     transformers?: Array<{ ref_id: string }>;
   };
 };
@@ -242,7 +242,13 @@ async function zbudujSiecGotowaDoObliczen(request: APIRequestContext, caseId: st
     },
   });
 
-  for (const branch of op.snapshot?.branches ?? []) {
+  // Kategoria katalogu MUSI pasować do rodzaju gałęzi: KABEL_SN dostają
+  // WYŁĄCZNIE odcinki liniowe (aparat pola ma wiązanie APARAT_SN, którego nie
+  // wolno nadpisać — `catalog.namespace_mismatch`, KD-6).
+  const odcinkiLiniowe = (op.snapshot?.branches ?? []).filter(
+    (branch) => branch.type === 'cable' || branch.type === 'line_overhead',
+  );
+  for (const branch of odcinkiLiniowe) {
     await executeDomainOp(request, caseId, 'assign_catalog_to_element', {
       element_ref: branch.ref_id,
       catalog_binding: buildCatalogBinding('KABEL_SN', CABLE_ID),
