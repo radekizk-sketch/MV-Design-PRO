@@ -267,7 +267,12 @@ test('ogniwo: z wyniku zwarciowego wprost do werdyktu wytrzymałości aparatury 
   // Sekcja ogniwa pokazuje prądy TEGO punktu jako wejścia.
   const sekcja = page.getByTestId('mvd-zwarcia-aparatura');
   await expect(sekcja).toBeVisible();
-  await expect(page.getByTestId('mvd-zwarcia-aparatura-stacje')).toContainText(stationRef);
+  // Strefa pierwszoplanowa pokazuje NAZWĘ stacji; ref modelu jest atrybutem
+  // maszynowym — asercja idzie po nim (nazwa może się zmienić, ref nie).
+  await expect(page.getByTestId('mvd-zwarcia-aparatura-stacje')).toHaveAttribute(
+    'data-stacje-ref',
+    stationRef,
+  );
 
   // AKCJA: jawne przejście do weryfikacji wytrzymałości.
   await page.getByTestId('mvd-zwarcia-aparatura-sprawdz').click();

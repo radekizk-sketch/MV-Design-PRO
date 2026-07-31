@@ -30,6 +30,7 @@ import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 import { fmtKA } from '../strings';
 import {
+  nazwaStacji,
   polaDoSprawdzenia,
   powodBrakuPodstawy,
   stacjeDlaPunktu,
@@ -204,8 +205,16 @@ export function WeryfikacjaAparatury({
         </div>
         <div>
           <dt>{T.wejscieStacja}</dt>
-          <dd data-testid="mvd-zwarcia-aparatura-stacje">
-            {stacje.length === 0 ? T.kreska : stacje.join(', ')}
+          {/* Strefa pierwszoplanowa mówi NAZWĄ stacji; ref modelu zostaje
+              maszynowym atrybutem (podpowiedź i asercje), nie napisem. */}
+          <dd
+            data-testid="mvd-zwarcia-aparatura-stacje"
+            data-stacje-ref={stacje.join(',')}
+            title={stacje.join(', ')}
+          >
+            {stacje.length === 0
+              ? T.kreska
+              : stacje.map((ref) => nazwaStacji(snapshot, ref)).join(', ')}
           </dd>
         </div>
         <div>

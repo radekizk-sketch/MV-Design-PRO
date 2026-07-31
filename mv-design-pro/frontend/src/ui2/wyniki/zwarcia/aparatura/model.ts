@@ -102,6 +102,20 @@ export function polaDoSprawdzenia(args: {
     .sort((a, b) => a.bayDesignation.localeCompare(b.bayDesignation));
 }
 
+/**
+ * Nazwa stacji z modelu (strefa pierwszoplanowa mówi po polsku, nie
+ * identyfikatorami). Brak nazwy w modelu → ref jako uczciwy zapasowy opis.
+ */
+export function nazwaStacji(
+  snapshot: EnergyNetworkModel | null,
+  stationRef: string,
+): string {
+  const stacja = (snapshot?.substations ?? []).find(
+    (s) => (s.ref_id ?? s.id) === stationRef,
+  );
+  return stacja?.name || stationRef;
+}
+
 /** Powód, dla którego weryfikacji NIE DA SIĘ przeprowadzić (uczciwy stan zerowy). */
 export type PowodBrakuPodstawy =
   | 'brak-pradow'

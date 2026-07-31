@@ -21,7 +21,7 @@ import { useSnapshotStore } from '../../../../../ui/topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { shortCircuitRowFixture } from '../../__tests__/fixtures';
 import { WeryfikacjaAparatury } from '../WeryfikacjaAparatury';
-import { polaDoSprawdzenia, powodBrakuPodstawy, stacjeDlaPunktu } from '../model';
+import { nazwaStacji, polaDoSprawdzenia, powodBrakuPodstawy, stacjeDlaPunktu } from '../model';
 
 const STACJA = 'stn/abc/station';
 
@@ -313,6 +313,17 @@ describe('model ogniwa — czyste selektory', () => {
         ithKA: 12.5,
       }),
     ).toEqual([]);
+  });
+
+  it('stacja przedstawia się NAZWĄ; brak nazwy w modelu → uczciwie ref', () => {
+    const snap = snapshotZeStacja('EL-GPZ');
+    expect(nazwaStacji(snap, STACJA)).toBe('Stacja 1');
+    const bezNazwy = {
+      ...snap,
+      substations: [{ ...snap.substations[0], name: '' }],
+    } as unknown as EnergyNetworkModel;
+    expect(nazwaStacji(bezNazwy, STACJA)).toBe(STACJA);
+    expect(nazwaStacji(null, STACJA)).toBe(STACJA);
   });
 
   it('powód braku podstawy rozróżnia trzy sytuacje', () => {
