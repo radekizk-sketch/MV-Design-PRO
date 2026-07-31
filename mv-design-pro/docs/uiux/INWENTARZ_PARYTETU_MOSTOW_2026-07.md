@@ -3,6 +3,8 @@
 **Status:** WIĄŻĄCY. Aktualizacja 2026-07-31 (karta KD-4, fala 2 kolejki długu):
 domknięte luki **L-1, L-7, L-8, L-10, L-11, L-15**; **L-9** pozostaje wpisem
 imiennym (residuum decyzji właściciela D3/D4 planu wygaszania — patrz §8).
+Odnotowane przy okazji: **L-13** zamknięta w karcie backendowej KD-2 (pola
+`delta_*_percent` + kolumny Δ% ekranu) — wpis w tabeli był nieaktualny.
 Wcześniej (karta KD-1, fala 1): domknięte L-2…L-5 (zarządzanie projektami
 w ui2), L-12 i L-14 (porównanie A/B) oraz WYKONANE kasacje L-6 i L-17
 (werdykty MARTWY → USUNIĘTO).
@@ -45,7 +47,7 @@ trasę spoza rejestru (`#kreator-stacji-v2`, obsługiwaną wprost w `LegacyWarsz
 | 6 | `#enm-inspector` | `EnmInspectorPage` za flagą `ENM_INSPECTOR_VISIBLE` (domyślnie OFF) | brak | brak (narzędzie deweloperskie) | **ZOSTAWIĆ** (luka L-8) |
 | 7 | `#analysis` / `#results` | hub „Analizy techniczne” — od F-E5c dostawcą jest **ui2** (`MostAnalizTechnicznych` → `EkranAnalizTechnicznych`); most renderuje tylko powierzchnie-dzieci | menu, `navigateToResults` po DONE, deep-link | `wyniki/analizy/EkranAnalizTechnicznych` + zakładki warsztatu | **ZOSTAWIĆ** (widok domyślny już ui2; zakładka „Pozostałe analizy” = reszta mostu, luka L-9) |
 | 8 | `#proof` (alias, `tab=trace`) | `ElementCalculationProofPanel` + `ProofLatexPanel` (źródło LaTeX: kopiuj/pobierz `.tex`) | `InspectorPanel` („Otwórz wywód”), Ctrl+K „Dowód obliczeniowy” (→ zakładka ui2, nie trasa) | zakładka „Dowód obliczeń” (`DowodPrzebiegu` → `PrzegladDowodu`): kroki WHITE BOX + odcisk wejścia | **ZOSTAWIĆ** (luki L-10, L-11) |
-| 9 | `#compare` (alias) | `ResultsComparisonPage` (`POST /api/comparison/runs`): szyny U[kV]+U[pu]+Δ%, gałęzie P/Q+Δ%, zwarcia jako 2 skalary, filtr „tylko różnice”, status IMPROVED/REGRESSED (heurystyka w UI) | Ctrl+K „Porównanie przebiegów” (→ zakładka ui2, nie trasa) | zakładka „Porównanie A/B” (`EkranPorownania` + `TrybZwarciowy`): tryb rozpływowy (`/api/power-flow-comparisons`) i zwarciowy (tabela punktów Ik″/ip/Ith/Sk), ranking problemów, dowód kolumny A i B | **ZOSTAWIĆ** (po KD-1 pozostaje wyłącznie luka L-13 — brak pola `percent` w backendzie; L-12 i L-14 zamknięte) |
+| 9 | `#compare` (alias) | `ResultsComparisonPage` (`POST /api/comparison/runs`): szyny U[kV]+U[pu]+Δ%, gałęzie P/Q+Δ%, zwarcia jako 2 skalary, filtr „tylko różnice”, status IMPROVED/REGRESSED (heurystyka w UI) | Ctrl+K „Porównanie przebiegów” (→ zakładka ui2, nie trasa) | zakładka „Porównanie A/B” (`EkranPorownania` + `TrybZwarciowy`): tryb rozpływowy (`/api/power-flow-comparisons`) i zwarciowy (tabela punktów Ik″/ip/Ith/Sk), ranking problemów, dowód kolumny A i B | **ZOSTAWIĆ** (parytet osiągnięty: L-12 i L-14 zamknięte w KD-1, L-13 — Δ% z backendu — w KD-2) |
 | 10 | `#power-flow-results` (alias) | powierzchnia E-35 z `tabId='power-flow'` — **zakładka bez własnej gałęzi renderu**, więc GENERYCZNA `AnalysisDataTable` (te same wiersze dla każdej zakładki, limit 200) | brak wołającego produkcyjnego; zimny deep-link | zakładka „Rozpływ mocy” (`EkranRozplywu`: `TabelaSzyn`, `TabelaGalezi`, profil napięć, wejście w dowód) | **WYGASIĆ** ✅ (nadzbiór) |
 | 11 | `#protection-results` (alias) | powierzchnia E-35 z `tabId='protection'` — jak wyżej: GENERYCZNA tabela, zero treści zabezpieczeniowej | Ctrl+K „Wyniki zabezpieczeń” (`useLegacyMenuActions`, akcja `protection`) | **NOWA** zakładka „Koordynacja zabezpieczeń” (`EkranKoordynacji` — dostawca ui2 ekranu E-28: krzywe TCC, marginesy CTI, nastawy z backendu) | **WYGASIĆ** ✅ (nadzbiór) |
 | 12 | `#report` | `ReportSurface` (E-37) — generator raportu, eksporty OSD/audytowe | Ctrl+K „Generator raportu”, `WorkspaceOperationalBar`, karty huba Dokumentacji | brak w ui2 (`HubDokumentacji` tylko prowadzi do powierzchni mostu) | **ZOSTAWIĆ** (luka L-15) |
@@ -110,7 +112,7 @@ Format: **zdolność · miejsce w ui2 · czego brakuje**.
 | L-10 | Źródło LaTeX wywodu (kopiuj / pobierz `.tex`) | zakładka „Dowód obliczeń” | ZAMKNIĘTA (KD-4): sekcja `ui2/wyniki/dowod/ZrodloLatex` (pokaż / kopiuj / pobierz `.tex`) na TYM SAMYM kliencie co most (`fetchProofLatex`/`downloadProofLatex`/`proofLatexFilename` → `GET /analysis-runs/{id}/export/proof/latex`); prezentacja pokazuje bajty backendu, niczego nie skleja |
 | L-11 | Dowód zawężony do WSKAZANEGO elementu | zakładka „Dowód obliczeń” | ZAMKNIĘTA (KD-4): `PrzegladDowodu` przyjmuje wskazany element i startuje na JEGO krokach, z jawnym przełącznikiem na cały przebieg. **Defekt zastany naprawiony u źródła:** `otworzDowod(_ref)` warsztatu Wyników przyjmował ref elementu i go WYRZUCAŁ (2× klik zawsze otwierał cały wywód). Kroki elementu wybiera `resolveTraceStepsForElement` (`selection_index` + referencje kroku) — dostawca z panelu dowodu elementu mostu; drugie wejście to selekcja na schemacie |
 | L-12 | Różnice mocy biernej w porównaniu A/B | `EkranPorownania` | ZAMKNIĘTA (KD-1): kolumny Q [Mvar] (A · B · Δ) w tabelach szyn i gałęzi — pola `q_injected_mvar_*`/`delta_q_mvar` i `q_from_mvar_*`/`delta_q_from_mvar` z payloadu backendu |
-| L-13 | Różnice w procentach (Δ%) | `EkranPorownania` | backend `/api/power-flow-comparisons` nie zwraca `percent`; wyliczenie w UI byłoby fizyką/arytmetyką w prezentacji → potrzebne pole z backendu |
+| L-13 | Różnice w procentach (Δ%) | `EkranPorownania` | ZAMKNIĘTA (KD-2 + scalenie nadzorcy): backend `/api/power-flow-comparisons` zwraca `delta_v_percent` / `delta_angle_percent` / `delta_p_percent` / `delta_q_percent` (`None` = wartość A równa zeru), a ekran pokazuje je jako kolumny Δ% szyn i gałęzi — bez arytmetyki w prezentacji |
 | L-14 | Filtr „pokaż tylko różnice” | `EkranPorownania` | ZAMKNIĘTA (KD-1): przełącznik „Pokaż tylko różnice” filtrujący wiersze po deltach BACKENDU (zero arytmetyki w prezentacji) |
 | L-15 | Generator raportu i eksporty OSD | przestrzeń „Dokumentacja” | ZAMKNIĘTA (KD-4): okno `ui2/spaces/dokumentacja/generator` — wybór przebiegu (wyłącznie zakończone), SKŁAD dokumentu (profil · poziom · zakres · sekcje · tabela wiodąca z REALNEJ odpowiedzi `results/index` biegu), zapis kopii do magazynu dokumentów. **Znalezisko naprawione u źródła:** kompozycja istniała w budowniczym raportu, ale ŻADEN endpoint jej nie wystawiał (a most miał dwie kontrolki składu, które nie jechały do backendu — phantom); trzy końcówki eksportu przyjmują teraz `profile`/`detail_level`/`scope`/`sections`/`focus_table` addytywnie. Eksporty OSD (wniosek przyłączeniowy) mają własnego dostawcę ui2 od wcześniej (`ui2/oze/wniosek`) |
 | L-16 | Katalogi CT, VT, kable nN, aparaty nN | `spaces/model/katalog` | 4 kategorie obecne w moście (`CatalogBrowser`) i w API katalogu, nieobecne w `KATEGORIE` adaptera ui2 |
@@ -133,8 +135,8 @@ Format: **zdolność · miejsce w ui2 · czego brakuje**.
   Bramka: `frontend/e2e/projekty-parytet.spec.ts` (asercje przez API — usunięty
   projekt znika z backendu) + testy kontenera.
 - **L-12 i L-14 (porównanie A/B rozpływu)** — `ui2/wyniki/porownanie/**`.
-  Zostaje L-13 (procent różnicy): backend nie zwraca pola `percent`, a liczenie
-  go w UI byłoby arytmetyką w prezentacji — karta backendowa.
+  L-13 (procent różnicy) przeszła wtedy do karty backendowej i została ZAMKNIĘTA
+  w KD-2 (pola `delta_*_percent` w odpowiedzi porównań + kolumny Δ% na ekranie).
 - **L-6 i L-17 (kasacje)** — patrz wiersze 4 i 16 tabeli werdyktów.
 - **Znalezisko uboczne (naprawione u źródła):** `useTopologyStore.loadSummary`
   NIE MIAŁ żadnego wołającego produkcyjnego (jedyny konsument `ui/topology/TopologyPanel`
