@@ -293,3 +293,45 @@ Data wejscia statusow: 2026-05-24.
 | `POST /api/v1/reference-networks/{network_id}/validate` | v12xx | aktywny | 2026-05-24 | - | Walidacja sieci referencyjnej. | reference network tests | Architekt testow |
 | `POST /api/v1/reference-networks/{network_id}/validate-dynamic` | v12xx | aktywny | 2026-05-24 | - | Walidacja dynamiczna sieci referencyjnej. | reference network tests | Architekt testow |
 | `PUT /api/v1/projects/{project_id}/audit2-station-config/{station_id:path}` | v12xx.m1 | adapter | 2026-05-24 | koniec M4 | Zapis konfiguracji stacji audit2. | audit2 station config tests | Architekt stacji |
+
+## Uzupelnienie KD-9 — koncowki odsloniete po naprawie strazenika cyklu zycia
+
+Data wejscia statusow w tej sekcji: 2026-07-31.
+
+DLACZEGO TE WIERSZE POWSTALY TAK POZNO. `scripts/api_lifecycle_guard.py`
+rozpoznawal routery WYLACZNIE po nazwie zmiennej `router`. `api/enm.py` i
+`api/catalog.py` eksportuja do aplikacji `production_router`, a
+`api/protection_analysis_runs.py` reeksportuje router z `api/protection_runs.py`
+- wszystkie trzy byly dla strazenika niewidoczne, a `include_router` na nich
+pomijal cicho. Pomiar (2026-07-31): stary strazink widzial 200 tras `/api`,
+aplikacja wystawia 262; 62 trasy nie podlegaly zadnej bramce cyklu zycia, a 19 z
+nich nie mialo tu wiersza. Strazink liczy teraz trasy z KAZDEGO routera wpietego
+przez `include_router`, niezaleznie od nazwy zmiennej, i jest fail-closed:
+router, ktorego nie potrafi rozwiazac statycznie, konczy sie naruszeniem
+`[api-lifecycle-unresolved-router]`, a nie cichym pominieciem.
+
+Kolumna Testy oznaczona `BRAK przed KD-9` mowi, ze koncowka nie miala ZADNEGO
+wlasnego testu kontraktu - testy dymne dopisala karta KD-9 w
+`backend/tests/api/test_kd9_kontrakt_koncowek_bez_testu.py`.
+
+| Endpoint | Wersja | Status | Data wejscia | Data wylaczenia | Zakres kompatybilnosci | Testy | Wlasciciel |
+|---|---|---|---|---|---|---|---|
+| `GET /api/cases/{case_id}/enm/dziennik-zmian` | v12xx | aktywny | 2026-07-31 | - | Dziennik zmian ENM przypadku od wskazanej rewizji (`od_rewizji`); odczyt, bez mutacji modelu. | tests/api/test_dziennik_zmian_api.py | nadzor programu |
+| `GET /api/cases/{case_id}/enm/station-fault-loop` | v12xx | aktywny | 2026-07-31 | - | Petla zwarcia u zrodla stacji nN (IEC 60364-4-41) z modelu; fizyke liczy solver, koncowka jest read-only. Model bez wskazanej stacji daje jawny stan `brak danych` z lista brakow, nigdy wartosc domyslna. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/catalog/complete-bay-templates` | v12xx | aktywny | 2026-07-31 | - | Pelne szablony pol SN powiazane z rodzina rozdzielnicy; filtry `manufacturer_ref` i `bay_kind`. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/catalog/converter-types` | v12xx | aktywny | 2026-07-31 | - | Katalog przeksztaltnikow zrodel z kanonicznego katalogu SN; filtr `kind`. | tests/api/test_catalog_api.py | nadzor programu |
+| `GET /api/catalog/inverter-types` | v12xx | aktywny | 2026-07-31 | - | Katalog falownikow i przeksztaltnikow ogolnych z kanonicznego katalogu SN. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/catalog/manufacturers` | v12xx | aktywny | 2026-07-31 | - | Lista producentow rozdzielnic SN ze statusem weryfikacji zrodel katalogowych. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/catalog/ptpiree/generator-certificates` | v12xx | aktywny | 2026-07-31 | - | Lokalna migawka certyfikatow generatorow i przeksztaltnikow PTPiREE. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/catalog/ptpiree/manifest` | v12xx | aktywny | 2026-07-31 | - | Metadane zrodla migawki PTPiREE uzytej przez katalog lokalny. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/catalog/shunt-capacitor-types` | v12xx | aktywny | 2026-07-31 | - | Katalog baterii kondensatorow SN (przestrzen KOMPENSATOR_SN). | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/catalog/surge-arrester-types` | v12xx | aktywny | 2026-07-31 | - | Katalog ogranicznikow przepiec SN. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/catalog/switchgear-families` | v12xx | aktywny | 2026-07-31 | - | Rodziny rozdzielnic SN; filtr `manufacturer_ref` zwezajacy do jednego producenta. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/catalog/wind-inverter-types` | v12xx | aktywny | 2026-07-31 | - | Katalog przeksztaltnikow farm wiatrowych (podzbior `converter-types` o rodzaju WIND). | tests/api/test_catalog_api.py | nadzor programu |
+| `GET /api/projects/{project_id}/sld/{diagram_id}/protection-overlay` | v12xx | aktywny | 2026-07-31 | - | Nakladka SLD wynikow zabezpieczen (read-only, bez mutacji modelu i diagramu); wymaga zakonczonego biegu wskazanego przez `run_id`. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/protection-runs/{run_id}` | v12xx | aktywny | 2026-07-31 | - | Metadane biegu analizy zabezpieczen: status, hash wejscia, znaczniki czasu, komunikat bledu. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/protection-runs/{run_id}/results` | v12xx | aktywny | 2026-07-31 | - | Wyniki analizy zabezpieczen; dostepne wylacznie dla biegu w stanie FINISHED. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `GET /api/protection-runs/{run_id}/trace` | v12xx | aktywny | 2026-07-31 | - | WHITE BOX slad biegu zabezpieczen do audytu numerycznego. | BRAK przed KD-9 -> tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `POST /api/catalog/auto-populate/{element_type}` | v12xx | aktywny | 2026-07-31 | - | Rankingowa podpowiedz pozycji katalogowych dla kontekstu elementu (transformator, kabel, lacznik, punkt rozgalezny, DER); zwraca kandydatow z pewnoscia dopasowania i NIE zapisuje modelu. | tests/api/test_catalog_auto_populate.py | nadzor programu |
+| `POST /api/projects/{project_id}/protection-runs` | v12xx | aktywny | 2026-07-31 | - | Utworzenie biegu analizy zabezpieczen; wymaga zakonczonego biegu zwarciowego (`sc_run_id`) i przypadku z ProtectionConfig (`protection_case_id`). | tests/api/test_protection_api_contract.py + tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
+| `POST /api/protection-runs/{run_id}/execute` | v12xx | aktywny | 2026-07-31 | - | Wykonanie biegu analizy zabezpieczen (CREATED -> FINISHED albo FAILED); walidacja wejsc, silnik oceny, zapis wyniku i sladu. | tests/api/test_protection_api_contract.py + tests/api/test_kd9_kontrakt_koncowek_bez_testu.py | nadzor programu |
