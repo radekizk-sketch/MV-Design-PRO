@@ -20,7 +20,6 @@ import {
   navigateToCatalog,
   navigateToNetworkBuild,
   navigateToReport,
-  navigateToResultsProtection,
   navigateToSwitchgear,
   navigateToVariants,
 } from '../../ui/navigation';
@@ -160,9 +159,12 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
         setActiveSpace('wyniki');
         break;
       case 'protection':
-        // ZOSTAJE w moście (K3 §A pkt 4): brak zakładkowego odpowiednika ui2
-        // dla wyników zabezpieczeń — trasa #protection-results bez zmian.
-        navigateToResultsProtection({ runId: effectiveRunId });
+        // K8 (domknięcie długu K3 §A pkt 4): warsztat Wyników ma zakładkę
+        // „Koordynacja zabezpieczeń" (EkranKoordynacji — dostawca ui2 ekranu
+        // E-28), więc akcja prowadzi do niej zamiast do wygaszonej trasy
+        // mostu #protection-results (ta renderowała generyczną tabelę E-35).
+        setWynikiTab('koordynacja');
+        setActiveSpace('wyniki');
         break;
       case 'run-sc-3f':
       case 'run-sc-1f':

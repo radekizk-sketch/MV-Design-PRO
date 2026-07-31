@@ -2333,67 +2333,6 @@ function CatalogHelperSurface({ surface }: { surface: WorkspaceSurfaceDescriptor
   );
 }
 
-function CaseContextSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
-  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
-  const activeCaseName = useAppStateStore((state) => state.activeCaseName);
-  const activeRunId = useAppStateStore((state) => state.activeRunId);
-  const openChildSurface = useChildSurfaceLauncher(surface);
-
-  return (
-    <div className="space-y-4">
-      <MiniSldCard surface={surface} />
-      <SectionCard title="Parametry analizy" eyebrow="Kontekst roboczy">
-        <KeyValueGrid
-          rows={[
-            { label: 'Wariant', value: displayScopeLabel(activeCaseName, activeCaseId) },
-            { label: 'Stan obliczeń', value: activeRunId ? 'Wybrane obliczenie jest dostępne' : 'Nie wybrano obliczenia' },
-            { label: 'Następny krok', value: 'Skontroluj konfigurację układu, wyniki albo raport techniczny dla aktywnego wariantu.' },
-          ]}
-        />
-      </SectionCard>
-      <SectionCard title="Nawigacja kanoniczna" eyebrow="Główne okno robocze">
-        <div className="flex flex-wrap gap-2">
-          <SurfaceActionButton
-            label="Stan obliczeń wariantu"
-            onClick={() =>
-              openChildSurface('variants', {
-                titlePl: 'Stan obliczeń wariantu',
-                sizeClass: 'C',
-                supportsMiniSld: false,
-                subjectKind: 'helper_context',
-                subjectRef: activeCaseId ?? surface.subjectRef ?? 'variants-context',
-              })
-            }
-          />
-          <SurfaceActionButton
-            label="Nakładka wynikowa"
-            onClick={() =>
-              openChildSurface('analysis', {
-                screenCode: ANALYSIS_SURFACE_SCREEN_CODE,
-                tabId: 'results',
-                titlePl: 'Nakładka wynikowa na schemacie',
-                sizeClass: 'C',
-                supportsMiniSld: true,
-              })
-            }
-          />
-          <SurfaceActionButton
-            label="Raporty i eksporty"
-            onClick={() =>
-              openChildSurface('report', {
-                screenCode: REPORT_SURFACE_SCREEN_CODE,
-                titlePl: 'Raporty i eksporty',
-                sizeClass: 'C',
-                supportsMiniSld: true,
-              })
-            }
-          />
-        </div>
-      </SectionCard>
-    </div>
-  );
-}
-
 function ProofSurface({ surface }: { surface: WorkspaceSurfaceDescriptor }) {
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const executionRuns = useExecutionRunsStore((state) => state.runs);
@@ -2908,15 +2847,17 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
   }
 
   switch (surface.screenCode) {
-    case 'E-08':
+    // K8: trasa #variants wygaszona (lądowisko = przestrzeń „Obliczenia" ui2),
+    // ale `VariantsSurface` ZOSTAJE — jest współdzielona z akcją naprawczą
+    // „historia" (`fixActionSurface('history')` → `variants_runs`), więc nie
+    // jest martwa. Kod ekranu 'E-08' nie ma już żadnego wołającego i zniknął
+    // z gałęzi (`case_context`/`CaseContextSurface` usunięte razem z trasą).
     case 'variants_runs':
       return <VariantsSurface surface={surface} />;
     case 'catalog_admin':
     case 'catalog_picker':
     case 'E-38':
       return <CatalogHelperSurface surface={surface} />;
-    case 'case_context':
-      return <CaseContextSurface surface={surface} />;
     case 'switchgear_wizard':
     case ANALYSIS_SURFACE_SCREEN_CODE:
       return <AnalysisSurface surface={surface} />;

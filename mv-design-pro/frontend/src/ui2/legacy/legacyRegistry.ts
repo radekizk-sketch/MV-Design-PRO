@@ -69,7 +69,8 @@ export const REJESTR_LEGACY: Readonly<Record<SpaceId, WpisRejestruLegacy>> = {
     obszaryLegacy: ['STUDIA_OBLICZENIOWE (konfiguracja + przebiegi)'],
     montaz:
       'MenedzerPrzypadkow (E7.1) + PrzebiegiPanel (E7.2: historia z parametrami, odcisk odtwarzalności, na żywo z magistrali)',
-    wygaszenie: 'zrealizowane w U2 w całości (most RunHistoryPanel usunięty)',
+    wygaszenie:
+      'zrealizowane w U2 w całości (most RunHistoryPanel usunięty); K8: trasy #case-config (E-07 bez renderu w routerze) i #variants (E-08, karta read-only) wygaszone — lądują w tej przestrzeni',
   },
   wyniki: {
     przestrzen: 'wyniki',
@@ -83,7 +84,8 @@ export const REJESTR_LEGACY: Readonly<Record<SpaceId, WpisRejestruLegacy>> = {
     ],
     montaz:
       'WynikiWarsztat (E8.1: rozpływ szyn na wzorcu ekranu analizy) + WorkspaceSurfaceRouter (pozostałe analizy przez trasę #analysis w zakładce mostu)',
-    wygaszenie: 'U3/E8–E9: kolejne okna wyników na wzorcu (zwarcia E8.2, dowody, zabezpieczenia, porównania)',
+    wygaszenie:
+      'K8: wygaszone trasy mostu #power-flow-results → zakładka „Rozpływ mocy" i #protection-results → zakładka „Koordynacja zabezpieczeń"; w moście zostaje wyłącznie zakładka „Pozostałe analizy" (#analysis/#proof/#compare — luki w inwentarzu INWENTARZ_PARYTETU_MOSTOW_2026-07.md)',
   },
   dokumentacja: {
     przestrzen: 'dokumentacja',

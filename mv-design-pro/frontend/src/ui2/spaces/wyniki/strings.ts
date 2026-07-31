@@ -10,6 +10,7 @@ export const WYNIKI_WARSZTAT_STRINGS = {
   zakladkaRegulacjaOltc: 'Regulacja OLTC',
   zakladkaZbieznosc: 'Zbieżność rozpływu',
   zakladkaZwarcia: 'Zwarcia',
+  zakladkaKoordynacja: 'Koordynacja zabezpieczeń',
   zakladkaSkladowe: 'Składowe symetryczne',
   zakladkaDowod: 'Dowód obliczeń',
   zakladkaStanFazowy: 'Stan fazowy SN',

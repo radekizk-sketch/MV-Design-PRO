@@ -2,8 +2,9 @@
  * Testy akcji menu legacy (K3-A2 — jedno lądowisko wyników): akcje z
  * zakładkowym dostawcą ui2 (wyniki/porównanie/dowód) prowadzą do warsztatu
  * przestrzeni „Wyniki" (deep-link zakładki, wzorzec V12K-106), a nie do
- * powierzchni trasowych mostu; „protection" celowo zostaje w moście
- * (brak zakładkowego odpowiednika ui2).
+ * powierzchni trasowych mostu. K8: „protection" dołącza do tej reguły —
+ * zakładka „Koordynacja zabezpieczeń" jest realnym dostawcą ui2, więc trasa
+ * mostu #protection-results została wygaszona.
  */
 import { render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -60,11 +61,18 @@ describe('useLegacyMenuActions (K3-A2 — lądowisko wyników ui2)', () => {
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 
-  it('protection zostaje w moście — trasa #protection-results (brak zakładki ui2)', async () => {
+  // INTENCJA (K3-A2, zachowana): akcja „protection" ma prowadzić do JEDNEGO
+  // lądowiska wyników zabezpieczeń, a nie zostawiać użytkownika w widoku bez
+  // treści zabezpieczeniowej. Kanon zmieniony w K8: warsztat Wyników ma
+  // zakładkę „Koordynacja zabezpieczeń" (EkranKoordynacji — dostawca ui2
+  // ekranu E-28), więc trasa mostu #protection-results (generyczna tabela
+  // E-35) jest wygaszona i akcja celuje w zakładkę.
+  it('protection → zakładka „koordynacja" + przestrzeń „wyniki" (trasa mostu #protection-results wygaszona)', async () => {
     render(<Probe />);
     await waitFor(() => expect(wykonaj).not.toBeNull());
     wykonaj!('protection');
-    expect(window.location.hash).toContain('#protection-results');
-    expect(useShellStore.getState().activeSpace).toBe('projekt');
+    expect(useShellStore.getState().wynikiTab).toBe('koordynacja');
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(window.location.hash).toBe('');
   });
 });

@@ -106,6 +106,31 @@ describe('WynikiWarsztat — zakładki', () => {
     );
   });
 
+  // K8 (wygaszenie trasy mostu #protection-results): zakładka „Koordynacja
+  // zabezpieczeń" MUSI mieć realnego dostawcę — bez niej lądowisko wygaszonej
+  // trasy byłoby phantomem (dokładnie tego wymagał K3-A3 przy czterech
+  // zakładkach kart huba).
+  it('zakładka „koordynacja" (K8) ma etykietę PL i realnego dostawcę (EkranKoordynacji)', () => {
+    render(<WynikiWarsztat {...props()} />);
+    const zakladka = screen.getByTestId('mvd-wyniki-zakladka-koordynacja');
+    expect(zakladka).toHaveTextContent(T.zakladkaKoordynacja);
+
+    fireEvent.click(zakladka);
+    expect(zakladka.getAttribute('aria-selected')).toBe('true');
+    // Bez projektu ekran pokazuje UCZCIWY stan zerowy z akcją naprawczą
+    // (kontrakt EkranKoordynacji), a nie pustą przestrzeń ani widok mostu.
+    expect(screen.getByTestId('mvd-koordynacja-brak-projektu')).toBeTruthy();
+  });
+
+  it('deep-link „koordynacja" (K8): żądanie ze shell store otwiera zakładkę i jest konsumowane', () => {
+    useShellStore.setState({ wynikiTab: 'koordynacja' });
+    render(<WynikiWarsztat {...props()} />);
+    expect(screen.getByTestId('mvd-wyniki-zakladka-koordynacja').getAttribute('aria-selected')).toBe(
+      'true',
+    );
+    expect(useShellStore.getState().wynikiTab).toBeNull();
+  });
+
   it('deep-link ze shell store (F-E8.2): wynikiTab=„studium" otwiera zakładkę studium i czyści żądanie', async () => {
     useShellStore.setState({ wynikiTab: 'studium' });
     render(<WynikiWarsztat {...props()} />);

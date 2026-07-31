@@ -24,6 +24,7 @@ import { SldCanvasV3Workspace } from '../../ui/sld/v3/canvas/SldCanvasV3Workspac
 import { ProjectDashboardSurface } from '../../ui/workspace/surfaces/ProjectDashboardSurface';
 import { WorkspaceSurfaceRouter } from '../../ui/workspace';
 import { SemanticIssuesBanner } from '../../ui/tech-card/SemanticIssuesBanner';
+import { useAppStateStore } from '../../ui/app-state';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../ui/selection/store';
@@ -44,6 +45,26 @@ function UnknownRoutePage({ route }: { route: string }) {
           powierzchni. Przejdź do jednej z aktywnych sekcji albo popraw routing.
         </p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Trasa `#fault-scenarios` (most legacy) — K8, naprawa u źródła (Zero-Debt).
+ *
+ * Defekt zastany: panel dostawał `studyCaseId={null}` NA SZTYWNO, więc trasa
+ * ZAWSZE pokazywała stan „Wybierz wariant pracy…" — scenariuszy zwarciowych nie
+ * dało się obejrzeć ani dodać, niezależnie od aktywnego przypadku. Panel sam
+ * ustawia `studyCaseId` w store (efekt na propie), więc jedyną poprawną wartością
+ * jest AKTYWNY przypadek obliczeniowy powłoki; brak przypadku nadal daje uczciwy
+ * stan zerowy panelu (bez zgadywania identyfikatora).
+ */
+function ScenariuszeZwarcioweTrasa() {
+  const activeCaseId = useAppStateStore((state) => state.activeCaseId);
+  return (
+    <div className="flex flex-col h-full">
+      <FaultScenariosPanel studyCaseId={activeCaseId} />
+      <FaultScenarioModal />
     </div>
   );
 }
@@ -76,12 +97,7 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
     return <StationWizardSurface />;
   }
   if (route === '#fault-scenarios') {
-    return (
-      <div className="flex flex-col h-full">
-        <FaultScenariosPanel studyCaseId={null} />
-        <FaultScenarioModal />
-      </div>
-    );
+    return <ScenariuszeZwarcioweTrasa />;
   }
   // Pulpit projektów legacy (lista projektów + nowy projekt) — trasa #dashboard;
   // przestrzeń „Projekt" nowej powłoki kieruje tu akcją „Otwórz projekt".

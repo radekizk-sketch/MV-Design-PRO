@@ -44,6 +44,7 @@ import {
   PulpitOze,
 } from '../../oze';
 import { EkranJakosci } from '../../wyniki/jakosc';
+import { EkranKoordynacji } from '../../wyniki/koordynacja';
 import { EkranEstymacji } from '../../wyniki/estymacja';
 import { EkranSkladowych } from '../../wyniki/skladowe';
 import { EkranSsci } from '../../wyniki/ssci';
@@ -64,6 +65,7 @@ const ZAKLADKI = [
   { id: 'regulacja-oltc', etykieta: T.zakladkaRegulacjaOltc },
   { id: 'zbieznosc', etykieta: T.zakladkaZbieznosc },
   { id: 'zwarcia', etykieta: T.zakladkaZwarcia },
+  { id: 'koordynacja', etykieta: T.zakladkaKoordynacja },
   { id: 'skladowe', etykieta: T.zakladkaSkladowe },
   { id: 'dowod', etykieta: T.zakladkaDowod },
   { id: 'jakosc', etykieta: T.zakladkaJakosc },
@@ -100,6 +102,7 @@ const GRUPY_ZAKLADEK: readonly { etykieta: string; zakladki: readonly ZakladkaId
       'regulacja-oltc',
       'zbieznosc',
       'zwarcia',
+      'koordynacja',
       'skladowe',
       'dowod',
       'jakosc',
@@ -314,6 +317,10 @@ export function WynikiWarsztat({
             czasCieplnyS={zalozeniaZwarciowe.czasCieplnyS}
           />
         )}
+        {/* K8: dostawca zakładkowy dla wygaszonej trasy mostu #protection-results
+            (dawniej: generyczna tabela analityczna powierzchni E-35 bez treści
+            zabezpieczeniowej). Ekran ui2 czyta store'y sam — bez propsów. */}
+        {zakladka === 'koordynacja' && <EkranKoordynacji />}
         {zakladka === 'dowod' && (
           <DowodPrzebiegu trybZaawansowania={trybZaawansowania} wskazanyRunId={przebiegDowodu} />
         )}

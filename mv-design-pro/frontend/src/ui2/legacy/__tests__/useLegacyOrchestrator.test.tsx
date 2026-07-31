@@ -226,16 +226,55 @@ describe('useLegacyOrchestrator (E1.7a — ekstrakcja 1:1 z App.tsx)', () => {
     expect(useShellStore.getState().activeSpace).toBe('projekt');
   });
 
-  it('#protection-results zostaje w moście (bez zakładki ui2 — przestrzeń bez zmian)', async () => {
+  // INTENCJA (K3-A1, zachowana): trasa wyników zabezpieczeń ma mieć JEDNO,
+  // jawne lądowisko. Kanon zmieniony w K8 (wygaszenie mostów o pełnym
+  // parytecie): most renderował dla zakładki 'protection' GENERYCZNĄ tabelę
+  // analityczną E-35 (brak własnej gałęzi), a warsztat Wyników ma dziś
+  // zakładkę „Koordynacja zabezpieczeń" (EkranKoordynacji, dostawca E-28) —
+  // trasa ląduje w oknie ui2 i NIE zostawia powierzchni mostu.
+  it('#protection-results (K8): ląduje w zakładce „koordynacja" przestrzeni „wyniki", bez powierzchni mostu', async () => {
     window.location.hash = '#protection-results';
 
     render(<Probe />);
 
     await waitFor(() => {
-      expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe(
-        ANALYSIS_SURFACE_SCREEN_CODE,
-      );
+      expect(useShellStore.getState().activeSpace).toBe('wyniki');
     });
-    expect(useShellStore.getState().activeSpace).toBe('projekt');
+    expect(useShellStore.getState().wynikiTab).toBe('koordynacja');
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+
+  it('#power-flow-results (K8): ląduje w zakładce „rozplyw", bez powierzchni mostu', async () => {
+    window.location.hash = '#power-flow-results';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(useShellStore.getState().wynikiTab).toBe('rozplyw');
+    });
+    expect(useShellStore.getState().activeSpace).toBe('wyniki');
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+
+  it('#case-config (K8): ląduje w przestrzeni „Obliczenia", bez powierzchni E-07 (router nie ma dla niej renderu)', async () => {
+    window.location.hash = '#case-config?case=case-1';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+    });
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
+  });
+
+  it('#variants (K8): ląduje w przestrzeni „Obliczenia", bez powierzchni E-08', async () => {
+    window.location.hash = '#variants?case=case-1';
+
+    render(<Probe />);
+
+    await waitFor(() => {
+      expect(useShellStore.getState().activeSpace).toBe('obliczenia');
+    });
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
   });
 });
