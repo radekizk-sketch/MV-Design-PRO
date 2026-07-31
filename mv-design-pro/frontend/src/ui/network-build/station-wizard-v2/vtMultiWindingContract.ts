@@ -34,87 +34,25 @@ export interface VtWinding {
   readonly destinationPl: string;
 }
 
-export interface VtWiring {
-  /** Długość przewodów wtórnych (m). */
-  readonly lengthM: number;
-  /** Przekrój przewodu (mm²). */
-  readonly crossSectionMm2: number;
-  readonly material: 'Cu' | 'Al';
-  readonly conductivityMperOhmMm2: number;
-  /** Moc znamionowa odbiornika Sl (VA). */
-  readonly loadVa: number;
-}
-
-export interface VtBurdenResult {
-  readonly windingId: string;
-  readonly wireResistanceOhm: number;
-  readonly contactLossVa: number;
-  readonly computedBurdenVa: number;
-  readonly ratedBurdenVa: number;
-  readonly ok: boolean;
-  readonly marginPct: number;
-  /** Spadek napięcia wtórny (%). */
-  readonly voltageDropPct: number;
-}
-
-export const VT_BURDEN_CONSTANTS = {
-  COPPER_CONDUCTIVITY: 56,
-  TERMINAL_CONTACT_LOSS_VA: 0.1,
-  /** Napięcie wtórne IEC standardowe (V) — uzwojenie gwiazdowe 0.1/√3 kV. */
-  // znamionowe napięcie wtórne 100/√3 V (stała katalogowa IEC 61869-3, nie obliczenie fizyki)
-  STANDARD_SECONDARY_VOLTAGE_V: 57.735026919,
-  /** Limit ΔU dla klas pomiarowych (%). */
-  VOLTAGE_DROP_LIMIT_METERING_PCT: 0.5,
-  /** Limit ΔU dla klas zabezpieczeniowych (%). */
-  VOLTAGE_DROP_LIMIT_PROTECTION_PCT: 1.0,
-} as const;
-
-export function computeVtWireResistance(wiring: VtWiring): number {
-  return (2 * wiring.lengthM) / (wiring.conductivityMperOhmMm2 * wiring.crossSectionMm2);
-}
-
-export function computeVtBurden(
-  winding: VtWinding,
-  wiring: VtWiring,
-  secondaryVoltageV: number = VT_BURDEN_CONSTANTS.STANDARD_SECONDARY_VOLTAGE_V,
-): VtBurdenResult {
-  const rp = computeVtWireResistance(wiring);
-  const sz = VT_BURDEN_CONSTANTS.TERMINAL_CONTACT_LOSS_VA;
-  // Dla VT bilans dominowany przez Sl + Sz (przewody mają znikomy wpływ
-  // przy U2n ≈ 100 V i typowych prądach <50mA).
-  const computed = wiring.loadVa + sz;
-  // ΔU% obwodu wtórnego: I_wire = Sl / U2n; spadek = Rp × I_wire / U2n × 100.
-  const iWire = wiring.loadVa / secondaryVoltageV;
-  const voltageDropPct = (rp * iWire / secondaryVoltageV) * 100;
-  const ok = winding.ratedBurdenVa >= computed;
-  return {
-    windingId: winding.id,
-    wireResistanceOhm: rp,
-    contactLossVa: sz,
-    computedBurdenVa: computed,
-    ratedBurdenVa: winding.ratedBurdenVa,
-    ok,
-    marginPct: ((winding.ratedBurdenVa - computed) / winding.ratedBurdenVa) * 100,
-    voltageDropPct,
-  };
-}
-
-/**
- * Sprawdza limit ΔU% per kategoria uzwojenia.
+/*
+ * BILANS MOCY WTÓRNEJ VT I ΔU OBWODU WTÓRNEGO — USUNIĘTE (K7-B, 2026-07-31).
+ *
+ * Stały tu `VT_BURDEN_CONSTANTS`, typy `VtWiring` / `VtBurdenResult` oraz
+ * `computeVtWireResistance` (Rp = 2L/(γ·s)), `computeVtBurden` (S2obl = Sl + Sz
+ * plus ΔU% = Rp·I/U2n·100) i `checkVtVoltageDropLimit` (limit 0,5% dla klas
+ * pomiarowych, 1,0% dla zabezpieczeniowych). Poza własnym testem nikt ich nie
+ * wołał — kreator stacji importuje z tego pliku wyłącznie
+ * `VT_REFERENCE_4WINDING`. Ta sama klasa co usunięty tą kartą bilans wtórny CT
+ * (`ctMultiCoreContract.ts`).
+ *
+ * Uwaga na precedens: stała `STANDARD_SECONDARY_VOLTAGE_V` (100/√3 V) była w R2
+ * (2026-07-18) rozstrzygnięta jako DANA KATALOGOWA IEC 61869-3, nie fizyka —
+ * i jako dana wróci, gdy backend dostanie tę zdolność. Znika tutaj razem z
+ * jedynym rachunkiem, który jej używał. Dane znamionowe przekładników
+ * napięciowych niesie katalog backendu (`VTType`, V12K-255/257).
+ * BRAK dostawcy backendowego dla bilansu wtórnego VT — luka zapisana imiennie
+ * w `docs/uiux/DLUG_FIZYKA_W_UI_2026-07.md` §7.
  */
-export function checkVtVoltageDropLimit(
-  winding: VtWinding,
-  burden: VtBurdenResult,
-): { withinLimit: boolean; limit: number; actual: number } {
-  const limit = winding.category === 'protection'
-    ? VT_BURDEN_CONSTANTS.VOLTAGE_DROP_LIMIT_PROTECTION_PCT
-    : VT_BURDEN_CONSTANTS.VOLTAGE_DROP_LIMIT_METERING_PCT;
-  return {
-    withinLimit: burden.voltageDropPct <= limit,
-    limit,
-    actual: burden.voltageDropPct,
-  };
-}
 
 /**
  * Referencyjny VT 4-uzwojeniowy 15:√3 / 0.1:√3 kV.

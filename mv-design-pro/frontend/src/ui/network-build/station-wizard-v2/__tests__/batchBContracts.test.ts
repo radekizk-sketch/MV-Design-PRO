@@ -7,21 +7,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  checkPvString,
-  projectBessLifetime,
-  computeWindTurbinePower,
-  computeRotorSweptArea,
-  type WindTurbineSpec,
-} from '../derSourcesContract';
-import {
   EN_50160_HARMONIC_LIMITS,
   EN_50160_THDU_LIMIT_PCT,
   FLICKER_PST_LIMIT,
   FLICKER_PLT_LIMIT,
   VOLTAGE_CHANGE_DMAX_PCT,
-  checkHarmonicCompliance,
-  checkFlickerCompliance,
-  computeHostingCapacity,
 } from '../powerQualityContract';
 import {
   selectNcRfgModule,
@@ -36,148 +26,18 @@ import {
 // Krok 11 — DER Sources
 // ============================================================================
 
-describe('PV string check — Voc max + Vmpp range', () => {
-  it('20 modułów × 40Voc, -25°C ambient → string Voc max ~966V (Inverter 1100V → OK)', () => {
-    const result = checkPvString(
-      {
-        modulesPerString: 20,
-        moduleVocV: 40,
-        moduleVmppV: 32,
-        modulePmaxW: 400,
-        tempCoeffVocPctPerK: -0.30,
-        minAmbientTempC: -25,
-      },
-      1100, 200, 850,
-    );
-    // tempDelta = 25-(-25) = 50K; correction = 1 + 0.003 × 50 = 1.15
-    // Voc max = 20 × 40 × 1.15 = 920 V (zaokrąglone ~ 920).
-    expect(result.stringVocMaxV).toBeCloseTo(920, 0);
-    expect(result.vocWithinInverterLimit).toBe(true);
-    // Vmpp string = 20 × 32 = 640 V → w zakresie 200..850.
-    expect(result.stringVmppStcV).toBe(640);
-    expect(result.vmppInMpptRange).toBe(true);
-    // Power = 20 × 400 = 8000 W.
-    expect(result.stringPmaxW).toBe(8000);
-  });
-
-  it('Za dużo modułów (30) → Voc przekracza limit invertera', () => {
-    const result = checkPvString(
-      {
-        modulesPerString: 30, moduleVocV: 50, moduleVmppV: 38, modulePmaxW: 450,
-        tempCoeffVocPctPerK: -0.30, minAmbientTempC: -30,
-      },
-      1100, 200, 850,
-    );
-    expect(result.vocWithinInverterLimit).toBe(false);
-  });
-
-  it('Vmpp poniżej MPPT min → vmppInMpptRange = false', () => {
-    const result = checkPvString(
-      {
-        modulesPerString: 5, moduleVocV: 40, moduleVmppV: 32, modulePmaxW: 400,
-        tempCoeffVocPctPerK: -0.30, minAmbientTempC: -25,
-      },
-      1100, 300, 850,
-    );
-    // Vmpp = 5×32 = 160 < 300 min.
-    expect(result.vmppInMpptRange).toBe(false);
-  });
-});
-
-describe('BESS lifetime projection — degradacja cycliczna + kalendarzowa', () => {
-  it('BESS 1000kWh, 300 cycles/yr, 20 lat → SOH ~70-80%', () => {
-    const projection = projectBessLifetime(
-      {
-        nominalEnergyKwh: 1000,
-        ratedPowerKw: 500,
-        maxCRate: 0.5,
-        roundTripEfficiencyPct: 92,
-        socMinPct: 10,
-        socMaxPct: 90,
-        degradationPerCyclePct: 0.025,
-        calendarDegradationPerYearPct: 1.5,
-      },
-      20,
-      300,
-    );
-    // Cyclic = 20 × 300 × 0.025 = 150 %... za dużo!
-    // Ale calendar = 20 × 1.5 = 30%. Total ≈ 180%, max(0, 100-180) = 0.
-    // Test - parameter set wskazuje high cyclic degradation per cycle.
-    // Adjust expectations: SOH will be 0 with these params.
-    expect(projection.sohAfterYears).toBeLessThanOrEqual(20);
-    expect(projection.usableEnergyKwh).toBe(800); // (90-10)% × 1000.
-  });
-
-  it('Niska degradacja → długa żywotność', () => {
-    const projection = projectBessLifetime(
-      {
-        nominalEnergyKwh: 1000,
-        ratedPowerKw: 500,
-        maxCRate: 0.5,
-        roundTripEfficiencyPct: 92,
-        socMinPct: 10,
-        socMaxPct: 90,
-        degradationPerCyclePct: 0.005,  // low
-        calendarDegradationPerYearPct: 0.5, // low
-      },
-      10,
-      200,
-    );
-    // Cyclic = 10 × 200 × 0.005 = 10%. Calendar = 10 × 0.5 = 5%. Total 15%.
-    // SOH = 85%.
-    expect(projection.sohAfterYears).toBeCloseTo(85, 0);
-    expect(projection.yearsToEol80Pct).toBeGreaterThan(10);
-  });
-});
-
-describe('Wind turbine power curve P(v)', () => {
-  const turbine: WindTurbineSpec = {
-    ratedPowerKw: 3000,
-    cutInSpeedMs: 3.0,
-    ratedSpeedMs: 12.0,
-    cutOutSpeedMs: 25.0,
-    generatorType: 'FULL_CONVERTER_T4',
-    rotorDiameterM: 100,
-    hubHeightM: 100,
-  };
-
-  it('Wind < cut-in → P = 0', () => {
-    expect(computeWindTurbinePower(turbine, 2.0)).toBe(0);
-  });
-
-  it('Wind = cut-in → P ≈ 0', () => {
-    expect(computeWindTurbinePower(turbine, 3.0)).toBeCloseTo(0, 1);
-  });
-
-  it('Wind = rated → P = ratedPowerKw', () => {
-    expect(computeWindTurbinePower(turbine, 12.0)).toBe(3000);
-  });
-
-  it('Wind > rated, < cut-out → P = rated (płaska część krzywej)', () => {
-    expect(computeWindTurbinePower(turbine, 20.0)).toBe(3000);
-  });
-
-  it('Wind > cut-out → P = 0 (turbina wyłączona)', () => {
-    expect(computeWindTurbinePower(turbine, 26.0)).toBe(0);
-  });
-
-  it('Wind w środku zakresu rosnącego → krzywa kubiczna', () => {
-    const p8 = computeWindTurbinePower(turbine, 8.0);
-    // factor = (8-3)^3 / (12-3)^3 = 125/729 = 0.171
-    // P = 3000 × 0.171 = 514 kW
-    expect(p8).toBeGreaterThan(400);
-    expect(p8).toBeLessThan(700);
-  });
-
-  it('computeRotorSweptArea: D=100m → πr² = π×50² ≈ 7854 m²', () => {
-    const area = computeRotorSweptArea(turbine);
-    expect(area).toBeCloseTo(7854, 0);
-  });
-});
-
 // ============================================================================
-// Krok 12 — Power Quality
+// Krok 11 — Źródła OZE: RACHUNKI USUNIĘTE (K7-B, 2026-07-31)
 // ============================================================================
+//
+// Stały tu asercje na `checkPvString` (Voc stringu z poprawką temperaturową
+// modułu), `projectBessLifetime` (degradacja cykliczna + kalendarzowa) oraz
+// `computeWindTurbinePower` / `computeRotorSweptArea` (krzywa mocy turbiny
+// P(v) ∝ (v−v_cut_in)³ i pole zataczane wirnika). Cały moduł
+// `derSourcesContract.ts` nie miał konsumenta produkcyjnego — poza tym plikiem
+// nikt go nie importował. Fizyka źródła OZE należy do backendu: katalogi
+// (`network_model/catalog/wind_turbines/`, `mv_converter_catalog`) oraz
+// `network_model/solvers/der_selection_preview.py` z pełnym śladem.
 
 describe('PN-EN 50160 harmonic limits', () => {
   it('15 rzędów harmonicznych ma określone limity', () => {
@@ -194,82 +54,15 @@ describe('PN-EN 50160 harmonic limits', () => {
   });
 });
 
-describe('checkHarmonicCompliance — THDu + naruszenia per rząd', () => {
-  it('Wszystkie harmoniczne w limicie → no violations', () => {
-    const result = checkHarmonicCompliance([
-      { order: 3, amplitudePct: 2.0 },
-      { order: 5, amplitudePct: 4.0 },
-      { order: 7, amplitudePct: 3.0 },
-    ]);
-    // THDu = √(4+16+9) = √29 ≈ 5.39%.
-    expect(result.thduPct).toBeCloseTo(5.39, 1);
-    expect(result.thduWithinLimit).toBe(true);
-    expect(result.violations.length).toBe(0);
-  });
-
-  it('Naruszenie 5. harmonicznej (8% > 6% limit)', () => {
-    const result = checkHarmonicCompliance([
-      { order: 5, amplitudePct: 8.0 },
-    ]);
-    expect(result.violations.length).toBe(1);
-    expect(result.violations[0].order).toBe(5);
-    expect(result.violations[0].measured).toBe(8.0);
-    expect(result.violations[0].limit).toBe(6.0);
-  });
-
-  it('THDu > 8% → thduWithinLimit = false', () => {
-    const result = checkHarmonicCompliance([
-      { order: 3, amplitudePct: 5.0 },
-      { order: 5, amplitudePct: 7.0 },
-    ]);
-    // THDu = √(25+49) = √74 ≈ 8.6.
-    expect(result.thduPct).toBeGreaterThan(EN_50160_THDU_LIMIT_PCT);
-    expect(result.thduWithinLimit).toBe(false);
-  });
-});
-
-describe('Flicker compliance', () => {
-  it('PST ≤ 1.0, PLT ≤ 0.8 → within limit', () => {
-    const r = checkFlickerCompliance(0.8, 0.6);
-    expect(r.pstWithinLimit).toBe(true);
-    expect(r.pltWithinLimit).toBe(true);
-  });
-
-  it('PST > 1.0 → exceeds limit', () => {
-    const r = checkFlickerCompliance(1.5, 0.5);
-    expect(r.pstWithinLimit).toBe(false);
-  });
-
-  it('FLICKER_PST_LIMIT = 1.0, FLICKER_PLT_LIMIT = 0.8 (IEC 61000-3-7)', () => {
-    expect(FLICKER_PST_LIMIT).toBe(1.0);
-    expect(FLICKER_PLT_LIMIT).toBe(0.8);
-  });
-});
-
-describe('Hosting capacity', () => {
-  it('Min z 3 limitów (Sk, thermal, voltage)', () => {
-    const r = computeHostingCapacity({
-      scCapacityMva: 100,
-      scRatioMin: 20,
-      nominalVoltageKv: 15,
-      voltageMarginPct: 4,
-      currentLoadingPct: 50,
-    });
-    // limitedBySc = 100×1000/20 = 5000 kVA
-    // limitedByThermal = 50% × 100000 / 10 = 5000 kVA
-    // limitedByVoltage = 4% × 100000 = 4000 kVA
-    // hostingCapacity = min(5000, 5000, 4000) = 4000.
-    expect(r.hostingCapacity_kva).toBe(4000);
-  });
-
-  it('VOLTAGE_CHANGE_DMAX_PCT = 4% (PN-EN 50160)', () => {
-    expect(VOLTAGE_CHANGE_DMAX_PCT).toBe(4.0);
-  });
-});
-
-// ============================================================================
-// Krok 14 — NC RfG
-// ============================================================================
+// RACHUNKI JAKOŚCI ENERGII — USUNIĘTE (K7-B, 2026-07-31).
+// Stały tu asercje na `checkHarmonicCompliance` (THDu = √(Σ Uh²) + naruszenia
+// per rząd), `checkFlickerCompliance` oraz `computeHostingCapacity`. Żadna z tych
+// funkcji nie miała konsumenta produkcyjnego, a `computeHostingCapacity` liczyła
+// moc przyłączeniową na stałych dobranych „na oko" (granica termiczna = Sk/10).
+// Limity normy (`EN_50160_*`, `FLICKER_*`, `VOLTAGE_CHANGE_DMAX_PCT`) zostają —
+// to dane katalogowe normy, nie rachunek; ich asercje są wyżej.
+// Zdolności backendu: `api/quality_analysis_runs.py`, solver V12.6 (THD),
+// `api/oze_analysis_runs.py` + `validate-hosting-capacity-export`.
 
 describe('selectNcRfgModule — wybór modułu na podstawie mocy + napięcia', () => {
   it('100 kW → moduł A', () => {

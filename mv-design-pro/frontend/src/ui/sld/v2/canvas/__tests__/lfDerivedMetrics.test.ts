@@ -99,104 +99,113 @@ describe('computeLfDerivedMetrics — K30-49 LF data plumbing', () => {
     expect(result.voltageDeviationPctByStationId.has('stn/z/station')).toBe(false);
   });
 
-  it('cable loading: I=200 A, ampacity=400 (SN default) → 50%', () => {
+  // OBCIĄŻENIE KABLA POCHODZI Z BACKENDU (K7-B). Poprzednie testy tej sekcji
+  // utrwalały defekt: sprawdzały, że UI dzieli prąd przez ampacyjność ZGADYWANĄ
+  // z poziomu napięcia (400 A dla SN, 1200 A dla WN, 200 A dla nN). Zgadywana
+  // wartość znamionowa jest fabrykacją — procent wykorzystania odnosił się do
+  // przekroju, którego w modelu nie ma. Backend liczy `loading_pct` na
+  // rzeczywistym prądzie znamionowym gałęzi i wystawia go jako metrykę overlay.
+  it('obciążenie kabla bierze się WPROST z metryki LOADING_PCT backendu', () => {
     const payload = lfPayload({
       'seg/a/branch_segment': {
         ref_id: 'seg/a/branch_segment',
         kind: 'branch',
         badges: [],
-        metrics: { I_A: { code: 'I_A', value: 200, unit: 'A' } },
+        metrics: {
+          I_A: { code: 'I_A', value: 200, unit: 'A' },
+          LOADING_PCT: { code: 'LOADING_PCT', value: 62.5, unit: '%' },
+        },
         severity: 'INFO',
       },
     });
     const runs: CableRunLfMeta[] = [{
       id: 'run1',
       segmentRefs: ['seg/a/branch_segment'],
-      voltageKv: 15,
     }];
     const result = computeLfDerivedMetrics(payload, [], runs);
-    expect(result.cableLoadingPctByRunId.get('run1')).toBeCloseTo(50.0, 5);
+    expect(result.cableLoadingPctByRunId.get('run1')).toBeCloseTo(62.5, 5);
   });
 
-  it('cable loading: I=480 A SN cable → 120% OVERLOAD', () => {
+  it('przeciążenie > 100% jest przepuszczane bez obcinania', () => {
     const payload = lfPayload({
       'seg/over': {
         ref_id: 'seg/over',
         kind: 'branch',
         badges: [],
-        metrics: { I_A: { code: 'I_A', value: 480, unit: 'A' } },
+        metrics: { LOADING_PCT: { code: 'LOADING_PCT', value: 137.4, unit: '%' } },
         severity: 'WARNING',
       },
     });
-    const runs: CableRunLfMeta[] = [{
-      id: 'run-over',
-      segmentRefs: ['seg/over'],
-      voltageKv: 15,
-    }];
+    const runs: CableRunLfMeta[] = [{ id: 'run-over', segmentRefs: ['seg/over'] }];
     const result = computeLfDerivedMetrics(payload, [], runs);
-    expect(result.cableLoadingPctByRunId.get('run-over')).toBeCloseTo(120.0, 5);
+    expect(result.cableLoadingPctByRunId.get('run-over')).toBeCloseTo(137.4, 5);
   });
 
-  it('cable loading multi-segment → max po segmentach', () => {
+  it('ciąg wielosegmentowy → max obciążenia po segmentach', () => {
     const payload = lfPayload({
-      'seg/a': { ref_id: 'seg/a', kind: 'branch', badges: [], metrics: { I_A: { code: 'I_A', value: 100, unit: 'A' } }, severity: 'INFO' },
-      'seg/b': { ref_id: 'seg/b', kind: 'branch', badges: [], metrics: { I_A: { code: 'I_A', value: 300, unit: 'A' } }, severity: 'INFO' },
-      'seg/c': { ref_id: 'seg/c', kind: 'branch', badges: [], metrics: { I_A: { code: 'I_A', value: 50, unit: 'A' } }, severity: 'INFO' },
+      'seg/a': { ref_id: 'seg/a', kind: 'branch', badges: [], metrics: { LOADING_PCT: { code: 'LOADING_PCT', value: 25, unit: '%' } }, severity: 'INFO' },
+      'seg/b': { ref_id: 'seg/b', kind: 'branch', badges: [], metrics: { LOADING_PCT: { code: 'LOADING_PCT', value: 75, unit: '%' } }, severity: 'INFO' },
+      'seg/c': { ref_id: 'seg/c', kind: 'branch', badges: [], metrics: { LOADING_PCT: { code: 'LOADING_PCT', value: 12.5, unit: '%' } }, severity: 'INFO' },
     });
     const runs: CableRunLfMeta[] = [{
       id: 'run-multi',
       segmentRefs: ['seg/a', 'seg/b', 'seg/c'],
-      voltageKv: 15,
     }];
     const result = computeLfDerivedMetrics(payload, [], runs);
-    // Max(100, 300, 50) = 300 / 400 = 75%
     expect(result.cableLoadingPctByRunId.get('run-multi')).toBeCloseTo(75.0, 5);
   });
 
-  it('ampacity defaults: 110 kV → 1200 A, 0.4 kV → 200 A', () => {
+  it('brak LOADING_PCT w wyniku → BRAK wartości, nie liczba z prądu i domysłu', () => {
+    // Sam prąd nie wystarcza: bez znamionowego z modelu nie ma czego dzielić.
+    // Wcześniej ta sama sytuacja dawała „50%” wobec zgadywanych 400 A.
     const payload = lfPayload({
-      'seg/wn': { ref_id: 'seg/wn', kind: 'branch', badges: [], metrics: { I_A: { code: 'I_A', value: 600, unit: 'A' } }, severity: 'INFO' },
-      'seg/nn': { ref_id: 'seg/nn', kind: 'branch', badges: [], metrics: { I_A: { code: 'I_A', value: 100, unit: 'A' } }, severity: 'INFO' },
+      'seg/tylko-prad': {
+        ref_id: 'seg/tylko-prad',
+        kind: 'branch',
+        badges: [],
+        metrics: { I_A: { code: 'I_A', value: 200, unit: 'A' } },
+        severity: 'INFO',
+      },
     });
-    const runs: CableRunLfMeta[] = [
-      { id: 'wn', segmentRefs: ['seg/wn'], voltageKv: 110 },
-      { id: 'nn', segmentRefs: ['seg/nn'], voltageKv: 0.4 },
-    ];
+    const runs: CableRunLfMeta[] = [{ id: 'run-bez', segmentRefs: ['seg/tylko-prad'] }];
     const result = computeLfDerivedMetrics(payload, [], runs);
-    expect(result.cableLoadingPctByRunId.get('wn')).toBeCloseTo(50.0, 5);   // 600/1200
-    expect(result.cableLoadingPctByRunId.get('nn')).toBeCloseTo(50.0, 5);   // 100/200
+    expect(result.cableLoadingPctByRunId.has('run-bez')).toBe(false);
   });
 
   it('cable bez segmentRefs → skipowany', () => {
     const payload = lfPayload({});
-    const runs: CableRunLfMeta[] = [{ id: 'empty', voltageKv: 15 }];
+    const runs: CableRunLfMeta[] = [{ id: 'empty' }];
     const result = computeLfDerivedMetrics(payload, [], runs);
     expect(result.cableLoadingPctByRunId.has('empty')).toBe(false);
   });
 
-  it('cable z I_A=null lub niskie ≤ 0 → skipowany (no contribution)', () => {
+  it('LOADING_PCT = null → segment nie wnosi nic', () => {
     const payload = lfPayload({
-      'seg/zero': { ref_id: 'seg/zero', kind: 'branch', badges: [], metrics: { I_A: { code: 'I_A', value: 0, unit: 'A' } }, severity: 'INFO' },
-      'seg/null': { ref_id: 'seg/null', kind: 'branch', badges: [], metrics: { I_A: { code: 'I_A', value: null, unit: 'A' } }, severity: 'INFO' },
+      'seg/null': { ref_id: 'seg/null', kind: 'branch', badges: [], metrics: { LOADING_PCT: { code: 'LOADING_PCT', value: null, unit: '%' } }, severity: 'INFO' },
     });
-    const runs: CableRunLfMeta[] = [
-      { id: 'r-zero', segmentRefs: ['seg/zero'], voltageKv: 15 },
-      { id: 'r-null', segmentRefs: ['seg/null'], voltageKv: 15 },
-    ];
+    const runs: CableRunLfMeta[] = [{ id: 'r-null', segmentRefs: ['seg/null'] }];
     const result = computeLfDerivedMetrics(payload, [], runs);
-    expect(result.cableLoadingPctByRunId.has('r-zero')).toBe(false);
     expect(result.cableLoadingPctByRunId.has('r-null')).toBe(false);
+  });
+
+  it('obciążenie 0% jest wartością, nie brakiem danych', () => {
+    const payload = lfPayload({
+      'seg/zero': { ref_id: 'seg/zero', kind: 'branch', badges: [], metrics: { LOADING_PCT: { code: 'LOADING_PCT', value: 0, unit: '%' } }, severity: 'INFO' },
+    });
+    const runs: CableRunLfMeta[] = [{ id: 'r-zero', segmentRefs: ['seg/zero'] }];
+    const result = computeLfDerivedMetrics(payload, [], runs);
+    expect(result.cableLoadingPctByRunId.get('r-zero')).toBe(0);
   });
 
   it('combined: stations + cable runs naraz', () => {
     const payload = lfPayload({
       'stn/1/sn_bus': { ref_id: 'stn/1/sn_bus', kind: 'bus', badges: [], metrics: { U_kV: { code: 'U_kV', value: 14.5, unit: 'kV' } }, severity: 'INFO' },
-      'seg/x': { ref_id: 'seg/x', kind: 'branch', badges: [], metrics: { I_A: { code: 'I_A', value: 360, unit: 'A' } }, severity: 'INFO' },
+      'seg/x': { ref_id: 'seg/x', kind: 'branch', badges: [], metrics: { LOADING_PCT: { code: 'LOADING_PCT', value: 90, unit: '%' } }, severity: 'INFO' },
     });
     const result = computeLfDerivedMetrics(
       payload,
       [{ id: 'stn/1/station', busVoltageKv: 15 }],
-      [{ id: 'run-x', segmentRefs: ['seg/x'], voltageKv: 15 }],
+      [{ id: 'run-x', segmentRefs: ['seg/x'] }],
     );
     expect(result.voltageDeviationPctByStationId.get('stn/1/station')).toBeCloseTo(-3.333, 2);
     expect(result.cableLoadingPctByRunId.get('run-x')).toBeCloseTo(90.0, 5);

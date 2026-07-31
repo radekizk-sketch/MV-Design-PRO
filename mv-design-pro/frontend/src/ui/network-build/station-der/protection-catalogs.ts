@@ -630,164 +630,19 @@ export function selectHvFusesForRating(args: {
 }
 
 // =============================================================================
-// 8. Idyn / Ith Catalog (Naprawa eng.18 — audyt zabezpieczeń)
+// 8. Wytrzymałość zwarciowa aparatury (I_dyn / I_th) — PRZENIESIONE DO BACKENDU
 // =============================================================================
 //
-// IEC 60909-0 wprowadza dwie kluczowe wartości aparatury:
-//  - I_dyn (peak short-circuit current — prąd udarowy ip) — wytrzymałość mechaniczna [kA]
-//  - I_th (thermal short-circuit current — prąd cieplny równoważny 1s) — wytrzymałość termiczna [kA]
+// Były tu TRZY rzeczy naraz: kopia katalogu aparatury (`DEVICE_WITHSTAND_CATALOG`),
+// kopia kryterium IEC 60909 (`validateDeviceWithstand`: I_th_eff = I_th_zn·√(t_zn/t_wył),
+// wykorzystanie obu kryteriów) oraz skład zdania werdyktu. Karta zabezpieczeń
+// pokazywała te liczby jako wynik inżynierski, choć nie widział ich żaden solver
+// i nie obejmował żaden ślad WHITE BOX (reguła NOT-A-SOLVER).
 //
-// Standardowe wartości dla typowej aparatury SN podane w katalogu.
-
-export interface DeviceWithstandRatings {
-  readonly id: string;
-  readonly catalog_namespace: 'device_withstand';
-  readonly catalog_version: string;
-  readonly label_pl: string;
-  readonly device_type:
-    | 'breaker_vacuum_15'
-    | 'breaker_sf6_15'
-    | 'breaker_vacuum_20'
-    | 'switch_load_15'
-    | 'disconnector_15'
-    | 'busbar_15_1250'
-    | 'busbar_15_2000';
-  readonly nominal_voltage_kv: number;
-  readonly nominal_current_a: number;
-  /** Prąd udarowy ip [kA] — wytrzymałość mechaniczna. */
-  readonly i_dyn_ka: number;
-  /** Prąd cieplny równoważny 1s I_th [kA]. */
-  readonly i_th_1s_ka: number;
-  /** Czas dla I_th — typowo 1s lub 3s. */
-  readonly i_th_duration_s: number;
-}
-
-export const DEVICE_WITHSTAND_CATALOG: ReadonlyArray<DeviceWithstandRatings> = Object.freeze([
-  {
-    id: 'wstd_breaker_vacuum_15_25',
-    catalog_namespace: 'device_withstand',
-    catalog_version: '2024.1',
-    label_pl: 'Wyłącznik próżniowy 15 kV · I_dyn=63 kA · I_th=25 kA/1s',
-    device_type: 'breaker_vacuum_15',
-    nominal_voltage_kv: 15,
-    nominal_current_a: 1250,
-    i_dyn_ka: 63,
-    i_th_1s_ka: 25,
-    i_th_duration_s: 1,
-  },
-  {
-    id: 'wstd_breaker_sf6_15_31_5',
-    catalog_namespace: 'device_withstand',
-    catalog_version: '2024.1',
-    label_pl: 'Wyłącznik SF6 15 kV · I_dyn=80 kA · I_th=31,5 kA/3s',
-    device_type: 'breaker_sf6_15',
-    nominal_voltage_kv: 15,
-    nominal_current_a: 1250,
-    i_dyn_ka: 80,
-    i_th_1s_ka: 31.5,
-    i_th_duration_s: 3,
-  },
-  {
-    id: 'wstd_busbar_15_2000_50',
-    catalog_namespace: 'device_withstand',
-    catalog_version: '2024.1',
-    label_pl: 'Szyna SN 15 kV · 2000 A · I_dyn=125 kA · I_th=50 kA/1s',
-    device_type: 'busbar_15_2000',
-    nominal_voltage_kv: 15,
-    nominal_current_a: 2000,
-    i_dyn_ka: 125,
-    i_th_1s_ka: 50,
-    i_th_duration_s: 1,
-  },
-  {
-    id: 'wstd_busbar_15_1250_25',
-    catalog_namespace: 'device_withstand',
-    catalog_version: '2024.1',
-    label_pl: 'Szyna SN 15 kV · 1250 A · I_dyn=63 kA · I_th=25 kA/1s',
-    device_type: 'busbar_15_1250',
-    nominal_voltage_kv: 15,
-    nominal_current_a: 1250,
-    i_dyn_ka: 63,
-    i_th_1s_ka: 25,
-    i_th_duration_s: 1,
-  },
-  {
-    id: 'wstd_switch_load_15_25',
-    catalog_namespace: 'device_withstand',
-    catalog_version: '2024.1',
-    label_pl: 'Rozłącznik z bezpiecznikami 15 kV · I_dyn=63 kA · I_th=25 kA/1s',
-    device_type: 'switch_load_15',
-    nominal_voltage_kv: 15,
-    nominal_current_a: 630,
-    i_dyn_ka: 63,
-    i_th_1s_ka: 25,
-    i_th_duration_s: 1,
-  },
-]);
-
-/**
- * Naprawa eng.18: walidacja wytrzymałości aparatury względem prądów obliczonych.
- * Reguła: I_dyn (peak) ≥ √2·κ·Ik″, I_th (thermal 1s) ≥ Ik″ × √(t_clearing).
- */
-export function validateDeviceWithstand(args: {
-  readonly device_id: string;
-  readonly i_peak_calculated_ka: number;
-  readonly i_thermal_calculated_ka: number;
-  readonly t_clearing_s: number;
-}): {
-  readonly ok: boolean;
-  readonly i_dyn_ok: boolean;
-  readonly i_th_ok: boolean;
-  readonly message_pl: string;
-  readonly utilization_dyn_percent: number;
-  readonly utilization_th_percent: number;
-} {
-  const device = DEVICE_WITHSTAND_CATALOG.find((d) => d.id === args.device_id);
-  if (!device) {
-    return {
-      ok: false,
-      i_dyn_ok: false,
-      i_th_ok: false,
-      message_pl: `Brak aparatury w katalogu (id=${args.device_id}).`,
-      utilization_dyn_percent: 0,
-      utilization_th_percent: 0,
-    };
-  }
-  // Skala I_th do nowej długości czasu clearing: I_th_eff = I_th_rated × √(t_rated / t_clearing).
-  const i_th_effective = device.i_th_1s_ka * Math.sqrt(device.i_th_duration_s / Math.max(args.t_clearing_s, 0.01));
-  const i_dyn_ok = device.i_dyn_ka >= args.i_peak_calculated_ka;
-  const i_th_ok = i_th_effective >= args.i_thermal_calculated_ka;
-  const utilization_dyn = (args.i_peak_calculated_ka / device.i_dyn_ka) * 100;
-  const utilization_th = (args.i_thermal_calculated_ka / i_th_effective) * 100;
-
-  let message_pl: string;
-  if (i_dyn_ok && i_th_ok) {
-    message_pl =
-      `OK: aparatura "${device.label_pl}" wytrzymała `
-      + `(I_dyn util ${utilization_dyn.toFixed(0)}%, I_th util ${utilization_th.toFixed(0)}%).`;
-  } else {
-    const failures: string[] = [];
-    if (!i_dyn_ok) {
-      failures.push(
-        `I_dyn ${args.i_peak_calculated_ka.toFixed(1)} kA > ${device.i_dyn_ka.toFixed(1)} kA (limit) — `
-        + `przekroczenie wytrzymałości dynamicznej`,
-      );
-    }
-    if (!i_th_ok) {
-      failures.push(
-        `I_th ${args.i_thermal_calculated_ka.toFixed(1)} kA > ${i_th_effective.toFixed(1)} kA `
-        + `(limit przy t=${args.t_clearing_s.toFixed(2)} s) — przekroczenie wytrzymałości termicznej`,
-      );
-    }
-    message_pl = `BLOKER: ${failures.join('; ')}.`;
-  }
-
-  return {
-    ok: i_dyn_ok && i_th_ok,
-    i_dyn_ok,
-    i_th_ok,
-    message_pl,
-    utilization_dyn_percent: utilization_dyn,
-    utilization_th_percent: utilization_th,
-  };
-}
+// Źródłem jest teraz backend: katalog `network_model/catalog/audit2_catalogs.py`
+// (`DEVICE_WITHSTAND_CATALOG` — te same identyfikatory i dane znamionowe) oraz
+// `validate_device_withstand` wystawione przez
+// `POST /api/v1/catalog/audit2/validate-device-withstand`. Klient: `audit2-api.ts`
+// (`validateDeviceWithstandApi`), prezentacja: `station-configurator/cards/`
+// `WalidacjaWytrzymalosciAparaturySekcja.tsx`. Parytetu liczbowego pilnuje
+// `backend/tests/network_model/test_device_withstand_parity.py` (karta K7-B).

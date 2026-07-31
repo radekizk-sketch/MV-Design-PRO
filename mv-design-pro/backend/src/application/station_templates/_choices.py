@@ -253,9 +253,7 @@ SN_APPARATUS_OPTIONS = (
 CT_OPTIONS = (
     CatalogChoice("ct_200_5_5p10_10va_abb", "CT 200/5 A, 5P10, 10 VA (ABB)", "CT"),
     CatalogChoice("ct_400_5_5p20_15va_abb", "CT 400/5 A, 5P20, 15 VA (ABB)", "CT", default=True),
-    CatalogChoice(
-        "ct_600_5_5p20_15va_schneider", "CT 600/5 A, 5P20, 15 VA (Schneider)", "CT"
-    ),
+    CatalogChoice("ct_600_5_5p20_15va_schneider", "CT 600/5 A, 5P20, 15 VA (Schneider)", "CT"),
     CatalogChoice("ct_1000_5_5p20_20va_abb", "CT 1000/5 A, 5P20, 20 VA (ABB)", "CT"),
 )
 

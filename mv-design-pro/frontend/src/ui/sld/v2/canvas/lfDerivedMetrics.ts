@@ -8,7 +8,17 @@
  * - `stationVoltageDeviationPct[stationId]` =
  *     ((U_actual_kV - U_nominal_kV) / U_nominal_kV) × 100
  *
- * - `cableLoadingPct[runId]` = max over segments of (I_actual_A / I_max_A) × 100
+ * - `cableLoadingPct[runId]` = max po segmentach z metryki `LOADING_PCT`
+ *   POLICZONEJ PRZEZ BACKEND (interpretacja kanoniczna: `enm/canonical_analysis.py`,
+ *   mapowanie na overlay: `domain/result_builder_v1.py`).
+ *
+ * OBCIĄŻENIE NIE JEST JUŻ LICZONE TUTAJ (K7-B, 2026-07-31). Do tej karty ten plik
+ * dzielił prąd z wyniku przez ampacyjność ZGADYWANĄ z poziomu napięcia
+ * (`defaultAmpacityForVoltage`: 1200 / 400 / 300 / 200 A „dla typowych przekrojów").
+ * Projektant widział procent wykorzystania kabla wyliczony względem przekroju,
+ * którego w modelu nie ma — a backend całą tę drogę przechodzi na rzeczywistym
+ * prądzie znamionowym gałęzi i wystawia gotową metrykę. Brak `LOADING_PCT` w wyniku
+ * daje teraz BRAK wartości (klucz nieobecny), a nie liczbę z powietrza.
  *
  * Funkcja jest pure — nie subskrybuje store ani nie używa hooks. Caller
  * (SldCanvasV2) decyduje kiedy ją wywołać (typically useMemo z payload deps).
@@ -28,9 +38,6 @@ export interface CableRunLfMeta {
   readonly id: string;
   /** Segment refs należące do tego ciągu — używane do lookup payload metrics. */
   readonly segmentRefs?: readonly string[];
-  /** Voltage classification — używane do oszacowania default ampacity gdy
-   *  catalog nie zawiera explicit I_max. */
-  readonly voltageKv?: number | null;
 }
 
 export interface LfDerivedMetrics {
@@ -38,24 +45,6 @@ export interface LfDerivedMetrics {
   readonly voltageDeviationPctByStationId: ReadonlyMap<string, number>;
   /** Cable run loading [%] per run id. Max po segmentach. */
   readonly cableLoadingPctByRunId: ReadonlyMap<string, number>;
-}
-
-/**
- * K30-49: domyślna ampacity per voltage class — używana gdy brak explicit
- * I_max w payload. Wartości typowe dla najczęstszych przekrojów PN-HD 620 S2:
- * - WN (110 kV) → 1200 A (linia napowietrzna AFL-240)
- * - SN (15-30 kV) → 400 A (typowy kabel SN 1×185 XLPE Al)
- * - SN niskie (6-10 kV) → 300 A
- * - nN (0.4-1 kV) → 200 A
- * - default → 400 A
- */
-function defaultAmpacityForVoltage(kv: number | null | undefined): number {
-  if (kv == null || !Number.isFinite(kv)) return 400;
-  if (kv >= 100) return 1200;
-  if (kv >= 12) return 400;
-  if (kv >= 5) return 300;
-  if (kv >= 0.2) return 200;
-  return 400;
 }
 
 /** Translate station id → SN bus ref_id (kanon "stn/{hash}/sn_bus"). */
@@ -96,18 +85,16 @@ export function computeLfDerivedMetrics(
     voltageDeviationPctByStationId.set(station.id, devPct);
   }
 
-  // Per-cable loading % (max over segments)
+  // Obciążenie ciągu kablowego [%] — max po segmentach, WPROST z wyniku backendu.
   for (const run of cableRuns) {
     const refs = run.segmentRefs ?? [];
     if (refs.length === 0) continue;
-    const ampacityA = defaultAmpacityForVoltage(run.voltageKv);
     let maxLoadingPct: number | null = null;
     for (const segRef of refs) {
-      const iMetric = getMetric(payload, segRef, 'I_A');
-      if (iMetric?.value == null || !Number.isFinite(iMetric.value) || iMetric.value <= 0) continue;
-      const loadingPct = (iMetric.value / ampacityA) * 100;
-      if (maxLoadingPct === null || loadingPct > maxLoadingPct) {
-        maxLoadingPct = loadingPct;
+      const loadingMetric = getMetric(payload, segRef, 'LOADING_PCT');
+      if (loadingMetric?.value == null || !Number.isFinite(loadingMetric.value)) continue;
+      if (maxLoadingPct === null || loadingMetric.value > maxLoadingPct) {
+        maxLoadingPct = loadingMetric.value;
       }
     }
     if (maxLoadingPct !== null) {

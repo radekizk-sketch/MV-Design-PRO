@@ -520,7 +520,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_breaker_vacuum_15_25",
         catalog_namespace="device_withstand",
         catalog_version="2024.1",
-        label_pl="Wylacznik prozniowy 15 kV * I_dyn=63 kA * I_th=25 kA/1s",
+        label_pl="Wyłącznik próżniowy 15 kV · I_dyn=63 kA · I_th=25 kA/1s",
         device_type="breaker_vacuum_15",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
@@ -532,7 +532,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_breaker_sf6_15_31_5",
         catalog_namespace="device_withstand",
         catalog_version="2024.1",
-        label_pl="Wylacznik SF6 15 kV * I_dyn=80 kA * I_th=31,5 kA/3s",
+        label_pl="Wyłącznik SF6 15 kV · I_dyn=80 kA · I_th=31,5 kA/3s",
         device_type="breaker_sf6_15",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
@@ -544,7 +544,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_busbar_15_2000_50",
         catalog_namespace="device_withstand",
         catalog_version="2024.1",
-        label_pl="Szyna SN 15 kV * 2000 A * I_dyn=125 kA * I_th=50 kA/1s",
+        label_pl="Szyna SN 15 kV · 2000 A · I_dyn=125 kA · I_th=50 kA/1s",
         device_type="busbar_15_2000",
         nominal_voltage_kv=15,
         nominal_current_a=2000,
@@ -556,7 +556,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_busbar_15_1250_25",
         catalog_namespace="device_withstand",
         catalog_version="2024.1",
-        label_pl="Szyna SN 15 kV * 1250 A * I_dyn=63 kA * I_th=25 kA/1s",
+        label_pl="Szyna SN 15 kV · 1250 A · I_dyn=63 kA · I_th=25 kA/1s",
         device_type="busbar_15_1250",
         nominal_voltage_kv=15,
         nominal_current_a=1250,
@@ -568,7 +568,7 @@ DEVICE_WITHSTAND_CATALOG: tuple[DeviceWithstandItem, ...] = (
         id="wstd_switch_load_15_25",
         catalog_namespace="device_withstand",
         catalog_version="2024.1",
-        label_pl="Rozlacznik z bezpiecznikami 15 kV * I_dyn=63 kA * I_th=25 kA/1s",
+        label_pl="Rozłącznik z bezpiecznikami 15 kV · I_dyn=63 kA · I_th=25 kA/1s",
         device_type="switch_load_15",
         nominal_voltage_kv=15,
         nominal_current_a=630,
@@ -1121,7 +1121,17 @@ def validate_device_withstand(
     i_thermal_calculated_ka: float,
     t_clearing_s: float,
 ) -> dict:
-    """Naprawa eng.18: walidacja I_dyn / I_th aparatury (IEC 60909)."""
+    """Naprawa eng.18: walidacja I_dyn / I_th aparatury (IEC 60909).
+
+    JEDYNE ZRODLO WERDYKTU (K7-B, 2026-07-31). Do tej karty rownolegly rachunek
+    zyl w warstwie prezentacji (`frontend/src/ui/network-build/station-der/
+    protection-catalogs.ts::validateDeviceWithstand` + wlasna kopia katalogu
+    `DEVICE_WITHSTAND_CATALOG`) i to ON zasilal karte zabezpieczen. Ekran mowil
+    „wytrzymala" na podstawie liczb, ktorych zaden solver nie widzial i ktorych
+    nie obejmowal zaden slad. Karta zabezpieczen wola teraz to wyliczenie przez
+    `POST /api/v1/catalog/audit2/validate-device-withstand`, a `message_pl` jest
+    tekstem POKAZYWANYM UZYTKOWNIKOWI — stad pelna polszczyzna z diakrytykami.
+    """
     import math
 
     device = get_device_withstand(device_id)
@@ -1142,20 +1152,20 @@ def validate_device_withstand(
     util_th = (i_thermal_calculated_ka / i_th_effective) * 100
     if i_dyn_ok and i_th_ok:
         message = (
-            f"OK: aparatura '{device.label_pl}' wytrzymala "
-            f"(I_dyn util {util_dyn:.0f}%, I_th util {util_th:.0f}%)."
+            f"OK: aparatura „{device.label_pl}” wytrzymała "
+            f"(wykorzystanie I_dyn {util_dyn:.0f}%, I_th {util_th:.0f}%)."
         )
     else:
         failures: list[str] = []
         if not i_dyn_ok:
             failures.append(
-                f"I_dyn {i_peak_calculated_ka:.1f} kA > {device.i_dyn_ka:.1f} kA (limit) -> "
-                "przekroczenie wytrzymalosci dynamicznej"
+                f"I_dyn {i_peak_calculated_ka:.1f} kA > {device.i_dyn_ka:.1f} kA (limit) — "
+                "przekroczenie wytrzymałości dynamicznej"
             )
         if not i_th_ok:
             failures.append(
                 f"I_th {i_thermal_calculated_ka:.1f} kA > {i_th_effective:.1f} kA "
-                f"(limit przy t={t_clearing_s:.2f} s) -> przekroczenie wytrzymalosci termicznej"
+                f"(limit przy t={t_clearing_s:.2f} s) — przekroczenie wytrzymałości cieplnej"
             )
         message = f"BLOKER: {'; '.join(failures)}."
     return {
