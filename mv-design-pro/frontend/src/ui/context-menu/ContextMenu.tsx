@@ -212,7 +212,7 @@ function ContextMenuItem({ action, onClick, isDestructive = false }: ContextMenu
         className={clsx(
           'flex w-full items-center justify-between px-3 py-1.5 text-left text-sm',
           !action.enabled && 'cursor-not-allowed text-scada-muted opacity-60',
-          action.enabled && isDestructive && 'text-red-400 hover:bg-red-900/30 hover:text-red-200',
+          action.enabled && isDestructive && 'text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo hover:text-red-200',
           action.enabled && !isDestructive && 'text-scada-text hover:bg-scada-hover-nav hover:text-scada-sn',
         )}
         role="menuitem"

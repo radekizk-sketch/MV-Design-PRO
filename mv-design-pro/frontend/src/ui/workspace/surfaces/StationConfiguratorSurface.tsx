@@ -1377,7 +1377,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
                 onClick={handleStartBranch}
                 disabled={!branchStartContext}
                 title={branchBlockReason ?? 'Rozpocznij odgałęzienie z wolnego pola SN stacji.'}
-                className="rounded border border-emerald-400 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-950/40 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:bg-transparent"
+                className="rounded border border-sygnal-ok px-3 py-1.5 text-xs font-semibold text-sygnal-ok-tusz transition hover:bg-sygnal-ok-tlo disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:bg-transparent"
                 data-testid="station-start-branch"
               >
                 Rozpocznij odgałęzienie
@@ -1385,7 +1385,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
               <button
                 type="button"
                 onClick={() => handleAddDer('PV')}
-                className="rounded border border-amber-400 px-3 py-1.5 text-xs font-semibold text-amber-200 transition hover:bg-amber-950/40"
+                className="rounded border border-sygnal-uwaga px-3 py-1.5 text-xs font-semibold text-sygnal-uwaga-tusz transition hover:bg-sygnal-uwaga-tlo"
                 data-testid="station-add-pv-shortcut"
               >
                 Dodaj PV
@@ -1393,7 +1393,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
               <button
                 type="button"
                 onClick={() => handleAddDer('BESS')}
-                className="rounded border border-cyan-400 px-3 py-1.5 text-xs font-semibold text-cyan-200 transition hover:bg-cyan-950/40"
+                className="rounded border border-sygnal-info px-3 py-1.5 text-xs font-semibold text-sygnal-info-tusz transition hover:bg-sygnal-info-tlo"
                 data-testid="station-add-bess-shortcut"
               >
                 Dodaj BESS
@@ -1401,7 +1401,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
               <button
                 type="button"
                 onClick={() => handleAddDer('FW')}
-                className="rounded border border-emerald-400 px-3 py-1.5 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-950/40"
+                className="rounded border border-sygnal-ok px-3 py-1.5 text-xs font-semibold text-sygnal-ok-tusz transition hover:bg-sygnal-ok-tlo"
                 data-testid="station-add-fw-shortcut"
               >
                 Dodaj FW
@@ -1409,7 +1409,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
             </div>
             {(continuationBlockReason || branchBlockReason) && (
               <div
-                className="max-w-xl rounded border border-amber-700/60 bg-amber-950/25 px-3 py-2 text-[11px] leading-relaxed text-amber-100"
+                className="max-w-xl rounded border border-sygnal-blokada bg-sygnal-blokada-tlo px-3 py-2 text-[11px] leading-relaxed text-sygnal-blokada-tusz"
                 data-testid="station-network-action-blockers"
               >
                 {continuationBlockReason && (
@@ -1423,7 +1423,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
           </div>
         )}
         {!stationRef && (
-          <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
+          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
             Wybierz stację z drzewa układów albo kliknij stację w SLD i wybierz
             "Otwórz konfigurator stacji".
           </p>

@@ -637,7 +637,7 @@ function FieldRow({ label, value }: { readonly label: string; readonly value: st
 
 function EngineeringNote({ children }: { readonly children: string }) {
   return (
-    <p className="mt-3 border-l-2 border-cyan-400 bg-cyan-950/20 px-3 py-2 text-xs text-cyan-100">
+    <p className="mt-3 border-l-2 border-sygnal-info bg-sygnal-info-tlo px-3 py-2 text-xs text-sygnal-info-tusz">
       {children}
     </p>
   );
@@ -1247,13 +1247,13 @@ function DerSurfaceShell({
           {der?.name ?? 'Układ PV/BESS/FW niewybrany'}
         </h2>
         {!der && (
-          <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
+          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
             Wybierz układ PV/BESS/FW z karty stacji „Układy przyłączeniowe” albo z menu
             kontekstowego SLD, aby otworzyć jego konfigurację przyłączeniową.
           </p>
         )}
         {der === surfaceContextDer && !storeDer && !snapshotDer && (
-          <p className="mt-2 rounded border border-amber-700 bg-amber-950/30 p-3 text-xs text-amber-200">
+          <p className="mt-2 rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-xs text-sygnal-uwaga-tusz">
             Falownik wybrany na schemacie wymaga przypisania kompletnego pakietu
             katalogowego OZE: urządzenia, PCC, toru przyłączenia, profili NC RfG/FRT
             i zabezpieczeń.

@@ -2111,7 +2111,7 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
                       <button
                         type="button"
                         onClick={() => handleFixActionClick(action)}
-                        className="rounded border border-red-500 px-3 py-1 text-xs font-semibold text-red-100 hover:bg-red-900/40"
+                        className="rounded border border-sygnal-blokada px-3 py-1 text-xs font-semibold text-sygnal-blokada-tusz hover:bg-sygnal-blokada-tlo"
                       >
                         Konfiguruj układ
                       </button>
@@ -2265,12 +2265,12 @@ function ModelGapsSurface({ surface: _surface }: { surface: WorkspaceSurfaceDesc
                 className={
                   'rounded border p-3 text-sm '
                   + (row.status === 'requires_ramp_down'
-                    ? 'border-rose-700 bg-rose-950/30 text-rose-200'
+                    ? 'border-sygnal-blokada bg-sygnal-blokada-tlo text-sygnal-blokada-tusz'
                     : row.status === 'high_export_warning'
-                      ? 'border-amber-700 bg-amber-950/30 text-amber-200'
+                      ? 'border-sygnal-uwaga bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz'
                       : row.status === 'normal_export'
-                        ? 'border-blue-700 bg-blue-950/30 text-blue-200'
-                        : 'border-emerald-700 bg-emerald-950/30 text-emerald-200')
+                        ? 'border-sygnal-info bg-sygnal-info-tlo text-sygnal-info-tusz'
+                        : 'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz')
                 }
               >
                 <div className="font-semibold">Stacja: {row.station_id}</div>

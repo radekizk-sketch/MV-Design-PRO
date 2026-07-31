@@ -253,10 +253,10 @@ export function CommandPalette({
                 className={clsx(
                   'mt-0.5 rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest',
                   entry.cmd.category === 'screen'
-                    ? 'bg-blue-900 text-blue-200'
+                    ? 'bg-sygnal-info-tlo text-sygnal-info-tusz'
                     : entry.cmd.category === 'menu'
-                      ? 'bg-amber-900 text-amber-200'
-                      : 'bg-emerald-900 text-emerald-200',
+                      ? 'bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz'
+                      : 'bg-sygnal-ok-tlo text-sygnal-ok-tusz',
                 )}
               >
                 {entry.cmd.category === 'screen'

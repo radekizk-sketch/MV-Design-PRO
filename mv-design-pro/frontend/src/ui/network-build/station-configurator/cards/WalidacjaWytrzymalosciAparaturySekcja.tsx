@@ -157,8 +157,8 @@ export function WalidacjaWytrzymalosciAparaturySekcja({
               + (wiersz.odpowiedz === null
                 ? 'border-scada-border bg-scada-panel/40 text-scada-muted'
                 : wiersz.odpowiedz.ok
-                  ? 'border-emerald-700 bg-emerald-950/20 text-emerald-200'
-                  : 'border-rose-700 bg-rose-950/20 text-rose-200')
+                  ? 'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz'
+                  : 'border-sygnal-blokada bg-sygnal-blokada-tlo text-sygnal-blokada-tusz')
             }
           >
             <span className="font-mono">{wiersz.bayDesignation}</span>

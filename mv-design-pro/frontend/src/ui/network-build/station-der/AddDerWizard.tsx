@@ -1489,7 +1489,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               {deviceCatalogStatus === 'error' && (
                 <div
                   data-testid="add-der-device-catalog-error"
-                  className="space-y-2 rounded border border-red-700 bg-red-950/30 p-3 text-[11px] text-red-100"
+                  className="space-y-2 rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-3 text-[11px] text-sygnal-blokada-tusz"
                 >
                   Katalog backendowy jest niedostępny, używam awaryjnych pozycji lokalnych.
                   {deviceCatalogError ? ` Przyczyna: ${deviceCatalogError}` : ''}
@@ -1535,7 +1535,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               {voltageMismatchWarning && (
                 <div
                   data-testid="add-der-voltage-mismatch-warning"
-                  className="rounded border border-amber-700 bg-amber-950/30 p-2 text-[11px] text-amber-200"
+                  className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-2 text-[11px] text-sygnal-uwaga-tusz"
                 >
                   <div className="font-semibold text-red-200">
                     Niezgodność napięciowa blokuje zapis wariantu nN.
@@ -1574,7 +1574,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               {transformerPowerWarning && (
                 <div
                   data-testid="add-der-transformer-power-warning"
-                  className="rounded border border-red-700 bg-red-950/30 p-2 text-[11px] text-red-200"
+                  className="rounded border border-sygnal-blokada bg-sygnal-blokada-tlo p-2 text-[11px] text-sygnal-blokada-tusz"
                 >
                   {transformerPowerWarning}
                 </div>
@@ -1617,7 +1617,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
               {transformerPowerWarning && transformerUpgradeOptions.length === 0 && (
                 <div
                   data-testid="add-der-transformer-upgrade-empty"
-                  className="rounded border border-amber-700 bg-amber-950/30 p-2 text-[11px] text-amber-200"
+                  className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-2 text-[11px] text-sygnal-uwaga-tusz"
                 >
                   Dla napięć tej stacji katalog nie wskazał większego transformatora.
                   Wybierz mniejszy wariant źródła albo przyłączenie po stronie SN.
@@ -1708,8 +1708,8 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                       ? 'wymaga innego napięcia/TR'
                       : 'wymaga większego TR stacji';
                   const eligibilityClass = voltageOk && transformerOk
-                    ? 'border-emerald-600 bg-emerald-950/40 text-emerald-200'
-                    : 'border-amber-700 bg-amber-950/30 text-amber-200';
+                    ? 'border-sygnal-ok bg-sygnal-ok-tlo text-sygnal-ok-tusz'
+                    : 'border-sygnal-uwaga bg-sygnal-uwaga-tlo text-sygnal-uwaga-tusz';
                   return (
                     <button
                       key={device.id}
@@ -1737,7 +1737,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                           {eligibilityText}
                         </span>
                         {ptpireeDocument !== '-' && (
-                          <span className="rounded bg-emerald-950/50 px-1.5 py-0.5 text-emerald-200">
+                          <span className="rounded bg-sygnal-ok-tlo px-1.5 py-0.5 text-sygnal-ok-tusz">
                             PTPiREE {ptpireeDocument}
                           </span>
                         )}
@@ -1748,7 +1748,7 @@ export function AddDerWizard(props: AddDerWizardProps): JSX.Element | null {
                 {filteredDeviceCatalog.length === 0 && (
                   <div
                     data-testid="add-der-device-results-empty"
-                    className="rounded border border-amber-700 bg-amber-950/20 p-3 text-[11px] text-amber-200"
+                    className="rounded border border-sygnal-uwaga bg-sygnal-uwaga-tlo p-3 text-[11px] text-sygnal-uwaga-tusz"
                   >
                     Brak pozycji dla aktualnych filtrów. Zmień tekst wyszukiwania, napięcie
                     albo cechy katalogowe.
