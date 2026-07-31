@@ -48,3 +48,12 @@ jobs:
       - name: Run real-backend E2E smoke
         working-directory: mv-design-pro/frontend
         run: npm run test:e2e:real
+
+      # KD-11: regresja użytkowa z odbioru KD-8 („Ukryto 35 opisów" — rysunek
+      # rozwiniętego GPZ bez ANI JEDNEGO podpisu). Spec mierzy na żywej
+      # aplikacji, że po rozwinięciu bloku i po „Dopasuj widok" tożsamość
+      # KAŻDEJ stacji Z MODELU jest na rysunku, nic z niej nie jest porzucone,
+      # a ukryte są wyłącznie opisy szczegółowe (i wracają po przybliżeniu).
+      - name: Run KD-11 identity labels E2E (real backend)
+        working-directory: mv-design-pro/frontend
+        run: node ./scripts/playwright-run-real.mjs e2e/kd11-tozsamosc-etykiet.spec.ts
