@@ -18,6 +18,7 @@ import './zwarcia.css';
 import type { AdvancementMode } from '../../shell/modeModel';
 import { EkranAnalizy, PrzyciskAkcjiStanu, useAkcjaUruchomObliczenie } from '../wzorzec';
 import { useRozplywZwarciowy, useWkladyZwarciowe } from './api';
+import { useOtworzKonfiguracjeStacji, WeryfikacjaAparatury } from './aparatura';
 import { BilansIEC } from './BilansIEC';
 import { usePokazZwarcieNaSchemacie } from './pokazNaSchemacie';
 import { RozplywZwarciowy } from './RozplywZwarciowy';
@@ -66,6 +67,8 @@ export function EkranZwarc({
   // Karta W-C pkt 6: selekcja + centrowanie + nawigacja + overlay rozpływu
   // (reużycie wzorca V12K-073 — wspólny store selekcji, produkcyjny store overlay).
   const pokazNaSchemacie = usePokazZwarcieNaSchemacie();
+  // KD-4 (dług V12K-287): ogniwo „wynik zwarciowy → wytrzymałość aparatury".
+  const otworzKonfiguracjeStacji = useOtworzKonfiguracjeStacji();
   // K6 / H-5: uczciwy stan zerowy Z AKCJĄ — brak wyniku zwarciowego prowadzi
   // WPROST do uruchomienia przebiegu zwarciowego (ten sam tor co „Oblicz").
   const akcjaBiegu = useAkcjaUruchomObliczenie('SC_3F');
@@ -141,6 +144,14 @@ export function EkranZwarc({
       </div>
 
       <BilansIEC row={wierszAktywny} punktNazwa={nazwaAktywnego} />
+
+      {/* Ogniwo łańcucha: prądy TEGO punktu → końcówka walidacji wytrzymałości
+          aparatury (ta sama, którą karta K7-B wpięła w konfigurator stacji). */}
+      <WeryfikacjaAparatury
+        wiersz={wierszAktywny}
+        punktNazwa={nazwaAktywnego}
+        onOtworzKonfiguracjeStacji={otworzKonfiguracjeStacji}
+      />
 
       <RozplywZwarciowy
         punktNazwa={nazwaAktywnego}
