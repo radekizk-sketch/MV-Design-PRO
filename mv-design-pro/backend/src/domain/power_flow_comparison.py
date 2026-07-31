@@ -111,6 +111,38 @@ TOP_N_FOR_RANKING = 5
 
 
 # =============================================================================
+# RÓŻNICA WZGLĘDNA (L-13)
+# =============================================================================
+
+
+def procent_roznicy(wartosc_a: float, wartosc_b: float) -> float | None:
+    """Różnica względna B wobec A w procentach: (B − A) / |A| · 100 [%].
+
+    L-13: różnica procentowa jest liczona TUTAJ (backend), bo w warstwie
+    prezentacji byłaby arytmetyką na wynikach solvera. Odniesieniem jest zawsze
+    przebieg A (baseline) — mianownik w wartości bezwzględnej, więc znak wyniku
+    pokrywa się ze znakiem delty (B − A).
+
+    Gdy A = 0, wartość względna NIE ISTNIEJE (dzielenie przez zero) → ``None``:
+    uczciwy brak, pole pomijane w odpowiedzi (exclude_none), konsument pokazuje
+    kreskę. Bez epsilonów i bez zaokrągleń — zero heurystyk, wynik
+    deterministyczny.
+    """
+    if wartosc_a == 0.0:
+        return None
+    return (wartosc_b - wartosc_a) / abs(wartosc_a) * 100.0
+
+
+def _procent_z_danych(data: dict[str, Any], klucz: str) -> float | None:
+    """Odczyt pola procentowego ze słownika (brak klucza / None → None).
+
+    Zgodność wsteczna: porównania zapisane przed L-13 nie mają tych pól.
+    """
+    wartosc = data.get(klucz)
+    return None if wartosc is None else float(wartosc)
+
+
+# =============================================================================
 # BUS DIFF ROW
 # =============================================================================
 
@@ -136,6 +168,10 @@ class PowerFlowBusDiffRow:
         delta_angle_deg: Angle delta (B - A) [deg]
         delta_p_mw: Active power delta (B - A) [MW]
         delta_q_mvar: Reactive power delta (B - A) [Mvar]
+        delta_v_percent: Względna zmiana napięcia (B − A)/|A| [%]; None = A równe zeru (L-13)
+        delta_angle_percent: Względna zmiana kąta [%]; None = A równe zeru (L-13)
+        delta_p_percent: Względna zmiana mocy czynnej [%]; None = A równe zeru (L-13)
+        delta_q_percent: Względna zmiana mocy biernej [%]; None = A równe zeru (L-13)
     """
 
     bus_id: str
@@ -151,10 +187,16 @@ class PowerFlowBusDiffRow:
     delta_angle_deg: float
     delta_p_mw: float
     delta_q_mvar: float
+    # L-13 — pola addytywne (domyślnie None: starszy zapis porównania w cache
+    # deserializuje się bez zmian; None NIE trafia do odpowiedzi — exclude_none).
+    delta_v_percent: float | None = None
+    delta_angle_percent: float | None = None
+    delta_p_percent: float | None = None
+    delta_q_percent: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
-        return {
+        """Serialize to JSON-compatible dict (pola procentowe: exclude_none)."""
+        data: dict[str, Any] = {
             "bus_id": self.bus_id,
             "v_pu_a": self.v_pu_a,
             "v_pu_b": self.v_pu_b,
@@ -169,6 +211,15 @@ class PowerFlowBusDiffRow:
             "delta_p_mw": self.delta_p_mw,
             "delta_q_mvar": self.delta_q_mvar,
         }
+        for klucz, wartosc in (
+            ("delta_v_percent", self.delta_v_percent),
+            ("delta_angle_percent", self.delta_angle_percent),
+            ("delta_p_percent", self.delta_p_percent),
+            ("delta_q_percent", self.delta_q_percent),
+        ):
+            if wartosc is not None:
+                data[klucz] = wartosc
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> PowerFlowBusDiffRow:
@@ -187,6 +238,10 @@ class PowerFlowBusDiffRow:
             delta_angle_deg=float(data["delta_angle_deg"]),
             delta_p_mw=float(data["delta_p_mw"]),
             delta_q_mvar=float(data["delta_q_mvar"]),
+            delta_v_percent=_procent_z_danych(data, "delta_v_percent"),
+            delta_angle_percent=_procent_z_danych(data, "delta_angle_percent"),
+            delta_p_percent=_procent_z_danych(data, "delta_p_percent"),
+            delta_q_percent=_procent_z_danych(data, "delta_q_percent"),
         )
 
 
@@ -222,6 +277,8 @@ class PowerFlowBranchDiffRow:
         delta_q_to_mvar: To-end reactive power delta (B - A) [Mvar]
         delta_losses_p_mw: Losses active power delta (B - A) [MW]
         delta_losses_q_mvar: Losses reactive power delta (B - A) [Mvar]
+        delta_*_percent: Względne zmiany (B − A)/|A| [%] tych samych wielkości;
+            None = wartość A równa zeru (różnica względna nie istnieje) — L-13
     """
 
     branch_id: str
@@ -243,10 +300,17 @@ class PowerFlowBranchDiffRow:
     delta_q_to_mvar: float
     delta_losses_p_mw: float
     delta_losses_q_mvar: float
+    # L-13 — pola addytywne (exclude_none; brak = starszy zapis albo A = 0).
+    delta_p_from_percent: float | None = None
+    delta_q_from_percent: float | None = None
+    delta_p_to_percent: float | None = None
+    delta_q_to_percent: float | None = None
+    delta_losses_p_percent: float | None = None
+    delta_losses_q_percent: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
-        return {
+        """Serialize to JSON-compatible dict (pola procentowe: exclude_none)."""
+        data: dict[str, Any] = {
             "branch_id": self.branch_id,
             "p_from_mw_a": self.p_from_mw_a,
             "p_from_mw_b": self.p_from_mw_b,
@@ -267,6 +331,17 @@ class PowerFlowBranchDiffRow:
             "delta_losses_p_mw": self.delta_losses_p_mw,
             "delta_losses_q_mvar": self.delta_losses_q_mvar,
         }
+        for klucz, wartosc in (
+            ("delta_p_from_percent", self.delta_p_from_percent),
+            ("delta_q_from_percent", self.delta_q_from_percent),
+            ("delta_p_to_percent", self.delta_p_to_percent),
+            ("delta_q_to_percent", self.delta_q_to_percent),
+            ("delta_losses_p_percent", self.delta_losses_p_percent),
+            ("delta_losses_q_percent", self.delta_losses_q_percent),
+        ):
+            if wartosc is not None:
+                data[klucz] = wartosc
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> PowerFlowBranchDiffRow:
@@ -291,6 +366,12 @@ class PowerFlowBranchDiffRow:
             delta_q_to_mvar=float(data["delta_q_to_mvar"]),
             delta_losses_p_mw=float(data["delta_losses_p_mw"]),
             delta_losses_q_mvar=float(data["delta_losses_q_mvar"]),
+            delta_p_from_percent=_procent_z_danych(data, "delta_p_from_percent"),
+            delta_q_from_percent=_procent_z_danych(data, "delta_q_from_percent"),
+            delta_p_to_percent=_procent_z_danych(data, "delta_p_to_percent"),
+            delta_q_to_percent=_procent_z_danych(data, "delta_q_to_percent"),
+            delta_losses_p_percent=_procent_z_danych(data, "delta_losses_p_percent"),
+            delta_losses_q_percent=_procent_z_danych(data, "delta_losses_q_percent"),
         )
 
 
@@ -367,10 +448,12 @@ class PowerFlowComparisonSummary:
     major_issues: int
     moderate_issues: int
     minor_issues: int
+    # L-13 — względna zmiana strat całkowitych [%] (addytywne, exclude_none).
+    delta_total_losses_p_percent: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize to JSON-compatible dict."""
-        return {
+        """Serialize to JSON-compatible dict (pole procentowe: exclude_none)."""
+        data: dict[str, Any] = {
             "total_buses": self.total_buses,
             "total_branches": self.total_branches,
             "converged_a": self.converged_a,
@@ -386,6 +469,9 @@ class PowerFlowComparisonSummary:
             "moderate_issues": self.moderate_issues,
             "minor_issues": self.minor_issues,
         }
+        if self.delta_total_losses_p_percent is not None:
+            data["delta_total_losses_p_percent"] = self.delta_total_losses_p_percent
+        return data
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> PowerFlowComparisonSummary:
@@ -405,6 +491,7 @@ class PowerFlowComparisonSummary:
             major_issues=int(data["major_issues"]),
             moderate_issues=int(data["moderate_issues"]),
             minor_issues=int(data["minor_issues"]),
+            delta_total_losses_p_percent=_procent_z_danych(data, "delta_total_losses_p_percent"),
         )
 
 

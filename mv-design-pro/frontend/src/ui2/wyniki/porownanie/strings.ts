@@ -43,6 +43,7 @@ export const POROWNANIE_STRINGS = {
   // Podsumowanie (część wyniku — jako ZAŁOŻENIA wzorca)
   podsumZbieznosc: 'Zbieżność (A / B)',
   podsumStraty: 'Straty czynne (A · B · Δ)',
+  podsumStratyProc: 'Straty czynne — zmiana względna',
   podsumMaksNapiecie: 'Maks. odchylenie napięcia',
   podsumMaksKat: 'Maks. odchylenie kąta',
   podsumProblemy: 'Problemy wg wagi (krytyczne · poważne · umiarkowane · drobne)',
@@ -60,9 +61,11 @@ export const POROWNANIE_STRINGS = {
   kolNapiecieA: 'Napięcie A',
   kolNapiecieB: 'Napięcie B',
   kolNapiecieD: 'Δ napięcia',
+  kolNapiecieDProc: 'Δ napięcia',
   kolKatA: 'Kąt A',
   kolKatB: 'Kąt B',
   kolKatD: 'Δ kąta',
+  kolKatDProc: 'Δ kąta',
   // Moc bierna wstrzykiwana w szynie (L-12) — payload backendu ma te pola.
   kolMocBiernaA: 'Moc bierna A',
   kolMocBiernaB: 'Moc bierna B',
@@ -73,9 +76,11 @@ export const POROWNANIE_STRINGS = {
   kolStratyA: 'Straty czynne A',
   kolStratyB: 'Straty czynne B',
   kolStratyD: 'Δ strat czynnych',
+  kolStratyDProc: 'Δ strat czynnych',
   kolMocA: 'Moc czynna (początek) A',
   kolMocB: 'Moc czynna (początek) B',
   kolMocD: 'Δ mocy czynnej (początek)',
+  kolMocDProc: 'Δ mocy czynnej (początek)',
   kolMocBiernaGalazA: 'Moc bierna (początek) A',
   kolMocBiernaGalazB: 'Moc bierna (początek) B',
   kolMocBiernaGalazD: 'Δ mocy biernej (początek)',
@@ -104,6 +109,7 @@ export const POROWNANIE_STRINGS = {
   jednStopnie: '°',
   jednMW: 'MW',
   jednMvar: 'Mvar',
+  jednProcent: '%',
 
   // Filtr „tylko różnice" (L-14) — czysta prezentacja na danych backendu
   filtrTylkoRoznice: 'Pokaż tylko różnice',
@@ -208,6 +214,21 @@ export function fmtMocBierna(n: number): string {
 /** Delta mocy biernej [Mvar] — 3 miejsca po przecinku, ze znakiem. */
 export function fmtDeltaMocBierna(n: number): string {
   return fmtDelta(n, 3);
+}
+
+/**
+ * Różnica względna [%] rozpływu A/B (L-13) — 2 miejsca po przecinku, ze znakiem,
+ * jako SAMODZIELNA kolumna. Wartość pochodzi WYŁĄCZNIE z backendu
+ * (`delta_*_percent`); brak wartości (odniesienie A = 0 albo porównanie sprzed
+ * L-13) → kreska. Zero arytmetyki w prezentacji.
+ *
+ * To NIE jest `fmtDeltaProcent` (dopisek „(±x,x%)" do delty w trybie
+ * zwarciowym) — tam procent liczy UI, bo tryb zwarciowy zestawia dwa przebiegi
+ * bez końcówki porównania w backendzie (karta E12.2 §2.1).
+ */
+export function fmtRoznicaProcentowa(n: number | null | undefined): string {
+  if (typeof n !== 'number' || !Number.isFinite(n)) return POROWNANIE_STRINGS.kreska;
+  return fmtDelta(n, 2);
 }
 
 /**

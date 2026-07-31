@@ -62,7 +62,13 @@ class CreatePowerFlowComparisonRequest(BaseModel):
 
 
 class BusDiffRowResponse(BaseModel):
-    """Single bus diff row."""
+    """Single bus diff row.
+
+    L-13: pola `delta_*_percent` (różnica względna B wobec A [%]) liczy backend —
+    w warstwie prezentacji byłaby to arytmetyka na wynikach solvera. Pola są
+    addytywne i opcjonalne: brak wartości (A = 0 → różnica względna nie istnieje)
+    jest POMIJANY w odpowiedzi (`response_model_exclude_none`), nigdy zerem.
+    """
 
     bus_id: str
     v_pu_a: float
@@ -77,10 +83,14 @@ class BusDiffRowResponse(BaseModel):
     delta_angle_deg: float
     delta_p_mw: float
     delta_q_mvar: float
+    delta_v_percent: float | None = None
+    delta_angle_percent: float | None = None
+    delta_p_percent: float | None = None
+    delta_q_percent: float | None = None
 
 
 class BranchDiffRowResponse(BaseModel):
-    """Single branch diff row."""
+    """Single branch diff row (L-13: `delta_*_percent` — patrz BusDiffRowResponse)."""
 
     branch_id: str
     p_from_mw_a: float
@@ -101,6 +111,12 @@ class BranchDiffRowResponse(BaseModel):
     delta_q_to_mvar: float
     delta_losses_p_mw: float
     delta_losses_q_mvar: float
+    delta_p_from_percent: float | None = None
+    delta_q_from_percent: float | None = None
+    delta_p_to_percent: float | None = None
+    delta_q_to_percent: float | None = None
+    delta_losses_p_percent: float | None = None
+    delta_losses_q_percent: float | None = None
 
 
 class RankingIssueResponse(BaseModel):
@@ -130,6 +146,7 @@ class ComparisonSummaryResponse(BaseModel):
     major_issues: int
     moderate_issues: int
     minor_issues: int
+    delta_total_losses_p_percent: float | None = None
 
 
 class PowerFlowComparisonResultResponse(BaseModel):
@@ -202,6 +219,9 @@ def _build_service(uow_factory: Any) -> PowerFlowComparisonService:
     "",
     status_code=status.HTTP_201_CREATED,
     response_model=PowerFlowComparisonResultResponse,
+    # L-13: brak różnicy względnej (A = 0) NIE trafia do odpowiedzi jako null —
+    # konsument odróżnia „nie istnieje" od wartości liczbowej.
+    response_model_exclude_none=True,
     summary="Utworz porownanie dwoch analiz rozplywu mocy",
     description="""
 P20c: Porownuje dwa PowerFlowRun i generuje deterministyczny ranking problemow.
@@ -277,6 +297,7 @@ def create_power_flow_comparison(
 @router.get(
     "/{comparison_id}",
     response_model=PowerFlowComparisonMetadataResponse,
+    response_model_exclude_none=True,
     summary="Pobierz metadane porownania",
 )
 def get_power_flow_comparison(
@@ -313,6 +334,7 @@ def get_power_flow_comparison(
 @router.get(
     "/{comparison_id}/results",
     response_model=PowerFlowComparisonResultResponse,
+    response_model_exclude_none=True,
     summary="Pobierz pelne wyniki porownania",
 )
 def get_power_flow_comparison_results(
@@ -397,7 +419,9 @@ def export_power_flow_comparison_json(
     # Build export payload
     export_payload = {
         "report_type": "power_flow_comparison",
-        "report_version": "1.0.0",
+        # L-13: payload porównania niesie dodatkowo różnice względne [%] —
+        # kontrakt jawnie wersjonowany, zmiana addytywna (1.0.0 → 1.1.0).
+        "report_version": "1.1.0",
         "comparison": comparison_dict,
     }
 

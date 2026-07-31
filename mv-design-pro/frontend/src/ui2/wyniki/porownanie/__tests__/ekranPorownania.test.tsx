@@ -193,6 +193,20 @@ describe('EkranPorownania — prezentacja wyniku backendu', () => {
     expect(tabela.getByText('+0,700')).toBeInTheDocument();
   });
 
+  it('L-13: kolumna Δ% z wartością backendu (szyny i gałęzie)', async () => {
+    render(<EkranPorownania {...props()} />);
+    await wykonajPorownanie();
+    const szyny = within(screen.getByTestId('mvd-wyn-tabela'));
+    // Dwie kolumny względne w tabeli szyn (napięcie, kąt) — jednostka w nagłówku.
+    expect(szyny.getAllByText(`[${POROWNANIE_STRINGS.jednProcent}]`)).toHaveLength(2);
+    // Wartość z payloadu (`delta_v_percent`), nie liczona w prezentacji
+    // (obie szyny fixture'u niosą tę samą różnicę względną).
+    expect(szyny.getAllByText('-5,39').length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(screen.getByTestId('mvd-por-tab-galezie'));
+    const galezie = within(screen.getByTestId('mvd-wyn-tabela'));
+    expect(galezie.getByText('+50,00')).toBeInTheDocument();
+  });
+
   it('zakładka Ranking: problemy z wagą PL i rodzajem PL', async () => {
     render(<EkranPorownania {...props()} />);
     await wykonajPorownanie();

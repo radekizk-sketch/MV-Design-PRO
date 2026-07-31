@@ -50,6 +50,7 @@ import {
   fmtDeltaMoc,
   fmtDeltaMocBierna,
   fmtDeltaNapiecie,
+  fmtRoznicaProcentowa,
   fmtKat,
   fmtMoc,
   fmtMocBierna,
@@ -68,9 +69,22 @@ export const KOLUMNY_SZYN_DIFF: DefinicjaKolumny[] = [
   { klucz: 'vA', etykieta: POROWNANIE_STRINGS.kolNapiecieA, jednostka: POROWNANIE_STRINGS.jednPu, mono: true },
   { klucz: 'vB', etykieta: POROWNANIE_STRINGS.kolNapiecieB, jednostka: POROWNANIE_STRINGS.jednPu, mono: true },
   { klucz: 'dV', etykieta: POROWNANIE_STRINGS.kolNapiecieD, jednostka: POROWNANIE_STRINGS.jednPu, mono: true },
+  {
+    klucz: 'dVproc',
+    etykieta: POROWNANIE_STRINGS.kolNapiecieDProc,
+    jednostka: POROWNANIE_STRINGS.jednProcent,
+    mono: true,
+  },
   { klucz: 'katA', etykieta: POROWNANIE_STRINGS.kolKatA, jednostka: POROWNANIE_STRINGS.jednStopnie, mono: true },
   { klucz: 'katB', etykieta: POROWNANIE_STRINGS.kolKatB, jednostka: POROWNANIE_STRINGS.jednStopnie, mono: true },
   { klucz: 'dKat', etykieta: POROWNANIE_STRINGS.kolKatD, jednostka: POROWNANIE_STRINGS.jednStopnie, mono: true },
+  // Scalenie KD-1 + KD-2 (nadzorca): obie delty ADDYTYWNE do tej samej tabeli.
+  {
+    klucz: 'dKatProc',
+    etykieta: POROWNANIE_STRINGS.kolKatDProc,
+    jednostka: POROWNANIE_STRINGS.jednProcent,
+    mono: true,
+  },
   // L-12: moc bierna wstrzykiwana w szynie — pola `q_injected_mvar_a/b`
   // i `delta_q_mvar` ISTNIEJĄ w payloadzie backendu (`types.ts` PowerFlowBusDiffRow),
   // ekran ich dotąd nie pokazywał.
@@ -84,9 +98,22 @@ export const KOLUMNY_GALEZI: DefinicjaKolumny[] = [
   { klucz: 'stratyA', etykieta: POROWNANIE_STRINGS.kolStratyA, jednostka: POROWNANIE_STRINGS.jednMW, mono: true },
   { klucz: 'stratyB', etykieta: POROWNANIE_STRINGS.kolStratyB, jednostka: POROWNANIE_STRINGS.jednMW, mono: true },
   { klucz: 'dStraty', etykieta: POROWNANIE_STRINGS.kolStratyD, jednostka: POROWNANIE_STRINGS.jednMW, mono: true },
+  {
+    klucz: 'dStratyProc',
+    etykieta: POROWNANIE_STRINGS.kolStratyDProc,
+    jednostka: POROWNANIE_STRINGS.jednProcent,
+    mono: true,
+  },
   { klucz: 'mocA', etykieta: POROWNANIE_STRINGS.kolMocA, jednostka: POROWNANIE_STRINGS.jednMW, mono: true },
   { klucz: 'mocB', etykieta: POROWNANIE_STRINGS.kolMocB, jednostka: POROWNANIE_STRINGS.jednMW, mono: true },
   { klucz: 'dMoc', etykieta: POROWNANIE_STRINGS.kolMocD, jednostka: POROWNANIE_STRINGS.jednMW, mono: true },
+  // Scalenie KD-1 + KD-2 (nadzorca): Δ% mocy z backendu + moc bierna L-12.
+  {
+    klucz: 'dMocProc',
+    etykieta: POROWNANIE_STRINGS.kolMocDProc,
+    jednostka: POROWNANIE_STRINGS.jednProcent,
+    mono: true,
+  },
   // L-12: moc bierna gałęzi (początek) — `q_from_mvar_a/b`, `delta_q_from_mvar`.
   { klucz: 'qA', etykieta: POROWNANIE_STRINGS.kolMocBiernaGalazA, jednostka: POROWNANIE_STRINGS.jednMvar, mono: true },
   { klucz: 'qB', etykieta: POROWNANIE_STRINGS.kolMocBiernaGalazB, jednostka: POROWNANIE_STRINGS.jednMvar, mono: true },
@@ -159,6 +186,19 @@ function komorkaDelty(
   return { wartosc: format(wartosc), sortKey: wartosc, ostrzezenie };
 }
 
+/**
+ * Komórka różnicy WZGLĘDNEJ [%] (L-13). Wartość pochodzi WYŁĄCZNIE z pola
+ * backendu (`delta_*_percent`) — prezentacja nie dzieli, nie mnoży i nie
+ * podstawia zera. Brak pola (odniesienie A = 0 albo porównanie sprzed L-13) →
+ * kreska bez `sortKey` (wiersz bez wartości nie udaje zera przy sortowaniu).
+ */
+function komorkaProcentu(wartosc: number | null | undefined, ostrzezenie: boolean): WartoscKomorki {
+  if (typeof wartosc !== 'number' || !Number.isFinite(wartosc)) {
+    return { wartosc: POROWNANIE_STRINGS.kreska };
+  }
+  return { wartosc: fmtRoznicaProcentowa(wartosc), sortKey: wartosc, ostrzezenie };
+}
+
 // ---------------------------------------------------------------------------
 // Adaptery czyste (bez React) — fixture 1:1 z realnym kontraktem
 // ---------------------------------------------------------------------------
@@ -177,9 +217,11 @@ export function naWierszeSzynDiff(
       vA: komorka(row.v_pu_a, fmtNapiecie, refA),
       vB: komorka(row.v_pu_b, fmtNapiecie, refB),
       dV: komorkaDelty(row.delta_v_pu, fmtDeltaNapiecie, flaga),
+      dVproc: komorkaProcentu(row.delta_v_percent, flaga),
       katA: komorka(row.angle_deg_a, fmtKat, refA),
       katB: komorka(row.angle_deg_b, fmtKat, refB),
       dKat: komorkaDelty(row.delta_angle_deg, fmtDeltaKat, flaga),
+      dKatProc: komorkaProcentu(row.delta_angle_percent, flaga),
       qA: komorka(row.q_injected_mvar_a, fmtMocBierna, refA),
       qB: komorka(row.q_injected_mvar_b, fmtMocBierna, refB),
       dQ: komorkaDelty(row.delta_q_mvar, fmtDeltaMocBierna, flaga),
@@ -201,9 +243,11 @@ export function naWierszeGalezi(
       stratyA: komorka(row.losses_p_mw_a, fmtMoc, refA),
       stratyB: komorka(row.losses_p_mw_b, fmtMoc, refB),
       dStraty: komorkaDelty(row.delta_losses_p_mw, fmtDeltaMoc, flaga),
+      dStratyProc: komorkaProcentu(row.delta_losses_p_percent, flaga),
       mocA: komorka(row.p_from_mw_a, fmtMoc, refA),
       mocB: komorka(row.p_from_mw_b, fmtMoc, refB),
       dMoc: komorkaDelty(row.delta_p_from_mw, fmtDeltaMoc, flaga),
+      dMocProc: komorkaProcentu(row.delta_p_from_percent, flaga),
       qA: komorka(row.q_from_mvar_a, fmtMocBierna, refA),
       qB: komorka(row.q_from_mvar_b, fmtMocBierna, refB),
       dQ: komorkaDelty(row.delta_q_from_mvar, fmtDeltaMocBierna, flaga),
@@ -284,6 +328,12 @@ export function naZalozeniaPorownania(summary: PowerFlowComparisonSummary): Wier
       etykieta: POROWNANIE_STRINGS.podsumStraty,
       wartosc: `${fmtMoc(summary.total_losses_p_mw_a)} · ${fmtMoc(summary.total_losses_p_mw_b)} · Δ ${fmtDeltaMoc(summary.delta_total_losses_p_mw)}${tag}`,
       jednostka: POROWNANIE_STRINGS.jednMW,
+    },
+    {
+      // L-13: względna zmiana strat — wartość z backendu, brak → kreska.
+      etykieta: POROWNANIE_STRINGS.podsumStratyProc,
+      wartosc: `Δ ${fmtRoznicaProcentowa(summary.delta_total_losses_p_percent)}`,
+      jednostka: POROWNANIE_STRINGS.jednProcent,
     },
     {
       etykieta: POROWNANIE_STRINGS.podsumMaksNapiecie,

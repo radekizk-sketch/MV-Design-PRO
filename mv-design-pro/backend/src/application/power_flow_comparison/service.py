@@ -51,6 +51,7 @@ from domain.power_flow_comparison import (
     PowerFlowRunNotFoundError,
     compute_pf_comparison_input_hash,
     get_ranking_thresholds,
+    procent_roznicy,
 )
 from infrastructure.persistence.unit_of_work import UnitOfWork
 
@@ -591,6 +592,11 @@ class PowerFlowComparisonService:
                 delta_angle_deg=angle_deg_b - angle_deg_a,
                 delta_p_mw=p_inj_b - p_inj_a,
                 delta_q_mvar=q_inj_b - q_inj_a,
+                # L-13: różnica względna liczona w backendzie (nie w prezentacji).
+                delta_v_percent=procent_roznicy(v_pu_a, v_pu_b),
+                delta_angle_percent=procent_roznicy(angle_deg_a, angle_deg_b),
+                delta_p_percent=procent_roznicy(p_inj_a, p_inj_b),
+                delta_q_percent=procent_roznicy(q_inj_a, q_inj_b),
             )
             diffs.append(diff)
 
@@ -659,6 +665,13 @@ class PowerFlowComparisonService:
                 delta_q_to_mvar=q_to_b - q_to_a,
                 delta_losses_p_mw=losses_p_b - losses_p_a,
                 delta_losses_q_mvar=losses_q_b - losses_q_a,
+                # L-13: różnica względna liczona w backendzie (nie w prezentacji).
+                delta_p_from_percent=procent_roznicy(p_from_a, p_from_b),
+                delta_q_from_percent=procent_roznicy(q_from_a, q_from_b),
+                delta_p_to_percent=procent_roznicy(p_to_a, p_to_b),
+                delta_q_to_percent=procent_roznicy(q_to_a, q_to_b),
+                delta_losses_p_percent=procent_roznicy(losses_p_a, losses_p_b),
+                delta_losses_q_percent=procent_roznicy(losses_q_a, losses_q_b),
             )
             diffs.append(diff)
 
@@ -860,4 +873,6 @@ class PowerFlowComparisonService:
             major_issues=severities["major_issues"],
             moderate_issues=severities["moderate_issues"],
             minor_issues=severities["minor_issues"],
+            # L-13: względna zmiana strat całkowitych [%].
+            delta_total_losses_p_percent=procent_roznicy(total_losses_a, total_losses_b),
         )

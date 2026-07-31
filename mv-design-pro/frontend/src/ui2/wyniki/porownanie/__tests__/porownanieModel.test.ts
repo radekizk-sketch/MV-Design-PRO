@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 
 import {
   KLUCZ_PROBLEM,
+  KOLUMNY_GALEZI,
   KOLUMNY_SZYN_DIFF,
   etykietaPrzebiegu,
   mapaWagElementow,
@@ -219,6 +220,17 @@ describe('kolumny — kontrakt deklaratywny', () => {
     expect(dQ?.jednostka).toBe(POROWNANIE_STRINGS.jednMvar);
     expect(dQ?.mono).toBe(true);
   });
+
+  it('L-13: kolumny Δ% istnieją w tabelach szyn i gałęzi z jednostką „%"', () => {
+    const dVproc = KOLUMNY_SZYN_DIFF.find((k) => k.klucz === 'dVproc');
+    const dKatProc = KOLUMNY_SZYN_DIFF.find((k) => k.klucz === 'dKatProc');
+    expect(dVproc?.jednostka).toBe(POROWNANIE_STRINGS.jednProcent);
+    expect(dKatProc?.jednostka).toBe(POROWNANIE_STRINGS.jednProcent);
+    const dStratyProc = KOLUMNY_GALEZI.find((k) => k.klucz === 'dStratyProc');
+    const dMocProc = KOLUMNY_GALEZI.find((k) => k.klucz === 'dMocProc');
+    expect(dStratyProc?.jednostka).toBe(POROWNANIE_STRINGS.jednProcent);
+    expect(dMocProc?.jednostka).toBe(POROWNANIE_STRINGS.jednProcent);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -292,5 +304,60 @@ describe('L-14 — filtr „pokaż tylko różnice" (czysta prezentacja na delta
       busDiffFixture({ bus_id: 'C' }),
     ];
     expect(tylkoRozniceSzyn(rows).map((r) => r.bus_id)).toEqual(['A', 'C']);
+
+describe('L-13 — Δ% pochodzi z backendu, prezentacja nic nie liczy', () => {
+  it('komórka Δ% szyny pokazuje WARTOŚĆ Z PAYLOADU, nie iloraz z A i B', () => {
+    // Wartość procentu w payloadzie jest CELOWO niezgodna z (B−A)/|A|·100 dla
+    // podanych A/B: gdyby ekran liczył sam, pokazałby -5,39 zamiast +12,50.
+    // Test przypina kontrakt: liczy backend, prezentacja tylko formatuje.
+    const w = naWierszeSzynDiff(
+      [busDiffFixture({ v_pu_a: 1.02, v_pu_b: 0.965, delta_v_percent: 12.5 })],
+      new Map(),
+    )[0];
+    expect(w.dVproc.wartosc).toBe('+12,50');
+    expect(w.dVproc.sortKey).toBe(12.5);
+  });
+
+  it('Δ% szyn i gałęzi formatowane z przecinkiem PL i znakiem', () => {
+    const szyna = naWierszeSzynDiff([busDiffFixture()], new Map())[0];
+    expect(szyna.dVproc.wartosc).toBe('-5,39');
+    expect(szyna.dKatProc.wartosc).toBe('-64,00');
+    const galaz = naWierszeGalezi([branchDiffFixture()], new Map())[0];
+    expect(galaz.dStratyProc.wartosc).toBe('+50,00');
+    expect(galaz.dMocProc.wartosc).toBe('+8,54');
+  });
+
+  it('brak pola procentu (odniesienie A = 0 albo starsze porównanie) → kreska bez sortKey', () => {
+    const szyna = naWierszeSzynDiff(
+      [busDiffFixture({ delta_v_percent: null, delta_angle_percent: undefined })],
+      new Map(),
+    )[0];
+    expect(szyna.dVproc.wartosc).toBe(POROWNANIE_STRINGS.kreska);
+    expect(szyna.dVproc.sortKey).toBeUndefined();
+    expect(szyna.dKatProc.wartosc).toBe(POROWNANIE_STRINGS.kreska);
+
+    const galaz = naWierszeGalezi(
+      [branchDiffFixture({ delta_losses_p_percent: null, delta_p_from_percent: null })],
+      new Map(),
+    )[0];
+    expect(galaz.dStratyProc.wartosc).toBe(POROWNANIE_STRINGS.kreska);
+    expect(galaz.dMocProc.wartosc).toBe(POROWNANIE_STRINGS.kreska);
+  });
+
+  it('tag „poza zakresem" wg wagi z backendu obejmuje także komórki Δ%', () => {
+    const wagi = mapaWagElementow(rankingFixture());
+    const szyna = naWierszeSzynDiff([busDiffFixture()], wagi)[0];
+    expect(szyna.dVproc.ostrzezenie).toBe(true);
+  });
+
+  it('podsumowanie niesie względną zmianę strat z backendu (brak → kreska)', () => {
+    const zal = naZalozeniaPorownania(summaryFixture());
+    const proc = zal.find((z) => z.etykieta === POROWNANIE_STRINGS.podsumStratyProc);
+    expect(proc?.wartosc).toBe('Δ +50,00');
+    expect(proc?.jednostka).toBe(POROWNANIE_STRINGS.jednProcent);
+
+    const bez = naZalozeniaPorownania(summaryFixture({ delta_total_losses_p_percent: null }));
+    const procBez = bez.find((z) => z.etykieta === POROWNANIE_STRINGS.podsumStratyProc);
+    expect(procBez?.wartosc).toBe(`Δ ${POROWNANIE_STRINGS.kreska}`);
   });
 });

@@ -30,6 +30,11 @@ export function busDiffFixture(over: Partial<PowerFlowBusDiffRow> = {}): PowerFl
     delta_angle_deg: -1.6,
     delta_p_mw: 0.4,
     delta_q_mvar: 0.3,
+    // L-13: różnice względne [%] policzone przez backend (pola addytywne).
+    delta_v_percent: -5.392156862745098,
+    delta_angle_percent: -64.0,
+    delta_p_percent: 4.0,
+    delta_q_percent: 15.0,
     ...over,
   };
 }
@@ -57,6 +62,13 @@ export function branchDiffFixture(
     delta_q_to_mvar: -0.1,
     delta_losses_p_mw: 0.1,
     delta_losses_q_mvar: 0.1,
+    // L-13: różnice względne [%] policzone przez backend (pola addytywne).
+    delta_p_from_percent: 8.536585365853659,
+    delta_q_from_percent: 18.181818181818183,
+    delta_p_to_percent: -7.5,
+    delta_q_to_percent: -11.11111111111111,
+    delta_losses_p_percent: 50.0,
+    delta_losses_q_percent: 50.0,
     ...over,
   };
 }
@@ -98,6 +110,8 @@ export function summaryFixture(
     major_issues: 0,
     moderate_issues: 1,
     minor_issues: 0,
+    // L-13: względna zmiana strat całkowitych [%] z backendu.
+    delta_total_losses_p_percent: 50.0,
     ...over,
   };
 }
