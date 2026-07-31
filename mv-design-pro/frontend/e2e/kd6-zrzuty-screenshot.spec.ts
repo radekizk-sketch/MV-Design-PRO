@@ -154,9 +154,13 @@ async function zbudujScene(request: APIRequestContext): Promise<Scena> {
       {
         field_role: 'LINIA_IN',
         equipment: {
-          ct: { catalog_ref: CT_ID, ratio_primary_a: 400.0, ratio_secondary_a: 5.0 },
+          ct: {
+            catalog_binding: catalogBinding('CT', CT_ID),
+            ratio_primary_a: 400.0,
+            ratio_secondary_a: 5.0,
+          },
           relay: {
-            catalog_ref: PRZEKAZNIK_ID,
+            catalog_binding: catalogBinding('ZABEZPIECZENIE', PRZEKAZNIK_ID),
             relay_type: 'NADPRADOWY',
             settings: [
               {

@@ -1028,18 +1028,42 @@ for (const lod of LODS) {
   );
 
   // -- §21 (F13.1, D3-1/D3-2): GPZ jako dominanta WN/SN ----------------------
-  const hvGaps = gpzHvColumnGaps(scene, enm);
-  check(
-    'gpz_hv_column_probe (§21.1): ENM niesie TR WN/SN ⇒ scena rysuje kolumnę WN (przyłącze→szyna WN→TR→sekcje SN); 0 GPZ z danymi WN bez kolumny',
-    allGpzHvColumnsComplete(scene, enm) && hvGaps.length === 0,
-    `luki=${hvGaps.length}`,
-  );
-  const domGaps = gpzDominanceGaps(scene);
-  check(
-    'gpz_dominance_probe (§21.2): strefa GPZ ≥ największa stacja; szyna GPZ grubsza (busGpz>bus); tabliczka danych przy źródle',
-    gpzIsDominant(scene) && domGaps.length === 0,
-    `luki=${domGaps.length}${domGaps.length ? ' np. ' + JSON.stringify(domGaps[0]) : ''}`,
-  );
+  // V12K-293 (KD-5): na L0 blok GPZ jest ZWINIĘTY (jeden symbol `gpzCollapsed`
+  // + glif źródła + aparaty ciągłości pól odejściowych) — kolumna WN (§21.1)
+  // i dominanta pełnego detalu (§21.2) obowiązują od L1. Na L0 wyrocznia
+  // pilnuje kanonu zwinięcia zamiast wymagać cech, których scena celowo nie ma.
+  if (lod !== 0) {
+    const hvGaps = gpzHvColumnGaps(scene, enm);
+    check(
+      'gpz_hv_column_probe (§21.1, lod>=1): ENM niesie TR WN/SN ⇒ scena rysuje kolumnę WN (przyłącze→szyna WN→TR→sekcje SN); 0 GPZ z danymi WN bez kolumny',
+      allGpzHvColumnsComplete(scene, enm) && hvGaps.length === 0,
+      `luki=${hvGaps.length}`,
+    );
+    const domGaps = gpzDominanceGaps(scene);
+    check(
+      'gpz_dominance_probe (§21.2, lod>=1): strefa GPZ ≥ największa stacja; szyna GPZ grubsza (busGpz>bus); tabliczka danych przy źródle',
+      gpzIsDominant(scene) && domGaps.length === 0,
+      `luki=${domGaps.length}${domGaps.length ? ' np. ' + JSON.stringify(domGaps[0]) : ''}`,
+    );
+  } else {
+    const gpzInFull = buildSceneV3(enm, 1).symbols.some(
+      (s) => (s.meta?.ownerRef ?? '').startsWith('gpz/'),
+    );
+    const collapsedCount = scene.symbols.filter((s) => s.symbolId === 'gpzCollapsed').length;
+    const internalExtra = scene.symbols.filter(
+      (s) =>
+        (s.meta?.ownerRef ?? '').startsWith('gpz/') &&
+        s.symbolId !== 'gpzCollapsed' &&
+        s.symbolId !== 'gridSource' &&
+        s.symbolId !== 'breaker',
+    );
+    check(
+      'gpz_collapsed_probe (§21.3, V12K-293): L0 rysuje GPZ ZWINIĘTY — dokładnie jeden gpzCollapsed (gdy pełny detal niesie pasmo gpz/), a poza nim wyłącznie glif źródła i aparaty ciągłości pól',
+      (!gpzInFull && collapsedCount === 0) ||
+        (gpzInFull && collapsedCount === 1 && internalExtra.length === 0),
+      `gpz_w_pelnym_detalu=${gpzInFull} zwiniete=${collapsedCount} wewnetrzne_nadmiarowe=${internalExtra.length}${internalExtra.length ? ' np. ' + JSON.stringify(internalExtra[0]?.symbolId) : ''}`,
+    );
+  }
 
   // -- §12.5 (recenzja NO-GO 2026-07-17 pkt 5): szablony technologiczne pól --
   const templateGaps = bayTemplateGaps(scene, enm);
