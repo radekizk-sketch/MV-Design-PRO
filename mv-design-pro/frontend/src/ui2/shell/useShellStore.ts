@@ -88,11 +88,20 @@ interface ShellState {
    * NIE persystowane (żądanie chwili, nie preferencja układu).
    */
   zadanieNowyPrzypadek: boolean;
+  /**
+   * Tryb PODGLĄDU schematu (KD-4, luka L-1): kanwa bez edycji. Zdolność miała
+   * dotąd wyłącznie trasa mostu `#sld-view`, osiągalna jedynie z wyszukiwarki
+   * poleceń — powłoka nie umiała przełączyć kanwy w tryb tylko-do-odczytu.
+   * Ustawienie WIDOKU (nie danych modelu), więc żyje tu i jest persystowane
+   * jak reszta preferencji układu.
+   */
+  podgladSchematu: boolean;
 
   setActiveSpace: (space: SpaceId) => void;
   setAdvancementMode: (mode: AdvancementMode) => void;
   setWynikiTab: (tab: string | null, element?: string | null) => void;
   setZadanieNowyPrzypadek: (zadanie: boolean) => void;
+  setPodgladSchematu: (podglad: boolean) => void;
 
   getLayout: (space: SpaceId) => PanelLayoutState;
   setLeftWidth: (space: SpaceId, width: number) => void;
@@ -133,6 +142,7 @@ export const useShellStore = create<ShellState>()(
       wynikiTab: null,
       wynikiTabElement: null,
       zadanieNowyPrzypadek: false,
+      podgladSchematu: false,
 
       setActiveSpace: (space) => set({ activeSpace: space }),
       setAdvancementMode: (mode) => set({ advancementMode: mode }),
@@ -140,6 +150,7 @@ export const useShellStore = create<ShellState>()(
       // domyślnie null — istniejące wywołania `setWynikiTab(tab)` działają 1:1).
       setWynikiTab: (tab, element = null) => set({ wynikiTab: tab, wynikiTabElement: element }),
       setZadanieNowyPrzypadek: (zadanie) => set({ zadanieNowyPrzypadek: zadanie }),
+      setPodgladSchematu: (podglad) => set({ podgladSchematu: podglad }),
 
       getLayout: (space) => layoutFor(get(), space),
 
@@ -190,6 +201,7 @@ export const useShellStore = create<ShellState>()(
         activeSpace: state.activeSpace,
         advancementMode: state.advancementMode,
         layoutBySpace: state.layoutBySpace,
+        podgladSchematu: state.podgladSchematu,
       }),
     },
   ),

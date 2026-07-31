@@ -29,7 +29,8 @@ import { useSnapshotStore } from '../../ui/topology/snapshotStore';
 import { useSelectionStore } from '../../ui/selection/store';
 import { ROUTES, getRouteByHash, isAnalysisRouteAlias } from '../../ui/navigation';
 import type { SpaceId } from '../shell/spaces';
-import { NastepnyKrokSchematu } from '../spaces/schemat';
+import { NastepnyKrokSchematu, PrzelacznikPodgladu } from '../spaces/schemat';
+import { useShellStore } from '../shell/useShellStore';
 import { LegacySurface } from './LegacySurface';
 import { LegacyPasekNarzedzi } from './LegacyPasekNarzedzi';
 
@@ -64,6 +65,21 @@ function ScenariuszeZwarcioweTrasa() {
     <div className="flex flex-col h-full">
       <FaultScenariosPanel studyCaseId={activeCaseId} />
       <FaultScenarioModal />
+    </div>
+  );
+}
+
+/**
+ * Trasa `#sld` — kanwa schematu. KD-4 (luka L-1): tryb pracy kanwy (edycja /
+ * podgląd) jest JEDNĄ prawdą powłoki, więc jawna trasa schematu honoruje go
+ * tak samo jak przestrzeń „Schemat" (inaczej ten sam widok miałby dwa różne
+ * zachowania zależnie od tego, jak się do niego weszło).
+ */
+function SldTrasaSchematu() {
+  const podglad = useShellStore((state) => state.podgladSchematu);
+  return (
+    <div data-testid="workspace-surface-main" className="mvd-legacy-host">
+      <SldCanvasV3Workspace readOnly={podglad} />
     </div>
   );
 }
@@ -119,11 +135,7 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
   // Jawna trasa schematu — kanwa SLD niezależnie od przestrzeni (parytet
   // starego wejścia: '#sld' zawsze renderował środowisko schematu).
   if (route === ROUTES.SLD.hash) {
-    return (
-      <div data-testid="workspace-surface-main" className="mvd-legacy-host">
-        <SldCanvasV3Workspace />
-      </div>
-    );
+    return <SldTrasaSchematu />;
   }
   if (getRouteByHash(route) === null && !isAnalysisRouteAlias(route)) {
     return <UnknownRoutePage route={route} />;
@@ -188,6 +200,8 @@ export function LegacyWarsztat(props: LegacyWarsztatProps) {
           onSelectElement={(ref) => centerSldOnElement(ref)}
         />
       )}
+      {/* KD-4 (L-1): tryb pracy kanwy — przełącznik nad schematem. */}
+      {pokazNastepnyKrokSchematu && <PrzelacznikPodgladu />}
       {pokazNastepnyKrokSchematu && <NastepnyKrokSchematu />}
       <div className="mvd-legacy-warsztat-tresc">
         {mainSurfaceExpanded ? <WorkspaceSurfaceRouter region="main" /> : <TrasaLubPrzestrzen {...props} />}

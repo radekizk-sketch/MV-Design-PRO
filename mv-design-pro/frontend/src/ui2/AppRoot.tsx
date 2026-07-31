@@ -39,7 +39,7 @@ import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } fr
 import { PulpitProjektu, OtworzProjektKontener } from './spaces/projekt';
 import { PanelGotowosci } from './spaces/gotowosc';
 import { ModelWarsztat } from './spaces/model';
-import { MenedzerPrzypadkow } from './spaces/obliczenia';
+import { MenedzerPrzypadkow, PanelScenariuszy } from './spaces/obliczenia';
 import { PrzebiegiPanel } from './spaces/obliczenia/przebiegi';
 import { WynikiWarsztat } from './spaces/wyniki';
 import { MostDokumentacji } from './spaces/dokumentacja';
@@ -274,6 +274,10 @@ export function AppRoot() {
           obliczenia={
             <div className="mvd-obliczenia-warsztat">
               <MenedzerPrzypadkow />
+              {/* KD-4 (L-7): scenariusze zwarciowe mają wejście w powłoce —
+                  do tej karty zdolność żyła wyłącznie na trasie mostu, do
+                  której nie prowadziło ŻADNE wejście produkcyjne. */}
+              <PanelScenariuszy />
               <PrzebiegiPanel
                 trybZaawansowania={advancementMode}
                 onPokazWyniki={(runId) => {

@@ -10,9 +10,11 @@
  */
 import { useMemo, useState } from 'react';
 
+import { EnmInspectorPage } from '../../../ui/enm-inspector';
 import { StationTemplateWizard } from '../../../ui/network-build/station-templates';
 import { SldCanvasV3Workspace } from '../../../ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { useAppStateStore } from '../../../ui/app-state';
+import { useShellStore } from '../../shell/useShellStore';
 import { PrzegladarkaSzablonow } from './szablony';
 import { WlasciwosciModelu } from './WlasciwosciModelu';
 import { KatalogPanel } from './katalog';
@@ -22,11 +24,18 @@ import { emituj } from '../../events';
 import { MODEL_WARSZTAT_STRINGS as T } from './strings';
 import './modelWarsztat.css';
 
+/**
+ * KD-4 (rozstrzygnięcie karty dla luki L-8): inspektor modelu ENM to zdolność
+ * DIAGNOSTYCZNA — wchodzi do powłoki jako zakładka trybu EKSPERCKIEGO, bez
+ * flagi środowiskowej. Dotąd żył wyłącznie na trasie mostu `#enm-inspector`
+ * za flagą domyślnie OFF, czyli był praktycznie nieosiągalny w aplikacji.
+ */
 const ZAKLADKI = [
-  { id: 'schemat', etykieta: T.zakladkaSchemat },
-  { id: 'wlasciwosci', etykieta: T.zakladkaWlasciwosci },
-  { id: 'szablony', etykieta: T.zakladkaSzablony },
-  { id: 'katalog', etykieta: T.zakladkaKatalog },
+  { id: 'schemat', etykieta: T.zakladkaSchemat, tylkoEkspercki: false },
+  { id: 'wlasciwosci', etykieta: T.zakladkaWlasciwosci, tylkoEkspercki: false },
+  { id: 'szablony', etykieta: T.zakladkaSzablony, tylkoEkspercki: false },
+  { id: 'katalog', etykieta: T.zakladkaKatalog, tylkoEkspercki: false },
+  { id: 'diagnostyka', etykieta: T.zakladkaDiagnostyka, tylkoEkspercki: true },
 ] as const;
 
 type ZakladkaId = (typeof ZAKLADKI)[number]['id'];
@@ -56,6 +65,11 @@ function zbierzUzycia(snapshot: unknown): readonly ElementUzycia[] {
 
 export function ModelWarsztat() {
   const [zakladka, setZakladka] = useState<ZakladkaId>('schemat');
+  const trybEkspercki = useShellStore((s) => s.advancementMode === 'expert');
+  const zakladki = useMemo(
+    () => ZAKLADKI.filter((z) => !z.tylkoEkspercki || trybEkspercki),
+    [trybEkspercki],
+  );
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const uzycia = useMemo(() => zbierzUzycia(snapshot), [snapshot]);
   const [kreatorOtwarty, setKreatorOtwarty] = useState(false);
@@ -65,7 +79,7 @@ export function ModelWarsztat() {
   return (
     <div className="mvd-model-warsztat" data-testid="mvd-model-warsztat">
       <div role="tablist" aria-label={T.ariaZakladki} className="mvd-model-zakladki">
-        {ZAKLADKI.map((z) => (
+        {zakladki.map((z) => (
           <button
             key={z.id}
             role="tab"
@@ -78,9 +92,9 @@ export function ModelWarsztat() {
             onKeyDown={(e) => {
               if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
                 e.preventDefault();
-                const idx = ZAKLADKI.findIndex((x) => x.id === zakladka);
-                const krok = e.key === 'ArrowRight' ? 1 : ZAKLADKI.length - 1;
-                setZakladka(ZAKLADKI[(idx + krok) % ZAKLADKI.length].id);
+                const idx = zakladki.findIndex((x) => x.id === zakladka);
+                const krok = e.key === 'ArrowRight' ? 1 : zakladki.length - 1;
+                setZakladka(zakladki[(idx + krok) % zakladki.length].id);
               }
             }}
           >
@@ -89,6 +103,10 @@ export function ModelWarsztat() {
         ))}
       </div>
       <div role="tabpanel" className="mvd-model-tresc">
+        {/* Wyjście z trybu eksperckiego przy otwartej diagnostyce nie może
+            zostawić pustego panelu — wracamy na widok domyślny. */}
+        {zakladka === 'diagnostyka' && !trybEkspercki && <SldCanvasV3Workspace />}
+        {zakladka === 'diagnostyka' && trybEkspercki && <EnmInspectorPage />}
         {zakladka === 'schemat' && <SldCanvasV3Workspace />}
         {zakladka === 'wlasciwosci' && <WlasciwosciModelu />}
         {zakladka === 'szablony' && (

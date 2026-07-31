@@ -10,4 +10,10 @@ export const SCHEMAT_STRINGS = {
   nastepnyKrokOpis:
     'Model zawiera elementy — bramka gotowości wskaże, czy układ jest kompletny do obliczeń.',
   nastepnyKrokAkcja: 'Sprawdź gotowość obliczeniową',
+
+  // Tryb pracy kanwy (KD-4, luka L-1) — edycja vs podgląd tylko do odczytu
+  trybEtykieta: 'TRYB PRACY',
+  trybEdycja: 'Edycja',
+  trybPodglad: 'Podgląd',
+  trybPodgladOpis: 'Kanwa zablokowana do odczytu — operacje edycyjne są odrzucane.',
 } as const;

@@ -117,8 +117,11 @@ export const GRUPY_ANALIZ: readonly GrupaAnaliz[] = [
       {
         ekran: 'E-34',
         tytul: 'Weryfikacja cieplna i dynamiczna toru',
-        opis: 'Pełny bilans IEC 60909 wybranego punktu zwarcia (Ik", ip, Ith, I²t, κ, X/R) jako podstawa oceny toru — werdykt wytrzymałości aparatury wydaje dobór aparatów w karcie pola.',
-        zrodlo: 'panel „Bilans IEC 60909" ekranu zwarć (zakończony przebieg zwarciowy)',
+        // KD-4: opis zaktualizowany po domknięciu ogniwa „zwarcie → aparatura" —
+        // werdykt wytrzymałości jest teraz WPROST pod punktem zwarcia (dotąd
+        // trzeba było iść po niego do karty pola konfiguratora stacji).
+        opis: 'Pełny bilans IEC 60909 wybranego punktu zwarcia (Ik", ip, Ith, I²t, κ, X/R) oraz werdykt wytrzymałości aparatury pól tej stacji (I_dyn, I_th) dla prądów z tego przebiegu.',
+        zrodlo: 'panele „Bilans IEC 60909" i „Wytrzymałość aparatury w punkcie zwarcia" ekranu zwarć (zakończony przebieg zwarciowy)',
         wymaga: 'zwarciowy',
         testid: 'mvd-analizy-karta-cieplna',
         zakladkaWynikow: 'zwarcia',

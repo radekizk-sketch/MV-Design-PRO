@@ -5,4 +5,5 @@
  */
 
 export { NastepnyKrokSchematu } from './NastepnyKrokSchematu';
+export { PrzelacznikPodgladu } from './PrzelacznikPodgladu';
 export { SCHEMAT_STRINGS } from './strings';

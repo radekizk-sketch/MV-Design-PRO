@@ -158,9 +158,11 @@ describe('EkranAnalizTechnicznych — hub po przebudowie', () => {
     const user = userEvent.setup();
     render(<EkranAnalizTechnicznych />);
     const karta = screen.getByTestId('mvd-analizy-karta-cieplna');
-    // Opis wskazuje bilans IEC 60909 i miejsce werdyktu (dobór aparatów).
+    // INTENCJA BEZ ZMIAN: opis mówi, CO karta daje i GDZIE zapada werdykt.
+    // KANON PO KD-4 (ogniwo „zwarcie → aparatura"): werdykt wytrzymałości jest
+    // WPROST pod punktem zwarcia, więc opis nie odsyła już do karty pola.
     expect(within(karta).getByText(/Bilans IEC 60909/)).toBeTruthy();
-    expect(within(karta).getByText(/dobór aparatów/)).toBeTruthy();
+    expect(within(karta).getByText(/werdykt wytrzymałości aparatury/)).toBeTruthy();
     await user.click(within(karta).getByRole('button', { name: 'Otwórz' }));
     expect(useShellStore.getState().wynikiTab).toBe('zwarcia');
     expect(useNetworkBuildStore.getState().activeSurface).toBeNull();

@@ -1,8 +1,11 @@
 # INWENTARZ PARYTETU MOSTÓW LEGACY — trasa po trasie (karta K8, 2026-07-31)
 
-**Status:** WIĄŻĄCY. Aktualizacja 2026-07-31 (karta KD-1, fala 1 kolejki długu):
-domknięte luki L-2…L-5 (zarządzanie projektami w ui2), L-12 i L-14 (porównanie
-A/B) oraz WYKONANE kasacje L-6 i L-17 (werdykty MARTWY → USUNIĘTO).
+**Status:** WIĄŻĄCY. Aktualizacja 2026-07-31 (karta KD-4, fala 2 kolejki długu):
+domknięte luki **L-1, L-7, L-8, L-10, L-11, L-15**; **L-9** pozostaje wpisem
+imiennym (residuum decyzji właściciela D3/D4 planu wygaszania — patrz §8).
+Wcześniej (karta KD-1, fala 1): domknięte L-2…L-5 (zarządzanie projektami
+w ui2), L-12 i L-14 (porównanie A/B) oraz WYKONANE kasacje L-6 i L-17
+(werdykty MARTWY → USUNIĘTO).
 
 Dokument rejestruje, które trasy mostu legacy (stare
 powierzchnie `frontend/src/ui/**` hostowane w powłoce ui2) mają PEŁNY parytet
@@ -95,21 +98,21 @@ Format: **zdolność · miejsce w ui2 · czego brakuje**.
 
 | Kod | Zdolność | Miejsce w ui2 | Czego brakuje |
 |-----|----------|---------------|---------------|
-| L-1 | Podgląd schematu tylko do odczytu | przestrzeń „Schemat” | tryb read-only kanwy (blokada edycji) osiągalny z powłoki ui2 |
+| L-1 | Podgląd schematu tylko do odczytu | przestrzeń „Schemat” | ZAMKNIĘTA (KD-4): przełącznik „Tryb pracy: Edycja / Podgląd” nad kanwą (`ui2/spaces/schemat/PrzelacznikPodgladu`); stan w powłoce (`useShellStore.podgladSchematu`, persystowany jak reszta preferencji widoku) steruje ISTNIEJĄCYM propem `readOnly` kanwy v3. Jedna prawda trybu: honoruje go zarówno przestrzeń „Schemat”, jak i jawna trasa `#sld` |
 | L-2 | Usunięcie projektu | `spaces/projekt/otworz` | ZAMKNIĘTA (KD-1): akcja „Usuń projekt” + dialog potwierdzenia w `ListaProjektow`/`OtworzProjekt`, `DELETE /api/projects/{id}` w kontenerze; usunięcie AKTYWNEGO projektu czyści kontekst aplikacji |
 | L-3 | Nowy projekt z dowolną nazwą i opisem | `OtworzProjektKontener` | ZAMKNIĘTA (KD-1): dialog „Nowy projekt” (`NowyProjektDialog`) z polami nazwa + opis mapowanymi 1:1 na `POST /api/projects`; ścieżka od celu pozostaje pierwszoplanowa |
 | L-4 | Odświeżenie listy projektów | `ListaProjektow` | ZAMKNIĘTA (KD-1): akcja „Odśwież listę” (ponowne `GET /api/projects`) |
 | L-5 | Zmiana projektu przy aktywnym projekcie | przestrzeń „Projekt” | ZAMKNIĘTA (KD-1): ekran „Nowy / otwórz projekt” renderuje się TAKŻE przy otwartym projekcie (chip nazwy projektu w pasku przypadku), zmiana projektu przez dialog potwierdzenia, powrót na pulpit bez zmiany kontekstu |
 | L-6 | Kreator stacji jako powierzchnia trasowa | `ui2/kreatory/stacja` | ZAMKNIĘTA (KD-1): podzespół `station-wizard-v2` (7 komponentów + 7 testów + spec e2e + trasa) USUNIĘTY; kontrakty inżynierskie (`*Contract.ts`, `vendorSwitchgearCatalog`, `vendorBayRoleBridge`) ZOSTAJĄ — mają własne testy i pilnuje ich `scadaComplianceContract` |
-| L-7 | Scenariusze zwarciowe (lista, dodanie, uruchomienie) | brak | okno ui2 dla scenariuszy + wejście w powłoce (dziś tylko trasa mostu bez nawigatora) |
-| L-8 | Inspektor modelu ENM | brak | narzędzie diagnostyczne pozostaje za flagą OFF — świadomie poza UI inżyniera |
-| L-9 | Powierzchnie zakładki „Pozostałe analizy” | `wyniki/analizy` | reszta wg `PLAN_WYGASZANIA_MOSTU_WYNIKI.md` (V12.6 akademicki, testy NC RfG, kreator porównania) |
-| L-10 | Źródło LaTeX wywodu (kopiuj / pobierz `.tex`) | zakładka „Dowód obliczeń” | `ProofLatexPanel` (`GET` wywodu LaTeX) nie ma odpowiednika w `PrzegladDowodu` |
-| L-11 | Dowód zawężony do WSKAZANEGO elementu | zakładka „Dowód obliczeń” | `PrzegladDowodu` nie przyjmuje kroku startowego wg elementu (`selection_index` z ExtendedTrace) — TODO nazwane już w `DowodPrzebiegu` |
+| L-7 | Scenariusze zwarciowe (lista, dodanie, uruchomienie) | przestrzeń „Obliczenia” | ZAMKNIĘTA (KD-4): okno `ui2/spaces/obliczenia/scenariusze/PanelScenariuszy` wpięte w warsztat Obliczeń (obok przypadków i przebiegów) — lista, dodanie z pełnym kontraktem (rodzaj, miejsce, pozycja, tryb metaliczny/impedancyjny, c, czas cieplny, wkłady gałęziowe), usunięcie z potwierdzeniem i URUCHOMIENIE przebiegu. Dostawca: istniejący `useFaultScenariosStore` (`/api/execution/...`), zero nowego toru danych |
+| L-8 | Inspektor modelu ENM | `spaces/model` (zakładka „Diagnostyka modelu”) | ZAMKNIĘTA (KD-4, rozstrzygnięcie karty): zdolność diagnostyczna wchodzi do powłoki jako zakładka trybu EKSPERCKIEGO — bez flagi środowiskowej. Dotąd żyła wyłącznie na trasie mostu za flagą domyślnie OFF (praktycznie nieosiągalna). Wyjście z trybu eksperckiego przy otwartej zakładce wraca na widok domyślny (zero pustego panelu) |
+| L-9 | Powierzchnie zakładki „Pozostałe analizy” | `wyniki/analizy` | **ZOSTAJE wpisem imiennym** (KD-4 — bez zmiany): residuum to POZYCJE ROZSTRZYGNIĘTE PRZEZ WŁAŚCICIELA w `PLAN_WYGASZANIA_MOSTU_WYNIKI.md` §3b — D3 (powierzchnia dowodu z akcjami audytu katalogowego: ZOSTAJE, osobna epika) i D4 (V12.6 akademicki: ZOSTAJE TRWALE jako narzędzie eksperckie) — plus Grupa C (powierzchnie NIE-wynikowe: konfiguratory modelu, katalog, archiwum). Nie jest to luka do domknięcia kartą parytetu; nie wymaga też nowego dostawcy backendu |
+| L-10 | Źródło LaTeX wywodu (kopiuj / pobierz `.tex`) | zakładka „Dowód obliczeń” | ZAMKNIĘTA (KD-4): sekcja `ui2/wyniki/dowod/ZrodloLatex` (pokaż / kopiuj / pobierz `.tex`) na TYM SAMYM kliencie co most (`fetchProofLatex`/`downloadProofLatex`/`proofLatexFilename` → `GET /analysis-runs/{id}/export/proof/latex`); prezentacja pokazuje bajty backendu, niczego nie skleja |
+| L-11 | Dowód zawężony do WSKAZANEGO elementu | zakładka „Dowód obliczeń” | ZAMKNIĘTA (KD-4): `PrzegladDowodu` przyjmuje wskazany element i startuje na JEGO krokach, z jawnym przełącznikiem na cały przebieg. **Defekt zastany naprawiony u źródła:** `otworzDowod(_ref)` warsztatu Wyników przyjmował ref elementu i go WYRZUCAŁ (2× klik zawsze otwierał cały wywód). Kroki elementu wybiera `resolveTraceStepsForElement` (`selection_index` + referencje kroku) — dostawca z panelu dowodu elementu mostu; drugie wejście to selekcja na schemacie |
 | L-12 | Różnice mocy biernej w porównaniu A/B | `EkranPorownania` | ZAMKNIĘTA (KD-1): kolumny Q [Mvar] (A · B · Δ) w tabelach szyn i gałęzi — pola `q_injected_mvar_*`/`delta_q_mvar` i `q_from_mvar_*`/`delta_q_from_mvar` z payloadu backendu |
 | L-13 | Różnice w procentach (Δ%) | `EkranPorownania` | backend `/api/power-flow-comparisons` nie zwraca `percent`; wyliczenie w UI byłoby fizyką/arytmetyką w prezentacji → potrzebne pole z backendu |
 | L-14 | Filtr „pokaż tylko różnice” | `EkranPorownania` | ZAMKNIĘTA (KD-1): przełącznik „Pokaż tylko różnice” filtrujący wiersze po deltach BACKENDU (zero arytmetyki w prezentacji) |
-| L-15 | Generator raportu i eksporty OSD | przestrzeń „Dokumentacja” | `HubDokumentacji` tylko prowadzi do powierzchni mostu E-37; brak okna ui2 |
+| L-15 | Generator raportu i eksporty OSD | przestrzeń „Dokumentacja” | ZAMKNIĘTA (KD-4): okno `ui2/spaces/dokumentacja/generator` — wybór przebiegu (wyłącznie zakończone), SKŁAD dokumentu (profil · poziom · zakres · sekcje · tabela wiodąca z REALNEJ odpowiedzi `results/index` biegu), zapis kopii do magazynu dokumentów. **Znalezisko naprawione u źródła:** kompozycja istniała w budowniczym raportu, ale ŻADEN endpoint jej nie wystawiał (a most miał dwie kontrolki składu, które nie jechały do backendu — phantom); trzy końcówki eksportu przyjmują teraz `profile`/`detail_level`/`scope`/`sections`/`focus_table` addytywnie. Eksporty OSD (wniosek przyłączeniowy) mają własnego dostawcę ui2 od wcześniej (`ui2/oze/wniosek`) |
 | L-16 | Katalogi CT, VT, kable nN, aparaty nN | `spaces/model/katalog` | 4 kategorie obecne w moście (`CatalogBrowser`) i w API katalogu, nieobecne w `KATEGORIE` adaptera ui2 |
 | L-17 | „Rozdzielnica: pola i aparaty” jako trasa | brak | ZAMKNIĘTA (KD-1): trasa `#switchgear`, `navigateToSwitchgear`, powierzchnia `switchgear_wizard` (typ, rejestr, gałąź routera, klucz trasy) i pozycja Ctrl+K USUNIĘTE |
 
@@ -141,3 +144,44 @@ Format: **zdolność · miejsce w ui2 · czego brakuje**.
 - **Znalezisko uboczne (naprawione u źródła):** `topologyTreeAdapter` liczył jeden
   problem DWA razy, gdy `element_ref` powtarzał się w `element_refs` — po przepięciu
   na jedną prawdę gotowości dawało to podwojone liczniki blokad.
+
+## 8. Zamknięcia z karty KD-4 (2026-07-31, fala 2)
+
+Domknięte: **L-1** (tryb podglądu kanwy), **L-7** (scenariusze zwarciowe
+w przestrzeni Obliczeń), **L-8** (diagnostyka modelu jako zakładka trybu
+eksperckiego — rozstrzygnięcie karty: bez flagi środowiskowej), **L-10**
+(źródło LaTeX wywodu), **L-11** (wywód wg wskazanego elementu), **L-15**
+(generator raportu ze składem dokumentu). Szczegóły — kolumna „Czego brakuje”
+tabeli §5 (wpisy przepisane na treść zamknięcia).
+
+**L-9 pozostaje wpisem imiennym, świadomie.** Nie jest luką parytetu do
+domknięcia: po falach W1–W5 planu wygaszania w zakładce „Pozostałe analizy”
+zostały wyłącznie pozycje ROZSTRZYGNIĘTE PRZEZ WŁAŚCICIELA
+(`PLAN_WYGASZANIA_MOSTU_WYNIKI.md` §3b): D3 — powierzchnia dowodu z akcjami
+audytu katalogowego (ZOSTAJE, osobna epika migracji) i D4 — V12.6 akademicki
+(ZOSTAJE TRWALE jako narzędzie eksperckie) — oraz Grupa C, czyli powierzchnie
+NIE-wynikowe (konfiguratory modelu, katalog, archiwum), które należą do innych
+przestrzeni, nie do epiki wyników. Żadna z nich nie wymaga nowego dostawcy
+backendu.
+
+**Ogniwo łańcucha (dług nazwany w V12K-287) — DOMKNIĘTE.** Z wybranego punktu
+zwarcia prowadzi teraz JAWNE przejście do weryfikacji wytrzymałości aparatury
+(`ui2/wyniki/zwarcia/aparatura`): prądy z TEGO biegu (ip → I_dyn, Ith → I_th),
+aparat i czas wyłączenia z zapisanej konfiguracji stacji
+(`bay_device_withstand`), werdykt z TEJ SAMEJ końcówki, którą karta K7-B wpięła
+w konfigurator (`POST /api/v1/catalog/audit2/validate-device-withstand`).
+Uczciwe stany zerowe z nazwanym powodem: brak prądów w wyniku · punkt poza
+stacją · brak aparatury w konfiguracji (z akcją do konfiguratora stacji);
+aparat spoza katalogu → „nieustalone”, nigdy werdykt negatywny.
+
+**Znaleziska uboczne KD-4 (naprawione u źródła):**
+- kompozycja raportu (profil, poziom szczegółowości, zakres, sekcje, tabela
+  wiodąca) istniała w budowniczym raportu, ale NIE BYŁA wystawiona po HTTP —
+  a powierzchnia mostu miała dwie kontrolki składu, które backend ignorował
+  (phantom). Trzy końcówki eksportu przyjmują teraz parametry addytywnie;
+- `otworzDowod(_ref)` w warsztacie Wyników przyjmował ref elementu i go
+  wyrzucał — 2× klik na wartości z dowodem zawsze otwierał wywód całego
+  przebiegu (patrz L-11);
+- opis karty „Weryfikacja cieplna i dynamiczna toru” odsyłał po werdykt
+  wytrzymałości do karty pola — po domknięciu ogniwa werdykt jest wprost pod
+  punktem zwarcia (opis zaktualizowany).
