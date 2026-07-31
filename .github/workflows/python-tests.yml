@@ -136,3 +136,16 @@ jobs:
       - name: Mypy Ratchet Guard (dlug typow nie rosnie)
         working-directory: mv-design-pro/backend
         run: poetry run python ../scripts/mypy_ratchet_guard.py
+      # KD-9: ta sama choroba co V12K-240 wyzej, tyle ze dla formatu i lintu.
+      # `pyproject.toml` konfiguruje black (line-length 100) i ruff (E,F,W,I,N,UP,B,C4),
+      # CLAUDE.md podaje je jako polecenia obowiazkowe, a `grep -riE "black|ruff"`
+      # po `.github/workflows/` nie znajdowal ANI JEDNEGO wywolania — narzedzia
+      # skonfigurowane i nigdy nie uruchamiane. Oba sa ZIELONE na HEAD w chwili
+      # wpiecia (1317 plikow bez zmian formatu, ruff bez uwag), wiec krok wchodzi
+      # jako zapadka, nie jako dlug do splacenia. Stoi PO tescie, zeby usterka
+      # formatu nie zabierala sygnalu z regresji.
+      - name: Format i lint backendu (black --check, ruff)
+        working-directory: mv-design-pro/backend
+        run: |
+          poetry run black --check src tests
+          poetry run ruff check src tests
