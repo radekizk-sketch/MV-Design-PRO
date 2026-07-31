@@ -2313,6 +2313,40 @@ def build_short_circuit_rozplyw(run: CanonicalRun, target_id: str) -> dict[str, 
     raise KeyError(f"Brak punktu zwarcia {target_id} w wynikach przebiegu {run.id}")
 
 
+def wiersze_swiezego_biegu_bez_rozplywu(run: CanonicalRun) -> list[dict[str, Any]]:
+    """SUROWE wiersze świeżo policzonego biegu BEZ rozpływu inline + flaga dostępności.
+
+    V12K-284 (dług nazwany): odpowiedź `POST …/runs/short-circuit` niosła PEŁNY
+    rozpływ gałęziowy KAŻDEGO punktu zwarcia — iloczyn źródło×gałąź per wiersz
+    (zmierzone na sieci 50 stacji: 104 punkty × 11 506 wpisów), choć konsument
+    świeżego biegu czyta z wiersza prądy zwarciowe, a rozpływ potrzebuje dla
+    JEDNEGO wskazanego punktu.
+
+    TEN SAM wzorzec co V12K-281 dla wierszy kanonicznych: wiersz nie niesie
+    rozpływu, niesie FLAGĘ dostępności (`branch_contributions_available`), a treść
+    pobiera się na żądanie —
+    `GET /api/analysis-runs/{run_id}/results/short-circuit/rozplyw?target_id=…`
+    (`build_short_circuit_rozplyw`). Flaga odróżnia „rozpływ istnieje, pobierz go"
+    od „solver policzył bez wkładów" (uczciwy brak).
+
+    Rozpływ jest NIETKNIĘTY: solver liczy go jak dotąd, zapis biegu przenosi go
+    bajtowo do osobnej tabeli (K14). Zmienia się WYŁĄCZNIE treść odpowiedzi POST.
+    Wiersz nie będący słownikiem przechodzi bez zmian (zero zgadywania).
+    """
+    wiersze: list[dict[str, Any]] = []
+    for item in (run.raw_result or {}).get("results", []):
+        if not isinstance(item, dict):
+            wiersze.append(item)
+            continue
+        wiersze.append(
+            {
+                **{klucz: wartosc for klucz, wartosc in item.items() if klucz != KLUCZ_ROZPLYWU},
+                KLUCZ_DOSTEPNOSCI_ROZPLYWU: _rozplyw_dostepny(item),
+            }
+        )
+    return wiersze
+
+
 def build_phase_state_results(run: CanonicalRun) -> dict[str, Any]:
     if run.analysis_type != "phase_state_sn":
         return {"run_id": str(run.id), "rows": []}

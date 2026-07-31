@@ -25,7 +25,11 @@ from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
 from domain.canonical_operations import resolve_operation_name
 from domain.readiness_bridge import opis_kanoniczny
-from enm.canonical_analysis import run_power_flow_now, run_short_circuit_now
+from enm.canonical_analysis import (
+    run_power_flow_now,
+    run_short_circuit_now,
+    wiersze_swiezego_biegu_bez_rozplywu,
+)
 from enm.dziennik_zmian import wpisy_od as wpisy_dziennika_od
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
@@ -599,7 +603,12 @@ async def run_short_circuit(case_id: str, request: Request) -> dict[str, Any]:
         "run_id": str(run.id),
         "input_hash": run.input_hash,
         "readiness": run.readiness,
-        "results": (run.raw_result or {}).get("results", []),
+        # V12K-284: wiersze świeżego biegu BEZ rozpływu gałęziowego inline —
+        # każdy wiersz niesie flagę `branch_contributions_available`, a treść
+        # rozpływu WSKAZANEGO punktu pobiera się końcówką
+        # /api/analysis-runs/{run_id}/results/short-circuit/rozplyw?target_id=…
+        # (ten sam wzorzec co wiersze kanoniczne w V12K-281).
+        "results": wiersze_swiezego_biegu_bez_rozplywu(run),
     }
 
 

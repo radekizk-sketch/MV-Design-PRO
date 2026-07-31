@@ -403,6 +403,51 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   expect(proofLatexText).toContain('I_dyn');
   expect(proofLatexText).toContain('I_th');
 
+  // V12K-284 (KD-2): bramka rozmiaru odpowiedzi ŚWIEŻEGO biegu zwarciowego.
+  // Odpowiedź POST niosła pełny rozpływ gałęziowy każdego punktu (iloczyn
+  // źródło×gałąź) — na tej sieci setki MB. Po odchudzeniu wiersz niesie FLAGĘ
+  // dostępności, a treść rozpływu pobiera się dla WSKAZANEGO punktu.
+  // Limit 20 MB = wielokrotność zmierzonego rozmiaru po odchudzeniu; powrót
+  // rozpływu inline do odpowiedzi POST ma być CZERWONY.
+  const swiezyBiegStart = Date.now();
+  const swiezyBiegResponse = await request.post(
+    `${BACKEND_BASE}/api/cases/${seed.caseId}/runs/short-circuit`,
+    { data: {}, timeout: 240000 },
+  );
+  const swiezyBiegBody = await swiezyBiegResponse.body();
+  console.log(
+    `[pomiar] POST /api/cases/{case}/runs/short-circuit: `
+      + `${(swiezyBiegBody.byteLength / 1048576).toFixed(1)} MiB w ${Date.now() - swiezyBiegStart} ms`,
+  );
+  expect(
+    swiezyBiegResponse.ok(),
+    swiezyBiegBody.subarray(0, 2048).toString('utf-8'),
+  ).toBeTruthy();
+  expect(swiezyBiegBody.byteLength).toBeLessThan(20 * 1024 * 1024);
+  const swiezyBieg = JSON.parse(swiezyBiegBody.toString('utf-8')) as {
+    run_id: string;
+    results: Array<{
+      fault_node_id?: string;
+      branch_contributions?: unknown;
+      branch_contributions_available?: boolean;
+    }>;
+  };
+  expect(swiezyBieg.results.length).toBeGreaterThan(0);
+  for (const wiersz of swiezyBieg.results) {
+    expect(wiersz.branch_contributions).toBeUndefined();
+  }
+  const punktZRozplywem = swiezyBieg.results.find((w) => w.branch_contributions_available === true);
+  expect(punktZRozplywem?.fault_node_id).toBeTruthy();
+  // Parytet treści: to, czego POST już nie niesie, jest osiągalne na żądanie.
+  const rozplywResponse = await request.get(
+    `${BACKEND_BASE}/api/analysis-runs/${swiezyBieg.run_id}/results/short-circuit/rozplyw`,
+    { params: { target_id: String(punktZRozplywem?.fault_node_id) }, timeout: 120000 },
+  );
+  expect(rozplywResponse.ok(), await rozplywResponse.text()).toBeTruthy();
+  const rozplyw = (await rozplywResponse.json()) as { branch_contributions?: unknown[] | null };
+  expect(Array.isArray(rozplyw.branch_contributions)).toBe(true);
+  expect((rozplyw.branch_contributions ?? []).length).toBeGreaterThan(0);
+
   const powerFlowResponse = await request.post(
     `${BACKEND_BASE}/api/cases/${seed.caseId}/runs/power-flow`,
     { data: {}, timeout: 60000 },
