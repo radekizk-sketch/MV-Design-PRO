@@ -10,9 +10,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 
-// R3-C (pełny łańcuch przez okno porównania): lista przebiegów rozpływu i
-// per-przebiegowe wyniki zwarciowe mockowane na granicy klienta API (reszta
-// modułu inspektora wyników pozostaje realna — importOriginal).
+// R3-C (pełny łańcuch przez okno porównania): lista przebiegów rozpływu,
+// porównanie zwarciowe i per-przebiegowe wyniki zwarciowe mockowane na granicy
+// klienta API (reszta modułu inspektora wyników pozostaje realna —
+// importOriginal).
 vi.mock('../../../../ui/power-flow-comparison/api', () => ({
   fetchPowerFlowRuns: vi.fn(async () => []),
   createPowerFlowComparison: vi.fn(),
@@ -21,8 +22,17 @@ vi.mock('../../../../ui/results-inspector/api', async (importOriginal) => ({
   ...(await importOriginal<Record<string, unknown>>()),
   fetchShortCircuitResults: vi.fn(),
 }));
+// KD-3 poz. 11: tabela porównania zwarć powstaje z JEDNEJ końcówki
+// `POST /api/short-circuit-comparisons` (delty liczy domena, nie ekran).
+// Wcześniej ten test karmił porównanie dwoma odczytami wyników zwarciowych —
+// intencja („pełny łańcuch realną ścieżką: klik w komórkę A → dowód przebiegu
+// A") bez zmian, zmienia się tylko granica, na której stoi atrapa.
+vi.mock('../../../wyniki/porownanie/zwarciaPorownanieApi', () => ({
+  pobierzPorownanieZwarciowe: vi.fn(),
+}));
 
 import { fetchShortCircuitResults } from '../../../../ui/results-inspector/api';
+import { pobierzPorownanieZwarciowe } from '../../../wyniki/porownanie/zwarciaPorownanieApi';
 import { useAppStateStore } from '../../../../ui/app-state';
 import { useStationDerStore } from '../../../../ui/network-build/station-der';
 import { usePowerFlowResultsStore } from '../../../../ui/power-flow-results/store';
@@ -482,9 +492,30 @@ describe('WynikiWarsztat — kontekst przebiegu zakładki „Dowód obliczeń" (
         przebiegFixture({ id: 'sc-run-b', analysis_type: 'SC_3F', finished_at: '2026-07-16T08:00:01Z' }),
       ],
     });
+    // Dowód (panel wywodu elementu) nadal czyta wynik POJEDYNCZEGO przebiegu.
     vi.mocked(fetchShortCircuitResults).mockImplementation(async (runId: string) => ({
       ...wynikZwarciowyFixture(),
       run_id: runId,
+    }));
+    // Porównanie A/B przychodzi GOTOWE z domeny (delty są polami odpowiedzi).
+    vi.mocked(pobierzPorownanieZwarciowe).mockImplementation(async (a: string, b: string) => ({
+      run_id_a: a,
+      run_id_b: b,
+      report_version: '1.1.0',
+      punkty: [
+        {
+          target_id: 'bus-1',
+          target_name: 'Szyna GPZ',
+          obecny_w: 'AB' as const,
+          ikss_ka_a: 12.5,
+          ikss_ka_b: 12.1,
+          delta_ikss_ka: -0.4,
+          delta_ikss_percent: -3.2,
+        },
+      ],
+      liczba_punktow_wspolnych: 1,
+      liczba_punktow_tylko_a: 0,
+      liczba_punktow_tylko_b: 0,
     }));
     render(<WynikiWarsztat {...props()} />);
     // Okno porównania → tryb zwarciowy → jawne porównanie A/B.
