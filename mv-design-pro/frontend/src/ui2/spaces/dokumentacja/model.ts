@@ -25,7 +25,16 @@ export type WymogDokumentu = 'przebieg' | 'projekt';
 export type CelDokumentu =
   | { readonly rodzaj: 'ekran'; readonly ekran: WorkspaceSurfaceCode }
   | { readonly rodzaj: 'przestrzen'; readonly przestrzen: SpaceId }
-  | { readonly rodzaj: 'wyniki-zakladka'; readonly zakladka: string };
+  | { readonly rodzaj: 'wyniki-zakladka'; readonly zakladka: string }
+  /**
+   * Okno WŁASNE przestrzeni Dokumentacji (KD-4, L-15) — generator raportu w ui2
+   * zamiast powierzchni mostu E-37. Most zostaje osiągalny starym adresem, ale
+   * karta huba prowadzi już do okna powłoki.
+   */
+  | { readonly rodzaj: 'okno'; readonly okno: OknoDokumentacji };
+
+/** Okna własne przestrzeni „Dokumentacja". */
+export type OknoDokumentacji = 'generator-raportu';
 
 /** Rodzina wizualna karty (ikona + akcent) — recenzja pkt 2/7. */
 export type IkonaDokumentu = 'raport' | 'dowod' | 'archiwum';
@@ -65,7 +74,7 @@ export const GRUPY_DOKUMENTOW: readonly GrupaDokumentow[] = [
         tytul: 'Raport analizy technicznej',
         opis: 'Wyniki i werdykty z zakończonego przebiegu, gotowe do wydruku.',
         wymaga: 'przebieg',
-        cel: { rodzaj: 'ekran', ekran: 'E-37' },
+        cel: { rodzaj: 'okno', okno: 'generator-raportu' },
         ikona: 'raport',
         akcent: 'accent',
         formaty: ['PDF', 'DOCX', 'JSON'],

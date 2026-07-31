@@ -303,14 +303,67 @@ def _proof_latex_response(run: CanonicalRun) -> Response:
     )
 
 
+def _report_options_from_query(
+    profile: str | None,
+    detail_level: str | None,
+    scope: str | None,
+    sections: list[str] | None,
+    focus_table: str | None,
+) -> dict[str, Any] | None:
+    """
+    Kompozycja raportu z parametrow zapytania (KD-4, luka L-15).
+
+    Budowniczy raportu (`build_analysis_run_report_payload`) od dawna przyjmowal
+    `report_options` (profil, poziom szczegolowosci, zakres, sekcje, tabela
+    wiodaca), ale ZADEN endpoint HTTP ich nie wystawial — kompozycji nie dalo sie
+    wybrac z aplikacji, wiec generator w powloce musialby albo udawac
+    (kontrolki, ktorych backend nie widzi = phantom), albo jej nie miec.
+
+    Zmiana jest CZYSTO ADDYTYWNA: brak parametrow = `None` = dzisiejsze
+    zachowanie 1:1 (`normalize_report_options()` bez argumentow). Nazwy pol sa
+    identyczne z kluczami `report_options` w odpowiedzi, wiec konsument czyta
+    wprost to, co wyslal. Wartosci spoza kontraktu normalizator odrzuca do
+    wartosci domyslnych (zero bledow 4xx za literowke w linku).
+
+    Zwracany jest SUROWY zestaw argumentow — normalizacje robi budowniczy
+    raportu (`build_analysis_run_report_payload`), zeby normalizator zostal
+    wolany DOKLADNIE RAZ (jego wynik niesie tez etykiety, ktorych sam nie
+    przyjmuje jako wejscia).
+    """
+    if (
+        profile is None
+        and detail_level is None
+        and scope is None
+        and not sections
+        and focus_table is None
+    ):
+        return None
+    return {
+        "profile": profile,
+        "detail_level": detail_level,
+        "scope": scope,
+        "sections": sections,
+        "focus_table": focus_table,
+    }
+
+
 @router.get("/analysis-runs/{run_id}/export/report/json")
 def export_analysis_run_report_json(
-    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+    run_id: UUID,
+    zapisz_do_magazynu: bool = Query(default=False),
+    profile: str | None = Query(default=None),
+    detail_level: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
+    sections: list[str] | None = Query(default=None),
+    focus_table: str | None = Query(default=None),
 ) -> Response:
     run = _require_canonical_run(run_id)
     response = export_run_report_json_response(
         run,
         filename_stem=_analysis_run_filename_stem(run, "raport"),
+        report_options=_report_options_from_query(
+            profile, detail_level, scope, sections, focus_table
+        ),
     )
     if zapisz_do_magazynu:
         store_generated_document_from_response(
@@ -326,13 +379,22 @@ def export_analysis_run_report_json(
 
 @router.get("/analysis-runs/{run_id}/export/report/docx")
 def export_analysis_run_report_docx(
-    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+    run_id: UUID,
+    zapisz_do_magazynu: bool = Query(default=False),
+    profile: str | None = Query(default=None),
+    detail_level: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
+    sections: list[str] | None = Query(default=None),
+    focus_table: str | None = Query(default=None),
 ) -> Response:
     run = _require_canonical_run(run_id)
     try:
         response = export_run_report_docx_response(
             run,
             filename_stem=_analysis_run_filename_stem(run, "raport"),
+            report_options=_report_options_from_query(
+                profile, detail_level, scope, sections, focus_table
+            ),
         )
     except ValueError as exc:
         raise HTTPException(
@@ -352,13 +414,22 @@ def export_analysis_run_report_docx(
 
 @router.get("/analysis-runs/{run_id}/export/report/pdf")
 def export_analysis_run_report_pdf(
-    run_id: UUID, zapisz_do_magazynu: bool = Query(default=False)
+    run_id: UUID,
+    zapisz_do_magazynu: bool = Query(default=False),
+    profile: str | None = Query(default=None),
+    detail_level: str | None = Query(default=None),
+    scope: str | None = Query(default=None),
+    sections: list[str] | None = Query(default=None),
+    focus_table: str | None = Query(default=None),
 ) -> Response:
     run = _require_canonical_run(run_id)
     try:
         response = export_run_report_pdf_response(
             run,
             filename_stem=_analysis_run_filename_stem(run, "raport"),
+            report_options=_report_options_from_query(
+                profile, detail_level, scope, sections, focus_table
+            ),
         )
     except ValueError as exc:
         raise HTTPException(

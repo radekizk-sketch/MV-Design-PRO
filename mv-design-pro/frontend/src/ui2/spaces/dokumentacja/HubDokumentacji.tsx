@@ -34,6 +34,7 @@ import {
   type CelDokumentu,
   type IkonaDokumentu,
   type KartaDokumentu,
+  type OknoDokumentacji,
 } from './model';
 import { DOK_STRINGS as T } from './strings';
 
@@ -205,7 +206,16 @@ function Karta({
   );
 }
 
-export function HubDokumentacji() {
+export interface HubDokumentacjiProps {
+  /**
+   * Otwiera OKNO WŁASNE przestrzeni (KD-4, L-15) — dziś generator raportu ui2.
+   * Brak wołającego (montaż bez powłoki, testy jednostkowe) = karta pozostaje
+   * bez efektu zamiast prowadzić w martwe miejsce.
+   */
+  readonly onOtworzOkno?: (okno: OknoDokumentacji) => void;
+}
+
+export function HubDokumentacji({ onOtworzOkno }: HubDokumentacjiProps = {}) {
   const activeProjectName = useAppStateStore((s) => s.activeProjectName);
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
   const snapshot = useSnapshotStore((s) => s.snapshot);
@@ -234,7 +244,9 @@ export function HubDokumentacji() {
   ];
 
   const otworzCel = (cel: CelDokumentu) => {
-    if (cel.rodzaj === 'ekran') {
+    if (cel.rodzaj === 'okno') {
+      onOtworzOkno?.(cel.okno);
+    } else if (cel.rodzaj === 'ekran') {
       openRouteSurface(cel.ekran);
     } else if (cel.rodzaj === 'wyniki-zakladka') {
       // Deep-link do istniejącego generatora w przestrzeni „Wyniki" (studium OZE).

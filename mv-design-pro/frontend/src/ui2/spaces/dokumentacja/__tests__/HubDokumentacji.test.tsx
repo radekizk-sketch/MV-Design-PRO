@@ -113,9 +113,15 @@ describe('HubDokumentacji — ekran prowadzący (R2: 3 pytania inżyniera)', () 
 
   it('Q2 akcje nazywają skutek i otwierają realnych dostawców (klik natywny)', async () => {
     const user = userEvent.setup();
-    render(<HubDokumentacji />);
+    // INTENCJA BEZ ZMIAN: każda karta prowadzi do REALNEGO dostawcy tej zdolności.
+    // KANON PO KD-4 (luka L-15): dostawcą generatora raportu jest OKNO ui2
+    // (`onOtworzOkno('generator-raportu')`), a nie powierzchnia mostu E-37.
+    const otwarteOkna: string[] = [];
+    render(<HubDokumentacji onOtworzOkno={(okno) => otwarteOkna.push(okno)} />);
     await user.click(within(screen.getByTestId('mvd-dok-karta-raport')).getByRole('button', { name: 'Otwórz generator' }));
-    expect(useNetworkBuildStore.getState().activeSurface?.screenCode).toBe('E-37');
+    expect(otwarteOkna).toEqual(['generator-raportu']);
+    // Karta raportu NIE otwiera już powierzchni mostu.
+    expect(useNetworkBuildStore.getState().activeSurface).toBeNull();
     cleanup();
     useNetworkBuildStore.setState({ activeSurface: null, surfaceStack: [] });
     render(<HubDokumentacji />);
