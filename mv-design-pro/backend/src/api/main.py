@@ -13,6 +13,7 @@ from api.der_sn_documents import router as der_sn_documents_router
 from api.diagnostics import router as diagnostics_router
 from api.document_store import router as document_store_router
 from api.enm import production_router as enm_router
+from api.equipment_checks import router as equipment_checks_router
 from api.equipment_proof_pack import router as equipment_proof_pack_router
 from api.exception_handlers import register_exception_handlers
 from api.execution_runs import router as execution_runs_router
@@ -119,6 +120,7 @@ app.include_router(comparison_router)
 app.include_router(der_sn_documents_router)
 app.include_router(diagnostics_router)
 app.include_router(document_store_router)
+app.include_router(equipment_checks_router)
 app.include_router(equipment_proof_pack_router)
 app.include_router(health_router)
 app.include_router(ncrfg_ptpiree_tests_router)

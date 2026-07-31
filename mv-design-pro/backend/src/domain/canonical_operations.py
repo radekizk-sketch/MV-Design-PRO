@@ -879,6 +879,153 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_conductor_thermal_data",
         fix_navigation={"panel": "katalog", "tab": "kable", "focus": "ith_1s_a"},
     ),
+    # Kryteria WYPOSAŻENIA stacji (karta KD-3, dług §7.4 „zdolności bez dostawcy").
+    # Cztery rachunki wróciły z warstwy prezentacji do solverów; każdy brak danej
+    # kończy się TYM kodem, nigdy wartością zastępczą — inaczej werdykt doboru
+    # przekładnika lub kabla byłby oparty na liczbie, której nikt nie podał.
+    "ct.secondary_circuit_missing": ReadinessCodeSpec(
+        code="ct.secondary_circuit_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak danych obwodu wtórnego przekładnika prądowego (długość, przekrój) — "
+            "uzupełnij, by policzyć bilans mocy wtórnej"
+        ),
+        fix_action_id="fix_ct_secondary_circuit",
+        fix_navigation={"panel": "wizard", "tab": "pomiary", "focus": "ct_obwod_wtorny"},
+    ),
+    "ct.rated_burden_missing": ReadinessCodeSpec(
+        code="ct.rated_burden_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak mocy znamionowej przekładnika prądowego w katalogu — "
+            "uzupełnij pozycję katalogową"
+        ),
+        fix_action_id="fix_ct_rated_burden",
+        fix_navigation={"panel": "katalog", "tab": "ct", "focus": "burden_va"},
+    ),
+    "ct.accuracy_limit_missing": ReadinessCodeSpec(
+        code="ct.accuracy_limit_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Klasa przekładnika prądowego nie niesie współczynnika granicznego (rdzeń "
+            "pomiarowy albo klasa nierozpoznana) — kryterium nasycenia nie ma zastosowania"
+        ),
+        fix_action_id="fix_ct_accuracy_class",
+        fix_navigation={"panel": "katalog", "tab": "ct", "focus": "accuracy_class"},
+    ),
+    "ct.winding_resistance_missing": ReadinessCodeSpec(
+        code="ct.winding_resistance_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak rezystancji uzwojenia wtórnego przekładnika — współczynnik graniczny "
+            "policzono wariantem uproszczonym (wynik optymistyczny)"
+        ),
+        fix_action_id="fix_ct_winding_resistance",
+        fix_navigation={"panel": "katalog", "tab": "ct", "focus": "rct_ohm"},
+    ),
+    "ct.required_alf_missing": ReadinessCodeSpec(
+        code="ct.required_alf_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak wymaganego współczynnika granicznego z funkcji zabezpieczeniowych pola — "
+            "bez niego kryterium nasycenia nie ma odniesienia"
+        ),
+        fix_action_id="fix_ct_required_alf",
+        fix_navigation={"panel": "analizy", "tab": "zabezpieczenia"},
+    ),
+    "vt.secondary_circuit_missing": ReadinessCodeSpec(
+        code="vt.secondary_circuit_missing",
+        area=ReadinessArea.PROTECTION,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak danych obwodu wtórnego przekładnika napięciowego (długość, przekrój) — "
+            "uzupełnij, by policzyć zmianę napięcia obwodu"
+        ),
+        fix_action_id="fix_vt_secondary_circuit",
+        fix_navigation={"panel": "wizard", "tab": "pomiary", "focus": "vt_obwod_wtorny"},
+    ),
+    "vt.rated_burden_missing": ReadinessCodeSpec(
+        code="vt.rated_burden_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak mocy znamionowej uzwojenia przekładnika napięciowego w katalogu — "
+            "uzupełnij pozycję katalogową"
+        ),
+        fix_action_id="fix_vt_rated_burden",
+        fix_navigation={"panel": "katalog", "tab": "vt", "focus": "burden_va"},
+    ),
+    "vt.winding_category_missing": ReadinessCodeSpec(
+        code="vt.winding_category_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii "
+            "(pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia"
+        ),
+        fix_action_id="fix_vt_winding_category",
+        fix_navigation={"panel": "katalog", "tab": "vt", "focus": "accuracy_class"},
+    ),
+    "cable.insulation_data_missing": ReadinessCodeSpec(
+        code="cable.insulation_data_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak typu izolacji lub temperatury znamionowej kabla w katalogu — "
+            "bez nich nie da się ocenić starzenia izolacji"
+        ),
+        fix_action_id="fix_cable_insulation_data",
+        fix_navigation={"panel": "katalog", "tab": "kable", "focus": "insulation_type"},
+    ),
+    "cable.operating_temperature_missing": ReadinessCodeSpec(
+        code="cable.operating_temperature_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak temperatury pracy żyły — podaj ją, by ocenić względne starzenie izolacji"
+        ),
+        fix_action_id="fix_cable_operating_temperature",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "temperatura_pracy_c"},
+    ),
+    "transformer.loss_data_missing": ReadinessCodeSpec(
+        code="transformer.loss_data_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak strat jałowych lub obciążeniowych transformatora w katalogu — "
+            "uzupełnij pozycję katalogową"
+        ),
+        fix_action_id="fix_transformer_loss_data",
+        fix_navigation={"panel": "katalog", "tab": "transformatory", "focus": "p0_kw"},
+    ),
+    "transformer.loading_factor_missing": ReadinessCodeSpec(
+        code="transformer.loading_factor_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Brak współczynnika obciążenia transformatora — bez niego nie da się policzyć "
+            "strat w punkcie pracy"
+        ),
+        fix_action_id="fix_transformer_loading_factor",
+        fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "beta"},
+    ),
     # Earthing / Ground fault (EARTHING-1: most SC_1F -> napięcia dotykowe/krokowe)
     "earthing.electrode_data_missing": ReadinessCodeSpec(
         code="earthing.electrode_data_missing",
