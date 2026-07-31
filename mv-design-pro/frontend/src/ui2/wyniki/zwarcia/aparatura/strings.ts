@@ -33,7 +33,18 @@ export const APARATURA_STRINGS = {
   brakPrzypadku: 'Bez aktywnego przypadku obliczeniowego nie ma z czego wczytać pól stacji.',
   blad: 'Nie udało się sprawdzić wytrzymałości aparatury.',
   bladUwaga: 'Werdykt pochodzi z backendu — bez odpowiedzi nie ma podstawy do oceny.',
+  // Rozbicie czasu wyłączenia (KD-6 poz. 3) — WHITE BOX: suma i oba człony.
+  czasSuma: 'Czas wyłączenia t_wył',
+  czasCzlonNastawczy: 'Człon nastawczy zabezpieczenia',
+  czasWlasny: 'Czas własny aparatu',
+  czasZrodlo: 'Źródło czasu',
+  czasZNastaw: 'z nastaw zabezpieczeń pola',
+  czasZKonfiguracji: 'z konfiguracji stacji',
+  czasNieustalony: 'nieustalone',
+  czasZalozenie: 'Założenie:',
+
   poza: 'nieustalone',
   kreska: '—',
   jednKA: 'kA',
+  jednS: 's',
 } as const;

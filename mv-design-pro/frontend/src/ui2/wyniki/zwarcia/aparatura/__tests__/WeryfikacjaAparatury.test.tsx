@@ -152,6 +152,58 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     );
   });
 
+  it('ROZBICIE CZASU WYŁĄCZENIA jest widoczne przy werdykcie (oba człony, źródło)', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([
+      poleOdpowiedzi({
+        czas_wylaczenia: {
+          t_clearing_s: 0.36,
+          zrodlo: 'nastawy_pola',
+          powod_pl: 'Czas z charakterystyki DT zabezpieczenia pola przy prądzie 8000,0 A.',
+          czlon_nastawczy_s: 0.3,
+          czas_wlasny_wylacznika_s: 0.06,
+          zalozenia_pl: [],
+          kody_gotowosci: [],
+        },
+      }),
+    ]);
+
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    const czas = await screen.findByTestId('mvd-zwarcia-aparatura-czas-P-1');
+    expect(czas.getAttribute('data-zrodlo-czasu')).toBe('nastawy_pola');
+    // OBA człony osobno — inaczej suma byłaby nieweryfikowalna.
+    expect(czas.textContent).toContain('0,36');
+    expect(czas.textContent).toContain('0,30');
+    expect(czas.textContent).toContain('0,06');
+    expect(czas.textContent).toContain('z nastaw zabezpieczeń pola');
+    expect(czas.textContent).toContain('Czas z charakterystyki DT');
+  });
+
+  it('ZAŁOŻENIE przy braku czasu własnego aparatu jest wypisane, nie przemilczane', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([
+      poleOdpowiedzi({
+        czas_wylaczenia: {
+          t_clearing_s: 0.3,
+          zrodlo: 'nastawy_pola',
+          powod_pl: 'Czas z charakterystyki DT zabezpieczenia pola.',
+          czlon_nastawczy_s: 0.3,
+          czas_wlasny_wylacznika_s: null,
+          zalozenia_pl: ['Karta katalogowa aparatu nie niesie czasu własnego.'],
+          kody_gotowosci: ['aparatura.brak_czasu_wlasnego_wylacznika'],
+        },
+      }),
+    ]);
+
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    const czas = await screen.findByTestId('mvd-zwarcia-aparatura-czas-P-1');
+    expect(czas.textContent).toContain('Karta katalogowa aparatu nie niesie czasu własnego.');
+  });
+
   it('WERDYKT NEGATYWNY z backendu jest pokazywany bez tłumaczenia na własne słowa', async () => {
     const user = userEvent.setup();
     zamontujBackend([

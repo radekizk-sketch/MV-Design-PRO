@@ -20,6 +20,9 @@ from uuid import UUID
 
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
 from application.analyses.fault_loop.service import build_station_fault_loop_view
+from application.analyses.protection.czas_wylaczenia_pola import (
+    czasy_wylaczenia_pol_stacji,
+)
 from application.analyses.wytrzymalosc_aparatury_pol import (
     zbuduj_widok_wytrzymalosci_aparatury,
 )
@@ -262,12 +265,16 @@ async def post_wytrzymalosc_aparatury(
     enm = _get_enm(case_id)
     project_id = _resolve_project_id(case_id, request)
     zapisana = _bay_device_withstand(project_id, body.station_ref, request)
+    # Czas wyłączenia z NASTAW pól (KD-6 poz. 3) — konfiguracja stacji pozostaje
+    # nadrzędna dla pól, które inżynier skonfigurował ręcznie.
+    czasy = czasy_wylaczenia_pol_stacji(enm=enm, station_ref=body.station_ref, ik_ka=body.ik_ka)
     return zbuduj_widok_wytrzymalosci_aparatury(
         enm=enm,
         station_ref=body.station_ref,
         i_peak_ka=body.i_peak_ka,
         i_thermal_ka=body.i_thermal_ka,
         bay_device_withstand=zapisana,
+        czasy_pol=czasy,
     )
 
 

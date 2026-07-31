@@ -2199,6 +2199,14 @@ class MVApparatusType:
     i_th_ka: float | None = None
     i_th_duration_s: float | None = None
     i_dyn_ka: float | None = None
+    #: KD-6 poz. 3 — CZAS WŁASNY aparatu [s] (rated break time, IEC 62271-100
+    #: § 3.7.145: od pobudzenia wyzwalacza do przerwania łuku we wszystkich
+    #: biegunach). Składnik czasu wyłączenia zwarcia obok członu nastawczego
+    #: zabezpieczenia. Dana WYŁĄCZNIE producencka — normy podają szereg wartości
+    #: znamionowych, ale NIE przypisują ich modelowi, więc wyprowadzić się jej
+    #: nie da. `None` = karta katalogowa tej danej jeszcze nie wniosła; wtedy
+    #: czas wyłączenia niesie sam człon nastawczy z JAWNYM założeniem.
+    break_time_s: float | None = None
     verification_status: str = CatalogVerificationStatus.CZESCIOWO_ZWERYFIKOWANY.value
     source_reference: str = "Katalog aparatury SN MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.PRODUKCYJNY_V1.value
@@ -2245,6 +2253,7 @@ class MVApparatusType:
                 self.i_dyn_ka if self.i_dyn_ka is not None else idyn_aparatu_sn_z_ith(self.i_th_ka)
             ),
             "i_dyn_pochodzenie": self.pochodzenie_i_dyn(),
+            "break_time_s": self.break_time_s,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2288,6 +2297,9 @@ class MVApparatusType:
                 if data.get("i_dyn_ka") is not None
                 and data.get("i_dyn_pochodzenie") != POCHODZENIE_DERYWACJA_IEC62271
                 else None
+            ),
+            break_time_s=(
+                float(data["break_time_s"]) if data.get("break_time_s") is not None else None
             ),
             **_catalog_metadata_kwargs(
                 data,

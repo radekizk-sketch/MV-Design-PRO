@@ -24,7 +24,7 @@ import './aparatura.css';
 import { useAppStateStore } from '../../../../ui/app-state';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
-import { fmtKA } from '../strings';
+import { fmtCzas, fmtKA } from '../strings';
 import { pobierzWytrzymaloscAparatury, znacznikWerdyktu, type PoleWytrzymalosci } from './api';
 import {
   nazwaStacji,
@@ -52,6 +52,58 @@ export interface WeryfikacjaAparaturyProps {
 /** Etykieta źródła aparatu — inżynier musi wiedzieć, co ocenia. */
 function opisZrodla(pole: PoleWytrzymalosci): string {
   return pole.zrodlo === 'model' ? T.zrodloModel : T.zrodloKonfiguracja;
+}
+
+/** Sekunda z backendu albo uczciwa kreska (prezentacja NIC nie dolicza). */
+function sekundy(wartosc: number | null): string {
+  return wartosc === null ? T.kreska : `${fmtCzas(wartosc)} ${T.jednS}`;
+}
+
+/**
+ * Rozbicie czasu wyłączenia (WHITE BOX): suma i OBA człony osobno, źródło oraz
+ * założenia przyjęte przy braku danej. Liczby pochodzą wprost z odpowiedzi —
+ * ekran ich nie sumuje, bo suma jest częścią wyprowadzenia, nie prezentacji.
+ */
+function RozbicieCzasu({ pole }: { readonly pole: PoleWytrzymalosci }) {
+  const czas = pole.czas_wylaczenia;
+  const zrodlo =
+    czas.zrodlo === 'nastawy_pola'
+      ? T.czasZNastaw
+      : czas.zrodlo === 'konfiguracja'
+        ? T.czasZKonfiguracji
+        : T.czasNieustalony;
+  return (
+    <div
+      className="mvd-apar-czas"
+      data-testid={`mvd-zwarcia-aparatura-czas-${pole.pole}`}
+      data-zrodlo-czasu={czas.zrodlo ?? 'nieustalony'}
+    >
+      <dl className="mvd-apar-czas-pola">
+        <div>
+          <dt>{T.czasSuma}</dt>
+          <dd className="mvd-num">{sekundy(czas.t_clearing_s)}</dd>
+        </div>
+        <div>
+          <dt>{T.czasCzlonNastawczy}</dt>
+          <dd className="mvd-num">{sekundy(czas.czlon_nastawczy_s)}</dd>
+        </div>
+        <div>
+          <dt>{T.czasWlasny}</dt>
+          <dd className="mvd-num">{sekundy(czas.czas_wlasny_wylacznika_s)}</dd>
+        </div>
+        <div>
+          <dt>{T.czasZrodlo}</dt>
+          <dd>{zrodlo}</dd>
+        </div>
+      </dl>
+      <p className="mvd-apar-czas-powod">{czas.powod_pl}</p>
+      {czas.zalozenia_pl.map((zalozenie) => (
+        <p className="mvd-apar-czas-zalozenie" key={zalozenie}>
+          {T.czasZalozenie} {zalozenie}
+        </p>
+      ))}
+    </div>
+  );
 }
 
 export function WeryfikacjaAparatury({
@@ -223,6 +275,7 @@ export function WeryfikacjaAparatury({
                 {opisZrodla(w)}
                 {w.aparat_etykieta ? ` · ${w.aparat_etykieta}` : ''}
               </span>
+              <RozbicieCzasu pole={w} />
             </li>
           ))}
         </ul>

@@ -8,6 +8,8 @@ więc test dowodzi, że werdykt naprawdę bierze się z modelu.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 from api.main import app
 from enm.dziennik_zmian import wyczysc_dziennik
@@ -18,6 +20,8 @@ APARAT_POLA = "sw-cb-abb-vd4-17kv-630a"
 KABEL = "cable-tfk-yakxs-3x120"
 TRAFO = "tr-sn-nn-15-04-630kva-dyn11"
 ZRODLO = "src-gpz-15kv-250mva-rx010"
+CT = "ct_400_5_5p20_15va_abb"
+PRZEKAZNIK = "ACME_REX100_v1"
 
 
 @pytest.fixture()
@@ -41,7 +45,7 @@ def _operacja(klient: TestClient, case_id: str, nazwa: str, payload: dict) -> di
     return dane
 
 
-def _stacja_z_polami(klient: TestClient, case_id: str) -> str:
+def _stacja_z_polami(klient: TestClient, case_id: str, *, z_zabezpieczeniem: bool = False) -> str:
     _operacja(
         klient,
         case_id,
@@ -55,6 +59,34 @@ def _stacja_z_polami(klient: TestClient, case_id: str) -> str:
         {"segment": {"rodzaj": "KABEL", "dlugosc_m": 400, "catalog_ref": KABEL}},
     )
     segmenty = odp["snapshot"]["corridors"][0]["ordered_segment_refs"]
+    # Wyposażenie pola (CT + przekaźnik z NASTAWAMI) powstaje w TEJ SAMEJ
+    # operacji co stacja (B-3) — to produkcyjna droga zapisu nastaw pola.
+    pole_in: Any = (
+        {
+            "field_role": "LINIA_IN",
+            "equipment": {
+                "ct": {
+                    "catalog_ref": CT,
+                    "ratio_primary_a": 400.0,
+                    "ratio_secondary_a": 5.0,
+                },
+                "relay": {
+                    "catalog_ref": PRZEKAZNIK,
+                    "relay_type": "NADPRADOWY",
+                    "settings": [
+                        {
+                            "function_type": "overcurrent_51",
+                            "threshold_a": 400.0,
+                            "curve_type": "DT",
+                            "time_delay_s": 0.3,
+                        }
+                    ],
+                },
+            },
+        }
+        if z_zabezpieczeniem
+        else "IN"
+    )
     odp = _operacja(
         klient,
         case_id,
@@ -65,7 +97,7 @@ def _stacja_z_polami(klient: TestClient, case_id: str) -> str:
             "station_type": "B",
             "insert_at": {"value": 0.5},
             "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
-            "sn_fields": ["IN", "OUT"],
+            "sn_fields": [pole_in, "OUT"],
             "transformer": {
                 "create": True,
                 "catalog_binding": {
@@ -139,3 +171,56 @@ def test_brak_pradow_z_biegu_daje_jawny_kod_gotowosci(klient: TestClient):
     widok = odp.json()
     assert widok["status"] == "brak danych"
     assert widok["kody_gotowosci"] == ["aparatura.brak_pradow_biegu"]
+
+
+def test_czas_wylaczenia_pochodzi_z_nastaw_pola_i_niesie_rozbicie(klient: TestClient):
+    """KD-6 poz. 3: czas kryterium cieplnego wyprowadzony z NASTAW, nie wpisany ręcznie."""
+    station_ref = _stacja_z_polami(klient, "c-nastawy", z_zabezpieczeniem=True)
+
+    odp = klient.post(
+        "/api/cases/c-nastawy/enm/wytrzymalosc-aparatury",
+        json={
+            "station_ref": station_ref,
+            "i_peak_ka": 10.0,
+            "i_thermal_ka": 4.0,
+            "ik_ka": 8.0,
+        },
+    )
+    assert odp.status_code == 200, odp.text
+    widok = odp.json()
+
+    z_nastaw = [p for p in widok["pola"] if p["czas_wylaczenia"]["zrodlo"] == "nastawy_pola"]
+    assert z_nastaw, "Pole z nastawami musi dostać czas wyprowadzony z charakterystyki"
+    czas = z_nastaw[0]["czas_wylaczenia"]
+    # WHITE BOX: oba człony osobno + ślad nastawy, z której czas powstał.
+    assert czas["czlon_nastawczy_s"] == 0.3
+    assert czas["t_clearing_s"] == 0.3
+    assert czas["czas_wlasny_wylacznika_s"] is None
+    assert czas["zalozenia_pl"], "Brak czasu własnego MUSI być powiedziany wprost"
+    assert czas["funkcja"] == "overcurrent_51"
+    assert czas["prad_zwarciowy_a"] == 8000.0
+    # Czas domyka kryterium cieplne, które bez niego zostawało nierozstrzygnięte.
+    assert z_nastaw[0]["werdykt"]["i_th_ok"] is True
+
+
+def test_pole_bez_nastaw_dostaje_kod_gotowosci_zamiast_czasu_z_powietrza(klient: TestClient):
+    station_ref = _stacja_z_polami(klient, "c-bez-nastaw")
+
+    odp = klient.post(
+        "/api/cases/c-bez-nastaw/enm/wytrzymalosc-aparatury",
+        json={
+            "station_ref": station_ref,
+            "i_peak_ka": 10.0,
+            "i_thermal_ka": 4.0,
+            "ik_ka": 8.0,
+        },
+    )
+    widok = odp.json()
+
+    assert widok["pola"], "Stacja ma pola z aparatami — werdykt dynamiczny nadal powstaje"
+    for pole in widok["pola"]:
+        assert pole["czas_wylaczenia"]["t_clearing_s"] is None
+        assert "aparatura.czas_wylaczenia_nieustalony" in pole["kody_gotowosci"]
+        # Kryterium dynamiczne rozstrzygnięte MIMO braku czasu.
+        assert pole["werdykt"]["i_dyn_ok"] is True
+        assert pole["werdykt"]["i_th_ok"] is None

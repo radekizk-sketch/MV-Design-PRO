@@ -33,8 +33,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from application.analyses.aparaty_pol import aparaty_pol_stacji, znajdz_stacje
 from application.field_read_model import collect_bays
-from enm.models import Bay, EnergyNetworkModel, Substation
+from enm.models import Bay, EnergyNetworkModel
 from network_model.catalog import get_default_mv_catalog
 from network_model.catalog.audit2_catalogs import (
     get_device_withstand,
@@ -56,9 +57,6 @@ READINESS_CZAS_NIEUSTALONY = "aparatura.czas_wylaczenia_nieustalony"
 ZRODLO_MODEL = "model"
 ZRODLO_KONFIGURACJA = "konfiguracja"
 
-#: Kategoria katalogu, którą operacje domenowe wiążą z aparatem pola SN (B-12).
-_NAMESPACE_APARAT_SN = "APARAT_SN"
-
 #: Rola pola → nazwa po polsku (strefa pierwszoplanowa mówi po polsku, nie kodem).
 _ROLA_PL: dict[str, str] = {
     "IN": "liniowe dopływowe",
@@ -69,15 +67,6 @@ _ROLA_PL: dict[str, str] = {
     "MEASUREMENT": "pomiarowe",
     "OZE": "źródłowe OZE",
 }
-
-
-def _stacja(enm: EnergyNetworkModel, station_ref: str) -> Substation | None:
-    # Dopasowanie po ref_id (odnośnik domenowy) LUB id (UUID elementu) — spójnie
-    # z widokiem pętli zwarcia, bo wołający podaje raz jedno, raz drugie.
-    return next(
-        (s for s in enm.substations if station_ref in (s.ref_id, str(getattr(s, "id", "")))),
-        None,
-    )
 
 
 def _oznaczenia_pola(bay: Bay) -> list[str]:
@@ -94,41 +83,6 @@ def _oznaczenia_pola(bay: Bay) -> list[str]:
 
 def _oznaczenie_glowne(bay: Bay) -> str:
     return (bay.bay_number or bay.name or bay.ref_id).strip()
-
-
-def _aparaty_pol_stacji(
-    enm: EnergyNetworkModel, station: Substation
-) -> dict[str, list[dict[str, Any]]]:
-    """Aparaty katalogowe pól tej stacji: referencja pola → lista aparatów.
-
-    Aparat pola jest gałęzią łącznikową z wiązaniem katalogu APARAT_SN
-    (``insert_station_on_segment_sn`` / ``append_station_on_endpoint`` /
-    ``add_sn_bay``). Referencja pola siedzi w ``meta`` gałęzi — raz jako
-    ``bay_ref``, raz jako ``field_ref`` (zależnie od operacji), więc czytamy oba.
-    """
-    wynik: dict[str, list[dict[str, Any]]] = {}
-    for branch in enm.branches:
-        if getattr(branch, "catalog_namespace", None) != _NAMESPACE_APARAT_SN:
-            continue
-        catalog_ref = getattr(branch, "catalog_ref", None)
-        if not catalog_ref:
-            continue
-        meta = dict(getattr(branch, "meta", None) or {})
-        if meta.get("station_ref") not in (None, station.ref_id):
-            continue
-        pole_ref = meta.get("bay_ref") or meta.get("field_ref")
-        if not isinstance(pole_ref, str) or not pole_ref:
-            continue
-        wynik.setdefault(pole_ref, []).append(
-            {
-                "aparat_ref": branch.ref_id,
-                "aparat_nazwa": branch.name,
-                "catalog_ref": str(catalog_ref),
-            }
-        )
-    for pozycje in wynik.values():
-        pozycje.sort(key=lambda p: str(p["aparat_ref"]))
-    return wynik
 
 
 def _znamiona_z_aparat_sn(catalog_ref: str) -> tuple[dict[str, Any] | None, str | None]:
@@ -283,7 +237,7 @@ def zbuduj_widok_wytrzymalosci_aparatury(
         Widok: stacja, lista pól z werdyktami, kody gotowości. Nigdy nie
         fabrykuje znamion ani czasu.
     """
-    stacja = _stacja(enm, station_ref)
+    stacja = znajdz_stacje(enm, station_ref)
     if stacja is None:
         return {
             "stacja_ref": station_ref,
@@ -310,7 +264,7 @@ def zbuduj_widok_wytrzymalosci_aparatury(
         if isinstance(wartosc, dict)
     }
     czasy = dict(czasy_pol or {})
-    aparaty = _aparaty_pol_stacji(enm, stacja)
+    aparaty = aparaty_pol_stacji(enm, stacja)
     pola_stacji = [bay for bay in collect_bays(enm) if bay.substation_ref == stacja.ref_id]
 
     wiersze: list[dict[str, Any]] = []
@@ -347,16 +301,16 @@ def zbuduj_widok_wytrzymalosci_aparatury(
             continue
 
         for aparat in aparaty.get(bay.ref_id, []):
-            znamiona, etykieta = _znamiona_z_aparat_sn(aparat["catalog_ref"])
+            znamiona, etykieta = _znamiona_z_aparat_sn(aparat.catalog_ref)
             wiersze.append(
                 _wiersz(
                     oznaczenie=oznaczenie,
                     pole_ref=bay.ref_id,
                     rola=bay.bay_role,
                     zrodlo=ZRODLO_MODEL,
-                    aparat_ref=aparat["aparat_ref"],
-                    aparat_nazwa=aparat["aparat_nazwa"],
-                    catalog_ref=aparat["catalog_ref"],
+                    aparat_ref=aparat.aparat_ref,
+                    aparat_nazwa=aparat.aparat_nazwa,
+                    catalog_ref=aparat.catalog_ref,
                     znamiona=znamiona,
                     etykieta=etykieta,
                     czas=czasy.get(bay.ref_id, _CZAS_NIEUSTALONY),
