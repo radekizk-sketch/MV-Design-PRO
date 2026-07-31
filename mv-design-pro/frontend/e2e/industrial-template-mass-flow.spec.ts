@@ -407,8 +407,14 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
   // Odpowiedź POST niosła pełny rozpływ gałęziowy każdego punktu (iloczyn
   // źródło×gałąź) — na tej sieci setki MB. Po odchudzeniu wiersz niesie FLAGĘ
   // dostępności, a treść rozpływu pobiera się dla WSKAZANEGO punktu.
-  // Limit 20 MB = wielokrotność zmierzonego rozmiaru po odchudzeniu; powrót
-  // rozpływu inline do odpowiedzi POST ma być CZERWONY.
+  //
+  // LIMIT SKALIBROWANY DO POMIARU (2026-07-31, ta sieć 50 stacji): odpowiedź po
+  // odchudzeniu ma 22,9 MiB — resztę stanowi ślad WHITE BOX każdego punktu
+  // zwarcia (pole `white_box_trace`), który MUSI zostać (jawność obliczeń).
+  // Z rozpływem inline ta sama odpowiedź miała 339,3 MiB (pomiar regresją
+  // wstrzykniętą na tej samej sieci), więc 60 MB odróżnia stan poprawny od
+  // defektu z zapasem w obie strony: powrót rozpływu do odpowiedzi POST jest
+  // CZERWONY (zweryfikowane — 355 787 873 B > limitu).
   const swiezyBiegStart = Date.now();
   const swiezyBiegResponse = await request.post(
     `${BACKEND_BASE}/api/cases/${seed.caseId}/runs/short-circuit`,
@@ -423,7 +429,7 @@ test('pełny przepływ przemysłowy: 50 szablonów stacji, OZE, analizy, dowody 
     swiezyBiegResponse.ok(),
     swiezyBiegBody.subarray(0, 2048).toString('utf-8'),
   ).toBeTruthy();
-  expect(swiezyBiegBody.byteLength).toBeLessThan(20 * 1024 * 1024);
+  expect(swiezyBiegBody.byteLength).toBeLessThan(60 * 1024 * 1024);
   const swiezyBieg = JSON.parse(swiezyBiegBody.toString('utf-8')) as {
     run_id: string;
     results: Array<{
