@@ -199,7 +199,7 @@ import { formatDateTime } from '../../../workspace/routerDisplayHelpers';
 // scena), rysunek eksportu reużywa `SheetLegend` (`sheet/Frame.tsx`) przez
 // `renderToStaticMarkup` — JEDNO źródło renderu legendy dla arkusza/eksportu.
 import { renderToStaticMarkup } from 'react-dom/server';
-import { SheetLegend, type SheetLegendEntry } from '../sheet/Frame';
+import { FRAME_MARGIN, SheetLegend, type SheetLegendEntry } from '../sheet/Frame';
 import { computeProjectLegendEntries } from '../sheet/projectLegend';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { sheetSizeFor } from './SldCanvasV3';
@@ -1651,19 +1651,31 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     if (!cameraState || size.width <= 0 || size.height <= 0) return null;
     return parseCameraViewBox(cameraViewBox(cameraState.transform, size));
   }, [cameraState, size]);
+  /** KD-7: bbox świata AKTYWNEGO LOD w układzie KAMERY (scena przesunięta o
+   *  `FRAME_MARGIN` przez `SheetFrame`) — `cameraWorldRect` pochodzi z
+   *  `viewBox`, więc obie strony renormalizacji muszą być w tym samym
+   *  układzie; wcześniej minimapa mieszała świat sceny ze światem kamery i
+   *  prostokąt kadru dryfował o margines arkusza. */
+  const activeLodCameraBbox = useMemo<V3Rect | null>(
+    () =>
+      activeLodScene
+        ? { ...activeLodScene.bbox, x: activeLodScene.bbox.x + FRAME_MARGIN, y: activeLodScene.bbox.y + FRAME_MARGIN }
+        : null,
+    [activeLodScene],
+  );
   const minimapFrame = useMemo<MinimapRect | null>(() => {
-    if (!minimapProjection || !cameraWorldRect || !activeLodScene) return null;
-    return worldRectToMinimap(cameraWorldRect, activeLodScene.bbox, minimapProjection);
-  }, [minimapProjection, cameraWorldRect, activeLodScene]);
+    if (!minimapProjection || !cameraWorldRect || !activeLodCameraBbox) return null;
+    return worldRectToMinimap(cameraWorldRect, activeLodCameraBbox, minimapProjection);
+  }, [minimapProjection, cameraWorldRect, activeLodCameraBbox]);
   /** Wskazanie w panelu → punkt świata aktywnego LOD → żądanie `'center'` do
    *  kamery. JEDYNE wyjście minimapy: współrzędna. Skala/LOD/scena nietknięte. */
   const handleMinimapNavigate = useCallback(
     (point: { readonly x: number; readonly y: number }) => {
-      if (!minimapProjection || !activeLodScene) return;
-      const world = minimapPointToWorld(point, activeLodScene.bbox, minimapProjection);
+      if (!minimapProjection || !activeLodCameraBbox) return;
+      const world = minimapPointToWorld(point, activeLodCameraBbox, minimapProjection);
       setCenterRequest((prev) => ({ x: world.x, y: world.y, seq: (prev?.seq ?? 0) + 1 }));
     },
-    [minimapProjection, activeLodScene],
+    [minimapProjection, activeLodCameraBbox],
   );
   // Domyślnie WYŁĄCZONA (karta §0.4) — eksport bez legendy jest zachowaniem
   // dotychczasowym (zero zmiany domyślnej dla wołających istniejących).

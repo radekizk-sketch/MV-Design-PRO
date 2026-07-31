@@ -43,7 +43,7 @@ import {
   type PreviewSegment,
   type PreviewSymbol,
 } from '../compose/preview';
-import { SheetFrame, type SheetLegendEntry } from '../sheet/Frame';
+import { FRAME_MARGIN, SheetFrame, type SheetLegendEntry } from '../sheet/Frame';
 import type { RouteVertex } from '../layout/route';
 import {
   boundingBoxOfRect,
@@ -2000,14 +2000,28 @@ function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: num
  *  — `v3/export/exportFrame.ts` reużywa DOKŁADNIE tę samą formułę dla kadru
  *  fit-do-treści eksportu (0 duplikacji marginesu treści). */
 /** K11-A: bbox TREŚCI SIECI sceny — wyłącznie elementy z `ownerRef`
- *  (symbole aparatów/stacji + odcinki torów), bez mebli arkusza (legenda,
- *  rama, tabliczka), z rezerwą na wiersze podpisu stacji (4 rzędy t2 pod
- *  symbolem) i tytuł GPZ (1 rząd t1). Prostokątów etykiet nie włączamy
- *  wprost: tytuł strefy GPZ i legenda leżą przy krawędzi obwiedni
- *  dekoracyjnej i przywracałyby kadr quasi-arkusza (zmierzone 2026-07-30:
- *  wypełnienie osi 0,84 → 0,72). Scena bez elementów ⇒ null (wołający
- *  fituje do pełnego bboxa sceny). Eksportowana — testy kamery liczą
- *  oczekiwany cel fitu TĄ SAMĄ funkcją. */
+ *  (symbole aparatów/stacji + odcinki torów) WRAZ Z ICH ETYKIETAMI, bez
+ *  mebli arkusza (legenda, rama, tabliczka — te nie są elementami sceny,
+ *  rysuje je `SheetFrame`). Scena bez elementów ⇒ null (wołający fituje do
+ *  pełnego bboxa sceny). Eksportowana — testy kamery liczą oczekiwany cel
+ *  fitu TĄ SAMĄ funkcją.
+ *
+ *  KD-7 (naprawa u źródła; dowód: e2e „kadr i panele" mierzył treść po
+ *  `[data-element-kind],[data-owner-ref]`, a etykiety NIOSĄ `data-owner-ref`
+ *  — wychodziły więc poza kadr, pomiar 2026-07-31: podpis stacji „stacja
+ *  odgałęźna" 5 px pod dolną krawędzią kanwy). PODPIS NALEŻY DO RYSUNKU:
+ *  kadr obejmuje `scene.labels` PROSTOKĄTAMI, nie rezerwą liczbową. Dawna
+ *  formuła dokładała pod najniższym symbolem 4 wiersze t2 + 8 i nad
+ *  najwyższym 1 wiersz t1 + 8 — stała dobrana pod jedną fixturę: pokrywała
+ *  pasmo nazw stacji (69 j. świata przy rezerwie 76) i NIE pokrywała
+ *  etykiet po bokach (na sieci e2e: 56 j. w lewo, 88 j. w prawo, 37 j. w
+ *  górę poza bboxem treści). `OwnedLabel.rect` jest deterministyczny
+ *  (`core/text.ts` — `measureLabelWidth`/`labelLineHeight`, jawna stała
+ *  `AVG_GLYPH_WIDTH_FACTOR`), więc kadr nie zależy od renderu czcionki w
+ *  przeglądarce (P7). Etykiety ukryte progiem czytelności (`declutter`
+ *  ekranowy warstwy renderu) NADAL liczą się do kadru — kadr jest
+ *  własnością sceny, nie stanu kamery, inaczej fit oscylowałby razem z
+ *  progiem. */
 export function contentBoundingBoxOf(scene: SceneV3): BoundingBox | null {
   let minX = Infinity;
   let minY = Infinity;
@@ -2030,10 +2044,48 @@ export function contentBoundingBoxOf(scene: SceneV3): BoundingBox | null {
       maxY = Math.max(maxY, p.y);
     }
   }
+  for (const label of scene.labels) {
+    minX = Math.min(minX, label.rect.x);
+    minY = Math.min(minY, label.rect.y);
+    maxX = Math.max(maxX, label.rect.x + label.rect.width);
+    maxY = Math.max(maxY, label.rect.y + label.rect.height);
+  }
   if (!Number.isFinite(minX) || maxX - minX <= 0 || maxY - minY <= 0) return null;
-  maxY += 4 * labelLineHeight('t2') + 8;
-  minY -= labelLineHeight('t1') + 8;
   return { minX, minY, maxX, maxY };
+}
+
+/**
+ * KD-7: ŚWIAT KAMERY ≠ ŚWIAT SCENY — konwersja w jednym miejscu.
+ *
+ * `viewBox` zewnętrznego SVG (`camera.ts::cameraViewBox`) opisuje układ, w
+ * którym rysuje `SheetFrame`, a ten wkłada CAŁĄ treść sceny w grupę
+ * `translate(FRAME_MARGIN, FRAME_MARGIN)` (`sheet/Frame.tsx` — margines na
+ * oznaczenia stref na ZEWNĄTRZ obszaru rysunku). Punkt sceny (x, y) leży
+ * więc w świecie kamery na (x + FRAME_MARGIN, y + FRAME_MARGIN).
+ *
+ * Bez tej konwersji fit celował o `FRAME_MARGIN` obok: przy zmierzonym
+ * 2026-07-31 kadrze (skala 0,96) 32 jednostki świata to ~31 px ekranu, czyli
+ * niemal cały 40-pikselowy padding fitu — treść zjeżdżała w prawo i w dół aż
+ * do wyjścia poza kanwę przy niekorzystnej kolejności pomiaru kontenera.
+ * Ruchy WZGLĘDNE kamery (pan/zoom, mapowanie skali LOD) są niezmiennicze na
+ * translację, więc dotknięte były wyłącznie wartości BEZWZGLĘDNE: cel fitu,
+ * punkt fokusu i punkt centrowania.
+ */
+export function sceneBoxToCameraWorld(bbox: BoundingBox): BoundingBox {
+  return {
+    minX: bbox.minX + FRAME_MARGIN,
+    minY: bbox.minY + FRAME_MARGIN,
+    maxX: bbox.maxX + FRAME_MARGIN,
+    maxY: bbox.maxY + FRAME_MARGIN,
+  };
+}
+
+/** Punkt sceny → punkt świata kamery (patrz `sceneBoxToCameraWorld`). */
+export function scenePointToCameraWorld(point: { readonly x: number; readonly y: number }): {
+  readonly x: number;
+  readonly y: number;
+} {
+  return { x: point.x + FRAME_MARGIN, y: point.y + FRAME_MARGIN };
 }
 
 export function sheetSizeFor(scene: SceneV3): { readonly width: number; readonly height: number } {
@@ -2103,10 +2155,14 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     [sceneByLod],
   );
 
-  const fitBbox =
+  // KD-7: cel fitu przeliczony do ŚWIATA KAMERY (`sceneBoxToCameraWorld`) —
+  // `contentBoundingBoxOf`/`scene.bbox` opisują scenę, a kamera kadruje układ
+  // arkusza (scena przesunięta o `FRAME_MARGIN`).
+  const fitBbox = sceneBoxToCameraWorld(
     fitTarget === 'arkusz'
       ? lodBboxes[fitTargetLod]
-      : contentBboxByLod[fitTargetLod] ?? lodBboxes[fitTargetLod];
+      : contentBboxByLod[fitTargetLod] ?? lodBboxes[fitTargetLod],
+  );
 
   // F12-C (E15/E16 parytet z v2, spec §10 „kamera mobilna (portrait focus na
   // GPZ)"): środek bloku GPZ jako punkt fokusu kamery mobilnej — liczony ze
@@ -2130,7 +2186,9 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       maxX = Math.max(maxX, s.x + def.width);
       maxY = Math.max(maxY, s.y + def.height);
     }
-    return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+    // KD-7: punkt fokusu to wartość BEZWZGLĘDNA kamery — jak cel fitu, w
+    // świecie arkusza.
+    return scenePointToCameraWorld({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
   }, [sceneByLod, fitTargetLod]);
 
   const [camera, dispatch] = useReducer(
@@ -2412,7 +2470,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     (symbol: PreviewSymbol) => {
       if (camera.lod !== 0) return;
       const def = SYMBOL_DEFS[symbol.symbolId];
-      dispatch({ type: 'center', worldPoint: { x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 } });
+      // KD-7: środek symbolu to współrzędna SCENY — kamera centruje w świecie
+      // arkusza (`scenePointToCameraWorld`).
+      dispatch({
+        type: 'center',
+        worldPoint: scenePointToCameraWorld({ x: symbol.x + def.width / 2, y: symbol.y + def.height / 2 }),
+      });
       const factor = zoomFactorToEnterNextLod(
         refScaleFor(camera.transform.scale, camera.lod, camera.lodBboxes),
         camera.lod,
