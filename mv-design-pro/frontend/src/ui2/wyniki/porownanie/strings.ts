@@ -63,6 +63,10 @@ export const POROWNANIE_STRINGS = {
   kolKatA: 'Kąt A',
   kolKatB: 'Kąt B',
   kolKatD: 'Δ kąta',
+  // Moc bierna wstrzykiwana w szynie (L-12) — payload backendu ma te pola.
+  kolMocBiernaA: 'Moc bierna A',
+  kolMocBiernaB: 'Moc bierna B',
+  kolMocBiernaD: 'Δ mocy biernej',
 
   // Kolumny — gałęzie
   kolGalaz: 'Gałąź',
@@ -72,6 +76,9 @@ export const POROWNANIE_STRINGS = {
   kolMocA: 'Moc czynna (początek) A',
   kolMocB: 'Moc czynna (początek) B',
   kolMocD: 'Δ mocy czynnej (początek)',
+  kolMocBiernaGalazA: 'Moc bierna (początek) A',
+  kolMocBiernaGalazB: 'Moc bierna (początek) B',
+  kolMocBiernaGalazD: 'Δ mocy biernej (początek)',
 
   // Kolumny — ranking
   kolWaga: 'Waga',
@@ -96,6 +103,12 @@ export const POROWNANIE_STRINGS = {
   jednPu: 'pu',
   jednStopnie: '°',
   jednMW: 'MW',
+  jednMvar: 'Mvar',
+
+  // Filtr „tylko różnice" (L-14) — czysta prezentacja na danych backendu
+  filtrTylkoRoznice: 'Pokaż tylko różnice',
+  filtrOpis: 'Ukrywa wiersze, w których wszystkie różnice A/B są zerowe.',
+  filtrPusto: 'Wszystkie wiersze są identyczne w obu przebiegach — brak różnic do pokazania.',
 
   // Wartość pusta
   kreska: '—',
@@ -187,6 +200,16 @@ export function fmtDeltaMoc(n: number): string {
   return fmtDelta(n, 3);
 }
 
+/** Moc bierna [Mvar] — 3 miejsca po przecinku (ta sama rozdzielczość co moc czynna). */
+export function fmtMocBierna(n: number): string {
+  return fmtLiczba(n, 3);
+}
+
+/** Delta mocy biernej [Mvar] — 3 miejsca po przecinku, ze znakiem. */
+export function fmtDeltaMocBierna(n: number): string {
+  return fmtDelta(n, 3);
+}
+
 /**
  * Data z ISO cięta deterministycznie (bez konwersji strefy czasowej): „YYYY-MM-DD
  * HH:MM". Wartość pusta/nierozpoznana → „—". Nie używamy `toLocaleString`, aby
@@ -275,6 +298,11 @@ export const ZWARCIA_POROWNANIE_STRINGS = {
   jednMVA: 'MVA',
   jednOhm: 'Ω',
   jednKA2s: 'kA²·s',
+
+  // Filtr „tylko różnice" (L-14) — czysta prezentacja na danych backendu
+  filtrTylkoRoznice: 'Pokaż tylko różnice',
+  filtrOpis: 'Ukrywa wiersze, w których wszystkie różnice A/B są zerowe.',
+  filtrPusto: 'Wszystkie wiersze są identyczne w obu przebiegach — brak różnic do pokazania.',
 
   // Wartość pusta
   kreska: '—',

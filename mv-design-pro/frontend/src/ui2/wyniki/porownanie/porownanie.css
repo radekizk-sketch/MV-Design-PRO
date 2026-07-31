@@ -229,3 +229,20 @@
   flex-direction: column;
   gap: 2px;
 }
+
+/* ---- filtr „pokaż tylko różnice" (KD-1 / L-14) ---- */
+.mvd-por-filtr {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 8px 0;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mvd-por-filtr-etyk {
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+.mvd-por-filtr-opis {
+  color: var(--mvd-muted);
+}

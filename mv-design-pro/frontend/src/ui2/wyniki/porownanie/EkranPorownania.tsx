@@ -53,6 +53,8 @@ import {
   naWierszeRankingu,
   naWierszeSzynDiff,
   naZalozeniaPorownania,
+  tylkoRozniceGalezi,
+  tylkoRozniceSzyn,
 } from './porownanieModel';
 
 /**
@@ -155,6 +157,9 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
 
   const [zakladka, setZakladka] = useState<Zakladka>('szyny');
   const [wybranyProblem, setWybranyProblem] = useState<string | null>(null);
+  // L-14: filtr „pokaż tylko różnice" — czysta prezentacja na deltach backendu
+  // (parytet mostu `#compare`, który miał ten przełącznik).
+  const [tylkoRoznice, setTylkoRoznice] = useState(false);
 
   // Lista przebiegów rozpływu (projektowa, tylko zakończone — filtruje klient).
   useEffect(() => {
@@ -219,14 +224,16 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
     [wynik],
   );
   const poprawWModelu = usePoprawWModelu();
-  const wierszeSzyn = useMemo(
-    () => (wynik ? naWierszeSzynDiff(wynik.bus_diffs, wagi) : []),
-    [wynik, wagi],
-  );
-  const wierszeGalezi = useMemo(
-    () => (wynik ? naWierszeGalezi(wynik.branch_diffs, wagi) : []),
-    [wynik, wagi],
-  );
+  const wierszeSzyn = useMemo(() => {
+    if (!wynik) return [];
+    const zrodlo = tylkoRoznice ? tylkoRozniceSzyn(wynik.bus_diffs) : wynik.bus_diffs;
+    return naWierszeSzynDiff(zrodlo, wagi);
+  }, [wynik, wagi, tylkoRoznice]);
+  const wierszeGalezi = useMemo(() => {
+    if (!wynik) return [];
+    const zrodlo = tylkoRoznice ? tylkoRozniceGalezi(wynik.branch_diffs) : wynik.branch_diffs;
+    return naWierszeGalezi(zrodlo, wagi);
+  }, [wynik, wagi, tylkoRoznice]);
   const wierszeRankingu = useMemo(
     () => (wynik ? naWierszeRankingu(wynik.ranking) : []),
     [wynik],
@@ -336,10 +343,23 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
             ))}
           </div>
 
+          {zakladka !== 'ranking' && (
+            <label className="mvd-por-filtr" data-testid="mvd-por-filtr">
+              <input
+                type="checkbox"
+                checked={tylkoRoznice}
+                onChange={(e) => setTylkoRoznice(e.target.checked)}
+                data-testid="mvd-por-filtr-roznice"
+              />
+              <span className="mvd-por-filtr-etyk">{POROWNANIE_STRINGS.filtrTylkoRoznice}</span>
+              <span className="mvd-por-filtr-opis">{POROWNANIE_STRINGS.filtrOpis}</span>
+            </label>
+          )}
+
           {zakladka === 'szyny' &&
             (wierszeSzyn.length === 0 ? (
               <p className="mvd-por-pusto" data-testid="mvd-por-szyny-puste">
-                {POROWNANIE_STRINGS.brakSzyn}
+                {tylkoRoznice ? POROWNANIE_STRINGS.filtrPusto : POROWNANIE_STRINGS.brakSzyn}
               </p>
             ) : (
               /* F-K4 (znalezisko Z4): wiersz z ISTOTNĄ różnicą prowadzi do szyny
@@ -358,7 +378,7 @@ function TrybRozplywu({ projektId, trybZaawansowania }: EkranPorownaniaProps) {
           {zakladka === 'galezie' &&
             (wierszeGalezi.length === 0 ? (
               <p className="mvd-por-pusto" data-testid="mvd-por-galezie-puste">
-                {POROWNANIE_STRINGS.brakGalezi}
+                {tylkoRoznice ? POROWNANIE_STRINGS.filtrPusto : POROWNANIE_STRINGS.brakGalezi}
               </p>
             ) : (
               <TabelaWynikow

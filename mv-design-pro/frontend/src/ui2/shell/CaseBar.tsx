@@ -42,9 +42,26 @@ export function CaseBar({ info, onOpenProject, onOpenVariants, onPrzejdzDoOblicz
       <span className="mvd-lbl">{SHELL_STRINGS.activeCase}</span>
 
       {info.projectPresent && info.projectName ? (
-        <span className="mvd-chip" data-testid="mvd-casebar-project">
-          {info.projectName}
-        </span>
+        onOpenProject ? (
+          /* KD-1 (parytet L-5): przy OTWARTYM projekcie chip nazwy jest jedynym
+             wejściem do zmiany projektu — dotąd „Otwórz projekt" pokazywał się
+             wyłącznie bez projektu, więc zmiana projektu w powłoce ui2 nie była
+             osiągalna klikiem. Zmiana kontekstu przechodzi przez potwierdzenie
+             w ekranie „Nowy / otwórz projekt". */
+          <button
+            type="button"
+            className="mvd-chip mvd-chip-klik"
+            data-testid="mvd-casebar-project"
+            onClick={onOpenProject}
+            title={SHELL_STRINGS.changeProjectHint}
+          >
+            {info.projectName}
+          </button>
+        ) : (
+          <span className="mvd-chip" data-testid="mvd-casebar-project">
+            {info.projectName}
+          </span>
+        )
       ) : null}
 
       {info.projectPresent && onOpenVariants ? (

@@ -30,6 +30,8 @@ export const SHELL_STRINGS = {
   calculate: 'Oblicz',
   reconnect: 'Połącz ponownie',
   openProject: 'Otwórz projekt',
+  /** Podpowiedź chipu nazwy projektu przy otwartym projekcie (KD-1 / L-5). */
+  changeProjectHint: 'Zmień otwarty projekt',
   resetLayout: 'Przywróć układ domyślny',
   viewMenu: 'Widok',
 

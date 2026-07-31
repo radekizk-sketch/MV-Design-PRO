@@ -48,9 +48,11 @@ import {
   fmtData,
   fmtDeltaKat,
   fmtDeltaMoc,
+  fmtDeltaMocBierna,
   fmtDeltaNapiecie,
   fmtKat,
   fmtMoc,
+  fmtMocBierna,
   fmtNapiecie,
   rodzajProblemuPL,
   wagaPL,
@@ -69,6 +71,12 @@ export const KOLUMNY_SZYN_DIFF: DefinicjaKolumny[] = [
   { klucz: 'katA', etykieta: POROWNANIE_STRINGS.kolKatA, jednostka: POROWNANIE_STRINGS.jednStopnie, mono: true },
   { klucz: 'katB', etykieta: POROWNANIE_STRINGS.kolKatB, jednostka: POROWNANIE_STRINGS.jednStopnie, mono: true },
   { klucz: 'dKat', etykieta: POROWNANIE_STRINGS.kolKatD, jednostka: POROWNANIE_STRINGS.jednStopnie, mono: true },
+  // L-12: moc bierna wstrzykiwana w szynie — pola `q_injected_mvar_a/b`
+  // i `delta_q_mvar` ISTNIEJĄ w payloadzie backendu (`types.ts` PowerFlowBusDiffRow),
+  // ekran ich dotąd nie pokazywał.
+  { klucz: 'qA', etykieta: POROWNANIE_STRINGS.kolMocBiernaA, jednostka: POROWNANIE_STRINGS.jednMvar, mono: true },
+  { klucz: 'qB', etykieta: POROWNANIE_STRINGS.kolMocBiernaB, jednostka: POROWNANIE_STRINGS.jednMvar, mono: true },
+  { klucz: 'dQ', etykieta: POROWNANIE_STRINGS.kolMocBiernaD, jednostka: POROWNANIE_STRINGS.jednMvar, mono: true },
 ];
 
 export const KOLUMNY_GALEZI: DefinicjaKolumny[] = [
@@ -79,6 +87,10 @@ export const KOLUMNY_GALEZI: DefinicjaKolumny[] = [
   { klucz: 'mocA', etykieta: POROWNANIE_STRINGS.kolMocA, jednostka: POROWNANIE_STRINGS.jednMW, mono: true },
   { klucz: 'mocB', etykieta: POROWNANIE_STRINGS.kolMocB, jednostka: POROWNANIE_STRINGS.jednMW, mono: true },
   { klucz: 'dMoc', etykieta: POROWNANIE_STRINGS.kolMocD, jednostka: POROWNANIE_STRINGS.jednMW, mono: true },
+  // L-12: moc bierna gałęzi (początek) — `q_from_mvar_a/b`, `delta_q_from_mvar`.
+  { klucz: 'qA', etykieta: POROWNANIE_STRINGS.kolMocBiernaGalazA, jednostka: POROWNANIE_STRINGS.jednMvar, mono: true },
+  { klucz: 'qB', etykieta: POROWNANIE_STRINGS.kolMocBiernaGalazB, jednostka: POROWNANIE_STRINGS.jednMvar, mono: true },
+  { klucz: 'dQ', etykieta: POROWNANIE_STRINGS.kolMocBiernaGalazD, jednostka: POROWNANIE_STRINGS.jednMvar, mono: true },
 ];
 
 /** Klucz React wiersza rankingu (indeks źródłowy — stabilny przy sortowaniu). */
@@ -168,6 +180,9 @@ export function naWierszeSzynDiff(
       katA: komorka(row.angle_deg_a, fmtKat, refA),
       katB: komorka(row.angle_deg_b, fmtKat, refB),
       dKat: komorkaDelty(row.delta_angle_deg, fmtDeltaKat, flaga),
+      qA: komorka(row.q_injected_mvar_a, fmtMocBierna, refA),
+      qB: komorka(row.q_injected_mvar_b, fmtMocBierna, refB),
+      dQ: komorkaDelty(row.delta_q_mvar, fmtDeltaMocBierna, flaga),
     };
   });
 }
@@ -189,8 +204,47 @@ export function naWierszeGalezi(
       mocA: komorka(row.p_from_mw_a, fmtMoc, refA),
       mocB: komorka(row.p_from_mw_b, fmtMoc, refB),
       dMoc: komorkaDelty(row.delta_p_from_mw, fmtDeltaMoc, flaga),
+      qA: komorka(row.q_from_mvar_a, fmtMocBierna, refA),
+      qB: komorka(row.q_from_mvar_b, fmtMocBierna, refB),
+      dQ: komorkaDelty(row.delta_q_from_mvar, fmtDeltaMocBierna, flaga),
     };
   });
+}
+
+// ---------------------------------------------------------------------------
+// Filtr „pokaż tylko różnice" (karta KD-1, luka L-14)
+// ---------------------------------------------------------------------------
+
+/*
+ * CZYSTA PREZENTACJA: filtr NIE liczy niczego — sprawdza wyłącznie, czy pola
+ * `delta_*` PODANE PRZEZ BACKEND są zerowe. Zero arytmetyki na wielkościach
+ * fizycznych w UI (NOT-A-SOLVER); wiersz bez żadnej niezerowej różnicy jest
+ * ukrywany, kolejność pozostałych wierszy pozostaje źródłowa (Determinism Rule).
+ */
+
+function jakakolwiekRoznica(delty: readonly number[]): boolean {
+  return delty.some((d) => d !== 0);
+}
+
+/** Szyny z co najmniej jedną niezerową różnicą podaną przez backend. */
+export function tylkoRozniceSzyn(rows: PowerFlowBusDiffRow[]): PowerFlowBusDiffRow[] {
+  return rows.filter((row) =>
+    jakakolwiekRoznica([row.delta_v_pu, row.delta_angle_deg, row.delta_p_mw, row.delta_q_mvar]),
+  );
+}
+
+/** Gałęzie z co najmniej jedną niezerową różnicą podaną przez backend. */
+export function tylkoRozniceGalezi(rows: PowerFlowBranchDiffRow[]): PowerFlowBranchDiffRow[] {
+  return rows.filter((row) =>
+    jakakolwiekRoznica([
+      row.delta_p_from_mw,
+      row.delta_q_from_mvar,
+      row.delta_p_to_mw,
+      row.delta_q_to_mvar,
+      row.delta_losses_p_mw,
+      row.delta_losses_q_mvar,
+    ]),
+  );
 }
 
 /**

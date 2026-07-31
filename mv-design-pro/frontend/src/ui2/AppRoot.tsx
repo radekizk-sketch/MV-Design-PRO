@@ -128,6 +128,9 @@ function DrzewoPrzestrzeni({
 
 export function AppRoot() {
   const [zaznaczonyId, setZaznaczonyId] = useState<string | null>(null);
+  // KD-1 (parytet L-5): tryb ZMIANY projektu — ekran „Nowy / otwórz projekt"
+  // pokazany mimo otwartego projektu (wejście „Otwórz projekt" z powłoki).
+  const [zmianaProjektu, setZmianaProjektu] = useState(false);
   const activeSpace = useShellStore((s) => s.activeSpace);
   const advancementMode = useShellStore((s) => s.advancementMode);
   const rewizjaModelu = useRewizjaModelu();
@@ -185,6 +188,12 @@ export function AppRoot() {
     }
   }, [activeProjectId, setActiveSpaceStore]);
 
+  // KD-1 (L-5): tryb zmiany projektu żyje tylko wewnątrz przestrzeni „Projekt" —
+  // wyjście do innej przestrzeni przywraca pulpit otwartego projektu.
+  useEffect(() => {
+    if (activeSpace !== 'projekt') setZmianaProjektu(false);
+  }, [activeSpace]);
+
   const zaznacz = (id: string) => {
     // Okno emituje selekcję z prawdziwym źródłem; stan lokalny ustawi subskrypcja.
     emituj({ typ: 'selekcja', obiektId: id, zrodlo: ZRODLO_DRZEWO_KONTEKSTOWE });
@@ -218,9 +227,12 @@ export function AppRoot() {
     [wykonajAkcjeMenu],
   );
   const otworzPulpitProjektow = () => {
-    // Pulpit projektów (lista + nowy projekt) — trasa legacy #dashboard (most E1.7c).
+    // KD-1 (parytet L-5): „Otwórz projekt" prowadzi do ekranu ui2 „Nowy /
+    // otwórz projekt" TAKŻE przy otwartym projekcie (dotąd skakało na trasę
+    // mostu `#dashboard`, bo ekran ui2 renderował się wyłącznie bez projektu).
+    // Zmiana projektu przechodzi przez potwierdzenie w samym ekranie.
     setActiveSpace('projekt');
-    window.location.hash = '#dashboard';
+    setZmianaProjektu(true);
   };
   // Most tras (E1.7c) wyniesiony do `shell/przejsciaPrzestrzeni.ts` (K4-E2):
   // ta sama prawda nawigacji dla jawnego wyboru przestrzeni w AppShell i dla
@@ -300,8 +312,13 @@ export function AppRoot() {
             // E1a (K4): sekwencja pierwszego użycia — bez aktywnego projektu
             // przestrzeń „Projekt" prowadzi ekranem „Nowy / otwórz projekt"
             // (W-102, realne akcje API w kontenerze); z projektem — pulpit.
-            activeProjectId == null ? (
-              <OtworzProjektKontener />
+            activeProjectId == null || zmianaProjektu ? (
+              <OtworzProjektKontener
+                onWrocDoPulpitu={
+                  activeProjectId == null ? undefined : () => setZmianaProjektu(false)
+                }
+                onProjektOtwarty={() => setZmianaProjektu(false)}
+              />
             ) : (
               <PulpitProjektu
                 onNawiguj={wybierzPrzestrzen}

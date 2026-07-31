@@ -9,6 +9,8 @@ import {
   naWierszeRankingu,
   naWierszeSzynDiff,
   naZalozeniaPorownania,
+  tylkoRozniceGalezi,
+  tylkoRozniceSzyn,
 } from '../porownanieModel';
 import { POROWNANIE_STRINGS } from '../strings';
 import {
@@ -210,5 +212,85 @@ describe('kolumny — kontrakt deklaratywny', () => {
     const dV = KOLUMNY_SZYN_DIFF.find((k) => k.klucz === 'dV');
     expect(dV?.jednostka).toBe(POROWNANIE_STRINGS.jednPu);
     expect(dV?.mono).toBe(true);
+  });
+
+  it('kolumny mocy biernej mają jednostkę Mvar (KD-1 / L-12)', () => {
+    const dQ = KOLUMNY_SZYN_DIFF.find((k) => k.klucz === 'dQ');
+    expect(dQ?.jednostka).toBe(POROWNANIE_STRINGS.jednMvar);
+    expect(dQ?.mono).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// KD-1: moc bierna w porównaniu (L-12) i filtr „tylko różnice" (L-14)
+// ---------------------------------------------------------------------------
+
+describe('L-12 — kolumny mocy biernej z payloadu backendu', () => {
+  it('szyna: Q A/B i ΔQ pochodzą z pól q_injected_mvar_* i delta_q_mvar', () => {
+    const wiersz = naWierszeSzynDiff([busDiffFixture()], new Map())[0];
+    expect(wiersz.qA.wartosc).toBe('2,000');
+    expect(wiersz.qB.wartosc).toBe('2,300');
+    expect(wiersz.dQ.wartosc).toBe('+0,300');
+    expect(wiersz.dQ.sortKey).toBe(0.3);
+  });
+
+  it('gałąź: Q A/B i ΔQ pochodzą z pól q_from_mvar_* i delta_q_from_mvar', () => {
+    const wiersz = naWierszeGalezi([branchDiffFixture()], new Map())[0];
+    expect(wiersz.qA.wartosc).toBe('1,100');
+    expect(wiersz.qB.wartosc).toBe('1,300');
+    expect(wiersz.dQ.wartosc).toBe('+0,200');
+  });
+
+  it('kolumna Δ mocy biernej nie otwiera dowodu (różnica bez wywodu WHITE BOX)', () => {
+    const wiersz = naWierszeSzynDiff([busDiffFixture()], new Map())[0];
+    expect(wiersz.qA.dowodRef).toBeDefined();
+    expect(wiersz.dQ.dowodRef).toBeUndefined();
+  });
+});
+
+describe('L-14 — filtr „pokaż tylko różnice" (czysta prezentacja na deltach backendu)', () => {
+  const bezRoznic = {
+    delta_v_pu: 0,
+    delta_angle_deg: 0,
+    delta_p_mw: 0,
+    delta_q_mvar: 0,
+  };
+
+  it('szyny: zostają wyłącznie wiersze z niezerową deltą', () => {
+    const rows = [
+      busDiffFixture({ bus_id: 'ROZNA' }),
+      busDiffFixture({ bus_id: 'IDENTYCZNA', ...bezRoznic }),
+    ];
+    expect(tylkoRozniceSzyn(rows).map((r) => r.bus_id)).toEqual(['ROZNA']);
+  });
+
+  it('szyny: różnica WYŁĄCZNIE w mocy biernej też zatrzymuje wiersz', () => {
+    const rows = [busDiffFixture({ bus_id: 'TYLKO-Q', ...bezRoznic, delta_q_mvar: 0.01 })];
+    expect(tylkoRozniceSzyn(rows)).toHaveLength(1);
+  });
+
+  it('gałęzie: wiersz bez żadnej niezerowej delty jest ukrywany', () => {
+    const rows = [
+      branchDiffFixture({ branch_id: 'ROZNA' }),
+      branchDiffFixture({
+        branch_id: 'IDENTYCZNA',
+        delta_p_from_mw: 0,
+        delta_q_from_mvar: 0,
+        delta_p_to_mw: 0,
+        delta_q_to_mvar: 0,
+        delta_losses_p_mw: 0,
+        delta_losses_q_mvar: 0,
+      }),
+    ];
+    expect(tylkoRozniceGalezi(rows).map((r) => r.branch_id)).toEqual(['ROZNA']);
+  });
+
+  it('filtr zachowuje kolejność źródłową (Determinism Rule)', () => {
+    const rows = [
+      busDiffFixture({ bus_id: 'A' }),
+      busDiffFixture({ bus_id: 'B', ...bezRoznic }),
+      busDiffFixture({ bus_id: 'C' }),
+    ];
+    expect(tylkoRozniceSzyn(rows).map((r) => r.bus_id)).toEqual(['A', 'C']);
   });
 });

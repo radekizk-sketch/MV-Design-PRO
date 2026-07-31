@@ -41,6 +41,36 @@ export const OTWORZ_STRINGS = {
   otworz: 'Otwórz',
   brakProjektow: 'Brak istniejących projektów',
   ladowanieProjektow: 'Wczytywanie listy projektów…',
+
+  // Parytet z mostem #dashboard (karta KD-1, luki L-2…L-5)
+  odswiezListe: 'Odśwież listę',
+  usunProjekt: 'Usuń projekt',
+  usunTytul: 'Usunąć projekt?',
+  usunPytanie: (nazwa: string) =>
+    `Projekt „${nazwa}" zostanie trwale usunięty razem z modelem sieci, wariantami obliczeń i historią przebiegów.`,
+  usunNieodwracalne: 'Operacji nie można cofnąć.',
+  usunPotwierdz: 'Usuń projekt',
+  anuluj: 'Anuluj',
+  usunieto: (nazwa: string) => `Usunięto projekt „${nazwa}".`,
+  bladUsuwania: 'Nie udało się usunąć projektu.',
+
+  // Nowy projekt z własną nazwą i opisem (L-3)
+  wlasnaNazwa: 'Nazwij projekt samodzielnie',
+  nowyTytul: 'Nowy projekt',
+  nowyNazwa: 'Nazwa projektu',
+  nowyNazwaPodpis: 'np. GPZ Wschód — magistrala miejska',
+  nowyOpis: 'Opis (opcjonalnie)',
+  nowyOpisPodpis: 'Zakres opracowania, numer zlecenia, uwagi projektowe',
+  nowyUtworz: 'Utwórz projekt',
+  bladNazwaPusta: 'Podaj nazwę projektu.',
+
+  // Zmiana projektu przy otwartym projekcie (L-5)
+  zmianaTytul: 'Zmienić otwarty projekt?',
+  zmianaPytanie: (biezacy: string, nowy: string) =>
+    `Zamkniesz projekt „${biezacy}" i otworzysz „${nowy}". Niezapisane ustawienia widoku bieżącego projektu zostaną porzucone.`,
+  zmianaSkutek: 'Model, warianty obliczeń i wyniki bieżącego projektu pozostaną nienaruszone na serwerze.',
+  zmianaPotwierdz: 'Otwórz wskazany projekt',
+  wrocDoPulpitu: 'Wróć do pulpitu projektu',
 } as const;
 
 /** Gotowy przykład galerii startowej (SPEC_KREATORY_2026-07.md §4, tabela P-01…P-05). */

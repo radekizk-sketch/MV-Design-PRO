@@ -18,12 +18,13 @@ import { render, screen, fireEvent, waitFor, cleanup, act } from '@testing-libra
 import { OtworzProjektKontener } from '../OtworzProjektKontener';
 import { OTWORZ_STRINGS, PRZYKLADY } from '../strings';
 import { useAppStateStore } from '../../../../../ui/app-state';
-import { createProject, listProjects } from '../../../../../ui/projects/api';
+import { createProject, deleteProject, listProjects } from '../../../../../ui/projects/api';
 import { createStudyCase, getActiveStudyCase } from '../../../../../ui/study-cases/api';
 
 vi.mock('../../../../../ui/projects/api', () => ({
   listProjects: vi.fn(),
   createProject: vi.fn(),
+  deleteProject: vi.fn(),
 }));
 
 vi.mock('../../../../../ui/study-cases/api', () => ({
@@ -135,5 +136,166 @@ describe('OtworzProjektKontener — realne akcje E1a (K4)', () => {
     for (const p of PRZYKLADY) {
       expect(screen.queryByText(p.nazwa)).toBeNull();
     }
+  });
+
+  // -------------------------------------------------------------------------
+  // Parytet z mostem `#dashboard` (karta KD-1, luki L-2…L-5)
+  // -------------------------------------------------------------------------
+
+  it('L-3: własna nazwa i opis trafiają do POST /api/projects (bez metryki celu)', async () => {
+    (createProject as Mock).mockResolvedValue(projektOdpowiedz('proj-7', 'GPZ Wschód'));
+    (createStudyCase as Mock).mockResolvedValue({
+      id: 'case-7',
+      project_id: 'proj-7',
+      name: 'Wariant bazowy',
+      description: '',
+      case_type: 'ShortCircuitCase',
+      is_active: true,
+      result_status: 'NONE',
+      created_at: CZAS,
+      updated_at: CZAS,
+      config: {},
+    });
+
+    render(<OtworzProjektKontener />);
+    fireEvent.click(await screen.findByTestId('mvd-projekty-wlasna-nazwa'));
+    fireEvent.change(screen.getByTestId('mvd-nowy-projekt-nazwa'), {
+      target: { value: '  GPZ Wschód  ' },
+    });
+    fireEvent.change(screen.getByTestId('mvd-nowy-projekt-opis'), {
+      target: { value: 'Zlecenie 2026/114' },
+    });
+    fireEvent.click(screen.getByTestId('mvd-nowy-projekt-utworz'));
+
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeProjectId).toBe('proj-7');
+    });
+    expect(createProject).toHaveBeenCalledWith({
+      name: 'GPZ Wschód',
+      description: 'Zlecenie 2026/114',
+      mode: 'TO-BE',
+      voltage_level_kv: 15.0,
+      frequency_hz: 50.0,
+    });
+  });
+
+  it('L-3: pusta nazwa nie tworzy projektu (walidacja w dialogu)', async () => {
+    render(<OtworzProjektKontener />);
+    fireEvent.click(await screen.findByTestId('mvd-projekty-wlasna-nazwa'));
+    fireEvent.click(screen.getByTestId('mvd-nowy-projekt-utworz'));
+
+    expect(screen.getByTestId('mvd-nowy-projekt-blad')).toHaveTextContent(
+      OTWORZ_STRINGS.bladNazwaPusta,
+    );
+    expect(createProject).not.toHaveBeenCalled();
+  });
+
+  it('L-4: „Odśwież listę" ponownie woła GET /api/projects', async () => {
+    vi.mocked(listProjects).mockResolvedValue([projektOdpowiedz('PR1', 'Sieć A')]);
+    render(<OtworzProjektKontener />);
+    await screen.findByText('Sieć A');
+    expect(listProjects).toHaveBeenCalledTimes(1);
+
+    vi.mocked(listProjects).mockResolvedValue([
+      projektOdpowiedz('PR1', 'Sieć A'),
+      projektOdpowiedz('PR2', 'Sieć B'),
+    ]);
+    fireEvent.click(screen.getByTestId('mvd-projekty-odswiez'));
+
+    expect(await screen.findByText('Sieć B')).toBeInTheDocument();
+    expect(listProjects).toHaveBeenCalledTimes(2);
+  });
+
+  it('L-2: usunięcie wymaga potwierdzenia, potem woła DELETE i odświeża listę', async () => {
+    vi.mocked(listProjects).mockResolvedValue([projektOdpowiedz('PR1', 'Sieć do kasacji')]);
+    (deleteProject as Mock).mockResolvedValue(undefined);
+
+    render(<OtworzProjektKontener />);
+    fireEvent.click(await screen.findByText('Sieć do kasacji'));
+    fireEvent.click(screen.getByTestId('mvd-projekty-usun'));
+
+    // Dialog potwierdzenia — sama prośba NIE usuwa (operacja nieodwracalna).
+    expect(screen.getByTestId('mvd-projekty-usun-dialog')).toBeInTheDocument();
+    expect(deleteProject).not.toHaveBeenCalled();
+
+    vi.mocked(listProjects).mockResolvedValue([]);
+    fireEvent.click(screen.getByTestId('mvd-projekty-usun-dialog-potwierdz'));
+
+    await waitFor(() => {
+      expect(deleteProject).toHaveBeenCalledWith('PR1');
+    });
+    expect(await screen.findByText(OTWORZ_STRINGS.brakProjektow)).toBeInTheDocument();
+  });
+
+  it('L-2: anulowanie potwierdzenia nie usuwa projektu', async () => {
+    vi.mocked(listProjects).mockResolvedValue([projektOdpowiedz('PR1', 'Sieć zostaje')]);
+
+    render(<OtworzProjektKontener />);
+    fireEvent.click(await screen.findByText('Sieć zostaje'));
+    fireEvent.click(screen.getByTestId('mvd-projekty-usun'));
+    fireEvent.click(screen.getByTestId('mvd-projekty-usun-dialog-anuluj'));
+
+    expect(screen.queryByTestId('mvd-projekty-usun-dialog')).toBeNull();
+    expect(deleteProject).not.toHaveBeenCalled();
+  });
+
+  it('L-2: usunięcie AKTYWNEGO projektu czyści kontekst aplikacji', async () => {
+    vi.mocked(listProjects).mockResolvedValue([projektOdpowiedz('PR1', 'Sieć aktywna')]);
+    (deleteProject as Mock).mockResolvedValue(undefined);
+    act(() => {
+      useAppStateStore.getState().setActiveProject('PR1', 'Sieć aktywna');
+      useAppStateStore.getState().setActiveCase('case-1', 'Wariant', null, 'NONE');
+    });
+
+    render(<OtworzProjektKontener onWrocDoPulpitu={() => {}} />);
+    fireEvent.click(await screen.findByText('Sieć aktywna'));
+    fireEvent.click(screen.getByTestId('mvd-projekty-usun'));
+    vi.mocked(listProjects).mockResolvedValue([]);
+    fireEvent.click(screen.getByTestId('mvd-projekty-usun-dialog-potwierdz'));
+
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeProjectId).toBeNull();
+    });
+    expect(useAppStateStore.getState().activeCaseId).toBeNull();
+  });
+
+  it('L-5: zmiana projektu przy otwartym projekcie przechodzi przez potwierdzenie', async () => {
+    vi.mocked(listProjects).mockResolvedValue([
+      projektOdpowiedz('PR1', 'Sieć bieżąca'),
+      projektOdpowiedz('PR2', 'Sieć docelowa'),
+    ]);
+    (getActiveStudyCase as Mock).mockResolvedValue(null);
+    act(() => {
+      useAppStateStore.getState().setActiveProject('PR1', 'Sieć bieżąca');
+    });
+
+    render(<OtworzProjektKontener onWrocDoPulpitu={() => {}} />);
+    fireEvent.doubleClick(await screen.findByText('Sieć docelowa'));
+
+    // Bez potwierdzenia kontekst pozostaje na bieżącym projekcie.
+    expect(screen.getByTestId('mvd-projekty-zmiana-dialog')).toBeInTheDocument();
+    expect(useAppStateStore.getState().activeProjectId).toBe('PR1');
+
+    fireEvent.click(screen.getByTestId('mvd-projekty-zmiana-dialog-potwierdz'));
+    await waitFor(() => {
+      expect(useAppStateStore.getState().activeProjectId).toBe('PR2');
+    });
+    expect(useAppStateStore.getState().activeProjectName).toBe('Sieć docelowa');
+  });
+
+  it('L-5: ponowne otwarcie TEGO SAMEGO projektu nie pyta o zmianę kontekstu', async () => {
+    vi.mocked(listProjects).mockResolvedValue([projektOdpowiedz('PR1', 'Sieć bieżąca')]);
+    (getActiveStudyCase as Mock).mockResolvedValue(null);
+    act(() => {
+      useAppStateStore.getState().setActiveProject('PR1', 'Sieć bieżąca');
+    });
+
+    render(<OtworzProjektKontener onWrocDoPulpitu={() => {}} />);
+    fireEvent.doubleClick(await screen.findByText('Sieć bieżąca'));
+
+    expect(screen.queryByTestId('mvd-projekty-zmiana-dialog')).toBeNull();
+    await waitFor(() => {
+      expect(getActiveStudyCase).toHaveBeenCalledWith('PR1');
+    });
   });
 });
