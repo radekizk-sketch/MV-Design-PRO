@@ -110,6 +110,24 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/kadrTresci.contract.test.tsx --reporter=verbose
 
+      # KD-8 poz. 5: prześwit podpisu szyny od toru (styk, nie tylko przecięcie)
+      # + próg czytelności opisów jako jawna stała gramatyki.
+      - name: Run SLD v3 busbar label clearance contract tests (KD-8)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/scene/__tests__/busbarLabelClearance.test.ts --reporter=verbose
+
+      # KD-8 poz. 1: paleta rysunku sterowana motywem — parytet kluczy,
+      # semantyka klas napięć, kontrast i NIEZALEŻNOŚĆ hashu geometrii sceny
+      # od motywu (paleta nie wchodzi do sceny).
+      - name: Run SLD v3 theme palette contract tests (KD-8)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/theme/__tests__/palette.test.ts --reporter=verbose
+
+      # KD-8 poz. 2: rozłączność grup jednej warstwy narzędzi kanwy.
+      - name: Run SLD v3 canvas toolbar layout contract tests (KD-8)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/toolbarLayout.contract.test.ts --reporter=verbose
+
       - name: Run SLD v3 render-odbiór acceptance (F7/F8b-2)
         working-directory: mv-design-pro/frontend
         run: npm run accept:sld-v3
