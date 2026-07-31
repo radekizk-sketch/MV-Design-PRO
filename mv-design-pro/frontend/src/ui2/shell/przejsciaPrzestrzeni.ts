@@ -33,7 +33,6 @@ const TRASY_NADRZEDNE: ReadonlySet<string> = new Set([
   '#sld',
   '#sld-view',
   '#dashboard',
-  '#kreator-stacji-v2',
   '#fault-scenarios',
   '#enm-inspector',
 ]);

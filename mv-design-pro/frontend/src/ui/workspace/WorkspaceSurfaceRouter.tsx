@@ -2858,7 +2858,6 @@ function renderSurfaceBody(surface: WorkspaceSurfaceDescriptor) {
     case 'catalog_picker':
     case 'E-38':
       return <CatalogHelperSurface surface={surface} />;
-    case 'switchgear_wizard':
     case ANALYSIS_SURFACE_SCREEN_CODE:
       return <AnalysisSurface surface={surface} />;
     case REPORT_SURFACE_SCREEN_CODE:

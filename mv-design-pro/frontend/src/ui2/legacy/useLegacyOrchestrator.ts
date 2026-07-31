@@ -9,7 +9,7 @@
  *
  * Zakres wyniesionych efektów:
  * - hydracja store'ów z URL: ?project / ?case / ?run / ?snapshot (+ nazwy z API),
- * - deep-linki #analysis / #proof / #report / #catalog / #switchgear przez
+ * - deep-linki #analysis / #proof / #report / #catalog przez
  *   openRouteSurface (WorkspaceSurfaceRouter); K8: #variants, #case-config,
  *   #power-flow-results i #protection-results są WYGASZONE — lądują w oknach
  *   ui2 wg `LADOWISKA_WYGASZONYCH_TRAS` (bez powierzchni mostu),
@@ -196,9 +196,6 @@ function resolveRouteArea(route: string): AreaId | null {
   }
   if (route === ROUTES.CATALOG.hash) {
     return 'KATALOGI_TECHNICZNE';
-  }
-  if (route === ROUTES.SWITCHGEAR.hash) {
-    return 'SCHEMAT_TOPOLOGIA';
   }
   if (route === ROUTES.FAULT_SCENARIOS.hash) {
     return 'STUDIA_OBLICZENIOWE';
@@ -986,13 +983,6 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
       openRouteSurface('E-38', {
         subjectKind: 'helper_context',
         subjectRef: params.get('sel') ?? 'catalog-root',
-      });
-      return;
-    }
-    if (route === ROUTES.SWITCHGEAR.hash) {
-      openRouteSurface('switchgear_wizard', {
-        subjectKind: 'helper_context',
-        subjectRef: params.get('case') ?? params.get('snapshot') ?? 'switchgear-context',
       });
       return;
     }

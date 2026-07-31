@@ -53,7 +53,11 @@ test.describe('Wiring kanwy SLD (v3)', () => {
     await expect(page.getByTestId('sld-empty-state-open-catalogs')).toContainText(
       'Przeglądaj katalogi techniczne',
     );
-    await expect(page.getByTestId('sld-empty-state-open-station-wizard')).toBeVisible();
+    // KD-1: trzecia akcja („Otwórz konfigurację stacji (17 kroków)" → trasa
+    // `#kreator-stacji-v2`) USUNIĘTA razem z martwym podzespołem kreatora v2
+    // (inwentarz parytetu mostów L-6). Intencja testu bez zmian: pusty stan ma
+    // WYŁĄCZNIE akcje o realnym dostawcy — żadnego martwego odnośnika.
+    await expect(page.getByTestId('sld-empty-state-open-station-wizard')).toHaveCount(0);
   });
 
   test('trasa #sld-view renderuje workspace w trybie tylko-do-odczytu', async ({ page }) => {

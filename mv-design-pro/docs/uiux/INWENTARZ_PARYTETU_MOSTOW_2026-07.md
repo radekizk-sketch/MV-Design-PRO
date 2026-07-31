@@ -1,6 +1,10 @@
 # INWENTARZ PARYTETU MOSTÓW LEGACY — trasa po trasie (karta K8, 2026-07-31)
 
-**Status:** WIĄŻĄCY. Dokument rejestruje, które trasy mostu legacy (stare
+**Status:** WIĄŻĄCY. Aktualizacja 2026-07-31 (karta KD-1, fala 1 kolejki długu):
+domknięte luki L-2…L-5 (zarządzanie projektami w ui2), L-12 i L-14 (porównanie
+A/B) oraz WYKONANE kasacje L-6 i L-17 (werdykty MARTWY → USUNIĘTO).
+
+Dokument rejestruje, które trasy mostu legacy (stare
 powierzchnie `frontend/src/ui/**` hostowane w powłoce ui2) mają PEŁNY parytet
 funkcji w ui2 — te są wygaszane — a które zostają, z **imiennie nazwaną luką**.
 
@@ -32,20 +36,20 @@ trasę spoza rejestru (`#kreator-stacji-v2`, obsługiwaną wprost w `LegacyWarsz
 |---|-------|-------------------|---------------------|-----------------|---------|
 | 1 | `#` / `#sld` | `SldCanvasV3Workspace` (kanwa budowy) | przestrzeń Model/Schemat, `navigateToNetworkBuild`, menu | brak (kanwa JEST kanoniczna; ui2 dokłada `NastepnyKrokSchematu`) | **ZOSTAWIĆ** (wątek SLD) |
 | 2 | `#sld-view` | `SldCanvasV3Workspace readOnly` | Ctrl+K „Podgląd schematu” | brak trybu tylko-do-odczytu w ui2 | **ZOSTAWIĆ** (luka L-1) |
-| 3 | `#dashboard` | `ProjectDashboardSurface` (lista, otwórz, nowy z modalem, **usuń**, odśwież) | „Otwórz projekt” w powłoce i na pulpicie (`AppRoot.otworzPulpitProjektow`) | `spaces/projekt/otworz/OtworzProjektKontener` (lista, otwórz, nowy z celu) | **ZOSTAWIĆ** (luki L-2…L-5) |
-| 4 | `#kreator-stacji-v2` | `StationWizardSurface` → `StationWizardWorkspace` | **brak** (żaden kod produkcyjny nie ustawia tego hasha) | `ui2/kreatory/stacja/KreatorStacjiSnNn` — realny kreator, wpięty przez `operationFormRegistry` (`insert_station_on_segment_sn`, `append_station_on_endpoint`) | **MARTWY jako trasa** (luka L-6) |
+| 3 | `#dashboard` | `ProjectDashboardSurface` (lista, otwórz, nowy z modalem, **usuń**, odśwież) | po KD-1 wyłącznie zimny deep-link starym adresem — „Otwórz projekt” i chip nazwy projektu prowadzą do ui2 | `spaces/projekt/otworz/OtworzProjektKontener` — PEŁNY parytet po KD-1: lista, otwórz, nowy z celu, **nowy z własną nazwą i opisem**, **odśwież listę**, **usuń z potwierdzeniem**, **zmiana projektu przy otwartym projekcie** | **ZOSTAWIĆ** (parytet osiągnięty; L-2…L-5 zamknięte) |
+| 4 | ~~`#kreator-stacji-v2`~~ | — (trasa i podzespół USUNIĘTE w KD-1) | **znalezisko KD-1:** wejście JEDNAK istniało — odnośnik „Otwórz konfigurację stacji (17 kroków)” w PUSTYM stanie kanwy SLD (`<a href>`, którego inwentarz K8 nie zmierzył, bo szukał wywołań `navigateTo*`); usunięty razem z trasą (w pustym modelu nie ma na czym osadzić stacji) | `ui2/kreatory/stacja/KreatorStacjiSnNn` — realny kreator, wpięty przez `operationFormRegistry` (`insert_station_on_segment_sn`, `append_station_on_endpoint`) | **USUNIĘTO** ✅ (L-6 zamknięta) |
 | 5 | `#fault-scenarios` | `FaultScenariosPanel` + `FaultScenarioModal` | **brak** (`navigateToFaultScenarios` bez wołającego) | brak | **ZOSTAWIĆ** (defekt naprawiony w K8 — patrz §4; luka L-7) |
 | 6 | `#enm-inspector` | `EnmInspectorPage` za flagą `ENM_INSPECTOR_VISIBLE` (domyślnie OFF) | brak | brak (narzędzie deweloperskie) | **ZOSTAWIĆ** (luka L-8) |
 | 7 | `#analysis` / `#results` | hub „Analizy techniczne” — od F-E5c dostawcą jest **ui2** (`MostAnalizTechnicznych` → `EkranAnalizTechnicznych`); most renderuje tylko powierzchnie-dzieci | menu, `navigateToResults` po DONE, deep-link | `wyniki/analizy/EkranAnalizTechnicznych` + zakładki warsztatu | **ZOSTAWIĆ** (widok domyślny już ui2; zakładka „Pozostałe analizy” = reszta mostu, luka L-9) |
 | 8 | `#proof` (alias, `tab=trace`) | `ElementCalculationProofPanel` + `ProofLatexPanel` (źródło LaTeX: kopiuj/pobierz `.tex`) | `InspectorPanel` („Otwórz wywód”), Ctrl+K „Dowód obliczeniowy” (→ zakładka ui2, nie trasa) | zakładka „Dowód obliczeń” (`DowodPrzebiegu` → `PrzegladDowodu`): kroki WHITE BOX + odcisk wejścia | **ZOSTAWIĆ** (luki L-10, L-11) |
-| 9 | `#compare` (alias) | `ResultsComparisonPage` (`POST /api/comparison/runs`): szyny U[kV]+U[pu]+Δ%, gałęzie P/Q+Δ%, zwarcia jako 2 skalary, filtr „tylko różnice”, status IMPROVED/REGRESSED (heurystyka w UI) | Ctrl+K „Porównanie przebiegów” (→ zakładka ui2, nie trasa) | zakładka „Porównanie A/B” (`EkranPorownania` + `TrybZwarciowy`): tryb rozpływowy (`/api/power-flow-comparisons`) i zwarciowy (tabela punktów Ik″/ip/Ith/Sk), ranking problemów, dowód kolumny A i B | **ZOSTAWIĆ** (luki L-12…L-14) |
+| 9 | `#compare` (alias) | `ResultsComparisonPage` (`POST /api/comparison/runs`): szyny U[kV]+U[pu]+Δ%, gałęzie P/Q+Δ%, zwarcia jako 2 skalary, filtr „tylko różnice”, status IMPROVED/REGRESSED (heurystyka w UI) | Ctrl+K „Porównanie przebiegów” (→ zakładka ui2, nie trasa) | zakładka „Porównanie A/B” (`EkranPorownania` + `TrybZwarciowy`): tryb rozpływowy (`/api/power-flow-comparisons`) i zwarciowy (tabela punktów Ik″/ip/Ith/Sk), ranking problemów, dowód kolumny A i B | **ZOSTAWIĆ** (po KD-1 pozostaje wyłącznie luka L-13 — brak pola `percent` w backendzie; L-12 i L-14 zamknięte) |
 | 10 | `#power-flow-results` (alias) | powierzchnia E-35 z `tabId='power-flow'` — **zakładka bez własnej gałęzi renderu**, więc GENERYCZNA `AnalysisDataTable` (te same wiersze dla każdej zakładki, limit 200) | brak wołającego produkcyjnego; zimny deep-link | zakładka „Rozpływ mocy” (`EkranRozplywu`: `TabelaSzyn`, `TabelaGalezi`, profil napięć, wejście w dowód) | **WYGASIĆ** ✅ (nadzbiór) |
 | 11 | `#protection-results` (alias) | powierzchnia E-35 z `tabId='protection'` — jak wyżej: GENERYCZNA tabela, zero treści zabezpieczeniowej | Ctrl+K „Wyniki zabezpieczeń” (`useLegacyMenuActions`, akcja `protection`) | **NOWA** zakładka „Koordynacja zabezpieczeń” (`EkranKoordynacji` — dostawca ui2 ekranu E-28: krzywe TCC, marginesy CTI, nastawy z backendu) | **WYGASIĆ** ✅ (nadzbiór) |
 | 12 | `#report` | `ReportSurface` (E-37) — generator raportu, eksporty OSD/audytowe | Ctrl+K „Generator raportu”, `WorkspaceOperationalBar`, karty huba Dokumentacji | brak w ui2 (`HubDokumentacji` tylko prowadzi do powierzchni mostu) | **ZOSTAWIĆ** (luka L-15) |
 | 13 | `#variants` | `VariantsSurface` (E-08, klasa B → prawy panel): karta read-only (projekt, wariant, stan obliczeń, liczba przebiegów, ostatni przebieg, następny krok) + 4 przyciski nawigacyjne | Ctrl+K „Warianty i przebiegi”, `WorkspaceOperationalBar` | przestrzeń „Obliczenia” (`MenedzerPrzypadkow` + `PrzebiegiPanel` — historia z parametrami i odciskiem odtwarzalności) + przestrzenie docelowe przycisków (Wyniki / Dokumentacja / Gotowość) | **WYGASIĆ** ✅ (nadzbiór) |
 | 14 | `#case-config` | powierzchnia E-07 — **`renderSurfaceBody` NIE MA gałęzi dla `E-07`**, więc prawy panel pokazywał sam nagłówek „Zakresy obliczeń” bez treści i zasłaniał inspektor ui2 | Ctrl+K „Konfiguracja zakresu obliczeń”, **oraz każde jawne wejście w przestrzeń „Obliczenia”** (`przejsciaPrzestrzeni.mostTrasyPrzestrzeni`) | przestrzeń „Obliczenia” (`MenedzerPrzypadkow`: lista, nowy, aktywacja, porównanie konfiguracji) | **WYGASIĆ** ✅ (most nie miał czego pokazać) |
 | 15 | `#catalog` | `CatalogHelperSurface` (E-38) → `CatalogBrowser`, 8 przestrzeni nazw: `LINIA_SN`, `KABEL_SN`, `TRAFO_SN_NN`, `APARAT_SN`, `APARAT_NN`, `KABEL_NN`, `CT`, `VT` | Ctrl+K „Katalogi techniczne”, pasek narzędzi, `NcRfgTestsTab` | zakładka „Katalog” przestrzeni Model (`KatalogPanel`), 5 kategorii: `LINIA`, `KABEL`, `TRANSFORMATOR`, `APARAT`, `FALOWNIK` (+ „Gdzie użyty”) | **ZOSTAWIĆ** (luka L-16) |
-| 16 | `#switchgear` | powierzchnia pomocnicza `switchgear_wizard` — router kieruje ją do **`AnalysisSurface`** (ta sama gałąź co E-35): tytuł „Rozdzielnica: pola i aparaty”, treść = nawigacja analityczna i tabela wyników | Ctrl+K „Kreator rozdzielnicy” | brak trasowego odpowiednika (konfiguracja pól żyje w kartach E-10/E-11 otwieranych z kanwy) | **MARTWY (phantom)** (luka L-17) |
+| 16 | ~~`#switchgear`~~ | — (trasa, powierzchnia pomocnicza `switchgear_wizard` i pozycja Ctrl+K „Kreator rozdzielnicy” USUNIĘTE w KD-1; nieznany hash → zachowanie domyślne aplikacji) | — | konfiguracja pól żyje w kartach E-10/E-11 otwieranych z kanwy (jedyny uczciwy dostawca) | **USUNIĘTO** ✅ (L-17 zamknięta) |
 | 17 | `#kreator-stacji-v2` — patrz #4 | | | | |
 
 Legenda: ✅ = wygaszone w karcie K8 (trasa prowadzi do okna ui2, kontekst zachowany).
@@ -92,22 +96,22 @@ Format: **zdolność · miejsce w ui2 · czego brakuje**.
 | Kod | Zdolność | Miejsce w ui2 | Czego brakuje |
 |-----|----------|---------------|---------------|
 | L-1 | Podgląd schematu tylko do odczytu | przestrzeń „Schemat” | tryb read-only kanwy (blokada edycji) osiągalny z powłoki ui2 |
-| L-2 | Usunięcie projektu | `spaces/projekt/otworz` | akcja „Usuń projekt” + dialog potwierdzenia (`DELETE /api/projects/{id}` istnieje, klient `deleteProject` istnieje) |
-| L-3 | Nowy projekt z dowolną nazwą i opisem | `OtworzProjektKontener` | ui2 wyprowadza nazwę/opis z celu pracy (4 predefiniowane) — brak pól swobodnych |
-| L-4 | Odświeżenie listy projektów | `ListaProjektow` | akcja „Odśwież listę” (ui2 ładuje listę raz przy montażu) |
-| L-5 | Zmiana projektu przy aktywnym projekcie | przestrzeń „Projekt” | `OtworzProjektKontener` renderuje się tylko przy `activeProjectId == null`; „Otwórz projekt” nadal prowadzi na trasę mostu `#dashboard` |
-| L-6 | Kreator stacji jako powierzchnia trasowa | `ui2/kreatory/stacja` | decyzja + krok kasacyjny dla `station-wizard-v2` (`StationWizardSurface`/`Workspace` + 4 komponenty + testy) — kreator ui2 jest wpięty tylko jako formularz operacji domenowej |
+| L-2 | Usunięcie projektu | `spaces/projekt/otworz` | ZAMKNIĘTA (KD-1): akcja „Usuń projekt” + dialog potwierdzenia w `ListaProjektow`/`OtworzProjekt`, `DELETE /api/projects/{id}` w kontenerze; usunięcie AKTYWNEGO projektu czyści kontekst aplikacji |
+| L-3 | Nowy projekt z dowolną nazwą i opisem | `OtworzProjektKontener` | ZAMKNIĘTA (KD-1): dialog „Nowy projekt” (`NowyProjektDialog`) z polami nazwa + opis mapowanymi 1:1 na `POST /api/projects`; ścieżka od celu pozostaje pierwszoplanowa |
+| L-4 | Odświeżenie listy projektów | `ListaProjektow` | ZAMKNIĘTA (KD-1): akcja „Odśwież listę” (ponowne `GET /api/projects`) |
+| L-5 | Zmiana projektu przy aktywnym projekcie | przestrzeń „Projekt” | ZAMKNIĘTA (KD-1): ekran „Nowy / otwórz projekt” renderuje się TAKŻE przy otwartym projekcie (chip nazwy projektu w pasku przypadku), zmiana projektu przez dialog potwierdzenia, powrót na pulpit bez zmiany kontekstu |
+| L-6 | Kreator stacji jako powierzchnia trasowa | `ui2/kreatory/stacja` | ZAMKNIĘTA (KD-1): podzespół `station-wizard-v2` (7 komponentów + 7 testów + spec e2e + trasa) USUNIĘTY; kontrakty inżynierskie (`*Contract.ts`, `vendorSwitchgearCatalog`, `vendorBayRoleBridge`) ZOSTAJĄ — mają własne testy i pilnuje ich `scadaComplianceContract` |
 | L-7 | Scenariusze zwarciowe (lista, dodanie, uruchomienie) | brak | okno ui2 dla scenariuszy + wejście w powłoce (dziś tylko trasa mostu bez nawigatora) |
 | L-8 | Inspektor modelu ENM | brak | narzędzie diagnostyczne pozostaje za flagą OFF — świadomie poza UI inżyniera |
 | L-9 | Powierzchnie zakładki „Pozostałe analizy” | `wyniki/analizy` | reszta wg `PLAN_WYGASZANIA_MOSTU_WYNIKI.md` (V12.6 akademicki, testy NC RfG, kreator porównania) |
 | L-10 | Źródło LaTeX wywodu (kopiuj / pobierz `.tex`) | zakładka „Dowód obliczeń” | `ProofLatexPanel` (`GET` wywodu LaTeX) nie ma odpowiednika w `PrzegladDowodu` |
 | L-11 | Dowód zawężony do WSKAZANEGO elementu | zakładka „Dowód obliczeń” | `PrzegladDowodu` nie przyjmuje kroku startowego wg elementu (`selection_index` z ExtendedTrace) — TODO nazwane już w `DowodPrzebiegu` |
-| L-12 | Różnice mocy biernej w porównaniu A/B | `EkranPorownania` | kolumny Q [Mvar] (A · B · Δ) — payload backendu JE MA (`delta_q_mvar`, `delta_q_from_mvar`), ekran ich nie pokazuje |
+| L-12 | Różnice mocy biernej w porównaniu A/B | `EkranPorownania` | ZAMKNIĘTA (KD-1): kolumny Q [Mvar] (A · B · Δ) w tabelach szyn i gałęzi — pola `q_injected_mvar_*`/`delta_q_mvar` i `q_from_mvar_*`/`delta_q_from_mvar` z payloadu backendu |
 | L-13 | Różnice w procentach (Δ%) | `EkranPorownania` | backend `/api/power-flow-comparisons` nie zwraca `percent`; wyliczenie w UI byłoby fizyką/arytmetyką w prezentacji → potrzebne pole z backendu |
-| L-14 | Filtr „pokaż tylko różnice” | `EkranPorownania` | brak przełącznika ograniczającego tabele do wierszy ze zmianą |
+| L-14 | Filtr „pokaż tylko różnice” | `EkranPorownania` | ZAMKNIĘTA (KD-1): przełącznik „Pokaż tylko różnice” filtrujący wiersze po deltach BACKENDU (zero arytmetyki w prezentacji) |
 | L-15 | Generator raportu i eksporty OSD | przestrzeń „Dokumentacja” | `HubDokumentacji` tylko prowadzi do powierzchni mostu E-37; brak okna ui2 |
 | L-16 | Katalogi CT, VT, kable nN, aparaty nN | `spaces/model/katalog` | 4 kategorie obecne w moście (`CatalogBrowser`) i w API katalogu, nieobecne w `KATEGORIE` adaptera ui2 |
-| L-17 | „Rozdzielnica: pola i aparaty” jako trasa | brak | trasa `#switchgear` jest phantomem (renderuje `AnalysisSurface`); wymaga rozstrzygnięcia produktowego: kasacja trasy + pozycji Ctrl+K albo realny dostawca (E-10/E-11 z jawnym wyborem stacji) |
+| L-17 | „Rozdzielnica: pola i aparaty” jako trasa | brak | ZAMKNIĘTA (KD-1): trasa `#switchgear`, `navigateToSwitchgear`, powierzchnia `switchgear_wizard` (typ, rejestr, gałąź routera, klucz trasy) i pozycja Ctrl+K USUNIĘTE |
 
 ## 6. Bramki karty K8
 
@@ -117,3 +121,23 @@ Format: **zdolność · miejsce w ui2 · czego brakuje**.
 - Testy jednostkowe kanonu przepisane z zachowaniem intencji:
   `ui2/legacy/__tests__/useLegacyOrchestrator.test.tsx`,
   `ui2/legacy/__tests__/useLegacyMenuActions.test.tsx`.
+
+## 7. Zamknięcia z karty KD-1 (2026-07-31)
+
+- **L-2…L-5 (parytet zarządzania projektami)** — `ui2/spaces/projekt/otworz/**`
+  (`ListaProjektow`, `OtworzProjekt`, `NowyProjektDialog`, `DialogPotwierdzenia`,
+  `OtworzProjektKontener`) + klikalny chip nazwy projektu w `shell/CaseBar`.
+  Bramka: `frontend/e2e/projekty-parytet.spec.ts` (asercje przez API — usunięty
+  projekt znika z backendu) + testy kontenera.
+- **L-12 i L-14 (porównanie A/B rozpływu)** — `ui2/wyniki/porownanie/**`.
+  Zostaje L-13 (procent różnicy): backend nie zwraca pola `percent`, a liczenie
+  go w UI byłoby arytmetyką w prezentacji — karta backendowa.
+- **L-6 i L-17 (kasacje)** — patrz wiersze 4 i 16 tabeli werdyktów.
+- **Znalezisko uboczne (naprawione u źródła):** `useTopologyStore.loadSummary`
+  NIE MIAŁ żadnego wołającego produkcyjnego (jedyny konsument `ui/topology/TopologyPanel`
+  nie jest montowany), więc drzewo topologii przestrzeni „Model” było ZAWSZE puste —
+  liczniki blokad nie miały nawet gdzie się pojawić. Dostawca danych wpięty w powłokę
+  (`ui2/nav/useZasilanieDrzewaTopologii`, ładowanie na zmianę przypadku i rewizji migawki).
+- **Znalezisko uboczne (naprawione u źródła):** `topologyTreeAdapter` liczył jeden
+  problem DWA razy, gdy `element_ref` powtarzał się w `element_refs` — po przepięciu
+  na jedną prawdę gotowości dawało to podwojone liczniki blokad.

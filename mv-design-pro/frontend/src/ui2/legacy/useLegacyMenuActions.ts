@@ -20,7 +20,6 @@ import {
   navigateToCatalog,
   navigateToNetworkBuild,
   navigateToReport,
-  navigateToSwitchgear,
   navigateToVariants,
 } from '../../ui/navigation';
 import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
@@ -51,7 +50,6 @@ export const POZYCJE_MENU_LEGACY: readonly PozycjaMenuLegacy[] = [
   { akcjaId: 'sld', etykietaPL: 'Budowa sieci (schemat)' },
   { akcjaId: 'sld-view', etykietaPL: 'Podgląd schematu (tylko odczyt)' },
   { akcjaId: 'overlay', etykietaPL: 'Nakładka wyników na schemacie' },
-  { akcjaId: 'switchgear', etykietaPL: 'Kreator rozdzielnicy' },
   { akcjaId: 'case-manager', etykietaPL: 'Konfiguracja zakresu obliczeń' },
   { akcjaId: 'catalog', etykietaPL: 'Katalogi techniczne' },
   { akcjaId: 'analysis', etykietaPL: 'Analizy techniczne' },
@@ -90,9 +88,6 @@ export function useLegacyMenuActions(handleCalculate: () => Promise<void>) {
       case 'overlay':
         setActiveArea('SCHEMAT_TOPOLOGIA');
         openSldOverlayFromCurrentContext();
-        break;
-      case 'switchgear':
-        navigateToSwitchgear({ caseId: activeCaseId });
         break;
       case 'power-distribution':
         navigateToNetworkBuild();

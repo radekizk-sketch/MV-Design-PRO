@@ -2028,13 +2028,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
               >
                 Przeglądaj katalogi techniczne
               </button>
-              <a
-                href="#kreator-stacji-v2"
-                data-testid="sld-empty-state-open-station-wizard"
-                className="pointer-events-auto rounded border border-emerald-500/50 bg-emerald-500/10 px-4 py-2 text-center text-sm font-medium text-emerald-300 hover:bg-emerald-500/20 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                Otwórz konfigurację stacji (17 kroków)
-              </a>
+              {/* KD-1: usunięto odnośnik „Otwórz konfigurację stacji (17 kroków)"
+                  do trasy `#kreator-stacji-v2`. Trasa i jej podzespół zostały
+                  skasowane (werdykt MARTWY, inwentarz parytetu mostów L-6), a
+                  w PUSTYM modelu stacji i tak nie ma na czym osadzić — realny
+                  kreator stacji (`ui2/kreatory/stacja`) otwiera się z kanwy
+                  operacją na odcinku SN dopiero po wstawieniu GPZ i magistrali
+                  (dokładnie tak, jak zapowiada akapit poniżej). */}
             </div>
             <p className="mt-3 text-xs text-scada-muted">
               Po wstawieniu GPZ karta techniczna poprowadzi przez sekcje szyn,

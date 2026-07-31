@@ -6,7 +6,7 @@
  * 1. Powierzchnia rozwinięta (openMode 'expand_workspace') wypełnia warsztat
  *    (WorkspaceSurfaceRouter region="main" — jak stary `mainSurfaceExpanded`).
  * 2. Trasy dedykowane renderują dawne strony: #dashboard (pulpit projektów
- *    legacy), #sld-view (podgląd), #kreator-stacji-v2, #fault-scenarios,
+ *    legacy), #sld-view (podgląd), #fault-scenarios,
  *    #enm-inspector (za flagą), trasa nieznana → strona błędu trasy.
  * 3. W pozostałych przypadkach zawartość wyznacza aktywna przestrzeń
  *    (LegacySurface / pulpit projektu nowej powłoki).
@@ -18,7 +18,6 @@ import type { ReactNode } from 'react';
 
 import { EnmInspectorPage } from '../../ui/enm-inspector';
 import { FaultScenariosPanel, FaultScenarioModal } from '../../ui/fault-scenarios';
-import { StationWizardSurface } from '../../ui/network-build/station-wizard-v2/StationWizardSurface';
 import { featureFlags } from '../../ui/config/featureFlags';
 import { SldCanvasV3Workspace } from '../../ui/sld/v3/canvas/SldCanvasV3Workspace';
 import { ProjectDashboardSurface } from '../../ui/workspace/surfaces/ProjectDashboardSurface';
@@ -93,9 +92,11 @@ function TrasaLubPrzestrzen({ route, space, pulpit, gotowosc, model, obliczenia,
   if (route === '#enm-inspector' && featureFlags.ENM_INSPECTOR_VISIBLE) {
     return <EnmInspectorPage />;
   }
-  if (route === '#kreator-stacji-v2') {
-    return <StationWizardSurface />;
-  }
+  // KD-1: trasa `#kreator-stacji-v2` USUNIĘTA razem z podzespołem kreatora
+  // stacji v2 (werdykt MARTWY, inwentarz parytetu mostów L-6) — realnym
+  // kreatorem stacji jest `ui2/kreatory/stacja/KreatorStacjiSnNn` wpięty przez
+  // `operationFormRegistry` (operacje `insert_station_on_segment_sn` /
+  // `append_station_on_endpoint`). Nieznany hash → zachowanie domyślne.
   if (route === '#fault-scenarios') {
     return <ScenariuszeZwarcioweTrasa />;
   }

@@ -60,13 +60,6 @@ export const ROUTES = {
     icon: 'CFG',
     requiredMode: 'MODEL_EDIT',
   },
-  SWITCHGEAR: {
-    hash: '#switchgear',
-    label: 'Rozdzielnica: pola i aparaty',
-    description: 'Konfiguracja pól i aparatów rozdzielnicy',
-    icon: 'SWG',
-    requiredMode: 'MODEL_EDIT',
-  },
   ENM_INSPECTOR: {
     hash: '#enm-inspector',
     label: 'Inspektor modelu',
@@ -258,13 +251,6 @@ export function navigateToNetworkBuild(): void {
 
 export function navigateToCaseConfig(context: RouteContextOptions = {}): void {
   navigateToHash(ROUTES.CASE_CONFIG.hash, (params) => {
-    params.delete('run');
-    assignRouteContext(params, context);
-  });
-}
-
-export function navigateToSwitchgear(context: RouteContextOptions = {}): void {
-  navigateToHash(ROUTES.SWITCHGEAR.hash, (params) => {
     params.delete('run');
     assignRouteContext(params, context);
   });

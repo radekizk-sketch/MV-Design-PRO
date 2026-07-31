@@ -20,7 +20,6 @@ export {
   navigateToCompare,
   navigateToNetworkBuild,
   navigateToCaseConfig,
-  navigateToSwitchgear,
   navigateToEnmInspector,
   navigateToFaultScenarios,
   navigateToCatalog,
