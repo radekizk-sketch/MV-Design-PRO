@@ -92,13 +92,17 @@ export function DowodPrzebiegu({
   // pierwszoplanowa z selekcji, gdy dotyczy tego samego elementu; inaczej sam
   // ref (zero zgadywania nazwy nieznanego elementu).
   const wskazanyElement = useMemo(() => {
+    const jawne = wskazanyElementRef !== null;
     const ref = wskazanyElementRef ?? selekcja?.id ?? null;
     if (!ref || selectedRunId !== runId || !slad) return null;
     const nazwa = selekcja?.id === ref ? selekcja.name ?? ref : ref;
-    return {
-      nazwa,
-      kroki: resolveTraceStepsForElement(slad, { id: ref, name: nazwa }),
-    };
+    const krokiElementu = resolveTraceStepsForElement(slad, { id: ref, name: nazwa });
+    // Selekcja to KONTEKST, nie żądanie: gdy ślad nie wiąże z nią kroków,
+    // okno milczy zamiast pokazywać wyłączony przełącznik z ostrzeżeniem przy
+    // każdym wejściu. Wskazanie JAWNE (użytkownik kliknął wartość) zasługuje
+    // na odpowiedź także wtedy, gdy jest ona negatywna.
+    if (!jawne && krokiElementu.length === 0) return null;
+    return { nazwa, kroki: krokiElementu };
   }, [wskazanyElementRef, selekcja, selectedRunId, runId, slad]);
 
   return (

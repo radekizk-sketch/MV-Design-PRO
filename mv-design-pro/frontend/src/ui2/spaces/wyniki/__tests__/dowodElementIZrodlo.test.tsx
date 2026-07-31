@@ -125,6 +125,17 @@ describe('L-11 — wywód zawężony do wskazanego elementu', () => {
     expect(screen.queryByTestId('mvd-dowod-zakres')).toBeNull();
     expect(screen.getByText('Impedancja odcinka kablowego')).toBeTruthy();
   });
+
+  it('SELEKCJA BEZ KROKÓW to kontekst, nie żądanie — okno milczy (zero szumu)', () => {
+    // Wskazanie JAWNE zasługuje na odpowiedź także negatywną (test wyżej);
+    // sama selekcja czegoś spoza śladu nie może zaśmiecać okna ostrzeżeniem.
+    useSelectionStore.setState({
+      selectedElement: { id: 'EL-SPOZA-SLADU', type: 'Bus', name: 'Szyna obca' },
+    });
+    render(<DowodPrzebiegu trybZaawansowania="basic" />);
+    expect(screen.queryByTestId('mvd-dowod-zakres')).toBeNull();
+    expect(screen.getByText('Impedancja odcinka kablowego')).toBeTruthy();
+  });
 });
 
 describe('L-10 — źródło LaTeX wywodu', () => {
