@@ -1028,24 +1028,25 @@ for (const lod of LODS) {
   );
 
   // -- §21 (F13.1, D3-1/D3-2): GPZ jako dominanta WN/SN ----------------------
-  // V12K-293 (KD-5): na L0 blok GPZ jest ZWINIĘTY (jeden symbol `gpzCollapsed`
-  // + glif źródła + aparaty ciągłości pól odejściowych) — kolumna WN (§21.1)
-  // i dominanta pełnego detalu (§21.2) obowiązują od L1. Na L0 wyrocznia
-  // pilnuje kanonu zwinięcia zamiast wymagać cech, których scena celowo nie ma.
-  if (lod !== 0) {
+  // V12K-293 (KD-5) + KD-7 poz. 5: helpery §21 same czytają SCENĘ
+  // (`gpzBlockCollapsed`) — scena ze zwiniętym blokiem nie wymaga kolumny WN
+  // ani dominanty, ale rysunek ROZWINIĘTY podlega §21 na KAŻDYM poziomie LOD.
+  // Dlatego sondy biegną bezwarunkowo; na L0 dodatkowo sonda kanonu zwinięcia.
+  {
     const hvGaps = gpzHvColumnGaps(scene, enm);
     check(
-      'gpz_hv_column_probe (§21.1, lod>=1): ENM niesie TR WN/SN ⇒ scena rysuje kolumnę WN (przyłącze→szyna WN→TR→sekcje SN); 0 GPZ z danymi WN bez kolumny',
+      'gpz_hv_column_probe (§21.1): ENM niesie TR WN/SN ⇒ scena rysuje kolumnę WN (przyłącze→szyna WN→TR→sekcje SN); 0 GPZ z danymi WN bez kolumny',
       allGpzHvColumnsComplete(scene, enm) && hvGaps.length === 0,
       `luki=${hvGaps.length}`,
     );
     const domGaps = gpzDominanceGaps(scene);
     check(
-      'gpz_dominance_probe (§21.2, lod>=1): strefa GPZ ≥ największa stacja; szyna GPZ grubsza (busGpz>bus); tabliczka danych przy źródle',
+      'gpz_dominance_probe (§21.2): strefa GPZ ≥ największa stacja; szyna GPZ grubsza (busGpz>bus); tabliczka danych przy źródle',
       gpzIsDominant(scene) && domGaps.length === 0,
       `luki=${domGaps.length}${domGaps.length ? ' np. ' + JSON.stringify(domGaps[0]) : ''}`,
     );
-  } else {
+  }
+  if (lod === 0) {
     const gpzInFull = buildSceneV3(enm, 1).symbols.some(
       (s) => (s.meta?.ownerRef ?? '').startsWith('gpz/'),
     );
