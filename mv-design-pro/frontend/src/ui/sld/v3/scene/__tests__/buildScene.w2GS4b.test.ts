@@ -63,9 +63,18 @@ describe('W2 (GS-4b/Z2) — pole źródłowe SN vs rząd nN na scenie referencyj
     const a0 = nameAnchors(0);
     const a1 = nameAnchors(1);
     const a2 = nameAnchors(2);
+    // KD-5: pasma nazw ELEMENTÓW WEWNĘTRZNYCH bloku GPZ (tabliczka TR/źródła)
+    // na L0 nie istnieją — blok jest zwinięty. Liczność porównujemy więc na
+    // STACJACH (intencja testu: kotwica STACJI nie dryfuje), a zbiór L0 musi
+    // pozostać podzbiorem L1/L2 (zwinięcie nie dodaje kotwic).
+    const stationsOnly = (m: Map<string, string>): Map<string, string> =>
+      new Map([...m].filter(([ref]) => ref.startsWith('stn/')));
     expect(a0.size).toBeGreaterThan(0);
-    expect(a1.size).toBe(a0.size);
-    expect(a2.size).toBe(a0.size);
+    expect(stationsOnly(a1).size).toBe(stationsOnly(a0).size);
+    expect(stationsOnly(a2).size).toBe(stationsOnly(a0).size);
+    for (const ref of a0.keys()) {
+      expect(a1.has(ref) && a2.has(ref), `kotwica ${ref} obecna na L0, brak na L1/L2`).toBe(true);
+    }
     const drift: string[] = [];
     for (const [ref, pos0] of a0) {
       if (a1.get(ref) !== pos0 || a2.get(ref) !== pos0) {

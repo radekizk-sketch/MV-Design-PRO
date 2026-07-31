@@ -157,26 +157,33 @@ describe('buildSceneV3 — wyrocznie §11 per LOD (realna fixtura, 53 stacje)', 
         // NIE istnieje na scenie:
         expect(scene.symbols.some((s) => s.symbolId === 'branchJunction')).toBe(false);
         // V12K-150 (KROPKA-WEZLOWA): odczepy lateralne pól (ES/VT/SA) mają
-        // kropkę węzłową `junction` w scenie produkcyjnej. Na L0 stacje SN są
-        // zbiorcze (bez pól), ale GPZ renderuje pełny detal na KAŻDYM LOD i
-        // niesie odczep — więc kropka lateralna istnieje na wszystkich LOD.
+        // kropkę węzłową `junction` w scenie produkcyjnej.
+        // KD-5: odczep lateralny jest cechą ROZWINIĘTEGO pola — na L0 pól nie
+        // ma ANI w stacjach (mini-RMU), ANI w GPZ (blok zwinięty), więc kropek
+        // lateralnych na L0 nie ma i mieć nie może (kropka bez pola byłaby
+        // wskazaniem węzła, którego rysunek nie pokazuje). Intencja testu —
+        // „kropka wyłącznie na REALNYM węźle, obustronna spójność" — bez zmian:
+        // na L0 dowodzimy zera, na L1/L2 obecności.
         const lateralDots = scene.symbols.filter((s) =>
           String(s.meta?.testId ?? '').startsWith('sld-v3-wezel-lateral-'),
         );
-        expect(lateralDots.length).toBeGreaterThan(0);
+        if (lod === 0) expect(lateralDots.length).toBe(0);
+        else expect(lateralDots.length).toBeGreaterThan(0);
         // Obustronna spójność kropka⇔węzeł (tee + lateral):
         expect(noBranchWithoutAccent(scene)).toBe(true);
       });
 
       it('F9.3 FIX-1 (§12.3, kontrakt POŁĄCZENIA): głowice kablowe BEZ trasy dotykającej ich portu istnieją WYŁĄCZNIE na fizycznych końcach ciągów (1 magistrala + N laterali = brak dalszej stacji za polem "następnik"); WSZYSTKIE inne głowice (wnętrze ciągów, GPZ→S0, origin→lateral) MUSZĄ być dotknięte trasą', () => {
         if (lod === 0) {
-          // L0: stacje SN są symbolem zbiorczym (brak aparatów pola/głowic),
-          // ale GPZ renderuje się w PEŁNYM detalu na KAŻDYM LOD (`composeGpz`
-          // nie przyjmuje parametru lod, spec §7 dotyczy stacji, nie GPZ) —
-          // JEGO pole liniowe NIESIE własną głowicę, zawsze POŁĄCZONĄ (GPZ→S0,
-          // sekcja 5) — więc `cableHead` JEST obecny, ale zbiór nieosiągniętych
-          // głowic jest i tak pusty (GPZ ma zawsze następnika — magistralę).
-          expect(scene.symbols.some((s) => s.symbolId === 'cableHead')).toBe(true);
+          // L0: stacje SN są symbolem zbiorczym (brak aparatów pola/głowic).
+          // KD-5: blok GPZ jest na L0 ZWINIĘTY (dawniej renderował pełny detal
+          // na każdym LOD, stąd poprzednia treść tej gałęzi), więc jego głowica
+          // kablowa też nie istnieje — na L0 nie ma ŻADNEJ głowicy. Intencja
+          // testu (zbiór głowic NIEOSIĄGNIĘTYCH trasą jest pusty) obowiązuje
+          // dalej i jest tu spełniona w sposób mocniejszy: nie ma czego nie
+          // osiągnąć. Ciągłość toru źródło→magistrala na L0 dowodzi osobno
+          // `lodContinuity.test.ts` (aparat pola odejściowego + tor).
+          expect(scene.symbols.some((s) => s.symbolId === 'cableHead')).toBe(false);
           expect(fieldEntryConnectionsReachCableHead(scene)).toEqual([]);
           expect(allFieldEntryConnectionsReachCableHead(scene)).toBe(true);
           return;
@@ -341,10 +348,29 @@ describe('buildSceneV3 — kontrakt LOD (spec §7)', () => {
     const a0 = nameAnchors(0);
     const a1 = nameAnchors(1);
     const a2 = nameAnchors(2);
-    // Zbiór stacji z nazwą jest niepusty i wspólny (nic nie ginie między LOD).
+    // Zbiór STACJI z nazwą jest niepusty i wspólny (nic nie ginie między LOD).
+    // KD-5 (zwinięcie bloku GPZ na L0): pasma nazw ELEMENTÓW WEWNĘTRZNYCH GPZ
+    // (tabliczka transformatora, tabliczka źródła systemowego) na L0 nie
+    // istnieją — bo nie istnieją ich elementy. To TREŚĆ zwinięcia, nie dryf
+    // kotwicy, więc porównanie liczności robimy na STACJACH (`stn/...`), a
+    // różnicę GPZ nazywamy WPROST niżej (żeby przypadkowa utrata pasma i tak
+    // była złapana). Intencja testu — „kotwica stacji identyczna na L0/L1/L2"
+    // — bez zmian.
+    const stationsOnly = (m: Map<string, string>): Map<string, string> =>
+      new Map([...m].filter(([ref]) => ref.startsWith('stn/')));
     expect(a0.size).toBeGreaterThan(EXPECTED_STATION_COUNT / 2);
-    expect(a1.size).toBe(a0.size);
-    expect(a2.size).toBe(a0.size);
+    expect(stationsOnly(a1).size).toBe(stationsOnly(a0).size);
+    expect(stationsOnly(a2).size).toBe(stationsOnly(a0).size);
+    // Zwinięcie może pasma wyłącznie UJMOWAĆ — nigdy dodać nowej kotwicy na L0.
+    for (const ref of a0.keys()) {
+      expect(a1.has(ref), `kotwica ${ref} obecna na L0, brak na L1`).toBe(true);
+      expect(a2.has(ref), `kotwica ${ref} obecna na L0, brak na L2`).toBe(true);
+    }
+    const brakNaL0 = [...a1.keys()].filter((ref) => !a0.has(ref)).sort();
+    // Dokładnie pasma WEWNĘTRZNE bloku GPZ (i nic więcej) — 2 na fixturze:
+    // tabliczka TR i tabliczka źródła systemowego.
+    expect(brakNaL0.every((ref) => ref.startsWith('gpz/')), `nie-GPZ pasmo zgubione na L0: ${brakNaL0.join(', ')}`).toBe(true);
+    expect(brakNaL0.length).toBe(2);
     const drift: string[] = [];
     for (const [ref, pos0] of a0) {
       const pos1 = a1.get(ref);
@@ -977,7 +1003,15 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // ograniczeniem MIĘKKIM") — pełne dane techniczne linii (§7 P0) mają
     // pierwszeństwo; ZERO nowych kolizji (accept:sld-v3 zielony). NOWA kanoniczna
     // geometria po wzbogaceniu etykiet, nie regresja.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22944);
+    // KD-5 (zwinięcie bloku GPZ na L0): L0 OBNIŻONY 22944 → 22896 (−48).
+    // Piony WEWNĘTRZNE GPZ (zejście szyna→pole, zejście pola WN→TR, pole TR→
+    // szyna SN, zejście źródła) zastąpione na L0 dwoma krótkimi pionami
+    // reprezentacji zwiniętej (źródło→blok, blok→aparat pola odejściowego);
+    // różnica netto −48 px. Miara „nie-rosnąca" (§15.1) spełniona.
+    // L1/L2 BEZ ZMIAN (39888) — dowód, że zwinięcie nie ruszyło geometrii
+    // świata: offsety wiersza, trasa magistrali i rama strefy liczą się dalej
+    // z kompozycji PEŁNEJ na każdym LOD.
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22896);
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(39888);
     expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(39888);
   });

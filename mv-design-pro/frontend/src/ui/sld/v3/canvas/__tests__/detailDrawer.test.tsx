@@ -75,12 +75,18 @@ describe('SldCanvasV3Workspace — F8c pkt 2 / F11.4-B: drawer szczegółów (Sl
   });
 
   it('(c) klik w transformator otwiera drawer transformatora (F11.4-B: resolveTransformerRefForBayOwner)', () => {
-    const scene = buildSceneV3(enm, 0);
-    const transformerIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'transformer');
-    expect(transformerIndex).toBeGreaterThanOrEqual(0);
+    // KD-5: symbol transformatora istnieje od L1 — na L0 stacje są zwinięte do
+    // mini-RMU, a blok GPZ do sylwetki zbiorczej (TR niesie sylwetka). LOD2
+    // wymuszony `lodOverride` — TEN SAM wzorzec co przypadek (e) niżej. Węzeł
+    // szukany po realnym `data-testid` sceny (nie po indeksie dzieci DOM),
+    // żeby test nie zależał od kolejności symboli.
+    const scene = buildSceneV3(enm, 2);
+    const transformer = scene.symbols.find((s) => s.meta?.elementKind === 'transformer');
+    expect(transformer, 'symbol transformatora obecny na L2').toBeTruthy();
 
-    const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const group = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[transformerIndex];
+    const { container } = render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
+    const group = container.querySelector(`[data-testid="${transformer!.meta!.testId}"]`);
+    expect(group).toBeTruthy();
     fireEvent.click(group!);
 
     const label = screen.getByTestId('sld-v2-detail-drawer-label');

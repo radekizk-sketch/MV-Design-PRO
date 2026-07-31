@@ -110,7 +110,13 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
     expect(selected?.id).toBe(scene.symbols[0].meta?.ownerRef);
     // F8b-1 B: typ selekcji pochodzi teraz z elementKind (nie zawsze
     // 'DescriptiveElement' — patrz test dedykowany niżej).
-    expect(selected?.type).toBe('Switch');
+    // KD-5: pierwszym symbolem sceny L0 jest ZWINIĘTY BLOK GPZ
+    // (`elementKind: 'station'`), a nie aparat pola GPZ (dawniej odłącznik →
+    // 'Switch'). Intencja testu (klik → selekcja z id z `ownerRef` i typem z
+    // `elementKind`) bez zmian; oczekiwanie wyprowadzamy ze sceny, żeby test
+    // nie przybijał kolejności symboli.
+    expect(selected?.type).toBe(elementTypeForKind(scene.symbols[0].meta?.elementKind));
+    expect(selected?.type).toBe('Station');
   });
 
   describe('F8b-1 B — selekcja z realnym typem (elementKind → ElementType v2)', () => {
@@ -140,15 +146,21 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
 
     it('F9.4 (runda korekcyjna, F-3): klik w symbol gridSource (sieć zewnętrzna, GPZ) → SelectedElement.type = "Source", id = source ref — PRZED poprawką brakowało gałęzi "source" w elementTypeForKind (spadało na "DescriptiveElement")', () => {
       useSnapshotStore.setState({ snapshot: enm });
-      const scene = buildSceneV3(enm, 1);
-      const sourceIndex = scene.symbols.findIndex((s) => s.symbolId === 'gridSource');
-      expect(sourceIndex).toBeGreaterThanOrEqual(0);
+      // Zero-Debt (dyrektywa 2026-07-17 pkt 5): test brał INDEKS ze sceny L1, a
+      // klikał w DOM renderowany na L0 — działał wyłącznie dlatego, że indeksy
+      // przypadkiem się pokrywały (KD-5 je rozjechało). Naprawa u źródła: węzeł
+      // wyszukiwany po REALNYM `data-testid` sceny, którą kanwa faktycznie
+      // rysuje — test przestaje zależeć od kolejności symboli.
+      const scene = buildSceneV3(enm, 0);
+      const source = scene.symbols.find((s) => s.symbolId === 'gridSource');
+      expect(source, 'glif sieci zewnętrznej widoczny na KAŻDYM LOD (§13.1)').toBeTruthy();
       const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-      const sourceGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[sourceIndex];
+      const sourceGroup = container.querySelector(`[data-testid="${source!.meta!.testId}"]`);
+      expect(sourceGroup).toBeTruthy();
       fireEvent.click(sourceGroup!);
       const selected = useSelectionStore.getState().selectedElement;
       expect(selected?.type).toBe('Source');
-      expect(selected?.id).toBe(scene.symbols[sourceIndex].meta?.ownerRef);
+      expect(selected?.id).toBe(source!.meta?.ownerRef);
     });
   });
 });

@@ -90,7 +90,11 @@ describe('SCHEMAT-10 S7.6 — kontraktowe minimum światła pasm (Z1 KOMPRESJA)'
     // pełna etykieta techniczna L2 poszerza footprint kolumn (patrz baseline
     // `vertical_length_probe` + `buildScene.test.ts`). Kompresja pasm (przedmiot
     // tego testu) NIETKNIĘTA — delta pochodzi z szerokości etykiet, nie z gapów.
-    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22944);
+    // KD-5 (zwinięcie bloku GPZ na L0): L0 22944 → 22896 (−48 px — piony
+    // wewnętrzne GPZ zastąpione dwoma pionami reprezentacji zwiniętej).
+    // L1/L2 BEZ ZMIAN — zwinięcie nie rusza geometrii świata (kompozycja
+    // geometryczna GPZ liczona przy pełnym szczególe na każdym LOD).
+    expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 0))).toBe(22896);
     expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 1))).toBe(39888);
     expect(totalVerticalSegmentLength(buildSceneV3(bigEnm, 2))).toBe(39888);
   });

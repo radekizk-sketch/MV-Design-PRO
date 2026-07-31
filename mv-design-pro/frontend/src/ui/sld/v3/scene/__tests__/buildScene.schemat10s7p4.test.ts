@@ -221,7 +221,26 @@ describe('SCHEMAT-10 S7 etap 4 §9 P0 pkt 3 — czytelność L0 na widoku cało�
   it('L0: źródło (sieć zewnętrzna/GPZ) i transformator rozpoznawalne bez zoomu (glify obecne)', () => {
     const scene = buildSceneV3(bigEnm, 0);
     expect(scene.symbols.some((s) => s.symbolId === 'gridSource')).toBe(true);
-    expect(scene.symbols.some((s) => s.symbolId === 'transformer2W')).toBe(true);
+    // KD-5: transformator GPZ nie jest już na L0 osobnym symbolem `transformer2W`
+    // — blok GPZ jest ZWINIĘTY, a jego transformator niesie SYLWETKA bloku
+    // (`GpzCollapsedGlyph`, uzwojenia rysowane gdy `gpzGlyph.transformers > 0`).
+    // Dokładnie ten sam mechanizm, którym stacje SN niosą swój TR na L0 od GS-1
+    // (`stationGlyph.hasTransformer` w mini-RMU) — wymóg §3 „transformator NIGDY
+    // nie znika przy oddalaniu" jest spełniony na poziomie CZYTELNOŚCI, a nie
+    // przez rysowanie glifu 32×40 px, który przy skali przeglądu miał ≈4 px.
+    const gpzBlock = scene.symbols.find((s) => s.symbolId === 'gpzCollapsed');
+    expect(gpzBlock, 'blok GPZ zwinięty obecny na L0').toBeTruthy();
+    expect(gpzBlock!.meta?.gpzGlyph?.transformers).toBeGreaterThan(0);
+    // Parytet z L1/L2: liczba transformatorów w sylwetce == liczba realnych
+    // symboli transformatora GPZ na poziomie rozwiniętym (zero fabrykacji).
+    const rozwiniete = buildSceneV3(bigEnm, 1).symbols.filter(
+      (s) => s.symbolId === 'transformer2W' && (s.meta?.ownerRef ?? '').startsWith('gpz/'),
+    );
+    expect(gpzBlock!.meta?.gpzGlyph?.transformers).toBe(rozwiniete.length);
+    // Stacje SN: transformator dalej rozpoznawalny sylwetką mini-RMU (GS-1).
+    expect(
+      scene.symbols.some((s) => s.symbolId === 'stationCollapsed' && s.meta?.stationGlyph?.hasTransformer),
+    ).toBe(true);
   });
 
   it('L0: punkt NO (§3 znacznik sekcji/NOP) NIGDY nie znika — sylwetka mini-RMU niesie marker noOpen (GS-1)', () => {

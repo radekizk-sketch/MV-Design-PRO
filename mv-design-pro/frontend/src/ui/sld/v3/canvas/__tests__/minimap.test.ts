@@ -71,8 +71,10 @@ describe('K11-B — projekcja minimapy', () => {
     const symbole = sceneL0.symbols.length;
     expect(shapes.length).toBe(segmenty + symbole);
     expect(shapes.filter((s) => 'points' in s).length).toBe(segmenty);
+    // KD-5: klasa „station" obejmuje TERAZ także zwinięty blok GPZ (stacja
+    // zasilająca) — nawigator klasyfikuje go tak samo jak stacje SN.
     expect(shapes.filter((s) => s.kind === 'station').length).toBe(
-      sceneL0.symbols.filter((s) => s.symbolId === 'stationCollapsed').length,
+      sceneL0.symbols.filter((s) => s.symbolId === 'stationCollapsed' || s.symbolId === 'gpzCollapsed').length,
     );
   });
 

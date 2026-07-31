@@ -163,9 +163,18 @@ describe('W2c — przypadek 2 (PV + TR blokowy + pole SN): pełny tor', () => {
     const a0 = nameAnchors(enm, 0);
     const a1 = nameAnchors(enm, 1);
     const a2 = nameAnchors(enm, 2);
+    // KD-5: pasma nazw elementów WEWNĘTRZNYCH bloku GPZ (tabliczka TR/źródła)
+    // znikają na L0 wraz ze zwinięciem bloku — liczność porównujemy na
+    // STACJACH (intencja: tor DER-SN nie przesuwa kotwic STACJI), zbiór L0
+    // pozostaje podzbiorem L1/L2.
+    const stationsOnly = (m: Map<string, string>): Map<string, string> =>
+      new Map([...m].filter(([ref]) => ref.startsWith('stn/')));
     expect(a0.size).toBeGreaterThan(0);
-    expect(a1.size).toBe(a0.size);
-    expect(a2.size).toBe(a0.size);
+    expect(stationsOnly(a1).size).toBe(stationsOnly(a0).size);
+    expect(stationsOnly(a2).size).toBe(stationsOnly(a0).size);
+    for (const ref of a0.keys()) {
+      expect(a1.has(ref) && a2.has(ref), `kotwica ${ref} obecna na L0, brak na L1/L2`).toBe(true);
+    }
     const drift: string[] = [];
     for (const [ref, p0] of a0) {
       if (a1.get(ref) !== p0 || a2.get(ref) !== p0) drift.push(`${ref}: L0=${p0} L1=${a1.get(ref)} L2=${a2.get(ref)}`);
