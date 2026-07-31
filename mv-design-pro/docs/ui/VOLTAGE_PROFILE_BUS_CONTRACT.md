@@ -10,26 +10,26 @@
 
 ## 1. Cel dokumentu
 
-Zdefiniowanie **kanonicznego kontraktu UI** dla widoku **Profil napięć (węzĹ‚y)** prezentującego profil napięciowy wyĹ‚ącznie **per BUS** (węzeĹ‚ sieci), zgodnie z praktyką benchmark / benchmark.
+Zdefiniowanie **kanonicznego kontraktu UI** dla widoku **Profil napięć (węzły)** prezentującego profil napięciowy wyłącznie **per BUS** (węzeł sieci), zgodnie z praktyką benchmark / benchmark.
 
 **Zasada fundamentalna (BINDING):**
-- Widok **BUS-centric** — jeden wiersz = jeden BUS (węzeĹ‚).
+- Widok **BUS-centric** — jeden wiersz = jeden BUS (węzeł).
 - Brak agregacji po liniach, transformatorach, stacjach.
-- Brak nowych obliczeĹ„ fizycznych — tylko **normalizacja i agregacja wynikĂłw load flow**.
+- Brak nowych obliczeń fizycznych — tylko **normalizacja i agregacja wyników load flow**.
 
 ---
 
 ## 2. Zakres (IN / OUT)
 
 **W ZAKRESIE:**
-- Tabela napięć per BUS (U_nom, U, p.u., Î”%).
-- Statusy PASS / WARNING / FAIL / NOT_COMPUTED wg progĂłw.
-- Ranking â€žnajgorszych węzĹ‚Ăłwâ€ť wg |Î”%|.
+- Tabela napięć per BUS (U_nom, U, p.u., Δ%).
+- Statusy PASS / WARNING / FAIL / NOT_COMPUTED wg progów.
+- Ranking „najgorszych węzłów” wg |Δ%|.
 - Deterministyczne sortowanie wierszy.
 
 **POZA ZAKRESEM:**
 - Obliczenia solvera, korekty fizyki, nowe modele.
-- Wyniki per linia/trafo/ĹşrĂłdĹ‚o.
+- Wyniki per linia/trafo/źródło.
 - Implementacja frontendu (tylko kontrakt).
 
 ---
@@ -40,34 +40,34 @@ Zdefiniowanie **kanonicznego kontraktu UI** dla widoku **Profil napięć (węzĹ
 
 | Kolumna | Opis | Format |
 |---------|------|--------|
-| BUS | Nazwa/ID węzĹ‚a | String |
+| BUS | Nazwa/ID węzła | String |
 | U_nom [kV] | Napięcie znamionowe | Float (2-3 dec) |
 | U [kV] | Napięcie obliczone | Float (3 dec) |
 | U [p.u.] | Napięcie per-unit | Float (3 dec) |
-| Î”% | OdchyĹ‚ka względem U_nom | Float (2 dec) |
+| Δ% | Odchyłka względem U_nom | Float (2 dec) |
 | Status | PASS / WARNING / FAIL / NOT_COMPUTED | Enum |
 
-**Opcjonalnie (jeĹ›li dostępne):**
-- P [MW], Q [MVAr] — wstrzyknięcia węzĹ‚owe.
+**Opcjonalnie (jeśli dostępne):**
+- P [MW], Q [MVAr] — wstrzyknięcia węzłowe.
 
 ### 3.2 Obliczenia prezentacyjne
 
-- **U [p.u.]** = `U / U_nom` jeĹ›li brak bezpoĹ›rednio z wynikĂłw.
-- **Î”%** = `(U - U_nom) / U_nom * 100`.
-- Brak U lub U_nom â‡’ **NOT_COMPUTED**.
+- **U [p.u.]** = `U / U_nom` jeśli brak bezpośrednio z wyników.
+- **Δ%** = `(U - U_nom) / U_nom * 100`.
+- Brak U lub U_nom ⇒ **NOT_COMPUTED**.
 
 ---
 
 ## 4. Progi i statusy
 
-**Konfiguracja progĂłw (domyĹ›lna):**
+**Konfiguracja progów (domyślna):**
 - `voltage_warn_pct` = **5.0%**
 - `voltage_fail_pct` = **10.0%**
 
 **Interpretacja:**
-- **FAIL** gdy `|Î”%| â‰Ą fail`
-- **WARNING** gdy `|Î”%| â‰Ą warn`
-- **PASS** w pozostaĹ‚ych przypadkach
+- **FAIL** gdy `|Δ%| ≥ fail`
+- **WARNING** gdy `|Δ%| ≥ warn`
+- **PASS** w pozostałych przypadkach
 - **NOT_COMPUTED** gdy brak danych napięciowych
 
 ---
@@ -79,25 +79,25 @@ Zdefiniowanie **kanonicznego kontraktu UI** dla widoku **Profil napięć (węzĹ
 2. WARNING
 3. PASS
 4. NOT_COMPUTED
-5. W ramach statusu: malejąco po `|Î”%|`
-6. Dla remisĂłw: rosnąco po `bus_id`
+5. W ramach statusu: malejąco po `|Δ%|`
+6. Dla remisów: rosnąco po `bus_id`
 
-**Determinism:** ten sam input â‡’ identyczna kolejnoĹ›ć wierszy i identyczny JSON.
+**Determinism:** ten sam input ⇒ identyczna kolejność wierszy i identyczny JSON.
 
 ---
 
-## 6. Ranking â€žnajgorszych węzĹ‚Ăłwâ€ť
+## 6. Ranking „najgorszych węzłów”
 
-- Ranking wyznaczany po **|Î”%|**.
-- WyĹ›wietlany w podsumowaniu (np. â€žWorst Busâ€ť + wartoĹ›ć |Î”%|).
-- **NOT_COMPUTED** nie bierze udziaĹ‚u w rankingu.
+- Ranking wyznaczany po **|Δ%|**.
+- Wyświetlany w podsumowaniu (np. „Worst Bus” + wartość |Δ%|).
+- **NOT_COMPUTED** nie bierze udziału w rankingu.
 
 ---
 
 ## 7. Integracja z Results Browser
 
-**ĹšcieĹĽka UI:**
-- **Results → Profil napięć (węzĹ‚y)**
+**Ścieżka UI:**
+- **Results → Profil napięć (węzły)**
 
 **Wymagania integracyjne:**
 - Dostęp z Results Browser dla aktywnego Case/Run.
@@ -105,19 +105,19 @@ Zdefiniowanie **kanonicznego kontraktu UI** dla widoku **Profil napięć (węzĹ
 
 ---
 
-## 8. ObsĹ‚uga brakĂłw danych
+## 8. Obsługa braków danych
 
-- Brak U lub U_nom â‡’ **NOT_COMPUTED**.
+- Brak U lub U_nom ⇒ **NOT_COMPUTED**.
 - Wiersze z NOT_COMPUTED **nie są ukrywane**.
-- UI musi wskazywać brak danych (np. â€žbrak obliczeĹ„â€ť / â€žbrak U_nomâ€ť).
+- UI musi wskazywać brak danych (np. „brak obliczeń” / „brak U_nom”).
 
 ---
 
-## 9. Uwagi koĹ„cowe (benchmark / benchmark parity)
+## 9. Uwagi końcowe (benchmark / benchmark parity)
 
 - Widok odpowiada **Voltage Profile** znanemu z benchmark / benchmark.
-- Brak wynikĂłw na liniach/transformatorach — wyĹ‚ącznie BUS-centric.
-- Dane ĹşrĂłdĹ‚owe: wynik load flow + metadane modelu (U_nom).
+- Brak wyników na liniach/transformatorach — wyłącznie BUS-centric.
+- Dane źródłowe: wynik load flow + metadane modelu (U_nom).
 
 ---
 

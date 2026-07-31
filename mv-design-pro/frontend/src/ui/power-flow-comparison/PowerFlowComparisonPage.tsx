@@ -242,7 +242,7 @@ function BusDifferencesTable({ rows, filter }: BusDifferencesTableProps) {
               V [pu] — B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Î”V [pu]
+              ΔV [pu]
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
               Kat [deg] — A
@@ -251,7 +251,7 @@ function BusDifferencesTable({ rows, filter }: BusDifferencesTableProps) {
               Kat [deg] — B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Î”Kat [deg]
+              ΔKat [deg]
             </th>
           </tr>
         </thead>
@@ -333,7 +333,7 @@ function BranchDifferencesTable({ rows, filter }: BranchDifferencesTableProps) {
               Straty P [MW] — B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Î”Straty P [MW]
+              ΔStraty P [MW]
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
               P_from [MW] — A
@@ -342,7 +342,7 @@ function BranchDifferencesTable({ rows, filter }: BranchDifferencesTableProps) {
               P_from [MW] — B
             </th>
             <th className="px-3 py-2 text-right font-semibold text-slate-700">
-              Î”P_from [MW]
+              ΔP_from [MW]
             </th>
           </tr>
         </thead>
@@ -630,7 +630,7 @@ function SummaryPanel({ summary }: SummaryPanelProps) {
         <p className={`text-lg font-bold ${getDeltaColor(summary.delta_total_losses_p_mw, 0.01)}`}>
           {formatDelta(summary.delta_total_losses_p_mw, 3)} MW
         </p>
-        <p className="text-xs text-slate-500">Î”Straty calkowite</p>
+        <p className="text-xs text-slate-500">ΔStraty calkowite</p>
       </div>
       <div className="rounded border border-slate-200 bg-slate-50 p-4 text-center">
         <p className="text-2xl font-bold text-slate-700">{summary.total_issues}</p>

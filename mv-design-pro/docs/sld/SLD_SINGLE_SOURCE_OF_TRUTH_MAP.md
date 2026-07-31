@@ -193,52 +193,52 @@ Pipeline C: Backend Layout (backend)
 
 ```
 NetworkModel (backend)
-       â”‚
-       â–Ľ
+       │
+       ▼
    Snapshot (frozen, fingerprint SHA-256)
-       â”‚
-       â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-       â–Ľ                                              â–Ľ
+       │
+       ├──────────────────────────────────────────────┐
+       ▼                                              ▼
    EnergyNetworkModel (API)                 AnySldSymbol[] (editor)
-       â”‚                                              â”‚
-       â–Ľ                                              â–Ľ
+       │                                              │
+       ▼                                              ▼
    readTopologyFromENM()              readTopologyFromSymbols()
    (sciezka glowna)                   (bridge migracyjny)
-       â”‚                                              â”‚
-       â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                      â–Ľ
+       │                                              │
+       └──────────────┬───────────────────────────────┘
+                      ▼
               TopologyInputV1 (kanoniczny kontrakt)
-                      â”‚
-                      â–Ľ
-          buildVisualGraphFromTopology()  â† TopologyAdapterV2
+                      │
+                      ▼
+          buildVisualGraphFromTopology()  ← TopologyAdapterV2
           - ZERO self-edges (throw Error)
           - ZERO string heuristics
           - BFS spanning tree segmentacja
           - Stacje A/B/C/D z domeny
           - PV/BESS z GeneratorKind
-                      â”‚
-                      â–Ľ
+                      │
+                      ▼
               VisualGraphV1 (zamrozony kontrakt)
-                      â”‚
-                      â–Ľ
+                      │
+                      ▼
    Layout Engine (single orchestrator)
    VisualGraphV1 → LayoutResult (positions, paths)
-       â”‚
-       â”śâ”€ Phase 1: Role Assignment
-       â”śâ”€ Phase 2-4: Geometric Skeleton
-       â”śâ”€ Phase 5: Busbar Feeder Routing
-       â””â”€ Phase 6: Collision Guard
-       â”‚
-       â–Ľ
+       │
+       ├─ Phase 1: Role Assignment
+       ├─ Phase 2-4: Geometric Skeleton
+       ├─ Phase 5: Busbar Feeder Routing
+       └─ Phase 6: Collision Guard
+       │
+       ▼
    Camera (affine transform, no-reflow)
-       â”‚
-       â–Ľ
+       │
+       ▼
    Renderer (thin, topology-unaware)
-       â”‚
-       â–Ľ
+       │
+       ▼
    Overlay (token-only, geometry-preserving)
-       â”‚
-       â–Ľ
+       │
+       ▼
    Export (SVG/PDF/PNG, world coords)
 ```
 

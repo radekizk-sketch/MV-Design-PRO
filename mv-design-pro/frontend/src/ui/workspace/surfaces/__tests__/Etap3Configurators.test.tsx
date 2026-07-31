@@ -623,7 +623,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
       expect(screen.queryByText(/brief/)).not.toBeInTheDocument();
     });
 
-    it('pokazuje port OZE dla PV przyĹ‚Ä…czonego przez transformator blokowy', () => {
+    it('pokazuje port OZE dla PV przyłączonego przez transformator blokowy', () => {
       useSnapshotStore.setState({
         snapshot: {
           header: {
@@ -667,7 +667,7 @@ describe('Powierzchnie konfiguratorów E-10/E-11/E-13', () => {
               tags: [],
               meta: {
                 field_specs: [
-                  { field_ref: 'field-in', name: 'Pole wejĹ›ciowe', bay_role: 'IN' },
+                  { field_ref: 'field-in', name: 'Pole wejściowe', bay_role: 'IN' },
                   { field_ref: 'field-tr', name: 'Pole transformatora', bay_role: 'TR' },
                 ],
               },

@@ -33,13 +33,33 @@ SUSPICIOUS_FRAGMENTS: dict[str, str] = {
     "\u00c5\u00bc": "\u017c zapisane jako mojibake",
     "\u00c5\u00ba": "\u017a zapisane jako mojibake",
     "\u00c3\u00b3": "\u00f3 zapisane jako mojibake",
-    # DLUG NAZWANY (pomiar 2026-07-31, karta KD-2): klasa "\u0139" (np. "nale\u0139\u013dy",
-    # "przek\u0139\u201aadnik") NIE jest tu jeszcze wpisana, bo zapala 1347 miejsc \u2014
-    # w tym CALE dokumenty docs/*.md zapisane w tej postaci oraz
-    # frontend/src/ui/sld/canonical_symbols/ports.json. Jedno wystapienie
-    # produktowe (api/domain_ops_policy: "nale\u0139\u013dy") naprawione u zrodla w tej
-    # karcie; masowe czyszczenie tej klasy = osobna karta porzadkowa (ryzyko
-    # przepisywania tresci dokumentow bez ich autora).
+    # DLUG ZAMKNIETY (karta KD-6, poz. 4). Klasa "\u0139" (zapis UTF-8 odczytany
+    # jako CP1250: "przek\u0139\u201aadnik" zamiast "przek\u0142adnik") byla tu wpisana jako
+    # dlug, bo zapalala ponad tysiac miejsc \u2014 CALE dokumenty docs/*.md oraz
+    # frontend/src/ui/sld/canonical_symbols/ports.json. Naprawa masowa poszla
+    # narzedziem `scripts/napraw_mojibake.py` (odwrocenie uszkodzenia, nie
+    # przepisywanie tresci: 37 545 znakow w 47 plikach), wiec klasa jest juz
+    # PILNOWANA, a nie odkladana.
+    "\u0139\u201a": "\u0142 zapisane jako mojibake CP1250",
+    "\u0139\u201e": "\u0144 zapisane jako mojibake CP1250",
+    "\u0139\u203a": "\u015b zapisane jako mojibake CP1250",
+    "\u0139\u015f": "\u017a zapisane jako mojibake CP1250",
+    "\u0139\u013d": "\u017c zapisane jako mojibake CP1250",
+    "\u0139\u0161": "\u015a zapisane jako mojibake CP1250",
+    "\u0139\u0105": "\u0179 zapisane jako mojibake CP1250",
+    "\u0139\u00bb": "\u017b zapisane jako mojibake CP1250",
+    "\u0139\u0081": "\u0141 zapisane jako mojibake CP1250",
+    "\u0139\u0083": "\u0143 zapisane jako mojibake CP1250",
+    "\u0102\u0142": "\u00f3 zapisane jako mojibake CP1250",
+    "\u0102\u201c": "\u00d3 zapisane jako mojibake CP1250",
+    "\u00c4\u201e": "\u0104 zapisane jako mojibake CP1250",
+    "\u00c4\u2020": "\u0106 zapisane jako mojibake CP1250",
+    "\u00c4\u0098": "\u0118 zapisane jako mojibake CP1250",
+    "\u00c5\u0082": "\u0142 zapisane jako mojibake CP1252",
+    # Ramki i bloki rysunkowe (U+2500..U+259F) w tej samej klasie uszkodzenia \u2014
+    # to one dawaly najwiecej wystapien w dokumentach ze schematami ASCII.
+    "\u00e2\u201d": "ramka rysunkowa zapisana jako mojibake",
+    "\u00e2\u2022": "ramka podwojna zapisana jako mojibake",
     "\u00e2\u20ac\u2122": "apostrof zapisany jako mojibake",
     "\u00e2\u20ac\u201c": "pauza zapisana jako mojibake",
     "\u00e2\u20ac\u201d": "myslnik zapisany jako mojibake",

@@ -17,14 +17,14 @@ Definicja **Topology Tree** — hierarchicznej eksploracji sieci jako alternatyw
 
 ```
 PROJECT
-  â””â”€â”€ STATION
-        â””â”€â”€ VOLTAGE_LEVEL
-              â”śâ”€â”€ BUSES
-              â”śâ”€â”€ LINES
-              â”śâ”€â”€ TRANSFORMERS
-              â”śâ”€â”€ SOURCES
-              â”śâ”€â”€ LOADS
-              â””â”€â”€ SWITCHES
+  └── STATION
+        └── VOLTAGE_LEVEL
+              ├── BUSES
+              ├── LINES
+              ├── TRANSFORMERS
+              ├── SOURCES
+              ├── LOADS
+              └── SWITCHES
 ```
 
 ---
@@ -35,7 +35,7 @@ PROJECT
 |-------------|---------|
 | Element | SLD centruje + highlight, Inspector otwiera się |
 | Station | SLD zoom do stacji |
-| Voltage Level | Filtruje wyĹ›wietlanie |
+| Voltage Level | Filtruje wyświetlanie |
 
 ---
 
@@ -46,7 +46,7 @@ Global Focus = (Target Element, Active Case, Active Run, Active Snapshot, Active
 ```
 
 **Zasady:**
-1. Jeden globalny fokus wspĂłĹ‚dzielony przez Tree, SLD, Results, Inspector
+1. Jeden globalny fokus współdzielony przez Tree, SLD, Results, Inspector
 2. Zmiana w jednym widoku → aktualizacja WSZYSTKICH
 3. ESC cofa fokus o poziom (Element→Run→Snapshot→Case)
 
@@ -54,9 +54,9 @@ Global Focus = (Target Element, Active Case, Active Run, Active Snapshot, Active
 
 ## 5. FORBIDDEN
 
-- Wiele aktywnych fokusĂłw jednoczeĹ›nie
+- Wiele aktywnych fokusów jednocześnie
 - Rozjazd kontekstu między widokami
-- Reset kontekstu przy przeĹ‚ączaniu widokĂłw
+- Reset kontekstu przy przełączaniu widoków
 
 ---
 
@@ -64,9 +64,9 @@ Global Focus = (Target Element, Active Case, Active Run, Active Snapshot, Active
 
 | Feature | benchmark | benchmark | MV-DESIGN-PRO | Status |
 |---------|------|--------------|---------------|--------|
-| Hierarchical Tree | âś“ | âś“ | âś“ | âś… FULL |
-| Sync with SLD | âś“ | âś“ | âś“ | âś… FULL |
-| Focus Lock | âś— | âś— | âś“ | âž• SUPERIOR |
+| Hierarchical Tree | ✓ | ✓ | ✓ | ✅ FULL |
+| Sync with SLD | ✓ | ✓ | ✓ | ✅ FULL |
+| Focus Lock | ✗ | ✗ | ✓ | ➕ SUPERIOR |
 
 ---
 

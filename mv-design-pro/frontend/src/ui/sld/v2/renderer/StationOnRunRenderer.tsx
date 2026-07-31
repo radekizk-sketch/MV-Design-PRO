@@ -238,7 +238,7 @@ function DispatcherStationSymbol(props: StationOnRunRendererProps): JSX.Element 
     || (normalizedCode != null && normalizedName.startsWith(`${normalizedCode} `))
   )
     ? null
-    : name.length > 24 ? name.slice(0, 22) + 'â€¦' : name;
+    : name.length > 24 ? name.slice(0, 22) + '…' : name;
   const hasMultiVoltageLv = (nnVoltageLevelsCount ?? 0) > 1;
   const showVoltageLabel = effectiveFeeders <= 0 || hasMultiVoltageLv;
   const voltageLabelY = CODE_Y + (effectiveFeeders > 0 ? 68 : 48);

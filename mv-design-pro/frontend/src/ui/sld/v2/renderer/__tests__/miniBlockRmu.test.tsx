@@ -553,7 +553,7 @@ describe('MiniBlockRmuRenderer — DER badges', () => {
     const badge = container.querySelector('[data-testid="sld-v2-mini-rmu-der-badge-FW"]');
 
     expect(badge?.textContent).not.toContain('×2');
-    expect(badge?.textContent).not.toContain('Ă—2');
+    expect(badge?.textContent).not.toContain('×2');
   });
 });
 

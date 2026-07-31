@@ -5,6 +5,7 @@ from pathlib import Path
 
 from utf8_mojibake_guard import (
     _PARAMETR_ZAPYTANIA,
+    SUSPICIOUS_FRAGMENTS,
     ZNAK_ZASTEPCZY_W_SLOWIE,
     is_exempt,
     should_scan,
@@ -76,3 +77,36 @@ def test_nie_zapala_sie_na_pytaniu_ani_skladni_typescript() -> None:
     assert not _zapala_regule("const wynik = warunek ? pierwszy : drugi;")
     assert not _zapala_regule("interface Pole { etykieta?: string }")
     assert not _zapala_regule("const nazwa = element?.meta?.nazwa ?? null;")
+
+
+# ---------------------------------------------------------------------------
+# Klasa 3: zapis UTF-8 odczytany jako CP1250 (klasa "\u0139", karta KD-6 poz. 4)
+# ---------------------------------------------------------------------------
+
+
+def _zapala_fragment(linia: str) -> bool:
+    """Czy linia zawiera ktorykolwiek zakazany fragment (tak jak w skanie)."""
+    return any(fragment in linia for fragment in SUSPICIOUS_FRAGMENTS)
+
+
+def test_wykrywa_klase_cp1250_naprawiona_w_kd6() -> None:
+    """PROBKI Z REPO SPRZED NAPRAWY \u2014 dowod, ze straznik lapie te klase.
+
+    Do karty KD-6 klasa byla WPISANA JAKO DLUG (komentarz w guardzie), bo
+    zapalala ponad tysiac miejsc. Po masowej naprawie
+    (`scripts/napraw_mojibake.py`) jest pilnowana, wiec te probki MUSZA byc
+    czerwone \u2014 inaczej dlug wrocilby niezauwazony.
+    """
+    assert _zapala_fragment("const etykieta = 'Wy\u0139\u201aacznik';")  # Wylacznik
+    assert _zapala_fragment('"description": "Przek\u0139\u201aadnik pr\u0102\u0142dowy"')
+    assert _zapala_fragment("# nale\u0139\u013dy wskaza\u0107 pozycj\u0119")  # nalezy
+    assert _zapala_fragment("Ci\u0139\u0161nienie")  # Cisnienie (klasa \u0139\u0161)
+    assert _zapala_fragment("kr\u0102\u0142tko")  # krotko (klasa \u0102\u0142)
+    assert _zapala_fragment("\u00e2\u201d\u0161\u00e2\u201d\u20ac ramka")  # ramka rysunkowa
+
+
+def test_klasa_cp1250_nie_zapala_sie_na_poprawnym_tekscie() -> None:
+    """Poprawna polszczyzna \u2014 takze wielkimi literami \u2014 zostaje czysta."""
+    assert not _zapala_fragment("Wy\u0142\u0105cznik, przek\u0142adnik, ci\u015bnienie, kr\u00f3tko")
+    assert not _zapala_fragment("R\u00d3\u017bNICA NAPI\u0118\u0106 i CZ\u0118\u015a\u0106 ZAMIENNA")
+    assert not _zapala_fragment("\u251c\u2500\u2500 ramka rysunkowa")

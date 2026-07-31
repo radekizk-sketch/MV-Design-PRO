@@ -112,11 +112,11 @@ GENERATION_COLORS = {
 All SLD-related tests pass:
 
 ```
-âś“ UnifiedSymbolRenderer.test.tsx (31 tests)
-âś“ sldbenchmarkStyle.test.ts (60 tests)
-âś“ sldModeStore.test.ts (27 tests)
-âś“ ProtectionView.test.ts (41 tests)
-âś“ DiagnosticResultsLayer.test.tsx (22 tests)
+✓ UnifiedSymbolRenderer.test.tsx (31 tests)
+✓ sldbenchmarkStyle.test.ts (60 tests)
+✓ sldModeStore.test.ts (27 tests)
+✓ ProtectionView.test.ts (41 tests)
+✓ DiagnosticResultsLayer.test.tsx (22 tests)
 ```
 
 ## Visual Quality Assessment

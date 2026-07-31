@@ -9,165 +9,165 @@
 
 ```
 NetworkModel (backend)
-      â”‚
-      â–Ľ
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  SNAPSHOT                       â”‚
-â”‚  NetworkSnapshot (frozen)       â”‚
-â”‚  fingerprint: SHA-256           â”‚
-â”‚  backend/src/network_model/     â”‚
-â”‚    core/snapshot.py             â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-              â”‚
-              â–Ľ
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  PROJEKCJA SLD (backend)        â”‚
-â”‚  project_snapshot_to_sld()      â”‚
-â”‚  backend/src/network_model/     â”‚
-â”‚    sld_projection.py            â”‚
-â”‚  OUT: SldDiagram(elements)      â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-              â”‚
-              â–Ľ
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  ADAPTER NetworkGraph → SLD     â”‚
-â”‚  convert_graph_to_sld_payload() â”‚
-â”‚  build_sld_from_network_graph() â”‚
-â”‚  backend/src/application/sld/   â”‚
-â”‚    network_graph_to_sld.py      â”‚
-â”‚  OUT: SldDiagram + id_map       â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-              â”‚
-              â–Ľ
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  LAYOUT (backend)               â”‚
-â”‚  build_auto_layout_diagram()    â”‚
-â”‚  backend/src/application/sld/   â”‚
-â”‚    layout.py                    â”‚
-â”‚  OUT: SldDiagram z pozycjami    â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-              â”‚
-              â–Ľ (API REST)
-â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  API ENDPOINT                   â”‚
-â”‚  GET /projects/{id}/sld/...     â”‚
-â”‚  backend/src/api/sld.py         â”‚
-â”‚  OUT: SldDiagramDTO (JSON)      â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-              â”‚
-              â–Ľ (HTTP → frontend store)
-â”Śâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â”
-â•‘                         FRONTEND                                       â•‘
-â• â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•Ł
-â•‘                                                                        â•‘
-â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                                  â•‘
-â•‘  â”‚  SLD EDITOR STORE (Zustand)      â”‚                                  â•‘
-â•‘  â”‚  useSldEditorStore               â”‚                                  â•‘
-â•‘  â”‚  frontend/src/ui/sld-editor/     â”‚                                  â•‘
-â•‘  â”‚    SldEditorStore.ts             â”‚                                  â•‘
-â•‘  â”‚  symbols[], selectedIds[]        â”‚                                  â•‘
-â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                                  â•‘
-â•‘                 â”‚                                                      â•‘
-â•‘                 â–Ľ                                                      â•‘
-â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘  â”‚  TOPOLOGY ADAPTER (frontend, Phase 1)                          â”‚    â•‘
-â•‘  â”‚  assignTopologicalRoles(symbols)                               â”‚    â•‘
-â•‘  â”‚  frontend/src/ui/sld-editor/utils/topological-layout/          â”‚    â•‘
-â•‘  â”‚    roleAssigner.ts                                             â”‚    â•‘
-â•‘  â”‚  OUT: RoleAssignment map, feederChains, stationSymbolIds       â”‚    â•‘
-â•‘  â”‚  Buduje wewnetrzny TopologyGraph (nodes, edges, adjacency)     â”‚    â•‘
-â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘                 â”‚                                                      â•‘
-â•‘                 â–Ľ                                                      â•‘
-â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘  â”‚  LAYOUT ENGINE (frontend, Phase 2-4)                           â”‚    â•‘
-â•‘  â”‚  buildGeometricSkeleton(symbols, assignments, chains, ...)     â”‚    â•‘
-â•‘  â”‚  frontend/src/ui/sld-editor/utils/topological-layout/          â”‚    â•‘
-â•‘  â”‚    geometricSkeleton.ts                                        â”‚    â•‘
-â•‘  â”‚  OUT: GeometricSkeleton (positions, busbars, tiers, slots)     â”‚    â•‘
-â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘                 â”‚                                                      â•‘
-â•‘                 â”śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”         â•‘
-â•‘                 â”‚                                            â”‚         â•‘
-â•‘                 â–Ľ                                            â–Ľ         â•‘
-â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘  â”‚  COLLISION GUARD (Phase 6)  â”‚  â”‚  BUSBAR FEEDER AUTO-LAYOUT   â”‚    â•‘
-â•‘  â”‚  detectSymbolCollisions()   â”‚  â”‚  generateBusbarFeederPaths() â”‚    â•‘
-â•‘  â”‚  resolveSymbolCollisions()  â”‚  â”‚  frontend/src/ui/sld-editor/ â”‚    â•‘
-â•‘  â”‚  frontend/src/ui/sld-editor/â”‚  â”‚    layout-integration/       â”‚    â•‘
-â•‘  â”‚    utils/topological-layout/â”‚  â”‚    busbarFeedersAdapter.ts   â”‚    â•‘
-â•‘  â”‚    collisionGuard.ts        â”‚  â”‚  + computeBusbarAutoLayout   â”‚    â•‘
-â•‘  â”‚  OUT: CollisionReport       â”‚  â”‚  frontend/src/ui/sld/layout/ â”‚    â•‘
-â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”  â”‚    orthogonalPath.ts         â”‚    â•‘
-â•‘                 â”‚                 â”‚  OUT: feeder paths (Position[])â”‚   â•‘
-â•‘                 â”‚                 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘                 â”‚                                â”‚                     â•‘
-â•‘                 â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                     â•‘
-â•‘                              â”‚                                         â•‘
-â•‘                              â–Ľ                                         â•‘
-â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘  â”‚  ORCHESTRATOR                                                  â”‚    â•‘
-â•‘  â”‚  computeTopologicalLayout(symbols, config, orientation)        â”‚    â•‘
-â•‘  â”‚  frontend/src/ui/sld-editor/utils/topological-layout/          â”‚    â•‘
-â•‘  â”‚    topologicalLayoutEngine.ts                                  â”‚    â•‘
-â•‘  â”‚  OUT: TopologicalLayoutResult (positions, roles, skeleton,     â”‚    â•‘
-â•‘  â”‚       collisionReport, diagnostics)                            â”‚    â•‘
-â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘                 â”‚                                                      â•‘
-â•‘                 â–Ľ                                                      â•‘
-â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘  â”‚  SYMBOL REGISTRY                                               â”‚    â•‘
-â•‘  â”‚  SymbolResolver.ts — mapowanie ElementType → benchmarkSymbolId      â”‚    â•‘
-â•‘  â”‚  frontend/src/ui/sld/SymbolResolver.ts                         â”‚    â•‘
-â•‘  â”‚  + canonical_symbols/*.svg (16 symboli)                             â”‚    â•‘
-â•‘  â”‚  + canonical_symbols/ports.json (porty: x,y w viewBox 0-100)       â”‚    â•‘
-â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘                 â”‚                                                      â•‘
-â•‘                 â–Ľ                                                      â•‘
-â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘  â”‚  CAMERA (ViewportState)                                        â”‚    â•‘
-â•‘  â”‚  { offsetX, offsetY, zoom }                                    â”‚    â•‘
-â•‘  â”‚  frontend/src/ui/sld/types.ts                                  â”‚    â•‘
-â•‘  â”‚  fitToContent() — auto-fit z paddingiem                        â”‚    â•‘
-â•‘  â”‚  ZOOM: 0.25–3.0, krok 0.1                                     â”‚    â•‘
-â•‘  â”‚  PAN: middle-click drag / Shift+drag                           â”‚    â•‘
-â•‘  â”‚  BRAK reflow geometrii przy zmianie zoom/pan                   â”‚    â•‘
-â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘                 â”‚                                                      â•‘
-â•‘                 â–Ľ                                                      â•‘
-â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘  â”‚  RENDERER (thin)                                               â”‚    â•‘
-â•‘  â”‚  SLDViewCanvas.tsx — SVG canvas z energizacja                  â”‚    â•‘
-â•‘  â”‚  UnifiedSymbolRenderer.tsx — renderowanie symboli benchmark         â”‚    â•‘
-â•‘  â”‚  CanonicalSymbolRenderer.tsx — generowanie SVG                      â”‚    â•‘
-â•‘  â”‚  frontend/src/ui/sld/SLDViewCanvas.tsx                         â”‚    â•‘
-â•‘  â”‚  frontend/src/ui/sld/symbols/UnifiedSymbolRenderer.tsx         â”‚    â•‘
-â•‘  â”‚  Renderer NIE zna topologii — rysuje to co dostanie            â”‚    â•‘
-â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘                 â”‚                                                      â•‘
-â•‘                 â–Ľ                                                      â•‘
-â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘  â”‚  OVERLAY (token-only)                                          â”‚    â•‘
-â•‘  â”‚  OverlayEngine.ts — PURE FUNCTION (element → style token)      â”‚    â•‘
-â•‘  â”‚  LoadFlowOverlayAdapter.ts — PowerFlow → overlay               â”‚    â•‘
-â•‘  â”‚  ResultsOverlay.tsx, DiagnosticsOverlay.tsx, Protection...     â”‚    â•‘
-â•‘  â”‚  frontend/src/ui/sld-overlay/                                  â”‚    â•‘
-â•‘  â”‚  frontend/src/ui/sld/ResultsOverlay.tsx                        â”‚    â•‘
-â•‘  â”‚  OVERLAY NIE modyfikuje geometrii — tylko tokeny wizualne      â”‚    â•‘
-â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘                 â”‚                                                      â•‘
-â•‘                 â–Ľ                                                      â•‘
-â•‘  â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘  â”‚  EXPORT                                                        â”‚    â•‘
-â•‘  â”‚  SldSnapshotExport.ts — orkiestracja                           â”‚    â•‘
-â•‘  â”‚  exportPng.ts — raster PNG (1x/1.5x/2x/4x)                   â”‚    â•‘
-â•‘  â”‚  exportPdf.ts — wektor PDF (A4/A3/A2)                         â”‚    â•‘
-â•‘  â”‚  frontend/src/ui/sld/export/                                   â”‚    â•‘
-â•‘  â”‚  Warstwy: diagram, results, diagnostics, protection           â”‚    â•‘
-â•‘  â”‚  Koordynaty: world coords (nie screen)                         â”‚    â•‘
-â•‘  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”    â•‘
-â•‘                                                                        â•‘
-â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•ť
+      │
+      ▼
+┌─────────────────────────────────┐
+│  SNAPSHOT                       │
+│  NetworkSnapshot (frozen)       │
+│  fingerprint: SHA-256           │
+│  backend/src/network_model/     │
+│    core/snapshot.py             │
+└─────────────┬───────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐
+│  PROJEKCJA SLD (backend)        │
+│  project_snapshot_to_sld()      │
+│  backend/src/network_model/     │
+│    sld_projection.py            │
+│  OUT: SldDiagram(elements)      │
+└─────────────┬───────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐
+│  ADAPTER NetworkGraph → SLD     │
+│  convert_graph_to_sld_payload() │
+│  build_sld_from_network_graph() │
+│  backend/src/application/sld/   │
+│    network_graph_to_sld.py      │
+│  OUT: SldDiagram + id_map       │
+└─────────────┬───────────────────┘
+              │
+              ▼
+┌─────────────────────────────────┐
+│  LAYOUT (backend)               │
+│  build_auto_layout_diagram()    │
+│  backend/src/application/sld/   │
+│    layout.py                    │
+│  OUT: SldDiagram z pozycjami    │
+└─────────────┬───────────────────┘
+              │
+              ▼ (API REST)
+┌─────────────────────────────────┐
+│  API ENDPOINT                   │
+│  GET /projects/{id}/sld/...     │
+│  backend/src/api/sld.py         │
+│  OUT: SldDiagramDTO (JSON)      │
+└─────────────┬───────────────────┘
+              │
+              ▼ (HTTP → frontend store)
+┌══════════════════════════════════════════════════════════════════════════┐
+║                         FRONTEND                                       ║
+╠══════════════════════════════════════════════════════════════════════════╣
+║                                                                        ║
+║  ┌──────────────────────────────────┐                                  ║
+║  │  SLD EDITOR STORE (Zustand)      │                                  ║
+║  │  useSldEditorStore               │                                  ║
+║  │  frontend/src/ui/sld-editor/     │                                  ║
+║  │    SldEditorStore.ts             │                                  ║
+║  │  symbols[], selectedIds[]        │                                  ║
+║  └──────────────┬───────────────────┘                                  ║
+║                 │                                                      ║
+║                 ▼                                                      ║
+║  ┌────────────────────────────────────────────────────────────────┐    ║
+║  │  TOPOLOGY ADAPTER (frontend, Phase 1)                          │    ║
+║  │  assignTopologicalRoles(symbols)                               │    ║
+║  │  frontend/src/ui/sld-editor/utils/topological-layout/          │    ║
+║  │    roleAssigner.ts                                             │    ║
+║  │  OUT: RoleAssignment map, feederChains, stationSymbolIds       │    ║
+║  │  Buduje wewnetrzny TopologyGraph (nodes, edges, adjacency)     │    ║
+║  └──────────────┬─────────────────────────────────────────────────┘    ║
+║                 │                                                      ║
+║                 ▼                                                      ║
+║  ┌────────────────────────────────────────────────────────────────┐    ║
+║  │  LAYOUT ENGINE (frontend, Phase 2-4)                           │    ║
+║  │  buildGeometricSkeleton(symbols, assignments, chains, ...)     │    ║
+║  │  frontend/src/ui/sld-editor/utils/topological-layout/          │    ║
+║  │    geometricSkeleton.ts                                        │    ║
+║  │  OUT: GeometricSkeleton (positions, busbars, tiers, slots)     │    ║
+║  └──────────────┬─────────────────────────────────────────────────┘    ║
+║                 │                                                      ║
+║                 ├────────────────────────────────────────────┐         ║
+║                 │                                            │         ║
+║                 ▼                                            ▼         ║
+║  ┌─────────────────────────────┐  ┌──────────────────────────────┐    ║
+║  │  COLLISION GUARD (Phase 6)  │  │  BUSBAR FEEDER AUTO-LAYOUT   │    ║
+║  │  detectSymbolCollisions()   │  │  generateBusbarFeederPaths() │    ║
+║  │  resolveSymbolCollisions()  │  │  frontend/src/ui/sld-editor/ │    ║
+║  │  frontend/src/ui/sld-editor/│  │    layout-integration/       │    ║
+║  │    utils/topological-layout/│  │    busbarFeedersAdapter.ts   │    ║
+║  │    collisionGuard.ts        │  │  + computeBusbarAutoLayout   │    ║
+║  │  OUT: CollisionReport       │  │  frontend/src/ui/sld/layout/ │    ║
+║  └──────────────┬──────────────┘  │    orthogonalPath.ts         │    ║
+║                 │                 │  OUT: feeder paths (Position[])│   ║
+║                 │                 └──────────────┬───────────────┘    ║
+║                 │                                │                     ║
+║                 └────────────┬───────────────────┘                     ║
+║                              │                                         ║
+║                              ▼                                         ║
+║  ┌────────────────────────────────────────────────────────────────┐    ║
+║  │  ORCHESTRATOR                                                  │    ║
+║  │  computeTopologicalLayout(symbols, config, orientation)        │    ║
+║  │  frontend/src/ui/sld-editor/utils/topological-layout/          │    ║
+║  │    topologicalLayoutEngine.ts                                  │    ║
+║  │  OUT: TopologicalLayoutResult (positions, roles, skeleton,     │    ║
+║  │       collisionReport, diagnostics)                            │    ║
+║  └──────────────┬─────────────────────────────────────────────────┘    ║
+║                 │                                                      ║
+║                 ▼                                                      ║
+║  ┌────────────────────────────────────────────────────────────────┐    ║
+║  │  SYMBOL REGISTRY                                               │    ║
+║  │  SymbolResolver.ts — mapowanie ElementType → benchmarkSymbolId      │    ║
+║  │  frontend/src/ui/sld/SymbolResolver.ts                         │    ║
+║  │  + canonical_symbols/*.svg (16 symboli)                             │    ║
+║  │  + canonical_symbols/ports.json (porty: x,y w viewBox 0-100)       │    ║
+║  └──────────────┬─────────────────────────────────────────────────┘    ║
+║                 │                                                      ║
+║                 ▼                                                      ║
+║  ┌────────────────────────────────────────────────────────────────┐    ║
+║  │  CAMERA (ViewportState)                                        │    ║
+║  │  { offsetX, offsetY, zoom }                                    │    ║
+║  │  frontend/src/ui/sld/types.ts                                  │    ║
+║  │  fitToContent() — auto-fit z paddingiem                        │    ║
+║  │  ZOOM: 0.25–3.0, krok 0.1                                     │    ║
+║  │  PAN: middle-click drag / Shift+drag                           │    ║
+║  │  BRAK reflow geometrii przy zmianie zoom/pan                   │    ║
+║  └──────────────┬─────────────────────────────────────────────────┘    ║
+║                 │                                                      ║
+║                 ▼                                                      ║
+║  ┌────────────────────────────────────────────────────────────────┐    ║
+║  │  RENDERER (thin)                                               │    ║
+║  │  SLDViewCanvas.tsx — SVG canvas z energizacja                  │    ║
+║  │  UnifiedSymbolRenderer.tsx — renderowanie symboli benchmark         │    ║
+║  │  CanonicalSymbolRenderer.tsx — generowanie SVG                      │    ║
+║  │  frontend/src/ui/sld/SLDViewCanvas.tsx                         │    ║
+║  │  frontend/src/ui/sld/symbols/UnifiedSymbolRenderer.tsx         │    ║
+║  │  Renderer NIE zna topologii — rysuje to co dostanie            │    ║
+║  └──────────────┬─────────────────────────────────────────────────┘    ║
+║                 │                                                      ║
+║                 ▼                                                      ║
+║  ┌────────────────────────────────────────────────────────────────┐    ║
+║  │  OVERLAY (token-only)                                          │    ║
+║  │  OverlayEngine.ts — PURE FUNCTION (element → style token)      │    ║
+║  │  LoadFlowOverlayAdapter.ts — PowerFlow → overlay               │    ║
+║  │  ResultsOverlay.tsx, DiagnosticsOverlay.tsx, Protection...     │    ║
+║  │  frontend/src/ui/sld-overlay/                                  │    ║
+║  │  frontend/src/ui/sld/ResultsOverlay.tsx                        │    ║
+║  │  OVERLAY NIE modyfikuje geometrii — tylko tokeny wizualne      │    ║
+║  └──────────────┬─────────────────────────────────────────────────┘    ║
+║                 │                                                      ║
+║                 ▼                                                      ║
+║  ┌────────────────────────────────────────────────────────────────┐    ║
+║  │  EXPORT                                                        │    ║
+║  │  SldSnapshotExport.ts — orkiestracja                           │    ║
+║  │  exportPng.ts — raster PNG (1x/1.5x/2x/4x)                   │    ║
+║  │  exportPdf.ts — wektor PDF (A4/A3/A2)                         │    ║
+║  │  frontend/src/ui/sld/export/                                   │    ║
+║  │  Warstwy: diagram, results, diagnostics, protection           │    ║
+║  │  Koordynaty: world coords (nie screen)                         │    ║
+║  └────────────────────────────────────────────────────────────────┘    ║
+║                                                                        ║
+╚══════════════════════════════════════════════════════════════════════════╝
 ```
 
 ---
@@ -203,7 +203,7 @@ NetworkModel (backend)
 - Sciezka glowna: `readTopologyFromENM()` → `buildVisualGraphFromTopology()`
 - Sciezka bridge: `readTopologyFromSymbols()` → `buildVisualGraphFromTopology()`
 - **ZERO self-edges** — twardy invariant (throw Error)
-- **ZERO string heuristics** — typy z pĂłl strukturalnych (voltageKv, kind, stationType)
+- **ZERO string heuristics** — typy z pól strukturalnych (voltageKv, kind, stationType)
 - **Deterministyczna segmentacja** — BFS spanning tree → trunk/branch/secondary
 - **Stacje A/B/C/D** z analizy topologicznej domeny (busCount, branchCount, switchIds)
 - **PV/BESS** z jawnego pola `kind` (GeneratorKind), nie z nazw

@@ -54,7 +54,7 @@ Wariant przechowuje nastepujace parametry:
 | `wspolczynnik_c_max`          | float   | —         | 1.10      | Wspolczynnik napiecia c (max) wg IEC 60909   |
 | `wspolczynnik_c_min`          | float   | —         | 1.00      | Wspolczynnik napiecia c (min) wg IEC 60909   |
 | `moc_bazowa`                  | float   | MVA       | 100.0     | Moc bazowa ukladu                             |
-| `tolerancja`                  | float   | —         | 1e-6      | Tolerancja zbiĐµĐ·nosci obliczen                |
+| `tolerancja`                  | float   | —         | 1e-6      | Tolerancja zbieznosci obliczen                |
 | `czas_cieplny`                | float   | s         | 1.0       | Czas odniesienia dla pradu cieplnego Ith      |
 | `wklad_silnikow`              | bool    | —         | false     | Uwzglednienie wkladu silnikow asynchronicznych|
 | `wklad_falownikow`            | bool    | —         | false     | Uwzglednienie wkladu zrodel falownikowych (OZE)|
@@ -102,44 +102,44 @@ Gdzie `TrybZrodla` to:
 ### 3.1. Stany wariantu
 
 ```
-                    â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚                  â”‚
-     utworzenie     â”‚      NONE        â”‚  Brak wynikow
-     â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€> â”‚  (brak wynikow)  â”‚
-                    â”‚                  â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                             â”‚
+                    ┌──────────────────┐
+                    │                  │
+     utworzenie     │      NONE        │  Brak wynikow
+     ────────────> │  (brak wynikow)  │
+                    │                  │
+                    └────────┬─────────┘
+                             │
                     uruchomienie obliczen
                     (pomyslne)
-                             â”‚
+                             │
                              v
-                    â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚                  â”‚
-                    â”‚      FRESH       â”‚  Wyniki aktualne
-                    â”‚  (wyniki aktualne)â”‚
-                    â”‚                  â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                             â”‚
+                    ┌──────────────────┐
+                    │                  │
+                    │      FRESH       │  Wyniki aktualne
+                    │  (wyniki aktualne)│
+                    │                  │
+                    └────────┬─────────┘
+                             │
                     zmiana modelu sieci
-                             â”‚
+                             │
                              v
-                    â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚                  â”‚
-                    â”‚    OUTDATED      â”‚  Wyniki nieaktualne
-                    â”‚  (nieaktualne)   â”‚
-                    â”‚                  â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”¬â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                             â”‚
+                    ┌──────────────────┐
+                    │                  │
+                    │    OUTDATED      │  Wyniki nieaktualne
+                    │  (nieaktualne)   │
+                    │                  │
+                    └────────┬─────────┘
+                             │
                     ponowne uruchomienie
                     (pomyslne)
-                             â”‚
+                             │
                              v
-                    â”Śâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                    â”‚                  â”‚
-                    â”‚      FRESH       â”‚  Wyniki aktualne
-                    â”‚  (wyniki aktualne)â”‚
-                    â”‚                  â”‚
-                    â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                    ┌──────────────────┐
+                    │                  │
+                    │      FRESH       │  Wyniki aktualne
+                    │  (wyniki aktualne)│
+                    │                  │
+                    └──────────────────┘
 ```
 
 ### 3.2. Przejscia stanow
@@ -222,7 +222,7 @@ Porownanie wynikow dwoch wariantow (oba musza miec stan FRESH):
 
 | Wielkosc                  | Jednostka | Porownanie                                    |
 |---------------------------|-----------|-----------------------------------------------|
-| Napiecia wezlowe          | kV, p.u.  | Delta napiecia per szynĐ°                      |
+| Napiecia wezlowe          | kV, p.u.  | Delta napiecia per szyna                      |
 | Prady galezi              | A         | Delta pradu per galaz                          |
 | Prady zwarciowe           | kA        | Delta pradow zwarciowych per szyna             |
 | Moc zwarciowa             | MVA       | Delta mocy zwarciowej per szyna                |

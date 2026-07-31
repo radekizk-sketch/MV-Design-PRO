@@ -27,15 +27,15 @@ Obecny model:
 
 ```
 ProtectionSldOverlay
-  â””â”€â”€ wymaga run_id (wynik solvera)
-  â””â”€â”€ dane pochodza z analizy zabezpieczen
+  └── wymaga run_id (wynik solvera)
+  └── dane pochodza z analizy zabezpieczen
 
 ProtectionCaseConfigPanel
-  â””â”€â”€ konfiguruje szablon nastaw na poziomie CASE
-  â””â”€â”€ NIE przypisuje zabezpieczen do konkretnych elementow
+  └── konfiguruje szablon nastaw na poziomie CASE
+  └── NIE przypisuje zabezpieczen do konkretnych elementow
 ```
 
-**BRAK:** Statycznego przypisania `element â†’ protection_device`
+**BRAK:** Statycznego przypisania `element → protection_device`
 
 ---
 
@@ -128,7 +128,7 @@ interface Switch {
 }
 ```
 
-**Zalety:** Zgodnosc z bijection SldSymbol â†” Model
+**Zalety:** Zgodnosc z bijection SldSymbol ↔ Model
 **Wady:** Wymaga migracji modelu
 
 ### Opcja B: Osobny endpoint API
