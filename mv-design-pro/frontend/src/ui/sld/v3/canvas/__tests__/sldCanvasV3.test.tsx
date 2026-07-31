@@ -30,6 +30,7 @@ import {
   computeOltcBadgePlacements,
   computeResultLabelPlacements,
   contentBoundingBoxOf,
+  sceneBoxToCameraWorld,
   layoutResultLabels,
   flowOverlayGeometry,
   formatFlowLabelPl,
@@ -618,12 +619,15 @@ function viewBoxOf(container: HTMLElement): string {
 
 describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie zawsze LOD2)', () => {
   // K11-A (dyrektywa SLD-first 2026-07-30): domyślny CEL fitu to bbox TREŚCI
-  // sieci (`contentBoundingBoxOf` — elementy z ownerRef + rezerwy podpisów),
+  // sieci (`contentBoundingBoxOf` — elementy z ownerRef WRAZ Z ETYKIETAMI),
   // nie pełny bbox sceny z meblami arkusza. INTENCJA testów bez zmian:
   // lodOverride wybiera ŚWIAT (L0 ≠ L2), a fit celuje w treść tego świata.
+  // KD-7: cel fitu przeliczony do ŚWIATA KAMERY (`sceneBoxToCameraWorld`) —
+  // `viewBox` opisuje układ arkusza, w którym treść sceny jest przesunięta o
+  // margines ramki.
   const contentFitBbox = (lod: 0 | 2) => {
     const scena = buildSceneV3(enm, lod);
-    return contentBoundingBoxOf(scena) ?? boundingBoxOfRect(scena.bbox);
+    return sceneBoxToCameraWorld(contentBoundingBoxOf(scena) ?? boundingBoxOfRect(scena.bbox));
   };
 
   it('lodOverride=0: viewBox startowy dopasowany do treści L0, RÓŻNY od dopasowania do L2 (dawny defekt „mały rysunek w rogu")', () => {

@@ -25,7 +25,7 @@ import {
   computeInitialCameraState,
 } from '../camera';
 import { fitToView } from '../../../v2/viewport/ViewportController';
-import { SldCanvasV3, contentBoundingBoxOf } from '../SldCanvasV3';
+import { SldCanvasV3, contentBoundingBoxOf, sceneBoxToCameraWorld } from '../SldCanvasV3';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const fixturePath = resolve(
@@ -95,8 +95,10 @@ describe('SldCanvasV3 — F12-C kamera mobilna (E15/E16 parytet v2)', () => {
     // K11-A: cel fitu = bbox treści sieci (contentBoundingBoxOf), nie pełny
     // bbox sceny z meblami arkusza. INTENCJA testu bez zmian: desktop NIE
     // wchodzi w tryb focus — kamera to zwykły fit.
+    // KD-7: cel fitu żyje w ŚWIECIE KAMERY (scena + margines arkusza —
+    // `sceneBoxToCameraWorld`), bo `SheetFrame` rysuje treść przesuniętą.
     const scena2 = buildSceneV3(enm, 2);
-    const bbox2 = contentBoundingBoxOf(scena2) ?? boundingBoxOfRect(scena2.bbox);
+    const bbox2 = sceneBoxToCameraWorld(contentBoundingBoxOf(scena2) ?? boundingBoxOfRect(scena2.bbox));
     const expectedFit = cameraViewBox(
       computeInitialCameraState(bbox2, DESKTOP).transform,
       DESKTOP,
