@@ -20,7 +20,20 @@ infrastruktury importow, nie zachowanie zadnego endpointu.
 
 from __future__ import annotations
 
+import re
 import sys
+from pathlib import Path
+
+BACKEND = Path(__file__).resolve().parents[2]
+TEN_PLIK = Path(__file__).resolve()
+
+# Usuniecie wpisu z `sys.modules` to DRUGI sposob na zrobienie dwoch tozsamosci
+# jednego modulu — obok importu przez `src.`. Po usunieciu kolejny import buduje
+# SWIEZY obiekt modulu z nowym kompletem klas, a wszystko, co zaimportowalo modul
+# wczesniej, trzyma referencje do starych.
+WZORZEC_USUNIECIA = re.compile(r"del\s+sys\.modules\[|sys\.modules\.pop\(|sys\.modules\.clear\(")
+# Przywrocenie stanu — plik, ktory zdejmuje moduly, MUSI je oddac.
+WZORZEC_PRZYWROCENIA = re.compile(r"sys\.modules\.update\(|sys\.modules\[[^\]]+\]\s*=")
 
 # Nazwy dopuszczone pod prefiksem `src.` — WYLACZNIE modul rozruchowy.
 # Uzasadnienie: obraz produkcyjny startuje `uvicorn src.api.main:app`, wiec
@@ -76,4 +89,42 @@ def test_enm_models_nie_ma_blizniaka_pod_prefiksem_src() -> None:
         "`EnergyNetworkModel` jest DWIEMA roznymi klasami i "
         "`isinstance(src.enm.models.EnergyNetworkModel(), enm.models.EnergyNetworkModel)` "
         "zwraca False."
+    )
+
+
+def test_test_zdejmujacy_moduly_z_sys_modules_musi_je_oddac() -> None:
+    """Skan statyczny: kto zdejmuje modul z `sys.modules`, ten musi go przywrocic.
+
+    DEFEKT, KTORY TO ZAMYKA (KD-10). `tests/analysis/test_arc_flash.py` kasowal
+    wszystkie moduly `network_model.solvers*` i NIE oddawal ich. Kazdy test
+    wykonany pozniej, ktory przez leniwy import odtworzyl ktorys z nich, dostawal
+    SWIEZE klasy — a moduly zaimportowane wczesniej trzymaly stare. Pomiar w pelnym
+    biegu: `tests/solvers/test_pr15_pr16_solvers.py` oblewal
+    `isinstance(result, StabilityResult)` na obiekcie, ktory JEST `StabilityResult`.
+
+    Defekt byl PRZYKRYTY podwojna tozsamoscia: dopoki ten test importowal solwery
+    przez `src.`, kasowanie nazw `network_model.solvers*` go nie dotykalo. Reprodukcja
+    `pytest tests/analysis/test_arc_flash.py tests/solvers/test_pr15_pr16_solvers.py`
+    na commicie bazowym: 85 passed; po ujednoliceniu tozsamosci: 2 failed; po naprawie
+    przywracajacej stan: 85 passed. Bramka pilnuje, zeby nie wrocil ta sama droga.
+    """
+    naruszenia: list[str] = []
+    for plik in sorted((BACKEND / "tests").rglob("*.py")):
+        if plik.resolve() == TEN_PLIK:
+            # Ten plik CYTUJE wzorce w opisie i w regexach, sam `sys.modules` nie rusza.
+            continue
+        tresc = plik.read_text(encoding="utf-8")
+        if not WZORZEC_USUNIECIA.search(tresc):
+            continue
+        if WZORZEC_PRZYWROCENIA.search(tresc):
+            continue
+        naruszenia.append(plik.relative_to(BACKEND).as_posix())
+
+    assert naruszenia == [], (
+        "Test zdejmuje moduly z `sys.modules` i ich NIE ODDAJE. Kolejny import tworzy "
+        "wtedy DRUGA tozsamosc modulu — nowy komplet klas dla wszystkiego, co "
+        "zaimportuje go pozniej, przy starych referencjach u tych, ktorzy zdazyli "
+        "wczesniej. `isinstance` zaczyna oblewac na wlasnym typie, a wynik zalezy od "
+        "KOLEJNOSCI testow, wiec bieg czesciowy i pelny daja rozne odpowiedzi. "
+        "Zdjete moduly zapamietaj i przywroc w `finally`:\n" + "\n".join(naruszenia)
     )
