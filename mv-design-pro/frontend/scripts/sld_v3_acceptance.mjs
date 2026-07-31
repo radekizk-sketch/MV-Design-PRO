@@ -88,7 +88,13 @@ import {
   localDensityMetrics,
   LOCAL_DENSITY_WINDOW_CELLS,
   minParallelCableClearance,
+  sceneObstacleRects,
 } from '../src/ui/sld/v3/scene/buildScene.ts';
+import {
+  planSceneLabels,
+  plannedLabelCollisions,
+  plannedLabelObstacleCollisions,
+} from '../src/ui/sld/v3/canvas/labelLegibility.ts';
 import {
   BUSBAR_LABEL_PATH_CLEARANCE,
   MIN_PARALLEL_CABLE_CLEARANCE,
@@ -1726,6 +1732,76 @@ for (const lod of LODS) {
     // żyje wtedy WYŁĄCZNIE w testach vitest syntetycznych).
     line('  [SKIP] secondary_link_duality_probe (test negatywny): fixtura L2 bez symbolu breaker');
   }
+}
+
+// -- KD-11 identity_label_probe: tożsamość elementów NIE znika i NIE koliduje -
+// Rysunek techniczny bez tożsamości (nazwa stacji/transformatora, napięcie
+// szyny/sekcji, oznaczenie pola, nazwa źródła) nie mówi, CO przedstawia —
+// regresja użytkowa z odbioru KD-8 („Ukryto 35 opisów" na rozwiniętym GPZ).
+// Wyrocznia sprawdza PLAN RENDERU (`canvas/labelLegibility.ts`) na sieci
+// referencyjnej, w skalach, przy których dany LOD jest AKTYWNY w kamerze
+// produkcyjnej (progi + histereza `canvas/camera.ts`): (a) żadna etykieta
+// tożsamości nie jest porzucona, (b) zero nachodzeń etykieta↔etykieta,
+// (c) zero nachodzeń etykieta↔rysunek (symbol/tor).
+line('');
+line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===');
+{
+  const SKALE_PRODUKCYJNE = {
+    0: [0.51, 0.68],
+    1: [0.51, 0.69, 1.02, 1.38],
+    2: [1.02, 1.38, 2],
+  };
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    const obstacles = sceneObstacleRects(scene);
+    const tozsamosci = scene.labels.filter((l) => l.labelRole === 'tozsamosc').length;
+    check(
+      `identity_label_probe (KD-11) L${lod}: scena niesie etykiety tożsamości i KAŻDA ma zadeklarowaną stronę kotwicy`,
+      tozsamosci > 0 &&
+        scene.labels.every((l) => l.labelRole !== 'tozsamosc' || l.placement !== undefined),
+      `${tozsamosci} etykiet tożsamości`,
+    );
+    for (const scale of SKALE_PRODUKCYJNE[lod]) {
+      const plan = planSceneLabels(scene.labels, obstacles, scale);
+      const narysowaneTozsamosci = plan.drawn.filter((p) => p.label.labelRole === 'tozsamosc').length;
+      check(
+        `identity_label_probe (KD-11) L${lod} @ ${scale}: 0 porzuconych tożsamości`,
+        plan.droppedIdentity.length === 0,
+        `${narysowaneTozsamosci}/${tozsamosci} narysowanych, porzucone: ${plan.droppedIdentity
+          .slice(0, 3)
+          .map((l) => l.text)
+          .join(', ')}`,
+      );
+      const pary = plannedLabelCollisions(plan);
+      check(
+        `identity_label_probe (KD-11) L${lod} @ ${scale}: 0 nachodzeń etykieta↔etykieta`,
+        pary.length === 0,
+        `${pary.length} par`,
+      );
+      const naRysunku = plannedLabelObstacleCollisions(plan, obstacles);
+      check(
+        `identity_label_probe (KD-11) L${lod} @ ${scale}: 0 nachodzeń etykieta↔rysunek (symbol/tor)`,
+        naRysunku.length === 0,
+        `${naRysunku.length} etykiet`,
+      );
+      check(
+        `identity_label_probe (KD-11) L${lod} @ ${scale}: licznik „Ukryto N opisów" liczy WYŁĄCZNIE dane szczegółowe`,
+        plan.hiddenDetail.every((l) => l.labelRole === 'dane'),
+        `${plan.hiddenDetail.length} ukrytych opisów`,
+      );
+    }
+  }
+  // Negatyw obowiązkowy: wyrocznia kolizji MUSI gryźć na planie sfabrykowanym.
+  const scene = buildSceneV3(enm, 2);
+  const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1.02);
+  const sabotaz = {
+    ...plan,
+    drawn: [plan.drawn[0], { ...plan.drawn[1], rect: { ...plan.drawn[0].rect } }],
+  };
+  check(
+    'identity_label_probe (test negatywny — dowód, że wyrocznia gryzie): dwie etykiety w TYM SAMYM prostokącie MUSZĄ dać FAIL',
+    plannedLabelCollisions(sabotaz).length > 0,
+  );
 }
 
 // -- §15.2 lod_path_probe: „pokrywa TE SAME połączenia topologiczne" -------

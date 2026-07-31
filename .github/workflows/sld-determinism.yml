@@ -116,6 +116,14 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v3/scene/__tests__/busbarLabelClearance.test.ts --reporter=verbose
 
+      # KD-11: tożsamość elementów na rysunku (nazwa/napięcie szyny/oznaczenie
+      # pola/nazwa źródła) NIE znika przy kadrze „Dopasuj widok" — jest
+      # renderowana pismem minimalnym czytelnym, bez kolizji; licznik „Ukryto N
+      # opisów" liczy WYŁĄCZNIE dane szczegółowe.
+      - name: Run SLD v3 identity label contract tests (KD-11)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/tozsamoscEtykiet.contract.test.ts --reporter=verbose
+
       # KD-8 poz. 1: paleta rysunku sterowana motywem — parytet kluczy,
       # semantyka klas napięć, kontrast i NIEZALEŻNOŚĆ hashu geometrii sceny
       # od motywu (paleta nie wchodzi do sceny).
