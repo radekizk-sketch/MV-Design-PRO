@@ -47,9 +47,10 @@ def test_guard_main_returns_zero_on_repo():
 
 
 def test_ui_allowlist_matches_measured_baseline():
-    """Baseline (re-measured 2026-07-31, K7-B): exactly 18 raw physics-pattern
-    hits in frontend/src/ui/** (pre-allowlist, via scan_file which the allowlist
-    never touches), classified 0 class-a (real physics) / 18 class-b (false
+    """Baseline (re-measured 2026-07-31, KD-2 acceptance): exactly 16 raw
+    physics-pattern hits in frontend/src/ui/** (pre-allowlist, via scan_file
+    which the allowlist
+    never touches), classified 0 class-a (real physics) / 16 class-b (false
     positive: string, label, comment continuation, ratio of two backend values,
     unit conversion, chart-axis normalisation) / 0 class-c. If this count
     changes, a new hit appeared and MUST be re-classified explicitly
@@ -68,8 +69,13 @@ def test_ui_allowlist_matches_measured_baseline():
 
     HISTORY. H-1 (2026-07-22) measured 22 raw hits / 18 entries; V12K-267
     re-measured 5 after commit dc525539 moved the frontend VT catalog to the
-    backend. Both re-measurements lowered the baseline BY MEASUREMENT, never by
-    widening tolerance.
+    backend; K7-B (2026-07-31) widened patterns and measured 18; KD-2 acceptance
+    (2026-07-31) re-measured 16 after card KD-1 (V12K-289) deleted the dead
+    station-wizard-v2 component holding two allowlisted label hits (KD-1's own
+    gates skipped pytest -- zero backend files in its diff -- so this backend
+    test scanning frontend files could only catch it on the merged tip). All
+    re-measurements lowered the baseline BY MEASUREMENT, never by widening
+    tolerance.
     """
     scan_dir = ui_no_physics_guard.REPO_ROOT / "frontend" / "src" / "ui"
     raw = 0
@@ -79,7 +85,7 @@ def test_ui_allowlist_matches_measured_baseline():
         if ui_no_physics_guard._should_exclude_file(path):
             continue
         raw += len(ui_no_physics_guard.scan_file(path))
-    assert raw == 18
+    assert raw == 16
 
 
 def test_ui_allowlist_entries_are_not_stale():

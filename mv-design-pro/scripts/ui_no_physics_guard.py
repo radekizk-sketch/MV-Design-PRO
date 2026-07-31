@@ -119,14 +119,10 @@ ALLOWLIST: dict[tuple[str, int], str] = {
     # Test `test_ui_allowlist_entries_are_not_stale` zlapal to poprawnie; nikt
     # nie zaktualizowal pomiaru po tamtej karcie. Wszystkie 5 pozostalych
     # trafien to klasa b (napis/komentarz), zero klasy a (realna fizyka).
-    (
-        "frontend/src/ui/network-build/station-wizard-v2/StationWizardStepContent.tsx",
-        374,
-    ): "b: JSX label prop string ('VT 15:root3/0.1:root3 kV - 4-uzwojeniowy'), not arithmetic",
-    (
-        "frontend/src/ui/network-build/station-wizard-v2/StationWizardStepContent.tsx",
-        684,
-    ): "b: descriptive string naming the backend solver's method (IEC 60909-0), not a UI computation",
+    # StationWizardStepContent.tsx — dwa wpisy (374: napis etykiety VT,
+    # 684: napis metody IEC 60909-0) USUNIETE 2026-07-31: karta KD-1 (V12K-289)
+    # skasowala caly martwy komponent kreatora stacji v2, wiec wpisy przestaly
+    # wskazywac na istniejacy kod. Pomiar bazowy obnizony 18 -> 16.
     # metersContract.ts — trailing comment (not a whole-line comment, so the
     # guard's SKIP_LINE_PATTERNS regex does not recognise it as a comment).
     (
