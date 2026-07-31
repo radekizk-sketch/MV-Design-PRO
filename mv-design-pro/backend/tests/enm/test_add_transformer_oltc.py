@@ -63,7 +63,15 @@ def test_transformer_with_oltc_materializes_canonical_tap_changer() -> None:
             "transformer_tap_min_position": -9,
             "transformer_tap_max_position": 9,
             "transformer_tap_step_percent": 1.25,
-            "transformer_control_mode": "AUTO",
+            # KANONICZNA wartość trybu sterowania (`enm.models.TapChanger`).
+            # Wcześniej ten test podawał tu "AUTO" — wartość SPOZA kontraktu —
+            # i przechodził, bo nic jej nie sprawdzało: operacja zapisywała ją
+            # wprost do migawki, a `TapChanger` odrzuciłby ją dopiero przy
+            # walidacji modelu. Test maskował defekt produktu (kreator
+            # transformatora ui2 wysyłał dokładnie tę wartość). Karta KD-3
+            # naprawiła OBA: kontrakt jest teraz sprawdzany w operacji, a
+            # kreator wysyła `AUTOMATIC`.
+            "transformer_control_mode": "AUTOMATIC",
             "transformer_voltage_setpoint_kv": 15.5,
             "transformer_deadband_kv": 0.2,
         },
@@ -75,7 +83,7 @@ def test_transformer_with_oltc_materializes_canonical_tap_changer() -> None:
     assert tc["min_position"] == -9
     assert tc["max_position"] == 9
     assert tc["step_percent"] == 1.25
-    assert tc["control_mode"] == "AUTO"
+    assert tc["control_mode"] == "AUTOMATIC"
     assert tc["voltage_setpoint_kv"] == 15.5
     assert tc["deadband_kv"] == 0.2
     # Strona regulowana domyślnie steruje szyną nN (controlled_bus_ref = lv_bus).
@@ -97,3 +105,43 @@ def test_transformer_tap_changer_survives_create_device() -> None:
     )
     tc = _created_transformer(result).get("tap_changer")
     assert tc is not None and tc["regulation_type"] == "DETC"
+
+
+def test_control_mode_outside_contract_is_rejected() -> None:
+    """Wartość spoza kontraktu `TapChanger` kończy operację błędem (karta KD-3).
+
+    Do tej pory przechodziła cicho do migawki i wywracała dopiero walidację
+    modelu — czyli daleko od miejsca, w którym powstała.
+    """
+    result = execute_domain_operation(
+        _enm_two_buses(),
+        "add_transformer_sn_nn",
+        {
+            "hv_bus_ref": "bus-sn",
+            "lv_bus_ref": "bus-nn",
+            **_binding(),
+            "transformer_regulation_type": "OLTC",
+            "transformer_control_mode": "AUTO",
+        },
+    )
+    assert result.get("error"), "Tryb sterowania spoza kontraktu musi zostać odrzucony"
+    assert result.get("error_code") == "transformer.tap_changer_invalid"
+
+
+def test_tap_range_reversed_is_rejected() -> None:
+    """Odwrócony zakres zaczepów (min > max) jest błędem, nie danymi."""
+    result = execute_domain_operation(
+        _enm_two_buses(),
+        "add_transformer_sn_nn",
+        {
+            "hv_bus_ref": "bus-sn",
+            "lv_bus_ref": "bus-nn",
+            **_binding(),
+            "transformer_regulation_type": "DETC",
+            "transformer_tap_min_position": 4,
+            "transformer_tap_max_position": -4,
+            "transformer_tap_step_percent": 2.5,
+        },
+    )
+    assert result.get("error")
+    assert result.get("error_code") == "transformer.tap_changer_invalid"

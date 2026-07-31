@@ -119,6 +119,21 @@ export interface WyposazeniePolaWpis {
   vt_catalog_ref: string | null;
   relay_catalog_ref: string | null;
   relay_type: string;
+  /**
+   * Obwody wtórne CT i VT (karta KD-3). Dane WYŁĄCZNIE wejściowe do kryteriów
+   * bilansu (końcówki `ct-burden-check` / `vt-burden-check`) — model sieci nie
+   * ma dla nich pola, więc NIE trafiają do payloadu operacji stacyjnej. Nazwy
+   * odpowiadają 1:1 polom żądania końcówki (zero fabrykacji kontrolek).
+   * `null` = projektant nie podał, kryterium zwraca kod gotowości.
+   */
+  ct_dlugosc_m: number | null;
+  ct_przekroj_mm2: number | null;
+  ct_moc_aparatow_va: number | null;
+  vt_dlugosc_m: number | null;
+  vt_przekroj_mm2: number | null;
+  vt_moc_aparatow_va: number | null;
+  /** Które uzwojenie VT sprawdzamy (limit ΔU zależy od kategorii uzwojenia). */
+  vt_uzwojenie: 'POMIAROWE' | 'ZABEZPIECZENIOWE';
 }
 
 /** Rodzaje zabezpieczeń pola przyjmowane przez operację `add_relay`. */
@@ -129,6 +144,30 @@ export const RODZAJE_ZABEZPIECZEN: readonly string[] = [
   'ODLEGLOSCIOWY',
   'ROZNICOWY',
 ];
+
+/**
+ * Pusty wpis wyposażenia pola — JEDNO miejsce, w którym powstaje kształt
+ * domyślny. Wcześniej literał był powtarzany w trzech miejscach kreatora i przy
+ * dodaniu pól obwodu wtórnego (KD-3) rozjechałby się bez ostrzeżenia typów.
+ */
+export function nowyWpisWyposazenia(
+  nadpisania: Partial<WyposazeniePolaWpis> = {},
+): WyposazeniePolaWpis {
+  return {
+    ct_catalog_ref: null,
+    vt_catalog_ref: null,
+    relay_catalog_ref: null,
+    relay_type: RODZAJE_ZABEZPIECZEN[0],
+    ct_dlugosc_m: null,
+    ct_przekroj_mm2: null,
+    ct_moc_aparatow_va: null,
+    vt_dlugosc_m: null,
+    vt_przekroj_mm2: null,
+    vt_moc_aparatow_va: null,
+    vt_uzwojenie: 'POMIAROWE',
+    ...nadpisania,
+  };
+}
 
 export interface StacjaFormData {
   station_type: TypStacji;
@@ -178,6 +217,20 @@ export interface StacjaFormData {
   station_auxiliary_cosphi: string;
   /** Liczba równoległych transformatorów w polu (1 = pojedynczy) — G-STK-6. */
   transformer_units: number;
+  /**
+   * Zaczepy transformatora (B-2, karta KD-3). Klucze odpowiadają 1:1 kontraktowi
+   * operacji domenowej (`transformer_*` — te same, którymi steruje transformator
+   * GPZ), a backend materializuje z nich KANONICZNY podzespół `tap_changer`.
+   * ZERO pól równoległych: kreator nie zna żadnej innej drogi zapisu regulacji.
+   * `NONE` = bez regulacji (blok pomijany w payloadzie, zgodność wsteczna).
+   */
+  transformer_regulation_type: 'NONE' | 'DETC' | 'OLTC';
+  transformer_regulated_winding: 'HV' | 'LV';
+  transformer_tap_neutral_position: number;
+  transformer_tap_current_position: number;
+  transformer_tap_min_position: number;
+  transformer_tap_max_position: number;
+  transformer_tap_step_percent: number;
 }
 
 export interface BladPola {
@@ -212,6 +265,16 @@ export const DANE_DOMYSLNE: StacjaFormData = {
   station_auxiliary_kw: '',
   station_auxiliary_cosphi: '0,95',
   transformer_units: 1,
+  // Domyślnie BEZ regulacji — projektant włącza ją świadomie. Typowy
+  // transformator dystrybucyjny SN/nN ma przełącznik bez wzbudzenia ±2 × 2,5 %,
+  // dlatego takie są wartości startowe po włączeniu regulacji.
+  transformer_regulation_type: 'NONE',
+  transformer_regulated_winding: 'HV',
+  transformer_tap_neutral_position: 0,
+  transformer_tap_current_position: 0,
+  transformer_tap_min_position: -2,
+  transformer_tap_max_position: 2,
+  transformer_tap_step_percent: 2.5,
 };
 
 /**
@@ -813,6 +876,25 @@ function blokUziemienia(data: StacjaFormData): Record<string, unknown> | null {
 }
 
 /**
+ * Buduje blok zaczepów transformatora (B-2) wewnątrz `transformer` payloadu.
+ * Klucze są DOKŁADNIE te, które przyjmuje operacja domenowa (parytet z
+ * transformatorem GPZ) — backend materializuje z nich kanoniczny `tap_changer`.
+ * Regulacja `NONE` = pusty obiekt, czyli payload bez zmian (zgodność wsteczna).
+ */
+export function blokZaczepow(data: StacjaFormData): Record<string, unknown> {
+  if (data.transformer_regulation_type === 'NONE') return {};
+  return {
+    transformer_regulation_type: data.transformer_regulation_type,
+    transformer_regulated_winding: data.transformer_regulated_winding,
+    transformer_tap_neutral_position: data.transformer_tap_neutral_position,
+    transformer_tap_current_position: data.transformer_tap_current_position,
+    transformer_tap_min_position: data.transformer_tap_min_position,
+    transformer_tap_max_position: data.transformer_tap_max_position,
+    transformer_tap_step_percent: data.transformer_tap_step_percent,
+  };
+}
+
+/**
  * Buduje payload realnej operacji domenowej. Wspólny blok (stacja/transformator/
  * blok nN/opcje) + warianty umiejscowienia. Mapuje wyłącznie pola realnie
  * przyjmowane przez operacje `append_station_on_endpoint` /
@@ -903,6 +985,9 @@ export function zbudujPayload(
       model_type: 'DWU_UZWOJENIOWY',
       // Praca równoległa: n_parallel tylko dla ≥2 (pojedynczy → pominięte, G-STK-6).
       ...(data.transformer_units > 1 ? { n_parallel: data.transformer_units } : {}),
+      // B-2: zaczepy TYLKO gdy projektant włączył regulację — brak bloku odtwarza
+      // dotychczasowe zachowanie co do bitu (operacja nie tworzy `tap_changer`).
+      ...blokZaczepow(data),
     },
     nn_block: nnBlock,
     options: {

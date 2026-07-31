@@ -50,6 +50,8 @@ import {
   type StationTemplateFull,
   type StationTemplateSummary,
 } from '../../../ui/network-build/station-templates/api';
+import '../../kryteria/kryteria.css';
+import { KRYTERIA_STRINGS, SekcjaBilansuCtVt } from '../../kryteria';
 import {
   FIELD_ROLE_LABELS,
   contextString,
@@ -88,6 +90,7 @@ import {
   czyKoniecOdcinka,
   domyslneWpisyPol,
   nowyWpisPola,
+  nowyWpisWyposazenia,
   zbudujPolaSnZWpisow,
   zbudujWyposazeniePolaDoPayloadu,
   czyRozdzielnicaKompletna,
@@ -607,12 +610,7 @@ export function KreatorStacjiSnNn() {
   const zmienWyposazenie = useCallback(
     (id: string, zmiana: Partial<StacjaFormData['wyposazenie'][string]>) => {
       setDane((p) => {
-        const biezace = p.wyposazenie[id] ?? {
-          ct_catalog_ref: null,
-          vt_catalog_ref: null,
-          relay_catalog_ref: null,
-          relay_type: RODZAJE_ZABEZPIECZEN[0],
-        };
+        const biezace = p.wyposazenie[id] ?? nowyWpisWyposazenia();
         return { ...p, wyposazenie: { ...p.wyposazenie, [id]: { ...biezace, ...zmiana } } };
       });
     },
@@ -807,12 +805,12 @@ export function KreatorStacjiSnNn() {
         const wyposazenie = Object.fromEntries(
           pola.map((pole) => [
             pole.id,
-            {
+            nowyWpisWyposazenia({
               ct_catalog_ref: wKatalogu(wypelnienie.ctRef, ctTypy),
               vt_catalog_ref: wKatalogu(wypelnienie.vtRef, vtTypy),
               relay_catalog_ref: wKatalogu(wypelnienie.przekaznikRef, przekazniki),
               relay_type: 'NADPRADOWY',
-            },
+            }),
           ]),
         );
         return {
@@ -1206,6 +1204,85 @@ export function KreatorStacjiSnNn() {
             pomoc={T.liczbaTransformatorowPomoc}
             testid="mvd-kreator-stacja-liczba-trafo"
           />
+          {/* B-2: zaczepy transformatora — ta sama operacja stacyjna, ten sam
+              kontrakt domenowy co transformator GPZ (zero pól równoległych). */}
+          <KreatorSekcja tytul={T.zaczepyTytul} testid="mvd-kreator-stacja-zaczepy">
+            <KreatorInfo>{T.zaczepyOpis}</KreatorInfo>
+            <PoleWyboru
+              etykieta={T.zaczepyRodzaj}
+              wartosc={dane.transformer_regulation_type}
+              onZmiana={(v) =>
+                zmien('transformer_regulation_type', v as StacjaFormData['transformer_regulation_type'])
+              }
+              opcje={T.zaczepyRodzajOpcje}
+              pomoc={T.zaczepyRodzajPomoc}
+              testid="mvd-kreator-stacja-zaczepy-rodzaj"
+            />
+            {dane.transformer_regulation_type !== 'NONE' ? (
+              <>
+                <PoleWyboru
+                  etykieta={T.zaczepyUzwojenie}
+                  wartosc={dane.transformer_regulated_winding}
+                  onZmiana={(v) =>
+                    zmien(
+                      'transformer_regulated_winding',
+                      v as StacjaFormData['transformer_regulated_winding'],
+                    )
+                  }
+                  opcje={T.zaczepyUzwojenieOpcje}
+                  pomoc={T.zaczepyUzwojeniePomoc}
+                  testid="mvd-kreator-stacja-zaczepy-uzwojenie"
+                />
+                <KreatorSiatka kolumny={2}>
+                  <PoleLiczbowe
+                    etykieta={T.zaczepyPozycjaMin}
+                    wartosc={dane.transformer_tap_min_position}
+                    onZmiana={(v) => zmien('transformer_tap_min_position', v ?? 0)}
+                    krok={1}
+                    testid="mvd-kreator-stacja-zaczepy-min"
+                  />
+                  <PoleLiczbowe
+                    etykieta={T.zaczepyPozycjaMax}
+                    wartosc={dane.transformer_tap_max_position}
+                    onZmiana={(v) => zmien('transformer_tap_max_position', v ?? 0)}
+                    krok={1}
+                    testid="mvd-kreator-stacja-zaczepy-max"
+                  />
+                  <PoleLiczbowe
+                    etykieta={T.zaczepyPozycjaNeutralna}
+                    wartosc={dane.transformer_tap_neutral_position}
+                    onZmiana={(v) => zmien('transformer_tap_neutral_position', v ?? 0)}
+                    krok={1}
+                    testid="mvd-kreator-stacja-zaczepy-neutralna"
+                  />
+                  <PoleLiczbowe
+                    etykieta={T.zaczepyPozycjaBiezaca}
+                    wartosc={dane.transformer_tap_current_position}
+                    onZmiana={(v) => zmien('transformer_tap_current_position', v ?? 0)}
+                    krok={1}
+                    testid="mvd-kreator-stacja-zaczepy-biezaca"
+                  />
+                </KreatorSiatka>
+                <PoleLiczbowe
+                  etykieta={T.zaczepyKrok}
+                  wartosc={dane.transformer_tap_step_percent}
+                  onZmiana={(v) => zmien('transformer_tap_step_percent', v ?? 0)}
+                  krok={0.25}
+                  min={0}
+                  pomoc={T.zaczepyKrokPomoc}
+                  testid="mvd-kreator-stacja-zaczepy-krok"
+                />
+                <RzadWartosci
+                  etykieta={T.zaczepyTytul}
+                  wartosc={T.zaczepyZakres(
+                    dane.transformer_tap_min_position,
+                    dane.transformer_tap_max_position,
+                    dane.transformer_tap_step_percent,
+                  )}
+                />
+              </>
+            ) : null}
+          </KreatorSekcja>
           <PanelTeorii
             tytul={T.teoriaTrafoTytul}
             opis={T.teoriaTrafoOpis}
@@ -1444,6 +1521,102 @@ export function KreatorStacjiSnNn() {
                       }
                     />
                   </KreatorSiatka>
+                  {/* KD-3: obwody wtórne CT/VT — dane wejściowe kryteriów bilansu.
+                      Wartości liczbowe wracają z końcówek solvera (zero fizyki tutaj). */}
+                  {wpis?.ct_catalog_ref ? (
+                    <KreatorSiatka kolumny={3}>
+                      <PoleLiczbowe
+                        etykieta={KRYTERIA_STRINGS.ctDlugosc}
+                        jednostka="m"
+                        wartosc={wpis.ct_dlugosc_m}
+                        onZmiana={(v) => zmienWyposazenie(pole.id, { ct_dlugosc_m: v })}
+                        krok={0.5}
+                        min={0}
+                        testid={`mvd-kreator-stacja-ct-dlugosc-${index + 1}`}
+                      />
+                      <PoleLiczbowe
+                        etykieta={KRYTERIA_STRINGS.ctPrzekroj}
+                        jednostka="mm²"
+                        wartosc={wpis.ct_przekroj_mm2}
+                        onZmiana={(v) => zmienWyposazenie(pole.id, { ct_przekroj_mm2: v })}
+                        krok={0.5}
+                        min={0}
+                        testid={`mvd-kreator-stacja-ct-przekroj-${index + 1}`}
+                      />
+                      <PoleLiczbowe
+                        etykieta={KRYTERIA_STRINGS.ctMocAparatow}
+                        jednostka="VA"
+                        wartosc={wpis.ct_moc_aparatow_va}
+                        onZmiana={(v) => zmienWyposazenie(pole.id, { ct_moc_aparatow_va: v })}
+                        krok={0.5}
+                        min={0}
+                        testid={`mvd-kreator-stacja-ct-moc-${index + 1}`}
+                      />
+                    </KreatorSiatka>
+                  ) : null}
+                  {wpis?.vt_catalog_ref ? (
+                    <>
+                      <KreatorSiatka kolumny={3}>
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.vtDlugosc}
+                          jednostka="m"
+                          wartosc={wpis.vt_dlugosc_m}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { vt_dlugosc_m: v })}
+                          krok={0.5}
+                          min={0}
+                          testid={`mvd-kreator-stacja-vt-dlugosc-${index + 1}`}
+                        />
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.vtPrzekroj}
+                          jednostka="mm²"
+                          wartosc={wpis.vt_przekroj_mm2}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { vt_przekroj_mm2: v })}
+                          krok={0.5}
+                          min={0}
+                          testid={`mvd-kreator-stacja-vt-przekroj-${index + 1}`}
+                        />
+                        <PoleLiczbowe
+                          etykieta={KRYTERIA_STRINGS.vtMocAparatow}
+                          jednostka="VA"
+                          wartosc={wpis.vt_moc_aparatow_va}
+                          onZmiana={(v) => zmienWyposazenie(pole.id, { vt_moc_aparatow_va: v })}
+                          krok={0.5}
+                          min={0}
+                          testid={`mvd-kreator-stacja-vt-moc-${index + 1}`}
+                        />
+                      </KreatorSiatka>
+                      <PoleWyboru
+                        etykieta={KRYTERIA_STRINGS.vtUzwojenie}
+                        wartosc={wpis.vt_uzwojenie}
+                        onZmiana={(v) =>
+                          zmienWyposazenie(pole.id, {
+                            vt_uzwojenie: v as 'POMIAROWE' | 'ZABEZPIECZENIOWE',
+                          })
+                        }
+                        opcje={KRYTERIA_STRINGS.vtUzwojenieOpcje.map((o) => ({
+                          id: o.id,
+                          etykieta: o.etykieta,
+                        }))}
+                        testid={`mvd-kreator-stacja-vt-uzwojenie-${index + 1}`}
+                      />
+                    </>
+                  ) : null}
+                  <SekcjaBilansuCtVt
+                    ctRef={wpis?.ct_catalog_ref ?? null}
+                    vtRef={wpis?.vt_catalog_ref ?? null}
+                    obwodCt={{
+                      dlugosc_m: wpis?.ct_dlugosc_m ?? null,
+                      przekroj_mm2: wpis?.ct_przekroj_mm2 ?? null,
+                      moc_aparatow_va: wpis?.ct_moc_aparatow_va ?? null,
+                    }}
+                    obwodVt={{
+                      dlugosc_m: wpis?.vt_dlugosc_m ?? null,
+                      przekroj_mm2: wpis?.vt_przekroj_mm2 ?? null,
+                      moc_aparatow_va: wpis?.vt_moc_aparatow_va ?? null,
+                    }}
+                    uzwojenieVt={wpis?.vt_uzwojenie ?? 'POMIAROWE'}
+                    testidSufiks={String(index + 1)}
+                  />
                 </KreatorSekcja>
               );
             })

@@ -2379,6 +2379,59 @@ def _build_gpz_tap_changer(
     return tc
 
 
+#: Kontrakt domenowy podzespolu zaczepow (`enm.models.TapChanger`) — JEDNO miejsce,
+#: w ktorym zapisane sa dozwolone wartosci. Bez tej listy payload przechodzil
+#: WPROST do modelu (walidacja Pydantic nie jest uruchamiana przy zapisie migawki),
+#: wiec regulacja spoza kontraktu zapisywala sie cicho i wywracala solver dopiero
+#: przy odczycie. Znalezisko karty KD-3 (B-2), naprawa u zrodla dla WSZYSTKICH
+#: wolajacych `_build_gpz_tap_changer`, nie tylko dla operacji stacyjnej.
+_TAP_REGULATION_TYPES = ("NONE", "DETC", "OLTC")
+_TAP_REGULATED_WINDINGS = ("HV", "LV")
+_TAP_CONTROL_MODES = ("MANUAL", "AUTOMATIC", "PROFILE", "REMOTE")
+
+
+def _blad_zaczepow(tap_changer: dict[str, Any]) -> str | None:
+    """Zwroc opis bledu zaczepow albo ``None``, gdy podzespol jest poprawny."""
+    regulacja = str(tap_changer.get("regulation_type") or "")
+    if regulacja not in _TAP_REGULATION_TYPES:
+        return (
+            f"Typ regulacji '{regulacja}' jest nieprawidłowy. "
+            f"Dozwolone: {', '.join(_TAP_REGULATION_TYPES)}."
+        )
+    uzwojenie = str(tap_changer.get("regulated_winding") or "")
+    if uzwojenie not in _TAP_REGULATED_WINDINGS:
+        return (
+            f"Regulowane uzwojenie '{uzwojenie}' jest nieprawidłowe. "
+            f"Dozwolone: {', '.join(_TAP_REGULATED_WINDINGS)}."
+        )
+    tryb = str(tap_changer.get("control_mode") or "")
+    if tryb not in _TAP_CONTROL_MODES:
+        return (
+            f"Tryb sterowania '{tryb}' jest nieprawidłowy. "
+            f"Dozwolone: {', '.join(_TAP_CONTROL_MODES)}."
+        )
+
+    minimum = tap_changer.get("min_position")
+    maksimum = tap_changer.get("max_position")
+    biezaca = tap_changer.get("current_position")
+    neutralna = tap_changer.get("neutral_position")
+    if not all(isinstance(v, int) for v in (minimum, maksimum, biezaca, neutralna)):
+        return "Pozycje zaczepów muszą być liczbami całkowitymi."
+    assert isinstance(minimum, int) and isinstance(maksimum, int)
+    assert isinstance(biezaca, int) and isinstance(neutralna, int)
+    if minimum > maksimum:
+        return f"Zakres zaczepów jest odwrócony (min {minimum} > max {maksimum})."
+    if not minimum <= biezaca <= maksimum:
+        return f"Pozycja bieżąca {biezaca} jest poza zakresem [{minimum}, {maksimum}]."
+    if not minimum <= neutralna <= maksimum:
+        return f"Pozycja neutralna {neutralna} jest poza zakresem [{minimum}, {maksimum}]."
+
+    krok = tap_changer.get("step_percent")
+    if not isinstance(krok, int | float) or krok < 0:
+        return "Krok zaczepu musi być liczbą nieujemną."
+    return None
+
+
 def _validate_transformer_voltage_compatibility(
     *,
     transformer_data: dict[str, Any],
@@ -3233,6 +3286,14 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         # (regulated per its own SN busbar). Absent when regulation not requested.
         gpz_tap_changer = _build_gpz_tap_changer(payload, controlled_bus_ref=section["bus_ref"])
         if gpz_tap_changer is not None:
+            # Kontrakt domenowy zaczepów sprawdzany PRZED zapisem (karta KD-3):
+            # wartość spoza kontraktu zapisywała się dotąd cicho.
+            blad_zaczepow = _blad_zaczepow(gpz_tap_changer)
+            if blad_zaczepow is not None:
+                return _error_response(
+                    f"Transformator {transformer_ref} — {blad_zaczepow}",
+                    "transformer.tap_changer_invalid",
+                )
             transformer["tap_changer"] = gpz_tap_changer
         new_enm.setdefault("transformers", []).append(transformer)
         gpz_transformer_refs.append(transformer_ref)
@@ -4081,6 +4142,62 @@ def _zastosuj_wyposazenie_pol(
                     zdarzenia.append({**zdarzenie, "field_ref": field_ref})
 
     return new_enm, utworzone, zdarzenia
+
+
+def _zastosuj_zaczepy_transformatora(
+    new_enm: dict[str, Any],
+    transformer_block: dict[str, Any],
+    *,
+    transformer_ref: str,
+    controlled_bus_ref: str,
+    kod_bledu: str,
+) -> tuple[dict[str, Any], list[dict[str, Any]]] | dict[str, Any]:
+    """Ustaw zaczepy transformatora stacyjnego W TEJ SAMEJ migawce co stacja (B-2).
+
+    DLUG, KTORY TO ZAMYKA (B-2). Kanoniczny podzespol zaczepow ``tap_changer``
+    (V12K-045) istnial WYLACZNIE dla transformatora GPZ: `add_grid_source_sn`
+    budowal go z payloadu, a `update_element_parameters` nie mial go nawet w
+    liscie pol dozwolonych. Transformator stacji SN/nN powstawal wiec zawsze bez
+    regulacji, a projektant nie mial jak jej ustawic — ani w kreatorze, ani
+    osobna operacja.
+
+    ZERO POL ROWNOLEGLYCH. Uzywamy DOKLADNIE tego samego buildera co GPZ
+    (`_build_gpz_tap_changer`) i DOKLADNIE tego samego handlera co operacja
+    osobna (`update_element_parameters`) — te same klucze payloadu
+    (``transformer_*``), ta sama walidacja, ta sama sciezka zapisu. Blad zapisu
+    zaczepow konczy CALA operacje stacyjna, wiec do modelu trafia albo
+    transformator z regulacja, albo nic (wzorzec `_zastosuj_wyposazenie_pol`).
+
+    Zwraca ``(migawka, zdarzenia)`` albo odpowiedz bledu. Brak regulacji w
+    payloadzie = brak zmian (zgodnosc wsteczna co do bitu).
+    """
+    tap_changer = _build_gpz_tap_changer(transformer_block, controlled_bus_ref=controlled_bus_ref)
+    if tap_changer is None:
+        return new_enm, []
+
+    blad_kontraktu = _blad_zaczepow(tap_changer)
+    if blad_kontraktu is not None:
+        return _error_response(
+            f"Transformator {transformer_ref} — {blad_kontraktu}", "transformer.tap_changer_invalid"
+        )
+
+    odpowiedz = update_element_parameters(
+        new_enm,
+        {"element_ref": transformer_ref, "parameters": {"tap_changer": tap_changer}},
+    )
+    blad = odpowiedz.get("error")
+    if blad:
+        return _error_response(
+            f"Transformator {transformer_ref} — nie udało się ustawić zaczepów: {blad}",
+            str(odpowiedz.get("error_code") or kod_bledu),
+        )
+    migawka = odpowiedz.get("snapshot")
+    if not isinstance(migawka, dict):
+        return _error_response(
+            f"Transformator {transformer_ref} — operacja zaczepów nie zwróciła migawki modelu.",
+            kod_bledu,
+        )
+    return migawka, [{"event_type": "TAP_CHANGER_SET", "element_id": transformer_ref}]
 
 
 #: Dozwolone typy konstrukcji stacji (B-5) — parytet z `enm.models.Substation`
@@ -5081,6 +5198,26 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
     events.append(
         {"event_seq": ev_seq, "event_type": "LOGICAL_VIEWS_UPDATED", "element_id": stn_id}
     )
+
+    # B-2: zaczepy transformatora w TEJ SAMEJ migawce co stacja. Krok stoi TUTAJ
+    # (a nie zaraz po utworzeniu transformatora), bo handler
+    # `update_element_parameters` zwraca GŁĘBOKĄ KOPIĘ modelu — wcześniejsza
+    # podmiana `new_enm` unieważniłaby lokalne referencje, które kolejne kroki
+    # jeszcze mutują. Parytet z `append_station_on_endpoint`.
+    if transformer.get("create", True):
+        wynik_zaczepow = _zastosuj_zaczepy_transformatora(
+            new_enm,
+            transformer,
+            transformer_ref=tr_id,
+            controlled_bus_ref=nn_bus_id,
+            kod_bledu="station.insert.tap_changer_failed",
+        )
+        if isinstance(wynik_zaczepow, dict):
+            return wynik_zaczepow
+        new_enm, zdarzenia_zaczepow = wynik_zaczepow
+        for zdarzenie in zdarzenia_zaczepow:
+            ev_seq += 1
+            events.append({**zdarzenie, "event_seq": ev_seq})
 
     # B-3: CT/VT/zabezpieczenia pól w TEJ SAMEJ migawce co stacja (atomowo).
     wynik_wyposazenia = _zastosuj_wyposazenie_pol(
@@ -6342,6 +6479,12 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     # pole TapChanger (zero fabrykacji). Strona regulowana domyślnie = szyna nN (LV).
     tap_changer = _build_gpz_tap_changer(payload, controlled_bus_ref=lv_bus_ref)
     if tap_changer is not None:
+        # Kontrakt domenowy zaczepów sprawdzany PRZED zapisem (karta KD-3).
+        blad_zaczepow = _blad_zaczepow(tap_changer)
+        if blad_zaczepow is not None:
+            return _error_response(
+                f"Transformator {tr_ref} — {blad_zaczepow}", "transformer.tap_changer_invalid"
+            )
         tr_data["tap_changer"] = tap_changer
 
     if payload.get("station_ref"):
@@ -6618,6 +6761,13 @@ def update_element_parameters(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 "tap_min",
                 "tap_max",
                 "tap_step_percent",
+                # B-2 (karta KD-3): KANONICZNY podzespol zaczepow (V12K-045) —
+                # do tej pory jedyne zrodlo prawdy o regulacji nie mialo zadnej
+                # drogi zapisu poza operacja zrodla GPZ, wiec zaczepy
+                # transformatora stacyjnego byly nieedytowalne. Dopisanie go tu
+                # NIE tworzy pola rownoleglego: starsze `tap_*` zostaja dla
+                # zgodnosci wstecznej, kanonem jest `tap_changer`.
+                "tap_changer",
                 "catalog_ref",
                 "parameter_source",
                 "overrides",
@@ -7918,6 +8068,26 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 break
         line_run = _ensure_line_run_for_corridor(new_enm, effective_run_ref)
         _append_line_run_station(line_run, substation_ref)
+
+    # B-2: zaczepy transformatora w TEJ SAMEJ migawce co stacja — PARYTET z
+    # `insert_station_on_segment_sn`. Krok stoi TUTAJ, a nie zaraz po utworzeniu
+    # transformatora, bo handler `update_element_parameters` zwraca GŁĘBOKĄ KOPIĘ
+    # modelu: wcześniejsze podmienienie `new_enm` unieważniłoby lokalne referencje
+    # (`new_substation`, specyfikacje pól), które kolejne kroki jeszcze mutują.
+    if transformer_catalog_ref:
+        wynik_zaczepow = _zastosuj_zaczepy_transformatora(
+            new_enm,
+            transformer_payload,
+            transformer_ref=transformer_ref,
+            controlled_bus_ref=bus_nn_ref,
+            kod_bledu="station.append.tap_changer_failed",
+        )
+        if isinstance(wynik_zaczepow, dict):
+            return wynik_zaczepow
+        new_enm, zdarzenia_zaczepow = wynik_zaczepow
+        for zdarzenie in zdarzenia_zaczepow:
+            ev_seq += 1
+            events.append({**zdarzenie, "event_seq": ev_seq})
 
     # B-3: CT/VT/zabezpieczenia pól w TEJ SAMEJ migawce co stacja (atomowo).
     wynik_wyposazenia = _zastosuj_wyposazenie_pol(

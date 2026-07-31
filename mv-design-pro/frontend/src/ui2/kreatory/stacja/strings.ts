@@ -416,6 +416,40 @@ export const STACJA_STRINGS = {
     + 'Dla n jednostek impedancja zastępcza maleje n-krotnie ($Z/n$) — rozpływ i zwarcie liczy '
     + 'backend na agregacie. 1 = pojedynczy transformator.',
 
+  // Zaczepy transformatora (B-2) — sekcja w kroku transformatora.
+  zaczepyTytul: 'Regulacja napięcia — zaczepy transformatora',
+  zaczepyOpis:
+    'Zaczepy zmieniają przekładnię, czyli napięcie po stronie nN przy niezmienionym '
+    + 'napięciu SN. Ustawienie jedzie w TEJ SAMEJ operacji co stacja — nie trzeba wracać '
+    + 'do transformatora po zapisie.',
+  zaczepyRodzaj: 'Rodzaj regulacji',
+  zaczepyRodzajOpcje: [
+    { id: 'NONE', etykieta: 'bez regulacji' },
+    { id: 'DETC', etykieta: 'przełącznik bez wzbudzenia (DETC)' },
+    { id: 'OLTC', etykieta: 'podobciążeniowy (OLTC)' },
+  ],
+  zaczepyRodzajPomoc:
+    'Przełącznik bez wzbudzenia przestawia się przy wyłączonym transformatorze (typowy '
+    + 'w stacjach SN/nN); podobciążeniowy — pod napięciem i obciążeniem (typowy w GPZ).',
+  zaczepyUzwojenie: 'Regulowane uzwojenie',
+  zaczepyUzwojenieOpcje: [
+    { id: 'HV', etykieta: 'górne (SN)' },
+    { id: 'LV', etykieta: 'dolne (nN)' },
+  ],
+  zaczepyUzwojeniePomoc:
+    'Strona, po której fizycznie znajdują się odczepy uzwojenia. W transformatorach '
+    + 'dystrybucyjnych to zwykle strona górna.',
+  zaczepyPozycjaBiezaca: 'Pozycja bieżąca',
+  zaczepyPozycjaNeutralna: 'Pozycja neutralna',
+  zaczepyPozycjaMin: 'Pozycja minimalna',
+  zaczepyPozycjaMax: 'Pozycja maksymalna',
+  zaczepyKrok: 'Krok zaczepu [%]',
+  zaczepyKrokPomoc:
+    'Zmiana przekładni na jedną pozycję. Typowy przełącznik bez wzbudzenia ma ±2 pozycje '
+    + 'po 2,5 %.',
+  zaczepyZakres: (min: number, max: number, krok: number): string =>
+    `Zakres regulacji: ${min}…${max} × ${String(krok).replace('.', ',')} %`,
+
   // Potrzeby własne stacji (G-STK-3) — sekcja w kroku bloku nN.
   potrzebyWlasneTytul: 'Potrzeby własne stacji (opcjonalnie)',
   potrzebyWlasneOpis:

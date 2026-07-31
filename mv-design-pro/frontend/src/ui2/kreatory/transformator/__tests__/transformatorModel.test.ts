@@ -54,10 +54,10 @@ describe('transformatorModel — walidacja', () => {
   });
 
   it('OLTC AUTO wymaga napięcia zadanego', () => {
-    const errs = walidujFormularz(dane({ regulation_type: 'OLTC', control_mode: 'AUTO', voltage_setpoint_kv: null }));
+    const errs = walidujFormularz(dane({ regulation_type: 'OLTC', control_mode: 'AUTOMATIC', voltage_setpoint_kv: null }));
     expect(errs.some((e) => e.field === 'voltage_setpoint_kv')).toBe(true);
     expect(
-      walidujFormularz(dane({ regulation_type: 'OLTC', control_mode: 'AUTO', voltage_setpoint_kv: 15.5 })).some(
+      walidujFormularz(dane({ regulation_type: 'OLTC', control_mode: 'AUTOMATIC', voltage_setpoint_kv: 15.5 })).some(
         (e) => e.field === 'voltage_setpoint_kv',
       ),
     ).toBe(false);
@@ -112,13 +112,13 @@ describe('transformatorModel — payload', () => {
 
   it('OLTC AUTO wysyła komplet pól TapChanger', () => {
     const payload = zbudujPayload(
-      dane({ regulation_type: 'OLTC', control_mode: 'AUTO', voltage_setpoint_kv: 15.5, deadband_kv: 0.2, regulated_winding: 'HV' }),
+      dane({ regulation_type: 'OLTC', control_mode: 'AUTOMATIC', voltage_setpoint_kv: 15.5, deadband_kv: 0.2, regulated_winding: 'HV' }),
       {},
     );
     expect(payload).toMatchObject({
       transformer_regulation_type: 'OLTC',
       transformer_regulated_winding: 'HV',
-      transformer_control_mode: 'AUTO',
+      transformer_control_mode: 'AUTOMATIC',
       transformer_voltage_setpoint_kv: 15.5,
       transformer_deadband_kv: 0.2,
     });

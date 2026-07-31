@@ -18,6 +18,8 @@ import {
   namespaceZrodlaNn,
   nazwaOperacji,
   normalizujTypStacji,
+  blokZaczepow,
+  nowyWpisWyposazenia,
   ogranicznikOdplywow,
   parametryZKatalogu,
   rodzajFalownika,
@@ -713,7 +715,7 @@ describe('B-3 — wyposażenie pola w payloadzie operacji stacyjnej', () => {
     expect(zbudujWyposazeniePolaDoPayloadu(undefined, CT, VT)).toBeNull();
     expect(
       zbudujWyposazeniePolaDoPayloadu(
-        { ct_catalog_ref: null, vt_catalog_ref: null, relay_catalog_ref: null, relay_type: 'NADPRADOWY' },
+        nowyWpisWyposazenia(),
         CT,
         VT,
       ),
@@ -722,12 +724,12 @@ describe('B-3 — wyposażenie pola w payloadzie operacji stacyjnej', () => {
 
   it('przekładnie CT/VT pochodzą z POZYCJI KATALOGOWEJ (zero fizyki w UI)', () => {
     const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
-      {
+      nowyWpisWyposazenia({
         ct_catalog_ref: 'ct-400-5',
         vt_catalog_ref: 'vt-15-100',
         relay_catalog_ref: 'relay-1',
         relay_type: 'ZIEMNOZWARCIOWY',
-      },
+      }),
       CT,
       VT,
     );
@@ -745,7 +747,7 @@ describe('B-3 — wyposażenie pola w payloadzie operacji stacyjnej', () => {
 
   it('pozycja spoza katalogu nie tworzy przekładnika (zero fabrykacji przekładni)', () => {
     const wyposazenie = zbudujWyposazeniePolaDoPayloadu(
-      { ct_catalog_ref: 'ct-nieznany', vt_catalog_ref: null, relay_catalog_ref: null, relay_type: 'NADPRADOWY' },
+      nowyWpisWyposazenia({ ct_catalog_ref: 'ct-nieznany' }),
       CT,
       VT,
     );
@@ -765,5 +767,49 @@ describe('B-3 — wyposażenie pola w payloadzie operacji stacyjnej', () => {
     // Dwa pola TEJ SAMEJ roli — wyposażenie nie może „przeskoczyć" na pierwsze.
     expect(pola[0].equipment).toBeUndefined();
     expect(pola[1].equipment).toEqual({ ct: { catalog_ref: 'ct-400-5' } });
+  });
+});
+
+
+describe('B-2 — zaczepy transformatora w payloadzie operacji stacyjnej', () => {
+  it('bez regulacji blok jest pusty (zgodność wsteczna co do bitu)', () => {
+    expect(blokZaczepow(dane())).toEqual({});
+    const payload = zbudujPayload(dane(), kontekst(), rozdzielnica('branch'));
+    const transformer = payload.transformer as Record<string, unknown>;
+    expect(transformer).not.toHaveProperty('transformer_regulation_type');
+  });
+
+  it('regulacja włączona → klucze KONTRAKTU operacji (parytet z transformatorem GPZ)', () => {
+    const dane_z_regulacja = dane({
+      transformer_regulation_type: 'DETC',
+      transformer_regulated_winding: 'HV',
+      transformer_tap_neutral_position: 0,
+      transformer_tap_current_position: -1,
+      transformer_tap_min_position: -2,
+      transformer_tap_max_position: 2,
+      transformer_tap_step_percent: 2.5,
+    });
+    const payload = zbudujPayload(dane_z_regulacja, kontekst(), rozdzielnica('branch'));
+    expect(payload.transformer).toMatchObject({
+      transformer_regulation_type: 'DETC',
+      transformer_regulated_winding: 'HV',
+      transformer_tap_neutral_position: 0,
+      transformer_tap_current_position: -1,
+      transformer_tap_min_position: -2,
+      transformer_tap_max_position: 2,
+      transformer_tap_step_percent: 2.5,
+    });
+  });
+
+  it('zaczepy jadą W BLOKU transformatora — nie osobną operacją po zapisie', () => {
+    const payload = zbudujPayload(
+      dane({ transformer_regulation_type: 'OLTC', transformer_tap_current_position: 1 }),
+      kontekst(),
+      rozdzielnica('branch'),
+    );
+    // Cały payload to JEDNA operacja stacyjna: brak osobnego klucza „operacji
+    // następnej" ani listy kroków do wykonania po zapisie.
+    expect(Object.keys(payload)).not.toContain('operations');
+    expect((payload.transformer as Record<string, unknown>).transformer_tap_current_position).toBe(1);
   });
 });
