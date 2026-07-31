@@ -151,7 +151,12 @@ async function createCaseFromUi(page: Page, request: APIRequestContext): Promise
   });
 
   await page.goto('/', { waitUntil: 'commit' });
-  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+  // Budzet ROZRUCHU narzedzia (nie asercja produktu): PIERWSZE wejscie w biegu
+  // uruchamia zimny transform vite dev calego grafu modulow — zmierzone na tym
+  // kontenerze 36 s przy zimnym starcie, ~2 s przy kolejnych. 30 s wywracalo ten
+  // spec, gdy szedl jako pierwszy po starcie serwera. Asercje ponizej maja wlasne,
+  // krotkie limity, wiec realne zwisy UI nadal sa lapane.
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
   await expect(page.getByTestId('active-case-bar')).toContainText(/Zakres|Bieżący zestaw/);
   return caseId;
 }
@@ -314,7 +319,7 @@ test('krytyczny flow V1 na realnym backendzie: case -> GPZ -> trunk -> station -
   }
 
   await page.goto(`/#analysis?run=${runId}`, { waitUntil: 'commit' });
-  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 30000 });
+  await page.waitForSelector('[data-testid="app-ready"]', { state: 'attached', timeout: 90000 });
   await expect(page).toHaveURL(new RegExp(`#analysis\\?run=${runId}`));
   await expect(page.getByTestId('canonical-layout')).toBeVisible();
   // K3-A1 (jedno lądowisko wyników): trasa #analysis ustawia przestrzeń
