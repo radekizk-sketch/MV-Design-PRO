@@ -208,6 +208,8 @@ export function WynikiWarsztat({
   const setWynikiTab = useShellStore((s) => s.setWynikiTab);
   const [elementKompensacji, setElementKompensacji] = useState<string | null>(null);
   const [przebiegDowodu, setPrzebiegDowodu] = useState<string | null>(null);
+  /** KD-4 (L-11): element wskazany 2× klikiem — zawęża wywód do jego kroków. */
+  const [elementDowodu, setElementDowodu] = useState<string | null>(null);
   const [modulNcRfg, setModulNcRfg] = useState<string | null>(null);
   const [elementRozplywu, setElementRozplywu] = useState<string | null>(null);
   useEffect(() => {
@@ -222,6 +224,9 @@ export function WynikiWarsztat({
       if (wynikiTab === 'dowod') {
         // Deep-link bez kontekstu = dowód aktywnego przebiegu (czyści wskazanie).
         setPrzebiegDowodu(wynikiTabElement ?? null);
+        // Kontekst deep-linku to run_id, nie element — wskazanie elementu
+        // z poprzedniego wejścia nie może zalegać (izolacja kontekstu).
+        setElementDowodu(null);
       }
       if (wynikiTab === 'ncrfg' && wynikiTabElement) {
         // P-1 (akcja SLD „Pokaż zgodność przyłączeniową"): kontekst modułu
@@ -242,15 +247,24 @@ export function WynikiWarsztat({
   // wejście na „Dowód obliczeń" bez deep-linku wraca do aktywnego przebiegu —
   // wskazanie z porównania nie może zalegać (izolacja kontekstu, R3-C).
   const przejdzDoZakladki = (id: ZakladkaId) => {
-    if (id === 'dowod') setPrzebiegDowodu(null);
+    if (id === 'dowod') {
+      setPrzebiegDowodu(null);
+      setElementDowodu(null);
+    }
     // K3-A4: ręczny wybór użytkownika — hydratacja K2 przestaje sterować zakładką.
     setZakladkaWybranaRecznie(true);
     setZakladka(id);
   };
 
   // 2×klik na wartości z dowodem → zakładka „Dowód obliczeń" (okno E9.1).
-  const otworzDowod = (_ref: string) => {
-    przejdzDoZakladki('dowod');
+  // KD-4 (luka L-11): ref elementu, na którym kliknięto, JEDZIE DALEJ — do tej
+  // karty był przyjmowany i wyrzucany (`_ref`), więc wywód zawsze otwierał się
+  // na całym przebiegu, choć użytkownik wskazał konkretną wielkość.
+  const otworzDowod = (ref: string) => {
+    setPrzebiegDowodu(null);
+    setZakladkaWybranaRecznie(true);
+    setZakladka('dowod');
+    setElementDowodu(ref || null);
   };
 
   return (
@@ -322,7 +336,11 @@ export function WynikiWarsztat({
             zabezpieczeniowej). Ekran ui2 czyta store'y sam — bez propsów. */}
         {zakladka === 'koordynacja' && <EkranKoordynacji />}
         {zakladka === 'dowod' && (
-          <DowodPrzebiegu trybZaawansowania={trybZaawansowania} wskazanyRunId={przebiegDowodu} />
+          <DowodPrzebiegu
+            trybZaawansowania={trybZaawansowania}
+            wskazanyRunId={przebiegDowodu}
+            wskazanyElementRef={elementDowodu}
+          />
         )}
         {zakladka === 'jakosc' && (
           <EkranJakosci trybZaawansowania={trybZaawansowania} onOtworzDowod={otworzDowod} />

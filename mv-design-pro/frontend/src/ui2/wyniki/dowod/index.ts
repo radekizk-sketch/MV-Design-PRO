@@ -4,7 +4,9 @@
  */
 
 export { PrzegladDowodu } from './PrzegladDowodu';
-export type { PrzegladDowoduProps } from './PrzegladDowodu';
+export type { PrzegladDowoduProps, WskazanyElementDowodu } from './PrzegladDowodu';
+export { ZrodloLatex } from './ZrodloLatex';
+export type { ZrodloLatexProps } from './ZrodloLatex';
 export { KrokDowodu } from './KrokDowodu';
 export type { KrokDowoduProps } from './KrokDowodu';
 export { SpisKrokow } from './SpisKrokow';

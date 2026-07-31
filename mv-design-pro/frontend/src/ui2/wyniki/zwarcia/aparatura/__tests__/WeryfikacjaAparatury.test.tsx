@@ -58,7 +58,7 @@ function zamontujBackend(opcje: {
         return new Response(
           JSON.stringify({
             id: 'c1',
-            project_id: 'p1',
+            project_id: 'projekt-testowy',
             station_id: STACJA,
             mv_neutral_grounding_ref: null,
             tap_changer_refs: [],
@@ -98,7 +98,7 @@ function zamontujBackend(opcje: {
 
 describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
   beforeEach(() => {
-    useAppStateStore.setState({ activeProjectId: 'p1' });
+    useAppStateStore.setState({ activeProjectId: 'projekt-testowy' });
     useSnapshotStore.setState({ snapshot: snapshotZeStacja('EL-GPZ') });
   });
 
@@ -283,7 +283,7 @@ describe('model ogniwa — czyste selektory', () => {
     const zPolem = {
       ...snap,
       substations: [{ ...snap.substations[0], bus_refs: [] }],
-      bays: [{ id: 'b', ref_id: 'b', name: 'P1', tags: [], meta: {}, bus_ref: 'EL-GPZ', substation_ref: STACJA }],
+      bays: [{ id: 'b', ref_id: 'b', name: 'Pole odplywowe', tags: [], meta: {}, bus_ref: 'EL-GPZ', substation_ref: STACJA }],
     } as unknown as EnergyNetworkModel;
     expect(stacjeDlaPunktu(zPolem, { target_id: 'BUS-GPZ', element_id: 'EL-GPZ' })).toEqual([STACJA]);
   });
