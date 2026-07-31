@@ -1,11 +1,12 @@
 /**
  * Testy ogniwa „wynik zwarciowy → wytrzymałość aparatury" (karta KD-4;
- * dług nazwany w V12K-287).
+ * tor Z MODELU — karta KD-6 poz. 2).
  *
  * INTENCJA:
- *  1. do końcówki walidacji jadą PRĄDY Z BIEGU (ip → I_dyn, Ith → I_th), a nie
- *     liczby zapisane kiedyś w konfiguracji stacji,
- *  2. aparat i czas wyłączenia pochodzą z konfiguracji stacji,
+ *  1. do końcówki jadą PRĄDY Z BIEGU (ip → I_dyn, Ith → I_th, Ik" → czas
+ *     z charakterystyki), a nie liczby zapisane kiedyś w konfiguracji stacji,
+ *  2. werdykty powstają dla pól z MODELU, bez wymogu ręcznej konfiguracji,
+ *     a każdy wiersz mówi, skąd wziął aparat (`data-zrodlo`),
  *  3. wszystkie trzy stany werdyktu są odróżnialne, a brak podstawy
  *     (brak prądów / punkt poza stacją / brak aparatury) NIGDY nie udaje
  *     werdyktu negatywnego.
@@ -21,7 +22,8 @@ import { useSnapshotStore } from '../../../../../ui/topology/snapshotStore';
 import type { EnergyNetworkModel } from '../../../../../types/enm';
 import { shortCircuitRowFixture } from '../../__tests__/fixtures';
 import { WeryfikacjaAparatury } from '../WeryfikacjaAparatury';
-import { nazwaStacji, polaDoSprawdzenia, powodBrakuPodstawy, stacjeDlaPunktu } from '../model';
+import { znacznikWerdyktu, type PoleWytrzymalosci } from '../api';
+import { nazwaStacji, powodBrakuPodstawy, stacjeDlaPunktu } from '../model';
 
 const STACJA = 'stn/abc/station';
 
@@ -36,56 +38,72 @@ function snapshotZeStacja(busRef: string): EnergyNetworkModel {
   } as unknown as EnergyNetworkModel;
 }
 
-interface ZadanieWalidacji {
-  readonly device_id: string;
-  readonly i_peak_calculated_ka: number;
-  readonly i_thermal_calculated_ka: number;
-  readonly t_clearing_s: number;
+interface ZadanieWytrzymalosci {
+  readonly station_ref: string;
+  readonly i_peak_ka: number | null;
+  readonly i_thermal_ka: number | null;
+  readonly ik_ka: number | null;
 }
 
-/** Atrapa backendu: konfiguracja stacji + katalog + końcówka walidacji. */
-function zamontujBackend(opcje: {
-  readonly bayDeviceWithstand: Record<string, unknown>;
-  readonly katalogIds?: readonly string[];
-  readonly ok?: boolean;
-}): ZadanieWalidacji[] {
-  const zadania: ZadanieWalidacji[] = [];
+/** Wiersz odpowiedzi backendu — kształt 1:1 z widokiem wytrzymałości. */
+function poleOdpowiedzi(nadpisania: Partial<PoleWytrzymalosci>): PoleWytrzymalosci {
+  return {
+    pole: 'P-1',
+    pole_ref: 'field/x/in',
+    rola: 'IN',
+    rola_pl: 'liniowe dopływowe',
+    zrodlo: 'model',
+    aparat_ref: 'aparat/01',
+    aparat_nazwa: 'Aparat pola SN 1',
+    aparat_catalog_ref: 'sw-cb-abb-vd4-12kv-630a',
+    aparat_etykieta: 'ABB VD4 12 kV 630 A',
+    znamiona: {
+      i_dyn_ka: 50,
+      i_dyn_pochodzenie: 'derived_iec62271',
+      i_th_ka: 20,
+      i_th_duration_s: 1,
+      i_th_pochodzenie: 'producent',
+    },
+    czas_wylaczenia: {
+      t_clearing_s: 0.5,
+      zrodlo: 'nastawy_pola',
+      powod_pl: 'Czas z nastaw pola.',
+      czlon_nastawczy_s: 0.5,
+      czas_wlasny_wylacznika_s: null,
+      zalozenia_pl: [],
+      kody_gotowosci: [],
+    },
+    werdykt: {
+      ok: true,
+      i_dyn_ok: true,
+      i_th_ok: true,
+      message_pl: 'OK: aparatura wytrzymała.',
+      utilization_dyn_percent: 50,
+      utilization_th_percent: 50,
+      i_th_effective_ka: 28,
+    },
+    komunikat_pl: 'OK: aparatura wytrzymała.',
+    kody_gotowosci: [],
+    ...nadpisania,
+  };
+}
+
+/** Atrapa backendu: JEDNA końcówka werdyktów wytrzymałości pól stacji. */
+function zamontujBackend(pola: readonly PoleWytrzymalosci[]): ZadanieWytrzymalosci[] {
+  const zadania: ZadanieWytrzymalosci[] = [];
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
-      if (url.includes('/audit2-station-config/')) {
+      if (url.includes('/enm/wytrzymalosc-aparatury')) {
+        zadania.push(JSON.parse(String(init?.body)) as ZadanieWytrzymalosci);
         return new Response(
           JSON.stringify({
-            id: 'c1',
-            project_id: 'projekt-testowy',
-            station_id: STACJA,
-            mv_neutral_grounding_ref: null,
-            tap_changer_refs: [],
-            der_specs: [],
-            bay_device_withstand: opcje.bayDeviceWithstand,
-          }),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        );
-      }
-      if (url.endsWith('/device-withstand')) {
-        const ids = opcje.katalogIds ?? ['wstd_breaker_vacuum_15_25'];
-        return new Response(
-          JSON.stringify(ids.map((id) => ({ id, label_pl: `Aparat ${id}` }))),
-          { status: 200, headers: { 'Content-Type': 'application/json' } },
-        );
-      }
-      if (url.endsWith('/validate-device-withstand')) {
-        zadania.push(JSON.parse(String(init?.body)) as ZadanieWalidacji);
-        const ok = opcje.ok ?? true;
-        return new Response(
-          JSON.stringify({
-            ok,
-            i_dyn_ok: ok,
-            i_th_ok: ok,
-            message_pl: ok ? 'OK: aparatura wytrzymała.' : 'BLOKER: przekroczenie.',
-            utilization_dyn_percent: 50,
-            utilization_th_percent: 50,
+            stacja_ref: STACJA,
+            stacja_nazwa: 'Stacja 1',
+            status: pola.length > 0 ? 'OK' : 'brak danych',
+            pola,
+            kody_gotowosci: pola.length > 0 ? [] : ['aparatura.brak_pol_z_aparatem'],
           }),
           { status: 200, headers: { 'Content-Type': 'application/json' } },
         );
@@ -98,7 +116,7 @@ function zamontujBackend(opcje: {
 
 describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
   beforeEach(() => {
-    useAppStateStore.setState({ activeProjectId: 'projekt-testowy' });
+    useAppStateStore.setState({ activeProjectId: 'projekt-testowy', activeCaseId: 'case-1' });
     useSnapshotStore.setState({ snapshot: snapshotZeStacja('EL-GPZ') });
   });
 
@@ -108,51 +126,49 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     vi.restoreAllMocks();
   });
 
-  it('PRĄDY Z BIEGU jadą do końcówki walidacji; aparat i czas — z konfiguracji stacji', async () => {
+  it('PRĄDY Z BIEGU jadą do końcówki; werdykt pola pochodzi z MODELU', async () => {
     const user = userEvent.setup();
-    const zadania = zamontujBackend({
-      bayDeviceWithstand: {
-        'P-1': {
-          device_id: 'wstd_breaker_vacuum_15_25',
-          // Liczby zapisane przy DOBORZE aparatu — NIE MOGĄ trafić do sprawdzenia.
-          i_peak_calculated_ka: 1.1,
-          i_thermal_calculated_ka: 2.2,
-          t_clearing_s: 0.5,
-        },
-      },
-    });
-    const wiersz = shortCircuitRowFixture({ ip_ka: 31.2, ith_ka: 12.5 });
+    const zadania = zamontujBackend([poleOdpowiedzi({})]);
+    const wiersz = shortCircuitRowFixture({ ip_ka: 31.2, ith_ka: 12.5, ik_ka: 11.4 });
 
     render(<WeryfikacjaAparatury wiersz={wiersz} punktNazwa="Szyna GPZ 15 kV" />);
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     await waitFor(() => expect(zadania).toHaveLength(1));
     expect(zadania[0]).toEqual({
-      device_id: 'wstd_breaker_vacuum_15_25',
-      i_peak_calculated_ka: 31.2, // ip z WYNIKU biegu
-      i_thermal_calculated_ka: 12.5, // Ith z WYNIKU biegu
-      t_clearing_s: 0.5, // czas wyłączenia z konfiguracji
+      station_ref: STACJA,
+      i_peak_ka: 31.2, // ip z WYNIKU biegu
+      i_thermal_ka: 12.5, // Ith z WYNIKU biegu
+      ik_ka: 11.4, // Ik" — podstawa czasu z charakterystyki
     });
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-1');
     expect(pole.getAttribute('data-withstand-ok')).toBe('true');
+    expect(pole.getAttribute('data-zrodlo')).toBe('model');
     // Komunikat jest CYTATEM backendu (prezentacja nic nie układa).
     expect(pole.textContent).toContain('OK: aparatura wytrzymała.');
+    expect(screen.getByTestId('mvd-zwarcia-aparatura-zrodlo-P-1').textContent).toContain(
+      'aparat z modelu',
+    );
   });
 
   it('WERDYKT NEGATYWNY z backendu jest pokazywany bez tłumaczenia na własne słowa', async () => {
     const user = userEvent.setup();
-    zamontujBackend({
-      bayDeviceWithstand: {
-        'P-2': {
-          device_id: 'wstd_breaker_vacuum_15_25',
-          i_peak_calculated_ka: 0,
-          i_thermal_calculated_ka: 0,
-          t_clearing_s: 1,
+    zamontujBackend([
+      poleOdpowiedzi({
+        pole: 'P-2',
+        werdykt: {
+          ok: false,
+          i_dyn_ok: false,
+          i_th_ok: true,
+          message_pl: 'BLOKER: przekroczenie.',
+          utilization_dyn_percent: 140,
+          utilization_th_percent: 50,
+          i_th_effective_ka: 28,
         },
-      },
-      ok: false,
-    });
+        komunikat_pl: 'BLOKER: przekroczenie.',
+      }),
+    ]);
 
     render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
@@ -164,30 +180,62 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
 
   it('APARAT SPOZA KATALOGU → „nieustalone", a nie werdykt negatywny', async () => {
     const user = userEvent.setup();
-    const zadania = zamontujBackend({
-      bayDeviceWithstand: {
-        'P-3': {
-          device_id: 'aparat-spoza-katalogu',
-          i_peak_calculated_ka: 0,
-          i_thermal_calculated_ka: 0,
-          t_clearing_s: 1,
-        },
-      },
-      katalogIds: ['wstd_breaker_vacuum_15_25'],
-    });
+    zamontujBackend([
+      poleOdpowiedzi({
+        pole: 'P-3',
+        znamiona: null,
+        werdykt: null,
+        komunikat_pl: 'Aparat spoza katalogu — wytrzymałości nie da się sprawdzić.',
+        kody_gotowosci: ['aparatura.aparat_spoza_katalogu'],
+      }),
+    ]);
 
     render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-3');
     expect(pole.getAttribute('data-withstand-ok')).toBe('nieustalone');
-    // Backend NIE jest pytany o aparat, którego nie ma w katalogu.
-    expect(zadania).toHaveLength(0);
+  });
+
+  it('NIEROZSTRZYGNIĘTE kryterium cieplne nie udaje werdyktu negatywnego', async () => {
+    const user = userEvent.setup();
+    zamontujBackend([
+      poleOdpowiedzi({
+        pole: 'P-4',
+        czas_wylaczenia: {
+          t_clearing_s: null,
+          zrodlo: null,
+          powod_pl: 'Czas wyłączenia nie jest ustalony.',
+          czlon_nastawczy_s: null,
+          czas_wlasny_wylacznika_s: null,
+          zalozenia_pl: [],
+          kody_gotowosci: [],
+        },
+        werdykt: {
+          ok: false,
+          i_dyn_ok: true,
+          i_th_ok: null,
+          message_pl: 'NIEUSTALONE: brak czasu wyłączenia. Sprawdzone: I_dyn 62%.',
+          utilization_dyn_percent: 62,
+          utilization_th_percent: null,
+          i_th_effective_ka: null,
+        },
+        komunikat_pl: 'NIEUSTALONE: brak czasu wyłączenia. Sprawdzone: I_dyn 62%.',
+        kody_gotowosci: ['aparatura.czas_wylaczenia_nieustalony'],
+      }),
+    ]);
+
+    render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
+    await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
+
+    const pole = await screen.findByTestId('mvd-zwarcia-aparatura-pole-P-4');
+    expect(pole.getAttribute('data-withstand-ok')).toBe('nieustalone');
+    expect(pole.textContent).toContain('NIEUSTALONE');
   });
 
   it('PUNKT POZA STACJĄ → uczciwy brak podstawy (bez pytania backendu)', async () => {
     const user = userEvent.setup();
-    zamontujBackend({ bayDeviceWithstand: {} });
+    const zadania = zamontujBackend([poleOdpowiedzi({})]);
     useSnapshotStore.setState({ snapshot: snapshotZeStacja('INNA-SZYNA') });
 
     render(<WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna" />);
@@ -196,11 +244,12 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     const brak = await screen.findByTestId('mvd-zwarcia-aparatura-brak');
     expect(brak.getAttribute('data-powod')).toBe('punkt-poza-stacja');
     expect(screen.queryByTestId('mvd-zwarcia-aparatura-werdykty')).toBeNull();
+    expect(zadania).toHaveLength(0);
   });
 
-  it('BRAK APARATURY W KONFIGURACJI → stan zerowy Z AKCJĄ do konfiguratora stacji', async () => {
+  it('BRAK APARATURY (model i konfiguracja) → stan zerowy Z AKCJĄ do konfiguratora', async () => {
     const user = userEvent.setup();
-    zamontujBackend({ bayDeviceWithstand: {} });
+    zamontujBackend([]);
     const otwarte: string[] = [];
 
     render(
@@ -213,29 +262,17 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
     const brak = await screen.findByTestId('mvd-zwarcia-aparatura-brak');
-    expect(brak.getAttribute('data-powod')).toBe('brak-aparatury-w-konfiguracji');
+    expect(brak.getAttribute('data-powod')).toBe('brak-aparatury');
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-konfiguruj'));
     expect(otwarte).toEqual([STACJA]);
   });
 
   it('BRAK PRĄDU w wyniku → brak podstawy (zero podstawiania bezpiecznego zera)', async () => {
     const user = userEvent.setup();
-    zamontujBackend({
-      bayDeviceWithstand: {
-        'P-1': {
-          device_id: 'wstd_breaker_vacuum_15_25',
-          i_peak_calculated_ka: 1,
-          i_thermal_calculated_ka: 1,
-          t_clearing_s: 1,
-        },
-      },
-    });
+    zamontujBackend([poleOdpowiedzi({})]);
 
     render(
-      <WeryfikacjaAparatury
-        wiersz={shortCircuitRowFixture({ ip_ka: null })}
-        punktNazwa="Szyna"
-      />,
+      <WeryfikacjaAparatury wiersz={shortCircuitRowFixture({ ip_ka: null })} punktNazwa="Szyna" />,
     );
     await user.click(screen.getByTestId('mvd-zwarcia-aparatura-sprawdz'));
 
@@ -245,16 +282,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
 
   it('ZMIANA PUNKTU unieważnia poprzedni werdykt (żadnej oceny cudzego punktu)', async () => {
     const user = userEvent.setup();
-    zamontujBackend({
-      bayDeviceWithstand: {
-        'P-1': {
-          device_id: 'wstd_breaker_vacuum_15_25',
-          i_peak_calculated_ka: 1,
-          i_thermal_calculated_ka: 1,
-          t_clearing_s: 1,
-        },
-      },
-    });
+    zamontujBackend([poleOdpowiedzi({})]);
     const { rerender } = render(
       <WeryfikacjaAparatury wiersz={shortCircuitRowFixture()} punktNazwa="Szyna GPZ" />,
     );
@@ -267,9 +295,7 @@ describe('WeryfikacjaAparatury — ogniwo zwarcie → aparatura', () => {
         punktNazwa="Szyna inna"
       />,
     );
-    await waitFor(() =>
-      expect(screen.queryByTestId('mvd-zwarcia-aparatura-werdykty')).toBeNull(),
-    );
+    await waitFor(() => expect(screen.queryByTestId('mvd-zwarcia-aparatura-werdykty')).toBeNull());
   });
 });
 
@@ -288,33 +314,6 @@ describe('model ogniwa — czyste selektory', () => {
     expect(stacjeDlaPunktu(zPolem, { target_id: 'BUS-GPZ', element_id: 'EL-GPZ' })).toEqual([STACJA]);
   });
 
-  it('podstawia prądy biegu, zachowuje aparat i czas z konfiguracji, sortuje po polu', () => {
-    const pola = polaDoSprawdzenia({
-      stationRef: STACJA,
-      bayDeviceWithstand: {
-        'P-2': { device_id: 'd2', i_peak_calculated_ka: 9, i_thermal_calculated_ka: 9, t_clearing_s: 0.3 },
-        'P-1': { device_id: 'd1', i_peak_calculated_ka: 9, i_thermal_calculated_ka: 9, t_clearing_s: 0.5 },
-      },
-      ipKA: 31.2,
-      ithKA: 12.5,
-    });
-    expect(pola.map((p) => p.bayDesignation)).toEqual(['P-1', 'P-2']);
-    expect(pola.map((p) => p.i_peak_calculated_ka)).toEqual([31.2, 31.2]);
-    expect(pola.map((p) => p.i_thermal_calculated_ka)).toEqual([12.5, 12.5]);
-    expect(pola.map((p) => p.t_clearing_s)).toEqual([0.5, 0.3]);
-  });
-
-  it('brak prądu → pusta lista pól (nie ma czego porównywać)', () => {
-    expect(
-      polaDoSprawdzenia({
-        stationRef: STACJA,
-        bayDeviceWithstand: { 'P-1': { device_id: 'd1', i_peak_calculated_ka: 1, i_thermal_calculated_ka: 1, t_clearing_s: 1 } },
-        ipKA: null,
-        ithKA: 12.5,
-      }),
-    ).toEqual([]);
-  });
-
   it('stacja przedstawia się NAZWĄ; brak nazwy w modelu → uczciwie ref', () => {
     const snap = snapshotZeStacja('EL-GPZ');
     expect(nazwaStacji(snap, STACJA)).toBe('Stacja 1');
@@ -330,8 +329,43 @@ describe('model ogniwa — czyste selektory', () => {
     expect(powodBrakuPodstawy({ ipKA: null, ithKA: 1, stacje: [STACJA], liczbaPol: 1 })).toBe('brak-pradow');
     expect(powodBrakuPodstawy({ ipKA: 1, ithKA: 1, stacje: [], liczbaPol: 0 })).toBe('punkt-poza-stacja');
     expect(powodBrakuPodstawy({ ipKA: 1, ithKA: 1, stacje: [STACJA], liczbaPol: 0 })).toBe(
-      'brak-aparatury-w-konfiguracji',
+      'brak-aparatury',
     );
     expect(powodBrakuPodstawy({ ipKA: 1, ithKA: 1, stacje: [STACJA], liczbaPol: 2 })).toBeNull();
+  });
+
+  it('znacznik werdyktu odróżnia „nieustalone" od oceny negatywnej', () => {
+    expect(znacznikWerdyktu(poleOdpowiedzi({}))).toBe('true');
+    expect(znacznikWerdyktu(poleOdpowiedzi({ werdykt: null }))).toBe('nieustalone');
+    expect(
+      znacznikWerdyktu(
+        poleOdpowiedzi({
+          werdykt: {
+            ok: false,
+            i_dyn_ok: true,
+            i_th_ok: null,
+            message_pl: 'NIEUSTALONE',
+            utilization_dyn_percent: 10,
+            utilization_th_percent: null,
+            i_th_effective_ka: null,
+          },
+        }),
+      ),
+    ).toBe('nieustalone');
+    expect(
+      znacznikWerdyktu(
+        poleOdpowiedzi({
+          werdykt: {
+            ok: false,
+            i_dyn_ok: false,
+            i_th_ok: true,
+            message_pl: 'BLOKER',
+            utilization_dyn_percent: 150,
+            utilization_th_percent: 10,
+            i_th_effective_ka: 28,
+          },
+        }),
+      ),
+    ).toBe('false');
   });
 });

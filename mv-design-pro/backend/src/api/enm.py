@@ -20,6 +20,9 @@ from uuid import UUID
 
 from api.domain_ops_policy import validate_and_materialize_catalog_binding
 from application.analyses.fault_loop.service import build_station_fault_loop_view
+from application.analyses.wytrzymalosc_aparatury_pol import (
+    zbuduj_widok_wytrzymalosci_aparatury,
+)
 from application.eligibility_service import EligibilityService
 from application.field_read_model import build_field_read_model
 from application.protection_read_model import build_protection_read_model
@@ -231,6 +234,74 @@ async def get_station_fault_loop(case_id: str, station_ref: str) -> dict[str, An
     """
     enm = _get_enm(case_id)
     return build_station_fault_loop_view(enm, station_ref)
+
+
+class WytrzymaloscAparaturyRequestModel(BaseModel):
+    """Prądy punktu zwarcia z WYNIKU biegu + stacja, w której ten punkt leży."""
+
+    station_ref: str
+    i_peak_ka: float | None = None
+    i_thermal_ka: float | None = None
+    #: Prąd zwarciowy początkowy [kA] — potrzebny WYŁĄCZNIE do wyznaczenia czasu
+    #: wyłączenia z charakterystyki zabezpieczenia (poz. 3). Brak ⇒ czas z nastaw
+    #: pozostaje nieustalony, zamiast być liczonym przy zgadniętym prądzie.
+    ik_ka: float | None = None
+
+
+@router.post("/{case_id}/enm/wytrzymalosc-aparatury")
+async def post_wytrzymalosc_aparatury(
+    case_id: str, body: WytrzymaloscAparaturyRequestModel, request: Request
+) -> dict[str, Any]:
+    """Werdykty wytrzymałości aparatury WSZYSTKICH pól stacji (KD-6 poz. 2-3).
+
+    Aparaty biorą się z MODELU (pozycja katalogu APARAT_SN wskazana na polu),
+    a zapisana konfiguracja stacji pozostaje nadrzędna tam, gdzie istnieje —
+    każdy wiersz niesie jawne ``zrodlo``. Fizyka porównania siedzi w jądrze
+    werdyktu K7-B; ten endpoint tylko zestawia źródła danych.
+    """
+    enm = _get_enm(case_id)
+    project_id = _resolve_project_id(case_id, request)
+    zapisana = _bay_device_withstand(project_id, body.station_ref, request)
+    return zbuduj_widok_wytrzymalosci_aparatury(
+        enm=enm,
+        station_ref=body.station_ref,
+        i_peak_ka=body.i_peak_ka,
+        i_thermal_ka=body.i_thermal_ka,
+        bay_device_withstand=zapisana,
+    )
+
+
+def _bay_device_withstand(
+    project_id: str | None, station_ref: str, request: Request
+) -> dict[str, Any] | None:
+    """Zapisana konfiguracja aparatury pól stacji (albo ``None``, gdy jej nie ma).
+
+    Brak zapisu NIE jest błędem — od karty KD-6 werdykty powstają z modelu,
+    a konfiguracja jest nadpisaniem inżyniera tam, gdzie je zrobił.
+    """
+    uow_factory = getattr(request.app.state, "uow_factory", None)
+    if uow_factory is None or project_id is None:
+        return None
+    from infrastructure.persistence.models import StationAudit2ConfigORM
+
+    try:
+        parsed_project_id = UUID(project_id)
+    except ValueError:
+        return None
+    with uow_factory() as uow:
+        if uow.session is None:
+            return None
+        row = (
+            uow.session.query(StationAudit2ConfigORM)
+            .filter(
+                StationAudit2ConfigORM.project_id == parsed_project_id,
+                StationAudit2ConfigORM.station_id == station_ref,
+            )
+            .one_or_none()
+        )
+        if row is None:
+            return None
+        return dict(row.bay_device_withstand or {})
 
 
 # ---------------------------------------------------------------------------

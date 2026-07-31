@@ -1,45 +1,26 @@
 /*
  * Model ogniwa „wynik zwarciowy → weryfikacja wytrzymałości aparatury"
- * (karta KD-4; dług nazwany w V12K-287: „brak przejścia z wyniku zwarciowego
- * do weryfikacji aparatu — ogniwo łańcucha nadal nie istnieje").
+ * (karta KD-4; most katalogowy i tor z MODELU — karta KD-6 poz. 2).
  *
  * SKĄD DANE (zero zgadywania, zero fizyki w prezentacji):
  *  - PRĄDY: z wiersza WYNIKU biegu zwarciowego wybranego punktu —
- *    `ShortCircuitRow.ip_ka` (prąd udarowy → kryterium dynamiczne I_dyn) i
- *    `ShortCircuitRow.ith_ka` (prąd cieplny zastępczy → kryterium cieplne
- *    I_th). Tak samo nazywa je pakiet dowodowy SC3F
- *    (`_build_short_circuit_proof_currents`: I_dyn ← ip_a, I_th ← ith_a).
- *  - APARAT I CZAS WYŁĄCZENIA: z zapisanej konfiguracji stacji
- *    (`bay_device_withstand` w `GET /api/v1/projects/{id}/audit2-station-config/
- *    {station_id}`) — dokładnie ten sam zapis, który wypełnia kartę
- *    zabezpieczeń konfiguratora stacji.
- *  - ZNAMIONA I WERDYKT: z backendu
- *    (`POST /api/v1/catalog/audit2/validate-device-withstand`, IEC 60909) —
- *    ta sama końcówka, którą karta K7-B wpięła w konfigurator.
+ *    `ShortCircuitRow.ip_ka` (prąd udarowy → kryterium dynamiczne I_dyn),
+ *    `ShortCircuitRow.ith_ka` (prąd cieplny zastępczy → kryterium cieplne I_th)
+ *    i `ShortCircuitRow.ik_ka` (prąd początkowy → czas z charakterystyki
+ *    zabezpieczenia). Tak samo nazywa je pakiet dowodowy SC3F.
+ *  - APARAT, ZNAMIONA, CZAS I WERDYKT: z JEDNEJ końcówki backendu
+ *    (`POST /api/cases/{caseId}/enm/wytrzymalosc-aparatury`), która czyta pola
+ *    stacji i pozycje katalogu APARAT_SN z MODELU, a zapisaną konfigurację
+ *    stacji nakłada tam, gdzie istnieje. Do karty KD-6 ogniwo składało to samo
+ *    z trzech wywołań w przeglądarce i działało WYŁĄCZNIE dla pól ręcznie
+ *    skonfigurowanych.
  *
- * Ten plik NIE LICZY nic poza wyborem pól; wszystkie porównania i komunikaty
- * należą do backendu (reguła NOT-A-SOLVER).
+ * Ten plik NIE LICZY nic poza wyborem stacji punktu; wszystkie porównania i
+ * komunikaty należą do backendu (reguła NOT-A-SOLVER).
  */
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
 import type { ShortCircuitRow } from '../../../../ui/results-inspector/types';
-import type { BayDeviceWithstandSpec } from '../../../../ui/network-build/station-der/audit2-api';
-
-/** Pole stacji z aparatem do sprawdzenia (wejście końcówki walidacji). */
-export interface PoleDoSprawdzenia {
-  /** Stacja, w której leży pole (ref modelu) — potrzebna do pobrania konfiguracji. */
-  readonly stationRef: string;
-  /** Oznaczenie pola z konfiguracji stacji (klucz `bay_device_withstand`). */
-  readonly bayDesignation: string;
-  /** Identyfikator aparatu w katalogu wytrzymałości. */
-  readonly deviceCatalogRef: string;
-  /** Prąd udarowy z WYNIKU biegu [kA] (kryterium dynamiczne). */
-  readonly i_peak_calculated_ka: number;
-  /** Prąd cieplny zastępczy z WYNIKU biegu [kA] (kryterium cieplne). */
-  readonly i_thermal_calculated_ka: number;
-  /** Czas wyłączenia [s] z konfiguracji zabezpieczeń pola. */
-  readonly t_clearing_s: number;
-}
 
 /**
  * Stacje, w których leży punkt zwarcia. Punkt zwarcia to węzeł (szyna) —
@@ -74,35 +55,6 @@ export function stacjeDlaPunktu(
 }
 
 /**
- * Pola do sprawdzenia dla JEDNEJ stacji: aparat i czas wyłączenia z zapisanej
- * konfiguracji, prądy z wyniku biegu. Kolejność po oznaczeniu pola.
- *
- * `null` prądu (starszy wynik bez pola) → pusta lista: bez prądu nie ma czego
- * porównywać, a podstawienie zera byłoby fabrykacją bezpiecznego werdyktu.
- */
-export function polaDoSprawdzenia(args: {
-  readonly stationRef: string;
-  readonly bayDeviceWithstand: Readonly<Record<string, BayDeviceWithstandSpec>> | undefined;
-  readonly ipKA: number | null;
-  readonly ithKA: number | null;
-}): readonly PoleDoSprawdzenia[] {
-  const { stationRef, bayDeviceWithstand, ipKA, ithKA } = args;
-  if (ipKA === null || ithKA === null) return [];
-  return Object.entries(bayDeviceWithstand ?? {})
-    .map(([bayDesignation, spec]) => ({
-      stationRef,
-      bayDesignation,
-      deviceCatalogRef: spec.device_id,
-      // PRĄDY Z BIEGU — nie z zapisu konfiguracji (tam siedzą liczby, którymi
-      // konfigurator dobierał aparat; tutaj sprawdzamy je wynikiem solvera).
-      i_peak_calculated_ka: ipKA,
-      i_thermal_calculated_ka: ithKA,
-      t_clearing_s: spec.t_clearing_s,
-    }))
-    .sort((a, b) => a.bayDesignation.localeCompare(b.bayDesignation));
-}
-
-/**
  * Nazwa stacji z modelu (strefa pierwszoplanowa mówi po polsku, nie
  * identyfikatorami). Brak nazwy w modelu → ref jako uczciwy zapasowy opis.
  */
@@ -120,11 +72,15 @@ export function nazwaStacji(
 export type PowodBrakuPodstawy =
   | 'brak-pradow'
   | 'punkt-poza-stacja'
-  | 'brak-aparatury-w-konfiguracji';
+  | 'brak-aparatury';
 
 /**
  * Czy da się sprawdzić aparaturę w tym punkcie — i jeśli nie, DLACZEGO.
  * `null` = da się (są prądy, jest stacja, jest choć jeden aparat).
+ *
+ * `brak-aparatury` znaczy od karty KD-6: ani jedno pole stacji nie ma aparatu
+ * z katalogu w MODELU i nie ma zapisu w konfiguracji — wcześniej ten stan
+ * mówił wyłącznie o konfiguracji, bo model nie był w ogóle czytany.
  */
 export function powodBrakuPodstawy(args: {
   readonly ipKA: number | null;
@@ -134,6 +90,6 @@ export function powodBrakuPodstawy(args: {
 }): PowodBrakuPodstawy | null {
   if (args.ipKA === null || args.ithKA === null) return 'brak-pradow';
   if (args.stacje.length === 0) return 'punkt-poza-stacja';
-  if (args.liczbaPol === 0) return 'brak-aparatury-w-konfiguracji';
+  if (args.liczbaPol === 0) return 'brak-aparatury';
   return null;
 }

@@ -15,9 +15,12 @@ export const APARATURA_STRINGS = {
   wejscieIp: 'Prąd udarowy ip (kryterium I_dyn)',
   wejscieIth: 'Prąd cieplny zastępczy Ith (kryterium I_th)',
   wejscieStacja: 'Stacja punktu zwarcia',
-  wejsciePola: 'Pola z aparaturą w konfiguracji',
+  wejsciePola: 'Pola z aparaturą do sprawdzenia',
   zrodloPradow: 'z wyniku tego biegu',
-  zrodloAparatu: 'z konfiguracji stacji',
+  zrodloAparatu: 'z modelu i konfiguracji stacji',
+  // Źródło aparatu per wiersz — inżynier musi wiedzieć, CO ocenia (KD-6).
+  zrodloModel: 'aparat z modelu (katalog pola)',
+  zrodloKonfiguracja: 'aparat z konfiguracji stacji',
 
   // Uczciwe stany zerowe — każdy nazywa BRAK PODSTAWY, nie werdykt negatywny.
   brakPradow:
@@ -25,9 +28,9 @@ export const APARATURA_STRINGS = {
   punktPozaStacja:
     'Wybrany punkt zwarcia nie leży w żadnej stacji z modelu — aparatury pola nie ma do czego przypisać.',
   brakAparatury:
-    'Stacja tego punktu nie ma w konfiguracji ani jednego pola z aparatem — wytrzymałości nie da się sprawdzić.',
+    'Stacja tego punktu nie ma ani jednego pola z aparatem z katalogu w modelu ani zapisu w konfiguracji — wytrzymałości nie da się sprawdzić.',
   brakAparaturyAkcja: 'Otwórz konfigurację stacji',
-  brakProjektu: 'Bez otwartego projektu nie ma skąd wczytać konfiguracji stacji.',
+  brakPrzypadku: 'Bez aktywnego przypadku obliczeniowego nie ma z czego wczytać pól stacji.',
   blad: 'Nie udało się sprawdzić wytrzymałości aparatury.',
   bladUwaga: 'Werdykt pochodzi z backendu — bez odpowiedzi nie ma podstawy do oceny.',
   poza: 'nieustalone',
