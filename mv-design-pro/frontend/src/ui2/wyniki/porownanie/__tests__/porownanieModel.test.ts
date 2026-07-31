@@ -304,6 +304,8 @@ describe('L-14 — filtr „pokaż tylko różnice" (czysta prezentacja na delta
       busDiffFixture({ bus_id: 'C' }),
     ];
     expect(tylkoRozniceSzyn(rows).map((r) => r.bus_id)).toEqual(['A', 'C']);
+  });
+});
 
 describe('L-13 — Δ% pochodzi z backendu, prezentacja nic nie liczy', () => {
   it('komórka Δ% szyny pokazuje WARTOŚĆ Z PAYLOADU, nie iloraz z A i B', () => {
