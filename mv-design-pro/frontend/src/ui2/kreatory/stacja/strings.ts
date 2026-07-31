@@ -416,6 +416,22 @@ export const STACJA_STRINGS = {
     + 'Dla n jednostek impedancja zastępcza maleje n-krotnie ($Z/n$) — rozpływ i zwarcie liczy '
     + 'backend na agregacie. 1 = pojedynczy transformator.',
 
+  // Szablony użytkownika (B-8) — zapis konfiguracji z kroku podglądu.
+  szablonZapiszTytul: 'Zapisz jako szablon',
+  szablonZapiszOpis:
+    'Zapisuje bieżącą konfigurację kreatora (rodzaj stacji, pola SN z aparatami, '
+    + 'transformator, blok nN, uziemienie, wyposażenie pomiarowe) pod własną nazwą. '
+    + 'Szablon pojawi się na liście w kroku „Szablon" obok wbudowanych.',
+  szablonZapiszNazwa: 'Nazwa szablonu',
+  szablonZapiszNazwaPlaceholder: 'np. Stacja przelotowa 630 kVA — linia wiejska',
+  szablonZapiszAkcja: 'Zapisz jako szablon',
+  szablonZapiszBrakNazwy: 'Podaj nazwę szablonu, żeby go zapisać.',
+  szablonZapiszOk: (nazwa: string): string =>
+    `Zapisano szablon „${nazwa}". Znajdziesz go w kroku „Szablon".`,
+  szablonZapiszBlad: 'Nie udało się zapisać szablonu.',
+  szablonEtykietaWbudowany: (nazwa: string): string => `${nazwa} (wbudowany)`,
+  szablonEtykietaWlasny: (nazwa: string): string => `${nazwa} (mój szablon)`,
+
   // Zaczepy transformatora (B-2) — sekcja w kroku transformatora.
   zaczepyTytul: 'Regulacja napięcia — zaczepy transformatora',
   zaczepyOpis:

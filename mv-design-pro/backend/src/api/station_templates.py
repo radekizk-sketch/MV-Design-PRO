@@ -24,6 +24,15 @@ from application.station_templates.apply import (
     apply_template_to_case,
 )
 from application.station_templates.service import count_by_category
+from application.station_templates.user_store import (
+    lista_szablonow_uzytkownika as list_user_templates,
+)
+from application.station_templates.user_store import (
+    usun_szablon_uzytkownika as delete_user_template,
+)
+from application.station_templates.user_store import (
+    zapisz_szablon_uzytkownika as save_user_template,
+)
 from fastapi import APIRouter, Body, HTTPException, Query
 from pydantic import BaseModel, Field
 
@@ -199,6 +208,53 @@ def apply_station_template(
         ) from exc
 
     return result
+
+
+class SaveUserTemplateRequest(BaseModel):
+    """B-8: zapis biezacej konfiguracji kreatora jako szablonu uzytkownika."""
+
+    name_pl: str = Field(..., min_length=1, description="Nazwa szablonu (widoczna na liscie)")
+    description_pl: str | None = Field(default=None, description="Opis do czego szablon sluzy")
+    configuration: dict[str, Any] = Field(
+        ...,
+        description=(
+            "Stan formularza kreatora — przechowywany BEZ ZMIAN; backend go NIE "
+            "interpretuje (odtworzeniem zajmuje sie wylacznie kreator)"
+        ),
+    )
+
+
+@router.post("/user")
+def save_user_station_template(request: SaveUserTemplateRequest = Body(...)) -> dict[str, Any]:
+    """B-8 (karta KD-3): zapisz konfiguracje kreatora jako szablon uzytkownika.
+
+    Szablony WBUDOWANE pozostaja nietkniete — zapis idzie do OSOBNEGO zbioru z
+    wlasna przestrzenia identyfikatorow. Identyfikator jest wyprowadzony z TRESCI
+    (SHA-256), wiec powtorny zapis tej samej konfiguracji nadpisuje wpis zamiast
+    mnozyc duplikaty (determinizm).
+    """
+    return save_user_template(
+        nazwa=request.name_pl.strip(),
+        opis=request.description_pl,
+        konfiguracja=request.configuration,
+    )
+
+
+@router.get("/user")
+def list_user_station_templates() -> dict[str, Any]:
+    """Szablony zapisane przez uzytkownika (kolejnosc deterministyczna)."""
+    szablony = list_user_templates()
+    return {"templates": szablony, "total": len(szablony)}
+
+
+@router.delete("/user/{template_id}")
+def delete_user_station_template(template_id: str) -> dict[str, Any]:
+    """Usun szablon uzytkownika. Szablonu wbudowanego usunac sie NIE DA."""
+    if not delete_user_template(template_id):
+        raise HTTPException(
+            status_code=404, detail=f"Szablon użytkownika '{template_id}' nie istnieje"
+        )
+    return {"deleted": template_id}
 
 
 @router.get("")

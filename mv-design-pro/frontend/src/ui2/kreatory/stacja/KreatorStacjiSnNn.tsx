@@ -53,6 +53,11 @@ import {
 import '../../kryteria/kryteria.css';
 import { KRYTERIA_STRINGS, SekcjaBilansuCtVt, SekcjaKrzywychPrzekaznika } from '../../kryteria';
 import {
+  pobierzSzablonyUzytkownika,
+  zapiszSzablonUzytkownika,
+  type SzablonUzytkownika,
+} from './szablonyUzytkownika';
+import {
   FIELD_ROLE_LABELS,
   contextString,
   deriveSnVoltageKv,
@@ -249,6 +254,11 @@ export function KreatorStacjiSnNn() {
   const [szablonyStacji, setSzablonyStacji] = useState<StationTemplateSummary[]>([]);
   const [bladSzablonow, setBladSzablonow] = useState<string | null>(null);
   const [wybranySzablonId, setWybranySzablonId] = useState<string>('');
+  // B-8: szablony ZAPISANE PRZEZ UŻYTKOWNIKA — osobny zbiór, osobna przestrzeń
+  // identyfikatorów (`user_…`); wbudowane pozostają nietknięte.
+  const [szablonyWlasne, setSzablonyWlasne] = useState<SzablonUzytkownika[]>([]);
+  const [nazwaWlasnegoSzablonu, setNazwaWlasnegoSzablonu] = useState<string>('');
+  const [komunikatZapisuSzablonu, setKomunikatZapisuSzablonu] = useState<string | null>(null);
   const [szablonZastosowany, setSzablonZastosowany] = useState<StationTemplateFull | null>(null);
 
   // Krok 4 — katalogi pomiaru i zabezpieczeń.
@@ -414,6 +424,19 @@ export function KreatorStacjiSnNn() {
       cancelled = true;
     };
   }, [kategoriaSzablonu]);
+
+  // B-8: szablony użytkownika — lista niezależna od kategorii wbudowanych.
+  const odswiezSzablonyWlasne = useCallback(() => {
+    pobierzSzablonyUzytkownika()
+      .then(setSzablonyWlasne)
+      // Brak listy własnych szablonów nie może wywrócić kroku 0 — biblioteka
+      // wbudowana działa dalej (uczciwy stan zerowy zamiast błędu ekranu).
+      .catch(() => setSzablonyWlasne([]));
+  }, []);
+
+  useEffect(() => {
+    odswiezSzablonyWlasne();
+  }, [odswiezSzablonyWlasne]);
 
   // Katalogi kroku „Pomiar i zabezpieczenia" + kanoniczne kody funkcji per rola.
   useEffect(() => {
@@ -772,6 +795,20 @@ export function KreatorStacjiSnNn() {
       return;
     }
     setBladSzablonow(null);
+    // B-8: szablon UŻYTKOWNIKA odtwarzamy 1:1 z zapisanego stanu formularza —
+    // backend go nie interpretuje, więc nie ma miejsca na rozjazd zapisu i
+    // odtworzenia. Szablony wbudowane idą dawną ścieżką (schemat + podgląd).
+    const wlasny = szablonyWlasne.find((s) => s.id === wybranySzablonId);
+    if (wlasny) {
+      setSzablonZastosowany(null);
+      setDane({
+        ...DANE_DOMYSLNE,
+        ...(wlasny.configuration as Partial<StacjaFormData>),
+        template_id: wlasny.id,
+        template_name: wlasny.name_pl,
+      });
+      return;
+    }
     try {
       const [szablon, podgladSzablonu] = await Promise.all([
         fetchStationTemplate(wybranySzablonId),
@@ -834,7 +871,36 @@ export function KreatorStacjiSnNn() {
     } catch (e) {
       setBladSzablonow(e instanceof Error ? e.message : T.szablonBlad);
     }
-  }, [aparatDomyslny, ctTypy, przekazniki, szablonyRola, vtTypy, wybranySzablonId]);
+  }, [
+    aparatDomyslny,
+    ctTypy,
+    przekazniki,
+    szablonyRola,
+    szablonyWlasne,
+    vtTypy,
+    wybranySzablonId,
+  ]);
+
+  /** B-8 — zapisz bieżącą konfigurację kreatora jako szablon użytkownika. */
+  const zapiszJakoSzablon = useCallback(async () => {
+    const nazwa = nazwaWlasnegoSzablonu.trim();
+    if (!nazwa) {
+      setKomunikatZapisuSzablonu(T.szablonZapiszBrakNazwy);
+      return;
+    }
+    setKomunikatZapisuSzablonu(null);
+    try {
+      const zapisany = await zapiszSzablonUzytkownika(
+        nazwa,
+        null,
+        dane as unknown as Record<string, unknown>,
+      );
+      odswiezSzablonyWlasne();
+      setKomunikatZapisuSzablonu(T.szablonZapiszOk(zapisany.name_pl));
+    } catch (e) {
+      setKomunikatZapisuSzablonu(e instanceof Error ? e.message : T.szablonZapiszBlad);
+    }
+  }, [dane, nazwaWlasnegoSzablonu, odswiezSzablonyWlasne]);
 
   const pracujOdZera = useCallback(() => {
     setWybranySzablonId('');
@@ -994,7 +1060,16 @@ export function KreatorStacjiSnNn() {
               onZmiana={setWybranySzablonId}
               opcje={[
                 { id: '', etykieta: T.szablonWyborPlaceholder },
-                ...szablonyStacji.map((s) => ({ id: s.id, etykieta: s.name_pl })),
+                ...szablonyStacji.map((s) => ({
+                  id: s.id,
+                  etykieta: T.szablonEtykietaWbudowany(s.name_pl),
+                })),
+                // B-8: zapisane przez użytkownika — na tej samej liście, ale ze
+                // ZRÓDŁEM w etykiecie (projektant musi wiedzieć, skąd szablon).
+                ...szablonyWlasne.map((s) => ({
+                  id: s.id,
+                  etykieta: T.szablonEtykietaWlasny(s.name_pl),
+                })),
               ]}
               pomoc={T.szablonWyborPomoc}
               testid="mvd-kreator-stacja-szablon-wybor"
@@ -1779,6 +1854,36 @@ export function KreatorStacjiSnNn() {
               {T.podgladOdswiez}
             </button>
           </div>
+
+          {/* B-8: zapis bieżącej konfiguracji jako szablonu użytkownika. Zapisujemy
+              STAN FORMULARZA — odtworzenie jest wtedy dokładne, bez tłumaczenia
+              kształtu (i bez miejsca, w którym zapis mógłby się rozjechać). */}
+          <KreatorSekcja tytul={T.szablonZapiszTytul} testid="mvd-kreator-stacja-zapisz-szablon">
+            <KreatorInfo>{T.szablonZapiszOpis}</KreatorInfo>
+            <PoleTekstowe
+              etykieta={T.szablonZapiszNazwa}
+              wartosc={nazwaWlasnegoSzablonu}
+              onZmiana={setNazwaWlasnegoSzablonu}
+              placeholder={T.szablonZapiszNazwaPlaceholder}
+              testid="mvd-kreator-stacja-szablon-nazwa"
+            />
+            <div className="mvd-kreator-stopka-nawigacja">
+              <button
+                type="button"
+                className="mvd-kreator-btn"
+                disabled={!nazwaWlasnegoSzablonu.trim()}
+                onClick={() => void zapiszJakoSzablon()}
+                data-testid="mvd-kreator-stacja-szablon-zapisz"
+              >
+                {T.szablonZapiszAkcja}
+              </button>
+            </div>
+            {komunikatZapisuSzablonu ? (
+              <KreatorInfo testid="mvd-kreator-stacja-szablon-zapis-komunikat">
+                {komunikatZapisuSzablonu}
+              </KreatorInfo>
+            ) : null}
+          </KreatorSekcja>
 
           {podgladStan === 'loading' ? (
             <KreatorInfo testid="mvd-kreator-stacja-podglad-ladowanie">{T.podgladLadowanie}</KreatorInfo>

@@ -189,6 +189,37 @@ vi.mock('../../../../ui/catalog/api', () => ({
     ]),
 }));
 
+// B-8 (karta KD-3): klient szablonów UŻYTKOWNIKA — osobny zbiór od wbudowanych.
+const zapisaneSzablony: Array<{
+  id: string;
+  name_pl: string;
+  description_pl: string;
+  source: 'UZYTKOWNIKA';
+  saved_at: string;
+  configuration: Record<string, unknown>;
+}> = [];
+vi.mock('../szablonyUzytkownika', () => ({
+  pobierzSzablonyUzytkownika: () => Promise.resolve([...zapisaneSzablony]),
+  zapiszSzablonUzytkownika: (
+    nazwa: string,
+    opis: string | null,
+    konfiguracja: Record<string, unknown>,
+  ) => {
+    const wpis = {
+      id: 'user_test1',
+      name_pl: nazwa,
+      description_pl: opis ?? '',
+      source: 'UZYTKOWNIKA' as const,
+      saved_at: '2026-07-31T00:00:00Z',
+      configuration: konfiguracja,
+    };
+    zapisaneSzablony.length = 0;
+    zapisaneSzablony.push(wpis);
+    return Promise.resolve(wpis);
+  },
+  usunSzablonUzytkownika: () => Promise.resolve(),
+}));
+
 vi.mock('../../../../ui/network-build/station-templates/api', () => ({
   fetchStationTemplates: () =>
     Promise.resolve({
@@ -776,5 +807,53 @@ describe('KreatorStacjiSnNn — realna ścieżka', () => {
     render(<KreatorStacjiSnNn />);
     await waitFor(() => expect(screen.getByTestId('mvd-kreator-stacja-zapisz')).toBeDisabled());
     expect(executeDomainOperationMock).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('B-8 — zapisz konfigurację jako szablon użytkownika', () => {
+  it('zapis z kroku podglądu wysyła STAN FORMULARZA i pokazuje potwierdzenie', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoTransformatora();
+    await wybierzTyp();
+
+    // Natywna ścieżka: krok podglądu → nazwa szablonu → klik „Zapisz jako szablon".
+    await przejdzDoKroku('Podgląd skutków');
+    const nazwa = await screen.findByTestId('mvd-kreator-stacja-szablon-nazwa');
+    await userEvent.type(nazwa, 'Moja stacja 630');
+    await userEvent.click(screen.getByTestId('mvd-kreator-stacja-szablon-zapisz'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('mvd-kreator-stacja-szablon-zapis-komunikat')).toHaveTextContent(
+        'Moja stacja 630',
+      ),
+    );
+    // Zapisany został STAN FORMULARZA — z wybranym transformatorem.
+    expect(zapisaneSzablony).toHaveLength(1);
+    expect(zapisaneSzablony[0].configuration.catalog_ref).toBe('trafo-630-15-04');
+    expect(zapisaneSzablony[0].name_pl).toBe('Moja stacja 630');
+  });
+
+  it('zapisany szablon pojawia się na liście kroku 0 ze ŹRÓDŁEM w etykiecie', async () => {
+    render(<KreatorStacjiSnNn />);
+    // Lista jest odświeżana po zapisie (poprzedni test zostawił wpis w mocku).
+    const wybor = (await screen.findByTestId(
+      'mvd-kreator-stacja-szablon-wybor',
+    )) as HTMLSelectElement;
+    await waitFor(() => {
+      expect(wybor.querySelector('option[value="user_test1"]')).not.toBeNull();
+    });
+    const wlasny = wybor.querySelector('option[value="user_test1"]');
+    expect(wlasny?.textContent).toContain('(mój szablon)');
+    // Wbudowany ma własne oznaczenie — projektant widzi, skąd szablon pochodzi.
+    const wbudowany = wybor.querySelector('option[value="tpl_farma_pv_1mw"]');
+    expect(wbudowany?.textContent).toContain('(wbudowany)');
+  });
+
+  it('bez nazwy przycisk zapisu jest nieaktywny (uczciwy stan zerowy)', async () => {
+    render(<KreatorStacjiSnNn />);
+    await przejdzDoKroku('Podgląd skutków');
+    const przycisk = await screen.findByTestId('mvd-kreator-stacja-szablon-zapisz');
+    expect(przycisk).toBeDisabled();
   });
 });
