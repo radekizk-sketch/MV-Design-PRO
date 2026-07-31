@@ -12,10 +12,14 @@
  *   `ui/topology/TopologyTreeView.tsx:59-122` (`buildSpineTree`/`getIsolatedNodes`)
  *   — ten sam kształt danych, inny (zagnieżdżony) układ drzewa.
  * - Liczniki {blokady, ostrzeżenia}: `ReadinessIssue.element_ref`/`element_refs`
- *   + `severity` (`ui/types.ts:548-558`), z `useReadinessLiveStore.issues`
- *   (`ui/engineering-readiness/readinessLiveStore.ts:42-46`). BLOCKER→blokady,
- *   IMPORTANT→ostrzeżenia (INFO pomijane) — ta sama konwencja co
- *   `ui2/shell/shellStatus.ts:55-56` (`bySeverity.BLOCKER`/`bySeverity.IMPORTANT`).
+ *   + `severity` (`ui/types.ts:548-558`), z JEDNEJ prawdy gotowości
+ *   (`spaces/gotowosc/adapters/gotowoscAdapter.useGotowoscModelu` nad
+ *   `useSnapshotStore.readiness`). BLOCKER→blokady, IMPORTANT→ostrzeżenia
+ *   (INFO pomijane) — ta sama konwencja co `ui2/shell/shellStatus.ts`
+ *   (`gotowosc.blokady`/`gotowosc.ostrzezenia`).
+ *   KD-1 (dług V12K-286): wcześniej źródłem był `useReadinessLiveStore.issues`,
+ *   którego `refresh` nikt nie wołał — liczniki drzewa były ZAWSZE zerowe,
+ *   mimo blokad widocznych w panelu gotowości.
  *
  * TODO-KARTA: tryby „administracyjny" (grupowanie po stacjach) i „obwodowy"
  * (grupowanie po magistralach/obwodach) z audytu W-208 NIE MAJĄ jednoznacznego
@@ -32,7 +36,7 @@ import { useMemo } from 'react';
 import type { AdjacencyEntry, TopologyGraphSummary } from '../../../types/enm';
 import type { ReadinessIssue } from '../../../ui/types';
 import { useTopologyStore } from '../../../ui/topology/store';
-import { useReadinessLiveStore } from '../../../ui/engineering-readiness/readinessLiveStore';
+import { useProblemyGotowosci } from '../../spaces/gotowosc/adapters/gotowoscAdapter';
 import { LICZNIKI_ZERO, type LicznikiWezla, type TrybDrzewaTopologii, type WezelDrzewa } from '../treeModel';
 
 function budujLicznikiZReadiness(issues: ReadinessIssue[]): Map<string, LicznikiWezla> {
@@ -44,8 +48,14 @@ function budujLicznikiZReadiness(issues: ReadinessIssue[]): Map<string, Liczniki
     mapa.set(ref, wpis);
   };
   for (const issue of issues) {
-    if (issue.element_ref) dodaj(issue.element_ref, issue.severity);
-    for (const ref of issue.element_refs) dodaj(ref, issue.severity);
+    // Jeden problem = JEDEN wpis na element, nawet gdy `element_ref` powtarza
+    // się w `element_refs` (tak buduje go `gotowoscAdapter.polaczGotowosc`).
+    // Bez odsiania duplikatów licznik podwajał każdą blokadę — defekt niewidoczny,
+    // dopóki źródłem był nigdy nieodświeżany store (KD-1 / V12K-286).
+    const refy = new Set<string>();
+    if (issue.element_ref) refy.add(issue.element_ref);
+    for (const ref of issue.element_refs) refy.add(ref);
+    for (const ref of refy) dodaj(ref, issue.severity);
   }
   return mapa;
 }
@@ -159,9 +169,9 @@ export function mapowanieTopologiiDoDrzewa(
   return [];
 }
 
-/** Adapter read-only: `ui/topology/store.ts` (summary) + `ui/engineering-readiness` (issues). */
+/** Adapter read-only: `ui/topology/store.ts` (summary) + `gotowoscAdapter` (problemy). */
 export function useTopologyTree(tryb: TrybDrzewaTopologii): WezelDrzewa[] {
   const summary = useTopologyStore((s) => s.summary);
-  const issues = useReadinessLiveStore((s) => s.issues);
+  const issues = useProblemyGotowosci();
   return useMemo(() => mapowanieTopologiiDoDrzewa(summary, issues, tryb), [summary, issues, tryb]);
 }

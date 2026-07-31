@@ -34,7 +34,7 @@ import { useSelectionStore } from '../selection';
 import { sanitizeDisplayValue } from '../shell/displayHelpers';
 import { useNetworkBuildStore } from './networkBuildStore';
 import { useAppStateStore } from '../app-state';
-import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
+import { useProblemyGotowosci } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { issueTargetsElement } from './liveReadiness';
 import {
   formatStationSwitchgearLayoutLabelPl,
@@ -2421,7 +2421,7 @@ export function InspectorEngineeringView({ className }: InspectorEngineeringView
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const executeDomainOperation = useSnapshotStore((s) => s.executeDomainOperation);
   const logicalViews = useSnapshotStore((s) => s.logicalViews);
-  const readinessIssues = useReadinessLiveStore((s) => s.issues);
+  const readinessIssues = useProblemyGotowosci();
   const openOperationForm = useNetworkBuildStore((s) => s.openOperationForm);
   const openRouteSurface = useNetworkBuildStore((s) => s.openRouteSurface);
   const activeMode = useAppStateStore((s) => s.activeMode);

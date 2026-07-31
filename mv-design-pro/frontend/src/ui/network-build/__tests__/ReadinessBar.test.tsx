@@ -7,7 +7,10 @@ import {
   selectActiveOperationForm,
   useNetworkBuildStore,
 } from '../networkBuildStore';
-import { useReadinessLiveStore } from '../../engineering-readiness/readinessLiveStore';
+import {
+  ustawGotowoscMigawki,
+  wyczyscGotowoscMigawki,
+} from '../../../test/gotowoscTestUtils';
 import { useSnapshotStore } from '../../topology/snapshotStore';
 import { useNotificationStore } from '../../notifications/store';
 import { useSelectionStore } from '../../selection/store';
@@ -16,7 +19,7 @@ describe('ReadinessBar', () => {
   beforeEach(() => {
     useAppStateStore.getState().reset();
     useNetworkBuildStore.getState().reset();
-    useReadinessLiveStore.getState().clear();
+    wyczyscGotowoscMigawki();
     useNotificationStore.getState().clearAll();
     useSelectionStore.getState().clearSelection();
     useSnapshotStore.setState({
@@ -55,15 +58,7 @@ describe('ReadinessBar', () => {
         branches: [],
       } as never,
     });
-    useReadinessLiveStore.setState({
-      issues: [],
-      status: 'OK',
-      ready: true,
-      bySeverity: { BLOCKER: 0, IMPORTANT: 0, INFO: 0 },
-      loading: false,
-      error: null,
-      lastRevision: 1,
-    });
+    ustawGotowoscMigawki({ ready: true });
 
     render(<ReadinessBar />);
 
@@ -88,39 +83,26 @@ describe('ReadinessBar', () => {
         branches: [],
       } as never,
     });
-    useReadinessLiveStore.setState({
-      issues: [
+    ustawGotowoscMigawki({
+      blockers: [
         {
           code: 'TOPOLOGY_ISLAND',
-          severity: 'BLOCKER',
           message_pl: 'Wykryto wyspę topologiczną.',
           element_ref: 'bus-1',
-          element_refs: [],
-          fix_action: null,
         },
         {
           code: 'ELIG_SC3_MISSING_CATALOG_REF',
-          severity: 'BLOCKER',
           message_pl: 'Brak katalogu aparatu.',
           element_ref: 'seg-1',
-          element_refs: [],
-          fix_action: null,
         },
+      ],
+      warnings: [
         {
           code: 'WARN_PROFILE_MISSING',
-          severity: 'INFO',
           message_pl: 'Brak profilu czasowego.',
           element_ref: null,
-          element_refs: [],
-          fix_action: null,
         },
-      ] as never,
-      status: 'FAIL',
-      ready: false,
-      bySeverity: { BLOCKER: 2, IMPORTANT: 0, INFO: 1 },
-      loading: false,
-      error: null,
-      lastRevision: 1,
+      ],
     });
 
     render(<ReadinessBar />);
@@ -149,23 +131,14 @@ describe('ReadinessBar', () => {
         branches: [],
       } as never,
     });
-    useReadinessLiveStore.setState({
-      issues: [
+    ustawGotowoscMigawki({
+      blockers: [
         {
           code: 'TOPOLOGY_ISLAND',
-          severity: 'BLOCKER',
           message_pl: 'Wykryto wyspę topologiczną.',
           element_ref: 'bus-1',
-          element_refs: [],
-          fix_action: null,
         },
-      ] as never,
-      status: 'FAIL',
-      ready: false,
-      bySeverity: { BLOCKER: 1, IMPORTANT: 0, INFO: 0 },
-      loading: false,
-      error: null,
-      lastRevision: 1,
+      ],
     });
 
     render(<ReadinessBar />);
@@ -207,23 +180,14 @@ describe('ReadinessBar', () => {
         },
       ],
     } as never);
-    useReadinessLiveStore.setState({
-      issues: [
+    ustawGotowoscMigawki({
+      blockers: [
         {
           code: 'ELIG_LF_NO_LOADS_OR_GENERATORS',
-          severity: 'BLOCKER',
           message_pl: 'Brak odbiorów i generatorów w modelu.',
           element_ref: null,
-          element_refs: [],
-          fix_action: null,
         },
-      ] as never,
-      status: 'FAIL',
-      ready: false,
-      bySeverity: { BLOCKER: 1, IMPORTANT: 0, INFO: 0 },
-      loading: false,
-      error: null,
-      lastRevision: 1,
+      ],
     });
 
     render(<ReadinessBar />);
@@ -268,23 +232,14 @@ describe('ReadinessBar', () => {
         },
       ],
     } as never);
-    useReadinessLiveStore.setState({
-      issues: [
+    ustawGotowoscMigawki({
+      blockers: [
         {
           code: 'UNKNOWN_READINESS_CODE',
-          severity: 'BLOCKER',
           message_pl: 'Nieznany brak bez mapowania.',
           element_ref: 'bus-1',
-          element_refs: [],
-          fix_action: null,
         },
-      ] as never,
-      status: 'FAIL',
-      ready: false,
-      bySeverity: { BLOCKER: 1, IMPORTANT: 0, INFO: 0 },
-      loading: false,
-      error: null,
-      lastRevision: 1,
+      ],
     });
 
     render(<ReadinessBar />);

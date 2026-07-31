@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
+import { useGotowoscModelu } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 
 export type ObjectStatusDot = 'ok' | 'warning' | 'error' | 'none';
 
@@ -56,12 +56,12 @@ export function buildBlockerCountsByElement(
 }
 
 export function useBlockerCountsByElement(): Map<string, number> {
-  const issues = useReadinessLiveStore((state) => state.issues);
+  const { issues } = useGotowoscModelu();
   return useMemo(() => buildBlockerCountsByElement(issues), [issues]);
 }
 
 export function useElementIssues(elementId: string | null | undefined) {
-  const issues = useReadinessLiveStore((state) => state.issues);
+  const { issues } = useGotowoscModelu();
   return useMemo(() => {
     if (!elementId) {
       return [];
@@ -74,7 +74,7 @@ export function useElementStatusDot(
   elementId: string | null | undefined,
 ): ObjectStatusDot {
   const issues = useElementIssues(elementId);
-  const loading = useReadinessLiveStore((state) => state.loading);
+  const { loading } = useGotowoscModelu();
 
   return useMemo(() => {
     if (!elementId) {

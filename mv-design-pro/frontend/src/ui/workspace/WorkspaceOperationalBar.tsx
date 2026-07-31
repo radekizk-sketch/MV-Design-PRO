@@ -1,7 +1,7 @@
 import { clsx } from 'clsx';
 
 import { useActiveMode, useAppStateStore, useResultStatusLabel } from '../app-state';
-import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
+import { useGotowoscModelu } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { useNetworkBuildDerived, useNetworkBuildStore } from '../network-build';
 import { navigateToReport, navigateToVariants } from '../navigation/routes';
 import { useExecutionRunsStore } from '../study-cases/runStore';
@@ -88,8 +88,7 @@ export function WorkspaceOperationalBar({
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
   const { blockersByCategory, isReady } = useNetworkBuildDerived();
-  const readinessStatus = useReadinessLiveStore((state) => state.status);
-  const bySeverity = useReadinessLiveStore((state) => state.bySeverity);
+  const { status: readinessStatus, bySeverity } = useGotowoscModelu();
   const runs = useExecutionRunsStore((state) => state.runs);
 
   const activeRun = runs.find((run) => run.id === activeRunId) ?? null;

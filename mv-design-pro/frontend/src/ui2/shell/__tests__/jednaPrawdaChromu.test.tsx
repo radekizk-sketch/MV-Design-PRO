@@ -20,7 +20,6 @@ import {
 import { podsumujGotowosc } from '../../spaces/gotowosc/adapters/gotowoscAdapter';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
-import { useReadinessLiveStore } from '../../../ui/engineering-readiness/readinessLiveStore';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
 import type { ReadinessInfo } from '../../../types/enm';
 
@@ -57,9 +56,6 @@ function runFixture(over: Partial<ExecutionRun> = {}): ExecutionRun {
 beforeEach(() => {
   useAppStateStore.setState({ activeProjectId: PROJEKT_ID, activeCaseId: null, activeCaseName: null });
   useSnapshotStore.setState({ snapshot: null, readiness: null, fixActions: [] } as never);
-  // Stan początkowy dawnego (martwego) źródła: `ready: true` — chrom NIE MOŻE
-  // go czytać, więc jego obecność nie może zmienić wyniku poniższych asercji.
-  useReadinessLiveStore.getState().clear();
 });
 
 describe('podsumujGotowosc — projekcja gotowości dla chromu (R1)', () => {
@@ -125,9 +121,8 @@ describe('useShellStatusInfo — wersja modelu i rewizja (R4 + R5)', () => {
   });
 
   it('rewizja modelu pochodzi WYŁĄCZNIE z powłoki (R5 — martwy fallback usunięty)', () => {
-    // Nawet gdyby dawne źródło miało rewizję, chrom jej nie czyta.
-    useReadinessLiveStore.setState({ lastRevision: 42 } as never);
-
+    // KD-1: dawne (martwe) źródło rewizji usunięte w całości — rewizję podaje
+    // wyłącznie powłoka, więc bez podania nie ma czego pokazać.
     const bezPodania = renderHook(() => useShellStatusInfo());
     expect(bezPodania.result.current.modelRevision).toBeNull();
 

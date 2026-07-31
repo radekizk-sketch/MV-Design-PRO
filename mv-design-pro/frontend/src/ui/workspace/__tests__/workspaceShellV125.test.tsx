@@ -3,7 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useAppStateStore } from '../../app-state/store';
-import { useReadinessLiveStore } from '../../engineering-readiness/readinessLiveStore';
+import {
+  ustawGotowoscMigawki,
+  wyczyscGotowoscMigawki,
+} from '../../../test/gotowoscTestUtils';
 import { useNetworkBuildStore } from '../../network-build/networkBuildStore';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
@@ -173,7 +176,7 @@ describe('workspace shell V12.5 surfaces', () => {
     useAppStateStore.getState().reset();
     useExecutionRunsStore.getState().reset();
     useSnapshotStore.getState().reset();
-    useReadinessLiveStore.getState().clear();
+    wyczyscGotowoscMigawki();
     useShellStore.setState({ activeSpace: 'wyniki', wynikiTab: null, wynikiTabElement: null });
   });
 
@@ -645,7 +648,7 @@ describe('WorkspaceOperationalBar', () => {
     useAppStateStore.getState().reset();
     useExecutionRunsStore.getState().reset();
     useSnapshotStore.getState().reset();
-    useReadinessLiveStore.getState().clear();
+    wyczyscGotowoscMigawki();
   });
 
   it('otwiera surface E-09 po kliknieciu segmentu aktywnej migawki', async () => {
@@ -667,17 +670,7 @@ describe('WorkspaceOperationalBar', () => {
       ],
     });
     useAppStateStore.getState().setActiveRun('run-1');
-    useReadinessLiveStore.setState({
-      issues: [],
-      status: 'OK',
-      ready: true,
-      bySeverity: { BLOCKER: 0, IMPORTANT: 0, INFO: 0 },
-      loading: false,
-      error: null,
-      lastRevision: 1,
-      collapsedGroups: [],
-      autoRefreshEnabled: true,
-    });
+    ustawGotowoscMigawki({ ready: true });
 
     render(<WorkspaceOperationalBar validationStatus="valid" />);
 

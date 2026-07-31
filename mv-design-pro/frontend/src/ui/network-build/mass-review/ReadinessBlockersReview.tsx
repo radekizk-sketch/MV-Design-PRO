@@ -7,7 +7,7 @@
 
 import { useCallback, useMemo } from 'react';
 
-import { useReadinessLiveStore } from '../../engineering-readiness/readinessLiveStore';
+import { useProblemyGotowosci } from '../../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { useSelectionStore } from '../../selection';
 import {
   publicElementLabelFromRef,
@@ -63,7 +63,7 @@ function categorizeBlocker(code: string): BlockerCategory {
 export function ReadinessBlockersReview() {
   const fixActions = useSnapshotStore((state) => state.fixActions);
   const snapshot = useSnapshotStore((state) => state.snapshot);
-  const readinessIssues = useReadinessLiveStore((state) => state.issues);
+  const readinessIssues = useProblemyGotowosci();
   const selectElement = useSelectionStore((state) => state.selectElement);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
 

@@ -22,7 +22,7 @@
 
 import React, { useMemo, useCallback, useState } from 'react';
 import { clsx } from 'clsx';
-import { useReadinessLiveStore } from './readinessLiveStore';
+import { useGotowoscModelu } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import type { ReadinessIssue, ReadinessSeverity } from '../types';
 
 // =============================================================================
@@ -287,9 +287,7 @@ export const DataGapPanel: React.FC<DataGapPanelProps> = ({
   onQuickFix,
   compact = false,
 }) => {
-  const issues = useReadinessLiveStore((s) => s.issues);
-  const status = useReadinessLiveStore((s) => s.status);
-  const loading = useReadinessLiveStore((s) => s.loading);
+  const { issues, status, loading } = useGotowoscModelu();
 
   const [collapsedGroups, setCollapsedGroups] = useState<DataGapGroup[]>([]);
 

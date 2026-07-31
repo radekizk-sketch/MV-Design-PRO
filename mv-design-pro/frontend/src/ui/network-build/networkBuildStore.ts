@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { useReadinessLiveStore } from '../engineering-readiness/readinessLiveStore';
+import { useGotowoscModelu } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
@@ -1390,10 +1390,12 @@ export function useNetworkBuildDerived() {
   const snapshot = useSnapshotStore((s) => s.snapshot);
   const logicalViews = useSnapshotStore((s) => s.logicalViews);
   const fixActions = useSnapshotStore((s) => s.fixActions);
-  const readinessIssues = useReadinessLiveStore((s) => s.issues);
-  const readinessStatus = useReadinessLiveStore((s) => s.status);
-  const readinessReady = useReadinessLiveStore((s) => s.ready);
-  const readinessLoading = useReadinessLiveStore((s) => s.loading);
+  const {
+    issues: readinessIssues,
+    status: readinessStatus,
+    ready: readinessReady,
+    loading: readinessLoading,
+  } = useGotowoscModelu();
   const blockerCountsByElement = new Map<string, number>();
 
   const sourceCount = snapshot?.sources?.length ?? 0;

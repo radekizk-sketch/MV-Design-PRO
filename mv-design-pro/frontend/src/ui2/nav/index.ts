@@ -31,6 +31,8 @@ export {
   useTopologyTree,
 } from './adapters/topologyTreeAdapter';
 
+export { useZasilanieDrzewaTopologii } from './useZasilanieDrzewaTopologii';
+
 export {
   mapowaniePrzypadkowDoDrzewa,
   useCasesTree,

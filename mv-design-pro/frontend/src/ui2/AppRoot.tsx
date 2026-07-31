@@ -23,7 +23,14 @@ import { useBackendHealth } from './shell/backendHealth';
 import { useEtykietaOstatniegoPrzebiegu } from './shell/shellStatus';
 import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
 import { useInspektorZaZawartoscia } from './shell/useInspektorZaZawartoscia';
-import { ContextTree, NAV_STRINGS, useCasesTree, useRunsTree, useTopologyTree } from './nav';
+import {
+  ContextTree,
+  NAV_STRINGS,
+  useCasesTree,
+  useRunsTree,
+  useTopologyTree,
+  useZasilanieDrzewaTopologii,
+} from './nav';
 import type { AkcjaPusty } from './nav';
 import { InspectorPanel } from './inspector';
 import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapter';
@@ -136,6 +143,9 @@ export function AppRoot() {
   // restart przeglądarki cofał przestrzenie do stanu zerowego mimo danych na
   // serwerze.
   useHydratacjaPowloki(backendStatus);
+  // KD-1: drzewo topologii dostaje dane z serwera (dotąd `loadSummary` nie miał
+  // żadnego wołającego, więc drzewo przestrzeni „Model" było zawsze puste).
+  useZasilanieDrzewaTopologii();
   // K11-A (SLD-first): inspektor podąża za zawartością — pusty nie zabiera
   // przestrzeni roboczej; otwiera go selekcja albo powierzchnia panelowa.
   useInspektorZaZawartoscia();

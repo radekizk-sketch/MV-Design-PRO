@@ -38,6 +38,19 @@ import type { ReadinessInfo, FixAction as EnmFixAction } from '../../../../types
 import type { FixAction, ReadinessIssue, ReadinessSeverity } from '../../../../ui/types';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 
+/*
+ * KD-1 (dług V12K-286): TEN moduł jest jedyną prawdą gotowości dla WSZYSTKICH
+ * czytelników — nie tylko przestrzeni „Gotowość" i chromu powłoki (K6), lecz
+ * także pasków i inspektorów budowy sieci (`ui/network-build`), paska
+ * operacyjnego warsztatu (`ui/workspace`), panelu braków danych
+ * (`ui/engineering-readiness/DataGapPanel`) i drzewa topologii
+ * (`ui2/nav/adapters/topologyTreeAdapter`). Dawne drugie źródło
+ * `ui/engineering-readiness/readinessLiveStore` USUNIĘTO: nikt nigdy nie wołał
+ * jego `refresh`, więc każdy czytelnik dostawał pustą listę problemów i
+ * `ready: true` z definicji (liczniki blokad w drzewie topologii były zawsze
+ * zerowe, a paski deklarowały gotowość, której nikt nie policzył).
+ */
+
 // ---------------------------------------------------------------------------
 // Stan przestrzeni
 // ---------------------------------------------------------------------------
@@ -173,4 +186,72 @@ export function podsumujGotowosc(readiness: ReadinessInfo | null): PodsumowanieG
 export function usePodsumowanieGotowosci(): PodsumowanieGotowosci {
   const readiness = useSnapshotStore((s) => s.readiness);
   return useMemo(() => podsumujGotowosc(readiness), [readiness]);
+}
+
+// ---------------------------------------------------------------------------
+// Pełna projekcja gotowości dla pozostałych czytelników (KD-1 / V12K-286)
+// ---------------------------------------------------------------------------
+
+/** Status gotowości w konwencji pasków i paneli (`OK` / `WARN` / `FAIL`). */
+export type StatusGotowosci = 'OK' | 'WARN' | 'FAIL';
+
+/**
+ * Kształt gotowości oczekiwany przez czytelników spoza przestrzeni „Gotowość"
+ * (paski budowy sieci, pasek operacyjny, panel braków danych). Pola nazwane jak
+ * w kontrakcie `ReadinessIssue`/`ReadinessSeverity` (`ui/types.ts`), żeby
+ * przepięcie było podmianą źródła, a nie zmianą kontraktu prezentacji.
+ */
+export interface GotowoscModelu {
+  readonly issues: ReadinessIssue[];
+  readonly status: StatusGotowosci;
+  readonly ready: boolean;
+  readonly bySeverity: Record<ReadinessSeverity, number>;
+  readonly loading: boolean;
+  readonly error: string | null;
+}
+
+/**
+ * Status z odpowiedzi domenowej: blokada ⇒ `FAIL`, samo ostrzeżenie ⇒ `WARN`,
+ * brak problemów ⇒ `OK`. Bez migawki status jest `OK` przy `ready: false` —
+ * „nic nie policzono" nie jest awarią (stan rozróżnia `ready`, patrz
+ * `podsumujGotowosc`).
+ */
+export function statusGotowosci(readiness: ReadinessInfo | null): StatusGotowosci {
+  if (!readiness) return 'OK';
+  if (readiness.blockers.length > 0) return 'FAIL';
+  if (readiness.warnings.length > 0) return 'WARN';
+  return 'OK';
+}
+
+/** Liczby problemów wg wagi (INFO nie występuje w odpowiedzi domenowej). */
+export function liczbyWgWagi(readiness: ReadinessInfo | null): Record<ReadinessSeverity, number> {
+  return {
+    BLOCKER: readiness?.blockers.length ?? 0,
+    IMPORTANT: readiness?.warnings.length ?? 0,
+    INFO: 0,
+  };
+}
+
+/**
+ * Jedna prawda gotowości dla czytelników spoza przestrzeni „Gotowość".
+ * Źródło: `useSnapshotStore` (`readiness` + `fixActions` + `loading`/`error`) —
+ * dokładnie to samo, z którego żyje panel gotowości i chrom powłoki.
+ */
+export function useGotowoscModelu(): GotowoscModelu {
+  const readiness = useSnapshotStore((s) => s.readiness);
+  const fixActions = useSnapshotStore((s) => s.fixActions);
+  const loading = useSnapshotStore((s) => s.loading);
+  const error = useSnapshotStore((s) => s.error);
+
+  return useMemo(
+    () => ({
+      issues: polaczGotowosc(readiness, fixActions),
+      status: statusGotowosci(readiness),
+      ready: podsumujGotowosc(readiness).ready,
+      bySeverity: liczbyWgWagi(readiness),
+      loading,
+      error,
+    }),
+    [readiness, fixActions, loading, error],
+  );
 }
