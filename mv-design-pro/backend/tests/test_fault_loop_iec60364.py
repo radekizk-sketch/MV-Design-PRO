@@ -266,7 +266,7 @@ class TestErrorLogging:
         assert getattr(warnings[0], "fault_node_id", None) == "bus_LV_42"
 
     def test_tt_network_emits_warning(self, caplog: pytest.LogCaptureFixture) -> None:
-        from src.network_model.solvers.fault_loop_iec60364 import NetworkType
+        from network_model.solvers.fault_loop_iec60364 import NetworkType
 
         bad = FaultLoopInput(
             fault_node_id="bus_TT_1",

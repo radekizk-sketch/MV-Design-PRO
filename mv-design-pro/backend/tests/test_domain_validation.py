@@ -1,4 +1,4 @@
-from src.domain.validation import ValidationIssue, ValidationReport
+from domain.validation import ValidationIssue, ValidationReport
 
 
 def test_validation_report_is_valid() -> None:

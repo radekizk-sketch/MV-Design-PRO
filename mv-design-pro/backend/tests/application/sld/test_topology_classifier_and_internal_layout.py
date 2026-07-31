@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from src.application.sld.internal_layout import build_internal_sld
-from src.application.sld.topology_classifier import (
+from application.sld.internal_layout import build_internal_sld
+from application.sld.topology_classifier import (
     classify_station_topology,
     infer_topological_type_for_substation,
 )
-from src.enm.models import (
+from enm.models import (
     Bay,
     Bus,
     EnergyNetworkModel,

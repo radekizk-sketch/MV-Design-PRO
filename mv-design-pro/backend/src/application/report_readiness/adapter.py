@@ -8,13 +8,12 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
-
-from src.application.calculation_readiness.service import (
+from application.calculation_readiness.service import (
     CalculationReadinessService,
     ReadinessTypeReport,
 )
-from src.enm.models import EnergyNetworkModel
+from enm.models import EnergyNetworkModel
+from pydantic import BaseModel, Field
 
 ReportType = Literal["osd", "technical"]
 

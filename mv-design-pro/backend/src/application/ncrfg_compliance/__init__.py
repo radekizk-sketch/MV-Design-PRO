@@ -4,13 +4,13 @@
 Adapter API gotowy; solver numeryczny w PR-16-impl (osobna sesja).
 """
 
-from src.application.ncrfg_compliance.checker import (
+from application.ncrfg_compliance.checker import (
     ComplianceTestResult,
     DerDataForCompliance,
     NcRfgComplianceChecker,
     NcRfgComplianceReport,
 )
-from src.application.ncrfg_compliance.model_bridge import (
+from application.ncrfg_compliance.model_bridge import (
     build_der_compliance_from_generator,
     build_der_compliance_list_from_enm,
 )

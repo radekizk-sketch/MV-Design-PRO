@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import pytest
-
-from src.catalog.profiles.nc_rfg import (
+from catalog.profiles.nc_rfg import (
     NcRfgProfile,
     list_available_operators,
     load_nc_rfg_profile,
 )
-from src.network_model.catalog.wind_turbines import (
+from network_model.catalog.wind_turbines import (
     WIND_TURBINE_CATALOG,
     list_wind_turbines,
 )

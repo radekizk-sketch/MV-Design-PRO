@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from src.enm.models import (
+from enm.models import (
     Bay,
     ConnectionNode,
     EnergyNetworkModel,

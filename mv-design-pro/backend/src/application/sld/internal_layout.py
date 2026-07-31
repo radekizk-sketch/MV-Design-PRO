@@ -15,13 +15,12 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
-
-from src.application.sld.topology_classifier import (
+from application.sld.topology_classifier import (
     TopologicalType,
     infer_topological_type_for_substation,
 )
-from src.enm.models import Bay, EnergyNetworkModel, Port, Substation, Transformer
+from enm.models import Bay, EnergyNetworkModel, Port, Substation, Transformer
+from pydantic import BaseModel, Field
 
 
 class InternalBayDTO(BaseModel):

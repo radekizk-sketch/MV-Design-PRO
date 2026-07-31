@@ -6,7 +6,7 @@ Brief 2 §3 pkt 11. Klasyfikacja:
 - info (szary)
 """
 
-from src.application.validation_problem.service import (
+from application.validation_problem.service import (
     ValidationProblem,
     ValidationProblemService,
     ValidationSeverity,

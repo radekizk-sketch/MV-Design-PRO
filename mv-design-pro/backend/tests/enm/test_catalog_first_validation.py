@@ -8,7 +8,7 @@ Verifies:
 4. Deterministic serialization with overrides
 """
 
-from src.enm.models import (
+from enm.models import (
     Bus,
     EnergyNetworkModel,
     ENMHeader,
@@ -21,7 +21,7 @@ from src.enm.models import (
     Source,
     Transformer,
 )
-from src.enm.validator import ENMValidator
+from enm.validator import ENMValidator
 
 
 def _make_minimal_enm(**kwargs) -> EnergyNetworkModel:

@@ -14,7 +14,7 @@ Każdy DER (PV/BESS/FW) ma gwarantowany profil:
 
 from __future__ import annotations
 
-from src.network_model.catalog.der_dynamic.models import (
+from network_model.catalog.der_dynamic.models import (
     InverterDynamicProfile,
     WindTurbineDynamicProfile,
 )

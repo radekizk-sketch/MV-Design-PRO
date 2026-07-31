@@ -172,7 +172,7 @@ class StabilitySolverAdapter:
             )
         # PR-15-impl: podpięcie MVP solvera (Newton-Raphson trapezoidal-implicit
         # z 5+ modelami dynamicznymi). Status='ok' z deterministycznymi wynikami.
-        from src.network_model.solvers.stability_rms.engine import (
+        from network_model.solvers.stability_rms.engine import (
             run_stability_rms,
         )
 

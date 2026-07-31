@@ -6,7 +6,7 @@ silnika numerycznego ``engine.run_frt_hvrt`` zwracającego realne trajektorie
 V/Iq/P, margines do krzywej i czas odzysku mocy czynnej.
 """
 
-from src.network_model.solvers.frt_hvrt.contracts import (
+from network_model.solvers.frt_hvrt.contracts import (
     FrtHvrtResult,
     FrtHvrtSolverAdapter,
     FrtHvrtSolverInput,

@@ -108,6 +108,6 @@ class FrtHvrtSolverAdapter:
                 no_module_reason_pl="Walidacja wejścia: " + "; ".join(errors),
             )
         # PR-16-impl: realne wyniki numeryczne (MVP voltage dip simulation)
-        from src.network_model.solvers.frt_hvrt.engine import run_frt_hvrt
+        from network_model.solvers.frt_hvrt.engine import run_frt_hvrt
 
         return run_frt_hvrt(solver_input)

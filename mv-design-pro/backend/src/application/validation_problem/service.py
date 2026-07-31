@@ -12,13 +12,12 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
-
-from src.application.calculation_readiness.service import (
+from application.calculation_readiness.service import (
     CalculationReadinessService,
     ReadinessReport,
 )
-from src.enm.models import EnergyNetworkModel
+from enm.models import EnergyNetworkModel
+from pydantic import BaseModel, Field
 
 ValidationSeverity = Literal["error", "warning", "info"]
 
