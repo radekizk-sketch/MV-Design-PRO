@@ -289,6 +289,182 @@ export const DEFINICJE_PARAMETROW: Readonly<Record<string, DefinicjaParametru>> 
     definicja: 'Znamionowa pojemność energetyczna magazynu energii (BESS).',
     norma: 'IEC 62933-1', // źródło: IEC 62933 — systemy magazynowania energii elektrycznej
   },
+
+  // — Przekładniki prądowe (L-16) —
+  ratio_primary_a: {
+    symbol: 'I1n',
+    etykieta: 'Prąd znamionowy pierwotny',
+    jednostka: 'A',
+    typ: 'liczba',
+    miejscaDziesietne: 0,
+    definicja: 'Prąd toru głównego, dla którego przekładnik zachowuje klasę dokładności.',
+    norma: 'IEC 61869-2', // źródło: IEC 61869-2 — przekładniki prądowe
+  },
+  ratio_secondary_a: {
+    symbol: 'I2n',
+    etykieta: 'Prąd znamionowy wtórny',
+    jednostka: 'A',
+    typ: 'liczba',
+    miejscaDziesietne: 0,
+    definicja: 'Prąd obwodu wtórnego przy prądzie znamionowym pierwotnym (1 A albo 5 A).',
+    norma: 'IEC 61869-2', // źródło: IEC 61869-2 — szereg znormalizowany
+  },
+  accuracy_class: {
+    symbol: 'kl.',
+    etykieta: 'Klasa dokładności',
+    jednostka: '',
+    typ: 'tekst',
+    definicja:
+      'Oznaczenie klasy: liczba przed literą P to uchyb, liczba po niej — współczynnik '
+      + 'graniczny dokładności (np. 5P20). Klasa bez litery P jest klasą pomiarową.',
+    norma: 'IEC 61869-2', // źródło: IEC 61869-2 § 3.4 — klasy dokładności
+  },
+  accuracy_class_metering: {
+    symbol: 'kl. pom.',
+    etykieta: 'Klasa dokładności uzwojenia pomiarowego',
+    jednostka: '',
+    typ: 'tekst',
+    definicja: 'Klasa uzwojenia pomiarowego w przekładniku o dwóch uzwojeniach wtórnych.',
+    norma: 'IEC 61869-3', // źródło: IEC 61869-3 — przekładniki napięciowe
+  },
+  burden_va: {
+    symbol: 'Sn',
+    etykieta: 'Moc znamionowa',
+    jednostka: 'VA',
+    typ: 'liczba',
+    miejscaDziesietne: 1,
+    definicja:
+      'Moc, przy której przekładnik dotrzymuje klasy dokładności. Obciążenie obwodu '
+      + 'wtórnego ponad tę wartość pogarsza dokładność.',
+    norma: 'IEC 61869-2', // źródło: IEC 61869-2 § 3.4 — obciążenie znamionowe
+  },
+  ith_ka_1s: {
+    symbol: 'Ith',
+    etykieta: 'Prąd cieplny krótkotrwały (1 s)',
+    jednostka: 'kA',
+    typ: 'liczba',
+    miejscaDziesietne: 1,
+    definicja: 'Prąd, który uzwojenie pierwotne wytrzymuje cieplnie przez 1 sekundę.',
+    norma: 'IEC 61869-2', // źródło: IEC 61869-2 — wytrzymałość zwarciowa
+  },
+  idyn_ka_peak: {
+    symbol: 'Idyn',
+    etykieta: 'Prąd dynamiczny (szczytowy)',
+    jednostka: 'kA',
+    typ: 'liczba',
+    miejscaDziesietne: 1,
+    definicja: 'Szczytowy prąd zwarciowy, który przekładnik wytrzymuje mechanicznie.',
+    norma: 'IEC 61869-2', // źródło: IEC 61869-2 — wytrzymałość dynamiczna
+  },
+  fs_safety_factor: {
+    symbol: 'Fs',
+    etykieta: 'Współczynnik bezpieczeństwa przyrządowego',
+    jednostka: '',
+    typ: 'liczba',
+    miejscaDziesietne: 0,
+    definicja:
+      'Krotność prądu znamionowego, przy której rdzeń POMIAROWY nasyca się — chroni '
+      + 'przyrządy przed prądem zwarciowym.',
+    norma: 'IEC 61869-2', // źródło: IEC 61869-2 § 3.4 — rdzenie pomiarowe
+  },
+  rct_ohm: {
+    symbol: 'Rct',
+    etykieta: 'Rezystancja uzwojenia wtórnego',
+    jednostka: 'Ω',
+    typ: 'liczba',
+    miejscaDziesietne: 3,
+    definicja:
+      'Rezystancja samego uzwojenia wtórnego. Wchodzi do rachunku efektywnego '
+      + 'współczynnika granicznego (bilans obwodu wtórnego).',
+    norma: 'IEC 61869-2', // źródło: IEC 61869-2 § 5.6 — nasycenie rdzenia
+  },
+
+  // — Przekładniki napięciowe (L-16) —
+  ratio_primary_v: {
+    symbol: 'U1n',
+    etykieta: 'Napięcie znamionowe pierwotne',
+    jednostka: 'V',
+    typ: 'liczba',
+    miejscaDziesietne: 0,
+    definicja: 'Napięcie strony pierwotnej, dla którego obowiązuje przekładnia znamionowa.',
+    norma: 'IEC 61869-3', // źródło: IEC 61869-3 — przekładniki napięciowe
+  },
+  ratio_secondary_v: {
+    symbol: 'U2n',
+    etykieta: 'Napięcie znamionowe wtórne',
+    jednostka: 'V',
+    typ: 'liczba',
+    miejscaDziesietne: 1,
+    definicja: 'Napięcie obwodu wtórnego przy znamionowym napięciu pierwotnym.',
+    norma: 'IEC 61869-3', // źródło: IEC 61869-3 — szereg znormalizowany
+  },
+  rated_voltage_factor: {
+    symbol: 'Fv',
+    etykieta: 'Współczynnik napięciowy',
+    jednostka: '',
+    typ: 'liczba',
+    miejscaDziesietne: 2,
+    definicja:
+      'Krotność napięcia znamionowego, przy której przekładnik zachowuje dokładność '
+      + '(w sieci małoprądowej napięcie faz zdrowych rośnie przy zwarciu doziemnym).',
+    norma: 'IEC 61869-3', // źródło: IEC 61869-3 tab. 2 — współczynniki napięciowe
+  },
+  voltage_factor_duration_s: {
+    symbol: 't(Fv)',
+    etykieta: 'Czas obowiązywania współczynnika napięciowego',
+    jednostka: 's',
+    typ: 'liczba',
+    miejscaDziesietne: 0,
+    definicja: 'Czas, przez który przekładnik znosi podwyższone napięcie (30 s albo 8 h).',
+    norma: 'IEC 61869-3', // źródło: IEC 61869-3 tab. 2
+  },
+
+  // — Kable i aparaty nN (L-16) —
+  u_n_kv: {
+    symbol: 'Un',
+    etykieta: 'Napięcie znamionowe',
+    jednostka: 'kV',
+    typ: 'liczba',
+    miejscaDziesietne: 3,
+    definicja: 'Napięcie znamionowe izolacji (kabel) albo aparatu.',
+    norma: 'IEC 60038', // źródło: IEC 60038 — napięcia znormalizowane
+  },
+  i_max_a: {
+    symbol: 'Iz',
+    etykieta: 'Obciążalność prądowa długotrwała',
+    jednostka: 'A',
+    typ: 'liczba',
+    miejscaDziesietne: 0,
+    definicja: 'Dopuszczalny prąd roboczy ciągły kabla nN w warunkach znamionowych.',
+    norma: 'IEC 60364-5-52', // źródło: IEC 60364-5-52 — obciążalność instalacji nN
+  },
+  number_of_cores: {
+    symbol: 'n',
+    etykieta: 'Liczba żył',
+    jednostka: '',
+    typ: 'liczba',
+    miejscaDziesietne: 0,
+    definicja: 'Liczba żył kabla (3, 4 albo 5 — z żyłą ochronną i/lub neutralną).',
+    norma: 'IEC 60502-1', // źródło: IEC 60502-1 — kable na napięcia do 1 kV
+  },
+  i_n_a: {
+    symbol: 'In',
+    etykieta: 'Prąd znamionowy',
+    jednostka: 'A',
+    typ: 'liczba',
+    miejscaDziesietne: 0,
+    definicja: 'Prąd znamionowy ciągły aparatu nN.',
+    norma: 'IEC 60947-2', // źródło: IEC 60947-2 — wyłączniki nN
+  },
+  breaking_capacity_ka: {
+    symbol: 'Icu',
+    etykieta: 'Zdolność wyłączania zwarciowa',
+    jednostka: 'kA',
+    typ: 'liczba',
+    miejscaDziesietne: 1,
+    definicja: 'Największy prąd zwarciowy, który aparat potrafi wyłączyć.',
+    norma: 'IEC 60947-2', // źródło: IEC 60947-2 — zdolność łączeniowa zwarciowa
+  },
 };
 
 /** Zwraca definicję parametru po kluczu pola API lub `null`, gdy pole jest niejednoznaczne. */

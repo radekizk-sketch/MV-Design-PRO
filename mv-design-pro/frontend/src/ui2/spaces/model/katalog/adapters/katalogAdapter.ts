@@ -35,9 +35,13 @@
 import {
   fetchCableTypes,
   fetchConverterTypes,
+  fetchCtTypes,
   fetchLineTypes,
+  fetchLvApparatusTypes,
+  fetchLvCableTypes,
   fetchSwitchEquipmentTypes,
   fetchTransformerTypes,
+  fetchVtTypes,
 } from '../../../../../ui/catalog/api';
 import type { KatalogPozycja, KategoriaId } from '../types';
 
@@ -108,6 +112,67 @@ export const KATEGORIE: readonly MetadanaKategorii[] = [
     id: 'FALOWNIK',
     poleParametrow: ['sn_mva', 'un_kv', 'pmax_mw', 'cosphi_min', 'cosphi_max', 'e_kwh'],
     pobierz: () => fetchConverterTypes() as unknown as Promise<KatalogPozycja[]>,
+  },
+  // --- L-16: cztery przestrzenie obecne w API katalogu, brakujące w ui2 ---
+  //   Kategoria CT (przekładniki prądowe):
+  //     • klient:  ui/catalog/api.ts  fetchCtTypes() → GET /api/catalog/ct-types
+  //     • backend: backend/src/api/catalog.py  list_ct_types()
+  //     • typ:     ui/catalog/types.ts  interface CTCatalogType
+  {
+    id: 'CT',
+    poleParametrow: [
+      'ratio_primary_a',
+      'ratio_secondary_a',
+      'accuracy_class',
+      'burden_va',
+      'ith_ka_1s',
+      'idyn_ka_peak',
+      'fs_safety_factor',
+      'rct_ohm',
+    ],
+    pobierz: () => fetchCtTypes() as unknown as Promise<KatalogPozycja[]>,
+  },
+  //   Kategoria VT (przekładniki napięciowe):
+  //     • klient:  ui/catalog/api.ts  fetchVtTypes() → GET /api/catalog/vt-types
+  //     • backend: backend/src/api/catalog.py  list_vt_types()
+  //     • typ:     ui/catalog/types.ts  interface VTCatalogType
+  {
+    id: 'VT',
+    poleParametrow: [
+      'ratio_primary_v',
+      'ratio_secondary_v',
+      'accuracy_class',
+      'accuracy_class_metering',
+      'burden_va',
+      'rated_voltage_factor',
+      'voltage_factor_duration_s',
+    ],
+    pobierz: () => fetchVtTypes() as unknown as Promise<KatalogPozycja[]>,
+  },
+  //   Kategoria KABEL_NN (kable niskiego napięcia):
+  //     • klient:  ui/catalog/api.ts  fetchLvCableTypes() → GET /api/catalog/lv-cable-types
+  //     • backend: backend/src/api/catalog.py  list_lv_cable_types()
+  //     • typ:     ui/catalog/types.ts  interface LVCableType
+  {
+    id: 'KABEL_NN',
+    poleParametrow: [
+      'u_n_kv',
+      'cross_section_mm2',
+      'i_max_a',
+      'r_ohm_per_km',
+      'x_ohm_per_km',
+      'number_of_cores',
+    ],
+    pobierz: () => fetchLvCableTypes() as unknown as Promise<KatalogPozycja[]>,
+  },
+  //   Kategoria APARAT_NN (aparaty niskiego napięcia):
+  //     • klient:  ui/catalog/api.ts  fetchLvApparatusTypes() → GET /api/catalog/lv-apparatus-types
+  //     • backend: backend/src/api/catalog.py  list_lv_apparatus_types()
+  //     • typ:     ui/catalog/types.ts  interface LVApparatusType
+  {
+    id: 'APARAT_NN',
+    poleParametrow: ['u_n_kv', 'i_n_a', 'breaking_capacity_ka'],
+    pobierz: () => fetchLvApparatusTypes() as unknown as Promise<KatalogPozycja[]>,
   },
 ];
 

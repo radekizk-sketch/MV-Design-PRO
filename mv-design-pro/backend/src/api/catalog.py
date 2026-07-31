@@ -431,6 +431,57 @@ def list_mv_protection_device_types() -> list[dict[str, Any]]:
     return [item.to_dict() for item in get_default_mv_catalog().list_protection_device_types()]
 
 
+@router.get("/mv-protection-device-types/{device_type_id}/curves")
+def get_mv_protection_device_curves(device_type_id: str) -> dict[str, Any]:
+    """Krzywe koordynacji dla pozycji KANONICZNEGO katalogu MV (karta KD-3, poz. 9).
+
+    JEDNA PRAWDA KATALOGÓW, DWIE ROLE. Kanoniczny katalog MV (przestrzeń
+    `ZABEZPIECZENIE`) pozostaje jedynym źródłem pickerów budowy modelu, a
+    biblioteka analityczna (`/protection/device-types`) — źródłem funkcji i
+    charakterystyk czasowo-prądowych dla koordynacji. Do tej pory nic tych ról
+    nie łączyło: od dobranego przekaźnika NIE DAŁO SIĘ przejść do jego krzywych
+    inaczej niż ręcznym szukaniem po nazwie.
+
+    Powiązanie jest JAWNE w danych katalogu (`analytical_library_ref`), nie
+    dopasowaniem po nazwie w UI — dopasowanie po nazwie zwracałoby krzywe innego
+    wyrobu przy pierwszej rozbieżności zapisu. Pozycja bez odpowiednika dostaje
+    uczciwy kod gotowości, nie wymyślone mapowanie.
+    """
+    pozycja = get_default_mv_catalog().protection_device_types.get(device_type_id)
+    if pozycja is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Pozycja katalogowa zabezpieczenia '{device_type_id}' nie istnieje.",
+        )
+
+    odpowiedz: dict[str, Any] = {
+        "device_type_id": pozycja.id,
+        "name_pl": pozycja.name_pl,
+        "vendor": pozycja.vendor,
+        "analytical_library_ref": pozycja.analytical_library_ref,
+        "functions_supported": [],
+        "curves_supported": [],
+        "readiness_codes": [],
+    }
+
+    if not pozycja.analytical_library_ref:
+        odpowiedz["readiness_codes"] = ["protection.curve_library_missing"]
+        return odpowiedz
+
+    zdolnosc = load_device_capability(pozycja.analytical_library_ref)
+    if zdolnosc is None:
+        # Referencja wskazuje na wpis, którego w bibliotece nie ma — to BŁĄD
+        # danych katalogu, a nie brak krzywych. Zgłaszamy go jawnie zamiast
+        # cicho udawać, że pozycja krzywych nie ma.
+        odpowiedz["readiness_codes"] = ["protection.curve_library_ref_broken"]
+        return odpowiedz
+
+    odpowiedz["functions_supported"] = list(zdolnosc.functions_supported)
+    odpowiedz["curves_supported"] = list(zdolnosc.curves_supported)
+    odpowiedz["model"] = zdolnosc.model
+    return odpowiedz
+
+
 @router.get("/protection/device-types")
 def list_protection_device_types(
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),

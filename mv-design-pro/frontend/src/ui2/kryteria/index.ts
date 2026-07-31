@@ -1,5 +1,10 @@
 export { SekcjaBilansuCtVt, type ObwodWtorny } from './SekcjaBilansuCtVt';
 export { SekcjaStarzeniaKabla, SekcjaStratTransformatora } from './SekcjaKartyKatalogu';
+export {
+  SekcjaKrzywychPrzekaznika,
+  pobierzKrzywePrzekaznika,
+  type KrzywePrzekaznika,
+} from './SekcjaKrzywychPrzekaznika';
 export { KRYTERIA_STRINGS, etykietaWariantuAlf, etykietaWerdyktu, fmtLiczba } from './strings';
 export {
   komunikatyKodow,

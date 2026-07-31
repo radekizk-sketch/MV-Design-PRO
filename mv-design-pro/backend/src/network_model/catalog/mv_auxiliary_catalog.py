@@ -1143,6 +1143,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ABB",
                 "series": "REX",
                 "revision": "v1",
+                "analytical_library_ref": "ACME_REX500_v1",
                 "notes_pl": "Rekord zgodny z katalogiem analitycznym ochrony.",
                 **_device_meta(
                     verification_status="CZESCIOWO_ZWERYFIKOWANY",
@@ -1159,6 +1160,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ABB",
                 "series": "REX",
                 "revision": "v1",
+                "analytical_library_ref": "ACME_REX200_v1",
                 "notes_pl": "Rekord zgodny z katalogiem analitycznym ochrony.",
                 **_device_meta(
                     verification_status="CZESCIOWO_ZWERYFIKOWANY",
@@ -1175,6 +1177,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ABB",
                 "series": "REX",
                 "revision": "v1",
+                "analytical_library_ref": "ACME_REX100_v1",
                 "notes_pl": "Rekord referencyjny rodziny REX dla nizszych zakresow linii i transformatorow.",
                 **_device_meta(
                     verification_status="CZESCIOWO_ZWERYFIKOWANY",
@@ -1191,6 +1194,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ABB",
                 "series": "REX",
                 "revision": "v1",
+                "analytical_library_ref": "ACME_REX300_v1",
                 "notes_pl": "Rekord referencyjny rodziny REX dla typowych pol SN.",
                 **_device_meta(
                     verification_status="CZESCIOWO_ZWERYFIKOWANY",
@@ -1207,6 +1211,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ABB",
                 "series": "REX",
                 "revision": "v1",
+                "analytical_library_ref": "ACME_REX700_v1",
                 "notes_pl": "Rekord referencyjny rodziny REX dla rozbudowanych zastosowan SN.",
                 **_device_meta(
                     verification_status="CZESCIOWO_ZWERYFIKOWANY",
@@ -1223,6 +1228,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_400_V0",
                 "rated_current_a": 400.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1240,6 +1246,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_600_V0",
                 "rated_current_a": 600.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1257,6 +1264,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_800_V0",
                 "rated_current_a": 800.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1274,6 +1282,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_1000_V0",
                 "rated_current_a": 1000.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1291,6 +1300,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_1250_V0",
                 "rated_current_a": 1250.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1308,6 +1318,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_1600_V0",
                 "rated_current_a": 1600.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(
@@ -1325,6 +1336,7 @@ def get_all_protection_device_types() -> list[dict]:
                 "vendor": "ELEKTROMETAL",
                 "series": "e2TANGO",
                 "revision": "v0",
+                "analytical_library_ref": "EM_ETANGO_2000_V0",
                 "rated_current_a": 2000.0,
                 "notes_pl": "Rekord analityczny - dane wymagaja weryfikacji produkcyjnej.",
                 **_device_meta(

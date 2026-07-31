@@ -51,7 +51,7 @@ import {
   type StationTemplateSummary,
 } from '../../../ui/network-build/station-templates/api';
 import '../../kryteria/kryteria.css';
-import { KRYTERIA_STRINGS, SekcjaBilansuCtVt } from '../../kryteria';
+import { KRYTERIA_STRINGS, SekcjaBilansuCtVt, SekcjaKrzywychPrzekaznika } from '../../kryteria';
 import {
   FIELD_ROLE_LABELS,
   contextString,
@@ -797,9 +797,12 @@ export function KreatorStacjiSnNn() {
         // katalogu, który waliduje odpowiednia operacja (add_ct/add_vt/add_relay).
         // Szablony stacji wskazują zabezpieczenia z biblioteki ANALITYCZNEJ
         // koordynacji (np. EM_E2TANGO_600), a operacja modelu waliduje katalog MV
-        // (przestrzeń ZABEZPIECZENIE) — dopóki oba katalogi nie zostaną
-        // ujednolicone (dług nazwany), nie wolno podstawiać pozycji, której
-        // backend nie przyjmie.
+        // (przestrzeń ZABEZPIECZENIE). To NIE jest dług do scalenia katalogów:
+        // oba zbiory mają różne role i tak zostaje (K9-B). Karta KD-3 dołożyła
+        // brakujące ogniwo — JAWNE powiązanie pozycji kanonicznej z wpisem
+        // biblioteki (`analytical_library_ref`), czytane przez readout krzywych
+        // niżej. Pozycji spoza kanonu nadal nie wolno podstawiać: operacja by
+        // ją odrzuciła (fabrykacja wyboru).
         const wKatalogu = (ref: string | null, lista: ReadonlyArray<{ id: string }>) =>
           ref && lista.some((t) => t.id === ref) ? ref : null;
         const wyposazenie = Object.fromEntries(
@@ -1615,6 +1618,12 @@ export function KreatorStacjiSnNn() {
                       moc_aparatow_va: wpis?.vt_moc_aparatow_va ?? null,
                     }}
                     uzwojenieVt={wpis?.vt_uzwojenie ?? 'POMIAROWE'}
+                    testidSufiks={String(index + 1)}
+                  />
+                  {/* KD-3 poz. 9: od dobranego przekaźnika wprost do jego krzywych —
+                      powiązanie z danych katalogu, nie z dopasowania nazw w UI. */}
+                  <SekcjaKrzywychPrzekaznika
+                    relayRef={wpis?.relay_catalog_ref ?? null}
                     testidSufiks={String(index + 1)}
                   />
                 </KreatorSekcja>

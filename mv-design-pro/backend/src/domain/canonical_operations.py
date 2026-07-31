@@ -1026,6 +1026,31 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_transformer_loading_factor",
         fix_navigation={"panel": "inspector", "tab": "parametry", "focus": "beta"},
     ),
+    # Powiązanie katalogu kanonicznego z biblioteką krzywych (karta KD-3, poz. 9).
+    "protection.curve_library_missing": ReadinessCodeSpec(
+        code="protection.curve_library_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Ta pozycja katalogowa zabezpieczenia nie ma odpowiednika w bibliotece "
+            "charakterystyk czasowo-prądowych — koordynacja wymaga wyrobu z biblioteki"
+        ),
+        fix_action_id="fix_protection_curve_library",
+        fix_navigation={"panel": "katalog", "tab": "zabezpieczenia"},
+    ),
+    "protection.curve_library_ref_broken": ReadinessCodeSpec(
+        code="protection.curve_library_ref_broken",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Powiązanie pozycji katalogowej z biblioteką charakterystyk wskazuje wpis, "
+            "którego w bibliotece nie ma — dane katalogu wymagają poprawy"
+        ),
+        fix_action_id="fix_protection_curve_library",
+        fix_navigation={"panel": "katalog", "tab": "zabezpieczenia"},
+    ),
     # Earthing / Ground fault (EARTHING-1: most SC_1F -> napięcia dotykowe/krokowe)
     "earthing.electrode_data_missing": ReadinessCodeSpec(
         code="earthing.electrode_data_missing",

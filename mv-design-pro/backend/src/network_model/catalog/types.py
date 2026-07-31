@@ -1664,6 +1664,13 @@ class ProtectionDeviceType:
     revision: str | None = None
     rated_current_a: float | None = None
     notes_pl: str | None = None
+    #: JAWNE powiazanie z wpisem BIBLIOTEKI ANALITYCZNEJ koordynacji
+    #: (`application/analyses/protection/catalog/data/devices_v0.json` →
+    #: `device_id`), ktora niesie funkcje i krzywe czasowo-pradowe. Karta KD-3:
+    #: bez tego pola przejscie „dobrany przekaznik → jego krzywe" wymagaloby
+    #: dopasowania po nazwie w UI, czyli zgadywania. `None` znaczy, ze pozycja
+    #: NIE MA odpowiednika w bibliotece — uczciwy brak, nie powod do domyslu.
+    analytical_library_ref: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog ochrony MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.ANALITYCZNY_V1.value
@@ -1680,6 +1687,7 @@ class ProtectionDeviceType:
             "revision": self.revision,
             "rated_current_a": self.rated_current_a,
             "notes_pl": self.notes_pl,
+            "analytical_library_ref": self.analytical_library_ref,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1704,6 +1712,7 @@ class ProtectionDeviceType:
                 else None
             ),
             notes_pl=data.get("notes_pl"),
+            analytical_library_ref=data.get("analytical_library_ref"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog ochrony MV-DESIGN-PRO / dane referencyjne lub analityczne",

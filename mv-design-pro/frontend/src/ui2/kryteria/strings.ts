@@ -81,6 +81,14 @@ export const KRYTERIA_STRINGS = {
   trafoUdzialJalowych: 'Udział strat jałowych',
   trafoWerdykt: 'Stan rachunku',
 
+  // Krzywe koordynacji dobranego przekaźnika (powiązanie kanon ↔ biblioteka)
+  krzyweTytul: 'Charakterystyki dobranego zabezpieczenia',
+  krzyweOpis:
+    'Funkcje i charakterystyki czasowo-prądowe wyrobu wskazanego w katalogu — te same, '
+    + 'których użyje koordynacja zabezpieczeń.',
+  krzyweFunkcje: 'Funkcje zabezpieczeniowe',
+  krzyweLista: 'Charakterystyki czasowo-prądowe',
+
   // Wspólne
   werdyktPass: 'spełnione',
   werdyktFail: 'przekroczenie',
