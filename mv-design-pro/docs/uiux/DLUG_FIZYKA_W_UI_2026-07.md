@@ -202,3 +202,44 @@ fizykę w prezentacji, czego kontrakt strażnika zabrania):
 Każda z nich jest realną zdolnością projektową i nadaje się na osobną kartę
 (solver + końcówka + ekran), z tą samą dyscypliną: WHITE BOX, kody gotowości
 zamiast wartości zastępczych, zero fabrykacji.
+
+### 7.5 §7.4 ZAMKNIĘTE — cztery zdolności mają dostawcę (karta KD-3, 2026-07-31)
+
+Wszystkie cztery pozycje z §7.4 dostały dostawcę w warstwie, w której wolno
+liczyć fizykę. Pakiet `backend/src/network_model/solvers/equipment_checks/`
+(+ końcówki `POST /api/solver/{ct-burden-check, vt-burden-check,
+cable-thermal-aging, transformer-losses}`), pełny WHITE BOX (kroki wzór → dane →
+podstawienie → wynik → uwagi), kody gotowości zamiast wartości zastępczych,
+determinizm potwierdzony testem dwóch biegów.
+
+| §7.4 | Dostawca (solver) | Readout w UI |
+|---|---|---|
+| 1. Bilans wtórny + nasycenie CT | `ct_burden_saturation.py` | krok „Pomiar i zabezpieczenia" kreatora stacji |
+| 2. Bilans wtórny + ΔU obwodu VT | `vt_burden_voltage_drop.py` | jw. (limit z kategorii uzwojenia) |
+| 3. Starzenie izolacji kabla | `cable_thermal_aging.py` | karta techniczna pozycji katalogu (kategoria KABEL) |
+| 4. Straty transformatora i β_opt | `transformer_losses.py` | karta techniczna pozycji katalogu (TRANSFORMATOR) |
+
+**Dwa rozstrzygnięcia normatywne zapisane w kodzie i w śladzie** (bo skrócony
+zapis kryterium z §7.4 był w obu miejscach niejednoznaczny):
+
+1. **Wariant ALF.** Obowiązuje postać PEŁNA
+   `ALF_eff = ALF·(Sn + Sw)/(S2obl + Sw)`, gdzie `Sw = I2n²·Rct`. Zapis
+   uproszczony `ALF·Sn/S2obl` z §7.4 to ten sam wzór przy `Sw = 0` — i NIE jest
+   równoważny: przy typowym `S2obl < Sn` daje wynik WIĘKSZY, czyli optymistyczny.
+   Wariant uproszczony wchodzi wyłącznie, gdy katalog nie niesie `rct_ohm`; jest
+   wtedy NAZWANY w wyniku i dostaje kod `ct.winding_resistance_missing`.
+2. **Człon przewodów liczony RAZ.** Zapis `S2obl = SL + Sz + I2²·Rp` wymienia moc
+   przewodów dwukrotnie (raz z nazwy, raz ze wzoru). Obowiązuje
+   `S2obl = S_aparatów + I2n²·Rp` (+ opcjonalna moc styków podana jawnie);
+   podwójne ujęcie zawyżałoby S2obl i zaniżało ALF_eff — werdykt wyglądałby
+   „bezpiecznie", ale byłby nieprawdziwy.
+
+Rezystywność miedzi ρ = 0,017241 Ω·mm²/m (20 °C, IEC 60228) jest ZAŁOŻENIEM
+JAWNYM: jedzie w polu `assumptions` każdego wyniku i w śladzie. To ta sama stała,
+której używa wyprowadzenie k w `conductor_thermal_withstand` (jedno źródło).
+
+Limity ΔU obwodu wtórnego VT: 0,5 % (uzwojenie pomiarowe) / 1,0 %
+(zabezpieczeniowe), a kategoria jest WYPROWADZONA z klasy dokładności tego
+uzwojenia w katalogu. Klasa nierozpoznana = kod gotowości, nigdy „bezpieczny"
+limit — domyślenie się kategorii zamieniłoby 0,5 % na 1,0 % i przepuściło obwód
+pomiarowy dwukrotnie za długi.
