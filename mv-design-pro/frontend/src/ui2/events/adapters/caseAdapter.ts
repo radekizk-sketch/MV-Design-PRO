@@ -2,7 +2,13 @@
  * Adapter: tlumaczy zmiany store'u stanu aplikacji i store'u przebiegow
  * obliczen na zdarzenia magistrali 'przypadek-aktywny' i 'wyniki-gotowe'.
  *
- * Zrodla store'ow (WYLACZNIE odczyt/subscribe — zero zapisu, zero wolan API):
+ * K6 / H-6 (R2) — JEDEN wyjatek od reguly „zero wolan API" ponizej: po
+ * zdarzeniu 'wyniki-gotowe' adapter ponawia ISTNIEJACA akcje store'u
+ * `useStudyCasesStore.loadActiveCase`, zeby chrom powloki (znacznik wynikow)
+ * czytal stan SERWEROWY przypadku zamiast lokalnego przypuszczenia. Adapter
+ * nadal nie ma wlasnego `fetch` ani wlasnej kopii danych.
+ *
+ * Zrodla store'ow (WYLACZNIE odczyt/subscribe — zero zapisu):
  *
  * 1. frontend/src/ui/app-state/store.ts — useAppStateStore.activeCaseId
  *    -> 'przypadek-aktywny'.przypadekId.
@@ -27,6 +33,7 @@
 
 import { useAppStateStore } from '../../../ui/app-state/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
+import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import { emituj } from '../bus';
 
 let ostrzezonoRaz = false;
@@ -65,10 +72,45 @@ function startAppStateAdapter(): () => void {
   }
 }
 
+/**
+ * K6 / H-6 (R2): po ZAKOŃCZONYM biegu chrom powłoki musi pokazywać stan
+ * SERWEROWY przypadku, nie lokalne przypuszczenie. Znacznik „Wyniki: …"
+ * (`shell/znacznikSwiezosci`) czyta `useStudyCasesStore.activeCase`
+ * (`result_status` + `results_valid`), więc tuż po `wyniki-gotowe` ponawiamy
+ * ISTNIEJĄCĄ akcję store'u `loadActiveCase` — to jedyne miejsce, w którym
+ * ten adapter woła API, i robi to WYŁĄCZNIE przez akcję store'u (bez własnego
+ * `fetch`, bez własnej kopii danych).
+ *
+ * Brak projektu w zasięgu (zimny start bez hydratacji) ⇒ nic nie robimy —
+ * chrom zostaje przy ostatnim znanym stanie serwerowym, nie zgaduje.
+ */
+function odswiezAktywnyPrzypadek(): void {
+  const przypadki = useStudyCasesStore.getState();
+  const projectId = przypadki.projectId ?? useAppStateStore.getState().activeProjectId;
+  if (!projectId) {
+    return;
+  }
+  void przypadki.loadActiveCase(projectId);
+}
+
+/**
+ * DEFEKT NAPRAWIONY (K6, pomiar biegiem e2e): warunkiem emisji byla ZMIANA
+ * `runStatus` na 'DONE' w chwili, gdy rekord przebiegu byl juz w `runs`.
+ * `createAndExecuteRun` ustawia jednak 'DONE' PRZED przeladowaniem listy
+ * (`loadRuns` jest awaitowany dopiero po wykonaniu), wiec dla PIERWSZEGO biegu
+ * przypadku lista byla jeszcze pusta — adapter wychodzil bez emisji, a gdy
+ * `runs` sie doladowalo, `runStatus` juz sie nie zmienial. Efekt: 'wyniki-gotowe'
+ * dla pierwszego biegu NIE POWSTAWALO (znaczniki swiezosci i odswiezenie
+ * przypadku nie dostawaly sygnalu).
+ *
+ * Warunkiem jest teraz STAN, nie przejscie: „bieg DONE, znany w rejestrze,
+ * jeszcze nieogloszony". Deduplikacje zapewnia zapamietany identyfikator —
+ * dokladnie jedno zdarzenie na przebieg (kryterium §7.2 karty E15.1 bez zmian).
+ */
 function startRunStoreAdapter(): () => void {
-  let ostatniStatus: string | null;
+  let ostatniOgloszonyRunId: string | null = null;
   try {
-    ostatniStatus = useExecutionRunsStore.getState().runStatus;
+    useExecutionRunsStore.getState();
   } catch (err) {
     ostrzezRaz('[ui2/events] caseAdapter: store runStore niedostepny — adapter no-op', err);
     return () => {};
@@ -76,18 +118,23 @@ function startRunStoreAdapter(): () => void {
 
   try {
     return useExecutionRunsStore.subscribe((stan) => {
-      if (stan.runStatus === ostatniStatus) {
+      if (stan.runStatus !== 'DONE' || !stan.activeRunId) {
+        // Wyjscie ze stanu DONE (nowy bieg, reset) zwalnia blokade deduplikacji.
+        ostatniOgloszonyRunId = null;
         return;
       }
-      ostatniStatus = stan.runStatus;
-      if (stan.runStatus !== 'DONE' || !stan.activeRunId) {
+      if (stan.activeRunId === ostatniOgloszonyRunId) {
         return;
       }
       const przebieg = stan.runs.find((run) => run.id === stan.activeRunId);
       if (!przebieg) {
+        // Rekord jeszcze nie doladowany — ogloszenie nastapi przy kolejnej
+        // zmianie store'u (np. po `loadRuns`), bez zgadywania `przypadekId`.
         return;
       }
+      ostatniOgloszonyRunId = przebieg.id;
       emituj({ typ: 'wyniki-gotowe', runId: przebieg.id, przypadekId: przebieg.study_case_id });
+      odswiezAktywnyPrzypadek();
     });
   } catch (err) {
     ostrzezRaz('[ui2/events] caseAdapter: subskrypcja runStore niedostepna — adapter no-op', err);

@@ -83,6 +83,27 @@ async function wykonajHydratacje(wymus: boolean): Promise<void> {
   if (wymus || przypadki.projectId !== projectId) {
     // setProjectId = loadCases + loadActiveCase (jedna istniejąca akcja).
     przypadki.setProjectId(projectId);
+
+    // K6 / H-6 (R6): SERWER jest prawdą o aktywnym przypadku. `setProjectId`
+    // odpala `loadActiveCase` w tle, więc ponawiamy ją JAWNIE (deterministyczny
+    // punkt synchronizacji — czekamy na odpowiedź) i doprowadzamy lokalny
+    // `appState.activeCaseId` do przypadku aktywnego na serwerze. Bez tego
+    // projekt utworzony/otwarty na ekranie „Nowy / otwórz projekt" (K4) albo
+    // przypadek aktywowany poza tą powłoką zostawiał w powłoce nieaktualny —
+    // albo pusty — zakres obliczeń, przez co przycisk „Uruchom obliczenie"
+    // i ekrany wyników pracowały na cudzym kontekście.
+    // Synchronizacja żyje w TEJ SAMEJ gałęzi co ładowanie: kontekst niezmieniony
+    // ⇒ zero dodatkowych wołań (guard idempotencji HMR/remount bez zmian).
+    await useStudyCasesStore.getState().loadActiveCase(projectId);
+    if (useAppStateStore.getState().activeProjectId !== projectId) return;
+    const serwerowy = useStudyCasesStore.getState().activeCase;
+    if (serwerowy && serwerowy.id !== useAppStateStore.getState().activeCaseId) {
+      // Rodzaj zakresu (`CaseKind`) NIE występuje w kontrakcie `StudyCase` —
+      // nie zgadujemy go (null); nazwa i status wyników pochodzą z serwera.
+      useAppStateStore
+        .getState()
+        .setActiveCase(serwerowy.id, serwerowy.name, null, serwerowy.result_status);
+    }
   }
 
   const caseId = useAppStateStore.getState().activeCaseId;

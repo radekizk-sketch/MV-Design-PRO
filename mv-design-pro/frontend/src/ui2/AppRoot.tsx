@@ -20,6 +20,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { AppShell } from './shell/AppShell';
 import { useBackendHealth } from './shell/backendHealth';
+import { useEtykietaOstatniegoPrzebiegu } from './shell/shellStatus';
 import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
 import { useInspektorZaZawartoscia } from './shell/useInspektorZaZawartoscia';
 import { ContextTree, NAV_STRINGS, useCasesTree, useRunsTree, useTopologyTree } from './nav';
@@ -126,6 +127,9 @@ export function AppRoot() {
   const obiekt = useObiektInspektora(zaznaczonyId);
   const { status: backendStatus, reconnect } = useBackendHealth();
   const activeProjectId = useAppStateStore((s) => s.activeProjectId);
+  // K6 / H-6 R3: etykieta paska stanu z REJESTRU przebiegów (ostatni DONE) —
+  // dotąd pole nie miało dostawcy i zawsze pokazywało „—".
+  const etykietaPrzebiegu = useEtykietaOstatniegoPrzebiegu();
 
   // K2 (defekt H-0): hydratacja stanu zależnego z serwera po zimnym starcie
   // (zakresy obliczeń, rejestr przebiegów, migawka przy reconnect) — bez tego
@@ -235,6 +239,7 @@ export function AppRoot() {
       backendStatus={backendStatus}
       onReconnect={reconnect}
       modelRevision={rewizjaModelu > 0 ? rewizjaModelu : null}
+      lastRunLabel={etykietaPrzebiegu}
       onOpenProject={otworzPulpitProjektow}
       onOpenVariants={() => wykonajAkcjeMenu('variants')}
       onActiveSpaceChange={mostTrasyPrzestrzeni}

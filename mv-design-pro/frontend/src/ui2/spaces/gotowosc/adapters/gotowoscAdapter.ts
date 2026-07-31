@@ -136,3 +136,41 @@ export function useProblemyGotowosci(): ReadinessIssue[] {
   const fixActions = useSnapshotStore((s) => s.fixActions);
   return useMemo(() => polaczGotowosc(readiness, fixActions), [readiness, fixActions]);
 }
+
+// ---------------------------------------------------------------------------
+// Podsumowanie liczbowe gotowości — JEDNA prawda dla panelu i dla chromu (K6/H-6)
+// ---------------------------------------------------------------------------
+
+/** Liczby gotowości pokazywane w chromie powłoki (chipy „Model" i „Gotowość"). */
+export interface PodsumowanieGotowosci {
+  /** Model przeszedł walidację gotowości (pole `ready` odpowiedzi domenowej). */
+  readonly ready: boolean;
+  readonly blokady: number;
+  readonly ostrzezenia: number;
+}
+
+/**
+ * Czysta projekcja `ReadinessInfo` → liczby chromu. Bez migawki (brak projektu
+ * albo migawka jeszcze nieodczytana) model NIE JEST zwalidowany — chrom nie ma
+ * prawa deklarować gotowości, której nikt nie policzył (defekt H-6/R1: dawne
+ * źródło `readinessLiveStore` miało `ready: true` w stanie początkowym i nigdy
+ * nie było odświeżane, więc pasek zawsze pokazywał „Model: zwalidowany").
+ */
+export function podsumujGotowosc(readiness: ReadinessInfo | null): PodsumowanieGotowosci {
+  if (!readiness) return { ready: false, blokady: 0, ostrzezenia: 0 };
+  return {
+    ready: readiness.ready,
+    blokady: readiness.blockers.length,
+    ostrzezenia: readiness.warnings.length,
+  };
+}
+
+/**
+ * Podsumowanie gotowości ze WSPÓLNEGO źródła (`useSnapshotStore.readiness`) —
+ * tego samego, z którego żyje przestrzeń „Gotowość". Dzięki temu chip paska
+ * przypadku i panel gotowości nie mogą się rozjechać.
+ */
+export function usePodsumowanieGotowosci(): PodsumowanieGotowosci {
+  const readiness = useSnapshotStore((s) => s.readiness);
+  return useMemo(() => podsumujGotowosc(readiness), [readiness]);
+}

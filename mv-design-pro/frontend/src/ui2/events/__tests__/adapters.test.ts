@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
 import { useAppStateStore } from '../../../ui/app-state/store';
 import { useExecutionRunsStore } from '../../../ui/study-cases/runStore';
+import { useStudyCasesStore } from '../../../ui/study-cases/store';
 import { useSelectionStore } from '../../../ui/selection/store';
 import type { EnergyNetworkModel, ReadinessInfo } from '../../../types/enm';
 import type { ExecutionRun } from '../../../ui/study-cases/types';
@@ -283,6 +284,55 @@ describe('caseAdapter — study-cases/runStore.ts -> magistrala: wyniki-gotowe (
     } finally {
       wynikiGotowe.odsubskrybuj();
     }
+  });
+
+  it('K6: rekord przebiegu doladowany PO ustawieniu DONE (pierwszy bieg przypadku) -> zdarzenie i tak powstaje', () => {
+    // `createAndExecuteRun` ustawia DONE ZANIM przeladuje liste przebiegow —
+    // dla pierwszego biegu `runs` jest jeszcze puste. Warunkiem emisji jest STAN
+    // („DONE, znany, nieogloszony"), nie przejscie statusu.
+    useExecutionRunsStore.setState({ runs: [], activeRunId: 'run-nowy', runStatus: 'RUNNING' });
+    const wynikiGotowe = zbierzZdarzenia('wyniki-gotowe');
+    try {
+      useExecutionRunsStore.setState({ runStatus: 'DONE' });
+      expect(wynikiGotowe.odebrane).toEqual([]);
+
+      // Doladowanie rejestru (loadRuns) — dopiero teraz przypadek jest znany.
+      useExecutionRunsStore.setState({
+        runs: [przebieg({ id: 'run-nowy', study_case_id: 'case-nowy', status: 'DONE' })],
+      });
+      expect(wynikiGotowe.odebrane).toEqual([
+        { typ: 'wyniki-gotowe', runId: 'run-nowy', przypadekId: 'case-nowy' },
+      ]);
+
+      // Kolejne zmiany store'u nie duplikuja zdarzenia tego samego przebiegu.
+      useExecutionRunsStore.setState({ runStatus: 'DONE' });
+      expect(wynikiGotowe.odebrane).toHaveLength(1);
+    } finally {
+      wynikiGotowe.odsubskrybuj();
+    }
+  });
+
+  it('K6/H-6 R2: po wyniki-gotowe adapter ODSWIEZA aktywny przypadek z serwera (jedna prawda znacznika wynikow)', () => {
+    const loadActiveCase = vi.fn(async () => {});
+    useStudyCasesStore.setState({ projectId: 'projekt-1', loadActiveCase } as never);
+    const runDobiegu = przebieg({ id: 'run-r2', study_case_id: 'case-r2', status: 'RUNNING' });
+    useExecutionRunsStore.setState({ runs: [runDobiegu], activeRunId: 'run-r2', runStatus: 'RUNNING' });
+
+    useExecutionRunsStore.setState({ runs: [{ ...runDobiegu, status: 'DONE' }], runStatus: 'DONE' });
+
+    expect(loadActiveCase).toHaveBeenCalledWith('projekt-1');
+  });
+
+  it('K6/H-6 R2: bez projektu w zasiegu adapter nie wola niczego (zero zgadywania)', () => {
+    const loadActiveCase = vi.fn(async () => {});
+    useStudyCasesStore.setState({ projectId: null, loadActiveCase } as never);
+    useAppStateStore.setState({ activeProjectId: null } as never);
+    const runDobiegu = przebieg({ id: 'run-r2b', study_case_id: 'case-r2b', status: 'RUNNING' });
+    useExecutionRunsStore.setState({ runs: [runDobiegu], activeRunId: 'run-r2b', runStatus: 'RUNNING' });
+
+    useExecutionRunsStore.setState({ runs: [{ ...runDobiegu, status: 'DONE' }], runStatus: 'DONE' });
+
+    expect(loadActiveCase).not.toHaveBeenCalled();
   });
 
   it('runStatus DONE bez odpowiadajacego rekordu w runs -> brak emisji (brak zgadywania przypadekId)', () => {

@@ -17,7 +17,9 @@ export const SHELL_STRINGS = {
   spacesHeading: 'Przestrzenie',
 
   activeCase: 'Zakres obliczeń',
-  fingerprint: 'Odcisk wyników SHA-256',
+  /* K6 / H-6 R4: pasek stanu pokazuje odcisk SHA-256 MIGAWKI MODELU (realne
+     źródło), więc etykieta nazywa rzecz po imieniu — „Wersja modelu". */
+  wersjaModelu: 'Wersja modelu',
 
   modeGroup: 'Tryb',
   modeBasic: 'Podstawowy',

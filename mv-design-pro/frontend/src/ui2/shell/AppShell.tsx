@@ -57,10 +57,10 @@ export interface AppShellProps {
   loading?: boolean;
   /** Status połączenia z serwerem (klient health wpinany w E1.4 — TODO-KARTA). */
   backendStatus?: BackendStatus;
-  /** Etykieta ostatniego przebiegu (kontrakt świeżości E15.2 — TODO-KARTA). */
+  /** Etykieta ostatniego zakończonego przebiegu (K6/H-6 R3 — z rejestru przebiegów). */
   lastRunLabel?: string | null;
-  /** Odcisk SHA-256 wyników (kontrakt świeżości E15.2 — TODO-KARTA). */
-  resultsFingerprint?: string | null;
+  /** Odcisk SHA-256 migawki modelu — nadpisanie dla scen testowych (K6/H-6 R4). */
+  wersjaModelu?: string | null;
   /** Rewizja modelu (nadpisuje wartość z gotowości, gdy podana). */
   modelRevision?: number | null;
   onReconnect?: () => void;
@@ -81,7 +81,7 @@ export function AppShell({
   loading = false,
   backendStatus = 'connected',
   lastRunLabel = null,
-  resultsFingerprint,
+  wersjaModelu,
   modelRevision,
   onReconnect,
   onSave,
@@ -114,7 +114,7 @@ export function AppShell({
   const statusInfo = useShellStatusInfo({
     backend: backendStatus,
     lastRunLabel,
-    resultsFingerprint,
+    wersjaModelu,
     modelRevision,
   });
 
