@@ -220,6 +220,14 @@ export interface MVApparatusType extends CatalogType {
   i_n_a: number;
   breaking_capacity_ka?: number;
   making_capacity_ka?: number;
+  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — z pochodzeniem każdej liczby. */
+  i_th_ka?: number | null;
+  i_th_duration_s?: number | null;
+  i_th_pochodzenie?: string | null;
+  i_dyn_ka?: number | null;
+  i_dyn_pochodzenie?: string | null;
+  /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
+  break_time_s?: number | null;
 }
 
 /**
@@ -445,6 +453,14 @@ export interface MVApparatusCatalogType extends CatalogType {
   i_n_a: number;
   breaking_capacity_ka?: number;
   making_capacity_ka?: number;
+  /** Znamiona wytrzymałości zwarciowej pozycji (KD-6) — z pochodzeniem każdej liczby. */
+  i_th_ka?: number | null;
+  i_th_duration_s?: number | null;
+  i_th_pochodzenie?: string | null;
+  i_dyn_ka?: number | null;
+  i_dyn_pochodzenie?: string | null;
+  /** Czas własny aparatu [s] — dana wyłącznie producencka (IEC 62271-100). */
+  break_time_s?: number | null;
 }
 
 /**

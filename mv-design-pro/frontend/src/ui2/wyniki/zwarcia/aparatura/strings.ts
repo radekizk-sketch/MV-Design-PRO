@@ -43,7 +43,6 @@ export const APARATURA_STRINGS = {
   czasNieustalony: 'nieustalone',
   czasZalozenie: 'Założenie:',
 
-  poza: 'nieustalone',
   kreska: '—',
   jednKA: 'kA',
   jednS: 's',

@@ -73,6 +73,12 @@ const GENERIC_FIELD_LABELS: Partial<Record<string, string>> = {
   i_n_a: 'Prąd znamionowy [A]',
   breaking_capacity_ka: 'Zdolność wyłączalna [kA]',
   making_capacity_ka: 'Zdolność załączalna [kA]',
+  i_th_ka: 'Prąd wytrzymywany krótkotrwale I_th [kA]',
+  i_th_duration_s: 'Czas odniesienia I_th [s]',
+  i_th_pochodzenie: 'Pochodzenie I_th',
+  i_dyn_ka: 'Prąd dynamiczny szczytowy I_dyn [kA]',
+  i_dyn_pochodzenie: 'Pochodzenie I_dyn',
+  break_time_s: 'Czas własny aparatu [s]',
   cross_section_mm2: 'Przekrój [mm2]',
   number_of_cores: 'Liczba żył',
   ratio_primary_a: 'Przekładnia pierwotna [A]',
@@ -110,6 +116,12 @@ const GENERIC_FIELD_ORDER = [
   'i_n_a',
   'breaking_capacity_ka',
   'making_capacity_ka',
+  'i_th_ka',
+  'i_th_duration_s',
+  'i_th_pochodzenie',
+  'i_dyn_ka',
+  'i_dyn_pochodzenie',
+  'break_time_s',
   'cross_section_mm2',
   'number_of_cores',
   'ratio_primary_a',
@@ -220,7 +232,7 @@ function getTypeSummary(type: CatalogListItem, category: TypeCategory): string {
       return `${formatDetailValue(record.voltage_rating_kv)} kV · Sk3=${formatDetailValue(record.sk3_mva)} MVA · R/X=${formatDetailValue(record.rx_ratio)}`;
     case 'MV_APPARATUS':
     case 'LV_APPARATUS':
-      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Icw=${formatDetailValue(record.breaking_capacity_ka)} kA`;
+      return `${formatDetailValue(record.u_n_kv)} kV · ${formatDetailValue(record.i_n_a)} A · Ik=${formatDetailValue(record.breaking_capacity_ka)} kA`;
     case 'LV_CABLE':
       return `${formatDetailValue(record.cross_section_mm2)} mm2 · ${formatDetailValue(record.number_of_cores)} żył · ${formatDetailValue(record.i_max_a)} A`;
     case 'LOAD':
