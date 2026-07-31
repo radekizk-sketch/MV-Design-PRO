@@ -1626,19 +1626,31 @@ export function composeStation(input: ComposeStationInput): StationComposition {
   // co `stationNameBandHeight` (`layout/measure.ts`): nazwa, kod, kVA, typ,
   // strona nN (pkt 6 recenzji NO-GO 2026-07-17: węzeł 0,4 kV zawsze opisany
   // + odbiór zagregowany ALBO jawna granica modelu).
-  const rows: StationNameBandRow[] = [{ text: station.name, labelClass: 't1' }];
-  if (station.stationCode) rows.push({ text: station.stationCode, labelClass: 't1' });
+  // KD-11: KAŻDY wiersz deklaruje klasę znaczeniową (tożsamość vs dane
+  // szczegółowe) — nazwa i kod stacji oraz podpis szyny nN mówią, CO jest
+  // narysowane; moc znamionowa, typ stacji i odbiór zagregowany to parametry.
+  const rows: StationNameBandRow[] = [{ text: station.name, labelClass: 't1', role: 'tozsamosc' }];
+  if (station.stationCode) rows.push({ text: station.stationCode, labelClass: 't1', role: 'tozsamosc' });
   if (station.transformerRatedKva != null) {
-    rows.push({ text: formatTransformerRatedPower(station.transformerRatedKva), labelClass: 't2' });
+    rows.push({
+      text: formatTransformerRatedPower(station.transformerRatedKva),
+      labelClass: 't2',
+      role: 'dane',
+    });
   }
-  if (station.stationTypeLabel) rows.push({ text: station.stationTypeLabel, labelClass: 't4' });
+  if (station.stationTypeLabel) {
+    rows.push({ text: station.stationTypeLabel, labelClass: 't4', role: 'dane' });
+  }
   if (hasLvSection && lvPorts.length > 0) {
-    rows.push({ text: stationLvBusbarLabelText(station.nnVoltageKv), labelClass: 't4' });
+    // Podpis szyny nN („Szyna nN · 0,4 kV") to NAPIĘCIE SZYNY — ta sama klasa
+    // co `busbar-voltage` szyn SN/WN, tyle że niesiona wierszem pasma nazw.
+    rows.push({ text: stationLvBusbarLabelText(station.nnVoltageKv), labelClass: 't4', role: 'tozsamosc' });
     rows.push({
       text: station.aggregatedLvLoad
         ? stationLvLoadLabelText(station.aggregatedLvLoad)
         : LV_MODEL_BOUNDARY_TEXT,
       labelClass: 't4',
+      role: 'dane',
     });
   }
 

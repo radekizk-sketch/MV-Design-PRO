@@ -23,18 +23,19 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 
 import type { EnergyNetworkModel } from '../../../../types/enm';
-import { buildSceneV3, SCENE_LOD_LABELS_PL, type SceneLod, type SceneV3 } from '../scene/buildScene';
+import {
+  buildSceneV3,
+  sceneObstacleRects,
+  SCENE_LOD_LABELS_PL,
+  type SceneLod,
+  type SceneV3,
+} from '../scene/buildScene';
 import { SYMBOL_DEFS } from '../symbols/defs';
 import { SYMBOL_GLYPHS } from '../symbols/glyphs';
 import { sourceStateOverlayColor, type DerSourceKind } from '../compose/sourceKind';
-import {
-  isLabelReadableAtScale,
-  LABEL_TYPOGRAPHY,
-  labelLineHeight,
-  measureLabelWidth,
-} from '../core/text';
+import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth } from '../core/text';
 import { GRID } from '../core/grid';
-import type { OwnedLabel } from '../layout/labels';
+import { planSceneLabels, type PlannedLabel } from './labelLegibility';
 import {
   SEGMENT_STROKE_WIDTH,
   pointsToPath,
@@ -1958,12 +1959,18 @@ function ResultStaleBannerNode(props: { readonly x: number; readonly y: number }
   );
 }
 
-function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: number }): JSX.Element {
-  const { label, index } = props;
+/** KD-11: węzeł etykiety rysowany WEDŁUG PLANU (`canvas/labelLegibility.ts`) —
+ *  tekst (być może skrócony), rozmiar pisma (być może powiększony do minimum
+ *  czytelnego) i prostokąt efektywny pochodzą z planu, a nie wprost ze sceny.
+ *  Kanały audytu w DOM: `data-label-role` (klasa znaczeniowa) i
+ *  `data-label-enlarged` (czy pismo zostało powiększone). */
+function SceneLabelNode(props: { readonly planned: PlannedLabel }): JSX.Element {
+  const { planned } = props;
+  const { label, index } = planned;
   const palette = useSldPalette();
   const typo = LABEL_TYPOGRAPHY[label.labelClass];
-  const cx = label.rect.x + label.rect.width / 2;
-  const cy = label.rect.y + label.rect.height / 2;
+  const cx = planned.rect.x + planned.rect.width / 2;
+  const cy = planned.rect.y + planned.rect.height / 2;
   const textTransform = label.rotated ? `rotate(-90, ${cx}, ${cy})` : undefined;
   return (
     <g
@@ -1972,6 +1979,8 @@ function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: num
       data-owner-kind={label.ownerKind}
       data-slot-index={label.slotIndex}
       data-ct-purpose={label.ctPurpose}
+      data-label-role={label.labelRole}
+      data-label-enlarged={planned.enlarged ? 'true' : 'false'}
     >
       {label.leader && (
         <path
@@ -1990,10 +1999,10 @@ function SceneLabelNode(props: { readonly label: OwnedLabel; readonly index: num
         transform={textTransform}
         fill={palette.baseStroke}
         fontFamily="sans-serif"
-        fontSize={typo.fontSize}
+        fontSize={planned.fontSize}
         fontWeight={typo.fontWeight}
       >
-        {label.text}
+        {planned.text}
       </text>
     </g>
   );
@@ -2357,14 +2366,23 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     if (p.completedAtLabel) parts.push(`Czas ukończenia: ${p.completedAtLabel}`);
     return parts.length > 0 ? parts.join(' · ') : undefined;
   }, [effectiveOverlay?.provenance]);
+  // KD-11: PLAN ETYKIET dla bieżącej skali — jedna prawda o tym, co się rysuje
+  // (tekst, rozmiar pisma, prostokąt) i co zostało ukryte. Tożsamość elementów
+  // (nazwa, napięcie szyny, oznaczenie pola, nazwa źródła) NIE znika przy
+  // oddaleniu: jest renderowana pismem powiększonym do minimum czytelnego, bez
+  // kolizji (`canvas/labelLegibility.ts`). Ukrywane są WYŁĄCZNIE dane
+  // szczegółowe — i to one stoją we wskaźniku „Ukryto N opisów".
+  const labelObstacles = useMemo(() => sceneObstacleRects(scene), [scene]);
+  const labelPlan = useMemo(
+    () =>
+      isLayerVisible('labels', layerVisibility)
+        ? planSceneLabels(scene.labels, labelObstacles, camera.transform.scale)
+        : { drawn: [], hiddenDetail: [], droppedIdentity: [] },
+    [scene, labelObstacles, camera.transform.scale, layerVisibility],
+  );
   // Ile opisów wypadło przez próg czytelności (V12K-218) — potrzebne, żeby
   // ukrycie było JAWNE dla projektanta, a nie cichym zniknięciem danych.
-  const hiddenUnreadableLabels = isLayerVisible('labels', layerVisibility)
-    ? scene.labels.reduce(
-        (n, l) => (isLabelReadableAtScale(l.labelClass, camera.transform.scale) ? n : n + 1),
-        0,
-      )
-    : 0;
+  const hiddenUnreadableLabels = labelPlan.hiddenDetail.length;
 
   // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda symboli NIE
   // jest już domyślną treścią kanwy — zabierała miejsce, była cięższa
@@ -2645,14 +2663,14 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
          *  w kadr skala spada do ≈0,17 i całe pismo ma ~2 px (pomiar audytu R2).
          *  Ukrywamy tu to, co przestało być pismem — świadomie w renderze, bo
          *  scena musi zostać deterministyczna, a próg zależy od kamery. */}
-        <g data-testid="sld-v3-labels" data-hidden-unreadable={hiddenUnreadableLabels}>
-          {isLayerVisible('labels', layerVisibility)
-            ? scene.labels.map((label, index) =>
-                isLabelReadableAtScale(label.labelClass, camera.transform.scale) ? (
-                  <SceneLabelNode key={`label-${index}`} label={label} index={index} />
-                ) : null,
-              )
-            : null}
+        <g
+          data-testid="sld-v3-labels"
+          data-hidden-unreadable={hiddenUnreadableLabels}
+          data-dropped-identity={labelPlan.droppedIdentity.length}
+        >
+          {labelPlan.drawn.map((planned) => (
+            <SceneLabelNode key={`label-${planned.index}`} planned={planned} />
+          ))}
         </g>
         </g>
         {/* F9.5 (spec §14.2): nakładka przepływu NAD warstwami bazowymi

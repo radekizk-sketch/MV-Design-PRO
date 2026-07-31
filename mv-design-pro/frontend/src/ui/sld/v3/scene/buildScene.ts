@@ -132,6 +132,7 @@ import { computeSegmentLabelSlotX, colorSegmentLabelRows, COLUMN_GAP } from '../
 import { MIN_PARALLEL_CABLE_CLEARANCE, MIN_SUBTREE_CLEARANCE, TOP_LEVEL_FIELD_CLEARANCE } from '../layout/clearances';
 import {
   resolveLabels,
+  LABEL_ROLE_BY_OWNER_KIND,
   type OwnedLabel,
   type SegmentSpanOwnerInput,
   type SegmentLateralOwnerInput,
@@ -1140,7 +1141,8 @@ function composeRowStation(
       stationNameOwner: {
         ownerRef: measureInput.id,
         nameSlot: column.nameSlot,
-        rows: [{ text: measureInput.name, labelClass: 't1' }],
+        // KD-11: nazwa stacji zwiniętej to TOŻSAMOŚĆ bloku na L0.
+        rows: [{ text: measureInput.name, labelClass: 't1', role: 'tozsamosc' }],
       },
       apparatusOwners: [],
       portCaptionOwners: [],
@@ -2100,6 +2102,9 @@ function composeCollapsedGpz(
       {
         text: `Widok zbiorczy · sekcje SN: ${gpz.sections.length} · transformatory: ${gpz.transformers.length} · pola odejściowe: ${lineBayRefs.length}`,
         labelClass: 't3',
+        // KD-11: wiersz LICZBOWY stanu zwinięcia — dane szczegółowe (tożsamość
+        // bloku niesie wiersz tytułowy wyżej, reużyty z kompozycji pełnej).
+        role: 'dane',
       },
     ],
   };
@@ -2340,6 +2345,9 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         ownerRef: `${lastSegmentRef}#open-terminal-label`,
         ownerKind: 'port-caption',
         labelClass,
+        // KD-11: adnotacja zakończenia toru — dane szczegółowe (sam słupek
+        // terminalny jest rysowany zawsze, więc znak końca nie znika).
+        labelRole: LABEL_ROLE_BY_OWNER_KIND['port-caption'],
         text,
         slotIndex: 1,
         // Wycentrowana POD słupkiem (ta sama konwencja co `terminationLabels`
@@ -3589,6 +3597,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         ownerRef: `${ownerRef}#termination`,
         ownerKind: 'port-caption',
         labelClass,
+        // KD-11: adnotacja zakończenia toru — dane szczegółowe (jak wyżej).
+        labelRole: LABEL_ROLE_BY_OWNER_KIND['port-caption'],
         text,
         slotIndex: 1,
         // Wycentrowana POD głowicą (pas zejść, po F9.10 wysoki 6×GRID —
@@ -5681,6 +5691,32 @@ export function labelWireCollisions(scene: SceneV3): readonly LabelWireCollision
 
 export function noLabelWireCollisions(scene: SceneV3): boolean {
   return labelWireCollisions(scene).length === 0;
+}
+
+/**
+ * KD-11: PRZESZKODY RYSUNKU dla planu etykiet warstwy renderu
+ * (`canvas/labelLegibility.ts`) — bboxy symboli ORAZ odcinki toru w tej samej
+ * postaci prostokątów, której używa wyrocznia `labelWireCollisions` wyżej
+ * (z `WIRE_PROBE_HALF_THICKNESS`). Jedna prawda o tym, „czego etykieta nie
+ * może zasłonić": powiększone pismo tożsamości omija DOKŁADNIE to samo, co
+ * declutter sceny i wyrocznie odbioru.
+ */
+export function sceneObstacleRects(scene: SceneV3): readonly V3Rect[] {
+  const rects: V3Rect[] = scene.symbols.map(symbolRect);
+  for (const segment of scene.segments) {
+    const pts = segment.points;
+    for (let i = 1; i < pts.length; i++) {
+      const a = pts[i - 1];
+      const b = pts[i];
+      rects.push({
+        x: Math.min(a.x, b.x) - WIRE_PROBE_HALF_THICKNESS,
+        y: Math.min(a.y, b.y) - WIRE_PROBE_HALF_THICKNESS,
+        width: Math.abs(b.x - a.x) + 2 * WIRE_PROBE_HALF_THICKNESS,
+        height: Math.abs(b.y - a.y) + 2 * WIRE_PROBE_HALF_THICKNESS,
+      });
+    }
+  }
+  return rects;
 }
 
 // ---------------------------------------------------------------------------

@@ -100,14 +100,22 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
   // prawdziwa przy pełnym widoku sieci (kadr 1200×800 na 53 stacje daje skalę,
   // przy której CAŁE pismo ma ~2 px). Intencja zostaje wyrażona mocniej: nic nie
   // ginie PO CICHU — każda etykieta jest albo w DOM, albo policzona jako ukryta.
-  it('LOD 2: symbole w DOM = scene.symbols.length; etykiety w DOM + ukryte = scene.labels.length', () => {
+  //
+  // KD-11: kubełki są TRZY, nie dwa — ukryte DANE SZCZEGÓŁOWE
+  // (`data-hidden-unreadable`, wskaźnik „Ukryto N opisów") ORAZ tożsamości bez
+  // miejsca (`data-dropped-identity`). Ten kadr WYMUSZA `lodOverride={2}` przy
+  // skali ~0,08, czyli stan, którego kamera produkcyjna nie osiąga (histereza
+  // trzyma tam L0) — dlatego trzeci kubełek bywa tu niepusty, a osobny test
+  // niżej pilnuje, że w stanach PRODUKCYJNYCH jest zerowy.
+  it('LOD 2: symbole w DOM = scene.symbols.length; etykiety w DOM + ukryte dane + porzucone tożsamości = scene.labels.length', () => {
     const scene = buildSceneV3(enm, 2);
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     const symbolGroup = container.querySelector('[data-testid="sld-v3-symbols"]');
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
     expect(symbolGroup?.children.length).toBe(scene.symbols.length);
     const ukryte = Number(labelGroup?.getAttribute('data-hidden-unreadable') ?? '0');
-    expect((labelGroup?.children.length ?? 0) + ukryte).toBe(scene.labels.length);
+    const porzucone = Number(labelGroup?.getAttribute('data-dropped-identity') ?? '0');
+    expect((labelGroup?.children.length ?? 0) + ukryte + porzucone).toBe(scene.labels.length);
   });
 
   // Dowód, że próg NAPRAWDĘ gryzie na tym kadrze, i że ukrycie jest JAWNE.

@@ -10,6 +10,35 @@
 
 export type LabelClass = 't1' | 't2' | 't3' | 't4';
 
+/**
+ * KD-11 (regresja użytkowa z oględzin odbioru KD-8) — KLASA ZNACZENIOWA
+ * etykiety, ROZŁĄCZNA od klasy typograficznej (`LabelClass`).
+ *
+ * DLACZEGO OSOBNE POJĘCIE. Po podniesieniu progu czytelności 6 → 9 px (KD-8
+ * poz. 5) rysunek rozwiniętego GPZ przy kadrze „Dopasuj widok" nie niósł
+ * ŻADNEGO podpisu („Ukryto 35 opisów"). Rysunek techniczny bez TOŻSAMOŚCI
+ * elementów (nazwa transformatora, napięcie szyny/sekcji, nazwa źródła,
+ * oznaczenie pola) jest bezużyteczny — nie da się z niego odczytać, CO się
+ * rysuje. Poprzedni stan (próg 6 px) był zły inaczej: nieczytelna zbitka
+ * wszystkiego. Rozstrzygnięcie: dwie klasy z OSOBNYMI regułami widoczności.
+ *
+ *  - `'tozsamosc'` — nazwa elementu, napięcie szyny/sekcji, oznaczenie pola,
+ *    nazwa źródła/stacji. Widoczna wszędzie tam, gdzie widoczny jest jej
+ *    element; poniżej progu czytelności renderowana w rozmiarze MINIMALNYM
+ *    czytelnym (skalowana niezależnie od kamery — jak minimalny rozmiar
+ *    symboli `MIN_SYMBOL_SCREEN_PX`), a NIE ukrywana.
+ *  - `'dane'` — parametry (Yd11, uk%, Pk, przekroje, długości, nastawy) i
+ *    adnotacje. Podlegają progowi czytelności jak dotąd (ukrywanie z
+ *    licznikiem „Ukryto N opisów", który liczy WYŁĄCZNIE tę klasę).
+ *
+ * Klasa jest DANĄ SCENY (deklarowaną przez wytwórcę etykiety w
+ * `compose/*`/`layout/labels.ts`), nigdy nie jest zgadywana z TREŚCI tekstu —
+ * dwa wiersze tej samej klasy typograficznej mogą mieć różne klasy znaczeniowe
+ * (np. `t2`: „SN systemowe 110 kV" = nazwa źródła = tożsamość, „Yd11 · 25 MVA"
+ * = parametry = dane).
+ */
+export type LabelRole = 'tozsamosc' | 'dane';
+
 export interface LabelTypography {
   readonly fontSize: number;
   readonly fontWeight: number;
@@ -61,6 +90,60 @@ export function isLabelReadableAtScale(cls: LabelClass, scale: number): boolean 
 }
 
 /**
+ * KD-11: czy etykieta ZNIKA przy tej skali. Znika WYŁĄCZNIE klasa `'dane'` i
+ * wyłącznie poniżej progu czytelności — tożsamość nie znika NIGDY (jest
+ * przeskalowana do rozmiaru minimalnego, patrz `minReadableFontSize`).
+ * Jedyne miejsce, które wolno pytać o ukrycie etykiety (warstwa renderu ORAZ
+ * licznik „Ukryto N opisów" — jedna prawda, bez dwóch reguł).
+ */
+export function isLabelHiddenAtScale(role: LabelRole, cls: LabelClass, scale: number): boolean {
+  return role === 'dane' && !isLabelReadableAtScale(cls, scale);
+}
+
+/**
+ * KD-11: rozmiar pisma [px ŚWIATA], w którym etykieta klasy `'tozsamosc'` ma
+ * na ekranie dokładnie `MIN_READABLE_LABEL_SCREEN_PX`, gdy jej rozmiar
+ * naturalny spadłby poniżej progu. Powyżej progu — rozmiar naturalny
+ * (funkcja NIE powiększa etykiet czytelnych; skalowanie jest awaryjne, nie
+ * domyślne). Skala niewiarygodna (≤0/NaN) ⇒ rozmiar naturalny, tak jak
+ * `isLabelReadableAtScale` — brak pomiaru nie jest dowodem nieczytelności.
+ *
+ * To jest odpowiednik zasady K11-B dla PISMA: symbol poniżej progu zmienia
+ * REPREZENTACJĘ (kamera przełącza LOD), a etykieta tożsamości — ROZMIAR
+ * (rysunek bez nazw nie ma czego reprezentować zgrubniej).
+ */
+export function minReadableFontSize(cls: LabelClass, scale: number): number {
+  const naturalny = LABEL_TYPOGRAPHY[cls].fontSize;
+  if (!Number.isFinite(scale) || scale <= 0) return naturalny;
+  return Math.max(naturalny, MIN_READABLE_LABEL_SCREEN_PX / scale);
+}
+
+/**
+ * Skraca tekst z WIELOKROPKIEM do zadanej szerokości [px świata] przy zadanym
+ * rozmiarze pisma. REGUŁA REUŻYTA z v2 (`v2/renderer/GpzSwitchgearLayout.ts`
+ * `fitTextToWidth`, audyt anty-kolizji D1/D2: „silent slice" jest
+ * anty-wzorcem — ucinamy do liczby GLIFÓW mieszczących się w szerokości i
+ * zostawiamy miejsce na „…"). Skopiowana jest REGUŁA, nie kod: v2 mierzy
+ * własnym `labelCharWidthFactor`, a tu obowiązuje JEDNA prawda pomiaru v3
+ * (`measureLabelWidth`/`AVG_GLYPH_WIDTH_FACTOR`), więc niezmiennik
+ * `measureLabelWidth(fitLabelToWidth(t, f, w), …) ≤ w` trzyma dokładnie.
+ *
+ * `maxWidth` ≤ szerokość jednego glifu ⇒ pusty tekst (nie ma miejsca nawet na
+ * wielokropek — uczciwy brak zamiast wylania się poza slot).
+ */
+export function fitLabelToWidth(text: string, fontSize: number, maxWidth: number): string {
+  const szerokoscGlifu = fontSize * AVG_GLYPH_WIDTH_FACTOR;
+  if (!Number.isFinite(maxWidth) || szerokoscGlifu <= 0) return text;
+  // `measureTextWidth` zaokrągla W GÓRĘ, więc dopuszczalna liczba glifów liczy
+  // się od szerokości ZAOKRĄGLONEJ W DÓŁ — inaczej niezmiennik „zmierzona
+  // szerokość ≤ maxWidth" pękałby o ≤1 px dla niecałkowitych slotów.
+  const mieszczaceSie = Math.floor(Math.floor(maxWidth) / szerokoscGlifu);
+  if (mieszczaceSie >= text.length) return text;
+  if (mieszczaceSie < 2) return '';
+  return `${text.slice(0, mieszczaceSie - 1)}…`;
+}
+
+/**
  * Liczba w POLSKIM zapisie rysunku: całkowita bez miejsc dziesiętnych („20"),
  * ułamkowa z PRZECINKIEM („0,4", „10,5", „9,62"). Bez zer nieznaczących.
  *
@@ -90,9 +173,16 @@ export function liczbaRysunkuPl(value: number): string {
 
 const AVG_GLYPH_WIDTH_FACTOR = 0.62;
 
+/** Deterministyczna szerokość tekstu [px świata] przy DOWOLNYM rozmiarze pisma
+ *  — jedna formuła dla klas typograficznych (`measureLabelWidth` niżej) i dla
+ *  pisma przeskalowanego do rozmiaru minimalnego (KD-11, `minReadableFontSize`). */
+export function measureTextWidth(text: string, fontSize: number): number {
+  return Math.ceil(text.length * fontSize * AVG_GLYPH_WIDTH_FACTOR);
+}
+
 /** Deterministyczna szerokość etykiety [px świata]. */
 export function measureLabelWidth(text: string, cls: LabelClass): number {
-  return Math.ceil(text.length * LABEL_TYPOGRAPHY[cls].fontSize * AVG_GLYPH_WIDTH_FACTOR);
+  return measureTextWidth(text, LABEL_TYPOGRAPHY[cls].fontSize);
 }
 
 /** Wysokość wiersza etykiety [px świata] (fontSize + interlinia). */

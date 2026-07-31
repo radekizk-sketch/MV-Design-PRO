@@ -51,7 +51,7 @@
  */
 
 import { GRID, rectsOverlap, snapDown, snapToGrid, type V3Rect } from '../core/grid';
-import { labelLineHeight, measureLabelWidth, type LabelClass } from '../core/text';
+import { labelLineHeight, measureLabelWidth, type LabelClass, type LabelRole } from '../core/text';
 
 /** Właściciel etykiety (spec §4, tabela slotów). */
 export type OwnerKind =
@@ -67,6 +67,53 @@ export type OwnerKind =
   | 'protection'         // F9.9: numer urządzenia „52" (spec §17.1/§17.3, ANSI/IEEE C37.2)
   | 'lv-load';           // recenzja NO-GO pkt 6: odbiór zagregowany / granica modelu (t4) pod szyną nN
 
+/**
+ * KD-11: KLASA ZNACZENIOWA etykiety wyprowadzona z RODZAJU WŁAŚCICIELA — dana
+ * sceny, nie heurystyka po treści tekstu (`core/text.ts` `LabelRole`).
+ *
+ * TOŻSAMOŚĆ (co się rysuje):
+ *  - `busbar-voltage` — napięcie szyny/sekcji („Sekcja 1 · 15 kV") — wprost z
+ *    rozstrzygnięcia karty;
+ *  - `apparatus` — oznaczenie pola/aparatu (numer pola WN „Pole liniowe GPZ",
+ *    identyfikatory Q1/QE1/T1);
+ *  - `field-role` — oznaczenie FUNKCYJNE pola („pole liniowe");
+ *  - `der` — rodzaj i moc źródła rozproszonego, czyli JEGO nazwa na rysunku
+ *    (symbol DER bez tej etykiety nie mówi, jakim jest źródłem);
+ *  - `no-point` — badge „NO": punkt podziału sieci jest CECHĄ elementu (co to
+ *    za łącznik), nie jego parametrem; dwa znaki, a jego brak zmienia odczyt
+ *    układu pracy sieci na FAŁSZYWY. Spójne z `LABEL_PRIORITY` (90 — wyżej niż
+ *    `der`/`apparatus`/`field-role`), gdzie już dziś jest chroniony jako
+ *    „mały, krytyczny semantycznie".
+ *  - `station-name` — pasmo MIESZANE (nazwa/kod stacji obok kVA i typu), więc
+ *    klasy NIE da się wyprowadzić z rodzaju właściciela: rozstrzyga ją
+ *    WIERSZ (`StationNameBandRow.role`, deklarowany przez `compose/*`).
+ *    Wpis w tej tabeli jest DOMYŚLNY (tożsamość) i używany tylko wtedy, gdy
+ *    wołający nie poda roli wiersza.
+ *
+ * DANE SZCZEGÓŁOWE (parametry i adnotacje — podlegają progowi czytelności):
+ *  - `segment-span`/`segment-lateral` — typ·przekrój·długość (wprost
+ *    „przekroje, długości" z rozstrzygnięcia karty);
+ *  - `protection` — adnotacje warstwy zabezpieczeń (numer urządzenia C37.2,
+ *    przekładnie CT, montaż VT, lista funkcji) — spec §17 nazywa je
+ *    ADNOTACJAMI toru, a karta zalicza nastawy do danych szczegółowych;
+ *  - `port-caption` — podpis kierunku pola („⟨linia⟩ · kier. S03") i
+ *    zakończenia toru;
+ *  - `lv-load` — odbiór zagregowany nN / granica modelu.
+ */
+export const LABEL_ROLE_BY_OWNER_KIND: Readonly<Record<OwnerKind, LabelRole>> = {
+  'station-name': 'tozsamosc',
+  'busbar-voltage': 'tozsamosc',
+  apparatus: 'tozsamosc',
+  'field-role': 'tozsamosc',
+  der: 'tozsamosc',
+  'no-point': 'tozsamosc',
+  protection: 'dane',
+  'port-caption': 'dane',
+  'segment-span': 'dane',
+  'segment-lateral': 'dane',
+  'lv-load': 'dane',
+};
+
 export interface LabelPoint {
   readonly x: number;
   readonly y: number;
@@ -78,6 +125,13 @@ export interface OwnedLabel {
   readonly ownerRef: string;
   readonly ownerKind: OwnerKind;
   readonly labelClass: LabelClass;
+  /** KD-11: klasa ZNACZENIOWA (tożsamość vs dane szczegółowe) — steruje
+   *  widocznością w warstwie renderu (`canvas/labelLegibility.ts`). Dana
+   *  sceny: dla pasma nazw z wiersza (`StationNameBandRow.role`), dla
+   *  pozostałych z rodzaju właściciela (`LABEL_ROLE_BY_OWNER_KIND`).
+   *  Geometrycznie NEUTRALNA — nie wchodzi do `rect`, więc nie rusza
+   *  goldenów geometrii ani wyroczni sceny. */
+  readonly labelRole: LabelRole;
   readonly text: string;
   /** 1 = idealny (bez leadera), 2/3 = zapasowy (leader OBOWIĄZKOWY). */
   readonly slotIndex: 1 | 2 | 3;
@@ -98,6 +152,15 @@ export interface OwnedLabel {
    *  `data-ct-purpose`), geometrycznie neutralny (NIE wpływa na `text`/`rect`).
    *  `undefined` dla pozostałych etykiet. */
   readonly ctPurpose?: 'protection' | 'metering' | 'combined';
+  /** KD-11: STRONA, po której slot leży względem swojej kotwicy (symbolu,
+   *  toru, pasma). Potrzebna WYŁĄCZNIE etykietom klasy `'tozsamosc'`: gdy
+   *  render powiększa pismo do rozmiaru minimalnego czytelnego, prostokąt
+   *  rośnie OD kotwicy (etykieta nad szyną rośnie w GÓRĘ), więc prześwit od
+   *  toru (`BUSBAR_LABEL_PATH_CLEARANCE`) i odstęp od symbolu zostają
+   *  zachowane. Każda etykieta tożsamości ją niesie (kontrakt sprawdzany
+   *  testem); etykiety klasy `'dane'` nigdy nie są powiększane, więc mogą jej
+   *  nie mieć. Geometrycznie neutralna — `rect` bez zmian. */
+  readonly placement?: SimpleAnchorPlacement;
 }
 
 // ---------------------------------------------------------------------------
@@ -154,6 +217,7 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
       ownerRef: owner.ownerRef,
       ownerKind: 'segment-span',
       labelClass,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-span'],
       text: owner.text,
       slotIndex: 1,
       rect: { x, y: owner.primaryRect.y, width: labelWidth, height: owner.primaryRect.height },
@@ -173,6 +237,7 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
       ownerRef: owner.ownerRef,
       ownerKind: 'segment-span',
       labelClass,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-span'],
       text: owner.text,
       slotIndex: 1,
       rect: { x, y: owner.primaryRect.y, width: labelWidth, height: owner.primaryRect.height },
@@ -188,6 +253,7 @@ function resolveSegmentSpanLabel(owner: SegmentSpanOwnerInput): OwnedLabel {
     ownerRef: owner.ownerRef,
     ownerKind: 'segment-span',
     labelClass,
+    labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-span'],
     text: owner.text,
     slotIndex: 2,
     rect: owner.marginRect,
@@ -245,6 +311,7 @@ function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel
       ownerRef: owner.ownerRef,
       ownerKind: 'segment-lateral',
       labelClass,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-lateral'],
       text: owner.text,
       slotIndex: 1,
       rotated: true,
@@ -258,6 +325,7 @@ function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel
       ownerRef: owner.ownerRef,
       ownerKind: 'segment-lateral',
       labelClass,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-lateral'],
       text: owner.text,
       slotIndex: 2,
       rotated: true,
@@ -274,6 +342,7 @@ function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel
     ownerRef: owner.ownerRef,
     ownerKind: 'segment-lateral',
     labelClass,
+    labelRole: LABEL_ROLE_BY_OWNER_KIND['segment-lateral'],
     text: owner.text,
     slotIndex: 3,
     rotated: true,
@@ -298,6 +367,13 @@ function resolveSegmentLateralLabel(owner: SegmentLateralOwnerInput): OwnedLabel
 export interface StationNameBandRow {
   readonly text: string;
   readonly labelClass: LabelClass;
+  /** KD-11: klasa ZNACZENIOWA wiersza — WYMAGANA, bo pasmo nazw jest
+   *  MIESZANE: nazwa/kod stacji, oznaczenie transformatora, nazwa źródła i
+   *  podpis szyny nN to TOŻSAMOŚĆ, a moc znamionowa, typ stacji, Yd11/uk%/Pk,
+   *  zaczepy czy odbiór zagregowany to DANE SZCZEGÓŁOWE. Klasa typograficzna
+   *  tego nie rozstrzyga (nazwa źródła jest `t2`, tak jak „Yd11 · 25 MVA"),
+   *  a treść tekstu nie jest dowodem — deklaruje wytwórca wiersza. */
+  readonly role: LabelRole;
 }
 
 export interface StationNameBandOwnerInput {
@@ -315,9 +391,13 @@ function resolveStationNameBand(owner: StationNameBandOwnerInput): OwnedLabel[] 
       ownerRef: `${owner.ownerRef}#name-row-${index}`,
       ownerKind: 'station-name',
       labelClass: row.labelClass,
+      labelRole: row.role,
       text: row.text,
       slotIndex: 1,
       rect: { x: owner.nameSlot.x, y, width: owner.nameSlot.width, height },
+      // KD-11: pasmo nazw wisi POD swoją kotwicą (symbolem/stacją) i rośnie w
+      // dół — powiększone pismo tożsamości nie może wejść w symbol nad sobą.
+      placement: 'below',
     };
     y += height;
     return label;
@@ -356,6 +436,7 @@ function resolvePortCaption(owner: PortCaptionOwnerInput): OwnedLabel {
       ownerRef: owner.ownerRef,
       ownerKind: 'port-caption',
       labelClass,
+      labelRole: LABEL_ROLE_BY_OWNER_KIND['port-caption'],
       text: owner.text,
       slotIndex: 1,
       rect: { x, y: owner.primaryRect.y, width: labelWidth, height: owner.primaryRect.height },
@@ -371,6 +452,7 @@ function resolvePortCaption(owner: PortCaptionOwnerInput): OwnedLabel {
     ownerRef: owner.ownerRef,
     ownerKind: 'port-caption',
     labelClass,
+    labelRole: LABEL_ROLE_BY_OWNER_KIND['port-caption'],
     text: owner.text,
     slotIndex: 2,
     rect: owner.fallbackRect,
@@ -455,9 +537,14 @@ function resolveSimpleAnchoredLabel(owner: SimpleAnchoredOwnerInput): OwnedLabel
     ownerRef: owner.ownerRef,
     ownerKind: owner.ownerKind,
     labelClass: owner.labelClass,
+    labelRole: LABEL_ROLE_BY_OWNER_KIND[owner.ownerKind],
     text: owner.text,
     slotIndex: 1,
     rect: { x: snapX(x), y: snapY(y), width, height },
+    // KD-11: strona slotu względem kotwicy — kierunek, w którym prostokąt
+    // rośnie, gdy render powiększa pismo tożsamości do rozmiaru minimalnego
+    // (etykieta „above" rośnie w górę, więc prześwit od toru zostaje).
+    placement: owner.placement,
     // Z3 (spec §12.1): passthrough pochodzenia identyfikatora aparatu (tylko
     // etykiety `ownerKind:'apparatus'` niosą wartość; reszta `undefined`).
     ...(owner.designationSource !== undefined ? { designationSource: owner.designationSource } : {}),

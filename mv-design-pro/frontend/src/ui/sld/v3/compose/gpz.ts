@@ -1594,14 +1594,23 @@ export function composeGpz(
       ? `${transformer.oltc.kind} ${transformer.oltc.positionLabel} · ${transformer.oltc.modeLabel}`
         + (transformer.oltc.setpointLabel ? ` · ${transformer.oltc.setpointLabel}` : '')
       : null;
+    // KD-11: oznaczenie transformatora („TR1") to TOŻSAMOŚĆ — bez niego z
+    // rysunku nie da się odczytać, który to transformator; moc/grupa połączeń,
+    // przekładnia, dane zwarciowe i zaczepy to DANE SZCZEGÓŁOWE.
     const trRows: StationNameBandRow[] = [
-      { text: transformer.designation, labelClass: 't1' },
-      { text: ratingRowText, labelClass: 't2' },
-      { text: `${liczbaRysunkuPl(transformer.uhvKv)}/${liczbaRysunkuPl(transformer.ulvKv)} kV`, labelClass: 't2' },
+      { text: transformer.designation, labelClass: 't1', role: 'tozsamosc' },
+      { text: ratingRowText, labelClass: 't2', role: 'dane' },
+      {
+        text: `${liczbaRysunkuPl(transformer.uhvKv)}/${liczbaRysunkuPl(transformer.ulvKv)} kV`,
+        labelClass: 't2',
+        role: 'dane',
+      },
       ...(shortCircuitParts.length > 0
-        ? [{ text: shortCircuitParts.join(' · '), labelClass: 't3' } as StationNameBandRow]
+        ? [{ text: shortCircuitParts.join(' · '), labelClass: 't3', role: 'dane' } as StationNameBandRow]
         : []),
-      ...(oltcRowText ? [{ text: oltcRowText, labelClass: 't3' } as StationNameBandRow] : []),
+      ...(oltcRowText
+        ? [{ text: oltcRowText, labelClass: 't3', role: 'dane' } as StationNameBandRow]
+        : []),
     ];
     if (transformer.oltc) parityKeys.add('gpz.transformer.oltc');
     transformerLabels.push({
@@ -1750,13 +1759,20 @@ export function composeGpz(
         // `stationNameBands` — nowe pole wymagałoby tam dodatkowej linii.
         if (props.hvSystemSource && props.hvSystemSource.sourceRef === source.id) {
           const dataplate = gpzSystemSourceDataplateText(props.hvSystemSource);
-          const rows: StationNameBandRow[] = [{ text: props.hvSystemSource.name, labelClass: 't2' }];
+          // KD-11: NAZWA ŹRÓDŁA to tożsamość (mimo klasy `t2` — klasa
+          // typograficzna nie rozstrzyga znaczenia); opis ekwiwalentu i
+          // tabliczka danych zwarciowych to dane szczegółowe.
+          const rows: StationNameBandRow[] = [
+            { text: props.hvSystemSource.name, labelClass: 't2', role: 'tozsamosc' },
+          ];
           // Recenzja NO-GO 2026-07-17 pkt 3: gdy źródło to EKWIWALENT na
           // szynach SN (`!sourceOnHv`), tabliczka mówi to WPROST — inaczej
           // czytelnik bierze dane zwarciowe ekwiwalentu za parametry
           // przyłącza systemowego WN (fałsz prezentacji pkt 2).
-          if (!sourceOnHv) rows.push({ text: 'Ekwiwalent sieci zasilającej', labelClass: 't3' });
-          if (dataplate) rows.push({ text: dataplate, labelClass: 't3' });
+          if (!sourceOnHv) {
+            rows.push({ text: 'Ekwiwalent sieci zasilającej', labelClass: 't3', role: 'dane' });
+          }
+          if (dataplate) rows.push({ text: dataplate, labelClass: 't3', role: 'dane' });
           transformerLabels.push({
             ownerRef: `${source.id}#system-source-label`,
             nameSlot: {
@@ -1866,7 +1882,8 @@ export function composeGpz(
   const stationName: StationNameBandOwnerInput = {
     ownerRef: props.id,
     nameSlot: headerSlot,
-    rows: [{ text: headerText, labelClass: 't1' }],
+    // KD-11: nagłówek strefy („GPZ ⟨nazwa⟩ · UHV/ULV kV") to tożsamość bloku.
+    rows: [{ text: headerText, labelClass: 't1', role: 'tozsamosc' }],
   };
 
   // -- 10. Translacja końcowa do współrzędnych nieujemnych względem originu
