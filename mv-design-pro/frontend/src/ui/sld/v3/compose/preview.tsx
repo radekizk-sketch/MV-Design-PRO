@@ -234,6 +234,25 @@ export interface PreviewElementMeta {
    *  Rodzaj stacji WYPROWADZONY z TYPU elementów (topologia/sprzęgło/TR/DER/NO),
    *  nie z nazw (spec §19.3, macierz §3). */
   readonly stationGlyph?: StationCompactGlyphSummary;
+  /** KD-5 (dług nazwany w V12K-285): podsumowanie sylwetki BLOKU GPZ dla glifu
+   *  zwiniętego na L0 — WYŁĄCZNIE dla symboli `gpzCollapsed`. Steruje sekcjami/
+   *  transformatorem/polami odejściowymi w `GpzCollapsedGlyph`
+   *  (`symbols/glyphs.tsx`), przekazane 1:1 do `GlyphProps` (wzór
+   *  `stationGlyph`). Liczby WYPROWADZONE z realnej kompozycji GPZ
+   *  (`GpzComposition.sections`/`transformers` + pola liniowe SN), nie z nazw. */
+  readonly gpzGlyph?: GpzCompactGlyphSummary;
+}
+
+/** KD-5: kompaktowe cechy bloku GPZ rysowane sylwetką na L0. Wszystkie pola
+ *  WYPROWADZONE z realnej kompozycji GPZ (zero fabrykacji — patrz
+ *  `MiniGpzFeatures`, `symbols/miniRmuGrammar.ts`). */
+export interface GpzCompactGlyphSummary {
+  /** Liczba sekcji szyn SN (>1 ⇒ sprzęgło sekcyjne w sylwetce). */
+  readonly sections: number;
+  /** Liczba transformatorów WN/SN (0 ⇒ sylwetka bez uzwojeń). */
+  readonly transformers: number;
+  /** Liczba pól odejściowych (liniowych) SN. */
+  readonly feeders: number;
 }
 
 /** SCHEMAT-10 GS-1 (V12K-137): kompaktowe cechy stacji rysowane sylwetką
@@ -357,6 +376,9 @@ function PreviewSymbolNode(props: { readonly symbol: PreviewSymbol; readonly str
         stationDerOnMv={symbol.meta?.stationGlyph?.derOnMv}
         stationDerBehindTr={symbol.meta?.stationGlyph?.derBehindTr}
         stationNoOpen={symbol.meta?.stationGlyph?.noOpen}
+        gpzSections={symbol.meta?.gpzGlyph?.sections}
+        gpzTransformers={symbol.meta?.gpzGlyph?.transformers}
+        gpzFeeders={symbol.meta?.gpzGlyph?.feeders}
       />
     </g>
   );

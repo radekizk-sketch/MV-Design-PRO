@@ -658,7 +658,9 @@ function classifySymbolElementKind(symbolId: SymbolId): PreviewElementKind {
   // — nie jest DER, ma własny elementKind `'source'` (spec §13.1/§13.2).
   if (symbolId === 'gridSource') return 'source';
   if (symbolId.startsWith('der')) return 'der';
-  if (symbolId === 'stationCollapsed') return 'station';
+  // KD-5: blok GPZ zwinięty (L0) jest STACJĄ zasilającą, nie aparatem — ta sama
+  // kategoria co `stationCollapsed` (warstwa „stacje i aparatura", selekcja).
+  if (symbolId === 'stationCollapsed' || symbolId === 'gpzCollapsed') return 'station';
   return 'apparatus';
 }
 
@@ -1915,6 +1917,203 @@ function gpzBayBottomPort(
   return { x: last.x + def.width / 2, y: last.y + def.height };
 }
 
+// ---------------------------------------------------------------------------
+// KD-5 (dług nazwany w V12K-285) — BLOK GPZ ZWINIĘTY na poziomie przeglądowym L0.
+// ---------------------------------------------------------------------------
+
+/** Minimalna długość zejścia pola odejściowego pod blokiem (aparat 16 px +
+ *  prześwit 8 px z obu stron) — patrz `composeCollapsedGpz`. */
+const GPZ_COLLAPSED_MIN_DESCENT = 4 * GRID;
+/** Odstęp między poziomami wachlarza zejść pól niemagistralnych (rozdziela
+ *  poziome biegi kolejnych pól, żeby się nie zlewały). */
+const GPZ_COLLAPSED_FAN_STEP = 2 * GRID;
+/** Prześwit między glifem sieci zewnętrznej a górną krawędzią bloku. */
+const GPZ_COLLAPSED_SOURCE_GAP = 2 * GRID;
+
+interface CollapsedGpz {
+  readonly symbols: readonly PreviewSymbol[];
+  readonly segments: readonly PreviewSegment[];
+  readonly nameBand: StationNameBandOwnerInput;
+}
+
+/**
+ * KD-5 — reprezentacja ZWINIĘTA bloku GPZ dla L0 (dyrektywa właściciela z oceny
+ * ekranu: na przeglądzie sieci GPZ ma być zwartym symbolem stacji zasilającej,
+ * nie pełnym układem wewnętrznym; dług nazwany w V12K-285).
+ *
+ * ---------------------------------------------------------------------------
+ * CO ZNIKA, A CO ZOSTAJE (i dlaczego dokładnie tak)
+ * ---------------------------------------------------------------------------
+ * ZNIKA cała GEOMETRIA WEWNĘTRZNA rozdzielni: szyna WN, pola WN, transformator
+ * z polem TR, szyny sekcji SN, punkt neutralny oraz STOSY APARATÓW pól
+ * (odłącznik/przekładnik/uziemnik/głowica) — na fixturze referencyjnej 16
+ * symboli po 16 px świata, które przy skali przeglądu ≈0,12 renderowały się po
+ * ≈1,9 px, a więc poniżej progu rozpoznawalności `MIN_SYMBOL_SCREEN_PX` (szum,
+ * nie informacja). Ich treść niesie teraz JEDEN symbol `gpzCollapsed`, którego
+ * sylwetka rysuje tę samą gramatykę w miniaturze (`GpzCollapsedGlyph`).
+ *
+ * ZOSTAJE — świadomie, nie z niedoróbki:
+ *  (a) GLIF SIECI ZEWNĘTRZNEJ (`gridSource`) — kontrakt `allSourcesVisible`
+ *      (§13.1): źródło jest widoczne na KAŻDYM LOD, bo „skąd to jest zasilane"
+ *      nie jest szczegółem, tylko treścią przeglądu;
+ *  (b) APARAT CIĄGŁOŚCI POLA ODEJŚCIOWEGO — jeden `breaker` na KAŻDE pole
+ *      liniowe SN, zakotwiczony DOKŁADNIE w porcie, w którym pole oddaje tor
+ *      sieci. To wymóg 3 karty K11-B (dyrektywa właściciela: „LOD NIGDY nie
+ *      ukrywa toru przepływu energii ANI APARATÓW CIĄGŁOŚCI elektrycznej
+ *      (odłącznik/wyłącznik w torze)") — rysunek bez łącznika kłamałby o
+ *      możliwości odcięcia magistrali. To NIE jest geometria wewnętrzna pola:
+ *      cały stos pola jest zwinięty DO swojego aparatu ciągłości, a ten stoi na
+ *      GRANICY bloku z siecią. Wyrocznia `lodPathContinuityGaps` liczy go
+ *      wprost — zwinięcie przechodzi strażnika BEZ poszerzania tolerancji.
+ *
+ * ---------------------------------------------------------------------------
+ * KOTWICA (zoom = skala szczegółu, nie przemeblowanie)
+ * ---------------------------------------------------------------------------
+ * Blok kotwiczy się OSIĄ pola magistrali (`port.x` — ten sam punkt, z którego
+ * magistrala wychodzi na L1/L2) i osią szyny SN (`busY`), a jego zejścia kończą
+ * się w PORTACH pól policzonych z kompozycji PEŁNEJ. Trasa magistrali, trasy
+ * feederów, offsety wiersza i rama strefy są więc IDENTYCZNE jak na L1/L2 —
+ * zwinięcie zmienia wyłącznie to, CO jest narysowane wewnątrz strefy GPZ
+ * (SCHEMAT-10 S1 / V12K-135, ta sama zasada co `buildRowLayout` dla stacji).
+ */
+function composeCollapsedGpz(
+  gpz: GpzComposition,
+  gpzData: GpzCanonicalRendererProps,
+  gridSources: readonly SldSourceView[],
+  stopNotes: string[],
+): CollapsedGpz {
+  const symbols: PreviewSymbol[] = [];
+  const segments: PreviewSegment[] = [];
+  const blockDef = SYMBOL_DEFS.gpzCollapsed;
+  const breakerDef = SYMBOL_DEFS.breaker;
+  const sourceDef = SYMBOL_DEFS.gridSource;
+
+  const trunkPort = findGpzTrunkBottomPort(gpz, gpzData, stopNotes);
+  const axisX = trunkPort.x;
+  const busY = findGpzPrimaryBus(gpz)?.points[0]?.y ?? snapToGrid(trunkPort.y - blockDef.height);
+  // Blok wyśrodkowany na osi pola magistrali i na osi szyny SN; gdy zejście
+  // wyszłoby krótsze niż aparat ciągłości + prześwity, blok wędruje w górę
+  // (geometria deterministyczna, bez zgadywania).
+  const blockY = Math.min(
+    snapToGrid(busY - blockDef.height / 2),
+    snapToGrid(trunkPort.y - blockDef.height - GPZ_COLLAPSED_MIN_DESCENT),
+  );
+  const blockX = snapToGrid(axisX - blockDef.width / 2);
+  const blockBottomY = blockY + blockDef.height;
+  const lineBayRefs = findGpzLineBayRefs(gpzData);
+
+  symbols.push({
+    symbolId: 'gpzCollapsed',
+    x: blockX,
+    y: blockY,
+    meta: {
+      testId: `sld-v3-l0-gpz-${gpzData.id}`,
+      // Tożsamość LOD-niezależna: TEN SAM ref, którym GPZ występuje na L1/L2
+      // (pas tytułowy `labels.stationName.ownerRef`, terminale przęseł) —
+      // selekcja/nawigacja/nakładki działają bez tłumaczenia per LOD.
+      ownerRef: gpzData.id,
+      elementKind: 'station',
+      gpzGlyph: {
+        sections: gpz.sections.length,
+        transformers: gpz.transformers.length,
+        feeders: lineBayRefs.length,
+      },
+    },
+  });
+
+  // (a) Sieć zewnętrzna NAD blokiem — glif zachowany na każdym LOD (§13.1).
+  //     Wiele źródeł: rozstawione w prawo od osi, spięte do portu N bloku
+  //     łamaną (dla pierwszego źródła degeneruje się do prostego pionu).
+  gridSources.forEach((src, i) => {
+    const srcCx = axisX + i * (3 * GRID);
+    const srcY = blockY - GPZ_COLLAPSED_SOURCE_GAP - sourceDef.height;
+    symbols.push({
+      symbolId: 'gridSource',
+      x: snapToGrid(srcCx - sourceDef.width / 2),
+      y: srcY,
+      meta: {
+        testId: `sld-v3-l0-gpz-source-${src.id}`,
+        ownerRef: src.id,
+        elementKind: 'source',
+        missingData: src.missingData,
+      },
+    });
+    const raw: RouteVertex[] = [
+      { x: srcCx, y: srcY + sourceDef.height },
+      { x: srcCx, y: blockY - GRID },
+      { x: axisX, y: blockY - GRID },
+      { x: axisX, y: blockY },
+    ];
+    segments.push({
+      points: dedupeVertices(raw),
+      meta: { kind: 'sn', ownerRef: `${src.id}#grid-source-drop`, elementKind: 'segment' },
+    });
+  });
+
+  // (b) Pola odejściowe: aparat ciągłości zakotwiczony w PORCIE pola (ten sam
+  //     punkt, w którym tor sieci wychodzi z GPZ na L1/L2 — trasy nietknięte)
+  //     + zejście od bloku do tego aparatu.
+  lineBayRefs.forEach((bayRef, i) => {
+    const port = i === 0 ? trunkPort : gpzBayBottomPort(gpz, bayRef);
+    if (!port) {
+      stopNotes.push(
+        `Blok GPZ zwinięty (L0): pole liniowe „${bayRef}" bez portu w kompozycji — aparat ciągłości pominięty (dane niepełne).`,
+      );
+      return;
+    }
+    const breakerTopY = port.y - breakerDef.height;
+    symbols.push({
+      symbolId: 'breaker',
+      x: snapToGrid(port.x - breakerDef.width / 2),
+      y: breakerTopY,
+      // Stan łącznika z KOMPOZYCJI PEŁNEJ (realny stan aparatu tego pola) —
+      // zero domysłu: brak wyłącznika w polu ⇒ stan nieokreślony.
+      state: gpz.symbols.find((s) => s.meta.bayRef === bayRef && s.symbolId === 'breaker')?.state,
+      meta: {
+        testId: `sld-v3-l0-gpz-bay-${bayRef}`,
+        ownerRef: bayRef,
+        elementKind: 'apparatus',
+      },
+    });
+    const fanY = blockBottomY + i * GPZ_COLLAPSED_FAN_STEP;
+    const raw: RouteVertex[] = [
+      { x: axisX, y: blockBottomY },
+      { x: axisX, y: fanY },
+      { x: port.x, y: fanY },
+      { x: port.x, y: breakerTopY },
+    ];
+    segments.push({
+      points: dedupeVertices(raw),
+      meta: { kind: 'sn', ownerRef: `${bayRef}#descent`, elementKind: 'segment' },
+    });
+  });
+
+  // Pas nazwy bloku: WIERSZ TYTUŁOWY REUŻYTY z kompozycji pełnej (jedna prawda
+  // tytułu „GPZ ⟨nazwa⟩ · UHV/ULV kV", D3-12) + wiersz stanu z REALNYCH liczb
+  // tego, co zostało zwinięte (zero fabrykacji — liczby z kompozycji).
+  const base = gpz.labels.stationName;
+  const nameBand: StationNameBandOwnerInput = {
+    ownerRef: base.ownerRef,
+    nameSlot: base.nameSlot,
+    rows: [
+      ...base.rows,
+      {
+        text: `Widok zbiorczy · sekcje SN: ${gpz.sections.length} · transformatory: ${gpz.transformers.length} · pola odejściowe: ${lineBayRefs.length}`,
+        labelClass: 't3',
+      },
+    ],
+  };
+
+  return { symbols, segments, nameBand };
+}
+
+/** Usuwa POWTÓRZONE kolejno wierzchołki łamanej (łamana degenerująca się do
+ *  prostego odcinka, gdy oś źródła/pola pokrywa się z osią bloku) — ten sam
+ *  wzorzec co objazd rynną w sekcji 5. */
+function dedupeVertices(points: readonly RouteVertex[]): readonly RouteVertex[] {
+  return points.filter((p, i) => i === 0 || p.x !== points[i - 1].x || p.y !== points[i - 1].y);
+}
+
 function gpzSegmentToPreview(seg: ComposedGpzSegment): PreviewSegment {
   // F13.1 (spec §21.2, D3-2/D3-2bis): `busbarKind` (compose/gpz.ts, szyny
   // sekcji SN GPZ) ma pierwszeństwo nad domyślnym bus/sn — `undefined` dla
@@ -2165,7 +2364,20 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     : null;
 
   // -- 2. GPZ: pass1 @ (0,0) → dowiedz się bbox (X) i snBusY (Y docelowe). --
+  /** Kompozycja RENDEROWANA GPZ — `null` na L0 (KD-5: blok GPZ jest tam
+   *  ZWINIĘTY, patrz sekcja 4 niżej). */
   let gpzComposition: GpzComposition | null = null;
+  /** KD-5: kompozycja GEOMETRYCZNA GPZ — ZAWSZE pełny szczegół, NIEZALEŻNIE od
+   *  poziomu renderu. Wszystkie wyprowadzenia geometrii świata (offsety
+   *  magistrali `mainRowDx`/`mainRowDy`, port zaczepu magistrali, objazd rynną,
+   *  porty pól feederowych, rama strefy) czytają TĘ kompozycję — dzięki temu
+   *  zwinięcie bloku na L0 NIE przesuwa magistrali ani stacji („zoom = skala
+   *  szczegółu, nie przemeblowanie", SCHEMAT-10 S1 / V12K-135, ta sama zasada
+   *  co dla stacji: `buildRowLayout` liczy kolumny zawsze przy L2). Dla L1/L2
+   *  jest to DOKŁADNIE ta sama geometria co `gpzComposition` (różnica wyłącznie
+   *  w szczegółowości ADNOTACJI, która nie zmienia portów ani szyn — patrz
+   *  komentarz S1 niżej), więc przełączenie odczytów jest tam tożsamością. */
+  let gpzGeometry: GpzComposition | null = null;
   let mainRowDx = 0;
   let mainRowDy = 0;
   /** Prawa krawędź CAŁEJO bbox-a GPZ (WSZYSTKIE symbole/segmenty GPZ, nie
@@ -2230,13 +2442,22 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     }
     gpzRightEdgeX = gpzLayout.bbox.x + gpzLayout.bbox.width;
     mainRowDx = snapUp(gpzRightEdgeX) + GPZ_TRUNK_GAP;
+    // KD-5: kompozycja GEOMETRYCZNA (pełny szczegół) jest PRAWDĄ ŚWIATA na
+    // każdym LOD — patrz deklaracja `gpzGeometry` wyżej.
+    gpzGeometry = gpzLayout;
     // Kompozycja RENDEROWANA (render-LOD) — na TYM SAMYM originie co wyrównanie.
-    gpzComposition = composeGpz(
-      gpzData,
-      { x: 0, y: originY + mainRowDy },
-      externalGridSources.map((s) => ({ id: s.id })),
-      annotationDetail,
-    );
+    // KD-5 (dług nazwany w V12K-285): na L0 blok GPZ NIE jest rysowany polami —
+    // sekcja 4 emituje zamiast tego jego reprezentację ZWINIĘTĄ (jeden symbol
+    // `gpzCollapsed` + glif źródła + aparat ciągłości pola magistrali).
+    gpzComposition =
+      lod === 0
+        ? null
+        : composeGpz(
+            gpzData,
+            { x: 0, y: originY + mainRowDy },
+            externalGridSources.map((s) => ({ id: s.id })),
+            annotationDetail,
+          );
   }
 
   // -- 3. Przesuń magistralę o (bbox GPZ + GAP) w prawo i o nawis strefy GPZ
@@ -2297,6 +2518,12 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         'f6-1 NIEROZWIĄZANE: GPZ ma >1 sekcję — kolorowanie wierszy fieldCaptions jest PER SEKCJA (composeGpz, F5b zamrożony); F6a nie dowodzi rozłączności między sekcjami globalnie.',
       );
     }
+  } else if (gpzGeometry && gpzData) {
+    // KD-5: L0 — blok GPZ ZWINIĘTY (patrz `composeCollapsedGpz`).
+    const collapsed = composeCollapsedGpz(gpzGeometry, gpzData, externalGridSources, stopNotes);
+    allSymbols.push(...collapsed.symbols);
+    allSegments.push(...collapsed.segments);
+    stationNameBands.push(collapsed.nameBand);
   }
 
   // -- 5. Skomponuj stacje magistrali + routing GPZ→S0→S1→...→S11. ---------
@@ -2364,7 +2591,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // GPZ (`findGpzTrunkPort`, wciąż używany WYŁĄCZNIE do WYRÓWNANIA pass1→pass2
       // w sekcji 2 — tamten port ma inne zadanie: dopasować OŚ GPZ do osi
       // magistrali, nie być celem trasy kabla).
-      const gpzPort = gpzComposition ? findGpzTrunkBottomPort(gpzComposition, gpzData!, stopNotes) : null;
+      const gpzPort = gpzGeometry ? findGpzTrunkBottomPort(gpzGeometry, gpzData!, stopNotes) : null;
       if (gpzPort) {
         const fromTerminal = fromTerminalForOwner(mainCableRun, gpzData!.id);
         const toTerminal = toTerminalForOwner(mainCableRun, first.id);
@@ -2379,7 +2606,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         // TYLKO gdy prosty pion faktycznie przecina którąś szynę GPZ
         // (deterministyczny test na segmentach kompozycji) — inaczej ścieżka
         // IDENTYCZNA jak dotychczas (zero zmiany dla przypadku zdrowego).
-        const straightRiserCrossesGpzBus = gpzComposition!.segments.some((seg) => {
+        const straightRiserCrossesGpzBus = gpzGeometry!.segments.some((seg) => {
           const kind = (seg as { meta?: { busbarKind?: string; busbarRole?: string } }).meta;
           const isBus = seg.ownerRef.includes('#bus') || kind?.busbarKind === 'busGpz' || kind?.busbarRole != null;
           if (!isBus) return false;
@@ -2410,7 +2637,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         // poziomym biegu korytarza y=552). Ten sam objazd co §22.3 (rynna
         // za bboxem GPZ) — warunek deterministyczny na portach pól.
         const corridorLevelHitsOtherLineBayPort = findGpzLineBayRefs(gpzData!).some((bayRef) => {
-          const port = gpzBayBottomPort(gpzComposition!, bayRef);
+          const port = gpzBayBottomPort(gpzGeometry!, bayRef);
           if (!port || (port.x === gpzPort.x && port.y === gpzPort.y)) return false;
           const entryX = first.composed.entryPort.x;
           return (
@@ -2421,7 +2648,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         });
         const route = straightRiserCrossesGpzBus || corridorLevelHitsOtherLineBayPort
           ? (() => {
-              const gpzBbox = gpzComposition!.bbox;
+              const gpzBbox = gpzGeometry!.bbox;
               // Recenzja NO-GO 2026-07-17 pkt 1: bbox GPZ OBEJMUJE ramę strefy
               // (przerywaną) — objazd o +1×GRID biegł wizualnie PO granicy
               // obiektu. Prześwit 3×GRID odsuwa magistralę czytelnie POD strefę.
@@ -2501,10 +2728,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       // działa jak dla przęsła zwykłego). Kawałków tyle, ile segmentów w
       // `segmentPaths` (łańcuch segment→segment bez stacji dzieli bieg
       // po równych interwałach `OPEN_RUN_PIECE_SPAN` od końca).
-      const gpzPort = gpzComposition ? findGpzTrunkBottomPort(gpzComposition, gpzData!, stopNotes) : null;
+      const gpzPort = gpzGeometry ? findGpzTrunkBottomPort(gpzGeometry, gpzData!, stopNotes) : null;
       if (gpzPort) {
         const paths = mainCableRun!.segmentPaths!;
-        const gpzBbox = gpzComposition!.bbox;
+        const gpzBbox = gpzGeometry!.bbox;
         const belowY = snapUp(gpzBbox.y + gpzBbox.height) + 2 * GRID;
         const xEnd = Math.max(mainRowDx, snapUp(gpzPort.x) + paths.length * OPEN_RUN_PIECE_SPAN);
         paths.forEach((sp, i) => {
@@ -2624,7 +2851,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     for (const run of branchRuns) {
       const cr = cableRunById.get(run.id);
       const isFeeder =
-        gpzComposition != null &&
+        gpzGeometry != null &&
         gpzData != null &&
         (cr?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) === gpzData.id;
       if (isFeeder) continue; // feeder ma etykietę POZIOMĄ (segmentSpans), nie zejściową
@@ -2668,7 +2895,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     // głowicy tego pola — na lewo od wszystkich wierszy, więc bez kolizji;
     // przecięcia z korytarzem magistrali dostają mostki §22.1 automatycznie).
     const isGpzFeeder =
-      gpzComposition != null &&
+      gpzGeometry != null &&
       gpzData != null &&
       (cableRun?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null) === gpzData.id;
     if (isGpzFeeder) {
@@ -2690,7 +2917,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         typeof assignedFieldRef === 'string' && assignedFieldRef
           ? assignedFieldRef
           : lineBayRefs[1 + gpzFeederCount];
-      const feederPort = feederBayRef ? gpzBayBottomPort(gpzComposition!, feederBayRef) : null;
+      const feederPort = feederBayRef ? gpzBayBottomPort(gpzGeometry!, feederBayRef) : null;
       if (!feederPort) {
         stopNotes.push(
           `Feeder z pola GPZ „${run.id}": brak DEDYKOWANEGO pola liniowego GPZ (przydział=${String(assignedFieldRef ?? 'brak')}, pól liniowych=${lineBayRefs.length}) — ciąg pominięty; z jednego pola nie wolno wyprowadzić dwóch kabli.`,
@@ -2698,7 +2925,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
         continue;
       }
       gpzFeederCount += 1;
-      const gpzBottom = snapUp(gpzComposition!.bbox.y + gpzComposition!.bbox.height);
+      const gpzBottom = snapUp(gpzGeometry!.bbox.y + gpzGeometry!.bbox.height);
       let feederLayout = buildRowLayout(
         run.stationRefs, stationById, lineRuns, GPZ_NODE_CODE, cableRun, lod, stopNotes, derSourcesByStationId, true,
       );
@@ -3485,7 +3712,10 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
     ...labels.map((l) => l.rect),
     // F13.1: rama strefy GPZ to dekoracja (nie symbol/segment/etykieta) — bbox
     // sceny musi ją objąć jawnie, inaczej kamera/arkusz przycinają jej krawędzie.
-    ...(gpzComposition?.zone ? [gpzComposition.zone] : []),
+    // KD-5: rama strefy jest własnością ŚWIATA (nie renderu) — czytana z
+    // kompozycji GEOMETRYCZNEJ, więc obszar GPZ i bbox sceny są takie same na
+    // każdym LOD (zwinięcie nie przesuwa arkusza ani kamery).
+    ...(gpzGeometry?.zone ? [gpzGeometry.zone] : []),
   ]);
 
   // Feedery z pól GPZ (2026-07-17): licznik = stacje FAKTYCZNIE narysowane
@@ -3506,16 +3736,21 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       lod,
       stationCount,
       gpzId: gpzData?.id ?? null,
+      // KD-5: `parityKeys` opisuje ELEMENTY FAKTYCZNIE NARYSOWANE — na L0 blok
+      // jest zwinięty, więc kluczy pól GPZ na scenie nie ma (uczciwie puste).
+      // Reszta meta GPZ (braki danych, sekcje, transformatory, strefa, nota
+      // punktu neutralnego) opisuje MODEL, nie render — czytana z kompozycji
+      // geometrycznej, identyczna na każdym LOD.
       parityKeys: gpzComposition ? [...gpzComposition.parityKeys] : [],
-      missingData: gpzComposition ? [...gpzComposition.missingData] : [],
-      sections: gpzComposition?.sections ?? [],
-      transformers: gpzComposition?.transformers ?? [],
+      missingData: gpzGeometry ? [...gpzGeometry.missingData] : [],
+      sections: gpzGeometry?.sections ?? [],
+      transformers: gpzGeometry?.transformers ?? [],
       mainTrunkStationIds: mainRow.map((r) => r.id),
       lateralRunIds,
       stopNotes,
       sources: allSources,
-      gpzZone: gpzComposition?.zone ?? null,
-      neutralEarthingNotePl: gpzComposition?.neutralEarthingNotePl ?? null,
+      gpzZone: gpzGeometry?.zone ?? null,
+      neutralEarthingNotePl: gpzGeometry?.neutralEarthingNotePl ?? null,
       lateralShelves: packer.records(),
     },
   };
@@ -5895,6 +6130,16 @@ export function sceneConnectivityIndex(scene: SceneV3): SceneConnectivityIndex {
   };
 }
 
+/**
+ * KD-5: symbole ZWINIĘTE, których glif rysuje WŁASNĄ szynę zbiorczą
+ * (`MINI_RMU.bus` / `MINI_GPZ.szynaSn`). Deklaracja JAWNA — dopisanie tu
+ * symbolu, który szyny nie rysuje, byłoby cichym osłabieniem wymogu §14.1.
+ */
+const COLLAPSED_BUSBAR_CARRIER_SYMBOLS: ReadonlySet<SymbolId> = new Set<SymbolId>([
+  'stationCollapsed',
+  'gpzCollapsed',
+]);
+
 export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectivityGap[] {
   const sourceIndices: number[] = [];
   scene.symbols.forEach((s, i) => {
@@ -5907,6 +6152,17 @@ export function sourceConnectivityGaps(scene: SceneV3): readonly SourceConnectiv
   const busRoots = new Set<number>();
   scene.segments.forEach((seg, si) => {
     if (seg.meta?.kind === 'bus' || seg.meta?.kind === 'busGpz') busRoots.add(connectivity.segmentRoot(si));
+  });
+  // KD-5: na L0 szyna zbiorcza NIE jest osobnym odcinkiem sceny — niesie ją
+  // SYLWETKA symbolu zwiniętego (`MINI_RMU.bus` dla stacji, `MINI_GPZ.szynaSn`
+  // dla bloku GPZ; ta sama zasada, dla której L0 w ogóle istnieje: zwijamy
+  // reprezentację, nie treść). Wymóg §14.1 „źródło ma trasę do co najmniej
+  // jednej szyny" jest więc spełniony, gdy źródło dochodzi do symbolu, który
+  // szynę RYSUJE — inaczej wyrocznia karałaby za samo zwinięcie, mimo że tor
+  // źródło→szyna jest na rysunku widoczny. Zbiór JAWNY i zamknięty: wolno tu
+  // stać wyłącznie symbolom, których glif niesie szynę w swojej geometrii.
+  scene.symbols.forEach((sym, mi) => {
+    if (COLLAPSED_BUSBAR_CARRIER_SYMBOLS.has(sym.symbolId)) busRoots.add(connectivity.symbolRoot(mi));
   });
 
   const gaps: SourceConnectivityGap[] = [];
@@ -6429,6 +6685,26 @@ export function lod0ReadabilityGaps(scene: SceneV3): readonly Lod0ReadabilityGap
   //     liczbie źródeł podlegających temu LOD, external_grid zawsze).
   if (!allSourcesVisible(scene)) {
     gaps.push({ element: 'źródło', reason: `źródła sieci niewidoczne na L0: ${sourceCoverageGaps(scene).length} luk` });
+  }
+
+  // (5) KD-5: BLOK GPZ ZWINIĘTY — tożsamość i sylwetka. Ta sama dyscyplina co
+  //     dla stacji w punkcie (2)/(4): zwinięcie wolno robić tylko wtedy, gdy
+  //     zwinięty obiekt DALEJ mówi, czym jest (etykieta tożsamości) i jak jest
+  //     zbudowany (sylwetka z realnych liczb sekcji/TR/pól). Blok bez etykiety
+  //     albo bez podsumowania byłby anonimowym prostokątem — dokładnie tym,
+  //     czego zwinięcie NIE ma prawa wprowadzić.
+  for (const sym of scene.symbols) {
+    if (sym.symbolId !== 'gpzCollapsed') continue;
+    const ref = (sym.meta?.ownerRef ?? '').replace(/#.*$/, '');
+    if (!nameOwners.has(ref)) {
+      gaps.push({ element: 'tożsamość GPZ', reason: `zwinięty blok GPZ ${ref} bez etykiety tożsamości na L0` });
+    }
+    if (!sym.meta?.gpzGlyph) {
+      gaps.push({
+        element: 'sylwetka GPZ',
+        reason: `zwinięty blok GPZ ${ref} bez podsumowania sekcje/TR/pola (meta.gpzGlyph) — układ nierozpoznawalny na L0`,
+      });
+    }
   }
 
   return gaps;

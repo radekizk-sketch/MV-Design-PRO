@@ -9,7 +9,7 @@
 
 import { SYMBOL_DEFS, type SymbolId } from './defs';
 import { BASE_STROKE } from '../theme/colorTokens';
-import { MINI_RMU, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
+import { MINI_RMU, MINI_GPZ, DER_MARKER_SHAPE, type MiniRmuLineTopology, type StationDerGlyphKind } from './miniRmuGrammar';
 
 /** SCHEMAT-10 S3 (V12K-135): wartość TERAZ z `theme/colorTokens.ts`
  *  (`BASE_STROKE`) — JEDNO źródło prawdy, ta sama wartość co dotąd, zero
@@ -87,6 +87,15 @@ export interface GlyphProps {
    *  odgałęzienia na szynie (kabel zejścia rysuje scena; pełne pole
    *  odgałęźne od L1 — uzasadnienie przestrzenne w `miniRmuGrammar.ts`). */
   readonly stationLineTopology?: MiniRmuLineTopology;
+  /** KD-5: liczba SEKCJI szyn SN bloku GPZ — WYŁĄCZNIE `GpzCollapsedGlyph`
+   *  (wzór `stationSectioned`). >1 ⇒ sprzęgło sekcyjne w sylwetce. */
+  readonly gpzSections?: number;
+  /** KD-5: liczba transformatorów WN/SN bloku GPZ — 0 ⇒ sylwetka bez uzwojeń
+   *  (uczciwy obraz danych: GPZ bez TR w modelu nie dostaje fantomowego TR). */
+  readonly gpzTransformers?: number;
+  /** KD-5: liczba PÓL ODEJŚCIOWYCH (liniowych) SN bloku GPZ — rysowanych do
+   *  `MINI_GPZ.polaOdejsciowe.xs.length` (uzasadnienie limitu tamże). */
+  readonly gpzFeeders?: number;
 }
 
 function glyphGroupProps(id: SymbolId, props: GlyphProps) {
@@ -592,6 +601,80 @@ export function StationCollapsedGlyph(props: GlyphProps): JSX.Element {
 }
 
 /**
+ * KD-5 (dług nazwany w V12K-285): BLOK GPZ ZWINIĘTY na L0 — miniatura
+ * gramatyki GPZ (spec §3), nie plakietka. Rysunek WYŁĄCZNIE z `MINI_GPZ`
+ * (`miniRmuGrammar.ts`, reguła 13: zero literałów geometrii w rendererze).
+ *
+ * Tor czytany z kształtu, z góry na dół: zejście od sieci zewnętrznej → SZYNA
+ * WN → pole WN (aparat) → TRANSFORMATOR → pole TR (aparat) → SZYNA SN → POLA
+ * ODEJŚCIOWE; pole magistrali schodzi portem S do toru magistrali sceny.
+ * Liczby sekcji/transformatorów/pól pochodzą z REALNEJ kompozycji GPZ
+ * (`meta.gpzGlyph`, `scene/buildScene.ts`) — brak danych ⇒ element nie jest
+ * rysowany (zero fantomu), a nie rysowany „domyślnie".
+ */
+export function GpzCollapsedGlyph(props: GlyphProps): JSX.Element {
+  const s = stroke(props);
+  const { enclosure: e, zrodlo, szynaWn, poleWn, transformator: tr, poleTr, szynaSn, polaOdejsciowe: po, sprzeglo: sp, stroke: sw } = MINI_GPZ;
+  const sections = props.gpzSections ?? 1;
+  const transformers = props.gpzTransformers ?? 0;
+  const feeders = props.gpzFeeders ?? 0;
+  const drawnFeeders = po.xs.slice(0, Math.max(0, Math.min(feeders, po.xs.length)));
+  const sectioned = sections > 1;
+  const aparat = (x: number, y: number, size: number, testId: string): JSX.Element => (
+    <rect x={x - size / 2} y={y} width={size} height={size} fill="none" stroke={s} strokeWidth={sw.path} data-gpz-aparat={testId} />
+  );
+  return (
+    <g {...glyphGroupProps('gpzCollapsed', props)} data-gpz-silhouette="mini-gpz" data-gpz-sections={sections}>
+      {/* Obrys rozdzielni — WTÓRNY (K7). */}
+      <rect x={e.x} y={e.y} width={e.width} height={e.height} rx={e.rx} fill="none" stroke={s} strokeWidth={sw.outline} data-gpz-outline="true" />
+      {/* Zejście od sieci zewnętrznej (port N) do szyny WN. */}
+      <line x1={MINI_GPZ.axis} y1={zrodlo.stub.y1} x2={MINI_GPZ.axis} y2={zrodlo.stub.y2} stroke={s} strokeWidth={sw.path} />
+      {/* SZYNA WN. */}
+      <line x1={szynaWn.x1} y1={szynaWn.y} x2={szynaWn.x2} y2={szynaWn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="wn" />
+      {/* Pole WN transformatora (aparat w torze). */}
+      {transformers > 0 && (
+        <g data-gpz-transformer="true">
+          <line x1={poleWn.x} y1={poleWn.stub1.y1} x2={poleWn.x} y2={poleWn.stub1.y2} stroke={s} strokeWidth={sw.path} />
+          {aparat(poleWn.x, poleWn.aparat.y, poleWn.aparat.size, 'WN')}
+          <line x1={poleWn.x} y1={poleWn.stub2.y1} x2={poleWn.x} y2={poleWn.stub2.y2} stroke={s} strokeWidth={sw.path} />
+          {/* TRANSFORMATOR — dwa uzwojenia (ta sama notacja co pole TR mini-RMU). */}
+          <circle cx={tr.x} cy={tr.circle1Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
+          <circle cx={tr.x} cy={tr.circle2Y} r={tr.circleR} fill="none" stroke={s} strokeWidth={sw.marker} />
+          {/* Pole TR po stronie SN (aparat w torze). */}
+          <line x1={poleTr.x} y1={poleTr.stub1.y1} x2={poleTr.x} y2={poleTr.stub1.y2} stroke={s} strokeWidth={sw.path} />
+          {aparat(poleTr.x, poleTr.aparat.y, poleTr.aparat.size, 'TR')}
+          <line x1={poleTr.x} y1={poleTr.stub2.y1} x2={poleTr.x} y2={poleTr.stub2.y2} stroke={s} strokeWidth={sw.path} />
+        </g>
+      )}
+      {/* SZYNA SN — przy >1 sekcji realna PRZERWA + styki sprzęgła (wzór K6). */}
+      {sectioned ? (
+        <g data-gpz-sectioned="true">
+          <line x1={szynaSn.x1} y1={szynaSn.y} x2={sp.x - sp.gapHalf} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="sn" />
+          <line x1={sp.x + sp.gapHalf} y1={szynaSn.y} x2={szynaSn.x2} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} />
+          <line x1={sp.x - sp.gapHalf} y1={szynaSn.y - 3} x2={sp.x - sp.gapHalf} y2={szynaSn.y + 3} stroke={s} strokeWidth={sw.path} />
+          <line x1={sp.x + sp.gapHalf} y1={szynaSn.y - 3} x2={sp.x + sp.gapHalf} y2={szynaSn.y + 3} stroke={s} strokeWidth={sw.path} />
+        </g>
+      ) : (
+        <line x1={szynaSn.x1} y1={szynaSn.y} x2={szynaSn.x2} y2={szynaSn.y} stroke={s} strokeWidth={sw.bus} data-gpz-bus="sn" />
+      )}
+      {/* POLA ODEJŚCIOWE: pierwsze (na osi) schodzi na wylot do magistrali. */}
+      {drawnFeeders.map((x, i) => (
+        <g key={`pole-${x}`} data-gpz-feeder={i === 0 ? 'magistrala' : 'liniowe'}>
+          <line x1={x} y1={po.stub1.y1} x2={x} y2={po.stub1.y2} stroke={s} strokeWidth={sw.path} />
+          {aparat(x, po.aparat.y, po.aparat.size, i === 0 ? 'POLE-MAGISTRALA' : 'POLE')}
+          <line x1={x} y1={po.stub2.y1} x2={x} y2={po.stub2.y2} stroke={s} strokeWidth={sw.path} />
+          {i === 0 ? (
+            <line x1={x} y1={po.wyjscie.y1} x2={x} y2={po.wyjscie.y2} stroke={s} strokeWidth={sw.path} />
+          ) : (
+            <line x1={x} y1={po.stubKoncowy.y1} x2={x} y2={po.stubKoncowy.y2} stroke={s} strokeWidth={sw.path} />
+          )}
+        </g>
+      ))}
+    </g>
+  );
+}
+
+/**
  * F9.9 (spec §17.1/§17.3): przekaźnik zabezpieczeniowy — okrąg z kodami
  * funkcji ANSI/IEEE C37.2 (np. „50/51" nad „51N", maks. 2 linie ≤4 znaki,
  * §17.3 — obcinanie/wybór DWÓCH pierwszych kodów jest odpowiedzialnością
@@ -679,6 +762,7 @@ export const SYMBOL_GLYPHS: Readonly<Record<SymbolId, (props: GlyphProps) => JSX
   derWind: DerWindGlyph,
   gridSource: GridSourceGlyph,
   stationCollapsed: StationCollapsedGlyph,
+  gpzCollapsed: GpzCollapsedGlyph,
   protectionRelay: ProtectionRelayGlyph,
   meter: MeterGlyph,
 };

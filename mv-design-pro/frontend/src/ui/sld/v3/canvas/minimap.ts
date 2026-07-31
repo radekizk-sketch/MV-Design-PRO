@@ -152,7 +152,11 @@ export function minimapShapesOf(scene: SceneV3, projection: MinimapProjection): 
     const def = SYMBOL_DEFS[symbol.symbolId];
     const topLeft = projectPoint(projection, symbol.x, symbol.y);
     shapes.push({
-      kind: symbol.symbolId === 'stationCollapsed' ? 'station' : 'symbol',
+      // KD-5: blok GPZ zwinięty jest STACJĄ (zasilającą) — ta sama klasa
+      // nawigacyjna co `stationCollapsed`. Minimapa nie ma własnej ścieżki
+      // renderu: bierze to, co niesie scena L0, więc zwinięcie GPZ dziedziczy
+      // automatycznie; ta gałąź nadaje mu wyłącznie właściwą KLASĘ kształtu.
+      kind: symbol.symbolId === 'stationCollapsed' || symbol.symbolId === 'gpzCollapsed' ? 'station' : 'symbol',
       rect: {
         x: topLeft.x,
         y: topLeft.y,

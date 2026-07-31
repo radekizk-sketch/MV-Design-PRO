@@ -33,6 +33,7 @@ export type SymbolId =
   | 'derWind'          // farma wiatrowa (turbina, F9.4 §13.2)
   | 'gridSource'       // sieć zewnętrzna (Source ENM, F9.4 §13.1/§13.2)
   | 'stationCollapsed' // stacja SN/nN, widok zbiorczy (L0) — mini-RMU (sylwetka)
+  | 'gpzCollapsed'     // GPZ (rozdzielnia zasilająca), widok zbiorczy (L0) — blok zwinięty (KD-5)
   | 'protectionRelay'  // F9.9: przekaźnik zabezpieczeniowy (okrąg + kody ANSI, §17.1)
   | 'meter'            // F9.9: miernik (okrąg „M"/litera wielkości, §17.1)
   | 'loadArrow';       // zagregowany odbiór 0,4 kV (spec §12.5 — recenzja NO-GO pkt 6)
@@ -177,6 +178,29 @@ export const SYMBOL_DEFS: Readonly<Record<SymbolId, SymbolDef>> = {
     { name: 'e', x: 48, y: 24, dir: 'E' },
     { name: 'w', x: 0, y: 24, dir: 'W' },
   ], 'Stacja (widok zbiorczy)'),
+  // KD-5 (dług nazwany w V12K-285): BLOK GPZ ZWINIĘTY na poziomie przeglądowym
+  // L0 — odpowiednik `stationCollapsed` dla rozdzielni ZASILAJĄCEJ. Na L0 pełny
+  // układ wewnętrzny GPZ (szyna WN + pola WN + TR + pole TR + sekcje SN + pola
+  // liniowe = 16 symboli 16 px świata na fixturze referencyjnej) renderował się
+  // przy skali przeglądu ≈0,12 jako gąszcz plamek po ≈1,9 px — poniżej progu
+  // rozpoznawalności `MIN_SYMBOL_SCREEN_PX`, czyli szum zamiast informacji.
+  //
+  // Rozmiar 128×128 (16×GRID) WYPROWADZONY z czytelności na kadrze CAŁEJ sieci
+  // referencyjnej, TĄ SAMĄ metodą co `stationCollapsed`: przy skali fit
+  // `sldSubstrate52s` = 0,1203 daje 15,4 px ekranu (stacja 48 px → 5,78 px), a
+  // więc blok źródłowy jest 2,7× wyraźniejszy od stacji SN — hierarchia zgodna
+  // ze znaczeniem (GPZ jest jedynym punktem zasilania przeglądu). Mieści się z
+  // zapasem w rezerwie strefy GPZ (536×552 na fixturze), więc zwinięcie NIE
+  // przesuwa magistrali ani stacji (kotwica LOD-niezależna, V12K-135 §S1).
+  //
+  // Porty N/S/E/W jak `stationCollapsed`: `n` = zejście od źródła sieci
+  // zewnętrznej, `s` = zejście pola odejściowego do magistrali.
+  gpzCollapsed: def('gpzCollapsed', 128, 128, [
+    { name: 'n', x: 64, y: 0, dir: 'N' },
+    { name: 's', x: 64, y: 128, dir: 'S' },
+    { name: 'e', x: 128, y: 64, dir: 'E' },
+    { name: 'w', x: 0, y: 64, dir: 'W' },
+  ], 'Rozdzielnia zasilająca GPZ (widok zbiorczy)'),
   // F9.9 (spec §17.1/§17.3): przekaźnik zabezpieczeniowy — okrąg 24×24
   // (3×GRID) w kolumnie adnotacji pola. Element ADNOTACJI (NIE aparat toru
   // mocy, §17.1: „nie uczestniczy w ciągłości elektrycznej ani w wyroczniach
