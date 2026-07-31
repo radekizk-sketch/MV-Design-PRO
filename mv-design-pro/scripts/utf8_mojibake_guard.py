@@ -68,13 +68,12 @@ EXEMPT_PATTERNS = [
     "node_modules",
     "dist",
     "build",
-    # ZAPISY ODPOWIEDZI API Z AUDYTU (artefakty historyczne, nie tekst zrodlowy).
-    # Zostaly zrzucone narzedziem, ktore rozjechalo kodowanie \u2014 tre\u015b\u0107 jest
-    # uszkodzona w obu klasach naraz. Reczna "naprawa" falszowalaby ZAPIS
-    # audytu, wiec artefakty sa wylaczone ze skanu; DLUG: zrzuty do ponownego
-    # wykonania poprawnym narzedziem, gdy beda jeszcze potrzebne.
-    "docs/audits/backend_openapi_after_backend.json",
-    "docs/audits/backend_projects_after_backend.json",
+    # DLUG ZAMKNIETY (karta KD-3, poz. 12b). Byly tu dwa zapisy odpowiedzi API z
+    # audytu, uszkodzone w OBU klasach naraz. Wykluczenie ich ze skanu bylo
+    # maskowaniem dlugu (Zero-Debt pkt 1), a reczna "naprawa" znakow falszowalaby
+    # zapis audytu. Zrzuty zostaly WYKONANE OD NOWA poprawnym narzedziem
+    # (`backend/scripts/zrzut_api_audytu.py`, jawne UTF-8) i sa czyste, wiec
+    # wykluczenie zniknelo \u2014 od teraz pilnuje ich ten sam guard co reszte repo.
 ]
 
 SCAN_DIRS = [
