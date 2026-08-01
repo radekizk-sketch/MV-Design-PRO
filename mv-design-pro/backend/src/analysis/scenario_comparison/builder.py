@@ -5,7 +5,11 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from analysis.normative.models import NormativeReport, NormativeStatus
-from analysis.recommendations.models import RecommendationEffect, RecommendationView
+from analysis.recommendations.models import (
+    RecommendationEffect,
+    RecommendationEntry,
+    RecommendationView,
+)
 from analysis.scenario_comparison.models import (
     ScenarioComparisonEntry,
     ScenarioComparisonView,
@@ -13,6 +17,15 @@ from analysis.scenario_comparison.models import (
 )
 from analysis.sensitivity.models import SensitivityView
 from application.study_scenario.models import Run, Scenario
+
+
+@dataclass(frozen=True)
+class _ScenarioMetrics:
+    scenario: Scenario
+    risk_score: float
+    min_margin: float | None
+    not_computed_count: int
+    key_drivers: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -37,22 +50,22 @@ class ScenarioComparisonBuilder:
         metrics_sorted = sorted(
             metrics,
             key=lambda item: (
-                item["risk_score"],
-                item["scenario"].name,
-                str(item["scenario"].scenario_id),
+                item.risk_score,
+                item.scenario.name,
+                str(item.scenario.scenario_id),
             ),
         )
 
-        winner = metrics_sorted[0]["scenario"] if metrics_sorted else None
-        winner_margin = metrics_sorted[0]["min_margin"] if metrics_sorted else None
+        winner = metrics_sorted[0].scenario if metrics_sorted else None
+        winner_margin = metrics_sorted[0].min_margin if metrics_sorted else None
         winner_name = winner.name if winner else "—"
 
         entries: list[ScenarioComparisonEntry] = []
         for rank, item in enumerate(metrics_sorted):
-            scenario = item["scenario"]
-            min_margin = item["min_margin"]
+            scenario = item.scenario
+            min_margin = item.min_margin
             delta_margin = _delta_margin(min_margin, winner_margin)
-            key_drivers = tuple(item["key_drivers"])
+            key_drivers = item.key_drivers
             why_pl = _build_why(
                 scenario_name=scenario.name,
                 winner_name=winner_name,
@@ -63,10 +76,10 @@ class ScenarioComparisonBuilder:
                 ScenarioComparisonEntry(
                     scenario_id=str(scenario.scenario_id),
                     scenario_name=scenario.name,
-                    risk_score=item["risk_score"],
+                    risk_score=item.risk_score,
                     delta_margin=delta_margin,
                     delta_risk_rank=rank,
-                    not_computed_count=item["not_computed_count"],
+                    not_computed_count=item.not_computed_count,
                     key_drivers=key_drivers,
                     winner_flag=scenario == winner,
                     why_pl=why_pl,
@@ -98,7 +111,7 @@ def _resolve_generated_at(inputs: list[ScenarioComparisonInput]) -> datetime:
     return max(timestamps)
 
 
-def _scenario_metrics(entry: ScenarioComparisonInput) -> dict[str, object]:
+def _scenario_metrics(entry: ScenarioComparisonInput) -> _ScenarioMetrics:
     scenario = entry.scenario
     normative_report = entry.normative_report
     sensitivity = entry.sensitivity
@@ -160,13 +173,13 @@ def _scenario_metrics(entry: ScenarioComparisonInput) -> dict[str, object]:
         + missing_penalty
     )
 
-    return {
-        "scenario": scenario,
-        "risk_score": risk_score,
-        "min_margin": min_margin,
-        "not_computed_count": not_computed_count,
-        "key_drivers": key_drivers,
-    }
+    return _ScenarioMetrics(
+        scenario=scenario,
+        risk_score=risk_score,
+        min_margin=min_margin,
+        not_computed_count=not_computed_count,
+        key_drivers=tuple(key_drivers),
+    )
 
 
 def _normative_metrics(report: NormativeReport) -> tuple[int, int, int, float | None]:
@@ -198,7 +211,7 @@ def _min_recommendation_delta(view: RecommendationView) -> float | None:
     return min(candidates)
 
 
-def _delta_candidates(entry) -> list[float]:
+def _delta_candidates(entry: RecommendationEntry) -> list[float]:
     if entry.expected_effect != RecommendationEffect.PASS:
         return []
     if entry.required_delta is None:

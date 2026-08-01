@@ -192,7 +192,7 @@ def _build_entry_for_bus(
     if not element_list:
         missing.append("element_data")
 
-    if missing:
+    if missing or warn is None or fail is None or u_nom_kv is None:
         return LFSensitivityEntry(
             bus_id=row_bus_id,
             base_delta_pct=base_delta_pct,
@@ -208,13 +208,13 @@ def _build_entry_for_bus(
     total_delta_u = 0.0
 
     for element in element_list:
-        if None in (
-            element.r_ohm,
-            element.x_ohm,
-            element.p_mw,
-            element.q_mvar,
-            element.delta_u_r_kv,
-            element.delta_u_x_kv,
+        if (
+            element.r_ohm is None
+            or element.x_ohm is None
+            or element.p_mw is None
+            or element.q_mvar is None
+            or element.delta_u_r_kv is None
+            or element.delta_u_x_kv is None
         ):
             continue
         total_delta_u_r += float(element.delta_u_r_kv)

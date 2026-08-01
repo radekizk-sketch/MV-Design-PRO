@@ -28,7 +28,10 @@ from network_model.solvers.power_flow_unbalanced import (
     UnbalancedNetworkInput,
     solve_unbalanced_backward_forward_sweep,
 )
-from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
+from network_model.solvers.short_circuit_iec60909 import (
+    ShortCircuitIEC60909Solver,
+    ShortCircuitResult,
+)
 
 
 def _ohm_per_unit_from_pu(r_pu: float, x_pu: float) -> complex:
@@ -542,7 +545,9 @@ def build_short_circuit_graph_from_enm(enm: dict[str, Any]) -> NetworkGraph:
     return graph
 
 
-def _solve_short_circuit_scenario(graph: NetworkGraph, scenario: ExpectedShortCircuit):
+def _solve_short_circuit_scenario(
+    graph: NetworkGraph, scenario: ExpectedShortCircuit
+) -> ShortCircuitResult:
     if scenario.sc_type == "3F":
         return ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
             graph=graph,

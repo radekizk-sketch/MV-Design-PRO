@@ -33,8 +33,15 @@ class SanityCheckSeverity(StrEnum):
     WARN = "WARN"
     INFO = "INFO"
 
-    def __lt__(self, other: SanityCheckSeverity) -> bool:
-        """Porownanie dla sortowania: ERROR > WARN > INFO."""
+    def __lt__(self, other: object) -> bool:
+        """Porownanie dla sortowania: ERROR > WARN > INFO.
+
+        Sygnatura musi byc zgodna z `str.__lt__` (klasa dziedziczy po `StrEnum`),
+        wiec przyjmuje `object` i odsyla NIE-severity do domyslnego porownania
+        tekstowego zamiast wywracac sie na `KeyError`.
+        """
+        if not isinstance(other, SanityCheckSeverity):
+            return NotImplemented
         order = {
             SanityCheckSeverity.ERROR: 0,
             SanityCheckSeverity.WARN: 1,

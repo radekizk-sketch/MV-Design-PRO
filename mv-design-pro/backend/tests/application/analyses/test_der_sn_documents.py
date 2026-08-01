@@ -9,9 +9,11 @@ zero payloadu kreatora, zero fizyki. Przykład: falownik ~0,998 MW, TR blokowy
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 
-from application.analyses.lista_materialowa import build_bom_view
+from application.analyses.der_sn_track import extract_der_sn_track
+from application.analyses.lista_materialowa import build_bom_from_track, build_bom_view
 from application.analyses.raport_zgodnosci import (
     KOMUNIKAT_KRYTYCZNY,
     build_compliance_report,
@@ -192,6 +194,32 @@ def test_bom_is_deterministic_across_two_generations() -> None:
 
 def test_bom_none_when_no_der_sn_track() -> None:
     assert build_bom_view(_sn_station_enm()) is None
+
+
+def test_bom_reports_missing_links_instead_of_crashing() -> None:
+    """Niekompletny tor: BOM wymienia BRAKUJĄCE ogniwa i nie wywraca się.
+
+    Intencja pola ``braki_ogniw`` to uczciwy raport o ogniwach, których w modelu nie ma.
+    Wcześniej liczono je jako ``p["kategoria"] for p in raw if p is None`` — czyli
+    odczyt klucza z ``None``. Przy KAŻDYM niekompletnym torze generator wywracał się na
+    `TypeError`, a przy torze kompletnym pole zawsze było puste, więc defekt nie miał
+    jak się ujawnić. Ten test ćwiczy realny tor niekompletny (brak TR blokowego i kabla
+    SN) — bez naprawy pada na `TypeError`, po naprawie zwraca nazwy brakujących ogniw.
+    """
+    track = extract_der_sn_track(_materialized_snapshot())
+    assert track is not None
+    okrojony = replace(track, block_transformer=None, mv_cable=None)
+
+    bom = build_bom_from_track(okrojony)
+
+    assert bom["braki_ogniw"] == ["transformator_blokowy", "kabel_sn"]
+    assert [p["kategoria"] for p in bom["pozycje"]] == [
+        "pole_zrodlowe_sn",
+        "szyna_nn_producenta",
+        "falownik",
+    ]
+    assert [p["lp"] for p in bom["pozycje"]] == [1, 2, 3]
+    assert bom["count"] == 3
 
 
 # ---------------------------------------------------------------------------

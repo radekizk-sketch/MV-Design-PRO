@@ -32,8 +32,14 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # konkretną wartość z pomiaru. K7-A (2026-07-29): naprawa 15 błędów typów
     # u źródła w dotkniętych rendererach PDF ⇒ pomiar 273/67 → 258/65.
     # K14 (2026-07-30): jawne typy wejścia projekcji rozpływu gałęziowego ⇒ 258 → 254.
-    assert modul.BASELINE_ERRORS == 254
-    assert modul.BASELINE_FILES == 65
+    # KD-12 (2026-08-01): zdjęcie długu u źródła w warstwach API / persystencji /
+    # analiz / katalogu / operacji domenowych ⇒ pomiar 254/65 → 24/15.
+    #
+    # To JEDYNE miejsce, w którym zmierzona liczba jest powtórzona poza samym guardem.
+    # Test „odcina w obie strony" poniżej wyprowadza ją z modułu, więc obniżenie progu
+    # wymaga świadomej zmiany dokładnie tutaj (i nigdzie indziej).
+    assert modul.BASELINE_ERRORS == 24
+    assert modul.BASELINE_FILES == 15
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:
@@ -44,23 +50,28 @@ def test_guard_jest_wpiety_do_workflow_ci() -> None:
 
 
 @pytest.mark.parametrize(
-    ("bledy", "oczekiwany_kod"),
+    ("odchylka", "oczekiwany_kod"),
     [
-        (254, 0),  # stan zmierzony (K14) — przechodzi
-        (255, 1),  # dług urósł o jeden — zapadka odcina
-        (300, 1),  # dług urósł znacząco
-        (253, 1),  # dług zmalał — zapadka żąda utrwalenia poprawy
-        (0, 1),  # wszystko naprawione, ale próg nieobniżony
+        (0, 0),  # stan zmierzony — przechodzi
+        (+1, 1),  # dług urósł o jeden — zapadka odcina
+        (+46, 1),  # dług urósł znacząco
+        (-1, 1),  # dług zmalał — zapadka żąda utrwalenia poprawy
+        (-1000, 1),  # wszystko naprawione, ale próg nieobniżony
     ],
 )
 def test_prog_odcina_w_obie_strony(
-    monkeypatch: pytest.MonkeyPatch, bledy: int, oczekiwany_kod: int
+    monkeypatch: pytest.MonkeyPatch, odchylka: int, oczekiwany_kod: int
 ) -> None:
+    # Odchyłkę liczymy WZGLĘDEM progu z guarda, a nie od przepisanej tu liczby: badana
+    # własność to „odcina w obie strony", nie konkretna wartość pomiaru (ta jest
+    # przypięta w teście powyżej). Dzięki temu obniżenie progu nie wymusza edycji
+    # w dwóch miejscach — a sam pomiar nadal nie może przesunąć się po cichu.
     modul = _zaladuj_guard()
+    bledy = max(0, modul.BASELINE_ERRORS + odchylka)
     monkeypatch.setattr(
         modul,
         "uruchom_mypy",
-        lambda: (bledy, 65, f"Found {bledy} errors in 65 files"),
+        lambda: (bledy, modul.BASELINE_FILES, f"Found {bledy} errors in 1 file"),
     )
 
     assert modul.main() == oczekiwany_kod

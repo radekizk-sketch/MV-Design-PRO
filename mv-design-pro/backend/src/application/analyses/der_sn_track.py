@@ -142,7 +142,8 @@ def extract_der_sn_track(
     generator = resolve_generator(enm, generator_ref)
     if generator is None:
         return None
-    meta = generator.get("meta") if isinstance(generator.get("meta"), dict) else {}
+    meta_raw = generator.get("meta")
+    meta: dict[str, Any] = meta_raw if isinstance(meta_raw, dict) else {}
 
     bus_index = _index_by_ref(enm.get("buses") or [])
     tr_index = _index_by_ref(enm.get("transformers") or [])
@@ -183,10 +184,7 @@ def sum_apparent_power_mva(track: DerSnTrack) -> float:
     from enm.der_sn_validation import converter_apparent_power_mva
 
     p_mw = _as_float(track.generator.get("p_mw")) or 0.0
-    materialized = (
-        track.generator.get("materialized_params")
-        if isinstance(track.generator.get("materialized_params"), dict)
-        else {}
-    )
+    materialized_raw = track.generator.get("materialized_params")
+    materialized: dict[str, Any] = materialized_raw if isinstance(materialized_raw, dict) else {}
     cos_phi = _as_float(materialized.get("cosphi"))
     return converter_apparent_power_mva(p_mw, cos_phi)

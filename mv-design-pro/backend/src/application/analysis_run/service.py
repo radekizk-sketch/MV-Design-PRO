@@ -37,6 +37,7 @@ from network_model.solvers import ShortCircuitIEC60909Solver, ShortCircuitType
 from network_model.solvers.machine_sc_iec60909 import compute_machine_contributions
 from network_model.solvers.power_flow_inverter import inverter_control_from_params
 from network_model.solvers.power_flow_zip import zip_coeffs_from_materialized_params
+from network_model.solvers.short_circuit_iec60909 import ShortCircuitResult
 from network_model.validation import NetworkValidator as ModelNetworkValidator
 from network_model.validation import Severity as ModelSeverity
 
@@ -462,7 +463,7 @@ class AnalysisRunService:
             for load in loads
             if load.get("in_service", True)
         ]
-        pq_specs.sort(key=lambda spec: spec["node_id"])
+        pq_specs.sort(key=lambda spec: str(spec["node_id"]))
 
         pv_specs = []
         for source in sources:
@@ -510,7 +511,7 @@ class AnalysisRunService:
                     "q_max_mvar": float(payload.get("q_max_mvar", 1e6)),
                 }
             )
-        pv_specs.sort(key=lambda spec: spec["node_id"])
+        pv_specs.sort(key=lambda spec: str(spec["node_id"]))
 
         return {
             "snapshot_id": snapshot_id,
@@ -985,7 +986,7 @@ class AnalysisRunService:
         uow.snapshots.add_snapshot(snapshot, commit=False)
         return snapshot.meta.snapshot_id
 
-    def _solve_short_circuit(self, sc_input: dict[str, Any]):
+    def _solve_short_circuit(self, sc_input: dict[str, Any]) -> ShortCircuitResult:
         graph = sc_input["graph"]
         fault_spec = sc_input.get("fault_spec") or {}
         fault_type = self._map_fault_type(fault_spec.get("fault_type"))
@@ -1058,7 +1059,7 @@ class AnalysisRunService:
             return mapping[fault_type]
         raise ValueError(f"Unsupported fault_type: {fault_type}")
 
-    def _resolve_fault_node_id(self, graph, fault_spec: dict) -> str:
+    def _resolve_fault_node_id(self, graph: NetworkGraph, fault_spec: dict) -> str:
         fault_node_id = fault_spec.get("node_id")
         if fault_node_id:
             return str(fault_node_id)
@@ -1237,7 +1238,7 @@ class AnalysisRunService:
             }
             for source in sources
         ]
-        normalized.sort(key=lambda item: item["id"])
+        normalized.sort(key=lambda item: str(item["id"]))
         return normalized
 
     def _normalize_loads(self, loads: list[dict]) -> list[dict[str, Any]]:
@@ -1252,7 +1253,7 @@ class AnalysisRunService:
             }
             for load in loads
         ]
-        normalized.sort(key=lambda item: item["id"])
+        normalized.sort(key=lambda item: str(item["id"]))
         return normalized
 
     # ADR-011 §5b: control keys read by inverter_control_from_params, carried

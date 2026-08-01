@@ -38,15 +38,25 @@ BACKEND = ROOT / "backend"
 # K14 (2026-07-30): rozdzielenie rozplywu galeziowego od artefaktu biegu wymusilo
 # JAWNE typy wejscia projekcji rozplywu (`_sc_rozplyw_galeziowy`, `_wpis_grafu`,
 # `_odtworz_wklady_galeziowe`) — 4 bledy mniej u zrodla, prog obnizony 258->254.
-# KD-12 porcja 1 (2026-08-01): warstwa API/persystencji/analiz — jawne typy zwracane
-# endpointow eksportu (`Response`), sygnatury `TypeDecorator` SQLAlchemy (`Dialect`),
-# `UnitOfWork.__exit__` jako `Literal[False]` (deklaracja `bool` klamala, ze menedzer
-# moze polknac wyjatek), typy grafu w BoundaryIdentifier/validate_network, typy modelu
-# ENM w `enm/mapping`. Osobna nazwa dla impedancji zerowej zrodla w `enm/mapping`
-# (kolizja z nazwa z petli galeziowej chowala mozliwe `None`).
-# 48 bledow mniej u zrodla, prog obnizony 254->206, plikow 65->48.
-BASELINE_ERRORS = 206
-BASELINE_FILES = 48
+# KD-12 (2026-08-01): zdjecie dlugu U ZRODLA w warstwach API / persystencji / analiz /
+# katalogu / operacji domenowych — bez ani jednego wykluczenia, `# type: ignore` czy
+# poszerzenia sygnatury do `Any`. Glowne kategorie:
+#   * jawne typy zwracane i argumentow tam, gdzie ich brakowalo (endpointy eksportu,
+#     `TypeDecorator` SQLAlchemy, wejscia solverow rozplywu w `canonical_analysis`);
+#   * ROZDZIELENIE NAZW lokalnych, ktore w jednej funkcji oznaczaly dwie rozne rzeczy
+#     (`z0_ohm`, `curve_type`/`params`/`result`, `tmp_path`, `setpoint`, `case_id`,
+#     `materialization`, `feasible`) — kazda taka kolizja chowala przed analiza realna
+#     roznice typow;
+#   * ZWEZENIE przez wartosc zamiast przez posrednia flage/liste (`manual_equivalent`,
+#     `missing`), jedno pobranie ze slownika zamiast dwoch wywolan `.get()`;
+#   * naprawy KODU tam, gdzie deklaracja klamala: `UnitOfWork.__exit__` (`bool` ->
+#     `Literal[False]`), `_build_readiness` (deklarowal `dict`, zwraca krotke),
+#     `EligibilityService._compute_*` (`-> ...`), rejestr FixAction (typ tylko w
+#     komentarzu), `braki_ogniw` w liscie materialowej (odczyt klucza z `None`);
+#   * doinstalowane stuby `types-PyYAML` (naprawa u zrodla zamiast wyciszenia importu).
+# 230 bledow mniej, prog obnizony 254->24, plikow 65->15.
+BASELINE_ERRORS = 24
+BASELINE_FILES = 15
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 WZORZEC_SUKCESU = re.compile(r"Success: no issues found")

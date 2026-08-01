@@ -462,7 +462,7 @@ class ProofInspector:
         proof_type = self._document.proof_type.value
 
         if proof_type == ProofType.LOAD_CURRENTS_OVERLOAD.value:
-            rows: list[CounterfactualRow] = []
+            overload_rows: list[CounterfactualRow] = []
             diff = summary.counterfactual_diff
 
             def _coerce_float(value: object) -> float | None:
@@ -481,7 +481,7 @@ class ProofInspector:
                 delta = _coerce_float(diff[key_d].value)
                 if value_a is None or value_b is None or delta is None:
                     return
-                rows.append(
+                overload_rows.append(
                     CounterfactualRow(
                         name=key,
                         symbol_latex=symbol_latex,
@@ -499,9 +499,9 @@ class ProofInspector:
             _add_row("k_s_percent", r"k_{S}", "%")
             _add_row("m_s_percent", r"m_{S}", "%")
 
-            if rows:
+            if overload_rows:
                 return True, CounterfactualView(
-                    rows=tuple(rows),
+                    rows=tuple(overload_rows),
                     has_vdrop_data=False,
                 )
             return False, None

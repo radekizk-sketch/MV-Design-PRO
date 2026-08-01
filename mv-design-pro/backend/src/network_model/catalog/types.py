@@ -24,7 +24,7 @@ Usage:
 """
 
 import unicodedata
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal
 from uuid import uuid4
@@ -199,6 +199,12 @@ def _uf_control_to_dict(source: Any) -> dict[str, Any]:
         else:
             payload[name] = value
     return payload
+
+
+def _opcjonalny_float(data: dict[str, Any], key: str) -> float | None:
+    """Wartosc liczbowa spod klucza albo ``None``, gdy klucza brak/jest pusty."""
+    value = data.get(key)
+    return float(value) if value is not None else None
 
 
 def _uf_control_kwargs(data: dict[str, Any]) -> dict[str, Any]:
@@ -1245,15 +1251,11 @@ class ConverterType:
             un_kv=float(data.get("un_kv", 0.0)),
             sn_mva=float(data.get("sn_mva", 0.0)),
             pmax_mw=float(data.get("pmax_mw", 0.0)),
-            qmin_mvar=(float(data.get("qmin_mvar")) if data.get("qmin_mvar") is not None else None),
-            qmax_mvar=(float(data.get("qmax_mvar")) if data.get("qmax_mvar") is not None else None),
-            cosphi_min=(
-                float(data.get("cosphi_min")) if data.get("cosphi_min") is not None else None
-            ),
-            cosphi_max=(
-                float(data.get("cosphi_max")) if data.get("cosphi_max") is not None else None
-            ),
-            e_kwh=(float(data.get("e_kwh")) if data.get("e_kwh") is not None else None),
+            qmin_mvar=_opcjonalny_float(data, "qmin_mvar"),
+            qmax_mvar=_opcjonalny_float(data, "qmax_mvar"),
+            cosphi_min=_opcjonalny_float(data, "cosphi_min"),
+            cosphi_max=_opcjonalny_float(data, "cosphi_max"),
+            e_kwh=_opcjonalny_float(data, "e_kwh"),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
             grid_code=data.get("grid_code"),
@@ -1394,14 +1396,10 @@ class InverterType:
             un_kv=float(data.get("un_kv", 0.0)),
             sn_mva=float(data.get("sn_mva", 0.0)),
             pmax_mw=float(data.get("pmax_mw", 0.0)),
-            qmin_mvar=(float(data.get("qmin_mvar")) if data.get("qmin_mvar") is not None else None),
-            qmax_mvar=(float(data.get("qmax_mvar")) if data.get("qmax_mvar") is not None else None),
-            cosphi_min=(
-                float(data.get("cosphi_min")) if data.get("cosphi_min") is not None else None
-            ),
-            cosphi_max=(
-                float(data.get("cosphi_max")) if data.get("cosphi_max") is not None else None
-            ),
+            qmin_mvar=_opcjonalny_float(data, "qmin_mvar"),
+            qmax_mvar=_opcjonalny_float(data, "qmax_mvar"),
+            cosphi_min=_opcjonalny_float(data, "cosphi_min"),
+            cosphi_max=_opcjonalny_float(data, "cosphi_max"),
             kind=str(data.get("kind") or data.get("inverter_kind") or "INVERTER"),
             manufacturer=data.get("manufacturer"),
             model=data.get("model"),
@@ -1505,34 +1503,37 @@ class SurgeArresterType:
         )
 
 
+# Typ wartosci podany JAWNIE: `dict` jest niezmienniczy w wartosci, wiec literal
+# `dict[str, str]` nie pasowal do sygnatury `str.maketrans`. Tablica liczona raz,
+# przy imporcie, zamiast przy kazdym wywolaniu normalizacji.
+_PL_ZNAKI_DIAKRYTYCZNE: dict[str, str | int | None] = {
+    "\u0104": "A",
+    "\u0106": "C",
+    "\u0118": "E",
+    "\u0141": "L",
+    "\u0143": "N",
+    "\u00d3": "O",
+    "\u015a": "S",
+    "\u0179": "Z",
+    "\u017b": "Z",
+    "\u0105": "A",
+    "\u0107": "C",
+    "\u0119": "E",
+    "\u0142": "L",
+    "\u0144": "N",
+    "\u00f3": "O",
+    "\u015b": "S",
+    "\u017a": "Z",
+    "\u017c": "Z",
+}
+_PL_NA_ASCII = str.maketrans(_PL_ZNAKI_DIAKRYTYCZNE)
+
+
 def normalize_ptpiree_key(value: Any) -> str:
     """Stable normalization for PTPiREE manufacturer/model matching."""
 
     text = str(value or "").strip()
-    text = text.translate(
-        str.maketrans(
-            {
-                "\u0104": "A",
-                "\u0106": "C",
-                "\u0118": "E",
-                "\u0141": "L",
-                "\u0143": "N",
-                "\u00d3": "O",
-                "\u015a": "S",
-                "\u0179": "Z",
-                "\u017b": "Z",
-                "\u0105": "A",
-                "\u0107": "C",
-                "\u0119": "E",
-                "\u0142": "L",
-                "\u0144": "N",
-                "\u00f3": "O",
-                "\u015b": "S",
-                "\u017a": "Z",
-                "\u017c": "Z",
-            }
-        )
-    )
+    text = text.translate(_PL_NA_ASCII)
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
     for separator in ("-", "_", "/", "\\", "(", ")", ",", ";", ":"):
         text = text.replace(separator, " ")
@@ -1706,11 +1707,7 @@ class ProtectionDeviceType:
             vendor=data.get("vendor"),
             series=data.get("series"),
             revision=data.get("revision"),
-            rated_current_a=(
-                float(data.get("rated_current_a"))
-                if data.get("rated_current_a") is not None
-                else None
-            ),
+            rated_current_a=_opcjonalny_float(data, "rated_current_a"),
             notes_pl=data.get("notes_pl"),
             analytical_library_ref=data.get("analytical_library_ref"),
             **_catalog_metadata_kwargs(
@@ -1742,7 +1739,7 @@ class ProtectionCurve:
     name_pl: str
     standard: str | None = None
     curve_kind: str | None = None
-    parameters: dict[str, Any] = None
+    parameters: dict[str, Any] = field(default_factory=dict)
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog krzywych MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.ANALITYCZNY_V1.value
@@ -1810,7 +1807,7 @@ class ProtectionSettingTemplate:
     name_pl: str
     device_type_ref: str | None = None
     curve_ref: str | None = None
-    setting_fields: list[dict[str, Any]] = None
+    setting_fields: list[dict[str, Any]] = field(default_factory=list)
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Szablony nastaw MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.ANALITYCZNY_V1.value

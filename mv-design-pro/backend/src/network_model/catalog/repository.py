@@ -473,7 +473,7 @@ class CatalogRepository:
         return self._sorted(self.switch_equipment_types.values())
 
     def list_converter_types(self, kind: ConverterKind | None = None) -> list[ConverterType]:
-        values = self.converter_types.values()
+        values: list[ConverterType] = list(self.converter_types.values())
         if kind is not None:
             values = [item for item in values if item.kind == kind]
         return sorted(values, key=lambda item: str(item.id))

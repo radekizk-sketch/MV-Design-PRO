@@ -95,7 +95,60 @@ class LoadFlowRunInput:
     options: PowerFlowOptions = field(default_factory=PowerFlowOptions)
 
     def canonical_dict(self) -> dict[str, Any]:
-        raw = {
+        nodes: list[dict[str, Any]] = [
+            {
+                "node_id": n.node_id,
+                "node_type": n.node_type,
+                "voltage_level_kv": n.voltage_level_kv,
+            }
+            for n in self.nodes
+        ]
+        branches: list[dict[str, Any]] = [
+            {
+                "branch_id": b.branch_id,
+                "from_node_id": b.from_node_id,
+                "to_node_id": b.to_node_id,
+                "r_ohm_per_km": b.r_ohm_per_km,
+                "x_ohm_per_km": b.x_ohm_per_km,
+                "b_us_per_km": b.b_us_per_km,
+                "length_km": b.length_km,
+                "in_service": b.in_service,
+            }
+            for b in self.branches
+        ]
+        loads: list[dict[str, Any]] = [
+            {
+                "node_id": ld.node_id,
+                "p_mw": ld.p_mw,
+                "q_mvar": ld.q_mvar,
+                # ADR-011: only emit ZIP when present so constant-power
+                # loads keep their existing canonical hash byte-identical.
+                **(
+                    {"zip_coeffs": dataclasses.asdict(ld.zip_coeffs)}
+                    if ld.zip_coeffs is not None
+                    else {}
+                ),
+                # ADR-011 §5b: only emit inverter control when present so
+                # constant-PQ sources keep their canonical hash unchanged.
+                **(
+                    {"inverter_control": ld.inverter_control_params}
+                    if ld.inverter_control_params
+                    else {}
+                ),
+            }
+            for ld in self.loads
+        ]
+        generators: list[dict[str, Any]] = [
+            {
+                "node_id": g.node_id,
+                "p_mw": g.p_mw,
+                "u_pu": g.u_pu,
+                "q_min_mvar": g.q_min_mvar,
+                "q_max_mvar": g.q_max_mvar,
+            }
+            for g in self.generators
+        ]
+        raw: dict[str, Any] = {
             "base_mva": self.base_mva,
             "slack_node_id": self.slack_node_id,
             "slack_u_pu": self.slack_u_pu,
@@ -108,66 +161,21 @@ class LoadFlowRunInput:
                 "validate": self.options.validate,
                 "trace_level": self.options.trace_level,
             },
-            "nodes": [
-                {
-                    "node_id": n.node_id,
-                    "node_type": n.node_type,
-                    "voltage_level_kv": n.voltage_level_kv,
-                }
-                for n in self.nodes
-            ],
-            "branches": [
-                {
-                    "branch_id": b.branch_id,
-                    "from_node_id": b.from_node_id,
-                    "to_node_id": b.to_node_id,
-                    "r_ohm_per_km": b.r_ohm_per_km,
-                    "x_ohm_per_km": b.x_ohm_per_km,
-                    "b_us_per_km": b.b_us_per_km,
-                    "length_km": b.length_km,
-                    "in_service": b.in_service,
-                }
-                for b in self.branches
-            ],
-            "loads": [
-                {
-                    "node_id": ld.node_id,
-                    "p_mw": ld.p_mw,
-                    "q_mvar": ld.q_mvar,
-                    # ADR-011: only emit ZIP when present so constant-power
-                    # loads keep their existing canonical hash byte-identical.
-                    **(
-                        {"zip_coeffs": dataclasses.asdict(ld.zip_coeffs)}
-                        if ld.zip_coeffs is not None
-                        else {}
-                    ),
-                    # ADR-011 §5b: only emit inverter control when present so
-                    # constant-PQ sources keep their canonical hash unchanged.
-                    **(
-                        {"inverter_control": ld.inverter_control_params}
-                        if ld.inverter_control_params
-                        else {}
-                    ),
-                }
-                for ld in self.loads
-            ],
-            "generators": [
-                {
-                    "node_id": g.node_id,
-                    "p_mw": g.p_mw,
-                    "u_pu": g.u_pu,
-                    "q_min_mvar": g.q_min_mvar,
-                    "q_max_mvar": g.q_max_mvar,
-                }
-                for g in self.generators
-            ],
+            "nodes": nodes,
+            "branches": branches,
+            "loads": loads,
+            "generators": generators,
         }
+        # `raw` jest slownikiem HETEROGENICZNYM (liczby, teksty, listy), wiec odczyt
+        # `raw["nodes"]` mial dla analizy typ `object` — nieiterowalny, nienadajacy sie
+        # do `sorted`. Kolekcje sortujemy z ich WLASNYCH nazw; zawartosc i kolejnosc
+        # kluczy wyniku bez zmian (hash kanoniczny liczy `json.dumps(sort_keys=True)`).
         return {
             **raw,
-            "nodes": sorted(raw["nodes"], key=lambda x: x["node_id"]),
-            "branches": sorted(raw["branches"], key=lambda x: x["branch_id"]),
-            "loads": sorted(raw["loads"], key=lambda x: x["node_id"]),
-            "generators": sorted(raw["generators"], key=lambda x: x["node_id"]),
+            "nodes": sorted(nodes, key=lambda x: str(x["node_id"])),
+            "branches": sorted(branches, key=lambda x: str(x["branch_id"])),
+            "loads": sorted(loads, key=lambda x: str(x["node_id"])),
+            "generators": sorted(generators, key=lambda x: str(x["node_id"])),
         }
 
     def canonical_hash(self) -> str:

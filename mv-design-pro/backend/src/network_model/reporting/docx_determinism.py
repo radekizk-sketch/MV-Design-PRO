@@ -116,12 +116,15 @@ def make_docx_deterministic(path: Path | str) -> None:
         entries[core_xml_path] = (normalized_content, original_info)
 
     # Create a temporary file in the same directory for atomic replace
-    tmp_fd, tmp_path = tempfile.mkstemp(
+    # `mkstemp` zwraca SCIEZKE JAKO TEKST; osobna nazwa dla `Path`, bo nadpisanie
+    # `tmp_path` tekstem, a potem obiektem `Path`, chowalo przed analiza fakt, ze
+    # ponizej wolamy `.replace()/.exists()/.unlink()` — metody `Path`, nie `str`.
+    tmp_fd, tmp_name = tempfile.mkstemp(
         suffix=".docx.tmp",
         dir=path.parent,
     )
     os.close(tmp_fd)
-    tmp_path = Path(tmp_path)
+    tmp_path = Path(tmp_name)
 
     try:
         # Write normalized ZIP with sorted entries and fixed timestamps

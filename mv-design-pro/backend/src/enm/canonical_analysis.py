@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, cast
@@ -37,6 +38,7 @@ from infrastructure.persistence.repositories.canonical_run_repository import (
     KLUCZ_ROZPLYWU,
     canonical_run_repository_scope,
 )
+from network_model.core.graph import NetworkGraph
 from network_model.core.node import NodeType
 from network_model.solvers.phase_state_sn import (
     OpenPhaseFlags,
@@ -56,7 +58,10 @@ from network_model.solvers.power_flow_inverter import (
     InverterControl,
     inverter_control_from_params,
 )
-from network_model.solvers.power_flow_newton import PowerFlowNewtonSolver
+from network_model.solvers.power_flow_newton import (
+    PowerFlowNewtonSolution,
+    PowerFlowNewtonSolver,
+)
 from network_model.solvers.power_flow_oltc import solve_with_oltc
 from network_model.solvers.power_flow_result import build_power_flow_result_v1
 from network_model.solvers.power_flow_types import (
@@ -646,7 +651,7 @@ def run_source_compliance_now(
     return execute_run(run.id)
 
 
-def _load_graph(run: CanonicalRun):
+def _load_graph(run: CanonicalRun) -> NetworkGraph:
     enm = EnergyNetworkModel.model_validate(run.snapshot)
     return map_enm_to_network_graph(enm)
 
@@ -1212,7 +1217,7 @@ def _solve_power_flow_with_method(
     options: PowerFlowOptions,
     run_options: dict[str, Any],
     solver_method: str,
-):
+) -> PowerFlowNewtonSolution:
     if solver_method == "newton-raphson":
         return PowerFlowNewtonSolver().solve(pf_input)
     if solver_method == "gauss-seidel":
@@ -1269,7 +1274,7 @@ def _first_oltc_branch_id(pf_input: PowerFlowInput) -> str | None:
 def _run_oltc_study(
     study: str,
     pf_input: PowerFlowInput,
-    solve_once,
+    solve_once: Callable[[PowerFlowInput], PowerFlowNewtonSolution],
     run_options: dict[str, Any],
 ) -> tuple[str, dict[str, Any]] | None:
     """Dispatch an opt-in OLTC study (V12K-046) on the current pf_input.
@@ -1469,7 +1474,8 @@ def _build_converter_control_by_node(
         bus_ref = gen.get("bus_ref")
         if not isinstance(bus_ref, str) or not bus_ref.strip():
             continue
-        meta = gen.get("meta") if isinstance(gen.get("meta"), dict) else {}
+        meta_raw = gen.get("meta")
+        meta: dict[str, Any] = meta_raw if isinstance(meta_raw, dict) else {}
         mode = str(meta.get("control_mode") or gen.get("control_mode") or "").upper()
         cosphi = _oze_opt_float(meta.get("cos_phi"))
         qu_slope = _oze_opt_float(meta.get("qu_slope_pu_per_pu"))
@@ -1605,7 +1611,7 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     # V12K-045 (OLTC F2): wrap the single-shot solve with the automatic OLTC
     # control loop. Networks without automatic OLTC regulators solve exactly
     # once (oltc_trace is None) — determinism preserved.
-    def _solve_once(pfi: PowerFlowInput):
+    def _solve_once(pfi: PowerFlowInput) -> PowerFlowNewtonSolution:
         return _solve_power_flow_with_method(
             pfi,
             options,
@@ -1756,7 +1762,9 @@ def _execute_power_flow(run: CanonicalRun) -> None:
         run.power_flow_trace["oltc_control"] = oltc_trace
 
 
-def _build_power_flow_trace_steps(solution) -> list[dict[str, Any]]:
+def _build_power_flow_trace_steps(
+    solution: PowerFlowNewtonSolution,
+) -> list[dict[str, Any]]:
     steps: list[dict[str, Any]] = []
     solver_method = str(getattr(solution, "solver_method", "newton-raphson"))
     title_by_method = {
@@ -2496,7 +2504,7 @@ def build_source_compliance_results(run: CanonicalRun) -> dict[str, Any]:
     }
 
 
-def _amps_to_ka(value: object | None) -> float | None:
+def _amps_to_ka(value: float | None) -> float | None:
     if value is None:
         return None
     return float(value) / 1000.0

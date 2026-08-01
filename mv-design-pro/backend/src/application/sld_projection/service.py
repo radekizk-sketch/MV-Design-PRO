@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from uuid import UUID
 
+from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.sld_projection import SldDiagram, project_snapshot_to_sld
 
 
 class SldProjectionService:
-    def __init__(self, uow_factory) -> None:
+    def __init__(self, uow_factory: Callable[[], UnitOfWork]) -> None:
         self._uow_factory = uow_factory
 
     def get_sld_for_case(self, case_id: UUID) -> SldDiagram:

@@ -15,7 +15,7 @@ import hashlib
 import json
 import math
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from network_model.catalog.audit2_catalogs import (
     get_tap_changer,
@@ -23,6 +23,9 @@ from network_model.catalog.audit2_catalogs import (
 )
 from network_model.catalog.bay_templates import TRANSFORMER_BAY_PROTECTION_CODES
 from network_model.catalog.materialization import materialize_catalog_binding
+
+if TYPE_CHECKING:
+    from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
 
 from .models import EnergyNetworkModel
@@ -140,10 +143,13 @@ def _branch_point_port_count(
     if branch_point_type == "branch_pole":
         return 1
     raw = payload.get("branch_ports_count", catalog_params.get("branch_ports_count"))
+    domyslne = 2 if "2P" in str(payload.get("catalog_ref") or "").upper() else 1
+    if raw is None:
+        return max(1, min(2, domyslne))
     try:
         value = int(raw)
     except (TypeError, ValueError):
-        value = 2 if "2P" in str(payload.get("catalog_ref") or "").upper() else 1
+        value = domyslne
     return max(1, min(2, value))
 
 
@@ -204,13 +210,13 @@ def _branch_point_materialized_params(
     catalog_params: dict[str, Any],
     branch_ports_count: int,
 ) -> dict[str, Any]:
+    payload_params_raw = payload.get("materialized_params")
+    payload_params: dict[str, Any] = (
+        payload_params_raw if isinstance(payload_params_raw, dict) else {}
+    )
     materialized = {
         **catalog_params,
-        **(
-            payload.get("materialized_params")
-            if isinstance(payload.get("materialized_params"), dict)
-            else {}
-        ),
+        **payload_params,
         "catalog_item_id": catalog_ref,
         "catalog_namespace": payload.get("catalog_namespace") or "mv_branch_points",
         "has_transformer": False,
@@ -1245,10 +1251,12 @@ def _is_mv_route_segment(branch: dict[str, Any] | None) -> bool:
         return False
     if branch.get("type") not in {"cable", "line_overhead"}:
         return False
-    tags = branch.get("tags") if isinstance(branch.get("tags"), list) else []
+    tags_raw = branch.get("tags")
+    tags: list[Any] = tags_raw if isinstance(tags_raw, list) else []
     if "branch_point_internal_connector" in tags:
         return False
-    meta = branch.get("meta") if isinstance(branch.get("meta"), dict) else {}
+    meta_raw = branch.get("meta")
+    meta: dict[str, Any] = meta_raw if isinstance(meta_raw, dict) else {}
     return meta.get("render_on_sld") is not False
 
 
@@ -1450,9 +1458,11 @@ def _resolve_initial_trunk_start_field(
     field_specs_by_bus = _field_specs_by_bus(enm)
     source_bus_refs = sorted(
         {
-            source.get("bus_ref")
+            bus_ref
             for source in enm.get("sources", [])
-            if isinstance(source, dict) and isinstance(source.get("bus_ref"), str)
+            if isinstance(source, dict)
+            for bus_ref in [source.get("bus_ref")]
+            if isinstance(bus_ref, str)
         }
     )
     for bus_ref in source_bus_refs:
@@ -1476,7 +1486,9 @@ def _resolve_initial_trunk_start_field(
     return None
 
 
-def _build_readiness(enm: dict[str, Any]) -> dict[str, Any]:
+def _build_readiness(
+    enm: dict[str, Any],
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     """Oblicz gotowość i blokery z walidatora."""
     try:
         enm_model = EnergyNetworkModel.model_validate(enm)
@@ -1706,9 +1718,11 @@ def _compute_logical_views(enm: dict[str, Any]) -> dict[str, Any]:
     field_specs_by_bus = _field_specs_by_bus(enm)
     source_bus_refs = sorted(
         {
-            source.get("bus_ref")
+            bus_ref
             for source in enm.get("sources", [])
-            if isinstance(source, dict) and isinstance(source.get("bus_ref"), str)
+            if isinstance(source, dict)
+            for bus_ref in [source.get("bus_ref")]
+            if isinstance(bus_ref, str)
         }
     )
 
@@ -2062,7 +2076,7 @@ def _lookup_branch_from_ref_for_bus(
     return None, "branch_connection.source_not_branch_capable"
 
 
-def _get_catalog_safe():
+def _get_catalog_safe() -> CatalogRepository | None:
     """Załaduj katalog MV (bezpieczne — zwraca None przy braku)."""
     try:
         from network_model.catalog import get_default_mv_catalog
@@ -2295,7 +2309,9 @@ def _apply_materialized_transformer_fields(
             target[target_key] = materialized_params[source_key]
 
 
-def _as_positive_float(value: object) -> float | None:
+def _as_positive_float(value: float | str | None) -> float | None:
+    if value is None:
+        return None
     try:
         parsed = float(value)
     except (TypeError, ValueError):
@@ -2303,9 +2319,11 @@ def _as_positive_float(value: object) -> float | None:
     return parsed if parsed > 0 else None
 
 
-def _opt_int(value: object) -> int | None:
+def _opt_int(value: float | str | None) -> int | None:
+    if value is None:
+        return None
     try:
-        return int(value)  # type: ignore[arg-type]
+        return int(value)
     except (TypeError, ValueError):
         return None
 
@@ -2780,7 +2798,7 @@ def _require_catalog_ref(
 
 def _resolve_manual_source_equivalent(
     payload: dict[str, Any],
-) -> dict[str, Any] | None | dict[str, Any]:
+) -> dict[str, Any] | None:
     manual = payload.get("manual_equivalent")
     if manual is None:
         return None
@@ -2839,7 +2857,11 @@ def _resolve_manual_source_equivalent(
             "source.manual_equivalent_incomplete",
         )
 
-    if input_side == "HV_110" and voltage_kv is None:
+    # Rownowaznie do dotychczasowego `input_side == "HV_110" and voltage_kv is None`:
+    # dla strony SN `voltage_kv` JEST `sn_voltage_kv`, a brak `sn_voltage_kv` odciela juz
+    # bramka powyzej — wiec `voltage_kv is None` moze zajsc wylacznie po stronie WN.
+    # Warunek na samej wartosci zweza typ do `float` w calej reszcie funkcji.
+    if voltage_kv is None:
         return _error_response(
             "Reczna umowa rownowazna GPZ WN/SN wymaga dodatniego napiecia strony WN.",
             "source.manual_equivalent_incomplete",
@@ -2936,7 +2958,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     manual_equivalent = _resolve_manual_source_equivalent(payload)
     if isinstance(manual_equivalent, dict) and manual_equivalent.get("error"):
         return manual_equivalent
-    manual_source_mode = isinstance(manual_equivalent, dict)
+    manual_source_mode = manual_equivalent is not None
     gpz_section_entries = _normalize_gpz_section_entries(payload)
     sections_count = int(payload.get("sections_count", len(gpz_section_entries) or 1) or 1)
     if len(gpz_section_entries) != sections_count:
@@ -2978,7 +3000,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                 ),
                 "source.invalid_line_fields_count",
             )
-    if manual_source_mode and (voltage_kv is None or voltage_kv <= 0):
+    if manual_equivalent is not None and (voltage_kv is None or voltage_kv <= 0):
         voltage_kv = manual_equivalent["voltage_kv"]
     if voltage_kv is None or voltage_kv <= 0:
         # Pobierz napięcie z jawnych ustawień projektu (ENM defaults)
@@ -3016,7 +3038,10 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
         )
     if source_identity:
         for source in existing_sources:
-            source_meta = source.get("meta") if isinstance(source.get("meta"), dict) else {}
+            source_meta_raw = source.get("meta")
+            source_meta: dict[str, Any] = (
+                source_meta_raw if isinstance(source_meta_raw, dict) else {}
+            )
             existing_identity = (
                 source_meta.get("source_id")
                 or source_meta.get("solution_ref")
@@ -3055,7 +3080,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             grounding_config["x_ohm"] = float(grounding_payload["x_ohm"])
 
     zero_sequence_payload = payload.get("zero_sequence")
-    zero_sequence_config = None
+    zero_sequence_config: dict[str, bool | float] | None = None
     if zero_sequence_payload is not None:
         if not isinstance(zero_sequence_payload, dict):
             return _error_response(
@@ -3069,7 +3094,7 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
 
     catalog_binding = payload.get("catalog_binding")
     binding_payload = None
-    if manual_source_mode:
+    if manual_equivalent is not None:
         catalog_ref = None
         materialized_params = {
             "voltage_rating_kv": manual_equivalent["voltage_kv"],
@@ -3448,12 +3473,14 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             {"step": ev_seq, "action": "Utworzono sprzęgło sekcyjne GPZ", "element_id": coupler_ref}
         )
 
-    field_specs = []
+    field_specs: list[dict[str, Any]] = []
     for idx, section in enumerate(gpz_sections):
-        line_field_names = section.get("line_field_names")
-        if not isinstance(line_field_names, list):
-            line_field_names = []
-        section_bays = section.get("bays") if isinstance(section.get("bays"), list) else []
+        section_field_names_raw = section.get("line_field_names")
+        section_field_names = (
+            section_field_names_raw if isinstance(section_field_names_raw, list) else []
+        )
+        section_bays_raw = section.get("bays")
+        section_bays = section_bays_raw if isinstance(section_bays_raw, list) else []
         for field_index in range(int(section.get("line_fields_count") or 1)):
             bay_spec = section_bays[field_index] if field_index < len(section_bays) else {}
             bay_ref = _make_id("gpz", seed, f"bay/{idx + 1:03d}/{field_index + 1:03d}")
@@ -3469,7 +3496,11 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             )
             bay_name = (
                 bay_spec.get("name")
-                or (line_field_names[field_index] if field_index < len(line_field_names) else None)
+                or (
+                    section_field_names[field_index]
+                    if field_index < len(section_field_names)
+                    else None
+                )
                 or f"Pole liniowe GPZ {idx + 1}.{field_index + 1}"
             )
             # Szablon pola producenta: preferuj per-pole, potem sekcyjny.
@@ -7843,7 +7874,7 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
     ) or transformer_payload.get("catalog_ref")
     if transformer_catalog_ref:
         # Bus nN
-        bus_nn = {
+        bus_nn: dict[str, Any] = {
             "ref_id": bus_nn_ref,
             "name": f"Szyna nN {station_name}",
             "voltage_kv": nn_voltage_kv,
@@ -7955,17 +7986,17 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             equipment_refs = [transformer_ref]
             spec["equipment_refs"] = [transformer_ref]
         else:
-            materialization, equipment_refs = _materialize_sn_field_apparatus(
+            bay_materialization, equipment_refs = _materialize_sn_field_apparatus(
                 spec=spec,
                 bay_ref=bay_ref,
                 bay_role=bay_role,
                 field_role=field_role,
                 ordinal=len(existing_bay_refs) + 1,
             )
-            if isinstance(materialization, dict):
-                return materialization
-            if materialization is not None:
-                new_enm = materialization.enm
+            if isinstance(bay_materialization, dict):
+                return bay_materialization
+            if bay_materialization is not None:
+                new_enm = bay_materialization.enm
         new_bay = {
             "ref_id": bay_ref,
             "name": f"Pole {bay_role} — {station_name}",

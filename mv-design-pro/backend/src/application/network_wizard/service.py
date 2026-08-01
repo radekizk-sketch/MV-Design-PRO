@@ -1041,14 +1041,14 @@ class NetworkWizardService:
                 )
                 continue
             if source.get("source_type") == "CONVERTER":
-                setpoint = converter_setpoints.get(str(source.get("id")))
-                if setpoint is None:
+                conv_setpoint = converter_setpoints.get(str(source.get("id")))
+                if conv_setpoint is None:
                     continue
                 pq_specs.append(
                     PQSpec(
                         node_id=str(source["node_id"]),
-                        p_mw=setpoint.p_mw,
-                        q_mvar=self._resolve_converter_q_mvar(setpoint),
+                        p_mw=conv_setpoint.p_mw,
+                        q_mvar=self._resolve_converter_q_mvar(conv_setpoint),
                         inverter_control=inverter_control_from_params(
                             payload, base_mva, payload.get("sn_mva")
                         ),
@@ -1419,8 +1419,8 @@ class NetworkWizardService:
 
             for source in parsed.get("sources", []):
                 try:
-                    payload = self._source_payload_from_dict(source)
-                    record = self._source_payload_to_record(project_id, payload)
+                    source_payload = self._source_payload_from_dict(source)
+                    record = self._source_payload_to_record(project_id, source_payload)
                     uow.wizard.upsert_source(project_id, record, commit=False)
                     result = "updated" if record["id"] in existing_source_ids else "created"
                     created, updated = self._bump_counts(result, created, updated, "sources")
@@ -1486,12 +1486,16 @@ class NetworkWizardService:
 
             for state in parsed.get("switching_states", []):
                 try:
-                    case_id = UUID(str(state.get("case_id")))
+                    state_case_id = UUID(str(state.get("case_id")))
                     element_id = UUID(str(state.get("element_id")))
                     element_type = str(state.get("element_type"))
                     in_service = bool(state.get("in_service", True))
                     uow.wizard.set_switching_state(
-                        case_id, element_id, element_type, in_service, commit=False
+                        state_case_id,
+                        element_id,
+                        element_type,
+                        in_service,
+                        commit=False,
                     )
                     created, updated = self._bump_counts(
                         "created", created, updated, "switching_states"

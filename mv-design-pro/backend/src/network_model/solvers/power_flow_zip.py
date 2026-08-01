@@ -16,6 +16,7 @@ invariant that keeps the frozen solver byte-identical when no ZIP load exists.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -197,12 +198,12 @@ def aggregate_zip(
         return None
     v0_pu, f0_hz = ref.v0_pu, ref.f0_hz
 
-    def _share_p(getter) -> float:
+    def _share_p(getter: Callable[[ZipCoeffs | None], float]) -> float:
         if p_tot == 0.0:
             return 0.0
         return sum(p * getter(c) for p, _q, c in components) / p_tot
 
-    def _share_q(getter) -> float:
+    def _share_q(getter: Callable[[ZipCoeffs | None], float]) -> float:
         if q_tot == 0.0:
             return 0.0
         return sum(q * getter(c) for _p, q, c in components) / q_tot

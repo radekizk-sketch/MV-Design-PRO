@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 from uuid import UUID
 
 from domain.analysis_run import (
@@ -12,7 +12,7 @@ from domain.analysis_run import (
 )
 from infrastructure.persistence.models import AnalysisRunORM
 from infrastructure.persistence.time_utils import ensure_utc
-from sqlalchemy import select, update
+from sqlalchemy import CursorResult, select, update
 from sqlalchemy.orm import Session
 
 
@@ -180,7 +180,11 @@ class AnalysisRunRepository:
             .where(AnalysisRunORM.project_id == project_id)
             .values(result_status="OUTDATED")
         )
-        result = self._session.execute(stmt)
+        # `Session.execute` jest typowane ogolnym `Result[Any]`, ale dla instrukcji DML
+        # (`update()`) SQLAlchemy ZAWSZE zwraca `CursorResult` — i tylko on niesie
+        # `rowcount`. Jawne zawezenie zamiast siegania po atrybut, ktorego deklarowany
+        # typ nie ma.
+        result = cast(CursorResult[Any], self._session.execute(stmt))
         if commit:
             self._session.commit()
         return int(result.rowcount or 0)
@@ -201,7 +205,11 @@ class AnalysisRunRepository:
             .where(AnalysisRunORM.result_status == "VALID")
             .values(result_status="OUTDATED")
         )
-        result = self._session.execute(stmt)
+        # `Session.execute` jest typowane ogolnym `Result[Any]`, ale dla instrukcji DML
+        # (`update()`) SQLAlchemy ZAWSZE zwraca `CursorResult` — i tylko on niesie
+        # `rowcount`. Jawne zawezenie zamiast siegania po atrybut, ktorego deklarowany
+        # typ nie ma.
+        result = cast(CursorResult[Any], self._session.execute(stmt))
         if commit:
             self._session.commit()
         return int(result.rowcount or 0)
