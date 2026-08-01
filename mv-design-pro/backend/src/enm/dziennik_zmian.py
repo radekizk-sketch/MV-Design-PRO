@@ -37,6 +37,7 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from domain.canonical_operations import CANONICAL_OPERATIONS
 
@@ -113,6 +114,23 @@ def _store_dir() -> Path:
     return Path(configured) if configured else _DEFAULT_STORE_DIR
 
 
+def sciezka_tymczasowa(sciezka_docelowa: Path) -> Path:
+    """Unikalna nazwa pliku roboczego zapisu atomowego (defekt D4 audytu 2026-08-01).
+
+    Wspolna nazwa `<digest>.tmp` byla dzielona przez WSZYSTKIE rownolegle zapisy
+    tego samego przypadku: pierwszy watek robil `replace()`, drugi trafial na
+    `FileNotFoundError` (`…<digest>.tmp -> …<digest>.json`), a uzytkownik dostawal
+    HTTP 422 „blad zapisu" mimo ze model w pamieci juz awansowal o rewizje. Nazwa
+    z identyfikatorem procesu i losowym znacznikiem daje kazdemu zapisowi WLASNY
+    plik roboczy; atomowa podmiana `replace()` zostaje bez zmian.
+
+    Helper mieszka tutaj (a nie w `enm/store.py`), bo `store` importuje dziennik —
+    odwrotny kierunek byłby cyklem importu. Uzywaja go OBA zapisy towarzyszace
+    modelowi: snapshot i dziennik.
+    """
+    return sciezka_docelowa.with_name(f"{sciezka_docelowa.name}.{os.getpid()}.{uuid4().hex}.tmp")
+
+
 def _sciezka(case_id: str) -> Path:
     digest = sha256(case_id.encode("utf-8")).hexdigest()
     return _store_dir() / f"{digest}.dziennik.json"
@@ -142,16 +160,24 @@ def _zapisz(case_id: str, dziennik: _Dziennik) -> None:
     katalog = _store_dir()
     katalog.mkdir(parents=True, exist_ok=True)
     sciezka = _sciezka(case_id)
-    tmp = sciezka.with_suffix(".tmp")
+    # Nazwa pliku roboczego unikalna per proces i zapis — wspolna `<digest>.dziennik.tmp`
+    # gubila sie przy rownoleglych zapisach tego samego przypadku (`replace()`
+    # drugiego watku konczyl sie `FileNotFoundError`); ta sama poprawka co w
+    # `enm/store.py` (defekt D4 audytu 2026-08-01).
+    tmp = sciezka_tymczasowa(sciezka)
     payload = {
         "case_id": case_id,
         "wpisy": [w.to_dict() for w in dziennik.wpisy],
     }
-    tmp.write_text(
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
-        encoding="utf-8",
-    )
-    tmp.replace(sciezka)
+    try:
+        tmp.write_text(
+            json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        tmp.replace(sciezka)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
 
 
 def opis_operacji(operacja: str | None) -> str:
@@ -227,6 +253,10 @@ def wyczysc_dziennik(*, usun_pliki: bool = True) -> None:
     if not katalog.exists():
         return
     for path in katalog.glob("*.dziennik.json"):
+        path.unlink(missing_ok=True)
+    # Dwa wzorce: `<digest>.dziennik.json.<pid>.<znacznik>.tmp` (nazwa unikalna,
+    # po naprawie kolizji plikow roboczych) oraz historyczne `<digest>.dziennik.tmp`.
+    for path in katalog.glob("*.dziennik.json.*.tmp"):
         path.unlink(missing_ok=True)
     for path in katalog.glob("*.dziennik.tmp"):
         path.unlink(missing_ok=True)

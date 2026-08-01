@@ -183,6 +183,13 @@ def apply_station_template(
     4. Execute domain operation
     5. Optionally chain DER additions
     6. Return created element refs + readiness report
+
+    Koncowka celowo pozostaje SYNCHRONICZNA (`def`): zastosowanie szablonu to
+    kilkaset milisekund pracy procesora, wiec w petli zdarzen zablokowaloby cala
+    aplikacje. Rownolegle zadania na TYM SAMYM przypadku serializuje blokada
+    przypadku zalozona w `apply_template_to_case` (defekt D4 audytu 2026-08-01) —
+    zamiana na `async def` NIE jest naprawa wyscigu, tylko schowaniem go za petla
+    zdarzen.
     """
     template = get_template(template_id)
     if template is None:

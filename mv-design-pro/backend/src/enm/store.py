@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
@@ -9,6 +10,7 @@ from pathlib import Path
 
 from enm.catalog_completion import complete_catalog_defaults
 from enm.dziennik_zmian import dopisz as dopisz_do_dziennika
+from enm.dziennik_zmian import sciezka_tymczasowa
 from enm.hash import compute_enm_hash
 from enm.migrations.punkt_przylaczenia_der import migruj as migruj_punkt_przylaczenia
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
@@ -32,6 +34,42 @@ class ZrodloZmiany:
 
 _enm_store: dict[str, EnergyNetworkModel] = {}
 _DEFAULT_STORE_DIR = Path(__file__).resolve().parents[2] / ".enm_store"
+
+# Blokady zapisu modelu — JEDNA na przypadek obliczeniowy.
+_blokady_przypadkow: dict[str, threading.RLock] = {}
+_rejestr_blokad = threading.Lock()
+
+
+def blokada_przypadku(case_id: str) -> threading.RLock:
+    """Blokada CALEGO cyklu odczyt→przeliczenie→zapis modelu jednego przypadku.
+
+    DLUG, KTORY TO ZAMYKA (defekt D4 audytu 2026-08-01). `set_enm` czyta biezacy
+    model, liczy z niego nowa rewizje i podmienia wpis w globalnym slowniku. Ta
+    sekwencja nie byla niczym serializowana, a koncowka `POST
+    /api/station-templates/{id}/apply` jest zdefiniowana jako `def`, wiec Starlette
+    oddaje ja do PULI WATKOW — dwa zadania biegly naprawde rownolegle na tej samej
+    bazie wyjsciowej. Zwyciezal ten, ktory zapisal jako ostatni; praca drugiego
+    znikala, a API meldowalo HTTP 200 z lista utworzonych elementow, ktorych w
+    modelu nie ma (zmierzone: 4 zadania → +1 stacja, rewizja +4).
+
+    DLACZEGO `threading.RLock`, A NIE `asyncio.Lock`. Wyscig siedzi w watkach
+    roboczych, a nie w petli zdarzen — blokada asynchroniczna nie obejmuje kodu
+    wykonywanego przez pule watkow. `RLock` jest REENTRANTNY, bo `get_enm` moze
+    zawolac `set_enm` (migracja formatu, uzupelnienie danych katalogowych), a
+    warstwa wyzej (zastosowanie szablonu stacji) trzyma te sama blokade przez caly
+    cykl — blokada nie-reentrantna zakleszczylaby sie na wlasnym watku.
+
+    ZAKRES: ochrona W PROCESIE. Blokada miedzyprocesowa (uvicorn z wiecej niz
+    jednym pracownikiem, wiele instancji) jest osobna decyzja wdrozeniowa i NIE
+    jest tu realizowana — patrz `docs/audit/AUDYT_SZCZYTU_2026-08-01.md`, sekcja 4
+    pkt 7.
+    """
+    with _rejestr_blokad:
+        blokada = _blokady_przypadkow.get(case_id)
+        if blokada is None:
+            blokada = threading.RLock()
+            _blokady_przypadkow[case_id] = blokada
+        return blokada
 
 
 def _store_dir() -> Path:
@@ -67,7 +105,7 @@ def _persist_enm(case_id: str, enm: EnergyNetworkModel) -> None:
     store_dir = _store_dir()
     store_dir.mkdir(parents=True, exist_ok=True)
     path = _case_path(case_id)
-    tmp_path = path.with_suffix(".tmp")
+    tmp_path = sciezka_tymczasowa(path)
     payload = {
         "case_id": case_id,
         "snapshot": enm.model_dump(mode="json"),
@@ -75,11 +113,17 @@ def _persist_enm(case_id: str, enm: EnergyNetworkModel) -> None:
         "revision": enm.header.revision,
         "updated_at": enm.header.updated_at.isoformat(),
     }
-    tmp_path.write_text(
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
-        encoding="utf-8",
-    )
-    tmp_path.replace(path)
+    try:
+        tmp_path.write_text(
+            json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        tmp_path.replace(path)
+    except OSError:
+        # Nieudany zapis nie moze zostawic po sobie pliku roboczego — nazwa jest
+        # teraz unikalna, wiec nikt inny go nie sprzatnie.
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 def has_enm(case_id: str) -> bool:
@@ -89,6 +133,15 @@ def has_enm(case_id: str) -> bool:
 
 def get_enm(case_id: str) -> EnergyNetworkModel:
     """Return the current ENM snapshot for a case, creating a default model if needed."""
+    with blokada_przypadku(case_id):
+        return _get_enm_pod_blokada(case_id)
+
+
+def _get_enm_pod_blokada(case_id: str) -> EnergyNetworkModel:
+    # Odczyt bierze te sama blokade co zapis, bo NIE JEST czystym odczytem:
+    # tworzy model domyslny, migruje format i uzupelnia dane katalogowe, a wynik
+    # ZAPISUJE (`set_enm` nizej). Bez blokady dwa rownolegle odczyty swiezego
+    # przypadku utworzylyby dwa rozne modele domyslne.
     if case_id not in _enm_store:
         persisted = _load_persisted_enm(case_id)
         if persisted is not None:
@@ -132,7 +185,23 @@ def set_enm(
     a nie polem modelu. Zapis bez zrodla trafia do dziennika z `operacja = None` —
     projektant ma wiedziec, ze rewizja powstala, nawet gdy przyczyna nie zostala
     zarejestrowana; cisza w tym miejscu bylaby luka w historii.
+
+    CALY cykl (odczyt biezacego modelu → wyliczenie rewizji → podmiana w pamieci →
+    zapis pliku → wpis do dziennika) biegnie w JEDNEJ sekcji krytycznej przypadku
+    (defekt D4). Dlatego rewizja i jej wpis w dzienniku powstaja razem albo wcale:
+    dziennik odpowiada na pytanie „ktora zmiana uniewaznila moj wynik" (V12K-264) i
+    z dziurami nie odpowiada.
     """
+    with blokada_przypadku(case_id):
+        return _set_enm_pod_blokada(case_id, enm, zrodlo_zmiany=zrodlo_zmiany)
+
+
+def _set_enm_pod_blokada(
+    case_id: str,
+    enm: EnergyNetworkModel,
+    *,
+    zrodlo_zmiany: ZrodloZmiany | None,
+) -> EnergyNetworkModel:
     enm, _ = complete_catalog_defaults(enm)
     existing = _enm_store.get(case_id)
     if existing is not None:
@@ -147,20 +216,62 @@ def set_enm(
     enm.header.updated_at = datetime.now(UTC)
     enm.header.hash_sha256 = compute_enm_hash(enm)
     _enm_store[case_id] = enm
-    _persist_enm(case_id, enm)
-    dopisz_do_dziennika(
-        case_id,
-        rewizja=enm.header.revision,
-        operacja=zrodlo_zmiany.operacja if zrodlo_zmiany else None,
-        utworzone=zrodlo_zmiany.utworzone if zrodlo_zmiany else (),
-        zmienione=zrodlo_zmiany.zmienione if zrodlo_zmiany else (),
-        usuniete=zrodlo_zmiany.usuniete if zrodlo_zmiany else (),
-        znacznik_czasu=enm.header.updated_at,
-    )
+    plik_istnial = _case_path(case_id).exists()
+    try:
+        _persist_enm(case_id, enm)
+        dopisz_do_dziennika(
+            case_id,
+            rewizja=enm.header.revision,
+            operacja=zrodlo_zmiany.operacja if zrodlo_zmiany else None,
+            utworzone=zrodlo_zmiany.utworzone if zrodlo_zmiany else (),
+            zmienione=zrodlo_zmiany.zmienione if zrodlo_zmiany else (),
+            usuniete=zrodlo_zmiany.usuniete if zrodlo_zmiany else (),
+            znacznik_czasu=enm.header.updated_at,
+        )
+    except Exception:
+        _wycofaj_nieudany_zapis(case_id, existing, plik_istnial=plik_istnial)
+        raise
     return enm
 
 
+def _wycofaj_nieudany_zapis(
+    case_id: str,
+    poprzedni: EnergyNetworkModel | None,
+    *,
+    plik_istnial: bool,
+) -> None:
+    """Cofnij rewizje, ktorej NIE UDALO SIE zapisac (defekt D4, wariant 2 i 3).
+
+    Wczesniej `_enm_store[case_id] = enm` wykonywalo sie PRZED zapisem pliku, wiec
+    wyjatek zapisu zostawial system w stanie, ktorego nikt nie zadeklarowal:
+    uzytkownik dostawal „blad zapisu", a zywy model byl juz o rewizje do przodu
+    (zmierzone: rewizja +4 przy dwoch odpowiedziach 200), dziennik zas nie mial
+    wpisu dla tej rewizji (zmierzone dziury: rewizje 7 i 9 bez wpisu). Operacja,
+    ktora melduje blad, ma nie zostawiac po sobie ZADNEGO skutku.
+
+    Wyjatek podniesiony przez samo cofanie NIE jest tlumiony — leci wyzej z
+    oryginalnym bledem w kontekscie, bo awaria nosnika w trakcie wycofywania jest
+    faktem, ktory inzynier musi zobaczyc.
+
+    `plik_istnial` chroni przed skasowaniem CUDZEGO stanu: gdy przypadku nie bylo w
+    pamieci, ale jego snapshot lezal na dysku (np. po restarcie procesu), wycofanie
+    nie moze usunac pliku — to bylaby utrata danych zamiast cofniecia zmiany.
+    Usuwamy wylacznie plik, ktory powstal w tej nieudanej probie.
+    """
+    if poprzedni is None:
+        _enm_store.pop(case_id, None)
+        if not plik_istnial:
+            _case_path(case_id).unlink(missing_ok=True)
+        return
+    _enm_store[case_id] = poprzedni
+    _persist_enm(case_id, poprzedni)
+
+
 def reset_enm_store(*, remove_persisted: bool = True) -> None:
+    # Rejestr blokad NIE jest czyszczony celowo: wymiana obiektu blokady w chwili,
+    # gdy inny watek ja trzyma, oddalaby drugiemu watkowi INNA blokade — czyli
+    # przywracalaby dokladnie ten wyscig, ktory blokada usuwa. Wpis to jeden
+    # obiekt `RLock` na przypadek.
     _enm_store.clear()
     if not remove_persisted:
         return

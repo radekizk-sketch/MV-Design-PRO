@@ -13,6 +13,7 @@ Returns: { created_element_refs, snapshot, readiness }
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 from uuid import UUID
@@ -20,6 +21,9 @@ from uuid import UUID
 from application.station_templates.schema import StationTemplate
 from enm.domain_operations import execute_domain_operation
 from enm.models import EnergyNetworkModel
+from enm.store import blokada_przypadku
+
+logger = logging.getLogger(__name__)
 
 
 class TemplateApplyError(Exception):
@@ -49,13 +53,46 @@ def apply_template_to_case(
     4. Chain additional nN feeders (jeśli nn_feeders_count > default)
     5. Chain DER additions per template.schema.der_options
     6. Persist final ENM
+
+    WSPOLBIEZNOSC (defekt D4 audytu 2026-08-01). Koncowka `POST
+    /api/station-templates/{id}/apply` jest zdefiniowana jako `def`, wiec Starlette
+    wykonuje ja w PULI WATKOW — dwa zatwierdzenia szablonu na tym samym przypadku
+    biegly naprawde rownolegle. Kroki 1-6 czytaja model raz i zapisuja go na koncu,
+    wiec bez serializacji drugi zapis nadpisywal caly dorobek pierwszego (zmierzone:
+    4 zadania po HTTP 200, w modelu przybywala JEDNA stacja). Blokada obejmuje CALY
+    cykl, a nie samo `set_enm` — blokada zalozona dopiero na zapisie nie pomaga, bo
+    stary model zostal odczytany wczesniej. Zamiana `def` na `async def` NIE jest
+    naprawa: chowa wyscig za petla zdarzen zamiast go usunac.
+
+    Blokada jest per przypadek obliczeniowy — zastosowania szablonu na ROZNYCH
+    przypadkach nadal biegna rownolegle.
     """
+    case_key = str(case_id)
+    with blokada_przypadku(case_key):
+        return _zastosuj_szablon_pod_blokada(
+            template=template,
+            case_key=case_key,
+            target_segment_id=target_segment_id,
+            insert_at_ratio=insert_at_ratio,
+            params_override=params_override,
+            catalog_profile=catalog_profile,
+        )
+
+
+def _zastosuj_szablon_pod_blokada(
+    *,
+    template: StationTemplate,
+    case_key: str,
+    target_segment_id: str,
+    insert_at_ratio: float,
+    params_override: dict[str, Any] | None,
+    catalog_profile: str | None,
+) -> dict[str, Any]:
     overrides = params_override or {}
 
     # Avoid circular import — import here
     from api.enm import _get_enm, _set_enm
 
-    case_key = str(case_id)
     enm = _get_enm(case_key)
     enm_dict: dict[str, Any] = enm.model_dump(mode="json")
 
@@ -287,9 +324,19 @@ def apply_template_to_case(
         saved = _set_enm(case_key, new_enm)
         enm_dict = saved.model_dump(mode="json")
     except Exception as exc:
+        # Szczegol techniczny (typ wyjatku, sciezka pliku) idzie do dziennika
+        # serwera, a NIE do komunikatu inzyniera: dotychczasowe `f"...{exc}"`
+        # wypychalo na ekran bezwzgledna sciezke systemu plikow backendu.
+        # Komunikat mowi to, co dla projektanta jest istotne: model pozostal
+        # nietkniety, wiec operacje mozna powtorzyc bez sprzatania po niej.
+        logger.exception("Zapis modelu po zastosowaniu szablonu '%s' nie powiodl sie", template.id)
         raise TemplateApplyError(
             code="template.persist_failed",
-            message_pl=f"Błąd zapisu snapshot: {exc}",
+            message_pl=(
+                "Nie udało się zapisać modelu sieci po zastosowaniu szablonu — "
+                "model pozostał bez zmian. Powtórz operację; jeśli błąd wraca, "
+                "zgłoś go administratorowi (szczegóły są w dzienniku serwera)."
+            ),
         ) from exc
 
     return {
