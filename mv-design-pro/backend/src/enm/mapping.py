@@ -541,9 +541,16 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
     # Each entry is (P0_mw, Q0_mw, coeffs|None); coeffs comes from the load's
     # catalog-materialized params (None => constant power, no change).
     bus_zip_components: dict[str, list[tuple[float, float, ZipCoeffs | None]]] = {}
+    # Defect D1 (audit 2026-08-01): the ODBIOROWA part of the bus power, kept
+    # apart from bus_p/bus_q (which are NET: loads minus generation). The ZIP
+    # polynomial is built from the loads, so it may only be applied to the loads.
+    bus_load_p: dict[str, float] = {}
+    bus_load_q: dict[str, float] = {}
     for load in enm.loads:
         bus_p[load.bus_ref] = bus_p.get(load.bus_ref, 0.0) - load.p_mw
         bus_q[load.bus_ref] = bus_q.get(load.bus_ref, 0.0) - load.q_mvar
+        bus_load_p[load.bus_ref] = bus_load_p.get(load.bus_ref, 0.0) - load.p_mw
+        bus_load_q[load.bus_ref] = bus_load_q.get(load.bus_ref, 0.0) - load.q_mvar
         bus_zip_components.setdefault(load.bus_ref, []).append(
             (
                 load.p_mw,
@@ -569,6 +576,12 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
         # ADR-011 (Z-ZIP-04): power-weighted aggregation of the bus loads into a
         # single ZipCoeffs. Constant-power buses aggregate to None (unchanged).
         bus_zip = aggregate_zip(bus_zip_components.get(bus.ref_id, []))
+        # Defect D1: a ZIP bus carries its LOAD part alongside the net power, so
+        # the solver can scale the polynomial by the loads only and keep the
+        # generation constant. Without ZIP coefficients there is nothing to
+        # scale, so nothing is carried (historical path, unchanged).
+        zip_load_p = bus_load_p.get(bus.ref_id, 0.0) if bus_zip is not None else None
+        zip_load_q = bus_load_q.get(bus.ref_id, 0.0) if bus_zip is not None else None
 
         if is_slack:
             node = Node(
@@ -581,6 +594,8 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 active_power=p if p != 0.0 else None,
                 reactive_power=q if q != 0.0 else None,
                 zip_coeffs=bus_zip,
+                zip_load_active_power=zip_load_p,
+                zip_load_reactive_power=zip_load_q,
             )
         else:
             node = Node(
@@ -591,6 +606,8 @@ def map_enm_to_network_graph(enm: EnergyNetworkModel) -> NetworkGraph:
                 active_power=p,
                 reactive_power=q,
                 zip_coeffs=bus_zip,
+                zip_load_active_power=zip_load_p,
+                zip_load_reactive_power=zip_load_q,
             )
         graph.add_node(node)
 

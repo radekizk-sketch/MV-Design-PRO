@@ -51,6 +51,7 @@ from network_model.solvers.power_flow_newton_internal import (
     build_ybus_pu,
     compute_branch_flows,
     compute_power_injections,
+    effective_pq_injections,
     validate_input,
 )
 from network_model.solvers.power_flow_types import PowerFlowInput, PowerFlowOptions
@@ -58,6 +59,7 @@ from network_model.solvers.power_flow_zip import (
     ZipCoeffs,
     apply_zip_frequency,
     build_zip_table,
+    split_zip_constant_part,
     zip_effective_spec,
 )
 from scipy import linalg
@@ -243,6 +245,12 @@ class PowerFlowFastDecoupledSolver:
             pv_setpoints = {}
             pv_q_limits = {}
 
+        # Defect D1 (audit 2026-08-01): rebase ZIP buses onto their LOAD part and
+        # keep the rest (generation) as a constant term. BEFORE the frequency
+        # scaling, so P(f) scales the load only. None => nothing to split.
+        zip_const = split_zip_constant_part(
+            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_mva
+        )
         # ADR-011 ZIP: one-time frequency base scaling (constant w.r.t. V) and the
         # voltage-dependent ZIP table (per-iteration recompute in the mismatch).
         # B'/B" stay constant (built from ybus.imag). Empty table => reduce-to-NR.
@@ -286,6 +294,7 @@ class PowerFlowFastDecoupledSolver:
             pf_input.base_mva,
             zip_table,
             inv_table,
+            zip_const,
         )
 
         # Handle non-convergence
@@ -369,7 +378,15 @@ class PowerFlowFastDecoupledSolver:
         # Compute slack power
         p_calc, q_calc = compute_power_injections(ybus_pu, v)
         slack_power = complex(p_calc[slack_index], q_calc[slack_index])
+        # Defect D1: after the split p_spec/q_spec hold only the ZIP base, so the
+        # constant part is added back here — this diagnostic keeps its historical
+        # meaning (sum of the SPECIFIED PQ powers) and its historical value.
         sum_pq_spec = complex(float(np.sum(p_spec)), float(np.sum(q_spec)))
+        if zip_const is not None:
+            sum_pq_spec += complex(float(np.sum(zip_const[0])), float(np.sum(zip_const[1])))
+        node_p_spec_effective_pu, node_q_spec_effective_pu = effective_pq_injections(
+            pf_input.pq, node_index_map, p_spec, q_spec, v, zip_table, inv_table, zip_const
+        )
 
         if branch_flow_note:
             losses_total = 0.0 + 0.0j
@@ -403,6 +420,8 @@ class PowerFlowFastDecoupledSolver:
             applied_shunts=applied_shunts,
             pv_to_pq_switches=pv_to_pq_switches,
             init_state=init_state,
+            node_p_spec_effective_pu=node_p_spec_effective_pu,
+            node_q_spec_effective_pu=node_q_spec_effective_pu,
             solver_method="fast-decoupled",  # type: ignore[arg-type]
             fallback_info=None,
         )
@@ -519,6 +538,7 @@ class PowerFlowFastDecoupledSolver:
         base_mva: float,
         zip_table: dict[int, ZipCoeffs] | None = None,
         inv_table: dict[int, InverterControl] | None = None,
+        zip_const: tuple[np.ndarray, np.ndarray] | None = None,
     ) -> tuple[
         np.ndarray,
         bool,
@@ -554,6 +574,9 @@ class PowerFlowFastDecoupledSolver:
             inv_table: Voltage-dependent inverter Q(U) controls keyed by bus index
                 (ADR-011 §5b). Only the Q mismatch uses the V-dependent spec; B'/B"
                 stay constant. Empty/None => classic path (reduce-to-NR).
+            zip_const: Constant (non-ZIP) part of a ZIP bus — generation on the
+                same bus (defect D1). None => nothing to split; p_spec/q_spec are
+                the whole bus power (historical path).
 
         Returns:
             Tuple of (voltage, converged, iterations, max_mismatch, trace, pv_switches).
@@ -673,7 +696,7 @@ class PowerFlowFastDecoupledSolver:
 
             # ADR-011 ZIP: evaluate the specified injection at the current |V|
             # (no-op when zip_table is empty => reduce-to-NR). B' is unaffected.
-            p_eff, _ = zip_effective_spec(p_spec, q_spec, v, zip_table)
+            p_eff, _ = zip_effective_spec(p_spec, q_spec, v, zip_table, zip_const)
 
             # P mismatch for all non-slack buses
             d_p_full = p_eff - p_calc
@@ -711,7 +734,7 @@ class PowerFlowFastDecoupledSolver:
                 # ADR-011 §5b: the Q(U) buses use the under-relaxed Q(U) state (no-op
                 # when inv_table empty); inverter P is not voltage-dependent so the P
                 # side is untouched.
-                _, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table)
+                _, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table, zip_const)
                 if inv_table:
                     q_eff = q_eff.copy()
                     for idx in inv_table:
@@ -749,7 +772,7 @@ class PowerFlowFastDecoupledSolver:
             # ADR-011 §5b: the Q(U) buses use the under-relaxed Q(U) state for the Q
             # mismatch (same value the Q-V half-iteration used this iteration), so the
             # convergence test is consistent. No-op when inv_table is empty.
-            p_eff_final, q_eff_final = zip_effective_spec(p_spec, q_spec, v, zip_table)
+            p_eff_final, q_eff_final = zip_effective_spec(p_spec, q_spec, v, zip_table, zip_const)
             if inv_table:
                 q_eff_final = q_eff_final.copy()
                 for idx in inv_table:

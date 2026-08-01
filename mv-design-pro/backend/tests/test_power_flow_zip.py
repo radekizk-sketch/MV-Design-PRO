@@ -238,11 +238,34 @@ def test_frequency_at_nominal_is_noop() -> None:
 
 
 def test_white_box_trace_exposes_zip_loads() -> None:
+    """Defect D1: the trace exposes BOTH components of a ZIP bus.
+
+    Intent unchanged (the ZIP bus must be auditable from the trace alone); the
+    contract grew, because the effective injection is now a load base scaled by
+    the polynomial PLUS a constant part, and an auditor must be able to
+    reproduce the multiplier from the numbers.
+    """
     full = _solve(CONST_Z, trace="full")
     assert any("zip_loads" in entry for entry in full.nr_trace)
     last = full.nr_trace[-1]
     assert "B" in last["zip_loads"]
-    assert set(last["zip_loads"]["B"]) == {"p_spec_pu", "q_spec_pu"}
+    entry = last["zip_loads"]["B"]
+    assert set(entry) == {
+        "p_spec_pu",
+        "q_spec_pu",
+        "p_base_pu",
+        "q_base_pu",
+        "p_const_pu",
+        "q_const_pu",
+    }
+    # No generation on this bus => the whole bus power is the ZIP base.
+    assert entry["p_const_pu"] == 0.0
+    assert entry["q_const_pu"] == 0.0
+    # p_spec = p_base * f_ZIP(V) + p_const — reproducible from the trace alone.
+    v = full.node_u_mag["B"]
+    assert entry["p_spec_pu"] == pytest.approx(
+        entry["p_base_pu"] * zip_factor(1.0, 0.0, 0.0, v, 1.0) + entry["p_const_pu"], rel=1e-12
+    )
 
 
 def test_zip_solution_is_deterministic() -> None:
@@ -290,3 +313,129 @@ def test_aggregate_zip_is_power_weighted() -> None:
 
 def test_aggregate_all_constant_power_is_none() -> None:
     assert aggregate_zip([(2.0, 1.0, None), (1.0, 0.5, CONST_P)]) is None
+
+
+# ---- defect D1: aggregation with a zero total, and validated aggregates ------
+
+
+def test_aggregate_zero_q_total_is_constant_power_not_zero_polynomial() -> None:
+    """A load compensated to cosφ=1 (Q0=0) must give a Q polynomial summing to 1.
+
+    The old code returned (0, 0, 0) — a polynomial summing to 0 — which
+    build_zip_table then rejected, so a perfectly valid model crashed the whole
+    run (defect D1, scenario 2). Zero total carries no weight => the default
+    (constant power) applies.
+    """
+    agg = aggregate_zip([(2.0, 0.0, CONST_Z)])
+    assert agg is not None
+    assert (agg.a_q, agg.b_q, agg.c_q) == (0.0, 0.0, 1.0)
+    assert agg.a_q + agg.b_q + agg.c_q == 1.0
+    validate_zip_coeffs(agg)  # every aggregate is usable as-is
+
+
+def test_aggregate_zero_p_total_is_constant_power_symmetrically() -> None:
+    agg = aggregate_zip([(0.0, 1.0, CONST_Z)])
+    assert agg is not None
+    assert (agg.a_p, agg.b_p, agg.c_p) == (0.0, 0.0, 1.0)
+    assert (agg.a_q, agg.b_q, agg.c_q) == (1.0, 0.0, 0.0)
+    validate_zip_coeffs(agg)
+
+
+def test_aggregate_zero_total_keeps_frequency_sensitivity_neutral() -> None:
+    """The (0,0,1) fallback is per coefficient: k_pf/k_qf default to 0, not 1."""
+    agg = aggregate_zip([(1.0, 0.0, ZipCoeffs(0, 0, 1, 0, 0, 1, k_pf=2.0, k_qf=1.0))])
+    assert agg is not None
+    assert agg.k_pf == 2.0
+    assert agg.k_qf == 0.0  # no Q weight on the bus => no Q frequency sensitivity
+    assert (agg.a_q, agg.b_q, agg.c_q) == (0.0, 0.0, 1.0)
+
+
+def test_aggregate_is_validated_before_return() -> None:
+    """Every aggregate goes through validate_zip_coeffs (no silent garbage)."""
+    with pytest.raises(ValueError, match="ZIP"):
+        # Negative load weight => share outside [0, 1]: rejected at aggregation
+        # time instead of being carried into the solver.
+        aggregate_zip([(2.0, 1.0, CONST_Z), (-1.0, 1.0, CONST_P)])
+
+
+# ---- defect D1: the polynomial scales the LOAD, generation stays constant ----
+
+
+def _solve_with_generation(
+    zip_coeffs: ZipCoeffs | None,
+    *,
+    p_load_mw: float,
+    q_load_mvar: float,
+    p_gen_mw: float,
+    trace: str = "summary",
+):
+    """Bus B carries a ZIP load AND generation: p_mw is the NET bus power, the
+    ZIP base is the load part only."""
+    pf = PowerFlowInput(
+        graph=_two_bus(),
+        base_mva=10.0,
+        slack=SlackSpec(node_id="A", u_pu=1.0, angle_rad=0.0),
+        pq=[
+            PQSpec(
+                node_id="B",
+                p_mw=p_load_mw - p_gen_mw,
+                q_mvar=q_load_mvar,
+                zip_coeffs=zip_coeffs,
+                zip_base_p_mw=p_load_mw,
+                zip_base_q_mvar=q_load_mvar,
+            )
+        ],
+        options=PowerFlowOptions(max_iter=40, tolerance=1e-10, trace_level=trace),
+    )
+    return solve_power_flow_physics(pf)
+
+
+def test_generation_on_zip_bus_is_not_scaled_by_the_load_polynomial() -> None:
+    """P_bus(V) = -P_load*(V/V0)^2 + P_gen — the generator is constant power.
+
+    Before the fix the polynomial multiplied the NET bus power: ΔP = P_gen·(f−1).
+    (The sign of the connection-point flow flips too, but only on a loaded feeder
+    — that is proven end-to-end in tests/enm/test_zip_generation_split.py.)
+    """
+    sol = _solve_with_generation(
+        CONST_Z, p_load_mw=3.0, q_load_mvar=0.0, p_gen_mw=2.7, trace="full"
+    )
+    assert sol.converged
+    v = sol.node_u_mag["B"]
+    p_expected_mw = -3.0 * v * v + 2.7
+    assert sol.node_p_spec_effective_pu["B"] * 10.0 == pytest.approx(p_expected_mw, rel=1e-9)
+    # The defective formula multiplied the NET power: (2.7-3.0)*v^2. The error is
+    # exactly P_gen*(f-1) and must NOT be what the solver injected.
+    p_defective_mw = (2.7 - 3.0) * v * v
+    assert p_defective_mw - p_expected_mw == pytest.approx(2.7 * (v * v - 1.0), rel=1e-9)
+    assert abs(p_defective_mw - p_expected_mw) > 1e-3
+
+
+def test_zip_base_equal_to_net_power_is_the_historical_path() -> None:
+    """No generation => base == net => bit-identical to declaring no base at all."""
+    with_base = _solve_with_generation(CONST_Z, p_load_mw=3.0, q_load_mvar=1.0, p_gen_mw=0.0)
+    plain = _solve(CONST_Z)
+    assert with_base.node_u_mag["B"] == plain.node_u_mag["B"]
+    assert with_base.iterations == plain.iterations
+    assert complex(with_base.slack_power) == complex(plain.slack_power)
+
+
+def test_effective_injection_of_a_constant_power_bus_is_the_specified_one() -> None:
+    """Reduce-to-NR for the reported injection: unchanged at a classic PQ bus."""
+    sol = _solve(None)
+    assert sol.node_p_spec_effective_pu["B"] == -3.0 / 10.0
+    assert sol.node_q_spec_effective_pu["B"] == -1.0 / 10.0
+
+
+def test_split_trace_exposes_base_and_constant_part() -> None:
+    """WHITE BOX: both components visible, and they reconstruct the injection."""
+    sol = _solve_with_generation(
+        CONST_Z, p_load_mw=3.0, q_load_mvar=0.0, p_gen_mw=2.7, trace="full"
+    )
+    entry = sol.nr_trace[-1]["zip_loads"]["B"]
+    assert entry["p_base_pu"] == pytest.approx(-3.0 / 10.0, rel=1e-12)
+    assert entry["p_const_pu"] == pytest.approx(2.7 / 10.0, rel=1e-12)
+    v = sol.node_u_mag["B"]
+    assert entry["p_spec_pu"] == pytest.approx(
+        entry["p_base_pu"] * zip_factor(1.0, 0.0, 0.0, v, 1.0) + entry["p_const_pu"], rel=1e-12
+    )
