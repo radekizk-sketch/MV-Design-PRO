@@ -29,7 +29,11 @@ def read_text(path: Path) -> str:
 def active_api_module_paths() -> list[Path]:
     module_paths: list[Path] = []
     seen: set[Path] = set()
-    for module_name, _include_prefix in api_lifecycle_guard._main_included_routers():
+    for (
+        module_name,
+        _symbol,
+        _include_prefix,
+    ) in api_lifecycle_guard._main_included_routers():
         module_path = API_DIR / f"{module_name}.py"
         if module_path.exists() and module_path not in seen:
             seen.add(module_path)
