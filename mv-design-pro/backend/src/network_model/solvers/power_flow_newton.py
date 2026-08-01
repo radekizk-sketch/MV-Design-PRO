@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Literal
 
 import numpy as np
@@ -16,6 +16,7 @@ from network_model.solvers.power_flow_newton_internal import (
     build_ybus_pu,
     compute_branch_flows,
     compute_power_injections,
+    effective_pq_injections,
     newton_raphson_solve_v2,
     validate_input,
 )
@@ -23,6 +24,7 @@ from network_model.solvers.power_flow_types import PowerFlowInput
 from network_model.solvers.power_flow_zip import (
     apply_zip_frequency,
     build_zip_table,
+    split_zip_constant_part,
 )
 
 
@@ -59,6 +61,14 @@ class PowerFlowNewtonSolution:
     pv_to_pq_switches: list[dict[str, object]]
     # P20a: Initial state for white-box trace (V0, θ0)
     init_state: dict[str, dict[str, float]] | None = None
+    # Defect D1 (audit 2026-08-01): the injection the solver actually specified at
+    # each PQ bus at the converged |V| — i.e. the ZIP polynomial applied to the load
+    # base plus the constant part (and the converged Q(U) at inverter buses). For a
+    # classic constant-power bus this is exactly -p_mw/base_mva (unchanged). The
+    # result table must report THIS, not the pre-polynomial request, or the nodal
+    # balance breaks. Injection convention, pu on base_mva. Empty => not available.
+    node_p_spec_effective_pu: dict[str, float] = field(default_factory=dict)
+    node_q_spec_effective_pu: dict[str, float] = field(default_factory=dict)
     # FIX-08b/FIX-09: Solver method identifier for trace clarity
     solver_method: Literal["newton-raphson", "gauss-seidel", "fast-decoupled"] = "newton-raphson"
     # FIX-08b: Fallback information (if GS fell back to NR)
@@ -131,6 +141,12 @@ class PowerFlowNewtonSolver:
         p_spec, q_spec, pv_setpoints, pv_q_limits = build_power_spec_v2(
             slack_island_nodes, pf_input.base_mva, pf_input.pq, pf_input.pv
         )
+        # Defect D1 (audit 2026-08-01): rebase ZIP buses onto their LOAD part and
+        # keep the rest (generation) as a constant term. BEFORE the frequency
+        # scaling, so P(f) scales the load only. None => nothing to split.
+        zip_const = split_zip_constant_part(
+            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_mva
+        )
         apply_zip_frequency(p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz)
         # ADR-011 §5b: one-time inverter shaping (LFSM P(f) + cosφ/Q modes);
         # Q(U) sources are recomputed per iteration via inv_table.
@@ -162,6 +178,7 @@ class PowerFlowNewtonSolver:
                 node_index_to_id,
                 zip_table,
                 inv_table,
+                zip_const,
             )
         else:
             v = v0
@@ -251,7 +268,15 @@ class PowerFlowNewtonSolver:
 
         p_calc, q_calc = compute_power_injections(ybus_pu, v)
         slack_power = complex(p_calc[slack_index], q_calc[slack_index])
+        # Defect D1: after the split p_spec/q_spec hold only the ZIP base, so the
+        # constant part is added back here — this diagnostic keeps its historical
+        # meaning (sum of the SPECIFIED PQ powers) and its historical value.
         sum_pq_spec = complex(float(np.sum(p_spec)), float(np.sum(q_spec)))
+        if zip_const is not None:
+            sum_pq_spec += complex(float(np.sum(zip_const[0])), float(np.sum(zip_const[1])))
+        node_p_spec_effective_pu, node_q_spec_effective_pu = effective_pq_injections(
+            pf_input.pq, node_index_map, p_spec, q_spec, v, zip_table, inv_table, zip_const
+        )
 
         if branch_flow_note:
             losses_total = 0.0 + 0.0j
@@ -285,6 +310,8 @@ class PowerFlowNewtonSolver:
             applied_shunts=applied_shunts,
             pv_to_pq_switches=pv_to_pq_switches,
             init_state=init_state,
+            node_p_spec_effective_pu=node_p_spec_effective_pu,
+            node_q_spec_effective_pu=node_q_spec_effective_pu,
         )
 
 

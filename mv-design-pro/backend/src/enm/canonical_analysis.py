@@ -1565,6 +1565,18 @@ def _execute_power_flow(run: CanonicalRun) -> None:
             # ADR-011 (Z-ZIP-04): aggregated ZIP coefficients for the bus (None
             # => constant power). Solver reduces to classic PQ when None.
             zip_coeffs=node.zip_coeffs,
+            # Defect D1 (audit 2026-08-01): the ZIP polynomial is built from the
+            # bus LOADS, so it may only scale the load part. The remainder of the
+            # bus power (generation) is constant. Same gen->load conversion point
+            # as p_mw/q_mvar above; None (no ZIP bus) => whole bus power is the base.
+            zip_base_p_mw=(
+                None if node.zip_load_active_power is None else -float(node.zip_load_active_power)
+            ),
+            zip_base_q_mvar=(
+                None
+                if node.zip_load_reactive_power is None
+                else -float(node.zip_load_reactive_power)
+            ),
         )
         for node_id, node in sorted(graph.nodes.items())
         if node.node_type == NodeType.PQ and node_id != slack_node_id
@@ -1631,11 +1643,21 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     # ``power_flow_result.py:35``) — jak moc slacka niżej. Stąd negacja przy
     # montażu wyniku; bez niej szyny PQ miałyby znak odwrotny do slacka i do
     # udokumentowanego kontraktu (defekt ujawniony rekalibracją K3).
+    # Defect D1 (audit 2026-08-01): na szynie z modelem ZIP (albo z regulacją
+    # falownika) moc ZADANA w PQSpec to dopiero ŻĄDANIE — solver wstrzykuje moc
+    # PO wielomianie napięciowym. Tabela wyników musi pokazać moc FAKTYCZNIE
+    # wstrzykniętą (inaczej bilans węzłowy się nie domyka: było -3,0000 MW przy
+    # rzeczywistym -2,3408 MW = przepływ gałęzi). Wartość bierzemy WPROST ze
+    # solvera (ZERO fizyki w tej warstwie); dla szyny stałomocowej jest ona
+    # bitowo równa dotychczasowemu -p_mw/base_mva, więc wyniki bez ZIP/regulacji
+    # są nietknięte. Szyny spoza wyspy slacka solver pomija — zostaje żądanie.
     node_p_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
     node_q_injected_pu = {node.node_id: 0.0 for node in pf_input.pq}
+    solver_p_effective = solution.node_p_spec_effective_pu
+    solver_q_effective = solution.node_q_spec_effective_pu
     for pq in pf_input.pq:
-        node_p_injected_pu[pq.node_id] = -pq.p_mw / base_mva
-        node_q_injected_pu[pq.node_id] = -pq.q_mvar / base_mva
+        node_p_injected_pu[pq.node_id] = solver_p_effective.get(pq.node_id, -pq.p_mw / base_mva)
+        node_q_injected_pu[pq.node_id] = solver_q_effective.get(pq.node_id, -pq.q_mvar / base_mva)
     node_p_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.real)
     node_q_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.imag)
 

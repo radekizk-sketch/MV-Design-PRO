@@ -39,6 +39,15 @@ class PQSpec:
     # None => classic constant-power PQ (reduce-to-NR invariant). When set,
     # p_mw/q_mvar are treated as the load base P0/Q0 at the reference voltage.
     zip_coeffs: ZipCoeffs | None = None
+    # Defect D1 (audit 2026-08-01): the ZIP polynomial describes the LOAD only.
+    # On a bus that also carries generation, p_mw/q_mvar are the NET bus power,
+    # so the polynomial must not be applied to them. These fields carry the
+    # LOAD-only part (same sign convention as p_mw/q_mvar); the rest of the bus
+    # power is constant (a PQ generator is constant power):
+    #     P_bus(V) = zip_base_p_mw * f_ZIP(V) + (p_mw - zip_base_p_mw)
+    # None => the whole bus power is the ZIP base (historical path, unchanged).
+    zip_base_p_mw: float | None = None
+    zip_base_q_mvar: float | None = None
     # ADR-011 §5b: optional inverter/converter source control (Q(U), P(f)/LFSM,
     # cosφ modes). None => constant-PQ source (reduce-to-NR). Mutually exclusive
     # with zip_coeffs on a given bus (a bus is a load XOR a source).
