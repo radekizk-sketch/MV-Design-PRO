@@ -38,17 +38,29 @@ export interface KrokProfilu {
   label: string;
   load_scale: number;
   positions: Record<string, number>;
-  switch_count: number;
+  /** `null` = pętla regulatora nie mogła zadziałać, więc liczby łączeń nie ma. */
+  switch_count: number | null;
   controlled_bus_kv: Record<string, number>;
-  within_deadband: Record<string, boolean>;
+  /**
+   * Znacznik pasma jest TRÓJSTANOWY przez obecność klucza: `true` = w paśmie,
+   * `false` = poza pasmem, BRAK KLUCZA (`undefined`) = nieustalone. Backend
+   * wpisuje klucz tylko wtedy, gdy kryterium da się zbudować z modelu, więc typ
+   * musi dopuszczać `undefined` — inaczej render dwustanowy „kompiluje się", a
+   * inżynierowi pokazuje „nie" tam, gdzie oceny nie ma (znalezisko N3).
+   */
+  within_deadband: Record<string, boolean | undefined>;
 }
 
 export interface WynikProfilu {
   steps: KrokProfilu[];
-  total_switch_count: number;
-  steps_outside_deadband: number;
+  /** `null` = liczba łączeń niedostępna (brak nastaw regulatora w modelu). */
+  total_switch_count: number | null;
+  /** `null` = choć jeden znacznik pasma nieustalony, więc licznik nie istnieje. */
+  steps_outside_deadband: number | null;
   /** Wywód dyplomowy {tekst, latex} z backendu (zasada KaTeX 2026-07-22); addytywny. */
   wywod?: KrokWywodu[];
+  /** Kody gotowości badania — treść bierzemy z kanonicznego rejestru, nie z UI. */
+  readiness_codes?: string[];
 }
 
 export interface KandydatOptymalizacji {
@@ -206,10 +218,19 @@ export function fmtLiczbaPrzelaczen(value: number | null | undefined): string {
   return typeof value === 'number' && Number.isFinite(value) ? String(value) : '—';
 }
 
-export function fmtDopuszczalna(value: boolean | null | undefined): string {
+/**
+ * Znacznik trójstanowy: tak / nie / brak oceny. JEDNA konwencja uczciwego stanu
+ * zerowego dla wszystkich kolumn logicznych ekranu — pole opcjonalne w kontrakcie
+ * backendu nie może być renderowane dwustanowo (brak danej to nie „nie").
+ */
+export function fmtZnacznikTrojstanowy(value: boolean | null | undefined): string {
   if (value === true) return T.tak;
   if (value === false) return T.nie;
   return '—';
+}
+
+export function fmtDopuszczalna(value: boolean | null | undefined): string {
+  return fmtZnacznikTrojstanowy(value);
 }
 
 /**

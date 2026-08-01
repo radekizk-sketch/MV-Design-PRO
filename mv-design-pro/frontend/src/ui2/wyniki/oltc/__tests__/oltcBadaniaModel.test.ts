@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   fmtDopuszczalna,
   fmtLiczbaPrzelaczen,
+  fmtZnacznikTrojstanowy,
   opisKryterium,
   PARAMETRY_DOMYSLNE,
   parsujWynik,
@@ -123,5 +124,22 @@ describe('formatery uczciwego braku', () => {
     expect(fmtDopuszczalna(true)).toBe('tak');
     expect(fmtDopuszczalna(false)).toBe('nie');
     expect(fmtDopuszczalna(null)).toBe('—');
+  });
+
+  it('znacznik trójstanowy: brak klucza w odpowiedzi (undefined) to kreska, nie „nie"', () => {
+    // Kolumna „W paśmie" czyta pole OPCJONALNE kontraktu: gdy backend nie ma z
+    // czego zbudować kryterium, klucza nie ma. Render dwustanowy zamieniał to
+    // milcząco na „nie" (znalezisko N3).
+    const bezOceny: Record<string, boolean | undefined> = {};
+    expect(fmtZnacznikTrojstanowy(bezOceny.TR1)).toBe('—');
+    expect(fmtZnacznikTrojstanowy(true)).toBe('tak');
+    expect(fmtZnacznikTrojstanowy(false)).toBe('nie');
+  });
+
+  it('liczniki profilu: null (niedostępne) przechodzą przez formater na kreskę', () => {
+    // Podsumowanie profilu bierze SFORMATOWANY tekst, więc „0" nie może się
+    // pojawić tam, gdzie wielkości nie ma.
+    expect(fmtLiczbaPrzelaczen(null)).toBe('—');
+    expect(fmtLiczbaPrzelaczen(7)).toBe('7');
   });
 });

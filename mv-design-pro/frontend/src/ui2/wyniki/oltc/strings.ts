@@ -58,8 +58,11 @@ export const OLTC_BADANIA_STRINGS = {
   profilOsX: 'Krok',
   profilPozycja: 'Pozycja zaczepu',
   profilNapiecie: 'U sterowanej szyny',
-  profilPrzelaczenia: (n: number) => `Łączne przełączenia: ${n}`,
-  profilPozaPasmem: (n: number) => `Kroki poza pasmem nieczułości: ${n}`,
+  // Podsumowanie profilu przyjmuje SFORMATOWANY tekst (liczba albo kreska), bo
+  // przy braku nastaw regulatora obu wielkości po prostu nie ma — „0" byłoby
+  // werdyktem o kryterium, którego nikt nie zadeklarował.
+  profilPrzelaczenia: (n: string) => `Łączne przełączenia: ${n}`,
+  profilPozaPasmem: (n: string) => `Kroki poza pasmem nieczułości: ${n}`,
   profilTabelaKrok: 'Krok',
   profilTabelaSkala: 'Obciążenie',
   profilTabelaPozycja: 'Pozycja',

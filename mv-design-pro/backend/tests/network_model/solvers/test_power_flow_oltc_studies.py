@@ -121,6 +121,117 @@ class TestAnnualProfile:
         assert krok.within_deadband[trafo_id] is False
 
 
+class TestProfilBezDanychRegulatora:
+    """Profil roczny: brak danej modelu NIE MOZE udawac werdyktu (przeglad P10/N3).
+
+    Kryterium pasma pochodzi z modelu tak samo, jak kryterium doboru zaczepow z
+    karty D. Brak pasma => znacznik NIEUSTALONY + kod gotowosci; liczba laczen
+    NIEDOSTEPNA, bo policzono by ja na paśmie, ktorego nikt nie zadeklarowal.
+    """
+
+    PROFIL = [
+        ProfilePoint(label="noc", load_scale=0.3),
+        ProfilePoint(label="dzien", load_scale=1.0),
+        ProfilePoint(label="szczyt", load_scale=1.6),
+    ]
+
+    def test_bez_pasma_znacznik_nieustalony_i_kod_gotowosci(self):
+        pf_input = _build_input(_oltc(deadband_kv=None))
+        trafo_id = _trafo_id(pf_input)
+        wynik = run_annual_oltc_profile(pf_input, _solve_once, self.PROFIL)
+
+        # Znacznik trojstanowy przez OBECNOSC klucza: brak klucza = nieustalone.
+        for krok in wynik.steps:
+            assert trafo_id not in krok.within_deadband
+            # Zmierzone napiecie zostaje — brakuje kryterium, nie pomiaru.
+            assert trafo_id in krok.controlled_bus_kv
+        assert wynik.steps_outside_deadband is None
+        assert wynik.readiness_codes == ("oltc.deadband_missing",)
+
+    def test_bez_pasma_wywod_nie_drukuje_progu_zerowego(self):
+        # BRAMKA (a): inzynier NIE MOZE zobaczyc „> 0.000 kV" jako kryterium.
+        # Odchylki tej sondy to 0,876 / 1,193 / 1,496 kV, a skale profilu drukuja
+        # sie jako 0.30/1.00/1.60 — wiec „0.000" w wywodzie moze pochodzic
+        # WYLACZNIE z podstawionego pasma zerowego.
+        pf_input = _build_input(_oltc(deadband_kv=None))
+        kroki = run_annual_oltc_profile(pf_input, _solve_once, self.PROFIL).to_dict()["wywod"]
+        caly = " | ".join(f"{k['tekst']} {k['latex'] or ''}" for k in kroki)
+        assert "0.000" not in caly
+        assert "> 0.000" not in caly
+        assert r"\le 0.000" not in caly
+        # Zamiast progu — nazwana brakujaca dana i uczciwy stan znacznika.
+        assert "NIEUSTALONE" in caly
+        assert "pasma nieczulosci regulatora" in caly
+        assert r"\Delta U_{db} = \text{brak}" in caly
+
+    def test_bez_pasma_liczba_laczen_niedostepna(self):
+        # BRAMKA (b): licznik przelaczen nie moze powstac z fikcyjnego pasma.
+        pf_input = _build_input(_oltc(deadband_kv=None))
+        wynik = run_annual_oltc_profile(pf_input, _solve_once, self.PROFIL)
+        assert wynik.total_switch_count is None
+        assert [s.switch_count for s in wynik.steps] == [None, None, None]
+        teksty = " | ".join(k["tekst"] for k in wynik.to_dict()["wywod"])
+        assert "Suma przelaczen zaczepow: NIEDOSTEPNA" in teksty
+
+    def test_z_pasmem_liczba_laczen_bez_zmian(self):
+        # BRAMKA (b), druga polowa: obecnosc pasma = wynik jak dotad. Liczby
+        # przypiete pomiarem na tej samej sondzie (110/15 kV, U_zad 15,0 kV,
+        # pasmo 0,2 kV, profil 0,3/1,0/1,6): 5 + 1 + 1 = 7 laczen, 0 krokow poza
+        # pasmem. To jest wartosc, ktora fikcyjne pasmo zerowe zawyzalo.
+        pf_input = _build_input(_oltc(deadband_kv=0.2))
+        wynik = run_annual_oltc_profile(pf_input, _solve_once, self.PROFIL)
+        assert [s.switch_count for s in wynik.steps] == [5, 1, 1]
+        assert wynik.total_switch_count == 7
+        assert wynik.steps_outside_deadband == 0
+        assert wynik.readiness_codes == ()
+        assert "readiness_codes" not in wynik.to_dict()
+
+    def test_bez_nastawy_znacznik_nieustalony_zamiast_poza_pasmem(self):
+        # Znalezisko N3: przy braku nastawy tabela pokazywala „nie" w kazdym
+        # wierszu, a podsumowanie „0 krokow poza pasmem" — ekran przeczyl sobie.
+        # Prawda jest jedna: kryterium NIE ZOSTALO USTALONE.
+        pf_input = _build_input(_oltc(voltage_setpoint_kv=None, control_mode="MANUAL"))
+        trafo_id = _trafo_id(pf_input)
+        wynik = run_annual_oltc_profile(pf_input, _solve_once, self.PROFIL)
+        assert all(trafo_id not in s.within_deadband for s in wynik.steps)
+        assert wynik.steps_outside_deadband is None
+        assert wynik.readiness_codes == ("oltc.target_voltage_missing",)
+
+    def test_bez_obu_danych_oba_kody_w_stalej_kolejnosci(self):
+        pf_input = _build_input(_oltc(voltage_setpoint_kv=None, deadband_kv=None))
+        wynik = run_annual_oltc_profile(pf_input, _solve_once, self.PROFIL)
+        assert wynik.readiness_codes == (
+            "oltc.target_voltage_missing",
+            "oltc.deadband_missing",
+        )
+        assert wynik.to_dict()["readiness_codes"] == [
+            "oltc.target_voltage_missing",
+            "oltc.deadband_missing",
+        ]
+        assert wynik.total_switch_count is None
+        assert wynik.steps_outside_deadband is None
+
+    def test_bez_pasma_wynik_deterministyczny(self):
+        def _bieg():
+            return run_annual_oltc_profile(
+                _build_input(_oltc(deadband_kv=None)), _solve_once, self.PROFIL
+            ).to_dict()
+
+        assert _bieg() == _bieg()
+
+    def test_brak_podstawienia_za_pasmo_w_zrodle(self):
+        # BRAMKA KLASY: podstawienie `deadband_kv or ...` nie moze wrocic w ZADNYM
+        # z dwoch miejsc (profil i petla regulatora) — pomiar na jednej sieci nie
+        # odroznia „pasma z modelu" od „pasma podstawionego, ktore akurat pasuje".
+        from network_model.solvers import power_flow_oltc
+
+        for modul in (power_flow_oltc_studies, power_flow_oltc):
+            zrodlo = inspect.getsource(modul)
+            assert "deadband_kv" in zrodlo  # skanujemy wlasciwy modul
+            podejrzane = re.findall(r"deadband(?:_kv)?\s+or\s+[0-9]", zrodlo)
+            assert podejrzane == [], f"{modul.__name__}: podstawienie za pasmo: {podejrzane}"
+
+
 class TestOptimization:
     def test_minimize_losses_picks_converged_position_and_restores(self):
         pf_input = _build_input(_oltc())

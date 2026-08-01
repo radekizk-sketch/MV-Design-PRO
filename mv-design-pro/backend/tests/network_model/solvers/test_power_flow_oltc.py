@@ -180,6 +180,43 @@ class TestRegulationLoop:
         assert first_iter["reason"] == "within_deadband"
 
 
+class TestBrakDanychRegulatora:
+    """Brak danej regulatora = brak podstawy do decyzji, NIE pasmo zerowe.
+
+    Podstawienie `(deadband_kv or 0.0)` czynilo kazda niezerowa odchylke
+    naruszeniem: petla krecila zaczepem az do blokady oscylacji i licznik laczen
+    rosl na pasmie, ktorego nikt nie zadeklarowal (przeglad fali 2026-08-01, P10).
+    """
+
+    def test_bez_pasma_w_modelu_regulator_nie_rusza_zaczepu(self):
+        pf_input = _build_input(_oltc(deadband_kv=None))
+        _solution, trace = solve_with_oltc(pf_input, _solve_once)
+        assert trace["final_positions"]["TR1"] == 0
+        assert trace["switch_counts"]["TR1"] == 0
+        assert trace["total_switch_count"] == 0
+        powody = {d["reason"] for it in trace["iterations"] for d in it["decisions"]}
+        assert powody == {"no_deadband"}
+
+    def test_pasmo_zerowe_ZADEKLAROWANE_dalej_reguluje(self):
+        # Rozroznienie, ktore znosi cala klase defektu: 0,0 kV to JAWNA dana modelu
+        # (regulator ma trafic dokladnie w nastawe), a None to BRAK danej. Gdyby
+        # naprawa myliła te dwa stany, ten przypadek przestalby regulowac.
+        pf_input = _build_input(_oltc(deadband_kv=0.0))
+        _solution, trace = solve_with_oltc(pf_input, _solve_once)
+        assert trace["total_switch_count"] > 0
+        assert trace["final_positions"]["TR1"] < 0
+        powody = {d["reason"] for it in trace["iterations"] for d in it["decisions"]}
+        assert "no_deadband" not in powody
+
+    def test_slad_niesie_brak_pasma_jako_dana_wejsciowa(self):
+        # WHITE BOX: inzynier musi widziec w sladzie, ze pasma NIE BYLO — bez tego
+        # „0 przelaczen" czyta sie jak werdykt „nie trzeba bylo regulowac".
+        pf_input = _build_input(_oltc(deadband_kv=None))
+        _solution, trace = solve_with_oltc(pf_input, _solve_once)
+        assert trace["regulators"][0]["deadband_kv"] is None
+        assert trace["iterations"][0]["decisions"][0]["deadband_kv"] is None
+
+
 class TestLimits:
     def test_unreachable_setpoint_stops_at_limit(self):
         # Very high setpoint -> regulator drives to the minimum position (raising
