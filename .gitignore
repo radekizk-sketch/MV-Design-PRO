@@ -76,16 +76,16 @@ mv-design-pro/artifacts/
 mv-design-pro/docs/audit/visual/sceny/*.png
 mv-design-pro/docs/audit/visual/kreatory/*.png
 mv-design-pro/docs/audit/visual/dokumentacja/*.png
-# WYJĄTEK: zrzuty OSADZANE w stronie oceny (`generuj_strone_oceny.py` czyta je z dysku
-# i wstawia jako data URI). Gdyby były ignorowane, po cofnięciu migawki kontenera
-# generator przerywałby z „brak zrzutu" — czyli reguła kasowałaby to, czego generator
-# w repo miał pilnować.
+# WYJĄTEK: zrzuty pokazywane w NARRACJI strony oceny (`generuj_strone_oceny.py` odwołuje
+# się do nich ścieżką względną, a w trybie `--osadz` wstawia jako data URI). Gdyby były
+# ignorowane, po cofnięciu migawki kontenera narracja odsyłałaby do plików, których nie ma
+# — czyli reguła kasowałaby to, czego generator w repo miał pilnować.
 !mv-design-pro/docs/audit/visual/kreatory/wiazania_oze*.png
 
 # Artefakty przebiegu Playwrighta — stan ostatniego uruchomienia, nie kod projektu.
 mv-design-pro/test-results/
 
-# Strona oceny — WYNIK generatora `generuj_strone_oceny.py` (zrzuty osadzone jako data URI).
+# Strona oceny — WYNIK generatora `generuj_strone_oceny.py` (skan katalogu, KD-13).
 # Źródłem prawdy jest generator + zrzuty w repo, nie ten plik; po cofnięciu migawki
 # kontenera stronę odtwarza jedno uruchomienie.
 mv-design-pro/docs/audit/visual/ocena_seria.html

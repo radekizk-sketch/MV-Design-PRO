@@ -1,72 +1,404 @@
-"""Generator strony oceny dla wlasciciela (dyrektywa 8: pokazuj ekrany po kazdym etapie).
+"""Strona oceny wlasciciela — powstaje z ODKRYCIA katalogu, nie z listy w kodzie.
 
 DLACZEGO W REPO. Strona zyla dotad wylacznie w katalogu tymczasowym sesji i przepadla,
 gdy kontener cofnal migawke (2026-07-27, osmy raz w tej dobie). Zrzuty byly bezpieczne,
-bo sa scalone w `docs/audit/visual/sld_audyt/` — tresc strony nie byla. Generator w repo
-znosi te asymetrie: po cofnieciu migawki strone odtwarza jedno uruchomienie.
+bo sa scalone w `docs/audit/visual/**` — tresc strony nie byla. Generator w repo znosi te
+asymetrie: po cofnieciu migawki strone odtwarza jedno uruchomienie.
+
+DLACZEGO ODKRYCIE, NIE LISTA (KD-13). Poprzednia wersja osadzala SZESC zrzutow wskazanych
+na sztywno, podczas gdy w katalogu lezalo 299 plikow w 9 seriach — cala seria `flow-ekspert`
+(116 plikow, komplet ekranow biezacego programu kart) byla dla strony NIEWIDOCZNA. Przyczyna
+zrodlowa to lista w kodzie: dryfuje po cichu, bo kazdy nowy zrzut trzeba dopisac recznie,
+a nikt tego nie robil. Dlatego strona SKANUJE katalog i pokazuje wszystko, co w nim lezy;
+seria bez wpisu w `MAPA_SERII` dostaje etykiete z nazwy katalogu — pominiecie jest niemozliwe.
+Bramka przeciw nawrotowi: `backend/tests/ci/test_strona_oceny_pokrycie_zrzutow.py`.
+
+TRYBY.
+  domyslny  — odwolania WZGLEDNE do plikow. Strona lezy w `docs/audit/visual/`, wiec dziala
+              lokalnie i po skopiowaniu calego katalogu; jest lekka i wersjonowalna.
+  --osadz SERIA[,SERIA]
+            — wskazane serie osadzone jako data URI (publikacja jako artefakt, gdzie
+              odwolania do zewnetrznych plikow sa zakazane). Osadzenie WSZYSTKICH zrzutow
+              daloby strone rzedu dziesiatek MB, wiec zakres wybiera wolajacy.
+
+DETERMINIZM. Dwa uruchomienia z tym samym `--data` daja bajtowo identyczny plik: kolejnosc
+serii bierze sie z jawnej mapy, kolejnosc kadrow z sortowania nazw, a data generowania jest
+PRZEKAZYWANA z zewnatrz (`--data` albo zmienna `DATA_STRONY_OCENY`) — nie czytana z zegara
+w tresci, ktora porownuje test.
 
 Uzycie:
-  python3 mv-design-pro/docs/audit/visual/generuj_strone_oceny.py [sciezka_wyjscia.html]
-
-Zrzuty (kadr L2 oraz dwa kadry szczegolu) sa osadzane jako data URI — strona jest
-samowystarczalna, zgodnie z polityka bezpieczenstwa artefaktow (zero zadan do zewnetrznych
-hostow).
+  python3 mv-design-pro/docs/audit/visual/generuj_strone_oceny.py [wyjscie.html]
+      [--data 2026-08-01] [--osadz sld_audyt,kreatory]
 """
 
+from __future__ import annotations
+
+import argparse
 import base64
+import os
 import pathlib
-import subprocess
-import sys
-import tempfile
+from dataclasses import dataclass
+from datetime import date
 
 # Sciezki liczone wzgledem WLASNEGO katalogu, nie przez liczenie poziomow w repo —
-# zrzut jest katalogiem obok, wiec przeniesienie calego `docs/audit/visual/` nic nie psuje.
+# zrzuty sa katalogami obok, wiec przeniesienie calego `docs/audit/visual/` nic nie psuje.
 KATALOG = pathlib.Path(__file__).resolve().parent
-ZRZUTY = KATALOG
-WYJSCIE = (
-    pathlib.Path(sys.argv[1]) if len(sys.argv) > 1 else KATALOG / "ocena_seria.html"
+
+#: Klucz serii dla plikow lezacych WPROST w `docs/audit/visual/` (bez podkatalogu).
+KORZEN = "korzen"
+
+
+@dataclass(frozen=True)
+class Seria:
+    """Jedna seria zrzutow = jeden katalog. `tytul` i `opis` sa tresc dla wlasciciela."""
+
+    klucz: str
+    tytul: str
+    opis: str
+
+
+#: Kolejnosc serii na stronie = kolejnosc TEJ krotki (najnowsze programy pierwsze; `korzen`
+#: na koncu, bo to material sprzed podzialu na serie). Katalog, ktorego tu NIE MA, nie znika
+#: ze strony — dostaje etykiete z wlasnej nazwy (patrz `serie_katalogu`). Milczace pominiecie
+#: jest dokladnie tym defektem, ktory ta mapa zastapila.
+MAPA_SERII: tuple[Seria, ...] = (
+    Seria(
+        "flow-ekspert",
+        "Flow projektanta — ekrany bieżącego programu kart",
+        "Komplet ekranów, na których ocenia się kolejne karty: bilans CT/VT, zaczepy "
+        "transformatora, katalog nN, porównanie zwarć, ogniwo aparatury, zwinięcie GPZ, "
+        "kadr, motyw i tożsamość etykiet. Zrzuty żywej aplikacji, w obu motywach.",
+    ),
+    Seria(
+        "flow-nadzor",
+        "Przejście nadzorcze E1–E8",
+        "Osobiste przejście etapami pracy inżyniera: pierwsze wejście, pulpit projektu, "
+        "model i schemat, gotowość, obliczenia, wyniki świeże i nieaktualne, dokumentacja. "
+        "Tu leżą też zrzuty samej tej strony oceny.",
+    ),
+    Seria(
+        "dowody",
+        "Dowody analiz i studiów",
+        "Powierzchnie wynikowe z policzonym materiałem: arc flash, estymacja stanu, "
+        "kompensacja, migotanie, zgodność odbioru, siła sieci, SSCI, FRT, LoM, sweep OLTC, "
+        "macierz analiz oraz dowody czasu i linii z serii F-K1.",
+    ),
+    Seria(
+        "fk7",
+        "Dobór aparatury — karta F-K7",
+        "Dobór na danych katalogowych oraz wariant z uziemieniem punktu neutralnego.",
+    ),
+    Seria(
+        "kreatory",
+        "Kreatory obiektów i konfigurator wytwórcy",
+        "Wejście danych do modelu: kreator pola SN, źródła OZE, arc flash oraz "
+        "powierzchnia wytwórcy E-21 na desktopie, telefonie i tablecie razem z wyborem "
+        "typu z katalogu backendu.",
+    ),
+    Seria(
+        "sld_audyt",
+        "Schemat jednoliniowy — audyt poziomów szczegółu",
+        "Poziomy L0/L1/L2 sieci wzorcowej 52 stacji oraz dwa kadry szczegółu 1:1 (GPZ, "
+        "stacja z polami). Pary jasny/ciemny są tu bajtowo identyczne ŚWIADOMIE: "
+        "powierzchnia schematu stoi na stałej palecie SCADA, żeby kolor niósł znaczenie "
+        "elektryczne, a nie preferencję motywu.",
+    ),
+    Seria(
+        "schemat-10",
+        "Program schematu — dowody wizualne serii S/W/R/GS",
+        "Dowody kolejnych reguł rysunku technicznego (tor DER po stronie SN, adnotacje "
+        "CT/VT, warstwy wyników, zoom). Opis każdego kadru: `schemat-10/README.md`.",
+    ),
+    Seria(
+        "ocena-2026-07",
+        "Ocena 2026-07 — pierwsza runda oględzin",
+        "GPZ, wszystkie poziomy szczegółu i sieć demonstracyjna z warstwą wyników "
+        "zwarciowych — materiał, od którego zaczęła się seria ocen.",
+    ),
+    Seria(
+        KORZEN,
+        "Katalog główny — materiał sprzed podziału na serie",
+        "Kadry schematu, kompozycje stacji i źródeł OZE, powierzchnie wyników i dowodów "
+        "zebrane zanim materiał rozdzielono na serie. Zostaje jako archiwum porównawcze.",
+    ),
 )
 
-# Zrzut kadru calej sieci ORAZ kadry szczegolu (V12K-234) — bez tych drugich strona
-# obiecuje poziom detalu, ktorego kadr 52 stacji nie zawiera (declutter ukrywa 1135 opisow).
+#: Sufiksy motywu. Rozdzielnik jest CZESCIA klucza pary: `a-dark.png` i `a_light.png` nie
+#: sa para (to dwa rozne materialy o zbieznej nazwie), wiec nie wolno ich skleic.
+MOTYWY: tuple[tuple[str, str], ...] = (("light", "motyw jasny"), ("dark", "motyw ciemny"))
+ROZDZIELNIKI: tuple[str, ...] = ("-", "_")
+
+# Kadry osadzone w NARRACJI (V12K-234): kadr calej sieci oraz dwa kadry szczegolu, a po
+# V12K-242/243 trzy kadry ZYWEJ powierzchni E-21 z harnessu. Te same pliki stoja rowniez
+# w galerii wyzej — narracja potrzebuje ich W TRESCI, wiec odwoluje sie do nich wprost.
 OSADZONE = {
     "ZRZUT_L2": "sld_audyt/sld_L2_dark.png",
     "ZRZUT_GPZ": "sld_audyt/sld_szczegol_gpz.png",
     "ZRZUT_STACJA": "sld_audyt/sld_szczegol_stacja.png",
-    # Ekran wytworcy po V12K-242/243 — zrzut ZYWEJ powierzchni E-21 z harnessu
-    # (`creator-harness.html?creator=wiazania`), nie makieta.
     "ZRZUT_WIAZANIA": "kreatory/wiazania_oze.png",
     "ZRZUT_PICKER": "kreatory/wiazania_oze_picker.png",
     "ZRZUT_MOBILNY": "kreatory/wiazania_oze_mobile.png",
 }
 
 
-def zrzut_data_uri(nazwa: str) -> str:
-    """Zrzut jako data URI. JPEG przy dostepnym Pillow (mniejsza strona), inaczej PNG.
+@dataclass(frozen=True)
+class Kadr:
+    """Jeden plik: sciezka wzgledem `docs/audit/visual/` + etykieta motywu ('' = brak)."""
 
-    `nazwa` jest sciezka WZGLEDNA wzgledem `docs/audit/visual/`, bo material oceny nie
-    mieszka juz w jednym katalogu (SLD w `sld_audyt/`, ekrany w `kreatory/`).
+    sciezka: str
+    motyw: str
+
+
+@dataclass(frozen=True)
+class Kafel:
+    """Jeden material oceny: para motywow obok siebie albo pojedynczy zrzut."""
+
+    podpis: str
+    kadry: tuple[Kadr, ...]
+
+
+def rozbior_nazwy(nazwa: str) -> tuple[str, str, str]:
+    """`kd3-bilans-dark.png` -> ('kd3-bilans', '-', 'dark'); bez sufiksu -> (trzon, '', '')."""
+    trzon = nazwa[: -len(".png")]
+    for rozdzielnik in ROZDZIELNIKI:
+        for sufiks, _etykieta in MOTYWY:
+            koncowka = rozdzielnik + sufiks
+            if trzon.endswith(koncowka):
+                return trzon[: -len(koncowka)], rozdzielnik, sufiks
+    return trzon, "", ""
+
+
+def kafle_serii(pliki: list[str]) -> list[Kafel]:
+    """Pary motywow (ten sam trzon I ten sam rozdzielnik) ida w JEDEN kafel, obok siebie.
+
+    Zrzut bez pary zostaje kaflem pojedynczym — z zachowana etykieta motywu, bo brak
+    drugiego wariantu jest informacja dla ogledzin, a nie powodem do ukrycia kadru.
     """
-    png = ZRZUTY / nazwa
+    etykieta = dict(MOTYWY)
+    grupy: dict[tuple[str, str], dict[str, str]] = {}
+    pojedyncze: list[tuple[str, str]] = []
+    for sciezka in pliki:
+        nazwa = sciezka.rsplit("/", 1)[-1]
+        trzon, rozdzielnik, sufiks = rozbior_nazwy(nazwa)
+        if sufiks:
+            grupy.setdefault((trzon, rozdzielnik), {})[sufiks] = sciezka
+        else:
+            pojedyncze.append((trzon, sciezka))
+    zebrane: list[tuple[str, Kafel]] = []
+    for (trzon, _rozdzielnik), warianty in grupy.items():
+        kadry = tuple(
+            Kadr(warianty[sufiks], etykieta[sufiks])
+            for sufiks, _opis in MOTYWY
+            if sufiks in warianty
+        )
+        zebrane.append((trzon, Kafel(trzon, kadry)))
+    for trzon, sciezka in pojedyncze:
+        zebrane.append((trzon, Kafel(trzon, (Kadr(sciezka, ""),))))
+    # Sortowanie po trzonie, a przy remisie po pierwszej sciezce — kolejnosc na stronie nie
+    # moze zalezec od kolejnosci obchodzenia katalogu ani od czasu modyfikacji pliku.
+    return [kafel for _klucz, kafel in sorted(zebrane, key=lambda p: (p[0], p[1].kadry[0].sciezka))]
+
+
+def serie_katalogu(katalog: pathlib.Path) -> list[tuple[Seria, list[str]]]:
+    """Skan `katalog/**/*.png` pogrupowany po katalogu-serii, w kolejnosci `MAPA_SERII`.
+
+    Seria spoza mapy NIE JEST pomijana: dostaje etykiete z nazwy katalogu i lezy na koncu,
+    alfabetycznie. To jest cala istota tej zmiany — strona ma pokazywac zawartosc repo,
+    a nie stan wiedzy autora listy.
+    """
+    znalezione: dict[str, list[str]] = {}
+    for png in katalog.rglob("*.png"):
+        wzgledna = png.relative_to(katalog).as_posix()
+        klucz = wzgledna.rsplit("/", 1)[0] if "/" in wzgledna else KORZEN
+        znalezione.setdefault(klucz, []).append(wzgledna)
+    wynik: list[tuple[Seria, list[str]]] = []
+    opisane = {seria.klucz for seria in MAPA_SERII}
+    for seria in MAPA_SERII:
+        if seria.klucz in znalezione:
+            wynik.append((seria, sorted(znalezione[seria.klucz])))
+    for klucz in sorted(k for k in znalezione if k not in opisane):
+        wynik.append(
+            (
+                Seria(
+                    klucz,
+                    f"Katalog „{klucz}”",
+                    "Seria bez wpisu w mapie etykiet — tytuł pochodzi z nazwy katalogu. "
+                    "Dopisz opis w <code>MAPA_SERII</code>, żeby oględziny wiedziały, "
+                    "czego tu szukać.",
+                ),
+                sorted(znalezione[klucz]),
+            )
+        )
+    return wynik
+
+
+def _data_uri(png: pathlib.Path) -> str:
+    """Plik jako data URI. JPEG przy dostepnym Pillow (mniejsza strona), inaczej surowy PNG."""
     if not png.exists():
         raise SystemExit(f"brak zrzutu: {png}")
-    jpg = pathlib.Path(tempfile.gettempdir()) / f"ocena_{png.stem}.jpg"
-    subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            f"from PIL import Image; Image.open(r'{png}').convert('RGB')"
-            f".save(r'{jpg}', quality=80, optimize=True)",
-        ],
-        check=False,
-        capture_output=True,
+    try:
+        from PIL import Image
+    except ModuleNotFoundError:
+        return "data:image/png;base64," + base64.b64encode(png.read_bytes()).decode("ascii")
+    import io
+
+    bufor = io.BytesIO()
+    with Image.open(png) as obraz:
+        obraz.convert("RGB").save(bufor, format="JPEG", quality=80, optimize=True)
+    return "data:image/jpeg;base64," + base64.b64encode(bufor.getvalue()).decode("ascii")
+
+
+def wymiary_png(png: pathlib.Path) -> tuple[int, int]:
+    """Rozmiar wlasny obrazu z naglowka IHDR (czysty stdlib). Plik nie-PNG -> (0, 0).
+
+    DLACZEGO TO JEST POTRZEBNE. Kadry sa ladowane leniwie, wiec dopoki obraz nie dojdzie,
+    `<img>` bez wymiarow ma wysokosc ZERO — uklad skacze, a przejscie do kotwicy w nawigacji
+    lada w zupelnie innym miejscu strony (zmierzone: zrzut spod `#narracja` wyszedl pusty).
+    Podanie `width`/`height` daje przegladarce proporcje z gory, wiec miejsce jest
+    zarezerwowane, zanim obraz sie pojawi.
+    """
+    try:
+        naglowek = png.read_bytes()[:24]
+    except OSError:
+        return 0, 0
+    if len(naglowek) < 24 or naglowek[:8] != b"\x89PNG\r\n\x1a\n" or naglowek[12:16] != b"IHDR":
+        return 0, 0
+    return int.from_bytes(naglowek[16:20], "big"), int.from_bytes(naglowek[20:24], "big")
+
+
+def zrodlo(katalog: pathlib.Path, sciezka: str, osadzone: frozenset[str]) -> str:
+    """Wartosc atrybutu `src`: data URI dla serii z `--osadz`, inaczej sciezka wzgledna."""
+    klucz = sciezka.rsplit("/", 1)[0] if "/" in sciezka else KORZEN
+    if klucz in osadzone:
+        return _data_uri(katalog / sciezka)
+    return sciezka
+
+
+def _kotwica(klucz: str) -> str:
+    return "seria-" + klucz.replace("/", "-").replace("_", "-")
+
+
+def _atrybuty_wymiarow(png: pathlib.Path) -> str:
+    szerokosc, wysokosc = wymiary_png(png)
+    return f' width="{szerokosc}" height="{wysokosc}"' if szerokosc and wysokosc else ""
+
+
+def _kafel_html(kafel: Kafel, katalog: pathlib.Path, osadzone: frozenset[str]) -> str:
+    obrazy = "".join(
+        f'<img src="{zrodlo(katalog, kadr.sciezka, osadzone)}" '
+        f'alt="{kafel.podpis}{" — " + kadr.motyw if kadr.motyw else ""}"'
+        + _atrybuty_wymiarow(katalog / kadr.sciezka)
+        + ' loading="lazy">'
+        for kadr in kafel.kadry
     )
-    plik = jpg if jpg.exists() else png
-    mime = "image/jpeg" if plik.suffix == ".jpg" else "image/png"
-    return f"data:{mime};base64," + base64.b64encode(plik.read_bytes()).decode()
+    motywy = " · ".join(kadr.motyw for kadr in kafel.kadry if kadr.motyw)
+    # Sciezka pliku stoi w podpisie ZAWSZE, takze w trybie osadzonym: bez niej uwagi
+    # z ogledzin nie da sie przypisac do konkretnego zrzutu.
+    sciezki = "".join(f'<code class="plik">{kadr.sciezka}</code>' for kadr in kafel.kadry)
+    klasa = "para dwa" if len(kafel.kadry) > 1 else "para"
+    return (
+        '<figure class="kafel">'
+        f'<div class="{klasa}">{obrazy}</div>'
+        f"<figcaption><strong>{kafel.podpis}</strong>"
+        + (f'<span class="motywy">{motywy}</span>' if motywy else "")
+        + f"{sciezki}</figcaption></figure>"
+    )
 
 
-STRONA = """<title>MV-DESIGN-PRO · Seria napraw V12K-216…243</title>
+def zbuduj_strone(
+    katalog: pathlib.Path, data_strony: str, osadzone: frozenset[str] = frozenset()
+) -> str:
+    """Cala strona jako tekst. `data_strony` przychodzi Z ZEWNATRZ (determinizm)."""
+    serie = serie_katalogu(katalog)
+    nawigacja = (
+        " ".join(
+            f'<a href="#{_kotwica(seria.klucz)}">{seria.tytul.split(" — ")[0]}</a>'
+            for seria, _pliki in serie
+        )
+        + ' <a href="#narracja">Narracja serii</a>'
+    )
+    wiersze = []
+    sekcje = []
+    razem_kafli = 0
+    for seria, pliki in serie:
+        kafle = kafle_serii(pliki)
+        razem_kafli += len(kafle)
+        wiersze.append(
+            f'<tr><td><a href="#{_kotwica(seria.klucz)}">{seria.tytul}</a></td>'
+            f'<td class="num">{len(kafle)}</td><td class="num">{len(pliki)}</td></tr>'
+        )
+        kadry = "".join(_kafel_html(kafel, katalog, osadzone) for kafel in kafle)
+        sekcje.append(
+            f'<section id="{_kotwica(seria.klucz)}">'
+            f"<h2>{seria.tytul}</h2><p>{seria.opis}</p>"
+            f'<p class="cichy">Katalog <code>{seria.klucz}</code> · kafli: {len(kafle)} · '
+            f"plików: {len(pliki)}</p>"
+            f'<div class="siatka">{kadry}</div>'
+            "</section>"
+        )
+    razem_plikow = sum(len(pliki) for _seria, pliki in serie)
+    wiersze.append(
+        f'<tr><td><strong>Razem</strong></td><td class="num"><strong>{razem_kafli}</strong></td>'
+        f'<td class="num"><strong>{razem_plikow}</strong></td></tr>'
+    )
+    strona = SZKIELET
+    for znacznik, wartosc in (
+        ("NAWIGACJA", nawigacja),
+        ("TABELA_SERII", "\n".join(wiersze)),
+        ("SEKCJE_GALERII", "\n".join(sekcje)),
+        ("LICZBA_SERII", str(len(serie))),
+        ("LICZBA_ZRZUTOW", str(razem_plikow)),
+        ("DATA_STRONY", data_strony),
+    ):
+        strona = strona.replace(znacznik, wartosc)
+    for znacznik, nazwa in OSADZONE.items():
+        strona = strona.replace(znacznik, zrodlo(katalog, nazwa, osadzone))
+    return strona
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Strona oceny — wszystkie zrzuty z `docs/audit/visual/`, ze skanu katalogu."
+    )
+    parser.add_argument(
+        "wyjscie", nargs="?", default=str(KATALOG / "ocena_seria.html"), help="plik wynikowy"
+    )
+    parser.add_argument(
+        "--data",
+        default=os.environ.get("DATA_STRONY_OCENY", ""),
+        help="data generowania w nagłówku (domyślnie DATA_STRONY_OCENY albo dzień dzisiejszy)",
+    )
+    parser.add_argument(
+        "--osadz",
+        default="",
+        help="serie osadzone jako data URI, po przecinku (domyślnie: odwołania względne)",
+    )
+    args = parser.parse_args(argv)
+    serie = serie_katalogu(KATALOG)
+    dostepne = {seria.klucz for seria, _pliki in serie}
+    osadzone = frozenset(klucz for klucz in args.osadz.split(",") if klucz)
+    nieznane = sorted(osadzone - dostepne)
+    if nieznane:
+        raise SystemExit(
+            "--osadz: nieznane serie: "
+            + ", ".join(nieznane)
+            + "; dostępne: "
+            + ", ".join(sorted(dostepne))
+        )
+    wyjscie = pathlib.Path(args.wyjscie)
+    wyjscie.write_text(
+        zbuduj_strone(KATALOG, args.data or date.today().isoformat(), osadzone), encoding="utf-8"
+    )
+    print(
+        f"strona zapisana: {wyjscie} ({wyjscie.stat().st_size // 1024} kB, "
+        f"serii: {len(serie)}, zrzutów: {sum(len(p) for _s, p in serie)}, "
+        f"osadzone: {', '.join(sorted(osadzone)) or 'brak (odwołania względne)'})"
+    )
+    return 0
+
+
+SZKIELET = """<title>MV-DESIGN-PRO · Ekrany do oceny</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{--tlo:#f7f6f2;--karta:#fff;--tekst:#191814;--cichy:#5d594f;--linia:#dbd6c9;--akcent:#2e5f7a;
 --akcent-tlo:#e6eef3;--ok:#2f6b3f;--brak:#8c2f2f;--uwaga:#8a5a12}
@@ -106,13 +438,59 @@ code{font:.9em ui-monospace,Menlo,monospace;background:var(--akcent-tlo);padding
 .stan{font:600 11px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.1em;text-transform:uppercase;
 padding:3px 7px;border-radius:2px;vertical-align:2px}
 .stan.otw{background:var(--uwaga);color:var(--tlo)}
+a{color:var(--akcent)}
+nav{position:sticky;top:0;z-index:2;background:var(--tlo);border-bottom:1px solid var(--linia);
+padding:10px 0;margin:0 0 26px;display:flex;flex-wrap:wrap;gap:8px 18px;
+font:600 12px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase}
+nav a{text-decoration:none;border-bottom:1px solid transparent;padding-bottom:2px}
+nav a:hover,nav a:focus-visible{border-bottom-color:var(--akcent)}
+section{padding-top:26px;margin-top:34px;border-top:1px solid var(--linia)}
+section>h2{border-top:0;padding-top:0;margin-top:0}
+/* `align-items:start` jest KONIECZNE: bez niego kafel o nizszym zrzucie rozciaga sie do
+wysokosci sasiada w wierszu i pod podpisem zieje pusty blok — widziane na ogledzinach. */
+.siatka{display:grid;grid-template-columns:1fr;gap:22px;margin-top:18px;align-items:start}
+@media(min-width:900px){.siatka{grid-template-columns:1fr 1fr}}
+.kafel{margin:0;background:var(--karta);border:1px solid var(--linia);border-radius:3px;
+overflow:hidden;display:flex;flex-direction:column}
+.para{display:grid;grid-template-columns:1fr;gap:1px;background:var(--linia)}
+.para.dwa{grid-template-columns:1fr 1fr}
+.kafel img{width:100%;height:auto;display:block;border:0;border-radius:0;background:var(--tlo)}
+.kafel figcaption{font:13px/1.5 ui-sans-serif,system-ui,sans-serif;color:var(--cichy);
+padding:10px 12px 12px;display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--linia)}
+.kafel figcaption strong{color:var(--tekst);font-size:14px;word-break:break-word}
+.motywy{font:600 10px/1 ui-sans-serif,system-ui,sans-serif;letter-spacing:.1em;
+text-transform:uppercase;color:var(--akcent)}
+.plik{font:11px/1.4 ui-monospace,Menlo,monospace;color:var(--cichy);opacity:.8;
+background:none;padding:0;word-break:break-all}
 </style>
 <div class="owijka">
 <header>
-<div class="nadtytul">Seria · V12K-216…243 · jedna doba</div>
-<h1>Od schematu do jednej reguły: brak danej nie może stać się zerem</h1>
-<p class="cichy">Zrzuty żywej aplikacji, sieć wzorcowa 52 stacji · pomiar na renderze i na kodzie · 2026-07-27</p>
+<div class="nadtytul">Materiał oceny · serii: LICZBA_SERII · zrzutów: LICZBA_ZRZUTOW · DATA_STRONY</div>
+<h1>Wszystkie zrzuty, które leżą w repozytorium</h1>
+<p class="cichy">Strona powstaje ze <strong>skanu katalogu</strong> <code>docs/audit/visual/</code>,
+nie z listy w kodzie. Poprzednia wersja osadzała sześć zrzutów wskazanych na sztywno i nie
+znała reszty — w tym całej serii ekranów bieżącego programu. Lista w kodzie dryfuje po cichu;
+katalog nie.</p>
 </header>
+
+<nav>NAWIGACJA</nav>
+
+<p><strong>Jak to czytać.</strong> Każdy kafel to jeden materiał: para motywów stoi
+<em>obok siebie</em>, zrzut bez pary — pojedynczo, z zachowaną etykietą motywu. Pod kafelkiem
+leży ścieżka pliku, żeby uwagę z oględzin dało się przypisać do konkretnego zrzutu. Serie idą
+w kolejności programów (najnowsze pierwsze), wewnątrz serii alfabetycznie.</p>
+
+<div class="tab"><table>
+<thead><tr><th>Seria</th><th class="num">Kafli</th><th class="num">Plików</th></tr></thead>
+<tbody>TABELA_SERII</tbody></table></div>
+
+SEKCJE_GALERII
+
+<section id="narracja">
+<h2>Narracja serii V12K-216…243 — zapis oględzin z 2026-07-27</h2>
+<p class="cichy">Tekst i sześć kadrów, wokół których ta strona powstała. Zostaje w całości:
+to zapis rozstrzygnięć, nie ilustracja. Kadry pochodzą z serii <code>sld_audyt</code>
+i <code>kreatory</code>, które w komplecie leżą wyżej.</p>
 
 <h2>Rysunek po serii SLD</h2>
 <figure><img src="ZRZUT_L2" alt="SLD poziom L2, kadr całej sieci wzorcowej" loading="lazy">
@@ -628,12 +1006,10 @@ kontener cofnął migawkę osiem razy, ostatni raz o 10:40, i tylko dlatego nic 
 <p class="cichy">Bramki sprawdzane wstrzykniętą regresją, nie zielonym wynikiem — dla niezmiennika
 motywu nadpisałem jeden zrzut bajtami drugiego i potwierdziłem, że test pada z komunikatem
 wskazującym oba możliwe powody rozbieżności.</p>
+</section>
 </div>
 """
 
-strona = STRONA
-for znacznik, nazwa in OSADZONE.items():
-    strona = strona.replace(znacznik, zrzut_data_uri(nazwa))
 
-WYJSCIE.write_text(strona, encoding="utf-8")
-print(f"strona zapisana: {WYJSCIE} ({WYJSCIE.stat().st_size // 1024} kB)")
+if __name__ == "__main__":
+    raise SystemExit(main())
