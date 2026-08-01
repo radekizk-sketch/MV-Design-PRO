@@ -1,10 +1,14 @@
-"""Wspolne elementy sladu WHITE BOX dla kryteriow wyposazenia stacji.
+"""Wspolne elementy sladu WHITE BOX i werdyktu dla kryteriow wyposazenia stacji.
 
 REUZYCIE, NIE DUPLIKACJA: kanon pieciu pol kroku (wzor → dane → podstawienie →
 wynik → uwagi) oraz zapis liczb dla KaTeX-a powstaly przy kryterium cieplnym
 przewodu (`conductor_thermal_withstand`). Tu sa wyniesione do jednego miejsca,
 zeby cztery moduly tego pakietu nie powtarzaly wlasnych kopii i nie rozjechaly
 sie w formacie sladu.
+
+Z tego samego powodu mieszka tu REGULA SKLADANIA WERDYKTOW (`werdykt_zbiorczy`)
+obok stalych `STATUS_*`: kryteria wieloczlonowe (CT, VT) skladaja werdykt zbiorczy
+jedna funkcja, a nie wlasnymi kopiami warunku.
 """
 
 from __future__ import annotations
@@ -17,6 +21,32 @@ from typing import Any
 STATUS_PASS = "PASS"
 STATUS_FAIL = "FAIL"
 STATUS_UNAVAILABLE = "UNAVAILABLE"
+
+
+def werdykt_zbiorczy(*czastkowe: str) -> str:
+    """Zloz werdykty czastkowe jednego kryterium w werdykt zbiorczy.
+
+    PORZADEK: ``FAIL`` > ``NIEDOSTEPNY`` > ``PASS``.
+
+    FAIL wygrywa z NIEDOSTEPNYM, bo udowodnione naruszenie nie staje sie
+    „nierozstrzygnietym" przez to, ze innej wielkosci zabraklo. NIEDOSTEPNY
+    wygrywa z PASS, bo zielony werdykt wydany na POLICZONEJ POLOWIE kryterium
+    przepuszcza dobor, ktorego nikt nie sprawdzil — a projektant czyta go tak
+    samo jak spelnienie calosci (bilans CT bez wymaganego ALF, bilans VT bez
+    rozpoznanej kategorii uzwojenia).
+
+    Funkcja jest WSPOLNA dla calej rodziny: kazde kryterium o werdykcie
+    wieloczlonowym sklada go tutaj, zeby dwa moduly nie rozjechaly sie w regule.
+    """
+    if not czastkowe:
+        # Kryterium bez ani jednego werdyktu czastkowego nie ma czego skladac.
+        # Ciche PASS byloby dokladnie tym falszem, ktoremu ta funkcja zapobiega.
+        raise ValueError("werdykt zbiorczy wymaga co najmniej jednego werdyktu czastkowego")
+    if STATUS_FAIL in czastkowe:
+        return STATUS_FAIL
+    if STATUS_UNAVAILABLE in czastkowe:
+        return STATUS_UNAVAILABLE
+    return STATUS_PASS
 
 
 def wartosc(value: float | None, unit: str, label: str) -> dict[str, Any]:
