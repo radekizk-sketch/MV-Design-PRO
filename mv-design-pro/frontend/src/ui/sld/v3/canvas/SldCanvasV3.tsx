@@ -2656,13 +2656,19 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             );
           })}
         </g>
-        {/* DECLUTTER EKRANOWY (V12K-218, karta R2-B). `layout/declutter.ts`
-         *  rozstrzyga kolizje w przestrzeni ARKUSZA i na sieci wzorcowej jest
-         *  tożsamością — arkusz jest ogromny, więc kolizji faktycznie nie ma.
-         *  Czytelność jest jednak własnością EKRANU: przy wpasowaniu 52 stacji
-         *  w kadr skala spada do ≈0,17 i całe pismo ma ~2 px (pomiar audytu R2).
-         *  Ukrywamy tu to, co przestało być pismem — świadomie w renderze, bo
-         *  scena musi zostać deterministyczna, a próg zależy od kamery. */}
+        {/* WARSTWA ETYKIET WEDŁUG PLANU (V12K-218 declutter ekranowy + KD-11
+         *  tożsamość elementów). `layout/declutter.ts` rozstrzyga kolizje w
+         *  przestrzeni ARKUSZA i na sieci wzorcowej jest tożsamością — arkusz
+         *  jest ogromny, więc kolizji faktycznie nie ma. Czytelność jest jednak
+         *  własnością EKRANU: przy wpasowaniu 52 stacji w kadr skala spada do
+         *  ≈0,17 i całe pismo ma ~2 px (pomiar audytu R2). Dlatego plan
+         *  (`labelLegibility.ts`) liczony jest tu, w renderze — scena musi
+         *  zostać deterministyczna, a skala kamery do sceny nie należy.
+         *  ROZSTRZYGNIĘCIE KD-11: znika WYŁĄCZNIE klasa DANE SZCZEGÓŁOWE
+         *  (`data-hidden-unreadable` = licznik „Ukryto N opisów"), a TOŻSAMOŚĆ
+         *  elementów jest rysowana pismem powiększonym do minimum czytelnego,
+         *  bez kolizji; `data-dropped-identity` mówi, ile tożsamości nie
+         *  zmieściło się mimo skracania (na sieciach kanonicznych: 0). */}
         <g
           data-testid="sld-v3-labels"
           data-hidden-unreadable={hiddenUnreadableLabels}
