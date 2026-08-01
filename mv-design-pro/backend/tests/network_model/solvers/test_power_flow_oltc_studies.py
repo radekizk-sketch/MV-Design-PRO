@@ -86,6 +86,40 @@ class TestAnnualProfile:
         assert [s.positions for s in r1.steps] == [s.positions for s in r2.steps]
         assert r1.total_switch_count == r2.total_switch_count
 
+    def test_profil_roczny_mierzy_odchylke_do_POLOWY_pasma_modelu(self):
+        """Profil roczny musi stosowac POLOWE pasma martwego, tak jak regulator.
+
+        Luka wykryta przy odbiorze karty D (audyt szczytu 2026-08-01): kryterium
+        doboru zaczepow bylo juz przypiete testami, ale znacznik `within_deadband`
+        profilu rocznego — nie. Podwojenie pasma w tym miejscu (uzycie CALEGO
+        `deadband_kv` zamiast polowy) nie zapalalo zadnego testu, a to ono decyduje,
+        ile krokow profilu inzynier zobaczy jako „poza pasmem".
+
+        Test rozstrzyga przez okno: odchylka lezy MIEDZY polowa pasma a calym
+        pasmem, wiec konwencja polowy daje „poza pasmem", a konwencja calego
+        pasma — „w pasmie". Zakres zaczepow jest nasycony (nastawa nieosiagalna),
+        zeby odchylka nie zalezala od tego, kiedy regulator przestanie krecic.
+        """
+        pf_input = _build_input(_oltc(voltage_setpoint_kv=18.0, deadband_kv=0.2))
+        trafo_id = _trafo_id(pf_input)
+        nasycenie = run_annual_oltc_profile(
+            pf_input, _solve_once, [ProfilePoint(label="nasycenie", load_scale=1.0)]
+        )
+        krok_ref = nasycenie.steps[0]
+        assert krok_ref.positions[trafo_id] == -9, "sonda wymaga nasycenia zakresu zaczepow"
+        odchylka = abs(krok_ref.controlled_bus_kv[trafo_id] - 18.0)
+
+        pasmo = 1.5 * odchylka
+        wynik = run_annual_oltc_profile(
+            _build_input(_oltc(voltage_setpoint_kv=18.0, deadband_kv=pasmo)),
+            _solve_once,
+            [ProfilePoint(label="nasycenie", load_scale=1.0)],
+        )
+        krok = wynik.steps[0]
+        dev = abs(krok.controlled_bus_kv[trafo_id] - 18.0)
+        assert pasmo / 2.0 < dev <= pasmo, "okno rozstrzygajace polowa-vs-cale pasmo"
+        assert krok.within_deadband[trafo_id] is False
+
 
 class TestOptimization:
     def test_minimize_losses_picks_converged_position_and_restores(self):
