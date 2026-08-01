@@ -36,6 +36,17 @@ const REJESTR = async () =>
         fix_action_id: 'fix_ct_winding_resistance',
       },
     ],
+    [
+      'vt.winding_category_missing',
+      {
+        code: 'vt.winding_category_missing',
+        message_pl:
+          'Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii '
+          + '(pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia',
+        level: 'WARNING',
+        fix_action_id: 'fix_vt_winding_category',
+      },
+    ],
   ]);
 
 function bilansCt(over: Partial<BilansCtOdpowiedz> = {}): BilansCtOdpowiedz {
@@ -158,7 +169,92 @@ describe('SekcjaBilansuCtVt — readout bilansu obwodów wtórnych', () => {
     ).toBeTruthy();
   });
 
-  it('bez wskazanego przekładnika sekcja się nie renderuje (uczciwy stan zerowy)', () => {
+  it('kategoria uzwojenia stoi OBOK limitu (podmiana kategorii nie jest niewidoczna)', async () => {
+    // Odpowiedź toru ZABEZPIECZENIOWEGO: limit 1,0 % ma przy sobie kategorię,
+    // z której został wzięty. Bez tego wiersza ekran pokazywał sam limit i
+    // przeczył etykiecie wybranego uzwojenia tuż nad readoutem.
+    const klientVt = vi.fn(async () =>
+      bilansVt({
+        status_spadku: 'PASS',
+        limit_delta_u_procent: 1.0,
+        kategoria_uzwojenia: 'ZABEZPIECZENIOWE',
+        klasa_dokladnosci: '3P',
+      }),
+    );
+
+    render(
+      <SekcjaBilansuCtVt
+        ctRef={null}
+        vtRef="vt-1"
+        obwodCt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null }}
+        obwodVt={{ dlugosc_m: 100, przekroj_mm2: 1.5, moc_aparatow_va: 30 }}
+        uzwojenieVt="ZABEZPIECZENIOWE"
+        testidSufiks="1"
+        klientCt={vi.fn(async () => bilansCt())}
+        klientVt={klientVt}
+        klientRejestru={REJESTR}
+      />,
+    );
+
+    await waitFor(() => expect(screen.getByText('1,0 %')).toBeTruthy());
+    expect(screen.getByText('zabezpieczeniowa (klasa 3P)')).toBeTruthy();
+    // Kategoria opisana po polsku — wartość kontraktu nie jest tekstem dla inżyniera.
+    expect(screen.queryByText(/ZABEZPIECZENIOWE/)).toBeNull();
+  });
+
+  it('brak klasy pytanego uzwojenia: uczciwy stan zerowy zamiast werdyktu', async () => {
+    // Przekładnik czysto zabezpieczeniowy pytany o uzwojenie POMIAROWE: backend
+    // nie zgaduje kategorii, więc readout nie ma czego pokazać poza brakiem.
+    const klientVt = vi.fn(async () =>
+      bilansVt({
+        status: 'UNAVAILABLE',
+        status_spadku: 'UNAVAILABLE',
+        limit_delta_u_procent: null,
+        kategoria_uzwojenia: null,
+        klasa_dokladnosci: null,
+        readiness_codes: ['vt.winding_category_missing'],
+      }),
+    );
+
+    render(
+      <SekcjaBilansuCtVt
+        ctRef={null}
+        vtRef="vt-1"
+        obwodCt={{ dlugosc_m: null, przekroj_mm2: null, moc_aparatow_va: null }}
+        obwodVt={{ dlugosc_m: 100, przekroj_mm2: 1.5, moc_aparatow_va: 30 }}
+        uzwojenieVt="POMIAROWE"
+        testidSufiks="1"
+        klientCt={vi.fn(async () => bilansCt())}
+        klientVt={klientVt}
+        klientRejestru={REJESTR}
+      />,
+    );
+
+    // Zdanie kanonu gotowości mówi, CZEGO brakuje.
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          'Nierozpoznana klasa uzwojenia przekładnika napięciowego — bez kategorii '
+          + '(pomiarowe/zabezpieczeniowe) nie ma limitu zmiany napięcia',
+        ),
+      ).toBeTruthy(),
+    );
+    // Werdykt zmiany napięcia NIE udaje spełnienia kryterium.
+    expect(screen.getByText('brak podstawy do oceny')).toBeTruthy();
+    expect(
+      screen.getByText('nieustalona — brak klasy tego uzwojenia w danych katalogowych'),
+    ).toBeTruthy();
+    // Żaden limit nie został przyjęty — w szczególności zabezpieczeniowy 1,0 %.
+    expect(screen.queryByText('1,0 %')).toBeNull();
+    expect(screen.queryByText('0,5 %')).toBeNull();
+    // Identyfikator kodu nie trafia do tekstu dla inżyniera.
+    expect(screen.queryByText(/vt\.winding_category_missing/)).toBeNull();
+  });
+
+  // `async` + `waitFor`: pobranie rejestru gotowości kończy się PO renderze i
+  // aktualizuje stan komponentu. Bez odczekania React zgłaszał ostrzeżenie
+  // „update … not wrapped in act", które zagłusza ostrzeżenia realnych defektów.
+  it('bez wskazanego przekładnika sekcja się nie renderuje (uczciwy stan zerowy)', async () => {
     const { container } = render(
       <SekcjaBilansuCtVt
         ctRef={null}
@@ -172,7 +268,7 @@ describe('SekcjaBilansuCtVt — readout bilansu obwodów wtórnych', () => {
         klientRejestru={REJESTR}
       />,
     );
-    expect(container.textContent).toBe('');
+    await waitFor(() => expect(container.textContent).toBe(''));
   });
 });
 

@@ -32,6 +32,7 @@ from network_model.solvers.equipment_checks.transformer_losses import (
     compute_transformer_losses,
 )
 from network_model.solvers.equipment_checks.vt_burden_voltage_drop import (
+    KATEGORIA_POMIAROWA,
     VtBurdenInput,
     VtDeviceBurden,
     check_vt_burden_voltage_drop,
@@ -188,12 +189,16 @@ class VtBurdenResponse(BaseModel):
     delta_u_v: float | None = None
     delta_u_procent: float | None = None
     limit_delta_u_procent: float | None = None
+    #: Kategoria uzwojenia, Z KTOREJ wziety jest limit powyzej — stoi obok niego,
+    #: zeby zadna podmiana kategorii nie byla niewidoczna. ``None`` = kategoria
+    #: nierozpoznana (limit nieprzyjety, patrz ``readiness_codes``).
     kategoria_uzwojenia: str | None = None
     readiness_codes: list[str] = Field(default_factory=list)
     formula_ref: str
     assumptions: list[str] = Field(default_factory=list)
     white_box_trace: list[SladKroku] = Field(default_factory=list)
     pozycja_katalogowa: str
+    #: Klasa dokladnosci SPRAWDZANEGO uzwojenia (nie „jakas klasa z rekordu").
     klasa_dokladnosci: str | None = None
     moc_znamionowa_va: float | None = None
     napiecie_wtorne_v: float | None = None
@@ -211,18 +216,33 @@ def sprawdz_bilans_vt(request: VtBurdenRequest) -> VtBurdenResponse:
             "nie istnieje.",
         )
 
-    # Klasa TEGO uzwojenia: przekladnik dwuuzwojeniowy niesie obie. Gdy katalog nie
-    # podaje klasy pomiarowej osobno, uzwojenie pomiarowe opisuje `accuracy_class`.
-    if request.uzwojenie == "POMIAROWE":
-        klasa = pozycja.accuracy_class_metering or pozycja.accuracy_class
-    else:
-        klasa = pozycja.accuracy_class
+    # Klasa TEGO uzwojenia. Przekladnik dwuuzwojeniowy niesie obie klasy
+    # (``accuracy_class`` zabezpieczeniowa, ``accuracy_class_metering`` pomiarowa),
+    # jednouzwojeniowy tylko ``accuracy_class`` — i wolno ja przyjac WYLACZNIE
+    # wtedy, gdy opisuje PYTANE uzwojenie. Zapasowe „skoro nie ma klasy pomiarowej,
+    # wezmy zabezpieczeniowa" bylo podmiana kategorii: dla przekladnika czysto
+    # zabezpieczeniowego (klasa 3P) zamienialo limit ΔU z 0,5 % na 1,0 % i dawalo
+    # PASS obwodowi pomiarowemu dwukrotnie za dlugiemu, bez sladu na ekranie.
+    # Symetrycznie: klasa pomiarowa nie opisuje uzwojenia zabezpieczeniowego.
+    klasy_kandydujace = (
+        (pozycja.accuracy_class_metering, pozycja.accuracy_class)
+        if request.uzwojenie == KATEGORIA_POMIAROWA
+        else (pozycja.accuracy_class,)
+    )
+    klasa = next(
+        (k for k in klasy_kandydujace if kategoria_z_klasy(k) == request.uzwojenie),
+        None,
+    )
+    # Brak klasy opisujacej pytane uzwojenie ⇒ kategoria nierozpoznana. Solver
+    # konczy wtedy kryterium ΔU stanem NIEDOSTEPNY i kodem gotowosci
+    # ``vt.winding_category_missing`` (uczciwy stan zerowy zamiast domyslu).
+    kategoria = kategoria_z_klasy(klasa)
 
     wynik = check_vt_burden_voltage_drop(
         VtBurdenInput(
             u2n_v=pozycja.ratio_secondary_v,
             sn_va=pozycja.burden_va,
-            kategoria_uzwojenia=kategoria_z_klasy(klasa),
+            kategoria_uzwojenia=kategoria,
             dlugosc_przewodu_m=request.dlugosc_przewodu_m,
             przekroj_przewodu_mm2=request.przekroj_przewodu_mm2,
             obciazenia_aparatow=tuple(

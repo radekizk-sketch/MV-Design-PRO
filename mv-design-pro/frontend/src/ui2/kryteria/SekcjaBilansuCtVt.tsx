@@ -27,6 +27,7 @@ import {
 } from './rejestrGotowosci';
 import {
   KRYTERIA_STRINGS as T,
+  etykietaKategoriiUzwojenia,
   etykietaWariantuAlf,
   etykietaWerdyktu,
   fmtLiczba,
@@ -244,6 +245,11 @@ export function SekcjaBilansuCtVt({
               <Wiersz etykieta={T.vtPrad} wartosc={fmtLiczba(vt.prad_obwodu_a, 'A')} />
               <Wiersz etykieta={T.vtDeltaU} wartosc={fmtLiczba(vt.delta_u_procent, '%')} />
               <Wiersz etykieta={T.vtLimit} wartosc={fmtLiczba(vt.limit_delta_u_procent, '%', 1)} />
+              {/* Kategoria STOI OBOK LIMITU — inaczej podmiana kategorii jest niewidoczna. */}
+              <Wiersz
+                etykieta={T.vtKategoria}
+                wartosc={etykietaKategoriiUzwojenia(vt.kategoria_uzwojenia, vt.klasa_dokladnosci)}
+              />
               <Wiersz
                 etykieta={T.vtWerdyktObciazenia}
                 wartosc={etykietaWerdyktu(vt.status_obciazenia)}

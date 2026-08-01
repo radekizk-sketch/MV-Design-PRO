@@ -50,6 +50,10 @@ export const KRYTERIA_STRINGS = {
   vtPrad: 'Prąd obwodu wtórnego',
   vtDeltaU: 'Zmiana napięcia obwodu ΔU',
   vtLimit: 'Limit dla kategorii uzwojenia',
+  vtKategoria: 'Kategoria uzwojenia, z której wzięto limit',
+  vtKategoriaPomiarowa: 'pomiarowa',
+  vtKategoriaZabezpieczeniowa: 'zabezpieczeniowa',
+  vtKategoriaNieustalona: 'nieustalona — brak klasy tego uzwojenia w danych katalogowych',
   vtWerdyktObciazenia: 'Werdykt obciążenia',
   vtWerdyktSpadku: 'Werdykt zmiany napięcia',
   vtPozycja: 'Pozycja katalogowa',
@@ -106,6 +110,27 @@ export function etykietaWerdyktu(status: string): string {
   if (status === 'PASS') return KRYTERIA_STRINGS.werdyktPass;
   if (status === 'FAIL') return KRYTERIA_STRINGS.werdyktFail;
   return KRYTERIA_STRINGS.werdyktNiedostepny;
+}
+
+/**
+ * Etykieta PL kategorii uzwojenia, Z KTÓREJ wzięty jest limit ΔU — razem z klasą
+ * dokładności tego uzwojenia.
+ *
+ * DLACZEGO STOI OBOK LIMITU. Kategoria przychodziła w odpowiedzi, ale nie była
+ * renderowana nigdzie: nad readoutem widniała etykieta wybranego uzwojenia
+ * („pomiarowe (limit 0,5 %)"), a wiersz niżej pokazywał limit 1,0 % — ekran
+ * przeczył sam sobie i nie tłumaczył dlaczego. Kategoria widoczna przy limicie
+ * sprawia, że żadna niezgodność nie jest już niewidoczna.
+ */
+export function etykietaKategoriiUzwojenia(
+  kategoria: string | null,
+  klasa: string | null,
+): string {
+  let nazwa: string | null = null;
+  if (kategoria === 'POMIAROWE') nazwa = KRYTERIA_STRINGS.vtKategoriaPomiarowa;
+  if (kategoria === 'ZABEZPIECZENIOWE') nazwa = KRYTERIA_STRINGS.vtKategoriaZabezpieczeniowa;
+  if (nazwa === null) return KRYTERIA_STRINGS.vtKategoriaNieustalona;
+  return klasa ? `${nazwa} (klasa ${klasa.replace('.', ',')})` : nazwa;
 }
 
 /** Etykieta PL wariantu rachunku ALF (nazwa wariantu jest kodem, nie tekstem). */
