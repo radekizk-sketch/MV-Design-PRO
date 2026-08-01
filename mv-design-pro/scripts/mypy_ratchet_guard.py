@@ -55,8 +55,13 @@ BACKEND = ROOT / "backend"
 #     komentarzu), `braki_ogniw` w liscie materialowej (odczyt klucza z `None`);
 #   * doinstalowane stuby `types-PyYAML` (naprawa u zrodla zamiast wyciszenia importu).
 # 230 bledow mniej, prog obnizony 254->24, plikow 65->15.
-BASELINE_ERRORS = 24
-BASELINE_FILES = 15
+# KARTA D / D6 (2026-08-01): kryterium dopuszczalnosci pozycji zaczepu przestalo byc
+# zaszytym progiem i stalo sie danymi wyniku. Przy okazji znikla KOLIZJA NAZWY
+# `feasible` w `power_flow_oltc_studies.optimize_tap_positions` (raz `bool` kandydata,
+# raz lista kandydatow), ktora chowala przed analiza dwa realne bledy typow
+# (assignment + arg-type). Pomiar wlasny: 24/15 -> 22/14.
+BASELINE_ERRORS = 22
+BASELINE_FILES = 14
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 WZORZEC_SUKCESU = re.compile(r"Success: no issues found")

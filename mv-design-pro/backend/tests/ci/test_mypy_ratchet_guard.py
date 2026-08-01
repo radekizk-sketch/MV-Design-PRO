@@ -34,12 +34,15 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # K14 (2026-07-30): jawne typy wejścia projekcji rozpływu gałęziowego ⇒ 258 → 254.
     # KD-12 (2026-08-01): zdjęcie długu u źródła w warstwach API / persystencji /
     # analiz / katalogu / operacji domenowych ⇒ pomiar 254/65 → 24/15.
+    # KARTA D / D6 (2026-08-01): kryterium dopuszczalności pozycji zaczepu jest teraz
+    # daną wyniku, a nie zaszytym progiem — zniknęła kolizja nazwy `feasible`
+    # (raz `bool`, raz lista) w `power_flow_oltc_studies` ⇒ pomiar 24/15 → 22/14.
     #
     # To JEDYNE miejsce, w którym zmierzona liczba jest powtórzona poza samym guardem.
     # Test „odcina w obie strony" poniżej wyprowadza ją z modułu, więc obniżenie progu
     # wymaga świadomej zmiany dokładnie tutaj (i nigdzie indziej).
-    assert modul.BASELINE_ERRORS == 24
-    assert modul.BASELINE_FILES == 15
+    assert modul.BASELINE_ERRORS == 22
+    assert modul.BASELINE_FILES == 14
 
 
 def test_guard_jest_wpiety_do_workflow_ci() -> None:

@@ -1129,6 +1129,34 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_verdict_input_data",
         fix_navigation={"panel": "gotowosc"},
     ),
+    # Badanie doboru zaczepów (OLTC §17) — powody, dla których kryterium
+    # dopuszczalności pozycji NIE DA SIĘ zbudować z danych. Bez kryterium badanie
+    # nie wskazuje pozycji: pasma akceptacji nie wolno zastąpić żadną wartością
+    # domyślną (zakaz heurystyk w solverach).
+    "oltc.deadband_missing": ReadinessCodeSpec(
+        code="oltc.deadband_missing",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Przełącznik zaczepów nie ma pasma nieczułości regulatora — bez niego nie "
+            "wiadomo, jaka odchyłka napięcia jest jeszcze dopuszczalna"
+        ),
+        fix_action_id="fix_oltc_deadband",
+        fix_navigation={"panel": "inspector", "tab": "regulacja", "focus": "deadband_kv"},
+    ),
+    "oltc.target_voltage_missing": ReadinessCodeSpec(
+        code="oltc.target_voltage_missing",
+        area=ReadinessArea.ANALYSIS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Badanie doboru zaczepów nie ma napięcia docelowego — podaj napięcie, "
+            "które ma być utrzymywane na szynie regulowanej"
+        ),
+        fix_action_id="fix_oltc_target_voltage",
+        fix_navigation={"panel": "analizy", "tab": "oltc", "focus": "napiecie_cel"},
+    ),
     # Catalog gate — input validation (NOT readiness, blocks operation execution)
     "catalog.ref_required": ReadinessCodeSpec(
         code="catalog.ref_required",

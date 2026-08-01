@@ -3,6 +3,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  fmtDopuszczalna,
+  fmtLiczbaPrzelaczen,
+  opisKryterium,
   PARAMETRY_DOMYSLNE,
   parsujWynik,
   zbudujSolverInput,
@@ -55,5 +58,70 @@ describe('parsujWynik', () => {
 
   it('brak klucza → pusty wynik', () => {
     expect(parsujWynik('sweep', {})).toEqual({});
+  });
+});
+
+describe('opisKryterium — wartość i źródło kryterium dopuszczalności', () => {
+  it('pasmo regulatora: pokazuje cel, połowę pasma i pełne pasmo z modelu', () => {
+    const { tresc, zrodlo } = opisKryterium({
+      kind: 'voltage_deadband',
+      available: true,
+      source: 'tap_changer_deadband',
+      target_kv: 15.75,
+      band_kv: 0.2,
+      half_band_kv: 0.1,
+    });
+    expect(tresc).toContain('15.750 kV');
+    expect(tresc).toContain('0.100 kV');
+    expect(tresc).toContain('0.200 kV');
+    expect(zrodlo).toContain('pasmo nieczułości przełącznika zaczepów z modelu');
+  });
+
+  it('odchyłka od napięcia docelowego: bez dodatkowego pasma', () => {
+    const { tresc, zrodlo } = opisKryterium({
+      kind: 'voltage_deviation',
+      available: true,
+      source: 'study_target_kv',
+      target_kv: 15,
+    });
+    expect(tresc).toContain('15.000 kV');
+    expect(zrodlo).toBe('napięcie docelowe podane w badaniu');
+  });
+
+  it('zbieżność rozpływu: źródłem jest wynik rozpływu', () => {
+    const { tresc, zrodlo } = opisKryterium({
+      kind: 'convergence',
+      available: true,
+      source: 'power_flow_convergence',
+    });
+    expect(tresc).toContain('rozpływ mocy');
+    expect(zrodlo).toBe('wynik rozpływu mocy');
+  });
+
+  it('kryterium niedostępne → uczciwy stan bez wymyślonej wartości i bez źródła', () => {
+    const { tresc, zrodlo } = opisKryterium({
+      kind: 'voltage_deadband',
+      available: false,
+      readiness_codes: ['oltc.deadband_missing'],
+    });
+    expect(tresc).toContain('Nieustalone');
+    expect(tresc).not.toContain('kV');
+    expect(zrodlo).toBeNull();
+    // Brak kryterium w odpowiedzi = ten sam uczciwy stan (starsza odpowiedź backendu).
+    expect(opisKryterium(undefined).zrodlo).toBeNull();
+  });
+});
+
+describe('formatery uczciwego braku', () => {
+  it('liczba przełączeń: null → kreska (nie zero)', () => {
+    expect(fmtLiczbaPrzelaczen(3)).toBe('3');
+    expect(fmtLiczbaPrzelaczen(0)).toBe('0');
+    expect(fmtLiczbaPrzelaczen(null)).toBe('—');
+  });
+
+  it('dopuszczalność: null to nie „nie" — to brak oceny', () => {
+    expect(fmtDopuszczalna(true)).toBe('tak');
+    expect(fmtDopuszczalna(false)).toBe('nie');
+    expect(fmtDopuszczalna(null)).toBe('—');
   });
 });
