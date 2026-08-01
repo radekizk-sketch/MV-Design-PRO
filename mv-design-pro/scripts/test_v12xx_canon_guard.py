@@ -26,9 +26,7 @@ def test_api_matrix_requires_v2_projection_endpoint(tmp_path, monkeypatch) -> No
     violations = guard.check_api_compatibility_matrix()
 
     assert any("[api-matrix-endpoint]" in violation for violation in violations)
-    assert any(
-        "/api/cases/{id}/enm/v2-projection" in violation for violation in violations
-    )
+    assert any("/api/cases/{id}/enm/v2-projection" in violation for violation in violations)
 
 
 def test_api_matrix_accepts_v2_projection_endpoint(tmp_path, monkeypatch) -> None:
@@ -194,7 +192,9 @@ def test_debt_closure_accepts_closed_registers(tmp_path, monkeypatch) -> None:
     assert guard.check_v12_debt_closure() == []
 
 
-def test_removed_legacy_public_endpoints_rejects_active_protection_engine_route(monkeypatch) -> None:
+def test_removed_legacy_public_endpoints_rejects_active_protection_engine_route(
+    monkeypatch,
+) -> None:
     monkeypatch.setattr(
         guard.api_lifecycle_guard,
         "discover_active_api_routes",
@@ -308,9 +308,7 @@ def test_decision_register_requires_v12d_016(tmp_path, monkeypatch) -> None:
     assert any("V12D-016" in violation for violation in violations)
 
 
-def test_playwright_env_timeout_requires_chromium_probe_timeout(
-    tmp_path, monkeypatch
-) -> None:
+def test_playwright_env_timeout_requires_chromium_probe_timeout(tmp_path, monkeypatch) -> None:
     playwright_env = write_doc(
         tmp_path,
         "playwright-env.mjs",
@@ -324,15 +322,10 @@ spawnSync('chrome', ['--version'], { encoding: 'utf-8' });
     violations = guard.check_playwright_env_timeout()
 
     assert any("[playwright-env-timeout]" in violation for violation in violations)
-    assert any(
-        "PLAYWRIGHT_CHROMIUM_VERSION_TIMEOUT_MS" in violation
-        for violation in violations
-    )
+    assert any("PLAYWRIGHT_CHROMIUM_VERSION_TIMEOUT_MS" in violation for violation in violations)
 
 
-def test_playwright_env_timeout_accepts_canonical_timeout_contract(
-    tmp_path, monkeypatch
-) -> None:
+def test_playwright_env_timeout_accepts_canonical_timeout_contract(tmp_path, monkeypatch) -> None:
     playwright_env = write_doc(
         tmp_path,
         "playwright-env.mjs",
@@ -373,9 +366,7 @@ const backendServerCommand = process.platform === 'win32'
     assert any("[playwright-webserver-shell]" in violation for violation in violations)
 
 
-def test_playwright_webserver_lifecycle_accepts_cwd_backend_handoff(
-    tmp_path, monkeypatch
-) -> None:
+def test_playwright_webserver_lifecycle_accepts_cwd_backend_handoff(tmp_path, monkeypatch) -> None:
     config_path = write_doc(
         tmp_path,
         "playwright.config.ts",
@@ -395,9 +386,7 @@ export default defineConfig({
     assert guard.check_playwright_webserver_lifecycle() == []
 
 
-def test_playwright_setup_windows_launcher_requires_cmd_launcher(
-    tmp_path, monkeypatch
-) -> None:
+def test_playwright_setup_windows_launcher_requires_cmd_launcher(tmp_path, monkeypatch) -> None:
     setup_path = write_doc(
         tmp_path,
         "playwright-setup.mjs",
@@ -413,9 +402,7 @@ const install = run(localPlaywright, ['install', '--with-deps', 'chromium']);
     assert any("[playwright-setup-windows]" in violation for violation in violations)
 
 
-def test_playwright_setup_windows_launcher_accepts_cmd_launcher(
-    tmp_path, monkeypatch
-) -> None:
+def test_playwright_setup_windows_launcher_accepts_cmd_launcher(tmp_path, monkeypatch) -> None:
     setup_path = write_doc(
         tmp_path,
         "playwright-setup.mjs",

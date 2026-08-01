@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
 import sys
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = ROOT / "docs"
@@ -43,9 +42,7 @@ MIGRATION_MAP = {
     "ui/powerfactory_ui_parity.md": "ui/ui_canonical_parity.md",
 }
 
-TEMP_ARTIFACTS = (
-    DOCS_DIR / "spec" / "_codex_test.tmp",
-)
+TEMP_ARTIFACTS = (DOCS_DIR / "spec" / "_codex_test.tmp",)
 
 
 def is_historical_doc(path: Path) -> bool:
@@ -53,11 +50,7 @@ def is_historical_doc(path: Path) -> bool:
 
 
 def iter_active_docs() -> list[Path]:
-    return [
-        path
-        for path in sorted(DOCS_DIR.rglob("*.md"))
-        if not is_historical_doc(path)
-    ]
+    return [path for path in sorted(DOCS_DIR.rglob("*.md")) if not is_historical_doc(path)]
 
 
 def extract_markdown_targets(path: Path) -> list[str]:
@@ -86,9 +79,7 @@ def check_spec_banners() -> list[str]:
             actual = normalized[index - 1] if len(normalized) >= index else ""
             if actual != expected:
                 rel_path = path.relative_to(ROOT).as_posix()
-                violations.append(
-                    f"[historical-banner] {rel_path}:{index}: expected {expected!r}"
-                )
+                violations.append(f"[historical-banner] {rel_path}:{index}: expected {expected!r}")
                 break
     return violations
 
@@ -105,9 +96,13 @@ def check_archive_readme() -> list[str]:
     if "../INDEX.md" not in content:
         violations.append("[archive-readme] docs/archive/README.md must point to ../INDEX.md")
     if "../INDEX_KANONICZNY.md" not in content:
-        violations.append("[archive-readme] docs/archive/README.md must point to ../INDEX_KANONICZNY.md")
+        violations.append(
+            "[archive-readme] docs/archive/README.md must point to ../INDEX_KANONICZNY.md"
+        )
     if "V12.5 migration map" not in content:
-        violations.append("[archive-readme] docs/archive/README.md missing V12.5 migration map section")
+        violations.append(
+            "[archive-readme] docs/archive/README.md missing V12.5 migration map section"
+        )
     for legacy_path, active_path in MIGRATION_MAP.items():
         row = f"| `{legacy_path}` | `{active_path}` |"
         if row not in content:
@@ -127,7 +122,9 @@ def check_temp_artifacts_absent() -> list[str]:
     violations: list[str] = []
     for path in TEMP_ARTIFACTS:
         if path.exists():
-            violations.append(f"[temp-artifact] {path.relative_to(ROOT).as_posix()} should not exist")
+            violations.append(
+                f"[temp-artifact] {path.relative_to(ROOT).as_posix()} should not exist"
+            )
     return violations
 
 
@@ -137,7 +134,9 @@ def check_history_labels(index_path: Path) -> list[str]:
 
     violations: list[str] = []
     rel_index = index_path.relative_to(ROOT).as_posix()
-    for line_no, line in enumerate(index_path.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1):
+    for line_no, line in enumerate(
+        index_path.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1
+    ):
         if "](./spec/" in line and "[historyczne]" not in line:
             violations.append(
                 f"[history-label] {rel_index}:{line_no}: docs/spec links must be marked [historyczne]"
@@ -153,7 +152,9 @@ def check_active_doc_archive_links() -> list[str]:
     violations: list[str] = []
     for path in iter_active_docs():
         rel_path = path.relative_to(ROOT).as_posix()
-        for line_no, line in enumerate(path.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1):
+        for line_no, line in enumerate(
+            path.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1
+        ):
             if ARCHIVE_LINK_PATTERN.search(line) is None:
                 continue
             if "[historyczne]" in line:
@@ -174,9 +175,7 @@ def check_index_targets_exist() -> list[str]:
             resolved_target = resolve_target(index_path, raw_target)
             if resolved_target.exists():
                 continue
-            violations.append(
-                f"[missing-index-target] {rel_index}: missing target {raw_target}"
-            )
+            violations.append(f"[missing-index-target] {rel_index}: missing target {raw_target}")
     return violations
 
 
@@ -233,7 +232,10 @@ def check_indexed_active_docs_for_historical_spec_refs() -> list[str]:
             rel_path = resolved_target.relative_to(ROOT).as_posix()
             if rel_path in META_AUDIT_ALLOWLIST:
                 continue
-            for line_no, line in enumerate(resolved_target.read_text(encoding="utf-8", errors="ignore").splitlines(), start=1):
+            for line_no, line in enumerate(
+                resolved_target.read_text(encoding="utf-8", errors="ignore").splitlines(),
+                start=1,
+            ):
                 if not any(pattern in line for pattern in HISTORICAL_SPEC_PATTERNS):
                     continue
                 violations.append(

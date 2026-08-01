@@ -50,7 +50,7 @@ def main() -> int:
     if not os.path.isdir(frontend_src):
         frontend_src = os.path.join("frontend", "src")
     if not os.path.isdir(frontend_src):
-        print(f"WARNING: frontend/src directory not found, skipping guard")
+        print("WARNING: frontend/src directory not found, skipping guard")
         return 0
 
     violations: list[str] = []
@@ -64,8 +64,10 @@ def main() -> int:
             rel_path = os.path.relpath(filepath, frontend_src)
 
             # Check if in allowed path
-            in_allowed = any(rel_path.startswith(p) or rel_path.replace("\\", "/").startswith(p)
-                             for p in ALLOWED_PATHS)
+            in_allowed = any(
+                rel_path.startswith(p) or rel_path.replace("\\", "/").startswith(p)
+                for p in ALLOWED_PATHS
+            )
             if in_allowed:
                 continue
 
@@ -74,7 +76,7 @@ def main() -> int:
                 continue
 
             try:
-                with open(filepath, "r", encoding="utf-8") as f:
+                with open(filepath, encoding="utf-8") as f:
                     content = f.read()
             except (OSError, UnicodeDecodeError):
                 continue
@@ -82,7 +84,11 @@ def main() -> int:
             for line_num, line in enumerate(content.splitlines(), 1):
                 # Skip comments
                 stripped = line.strip()
-                if stripped.startswith("//") or stripped.startswith("/*") or stripped.startswith("*"):
+                if (
+                    stripped.startswith("//")
+                    or stripped.startswith("/*")
+                    or stripped.startswith("*")
+                ):
                     continue
 
                 for pattern in TRACE_V2_PATTERNS:

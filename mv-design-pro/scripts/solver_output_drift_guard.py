@@ -12,7 +12,6 @@ Exit code: 0 (PASS) / 1 (FAIL).
 
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
 
@@ -54,9 +53,7 @@ def check_drift_for_network(net_id: str) -> None:
             EXIT_CODE = 1
     for sc in expected.short_circuit:
         if sc.ikss_a <= 0:
-            WARNINGS.append(
-                f"{net_id}: SC at {sc.fault_node_id} ikss_a={sc.ikss_a} ≤ 0 - drift"
-            )
+            WARNINGS.append(f"{net_id}: SC at {sc.fault_node_id} ikss_a={sc.ikss_a} ≤ 0 - drift")
             EXIT_CODE = 1
     prev_t = -1e9
     for ds in expected.dynamic_samples:

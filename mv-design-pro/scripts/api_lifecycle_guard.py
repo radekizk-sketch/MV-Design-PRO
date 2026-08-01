@@ -185,15 +185,11 @@ def resolve_router(module_name: str, symbol: str, _depth: int = 0) -> RouterSour
         reexport = _reexport_target(tree, symbol)
         if reexport is not None:
             return resolve_router(reexport[0], reexport[1], _depth + 1)
-        raise UnresolvedRouter(
-            f"{module_name}.{symbol} nie jest przypisany na poziomie modulu"
-        )
+        raise UnresolvedRouter(f"{module_name}.{symbol} nie jest przypisany na poziomie modulu")
 
     if isinstance(value, ast.Call) and isinstance(value.func, ast.Name):
         if value.func.id == "APIRouter":
-            return RouterSource(
-                module_name, symbol, _apirouter_prefix(value), frozenset()
-            )
+            return RouterSource(module_name, symbol, _apirouter_prefix(value), frozenset())
         base_name, excluded = _derived_router(tree, assignments, value.func.id)
         base_value = assignments.get(base_name)
         if not (
@@ -205,9 +201,7 @@ def resolve_router(module_name: str, symbol: str, _depth: int = 0) -> RouterSour
                 f"{module_name}.{symbol} kopiuje trasy z {base_name}, "
                 "ktory nie jest bezposrednim APIRouter"
             )
-        return RouterSource(
-            module_name, base_name, _apirouter_prefix(base_value), excluded
-        )
+        return RouterSource(module_name, base_name, _apirouter_prefix(base_value), excluded)
 
     raise UnresolvedRouter(f"{module_name}.{symbol} ma nierozpoznany ksztalt routera")
 
@@ -398,22 +392,16 @@ def check_api_lifecycle_matrix() -> list[str]:
     for route in discover_active_api_routes():
         row = matrix_rows.get(route.key)
         if row is None:
-            violations.append(
-                f"[api-lifecycle-missing] {route.key} from {route.source}"
-            )
+            violations.append(f"[api-lifecycle-missing] {route.key} from {route.source}")
             continue
         status = row.get("Status", "")
         if status not in VALID_STATUSES:
-            violations.append(
-                f"[api-lifecycle-status] {route.key} has invalid status {status!r}"
-            )
+            violations.append(f"[api-lifecycle-status] {route.key} has invalid status {status!r}")
         if status in {"deprecated", "adapter"} and row.get("Data wylaczenia", "") in {
             "",
             "-",
         }:
-            violations.append(
-                f"[api-lifecycle-shutdown-date] {route.key} requires Data wylaczenia"
-            )
+            violations.append(f"[api-lifecycle-shutdown-date] {route.key} requires Data wylaczenia")
         for field in (
             "Wersja",
             "Data wejscia",
@@ -422,9 +410,7 @@ def check_api_lifecycle_matrix() -> list[str]:
             "Wlasciciel",
         ):
             if not row.get(field, "").strip():
-                violations.append(
-                    f"[api-lifecycle-field] {route.key} missing field {field}"
-                )
+                violations.append(f"[api-lifecycle-field] {route.key} missing field {field}")
 
     return violations
 

@@ -11,9 +11,9 @@ import argparse
 import json
 import re
 import unicodedata
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
 
 try:
     from pypdf import PdfReader
@@ -183,7 +183,11 @@ def extract_rows(pdf_path: Path, expected_rows: int) -> list[dict[str, object]]:
                 if current is not None:
                     rows.append(current)
                 rest = row_match.group(2).strip()
-                current = {"row": expected_row, "page": page_number, "lines": [rest] if rest else []}
+                current = {
+                    "row": expected_row,
+                    "page": page_number,
+                    "lines": [rest] if rest else [],
+                }
                 expected_row += 1
                 continue
 
@@ -338,7 +342,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--wipwc-1-2-pdf", required=True, type=Path)
     parser.add_argument(
         "--output",
-        default=Path("frontend/src/ui/network-build/station-der/ptpireeCertifiedInverters.generated.ts"),
+        default=Path(
+            "frontend/src/ui/network-build/station-der/ptpireeCertifiedInverters.generated.ts"
+        ),
         type=Path,
     )
     return parser.parse_args()

@@ -58,17 +58,17 @@ PHYSICS_PATTERNS = [
 
 # Lines to skip (comments, imports, type annotations)
 SKIP_LINE_PATTERNS = [
-    re.compile(r"^\s*//"),           # Single-line comment
-    re.compile(r"^\s*\*"),           # Block comment continuation
-    re.compile(r"^\s*/\*"),          # Block comment start
-    re.compile(r"^\s*import\s"),     # Import statements
-    re.compile(r"^\s*export\s+type"), # Type exports
-    re.compile(r"^\s*\*\s*@"),       # JSDoc annotations
-    re.compile(r"^\s*\*\s*-"),       # JSDoc list items
-    re.compile(r'^\s*description:'), # Description fields
+    re.compile(r"^\s*//"),  # Single-line comment
+    re.compile(r"^\s*\*"),  # Block comment continuation
+    re.compile(r"^\s*/\*"),  # Block comment start
+    re.compile(r"^\s*import\s"),  # Import statements
+    re.compile(r"^\s*export\s+type"),  # Type exports
+    re.compile(r"^\s*\*\s*@"),  # JSDoc annotations
+    re.compile(r"^\s*\*\s*-"),  # JSDoc list items
+    re.compile(r"^\s*description:"),  # Description fields
     re.compile(r"^\s*//.*FORBIDDEN"),  # Rule documentation
     re.compile(r"^\s*//.*INVARIANT"),  # Invariant documentation
-    re.compile(r"^\s*//.*NO\s"),     # "NO physics" style comments
+    re.compile(r"^\s*//.*NO\s"),  # "NO physics" style comments
 ]
 
 # File extensions to scan

@@ -109,9 +109,7 @@ def _docstring_constants(tree: ast.AST) -> set[int]:
     """Zbiera id() węzłów-stałych będących docstringami (pomijane w skanie)."""
     doc_ids: set[int] = set()
     for node in ast.walk(tree):
-        if isinstance(
-            node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
-        ):
+        if isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
             body = node.body
             if (
                 body
@@ -148,9 +146,7 @@ def scan_file(path: Path) -> list[Violation]:
             continue
         text = node.value
         tokens = [
-            t
-            for t in CODENAME_PATTERN.findall(text)
-            if t.lower() not in ALLOWED_TECHNICAL_TOKENS
+            t for t in CODENAME_PATTERN.findall(text) if t.lower() not in ALLOWED_TECHNICAL_TOKENS
         ]
         tokens += PRODUCT_PATTERN.findall(text)
         # K10: kody rejestru zawsze; nazwy API/ścieżki tylko w prozie (odstęp).

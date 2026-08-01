@@ -48,17 +48,11 @@ def check_legacy_public_paths() -> list[str]:
         rel_path = module_path.relative_to(ROOT).as_posix()
         for node in ast.walk(tree):
             if isinstance(node, ast.ImportFrom) and node.module in FORBIDDEN_IMPORTS:
-                violations.append(
-                    f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module}"
-                )
+                violations.append(f"[legacy-public-import] {rel_path}:{node.lineno}: {node.module}")
             if isinstance(node, ast.Name) and node.id in FORBIDDEN_NAMES:
-                violations.append(
-                    f"[legacy-public-name] {rel_path}:{node.lineno}: {node.id}"
-                )
+                violations.append(f"[legacy-public-name] {rel_path}:{node.lineno}: {node.id}")
             if isinstance(node, ast.Attribute) and node.attr in FORBIDDEN_NAMES:
-                violations.append(
-                    f"[legacy-public-attr] {rel_path}:{node.lineno}: {node.attr}"
-                )
+                violations.append(f"[legacy-public-attr] {rel_path}:{node.lineno}: {node.attr}")
             if isinstance(node, ast.Constant) and isinstance(node.value, str):
                 if "operating_case_id" in node.value:
                     violations.append(

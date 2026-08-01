@@ -34,9 +34,7 @@ SCAN_DIRS = ["frontend/src"]
 FILE_EXTENSIONS = {".ts", ".tsx"}
 
 # Pliki wyłączone (warstwa TechCard ma legalny dostęp do diagnostyki):
-EXCLUDED_DIRS = (
-    "frontend/src/ui/tech-card/",
-)
+EXCLUDED_DIRS = ("frontend/src/ui/tech-card/",)
 EXCLUDED_RELATIVE_FILES = {
     # Test artifacts intencjonalnie używają tych literałów:
     "frontend/src/ui/tech-card/__tests__/redactor.test.ts",

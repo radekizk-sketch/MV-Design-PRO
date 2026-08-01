@@ -11,9 +11,7 @@ def write_doc(tmp_path: Path, name: str, content: str) -> Path:
     return path
 
 
-def test_guard_reports_active_api_route_missing_from_matrix(
-    tmp_path, monkeypatch
-) -> None:
+def test_guard_reports_active_api_route_missing_from_matrix(tmp_path, monkeypatch) -> None:
     matrix_path = write_doc(
         tmp_path,
         "MACIERZ_KOMPATYBILNOSCI_API.md",
@@ -45,8 +43,7 @@ def test_guard_reports_active_api_route_missing_from_matrix(
 
     assert any("[api-lifecycle-missing]" in violation for violation in violations)
     assert any(
-        "POST /api/cases/{case_id}/runs/short-circuit" in violation
-        for violation in violations
+        "POST /api/cases/{case_id}/runs/short-circuit" in violation for violation in violations
     )
 
 

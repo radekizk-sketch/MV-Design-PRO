@@ -57,10 +57,19 @@ SCAN_EXTENSIONS_FRONTEND = {".ts", ".tsx"}
 FRONTEND_VIOLATIONS = [
     (re.compile(r"Date\.now\(\)"), "Date.now() — niedeterministyczny timestamp"),
     (re.compile(r"Math\.random\(\)"), "Math.random() — niedeterministyczna wartość"),
-    (re.compile(r"\.sort\(\s*\)"), ".sort() bez komparatora — niedeterministyczna kolejność"),
+    (
+        re.compile(r"\.sort\(\s*\)"),
+        ".sort() bez komparatora — niedeterministyczna kolejność",
+    ),
     (re.compile(r"new Date\(\)"), "new Date() — niedeterministyczny timestamp"),
-    (re.compile(r"performance\.now\(\)"), "performance.now() — niedeterministyczny czas"),
-    (re.compile(r"crypto\.randomUUID\(\)"), "crypto.randomUUID() — niedeterministyczny ID"),
+    (
+        re.compile(r"performance\.now\(\)"),
+        "performance.now() — niedeterministyczny czas",
+    ),
+    (
+        re.compile(r"crypto\.randomUUID\(\)"),
+        "crypto.randomUUID() — niedeterministyczny ID",
+    ),
 ]
 
 # PCC guard (all files)
@@ -70,14 +79,14 @@ PCC_VIOLATIONS = [
 
 # Lines to skip
 SKIP_LINE_PATTERNS = [
-    re.compile(r"^\s*#"),           # Python comment
-    re.compile(r"^\s*//"),          # JS comment
-    re.compile(r"^\s*\*"),          # Block comment continuation
-    re.compile(r"^\s*/\*"),         # Block comment start
-    re.compile(r"^\s*import\s"),    # Import statements
-    re.compile(r"^\s*from\s"),      # Python from-imports
-    re.compile(r'^\s*"""'),         # Python docstrings
-    re.compile(r"^\s*'''"),         # Python docstrings
+    re.compile(r"^\s*#"),  # Python comment
+    re.compile(r"^\s*//"),  # JS comment
+    re.compile(r"^\s*\*"),  # Block comment continuation
+    re.compile(r"^\s*/\*"),  # Block comment start
+    re.compile(r"^\s*import\s"),  # Import statements
+    re.compile(r"^\s*from\s"),  # Python from-imports
+    re.compile(r'^\s*"""'),  # Python docstrings
+    re.compile(r"^\s*'''"),  # Python docstrings
 ]
 
 # Exclude test files

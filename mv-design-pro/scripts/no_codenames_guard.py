@@ -62,11 +62,11 @@ STRING_LITERAL_PATTERN = re.compile(
 
 # Comment line patterns (for lines to skip entirely)
 COMMENT_LINE_PATTERNS = [
-    re.compile(r"^\s*//"),       # // single-line comment
-    re.compile(r"^\s*\*"),       # * JSDoc/block comment continuation
-    re.compile(r"^\s*/\*"),      # /* block comment start
-    re.compile(r"^\s*\*/"),      # */ block comment end
-    re.compile(r"^\s*{/\*"),     # JSX comment {/*
+    re.compile(r"^\s*//"),  # // single-line comment
+    re.compile(r"^\s*\*"),  # * JSDoc/block comment continuation
+    re.compile(r"^\s*/\*"),  # /* block comment start
+    re.compile(r"^\s*\*/"),  # */ block comment end
+    re.compile(r"^\s*{/\*"),  # JSX comment {/*
 ]
 
 # Inline ignore pattern (add to line to suppress warning)

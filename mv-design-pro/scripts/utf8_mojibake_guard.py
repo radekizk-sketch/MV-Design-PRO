@@ -123,7 +123,16 @@ def iter_files(root: Path) -> list[Path]:
 
 
 def should_scan(path: Path) -> bool:
-    return path.suffix.lower() in {".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".json", ".css"}
+    return path.suffix.lower() in {
+        ".ts",
+        ".tsx",
+        ".js",
+        ".jsx",
+        ".py",
+        ".md",
+        ".json",
+        ".css",
+    }
 
 
 def main() -> int:

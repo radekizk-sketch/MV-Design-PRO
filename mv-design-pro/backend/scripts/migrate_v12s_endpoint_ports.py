@@ -109,7 +109,9 @@ def main(argv: list[str] | None = None) -> int:
     output_path = args.output or input_path
     _save_model(output_path, model)
 
-    report_path = args.report or output_path.with_suffix(output_path.suffix + ".migration_report.json")
+    report_path = args.report or output_path.with_suffix(
+        output_path.suffix + ".migration_report.json"
+    )
     _save_report(report_path, report_payload)
 
     if not args.quiet:

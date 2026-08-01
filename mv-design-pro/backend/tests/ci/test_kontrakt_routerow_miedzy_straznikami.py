@@ -44,9 +44,7 @@ def test_krotka_routera_ma_trzy_pola_z_nazwami_modulu_symbolu_i_prefiksu() -> No
     assert routery, "main.py wpina co najmniej jeden router"
     for wpis in routery:
         assert len(wpis) == 3, f"krotka routera zmienila ksztalt: {wpis!r}"
-        assert all(
-            isinstance(pole, str) for pole in wpis
-        ), f"pola musza byc tekstem: {wpis!r}"
+        assert all(isinstance(pole, str) for pole in wpis), f"pola musza byc tekstem: {wpis!r}"
 
 
 def test_straznik_sciezek_zastanych_konsumuje_kontrakt_bez_wyjatku() -> None:

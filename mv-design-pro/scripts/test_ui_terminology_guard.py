@@ -4,7 +4,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-
 from ui_terminology_guard import extract_ui_strings, find_banned_terms, scan_file
 
 
@@ -17,13 +16,15 @@ def write_temp(content: str) -> Path:
 
 
 def test_extracts_ui_property_strings() -> None:
-    fragments = extract_ui_strings("const spec = { title: 'Proof panel', description: 'Feeder map' };")
+    fragments = extract_ui_strings(
+        "const spec = { title: 'Proof panel', description: 'Feeder map' };"
+    )
     assert "Proof panel" in fragments
     assert "Feeder map" in fragments
 
 
 def test_extracts_jsx_text() -> None:
-    fragments = extract_ui_strings('<button>Open Proof</button>')
+    fragments = extract_ui_strings("<button>Open Proof</button>")
     assert "Open Proof" in fragments
 
 
@@ -35,9 +36,9 @@ def test_finds_banned_terms_in_user_copy() -> None:
 def test_ignores_internal_strings_outside_ui_context() -> None:
     path = write_temp("const mode = 'RESULT_VIEW';\nconst state = 'case';\n")
     try:
-      assert scan_file(path) == []
+        assert scan_file(path) == []
     finally:
-      path.unlink(missing_ok=True)
+        path.unlink(missing_ok=True)
 
 
 def test_detects_banned_term_in_ui_property_assignment() -> None:

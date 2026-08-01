@@ -99,7 +99,9 @@ def main() -> int:
         with_expected = sum(
             1 for net in REFERENCE_NETWORK_REGISTRY.values() if net.expected_path.exists()
         )
-        print(f"reference_networks_validation_guard: OK ({with_expected}/{total} networks with expected JSON)")
+        print(
+            f"reference_networks_validation_guard: OK ({with_expected}/{total} networks with expected JSON)"
+        )
     else:
         print("reference_networks_validation_guard: FAIL")
         for f in FAILURES:

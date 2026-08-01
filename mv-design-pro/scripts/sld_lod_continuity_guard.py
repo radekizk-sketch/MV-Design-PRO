@@ -163,7 +163,9 @@ def main() -> int:
     else:
         for const_name in ("STATIONS_APPARATUS_KINDS", "DER_SOURCES_KINDS"):
             match = re.search(
-                rf"const {const_name}[^=]*=\s*new Set\(\[(.*?)\]\)", layers_src, re.DOTALL
+                rf"const {const_name}[^=]*=\s*new Set\(\[(.*?)\]\)",
+                layers_src,
+                re.DOTALL,
             )
             members = re.findall(r"'([^']+)'", match.group(1)) if match else []
             if "segment" in members:
@@ -190,7 +192,9 @@ def main() -> int:
             if "isLabelReadableAtScale" not in line:
                 continue
             # Import to nie użycie (nazwa stoi samotnie w liście importu).
-            if stripped.startswith("import ") or re.fullmatch(r"isLabelReadableAtScale,?", stripped):
+            if stripped.startswith("import ") or re.fullmatch(
+                r"isLabelReadableAtScale,?", stripped
+            ):
                 continue
             # Nazwa samej funkcji zawiera „Label", więc szukanie słowa w CAŁEJ
             # linii zawsze trafiało — czyli ten warunek nie mógł nigdy zapalić

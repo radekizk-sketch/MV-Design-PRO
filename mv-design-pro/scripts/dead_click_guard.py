@@ -82,9 +82,7 @@ def check_sld_menu_path() -> list[str]:
     # F12-A (ARCH-3, spec SLD_CAD_SPEC_V3 par. 10.1): wykonawca akcji i jego
     # tabele routingu (ACTION_TO_SCREEN / opByAction / ROADMAP / DELETE-labels)
     # zyja we WSPOLDZIELONYM ui/sld/shared/sldActionExecutor.ts (jedna prawda).
-    executor_content = read(
-        FRONTEND_SRC / "ui" / "sld" / "shared" / "sldActionExecutor.ts"
-    )
+    executor_content = read(FRONTEND_SRC / "ui" / "sld" / "shared" / "sldActionExecutor.ts")
     for token in [
         "buildSldOperationContext",
         "ACTION_TO_SCREEN",
@@ -126,8 +124,7 @@ def check_sld_menu_path() -> list[str]:
     uncovered = sorted(registry_ids - covered)
     if uncovered:
         errors.append(
-            "SLD_MENU_REGISTRY action(s) without route/operation/hint: "
-            + ", ".join(uncovered[:60])
+            "SLD_MENU_REGISTRY action(s) without route/operation/hint: " + ", ".join(uncovered[:60])
         )
 
     print(f"  SLD registry action ids: {len(registry_ids)}")

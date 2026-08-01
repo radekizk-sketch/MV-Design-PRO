@@ -43,7 +43,6 @@ EXIT CODES:
 
 from __future__ import annotations
 
-import re
 import sys
 from pathlib import Path
 
@@ -57,21 +56,56 @@ CREATORS_DIR = REPO_ROOT / "frontend" / "src" / "ui2" / "kreatory"
 # Mapping: canonical operation -> list of acceptable modal names (partial match)
 OPERATION_TO_MODAL: dict[str, list[str]] = {
     "add_grid_source_sn": ["GridSource", "SourceModal", "GPZModal", "KreatorZrodlo"],
-    "continue_trunk_segment_sn": ["TrunkContinue", "TrunkModal", "SegmentModal", "KreatorMagistrala", "Magistrala"],
-    "insert_station_on_segment_sn": ["TransformerStation", "StationModal", "InsertStation"],
-    "start_branch_segment_sn": ["KreatorOdgalezienia", "Odgalezienia", "BranchModal", "Branch"],
+    "continue_trunk_segment_sn": [
+        "TrunkContinue",
+        "TrunkModal",
+        "SegmentModal",
+        "KreatorMagistrala",
+        "Magistrala",
+    ],
+    "insert_station_on_segment_sn": [
+        "TransformerStation",
+        "StationModal",
+        "InsertStation",
+    ],
+    "start_branch_segment_sn": [
+        "KreatorOdgalezienia",
+        "Odgalezienia",
+        "BranchModal",
+        "Branch",
+    ],
     "insert_branch_pole_on_segment_sn": ["KreatorSlupaOdgaleznego", "SlupaOdgaleznego"],
     "insert_zksn_on_segment_sn": ["KreatorZksn", "Zksn"],
-    "insert_section_switch_sn": ["SwitchModal", "NodeModal", "SectionSwitch", "KreatorLacznika", "Lacznik"],
-    "connect_secondary_ring_sn": ["RingClose", "RingModal", "KreatorPierscienia", "Pierscien"],
-    "add_transformer_sn_nn": ["TransformerStation", "Transformer", "KreatorTransformatora", "Transformatora"],
+    "insert_section_switch_sn": [
+        "SwitchModal",
+        "NodeModal",
+        "SectionSwitch",
+        "KreatorLacznika",
+        "Lacznik",
+    ],
+    "connect_secondary_ring_sn": [
+        "RingClose",
+        "RingModal",
+        "KreatorPierscienia",
+        "Pierscien",
+    ],
+    "add_transformer_sn_nn": [
+        "TransformerStation",
+        "Transformer",
+        "KreatorTransformatora",
+        "Transformatora",
+    ],
     "assign_catalog_to_element": ["CatalogPicker", "Catalog"],
     "add_nn_outgoing_field": ["NodeModal", "OutgoingField", "NNField"],
     "add_nn_load": ["LoadDER", "LoadModal", "NNLoad", "KreatorOdbioru", "Odbior"],
     "add_converter_source": ["LoadDER", "PVInverter", "BESSInverter", "Converter"],
     "add_genset_nn": ["KreatorZrodloDyspozycyjne", "ZrodloDyspozycyjne"],
     "add_ups_nn": ["KreatorZrodloDyspozycyjne", "ZrodloDyspozycyjne"],
-    "add_shunt_compensator_sn": ["KreatorKompensatora", "Kompensator", "ShuntCompensator"],
+    "add_shunt_compensator_sn": [
+        "KreatorKompensatora",
+        "Kompensator",
+        "ShuntCompensator",
+    ],
     "add_ct": ["Measurement", "CTModal"],
     "add_vt": ["Measurement", "VTModal"],
     "add_relay": ["Protection", "RelayModal"],
@@ -182,8 +216,10 @@ def main() -> int:
         print()
         return 1
 
-    print(f"Dialog Completeness Guard: OK ({len(modal_names)} modals, "
-          f"{len(OPERATION_TO_MODAL)} operations covered)")
+    print(
+        f"Dialog Completeness Guard: OK ({len(modal_names)} modals, "
+        f"{len(OPERATION_TO_MODAL)} operations covered)"
+    )
     return 0
 
 

@@ -70,7 +70,11 @@ def main() -> int:
     # (domyslnie plik roboczy backendu) — ten sam mechanizm co aplikacja.
     import os
 
-    from infrastructure.persistence.db import create_engine_from_url, create_session_factory, init_db
+    from infrastructure.persistence.db import (
+        create_engine_from_url,
+        create_session_factory,
+        init_db,
+    )
     from infrastructure.persistence.unit_of_work import build_uow_factory
 
     silnik = create_engine_from_url(

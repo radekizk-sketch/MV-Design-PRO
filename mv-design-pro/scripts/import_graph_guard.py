@@ -1,16 +1,21 @@
 from __future__ import annotations
 
-from pathlib import Path
 import re
 import sys
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
 ENTRYPOINT_PATTERNS: dict[str, list[tuple[str, str]]] = {
     "frontend/src/App.tsx": [
-        ("wizard public import", r"WizardPage|SwitchgearWizardPage|[/\\\\]ui[/\\\\]wizard"),
-        ("legacy dedicated route page", r"ReferencePatternsPage|ProtectionSettingsPage|PowerDistributionPage"),
+        (
+            "wizard public import",
+            r"WizardPage|SwitchgearWizardPage|[/\\\\]ui[/\\\\]wizard",
+        ),
+        (
+            "legacy dedicated route page",
+            r"ReferencePatternsPage|ProtectionSettingsPage|PowerDistributionPage",
+        ),
         ("legacy layout import", r"PowerFactoryLayout"),
         ("legacy helper page import", r"TypeLibraryBrowser|CaseConfigPage"),
     ],
@@ -25,7 +30,10 @@ ENTRYPOINT_PATTERNS: dict[str, list[tuple[str, str]]] = {
         ("legacy layout import", r"PowerFactoryLayout"),
     ],
     "frontend/src/ui/navigation/routes.ts": [
-        ("legacy public route", r"#reference-patterns|#protection-settings|#power-distribution"),
+        (
+            "legacy public route",
+            r"#reference-patterns|#protection-settings|#power-distribution",
+        ),
     ],
 }
 

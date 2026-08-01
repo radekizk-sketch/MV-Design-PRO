@@ -131,9 +131,7 @@ def run_step(step: Step) -> StepResult:
             step=step,
             exit_code=124,
             stdout_tail=tail(error.stdout),
-            stderr_tail=tail(
-                f"Step exceeded timeout of {step.timeout_seconds} seconds."
-            ),
+            stderr_tail=tail(f"Step exceeded timeout of {step.timeout_seconds} seconds."),
             duration_seconds=perf_counter() - started_at,
         )
     except OSError as error:
@@ -161,17 +159,13 @@ def resolve_performance_run(args: argparse.Namespace) -> PerformanceRun | None:
     if args.backend_only or args.skip_performance:
         return None
     profile = "quick" if args.quick else "full"
-    output_path = (
-        Path(tempfile.gettempdir()) / f"mv_design_pro_v125_perf_{profile}.json"
-    )
+    output_path = Path(tempfile.gettempdir()) / f"mv_design_pro_v125_perf_{profile}.json"
     if output_path.exists():
         output_path.unlink()
     return PerformanceRun(profile=profile, output_path=output_path)
 
 
-def build_performance_step(
-    package_manager: str, performance_run: PerformanceRun
-) -> Step:
+def build_performance_step(package_manager: str, performance_run: PerformanceRun) -> Step:
     return Step(
         name=f"Frontend V12.5 performance harness ({performance_run.profile})",
         cwd=FRONTEND_DIR,
@@ -512,9 +506,7 @@ def build_performance_report_lines(
     )
 
     for target in performance_report.get("targets", []):
-        sample_values = ", ".join(
-            f"{float(value):.2f}" for value in target.get("sampleMs", [])
-        )
+        sample_values = ", ".join(f"{float(value):.2f}" for value in target.get("sampleMs", []))
         lines.append(
             "| {target} | {kind} | {mean:.2f} | {median:.2f} | {p95:.2f} | {max:.2f} | {samples} |".format(
                 target=target.get("label", target.get("targetId", "unknown")),
@@ -627,9 +619,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--skip-golden", action="store_true", help="Skip golden tests.")
     parser.add_argument("--skip-e2e", action="store_true", help="Skip E2E tests.")
-    parser.add_argument(
-        "--skip-vulture", action="store_true", help="Skip vulture dead-code guard."
-    )
+    parser.add_argument("--skip-vulture", action="store_true", help="Skip vulture dead-code guard.")
     parser.add_argument(
         "--skip-performance",
         action="store_true",
@@ -654,9 +644,7 @@ def main() -> int:
 
     failed = [result for result in results if not result.ok]
     if failed:
-        print(
-            f"{verification_label()} verification failed. See {REPORT_PATH.name} for details."
-        )
+        print(f"{verification_label()} verification failed. See {REPORT_PATH.name} for details.")
         return 1
 
     print(f"{verification_label()} verification passed.")

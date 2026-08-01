@@ -14,7 +14,10 @@ BANNED_PATTERNS = [
     {
         "id": "NH-01",
         "name": "Auto-select slack",
-        "pattern": re.compile(r"auto_select_slack|pick_slack|find_slack|choose_slack|default_slack", re.IGNORECASE),
+        "pattern": re.compile(
+            r"auto_select_slack|pick_slack|find_slack|choose_slack|default_slack",
+            re.IGNORECASE,
+        ),
         "description": "Automatyczny dobór węzła bilansującego jest zabroniony.",
     },
     {
@@ -44,6 +47,7 @@ BANNED_PATTERNS = [
 
 EXCLUDED_FILENAMES = {"__pycache__", ".pyc"}
 
+
 def scan_file(filepath: Path) -> list[dict]:
     violations = []
     try:
@@ -58,15 +62,18 @@ def scan_file(filepath: Path) -> list[dict]:
             continue
         for bp in BANNED_PATTERNS:
             if bp["pattern"].search(line):
-                violations.append({
-                    "file": str(filepath),
-                    "line": line_num,
-                    "pattern_id": bp["id"],
-                    "pattern_name": bp["name"],
-                    "description": bp["description"],
-                    "code": stripped[:120],
-                })
+                violations.append(
+                    {
+                        "file": str(filepath),
+                        "line": line_num,
+                        "pattern_id": bp["id"],
+                        "pattern_name": bp["name"],
+                        "description": bp["description"],
+                        "code": stripped[:120],
+                    }
+                )
     return violations
+
 
 def main() -> int:
     base = Path("mv-design-pro")
@@ -92,11 +99,14 @@ def main() -> int:
             print(f"    Opis: {v['description']}")
             print(f"    Kod: {v['code']}")
             print()
-        print("Load Flow NIE MOŻE zawierać domyślnych wartości ani automatycznego doboru parametrów.")
+        print(
+            "Load Flow NIE MOŻE zawierać domyślnych wartości ani automatycznego doboru parametrów."
+        )
         return 1
 
     print("OK [NoHeuristicsGuard]: Brak zakazanych wzorców heurystycznych.")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

@@ -27,12 +27,8 @@ REQUIRED_REFERENCE_CODES = {
         ROOT / "backend" / "tests" / "application" / "test_automation_trace.py",
         ROOT / "frontend" / "e2e" / "branch-points-workflow.spec.ts",
     ),
-    "V12-GN-006": (
-        ROOT / "backend" / "tests" / "application" / "test_dynamic_stability.py",
-    ),
-    "V12-GN-007": (
-        ROOT / "backend" / "tests" / "application" / "test_dynamic_stability.py",
-    ),
+    "V12-GN-006": (ROOT / "backend" / "tests" / "application" / "test_dynamic_stability.py",),
+    "V12-GN-007": (ROOT / "backend" / "tests" / "application" / "test_dynamic_stability.py",),
 }
 
 
@@ -81,9 +77,7 @@ def markdown_table_rows(text: str) -> list[dict[str, str]]:
 
 def check_reference_networks_matrix() -> list[str]:
     if not TEST_MATRIX_PATH.exists():
-        return [
-            f"[reference-matrix-missing] {TEST_MATRIX_PATH.relative_to(ROOT).as_posix()}"
-        ]
+        return [f"[reference-matrix-missing] {TEST_MATRIX_PATH.relative_to(ROOT).as_posix()}"]
 
     rows = markdown_table_rows(read_text(TEST_MATRIX_PATH))
     code_to_row = {row.get("Kod", "").strip(): row for row in rows if row.get("Kod")}

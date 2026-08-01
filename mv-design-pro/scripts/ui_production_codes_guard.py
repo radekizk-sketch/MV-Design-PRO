@@ -118,9 +118,7 @@ def _tokens_for_text(text: str) -> list[str]:
 def _docstring_constants(tree: ast.AST) -> set[int]:
     doc_ids: set[int] = set()
     for node in ast.walk(tree):
-        if isinstance(
-            node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
-        ):
+        if isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
             body = node.body
             if (
                 body

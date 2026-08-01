@@ -62,9 +62,7 @@ def check_contract_exports() -> list[str]:
         return [
             f"[severity-contract-missing] {SEVERITY_CONTRACT_PATH.relative_to(ROOT).as_posix()}"
         ]
-    tree = ast.parse(
-        read_text(SEVERITY_CONTRACT_PATH), filename=str(SEVERITY_CONTRACT_PATH)
-    )
+    tree = ast.parse(read_text(SEVERITY_CONTRACT_PATH), filename=str(SEVERITY_CONTRACT_PATH))
     symbols = _symbol_names(tree)
     return [
         f"[severity-contract-symbol] missing {symbol}"

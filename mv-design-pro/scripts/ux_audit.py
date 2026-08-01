@@ -125,9 +125,7 @@ def _any(files: list[Path], needle: str) -> bool:
 
 def _store_emits_success() -> bool:
     text = _read(STORE)
-    return "getOperationSuccessMessage" in text and (
-        "'success'" in text or '"success"' in text
-    )
+    return "getOperationSuccessMessage" in text and ("'success'" in text or '"success"' in text)
 
 
 def _message_mapped(op: str) -> bool:
@@ -149,7 +147,9 @@ def _spine_error_coloring() -> bool:
     """
     sr = FE / "ui/sld/v2/renderer/StationOnRunRenderer.tsx"
     text = _read(sr)
-    return text != "" and ("issue" in text.lower() or "alarm" in text.lower() or "severity" in text.lower())
+    return text != "" and (
+        "issue" in text.lower() or "alarm" in text.lower() or "severity" in text.lower()
+    )
 
 
 def audit_stage(stage: Stage) -> StageResult:
@@ -159,50 +159,76 @@ def audit_stage(stage: Stage) -> StageResult:
 
     # C1 — brak duplikatu wejść (1 operacja → 1 prymarny form file present)
     primary_forms = [f for f in existing if "Editor" not in f.name]
-    res.criteria.append(CriterionResult(
-        1, "brak duplikatu wejść",
-        len(primary_forms) <= 1 or stage.key == "segments",  # segments ma 2 legit (trunk+branch)
-        f"{[f.name for f in primary_forms]}",
-    ))
+    res.criteria.append(
+        CriterionResult(
+            1,
+            "brak duplikatu wejść",
+            len(primary_forms) <= 1
+            or stage.key == "segments",  # segments ma 2 legit (trunk+branch)
+            f"{[f.name for f in primary_forms]}",
+        )
+    )
 
     # C2 — feedback sukcesu (centralny store emit + komunikat dla operacji)
     c2 = _store_emits_success() and _message_mapped(stage.operation)
-    res.criteria.append(CriterionResult(
-        2, "feedback sukcesu",
-        c2,
-        "centralny notify+message" if c2 else f"brak komunikatu dla {stage.operation}",
-    ))
+    res.criteria.append(
+        CriterionResult(
+            2,
+            "feedback sukcesu",
+            c2,
+            ("centralny notify+message" if c2 else f"brak komunikatu dla {stage.operation}"),
+        )
+    )
 
     # C3 — walidacja real-time (SemanticIssuesBanner globalnie podpięty)
-    res.criteria.append(CriterionResult(
-        3, "walidacja real-time (banner)",
-        _semantic_banner_wired(),
-        "SemanticIssuesBanner wired" if _semantic_banner_wired() else "banner NIE podpięty globalnie",
-    ))
+    res.criteria.append(
+        CriterionResult(
+            3,
+            "walidacja real-time (banner)",
+            _semantic_banner_wired(),
+            (
+                "SemanticIssuesBanner wired"
+                if _semantic_banner_wired()
+                else "banner NIE podpięty globalnie"
+            ),
+        )
+    )
 
     # C4 — tooltipy inżynierskie (HelpTooltip / helperText / describe*)
     c4 = bool(re.search(r"HelpTooltip|helperText|describe[A-Z]|FieldTooltip|getTooltip", text_all))
-    res.criteria.append(CriterionResult(
-        4, "tooltipy inżynierskie", c4,
-        "obecne" if c4 else "brak tooltipów/helperText",
-    ))
+    res.criteria.append(
+        CriterionResult(
+            4,
+            "tooltipy inżynierskie",
+            c4,
+            "obecne" if c4 else "brak tooltipów/helperText",
+        )
+    )
 
     # C5 — PL terminologia (delegowane do guardów; tu: brak oczywistych ang. terminów w formie)
     forbidden = re.findall(r"\b(Bus Bar|Feeder|Breaker|Grounding Type)\b", text_all)
-    res.criteria.append(CriterionResult(
-        5, "PL terminologia", len(forbidden) == 0,
-        "OK (guardy ui_terminology)" if not forbidden else f"ang. terminy: {set(forbidden)}",
-    ))
+    res.criteria.append(
+        CriterionResult(
+            5,
+            "PL terminologia",
+            len(forbidden) == 0,
+            ("OK (guardy ui_terminology)" if not forbidden else f"ang. terminy: {set(forbidden)}"),
+        )
+    )
 
     # C6 — catalog-first z wyszukiwarką (tylko etapy z dużym katalogiem).
     # CatalogPicker ma wbudowaną wyszukiwarkę + filtry (searchTerm/filteredEntries),
     # więc jego użycie spełnia kryterium katalog-first z wyszukiwaniem.
     if stage.uses_catalog:
         c6 = bool(re.search(r"SearchBox|search|filtr|Filter|CatalogSearch|CatalogPicker", text_all))
-        res.criteria.append(CriterionResult(
-            6, "catalog search+filtry", c6,
-            "obecne" if c6 else "brak wyszukiwarki katalogu",
-        ))
+        res.criteria.append(
+            CriterionResult(
+                6,
+                "catalog search+filtry",
+                c6,
+                "obecne" if c6 else "brak wyszukiwarki katalogu",
+            )
+        )
     else:
         res.criteria.append(CriterionResult(6, "catalog search (n/d)", True, "nie dotyczy etapu"))
 
@@ -210,30 +236,48 @@ def audit_stage(stage: Stage) -> StageResult:
     #  - jawne słowa (autofill/sugerowany/derive)
     #  - catalog-driven population: `selected?.<param> ?? previous` w setFormData
     #    (wybór pozycji katalogowej automatycznie wypełnia parametry — realny auto-fill)
-    c7 = bool(re.search(
-        r"auto.?fill|autofill|sugerowan|suggest|derive|computeFrom|length_km"
-        r"|selected\?\.\w+\s*\?\?|selectedItem\?\.\w+\s*\?\?|fromCatalog|catalogItem\?\.\w+\s*\?\?"
-        # auto-select pierwszej pozycji katalogowej (usable[0]?.id ?? / items[0]?.id ??)
-        r"|\[0\]\?\.\w+\s*\?\?|\[0\]\.id",
-        text_all,
-    ))
-    res.criteria.append(CriterionResult(
-        7, "auto-fill parametryczny", c7,
-        "obecne (catalog-driven)" if c7 else "brak auto-fill",
-    ))
+    c7 = bool(
+        re.search(
+            r"auto.?fill|autofill|sugerowan|suggest|derive|computeFrom|length_km"
+            r"|selected\?\.\w+\s*\?\?|selectedItem\?\.\w+\s*\?\?|fromCatalog|catalogItem\?\.\w+\s*\?\?"
+            # auto-select pierwszej pozycji katalogowej (usable[0]?.id ?? / items[0]?.id ??)
+            r"|\[0\]\?\.\w+\s*\?\?|\[0\]\.id",
+            text_all,
+        )
+    )
+    res.criteria.append(
+        CriterionResult(
+            7,
+            "auto-fill parametryczny",
+            c7,
+            "obecne (catalog-driven)" if c7 else "brak auto-fill",
+        )
+    )
 
     # C8 — undo/redo per operacja (operationHistory w store — global)
     c8 = "operationHistory" in _read(STORE)
-    res.criteria.append(CriterionResult(
-        8, "undo/redo (historia)", c8,
-        "operationHistory" if c8 else "brak historii operacji",
-    ))
+    res.criteria.append(
+        CriterionResult(
+            8,
+            "undo/redo (historia)",
+            c8,
+            "operationHistory" if c8 else "brak historii operacji",
+        )
+    )
 
     # C9 — real-time error na SLD (StationOnRunRenderer issue/alarm coloring)
-    res.criteria.append(CriterionResult(
-        9, "error na SLD", _spine_error_coloring(),
-        "StationOnRunRenderer issue-aware" if _spine_error_coloring() else "SLD nie pokazuje issue",
-    ))
+    res.criteria.append(
+        CriterionResult(
+            9,
+            "error na SLD",
+            _spine_error_coloring(),
+            (
+                "StationOnRunRenderer issue-aware"
+                if _spine_error_coloring()
+                else "SLD nie pokazuje issue"
+            ),
+        )
+    )
 
     # C10 — brak raw ID/hash w WIDOCZNYM tekście (delegowane do no_raw_ids_in_ui_guard).
     # Wykluczamy atrybuty nie-wyświetlane (key=/value=/data-/htmlFor=/id=) — to nie jest
@@ -245,10 +289,14 @@ def audit_stage(stage: Stage) -> StageResult:
             continue  # atrybut techniczny, nie widoczny tekst
         if "hash_sha256" in line or re.search(r">\s*\{[^}]*\bref_id\b", line):
             raw_lines.append(line.strip())
-    res.criteria.append(CriterionResult(
-        10, "brak raw ID/hash", len(raw_lines) == 0,
-        "OK (guard no_raw_ids)" if not raw_lines else f"podejrzane: {len(raw_lines)}",
-    ))
+    res.criteria.append(
+        CriterionResult(
+            10,
+            "brak raw ID/hash",
+            len(raw_lines) == 0,
+            ("OK (guard no_raw_ids)" if not raw_lines else f"podejrzane: {len(raw_lines)}"),
+        )
+    )
 
     return res
 
@@ -301,7 +349,7 @@ def main() -> int:
                 print(f"    ✗ {fail}")
         print("-" * 64)
         print(f"Średni wynik: {payload['mean_score']}/10")
-        print(f"Raport: docs/ux/AUDIT_LATEST.json")
+        print("Raport: docs/ux/AUDIT_LATEST.json")
 
     if args.fail_under:
         worst = min((r.score for r in results), default=0)

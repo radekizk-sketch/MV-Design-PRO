@@ -108,9 +108,7 @@ def main() -> int:
 
     # Check minimum count
     if len(codes) < 24:
-        violations.append(
-            f"Only {len(codes)} readiness codes found (minimum 24 required)"
-        )
+        violations.append(f"Only {len(codes)} readiness codes found (minimum 24 required)")
 
     # Check all required codes present
     for required_code in sorted(REQUIRED_CODES):
@@ -130,8 +128,10 @@ def main() -> int:
         print()
         return 1
 
-    print(f"Readiness Codes Guard: OK ({len(codes)} codes, "
-          f"{len(REQUIRED_CODES)} required codes present)")
+    print(
+        f"Readiness Codes Guard: OK ({len(codes)} codes, "
+        f"{len(REQUIRED_CODES)} required codes present)"
+    )
     return 0
 
 

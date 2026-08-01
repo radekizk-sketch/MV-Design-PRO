@@ -47,10 +47,10 @@ SLD_ACTION_EXECUTOR_PATH = (
 # ---------------------------------------------------------------------------
 
 REQUIRED_STATION_ACTION_IDS = [
-    "add-source",   # PV/BESS/FW z katalogu (kreator DER w E-13)
-    "add-load",     # odbior nN
-    "add-genset",   # agregat pradotworczy nN (add_genset_nn)
-    "add-ups",      # zasilacz UPS nN (add_ups_nn)
+    "add-source",  # PV/BESS/FW z katalogu (kreator DER w E-13)
+    "add-load",  # odbior nN
+    "add-genset",  # agregat pradotworczy nN (add_genset_nn)
+    "add-ups",  # zasilacz UPS nN (add_ups_nn)
 ]
 
 # Wejscie menu -> wymagana operacja kanoniczna w opByAction wykonawcy.
@@ -178,7 +178,9 @@ def check_executor_operations(executor_content: str) -> list[Violation]:
     end = executor_content.find("};", start)
     block = executor_content[start : end if end > 0 else start + 4000]
     for action_id, operation in REQUIRED_EXECUTOR_OPERATIONS.items():
-        pattern = re.compile(rf"""['"]{re.escape(action_id)}['"]\s*:\s*['"]{re.escape(operation)}['"]""")
+        pattern = re.compile(
+            rf"""['"]{re.escape(action_id)}['"]\s*:\s*['"]{re.escape(operation)}['"]"""
+        )
         if not pattern.search(block):
             violations.append(
                 Violation(
@@ -216,9 +218,7 @@ def check_required_modals() -> list[Violation]:
     violations = []
     for zdolnosc, sciezki in DOSTAWCY_ZRODEL_NN:
         zywe = [
-            p
-            for p in (REPO_ROOT / s for s in sciezki)
-            if p.exists() and p.stat().st_size >= 100
+            p for p in (REPO_ROOT / s for s in sciezki) if p.exists() and p.stat().st_size >= 100
         ]
         if not zywe:
             violations.append(

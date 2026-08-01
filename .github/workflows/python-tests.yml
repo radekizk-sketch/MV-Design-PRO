@@ -144,8 +144,21 @@ jobs:
       # wpiecia (1317 plikow bez zmian formatu, ruff bez uwag), wiec krok wchodzi
       # jako zapadka, nie jako dlug do splacenia. Stoi PO tescie, zeby usterka
       # formatu nie zabierala sygnalu z regresji.
+      # V12K-301 (2026-08-01): zakres rozszerzony o `scripts/` — dlug nazwany w
+      # V12K-296/297 („scripts poza zapadka") splacony: 60 plikow sformatowanych,
+      # 58 uwag ruffa zamknietych (w tym DWIE martwe zmienne `pattern` — pozostalosc
+      # po refaktorze, w ktorym sprawdzenie przejelo wywolanie inline w petli).
+      # Dowod niezmiennosci zachowania: wyjscie WSZYSTKICH 43 guardow z
+      # `p0-extended-guards.yml` bajtowo identyczne przed i po zmianie.
       - name: Format i lint backendu (black --check, ruff)
         working-directory: mv-design-pro/backend
         run: |
           poetry run black --check src tests
           poetry run ruff check src tests
+          # `scripts/` lezy POZA katalogiem projektu backendu, wiec black szuka
+          # konfiguracji od niego w gore i trafia na inny katalog niz nasz —
+          # bez `--config` sformatowalby te pliki domyslna szerokoscia 88
+          # zamiast kanonicznej 100. Dlatego OSOBNE wywolanie z jawna konfiguracja
+          # (laczenie sciezek w jednym wywolaniu psuje wykrywanie tak samo).
+          poetry run black --check --config pyproject.toml ../scripts
+          poetry run ruff check ../scripts

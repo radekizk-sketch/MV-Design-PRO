@@ -95,12 +95,12 @@ PHYSICS_FIELD_NAMES = [
 INPUT_CONTEXTS = [
     r'name\s*[=:]\s*["\']({field})["\']',
     r'register\s*\(\s*["\']({field})["\']',
-    r'defaultValue\s*.*({field})',
+    r"defaultValue\s*.*({field})",
     r'<input[^>]*name\s*=\s*["\']({field})["\']',
     r'<Input[^>]*name\s*=\s*["\']({field})["\']',
     r'<TextField[^>]*name\s*=\s*["\']({field})["\']',
     r'<NumberInput[^>]*name\s*=\s*["\']({field})["\']',
-    r'onChange\s*.*({field})',
+    r"onChange\s*.*({field})",
 ]
 
 # Comment line patterns (for lines to skip entirely)

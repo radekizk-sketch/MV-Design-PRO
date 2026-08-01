@@ -61,19 +61,25 @@ def test_wykrywa_litere_zastapiona_znakiem_zapytania() -> None:
 
 def test_nie_zapala_sie_na_poprawnym_tekscie_polskim() -> None:
     assert not _zapala_regule('"Brak napi\u0119cia znamionowego SN: podaj voltage_kv"')
-    assert not _zapala_regule("Za\u017c\u00f3\u0142\u0107 g\u0119\u015bl\u0105 ja\u017a\u0144 \u2014 pe\u0142ny zestaw znak\u00f3w")
+    assert not _zapala_regule(
+        "Za\u017c\u00f3\u0142\u0107 g\u0119\u015bl\u0105 ja\u017a\u0144 \u2014 pe\u0142ny zestaw znak\u00f3w"
+    )
 
 
 def test_nie_zapala_sie_na_adresie_z_parametrem_zapytania() -> None:
     """Dokumentacja ko\u0144c\u00f3wek API nie jest uszkodzonym tekstem."""
     assert not _zapala_regule("- ``GET /api/quality/flicker?run_id=`` \u2014 ocena migotania")
-    assert not _zapala_regule("- GET /api/station-templates?category=<cat> \u2014 filter by category")
+    assert not _zapala_regule(
+        "- GET /api/station-templates?category=<cat> \u2014 filter by category"
+    )
     assert not _zapala_regule("GET /api/oze-analysis/pq-area?run_id=&bus_ref=")
 
 
 def test_nie_zapala_sie_na_pytaniu_ani_skladni_typescript() -> None:
     """Zdanie pytaj\u0105ce i operatory TS to normalna tre\u015b\u0107, nie uszkodzenie."""
-    assert not _zapala_regule("Czy rozp\u0142yw jest dost\u0119pny? Sprawd\u017a flag\u0119 wiersza.")
+    assert not _zapala_regule(
+        "Czy rozp\u0142yw jest dost\u0119pny? Sprawd\u017a flag\u0119 wiersza."
+    )
     assert not _zapala_regule("const wynik = warunek ? pierwszy : drugi;")
     assert not _zapala_regule("interface Pole { etykieta?: string }")
     assert not _zapala_regule("const nazwa = element?.meta?.nazwa ?? null;")
@@ -107,6 +113,10 @@ def test_wykrywa_klase_cp1250_naprawiona_w_kd6() -> None:
 
 def test_klasa_cp1250_nie_zapala_sie_na_poprawnym_tekscie() -> None:
     """Poprawna polszczyzna \u2014 takze wielkimi literami \u2014 zostaje czysta."""
-    assert not _zapala_fragment("Wy\u0142\u0105cznik, przek\u0142adnik, ci\u015bnienie, kr\u00f3tko")
-    assert not _zapala_fragment("R\u00d3\u017bNICA NAPI\u0118\u0106 i CZ\u0118\u015a\u0106 ZAMIENNA")
+    assert not _zapala_fragment(
+        "Wy\u0142\u0105cznik, przek\u0142adnik, ci\u015bnienie, kr\u00f3tko"
+    )
+    assert not _zapala_fragment(
+        "R\u00d3\u017bNICA NAPI\u0118\u0106 i CZ\u0118\u015a\u0106 ZAMIENNA"
+    )
     assert not _zapala_fragment("\u251c\u2500\u2500 ramka rysunkowa")

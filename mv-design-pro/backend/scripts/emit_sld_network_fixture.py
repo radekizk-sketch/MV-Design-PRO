@@ -2,6 +2,7 @@
 deterministic TypeScript fixture the SLD network auto-layout (E3) reads — the same generate-from-
 the-model pattern as ozeArchetypes2a.ts. Run: poetry run python scripts/emit_sld_network_fixture.py
 """
+
 from __future__ import annotations
 
 import json

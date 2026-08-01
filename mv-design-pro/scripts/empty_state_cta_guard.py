@@ -24,7 +24,6 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from typing import List, Tuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_SRC = REPO_ROOT / "frontend" / "src"
@@ -66,7 +65,7 @@ def has_cta(text: str) -> bool:
 
 
 def main() -> int:
-    violations: List[Tuple[Path, str]] = []
+    violations: list[tuple[Path, str]] = []
 
     for tsx in FRONTEND_SRC.rglob("*.tsx"):
         name = tsx.name

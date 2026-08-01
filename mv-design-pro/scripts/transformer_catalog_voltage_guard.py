@@ -9,8 +9,8 @@ catalog have non-zero voltage_lv_kv.
 EXIT 0 = pass, EXIT 1 = fail
 """
 
-import sys
 import os
+import sys
 
 # Add backend/src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend", "src"))
@@ -40,9 +40,7 @@ def check_materialization_contract() -> list[str]:
     # Check UI fields include both voltages
     ui_field_names = [f[0] for f in trafo_contract.ui_fields]
     if "voltage_hv_kv" not in ui_field_names and "rated_power_mva" in ui_field_names:
-        errors.append(
-            "WARNING: TRAFO_SN_NN ui_fields should display U_górne (voltage_hv_kv)"
-        )
+        errors.append("WARNING: TRAFO_SN_NN ui_fields should display U_górne (voltage_hv_kv)")
 
     return errors
 

@@ -37,23 +37,37 @@ def check_run_hash_independence() -> bool:
 
     def make_step(sub: str) -> TraceEquationStep:
         return TraceEquationStep(
-            step_id="S1", subject_id="n1", eq_id="EQ1",
-            label_pl="test", symbolic_latex="x=y",
-            substituted_latex=sub, inputs_used=(),
+            step_id="S1",
+            subject_id="n1",
+            eq_id="EQ1",
+            label_pl="test",
+            symbolic_latex="x=y",
+            substituted_latex=sub,
+            inputs_used=(),
             intermediate_values={},
             result=TraceValue(name="r", value=1.0, unit="A", label_pl="r"),
             origin="solver",
         )
 
     a1 = build_trace_artifact_v2(
-        trace_id="t1", analysis_type=AnalysisTypeV2.SC,
-        math_spec_version="1.0.0", snapshot_hash="snap", run_hash=run_hash,
-        inputs={}, equation_steps=[make_step("x=1")], outputs={},
+        trace_id="t1",
+        analysis_type=AnalysisTypeV2.SC,
+        math_spec_version="1.0.0",
+        snapshot_hash="snap",
+        run_hash=run_hash,
+        inputs={},
+        equation_steps=[make_step("x=1")],
+        outputs={},
     )
     a2 = build_trace_artifact_v2(
-        trace_id="t1", analysis_type=AnalysisTypeV2.SC,
-        math_spec_version="1.0.0", snapshot_hash="snap", run_hash=run_hash,
-        inputs={}, equation_steps=[make_step("x=999")], outputs={},
+        trace_id="t1",
+        analysis_type=AnalysisTypeV2.SC,
+        math_spec_version="1.0.0",
+        snapshot_hash="snap",
+        run_hash=run_hash,
+        inputs={},
+        equation_steps=[make_step("x=999")],
+        outputs={},
     )
 
     if a1.run_hash != a2.run_hash:
@@ -73,12 +87,16 @@ def check_trace_signature_determinism() -> bool:
         build_trace_artifact_v2,
     )
 
-    kwargs = dict(
-        trace_id="t1", analysis_type=AnalysisTypeV2.SC,
-        math_spec_version="1.0.0", snapshot_hash="snap", run_hash="hash",
-        inputs={"a": TraceValue(name="a", value=1.0, unit="V", label_pl="A")},
-        equation_steps=[], outputs={},
-    )
+    kwargs = {
+        "trace_id": "t1",
+        "analysis_type": AnalysisTypeV2.SC,
+        "math_spec_version": "1.0.0",
+        "snapshot_hash": "snap",
+        "run_hash": "hash",
+        "inputs": {"a": TraceValue(name="a", value=1.0, unit="V", label_pl="A")},
+        "equation_steps": [],
+        "outputs": {},
+    }
 
     a1 = build_trace_artifact_v2(**kwargs)
     a2 = build_trace_artifact_v2(**kwargs)
@@ -107,14 +125,24 @@ def check_permutation_invariance() -> bool:
     }
 
     a = build_trace_artifact_v2(
-        trace_id="t1", analysis_type=AnalysisTypeV2.SC,
-        math_spec_version="1.0.0", snapshot_hash="s", run_hash="r",
-        inputs=inp_a, equation_steps=[], outputs={},
+        trace_id="t1",
+        analysis_type=AnalysisTypeV2.SC,
+        math_spec_version="1.0.0",
+        snapshot_hash="s",
+        run_hash="r",
+        inputs=inp_a,
+        equation_steps=[],
+        outputs={},
     )
     b = build_trace_artifact_v2(
-        trace_id="t1", analysis_type=AnalysisTypeV2.SC,
-        math_spec_version="1.0.0", snapshot_hash="s", run_hash="r",
-        inputs=inp_b, equation_steps=[], outputs={},
+        trace_id="t1",
+        analysis_type=AnalysisTypeV2.SC,
+        math_spec_version="1.0.0",
+        snapshot_hash="s",
+        run_hash="r",
+        inputs=inp_b,
+        equation_steps=[],
+        outputs={},
     )
 
     if a.trace_signature != b.trace_signature:

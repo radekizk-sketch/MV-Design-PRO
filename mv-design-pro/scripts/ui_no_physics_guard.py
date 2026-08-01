@@ -194,9 +194,7 @@ ALLOWLIST: dict[tuple[str, int], str] = {
 # `reactanceOhmPerKm`). Multiplying/dividing these is network physics.
 # K7-B: + resistivity / conductivity — the removed earthing-grid (IEEE 80) and
 # instrument-transformer-burden code multiplied exactly those.
-_IMPEDANCE_FAMILY = (
-    r"\w*(?:impedance|admittance|reactance|susceptance|resistivity|conductivity)\w*"
-)
+_IMPEDANCE_FAMILY = r"\w*(?:impedance|admittance|reactance|susceptance|resistivity|conductivity)\w*"
 
 # K7-B: short-circuit / withstand quantities. Case-insensitive, because real
 # identifiers came in every spelling (`i_th_1s_ka`, `calculated_Ith_kA`,
@@ -398,8 +396,7 @@ def scan_tree(scan_dirs: list[Path]) -> list[tuple[Path, int, str, str]]:
 def main() -> int:
     if not any(d.exists() for d in SCAN_DIRS):
         print(
-            "ui-no-physics-guard: no scan directory found: "
-            + ", ".join(str(d) for d in SCAN_DIRS),
+            "ui-no-physics-guard: no scan directory found: " + ", ".join(str(d) for d in SCAN_DIRS),
             file=sys.stderr,
         )
         return 2

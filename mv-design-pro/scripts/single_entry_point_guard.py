@@ -25,7 +25,6 @@ from __future__ import annotations
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List, Set
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FRONTEND_SRC = REPO_ROOT / "frontend" / "src"
@@ -41,11 +40,10 @@ ALLOWED_SHARED_COMPONENTS = {
 }
 
 
-def extract_registry_entries(content: str) -> Dict[str, str]:
+def extract_registry_entries(content: str) -> dict[str, str]:
     """Wyekstraktuj op_name → component_name z OPERATION_FORM_REGISTRY."""
-    entries: Dict[str, str] = {}
+    entries: dict[str, str] = {}
     # Match: op_name: ComponentName, OR op_name: null,
-    pattern = re.compile(r"^\s+(\w+):\s+(\w+|null),?\s*$", re.MULTILINE)
     in_registry = False
     for line in content.splitlines():
         if "OPERATION_FORM_REGISTRY" in line and "=" in line:
@@ -62,11 +60,11 @@ def extract_registry_entries(content: str) -> Dict[str, str]:
     return entries
 
 
-def find_direct_form_imports(component_name: str) -> List[Path]:
+def find_direct_form_imports(component_name: str) -> list[Path]:
     """Znajdź pliki które importują formularz spoza registry."""
     if component_name in {"null"}:
         return []
-    callers: List[Path] = []
+    callers: list[Path] = []
     pattern = re.compile(rf"\bimport\s+\{{[^}}]*\b{component_name}\b[^}}]*\}}\s+from")
     for tsx in FRONTEND_SRC.rglob("*.tsx"):
         if tsx.name.endswith(".test.tsx"):
@@ -91,13 +89,13 @@ def main() -> int:
         print("FAIL: registry pusty albo niemożliwy do sparsowania", file=sys.stderr)
         return 1
 
-    component_to_ops: Dict[str, List[str]] = {}
+    component_to_ops: dict[str, list[str]] = {}
     for op, comp in entries.items():
         if comp == "null":
             continue
         component_to_ops.setdefault(comp, []).append(op)
 
-    violations: List[str] = []
+    violations: list[str] = []
 
     # Sprawdź duplikaty: ten sam komponent dla wielu ops jest OK tylko w ALLOWED_SHARED_COMPONENTS
     for comp, ops in component_to_ops.items():

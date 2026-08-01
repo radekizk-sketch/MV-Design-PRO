@@ -9,17 +9,18 @@ Verifies that the guard correctly:
 - Respects // no-codenames-ignore directive
 """
 
-import pytest
 import tempfile
 from pathlib import Path
+
+import pytest
 
 # Import functions from guard
 from no_codenames_guard import (
     ALLOWED_TECHNICAL_TOKENS,
+    CODENAME_PATTERN,
     find_codenames_in_strings,
     is_comment_line,
     scan_file,
-    CODENAME_PATTERN,
 )
 
 
@@ -30,15 +31,15 @@ class TestCodenamePattern:
         """Should detect p7."""
         assert CODENAME_PATTERN.search("p7")
 
-    def test_detects_P20(self):
+    def test_detects_p20_codename(self):
         """Should detect P20."""
         assert CODENAME_PATTERN.search("P20")
 
-    def test_detects_P11(self):
+    def test_detects_p11_codename(self):
         """Should detect P11."""
         assert CODENAME_PATTERN.search("P11")
 
-    def test_ignores_P0(self):
+    def test_ignores_p0(self):
         """Should NOT detect P0 (technical parameter for transformer losses)."""
         match = CODENAME_PATTERN.search("P0")
         assert match is None
@@ -124,12 +125,10 @@ class TestScanFile:
 
     def test_detects_violation_in_string(self):
         """Should detect codename in string literal."""
-        content = '''
+        content = """
 const label = "Feature P11";
-'''
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".ts", delete=False
-        ) as f:
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".ts", delete=False) as f:
             f.write(content)
             f.flush()
             path = Path(f.name)
@@ -142,13 +141,11 @@ const label = "Feature P11";
 
     def test_ignores_comment_line(self):
         """Should NOT detect codename in comment."""
-        content = '''
+        content = """
 // This is P11 feature documentation
 const x = 1;
-'''
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".ts", delete=False
-        ) as f:
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".ts", delete=False) as f:
             f.write(content)
             f.flush()
             path = Path(f.name)
@@ -160,12 +157,10 @@ const x = 1;
 
     def test_respects_ignore_directive(self):
         """Should respect // no-codenames-ignore directive."""
-        content = '''
+        content = """
 const regex = /P11|P14/g; // no-codenames-ignore
-'''
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".ts", delete=False
-        ) as f:
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".ts", delete=False) as f:
             f.write(content)
             f.flush()
             path = Path(f.name)
@@ -175,14 +170,12 @@ const regex = /P11|P14/g; // no-codenames-ignore
 
         assert len(violations) == 0
 
-    def test_ignores_P0_parameter(self):
+    def test_ignores_p0_parameter(self):
         """Should NOT detect P0 (technical transformer parameter)."""
-        content = '''
+        content = """
 const losses = "Straty jałowe P0";
-'''
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".ts", delete=False
-        ) as f:
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".ts", delete=False) as f:
             f.write(content)
             f.flush()
             path = Path(f.name)

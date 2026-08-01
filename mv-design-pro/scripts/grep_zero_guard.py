@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-from pathlib import Path
 import fnmatch
 import re
 import sys
-
+from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = ROOT / "config"
@@ -68,11 +67,12 @@ def is_allowlisted(rel_path: str, allowlist: list[str]) -> bool:
 
 
 def main() -> int:
-    active_paths = [ROOT / rel for rel in load_config_lines(CONFIG_DIR / "grep_zero_active_paths.txt")]
+    active_paths = [
+        ROOT / rel for rel in load_config_lines(CONFIG_DIR / "grep_zero_active_paths.txt")
+    ]
     allowlist = load_config_lines(CONFIG_DIR / "grep_zero_allowlist.txt")
     patterns = [
-        (raw, re.compile(raw))
-        for raw in load_config_lines(CONFIG_DIR / "grep_zero_patterns.txt")
+        (raw, re.compile(raw)) for raw in load_config_lines(CONFIG_DIR / "grep_zero_patterns.txt")
     ]
 
     violations: list[str] = []

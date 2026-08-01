@@ -74,7 +74,9 @@ def _check_v126_contract_text() -> int:
         text = path.read_text(encoding="utf-8")
         for forbidden in V126_FORBIDDEN_TEXT:
             if forbidden in text:
-                violations.append(f"{path.relative_to(ROOT)} contains forbidden text fragment: {forbidden}")
+                violations.append(
+                    f"{path.relative_to(ROOT)} contains forbidden text fragment: {forbidden}"
+                )
     if violations:
         for violation in violations:
             print(violation)
@@ -86,30 +88,89 @@ def _check_v126_contract_text() -> int:
 
 def main() -> int:
     steps = [
-        Step("Mojibake guard", ROOT, [sys.executable, str(ROOT / "scripts/utf8_mojibake_guard.py")]),
-        Step("Docs archive guard", ROOT, [sys.executable, str(ROOT / "scripts/docs_archive_guard.py")]),
-        Step("V12.xx canon guard", ROOT, [sys.executable, str(ROOT / "scripts/v12xx_canon_guard.py")]),
-        Step("API lifecycle guard", ROOT, [sys.executable, str(ROOT / "scripts/api_lifecycle_guard.py")]),
-        Step("Legacy public path guard", ROOT, [sys.executable, str(ROOT / "scripts/legacy_public_path_guard.py")]),
-        Step("SLD station mini-RMU guard", ROOT, [sys.executable, str(ROOT / "scripts/station_not_rectangle_guard.py")]),
-        Step("SLD GPZ switchgear guard", ROOT, [sys.executable, str(ROOT / "scripts/gpz_switchgear_guard.py")]),
+        Step(
+            "Mojibake guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/utf8_mojibake_guard.py")],
+        ),
+        Step(
+            "Docs archive guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/docs_archive_guard.py")],
+        ),
+        Step(
+            "V12.xx canon guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/v12xx_canon_guard.py")],
+        ),
+        Step(
+            "API lifecycle guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/api_lifecycle_guard.py")],
+        ),
+        Step(
+            "Legacy public path guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/legacy_public_path_guard.py")],
+        ),
+        Step(
+            "SLD station mini-RMU guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/station_not_rectangle_guard.py")],
+        ),
+        Step(
+            "SLD GPZ switchgear guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/gpz_switchgear_guard.py")],
+        ),
         Step(
             "SLD no direct 110 kV tie guard",
             ROOT,
-            [sys.executable, str(ROOT / "scripts/no_direct_110kv_tr_tie_without_switchgear.py")],
+            [
+                sys.executable,
+                str(ROOT / "scripts/no_direct_110kv_tr_tie_without_switchgear.py"),
+            ],
         ),
-        Step("SLD port binding guard", ROOT, [sys.executable, str(ROOT / "scripts/port_binding_guard.py")]),
+        Step(
+            "SLD port binding guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/port_binding_guard.py")],
+        ),
         Step(
             "SLD cable leaves from head guard",
             ROOT,
             [sys.executable, str(ROOT / "scripts/cable_leaves_from_head_guard.py")],
         ),
-        Step("SLD DER PCC guard", ROOT, [sys.executable, str(ROOT / "scripts/der_pcc_guard.py")]),
-        Step("SLD false zero guard", ROOT, [sys.executable, str(ROOT / "scripts/false_zero_guard.py"), "--strict"]),
-        Step("SLD dead click guard", ROOT, [sys.executable, str(ROOT / "scripts/dead_click_guard.py")]),
-        Step("SLD label overlap guard", ROOT, [sys.executable, str(ROOT / "scripts/label_overlap_guard.py")]),
-        Step("SLD LOD hysteresis guard", ROOT, [sys.executable, str(ROOT / "scripts/lod_hysteresis_guard.py")]),
-        Step("SLD layout readability guard", ROOT, [sys.executable, str(ROOT / "scripts/layout_readability_guard.py")]),
+        Step(
+            "SLD DER PCC guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/der_pcc_guard.py")],
+        ),
+        Step(
+            "SLD false zero guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/false_zero_guard.py"), "--strict"],
+        ),
+        Step(
+            "SLD dead click guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/dead_click_guard.py")],
+        ),
+        Step(
+            "SLD label overlap guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/label_overlap_guard.py")],
+        ),
+        Step(
+            "SLD LOD hysteresis guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/lod_hysteresis_guard.py")],
+        ),
+        Step(
+            "SLD layout readability guard",
+            ROOT,
+            [sys.executable, str(ROOT / "scripts/layout_readability_guard.py")],
+        ),
         Step(
             "SLD ENM adapter consistency guard",
             ROOT,
