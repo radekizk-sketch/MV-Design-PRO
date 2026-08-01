@@ -6,15 +6,23 @@
  * na wykresach/tabelach. ZERO fizyki — liczy backend.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { useAppStateStore } from '../../../ui/app-state';
 import { PoleLiczbowe, PoleTekstowe, PoleWyboru } from '../../kreatory/rama';
+import {
+  komunikatyKodow,
+  pobierzRejestrGotowosci,
+  type WpisRejestruGotowosci,
+} from '../../kryteria/rejestrGotowosci';
 import { SladWywodu } from '../wzorzec';
 import {
+  fmtDopuszczalna,
   fmtKv,
+  fmtLiczbaPrzelaczen,
   fmtMw,
   fmtPozycja,
+  opisKryterium,
   PARAMETRY_DOMYSLNE,
   uruchomBadanie,
   type CelOptymalizacji,
@@ -27,12 +35,34 @@ import { WykresProfilChart } from './WykresProfilChart';
 import { WykresSweepChart } from './WykresSweepChart';
 import './oltc.css';
 
-export function EkranBadanOltc() {
+export function EkranBadanOltc({
+  klientRejestru = pobierzRejestrGotowosci,
+}: {
+  /** Wstrzykiwany klient kanonicznego rejestru kodów gotowości (domyślnie: końcówka API). */
+  klientRejestru?: typeof pobierzRejestrGotowosci;
+} = {}) {
   const activeCaseId = useAppStateStore((s) => s.activeCaseId);
   const [params, setParams] = useState<ParametryBadania>(PARAMETRY_DOMYSLNE);
   const [ladowanie, setLadowanie] = useState(false);
   const [blad, setBlad] = useState<string | null>(null);
   const [wynik, setWynik] = useState<WynikBadania | null>(null);
+  const [rejestr, setRejestr] = useState<ReadonlyMap<string, WpisRejestruGotowosci> | null>(null);
+
+  // Treść kodów gotowości pochodzi WYŁĄCZNIE z kanonu (bez własnej tablicy w UI).
+  useEffect(() => {
+    let aktywne = true;
+    klientRejestru()
+      .then((mapa) => {
+        if (aktywne) setRejestr(mapa);
+      })
+      .catch(() => {
+        // Brak rejestru = brak zdań dla kodów; readout wartości działa dalej.
+        if (aktywne) setRejestr(null);
+      });
+    return () => {
+      aktywne = false;
+    };
+  }, [klientRejestru]);
 
   const opis =
     params.rodzaj === 'sweep' ? T.opisSweep : params.rodzaj === 'annual_profile' ? T.opisProfil : T.opisOptim;
@@ -172,7 +202,9 @@ export function EkranBadanOltc() {
 
         {wynik?.sweep ? <WynikSweep wynik={wynik.sweep} /> : null}
         {wynik?.profil ? <WynikProfilu wynik={wynik.profil} /> : null}
-        {wynik?.optymalizacja ? <WynikOptymalizacji wynik={wynik.optymalizacja} /> : null}
+        {wynik?.optymalizacja ? (
+          <WynikOptymalizacji wynik={wynik.optymalizacja} rejestr={rejestr} />
+        ) : null}
       </div>
     </section>
   );
@@ -254,21 +286,49 @@ function WynikProfilu({ wynik }: { wynik: NonNullable<WynikBadania['profil']> })
   );
 }
 
-function WynikOptymalizacji({ wynik }: { wynik: NonNullable<WynikBadania['optymalizacja']> }) {
+function WynikOptymalizacji({
+  wynik,
+  rejestr,
+}: {
+  wynik: NonNullable<WynikBadania['optymalizacja']>;
+  rejestr: ReadonlyMap<string, WpisRejestruGotowosci> | null;
+}) {
+  const kryterium = opisKryterium(wynik.feasibility_criterion);
+  const braki = komunikatyKodow(wynik.readiness_codes ?? [], rejestr);
   return (
     <div data-testid="mvd-oltc-wynik-optymalizacja">
       <h3 className="mvd-oltc-podtytul">{T.optimTytul}</h3>
       <div className="mvd-oltc-kpi">
         <span>
-          {T.optimNajlepsza}: <strong>{fmtPozycja(wynik.best_position)}</strong>
+          {T.optimNajlepsza}:{' '}
+          <strong>
+            {wynik.best_position === null ? T.optimBrakPozycji : fmtPozycja(wynik.best_position)}
+          </strong>
         </span>
         <span>
           {T.optimStart}: <strong>{fmtPozycja(wynik.initial_position)}</strong>
         </span>
         <span>
-          {T.optimPrzelaczenia}: <strong>{wynik.switch_count}</strong>
+          {T.optimPrzelaczenia}: <strong>{fmtLiczbaPrzelaczen(wynik.switch_count)}</strong>
         </span>
       </div>
+      {/* Kryterium, które zdecydowało o werdykcie — wartość + źródło (WHITE BOX). */}
+      <p className="mvd-oltc-kryterium" data-testid="mvd-oltc-kryterium">
+        {T.kryteriumTytul}: <strong>{kryterium.tresc}</strong>
+        {kryterium.zrodlo ? (
+          <span className="mvd-oltc-kryterium-zrodlo">
+            {' · '}
+            {T.kryteriumZrodlo}: {kryterium.zrodlo}
+          </span>
+        ) : null}
+      </p>
+      {braki.length > 0 ? (
+        <ul className="mvd-oltc-braki" data-testid="mvd-oltc-kryterium-braki">
+          {braki.map((tekst) => (
+            <li key={tekst}>{tekst}</li>
+          ))}
+        </ul>
+      ) : null}
       <div className="mvd-oltc-tabela-wrap">
         <table className="mvd-oltc-tabela">
           <thead>
@@ -293,7 +353,7 @@ function WynikOptymalizacji({ wynik }: { wynik: NonNullable<WynikBadania['optyma
                 <td>{fmtKv(c.controlled_bus_kv)}</td>
                 <td>{c.voltage_deviation_kv == null ? '—' : fmtKv(c.voltage_deviation_kv)}</td>
                 <td>{c.objective_value.toFixed(4)}</td>
-                <td>{c.feasible ? T.tak : T.nie}</td>
+                <td>{fmtDopuszczalna(c.feasible)}</td>
               </tr>
             ))}
           </tbody>

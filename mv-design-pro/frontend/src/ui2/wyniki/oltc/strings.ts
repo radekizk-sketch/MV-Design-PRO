@@ -71,6 +71,22 @@ export const OLTC_BADANIA_STRINGS = {
   optimNajlepsza: 'Pozycja optymalna',
   optimStart: 'Pozycja startowa',
   optimPrzelaczenia: 'Wymagane przełączenia',
+
+  // Kryterium dopuszczalności — o werdykcie decyduje wyłącznie to, które pozycje
+  // uznano za dopuszczalne, więc kryterium stoi obok werdyktu razem ze źródłem.
+  kryteriumTytul: 'Kryterium dopuszczalności pozycji',
+  kryteriumZrodlo: 'Skąd kryterium',
+  kryteriumNiedostepne: 'Nieustalone — badanie nie wskazuje pozycji ani liczby przełączeń',
+  kryteriumPasmo: (celKv: string, polowaKv: string, pasmoKv: string) =>
+    `Napięcie szyny nie odbiega od ${celKv} więcej niż o ${polowaKv} `
+    + `(połowa pasma nieczułości regulatora ${pasmoKv})`,
+  kryteriumOdchylka: (celKv: string) =>
+    `Najmniejsza odchyłka napięcia szyny od ${celKv} (bez dodatkowego pasma)`,
+  kryteriumZbieznosc: 'Pozycja, dla której rozpływ mocy ma rozwiązanie',
+  zrodloPasmo: 'pasmo nieczułości przełącznika zaczepów z modelu + napięcie docelowe badania',
+  zrodloOdchylka: 'napięcie docelowe podane w badaniu',
+  zrodloZbieznosc: 'wynik rozpływu mocy',
+  optimBrakPozycji: 'nie wskazano',
   optimTabelaPozycja: 'Pozycja',
   optimTabelaStraty: 'Straty',
   optimTabelaU: 'U szyny',
