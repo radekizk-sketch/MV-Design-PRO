@@ -81,7 +81,19 @@ export interface SnapshotState {
   ) => Promise<DomainOpResponseV1 | null>;
   /** Refresh snapshot from backend without mutation (calls refresh_snapshot op). */
   refreshFromBackend: (caseId: string) => Promise<DomainOpResponseV1 | null>;
+  /**
+   * Odczyt gotowości BIEŻĄCEGO modelu bez podmiany widocznej migawki.
+   * Używane, gdy w store'ie leży migawka przebiegu (podgląd wyniku), a gotowość
+   * jeszcze nikt nie policzył (zimne wejście na głęboki link przebiegu).
+   */
+  refreshReadinessFromBackend: (caseId: string) => Promise<DomainOpResponseV1 | null>;
   setSnapshot: (response: DomainOpResponseV1) => void;
+  /**
+   * Zapis migawki PRZEBIEGU (podgląd modelu, na którym policzono wynik).
+   * NIE dotyka `readiness`/`fixActions` — gotowość opisuje bieżący model i nie
+   * wolno jej wyprowadzać z migawki przebiegu (audyt szczytu 2026-08-01, D5).
+   */
+  setAnalysisRunSnapshot: (snapshot: EnergyNetworkModel, snapshotId: string) => void;
   clearError: () => void;
   reset: () => void;
 }
@@ -204,6 +216,8 @@ function createHistoryEntry(
     deletedElementIds: response?.changes.deleted_element_ids ?? [],
   };
 }
+
+const ANALYSIS_RUN_LAYOUT_VERSION = 'analysis-run-snapshot';
 
 function snapshotResponseState(response: DomainOpResponseV1) {
   return {
@@ -457,6 +471,28 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
     }
   },
 
+  refreshReadinessFromBackend: async (caseId: string) => {
+    try {
+      // Bez `snapshot_base_hash`: w store'ie może leżeć migawka przebiegu, a jej
+      // odcisk nie jest odciskiem bieżącego modelu — pytamy wyłącznie o gotowość.
+      const response = await executeDomainOp(caseId, 'refresh_snapshot', {}, '');
+      if (response.error) {
+        return response;
+      }
+      if (get().caseId !== null && get().caseId !== caseId) {
+        return response;
+      }
+      // Podmieniamy WYŁĄCZNIE gotowość i akcje naprawcze — widoczna migawka
+      // (podgląd przebiegu) zostaje nietknięta.
+      set({ readiness: response.readiness, fixActions: response.fix_actions });
+      return response;
+    } catch {
+      // Gotowości nie udało się ustalić — zostaje stan nieustalony (`null`),
+      // nigdy wartość zmyślona.
+      return null;
+    }
+  },
+
   setSnapshot: (response: DomainOpResponseV1) => {
     set({
       caseId: get().caseId,
@@ -469,6 +505,31 @@ export const useSnapshotStore = create<SnapshotState>((set, get) => ({
       selectionHint: response.selection_hint,
       lastChanges: response.changes,
       lastEvents: response.domain_events,
+      operationHistory: [],
+    });
+  },
+
+  setAnalysisRunSnapshot: (snapshot: EnergyNetworkModel, snapshotId: string) => {
+    // Końcówka `/api/analysis-runs/{run}/snapshot` niesie wyłącznie `snapshot`
+    // — bez widoków logicznych, zmian i sparametryzowanych kopii katalogu.
+    // Nie zgadujemy ich: puste struktury zamiast wartości zmyślonych.
+    set({
+      caseId: get().caseId,
+      snapshot,
+      logicalViews: snapshot.logical_views ?? {
+        trunks: [],
+        branches: [],
+        secondary_connectors: [],
+        terminals: [],
+      },
+      materializedParams: { lines_sn: {}, transformers_sn_nn: {} },
+      layout: {
+        layout_hash: snapshotId || snapshot.header.hash_sha256,
+        layout_version: ANALYSIS_RUN_LAYOUT_VERSION,
+      },
+      selectionHint: null,
+      lastChanges: { created_element_ids: [], updated_element_ids: [], deleted_element_ids: [] },
+      lastEvents: [],
       operationHistory: [],
     });
   },

@@ -56,7 +56,7 @@ import { useNetworkBuildStore } from '../../ui/network-build/networkBuildStore';
 import { useSelectionStore } from '../../ui/selection/store';
 import type { AreaId } from '../../ui/navigation/areaRegistry';
 import type { SelectedElement } from '../../ui/types';
-import type { DomainOpResponseV1, EnergyNetworkModel } from '../../types/enm';
+import type { EnergyNetworkModel } from '../../types/enm';
 import {
   ANALYSIS_SURFACE_SCREEN_CODE,
   REPORT_SURFACE_SCREEN_CODE,
@@ -230,13 +230,6 @@ type AnalysisRunSnapshotPayload = {
   snapshot?: unknown;
 };
 
-const EMPTY_LOGICAL_VIEWS = {
-  trunks: [],
-  branches: [],
-  secondary_connectors: [],
-  terminals: [],
-};
-
 function isEnergyNetworkModel(value: unknown): value is EnergyNetworkModel {
   if (!value || typeof value !== 'object') {
     return false;
@@ -268,39 +261,6 @@ function hasTopologicalContent(snapshot: EnergyNetworkModel | null | undefined):
     snapshot.corridors,
     snapshot.line_runs,
   ].some((items) => Array.isArray(items) && items.length > 0);
-}
-
-function createAnalysisRunSnapshotEnvelope(
-  snapshot: EnergyNetworkModel,
-  snapshotId: string,
-): DomainOpResponseV1 {
-  const stableSnapshotId = snapshotId || snapshot.header.hash_sha256;
-  return {
-    snapshot,
-    logical_views: snapshot.logical_views ?? EMPTY_LOGICAL_VIEWS,
-    readiness: {
-      ready: true,
-      blockers: [],
-      warnings: [],
-    },
-    fix_actions: [],
-    changes: {
-      created_element_ids: [],
-      updated_element_ids: [],
-      deleted_element_ids: [],
-    },
-    selection_hint: null,
-    audit_trail: [],
-    domain_events: [],
-    materialized_params: {
-      lines_sn: {},
-      transformers_sn_nn: {},
-    },
-    layout: {
-      layout_hash: stableSnapshotId,
-      layout_version: 'analysis-run-snapshot',
-    },
-  };
 }
 
 interface DerSurfaceRouteTarget {
@@ -439,7 +399,10 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const snapshotError = useSnapshotStore((state) => state.error);
   const refreshSnapshotFromBackend = useSnapshotStore((state) => state.refreshFromBackend);
-  const setSnapshotFromResponse = useSnapshotStore((state) => state.setSnapshot);
+  const setAnalysisRunSnapshot = useSnapshotStore((state) => state.setAnalysisRunSnapshot);
+  const refreshReadinessFromBackend = useSnapshotStore(
+    (state) => state.refreshReadinessFromBackend,
+  );
   const resetSnapshotStore = useSnapshotStore((state) => state.reset);
   const projectName = useActiveProjectName();
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
@@ -494,9 +457,17 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
             setActiveCaseResultStatus(failedRun ? 'NONE' : 'FRESH');
           }
           if (isEnergyNetworkModel(payload?.snapshot) && hasTopologicalContent(payload.snapshot)) {
-            setSnapshotFromResponse(
-              createAnalysisRunSnapshotEnvelope(payload.snapshot, snapshotId),
-            );
+            // Migawka przebiegu to PODGLĄD modelu, na którym policzono wynik —
+            // nie niesie gotowości (końcówka zwraca wyłącznie `run_id`,
+            // `snapshot_id`, `snapshot`). Zapis nie rusza `readiness`: gotowość
+            // opisuje BIEŻĄCY model (jedna prawda — `useSnapshotStore.readiness`).
+            setAnalysisRunSnapshot(payload.snapshot, snapshotId);
+            if (fallbackCaseId && useSnapshotStore.getState().readiness == null) {
+              // Zimne wejście na głęboki link przebiegu: gotowości bieżącego
+              // modelu nikt jeszcze nie policzył — pytamy o nią backend, zamiast
+              // ją zmyślać. Nieudany odczyt zostawia stan nieustalony (`null`).
+              void refreshReadinessFromBackend(fallbackCaseId);
+            }
             return;
           }
 
@@ -512,13 +483,14 @@ export function useLegacyOrchestrator(): LegacyOrchestratorApi {
         });
     },
     [
+      refreshReadinessFromBackend,
       refreshSnapshotFromBackend,
       setActiveCaseResultStatus,
       setActiveRun,
       setActiveSnapshot,
+      setAnalysisRunSnapshot,
       setExecutionActiveRun,
       setHashVersion,
-      setSnapshotFromResponse,
     ],
   );
 
