@@ -7895,6 +7895,9 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         )
 
         # Transformator SN/nN
+        # PARYTET z insert_station_on_segment_sn: fizyka transformatora pochodzi
+        # WYŁĄCZNIE z materializacji katalogu. Wartości poniżej są inicjalne i
+        # zostają nadpisane przez katalog; payload nie wstrzykuje impedancji.
         transformer = {
             "ref_id": transformer_ref,
             "name": f"TR {station_name}",
@@ -7902,25 +7905,28 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             "lv_bus_ref": bus_nn_ref,
             "uhv_kv": sn_voltage_kv,
             "ulv_kv": nn_voltage_kv,
-            "sn_mva": transformer_payload.get("sn_mva", 0.0),
-            "uk_percent": transformer_payload.get("uk_percent", 0.0),
-            "pk_kw": transformer_payload.get("pk_kw", 0.0),
-            "catalog_ref": transformer_catalog_ref,
-            "catalog_namespace": "TRAFO_SN_NN",
-            "source_mode": "KATALOG",
+            "sn_mva": 0.001,  # Wartosc inicjalna — materializacja z katalogu
+            "uk_percent": 0.01,  # Wartosc inicjalna — materializacja z katalogu
+            "pk_kw": 0.0,
             "tags": [],
             "meta": {},
         }
-        # Materializacja z katalogu (ujednolicony wzorzec)
+        # Materializacja z katalogu (ujednolicony wzorzec).
+        # Nieudana materializacja = błąd operacji (wzorzec pozostałych wywołań
+        # _materialize_catalog_payload). Metadane katalogowe — w tym
+        # source_mode: KATALOG — wolno wpisać DOPIERO po udanej materializacji,
+        # inaczej migawka deklarowałaby wiązanie katalogowe, którego nie ma.
         materialization = _materialize_catalog_payload(
             catalog_ref=transformer_catalog_ref,
             catalog_binding=transformer_payload.get("catalog_binding"),
             default_namespace="TRAFO_SN_NN",
         )
-        if not isinstance(materialization, dict):
-            binding_payload, materialized_params = materialization
-            _apply_catalog_metadata(transformer, binding_payload, default_namespace="TRAFO_SN_NN")
-            _apply_materialized_transformer_fields(transformer, materialized_params)
+        if isinstance(materialization, dict):
+            return materialization
+        binding_payload, materialized_params = materialization
+        transformer["catalog_ref"] = transformer_catalog_ref
+        _apply_catalog_metadata(transformer, binding_payload, default_namespace="TRAFO_SN_NN")
+        _apply_materialized_transformer_fields(transformer, materialized_params)
         # Uziemienie punktu neutralnego — PARYTET z insert (G-STK-1).
         _apply_station_neutral_grounding(
             transformer, payload, station=substation_ref, new_enm=new_enm

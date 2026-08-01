@@ -947,3 +947,139 @@ def test_endpoint_append_load_nn_block_creates_fields_without_generator() -> Non
     feeders = [f for f in nn_field_specs if f.get("bay_role") == "FEEDER"]
     assert len(main_breakers) == 1
     assert len(feeders) == 3
+
+
+# ---------------------------------------------------------------------------
+# Brama katalogowa transformatora (audyt szczytu 2026-08-01, defekt D2)
+# ---------------------------------------------------------------------------
+
+
+def test_zly_ref_katalogowy_konczy_operacje_bledem_zamiast_wstrzykiwac_impedancje() -> None:
+    """Nieudana materializacja katalogu = błąd operacji, nie cicha kontynuacja.
+
+    Przed naprawą warunek `if not isinstance(materialization, dict)` POMIJAŁ
+    błąd: transformator lądował w migawce z `source_mode: KATALOG`,
+    `materialized_params: null` i impedancją wprost z payloadu.
+    """
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "station": {"name": "Stacja z literowka", "station_type": "terminal"},
+            "transformer": {
+                "transformer_catalog_ref": "trafo-ktorego-nie-ma",
+                "sn_mva": 0.63,
+                "uk_percent": 4.0,
+                "pk_kw": 6.5,
+            },
+            "nn_voltage_kv": 0.4,
+        },
+    )
+
+    assert response.get("error_code") == "catalog.item_not_found"
+    assert "trafo-ktorego-nie-ma" in response.get("error", "")
+    # Operacja nie utrwala migawki — model zostaje bez stacji-widma.
+    assert response["snapshot"] is None
+    assert response["changes"]["created_element_ids"] == []
+
+
+def test_fizyka_transformatora_pochodzi_z_katalogu_a_nie_z_tabliczki_w_payloadzie() -> None:
+    """Tabliczka w payloadzie nie może nadpisać katalogu (§10 kanonu).
+
+    Payload celowo podaje uk = 4,0 %, katalog ma 5,0 % — do migawki i do solvera
+    ma trafić wartość katalogowa.
+    """
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "station": {"name": "Stacja katalogowa", "station_type": "terminal"},
+            "transformer": {
+                "transformer_catalog_ref": CATALOG_TRAFO_630,
+                "sn_mva": 0.63,
+                "uk_percent": 4.0,
+                "pk_kw": 6.5,
+            },
+            "nn_voltage_kv": 0.4,
+        },
+    )
+
+    assert response.get("error") is None
+    new_snap = response["snapshot"]
+    sub = next(s for s in new_snap["substations"] if s["name"] == "Stacja katalogowa")
+    tr = next(t for t in new_snap["transformers"] if t["ref_id"] in sub["transformer_refs"])
+    assert tr["uk_percent"] == 5.0
+    assert tr["source_mode"] == "KATALOG"
+    assert tr["materialized_params"]["catalog_item_id"] == CATALOG_TRAFO_630
+
+
+def test_prad_zwarciowy_na_szynie_nn_liczy_sie_z_impedancji_katalogowej() -> None:
+    """POMIAR KOŃCOWY defektu D2: nie ma ścieżki dającej Ikss 23 753 A.
+
+    Zły ref z tabliczką uk = 4 % dawał na szynie nN 23 753,1 A (Sk 16,4567 MVA)
+    zamiast 19 391,1 A (Sk 13,4346 MVA) z pozycji katalogowej — +22,5 % w stronę
+    niebezpieczną (przewymiarowanie / fałszywy werdykt wytrzymałości aparatury).
+    """
+    from enm.mapping import map_enm_to_network_graph
+    from network_model.solvers.short_circuit_iec60909 import ShortCircuitIEC60909Solver
+
+    snap, endpoint = _build_gpz_with_endpoint()
+    response = append_station_on_endpoint(
+        snap,
+        {
+            "endpoint_bus_ref": endpoint,
+            "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+            "station": {"name": "Stacja pomiarowa", "station_type": "terminal"},
+            "transformer": {
+                "transformer_catalog_ref": CATALOG_TRAFO_630,
+                "sn_mva": 0.63,
+                "uk_percent": 4.0,
+                "pk_kw": 6.5,
+            },
+            "nn_voltage_kv": 0.4,
+        },
+    )
+    assert response.get("error") is None
+
+    graph = map_enm_to_network_graph(
+        EnergyNetworkModel.model_validate(response["snapshot"]),
+    )
+    galaz_tr = next(b for b in graph.branches.values() if getattr(b, "voltage_lv_kv", None) == 0.4)
+    wynik = ShortCircuitIEC60909Solver.compute_3ph_short_circuit(
+        graph, galaz_tr.to_node_id, c_factor=1.1, tk_s=1.0
+    )
+
+    assert galaz_tr.uk_percent == 5.0
+    assert abs(wynik.ikss_a - 19391.1) < 0.5
+    # Wartość z wstrzykniętej tabliczki nie może już powstać na żadnej ścieżce.
+    assert abs(wynik.ikss_a - 23753.1) > 100.0
+
+
+def test_zaden_wariant_domain_operations_nie_pomija_bledu_materializacji() -> None:
+    """TEST KLASY: odwrócony warunek nie może wrócić do żadnej operacji domenowej.
+
+    Wzorzec kanoniczny to `if isinstance(materialization, dict): return materialization`
+    (błąd materializacji kończy operację). Wariant odwrócony milcząco pomija błąd —
+    dokładnie tak powstał defekt D2.
+    """
+    import pathlib
+    import re
+
+    katalog_zrodel = pathlib.Path(__file__).resolve().parents[2] / "src" / "enm"
+    pliki = sorted(katalog_zrodel.glob("domain_operations*.py"))
+    assert pliki, "Nie znaleziono plików domain_operations*.py"
+
+    wzorzec = re.compile(r"not\s+isinstance\(\s*materialization\s*,\s*dict\s*\)")
+    trafienia: list[str] = []
+    for plik in pliki:
+        for numer, linia in enumerate(plik.read_text(encoding="utf-8").splitlines(), start=1):
+            if wzorzec.search(linia):
+                trafienia.append(f"{plik.name}:{numer}: {linia.strip()}")
+
+    assert (
+        not trafienia
+    ), "Odwrócony warunek materializacji katalogu (błąd byłby połknięty):\n" + "\n".join(trafienia)

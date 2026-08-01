@@ -23,6 +23,7 @@ CATALOG_REQUIRED_OPERATIONS: frozenset[str] = frozenset(
         "start_branch_segment_sn",
         "insert_zksn_on_segment_sn",
         "insert_station_on_segment_sn",
+        "append_station_on_endpoint",
         "add_transformer_sn_nn",
         "add_nn_load",
         "add_converter_source",
@@ -178,6 +179,18 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
             payload.get("transformer"),
             namespace="TRAFO_SN_NN",
             ref_keys=("transformer_catalog_ref",),
+        )
+        if candidate is not None:
+            return candidate
+
+    if operation == "append_station_on_endpoint":
+        # Ref transformatora czytany DOKŁADNIE tak, jak czyta go operacja
+        # domenowa (`transformer_catalog_ref` albo `catalog_ref`) — brama API
+        # ma sprawdzać tę samą pozycję katalogową, która trafi do migawki.
+        candidate = _extract_binding_from_container(
+            payload.get("transformer"),
+            namespace="TRAFO_SN_NN",
+            ref_keys=("transformer_catalog_ref", "catalog_ref"),
         )
         if candidate is not None:
             return candidate
@@ -371,6 +384,20 @@ def _validate_field_equipment_bindings(
     return None
 
 
+def _append_station_tworzy_transformator(payload: dict[str, Any]) -> bool:
+    """Czy `append_station_on_endpoint` w ogóle utworzy transformator?
+
+    Warunek jest LUSTREM warunku operacji domenowej (`if transformer_catalog_ref:`).
+    Stacja bez transformatora jest kanoniczna (samo pole liniowe na końcu ciągu) —
+    wtedy nie powstaje żaden element wiązany katalogiem TRAFO_SN_NN i nie ma czego
+    materializować. Gdy ref JEST podany, brama katalogowa obowiązuje bez wyjątku.
+    """
+    transformer = payload.get("transformer")
+    if not isinstance(transformer, dict):
+        return False
+    return bool(transformer.get("transformer_catalog_ref") or transformer.get("catalog_ref"))
+
+
 def validate_and_materialize_catalog_binding(
     operation: str,
     payload: dict[str, Any],
@@ -386,6 +413,11 @@ def validate_and_materialize_catalog_binding(
         return equipment_error, {}
 
     if operation not in CATALOG_REQUIRED_OPERATIONS:
+        return None, {}
+
+    if operation == "append_station_on_endpoint" and not _append_station_tworzy_transformator(
+        payload
+    ):
         return None, {}
 
     if operation == "add_grid_source_sn" and _uses_manual_grid_source_equivalent(payload):
