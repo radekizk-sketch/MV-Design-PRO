@@ -2,6 +2,7 @@
 
 import logging
 import os
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 from api.analysis_runs import router as analysis_runs_router
@@ -71,7 +72,7 @@ logger = logging.getLogger("mv_design_pro")
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     database_url = os.getenv("DATABASE_URL", "sqlite+pysqlite:///./mv_design_pro.db")
     engine = create_engine_from_url(database_url)
     session_factory = create_session_factory(engine)

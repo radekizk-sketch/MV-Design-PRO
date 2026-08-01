@@ -48,7 +48,9 @@ def _get_graph_for_case(case_id: str) -> NetworkGraph:
     return NetworkGraph(network_model_id=case_id)
 
 
-def _get_graph_for_snapshot(snapshot_id: str, uow_factory) -> NetworkGraph:
+def _get_graph_for_snapshot(
+    snapshot_id: str, uow_factory: Callable[[], UnitOfWork]
+) -> NetworkGraph:
     """
     Phase 36: ladowanie real NetworkGraph z persystencji (network_snapshots).
 

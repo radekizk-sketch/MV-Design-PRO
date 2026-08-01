@@ -18,9 +18,10 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.engine.interfaces import Dialect
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from sqlalchemy.sql import func
-from sqlalchemy.types import TypeDecorator
+from sqlalchemy.types import TypeDecorator, TypeEngine
 
 
 class Base(DeclarativeBase):
@@ -31,19 +32,19 @@ class GUID(TypeDecorator[UUID]):
     impl = String(36)
     cache_ok = True
 
-    def load_dialect_impl(self, dialect):
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
         if dialect.name == "postgresql":
             from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 
             return dialect.type_descriptor(PG_UUID(as_uuid=True))
         return dialect.type_descriptor(String(36))
 
-    def process_bind_param(self, value: UUID | None, dialect):
+    def process_bind_param(self, value: UUID | None, dialect: Dialect) -> str | None:
         if value is None:
             return None
         return str(value)
 
-    def process_result_value(self, value: str | None, dialect):
+    def process_result_value(self, value: str | None, dialect: Dialect) -> UUID | None:
         if value is None:
             return None
         return UUID(value)
@@ -106,12 +107,12 @@ class DeterministicJSON(TypeDecorator[Any]):
     impl = Text
     cache_ok = True
 
-    def load_dialect_impl(self, dialect):
+    def load_dialect_impl(self, dialect: Dialect) -> TypeEngine[Any]:
         if dialect.name == "postgresql":
             return dialect.type_descriptor(JSONB())
         return dialect.type_descriptor(Text())
 
-    def process_bind_param(self, value: Any, dialect):
+    def process_bind_param(self, value: Any, dialect: Dialect) -> Any:
         if value is None:
             return None
         if dialect.name == "postgresql":
@@ -133,7 +134,7 @@ class DeterministicJSON(TypeDecorator[Any]):
             default=_kanoniczna_wartosc_spoza_json,
         )
 
-    def process_result_value(self, value: Any, dialect):
+    def process_result_value(self, value: Any, dialect: Dialect) -> Any:
         if value is None:
             return None
         if dialect.name == "postgresql":

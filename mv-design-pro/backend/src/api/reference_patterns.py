@@ -16,7 +16,7 @@ NO CODENAMES IN UI.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from application.reference_patterns import (
@@ -26,9 +26,14 @@ from application.reference_patterns import (
     get_pattern_a_fixtures_dir,
     run_pattern_a,
 )
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    # python-docx jest importowany LENIWIE w ciele eksportu (brak paczki => 501),
+    # wiec typ tabeli sprowadzamy wylacznie na potrzeby analizy statycznej.
+    from docx.table import Table
 
 router = APIRouter(
     prefix="/api/reference-patterns",
@@ -267,7 +272,7 @@ async def run_pattern_with_fixture(fixture_file: str) -> PatternRunResponse:
 
 
 @router.get("/fixtures/{fixture_file}/export/pdf")
-async def export_pattern_result_pdf(fixture_file: str):
+async def export_pattern_result_pdf(fixture_file: str) -> Response:
     """
     Export reference pattern result to PDF.
 
@@ -427,7 +432,7 @@ async def export_pattern_result_pdf(fixture_file: str):
 
 
 @router.get("/fixtures/{fixture_file}/export/docx")
-async def export_pattern_result_docx(fixture_file: str):
+async def export_pattern_result_docx(fixture_file: str) -> Response:
     """
     Export reference pattern result to DOCX.
 
@@ -527,7 +532,7 @@ async def export_pattern_result_docx(fixture_file: str):
             for r in p.runs:
                 r.bold = True
 
-    def add_artifact_row(table, label, value, unit=""):
+    def add_artifact_row(table: Table, label: str, value: Any, unit: str = "") -> None:
         if value is not None:
             row = table.add_row().cells
             row[0].text = label

@@ -5,6 +5,7 @@ from datetime import UTC
 from typing import Any
 
 from api.dependencies import get_uow_factory
+from application.analyses.run_index import AnalysisRunIndexEntry
 from fastapi import APIRouter, Depends, Query
 from infrastructure.persistence.unit_of_work import UnitOfWork
 
@@ -30,7 +31,7 @@ def list_analysis_runs_index(
     return {"items": items, "count": len(entries)}
 
 
-def _index_entry_to_dict(entry) -> dict[str, Any]:
+def _index_entry_to_dict(entry: AnalysisRunIndexEntry) -> dict[str, Any]:
     created_at = entry.created_at_utc
     created_at_utc = (
         created_at.astimezone(UTC).isoformat()

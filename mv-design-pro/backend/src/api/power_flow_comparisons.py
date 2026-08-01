@@ -23,7 +23,7 @@ CANONICAL ALIGNMENT:
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from api.dependencies import get_uow_factory
 from application.power_flow_comparison import PowerFlowComparisonService
@@ -35,10 +35,15 @@ from domain.power_flow_comparison import (
     PowerFlowRunNotFinishedError,
     PowerFlowRunNotFoundError,
 )
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel, Field
+
+if TYPE_CHECKING:
+    # python-docx jest importowany LENIWIE w ciele eksportu (brak paczki => 501),
+    # wiec typ tabeli sprowadzamy wylacznie na potrzeby analizy statycznej.
+    from docx.table import Table
 
 router = APIRouter(prefix="/power-flow-comparisons", tags=["power-flow-comparison"])
 
@@ -399,7 +404,7 @@ def get_power_flow_comparison_trace(
 def export_power_flow_comparison_json(
     comparison_id: str,
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-):
+) -> Response:
     """P20d: Export power flow comparison to JSON file."""
     import json
 
@@ -443,7 +448,7 @@ def export_power_flow_comparison_json(
 def export_power_flow_comparison_docx(
     comparison_id: str,
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-):
+) -> Response:
     """P20d: Export power flow comparison to DOCX file."""
     import io
 
@@ -504,7 +509,7 @@ def export_power_flow_comparison_docx(
             for r in p.runs:
                 r.bold = True
 
-    def add_row(table, label, value):
+    def add_row(table: Table, label: str, value: Any) -> None:
         row = table.add_row().cells
         row[0].text = label
         row[1].text = str(value) if value is not None else "—"
@@ -572,7 +577,7 @@ def export_power_flow_comparison_docx(
 def export_power_flow_comparison_pdf(
     comparison_id: str,
     uow_factory: Callable[[], UnitOfWork] = Depends(get_uow_factory),
-):
+) -> Response:
     """P20d: Export power flow comparison to PDF file."""
     import io
 

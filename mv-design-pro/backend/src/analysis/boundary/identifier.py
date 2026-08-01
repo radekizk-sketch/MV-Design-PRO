@@ -12,6 +12,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from network_model.core.graph import NetworkGraph
 from network_model.core.snapshot import NetworkSnapshot, snapshot_read_only_guard
 
 EXTERNAL_GRID_SOURCE_TYPES = {"GRID", "EXTERNAL_GRID"}
@@ -146,7 +147,7 @@ class BoundaryIdentifier:
             diagnostics=["connection_node.not_found"],
         )
 
-    def _external_grid_nodes(self, graph, case_params: Mapping) -> list[str]:
+    def _external_grid_nodes(self, graph: NetworkGraph, case_params: Mapping) -> list[str]:
         sources = case_params.get("sources") or []
         candidates = {
             str(source.get("node_id"))
@@ -157,7 +158,7 @@ class BoundaryIdentifier:
         candidates = {node_id for node_id in candidates if node_id in graph.nodes}
         return sorted(candidates)
 
-    def _generator_dominant_nodes(self, graph, case_params: Mapping) -> list[str]:
+    def _generator_dominant_nodes(self, graph: NetworkGraph, case_params: Mapping) -> list[str]:
         sources = case_params.get("sources") or []
         loads = case_params.get("loads") or []
 
@@ -198,13 +199,13 @@ class BoundaryIdentifier:
         candidates.sort()
         return candidates
 
-    def _single_feeder_nodes(self, graph) -> list[str]:
+    def _single_feeder_nodes(self, graph: NetworkGraph) -> list[str]:
         degree_map = self._degree_map(graph)
         candidates = [node_id for node_id, degree in degree_map.items() if degree == 1]
         candidates.sort()
         return candidates
 
-    def _voltage_level_boundary_nodes(self, graph) -> list[str]:
+    def _voltage_level_boundary_nodes(self, graph: NetworkGraph) -> list[str]:
         transitions: list[tuple[str, str]] = []
         seen_edges: set[tuple[str, str]] = set()
 
@@ -229,7 +230,7 @@ class BoundaryIdentifier:
         return candidates
 
     @staticmethod
-    def _degree_map(graph) -> dict[str, int]:
+    def _degree_map(graph: NetworkGraph) -> dict[str, int]:
         return {node_id: graph._graph.degree(node_id) for node_id in graph.nodes}
 
     @staticmethod

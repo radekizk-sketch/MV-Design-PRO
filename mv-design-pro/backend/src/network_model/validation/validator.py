@@ -757,7 +757,7 @@ class NetworkValidator:
         return report
 
 
-def validate_network(graph) -> ValidationReport:
+def validate_network(graph: "NetworkGraph") -> ValidationReport:
     """
     Convenience function to validate a network graph.
 

@@ -38,8 +38,15 @@ BACKEND = ROOT / "backend"
 # K14 (2026-07-30): rozdzielenie rozplywu galeziowego od artefaktu biegu wymusilo
 # JAWNE typy wejscia projekcji rozplywu (`_sc_rozplyw_galeziowy`, `_wpis_grafu`,
 # `_odtworz_wklady_galeziowe`) — 4 bledy mniej u zrodla, prog obnizony 258->254.
-BASELINE_ERRORS = 254
-BASELINE_FILES = 65
+# KD-12 porcja 1 (2026-08-01): warstwa API/persystencji/analiz — jawne typy zwracane
+# endpointow eksportu (`Response`), sygnatury `TypeDecorator` SQLAlchemy (`Dialect`),
+# `UnitOfWork.__exit__` jako `Literal[False]` (deklaracja `bool` klamala, ze menedzer
+# moze polknac wyjatek), typy grafu w BoundaryIdentifier/validate_network, typy modelu
+# ENM w `enm/mapping`. Osobna nazwa dla impedancji zerowej zrodla w `enm/mapping`
+# (kolizja z nazwa z petli galeziowej chowala mozliwe `None`).
+# 48 bledow mniej u zrodla, prog obnizony 254->206, plikow 65->48.
+BASELINE_ERRORS = 206
+BASELINE_FILES = 48
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 WZORZEC_SUKCESU = re.compile(r"Success: no issues found")

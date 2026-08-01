@@ -10,6 +10,7 @@ from api.schemas.design_synth import (
 )
 from application.analyses.design_synth.envelope_adapter import to_run_envelope
 from application.analyses.design_synth.pipeline import run_connection_study
+from application.analyses.design_synth.result import DesignSynthRunResult
 from application.analyses.run_index import index_run
 from fastapi import APIRouter, Depends, HTTPException, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
@@ -38,7 +39,9 @@ def create_connection_study(
     return result.to_dict()
 
 
-def _index_design_synth_run(result, *, uow_factory) -> None:
+def _index_design_synth_run(
+    result: DesignSynthRunResult, *, uow_factory: Callable[[], UnitOfWork]
+) -> None:
     with uow_factory() as uow:
         evidence = uow.design_evidence.get(result.design_evidence_id)
         evidence_payload = (

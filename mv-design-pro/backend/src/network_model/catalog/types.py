@@ -1749,7 +1749,7 @@ class ProtectionCurve:
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure parameters is a dict (frozen dataclass workaround)."""
         if self.parameters is None:
             object.__setattr__(self, "parameters", {})
@@ -1817,7 +1817,7 @@ class ProtectionSettingTemplate:
     contract_version: str = CATALOG_CONTRACT_VERSION
     verification_note: str | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure setting_fields is a list (frozen dataclass workaround)."""
         if self.setting_fields is None:
             object.__setattr__(self, "setting_fields", [])

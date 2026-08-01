@@ -29,7 +29,7 @@ from enm.canonical_analysis import create_run as create_canonical_run
 from enm.canonical_analysis import execute_run as execute_canonical_run
 from enm.canonical_analysis import get_run as get_canonical_run
 from enm.canonical_analysis import list_runs_for_project as list_canonical_runs_for_project
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from infrastructure.persistence.unit_of_work import UnitOfWork
 from network_model.reporting.czcionki import zarejestruj_czcionki
 from pydantic import BaseModel, Field
@@ -455,7 +455,7 @@ def get_power_flow_trace(run_id: UUID) -> dict[str, Any]:
 
 
 @router.get("/power-flow-runs/{run_id}/export/json")
-def export_power_flow_run_json(run_id: UUID):
+def export_power_flow_run_json(run_id: UUID) -> Response:
     try:
         return export_run_json_response(
             _require_canonical_run(run_id),
@@ -471,7 +471,7 @@ def export_power_flow_run_json(run_id: UUID):
 
 
 @router.get("/power-flow-runs/{run_id}/export/docx")
-def export_power_flow_run_docx(run_id: UUID):
+def export_power_flow_run_docx(run_id: UUID) -> Response:
     import io
     import json
 
@@ -597,7 +597,7 @@ def export_power_flow_run_docx(run_id: UUID):
 
 
 @router.get("/power-flow-runs/{run_id}/export/xlsx")
-def export_power_flow_run_xlsx(run_id: UUID):
+def export_power_flow_run_xlsx(run_id: UUID) -> Response:
     from fastapi.responses import Response
 
     bundle = _build_export_bundle(run_id)
@@ -610,7 +610,7 @@ def export_power_flow_run_xlsx(run_id: UUID):
 
 
 @router.get("/power-flow-runs/{run_id}/export/pdf")
-def export_power_flow_run_pdf(run_id: UUID):
+def export_power_flow_run_pdf(run_id: UUID) -> Response:
     import json
 
     from fastapi.responses import Response

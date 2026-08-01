@@ -47,8 +47,10 @@ from .models import (
     FuseBranch,
     Generator,
     OverheadLine,
+    Source,
     SwitchBranch,
 )
+from .models import TapChanger as EnmTapChanger
 
 
 def ref_to_graph_id(ref_id: str) -> str:
@@ -67,7 +69,9 @@ def ref_to_graph_id(ref_id: str) -> str:
 _ref_to_uuid = ref_to_graph_id
 
 
-def _map_tap_changer(tap_changer, ref_to_node_id: dict[str, str]) -> TapChanger | None:
+def _map_tap_changer(
+    tap_changer: EnmTapChanger | None, ref_to_node_id: dict[str, str]
+) -> TapChanger | None:
     """Project an ENM TapChanger onto the domain TapChanger (V12K-045).
 
     Resolves ``controlled_bus_ref`` (a bus ref_id) to the domain node id so the
@@ -103,7 +107,7 @@ def _map_tap_changer(tap_changer, ref_to_node_id: dict[str, str]) -> TapChanger 
     )
 
 
-def _source_positive_impedance_ohm(source, bus_voltage_kv: float) -> complex | None:
+def _source_positive_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
     if source.r_ohm is not None and source.x_ohm is not None:
         return complex(source.r_ohm, source.x_ohm)
     if source.sk3_mva is None or source.sk3_mva <= 0:
@@ -115,7 +119,7 @@ def _source_positive_impedance_ohm(source, bus_voltage_kv: float) -> complex | N
     return complex(r_ohm, x_ohm)
 
 
-def _source_zero_impedance_ohm(source, bus_voltage_kv: float) -> complex | None:
+def _source_zero_impedance_ohm(source: Source, bus_voltage_kv: float) -> complex | None:
     if source.r0_ohm is not None and source.x0_ohm is not None:
         return complex(source.r0_ohm, source.x0_ohm)
     if source.z0_z1_ratio is None or source.z0_z1_ratio <= 0:
@@ -259,22 +263,28 @@ def _assemble_zero_sequence_y0(
         bus_voltage_kv = bus_voltage.get(source.bus_ref, 0.0)
         if bus_voltage_kv <= 0:
             continue
-        z0_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv)
-        if z0_ohm is None:
+        # Wlasna nazwa (nie `z0_ohm` z petli galeziowej wyzej): tam wartosc jest
+        # ZAWSZE zespolona, tu MOZE byc None (zrodlo bez danych skladowej zerowej).
+        # Wspoldzielenie jednej nazwy chowalo te roznice przed analiza typow.
+        z0_source_ohm = _source_zero_impedance_ohm(source, bus_voltage_kv)
+        if z0_source_ohm is None:
             continue
-        if z0_ohm == 0:
+        if z0_source_ohm == 0:
             raise ZeroDivisionError(
                 "Cannot compute source zero-sequence admittance: impedance is zero"
             )
         idx = node_index[bus_id]
-        y0_bus[idx, idx] += 1.0 / (z0_ohm / builder.get_zbase_ohm(bus_id))
+        y0_bus[idx, idx] += 1.0 / (z0_source_ohm / builder.get_zbase_ohm(bus_id))
         tracer.add(
             key=f"z0_source[{source.ref_id}]",
             title=f"Źródło {source.name or source.ref_id}: impedancja zerowa (bocznik do ziemi)",
             formula_latex=r"Y_{0,src} = 1 / (Z_{0,src}/Z_{base})",
-            inputs={"ref_id": source.ref_id, "z0_ohm": z0_ohm},
-            substitution=f"Z0(src) = {z0_ohm.real:.6g} + j{z0_ohm.imag:.6g} Ω (bocznik {bus_id})",
-            result={"z0_ohm": z0_ohm},
+            inputs={"ref_id": source.ref_id, "z0_ohm": z0_source_ohm},
+            substitution=(
+                f"Z0(src) = {z0_source_ohm.real:.6g} + j{z0_source_ohm.imag:.6g} Ω "
+                f"(bocznik {bus_id})"
+            ),
+            result={"z0_ohm": z0_source_ohm},
         )
 
     # SM-3 (V12K-181): transformatory w sieci składowej zerowej wg grupy połączeń.
