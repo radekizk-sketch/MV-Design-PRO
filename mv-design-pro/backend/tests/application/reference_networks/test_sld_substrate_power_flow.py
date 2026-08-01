@@ -142,3 +142,36 @@ def test_determinism() -> None:
         enm2, case_ref=_CASE_REF, case_label=_CASE_LABEL, enm_hash=s2["snapshot_hash"]
     )
     assert c1 == c2
+
+
+# ---- defekt A1: blizniaczy budowniczy nie moze zgubic generacji --------------
+
+
+def test_zip_split_is_carried_by_the_twin_builder() -> None:
+    """Ten budowniczy jest BLIZNIAKIEM `enm.canonical_analysis._execute_power_flow`.
+
+    Rozdzielenie ZIP (baza odbiorowa + czesc stala) musi przechodzic tak samo w
+    obu, inaczej ten sam model policzy sie inaczej w rozplywie kanonicznym i w
+    towarzyszu SLD. Defekt A1 (przeglad fali 2026-08-01) gubil CALA generacje na
+    szynie z odbiorem zaleznym wylacznie od czestotliwosci; kontrakt jest tu
+    przypiety na PQSpec, zeby blizniak nie mogl sie cicho rozjechac.
+    """
+    from tests.enm.test_zip_generation_split import _payload_freq_only
+
+    enm = EnergyNetworkModel.model_validate(_payload_freq_only("Blizniak SLD", p_gen_mw=2.0))
+    pf_input, _slack = _build_power_flow_input(enm)
+    zip_specs = [s for s in pf_input.pq if s.zip_coeffs is not None]
+    assert zip_specs, "szyna ZIP musi trafic do wejscia rozplywu"
+    spec = zip_specs[0]
+    # Baza ODBIOROWA (3,0 MW) obok mocy WYPADKOWEJ szyny (3,0 - 2,0 = 1,0 MW):
+    # bez tego pola solver przemnozylby wielomianem cala moc szyny.
+    assert spec.zip_base_p_mw == pytest.approx(3.0)
+    assert spec.p_mw == pytest.approx(1.0)
+
+    solution = solve_power_flow_physics(pf_input)
+    assert solution.converged
+    # Przy f = f0 mnoznik czestotliwosciowy = 1,0 i wielomian napieciowy jest
+    # trywialny, wiec moc wstrzyknieta szyny to dokladnie -3,0 + 2,0 = -1,0 MW.
+    assert solution.node_p_spec_effective_pu[spec.node_id] * pf_input.base_mva == pytest.approx(
+        -1.0, abs=1e-9
+    )
