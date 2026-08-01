@@ -1,30 +1,35 @@
 """
-E2E Production Scenario Test — §13 Deterministic 12-step scenario.
+E2E Production Scenario Test — §13 Deterministic scenario.
 
 Validates the canonical startup scenario with catalog bindings,
-materialization, readiness checks, and determinism (100× identical hash).
+materialization and determinism (100× identical hash).
 
 Steps:
 1. Create empty network graph
 2. Add grid source (GPZ)
 3. Add trunk segment ×3 (with catalog binding)
-4. Verify readiness after each operation
+4. Check snapshot changes after operation
 5. Check snapshot fingerprint determinism
 6. Validate materialized parameters
-7. Run readiness check (full)
+
+Gotowości NIE sprawdza już ten plik: `check_snapshot_readiness` był martwym
+checkerem (żaden moduł produkcyjny go nie wołał — jedynym konsumentem były te
+testy), usuniętym wraz z kartą A audytu szczytu 2026-08-01. Gotowość produkcyjna
+powstaje w bramach operacji domenowych (`domain_ops_policy` + `ENMValidator`) i
+tam jest sprawdzana — m.in. tests/api/test_brama_katalogowa_stacji_koncowej.py.
 """
 
 import pytest
 from network_model.catalog.materialization import (
     materialize_catalog_binding,
 )
-from network_model.catalog.readiness_checker import check_snapshot_readiness
 from network_model.catalog.repository import CatalogRepository, get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding, CatalogNamespace
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
 from network_model.core.snapshot import (
+    NetworkSnapshot,
     create_network_snapshot,
 )
 
@@ -228,66 +233,6 @@ class TestProductionScenario:
         assert result.solver_fields["voltage_lv_kv"] == trafo.voltage_lv_kv
         assert result.solver_fields["voltage_lv_kv"] > 0
 
-    def test_step07_readiness_check_empty_network(self) -> None:
-        """Step 7: Readiness check on empty network flags missing source."""
-        graph = NetworkGraph()
-        graph.add_node(_build_pq_node("BUS_001"))
-
-        snapshot = create_network_snapshot(
-            graph,
-            network_model_id="NM_001",
-            snapshot_id="SNAP_EMPTY",
-            created_at="2026-02-20T12:00:00Z",
-        )
-
-        profile = check_snapshot_readiness(snapshot)
-        # Should have issues about missing source and missing segments
-        assert len(profile.issues) > 0
-        codes = [i.code for i in profile.issues]
-        assert "source.grid_supply_missing" in codes or "trunk.segment_missing" in codes
-
-    def test_step08_readiness_check_with_source(self) -> None:
-        """Step 8: Network with source and segments has fewer issues."""
-        graph = NetworkGraph()
-        graph.add_node(_build_source_node())
-        graph.add_node(_build_pq_node("BUS_001"))
-        graph.add_branch(
-            _build_line_branch("SEG_1", "GPZ_BUS_001", "BUS_001", "test", length_km=0.5)
-        )
-
-        snapshot = create_network_snapshot(
-            graph,
-            network_model_id="NM_001",
-            snapshot_id="SNAP_WITH_SRC",
-            created_at="2026-02-20T12:00:00Z",
-        )
-
-        profile = check_snapshot_readiness(snapshot)
-        # Should not have source.grid_supply_missing
-        codes = [i.code for i in profile.issues]
-        assert "source.grid_supply_missing" not in codes
-
-    def test_step09_readiness_determinism(self) -> None:
-        """Step 9: Readiness check is deterministic (same input → same output)."""
-        graph = NetworkGraph()
-        graph.add_node(_build_source_node())
-        graph.add_node(_build_pq_node("BUS_001"))
-        graph.add_branch(
-            _build_line_branch("SEG_1", "GPZ_BUS_001", "BUS_001", "test", length_km=0.5)
-        )
-
-        snapshot = create_network_snapshot(
-            graph,
-            network_model_id="NM_001",
-            snapshot_id="SNAP_DET",
-            created_at="2026-02-20T12:00:00Z",
-        )
-
-        profile1 = check_snapshot_readiness(snapshot)
-        profile2 = check_snapshot_readiness(snapshot)
-
-        assert profile1.content_hash == profile2.content_hash
-
     def test_step10_fingerprint_100x_determinism(self) -> None:
         """Step 10: 100× fingerprint determinism test."""
         graph = NetworkGraph()
@@ -321,27 +266,6 @@ class TestProductionScenario:
                 created_at="2026-02-20T12:00:00Z",
             )
             assert snap.fingerprint == reference_fp, f"Fingerprint mismatch at iteration {i + 2}"
-
-    def test_step11_readiness_profile_hash_determinism(self) -> None:
-        """Step 11: Readiness profile content_hash is stable 100×."""
-        graph = NetworkGraph()
-        graph.add_node(_build_source_node())
-
-        snapshot = create_network_snapshot(
-            graph,
-            network_model_id="NM_001",
-            snapshot_id="SNAP_READY",
-            created_at="2026-02-20T12:00:00Z",
-        )
-
-        first_profile = check_snapshot_readiness(snapshot)
-        reference_hash = first_profile.content_hash
-
-        for i in range(99):
-            profile = check_snapshot_readiness(snapshot)
-            assert (
-                profile.content_hash == reference_hash
-            ), f"Readiness hash mismatch at iteration {i + 2}"
 
     def test_step12_no_500_errors(self, catalog: CatalogRepository) -> None:
         """Step 12: No internal errors in canonical path."""
@@ -377,12 +301,10 @@ class TestProductionScenario:
         )
 
         # All these must not raise
-        profile = check_snapshot_readiness(snapshot)
-        assert profile.snapshot_id == "SNAP_FULL"
-        assert profile.content_hash
-        assert isinstance(profile.issues, tuple)
+        assert snapshot.snapshot_id == "SNAP_FULL"
+        assert snapshot.fingerprint
 
         # Serialize/deserialize round-trip
-        profile_dict = profile.to_dict()
-        assert "issues" in profile_dict
-        assert "sld_ready" in profile_dict
+        snapshot_dict = snapshot.to_dict()
+        assert "graph" in snapshot_dict
+        assert NetworkSnapshot.from_dict(snapshot_dict).fingerprint == snapshot.fingerprint
