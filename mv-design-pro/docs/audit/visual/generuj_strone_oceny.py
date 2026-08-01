@@ -351,8 +351,14 @@ def zbuduj_strone(
         ("DATA_STRONY", data_strony),
     ):
         strona = strona.replace(znacznik, wartosc)
+    # Kadry narracji dostaja wymiary wlasne tak samo jak kafle galerii — inaczej ten sam
+    # defekt (leniwy obraz o zerowej wysokosci przesuwajacy kotwice) siedzialby dalej
+    # w drugiej polowie strony.
     for znacznik, nazwa in OSADZONE.items():
-        strona = strona.replace(znacznik, zrodlo(katalog, nazwa, osadzone))
+        strona = strona.replace(
+            f'src="{znacznik}"',
+            f'src="{zrodlo(katalog, nazwa, osadzone)}"' + _atrybuty_wymiarow(katalog / nazwa),
+        )
     return strona
 
 
