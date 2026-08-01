@@ -15,6 +15,8 @@ Allowed locations (whitelist):
 - scripts/ (this guard)
 
 Exit 0 = PASS, Exit 1 = FAIL.
+An EMPTY SCAN (missing scan root or 0 inspected files) is a FAIL, not a PASS:
+a guard that looks at nothing must never report green.
 """
 
 from __future__ import annotations
@@ -23,9 +25,15 @@ import re
 import sys
 from pathlib import Path
 
-# Root of the backend source
-BACKEND_SRC = Path(__file__).resolve().parent.parent / "mv-design-pro" / "backend" / "src"
-BACKEND_TESTS = Path(__file__).resolve().parent.parent / "mv-design-pro" / "backend" / "tests"
+# Root of the backend source.
+# NOTE (V12K-306 / audyt 2026-08-01, defekt D3): this file lives in
+# <repo>/mv-design-pro/scripts/, so parent.parent is ALREADY <repo>/mv-design-pro.
+# The historical constant appended a second "mv-design-pro" segment, which pointed
+# the scan at a directory that never existed — the guard scanned 0 files and exited 0
+# from the day it was written.  Do not reintroduce the duplicated segment.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+BACKEND_SRC = PROJECT_ROOT / "backend" / "src"
+BACKEND_TESTS = PROJECT_ROOT / "backend" / "tests"
 
 # Patterns to detect
 FAULT_NODE_ID_PATTERN = re.compile(r"\bfault_node_id\b")
@@ -48,12 +56,15 @@ def is_whitelisted(filepath: Path) -> bool:
     if "/tests/" in rel or "/scripts/" in rel:
         return True
 
-    # Check against whitelist
+    # Check against whitelist.
+    # A file that cannot be expressed relative to the scan root is NOT whitelisted:
+    # swallowing the ValueError used to whitelist EVERY file whenever the root was
+    # wrong (second layer of the D3 emptiness).  Fail closed instead.
     try:
         relative = filepath.relative_to(BACKEND_SRC)
-        return str(relative) in WHITELISTED_PATHS
     except ValueError:
-        return True  # Outside backend src
+        return False
+    return str(relative) in WHITELISTED_PATHS
 
 
 def check_file(filepath: Path) -> list[str]:
@@ -94,12 +105,21 @@ def main() -> int:
     violations: list[str] = []
 
     if not BACKEND_SRC.exists():
-        print("WARN: Backend source directory not found, skipping guard.")
-        return 0
+        print(f"FAIL: Backend source directory not found: {BACKEND_SRC}")
+        print("A guard that cannot reach its scan root is a false green — fix the path.")
+        return 1
 
     # Scan all Python files
+    scanned = 0
     for py_file in BACKEND_SRC.rglob("*.py"):
+        scanned += 1
         violations.extend(check_file(py_file))
+
+    print(f"Scanned {scanned} Python file(s) under {BACKEND_SRC}.")
+
+    if scanned == 0:
+        print("FAIL: Empty scan — 0 files inspected. An empty guard proves nothing.")
+        return 1
 
     if violations:
         print("FAIL: Direct fault parameter usage detected outside whitelisted modules:")
