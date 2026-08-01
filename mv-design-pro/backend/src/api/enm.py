@@ -15,6 +15,7 @@ Routes:
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 from uuid import UUID
 
@@ -64,6 +65,8 @@ from enm.v2_projection import project_enm_v1_to_v2
 from enm.validator import ENMValidator
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/cases", tags=["enm"])
 
@@ -911,8 +914,16 @@ async def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]
             )
             saved = _set_enm(case_id, new_enm, zrodlo_zmiany=zrodlo)
             result["snapshot"] = saved.model_dump(mode="json")
-        except Exception as e:
-            result["error"] = f"Błąd zapisu snapshot: {e}"
+        except Exception:
+            # Szczegół techniczny (typ wyjątku, ścieżka pliku) idzie do dziennika
+            # serwera, nie do komunikatu inżyniera — dotychczasowe f"...{e}"
+            # wypychało na ekran bezwzględną ścieżkę systemu plików backendu
+            # (ta sama klasa co template.persist_failed w apply.py, defekt D4).
+            logger.exception("Zapis modelu po operacji domenowej nie powiódł się")
+            result["error"] = (
+                "Nie udało się zapisać modelu sieci — model pozostał bez zmian. "
+                "Powtórz operację; szczegóły są w dzienniku serwera."
+            )
             result["error_code"] = "api.snapshot_validation_failed"
             result["snapshot"] = None
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import Any, Literal
 from uuid import UUID
 
@@ -35,6 +36,8 @@ from enm.store import set_enm as _set_enm
 from fastapi import APIRouter, HTTPException, Request, status
 from network_model.catalog.audit2_catalogs import get_block_transformer
 from pydantic import BaseModel, Field, field_validator
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/projects", tags=["generators"])
 
@@ -473,11 +476,16 @@ async def create_der_generator(
             saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
             result["snapshot"] = saved.model_dump(mode="json")
         except Exception as exc:  # pragma: no cover - defensive validation guard
+            logger.exception("Zapis modelu ENM po konfiguracji DER nie powiódł się")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={
                     "code": "api.snapshot_validation_failed",
-                    "message_pl": f"Błąd zapisu snapshotu ENM: {exc}",
+                    # Bez f"...{exc}" — szczegół (ścieżka FS) tylko do dziennika serwera.
+                    "message_pl": (
+                        "Nie udało się zapisać modelu sieci — model pozostał bez zmian. "
+                        "Powtórz operację; szczegóły są w dzienniku serwera."
+                    ),
                 },
             ) from exc
 
@@ -524,11 +532,16 @@ async def set_der_bindings(
             saved = _set_enm(case_id, EnergyNetworkModel.model_validate(result["snapshot"]))
             result["snapshot"] = saved.model_dump(mode="json")
         except Exception as exc:  # pragma: no cover - defensive validation guard
+            logger.exception("Zapis modelu ENM po konfiguracji DER nie powiódł się")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail={
                     "code": "api.snapshot_validation_failed",
-                    "message_pl": f"Błąd zapisu snapshotu ENM: {exc}",
+                    # Bez f"...{exc}" — szczegół (ścieżka FS) tylko do dziennika serwera.
+                    "message_pl": (
+                        "Nie udało się zapisać modelu sieci — model pozostał bez zmian. "
+                        "Powtórz operację; szczegóły są w dzienniku serwera."
+                    ),
                 },
             ) from exc
 
