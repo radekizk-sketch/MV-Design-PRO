@@ -913,8 +913,13 @@ def test_arc_flash_does_not_import_solver_layer() -> None:
             m.startswith(zabroniona_warstwa) for m in sys.modules
         ), "arc_flash nie powinien importować warstwy solverów"
     finally:
+        # Przywrocenie MUSI byc przypisaniem, nie `setdefault`: test zdazyl
+        # zaimportowac `analysis.arc_flash.*` na nowo, wiec `setdefault` zostawilby
+        # w `sys.modules` SWIEZA tozsamosc tych modulow, a stare referencje
+        # zostalyby u tych, ktorzy zaimportowali je wczesniej — czyli dokladnie ta
+        # dwutozsamosc, ktora zamknela karta KD-10 (V12K-297).
         for nazwa, modul in zdjete.items():
-            sys.modules.setdefault(nazwa, modul)
+            sys.modules[nazwa] = modul
 
 
 def test_structure_runs_end_to_end_from_short_circuit_result() -> None:
