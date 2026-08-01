@@ -214,6 +214,12 @@ def test_vt_koncowka_bez_klasy_pomiarowej_nie_podmienia_kategorii(klient: TestCl
     assert _VT_KOD_BRAKU_KATEGORII in dane["readiness_codes"]
     # ΔU jest policzone — brakuje wyłącznie odniesienia normatywnego.
     assert dane["delta_u_procent"] == pytest.approx(0.68964, abs=1e-5)
+    # ZBIORCZY werdykt nie może być zielony, gdy jeden człon kryterium nie ma
+    # podstawy do oceny (reguła FAIL > NIEDOSTĘPNY > PASS). Sam bilans obciążenia
+    # wypada dodatnio (30 VA ≤ 30 VA), więc przed naprawą całe kryterium wracało
+    # jako PASS — zielone na policzonej połowie.
+    assert dane["status_obciazenia"] == "PASS"
+    assert dane["status"] == "UNAVAILABLE"
 
 
 def test_vt_koncowka_bez_uzwojenia_zabezpieczeniowego_tez_nie_zgaduje(klient: TestClient) -> None:
@@ -224,6 +230,7 @@ def test_vt_koncowka_bez_uzwojenia_zabezpieczeniowego_tez_nie_zgaduje(klient: Te
     assert dane["kategoria_uzwojenia"] is None
     assert dane["limit_delta_u_procent"] is None
     assert dane["status_spadku"] == "UNAVAILABLE"
+    assert dane["status"] == "UNAVAILABLE"
     assert _VT_KOD_BRAKU_KATEGORII in dane["readiness_codes"]
 
 
@@ -250,6 +257,11 @@ def test_vt_koncowka_limit_zawsze_zgodny_z_pytanym_uzwojeniem(
             assert dane["kategoria_uzwojenia"] is None, ref
             assert dane["limit_delta_u_procent"] is None, ref
             assert _VT_KOD_BRAKU_KATEGORII in dane["readiness_codes"], ref
+            # Człon bez podstawy nie może przejść do zbiorczego PASS na żadnym
+            # rekordzie katalogu (asercja na regule, nie na dzisiejszej mocy
+            # znamionowej: gdy bilans obciążenia wypadnie FAIL, agregat też jest
+            # czerwony — i to również nie jest PASS).
+            assert dane["status"] != "PASS", ref
     # Kryterium nie może „przejść”, bo nic nie policzyło.
     assert rozstrzygniete > 0
 

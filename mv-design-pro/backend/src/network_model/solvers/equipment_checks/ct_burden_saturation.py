@@ -57,6 +57,7 @@ from network_model.solvers.equipment_checks.slad import (
     liczba_tex,
     nieujemna,
     wartosc,
+    werdykt_zbiorczy,
 )
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
@@ -139,6 +140,10 @@ class CtBurdenResult:
 
     ``status`` = NIEDOSTEPNY oznacza brak podstawy do oceny (patrz
     ``readiness_codes``); nie wolno go czytac jako spelnienia kryterium.
+
+    ``status`` jest ZLOZENIEM obu werdyktow czastkowych regula
+    ``slad.werdykt_zbiorczy`` (FAIL > NIEDOSTEPNY > PASS), wiec NIEDOSTEPNE
+    nasycenie nie moze dac zbiorczego PASS wydanego na samym obciazeniu.
     """
 
     status: str
@@ -261,13 +266,11 @@ def check_ct_burden_saturation(data: CtBurdenInput) -> CtBurdenResult:
             zapas = alf_eff - alf_wym
             status_nasycenia = STATUS_PASS if alf_eff >= alf_wym else STATUS_FAIL
 
-    # Werdykt LACZNY: nasycenie decyduje, gdy jest rozstrzygniete; inaczej rozstrzyga
-    # bilans obciazenia. Wynik NIEDOSTEPNY tylko wtedy, gdy zadne kryterium nie ma
-    # podstawy — samo obciazenie zawsze ja ma, bo liczy sie z danych obwodu.
-    if status_nasycenia == STATUS_FAIL or status_obciazenia == STATUS_FAIL:
-        status = STATUS_FAIL
-    else:
-        status = STATUS_PASS
+    # Werdykt LACZNY skladany wspolna regula rodziny: FAIL > NIEDOSTEPNY > PASS.
+    # Poprzednio brak podstawy do oceny nasycenia (np. nieznane ALF_wym albo rdzen
+    # bez klasy zabezpieczeniowej) znikal z werdyktu, bo zbiorczy status wychodzil
+    # PASS z samego bilansu obciazenia — zielone na POLICZONEJ POLOWIE kryterium.
+    status = werdykt_zbiorczy(status_obciazenia, status_nasycenia)
 
     return CtBurdenResult(
         status=status,

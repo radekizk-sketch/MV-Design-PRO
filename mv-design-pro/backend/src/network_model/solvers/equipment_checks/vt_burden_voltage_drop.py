@@ -42,6 +42,7 @@ from network_model.solvers.equipment_checks.slad import (
     liczba_tex,
     nieujemna,
     wartosc,
+    werdykt_zbiorczy,
 )
 
 # Kanoniczne kody gotowosci (zsynchronizowane z domain.canonical_operations.READINESS_CODES).
@@ -121,7 +122,15 @@ class VtBurdenInput:
 
 @dataclass(frozen=True)
 class VtBurdenResult:
-    """Wynik bilansu wtornego i zmiany napiecia obwodu VT (WHITE BOX)."""
+    """Wynik bilansu wtornego i zmiany napiecia obwodu VT (WHITE BOX).
+
+    ``status`` = NIEDOSTEPNY oznacza brak podstawy do oceny (patrz
+    ``readiness_codes``); nie wolno go czytac jako spelnienia kryterium.
+
+    ``status`` jest ZLOZENIEM obu werdyktow czastkowych regula
+    ``slad.werdykt_zbiorczy`` (FAIL > NIEDOSTEPNY > PASS), wiec NIEDOSTEPNY
+    werdykt zmiany napiecia nie moze dac zbiorczego PASS z samego obciazenia.
+    """
 
     status: str
     status_obciazenia: str
@@ -215,10 +224,11 @@ def check_vt_burden_voltage_drop(data: VtBurdenInput) -> VtBurdenResult:
         limit = LIMIT_DELTA_U_PROCENT[kategoria]
         status_spadku = STATUS_PASS if delta_u_procent <= limit else STATUS_FAIL
 
-    if status_obciazenia == STATUS_FAIL or status_spadku == STATUS_FAIL:
-        status = STATUS_FAIL
-    else:
-        status = STATUS_PASS
+    # Werdykt LACZNY skladany wspolna regula rodziny: FAIL > NIEDOSTEPNY > PASS.
+    # Poprzednio nierozpoznana kategoria uzwojenia (limit NIE przyjety) znikala z
+    # werdyktu, bo zbiorczy status wychodzil PASS z samego bilansu obciazenia —
+    # ekran pokazywal zielone kryterium, ktorego polowy nikt nie sprawdzil.
+    status = werdykt_zbiorczy(status_obciazenia, status_spadku)
 
     return VtBurdenResult(
         status=status,

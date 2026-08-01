@@ -203,6 +203,10 @@ def test_ct_brak_wymagania_alf_daje_kod_gotowosci_nie_zero() -> None:
     # Bilans obciążenia MA podstawę i musi zostać policzony mimo braku wymagania.
     assert wynik.status_obciazenia == STATUS_PASS
     assert wynik.moc_obliczeniowa_va == pytest.approx(8.8878125, abs=1e-12)
+    # …ale sam policzony bilans NIE wystarcza na zbiorczy werdykt: nasycenia nikt
+    # nie sprawdził, więc kryterium jako całość jest NIEDOSTĘPNE, nie spełnione.
+    assert wynik.status == STATUS_UNAVAILABLE
+    assert wynik.is_conclusive is False
 
 
 def test_ct_braki_danych_daja_status_niedostepny_i_kody() -> None:
@@ -363,6 +367,10 @@ def test_vt_brak_kategorii_nie_przyjmuje_limitu() -> None:
     assert READINESS_VT_WINDING_CATEGORY_MISSING in wynik.readiness_codes
     # ΔU jest policzone — brakuje tylko odniesienia normatywnego.
     assert wynik.delta_u_procent == pytest.approx(0.06620544, abs=1e-12)
+    # Bilans obciążenia wypada dodatnio, ale kryterium ma DRUGI człon bez podstawy,
+    # więc zbiorczy werdykt nie może być zielony (FAIL > NIEDOSTĘPNY > PASS).
+    assert wynik.status_obciazenia == STATUS_PASS
+    assert wynik.status == STATUS_UNAVAILABLE
 
 
 def test_vt_brak_obwodu_daje_status_niedostepny() -> None:
@@ -591,3 +599,153 @@ def test_kody_gotowosci_sa_zarejestrowane_w_kanonie() -> None:
     assert brakujace == []
     for kod in kody:
         assert READINESS_CODES[kod].message_pl.strip()
+
+
+# ---------------------------------------------------------------------------
+# Werdykt ZBIORCZY kryteriow wieloczlonowych — FAIL > NIEDOSTEPNY > PASS
+# ---------------------------------------------------------------------------
+#
+# DLACZEGO TE TABELE ISTNIEJA. Zbiorczy `status` skladano regula „jakikolwiek
+# FAIL ⇒ FAIL, w przeciwnym razie PASS", wiec czlon BEZ PODSTAWY do oceny znikal
+# z werdyktu: bilans CT bez wymaganego ALF i bilans VT bez rozpoznanej kategorii
+# uzwojenia konczyly sie zbiorczym PASS wydanym na POLICZONEJ POLOWIE kryterium
+# (zmierzone przed naprawa: obie te kombinacje dawaly `status == PASS`).
+# Regula rodziny: FAIL (udowodnione naruszenie nie staje sie nierozstrzygnietym
+# przez brak innej wielkosci) > NIEDOSTEPNY (zielone na polowie przepuszcza
+# dobor, ktorego nikt nie sprawdzil) > PASS.
+#
+# Tabele jada przez SOLVER, a nie przez sama funkcje skladajaca: tylko solver
+# rozstrzyga, ktore kombinacje werdyktow czastkowych sa osiagalne z danych
+# wejsciowych — i tylko te widzi projektant.
+
+
+def _ct_wariant(*, sn_va: float | None, alf_wymagany: float | None) -> CtBurdenInput:
+    """Wariant przypadku odniesienia CT sterujacy WYLACZNIE werdyktami czastkowymi.
+
+    Obwod wtorny jest ten sam co w `_CT_ODNIESIENIE` (S2obl = 8,8878125 VA,
+    Sw = 5,0 VA), wiec roznica werdyktow nie moze pochodzic z innego rachunku:
+    `sn_va` steruje bilansem obciazenia, `alf_wymagany` — werdyktem nasycenia.
+    """
+    return CtBurdenInput(
+        i2n_a=5.0,
+        sn_va=sn_va,
+        alf=20.0,
+        dlugosc_przewodu_m=25.0,
+        przekroj_przewodu_mm2=4.0,
+        obciazenia_aparatow=_CT_ODNIESIENIE.obciazenia_aparatow,
+        rct_ohm=0.2,
+        alf_wymagany=alf_wymagany,
+    )
+
+
+@pytest.mark.parametrize(
+    ("sn_va", "alf_wymagany", "obciazenie", "nasycenie", "agregat"),
+    [
+        # ALF_eff = 20·(10+5)/13,8878125 = 21,6017 przy Sn = 10 VA;
+        # ALF_eff = 20·(5+5)/13,8878125 = 14,4011 przy Sn = 5 VA.
+        (10.0, 15.0, STATUS_PASS, STATUS_PASS, STATUS_PASS),
+        (10.0, 25.0, STATUS_PASS, STATUS_FAIL, STATUS_FAIL),
+        (10.0, None, STATUS_PASS, STATUS_UNAVAILABLE, STATUS_UNAVAILABLE),
+        (5.0, 10.0, STATUS_FAIL, STATUS_PASS, STATUS_FAIL),
+        (5.0, 25.0, STATUS_FAIL, STATUS_FAIL, STATUS_FAIL),
+        (5.0, None, STATUS_FAIL, STATUS_UNAVAILABLE, STATUS_FAIL),
+        # Brak mocy znamionowej: rachunek nie ma podstawy, oba czlony NIEDOSTEPNE.
+        (None, 15.0, STATUS_UNAVAILABLE, STATUS_UNAVAILABLE, STATUS_UNAVAILABLE),
+    ],
+)
+def test_ct_tabela_przejsc_werdyktu_zbiorczego(
+    sn_va: float | None,
+    alf_wymagany: float | None,
+    obciazenie: str,
+    nasycenie: str,
+    agregat: str,
+) -> None:
+    """Pełna tabela przejść CT: (obciążenie, nasycenie) → status zbiorczy."""
+    wynik = check_ct_burden_saturation(_ct_wariant(sn_va=sn_va, alf_wymagany=alf_wymagany))
+
+    assert wynik.status_obciazenia == obciazenie
+    assert wynik.status_nasycenia == nasycenie
+    assert wynik.status == agregat
+    assert wynik.is_conclusive is (agregat in (STATUS_PASS, STATUS_FAIL))
+
+
+def _vt_wariant(
+    *,
+    sn_va: float | None,
+    kategoria: str | None,
+    dlugosc_m: float,
+    przekroj_mm2: float,
+    moc_aparatu_va: float,
+) -> VtBurdenInput:
+    """Wariant przypadku VT sterujacy WYLACZNIE werdyktami czastkowymi.
+
+    `sn_va` wobec mocy odbiornika steruje bilansem obciazenia, dlugosc/przekroj —
+    zmiana napiecia, `kategoria` — istnieniem limitu dla tego uzwojenia.
+    """
+    return VtBurdenInput(
+        u2n_v=100.0,
+        sn_va=sn_va,
+        kategoria_uzwojenia=kategoria,
+        dlugosc_przewodu_m=dlugosc_m,
+        przekroj_przewodu_mm2=przekroj_mm2,
+        obciazenia_aparatow=(VtDeviceBurden(nazwa="Licznik energii", moc_va=moc_aparatu_va),),
+    )
+
+
+@pytest.mark.parametrize(
+    (
+        "sn_va",
+        "kategoria",
+        "dlugosc_m",
+        "przekroj_mm2",
+        "moc_va",
+        "obciazenie",
+        "spadek",
+        "agregat",
+    ),
+    [
+        # 40 m / 2,5 mm² ⇒ ΔU% = 0,06620544 (≤ 0,5); 150 m / 1,5 mm² ⇒ ΔU% = 0,86205 (> 0,5).
+        (30.0, KATEGORIA_POMIAROWA, 40.0, 2.5, 12.0, STATUS_PASS, STATUS_PASS, STATUS_PASS),
+        (30.0, KATEGORIA_POMIAROWA, 150.0, 1.5, 25.0, STATUS_PASS, STATUS_FAIL, STATUS_FAIL),
+        (30.0, None, 40.0, 2.5, 12.0, STATUS_PASS, STATUS_UNAVAILABLE, STATUS_UNAVAILABLE),
+        (10.0, KATEGORIA_POMIAROWA, 40.0, 2.5, 12.0, STATUS_FAIL, STATUS_PASS, STATUS_FAIL),
+        (10.0, KATEGORIA_POMIAROWA, 150.0, 1.5, 25.0, STATUS_FAIL, STATUS_FAIL, STATUS_FAIL),
+        (10.0, None, 40.0, 2.5, 12.0, STATUS_FAIL, STATUS_UNAVAILABLE, STATUS_FAIL),
+        # Brak mocy znamionowej uzwojenia: oba czlony bez podstawy.
+        (
+            None,
+            KATEGORIA_POMIAROWA,
+            40.0,
+            2.5,
+            12.0,
+            STATUS_UNAVAILABLE,
+            STATUS_UNAVAILABLE,
+            STATUS_UNAVAILABLE,
+        ),
+    ],
+)
+def test_vt_tabela_przejsc_werdyktu_zbiorczego(
+    sn_va: float | None,
+    kategoria: str | None,
+    dlugosc_m: float,
+    przekroj_mm2: float,
+    moc_va: float,
+    obciazenie: str,
+    spadek: str,
+    agregat: str,
+) -> None:
+    """Pełna tabela przejść VT: (obciążenie, zmiana napięcia) → status zbiorczy."""
+    wynik = check_vt_burden_voltage_drop(
+        _vt_wariant(
+            sn_va=sn_va,
+            kategoria=kategoria,
+            dlugosc_m=dlugosc_m,
+            przekroj_mm2=przekroj_mm2,
+            moc_aparatu_va=moc_va,
+        )
+    )
+
+    assert wynik.status_obciazenia == obciazenie
+    assert wynik.status_spadku == spadek
+    assert wynik.status == agregat
+    assert wynik.is_conclusive is (agregat in (STATUS_PASS, STATUS_FAIL))
