@@ -876,45 +876,45 @@ def test_status_enum_is_distinct_from_field_quality() -> None:
 
 
 def test_arc_flash_does_not_import_solver_layer() -> None:
-    """arch_guard: warstwa analizy nie może importować solverów."""
+    """arch_guard: warstwa analizy nie może importować solverów.
+
+    V12K-302: test sprzed poprawki był SŁABSZY, niż wygląda — w pełnym biegu
+    moduły `analysis.arc_flash.*` były już zaimportowane przez wcześniejsze
+    testy, więc trzy `import` poniżej nic nie wykonywały i asercja przechodziła
+    trywialnie (zależnie od kolejności plików w suicie). Teraz zdejmujemy z
+    `sys.modules` OBIE strony — badane moduły analizy i warstwę solverów —
+    a po pomiarze przywracamy stan wyjściowy w `finally` (reguła z V12K-297:
+    kto zdejmuje moduły, ten je oddaje).
+    """
     import sys
 
-    # Moduly solverow zdejmujemy z `sys.modules`, zeby import warstwy analizy MUSIAL
-    # je zaladowac od nowa, gdyby ich potrzebowal — tylko wtedy asercja ponizej cos
-    # znaczy. ALE zdjete obiekty TRZYMAMY i oddajemy w `finally`.
-    #
-    # DLACZEGO (KD-10, defekt zmierzony): bez przywrocenia ten test trwale niszczy
-    # stan globalny procesu. Kazdy modul zaimportowany PO nim dostaje SWIEZY obiekt
-    # `network_model.solvers.*` z nowym kompletem klas, podczas gdy moduly
-    # zaimportowane WCZESNIEJ trzymaja referencje do starych. Skutek zmierzony w
-    # pelnym biegu: `tests/solvers/test_pr15_pr16_solvers.py` oblewal
-    # `isinstance(result, StabilityResult)` na obiekcie, ktory JEST StabilityResult —
-    # bo adapter przez leniwy import `...stability_rms.engine` odtwarzal modul
-    # `contracts` i budowal wynik z NOWEJ klasy. Minimalna reprodukcja:
-    # `pytest tests/analysis/test_arc_flash.py tests/solvers/test_pr15_pr16_solvers.py`
-    # -> 2 failed przed ta naprawa, 85 passed po niej.
+    badane = ("analysis.arc_flash",)
+    zabroniona_warstwa = "network_model.solvers"
+
     zdjete = {
         nazwa: modul
-        for nazwa, modul in sys.modules.items()
-        if nazwa.startswith("network_model.solvers")
+        for nazwa, modul in list(sys.modules.items())
+        if nazwa.startswith(zabroniona_warstwa) or nazwa.startswith(badane)
     }
     for nazwa in zdjete:
         del sys.modules[nazwa]
+
     try:
         import analysis.arc_flash.builder  # noqa: F401
         import analysis.arc_flash.loader  # noqa: F401
         import analysis.arc_flash.models  # noqa: F401
 
+        # Dowód, że import faktycznie się wykonał (inaczej pomiar jest pusty).
+        assert any(
+            m.startswith("analysis.arc_flash") for m in sys.modules
+        ), "moduły analizy nie zostały zaimportowane — pomiar byłby bezwartościowy"
+
         assert not any(
-            m.startswith("network_model.solvers") for m in sys.modules
+            m.startswith(zabroniona_warstwa) for m in sys.modules
         ), "arc_flash nie powinien importować warstwy solverów"
     finally:
-        # Najpierw kasujemy ewentualne NOWE obiekty (gdyby jednak powstaly), potem
-        # oddajemy ORYGINALNE — modul musi wyjsc z tego testu z ta sama tozsamoscia,
-        # z ktora do niego wszedl.
-        for nazwa in [m for m in sys.modules if m.startswith("network_model.solvers")]:
-            del sys.modules[nazwa]
-        sys.modules.update(zdjete)
+        for nazwa, modul in zdjete.items():
+            sys.modules.setdefault(nazwa, modul)
 
 
 def test_structure_runs_end_to_end_from_short_circuit_result() -> None:
