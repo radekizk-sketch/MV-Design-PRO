@@ -41,7 +41,7 @@ from enm.dziennik_zmian import wpisy_od as wpisy_dziennika_od
 from enm.hash import compute_enm_hash
 from enm.models import EnergyNetworkModel
 from enm.severity import empty_severity_counts, is_failed_status
-from enm.store import ZrodloZmiany
+from enm.store import ZrodloZmiany, blokada_przypadku
 from enm.store import get_enm as _get_enm
 from enm.store import set_enm as _set_enm
 from enm.topology_ops import (
@@ -141,7 +141,14 @@ async def get_dziennik_zmian(case_id: str, od_rewizji: int = 0) -> dict[str, Any
 
 @router.put("/{case_id}/enm")
 async def put_enm(case_id: str, payload: EnergyNetworkModel) -> dict[str, Any]:
-    """Autosave ENM: revision++, hash recomputed."""
+    """Autosave ENM: revision++, hash recomputed.
+
+    WSPÓŁBIEŻNOŚĆ: ta końcówka NIE ma cyklu odczyt → przeliczenie → zapis — model
+    przychodzi w całości od wołającego, a sam zapis (`revision++` na bieżącym
+    wpisie magazynu) jest już serializowany blokadą wewnątrz `set_enm`. Rozciąganie
+    blokady na końcówkę niczego by nie dało: model, który autosave nadpisuje,
+    został odczytany po stronie przeglądarki, poza zasięgiem blokady w procesie.
+    """
     saved = _set_enm(case_id, payload)
     return saved.model_dump(mode="json")
 
@@ -504,6 +511,12 @@ async def topology_ops(case_id: str, req: TopologyOpRequest) -> dict[str, Any]:
     Supports: create/update/delete for nodes, branches, devices,
     measurements, and protection assignments.
     Returns operation result with issues and updated ENM revision.
+
+    WSPÓŁBIEŻNOŚĆ: blokada obejmuje CAŁY cykl odczyt → mutacja → zapis (patrz
+    `domain_ops`). Końcówka jest dziś wyłączona z routera produkcyjnego
+    (`_PRODUCTION_DISABLED_ROUTE_KEYS`), ale cykl jest ten sam, więc blokada
+    stoi tu razem z pozostałymi — inaczej ponowne włączenie trasy wniosłoby
+    z powrotem cichą utratę pracy.
     """
     handler = _OP_DISPATCH.get(req.op)
     if not handler:
@@ -513,6 +526,15 @@ async def topology_ops(case_id: str, req: TopologyOpRequest) -> dict[str, Any]:
             f"Dostępne: {', '.join(sorted(_OP_DISPATCH.keys()))}",
         )
 
+    with blokada_przypadku(case_id):
+        return _topology_ops_pod_blokada(case_id, req, handler)
+
+
+def _topology_ops_pod_blokada(
+    case_id: str,
+    req: TopologyOpRequest,
+    handler: Any,
+) -> dict[str, Any]:
     enm = _get_enm(case_id)
     enm_dict = enm.model_dump(mode="json")
 
@@ -567,7 +589,17 @@ async def topology_ops_batch(case_id: str, req: BatchOpsRequest) -> dict[str, An
 
     Each operation is applied sequentially on the result of the previous one.
     If any operation fails with BLOCKER, ALL operations are rolled back.
+
+    WSPÓŁBIEŻNOŚĆ: blokada obejmuje CAŁY cykl (patrz `domain_ops`). Tu jest to
+    szczególnie istotne, bo cykl obejmuje CAŁĄ serię operacji — bez blokady
+    równoległy zapis wchodził w środek serii, a jej rollback i tak odtwarzał
+    model sprzed serii, kasując cudzą pracę.
     """
+    with blokada_przypadku(case_id):
+        return _topology_ops_batch_pod_blokada(case_id, req)
+
+
+def _topology_ops_batch_pod_blokada(case_id: str, req: BatchOpsRequest) -> dict[str, Any]:
     enm = _get_enm(case_id)
     enm_dict = enm.model_dump(mode="json")
 
@@ -750,7 +782,16 @@ async def wizard_apply_step(case_id: str, req: WizardStepRequestModel) -> dict[s
     If preconditions fail → original ENM unchanged, success=False.
     If postconditions fail → rollback, original ENM unchanged, success=False.
     On success → ENM saved with revision++, returns new wizard state.
+
+    WSPÓŁBIEŻNOŚĆ: blokada obejmuje CAŁY cykl (patrz `domain_ops`). Deklarowana
+    atomowość kroku („preconditions → mutate → postconditions") jest prawdziwa
+    tylko wtedy, gdy nikt nie zapisze modelu między odczytem a zapisem.
     """
+    with blokada_przypadku(case_id):
+        return _wizard_apply_step_pod_blokada(case_id, req)
+
+
+def _wizard_apply_step_pod_blokada(case_id: str, req: WizardStepRequestModel) -> dict[str, Any]:
     from application.network_wizard.schema import ApplyStepResponse
     from application.network_wizard.step_controller import apply_step as ctrl_apply_step
     from application.network_wizard.validator import validate_wizard_state
@@ -852,7 +893,29 @@ async def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]
 
     Odpowiedź zawiera: snapshot, readiness, fix_actions, changes,
     selection_hint, audit_trail, domain_events.
+
+    WSPÓŁBIEŻNOŚĆ (znalezisko P5 przeglądu fali 2026-08-01). Blokada obejmuje CAŁY
+    cykl odczyt → operacja domenowa → zapis, a nie sam zapis: blokada założona
+    dopiero na `_set_enm` nie pomaga, bo stary model został odczytany wcześniej.
+    Bez niej ta końcówka (`async def`, pętla zdarzeń) gubiła pracę zatwierdzenia
+    szablonu stacji (`def`, pula wątków Starlette) biegnącego równolegle na tym
+    samym przypadku — obie końcówki meldowały `HTTP 200`, a w modelu zostawał
+    dorobek tylko jednej, przy czym druga zwracała `created_element_ids`
+    wskazujące na byty, których w zapisanej migawce NIE MA.
+
+    `snapshot_base_hash` nie jest tu obroną: porównuje hash z modelem odczytanym
+    w tej samej funkcji (chwila ODCZYTU, nie zapisu), więc nie jest to
+    compare-and-swap, a produkcyjni wołający wysyłają pusty łańcuch.
+
+    Zamiana na `def` NIE jest naprawą wyścigu — przenosi go tylko z pętli zdarzeń
+    do puli wątków. Blokada jest per przypadek obliczeniowy, więc operacje na
+    RÓŻNYCH przypadkach nadal biegną równolegle.
     """
+    with blokada_przypadku(case_id):
+        return _domain_ops_pod_blokada(case_id, req)
+
+
+def _domain_ops_pod_blokada(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
     from enm.domain_operations import execute_domain_operation
 
     enm = _get_enm(case_id)
