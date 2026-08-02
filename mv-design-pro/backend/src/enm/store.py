@@ -9,8 +9,8 @@ from hashlib import sha256
 from pathlib import Path
 
 from enm.catalog_completion import complete_catalog_defaults
-from enm.dziennik_zmian import dopisz as dopisz_do_dziennika
-from enm.dziennik_zmian import sciezka_tymczasowa
+from enm.dziennik_zmian import PrzygotowanyWpis, sciezka_tymczasowa
+from enm.dziennik_zmian import przygotuj_dopisanie as przygotuj_wpis_dziennika
 from enm.hash import compute_enm_hash
 from enm.migrations.punkt_przylaczenia_der import migruj as migruj_punkt_przylaczenia
 from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
@@ -126,6 +126,40 @@ def _persist_enm(case_id: str, enm: EnergyNetworkModel) -> None:
         raise
 
 
+def _tresc_snapshotu(case_id: str) -> bytes | None:
+    """Bajty zapisanego snapshotu — MATERIAL DO WYCOFANIA nieudanego zapisu.
+
+    Wycofanie odtwarza plik CO DO BAJTU, a nie „zapisuje poprzedni model" —
+    poprzedni model w pamieci moze sie roznic od tresci na dysku (np. po
+    automigracji formatu, ktora zmienila model, ale jeszcze go nie zapisala), wiec
+    zapis z pamieci zostawilby na nosniku slad operacji, ktora zglosila blad.
+
+    `None` znaczy: pliku NIE BYLO przed operacja (wycofanie ma wtedy usunac
+    wylacznie to, co ta nieudana proba utworzyla). Bledu odczytu NIE tlumimy:
+    skoro nie umiemy zrobic kopii stanu, ktory za chwile nadpiszemy, nie
+    zaczynamy zapisu — blad leci przed jakakolwiek zmiana, wiec skutku nie ma.
+    """
+    try:
+        return _case_path(case_id).read_bytes()
+    except FileNotFoundError:
+        return None
+
+
+def _przywroc_snapshot(case_id: str, tresc: bytes | None) -> None:
+    """Odtworz plik snapshotu DOKLADNIE w stanie sprzed nieudanego zapisu."""
+    path = _case_path(case_id)
+    if tresc is None:
+        path.unlink(missing_ok=True)
+        return
+    tmp = sciezka_tymczasowa(path)
+    try:
+        tmp.write_bytes(tresc)
+        tmp.replace(path)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def has_enm(case_id: str) -> bool:
     """Return whether a case already has a materialized ENM snapshot."""
     return case_id in _enm_store or _case_path(case_id).exists()
@@ -191,6 +225,14 @@ def set_enm(
     (defekt D4). Dlatego rewizja i jej wpis w dzienniku powstaja razem albo wcale:
     dziennik odpowiada na pytanie „ktora zmiana uniewaznila moj wynik" (V12K-264) i
     z dziurami nie odpowiada.
+
+    „Razem albo wcale" nie jest tu sama deklaracja — stoi na trzech konkretach
+    (przeglad 2026-08-01, znaleziska P4 i P6): material do wycofania jest KOPIA
+    stanu sprzed mutacji, a nie referencja do obiektu, ktory ta mutacja wlasnie
+    zmienila; wpis dziennika wchodzi do pamieci dopiero po udanej podmianie jego
+    pliku (`enm/dziennik_zmian.PrzygotowanyWpis`); a plik snapshotu wraca do stanu
+    CO DO BAJTU i tylko wtedy, gdy ta operacja go faktycznie podmienila. Zakres i
+    granice tej gwarancji: `_wycofaj_nieudany_zapis` nizej.
     """
     with blokada_przypadku(case_id):
         return _set_enm_pod_blokada(case_id, enm, zrodlo_zmiany=zrodlo_zmiany)
@@ -211,15 +253,38 @@ def _set_enm_pod_blokada(
             _persist_enm(case_id, existing)
             return existing
 
+    # MATERIAL DO WYCOFANIA pobrany PRZED jakakolwiek mutacja — i trzymany jako
+    # KOPIA, nie referencja (znalezisko P4 przegladu 2026-08-01). Wolajacy ma prawo
+    # podac TEN SAM obiekt, ktory lezy w magazynie (`enm is existing`) — tak robi
+    # `_get_enm_pod_blokada` po automigracji formatu. Podniesienie rewizji ponizej
+    # mutuje wtedy rowniez `existing`, wiec „przywrocenie" referencji oddawaloby
+    # stan JUZ PODNIESIONY: uzytkownik dostawal blad zapisu, a model po cichu
+    # awansowal o rewizje, ktorej dziennik nie zna.
+    # KOSZT NAZWANY: kopia to ok. 8 ms na modelu 120 szyn / 119 galezi (~20% czasu
+    # calego `set_enm`, zmierzone) — ta sama klasa kosztu co kopia liczona wyzej dla
+    # porownania hasza. Kopia jest tu bezwarunkowa, bo wspoldzielenie obiektow miedzy
+    # `enm` a magazynem nie musi byc pelnym aliasem (wystarczy wspolny `header`), a
+    # kryterium „czy da sie wycofac" nie moze zalezec od domyslu o wolajacym.
+    poprzedni = existing.model_copy(deep=True) if existing is not None else None
+    tresc_snapshotu = _tresc_snapshotu(case_id)
+
     old_rev = existing.header.revision if existing else 0
     enm.header.revision = old_rev + 1
     enm.header.updated_at = datetime.now(UTC)
     enm.header.hash_sha256 = compute_enm_hash(enm)
     _enm_store[case_id] = enm
-    plik_istnial = _case_path(case_id).exists()
+
+    wpis_dziennika: PrzygotowanyWpis | None = None
+    snapshot_zatwierdzony = False
     try:
-        _persist_enm(case_id, enm)
-        dopisz_do_dziennika(
+        # KOLEJNOSC ZAPISOW jest czescia naprawy, nie przypadkiem. Najpierw OBIE
+        # tresci ida na nosnik jako pliki robocze (dziennik tutaj, snapshot
+        # wewnatrz `_persist_enm`), a dopiero potem nastepuja podmiany. Awaria
+        # klasy „nosnik odmawia zapisu" (ENOSPC/EACCES/EIO) trafia wiec w faze
+        # PRZYGOTOWANIA, kiedy nie ma jeszcze czego cofac na dysku. Dziennik
+        # zatwierdzamy jako OSTATNI, bo jego podmiana jest jedynym krokiem, po
+        # ktorym nie zostaje juz nic do zrobienia.
+        wpis_dziennika = przygotuj_wpis_dziennika(
             case_id,
             rewizja=enm.header.revision,
             operacja=zrodlo_zmiany.operacja if zrodlo_zmiany else None,
@@ -228,8 +293,17 @@ def _set_enm_pod_blokada(
             usuniete=zrodlo_zmiany.usuniete if zrodlo_zmiany else (),
             znacznik_czasu=enm.header.updated_at,
         )
+        _persist_enm(case_id, enm)
+        snapshot_zatwierdzony = True
+        wpis_dziennika.zatwierdz()
     except Exception:
-        _wycofaj_nieudany_zapis(case_id, existing, plik_istnial=plik_istnial)
+        _wycofaj_nieudany_zapis(
+            case_id,
+            poprzedni,
+            wpis_dziennika=wpis_dziennika,
+            tresc_snapshotu=tresc_snapshotu,
+            snapshot_zatwierdzony=snapshot_zatwierdzony,
+        )
         raise
     return enm
 
@@ -238,7 +312,9 @@ def _wycofaj_nieudany_zapis(
     case_id: str,
     poprzedni: EnergyNetworkModel | None,
     *,
-    plik_istnial: bool,
+    wpis_dziennika: PrzygotowanyWpis | None,
+    tresc_snapshotu: bytes | None,
+    snapshot_zatwierdzony: bool,
 ) -> None:
     """Cofnij rewizje, ktorej NIE UDALO SIE zapisac (defekt D4, wariant 2 i 3).
 
@@ -249,22 +325,42 @@ def _wycofaj_nieudany_zapis(
     wpisu dla tej rewizji (zmierzone dziury: rewizje 7 i 9 bez wpisu). Operacja,
     ktora melduje blad, ma nie zostawiac po sobie ZADNEGO skutku.
 
-    Wyjatek podniesiony przez samo cofanie NIE jest tlumiony — leci wyzej z
-    oryginalnym bledem w kontekscie, bo awaria nosnika w trakcie wycofywania jest
-    faktem, ktory inzynier musi zobaczyc.
+    KOLEJNOSC COFANIA jest odwrotna do ryzyka: najpierw pamiec (nie ma jak sie nie
+    udac), potem sprzatniecie pliku roboczego, a NA KONCU jedyny krok dotykajacy
+    nosnika. Gdy odtworzenie pliku padnie na tej samej awarii, stan w pamieci jest
+    juz cofniety — wyjatek leci wyzej z oryginalnym bledem w kontekscie (awaria
+    nosnika w trakcie wycofywania jest faktem, ktory inzynier musi zobaczyc), a nie
+    zostawia modelu o rewizje do przodu.
 
-    `plik_istnial` chroni przed skasowaniem CUDZEGO stanu: gdy przypadku nie bylo w
-    pamieci, ale jego snapshot lezal na dysku (np. po restarcie procesu), wycofanie
-    nie moze usunac pliku — to bylaby utrata danych zamiast cofniecia zmiany.
-    Usuwamy wylacznie plik, ktory powstal w tej nieudanej probie.
+    DZIENNIK nie ma tu czego cofac: jego wpis wchodzi do pamieci dopiero po udanej
+    podmianie pliku (`PrzygotowanyWpis`), wiec nieudany zapis nie zostawia
+    wpisu-ducha ani w pamieci, ani na dysku. Tutaj sprzatamy wylacznie plik roboczy.
+
+    SNAPSHOT odtwarzamy TYLKO wtedy, gdy jego podmiana faktycznie sie odbyla —
+    `_persist_enm` jest atomowy (zapis roboczy + `replace()`), wiec jego wyjatek
+    znaczy, ze plik docelowy jest nietkniety i nie wolno go ruszac. Odtworzenie idzie
+    z BAJTOW sprzed operacji, a nie z modelu w pamieci; `tresc_snapshotu is None`
+    znaczy „pliku nie bylo", wiec usuwamy wylacznie plik powstaly w tej nieudanej
+    probie. Skasowanie zastanego snapshotu (np. wczytanego po restarcie procesu)
+    byloby utrata pracy projektanta zamiast cofnieciem zmiany.
+
+    DLUG NAZWANY — atomowosc DWOCH plikow. Snapshot i dziennik to dwa osobne pliki;
+    system plikow nie daje jednej transakcji na oba, wiec pelnej atomowosci nie da
+    sie tu osiagnac bez dziennika zapisu wyprzedzajacego (WAL). Kolejnosc powyzej
+    zawezia okno do jednego przypadku: `replace()` snapshotu sie udal, a `replace()`
+    dziennika padl — obie tresci lezaly juz wtedy na nosniku, wiec zostaje awaria
+    samej podmiany (EIO, znikniecie katalogu). Gdy w tym oknie padnie takze
+    odtworzenie snapshotu, na dysku zostaje rewizja bez wpisu w dzienniku; jest ona
+    WYKRYWALNA (rewizja snapshotu wyzsza niz najwyzsza rewizja w dzienniku).
     """
     if poprzedni is None:
         _enm_store.pop(case_id, None)
-        if not plik_istnial:
-            _case_path(case_id).unlink(missing_ok=True)
-        return
-    _enm_store[case_id] = poprzedni
-    _persist_enm(case_id, poprzedni)
+    else:
+        _enm_store[case_id] = poprzedni
+    if wpis_dziennika is not None:
+        wpis_dziennika.porzuc()
+    if snapshot_zatwierdzony:
+        _przywroc_snapshot(case_id, tresc_snapshotu)
 
 
 def reset_enm_store(*, remove_persisted: bool = True) -> None:

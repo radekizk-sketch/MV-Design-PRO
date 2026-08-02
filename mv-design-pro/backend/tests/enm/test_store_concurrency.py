@@ -27,16 +27,18 @@ from __future__ import annotations
 import json
 import threading
 import uuid
+from pathlib import Path
 from typing import Any
 
 import enm.store as store
 import pytest
 from application.station_templates import get_template
 from application.station_templates.apply import apply_template_to_case
+from enm.catalog_completion import complete_catalog_defaults
 from enm.domain_operations import execute_domain_operation
 from enm.dziennik_zmian import wszystkie_wpisy, wyczysc_dziennik
-from enm.models import EnergyNetworkModel
-from enm.store import get_enm, reset_enm_store, set_enm
+from enm.models import EnergyNetworkModel, Generator
+from enm.store import ZrodloZmiany, get_enm, reset_enm_store, set_enm
 
 CATALOG_VERSION = "2024.1"
 CABLE_ID = "cable-tfk-yakxs-3x120"
@@ -52,6 +54,16 @@ def _czysty_magazyn(tmp_path, monkeypatch):
     yield
     reset_enm_store()
     wyczysc_dziennik()
+
+
+def _pliki_robocze(katalog: Path) -> list[str]:
+    """Pliki robocze zapisu atomowego pozostawione w magazynie.
+
+    Nieudana operacja ma po sobie nie zostawiac RÓWNIEŻ smieci: plik roboczy
+    dziennika powstaje przed podmiana snapshotu, wiec bez sprzatniecia rosłby
+    z kazda odrzucona proba zapisu.
+    """
+    return sorted(p.name for p in katalog.glob("*.tmp"))
 
 
 def _binding(namespace: str, item_id: str) -> dict[str, str]:
@@ -285,24 +297,26 @@ class TestWyscigZapisuModelu:
         `enm/store.py`). Przed naprawa `_enm_store[case_id] = enm` wykonywalo sie
         PRZED zapisem pliku, wiec uzytkownik dostawal HTTP 422 „blad zapisu", a zywy
         model byl juz o rewizje do przodu i bez wpisu w dzienniku.
+
+        INTENCJA WZMOCNIONA (przeglad 2026-08-01, znaleziska P4/P6). Wczesniej test
+        badal przypadek, ktorego plik jeszcze nie istnial, i sprawdzal, ze wycofanie
+        ZAPISZE na dysk poprzednia rewizje. To bylo mierzenie skutku ubocznego:
+        wycofanie zapisywalo plik, ktorego przed operacja NIE BYLO — czyli nieudana
+        operacja zostawiala slad na nosniku. Teraz przypadek jest najpierw zapisany
+        (plik istnieje), a bramka mierzy wprost to, co obiecuje docstring `set_enm`:
+        po bledzie zapisu tresc pliku jest IDENTYCZNA CO DO BAJTU.
         """
         case_key = str(uuid.uuid4())
-        model = get_enm(case_key)
+        poczatkowy = get_enm(case_key).model_copy(deep=True)
+        poczatkowy.header.name = "Sieć przed nieudanym zapisem"
+        model = set_enm(case_key, poczatkowy)
         rewizja_przed = model.header.revision
         hash_przed = model.header.hash_sha256
         rewizje_przed = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]
-
-        # Awaria dotyczy TYLKO proby zapisu nowej rewizji — wycofanie (odtworzenie
-        # poprzedniego stanu na dysku) ma sie udac, bo inaczej test nie sprawdzilby,
-        # co zostaje w pliku.
-        oryginalny_zapis = store._persist_enm
-        wywolania = {"licznik": 0}
+        bajty_przed = store._case_path(case_key).read_bytes()
 
         def zapis_z_awaria(case_id: str, snapshot: Any) -> None:
-            wywolania["licznik"] += 1
-            if wywolania["licznik"] == 1:
-                raise OSError("nosnik odmowil zapisu")
-            oryginalny_zapis(case_id, snapshot)
+            raise OSError("nosnik odmowil zapisu")
 
         zmieniony = get_enm(case_key).model_copy(deep=True)
         zmieniony.header.name = "Sieć po nieudanym zapisie"
@@ -317,13 +331,16 @@ class TestWyscigZapisuModelu:
         model_po = get_enm(case_key)
         assert model_po.header.revision == rewizja_przed
         assert model_po.header.hash_sha256 == hash_przed
+        assert model_po.header.name == "Sieć przed nieudanym zapisem"
         rewizje_w_dzienniku = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]
         assert rewizja_przed + 1 not in rewizje_w_dzienniku
         assert rewizje_w_dzienniku == rewizje_przed
 
+        assert store._case_path(case_key).read_bytes() == bajty_przed
         zapisany = json.loads(store._case_path(case_key).read_text(encoding="utf-8"))
         assert zapisany["revision"] == rewizja_przed
         assert zapisany["hash_sha256"] == hash_przed
+        assert _pliki_robocze(store._store_dir()) == []
 
     def test_nieudany_zapis_nie_kasuje_snapshotu_z_dysku(self) -> None:
         """Wycofanie nie moze usunac stanu, ktorego nie zapisala ta operacja.
@@ -354,3 +371,290 @@ class TestWyscigZapisuModelu:
 
         assert store._case_path(case_key).exists(), "Wycofanie skasowalo zastany snapshot"
         assert store._case_path(case_key).read_text(encoding="utf-8") == tresc_przed
+
+
+class TestWycofanieNieudanegoZapisu:
+    """Operacja, ktora melduje blad, nie zostawia ZADNEGO skutku.
+
+    DEFEKT, KTORY TE TESTY ZAMYKAJA (przeglad 2026-08-01, znaleziska P4 i P6).
+    Docstring `set_enm` obiecywal „rewizja i jej wpis powstaja razem albo wcale",
+    ale wycofanie nieudanego zapisu bylo niepelne w dwoch niezaleznych miejscach:
+
+    1. ALIAS — gdy wolajacy podaje TEN SAM obiekt, ktory lezy w magazynie,
+       podniesienie rewizji mutowalo rowniez „poprzedni" stan, wiec wycofanie
+       przywracalo stan JUZ PODNIESIONY. Sciezka jest produkcyjna: po automigracji
+       formatu `_get_enm_pod_blokada` wola `set_enm` obiektem z magazynu.
+    2. DZIENNIK — wpis wchodzil do pamieci PRZED zapisem pliku, wiec awaria zapisu
+       zostawiala wpis-ducha opisujacy operacje, ktora zostala cofnieta. Idempotencja
+       po numerze rewizji czynila ten stan trwalym: kolejna, UDANA operacja o tym
+       samym numerze trafiala na ducha i nie dopisywala niczego.
+
+    ILOCZYN CECH, KTOREGO BRAKOWALO. Wczesniejsze bramki podawaly do `set_enm`
+    wylacznie `model_copy(deep=True)` (nigdy obiektu z magazynu) i wstrzykiwaly
+    awarie wylacznie w `_persist_enm` (nigdy w zapis dziennika) — obie galezie byly
+    poza zasiegiem testow. Tutaj obie sa ćwiczone wprost.
+    """
+
+    @staticmethod
+    def _zepsuty_zapis(*_args: Any, **_kwargs: Any) -> None:
+        raise OSError("nosnik odmowil zapisu")
+
+    def test_alias_z_magazynu_nie_awansuje_rewizji_po_nieudanym_zapisie(self) -> None:
+        """`set_enm(case, obiekt_z_magazynu)` + awaria zapisu = rewizja bez zmian."""
+        case_key = str(uuid.uuid4())
+        poczatkowy = get_enm(case_key).model_copy(deep=True)
+        poczatkowy.header.name = "Sieć bazowa"
+        set_enm(case_key, poczatkowy, zrodlo_zmiany=ZrodloZmiany(operacja="add_sn_bay"))
+        rewizja_przed = get_enm(case_key).header.revision
+        bajty_przed = store._case_path(case_key).read_bytes()
+        rewizje_przed = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]
+
+        # ALIAS: `get_enm` oddaje ZYWY obiekt magazynu, a nie kopie — to jest
+        # najzwyklejszy ksztalt wywolania i wlasnie on byl poza testami.
+        aliasowany = get_enm(case_key)
+        assert aliasowany is store._enm_store[case_key]
+        # `set_enm` przepuszcza model przez uzupelnienie katalogowe; gdyby ono
+        # zwrocilo NOWY obiekt, galaz aliasu nie zostalaby dotknieta i test badalby
+        # co innego niz deklaruje.
+        assert complete_catalog_defaults(aliasowany)[0] is aliasowany
+        aliasowany.header.description = "zmiana wykonana na żywym obiekcie"
+
+        with pytest.MonkeyPatch.context() as podmiana:
+            podmiana.setattr(store, "_persist_enm", self._zepsuty_zapis)
+            with pytest.raises(OSError):
+                set_enm(case_key, aliasowany)
+
+        assert store._enm_store[case_key].header.revision == rewizja_przed, (
+            "Wycofanie przywrocilo stan JUZ PODNIESIONY o rewizje: poprzedni stan byl "
+            "referencja do zmutowanego obiektu, a nie kopia sprzed mutacji"
+        )
+        assert store._case_path(case_key).read_bytes() == bajty_przed
+        assert [wpis.rewizja for wpis in wszystkie_wpisy(case_key)] == rewizje_przed
+        assert _pliki_robocze(store._store_dir()) == []
+        # GRANICA GWARANCJI, powiedziana wprost: zmiana, ktora wolajacy wykonal na
+        # zywym obiekcie PRZED wywolaniem, nie jest skutkiem `set_enm` i nie ma jej
+        # z czego odtworzyc — stan wraca do tego z chwili WEJSCIA w zapis. `set_enm`
+        # odpowiada za to, zeby nie DOLOZYC wlasnego skutku: rewizji, pliku ani wpisu.
+        assert store._enm_store[case_key].header.description == "zmiana wykonana na żywym obiekcie"
+
+    def test_automigracja_nie_zostawia_awansowanej_rewizji_po_nieudanym_zapisie(self) -> None:
+        """Produkcyjne zrodlo aliasu: `get_enm` → automigracja → `set_enm` tym samym obiektem.
+
+        Projekt zapisany starszym kodem (zastany klucz punktu przylaczenia) po
+        restarcie procesu: pierwszy odczyt migruje model i probuje zapisac nowa
+        rewizje. Gdy nosnik odmawia, projektant dostaje blad — i nie moze przy tym
+        dostac modelu po cichu awansowanego o rewizje, ktorej dziennik nie zna.
+        """
+        case_key = str(uuid.uuid4())
+        model = get_enm(case_key).model_copy(deep=True)
+        model.generators = [
+            Generator(
+                ref_id="g1",
+                name="Wytwórca 1",
+                bus_ref="bus-1",
+                p_mw=1.0,
+                meta={"pcc_ref": "bus-1"},
+            )
+        ]
+        zapisany = set_enm(case_key, model, zrodlo_zmiany=ZrodloZmiany(operacja="add_sn_bay"))
+        # Bez `get_enm` w tym miejscu: odczyt sam uruchomilby automigracje i zapisal
+        # juz zmigrowany model, wiec badany scenariusz (zastany klucz na dysku)
+        # przestalby istniec.
+        rewizja_przed = zapisany.header.revision
+        bajty_przed = store._case_path(case_key).read_bytes()
+        rewizje_przed = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]
+        assert b"pcc_ref" in bajty_przed, "Zastany klucz nie trafil na dysk — nie ma co migrowac"
+
+        # Restart procesu: pamiec pusta, pliki zostaja.
+        reset_enm_store(remove_persisted=False)
+        wyczysc_dziennik(usun_pliki=False)
+
+        # Opakowanie tylko OBSERWUJE (wola oryginal) — sluzy dowodowi, ze alias
+        # faktycznie powstaje na sciezce produkcyjnej, a nie tylko w teorii.
+        oryginalny_set_enm = store.set_enm
+        obserwacje: dict[str, bool] = {}
+
+        def obserwowany_set_enm(
+            case_id: str,
+            enm: EnergyNetworkModel,
+            *,
+            zrodlo_zmiany: ZrodloZmiany | None = None,
+        ) -> EnergyNetworkModel:
+            obserwacje["alias"] = enm is store._enm_store.get(case_id)
+            return oryginalny_set_enm(case_id, enm, zrodlo_zmiany=zrodlo_zmiany)
+
+        with pytest.MonkeyPatch.context() as podmiana:
+            podmiana.setattr(store, "set_enm", obserwowany_set_enm)
+            podmiana.setattr(store, "_persist_enm", self._zepsuty_zapis)
+            with pytest.raises(OSError):
+                get_enm(case_key)
+
+        assert obserwacje.get("alias") is True, (
+            "Automigracja nie oddala do `set_enm` obiektu z magazynu — test nie "
+            "dotknal galezi aliasu"
+        )
+        assert store._enm_store[case_key].header.revision == rewizja_przed
+        assert store._case_path(case_key).read_bytes() == bajty_przed
+        assert [wpis.rewizja for wpis in wszystkie_wpisy(case_key)] == rewizje_przed
+
+    def test_nieudany_zapis_dziennika_nie_zostawia_wpisu_ducha(self) -> None:
+        """Awaria zapisu pliku DZIENNIKA: brak wpisu w pamieci i na dysku, model bez zmian.
+
+        Iniekcja siedzi na poziomie nosnika (`Path.write_text` dla pliku roboczego
+        dziennika), a nie w podmianie funkcji produkcyjnej — to ta sama klasa awarii
+        (ENOSPC), dla ktorej wycofanie zostalo napisane.
+        """
+        case_key = str(uuid.uuid4())
+        poczatkowy = get_enm(case_key).model_copy(deep=True)
+        poczatkowy.header.name = "Sieć bazowa"
+        set_enm(
+            case_key,
+            poczatkowy,
+            zrodlo_zmiany=ZrodloZmiany(operacja="add_grid_source_sn", utworzone=("ZRODLO-1",)),
+        )
+        rewizja_przed = get_enm(case_key).header.revision
+        bajty_przed = store._case_path(case_key).read_bytes()
+        rewizje_przed = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]
+
+        oryginalny_write_text = Path.write_text
+
+        def zapis_dziennika_z_awaria(self: Path, dane: str, **kwargs: Any) -> int:
+            if ".dziennik.json." in self.name:
+                raise OSError(28, "No space left on device")
+            return oryginalny_write_text(self, dane, **kwargs)
+
+        zmieniony = get_enm(case_key).model_copy(deep=True)
+        zmieniony.header.name = "Sieć ze stacją, której nie ma"
+        with pytest.MonkeyPatch.context() as podmiana:
+            podmiana.setattr(Path, "write_text", zapis_dziennika_z_awaria)
+            with pytest.raises(OSError):
+                set_enm(
+                    case_key,
+                    zmieniony,
+                    zrodlo_zmiany=ZrodloZmiany(
+                        operacja="insert_station_on_segment_sn",
+                        utworzone=("STACJA-A",),
+                    ),
+                )
+
+        assert get_enm(case_key).header.revision == rewizja_przed
+        assert store._case_path(case_key).read_bytes() == bajty_przed
+        assert [wpis.rewizja for wpis in wszystkie_wpisy(case_key)] == rewizje_przed
+        assert _pliki_robocze(store._store_dir()) == []
+
+        # TRWALOSC ducha byla druga polowa defektu: idempotencja po numerze rewizji
+        # sprawiala, ze kolejna UDANA operacja o tym samym numerze trafiala na wpis
+        # operacji COFNIETEJ i nie dopisywala niczego. Dziennik na stale opisywalby
+        # rewizje operacja, ktora sie nie odbyla.
+        powtorka = get_enm(case_key).model_copy(deep=True)
+        powtorka.header.name = "Sieć po udanej powtórce"
+        set_enm(
+            case_key,
+            powtorka,
+            zrodlo_zmiany=ZrodloZmiany(operacja="add_transformer_sn_nn", utworzone=("TRAFO-B",)),
+        )
+        wpisy_nowej_rewizji = [
+            wpis for wpis in wszystkie_wpisy(case_key) if wpis.rewizja == rewizja_przed + 1
+        ]
+        assert len(wpisy_nowej_rewizji) == 1
+        assert wpisy_nowej_rewizji[0].operacja == "add_transformer_sn_nn"
+        assert wpisy_nowej_rewizji[0].utworzone == ("TRAFO-B",)
+        assert all("STACJA-A" not in wpis.utworzone for wpis in wszystkie_wpisy(case_key))
+
+    def test_nieudana_podmiana_dziennika_odtwarza_snapshot_co_do_bajtu(self) -> None:
+        """Snapshot zapisany, podmiana dziennika padla → plik snapshotu wraca bajtowo.
+
+        To jedyne okno, w ktorym nieudana operacja zdazyla juz podmienic plik
+        snapshotu. Odtworzenie idzie z BAJTOW sprzed operacji, wiec na nosniku nie
+        zostaje ani nowa rewizja, ani przepisany model.
+        """
+        case_key = str(uuid.uuid4())
+        poczatkowy = get_enm(case_key).model_copy(deep=True)
+        poczatkowy.header.name = "Sieć bazowa"
+        set_enm(case_key, poczatkowy, zrodlo_zmiany=ZrodloZmiany(operacja="add_sn_bay"))
+        rewizja_przed = get_enm(case_key).header.revision
+        bajty_przed = store._case_path(case_key).read_bytes()
+        rewizje_przed = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]
+
+        oryginalny_replace = Path.replace
+
+        def podmiana_dziennika_z_awaria(self: Path, cel: Any) -> Path:
+            if str(cel).endswith(".dziennik.json"):
+                raise OSError(5, "Input/output error")
+            return oryginalny_replace(self, cel)
+
+        zmieniony = get_enm(case_key).model_copy(deep=True)
+        zmieniony.header.name = "Sieć ze stacją, której nie ma"
+        with pytest.MonkeyPatch.context() as podmiana:
+            podmiana.setattr(Path, "replace", podmiana_dziennika_z_awaria)
+            with pytest.raises(OSError):
+                set_enm(
+                    case_key,
+                    zmieniony,
+                    zrodlo_zmiany=ZrodloZmiany(
+                        operacja="insert_station_on_segment_sn",
+                        utworzone=("STACJA-A",),
+                    ),
+                )
+
+        assert get_enm(case_key).header.revision == rewizja_przed
+        assert (
+            store._case_path(case_key).read_bytes() == bajty_przed
+        ), "Snapshot zostal na dysku o rewizje do przodu, choc operacja zglosila blad"
+        assert [wpis.rewizja for wpis in wszystkie_wpisy(case_key)] == rewizje_przed
+        assert _pliki_robocze(store._store_dir()) == []
+
+    def test_blad_w_samym_wycofaniu_leci_wyzej_z_oryginalna_przyczyna(self) -> None:
+        """Awaria PODCZAS wycofywania: pamiec cofnieta, blad widoczny z przyczyna.
+
+        Gdy nosnik odmawia rowniez odtworzenia snapshotu, cofniecie pamieci jest juz
+        wykonane (kolejnosc: pamiec przed nosnikiem), a wyjatek leci wyzej z
+        ORYGINALNA przyczyna w kontekscie — awaria w trakcie wycofywania jest faktem,
+        ktory inzynier musi zobaczyc, a nie stanem do przemilczenia.
+
+        DLUG NAZWANY. Snapshot i dziennik to dwa osobne pliki i nie ma na nie jednej
+        transakcji systemu plikow. W tym oknie na dysku zostaje rewizja bez wpisu —
+        WYKRYWALNA (rewizja snapshotu wyzsza niz najwyzsza rewizja dziennika). Test
+        mierzy ten stan wprost, zeby granica gwarancji byla faktem, a nie deklaracja.
+        """
+        case_key = str(uuid.uuid4())
+        poczatkowy = get_enm(case_key).model_copy(deep=True)
+        poczatkowy.header.name = "Sieć bazowa"
+        set_enm(case_key, poczatkowy, zrodlo_zmiany=ZrodloZmiany(operacja="add_sn_bay"))
+        rewizja_przed = get_enm(case_key).header.revision
+        rewizje_przed = [wpis.rewizja for wpis in wszystkie_wpisy(case_key)]
+
+        oryginalny_replace = Path.replace
+
+        def podmiana_dziennika_z_awaria(self: Path, cel: Any) -> Path:
+            if str(cel).endswith(".dziennik.json"):
+                raise OSError(5, "podmiana dziennika odmowila")
+            return oryginalny_replace(self, cel)
+
+        def zapis_bajtow_z_awaria(self: Path, _dane: bytes) -> int:
+            raise OSError(28, "wycofywanie: brak miejsca na nosniku")
+
+        zmieniony = get_enm(case_key).model_copy(deep=True)
+        zmieniony.header.name = "Sieć ze stacją, której nie ma"
+        with pytest.MonkeyPatch.context() as podmiana:
+            podmiana.setattr(Path, "replace", podmiana_dziennika_z_awaria)
+            podmiana.setattr(Path, "write_bytes", zapis_bajtow_z_awaria)
+            with pytest.raises(OSError) as blad:
+                set_enm(
+                    case_key,
+                    zmieniony,
+                    zrodlo_zmiany=ZrodloZmiany(operacja="insert_station_on_segment_sn"),
+                )
+
+        assert "wycofywanie" in str(blad.value)
+        przyczyna = blad.value.__context__
+        assert isinstance(przyczyna, OSError)
+        assert "podmiana dziennika odmowila" in str(przyczyna)
+
+        assert store._enm_store[case_key].header.revision == rewizja_przed
+        assert [wpis.rewizja for wpis in wszystkie_wpisy(case_key)] == rewizje_przed
+
+        # Granica gwarancji (dlug nazwany): snapshotu nie dalo sie odtworzyc.
+        zapisany = json.loads(store._case_path(case_key).read_text(encoding="utf-8"))
+        assert zapisany["revision"] == rewizja_przed + 1
+        assert max(wpis.rewizja for wpis in wszystkie_wpisy(case_key)) < zapisany["revision"]
