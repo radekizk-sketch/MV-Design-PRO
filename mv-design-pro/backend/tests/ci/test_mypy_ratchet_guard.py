@@ -37,11 +37,14 @@ def test_guard_istnieje_i_ma_zmierzony_prog() -> None:
     # KARTA D / D6 (2026-08-01): kryterium dopuszczalności pozycji zaczepu jest teraz
     # daną wyniku, a nie zaszytym progiem — zniknęła kolizja nazwy `feasible`
     # (raz `bool`, raz lista) w `power_flow_oltc_studies` ⇒ pomiar 24/15 → 22/14.
+    # TOR U2 (2026-08-02): brama przypisania katalogu zastąpiła DWA równoległe bloki
+    # materializacji w `assign_catalog_to_element` jednym wywołaniem — zniknęła
+    # kolizja nazw `binding_payload`/`materialized_params` ⇒ pomiar 22/14 → 20/14.
     #
     # To JEDYNE miejsce, w którym zmierzona liczba jest powtórzona poza samym guardem.
     # Test „odcina w obie strony" poniżej wyprowadza ją z modułu, więc obniżenie progu
     # wymaga świadomej zmiany dokładnie tutaj (i nigdzie indziej).
-    assert modul.BASELINE_ERRORS == 22
+    assert modul.BASELINE_ERRORS == 20
     assert modul.BASELINE_FILES == 14
 
 

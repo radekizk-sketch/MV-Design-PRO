@@ -170,7 +170,7 @@ def test_no_default_catalog_guessing_helpers_in_active_modals_and_sld() -> None:
             for fragment in forbidden_fragments:
                 if fragment in text:
                     violations.append(f"{path.relative_to(REPO_ROOT)}: {fragment}")
-    assert not violations, f"Aktywne modale/SLD nadal zgadujÄ… katalog: {violations}"
+    assert not violations, f"Aktywne modale/SLD nadal zgadują katalog: {violations}"
 
 
 def test_dead_legacy_modules_are_deleted() -> None:

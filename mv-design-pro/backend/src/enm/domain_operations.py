@@ -119,19 +119,33 @@ def _normalize_branch_point_switch_state(value: Any) -> str:
     return "closed"
 
 
-def _branch_point_catalog_params(catalog_ref: str | None) -> dict[str, Any]:
+def _branch_point_catalog_item(catalog_ref: str | None) -> dict[str, Any] | None:
+    """Pozycja katalogu punktów rozgałęzienia albo ``None``, gdy jej NIE MA.
+
+    Rozdzielenie „pozycji nie ma" od „pozycja jest, ale bez parametrów" jest
+    warunkiem uczciwej deklaracji pochodzenia: `_branch_point_catalog_params`
+    zwracał pusty słownik w OBU przypadkach, więc punkt rozgałęzienia
+    z referencją, której w katalogu nie ma, i tak dostawał `source_mode: KATALOG`.
+    """
     if not isinstance(catalog_ref, str) or not catalog_ref.strip():
-        return {}
+        return None
     try:
         from network_model.catalog.mv_branch_point_catalog import get_all_branch_point_types
 
         for item in get_all_branch_point_types():
-            if item.get("id") == catalog_ref:
-                params = item.get("params")
-                return copy.deepcopy(params) if isinstance(params, dict) else {}
+            if isinstance(item, dict) and item.get("id") == catalog_ref.strip():
+                return item
     except Exception:
+        return None
+    return None
+
+
+def _branch_point_catalog_params(catalog_ref: str | None) -> dict[str, Any]:
+    item = _branch_point_catalog_item(catalog_ref)
+    if item is None:
         return {}
-    return {}
+    params = item.get("params")
+    return copy.deepcopy(params) if isinstance(params, dict) else {}
 
 
 def _branch_point_port_count(
@@ -379,6 +393,49 @@ def _extract_catalog_binding_version(catalog_binding: object) -> str | None:
     return None
 
 
+#: INWENTARZ KLASY „deklaracja pochodzenia katalogowego" (V12K-315 poz. 7,
+#: V12K-316 poz. 2 i 3).
+#:
+#: ZAMKNIĘTA lista funkcji tego modułu, którym wolno zapisać do migawki
+#: ``source_mode: KATALOG`` / ``parameter_source: CATALOG``, wraz z bramą, która
+#: to uprawnienie nadaje. Reguła klasy: znacznik pochodzenia wolno postawić
+#: WYŁĄCZNIE po udanej materializacji ISTNIEJĄCEJ pozycji katalogu — element
+#: deklarujący katalog przy pustej tabliczce niesie „tabliczkę znikąd".
+#:
+#: Lista jest ZAMKNIĘTA: każde nowe miejsce zapisujące znacznik bez wpisu tutaj
+#: jest naruszeniem. Deklarację pilnuje test klasy (skan AST całego modułu
+#: w `tests/enm/test_brama_pochodzenia_katalogowego.py`) — bez niego obietnica
+#: byłaby groźniejsza niż sam defekt, bo wyłączałaby czujność.
+INWENTARZ_DEKLARACJI_KATALOGOWYCH: dict[str, str] = {
+    "_apply_catalog_metadata": (
+        "wspólny zapisywacz metadanych — wołany PO materializacji, nigdy zamiast niej"
+    ),
+    "add_grid_source_sn": (
+        "źródło i transformator WN/SN: _materialize_catalog_payload; "
+        "aparat pola liniowego: _brama_katalogowa_aparatu_sn"
+    ),
+    "continue_trunk_segment_sn": "odcinek magistrali: _materialize_catalog_payload",
+    "start_branch_segment_sn": "odcinek odgałęzienia: _materialize_catalog_payload",
+    "connect_secondary_ring_sn": "odcinek powiązania pierścieniowego: _materialize_catalog_payload",
+    "insert_station_on_segment_sn": (
+        "odcinki i transformator: _materialize_catalog_payload; "
+        "aparat pola SN: _materialize_sn_field_apparatus_catalog"
+    ),
+    "append_station_on_endpoint": (
+        "transformator: _materialize_catalog_payload; "
+        "aparat pola SN: _materialize_sn_field_apparatus_catalog"
+    ),
+    "_materialize_sn_field_apparatus": "aparat pola SN: _materialize_sn_field_apparatus_catalog",
+    "_materialize_nn_source": "źródło nN stacji: _materialize_catalog_payload",
+    "insert_section_switch_sn": "łącznik sekcyjny: _brama_katalogowa_aparatu_sn",
+    "add_transformer_sn_nn": "transformator SN/nN: _materialize_catalog_payload",
+    "_insert_branch_point_on_segment_sn": (
+        "punkt rozgałęzienia: _branch_point_catalog_item (własny katalog obiektów)"
+    ),
+    "assign_catalog_to_element": "przypisanie pozycji do elementu: _brama_katalogowa_przypisania",
+}
+
+
 def _apply_catalog_metadata(
     target: dict[str, Any],
     catalog_binding: object,
@@ -386,7 +443,12 @@ def _apply_catalog_metadata(
     default_namespace: str | None = None,
     default_source_mode: str = "KATALOG",
 ) -> None:
-    """Uzupełnij snapshot elementu o kanoniczne metadane katalogowe."""
+    """Uzupełnij snapshot elementu o kanoniczne metadane katalogowe.
+
+    UWAGA: ta funkcja tylko ZAPISUJE znacznik pochodzenia — nie jest bramą.
+    Wolno ją wołać dopiero po udanej materializacji pozycji katalogu
+    (patrz `INWENTARZ_DEKLARACJI_KATALOGOWYCH`).
+    """
     namespace = _extract_catalog_binding_namespace(catalog_binding) or default_namespace
     if namespace:
         target["catalog_namespace"] = namespace
@@ -3150,6 +3212,25 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
             "source.missing_voltage",
         )
     line_field_apparatus = _normalize_gpz_line_field_apparatus(payload)
+    if line_field_apparatus is not None:
+        # BRAMA KATALOGOWA aparatu pola liniowego stacji zasilającej (dług 7
+        # z V12K-315): dotąd `_apply_catalog_metadata` wpisywał aparatowi
+        # `source_mode: KATALOG` / `parameter_source: CATALOG` BEZ materializacji
+        # i bez sprawdzenia, czy pozycja w ogóle istnieje — element deklarował
+        # pochodzenie katalogowe przy `materialized_params: null`. Sprawdzamy
+        # PRZED jakąkolwiek zmianą modelu, więc zła pozycja nie zostawia
+        # połowicznej stacji zasilającej w migawce.
+        apparatus_materialization = _brama_katalogowa_aparatu_sn(
+            line_field_apparatus["catalog_ref"],
+            catalog_binding=line_field_apparatus["catalog_binding"],
+            opis_pl="Aparat pola liniowego stacji zasilającej",
+        )
+        if isinstance(apparatus_materialization, dict):
+            return apparatus_materialization
+        (
+            line_field_apparatus["catalog_binding"],
+            line_field_apparatus["materialized_params"],
+        ) = apparatus_materialization
 
     # Rodzina rozdzielnicy producenta (Reference Engine) — opcjonalna, addytywna.
     # Wiąże pola GPZ ze szablonami producenta; spływa do SLD (internal_layout),
@@ -3403,6 +3484,20 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
     elif manual_source_mode:
         source_data["source_mode"] = payload.get("source_mode") or "EKSPERCKI_RECZNY"
         source_data["parameter_source"] = payload.get("parameter_source") or "MANUAL_EQUIVALENT"
+    # Znacznik pochodzenia z payloadu NIE MOŻE awansować źródła do katalogu.
+    # Bez `binding_payload` tabliczka pochodzi z ręcznego ekwiwalentu zwarciowego,
+    # więc „KATALOG"/„CATALOG" byłoby w migawce zdaniem nieprawdziwym — ta sama
+    # klasa defektu co aparat pola deklarujący katalog bez materializacji.
+    if binding_payload is None and (
+        str(payload.get("source_mode") or "").strip().upper() == "KATALOG"
+        or str(payload.get("parameter_source") or "").strip().upper() == "CATALOG"
+    ):
+        return _error_response(
+            "Źródło bez wiązania katalogowego nie może deklarować pochodzenia "
+            "katalogowego. Wskaż pozycję katalogu ZRODLO_SN albo zostaw tryb "
+            "ekspercki (ręczny ekwiwalent zwarciowy).",
+            "catalog.ref_required",
+        )
     if payload.get("source_mode"):
         source_data["source_mode"] = payload["source_mode"]
     if payload.get("parameter_source"):
@@ -3578,6 +3673,11 @@ def add_grid_source_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str
                         "requires_catalog_binding": False,
                         "catalog_binding": copy.deepcopy(apparatus_binding),
                     },
+                    # Pozycja przeszła bramę katalogową powyżej — dopiero teraz
+                    # wolno zapisać tabliczkę i zadeklarować pochodzenie.
+                    "materialized_params": copy.deepcopy(
+                        line_field_apparatus["materialized_params"]
+                    ),
                 }
                 _apply_catalog_metadata(
                     apparatus_data, apparatus_binding, default_namespace="APARAT_SN"
@@ -4106,6 +4206,44 @@ def _field_apparatus_missing_error(*, index: int, field_role: str, code: str) ->
     )
 
 
+def _brama_katalogowa_aparatu_sn(
+    apparatus_catalog_ref: str,
+    *,
+    catalog_binding: object = None,
+    opis_pl: str,
+) -> tuple[dict[str, Any], dict[str, Any]] | dict[str, Any]:
+    """JEDYNA brama katalogowa aparatu łączeniowego SN w tym module.
+
+    Zwraca ``(binding_payload, materialized_params)`` albo odpowiedź błędu
+    ``catalog.item_not_found``. Deklarację pochodzenia katalogowego
+    (``source_mode: KATALOG`` / ``parameter_source: CATALOG``) wolno postawić
+    WYŁĄCZNIE na tym wyniku — inaczej migawka niesie tabliczkę znikąd.
+
+    Brama sprawdza DOKŁADNIE tę pozycję, która trafi do migawki: ``catalog_binding``
+    z payloadu (jeśli jest) rozstrzyga kategorię, więc predykat wejścia i wpis
+    wyjściowy mają JEDNO źródło prawdy.
+
+    Bez tego kroku operacje zapisywały do modelu jako FAKT zdanie „Aparat SN
+    z jawnie wskazanej pozycji katalogu APARAT_SN: X" dla pozycji, której
+    w katalogu NIE MA, przy ``materialized_params = null``. Most katalogowy
+    aparat → wytrzymałość (I_th/I_dyn) dostawał wtedy martwą referencję, a
+    projektant dowiadywał się o tym dopiero z niedostępności kryterium.
+    """
+    materialization = _materialize_catalog_payload(
+        catalog_ref=apparatus_catalog_ref,
+        catalog_binding=catalog_binding,
+        default_namespace="APARAT_SN",
+        default_version="2024.1",
+    )
+    if isinstance(materialization, dict):
+        return _error_response(
+            f"{opis_pl}: {materialization['error']} "
+            "Wskaż istniejącą pozycję katalogu APARAT_SN.",
+            str(materialization.get("error_code") or "catalog.item_not_found"),
+        )
+    return materialization
+
+
 def _materialize_sn_field_apparatus_catalog(
     apparatus_catalog_ref: str,
     *,
@@ -4114,30 +4252,15 @@ def _materialize_sn_field_apparatus_catalog(
 ) -> tuple[dict[str, Any], dict[str, Any]] | dict[str, Any]:
     """Brama katalogowa aparatu pola SN (APARAT_SN) — wspólna dla obu operacji stacyjnych.
 
-    Zwraca ``(binding_payload, materialized_params)`` albo odpowiedź błędu
-    ``catalog.item_not_found`` — parytet z torem atomowym (`add_sn_bay`,
-    `insert_section_switch_sn`), gdzie ten sam ref jest odrzucany.
-
-    Bez tego kroku obie operacje stacyjne zapisywały do modelu jako FAKT zdanie
-    „Aparat pola SN z jawnie wskazanej pozycji katalogu APARAT_SN: X" dla pozycji,
-    której w katalogu NIE MA, przy ``materialized_params = null``. Most katalogowy
-    aparat → wytrzymałość (I_th/I_dyn) dostawał wtedy martwą referencję, a
-    projektant dowiadywał się o tym dopiero z niedostępności kryterium.
+    Cienka nakładka na `_brama_katalogowa_aparatu_sn` dodająca adres pola do
+    komunikatu — parytet z torem atomowym (`add_sn_bay`, `insert_section_switch_sn`),
+    gdzie ten sam ref jest odrzucany.
     """
-    materialization = _materialize_catalog_payload(
-        catalog_ref=apparatus_catalog_ref,
-        catalog_binding=None,
-        default_namespace="APARAT_SN",
-        default_version="2024.1",
+    rola = field_role.strip() or "bez roli"
+    return _brama_katalogowa_aparatu_sn(
+        apparatus_catalog_ref,
+        opis_pl=f"Pole SN nr {index + 1} (rola: {rola})",
     )
-    if isinstance(materialization, dict):
-        rola = field_role.strip() or "bez roli"
-        return _error_response(
-            f"Pole SN nr {index + 1} (rola: {rola}): {materialization['error']} "
-            "Wskaż istniejącą pozycję katalogu APARAT_SN.",
-            str(materialization.get("error_code") or "catalog.item_not_found"),
-        )
-    return materialization
 
 
 # ---------------------------------------------------------------------------
@@ -4615,6 +4738,72 @@ def _materialize_nn_source(
         "station_transformer_ref": station_transformer_ref,
         "protection_intent": source_protection if isinstance(source_protection, dict) else None,
     }
+
+    # PARYTET KONTROLI DOBORU z torem atomowym (`add_converter_source`): ta sama
+    # pozycja katalogowa i ten sam transformator MUSZĄ dać ten sam werdykt
+    # niezależnie od drogi. Dotąd kontrola mocy transformatora istniała WYŁĄCZNIE
+    # w torze atomowym, więc falownik przekraczający moc transformatora stacji
+    # bywał przyjęty przy tworzeniu stacji i odrzucony przy dodaniu źródła osobno
+    # — dwa różne werdykty dla tego samego doboru. Reużyta jest DOKŁADNIE ta sama
+    # funkcja kontrolna (zero równoległej implementacji), a kontrola stoi PRZED
+    # dopisaniem generatora, więc odrzucenie nie zostawia śladu w migawce.
+    from enm.domain_operations_v2 import (
+        _bus_voltage_kv,
+        _has_transformer_in_path,
+        _same_nominal_voltage,
+        _validate_converter_transformer_capacity,
+    )
+
+    # ZGODNOŚĆ NAPIĘĆ — ten sam werdykt co w torze atomowym. Bez tego falownik
+    # 0,69 kV siadał CICHO na szynie 0,4 kV (zmierzone: `un_kv=0.69` przy szynie
+    # 0,4 kV, brak błędu), a jego moc czynna wchodziła do bilansu rozpływu —
+    # ta sama pozycja katalogowa dawała dwa różne werdykty zależnie od drogi.
+    bus_voltage_kv = _bus_voltage_kv(new_enm, nn_bus_id)
+    if bus_voltage_kv is None:
+        return _error_response(
+            "Nie znaleziono napięcia szyny dla źródła przekształtnikowego.",
+            "converter.bus_voltage_missing",
+        )
+    if not _same_nominal_voltage(un_kv, bus_voltage_kv):
+        return _error_response(
+            (
+                "Napięcie katalogowe źródła nie jest zgodne z napięciem szyny. "
+                f"Źródło: {un_kv:g} kV, szyna: {bus_voltage_kv:g} kV."
+            ),
+            "converter.voltage_mismatch",
+        )
+
+    station = next(
+        (
+            sub
+            for sub in new_enm.get("substations", [])
+            if isinstance(sub, dict) and sub.get("ref_id") == station_id
+        ),
+        None,
+    )
+    if station is not None:
+        # Ten sam PRÓG wejścia co w torze atomowym: źródło po stronie nN wymaga
+        # transformatora w ścieżce zasilania. Bez tego stacja bez transformatora
+        # przyjmowała źródło, które operacja atomowa odrzuca — ten sam rozjazd
+        # werdyktów co przy kontroli mocy, tylko o krok wcześniej.
+        if not _has_transformer_in_path(new_enm, station):
+            return _error_response(
+                f"Źródło {_technology} wymaga transformatora w ścieżce zasilania stacji.",
+                f"{_technology.lower()}.transformer_required",
+            )
+        capacity_error = _validate_converter_transformer_capacity(
+            new_enm,
+            station=station,
+            bus_ref=nn_bus_id,
+            blocking_transformer_ref=None,
+            connection_variant="nn_side",
+            technology=_technology,
+            payload=nn_block,
+            materialized_params=materialized_source_params,
+        )
+        if capacity_error is not None:
+            return capacity_error
+
     new_enm.setdefault("generators", []).append(
         {
             "ref_id": generator_ref,
@@ -5721,6 +5910,17 @@ def _insert_branch_point_on_segment_sn(
     if isinstance(bp_catalog_ref, dict):
         return bp_catalog_ref
 
+    # BRAMA KATALOGOWA punktu rozgałęzienia (ta sama klasa co aparat pola):
+    # migawka deklaruje `source_mode: KATALOG`, więc pozycja MUSI istnieć.
+    # Dotąd nieznana referencja dawała ciche `{}` parametrów katalogowych,
+    # a tabliczka powstawała z payloadu i wartości domyślnych.
+    if _branch_point_catalog_item(bp_catalog_ref) is None:
+        return _error_response(
+            f"Nie znaleziono pozycji katalogu punktów rozgałęzienia: {bp_catalog_ref}. "
+            "Wskaż istniejącą pozycję katalogu — operacja nie przyjmie tabliczki "
+            "z formularza.",
+            "catalog.item_not_found",
+        )
     catalog_params = _branch_point_catalog_params(bp_catalog_ref)
     branch_ports_count = _branch_point_port_count(
         branch_point_type=branch_point_type,
@@ -6304,6 +6504,22 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     if isinstance(switch_catalog_ref, dict):
         return switch_catalog_ref
 
+    # BRAMA KATALOGOWA łącznika sekcyjnego (ta sama klasa co aparat pola stacji
+    # zasilającej): dotąd tor domenowy sprawdzał wyłącznie OBECNOŚĆ referencji,
+    # a do migawki wpisywał `source_mode: KATALOG` przy `materialized_params: null`.
+    # Odrzucenie pozycji nieistniejącej działo się tylko w torze payloadu (brama
+    # API), więc ta sama referencja bywała przyjęta domenowo i odrzucona przez
+    # końcówkę. Sprawdzamy PRZED usunięciem odcinka — zła pozycja nie zostawia
+    # modelu bez odcinka i bez łącznika.
+    switch_materialization = _brama_katalogowa_aparatu_sn(
+        switch_catalog_ref,
+        catalog_binding=payload.get("catalog_binding"),
+        opis_pl="Łącznik sekcyjny SN",
+    )
+    if isinstance(switch_materialization, dict):
+        return switch_materialization
+    switch_binding_payload, switch_materialized_params = switch_materialization
+
     from_bus_ref = segment.get("from_bus_ref")
     to_bus_ref = segment.get("to_bus_ref")
     length_km = segment.get("length_km", 1.0)
@@ -6430,20 +6646,20 @@ def insert_section_switch_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
     created.append(switch_bus2_ref)
 
     # Redo: switch between two buses
-    result = create_branch(
-        new_enm,
-        {
-            "ref_id": switch_ref,
-            "name": payload.get("switch_name") or "Łącznik sekcyjny",
-            "type": sw_type,
-            "from_bus_ref": switch_bus_ref,
-            "to_bus_ref": switch_bus2_ref,
-            "status": normal_state,
-            "source_mode": "KATALOG",
-            "catalog_namespace": "APARAT_SN",
-            "catalog_ref": switch_catalog_ref,
-        },
-    )
+    switch_data: dict[str, Any] = {
+        "ref_id": switch_ref,
+        "name": payload.get("switch_name") or "Łącznik sekcyjny",
+        "type": sw_type,
+        "from_bus_ref": switch_bus_ref,
+        "to_bus_ref": switch_bus2_ref,
+        "status": normal_state,
+        "catalog_ref": switch_catalog_ref,
+        # Pozycja przeszła bramę katalogową powyżej — dopiero teraz wolno
+        # zapisać tabliczkę i zadeklarować pochodzenie katalogowe.
+        "materialized_params": switch_materialized_params,
+    }
+    _apply_catalog_metadata(switch_data, switch_binding_payload, default_namespace="APARAT_SN")
+    result = create_branch(new_enm, switch_data)
     if result.success:
         new_enm = result.enm
         created.append(switch_ref)
@@ -6753,6 +6969,61 @@ def add_transformer_sn_nn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
 # ---------------------------------------------------------------------------
 
 
+def _brama_katalogowa_przypisania(
+    *,
+    collection: str,
+    catalog_item_id: str,
+    catalog_namespace: str | None,
+    catalog_version: str | None,
+    target_element: dict[str, Any],
+) -> tuple[dict[str, Any] | None, dict[str, Any]] | dict[str, Any]:
+    """Brama katalogowa przypisania pozycji do ISTNIEJĄCEGO elementu.
+
+    JEDYNE wejście do deklaracji pochodzenia katalogowego w
+    `assign_catalog_to_element`. Zwraca ``(binding_payload, tabliczka)`` — gdzie
+    ``binding_payload`` jest ``None`` dla katalogu punktów rozgałęzienia, który
+    nie ma kontraktu materializacji — albo odpowiedź błędu.
+
+    Punkty rozgałęzienia mają WŁASNY katalog (`mv_branch_point_catalog`) poza
+    `CatalogRepository`, więc ich istnienie sprawdzamy w tamtym rejestrze;
+    tabliczka zachowuje wcześniej wyliczoną strukturę portów (opis topologii
+    obiektu, nie fizyka pozycji) i nadpisuje parametry z NOWEJ pozycji.
+    """
+    if collection == "branch_points":
+        if _branch_point_catalog_item(catalog_item_id) is None:
+            return _error_response(
+                f"Nie znaleziono pozycji katalogu punktów rozgałęzienia: {catalog_item_id}. "
+                "Wskaż istniejącą pozycję katalogu.",
+                "catalog.item_not_found",
+            )
+        biezaca = target_element.get("materialized_params")
+        tabliczka: dict[str, Any] = dict(biezaca) if isinstance(biezaca, dict) else {}
+        tabliczka.update(_branch_point_catalog_params(catalog_item_id))
+        tabliczka["catalog_item_id"] = catalog_item_id
+        if catalog_namespace:
+            tabliczka["catalog_namespace"] = catalog_namespace
+        return None, tabliczka
+
+    if not catalog_namespace:
+        return _error_response(
+            f"Nie da się ustalić kategorii katalogu dla elementu "
+            f"'{target_element.get('ref_id')}' — podaj catalog_namespace albo "
+            "catalog_binding z kategorią. Bez kategorii nie ma czego sprawdzić "
+            "w katalogu, więc element nie może deklarować pochodzenia katalogowego.",
+            "catalog.namespace_required",
+        )
+
+    return _materialize_catalog_payload(
+        catalog_ref=catalog_item_id,
+        catalog_binding={
+            "catalog_namespace": catalog_namespace,
+            "catalog_item_version": catalog_version or "legacy",
+        },
+        default_namespace=catalog_namespace,
+        default_version=catalog_version,
+    )
+
+
 def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Przypisz katalog do elementu."""
     element_ref = payload.get("element_ref")
@@ -6805,10 +7076,6 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
         if isinstance(meta, dict):
             meta.pop("catalog_item_version", None)
     else:
-        target_element["catalog_ref"] = catalog_item_id
-        target_element["parameter_source"] = "CATALOG"
-        target_element["source_mode"] = payload.get("source_mode") or "KATALOG"
-
         catalog_namespace = (
             payload.get("catalog_namespace")
             or _extract_catalog_binding_namespace(catalog_binding)
@@ -6822,8 +7089,6 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
                 f"'{target_element.get('type')}' — wskaż pozycję właściwej kategorii.",
                 "catalog.namespace_mismatch",
             )
-        if catalog_namespace:
-            target_element["catalog_namespace"] = catalog_namespace
 
         catalog_item_version = _extract_catalog_binding_version(catalog_binding) or payload.get(
             "catalog_item_version"
@@ -6833,50 +7098,49 @@ def assign_catalog_to_element(enm: dict[str, Any], payload: dict[str, Any]) -> d
             if isinstance(catalog_item_version, str) and catalog_item_version.strip()
             else target_element.get("meta", {}).get("catalog_item_version")
         )
+
+        # BRAMA KATALOGOWA PRZYPISANIA (ta sama klasa co aparat pola stacji
+        # zasilającej). Dotąd `parameter_source: CATALOG` / `source_mode: KATALOG`
+        # wpisywano ZAWSZE, a materializacja obejmowała WYŁĄCZNIE kable/linie
+        # i transformatory: aparat łączeniowy, źródło, odbiór i punkt rozgałęzienia
+        # dostawały deklarację pochodzenia katalogowego bez tabliczki i bez
+        # sprawdzenia, czy wskazana pozycja w ogóle istnieje.
+        brama = _brama_katalogowa_przypisania(
+            collection=coll,
+            catalog_item_id=str(catalog_item_id),
+            catalog_namespace=catalog_namespace,
+            catalog_version=effective_catalog_version,
+            target_element=target_element,
+        )
+        if not isinstance(brama, tuple):
+            return brama
+        binding_przypisania, tabliczka_przypisania = brama
+
+        # Znacznik pochodzenia NIE pochodzi już z payloadu: po udanej materializacji
+        # element JEST katalogowy, a bez niej operacja kończy się wyżej błędem.
+        # `source_mode` z payloadu pozwalał wcześniej opisać pochodzenie inaczej,
+        # niż wynika ze stanu faktycznego (kable i transformatory i tak je gubiły).
+        target_element["catalog_ref"] = catalog_item_id
+        target_element["parameter_source"] = "CATALOG"
+        target_element["source_mode"] = "KATALOG"
+        target_element["materialized_params"] = tabliczka_przypisania
+        if catalog_namespace:
+            target_element["catalog_namespace"] = catalog_namespace
         if effective_catalog_version:
             target_element.setdefault("meta", {})[
                 "catalog_item_version"
             ] = effective_catalog_version
 
-        if (
-            coll == "branches"
-            and target_element.get("type") in {"cable", "line_overhead"}
-            and catalog_namespace
-        ):
-            materialization = _materialize_catalog_payload(
-                catalog_ref=catalog_item_id,
-                catalog_binding={
-                    "catalog_namespace": catalog_namespace,
-                    "catalog_item_version": effective_catalog_version or "legacy",
-                },
-                default_namespace=catalog_namespace,
-                default_version=effective_catalog_version,
-            )
-            if isinstance(materialization, dict):
-                return materialization
-            binding_payload, materialized_params = materialization
+        # Fizyka z TEJ SAMEJ materializacji, którą przepuściła brama — drugie
+        # wywołanie katalogu mogłoby dać inny wynik niż sprawdzony przez bramę.
+        if binding_przypisania is not None:
             _apply_catalog_metadata(
-                target_element, binding_payload, default_namespace=catalog_namespace
+                target_element, binding_przypisania, default_namespace=catalog_namespace
             )
-            _apply_materialized_branch_fields(target_element, materialized_params)
-
-        if coll == "transformers" and catalog_namespace:
-            materialization = _materialize_catalog_payload(
-                catalog_ref=catalog_item_id,
-                catalog_binding={
-                    "catalog_namespace": catalog_namespace,
-                    "catalog_item_version": effective_catalog_version or "legacy",
-                },
-                default_namespace=catalog_namespace,
-                default_version=effective_catalog_version,
-            )
-            if isinstance(materialization, dict):
-                return materialization
-            binding_payload, materialized_params = materialization
-            _apply_catalog_metadata(
-                target_element, binding_payload, default_namespace=catalog_namespace
-            )
-            _apply_materialized_transformer_fields(target_element, materialized_params)
+            if coll == "branches" and target_element.get("type") in {"cable", "line_overhead"}:
+                _apply_materialized_branch_fields(target_element, tabliczka_przypisania)
+            elif coll == "transformers":
+                _apply_materialized_transformer_fields(target_element, tabliczka_przypisania)
 
     return _response(
         new_enm,

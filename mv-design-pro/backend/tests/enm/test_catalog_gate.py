@@ -22,6 +22,9 @@ CATALOG_LINIA_SN = "line-base-al-st-50"
 CATALOG_TRAFO_SN_NN = "tr-sn-nn-15-04-630kva-dyn11"
 CATALOG_APARAT_SN = "sw-ls-schneider-rm6-17kv-400a"
 CATALOG_ZRODLO_SN = "src-gpz-15kv-250mva-rx010"
+#: Punkty rozgałęzienia mają własny katalog obiektów (`mv_branch_points`).
+CATALOG_SLUP_ROZGALEZNY = "SLUP-ODG-12"
+CATALOG_ZKSN = "ZKSN-2P-630A"
 
 
 def _empty_enm() -> dict:
@@ -535,7 +538,7 @@ class TestCatalogGateInsertBranchPole:
             payload={
                 "segment_id": seg_ref,
                 "name": "Słup rozgałęźny SN",
-                "catalog_ref": "SLUP_BP_001",
+                "catalog_ref": "SLUP-ODG-12",
                 "insert_at": {"mode": "RATIO", "value": 0.5},
             },
         )
@@ -556,7 +559,7 @@ class TestCatalogGateInsertBranchPole:
             payload={
                 "segment_id": seg_ref,
                 "catalog_binding": {
-                    "catalog_item_id": "SLUP_BP_001",
+                    "catalog_item_id": "SLUP-ODG-12",
                     "catalog_namespace": "mv_branch_points",
                 },
                 "insert_at": {"mode": "RATIO", "value": 0.5},
@@ -627,8 +630,10 @@ class TestCatalogGateInsertZKSN:
             enm_dict=snapshot,
             op_name="insert_zksn_on_segment_sn",
             payload={
+                # ZKSN ma WŁASNY katalog obiektów (mv_branch_points) — pozycja
+                # aparatu łączeniowego nie jest pozycją punktu rozgałęzienia.
                 "segment_id": seg_ref,
-                "catalog_ref": CATALOG_APARAT_SN,
+                "catalog_ref": CATALOG_ZKSN,
                 "insert_at": {"mode": "RATIO", "value": 0.5},
                 "switch_state": "CLOSED",
             },

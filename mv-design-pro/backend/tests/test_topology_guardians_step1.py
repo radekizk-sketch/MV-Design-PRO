@@ -133,7 +133,7 @@ def test_topology_ring_8_stations_with_nop() -> None:
             {
                 "segment_id": target_segment,
                 "insert_at": {"mode": "RATIO", "value": 0.5},
-                "catalog_ref": "APARAT_SN_ROZLACZNIK",
+                "catalog_ref": "sw-ls-schneider-rm6-17kv-400a",
             },
         ),
         "insert_section_switch_sn",

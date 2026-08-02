@@ -90,7 +90,7 @@ def test_reject_insert_branch_pole_on_cable() -> None:
     resp = execute_domain_operation(
         snapshot,
         "insert_branch_pole_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "SŁUP-ODG-12"},
+        {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12"},
     )
     assert resp.get("error_code") == "branch_point.invalid_parent_medium"
 
@@ -100,7 +100,7 @@ def test_insert_zksn_on_cable() -> None:
     resp = execute_domain_operation(
         snapshot,
         "insert_zksn_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P"},
+        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A"},
     )
     assert resp.get("error") in (None, "")
     branch_points = resp["snapshot"].get("branch_points", [])
@@ -115,7 +115,7 @@ def test_reject_insert_zksn_on_overhead_line() -> None:
     resp = execute_domain_operation(
         snapshot,
         "insert_zksn_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P"},
+        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A"},
     )
     assert resp.get("error_code") == "branch_point.invalid_parent_medium"
 
@@ -125,7 +125,7 @@ def test_refresh_snapshot_completes_legacy_zksn_switch_state() -> None:
     legacy = execute_domain_operation(
         snapshot,
         "insert_zksn_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P", "branch_ports_count": 2},
+        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A", "branch_ports_count": 2},
     )["snapshot"]
     legacy["branch_points"][0].pop("switch_state", None)
 
@@ -144,7 +144,7 @@ def test_branch_from_branch_pole_branch_port() -> None:
     s1 = execute_domain_operation(
         snapshot,
         "insert_branch_pole_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "SŁUP-ODG-12"},
+        {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12"},
     )["snapshot"]
     bp = next(bp for bp in s1["branch_points"] if bp["branch_point_type"] == "branch_pole")
 
@@ -169,7 +169,7 @@ def test_start_branch_segment_accepts_explicit_zero_sequence_data() -> None:
     s1 = execute_domain_operation(
         snapshot,
         "insert_branch_pole_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "SĹUP-ODG-12", "switch_state": "closed"},
+        {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12", "switch_state": "closed"},
     )["snapshot"]
     bp = next(bp for bp in s1["branch_points"] if bp["branch_point_type"] == "branch_pole")
 
@@ -202,7 +202,7 @@ def test_branch_from_zksn_branch_1_port() -> None:
     s1 = execute_domain_operation(
         snapshot,
         "insert_zksn_on_segment_sn",
-        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P", "branch_ports_count": 2},
+        {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A", "branch_ports_count": 2},
     )["snapshot"]
     zksn = next(bp for bp in s1["branch_points"] if bp["branch_point_type"] == "zksn")
 
@@ -226,7 +226,7 @@ def test_branch_point_ports_are_electrically_connected_to_main_node() -> None:
         "insert_zksn_on_segment_sn",
         {
             "segment_id": seg_id,
-            "catalog_ref": "ZKSN-2P",
+            "catalog_ref": "ZKSN-2P-630A",
             "branch_ports_count": 2,
             "switch_state": "closed",
         },
@@ -263,7 +263,7 @@ def test_branch_point_split_preserves_zero_sequence_segment_data() -> None:
         "insert_branch_pole_on_segment_sn",
         {
             "segment_id": seg_id,
-            "catalog_ref": "SĹUP-ODG-12",
+            "catalog_ref": "SLUP-ODG-12",
             "switch_state": "closed",
         },
     )
