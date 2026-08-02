@@ -55,6 +55,13 @@ export const SHELL_STRINGS = {
   resultsFresh: 'Wyniki: aktualne',
   resultsOutdated: 'Wyniki: nieaktualne',
   resultsNone: 'Wyniki: brak',
+  /* Stan bez odpowiednika w `StudyCaseResultStatus` (dług V12K-309 poz. 2):
+     serwer melduje wynik jako aktualny, ale rewizji, na której go policzono,
+     w chromie NIE MA — świeżości nie da się wtedy rozstrzygnąć porównaniem
+     rewizji, a „aktualne" byłoby werdyktem bez podstawy. Słowo „nieustalone"
+     jest już produktowym słownikiem stanu bez werdyktu (weryfikacja aparatury,
+     badania OLTC) — nie nowa fraza. */
+  resultsUnknown: 'Wyniki: nieustalone',
   resultsOutdatedHint: 'Przejdź do przestrzeni Obliczenia, aby przeliczyć wyniki',
 
   searchPlaceholder: 'Szukaj poleceń, obiektów, okien…',
@@ -86,8 +93,21 @@ export function runLabel(when: string | null): string {
   return `Przebieg: ${when == null ? SHELL_STRINGS.emptyValue : when}`;
 }
 
-/** „Gotowość: brak uwag" / „Gotowość: {n} ostrzeżenie|ostrzeżenia|ostrzeżeń". */
-export function readinessLabel(warnings: number, blockers: number): string {
+/**
+ * „Gotowość: brak uwag" / „Gotowość: {n} ostrzeżenie|ostrzeżenia|ostrzeżeń".
+ *
+ * `ustalona === false` (gotowości NIKT nie policzył — `podsumujGotowosc().ustalona`)
+ * daje umowną kreskę braku danej, tę samą, którą ten moduł stosuje dla nieznanej
+ * liczby przypadków, rewizji i przebiegu (`caseCountLabel`, `modelRevisionLabel`,
+ * `runLabel`). Bez tego rozróżnienia chip mówił „Gotowość: brak uwag" dokładnie
+ * wtedy, gdy odczyt gotowości padł — ta sama klasa defektu co V12K-309 poz. 1.
+ * Docelowe nazewnictwo stanu nieustalonego w chromie pozostaje decyzją właściciela
+ * (AUDYT_SZCZYTU_2026-08-01 §4 pkt 3); kreska jest brakiem danej, nie nową nazwą.
+ */
+export function readinessLabel(warnings: number, blockers: number, ustalona: boolean): string {
+  if (!ustalona) {
+    return `Gotowość: ${SHELL_STRINGS.emptyValue}`;
+  }
   if (blockers > 0) {
     return `Gotowość: ${blockers} ${pluralPl(blockers, 'blokada', 'blokady', 'blokad')}`;
   }

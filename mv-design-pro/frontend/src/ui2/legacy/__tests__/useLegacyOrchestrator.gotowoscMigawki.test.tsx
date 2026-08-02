@@ -236,7 +236,7 @@ describe('useLegacyOrchestrator — migawka przebiegu nie fabrykuje gotowości (
 
     // PRZED: model wczytany produkcyjną ścieżką (operacja `refresh_snapshot`).
     await waitFor(() => {
-      expect(gotowoscZeStoru()).toEqual({ ready: true, blokady: 0, ostrzezenia: 2 });
+      expect(gotowoscZeStoru()).toEqual({ ready: true, ustalona: true, blokady: 0, ostrzezenia: 2 });
     });
     expect(kodyGotowosci()).toEqual(['W002', 'W003']);
     expect(screen.getByTestId('mvd-casebar-readiness').textContent).toContain(
@@ -254,7 +254,7 @@ describe('useLegacyOrchestrator — migawka przebiegu nie fabrykuje gotowości (
 
     // PO: model NIEZMIENIONY (ta sama rewizja i odcisk), więc i gotowość ta sama.
     expect(useSnapshotStore.getState().snapshot?.header.hash_sha256).toBe(MODEL_HASH);
-    expect(gotowoscZeStoru()).toEqual({ ready: true, blokady: 0, ostrzezenia: 2 });
+    expect(gotowoscZeStoru()).toEqual({ ready: true, ustalona: true, blokady: 0, ostrzezenia: 2 });
     expect(kodyGotowosci()).toEqual(['W002', 'W003']);
     expect(screen.getByTestId('mvd-casebar-readiness').textContent).toContain(
       'Gotowość: 2 ostrzeżenia',
@@ -268,7 +268,7 @@ describe('useLegacyOrchestrator — migawka przebiegu nie fabrykuje gotowości (
     render(<Probe />);
 
     await waitFor(() => {
-      expect(gotowoscZeStoru()).toEqual({ ready: false, blokady: 1, ostrzezenia: 2 });
+      expect(gotowoscZeStoru()).toEqual({ ready: false, ustalona: true, blokady: 1, ostrzezenia: 2 });
     });
     expect(screen.getByTestId('mvd-casebar-model').textContent).toContain('Model: w budowie');
 
@@ -278,7 +278,7 @@ describe('useLegacyOrchestrator — migawka przebiegu nie fabrykuje gotowości (
       expect(czyPrzywroconoMigawkePrzebiegu()).toBe(true);
     });
 
-    expect(gotowoscZeStoru()).toEqual({ ready: false, blokady: 1, ostrzezenia: 2 });
+    expect(gotowoscZeStoru()).toEqual({ ready: false, ustalona: true, blokady: 1, ostrzezenia: 2 });
     expect(kodyGotowosci()).toEqual(['E005', 'W002', 'W003']);
     expect(screen.getByTestId('mvd-casebar-model').textContent).toContain('Model: w budowie');
     expect(screen.getByTestId('mvd-casebar-model').textContent).not.toContain(
@@ -302,7 +302,7 @@ describe('useLegacyOrchestrator — migawka przebiegu nie fabrykuje gotowości (
     });
 
     await waitFor(() => {
-      expect(gotowoscZeStoru()).toEqual({ ready: false, blokady: 1, ostrzezenia: 2 });
+      expect(gotowoscZeStoru()).toEqual({ ready: false, ustalona: true, blokady: 1, ostrzezenia: 2 });
     });
     // Liczby pochodzą z odpowiedzi backendu, nie z koperty migawki.
     expect(domainOpCalls).toBeGreaterThan(0);
