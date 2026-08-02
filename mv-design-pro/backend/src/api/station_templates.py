@@ -39,6 +39,46 @@ from pydantic import BaseModel, Field
 router = APIRouter(prefix="/api/station-templates", tags=["station-templates"])
 
 
+def klucz_przypadku(case_id: str) -> str:
+    """JEDYNE źródło prawdy o kluczu magazynu ENM dla końcówek szablonów.
+
+    ROZSTRZYGNIĘCIE (dług 2 z V12K-315, rozjazd normalizacji klucza przypadku).
+    Wygrywa **surowy łańcuch z adresu**, bo TAK klucz wyprowadza magazyn ENM
+    (`enm.store._case_path` liczy SHA-256 z tekstu identyfikatora, a blokada
+    `blokada_przypadku` indeksuje słownik tym samym tekstem) i tak samo robią
+    WSZYSTKIE pozostałe końcówki (`/api/cases/{case_id}/enm/**` przekazuje
+    `case_id` wprost). Normalizacja mogła zostać tylko wtedy, gdyby objęła też
+    magazyn — a magazynu ta karta nie zmienia, więc normalizacja znika.
+
+    Ta końcówka normalizowała klucz przez `str(UUID(...))`, czyli sprowadzała
+    identyfikator do postaci kanonicznej (małe litery, myślniki, bez klamer i
+    prefiksu `urn:uuid:`). Dopóki identyfikatory pochodzą z backendu, obie
+    postacie są identyczne — ale dla postaci NIEKANONICZNEJ zastosowanie
+    szablonu operowałoby na INNYM wpisie magazynu niż operacje domenowe: praca
+    lądowałaby pod kluczem `str(UUID(x))`, a `GET /api/cases/{x}/enm` czytałby
+    pusty model spod `x`. Blokada współbieżności też brałaby wtedy inny zamek,
+    więc szablon i operacje domenowe biegłyby równolegle po jednym modelu.
+
+    Funkcja jest ZWRACAJĄCĄ TOŻSAMOŚĆ z jawną walidacją formatu: identyfikator
+    musi być poprawnym UUID (kontrakt `case_id` całego API), ale wynik nigdy nie
+    jest przekształceniem wejścia. Postać niekanoniczna jest ODRZUCANA, a nie
+    po cichu tłumaczona — inaczej wróciłby ten sam rozjazd, tylko w innym
+    miejscu.
+
+    Podnosi ``ValueError`` dla identyfikatora spoza kontraktu.
+    """
+    # ŻADNEGO `strip()` ani innego oczyszczenia: każde przekształcenie wejścia jest
+    # tym samym defektem co normalizacja UUID, tylko o jeden znak mniej widocznym.
+    kanoniczny = str(UUID(case_id))
+    if kanoniczny != case_id:
+        raise ValueError(
+            f"identyfikator przypadku '{case_id}' nie jest w postaci kanonicznej "
+            f"('{kanoniczny}'). Klucz magazynu modelu to DOKŁADNIE tekst z adresu, "
+            "więc postać niekanoniczna wskazywałaby inny wpis niż operacje domenowe."
+        )
+    return case_id
+
+
 class ApplyTemplateRequest(BaseModel):
     """K30-20: Apply template payload."""
 
@@ -196,14 +236,18 @@ def apply_station_template(
         raise HTTPException(status_code=404, detail=f"Template '{template_id}' not found")
 
     try:
-        case_uuid = UUID(request.case_id)
+        # JEDNO ŹRÓDŁO PRAWDY o kluczu magazynu — patrz `klucz_przypadku`.
+        # `UUID(...)` niżej jest bezskutkowe co do treści klucza: funkcja gwarantuje
+        # `str(UUID(klucz)) == klucz`, więc `apply_template_to_case` trafia w TEN SAM
+        # wpis magazynu, w który trafiają operacje domenowe pod tym samym adresem.
+        klucz = klucz_przypadku(request.case_id)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"Invalid case_id: {exc}") from exc
 
     try:
         result = apply_template_to_case(
             template=template,
-            case_id=case_uuid,
+            case_id=UUID(klucz),
             target_segment_id=request.target_segment_id,
             insert_at_ratio=request.insert_at_ratio,
             params_override=request.params_override,
