@@ -12,6 +12,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from application.power_flow_input_builder import merge_bus_components
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
@@ -71,6 +72,16 @@ class LoadFlowLoadInput:
     # by inverter_control_from_params). None => constant-PQ source; the typed
     # InverterControl is built in to_power_flow_input using base_mva.
     inverter_control_params: dict[str, Any] | None = None
+    # V12K-316 (debt 5): the regulated source's OWN power, GENERATION convention
+    # (>0 = injection) — the OPPOSITE of p_mw/q_mvar above. A composite bus may be
+    # declared either as SEVERAL entries with one node_id (the fold sums them and
+    # reads the source off its own entry) or as ONE entry carrying the net bus
+    # power plus these fields. Without them a constant-power load sharing the bus
+    # with a source leaves no trace at all and the shaping mistakes the aggregate
+    # for the source. Additive and optional: absent => historical path, and
+    # canonical_dict omits the keys, so existing hashes stay byte-identical.
+    inverter_p_mw: float | None = None
+    inverter_q_mvar: float | None = None
 
 
 @dataclass(frozen=True)
@@ -135,6 +146,11 @@ class LoadFlowRunInput:
                     if ld.inverter_control_params
                     else {}
                 ),
+                # V12K-316 (debt 5): same rule for the source's own power — the
+                # keys appear only when the entry declares them, so every payload
+                # written before this field existed hashes exactly as before.
+                **({} if ld.inverter_p_mw is None else {"inverter_p_mw": ld.inverter_p_mw}),
+                **({} if ld.inverter_q_mvar is None else {"inverter_q_mvar": ld.inverter_q_mvar}),
             }
             for ld in self.loads
         ]
@@ -223,20 +239,28 @@ class LoadFlowRunInput:
                 u_pu=self.slack_u_pu,
                 angle_rad=self.slack_angle_rad,
             ),
-            pq=[
-                PQSpec(
-                    node_id=x.node_id,
-                    p_mw=x.p_mw,
-                    q_mvar=x.q_mvar,
-                    zip_coeffs=x.zip_coeffs,
-                    # ADR-011 §5b: build the U/f-control on base_mva (None =>
-                    # constant-PQ source, reduce-to-NR).
-                    inverter_control=_build_inverter_control(
-                        x.inverter_control_params, self.base_mva
-                    ),
-                )
-                for x in self.loads
-            ],
+            # V12K-313/V12K-316: entries are per COMPONENT, the solver contract is
+            # per BUS — the fold accumulates the bus power and keeps the source's
+            # own power and the load base next to it (single implementation, shared
+            # with the other power flow input builders).
+            pq=merge_bus_components(
+                [
+                    PQSpec(
+                        node_id=x.node_id,
+                        p_mw=x.p_mw,
+                        q_mvar=x.q_mvar,
+                        zip_coeffs=x.zip_coeffs,
+                        # ADR-011 §5b: build the U/f-control on base_mva (None =>
+                        # constant-PQ source, reduce-to-NR).
+                        inverter_control=_build_inverter_control(
+                            x.inverter_control_params, self.base_mva
+                        ),
+                        inverter_p_mw=x.inverter_p_mw,
+                        inverter_q_mvar=x.inverter_q_mvar,
+                    )
+                    for x in self.loads
+                ]
+            ),
             pv=[
                 PVSpec(
                     node_id=g.node_id,
