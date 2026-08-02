@@ -1454,10 +1454,26 @@ def _oze_opt_float(value: Any) -> float | None:
     return None
 
 
+@dataclass(frozen=True)
+class _ConverterBinding:
+    """Regulowane źródło przypięte do węzła: charakterystyka + WŁASNA moc źródła.
+
+    Defekt B (przegląd 2026-08-01): kształtowanie falownika MUSI dostać moc czynną
+    wytwórcy jako jawną wielkość wejściową. Odczyt mocy zadanej szyny był podwójnie
+    błędny — na szynie prosumenckiej to moc ODBIORU, a po rozdzieleniu ZIP (defekt
+    D1) to baza odbiorowa. Konwencja GENERATOROWA (>0 = wstrzyk do sieci), zgodna
+    z `Generator.p_mw`/`q_mvar` w ENM i z `PQSpec.inverter_p_mw` w solverze.
+    """
+
+    control: InverterControl
+    p_mw: float
+    q_mvar: float
+
+
 def _build_converter_control_by_node(
     snapshot: dict[str, Any], base_mva: float
-) -> dict[str, InverterControl]:
-    """G-OZE-PF (V12K-051): mapuje węzły OZE → InverterControl dla kanonicznego PF.
+) -> dict[str, _ConverterBinding]:
+    """G-OZE-PF (V12K-051): mapuje węzły OZE → regulacja + moc źródła dla kanonicznego PF.
 
     Domyka forward-phantom: dotąd kanoniczny run budował PQSpec bez inverter_control,
     więc wybór trybu regulacji (Q(U)/cosφ) nie wpływał na rozpływ mocy. Reużycie
@@ -1466,8 +1482,15 @@ def _build_converter_control_by_node(
     Determinizm: dołączamy WYŁĄCZNIE realnie aktywne regulacje (cosφ≠1 albo nachylenie
     Q(U)≠0). Źródła pasywne / unity / bez nowych pól → brak wpisu → PQSpec bez
     inverter_control → wynik bajt-w-bajt jak dotąd (istniejące snapshoty nietknięte).
+
+    JEDNA REGULACJA NA SZYNĘ (defekt B, §2.2). Kontrakt solvera ma dokładnie jedno
+    `PQSpec.inverter_control` na węzeł, więc dwa REGULOWANE źródła na jednej szynie
+    są nieprzedstawialne — dotąd ostatnie po cichu wygrywało, a moc bierna
+    pierwszego znikała z modelu. Taki przypadek jest ODRZUCANY z jawnym błędem;
+    ciche wybranie jednego źródła jest zakazane. Źródła BEZ aktywnej regulacji nie
+    kolidują — ich moc zostaje w agregacie szyny, tak jak dotąd.
     """
-    out: dict[str, InverterControl] = {}
+    out: dict[str, _ConverterBinding] = {}
     for gen in snapshot.get("generators") or []:
         if not isinstance(gen, dict):
             continue
@@ -1523,8 +1546,20 @@ def _build_converter_control_by_node(
             params["pmax_mw"] = abs(pmax)
         sn = _oze_opt_float(gen.get("sn_mva")) or _oze_opt_float(meta.get("sn_mva"))
         control = inverter_control_from_params(params, base_mva, sn)
-        if control is not None:
-            out[_graph_id_from_ref(bus_ref.strip())] = control
+        if control is None:
+            continue
+        node_id = _graph_id_from_ref(bus_ref.strip())
+        if node_id in out:
+            raise ValueError(
+                f"Szyna {bus_ref.strip()} ma wiecej niz jedno zrodlo z aktywna regulacja "
+                "falownika; kontrakt rozplywu dopuszcza jedna charakterystyke na wezel"
+            )
+        out[node_id] = _ConverterBinding(
+            control=control,
+            # Konwencja generatorowa (>0 = wstrzyk), jak Generator.p_mw w ENM.
+            p_mw=_oze_opt_float(gen.get("p_mw")) or 0.0,
+            q_mvar=_oze_opt_float(gen.get("q_mvar")) or 0.0,
+        )
     return out
 
 
@@ -1546,10 +1581,30 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     base_mva = float(run.options.get("base_mva", 100.0))
     converter_control_by_node = _build_converter_control_by_node(run.snapshot or {}, base_mva)
 
+    def _converter(node_id: str) -> InverterControl | None:
+        binding = converter_control_by_node.get(node_id)
+        return None if binding is None else binding.control
+
+    def _converter_p_mw(node_id: str) -> float | None:
+        binding = converter_control_by_node.get(node_id)
+        return None if binding is None else binding.p_mw
+
+    def _converter_q_mvar(node_id: str) -> float | None:
+        binding = converter_control_by_node.get(node_id)
+        return None if binding is None else binding.q_mvar
+
     pq_specs = [
         PQSpec(
             node_id=node_id,
-            inverter_control=converter_control_by_node.get(node_id),
+            inverter_control=_converter(node_id),
+            # Defekt B (przegląd 2026-08-01): WŁASNA moc regulowanego źródła jest
+            # jawną wielkością wejściową kształtowania. Bez niej solver czytał moc
+            # zadaną szyny — czyli moc ODBIORU na szynie prosumenckiej (a po
+            # rozdzieleniu ZIP wręcz bazę odbiorową) — i z niej liczył moc bierną
+            # falownika. Konwencja generatorowa (>0 = wstrzyk), przeciwna do
+            # p_mw/q_mvar poniżej; None (brak regulacji) => pole nieużywane.
+            inverter_p_mw=_converter_p_mw(node_id),
+            inverter_q_mvar=_converter_q_mvar(node_id),
             # F9.8 WHITE BOX: `node.active_power`/`node.reactive_power` (built by
             # `enm.mapping`) use the GENERATION convention (positive = injection
             # into the bus; a pure load is negative — see mapping.py, pinned by

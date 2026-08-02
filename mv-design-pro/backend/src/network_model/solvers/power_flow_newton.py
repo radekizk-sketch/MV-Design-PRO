@@ -149,9 +149,19 @@ class PowerFlowNewtonSolver:
         )
         apply_zip_frequency(p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz)
         # ADR-011 §5b: one-time inverter shaping (LFSM P(f) + cosφ/Q modes);
-        # Q(U) sources are recomputed per iteration via inv_table.
-        apply_inverter_setpoint(
-            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
+        # Q(U) sources are recomputed per iteration via inv_table. Defect B: the
+        # shaping reads the SOURCE's own power and enters as a component of the
+        # bus — on a ZIP bus into the constant part, so the load polynomial never
+        # scales it (hence zip_table/zip_const are handed over).
+        inv_shaping = apply_inverter_setpoint(
+            p_spec,
+            q_spec,
+            pf_input.pq,
+            node_index_map,
+            pf_input.base_frequency_hz,
+            pf_input.base_mva,
+            zip_table,
+            zip_const,
         )
         for idx, u_pu in pv_setpoints.items():
             v0[idx] = u_pu * np.exp(1j * np.angle(v0[idx]))
@@ -179,6 +189,7 @@ class PowerFlowNewtonSolver:
                 zip_table,
                 inv_table,
                 zip_const,
+                inv_shaping,
             )
         else:
             v = v0

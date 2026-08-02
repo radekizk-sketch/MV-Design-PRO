@@ -10,6 +10,7 @@ from network_model.core.branch import Branch, LineBranch, TransformerBranch
 from network_model.core.graph import NetworkGraph
 from network_model.solvers.power_flow_inverter import (
     InverterControl,
+    InverterShaping,
     inverter_effective_spec,
     qu_dq_dv,
     qu_q,
@@ -216,6 +217,53 @@ def _zip_loads_trace(
             "p_const_pu": float(zip_const[0][z_idx]) if zip_const is not None else 0.0,
             "q_const_pu": float(zip_const[1][z_idx]) if zip_const is not None else 0.0,
         }
+    return out
+
+
+def _inverter_sources_trace(
+    inv_table: dict[int, InverterControl] | None,
+    inv_shaping: dict[int, InverterShaping] | None,
+    node_index_to_id: dict[int, str],
+    v: np.ndarray,
+    p_spec_eff: np.ndarray,
+    q_spec_eff: np.ndarray,
+) -> dict[str, dict[str, float | str]]:
+    """WHITE BOX (Rule #2) view of the controlled sources for the trace (defect B).
+
+    The audit that missed defect B could not have caught it from this trace: it
+    reported only the BUS injection, so a cosφ source deriving its reactive power
+    from the LOAD's active power looked exactly like a correct one. The record now
+    carries the shaping INPUT and its RESULT, so the rachunek is reproducible from
+    the numbers alone:
+
+        p_shaped_pu   = p_source_pu * lfsm_factor
+        q_shaped_pu   = q_over_p * |p_shaped_pu|      (cosφ modes)
+        q_volt_var_pu = qu_q(|V|)                     (Q(U) mode, per iteration)
+        q_spec_pu     = (bus power without this source) + q_shaped/q_volt_var
+
+    Covers every shaped source, not only the voltage-dependent ones — a cosφ or
+    P(f) source is shaped too and was invisible here before."""
+    v_mag = np.abs(v)
+    records = inv_shaping or {}
+    controls = inv_table or {}
+    out: dict[str, dict[str, float | str]] = {}
+    for i_idx in sorted(set(records) | set(controls)):
+        entry: dict[str, float | str] = {
+            "p_spec_pu": float(p_spec_eff[i_idx]),
+            "q_spec_pu": float(q_spec_eff[i_idx]),
+        }
+        sh = records.get(i_idx)
+        if sh is not None:
+            entry["p_source_pu"] = sh.p_source_pu
+            entry["q_source_pu"] = sh.q_source_pu
+            entry["p_shaped_pu"] = sh.p_shaped_pu
+            entry["q_shaped_pu"] = sh.q_shaped_pu
+            entry["lfsm_factor"] = sh.lfsm_factor
+        c = controls.get(i_idx)
+        if c is not None:
+            entry["q_volt_var_pu"] = float(qu_q(c, v_mag[i_idx]))
+        entry["mode"] = (c.mode if c is not None else sh.mode).value  # type: ignore[union-attr]
+        out[node_index_to_id.get(i_idx, str(i_idx))] = entry
     return out
 
 
@@ -578,6 +626,7 @@ def newton_raphson_solve_v2(
     zip_table: dict[int, ZipCoeffs] | None = None,
     inv_table: dict[int, InverterControl] | None = None,
     zip_const: tuple[np.ndarray, np.ndarray] | None = None,
+    inv_shaping: dict[int, InverterShaping] | None = None,
 ) -> tuple[
     np.ndarray,
     bool,
@@ -594,6 +643,10 @@ def newton_raphson_solve_v2(
     Defect D1: with ``zip_const`` (from split_zip_constant_part) p_spec/q_spec are
     the ZIP BASE (load part) and the constant part (generation on the same bus) is
     added back after the polynomial. None => no split => historical path.
+
+    Defect B: ``inv_shaping`` is the WHITE BOX record of the one-time source
+    shaping (from ``apply_inverter_setpoint``) — trace-only, so the auditor can
+    reproduce the source's Q from the source's own P.
     """
     v = v0.copy()
     trace: list[dict[str, Any]] = []
@@ -665,8 +718,13 @@ def newton_raphson_solve_v2(
             if inv_table:
                 # ADR-011 §5b: Q(U) volt-var sources recompute Q from |V| each
                 # iteration (P is frequency-, not voltage-dependent → unchanged).
+                # Defect B: ADDED to the bus power, not assigned over it — the
+                # source's own declared Q was already taken out of the base by
+                # apply_inverter_setpoint, so what remains is the (ZIP-scaled)
+                # load of a prosumer bus. Assigning deleted that load's reactive
+                # demand. Source-only bus => base is exactly 0.0 => unchanged.
                 for i_idx, i_c in inv_table.items():
-                    q_spec_eff[i_idx] = qu_q(i_c, v_mag_now[i_idx])
+                    q_spec_eff[i_idx] += qu_q(i_c, v_mag_now[i_idx])
         else:
             p_spec_eff = p_spec
             q_spec_eff = q_spec
@@ -732,15 +790,10 @@ def newton_raphson_solve_v2(
                         q_spec_eff,
                         zip_const,
                     )
-                if inv_table:
-                    trace_entry["inverter_sources"] = {
-                        node_index_to_id.get(i_idx, str(i_idx)): {
-                            "p_spec_pu": float(p_spec_eff[i_idx]),
-                            "q_spec_pu": float(q_spec_eff[i_idx]),
-                            "mode": inv_table[i_idx].mode.value,
-                        }
-                        for i_idx in sorted(inv_table)
-                    }
+                if inv_table or inv_shaping:
+                    trace_entry["inverter_sources"] = _inverter_sources_trace(
+                        inv_table, inv_shaping, node_index_to_id, v, p_spec_eff, q_spec_eff
+                    )
             trace.append(trace_entry)
             break
 
@@ -831,15 +884,10 @@ def newton_raphson_solve_v2(
                     q_spec_eff,
                     zip_const,
                 )
-            if inv_table:
-                trace_entry["inverter_sources"] = {
-                    node_index_to_id.get(i_idx, str(i_idx)): {
-                        "p_spec_pu": float(p_spec_eff[i_idx]),
-                        "q_spec_pu": float(q_spec_eff[i_idx]),
-                        "mode": inv_table[i_idx].mode.value,
-                    }
-                    for i_idx in sorted(inv_table)
-                }
+            if inv_table or inv_shaping:
+                trace_entry["inverter_sources"] = _inverter_sources_trace(
+                    inv_table, inv_shaping, node_index_to_id, v, p_spec_eff, q_spec_eff
+                )
 
         trace.append(trace_entry)
 

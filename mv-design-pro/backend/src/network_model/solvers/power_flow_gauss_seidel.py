@@ -31,6 +31,7 @@ from network_model.solvers.power_flow_inverter import (
     InverterControl,
     apply_inverter_setpoint,
     build_inverter_table,
+    inverter_q_seed,
     inverter_relax_q,
 )
 from network_model.solvers.power_flow_newton import (
@@ -238,10 +239,21 @@ class PowerFlowGaussSeidelSolver:
         # ADR-011 §5b: one-time inverter shaping (LFSM P(f) + cosφ/Q modes); Q(U)
         # sources are recomputed per sweep via inv_table. Empty table => classic
         # constant-PQ path (reduce-to-NR: identical code, identical output).
-        apply_inverter_setpoint(
-            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
+        # Defect B: the shaping reads the SOURCE's own power and enters as a
+        # component of the bus — on a ZIP bus into the constant part, so the load
+        # polynomial never scales it (hence zip_table/zip_const are handed over).
+        inv_shaping = apply_inverter_setpoint(
+            p_spec,
+            q_spec,
+            pf_input.pq,
+            node_index_map,
+            pf_input.base_frequency_hz,
+            pf_input.base_mva,
+            zip_table,
+            zip_const,
         )
         inv_table = build_inverter_table(pf_input.pq, node_index_map)
+        q_inv_seed = inverter_q_seed(inv_table, inv_shaping)
 
         # Run Gauss-Seidel iteration
         (
@@ -270,6 +282,7 @@ class PowerFlowGaussSeidelSolver:
             zip_table,
             inv_table,
             zip_const,
+            q_inv_seed,
         )
 
         # Handle non-convergence with optional fallback to Newton-Raphson
@@ -488,6 +501,7 @@ class PowerFlowGaussSeidelSolver:
         zip_table: dict[int, ZipCoeffs] | None = None,
         inv_table: dict[int, InverterControl] | None = None,
         zip_const: tuple[np.ndarray, np.ndarray] | None = None,
+        q_inv_seed: dict[int, float] | None = None,
     ) -> tuple[
         np.ndarray,
         bool,
@@ -517,11 +531,15 @@ class PowerFlowGaussSeidelSolver:
             zip_table: Voltage-dependent ZIP coefficients keyed by bus index
                 (ADR-011). Empty/None => classic constant-power path (reduce-to-NR).
             inv_table: Voltage-dependent inverter Q(U) controls keyed by bus index
-                (ADR-011 §5b). Empty/None => classic path. A bus is in zip_table
-                XOR inv_table, never both.
+                (ADR-011 §5b). Empty/None => classic path. A bus MAY be in both
+                zip_table and inv_table (a prosumer bus): the two contributions
+                COMPOSE — see the exclusivity contract on PQSpec.inverter_control
+                (defect B). Picking one branch silently is forbidden.
             zip_const: Constant (non-ZIP) part of a ZIP bus — generation on the
                 same bus (defect D1). None => nothing to split; p_spec/q_spec are
                 the whole bus power (historical path).
+            q_inv_seed: Start value of the Q(U) relaxation state per bus — the
+                SOURCE's own declared Q (defect B), from ``inverter_q_seed``.
 
         Returns:
             Tuple of (voltage, converged, iterations, max_mismatch, trace, pv_switches).
@@ -539,12 +557,13 @@ class PowerFlowGaussSeidelSolver:
         active_pq = list(pq_indices)
         active_pv = list(pv_indices)
 
-        # ADR-011 §5b: under-relaxed Q(U) state. Seed from the base q_spec at the
-        # Q_U buses; advanced toward qu_q(|V|) at the start of each iteration with a
+        # ADR-011 §5b: under-relaxed Q(U) state. Seeded from the SOURCE's own
+        # declared Q (defect B — the bus power is not the source's on a prosumer
+        # bus); advanced toward qu_q(|V|) at the start of each iteration with a
         # slope-scaled step so the volt-var fixed-point gain stays < 1 (GS lacks NR's
         # ∂Q/∂V Jacobian feedback). Converged value == qu_q(v*) => parity with NR and
         # reduce-to-NR preserved (empty inv_table => no-op).
-        q_inv_state = {idx: float(q_spec[idx]) for idx in inv_table}
+        q_inv_state = dict(q_inv_seed or {})
 
         for iteration in range(1, max_iter + 1):
             v_old = v.copy()
@@ -596,22 +615,25 @@ class PowerFlowGaussSeidelSolver:
                 # ADR-011 ZIP: at a voltage-dependent bus, recompute the specified
                 # injection from the current |V| (fixed-point recompute, no Jacobian).
                 # ADR-011 §5b: at a Q(U) inverter bus, recompute only the Q part from
-                # |V| (inverter P is frequency-, not voltage-dependent). A bus is in
-                # zip_table XOR inv_table, never both.
+                # |V| (inverter P is frequency-, not voltage-dependent).
+                # Defect B: the two mechanisms COMPOSE. This used to be an if/elif
+                # chain, so a prosumer bus (ZIP load + volt-var source) took the ZIP
+                # branch and the volt-var control was silently dropped — GS then
+                # disagreed with NR/FD, which instead overwrote the load's Q.
+                p_i = p_spec[idx]
+                q_i = q_spec[idx]
                 if idx in zip_table:
                     c = zip_table[idx]
-                    p_i = p_spec[idx] * zip_factor(c.a_p, c.b_p, c.c_p, abs(v[idx]), c.v0_pu)
-                    q_i = q_spec[idx] * zip_factor(c.a_q, c.b_q, c.c_q, abs(v[idx]), c.v0_pu)
+                    p_i = p_i * zip_factor(c.a_p, c.b_p, c.c_p, abs(v[idx]), c.v0_pu)
+                    q_i = q_i * zip_factor(c.a_q, c.b_q, c.c_q, abs(v[idx]), c.v0_pu)
                     if zip_const is not None:
                         # Defect D1: generation on a ZIP bus is constant power —
                         # added AFTER the load polynomial, never scaled by it.
                         p_i += zip_const[0][idx]
                         q_i += zip_const[1][idx]
-                    s_i = complex(p_i, q_i)
-                elif idx in inv_table:
-                    s_i = complex(p_spec[idx], q_inv_state[idx])
-                else:
-                    s_i = complex(p_spec[idx], q_spec[idx])
+                if idx in inv_table:
+                    q_i += q_inv_state[idx]
+                s_i = complex(p_i, q_i)
 
                 # Gauss-Seidel update for PQ bus
                 # V_i^{new} = (1/Y_ii) * (S_i^*/V_i^* - Σ Y_ij V_j)
@@ -676,11 +698,14 @@ class PowerFlowGaussSeidelSolver:
             # ADR-011 §5b: the Q mismatch at Q(U) buses uses the under-relaxed Q(U)
             # state (same value the sweep used this iteration), so the convergence
             # test and the update are consistent. No-op when inv_table is empty.
+            # Defect B: ADDED to the composed bus power, exactly as the sweep does
+            # above — assigning here would make the convergence test disagree with
+            # the update on a prosumer bus (and never converge).
             p_eff, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table, zip_const)
             if inv_table:
                 q_eff = q_eff.copy()
                 for idx in inv_table:
-                    q_eff[idx] = q_inv_state[idx]
+                    q_eff[idx] += q_inv_state[idx]
             d_p = p_eff[non_slack_indices] - p_calc[non_slack_indices]
             d_q = q_eff[active_pq] - q_calc[active_pq]
 
