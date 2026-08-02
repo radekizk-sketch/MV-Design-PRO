@@ -505,17 +505,26 @@ def test_tabliczka_zrodla_nn_pochodzi_z_katalogu_a_nie_z_payloadu(operacja: str)
     assert tabliczka["un_kv"] == pytest.approx(0.4)
 
 
-#: Konfiguracja bloku nN → (referencja katalogowa, Pmax [MW], Sn [MVA], typ generatora).
-#: Wartości ODCZYTANE z katalogu; payload w `_blok_stacji` deklaruje 9,9/9,9.
-WARIANTY_ZRODLA_NN: tuple[tuple[str, str, float, float, str], ...] = (
-    ("PV_INVERTER", REF_FALOWNIK_PV, 0.5, 0.55, "pv_inverter"),
-    ("BESS_INVERTER", "conv-bess-nn-2mw-0p4kv", 2.0, 2.2, "bess"),
-    ("FW_INVERTER", "conv-wind-nn-2mw-0p4kv", 2.0, 2.2, "wind_inverter"),
+#: Transformator stacji dobrany DO ŹRÓDŁA. Od V12K-317 kontrola mocy
+#: transformatora obowiązuje w OBU torach (stacyjnym i atomowym), więc źródło
+#: 2,2 MVA pod transformatorem 630 kVA jest — słusznie — odrzucane. Ten test
+#: bada rozstrzygalność PRZESTRZENI KATALOGU, więc dobieramy transformator,
+#: przy którym dobór jest poprawny, zamiast omijać kontrolę.
+REF_TRAFO_2500 = "tr-sn-nn-15-04-2500kva-dyn11"
+
+#: Konfiguracja bloku nN → (ref katalogu, Pmax [MW], Sn [MVA], typ generatora,
+#: ref transformatora stacji). Wartości ODCZYTANE z katalogu; payload
+#: w `_blok_stacji` deklaruje 9,9/9,9.
+WARIANTY_ZRODLA_NN: tuple[tuple[str, str, float, float, str, str], ...] = (
+    ("PV_INVERTER", REF_FALOWNIK_PV, 0.5, 0.55, "pv_inverter", REF_TRAFO),
+    ("BESS_INVERTER", "conv-bess-nn-2mw-0p4kv", 2.0, 2.2, "bess", REF_TRAFO_2500),
+    ("FW_INVERTER", "conv-wind-nn-2mw-0p4kv", 2.0, 2.2, "wind_inverter", REF_TRAFO_2500),
 )
 
 
 @pytest.mark.parametrize(
-    ("konfiguracja", "ref_katalogu", "pmax_mw", "sn_mva", "gen_type"), WARIANTY_ZRODLA_NN
+    ("konfiguracja", "ref_katalogu", "pmax_mw", "sn_mva", "gen_type", "ref_transformatora"),
+    WARIANTY_ZRODLA_NN,
 )
 def test_kazda_technologia_zrodla_nn_materializuje_sie_z_katalogu(
     konfiguracja: str,
@@ -523,6 +532,7 @@ def test_kazda_technologia_zrodla_nn_materializuje_sie_z_katalogu(
     pmax_mw: float,
     sn_mva: float,
     gen_type: str,
+    ref_transformatora: str,
 ) -> None:
     """PV/BESS/FW — każda technologia ma rozstrzygalną przestrzeń katalogu.
 
@@ -536,6 +546,7 @@ def test_kazda_technologia_zrodla_nn_materializuje_sie_z_katalogu(
     )
     payload["nn_block"]["nn_configuration"] = konfiguracja
     payload["nn_block"]["source_converter_catalog_ref"] = ref_katalogu
+    payload["transformer"]["transformer_catalog_ref"] = ref_transformatora
 
     blad, _ = validate_and_materialize_catalog_binding("append_station_on_endpoint", payload)
     assert blad is None, blad

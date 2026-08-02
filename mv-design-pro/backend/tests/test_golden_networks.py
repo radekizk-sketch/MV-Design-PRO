@@ -234,7 +234,7 @@ class TestGN03SNRingNOP:
                 {
                     "segment_id": branches[1]["ref_id"],
                     "insert_at": {"mode": "RATIO", "value": 0.5},
-                    "catalog_ref": "APARAT_SN_ROZLACZNIK",
+                    "catalog_ref": "sw-ls-schneider-rm6-17kv-400a",
                 },
             )
             enm = r["snapshot"]

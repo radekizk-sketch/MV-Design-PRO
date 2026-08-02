@@ -60,7 +60,12 @@ BACKEND = ROOT / "backend"
 # `feasible` w `power_flow_oltc_studies.optimize_tap_positions` (raz `bool` kandydata,
 # raz lista kandydatow), ktora chowala przed analiza dwa realne bledy typow
 # (assignment + arg-type). Pomiar wlasny: 24/15 -> 22/14.
-BASELINE_ERRORS = 22
+# TOR U2 (2026-08-02, deklaracja pochodzenia katalogowego): brama przypisania
+# katalogu zastapila DWA rownolegle bloki materializacji w `assign_catalog_to_element`
+# jednym wywolaniem. Zniknela kolizja nazw `binding_payload`/`materialized_params`
+# (te same nazwy lokalne w dwoch galeziach o roznych typach), ktora chowala przed
+# analiza dwa realne bledy typow. Pomiar wlasny: 22/14 -> 20/14.
+BASELINE_ERRORS = 20
 BASELINE_FILES = 14
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")

@@ -183,7 +183,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id2,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
                 "name": "Słup T2",
             },
         )
@@ -217,7 +217,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "closed",
                 "name": "ZKSN T1",
@@ -298,7 +298,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
                 "name": "Słup A",
             },
         )
@@ -311,7 +311,7 @@ class TestE2E1MultiObjectFeeder:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": segs[0],
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
                 "name": "Słup B",
             },
         )
@@ -515,7 +515,7 @@ class TestE2E3BranchFromBranchPole:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
                 "name": "Słup T-A",
             },
         )
@@ -566,7 +566,7 @@ class TestE2E3BranchFromBranchPole:
         result = execute_domain_operation(
             s,
             "insert_branch_pole_on_segment_sn",
-            {"segment_id": seg_id, "catalog_ref": "SŁUP-ODG-12"},
+            {"segment_id": seg_id, "catalog_ref": "SLUP-ODG-12"},
         )
         assert result.get("error_code") == "branch_point.invalid_parent_medium"
 
@@ -590,7 +590,7 @@ class TestE2E3BranchFromBranchPole:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
             },
         )
 
@@ -650,7 +650,7 @@ class TestE2E4BranchFromZKSN:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "closed",
                 "name": "ZKSN-A",
@@ -696,7 +696,7 @@ class TestE2E4BranchFromZKSN:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "open",
             },
@@ -738,7 +738,7 @@ class TestE2E4BranchFromZKSN:
         result = execute_domain_operation(
             s,
             "insert_zksn_on_segment_sn",
-            {"segment_id": seg_id, "catalog_ref": "ZKSN-2P", "branch_ports_count": 2},
+            {"segment_id": seg_id, "catalog_ref": "ZKSN-2P-630A", "branch_ports_count": 2},
         )
         assert result.get("error_code") == "branch_point.invalid_parent_medium"
 
@@ -765,7 +765,7 @@ class TestE2E4BranchFromZKSN:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_cable,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 1,
                 "switch_state": "closed",
             },
@@ -789,7 +789,7 @@ class TestE2E4BranchFromZKSN:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": seg_overhead,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
             },
         )
 
@@ -1001,7 +1001,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": seg_id,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "closed",
             },
@@ -1045,7 +1045,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "insert_zksn_on_segment_sn",
             {
                 "segment_id": cable_seg,
-                "catalog_ref": "ZKSN-2P",
+                "catalog_ref": "ZKSN-2P-630A",
                 "branch_ports_count": 2,
                 "switch_state": "closed",
                 "name": "ZKSN-Centrum",
@@ -1083,7 +1083,7 @@ class TestE2E5ReceivingStationsAndOzeBess:
             "insert_branch_pole_on_segment_sn",
             {
                 "segment_id": overhead_seg,
-                "catalog_ref": "SŁUP-ODG-12",
+                "catalog_ref": "SLUP-ODG-12",
                 "name": "Słup-Odgałęźny-A",
             },
         )
