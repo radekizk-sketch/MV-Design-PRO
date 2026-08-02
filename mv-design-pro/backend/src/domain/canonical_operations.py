@@ -1220,6 +1220,256 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_catalog_rematerialize",
         fix_navigation={"panel": "inspector", "tab": "katalog"},
     ),
+    # ------------------------------------------------------------------
+    # BRAMY KATALOGOWE — kody odrzucenia operacji (karta W4, dług V12K-317)
+    # ------------------------------------------------------------------
+    # Rejestr znał CZTERY kody przestrzeni `catalog.`, a bramy katalogowe
+    # (`api/domain_ops_policy.py`, `api/enm.py`, `enm/domain_operations*.py`,
+    # `network_model/catalog/materialization.py`) emitują ich SIEDEMNAŚCIE
+    # więcej. Kod bez wpisu dociera do projektanta jako gołe `catalog.<coś>`:
+    # bez zdania po polsku i bez wskazania, gdzie to naprawić. Najcięższy
+    # przypadek to `catalog.item_not_found` — po ujednoliceniu parytetu torów
+    # (V12K-307/315/316) JEDYNY kod złej referencji katalogowej, więc projektant
+    # widział go najczęściej i rozumiał najmniej.
+    #
+    # Treść każdego wpisu pochodzi Z MIEJSCA EMISJI (komunikat bramy), nie z
+    # podobieństwa nazwy — dopasowanie „po nazwie" fabrykowałoby treść
+    # normatywną (ta sama zasada, co w `domain/readiness_bridge.py`).
+    # Kompletność przypina test klasy `tests/domain/test_rejestr_kodow_bram_katalogowych.py`
+    # (skan AST kodu bram), więc nowy kod bramy bez wpisu zapala regresję.
+    "catalog.item_not_found": ReadinessCodeSpec(
+        code="catalog.item_not_found",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wskazana pozycja katalogowa nie istnieje w katalogu — wskaż pozycję "
+            "istniejącą albo uzupełnij rekord katalogowy; operacja nie przyjmie "
+            "tabliczki z formularza"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.ref_missing": ReadinessCodeSpec(
+        code="catalog.ref_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Element nie ma wskazanej referencji katalogowej",
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.item_missing": ReadinessCodeSpec(
+        code="catalog.item_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Przypisanie katalogu nie wskazało pozycji katalogowej",
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.item_id_missing": ReadinessCodeSpec(
+        code="catalog.item_id_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Brak identyfikatora rekordu katalogu w wiązaniu elementu",
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.binding_required": ReadinessCodeSpec(
+        code="catalog.binding_required",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Element techniczny wymaga wiązania z katalogiem",
+        fix_action_id="fix_catalog_binding",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
+    ),
+    "catalog.binding_invalid": ReadinessCodeSpec(
+        code="catalog.binding_invalid",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wiązanie katalogowe ma niewłaściwą postać albo nie niesie "
+            "identyfikatora pozycji katalogowej"
+        ),
+        fix_action_id="fix_catalog_binding",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "MODAL_ZMIEN_TYP_Z_KATALOGU",
+        },
+    ),
+    "catalog.namespace_missing": ReadinessCodeSpec(
+        code="catalog.namespace_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Brak kategorii katalogu w wiązaniu elementu",
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.namespace_required": ReadinessCodeSpec(
+        code="catalog.namespace_required",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Nie da się ustalić kategorii katalogu dla elementu — bez kategorii nie ma "
+            "czego sprawdzić w katalogu, więc element nie może deklarować pochodzenia "
+            "katalogowego"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.unknown_namespace": ReadinessCodeSpec(
+        code="catalog.unknown_namespace",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Nieznana kategoria katalogu — brama nie dobiera kategorii za projektanta; "
+            "wskaż kategorię, która istnieje w katalogu"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.namespace_mismatch": ReadinessCodeSpec(
+        code="catalog.namespace_mismatch",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Kategoria katalogu nie pasuje do rodzaju elementu — wskaż pozycję "
+            "właściwej kategorii"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.element_missing": ReadinessCodeSpec(
+        code="catalog.element_missing",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Przypisanie katalogu nie wskazało elementu modelu",
+        fix_action_id="fix_catalog_element_ref",
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "catalog.element_not_found": ReadinessCodeSpec(
+        code="catalog.element_not_found",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl="Element wskazany do przypisania katalogu nie istnieje w modelu",
+        fix_action_id="fix_catalog_element_ref",
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "catalog.clear_forbidden": ReadinessCodeSpec(
+        code="catalog.clear_forbidden",
+        area=ReadinessArea.CATALOGS,
+        priority=1,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Element techniczny nie może istnieć bez przypięcia katalogowego — zamiast "
+            "czyścić wiązanie wskaż pozycję zastępczą"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.materialization_required": ReadinessCodeSpec(
+        code="catalog.materialization_required",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Wiązanie wyłącza materializację, a element techniczny musi brać parametry "
+            "z katalogu"
+        ),
+        fix_action_id="fix_catalog_rematerialize",
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "catalog.materialization_incomplete": ReadinessCodeSpec(
+        code="catalog.materialization_incomplete",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Materializacja katalogu nie dała wszystkich parametrów wymaganych przez "
+            "solver — uzupełnij rekord katalogowy albo wskaż pozycję kompletną"
+        ),
+        fix_action_id="fix_catalog_rematerialize",
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "catalog.nameplate_mismatch": ReadinessCodeSpec(
+        code="catalog.nameplate_mismatch",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Dane tabliczki z formularza przeczą pozycji katalogowej — liczby pochodzą "
+            "z katalogu, więc wybierz pozycję o właściwych parametrach"
+        ),
+        fix_action_id="fix_catalog_select",
+        fix_navigation={
+            "panel": "inspector",
+            "tab": "katalog",
+            "modal": "CatalogPicker",
+        },
+    ),
+    "catalog.gate_result_mismatch": ReadinessCodeSpec(
+        code="catalog.gate_result_mismatch",
+        area=ReadinessArea.CATALOGS,
+        priority=2,
+        level=ReadinessLevel.BLOCKER,
+        message_pl=(
+            "Model zapisałby dla wskazanej pozycji katalogowej inne wartości niż "
+            "zmaterializowane przez bramę katalogową — operacja odrzucona, model bez zmian"
+        ),
+        fix_action_id="fix_catalog_rematerialize",
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
     # OZE — PV/BESS transformer rule
     "oze.pv_no_transformer": ReadinessCodeSpec(
         code="oze.pv_no_transformer",

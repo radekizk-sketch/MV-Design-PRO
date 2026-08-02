@@ -43,22 +43,14 @@ import argparse
 import sys
 from pathlib import Path
 
-REPO = Path(__file__).resolve().parents[1]
-
-#: Drzewo skanowane — DOKŁADNIE to, co widzi `utf8_mojibake_guard`.
-SCAN_DIRS = [
-    Path("frontend") / "src",
-    Path("backend") / "src",
-    Path("docs"),
-    Path("scripts"),
-]
-SCAN_FILES = [
-    Path("AGENTS.md"),
-    Path("ARCHITECTURE.md"),
-    Path("SYSTEM_SPEC.md"),
-    Path("PLANS.md"),
-]
-SUFFIXES = {".ts", ".tsx", ".js", ".jsx", ".py", ".md", ".json", ".css"}
+#: Drzewo skanowane — NIE kopia listy, tylko TA SAMA funkcja, z której korzysta
+#: strażnik. Do karty W4 stała tu druga lista katalogów z deklaracją „DOKŁADNIE
+#: to, co widzi `utf8_mojibake_guard`" — deklaracja bez testu, więc rozjazd
+#: detektora i naprawiacza mógł urosnąć niezauważony (CLAUDE.md: predykaty
+#: wejścia i wyjścia z JEDNEGO źródła prawdy). Teraz zbiory są identyczne
+#: Z KONSTRUKCJI, a `scripts/test_utf8_mojibake_guard.py` to przypina.
+from utf8_mojibake_guard import KORZEN as REPO  # noqa: E402
+from utf8_mojibake_guard import iter_scannable_files  # noqa: E402
 
 #: Litery alfabetu polskiego — NIGDY nie zaczynają ciągu naprawy (bezpiecznik 1).
 LITERY_POLSKIE = set("aąbcćdeęfghijklłmnńoópqrsśtuvwxyzźżAĄBCĆDEĘFGHIJKLŁMNŃOÓPQRSŚTUVWXYZŹŻ")
@@ -207,18 +199,13 @@ def _dlugosc_sekwencji(bajt: int) -> int:
 
 
 def _pliki(korzen: Path, ograniczenie: Path | None) -> list[Path]:
-    zebrane: list[Path] = []
-    for katalog in SCAN_DIRS:
-        sciezka = korzen / katalog
-        if ograniczenie is not None and ograniczenie not in (sciezka, *sciezka.parents):
-            if sciezka not in (ograniczenie, *ograniczenie.parents):
-                continue
-        if sciezka.exists():
-            zebrane.extend(
-                p for p in sciezka.rglob("*") if p.is_file() and p.suffix.lower() in SUFFIXES
-            )
-    if ograniczenie is None:
-        zebrane.extend(korzen / f for f in SCAN_FILES if (korzen / f).exists())
+    """Pliki do naprawy = zbiór strażnika, opcjonalnie zawężony do podkatalogu.
+
+    Zawężenie `--sciezka` FILTRUJE wynik jednego źródła zamiast budować drugi
+    zbiór własną regułą — inaczej naprawa ograniczona do katalogu mogłaby objąć
+    plik, którego strażnik nie ogląda (albo odwrotnie).
+    """
+    zebrane = iter_scannable_files(korzen)
     if ograniczenie is not None:
         zebrane = [p for p in zebrane if ograniczenie in (p, *p.parents)]
     return sorted(set(zebrane))

@@ -4,11 +4,13 @@
 DLACZEGO TEN SKRYPT ISTNIEJE. Dwa artefakty audytu
 (`docs/audits/backend_openapi_after_backend.json`,
 `docs/audits/backend_projects_after_backend.json`) zostaly zrzucone narzedziem,
-ktore rozjechalo kodowanie. Uszkodzenie ma DWIE KLASY NARAZ:
+ktore rozjechalo kodowanie. Probki ponizej sa CYTATEM z uszkodzonych plikow —
+bez nich opis nie mowilby, co dokladnie zaszlo. Uszkodzenie ma DWIE KLASY NARAZ:
   1. mojibake — polska litera zapisana jako para bajtow innej strony kodowej
      (``SieÄ``, ``ukÅad``),
-  2. znak zastepczy — litera zamieniona na ASCII ``?`` (``ZÅo?ony``); ta
-     konwersja jest STRATNA, wiec oryginalu nie da sie z pliku odtworzyc.
+  2. znak zastepczy — litera zamieniona na ASCII, przy czym ta konwersja jest
+     STRATNA, wiec oryginalu nie da sie z pliku odtworzyc. Probka z uszkodzonego
+     zapisu (mojibake-guard: probka celowa — cytat zapisu audytu): ``ZÅo?ony``.
 
 Reczna „naprawa" znakow falszowalaby ZAPIS audytu (zgadywanie, co tam bylo), a
 druga klasa uszkodzenia i tak jest nieodwracalna. Dlatego zrzuty wykonujemy OD
