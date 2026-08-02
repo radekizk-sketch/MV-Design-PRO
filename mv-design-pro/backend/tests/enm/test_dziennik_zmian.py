@@ -14,8 +14,8 @@ from __future__ import annotations
 
 import pytest
 from enm.dziennik_zmian import (
-    dopisz,
     opis_operacji,
+    przygotuj_dopisanie,
     wpisy_od,
     wszystkie_wpisy,
     wyczysc_dziennik,
@@ -98,8 +98,10 @@ class TestZakresOdRewizji:
         assert len(wszystkie_wpisy("c1")) == przed
 
     def test_dopisanie_tej_samej_rewizji_jest_idempotentne(self):
-        dopisz("c1", rewizja=7, operacja="add_sn_bay")
-        dopisz("c1", rewizja=7, operacja="add_nn_load")
+        # Dopisanie jest dwufazowe (przygotowanie na nosniku → zatwierdzenie), wiec
+        # test przechodzi obie fazy — tak samo jak produkcyjny zapis w `enm/store.py`.
+        przygotuj_dopisanie("c1", rewizja=7, operacja="add_sn_bay").zatwierdz()
+        przygotuj_dopisanie("c1", rewizja=7, operacja="add_nn_load").zatwierdz()
         wpisy = wszystkie_wpisy("c1")
         assert len(wpisy) == 1
         # Pierwszy zapis wygrywa — powtorzone zadanie HTTP nie przepisuje historii.
