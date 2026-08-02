@@ -22,7 +22,12 @@
 
 import React, { useMemo, useCallback, useState } from 'react';
 import { clsx } from 'clsx';
-import { useGotowoscModelu } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
+import {
+  useGotowoscModelu,
+  usePodsumowanieGotowosci,
+} from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
+import { GOTOWOSC_STRINGS } from '../../ui2/spaces/gotowosc/strings';
+import { SHELL_STRINGS } from '../../ui2/shell/strings';
 import type { ReadinessIssue, ReadinessSeverity } from '../types';
 
 // =============================================================================
@@ -288,6 +293,13 @@ export const DataGapPanel: React.FC<DataGapPanelProps> = ({
   compact = false,
 }) => {
   const { issues, status, loading } = useGotowoscModelu();
+  // DŁUG V12K-317 poz. 4 (naprawiony): przy gotowości NIEUSTALONEJ
+  // (`readiness === null`, czyli nieudany odczyt z backendu) lista problemów jest
+  // pusta, a `statusGotowosci(null)` zwraca `OK` — panel wywieszał wtedy ZIELONĄ
+  // bramkę „Układ przygotowany do obliczeń" dokładnie wtedy, gdy nie wiadomo.
+  // Sygnał rozróżniający z toru U5 (`podsumujGotowosc().ustalona`), napisy
+  // reużyte ze stanu nieustalonego panelu „Gotowość" — zero nowych fraz.
+  const { ustalona } = usePodsumowanieGotowosci();
 
   const [collapsedGroups, setCollapsedGroups] = useState<DataGapGroup[]>([]);
 
@@ -378,6 +390,51 @@ export const DataGapPanel: React.FC<DataGapPanelProps> = ({
     },
     [onQuickFix],
   );
+
+  // ---------------------------------------------------------------------------
+  // Stan NIEUSTALONY — uczciwy stan zerowy PRZED zieloną bramką (V12K-317 poz. 4)
+  // ---------------------------------------------------------------------------
+
+  if (!loading && !ustalona) {
+    return (
+      <div
+        className={clsx(
+          'pointer-events-auto flex w-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm',
+          compact ? 'max-h-80' : 'h-full',
+        )}
+        data-testid="data-gap-panel"
+      >
+        <div
+          className={clsx(
+            'border-b border-gray-200 bg-gray-50',
+            compact ? 'px-3 py-1.5' : 'px-4 py-3',
+          )}
+        >
+          <h2
+            className={clsx(
+              'font-semibold text-gray-800',
+              compact ? 'text-xs' : 'text-sm',
+            )}
+          >
+            Kontrola konfiguracji obliczeń
+          </h2>
+        </div>
+
+        <div
+          className="flex flex-col items-center justify-center p-6 text-center"
+          data-testid="data-gap-panel-nieustalona"
+          role="alert"
+        >
+          <span className="text-sm font-semibold text-slate-700">
+            {GOTOWOSC_STRINGS.nieustalonaTytul}
+          </span>
+          <span className="mt-1 text-xs text-gray-500">
+            {GOTOWOSC_STRINGS.nieustalonaOpis}
+          </span>
+        </div>
+      </div>
+    );
+  }
 
   // ---------------------------------------------------------------------------
   // Empty state: green calculation-ready banner
@@ -481,15 +538,19 @@ export const DataGapPanel: React.FC<DataGapPanelProps> = ({
               {totalWarnings}
             </span>
           )}
+          {/* Ta sama para predykatów co bramka zerowa wyżej: dopóki gotowość jest
+              NIEUSTALONA, plakietka nie ma prawa świecić na zielono ani podawać
+              liczby „0" jako wyniku — kreska jest brakiem danej. */}
           <span
             className={clsx(
               'px-2 py-0.5 text-xs font-medium rounded',
-              status === 'OK' && 'bg-green-100 text-green-700',
-              status === 'WARN' && 'bg-amber-100 text-amber-700',
-              status === 'FAIL' && 'bg-red-100 text-red-700',
+              !ustalona && 'bg-slate-100 text-slate-600',
+              ustalona && status === 'OK' && 'bg-green-100 text-green-700',
+              ustalona && status === 'WARN' && 'bg-amber-100 text-amber-700',
+              ustalona && status === 'FAIL' && 'bg-red-100 text-red-700',
             )}
           >
-            {issues.length}
+            {ustalona ? issues.length : SHELL_STRINGS.emptyValue}
           </span>
         </div>
       </div>
