@@ -24,9 +24,10 @@ from network_model.solvers.power_flow_types import PowerFlowInput
 
 SolveOnce = Callable[[PowerFlowInput], Any]
 
-#: Kody gotowosci badania optymalizacji zaczepow — kanon: `domain.canonical_operations`.
-#: Emitowane, gdy kryterium dopuszczalnosci pozycji nie da sie ZBUDOWAC Z DANYCH.
-#: Nigdy nie zastepujemy brakujacej danej domyslem (WHITE BOX, zakaz heurystyk).
+#: Kody gotowosci badan zaczepowych — kanon: `domain.canonical_operations`.
+#: Emitowane, gdy kryterium (dopuszczalnosci pozycji w §17, pasma nieczulosci w §8)
+#: nie da sie ZBUDOWAC Z DANYCH. Nigdy nie zastepujemy brakujacej danej domyslem
+#: (WHITE BOX, zakaz heurystyk).
 KOD_BRAK_PASMA_REGULATORA = "oltc.deadband_missing"
 KOD_BRAK_NAPIECIA_DOCELOWEGO = "oltc.target_voltage_missing"
 
@@ -243,8 +244,13 @@ class AnnualProfileStep:
     label: str
     load_scale: float
     positions: dict[str, int]
-    switch_count: int
+    #: ``None`` = petla regulatora nie mogla zadzialac (brak nastawy albo pasma w
+    #: modelu), wiec liczba laczen tego kroku NIE ISTNIEJE. Zero byloby werdyktem
+    #: „zaczep nie musial sie ruszyc" — konwencja jak ``OptimizationResult``.
+    switch_count: int | None
     controlled_bus_kv: dict[str, float]
+    #: Znacznik pasma jest TROJSTANOWY przez OBECNOSC klucza: True = w pasmie,
+    #: False = poza pasmem, BRAK KLUCZA = nieustalone (nie ma z czego ocenic).
     within_deadband: dict[str, bool]
 
     def to_dict(self) -> dict[str, Any]:
@@ -262,18 +268,27 @@ class AnnualProfileStep:
 @dataclass(frozen=True)
 class AnnualProfileResult:
     steps: list[AnnualProfileStep]
-    total_switch_count: int
-    steps_outside_deadband: int
+    #: ``None`` gdy petla regulatora nie mogla zadzialac — patrz ``AnnualProfileStep``.
+    total_switch_count: int | None
+    #: ``None`` gdy choc jeden znacznik pasma jest nieustalony: „0 krokow poza
+    #: pasmem" bylby wtedy werdyktem o kryterium, ktorego nie ma.
+    steps_outside_deadband: int | None
     # Wywod dyplomowy {tekst, latex} — addytywny (zasada wywodow KaTeX 2026-07-22).
     wywod: list[dict[str, Any]] = field(default_factory=list)
+    #: Kody gotowosci badania — czego brakuje w modelu, by ocena pasma i liczba
+    #: laczen byly w ogole mozliwe (kanon: `domain.canonical_operations`).
+    readiness_codes: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        result: dict[str, Any] = {
             "steps": [s.to_dict() for s in self.steps],
             "total_switch_count": self.total_switch_count,
             "steps_outside_deadband": self.steps_outside_deadband,
             "wywod": list(self.wywod),
         }
+        if self.readiness_codes:
+            result["readiness_codes"] = list(self.readiness_codes)
+        return result
 
 
 @dataclass(frozen=True)
@@ -289,6 +304,41 @@ def _scaled_pq(pf_input: PowerFlowInput, scale: float) -> PowerFlowInput:
     return replace(pf_input, pq=scaled)
 
 
+def _kody_gotowosci_profilu(regulators: list[TransformerBranch]) -> tuple[str, ...]:
+    """Czego brakuje w modelu, by profil mogl w ogole ocenic pasmo regulatora.
+
+    Kolejnosc STALA (najpierw nastawa, potem pasmo) — jak w
+    ``_kryterium_dopuszczalnosci`` badania §17; determinizm wyniku.
+    """
+    brak_nastawy = any(
+        reg.tap_changer is not None and reg.tap_changer.voltage_setpoint_kv is None
+        for reg in regulators
+    )
+    brak_pasma = any(
+        reg.tap_changer is not None and reg.tap_changer.deadband_kv is None for reg in regulators
+    )
+    kody: list[str] = []
+    if brak_nastawy:
+        kody.append(KOD_BRAK_NAPIECIA_DOCELOWEGO)
+    if brak_pasma:
+        kody.append(KOD_BRAK_PASMA_REGULATORA)
+    return tuple(kody)
+
+
+def _petla_moze_dzialac(regulators: list[TransformerBranch]) -> bool:
+    """Czy KAZDY regulator automatyczny ma komplet nastaw do pracy petli.
+
+    Regulator bez nastawy albo bez pasma nie jest przez petle ruszany, wiec jego
+    udzial w liczbie laczen jest NIEZNANY — a nie zerowy. Regulator nieautomatyczny
+    po prostu nie laczy: to fakt przebiegu, nie brak danej.
+    """
+    return all(
+        tc.voltage_setpoint_kv is not None and tc.deadband_kv is not None
+        for tc in (reg.tap_changer for reg in regulators)
+        if tc is not None and tc.is_automatic()
+    )
+
+
 def run_annual_oltc_profile(
     pf_input: PowerFlowInput,
     solve_once: SolveOnce,
@@ -300,6 +350,11 @@ def run_annual_oltc_profile(
     OLTC loop; the converged positions carry over to the next step (as a real
     regulator would), and per-step switch counts / dead-band status are recorded.
     The transformer tap state is restored afterwards.
+
+    Kryterium pasma pochodzi WYLACZNIE z modelu (``TapChanger``): brak nastawy albo
+    brak pasma => znacznik NIEUSTALONY (klucz nieobecny) i kod gotowosci, nigdy
+    werdykt „poza pasmem" z podstawionego pasma zerowego. Gdy petla nie mogla
+    zadzialac, liczba laczen jest NIEDOSTEPNA (``None``), bo zero byloby werdyktem.
     """
     graph = pf_input.typed_graph()
     regulators = [
@@ -308,10 +363,12 @@ def run_annual_oltc_profile(
         if isinstance(b, TransformerBranch) and b.tap_changer is not None
     ]
     saved = {reg.id: reg.tap_changer for reg in regulators}
+    kody = _kody_gotowosci_profilu(regulators)
+    licz_laczenia = _petla_moze_dzialac(regulators)
 
     steps: list[AnnualProfileStep] = []
-    total_switches = 0
-    outside = 0
+    total_switches: int | None = 0 if licz_laczenia else None
+    outside: int | None = 0
     try:
         for index, point in enumerate(profile):
             step_input = _scaled_pq(pf_input, point.load_scale)
@@ -321,19 +378,31 @@ def run_annual_oltc_profile(
             v_map = getattr(solution, "node_voltage_kv", {}) or {}
             controlled_kv: dict[str, float] = {}
             within: dict[str, bool] = {}
-            step_switches = int(trace["total_switch_count"]) if trace else 0
+            step_switches = (
+                (int(trace["total_switch_count"]) if trace else 0) if licz_laczenia else None
+            )
             for reg in regulators:
                 tc = reg.tap_changer
                 bus = tc.controlled_bus_id or reg.to_node_id
                 v = v_map.get(bus)
                 if v is not None:
                     controlled_kv[reg.id] = v
-                    if tc.voltage_setpoint_kv is not None:
-                        half = (tc.deadband_kv or 0.0) / 2.0
-                        within[reg.id] = abs(v - tc.voltage_setpoint_kv) <= half
+                # Znacznik TYLKO z kompletnych danych: napiecie szyny + nastawa +
+                # pasmo z modelu. Polowa pasma 1:1 z petla regulatora.
+                if (
+                    v is not None
+                    and tc.voltage_setpoint_kv is not None
+                    and tc.deadband_kv is not None
+                ):
+                    within[reg.id] = abs(v - tc.voltage_setpoint_kv) <= tc.deadband_kv / 2.0
 
-            total_switches += step_switches
-            if within and not all(within.values()):
+            if total_switches is not None and step_switches is not None:
+                total_switches += step_switches
+            if len(within) < len(regulators):
+                # Choc jeden regulator bez oceny => licznik krokow poza pasmem nie
+                # istnieje (0 znaczyloby „wszystkie kroki w pasmie").
+                outside = None
+            elif outside is not None and within and not all(within.values()):
                 outside += 1
             steps.append(
                 AnnualProfileStep(
@@ -359,20 +428,25 @@ def run_annual_oltc_profile(
         steps=steps,
         total_switch_count=total_switches,
         steps_outside_deadband=outside,
-        wywod=_wywod_profilu(steps, total_switches, outside, nastawy),
+        wywod=_wywod_profilu(steps, total_switches, outside, nastawy, kody),
+        readiness_codes=kody,
     )
 
 
 def _wywod_profilu(
     steps: list[AnnualProfileStep],
-    total_switches: int,
-    outside: int,
+    total_switches: int | None,
+    outside: int | None,
     nastawy: dict[str, tuple[float | None, float | None]],
+    kody: tuple[str, ...],
 ) -> list[dict[str, Any]]:
     """Wywod dyplomowy profilu rocznego: skalowanie -> warunek pasma -> suma.
 
     Czysty formatter — liczby WYLACZNIE z krokow badania (U regulowane, pozycje,
     przelaczenia) i z nastaw regulatorow (U_zad, pasmo). Formaty stale, ASCII-PL.
+
+    Brak nastawy albo pasma w modelu NIE jest tu podstawiany zadna wartoscia:
+    zamiast podstawienia z progiem 0,000 kV wywod nazywa brakujaca dana.
     """
     kroki = [
         _krok(
@@ -389,34 +463,80 @@ def _wywod_profilu(
             r"\left|U - U_{zad}\right| \le \frac{\Delta U_{db}}{2}",
         ),
     ]
+    if kody:
+        kroki.append(_krok_brakow_profilu(kody))
     for step in steps:
         for reg_id in sorted(step.positions):
             pos = step.positions[reg_id]
             v = step.controlled_bus_kv.get(reg_id)
             setpoint, deadband = nastawy.get(reg_id, (None, None))
+            laczenia = "nieustalone" if step.switch_count is None else str(step.switch_count)
             tekst = (
                 f"Krok '{step.label}' (s = {step.load_scale:.2f}), transformator {reg_id}: "
-                f"pozycja koncowa n = {pos}, przelaczenia w kroku = {step.switch_count}."
+                f"pozycja koncowa n = {pos}, przelaczenia w kroku = {laczenia}."
             )
             latex: str | None = None
-            if v is not None and setpoint is not None:
-                half = (deadband or 0.0) / 2.0
+            if v is not None and setpoint is not None and deadband is not None:
+                half = deadband / 2.0
                 dev = abs(v - setpoint)
                 znak = r"\le" if step.within_deadband.get(reg_id, False) else ">"
                 latex = (
                     rf"\left|{v:.3f} - {setpoint:.3f}\right| = {dev:.3f}"
                     rf" {znak} {half:.3f}\ \text{{kV}}"
                 )
+            elif v is not None and setpoint is not None:
+                # Odchylka jest ZMIERZONA, ale nie ma jej do czego porownac —
+                # pokazujemy sama odchylke, bez progu i bez werdyktu.
+                tekst += (
+                    " Polozenie wzgledem pasma: NIEUSTALONE (brak pasma nieczulosci"
+                    " regulatora w modelu)."
+                )
+                latex = (
+                    rf"\left|{v:.3f} - {setpoint:.3f}\right| = {abs(v - setpoint):.3f}"
+                    rf"\ \text{{kV}},\quad \Delta U_{{db}} = \text{{brak}}"
+                )
+            elif v is not None:
+                tekst += (
+                    " Polozenie wzgledem pasma: NIEUSTALONE (brak napiecia zadanego"
+                    " regulatora w modelu)."
+                )
             kroki.append(_krok(tekst, latex))
+    if total_switches is None:
+        kroki.append(
+            _krok(
+                "Suma przelaczen zaczepow: NIEDOSTEPNA — petla regulatora nie miala "
+                "kompletu nastaw, wiec liczby laczen nie ma z czego policzyc "
+                f"(kroki poza pasmem nieczulosci: {_licznik_lub_brak(outside)} z {len(steps)})."
+            )
+        )
+        return kroki
     suma_czlony = " + ".join(str(s.switch_count) for s in steps) if steps else "0"
     kroki.append(
         _krok(
             f"Suma przelaczen zaczepow: N = {total_switches} "
-            f"(kroki poza pasmem nieczulosci: {outside} z {len(steps)}).",
+            f"(kroki poza pasmem nieczulosci: {_licznik_lub_brak(outside)} z {len(steps)}).",
             rf"N_{{prz}} = \sum_{{i}} n_{{i}} = {suma_czlony} = {total_switches}",
         )
     )
     return kroki
+
+
+def _licznik_lub_brak(wartosc: int | None) -> str:
+    return "nieustalone" if wartosc is None else str(wartosc)
+
+
+def _krok_brakow_profilu(kody: tuple[str, ...]) -> dict[str, Any]:
+    """Krok wywodu nazywajacy BRAKUJACE dane modelu (zamiast werdyktu z domyslu)."""
+    braki: list[str] = []
+    if KOD_BRAK_NAPIECIA_DOCELOWEGO in kody:
+        braki.append("napiecia zadanego regulatora U_zad (model, przelacznik zaczepow)")
+    if KOD_BRAK_PASMA_REGULATORA in kody:
+        braki.append("pasma nieczulosci regulatora dU_db (model, przelacznik zaczepow)")
+    return _krok(
+        "Kryterium pasma: NIEUSTALONE dla co najmniej jednego regulatora — brakuje "
+        f"{' oraz '.join(braki)}. Brakujacej danej NIE zastepujemy zadna wartoscia "
+        "domyslna, wiec znacznik 'w pasmie' pozostaje nieustalony (kod gotowosci w wyniku)."
+    )
 
 
 # ---------------------------------------------------------------------------

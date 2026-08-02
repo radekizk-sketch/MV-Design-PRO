@@ -22,6 +22,7 @@ import {
   fmtLiczbaPrzelaczen,
   fmtMw,
   fmtPozycja,
+  fmtZnacznikTrojstanowy,
   opisKryterium,
   PARAMETRY_DOMYSLNE,
   uruchomBadanie,
@@ -201,7 +202,7 @@ export function EkranBadanOltc({
         ) : null}
 
         {wynik?.sweep ? <WynikSweep wynik={wynik.sweep} /> : null}
-        {wynik?.profil ? <WynikProfilu wynik={wynik.profil} /> : null}
+        {wynik?.profil ? <WynikProfilu wynik={wynik.profil} rejestr={rejestr} /> : null}
         {wynik?.optymalizacja ? (
           <WynikOptymalizacji wynik={wynik.optymalizacja} rejestr={rejestr} />
         ) : null}
@@ -246,14 +247,31 @@ function WynikSweep({ wynik }: { wynik: NonNullable<WynikBadania['sweep']> }) {
   );
 }
 
-function WynikProfilu({ wynik }: { wynik: NonNullable<WynikBadania['profil']> }) {
+function WynikProfilu({
+  wynik,
+  rejestr,
+}: {
+  wynik: NonNullable<WynikBadania['profil']>;
+  rejestr: ReadonlyMap<string, WpisRejestruGotowosci> | null;
+}) {
   const branchId = wynik.steps[0] ? Object.keys(wynik.steps[0].positions)[0] ?? '' : '';
+  // Ten sam uczciwy stan zerowy, co w tabeli optymalizacji: zdanie z kanonu
+  // gotowości tłumaczy kreskę w kolumnie „W paśmie" i w podsumowaniu.
+  const braki = komunikatyKodow(wynik.readiness_codes ?? [], rejestr);
   return (
     <div data-testid="mvd-oltc-wynik-profil">
       <WykresProfilChart kroki={wynik.steps} branchId={branchId} />
       <p className="mvd-oltc-podsumowanie">
-        {T.profilPrzelaczenia(wynik.total_switch_count)} · {T.profilPozaPasmem(wynik.steps_outside_deadband)}
+        {T.profilPrzelaczenia(fmtLiczbaPrzelaczen(wynik.total_switch_count))} ·{' '}
+        {T.profilPozaPasmem(fmtLiczbaPrzelaczen(wynik.steps_outside_deadband))}
       </p>
+      {braki.length > 0 ? (
+        <ul className="mvd-oltc-braki" data-testid="mvd-oltc-profil-braki">
+          {braki.map((tekst) => (
+            <li key={tekst}>{tekst}</li>
+          ))}
+        </ul>
+      ) : null}
       <div className="mvd-oltc-tabela-wrap">
         <table className="mvd-oltc-tabela">
           <thead>
@@ -273,8 +291,10 @@ function WynikProfilu({ wynik }: { wynik: NonNullable<WynikBadania['profil']> })
                 <td>{k.load_scale.toFixed(2)}</td>
                 <td>{fmtPozycja(k.positions[branchId])}</td>
                 <td>{fmtKv(k.controlled_bus_kv[branchId])}</td>
-                <td>{k.switch_count}</td>
-                <td>{k.within_deadband[branchId] ? T.tak : T.nie}</td>
+                <td>{fmtLiczbaPrzelaczen(k.switch_count)}</td>
+                {/* Pole opcjonalne kontraktu → render TRÓJSTANOWY: brak oceny to
+                    kreska, nie „nie" (ta sama reguła, co kolumna „Dopuszczalna"). */}
+                <td>{fmtZnacznikTrojstanowy(k.within_deadband[branchId])}</td>
               </tr>
             ))}
           </tbody>

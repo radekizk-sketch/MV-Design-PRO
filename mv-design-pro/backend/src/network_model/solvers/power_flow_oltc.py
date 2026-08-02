@@ -9,6 +9,13 @@ Wraps a single-shot power-flow solve with a deterministic tap-control loop:
        position toward the setpoint (respecting the position limits),
     4. re-solve and repeat until no tap moves or the iteration limit is hit.
 
+A regulator whose decision inputs are incomplete (no controlled-bus voltage, no
+setpoint, or no dead band in the model) is NOT regulated: the loop leaves its tap
+alone and records the reason (``no_measurement`` / ``no_setpoint`` /
+``no_deadband``). Missing data is never replaced by a default — a substituted
+zero-wide dead band would turn every deviation into a violation and inflate the
+switch count with moves the model never called for.
+
 This module is solver-layer orchestration around the FROZEN physics solvers: it
 does not compute any power-system quantities itself, it only reads solver output
 and moves tap positions on the shared graph. Every regulator decision is
@@ -175,9 +182,22 @@ def solve_with_oltc(
             }
 
             setpoint = tc.voltage_setpoint_kv
-            if u_reg_kv is None or setpoint is None:
+            deadband = tc.deadband_kv
+            # Pasmo nieczulosci jest DANA MODELU i jest tym, co regulator ZATRZYMUJE.
+            # Podstawienie za brakujace pasmo wartosci 0 kV (dawne `or 0.0`) czynilo
+            # KAZDA niezerowa odchylke naruszeniem: regulator krecil zaczepem az do
+            # blokady oscylacji, a licznik laczen rosl (pomiar przegladu: 7 -> 9) na
+            # pasmie, ktorego nikt nie zadeklarowal. Brak danej nie jest pasmem
+            # zerowym — to brak podstawy do decyzji, wiec regulator nie rusza zaczepu
+            # i mowi wprost, czego brakuje (WHITE BOX, zakaz heurystyk).
+            if u_reg_kv is None or setpoint is None or deadband is None:
                 decision["position_after"] = tc.current_position
-                decision["reason"] = "no_measurement" if u_reg_kv is None else "no_setpoint"
+                if u_reg_kv is None:
+                    decision["reason"] = "no_measurement"
+                elif setpoint is None:
+                    decision["reason"] = "no_setpoint"
+                else:
+                    decision["reason"] = "no_deadband"
                 decisions.append(decision)
                 continue
 
@@ -190,7 +210,7 @@ def solve_with_oltc(
             # Odchyłka bieżącej pozycji trafia do pamięci odwiedzonych zaczepów.
             visited[reg.id][tc.current_position] = abs(u_reg_kv - setpoint)
 
-            half_band = (tc.deadband_kv or 0.0) / 2.0
+            half_band = deadband / 2.0
             if abs(u_reg_kv - setpoint) <= half_band:
                 decision["position_after"] = tc.current_position
                 decision["reason"] = "within_deadband"

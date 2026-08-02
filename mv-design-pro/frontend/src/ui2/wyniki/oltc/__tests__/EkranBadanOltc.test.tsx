@@ -32,6 +32,17 @@ const REJESTR_GOTOWOSCI = new Map([
       fix_action_id: 'fix_oltc_deadband',
     },
   ],
+  [
+    'oltc.target_voltage_missing',
+    {
+      code: 'oltc.target_voltage_missing',
+      message_pl:
+        'Badanie doboru zaczepów nie ma napięcia docelowego — podaj napięcie, '
+        + 'które ma być utrzymywane na szynie regulowanej',
+      level: 'WARNING',
+      fix_action_id: 'fix_oltc_target_voltage',
+    },
+  ],
 ]);
 const klientRejestru = () => Promise.resolve(REJESTR_GOTOWOSCI);
 
@@ -266,6 +277,105 @@ describe('EkranBadanOltc — realna ścieżka', () => {
       const komorki = wiersz.querySelectorAll('td');
       expect(komorki[komorki.length - 1].textContent).toBe('—');
     }
+  });
+
+  it('profil dobowy bez pasma regulatora: kolumna „W paśmie" pokazuje brak danej, nie „nie"', async () => {
+    // BRAMKA (c) karty T4 / znalezisko N3. Odpowiedź backendu przy braku pasma w
+    // modelu: znacznik NIEOBECNY (klucz nie istnieje), liczniki niedostępne, kod
+    // gotowości. Ekran ma być spójny: kreska w kolumnie, kreska w podsumowaniu i
+    // zdanie z kanonu — zamiast trzech „nie" obok „0 kroków poza pasmem".
+    const user = userEvent.setup();
+    getRunResultsMock.mockResolvedValue({
+      global_results: {
+        oltc_annual_profile: {
+          steps: [
+            { index: 0, label: 'Noc (dolina)', load_scale: 0.3, positions: { TR1: 0 }, switch_count: null, controlled_bus_kv: { TR1: 14.124 }, within_deadband: {} },
+            { index: 1, label: 'Szczyt', load_scale: 1.6, positions: { TR1: 0 }, switch_count: null, controlled_bus_kv: { TR1: 13.504 }, within_deadband: {} },
+          ],
+          total_switch_count: null,
+          steps_outside_deadband: null,
+          readiness_codes: ['oltc.deadband_missing'],
+        },
+      },
+    });
+    render(<EkranBadanOltc klientRejestru={klientRejestru} />);
+    await user.selectOptions(screen.getByTestId('mvd-oltc-rodzaj'), 'annual_profile');
+    await user.click(screen.getByTestId('mvd-oltc-uruchom'));
+    const wynik = await screen.findByTestId('mvd-oltc-wynik-profil');
+
+    const wiersze = Array.from(wynik.querySelectorAll('tbody tr'));
+    expect(wiersze).toHaveLength(2);
+    for (const wiersz of wiersze) {
+      const komorki = wiersz.querySelectorAll('td');
+      // Ostatnia kolumna = „W paśmie": brak oceny to kreska, nie werdykt.
+      expect(komorki[komorki.length - 1].textContent).toBe('—');
+      expect(komorki[komorki.length - 1].textContent).not.toBe('nie');
+      // Przedostatnia = „Przełączenia": brak liczby to kreska, nie zero.
+      expect(komorki[komorki.length - 2].textContent).toBe('—');
+    }
+    // Podsumowanie nie przeczy tabeli: obie wielkości nieustalone.
+    expect(wynik.textContent).toContain('Łączne przełączenia: —');
+    expect(wynik.textContent).toContain('Kroki poza pasmem nieczułości: —');
+    // Zdanie z kanonu gotowości (bez własnej tablicy kodów, bez surowego kodu).
+    const braki = await screen.findByTestId('mvd-oltc-profil-braki');
+    expect(braki.textContent).toContain('pasma nieczułości regulatora');
+    expect(braki.textContent).not.toContain('oltc.deadband_missing');
+  });
+
+  it('profil dobowy bez nastawy regulatora: kreska w kolumnie i zdanie o brakującym napięciu', async () => {
+    // Scenariusz N3 wprost: przełącznik w trybie ręcznym, bez nastawy napięcia.
+    const user = userEvent.setup();
+    getRunResultsMock.mockResolvedValue({
+      global_results: {
+        oltc_annual_profile: {
+          steps: [
+            { index: 0, label: 'Dzień', load_scale: 1.0, positions: { TR1: 0 }, switch_count: 0, controlled_bus_kv: { TR1: 13.807 }, within_deadband: {} },
+          ],
+          total_switch_count: 0,
+          steps_outside_deadband: null,
+          readiness_codes: ['oltc.target_voltage_missing'],
+        },
+      },
+    });
+    render(<EkranBadanOltc klientRejestru={klientRejestru} />);
+    await user.selectOptions(screen.getByTestId('mvd-oltc-rodzaj'), 'annual_profile');
+    await user.click(screen.getByTestId('mvd-oltc-uruchom'));
+    const wynik = await screen.findByTestId('mvd-oltc-wynik-profil');
+    const komorki = wynik.querySelectorAll('tbody tr td');
+    expect(komorki[komorki.length - 1].textContent).toBe('—');
+    // Łączenia SĄ znane (regulator ręczny nie łączy) — zero jest tu faktem biegu.
+    expect(wynik.textContent).toContain('Łączne przełączenia: 0');
+    expect(wynik.textContent).toContain('Kroki poza pasmem nieczułości: —');
+    const braki = await screen.findByTestId('mvd-oltc-profil-braki');
+    expect(braki.textContent).toContain('napięcie, które ma być utrzymywane na szynie regulowanej');
+  });
+
+  it('profil dobowy z pełnymi nastawami: werdykt i liczby bez zastrzeżeń', async () => {
+    // Regresja drugiej połowy bramki: komplet danych = tabela mówi „tak"/„nie",
+    // liczniki są liczbami, lista braków w ogóle się nie pokazuje.
+    const user = userEvent.setup();
+    getRunResultsMock.mockResolvedValue({
+      global_results: {
+        oltc_annual_profile: {
+          steps: [
+            { index: 0, label: 'Noc (dolina)', load_scale: 0.3, positions: { TR1: -5 }, switch_count: 5, controlled_bus_kv: { TR1: 15.083 }, within_deadband: { TR1: true } },
+            { index: 1, label: 'Szczyt', load_scale: 1.6, positions: { TR1: -7 }, switch_count: 1, controlled_bus_kv: { TR1: 14.952 }, within_deadband: { TR1: false } },
+          ],
+          total_switch_count: 6,
+          steps_outside_deadband: 1,
+        },
+      },
+    });
+    render(<EkranBadanOltc klientRejestru={klientRejestru} />);
+    await user.selectOptions(screen.getByTestId('mvd-oltc-rodzaj'), 'annual_profile');
+    await user.click(screen.getByTestId('mvd-oltc-uruchom'));
+    const wynik = await screen.findByTestId('mvd-oltc-wynik-profil');
+    const wiersze = Array.from(wynik.querySelectorAll('tbody tr'));
+    expect(wiersze[0].querySelectorAll('td')[5].textContent).toBe('tak');
+    expect(wiersze[1].querySelectorAll('td')[5].textContent).toBe('nie');
+    expect(wynik.textContent).toContain('Łączne przełączenia: 6');
+    expect(wynik.textContent).toContain('Kroki poza pasmem nieczułości: 1');
+    expect(screen.queryByTestId('mvd-oltc-profil-braki')).toBeNull();
   });
 
   it('bez aktywnego przypadku pokazuje uczciwy błąd zamiast uruchomienia', async () => {
