@@ -230,11 +230,11 @@ class PrzypadekIniekcji:
     zepsuj: Callable[[dict[str, Any]], None]
     #: Czy operacja wymaga wcześniejszego CT w polu (dobór zabezpieczenia).
     wymaga_ct: bool = False
-    #: Kod odrzucenia. Operacje wiążące katalog przez wspólny materializator
-    #: zwracają kanoniczne `catalog.item_not_found` (parytet z torem stacyjnym);
-    #: bateria kondensatorów i ogranicznik pytają katalog wprost i mają własne,
-    #: równie jednoznaczne kody — jawnie wypisane, żeby test nie udawał parytetu,
-    #: którego nie ma.
+    #: Kod odrzucenia W WARSTWIE DOMENOWEJ (operacja wołana wprost). Operacje
+    #: wiążące katalog przez wspólny materializator zwracają kanoniczne
+    #: `catalog.item_not_found`; bateria kondensatorów, ogranicznik i wiązania DER
+    #: pytają katalog wprost i mają własne kody — jawnie wypisane, żeby test nie
+    #: udawał parytetu, którego w tej warstwie nie ma.
     oczekiwany_kod: str = "catalog.item_not_found"
 
 
@@ -805,14 +805,18 @@ def test_literowka_odrzucona_w_torze_domenowym(przypadek: PrzypadekIniekcji) -> 
 def test_literowka_odrzucona_w_torze_payloadu(
     klient: TestClient, przypadek: PrzypadekIniekcji
 ) -> None:
-    """Produkcyjna droga zapisu: ten sam kod `catalog.item_not_found`, model bez zmian.
+    """Produkcyjna droga zapisu: 422 `catalog.item_not_found`, model bez zmian.
 
-    Odrzucenie ma DWIE dopuszczalne formy i obie są zamknięte: brama katalogowa
-    API kończy żądanie kodem 422, a pozycje spoza jej inwentarza (dziś
-    `source_field.catalog_binding` — plik polityki należy do toru T5) zatrzymuje
-    warstwa domenowa, zwracając `HTTP 200` z `error_code` i BEZ migawki. Test
-    pilnuje niezmiennika, który liczy się dla projektanta: TEN SAM kod błędu i
-    ZERO skutku w modelu — niezależnie od tego, które ogniwo złapało literówkę.
+    KANON PO KARCIE U1 (dług 1 z V12K-316). Do czasu tej karty brama API znała
+    tylko „główne" wiązanie operacji, więc część pozycji inwentarza
+    (`source_field.catalog_binding`, cały tor DER-SN, kompensator, ogranicznik,
+    wiązania DER) zatrzymywała dopiero warstwa domenowa — projektant dostawał
+    `HTTP 200` z kodem błędu w treści zamiast 422, czyli INNY kontrakt dla tej
+    samej pomyłki. Teraz brama zna KAŻDĄ referencję z inwentarza, więc forma
+    odrzucenia jest jedna: 422 z kanonicznym `catalog.item_not_found`.
+    Kod właściwy operacji (`shunt.catalog_not_found`, `spd.catalog_not_found`,
+    `der_bindings.catalog_ref_unknown`) zostaje kodem WARSTWY DOMENOWEJ i jest
+    pilnowany osobnym testem wyżej.
     """
     case_id = f"v2-brama-{abs(hash((przypadek.operacja, przypadek.sciezka)))}"
     snapshot = _zasiej_siec_przez_api(klient, case_id)
@@ -832,14 +836,9 @@ def test_literowka_odrzucona_w_torze_payloadu(
         json={"operation": {"name": przypadek.operacja, "payload": payload}},
     )
 
-    assert odpowiedz.status_code in {200, 422}, odpowiedz.text
-    tresc = odpowiedz.json()
-    if odpowiedz.status_code == 422:
-        szczegol = tresc["detail"]
-        assert szczegol["code"] == przypadek.oczekiwany_kod, szczegol
-    else:
-        assert tresc.get("error_code") == przypadek.oczekiwany_kod, tresc
-        assert tresc.get("snapshot") is None
+    assert odpowiedz.status_code == 422, odpowiedz.text
+    szczegol = odpowiedz.json()["detail"]
+    assert szczegol["code"] == "catalog.item_not_found", szczegol
     assert klient.get(f"/api/cases/{case_id}/enm").json()["header"]["hash_sha256"] == hash_przed
 
 
