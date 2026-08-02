@@ -40,6 +40,7 @@ from network_model.solvers.power_flow_inverter import (
     InverterControl,
     apply_inverter_setpoint,
     build_inverter_table,
+    inverter_q_seed,
     inverter_relax_q,
 )
 from network_model.solvers.power_flow_newton import PowerFlowNewtonSolution
@@ -260,10 +261,21 @@ class PowerFlowFastDecoupledSolver:
         # ADR-011 §5b: one-time inverter shaping (LFSM P(f) + cosφ/Q modes); Q(U)
         # sources are recomputed per iteration in the Q mismatch via inv_table.
         # B'/B" stay constant (built from ybus.imag). Empty table => reduce-to-NR.
-        apply_inverter_setpoint(
-            p_spec, q_spec, pf_input.pq, node_index_map, pf_input.base_frequency_hz
+        # Defect B: the shaping reads the SOURCE's own power and enters as a
+        # component of the bus — on a ZIP bus into the constant part, so the load
+        # polynomial never scales it (hence zip_table/zip_const are handed over).
+        inv_shaping = apply_inverter_setpoint(
+            p_spec,
+            q_spec,
+            pf_input.pq,
+            node_index_map,
+            pf_input.base_frequency_hz,
+            pf_input.base_mva,
+            zip_table,
+            zip_const,
         )
         inv_table = build_inverter_table(pf_input.pq, node_index_map)
+        q_inv_seed = inverter_q_seed(inv_table, inv_shaping)
 
         # Run Fast-Decoupled iteration
         (
@@ -295,6 +307,7 @@ class PowerFlowFastDecoupledSolver:
             zip_table,
             inv_table,
             zip_const,
+            q_inv_seed,
         )
 
         # Handle non-convergence
@@ -539,6 +552,7 @@ class PowerFlowFastDecoupledSolver:
         zip_table: dict[int, ZipCoeffs] | None = None,
         inv_table: dict[int, InverterControl] | None = None,
         zip_const: tuple[np.ndarray, np.ndarray] | None = None,
+        q_inv_seed: dict[int, float] | None = None,
     ) -> tuple[
         np.ndarray,
         bool,
@@ -595,12 +609,13 @@ class PowerFlowFastDecoupledSolver:
         active_pq = list(pq_indices)
         active_pv = list(pv_indices)
 
-        # ADR-011 §5b: under-relaxed Q(U) state. Seed from the base q_spec at the
-        # Q_U buses; advanced toward qu_q(|V|) at the start of each iteration with a
+        # ADR-011 §5b: under-relaxed Q(U) state. Seeded from the SOURCE's own
+        # declared Q (defect B — the bus power is not the source's on a prosumer
+        # bus); advanced toward qu_q(|V|) at the start of each iteration with a
         # slope-scaled step so the volt-var fixed-point gain stays < 1 (FD lacks NR's
         # ∂Q/∂V Jacobian feedback). Converged value == qu_q(v*) => parity with NR and
         # reduce-to-NR preserved (empty inv_table => no-op).
-        q_inv_state = {idx: float(q_spec[idx]) for idx in inv_table}
+        q_inv_state = dict(q_inv_seed or {})
 
         # Build and factor B matrices initially
         b_prime, b_double_prime, non_slack_indices, _ = self._build_b_matrices(
@@ -734,11 +749,14 @@ class PowerFlowFastDecoupledSolver:
                 # ADR-011 §5b: the Q(U) buses use the under-relaxed Q(U) state (no-op
                 # when inv_table empty); inverter P is not voltage-dependent so the P
                 # side is untouched.
+                # Defect B: the volt-var value is ADDED to the composed bus power,
+                # not assigned over it — on a prosumer bus what is already there is
+                # the ZIP-scaled load, which assigning deleted from the model.
                 _, q_eff = zip_effective_spec(p_spec, q_spec, v, zip_table, zip_const)
                 if inv_table:
                     q_eff = q_eff.copy()
                     for idx in inv_table:
-                        q_eff[idx] = q_inv_state[idx]
+                        q_eff[idx] += q_inv_state[idx]
                 d_q_updated = q_eff[active_pq] - q_calc_updated[active_pq]
 
                 # ΔQ / |V| for PQ buses
@@ -776,7 +794,7 @@ class PowerFlowFastDecoupledSolver:
             if inv_table:
                 q_eff_final = q_eff_final.copy()
                 for idx in inv_table:
-                    q_eff_final[idx] = q_inv_state[idx]
+                    q_eff_final[idx] += q_inv_state[idx]
             d_p_final = p_eff_final[non_slack_indices] - p_calc_final[non_slack_indices]
             d_q_final = q_eff_final[active_pq] - q_calc_final[active_pq]
 

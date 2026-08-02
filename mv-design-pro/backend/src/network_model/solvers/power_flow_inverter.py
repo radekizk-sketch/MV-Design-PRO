@@ -19,6 +19,20 @@ Reduce-to-NR invariant: Q_CONST with no LFSM at f=f0 leaves p_spec/q_spec
 untouched, so a network with no active characteristic is byte-identical to the
 classic constant-PQ solve. The Q(U) droop uses the same deadband_low/high +
 slope_pu_per_pu representation as the Q(U) proof pack (single source of truth).
+
+THE SOURCE COMPUTES FROM ITS OWN POWER (defect B, review 2026-08-01). The shaping
+input is ``PQSpec.inverter_p_mw`` — the source's own active injection — never the
+bus aggregate. Reading ``p_spec[idx]`` was wrong twice over: on a bus that also
+carries a load the aggregate is not the source, and after the ZIP split (defect
+D1) it is the LOAD BASE, so a cosφ source on a bus with a load derived its
+reactive power from the LOAD's active power. The result is written as a COMPONENT
+of the bus power (``bus = rest + source``), never as an assignment over someone
+else's value: on a source-only bus ``rest`` is exactly 0.0, so the historical
+single-source result stays bit-for-bit identical.
+
+THE SOURCE AND THE LOAD COMPOSE (defect B, §2.2). A prosumer bus — ZIP load plus
+a controlled source — is legal, and both mechanisms are applied together in NR,
+GS and FD. See the exclusivity contract on ``PQSpec.inverter_control``.
 """
 
 from __future__ import annotations
@@ -27,6 +41,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 import numpy as np
+from network_model.solvers.power_flow_zip import ZipCoeffs, declares_zip_split
 
 _TOL = 1e-9
 
@@ -151,21 +166,114 @@ def validate_inverter_control(c: InverterControl) -> None:
             raise ValueError("COSPHI_P points must be ascending in p_frac")
 
 
+@dataclass(frozen=True)
+class InverterShaping:
+    """WHITE BOX (Rule #2) record of the ONE-TIME shaping of one source (defect B).
+
+    Every number an auditor needs to reproduce the shaping by hand, in pu on
+    base_mva, injection convention:
+
+        p_shaped_pu = p_source_pu * lfsm_factor
+        q_shaped_pu = q_over_p * |p_shaped_pu|      (cosφ modes)
+
+    ``p_source_pu``/``q_source_pu`` are the SOURCE's own injection — the input of
+    the shaping — not the bus aggregate. ``q_shaped_pu`` is 0.0 for Q_U, whose Q
+    is recomputed per iteration from |V| (see ``inverter_effective_spec``)."""
+
+    mode: InverterMode
+    p_source_pu: float
+    q_source_pu: float
+    p_shaped_pu: float
+    q_shaped_pu: float
+    lfsm_factor: float
+
+
+def source_injection_pu(
+    spec: object, p_spec: np.ndarray, q_spec: np.ndarray, idx: int, base_mva: float
+) -> tuple[float, float]:
+    """The SOURCE's own injection (pu, injection convention) — the shaping input.
+
+    Reads ``inverter_p_mw``/``inverter_q_mvar``, which the mapping layer fills from
+    the generator itself. Both None => the bus power IS the source (a source-only
+    bus): the historical single-source case, kept so the callers that emit ONE PQSpec
+    PER COMPONENT (``analysis_run``, ``network_wizard`` — a load and a source on one
+    node collide on the duplicate-node_id check) and the frozen source-only networks
+    stay byte-identical.
+
+    The fallback is REFUSED as soon as the spec itself proves a LOAD shares the bus,
+    i.e. carries a load model next to the source control:
+      * ``declares_zip_split`` — the single source of truth for 'a load base exists
+        apart from the net bus power' (shared with power_flow_zip, never a second
+        predicate), or
+      * ``zip_coeffs`` — a load voltage polynomial.
+    On such a bus the aggregate is provably not the source, and inferring it would
+    reproduce defect B (the source's reactive power computed from the LOAD's active
+    power). Refusing is the explicit branch of the exclusivity contract for the one
+    combination the input cannot express. Duck-typed, so the rule holds for every
+    caller, not only the one named in the audit."""
+    p_own = getattr(spec, "inverter_p_mw", None)
+    q_own = getattr(spec, "inverter_q_mvar", None)
+    if p_own is None and q_own is None:
+        if declares_zip_split(spec) or getattr(spec, "zip_coeffs", None) is not None:
+            raise ValueError(
+                f"inverter control on bus {getattr(spec, 'node_id', '?')} without "
+                "inverter_p_mw: the bus also carries a load model, so its power is "
+                "not the source's power and cannot be used as the shaping input"
+            )
+        return float(p_spec[idx]), float(q_spec[idx])
+    return (
+        (0.0 if p_own is None else float(p_own)) / base_mva,
+        (0.0 if q_own is None else float(q_own)) / base_mva,
+    )
+
+
 def apply_inverter_setpoint(
     p_spec: np.ndarray,
     q_spec: np.ndarray,
     inv_specs: object,
     node_index_map: dict[str, int],
     f_hz: float,
-) -> None:
-    """ONE-TIME base shaping of inverter buses (mirrors apply_zip_frequency):
+    base_mva: float,
+    zip_table: dict[int, ZipCoeffs] | None = None,
+    zip_const: tuple[np.ndarray, np.ndarray] | None = None,
+) -> dict[int, InverterShaping]:
+    """ONE-TIME shaping of the SOURCE on each inverter bus (mirrors apply_zip_frequency):
 
-    - scales the active injection by the LFSM P(f) factor,
-    - sets Q for the V-independent modes (Q_CONST keeps the setpoint; COSPHI_CONST
-      and COSPHI_P set Q from the scaled |P|).
+    - scales the source's OWN active injection by the LFSM P(f) factor,
+    - sets Q for the V-independent modes (Q_CONST keeps the source's setpoint;
+      COSPHI_CONST and COSPHI_P derive Q from the scaled |P| OF THE SOURCE).
 
-    The Q_U mode is left for the per-iteration recompute (build_inverter_table /
-    inverter_effective_spec). Duck-typed on ``.inverter_control`` / ``.node_id``."""
+    Q SIGN CONVENTION (catalog, ``inverter_control_from_params``): ``q_over_p`` is
+    +tan(φ) for an OVER-EXCITED source (``q_absorbing`` false — injects reactive
+    power, Q > 0 on the injection convention) and -tan(φ) for an UNDER-EXCITED one
+    (absorbs, Q < 0). Q_shaped = q_over_p * |P_shaped| therefore carries the sign
+    of the excitation, independent of the sign of P.
+
+    The result enters as a COMPONENT of the bus power, never as an assignment over
+    the bus value (defect B — same class as the accumulation debt of
+    ``build_power_spec_v2``, V12K-313):
+
+        target[idx] = (target[idx] - source_before) + source_after
+
+    On a source-only bus ``target[idx] - source_before`` is exactly 0.0, so the
+    historical value is reproduced bit for bit (reduce-to-NR).
+
+    WHERE the component lands is decided by ONE predicate — ``idx in zip_table``,
+    the set whose spec is multiplied by the load polynomial every iteration and
+    the only set for which any solver adds ``zip_const`` back. On such a bus the
+    source belongs to the CONSTANT part (it is not voltage-dependent); everywhere
+    else it belongs to the bus spec itself. A bus in the recompute set that does
+    not declare a split has no constant part to hold the source, so the polynomial
+    would scale the source injection — that is REFUSED explicitly rather than
+    silently mis-scaled (exclusivity contract, PQSpec.inverter_control).
+
+    Returns the per-bus WHITE BOX shaping record, keyed by bus index. The Q_U mode
+    contributes 0.0 to the base here and is recomputed per iteration
+    (build_inverter_table / inverter_effective_spec), seeded from
+    ``q_source_pu`` via ``inverter_q_seed``. Duck-typed on ``.inverter_control`` /
+    ``.node_id``."""
+    zip_table = zip_table or {}
+    shaping: dict[int, InverterShaping] = {}
     for spec in inv_specs:  # type: ignore[attr-defined]
         c = getattr(spec, "inverter_control", None)
         if c is None or c.is_passive():
@@ -174,16 +282,72 @@ def apply_inverter_setpoint(
         if idx is None:
             continue
         validate_inverter_control(c)
-        # LFSM scales the active injection (sign-preserving on the injection pu).
-        p_spec[idx] *= lfsm_factor(c, f_hz)
-        p_inj = abs(p_spec[idx])
+        p_src, q_src = source_injection_pu(spec, p_spec, q_spec, idx, base_mva)
+        # LFSM scales the SOURCE's active injection (sign-preserving on the pu).
+        factor = lfsm_factor(c, f_hz)
+        p_shaped = p_src * factor
+        p_inj = abs(p_shaped)
         if c.mode is InverterMode.COSPHI_CONST:
-            q_spec[idx] = c.q_over_p * p_inj
+            q_shaped = c.q_over_p * p_inj
         elif c.mode is InverterMode.COSPHI_P:
             pmax = c.p_max_pu if c.p_max_pu > 0 else p_inj
-            ratio = _cosphi_p_ratio(c, p_inj / pmax if pmax > 0 else 0.0)
-            q_spec[idx] = ratio * p_inj
-        # Q_CONST: q_spec already holds the setpoint. Q_U: handled per iteration.
+            q_shaped = _cosphi_p_ratio(c, p_inj / pmax if pmax > 0 else 0.0) * p_inj
+        elif c.mode is InverterMode.Q_U:
+            # Voltage-dependent: the source contributes nothing to the base, its Q
+            # is recomputed each iteration and ADDED to the composed bus power.
+            q_shaped = 0.0
+        else:
+            q_shaped = q_src  # Q_CONST (+ LFSM): the source keeps its setpoint.
+        if idx in zip_table:
+            if zip_const is None or not declares_zip_split(spec):
+                raise ValueError(
+                    f"bus {spec.node_id} is in the ZIP recompute set and carries an "
+                    "inverter control, but declares no load/generation split: the "
+                    "load polynomial would scale the source injection"
+                )
+            target_p, target_q = zip_const
+        else:
+            target_p, target_q = p_spec, q_spec
+        target_p[idx] = (target_p[idx] - p_src) + p_shaped
+        target_q[idx] = (target_q[idx] - q_src) + q_shaped
+        shaping[idx] = InverterShaping(
+            mode=c.mode,
+            p_source_pu=p_src,
+            q_source_pu=q_src,
+            p_shaped_pu=p_shaped,
+            q_shaped_pu=q_shaped,
+            lfsm_factor=factor,
+        )
+    return shaping
+
+
+def inverter_q_seed(
+    inv_table: dict[int, InverterControl] | None,
+    shaping: dict[int, InverterShaping] | None,
+) -> dict[int, float]:
+    """Seed of the GS/FD Q(U) relaxation state: the SOURCE's own declared Q (pu).
+
+    Seeding from ``q_spec[idx]`` (the bus power) was the same defect-B mistake in
+    the sweep as in the shaping: on a prosumer bus it started the volt-var
+    fixed-point from the LOAD's reactive power. On a source-only bus the two are
+    equal, so the historical iteration path is unchanged.
+
+    PREDICATE PAIRING (rule KLASA, NIE INSTANCJA §3): ``build_inverter_table``
+    admits ``is_voltage_dependent()`` buses while ``apply_inverter_setpoint``
+    shapes ``not is_passive()`` ones. The first set is contained in the second by
+    construction (Q_U with a slope is never Q_CONST), and this function REFUSES
+    rather than assumes it: a key of the recompute table with no shaping record
+    would be a bus whose Q(U) state has no source to start from."""
+    if not inv_table:
+        return {}
+    records = shaping or {}
+    missing = sorted(idx for idx in inv_table if idx not in records)
+    if missing:
+        raise ValueError(
+            f"Q(U) inverter buses {missing} have no shaping record: the volt-var "
+            "recompute set and the shaping set have drifted apart"
+        )
+    return {idx: records[idx].q_source_pu for idx in inv_table}
 
 
 def build_inverter_table(
@@ -211,13 +375,20 @@ def inverter_effective_spec(
 ) -> np.ndarray:
     """Recompute Q at Q_U inverter buses from the current |v| (per iteration).
     Returns q_spec unchanged when the table is empty (reduce-to-NR). P is not
-    voltage-dependent, so only Q is recomputed (mirrors zip_effective_spec)."""
+    voltage-dependent, so only Q is recomputed (mirrors zip_effective_spec).
+
+    The volt-var value is ADDED to the bus power, not assigned over it (defect B):
+    ``apply_inverter_setpoint`` already removed the source's own declared Q from
+    the base, so what is left there is everything else on the bus (the ZIP-scaled
+    load). Assigning wiped that load's reactive demand from the model. On a
+    source-only bus the base is exactly 0.0, so the historical value is
+    reproduced bit for bit."""
     if not inv_table:
         return q_spec
     q_eff = q_spec.copy()
     v_mag = np.abs(v)
     for idx, c in inv_table.items():
-        q_eff[idx] = qu_q(c, v_mag[idx])
+        q_eff[idx] += qu_q(c, v_mag[idx])
     return q_eff
 
 

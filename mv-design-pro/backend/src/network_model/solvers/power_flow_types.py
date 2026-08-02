@@ -49,9 +49,37 @@ class PQSpec:
     zip_base_p_mw: float | None = None
     zip_base_q_mvar: float | None = None
     # ADR-011 §5b: optional inverter/converter source control (Q(U), P(f)/LFSM,
-    # cosφ modes). None => constant-PQ source (reduce-to-NR). Mutually exclusive
-    # with zip_coeffs on a given bus (a bus is a load XOR a source).
+    # cosφ modes). None => constant-PQ source (reduce-to-NR).
+    #
+    # EXCLUSIVITY CONTRACT, resolved explicitly (defect B, review 2026-08-01).
+    # The former claim "mutually exclusive with zip_coeffs on a given bus (a bus
+    # is a load XOR a source)" was FALSE in both directions: `enm.canonical_analysis`
+    # builds ONE PQSpec per bus and sets both, and the three solvers then silently
+    # disagreed on such a bus (GS took the ZIP branch and dropped the volt-var
+    # control; NR/FD overwrote the load Q with the control value). A prosumer bus
+    # — a load and a controlled source on one node — is a REAL renewable network,
+    # so it is LEGAL and both mechanisms compose, in NR, GS and FD alike:
+    #
+    #     P_bus(V) = P_load_base * f_ZIP(V) + P_const   (P_const carries P_source)
+    #     Q_bus(V) = Q_load_base * f_ZIP(V) + Q_const   (Q_const carries Q_source)
+    #
+    # The one combination that cannot compose — a bus in the ZIP recompute set
+    # whose spec does NOT declare the load/generation split, where the load
+    # polynomial would scale the source injection — is REFUSED with an explicit
+    # error by ``apply_inverter_setpoint``. Never a silent branch.
     inverter_control: InverterControl | None = None
+    # Defect B: the SOURCE's OWN injection at this bus — the input quantity of the
+    # inverter shaping. GENERATION convention (>0 = into the grid), i.e. the same
+    # convention as InverterControl itself and the OPPOSITE of p_mw/q_mvar above.
+    # It must never be inferred from the bus aggregate: after the ZIP split
+    # p_mw/q_mvar-derived p_spec is the LOAD base, so `abs(p_spec)` was the power
+    # of the LOAD, and the source's Q came out of the load's active power.
+    # None => the bus power IS the source (a source-only bus, the historical
+    # single-source case; byte-identical). Refused as soon as the spec carries a
+    # load model too (``zip_coeffs`` or a declared ZIP split), because that proves
+    # a load shares the bus and the aggregate is not the source's power.
+    inverter_p_mw: float | None = None
+    inverter_q_mvar: float | None = None
 
 
 @dataclass
