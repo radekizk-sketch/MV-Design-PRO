@@ -20,6 +20,16 @@ _TR_BLOCK_04_630 = "tr-sn-nn-15-04-630kva-dyn11"  # Sn = 0,63 MVA
 _CABLE = "cable-base-epr-al-1c-240"
 _APARAT_SN_REAL = "sw-cb-abb-vd4-24kv-630a"  # niesie i_n_a=630 A → ogniwo In pola dostępne
 
+#: Napięcie znamionowe falownika → RZECZYWISTA pozycja katalogu o tym napięciu.
+#: Tabliczka źródła pochodzi wyłącznie z katalogu (defekt G), więc test nie może
+#: „zadeklarować" innego napięcia niż pozycja, którą wskazuje: wariant napięciowy
+#: wybiera się teraz WYBOREM POZYCJI KATALOGOWEJ — dokładnie tak, jak projektant.
+_FALOWNIK_WG_NAPIECIA: dict[float, str] = {
+    0.4: "conv-pv-nn-0p5mw-0p4kv",
+    0.69: "conv-pv-nn-0p5mw-0p69kv",
+    0.8: "conv-pv-nn-0p5mw-0p8kv",
+}
+
 
 def _sn_station_enm() -> dict:
     enm = EnergyNetworkModel(
@@ -78,7 +88,7 @@ def _der_sn_payload(
     connection_method: str | None = None,
     has_block_transformer: bool = True,
     has_manufacturer_lv_switchgear: bool = True,
-    apparatus_ref: str = _APARAT_SN_REAL,
+    apparatus_ref: str | None = _APARAT_SN_REAL,
     quantity: int = 1,
 ) -> dict:
     payload: dict = {
@@ -91,17 +101,10 @@ def _der_sn_payload(
         "power_setpoint_mw": power_setpoint_mw,
         "catalog_binding": {
             "catalog_namespace": "ZRODLO_NN_PV",
-            "catalog_item_id": "conv-pv-04kv",
+            "catalog_item_id": _FALOWNIK_WG_NAPIECIA[converter_un_kv],
             "catalog_item_version": "2024.1",
             "materialize": True,
             "snapshot_mapping_version": "1.0",
-        },
-        "materialized_params": {
-            "catalog_item_id": "conv-pv-04kv",
-            "catalog_item_version": "2024.1",
-            "un_kv": converter_un_kv,
-            "pmax_mw": power_setpoint_mw,
-            "sn_mva": block_rated_power_mva,
         },
         "der_topology": {
             "connection_level": "sn",
@@ -151,6 +154,10 @@ def _der_sn_payload(
             },
         },
     }
+    if apparatus_ref is None:
+        # Pole bez WSKAZANEGO aparatu jest kanoniczne (`requires_catalog_binding`) —
+        # wtedy ogniwo In pola nie ma źródła i musi być pominięte Z OSTRZEŻENIEM.
+        payload["der_topology"]["mv_field_configuration"].pop("apparatus_catalog_binding")
     if cos_phi is not None:
         payload["cos_phi"] = cos_phi
     if loadability_pu is not None:
@@ -284,10 +291,31 @@ def test_req5b_cascade_full_chain_no_warning() -> None:
 
 
 def test_req5b_cascade_missing_field_current_warns_explicitly() -> None:
-    """Aparat spoza katalogu ⇒ In pola pominięte Z JAWNYM OSTRZEŻENIEM (nie cichy skip)."""
-    result = _run(_der_sn_payload(apparatus_ref="ap-sn-cb-630-nieistnieje"))
+    """Pole bez WSKAZANEGO aparatu ⇒ In pola pominięte Z JAWNYM OSTRZEŻENIEM.
+
+    Intencja bez zmian (ogniwo bez danych ma być nazwane, nie ominięte w ciszy),
+    zmienił się SPOSÓB jej wywołania: dotąd test podawał referencję aparatu,
+    której w katalogu nie ma, i operacja to przyjmowała — czyli „brak danej"
+    powstawał z martwej referencji zapisywanej do modelu. Po naprawie defektu G
+    nieistniejąca pozycja jest odrzucana (patrz test niżej), a jedynym uczciwym
+    źródłem braku jest pole bez wskazanego aparatu.
+    """
+    result = _run(_der_sn_payload(apparatus_ref=None))
     assert not result.get("error"), result.get("error")
     assert "converter.der_sn.kaskada_prad_pole_brak" in _warning_codes(result)
+
+
+def test_req5b_aparat_spoza_katalogu_jest_odrzucany() -> None:
+    """Referencja aparatu, której w katalogu NIE MA, kończy operację (defekt G).
+
+    Wcześniej gałąź aparatu pola źródłowego SN dostawała `source_mode: KATALOG`
+    i `catalog_ref` martwej pozycji, a jedyna próba odczytu katalogu (prąd
+    znamionowy) cicho zwracała `None` — projektant widział wyłącznie ostrzeżenie
+    o brakującym ogniwie kaskady, nigdy przyczyny.
+    """
+    result = _run(_der_sn_payload(apparatus_ref="ap-sn-cb-630-nieistnieje"))
+    assert result.get("error_code") == "catalog.item_not_found", result.get("error")
+    assert result.get("snapshot") is None
 
 
 # ---------------------------------------------------------------------------
