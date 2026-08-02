@@ -31,6 +31,7 @@ from utf8_mojibake_guard import (
     SUSPICIOUS_FRAGMENTS,
     ZNAK_ZASTEPCZY_W_SLOWIE,
     czy_segment_pomijany,
+    ignorowane_przez_gita,
     iter_scannable_files,
     main,
     should_scan,
@@ -200,6 +201,73 @@ def test_zakres_nie_wciaga_artefaktow_ignorowanych_przez_gita() -> None:
         "w zakresie strażnika są pliki ignorowane przez gita (stan uruchomieniowy "
         f"albo wyjście narzędzia): {ignorowane[:10]}"
     )
+
+
+def _repozytorium(korzen: Path) -> None:
+    """Minimalne repozytorium — potrzebne, bo `git check-ignore` czyta `.gitignore`
+    wyłącznie wewnątrz drzewa roboczego gita."""
+    for polecenie in (
+        ["init", "-q"],
+        ["config", "user.email", "t@t"],
+        ["config", "user.name", "t"],
+    ):
+        subprocess.run(["git", *polecenie], cwd=korzen, check=True, capture_output=True)
+
+
+def test_odjecie_ignorowanych_jest_regula_nie_lista_katalogow() -> None:
+    """ILOCZYN CECH dla odejmowania stanu uruchomieniowego (CLAUDE.md pkt 2).
+
+    Zakres liczymy przez odjęcie, więc katalog wyjścia narzędzia, którego nikt nie
+    wpisał do `SEGMENTY_POMIJANE`, wchodziłby do skanu sam — i wynik strażnika
+    zależałby od tego, co ktoś wcześniej uruchomił na SWOIM dysku. Precedens:
+    `frontend/audyt-r4/` (ignorowany, obecny tylko po uruchomieniu audytu) czynił
+    test zakresu czerwonym u nadzorcy i zielonym-pusto u wykonawcy.
+
+    Cechy: {wzorzec katalogowy, wzorzec plikowy} × {ignorowany, nieignorowany} ×
+    {śledzony, nieśledzony}. Odejmujemy WYŁĄCZNIE to, co git świadomie ignoruje —
+    świeżo napisany plik zostaje w zakresie od pierwszej chwili.
+    """
+    with tempfile.TemporaryDirectory() as tmp:
+        korzen = Path(tmp).resolve()
+        _repozytorium(korzen)
+        (korzen / ".gitignore").write_text(
+            "raport-narzedzia/\n*.wygenerowany.json\n", encoding="utf-8"
+        )
+
+        (korzen / "raport-narzedzia").mkdir()
+        (korzen / "raport-narzedzia" / "wynik.json").write_text("{}", encoding="utf-8")
+        (korzen / "src").mkdir()
+        (korzen / "src" / "dane.wygenerowany.json").write_text("{}", encoding="utf-8")
+        (korzen / "src" / "Ekran.tsx").write_text("x", encoding="utf-8")
+        (korzen / "src" / "swiezy.ts").write_text("x", encoding="utf-8")
+        subprocess.run(
+            ["git", "add", ".gitignore", "src/Ekran.tsx"],
+            cwd=korzen,
+            check=True,
+            capture_output=True,
+        )
+
+        widziane = {
+            str(p.relative_to(korzen)).replace("\\", "/") for p in iter_scannable_files(korzen)
+        }
+
+    # ignorowany katalogiem i ignorowany wzorcem plikowym — POZA zakresem
+    assert "raport-narzedzia/wynik.json" not in widziane
+    assert "src/dane.wygenerowany.json" not in widziane
+    # śledzony oraz nieśledzony-nieignorowany — W zakresie (nowa treść pilnowana od razu)
+    assert "src/Ekran.tsx" in widziane
+    assert "src/swiezy.ts" in widziane
+
+
+def test_brak_repozytorium_nie_zwęża_zakresu() -> None:
+    """Gdy git nie odpowiada (drzewo poza repozytorium, brak narzędzia), strażnik
+    ma skanować WIĘCEJ, nigdy mniej — awaria pomocnika nie może cicho wygasić
+    kontroli kodowania."""
+    with tempfile.TemporaryDirectory() as tmp:
+        korzen = Path(tmp).resolve()
+        (korzen / "plik.md").write_text("x", encoding="utf-8")
+        assert ignorowane_przez_gita(korzen, [korzen / "plik.md"]) == set()
+        assert [p.name for p in iter_scannable_files(korzen)] == ["plik.md"]
 
 
 def test_naprawiacz_widzi_dokladnie_ten_sam_zbior_co_straznik() -> None:

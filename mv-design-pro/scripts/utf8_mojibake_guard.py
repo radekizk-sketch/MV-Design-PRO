@@ -48,6 +48,7 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -198,6 +199,43 @@ def czy_segment_pomijany(nazwa: str) -> bool:
     return nazwa in SEGMENTY_POMIJANE
 
 
+def ignorowane_przez_gita(baza: Path, sciezki: list[Path]) -> set[Path]:
+    """Podzbior sciezek, ktorych repozytorium SWIADOMIE nie sledzi.
+
+    Zakres liczymy przez ODJECIE, wiec kazdy nowy katalog stanu uruchomieniowego
+    (raport narzedzia, magazyn migawek, zrzut przebiegu) wchodzilby do skanu SAM
+    — a wtedy wynik straznika zalezalby od tego, co ktos wczesniej uruchomil na
+    swoim dysku. Takie katalogi sa juz opisane w `.gitignore`, wiec pytamy git o
+    JEDNO zrodlo tej wiedzy zamiast dopisywac wpis po wpisie do
+    `SEGMENTY_POMIJANE` (CLAUDE.md: KLASA, NIE INSTANCJA). Precedens: katalog
+    `frontend/audyt-r4/` wywracal test zakresu wylacznie na dysku, na ktorym
+    audyt kiedykolwiek uruchomiono — na czystym drzewie test przechodzil pusto.
+
+    Plik NIESLEDZONY, ale i NIEIGNOROWANY (swiezo napisany) nie jest odejmowany
+    — nowa tresc ma byc pilnowana od pierwszej chwili.
+
+    Gdy git jest niedostepny albo `baza` nie jest repozytorium, nie odejmujemy
+    NICZEGO: straznik ma wtedy skanowac WIECEJ, nigdy mniej.
+    """
+    if not sciezki:
+        return set()
+    try:
+        wynik = subprocess.run(
+            ["git", "check-ignore", "-z", "--stdin"],
+            input="\0".join(str(p) for p in sciezki) + "\0",
+            cwd=baza,
+            capture_output=True,
+            text=True,
+        )
+    except OSError:
+        return set()
+    # 0 = cos jest ignorowane, 1 = nic; kazdy inny kod to blad wywolania
+    # (nie-repozytorium, brak uprawnien) — wtedy skanujemy wszystko.
+    if wynik.returncode not in (0, 1):
+        return set()
+    return {Path(s) for s in wynik.stdout.split("\0") if s}
+
+
 def iter_scannable_files(korzen: Path | None = None) -> list[Path]:
     """Wszystkie pliki z trescia autorska \u2014 JEDNO zrodlo zakresu.
 
@@ -216,7 +254,8 @@ def iter_scannable_files(korzen: Path | None = None) -> list[Path]:
             sciezka = biezacy / nazwa
             if should_scan(sciezka):
                 zebrane.append(sciezka)
-    return zebrane
+    pominiete = ignorowane_przez_gita(baza, zebrane)
+    return [p for p in zebrane if p not in pominiete]
 
 
 def _probka_celowa(linie: list[str], indeks: int) -> bool:
