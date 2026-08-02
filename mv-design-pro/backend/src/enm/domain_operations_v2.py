@@ -12,6 +12,7 @@ from __future__ import annotations
 import copy
 import json
 import math
+from dataclasses import dataclass
 from typing import Any
 
 from network_model.catalog.materialization import materialize_catalog_binding
@@ -466,6 +467,15 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             catalog_error or "ct.catalog_required",
         )
 
+    z_katalogu, blad_katalogu = _pozycja_katalogu(
+        namespace=_catalog_namespace(binding, "CT"),
+        catalog_ref=catalog_ref,
+        catalog_binding=binding,
+        opis_pl="Przekładnik prądowy CT",
+    )
+    if blad_katalogu is not None:
+        return blad_katalogu
+
     primary = payload.get("ratio_primary_a")
     secondary = payload.get("ratio_secondary_a")
     if primary is None or secondary is None:
@@ -473,6 +483,28 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "Przekładnik CT wymaga przekładni pierwotnej i wtórnej.",
             "ct.ratio_missing",
         )
+
+    rozbieznosci = rozbieznosci_tabliczki(
+        {
+            "ratio_primary_a": primary,
+            "ratio_secondary_a": secondary,
+            "accuracy_class": payload.get("accuracy_class"),
+        },
+        z_katalogu,
+    )
+    if rozbieznosci:
+        return _error_response(
+            f"Przekładnik CT: dane formularza przeczą pozycji katalogowej '{catalog_ref}': "
+            + "; ".join(rozbieznosci)
+            + ". Przekładnia i klasa pochodzą z katalogu — wybierz pozycję o właściwej "
+            "przekładni.",
+            "catalog.nameplate_mismatch",
+        )
+    primary = _wartosc_katalogowa(z_katalogu, "ratio_primary_a", primary)
+    secondary = _wartosc_katalogowa(z_katalogu, "ratio_secondary_a", secondary)
+    accuracy_class = _wartosc_katalogowa(
+        z_katalogu, "accuracy_class", payload.get("accuracy_class")
+    )
 
     measurement_ref = _make_id(
         "ct",
@@ -497,7 +529,7 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "rating": {
                 "ratio_primary": float(primary),
                 "ratio_secondary": float(secondary),
-                "accuracy_class": payload.get("accuracy_class"),
+                "accuracy_class": accuracy_class,
                 "burden_va": payload.get("burden_va"),
             },
             "connection": payload.get("connection") or "star",
@@ -523,7 +555,10 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                         "catalog_item_id": catalog_ref,
                         "ratio_primary_a": float(primary),
                         "ratio_secondary_a": float(secondary),
-                        "accuracy_class": payload.get("accuracy_class"),
+                        "accuracy_class": accuracy_class,
+                        # Obciążalność wtórna nie jest polem kontraktu materializacji
+                        # CT — katalog jej nie niesie, więc pozostaje daną formularza
+                        # (jawnie, a nie pod pozorem pochodzenia katalogowego).
                         "burden_va": payload.get("burden_va"),
                     },
                     "overrides": [],
@@ -575,6 +610,15 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             catalog_error or "vt.catalog_required",
         )
 
+    z_katalogu, blad_katalogu = _pozycja_katalogu(
+        namespace=_catalog_namespace(binding, "VT"),
+        catalog_ref=catalog_ref,
+        catalog_binding=binding,
+        opis_pl="Przekładnik napięciowy VT",
+    )
+    if blad_katalogu is not None:
+        return blad_katalogu
+
     primary = payload.get("ratio_primary_v")
     secondary = payload.get("ratio_secondary_v")
     if primary is None or secondary is None:
@@ -582,6 +626,28 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "Przekładnik VT wymaga przekładni pierwotnej i wtórnej.",
             "vt.ratio_missing",
         )
+
+    rozbieznosci = rozbieznosci_tabliczki(
+        {
+            "ratio_primary_v": primary,
+            "ratio_secondary_v": secondary,
+            "accuracy_class": payload.get("accuracy_class"),
+        },
+        z_katalogu,
+    )
+    if rozbieznosci:
+        return _error_response(
+            f"Przekładnik VT: dane formularza przeczą pozycji katalogowej '{catalog_ref}': "
+            + "; ".join(rozbieznosci)
+            + ". Przekładnia i klasa pochodzą z katalogu — wybierz pozycję o właściwej "
+            "przekładni.",
+            "catalog.nameplate_mismatch",
+        )
+    primary = _wartosc_katalogowa(z_katalogu, "ratio_primary_v", primary)
+    secondary = _wartosc_katalogowa(z_katalogu, "ratio_secondary_v", secondary)
+    accuracy_class = _wartosc_katalogowa(
+        z_katalogu, "accuracy_class", payload.get("accuracy_class")
+    )
 
     measurement_ref = _make_id(
         "vt",
@@ -606,7 +672,7 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "rating": {
                 "ratio_primary": float(primary),
                 "ratio_secondary": float(secondary),
-                "accuracy_class": payload.get("accuracy_class"),
+                "accuracy_class": accuracy_class,
                 "burden_va": payload.get("burden_va"),
             },
             "connection": payload.get("connection") or "star",
@@ -632,7 +698,10 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                         "catalog_item_id": catalog_ref,
                         "ratio_primary_v": float(primary),
                         "ratio_secondary_v": float(secondary),
-                        "accuracy_class": payload.get("accuracy_class"),
+                        # Klasa i obciążalność wtórna nie należą do kontraktu
+                        # materializacji VT — katalog ich nie niesie, więc zostają
+                        # daną formularza (jawnie, bez pozoru pochodzenia z katalogu).
+                        "accuracy_class": accuracy_class,
                         "burden_va": payload.get("burden_va"),
                     },
                     "overrides": [],
@@ -678,6 +747,15 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "Zabezpieczenie pola SN wymaga wyboru pozycji katalogowej.",
             catalog_error or "relay.catalog_required",
         )
+
+    z_katalogu, blad_katalogu = _pozycja_katalogu(
+        namespace=_catalog_namespace(binding, "ZABEZPIECZENIE"),
+        catalog_ref=catalog_ref,
+        catalog_binding=binding,
+        opis_pl="Zabezpieczenie pola SN",
+    )
+    if blad_katalogu is not None:
+        return blad_katalogu
 
     breaker_ref = payload.get("breaker_ref")
     if not isinstance(breaker_ref, str) or not breaker_ref.strip():
@@ -757,6 +835,12 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
                         "catalog_item_id": catalog_ref,
                         "relay_type": relay_type_text,
                         "device_type": device_type,
+                        # Tożsamość urządzenia Z KATALOGU (kontrakt ZABEZPIECZENIE):
+                        # bez niej migawka deklarowała `source_mode: KATALOG`, nie
+                        # niosąc ani jednej wartości pochodzącej z rekordu katalogu.
+                        "name_pl": z_katalogu.get("name_pl"),
+                        "vendor": z_katalogu.get("vendor"),
+                        "series": z_katalogu.get("series"),
                     },
                     "overrides": [],
                 }
@@ -1366,16 +1450,167 @@ def _validate_required_materialization(
     return normalized, None
 
 
+#: Zdanie naprawcze dołączane do KAŻDEGO błędu nierozstrzygalnej pozycji katalogu.
+#: Bez niego kod błędu mówi „nie ma", ale nie mówi projektantowi, co zrobić.
+_AKCJA_NAPRAWCZA_KATALOG_PL = (
+    "Wskaż pozycję istniejącą w katalogu albo uzupełnij rekord katalogowy — "
+    "operacja nie przyjmie tabliczki z formularza."
+)
+
+#: Tolerancja porównania tabliczki deklarowanej w payloadzie z katalogiem.
+#: Obie liczby pochodzą z TEJ SAMEJ pozycji katalogowej (kreator kopiuje rekord),
+#: więc jedyna dopuszczalna różnica to zaokrąglenie binarne przeliczeń kW→MW.
+_TOLERANCJA_TABLICZKI = 1e-9
+
+
+def _blad_pozycji_katalogu(blad_materializacji: dict[str, Any], opis_pl: str) -> dict[str, Any]:
+    """Nierozstrzygalna pozycja katalogu — JEDEN kształt komunikatu w całym module.
+
+    Nazwa miejsca + przyczyna z materializacji + akcja naprawcza. Bez wspólnego
+    kształtu ta sama klasa błędu czytałaby się inaczej w każdej operacji, a
+    projektant nie miałby jak rozpoznać, że to wciąż „pozycji nie ma w katalogu".
+    """
+    return _error_response(
+        f"{opis_pl}: {blad_materializacji['error']} {_AKCJA_NAPRAWCZA_KATALOG_PL}",
+        str(blad_materializacji.get("error_code") or "catalog.item_not_found"),
+    )
+
+
+def _pozycja_katalogu(
+    *,
+    namespace: str,
+    catalog_ref: str,
+    opis_pl: str,
+    catalog_binding: object = None,
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Zmaterializuj pozycję katalogu albo zwróć odpowiedź błędu operacji.
+
+    ISTNIENIE, NIE OBECNOŚĆ (defekt G, długi 8/9 rejestru V12K-315). Operacje
+    atomowe sprawdzały wyłącznie, czy referencja JEST w payloadzie, po czym
+    zapisywały do migawki `source_mode: KATALOG` przy pozycji, której w katalogu
+    NIE MA. Tor stacyjny (T5, `_zastosuj_wyposazenie_pol`) odrzucał tę samą
+    referencję kodem `catalog.item_not_found` — parytet torów wymaga, żeby zły
+    ref dawał ten sam kod po obu stronach.
+
+    Zwraca ``(parametry_katalogowe, None)`` albo ``({}, odpowiedź_błędu)``.
+    Materializacja stoi PRZED jakąkolwiek mutacją modelu, więc odrzucona
+    operacja nie zostawia w migawce połowicznego elementu.
+    """
+    materializacja = _materialize_catalog_payload(
+        catalog_ref=catalog_ref,
+        catalog_binding=catalog_binding,
+        default_namespace=namespace,
+        default_version="2024.1",
+    )
+    if isinstance(materializacja, dict):
+        return {}, _blad_pozycji_katalogu(materializacja, opis_pl)
+    _binding_payload, parametry = materializacja
+    return parametry, None
+
+
+def _wartosc_katalogowa(z_katalogu: dict[str, Any], klucz: str, z_formularza: object) -> Any:
+    """Wartość z katalogu, a gdy katalog jej NIE NIESIE — wartość z formularza.
+
+    Katalog milczący nie jest katalogiem sprzecznym: pole spoza kontraktu
+    materializacji (albo puste w rekordzie) nie ma odpowiednika, wobec którego
+    formularz mógłby kłamać. Ta sama zasada rządzi `rozbieznosci_tabliczki`,
+    żeby warunek przyjęcia i warunek porównania pochodziły z jednego źródła.
+    """
+    wartosc = z_katalogu.get(klucz)
+    return wartosc if wartosc is not None else z_formularza
+
+
+def _blad_aparatu_pola(
+    binding: object,
+    *,
+    namespace: str,
+    opis_pl: str,
+) -> dict[str, Any] | None:
+    """Aparat pola wskazany w payloadzie musi ISTNIEĆ w katalogu.
+
+    Brak wiązania jest kanoniczny (pole bez wskazanego aparatu, `requires_catalog_binding`);
+    wiązanie WSKAZUJĄCE nieistniejącą pozycję nie jest — specyfikacja pola zapisywała
+    wtedy `apparatus_catalog_ref` martwej pozycji, a gałąź aparatu deklarowała
+    `source_mode: KATALOG`. Zwraca odpowiedź błędu albo ``None``.
+    """
+    if not isinstance(binding, dict):
+        return None
+    ref = _catalog_item_id(binding)
+    if not ref:
+        return None
+    _, blad = _pozycja_katalogu(
+        namespace=_catalog_namespace(binding, namespace),
+        catalog_ref=ref,
+        catalog_binding=binding,
+        opis_pl=opis_pl,
+    )
+    return blad
+
+
+def _te_same_wartosci(lewa: object, prawa: object) -> bool:
+    """Równość tabliczkowa: liczby w tolerancji binarnej, teksty po obcięciu spacji."""
+    if isinstance(lewa, bool) or isinstance(prawa, bool):
+        return lewa is prawa
+    if isinstance(lewa, int | float) and isinstance(prawa, int | float):
+        return math.isclose(
+            float(lewa),
+            float(prawa),
+            rel_tol=_TOLERANCJA_TABLICZKI,
+            abs_tol=_TOLERANCJA_TABLICZKI,
+        )
+    if isinstance(lewa, str) and isinstance(prawa, str):
+        return lewa.strip() == prawa.strip()
+    return bool(lewa == prawa)
+
+
+def rozbieznosci_tabliczki(
+    deklarowane: object,
+    katalogowe: dict[str, Any],
+    *,
+    etykieta_deklaracji: str = "payload",
+) -> list[str]:
+    """Pola, w których deklarowana tabliczka PRZECZY tabliczce katalogowej.
+
+    KATALOG WYGRYWA ZAWSZE (defekt G). Tabliczka podana z zewnątrz nie zastępuje
+    materializacji — jest wyłącznie DEKLARACJĄ weryfikowaną wobec katalogu.
+    Porównujemy część wspólną kluczy: pole, którego katalog nie niesie, nie jest
+    tabliczką katalogową i nie ma wobec czego się rozjechać; pole niezadeklarowane
+    nie jest deklaracją.
+
+    JEDNO ŹRÓDŁO PORÓWNANIA (predykaty parami): tej samej funkcji używa brama API
+    (`api/enm.py`), sprawdzając, czy to, co polityka katalogowa zmaterializowała
+    PRZED operacją, zgadza się z tym, co operacja zapisała do migawki.
+    """
+    if not isinstance(deklarowane, dict):
+        return []
+    rozbieznosci: list[str] = []
+    for klucz in sorted(katalogowe):
+        z_katalogu = katalogowe[klucz]
+        if z_katalogu is None or klucz not in deklarowane:
+            continue
+        z_payloadu = deklarowane[klucz]
+        if z_payloadu is None:
+            continue
+        if _te_same_wartosci(z_payloadu, z_katalogu):
+            continue
+        rozbieznosci.append(
+            f"{klucz}: {etykieta_deklaracji} {z_payloadu!r}, katalog {z_katalogu!r}"
+        )
+    return rozbieznosci
+
+
 def _materialize_nn_source_params(
     *,
     namespace: str,
     catalog_ref: str,
     required_fields: list[str],
-    explicit_params: object,
 ) -> tuple[dict[str, Any] | None, str | None]:
-    if explicit_params is not None:
-        return _validate_required_materialization(explicit_params, required_fields)
+    """Tabliczka źródła nN WYŁĄCZNIE z katalogu (kanał payloadu nie istnieje).
 
+    Dawny parametr `explicit_params` był drugą, nieweryfikowaną drogą podania
+    tabliczki — usunięty razem z wczesnym zwrotem w
+    `_build_converter_materialized_params` (defekt G).
+    """
     binding = CatalogBinding(
         catalog_namespace=namespace,
         catalog_item_id=catalog_ref,
@@ -1387,28 +1622,37 @@ def _materialize_nn_source_params(
         return None, result.error_code or "catalog.materialization_incomplete"
 
     if namespace == "ZRODLO_NN_PV":
-        return _validate_required_materialization(
-            {
-                "un_kv": result.solver_fields.get("un_kv"),
-                "rated_power_ac_kw": result.solver_fields.get("s_n_kva"),
-                "max_power_kw": result.solver_fields.get("p_max_kw"),
-                "control_mode": result.solver_fields.get("control_mode"),
-            },
-            required_fields,
-        )
+        zmapowane = {
+            "un_kv": result.solver_fields.get("un_kv"),
+            "rated_power_ac_kw": result.solver_fields.get("s_n_kva"),
+            "max_power_kw": result.solver_fields.get("p_max_kw"),
+            "control_mode": result.solver_fields.get("control_mode"),
+        }
+    elif namespace == "ZRODLO_NN_BESS":
+        zmapowane = {
+            "un_kv": result.solver_fields.get("un_kv"),
+            "usable_capacity_kwh": result.solver_fields.get("e_kwh"),
+            "charge_power_kw": result.solver_fields.get("p_charge_kw"),
+            "discharge_power_kw": result.solver_fields.get("p_discharge_kw"),
+            # MOC POZORNA Z KATALOGU (dług 8 rejestru V12K-315): tor atomowy
+            # wyprowadzał ją z mocy rozładowania i gubił katalogowe 2,2 MVA
+            # (liczył 2,0), więc ta sama pozycja dawała inne liczby w torze
+            # stacyjnym i atomowym. Teraz obydwa czytają `s_n_kva` pozycji.
+            "s_n_kva": result.solver_fields.get("s_n_kva"),
+        }
+    elif namespace == "CONVERTER":
+        # Falownik wiatrowy: TA SAMA przestrzeń katalogu, co w torze stacyjnym
+        # (`_NN_SOURCE_KIND_MAP["FW_INVERTER"]`), więc zły ref daje ten sam kod
+        # `catalog.item_not_found` w obu torach. Dawny wyszukiwacz po liście
+        # `get_wind_types()` był równoległą ścieżką z własnym kodem błędu.
+        zmapowane = dict(result.solver_fields)
+    else:
+        return None, "catalog.materialization_incomplete"
 
-    if namespace == "ZRODLO_NN_BESS":
-        return _validate_required_materialization(
-            {
-                "un_kv": result.solver_fields.get("un_kv"),
-                "usable_capacity_kwh": result.solver_fields.get("e_kwh"),
-                "charge_power_kw": result.solver_fields.get("p_charge_kw"),
-                "discharge_power_kw": result.solver_fields.get("p_discharge_kw"),
-            },
-            required_fields,
-        )
-
-    return None, "catalog.materialization_incomplete"
+    _, brak = _validate_required_materialization(zmapowane, required_fields)
+    if brak is not None:
+        return None, brak
+    return zmapowane, None
 
 
 def _normalize_nn_field_role(payload: dict[str, Any]) -> str:
@@ -1567,6 +1811,21 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     catalog_binding = _catalog_binding_from_payload(payload, "APARAT_SN")
     catalog_namespace = _catalog_namespace(catalog_binding, "APARAT_SN")
     catalog_ref = _catalog_item_id(catalog_binding)
+    # Pole SN bez wskazanego aparatu jest kanoniczne (`requires_catalog_binding`),
+    # ale WSKAZANY aparat musi ISTNIEĆ: bez tego pole deklarowało
+    # `source_mode: KATALOG` przy pozycji, której w katalogu nie ma — tor stacyjny
+    # odrzucał tę samą referencję kodem `catalog.item_not_found`.
+    apparatus_params: dict[str, Any] = {}
+    if catalog_ref:
+        zmaterializowane, blad_katalogu = _pozycja_katalogu(
+            namespace=catalog_namespace,
+            catalog_ref=catalog_ref,
+            catalog_binding=catalog_binding,
+            opis_pl="Aparat pola SN",
+        )
+        if blad_katalogu is not None:
+            return blad_katalogu
+        apparatus_params = zmaterializowane or {}
     branch_type = _sn_bay_branch_type(apparatus_kind)
 
     # V12K-058 (G-POLE-R): powiązania producenckie pola (szablon/rodzina/producent/
@@ -1636,6 +1895,12 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             branch["source_mode"] = "KATALOG"
             branch["catalog_namespace"] = catalog_namespace
             branch["catalog_ref"] = catalog_ref
+            # Tabliczka aparatu Z KATALOGU (parytet z torem stacyjnym, gdzie
+            # `_materialize_sn_field_apparatus` zapisuje `materialized_params`):
+            # sama deklaracja `source_mode: KATALOG` bez materializacji to zdanie
+            # o pozycji, którego nikt nie sprawdził.
+            if apparatus_params:
+                branch["materialized_params"] = copy.deepcopy(apparatus_params)
             branch.setdefault("tags", [])
             meta = branch.setdefault("meta", {})
             if isinstance(meta, dict):
@@ -1735,6 +2000,10 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "source_mode": "KATALOG",
             "catalog_namespace": catalog_namespace,
             "catalog_ref": catalog_ref,
+            # Tabliczka aparatu Z KATALOGU — parytet z torem stacyjnym
+            # (`_materialize_sn_field_apparatus`), gdzie ten sam aparat dostaje
+            # `materialized_params` po materializacji pozycji.
+            "materialized_params": copy.deepcopy(apparatus_params) or None,
             "tags": ["gpz_field_device", "requires_catalog_binding"],
             "meta": {
                 "field_ref": field_ref,
@@ -1985,6 +2254,19 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(feeder_ref, str) or not _field_ref_exists(enm, feeder_ref):
         return _error_response("Wskazany odpływ nN nie istnieje w modelu.", "nn.feeder_not_found")
 
+    # Odbiór bez pozycji katalogowej jest kanoniczny (`EKSPERCKI_RECZNY`), ale
+    # WSKAZANA pozycja musi ISTNIEĆ — inaczej odbiór deklaruje w migawce
+    # `source_mode: KATALOG` / `parameter_source: CATALOG` przy martwej referencji.
+    if catalog_ref:
+        _, blad_katalogu = _pozycja_katalogu(
+            namespace=_catalog_namespace(catalog_binding, "OBCIAZENIE"),
+            catalog_ref=catalog_ref,
+            catalog_binding=catalog_binding,
+            opis_pl="Odbiór nN",
+        )
+        if blad_katalogu is not None:
+            return blad_katalogu
+
     feeder_bus_ref = _field_bus_ref(enm, feeder_ref)
     if not feeder_bus_ref:
         return _error_response("Odpływ nN nie ma przypisanej szyny nN.", "nn.feeder_bus_missing")
@@ -2101,91 +2383,178 @@ def _resolve_converter_catalog_ref(
     return _resolve_catalog_ref(direct_ref, payload.get("catalog_binding"))
 
 
+#: Technologia źródła przekształtnikowego → przestrzeń katalogu. LUSTRO
+#: `_NN_SOURCE_KIND_MAP` toru stacyjnego: ten sam ref musi być rozstrzygalny
+#: w obu torach, inaczej brama jednego z nich jest fikcją (parytet torów).
+_PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO: dict[str, str] = {
+    "PV": "ZRODLO_NN_PV",
+    "BESS": "ZRODLO_NN_BESS",
+    "FW": "CONVERTER",
+}
+
+#: Pola certyfikatu PTPiREE przenoszone Z REKORDU KATALOGU do tabliczki źródła.
+#: Most zgodności NC RfG czyta je z `generator.materialized_params`
+#: (`ui/workspace/surfaces/DerSurfaces.tsx` → `der.catalogs.ptpiree_certificate_ref`),
+#: a kreator OZE wysyłał je dotąd w payloadzie. Skoro payload przestał być
+#: źródłem tabliczki, ogniwo musi pochodzić z katalogu — inaczej naprawa
+#: „katalog wygrywa" zerwałaby żywy łańcuch danych.
+_POLA_CERTYFIKATU_PTPIREE: tuple[str, ...] = (
+    "ptpiree_certificate_ref",
+    "ptpiree_document_number",
+    "ptpiree_wos_version",
+    "ptpiree_source_url",
+)
+
+#: Pola tabliczki, których katalog NIE niesie (wybór ruchowy projektanta) —
+#: wyłączone z porównania z deklaracją payloadu, bo nie mają odpowiednika
+#: katalogowego, wobec którego mogłyby się rozjechać.
+_POLA_TABLICZKI_SPOZA_KATALOGU: frozenset[str] = frozenset({"operation_mode"})
+
+
+def _certyfikat_ptpiree_z_katalogu(namespace: str, catalog_ref: str) -> dict[str, Any]:
+    """Pola certyfikatu PTPiREE z REKORDU katalogu (pomijane, gdy rekord ich nie ma).
+
+    Uczciwy stan zerowy: brak certyfikatu = brak klucza, nigdy `null` udający daną.
+    """
+    katalog = get_default_mv_catalog()
+    if namespace == "ZRODLO_NN_PV":
+        rekord: Any = katalog.get_pv_inverter_type(catalog_ref)
+    elif namespace == "ZRODLO_NN_BESS":
+        rekord = katalog.get_bess_inverter_type(catalog_ref)
+    else:
+        rekord = katalog.get_converter_type(catalog_ref)
+    if rekord is None:
+        return {}
+    dane = rekord.to_dict()
+    return {pole: dane[pole] for pole in _POLA_CERTYFIKATU_PTPIREE if dane.get(pole)}
+
+
 def _build_converter_materialized_params(
     *,
     technology: str,
     payload: dict[str, Any],
     catalog_ref: str,
-) -> tuple[dict[str, Any], str | None]:
-    explicit = payload.get("materialized_params")
-    if isinstance(explicit, dict) and explicit:
-        return dict(explicit), None
+) -> tuple[dict[str, Any], dict[str, Any] | None]:
+    """Tabliczka źródła przekształtnikowego — WYŁĄCZNIE z katalogu (defekt G).
+
+    DŁUG, KTÓRY TO ZAMYKA (przegląd fali 2026-08-01, znalezisko P12): funkcja
+    zaczynała od `explicit = payload.get("materialized_params")` i przy obecnym
+    kluczu ZWRACAŁA GO WPROST — katalog nie był czytany w ogóle. Skutki zmierzone
+    na produkcyjnej drodze zapisu `POST /enm/domain-ops`:
+
+    * kontrola zgodności napięć liczyła się na danej z payloadu, więc magazyn
+      15 kV wchodził na szynę 0,4 kV z `error: None`;
+    * `p_mw` generatora (wprost do bilansu rozpływu) brało się z payloadu pod
+      referencją prawdziwej, znacznie mniejszej pozycji katalogowej;
+    * migawka deklarowała `source_mode: KATALOG` przy tabliczce z przeglądarki.
+
+    Teraz tabliczka pochodzi z materializacji pozycji katalogowej, a
+    `materialized_params` z payloadu jest wyłącznie DEKLARACJĄ: rozbieżność
+    kończy operację kodem `catalog.nameplate_mismatch`, nigdy cichym przyjęciem.
+
+    Zwraca ``(tabliczka, None)`` albo ``({}, odpowiedź_błędu)``.
+    """
+    namespace = _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO.get(technology)
+    if namespace is None:
+        return {}, _error_response(
+            f"Nieznana technologia źródła przekształtnikowego: {technology}.",
+            "converter.source_technology_missing",
+        )
+
+    def _blad_materializacji(kod: str) -> dict[str, Any]:
+        return _error_response(
+            f"Źródło {technology}: pozycja katalogowa '{catalog_ref}' "
+            f"(kategoria {namespace}) nie ma kompletnej tabliczki albo nie istnieje. "
+            f"{_AKCJA_NAPRAWCZA_KATALOG_PL}",
+            kod,
+        )
 
     if technology == "PV":
-        materialized_params, error = _materialize_nn_source_params(
-            namespace="ZRODLO_NN_PV",
+        z_katalogu, blad = _materialize_nn_source_params(
+            namespace=namespace,
             catalog_ref=catalog_ref,
-            explicit_params=None,
             required_fields=["un_kv", "rated_power_ac_kw", "max_power_kw", "control_mode"],
         )
-        if error or materialized_params is None:
-            return {}, error or "catalog.materialization_incomplete"
-        return {
+        if blad or z_katalogu is None:
+            return {}, _blad_materializacji(blad or "catalog.materialization_incomplete")
+        tabliczka: dict[str, Any] = {
             "catalog_item_id": catalog_ref,
             "catalog_item_version": "2024.1",
-            "rated_power_ac_kw": materialized_params.get("rated_power_ac_kw"),
-            "max_power_kw": materialized_params.get("max_power_kw"),
-            "control_mode": materialized_params.get("control_mode"),
-            "un_kv": materialized_params.get("un_kv"),
-            "pmax_mw": _kw_to_mw(materialized_params.get("max_power_kw")),
-            "sn_mva": _kw_to_mw(materialized_params.get("rated_power_ac_kw")),
-        }, None
-
-    if technology == "BESS":
-        materialized_params, error = _materialize_nn_source_params(
-            namespace="ZRODLO_NN_BESS",
+            "rated_power_ac_kw": z_katalogu.get("rated_power_ac_kw"),
+            "max_power_kw": z_katalogu.get("max_power_kw"),
+            "control_mode": z_katalogu.get("control_mode"),
+            "un_kv": z_katalogu.get("un_kv"),
+            "pmax_mw": _kw_to_mw(z_katalogu.get("max_power_kw")),
+            "sn_mva": _kw_to_mw(z_katalogu.get("rated_power_ac_kw")),
+        }
+    elif technology == "BESS":
+        z_katalogu, blad = _materialize_nn_source_params(
+            namespace=namespace,
             catalog_ref=catalog_ref,
-            explicit_params=None,
             required_fields=[
                 "un_kv",
                 "usable_capacity_kwh",
                 "charge_power_kw",
                 "discharge_power_kw",
+                "s_n_kva",
             ],
         )
-        if error or materialized_params is None:
-            return {}, error or "catalog.materialization_incomplete"
-        return {
+        if blad or z_katalogu is None:
+            return {}, _blad_materializacji(blad or "catalog.materialization_incomplete")
+        tabliczka = {
             "catalog_item_id": catalog_ref,
             "catalog_item_version": "2024.1",
-            "usable_capacity_kwh": materialized_params.get("usable_capacity_kwh"),
-            "charge_power_kw": materialized_params.get("charge_power_kw"),
-            "discharge_power_kw": materialized_params.get("discharge_power_kw"),
+            "usable_capacity_kwh": z_katalogu.get("usable_capacity_kwh"),
+            "charge_power_kw": z_katalogu.get("charge_power_kw"),
+            "discharge_power_kw": z_katalogu.get("discharge_power_kw"),
             "operation_mode": payload.get("bess_mode"),
-            "un_kv": materialized_params.get("un_kv"),
-            "pmax_mw": _kw_to_mw(materialized_params.get("discharge_power_kw")),
-            "sn_mva": _kw_to_mw(materialized_params.get("discharge_power_kw")),
-            "e_kwh": materialized_params.get("usable_capacity_kwh"),
-        }, None
-
-    # K30-15: FW (turbiny wiatrowe) — brak dedykowanego namespace materializacji
-    # (catalog jest w CONVERTER_WIND list, nie indexed przez get_wind_inverter_type).
-    # Inline lookup z mv_converter_catalog dla un_kv, pmax_mw bez namespace pipeline.
-    if technology == "FW":
-        from network_model.catalog.mv_converter_catalog import get_wind_types
-
-        wind_types = get_wind_types()
-        match = next((w for w in wind_types if w.get("id") == catalog_ref), None)
-        if match is None:
-            return {}, "catalog.fw_type_not_found"
-        params = match.get("params") or {}
-        if not params.get("un_kv"):
-            return {}, "catalog.materialization_incomplete"
-        return {
+            "un_kv": z_katalogu.get("un_kv"),
+            "pmax_mw": _kw_to_mw(z_katalogu.get("discharge_power_kw")),
+            # MOC POZORNA Z KATALOGU, nie z przeliczenia mocy rozładowania
+            # (dług 8 rejestru V12K-315): pozycja `conv-bess-nn-2mw-0p4kv` ma
+            # 2,2 MVA, a tor atomowy liczył 2,0 — ta sama pozycja dawała inne
+            # liczby niż tor stacyjny (`_nn_source_nameplate_from_catalog`).
+            "sn_mva": _kw_to_mw(z_katalogu.get("s_n_kva")),
+            "e_kwh": z_katalogu.get("usable_capacity_kwh"),
+        }
+    else:
+        z_katalogu, blad = _materialize_nn_source_params(
+            namespace=namespace,
+            catalog_ref=catalog_ref,
+            required_fields=["un_kv", "pmax_mw", "sn_mva"],
+        )
+        if blad or z_katalogu is None:
+            return {}, _blad_materializacji(blad or "catalog.materialization_incomplete")
+        tabliczka = {
             "catalog_item_id": catalog_ref,
             "catalog_item_version": "2024.1",
-            "un_kv": float(params.get("un_kv") or 0.0),
-            "pmax_mw": float(params.get("pmax_mw") or 0.0),
-            "sn_mva": float(params.get("sn_mva") or params.get("pmax_mw") or 0.0),
-            "qmin_mvar": params.get("qmin_mvar"),
-            "qmax_mvar": params.get("qmax_mvar"),
-            "control_mode": params.get("control_mode") or payload.get("control_mode"),
-        }, None
+            "un_kv": float(z_katalogu["un_kv"]),
+            "pmax_mw": float(z_katalogu["pmax_mw"]),
+            "sn_mva": float(z_katalogu["sn_mva"]),
+            "qmin_mvar": z_katalogu.get("qmin_mvar"),
+            "qmax_mvar": z_katalogu.get("qmax_mvar"),
+            "control_mode": z_katalogu.get("control_mode"),
+        }
 
-    return {
-        "catalog_item_id": catalog_ref,
-        "catalog_item_version": "2024.1",
-    }, None
+    tabliczka.update(_certyfikat_ptpiree_z_katalogu(namespace, catalog_ref))
+
+    rozbieznosci = rozbieznosci_tabliczki(
+        payload.get("materialized_params"),
+        {
+            klucz: wartosc
+            for klucz, wartosc in tabliczka.items()
+            if klucz not in _POLA_TABLICZKI_SPOZA_KATALOGU
+        },
+    )
+    if rozbieznosci:
+        return {}, _error_response(
+            f"Tabliczka podana w formularzu przeczy pozycji katalogowej '{catalog_ref}': "
+            + "; ".join(rozbieznosci)
+            + ". Źródłem tabliczki jest katalog — popraw wybór pozycji katalogowej "
+            "albo usuń tabliczkę z żądania.",
+            "catalog.nameplate_mismatch",
+        )
+    return tabliczka, None
 
 
 def _resolve_converter_defaults(
@@ -2498,7 +2867,7 @@ def _materialize_der_block_transformer(
         default_namespace="TRAFO_SN_NN",
     )
     if isinstance(materialization, dict):
-        return None, materialization
+        return None, _blad_pozycji_katalogu(materialization, "Transformator blokowy DER")
     binding_payload, materialized_params = materialization
     # D3 wymaganie 7: układ połączeń = parametr modelu spójny z TYPEM katalogu. Grupa żądana
     # w payloadzie (spec) musi zgadzać się z grupą typu katalogowego — inaczej odrzucamy JAWNIE
@@ -2602,7 +2971,7 @@ def _materialize_der_mv_cable(
         default_namespace="KABEL_SN",
     )
     if isinstance(materialization, dict):
-        return None, materialization
+        return None, _blad_pozycji_katalogu(materialization, "Kabel SN przyłączeniowy DER")
     binding_payload, materialized_params = materialization
 
     branch_data: dict[str, Any] = {
@@ -2633,10 +3002,13 @@ def _materialize_der_mv_cable(
 
 
 def _resolve_apparatus_rated_current_a(apparatus_binding: object) -> float | None:
-    """Best-effort: prąd znamionowy In aparatu głównego pola SN z katalogu (APARAT_SN).
+    """Prąd znamionowy In aparatu głównego pola SN z katalogu (APARAT_SN).
 
-    Zwraca None gdy brak powiązania lub katalog nie niesie prądu (i_n_a/rated_current_a) —
-    wtedy ogniwo kaskady prądowej jest pomijane Z JAWNYM OSTRZEŻENIEM (nie cichy skip).
+    Zwraca None gdy BRAK powiązania albo gdy pozycja katalogowa nie niesie prądu
+    (`i_n_a`/`rated_current_a`) — wtedy ogniwo kaskady prądowej jest pomijane.
+    NIE zwraca None z powodu nieistniejącej pozycji: wołający sprawdza istnienie
+    aparatu bramą `_blad_aparatu_pola` PRZED mutacją modelu (defekt G), więc
+    „nierozstrzygalny ref" kończy operację błędem, a nie cichym brakiem danej.
     """
     if not isinstance(apparatus_binding, dict):
         return None
@@ -2730,11 +3102,8 @@ def _add_converter_source_der_sn(
         payload=payload,
         catalog_ref=catalog_ref,
     )
-    if materialization_error:
-        return _error_response(
-            f"Źródło {technology} wymaga kompletnej materializacji parametrów katalogowych.",
-            materialization_error,
-        )
+    if materialization_error is not None:
+        return materialization_error
     converter_un_kv = _as_float(materialized_params.get("un_kv"))
     if converter_un_kv is None or converter_un_kv <= 0:
         return _error_response(
@@ -2771,6 +3140,22 @@ def _add_converter_source_der_sn(
     sn_error = der_val.validate_sn_voltage(block_primary_kv, mv_bus_voltage_kv)
     if sn_error is not None:
         return _error_response(sn_error.message_pl, sn_error.code)
+
+    # Aparat dedykowanego pola źródłowego SN — materializacja PRZED mutacją modelu.
+    # Bez tego gałąź aparatu dostawała `source_mode: KATALOG` przy pozycji, której
+    # w katalogu nie ma (jedyna próba odczytu, `_resolve_apparatus_rated_current_a`,
+    # cicho zwracała None i ogniwo kaskady prądowej znikało bez sygnału).
+    blad_aparatu_sn = _blad_aparatu_pola(
+        (
+            (der_topology.get("mv_field_configuration") or {}).get("apparatus_catalog_binding")
+            if isinstance(der_topology.get("mv_field_configuration"), dict)
+            else None
+        ),
+        namespace="APARAT_SN",
+        opis_pl="Aparat pola źródłowego SN",
+    )
+    if blad_aparatu_sn is not None:
+        return blad_aparatu_sn
 
     name, gen_type, event_type, gen_meta, p_mw = _resolve_converter_defaults(
         technology, payload, materialized_params
@@ -3269,16 +3654,16 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             # LV-side converters (typowe 0.4 kV) → bus_nn_ref = LV side.
             tr_hv_kv = _as_float(transformer.get("uhv_kv"))
             tr_lv_kv = _as_float(transformer.get("ulv_kv"))
-            # Quick lookup converter un_kv z catalog without full materialization
+            # Napięcie znamionowe falownika Z KATALOGU (ta sama materializacja, co
+            # niżej) — wybór strony transformatora blokowego nie może zależeć od
+            # tabliczki podanej w formularzu. Błąd materializacji zgłasza pełna
+            # ścieżka poniżej, tu wybór strony po prostu nie ma podstawy.
             converter_un_kv: float | None = None
-            try:
-                _tmp_mp, _err = _build_converter_materialized_params(
-                    technology=technology, payload=payload, catalog_ref=catalog_ref
-                )
-                if not _err:
-                    converter_un_kv = _as_float(_tmp_mp.get("un_kv"))
-            except Exception:
-                converter_un_kv = None
+            _tabliczka_wstepna, _blad_wstepny = _build_converter_materialized_params(
+                technology=technology, payload=payload, catalog_ref=catalog_ref
+            )
+            if _blad_wstepny is None:
+                converter_un_kv = _as_float(_tabliczka_wstepna.get("un_kv"))
             if (
                 converter_un_kv is not None
                 and tr_hv_kv is not None
@@ -3315,11 +3700,8 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
         payload=payload,
         catalog_ref=catalog_ref,
     )
-    if materialization_error:
-        return _error_response(
-            f"Źródło {technology} wymaga kompletnej materializacji parametrów katalogowych.",
-            materialization_error,
-        )
+    if materialization_error is not None:
+        return materialization_error
 
     converter_voltage_kv = _as_float(materialized_params.get("un_kv"))
     if converter_voltage_kv is None or converter_voltage_kv <= 0:
@@ -3382,6 +3764,20 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
     source_seed = _compute_seed(seed_payload)
     prefix = technology.lower()
     generator_ref = _make_id(prefix, source_seed, "converter")
+
+    # Aparat pola źródłowego nN — sprawdzany PRZED mutacją modelu, żeby zła
+    # referencja nie zostawiła w migawce pola z martwym `apparatus_catalog_ref`.
+    blad_aparatu = _blad_aparatu_pola(
+        (
+            (payload.get("source_field") or {}).get("catalog_binding")
+            if isinstance(payload.get("source_field"), dict)
+            else None
+        ),
+        namespace="APARAT_NN",
+        opis_pl="Aparat pola źródłowego nN",
+    )
+    if blad_aparatu is not None:
+        return blad_aparatu
 
     new_enm = copy.deepcopy(enm)
     field_ref, created_field_ids, field_events = _append_converter_field_if_needed(
@@ -4118,6 +4514,148 @@ def set_label(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         updated=[element_ref],
         events=[{"event_seq": 1, "event_type": "PARAMETERS_UPDATED", "element_id": element_ref}],
     )
+
+
+# ---------------------------------------------------------------------------
+# INWENTARZ BRAMY KATALOGOWEJ OPERACJI V2 (defekt G)
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class PozycjaBramyKatalogowejV2:
+    """Jedno miejsce, w którym operacja V2 czyta Z PAYLOADU pozycję katalogu albo tabliczkę."""
+
+    operacja: str
+    #: Ścieżka w payloadzie (ostatni człon = klucz czytany przez operację).
+    sciezka: str
+    #: Przestrzeń katalogu, w której referencja musi być rozstrzygalna.
+    przestrzen: str
+    #: Czy operacja sprawdza ISTNIENIE pozycji (a nie samą obecność referencji).
+    bramkowana: bool
+    #: Dlaczego — dla pozycji niebramkowanych uzasadnienie MERYTORYCZNE.
+    uzasadnienie: str = ""
+
+
+#: PEŁNY INWENTARZ (reguła KLASA, NIE INSTANCJA): każda referencja katalogowa
+#: i każda tabliczka czytana z payloadu przez operacje `domain_operations_v2`.
+#:
+#: Defekt G (przegląd fali 2026-08-01, znalezisko P12 + długi 8/9 rejestru
+#: V12K-315) nie był pojedynczym błędem `add_converter_source`: KLASĄ było
+#: „operacja zapisuje do migawki pochodzenie katalogowe, nie czytając katalogu".
+#: Ta lista jest KONTRAKTEM — test klasy skanuje moduł i czerwienieje, gdy
+#: operacja V2 zacznie czytać referencję spoza inwentarza.
+V2_CATALOG_GATE_INVENTORY: tuple[PozycjaBramyKatalogowejV2, ...] = (
+    PozycjaBramyKatalogowejV2("add_ct", "catalog_ref", "CT", True),
+    PozycjaBramyKatalogowejV2(
+        "add_ct", "catalog_binding", "CT", True, "druga droga wskazania pozycji"
+    ),
+    PozycjaBramyKatalogowejV2("add_vt", "catalog_ref", "VT", True),
+    PozycjaBramyKatalogowejV2(
+        "add_vt", "catalog_binding", "VT", True, "druga droga wskazania pozycji"
+    ),
+    PozycjaBramyKatalogowejV2("add_relay", "catalog_ref", "ZABEZPIECZENIE", True),
+    PozycjaBramyKatalogowejV2(
+        "add_relay",
+        "protection.catalog_item_id",
+        "ZABEZPIECZENIE",
+        True,
+        "kontrakt kreatora pola — rozwiązywany do tego samego wiązania",
+    ),
+    PozycjaBramyKatalogowejV2("add_sn_bay", "catalog_binding", "APARAT_SN", True),
+    PozycjaBramyKatalogowejV2("add_nn_load", "catalog_binding", "OBCIAZENIE", True),
+    PozycjaBramyKatalogowejV2(
+        "add_converter_source", "catalog_ref", "ZRODLO_NN_PV|ZRODLO_NN_BESS|CONVERTER", True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_converter_source",
+        "materialized_params",
+        "ZRODLO_NN_PV|ZRODLO_NN_BESS|CONVERTER",
+        True,
+        "tabliczka z payloadu jest DEKLARACJĄ weryfikowaną wobec katalogu "
+        "(rozbieżność ⇒ catalog.nameplate_mismatch), nigdy źródłem liczb",
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_converter_source", "source_field.catalog_binding", "APARAT_NN", True
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_converter_source",
+        "der_topology.block_transformer.catalog_ref",
+        "TRAFO_SN_NN",
+        True,
+        "materializacja przez `_materialize_der_block_transformer`",
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_converter_source",
+        "der_topology.mv_field_configuration.cable_catalog_ref",
+        "KABEL_SN",
+        True,
+        "materializacja przez `_materialize_der_mv_cable`",
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_converter_source",
+        "der_topology.mv_field_configuration.apparatus_catalog_binding",
+        "APARAT_SN",
+        True,
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_shunt_compensator_sn", "catalog_binding", "KOMPENSATOR_SN", True
+    ),
+    PozycjaBramyKatalogowejV2("add_surge_arrester_sn", "catalog_binding", "OGRANICZNIK_SN", True),
+    PozycjaBramyKatalogowejV2(
+        "set_der_catalog_bindings", "protection_catalog_ref", "ZABEZPIECZENIE", True
+    ),
+    PozycjaBramyKatalogowejV2("set_der_catalog_bindings", "ct_catalog_ref", "CT", True),
+    PozycjaBramyKatalogowejV2("set_der_catalog_bindings", "vt_catalog_ref", "VT", True),
+    PozycjaBramyKatalogowejV2(
+        "add_genset_nn",
+        "genset_spec",
+        "",
+        False,
+        "agregat prądotwórczy NIE MA kategorii w katalogu, więc payload jest jedynym "
+        "źródłem tabliczki — i element to przyznaje: bez `catalog_ref`, bez "
+        "`catalog_namespace`, bez `source_mode: KATALOG`. To dług katalogu "
+        "(brak kategorii), nie obejście bramy: nie ma pozycji, wobec której "
+        "można by cokolwiek zweryfikować.",
+    ),
+    PozycjaBramyKatalogowejV2(
+        "add_ups_nn",
+        "ups_spec",
+        "",
+        False,
+        "UPS — jak wyżej: brak kategorii katalogu, element nie deklaruje "
+        "pochodzenia katalogowego (tabliczka jawnie ekspercka).",
+    ),
+)
+
+#: Klucze payloadu z referencją katalogową, które operacjom V2 wolno czytać.
+#: Zbiór WYPROWADZONY z inwentarza (test klasy pilnuje zgodności obu stron).
+V2_CATALOG_REF_PAYLOAD_KEYS: frozenset[str] = frozenset(
+    {
+        "catalog_ref",
+        "apparatus_catalog_ref",
+        "cable_catalog_ref",
+        "protection_catalog_ref",
+        "ct_catalog_ref",
+        "vt_catalog_ref",
+    }
+)
+
+#: Klucze o kształcie WIĄZANIA katalogowego dopuszczone w operacjach V2. Osobny
+#: zbiór, bo wiązanie jest drugą drogą wskazania pozycji — bez tej połowy skanu
+#: dałoby się obejść inwentarz, podając `catalog_binding` zamiast `catalog_ref`.
+V2_CATALOG_BINDING_KEYS: frozenset[str] = frozenset(
+    {
+        "catalog_binding",
+        "catalog_item_id",
+        "catalog_item_version",
+        "catalog_namespace",
+        "apparatus_catalog_binding",
+        "cable_catalog_binding",
+        # Znacznik migawki („pole czeka na wskazanie aparatu"), nie kanał wskazania
+        # pozycji — zapisywany przez operację, nigdy z niego nie czytany.
+        "requires_catalog_binding",
+    }
+)
 
 
 # ---------------------------------------------------------------------------

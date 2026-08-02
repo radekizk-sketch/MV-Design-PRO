@@ -978,7 +978,7 @@ class TestNnFieldAdapters:
                 "load_name": "Odbiór katalogowy nN",
                 "catalog_binding": {
                     "catalog_namespace": "OBCIAZENIE",
-                    "catalog_item_id": "load-household-15kw",
+                    "catalog_item_id": "load_mieszk_15kw",
                     "catalog_item_version": "2024.1",
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
@@ -988,10 +988,10 @@ class TestNnFieldAdapters:
 
         assert result.get("snapshot") is not None, f"Error: {result.get('error')}"
         load = result["snapshot"]["loads"][0]
-        assert load["catalog_ref"] == "load-household-15kw"
+        assert load["catalog_ref"] == "load_mieszk_15kw"
         assert load["catalog_namespace"] == "OBCIAZENIE"
         assert load["parameter_source"] == "CATALOG"
-        assert load["meta"]["catalog_binding"]["catalog_item_id"] == "load-household-15kw"
+        assert load["meta"]["catalog_binding"]["catalog_item_id"] == "load_mieszk_15kw"
 
     def test_add_nn_outgoing_field_supports_source_field_role_without_legacy_alias(self):
         _, snapshot = _build_gpz_plus_segments(1)
@@ -1103,28 +1103,20 @@ class TestNnFieldAdapters:
                     "field_name": "Pole PV nN",
                     "catalog_binding": {
                         "catalog_namespace": "APARAT_NN",
-                        "catalog_item_id": "ap-nn-630",
+                        "catalog_item_id": "cb_nn_630a",
                         "catalog_item_version": "2024.1",
                         "materialize": True,
                         "snapshot_mapping_version": "1.0",
                     },
                 },
+                # Pozycja RZECZYWISTA (0,4 kV / 500 kW / 550 kVA): tabliczka pochodzi
+                # z katalogu, więc test nie może jej podać w payloadzie (defekt G).
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
-                    "catalog_item_id": "conv-pv-500",
+                    "catalog_namespace": "ZRODLO_NN_PV",
+                    "catalog_item_id": "conv-pv-nn-0p5mw-0p4kv",
                     "catalog_item_version": "2024.1",
                     "materialize": True,
                     "snapshot_mapping_version": "1.0",
-                },
-                "materialized_params": {
-                    "catalog_item_id": "conv-pv-500",
-                    "catalog_item_version": "2024.1",
-                    "un_kv": 0.4,
-                    "rated_power_ac_kw": 500.0,
-                    "max_power_kw": 500.0,
-                    "control_mode": "STALY_COS_PHI",
-                    "pmax_mw": 0.5,
-                    "sn_mva": 0.5,
                 },
             },
         )

@@ -19,7 +19,10 @@ import logging
 from typing import Any
 from uuid import UUID
 
-from api.domain_ops_policy import validate_and_materialize_catalog_binding
+from api.domain_ops_policy import (
+    extract_catalog_binding,
+    validate_and_materialize_catalog_binding,
+)
 from application.analyses.fault_loop.service import build_station_fault_loop_view
 from application.analyses.protection.czas_wylaczenia_pola import (
     czasy_wylaczenia_pol_stacji,
@@ -880,6 +883,95 @@ class DomainOpEnvelopeModel(BaseModel):
     operation: DomainOpPayloadModel
 
 
+#: Kolekcje migawki, w których element może nieść `materialized_params`.
+_KOLEKCJE_Z_TABLICZKA: tuple[str, ...] = (
+    "branches",
+    "buses",
+    "generators",
+    "loads",
+    "measurements",
+    "protection_assignments",
+    "shunt_capacitors",
+    "surge_arresters",
+    "transformers",
+)
+
+
+def rozbieznosc_wobec_bramy(
+    pola_bramy: dict[str, Any],
+    wiazanie: dict[str, Any] | None,
+    migawka: Any,
+    dotkniete_elementy: Any = None,
+) -> dict[str, Any] | None:
+    """Wynik bramy katalogowej MUSI trafić do modelu — inaczej brama jest teatrem.
+
+    DŁUG, KTÓRY TO ZAMYKA (przegląd fali 2026-08-01, znalezisko P12, klaster G):
+    `validate_and_materialize_catalog_binding` zwracała ZMATERIALIZOWANE pola
+    pozycji katalogowej (np. prawdziwe `un_kv = 15 kV` falownika), a wołający
+    WYRZUCAŁ je (`policy_error, _ = ...`) i przekazywał payload bez zmian. Brama
+    znała prawdę i milczała — operacja zapisywała do migawki tabliczkę
+    z przeglądarki pod `source_mode: KATALOG`.
+
+    PREDYKATY PARAMI: brama materializuje pozycję PRZED operacją, a operacja
+    materializuje ją ponownie, zapisując do migawki. Dwa niezależne odczyty, które
+    „dziś się zgadzają", są defektem czekającym na dane brzegowe — dlatego tu
+    porównujemy je wprost, TĄ SAMĄ funkcją, której operacja używa do weryfikacji
+    tabliczki z payloadu (`enm.domain_operations_v2.rozbieznosci_tabliczki`).
+    Rozbieżność ⇒ 422 i BRAK zapisu (kontrola stoi przed utrwaleniem migawki).
+
+    ZAKRES: wyłącznie elementy, które TA operacja utworzyła albo zmieniła
+    (`dotkniete_elementy`). Bez tego zawężenia jeden zastany element z zepsutą
+    tabliczką (zapisany, zanim brama zaczęła działać) blokowałby KAŻDĄ kolejną
+    operację wiążącą tę samą pozycję katalogową — kontrola pilnuje bieżącego
+    zapisu, a nie długu poprzednich rewizji.
+
+    Zwraca treść błędu HTTP albo ``None``, gdy brama i model mówią to samo.
+    """
+    from enm.domain_operations_v2 import rozbieznosci_tabliczki
+
+    if not pola_bramy or not isinstance(migawka, dict) or not isinstance(wiazanie, dict):
+        return None
+    pozycja = wiazanie.get("catalog_item_id")
+    if not isinstance(pozycja, str) or not pozycja.strip():
+        return None
+    pozycja = pozycja.strip()
+    zakres = {ref for ref in (dotkniete_elementy or ()) if isinstance(ref, str)}
+    if not zakres:
+        return None
+
+    rozbieznosci: list[str] = []
+    for kolekcja in _KOLEKCJE_Z_TABLICZKA:
+        for element in migawka.get(kolekcja) or []:
+            if not isinstance(element, dict) or element.get("ref_id") not in zakres:
+                continue
+            tabliczka = element.get("materialized_params")
+            if not isinstance(tabliczka, dict) or not tabliczka:
+                continue
+            if (
+                tabliczka.get("catalog_item_id") != pozycja
+                and element.get("catalog_ref") != pozycja
+            ):
+                continue
+            for opis in rozbieznosci_tabliczki(tabliczka, pola_bramy, etykieta_deklaracji="model"):
+                rozbieznosci.append(f"{element.get('ref_id')}: {opis}")
+
+    if not rozbieznosci:
+        return None
+    return {
+        "code": "catalog.gate_result_mismatch",
+        "message_pl": (
+            f"Model zapisałby dla pozycji katalogowej '{pozycja}' wartości inne niż "
+            "zmaterializowane przez bramę katalogową: "
+            + "; ".join(sorted(rozbieznosci))
+            + ". Operacja została odrzucona, model pozostał bez zmian."
+        ),
+        "errors": [
+            {"code": "catalog.gate_result_mismatch", "message_pl": opis}
+            for opis in sorted(rozbieznosci)
+        ],
+    }
+
+
 @router.post("/{case_id}/enm/domain-ops")
 async def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
     """Kanoniczny endpoint operacji domenowych V1.
@@ -933,7 +1025,7 @@ def _domain_ops_pod_blokada(case_id: str, req: DomainOpEnvelopeModel) -> dict[st
         )
 
     resolved_name = resolve_operation_name(req.operation.name)
-    policy_error, _ = validate_and_materialize_catalog_binding(
+    policy_error, pola_bramy = validate_and_materialize_catalog_binding(
         resolved_name,
         req.operation.payload,
     )
@@ -952,6 +1044,19 @@ def _domain_ops_pod_blokada(case_id: str, req: DomainOpEnvelopeModel) -> dict[st
         op_name=req.operation.name,
         payload=req.operation.payload,
     )
+
+    zmiany_operacji = result.get("changes") or {}
+    rozbieznosc_bramy = rozbieznosc_wobec_bramy(
+        pola_bramy,
+        extract_catalog_binding(resolved_name, req.operation.payload),
+        result.get("snapshot"),
+        [
+            *(zmiany_operacji.get("created_element_ids") or ()),
+            *(zmiany_operacji.get("updated_element_ids") or ()),
+        ],
+    )
+    if rozbieznosc_bramy is not None:
+        raise HTTPException(status_code=422, detail=rozbieznosc_bramy)
 
     if result.get("adapter_only"):
         if result.get("attach_field_view"):

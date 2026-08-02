@@ -877,20 +877,12 @@ class TestE2E5ReceivingStationsAndOzeBess:
                 "bus_nn_ref": nn_bus_ref,
                 "source_name": "PV-Farm-1",
                 "power_setpoint_mw": 0.5,
+                # Tabliczka pochodzi z katalogu (defekt G) — payload wskazuje
+                # wyłącznie POZYCJĘ, tak jak kreator OZE po wyborze falownika.
                 "catalog_binding": {
-                    "catalog_namespace": "CONVERTER",
-                    "catalog_item_id": "conv-pv-e2e-1",
+                    "catalog_namespace": "ZRODLO_NN_PV",
+                    "catalog_item_id": CATALOG_FALOWNIK_PV_NN,
                     "catalog_item_version": "2024.1",
-                },
-                "materialized_params": {
-                    "catalog_item_id": "conv-pv-e2e-1",
-                    "catalog_item_version": "2024.1",
-                    "un_kv": 0.4,
-                    "rated_power_ac_kw": 500.0,
-                    "max_power_kw": 500.0,
-                    "control_mode": "STALY_COS_PHI",
-                    "pmax_mw": 0.5,
-                    "sn_mva": 0.5,
                 },
             },
         )

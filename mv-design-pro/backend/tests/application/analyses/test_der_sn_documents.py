@@ -23,7 +23,11 @@ from enm.models import EnergyNetworkModel, ENMDefaults, ENMHeader
 
 _TR_BLOCK = "tr-sn-nn-15-04-1000kva-dyn11"
 _CABLE = "cable-base-epr-al-1c-240"
-_APARAT_SN = "ap-sn-cb-630"
+#: Aparat pola SN — RZECZYWISTA pozycja katalogu (dawne „ap-sn-cb-630" nie
+#: istniało w katalogu; operacja przyjmowała je bez sprawdzenia — defekt G).
+_APARAT_SN = "sw-cb-abb-vd4-17kv-630a"
+#: Falownik PV nN 1 MW / 0,4 kV — mieści się w TR blokowym 1 MVA toru DER.
+_FALOWNIK_PV = "conv-pv-nn-1mw-0p4kv"
 
 
 def _sn_station_enm() -> dict[str, Any]:
@@ -77,19 +81,13 @@ def _der_sn_payload(power_mw: float = 0.998) -> dict[str, Any]:
         "source_name": "Blok PV SN",
         "quantity": 1,
         "power_setpoint_mw": power_mw,
+        # Tabliczka pochodzi z katalogu (defekt G) — payload wskazuje POZYCJĘ.
         "catalog_binding": {
             "catalog_namespace": "ZRODLO_NN_PV",
-            "catalog_item_id": "conv-pv-04kv",
+            "catalog_item_id": _FALOWNIK_PV,
             "catalog_item_version": "2024.1",
             "materialize": True,
             "snapshot_mapping_version": "1.0",
-        },
-        "materialized_params": {
-            "catalog_item_id": "conv-pv-04kv",
-            "catalog_item_version": "2024.1",
-            "un_kv": 0.4,
-            "pmax_mw": power_mw,
-            "sn_mva": 1.0,
         },
         "der_topology": {
             "connection_level": "sn",
@@ -183,7 +181,7 @@ def test_bom_from_materialized_track_lists_all_elements() -> None:
     assert kabel["jednostka"] == "km"
 
     falownik = bom["pozycje"][4]
-    assert falownik["catalog_ref"] == "conv-pv-04kv"
+    assert falownik["catalog_ref"] == _FALOWNIK_PV
     assert falownik["ilosc"] == 1
 
 
