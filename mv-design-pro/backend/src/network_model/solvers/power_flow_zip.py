@@ -23,6 +23,18 @@ part. ``split_zip_constant_part`` performs that split once, before the iteration
 and ``zip_effective_spec`` adds the constant part back at each recompute. With no
 generation on a ZIP bus the split is empty and every code path below is the
 historical one, bit for bit.
+
+ONE PREDICATE FOR THE SPLIT (defect A1, review 2026-08-01). The set of buses that
+are REBASED and the set of buses that get their constant part BACK must be the
+same set BY CONSTRUCTION, never "equal by accident". ``declares_zip_split`` is the
+single source of truth, used by ``split_zip_constant_part`` (which rebases) and by
+``build_zip_table`` (whose keys are the recompute set every solver adds the
+constant part for). When the two predicates differed — rebase on ``zip_base_*``,
+add-back on VOLTAGE dependence — a load with a trivial voltage polynomial but a
+non-zero frequency sensitivity (a=b=0, c=1, k_pf!=0) was rebased onto the load
+base and never restored: the whole generation of that bus silently left the
+equation, identically in NR/GS/FD, and the bus was absent from the WHITE BOX
+trace. ``zip_effective_spec`` now refuses that state instead of losing power.
 """
 
 from __future__ import annotations
@@ -91,15 +103,45 @@ def zip_factor_derivative(a: float, b: float, v_pu: float, v0_pu: float) -> floa
     return 2.0 * a * v_pu / (v0_pu * v0_pu) + b / v0_pu
 
 
+def declares_zip_split(spec: object) -> bool:
+    """SINGLE SOURCE OF TRUTH: is this bus split into a load base + a constant part?
+
+    Defect A1 (review 2026-08-01). Exactly one predicate may decide this, because
+    two consumers must agree on the same set of buses: ``split_zip_constant_part``
+    rebases them, and ``build_zip_table`` admits them to the recompute set that is
+    the ONLY place any solver adds the constant part back (NR
+    ``power_flow_newton_internal``, GS sweep, FD via ``zip_effective_spec``). A bus
+    rebased but not admitted loses its whole generation without a trace.
+
+    A spec declares the split by carrying the LOAD-only base alongside the net bus
+    power. Duck-typed on ``.zip_base_p_mw``/``.zip_base_q_mvar``."""
+    return (
+        getattr(spec, "zip_base_p_mw", None) is not None
+        or getattr(spec, "zip_base_q_mvar", None) is not None
+    )
+
+
 def build_zip_table(pq_specs: object, node_index_map: dict[str, int]) -> dict[int, ZipCoeffs]:
-    """Validated VOLTAGE-dependent ZIP table keyed by bus index (per-iteration
-    recompute set). Frequency-only loads are excluded here — their constant factor
-    is handled once by apply_zip_frequency. Empty => classic path (reduce-to-NR).
+    """Validated ZIP table keyed by bus index — the per-iteration recompute set.
+
+    Admits a bus when its coefficients are VOLTAGE-dependent (a per-iteration
+    recompute is genuinely needed) OR when the bus declares a split
+    (``declares_zip_split``), because the constant part of a split bus is added
+    back only for the keys of this table. For a split frequency-only bus the
+    polynomial is the identity (a=b=0, c=1 => factor exactly 1.0, derivative
+    exactly 0.0), so admitting it costs no physics — it only puts the bus where
+    its generation can come back and where the WHITE BOX trace can see it.
+
+    A frequency-only load on a bus with NO split stays out: its one-time factor is
+    applied by apply_zip_frequency and there is nothing to add back, so the classic
+    path is preserved bit for bit. Empty => classic path (reduce-to-NR).
     Shared by NR/GS/FD; duck-typed on .zip_coeffs / .node_id."""
     table: dict[int, ZipCoeffs] = {}
     for spec in pq_specs:  # type: ignore[attr-defined]
         c = getattr(spec, "zip_coeffs", None)
-        if c is None or c.is_constant_power():
+        if c is None:
+            continue
+        if c.is_constant_power() and not declares_zip_split(spec):
             continue
         idx = node_index_map.get(spec.node_id)
         if idx is None:
@@ -131,18 +173,20 @@ def split_zip_constant_part(
     path bit for bit (reduce-to-NR).
 
     Must run BEFORE apply_zip_frequency, so the load frequency factor scales the
-    load base only. Duck-typed on ``.zip_base_p_mw``/``.zip_base_q_mvar``."""
+    load base only. The set of buses rebased here is ``declares_zip_split`` — the
+    same predicate that admits them to ``build_zip_table``, so every bus whose
+    constant part is taken out is a bus where it is put back (defect A1)."""
     p_const = np.zeros_like(p_spec)
     q_const = np.zeros_like(q_spec)
     split_found = False
     for spec in pq_specs:  # type: ignore[attr-defined]
-        base_p = getattr(spec, "zip_base_p_mw", None)
-        base_q = getattr(spec, "zip_base_q_mvar", None)
-        if base_p is None and base_q is None:
+        if not declares_zip_split(spec):
             continue
         idx = node_index_map.get(spec.node_id)
         if idx is None:
             continue
+        base_p = getattr(spec, "zip_base_p_mw", None)
+        base_q = getattr(spec, "zip_base_q_mvar", None)
         # Same construction as build_power_spec(_v2): injection convention, pu.
         p_base_pu = -(spec.p_mw if base_p is None else float(base_p)) / base_mva
         q_base_pu = -(spec.q_mvar if base_q is None else float(base_q)) / base_mva
@@ -151,12 +195,47 @@ def split_zip_constant_part(
         if p_rest == 0.0 and q_rest == 0.0:
             # Load-only bus: base == spec, nothing to split (exact zero remainder).
             continue
+        if getattr(spec, "zip_coeffs", None) is None:
+            # No polynomial => build_zip_table cannot admit this bus => nobody
+            # would ever add the constant part back. Refuse loudly instead of
+            # dropping the generation of the bus (defect A1: never a silent loss).
+            raise ValueError(
+                f"ZIP split declared for bus {spec.node_id} without zip_coeffs: "
+                "the constant part could not be restored"
+            )
         p_spec[idx] = p_base_pu
         q_spec[idx] = q_base_pu
         p_const[idx] = p_rest
         q_const[idx] = q_rest
         split_found = True
     return (p_const, q_const) if split_found else None
+
+
+def assert_const_part_is_restorable(
+    zip_table: dict[int, ZipCoeffs] | None,
+    zip_const: tuple[np.ndarray, np.ndarray] | None,
+) -> None:
+    """Structural fuse for the split (defect A1): no bus may lose its constant part.
+
+    Every bus carrying a non-zero constant part (generation taken out of the bus
+    power by ``split_zip_constant_part``) MUST be a key of the recompute table,
+    because that table is the only place any solver adds it back. If the two sets
+    ever drift apart again, the run fails here with the offending bus indices
+    instead of silently returning a rebased load as if it were the whole bus."""
+    if zip_const is None:
+        return
+    p_const, q_const = zip_const
+    covered = zip_table or {}
+    missing = [
+        int(idx)
+        for idx in np.flatnonzero((p_const != 0.0) | (q_const != 0.0))
+        if int(idx) not in covered
+    ]
+    if missing:
+        raise ValueError(
+            f"ZIP split lost the constant part at bus indices {missing}: "
+            "they are not in the ZIP recompute table"
+        )
 
 
 def zip_effective_spec(
@@ -175,6 +254,7 @@ def zip_effective_spec(
     after the polynomial — None => no bus carries one. With an empty/None
     zip_table the inputs are returned unchanged (reduce-to-NR). Shared by
     NR/GS/FD for a single ZIP recompute contract."""
+    assert_const_part_is_restorable(zip_table, zip_const)
     if not zip_table:
         return p_spec, q_spec
     p_eff = p_spec.copy()
@@ -261,7 +341,18 @@ def aggregate_zip(
     coefficient: constant power (a=b=0, c=1) and zero frequency sensitivity. It
     must never be an all-zero polynomial (sum 0 instead of 1) — that used to make
     build_zip_table raise on a perfectly valid model (defect D1, audit 2026-08-01).
-    Every aggregate is validated here, before anyone can use it.
+
+    NOT validated here (defect A2, review 2026-08-01). This function is called from
+    ``enm.mapping.map_enm_to_network_graph``, a pure function shared by analyses
+    that never read the ZIP model at all (short circuit, energy validation, state
+    estimation, thermal withstand). The RANGE of an aggregate is a property of the
+    COMBINATION, not of any input: mixing an inductive and a capacitive load on one
+    bus makes the weighted shares leave [0, 1] while every component is valid. A
+    load-flow-only property must not be able to topple the shared mapping, so it is
+    enforced by ``build_zip_table`` — the load-flow layer that actually uses the
+    polynomial. (Per-component coefficients ARE still validated at construction in
+    ``zip_coeffs_from_materialized_params``: that is input validation, not a
+    derived quantity.)
 
     Returns None when the aggregate is trivial constant power."""
     p_tot = sum(p for p, _q, _c in components)
@@ -298,7 +389,6 @@ def aggregate_zip(
         k_qf=_share_q(lambda c: gp(c, "k_qf", 0.0), 0.0),
         f0_hz=f0_hz,
     )
-    validate_zip_coeffs(agg)
     if agg.is_constant_power() and not agg.has_frequency_dependence():
         return None
     return agg

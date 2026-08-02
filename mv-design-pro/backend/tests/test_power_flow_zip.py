@@ -23,8 +23,13 @@ from network_model.solvers.power_flow_types import (
 from network_model.solvers.power_flow_zip import (
     ZipCoeffs,
     aggregate_zip,
+    build_zip_table,
+    declares_zip_split,
     frequency_factor,
+    split_zip_constant_part,
     validate_zip_coeffs,
+    zip_coeffs_from_materialized_params,
+    zip_effective_spec,
     zip_factor,
     zip_factor_derivative,
 )
@@ -32,6 +37,11 @@ from network_model.solvers.power_flow_zip import (
 CONST_Z = ZipCoeffs(1.0, 0.0, 0.0, 1.0, 0.0, 0.0)
 CONST_I = ZipCoeffs(0.0, 1.0, 0.0, 0.0, 1.0, 0.0)
 CONST_P = ZipCoeffs(0.0, 0.0, 1.0, 0.0, 0.0, 1.0)
+# Wielomian napieciowy TRYWIALNY (a=b=0, c=1), ale czulosc czestotliwosciowa
+# niezerowa — defekt A1 (przeglad fali 2026-08-01) siedzial dokladnie tutaj.
+FREQ_ONLY = ZipCoeffs(0.0, 0.0, 1.0, 0.0, 0.0, 1.0, k_pf=2.0, k_qf=1.0, f0_hz=50.0)
+# Udzialy dokladne binarnie, zeby a+b+c == 1.0 co do bitu przy V = V0.
+MIXED = ZipCoeffs(0.5, 0.25, 0.25, 0.5, 0.25, 0.25)
 
 
 def _two_bus() -> NetworkGraph:
@@ -350,12 +360,33 @@ def test_aggregate_zero_total_keeps_frequency_sensitivity_neutral() -> None:
     assert (agg.a_q, agg.b_q, agg.c_q) == (0.0, 0.0, 1.0)
 
 
-def test_aggregate_is_validated_before_return() -> None:
-    """Every aggregate goes through validate_zip_coeffs (no silent garbage)."""
+def test_aggregate_out_of_range_is_rejected_by_the_load_flow_layer_not_by_mapping() -> None:
+    """Defect A2: an aggregate outside [0, 1] must fail where it is USED.
+
+    Intent unchanged (malformed coefficients must never reach the solver
+    silently); the layer moved. ``aggregate_zip`` is called from
+    ``enm.mapping.map_enm_to_network_graph`` — a pure function shared by analyses
+    that never read the ZIP model (short circuit, energy validation, state
+    estimation, thermal withstand), so a load-flow-only property must not topple
+    it. The RANGE of an aggregate is a property of the COMBINATION: mixing an
+    inductive and a capacitive load on one bus takes the weighted shares outside
+    [0, 1] while every component is perfectly valid.
+    """
+    agg = aggregate_zip([(3.0, 1.5, CONST_Z), (1.0, -1.0, None)])
+    assert agg is not None
+    assert agg.a_q == pytest.approx(3.0)  # combination, not a malformed input
+    # Sum-to-1 still holds — the polynomial of the sum IS the sum of polynomials.
+    assert agg.a_q + agg.b_q + agg.c_q == pytest.approx(1.0)
+    # ...and the load-flow layer refuses to solve with it.
+    spec = PQSpec(node_id="B", p_mw=4.0, q_mvar=0.5, zip_coeffs=agg)
     with pytest.raises(ValueError, match="ZIP"):
-        # Negative load weight => share outside [0, 1]: rejected at aggregation
-        # time instead of being carried into the solver.
-        aggregate_zip([(2.0, 1.0, CONST_Z), (-1.0, 1.0, CONST_P)])
+        build_zip_table([spec], {"B": 0})
+
+
+def test_per_component_coefficients_are_still_validated_at_construction() -> None:
+    """Input validation stays: one load's own catalog params are checked on build."""
+    with pytest.raises(ValueError, match="ZIP"):
+        zip_coeffs_from_materialized_params({"a_p": 2.0, "b_p": 0.0, "c_p": -1.0})
 
 
 # ---- defect D1: the polynomial scales the LOAD, generation stays constant ----
@@ -439,3 +470,186 @@ def test_split_trace_exposes_base_and_constant_part() -> None:
     assert entry["p_spec_pu"] == pytest.approx(
         entry["p_base_pu"] * zip_factor(1.0, 0.0, 0.0, v, 1.0) + entry["p_const_pu"], rel=1e-12
     )
+
+
+# ---- defect A1: ONE predicate decides the split (review 2026-08-01) ----------
+#
+# The bug was an asymmetry, not a formula: `split_zip_constant_part` rebased every
+# bus carrying a ZIP base, while the constant part came back only for buses in
+# `zip_table` — and `build_zip_table` dropped everything without a VOLTAGE
+# dependence. A load with a trivial voltage polynomial but a non-zero frequency
+# sensitivity fell in the gap and lost its whole generation, in NR, GS and FD
+# alike. These tests pin the SET equality, not just the arithmetic.
+
+
+def _spec_arrays(specs: list[PQSpec], base_mva: float = 10.0):
+    """p_spec/q_spec in the solver's convention (mirrors build_power_spec_v2)."""
+    import numpy as np
+
+    p = np.array([-s.p_mw / base_mva for s in specs])
+    q = np.array([-s.q_mvar / base_mva for s in specs])
+    return p, q
+
+
+def test_split_set_and_recompute_set_are_identical_by_construction() -> None:
+    """Every bus that is REBASED is a key of the table that puts it BACK.
+
+    This is the invariant the defect broke. It is asserted over the whole
+    coefficient matrix at once, so no single variant can drift out again.
+    """
+    import numpy as np
+
+    variants = {
+        "const_p": CONST_P,
+        "const_i": CONST_I,
+        "const_z": CONST_Z,
+        "freq_only": FREQ_ONLY,
+        "mixed": MIXED,
+    }
+    specs = [
+        PQSpec(
+            node_id=name,
+            p_mw=3.0 - 2.7,
+            q_mvar=1.0,
+            zip_coeffs=coeffs,
+            zip_base_p_mw=3.0,
+            zip_base_q_mvar=1.0,
+        )
+        for name, coeffs in variants.items()
+    ]
+    index_map = {name: i for i, name in enumerate(variants)}
+    p_spec, q_spec = _spec_arrays(specs)
+
+    table = build_zip_table(specs, index_map)
+    const = split_zip_constant_part(p_spec, q_spec, specs, index_map, 10.0)
+    assert const is not None
+    rebased = {int(i) for i in np.flatnonzero((const[0] != 0.0) | (const[1] != 0.0))}
+    assert rebased == set(table), "rebased buses must be exactly the recompute set"
+    assert rebased == set(index_map.values())
+
+
+@pytest.mark.parametrize(
+    "name,coeffs",
+    [("const_p", CONST_P), ("const_i", CONST_I), ("const_z", CONST_Z), ("freq_only", FREQ_ONLY)],
+)
+@pytest.mark.parametrize("p_gen_mw", [2.7, 0.0])
+def test_split_plus_constant_reconstructs_the_specified_bus_power(
+    name: str, coeffs: ZipCoeffs, p_gen_mw: float
+) -> None:
+    """SAFETY FUSE (§2.2): load base + constant part == the bus power specified.
+
+    Evaluated at V = V0, where EVERY valid ZIP polynomial equals a+b+c = 1 and the
+    frequency factor at f = f0 equals 1 — so the effective injection must be the
+    untouched specified power. Runs over {const P, const I, const Z, freq-only}
+    x {with generation, without}: the defect lived in exactly one cell of that
+    matrix and no test occupied it.
+    """
+    import numpy as np
+
+    spec = PQSpec(
+        node_id="B",
+        p_mw=3.0 - p_gen_mw,
+        q_mvar=1.0,
+        zip_coeffs=coeffs,
+        zip_base_p_mw=3.0,
+        zip_base_q_mvar=1.0,
+    )
+    index_map = {"B": 0}
+    p_spec, q_spec = _spec_arrays([spec])
+    p_zadane, q_zadane = float(p_spec[0]), float(q_spec[0])
+
+    table = build_zip_table([spec], index_map)
+    const = split_zip_constant_part(p_spec, q_spec, [spec], index_map, 10.0)
+    v = np.array([complex(coeffs.v0_pu, 0.0)])
+    p_eff, q_eff = zip_effective_spec(p_spec, q_spec, v, table, const)
+
+    assert float(p_eff[0]) == pytest.approx(p_zadane, rel=1e-12, abs=1e-15)
+    assert float(q_eff[0]) == pytest.approx(q_zadane, rel=1e-12, abs=1e-15)
+
+
+@pytest.mark.parametrize("p_gen_mw", [2.7, 0.0])
+def test_split_plus_constant_reconstructs_for_mixed_coefficients(p_gen_mw: float) -> None:
+    """Same fuse for a genuinely mixed polynomial (Z + I + P shares)."""
+    import numpy as np
+
+    spec = PQSpec(
+        node_id="B",
+        p_mw=3.0 - p_gen_mw,
+        q_mvar=1.0,
+        zip_coeffs=MIXED,
+        zip_base_p_mw=3.0,
+        zip_base_q_mvar=1.0,
+    )
+    index_map = {"B": 0}
+    p_spec, q_spec = _spec_arrays([spec])
+    p_zadane = float(p_spec[0])
+    table = build_zip_table([spec], index_map)
+    const = split_zip_constant_part(p_spec, q_spec, [spec], index_map, 10.0)
+    p_eff, _ = zip_effective_spec(p_spec, q_spec, np.array([1.0 + 0j]), table, const)
+    assert float(p_eff[0]) == pytest.approx(p_zadane, rel=1e-12, abs=1e-15)
+
+
+def test_frequency_only_bus_with_generation_keeps_it() -> None:
+    """The reported defect, at solver level: f = f0 => identical to constant power."""
+    freq = _solve_with_generation(FREQ_ONLY, p_load_mw=3.0, q_load_mvar=1.0, p_gen_mw=2.7)
+    const = _solve_with_generation(CONST_P, p_load_mw=3.0, q_load_mvar=1.0, p_gen_mw=2.7)
+    bez_generacji = _solve_with_generation(FREQ_ONLY, p_load_mw=3.0, q_load_mvar=1.0, p_gen_mw=0.0)
+    assert freq.converged
+    assert freq.node_u_mag["B"] == const.node_u_mag["B"]
+    assert complex(freq.slack_power) == complex(const.slack_power)
+    # The defect made the bus solve as if the generator was not there at all.
+    assert freq.node_u_mag["B"] != bez_generacji.node_u_mag["B"]
+
+
+def test_frequency_only_split_bus_is_in_the_white_box_trace() -> None:
+    """WHITE BOX (§2.4): a split frequency-only bus must be auditable too.
+
+    It was absent from `zip_loads` (the trace is built from the recompute table),
+    so an auditor reading the numbers could not have caught the lost generation.
+    """
+    sol = _solve_with_generation(
+        FREQ_ONLY, p_load_mw=3.0, q_load_mvar=1.0, p_gen_mw=2.7, trace="full"
+    )
+    entry = sol.nr_trace[-1]["zip_loads"]["B"]
+    assert entry["p_base_pu"] == pytest.approx(-3.0 / 10.0, rel=1e-12)
+    assert entry["p_const_pu"] == pytest.approx(2.7 / 10.0, rel=1e-12)
+    # p_spec = p_base * f_ZIP(V) + p_const, with f_ZIP == 1 for this polynomial.
+    assert entry["p_spec_pu"] == pytest.approx(entry["p_base_pu"] + entry["p_const_pu"], rel=1e-12)
+
+
+def test_frequency_only_bus_without_a_split_stays_out_of_the_table() -> None:
+    """No split => nothing to add back => classic path, bit for bit.
+
+    The table must not grow for its own sake: a frequency-only load on a bus with
+    no generation needs no per-iteration recompute, and admitting it would change
+    the WHITE BOX trace of networks that are correct today.
+    """
+    spec = PQSpec(node_id="B", p_mw=3.0, q_mvar=1.0, zip_coeffs=FREQ_ONLY)
+    assert not declares_zip_split(spec)
+    assert build_zip_table([spec], {"B": 0}) == {}
+
+
+def test_declared_split_without_coefficients_is_refused_not_dropped() -> None:
+    """§2.3: a bus the load-flow layer cannot carry is an ERROR, never a silent loss."""
+    spec = PQSpec(node_id="B", p_mw=0.3, q_mvar=1.0, zip_base_p_mw=3.0, zip_base_q_mvar=1.0)
+    p_spec, q_spec = _spec_arrays([spec])
+    with pytest.raises(ValueError, match="without zip_coeffs"):
+        split_zip_constant_part(p_spec, q_spec, [spec], {"B": 0}, 10.0)
+
+
+def test_effective_spec_refuses_a_constant_part_it_cannot_restore() -> None:
+    """Structural fuse: a constant part outside the recompute table must raise.
+
+    This is the state the defect silently produced. If the two sets ever drift
+    apart again the run stops with the offending bus index instead of returning a
+    rebased load as though it were the whole bus.
+    """
+    import numpy as np
+
+    p_spec = np.array([-0.3])
+    q_spec = np.array([-0.1])
+    zip_const = (np.array([0.27]), np.array([0.0]))
+    with pytest.raises(ValueError, match="lost the constant part"):
+        zip_effective_spec(p_spec, q_spec, np.array([1.0 + 0j]), {}, zip_const)
+    with pytest.raises(ValueError, match="lost the constant part"):
+        zip_effective_spec(p_spec, q_spec, np.array([1.0 + 0j]), {1: CONST_Z}, zip_const)
