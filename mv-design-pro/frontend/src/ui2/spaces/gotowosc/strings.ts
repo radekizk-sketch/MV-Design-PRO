@@ -20,6 +20,17 @@ export const GOTOWOSC_STRINGS = {
   ladowanie: 'Wczytywanie…',
   blad: 'Błąd wczytywania gotowości',
 
+  // Stan NIEUSTALONY (dług V12K-309 poz. 1): model jest wczytany, ale gotowości
+  // nikt nie policzył — jedyna droga do tego stanu to nieudany odczyt gotowości
+  // z backendu (`snapshotStore.refreshReadinessFromBackend` zostawia wtedy
+  // `null`). Zdanie tytułowe jest tym samym, którym opisuje ten stan store
+  // („Gotowości nie udało się ustalić"); akcja reużywa istniejący napis stanu
+  // zerowego z przeglądarki szablonów („Spróbuj ponownie") — zero nowych fraz.
+  nieustalonaTytul: 'Nie udało się ustalić gotowości',
+  nieustalonaOpis:
+    'Kontroli technicznej układu nie policzono — dopóki nie wiadomo, panel nie ocenia gotowości.',
+  sprobujPonownie: 'Spróbuj ponownie',
+
   // Stan pozytywny — wszystko gotowe
   wszystkoGotowe: 'Gotowe do analiz',
   wszystkoGotoweOpis:

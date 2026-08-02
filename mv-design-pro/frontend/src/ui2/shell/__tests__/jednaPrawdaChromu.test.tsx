@@ -14,9 +14,11 @@ import { renderHook } from '@testing-library/react';
 import {
   etykietaPrzebiegu,
   ostatniZakonczonyPrzebieg,
+  ostatniZakonczonyPrzebiegPrzypadku,
   useShellCaseInfo,
   useShellStatusInfo,
 } from '../shellStatus';
+import { SHELL_STRINGS, readinessLabel } from '../strings';
 import { podsumujGotowosc } from '../../spaces/gotowosc/adapters/gotowoscAdapter';
 import { useAppStateStore } from '../../../ui/app-state';
 import { useSnapshotStore } from '../../../ui/topology/snapshotStore';
@@ -59,20 +61,62 @@ beforeEach(() => {
 });
 
 describe('podsumujGotowosc — projekcja gotowości dla chromu (R1)', () => {
-  it('brak migawki → model NIEzwalidowany i zerowe liczniki (zero fabrykacji)', () => {
-    expect(podsumujGotowosc(null)).toEqual({ ready: false, blokady: 0, ostrzezenia: 0 });
-  });
-
-  it('gotowość z blokadami → ready=false + liczby wprost z odpowiedzi domenowej', () => {
-    expect(podsumujGotowosc(readinessFixture())).toEqual({ ready: false, blokady: 1, ostrzezenia: 2 });
-  });
-
-  it('gotowość bez uwag → ready=true', () => {
-    expect(podsumujGotowosc(readinessFixture({ ready: true, blockers: [], warnings: [] }))).toEqual({
-      ready: true,
+  it('brak migawki → model NIEzwalidowany, liczniki zerowe i gotowość NIEUSTALONA', () => {
+    // `ustalona: false` odróżnia „policzono: zero uwag" od „nie policzono" —
+    // bez tego pola obie sytuacje dawały w chromie „Gotowość: brak uwag"
+    // (dług V12K-309 poz. 1, ta sama klasa co panel „Gotowe do analiz").
+    expect(podsumujGotowosc(null)).toEqual({
+      ready: false,
+      ustalona: false,
       blokady: 0,
       ostrzezenia: 0,
     });
+  });
+
+  it('gotowość z blokadami → ready=false + liczby wprost z odpowiedzi domenowej', () => {
+    expect(podsumujGotowosc(readinessFixture())).toEqual({
+      ready: false,
+      ustalona: true,
+      blokady: 1,
+      ostrzezenia: 2,
+    });
+  });
+
+  it('gotowość bez uwag → ready=true, ustalona=true (POLICZONE zero, nie brak danej)', () => {
+    expect(podsumujGotowosc(readinessFixture({ ready: true, blockers: [], warnings: [] }))).toEqual({
+      ready: true,
+      ustalona: true,
+      blokady: 0,
+      ostrzezenia: 0,
+    });
+  });
+});
+
+describe('chip „Gotowość" nie ogłasza braku uwag, gdy gotowości nikt nie policzył', () => {
+  it('gotowość NIEUSTALONA → etykieta kreski braku danej, nie „brak uwag"', () => {
+    const { result } = renderHook(() => useShellCaseInfo());
+
+    expect(result.current.readinessGotowoscUstalona).toBe(false);
+    expect(readinessLabel(
+      result.current.readinessWarnings,
+      result.current.readinessBlockers,
+      result.current.readinessGotowoscUstalona,
+    )).toBe(`Gotowość: ${SHELL_STRINGS.emptyValue}`);
+  });
+
+  it('gotowość policzona bez uwag → „Gotowość: brak uwag" (werdykt ma pokrycie)', () => {
+    useSnapshotStore.setState({
+      readiness: readinessFixture({ ready: true, blockers: [], warnings: [] }),
+    } as never);
+
+    const { result } = renderHook(() => useShellCaseInfo());
+
+    expect(result.current.readinessGotowoscUstalona).toBe(true);
+    expect(readinessLabel(
+      result.current.readinessWarnings,
+      result.current.readinessBlockers,
+      result.current.readinessGotowoscUstalona,
+    )).toBe('Gotowość: brak uwag');
   });
 });
 
@@ -155,5 +199,29 @@ describe('etykieta ostatniego przebiegu (R3)', () => {
     ];
     expect(ostatniZakonczonyPrzebieg(lista)?.id).toBe('run-z');
     expect(ostatniZakonczonyPrzebieg([...lista].reverse())?.id).toBe('run-z');
+  });
+});
+
+describe('rewizja wyniku bierze się z przebiegu WŁAŚCIWEGO przypadku (V12K-309 poz. 2)', () => {
+  it('przebieg innego zakresu jest pomijany — cudza rewizja nie opisuje tego wyniku', () => {
+    const lista = [
+      runFixture({ id: 'run-obcy', study_case_id: 'case-INNY', finished_at: '2026-07-30T23:00:00Z' }),
+      runFixture({ id: 'run-moj', study_case_id: 'case-1', finished_at: '2026-07-30T10:00:00Z' }),
+    ];
+    // Przebieg obcego zakresu jest PÓŹNIEJSZY — bez filtru wygrałby ranking.
+    expect(ostatniZakonczonyPrzebieg(lista)?.id).toBe('run-obcy');
+    expect(ostatniZakonczonyPrzebiegPrzypadku(lista, 'case-1')?.id).toBe('run-moj');
+  });
+
+  it('brak przypadku albo brak jego przebiegów → brak rewizji wyniku (bez zgadywania)', () => {
+    const lista = [runFixture({ id: 'run-obcy', study_case_id: 'case-INNY' })];
+    expect(ostatniZakonczonyPrzebiegPrzypadku(lista, null)).toBeNull();
+    expect(ostatniZakonczonyPrzebiegPrzypadku(lista, 'case-1')).toBeNull();
+    expect(ostatniZakonczonyPrzebiegPrzypadku([], 'case-1')).toBeNull();
+  });
+
+  it('niezakończony przebieg przypadku nie daje rewizji (wynik jeszcze nie istnieje)', () => {
+    const lista = [runFixture({ id: 'run-w-toku', study_case_id: 'case-1', status: 'RUNNING' })];
+    expect(ostatniZakonczonyPrzebiegPrzypadku(lista, 'case-1')).toBeNull();
   });
 });

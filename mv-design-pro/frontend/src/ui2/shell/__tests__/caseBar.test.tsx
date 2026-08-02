@@ -7,14 +7,20 @@ import { SHELL_STRINGS } from '../strings';
 import { studyCaseFixture } from '../../spaces/obliczenia/__tests__/fixtures';
 import type { StudyCaseResultStatus } from '../../../ui/study-cases/types';
 
-/** Model znacznika z realnego kształtu StudyCase (przez czysty helper K4/D1). */
-function znacznik(status: StudyCaseResultStatus) {
+/**
+ * Model znacznika z realnego kształtu StudyCase (przez czysty helper K4/D1).
+ * Para rewizji ZGODNA (7 ↔ 7) — od V12K-309 poz. 2 to ona, a nie sam
+ * `result_status`, rozstrzyga „aktualne": bez pary rewizji werdykt jest
+ * nieustalony, a przy rewizji wyniku starszej od modelu — „nieaktualne".
+ */
+function znacznik(status: StudyCaseResultStatus, rewizjaWyniku: number | null = 7) {
   return znacznikSwiezosci(
     studyCaseFixture('K-1', 'Zwarcia maks.', {
       result_status: status,
       results_valid: status === 'FRESH',
       is_active: true,
     }),
+    { rewizjaWyniku, rewizjaModelu: 7 },
   );
 }
 
@@ -26,6 +32,7 @@ function makeInfo(overrides: Partial<ShellCaseInfo> = {}): ShellCaseInfo {
     caseCount: 4,
     znacznikWynikow: znacznik('FRESH'),
     modelValidated: true,
+    readinessGotowoscUstalona: true,
     readinessWarnings: 0,
     readinessBlockers: 0,
     ...overrides,
@@ -70,7 +77,7 @@ describe('CaseBar', () => {
           projectPresent: false,
           projectName: null,
           caseName: null,
-          znacznikWynikow: znacznikSwiezosci(null),
+          znacznikWynikow: znacznikSwiezosci(null, { rewizjaWyniku: null, rewizjaModelu: null }),
         })}
         onOpenProject={onOpenProject}
       />,
@@ -120,5 +127,25 @@ describe('CaseBar', () => {
     expect(chip).toHaveTextContent(SHELL_STRINGS.resultsNone);
     fireEvent.click(chip);
     expect(onPrzejdzDoObliczen).not.toHaveBeenCalled();
+  });
+
+  it('świeżość bez rewizji wyniku → „Wyniki: nieustalone", NIGDY „aktualne" (V12K-309 poz. 2)', () => {
+    render(<CaseBar info={makeInfo({ znacznikWynikow: znacznik('FRESH', null) })} />);
+
+    const chip = screen.getByTestId('mvd-casebar-results');
+    expect(chip).toHaveTextContent(SHELL_STRINGS.resultsUnknown);
+    expect(chip).not.toHaveTextContent(SHELL_STRINGS.resultsFresh);
+    // Kropka neutralna — „ok" byłaby werdyktem, którego nikt nie policzył.
+    expect(chip.querySelector('.mvd-dot')?.className).toBe('mvd-dot mvd-dot-none');
+  });
+
+  it('gotowość nieustalona → chip pokazuje kreskę braku danej i NIE „brak uwag" (V12K-309 poz. 1)', () => {
+    render(<CaseBar info={makeInfo({ readinessGotowoscUstalona: false })} />);
+
+    const chip = screen.getByTestId('mvd-casebar-readiness');
+    expect(chip).toHaveTextContent(`Gotowość: ${SHELL_STRINGS.emptyValue}`);
+    expect(chip).not.toHaveTextContent('brak uwag');
+    // Zielona kropka jest zarezerwowana dla POLICZONEJ gotowości bez uwag.
+    expect(chip.querySelector('.mvd-dot')?.className).toBe('mvd-dot mvd-dot-warn');
   });
 });

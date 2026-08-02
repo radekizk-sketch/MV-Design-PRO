@@ -82,7 +82,12 @@ describe('jedna prawda gotowości — drzewo topologii i panel idą razem', () =
 
     // Ta sama prawda w panelu gotowości i w chromie powłoki.
     expect(panel.result.current.map((p) => p.severity)).toEqual(['BLOCKER', 'IMPORTANT']);
-    expect(chrom.result.current).toEqual({ ready: false, blokady: 1, ostrzezenia: 1 });
+    expect(chrom.result.current).toEqual({
+      ready: false,
+      ustalona: true,
+      blokady: 1,
+      ostrzezenia: 1,
+    });
   });
 
   it('naprawa blokady zeruje licznik drzewa i opróżnia panel w tym samym kroku', () => {

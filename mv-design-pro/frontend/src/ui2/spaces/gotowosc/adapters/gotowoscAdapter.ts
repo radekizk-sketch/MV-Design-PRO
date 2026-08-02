@@ -33,9 +33,10 @@
  * elementów) jest jedynym dostępnym kluczem łączącym (bez zgadywania).
  */
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { ReadinessInfo, FixAction as EnmFixAction } from '../../../../types/enm';
 import type { FixAction, ReadinessIssue, ReadinessSeverity } from '../../../../ui/types';
+import { useAppStateStore } from '../../../../ui/app-state/store';
 import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 
 /*
@@ -55,8 +56,33 @@ import { useSnapshotStore } from '../../../../ui/topology/snapshotStore';
 // Stan przestrzeni
 // ---------------------------------------------------------------------------
 
-/** Stan przestrzeni „Gotowość" (karta §3 + 5 stanów obowiązkowych — MODEL_INTERAKCJI §2.4). */
-export type StanGotowosci = 'brak-projektu' | 'ladowanie' | 'blad' | 'wszystko-gotowe' | 'lista';
+/**
+ * Stan przestrzeni „Gotowość" (karta §3 + 5 stanów obowiązkowych —
+ * MODEL_INTERAKCJI §2.4), rozszerzony o `nieustalona` (dług V12K-309 poz. 1).
+ */
+export type StanGotowosci =
+  | 'brak-projektu'
+  | 'ladowanie'
+  | 'blad'
+  | 'nieustalona'
+  | 'wszystko-gotowe'
+  | 'lista';
+
+/**
+ * JEDYNY predykat „gotowość jest ustalona" (reguła KLASA, NIE INSTANCJA pkt 3:
+ * warunek wejścia i wyjścia z jednego źródła prawdy).
+ *
+ * `readiness === null` znaczy dokładnie „NIKT tego nie policzył" — odpowiedź
+ * domenowa zawsze niesie `blockers`/`warnings` (choćby puste), więc brak obiektu
+ * może pochodzić WYŁĄCZNIE z nieudanego odczytu gotowości
+ * (`snapshotStore.refreshReadinessFromBackend` zostawia wtedy `null`, nigdy
+ * wartości zmyślonej — patrz V12K-309/D5). Stan nieustalony NIE JEST gotowością:
+ * każdy czytelnik, który mapuje go na werdykt pozytywny („Gotowe do analiz",
+ * „brak uwag", `ready`), kłamie dokładnie wtedy, gdy nie wiadomo.
+ */
+export function czyGotowoscUstalona(readiness: ReadinessInfo | null): readiness is ReadinessInfo {
+  return readiness !== null;
+}
 
 // ---------------------------------------------------------------------------
 // Mapowania czyste (bez React)
@@ -139,8 +165,42 @@ export function useStanGotowosci(): StanGotowosci {
     if (error) return 'blad';
     return 'brak-projektu';
   }
-  const brakProblemow = (readiness?.blockers.length ?? 0) + (readiness?.warnings.length ?? 0) === 0;
+  // DŁUG V12K-309 poz. 1 (naprawiony): dotąd `readiness === null` wpadało w tę
+  // samą gałąź co „zero blokad i zero ostrzeżeń" i dawało `wszystko-gotowe` —
+  // panel mówił „Gotowe do analiz" dokładnie wtedy, gdy odczyt gotowości padł.
+  if (!czyGotowoscUstalona(readiness)) return 'nieustalona';
+  const brakProblemow = readiness.blockers.length + readiness.warnings.length === 0;
   return brakProblemow ? 'wszystko-gotowe' : 'lista';
+}
+
+/**
+ * Ponowienie odczytu gotowości BIEŻĄCEGO modelu — akcja stanu nieustalonego.
+ *
+ * Reużywa ISTNIEJĄCĄ akcję store'u `refreshReadinessFromBackend` (tę samą,
+ * którą przy zimnym wejściu na link przebiegu woła `useLegacyOrchestrator`) —
+ * adapter nie ma własnego `fetch` ani własnej kopii danych. To jedyne miejsce
+ * w tym module, które sięga po akcję zapisującą do store'u; uzasadnienie jest
+ * takie samo jak dla wyjątku w `ui2/events/adapters/caseAdapter.ts`: uczciwy
+ * stan zerowy musi mieć wyjście, a jedynym wyjściem ze stanu „nie wiadomo" jest
+ * ponowne zapytanie serwera.
+ *
+ * `null`, gdy nie ma o co pytać (brak przypadku w zasięgu) — panel nie rysuje
+ * wtedy przycisku (zakaz kontrolek bez pokrycia w backendzie, phantom rule).
+ * Źródło identyfikatora przypadku jest to samo, co w orkiestratorze:
+ * migawka, a gdy jej nie ma — aktywny przypadek stanu aplikacji.
+ */
+export function usePonowOdczytGotowosci(): (() => void) | null {
+  const caseIdMigawki = useSnapshotStore((s) => s.caseId);
+  const caseIdAplikacji = useAppStateStore((s) => s.activeCaseId);
+  const refreshReadinessFromBackend = useSnapshotStore((s) => s.refreshReadinessFromBackend);
+  const caseId = caseIdMigawki ?? caseIdAplikacji;
+
+  const ponow = useCallback(() => {
+    if (!caseId) return;
+    void refreshReadinessFromBackend(caseId);
+  }, [caseId, refreshReadinessFromBackend]);
+
+  return caseId ? ponow : null;
 }
 
 /** Problemy gotowości (`ReadinessIssue[]`) — projekcja read-only ze store'u. */
@@ -158,6 +218,12 @@ export function useProblemyGotowosci(): ReadinessIssue[] {
 export interface PodsumowanieGotowosci {
   /** Model przeszedł walidację gotowości (pole `ready` odpowiedzi domenowej). */
   readonly ready: boolean;
+  /**
+   * Gotowość została w ogóle policzona (`czyGotowoscUstalona`). `false` znaczy
+   * „nie wiadomo" — liczby poniżej są wtedy BRAKIEM DANEJ, nie wynikiem zerowym,
+   * i chrom nie ma prawa czytać ich jako „brak uwag" (dług V12K-309 poz. 1).
+   */
+  readonly ustalona: boolean;
   readonly blokady: number;
   readonly ostrzezenia: number;
 }
@@ -168,11 +234,16 @@ export interface PodsumowanieGotowosci {
  * prawa deklarować gotowości, której nikt nie policzył (defekt H-6/R1: dawne
  * źródło `readinessLiveStore` miało `ready: true` w stanie początkowym i nigdy
  * nie było odświeżane, więc pasek zawsze pokazywał „Model: zwalidowany").
+ * `ustalona` odróżnia „policzono: zero uwag" od „nie policzono" — bez tego pola
+ * obie sytuacje wyglądały w chromie identycznie (0 blokad, 0 ostrzeżeń).
  */
 export function podsumujGotowosc(readiness: ReadinessInfo | null): PodsumowanieGotowosci {
-  if (!readiness) return { ready: false, blokady: 0, ostrzezenia: 0 };
+  if (!czyGotowoscUstalona(readiness)) {
+    return { ready: false, ustalona: false, blokady: 0, ostrzezenia: 0 };
+  }
   return {
     ready: readiness.ready,
+    ustalona: true,
     blokady: readiness.blockers.length,
     ostrzezenia: readiness.warnings.length,
   };
@@ -215,6 +286,18 @@ export interface GotowoscModelu {
  * brak problemów ⇒ `OK`. Bez migawki status jest `OK` przy `ready: false` —
  * „nic nie policzono" nie jest awarią (stan rozróżnia `ready`, patrz
  * `podsumujGotowosc`).
+ *
+ * DŁUG NAZWANY (ta sama klasa co V12K-309 poz. 1, NIEnaprawiony tutaj):
+ * gotowość NIEUSTALONA (`czyGotowoscUstalona === false`) daje `OK` i zerowe
+ * `liczbyWgWagi`, więc czytelnicy spoza przestrzeni „Gotowość" pokazują wtedy
+ * stan pozytywny zamiast „nie wiadomo". Rozróżnienie wymaga nowej wartości
+ * `StatusGotowosci`, a ta jest wyczerpująco mapowana w CZTERECH plikach
+ * produkcyjnych innych torów (`ui/workspace/WorkspaceOperationalBar.tsx`,
+ * `ui/engineering-readiness/DataGapPanel.tsx`, `ui/network-build/networkBuildStore.ts`,
+ * `ui2/nav/adapters/topologyTreeAdapter.ts`) — zmiana bez ich edycji jest
+ * niewykonalna, a edycja narusza rozłączność torów. Uczciwy sygnał jest już
+ * dostępny w `podsumujGotowosc().ustalona`; wpięcie go u tych czytelników należy
+ * do karty obejmującej ich pliki.
  */
 export function statusGotowosci(readiness: ReadinessInfo | null): StatusGotowosci {
   if (!readiness) return 'OK';
