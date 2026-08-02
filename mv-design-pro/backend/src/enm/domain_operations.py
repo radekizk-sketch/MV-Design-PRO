@@ -4106,18 +4106,73 @@ def _field_apparatus_missing_error(*, index: int, field_role: str, code: str) ->
     )
 
 
+def _materialize_sn_field_apparatus_catalog(
+    apparatus_catalog_ref: str,
+    *,
+    index: int,
+    field_role: str,
+) -> tuple[dict[str, Any], dict[str, Any]] | dict[str, Any]:
+    """Brama katalogowa aparatu pola SN (APARAT_SN) — wspólna dla obu operacji stacyjnych.
+
+    Zwraca ``(binding_payload, materialized_params)`` albo odpowiedź błędu
+    ``catalog.item_not_found`` — parytet z torem atomowym (`add_sn_bay`,
+    `insert_section_switch_sn`), gdzie ten sam ref jest odrzucany.
+
+    Bez tego kroku obie operacje stacyjne zapisywały do modelu jako FAKT zdanie
+    „Aparat pola SN z jawnie wskazanej pozycji katalogu APARAT_SN: X" dla pozycji,
+    której w katalogu NIE MA, przy ``materialized_params = null``. Most katalogowy
+    aparat → wytrzymałość (I_th/I_dyn) dostawał wtedy martwą referencję, a
+    projektant dowiadywał się o tym dopiero z niedostępności kryterium.
+    """
+    materialization = _materialize_catalog_payload(
+        catalog_ref=apparatus_catalog_ref,
+        catalog_binding=None,
+        default_namespace="APARAT_SN",
+        default_version="2024.1",
+    )
+    if isinstance(materialization, dict):
+        rola = field_role.strip() or "bez roli"
+        return _error_response(
+            f"Pole SN nr {index + 1} (rola: {rola}): {materialization['error']} "
+            "Wskaż istniejącą pozycję katalogu APARAT_SN.",
+            str(materialization.get("error_code") or "catalog.item_not_found"),
+        )
+    return materialization
+
+
 # ---------------------------------------------------------------------------
 # B-3 — wyposażenie pomiarowo-zabezpieczeniowe pola W TEJ SAMEJ operacji
 # ---------------------------------------------------------------------------
 
 #: Kolejność zakładania wyposażenia pola: CT → VT → zabezpieczenie. Zabezpieczenie
 #: wiąże CT/VT TEGO SAMEGO pola (`add_relay` szuka ich po `bay_ref`), więc musi
-#: powstać jako ostatnie.
+#: powstać jako ostatnie. Czwarty element to przestrzeń katalogu, w której
+#: referencja wyposażenia musi być rozstrzygalna (brama katalogowa, defekt F).
 _KOLEJNOSC_WYPOSAZENIA_POLA = (
-    ("ct", "add_ct", "przekładnika prądowego CT"),
-    ("vt", "add_vt", "przekładnika napięciowego VT"),
-    ("relay", "add_relay", "zabezpieczenia"),
+    ("ct", "add_ct", "przekładnika prądowego CT", "CT"),
+    ("vt", "add_vt", "przekładnika napięciowego VT", "VT"),
+    ("relay", "add_relay", "zabezpieczenia", "ZABEZPIECZENIE"),
 )
+
+
+def _ref_wyposazenia_pola(dane: dict[str, Any], klucz: str) -> str | None:
+    """Referencja katalogowa wyposażenia pola — LUSTRO odczytu operacji atomowej.
+
+    `add_relay` czyta najpierw zagnieżdżony blok `protection`
+    (`catalog_item_id`/`catalog_ref`), a dopiero potem korzeń payloadu — brama
+    domenowa musi sprawdzać DOKŁADNIE tę pozycję, która trafi do migawki.
+    Brak referencji ⇒ ``None``: operacja atomowa zwróci wtedy `catalog.ref_required`.
+    """
+    if klucz == "relay":
+        protection = dane.get("protection")
+        if isinstance(protection, dict):
+            ref = _resolve_catalog_ref(
+                protection.get("catalog_item_id") or protection.get("catalog_ref"),
+                None,
+            )
+            if ref is not None:
+                return ref
+    return _resolve_catalog_ref(dane.get("catalog_ref"), dane.get("catalog_binding"))
 
 
 def _wyposazenie_pola_z_wpisu(field_spec: Any) -> dict[str, Any]:
@@ -4173,10 +4228,29 @@ def _zastosuj_wyposazenie_pol(
     zdarzenia: list[dict[str, Any]] = []
 
     for field_ref, field_role, equipment in wyposazenie_pol:
-        for klucz, nazwa_operacji, etykieta in _KOLEJNOSC_WYPOSAZENIA_POLA:
+        for klucz, nazwa_operacji, etykieta, przestrzen in _KOLEJNOSC_WYPOSAZENIA_POLA:
             dane = equipment.get(klucz)
             if not isinstance(dane, dict) or not dane:
                 continue
+            # BRAMA KATALOGOWA (defekt F): pozycja wyposażenia musi ISTNIEĆ w katalogu,
+            # a nie tylko być wskazana. Handlery atomowe sprawdzają wyłącznie obecność
+            # referencji, więc bez tego kroku tor domenowy przyjmował literówkę
+            # (odrzucaną w torze payloadu) i zapisywał martwe wiązanie do migawki.
+            ref_wyposazenia = _ref_wyposazenia_pola(dane, klucz)
+            if ref_wyposazenia is not None:
+                materializacja = _materialize_catalog_payload(
+                    catalog_ref=ref_wyposazenia,
+                    catalog_binding=dane.get("catalog_binding"),
+                    default_namespace=przestrzen,
+                    default_version="2024.1",
+                )
+                if isinstance(materializacja, dict):
+                    rola = field_role.strip() or "bez roli"
+                    return _error_response(
+                        f"Pole {rola} ({field_ref}) — nie udało się dodać {etykieta}: "
+                        f"{materializacja['error']}",
+                        str(materializacja.get("error_code") or kod_bledu),
+                    )
             odpowiedz = handlery[nazwa_operacji](new_enm, {**dane, "bay_ref": field_ref})
             blad = odpowiedz.get("error")
             if blad:
@@ -4402,6 +4476,54 @@ def _build_nn_field_specs(
     return nn_field_specs
 
 
+#: Konfiguracja bloku nN → (technologia, gen_type, przestrzeń katalogu, zdarzenie).
+#:
+#: Przestrzeń katalogu jest DOKŁADNIE tą, której używa tor atomowy
+#: `add_converter_source` (PV→ZRODLO_NN_PV, BESS→ZRODLO_NN_BESS, FW→CONVERTER):
+#: ten sam ref musi być rozstrzygalny w obu torach, inaczej brama jednego z nich
+#: jest fikcją. Dawne „ZRODLO_NN_FW" NIE JEST przestrzenią katalogu — to nazwa
+#: ROLI POLA nN (`feeder_role`), więc materializacja falownika wiatrowego pod tą
+#: nazwą nigdy nie mogła się powieść.
+_NN_SOURCE_KIND_MAP: dict[str, tuple[str, str, str, str]] = {
+    "PV_INVERTER": ("PV", "pv_inverter", "ZRODLO_NN_PV", "PV_INVERTER_CREATED"),
+    "BESS_INVERTER": ("BESS", "bess", "ZRODLO_NN_BESS", "BESS_SOURCE_CREATED"),
+    "FW_INVERTER": ("WIND", "wind_inverter", "CONVERTER", "FW_SOURCE_CREATED"),
+}
+
+
+def _nn_source_nameplate_from_catalog(
+    catalog_namespace: str,
+    catalog_params: dict[str, Any],
+) -> tuple[float, float, float] | None:
+    """Tabliczka źródła nN ``(un_kv, pmax_mw, sn_mva)`` — WYŁĄCZNIE z katalogu.
+
+    Jednostki różnią się między przestrzeniami katalogu: ZRODLO_NN_PV/BESS trzymają
+    moce w kW i kVA (przelicznik 1/1000), CONVERTER (FW) od razu w MW i MVA.
+    Wyprowadzenie jest kopią przeliczeń toru atomowego `add_converter_source`.
+
+    Brak którejkolwiek wartości ⇒ ``None`` i JAWNY błąd u wołającego. Nigdy nie
+    podstawiamy tabliczki z payloadu — model deklaruje ``source_mode: KATALOG``,
+    więc liczby MUSZĄ pochodzić z pozycji katalogowej.
+    """
+    un_kv = _as_positive_float(catalog_params.get("un_kv"))
+    if catalog_namespace == "ZRODLO_NN_PV":
+        pmax_kw = _as_positive_float(catalog_params.get("p_max_kw"))
+        sn_kva = _as_positive_float(catalog_params.get("s_n_kva"))
+        pmax_mw = pmax_kw / 1000.0 if pmax_kw is not None else None
+        sn_mva = sn_kva / 1000.0 if sn_kva is not None else None
+    elif catalog_namespace == "ZRODLO_NN_BESS":
+        pmax_kw = _as_positive_float(catalog_params.get("p_discharge_kw"))
+        sn_kva = _as_positive_float(catalog_params.get("s_n_kva"))
+        pmax_mw = pmax_kw / 1000.0 if pmax_kw is not None else None
+        sn_mva = sn_kva / 1000.0 if sn_kva is not None else None
+    else:
+        pmax_mw = _as_positive_float(catalog_params.get("pmax_mw"))
+        sn_mva = _as_positive_float(catalog_params.get("sn_mva"))
+    if un_kv is None or pmax_mw is None or sn_mva is None:
+        return None
+    return un_kv, pmax_mw, sn_mva
+
+
 def _materialize_nn_source(
     *,
     new_enm: dict[str, Any],
@@ -4412,7 +4534,7 @@ def _materialize_nn_source(
     transformer_ref: str,
     transformer_created: bool,
     created: list[str],
-) -> tuple[str, str] | None:
+) -> tuple[str, str] | dict[str, Any] | None:
     """Zmaterializuj źródło nN (PV/BESS/FW) z ``nn_block`` do ENM.
 
     Wspólny materializator dla ``insert_station_on_segment_sn`` i
@@ -4420,36 +4542,76 @@ def _materialize_nn_source(
     wpis w ``substation.meta.source_specs`` oraz — gdy podano ``source_protection``
     — ``protection_assignment``. Determinizm wynika ze ``station_seed``.
 
+    BRAMA KATALOGOWA (defekt F): referencja falownika i referencja urządzenia
+    zabezpieczeniowego są rozstrzygane w katalogu PRZED jakąkolwiek zmianą modelu.
+    Wcześniej generator dostawał ``parameter_source: CATALOG`` / ``source_mode:
+    KATALOG`` przy tabliczce sklejonej z payloadu, a jego ``p_mw`` wchodziło
+    wprost do bilansu rozpływu — model kłamał o pochodzeniu liczby.
+
     Zwraca ``(generator_ref, event_type)`` gdy źródło utworzono (do emisji
-    zdarzenia przez wywołującego), w przeciwnym razie ``None``.
+    zdarzenia przez wywołującego), odpowiedź błędu gdy referencja katalogowa jest
+    nierozstrzygalna, ``None`` gdy operacja źródła nie tworzy.
     """
     nn_configuration = str(nn_block.get("nn_configuration") or "")
     source_converter_ref = nn_block.get("source_converter_catalog_ref")
     source_converter_kind = str(nn_block.get("source_converter_kind") or "")
     source_protection = nn_block.get("source_protection")
-    source_kind_map = {
-        "PV_INVERTER": ("PV", "pv_inverter", "ZRODLO_NN_PV", "PV_INVERTER_CREATED"),
-        "BESS_INVERTER": ("BESS", "bess", "ZRODLO_NN_BESS", "BESS_SOURCE_CREATED"),
-        "FW_INVERTER": ("WIND", "wind_inverter", "ZRODLO_NN_FW", "FW_SOURCE_CREATED"),
-    }
-    source_spec = source_kind_map.get(nn_configuration)
+    source_spec = _NN_SOURCE_KIND_MAP.get(nn_configuration)
     if not (source_spec and source_converter_ref):
         return None
 
     _technology, gen_type, catalog_namespace, event_type = source_spec
+
+    # Materializacja PRZED mutacją modelu: nierozstrzygalny ref kończy operację
+    # bez pozostawiania połowicznej stacji w migawce.
+    materialization = _materialize_catalog_payload(
+        catalog_ref=str(source_converter_ref),
+        catalog_binding=None,
+        default_namespace=catalog_namespace,
+        default_version="2024.1",
+    )
+    if isinstance(materialization, dict):
+        return materialization
+    binding_payload, catalog_params = materialization
+    nameplate = _nn_source_nameplate_from_catalog(catalog_namespace, catalog_params)
+    if nameplate is None:
+        return _error_response(
+            f"Pozycja katalogowa źródła nN '{source_converter_ref}' "
+            f"(kategoria {catalog_namespace}) nie ma kompletnej tabliczki: wymagane "
+            "napięcie znamionowe, moc czynna i moc pozorna. Wskaż inną pozycję "
+            "katalogu albo uzupełnij rekord katalogowy — operacja nie przyjmie "
+            "tabliczki z formularza.",
+            "catalog.materialization_incomplete",
+        )
+    un_kv, pmax_mw, sn_mva = nameplate
+
+    protection_catalog_ref: str | None = None
+    if isinstance(source_protection, dict):
+        raw_protection_ref = source_protection.get("device_catalog_ref")
+        if isinstance(raw_protection_ref, str) and raw_protection_ref.strip():
+            protection_catalog_ref = raw_protection_ref.strip()
+            protection_materialization = _materialize_catalog_payload(
+                catalog_ref=protection_catalog_ref,
+                catalog_binding=None,
+                default_namespace="ZABEZPIECZENIE",
+                default_version="2024.1",
+            )
+            if isinstance(protection_materialization, dict):
+                return _error_response(
+                    f"Zabezpieczenie źródła nN: {protection_materialization['error']} "
+                    "Wskaż istniejącą pozycję katalogu ZABEZPIECZENIE.",
+                    str(protection_materialization.get("error_code") or "catalog.item_not_found"),
+                )
+
     generator_ref = _make_id("stn", station_seed, f"nn_source/{gen_type}")
     station_transformer_ref = transformer_ref if transformer_created else None
-    p_mw = (
-        _as_positive_float(nn_block.get("source_converter_pmax_mw"))
-        or _as_positive_float(nn_block.get("source_converter_sn_mva"))
-        or 0.0
-    )
+    p_mw = pmax_mw
     materialized_source_params = {
-        "catalog_item_id": source_converter_ref,
-        "catalog_item_version": "2024.1",
-        "un_kv": nn_block.get("source_converter_un_kv"),
-        "pmax_mw": p_mw,
-        "sn_mva": nn_block.get("source_converter_sn_mva"),
+        "catalog_item_id": binding_payload["catalog_item_id"],
+        "catalog_item_version": binding_payload["catalog_item_version"],
+        "un_kv": un_kv,
+        "pmax_mw": pmax_mw,
+        "sn_mva": sn_mva,
         "station_transformer_ref": station_transformer_ref,
         "protection_intent": source_protection if isinstance(source_protection, dict) else None,
     }
@@ -4510,7 +4672,9 @@ def _materialize_nn_source(
                 "ct_ref": None,
                 "vt_ref": None,
                 "device_type": "overcurrent",
-                "catalog_ref": source_protection.get("device_catalog_ref"),
+                # Ref przeszedł bramę katalogową ZABEZPIECZENIE powyżej — do modelu
+                # trafia DOKŁADNIE ta pozycja, która została rozstrzygnięta.
+                "catalog_ref": protection_catalog_ref,
                 "settings": [],
                 "is_enabled": True,
                 "tags": ["station_nn_source_protection", "requires_ct_vt"],
@@ -4961,6 +5125,12 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 field_role=field_role,
                 code="station.insert.field_apparatus_ref_missing",
             )
+        apparatus_materialization = _materialize_sn_field_apparatus_catalog(
+            breaker_catalog_ref, index=idx, field_role=field_role
+        )
+        if isinstance(apparatus_materialization, dict):
+            return apparatus_materialization
+        _apparatus_binding, apparatus_params = apparatus_materialization
 
         result = create_node(
             new_enm,
@@ -4999,6 +5169,11 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
                 "x_ohm": 0.0,
                 "catalog_ref": breaker_catalog_ref,
                 "catalog_namespace": "APARAT_SN",
+                # Pozycja przeszła bramę katalogową (defekt F) — dopiero teraz
+                # wolno zadeklarować pochodzenie katalogowe i zapisać tabliczkę.
+                "parameter_source": "CATALOG",
+                "source_mode": "KATALOG",
+                "materialized_params": apparatus_params,
                 "tags": ["station_field_device"],
                 "meta": {
                     "field_ref": field_ref,
@@ -5213,6 +5388,9 @@ def insert_station_on_segment_sn(enm: dict[str, Any], payload: dict[str, Any]) -
         transformer_created=bool(transformer.get("create", True)),
         created=created,
     )
+    if isinstance(source_event, dict):
+        # Brama katalogowa źródła nN — nierozstrzygalna pozycja kończy operację.
+        return source_event
     if source_event is not None:
         generator_ref, event_type = source_event
         ev_seq += 1
@@ -7585,34 +7763,42 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
         wyposazenie_pola = _wyposazenie_pola_z_wpisu(field)
         if wyposazenie_pola:
             wyposazenie_pol.append((f"field/{seed}/{index}", field_role, wyposazenie_pola))
-        field_specs.append(
-            {
-                "field_ref": f"field/{seed}/{index}",
-                "bay_ref": bay_ref,
-                "field_role": field_role,
-                "bay_role": bay_role,
-                "bus_ref": endpoint_bus_ref,
-                "bay_kind": field.get("bay_kind"),
-                "manufacturer_ref": field_manufacturer_ref,
-                "switchgear_family_ref": field.get("switchgear_family_ref"),
-                "bay_template_ref": field_bay_template_ref,
-                "protection_codes": _resolve_bay_template_protection_codes(
-                    field_manufacturer_ref, field_bay_template_ref, bay_role
-                ),
-                "source_status": field.get("source_status"),
-                "source_refs": list(field.get("source_refs") or []),
-                "catalog_bindings": field.get("catalog_bindings"),
-                "equipment_refs": [
-                    ref
-                    for ref in field.get("equipment_refs", [])
-                    if isinstance(ref, str) and ref.strip()
-                ],
-                "meta": {
-                    "created_by": "append_station_on_endpoint",
-                    "terminal_bus_ref": endpoint_bus_ref,
-                },
-            }
-        )
+        field_spec_entry: dict[str, Any] = {
+            "field_ref": f"field/{seed}/{index}",
+            "bay_ref": bay_ref,
+            "field_role": field_role,
+            "bay_role": bay_role,
+            "bus_ref": endpoint_bus_ref,
+            "bay_kind": field.get("bay_kind"),
+            "manufacturer_ref": field_manufacturer_ref,
+            "switchgear_family_ref": field.get("switchgear_family_ref"),
+            "bay_template_ref": field_bay_template_ref,
+            "protection_codes": _resolve_bay_template_protection_codes(
+                field_manufacturer_ref, field_bay_template_ref, bay_role
+            ),
+            "source_status": field.get("source_status"),
+            "source_refs": list(field.get("source_refs") or []),
+            "catalog_bindings": field.get("catalog_bindings"),
+            "equipment_refs": [
+                ref
+                for ref in field.get("equipment_refs", [])
+                if isinstance(ref, str) and ref.strip()
+            ],
+            "meta": {
+                "created_by": "append_station_on_endpoint",
+                "terminal_bus_ref": endpoint_bus_ref,
+            },
+        }
+        # B-12/defekt F: aparat WSKAZANY NA POLU. Bez tego klucza specyfikacja
+        # gubiła wybór projektanta, a `_materialize_sn_field_apparatus` widziało
+        # wyłącznie wspólny `field_apparatus_catalog_ref` payloadu — kreator stacji
+        # ui2 wysyła aparat per pole, więc stacja na końcu ciągu kończyła się
+        # błędem „pole bez wskazanego aparatu". Klucz DOPISUJEMY tylko gdy podany,
+        # żeby payloady bez wskazania per pole zachowały identyczną migawkę.
+        field_apparatus_ref = field.get("apparatus_catalog_ref")
+        if isinstance(field_apparatus_ref, str) and field_apparatus_ref.strip():
+            field_spec_entry["apparatus_catalog_ref"] = field_apparatus_ref.strip()
+        field_specs.append(field_spec_entry)
 
     def _field_spec_for_role(role: str) -> dict[str, Any] | None:
         for spec in field_specs:
@@ -7716,6 +7902,12 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 ),
                 [],
             )
+        apparatus_materialization = _materialize_sn_field_apparatus_catalog(
+            apparatus_catalog_ref, index=ordinal - 1, field_role=field_role
+        )
+        if isinstance(apparatus_materialization, dict):
+            return apparatus_materialization, []
+        _apparatus_binding, apparatus_params = apparatus_materialization
 
         terminal_ref = _make_id("bus", seed, f"sn_field_terminal/{ordinal:03d}")
         apparatus_ref = _make_id("stn", seed, f"sn_field_apparatus/{ordinal:03d}")
@@ -7759,6 +7951,11 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
                 "x_ohm": 0.0,
                 "catalog_ref": apparatus_catalog_ref,
                 "catalog_namespace": "APARAT_SN",
+                # Pozycja przeszła bramę katalogową (defekt F) — dopiero teraz
+                # wolno zadeklarować pochodzenie katalogowe i zapisać tabliczkę.
+                "parameter_source": "CATALOG",
+                "source_mode": "KATALOG",
+                "materialized_params": apparatus_params,
                 "tags": ["station_field_device"],
                 "meta": {
                     "field_ref": spec.get("field_ref"),
@@ -8086,6 +8283,9 @@ def append_station_on_endpoint(enm: dict[str, Any], payload: dict[str, Any]) -> 
             transformer_created=bool(transformer_catalog_ref),
             created=created,
         )
+        if isinstance(source_event, dict):
+            # Brama katalogowa źródła nN — nierozstrzygalna pozycja kończy operację.
+            return source_event
         if source_event is not None:
             generator_ref, event_type = source_event
             ev_seq += 1

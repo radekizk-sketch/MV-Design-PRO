@@ -28,6 +28,12 @@ CATALOG_LINE_70 = "line-base-al-st-70"
 CATALOG_TRAFO_630 = "tr-sn-nn-15-04-630kva-dyn11"
 CATALOG_ZRODLO_250 = "src-gpz-15kv-250mva-rx010"
 CATALOG_APARAT_SN = "sw-cb-abb-vd4-24kv-630a"
+# Falownik PV nN — RZECZYWISTA pozycja katalogu ZRODLO_NN_PV (0,4 kV; Pmax 500 kW;
+# Sn 550 kVA). Dawny „conv-pv-append-1" nie istniał w katalogu i przechodził tylko
+# dlatego, że operacja stacyjna nie miała bramy katalogowej (defekt F).
+CATALOG_FALOWNIK_PV_NN = "conv-pv-nn-0p5mw-0p4kv"
+CATALOG_FALOWNIK_PV_NN_PMAX_MW = 0.5
+CATALOG_FALOWNIK_PV_NN_SN_MVA = 0.55
 
 
 def _empty_enm() -> dict[str, Any]:
@@ -703,7 +709,7 @@ def test_dispatcher_routes_append_station_on_endpoint() -> None:
 def _pv_nn_block() -> dict[str, Any]:
     return {
         "nn_configuration": "PV_INVERTER",
-        "source_converter_catalog_ref": "conv-pv-append-1",
+        "source_converter_catalog_ref": CATALOG_FALOWNIK_PV_NN,
         "source_converter_name": "Falownik PV katalogowy",
         "source_converter_kind": "PV",
         "source_converter_un_kv": 0.4,
@@ -752,10 +758,15 @@ def test_endpoint_append_pv_nn_block_materializes_source_and_nn_fields() -> None
     ]
     assert len(pv_generators) == 1, "Brak generatora PV — nn_block zgubiony"
     gen = pv_generators[0]
-    assert gen["catalog_ref"] == "conv-pv-append-1"
+    assert gen["catalog_ref"] == CATALOG_FALOWNIK_PV_NN
     assert gen["catalog_namespace"] == "ZRODLO_NN_PV"
     assert gen["connection_variant"] == "nn_side"
     assert gen["station_ref"] == sub["ref_id"]
+    # Defekt F: tabliczka POCHODZI Z KATALOGU. Payload deklaruje 1,0 MW / 1,0 MVA,
+    # a pozycja katalogowa 0,5 MW / 0,55 MVA — wygrywa katalog.
+    assert gen["p_mw"] == CATALOG_FALOWNIK_PV_NN_PMAX_MW
+    assert gen["materialized_params"]["pmax_mw"] == CATALOG_FALOWNIK_PV_NN_PMAX_MW
+    assert gen["materialized_params"]["sn_mva"] == CATALOG_FALOWNIK_PV_NN_SN_MVA
     # Źródło podpięte do szyny nN stacji (nie do szyny SN/endpoint).
     nn_bus_ref = gen["bus_ref"]
     nn_bus = next(b for b in new_snap["buses"] if b["ref_id"] == nn_bus_ref)
