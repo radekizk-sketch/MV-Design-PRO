@@ -2,8 +2,8 @@
 """
 Guard: utf8_mojibake_guard.py
 
-Scans active source and docs for common mojibake fragments that usually appear
-when UTF-8 Polish text is decoded with the wrong code page.
+Scans authored repository content for common mojibake fragments that usually
+appear when UTF-8 Polish text is decoded with the wrong code page.
 
 Dwie klasy uszkodzen (obie realnie wystapily w repo):
 1. FRAGMENTY MOJIBAKE \u2014 polska litera zapisana jako para/trojka bajtow innej
@@ -13,10 +13,40 @@ Dwie klasy uszkodzen (obie realnie wystapily w repo):
    "napi[?]cia", "Brak wynik[?]w"): konwersja STRATNA, wiec nie ma juz sladu
    mojibake do dopasowania. Klasa dodana po V12K-283, gdzie 23 takie miejsca
    siedzialy w komunikatach operacji domenowych, a guard ich nie widzial.
+
+ZAKRES \u2014 JEDNA LISTA, WYPROWADZONA PRZEZ ODJECIE (karta W4, dlug z V12K-317)
+==========================================================================
+Do karty W4 zakres byl DODAWANY: dwie listy katalogow (`SCAN_DIRS`, `SCAN_FILES`)
+wymienialy miejsca do przeskanowania, wiec kazdy katalog, ktorego nikt nie
+dopisal, byl niewidoczny. Zmierzone skutki tego mechanizmu:
+
+  * `backend/tests` (576 plikow) NIGDY nie byl skanowany \u2014 referencja katalogowa
+    zapisana jako mojibake nie mogla odpowiadac zadnej pozycji katalogu i utrwalala
+    test, ktory przechodzil z bledna referencja (ustalenie V12K-317),
+  * `frontend/e2e` (74 pliki) tak samo \u2014 dlug nazwany juz w V12K-271,
+  * wzorce wykluczen dopasowywane jako PODCIAG nazwy chowaly kod PRODUKCYJNY:
+    "build" lapal `frontend/src/ui/network-build` (143 pliki), "dist" lapal
+    `frontend/src/ui/power-distribution`. W tak ukrytym pliku siedzialy dwie
+    etykiety UI z polska litera zamieniona na '?' (karta W4 naprawia je u zrodla).
+
+Dlatego zakres jest teraz ODWROTNOSCIA listy: guard obchodzi CALE repozytorium i
+pomija WYLACZNIE segmenty sciezki, ktore nie niosa tresci pisanej przez czlowieka
+(`SEGMENTY_POMIJANE` \u2014 kazdy z powodem). Nowy katalog jest objety domyslnie, wiec
+klasa "ktos zapomnial dopisac katalog" nie moze wrocic. Wzorce dopasowywane sa do
+SEGMENTU sciezki, nie do jej podciagu.
+
+PROBKI CELOWE \u2014 KOMENTARZ W KODZIE, NIE LISTA WYKLUCZEN W GUARDZIE
+=================================================================
+Sa miejsca, w ktorych uszkodzony zapis jest TRESCIA: dokumentacja defektu i
+asercja, ktora pilnuje, zeby mojibake nie wrocila na ekran. Takie miejsce oznacza
+sie znacznikiem `mojibake-guard: probka celowa` z uzasadnieniem \u2014 w linii
+trafienia albo w linii bezposrednio nad nia. Znacznik BEZ uzasadnienia nie
+zwalnia niczego (inaczej bylby cicha lista wykluczen rozproszona po plikach).
 """
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -81,58 +111,145 @@ ZNAK_ZASTEPCZY_W_SLOWIE = re.compile(rf"[{_LITERA}]\?[{_LITERA}]")
 #: uszkodzenie tekstu, tylko dokumentacja koncowki. Wycinany przed sprawdzeniem.
 _PARAMETR_ZAPYTANIA = re.compile(r"[\w./{}-]+\?[\w]+=")
 
-EXEMPT_PATTERNS = [
-    "__tests__",
-    ".test.",
-    ".spec.",
-    "node_modules",
-    "dist",
-    "build",
-    # DLUG ZAMKNIETY (karta KD-3, poz. 12b). Byly tu dwa zapisy odpowiedzi API z
-    # audytu, uszkodzone w OBU klasach naraz. Wykluczenie ich ze skanu bylo
-    # maskowaniem dlugu (Zero-Debt pkt 1), a reczna "naprawa" znakow falszowalaby
-    # zapis audytu. Zrzuty zostaly WYKONANE OD NOWA poprawnym narzedziem
-    # (`backend/scripts/zrzut_api_audytu.py`, jawne UTF-8) i sa czyste, wiec
-    # wykluczenie zniknelo \u2014 od teraz pilnuje ich ten sam guard co reszte repo.
-]
+#: Kwantyfikator wyrazenia regularnego po sekwencji ucieczki (`\\s?`, `\\d?`,
+#: `\\w?`) \u2014 to skladnia, nie uszkodzone slowo. Wzorzec `[litera]?[litera]`
+#: trafia w "s\u003fb" w `/\\bwhite\\s?box\\b/i`, choc zaden znak nie zginal.
+#: Rozstrzygniecie: '?' poprzedzony sekwencja ucieczki jest kwantyfikatorem.
+#: Zawezenie jest WASKIE \u2014 wymaga odwrotnego ukosnika BEZPOSREDNIO przed
+#: litera, wiec uszkodzone slowo ("Pr\u003fd", "Odbi\u003fr") nadal zapala regule.
+#: (Probki zapisane sekwencjami \\uXXXX \u2014 inaczej TEN opis zapalalby regule,
+#: ktora wlasnie tlumaczy; ta sama konwencja co w `napraw_mojibake.py`.)
+_UCIECZKA_REGEXP = re.compile(r"\\[A-Za-z]\?")
 
-SCAN_DIRS = [
-    Path("frontend") / "src",
-    Path("backend") / "src",
-    Path("docs"),
-    Path("scripts"),
-]
+#: Znacznik probki celowej \u2014 patrz naglowek modulu. Musi niesc uzasadnienie,
+#: dlatego wzorzec wymaga tresci PO znaczniku (co najmniej 10 znakow).
+ZNACZNIK_PROBKI = "mojibake-guard: probka celowa"
+_ZNACZNIK_Z_UZASADNIENIEM = re.compile(
+    re.escape(ZNACZNIK_PROBKI) + r"\s*[-\u2014:]?\s*(?P<uzasadnienie>\S.{9,})"
+)
 
-SCAN_FILES = [
-    Path("AGENTS.md"),
-    Path("ARCHITECTURE.md"),
-    Path("SYSTEM_SPEC.md"),
-    Path("PLANS.md"),
-]
+#: Segmenty sciezki BEZ tresci pisanej przez czlowieka \u2014 jedyne, ktore guard
+#: pomija. Powod stoi przy kazdym wpisie, bo lista jest odwrotnoscia zakresu:
+#: wszystko, czego tu nie ma, JEST skanowane.
+SEGMENTY_POMIJANE: dict[str, str] = {
+    ".git": "wewnetrzny magazyn gita \u2014 zapis obiektowy, nie tresc autorska",
+    ".claude": "worktree agentow \u2014 kopie repozytorium w trakcie pracy innych sesji",
+    ".codex-backups": "kopie zapasowe narzedzia \u2014 duplikaty plikow, nie zrodlo",
+    ".codex-screenshots": "zrzuty ekranu narzedzia \u2014 wyjscie przebiegu",
+    "node_modules": "zaleznosci npm \u2014 kod obcy, nie nasz tekst",
+    ".venv": "srodowisko wirtualne Pythona \u2014 zaleznosci",
+    "venv": "srodowisko wirtualne Pythona \u2014 zaleznosci",
+    "dist": "wyjscie budowania frontu",
+    "build": "wyjscie budowania",
+    "__pycache__": "bajtkod Pythona",
+    ".pytest_cache": "pamiec podreczna pytest",
+    ".mypy_cache": "pamiec podreczna mypy",
+    ".ruff_cache": "pamiec podreczna ruff",
+    "coverage": "raport pokrycia \u2014 wyjscie narzedzia",
+    "playwright-report": "raport Playwright \u2014 wyjscie przebiegu",
+    "test-results": "artefakty przebiegu testow",
+    # STAN URUCHOMIENIOWY, nie zrodlo: magazyn migawek ENM zapisywany przez
+    # dzialajaca aplikacje i przez testy (`enm/dziennik_zmian.py`). Bez tego wpisu
+    # wynik guarda zalezalby od tego, czy ktos wczesniej uruchomil testy \u2014 a nazwy
+    # elementow z migawki nie sa tekstem, ktory ktokolwiek w tym repo napisal.
+    ".enm_store": "magazyn migawek ENM \u2014 stan uruchomieniowy zapisany przez aplikacje",
+    # DLUG NAZWANY (karta W4). `tmp/` to zrzuty przebiegow QA i audytu (odpowiedzi
+    # HTTP, eksporty, zrzuty ekranu) \u2014 tresc pochodzi z PRZEBIEGU, nie od autora,
+    # a narzedzie zrzucajace rozjechalo kodowanie. Pomiar: 425 trafien w 10 plikach
+    # JSON, z czego 4 pliki niosa klase STRATNA ('\u003f' zamiast litery: "Odbi\u003fr",
+    # "ko\u003fcowa"), ktorej nie da sie odwrocic \u2014 jedyna naprawa to WYKONANIE ZRZUTU
+    # OD NOWA z zywego stosu (precedens: `backend/scripts/zrzut_api_audytu.py`,
+    # karta KD-3 poz. 12b), a sesje QA sprzed zmian modelu sa nieodtwarzalne.
+    "tmp": "zrzuty przebiegow QA/audytu \u2014 wyjscie narzedzia (dlug: karta W4)",
+}
 
+SKANOWANE_ROZSZERZENIA = {
+    ".ts",
+    ".tsx",
+    ".js",
+    ".jsx",
+    ".py",
+    ".md",
+    ".json",
+    ".css",
+}
 
-def is_exempt(path: Path) -> bool:
-    normalized = str(path).replace("\\", "/")
-    return any(pattern in normalized for pattern in EXEMPT_PATTERNS)
-
-
-def iter_files(root: Path) -> list[Path]:
-    if not root.exists():
-        return []
-    return [path for path in root.rglob("*") if path.is_file()]
+#: Korzen skanu \u2014 CALE repozytorium (skrypt lezy w `<repo>/mv-design-pro/scripts`).
+KORZEN = Path(__file__).resolve().parents[2]
 
 
 def should_scan(path: Path) -> bool:
-    return path.suffix.lower() in {
-        ".ts",
-        ".tsx",
-        ".js",
-        ".jsx",
-        ".py",
-        ".md",
-        ".json",
-        ".css",
-    }
+    """Czy plik o tym rozszerzeniu niesie tekst, ktory guard umie ocenic."""
+    return path.suffix.lower() in SKANOWANE_ROZSZERZENIA
+
+
+def czy_segment_pomijany(nazwa: str) -> bool:
+    """Czy segment sciezki o tej nazwie nie niesie tresci autorskiej.
+
+    Dopasowanie do CALEGO segmentu, nie do podciagu nazwy: `network-build` i
+    `power-distribution` to katalogi PRODUKCYJNE i musza byc skanowane, choc
+    zawieraja w nazwie "build" i "dist". Do karty W4 wykluczenia dzialaly wlasnie
+    podciagiem i ukrywaly 143 pliki `network-build` razem z uszkodzonymi
+    etykietami UI.
+
+    JEDYNY predykat pomijania — obchod drzewa wola TE funkcje, wiec nie da sie
+    zmienic regule dopasowania tak, zeby test tego nie zobaczyl.
+    """
+    return nazwa in SEGMENTY_POMIJANE
+
+
+def iter_scannable_files(korzen: Path | None = None) -> list[Path]:
+    """Wszystkie pliki z trescia autorska \u2014 JEDNO zrodlo zakresu.
+
+    Uzywane zarowno przez ten guard, jak i przez `scripts/napraw_mojibake.py`:
+    wykrywacz i naprawiacz musza widziec DOKLADNIE ten sam zbior, inaczej
+    naprawa nie siega tam, gdzie guard zaglada (predykaty parami, CLAUDE.md).
+    """
+    baza = (korzen or KORZEN).resolve()
+    zebrane: list[Path] = []
+    for katalog, podkatalogi, pliki in os.walk(baza):
+        biezacy = Path(katalog)
+        # Przycinamy drzewo W TRAKCIE obchodu — inaczej wejscie w `.claude`
+        # oznaczaloby obejscie kopii repozytorium kazdej rownoleglej sesji.
+        podkatalogi[:] = sorted(n for n in podkatalogi if not czy_segment_pomijany(n))
+        for nazwa in sorted(pliki):
+            sciezka = biezacy / nazwa
+            if should_scan(sciezka):
+                zebrane.append(sciezka)
+    return zebrane
+
+
+def _probka_celowa(linie: list[str], indeks: int) -> bool:
+    """Czy trafienie jest oznaczona probka celowa (znacznik + uzasadnienie).
+
+    Znacznik czytamy z linii trafienia albo z linii bezposrednio nad nia \u2014 druga
+    forma jest potrzebna tam, gdzie linii nie da sie skomentowac (wnetrze
+    wywolania, tekst dokumentacyjny modulu).
+    """
+    for kandydat in (linie[indeks], linie[indeks - 1] if indeks > 0 else ""):
+        dopasowanie = _ZNACZNIK_Z_UZASADNIENIEM.search(kandydat)
+        if dopasowanie and dopasowanie.group("uzasadnienie").strip():
+            return True
+    return False
+
+
+def znajdz_trafienia(linie: list[str]) -> list[tuple[int, str, str]]:
+    """(numer linii, tresc, powod) dla kazdego uszkodzenia w podanych liniach."""
+    trafienia: list[tuple[int, str, str]] = []
+    for indeks, linia in enumerate(linie):
+        powody: list[str] = []
+        for fragment, powod in SUSPICIOUS_FRAGMENTS.items():
+            if fragment in linia:
+                powody.append(powod)
+        linia_bez_skladni = _UCIECZKA_REGEXP.sub(" ", _PARAMETR_ZAPYTANIA.sub(" ", linia))
+        trafienie = ZNAK_ZASTEPCZY_W_SLOWIE.search(linia_bez_skladni)
+        if trafienie:
+            powody.append(f"polska litera zamieniona na znak zapytania ({trafienie.group(0)!r})")
+        if not powody or _probka_celowa(linie, indeks):
+            continue
+        for powod in powody:
+            trafienia.append((indeks + 1, linia.strip(), powod))
+    return trafienia
 
 
 def main() -> int:
@@ -141,38 +258,22 @@ def main() -> int:
     if hasattr(sys.stderr, "reconfigure"):
         sys.stderr.reconfigure(encoding="utf-8")
 
-    root = Path(__file__).resolve().parents[1]
-    candidates = [path for scan_dir in SCAN_DIRS for path in iter_files(root / scan_dir)]
-    candidates.extend(root / path for path in SCAN_FILES if (root / path).exists())
-
+    kandydaci = iter_scannable_files()
     violations: list[tuple[str, int, str, str]] = []
 
-    for path in candidates:
-        if is_exempt(path) or not should_scan(path):
-            continue
+    for path in kandydaci:
         try:
             text = path.read_text(encoding="utf-8")
         except Exception:
             continue
-        for line_no, line in enumerate(text.splitlines(), start=1):
-            for fragment, reason in SUSPICIOUS_FRAGMENTS.items():
-                if fragment in line:
-                    violations.append((str(path.relative_to(root)), line_no, line.strip(), reason))
-            linia_bez_adresow = _PARAMETR_ZAPYTANIA.sub(" ", line)
-            trafienie = ZNAK_ZASTEPCZY_W_SLOWIE.search(linia_bez_adresow)
-            if trafienie:
-                violations.append(
-                    (
-                        str(path.relative_to(root)),
-                        line_no,
-                        line.strip(),
-                        f"polska litera zamieniona na znak zapytania ({trafienie.group(0)!r})",
-                    )
-                )
+        linie = text.splitlines()
+        for numer, tresc, powod in znajdz_trafienia(linie):
+            violations.append((str(path.relative_to(KORZEN)), numer, tresc, powod))
 
     print("=" * 60)
     print("GUARD: utf8_mojibake_guard")
     print("=" * 60)
+    print(f"\nPlikow przeskanowanych: {len(kandydaci)}")
 
     if violations:
         print(f"\nFOUND {len(violations)} suspicious fragment(s):\n")

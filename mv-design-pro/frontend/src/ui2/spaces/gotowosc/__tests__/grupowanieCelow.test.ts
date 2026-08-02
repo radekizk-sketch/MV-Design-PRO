@@ -65,6 +65,36 @@ describe('celDlaKodu — mapowanie realnych kodów gotowości', () => {
     expect(celDlaKodu('transformer.connection_missing')).toBe('stacje');
     expect(celDlaKodu('transformer.hv_invalid')).toBe('pozostale');
   });
+
+  // Karta W4 (dług nazwany w V12K-317 poz. 8). Kody bram katalogowych trafiały
+  // do „Wspólne" wyłącznie fallbackiem prefiksu — czyli były grupowane, ale
+  // NIEROZPOZNANE: bez wpisu w kanonicznym rejestrze projektant nie dostawał
+  // ani zdania po polsku, ani nawigacji naprawczej. Kompletność zbioru pilnuje
+  // test klasy backendu (skan AST kodu bram czytający rejestr i tę mapę);
+  // tutaj sprawdzamy SKUTEK dla projektanta: kod bramy ląduje we właściwym celu.
+  it('kody bram katalogowych -> wspolne (karta W4, wpis dokładny w rejestrze)', () => {
+    for (const kod of [
+      'catalog.item_not_found',
+      'catalog.ref_missing',
+      'catalog.item_missing',
+      'catalog.item_id_missing',
+      'catalog.binding_required',
+      'catalog.binding_invalid',
+      'catalog.namespace_missing',
+      'catalog.namespace_required',
+      'catalog.unknown_namespace',
+      'catalog.namespace_mismatch',
+      'catalog.element_missing',
+      'catalog.element_not_found',
+      'catalog.clear_forbidden',
+      'catalog.materialization_required',
+      'catalog.materialization_incomplete',
+      'catalog.nameplate_mismatch',
+      'catalog.gate_result_mismatch',
+    ]) {
+      expect(celDlaKodu(kod)).toBe('wspolne');
+    }
+  });
 });
 
 describe('wagaZSeverity', () => {

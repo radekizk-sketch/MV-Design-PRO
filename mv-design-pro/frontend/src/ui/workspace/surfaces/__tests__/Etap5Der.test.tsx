@@ -383,6 +383,10 @@ describe('E-21/E-22/E-23 surface - integracja z useStationDerStore', () => {
     expect(screen.getByText(/Falownik wybrany na schemacie/)).toBeInTheDocument();
     expect(screen.getByText(/wymaga przypisania kompletnego pakietu/)).toBeInTheDocument();
     expect(document.body.textContent ?? '').not.toMatch(/brak danych|brak certyfikatu|brak danych katalogowych/i);
+    // Wzorzec MUSI niesc uszkodzone znaki: to asercja pilnujaca, ze mojibake NIE
+    // pojawia sie na ekranie karty DER. Zapis sekwencjami ucieczki zmienilby to,
+    // co asercja porownuje z trescia dokumentu.
+    // mojibake-guard: probka celowa — uszkodzone znaki sa TRESCIA tej asercji
     expect(document.body.textContent ?? '').not.toMatch(/Ĺ|Ä|Ă|Â|â€|�/);
     expect(screen.getByText('Falownik z katalogu')).toBeInTheDocument();
     expect(screen.getByText('Regulacja PV')).toBeInTheDocument();
