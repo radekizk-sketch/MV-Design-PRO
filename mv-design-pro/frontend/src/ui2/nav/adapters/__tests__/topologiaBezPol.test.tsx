@@ -181,6 +181,19 @@ const WARIANTY: Wariant[] = [
     oczekiwaneWiersze: [],
   },
   {
+    // Osłona ma sprawdzać TYP, nie samą obecność: serwer, który odda obiekt albo
+    // łańcuch w miejscu kolekcji, jest tak samo zdolny zgasić ekran jak serwer,
+    // który pole pominie. Wariant `null` powyżej łapie tylko brak wartości —
+    // ten łapie złą wartość (luka wykryta iniekcją nadzorcy przy odbiorze W3).
+    nazwa: 'kolekcje obecne, ale ZŁEGO TYPU (obiekt / łańcuch / liczba)',
+    cialo: odpowiedz({
+      spine: {} as never,
+      adjacency: 'brak' as never,
+      lateral_roots: 7 as never,
+    }),
+    oczekiwaneWiersze: [],
+  },
+  {
     nazwa: 'kolekcje obecne, ale NIE-tablicowe (null)',
     cialo: odpowiedz({ spine: null, adjacency: null, lateral_roots: null }),
     oczekiwaneWiersze: [],
