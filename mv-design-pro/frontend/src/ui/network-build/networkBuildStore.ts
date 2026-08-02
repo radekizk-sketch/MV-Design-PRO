@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 
-import { useGotowoscModelu } from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
+import {
+  useGotowoscModelu,
+  usePodsumowanieGotowosci,
+} from '../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
 import { resolveReadinessVisualState } from '../engineering-readiness/readinessVisualState';
 import { isOperationalBus, isTerrainSnSegment } from '../shared/enmVisibility';
 import { stationPublicIdentity } from '../shared/publicTechnicalLabels';
@@ -1387,6 +1390,13 @@ export function useNetworkBuildDerived() {
     ready: readinessReady,
     loading: readinessLoading,
   } = useGotowoscModelu();
+  // DŁUG V12K-317 poz. 4 (naprawiony): gotowość NIEUSTALONA (`readiness === null`)
+  // daje pustą listę problemów i zerowe liczby wg wagi, więc każdy czytelnik
+  // liczący „ile blokad" dostawał ZERO tam, gdzie prawdziwą odpowiedzią jest
+  // „nie wiadomo". Sygnał rozróżniający pochodzi z toru U5 — `podsumujGotowosc()
+  // .ustalona` nad tym samym `useSnapshotStore.readiness`, z którego żyje panel
+  // gotowości i chrom powłoki. Reużycie jedynej definicji, nie druga prawda.
+  const { ustalona: readinessUstalona } = usePodsumowanieGotowosci();
   const blockerCountsByElement = new Map<string, number>();
 
   const sourceCount = snapshot?.sources?.length ?? 0;
@@ -1416,6 +1426,16 @@ export function useNetworkBuildDerived() {
   });
   const hasMinimumDesignFlow = sourceCount > 0 && (trunkSegmentCount + branchCount) > 0 && stationCount > 0;
 
+  // Faza „Do analizy" nie może zapaść się z gotowości, której nikt nie policzył —
+  // i NIE MOŻE, bo `readinessVisualState === 'ready'` wymaga `readinessReady`,
+  // a to pole pochodzi z `podsumujGotowosc().ready`, czyli z DOKŁADNIE tego samego
+  // wywołania, co `ustalona` (`ready === true ⇒ ustalona === true` jest
+  // niezmiennikiem adaptera U5, przypiętym w `gotowoscAdapter.test.ts` oraz
+  // `jednaPrawdaGotowosci.test.tsx`). Dopisanie tu jawnego `readinessUstalona &&`
+  // byłoby warunkiem MARTWYM: iniekcja kontrolna usuwająca go nie zapala żadnego
+  // testu, a deklaracja bez przypiętego testu to fałszywa pewność (CLAUDE.md,
+  // reguła KLASA pkt 4). Sygnałem dla czytelników, którzy LICZĄ problemy — i u
+  // których zero naprawdę kłamie — jest eksportowane `readinessUstalona` niżej.
   const buildPhase = readinessVisualState === 'ready' && hasMinimumDesignFlow
     ? 'READY'
     : computeBuildPhase(snapshot, logicalViews, null);
@@ -1432,6 +1452,8 @@ export function useNetworkBuildDerived() {
   const unconfiguredGpzSnFields = gpzSnFieldCandidates.filter((field) => !field.configured);
   const gridSourceStationRef = selectGridSourceStationRef(snapshot);
   const blockersByCategory = selectBlockersByCategory(readinessBlockers);
+  // Ta sama para predykatów co `buildPhase` wyżej (i to samo uzasadnienie, dlaczego
+  // jawny `readinessUstalona &&` byłby tu warunkiem martwym).
   const isReady = readinessVisualState === 'ready' && hasMinimumDesignFlow;
   const readiness = {
     ready: readinessReady,
@@ -1471,6 +1493,7 @@ export function useNetworkBuildDerived() {
     generatorCount,
     isReady,
     readiness,
+    readinessUstalona,
     workspaceBlockState,
     readinessLoading,
   };

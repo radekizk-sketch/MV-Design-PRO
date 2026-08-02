@@ -10,6 +10,24 @@ import {
   ANALYSIS_SURFACE_SCREEN_CODE,
 } from './types';
 import { calculationScopeDisplayName } from '../shell/publicNames';
+import { SHELL_STRINGS } from '../../ui2/shell/strings';
+
+/**
+ * Wartość segmentu, gdy gotowości NIKT nie policzył (`readinessUstalona === false`).
+ *
+ * DŁUG V12K-317 poz. 4 (naprawiony): `statusGotowosci(null)` daje `OK`, a
+ * `liczbyWgWagi(null)` zera, więc CZTERY segmenty tego paska deklarowały werdykt
+ * pozytywny („Układ ochrony skonfigurowany", „bez błędów krytycznych",
+ * „układ do analizy") dokładnie wtedy, gdy odczyt gotowości z backendu padł.
+ * Sygnał rozróżniający pochodzi z toru U5 (`podsumujGotowosc().ustalona`) przez
+ * `useNetworkBuildDerived` — zero drugiej definicji.
+ *
+ * Kreska jest ISTNIEJĄCĄ konwencją braku danej w chromie (`SHELL_STRINGS.emptyValue`,
+ * ta sama w `caseCountLabel`/`modelRevisionLabel`/`runLabel`/`readinessLabel`), a nie
+ * nową nazwą stanu — nazewnictwo stanu nieustalonego pozostaje decyzją właściciela
+ * (AUDYT_SZCZYTU_2026-08-01 §4 pkt 3).
+ */
+const BRAK_DANEJ = SHELL_STRINGS.emptyValue;
 
 interface WorkspaceOperationalBarProps {
   validationStatus?: 'valid' | 'warnings' | 'errors' | null;
@@ -87,7 +105,7 @@ export function WorkspaceOperationalBar({
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const activeSurface = useNetworkBuildStore((state) => state.activeSurface);
   const openRouteSurface = useNetworkBuildStore((state) => state.openRouteSurface);
-  const { blockersByCategory, isReady } = useNetworkBuildDerived();
+  const { blockersByCategory, isReady, readinessUstalona } = useNetworkBuildDerived();
   const { status: readinessStatus, bySeverity } = useGotowoscModelu();
   const runs = useExecutionRunsStore((state) => state.runs);
 
@@ -106,8 +124,8 @@ export function WorkspaceOperationalBar({
     >
       <SegmentButton
         label="Obliczenia"
-        value={isReady ? 'układ do analizy' : `${blockersCount} do konfiguracji`}
-        tone={isReady ? 'ok' : blockersCount > 0 ? 'error' : 'warn'}
+        value={!readinessUstalona ? BRAK_DANEJ : isReady ? 'układ do analizy' : `${blockersCount} do konfiguracji`}
+        tone={!readinessUstalona ? 'default' : isReady ? 'ok' : blockersCount > 0 ? 'error' : 'warn'}
         onClick={() =>
           openRouteSurface('E-04', {
             titlePl: 'Przegląd techniczny układu',
@@ -123,8 +141,14 @@ export function WorkspaceOperationalBar({
       />
       <SegmentButton
         label="Zabezpieczenia"
-        value={protectionReady ? 'Układ ochrony skonfigurowany' : 'Skonfiguruj dane ochrony'}
-        tone={protectionReady ? 'ok' : 'warn'}
+        value={
+          !readinessUstalona
+            ? BRAK_DANEJ
+            : protectionReady
+              ? 'Układ ochrony skonfigurowany'
+              : 'Skonfiguruj dane ochrony'
+        }
+        tone={!readinessUstalona ? 'default' : protectionReady ? 'ok' : 'warn'}
         onClick={() =>
           openRouteSurface('E-27', {
             titlePl: 'Zabezpieczenia i automatyka',
@@ -197,8 +221,14 @@ export function WorkspaceOperationalBar({
       />
       <SegmentButton
         label="Konfiguracja"
-        value={blockersCount > 0 ? `${blockersCount} do konfiguracji` : 'układ do analizy'}
-        tone={blockersCount > 0 ? 'error' : 'ok'}
+        value={
+          !readinessUstalona
+            ? BRAK_DANEJ
+            : blockersCount > 0
+              ? `${blockersCount} do konfiguracji`
+              : 'układ do analizy'
+        }
+        tone={!readinessUstalona ? 'default' : blockersCount > 0 ? 'error' : 'ok'}
         onClick={() =>
           openRouteSurface('E-04', {
             titlePl: 'Przegląd techniczny układu',
@@ -219,11 +249,21 @@ export function WorkspaceOperationalBar({
             ? `${errorCount} błędów technicznych`
             : validationStatus === 'warnings'
               ? `${validationWarnings} ostrzezen`
-              : readinessStatus === 'WARN'
-                ? 'Wynik czesciowy lub ostrzezenia'
-                : 'bez błędów krytycznych'
+              : !readinessUstalona
+                ? BRAK_DANEJ
+                : readinessStatus === 'WARN'
+                  ? 'Wynik czesciowy lub ostrzezenia'
+                  : 'bez błędów krytycznych'
         }
-        tone={errorCount > 0 ? 'error' : validationStatus === 'warnings' || readinessStatus === 'WARN' ? 'warn' : 'ok'}
+        tone={
+          errorCount > 0
+            ? 'error'
+            : validationStatus === 'warnings' || readinessStatus === 'WARN'
+              ? 'warn'
+              : !readinessUstalona
+                ? 'default'
+                : 'ok'
+        }
         onClick={() =>
           openRouteSurface('E-04', {
             titlePl: 'Przegląd techniczny układu',
