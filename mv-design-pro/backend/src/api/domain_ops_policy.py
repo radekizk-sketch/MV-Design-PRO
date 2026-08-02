@@ -330,7 +330,8 @@ def extract_catalog_binding(operation: str, payload: dict[str, Any]) -> dict[str
     return _binding_from_ref(_explicit_namespace(payload), payload.get("catalog_ref"))
 
 
-#: Operacje stacyjne, które mogą założyć wyposażenie pól w tej samej migawce (B-3).
+#: Operacje stacyjne — obie zakładają w JEDNEJ migawce cały podgraf stacji
+#: (transformator, aparaty pól, wyposażenie pomiarowo-zabezpieczeniowe, źródło nN).
 _STATION_OPERATIONS_WITH_FIELD_EQUIPMENT: frozenset[str] = frozenset(
     {
         "insert_station_on_segment_sn",
@@ -344,6 +345,72 @@ _FIELD_EQUIPMENT_OPERATIONS: tuple[tuple[str, str], ...] = (
     ("vt", "add_vt"),
     ("relay", "add_relay"),
 )
+
+#: INWENTARZ BRAMY STACYJNEJ (defekt F) — KAŻDA referencja katalogowa czytana
+#: Z PAYLOADU przez operacje stacyjne, wraz z operacją atomową, której bramę
+#: katalogową ta referencja MUSI przejść (parytet torów).
+#:
+#: Karta A ogłosiła „bramę katalogową stacji", ale `extract_catalog_binding`
+#: czytał WYŁĄCZNIE ref transformatora. Elementy powstające w TEJ SAMEJ operacji —
+#: źródło OZE nN (`nn_block`) i aparat pola SN — deklarowały pochodzenie katalogowe
+#: przy nieweryfikowanej pozycji, a moc czynna źródła wchodziła wprost do rozpływu.
+#:
+#: Ta lista jest KONTRAKTEM: test klasy skanuje `enm/domain_operations.py` i
+#: czerwienieje, gdy operacja stacyjna zacznie czytać referencję spoza inwentarza.
+STATION_CATALOG_REF_INVENTORY: tuple[tuple[str, str], ...] = (
+    ("transformer.transformer_catalog_ref", "add_transformer_sn_nn"),
+    ("transformer.catalog_ref", "add_transformer_sn_nn"),
+    ("sn_fields[].apparatus_catalog_ref", "add_sn_bay"),
+    ("field_apparatus_catalog_ref", "add_sn_bay"),
+    ("sn_fields[].equipment.ct", "add_ct"),
+    ("sn_fields[].equipment.vt", "add_vt"),
+    ("sn_fields[].equipment.relay", "add_relay"),
+    ("nn_block.source_converter_catalog_ref", "add_converter_source"),
+    ("nn_block.source_protection.device_catalog_ref", "add_relay"),
+)
+
+#: Klucze payloadu z referencją katalogową, które operacjom stacyjnym wolno czytać.
+#: Zbiór wyprowadzony z inwentarza powyżej — służy testowi klasy do skanu kodu
+#: domenowego (`segment.catalog_ref` przy podziale odcinka pochodzi Z MODELU, nie
+#: z payloadu, i był bramkowany przy tworzeniu odcinka).
+STATION_CATALOG_REF_PAYLOAD_KEYS: frozenset[str] = frozenset(
+    {
+        "catalog_ref",
+        "transformer_catalog_ref",
+        "apparatus_catalog_ref",
+        "field_apparatus_catalog_ref",
+        "source_converter_catalog_ref",
+        "device_catalog_ref",
+    }
+)
+
+#: Klucze o kształcie WIĄZANIA katalogowego dopuszczone w operacjach stacyjnych.
+#: Osobny zbiór, bo wiązanie jest drugą drogą wskazania pozycji katalogu i bez
+#: niego skan klasy dałoby się obejść, podając `catalog_binding` zamiast
+#: `catalog_ref`:
+#:   * `catalog_binding` / `catalog_item_id` — kanoniczny kontrakt wiązania
+#:     (transformator, wyposażenie pól) — czytany przez `extract_catalog_binding`;
+#:   * `catalog_bindings` — INTENCJA zapisywana w `meta` specyfikacji pola/odpływu
+#:     nN; z tego klucza operacja stacyjna NIE tworzy elementu (element źródła nN
+#:     powstaje z `nn_block.source_converter_catalog_ref`, który brama sprawdza).
+#:     Gdyby kiedyś zaczął tworzyć — trzeba go dopisać do inwentarza i bramy.
+STATION_CATALOG_BINDING_KEYS: frozenset[str] = frozenset(
+    {
+        "catalog_binding",
+        "catalog_bindings",
+        "catalog_item_id",
+    }
+)
+
+#: Konfiguracja bloku nN → technologia źródła. LUSTRO `_NN_SOURCE_KIND_MAP`
+#: operacji domenowej: brak/nieznana konfiguracja albo brak referencji ⇒ operacja
+#: NIE tworzy źródła, więc nie ma elementu wiązanego katalogiem i nie ma czego
+#: bramkować (lustro warunku domenowego, nie furtka).
+_NN_SOURCE_TECHNOLOGY: dict[str, str] = {
+    "PV_INVERTER": "PV",
+    "BESS_INVERTER": "BESS",
+    "FW_INVERTER": "FW",
+}
 
 
 def _validate_field_equipment_bindings(
@@ -384,6 +451,121 @@ def _validate_field_equipment_bindings(
     return None
 
 
+def _tekst_referencji(wartosc: Any) -> str | None:
+    """Referencja katalogowa jako niepusty tekst albo ``None``."""
+    if isinstance(wartosc, str) and wartosc.strip():
+        return wartosc.strip()
+    return None
+
+
+def _blad_z_prefiksem(
+    blad: CatalogPolicyError,
+    prefiks_pl: str,
+) -> CatalogPolicyError:
+    """Ten sam kod i te same szczegóły, komunikat wskazuje MIEJSCE w stacji."""
+    return CatalogPolicyError(
+        code=blad.code,
+        message_pl=f"{prefiks_pl}: {blad.message_pl}",
+        errors=blad.errors,
+    )
+
+
+def _validate_station_field_apparatus_bindings(
+    operation: str,
+    payload: dict[str, Any],
+) -> CatalogPolicyError | None:
+    """Brama katalogowa aparatu pól SN zakładanego w operacji stacyjnej (defekt F).
+
+    PARYTET TORÓW: aparat wskazany w operacji stacyjnej przechodzi DOKŁADNIE tę
+    samą bramę co wołany osobno `add_sn_bay` / `insert_section_switch_sn`, gdzie
+    ta sama referencja jest odrzucana kodem `catalog.item_not_found`.
+
+    Kolejność odczytu jest LUSTREM `_sn_field_apparatus_catalog_ref`: referencja
+    pola → wspólna referencja payloadu. Brak obu ⇒ nie bramkujemy tutaj —
+    operacja domenowa zwraca wtedy jawny błąd wskazujący konkretne pole.
+    """
+    if operation not in _STATION_OPERATIONS_WITH_FIELD_EQUIPMENT:
+        return None
+
+    wspolny_ref = _tekst_referencji(payload.get("field_apparatus_catalog_ref"))
+    sn_fields = payload.get("sn_fields")
+    pola = sn_fields if isinstance(sn_fields, list) else []
+
+    sprawdzone: set[str] = set()
+    for index, pole in enumerate(pola, start=1):
+        ref = (
+            _tekst_referencji(pole.get("apparatus_catalog_ref")) if isinstance(pole, dict) else None
+        )
+        ref = ref or wspolny_ref
+        if ref is None or ref in sprawdzone:
+            continue
+        sprawdzone.add(ref)
+        blad, _ = validate_and_materialize_catalog_binding("add_sn_bay", {"catalog_ref": ref})
+        if blad is not None:
+            return _blad_z_prefiksem(blad, f"Aparat pola SN nr {index}")
+
+    # Pola domyślne (payload bez `sn_fields`) też dostają aparat — ze wspólnej
+    # referencji payloadu; bez tego sprawdzenia zostałaby ona poza bramą.
+    if not pola and wspolny_ref is not None and wspolny_ref not in sprawdzone:
+        blad, _ = validate_and_materialize_catalog_binding(
+            "add_sn_bay", {"catalog_ref": wspolny_ref}
+        )
+        if blad is not None:
+            return _blad_z_prefiksem(blad, "Aparat pól SN stacji")
+
+    return None
+
+
+def _validate_station_nn_block_bindings(
+    operation: str,
+    payload: dict[str, Any],
+) -> CatalogPolicyError | None:
+    """Brama katalogowa bloku nN stacji: falownik OZE + zabezpieczenie źródła (defekt F).
+
+    PARYTET TORÓW: falownik zakładany w operacji stacyjnej przechodzi tę samą bramę
+    co `add_converter_source`, a urządzenie zabezpieczeniowe źródła — tę samą co
+    `add_relay`. Bez tego generator OZE nN powstawał z `source_mode: KATALOG` przy
+    referencji, której w katalogu nie ma, a jego `p_mw` wchodziło do bilansu
+    rozpływu jako generacja na szynie nN.
+    """
+    if operation not in _STATION_OPERATIONS_WITH_FIELD_EQUIPMENT:
+        return None
+
+    nn_block = payload.get("nn_block")
+    if not isinstance(nn_block, dict):
+        return None
+
+    konfiguracja = nn_block.get("nn_configuration")
+    technologia = (
+        _NN_SOURCE_TECHNOLOGY.get(konfiguracja.strip()) if isinstance(konfiguracja, str) else None
+    )
+    converter_ref = _tekst_referencji(nn_block.get("source_converter_catalog_ref"))
+    if technologia is None or converter_ref is None:
+        # Operacja domenowa wychodzi wtedy bez utworzenia źródła — nie powstaje
+        # ŻADEN element wiązany katalogiem, więc nie ma czego bramkować (dotyczy
+        # to także `source_protection`, którego operacja w ogóle nie czyta).
+        return None
+
+    blad, _ = validate_and_materialize_catalog_binding(
+        "add_converter_source",
+        {"catalog_ref": converter_ref, "source_technology": technologia},
+    )
+    if blad is not None:
+        return _blad_z_prefiksem(blad, "Źródło nN stacji")
+
+    source_protection = nn_block.get("source_protection")
+    if isinstance(source_protection, dict):
+        protection_ref = _tekst_referencji(source_protection.get("device_catalog_ref"))
+        if protection_ref is not None:
+            blad, _ = validate_and_materialize_catalog_binding(
+                "add_relay", {"catalog_ref": protection_ref}
+            )
+            if blad is not None:
+                return _blad_z_prefiksem(blad, "Zabezpieczenie źródła nN stacji")
+
+    return None
+
+
 def _append_station_tworzy_transformator(payload: dict[str, Any]) -> bool:
     """Czy `append_station_on_endpoint` w ogóle utworzy transformator?
 
@@ -408,9 +590,20 @@ def validate_and_materialize_catalog_binding(
       - CatalogPolicyError when operation must be rejected
       - materialized solver params (dry-run) when binding is valid and resolvable
     """
+    # BRAMA STACYJNA (defekt F) — pełny inwentarz referencji katalogowych operacji
+    # stacyjnych. Kontrole stoją PRZED wyjściem dla stacji bez transformatora: brak
+    # transformatora nie zwalnia aparatu pól ani źródła nN z katalogu.
     equipment_error = _validate_field_equipment_bindings(operation, payload)
     if equipment_error is not None:
         return equipment_error, {}
+
+    apparatus_error = _validate_station_field_apparatus_bindings(operation, payload)
+    if apparatus_error is not None:
+        return apparatus_error, {}
+
+    nn_block_error = _validate_station_nn_block_bindings(operation, payload)
+    if nn_block_error is not None:
+        return nn_block_error, {}
 
     if operation not in CATALOG_REQUIRED_OPERATIONS:
         return None, {}
