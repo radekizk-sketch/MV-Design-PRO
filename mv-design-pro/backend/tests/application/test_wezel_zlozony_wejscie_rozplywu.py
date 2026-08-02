@@ -16,12 +16,20 @@ stoi odbior i zrodlo naraz:
    odrzucane jako sprzecznosc.
 
 Naprawa jest w warstwie budowania wejscia (`merge_bus_components`), wspolna dla
-wszystkich trzech budowniczych: moc szyny AKUMULUJE sie, a skladniki zostaja
+WSZYSTKICH CZTERECH budowniczych: moc szyny AKUMULUJE sie, a skladniki zostaja
 odzyskiwalne — wlasna moc zrodla laduje w `inverter_p_mw`/`inverter_q_mvar`
 (konwencja generatorowa), baza odbiorowa w `zip_base_p_mw`/`zip_base_q_mvar`.
 
+Czwarty budowniczy — `NetworkWizardService.build_power_flow_input` — zostal
+domkniety osobno (tor W1). Do tego czasu KREATOR, czyli jedyna droga, ktora ma
+uzytkownik, odrzucal legalny model prosumencki bledem `duplicate PQSpec.node_id
+entries`: odbior i regulowany falownik na jednej szynie dawaly dwa wpisy o tym
+samym `node_id`. Parytet CZTERECH budowniczych (`test_czterej_budowniczowie_
+mowia_jednym_glosem`) jest dowodem, ze klasa defektu jest ZAMKNIETA — nie ze
+naprawiono kolejna instancje.
+
 Testy sa ILOCZYNEM CECH, nie przykladem z karty: {brak odbioru, odbior
-stalomocowy, odbior ZIP} × {zrodlo z regulacja, zrodlo bez} × {trzej
+stalomocowy, odbior ZIP} × {zrodlo z regulacja, zrodlo bez} × {czterej
 budowniczowie}. Liczby rozplywu sedziuje NIEZALEZNY Newton napisany w tescie —
 zaden wynik solvera nie jest porownywany wylacznie z innym wynikiem solvera.
 """
@@ -31,8 +39,9 @@ from __future__ import annotations
 import hashlib
 import math
 import sys
+from dataclasses import replace
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -57,6 +66,7 @@ from application.power_flow_input_builder import build_power_flow_input, merge_b
 from domain.project_design_mode import ProjectDesignMode
 from infrastructure.persistence.db import create_engine_from_url, create_session_factory, init_db
 from infrastructure.persistence.unit_of_work import build_uow_factory
+from network_model.catalog.types import ConverterKind
 from network_model.core.branch import BranchType, LineBranch
 from network_model.core.graph import NetworkGraph
 from network_model.core.node import Node, NodeType
@@ -74,7 +84,7 @@ from network_model.solvers.power_flow_zip import ZipCoeffs
 
 # --------------------------------------------------------------------------
 # Wspolny scenariusz: slack A -- linia -- szyna B (ta sama siec u kazdego z
-# trzech budowniczych, zeby parytet dotyczyl kontraktu, a nie topologii).
+# czterech budowniczych, zeby parytet dotyczyl kontraktu, a nie topologii).
 # --------------------------------------------------------------------------
 BASE_MVA = 10.0
 KV = 15.0
@@ -84,6 +94,8 @@ X_OHM_KM = 0.8
 
 LOAD_P_MW = 3.0
 LOAD_Q_MVAR = 1.5
+# Drugi odbior na tej samej szynie (wariant „sumowalnosc, nie sprzecznosc").
+EXTRA_LOAD_P_MW = 0.75
 # Wlasna moc zrodla, konwencja GENERATOROWA (>0 = wstrzyk do sieci).
 SRC_P_MW = 2.0
 SRC_Q_MVAR = 0.4
@@ -97,6 +109,27 @@ CONTROL_PARAMS = {"control_mode": "STALY_COS_PHI", "cosphi": COSPHI}
 
 LOAD_KINDS = ("brak_odbioru", "odbior_stalomocowy", "odbior_zip")
 SOURCE_KINDS = ("zrodlo_regulowane", "zrodlo_bez_regulacji")
+
+# Odciski SHA-256 HISTORYCZNEGO ladunku `PQSpec` dla modelu kreatora BEZ wezla
+# zlozonego (odbior na szynie B, regulowane zrodlo na wlasnej szynie C), zmierzone
+# na kodzie SPRZED naprawy toru W1 — czyli na wyniku petli, ktora nie skladala
+# szyn. Obejmuja WYLACZNIE pola, ktore istnialy przed zlozeniem, wiec literal musi
+# sie zgadzac po obu stronach naprawy: model bez wezla zlozonego nie ma sie prawo
+# ruszyc o bajt.
+#
+# Odcisk idzie po NAZWACH wezlow, bo identyfikatory kreatora sa losowymi UUID.
+# Odcisk po LICZBACH WYNIKU jest tu nieprzypinalny i to nie jest wybor wygody:
+# kat wezla C rozni sie miedzy uruchomieniami w ostatnim ulp, bo losowe
+# identyfikatory zmieniaja kolejnosc montazu macierzy. Zachowanie jest
+# PRE-EXISTING (zmierzone po obu stronach naprawy) i lezy w warstwie solvera, poza
+# torem W1 — zglaszone jako dlug nazwany. Niezmiennosc WYNIKU jest tu dowodzona
+# rownoscia dwoch odciskow policzonych w JEDNYM procesie (te same identyfikatory),
+# co ten ulp eliminuje.
+FROZEN_LADUNEK_MODELU_PROSTEGO = {
+    "brak_odbioru": "9714cff564322d1e40a5092ab32edb278c581c66778ee2a8344776d5f7d99216",
+    "odbior_stalomocowy": "f483045858a0ce6f6a7400b824b5c6c4f826337bee649e7de9ddbcc013718562",
+    "odbior_zip": "63ddd3bb5ac06193d1bac275fb7e1e74e70163bc0935a97fccf1f5744f234081",
+}
 
 
 def _load_power(load_kind: str) -> tuple[float, float]:
@@ -149,8 +182,9 @@ def _options() -> PowerFlowOptions:
 
 
 # --------------------------------------------------------------------------
-# Trzej budowniczowie — kazdy dostaje TEN SAM opis szyny zlozonej, w swoim
-# wlasnym ksztalcie danych (dict / wpis kanoniczny / migawka biegu).
+# Czterej budowniczowie — kazdy dostaje TEN SAM opis szyny zlozonej, w swoim
+# wlasnym ksztalcie danych (dict / wpis kanoniczny / model kreatora / migawka
+# biegu).
 # --------------------------------------------------------------------------
 
 
@@ -230,8 +264,28 @@ def _analysis_run_services() -> tuple[NetworkWizardService, AnalysisRunService]:
     return NetworkWizardService(uow_factory), AnalysisRunService(uow_factory)
 
 
-def _build_analysis_run(load_kind: str, source_kind: str):
-    """Budowniczy 3: pelna sciezka `AnalysisRunService` (model -> migawka -> wejscie)."""
+def _build_wizard_model(
+    load_kind: str,
+    source_kind: str,
+    *,
+    source_on_own_bus: bool = False,
+    source_type: str = "INVERTER",
+    extra_loads: int = 0,
+) -> tuple[NetworkWizardService, AnalysisRunService, UUID, UUID, str, str]:
+    """Model kreatora: slack A -- linia -- szyna B (+ opcjonalnie C dla wariantu
+    „szyna prosta", ktory sluzy dowodowi FROZEN).
+
+    JEDNO zrodlo prawdy o scenariuszu dla budowniczego kreatora i budowniczego
+    `AnalysisRunService` — te dwie sciezki musza wychodzic z DOKLADNIE tego samego
+    modelu, inaczej parytet mierzylby roznice danych, a nie roznice kontraktow.
+    Zwraca `(kreator, serwis_biegow, project_id, case_id, id_szyny_B, id_szyny_zrodla)`.
+
+    `source_type` wybiera, KTORA z dwoch galezi emisji zrodla w
+    `build_power_flow_input` cwiczymy (falownik / przeksztaltnik) — obie skladaja
+    ten sam wpis do tej samej listy, wiec obie naleza do tej samej klasy defektu.
+    `extra_loads` doklada odbiory na szynie B (wariant „dwa odbiory na jednej
+    szynie", druga polowa klasy: sumowalnosc zamiast duplikatu).
+    """
     wizard, service = _analysis_run_services()
     project = wizard.create_project(f"{load_kind}-{source_kind}")
     slack = wizard.add_node(
@@ -289,15 +343,54 @@ def _build_analysis_run(load_kind: str, source_kind: str):
             project.id,
             LoadPayload(name="Odbior", node_id=bus["id"], payload=load_payload),
         )
+    for nr in range(extra_loads):
+        wizard.add_load(
+            project.id,
+            LoadPayload(
+                name=f"Odbior{nr + 2}",
+                node_id=bus["id"],
+                payload={"name": f"Odbior{nr + 2}", "p_mw": EXTRA_LOAD_P_MW, "q_mvar": 0.0},
+            ),
+        )
+    # Wariant „szyna prosta" (dowod FROZEN): zrodlo stoi na WLASNEJ szynie C, wiec
+    # zaden wezel nie jest zlozony i skladac nie ma czego.
+    source_bus = bus
+    if source_on_own_bus:
+        source_bus = wizard.add_node(
+            project.id,
+            NodePayload(
+                name="C",
+                node_type="PQ",
+                base_kv=KV,
+                attrs={"active_power_mw": 0.0, "reactive_power_mvar": 0.0},
+            ),
+        )
+        wizard.add_branch(
+            project.id,
+            BranchPayload(
+                name="L2",
+                branch_type="LINE",
+                from_node_id=bus["id"],
+                to_node_id=source_bus["id"],
+                params={
+                    "r_ohm_per_km": R_OHM_KM,
+                    "x_ohm_per_km": X_OHM_KM,
+                    "b_us_per_km": 0.0,
+                    "length_km": LEN_KM,
+                },
+            ),
+        )
     source_payload: dict[str, object] = {"name": "INV"}
+    if source_type == "CONVERTER":
+        source_payload["converter_kind"] = ConverterKind.PV.value
     if source_kind == "zrodlo_regulowane":
         source_payload.update(CONTROL_PARAMS)
-    inverter = wizard.add_source(
+    zrodlo = wizard.add_source(
         project.id,
         SourcePayload(
             name="INV",
-            node_id=bus["id"],
-            source_type="INVERTER",
+            node_id=source_bus["id"],
+            source_type=source_type,
             payload=source_payload,
             type_ref=uuid4(),
         ),
@@ -311,11 +404,22 @@ def _build_analysis_run(load_kind: str, source_kind: str):
             "project_design_mode": ProjectDesignMode.SN_NETWORK.value,
         },
     )
-    # Nastawa w konwencji ODBIOROWEJ wpisu (jak `_resolve_inverter_q_mvar`), wiec
-    # wstrzyk ma znak minus.
-    wizard.set_inverter_setpoints(case.id, inverter["id"], p_mw=-SRC_P_MW, q_mvar=-SRC_Q_MVAR)
-    run = service.create_power_flow_run(project.id, case.id)
-    return service, run, str(bus["id"])
+    # Nastawa w konwencji ODBIOROWEJ wpisu (jak `_resolve_inverter_q_mvar` /
+    # `_resolve_converter_q_mvar`), wiec wstrzyk ma znak minus.
+    if source_type == "CONVERTER":
+        wizard.set_converter_setpoints(case.id, zrodlo["id"], p_mw=-SRC_P_MW, q_mvar=-SRC_Q_MVAR)
+    else:
+        wizard.set_inverter_setpoints(case.id, zrodlo["id"], p_mw=-SRC_P_MW, q_mvar=-SRC_Q_MVAR)
+    return wizard, service, project.id, case.id, str(bus["id"]), str(source_bus["id"])
+
+
+def _build_analysis_run(load_kind: str, source_kind: str):
+    """Budowniczy 4: pelna sciezka `AnalysisRunService` (model -> migawka -> wejscie)."""
+    _wizard, service, project_id, case_id, bus_id, _src_bus = _build_wizard_model(
+        load_kind, source_kind
+    )
+    run = service.create_power_flow_run(project_id, case_id)
+    return service, run, bus_id
 
 
 def _via_analysis_run(load_kind: str, source_kind: str) -> tuple[PowerFlowInput, str]:
@@ -323,7 +427,31 @@ def _via_analysis_run(load_kind: str, source_kind: str) -> tuple[PowerFlowInput,
     return service._build_power_flow_input(run), bus_id
 
 
-BUILDERS = ("budowniczy_generyczny", "budowniczy_silnika_biegow", "budowniczy_analysis_run")
+def _via_wizard(load_kind: str, source_kind: str) -> tuple[PowerFlowInput, str]:
+    """Budowniczy 3: `NetworkWizardService.build_power_flow_input`.
+
+    Jedyna droga uzytkownika kreatora — i jedyna, ktorej naprawa V12K-313/316 nie
+    objela do toru W1. Opcje ida slownikiem, bo taki jest kontrakt tej metody."""
+    wizard, _service, project_id, case_id, bus_id, _src_bus = _build_wizard_model(
+        load_kind, source_kind
+    )
+    options = _options()
+    return (
+        wizard.build_power_flow_input(
+            project_id,
+            case_id,
+            {"max_iter": options.max_iter, "tolerance": options.tolerance},
+        ),
+        bus_id,
+    )
+
+
+BUILDERS = (
+    "budowniczy_generyczny",
+    "budowniczy_silnika_biegow",
+    "budowniczy_kreatora",
+    "budowniczy_analysis_run",
+)
 
 
 def _bus_spec(builder: str, load_kind: str, source_kind: str) -> PQSpec:
@@ -334,6 +462,8 @@ def _bus_spec(builder: str, load_kind: str, source_kind: str) -> PQSpec:
     elif builder == "budowniczy_silnika_biegow":
         pf_input = _via_execution_engine(load_kind, source_kind)
         bus_id = "B"
+    elif builder == "budowniczy_kreatora":
+        pf_input, bus_id = _via_wizard(load_kind, source_kind)
     else:
         pf_input, bus_id = _via_analysis_run(load_kind, source_kind)
     specs = [spec for spec in pf_input.pq if spec.node_id == bus_id]
@@ -342,7 +472,7 @@ def _bus_spec(builder: str, load_kind: str, source_kind: str) -> PQSpec:
 
 
 # --------------------------------------------------------------------------
-# (a) ILOCZYN CECH: {brak, stalomocowy, ZIP} × {z regulacja, bez} × 3 budowniczych
+# (a) ILOCZYN CECH: {brak, stalomocowy, ZIP} × {z regulacja, bez} × 4 budowniczych
 # --------------------------------------------------------------------------
 
 
@@ -390,8 +520,14 @@ def test_wezel_zlozony_niesie_skladniki_a_nie_sume(
 
 @pytest.mark.parametrize("source_kind", SOURCE_KINDS)
 @pytest.mark.parametrize("load_kind", LOAD_KINDS)
-def test_trzej_budowniczowie_mowia_jednym_glosem(load_kind: str, source_kind: str) -> None:
-    """Parytet: ten sam scenariusz daje z kazdego budowniczego TEN SAM ksztalt."""
+def test_czterej_budowniczowie_mowia_jednym_glosem(load_kind: str, source_kind: str) -> None:
+    """Parytet: ten sam scenariusz daje z KAZDEGO z czterech budowniczych TEN SAM
+    ksztalt szyny.
+
+    To jest dowod, ze klasa defektu jest ZAMKNIETA, a nie ze naprawiono kolejna
+    instancje: gdyby ktorykolwiek budowniczy skladal szyne po swojemu (albo nie
+    skladal jej wcale, jak kreator przed torem W1), kontrakt mowilby dwoma glosami
+    o tej samej szynie i ten test by to pokazal."""
 
     def _shape(builder: str) -> tuple[object, ...]:
         spec = _bus_spec(builder, load_kind, source_kind)
@@ -496,6 +632,23 @@ def test_skladanie_nie_zostawia_duplikatu_dla_walidatora_solvera() -> None:
     assert solution.converged
 
 
+@pytest.mark.parametrize("load_kind", ("odbior_stalomocowy", "odbior_zip"))
+def test_kreator_liczy_szyne_prosumencka_zamiast_ja_odrzucac(load_kind: str) -> None:
+    """Tor W1, bramka (a): legalny model prosumencki PRZECHODZI przez kreator.
+
+    Przed naprawa kreator — jedyna droga uzytkownika — emitowal dwa `PQSpec` o tym
+    samym `node_id` (odbior + regulowany falownik na jednej szynie) i solver
+    wywracal bieg bledem `duplicate PQSpec.node_id entries`. Uzytkownik NIE MOGL
+    policzyc sieci OZE z odbiorem na tej samej szynie. Test idzie cala droga:
+    model kreatora -> `build_power_flow_input` -> solver z wlaczona walidacja."""
+    pf_input, bus_id = _via_wizard(load_kind, "zrodlo_regulowane")
+    assert [spec.node_id for spec in pf_input.pq].count(bus_id) == 1
+    pf_input.options.validate = True
+    solution = solve_power_flow_physics(pf_input)
+    assert solution.validation_errors == []
+    assert solution.converged
+
+
 # --------------------------------------------------------------------------
 # (a2) Wpis JUZ ZAGREGOWANY: pole addytywne niesie wlasna moc zrodla
 # --------------------------------------------------------------------------
@@ -565,7 +718,19 @@ def _aggregated_bus_spec(builder: str, load_kind: str) -> PQSpec:
     return next(spec for spec in service._build_power_flow_input(run).pq if spec.node_id == bus_id)
 
 
-@pytest.mark.parametrize("builder", BUILDERS)
+# Kreator jest tu SWIADOMIE poza zbiorem, i nie „bo poza zakresem": jego wejsciem
+# jest MODEL (tabele odbiorow i zrodel), a nie payload, wiec ksztalt „jeden wpis o
+# mocy wypadkowej deklarujacy wlasna moc zrodla" jest w nim NIEWYRAZALNY — kreator
+# zawsze zna skladniki z osobna. Pozostali trzej czytaja payload/migawke, ktore
+# moga przyjsc juz zagregowane, i dlatego musza umiec ten drugi ksztalt.
+BUILDERS_Z_WPISEM_ZAGREGOWANYM = (
+    "budowniczy_generyczny",
+    "budowniczy_silnika_biegow",
+    "budowniczy_analysis_run",
+)
+
+
+@pytest.mark.parametrize("builder", BUILDERS_Z_WPISEM_ZAGREGOWANYM)
 @pytest.mark.parametrize("load_kind", ("brak_odbioru", "odbior_stalomocowy"))
 def test_wpis_zagregowany_deklaruje_wlasna_moc_zrodla(builder: str, load_kind: str) -> None:
     """Drugi ksztalt tego samego kontraktu: szyne zlozona wolno opisac JEDNYM
@@ -667,6 +832,118 @@ def test_pojedynczy_skladnik_bez_regulacji_wraca_tym_samym_obiektem() -> None:
     assert merged[0] is spec
 
 
+def _wizard_node_names(pf_input: PowerFlowInput) -> dict[str, str]:
+    """Identyfikator wezla kreatora -> nazwa ze scenariusza („A"/„B"/„C").
+
+    Identyfikatory sa losowymi UUID (nowa baza w pamieci na kazdy bieg), wiec kazdy
+    odcisk porownywany MIEDZY procesami musi isc po nazwach."""
+    return {node_id: node.name for node_id, node in pf_input.typed_graph().nodes.items()}
+
+
+def _wizard_payload_fingerprint(pf_input: PowerFlowInput) -> str:
+    """Odcisk SHA-256 HISTORYCZNEGO ladunku `PQSpec` (bez pol dodanych zlozeniem).
+
+    To jest dokladnie ten ladunek, ktory petla kreatora emitowala przed naprawa —
+    dlatego literal zmierzony na kodzie sprzed naprawy musi sie zgadzac po niej."""
+    names = _wizard_node_names(pf_input)
+    payload = repr(
+        sorted(
+            (
+                names[spec.node_id],
+                repr(spec.p_mw),
+                repr(spec.q_mvar),
+                repr(spec.zip_coeffs),
+                repr(spec.zip_base_p_mw),
+                repr(spec.zip_base_q_mvar),
+                repr(spec.inverter_control),
+            )
+            for spec in pf_input.pq
+        )
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _wizard_result_fingerprint(pf_input: PowerFlowInput, solution: PowerFlowNewtonSolution) -> str:
+    """Odcisk SHA-256 liczb wyniku kreatora, kluczowany nazwami wezlow.
+
+    Porownywalny WYLACZNIE w obrebie jednego procesu (te same identyfikatory) —
+    patrz komentarz przy `FROZEN_LADUNEK_MODELU_PROSTEGO`."""
+    names = _wizard_node_names(pf_input)
+    payload = repr(
+        (
+            solution.converged,
+            solution.iterations,
+            sorted((names[k], v) for k, v in solution.node_u_mag.items()),
+            sorted((names[k], v) for k, v in solution.node_angle.items()),
+            sorted((names[k], v) for k, v in solution.node_p_spec_effective_pu.items()),
+            sorted((names[k], v) for k, v in solution.node_q_spec_effective_pu.items()),
+            repr(solution.slack_power),
+        )
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+@pytest.mark.parametrize("load_kind", LOAD_KINDS)
+def test_model_kreatora_bez_szyny_zlozonej_liczy_sie_bajtowo_jak_dotad(load_kind: str) -> None:
+    """Tor W1, bramka (c): model BEZ wezla zlozonego nie moze drgnac o bit.
+
+    Odbior stoi na szynie B, zrodlo na wlasnej szynie C — skladac nie ma czego, wiec
+    zlozenie ma byc przezroczyste. Dowod jest trzystopniowy:
+
+    1. ladunek `PQSpec` w polach, ktore istnialy przed naprawa, ma odcisk SHA-256
+       PRZYPIETY LITERALEM zmierzonym na kodzie sprzed naprawy;
+    2. szyny bez regulacji nie zyskuja ZADNEGO z nowych pol — sciezka historyczna
+       nie jest nawet przepisywana;
+    3. wynik solvera na wejsciu po naprawie ma TEN SAM odcisk SHA-256 co wynik na
+       wejsciu w ksztalcie SPRZED naprawy (szyna zrodla bez jawnej wlasnej mocy) —
+       uzupelnienie `inverter_p_mw` na szynie samego zrodla liczy dokladnie te sama
+       wartosc, ktora `source_injection_pu` czytalo dotad z mocy szyny.
+    """
+    wizard, _service, project_id, case_id, bus_id, source_bus_id = _build_wizard_model(
+        load_kind, "zrodlo_regulowane", source_on_own_bus=True
+    )
+    assert bus_id != source_bus_id
+    options = _options()
+    po_naprawie = wizard.build_power_flow_input(
+        project_id,
+        case_id,
+        {"max_iter": options.max_iter, "tolerance": options.tolerance, "validate": True},
+    )
+    assert [spec.node_id for spec in po_naprawie.pq].count(source_bus_id) == 1
+
+    # (1) Ladunek historyczny co do bajtu — literal z kodu SPRZED naprawy W1.
+    assert _wizard_payload_fingerprint(po_naprawie) == FROZEN_LADUNEK_MODELU_PROSTEGO[load_kind]
+
+    # (2) Szyny bez regulacji nie zyskuja zadnego z nowych pol.
+    for spec in po_naprawie.pq:
+        if spec.node_id == source_bus_id:
+            continue
+        assert spec.inverter_control is None
+        assert spec.inverter_p_mw is None and spec.inverter_q_mvar is None
+        assert spec.zip_base_p_mw is None and spec.zip_base_q_mvar is None
+
+    # (3) Ksztalt SPRZED naprawy: petla emitowala wpisy bez jawnej wlasnej mocy
+    # zrodla, a przy braku wezla zlozonego byl to caly jej wynik.
+    historyczny = PowerFlowInput(
+        graph=po_naprawie.graph,
+        base_mva=po_naprawie.base_mva,
+        slack=po_naprawie.slack,
+        pq=[replace(spec, inverter_p_mw=None, inverter_q_mvar=None) for spec in po_naprawie.pq],
+        pv=po_naprawie.pv,
+        options=_options(),
+    )
+    zrodlo = next(spec for spec in po_naprawie.pq if spec.node_id == source_bus_id)
+    assert zrodlo.inverter_p_mw == pytest.approx(SRC_P_MW, abs=1e-12)
+    assert zrodlo.inverter_q_mvar == pytest.approx(SRC_Q_MVAR, abs=1e-12)
+
+    wynik = solve_power_flow_physics(po_naprawie)
+    assert wynik.validation_errors == []
+    assert wynik.converged
+    assert _wizard_result_fingerprint(po_naprawie, wynik) == _wizard_result_fingerprint(
+        historyczny, solve_power_flow_physics(historyczny)
+    )
+
+
 def test_wpis_bez_nowych_pol_nie_zmienia_odcisku_kanonicznego() -> None:
     """Pole ADDYTYWNE: klucze `inverter_p_mw`/`inverter_q_mvar` pojawiaja sie w
     kanonicznym slowniku dopiero, gdy wpis je deklaruje, wiec kazdy payload
@@ -747,7 +1024,7 @@ def _judge(p_of_v, q_of_v) -> tuple[float, float, float]:
 def test_szyna_prosumencka_liczy_sie_zgodnie_z_niezaleznym_newtonem(
     builder: str, load_kind: str
 ) -> None:
-    """Kazdy z trzech budowniczych daje wejscie, na ktorym rozplyw ZGADZA SIE z
+    """Kazdy z CZTERECH budowniczych daje wejscie, na ktorym rozplyw ZGADZA SIE z
     niezaleznym Newtonem — takze dla wariantu, ktory przed naprawa albo wywracal
     bieg (duplikat / brak rozdzielenia ZIP), albo liczyl moc bierna zrodla z mocy
     ODBIORU (brak znacznika szyny prosumenckiej)."""
@@ -800,3 +1077,99 @@ def test_szyna_prosumencka_liczy_sie_zgodnie_z_niezaleznym_newtonem(
     assert solution.node_u_mag["B"] == pytest.approx(v_ref, abs=1e-9)
     assert solution.node_p_spec_effective_pu["B"] == pytest.approx(p_ref, abs=1e-9)
     assert solution.node_q_spec_effective_pu["B"] == pytest.approx(q_ref, abs=1e-9)
+
+
+# --------------------------------------------------------------------------
+# (e) Kreator: POZOSTALE galezie emisji tej samej funkcji
+#
+# `build_power_flow_input` dopisuje `PQSpec` do jednej listy w TRZECH miejscach
+# (odbiory, zrodla INVERTER, zrodla CONVERTER). Naprawa jednej galezi przy
+# zostawieniu wzorca w galezi sasiedniej byla by naruszeniem tej samej karty
+# (regula KLASA, NIE INSTANCJA, pkt 5), wiec kazda z nich ma tu swoj test.
+# --------------------------------------------------------------------------
+
+
+def test_kreator_sklada_szyne_takze_dla_przeksztaltnika() -> None:
+    """Galaz CONVERTER emituje wpis do TEJ SAMEJ listy co galaz INVERTER, wiec
+    odbior + regulowany przeksztaltnik na jednej szynie to ten sam defekt.
+
+    Wynik musi byc IDENTYCZNY jak dla falownika przy tej samej nastawie i tej samej
+    charakterystyce — obie galezie roznia sie zrodlem nastawy, nie fizyka."""
+    wizard, _service, project_id, case_id, bus_id, _src = _build_wizard_model(
+        "odbior_stalomocowy", "zrodlo_regulowane", source_type="CONVERTER"
+    )
+    options = _options()
+    pf_input = wizard.build_power_flow_input(
+        project_id,
+        case_id,
+        {"max_iter": options.max_iter, "tolerance": options.tolerance, "validate": True},
+    )
+    specs = [spec for spec in pf_input.pq if spec.node_id == bus_id]
+    assert len(specs) == 1
+    spec = specs[0]
+    assert spec.p_mw == pytest.approx(LOAD_P_MW - SRC_P_MW, abs=1e-12)
+    assert spec.q_mvar == pytest.approx(LOAD_Q_MVAR - SRC_Q_MVAR, abs=1e-12)
+    assert spec.inverter_control is not None
+    assert spec.inverter_p_mw == pytest.approx(SRC_P_MW, abs=1e-12)
+    assert spec.inverter_q_mvar == pytest.approx(SRC_Q_MVAR, abs=1e-12)
+
+    solution = solve_power_flow_physics(pf_input)
+    assert solution.validation_errors == []
+    assert solution.converged
+
+    # Parytet galezi: falownik o tej samej nastawie daje ten sam wpis.
+    falownikowy = _bus_spec("budowniczy_kreatora", "odbior_stalomocowy", "zrodlo_regulowane")
+    assert (spec.p_mw, spec.q_mvar, spec.inverter_p_mw, spec.inverter_q_mvar) == (
+        falownikowy.p_mw,
+        falownikowy.q_mvar,
+        falownikowy.inverter_p_mw,
+        falownikowy.inverter_q_mvar,
+    )
+
+
+def test_kreator_sumuje_dwa_odbiory_na_jednej_szynie() -> None:
+    """Druga polowa klasy (V12K-313): dwa odbiory na jednej szynie to model
+    calkowicie legalny, a kreator odrzucal go tym samym bledem duplikatu.
+
+    Po naprawie szyna ma jeden wpis o mocy bedacej SUMA obu odbiorow (i wciaz
+    odejmuje wlasna moc zrodla)."""
+    wizard, _service, project_id, case_id, bus_id, _src = _build_wizard_model(
+        "odbior_stalomocowy", "zrodlo_bez_regulacji", extra_loads=1
+    )
+    options = _options()
+    pf_input = wizard.build_power_flow_input(
+        project_id,
+        case_id,
+        {"max_iter": options.max_iter, "tolerance": options.tolerance, "validate": True},
+    )
+    specs = [spec for spec in pf_input.pq if spec.node_id == bus_id]
+    assert len(specs) == 1
+    assert specs[0].p_mw == pytest.approx(LOAD_P_MW + EXTRA_LOAD_P_MW - SRC_P_MW, abs=1e-12)
+    assert specs[0].q_mvar == pytest.approx(LOAD_Q_MVAR - SRC_Q_MVAR, abs=1e-12)
+    solution = solve_power_flow_physics(pf_input)
+    assert solution.validation_errors == []
+    assert solution.converged
+
+
+def test_kreator_odrzuca_dwa_regulowane_zrodla_na_jednej_szynie() -> None:
+    """SPRZECZNOSC, nie sumowalnosc — takze w kreatorze.
+
+    Kontrakt trzyma DOKLADNIE jedna charakterystyke na wezel, wiec ciche wybranie
+    jednej z dwoch skasowalo by druga z modelu. Odmowa ma byc JAWNA i pochodzic z
+    tego samego, jednego skladania (a nie z przypadkowego duplikatu)."""
+    wizard, _service, project_id, case_id, bus_id, _src = _build_wizard_model(
+        "odbior_stalomocowy", "zrodlo_regulowane"
+    )
+    drugie = wizard.add_source(
+        project_id,
+        SourcePayload(
+            name="INV2",
+            node_id=UUID(bus_id),
+            source_type="INVERTER",
+            payload={"name": "INV2", **CONTROL_PARAMS},
+            type_ref=uuid4(),
+        ),
+    )
+    wizard.set_inverter_setpoints(case_id, drugie["id"], p_mw=-1.0, q_mvar=-0.2)
+    with pytest.raises(ValueError, match="ONE inverter characteristic per bus"):
+        wizard.build_power_flow_input(project_id, case_id)
