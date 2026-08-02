@@ -17,6 +17,7 @@ from analysis.power_flow.types import (
 )
 from application.analysis_run.result_invalidator import ResultInvalidator
 from application.network_model import build_network_graph, network_model_id_for_project
+from application.power_flow_input_builder import merge_bus_components
 from application.sld.layout import build_auto_layout_diagram
 from domain.models import (
     OperatingCase,
@@ -1070,7 +1071,17 @@ class NetworkWizardService:
             graph=graph,
             base_mva=base_mva,
             slack=slack_spec,
-            pq=pq_specs,
+            # V12K-313/V12K-316: the loop above emits one entry per COMPONENT (a
+            # load and an inverter on one bus are two entries), while the solver
+            # contract holds exactly one `PQSpec` per BUS — `validate_input` refuses
+            # a duplicate `node_id` and `build_power_spec_v2` ASSIGNS. Without the
+            # fold the wizard REFUSED the ordinary prosumer model (a bus carrying a
+            # load and a regulated source at once) instead of computing it. The fold
+            # is the one shared with the other power flow input builders: it
+            # accumulates the bus power and keeps the source's own power and the
+            # load base recoverable next to it (single implementation, never a
+            # second one here).
+            pq=merge_bus_components(pq_specs),
             pv=pv_specs,
             options=PowerFlowOptions(**options_data),
         )
