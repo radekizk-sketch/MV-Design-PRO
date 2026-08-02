@@ -5,6 +5,15 @@ Rozszerzenie domain_operations.py o brakujące operacje z Fazy 1.1 specyfikacji.
 Każda operacja jest deterministyczna i generuje zdarzenia domenowe.
 
 BINDING: Komunikaty po polsku, brak kodów projektowych.
+
+ZNACZNIK POCHODZENIA KATALOGOWEGO (V12K-316 dług 4). Przestrzeń katalogu
+(`catalog_namespace`) wynika z RODZAJU elementu, który operacja tworzy — nie
+z deklaracji payloadu. TA SAMA wartość wybiera pozycję w katalogu i trafia do
+migawki jako znacznik pochodzenia, a element bez pozycji katalogowej nie
+deklaruje kategorii wcale. Reguła jest pilnowana skanem struktury w
+`tests/enm/test_znacznik_pochodzenia_katalogowego_v2.py`: nowe miejsce zapisu
+`catalog_namespace` musi brać wartość ze stałej przestrzeni albo z nazwy, która
+w tej samej funkcji pojechała do materializacji.
 """
 
 from __future__ import annotations
@@ -190,6 +199,16 @@ def _catalog_binding_from_payload(
     payload: dict[str, Any],
     namespace: str,
 ) -> dict[str, Any] | None:
+    """Wiązanie katalogowe payloadu sprowadzone do PRZESTRZENI RODZAJU elementu.
+
+    ZNACZNIK POCHODZENIA OPISUJE ŹRÓDŁO (V12K-316 dług 4). Kategoria katalogu nie
+    jest deklaracją klienta, tylko konsekwencją tego, JAKI element operacja tworzy:
+    ta sama wartość wybiera akcesor katalogu w materializacji i trafia do migawki.
+    Dotąd payload mógł tu podstawić własną kategorię (`normalized` zachowywał
+    `catalog_namespace` z żądania), więc migawka deklarowała przestrzeń, w której
+    materializacja niczego nie szukała — ślad audytowy kłamał, choć liczby były
+    pilnowane bramą katalogową.
+    """
     binding = payload.get("catalog_binding")
     if isinstance(binding, dict):
         normalized = copy.deepcopy(binding)
@@ -202,9 +221,7 @@ def _catalog_binding_from_payload(
         )
         if isinstance(item_id, str) and item_id.strip():
             normalized["catalog_item_id"] = item_id.strip()
-        catalog_namespace = normalized.get("catalog_namespace")
-        if not isinstance(catalog_namespace, str) or not catalog_namespace.strip():
-            normalized["catalog_namespace"] = namespace
+        normalized["catalog_namespace"] = namespace
         item_version = normalized.get("catalog_item_version") or payload.get("catalog_item_version")
         normalized["catalog_item_version"] = (
             item_version.strip()
@@ -227,14 +244,6 @@ def _catalog_binding_from_payload(
     return None
 
 
-def _catalog_namespace(binding: dict[str, Any] | None, fallback: str) -> str:
-    if isinstance(binding, dict):
-        namespace = binding.get("catalog_namespace")
-        if isinstance(namespace, str) and namespace.strip():
-            return namespace.strip()
-    return fallback
-
-
 def _catalog_item_id(binding: dict[str, Any] | None) -> str | None:
     if not isinstance(binding, dict):
         return None
@@ -243,6 +252,30 @@ def _catalog_item_id(binding: dict[str, Any] | None) -> str | None:
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+#: Przestrzeń katalogu APARATU POLA — wynika z rodzaju pola (SN albo nN), nigdy
+#: z deklaracji payloadu. Jedna stała na obie strony pary predykatów: sprawdzenie
+#: ISTNIENIA pozycji (`_blad_aparatu_pola`) i znacznik pochodzenia zapisywany do
+#: migawki muszą pytać o TĘ SAMĄ przestrzeń (V12K-316 dług 4).
+_PRZESTRZEN_APARATU_POLA_SN = "APARAT_SN"
+_PRZESTRZEN_APARATU_POLA_NN = "APARAT_NN"
+
+
+def _wiazanie_w_przestrzeni(binding: object, namespace: str) -> dict[str, Any] | None:
+    """Wiązanie katalogowe sprowadzone do przestrzeni RODZAJU elementu.
+
+    Wiązanie podane w żądaniu wskazuje POZYCJĘ, nie kategorię: kategoria wynika
+    z tego, jaki element operacja tworzy (transformator blokowy jest zawsze
+    TRAFO_SN_NN, kabel przyłączeniowy zawsze KABEL_SN, aparat pola SN zawsze
+    APARAT_SN). Bez tego sprowadzenia payload wybierałby akcesor katalogu — i do
+    gałęzi `type: cable` dałoby się zmaterializować typ linii napowietrznej,
+    a migawka zapisałaby tę kategorię jako pochodzenie (V12K-316 dług 4;
+    ta sama reguła co `catalog.namespace_mismatch` w `assign_catalog_to_element`).
+    """
+    if not isinstance(binding, dict):
+        return None
+    return {**copy.deepcopy(binding), "catalog_namespace": namespace}
 
 
 def _bus_voltage_kv(enm: dict[str, Any], bus_ref: str) -> float | None:
@@ -270,17 +303,17 @@ def _sn_bay_branch_type(apparatus_kind: object) -> str:
     return "breaker"
 
 
-def _relay_catalog_binding(payload: dict[str, Any]) -> dict[str, Any] | None:
+def _relay_catalog_binding(payload: dict[str, Any], namespace: str) -> dict[str, Any] | None:
     protection = payload.get("protection")
     if isinstance(protection, dict):
         item_id = protection.get("catalog_item_id") or protection.get("catalog_ref")
         if isinstance(item_id, str) and item_id.strip():
             return {
-                "catalog_namespace": "ZABEZPIECZENIE",
+                "catalog_namespace": namespace,
                 "catalog_item_id": item_id.strip(),
                 "catalog_item_version": protection.get("catalog_item_version") or "2024.1",
             }
-    return _catalog_binding_from_payload(payload, "ZABEZPIECZENIE")
+    return _catalog_binding_from_payload(payload, namespace)
 
 
 def _relay_device_type(relay_type: str) -> str:
@@ -459,7 +492,10 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "ct.bus_missing",
         )
 
-    binding = _catalog_binding_from_payload(payload, "CT")
+    # JEDNA przestrzeń katalogu na całą operację: wybiera akcesor materializacji
+    # i jest znacznikiem pochodzenia w migawce (V12K-316 dług 4).
+    przestrzen_katalogu = "CT"
+    binding = _catalog_binding_from_payload(payload, przestrzen_katalogu)
     catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
     if catalog_error or not catalog_ref:
         return _error_response(
@@ -468,7 +504,7 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         )
 
     z_katalogu, blad_katalogu = _pozycja_katalogu(
-        namespace=_catalog_namespace(binding, "CT"),
+        namespace=przestrzen_katalogu,
         catalog_ref=catalog_ref,
         catalog_binding=binding,
         opis_pl="Przekładnik prądowy CT",
@@ -548,7 +584,7 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             measurement.update(
                 {
                     "catalog_ref": catalog_ref,
-                    "catalog_namespace": _catalog_namespace(binding, "CT"),
+                    "catalog_namespace": przestrzen_katalogu,
                     "parameter_source": "CATALOG",
                     "source_mode": "KATALOG",
                     "materialized_params": {
@@ -602,7 +638,8 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "vt.bus_missing",
         )
 
-    binding = _catalog_binding_from_payload(payload, "VT")
+    przestrzen_katalogu = "VT"
+    binding = _catalog_binding_from_payload(payload, przestrzen_katalogu)
     catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
     if catalog_error or not catalog_ref:
         return _error_response(
@@ -611,7 +648,7 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         )
 
     z_katalogu, blad_katalogu = _pozycja_katalogu(
-        namespace=_catalog_namespace(binding, "VT"),
+        namespace=przestrzen_katalogu,
         catalog_ref=catalog_ref,
         catalog_binding=binding,
         opis_pl="Przekładnik napięciowy VT",
@@ -691,7 +728,7 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             measurement.update(
                 {
                     "catalog_ref": catalog_ref,
-                    "catalog_namespace": _catalog_namespace(binding, "VT"),
+                    "catalog_namespace": przestrzen_katalogu,
                     "parameter_source": "CATALOG",
                     "source_mode": "KATALOG",
                     "materialized_params": {
@@ -740,7 +777,8 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     if not _field_ref_exists(enm, field_ref):
         return _error_response(f"Pole '{field_ref}' nie istnieje.", "relay.field_not_found")
 
-    binding = _relay_catalog_binding(payload)
+    przestrzen_katalogu = "ZABEZPIECZENIE"
+    binding = _relay_catalog_binding(payload, przestrzen_katalogu)
     catalog_ref, catalog_error = _resolve_catalog_ref(payload.get("catalog_ref"), binding)
     if catalog_error or not catalog_ref:
         return _error_response(
@@ -749,7 +787,7 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         )
 
     z_katalogu, blad_katalogu = _pozycja_katalogu(
-        namespace=_catalog_namespace(binding, "ZABEZPIECZENIE"),
+        namespace=przestrzen_katalogu,
         catalog_ref=catalog_ref,
         catalog_binding=binding,
         opis_pl="Zabezpieczenie pola SN",
@@ -828,7 +866,7 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             assignment.update(
                 {
                     "catalog_ref": catalog_ref,
-                    "catalog_namespace": _catalog_namespace(binding, "ZABEZPIECZENIE"),
+                    "catalog_namespace": przestrzen_katalogu,
                     "parameter_source": "CATALOG",
                     "source_mode": "KATALOG",
                     "materialized_params": {
@@ -1492,13 +1530,20 @@ def _pozycja_katalogu(
     referencję kodem `catalog.item_not_found` — parytet torów wymaga, żeby zły
     ref dawał ten sam kod po obu stronach.
 
+    PRZESTRZEŃ JEST ROZKAZEM, NIE DOMYŚLNĄ WARTOŚCIĄ (V12K-316 dług 4).
+    `_materialize_catalog_payload` traktuje `default_namespace` jako DOMYŚLNĄ:
+    kategoria obecna w wiązaniu payloadu wygrywała, więc żądanie kierowało
+    wyszukiwanie do cudzego katalogu, a operacja i tak zapisywała do migawki
+    kategorię wynikającą z rodzaju elementu. Sprowadzenie wiązania do `namespace`
+    zamyka obie strony rozjazdu: szukamy tam, gdzie deklarujemy.
+
     Zwraca ``(parametry_katalogowe, None)`` albo ``({}, odpowiedź_błędu)``.
     Materializacja stoi PRZED jakąkolwiek mutacją modelu, więc odrzucona
     operacja nie zostawia w migawce połowicznego elementu.
     """
     materializacja = _materialize_catalog_payload(
         catalog_ref=catalog_ref,
-        catalog_binding=catalog_binding,
+        catalog_binding=_wiazanie_w_przestrzeni(catalog_binding, namespace),
         default_namespace=namespace,
         default_version="2024.1",
     )
@@ -1532,6 +1577,11 @@ def _blad_aparatu_pola(
     wiązanie WSKAZUJĄCE nieistniejącą pozycję nie jest — specyfikacja pola zapisywała
     wtedy `apparatus_catalog_ref` martwej pozycji, a gałąź aparatu deklarowała
     `source_mode: KATALOG`. Zwraca odpowiedź błędu albo ``None``.
+
+    Przestrzeń katalogu bierze się z RODZAJU aparatu (parametr wywołania), nie z
+    deklaracji payloadu: inaczej wiązanie wskazujące „CT" kazałoby sprawdzać
+    istnienie w katalogu przekładników, a migawka i tak zapisywałaby APARAT_SN
+    (V12K-316 dług 4 — predykat wejścia i wyjścia z jednego źródła).
     """
     if not isinstance(binding, dict):
         return None
@@ -1539,7 +1589,7 @@ def _blad_aparatu_pola(
     if not ref:
         return None
     _, blad = _pozycja_katalogu(
-        namespace=_catalog_namespace(binding, namespace),
+        namespace=namespace,
         catalog_ref=ref,
         catalog_binding=binding,
         opis_pl=opis_pl,
@@ -1808,8 +1858,8 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         return _error_response(
             "Nie znaleziono napięcia szyny SN dla pola.", "sn.bus_voltage_missing"
         )
-    catalog_binding = _catalog_binding_from_payload(payload, "APARAT_SN")
-    catalog_namespace = _catalog_namespace(catalog_binding, "APARAT_SN")
+    catalog_namespace = _PRZESTRZEN_APARATU_POLA_SN
+    catalog_binding = _catalog_binding_from_payload(payload, catalog_namespace)
     catalog_ref = _catalog_item_id(catalog_binding)
     # Pole SN bez wskazanego aparatu jest kanoniczne (`requires_catalog_binding`),
     # ale WSKAZANY aparat musi ISTNIEĆ: bez tego pole deklarowało
@@ -1892,8 +1942,12 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         if branch is not None:
             branch["name"] = f"Aparat {field_name}"
             branch["type"] = branch_type
-            branch["source_mode"] = "KATALOG"
-            branch["catalog_namespace"] = catalog_namespace
+            # Pochodzenie katalogowe deklarujemy TYLKO wtedy, gdy pozycja katalogu
+            # naprawdę stoi za aparatem. Pole bez wskazanego aparatu jest kanoniczne
+            # (`requires_catalog_binding`) i nie może nieść kategorii, z której nic
+            # nie pochodzi — tak samo jak aparat pola źródłowego SN niżej.
+            branch["source_mode"] = "KATALOG" if catalog_ref else None
+            branch["catalog_namespace"] = catalog_namespace if catalog_ref else None
             branch["catalog_ref"] = catalog_ref
             # Tabliczka aparatu Z KATALOGU (parytet z torem stacyjnym, gdzie
             # `_materialize_sn_field_apparatus` zapisuje `materialized_params`):
@@ -1997,8 +2051,8 @@ def add_sn_bay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "status": "closed",
             "r_ohm": 0.0,
             "x_ohm": 0.0,
-            "source_mode": "KATALOG",
-            "catalog_namespace": catalog_namespace,
+            "source_mode": "KATALOG" if catalog_ref else None,
+            "catalog_namespace": catalog_namespace if catalog_ref else None,
             "catalog_ref": catalog_ref,
             # Tabliczka aparatu Z KATALOGU — parytet z torem stacyjnym
             # (`_materialize_sn_field_apparatus`), gdzie ten sam aparat dostaje
@@ -2230,7 +2284,8 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     feeder_ref = payload.get("feeder_ref")
     bus_nn_ref = payload.get("bus_nn_ref")
     active_power_kw = payload.get("active_power_kw", 0)
-    catalog_binding = _catalog_binding_from_payload(payload, "OBCIAZENIE")
+    przestrzen_katalogu = "OBCIAZENIE"
+    catalog_binding = _catalog_binding_from_payload(payload, przestrzen_katalogu)
     catalog_ref = _catalog_item_id(catalog_binding)
 
     # Dobór mocy biernej odbioru z tabliczki: gdy Q nie podano jawnie, wyprowadź
@@ -2259,7 +2314,7 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     # `source_mode: KATALOG` / `parameter_source: CATALOG` przy martwej referencji.
     if catalog_ref:
         _, blad_katalogu = _pozycja_katalogu(
-            namespace=_catalog_namespace(catalog_binding, "OBCIAZENIE"),
+            namespace=przestrzen_katalogu,
             catalog_ref=catalog_ref,
             catalog_binding=catalog_binding,
             opis_pl="Odbiór nN",
@@ -2290,7 +2345,10 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             # Load.model akceptuje 'pq' | 'zip' — 'pq' = constant power (klasyczny PQ).
             "model": "pq",
             "catalog_ref": catalog_ref,
-            "catalog_namespace": _catalog_namespace(catalog_binding, "OBCIAZENIE"),
+            # Odbiór ekspercki (bez pozycji) nie deklaruje kategorii katalogu —
+            # inaczej kontekst katalogowy raportu pokazywałby „OBCIAZENIE" przy
+            # elemencie, którego katalog nigdy nie widział.
+            "catalog_namespace": przestrzen_katalogu if catalog_ref else None,
             "source_mode": "KATALOG" if catalog_ref else "EKSPERCKI_RECZNY",
             "parameter_source": "CATALOG" if catalog_ref else "OVERRIDE",
             "tags": [],
@@ -2343,33 +2401,19 @@ def _first_number(*candidates: object) -> float | None:
 
 
 def _normalize_source_technology(payload: dict[str, Any]) -> str | None:
+    """Technologia źródła przekształtnikowego — zbiór dopuszczonych wartości Z MAPY PRZESTRZENI.
+
+    Predykat wejścia (co przyjmujemy) i predykat wyjścia (w jakiej przestrzeni
+    katalogu szukamy) pochodzą z JEDNEGO źródła prawdy. Dwa niezależne zbiory,
+    które „dziś się zgadzają", rozjechałyby się przy pierwszej nowej technologii
+    i dałyby albo martwą gałąź, albo `KeyError` w handlerze.
+    """
     technology = payload.get("source_technology")
     if isinstance(technology, str):
         normalized = technology.strip().upper()
-        if normalized in {"PV", "BESS", "FW"}:
+        if normalized in _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO:
             return normalized
     return None
-
-
-def _legacy_converter_spec(payload: dict[str, Any], technology: str) -> dict[str, Any]:
-    if technology == "PV" and isinstance(payload.get("pv_spec"), dict):
-        return payload["pv_spec"]
-    if technology == "BESS" and isinstance(payload.get("bess_spec"), dict):
-        return payload["bess_spec"]
-    return {}
-
-
-def _resolve_converter_catalog_namespace(payload: dict[str, Any], technology: str) -> str:
-    binding = payload.get("catalog_binding")
-    if isinstance(binding, dict):
-        namespace = binding.get("catalog_namespace")
-        if isinstance(namespace, str) and namespace.strip():
-            return namespace.strip()
-    if technology == "PV":
-        return "ZRODLO_NN_PV"
-    if technology == "BESS":
-        return "ZRODLO_NN_BESS"
-    return "CONVERTER"
 
 
 def _resolve_converter_catalog_ref(
@@ -2386,6 +2430,13 @@ def _resolve_converter_catalog_ref(
 #: Technologia źródła przekształtnikowego → przestrzeń katalogu. LUSTRO
 #: `_NN_SOURCE_KIND_MAP` toru stacyjnego: ten sam ref musi być rozstrzygalny
 #: w obu torach, inaczej brama jednego z nich jest fikcją (parytet torów).
+#:
+#: JEDYNE ŹRÓDŁO PRAWDY dla trzech rzeczy naraz (V12K-316 dług 4): zbioru
+#: dopuszczonych technologii (`_normalize_source_technology`), przestrzeni,
+#: w której materializacja szuka tabliczki, ORAZ znacznika pochodzenia
+#: zapisywanego do migawki. Dopóki znacznik pochodził z payloadu, a tabliczka
+#: z tej mapy, migawka mogła deklarować kategorię (np. „CONVERTER"), z której
+#: nie pochodziła ani jedna liczba — ślad audytowy kłamał o pochodzeniu.
 _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO: dict[str, str] = {
     "PV": "ZRODLO_NN_PV",
     "BESS": "ZRODLO_NN_BESS",
@@ -2432,6 +2483,7 @@ def _certyfikat_ptpiree_z_katalogu(namespace: str, catalog_ref: str) -> dict[str
 def _build_converter_materialized_params(
     *,
     technology: str,
+    namespace: str,
     payload: dict[str, Any],
     catalog_ref: str,
 ) -> tuple[dict[str, Any], dict[str, Any] | None]:
@@ -2452,14 +2504,14 @@ def _build_converter_materialized_params(
     `materialized_params` z payloadu jest wyłącznie DEKLARACJĄ: rozbieżność
     kończy operację kodem `catalog.nameplate_mismatch`, nigdy cichym przyjęciem.
 
+    PRZESTRZEŃ KATALOGU WCHODZI Z ZEWNĄTRZ (V12K-316 dług 4). Handler wyznacza ją
+    raz z `_PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO`, przekazuje tutaj i TĘ SAMĄ
+    wartość zapisuje do migawki jako znacznik pochodzenia. Dopóki funkcja
+    wyznaczała ją sama, handler pisał do modelu kategorię z payloadu i migawka
+    deklarowała przestrzeń, w której nic nie było szukane.
+
     Zwraca ``(tabliczka, None)`` albo ``({}, odpowiedź_błędu)``.
     """
-    namespace = _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO.get(technology)
-    if namespace is None:
-        return {}, _error_response(
-            f"Nieznana technologia źródła przekształtnikowego: {technology}.",
-            "converter.source_technology_missing",
-        )
 
     def _blad_materializacji(kod: str) -> dict[str, Any]:
         return _error_response(
@@ -2686,34 +2738,6 @@ def _resolve_converter_defaults(
     )
 
 
-def _legacy_converter_binding(
-    legacy_spec: dict[str, Any],
-    *,
-    technology: str,
-) -> dict[str, Any] | None:
-    binding = legacy_spec.get("catalog_binding")
-    if isinstance(binding, dict):
-        return binding
-
-    item_id_key = "catalog_item_id" if technology == "PV" else "inverter_catalog_id"
-    version_key = "catalog_item_version" if technology == "PV" else "inverter_catalog_version"
-    item_id = legacy_spec.get(item_id_key)
-    if not isinstance(item_id, str) or not item_id.strip():
-        return None
-
-    binding = {
-        "catalog_namespace": "ZRODLO_NN_PV" if technology == "PV" else "ZRODLO_NN_BESS",
-        "catalog_item_id": item_id.strip(),
-        "catalog_item_version": "2024.1",
-        "materialize": True,
-        "snapshot_mapping_version": "1.0",
-    }
-    version = legacy_spec.get(version_key)
-    if isinstance(version, str) and version.strip():
-        binding["catalog_item_version"] = version.strip()
-    return binding
-
-
 def _append_converter_field_if_needed(
     new_enm: dict[str, Any],
     *,
@@ -2763,7 +2787,11 @@ def _append_converter_field_if_needed(
     field_meta = {"source_field_kind": source_field_payload.get("source_field_kind") or technology}
     apparatus_binding = source_field_payload.get("catalog_binding")
     if isinstance(apparatus_binding, dict):
-        field_meta["catalog_binding"] = apparatus_binding
+        # Wiązanie zapisane do pola niesie przestrzeń, w której sprawdzono ISTNIENIE
+        # aparatu (`_blad_aparatu_pola`, APARAT_NN) — nie tę zadeklarowaną w żądaniu.
+        field_meta["catalog_binding"] = _wiazanie_w_przestrzeni(
+            apparatus_binding, _PRZESTRZEN_APARATU_POLA_NN
+        )
         catalog_item_id = apparatus_binding.get("catalog_item_id")
         if isinstance(catalog_item_id, str) and catalog_item_id.strip():
             field_meta["apparatus_catalog_ref"] = catalog_item_id.strip()
@@ -2831,9 +2859,11 @@ def _materialize_der_block_transformer(
     Zwraca (transformer_dict, None) przy sukcesie albo (None, error_response) przy błędzie.
     Rola „TRANSFORMATOR_BLOKOWY_DER" w meta odróżnia go jednoznacznie od TR stacji.
     """
+    przestrzen_katalogu = "TRAFO_SN_NN"
+    wiazanie = _wiazanie_w_przestrzeni(spec.get("catalog_binding"), przestrzen_katalogu)
     catalog_ref = _require_catalog_ref(
         payload_ref=spec.get("catalog_ref"),
-        payload_binding=spec.get("catalog_binding"),
+        payload_binding=wiazanie,
         context_code="der.block_transformer",
     )
     if isinstance(catalog_ref, dict):
@@ -2851,7 +2881,7 @@ def _materialize_der_block_transformer(
         "pk_kw": 0.0,
         "vector_group": spec.get("vector_group"),
         "source_mode": "KATALOG",
-        "catalog_namespace": "TRAFO_SN_NN",
+        "catalog_namespace": przestrzen_katalogu,
         "n_parallel": 1,
         "tags": ["der_block_transformer"],
         "meta": {
@@ -2863,8 +2893,8 @@ def _materialize_der_block_transformer(
     }
     materialization = _materialize_catalog_payload(
         catalog_ref=catalog_ref,
-        catalog_binding=spec.get("catalog_binding"),
-        default_namespace="TRAFO_SN_NN",
+        catalog_binding=wiazanie,
+        default_namespace=przestrzen_katalogu,
     )
     if isinstance(materialization, dict):
         return None, _blad_pozycji_katalogu(materialization, "Transformator blokowy DER")
@@ -2879,7 +2909,7 @@ def _materialize_der_block_transformer(
     if vector_group_error is not None:
         return None, _error_response(vector_group_error.message_pl, vector_group_error.code)
     tr_data["catalog_ref"] = catalog_ref
-    _apply_catalog_metadata(tr_data, binding_payload, default_namespace="TRAFO_SN_NN")
+    _apply_catalog_metadata(tr_data, binding_payload, default_namespace=przestrzen_katalogu)
     _apply_materialized_transformer_fields(tr_data, materialized_params)
     # Rola DER musi przetrwać materializację katalogu (odróżnienie od TR stacji).
     tr_data.setdefault("meta", {})
@@ -2890,7 +2920,7 @@ def _materialize_der_block_transformer(
 
 
 def _der_cable_laying_conditions(
-    config: dict[str, Any]
+    config: dict[str, Any],
 ) -> tuple[dict[str, Any] | None, str | None]:
     """Warunki UŁOŻENIA kabla DER z konfiguracji pola SN (V12K-207, karta F-K7).
 
@@ -2957,9 +2987,11 @@ def _materialize_der_mv_cable(
 
     Zwraca (branch_data, None) przy sukcesie albo (None, error_response) przy błędzie.
     """
+    przestrzen_katalogu = "KABEL_SN"
+    wiazanie = _wiazanie_w_przestrzeni(catalog_binding, przestrzen_katalogu)
     resolved_ref = _require_catalog_ref(
         payload_ref=catalog_ref,
-        payload_binding=catalog_binding,
+        payload_binding=wiazanie,
         context_code="der.mv_cable",
     )
     if isinstance(resolved_ref, dict):
@@ -2967,8 +2999,8 @@ def _materialize_der_mv_cable(
 
     materialization = _materialize_catalog_payload(
         catalog_ref=resolved_ref,
-        catalog_binding=catalog_binding,
-        default_namespace="KABEL_SN",
+        catalog_binding=wiazanie,
+        default_namespace=przestrzen_katalogu,
     )
     if isinstance(materialization, dict):
         return None, _blad_pozycji_katalogu(materialization, "Kabel SN przyłączeniowy DER")
@@ -2985,7 +3017,7 @@ def _materialize_der_mv_cable(
         "r_ohm_per_km": 0.0,
         "x_ohm_per_km": 0.0,
         "source_mode": "KATALOG",
-        "catalog_namespace": "KABEL_SN",
+        "catalog_namespace": przestrzen_katalogu,
         "catalog_ref": resolved_ref,
         "tags": ["der_mv_cable"],
         "meta": {"der_role": "mv_connection_cable", "visual_role": "DER_MV_CABLE"},
@@ -2995,7 +3027,7 @@ def _materialize_der_mv_cable(
         # dlatego meta, a nie pole modelu. Solver liczy z nich obciążalność skorygowaną;
         # w modelu zostaje sam OPIS warunków (jedno źródło reguły to solver).
         branch_data["meta"]["cable_laying_conditions"] = laying_conditions
-    _apply_catalog_metadata(branch_data, binding_payload, default_namespace="KABEL_SN")
+    _apply_catalog_metadata(branch_data, binding_payload, default_namespace=przestrzen_katalogu)
     _apply_materialized_branch_fields(branch_data, materialized_params)
     branch_data["length_km"] = length_km
     return branch_data, None
@@ -3009,6 +3041,12 @@ def _resolve_apparatus_rated_current_a(apparatus_binding: object) -> float | Non
     NIE zwraca None z powodu nieistniejącej pozycji: wołający sprawdza istnienie
     aparatu bramą `_blad_aparatu_pola` PRZED mutacją modelu (defekt G), więc
     „nierozstrzygalny ref" kończy operację błędem, a nie cichym brakiem danej.
+
+    TA SAMA PRZESTRZEŃ, CO W BRAMIE (V12K-316 dług 4). Dopóki kategoria szła
+    z wiązania payloadu, obietnica z akapitu wyżej była nieprawdziwa: brama
+    potwierdzała istnienie aparatu w APARAT_SN, a ten odczyt szukał go w
+    kategorii z żądania — nie znajdował i ogniwo kaskady prądowej znikało
+    CICHO, mimo że operacja kończyła się sukcesem.
     """
     if not isinstance(apparatus_binding, dict):
         return None
@@ -3017,8 +3055,8 @@ def _resolve_apparatus_rated_current_a(apparatus_binding: object) -> float | Non
         return None
     materialization = _materialize_catalog_payload(
         catalog_ref=catalog_ref,
-        catalog_binding=apparatus_binding,
-        default_namespace="APARAT_SN",
+        catalog_binding=_wiazanie_w_przestrzeni(apparatus_binding, _PRZESTRZEN_APARATU_POLA_SN),
+        default_namespace=_PRZESTRZEN_APARATU_POLA_SN,
     )
     if not isinstance(materialization, tuple):
         return None
@@ -3097,8 +3135,12 @@ def _add_converter_source_der_sn(
         )
 
     # Materializacja parametrów falownika (reużycie kanonicznej ścieżki katalogowej).
+    # TA SAMA przestrzeń wybiera pozycję katalogu i trafia do migawki jako znacznik
+    # pochodzenia generatora (V12K-316 dług 4).
+    przestrzen_katalogu = _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO[technology]
     materialized_params, materialization_error = _build_converter_materialized_params(
         technology=technology,
+        namespace=przestrzen_katalogu,
         payload=payload,
         catalog_ref=catalog_ref,
     )
@@ -3151,7 +3193,7 @@ def _add_converter_source_der_sn(
             if isinstance(der_topology.get("mv_field_configuration"), dict)
             else None
         ),
-        namespace="APARAT_SN",
+        namespace=_PRZESTRZEN_APARATU_POLA_SN,
         opis_pl="Aparat pola źródłowego SN",
     )
     if blad_aparatu_sn is not None:
@@ -3301,7 +3343,7 @@ def _add_converter_source_der_sn(
             "r_ohm": 0.0,
             "x_ohm": 0.0,
             "source_mode": "KATALOG" if apparatus_catalog_ref else None,
-            "catalog_namespace": "APARAT_SN" if apparatus_catalog_ref else None,
+            "catalog_namespace": (_PRZESTRZEN_APARATU_POLA_SN if apparatus_catalog_ref else None),
             "catalog_ref": apparatus_catalog_ref,
             "tags": ["gpz_field_device", "der_source_field_device"],
             "meta": {
@@ -3313,10 +3355,10 @@ def _add_converter_source_der_sn(
                 "render_on_sld": False,
                 "show_in_project_tree": False,
                 "requires_catalog_binding": apparatus_catalog_ref is None,
-                "catalog_binding": (
-                    copy.deepcopy(apparatus_binding)
-                    if isinstance(apparatus_binding, dict)
-                    else None
+                # Wiązanie zapisane do migawki niesie przestrzeń, w której
+                # sprawdzono ISTNIENIE aparatu, a nie tę z żądania.
+                "catalog_binding": _wiazanie_w_przestrzeni(
+                    apparatus_binding, _PRZESTRZEN_APARATU_POLA_SN
                 ),
             },
         },
@@ -3358,8 +3400,8 @@ def _add_converter_source_der_sn(
         tags=["der_source_field", "nn_source_field"],
         meta={
             "apparatus_kind": apparatus_kind,
-            "catalog_binding": (
-                copy.deepcopy(apparatus_binding) if isinstance(apparatus_binding, dict) else None
+            "catalog_binding": _wiazanie_w_przestrzeni(
+                apparatus_binding, _PRZESTRZEN_APARATU_POLA_SN
             ),
             "terminal_bus_ref": terminal_bus_ref,
             "default_device_ref": apparatus_ref,
@@ -3473,7 +3515,7 @@ def _add_converter_source_der_sn(
             "p_mw": p_mw,
             "q_mvar": q_mvar,
             "catalog_ref": catalog_ref,
-            "catalog_namespace": _resolve_converter_catalog_namespace(payload, technology),
+            "catalog_namespace": przestrzen_katalogu,
             "source_mode": "KATALOG",
             "materialized_params": materialized_params,
             "station_ref": station_ref,
@@ -3568,6 +3610,12 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             catalog_error or "catalog.ref_required",
         )
 
+    # JEDNA przestrzeń katalogu: wybiera pozycję do materializacji tabliczki i jest
+    # znacznikiem pochodzenia w migawce. Payload może ją zadeklarować (kreator OZE
+    # wysyła „CONVERTER"), ale deklaracja nie ma wpływu na to, gdzie szukamy ani co
+    # zapisujemy — inaczej model niósłby kategorię, z której nic nie pochodzi.
+    przestrzen_katalogu = _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO[technology]
+
     # W2b-DANE (POLECENIE_DER_SN_TOPOLOGIA_2026-07): kompletny tor DER po stronie SN.
     # ADDYTYWNY — bez der_topology zachowanie bez zmian. connection_level='sn' materializuje
     # szynę nN producenta → TR blokowy (osobny element) → kabel SN → pole źródłowe SN.
@@ -3660,7 +3708,10 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             # ścieżka poniżej, tu wybór strony po prostu nie ma podstawy.
             converter_un_kv: float | None = None
             _tabliczka_wstepna, _blad_wstepny = _build_converter_materialized_params(
-                technology=technology, payload=payload, catalog_ref=catalog_ref
+                technology=technology,
+                namespace=przestrzen_katalogu,
+                payload=payload,
+                catalog_ref=catalog_ref,
             )
             if _blad_wstepny is None:
                 converter_un_kv = _as_float(_tabliczka_wstepna.get("un_kv"))
@@ -3697,6 +3748,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
 
     materialized_params, materialization_error = _build_converter_materialized_params(
         technology=technology,
+        namespace=przestrzen_katalogu,
         payload=payload,
         catalog_ref=catalog_ref,
     )
@@ -3773,7 +3825,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             if isinstance(payload.get("source_field"), dict)
             else None
         ),
-        namespace="APARAT_NN",
+        namespace=_PRZESTRZEN_APARATU_POLA_NN,
         opis_pl="Aparat pola źródłowego nN",
     )
     if blad_aparatu is not None:
@@ -3808,7 +3860,7 @@ def add_converter_source(enm: dict[str, Any], payload: dict[str, Any]) -> dict[s
             "p_mw": p_mw,
             "q_mvar": q_mvar,
             "catalog_ref": catalog_ref,
-            "catalog_namespace": _resolve_converter_catalog_namespace(payload, technology),
+            "catalog_namespace": przestrzen_katalogu,
             "source_mode": "KATALOG",
             "materialized_params": materialized_params,
             "station_ref": station_ref,
@@ -4009,7 +4061,11 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "shunt.bus_not_found",
         )
 
-    binding = _catalog_binding_from_payload(payload, "KOMPENSATOR_SN")
+    # Materializacja pyta katalog baterii kondensatorów WPROST
+    # (`get_shunt_capacitor_type`), więc przestrzeń jest przesądzona rodzajem
+    # elementu — payload nie może jej przestawić ani w wiązaniu, ani w migawce.
+    przestrzen_katalogu = "KOMPENSATOR_SN"
+    binding = _catalog_binding_from_payload(payload, przestrzen_katalogu)
     catalog_ref = _catalog_item_id(binding)
     if not catalog_ref:
         return _error_response(
@@ -4054,7 +4110,7 @@ def add_shunt_compensator_sn(enm: dict[str, Any], payload: dict[str, Any]) -> di
             "rated_kv": rated_kv,
             "status": status,
             "catalog_ref": catalog_ref,
-            "catalog_namespace": _catalog_namespace(binding, "KOMPENSATOR_SN"),
+            "catalog_namespace": przestrzen_katalogu,
             "source_mode": "KATALOG",
             "parameter_source": "CATALOG",
             "tags": [],
@@ -4107,7 +4163,9 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
     if station is None:
         return _error_response("Nie znaleziono stacji dla pola SN.", "spd.station_not_found")
 
-    binding = _catalog_binding_from_payload(payload, "OGRANICZNIK_SN")
+    # Jak wyżej: `get_surge_arrester_type` przesądza przestrzeń rodzajem elementu.
+    przestrzen_katalogu = "OGRANICZNIK_SN"
+    binding = _catalog_binding_from_payload(payload, przestrzen_katalogu)
     catalog_ref = _catalog_item_id(binding)
     if not catalog_ref:
         return _error_response(
@@ -4173,7 +4231,7 @@ def add_surge_arrester_sn(enm: dict[str, Any], payload: dict[str, Any]) -> dict[
         {
             "device_ref": device_ref,
             "catalog_ref": catalog_ref,
-            "catalog_namespace": _catalog_namespace(binding, "OGRANICZNIK_SN"),
+            "catalog_namespace": przestrzen_katalogu,
         }
     )
 

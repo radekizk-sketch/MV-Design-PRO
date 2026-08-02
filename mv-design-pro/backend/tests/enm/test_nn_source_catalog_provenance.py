@@ -148,16 +148,23 @@ def test_failed_materialization_leaves_snapshot_unchanged(
 #: w payloadzie — i przechodził WYŁĄCZNIE dzięki defektowi G (payload zastępował
 #: materializację, katalog nie był czytany). Intencja bez zmian: udane utworzenie
 #: niesie komplet pól proweniencji.
+#:
+#: KANON PO V12K-316 (dług 4): znacznik pochodzenia to przestrzeń, w której
+#: materializacja NAPRAWDĘ znalazła pozycję, więc payload deklarujący „CONVERTER"
+#: nie zmienia tego, co niesie migawka. Dotąd test przypinał zapis kategorii
+#: Z PAYLOADU — czyli utrwalał ślad audytowy wskazujący przestrzeń, z której nie
+#: pochodziła ani jedna liczba tabliczki.
 @pytest.mark.parametrize(
-    ("technology", "catalog_key"),
+    ("technology", "catalog_key", "przestrzen_materializacji"),
     [
-        ("PV", "conv-pv-nn-0p5mw-0p4kv"),
-        ("BESS", "conv-bess-nn-0p5mw-0p4kv"),
+        ("PV", "conv-pv-nn-0p5mw-0p4kv", "ZRODLO_NN_PV"),
+        ("BESS", "conv-bess-nn-0p5mw-0p4kv", "ZRODLO_NN_BESS"),
     ],
 )
 def test_successful_create_includes_provenance_fields(
     technology: str,
     catalog_key: str,
+    przestrzen_materializacji: str,
 ) -> None:
     result = execute_domain_operation(
         _base_enm_with_transformer(),
@@ -183,7 +190,7 @@ def test_successful_create_includes_provenance_fields(
 
     created = snapshot["generators"][0]
     assert created.get("catalog_ref") == catalog_key
-    assert created.get("catalog_namespace") == "CONVERTER"
+    assert created.get("catalog_namespace") == przestrzen_materializacji
     assert created.get("source_mode") == "KATALOG"
     assert isinstance(created.get("materialized_params"), dict)
     assert created.get("meta", {}).get("field_ref")
