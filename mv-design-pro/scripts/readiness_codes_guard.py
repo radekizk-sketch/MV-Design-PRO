@@ -69,8 +69,10 @@ EXIT CODES:
 from __future__ import annotations
 
 import ast
+import importlib.util
 import sys
 from pathlib import Path
+from types import ModuleType
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 REGISTRY_FILE = REPO_ROOT / "backend" / "src" / "domain" / "canonical_operations.py"
@@ -106,6 +108,36 @@ MIN_CODES = 24
 MIN_MESSAGE_LEN = 5
 
 
+def modul_rejestru() -> ModuleType:
+    """Modul rejestru bez wykonywania `__init__` pakietu `domain`.
+
+    CI wola ten straznik golym pythonem (bez zaleznosci backendu), a
+    `import domain.canonical_operations` odpala `domain/__init__.py`, ktory
+    ciagnie pydantic — sam rejestr potrzebuje wylacznie stdlib. Gdy pakiet JEST
+    juz zaimportowany (pytest pod poetry), zwracamy DOKLADNIE ten sam modul,
+    zeby `isinstance` widzial te same klasy enum co testy.
+    """
+    # Kolejnosc: pakiet (pytest pod poetry), potem WLASNY wpis z poprzedniego
+    # ladowania plikowego — bez niego kazde wywolanie tworzyloby NOWY modul
+    # z NOWYMI klasami enum i `isinstance` mowilby falszywe "nie".
+    juz = sys.modules.get("domain.canonical_operations") or sys.modules.get("_rejestr_kanoniczny")
+    if juz is not None:
+        return juz
+    try:
+        import domain.canonical_operations as pakietowy  # noqa: PLC0415
+
+        return pakietowy
+    except ModuleNotFoundError:
+        spec = importlib.util.spec_from_file_location("_rejestr_kanoniczny", REGISTRY_FILE)
+        assert spec and spec.loader
+        m = importlib.util.module_from_spec(spec)
+        # Rejestracja PRZED exec: mechanika dataclasses szuka modulu klasy w
+        # sys.modules przy przetwarzaniu adnotacji (KW_ONLY) i bez wpisu pada.
+        sys.modules[spec.name] = m
+        spec.loader.exec_module(m)
+        return m
+
+
 def duplikaty_kluczy_zrodla(zrodlo: str, nazwa_slownika: str = "READINESS_CODES") -> list[str]:
     """Zduplikowane klucze LITERALU slownika — niewykrywalne po imporcie.
 
@@ -134,7 +166,7 @@ def duplikaty_kluczy_zrodla(zrodlo: str, nazwa_slownika: str = "READINESS_CODES"
 
 def waliduj_rejestr(codes: dict[str, object]) -> list[str]:
     """Kontrole per wpis na ZYWYCH obiektach rejestru (naglowek modulu: mapa)."""
-    from domain.canonical_operations import ReadinessLevel
+    ReadinessLevel = modul_rejestru().ReadinessLevel  # noqa: N806
 
     naruszenia: list[str] = []
     for klucz, spec in codes.items():
@@ -181,7 +213,7 @@ def main() -> int:
         return 1
 
     sys.path.insert(0, str(REPO_ROOT / "backend" / "src"))
-    from domain.canonical_operations import READINESS_CODES
+    READINESS_CODES = modul_rejestru().READINESS_CODES  # noqa: N806
 
     codes = set(READINESS_CODES)
     if len(codes) < MIN_CODES:
