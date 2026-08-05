@@ -297,7 +297,30 @@ Wynik jest zgodny z mechanizmem: FastAPI buduje schemat z **sygnatur i
 adnotacji**, a `def` i `async def` różnią się wyłącznie sposobem wykonania —
 do schematu nie wchodzą. Sygnatury końcówek nie zostały zmienione ani razu.
 
-### 8.4 Zestaw asercji
+### 8.4 Konsument spoza HTTP — jedyna realna regresja tej karty
+
+Odcisk OpenAPI (§8.3) dowodzi, że kontrakt **HTTP** jest nietknięty, ale nie
+mówi nic o konsumentach, którzy **omijają HTTP**. Pełny bieg regresji znalazł
+dokładnie taki przypadek: 9 testów wołało funkcję końcówki wprost i owijało ją
+w `asyncio.run(...)`. Po zamianie `async def` → `def` funkcja zwraca gotowy
+słownik, nie korutynę — `ValueError: a coroutine was expected`.
+
+Naprawa poszła **do kanonu, nie przez cofnięcie zmiany**: `def` jest tu
+poprawne (ciało w całości blokujące), a `asyncio.run` było w tych testach
+wyłącznie adapterem do poprzedniego kształtu końcówki, nigdy przedmiotem
+badania. Intencja testów zapisana w docstringach obu plików.
+
+Sprawdzenie **całej klasy** (przejście po AST `src/` i `tests/` szukające
+`await X()` oraz `asyncio.run(X())` dla wszystkich 40 przekonwertowanych nazw):
+**0 pozostałych trafień**.
+
+**Lekcja o procesie.** Regresja celowana (`tests/api` + archiwa + xlsx = 767
+testów) tego nie złapała, bo te testy leżą w `tests/enm`. Zakres regresji
+celowanej dobrano po warstwie ZMIENIONEGO kodu, a należało po warstwie JEGO
+KONSUMENTÓW. Przy zmianie sygnatury/kształtu funkcji publicznej modułu zakres
+wyznacza `grep` po nazwach, nie katalog, w którym leży zmiana.
+
+### 8.5 Zestaw asercji
 
 1. `test_biegi_rownolegle_sa_deterministyczne` — K=10 zadań mieszanych:
    (a) wszystkie 200, (b) odcisk **fizyki** identyczny z biegiem szeregowym,
