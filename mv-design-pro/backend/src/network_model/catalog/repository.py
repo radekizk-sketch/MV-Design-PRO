@@ -54,6 +54,33 @@ def _copy_catalog_quality(record: dict) -> dict:
     return quality
 
 
+#: Memoizacja OBIEKTOW certyfikatow PTPiREE (V12K-321, dlug wydajnosci P1-D1).
+#: Snapshot wykazu ma 6887 wierszy, a `get_default_mv_catalog()` jest wolane w
+#: 88 miejscach — bez memo kazde wywolanie parsowalo 6887x `from_dict`
+#: (zmierzone 87 ms/wywolanie; krok pytest w CI wydluzyl sie ~2x, z ~18 do
+#: ponad 45 minut). Obiekty sa ZAMROZONE (frozen dataclass), wiec
+#: wspoldzielenie miedzy instancjami repozytorium jest bezpieczne. Straznica
+#: swiezosci: klucz niesie numer dokumentu i model, wiec rekord testowy o tym
+#: samym id ale INNEJ tresci nie dostanie cudzego obiektu.
+_PTPIREE_CERT_MEMO: dict[tuple[str, str, str], PtpireeGeneratorCertificate] = {}
+
+
+def _certyfikat_ptpiree_z_memo(record: dict) -> PtpireeGeneratorCertificate:
+    params = record.get("params") or {}
+    klucz = (
+        str(record.get("id")),
+        str(params.get("document_number") or ""),
+        str(params.get("model") or record.get("name") or ""),
+    )
+    obiekt = _PTPIREE_CERT_MEMO.get(klucz)
+    if obiekt is None:
+        data = {"id": record.get("id"), "name": record.get("name")}
+        data.update(params)
+        obiekt = PtpireeGeneratorCertificate.from_dict(data)
+        _PTPIREE_CERT_MEMO[klucz] = obiekt
+    return obiekt
+
+
 #: Czas odniesienia prądu wytrzymywanego krótkotrwale w katalogu aparatury SN.
 #: Konwencja katalogu jest zapisana w jego nagłówku ("icw_ka [kA] — prad
 #: wytrzymywany krotkotrwale 1s"), więc czas NIE jest tu zgadywany — jest
@@ -366,9 +393,7 @@ class CatalogRepository:
         def _build_ptpiree_generator_certificate(
             record: dict,
         ) -> PtpireeGeneratorCertificate:
-            data = {"id": record.get("id"), "name": record.get("name")}
-            data.update(record.get("params") or {})
-            return PtpireeGeneratorCertificate.from_dict(data)
+            return _certyfikat_ptpiree_z_memo(record)
 
         switch_records = list(switch_equipment_types or [])
         converter_records = list(converter_types or [])
