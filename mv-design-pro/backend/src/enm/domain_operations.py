@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from network_model.catalog.repository import CatalogRepository
 from network_model.catalog.types import CatalogBinding
 
-from .models import EnergyNetworkModel
+from .models import GEN_TYPES_PRZEKSZTALTNIKOWE, EnergyNetworkModel
 from .topology_ops import (
     create_branch,
     create_device,
@@ -1420,21 +1420,10 @@ def _find_branch_or_split_child(enm: dict[str, Any], ref_id: str) -> dict[str, A
 
 
 #: Rodzaje generatorow ENM bedace ZRODLAMI PRZEKSZTALTNIKOWYMI (DER), czyli
-#: dokladnie te, ktore podlegaja certyfikacji PTPiREE i testom NC RfG.
-#:
-#: Zbior jest TEN SAM, ktorego uzywa most zgodnosci NC RfG
-#: (`application/ncrfg_compliance/model_bridge.py::_INVERTER_GEN_TYPES`) —
-#: sygnal gotowosci o certyfikacie i bieg testow NC RfG musza obejmowac te sama
-#: klase urzadzen, inaczej projektant dostaje ostrzezenie o urzadzeniu, ktorego
-#: bieg nie testuje (albo odwrotnie).
-#:
-#: UWAGA — to NIE jest zbior `enm/mapping.py::_INVERTER_GEN_TYPES`, mimo
-#: identycznej nazwy: tamten klasyfikuje zrodla na potrzeby modelu zwarciowego
-#: IEC 60909 i CELOWO wyklucza `fw_dfig`/`fw_scig` (maszyny wirujace). Do
-#: certyfikacji PTPiREE naleza rowniez one.
-_GEN_TYPES_PRZEKSZTALTNIKOWE: frozenset[str] = frozenset(
-    {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
-)
+#: dokladnie te, ktore podlegaja certyfikacji PTPiREE, testom NC RfG i bramom
+#: gotowosci DER. Jedno zrodlo prawdy: ``enm/models.py`` (obok Literalu
+#: ``Generator.gen_type``) — semantyka i granice zbioru opisane przy definicji.
+_GEN_TYPES_PRZEKSZTALTNIKOWE: frozenset[str] = GEN_TYPES_PRZEKSZTALTNIKOWE
 
 
 def _station_has_transformer(enm: dict[str, Any], station_ref: object) -> bool:
@@ -1606,10 +1595,13 @@ def _build_readiness(
                 entry["severity"] = "OSTRZEZENIE"
                 warnings.append(entry)
 
-        # Domain-level check: PV/BESS generators without transformer
+        # Domain-level check: DER przeksztaltnikowy bez transformatora w sciezce.
+        # Predykat = kanoniczny zbior GEN_TYPES_PRZEKSZTALTNIKOWE (enm/models.py),
+        # nie podciagi nazw — dopasowanie podciagiem gubilo farmy fw_pmsg/fw_dfig/
+        # fw_scig (przylaczane na nN tak samo jak PV/BESS).
         for gen in enm.get("generators", []):
             gen_type = (gen.get("gen_type") or "").lower()
-            if "pv" in gen_type or "bess" in gen_type or "inverter" in gen_type:
+            if gen_type in _GEN_TYPES_PRZEKSZTALTNIKOWE:
                 has_trafo = bool(gen.get("blocking_transformer_ref")) or _station_has_transformer(
                     enm,
                     gen.get("station_ref"),

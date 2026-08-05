@@ -374,7 +374,7 @@ def build_zero_sequence_trace(enm: EnergyNetworkModel, graph: NetworkGraph) -> l
 # short-circuit source model. Full converters (§6.7 bounded current source) →
 # InverterSource; rotating machines → voltage-behind-Z″ (§6.3 synchronous / §6.7
 # asynchronous, incl. DFIG Type 3 crowbar).
-_INVERTER_GEN_TYPES: dict[str, ConverterKind] = {
+_FULL_CONVERTER_SC_GEN_TYPES: dict[str, ConverterKind] = {
     "pv_inverter": ConverterKind.PV,
     "bess": ConverterKind.BESS,
     "wind_inverter": ConverterKind.WIND,
@@ -462,7 +462,7 @@ def _add_generator_sc_sources(
         if un_kv is None:
             continue
 
-        if gen_type in _INVERTER_GEN_TYPES:
+        if gen_type in _FULL_CONVERTER_SC_GEN_TYPES:
             sr_mva = _gen_rated_apparent_mva(gen, mp)
             if sr_mva is None:
                 continue
@@ -474,7 +474,7 @@ def _add_generator_sc_sources(
                     name=gen.name,
                     node_id=node_id,
                     type_ref=gen.catalog_ref,
-                    converter_kind=_INVERTER_GEN_TYPES[gen_type],
+                    converter_kind=_FULL_CONVERTER_SC_GEN_TYPES[gen_type],
                     in_rated_a=in_rated_a,
                     k_sc=float(k_sc) if isinstance(k_sc, int | float) and k_sc > 0 else 1.1,
                     contributes_negative_sequence=True,

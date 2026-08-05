@@ -1527,6 +1527,74 @@ class TestPVBESSTransformerGate:
             has_pv_blocker
         ), f"Expected pv_bess.transformer_required blocker, got codes: {blocker_codes}"
 
+    def test_transformer_gate_obejmuje_cala_klase_der(self):
+        """Brama transformatora obejmuje CALA klase DER (dlug 7 z V12K-321).
+
+        Dopasowanie podciagiem ("pv"/"bess"/"inverter" w gen_type) gubilo farmy
+        fw_pmsg/fw_dfig/fw_scig — przylaczane na nN dokladnie jak PV/BESS.
+        Test klasa-nie-instancja: KAZDY typ z GEN_TYPES_PRZEKSZTALTNIKOWE bez
+        transformatora w sciezce dostaje blokade, a synchronous — nie
+        (kontrola dodatnia wykluczajaca brame strzelajaca w kazdy generator).
+        """
+        from enm.models import GEN_TYPES_PRZEKSZTALTNIKOWE
+
+        _, snapshot = _build_gpz_plus_segments(2)
+        first_seg = _get_first_segment_ref(snapshot)
+        result_station = execute_domain_operation(
+            enm_dict=snapshot,
+            op_name="insert_station_on_segment_sn",
+            payload={
+                "segment_ref": first_seg,
+                "field_apparatus_catalog_ref": "sw-cb-abb-vd4-17kv-630a",
+                "station_type": "B",
+                "insert_at": {"value": 0.5},
+                "station": {"sn_voltage_kv": 15.0, "nn_voltage_kv": 0.4},
+                "sn_fields": ["IN", "OUT"],
+                "transformer": {
+                    "create": True,
+                    "transformer_catalog_ref": "tr-sn-nn-15-04-630kva-dyn11",
+                },
+            },
+        )
+        assert result_station.get("snapshot") is not None, f"Error: {result_station.get('error')}"
+        s = result_station["snapshot"]
+        source_bus_refs = {src.get("bus_ref") for src in s.get("sources", [])}
+        target_bus_ref = next(
+            b["ref_id"] for b in s.get("buses", []) if b.get("ref_id") not in source_bus_refs
+        )
+
+        def _kody_blokad(gen_type: str) -> set[str]:
+            s_copy = copy.deepcopy(s)
+            s_copy.setdefault("generators", []).append(
+                {
+                    "ref_id": f"gen_gate_{gen_type}",
+                    "name": f"Generator {gen_type}",
+                    "bus_ref": target_bus_ref,
+                    "p_mw": 0.5,
+                    "q_mvar": 0.0,
+                    "gen_type": gen_type,
+                    # BEZ station_ref, connection_variant i blocking_transformer_ref.
+                }
+            )
+            any_bus = s_copy["buses"][0]
+            result = execute_domain_operation(
+                enm_dict=s_copy,
+                op_name="update_element_parameters",
+                payload={
+                    "element_ref": any_bus["ref_id"],
+                    "parameters": {"name": any_bus.get("name", "test")},
+                },
+            )
+            return {b.get("code") for b in result.get("readiness", {}).get("blockers", [])}
+
+        for gen_type in sorted(GEN_TYPES_PRZEKSZTALTNIKOWE):
+            assert "pv_bess.transformer_required" in _kody_blokad(gen_type), (
+                f"DER '{gen_type}' bez transformatora w sciezce nie dostal blokady "
+                "pv_bess.transformer_required — brama gubi czesc klasy DER"
+            )
+        # Kontrola dodatnia: generator synchroniczny NIE podlega bramie.
+        assert "pv_bess.transformer_required" not in _kody_blokad("synchronous")
+
     def test_pv_nn_side_uses_station_transformer_refs(self):
         """PV po stronie nN korzysta z transformatora stacyjnego, bez fałszywego blokera."""
         _, snapshot = _build_gpz_plus_segments(2)

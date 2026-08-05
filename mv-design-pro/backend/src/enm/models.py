@@ -436,6 +436,21 @@ class ShuntCapacitor(ENMElement):
 # Generator
 # ---------------------------------------------------------------------------
 
+#: Rodzaje generatorow ENM bedace ZRODLAMI PRZEKSZTALTNIKOWYMI (DER) — dokladnie
+#: te z Literalu ``Generator.gen_type`` poza ``synchronous``. Jedno zrodlo
+#: prawdy dla predykatu "czy generator jest DER": bramy gotowosci
+#: (``enm/domain_operations.py``), walidator E028/E029 (``enm/validator.py``)
+#: i most zgodnosci NC RfG (``application/ncrfg_compliance/model_bridge.py``)
+#: musza obejmowac te sama klase urzadzen — rozjazd zbiorow oznacza urzadzenie
+#: ostrzegane, ktorego bieg nie testuje (albo odwrotnie).
+#:
+#: UWAGA — to NIE jest klasyfikacja zwarciowa z ``enm/mapping.py``
+#: (tam pelne przeksztaltniki IEC 60909; ``fw_dfig``/``fw_scig`` to maszyny
+#: wirujace). Do certyfikacji PTPiREE i bram DER naleza rowniez one.
+GEN_TYPES_PRZEKSZTALTNIKOWE: frozenset[str] = frozenset(
+    {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
+)
+
 
 class Generator(ENMElement):
     bus_ref: str

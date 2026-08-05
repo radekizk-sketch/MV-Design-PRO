@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from .fix_actions import FixAction
 from .interlock_rules import earthing_interlock_violation
 from .models import (
+    GEN_TYPES_PRZEKSZTALTNIKOWE,
     Cable,
     EnergyNetworkModel,
     OverheadLine,
@@ -313,14 +314,8 @@ class ENMValidator:
         # narysować drzewo połączeń (LV_BEHIND_STATION_TRANSFORMER vs
         # DEDICATED_MV_CONNECTION vs SOURCE_CONNECTION_STATION vs
         # nn_side / block_transformer).
-        _INVERTER_GEN_TYPES = {
-            "pv_inverter",
-            "wind_inverter",
-            "fw_pmsg",
-            "fw_dfig",
-            "fw_scig",
-            "bess",
-        }
+        # Jedno zrodlo prawdy predykatu DER: enm/models.py (obok Literalu gen_type).
+        _INVERTER_GEN_TYPES = GEN_TYPES_PRZEKSZTALTNIKOWE
         for gen in enm.generators:
             gen_type = getattr(gen, "gen_type", None)
             if gen_type not in _INVERTER_GEN_TYPES:
