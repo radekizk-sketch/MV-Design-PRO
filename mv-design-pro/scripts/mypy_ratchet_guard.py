@@ -70,10 +70,32 @@ BASELINE_FILES = 14
 
 WZORZEC_PODSUMOWANIA = re.compile(r"Found (\d+) errors? in (\d+) files?")
 WZORZEC_SUKCESU = re.compile(r"Success: no issues found")
+#: Podsumowanie PRAWDZIWEJ analizy niesie liczbę sprawdzonych plików źródłowych.
+#: Podsumowanie przerwanego biegu niesie zamiast niej „errors prevented further
+#: checking" — patrz `uruchom_mypy`.
+WZORZEC_SPRAWDZONYCH = re.compile(r"\(checked (\d+) source files?\)")
+
+#: Dolna granica wiarygodności pomiaru: `backend/src` to setki modułów, więc bieg
+#: raportujący garstkę sprawdzonych plików NIE zmierzył długu (zły katalog, obcięta
+#: konfiguracja). Wartość celowo luźna — chodzi o odróżnienie „zmierzono" od
+#: „nie zmierzono", nie o pilnowanie liczby plików w repozytorium.
+MIN_SPRAWDZONYCH_PLIKOW = 100
 
 
 def uruchom_mypy() -> tuple[int, int, str]:
-    """Uruchom mypy na `backend/src`; zwróć (liczba błędów, liczba plików, wyjście)."""
+    """Uruchom mypy na `backend/src`; zwróć (liczba błędów, liczba plików, wyjście).
+
+    ZAPADKA MUSI ODRÓŻNIĆ „zmierzono dług" od „nie udało się zmierzyć". Sam fakt,
+    że w wyjściu jest wiersz `Found N errors in M files`, tego NIE gwarantuje:
+    gdy mypy przerwie na błędzie konfiguracji (np. brak wtyczki `pydantic.mypy`
+    w środowisku), drukuje `Found 1 error in 1 file (errors prevented further
+    checking)` — czyli podsumowanie, którego zapadka nie odróżniała od realnego
+    pomiaru i odczytywała jako SPEKTAKULARNY SPADEK długu (20 → 1). W trybie
+    „dług zmalał" guard tylko prosi o obniżenie progu, więc zepsute środowisko
+    kończyło się propozycją TRWAŁEGO rozbrojenia zapadki. Dlatego pomiar jest
+    uznawany wyłącznie wtedy, gdy mypy zameldował, ile plików źródłowych naprawdę
+    sprawdził — i gdy ta liczba jest wiarygodna.
+    """
     wynik = subprocess.run(
         ["poetry", "run", "mypy", "src"],
         cwd=BACKEND,
@@ -94,6 +116,24 @@ def uruchom_mypy() -> tuple[int, int, str]:
             "mypy_ratchet_guard: nie rozpoznano podsumowania mypy — narzędzie nie "
             f"wykonało analizy.\nWyjście:\n{wyjscie[-2000:]}"
         )
+
+    sprawdzone = WZORZEC_SPRAWDZONYCH.search(wyjscie)
+    if sprawdzone is None:
+        raise SystemExit(
+            "mypy_ratchet_guard: mypy PRZERWAL analize (podsumowanie bez liczby "
+            "sprawdzonych plikow zrodlowych) — pomiar dlugu nie powstal.\n"
+            "Najczestsza przyczyna: srodowisko bez zaleznosci projektu "
+            "(`cd backend && poetry install --with dev`).\n"
+            f"Wyjscie:\n{wyjscie[-2000:]}"
+        )
+    if int(sprawdzone.group(1)) < MIN_SPRAWDZONYCH_PLIKOW:
+        raise SystemExit(
+            f"mypy_ratchet_guard: mypy sprawdzil tylko {sprawdzone.group(1)} plikow "
+            f"zrodlowych (oczekiwano co najmniej {MIN_SPRAWDZONYCH_PLIKOW}) — "
+            "pomiar dlugu jest niewiarygodny.\n"
+            f"Wyjscie:\n{wyjscie[-2000:]}"
+        )
+
     return int(dopasowanie.group(1)), int(dopasowanie.group(2)), wyjscie
 
 

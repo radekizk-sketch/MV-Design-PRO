@@ -83,19 +83,79 @@ def test_prog_odcina_w_obie_strony(
     assert modul.main() == oczekiwany_kod
 
 
+def _podstaw_wyjscie_mypy(modul, monkeypatch: pytest.MonkeyPatch, wyjscie: str) -> None:
+    """Podstaw WYJŚCIE procesu mypy, nie wynik `uruchom_mypy`.
+
+    Test, który zaślepia `uruchom_mypy`, nie ćwiczy rozpoznawania podsumowania —
+    czyli dokładnie tej części, która decyduje, czy pomiar w ogóle powstał.
+    Dlatego zaślepiamy granicę procesu (`subprocess.run`) i zostawiamy guardowi
+    całą jego pracę.
+    """
+
+    class _Wynik:
+        stdout = wyjscie
+        stderr = ""
+
+    monkeypatch.setattr(modul.subprocess, "run", lambda *a, **k: _Wynik())
+
+
 def test_brak_podsumowania_mypy_jest_bledem_a_nie_cisza(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Gdyby mypy nie wykonał analizy (np. błąd konfiguracji), zapadka NIE MOŻE przejść —
     # udawałaby wtedy, że czegoś pilnuje.
     modul = _zaladuj_guard()
+    _podstaw_wyjscie_mypy(modul, monkeypatch, "mypy: error: Cannot find config file")
 
-    def _bez_podsumowania() -> tuple[int, int, str]:
-        wyjscie = "mypy: error: Cannot find config file"
-        if not modul.WZORZEC_PODSUMOWANIA.search(wyjscie):
-            raise SystemExit("mypy_ratchet_guard: nie rozpoznano podsumowania mypy")
-        raise AssertionError("nieosiągalne")
-
-    monkeypatch.setattr(modul, "uruchom_mypy", _bez_podsumowania)
     with pytest.raises(SystemExit):
         modul.main()
+
+
+def test_przerwana_analiza_nie_jest_pomiarem_mimo_podsumowania(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Podsumowanie przerwanego biegu NIE jest pomiarem długu.
+
+    Gdy w środowisku brakuje zależności projektu, mypy przerywa na wtyczce
+    z `pyproject.toml` i drukuje `Found 1 error in 1 file (errors prevented
+    further checking)`. Zapadka czytała to jako spadek długu 20 → 1 i — w trybie
+    „dług zmalał" — prosiła o TRWAŁE obniżenie progu, czyli o własne rozbrojenie.
+    """
+    modul = _zaladuj_guard()
+    _podstaw_wyjscie_mypy(
+        modul,
+        monkeypatch,
+        'pyproject.toml:1: error: Error importing plugin "pydantic.mypy": '
+        "No module named 'pydantic'  [misc]\n"
+        "Found 1 error in 1 file (errors prevented further checking)\n",
+    )
+
+    with pytest.raises(SystemExit, match="PRZERWAL analize"):
+        modul.main()
+
+
+def test_garstka_sprawdzonych_plikow_nie_jest_pomiarem(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bieg po kilku plikach (zły katalog, obcięta konfiguracja) też nie mierzy długu."""
+    modul = _zaladuj_guard()
+    _podstaw_wyjscie_mypy(modul, monkeypatch, "Found 2 errors in 1 file (checked 3 source files)\n")
+
+    with pytest.raises(SystemExit, match="niewiarygodny"):
+        modul.main()
+
+
+def test_pelna_analiza_jest_pomiarem_i_przechodzi_na_progu(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bieg z liczbą sprawdzonych plików to jedyny kształt uznawany za pomiar."""
+    modul = _zaladuj_guard()
+    _podstaw_wyjscie_mypy(
+        modul,
+        monkeypatch,
+        f"Found {modul.BASELINE_ERRORS} errors in {modul.BASELINE_FILES} files "
+        "(checked 741 source files)\n",
+    )
+
+    assert modul.uruchom_mypy()[:2] == (modul.BASELINE_ERRORS, modul.BASELINE_FILES)
+    assert modul.main() == 0
