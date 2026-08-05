@@ -45,6 +45,21 @@ describe('celDlaKodu — mapowanie realnych kodów gotowości', () => {
     expect(celDlaKodu('oze.card_field_not_accepted')).toBe('wniosekOsd');
   });
 
+  it('certyfikat PTPiREE przetwornicy DER -> wniosekOsd (wpis dokładny)', () => {
+    // Skutkiem braku (albo warunkowego) powiązania certyfikatu jest ryzyko
+    // odrzucenia WNIOSKU przez OSD, nie błąd rozpływu — mimo obszaru GENERATORS
+    // w kanonicznym rejestrze. Ta sama droga, co `oze.card_field_not_accepted`.
+    expect(celDlaKodu('der.inverter_certificate_unlinked')).toBe('wniosekOsd');
+    expect(celDlaKodu('der.inverter_certificate_conditional')).toBe('wniosekOsd');
+  });
+
+  it('nieznany kod przestrzeni der.* -> Pozostałe (prefiks der NIE ma fallbacku)', () => {
+    // Kody kreatora DER (`der.station_not_found` itd.) należą do kanału BŁĘDU
+    // OPERACJI, nie do toru gotowości — mapa celów nie ma prawa udawać, że je
+    // rozpoznaje. Wpis dokładny jest jedyną drogą do celu.
+    expect(celDlaKodu('der.station_not_found')).toBe('pozostale');
+  });
+
   it('kod bez kropki (brak przestrzeni nazw) -> Pozostałe, bez zgadywania', () => {
     expect(celDlaKodu('E010')).toBe('pozostale');
     expect(celDlaKodu('W001')).toBe('pozostale');

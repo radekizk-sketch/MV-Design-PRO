@@ -719,6 +719,45 @@ READINESS_CODES: dict[str, ReadinessCodeSpec] = {
         fix_action_id="fix_oze_card_field_acceptance",
         fix_navigation={"panel": "inspector", "tab": "karta_falownika"},
     ),
+    # Certyfikacja PTPiREE przetwornicy DER (karta P2).
+    #
+    # OSTRZEZENIE, nie blokada — swiadomy wybor poziomu. Manifest katalogu
+    # PTPiREE (`network_model/catalog/mv_ptpiree_catalog.py`,
+    # `get_ptpiree_catalog_manifest()["integration_policy"]`) mowi WPROST:
+    # „Ostateczna akceptacja przylaczeniowa pozostaje po stronie wlasciwego
+    # OSD". Lokalny snapshot wykazu nie jest wiec organem rozstrzygajacym i nie
+    # moze zatrzymac obliczen — ale brak powiazanego certyfikatu jest realnym
+    # ryzykiem odrzucenia wniosku przez OSD, wiec projektant musi go zobaczyc.
+    #
+    # Nawigacja prowadzi do konfiguracji DER (wybor urzadzenia z katalogu), bo
+    # naprawa polega na wskazaniu przetwornicy o powiazanym certyfikacie —
+    # regul waznosci certyfikatow system NIE wyprowadza samodzielnie.
+    "der.inverter_certificate_unlinked": ReadinessCodeSpec(
+        code="der.inverter_certificate_unlinked",
+        area=ReadinessArea.GENERATORS,
+        priority=2,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Przetwornica źródła DER nie ma powiązanego certyfikatu PTPiREE — "
+            "wniosek do OSD może zostać odrzucony. Ostateczna akceptacja "
+            "przyłączeniowa pozostaje po stronie właściwego OSD"
+        ),
+        fix_action_id=None,
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
+    "der.inverter_certificate_conditional": ReadinessCodeSpec(
+        code="der.inverter_certificate_conditional",
+        area=ReadinessArea.GENERATORS,
+        priority=3,
+        level=ReadinessLevel.WARNING,
+        message_pl=(
+            "Certyfikat PTPiREE przetwornicy DER jest powiązany warunkowo — "
+            "rekord wykazu niesie notę o warunkach, którą trzeba potwierdzić "
+            "przed warunkami przyłączenia"
+        ),
+        fix_action_id=None,
+        fix_navigation={"panel": "inspector", "tab": "katalog"},
+    ),
     # Ring
     "ring.endpoints_missing": ReadinessCodeSpec(
         code="ring.endpoints_missing",
