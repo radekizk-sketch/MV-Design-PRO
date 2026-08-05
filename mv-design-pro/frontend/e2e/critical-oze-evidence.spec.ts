@@ -346,7 +346,7 @@ test('krytyczny łańcuch dowodu PTPiREE: kreator OZE → tabliczka w modelu →
     connection_variant: 'nn_side',
     station_ref: stationRef,
     bus_nn_ref: busNnRef,
-    catalog_ref: KONWERTER_NIEPOWIAZANY,
+    // Wiązanie katalogowe (catalog-first) — bez legacy pola płaskiego.
     catalog_binding: buildCatalogBinding('ZRODLO_NN_PV', KONWERTER_NIEPOWIAZANY),
     quantity: 1,
   });

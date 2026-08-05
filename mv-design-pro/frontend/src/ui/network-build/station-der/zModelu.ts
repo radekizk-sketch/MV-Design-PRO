@@ -238,13 +238,19 @@ export function deryStacjiZModelu(
 /**
  * Tożsamość ZNACZENIOWA rekordu — ten sam wytwórca zapisany lokalnie i odczytany
  * z modelu ma inne `id`, więc bez tego klucza lista dublowałaby wpisy.
+ *
+ * NAZWA NIE WCHODZI DO KLUCZA (naprawa 2026-08-05): rekord z modelu dostaje
+ * nazwę wyświetlaną z `generatorDisplayName` („Blok PV" → „PV 01 - fotowoltaika"),
+ * więc klucz z nazwą NIGDY nie zrównywał pary lokalny/modelowy i ten sam fizyczny
+ * wytwórca pojawiał się w macierzy zgodności DWA razy — certyfikat meldowałby
+ * dwa moduły dla jednego urządzenia. Tożsamość niesie rozdzielnia, rodzaj, strona
+ * przyłączenia, pozycja katalogowa urządzenia i moc; etykieta jest prezentacją.
  */
 export function derSemanticKey(der: StationDerConnection): string {
   return [
     der.station_id,
     der.der_kind,
     der.connection_side,
-    der.name.trim().toLocaleLowerCase('pl-PL'),
     der.catalogs.device_catalog_ref ?? '',
     der.nominal_power_kw ?? '',
   ].join('|');
