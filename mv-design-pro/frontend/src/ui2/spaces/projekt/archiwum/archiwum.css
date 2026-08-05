@@ -1,0 +1,219 @@
+/*
+ * Okno „Archiwum projektu (ZIP)" (przestrzeń „Projekt"). Wyłącznie tokeny
+ * powłoki (--mvd-*), więc oba motywy działają z automatu. Skala promieni:
+ * 10px sekcja / 8px blok / 6px pole. Odstępy: 4 / 8 / 12 / 16.
+ */
+
+.mvd-arch {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  color: var(--mvd-ink);
+}
+
+.mvd-arch-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.mvd-arch-head h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  line-height: 1.25;
+  color: var(--mvd-ink);
+}
+
+.mvd-arch-head p {
+  margin: 0;
+  max-width: 72ch;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--mvd-muted);
+}
+
+.mvd-arch-lbl {
+  font: 600 10.5px/1 var(--mvd-font-mono);
+  letter-spacing: 0.14em;
+  color: var(--mvd-accent);
+}
+
+.mvd-arch-sekcja {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: var(--mvd-panel);
+  border: 1px solid var(--mvd-line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.mvd-arch-opis {
+  margin: 0;
+  max-width: 76ch;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--mvd-muted);
+}
+
+.mvd-arch-meta-k {
+  font: 600 10px/1.4 var(--mvd-font-mono);
+  letter-spacing: 0.1em;
+  color: var(--mvd-muted);
+}
+
+.mvd-num {
+  font-family: var(--mvd-font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Stan zerowy ---------------------------------------------------------- */
+
+.mvd-arch-pusty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: var(--mvd-panel-2);
+  border: 1px dashed var(--mvd-line);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.mvd-arch-pusty-tytul {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--mvd-ink);
+}
+
+/* --- Pola formularza ------------------------------------------------------ */
+
+.mvd-arch-pole {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 46ch;
+}
+
+.mvd-arch-pole-etyk {
+  font-size: 12px;
+  color: var(--mvd-muted);
+}
+
+.mvd-arch-pole input[type='text'],
+.mvd-arch-pole input[type='file'] {
+  font: inherit;
+  font-size: 13px;
+  color: var(--mvd-ink);
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.mvd-arch-pole input:focus-visible {
+  outline: 2px solid var(--mvd-focus);
+  outline-offset: 1px;
+}
+
+.mvd-arch-pole-check {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--mvd-ink);
+}
+
+.mvd-arch-akcje {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* --- Podgląd / raport ----------------------------------------------------- */
+
+.mvd-arch-podglad,
+.mvd-arch-raport {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--mvd-panel-2);
+  border: 1px solid var(--mvd-line);
+  border-left-width: 3px;
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.mvd-arch-podglad { border-left-color: var(--mvd-muted); }
+.mvd-arch-raport[data-wariant='ok'] { border-left-color: var(--mvd-ok); }
+.mvd-arch-raport[data-wariant='warn'] { border-left-color: var(--mvd-warn); }
+.mvd-arch-raport[data-wariant='err'] { border-left-color: var(--mvd-err); }
+
+.mvd-arch-podglad h5 {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--mvd-ink);
+}
+
+.mvd-arch-werdykt {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--mvd-ink);
+}
+
+.mvd-arch-kv-siatka {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 4px 16px;
+}
+
+.mvd-arch-kv {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12.5px;
+}
+
+.mvd-arch-kv-k { color: var(--mvd-muted); }
+.mvd-arch-kv-v { color: var(--mvd-ink); }
+
+.mvd-arch-komunikaty {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mvd-arch-komunikaty ul {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.mvd-arch-komunikaty[data-wariant='warn'] ul { color: var(--mvd-warn); }
+.mvd-arch-komunikaty[data-wariant='err'] ul { color: var(--mvd-err); }
+
+.mvd-arch-ok,
+.mvd-arch-blad {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.mvd-arch-ok { color: var(--mvd-ok); }
+.mvd-arch-blad { color: var(--mvd-err); }
+
+.mvd-arch-nastepny {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--mvd-muted);
+}

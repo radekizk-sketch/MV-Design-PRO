@@ -40,6 +40,7 @@ function props() {
     onOtworzProjekt: vi.fn(),
     onZaznaczPrzypadek: vi.fn(),
     onOtworzPrzypadek: vi.fn(),
+    onOtworzArchiwum: vi.fn(),
   };
 }
 
@@ -217,6 +218,13 @@ describe('PulpitProjektu — nawigacja i selekcja (gramatyka §2)', () => {
     render(<PulpitProjektu {...p} />);
     fireEvent.click(screen.getByRole('button', { name: PULPIT_STRINGS.gotowoscTytul }));
     expect(p.onNawiguj).toHaveBeenCalledWith('gotowosc');
+  });
+
+  it('klik kafla „Archiwum projektu (ZIP)" → otwarcie okna archiwum', () => {
+    const p = props();
+    render(<PulpitProjektu {...p} />);
+    fireEvent.click(screen.getByRole('button', { name: PULPIT_STRINGS.archiwumAkcja }));
+    expect(p.onOtworzArchiwum).toHaveBeenCalledTimes(1);
   });
 
   it('klik wiersza przypadku = selekcja; 2× klik = otwarcie', () => {

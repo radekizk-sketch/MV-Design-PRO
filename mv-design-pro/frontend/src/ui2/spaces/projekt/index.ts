@@ -6,11 +6,13 @@
 
 export { PulpitProjektu, type PulpitProjektuProps } from './PulpitProjektu';
 export { OtworzProjektKontener } from './otworz/OtworzProjektKontener';
+export { EkranArchiwum, type EkranArchiwumProps } from './archiwum';
 export { KafelModelu } from './KafelModelu';
 export { KafelGotowosci } from './KafelGotowosci';
 export { KafelOstatniegoPrzebiegu } from './KafelOstatniegoPrzebiegu';
 export { KafelSpojnosci } from './KafelSpojnosci';
 export { KafelWkrotce } from './KafelWkrotce';
+export { KafelArchiwum } from './KafelArchiwum';
 export { ListaPrzypadkow } from './ListaPrzypadkow';
 export { Kafel, KafelWiersz, Tag, type WariantTagu } from './Kafel';
 

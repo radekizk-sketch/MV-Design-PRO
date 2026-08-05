@@ -191,7 +191,7 @@ Dowód dla ❌/◐: `grep -ril <termin> frontend/src` z 2026-07-15.
 | Preview kabla/transformatora/kompensatora | S20–S22 | ✅ `/api/solver/{cable-voltage-drop,cable-rated-current,transformer-rated-currents,shunt-compensator}-preview` | ui2/kreatory (transformator, kompensator, magistrala) | ◐ (nowe 2026-07) |
 | Reference Engine (paczki referencyjne) | — | ✅ reference_engine: `/api/reference/packs`, `/api/cases/{id}/reference/compliance` | ui2/referencje, ui/reference-networks, ui/reference-patterns | ◐ (nowe 2026-07) |
 | Import XLSX | — | ✅ xlsx_import (wpięty w main.py) | częściowe (`xlsx`: 11 plików) | ◐ |
-| Archiwum projektu (ZIP) | — | project_archive, archive_diff, incremental_archive | project-archive | ✅ |
+| Archiwum projektu (ZIP) | — | ✅ project_archive: `POST /projects/{id}/export` (parametr `zapisz_do_magazynu` → magazyn dokumentów, typ ARCHIWUM), `POST /projects/import`, `POST /projects/import/preview`; archive_diff, incremental_archive bez wejścia w UI | ui2/spaces/projekt/archiwum (okno „Archiwum projektu (ZIP)": kafel pulpitu + karta huba dokumentacji); `ui/project-archive` = warstwa zastana BEZ konsumenta produkcyjnego (kasacja: G-07) | ◐ (naprawa fałszywego ✅ — G-01 audytu bramek U2–U5: do 2026-08 karta huba prowadziła do przestrzeni bez akcji, a dialog warstwy zastanej miał zero konsumentów; wpięte eksport/import/podgląd, poza UI zostają różnicowanie i archiwum przyrostowe) |
 | Katalog typów | — | catalog, audit2_catalogs | catalog, tech-card, property-grid | ✅ |
 | Kreator sieci/stacji | — | station_templates, switchgear_config, design_synth, reference_patterns | designer, network-build, reference-patterns | ◐ |
 | Przypadki obliczeniowe | — | study_cases, case_runs, batch_execution | study-cases (dawny `ui/active-case-bar` USUNIĘTY 2026-07) | ◐ |
@@ -210,6 +210,16 @@ routerów `oze_analysis_runs` i `quality_analysis_runs` oraz powierzchni `ui2/`.
 macierzy zdolności wcześniej pominięte (migotanie, hosting capacity, P-Q, dobór kompensacji,
 LoM, dokumenty OSD, OLTC, preview kabla/transformatora/kompensatora, Reference Engine).
 Wszystkie ❌ i ◐ mają obowiązkowe karty zadań w Programie UI/UX.
+
+**Korekta punktowa 2026-08-05 (G-01 audytu bramek U2–U5).** Wiersz **Archiwum
+projektu (ZIP)** zmieniony ✅ → ◐: poprzedni status był FAŁSZYWY — karta huba
+dokumentacji celowała w przestrzeń „Projekt", w której nie było ŻADNEJ akcji
+archiwum, a `ui/project-archive` (dialog warstwy zastanej) nie miał ani jednego
+konsumenta produkcyjnego. Po naprawie: okno `ui2/spaces/projekt/archiwum`
+(eksport z zapisem do magazynu dokumentów, import, podgląd zawartości), wejście
+z kafla pulpitu i z karty huba. ◐, bo `archive_diff` i `incremental_archive`
+nadal nie mają powierzchni. Pozostałe wiersze macierzy NIE były rewidowane przy
+tej korekcie — pełna rewizja wobec szczytu to osobna karta (G-09 audytu).
 
 ---
 
