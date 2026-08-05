@@ -3,6 +3,7 @@ import { clsx } from 'clsx';
 
 import { selectFieldStationCount, useNetworkBuildDerived } from './networkBuildStore';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import { GOTOWOSC_STRINGS } from '../../ui2/spaces/gotowosc/strings';
 
 export interface TopContextBarProps {
   className?: string;
@@ -88,7 +89,11 @@ export function TopContextBar({
   onOpenProjectMetadata,
   onOpenSnapshotHistory,
 }: TopContextBarProps) {
-  const { buildPhase, buildPhaseLabel, blockersByCategory, isReady } = useNetworkBuildDerived();
+  // DŁUG V12K-318 poz. 4: `blockersByCategory.total === 0` przy gotowości
+  // NIEUSTALONEJ znaczy „nie policzono", a nie „policzono i czysto" — pasek
+  // wywieszał wtedy zieloną plakietkę. Sygnał rozróżniający z toru U5.
+  const { buildPhase, buildPhaseLabel, blockersByCategory, isReady, readinessUstalona } =
+    useNetworkBuildDerived();
   const snapshot = useSnapshotStore((state) => state.snapshot);
 
   const stats = useMemo(() => {
@@ -153,7 +158,14 @@ export function TopContextBar({
             <span>{buildPhaseLabel}</span>
           </div>
 
-          {blockersByCategory.total > 0 ? (
+          {!readinessUstalona ? (
+            <div
+              className="rounded-full border border-slate-500/30 bg-slate-500/10 px-3 py-1 text-[10px] font-medium text-slate-200"
+              data-testid="top-context-gotowosc-nieustalona"
+            >
+              {GOTOWOSC_STRINGS.nieustalonaTytul}
+            </div>
+          ) : blockersByCategory.total > 0 ? (
             <div className="rounded-full border border-rose-500/30 bg-rose-500/10 px-3 py-1 text-[10px] font-medium text-rose-100">
               {blockersByCategory.total} zagadnień konfiguracji
               <span className="ml-2 text-rose-200/70">

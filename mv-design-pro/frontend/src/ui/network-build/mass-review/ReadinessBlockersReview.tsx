@@ -7,7 +7,11 @@
 
 import { useCallback, useMemo } from 'react';
 
-import { useProblemyGotowosci } from '../../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
+import {
+  useProblemyGotowosci,
+  usePodsumowanieGotowosci,
+} from '../../../ui2/spaces/gotowosc/adapters/gotowoscAdapter';
+import { GOTOWOSC_STRINGS } from '../../../ui2/spaces/gotowosc/strings';
 import { useSelectionStore } from '../../selection';
 import {
   publicElementLabelFromRef,
@@ -64,6 +68,12 @@ export function ReadinessBlockersReview() {
   const fixActions = useSnapshotStore((state) => state.fixActions);
   const snapshot = useSnapshotStore((state) => state.snapshot);
   const readinessIssues = useProblemyGotowosci();
+  // DLUG V12K-318 poz. 4 (naprawiony): przy gotowosci NIEUSTALONEJ lista
+  // problemow jest pusta z BRAKU POMIARU, a nie z jego wyniku — przeglad
+  // wywieszal wtedy zielone „bez zagadnien krytycznych" i „Siec jest
+  // przygotowana do analizy" dokladnie wtedy, gdy nie wiadomo. Sygnal
+  // rozrozniajacy z toru U5, napisy te same, co w panelu brakow danych.
+  const { ustalona: gotowoscUstalona } = usePodsumowanieGotowosci();
   const selectElement = useSelectionStore((state) => state.selectElement);
   const openOperationForm = useNetworkBuildStore((state) => state.openOperationForm);
 
@@ -107,6 +117,19 @@ export function ReadinessBlockersReview() {
     },
     [openOperationForm],
   );
+
+  if (!gotowoscUstalona) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-8">
+        <div className="text-center" data-testid="readiness-blockers-nieustalona" role="alert">
+          <p className="text-sm font-semibold text-slate-700">
+            {GOTOWOSC_STRINGS.nieustalonaTytul}
+          </p>
+          <p className="mt-1 text-xs text-gray-500">{GOTOWOSC_STRINGS.nieustalonaOpis}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (blockers.length === 0) {
     const helperMessage =

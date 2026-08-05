@@ -23,6 +23,7 @@ import {
 } from '../field/fieldControlSelectors';
 import { useFieldReadModel } from '../field/useFieldReadModel';
 import { useSnapshotStore } from '../topology/snapshotStore';
+import { GOTOWOSC_STRINGS } from '../../ui2/spaces/gotowosc/strings';
 import {
   resolveBranchSourceContext,
   resolveBranchSourceRef,
@@ -845,21 +846,46 @@ function ProtectionSection({ testIdScope }: { testIdScope?: string }) {
 
 function CalculationControlSection({
   isReady,
+  gotowoscUstalona,
   blockersByCategory,
 }: {
   isReady: boolean;
+  gotowoscUstalona: boolean;
   blockersByCategory: { topologia: number; katalogi: number; eksploatacja: number; analiza: number; total: number };
 }) {
+  // DŁUG V12K-318 poz. 4: przy gotowości NIEUSTALONEJ liczniki są zerami z BRAKU
+  // POMIARU — napis „0 zagadnień technicznych" twierdził wtedy, że policzono i
+  // wyszło zero. Sygnał rozróżniający z toru U5, napisy z panelu „Gotowość".
   return (
     <div className="px-3 py-2 space-y-2">
       <div className="flex items-center gap-2">
-        <StatusDot level={isReady ? 'done' : blockersByCategory.total > 0 ? 'error' : 'partial'} />
-        <span className={clsx('text-xs font-semibold', isReady ? 'text-eng-green' : primaryTextClass)}>
-          {isReady ? 'Układ dopuszczony do analizy' : `${blockersByCategory.total} zagadnień technicznych`}
+        <StatusDot
+          level={
+            !gotowoscUstalona
+              ? 'empty'
+              : isReady
+                ? 'done'
+                : blockersByCategory.total > 0
+                  ? 'error'
+                  : 'partial'
+          }
+        />
+        <span
+          className={clsx(
+            'text-xs font-semibold',
+            isReady && gotowoscUstalona ? 'text-eng-green' : primaryTextClass,
+          )}
+          data-testid="proces-stan-gotowosci"
+        >
+          {!gotowoscUstalona
+            ? GOTOWOSC_STRINGS.nieustalonaTytul
+            : isReady
+              ? 'Układ dopuszczony do analizy'
+              : `${blockersByCategory.total} zagadnień technicznych`}
         </span>
       </div>
 
-      {!isReady && blockersByCategory.total > 0 && (
+      {gotowoscUstalona && !isReady && blockersByCategory.total > 0 && (
         <div className="grid grid-cols-2 gap-1 text-[10px]">
           {blockersByCategory.topologia > 0 && (
             <span className="text-eng-red">Topologia: {blockersByCategory.topologia}</span>
@@ -894,6 +920,7 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
     blockersByCategory,
     branchCount,
     buildPhaseLabel,
+    readinessUstalona,
     configuredGpzSnFieldCount,
     configuredGpzSnFields,
     generatorCount,
@@ -963,7 +990,13 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
       : protectionStats.withCt > 0 || protectionStats.fields > 0
         ? 'partial'
         : 'empty';
-  const readinessStatus: StatusLevel = isReady ? 'done' : blockersByCategory.total > 0 ? 'error' : 'partial';
+  const readinessStatus: StatusLevel = !readinessUstalona
+    ? 'empty'
+    : isReady
+      ? 'done'
+      : blockersByCategory.total > 0
+        ? 'error'
+        : 'partial';
 
   return (
     <div
@@ -1127,7 +1160,11 @@ export function ProcessPanel({ className, testIdScope }: ProcessPanelProps) {
           testIdScope={testIdScope}
         />
         {!isSectionCollapsed('readiness') && (
-          <CalculationControlSection isReady={isReady} blockersByCategory={blockersByCategory} />
+          <CalculationControlSection
+            isReady={isReady}
+            gotowoscUstalona={readinessUstalona}
+            blockersByCategory={blockersByCategory}
+          />
         )}
       </div>
     </div>

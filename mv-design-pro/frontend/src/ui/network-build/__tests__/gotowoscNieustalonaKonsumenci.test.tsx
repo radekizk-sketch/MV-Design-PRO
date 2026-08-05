@@ -28,7 +28,7 @@
  * jako poprawka.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 
 import { WorkspaceOperationalBar } from '../../workspace/WorkspaceOperationalBar';
@@ -42,6 +42,9 @@ import { SHELL_STRINGS } from '../../../ui2/shell/strings';
 import { useAppStateStore } from '../../app-state';
 import { useExecutionRunsStore } from '../../study-cases/runStore';
 import { useSnapshotStore } from '../../topology/snapshotStore';
+import { ProcessPanel } from '../ProcessPanel';
+import { TopContextBar } from '../TopContextBar';
+import { ReadinessBlockersReview } from '../mass-review/ReadinessBlockersReview';
 import { useSelectionStore } from '../../selection/store';
 import { getProject } from '../../projects/api';
 import { getStudyCase } from '../../study-cases/api';
@@ -171,7 +174,7 @@ function SondaBudowy() {
   );
 }
 
-/** Wszyscy czterej konsumenci naraz, nad JEDNYM produkcyjnym orkiestratorem. */
+/** Wszyscy konsumenci naraz, nad JEDNYM produkcyjnym orkiestratorem. */
 function Probe() {
   useLegacyOrchestrator();
   return (
@@ -180,6 +183,10 @@ function Probe() {
       <DataGapPanel />
       <SondaBudowy />
       <KropkaElementu />
+      {/* V12K-319 (karta X3): trzej pozostali konsumenci tej samej klasy. */}
+      <TopContextBar />
+      <ReadinessBlockersReview />
+      <ProcessPanel />
     </>
   );
 }
@@ -300,8 +307,11 @@ describe('gotowość NIEUSTALONA u czterech konsumentów (V12K-317 poz. 4)', () 
     it('NIEUSTALONA → uczciwy stan zerowy zamiast zielonej bramki', async () => {
       await uruchom('nieustalona');
 
-      expect(await screen.findByTestId('data-gap-panel-nieustalona')).toBeInTheDocument();
-      expect(screen.getByText(GOTOWOSC_STRINGS.nieustalonaTytul)).toBeInTheDocument();
+      const panelNieustalony = await screen.findByTestId('data-gap-panel-nieustalona');
+      // Zakres asercji ZAWEZONY do panelu: od karty X3 ten sam napis nosza takze
+      // pasek kontekstu i przeglad masowy, wiec wyszukiwanie globalne trafialoby
+      // w trzy wezly naraz (i przestaloby mowic, KTORY konsument jest uczciwy).
+      expect(within(panelNieustalony).getByText(GOTOWOSC_STRINGS.nieustalonaTytul)).toBeInTheDocument();
       expect(screen.queryByTestId('data-gap-panel-ready')).toBeNull();
       expect(screen.queryByText('Układ przygotowany do obliczeń')).toBeNull();
     });
@@ -384,5 +394,135 @@ describe('gotowość NIEUSTALONA u czterech konsumentów (V12K-317 poz. 4)', () 
         expect(screen.getByTestId('sonda-kropka')).toHaveTextContent('ok');
       });
     });
+  });
+  // -------------------------------------------------------------------------
+  // Konsumenci 5-7 (karta X3, V12K-319) — reszta klasy „zero z braku pomiaru"
+  //
+  // Ci trzej czytelnicy wyprowadzali werdykt POZYTYWNY z pustej listy blokad,
+  // nie sprawdzajac, czy lista jest pusta z POMIARU czy z jego braku. Testy ida
+  // po ILOCZYNIE CECH: {nieustalona, ustalona z blokadami, ustalona bez uwag}
+  // x {przeglad masowy, pasek kontekstu, panel procesu}.
+  // -------------------------------------------------------------------------
+  describe('5/7 przegląd masowy blokad', () => {
+    it('NIEUSTALONA → uczciwy stan zerowy zamiast „bez zagadnień krytycznych"', async () => {
+      await uruchom('nieustalona');
+
+      expect(await screen.findByTestId('readiness-blockers-nieustalona')).toBeInTheDocument();
+      expect(screen.queryByText('Kontrola konfiguracji bez zagadnień krytycznych')).toBeNull();
+      expect(screen.queryByText('Sieć jest przygotowana do analizy')).toBeNull();
+    });
+
+    it('USTALONA z blokadami → tabela blokad, nie stan zerowy', async () => {
+      await uruchom('ustalona-z-blokadami');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('readiness-blockers-review')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('readiness-blockers-nieustalona')).toBeNull();
+    });
+
+    it('USTALONA bez uwag → zielony werdykt nadal działa (naprawa go nie gasi)', async () => {
+      await uruchom('ustalona-bez-uwag');
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('Kontrola konfiguracji bez zagadnień krytycznych'),
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('readiness-blockers-nieustalona')).toBeNull();
+    });
+  });
+
+  describe('6/7 pasek kontekstu budowy', () => {
+    it('NIEUSTALONA → brak zielonej plakietki „Układ bez zagadnień konfiguracji"', async () => {
+      await uruchom('nieustalona');
+
+      expect(await screen.findByTestId('top-context-gotowosc-nieustalona')).toBeInTheDocument();
+      expect(screen.queryByText('Układ bez zagadnień konfiguracji')).toBeNull();
+    });
+
+    it('USTALONA z blokadami → plakietka nazywa liczbę zagadnień', async () => {
+      await uruchom('ustalona-z-blokadami');
+
+      await waitFor(() => {
+        expect(screen.getByText(/zagadnień konfiguracji/)).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('top-context-gotowosc-nieustalona')).toBeNull();
+    });
+
+    it('USTALONA bez uwag → zielona plakietka nadal działa', async () => {
+      await uruchom('ustalona-bez-uwag');
+
+      await waitFor(() => {
+        expect(screen.getByText('Układ bez zagadnień konfiguracji')).toBeInTheDocument();
+      });
+      expect(screen.queryByTestId('top-context-gotowosc-nieustalona')).toBeNull();
+    });
+  });
+
+  describe('7/7 panel procesu — sterowanie obliczeniami', () => {
+    it('NIEUSTALONA → nie twierdzi „0 zagadnień technicznych"', async () => {
+      await uruchom('nieustalona');
+
+      const stan = await screen.findByTestId('proces-stan-gotowosci');
+      expect(stan).toHaveTextContent(GOTOWOSC_STRINGS.nieustalonaTytul);
+      expect(stan).not.toHaveTextContent('0 zagadnień technicznych');
+      expect(stan).not.toHaveTextContent('Układ dopuszczony do analizy');
+    });
+
+    it('USTALONA z blokadami → liczba zagadnień jest POMIAREM', async () => {
+      await uruchom('ustalona-z-blokadami');
+
+      await waitFor(() => {
+        expect(screen.getByTestId('proces-stan-gotowosci')).toHaveTextContent(
+          /[1-9]\d* zagadnień technicznych/,
+        );
+      });
+    });
+
+    it('USTALONA bez uwag → zero jest POLICZONE i nadal wolno je pokazac', async () => {
+      await uruchom('ustalona-bez-uwag');
+
+      const stan = await screen.findByTestId('proces-stan-gotowosci');
+      // Zero POLICZONE wolno pokazac jako zero — naprawa gasi wylacznie zero z
+      // BRAKU pomiaru. (Zielone „Uklad dopuszczony do analizy" wymaga dodatkowo
+      // domknietej fazy budowy sieci, ktorej ta migawka nie ma — stad liczba,
+      // a nie werdykt; to stan poprawny, nie luka.)
+      expect(stan).toHaveTextContent('0 zagadnień technicznych');
+      expect(stan).not.toHaveTextContent(GOTOWOSC_STRINGS.nieustalonaTytul);
+    });
+  });
+  // -------------------------------------------------------------------------
+  // KLASA ZAMKNIETA STRUKTURALNIE (regula KLASA pkt 5) — nie tylko trzy instancje
+  // -------------------------------------------------------------------------
+  it('każdy czytelnik liczników blokad czyta też sygnał ustalonej gotowości', async () => {
+    const { readFileSync, readdirSync, statSync } = await import('node:fs');
+    const { join } = await import('node:path');
+
+    // Producent liczników i jego testy nie sa czytelnikami — reszta modulu jest.
+    const POMIJANE = new Set(['networkBuildStore.ts', 'liveReadiness.ts']);
+    const pliki: string[] = [];
+    const obejdz = (katalog: string): void => {
+      for (const wpis of readdirSync(katalog)) {
+        const sciezka = join(katalog, wpis);
+        if (statSync(sciezka).isDirectory()) {
+          if (wpis !== '__tests__') obejdz(sciezka);
+        } else if (/\.tsx?$/.test(wpis) && !POMIJANE.has(wpis)) {
+          pliki.push(sciezka);
+        }
+      }
+    };
+    obejdz('src/ui/network-build');
+
+    const bezOslony = pliki.filter((sciezka) => {
+      const tresc = readFileSync(sciezka, 'utf-8');
+      if (!tresc.includes('blockersByCategory')) return false;
+      return !/readinessUstalona|gotowoscUstalona/.test(tresc);
+    });
+
+    // Test miałby wartość zerową, gdyby nie znalazł żadnego czytelnika.
+    const czytelnicy = pliki.filter((s) => readFileSync(s, 'utf-8').includes('blockersByCategory'));
+    expect(czytelnicy.length).toBeGreaterThanOrEqual(2);
+    expect(bezOslony).toEqual([]);
   });
 });
