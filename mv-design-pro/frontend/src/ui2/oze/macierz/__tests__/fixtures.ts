@@ -321,3 +321,46 @@ export function certyfikatFixture(): WidokCertyfikatu {
     odcisk_wyniku_sha256: 'det-9f8e7d6c',
   };
 }
+
+/**
+ * Certyfikat z DOWODEM certyfikacji PTPiREE per moduł — odpowiedź na żądanie
+ * ze wskazanym przypadkiem (`case_id`). Pierwszy moduł ma komplet danych
+ * tabliczki, drugi nie ma tabliczki w modelu (uczciwy stan zerowy) — ten
+ * iloczyn cech ma być widoczny w jednym podglądzie.
+ */
+export function certyfikatZDowodemFixture(): WidokCertyfikatu {
+  const bazowy = certyfikatFixture();
+  return {
+    ...bazowy,
+    moduly: [
+      {
+        ...bazowy.moduly[0],
+        dowod_certyfikatu: {
+          der_ref: 'pv-1',
+          numer_dokumentu: 'PTPiREE/WiPWC/1234/2025',
+          data_akceptacji: '2025-11-03',
+          wersja_wos: 'WOS 2021',
+          wersja_wipwc: '1.2',
+          zakres_ppm: 'PPM typu A',
+          warunek_waznosci: 'Tylko z modułem sterowania SG-CTRL.',
+          adres_zrodla: 'https://ptpiree.pl/wykaz/pv-1234',
+          stan_pl: null,
+        },
+      },
+      {
+        ...bazowy.moduly[1],
+        dowod_certyfikatu: {
+          der_ref: 'bess-1',
+          numer_dokumentu: null,
+          data_akceptacji: null,
+          wersja_wos: null,
+          wersja_wipwc: null,
+          zakres_ppm: null,
+          warunek_waznosci: null,
+          adres_zrodla: null,
+          stan_pl: 'Brak danych tabliczki urządzenia w modelu.',
+        },
+      },
+    ],
+  };
+}

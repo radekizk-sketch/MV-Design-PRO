@@ -51,7 +51,11 @@ function ustawBiegNcRfg(): void {
 beforeEach(() => {
   useExecutionRunsStore.setState({ runs: [], activeRunId: null });
   useNcRfgStore.getState().reset();
-  useAppStateStore.setState({ activeProjectName: null, activeCaseName: null });
+  useAppStateStore.setState({
+    activeProjectName: null,
+    activeCaseName: null,
+    activeCaseId: null,
+  } as never);
 });
 
 afterEach(() => {
@@ -122,6 +126,24 @@ describe('EkranWniosku — generacja i sekcje', () => {
     expect(zadanie.nazwa_projektu).toBe('Farma PV Wschód');
     expect(zadanie.run_request.modules).toHaveLength(1);
     expect(zadanie.run_request.procedure_version).toBe('PTPiREE 2024');
+  });
+
+  it('żądanie wniosku niesie aktywny przypadek (bez niego dokument nie ma dowodu PTPiREE)', async () => {
+    vi.mocked(pobierzWniosek).mockResolvedValue(widokWnioskuFixture());
+    vi.mocked(pobierzWniosekDocx).mockResolvedValue(new Blob(['docx']));
+    ustawPrzebiegi();
+    ustawBiegNcRfg();
+    useAppStateStore.setState({
+      activeProjectName: 'Farma PV Wschód',
+      activeCaseId: 'case-oze-1',
+    } as never);
+    render(<EkranWniosku trybZaawansowania="basic" />);
+    fireEvent.change(screen.getByTestId('mvd-wniosek-wezel'), { target: { value: 'bus-1' } });
+
+    fireEvent.click(screen.getByTestId('mvd-wniosek-generuj'));
+
+    await waitFor(() => expect(pobierzWniosek).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(pobierzWniosek).mock.calls[0][1]).toBe('case-oze-1');
   });
 
   it('render sekcji wniosku z fixture 1:1 (bilans, zwarcia, zgodność, założenia)', async () => {

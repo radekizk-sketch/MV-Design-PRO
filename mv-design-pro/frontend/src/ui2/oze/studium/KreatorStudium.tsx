@@ -347,6 +347,9 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
   // Identyfikacja domyślna z aktywnego projektu/przypadku (read-only, do dokumentu).
   const nazwaProjektuBazowa = useAppStateStore((s) => s.activeProjectName);
   const nazwaPrzypadkuBazowa = useAppStateStore((s) => s.activeCaseName);
+  // Aktywny przypadek → backend dopina do dokumentu dowód certyfikacji PTPiREE
+  // urządzeń modelu związanych z wybranym typem katalogowym przekształtnika.
+  const aktywnyPrzypadek = useAppStateStore((s) => s.activeCaseId);
 
   // Parametry zakończonego biegu — źródło żądania dokumentu 1:1 (nie stan formularza,
   // który użytkownik może zmienić po biegu). Ustawiane wyłącznie po zakończonym biegu.
@@ -505,7 +508,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
     setDokBlad(null);
     setDokBraki(null);
     try {
-      setDokument(await pobierzDokumentStudium(zadanie));
+      setDokument(await pobierzDokumentStudium(zadanie, aktywnyPrzypadek));
     } catch (err) {
       obsluzBladDokumentu(err);
     } finally {
@@ -519,7 +522,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
     setDocxLadowanie(true);
     setDokBlad(null);
     try {
-      const blob = await pobierzDokumentStudiumDocx(zadanie);
+      const blob = await pobierzDokumentStudiumDocx(zadanie, aktywnyPrzypadek);
       zapiszBlob(blob, nazwaPlikuDokumentuStudium(new Date(), 'docx'));
     } catch (err) {
       obsluzBladDokumentu(err);
@@ -534,7 +537,7 @@ export function KreatorStudium({ trybZaawansowania }: KreatorStudiumProps) {
     setPdfLadowanie(true);
     setDokBlad(null);
     try {
-      const blob = await pobierzDokumentStudiumPdf(zadanie);
+      const blob = await pobierzDokumentStudiumPdf(zadanie, aktywnyPrzypadek);
       zapiszBlob(blob, nazwaPlikuDokumentuStudium(new Date(), 'pdf'));
     } catch (err) {
       obsluzBladDokumentu(err);
