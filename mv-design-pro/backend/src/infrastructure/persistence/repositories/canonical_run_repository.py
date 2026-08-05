@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import threading
 from collections.abc import Iterator
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any
@@ -113,6 +114,27 @@ _cached_database_url: str | None = None
 _cached_engine: Engine | None = None
 _cached_session_factory: sessionmaker[Session] | None = None
 
+#: Blokada leniwej inicjalizacji silnika bazy biegów.
+#:
+#: DLUG, KTORY TO ZAMYKA (os wspolbieznosci programu 10x, 2026-08-05). Sekwencja
+#: „sprawdz cache → utworz silnik → podmien trzy zmienne modulu" nie byla niczym
+#: serializowana, a wolaja ja WSZYSTKIE koncowki zapisujace i czytajace biegi.
+#: Dopoki koncowki `async def` liczyly na petli zdarzen, wyscig byl teoretyczny —
+#: przeniesienie ich do puli watkow (ta sama karta) czyni go realnym. Dwa
+#: skutki, oba ciche:
+#:   (1) dwa watki widzace pusty cache tworza DWA silniki i dwa razy wykonuja
+#:       `init_db`; jeden silnik zostaje osierocony BEZ `dispose()`, czyli z
+#:       otwartymi polaczeniami,
+#:   (2) grozniejszy: galaz zmiany adresu bazy wola `_cached_engine.dispose()`
+#:       na silniku, z ktorego INNY watek wlasnie korzysta — jego sesja dostaje
+#:       zamkniete polaczenie w srodku transakcji.
+#:
+#: `threading.Lock`, nie `asyncio.Lock`: wyscig siedzi w watkach roboczych puli,
+#: a nie w petli zdarzen — blokada asynchroniczna w ogole by ich nie objela.
+#: Nie musi byc reentrantna, bo sekcja krytyczna nie wola niczego, co wracaloby
+#: tutaj (`create_engine_from_url` i `init_db` nie dotykaja tego cache'u).
+_blokada_silnika = threading.Lock()
+
 
 def _resolve_database_url() -> str:
     return os.getenv("DATABASE_URL", _DEFAULT_DATABASE_URL)
@@ -122,18 +144,31 @@ def get_canonical_run_session_factory() -> sessionmaker[Session]:
     global _cached_database_url, _cached_engine, _cached_session_factory
 
     database_url = _resolve_database_url()
-    if _cached_session_factory is not None and _cached_database_url == database_url:
+    # Szybka sciezka BEZ blokady — trafienie w cache jest przypadkiem masowym
+    # (kazde zapytanie o bieg), a odczyt referencji jest w CPythonie atomowy.
+    # Para (adres, fabryka) jest czytana w jednym kroku do zmiennych lokalnych,
+    # wiec podmiana cache'u przez inny watek w trakcie nie moze dac fabryki
+    # sparowanej z cudzym adresem.
+    fabryka = _cached_session_factory
+    if fabryka is not None and _cached_database_url == database_url:
+        return fabryka
+
+    with _blokada_silnika:
+        # Sprawdzenie POWTORZONE pod blokada: miedzy szybka sciezka a wejsciem
+        # tutaj inny watek mogl juz zbudowac silnik dla tego samego adresu.
+        # Bez tego kroku blokada tylko szereguje tworzenie duplikatow.
+        if _cached_session_factory is not None and _cached_database_url == database_url:
+            return _cached_session_factory
+
+        if _cached_engine is not None:
+            _cached_engine.dispose()
+
+        engine = create_engine_from_url(database_url)
+        init_db(engine)
+        _cached_database_url = database_url
+        _cached_engine = engine
+        _cached_session_factory = create_session_factory(engine)
         return _cached_session_factory
-
-    if _cached_engine is not None:
-        _cached_engine.dispose()
-
-    engine = create_engine_from_url(database_url)
-    init_db(engine)
-    _cached_database_url = database_url
-    _cached_engine = engine
-    _cached_session_factory = create_session_factory(engine)
-    return _cached_session_factory
 
 
 @contextmanager
