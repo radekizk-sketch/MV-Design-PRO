@@ -280,7 +280,24 @@ Przed offloadem sonda **nie przechodzi w ogóle**: przy cofniętym offloadzie
 jednej końcówki biegu zdążyła wykonać **1 zapytanie** w całej partii, a jego
 opóźnienie wyniosło 865 ms (czyli czekała na koniec biegu).
 
-### 8.3 Zestaw asercji
+### 8.3 Dowód nienaruszenia kontraktu odpowiedzi
+
+Karta wymagała „ZERO zmian semantyki odpowiedzi: kontrakty, kody błędów,
+kolejność pól identyczne". Sprawdzone **empirycznie**, nie deklaracją:
+odcisk SHA-256 kanonicznego zrzutu OpenAPI (ścieżki, metody, `operationId`,
+kody odpowiedzi, parametry, `requestBody`, schematy odpowiedzi + wszystkie
+`components.schemas`) policzony na kodzie SPRZED i PO zmianach.
+
+| | Operacji | Odcisk SHA-256 |
+|---|---|---|
+| przed (`a101305d`) | 295 | `5ea9b0e52e2e007bcb13e5909a3cec2f5dbfbfe18422c9b177eca204c06f009a` |
+| po (`2143b588`) | 295 | `5ea9b0e52e2e007bcb13e5909a3cec2f5dbfbfe18422c9b177eca204c06f009a` |
+
+Wynik jest zgodny z mechanizmem: FastAPI buduje schemat z **sygnatur i
+adnotacji**, a `def` i `async def` różnią się wyłącznie sposobem wykonania —
+do schematu nie wchodzą. Sygnatury końcówek nie zostały zmienione ani razu.
+
+### 8.4 Zestaw asercji
 
 1. `test_biegi_rownolegle_sa_deterministyczne` — K=10 zadań mieszanych:
    (a) wszystkie 200, (b) odcisk **fizyki** identyczny z biegiem szeregowym,
