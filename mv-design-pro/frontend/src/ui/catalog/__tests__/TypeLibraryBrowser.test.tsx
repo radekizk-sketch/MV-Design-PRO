@@ -25,6 +25,7 @@ const TAB_LABELS = [
   'Typy falowników magazynów energii',
   'Typy konwerterów',
   'Typy zabezpieczeń',
+  'Wykaz certyfikatów PTPiREE',
 ] as const;
 
 const catalogByCategory: Record<TypeCategory, CatalogListItem[]> = {
@@ -380,5 +381,75 @@ describe('TypeLibraryBrowser', () => {
     await waitFor(() => {
       expect(screen.getByText('Katalog typów wymaga konfiguracji.')).toBeInTheDocument();
     });
+  });
+});
+
+describe('TypeLibraryBrowser — wykaz certyfikatów PTPiREE (strona serwerowa, dług 5 z V12K-321)', () => {
+  const pozycjeStrony: CatalogListItem[] = [
+    {
+      id: 'wipwc-1-2-w3254',
+      name: 'Huawei SUN2000-215KTL-H3',
+      manufacturer: 'Huawei Digital Power',
+      document_number: 'DEKRA/2025/3254',
+    },
+    {
+      id: 'wipwc-1-2-w0001',
+      name: 'Afore HNS3000TL',
+      manufacturer: 'Afore New Energy',
+      document_number: 'TUV/2024/0001',
+    },
+  ];
+
+  beforeEach(() => {
+    vi.mocked(catalogApi.fetchTypesByCategory).mockImplementation(async (category) => (
+      catalogByCategory[category]
+    ));
+    vi.mocked(catalogApi.fetchPtpireeGeneratorCertificatesPage).mockResolvedValue({
+      items: pozycjeStrony,
+      total: 6887,
+    });
+  });
+
+  it('zakładka wykazu pobiera stronę z serwera i pokazuje uczciwy licznik pozycji', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser />);
+
+    await user.click(
+      await screen.findByRole('button', { name: /Wykaz certyfikatów PTPiREE/i }),
+    );
+
+    await waitFor(() => {
+      expect(catalogApi.fetchPtpireeGeneratorCertificatesPage).toHaveBeenCalledWith('', 300);
+    });
+    expect(await screen.findByText('Huawei SUN2000-215KTL-H3')).toBeInTheDocument();
+    // Licznik: pokazano 2 z 6887 (separator tysięcy zależny od ICU — dopuść odstęp).
+    const licznik = screen.getByTestId('catalog-strona-serwera');
+    expect(licznik.textContent).toMatch(/2 z 6\s?887/u);
+  });
+
+  it('zapytanie idzie do serwera (po odroczeniu), a filtr lokalny strony jest wyłączony', async () => {
+    const user = userEvent.setup();
+    render(<TypeLibraryBrowser />);
+
+    await user.click(
+      await screen.findByRole('button', { name: /Wykaz certyfikatów PTPiREE/i }),
+    );
+    await screen.findByText('Huawei SUN2000-215KTL-H3');
+
+    await user.type(
+      screen.getByPlaceholderText('Szukaj po nazwie, producencie lub ID...'),
+      'huawei 215ktl',
+    );
+
+    await waitFor(() => {
+      expect(catalogApi.fetchPtpireeGeneratorCertificatesPage).toHaveBeenCalledWith(
+        'huawei 215ktl',
+        300,
+      );
+    });
+    // Listę zawęża SERWER: pozycje zwrócone w stronie pozostają widoczne mimo
+    // zapytania (mock zwraca tę samą stronę) — filtr lokalny działałby na
+    // niepełnej liście i kłamał wynikiem.
+    expect(screen.getByText('Afore HNS3000TL')).toBeInTheDocument();
   });
 });

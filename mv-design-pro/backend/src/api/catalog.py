@@ -39,6 +39,7 @@ from network_model.catalog.switchgear import (
 from network_model.catalog.switchgear import (
     list_manufacturers as list_switchgear_manufacturers,
 )
+from network_model.catalog.types import normalize_ptpiree_key
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/catalog", tags=["Type Catalog"])
@@ -340,11 +341,60 @@ def get_ptpiree_manifest() -> dict[str, Any]:
 
 
 @router.get("/ptpiree/generator-certificates")
-def list_ptpiree_generator_certificates() -> list[dict[str, Any]]:
-    """List local PTPiREE generator/converter certificate snapshot records."""
-    return [
+def list_ptpiree_generator_certificates(
+    response: Response,
+    search: str | None = None,
+    limit: int | None = None,
+    offset: int = 0,
+) -> list[dict[str, Any]]:
+    """List local PTPiREE generator/converter certificate snapshot records.
+
+    Pelny wykaz ma 6887 pozycji (~3 MB) — parametry sa ADDYTYWNE (bez nich
+    kontrakt sprzed zmiany: pelna lista, ta sama kolejnosc):
+
+    - ``search``: filtr po producencie/modelu/numerze dokumentu. Obie strony
+      normalizowane ``normalize_ptpiree_key`` (ta sama regula co dopasowanie
+      certyfikacji), dopasowanie KAZDEGO tokenu zapytania (koniunkcja) — to
+      WYSZUKIWANIE dla piszacego czlowieka, nie relacja certyfikacji, stad
+      wolno mu byc podciagiem („huawei 215ktl" znajduje wiersz, mimo ze
+      producent w wykazie niesie pelna forme prawna).
+    - ``limit``/``offset``: wycinek po filtrze (limit >= 1, offset >= 0).
+    - naglowek ``X-Total-Count``: licznosc PO filtrze, PRZED wycinkiem —
+      konsument widzi uczciwie, ile pozycji zostalo poza strona.
+    """
+    if limit is not None and limit < 1:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Parametr limit musi byc >= 1.",
+        )
+    if offset < 0:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Parametr offset musi byc >= 0.",
+        )
+    records = [
         item.to_dict() for item in get_default_mv_catalog().list_ptpiree_generator_certificates()
     ]
+    if search is not None and search.strip():
+        tokeny = normalize_ptpiree_key(search).split()
+        if tokeny:
+            records = [
+                record
+                for record in records
+                if (
+                    stog := normalize_ptpiree_key(
+                        f"{record.get('manufacturer', '')} {record.get('model', '')} "
+                        f"{record.get('document_number', '')}"
+                    )
+                )
+                and all(token in stog for token in tokeny)
+            ]
+    response.headers["X-Total-Count"] = str(len(records))
+    if limit is not None:
+        return records[offset : offset + limit]
+    if offset:
+        return records[offset:]
+    return records
 
 
 @router.get("/branch-point-types")

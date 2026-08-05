@@ -273,6 +273,40 @@ export async function fetchPtpireeGeneratorCertificates(): Promise<PtpireeGenera
   );
 }
 
+/** Strona wykazu certyfikatów PTPiREE + licznik PO filtrze, PRZED wycinkiem. */
+export interface PtpireeCertificatesPage {
+  readonly items: PtpireeGeneratorCertificateCatalogType[];
+  readonly total: number;
+}
+
+/**
+ * Wycinek wykazu certyfikatów PTPiREE z serwerowym filtrem (pełny wykaz to
+ * ~6887 pozycji / ~3 MB — przeglądarka typów pobiera stronę zamiast całości).
+ * `total` pochodzi z nagłówka `X-Total-Count` (liczność po filtrze), więc UI
+ * może uczciwie powiedzieć, ile pozycji zostało poza stroną.
+ */
+export async function fetchPtpireeGeneratorCertificatesPage(
+  search?: string,
+  limit?: number,
+): Promise<PtpireeCertificatesPage> {
+  const params = new URLSearchParams();
+  if (search && search.trim()) params.set('search', search.trim());
+  if (limit !== undefined) params.set('limit', String(limit));
+  const query = params.toString();
+  const endpoint = `/api/catalog/ptpiree/generator-certificates${query ? `?${query}` : ''}`;
+  try {
+    const response = await fetch(endpoint);
+    const items = await handleResponse<PtpireeGeneratorCertificateCatalogType[]>(
+      response,
+      endpoint,
+    );
+    const naglowek = Number(response.headers.get('X-Total-Count'));
+    return { items, total: Number.isFinite(naglowek) ? naglowek : items.length };
+  } catch (error) {
+    throw normalizeCatalogRequestError(error);
+  }
+}
+
 export async function fetchPvInverterTypes(): Promise<PVInverterCatalogType[]> {
   return fetchCatalogJson<PVInverterCatalogType[]>('/api/catalog/pv-inverter-types');
 }
