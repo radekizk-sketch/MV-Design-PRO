@@ -1,5 +1,5 @@
 /*
- * Test klienta biegu NC RfG (ui/ncrfg-tests/api) — dług P2-D6 z rejestru
+ * Test klienta biegu NC RfG (ui/ncrfg-tests/api) — dług 6 z rejestru
  * V12K-321: bieg bez `case_id` zwraca dowód certyfikatu z pustymi polami,
  * więc klient MUSI przekazywać aktywny przypadek w zapytaniu. Test przypina
  * budowę adresu (z case_id / bez), żeby regresja tej naprawy była wykrywalna.

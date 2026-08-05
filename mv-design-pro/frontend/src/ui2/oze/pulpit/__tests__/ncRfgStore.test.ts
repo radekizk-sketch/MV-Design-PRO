@@ -82,7 +82,7 @@ describe('ncRfgStore — bieg testów', () => {
     expect(stan.bladBiegu).toBeNull();
   });
 
-  it('przeprowadzTesty niesie aktywny przypadek (dowód certyfikatu z modelu — P2-D6)', async () => {
+  it('przeprowadzTesty niesie aktywny przypadek (dowód certyfikatu z modelu)', async () => {
     useAppStateStore.setState({ activeCaseId: 'case-42' });
     try {
       await useNcRfgStore.getState().przeprowadzTesty(wejscia());

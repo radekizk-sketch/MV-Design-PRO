@@ -314,7 +314,7 @@ describe('MacierzNcRfg — certyfikat zgodności (karta P39c)', () => {
   });
 });
 
-describe('MacierzNcRfg — dowód certyfikatu PTPiREE (dług P2-D6 z V12K-321)', () => {
+describe('MacierzNcRfg — dowód certyfikatu PTPiREE (dług 6 z rejestru V12K-321)', () => {
   it('po biegu pokazuje numer dokumentu i wersję WiPWC z tabliczki urządzenia', async () => {
     render(<MacierzNcRfg trybZaawansowania="basic" />);
     fireEvent.click(await screen.findByTestId('mvd-oze-przeprowadz'));
