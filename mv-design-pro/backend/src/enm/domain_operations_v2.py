@@ -555,8 +555,16 @@ def add_ct(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         ),
         "measurement",
     )
+    # KOPIA GRANICZNA OPERACJI (TOPO-COPY, V12K-323). Warstwa topologiczna mutuje
+    # model W MIEJSCU, więc izolacja modelu wołającego należy do granicy operacji —
+    # dokładnie tak, jak robi to `add_sn_bay` czy `add_grid_source_sn`. Bez tej kopii
+    # `_zastosuj_wyposazenie_pol` (gwarancja B-3: albo pole z kompletnym wyposażeniem,
+    # albo nic) zostawiałby CT dopisane przed błędem kolejnego kroku serii, a
+    # `execute_domain_operation` liczyłby `semantic_issues` z modelu PO zmianie —
+    # inaczej niż wszystkie pozostałe operacje domenowe.
+    roboczy = copy.deepcopy(enm)
     result = create_measurement(
-        enm,
+        roboczy,
         {
             "ref_id": measurement_ref,
             "name": payload.get("name") or f"CT pola {field_ref}",
@@ -699,8 +707,10 @@ def add_vt(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         ),
         "measurement",
     )
+    # KOPIA GRANICZNA OPERACJI — uzasadnienie jak w `add_ct` (TOPO-COPY, V12K-323).
+    roboczy = copy.deepcopy(enm)
     result = create_measurement(
-        enm,
+        roboczy,
         {
             "ref_id": measurement_ref,
             "name": payload.get("name") or f"VT pola {field_ref}",
@@ -834,8 +844,10 @@ def add_relay(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
         ),
         "assignment",
     )
+    # KOPIA GRANICZNA OPERACJI — uzasadnienie jak w `add_ct` (TOPO-COPY, V12K-323).
+    roboczy = copy.deepcopy(enm)
     result = attach_protection(
-        enm,
+        roboczy,
         {
             "ref_id": protection_ref,
             "name": payload.get("name") or f"Zabezpieczenie pola {_nazwa_pola(enm, field_ref)}",

@@ -190,6 +190,29 @@ jest zrzutem modelu, weryfikacja pomiarowa), 2 to domknięcie stacji (K5, kopia 
 otaczającym), 3 to `add_ct`/`add_vt`/`add_relay` (K3, kopia rzeczywiście brakująca —
 dokładana).
 
+### Trzy wzorce ryzyka, nie jeden
+
+Audyt szukał TRZECH sposobów, na jakie mutacja w miejscu mogłaby zmienić zachowanie —
+bo „czy wołający ma swoją kopię" odpowiada tylko na pierwszy z nich:
+
+* **A — wołający podaje model, którego używa dalej.** Rozstrzygnięte tabelą wyżej (K1–K6).
+* **B — wołający trzyma referencję do PODOBIEKTU modelu sprzed operacji.** Pod semantyką
+  kopii taka referencja stawała się odczepiona (martwa); pod in-place zostaje żywa. Skan
+  AST znalazł 22 takie wiązania. Wszystkie okazały się albo skalarami (napięcie, ref_id —
+  semantyka wartości, kopia bez znaczenia), albo podobiektami wziętymi z **wejściowego
+  `enm`**, którego żadna operacja nie dotyka, i wyłącznie CZYTANYMI po operacji
+  (`segment` w `insert_station_on_segment_sn:5003`, `_insert_branch_point_on_segment_sn:5959`,
+  `insert_section_switch_sn:6567`; `station`/`existing_field` w `add_sn_bay:1803/1809`).
+  Jedyne miejsce, gdzie podobiekt jest po operacji ZAPISYWANY (`new_substation` w
+  `append_station_on_endpoint:8419,8470`), ponownie rozwiązuje referencję z bieżącego
+  modelu (linia 8377) — idiom wprowadzony właśnie pod semantykę kopii, poprawny również
+  bez niej.
+* **C — pętla po kolekcji modelu z operacją w ciele.** Pod semantyką kopii dopisanie
+  elementu nie dotykało iterowanej listy; pod in-place dotknęłoby (pętla mogłaby się nie
+  zakończyć). Skan AST po wszystkich pętlach `for … in <model>[…]` / `<model>.get('<kolekcja>')`
+  w trzech plikach wołających: **0 wystąpień** — każda pętla wołająca operację iteruje po
+  danych z payloadu (krotki ról pól, `range(liczba_portów)`), nie po kolekcji modelu.
+
 ---
 
 ## 4. Kontrakt — rozstrzygnięcie
@@ -227,6 +250,14 @@ Uzasadnienie wprost z audytu, nie z wygody:
 * Wołający, który potrzebuje izolacji od wejścia, robi kopię SAM, na swojej granicy —
   tak jak dziś robi to 12 operacji domenowych V1/V2.
 
+**Odstępstwo od karty, świadome i zameldowane.** Karta prosiła o deklarację kontraktu
+„w docstringu **i nazwie parametru**". Nazwa parametru została na `enm`. Powód: wszystkie
+152 wywołania podają model POZYCYJNIE (sprawdzone skanem AST), więc zmiana nazwy nie
+pokazałaby się w żadnym miejscu wywołania — byłaby zmianą publicznej sygnatury 14 funkcji
+bez ani jednego czytelnika. Nośnikiem deklaracji są zamiast tego: docstring modułu,
+docstring KAŻDEJ z 14 funkcji (zdanie „MUTUJE `enm` W MIEJSCU") oraz testy kontraktu,
+w tym test kompletności, który skanuje moduł i wywala się na funkcji mutującej bez pokrycia.
+
 ---
 
 ## 5. Weryfikacja
@@ -234,9 +265,24 @@ Uzasadnienie wprost z audytu, nie z wygody:
 * **Kanarek determinizmu:** substrat 53 stacji (~700 operacji topologicznych na modelu
   rosnącym do 88 gałęzi) daje identyczny SHA-256 migawki przed i po zmianie:
   `b0e7518ed3736ea476a702eb79804f94460b8488b3de7b1ea3e8e5938410007c`.
-* **Pomiar:** budowa substratu 10,90 s → 4,29 s (−61 %); udział `deepcopy` z `topology_ops`
-  spadł z 60,5 % do 0.
-* **Pełna regresja backendu:** `poetry run pytest -q` RC=0 przed i po.
+* **Pomiar (zmierzone po chirurgii):**
+
+  | | przed | po |
+  |---|---:|---:|
+  | budowa substratu 53 stacji | 10,900 s | **4,115 s** (−62 %) |
+  | kopie w `topology_ops` | 737 / 6,594 s | **0 / 0,000 s** |
+  | kopie w `domain_operations` | 2 949 / 0,592 s | 2 949 / 0,657 s |
+  | kopie w `domain_operations_v2` | 60 / 1,172 s | 60 / 1,140 s |
+
+  Cel karty (~3 s) NIE został osiągnięty w pełni: pozostałe 1,80 s to kopie GRANICZNE
+  operacji domenowych — jedna na operację, czyli dokładnie ten mechanizm, na którym stoi
+  kontrakt izolacji z §4. Ich usunięcie wymagałoby przeniesienia izolacji o kolejny
+  poziom wyżej (do dyspozytora operacji) i jest osobną decyzją kontraktową, nie
+  kontynuacją tej karty. Liczba kopii granicznych `domain_operations` (2 949) to
+  w większości drobne kopie payloadów i wiązań katalogowych, nie kopie modelu.
+
+* **Pełna regresja backendu:** `poetry run pytest -q` RC=0 przed (8238 passed, 11 skipped,
+  464 s) i po zmianie.
 * **Iniekcje:** przywrócenie `deepcopy` w jednym miejscu wykrywa deterministyczna asercja
   liczby kopii (`test_topology_ops_kontrakt_kopii.py`); wycięcie kopii granicznej operacji
   domenowej wykrywają testy izolacji z tego samego pliku.
