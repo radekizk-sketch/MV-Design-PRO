@@ -721,12 +721,14 @@ async def run_short_circuit(case_id: str, request: Request) -> dict[str, Any]:
         if isinstance(body, dict) and key in body
     }
 
-    project_id = _resolve_project_id(case_id, request)
-
     def _policz() -> dict[str, Any]:
+        # `_resolve_project_id` odpytuje bazę (sync SQLAlchemy) — musi być PO tej
+        # stronie granicy, razem z biegiem. Zostawienie go przed nią byłoby tym
+        # samym defektem, który ta karta usuwa, tyle że mniejszym: pojedyncze
+        # zapytanie zamiast całego biegu, ale wciąż na pętli zdarzeń.
         run = run_short_circuit_now(
             case_id=case_id,
-            project_id=project_id,
+            project_id=_resolve_project_id(case_id, request),
             options=allowed_options,
         )
         # Map ENM → NetworkGraph
