@@ -70,6 +70,7 @@ export function wynikNcRfgFixture(): NcRfgRunResult {
     input_hash: 'ncrfg-input-hash',
     deterministic_hash: 'ncrfg-det-hash',
     modules: [],
+    certificate_evidence: [],
     test_catalog: [],
     white_box_trace: [],
     report_pl: '',

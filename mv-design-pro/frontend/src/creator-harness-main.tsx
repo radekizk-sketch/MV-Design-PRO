@@ -2698,6 +2698,12 @@ window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
             ],
           },
         ],
+        // Dowod certyfikatu PTPiREE 1:1 z `NcRfgPtpireeRunResponse` (api):
+        // pv-1 z tabliczka urzadzenia, bess-1 bez (uczciwy stan zerowy, pola null).
+        certificate_evidence: [
+          { der_ref: 'bess-1', document_number: null, acceptance_date: null, wos_version: null, wipwc_version: null, ppm_scope: null, source_url: null },
+          { der_ref: 'pv-1', document_number: 'PTPiREE/WiPWC/3254/2025', acceptance_date: '2025-10-14', wos_version: 'WOS 2021', wipwc_version: '1.2', ppm_scope: 'moduł typu B', source_url: null },
+        ],
         test_catalog: [
           { test_id: 'T05', ability_pl: 'Możliwość regulacji mocy czynnej', procedure_basis_pl: 'Program ramowy testów PPM oraz sprawdzenia dodatkowe dla regulacji P.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },
           { test_id: 'T09', ability_pl: 'Zdolność do generacji mocy biernej', procedure_basis_pl: 'Zakres testów zgodności PPM typu B, C i D.', default_for_modules: ['B', 'C', 'D'], conditional_pl: null },

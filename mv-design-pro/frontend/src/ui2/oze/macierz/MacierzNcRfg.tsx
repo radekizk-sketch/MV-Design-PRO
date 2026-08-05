@@ -641,6 +641,11 @@ export function MacierzNcRfg({
                 // „Walidacja modelu falownika" — ta sama tożsamość modułu
                 // (der.id), werdykt z biegu solvera trajektorii.
                 const frt = wynikiFrt[opis.derRef];
+                // Dowód certyfikatu PTPiREE z tabliczki urządzenia w modelu
+                // (certificate_evidence biegu) — brak numeru dokumentu to
+                // uczciwy stan zerowy, nie wartość dopowiedziana.
+                const dowod =
+                  wynik?.certificate_evidence.find((d) => d.der_ref === opis.derRef) ?? null;
                 return (
                   <div key={opis.derRef} className="mvd-oze-podsum-poz">
                     <span className="mvd-oze-podsum-etyk">
@@ -671,6 +676,27 @@ export function MacierzNcRfg({
                           {' · '}
                           {MACIERZ_STRINGS.wynikFrtHvrt}: {frt.hvrt.tekst}
                         </span>
+                      ) : null}
+                      {dowod ? (
+                        dowod.document_number ? (
+                          <span
+                            className="mvd-oze-podsum-dowod"
+                            data-testid={`mvd-oze-dowod-${opis.derRef}`}
+                          >
+                            {' · '}
+                            {MACIERZ_STRINGS.dowodCertyfikatu}: {dowod.document_number}
+                            {dowod.wipwc_version ? ` · WiPWC ${dowod.wipwc_version}` : ''}
+                            {dowod.acceptance_date ? ` · ${dowod.acceptance_date}` : ''}
+                          </span>
+                        ) : (
+                          <span
+                            className="mvd-oze-podsum-dowod mvd-oze-podsum-dowod--brak"
+                            data-testid={`mvd-oze-dowod-brak-${opis.derRef}`}
+                          >
+                            {' · '}
+                            {MACIERZ_STRINGS.dowodCertyfikatuBrak}
+                          </span>
+                        )
                       ) : null}
                     </span>
                     <span className="mvd-oze-podsum-wart mvd-oze-num">

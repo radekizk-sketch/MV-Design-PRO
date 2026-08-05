@@ -14,6 +14,7 @@
 
 import { create } from 'zustand';
 
+import { useAppStateStore } from '../../ui/app-state';
 import {
   fetchNcRfgTestCatalog,
   runNcRfgPtpireeTests,
@@ -113,10 +114,15 @@ export const useNcRfgStore = create<NcRfgStoreState>((set, get) => ({
     if (modules.length === 0) return;
     set({ status: 'running', bladBiegu: null });
     try {
-      const payload = await runNcRfgPtpireeTests({
-        modules,
-        procedure_version: procedureVersion,
-      });
+      // Aktywny przypadek → backend dopina dowód certyfikatu PTPiREE z tabliczek
+      // urządzeń modelu (bez niego certificate_evidence wraca z pustymi polami).
+      const payload = await runNcRfgPtpireeTests(
+        {
+          modules,
+          procedure_version: procedureVersion,
+        },
+        useAppStateStore.getState().activeCaseId,
+      );
       set({ wynik: payload, status: 'ready', ostatnieWejscia: modules });
     } catch (err) {
       set({

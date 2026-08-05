@@ -59,6 +59,11 @@ export const MACIERZ_STRINGS = {
   // modelu falownika" (EkranFrt → ncRfgStore.zapiszWynikFrt).
   wynikFrtLvrt: 'Walidacja LVRT',
   wynikFrtHvrt: 'Walidacja HVRT',
+  // Dowód certyfikatu PTPiREE per urządzenie — wartości WPROST z tabliczki
+  // urządzenia w modelu (certificate_evidence biegu); brak danej = uczciwy
+  // stan zerowy, nigdy wartość dopowiedziana.
+  dowodCertyfikatu: 'Certyfikat PTPiREE',
+  dowodCertyfikatuBrak: 'Certyfikat PTPiREE: brak danych tabliczki urządzenia',
 
   // Szczegół werdyktu
   szczegolTytul: 'Szczegół werdyktu',

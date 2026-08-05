@@ -6,6 +6,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useAppStateStore } from '../../../../ui/app-state';
 import {
   fetchNcRfgTestCatalog,
   runNcRfgPtpireeTests,
@@ -79,6 +80,16 @@ describe('ncRfgStore — bieg testów', () => {
     expect(stan.status).toBe('ready');
     expect(stan.wynik?.deterministic_hash).toBe('det-9f8e7d6c');
     expect(stan.bladBiegu).toBeNull();
+  });
+
+  it('przeprowadzTesty niesie aktywny przypadek (dowód certyfikatu z modelu — P2-D6)', async () => {
+    useAppStateStore.setState({ activeCaseId: 'case-42' });
+    try {
+      await useNcRfgStore.getState().przeprowadzTesty(wejscia());
+      expect(runMock).toHaveBeenCalledWith(expect.anything(), 'case-42');
+    } finally {
+      useAppStateStore.setState({ activeCaseId: null });
+    }
   });
 
   it('przeprowadzTesty zapisuje błąd i status „error" przy odrzuceniu', async () => {

@@ -9,6 +9,7 @@ import {
   type NcRfgTestCatalogResponse,
   type NcRfgVerdict,
 } from '../../ncrfg-tests/api';
+import { useAppStateStore } from '../../app-state';
 import { notify } from '../../notifications/store';
 import {
   selectAllDers,
@@ -440,10 +441,15 @@ export function NcRfgTestsTab(): JSX.Element {
     setStatus('running');
     setError(null);
     try {
-      const payload = await runNcRfgPtpireeTests({
-        modules: [modulePreview],
-        procedure_version: catalog?.procedure_version ?? 'PTPiREE Procedura testowania v3.0',
-      });
+      // Aktywny przypadek → backend dopina dowód certyfikatu PTPiREE z tabliczek
+      // urządzeń modelu (bez niego certificate_evidence wraca z pustymi polami).
+      const payload = await runNcRfgPtpireeTests(
+        {
+          modules: [modulePreview],
+          procedure_version: catalog?.procedure_version ?? 'PTPiREE Procedura testowania v3.0',
+        },
+        useAppStateStore.getState().activeCaseId,
+      );
       setResult(payload);
       setStatus('ready');
     } catch (err) {

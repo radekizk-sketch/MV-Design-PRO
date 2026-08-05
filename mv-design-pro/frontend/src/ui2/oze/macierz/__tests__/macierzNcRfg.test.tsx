@@ -314,6 +314,33 @@ describe('MacierzNcRfg — certyfikat zgodności (karta P39c)', () => {
   });
 });
 
+describe('MacierzNcRfg — dowód certyfikatu PTPiREE (dług P2-D6 z V12K-321)', () => {
+  it('po biegu pokazuje numer dokumentu i wersję WiPWC z tabliczki urządzenia', async () => {
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    fireEvent.click(await screen.findByTestId('mvd-oze-przeprowadz'));
+    const dowod = await screen.findByTestId('mvd-oze-dowod-pv-1');
+    expect(dowod).toHaveTextContent(MACIERZ_STRINGS.dowodCertyfikatu);
+    expect(dowod).toHaveTextContent('PTPiREE/WiPWC/1234/2025');
+    expect(dowod).toHaveTextContent('WiPWC 1.2');
+    expect(dowod).toHaveTextContent('2025-11-03');
+  });
+
+  it('urządzenie bez tabliczki dostaje uczciwy stan zerowy, nie wartość dopowiedzianą', async () => {
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    fireEvent.click(await screen.findByTestId('mvd-oze-przeprowadz'));
+    const brak = await screen.findByTestId('mvd-oze-dowod-brak-bess-1');
+    expect(brak).toHaveTextContent(MACIERZ_STRINGS.dowodCertyfikatuBrak);
+    expect(screen.queryByTestId('mvd-oze-dowod-bess-1')).not.toBeInTheDocument();
+  });
+
+  it('przed biegiem nie pokazuje dowodu (brak wyniku → brak wiersza, zero atrapy)', async () => {
+    render(<MacierzNcRfg trybZaawansowania="basic" />);
+    await screen.findByTestId('mvd-oze-podsum-moduly');
+    expect(screen.queryByTestId('mvd-oze-dowod-pv-1')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('mvd-oze-dowod-brak-pv-1')).not.toBeInTheDocument();
+  });
+});
+
 describe('MacierzNcRfg — wynik walidacji FRT z okna falownika (K5-B / H-3 pkt 4)', () => {
   it('zapisany werdykt LVRT/HVRT modułu jest widoczny w podsumowaniu per moduł', async () => {
     useNcRfgStore.getState().zapiszWynikFrt('pv-1', {

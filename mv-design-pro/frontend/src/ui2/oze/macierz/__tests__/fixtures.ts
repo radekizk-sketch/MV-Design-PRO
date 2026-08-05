@@ -189,6 +189,28 @@ export function wynikFixture(): NcRfgRunResult {
         ],
       },
     ],
+    // Dowód certyfikatu per urządzenie: pv-1 z tabliczką PTPiREE (pełny dowód),
+    // bess-1 bez tabliczki (uczciwy stan zerowy — pola null, nigdy dopowiedziane).
+    certificate_evidence: [
+      {
+        der_ref: 'pv-1',
+        document_number: 'PTPiREE/WiPWC/1234/2025',
+        acceptance_date: '2025-11-03',
+        wos_version: 'WOS 2021',
+        wipwc_version: '1.2',
+        ppm_scope: 'moduł typu B',
+        source_url: 'https://ptpiree.pl/wykaz/1234',
+      },
+      {
+        der_ref: 'bess-1',
+        document_number: null,
+        acceptance_date: null,
+        wos_version: null,
+        wipwc_version: null,
+        ppm_scope: null,
+        source_url: null,
+      },
+    ],
     test_catalog: katalogFixture().tests,
     white_box_trace: [
       {

@@ -444,3 +444,12 @@
 .mvd-oze-podsum-frt--err {
   color: var(--mvd-err);
 }
+
+/* Dowód certyfikatu PTPiREE przy module (z tabliczki urządzenia w modelu) */
+.mvd-oze-podsum-dowod {
+  color: var(--mvd-ok);
+}
+
+.mvd-oze-podsum-dowod--brak {
+  color: var(--mvd-warn);
+}
