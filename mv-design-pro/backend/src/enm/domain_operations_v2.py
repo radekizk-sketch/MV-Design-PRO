@@ -2490,22 +2490,40 @@ def _certyfikat_ptpiree_z_katalogu(namespace: str, catalog_ref: str) -> dict[str
     if rekord is None:
         return {}
     dane = rekord.to_dict()
+    zrodlo = {k: v for k, v in dane.items() if k.startswith("ptpiree_")}
     # Styk P1/P2 (V12K-321): typy katalogowe nie niosa `ptpiree_status` ani
     # `ptpiree_note` w kazdej sciezce ladowania, a to od nich zalezy tor
     # gotowosci. Zrodlem prawdy o dopasowaniu jest annotate na PELNYM wykazie
     # (karta P1) — wolamy TE SAMA funkcje na tabliczce producent/model rekordu,
     # zero drugiej implementacji dopasowania.
-    adnotowane = annotate_with_ptpiree_status(
-        {
-            "id": str(dane.get("id") or catalog_ref),
-            "name": str(dane.get("model") or dane.get("name") or catalog_ref),
-            "params": {
-                "manufacturer": dane.get("manufacturer"),
-                "model": dane.get("model"),
-            },
+    #
+    # JEDNO ZRODLO STATUSU (naprawa 2026-08-05, luka klasowa): adnotacja jest
+    # WYLACZNIE UZUPELNIENIEM rekordu, ktory statusu nie niesie — nigdy jego
+    # nadpisaniem. `ConverterType.to_dict` niesie `model`, ale `PVInverterType`
+    # i `BESSInverterType` go NIE MAJA (pole nie istnieje w typie), wiec
+    # ponowna adnotacja szla tam z `model=None`, nie trafiala w wykaz i
+    # nadpisywala POPRAWNY `POWIAZANY` rekordu falszywym `NIEPOWIAZANY`.
+    # Zmierzony skutek na zywej drodze `POST /enm/domain-ops`: jedyne
+    # urzadzenie powiazane z wykazem (`conv-pv-card-huawei-sun2000-215ktl`,
+    # HUAWEI SUN2000-215KTL-H3, dokument TC-GCC-DNVGL-SE-0124-07526-1) dostawalo
+    # w modelu tabliczke z `ptpiree_status: NIEPOWIAZANY` i nota „Brak
+    # dopasowania" OBOK wypelnionych pol dowodowych tego samego dopasowania,
+    # a tor gotowosci podnosil `der.inverter_certificate_unlinked` („wniosek do
+    # OSD moze zostac odrzucony") dla urzadzenia certyfikowanego.
+    if not zrodlo.get("ptpiree_status"):
+        zrodlo = {
+            **zrodlo,
+            **annotate_with_ptpiree_status(
+                {
+                    "id": str(dane.get("id") or catalog_ref),
+                    "name": str(dane.get("model") or dane.get("name") or catalog_ref),
+                    "params": {
+                        "manufacturer": dane.get("manufacturer"),
+                        "model": dane.get("model"),
+                    },
+                }
+            )["params"],
         }
-    )["params"]
-    zrodlo = {**{k: v for k, v in dane.items() if k.startswith("ptpiree_")}, **adnotowane}
     return {pole: zrodlo[pole] for pole in _POLA_CERTYFIKATU_PTPIREE if zrodlo.get(pole)}
 
 

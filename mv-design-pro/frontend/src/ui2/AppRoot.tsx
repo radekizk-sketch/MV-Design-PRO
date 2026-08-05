@@ -23,6 +23,7 @@ import { useBackendHealth } from './shell/backendHealth';
 import { useEtykietaOstatniegoPrzebiegu } from './shell/shellStatus';
 import { useHydratacjaPowloki } from './shell/useHydratacjaPowloki';
 import { useInspektorZaZawartoscia } from './shell/useInspektorZaZawartoscia';
+import { useSynchronizacjaDerZModelu } from '../ui/network-build/station-der';
 import {
   ContextTree,
   NAV_STRINGS,
@@ -149,6 +150,10 @@ export function AppRoot() {
   // KD-1: drzewo topologii dostaje dane z serwera (dotąd `loadSummary` nie miał
   // żadnego wołającego, więc drzewo przestrzeni „Model" było zawsze puste).
   useZasilanieDrzewaTopologii();
+  // Wytwórcy DER z MODELU zasilają warsztat czytany przez ekrany strumienia OZE
+  // (macierz NC RfG, pulpit OZE, krzywe P–Q, walidacja falownika). Bez tego
+  // źródło zapisane kreatorem OZE nie istniało dla żadnego z nich.
+  useSynchronizacjaDerZModelu();
   // K11-A (SLD-first): inspektor podąża za zawartością — pusty nie zabiera
   // przestrzeni roboczej; otwiera go selekcja albo powierzchnia panelowa.
   useInspektorZaZawartoscia();
