@@ -423,6 +423,9 @@ class ExecutionEngineService:
                 "snapshot_hash": mapped.snapshot_hash,
                 "convergence_status": mapped.convergence_status,
                 "iteration_count": mapped.iteration_count,
+                # V12K-320: utrata regulacji napiecia (PV->PQ na granicy Q)
+                # nalezy do wyniku biegu — patrz enm/canonical_analysis.
+                "pv_to_pq_switches": solution.pv_to_pq_switches,
                 "totals": mapped.totals.to_dict(),
                 "sld_overlay": {
                     "nodes": {

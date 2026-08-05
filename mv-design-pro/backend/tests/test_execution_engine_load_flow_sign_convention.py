@@ -584,6 +584,9 @@ def test_parytet_z_wezlem_tranzytowym_ze_sciezka_kanoniczna(
             create_run(case_id=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}).id
         )
         assert run.status == "FINISHED", run.error_message
+        # V12K-320: sciezka kanoniczna eksponuje przelaczenia PV->PQ w wyniku
+        # biegu (tu siec bez szyn PV => lista PUSTA, ale klucz OBECNY).
+        assert run.raw_result["pv_to_pq_switches"] == []  # type: ignore[index]
         kanoniczne = {
             b["bus_id"]: b for b in run.raw_result["result_v1"]["bus_results"]  # type: ignore[index]
         }
@@ -955,3 +958,38 @@ def test_build_power_flow_result_v1_pozostaje_nietkniete() -> None:
     szyny = {b.bus_id: b for b in wynik.bus_results}
     assert szyny["a"].p_injected_mw == pytest.approx(-2.0)
     assert szyny["s"].p_injected_mw == pytest.approx(2.0)
+
+
+def test_przelaczenia_pv_pq_sa_czescia_wyniku_biegu(monkeypatch: pytest.MonkeyPatch) -> None:
+    """V12K-320 — utrata regulacji napiecia jest WYNIKIEM, nie ciekawostka sladu.
+
+    Szyna PV z granicami Q za ciasnymi, by utrzymac zadane napiecie, zostaje
+    przelaczona na PQ i pracuje na granicy mocy biernej. Do tej karty solver
+    raportowal przelaczenia wylacznie w sladzie iteracji — projektant ogladajacy
+    wynik biegu nie mial sygnalu, ze siec NIE trzyma zadanego napiecia.
+
+    ILOCZYN CECH: {granice ciasne -> przelaczenie zgloszone, granice luzne ->
+    lista pusta}; sedzia potwierdza, ze po przelaczeniu Q siedzi na granicy.
+    """
+    # Granice Q +/-0,05 Mvar — nieosiagalne zadanie 1,03 pu przy odbiorze obok.
+    lf_ciasne = _siec(
+        (LoadFlowLoadInput("n1", 2.0, 0.8),),
+        (LoadFlowGeneratorInput("n2", -1.0, 1.03, -0.05, 0.05),),
+    )
+    wynik, przechwycone = _uruchom(monkeypatch, lf_ciasne)
+    przelaczenia = przechwycone["result_set"].global_results["pv_to_pq_switches"]
+    assert len(przelaczenia) >= 1, "ciasne granice musza wymusic przelaczenie"
+    assert any("n2" in str(w.values()) or w.get("node_id") == "n2" for w in przelaczenia)
+    # Sedzia: moc bierna szyny siedzi na granicy (nie na zadaniu napieciowym).
+    sedzia = _sedzia_bilans_wezlowy(lf_ciasne, wynik)
+    assert abs(abs(sedzia["n2"].imag) - 0.05) < TOL_MW * 10
+    szyny = {b.bus_id: b for b in wynik.bus_results}
+    assert szyny["n2"].q_injected_mvar == pytest.approx(sedzia["n2"].imag, abs=TOL_MW)
+
+    # Granice luzne — regulacja utrzymana, lista PUSTA (zero falszywych alarmow).
+    lf_luzne = _siec(
+        (LoadFlowLoadInput("n1", 2.0, 0.8),),
+        (LoadFlowGeneratorInput("n2", -1.0, 1.0, -5.0, 5.0),),
+    )
+    _, przechwycone2 = _uruchom(monkeypatch, lf_luzne)
+    assert przechwycone2["result_set"].global_results["pv_to_pq_switches"] == []

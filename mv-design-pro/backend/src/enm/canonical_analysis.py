@@ -1774,6 +1774,12 @@ def _execute_power_flow(run: CanonicalRun) -> None:
             )
         ),
         "result_v1": result_v1.to_dict(),
+        # V12K-320: przelaczenia PV->PQ przy nasyceniu granic Q sa czescia
+        # WYNIKU, nie ciekawostka sladu — szyna, ktora utracila regulacje
+        # napiecia, pracuje na granicy mocy biernej i projektant ma to widziec
+        # bez zagladania w iteracje. Addytywnie (dict), lista z solvera w
+        # porzadku wykrycia (deterministyczna — iteracje sa deterministyczne).
+        "pv_to_pq_switches": solution.pv_to_pq_switches,
         "node_voltage_kv": solution.node_voltage_kv,
         "branch_current_ka": solution.branch_current_ka,
         "graph": {
