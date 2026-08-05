@@ -39,6 +39,10 @@ TABLICZKA_Z_CERTYFIKATEM: dict[str, Any] = {
     "ptpiree_wipwc_version": "1.3",
     "ptpiree_ppm_scope": "PPM typu B",
     "ptpiree_source_url": "https://ptpiree.pl/wykaz/pv-900",
+    # Warunek ważności certyfikatu: bez niego certyfikat NIE obowiązuje, więc
+    # dowód musi go cytować tak samo jak numer dokumentu (karta dowodu
+    # w dokumentach formalnych — sekcja „Dowód certyfikacji PTPiREE").
+    "ptpiree_certificate_condition": "Tylko z modułem sterowania SG-CTRL.",
 }
 
 MODUL_BIEGU: dict[str, Any] = {
@@ -111,6 +115,7 @@ def test_dowod_certyfikatu_cytuje_tabliczke_urzadzenia(client: TestClient) -> No
         "wipwc_version": "1.3",
         "ppm_scope": "PPM typu B",
         "source_url": "https://ptpiree.pl/wykaz/pv-900",
+        "certificate_condition": "Tylko z modułem sterowania SG-CTRL.",
     }
 
 
@@ -132,6 +137,7 @@ def test_urzadzenie_bez_danych_certyfikatu_daje_pola_none_a_bieg_dziala(
             "wipwc_version",
             "ppm_scope",
             "source_url",
+            "certificate_condition",
         )
     ), f"pole dowodowe wypelnione mimo braku danych: {dowod}"
     # Bieg NIE zostaje wstrzymany brakiem dowodu.
@@ -156,6 +162,7 @@ def test_tabliczka_niepelna_niesie_tylko_to_co_jest(client: TestClient) -> None:
     assert dowod["acceptance_date"] is None
     assert dowod["wipwc_version"] is None
     assert dowod["ppm_scope"] is None
+    assert dowod["certificate_condition"] is None
 
 
 def test_bieg_bez_wskazanego_przypadku_dziala_i_nie_zmysla_dowodu(

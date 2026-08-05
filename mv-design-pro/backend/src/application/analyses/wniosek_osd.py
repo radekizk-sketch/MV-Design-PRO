@@ -36,12 +36,19 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Sequence
 from io import BytesIO
 from typing import Any
 
 from application.analyses.certyfikat_zgodnosci import (
     CertyfikatBrakiError,
     build_certyfikat_view,
+)
+from application.analyses.dowod_certyfikatu import (
+    TYTUL_DOWODU,
+    NcRfgCertificateEvidence,
+    sekcje_dowodow,
+    wiersze_dowodu_pl,
 )
 from application.analyses.energy_validation.service import build_energy_validation_view
 from application.analyses.grid_strength import _installed_mva_by_bus
@@ -231,11 +238,19 @@ def _zwarcia_sekcja(sc_run: CanonicalRun, bus_ref: str) -> dict[str, Any]:
     }
 
 
-def _zgodnosc_sekcja(ncrfg_run_result: NcRfgPtpireeRunResult) -> dict[str, Any]:
-    """Zbuduj sekcję zgodności NC RfG z werdyktu zbiorczego certyfikatu (D14)."""
+def _zgodnosc_sekcja(
+    ncrfg_run_result: NcRfgPtpireeRunResult,
+    dowody: Sequence[NcRfgCertificateEvidence] | None,
+) -> dict[str, Any]:
+    """Zbuduj sekcję zgodności NC RfG z werdyktu zbiorczego certyfikatu (D14).
+
+    Z dowodami (wskazany przypadek) sekcja niesie dodatkowo ``dowody_certyfikatu``
+    — po jednej pozycji na moduł biegu, w jego kolejności. Bez dowodów klucz nie
+    powstaje, więc odcisk sekcji jest identyczny jak przed dodaniem dowodu.
+    """
     certyfikat = build_certyfikat_view(ncrfg_run_result, nazwa_projektu="—")
     werdykt = certyfikat["werdykt_zbiorczy"]
-    return {
+    sekcja: dict[str, Any] = {
         "status": werdykt["status"],
         "etykieta_pl": werdykt["etykieta_pl"],
         "liczba_modulow": werdykt["liczba_modulow"],
@@ -248,6 +263,9 @@ def _zgodnosc_sekcja(ncrfg_run_result: NcRfgPtpireeRunResult) -> dict[str, Any]:
         ),
         "odcisk_wejscia_nc_rfg_sha256": ncrfg_run_result.input_hash,
     }
+    if dowody is not None:
+        sekcja["dowody_certyfikatu"] = sekcje_dowodow(dowody)
+    return sekcja
 
 
 def build_wniosek_osd_view(
@@ -257,10 +275,15 @@ def build_wniosek_osd_view(
     *,
     bus_ref: str,
     identyfikacja: WniosekOsdIdentyfikacja,
+    dowody: Sequence[NcRfgCertificateEvidence] | None = None,
 ) -> dict[str, Any]:
     """Zbuduj widok JSON wniosku OSD z istniejących wyników.
 
     Rzuca ``WniosekOsdBrakiError`` gdy dane są niekompletne (bramka kompletności).
+
+    ``dowody`` (opcjonalne) to dowód certyfikacji PTPiREE per moduł z tabliczek
+    modelu. Bez dowodów (wywołanie bez wskazanego przypadku) widok jest IDENTYCZNY
+    jak przed dodaniem sekcji — łącznie z odciskami sekcji i ``input_hash``.
     """
     braki = zbierz_braki_wniosku(pf_run, sc_run, bus_ref, ncrfg_run_result)
     if braki:
@@ -268,7 +291,7 @@ def build_wniosek_osd_view(
 
     bilans = _bilans_mocy_sekcja(pf_run, bus_ref)
     zwarcia = _zwarcia_sekcja(sc_run, bus_ref)
-    zgodnosc = _zgodnosc_sekcja(ncrfg_run_result)
+    zgodnosc = _zgodnosc_sekcja(ncrfg_run_result, dowody)
 
     zalozenia_pl = [
         "Wniosek zestawia gotowe wyniki obliczeń — nie przelicza żadnej wielkości "
@@ -431,6 +454,20 @@ def render_wniosek_osd_docx(view: dict) -> bytes:
     )
     doc.add_paragraph(str(zgodnosc["odeslanie_pl"]))
 
+    dowody = zgodnosc.get("dowody_certyfikatu")
+    if dowody is not None:
+        doc.add_heading(TYTUL_DOWODU, level=2)
+        for dowod in dowody:
+            dow_para = doc.add_paragraph()
+            dow_para.add_run(f"{dowod['der_ref']}: ").bold = True
+            wiersze = wiersze_dowodu_pl(dowod)
+            if wiersze:
+                dow_para.add_run(
+                    "  |  ".join(f"{etykieta}: {wartosc}" for etykieta, wartosc in wiersze)
+                )
+            else:
+                dow_para.add_run(str(dowod["stan_pl"]))
+
     # Założenia i źródła.
     doc.add_heading("Założenia i źródła", level=1)
     for pozycja in view["zalozenia_pl"]:
@@ -568,6 +605,17 @@ def render_wniosek_pdf(view: dict) -> bytes:
         f"niezgodnych: {zgodnosc['modulow_niezgodnych']})"
     )
     para(str(zgodnosc["odeslanie_pl"]))
+    dowody = zgodnosc.get("dowody_certyfikatu")
+    if dowody is not None:
+        para(TYTUL_DOWODU, size=10, bold=True)
+        for dowod in dowody:
+            wiersze = wiersze_dowodu_pl(dowod)
+            tresc = (
+                "  |  ".join(f"{etykieta}: {wartosc}" for etykieta, wartosc in wiersze)
+                if wiersze
+                else str(dowod["stan_pl"])
+            )
+            para(f"{dowod['der_ref']}: {tresc}", size=9, indent=4 * mm)
     y -= line_height
 
     # Założenia i źródła.

@@ -3,6 +3,10 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID
 
+from application.analyses.dowod_certyfikatu import (
+    NcRfgCertificateEvidence,
+    dowody_certyfikatu,
+)
 from application.ncrfg_compliance import (
     NcRfgComplianceChecker,
     build_der_compliance_list_from_enm,
@@ -16,7 +20,6 @@ from network_model.solvers.ncrfg_ptpiree import (
     NcRfgPtpireeSolver,
 )
 from network_model.solvers.ncrfg_ptpiree.engine import TEST_CATALOG
-from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/ncrfg-tests", tags=["ncrfg-ptpiree-tests"])
 _solver = NcRfgPtpireeSolver()
@@ -82,24 +85,6 @@ def run_ncrfg_compliance_from_model(case_id: UUID, operator_id: str) -> dict[str
     }
 
 
-class NcRfgCertificateEvidence(BaseModel):
-    """Dowód certyfikacji PTPiREE urządzenia testowanego w biegu NC RfG.
-
-    Wartości pochodzą WPROST z tabliczki urządzenia w modelu (`Generator.
-    materialized_params`), którą kreator DER zapisał z rekordu katalogowego.
-    Ten moduł niczego nie wylicza i niczego nie dopowiada: brak danej = ``None``
-    (uczciwy stan zerowy), nigdy wartość domyślna ani zgadnięta.
-    """
-
-    der_ref: str
-    document_number: str | None = None
-    acceptance_date: str | None = None
-    wos_version: str | None = None
-    wipwc_version: str | None = None
-    ppm_scope: str | None = None
-    source_url: str | None = None
-
-
 class NcRfgPtpireeRunResponse(NcRfgPtpireeRunResult):
     """Wynik biegu POSZERZONY o dowód certyfikacji (dodatek karty P2).
 
@@ -109,38 +94,6 @@ class NcRfgPtpireeRunResponse(NcRfgPtpireeRunResult):
     """
 
     certificate_evidence: list[NcRfgCertificateEvidence] = []
-
-
-def _dowody_certyfikatu(
-    case_id: UUID | None,
-    result: NcRfgPtpireeRunResult,
-) -> list[NcRfgCertificateEvidence]:
-    """Dowód certyfikatu per TESTOWANE urządzenie, w kolejności modułów wyniku.
-
-    Bez wskazanego przypadku (albo dla urządzenia, którego w modelu nie ma) blok
-    powstaje z samą referencją i pustymi polami — bieg działa dalej, a projektant
-    widzi, że dowodu nie ma, zamiast oglądać wartość wziętą znikąd.
-    """
-    tabliczki: dict[str, dict[str, Any]] = {}
-    if case_id is not None:
-        enm = get_enm(str(case_id))
-        for generator in enm.generators:
-            tabliczki[generator.ref_id] = generator.materialized_params or {}
-    dowody: list[NcRfgCertificateEvidence] = []
-    for module in result.modules:
-        tabliczka = tabliczki.get(module.der_ref, {})
-        dowody.append(
-            NcRfgCertificateEvidence(
-                der_ref=module.der_ref,
-                document_number=tabliczka.get("ptpiree_document_number"),
-                acceptance_date=tabliczka.get("ptpiree_document_acceptance_date"),
-                wos_version=tabliczka.get("ptpiree_wos_version"),
-                wipwc_version=tabliczka.get("ptpiree_wipwc_version"),
-                ppm_scope=tabliczka.get("ptpiree_ppm_scope"),
-                source_url=tabliczka.get("ptpiree_source_url"),
-            )
-        )
-    return dowody
 
 
 @router.post("/run", response_model=NcRfgPtpireeRunResponse)
@@ -157,5 +110,7 @@ def run_ncrfg_ptpiree_tests(
         ) from exc
     return NcRfgPtpireeRunResponse(
         **result.model_dump(),
-        certificate_evidence=_dowody_certyfikatu(case_id, result),
+        certificate_evidence=dowody_certyfikatu(
+            case_id, [module.der_ref for module in result.modules]
+        ),
     )

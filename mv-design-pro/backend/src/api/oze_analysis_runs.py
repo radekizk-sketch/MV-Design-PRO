@@ -17,6 +17,13 @@
   deterministyczny przegląd rekordów katalogu (rosnąco po mocy) na modelu przebiegu
   (``PF``).
 
+Dokumenty formalne (każdy w wariancie JSON oraz ``.docx`` i ``.pdf``):
+``POST /api/oze-analysis/compliance-certificate``, ``…/osd-application``,
+``…/connection-study``. Wszystkie przyjmują opcjonalny ``case_id`` (semantyka jak
+``POST /api/ncrfg-tests/run``) — wskazanie przypadku dopina DOWÓD certyfikacji
+PTPiREE z tabliczek urządzeń modelu. Bez ``case_id`` widok jest dokładnie taki
+jak przed dodaniem dowodu (odciski sekcji i ``input_hash`` bez zmian).
+
 Warstwa PREZENTACJI/API: ładuje przebieg (404 gdy brak), deleguje mapowanie do
 serwisów aplikacyjnych (ZERO fizyki) i zwraca zserializowany widok 1:1 z buildera
 interpretacji. Zły rodzaj przebiegu → 422 z komunikatem w języku polskim.
@@ -42,6 +49,10 @@ from application.analyses.dokument_studium import (
     build_dokument_studium_view,
     render_dokument_studium_docx,
     render_dokument_studium_pdf,
+)
+from application.analyses.dowod_certyfikatu import (
+    dowody_certyfikatu,
+    dowody_certyfikatu_typu,
 )
 from application.analyses.frt_sekwencja import build_frt_sekwencja_view
 from application.analyses.frt_trajektorie import build_frt_trajectories_view
@@ -361,12 +372,18 @@ def get_pq_coverage(
         ) from exc
 
 
-def _certyfikat_view(request: CertyfikatZgodnosciRequest) -> dict[str, Any]:
+def _certyfikat_view(
+    request: CertyfikatZgodnosciRequest, case_id: UUID | None = None
+) -> dict[str, Any]:
     """Zbuduj widok certyfikatu tą samą ścieżką co macierz frontendu.
 
     Uruchamia deterministyczny solver NC RfG/PTPiREE (``POST /api/ncrfg-tests/run``
     używa tego samego solvera), po czym komponuje certyfikat z gotowych werdyktów.
     Nieznany profil operatora → 404 PL; braki kompletności → 422 z listą PL.
+
+    ``case_id`` (semantyka jak ``POST /api/ncrfg-tests/run``) dopina dowód
+    certyfikacji PTPiREE z tabliczek urządzeń modelu. Bez niego widok jest
+    dokładnie taki jak przed dodaniem dowodu.
     """
     try:
         run_result = _ncrfg_solver.run(request.run_request)
@@ -375,11 +392,17 @@ def _certyfikat_view(request: CertyfikatZgodnosciRequest) -> dict[str, Any]:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+    dowody = (
+        None
+        if case_id is None
+        else dowody_certyfikatu(case_id, [module.der_ref for module in run_result.modules])
+    )
     try:
         return build_certyfikat_view(
             run_result,
             nazwa_projektu=request.nazwa_projektu,
             nazwa_przypadku=request.nazwa_przypadku,
+            dowody=dowody,
         )
     except CertyfikatBrakiError as exc:
         raise HTTPException(
@@ -393,13 +416,19 @@ def _certyfikat_view(request: CertyfikatZgodnosciRequest) -> dict[str, Any]:
 
 
 @router.post("/api/oze-analysis/compliance-certificate")
-def post_compliance_certificate(request: CertyfikatZgodnosciRequest) -> dict[str, Any]:
-    return _certyfikat_view(request)
+def post_compliance_certificate(
+    request: CertyfikatZgodnosciRequest,
+    case_id: UUID | None = Query(default=None),
+) -> dict[str, Any]:
+    return _certyfikat_view(request, case_id)
 
 
 @router.post("/api/oze-analysis/compliance-certificate.docx")
-def post_compliance_certificate_docx(request: CertyfikatZgodnosciRequest) -> Response:
-    view = _certyfikat_view(request)
+def post_compliance_certificate_docx(
+    request: CertyfikatZgodnosciRequest,
+    case_id: UUID | None = Query(default=None),
+) -> Response:
+    view = _certyfikat_view(request, case_id)
     docx_bytes = render_certyfikat_docx(view)
     return Response(
         content=docx_bytes,
@@ -409,8 +438,11 @@ def post_compliance_certificate_docx(request: CertyfikatZgodnosciRequest) -> Res
 
 
 @router.post("/api/oze-analysis/compliance-certificate.pdf")
-def post_compliance_certificate_pdf(request: CertyfikatZgodnosciRequest) -> Response:
-    view = _certyfikat_view(request)
+def post_compliance_certificate_pdf(
+    request: CertyfikatZgodnosciRequest,
+    case_id: UUID | None = Query(default=None),
+) -> Response:
+    view = _certyfikat_view(request, case_id)
     pdf_bytes = render_certyfikat_pdf(view)
     return Response(
         content=pdf_bytes,
@@ -432,12 +464,16 @@ class WniosekOsdRequest(BaseModel):
     run_request: NcRfgPtpireeRunRequest
 
 
-def _wniosek_osd_view(request: WniosekOsdRequest) -> dict[str, Any]:
+def _wniosek_osd_view(request: WniosekOsdRequest, case_id: UUID | None = None) -> dict[str, Any]:
     """Zbuduj widok wniosku OSD z gotowych przebiegów i macierzy NC RfG.
 
     Ładuje przebieg rozpływu i zwarciowy (404 gdy brak), uruchamia deterministyczny
     solver NC RfG (404 gdy nieznany profil operatora), po czym komponuje wniosek.
     Braki kompletności → 422 z listą po polsku (wniosek nie powstaje).
+
+    ``case_id`` (semantyka jak ``POST /api/ncrfg-tests/run``) dopina dowód
+    certyfikacji PTPiREE z tabliczek urządzeń modelu. Bez niego widok jest
+    dokładnie taki jak przed dodaniem dowodu (odciski sekcji bez zmian).
     """
     pf_run = _require_run(request.pf_run_id)
     sc_run = _require_run(request.sc_run_id)
@@ -448,6 +484,11 @@ def _wniosek_osd_view(request: WniosekOsdRequest) -> dict[str, Any]:
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(exc),
         ) from exc
+    dowody = (
+        None
+        if case_id is None
+        else dowody_certyfikatu(case_id, [module.der_ref for module in ncrfg_run_result.modules])
+    )
     identyfikacja = WniosekOsdIdentyfikacja(
         nazwa_projektu=request.nazwa_projektu,
         nazwa_przypadku=request.nazwa_przypadku,
@@ -461,6 +502,7 @@ def _wniosek_osd_view(request: WniosekOsdRequest) -> dict[str, Any]:
             ncrfg_run_result,
             bus_ref=request.bus_ref,
             identyfikacja=identyfikacja,
+            dowody=dowody,
         )
     except WniosekOsdBrakiError as exc:
         raise HTTPException(
@@ -474,13 +516,19 @@ def _wniosek_osd_view(request: WniosekOsdRequest) -> dict[str, Any]:
 
 
 @router.post("/api/oze-analysis/osd-application")
-def post_osd_application(request: WniosekOsdRequest) -> dict[str, Any]:
-    return _wniosek_osd_view(request)
+def post_osd_application(
+    request: WniosekOsdRequest,
+    case_id: UUID | None = Query(default=None),
+) -> dict[str, Any]:
+    return _wniosek_osd_view(request, case_id)
 
 
 @router.post("/api/oze-analysis/osd-application.docx")
-def post_osd_application_docx(request: WniosekOsdRequest) -> Response:
-    view = _wniosek_osd_view(request)
+def post_osd_application_docx(
+    request: WniosekOsdRequest,
+    case_id: UUID | None = Query(default=None),
+) -> Response:
+    view = _wniosek_osd_view(request, case_id)
     docx_bytes = render_wniosek_osd_docx(view)
     return Response(
         content=docx_bytes,
@@ -490,8 +538,11 @@ def post_osd_application_docx(request: WniosekOsdRequest) -> Response:
 
 
 @router.post("/api/oze-analysis/osd-application.pdf")
-def post_osd_application_pdf(request: WniosekOsdRequest) -> Response:
-    view = _wniosek_osd_view(request)
+def post_osd_application_pdf(
+    request: WniosekOsdRequest,
+    case_id: UUID | None = Query(default=None),
+) -> Response:
+    view = _wniosek_osd_view(request, case_id)
     pdf_bytes = render_wniosek_pdf(view)
     return Response(
         content=pdf_bytes,
@@ -549,13 +600,21 @@ class DokumentStudiumRequest(BaseModel):
     warianty: list[str] = Field(min_length=1)
 
 
-def _dokument_studium_view(request: DokumentStudiumRequest) -> dict[str, Any]:
+def _dokument_studium_view(
+    request: DokumentStudiumRequest, case_id: UUID | None = None
+) -> dict[str, Any]:
     """Zbuduj widok dokumentu studium serwerową kompozycją sekwencji kreatora.
 
     Ładuje przebieg bazowy (404 gdy brak), rozwiązuje typ katalogowy i profil
     operatora (przekazane do bramki braków twardych), po czym komponuje dokument.
     Braki twarde → 422 z listą po polsku (dokument nie powstaje). Błąd pojedynczego
     wariantu jest odnotowany w sekcji wariantu i nie przerywa dokumentu.
+
+    ``case_id`` (semantyka jak ``POST /api/ncrfg-tests/run``) dopina dowód
+    certyfikacji PTPiREE urządzeń modelu związanych z TYPEM katalogowym dokumentu
+    (tożsamość urządzenia w studium to typ przekształtnika, nie moduł biegu — ten
+    dokument nie uruchamia macierzy NC RfG). Bez niego widok jest dokładnie taki
+    jak przed dodaniem dowodu (odcisk sekcji założeń bez zmian).
     """
     run = _require_run(request.run_id)
     converter = get_default_mv_catalog().get_converter_type(request.catalog_item_id)
@@ -578,6 +637,11 @@ def _dokument_studium_view(request: DokumentStudiumRequest) -> dict[str, Any]:
             operator_id=request.operator_id,
             warianty=list(request.warianty),
             identyfikacja=identyfikacja,
+            dowody=(
+                None
+                if case_id is None
+                else dowody_certyfikatu_typu(case_id, request.catalog_item_id)
+            ),
         )
     except DokumentStudiumBrakiError as exc:
         raise HTTPException(
@@ -591,15 +655,20 @@ def _dokument_studium_view(request: DokumentStudiumRequest) -> dict[str, Any]:
 
 
 @router.post("/api/oze-analysis/connection-study")
-def post_connection_study(request: DokumentStudiumRequest) -> dict[str, Any]:
-    return _dokument_studium_view(request)
+def post_connection_study(
+    request: DokumentStudiumRequest,
+    case_id: UUID | None = Query(default=None),
+) -> dict[str, Any]:
+    return _dokument_studium_view(request, case_id)
 
 
 @router.post("/api/oze-analysis/connection-study.docx")
 def post_connection_study_docx(
-    request: DokumentStudiumRequest, zapisz_do_magazynu: bool = Query(default=False)
+    request: DokumentStudiumRequest,
+    zapisz_do_magazynu: bool = Query(default=False),
+    case_id: UUID | None = Query(default=None),
 ) -> Response:
-    view = _dokument_studium_view(request)
+    view = _dokument_studium_view(request, case_id)
     docx_bytes = render_dokument_studium_docx(view)
     response = Response(
         content=docx_bytes,
@@ -620,9 +689,11 @@ def post_connection_study_docx(
 
 @router.post("/api/oze-analysis/connection-study.pdf")
 def post_connection_study_pdf(
-    request: DokumentStudiumRequest, zapisz_do_magazynu: bool = Query(default=False)
+    request: DokumentStudiumRequest,
+    zapisz_do_magazynu: bool = Query(default=False),
+    case_id: UUID | None = Query(default=None),
 ) -> Response:
-    view = _dokument_studium_view(request)
+    view = _dokument_studium_view(request, case_id)
     pdf_bytes = render_dokument_studium_pdf(view)
     response = Response(
         content=pdf_bytes,
