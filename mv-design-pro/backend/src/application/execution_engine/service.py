@@ -352,16 +352,18 @@ class ExecutionEngineService:
                     pq.node_id, -pq.q_mvar / pf_input.base_mva
                 )
             for pv in pf_input.pv:
-                # A PV bus holds its active power at the declared value, so the
-                # negated spec IS the injection. Its reactive power is the free
-                # variable of the solve and the solver publishes no per-PV value
-                # (``effective_pq_injections`` iterates pf_input.pq only), so this
-                # dict keeps 0.0 there — a KNOWN, MEASURED gap reported as debt
-                # W2-D1 (case C: 0,000000 Mvar reported vs 0,405463 Mvar by the
-                # Kirchhoff judge). Closing it means publishing the converged Q at
-                # PV buses from the solver, which this layer must not compute and
-                # this card must not edit.
-                node_p_injected_pu[pv.node_id] = -pv.p_mw / pf_input.base_mva
+                # Debt W2-D1 CLOSED (card X1). A PV bus holds its active power at
+                # the declared value, and its reactive power is the free variable
+                # of the solve — the quantity that holds the requested voltage.
+                # The solver now publishes BOTH in the same dictionaries
+                # (``pv_calculated_injections``, read from the nodal equation),
+                # so this layer reads them instead of reporting 0.000000 Mvar
+                # against the 0.405463 Mvar of the Kirchhoff judge. The fallbacks
+                # cover buses outside the slack island, which the solver skips.
+                node_p_injected_pu[pv.node_id] = solver_p_effective.get(
+                    pv.node_id, -pv.p_mw / pf_input.base_mva
+                )
+                node_q_injected_pu[pv.node_id] = solver_q_effective.get(pv.node_id, 0.0)
             node_p_injected_pu[pf_input.slack.node_id] = float(np.real(solution.slack_power))
             node_q_injected_pu[pf_input.slack.node_id] = float(np.imag(solution.slack_power))
 

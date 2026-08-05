@@ -606,9 +606,9 @@ def test_parytet_z_wezlem_tranzytowym_ze_sciezka_kanoniczna(
         assert silnik[szyna].q_injected_mvar == pytest.approx(
             kan[szyna]["q_injected_mvar"], abs=TOL_MW
         ), f"rozjazd mocy biernej na szynie {szyna}"
-        assert silnik[szyna].v_pu == pytest.approx(kan[szyna]["v_pu"], abs=1e-9), (
-            f"rozjazd napiecia na szynie {szyna}"
-        )
+        assert silnik[szyna].v_pu == pytest.approx(
+            kan[szyna]["v_pu"], abs=1e-9
+        ), f"rozjazd napiecia na szynie {szyna}"
 
     # Parytet nie moze byc spelniony „na plasko": napiecie tranzytu jest WYNIKIEM.
     assert silnik["tranzyt"].v_pu < 1.0 - 1e-6
@@ -649,19 +649,21 @@ def test_zbiory_pq_i_pv_sa_rozlaczne_z_jednego_zrodla_prawdy() -> None:
         )
 
 
-def test_dlug_w2_d1_moc_bierna_szyny_pv_nie_jest_publikowana(
+def test_moc_bierna_szyny_pv_jest_publikowana_i_zgodna_z_sedzia(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """DLUG W2-D1, przypiety swiadomie — moc bierna szyny PV nie jest raportowana.
+    """DLUG W2-D1 ZAMKNIETY (karta X1) — zbiezne Q szyny PV trafia do raportu.
 
-    Moc bierna szyny PV jest zmienna swobodna rozwiazania i solver nie publikuje
-    jej per wezel (``effective_pq_injections`` przechodzi wylacznie po
-    ``pf_input.pq``). Warstwa aplikacji nie moze jej policzyc — to byloby liczenie
-    fizyki poza solverem. Do czasu, az solver zacznie publikowac zbiezne Q szyn
-    PV, raport pokazuje tam 0,0 Mvar, choc fizyka daje wartosc niezerowa.
+    Moc bierna szyny PV jest zmienna swobodna rozwiazania: to ONA utrzymuje zadany
+    modul napiecia. Solver zna ja, bo tym samym rownaniem wezlowym liczy moc
+    slacka — do karty X1 publikowal ja WYLACZNIE dla slacka
+    (``effective_pq_injections`` przechodzilo tylko po ``pf_input.pq``), wiec
+    raport podawal dla szyny PV 0,000000 Mvar. POMIAR LUKI (zachowany jako opis):
+    sedzia liczyl w tym samym ukladzie 0,405463 Mvar.
 
-    Test przypina POMIAR tej luki: gdy solver zacznie ja wypelniac, test padnie i
-    wymusi aktualizacje montazu oraz skreslenie dlugu — dlug nie zniknie po cichu.
+    Warstwa aplikacji nadal NIC nie liczy — czyta opublikowana wartosc
+    (``pv_calculated_injections``). Sedzia jest niezalezny: bilans wezlowy w
+    czystym numpy z napiec, ktore raport sam podaje.
     """
     lf = _siec(
         (LoadFlowLoadInput("n1", 2.0, 0.8),),
@@ -671,12 +673,57 @@ def test_dlug_w2_d1_moc_bierna_szyny_pv_nie_jest_publikowana(
     szyna_pv = {b.bus_id: b for b in wynik.bus_results}["n2"]
     sedzia = _sedzia_bilans_wezlowy(lf, wynik)
 
-    assert szyna_pv.q_injected_mvar == 0.0, "stan znany: brak publikacji Q szyny PV"
-    assert (
-        abs(sedzia["n2"].imag) > 0.1
-    ), "sedzia musi wskazywac niezerowa moc bierna, inaczej test nie mierzy luki"
-    # Moc CZYNNA szyny PV jest natomiast w pelni poprawna — luka dotyczy wylacznie Q.
+    # Test bylby bezwartosciowy, gdyby sedzia sam wskazywal zero.
+    assert abs(sedzia["n2"].imag) > 0.1, "sedzia musi wskazywac niezerowa moc bierna"
+    assert szyna_pv.q_injected_mvar == pytest.approx(sedzia["n2"].imag, abs=TOL_MW)
     assert szyna_pv.p_injected_mw == pytest.approx(sedzia["n2"].real, abs=TOL_MW)
+
+
+def test_moc_szyn_pv_zgodna_z_sedzia_w_iloczynie_cech(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """ILOCZYN CECH publikacji mocy szyny PV (regula KLASA pkt 2).
+
+    Moc bierna szyny PV wychodzi z rownania wezlowego, wiec musi sie zgadzac z
+    sedzia niezaleznie od tego, co jeszcze wisi na tej szynie i jaka jest galaz:
+    szyna PV bez odbioru x z odbiorem stalomocowym x z odbiorem ZIP (moc zadana
+    != wstrzyknieta) x dwie szyny PV x galezie z pojemnoscia doziemna.
+    """
+    warianty = {
+        "PV bez odbioru": _siec(
+            (LoadFlowLoadInput("n1", 2.0, 0.8),),
+            (LoadFlowGeneratorInput("n2", -1.0, 1.0, -5.0, 5.0),),
+        ),
+        "PV z odbiorem ZIP na szynie sasiedniej": _siec(
+            (LoadFlowLoadInput("n1", 2.0, 0.8, zip_coeffs=ZIP_MIESZANY),),
+            (LoadFlowGeneratorInput("n2", -1.0, 1.0, -5.0, 5.0),),
+        ),
+        "dwie szyny PV": _siec(
+            (),
+            (
+                LoadFlowGeneratorInput("n1", -0.5, 1.0, -5.0, 5.0),
+                LoadFlowGeneratorInput("n2", -1.0, 1.0, -5.0, 5.0),
+            ),
+        ),
+        "PV przy galeziach z pojemnoscia doziemna": _siec(
+            (LoadFlowLoadInput("n1", 2.0, 0.8),),
+            (LoadFlowGeneratorInput("n2", -1.0, 1.0, -5.0, 5.0),),
+            branches=BRANCHES_Z_POJEMNOSCIA,
+        ),
+    }
+
+    for nazwa, lf in warianty.items():
+        wynik, _ = _uruchom(monkeypatch, lf)
+        szyny = {b.bus_id: b for b in wynik.bus_results}
+        sedzia = _sedzia_bilans_wezlowy(lf, wynik)
+        for generator in lf.generators:
+            szyna = szyny[generator.node_id]
+            assert szyna.q_injected_mvar == pytest.approx(
+                sedzia[generator.node_id].imag, abs=TOL_MW
+            ), f"{nazwa}: moc bierna szyny {generator.node_id} rozjechana z sedzia"
+            assert szyna.p_injected_mw == pytest.approx(
+                sedzia[generator.node_id].real, abs=TOL_MW
+            ), f"{nazwa}: moc czynna szyny {generator.node_id} rozjechana z sedzia"
 
 
 def test_szyna_tranzytowa_ma_zerowe_wstrzykniecie(monkeypatch: pytest.MonkeyPatch) -> None:

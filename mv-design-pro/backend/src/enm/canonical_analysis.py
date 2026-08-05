@@ -1713,6 +1713,16 @@ def _execute_power_flow(run: CanonicalRun) -> None:
     for pq in pf_input.pq:
         node_p_injected_pu[pq.node_id] = solver_p_effective.get(pq.node_id, -pq.p_mw / base_mva)
         node_q_injected_pu[pq.node_id] = solver_q_effective.get(pq.node_id, -pq.q_mvar / base_mva)
+    # DŁUG W2-D1 (V12K-318): szyna o regulowanym napięciu też wstrzykuje moc — jej
+    # moc bierna jest WYNIKIEM zbieżności (to ona trzyma zadany moduł napięcia).
+    # Solver publikuje ją od karty X1 w tych samych słownikach; bez tej pętli
+    # raport podawał dla szyny PV 0,000000 Mvar. Zapas (`p_mw` z zadania) chroni
+    # szyny spoza wyspy slacka — solver ich nie liczy. `PVSpec.p_mw` jest w tej
+    # samej konwencji OBCIĄŻENIOWEJ co `PQSpec.p_mw` (`build_power_spec_v2`
+    # neguje oba), więc zapas negujemy tak samo.
+    for pv in pf_input.pv:
+        node_p_injected_pu[pv.node_id] = solver_p_effective.get(pv.node_id, -pv.p_mw / base_mva)
+        node_q_injected_pu[pv.node_id] = solver_q_effective.get(pv.node_id, 0.0)
     node_p_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.real)
     node_q_injected_pu[pf_input.slack.node_id] = float(solution.slack_power.imag)
 

@@ -156,6 +156,41 @@ def _apply_zip_jacobian_v2(
         jacobian[n_p + col_q, n_p + col_q] -= dq_dv
 
 
+def pv_calculated_injections(
+    pv_specs: Iterable[PVSpec],
+    node_index_map: dict[str, int],
+    p_calc: np.ndarray,
+    q_calc: np.ndarray,
+) -> tuple[dict[str, float], dict[str, float]]:
+    """What a voltage-controlled bus actually injected, at the converged state.
+
+    On a PV bus the reactive power is NOT specified — it is the RESULT: it is the
+    quantity that holds the requested voltage magnitude. The solver already knows
+    it, because the very same nodal equation (S_i = V_i * conj(sum_k Y_ik V_k))
+    yields the slack power a few lines above; up to this function it was published
+    for the slack ONLY. Measured gap (debt W2-D1, V12K-318): the report showed
+    0.000000 Mvar for a PV bus where an independent nodal balance gives
+    0.405463 Mvar — the bus looked reactively idle while it was regulating.
+
+    NO new physics: the same `p_calc`/`q_calc` arrays the slack is read from.
+    INJECTION convention, pu on base_mva — identical to `effective_pq_injections`,
+    so a consumer merging both dictionaries keeps ONE sign convention.
+
+    P is published too. On a PV bus it equals the specification, but reading it
+    from the same nodal equation keeps a single source of "what was injected" and
+    makes the pair (P, Q) close the balance by construction.
+    """
+    p_out: dict[str, float] = {}
+    q_out: dict[str, float] = {}
+    for spec in pv_specs:
+        idx = node_index_map.get(spec.node_id)
+        if idx is None:
+            continue
+        p_out[spec.node_id] = float(p_calc[idx])
+        q_out[spec.node_id] = float(q_calc[idx])
+    return p_out, q_out
+
+
 def effective_pq_injections(
     pq_specs: Iterable[PQSpec],
     node_index_map: dict[str, int],

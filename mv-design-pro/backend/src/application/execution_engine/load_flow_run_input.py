@@ -9,6 +9,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import json
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -49,10 +50,10 @@ class LoadFlowNodeInput:
 
 
 def wezly_tranzytowe_pq(
-    nodes: list[LoadFlowNodeInput],
+    nodes: Sequence[LoadFlowNodeInput],
     slack_node_id: str,
-    pq: list[PQSpec],
-    pv: list[PVSpec],
+    pq: Sequence[PQSpec],
+    pv: Sequence[PVSpec],
 ) -> list[PQSpec]:
     """Węzły PQ topologii, których nie deklaruje żadna pozycja odbioru ani źródła.
 

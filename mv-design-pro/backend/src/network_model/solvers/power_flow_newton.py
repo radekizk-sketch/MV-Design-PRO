@@ -18,6 +18,7 @@ from network_model.solvers.power_flow_newton_internal import (
     compute_power_injections,
     effective_pq_injections,
     newton_raphson_solve_v2,
+    pv_calculated_injections,
     validate_input,
 )
 from network_model.solvers.power_flow_types import PowerFlowInput
@@ -288,6 +289,16 @@ class PowerFlowNewtonSolver:
         node_p_spec_effective_pu, node_q_spec_effective_pu = effective_pq_injections(
             pf_input.pq, node_index_map, p_spec, q_spec, v, zip_table, inv_table, zip_const
         )
+        # DLUG W2-D1 (V12K-318) ZAMKNIETY: szyna PV tez wstrzykuje moc — jej moc
+        # bierna jest WYNIKIEM zbieznosci, nie zadaniem. Te same slowniki niosa
+        # teraz odpowiedz „ile faktycznie wstrzyknela kazda szyna niebilansujaca":
+        # dla szyny PQ z wielomianu/regulacji, dla szyny PV z rownania wezlowego.
+        # (Nazwa pola pochodzi sprzed rozszerzenia — patrz dlug X1-D1.)
+        node_p_pv_pu, node_q_pv_pu = pv_calculated_injections(
+            pf_input.pv, node_index_map, p_calc, q_calc
+        )
+        node_p_spec_effective_pu.update(node_p_pv_pu)
+        node_q_spec_effective_pu.update(node_q_pv_pu)
 
         if branch_flow_note:
             losses_total = 0.0 + 0.0j
