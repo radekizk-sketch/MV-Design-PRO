@@ -1,9 +1,9 @@
 # MV-DESIGN-PRO Agent Governance
 
-**Version:** 4.2
+**Version:** 4.3
 **Status:** CANONICAL & BINDING
 **Authority:** docs/v12xx/KANON_V12_XX.md > docs/system/ > docs/domain/+docs/sld/contracts > SYSTEM_SPEC.md > ARCHITECTURE.md > AGENTS.md > PLANS.md > docs/INDEX.md > docs/spec/ (ARCHIVAL)
-**Updated:** 2026-05-13 (V12K-011 conflict resolution: V12.xx canon wins; docs/spec/ archival)
+**Updated:** 2026-08-05 (dodano 0.5 Zasady inżynierskie — dyrektywa właściciela)
 
 ---
 
@@ -41,6 +41,17 @@ Use these rules for agent behavior. They do not weaken any domain, solver, proof
 - Angielski zostawiaj tylko dla nazw własnych standardów, bibliotek, API, typów kodowych, ścieżek i identyfikatorów programu.
 - Każdy widoczny błąd kodowania, w tym typowe pozostałości po błędnym odczycie UTF-8, jest błędem do naprawy w dotykanym zakresie.
 - Nie zostawiaj w interfejsie ani dokumentacji mieszanki językowej, jeżeli nie wynika ona z nazwy własnej albo kontraktu kodowego.
+
+### 0.5 Zasady inżynierskie (dyrektywa właściciela)
+
+1. Nie dbaj o kompatybilność wsteczną. Co przestarzałe, to usuń na amen – bez warstw kompatybilności, bez migracji, bez fallbacków.
+2. Wybierz najprostszą implementację, która spełnia bieżące potrzeby. Zero prewencyjnych abstrakcji, zero zbędnych warstw konfiguracyjnych.
+3. Dziel system na warstwy, ale stopniowo. Najpierw uruchom minimalną wersję end-to-end, potem dodawaj. Nigdy nie rozwalaj działającej rzeczy dla niedokończonej złożoności.
+4. Trzymaj komponenty modułowe, separuj odpowiedzialności.
+5. Stawiaj na dojrzałe, utrzymywane biblioteki. Bez konkretnego powodu nie przepisuj od zera.
+6. Najpierw sprawdź, co potrafią istniejące zależności w projekcie, zanim zaczniesz dodawać nowe pakiety czy pisać własne. Nie zakładaj z góry, że w bibliotekach niczego nie ma.
+7. Podejmuj decyzje architektoniczne z myślą o przyszłości. Nie akceptuj prowizorek w stylu „na razie tak, potem zmienimy".
+8. Sprawdź, jak dojrzałe produkty rozwiązują ten sam problem – korzystaj z zweryfikowanych wzorców, nie wymyślaj koła na nowo.
 
 ## 1. Document Hierarchy
 
