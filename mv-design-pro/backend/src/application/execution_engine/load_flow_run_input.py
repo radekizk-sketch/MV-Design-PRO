@@ -48,6 +48,39 @@ class LoadFlowNodeInput:
     voltage_level_kv: float
 
 
+def wezly_tranzytowe_pq(
+    nodes: list[LoadFlowNodeInput],
+    slack_node_id: str,
+    pq: list[PQSpec],
+    pv: list[PVSpec],
+) -> list[PQSpec]:
+    """Węzły PQ topologii, których nie deklaruje żadna pozycja odbioru ani źródła.
+
+    Zbiór węzłów wejścia solvera pochodzi z TOPOLOGII, nie z listy odbiorów. Węzeł
+    tranzytowy (bez odbioru i bez źródła) jest węzłem PQ o zerowej mocy, a nie
+    węzłem nieistniejącym: solver buduje wektor stanu wyłącznie z `pf_input.pq` i
+    `pf_input.pv` (`power_flow_newton.py`, `pq_indices`/`pv_indices`), więc węzeł
+    pominięty tutaj NIE dostaje równania niezbilansowania i zostaje na starcie
+    płaskim — zachowuje się jak DRUGI węzeł bilansujący.
+
+    Pomiar defektu (V12K-318, dług W2-D2): slack oddawał ~0 MW, a węzeł tranzytowy
+    „wstrzykiwał" 1,5047 MW. Bieg kończył się SUKCESEM — to była cicha zła liczba
+    w raporcie rozpływu, nie awaria.
+
+    Reguła wzięta z JEDNEGO źródła — ze ścieżki kanonicznej
+    (`enm/canonical_analysis.py` buduje `PQSpec` dla KAŻDEGO węzła PQ grafu poza
+    slackiem), żeby obie ścieżki liczyły ten sam zbiór węzłów. Zero fizyki:
+    przenosimy topologię, nie liczymy przepływów.
+    """
+    zadeklarowane = {spec.node_id for spec in pq} | {spec.node_id for spec in pv}
+    zadeklarowane.add(slack_node_id)
+    return [
+        PQSpec(node_id=node.node_id, p_mw=0.0, q_mvar=0.0)
+        for node in sorted(nodes, key=lambda n: n.node_id)
+        if node.node_id not in zadeklarowane and NodeType(node.node_type) is NodeType.PQ
+    ]
+
+
 @dataclass(frozen=True)
 class LoadFlowBranchInput:
     branch_id: str
@@ -231,6 +264,39 @@ class LoadFlowRunInput:
                 )
             )
 
+        pv_specs = [
+            PVSpec(
+                node_id=g.node_id,
+                p_mw=g.p_mw,
+                u_pu=g.u_pu,
+                q_min_mvar=g.q_min_mvar,
+                q_max_mvar=g.q_max_mvar,
+            )
+            for g in self.generators
+        ]
+        # V12K-313/V12K-316: entries are per COMPONENT, the solver contract is
+        # per BUS — the fold accumulates the bus power and keeps the source's
+        # own power and the load base next to it (single implementation, shared
+        # with the other power flow input builders).
+        pq_specs = merge_bus_components(
+            [
+                PQSpec(
+                    node_id=x.node_id,
+                    p_mw=x.p_mw,
+                    q_mvar=x.q_mvar,
+                    zip_coeffs=x.zip_coeffs,
+                    # ADR-011 §5b: build the U/f-control on base_mva (None =>
+                    # constant-PQ source, reduce-to-NR).
+                    inverter_control=_build_inverter_control(
+                        x.inverter_control_params, self.base_mva
+                    ),
+                    inverter_p_mw=x.inverter_p_mw,
+                    inverter_q_mvar=x.inverter_q_mvar,
+                )
+                for x in self.loads
+            ]
+        )
+
         return PowerFlowInput(
             graph=graph,
             base_mva=self.base_mva,
@@ -239,37 +305,11 @@ class LoadFlowRunInput:
                 u_pu=self.slack_u_pu,
                 angle_rad=self.slack_angle_rad,
             ),
-            # V12K-313/V12K-316: entries are per COMPONENT, the solver contract is
-            # per BUS — the fold accumulates the bus power and keeps the source's
-            # own power and the load base next to it (single implementation, shared
-            # with the other power flow input builders).
-            pq=merge_bus_components(
-                [
-                    PQSpec(
-                        node_id=x.node_id,
-                        p_mw=x.p_mw,
-                        q_mvar=x.q_mvar,
-                        zip_coeffs=x.zip_coeffs,
-                        # ADR-011 §5b: build the U/f-control on base_mva (None =>
-                        # constant-PQ source, reduce-to-NR).
-                        inverter_control=_build_inverter_control(
-                            x.inverter_control_params, self.base_mva
-                        ),
-                        inverter_p_mw=x.inverter_p_mw,
-                        inverter_q_mvar=x.inverter_q_mvar,
-                    )
-                    for x in self.loads
-                ]
-            ),
-            pv=[
-                PVSpec(
-                    node_id=g.node_id,
-                    p_mw=g.p_mw,
-                    u_pu=g.u_pu,
-                    q_min_mvar=g.q_min_mvar,
-                    q_max_mvar=g.q_max_mvar,
-                )
-                for g in self.generators
-            ],
+            # V12K-318 (dług W2-D2): zbiór węzłów wejścia solvera pochodzi z
+            # TOPOLOGII. Węzeł tranzytowy bez wpisu odbioru dopisujemy jako PQ o
+            # zerowej mocy — inaczej nie wchodzi do wektora stanu i zachowuje się
+            # jak drugi węzeł bilansujący (patrz `wezly_tranzytowe_pq`).
+            pq=pq_specs + wezly_tranzytowe_pq(self.nodes, self.slack_node_id, pq_specs, pv_specs),
+            pv=pv_specs,
             options=self.options,
         )

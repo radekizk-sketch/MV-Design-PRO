@@ -488,6 +488,133 @@ def test_parytet_znaku_ze_sciezka_kanoniczna(monkeypatch: pytest.MonkeyPatch) ->
     assert silnik["odbiorca"].p_injected_mw == pytest.approx(-p_mw, abs=TOL_MW)
 
 
+def _payload_enm_z_tranzytem(*, p_mw: float, q_mvar: float) -> dict[str, Any]:
+    """Ta sama fizyka co ``_siec_parytetu_z_tranzytem``: szyna POSREDNIA bez odbioru.
+
+    Sciezka kanoniczna deklaruje KAZDY wezel PQ grafu, wiec ta sama siec jest tu
+    sedzia dla budowniczego silnika wykonawczego: rozjazd oznacza, ze jeden ze
+    zbiorow wezlow jest wezszy od topologii.
+    """
+    payload = _payload_enm_dwie_szyny(p_mw=p_mw, q_mvar=q_mvar)
+    payload["header"]["name"] = "X2 parytet tranzytu"
+    payload["buses"].append(
+        {
+            "id": "00000000-0000-0000-0000-000000000003",
+            "ref_id": "b3",
+            "name": "Odbiorca za tranzytem",
+            "tags": [],
+            "meta": {},
+            "voltage_kv": U_KV,
+            "phase_system": "3ph",
+        }
+    )
+    payload["branches"].append(
+        {
+            "id": "00000000-0000-0000-0000-000000000032",
+            "ref_id": "ln-2",
+            "name": "Linia Tranzyt-Odbiorca",
+            "tags": [],
+            "meta": {},
+            "from_bus_ref": "b2",
+            "to_bus_ref": "b3",
+            "status": "closed",
+            "type": "line_overhead",
+            "length_km": 5.0,
+            "r_ohm_per_km": 0.08,
+            "x_ohm_per_km": 0.32,
+            "catalog_ref": "LINIA_SN:reczne",
+            "catalog_namespace": "LINIA_SN",
+        }
+    )
+    # Odbior przenosimy za szyne posrednia — b2 zostaje szyna TRANZYTOWA.
+    payload["loads"][0]["bus_ref"] = "b3"
+    return payload
+
+
+def _siec_parytetu_z_tranzytem(*, p_mw: float, q_mvar: float) -> LoadFlowRunInput:
+    return LoadFlowRunInput(
+        base_mva=BASE_MVA,
+        slack_node_id="slack",
+        slack_u_pu=1.0,
+        slack_angle_rad=0.0,
+        nodes=(
+            LoadFlowNodeInput("slack", "SLACK", U_KV),
+            LoadFlowNodeInput("tranzyt", "PQ", U_KV),
+            LoadFlowNodeInput("odbiorca", "PQ", U_KV),
+        ),
+        branches=(
+            LoadFlowBranchInput("ln-1", "slack", "tranzyt", 0.08, 0.32, 0.0, 5.0),
+            LoadFlowBranchInput("ln-2", "tranzyt", "odbiorca", 0.08, 0.32, 0.0, 5.0),
+        ),
+        loads=(LoadFlowLoadInput("odbiorca", p_mw, q_mvar),),
+    )
+
+
+def test_parytet_z_wezlem_tranzytowym_ze_sciezka_kanoniczna(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bramka (c) karty X2 — obie sciezki licza TEN SAM zbior wezlow.
+
+    Sciezka kanoniczna nigdy nie miala defektu W2-D2, bo buduje ``PQSpec`` dla
+    kazdego wezla PQ grafu. Dopoki silnik wykonawczy wyprowadzal zbior z listy
+    odbiorow, ta sama siec dawala z obu sciezek INNE napiecia i inny rozdzial mocy.
+    Test porownuje je wprost — i pilnuje, ze porownanie nie jest spelnione „na
+    zero" (napiecie tranzytu musi byc wynikiem zbieznosci, nie startem plaskim).
+    """
+    from enm.canonical_analysis import (
+        _graph_id_from_ref,
+        create_run,
+        execute_run,
+        reset_canonical_runs,
+    )
+    from enm.models import EnergyNetworkModel
+    from enm.store import reset_enm_store, set_enm
+
+    p_mw, q_mvar = 1.5, 0.6
+
+    reset_canonical_runs()
+    reset_enm_store()
+    try:
+        case_id = "x2-parytet-tranzyt"
+        set_enm(
+            case_id,
+            EnergyNetworkModel.model_validate(_payload_enm_z_tranzytem(p_mw=p_mw, q_mvar=q_mvar)),
+        )
+        run = execute_run(
+            create_run(case_id=case_id, analysis_type="PF", options={"base_mva": BASE_MVA}).id
+        )
+        assert run.status == "FINISHED", run.error_message
+        kanoniczne = {
+            b["bus_id"]: b for b in run.raw_result["result_v1"]["bus_results"]  # type: ignore[index]
+        }
+        kan = {
+            "tranzyt": kanoniczne[_graph_id_from_ref("b2")],
+            "odbiorca": kanoniczne[_graph_id_from_ref("b3")],
+            "slack": kanoniczne[_graph_id_from_ref("b1")],
+        }
+    finally:
+        reset_canonical_runs()
+        reset_enm_store()
+
+    wynik, _ = _uruchom(monkeypatch, _siec_parytetu_z_tranzytem(p_mw=p_mw, q_mvar=q_mvar))
+    silnik = {b.bus_id: b for b in wynik.bus_results}
+
+    for szyna in ("tranzyt", "odbiorca", "slack"):
+        assert silnik[szyna].p_injected_mw == pytest.approx(
+            kan[szyna]["p_injected_mw"], abs=TOL_MW
+        ), f"rozjazd mocy czynnej na szynie {szyna}"
+        assert silnik[szyna].q_injected_mvar == pytest.approx(
+            kan[szyna]["q_injected_mvar"], abs=TOL_MW
+        ), f"rozjazd mocy biernej na szynie {szyna}"
+        assert silnik[szyna].v_pu == pytest.approx(kan[szyna]["v_pu"], abs=1e-9), (
+            f"rozjazd napiecia na szynie {szyna}"
+        )
+
+    # Parytet nie moze byc spelniony „na plasko": napiecie tranzytu jest WYNIKIEM.
+    assert silnik["tranzyt"].v_pu < 1.0 - 1e-6
+    assert silnik["odbiorca"].p_injected_mw == pytest.approx(-p_mw, abs=TOL_MW)
+
+
 # ---------------------------------------------------------------------------
 # Predykaty parami + przypiete deklaracje (regula KLASA pkt 3 i 4)
 # ---------------------------------------------------------------------------
@@ -571,39 +698,154 @@ def test_szyna_tranzytowa_ma_zerowe_wstrzykniecie(monkeypatch: pytest.MonkeyPatc
     assert sedzia["n1"].imag == pytest.approx(0.0, abs=TOL_MW)
 
 
-def test_dlug_w2_d2_szyna_bez_wpisu_zachowuje_sie_jak_drugi_slack(
+def test_szyna_bez_wpisu_odbioru_NIE_jest_drugim_wezlem_bilansujacym(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """DLUG W2-D2, przypiety swiadomie — szyna wyspy BEZ wpisu nie wchodzi do stanu.
+    """DLUG W2-D2 ZAMKNIETY (V12K-319) — wezel tranzytowy wchodzi do wektora stanu.
 
-    Znalezisko POZA torem karty W2 (naprawa lezy w
-    ``application/execution_engine/load_flow_run_input.py::to_power_flow_input``,
-    a nie w naprawianym tu montazu wyniku). Solver bierze do wektora stanu
-    wylacznie szyny, dla ktorych istnieje specyfikacja PQ/PV
-    (``power_flow_newton.py``: ``pq_node_ids`` z ``pf_input.pq``). Wezel wyspy bez
-    zadnego odbioru NIE dostaje tu specyfikacji, wiec zostaje na napieciu startu
-    plaskiego i zachowuje sie jak DRUGI wezel bilansujacy: zasila odbior za soba,
-    a slack oddaje niemal zero.
+    Solver bierze do wektora stanu wylacznie szyny, dla ktorych istnieje
+    specyfikacja PQ/PV (``power_flow_newton.py``: ``pq_indices``/``pv_indices``).
+    Do naprawy wezel wyspy bez zadnego odbioru NIE dostawal specyfikacji, wiec
+    zostawal na napieciu startu plaskiego i zachowywal sie jak DRUGI wezel
+    bilansujacy. POMIAR DEFEKTU (zachowany jako opis, nie jako asercja):
+    |V| n1 = 1,000000 pu przypiete do startu, sedzia liczyl dla n1 wstrzykniecie
+    1,5047022162980206 MW, a slack oddawal ponizej 1e-3 MW przy pracujacym
+    odbiorze 1,5 MW.
 
-    Sciezka kanoniczna tego nie ma — ``enm/canonical_analysis`` buduje PQSpec dla
-    KAZDEGO wezla PQ grafu, takze o zerowej mocy.
-
-    Test przypina POMIAR luki, zeby nie zginela: gdy budowniczy wejscia zacznie
-    deklarowac wszystkie wezly wyspy, asercje pekna i wymusza skreslenie dlugu.
+    Po naprawie zbior wezlow wejscia pochodzi z TOPOLOGII
+    (``load_flow_run_input.wezly_tranzytowe_pq``), tak jak na sciezce kanonicznej.
+    Sedzia liczony niezaleznie w tym pliku potwierdza fizyke: przez wezel
+    tranzytowy nic nie wplywa ani nie wyplywa, a caly odbior i straty pokrywa slack.
     """
     lf = _siec((LoadFlowLoadInput("n2", 1.5, 0.6),))
     wynik, _ = _uruchom(monkeypatch, lf)
     szyny = {b.bus_id: b for b in wynik.bus_results}
     sedzia = _sedzia_bilans_wezlowy(lf, wynik)
 
-    # Stan znany: szyna n1 nie ma wpisu, wiec raport podaje dla niej zero...
-    assert szyny["n1"].p_injected_mw == 0.0
-    # ...podczas gdy fizyka przy raportowanych napieciach daje ~1,5 MW wstrzykniecia,
-    # bo napiecie n1 zostalo przypiete do startu plaskiego (|V| = 1,0, kat 0).
-    assert szyny["n1"].v_pu == pytest.approx(1.0, abs=1e-12)
-    assert sedzia["n1"].real == pytest.approx(1.5047022162980206, rel=1e-6)
-    # I dlatego slack nie oddaje mocy czynnej, choc odbior 1,5 MW pracuje.
-    assert abs(szyny["slack"].p_injected_mw) < 1e-3
+    # Wezel tranzytowy: zero jest tu FAKTEM potwierdzonym przez sedziego...
+    assert szyny["n1"].p_injected_mw == pytest.approx(0.0, abs=TOL_MW)
+    assert szyny["n1"].q_injected_mvar == pytest.approx(0.0, abs=TOL_MW)
+    assert sedzia["n1"].real == pytest.approx(0.0, abs=TOL_MW)
+    assert sedzia["n1"].imag == pytest.approx(0.0, abs=TOL_MW)
+    # ...a jego napiecie jest WYNIKIEM zbieznosci, nie startem plaskim.
+    assert szyny["n1"].v_pu < 1.0 - 1e-6
+    # Slack pokrywa odbior powiekszony o straty sieci (dodatnia = wstrzykniecie).
+    assert szyny["slack"].p_injected_mw > 1.5
+    assert szyny["slack"].p_injected_mw == pytest.approx(sedzia["slack"].real, abs=TOL_MW)
+
+
+def test_wezly_tranzytowe_iloczyn_cech(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ILOCZYN CECH polozenia wezla bez wpisu odbioru (regula KLASA pkt 2).
+
+    Znak defektu byl ten sam niezaleznie od miejsca w topologii, wiec naprawa musi
+    byc sprawdzona na kazdym z nich: wezel w SRODKU promienia (przeplyw tranzytowy
+    w obie strony), na KONCU odgalezienia (galaz slepa — przez nia nie plynie nic),
+    oraz DWA wezly tranzytowe pod rzad (blad kumulowalby sie na dwoch szynach).
+    W kazdym przypadku sedzia liczy bilans niezaleznie.
+    """
+    warianty = {
+        "tranzyt w srodku promienia": (
+            (
+                LoadFlowNodeInput("slack", "SLACK", U_KV),
+                LoadFlowNodeInput("n1", "PQ", U_KV),
+                LoadFlowNodeInput("n2", "PQ", U_KV),
+            ),
+            (
+                LoadFlowBranchInput("l1", "slack", "n1", 0.08, 0.32, 3.0, 5.0),
+                LoadFlowBranchInput("l2", "n1", "n2", 0.08, 0.32, 3.0, 5.0),
+            ),
+            (LoadFlowLoadInput("n2", 1.5, 0.6),),
+            ("n1",),
+        ),
+        "tranzyt na koncu odgalezienia": (
+            (
+                LoadFlowNodeInput("slack", "SLACK", U_KV),
+                LoadFlowNodeInput("n1", "PQ", U_KV),
+                LoadFlowNodeInput("koniec", "PQ", U_KV),
+            ),
+            (
+                LoadFlowBranchInput("l1", "slack", "n1", 0.08, 0.32, 3.0, 5.0),
+                LoadFlowBranchInput("l2", "n1", "koniec", 0.08, 0.32, 3.0, 5.0),
+            ),
+            (LoadFlowLoadInput("n1", 2.0, 0.8),),
+            ("koniec",),
+        ),
+        "dwa wezly tranzytowe pod rzad": (
+            (
+                LoadFlowNodeInput("slack", "SLACK", U_KV),
+                LoadFlowNodeInput("t1", "PQ", U_KV),
+                LoadFlowNodeInput("t2", "PQ", U_KV),
+                LoadFlowNodeInput("odbiorca", "PQ", U_KV),
+            ),
+            (
+                LoadFlowBranchInput("l1", "slack", "t1", 0.08, 0.32, 3.0, 5.0),
+                LoadFlowBranchInput("l2", "t1", "t2", 0.08, 0.32, 3.0, 5.0),
+                LoadFlowBranchInput("l3", "t2", "odbiorca", 0.08, 0.32, 3.0, 5.0),
+            ),
+            (LoadFlowLoadInput("odbiorca", 1.2, 0.5),),
+            ("t1", "t2"),
+        ),
+    }
+
+    for nazwa, (nodes, branches, loads, tranzytowe) in warianty.items():
+        lf = LoadFlowRunInput(
+            base_mva=BASE_MVA,
+            slack_node_id="slack",
+            slack_u_pu=1.0,
+            slack_angle_rad=0.0,
+            nodes=nodes,
+            branches=branches,
+            loads=loads,
+        )
+        wynik, _ = _uruchom(monkeypatch, lf)
+        szyny = {b.bus_id: b for b in wynik.bus_results}
+        sedzia = _sedzia_bilans_wezlowy(lf, wynik)
+
+        for node_id in tranzytowe:
+            assert szyny[node_id].p_injected_mw == pytest.approx(
+                0.0, abs=TOL_MW
+            ), f"{nazwa}: {node_id} nie jest zerem w raporcie"
+            assert sedzia[node_id].real == pytest.approx(
+                0.0, abs=TOL_MW
+            ), f"{nazwa}: {node_id} nie jest zerem wg sedziego"
+        # Slack pokrywa caly odbior — zaden wezel tranzytowy go nie wyreczyl.
+        assert szyny["slack"].p_injected_mw == pytest.approx(
+            sedzia["slack"].real, abs=TOL_MW
+        ), f"{nazwa}: slack rozjechany z sedzia"
+        assert szyny["slack"].p_injected_mw > sum(x.p_mw for x in loads) - TOL_MW, nazwa
+
+
+def test_zbior_wezlow_wejscia_pochodzi_z_topologii_a_nie_z_listy_odbiorow() -> None:
+    """PREDYKAT WPROST (regula KLASA pkt 3) — jedno zrodlo zbioru wezlow.
+
+    Skutek na sieci sprawdzaja testy powyzej; tutaj sprawdzamy sama regule, zeby
+    zmiana warunku nie mogla sie schowac za zbieznoscia solvera: slack i szyna
+    generatorowa NIE dostaja wpisu zerowego (inaczej solver odrzucilby wejscie za
+    niepusty przekroj PQ/PV), wezel spoza klasy PQ tez nie, a wezel PQ bez zadnej
+    pozycji — dostaje.
+    """
+    from application.execution_engine.load_flow_run_input import wezly_tranzytowe_pq
+    from network_model.solvers.power_flow_types import PQSpec, PVSpec
+
+    nodes = [
+        LoadFlowNodeInput("slack", "SLACK", U_KV),
+        LoadFlowNodeInput("z_odbiorem", "PQ", U_KV),
+        LoadFlowNodeInput("generator", "PV", U_KV),
+        LoadFlowNodeInput("tranzyt_b", "PQ", U_KV),
+        LoadFlowNodeInput("tranzyt_a", "PQ", U_KV),
+    ]
+    dopisane = wezly_tranzytowe_pq(
+        nodes,
+        "slack",
+        [PQSpec(node_id="z_odbiorem", p_mw=1.0, q_mvar=0.4)],
+        [PVSpec(node_id="generator", p_mw=-1.0, u_pu=1.0, q_min_mvar=-5.0, q_max_mvar=5.0)],
+    )
+
+    # Kolejnosc po identyfikatorze — determinizm wejscia solvera.
+    assert [spec.node_id for spec in dopisane] == ["tranzyt_a", "tranzyt_b"]
+    assert all(spec.p_mw == 0.0 and spec.q_mvar == 0.0 for spec in dopisane)
+    # Szyna generatorowa deklarowana jako PV nie moze trafic takze do PQ.
+    assert all(spec.node_id != "generator" for spec in dopisane)
 
 
 def test_montaz_uzywa_szyn_solvera_a_nie_surowych_skladnikow(
