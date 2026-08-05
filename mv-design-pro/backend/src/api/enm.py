@@ -65,8 +65,9 @@ from enm.topology_ops import (
     update_protection,
 )
 from enm.v2_projection import project_enm_v1_to_v2
-from enm.validator import ENMValidator
+from enm.validator import ENMValidator, ValidationResult
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -77,6 +78,17 @@ router = APIRouter(prefix="/api/cases", tags=["enm"])
 class WizardStepRequestModel(BaseModel):
     step_id: str
     data: dict[str, Any] = Field(default_factory=dict)
+
+
+def _wczytaj_i_zwaliduj(case_id: str) -> tuple[EnergyNetworkModel, ValidationResult]:
+    """Odczyt modelu + walidacja — blokujący blok wydzielony do puli wątków.
+
+    Wydzielony, bo `run_in_threadpool` przyjmuje funkcję, a nie fragment ciała.
+    Zwraca model RAZEM z wynikiem walidacji, żeby wołający nie musiał czytać
+    modelu drugi raz (odczyt to IO pliku + uzupełnianie danych katalogowych).
+    """
+    enm = _get_enm(case_id)
+    return enm, ENMValidator().validate(enm)
 
 
 def _resolve_project_id(case_id: str, request: Request) -> str | None:
@@ -100,14 +112,14 @@ def _resolve_project_id(case_id: str, request: Request) -> str | None:
 
 
 @router.get("/{case_id}/enm")
-async def get_enm(case_id: str) -> dict[str, Any]:
+def get_enm(case_id: str) -> dict[str, Any]:
     """Return current EnergyNetworkModel for case."""
     enm = _get_enm(case_id)
     return enm.model_dump(mode="json")
 
 
 @router.get("/{case_id}/enm/v2-projection")
-async def get_enm_v2_projection(case_id: str) -> dict[str, Any]:
+def get_enm_v2_projection(case_id: str) -> dict[str, Any]:
     """Return the read-only ENM v2.0 projection used by V12.xx M1 migration."""
     enm = _get_enm(case_id)
     projection = project_enm_v1_to_v2(enm)
@@ -115,7 +127,7 @@ async def get_enm_v2_projection(case_id: str) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/enm/dziennik-zmian")
-async def get_dziennik_zmian(case_id: str, od_rewizji: int = 0) -> dict[str, Any]:
+def get_dziennik_zmian(case_id: str, od_rewizji: int = 0) -> dict[str, Any]:
     """Zmiany modelu PO wskazanej rewizji — odpowiedz na „co uniewaznilo moj wynik".
 
     V12K-264. Model niosl dotad wylacznie FAKT zmiany (`header.revision` rosnie,
@@ -143,7 +155,7 @@ async def get_dziennik_zmian(case_id: str, od_rewizji: int = 0) -> dict[str, Any
 
 
 @router.put("/{case_id}/enm")
-async def put_enm(case_id: str, payload: EnergyNetworkModel) -> dict[str, Any]:
+def put_enm(case_id: str, payload: EnergyNetworkModel) -> dict[str, Any]:
     """Autosave ENM: revision++, hash recomputed.
 
     WSPÓŁBIEŻNOŚĆ: ta końcówka NIE ma cyklu odczyt → przeliczenie → zapis — model
@@ -157,7 +169,7 @@ async def put_enm(case_id: str, payload: EnergyNetworkModel) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/enm/validate")
-async def validate_enm(case_id: str) -> dict[str, Any]:
+def validate_enm(case_id: str) -> dict[str, Any]:
     """Validate ENM and return readiness gate result."""
     enm = _get_enm(case_id)
     validator = ENMValidator()
@@ -166,7 +178,7 @@ async def validate_enm(case_id: str) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/enm/topology")
-async def get_enm_topology(case_id: str) -> dict[str, Any]:
+def get_enm_topology(case_id: str) -> dict[str, Any]:
     """Zwróć podsumowanie topologii (stacje, pola, węzły T, magistrale)."""
     enm = _get_enm(case_id)
     return {
@@ -182,7 +194,7 @@ async def get_enm_topology(case_id: str) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/enm/readiness")
-async def get_enm_readiness(case_id: str) -> dict[str, Any]:
+def get_enm_readiness(case_id: str) -> dict[str, Any]:
     """Zwróć macierz gotowości dla wszystkich typów analiz."""
     enm = _get_enm(case_id)
     validator = ENMValidator()
@@ -228,21 +240,21 @@ async def get_enm_readiness(case_id: str) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/enm/protection-view")
-async def get_enm_protection_view(case_id: str) -> dict[str, Any]:
+def get_enm_protection_view(case_id: str) -> dict[str, Any]:
     """Return read-only protection view derived directly from ENM."""
     enm = _get_enm(case_id)
     return build_protection_read_model(case_id, enm)
 
 
 @router.get("/{case_id}/enm/field-view")
-async def get_enm_field_view(case_id: str) -> dict[str, Any]:
+def get_enm_field_view(case_id: str) -> dict[str, Any]:
     """Return canonical bay field view derived directly from ENM."""
     enm = _get_enm(case_id)
     return build_field_read_model(case_id, enm)
 
 
 @router.get("/{case_id}/enm/station-fault-loop")
-async def get_station_fault_loop(case_id: str, station_ref: str) -> dict[str, Any]:
+def get_station_fault_loop(case_id: str, station_ref: str) -> dict[str, Any]:
     """Pętla zwarcia u źródła stacji (nN) z modelu (G-STK-4).
 
     Domyka łańcuch uziemienia: układ sieci nN + impedancja transformatora →
@@ -265,7 +277,7 @@ class WytrzymaloscAparaturyRequestModel(BaseModel):
 
 
 @router.post("/{case_id}/enm/wytrzymalosc-aparatury")
-async def post_wytrzymalosc_aparatury(
+def post_wytrzymalosc_aparatury(
     case_id: str, body: WytrzymaloscAparaturyRequestModel, request: Request
 ) -> dict[str, Any]:
     """Werdykty wytrzymałości aparatury WSZYSTKICH pól stacji (KD-6 poz. 2-3).
@@ -330,7 +342,7 @@ def _bay_device_withstand(
 
 
 @router.get("/{case_id}/engineering-readiness")
-async def get_engineering_readiness(case_id: str) -> dict[str, Any]:
+def get_engineering_readiness(case_id: str) -> dict[str, Any]:
     """Agregacyjny endpoint inżynierskiej gotowości modelu.
 
     Łączy walidację + readiness + fix_action w jeden response
@@ -389,7 +401,7 @@ async def get_engineering_readiness(case_id: str) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/analysis-eligibility")
-async def get_analysis_eligibility(case_id: str) -> dict[str, Any]:
+def get_analysis_eligibility(case_id: str) -> dict[str, Any]:
     """Macierz zdolności uruchomienia analiz (eligibility).
 
     Dla każdego typu analizy (SC_3F, SC_2F, SC_1F, LOAD_FLOW) zwraca:
@@ -422,7 +434,7 @@ async def get_analysis_eligibility(case_id: str) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/enm/topology/summary")
-async def get_topology_summary(case_id: str) -> dict[str, Any]:
+def get_topology_summary(case_id: str) -> dict[str, Any]:
     """Zwróć podsumowanie topologiczne: adjacency, spine, laterals.
 
     Używane przez Tree i SLD do wyświetlania struktury sieci.
@@ -508,7 +520,7 @@ _OP_DISPATCH = {
 
 
 @router.post("/{case_id}/enm/ops")
-async def topology_ops(case_id: str, req: TopologyOpRequest) -> dict[str, Any]:
+def topology_ops(case_id: str, req: TopologyOpRequest) -> dict[str, Any]:
     """Atomic topology operation: validate → mutate → persist.
 
     Supports: create/update/delete for nodes, branches, devices,
@@ -587,7 +599,7 @@ class BatchOpsRequest(BaseModel):
 
 
 @router.post("/{case_id}/enm/ops/batch")
-async def topology_ops_batch(case_id: str, req: BatchOpsRequest) -> dict[str, Any]:
+def topology_ops_batch(case_id: str, req: BatchOpsRequest) -> dict[str, Any]:
     """Batch topology operations: execute sequentially, rollback all on BLOCKER.
 
     Each operation is applied sequentially on the result of the previous one.
@@ -673,12 +685,21 @@ async def run_short_circuit(case_id: str, request: Request) -> dict[str, Any]:
     3. Map ENM → NetworkGraph
     4. Run solver
     5. Cache + return
-    """
-    enm = _get_enm(case_id)
 
-    # Validate
-    validator = ENMValidator()
-    validation = validator.validate(enm)
+    WSPÓŁBIEŻNOŚĆ: ta końcówka MUSI zostać `async def`, bo czyta treść żądania
+    (`await request.json()`) — końcówka `def` nie ma jak tego wykonać. Blokujące
+    jest natomiast wszystko dookoła: odczyt modelu z pliku, walidacja i bieg
+    solvera IEC 60909 (zmierzone 91,3 ms na sieci 2-szynowej, czyli MINIMALNEJ).
+    Na pętli zdarzeń zatrzymywało to cały proces na czas biegu — kilka analiz
+    puszczonych równolegle wykonywało się szeregowo, a UI zamierało.
+    Dlatego blokujące części idą do puli wątków, a `await` zostaje między nimi.
+
+    KOLEJNOŚĆ ZACHOWANA CO DO KROKU: walidacja biegnie PRZED odczytem treści
+    żądania, dokładnie jak dotąd — model, który nie przechodzi walidacji, kończy
+    się 422 niezależnie od tego, co przyszło w ciele. Rozbicie na dwa wejścia do
+    puli (zamiast jednego obejmującego całość) jest ceną tej wierności.
+    """
+    enm, validation = await run_in_threadpool(_wczytaj_i_zwaliduj, case_id)
     if is_failed_status(validation.status):
         raise HTTPException(
             status_code=422,
@@ -700,36 +721,40 @@ async def run_short_circuit(case_id: str, request: Request) -> dict[str, Any]:
         if isinstance(body, dict) and key in body
     }
 
-    run = run_short_circuit_now(
-        case_id=case_id,
-        project_id=_resolve_project_id(case_id, request),
-        options=allowed_options,
-    )
+    project_id = _resolve_project_id(case_id, request)
 
-    # Map ENM → NetworkGraph
-    return {
-        "case_id": case_id,
-        "enm_revision": enm.header.revision,
-        "enm_hash": compute_enm_hash(enm),
-        "analysis_type": (run.raw_result or {}).get("analysis_type", "short_circuit_3f"),
-        "short_circuit_type": (run.raw_result or {}).get("short_circuit_type", "3F"),
-        "reporting_status": (run.raw_result or {}).get("reporting_status"),
-        "proof_status": (run.raw_result or {}).get("proof_status"),
-        "proof_engine_version": (run.raw_result or {}).get("proof_engine_version"),
-        "run_id": str(run.id),
-        "input_hash": run.input_hash,
-        "readiness": run.readiness,
-        # V12K-284: wiersze świeżego biegu BEZ rozpływu gałęziowego inline —
-        # każdy wiersz niesie flagę `branch_contributions_available`, a treść
-        # rozpływu WSKAZANEGO punktu pobiera się końcówką
-        # /api/analysis-runs/{run_id}/results/short-circuit/rozplyw?target_id=…
-        # (ten sam wzorzec co wiersze kanoniczne w V12K-281).
-        "results": wiersze_swiezego_biegu_bez_rozplywu(run),
-    }
+    def _policz() -> dict[str, Any]:
+        run = run_short_circuit_now(
+            case_id=case_id,
+            project_id=project_id,
+            options=allowed_options,
+        )
+        # Map ENM → NetworkGraph
+        return {
+            "case_id": case_id,
+            "enm_revision": enm.header.revision,
+            "enm_hash": compute_enm_hash(enm),
+            "analysis_type": (run.raw_result or {}).get("analysis_type", "short_circuit_3f"),
+            "short_circuit_type": (run.raw_result or {}).get("short_circuit_type", "3F"),
+            "reporting_status": (run.raw_result or {}).get("reporting_status"),
+            "proof_status": (run.raw_result or {}).get("proof_status"),
+            "proof_engine_version": (run.raw_result or {}).get("proof_engine_version"),
+            "run_id": str(run.id),
+            "input_hash": run.input_hash,
+            "readiness": run.readiness,
+            # V12K-284: wiersze świeżego biegu BEZ rozpływu gałęziowego inline —
+            # każdy wiersz niesie flagę `branch_contributions_available`, a treść
+            # rozpływu WSKAZANEGO punktu pobiera się końcówką
+            # /api/analysis-runs/{run_id}/results/short-circuit/rozplyw?target_id=…
+            # (ten sam wzorzec co wiersze kanoniczne w V12K-281).
+            "results": wiersze_swiezego_biegu_bez_rozplywu(run),
+        }
+
+    return await run_in_threadpool(_policz)
 
 
 @router.post("/{case_id}/runs/power-flow")
-async def run_power_flow(case_id: str, request: Request) -> dict[str, Any]:
+def run_power_flow(case_id: str, request: Request) -> dict[str, Any]:
     """Dispatch power-flow run from the canonical ENM snapshot."""
     enm = _get_enm(case_id)
 
@@ -764,7 +789,7 @@ async def run_power_flow(case_id: str, request: Request) -> dict[str, Any]:
 
 
 @router.get("/{case_id}/wizard/state")
-async def get_wizard_state(case_id: str) -> dict[str, Any]:
+def get_wizard_state(case_id: str) -> dict[str, Any]:
     """Return full wizard state for case (deterministic).
 
     Computes K1-K10 step states, readiness matrix, element counts.
@@ -779,7 +804,7 @@ async def get_wizard_state(case_id: str) -> dict[str, Any]:
 
 
 @router.post("/{case_id}/wizard/apply-step")
-async def wizard_apply_step(case_id: str, req: WizardStepRequestModel) -> dict[str, Any]:
+def wizard_apply_step(case_id: str, req: WizardStepRequestModel) -> dict[str, Any]:
     """Atomic step application: preconditions → mutate → postconditions.
 
     If preconditions fail → original ENM unchanged, success=False.
@@ -837,9 +862,7 @@ def _wizard_apply_step_pod_blokada(case_id: str, req: WizardStepRequestModel) ->
 
 
 @router.get("/{case_id}/wizard/can-proceed")
-async def wizard_can_proceed(
-    case_id: str, from_step: str = "K1", to_step: str = "K2"
-) -> dict[str, Any]:
+def wizard_can_proceed(case_id: str, from_step: str = "K1", to_step: str = "K2") -> dict[str, Any]:
     """Check if step transition is allowed.
 
     Forward transitions require no BLOCKER in current step
@@ -973,7 +996,7 @@ def rozbieznosc_wobec_bramy(
 
 
 @router.post("/{case_id}/enm/domain-ops")
-async def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
+def domain_ops(case_id: str, req: DomainOpEnvelopeModel) -> dict[str, Any]:
     """Kanoniczny endpoint operacji domenowych V1.
 
     Wspólny kontrakt dla wszystkich operacji budowy sieci SN:

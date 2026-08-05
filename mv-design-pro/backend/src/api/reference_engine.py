@@ -46,7 +46,7 @@ async def get_pack(pack_id: str) -> dict[str, Any]:
 
 
 @router.get("/cases/{case_id}/reference/compliance")
-async def get_reference_compliance(
+def get_reference_compliance(
     case_id: str,
     packs: str | None = Query(
         default=None,

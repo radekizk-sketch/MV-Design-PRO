@@ -7,6 +7,7 @@ from typing import Any
 from api.dependencies import get_uow_factory
 from application.xlsx_import import XlsxNetworkImporter
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.concurrency import run_in_threadpool
 
 router = APIRouter(prefix="/api/import", tags=["import"])
 
@@ -41,8 +42,12 @@ async def import_xlsx(
             detail="Plik jest pusty",
         )
 
+    # WSPÓŁBIEŻNOŚĆ: końcówka zostaje `async def`, bo czyta przesłany plik
+    # (`await file.read()`). Parsowanie arkusza jest natomiast blokujące
+    # (openpyxl, w całości na procesorze) i na pętli zdarzeń wstrzymywało
+    # obsługę wszystkich pozostałych żądań na czas importu.
     importer = XlsxNetworkImporter()
-    result = importer.import_from_bytes(content)
+    result = await run_in_threadpool(importer.import_from_bytes, content)
 
     if not result.success:
         raise HTTPException(

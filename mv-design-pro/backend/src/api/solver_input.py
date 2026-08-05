@@ -245,7 +245,7 @@ class EligibilityMapResponse(BaseModel):
         "eligibility, and provenance trace. Read-only, no side-effects."
     ),
 )
-async def get_solver_input(
+def get_solver_input(
     case_id: str = Path(..., description="Study case ID"),
     analysis_type: str = Path(
         ...,
@@ -340,7 +340,7 @@ async def get_solver_input(
         "for each analysis type. Read-only, no side-effects."
     ),
 )
-async def get_eligibility(
+def get_eligibility(
     case_id: str = Path(..., description="Study case ID"),
 ) -> EligibilityMapResponse:
     """Check eligibility for all analysis types for the given case."""

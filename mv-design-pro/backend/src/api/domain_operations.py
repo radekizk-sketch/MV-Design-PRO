@@ -109,7 +109,7 @@ class CatalogMaterializationRequest(BaseModel):
 
 
 @router.post("/execute", response_model=DomainOperationResponse)
-async def execute_domain_operation(
+def execute_domain_operation(
     request: DomainOperationRequest,
 ) -> DomainOperationResponse:
     """Execute a canonical domain operation.
@@ -223,7 +223,7 @@ async def validate_binding(
 
 
 @router.post("/materialize")
-async def materialize_binding(
+def materialize_binding(
     request: CatalogMaterializationRequest,
 ) -> dict[str, Any]:
     """Preview materialization of a catalog binding (dry-run)."""
