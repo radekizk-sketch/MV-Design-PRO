@@ -1419,6 +1419,24 @@ def _find_branch_or_split_child(enm: dict[str, Any], ref_id: str) -> dict[str, A
     return None
 
 
+#: Rodzaje generatorow ENM bedace ZRODLAMI PRZEKSZTALTNIKOWYMI (DER), czyli
+#: dokladnie te, ktore podlegaja certyfikacji PTPiREE i testom NC RfG.
+#:
+#: Zbior jest TEN SAM, ktorego uzywa most zgodnosci NC RfG
+#: (`application/ncrfg_compliance/model_bridge.py::_INVERTER_GEN_TYPES`) —
+#: sygnal gotowosci o certyfikacie i bieg testow NC RfG musza obejmowac te sama
+#: klase urzadzen, inaczej projektant dostaje ostrzezenie o urzadzeniu, ktorego
+#: bieg nie testuje (albo odwrotnie).
+#:
+#: UWAGA — to NIE jest zbior `enm/mapping.py::_INVERTER_GEN_TYPES`, mimo
+#: identycznej nazwy: tamten klasyfikuje zrodla na potrzeby modelu zwarciowego
+#: IEC 60909 i CELOWO wyklucza `fw_dfig`/`fw_scig` (maszyny wirujace). Do
+#: certyfikacji PTPiREE naleza rowniez one.
+_GEN_TYPES_PRZEKSZTALTNIKOWE: frozenset[str] = frozenset(
+    {"pv_inverter", "wind_inverter", "fw_pmsg", "fw_dfig", "fw_scig", "bess"}
+)
+
+
 def _station_has_transformer(enm: dict[str, Any], station_ref: object) -> bool:
     """Sprawdź, czy stacja ma transformator SN/nN powiązany prefiksem ref_id."""
     if not isinstance(station_ref, str) or not station_ref.strip():
@@ -1620,6 +1638,58 @@ def _build_readiness(
                             "message_pl": "Dodaj transformator dla generatora OZE.",
                         }
                     )
+
+        # Certyfikat PTPiREE przetwornicy DER (karta P2) — OSTRZEZENIE, nie blokada.
+        #
+        # Status i nota pochodza WYLACZNIE z tabliczki urzadzenia, ktora zapisal
+        # kreator DER z rekordu katalogowego (`annotate_with_ptpiree_status`).
+        # ZERO drugiej definicji statusu: ten tor NIE pyta katalogu ponownie i
+        # NIE wyprowadza wlasnych regul waznosci certyfikatow — cytuje note
+        # rekordu tak, jak ja zapisano.
+        for gen in enm.get("generators", []):
+            if (gen.get("gen_type") or "") not in _GEN_TYPES_PRZEKSZTALTNIKOWE:
+                continue
+            tabliczka = gen.get("materialized_params") or {}
+            status_ptpiree = tabliczka.get("ptpiree_status")
+            nota_ptpiree = str(tabliczka.get("ptpiree_note") or "").strip()
+            nazwa_der = gen.get("name") or gen.get("ref_id")
+            if status_ptpiree != "POWIAZANY":
+                kod = "der.inverter_certificate_unlinked"
+                komunikat = (
+                    f"Przetwornica źródła DER '{nazwa_der}' nie ma powiązanego "
+                    f"certyfikatu PTPiREE — wniosek do OSD może zostać odrzucony. "
+                    f"Ostateczna akceptacja przyłączeniowa pozostaje po stronie "
+                    f"właściwego OSD."
+                )
+                naprawa = "Wskaż przetwornicę z powiązanym certyfikatem PTPiREE."
+            elif nota_ptpiree:
+                kod = "der.inverter_certificate_conditional"
+                komunikat = (
+                    f"Certyfikat PTPiREE przetwornicy źródła DER '{nazwa_der}' jest "
+                    f"powiązany warunkowo. Nota wykazu: „{nota_ptpiree}”"
+                )
+                naprawa = "Potwierdź warunki noty wykazu PTPiREE dla tego urządzenia."
+            else:
+                continue
+            warnings.append(
+                {
+                    "code": kod,
+                    "message_pl": komunikat,
+                    "element_ref": gen.get("ref_id"),
+                    "severity": "OSTRZEZENIE",
+                }
+            )
+            fix_actions.append(
+                {
+                    "code": kod,
+                    "action_type": "SELECT_CATALOG",
+                    "element_ref": gen.get("ref_id"),
+                    "panel": "catalog",
+                    "step": None,
+                    "focus": gen.get("ref_id"),
+                    "message_pl": naprawa,
+                }
+            )
 
         # Domain-level check: branch points (slup rozgałęźny / ZKSN)
         for bp in enm.get("branch_points", []):

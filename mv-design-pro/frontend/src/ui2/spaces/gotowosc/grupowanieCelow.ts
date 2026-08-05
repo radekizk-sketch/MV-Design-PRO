@@ -43,6 +43,14 @@
  *   jako `OSD_CARD_FIELD_BLOCKER_CODE` — bramkę pakietu OSD (dokumentacji
  *   przyłączeniowej), NIE bramkę obliczeń rozpływowych.
  *
+ *   Tą samą drogą idą `der.inverter_certificate_unlinked` oraz
+ *   `der.inverter_certificate_conditional` (karta P2, obszar rejestru
+ *   GENERATORS): emiter w `enm/domain_operations.py` czyta status i notę
+ *   certyfikatu PTPiREE z tabliczki urządzenia, a skutkiem braku powiązania
+ *   jest ryzyko odrzucenia WNIOSKU przez OSD, nie błąd rozpływu. Oba są
+ *   OSTRZEŻENIEM — manifest katalogu PTPiREE mówi wprost, że „ostateczna
+ *   akceptacja przyłączeniowa pozostaje po stronie właściwego OSD".
+ *
  * Kody dokładne spoza rejestru (znalezione grepem w `backend/src/**`,
  * potwierdzone w miejscu wywołania — patrz też
  * `docs/ui/MACIERZ_OKIEN_DIALOGOWYCH_I_AKCJI.md` linie 34-50 dla kontekstu
@@ -183,6 +191,14 @@ export interface GrupaCelu {
 /** Wyjątek kodu dokładnego — nadpisuje wynik fallbacku prefiksu (patrz nagłówek). */
 const KOD_DOKLADNY_DO_CELU: Readonly<Record<string, CelGotowosci>> = {
   'oze.card_field_not_accepted': 'wniosekOsd',
+  // Certyfikat PTPiREE przetwornicy DER (karta P2). Obszar rejestru to
+  // GENERATORS (czyli fallback dałby „rozpływ"), ale treść tych dwóch kodów nie
+  // jest bramką obliczeń rozpływowych — to bramka PAKIETU PRZYŁĄCZENIOWEGO:
+  // urządzenie bez powiązanego (albo powiązanego warunkowo) wpisu w wykazie
+  // PTPiREE jest ryzykiem odrzucenia wniosku przez OSD. Ten sam powód, dla
+  // którego wyjątkiem jest `oze.card_field_not_accepted` wyżej.
+  'der.inverter_certificate_unlinked': 'wniosekOsd',
+  'der.inverter_certificate_conditional': 'wniosekOsd',
 };
 
 /**
