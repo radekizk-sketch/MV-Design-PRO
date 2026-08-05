@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 from .types import (
     BESSInverterType,
@@ -632,6 +633,18 @@ class CatalogRepository:
         return sorted(values, key=lambda item: (str(item.name_pl), str(item.id)))
 
 
+#: Memoizacja CALEGO kanonicznego repozytorium katalogowego (V12K-322, dlug 9 / DET-9).
+#: Bez memo `get_default_mv_catalog()` odbudowywalo komplet slownikow typow przy KAZDYM
+#: wywolaniu (zmierzone 89 ms), a pojedyncza operacja domenowa wola je 18 razy przez
+#: `_get_catalog_safe()` (`enm/domain_operations.py`) — profil `insert_station_on_segment_sn`
+#: pokazal 1,61 s katalogu na 1,69 s calej operacji, czyli ~95% czasu na przebudowie tych
+#: samych, NIEZMIENNYCH danych. To ta sama klasa defektu co memo obiektow PTPiREE nizej,
+#: tyle ze o poziom wyzej: tam zapamietano LISCIE, tu zapamietujemy caly agregat.
+#: Bezpieczenstwo wspoldzielenia: rekordy zrodlowe (`mv_*_catalog.get_all_*`) sa statyczne
+#: (brak rejestracji w czasie zycia procesu), `CatalogRepository` jest `frozen=True` i
+#: kontraktowo niezmienne ("Immutable catalog repository"), a w calym repo nie ma zapisu do
+#: zadnego z jego slownikow. Swiezosc na zadanie: `get_default_mv_catalog.cache_clear()`.
+@lru_cache(maxsize=1)
 def get_default_mv_catalog() -> CatalogRepository:
     """
     Get default MV catalog with full equipment data.

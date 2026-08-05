@@ -86,7 +86,7 @@ def test_bidirectional_flow(companion: dict) -> None:
     assert reverse, "expected reverse-flowing branches (OZE backfeed upstream)"
 
 
-def test_direction_matches_solver_sign(companion: dict) -> None:
+def test_direction_matches_solver_sign(companion: dict, substrate: dict) -> None:
     """``flow_direction`` per branch EQUALS sign(Re(branch_s_from)) of the solver.
 
     Re-runs the frozen solver here and checks the companion did not invent or flip
@@ -110,8 +110,15 @@ def test_direction_matches_solver_sign(companion: dict) -> None:
     ``test_canonical_analysis_api.py::test_resultset_v1_load_flow_direction_and_voltage_drop_are_physically_correct``
     (p_from_mw>0 source->load and v_pu(load)<v_pu(slack) on a minimal,
     hand-verified 2-bus network).
+
+    INTENCJA (DET-9): przedmiotem testu jest PONOWNY BIEG SOLVERA na tym samym
+    wejsciu, co towarzysz — nie ponowna budowa substratu. Bierzemy wiec ENM z
+    fixture modulu (ten sam, z ktorego policzono `companion`), zamiast budowac
+    identyczna siec 53 stacji drugi raz; porownanie kierunkow jest tym samym
+    porownaniem, a nawet scislejszym, bo oba boki startuja z DOKLADNIE tego
+    samego ENM zamiast z dwoch osobnych, "powinny byc rowne" kopii.
     """
-    enm = EnergyNetworkModel.model_validate(build_sld_substrate_52s()["enm"])
+    enm = EnergyNetworkModel.model_validate(substrate["enm"])
     pf_input, _slack = _build_power_flow_input(enm)
     solution = solve_power_flow_physics(pf_input)
     eps = 1.0e-3
@@ -130,18 +137,21 @@ def test_direction_matches_solver_sign(companion: dict) -> None:
         )
 
 
-def test_determinism() -> None:
-    s1 = build_sld_substrate_52s()
+def test_determinism(companion: dict) -> None:
+    """INTENCJA: DWA niezalezne przebiegi (budowa substratu + towarzysz rozplywu)
+    daja identycznego towarzysza.
+
+    Bieg A to `companion` z fixture modulu — osobne wywolanie `build_sld_substrate_52s()`
+    i osobne `compute_substrate_power_flow()`. Bieg B liczymy tu od zera. Oba boki
+    porownania nadal pochodza z rozlacznych wywolan budowniczego i solvera (determinizm
+    jest realnie sprawdzany), ale nie liczymy strony A po raz drugi w tym samym module.
+    """
     s2 = build_sld_substrate_52s()
-    enm1 = EnergyNetworkModel.model_validate(s1["enm"])
     enm2 = EnergyNetworkModel.model_validate(s2["enm"])
-    c1 = compute_substrate_power_flow(
-        enm1, case_ref=_CASE_REF, case_label=_CASE_LABEL, enm_hash=s1["snapshot_hash"]
-    )
     c2 = compute_substrate_power_flow(
         enm2, case_ref=_CASE_REF, case_label=_CASE_LABEL, enm_hash=s2["snapshot_hash"]
     )
-    assert c1 == c2
+    assert companion == c2
 
 
 # ---- defekt A1: blizniaczy budowniczy nie moze zgubic generacji --------------
