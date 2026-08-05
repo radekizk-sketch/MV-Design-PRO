@@ -72,25 +72,28 @@ zostawia skutku) i została przypięta testem.
 ## 3. Audyt wywołań — kto woła, czym woła, co robi z wynikiem
 
 Inwentarz zebrany mechanicznie (AST po `src/**`, `tests/**`): **59 wywołań w kodzie
-produkcyjnym** (45 + 10 + 14 poniżej — 14 z `_OP_DISPATCH` to lambdy jednej tablicy) oraz
-**81 wywołań w testach** w 53 funkcjach testowych.
+produkcyjnym** — 35 w `domain_operations.py` (33 K1 + 2 K5), 10 w `domain_operations_v2.py`
+(7 K2 + 3 K3), 14 w `api/enm.py` (lambdy jednej tablicy `_OP_DISPATCH`) — oraz
+**81 wywołań w testach** w 53 funkcjach testowych. Razem **140**.
 
-### K1 — operacje domenowe V1 (`enm/domain_operations.py`), 45 wywołań w 9 funkcjach
+### K1 — operacje domenowe V1 (`enm/domain_operations.py`), 33 wywołania w 8 funkcjach
 
-`add_grid_source_sn`, `continue_trunk_segment_sn`, `insert_station_on_segment_sn`,
-`_insert_branch_point_on_segment_sn`, `start_branch_segment_sn`, `insert_section_switch_sn`,
-`connect_secondary_ring_sn`, `add_transformer_sn_nn`, `append_station_on_endpoint`.
+`add_grid_source_sn` (5), `continue_trunk_segment_sn` (2), `insert_station_on_segment_sn` (10),
+`_insert_branch_point_on_segment_sn` (5), `start_branch_segment_sn` (2),
+`insert_section_switch_sn` (7), `connect_secondary_ring_sn` (1), `add_transformer_sn_nn` (1).
+Dziewiąta funkcja tego pliku, `append_station_on_endpoint`, woła operacje wyłącznie przez
+domknięcie i jest rozliczona osobno jako K5.
 
 * Wejściowy ENM to **prywatna kopia wołającego**: każda z tych funkcji ma własne
-  `new_enm = copy.deepcopy(enm)` (linie 3364, 3990, 5169, 6045, 6388, 6620, 6817, 6960, 8331)
-  i do operacji podaje WYŁĄCZNIE `new_enm`.
+  `new_enm = copy.deepcopy(enm)` (linie 3364, 3990, 5169, 6045, 6388, 6620, 6817, 6960;
+  K5 — 8331) i do operacji podaje WYŁĄCZNIE `new_enm`.
 * Zwrócony model: `new_enm = result.enm` — przepięcie nazwy; przy mutacji in-place jest to
   przypisanie tego samego obiektu, więc bez skutku.
 * Wejściowy `enm` po wywołaniu: **tylko odczyt** (np. `segment = _find_branch(enm, …)`
   w `insert_station_on_segment_sn:5003`, `_insert_branch_point_on_segment_sn:5959`,
   `insert_section_switch_sn:6567`). Ponieważ `enm` nigdy nie trafia do operacji, pozostaje
   nietknięty w OBU semantykach — te odczyty są poprawne tak samo przed i po zmianie.
-* **Wynik: BEZPIECZNE przy mutacji in-place (45/45).**
+* **Wynik: BEZPIECZNE przy mutacji in-place (33/33).**
 
 ### K2 — operacje domenowe V2 z kopią graniczną (`enm/domain_operations_v2.py`), 7 wywołań
 
@@ -176,13 +179,13 @@ przepiętego. **Wynik: BEZPIECZNE (81/81).**
 
 | kategoria | wywołań | BEZPIECZNE | WYMAGA kopii | NIEJASNE |
 |---|---:|---:|---:|---:|
-| K1 operacje domenowe V1 | 45 | 45 | 0 | 0 |
+| K1 operacje domenowe V1 | 33 | 33 | 0 | 0 |
 | K2 operacje domenowe V2 z kopią | 7 | 7 | 0 | 0 |
 | K3 `add_ct`/`add_vt`/`add_relay` | 3 | 0 | **3** | 0 |
 | K4 dyspozytor API | 14 | 14 | 0 | 0 |
 | K5 domknięcie stacji na końcu ciągu | 2 | 2 | 0 | 0 |
 | K6 testy | 81 | 81 | 0 | 0 |
-| **razem** | **152** | **149** | **3** | **0** |
+| **razem** | **140** | **137** | **3** | **0** |
 
 Pozycji NIEJASNYCH nie zostało: 19 miejsc, które analiza statyczna zgłosiła jako „bez
 wykrytej kopii prywatnej", rozstrzygnięto ręcznie — 14 to lambdy dyspozytora API (K4, kopia
@@ -222,7 +225,7 @@ odpowiedzialnością granicy operacji domenowej.**
 
 Uzasadnienie wprost z audytu, nie z wygody:
 
-1. **149 ze 152 wywołań już dziś podaje prywatną kopię.** Kopia w `topology_ops` jest
+1. **137 ze 140 wywołań już dziś podaje prywatną kopię.** Kopia w `topology_ops` jest
    w tych miejscach czystym powtórzeniem pracy, którą wołający wykonał sekundę wcześniej.
 2. **Jedyne 3 miejsca bez kopii to brak po stronie wołającego, nie potrzeba semantyki
    kopii w operacji.** `add_ct`/`add_vt`/`add_relay` są operacjami domenowymi tej samej klasy
@@ -248,11 +251,13 @@ Uzasadnienie wprost z audytu, nie z wygody:
 * Błąd BLOCKER: `result.enm is enm` i model jest **bajtowo nietknięty** — walidacja biegnie
   w całości przed jakąkolwiek mutacją.
 * Wołający, który potrzebuje izolacji od wejścia, robi kopię SAM, na swojej granicy —
-  tak jak dziś robi to 12 operacji domenowych V1/V2.
+  przed tą kartą robiło tak 11 operacji domenowych (9 w V1: linie 3364, 3990, 5169, 6045,
+  6388, 6620, 6817, 6960, 8331; 2 w V2: 1928, 3283), po niej **14** (dochodzą
+  `add_ct`/`add_vt`/`add_relay`).
 
 **Odstępstwo od karty, świadome i zameldowane.** Karta prosiła o deklarację kontraktu
 „w docstringu **i nazwie parametru**". Nazwa parametru została na `enm`. Powód: wszystkie
-152 wywołania podają model POZYCYJNIE (sprawdzone skanem AST), więc zmiana nazwy nie
+140 wywołań podaje model POZYCYJNIE (sprawdzone skanem AST), więc zmiana nazwy nie
 pokazałaby się w żadnym miejscu wywołania — byłaby zmianą publicznej sygnatury 14 funkcji
 bez ani jednego czytelnika. Nośnikiem deklaracji są zamiast tego: docstring modułu,
 docstring KAŻDEJ z 14 funkcji (zdanie „MUTUJE `enm` W MIEJSCU") oraz testy kontraktu,
@@ -269,7 +274,7 @@ w tym test kompletności, który skanuje moduł i wywala się na funkcji mutują
 
   | | przed | po |
   |---|---:|---:|
-  | budowa substratu 53 stacji | 10,900 s | **4,115 s** (−62 %) |
+  | budowa substratu 53 stacji | 10,900 s | **4,115 s** (−62 %; powtórka na drzewie po przywróceniu iniekcji: 4,057 s) |
   | kopie w `topology_ops` | 737 / 6,594 s | **0 / 0,000 s** |
   | kopie w `domain_operations` | 2 949 / 0,592 s | 2 949 / 0,657 s |
   | kopie w `domain_operations_v2` | 60 / 1,172 s | 60 / 1,140 s |
@@ -282,7 +287,31 @@ w tym test kompletności, który skanuje moduł i wywala się na funkcji mutują
   w większości drobne kopie payloadów i wiązań katalogowych, nie kopie modelu.
 
 * **Pełna regresja backendu:** `poetry run pytest -q` RC=0 przed (8238 passed, 11 skipped,
-  464 s) i po zmianie.
-* **Iniekcje:** przywrócenie `deepcopy` w jednym miejscu wykrywa deterministyczna asercja
-  liczby kopii (`test_topology_ops_kontrakt_kopii.py`); wycięcie kopii granicznej operacji
-  domenowej wykrywają testy izolacji z tego samego pliku.
+  464 s) i po zmianie (8311 passed, 11 skipped, 396 s — regresja przyspieszyła o 15 %,
+  bo z kopii korzystał również sam bieg testów). Bieg końcowy wykonany na drzewie PO
+  przywróceniu obu iniekcji, a więc na dokładnie tym kodzie, który idzie do scalenia.
+
+### Iniekcje — dowód, że testy wykrywają cofnięcie zmiany
+
+**Iniekcja 1 — przywrócenie `deepcopy` w JEDNYM miejscu** (`create_node`, plus `import copy`).
+Wykryta przez **cztery niezależne asercje**, w tym deterministyczną (nie czasową) asercję
+liczby kopii, o którą prosiła karta:
+
+| test | komunikat |
+|---|---|
+| `test_warstwa_topologiczna_nie_wykonuje_glebokich_kopii` | „warstwa topologiczna wykonała **4** głębokich kopii" |
+| `test_modul_nie_zawiera_ani_jednej_glebokiej_kopii` | „topology_ops wykonuje głębokie kopie w liniach: **[175]**" |
+| `test_sukces_zwraca_ten_sam_obiekt[create_node]` | wynik nie jest TYM SAMYM obiektem co wejście |
+| `test_tabele_pokrywaja_kazda_funkcje_mutujaca_modulu` | „moduł ma **13** funkcji mutujących, audyt naliczył 14" |
+
+`4 failed, 69 passed`. Przywrócenie pliku: SHA-256 `81f0d1ab…539a` — bajtowo zgodne.
+
+**Iniekcja 2 — wycięcie kopii GRANICZNEJ w JEDNYM miejscu** (`add_ct`, `roboczy = enm`).
+Wykryta przez **pięć asercji, wszystkie z klasy napisanej PRZED chirurgią**:
+`test_operacja_nie_mutuje_modelu_wejsciowego[K3/ct]`,
+`test_wynik_niezalezny_od_pozniejszych_mutacji_wejscia[K3/ct]`,
+`test_wejscie_niezalezne_od_mutacji_wyniku[K3/ct]`,
+`test_seria_operacji_na_wspolnej_migawce_izoluje_pierwotne_wejscie`,
+`test_wyposazenie_pola_z_bledem_nie_zostawia_polowicznej_migawki`
+(„nieudany krok serii zostawił ślad w modelu pierwotnym" — czyli dokładnie stan połowiczny
+z §3/K3). `5 failed, 68 passed`. Przywrócenie pliku: SHA-256 `a290e8c0…e369` — bajtowo zgodne.
