@@ -22,7 +22,7 @@ APP_VERSION = "4.0.0"
 
 
 @router.get("")
-async def health_check(request: Request) -> dict[str, Any]:
+def health_check(request: Request) -> dict[str, Any]:
     """
     Rozszerzony health check.
 

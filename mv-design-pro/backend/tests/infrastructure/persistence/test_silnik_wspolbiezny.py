@@ -1,15 +1,14 @@
 """Leniwa inicjalizacja silnika bazy biegow pod rownoczesnym dostepem.
 
-Testy przypiete do dwoch DEKLARACJI postawionych przy osi wspolbieznosci
-programu 10x — zgodnie z regula „deklaracja bez testu = falszywa pewnosc":
+Testy przypiete do DEKLARACJI postawionych przy osi wspolbieznosci programu
+10x — zgodnie z regula „deklaracja bez testu = falszywa pewnosc":
 
 1. `get_canonical_run_session_factory()` tworzy DOKLADNIE JEDEN silnik, choc
    wola je rownoczesnie wiele watkow (przed naprawa: kazdy watek, ktory zdazyl
    zobaczyc pusty cache, budowal wlasny silnik i wykonywal `init_db`; nadmiarowe
    silniki zostawaly osierocone z otwartymi polaczeniami).
-2. Silnik SQLite w pamieci znosi zamkniecie polaczenia z INNEGO watku niz jego
-   tworca — bez tego `dispose()` w teardownie zostawia otwarte polaczenia, a
-   baza „izolowana per test" nie znika.
+2. Konfiguracja sterownika SQLite dla bazy W PAMIECI zostaje przy `check_same_thread`
+   WLACZONYM — patrz `test_baza_w_pamieci_zachowuje_strażnika_watku` nizej.
 """
 
 from __future__ import annotations
@@ -80,60 +79,30 @@ def test_rownoczesne_wolania_buduja_jeden_silnik(monkeypatch, tmp_path) -> None:
         repo._cached_database_url = None
 
 
-def test_silnik_w_pamieci_znosi_zamkniecie_z_innego_watku(tmp_path) -> None:
-    """`dispose()` z watku glownego zamyka polaczenie zalozone w watku roboczym.
+def test_baza_w_pamieci_zachowuje_straznika_watku(monkeypatch, tmp_path) -> None:
+    """Adres SQLite W PAMIECI NIE MOZE dostac `check_same_thread=False`.
 
-    To jest dokladnie uklad z teardownu fikstury izolacji bazy: polaczenia
-    zakladaja watki puli obslugujace zadania, a sprzata je watek glowny.
-    """
-    from infrastructure.persistence.db import create_engine_from_url, init_db
-    from sqlalchemy import text
+    PULAPKA UDOKUMENTOWANA POMIAREM (2026-08-05). Dla adresu w pamieci SQLAlchemy
+    wybiera `SingletonThreadPool` — pule, ktora trzyma polaczenie NA WATEK i przy
+    przekroczeniu rozmiaru zamyka polaczenia NALEZACE DO INNYCH WATKOW. Przy
+    domyslnym `check_same_thread=True` takie zamkniecie po prostu sie nie udaje
+    (`sqlite3.ProgrammingError` polkniety przez pule i zalogowany), wiec uzywane
+    polaczenie PRZEZYWA — straznik dziala tu jak zabezpieczenie.
 
-    url = f"sqlite+pysqlite:///file:zamkniecie-{tmp_path.name}?mode=memory&cache=shared&uri=true"
-    engine = create_engine_from_url(url)
-    init_db(engine)
+    Proba „posprzatania" tego szumu przez `check_same_thread=False` sprawia, ze
+    zamkniecie SIE UDAJE — pula zamyka polaczenie, z ktorego inny watek wlasnie
+    korzysta, i proces konczy sie SEGMENTATION FAULT w warstwie C sqlite3
+    (zmierzone: `tests/api/test_wspolbieznosc_biegow.py`, K=10 watkow). Naprawa
+    kosmetycznego wpisu w logu kosztowalaby awarie procesu.
 
-    def uzyj_w_watku_roboczym() -> int:
-        with engine.connect() as conn:
-            return int(conn.execute(text("SELECT 1")).scalar_one())
+    WLASCIWE ROZWIAZANIE jest gdzie indziej i jest juz wdrozone: test
+    wspolbieznosci biegow uzywa bazy PLIKOWEJ — tej samej konfiguracji co tor
+    produkcyjny (`QueuePool`, WAL, busy timeout) — zamiast skrotu ze wspolnym
+    cache w pamieci, ktorego produkcja nigdy nie uzywa.
 
-    with ThreadPoolExecutor(max_workers=1) as pula:
-        assert pula.submit(uzyj_w_watku_roboczym).result() == 1
-
-    # Przed naprawa: `sqlite3.ProgrammingError` polkniety przez pule i zalogowany
-    # jako ERROR, z polaczeniem pozostawionym otwartym.
-    engine.dispose()
-
-
-@pytest.mark.parametrize(
-    ("adres", "oczekiwany_klucz", "oczekiwana_pula"),
-    [
-        # Plik: SQLAlchemy sam podaje `check_same_thread=False` i pule `QueuePool`,
-        # wiec NIE dokladamy klucza — byloby to cicha zmiana konfiguracji toru
-        # produkcyjnego pod pretekstem naprawy toru testowego.
-        ("plikowy", False, "QueuePool"),
-        # Pamiec: SQLAlchemy wybiera `SingletonThreadPool` i ZOSTAWIA straznik
-        # wlaczony — tu klucz jest konieczny.
-        ("w_pamieci", True, "SingletonThreadPool"),
-    ],
-)
-def test_rozluznienie_straznika_watku_tylko_dla_bazy_w_pamieci(
-    monkeypatch, tmp_path, adres: str, oczekiwany_klucz: bool, oczekiwana_pula: str
-) -> None:
-    """`check_same_thread=False` trafia WYLACZNIE do adresow w pamieci.
-
-    Test podglada argumenty, ktore `create_engine_from_url` faktycznie przekazuje
-    sterownikowi — `dialect.create_connect_args()` pokazuje wylacznie wybory
-    samego SQLAlchemy i o naszej decyzji nie mowi nic.
+    Ten test pilnuje, ze nikt nie „naprawi" tego ponownie.
     """
     from infrastructure.persistence import db
-
-    url = (
-        f"sqlite+pysqlite:///{tmp_path / 'plik.db'}"
-        if adres == "plikowy"
-        else f"sqlite+pysqlite:///file:straznik-{tmp_path.name}"
-        "?mode=memory&cache=shared&uri=true"
-    )
 
     przechwycone: dict[str, object] = {}
     oryginalne_create_engine = db.create_engine
@@ -144,10 +113,42 @@ def test_rozluznienie_straznika_watku_tylko_dla_bazy_w_pamieci(
 
     monkeypatch.setattr(db, "create_engine", podgladajace)
 
+    url = f"sqlite+pysqlite:///file:straznik-{tmp_path.name}?mode=memory&cache=shared&uri=true"
     engine = db.create_engine_from_url(url)
     try:
+        assert type(engine.pool).__name__ == "SingletonThreadPool"
+        assert "check_same_thread" not in przechwycone, (
+            "Baza w pamieci dostala rozluzniony straznik watku — "
+            "SingletonThreadPool zamknie polaczenie uzywane przez inny watek "
+            "(segmentation fault)."
+        )
         assert przechwycone["timeout"] == db._SQLITE_BUSY_TIMEOUT_S
-        assert ("check_same_thread" in przechwycone) is oczekiwany_klucz
-        assert type(engine.pool).__name__ == oczekiwana_pula
     finally:
+        engine.dispose()
+
+
+def test_silnik_plikowy_jest_wielowatkowy(tmp_path) -> None:
+    """Tor PLIKOWY (produkcja/dev) obsluguje wiele watkow bez zadnych dodatkow.
+
+    To jest konfiguracja, w ktorej dziala offload koncowek do puli watkow:
+    `QueuePool` + `check_same_thread=False` podane przez samo SQLAlchemy.
+    """
+    from infrastructure.persistence.db import create_engine_from_url, init_db
+    from sqlalchemy import text
+
+    engine = create_engine_from_url(f"sqlite+pysqlite:///{tmp_path / 'plik.db'}")
+    try:
+        init_db(engine)
+        assert type(engine.pool).__name__ == "QueuePool"
+
+        def uzyj() -> int:
+            with engine.connect() as conn:
+                return int(conn.execute(text("SELECT 1")).scalar_one())
+
+        with ThreadPoolExecutor(max_workers=4) as pula:
+            assert list(pula.map(lambda _: uzyj(), range(8))) == [1] * 8
+    finally:
+        # Zamkniecie z watku glownego polaczen zalozonych przez watki robocze —
+        # dla `QueuePool` poprawne, bo straznik watku jest wylaczony przez
+        # SQLAlchemy dla adresow plikowych.
         engine.dispose()

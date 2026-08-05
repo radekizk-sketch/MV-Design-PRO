@@ -436,7 +436,7 @@ def _build_domain_payload(
     "/{project_id}/cases/{case_id}/generators",
     status_code=status.HTTP_201_CREATED,
 )
-async def create_der_generator(
+def create_der_generator(
     project_id: str,
     case_id: str,
     req: DerGeneratorCreateRequest,
@@ -515,7 +515,7 @@ def _utworz_wytworce_pod_blokada(case_id: str, req: DerGeneratorCreateRequest) -
 
 
 @router.patch("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/bindings")
-async def set_der_bindings(
+def set_der_bindings(
     project_id: str,
     case_id: str,
     generator_ref: str,
@@ -660,7 +660,7 @@ def _funkcje_urzadzenia(protection_ref: str | None) -> tuple[tuple[str, ...] | N
 
 
 @router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/protection-functions")
-async def get_der_protection_functions(
+def get_der_protection_functions(
     project_id: str,
     case_id: str,
     generator_ref: str,
@@ -729,7 +729,7 @@ async def get_der_protection_functions(
 
 
 @router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/readiness")
-async def get_der_readiness(
+def get_der_readiness(
     project_id: str,
     case_id: str,
     generator_ref: str,
@@ -791,7 +791,7 @@ async def get_der_readiness(
 
 
 @router.get("/{project_id}/cases/{case_id}/generators/{generator_ref:path}/instrument-transformers")
-async def get_der_instrument_transformers(
+def get_der_instrument_transformers(
     project_id: str,
     case_id: str,
     generator_ref: str,

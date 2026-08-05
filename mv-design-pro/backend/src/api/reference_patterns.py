@@ -174,7 +174,7 @@ async def list_patterns() -> PatternListResponse:
 
 
 @router.get("/patterns/{pattern_id}/fixtures", response_model=FixtureListResponse)
-async def list_pattern_fixtures(pattern_id: str) -> FixtureListResponse:
+def list_pattern_fixtures(pattern_id: str) -> FixtureListResponse:
     """
     List available fixtures (test cases) for a pattern.
 
@@ -191,7 +191,7 @@ async def list_pattern_fixtures(pattern_id: str) -> FixtureListResponse:
 
 
 @router.post("/run", response_model=PatternRunResponse)
-async def run_pattern(request: PatternRunRequest) -> PatternRunResponse:
+def run_pattern(request: PatternRunRequest) -> PatternRunResponse:
     """
     Run a reference pattern validation.
 
@@ -240,7 +240,7 @@ async def run_pattern(request: PatternRunRequest) -> PatternRunResponse:
 
 
 @router.get("/fixtures/{fixture_file}", response_model=PatternRunResponse)
-async def run_pattern_with_fixture(fixture_file: str) -> PatternRunResponse:
+def run_pattern_with_fixture(fixture_file: str) -> PatternRunResponse:
     """
     Run Pattern A with a specific fixture file (convenience GET endpoint).
 
@@ -272,7 +272,7 @@ async def run_pattern_with_fixture(fixture_file: str) -> PatternRunResponse:
 
 
 @router.get("/fixtures/{fixture_file}/export/pdf")
-async def export_pattern_result_pdf(fixture_file: str) -> Response:
+def export_pattern_result_pdf(fixture_file: str) -> Response:
     """
     Export reference pattern result to PDF.
 
@@ -432,7 +432,7 @@ async def export_pattern_result_pdf(fixture_file: str) -> Response:
 
 
 @router.get("/fixtures/{fixture_file}/export/docx")
-async def export_pattern_result_docx(fixture_file: str) -> Response:
+def export_pattern_result_docx(fixture_file: str) -> Response:
     """
     Export reference pattern result to DOCX.
 

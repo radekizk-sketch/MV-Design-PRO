@@ -27,33 +27,11 @@ def create_engine_from_url(url: str, *, echo: bool = False) -> Engine:
         # dziennika, w którym równoległe sesje API na jednej bazie plikowej
         # są poprawne. Ustawienia deterministyczne (konfiguracja silnika,
         # zero wpływu na treść danych i wyniki).
-        # (3) `check_same_thread=False` dla bazy W PAMIECI. Sterownik sqlite3
-        # domyslnie zabrania UZYCIA polaczenia w innym watku niz ten, ktory je
-        # utworzyl — i liczy do tego rowniez `close()`. Dla adresu plikowego
-        # SQLAlchemy sam wylacza ten straznik (pula `QueuePool`), ale dla adresu
-        # w pamieci wybiera `SingletonThreadPool` i zostawia straznik wlaczony.
-        # Skutek zmierzony (2026-08-05, tor testowy po przeniesieniu koncowek do
-        # puli watkow): `engine.dispose()` z watku glownego probuje zamknac
-        # polaczenia utworzone przez watki robocze i konczy sie
-        # `sqlite3.ProgrammingError: SQLite objects created in a thread can only
-        # be used in that same thread`. Blad jest POLYKANY przez pule (leci do
-        # logu jako ERROR), wiec nie wywraca testu — zostawia za to otwarte
-        # polaczenie, przez ktore baza w pamieci ze wspolnym cache NIE ZNIKA po
-        # teardownie, wbrew temu, co deklaruje fikstura izolacji.
-        # ZAKRES ZMIANY: kazdy watek nadal dostaje WLASNE polaczenie
-        # (`SingletonThreadPool` trzyma je per watek) — nie wprowadzamy
-        # wspoldzielenia jednego polaczenia miedzy watkami. Zmienia sie
-        # wylacznie dopuszczalnosc zamkniecia polaczenia z zewnatrz.
-        w_pamieci = "mode=memory" in url or ":memory:" in url
-        connect_args: dict[str, Any] = {"timeout": _SQLITE_BUSY_TIMEOUT_S}
-        if w_pamieci:
-            connect_args["check_same_thread"] = False
-
         engine = create_engine(
             url,
             echo=echo,
             future=True,
-            connect_args=connect_args,
+            connect_args={"timeout": _SQLITE_BUSY_TIMEOUT_S},
         )
 
         @event.listens_for(engine, "connect")
