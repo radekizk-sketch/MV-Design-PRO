@@ -105,6 +105,15 @@ export const MACIERZ_STRINGS = {
   certyfikatZamknij: 'Zamknij podgląd certyfikatu',
   projektBezNazwy: 'Projekt bez nazwy',
 
+  // Dowód certyfikacji PTPiREE w podglądzie certyfikatu — wiersz per moduł.
+  // Dokument składany u operatora musi pokazywać, NA CO powołuje się deklaracja
+  // zgodności: numer dokumentu, wersja WiPWC, data akceptacji i warunek ważności.
+  certyfikatDowodTytul: 'Dowód certyfikacji PTPiREE',
+  certyfikatDowodNumer: 'Numer dokumentu',
+  certyfikatDowodWipwc: 'Wersja WiPWC',
+  certyfikatDowodData: 'Data akceptacji',
+  certyfikatDowodWarunek: 'Warunek ważności',
+
   // Panel modułu
   panelTytul: 'Dane wejściowe modułu',
   panelOpis:

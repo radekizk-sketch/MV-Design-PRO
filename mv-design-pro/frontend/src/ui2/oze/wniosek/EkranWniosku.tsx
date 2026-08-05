@@ -87,6 +87,9 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
   // Identyfikacja domyślna z aktywnego projektu/przypadku (read-only, jednorazowo).
   const nazwaProjektuBazowa = useAppStateStore((s) => s.activeProjectName);
   const nazwaPrzypadkuBazowa = useAppStateStore((s) => s.activeCaseName);
+  // Aktywny przypadek → backend dopina do wniosku dowód certyfikacji PTPiREE
+  // z tabliczek urządzeń modelu (bez niego dokument nie ma sekcji dowodu).
+  const aktywnyPrzypadek = useAppStateStore((s) => s.activeCaseId);
 
   const [pfRunId, setPfRunId] = useState<string | null>(null);
   const [scRunId, setScRunId] = useState<string | null>(null);
@@ -171,7 +174,7 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
     setBlad(null);
     setBraki(null);
     try {
-      setWidok(await pobierzWniosek(zadanie));
+      setWidok(await pobierzWniosek(zadanie, aktywnyPrzypadek));
     } catch (err) {
       obsluzBlad(err);
     } finally {
@@ -185,7 +188,7 @@ export function EkranWniosku({ trybZaawansowania }: EkranWnioskuProps): JSX.Elem
     setDocxLadowanie(true);
     setBlad(null);
     try {
-      const blob = await pobierzWniosekDocx(zadanie);
+      const blob = await pobierzWniosekDocx(zadanie, aktywnyPrzypadek);
       zapiszBlob(blob, nazwaPlikuWniosku(new Date()));
     } catch (err) {
       obsluzBlad(err);

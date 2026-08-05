@@ -15,6 +15,38 @@
 import type { NcRfgRunRequest } from '../../ui/ncrfg-tests/api';
 
 // =============================================================================
+// Dowód certyfikacji PTPiREE — application/analyses/dowod_certyfikatu.py
+// =============================================================================
+
+/**
+ * Sekcja „Dowód certyfikacji PTPiREE" jednego urządzenia (1:1 z `sekcja_dowodu`).
+ * Wartości pochodzą WPROST z tabliczki urządzenia w modelu — brak danej to `null`,
+ * nigdy wartość dopowiedziana. `stan_pl` jest niepusty DOKŁADNIE wtedy, gdy nie ma
+ * ani jednej danej (uczciwy stan zerowy do pokazania wprost).
+ */
+export interface DowodCertyfikatuPtpiree {
+  readonly der_ref: string;
+  readonly numer_dokumentu: string | null;
+  readonly data_akceptacji: string | null;
+  readonly wersja_wos: string | null;
+  readonly wersja_wipwc: string | null;
+  readonly zakres_ppm: string | null;
+  readonly warunek_waznosci: string | null;
+  readonly adres_zrodla: string | null;
+  readonly stan_pl: string | null;
+}
+
+/**
+ * Doklej wskazanie aktywnego przypadku do ścieżki dokumentu. Bez `case_id`
+ * backend nie ma skąd wziąć tabliczek urządzeń z modelu i buduje dokument bez
+ * sekcji dowodu — przekazujemy przypadek zawsze, gdy wywołujący go zna
+ * (wzorzec `runNcRfgPtpireeTests` w `ui/ncrfg-tests/api.ts`).
+ */
+function zPrzypadkiem(sciezka: string, caseId?: string | null): string {
+  return caseId ? `${sciezka}?case_id=${encodeURIComponent(caseId)}` : sciezka;
+}
+
+// =============================================================================
 // Siła sieci (SCR/WSCR) — analysis/grid_strength/serializer.py
 // =============================================================================
 
@@ -1124,6 +1156,11 @@ export interface ModulCertyfikatu {
     readonly nie_spelnia: number;
   };
   readonly testy: readonly TestCertyfikatu[];
+  /**
+   * Dowód certyfikacji PTPiREE urządzenia. Powstaje TYLKO dla żądania z
+   * `case_id` — bez wskazanego przypadku klucza nie ma (kontrakt sprzed dowodu).
+   */
+  readonly dowod_certyfikatu?: DowodCertyfikatuPtpiree;
 }
 
 /** Widok JSON certyfikatu zgodności (1:1 z `build_certyfikat_view`). */
@@ -1184,8 +1221,11 @@ async function bladCertyfikatu(response: Response): Promise<Error> {
  * co macierz). Rzuca `CertyfikatBrakiError` przy 422 (braki kompletności),
  * zwykły `Error` z komunikatem PL przy pozostałych błędach.
  */
-export async function pobierzCertyfikat(zadanie: ZadanieCertyfikatu): Promise<WidokCertyfikatu> {
-  const response = await fetch('/api/oze-analysis/compliance-certificate', {
+export async function pobierzCertyfikat(
+  zadanie: ZadanieCertyfikatu,
+  caseId?: string | null,
+): Promise<WidokCertyfikatu> {
+  const response = await fetch(zPrzypadkiem('/api/oze-analysis/compliance-certificate', caseId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(zadanie),
@@ -1198,12 +1238,18 @@ export async function pobierzCertyfikat(zadanie: ZadanieCertyfikatu): Promise<Wi
  * Pobierz deterministyczny plik DOCX certyfikatu (blob). Obsługa błędów PL jak
  * dla widoku JSON — w tym `CertyfikatBrakiError` przy 422 z listą braków.
  */
-export async function pobierzCertyfikatDocx(zadanie: ZadanieCertyfikatu): Promise<Blob> {
-  const response = await fetch('/api/oze-analysis/compliance-certificate.docx', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(zadanie),
-  });
+export async function pobierzCertyfikatDocx(
+  zadanie: ZadanieCertyfikatu,
+  caseId?: string | null,
+): Promise<Blob> {
+  const response = await fetch(
+    zPrzypadkiem('/api/oze-analysis/compliance-certificate.docx', caseId),
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(zadanie),
+    },
+  );
   if (!response.ok) throw await bladCertyfikatu(response);
   return response.blob();
 }
@@ -1283,6 +1329,11 @@ export interface SekcjaZgodnosciWniosku {
   readonly procedura: string;
   readonly odeslanie_pl: string;
   readonly odcisk_wejscia_nc_rfg_sha256: string;
+  /**
+   * Dowód certyfikacji PTPiREE per moduł biegu. Powstaje TYLKO dla żądania
+   * z `case_id` — bez wskazanego przypadku klucza nie ma (kontrakt sprzed dowodu).
+   */
+  readonly dowody_certyfikatu?: readonly DowodCertyfikatuPtpiree[];
 }
 
 /** Widok JSON wniosku OSD (1:1 z `build_wniosek_osd_view`). */
@@ -1352,8 +1403,11 @@ async function bladWniosku(response: Response): Promise<Error> {
  * Rzuca `WniosekBrakiError` przy 422 (braki kompletności), zwykły `Error`
  * z komunikatem PL przy pozostałych błędach.
  */
-export async function pobierzWniosek(zadanie: ZadanieWniosku): Promise<WidokWniosku> {
-  const response = await fetch('/api/oze-analysis/osd-application', {
+export async function pobierzWniosek(
+  zadanie: ZadanieWniosku,
+  caseId?: string | null,
+): Promise<WidokWniosku> {
+  const response = await fetch(zPrzypadkiem('/api/oze-analysis/osd-application', caseId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(zadanie),
@@ -1366,8 +1420,11 @@ export async function pobierzWniosek(zadanie: ZadanieWniosku): Promise<WidokWnio
  * Pobierz deterministyczny plik DOCX wniosku OSD (blob). Obsługa błędów PL jak
  * dla widoku JSON — w tym `WniosekBrakiError` przy 422 z listą braków.
  */
-export async function pobierzWniosekDocx(zadanie: ZadanieWniosku): Promise<Blob> {
-  const response = await fetch('/api/oze-analysis/osd-application.docx', {
+export async function pobierzWniosekDocx(
+  zadanie: ZadanieWniosku,
+  caseId?: string | null,
+): Promise<Blob> {
+  const response = await fetch(zPrzypadkiem('/api/oze-analysis/osd-application.docx', caseId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(zadanie),
@@ -1432,12 +1489,29 @@ export interface ZalozeniaPrzebieguDokumentu {
   readonly snapshot_hash: string | null;
 }
 
+/**
+ * Dowód certyfikacji PTPiREE urządzeń modelu związanych z TYPEM katalogowym
+ * dokumentu (studium nie uruchamia macierzy NC RfG, więc tożsamością urządzenia
+ * jest typ przekształtnika). `stan_pl` niepusty = w modelu nie ma urządzenia
+ * tego typu (uczciwy stan zerowy).
+ */
+export interface DowodCertyfikatuDokumentu {
+  readonly catalog_item_id: string;
+  readonly urzadzenia: readonly DowodCertyfikatuPtpiree[];
+  readonly stan_pl: string | null;
+}
+
 /** Blok założeń dokumentu (1:1 z `zalozenia` w `build_dokument_studium_view`). */
 export interface ZalozeniaDokumentu {
   readonly typ_katalogowy: ZalozeniaTypKatalogowyDokumentu;
   readonly operator: ZalozeniaOperatorDokumentu;
   readonly przebieg_bazowy: ZalozeniaPrzebieguDokumentu;
   readonly liczba_wariantow: number;
+  /**
+   * Powstaje TYLKO dla żądania z `case_id` — bez wskazanego przypadku klucza
+   * nie ma (kontrakt sprzed dowodu, odcisk sekcji założeń bez zmian).
+   */
+  readonly dowod_certyfikatu?: DowodCertyfikatuDokumentu;
 }
 
 /** Sekcja zdolności przyłączeniowej wariantu (`ok` → moc + kryterium; `blad` → opis). */
@@ -1557,8 +1631,9 @@ async function bladDokumentuStudium(response: Response): Promise<Error> {
  */
 export async function pobierzDokumentStudium(
   zadanie: ZadanieDokumentuStudium,
+  caseId?: string | null,
 ): Promise<WidokDokumentuStudium> {
-  const response = await fetch('/api/oze-analysis/connection-study', {
+  const response = await fetch(zPrzypadkiem('/api/oze-analysis/connection-study', caseId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(zadanie),
@@ -1573,8 +1648,9 @@ export async function pobierzDokumentStudium(
  */
 export async function pobierzDokumentStudiumDocx(
   zadanie: ZadanieDokumentuStudium,
+  caseId?: string | null,
 ): Promise<Blob> {
-  const response = await fetch('/api/oze-analysis/connection-study.docx', {
+  const response = await fetch(zPrzypadkiem('/api/oze-analysis/connection-study.docx', caseId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(zadanie),
@@ -1589,8 +1665,9 @@ export async function pobierzDokumentStudiumDocx(
  */
 export async function pobierzDokumentStudiumPdf(
   zadanie: ZadanieDokumentuStudium,
+  caseId?: string | null,
 ): Promise<Blob> {
-  const response = await fetch('/api/oze-analysis/connection-study.pdf', {
+  const response = await fetch(zPrzypadkiem('/api/oze-analysis/connection-study.pdf', caseId), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(zadanie),

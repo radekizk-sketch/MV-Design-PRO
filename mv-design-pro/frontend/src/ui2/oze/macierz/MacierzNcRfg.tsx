@@ -124,6 +124,9 @@ export function MacierzNcRfg({
   // Identyfikacja projektu/przypadku do certyfikatu (read-only ze store'u aplikacji).
   const nazwaProjektu = useAppStateStore((s) => s.activeProjectName);
   const nazwaPrzypadku = useAppStateStore((s) => s.activeCaseName);
+  // Aktywny przypadek → backend dopina do certyfikatu dowód certyfikacji PTPiREE
+  // z tabliczek urządzeń modelu (bez niego dokument nie ma sekcji dowodu).
+  const aktywnyPrzypadek = useAppStateStore((s) => s.activeCaseId);
 
   const [edycje, setEdycje] = useState<Record<string, EdycjaModulu>>({});
   // Stan podglądu certyfikatu zgodności (widok, braki 422 lub błąd — rozłącznie).
@@ -285,7 +288,7 @@ export function MacierzNcRfg({
     setCertBlad(null);
     setCertBraki(null);
     try {
-      setCertyfikat(await pobierzCertyfikat(zadanie));
+      setCertyfikat(await pobierzCertyfikat(zadanie, aktywnyPrzypadek));
     } catch (err) {
       obsluzBladCertyfikatu(err);
     } finally {
@@ -299,7 +302,7 @@ export function MacierzNcRfg({
     setDocxLadowanie(true);
     setCertBlad(null);
     try {
-      const blob = await pobierzCertyfikatDocx(zadanie);
+      const blob = await pobierzCertyfikatDocx(zadanie, aktywnyPrzypadek);
       zapiszBlob(blob, nazwaPlikuCertyfikatu(new Date()));
     } catch (err) {
       obsluzBladCertyfikatu(err);
@@ -483,6 +486,51 @@ export function MacierzNcRfg({
                   <dd className="mvd-oze-num">{liczbaTestowCertyfikatu}</dd>
                 </div>
               </dl>
+
+              {/* Dowód certyfikacji PTPiREE per moduł — dokument składany
+                  u operatora musi pokazywać, NA CO powołuje się deklaracja
+                  zgodności. Wartości WPROST z tabliczki urządzenia w modelu;
+                  brak tabliczki to jawny stan zerowy, nie puste pola. */}
+              {certyfikat.moduly.some((modul) => modul.dowod_certyfikatu) ? (
+                <div className="mvd-oze-cert-dowody" data-testid="mvd-oze-cert-dowody">
+                  <h5>{MACIERZ_STRINGS.certyfikatDowodTytul}</h5>
+                  <ul>
+                    {certyfikat.moduly.map((modul) => {
+                      const dowod = modul.dowod_certyfikatu;
+                      if (!dowod) return null;
+                      const etykieta = modul.der_name || modul.der_ref;
+                      return dowod.stan_pl ? (
+                        <li
+                          key={modul.der_ref}
+                          className="mvd-oze-cert-dowod mvd-oze-cert-dowod--brak"
+                          data-testid={`mvd-oze-cert-dowod-brak-${modul.der_ref}`}
+                        >
+                          {etykieta}: {dowod.stan_pl}
+                        </li>
+                      ) : (
+                        <li
+                          key={modul.der_ref}
+                          className="mvd-oze-cert-dowod"
+                          data-testid={`mvd-oze-cert-dowod-${modul.der_ref}`}
+                        >
+                          {etykieta}: {MACIERZ_STRINGS.certyfikatDowodNumer}{' '}
+                          {dowod.numer_dokumentu ?? '—'}
+                          {dowod.wersja_wipwc
+                            ? ` · ${MACIERZ_STRINGS.certyfikatDowodWipwc} ${dowod.wersja_wipwc}`
+                            : ''}
+                          {dowod.data_akceptacji
+                            ? ` · ${MACIERZ_STRINGS.certyfikatDowodData} ${dowod.data_akceptacji}`
+                            : ''}
+                          {dowod.warunek_waznosci
+                            ? ` · ${MACIERZ_STRINGS.certyfikatDowodWarunek}: ${dowod.warunek_waznosci}`
+                            : ''}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : null}
+
               <button
                 type="button"
                 className="mvd-btn mvd-btn-glowny"
