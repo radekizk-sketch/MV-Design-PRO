@@ -43,7 +43,6 @@ from __future__ import annotations
 
 import json
 import re
-import unicodedata
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -52,6 +51,7 @@ from .types import (
     CATALOG_CONTRACT_VERSION,
     CatalogStatus,
     CatalogVerificationStatus,
+    normalize_ptpiree_key,
 )
 
 PTPIREE_SOURCE_PAGE_URL = "https://ptpiree.pl/kodeksy-sieci/wykaz-certyfikatow/"
@@ -68,29 +68,6 @@ _SOURCE_REFERENCE_TEMPLATE = "PTPiREE Wykaz urzadzen {version}, publikacja {publ
 # --------------------------------------------------------------------------
 # NORMALIZACJA — jedno zrodlo prawdy dla obu stron porownania
 # --------------------------------------------------------------------------
-
-_PL_TO_ASCII = str.maketrans(
-    {
-        "ą": "a",
-        "ć": "c",
-        "ę": "e",
-        "ł": "l",
-        "ń": "n",
-        "ó": "o",
-        "ś": "s",
-        "ź": "z",
-        "ż": "z",
-        "Ą": "A",
-        "Ć": "C",
-        "Ę": "E",
-        "Ł": "L",
-        "Ń": "N",
-        "Ó": "O",
-        "Ś": "S",
-        "Ź": "Z",
-        "Ż": "Z",
-    }
-)
 
 #: Formy prawne spolek. Pomijane przy porownaniu producenta, bo ten sam podmiot
 #: bywa zapisany „Co., Ltd", „Co.,Ltd", „Co, Ltd" i „Co. , Ltd" w jednym wykazie.
@@ -170,13 +147,11 @@ _CERTIFICATE_CONDITION_RE = re.compile(r"\s*[-–—,]?\s*\btylko\b.*$", re.IGNO
 _WIPWC_VERSION_RE = re.compile(r"(\d+(?:\.\d+)*)")
 
 
-def _fold(value: Any) -> str:
-    """Znormalizowany klucz porownania: bez diakrytykow, bez interpunkcji, WERSALIKI."""
-
-    text = str(value or "").translate(_PL_TO_ASCII)
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    text = re.sub(r"[^A-Za-z0-9]+", " ", text)
-    return " ".join(text.upper().split())
+#: Znormalizowany klucz porownania: bez diakrytykow, bez interpunkcji, WERSALIKI.
+#: ALIAS (tozsamosc, nie kopia) `types.normalize_ptpiree_key` — jedno zrodlo
+#: prawdy normalizacji (dlug 3 z rejestru V12K-321): klucz dopasowania i klucz
+#: eksportowy certyfikatu musza byc TA SAMA funkcja, inaczej sie rozjezdzaja.
+_fold = normalize_ptpiree_key
 
 
 def split_certificate_condition(model: Any) -> tuple[str, str | None]:

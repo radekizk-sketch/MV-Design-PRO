@@ -23,6 +23,7 @@ Usage:
     )
 """
 
+import re
 import unicodedata
 from dataclasses import dataclass, field
 from enum import Enum
@@ -1150,6 +1151,8 @@ class ConverterType:
     ptpiree_ppm_scope: str | None = None
     ptpiree_source_url: str | None = None
     ptpiree_publication_date: str | None = None
+    ptpiree_note: str | None = None
+    ptpiree_certificate_condition: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog przeksztaltnikow MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -1227,6 +1230,8 @@ class ConverterType:
             "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
             "ptpiree_source_url": self.ptpiree_source_url,
             "ptpiree_publication_date": self.ptpiree_publication_date,
+            "ptpiree_note": self.ptpiree_note,
+            "ptpiree_certificate_condition": self.ptpiree_certificate_condition,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1280,6 +1285,8 @@ class ConverterType:
             ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
             ptpiree_source_url=data.get("ptpiree_source_url"),
             ptpiree_publication_date=data.get("ptpiree_publication_date"),
+            ptpiree_note=data.get("ptpiree_note"),
+            ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog przeksztaltnikow MV-DESIGN-PRO / profile typowe OZE i BESS",
@@ -1347,6 +1354,8 @@ class InverterType:
     ptpiree_ppm_scope: str | None = None
     ptpiree_source_url: str | None = None
     ptpiree_publication_date: str | None = None
+    ptpiree_note: str | None = None
+    ptpiree_certificate_condition: str | None = None
     verification_status: str = CatalogVerificationStatus.REFERENCYJNY.value
     source_reference: str = "Katalog falownikow MV-DESIGN-PRO"
     catalog_status: str = CatalogStatus.REFERENCYJNY_V1.value
@@ -1378,6 +1387,8 @@ class InverterType:
             "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
             "ptpiree_source_url": self.ptpiree_source_url,
             "ptpiree_publication_date": self.ptpiree_publication_date,
+            "ptpiree_note": self.ptpiree_note,
+            "ptpiree_certificate_condition": self.ptpiree_certificate_condition,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -1414,6 +1425,8 @@ class InverterType:
             ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
             ptpiree_source_url=data.get("ptpiree_source_url"),
             ptpiree_publication_date=data.get("ptpiree_publication_date"),
+            ptpiree_note=data.get("ptpiree_note"),
+            ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog falownikow MV-DESIGN-PRO / dane referencyjne",
@@ -1530,13 +1543,19 @@ _PL_NA_ASCII = str.maketrans(_PL_ZNAKI_DIAKRYTYCZNE)
 
 
 def normalize_ptpiree_key(value: Any) -> str:
-    """Stable normalization for PTPiREE manufacturer/model matching."""
+    """Stable normalization for PTPiREE manufacturer/model matching.
 
-    text = str(value or "").strip()
-    text = text.translate(_PL_NA_ASCII)
+    JEDNO zrodlo prawdy normalizacji (dlug 3 z rejestru V12K-321): ta sama
+    regula, ktorej uzywa dopasowanie na pelnym wykazie w
+    ``mv_ptpiree_catalog._fold`` — kazdy znak spoza [A-Za-z0-9] staje sie
+    separatorem. Wczesniejsza, slabsza lista separatorow zostawiala '.', '+',
+    '&' itd. w kluczu eksportowym, wiec klucz eksportu mogl NIE rownac sie
+    kluczowi dopasowania dla tego samego urzadzenia.
+    """
+
+    text = str(value or "").translate(_PL_NA_ASCII)
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
-    for separator in ("-", "_", "/", "\\", "(", ")", ",", ";", ":"):
-        text = text.replace(separator, " ")
+    text = re.sub(r"[^A-Za-z0-9]+", " ", text)
     return " ".join(text.upper().split())
 
 
@@ -2852,6 +2871,8 @@ class PVInverterType:
     ptpiree_ppm_scope: str | None = None
     ptpiree_source_url: str | None = None
     ptpiree_publication_date: str | None = None
+    ptpiree_note: str | None = None
+    ptpiree_certificate_condition: str | None = None
     """Referencja do profilu dynamicznego w `der_dynamic` (PR-15/16).
 
     Brak wartości oznacza fallback do default per kind w resolverze
@@ -2885,6 +2906,8 @@ class PVInverterType:
             "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
             "ptpiree_source_url": self.ptpiree_source_url,
             "ptpiree_publication_date": self.ptpiree_publication_date,
+            "ptpiree_note": self.ptpiree_note,
+            "ptpiree_certificate_condition": self.ptpiree_certificate_condition,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -2921,6 +2944,8 @@ class PVInverterType:
             ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
             ptpiree_source_url=data.get("ptpiree_source_url"),
             ptpiree_publication_date=data.get("ptpiree_publication_date"),
+            ptpiree_note=data.get("ptpiree_note"),
+            ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog falownikow PV MV-DESIGN-PRO / dane referencyjne",
@@ -2968,6 +2993,8 @@ class BESSInverterType:
     ptpiree_ppm_scope: str | None = None
     ptpiree_source_url: str | None = None
     ptpiree_publication_date: str | None = None
+    ptpiree_note: str | None = None
+    ptpiree_certificate_condition: str | None = None
     """Referencja do profilu dynamicznego w `der_dynamic` (PR-15/16).
 
     Brak wartości oznacza fallback do default per kind w resolverze
@@ -2999,6 +3026,8 @@ class BESSInverterType:
             "ptpiree_ppm_scope": self.ptpiree_ppm_scope,
             "ptpiree_source_url": self.ptpiree_source_url,
             "ptpiree_publication_date": self.ptpiree_publication_date,
+            "ptpiree_note": self.ptpiree_note,
+            "ptpiree_certificate_condition": self.ptpiree_certificate_condition,
             **_catalog_metadata_to_dict(
                 verification_status=self.verification_status,
                 source_reference=self.source_reference,
@@ -3029,6 +3058,8 @@ class BESSInverterType:
             ptpiree_ppm_scope=data.get("ptpiree_ppm_scope"),
             ptpiree_source_url=data.get("ptpiree_source_url"),
             ptpiree_publication_date=data.get("ptpiree_publication_date"),
+            ptpiree_note=data.get("ptpiree_note"),
+            ptpiree_certificate_condition=data.get("ptpiree_certificate_condition"),
             **_catalog_metadata_kwargs(
                 data,
                 default_source_reference="Katalog przeksztaltnikow BESS MV-DESIGN-PRO / dane referencyjne",
