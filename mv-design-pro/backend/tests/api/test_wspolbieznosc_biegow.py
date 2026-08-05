@@ -338,10 +338,21 @@ def test_biegi_rownolegle_sa_deterministyczne(client: TestClient) -> None:
     #     Prog 3,0x lapie REGRESJE STRUKTURALNE, ktore z GIL nie maja nic
     #     wspolnego: konwoj na blokadzie, ponawianie transakcji po zakleszczeniu,
     #     przypadkowa globalna sekcja krytyczna wokol biegu.
-    assert czas_rownolegle <= czas_szeregowo * 3.0, (
-        f"Partia rownolegla ({czas_rownolegle:.3f} s) jest ponad 3x wolniejsza "
-        f"od szeregowej ({czas_szeregowo:.3f} s) — to juz nie koszt GIL, tylko "
-        "konwoj na blokadzie albo ponawianie transakcji."
+    #
+    #     PODLOGA BEZWZGLEDNA (lekcja z czerwonego biegu CI na commicie czysto
+    #     dokumentacyjnym): przy PODsekundowej partii szeregowej iloraz mierzy
+    #     szum planisty, nie strukture — na 2-rdzeniowym runnerze zmierzono
+    #     0,674 s vs 0,146 s (4,6x) przy zielonych asercjach determinizmu.
+    #     Regresje strukturalne, ktore ten prog ma lapac (busy_timeout,
+    #     ponawianie po zakleszczeniu), kosztuja SEKUNDY — podloga +2 s
+    #     zachowuje pelna moc detekcyjna, a odbiera ilorazowi wladze nad
+    #     szumem malych liczb.
+    prog_rownoleglosci = max(czas_szeregowo * 3.0, czas_szeregowo + 2.0)
+    assert czas_rownolegle <= prog_rownoleglosci, (
+        f"Partia rownolegla ({czas_rownolegle:.3f} s) przekracza prog "
+        f"{prog_rownoleglosci:.3f} s (szeregowo {czas_szeregowo:.3f} s) — to juz "
+        "nie koszt GIL ani szum planisty, tylko konwoj na blokadzie albo "
+        "ponawianie transakcji."
     )
 
 
