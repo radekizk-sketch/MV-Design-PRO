@@ -17,6 +17,7 @@
  * Certyfikat PTPiREE spływa z pól katalogu falownika (ConverterType.ptpiree_*).
  */
 
+import { CANONICAL_CATALOG_VERSION } from '../../../ui/catalog/catalogBinding';
 import { normalizeCatalogBinding } from '../../../ui/network-build/forms/catalogPayload';
 import type { ConverterType } from '../../../ui/catalog/types';
 import type { CableLayingConditions } from './derSelectionApi';
@@ -29,7 +30,13 @@ import type {
 } from '../../../types/domainOps';
 import type { DerCatalogBindingsRequest } from '../../../ui/sld/v2/canvas/derPersistenceApi';
 
-const CANONICAL_CATALOG_VERSION = 'v12.5';
+// Wersja pozycji katalogowej ma JEDNO źródło we froncie (`ui/catalog/catalogBinding`)
+// i musi zgadzać się z wersją, którą materializuje backend
+// (`api/domain_ops_policy.DEFAULT_CATALOG_VERSION`). Kreator OZE miał tu własną,
+// RÓWNOLEGŁĄ stałą `'v12.5'` — bramka spójności tabliczki z katalogiem
+// (`domain_operations_v2._build_converter_materialized_params`) odrzucała przez to
+// KAŻDY zapis źródła OZE komunikatem „Tabliczka podana w formularzu przeczy pozycji
+// katalogowej … catalog_item_version: payload 'v12.5', katalog '2024.1'".
 
 export type TechnologiaOze = 'PV' | 'BESS' | 'FW';
 export type WariantPrzylaczenia = 'nn_side' | 'block_transformer';

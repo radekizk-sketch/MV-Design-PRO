@@ -45,6 +45,14 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npm run test:e2e:setup:real
 
+      # Dwa łańcuchy krytyczne w JEDNYM wywołaniu Playwrighta (`test:e2e:real`):
+      #   - critical-run-flow     — projekt → model → gotowość → bieg → wyniki,
+      #   - critical-oze-evidence — kreator OZE → tabliczka PTPiREE → gotowość →
+      #     bieg NC RfG → dowód na ekranie → certyfikat zgodności (z case_id).
+      # Jedno wywołanie, a nie drugi krok workflow, bo `webServer` Playwrighta
+      # startuje backend i vite RAZ na wywołanie: osobny krok płaciłby ponownie
+      # pełny zimny rozruch (boot API + zimny transform grafu modułów), zamiast
+      # tylko czasu nowego specu.
       - name: Run real-backend E2E smoke
         working-directory: mv-design-pro/frontend
         run: npm run test:e2e:real

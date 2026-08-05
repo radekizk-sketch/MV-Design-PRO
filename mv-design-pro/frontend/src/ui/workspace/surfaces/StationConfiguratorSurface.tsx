@@ -27,17 +27,12 @@ import type {
 } from '../../network-build/station-configurator/cards/StationConfigTransformerCard';
 import {
   AddDerWizard,
-  BLOCK_TRANSFORMER_CATALOG,
-  EMPTY_DER_CATALOGS,
-  EMPTY_DER_PROFILES,
-  EMPTY_DER_READINESS,
-  computeDerCompleteness,
+  deryStacjiZModelu,
+  mergeStationDers,
   useStationAudit2Config,
   useStationDerStore,
   useUpdateStationAudit2Config,
   selectDersOfStation,
-  type ConnectionSide,
-  type DerKindUnified,
   type StationDerConnection,
 } from '../../network-build/station-der';
 import type { AddDerKindRequest } from '../../network-build/station-configurator/cards/StationConfigDerSourcesCard';
@@ -55,7 +50,6 @@ import { selectStationDistributionTransformers } from '../../network-build/stati
 import type {
   Bay,
   EnergyNetworkModel,
-  Generator as EnmGenerator,
   Substation,
   Transformer,
 } from '../../../types/enm';
@@ -172,10 +166,6 @@ const DEFAULT_BRANCH_CABLE_SEGMENT = {
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function readNumber(value: unknown): number | null {
-  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
 const TRANSFORMER_SN_VOLTAGE_TOLERANCE_KV = 0.5;
@@ -305,148 +295,9 @@ function buildTransformerCatalogOptionsById(
   return optionsById;
 }
 
-function derKindFromGenerator(generator: EnmGenerator): DerKindUnified | null {
-  const genType = (generator.gen_type ?? '').toLowerCase();
-  const catalogGroup = (generator.catalog_namespace ?? '').toUpperCase();
-  const ref = `${generator.ref_id} ${generator.name} ${generator.catalog_ref ?? ''}`.toLowerCase();
-  if (genType.includes('bess') || catalogGroup.includes('BESS') || ref.includes('bess')) return 'BESS';
-  if (genType.includes('wind') || genType.startsWith('fw_') || catalogGroup.includes('FW') || ref.includes('/fw/')) return 'FW';
-  if (genType.includes('pv') || catalogGroup.includes('PV') || ref.includes('/pv/')) return 'PV';
-  return null;
-}
-
-function connectionSideFromGenerator(generator: EnmGenerator): ConnectionSide {
-  switch (generator.connection_variant) {
-    case 'LV_BEHIND_STATION_TRANSFORMER':
-    case 'nn_side':
-      return 'nN';
-    case 'DEDICATED_MV_CONNECTION':
-    case 'block_transformer':
-      return 'dedicated_transformer';
-    case 'SOURCE_CONNECTION_STATION':
-      return 'SN';
-    default:
-      return generator.bus_ref.includes('/nn_') || generator.bus_ref.includes('/nn_bus') ? 'nN' : 'SN';
-  }
-}
-
-function isGeneratorAttachedToStation(generator: EnmGenerator, stationRef: string): boolean {
-  if (generator.station_ref === stationRef) return true;
-  const stationPrefix = stationRef.endsWith('/station')
-    ? stationRef.slice(0, -'/station'.length)
-    : stationRef;
-  return generator.bus_ref.startsWith(`${stationPrefix}/`);
-}
-
-function generatorDisplayName(generator: EnmGenerator, kind: DerKindUnified): string {
-  const meta = generator.meta ?? {};
-  const sourceIndex = readNumber(meta.source_sequence_index);
-  const ordinal = String((sourceIndex ?? 0) + 1).padStart(2, '0');
-  const baseName = generator.name?.trim();
-  if (baseName && !/^blok\s/i.test(baseName)) return baseName;
-  const label = kind === 'BESS' ? 'magazyn energii' : kind === 'FW' ? 'farma wiatrowa' : 'fotowoltaika';
-  return `${kind} ${ordinal} - ${label}`;
-}
-
-function deriveStationDersFromSnapshot(
-  snapshot: EnergyNetworkModel | null,
-  stationRef: string | null,
-  projectId: string | null,
-): readonly StationDerConnection[] {
-  if (!snapshot || !stationRef) return [];
-  const timestamp = snapshot.header.updated_at || snapshot.header.created_at || '1970-01-01T00:00:00Z';
-  return (snapshot.generators ?? [])
-    .filter((generator) => isGeneratorAttachedToStation(generator, stationRef))
-    .map((generator): StationDerConnection | null => {
-      const kind = derKindFromGenerator(generator);
-      if (!kind) return null;
-      const meta = generator.meta ?? {};
-      const connectionSide = connectionSideFromGenerator(generator);
-      const transformerRef = generator.blocking_transformer_ref ?? null;
-      const blockTransformerCatalogRef = readString(meta.block_transformer_catalog_ref)
-        ?? inferBlockTransformerCatalogRef(snapshot, transformerRef);
-      const catalogs = {
-        ...EMPTY_DER_CATALOGS,
-        device_catalog_ref: generator.catalog_ref ?? null,
-        bay_catalog_ref: readString(meta.field_ref),
-        block_transformer_catalog_ref: blockTransformerCatalogRef,
-        protection_catalog_ref: readString(meta.protection_catalog_ref),
-        ct_catalog_ref: readString(meta.ct_catalog_ref),
-        vt_catalog_ref: readString(meta.vt_catalog_ref),
-        fault_current_data_ref: readString(meta.fault_current_data_ref),
-        dynamic_model_ref: readString(meta.dynamic_model_ref),
-      };
-      const profiles = {
-        ...EMPTY_DER_PROFILES,
-        nc_rfg_profile_ref:
-          readString(meta.nc_rfg_profile_ref) ?? readString(meta.operator_profile_ref),
-        regulation_profile_ref: readString(meta.regulation_profile_ref),
-        pf_curve_ref: readString(meta.pf_curve_ref),
-      };
-      const busPrzylaczeniaRef = readString(meta.bus_przylaczenia_ref) ?? generator.bus_ref;
-      const voltageLevelRef = readString(meta.voltage_level_ref);
-      return {
-        id: generator.ref_id,
-        project_id: projectId ?? 'project-from-enm',
-        station_id: stationRef,
-        der_kind: kind,
-        name: generatorDisplayName(generator, kind),
-        connection_side: connectionSide,
-        bus_przylaczenia_ref: busPrzylaczeniaRef,
-        bay_ref: readString(meta.field_ref),
-        transformer_ref: transformerRef,
-        lv_busbar_ref: connectionSide === 'nN' ? generator.bus_ref : null,
-        connection_node_ref: readString(meta.connection_node_ref),
-        internal_cable_ref: readString(meta.internal_cable_ref),
-        voltage_level_ref: voltageLevelRef,
-        catalogs,
-        profiles,
-        nominal_power_kw: Math.round(generator.p_mw * 1000),
-        // Liczba jednostek z modelu (`quantity`) — bez niej moc grupy i moc jednostki
-        // sa nierozroznialne (audyt E-21 pkt P2).
-        unit_count: readNumber(meta.quantity) ?? readNumber(meta.n_parallel),
-        completeness: computeDerCompleteness({
-          connection_side: connectionSide,
-          bus_przylaczenia_ref: busPrzylaczeniaRef,
-          catalogs,
-          profiles,
-          voltage_level_ref: voltageLevelRef,
-        }),
-        readiness: { ...EMPTY_DER_READINESS },
-        created_at: timestamp,
-        updated_at: timestamp,
-      };
-    })
-    .filter((der): der is StationDerConnection => der !== null)
-    .sort((left, right) => left.id.localeCompare(right.id));
-}
-
-function mergeStationDers(
-  snapshotDers: readonly StationDerConnection[],
-  localDers: readonly StationDerConnection[],
-): readonly StationDerConnection[] {
-  const byId = new Map<string, StationDerConnection>();
-  const snapshotSemanticKeys = new Set(snapshotDers.map(derSemanticKey));
-  snapshotDers.forEach((der) => byId.set(der.id, der));
-  localDers.forEach((der) => {
-    if (!byId.has(der.id) && snapshotSemanticKeys.has(derSemanticKey(der))) {
-      return;
-    }
-    byId.set(der.id, der);
-  });
-  return [...byId.values()].sort((left, right) => left.id.localeCompare(right.id));
-}
-
-function derSemanticKey(der: StationDerConnection): string {
-  return [
-    der.station_id,
-    der.der_kind,
-    der.connection_side,
-    der.name.trim().toLocaleLowerCase('pl-PL'),
-    der.catalogs.device_catalog_ref ?? '',
-    der.nominal_power_kw ?? '',
-  ].join('|');
-}
+// Odwzorowanie generatorów migawki na rekordy warsztatu wytwórców przeniesione
+// do `network-build/station-der/zModelu` — czyta je TAKŻE synchronizacja powłoki
+// (ekrany strumienia OZE), więc nie może mieszkać w jednej powierzchni.
 
 function findStation(
   snapshot: EnergyNetworkModel | null,
@@ -569,26 +420,6 @@ function transformerShortLabel(transformer: Transformer | null): string | null {
   const power = `${Math.round(transformer.sn_mva * 1000).toLocaleString('pl-PL')} kVA`;
   const group = transformer.vector_group ? ` ${transformer.vector_group}` : '';
   return `${voltage} ${power}${group}`;
-}
-
-function inferBlockTransformerCatalogRef(
-  snapshot: EnergyNetworkModel | null,
-  transformerRef: string | null | undefined,
-): string | null {
-  if (!snapshot || !transformerRef) return null;
-  const transformer = (snapshot.transformers ?? []).find(
-    (candidate) => candidate.ref_id === transformerRef || candidate.id === transformerRef,
-  );
-  if (!transformer) return null;
-  const snKva = Math.round(transformer.sn_mva * 1000);
-  const vectorGroup = transformer.vector_group ?? null;
-  const match = BLOCK_TRANSFORMER_CATALOG.find((candidate) =>
-    candidate.sn_kva === snKva
-    && Math.abs(candidate.hv_kv - transformer.uhv_kv) < 0.01
-    && Math.abs(candidate.lv_kv - transformer.ulv_kv) < 0.01
-    && (!vectorGroup || candidate.vector_group === vectorGroup),
-  );
-  return match?.id ?? null;
 }
 
 function derConnectionPortKind(der: StationDerConnection): PortKind {
@@ -821,7 +652,7 @@ export function StationConfiguratorSurface(props: StationConfiguratorSurfaceProp
   const activeRunId = useAppStateStore((state) => state.activeRunId);
   const defaultCard = useMemo(() => stationDefaultCard(surface), [surface]);
   const snapshotDers = useMemo(
-    () => deriveStationDersFromSnapshot(snapshot, stationRef, projectId),
+    () => deryStacjiZModelu(snapshot, stationRef, projectId),
     [snapshot, stationRef, projectId],
   );
   const ders = useMemo(

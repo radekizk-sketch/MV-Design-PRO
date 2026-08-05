@@ -143,16 +143,27 @@ export interface PodsumowanieProjektu {
 // =============================================================================
 
 /**
- * Napięcie przyłączenia [kV] z modelu — z poziomu napięcia przyłączenia
- * (`voltage_level_ref` → katalog poziomów napięć nN/SN, `nominal_kv`). Brak
- * jednoznacznej danej modelowej → `null` (moduł trafi w stan „brak danych").
- * NIE stosujemy domyślnej wartości 15 kV ani wnioskowania z `connection_side`.
+ * Napięcie przyłączenia [kV] z modelu — DWIE realne dane modelowe, w kolejności:
+ *   1. `voltage_level_ref` → katalog poziomów napięć nN/SN (`nominal_kv`) — wybór
+ *      projektanta zapisany kreatorem stacji,
+ *   2. `connection_voltage_kv` — napięcie SZYNY PRZYŁĄCZENIA odczytane z migawki
+ *      (wytwórca zapisany kreatorem źródła OZE nie ma referencji poziomu, a katalog
+ *      poziomów nie zna np. 0,8 kV falowników string — bez tego kroku moduł obecny
+ *      w modelu meldował „brak danych" i bieg zgodności był dla niego zablokowany).
+ *
+ * Brak obu → `null` (moduł trafi w stan „brak danych"). NIE stosujemy domyślnej
+ * wartości 15 kV ani wnioskowania z `connection_side`.
  */
 export function rozwiazNapiecieKv(der: StationDerConnection): number | null {
-  if (!der.voltage_level_ref) return null;
-  const poziom = getLvVoltageLevel(der.voltage_level_ref);
-  if (poziom && Number.isFinite(poziom.nominal_kv) && poziom.nominal_kv > 0) {
-    return poziom.nominal_kv;
+  if (der.voltage_level_ref) {
+    const poziom = getLvVoltageLevel(der.voltage_level_ref);
+    if (poziom && Number.isFinite(poziom.nominal_kv) && poziom.nominal_kv > 0) {
+      return poziom.nominal_kv;
+    }
+  }
+  const zModelu = der.connection_voltage_kv;
+  if (typeof zModelu === 'number' && Number.isFinite(zModelu) && zModelu > 0) {
+    return zModelu;
   }
   return null;
 }
