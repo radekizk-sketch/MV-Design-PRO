@@ -3219,26 +3219,44 @@ export const STATION_ARCHETYPE_SHORT_CIRCUIT: Readonly<
 > = """
 
 
-def write_companions() -> str:
+def render_companions() -> dict[str, str]:
+    """Nazwa pliku -> PELNA tresc artefaktu GENERATED (karta X4, V12K-318 poz. 5).
+
+    JEDEN tor renderowania dla zapisu (``--write``) i dla testu regeneracji
+    (``tests/application/test_companions_generated.py``): do karty X4 naglowek
+    „GENERATED — DO NOT EDIT BY HAND" byl honorowany wylacznie dyscyplina autora,
+    bo zaden test nie porownywal artefaktu z wyjsciem generatora. Solvery FROZEN
+    sa deterministyczne, serializacja sortuje klucze — rownosc jest BAJTOWA.
+    """
+    return {
+        "index.ts": _TS_HEADER + json.dumps(build_all(), indent=2, sort_keys=True) + ";\n",
+        "shortCircuit.ts": (
+            _TS_SC_HEADER + json.dumps(build_all_sc(), indent=2, sort_keys=True) + ";\n"
+        ),
+        "voltageFlow.ts": (
+            _TS_VF_HEADER + json.dumps(build_all_vf(), indent=2, sort_keys=True) + ";\n"
+        ),
+        "ozeArchetypes2a.ts": (
+            _TS_OZE_HEADER + json.dumps(build_all_oze_2a(), indent=2, sort_keys=True) + ";\n"
+        ),
+    }
+
+
+def _zapisz_artefakt(nazwa: str) -> str:
     out_dir = _companions_dir()
     os.makedirs(out_dir, exist_ok=True)
-    body = json.dumps(build_all(), indent=2, sort_keys=True)
-    ts = _TS_HEADER + body + ";\n"
-    path = os.path.join(out_dir, "index.ts")
+    path = os.path.join(out_dir, nazwa)
     with open(path, "w", encoding="utf-8") as fh:
-        fh.write(ts)
+        fh.write(render_companions()[nazwa])
     return path
+
+
+def write_companions() -> str:
+    return _zapisz_artefakt("index.ts")
 
 
 def write_sc_companions() -> str:
-    out_dir = _companions_dir()
-    os.makedirs(out_dir, exist_ok=True)
-    body = json.dumps(build_all_sc(), indent=2, sort_keys=True)
-    ts = _TS_SC_HEADER + body + ";\n"
-    path = os.path.join(out_dir, "shortCircuit.ts")
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write(ts)
-    return path
+    return _zapisz_artefakt("shortCircuit.ts")
 
 
 _TS_VF_HEADER = """\
@@ -3267,14 +3285,7 @@ export const STATION_ARCHETYPE_VOLTAGE_FLOW: Readonly<
 
 
 def write_vf_companions() -> str:
-    out_dir = _companions_dir()
-    os.makedirs(out_dir, exist_ok=True)
-    body = json.dumps(build_all_vf(), indent=2, sort_keys=True)
-    ts = _TS_VF_HEADER + body + ";\n"
-    path = os.path.join(out_dir, "voltageFlow.ts")
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write(ts)
-    return path
+    return _zapisz_artefakt("voltageFlow.ts")
 
 
 _TS_OZE_HEADER = """\
@@ -3297,14 +3308,7 @@ export const OZE_ARCHETYPES_2A: Readonly<Record<string, SldOzeArchetypeCompanion
 
 
 def write_oze_companions() -> str:
-    out_dir = _companions_dir()
-    os.makedirs(out_dir, exist_ok=True)
-    body = json.dumps(build_all_oze_2a(), indent=2, sort_keys=True)
-    ts = _TS_OZE_HEADER + body + ";\n"
-    path = os.path.join(out_dir, "ozeArchetypes2a.ts")
-    with open(path, "w", encoding="utf-8") as fh:
-        fh.write(ts)
-    return path
+    return _zapisz_artefakt("ozeArchetypes2a.ts")
 
 
 def main() -> None:
