@@ -179,8 +179,9 @@ pętlę zdarzeń staje się naprawdę równoległy. Przegląd stanu globalnego:
 | `enm/store.py` | `_enm_store`, `_blokady_przypadkow` | **BEZPIECZNE** — `threading.RLock` na przypadek, cały cykl odczyt→zapis w sekcji krytycznej (naprawa D4, 2026-08-01) |
 | `infrastructure/persistence/repositories/canonical_run_repository.py:111-136` | `_cached_engine`, `_cached_session_factory`, `_cached_database_url` | **DEFEKT — leniwy cache bez blokady** (naprawiany w tej karcie, §7) |
 | `api/sld_overrides.py`, `api/switchgear_config.py` | `_overrides_store`, `_config_store` | bezpieczne — końcówki zostają na pętli zdarzeń (§5) |
+| `api/incremental_archive.py` | `_last_fingerprints`, `_last_full_archive`, `_export_history` | **DEFEKT — cykl odczyt→przeliczenie→zapis bez blokady** (naprawiony, §7 pkt 2) |
 | silnik SQLite dla pliku bazy | `QueuePool` + `check_same_thread=False` | **BEZPIECZNE** — pula jest wielowątkowa |
-| silnik SQLite w pamięci (`mode=memory&cache=shared`, tor testowy) | `SingletonThreadPool` + `check_same_thread=True` | **DEFEKT** — `dispose()` z innego wątku niż twórca połączenia (naprawiany w tej karcie, §7) |
+| silnik SQLite w pamięci (`mode=memory&cache=shared`, tor testowy) | `SingletonThreadPool` + `check_same_thread=True` | **PUŁAPKA, NIE DEFEKT** — strażnik wątku jest tu zabezpieczeniem; jego zdjęcie wywraca proces (§7 pkt 3) |
 
 **Dług NIE naprawiany w tej karcie (wymaga osobnego pomiaru i decyzji):**
 `get_default_mv_catalog()` buduje pełny katalog przy każdym wywołaniu
@@ -190,37 +191,116 @@ osobno udowodnić, że katalog jest faktycznie niezmienny w czasie życia proces
 
 ---
 
-## 7. Naprawy poza `api/**` wymuszone przez offload
+## 7. Naprawy stanu współdzielonego wymuszone przez offload
 
 1. **`canonical_run_repository.get_canonical_run_session_factory()`** — leniwa
    inicjalizacja trzech zmiennych modułu bez blokady. Dwa wątki widzące pusty
    cache tworzą DWA silniki i dwa razy wykonują `init_db`; gorzej — gałąź
    zmiany adresu bazy woła `_cached_engine.dispose()` na silniku, z którego
    inny wątek właśnie korzysta. Naprawa: `threading.Lock` wokół całej
-   sekwencji sprawdź-utwórz-podmień.
-2. **`infrastructure/persistence/db.create_engine_from_url()`** — dla adresu
-   SQLite w pamięci sterownik dostaje `check_same_thread=True`, więc zamknięcie
-   połączenia z innego wątku niż jego twórca kończy się
-   `sqlite3.ProgrammingError` (połknięty przez pulę, ale zostawiający wyciek
-   połączenia i szum w logach). Naprawa: `check_same_thread=False` dla adresów
-   w pamięci — każdy wątek nadal dostaje WŁASNE połączenie (`SingletonThreadPool`),
-   zmienia się wyłącznie dopuszczalność zamknięcia go z zewnątrz.
+   sekwencji sprawdź-utwórz-podmień, z powtórzonym sprawdzeniem pod blokadą.
+   Test: `tests/infrastructure/persistence/test_silnik_wspolbiezny.py`.
+
+2. **`api/incremental_archive.py`** — eksport i import przyrostowy prowadzą ten
+   sam cykl odczyt→przeliczenie→zapis na trzech słownikach modułu. Wyścig
+   **istniał już przed tą kartą**: `POST /export/incremental` jest zdefiniowany
+   jako `def`, więc od zawsze biegł w puli wątków. Dwa równoległe eksporty
+   liczyły deltę względem tej samej bazy, a zapisywał ostatni — kolejna delta
+   powstawała więc względem punktu odniesienia, którego w stanie nie ma, czyli
+   MILCZAŁA o realnie zmienionych sekcjach. Offload importu dokłada drugiego
+   mutującego. Naprawa: `threading.RLock` na projekt wokół całego cyklu w obu
+   końcówkach.
+
+3. **`infrastructure/persistence/db.create_engine_from_url()` — PRÓBA WYCOFANA,
+   i to jest wynik wart zapisania.** Pierwotnie „naprawiono" tu szum w logach
+   (`sqlite3.ProgrammingError` przy `dispose()` bazy w pamięci) przez
+   `check_same_thread=False`. Pod prawdziwą wielowątkowością okazało się to
+   groźne: `SingletonThreadPool` przy przekroczeniu rozmiaru zamyka połączenia
+   NALEŻĄCE DO INNYCH WĄTKÓW, a ze zdjętym strażnikiem to zamknięcie **się
+   udaje** — proces kończy się **segmentation fault** w warstwie C `sqlite3`
+   (zmierzone przy K=10). Strażnik działał tam jak zabezpieczenie: przy
+   `check_same_thread=True` zamknięcie po prostu się nie udaje, jest logowane,
+   a używane połączenie przeżywa.
+
+   Właściwe rozwiązanie leżało gdzie indziej: **test współbieżności biegnie na
+   bazie PLIKOWEJ** — tej samej konfiguracji co produkcja (`QueuePool`, WAL,
+   30-sekundowy budżet oczekiwania) — zamiast na skrócie ze wspólnym cache w
+   pamięci, którego produkcja nigdy nie używa. Wspólny cache przełącza SQLite na
+   blokady NA POZIOMIE TABELI, a `busy_timeout` ich nie obejmuje: równolegli
+   pisarze dostawali natychmiastowe `database table is locked`. Test mierzący
+   współbieżność nie może biec na silniku, którego produkcja nie ma — mierzyłby
+   ograniczenie skrótu testowego. Pułapkę pilnuje przypięty test
+   `test_baza_w_pamieci_zachowuje_straznika_watku`.
 
 ---
 
-## 8. Miara „done" (§3 planu)
+## 8. Miara „done" (§3 planu) — i co pomiar zmienił w jej definicji
 
-Test: `backend/tests/api/test_wspolbieznosc_biegow.py`
+Test: `backend/tests/api/test_wspolbieznosc_biegow.py` (5 przypadków).
 
-- **K = 10** równoległych zadań mieszanych (5× rozpływ, 5× zwarcie, każde
-  z następującym po nim odczytem gotowości).
-- Asercje: (a) wszystkie HTTP 200, (b) odcisk wyniku fizyki identyczny z biegiem
-  szeregowym, (c) czas równoległy ≤ 1,25 × czas szeregowy, (d) **szczyt
-  jednoczesnych zadań ≥ 2** (okna czasowe zachodzą na siebie).
-- Drugi test: trywialny `GET /api/health` kończy się PRZED równoległym biegiem
-  analizy — wprost cel inżynierski osi (UI responsywne w trakcie liczenia).
+### 8.1 Czego offload NIE daje — wynik pomiaru, nie ustępstwo
 
-Progi są **względne**, nie milisekundowe — ten sam kod na wolniejszym runnerze
-CI musi dawać ten sam wynik. Asercja (d) jest odporna nawet na maszynę
-jednordzeniową: serializacja na pętli zdarzeń daje okna rozłączne (szczyt = 1)
-niezależnie od prędkości.
+Karta zakładała kryterium „bieg równoległy NIE wolniejszy niż sekwencyjny".
+**Pomiar pokazał, że to kryterium jest fizycznie nieosiągalne** i dlaczego:
+
+| Obciążenie (K=10, 4 rdzenie) | Szeregowo | Równolegle | Stosunek |
+|---|---|---|---|
+| biegi zwarciowe (solver) | 0,965 s | 1,746 s | **1,81×** |
+| odczyty modelu (`/enm/readiness`) | 0,417 s | 0,772 s | **1,85×** |
+| trywialny `/api/health` | 0,029 s | 0,036 s | **1,23×** |
+
+Spowolnienie dotyczy **nawet trywialnego `/api/health`**, co wyklucza
+rywalizację o bazę jako przyczynę. Powodem jest GIL: cała ta praca to bajtkod
+Pythona, a GIL dopuszcza jeden wątek naraz — K wątków dokłada wyłącznie koszt
+przełączania. **Offload nie zwiększa i nie może zwiększyć przepustowości
+liczenia.** Prawdziwe zrównoleglenie wymagałoby procesów (osobna decyzja, poza
+tą osią).
+
+Kryterium przepustowości zostało więc zamienione na **próg 3,0×**, który nie
+udaje zysku, a łapie regresje strukturalne niezależne od GIL: konwój na
+blokadzie, ponawianie transakcji po zakleszczeniu, przypadkową globalną sekcję
+krytyczną wokół biegu.
+
+### 8.2 Co offload daje — i to jest miara z §3 planu
+
+Plan §3 mówi „**stabilne p95 API przy K=10 równoległych biegach**" — czyli
+opóźnienie, nie przepustowość. To jest dokładnie to, co offload naprawia.
+
+Zmierzone po naprawie (K=10 biegów zwarciowych w locie, sonda `GET /api/health`):
+
+| Miara | Wartość |
+|---|---|
+| pojedynczy bieg bez obciążenia | 133,5 ms |
+| `/api/health` w spokoju (mediana) | 2,9 ms |
+| czas całej partii K=10 | 2,148 s |
+| `/api/health` pod obciążeniem — p50 | **17,2 ms** |
+| `/api/health` pod obciążeniem — p95 | **294,8 ms** (0,14 czasu partii) |
+
+Przed offloadem sonda **nie przechodzi w ogóle**: przy cofniętym offloadzie
+jednej końcówki biegu zdążyła wykonać **1 zapytanie** w całej partii, a jego
+opóźnienie wyniosło 865 ms (czyli czekała na koniec biegu).
+
+### 8.3 Zestaw asercji
+
+1. `test_biegi_rownolegle_sa_deterministyczne` — K=10 zadań mieszanych:
+   (a) wszystkie 200, (b) odcisk **fizyki** identyczny z biegiem szeregowym,
+   (c) próg przepustowości 3,0× (§8.1).
+2. `test_lekkie_zadanie_przechodzi_w_trakcie_biegow[rozpływ|zwarcie]` — miara
+   §3: p95 sondy < połowa czasu partii, **osobno dla każdej końcówki biegu**.
+3. `test_odczyt_nie_czeka_na_bieg_analizy[rozpływ|zwarcie]` — najostrzejsza
+   postać: lekki odczyt kończy się PRZED równoległym biegiem.
+
+**Progi są względne**, nie milisekundowe — ten sam kod na wolniejszym runnerze
+CI daje ten sam wynik.
+
+**Dlaczego per końcówka (reguła KLASA, NIE INSTANCJA).** Pomiar zbiorczy
+przechodzi także wtedy, gdy offload cofnięto na JEDNEJ końcówce, bo druga wciąż
+go ma — iniekcja karty właśnie tak przeszła. Dopiero parametryzacja po rodzaju
+biegu ją złapała.
+
+**Usunięte kryterium — uczciwość pomiaru.** Pierwotna asercja „okna czasowe
+zadań zachodzą na siebie" została WYCOFANA zamiast poprawiona: okno widziane
+przez klienta obejmuje czas oczekiwania w kolejce, więc żądania zakolejkowane i
+wykonane szeregowo mają okna zachodzące tak samo jak wykonane równolegle. Taki
+pomiar nie potrafi rozróżnić tych sytuacji — nie może więc być bramką i
+zostawienie go byłoby fałszywą pewnością.
