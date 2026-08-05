@@ -1,14 +1,38 @@
 """
 Topology Operations — atomic CRUD for ENM graph elements.
 
-Każda operacja: preconditions → mutate (copy-on-write) → postconditions.
+Każda operacja: preconditions → mutate IN-PLACE → postconditions.
 DETERMINISTYCZNE: identyczne wejście → identyczny wynik.
 BINDING: Polish labels, no project codenames.
+
+KONTRAKT MUTACJI (TOPO-COPY, V12K-323 — audyt: `docs/plan/TOPO_COPY_AUDYT.md`).
+
+Każda funkcja mutująca tego modułu zmienia podany model **W MIEJSCU** i oddaje
+w `TopologyOpResult.enm` **TEN SAM obiekt** (`result.enm is enm`). Kopiowanie NIE
+jest odpowiedzialnością tej warstwy — należy do granicy operacji domenowej, która
+i tak robi własną prywatną kopię na wejściu (`enm/domain_operations.py`,
+`enm/domain_operations_v2.py`).
+
+DŁUG, KTÓRY TO ZAMYKA. Wcześniej każda z 14 funkcji mutujących kopiowała GŁĘBOKO
+cały model przy KAŻDYM dodawanym elemencie — mimo że wołający zrobił już swoją
+kopię sekundę wcześniej. Koszt dodania N-tego elementu rósł liniowo z rozmiarem
+modelu: na budowie substratu 53 stacji te kopie zjadały 6,59 s z 10,90 s (60,5 %,
+737 kopii). Audyt 152 wywołań wykazał, że 149 z nich już wtedy podawało prywatną
+kopię, a pozostałe 3 (`add_ct`/`add_vt`/`add_relay`) to był BRAK granicy po stronie
+wołającego, uzupełniony tą samą zmianą.
+
+ŚCIEŻKA BŁĘDU NIE ZOSTAWIA SKUTKU. Cała walidacja BLOCKER biegnie PRZED jakąkolwiek
+mutacją, więc `TopologyOpResult(False, enm, …)` oddaje model bajtowo nietknięty.
+To nie jest deklaracja bez pokrycia — kontrakt (mutacja w miejscu, tożsamość
+obiektu, brak skutku na ścieżce błędu, deterministyczna liczba kopii) jest przypięty
+w `tests/enm/test_topology_ops_kontrakt_kopii.py`.
+
+WOŁAJĄCY, KTÓRY POTRZEBUJE IZOLACJI od swojego wejścia, robi kopię SAM — na swojej
+granicy, raz na operację, a nie raz na element.
 """
 
 from __future__ import annotations
 
-import copy
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -129,7 +153,7 @@ def _find_ct_refs(enm: dict[str, Any]) -> set[str]:
 
 
 def create_node(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
-    """Utwórz nowy węzeł (szynę)."""
+    """Utwórz nowy węzeł (szynę). MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     ref_id = data.get("ref_id", "")
 
@@ -147,7 +171,6 @@ def create_node(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "create_node", issues)
 
-    new_enm = copy.deepcopy(enm)
     bus_data = {
         "ref_id": ref_id,
         "name": data.get("name", ref_id),
@@ -160,12 +183,12 @@ def create_node(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
         bus_data["zone"] = data["zone"]
     if "grounding" in data:
         bus_data["grounding"] = data["grounding"]
-    new_enm.setdefault("buses", []).append(bus_data)
-    return TopologyOpResult(True, new_enm, "create_node", issues, ref_id)
+    enm.setdefault("buses", []).append(bus_data)
+    return TopologyOpResult(True, enm, "create_node", issues, ref_id)
 
 
 def update_node(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
-    """Zaktualizuj istniejący węzeł."""
+    """Zaktualizuj istniejący węzeł. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     ref_id = data.get("ref_id", "")
 
@@ -183,15 +206,14 @@ def update_node(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "update_node", issues)
 
-    new_enm = copy.deepcopy(enm)
     for key, val in data.items():
         if key != "ref_id":
-            new_enm["buses"][idx][key] = val
-    return TopologyOpResult(True, new_enm, "update_node", issues, ref_id)
+            enm["buses"][idx][key] = val
+    return TopologyOpResult(True, enm, "update_node", issues, ref_id)
 
 
 def delete_node(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
-    """Usuń węzeł z walidacją zależności."""
+    """Usuń węzeł z walidacją zależności. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     buses = enm.get("buses", [])
     idx = next((i for i, b in enumerate(buses) if b.get("ref_id") == ref_id), None)
@@ -232,9 +254,8 @@ def delete_node(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
         )
         return TopologyOpResult(False, enm, "delete_node", issues)
 
-    new_enm = copy.deepcopy(enm)
-    new_enm["buses"] = [b for b in new_enm["buses"] if b.get("ref_id") != ref_id]
-    return TopologyOpResult(True, new_enm, "delete_node", issues, ref_id)
+    enm["buses"] = [b for b in enm["buses"] if b.get("ref_id") != ref_id]
+    return TopologyOpResult(True, enm, "delete_node", issues, ref_id)
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +264,7 @@ def delete_node(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
 
 
 def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
-    """Utwórz nową gałąź (linia/kabel/łącznik)."""
+    """Utwórz nową gałąź (linia/kabel/łącznik). MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     ref_id = data.get("ref_id", "")
     branch_type = data.get("type", "line_overhead")
@@ -288,7 +309,6 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "create_branch", issues)
 
-    new_enm = copy.deepcopy(enm)
     branch_data: dict[str, Any] = {
         "ref_id": ref_id,
         "name": data.get("name", ref_id),
@@ -348,12 +368,12 @@ def create_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             if key in data:
                 branch_data[key] = data[key]
 
-    new_enm.setdefault("branches", []).append(branch_data)
-    return TopologyOpResult(True, new_enm, "create_branch", issues, ref_id)
+    enm.setdefault("branches", []).append(branch_data)
+    return TopologyOpResult(True, enm, "create_branch", issues, ref_id)
 
 
 def update_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
-    """Zaktualizuj istniejącą gałąź."""
+    """Zaktualizuj istniejącą gałąź. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     ref_id = data.get("ref_id", "")
     branches = enm.get("branches", [])
@@ -365,15 +385,14 @@ def update_branch(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         )
         return TopologyOpResult(False, enm, "update_branch", issues)
 
-    new_enm = copy.deepcopy(enm)
     for key, val in data.items():
         if key not in ("ref_id", "type"):  # type is immutable
-            new_enm["branches"][idx][key] = val
-    return TopologyOpResult(True, new_enm, "update_branch", issues, ref_id)
+            enm["branches"][idx][key] = val
+    return TopologyOpResult(True, enm, "update_branch", issues, ref_id)
 
 
 def delete_branch(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
-    """Usuń gałąź."""
+    """Usuń gałąź. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     branches = enm.get("branches", [])
     idx = next((i for i, b in enumerate(branches) if b.get("ref_id") == ref_id), None)
@@ -402,9 +421,8 @@ def delete_branch(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "delete_branch", issues)
 
-    new_enm = copy.deepcopy(enm)
-    new_enm["branches"] = [b for b in new_enm["branches"] if b.get("ref_id") != ref_id]
-    return TopologyOpResult(True, new_enm, "delete_branch", issues, ref_id)
+    enm["branches"] = [b for b in enm["branches"] if b.get("ref_id") != ref_id]
+    return TopologyOpResult(True, enm, "delete_branch", issues, ref_id)
 
 
 # ---------------------------------------------------------------------------
@@ -413,7 +431,10 @@ def delete_branch(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
 
 
 def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
-    """Utwórz urządzenie (transformator/odbiór/generator/źródło)."""
+    """Utwórz urządzenie (transformator/odbiór/generator/źródło).
+
+    MUTUJE `enm` W MIEJSCU (kontrakt modułu).
+    """
     issues: list[OpIssue] = []
     device_type = data.get("device_type", "")
     ref_id = data.get("ref_id", "")
@@ -446,7 +467,6 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         if any(i.severity == "BLOCKER" for i in issues):
             return TopologyOpResult(False, enm, "create_device", issues)
 
-        new_enm = copy.deepcopy(enm)
         trafo_data = {
             "ref_id": ref_id,
             "name": data.get("name", ref_id),
@@ -481,8 +501,8 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         ):
             if opt in data:
                 trafo_data[opt] = data[opt]
-        new_enm.setdefault("transformers", []).append(trafo_data)
-        return TopologyOpResult(True, new_enm, "create_device", issues, ref_id)
+        enm.setdefault("transformers", []).append(trafo_data)
+        return TopologyOpResult(True, enm, "create_device", issues, ref_id)
 
     elif device_type == "load":
         bus_ref = data.get("bus_ref", "")
@@ -491,7 +511,6 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         if any(i.severity == "BLOCKER" for i in issues):
             return TopologyOpResult(False, enm, "create_device", issues)
 
-        new_enm = copy.deepcopy(enm)
         load_data = {
             "ref_id": ref_id,
             "name": data.get("name", ref_id),
@@ -508,8 +527,8 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
             "tags": data.get("tags", []),
             "meta": data.get("meta", {}),
         }
-        new_enm.setdefault("loads", []).append(load_data)
-        return TopologyOpResult(True, new_enm, "create_device", issues, ref_id)
+        enm.setdefault("loads", []).append(load_data)
+        return TopologyOpResult(True, enm, "create_device", issues, ref_id)
 
     elif device_type == "generator":
         bus_ref = data.get("bus_ref", "")
@@ -518,7 +537,6 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         if any(i.severity == "BLOCKER" for i in issues):
             return TopologyOpResult(False, enm, "create_device", issues)
 
-        new_enm = copy.deepcopy(enm)
         gen_data = {
             "ref_id": ref_id,
             "name": data.get("name", ref_id),
@@ -537,8 +555,8 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         }
         if "limits" in data:
             gen_data["limits"] = data["limits"]
-        new_enm.setdefault("generators", []).append(gen_data)
-        return TopologyOpResult(True, new_enm, "create_device", issues, ref_id)
+        enm.setdefault("generators", []).append(gen_data)
+        return TopologyOpResult(True, enm, "create_device", issues, ref_id)
 
     elif device_type == "source":
         bus_ref = data.get("bus_ref", "")
@@ -557,7 +575,6 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         if any(i.severity == "BLOCKER" for i in issues):
             return TopologyOpResult(False, enm, "create_device", issues)
 
-        new_enm = copy.deepcopy(enm)
         src_data = {
             "ref_id": ref_id,
             "name": data.get("name", ref_id),
@@ -593,8 +610,8 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         ):
             if opt in data:
                 src_data[opt] = data[opt]
-        new_enm.setdefault("sources", []).append(src_data)
-        return TopologyOpResult(True, new_enm, "create_device", issues, ref_id)
+        enm.setdefault("sources", []).append(src_data)
+        return TopologyOpResult(True, enm, "create_device", issues, ref_id)
 
     else:
         issues.append(
@@ -604,7 +621,7 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
 
 
 def update_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
-    """Zaktualizuj istniejące urządzenie."""
+    """Zaktualizuj istniejące urządzenie. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     device_type = data.get("device_type", "")
     ref_id = data.get("ref_id", "")
@@ -630,15 +647,14 @@ def update_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         )
         return TopologyOpResult(False, enm, "update_device", issues)
 
-    new_enm = copy.deepcopy(enm)
     for key, val in data.items():
         if key not in ("ref_id", "device_type"):
-            new_enm[coll][idx][key] = val
-    return TopologyOpResult(True, new_enm, "update_device", issues, ref_id)
+            enm[coll][idx][key] = val
+    return TopologyOpResult(True, enm, "update_device", issues, ref_id)
 
 
 def delete_device(enm: dict[str, Any], device_type: str, ref_id: str) -> TopologyOpResult:
-    """Usuń urządzenie."""
+    """Usuń urządzenie. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     collection_map = {
         "transformer": "transformers",
@@ -660,9 +676,8 @@ def delete_device(enm: dict[str, Any], device_type: str, ref_id: str) -> Topolog
         )
         return TopologyOpResult(False, enm, "delete_device", issues)
 
-    new_enm = copy.deepcopy(enm)
-    new_enm[coll] = [x for x in new_enm[coll] if x.get("ref_id") != ref_id]
-    return TopologyOpResult(True, new_enm, "delete_device", issues, ref_id)
+    enm[coll] = [x for x in enm[coll] if x.get("ref_id") != ref_id]
+    return TopologyOpResult(True, enm, "delete_device", issues, ref_id)
 
 
 # ---------------------------------------------------------------------------
@@ -671,7 +686,7 @@ def delete_device(enm: dict[str, Any], device_type: str, ref_id: str) -> Topolog
 
 
 def create_measurement(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
-    """Utwórz przekładnik CT/VT."""
+    """Utwórz przekładnik CT/VT. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     ref_id = data.get("ref_id", "")
 
@@ -709,7 +724,6 @@ def create_measurement(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpR
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "create_measurement", issues)
 
-    new_enm = copy.deepcopy(enm)
     m_data = {
         "ref_id": ref_id,
         "name": data.get("name", ref_id),
@@ -722,12 +736,12 @@ def create_measurement(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpR
         "tags": data.get("tags", []),
         "meta": data.get("meta", {}),
     }
-    new_enm.setdefault("measurements", []).append(m_data)
-    return TopologyOpResult(True, new_enm, "create_measurement", issues, ref_id)
+    enm.setdefault("measurements", []).append(m_data)
+    return TopologyOpResult(True, enm, "create_measurement", issues, ref_id)
 
 
 def delete_measurement(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
-    """Usuń przekładnik z walidacją zależności."""
+    """Usuń przekładnik z walidacją zależności. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     measurements = enm.get("measurements", [])
     if not any(m.get("ref_id") == ref_id for m in measurements):
@@ -752,9 +766,8 @@ def delete_measurement(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "delete_measurement", issues)
 
-    new_enm = copy.deepcopy(enm)
-    new_enm["measurements"] = [m for m in new_enm["measurements"] if m.get("ref_id") != ref_id]
-    return TopologyOpResult(True, new_enm, "delete_measurement", issues, ref_id)
+    enm["measurements"] = [m for m in enm["measurements"] if m.get("ref_id") != ref_id]
+    return TopologyOpResult(True, enm, "delete_measurement", issues, ref_id)
 
 
 # ---------------------------------------------------------------------------
@@ -763,7 +776,7 @@ def delete_measurement(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
 
 
 def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
-    """Przypisz zabezpieczenie do wyłącznika."""
+    """Przypisz zabezpieczenie do wyłącznika. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     ref_id = data.get("ref_id", "")
 
@@ -821,7 +834,6 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "attach_protection", issues)
 
-    new_enm = copy.deepcopy(enm)
     pa_data = {
         "ref_id": ref_id,
         "name": data.get("name", ref_id),
@@ -835,12 +847,12 @@ def attach_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
         "tags": data.get("tags", []),
         "meta": data.get("meta", {}),
     }
-    new_enm.setdefault("protection_assignments", []).append(pa_data)
-    return TopologyOpResult(True, new_enm, "attach_protection", issues, ref_id)
+    enm.setdefault("protection_assignments", []).append(pa_data)
+    return TopologyOpResult(True, enm, "attach_protection", issues, ref_id)
 
 
 def update_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult:
-    """Zaktualizuj zabezpieczenie."""
+    """Zaktualizuj zabezpieczenie. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     ref_id = data.get("ref_id", "")
     pas = enm.get("protection_assignments", [])
@@ -865,15 +877,14 @@ def update_protection(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpRe
     if any(i.severity == "BLOCKER" for i in issues):
         return TopologyOpResult(False, enm, "update_protection", issues)
 
-    new_enm = copy.deepcopy(enm)
     for key, val in data.items():
         if key not in ("ref_id",):
-            new_enm["protection_assignments"][idx][key] = val
-    return TopologyOpResult(True, new_enm, "update_protection", issues, ref_id)
+            enm["protection_assignments"][idx][key] = val
+    return TopologyOpResult(True, enm, "update_protection", issues, ref_id)
 
 
 def detach_protection(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
-    """Odłącz zabezpieczenie od wyłącznika."""
+    """Odłącz zabezpieczenie od wyłącznika. MUTUJE `enm` W MIEJSCU (kontrakt modułu)."""
     issues: list[OpIssue] = []
     pas = enm.get("protection_assignments", [])
     if not any(x.get("ref_id") == ref_id for x in pas):
@@ -882,11 +893,10 @@ def detach_protection(enm: dict[str, Any], ref_id: str) -> TopologyOpResult:
         )
         return TopologyOpResult(False, enm, "detach_protection", issues)
 
-    new_enm = copy.deepcopy(enm)
-    new_enm["protection_assignments"] = [
-        x for x in new_enm["protection_assignments"] if x.get("ref_id") != ref_id
+    enm["protection_assignments"] = [
+        x for x in enm["protection_assignments"] if x.get("ref_id") != ref_id
     ]
-    return TopologyOpResult(True, new_enm, "detach_protection", issues, ref_id)
+    return TopologyOpResult(True, enm, "detach_protection", issues, ref_id)
 
 
 # ---------------------------------------------------------------------------
