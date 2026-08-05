@@ -1399,10 +1399,15 @@ class TestPermutationInvarianceSNFields:
         perms = list(itertools.permutations(fields))
         assert len(perms) >= 6  # 3! = 6
 
-        for _ in range(50):
-            _, snapshot = _build_gpz_plus_segments(2)
-            first_seg = _get_first_segment_ref(snapshot)
+        # INTENCJA (DET-9): powtarzane 50x jest POROWNANIE PERMUTACJI, nie budowa
+        # sieci wejsciowej. `_build_gpz_plus_segments(2)` jest deterministyczne (pin:
+        # TestDeterministicIds100x), wiec 50 wywolan dawalo 50 identycznych snapshotow
+        # — ta sama siec liczona od nowa. Budujemy ja RAZ; kazda permutacja i tak
+        # dostaje wlasna gleboka kopie, wiec izolacja biegow jest bez zmian.
+        _, snapshot = _build_gpz_plus_segments(2)
+        first_seg = _get_first_segment_ref(snapshot)
 
+        for _ in range(50):
             perm_hashes: list[str] = []
             for perm in perms:
                 snap_copy = copy.deepcopy(snapshot)
