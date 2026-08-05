@@ -247,4 +247,44 @@ describe('E1.4 — integracja powłoki (shell + nav + inspector + events)', () =
     const warsztat = screen.getByTestId('workspace-surface-main');
     expect(warsztat.textContent).toContain('Pulpit projektu');
   });
+
+  // === Łańcuch etapu przekazania projektu: hub dokumentacji → archiwum ZIP ===
+
+  it('karta „Archiwum projektu (ZIP)" huba prowadzi do DZIAŁAJĄCEJ akcji, nie do przestrzeni bez akcji', async () => {
+    await renderujPowloke();
+    act(() => {
+      useShellStore.setState({ activeSpace: 'dokumentacja' });
+    });
+
+    // Natywny klik akcji karty huba (ścieżka realnego użytkownika).
+    fireEvent.click(screen.getByRole('button', { name: 'Otwórz archiwum' }));
+
+    // Lądowanie: przestrzeń „Projekt" pokazuje okno archiwum z realną akcją.
+    expect(useShellStore.getState().activeSpace).toBe('projekt');
+    const okno = await screen.findByTestId('mvd-archiwum-projektu');
+    expect(okno.textContent).toContain('Archiwum projektu (ZIP)');
+    expect(screen.getByTestId('mvd-arch-eksport')).toBeTruthy();
+  });
+
+  it('kafel pulpitu otwiera to samo okno archiwum (wejście niezależne od huba)', async () => {
+    await renderujPowloke();
+    act(() => {
+      useShellStore.setState({ activeSpace: 'projekt' });
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Otwórz archiwum' }));
+    expect(await screen.findByTestId('mvd-archiwum-projektu')).toBeTruthy();
+  });
+
+  it('wyjście z przestrzeni „Projekt" gasi żądanie okna archiwum (brak zaległych żądań)', async () => {
+    await renderujPowloke();
+    act(() => {
+      useShellStore.getState().setZadanieArchiwumProjektu(true);
+      useShellStore.setState({ activeSpace: 'projekt' });
+    });
+    expect(await screen.findByTestId('mvd-archiwum-projektu')).toBeTruthy();
+    act(() => {
+      useShellStore.setState({ activeSpace: 'model' });
+    });
+    expect(useShellStore.getState().zadanieArchiwumProjektu).toBe(false);
+  });
 });

@@ -3792,6 +3792,7 @@ function Harness() {
         onOtworzProjekt={() => undefined}
         onZaznaczPrzypadek={() => undefined}
         onOtworzPrzypadek={() => undefined}
+        onOtworzArchiwum={() => undefined}
       />
     );
   else if (creator === 'uwaga') node = <EkranCoWymagaUwagi />;

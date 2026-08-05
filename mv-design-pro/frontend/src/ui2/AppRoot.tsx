@@ -37,7 +37,7 @@ import { InspectorPanel } from './inspector';
 import { useObiektInspektora, useRewizjaModelu } from './adapters/inspectorAdapter';
 import { emituj, subskrybuj, startEventBusAdapters } from './events';
 import { CommandPalette, zbudujIndeksWyszukiwania, type PozycjaWyszukiwania } from './search';
-import { PulpitProjektu, OtworzProjektKontener } from './spaces/projekt';
+import { PulpitProjektu, OtworzProjektKontener, EkranArchiwum } from './spaces/projekt';
 import { PanelGotowosci } from './spaces/gotowosc';
 import { ModelWarsztat } from './spaces/model';
 import { MenedzerPrzypadkow, PanelScenariuszy } from './spaces/obliczenia';
@@ -134,6 +134,10 @@ export function AppRoot() {
   const [zmianaProjektu, setZmianaProjektu] = useState(false);
   const activeSpace = useShellStore((s) => s.activeSpace);
   const advancementMode = useShellStore((s) => s.advancementMode);
+  // Okno „Archiwum projektu (ZIP)" przestrzeni „Projekt": otwiera je kafel
+  // pulpitu ALBO karta huba dokumentacji (jednorazowe żądanie powłoki).
+  const zadanieArchiwum = useShellStore((s) => s.zadanieArchiwumProjektu);
+  const setZadanieArchiwum = useShellStore((s) => s.setZadanieArchiwumProjektu);
   const rewizjaModelu = useRewizjaModelu();
   const obiekt = useObiektInspektora(zaznaczonyId);
   const { status: backendStatus, reconnect } = useBackendHealth();
@@ -194,9 +198,16 @@ export function AppRoot() {
   }, [activeProjectId, setActiveSpaceStore]);
 
   // KD-1 (L-5): tryb zmiany projektu żyje tylko wewnątrz przestrzeni „Projekt" —
-  // wyjście do innej przestrzeni przywraca pulpit otwartego projektu.
+  // wyjście do innej przestrzeni przywraca pulpit otwartego projektu. Tak samo
+  // okno archiwum: żądanie gaśnie z wyjściem z przestrzeni (żadnych zaległych
+  // żądań, wzorzec `zadanieNowyPrzypadek`).
   useEffect(() => {
-    if (activeSpace !== 'projekt') setZmianaProjektu(false);
+    if (activeSpace !== 'projekt') {
+      setZmianaProjektu(false);
+      if (useShellStore.getState().zadanieArchiwumProjektu) {
+        useShellStore.getState().setZadanieArchiwumProjektu(false);
+      }
+    }
   }, [activeSpace]);
 
   const zaznacz = (id: string) => {
@@ -318,7 +329,12 @@ export function AppRoot() {
           }
           dokumentacja={<MostDokumentacji />}
           pulpit={
-            // E1a (K4): sekwencja pierwszego użycia — bez aktywnego projektu
+            // Okno archiwum ma pierwszeństwo także BEZ otwartego projektu:
+            // eksport pokazuje wtedy uczciwy stan zerowy, a odtworzenie z paczki
+            // jest właśnie sposobem na zdobycie projektu.
+            zadanieArchiwum ? (
+              <EkranArchiwum onZamknij={() => setZadanieArchiwum(false)} />
+            ) : // E1a (K4): sekwencja pierwszego użycia — bez aktywnego projektu
             // przestrzeń „Projekt" prowadzi ekranem „Nowy / otwórz projekt"
             // (W-102, realne akcje API w kontenerze); z projektem — pulpit.
             activeProjectId == null || zmianaProjektu ? (
@@ -334,6 +350,7 @@ export function AppRoot() {
                 onOtworzProjekt={otworzPulpitProjektow}
                 onZaznaczPrzypadek={(id) => emituj({ typ: 'selekcja', obiektId: id, zrodlo: 'pulpit-projektu' })}
                 onOtworzPrzypadek={() => wybierzPrzestrzen('obliczenia')}
+                onOtworzArchiwum={() => setZadanieArchiwum(true)}
               />
             )
           }

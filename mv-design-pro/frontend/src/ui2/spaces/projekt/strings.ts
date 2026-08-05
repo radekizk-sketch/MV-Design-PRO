@@ -53,6 +53,11 @@ export const PULPIT_STRINGS = {
   brakPrzypadkow: 'Brak przypadków obliczeniowych',
   aktywny: 'aktywny',
 
+  // Kafel „Archiwum projektu (ZIP)" — wejście do okna archiwum (etap przekazania)
+  archiwumTytul: 'Archiwum projektu (ZIP)',
+  archiwumOpis: 'Spakuj projekt do przekazania albo odtwórz go z otrzymanej paczki.',
+  archiwumAkcja: 'Otwórz archiwum',
+
   // Stany przestrzeni
   brakProjektu: 'Nie otwarto projektu',
   brakProjektuOpis: 'Otwórz projekt, aby zobaczyć pulpit.',

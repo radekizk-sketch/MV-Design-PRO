@@ -27,6 +27,16 @@ export default defineConfig(({ mode }) => {
           target: apiUrl,
           changeOrigin: true,
         },
+        // Router archiwum projektu (`backend/src/api/project_archive.py`) jest
+        // zamontowany pod `/projects`, BEZ prefiksu `/api`. Bez tej reguły
+        // eksport/import paczki z przeglądarki trafiał w serwer statyczny
+        // (odpowiedź HTML zamiast ZIP) — końcówki istniały, ale były
+        // nieosiągalne dla interfejsu. Aplikacja nie ma tras ścieżkowych
+        // (nawigacja po hashu), więc przekierowanie `/projects` jest bezkolizyjne.
+        '/projects': {
+          target: apiUrl,
+          changeOrigin: true,
+        },
       },
     },
     test: {
