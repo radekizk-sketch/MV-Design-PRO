@@ -429,38 +429,59 @@ def test_odczyt_nie_czeka_na_bieg_analizy(client: TestClient, rodzaj: str, sciez
     Najostrzejsza postac celu inzynierskiego osi, sprawdzana dla KAZDEJ koncowki
     biegu osobno. Gdy bieg blokuje petle zdarzen, `GET /api/health` czeka na jego
     koniec — okno odczytu lezy wtedy CALE po zakonczeniu biegu.
+
+    ANTY-WYSCIG (lekcja z pierwszego czerwonego biegu CI): asercja porzadku ma
+    sens TYLKO gdy okna realnie sie nalozyly (odczyt wystartowal przed koncem
+    biegu). Po memoizacji katalogu bieg na malej sieci bywa krotszy niz zwloka
+    startowa odczytu — wtedy „odczyt po biegu" nie jest dowodem blokady, tylko
+    dowodem szybkiego biegu. Probujemy z malejaca zwloka az do zera; przy
+    zwloce 0 nalozenie jest gwarantowane (HTTP POST + solver trwa rzedy ms,
+    odczyt startuje rownoczesnie). Moc detekcyjna NIE slabnie: zablokowana
+    petla zawsze daje nalozenie (odczyt CZEKA), a wtedy porzadek jest twardo
+    asertowany.
     """
     case_id = str(uuid4())
     _zasiej(case_id, f"Siec SN — responsywnosc {rodzaj}")
     # Rozgrzewka poza pomiarem (migracje + dane katalogowe przy pierwszym odczycie).
     assert client.get(f"/api/cases/{case_id}/enm/readiness").status_code == 200
 
-    znaczniki: dict[str, tuple[float, float]] = {}
+    def probka(zwloka: float) -> tuple[tuple[float, float], tuple[float, float]]:
+        znaczniki: dict[str, tuple[float, float]] = {}
 
-    def bieg() -> int:
-        start = time.perf_counter()
-        odp = _uruchom_bieg(client, case_id, sciezka)
-        znaczniki["bieg"] = (start, time.perf_counter())
-        return odp.status_code
+        def bieg() -> int:
+            start = time.perf_counter()
+            odp = _uruchom_bieg(client, case_id, sciezka)
+            znaczniki["bieg"] = (start, time.perf_counter())
+            return odp.status_code
 
-    def odczyt() -> int:
-        # Krotka zwloka, zeby bieg zdazyl wejsc w faze liczenia.
-        time.sleep(0.01)
-        start = time.perf_counter()
-        odp = client.get("/api/health")
-        znaczniki["odczyt"] = (start, time.perf_counter())
-        return odp.status_code
+        def odczyt() -> int:
+            # Zwloka daje biegowi szanse wejscia w faze liczenia; maleje przy
+            # kolejnych probach, gdy bieg okazuje sie krotszy od niej.
+            if zwloka:
+                time.sleep(zwloka)
+            start = time.perf_counter()
+            odp = client.get("/api/health")
+            znaczniki["odczyt"] = (start, time.perf_counter())
+            return odp.status_code
 
-    with ThreadPoolExecutor(max_workers=2) as pula:
-        przyszly_bieg = pula.submit(bieg)
-        przyszly_odczyt = pula.submit(odczyt)
-        assert przyszly_bieg.result() == 200
-        assert przyszly_odczyt.result() == 200
+        with ThreadPoolExecutor(max_workers=2) as pula:
+            przyszly_bieg = pula.submit(bieg)
+            przyszly_odczyt = pula.submit(odczyt)
+            assert przyszly_bieg.result() == 200
+            assert przyszly_odczyt.result() == 200
+        return znaczniki["bieg"], znaczniki["odczyt"]
 
-    poczatek_biegu, koniec_biegu = znaczniki["bieg"]
-    poczatek_odczytu, koniec_odczytu = znaczniki["odczyt"]
-    assert poczatek_odczytu >= poczatek_biegu
-    assert koniec_odczytu < koniec_biegu, (
-        f"Odczyt /api/health zakonczyl sie dopiero PO biegu '{rodzaj}' — ten bieg "
-        "blokowal petle zdarzen."
-    )
+    for zwloka in (0.01, 0.005, 0.002, 0.001, 0.0, 0.0, 0.0):
+        (_, koniec_biegu), (poczatek_odczytu, koniec_odczytu) = probka(zwloka)
+        if poczatek_odczytu <= koniec_biegu:
+            # Okna sie nalozyly — proba rozstrzygajaca.
+            assert koniec_odczytu < koniec_biegu, (
+                f"Odczyt /api/health zakonczyl sie dopiero PO biegu '{rodzaj}' — "
+                "ten bieg blokowal petle zdarzen."
+            )
+            break
+    else:  # pragma: no cover - fizycznie nieosiagalne (bieg >> start watku)
+        pytest.fail(
+            f"Bieg '{rodzaj}' konczy sie szybciej, niz startuje rownolegly odczyt, "
+            "nawet bez zwloki — brak mozliwosci pomiaru nakladania okien."
+        )
