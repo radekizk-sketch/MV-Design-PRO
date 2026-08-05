@@ -25,6 +25,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from network_model.catalog.materialization import materialize_catalog_binding
+from network_model.catalog.mv_ptpiree_catalog import annotate_with_ptpiree_status
 from network_model.catalog.repository import get_default_mv_catalog
 from network_model.catalog.types import CatalogBinding
 from network_model.solvers import cable_ampacity_derating as cable_derating
@@ -2449,11 +2450,23 @@ _PRZESTRZEN_ZRODLA_PRZEKSZTALTNIKOWEGO: dict[str, str] = {
 #: a kreator OZE wysyłał je dotąd w payloadzie. Skoro payload przestał być
 #: źródłem tabliczki, ogniwo musi pochodzić z katalogu — inaczej naprawa
 #: „katalog wygrywa" zerwałaby żywy łańcuch danych.
+#: KOMPLET pól adnotacji (styk kart P1/P2, V12K-321): do tej karty most kopiował
+#: 4 z 9 pól — bez `ptpiree_status` i `ptpiree_note` tor gotowości czytał KAŻDY
+#: DER z kreatora jako „unlinked", a warunek ważności certyfikatu (WOS 2018,
+#: „tylko z modułem…") ginął na granicy typów. Lista = klucze, które produkuje
+#: `annotate_with_ptpiree_status` — przypięta testem porównującym oba zbiory.
 _POLA_CERTYFIKATU_PTPIREE: tuple[str, ...] = (
+    "ptpiree_status",
     "ptpiree_certificate_ref",
     "ptpiree_document_number",
+    "ptpiree_document_acceptance_date",
     "ptpiree_wos_version",
+    "ptpiree_wipwc_version",
+    "ptpiree_ppm_scope",
     "ptpiree_source_url",
+    "ptpiree_publication_date",
+    "ptpiree_note",
+    "ptpiree_certificate_condition",
 )
 
 #: Pola tabliczki, których katalog NIE niesie (wybór ruchowy projektanta) —
@@ -2477,7 +2490,23 @@ def _certyfikat_ptpiree_z_katalogu(namespace: str, catalog_ref: str) -> dict[str
     if rekord is None:
         return {}
     dane = rekord.to_dict()
-    return {pole: dane[pole] for pole in _POLA_CERTYFIKATU_PTPIREE if dane.get(pole)}
+    # Styk P1/P2 (V12K-321): typy katalogowe nie niosa `ptpiree_status` ani
+    # `ptpiree_note` w kazdej sciezce ladowania, a to od nich zalezy tor
+    # gotowosci. Zrodlem prawdy o dopasowaniu jest annotate na PELNYM wykazie
+    # (karta P1) — wolamy TE SAMA funkcje na tabliczce producent/model rekordu,
+    # zero drugiej implementacji dopasowania.
+    adnotowane = annotate_with_ptpiree_status(
+        {
+            "id": str(dane.get("id") or catalog_ref),
+            "name": str(dane.get("model") or dane.get("name") or catalog_ref),
+            "params": {
+                "manufacturer": dane.get("manufacturer"),
+                "model": dane.get("model"),
+            },
+        }
+    )["params"]
+    zrodlo = {**{k: v for k, v in dane.items() if k.startswith("ptpiree_")}, **adnotowane}
+    return {pole: zrodlo[pole] for pole in _POLA_CERTYFIKATU_PTPIREE if zrodlo.get(pole)}
 
 
 def _build_converter_materialized_params(

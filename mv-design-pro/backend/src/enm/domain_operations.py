@@ -1652,6 +1652,11 @@ def _build_readiness(
             tabliczka = gen.get("materialized_params") or {}
             status_ptpiree = tabliczka.get("ptpiree_status")
             nota_ptpiree = str(tabliczka.get("ptpiree_note") or "").strip()
+            # Styk P1/P2 (V12K-321): nota istnieje dla KAZDEGO dopasowania
+            # (opis dowodowy wykazu), wiec „warunkowo" kluczujemy na OSOBNYM
+            # polu warunku albo na przejsciowym WOS 2018 — nigdy na samej nocie.
+            warunek_ptpiree = str(tabliczka.get("ptpiree_certificate_condition") or "").strip()
+            wos_przejsciowy = tabliczka.get("ptpiree_wos_version") == "WOS 2018"
             nazwa_der = gen.get("name") or gen.get("ref_id")
             if status_ptpiree != "POWIAZANY":
                 kod = "der.inverter_certificate_unlinked"
@@ -1662,11 +1667,16 @@ def _build_readiness(
                     f"właściwego OSD."
                 )
                 naprawa = "Wskaż przetwornicę z powiązanym certyfikatem PTPiREE."
-            elif nota_ptpiree:
+            elif warunek_ptpiree or wos_przejsciowy:
                 kod = "der.inverter_certificate_conditional"
+                powod = (
+                    f"Warunek ważności certyfikatu: „{warunek_ptpiree}”"
+                    if warunek_ptpiree
+                    else f"Certyfikat WOS 2018 w okresie przejściowym. Nota wykazu: „{nota_ptpiree}”"
+                )
                 komunikat = (
                     f"Certyfikat PTPiREE przetwornicy źródła DER '{nazwa_der}' jest "
-                    f"powiązany warunkowo. Nota wykazu: „{nota_ptpiree}”"
+                    f"powiązany warunkowo. {powod}"
                 )
                 naprawa = "Potwierdź warunki noty wykazu PTPiREE dla tego urządzenia."
             else:

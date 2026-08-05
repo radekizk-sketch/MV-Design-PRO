@@ -196,14 +196,18 @@ def test_powiazany_bez_noty_nie_daje_zadnego_ostrzezenia(migawka_ze_stacja: dict
     _kontrola_dodatnia(migawka_ze_stacja, gen_type="pv_inverter")
 
 
-def test_powiazany_z_nota_daje_ostrzezenie_warunkowe_cytujace_note(
+def test_powiazany_wos_2018_daje_ostrzezenie_warunkowe_cytujace_note(
     migawka_ze_stacja: dict,
 ) -> None:
-    """Nota rekordu jest CYTOWANA — system nie wyprowadza własnych reguł ważności."""
+    """INTENCJA (przepisane przy styku P1/P2, V12K-321): pierwotnie „warunkowo"
+    kluczowalo na samej obecnosci noty. Po karcie P1 nota istnieje dla KAZDEGO
+    dopasowania (opis dowodowy wykazu), wiec kluczem jest przejsciowy WOS 2018
+    albo jawne pole warunku — nota pozostaje CYTOWANA w komunikacie."""
     wynik = _gotowosc_z_der(
         migawka_ze_stacja,
         tabliczka={
             "ptpiree_status": "POWIAZANY",
+            "ptpiree_wos_version": "WOS 2018",
             "ptpiree_note": NOTA_WOS_2018,
         },
     )
@@ -216,6 +220,43 @@ def test_powiazany_z_nota_daje_ostrzezenie_warunkowe_cytujace_note(
     assert ostrzezenie["element_ref"] == "gen_der_ptpiree"
     assert NOTA_WOS_2018 in ostrzezenie["message_pl"], "komunikat nie cytuje noty rekordu"
     assert "Falownik testowy" in ostrzezenie["message_pl"], "komunikat nie nazywa urzadzenia"
+
+
+def test_powiazany_z_jawnym_warunkiem_certyfikatu_daje_ostrzezenie(
+    migawka_ze_stacja: dict,
+) -> None:
+    """Warunek z nazwy pozycji wykazu („tylko z modułem…") — osobne pole z karty P1."""
+    warunek = "tylko z modulem zdalnego pozyskiwania danych VCB-5131LN-WB"
+    wynik = _gotowosc_z_der(
+        migawka_ze_stacja,
+        tabliczka={
+            "ptpiree_status": "POWIAZANY",
+            "ptpiree_wos_version": "WOS 2025",
+            "ptpiree_certificate_condition": warunek,
+            "ptpiree_note": "Pozycja wykazu PTPiREE WiPWC 1.3 (publikacja 2026-05-08).",
+        },
+    )
+    kody = _kody_ostrzezen(wynik)
+    assert KOD_WARUNKOWY in kody
+    assert warunek in _ostrzezenie(wynik, KOD_WARUNKOWY)["message_pl"]
+
+
+def test_powiazany_z_nota_informacyjna_NIE_alarmuje(migawka_ze_stacja: dict) -> None:
+    """ANTY-FALSZYWY-ALARM (defekt styku zlapany przy scaleniu P1+P2): nota
+    opisowa „Pozycja wykazu…" istnieje dla kazdego dopasowania — gdyby
+    kluczowala „warunkowo", kazde poprawnie powiazane urzadzenie mialoby
+    ostrzezenie i sygnal stalby sie szumem."""
+    wynik = _gotowosc_z_der(
+        migawka_ze_stacja,
+        tabliczka={
+            "ptpiree_status": "POWIAZANY",
+            "ptpiree_wos_version": "WOS 2025",
+            "ptpiree_note": "Pozycja wykazu PTPiREE WiPWC 1.2 (publikacja 2026-05-06).",
+        },
+    )
+    kody = _kody_ostrzezen(wynik)
+    assert KOD_WARUNKOWY not in kody
+    assert KOD_NIEPOWIAZANY not in kody
 
 
 def test_niepowiazany_daje_ostrzezenie_o_braku_certyfikatu(migawka_ze_stacja: dict) -> None:
@@ -313,7 +354,14 @@ def test_maszyna_synchroniczna_nie_dostaje_sygnalu_o_przetwornicy(
     ("tabliczka", "kod"),
     [
         ({"ptpiree_status": "NIEPOWIAZANY"}, KOD_NIEPOWIAZANY),
-        ({"ptpiree_status": "POWIAZANY", "ptpiree_note": NOTA_WOS_2018}, KOD_WARUNKOWY),
+        (
+            {
+                "ptpiree_status": "POWIAZANY",
+                "ptpiree_wos_version": "WOS 2018",
+                "ptpiree_note": NOTA_WOS_2018,
+            },
+            KOD_WARUNKOWY,
+        ),
     ],
 )
 def test_oba_kody_prowadza_do_konfiguracji_urzadzenia(

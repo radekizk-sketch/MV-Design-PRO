@@ -480,6 +480,11 @@ def annotate_with_ptpiree_status(record: dict[str, Any]) -> dict[str, Any]:
                 "ptpiree_source_url": match_params.get("source_url"),
                 "ptpiree_publication_date": match_params.get("publication_date"),
                 "ptpiree_note": _match_note(match_params),
+                # Styk P1/P2 (V12K-321): WARUNEK waznosci osobnym polem — nota
+                # jest OPISEM dowodowym i istnieje dla kazdego dopasowania, wiec
+                # tor gotowosci nie moze na niej kluczowac (falszywy alarm na
+                # kazdym poprawnie powiazanym urzadzeniu).
+                "ptpiree_certificate_condition": match_params.get("certificate_condition"),
             }
         )
     return {"id": record["id"], "name": record["name"], "params": params}
