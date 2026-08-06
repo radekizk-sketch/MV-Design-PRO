@@ -37,12 +37,14 @@ import {
   type WierszGotowosci,
 } from '../rama';
 import {
+  czyZipDomyslny,
   DANE_DOMYSLNE,
   fmtA,
   fmtKva,
   fmtKw,
   maOdplyw,
   prefillZKatalogu,
+  sumaUdzialowZip,
   walidujFormularz,
   zbudujPayload,
   zbudujZapytaniePodgladu,
@@ -51,6 +53,7 @@ import {
   type KontekstOdbioru,
   type LoadKind,
   type OdbiorFormData,
+  type PoleZip,
 } from './odbiorModel';
 import { ODBIOR_STRINGS as T } from './strings';
 import { WykresTrojkatMocy } from './WykresTrojkatMocy';
@@ -152,6 +155,10 @@ export function KreatorOdbioruNn() {
     [typy],
   );
 
+  const zmienZip = useCallback((pole: PoleZip, wartosc: number | null) => {
+    setDane((p) => ({ ...p, zip: { ...p.zip, [pole]: wartosc ?? 0 } }));
+  }, []);
+
   const bladDlaPola = (pole: string): string | undefined => bledy.find((b) => b.field === pole)?.message;
 
   const onZapisz = useCallback(async () => {
@@ -196,6 +203,11 @@ export function KreatorOdbioruNn() {
       wartosc: fmtKw(dane.active_power_kw),
     },
     { etykieta: T.wierszCos, stan: 'kompletne', wartosc: dane.cos_phi.toFixed(2) },
+    {
+      etykieta: T.zipWierszModel,
+      stan: bledy.some((b) => b.field.startsWith('zip.')) ? 'brak' : 'kompletne',
+      wartosc: czyZipDomyslny(dane.zip) ? T.zipModelStalaMoc : T.zipModelWlasny,
+    },
     { etykieta: T.wierszPrad, stan: podglad ? 'kompletne' : 'ostrzezenie', wartosc: fmtA(podglad?.rated_current_a) },
   ];
 
@@ -322,6 +334,88 @@ export function KreatorOdbioruNn() {
               testid="mvd-kreator-odbior-przylacze"
             />
           </KreatorSiatka>
+          <KreatorSekcja tytul={T.zipTytul} nota={T.zipNota} testid="mvd-kreator-odbior-zip">
+            <KreatorInfo>{T.zipPomoc}</KreatorInfo>
+            <KreatorSiatka kolumny={3}>
+              <PoleLiczbowe
+                etykieta={T.zipAP}
+                wartosc={dane.zip.a_p}
+                onZmiana={(v) => zmienZip('a_p', v)}
+                krok={0.05}
+                blad={bladDlaPola('zip.a_p')}
+                testid="mvd-kreator-odbior-zip-ap"
+              />
+              <PoleLiczbowe
+                etykieta={T.zipBP}
+                wartosc={dane.zip.b_p}
+                onZmiana={(v) => zmienZip('b_p', v)}
+                krok={0.05}
+                blad={bladDlaPola('zip.b_p')}
+                testid="mvd-kreator-odbior-zip-bp"
+              />
+              <PoleLiczbowe
+                etykieta={T.zipCP}
+                wartosc={dane.zip.c_p}
+                onZmiana={(v) => zmienZip('c_p', v)}
+                krok={0.05}
+                blad={bladDlaPola('zip.c_p')}
+                testid="mvd-kreator-odbior-zip-cp"
+              />
+              <PoleLiczbowe
+                etykieta={T.zipAQ}
+                wartosc={dane.zip.a_q}
+                onZmiana={(v) => zmienZip('a_q', v)}
+                krok={0.05}
+                blad={bladDlaPola('zip.a_q')}
+                testid="mvd-kreator-odbior-zip-aq"
+              />
+              <PoleLiczbowe
+                etykieta={T.zipBQ}
+                wartosc={dane.zip.b_q}
+                onZmiana={(v) => zmienZip('b_q', v)}
+                krok={0.05}
+                blad={bladDlaPola('zip.b_q')}
+                testid="mvd-kreator-odbior-zip-bq"
+              />
+              <PoleLiczbowe
+                etykieta={T.zipCQ}
+                wartosc={dane.zip.c_q}
+                onZmiana={(v) => zmienZip('c_q', v)}
+                krok={0.05}
+                blad={bladDlaPola('zip.c_q')}
+                testid="mvd-kreator-odbior-zip-cq"
+              />
+              <PoleLiczbowe
+                etykieta={T.zipKPf}
+                wartosc={dane.zip.k_pf}
+                onZmiana={(v) => zmienZip('k_pf', v)}
+                krok={0.1}
+                pomoc={T.zipKPomoc}
+                blad={bladDlaPola('zip.k_pf')}
+                testid="mvd-kreator-odbior-zip-kpf"
+              />
+              <PoleLiczbowe
+                etykieta={T.zipKQf}
+                wartosc={dane.zip.k_qf}
+                onZmiana={(v) => zmienZip('k_qf', v)}
+                krok={0.1}
+                blad={bladDlaPola('zip.k_qf')}
+                testid="mvd-kreator-odbior-zip-kqf"
+              />
+            </KreatorSiatka>
+            {/* Sumy widoczne NA BIEŻĄCO: warunek a+b+c = 1 ma być czytelny w trakcie
+                wpisywania, a nie dopiero jako błąd po naciśnięciu „Zapisz". */}
+            <KreatorSiatka kolumny={2}>
+              <RzadWartosci etykieta={T.zipSumaP} wartosc={sumaUdzialowZip(dane.zip, 'p').toFixed(3)} />
+              <RzadWartosci etykieta={T.zipSumaQ} wartosc={sumaUdzialowZip(dane.zip, 'q').toFixed(3)} />
+            </KreatorSiatka>
+            {bladDlaPola('zip.suma_p') ? (
+              <p className="mvd-pole-blad" role="alert">{bladDlaPola('zip.suma_p')}</p>
+            ) : null}
+            {bladDlaPola('zip.suma_q') ? (
+              <p className="mvd-pole-blad" role="alert">{bladDlaPola('zip.suma_q')}</p>
+            ) : null}
+          </KreatorSekcja>
           <PanelTeorii
             tytul={T.teoriaTytul}
             opis={T.teoriaOpis}
@@ -343,6 +437,10 @@ export function KreatorOdbioruNn() {
           <KreatorSiatka kolumny={2}>
             <RzadWartosci etykieta={T.wierszMoc} wartosc={fmtKw(dane.active_power_kw)} />
             <RzadWartosci etykieta={T.wierszCos} wartosc={dane.cos_phi.toFixed(2)} />
+            <RzadWartosci
+              etykieta={T.zipWierszModel}
+              wartosc={czyZipDomyslny(dane.zip) ? T.zipModelStalaMoc : T.zipModelWlasny}
+            />
             <RzadWartosci etykieta={T.podgladI} wartosc={fmtA(podglad?.rated_current_a)} />
             <RzadWartosci etykieta={T.podgladS} wartosc={fmtKva(podglad?.apparent_power_kva)} />
           </KreatorSiatka>

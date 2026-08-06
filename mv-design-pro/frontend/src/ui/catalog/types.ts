@@ -208,6 +208,21 @@ export interface LoadCatalogType extends CatalogType {
   cos_phi?: number;
   cos_phi_mode: string;
   profile_id?: string;
+  /**
+   * Model obciążenia ZIP pozycji katalogowej — udziały stałoimpedancyjny (a),
+   * stałoprądowy (b) i stałomocowy (c) mocy czynnej i biernej, oraz wrażliwość
+   * częstotliwościowa. Backend serwuje je od zawsze (`LoadType.to_dict`), a
+   * rozpływ mocy z nich liczy; brakowało wyłącznie deklaracji po stronie UI,
+   * więc typ odbioru wybrany z katalogu nie mógł wypełnić modelu w kreatorze.
+   */
+  a_p?: number;
+  b_p?: number;
+  c_p?: number;
+  a_q?: number;
+  b_q?: number;
+  c_q?: number;
+  k_pf?: number;
+  k_qf?: number;
 }
 
 /**

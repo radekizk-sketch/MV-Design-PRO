@@ -47,6 +47,7 @@ from .domain_operations import (
     _response,
     _station_has_transformer,
 )
+from .load_zip_model import KOD_BLEDU_ZIP, zip_odbioru_z_payloadu
 from .topology_ops import attach_protection, create_branch, create_measurement, create_node
 
 # ---------------------------------------------------------------------------
@@ -2344,37 +2345,49 @@ def add_nn_load(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
             "nn.feeder_bus_mismatch",
         )
 
+    # Model obciążenia (ZIP) deklarowany przez projektanta. Rozpływ czyta go z
+    # `materialized_params`, więc kreator ma tu jedyną drogę zapisu; brak
+    # deklaracji albo deklaracja stałej mocy ⇒ `None` i migawka bez zmian.
+    zip_odbioru, blad_zip = zip_odbioru_z_payloadu(payload)
+    if blad_zip is not None:
+        return _error_response(blad_zip, KOD_BLEDU_ZIP)
+
     seed = _compute_seed({"op": "nn_load", "feeder": feeder_ref, "p": active_power_kw})
     load_ref = _make_id("nn", seed, "load")
 
+    nowy_odbior: dict[str, Any] = {
+        "ref_id": load_ref,
+        "name": payload.get("load_name") or "Odbiór nN",
+        "bus_ref": feeder_bus_ref,
+        "p_mw": active_power_kw / 1000.0,
+        "q_mvar": (reactive_power_kvar or 0) / 1000.0,
+        # Load.model akceptuje 'pq' | 'zip' — 'pq' = constant power (klasyczny PQ).
+        "model": "zip" if zip_odbioru else "pq",
+        "catalog_ref": catalog_ref,
+        # Odbiór ekspercki (bez pozycji) nie deklaruje kategorii katalogu —
+        # inaczej kontekst katalogowy raportu pokazywałby „OBCIAZENIE" przy
+        # elemencie, którego katalog nigdy nie widział.
+        "catalog_namespace": przestrzen_katalogu if catalog_ref else None,
+        "source_mode": "KATALOG" if catalog_ref else "EKSPERCKI_RECZNY",
+        "parameter_source": "CATALOG" if catalog_ref else "OVERRIDE",
+        "tags": [],
+        "meta": {
+            "load_kind": payload.get("load_kind", "SKUPIONY"),
+            "connection_type": payload.get("connection_type", "TROJFAZOWY"),
+            "feeder_ref": feeder_ref,
+            "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
+            "load_profile_ref": payload.get("load_profile_ref"),
+            "cos_phi": payload.get("cos_phi"),
+        },
+    }
+    # Klucz dopisywany WARUNKOWO: odbiór stałomocowy zapisuje się dokładnie tak
+    # jak przed tą zmianą (bez `materialized_params`), więc istniejące projekty
+    # i ich odciski pozostają nietknięte.
+    if zip_odbioru is not None:
+        nowy_odbior["materialized_params"] = zip_odbioru
+
     new_enm = copy.deepcopy(enm)
-    new_enm.setdefault("loads", []).append(
-        {
-            "ref_id": load_ref,
-            "name": payload.get("load_name") or "Odbiór nN",
-            "bus_ref": feeder_bus_ref,
-            "p_mw": active_power_kw / 1000.0,
-            "q_mvar": (reactive_power_kvar or 0) / 1000.0,
-            # Load.model akceptuje 'pq' | 'zip' — 'pq' = constant power (klasyczny PQ).
-            "model": "pq",
-            "catalog_ref": catalog_ref,
-            # Odbiór ekspercki (bez pozycji) nie deklaruje kategorii katalogu —
-            # inaczej kontekst katalogowy raportu pokazywałby „OBCIAZENIE" przy
-            # elemencie, którego katalog nigdy nie widział.
-            "catalog_namespace": przestrzen_katalogu if catalog_ref else None,
-            "source_mode": "KATALOG" if catalog_ref else "EKSPERCKI_RECZNY",
-            "parameter_source": "CATALOG" if catalog_ref else "OVERRIDE",
-            "tags": [],
-            "meta": {
-                "load_kind": payload.get("load_kind", "SKUPIONY"),
-                "connection_type": payload.get("connection_type", "TROJFAZOWY"),
-                "feeder_ref": feeder_ref,
-                "catalog_binding": copy.deepcopy(catalog_binding) if catalog_binding else None,
-                "load_profile_ref": payload.get("load_profile_ref"),
-                "cos_phi": payload.get("cos_phi"),
-            },
-        }
-    )
+    new_enm.setdefault("loads", []).append(nowy_odbior)
 
     return _response(
         new_enm,

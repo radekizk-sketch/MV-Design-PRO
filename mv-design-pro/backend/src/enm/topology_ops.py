@@ -36,6 +36,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from .load_zip_model import zip_odbioru_z_parametrow_materializacji
+
 # ---------------------------------------------------------------------------
 # Operation Result
 # ---------------------------------------------------------------------------
@@ -508,6 +510,13 @@ def create_device(enm: dict[str, Any], data: dict[str, Any]) -> TopologyOpResult
         bus_ref = data.get("bus_ref", "")
         if bus_ref not in bus_refs:
             issues.append(OpIssue("OP_BUS_NOT_FOUND", "BLOCKER", f"Szyna '{bus_ref}' nie istnieje"))
+        # Tabliczka odbioru niesie wielomian ZIP czytany przez rozpływ. Sprawdzamy
+        # go NA WEJŚCIU, tym samym kontraktem co kreator odbioru — inaczej odbiór
+        # z sumą udziałów ≠ 1 wchodziłby do modelu bez słowa i wywracał dopiero
+        # rozpływ, surowym wyjątkiem solvera bez wskazania elementu.
+        blad_zip = zip_odbioru_z_parametrow_materializacji(data.get("materialized_params"))
+        if blad_zip is not None:
+            issues.append(OpIssue("OP_LOAD_ZIP_INVALID", "BLOCKER", blad_zip))
         if any(i.severity == "BLOCKER" for i in issues):
             return TopologyOpResult(False, enm, "create_device", issues)
 
