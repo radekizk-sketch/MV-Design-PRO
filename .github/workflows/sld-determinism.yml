@@ -136,6 +136,21 @@ jobs:
         working-directory: mv-design-pro/frontend
         run: npx vitest run --no-file-parallelism src/ui/sld/v3/canvas/__tests__/toolbarLayout.contract.test.ts --reporter=verbose
 
+      # S9-1 (ŁAMANIE ARKUSZA, `docs/sld/DECYZJA_LAMANIE_ARKUSZA.md`; audyt C-1):
+      # podział ciągu na wiersze arkusza — punkt łamania ZAWSZE na przęśle,
+      # podział pokrywa cały ciąg, prefiksowość (edycja nie przelewa arkusza),
+      # determinizm.
+      - name: Run SLD v3 sheet-row planner tests (S9-1)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/layout/__tests__/sheetRows.test.ts --reporter=verbose
+
+      # S9-1 kryteria odbioru na scenie: proporcja arkusza ≤ 2 : 1 na KAŻDYM
+      # poziomie szczegółu (C-1), auto-fit mieści 100 % symboli (C-2), stacja w
+      # tym samym wierszu na L0/L1/L2, stabilność wierszy przy edycji.
+      - name: Run SLD v3 sheet-break scene contract tests (S9-1)
+        working-directory: mv-design-pro/frontend
+        run: npx vitest run --no-file-parallelism src/ui/sld/v3/scene/__tests__/buildScene.sheetRows.test.ts --reporter=verbose
+
       - name: Run SLD v3 render-odbiór acceptance (F7/F8b-2)
         working-directory: mv-design-pro/frontend
         run: npm run accept:sld-v3
