@@ -80,8 +80,12 @@ describe('KD-5 — klik NATYWNY w zwinięty blok GPZ rozwija widok', () => {
     // Widok przeglądowy: cała sieć w kadrze (świat szerszy niż viewport).
     expect(przed[2]).toBeGreaterThan(scene.bbox.width * 0.9);
 
-    const wezel = container.querySelector(`[data-testid="${blok.meta!.testId}"]`);
-    expect(wezel, 'blok GPZ ma węzeł DOM z własnym testId').toBeTruthy();
+    // Karta S9-4: rysunek jest bierny, więc celem kliku jest UCHWYT obiektu
+    // (`sld-v3-trafienia`) — dokładnie ten węzeł, który w przeglądarce łapie
+    // zdarzenie. Intencja testu („klik natywny w blok rozwija widok") bez zmian;
+    // gdyby uchwyt zniknął, test byłby czerwony, tak jak przy martwym kliku.
+    const wezel = container.querySelector(`[data-hit-for="${blok.meta!.testId}"][data-hit-role="obrys"]`);
+    expect(wezel, 'blok GPZ ma uchwyt trafienia z własnym testId').toBeTruthy();
     fireEvent.click(wezel!);
 
     const po = viewBoxOf(container);
@@ -101,7 +105,8 @@ describe('KD-5 — klik NATYWNY w zwinięty blok GPZ rozwija widok', () => {
     const { container } = render(<SldCanvasV3 snapshot={enm} width={1800} height={1100} />);
     expect(container.querySelector(`[data-testid="${blok.meta!.testId}"]`)).toBeTruthy();
 
-    fireEvent.click(container.querySelector(`[data-testid="${blok.meta!.testId}"]`)!);
+    // Karta S9-4: klik w uchwyt trafienia bloku (patrz komentarz wyżej).
+    fireEvent.click(container.querySelector(`[data-hit-for="${blok.meta!.testId}"][data-hit-role="obrys"]`)!);
 
     // Blok zwinięty zniknął — na jego miejscu jest rozwinięty układ GPZ
     // (symbol transformatora GPZ istnieje wyłącznie od L1).
@@ -124,7 +129,7 @@ describe('KD-5 — klik NATYWNY w zwinięty blok GPZ rozwija widok', () => {
         onElementClick={(testId, meta) => kliki.push({ testId, ownerRef: meta?.ownerRef })}
       />,
     );
-    fireEvent.click(container.querySelector(`[data-testid="${blok.meta!.testId}"]`)!);
+    fireEvent.click(container.querySelector(`[data-hit-for="${blok.meta!.testId}"][data-hit-role="obrys"]`)!);
     expect(kliki).toEqual([{ testId: blok.meta!.testId, ownerRef: blok.meta!.ownerRef }]);
   });
 
@@ -133,7 +138,7 @@ describe('KD-5 — klik NATYWNY w zwinięty blok GPZ rozwija widok', () => {
     const stacja = scene.symbols.find((s) => s.symbolId === 'stationCollapsed')!;
     const { container } = render(<SldCanvasV3 snapshot={enm} width={1800} height={1100} />);
     const przed = viewBoxOf(container).join(' ');
-    fireEvent.click(container.querySelector(`[data-testid="${stacja.meta!.testId}"]`)!);
+    fireEvent.click(container.querySelector(`[data-hit-for="${stacja.meta!.testId}"][data-hit-role="obrys"]`)!);
     expect(viewBoxOf(container).join(' ')).toBe(przed);
   });
 });

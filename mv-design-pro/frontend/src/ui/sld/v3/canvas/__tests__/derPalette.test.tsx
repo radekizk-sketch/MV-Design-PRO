@@ -76,8 +76,13 @@ describe('SldCanvasV3Workspace — F8c pkt 4: paleta DER', () => {
     fireEvent.click(screen.getByTestId('der-palette-btn-PV'));
     expect(screen.getByTestId('sld-v3-der-cancel')).toBeTruthy();
 
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
-    fireEvent.click(stationGroup!);
+    // Karta S9-4: rysunek jest bierny, celem kliku jest UCHWYT obiektu
+    // (warstwa `sld-v3-trafienia`) — ten sam węzeł, w który trafia mysz
+    // użytkownika. Intencja testu (drop DER na stację) bez zmian.
+    const stationTestId = scene.symbols[stationIndex].meta?.testId ?? `sld-v3-symbol-${stationIndex}`;
+    const stationHit = container.querySelector(`[data-hit-for="${stationTestId}"][data-hit-role="obrys"]`);
+    expect(stationHit, 'stacja ma uchwyt trafienia').toBeTruthy();
+    fireEvent.click(stationHit!);
 
     // Uzbrojenie skonsumowane (drop wykonany) — wskaźnik „▸ Wskaż stację" znika.
     expect(screen.queryByTestId('sld-v3-der-cancel')).toBeNull();
@@ -97,8 +102,11 @@ describe('SldCanvasV3Workspace — F8c pkt 4: paleta DER', () => {
     fireEvent.click(screen.getByTestId('der-palette-btn-BESS'));
     expect(screen.getByTestId('sld-v3-der-cancel')).toBeTruthy();
 
-    const apparatusGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[apparatusIndex];
-    fireEvent.click(apparatusGroup!);
+    // Karta S9-4: klik w uchwyt aparatu (patrz komentarz w teście (a)).
+    const apparatusTestId = scene.symbols[apparatusIndex].meta?.testId ?? `sld-v3-symbol-${apparatusIndex}`;
+    const apparatusHit = container.querySelector(`[data-hit-for="${apparatusTestId}"][data-hit-role="obrys"]`);
+    expect(apparatusHit, 'aparat ma uchwyt trafienia').toBeTruthy();
+    fireEvent.click(apparatusHit!);
 
     // Anulowane — wskaźnik uzbrojenia znika.
     expect(screen.queryByTestId('sld-v3-der-cancel')).toBeNull();

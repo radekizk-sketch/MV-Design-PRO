@@ -40,6 +40,7 @@ import {
   hitAreaScreenSize,
   hitShapeBbox,
   pickCanvasHitArea,
+  pointInHitShape,
   type CanvasHitArea,
   type HitDomNode,
   type HitObjectClass,
@@ -82,15 +83,35 @@ const PRZYPADKI: readonly { readonly klasa: HitObjectClass; readonly lod: SceneL
   { klasa: 'znacznik-wyniku', lod: 2 },
 ];
 
-/** Środek obrysu obiektu — punkt, w który „celuje" projektant. */
-function punktKliku(area: CanvasHitArea): { x: number; y: number } {
-  if (area.obrys.ksztalt === 'prostokat') {
-    return { x: area.obrys.x + area.obrys.width / 2, y: area.obrys.y + area.obrys.height / 2 };
+/**
+ * Punkt kliku „nad obiektem" w rozumieniu sondy odbioru: leży na OBRYSIE tego
+ * obiektu i obiekt jest tam malowany NAJWYŻEJ. Bez tego warunku środek szyny
+ * wypadał pod symbolem stojącym na niej — klik należałby wtedy (poprawnie) do
+ * symbolu, a zrzut sugerowałby chybienie tam, gdzie żadnego nie ma.
+ * Wybór deterministyczny: PIERWSZY taki punkt siatki 1 j.św. w kolejności
+ * wiersz-po-wierszu; `null` = obiekt cały przykryty (nie ma czego pokazać).
+ */
+function punktKliku(area: CanvasHitArea, wszystkie: readonly CanvasHitArea[]): { x: number; y: number } | null {
+  const bbox = hitShapeBbox(area.obrys);
+  const kandydaci: { x: number; y: number }[] = [];
+  for (let y = Math.ceil(bbox.y); y <= bbox.y + bbox.height; y += 1) {
+    for (let x = Math.ceil(bbox.x); x <= bbox.x + bbox.width; x += 1) {
+      if (pointInHitShape(area.obrys, x, y)) kandydaci.push({ x, y });
+    }
   }
-  const p = area.obrys.points;
-  const srodek = p[Math.floor(p.length / 2)] ?? p[0];
-  const poprzedni = p[Math.max(0, Math.floor(p.length / 2) - 1)] ?? srodek;
-  return { x: (srodek.x + poprzedni.x) / 2, y: (srodek.y + poprzedni.y) / 2 };
+  // Preferuj ŚRODEK obrysu (czytelniejszy zrzut), ale tylko gdy obiekt jest tam
+  // widoczny; w przeciwnym razie pierwszy punkt spełniający warunek.
+  const uporzadkowani = kandydaci.length > 0
+    ? [kandydaci[Math.floor(kandydaci.length / 2)], ...kandydaci]
+    : [];
+  for (const punkt of uporzadkowani) {
+    let najwyzszy = area;
+    for (const inny of wszystkie) {
+      if (inny.z > najwyzszy.z && pointInHitShape(inny.obrys, punkt.x, punkt.y)) najwyzszy = inny;
+    }
+    if (najwyzszy.testId === area.testId) return punkt;
+  }
+  return null;
 }
 
 function ksztaltDoSvg(area: CanvasHitArea, kolor: string): string {
@@ -181,7 +202,11 @@ for (const przypadek of PRZYPADKI) {
       console.log(`pominięto ${przypadek.klasa} (brak obiektu tej klasy na L${przypadek.lod})`);
       continue;
     }
-    const punkt = punktKliku(cel);
+    const punkt = punktKliku(cel, oczekiwane);
+    if (!punkt) {
+      console.log(`pominięto ${przypadek.klasa} (obrys w całości przykryty innym rysunkiem)`);
+      continue;
+    }
     const wskazany = pickCanvasHitArea(zDrzewa, punkt.x, punkt.y);
     const trafione = wskazany?.testId === cel.testId;
     const rozmiarPx = wskazany ? hitAreaScreenSize(wskazany, scale) : 0;
@@ -228,4 +253,4 @@ for (const przypadek of PRZYPADKI) {
 }
 
 // Zestawienie obwiedni obszarów trafienia — sanity dla czytającego zrzuty.
-console.log('minimum ekranowe [px]:', MIN_HIT_SCREEN_PX, '· kadr:', KADR, '· bbox pomocniczy:', typeof hitShapeBbox === 'function');
+console.log('minimum ekranowe [px]:', MIN_HIT_SCREEN_PX, '· kadr:', KADR);

@@ -59,7 +59,11 @@ function openStationMenu(): { stationId: string } {
   expect(stationIndex).toBeGreaterThanOrEqual(0);
 
   const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-  const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+  // Karta S9-4: rysunek kanwy jest bierny — prawy klik trafia w UCHWYT obiektu
+  // (warstwa `sld-v3-trafienia`), ten sam węzeł, w który trafia mysz użytkownika.
+  const stationTestId = scene.symbols[stationIndex]?.meta?.testId ?? `sld-v3-symbol-${stationIndex}`;
+  const stationGroup = container.querySelector(`[data-hit-for="${stationTestId}"][data-hit-role="obrys"]`);
+  expect(stationGroup, 'stacja ma uchwyt trafienia').toBeTruthy();
   fireEvent.contextMenu(stationGroup!, { clientX: 120, clientY: 80 });
   expect(screen.getByRole('menu')).toBeTruthy();
 
@@ -139,7 +143,9 @@ describe('SldCanvasV3Workspace — F11.4-B: wykonawca akcji domenowych (ARCH-3)'
     const scene = buildSceneV3(enm, 0);
     const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} readOnly />);
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    // Karta S9-4: prawy klik w uchwyt obiektu (patrz komentarz w `otworzMenuStacji`).
+    const stationTestId = scene.symbols[stationIndex]?.meta?.testId ?? `sld-v3-symbol-${stationIndex}`;
+    const stationGroup = container.querySelector(`[data-hit-for="${stationTestId}"][data-hit-role="obrys"]`);
     fireEvent.contextMenu(stationGroup!, { clientX: 120, clientY: 80 });
     expect(screen.getByRole('menu')).toBeTruthy();
 

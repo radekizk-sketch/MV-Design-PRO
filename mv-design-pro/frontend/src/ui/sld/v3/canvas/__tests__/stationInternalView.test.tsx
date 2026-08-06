@@ -43,6 +43,13 @@ beforeEach(() => {
   useSnapshotStore.setState({ snapshot: enm });
 });
 
+/** Karta S9-4: uchwyt trafienia symbolu o zadanym indeksie sceny — węzeł,
+ *  który w przeglądarce faktycznie łapie zdarzenie (rysunek jest bierny). */
+function uchwyt(container: HTMLElement, scene: { symbols: readonly { meta?: { testId?: string } }[] }, index: number): Element | null {
+  const testId = scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`;
+  return container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+}
+
 describe('SldCanvasV3Workspace — F12-B pkt 6: StationInternalView (dwuklik stacji)', () => {
   it('(a) dwuklik symbolu stacji otwiera StationInternalView z nazwą stacji', () => {
     const scene = buildSceneV3(enm, 0);
@@ -54,7 +61,10 @@ describe('SldCanvasV3Workspace — F12-B pkt 6: StationInternalView (dwuklik sta
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
     expect(screen.queryByTestId('station-internal-view')).toBeNull();
 
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    // Karta S9-4: rysunek kanwy jest bierny — celem zdarzenia jest UCHWYT
+    // obiektu w warstwie `sld-v3-trafienia`, ten sam węzeł, w który trafia
+    // mysz użytkownika. Intencja testów (dwuklik stacji = drill-down) bez zmian.
+    const stationGroup = uchwyt(container, scene, stationIndex);
     expect(stationGroup).toBeTruthy();
     fireEvent.doubleClick(stationGroup!);
 
@@ -70,7 +80,10 @@ describe('SldCanvasV3Workspace — F12-B pkt 6: StationInternalView (dwuklik sta
     const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    // Karta S9-4: rysunek kanwy jest bierny — celem zdarzenia jest UCHWYT
+    // obiektu w warstwie `sld-v3-trafienia`, ten sam węzeł, w który trafia
+    // mysz użytkownika. Intencja testów (dwuklik stacji = drill-down) bez zmian.
+    const stationGroup = uchwyt(container, scene, stationIndex);
     fireEvent.click(stationGroup!);
 
     expect(screen.queryByTestId('station-internal-view')).toBeNull();
@@ -82,7 +95,7 @@ describe('SldCanvasV3Workspace — F12-B pkt 6: StationInternalView (dwuklik sta
     expect(apparatusIndex).toBeGreaterThanOrEqual(0);
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const group = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[apparatusIndex];
+    const group = uchwyt(container, scene, apparatusIndex);
     expect(() => fireEvent.doubleClick(group!)).not.toThrow();
 
     expect(screen.queryByTestId('station-internal-view')).toBeNull();
@@ -93,7 +106,10 @@ describe('SldCanvasV3Workspace — F12-B pkt 6: StationInternalView (dwuklik sta
     const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    // Karta S9-4: rysunek kanwy jest bierny — celem zdarzenia jest UCHWYT
+    // obiektu w warstwie `sld-v3-trafienia`, ten sam węzeł, w który trafia
+    // mysz użytkownika. Intencja testów (dwuklik stacji = drill-down) bez zmian.
+    const stationGroup = uchwyt(container, scene, stationIndex);
     fireEvent.doubleClick(stationGroup!);
     expect(screen.getByTestId('station-internal-view')).toBeInTheDocument();
 
@@ -115,7 +131,10 @@ describe('SldCanvasV3Workspace — F12-B pkt 6: StationInternalView (dwuklik sta
     const stationIndex = scene.symbols.findIndex((s) => s.meta?.elementKind === 'station');
 
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-    const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
+    // Karta S9-4: rysunek kanwy jest bierny — celem zdarzenia jest UCHWYT
+    // obiektu w warstwie `sld-v3-trafienia`, ten sam węzeł, w który trafia
+    // mysz użytkownika. Intencja testów (dwuklik stacji = drill-down) bez zmian.
+    const stationGroup = uchwyt(container, scene, stationIndex);
     fireEvent.doubleClick(stationGroup!);
 
     const overlay = screen.getByTestId('station-internal-view');

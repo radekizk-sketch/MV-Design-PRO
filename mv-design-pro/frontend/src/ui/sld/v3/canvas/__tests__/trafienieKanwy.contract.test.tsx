@@ -118,14 +118,18 @@ describe('S9-4 — render buduje uchwyty tą samą funkcją, którą czyta sonda
         expect(wDom!.ownerRef ?? undefined).toBe(area.ownerRef);
         // Geometria: prostokąt co do współrzędnych, łamana co do grubości i
         // liczby wierzchołków (wartości przechodzą przez atrybut `d`).
+        //
+        // Tolerancja 1e-6, nie równość bitowa: skalę kamery test odzyskuje z
+        // ZAPISANEGO `viewBox` (tekst), więc różni się od tej, którą render miał
+        // w pamięci, o ostatni bit mantysy — a plan etykiet jest od skali
+        // zależny. Porównujemy geometrię, nie zaokrąglenie IEEE 754.
         if (area.obszar.ksztalt === 'prostokat') {
-          expect(wDom!.obszar).toMatchObject({
-            ksztalt: 'prostokat',
-            x: area.obszar.x,
-            y: area.obszar.y,
-            width: area.obszar.width,
-            height: area.obszar.height,
-          });
+          expect(wDom!.obszar.ksztalt).toBe('prostokat');
+          const wDomProstokat = wDom!.obszar as { x: number; y: number; width: number; height: number };
+          expect(wDomProstokat.x).toBeCloseTo(area.obszar.x, 6);
+          expect(wDomProstokat.y).toBeCloseTo(area.obszar.y, 6);
+          expect(wDomProstokat.width).toBeCloseTo(area.obszar.width, 6);
+          expect(wDomProstokat.height).toBeCloseTo(area.obszar.height, 6);
         } else {
           expect(wDom!.obszar.ksztalt).toBe('lamana');
           expect((wDom!.obszar as { halfWidth: number }).halfWidth).toBeCloseTo(area.obszar.halfWidth, 6);

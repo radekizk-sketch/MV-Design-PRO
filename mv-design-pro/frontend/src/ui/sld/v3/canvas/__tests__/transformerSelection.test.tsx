@@ -43,7 +43,15 @@ describe('SldCanvasV3Workspace — selekcja transformatora stacji (adaptacja fle
       '[data-testid="sld-v3-symbols"] g[data-element-kind="transformer"][data-owner-ref^="stn/"]',
     );
     expect(group, 'symbol transformatora stacji musi istnieć w DOM (data-element-kind/data-owner-ref)').toBeTruthy();
-    fireEvent.click(group!);
+    // Karta S9-4: rysunek kanwy jest bierny — celem kliku jest UCHWYT obiektu
+    // w warstwie `sld-v3-trafienia`, adresowany tym samym `testId` co węzeł
+    // rysunku. Intencja testu (klik w transformator stacji niesie REALNY ref
+    // transformatora, nie ref pola) bez zmian.
+    const hit = container.querySelector(
+      `[data-hit-for="${group!.getAttribute('data-testid')}"][data-hit-role="obrys"]`,
+    );
+    expect(hit, 'transformator stacji ma uchwyt trafienia').toBeTruthy();
+    fireEvent.click(hit!);
 
     const selected = useSelectionStore.getState().selectedElements[0];
     expect(selected).toBeTruthy();
