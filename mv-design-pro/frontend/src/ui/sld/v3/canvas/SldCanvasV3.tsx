@@ -26,6 +26,7 @@ import type { EnergyNetworkModel } from '../../../../types/enm';
 import {
   buildSceneV3,
   sceneObstacleRects,
+  sheetRowBandsOf,
   SCENE_LOD_LABELS_PL,
   type SceneLod,
   type SceneV3,
@@ -37,7 +38,8 @@ import { LABEL_TYPOGRAPHY, labelLineHeight, measureLabelWidth } from '../core/te
 import { GRID } from '../core/grid';
 import { planSceneLabels, type PlannedLabel } from './labelLegibility';
 import {
-  SEGMENT_STROKE_WIDTH,
+  segmentStrokeWidthForScale,
+  strokeScaleFactor,
   pointsToPath,
   type PreviewElementKind,
   type PreviewElementMeta,
@@ -45,6 +47,8 @@ import {
   type PreviewSymbol,
 } from '../compose/preview';
 import { FRAME_MARGIN, SheetFrame, type SheetLegendEntry } from '../sheet/Frame';
+import { SLD_CANVAS_DOCK_INSETS } from './toolbarLayout';
+import type { SafeInsets } from '../../v2/viewport/ViewportController';
 import type { RouteVertex } from '../layout/route';
 import {
   boundingBoxOfRect,
@@ -184,6 +188,19 @@ export interface SldCanvasV3Props {
   readonly snapshot: EnergyNetworkModel;
   readonly width: number;
   readonly height: number;
+  /**
+   * S9-8 (audyt, „obszar bezpieczny pod dokami UI"): pasy kanwy zasłonięte
+   * nakładkami wołającego, liczone od jej krawędzi. Kadr („Dopasuj widok",
+   * refit po zmianie sieci) mieści treść w prostokącie POMNIEJSZONYM o te pasy,
+   * więc rysunek nie chowa się pod panelami.
+   *
+   * Domyślnie `SLD_CANVAS_DOCK_INSETS` — STAŁE doki własne kanwy (pas narzędzi
+   * u góry, pas kontrolek u dołu). Wołający, który dokłada własną zasłonę
+   * (panel boczny „wnętrze stacji"), podaje sumę: tylko on wie, czy panel jest
+   * otwarty. `{top:0,right:0,bottom:0,left:0}` przywraca zachowanie sprzed
+   * karty (kadr do pełnego prostokąta kanwy).
+   */
+  readonly safeInsets?: SafeInsets;
   /** Nakładka wyników solvera (energizacja) — patrz `canvas/overlay.ts`.
    *  Brak = rysunek bazowy mono, bez nakładki koloru. */
   readonly overlay?: SldV3Overlay;
@@ -406,18 +423,22 @@ function SceneSegmentNode(props: {
    *  identyczna jak dotąd (`polylinePathWithBridges` bez mostków ==
    *  `pointsToPath`, dowód w teście). */
   readonly sceneCrossings: readonly PowerPathCrossing[] | undefined;
+  /** S9-8: skala kamery — waga kreski dostaje PODŁOGĘ EKRANOWĄ, żeby
+   *  stopniowanie rangi toru (§22.4) nie zlewało się w jeden włos przy
+   *  oddaleniu (`segmentStrokeWidthForScale`, `compose/preview.tsx`). */
+  readonly cameraScale: number;
   readonly onElementClick: ((testId: string, meta?: SldElementClickMeta) => void) | undefined;
   readonly onElementContextMenu:
     | ((testId: string, meta: SldElementClickMeta | undefined, clientX: number, clientY: number) => void)
     | undefined;
 }): JSX.Element | null {
-  const { segment, index, overlay, sceneCrossings, onElementClick, onElementContextMenu } = props;
+  const { segment, index, overlay, sceneCrossings, cameraScale, onElementClick, onElementContextMenu } = props;
   // Hak PRZED wyjściem warunkowym (reguła haków Reacta) — paleta motywu.
   const palette = useSldPalette();
   if (segment.points.length < 2) return null;
   const testId = segmentTestId(segment, index);
   const kind = segment.meta?.kind ?? 'sn';
-  const strokeWidth = SEGMENT_STROKE_WIDTH[kind];
+  const strokeWidth = segmentStrokeWidthForScale(kind, cameraScale);
   // F9.9 (spec §17.1 „dash 4-2") / F10.5 (spec §20.1 „linie rozróżnialne") —
   // patrz `compose/preview.tsx` `PreviewSegmentNode`, ta sama reguła (harness
   // debug i kanwa docelowa zgodnie, zero duplikacji logiki poza kopią).
@@ -2024,7 +2045,7 @@ function ResultStaleBannerNode(props: { readonly x: number; readonly y: number }
  *  czytelnego) i prostokąt efektywny pochodzą z planu, a nie wprost ze sceny.
  *  Kanały audytu w DOM: `data-label-role` (klasa znaczeniowa) i
  *  `data-label-enlarged` (czy pismo zostało powiększone). */
-function SceneLabelNode(props: { readonly planned: PlannedLabel }): JSX.Element {
+function SceneLabelNode(props: { readonly planned: PlannedLabel; readonly cameraScale: number }): JSX.Element {
   const { planned } = props;
   const { label, index } = planned;
   const palette = useSldPalette();
@@ -2047,7 +2068,7 @@ function SceneLabelNode(props: { readonly planned: PlannedLabel }): JSX.Element 
           d={pointsToPath([label.leader.from, label.leader.to])}
           fill="none"
           stroke={palette.baseStroke}
-          strokeWidth={SEGMENT_STROKE_WIDTH.leader}
+          strokeWidth={segmentStrokeWidthForScale('leader', props.cameraScale)}
           strokeDasharray="2 2"
         />
       )}
@@ -2192,6 +2213,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     layerVisibility, onResultLabelActivate, onCameraChange, animateLodTransitions = true, fitSignal,
     fitTarget = 'tresc', centerRequest,
   } = props;
+  // S9-8: obszar bezpieczny kadru — doki własne kanwy plus (opcjonalnie)
+  // zasłona wołającego. Referencja stabilna, żeby `useEffect` refitu nie
+  // odpalał się co render przy domyślnym (nieprzekazanym) propie.
+  const effectiveSafeInsets = props.safeInsets ?? SLD_CANVAS_DOCK_INSETS;
 
   // KD-8 poz. 1: JEDEN sterownik motywu (`useThemeModeStore`) wybiera paletę
   // rysunku; węzły sceny czytają ją kontekstem (`useSldPalette`), więc kolor
@@ -2276,7 +2301,8 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   const [camera, dispatch] = useReducer(
     cameraReducer,
     { bbox: fitBbox, viewportSize, lodBboxes, focusPoint: gpzFocusPoint },
-    (arg) => computeInitialCameraState(arg.bbox, arg.viewportSize, arg.lodBboxes, arg.focusPoint),
+    (arg) =>
+      computeInitialCameraState(arg.bbox, arg.viewportSize, arg.lodBboxes, arg.focusPoint, effectiveSafeInsets),
   );
 
   // (k3) 'refit' PEŁNY gdy zmienia się `snapshot` (nowa sieć = nowy świat) lub
@@ -2292,7 +2318,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
     }
     // F12-C (E15): refit z punktem fokusu GPZ — nowa sieć/nowy cel fitu
     // przechodzi przez tę samą semantykę kamery startowej co mount.
-    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint });
+    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
     // `viewportSize` w akcji to viewport AKTUALNY w chwili refitu (nie w
     // chwili montażu) — poprawne nawet gdy width/height zmieniły się w tym
     // samym renderze co snapshot/lodOverride.
@@ -2306,7 +2332,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
       skippedInitialFitSignal.current = false;
       return;
     }
-    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint });
+    dispatch({ type: 'refit', bbox: fitBbox, lodBboxes, viewportSize, focusPoint: gpzFocusPoint, safeInsets: effectiveSafeInsets });
     // Wyłącznie sygnał steruje tym efektem — refit czyta AKTUALNE bboxy/viewport.
   }, [fitSignal]);
 
@@ -2340,6 +2366,11 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   // dla mostków wszystkich odcinków (deterministyczne, memoizowane per scena).
   const sceneCrossings = useMemo(() => interiorCrossings(scene.segments), [scene]);
   const sheetSize = useMemo(() => sheetSizeFor(scene), [scene]);
+  // S9-7: pasy stref = wiersze łamania arkusza. Układ arkusza ma ten sam
+  // początek co scena (`sheetSizeFor` liczy rozmiar od 0,0), więc pasy
+  // przechodzą 1:1, bez przeliczania — jedno źródło podziału na wiersze
+  // (`layout/sheetRows.ts` → `meta.sheetRowBands`).
+  const sheetRowBandsInSheetSpace = useMemo(() => sheetRowBandsOf(scene), [scene]);
   // F12-B pkt 4 (spec §10.1 ARCH-4): warstwa „nakładki wyników" (energizacja +
   // przepływ) — `null`/brak `layerVisibility` = widoczna (zero zmiany
   // zachowania). Filtr RENDERU: `computeFlowOverlayPlacements` niżej dostaje
@@ -2452,7 +2483,18 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
   );
   // Ile opisów wypadło przez próg czytelności (V12K-218) — potrzebne, żeby
   // ukrycie było JAWNE dla projektanta, a nie cichym zniknięciem danych.
-  const hiddenUnreadableLabels = labelPlan.hiddenDetail.length;
+  //
+  // S9-7 (audyt C-4): licznik obejmuje TAKŻE tożsamości PORZUCONE przez plan
+  // (`droppedIdentity`). Do tej karty plan miał stopień awaryjny „rysuj pismem
+  // naturalnym", więc tożsamość nigdy formalnie nie wypadała — ale przy dolnym
+  // krańcu zoomu (skala 0,05) lądowała na ekranie jako 1,4-pikselowy pyłek,
+  // czyli znikała FAKTYCZNIE, nie będąc nigdzie policzoną. Po usunięciu tego
+  // stopnia (patrz `canvas/labelLegibility.ts`) napis albo jest czytelny, albo
+  // go nie ma — a skoro go nie ma, MUSI być policzony tutaj, inaczej wskaźnik
+  // kłamałby o stanie rysunku. Pomiar na sieci fixturowej: 7 (referencyjna) /
+  // 36 (długi ciąg) tożsamości przy skali 0,05; zero przy skalach, w których
+  // kamera realnie utrzymuje dany poziom szczegółu.
+  const hiddenUnreadableLabels = labelPlan.hiddenDetail.length + labelPlan.droppedIdentity.length;
 
   // K12 (KARTA_K12, dyrektywa właściciela 2026-07-30): legenda symboli NIE
   // jest już domyślną treścią kanwy — zabierała miejsce, była cięższa
@@ -2631,6 +2673,12 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
         legend={SLD_V3_CANVAS_LEGEND}
         scaleLabel="wg kamery"
         lodLabel={SCENE_LOD_LABELS_PL[effectiveLod]}
+        // S9-7 (audyt C-4): aparat arkusza (strefy, podziałka, poziom
+        // szczegółu) w PIKSELACH EKRANU — inaczej przy wpasowaniu sieci dużej
+        // (skala ≈0,13) każdy z tych napisów ma 2 px. Pasy stref z tego samego
+        // podziału, co łamanie arkusza (`meta.sheetRowBands`).
+        cameraScale={camera.transform.scale}
+        rowBands={sheetRowBandsInSheetSpace}
       >
         {/* F13.1 (spec §21.2, D3-2/D3-12): rama strefy GPZ — DEKORACJA z meta
          *  sceny (nie segment toru mocy — zero udziału w wyroczniach §11/
@@ -2645,7 +2693,10 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
             height={scene.meta.gpzZone.height}
             fill="none"
             stroke={palette.baseStroke}
-            strokeWidth={1.2}
+            // S9-8: rama strefy to kreska pomocnicza — bez podłogi ekranowej
+            // znika przy oddaleniu razem z całą hierarchią wag (ta sama
+            // kompensacja co tory, `strokeScaleFactor`).
+            strokeWidth={1.2 * strokeScaleFactor(camera.transform.scale)}
             strokeDasharray="12 6"
             opacity={0.7}
           />
@@ -2694,6 +2745,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
                 index={index}
                 overlay={effectiveOverlay}
                 sceneCrossings={sceneCrossings}
+                cameraScale={camera.transform.scale}
                 onElementClick={onElementClick}
             onElementContextMenu={onElementContextMenu}
               />
@@ -2745,7 +2797,7 @@ export function SldCanvasV3(props: SldCanvasV3Props): JSX.Element {
           data-dropped-identity={labelPlan.droppedIdentity.length}
         >
           {labelPlan.drawn.map((planned) => (
-            <SceneLabelNode key={`label-${planned.index}`} planned={planned} />
+            <SceneLabelNode key={`label-${planned.index}`} planned={planned} cameraScale={camera.transform.scale} />
           ))}
         </g>
         </g>

@@ -215,6 +215,13 @@ export const SCENE_LOD_LABELS_PL: Readonly<Record<SceneLod, string>> = {
   2: 'Stacje i aparatura',
 };
 
+/** S9-7: pas poziomy arkusza odpowiadający jednemu wierszowi łamania (`meta.
+ *  sheetRowBands`). `y` = górna krawędź [px świata], `height` > 0. */
+export interface SheetRowBand {
+  readonly y: number;
+  readonly height: number;
+}
+
 export interface SceneV3Meta {
   readonly lod: SceneLod;
   readonly stationCount: number;
@@ -235,6 +242,25 @@ export interface SceneV3Meta {
    * nie zmienia wiersza przy zoomie — wyrocznia `sheetRowsMatchAcrossLods`.
    */
   readonly sheetRows: readonly (readonly string[])[];
+  /**
+   * S9-7 (audyt C-4 „znaczniki stref"): PASY POZIOME arkusza odpowiadające
+   * wierszom z `sheetRows` — współrzędne świata, rozłączne, POKRYWAJĄCE cały
+   * `bbox` sceny (pierwszy pas zaczyna się na górnej krawędzi arkusza,
+   * ostatni kończy na dolnej). Odgałęzienia wiersza `k` leżą MIĘDZY wierszami
+   * `k` i `k+1` (przeplot pasm, `DECYZJA_LAMANIE_ARKUSZA.md` §4), więc
+   * granicą pasa jest STROP wiersza następnego, a nie koniec pasm samej
+   * magistrali — dzięki temu litera strefy wskazuje ten sam wiersz arkusza,
+   * w którym stoi odgałęzienie tego wiersza.
+   *
+   * DLACZEGO W SCENIE, A NIE W RAMCE. Ramka arkusza (`sheet/Frame.tsx`) nie
+   * zna topologii ani podziału na wiersze — dostaje szerokość i wysokość.
+   * Gdyby liczyła pasy sama (np. dzieląc wysokość na równe części), byłaby to
+   * DRUGA reguła podziału arkusza obok `layout/sheetRows.ts` i rozjechałaby
+   * się przy pierwszej zmianie łamania (reguła KLASA §3 — predykaty parami).
+   *
+   * Pusta lista, gdy scena nie ma ciągu głównego (brak czego dzielić).
+   */
+  readonly sheetRowBands: readonly SheetRowBand[];
   readonly lateralRunIds: readonly string[];
   /** Decyzje zakresu / luki danych napotkane przy budowie TEJ sceny —
    *  widoczne w testach/CI (nie ukryty dług w komentarzu). */
@@ -4178,6 +4204,18 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   // raportowała zaniżoną liczbę (pomiar: 1 zamiast 2 na `gpzFeeder.enm.json`).
   const stationCount = drawnStationIds.size;
 
+  // S9-7: pasy stref = wiersze arkusza rozciągnięte na CAŁY bbox. Granica
+  // między pasem `k` i `k+1` to STROP wiersza `k+1` (patrz `SheetRowBand`);
+  // skrajne granice to krawędzie arkusza, żeby siatka odniesienia pokrywała go
+  // bez dziur — element leżący nad pierwszym wierszem (blok GPZ) należy do
+  // strefy A, a nie do „żadnej".
+  const sheetRowBands: SheetRowBand[] = sheetRowLayouts.map((layout, index) => {
+    const y = index === 0 ? bbox.y : rowTopYOf(layout);
+    const nastepny = sheetRowLayouts[index + 1];
+    const dol = nastepny ? rowTopYOf(nastepny) : bbox.y + bbox.height;
+    return { y, height: Math.max(0, dol - y) };
+  });
+
   return {
     symbols: allSymbols,
     segments: allSegments,
@@ -4202,6 +4240,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
       sheetRows: sheetPlan
         ? sheetPlan.rows.map((range) => trunkStationIds.slice(range.start, range.endExclusive))
         : [],
+      sheetRowBands,
       lateralRunIds,
       stopNotes,
       sources: allSources,
@@ -4477,7 +4516,16 @@ export function noBranchWithoutAccent(scene: SceneV3): boolean {
 // Napięcie w zapisie POLSKIM (przecinek dziesiętny — `liczbaRysunkuPl`, core/text.ts).
 // Kropka była tu przepuszczana, dopóki etykiety szyn wstawiały liczbę surowo (V12K-235):
 // wzorzec legalizował zapis niezgodny z resztą rysunku, zamiast go wyłapać.
-const BUSBAR_LABEL_TEXT_PATTERN = /^(?:Sekcja \d+|Szyna WN)(?: · \d+(?:,\d+)? kV)?$/;
+// S9-8 (audyt, „identyfikator stacji w opisie sekcji"): dopuszczony CZŁON
+// WIODĄCY = kod stacji z danych (`stationBusbarLabelText`, `layout/measure.ts`).
+// Człon jest OPCJONALNY (GPZ i stacje bez kodu zachowują formę sprzed karty) i
+// ograniczony do JEDNEGO tokenu bez separatora — dowolna fraza w tym miejscu
+// osłabiłaby wyrocznię do „cokolwiek · Sekcja N". Wartość tokenu pozostaje
+// DANĄ (kod stacji może wyglądać różnie u różnych operatorów), więc wyrocznia
+// pilnuje jego KSZTAŁTU, a nie treści; że jest to REALNY kod tej stacji,
+// dowodzi osobno `scripts/sld_v3_acceptance.mjs` (porównanie z ENM).
+const BUSBAR_LABEL_TEXT_PATTERN =
+  /^(?:[^\s·]{1,16} · )?(?:Sekcja \d+|Szyna WN)(?: · \d+(?:,\d+)? kV)?$/;
 
 export interface BusbarLabelGap {
   readonly reason: 'bus-without-label' | 'label-without-bus' | 'malformed-text';
@@ -5882,6 +5930,18 @@ export function sheetRowStationIds(scene: SceneV3): readonly (readonly string[])
   const rows = scene.meta.sheetRows;
   if (rows.length > 0) return rows;
   return scene.meta.mainTrunkStationIds.length > 0 ? [scene.meta.mainTrunkStationIds] : [];
+}
+
+/**
+ * S9-7: pasy poziome stref arkusza (`meta.sheetRowBands`) z tym samym
+ * dopełnieniem, co `sheetRowStationIds` — scena bez ciągu głównego dostaje
+ * JEDEN pas obejmujący cały bbox, żeby wołający (ramka arkusza) nie musiał
+ * rozróżniać przypadków ani wymyślać własnego podziału.
+ */
+export function sheetRowBandsOf(scene: SceneV3): readonly SheetRowBand[] {
+  const bands = scene.meta.sheetRowBands;
+  if (bands.length > 0) return bands;
+  return scene.bbox.height > 0 ? [{ y: scene.bbox.y, height: scene.bbox.height }] : [];
 }
 
 /**

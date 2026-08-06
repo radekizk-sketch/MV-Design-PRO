@@ -9,12 +9,13 @@
  * modelu/katalogu; brakująca dana jest POMIJANA (nie zgadywana). W szczególności
  * napięcie znamionowe kabla emitujemy TYLKO gdy katalog je niesie
  * (`voltage_rating_kv` w `materialized_params`) — na dostępnej danej (pojedyncze
- * Um, np. 20 kV) formatujemy „20 kV"; pary U0/U (np. „12/20 kV") NIE fabrykujemy,
- * bo katalog jej tu nie niesie.
+ * Um, np. 20 kV) formatujemy „Un=20 kV" (S9-8, oznacznik jednoznaczności — patrz
+ * `formatRatedVoltageKv`); pary U0/U (np. „12/20 kV") NIE fabrykujemy, bo katalog
+ * jej tu nie niesie.
  *
  * HIERARCHIA LOD (§7): L0 = sama relacja (kotwica/tożsamość, składana przez
  * wołającego z pary końców); L1 = typ + długość; L2 = PEŁNE dane
- * „relacja · typ żyły×przekrój · napięcie · długość". Ten moduł składa CZŁON
+ * „relacja · typ żyły×przekrój · Un · długość". Ten moduł składa CZŁON
  * TECHNICZNY (bez relacji — relację dokleja wołający w `buildScene.ts`, bo tylko
  * on zna kody obu końców z terminali §16).
  *
@@ -67,9 +68,31 @@ export function formatLineLengthPl(lengthKm: number | null | undefined): string 
   return `l = ${intPart},${fracStr} km`;
 }
 
-/** Formatuje napięcie znamionowe kabla [kV] wg katalogu: liczba całkowita bez
- *  miejsc (20 → „20 kV"), ułamkowa z przecinkiem („10,5 kV"). `null`/≤0 ⇒
- *  `null` (człon pominięty). */
+/**
+ * Formatuje napięcie znamionowe kabla [kV] wg katalogu: liczba całkowita bez
+ * miejsc (20 → „Un=20 kV"), ułamkowa z przecinkiem („Un=10,5 kV").
+ * `null`/≤0 ⇒ `null` (człon pominięty).
+ *
+ * S9-8 (audyt, „jednoznaczne oznaczenie napięcia znamionowego kabla przy
+ * przęśle"): oznacznik `Un` DOPISANY. Do tej karty człon brzmiał samo „20 kV" i
+ * stał w łańcuchu rozdzielonym tym samym separatorem, co wszystkie pozostałe
+ * człony („S04 ↔ S05 · YAKXS 3×120/16 · 20 kV · l = 135 m") — czytelnik nie ma
+ * z czego rozstrzygnąć, czy to napięcie IZOLACJI KABLA (dana katalogowa, którą
+ * dobiera się do sieci), czy napięcie PRACY SIECI w tym miejscu (dana modelu).
+ * Na tym samym rysunku obie liczby bywają różne (kabel 20 kV w sieci 15 kV), a
+ * pomyłka prowadzi do fałszywego wniosku o poprawności doboru.
+ *
+ * DLACZEGO „Un=" BEZ SPACJI, a nie „Un = " jak przy długości. Zapis ze spacjami
+ * jest o dwa glify dłuższy, a etykieta przęsła jest REZERWACJĄ szerokości
+ * kolumny stacji (`requiredSegmentLabelWidth`, `layout/measure.ts`) — pomiar na
+ * sieci fixturowej (długi ciąg, 40 przęseł kablowych): „Un = " podnosi wysokość
+ * arkusza o 488 px (dodatkowe wiersze pasma B1 z `colorSegmentLabelRows`), sumę
+ * pionów o 2 536 px i OBNIŻA gęstość tuszu na przeglądzie z 2,03 % do 1,94 %;
+ * „Un=" kosztuje 32 px wysokości i zostawia gęstość na 2,03 %. Skoro karta S9-7
+ * walczy o gęstość tuszu, oznacznik bierzemy w postaci zwartej — „Un=20 kV" to
+ * powszechna forma polskiego zapisu rysunkowego, więc nic nie tracimy poza
+ * symetrią ze zwyczajem `l = `.
+ */
 export function formatRatedVoltageKv(ratedVoltageKv: number | null | undefined): string | null {
   if (typeof ratedVoltageKv !== 'number' || !Number.isFinite(ratedVoltageKv) || ratedVoltageKv <= 0) {
     return null;
@@ -77,11 +100,11 @@ export function formatRatedVoltageKv(ratedVoltageKv: number | null | undefined):
   // Zapis liczby — jedna konwencja rysunku (`liczbaRysunkuPl`, core/text.ts).
   // Dwa miejsca dziesiętne zamiast jednego: katalogowe 20/30 kV wychodzą tak samo,
   // a wartość ułamkowa nie traci cyfry przez zaokrąglenie zapisu.
-  return `${liczbaRysunkuPl(ratedVoltageKv)} kV`;
+  return `Un=${liczbaRysunkuPl(ratedVoltageKv)} kV`;
 }
 
 /**
- * Składa CZŁON TECHNICZNY etykiety linii (§7 L2, bez relacji): „⟨typ⟩ · ⟨U kV⟩
+ * Składa CZŁON TECHNICZNY etykiety linii (§7 L2, bez relacji): „⟨typ⟩ · ⟨Un=… kV⟩
  * · ⟨l = …⟩ [· mufa]". Człony obecne tylko gdy dane realne (zero fabrykacji);
  * kolejność stała (determinizm). `null`, gdy ŻADNA składowa nie jest dostępna
  * (wołający degraduje do samej relacji — uczciwy brak).

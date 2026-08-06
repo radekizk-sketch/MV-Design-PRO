@@ -182,6 +182,8 @@ import { SldPaletteContext, sldPaletteForTheme } from '../theme/palette';
 import {
   isToolbarGroupExpanded,
   layoutCanvasToolbar,
+  SLD_CANVAS_DOCK_INSETS,
+  STATION_INTERNAL_PANEL_MAX_WIDTH_PX,
   type CanvasToolbarGroupId,
 } from './toolbarLayout';
 import { useThemeModeStore } from '../../../../ui2/theme/themeMode';
@@ -2078,6 +2080,26 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     () => buildStationInternalViewData(snapshot, sldData, internalStationId, size),
     [snapshot, sldData, internalStationId, size],
   );
+  /**
+   * S9-8 („obszar bezpieczny pod dokami UI"): doki STAŁE kanwy plus zasłona
+   * STANOWA tego wołającego — panel boczny „wnętrze stacji" zajmuje prawą
+   * krawędź (`bottom-3 right-3 top-3`, szerokość do
+   * `min(760, 100% − 1.5rem)`). Szerokość liczona TĄ SAMĄ formułą co klasa
+   * panelu, a nie wpisana ręcznie: rozjazd oznaczałby kadr, który „prawie" nie
+   * chowa treści (reguła KLASA §3 — predykaty parami).
+   */
+  const effectiveCanvasInsets = useMemo(
+    () =>
+      internalStationData
+        ? {
+            ...SLD_CANVAS_DOCK_INSETS,
+            right:
+              SLD_CANVAS_DOCK_INSETS.right +
+              Math.min(STATION_INTERNAL_PANEL_MAX_WIDTH_PX, Math.max(0, size.width - 24)),
+          }
+        : SLD_CANVAS_DOCK_INSETS,
+    [internalStationData, size.width],
+  );
   // Wybór pola/transformatora WEWNĄTRZ wnętrza stacji otwiera drawer
   // szczegółów — TEN SAM budowniczy współdzielony co selekcja na scenie
   // głównej (`buildDetailDrawerDataForKind`, już importowany wyżej). v2 ma
@@ -2376,6 +2398,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           fitSignal={fitSignal}
           fitTarget={fitTarget}
           centerRequest={centerRequest}
+          safeInsets={effectiveCanvasInsets}
         />
       ) : null}
 

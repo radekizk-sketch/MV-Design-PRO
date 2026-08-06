@@ -79,6 +79,7 @@ import {
   sheetFillRatio,
   sheetAspectRatio,
   sheetRowStationIds,
+  sheetRowBandsOf,
   sheetContinuationGaps,
   allSheetContinuationsMarked,
   trunkThicknessGaps,
@@ -98,8 +99,15 @@ import {
   planSceneLabels,
   plannedLabelCollisions,
   plannedLabelObstacleCollisions,
+  plannedLabelsBelowScreenFloor,
 } from '../src/ui/sld/v3/canvas/labelLegibility.ts';
-import { SHEET_MAX_ASPECT, SHEET_TARGET_ASPECT } from '../src/ui/sld/v3/layout/sheetRows.ts';
+import { MIN_TEXT_SCREEN_PX, screenFixedFontSize } from '../src/ui/sld/v3/core/text.ts';
+import { MIN_SCALE, MAX_SCALE } from '../src/ui/sld/v3/canvas/camera.ts';
+import {
+  SHEET_MAX_ASPECT,
+  SHEET_TARGET_ASPECT,
+  SHEET_WIDTH_QUANTUM,
+} from '../src/ui/sld/v3/layout/sheetRows.ts';
 import {
   BUSBAR_LABEL_PATH_CLEARANCE,
   MIN_PARALLEL_CABLE_CLEARANCE,
@@ -107,7 +115,11 @@ import {
 } from '../src/ui/sld/v3/layout/clearances.ts';
 import { allBayTemplatesValid, bayTemplateGaps } from '../src/ui/sld/v3/scene/buildScene.ts';
 import { overlapProbe } from '../src/ui/sld/v3/layout/labels.ts';
-import { SEGMENT_STROKE_WIDTH } from '../src/ui/sld/v3/compose/preview.tsx';
+import {
+  SEGMENT_STROKE_WIDTH,
+  segmentStrokeWidthForScale,
+  MIN_TRUNK_STROKE_SCREEN_PX,
+} from '../src/ui/sld/v3/compose/preview.tsx';
 import { fieldSilhouettesAreInjective } from '../src/ui/sld/v3/compose/station.ts';
 import { sourceKindSymbolsAreInjective } from '../src/ui/sld/v3/compose/sourceKind.ts';
 import { SYMBOL_DEFS } from '../src/ui/sld/v3/symbols/defs.ts';
@@ -340,7 +352,27 @@ const EXPECTED_STATION_COUNT = 53;
 // OBNIŻONY 23232/40224/40224 → 22232/39240/39240: odgałęzienia leżą w PAŚMIE
 // swojego wiersza arkusza (przeplot §4), więc piony zejść nie muszą już
 // przebiegać pod całym rysunkiem. Reguła „nie-rosnąca" spełniona.
-const VERTICAL_LENGTH_BASELINE = { 0: 22232, 1: 39240, 2: 39240 };
+// S9-7/8 (TYPOGRAFIA I HIERARCHIA RYSUNKU) — baseline PODNIESIONY 22232/39240/
+// 39240 → 22440/39448/39448 (+208 px pionów JEDNOLICIE na każdym LOD).
+// PRZYCZYNA ZMIERZONA, nie zgadnięta: oznacznik jednoznaczności napięcia
+// znamionowego kabla („Un=" przed wartością, `layout/lineLabel.ts` — S9-8
+// „jednoznaczne oznaczenie napięcia znamionowego kabla przy przęśle") wydłuża
+// etykietę przęsła o 3 glify, a etykieta przęsła jest REZERWACJĄ szerokości
+// kolumny stacji (`requiredSegmentLabelWidth`, `layout/measure.ts`). Szersze
+// sloty inaczej dzielą się na wiersze pasma B1 (`colorSegmentLabelRows`,
+// `layout/segments.ts`, NIEZMIENIONE) i „jedna kotwica" SCHEMAT-10 S1
+// propaguje deltę jednolicie na L0/L1/L2.
+//
+// ŚWIADOME ODSTĘPSTWO od reguły „nie-rosnąca" (spec §15.1: „redukcja jest
+// ograniczeniem MIĘKKIM — nigdy kosztem czytelności"): kabel opisany samym
+// „20 kV" w łańcuchu członów rozdzielonych tym samym separatorem nie mówi, czy
+// to napięcie IZOLACJI KABLA, czy PRACY SIECI — a te bywają różne na tym samym
+// rysunku. Wariant droższy („Un = " ze spacjami) kosztowałby +2536 px pionów i
+// obniżał gęstość tuszu na przeglądzie z 2,03 % do 1,94 %; wybrano formę zwartą
+// (pomiar w docstringu `formatRatedVoltageKv`). Gęstość tuszu po zmianie: L0
+// referencyjna 1,67 % → 1,66 %, L0 długi ciąg 2,03 % → 2,03 % (bez zmiany).
+// Zero nowych kolizji jakiegokolwiek rodzaju (ten skrypt zielony).
+const VERTICAL_LENGTH_BASELINE = { 0: 22440, 1: 39448, 2: 39448 };
 
 /**
  * SCHEMAT-10 S6 (V12K-137) — funkcja kosztu layoutu (recenzja ekspercka pkt 3):
@@ -384,7 +416,10 @@ const VERTICAL_LENGTH_BASELINE = { 0: 22232, 1: 39240, 2: 39240 };
 // na złamanie. Ceną 9120/9440/9424 px poziomów i 3/4/4 rogów kupujemy zejście
 // proporcji arkusza z 4,06 : 1 do 1,49 : 1 (znalezisko C-1 wagi 3), a PIONY w
 // tym samym bilansie SPADAJĄ (patrz `VERTICAL_LENGTH_BASELINE` wyżej).
-const HORIZONTAL_LENGTH_BASELINE = { 0: 57344, 1: 77840, 2: 81416 };
+// S9-7/8: PODNIESIONY 57344/77840/81416 → 57392/77888/81464 (+48 px poziomów
+// jednolicie) — ta sama przyczyna i to samo uzasadnienie co przy
+// `VERTICAL_LENGTH_BASELINE` wyżej (oznacznik „Un=" w etykiecie przęsła).
+const HORIZONTAL_LENGTH_BASELINE = { 0: 57392, 1: 77888, 2: 81464 };
 const BEND_COUNT_BASELINE = { 0: 43, 1: 172, 2: 172 };
 
 /**
@@ -1848,6 +1883,114 @@ line('=== identity_label_probe (KD-11: tożsamość na rysunku, bez kolizji) ===
   check(
     'identity_label_probe (test negatywny — dowód, że wyrocznia gryzie): dwie etykiety w TYM SAMYM prostokącie MUSZĄ dać FAIL',
     plannedLabelCollisions(sabotaz).length > 0,
+  );
+}
+
+// -- S9-7 screen_text_floor_probe: ŻADEN napis nie schodzi poniżej 8 px EKRANU
+// Audyt C-4 zmierzył na L0 sieci dużej 114 ze 165 napisów o wysokości 2 px
+// (znaczniki stref, podziałka, opis GPZ). Sonda pilnuje OBU rodzin napisów:
+// (a) TREŚCI RYSUNKU — plan etykiet sceny (`canvas/labelLegibility.ts`) na
+//     KAŻDYM poziomie szczegółu i przy skalach od dolnego krańca kamery
+//     (`MIN_SCALE`) po górny (`MAX_SCALE`): albo napis jest czytelny, albo go
+//     nie ma (jest wtedy policzony jako ukryty/porzucony);
+// (b) APARATU ARKUSZA — ramka, znaczniki stref, podziałka, poziom szczegółu,
+//     legenda (`sheet/Frame.tsx`): rozmiar STAŁY na ekranie, więc próg musi
+//     trzymać przy dowolnej skali z definicji (`screenFixedFontSize`).
+line('');
+line('=== screen_text_floor_probe (S9-7, C-4: zero napisów < 8 px ekranu) ===');
+{
+  // Skale: dolny kraniec kamery, wpasowanie sieci dużej, 1:1, górny kraniec.
+  const SKALE_EKRANOWE = [MIN_SCALE, 0.13, 1, MAX_SCALE];
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    const obstacles = sceneObstacleRects(scene);
+    for (const scale of SKALE_EKRANOWE) {
+      const plan = planSceneLabels(scene.labels, obstacles, scale);
+      const ponizej = plannedLabelsBelowScreenFloor(plan, scale, MIN_TEXT_SCREEN_PX);
+      check(
+        `screen_text_floor_probe (S9-7, treść rysunku) L${lod} @ ${scale}: 0 narysowanych napisów < ${MIN_TEXT_SCREEN_PX} px ekranu`,
+        ponizej.length === 0,
+        `narysowanych=${plan.drawn.length} poniżej=${ponizej.length}` +
+          (ponizej.length > 0 ? ` np. ${ponizej[0].ownerRef} @${ponizej[0].screenPx.toFixed(2)}px` : '') +
+          ` ukrytych=${plan.hiddenDetail.length} porzuconych=${plan.droppedIdentity.length}`,
+      );
+    }
+  }
+  // (b) aparat arkusza — rozmiar stały na ekranie dla KAŻDEJ klasy typograficznej,
+  // której ramka używa (t1 znaczniki stref, t2 podziałka/poziom, t3 legenda).
+  const KLASY_ARKUSZA = ['t1', 't2', 't3'];
+  for (const scale of SKALE_EKRANOWE) {
+    const najmniejszy = Math.min(
+      ...KLASY_ARKUSZA.map((cls) => screenFixedFontSize(cls, scale) * scale),
+    );
+    check(
+      `screen_text_floor_probe (S9-7, aparat arkusza) @ ${scale}: najmniejszy napis ramki ≥ ${MIN_TEXT_SCREEN_PX} px ekranu`,
+      najmniejszy >= MIN_TEXT_SCREEN_PX - 1e-9,
+      `najmniejszy=${najmniejszy.toFixed(2)}px`,
+    );
+  }
+  // Test negatywny OBOWIĄZKOWY — dowód, że wyrocznia gryzie: plan z pismem
+  // wprost poniżej progu MUSI zostać zgłoszony (bez tego sonda mogłaby być
+  // zielona dlatego, że nic nie mierzy).
+  {
+    const scene = buildSceneV3(enm, 2);
+    const plan = planSceneLabels(scene.labels, sceneObstacleRects(scene), 1);
+    const sabotaz = { ...plan, drawn: [{ ...plan.drawn[0], fontSize: 2 }] };
+    check(
+      'screen_text_floor_probe (test negatywny — dowód, że wyrocznia gryzie): napis 2 px ekranu MUSI dać zgłoszenie',
+      plannedLabelsBelowScreenFloor(sabotaz, 1, MIN_TEXT_SCREEN_PX).length === 1,
+    );
+  }
+}
+
+// -- S9-7/S9-8 sheet_grid_probe: siatka odniesienia i hierarchia wag --------
+// Znaczniki stref muszą opisywać FORMAT ARKUSZA (kwant `SHEET_WIDTH_QUANTUM`,
+// wiersze z `meta.sheetRowBands`), a nie stałą 400 px oderwaną od łamania;
+// hierarchia wag toru (§22.4) musi przetrwać KAŻDĄ skalę kamery, nie tylko 1:1.
+line('');
+line('=== sheet_grid_probe (S9-7 strefy z formatu arkusza) + stroke_rank_probe (S9-8) ===');
+{
+  for (const lod of LODS) {
+    const scene = buildSceneV3(enm, lod);
+    const wiersze = sheetRowStationIds(scene).length;
+    const pasy = sheetRowBandsOf(scene);
+    const dol = pasy.length > 0 ? pasy[pasy.length - 1].y + pasy[pasy.length - 1].height : 0;
+    const ciagle = pasy.every((b, i) => i === 0 || Math.abs(b.y - (pasy[i - 1].y + pasy[i - 1].height)) < 1e-9);
+    check(
+      `sheet_grid_probe (S9-7) L${lod}: pasy stref == wiersze arkusza, rozłączne i pokrywające bbox`,
+      pasy.length === wiersze &&
+        ciagle &&
+        pasy.every((b) => b.height > 0) &&
+        Math.abs(pasy[0].y - scene.bbox.y) < 1e-9 &&
+        Math.abs(dol - (scene.bbox.y + scene.bbox.height)) < 1e-9,
+      `pasów=${pasy.length} wierszy=${wiersze} od=${pasy[0]?.y} do=${dol} bbox=${scene.bbox.y}..${scene.bbox.y + scene.bbox.height}`,
+    );
+    const kolumn = Math.max(1, Math.ceil((scene.bbox.x + scene.bbox.width) / SHEET_WIDTH_QUANTUM));
+    check(
+      `sheet_grid_probe (S9-7) L${lod}: kolumn stref liczonych KWANTEM formatu (${SHEET_WIDTH_QUANTUM} px), nie stałą oderwaną od łamania`,
+      kolumn >= 1 && kolumn <= 32,
+      `kolumn=${kolumn} (dawna stała 400 px dałaby ${Math.ceil((scene.bbox.x + scene.bbox.width) / 400)})`,
+    );
+  }
+  // Hierarchia wag §22.4 na KAŻDEJ skali: wzmocnienie jest jednorodne, więc
+  // porządek jest zachowany co do ilorazu — sonda mierzy to wprost.
+  const RANGI = ['busGpz', 'bus', 'snTrunk', 'sn', 'lv', 'leader'];
+  for (const scale of [MIN_SCALE, 0.13, 0.51, 1, MAX_SCALE]) {
+    const wagi = RANGI.map((k) => segmentStrokeWidthForScale(k, scale) * scale);
+    const malejaco = wagi.every((w, i) => i === 0 || w < wagi[i - 1]);
+    const magistralaCzytelna = segmentStrokeWidthForScale('snTrunk', scale) * scale >= MIN_TRUNK_STROKE_SCREEN_PX - 1e-9;
+    check(
+      `stroke_rank_probe (S9-8) @ ${scale}: hierarchia wag §22.4 zachowana i magistrala ≥ ${MIN_TRUNK_STROKE_SCREEN_PX} px ekranu`,
+      malejaco && magistralaCzytelna,
+      `px ekranu: ${RANGI.map((k, i) => `${k}=${wagi[i].toFixed(2)}`).join(' ')}`,
+    );
+  }
+  // Test negatywny — bez wzmocnienia magistrala przy wpasowaniu ma 0,31 px
+  // (stan sprzed karty), więc sonda MUSI to wyłapać.
+  check(
+    'stroke_rank_probe (test negatywny — dowód, że wyrocznia gryzie): waga BEZ wzmocnienia przy skali 0,13 jest poniżej progu',
+    SEGMENT_STROKE_WIDTH.snTrunk * 0.13 < MIN_TRUNK_STROKE_SCREEN_PX,
+    `bez wzmocnienia=${(SEGMENT_STROKE_WIDTH.snTrunk * 0.13).toFixed(2)}px`,
   );
 }
 

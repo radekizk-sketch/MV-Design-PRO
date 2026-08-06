@@ -1413,7 +1413,8 @@ export function composeStation(input: ComposeStationInput): StationComposition {
     busbarLabels.push({
       ownerRef: `${station.id}#busbar-voltage`,
       ownerKind: 'busbar-voltage',
-      text: stationBusbarLabelText(station.busVoltageKv),
+      // S9-8: identyfikator stacji w opisie sekcji — patrz `stationBusbarLabelText`.
+      text: stationBusbarLabelText(station.busVoltageKv, station.stationCode),
       labelClass: 't2',
       anchor: {
         x: column.x + column.width / 2,

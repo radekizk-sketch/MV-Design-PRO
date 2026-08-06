@@ -91,6 +91,52 @@ export const SEGMENT_STROKE_WIDTH: Readonly<Record<PreviewSegmentKind, number>> 
 };
 
 /**
+ * S9-8 (audyt `docs/sld/AUDYT_JAKOSCI_SLD_2026-08.md`) — PODŁOGA EKRANOWA
+ * WAGI TORU GŁÓWNEGO [px ekranu].
+ *
+ * PROBLEM ZMIERZONY. Stopniowanie grubości wyżej jest poprawne w jednostkach
+ * ŚWIATA (szyny 4/6 > magistrala 2,4 > odgałęzienie 1,6 > nN 1,2 > kreski
+ * pomocnicze ≤0,8), ale rysunek ogląda się przez kamerę. Przy wpasowaniu sieci
+ * dużej (skala ≈0,13) magistrala ma na ekranie 0,31 px, odgałęzienie 0,21 px,
+ * obwód nN 0,16 px — przeglądarka rysuje je WSZYSTKIE jako ten sam włos. Cała
+ * hierarchia rangi toru, na której stoi §22.4 i sonda `trunk_thickness_probe`,
+ * znika DOKŁADNIE tam, gdzie jest najpotrzebniejsza: na przeglądzie sieci,
+ * gdzie projektant szuka magistrali jednym rzutem oka.
+ *
+ * ROZSTRZYGNIĘCIE: wzmocnienie JEDNORODNE, zakotwiczone na wadze magistrali.
+ * Mnożnik `k = max(1, próg / (waga_magistrali × skala))` jest ten sam dla
+ * WSZYSTKICH klas, więc PROPORCJE zostają nietknięte — hierarchia §22.4 jest
+ * zachowana co do ilorazu na KAŻDEJ skali (a nie „mniej więcej"), łącznie z
+ * odróżnialnością znaku ciągu dalszego S9-1 od toru, który znaczy. Wzmocnienie
+ * gaśnie samo (`k = 1`) powyżej skali `próg / waga_magistrali` ≈ 0,63, więc
+ * przy pracy na pełnym szczególe rysunek jest bit-identyczny ze stanem sprzed
+ * karty.
+ *
+ * Wartość 1,5 px: przy takiej grubości kreska magistrali jest na ekranie
+ * wyraźnie cięższa od odgałęzienia (1,0 px) i od obwodu nN (0,75 px), a
+ * jednocześnie nie zamienia się w pas — dobrana jako najmniejsza, przy której
+ * trzy sąsiednie rangi są rozróżnialne po samej wadze.
+ */
+export const MIN_TRUNK_STROKE_SCREEN_PX = 1.5;
+
+/**
+ * S9-8: mnożnik wagi kreski dla skali kamery (patrz `MIN_TRUNK_STROKE_SCREEN_PX`).
+ * Czysta funkcja; skala niewiarygodna (≤0/NaN) ⇒ `1` (brak pomiaru nie jest
+ * powodem do zmiany rysunku — parytet z `core/text.ts`).
+ */
+export function strokeScaleFactor(cameraScale: number): number {
+  if (!Number.isFinite(cameraScale) || cameraScale <= 0) return 1;
+  return Math.max(1, MIN_TRUNK_STROKE_SCREEN_PX / (SEGMENT_STROKE_WIDTH.snTrunk * cameraScale));
+}
+
+/** S9-8: waga kreski danej klasy [px ŚWIATA] przy zadanej skali kamery.
+ *  JEDNO wejście dla wszystkich rysujących (kanwa, leadery etykiet) — dwie
+ *  niezależne formuły tej samej wagi to gotowy rozjazd (reguła KLASA §3). */
+export function segmentStrokeWidthForScale(kind: PreviewSegmentKind, cameraScale: number): number {
+  return SEGMENT_STROKE_WIDTH[kind] * strokeScaleFactor(cameraScale);
+}
+
+/**
  * Mała, ZAMKNIĘTA unia kategorii elementu — fundament selekcji v3 (F8b-1,
  * REBUILD_PLAN_V3 §F8b, zadanie „parytet funkcjonalny v3 przed usunięciem
  * v2"). Pochodna WYŁĄCZNIE `symbolId`/rodzaju segmentu (`buildScene.ts`
