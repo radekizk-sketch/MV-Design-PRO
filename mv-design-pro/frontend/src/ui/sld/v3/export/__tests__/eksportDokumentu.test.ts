@@ -156,6 +156,30 @@ describe('S9-6 · konwerter markupu na prymitywy', () => {
     expect(prostokat).toMatchObject({ stroke: '#0F7A3D', fill: null, dash: [6, 3] });
   });
 
+  it('prostokąt tła w PROCENTACH pokrywa cały arkusz (regresja: „100%" czytane jako 100 jednostek zamalowywało róg rysunku)', () => {
+    // Dokładnie ten węzeł wstrzykuje `injectExportBackground` (`exportPalette.ts`)
+    // do KAŻDEGO `<svg>` eksportu — najczęstszy prostokąt w pliku.
+    const zTlem = MARKUP_ARKUSZA.replace(
+      '<g transform="translate(10, 20)">',
+      '<rect x="0" y="0" width="100%" height="100%" fill="#FFFFFF"/><g transform="translate(10, 20)">',
+    );
+    const tlo = svgMarkupToDrawing(zTlem).primitives.find(
+      (p) => p.kind === 'polyline' && p.fill === '#FFFFFF' && p.closed,
+    ) as { readonly points: readonly { x: number; y: number }[] };
+
+    expect(tlo.points).toEqual([
+      { x: 0, y: 0 },
+      { x: 200, y: 0 },
+      { x: 200, y: 100 },
+      { x: 0, y: 100 },
+    ]);
+  });
+
+  it('jednostka długości spoza słownika (px/mm) RZUCA wyjątek zamiast cichej reinterpretacji', () => {
+    const zJednostka = MARKUP_ARKUSZA.replace('width="20"', 'width="20mm"');
+    expect(() => svgMarkupToDrawing(zJednostka)).toThrow(/nieobsługiwana jednostka długości/);
+  });
+
   it('element spoza znanego słownika RZUCA wyjątek — nigdy cicho pomija części rysunku', () => {
     const zNieznanym = MARKUP_ARKUSZA.replace('<animate', '<use href="#x" /><animate');
     expect(() => svgMarkupToDrawing(zNieznanym)).toThrow(/nieobsługiwany element „<use>"/);
