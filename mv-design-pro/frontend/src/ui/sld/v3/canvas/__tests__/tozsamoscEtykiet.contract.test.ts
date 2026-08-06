@@ -199,7 +199,12 @@ describe('KD-11 §2 (bramka 1) — kadr „Dopasuj widok" na sieci z rozwinięty
     const skrocone = plan.drawn.filter((p) => p.text !== p.label.text);
     expect(skrocone.length).toBeGreaterThan(0); // kadr faktycznie ćwiczy skracanie
     for (const p of skrocone) {
-      expect(p.text.endsWith('…'), `${p.label.ownerRef} skrócone bez wielokropka`).toBe(true);
+      // S9-7 (audyt C-6): znak skrócenia może stać w ŚRODKU („Szy…WN",
+      // „Źródło…15 kV"), a nie tylko na końcu — od tej karty skracanie
+      // ZACHOWUJE CZŁON ROZRÓŻNIAJĄCY (końcówkę), bo „Stacja SN-…" ×20 wygląda
+      // identycznie dla dwudziestu stacji. Intencja asercji bez zmian: każdy
+      // skrót MUSI być jawnie oznaczony, żeby nie udawał kompletnej danej.
+      expect(p.text.includes('…'), `${p.label.ownerRef} skrócone bez wielokropka`).toBe(true);
       expect(measureTextWidth(p.text, p.fontSize)).toBeLessThanOrEqual(p.rect.width);
     }
   });

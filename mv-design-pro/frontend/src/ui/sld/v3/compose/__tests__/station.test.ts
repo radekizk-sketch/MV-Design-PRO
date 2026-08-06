@@ -1407,25 +1407,38 @@ describe('V3 compose/station — F10.4 §18.3: adnotacja przekładni CT (ct_anno
 // ---------------------------------------------------------------------------
 
 describe('V3 compose/station — F10.3 §18.4: etykieta szyny SN (busbar-voltage)', () => {
-  it('napięcie OBECNE w danych ⇒ tekst „Sekcja 1 · ⟨V⟩ kV" (parytet gramatyki z GPZ)', () => {
+  // S9-8 (audyt, „identyfikator stacji w opisie sekcji"): tekst niesie KOD
+  // STACJI jako człon wiodący, gdy dane go mają — bez niego 55 sekcji na sieci
+  // referencyjnej nosi identyczny napis „Sekcja 1 · 15 kV" i nie da się
+  // powiedzieć, KTÓREJ stacji dotyczy. Intencja obu asercji bez zmian: napięcie
+  // WYŁĄCZNIE z danych (zero fabrykacji liczby).
+  it('napięcie OBECNE w danych ⇒ tekst „⟨kod⟩ · Sekcja 1 · ⟨V⟩ kV" (parytet gramatyki z GPZ + identyfikator stacji)', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0);
     const station = makeStation('busbar-with-voltage', [bay], { busVoltageKv: 15 });
     const composition = composeStation(buildComposeInput(station));
 
     expect(composition.labels.busbar).toHaveLength(1);
-    expect(composition.labels.busbar[0].text).toBe('Sekcja 1 · 15 kV');
+    expect(composition.labels.busbar[0].text).toBe('S01 · Sekcja 1 · 15 kV');
     expect(composition.labels.busbar[0].ownerKind).toBe('busbar-voltage');
     expect(composition.labels.busbar[0].ownerRef).toBe('busbar-with-voltage#busbar-voltage');
   });
 
-  it('napięcie NIEOBECNE w danych ⇒ tekst „Sekcja 1" WYŁĄCZNIE (zero fabrykacji liczby, §12.1 zasada analogiczna)', () => {
+  it('napięcie NIEOBECNE w danych ⇒ tekst bez „kV" WYŁĄCZNIE (zero fabrykacji liczby, §12.1 zasada analogiczna)', () => {
     const bay = makeBay(FIELD_ROLE.LINE_IN, 0);
     const station = makeStation('busbar-no-voltage', [bay], { busVoltageKv: null });
     const composition = composeStation(buildComposeInput(station));
 
     expect(composition.labels.busbar).toHaveLength(1);
-    expect(composition.labels.busbar[0].text).toBe('Sekcja 1');
+    expect(composition.labels.busbar[0].text).toBe('S01 · Sekcja 1');
     expect(composition.labels.busbar[0].text).not.toMatch(/kV/);
+  });
+
+  it('S9-8: kod stacji NIEOBECNY w danych ⇒ opis sekcji BEZ członu wiodącego (degradacja, nie fabrykacja identyfikatora)', () => {
+    const bay = makeBay(FIELD_ROLE.LINE_IN, 0);
+    const station = makeStation('busbar-no-code', [bay], { busVoltageKv: 15, stationCode: null });
+    const composition = composeStation(buildComposeInput(station));
+
+    expect(composition.labels.busbar[0].text).toBe('Sekcja 1 · 15 kV');
   });
 
   it('stacja bez pól SN (snBays=[]) ⇒ ZERO etykiety szyny (zgodne z pominięciem #sn-bus — zakaz „szyny znikąd")', () => {

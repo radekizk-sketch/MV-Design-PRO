@@ -209,9 +209,13 @@ const CZLON_SEPARATOR = ' · ';
  *     to dokładnie ta klasa pomyłki, którą audyt zmierzył na „S400"/„S630";
  *  5. `wyrazy początkowe …` — CAŁE wiodące wyrazy z wielokropkiem („GPZ …").
  *     Mniej informacji niż ogon, ale nadal prawdziwe słowa nazwy;
- *  6. gdy nie mieści się nawet pierwszy wyraz ⇒ PUSTY tekst. Wołający (plan
- *     renderu) traktuje pusty wynik jak brak miejsca i etykiety NIE rysuje —
- *     uczciwy brak, policzony we wskaźniku „Ukryto N opisów".
+ *  6. `fragment…` — dopiero tu wolno przeciąć wyraz, i WYŁĄCZNIE ze znakiem
+ *     skrócenia. Wadą z audytu nie jest sam fragment, tylko fragment BEZ ZNAKU
+ *     („S400" czytane jak moc transformatora); fragment oznaczony „…" mówi
+ *     wprost, że jest skrótem, a alternatywą na tym etapie jest brak podpisu;
+ *  7. gdy nie mieści się nawet jeden znak z wielokropkiem ⇒ PUSTY tekst.
+ *     Wołający (plan renderu) traktuje pusty wynik jak brak miejsca i etykiety
+ *     NIE rysuje — uczciwy brak, policzony we wskaźniku „Ukryto N opisów".
  *
  * OGRANICZENIE NAZWANE: gdy element rozróżnia wyraz ze ŚRODKA nazwy („GPZ
  * *Referencyjny* 15 kV" vs „GPZ *Wschodni* 15 kV"), żadna forma mieszcząca
@@ -221,9 +225,9 @@ const CZLON_SEPARATOR = ' · ';
  * wtedy zależna od sąsiadów, a więc niedeterministyczna względem pojedynczej
  * etykiety.
  *
- * Niezmiennik (przypięty testem): `measureTextWidth(wynik, fontSize) ≤
- * maxWidth`, wynik nigdy nie zawiera fragmentu wyrazu wejściowego innego niż
- * pełny wyraz (poza głową skrótu środkowego, zawsze zakończoną „…").
+ * Niezmiennik (przypięty testem `core/__tests__/typografiaEkranowa.test.ts`):
+ * `measureTextWidth(wynik, fontSize) ≤ maxWidth` ORAZ każdy wynik różny od
+ * tekstu pełnego NIESIE znak skrócenia „…" (nigdy fragment udający całość).
  */
 export function shortenPreservingIdentity(text: string, fontSize: number, maxWidth: number): string {
   if (!Number.isFinite(maxWidth) || maxWidth <= 0 || fontSize <= 0) return text;
@@ -237,8 +241,14 @@ export function shortenPreservingIdentity(text: string, fontSize: number, maxWid
     if (miesciSie(kandydat)) return kandydat;
   }
 
+  // Sam pierwszy człon — ZAWSZE ze znakiem skrócenia, nawet gdy mieści się w
+  // całości: bez „…" czytelnik nie ma jak odróżnić „S12 · Sekcja 1" (pełna
+  // treść) od „S12 · Sekcja 1 · 15 kV" obciętego do dwóch członów. Skrót bez
+  // jawnego znaku jest tą samą wadą, co cięcie śródwyrazowe — udaje kompletną
+  // daną (kontrakt sprawdzany testem `tozsamoscEtykiet.contract`).
   const pierwszy = czlony[0];
-  if (miesciSie(pierwszy)) return pierwszy;
+  const pierwszyZeZnakiem = czlony.length > 1 ? `${pierwszy} …` : pierwszy;
+  if (miesciSie(pierwszyZeZnakiem)) return pierwszyZeZnakiem;
   const wyrazy = pierwszy.split(' ').filter((w) => w.length > 0);
   if (wyrazy.length === 0) return '';
 
@@ -269,7 +279,21 @@ export function shortenPreservingIdentity(text: string, fontSize: number, maxWid
     if (miesciSie(kandydat)) return kandydat;
   }
 
-  // (6) nie mieści się nawet pierwszy wyraz — uczciwy brak zamiast ogryzka.
+  // (6) OSTATNIA deska: fragment pierwszego wyrazu ZAKOŃCZONY wielokropkiem
+  // („pol…"). Wada nazwana w audycie to nie sam fragment, tylko fragment BEZ
+  // ZNAKU, który udaje kompletną daną („S400" czytane jak moc) — dlatego ten
+  // stopień jest osiągany dopiero po wyczerpaniu wszystkich form całowyrazowych
+  // i ZAWSZE niesie „…". Bez niego etykieta w bardzo wąskim slocie znikałaby
+  // całkowicie (pomiar: 2 podpisy pól GPZ i nazwa GPZ na sieci wielostacyjnej
+  // przy kadrze „Dopasuj widok"), a rysunek bez podpisu pola nie mówi, czym to
+  // pole jest — gorzej niż podpis oznaczony jako skrócony.
+  const glowa = wyrazy[0];
+  for (let g = glowa.length - 1; g >= 1; g--) {
+    const kandydat = `${glowa.slice(0, g)}…`;
+    if (miesciSie(kandydat)) return kandydat;
+  }
+
+  // (7) nie mieści się nawet jeden znak z wielokropkiem — uczciwy brak.
   return '';
 }
 

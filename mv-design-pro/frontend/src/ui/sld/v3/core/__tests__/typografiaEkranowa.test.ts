@@ -7,10 +7,11 @@
  *      ILOCZYN {klasa typograficzna} × {skala kamery od dolnego po górny
  *      kraniec}, bo błąd typu „kompensujemy tylko poniżej 1" schowałby się w
  *      pojedynczym przykładzie;
- *  (b) skracanie NIGDY nie tnie w środku wyrazu i NIGDY nie gubi członu
- *      rozróżniającego — sprawdzane jako ILOCZYN {rodzaj etykiety rysunku} ×
- *      {dostępna szerokość od pełnej do zerowej}, bo audyt zmierzył formy
- *      („S400", „S630"), które powstają dopiero przy CIASNYCH szerokościach.
+ *  (b) każdy skrót jest JAWNIE OZNACZONY i preferuje formy zachowujące człon
+ *      rozróżniający — sprawdzane jako ILOCZYN {rodzaj etykiety rysunku} ×
+ *      {dostępna szerokość od pełnej do jednego piksela}, bo audyt zmierzył
+ *      formy („S400", „S630"), które powstają dopiero przy CIASNYCH
+ *      szerokościach i wyglądają jak kompletna dana techniczna.
  */
 import { describe, expect, it } from 'vitest';
 
@@ -74,26 +75,27 @@ describe('S9-7 (a) — aparat arkusza w pikselach EKRANU', () => {
 });
 
 /** Realne kształty etykiet rysunku v3 (po jednym z każdej rodziny gramatyki). */
-const ETYKIETY: readonly { readonly opis: string; readonly text: string; readonly rozroznia: string }[] = [
+const ETYKIETY: readonly { readonly opis: string; readonly text: string }[] = [
   {
     opis: 'przęsło (relacja · typ · Un · długość)',
     text: 'S07 ↔ S08 · Linia napowietrzna Al 120 mm² · Un=20 kV · l = 150 m',
-    rozroznia: 'S07',
   },
-  { opis: 'opis sekcji z identyfikatorem stacji', text: 'S12 · Sekcja 1 · 15 kV', rozroznia: 'S12' },
-  { opis: 'nazwa GPZ z napięciami', text: 'GPZ Referencyjny 15 kV · 110/15 kV', rozroznia: 'GPZ' },
-  { opis: 'nazwa stacji z numerem na końcu', text: 'Stacja SN-01', rozroznia: 'SN-01' },
-  { opis: 'rola pola (bez ogona rozróżniającego)', text: 'pole liniowe', rozroznia: 'pole' },
-  { opis: 'kod stacji (jeden wyraz)', text: 'S400', rozroznia: 'S400' },
-  { opis: 'źródło DER (wartość + jednostka na końcu)', text: 'PV 500 kW', rozroznia: 'PV' },
+  { opis: 'opis sekcji z identyfikatorem stacji', text: 'S12 · Sekcja 1 · 15 kV' },
+  { opis: 'nazwa GPZ z napięciami', text: 'GPZ Referencyjny 15 kV · 110/15 kV' },
+  { opis: 'nazwa stacji z numerem na końcu', text: 'Stacja SN-01' },
+  { opis: 'rola pola (bez ogona rozróżniającego)', text: 'pole liniowe' },
+  { opis: 'kod stacji (jeden wyraz)', text: 'S400' },
+  { opis: 'źródło DER (wartość + jednostka na końcu)', text: 'PV 500 kW' },
 ];
 
 describe('S9-7 (b) — skracanie zachowujące człon rozróżniający', () => {
-  it('ILOCZYN {rodzaj etykiety} × {dostępna szerokość}: nigdy nie przekracza szerokości i nigdy nie tnie w środku wyrazu', () => {
+  it('ILOCZYN {rodzaj etykiety} × {dostępna szerokość}: nigdy nie przekracza szerokości, każdy skrót jawnie oznaczony', () => {
     for (const { opis, text } of ETYKIETY) {
       const fontSize = 11;
       const pelna = measureTextWidth(text, fontSize);
-      for (let w = pelna + 20; w >= 0; w -= 3) {
+      // Szerokość ≤ 0 jest pomiarem NIEWIARYGODNYM (osobna asercja niżej),
+      // więc iloczyn cech idzie po szerokościach realnych.
+      for (let w = pelna + 20; w >= 1; w -= 3) {
         const wynik = shortenPreservingIdentity(text, fontSize, w);
         if (wynik.length === 0) continue;
         expect(measureTextWidth(wynik, fontSize), `${opis} @${w}`).toBeLessThanOrEqual(w);
@@ -142,8 +144,14 @@ describe('S9-7 (b) — skracanie zachowujące człon rozróżniający', () => {
     expect(wynik === '' || wynik.startsWith('PV')).toBe(true);
   });
 
-  it('człon JEDNOWYRAZOWY, który się nie mieści, daje PUSTY wynik (uczciwy brak zamiast „S400")', () => {
-    expect(shortenPreservingIdentity('S4001', 11, measureTextWidth('S40', 11))).toBe('');
+  it('człon JEDNOWYRAZOWY skraca się WYŁĄCZNIE ze znakiem („S4…"), nigdy do formy udającej całość („S400")', () => {
+    // Wadą z audytu nie jest sam fragment, tylko fragment BEZ ZNAKU: „S400"
+    // (z „S4001") czyta się jak moc transformatora. Ten sam fragment ze
+    // znakiem („S4…") mówi wprost, że jest skrótem.
+    const wynik = shortenPreservingIdentity('S4001', 11, measureTextWidth('S40', 11));
+    expect(wynik).toBe('S4…');
+    expect(wynik).not.toBe('S400');
+    // Poniżej szerokości JEDNEGO znaku z wielokropkiem — uczciwy brak.
     expect(shortenPreservingIdentity('S4001', 11, 1)).toBe('');
   });
 

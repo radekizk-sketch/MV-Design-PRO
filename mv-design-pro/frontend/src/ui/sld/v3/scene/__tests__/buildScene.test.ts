@@ -1058,9 +1058,21 @@ describe('buildSceneV3 — F9.7: totalVerticalSegmentLength (spec §15.1 vertica
     // zjadają NOWE piony łączników ciągu dalszego (kanał powrotny + rynna
     // podjęcia na każdym złamaniu), więc bilans netto jest UJEMNY — reguła
     // „nie-rosnąca" (spec §15.1) spełniona.
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22232);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(39240);
-    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(39240);
+    // S9-7/8 (TYPOGRAFIA I HIERARCHIA RYSUNKU): PODNIESIONY 22232/39240/39240 →
+    // 22440/39448/39448 (+208 px jednolicie). Przyczyna ZMIERZONA: oznacznik
+    // jednoznaczności napięcia znamionowego kabla („Un=", `layout/lineLabel.ts`,
+    // S9-8) wydłuża etykietę przęsła o 3 glify, a ta jest REZERWACJĄ szerokości
+    // kolumny stacji (`requiredSegmentLabelWidth`), więc `colorSegmentLabelRows`
+    // inaczej dzieli sloty na wiersze pasma B1; „jedna kotwica" S1 propaguje
+    // deltę jednolicie na L0/L1/L2. Świadome odstępstwo od „nie-rosnącej"
+    // (§15.1 „redukcja jest ograniczeniem MIĘKKIM"): sam napis „20 kV" w
+    // łańcuchu członów nie mówi, czy to napięcie izolacji kabla, czy pracy
+    // sieci — a te bywają różne na tym samym rysunku. Wariant „Un = " ze
+    // spacjami kosztowałby +2536 px i obniżał gęstość tuszu 2,03 %→1,94 %,
+    // dlatego wybrano formę zwartą (pomiar w `formatRatedVoltageKv`).
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 0))).toBe(22440);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 1))).toBe(39448);
+    expect(totalVerticalSegmentLength(buildSceneV3(enm, 2))).toBe(39448);
   });
 });
 
@@ -1149,9 +1161,22 @@ describe('buildSceneV3 — F10.3: busbar_label_probe (spec §18.4) na fixturze R
       const busbarLabels = scene.labels.filter((l) => l.ownerKind === 'busbar-voltage');
       // 53 stacje + N sekcji GPZ (fixtura: 1) — parytet z GPZ dosłownie.
       expect(busbarLabels.length).toBeGreaterThanOrEqual(53);
-      // F13.1 (spec §21.1): forma WN „Szyna WN · V kV" (szyna 110 kV GPZ)
-      // dopisana do zamkniętego słownika form (§19.2 SN + §21.1 WN).
-      expect(busbarLabels.every((l) => /^(?:Sekcja \d+|Szyna WN)(?: · \d+(?:\.\d+)? kV)?$/.test(l.text))).toBe(true);
+      // S9-7 (reguła KLASA §3 — predykaty parami): format sprawdza WYŁĄCZNIE
+      // wyrocznia produkcyjna (`busbarLabelGaps` wyżej). Poprzednia wersja
+      // testu powtarzała TU własne wyrażenie regularne, i to ROZJECHANE z
+      // produkcją: dopuszczała kropkę dziesiętną („15.5 kV"), której kanon
+      // zapisu rysunku (`liczbaRysunkuPl`) zabrania. Dwa niezależne warunki na
+      // ten sam format to defekt czekający na dane brzegowe — wzorzec został
+      // usunięty, a jego intencję (forma SN + forma WN §21.1) niesie dowód
+      // POZYTYWNY niżej.
+      //
+      // S9-8: dowód pozytywny nowej własności — opis sekcji stacji niesie
+      // IDENTYFIKATOR STACJI jako człon wiodący (GPZ, który kodu nie ma,
+      // zachowuje formę „Sekcja N · V kV"/„Szyna WN · V kV").
+      const zStacji = busbarLabels.filter((l) => l.ownerRef.startsWith('stn/'));
+      expect(zStacji.length).toBeGreaterThan(0);
+      expect(zStacji.every((l) => /^S\d+ · Sekcja \d+/.test(l.text))).toBe(true);
+      expect(busbarLabels.some((l) => /^Szyna WN( · \d+(?:,\d+)? kV)?$/.test(l.text))).toBe(true);
     }
   });
 

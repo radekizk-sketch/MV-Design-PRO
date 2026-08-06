@@ -25,6 +25,7 @@ import {
   computeInitialCameraState,
 } from '../camera';
 import { fitToView } from '../../../v2/viewport/ViewportController';
+import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
 import { SldCanvasV3, contentBoundingBoxOf, sceneBoxToCameraWorld } from '../SldCanvasV3';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -99,8 +100,10 @@ describe('SldCanvasV3 — F12-C kamera mobilna (E15/E16 parytet v2)', () => {
     // `sceneBoxToCameraWorld`), bo `SheetFrame` rysuje treść przesuniętą.
     const scena2 = buildSceneV3(enm, 2);
     const bbox2 = sceneBoxToCameraWorld(contentBoundingBoxOf(scena2) ?? boundingBoxOfRect(scena2.bbox));
+    // S9-8: kadr produkcyjny liczony w prostokącie BEZPIECZNYM (kanwa minus
+    // pasy doków) — oczekiwanie idzie tą samą drogą.
     const expectedFit = cameraViewBox(
-      computeInitialCameraState(bbox2, DESKTOP).transform,
+      computeInitialCameraState(bbox2, DESKTOP, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
       DESKTOP,
     );
     const { container } = render(

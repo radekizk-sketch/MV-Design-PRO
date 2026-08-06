@@ -47,6 +47,7 @@ import {
 } from '../overlay';
 import { formatMagnitudeKa } from '../../../../sld-overlay/FaultContributionArrow';
 import { boundingBoxOfRect, cameraViewBox, computeInitialCameraState } from '../camera';
+import { SLD_CANVAS_DOCK_INSETS } from '../toolbarLayout';
 import { SYMBOL_DEFS } from '../../symbols/defs';
 import { HIGHLIGHT_COLOR, STATE_COLOR, VOLTAGE_COLOR } from '../../theme/colorTokens';
 
@@ -126,14 +127,21 @@ describe('SldCanvasV3 — montaż na realnej fixturze (53 stacje)', () => {
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     const labelGroup = container.querySelector('[data-testid="sld-v3-labels"]');
     const ukryte = Number(labelGroup?.getAttribute('data-hidden-unreadable') ?? '0');
+    const porzucone = Number(labelGroup?.getAttribute('data-dropped-identity') ?? '0');
     expect(ukryte).toBeGreaterThan(0);
-    expect(ukryte).toBeLessThanOrEqual(scene.labels.length);
+    expect(ukryte + porzucone).toBeLessThanOrEqual(scene.labels.length);
     // V12K-222: komunikat przeniesiony z ramki ARKUSZA do warstwy EKRANU. Pierwsza
     // wersja wpadała w pułapkę, którą sama opisuje — przy skali ukrywającej etykiety
     // sam komunikat miał ~2 px i był nieczytelny.
     const komunikat = container.querySelector('[data-testid="sld-v3-hidden-labels-hint"]');
     expect(komunikat?.textContent).toContain('przybliż, aby zobaczyć');
-    expect(komunikat?.getAttribute('data-hidden-count')).toBe(String(ukryte));
+    // S9-7 (audyt C-4): komunikat liczy OBA rodzaje niewidocznych opisów —
+    // ukryte dane szczegółowe ORAZ tożsamości, dla których zabrakło miejsca w
+    // rozmiarze czytelnym. Kanały audytu w DOM zostają ROZDZIELONE (żeby
+    // bilans „narysowane + ukryte + porzucone == etykiety sceny" dało się
+    // sprawdzić bez podwójnego liczenia), ale użytkownik musi zobaczyć sumę:
+    // napis, którego nie ma, nie może być niepoliczony.
+    expect(komunikat?.getAttribute('data-hidden-count')).toBe(String(ukryte + porzucone));
     // Dowód kompensacji skali: pismo w jednostkach ŚWIATA musi być tym większe, im
     // mniejsza skala kamery — tylko wtedy na ekranie ma stały rozmiar. Przy pełnym
     // widoku sieci (skala ≪ 1) fontSize w świecie jest wyraźnie większy od nominału.
@@ -645,8 +653,18 @@ describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie za
     const bbox0 = contentFitBbox(0);
     const bbox2 = contentFitBbox(2);
     const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
-    const expectedFitToL0 = cameraViewBox(computeInitialCameraState(bbox0, viewportSize).transform, viewportSize);
-    const expectedWrongFitToL2 = cameraViewBox(computeInitialCameraState(bbox2, viewportSize).transform, viewportSize);
+    // S9-8 („obszar bezpieczny pod dokami UI"): kamera produkcyjna liczy kadr w
+    // PROSTOKĄCIE BEZPIECZNYM (kanwa minus pasy doków, `SLD_CANVAS_DOCK_INSETS`),
+    // więc oczekiwanie testu MUSI przejść tą samą drogą — inaczej test mierzyłby
+    // kadr, którego produkt świadomie już nie liczy.
+    const expectedFitToL0 = cameraViewBox(
+      computeInitialCameraState(bbox0, viewportSize, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
+      viewportSize,
+    );
+    const expectedWrongFitToL2 = cameraViewBox(
+      computeInitialCameraState(bbox2, viewportSize, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
+      viewportSize,
+    );
 
     const { container } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={0} />);
     const actual = viewBoxOf(container);
@@ -658,7 +676,14 @@ describe('SldCanvasV3 — F8a k4.1: lodOverride fituje do bboxa TEGO LOD (nie za
   it('lodOverride=2 (lub brak override — domyślny cel fitu = LOD2): viewBox dopasowany do treści L2', () => {
     const bbox2 = contentFitBbox(2);
     const viewportSize = { width: CANVAS_WIDTH, height: CANVAS_HEIGHT };
-    const expectedFitToL2 = cameraViewBox(computeInitialCameraState(bbox2, viewportSize).transform, viewportSize);
+    // S9-8 („obszar bezpieczny pod dokami UI"): kamera produkcyjna liczy kadr w
+    // PROSTOKĄCIE BEZPIECZNYM (kanwa minus pasy doków, `SLD_CANVAS_DOCK_INSETS`),
+    // więc oczekiwanie testu MUSI przejść tą samą drogą — inaczej test mierzyłby
+    // kadr, którego produkt świadomie już nie liczy.
+    const expectedFitToL2 = cameraViewBox(
+      computeInitialCameraState(bbox2, viewportSize, undefined, null, SLD_CANVAS_DOCK_INSETS).transform,
+      viewportSize,
+    );
 
     const { container: withOverride } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} lodOverride={2} />);
     const { container: withoutOverride } = render(<SldCanvasV3 snapshot={enm} width={CANVAS_WIDTH} height={CANVAS_HEIGHT} />);
