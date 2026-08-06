@@ -105,6 +105,15 @@ describe('SldCanvasV3Workspace — F12-B pkt 1: eksport SVG', () => {
     const svgStr = String(parts[0]);
     expect(svgStr).toContain('<svg');
     expect(svgStr).toContain('sld-canvas-v3');
+    // Karta S9-4: warstwa TRAFIEŃ jest powierzchnią zdarzeń EKRANU, nie treścią
+    // rysunku — do dokumentu nie trafia. Bez tej asercji plik urósłby o kilka
+    // tysięcy niewidocznych węzłów, a deklaracja w kodzie eksportu byłaby
+    // obietnicą bez pokrycia.
+    expect(svgStr).not.toContain('sld-v3-trafienia');
+    expect(svgStr).not.toContain('data-hit-for');
+    // Dowód, że asercja mierzy USUNIĘCIE, a nie nieobecność od początku:
+    // kanwa na ekranie warstwę trafień ma.
+    expect(document.querySelector('[data-testid="sld-v3-trafienia"]')).toBeTruthy();
 
     vi.unstubAllGlobals();
   });
