@@ -114,6 +114,15 @@ app.add_middleware(
 register_exception_handlers(app)
 
 # Routers
+#
+# KANON PREFIKSU (karta PREFIKSY, dlug V12K-325): KAZDY router HTTP stoi pod
+# `/api`. Prefiks `/api` jest jedyna granica, ktora dev-proxy Vite przepuszcza
+# bez reguly szytej na miare, wiec router poza `/api` wymaga drugiej, rownoleglej
+# deklaracji w `frontend/vite.config.ts` — czyli kolejnego miejsca, ktore moze sie
+# rozjechac. Tak wlasnie powstaly dwa defekty zyjace w repo miesiacami: archiwum
+# projektu pod `/projects` bylo z przegladarki NIEOSIAGALNE, a klient rozplywu
+# wolal `/api/power-flow-runs/...`, ktorego backend NIE serwowal (trasa MARTWA).
+# Odstepstwo od kanonu lapie `scripts/route_prefix_guard.py`.
 app.include_router(analysis_runs_router, prefix="/api")
 app.include_router(audit2_catalogs_router)
 app.include_router(audit2_station_config_router)
@@ -128,22 +137,22 @@ app.include_router(equipment_proof_pack_router)
 app.include_router(health_router)
 app.include_router(ncrfg_ptpiree_tests_router)
 app.include_router(oze_analysis_runs_router)
-app.include_router(power_flow_comparisons_router)
-app.include_router(power_flow_runs_router)
+app.include_router(power_flow_comparisons_router, prefix="/api")
+app.include_router(power_flow_runs_router, prefix="/api")
 app.include_router(quality_analysis_runs_router)
 app.include_router(reference_engine_router)
 app.include_router(reference_networks_router)
-app.include_router(project_archive_router)
+app.include_router(project_archive_router, prefix="/api")
 app.include_router(projects_router)
 app.include_router(proof_pack_router)
-app.include_router(protection_comparisons_router)
+app.include_router(protection_comparisons_router, prefix="/api")
 app.include_router(protection_analysis_runs_router, prefix="/api")
 # Karta F-K5 (dlug V12K-189): prezentacja nastaw, w tym NIEDOSTEPNYCH, z akcja naprawcza.
 app.include_router(protection_overcurrent_settings_router)
 # Karta F-K6 (V12K-206): kanoniczny rejestr kodow gotowosci jako jedno zrodlo tresci.
 app.include_router(readiness_registry_router)
 app.include_router(reference_patterns_router)
-app.include_router(sld_router)
+app.include_router(sld_router, prefix="/api")
 app.include_router(station_templates_router)
 app.include_router(study_cases_router)
 app.include_router(xlsx_import_router)

@@ -93,10 +93,12 @@ def _summary_response(
     status_code: int = 200,
 ) -> dict[str, Any]:
     """Build a deterministically sorted response from AnalysisRunSummary."""
+    # `result_location` przychodzi z warstwy aplikacji juz jako adres kanoniczny
+    # `/api/...`. Stala tu wczesniej doklejka `/api`, ale WYLACZNIE dla prefiksu
+    # `/analysis-runs/` — rozplyw i zabezpieczenia szly dalej z adresem, ktorego
+    # nikt nie serwowal. Poprawka stoi teraz w JEDNYM miejscu (zrodle adresu),
+    # zamiast w jednym z konsumentow.
     payload = summary.to_dict()
-    result_location = payload.get("result_location")
-    if isinstance(result_location, str) and result_location.startswith("/analysis-runs/"):
-        payload["result_location"] = f"/api{result_location}"
     # Add run_summary wrapper for backward-compat envelope
     return canonicalize_json({"run_summary": payload})
 

@@ -6,11 +6,16 @@
  * - READ-ONLY: No mutations, no physics
  * - Deterministic: Same inputs → same outputs
  *
- * ENDPOINTS (P20a/P20b Backend):
- * - GET /projects/{project_id}/power-flow-runs (list)
- * - GET /power-flow-runs/{run_id} (metadata)
- * - GET /power-flow-runs/{run_id}/results (PowerFlowResultV1)
- * - GET /power-flow-runs/{run_id}/trace (PowerFlowTrace)
+ * ENDPOINTS (kanon `/api` — karta PREFIKSY):
+ * - GET /api/projects/{project_id}/power-flow-runs (list)
+ * - GET /api/power-flow-runs/{run_id} (metadata)
+ * - GET /api/power-flow-runs/{run_id}/results (PowerFlowResultV1)
+ * - GET /api/power-flow-runs/{run_id}/trace (PowerFlowTrace)
+ * - GET /api/power-flow-runs/{run_id}/interpretation (PowerFlowInterpretation)
+ *
+ * Klient wolal te adresy z prefiksem `/api` juz wczesniej, ale router stal poza
+ * `/api` — kazde wejscie w wyniki rozplywu konczylo sie 404. Przeniesienie
+ * routera pod kanon (`api/main.py`) zlikwidowalo rozjazd u zrodla.
  */
 
 import type {

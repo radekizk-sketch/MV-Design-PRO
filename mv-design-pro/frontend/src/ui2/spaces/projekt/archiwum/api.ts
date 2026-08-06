@@ -1,11 +1,11 @@
 /*
  * Klient archiwum projektu (ZIP) dla przestrzeni „Projekt".
  *
- * Kontrakt backendu 1:1 (`backend/src/api/project_archive.py`, router
- * `prefix="/projects"`):
- *  - POST /projects/{project_id}/export?zapisz_do_magazynu=… → ZIP (attachment),
- *  - POST /projects/import           (multipart: file, new_name?, verify_integrity?),
- *  - POST /projects/import/preview   (multipart: file).
+ * Kontrakt backendu 1:1 (`backend/src/api/project_archive.py`, router wpiety
+ * pod `prefix="/api"`):
+ *  - POST /api/projects/{project_id}/export?zapisz_do_magazynu=… → ZIP (attachment),
+ *  - POST /api/projects/import           (multipart: file, new_name?, verify_integrity?),
+ *  - POST /api/projects/import/preview   (multipart: file).
  *
  * ZERO fabrykacji: każde pole poniżej pochodzi z modeli odpowiedzi backendu
  * (`ImportResponse`, `PreviewResponse`) — łącznie z bramką katalogową po
@@ -62,7 +62,7 @@ export interface WynikImportu {
   readonly catalog_mapping_required?: boolean;
 }
 
-const BAZA = '/projects';
+const BAZA = '/api/projects';
 
 /** Treść błędu z odpowiedzi backendu (pole `detail`) albo kod stanu. */
 async function bladOdpowiedzi(response: Response, domyslny: string): Promise<Error> {
