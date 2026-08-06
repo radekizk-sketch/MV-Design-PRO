@@ -265,7 +265,7 @@ export interface SceneV3Meta {
   /** ODG-RYSUNEK: identyfikatory stacji FAKTYCZNIE narysowanych (magistrala,
    *  laterale, feedery GPZ) — posortowane. Dotąd scena wystawiała wyłącznie
    *  LICZNIK (`stationCount`), więc wyrocznia pokrycia mogła powiedzieć „ile", a
-   *  nie „które". Wejście `branchPointDrawGaps` („stacja za punktem odgałęźnym
+   *  nie „które". Wejście `branchPointCoverageGaps` („stacja za punktem odgałęźnym
    *  narysowana"). */
   readonly drawnStationIds: readonly string[];
   /** ODG-RYSUNEK: refy PUNKTÓW ODGAŁĘŹNYCH narysowanych na torze magistrali
@@ -2719,6 +2719,34 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   }
   const mainCableRun = mainTrunkRun ? cableRunById.get(mainTrunkRun.id) : undefined;
 
+  // ODG-RYSUNEK (etap 3 kontraktu pomiaru rozliczeniowego): PUNKTY ODGAŁĘŹNE
+  // ciągu głównego — jedyne miejsce, w którym scena czyta `snapshot.branch_points`.
+  // Liczone TU, PRZED planerem arkusza: odgałęzienie wychodzące z punktu należy do
+  // pasma wiersza stacji POPRZEDZAJĄCEJ punkt, więc planer musi je wliczyć do
+  // szerokości i wysokości tego pasma (predykaty parami — ten sam warunek
+  // przydziału wiersza, co przy budowie geometrii niżej).
+  const trunkBranchPoints = collectTrunkBranchPoints(snapshot, mainCableRun, stopNotes);
+  const branchPointByRef = new Map<string, TrunkBranchPoint>(trunkBranchPoints.map((bp) => [bp.refId, bp]));
+  /** ODG-RYSUNEK: stacja ciągu, w której SZCZELINIE leży kanał zejścia tego
+   *  odgałęzienia — JEDNO źródło prawdy dla planera arkusza, przydziału wiersza i
+   *  przydziału kanału. Dla odgałęzienia z pola stacji to ta stacja; dla
+   *  odgałęzienia z PUNKTU ODGAŁĘŹNEGO — stacja poprzedzająca punkt na ciągu.
+   *  Bez tego wspólnego predykatu odgałęzienie punktu byłoby dla planera
+   *  „originem poza ciągiem" (pasmo pełnej szerokości), a dla geometrii — zejściem
+   *  w szczelinie wiersza `k` (reguła KLASA §3). */
+  const branchRunChannelOwnerRef = (run: SldTopologyRun): string | null => {
+    const direct = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
+    if (direct != null) return direct;
+    const bpRef = run.branchOriginStationRef ?? null;
+    return (bpRef != null ? branchPointByRef.get(bpRef)?.upstreamNodeRef : null) ?? null;
+  };
+  /** ODG-RYSUNEK: kod końca przęsła dla etykiety „A ↔ B · …" — stacja ma
+   *  `stationCode`, punkt odgałęźny NAZWĘ Z DANYCH (`BranchPointSN.name`). Zero
+   *  fabrykacji: gdy węzeł nie jest ani stacją, ani punktem — `null`, a formatter
+   *  degraduje do samego członu technicznego. */
+  const trunkNodeCodeOfId = (id: string): string | null =>
+    stationCodeOfId(id) ?? branchPointByRef.get(id)?.name ?? null;
+
   // -- Symbole/segmenty/właściciele etykiet, akumulowane globalnie. ---------
   const allSymbols: PreviewSymbol[] = [];
   const allSegments: PreviewSegment[] = [];
@@ -2934,7 +2962,7 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   const sheetLateralExtents: SheetLateralExtent[] = [];
   if (trunkProbeLayout) {
     for (const run of sldData.topologyRuns.filter((r) => r.kind === 'branch')) {
-      const originRef = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
+      const originRef = branchRunChannelOwnerRef(run);
       const stationIndex = originRef != null ? trunkIndexById.get(originRef) : undefined;
       if (stationIndex == null) continue; // feeder GPZ / origin poza ciągiem — pasmo pełnej szerokości
       const branchLayout = buildRowLayout(
@@ -3197,18 +3225,8 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
   const branchRuns = sldData.topologyRuns.filter((r) => r.kind === 'branch');
   const lateralRunIds: string[] = [];
   const branchOriginUsage = new Map<string, number>();
-  // ODG-RYSUNEK (etap 3 kontraktu pomiaru rozliczeniowego): PUNKTY ODGAŁĘŹNE
-  // ciągu głównego — jedyne miejsce, w którym scena czyta `snapshot.branch_points`.
-  const trunkBranchPoints = collectTrunkBranchPoints(snapshot, mainCableRun, stopNotes);
-  const branchPointByRef = new Map<string, TrunkBranchPoint>(trunkBranchPoints.map((bp) => [bp.refId, bp]));
-  /** ODG-RYSUNEK: kod końca przęsła dla etykiety „A ↔ B · …" — stacja ma
-   *  `stationCode`, punkt odgałęźny NAZWĘ Z DANYCH (`BranchPointSN.name`). Zero
-   *  fabrykacji: gdy węzeł nie jest ani stacją, ani punktem — `null`, a formatter
-   *  degraduje do samego członu technicznego. */
-  const trunkNodeCodeOfId = (id: string): string | null =>
-    stationCodeOfId(id) ?? branchPointByRef.get(id)?.name ?? null;
   /** ODG-RYSUNEK: refy punktów odgałęźnych FAKTYCZNIE narysowanych (symbol na
-   *  scenie) — wejście wyroczni pokrycia `branchPointDrawGaps`. */
+   *  scenie) — wejście wyroczni pokrycia `branchPointCoverageGaps`. */
   const drawnBranchPointRefs = new Set<string>();
   /** ODG-RYSUNEK: punkty, w których tor magistrali ZOSTAŁ rozcięty. Symbol punktu
    *  rysuje się WYŁĄCZNIE dla nich (predykaty parami — patrz `trunkChainPieces`). */
@@ -3228,19 +3246,6 @@ export function buildSceneV3(snapshot: EnergyNetworkModel, lod: SceneLod): Scene
    *  wyznaczony przez stację-origin (feeder z pola GPZ nie ma stacji-origin na
    *  ciągu, więc trafia do pasma wiersza 0, tuż pod GPZ). */
   const sheetRowOfBranchRun = new Map<string, number>();
-  /** ODG-RYSUNEK: stacja ciągu, w której SZCZELINIE leży kanał zejścia tego
-   *  odgałęzienia — JEDNO źródło prawdy dla przydziału wiersza arkusza (tu) i dla
-   *  przydziału kanału (`computeRowChannelPlan`). Dla odgałęzienia z pola stacji
-   *  to ta stacja; dla odgałęzienia z PUNKTU ODGAŁĘŹNEGO — stacja poprzedzająca
-   *  punkt na ciągu. Bez tego wspólnego predykatu odgałęzienie punktu trafiłoby do
-   *  pasma wiersza 0 (fallback feederowy), a jego kanał — do szczeliny wiersza k
-   *  (reguła KLASA §3: warunek wejścia i wyjścia z jednego miejsca). */
-  const branchRunChannelOwnerRef = (run: SldTopologyRun): string | null => {
-    const direct = cableRunById.get(run.id)?.segmentPaths?.[0]?.fromTerminal?.ownerRef ?? null;
-    if (direct != null) return direct;
-    const bpRef = run.branchOriginStationRef ?? null;
-    return (bpRef != null ? branchPointByRef.get(bpRef)?.upstreamNodeRef : null) ?? null;
-  };
   for (const run of branchRuns) {
     const originRef = branchRunChannelOwnerRef(run);
     const originIndex = originRef != null ? trunkIndexById.get(originRef) : undefined;
