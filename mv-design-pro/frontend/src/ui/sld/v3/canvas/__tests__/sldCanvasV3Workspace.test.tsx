@@ -75,6 +75,23 @@ function rawPayload(elements: Record<string, RawOverlayElement>): RawOverlayPayl
   return { run_id: 'run-test', analysis_type: 'load_flow', elements };
 }
 
+/** Karta S9-4: uchwyt trafienia obiektu sceny — węzeł warstwy
+ *  `sld-v3-trafienia`, który w przeglądarce faktycznie łapie zdarzenie
+ *  (rysunek kanwy jest bierny, `pointer-events="none"`). Adresowany tym samym
+ *  `testId`, co węzeł rysunku, więc intencja testów zostaje bez zmian. */
+function uchwytTrafienia(container: HTMLElement, testId: string): Element | null {
+  return container.querySelector(`[data-hit-for="${testId}"][data-hit-role="obrys"]`);
+}
+
+/** Uchwyt symbolu po indeksie sceny (testId ze sceny albo fallback indeksowy). */
+function uchwytSymbolu(
+  container: HTMLElement,
+  scene: { readonly symbols: readonly { readonly meta?: { readonly testId?: string } }[] },
+  index: number,
+): Element | null {
+  return uchwytTrafienia(container, scene.symbols[index]?.meta?.testId ?? `sld-v3-symbol-${index}`);
+}
+
 describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
   it('brak snapshot w store: nie renderuje kanwy (brak sieci = brak rysunku, nie crash)', () => {
     const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
@@ -98,7 +115,7 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
     const testId = firstSymbolGroup!.getAttribute('data-testid')!;
     expect(testId).toBe(scene.symbols[0].meta?.testId ?? 'sld-v3-symbol-0');
 
-    fireEvent.click(firstSymbolGroup!);
+    fireEvent.click(uchwytTrafienia(container, testId)!);
 
     const selected = useSelectionStore.getState().selectedElement;
     expect(selected).not.toBeNull();
@@ -126,8 +143,7 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
       const stationIndex = scene.symbols.findIndex((s) => s.symbolId === 'stationCollapsed');
       expect(stationIndex).toBeGreaterThanOrEqual(0);
       const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-      const stationGroup = container.querySelector('[data-testid="sld-v3-symbols"]')?.children[stationIndex];
-      fireEvent.click(stationGroup!);
+      fireEvent.click(uchwytSymbolu(container, scene, stationIndex)!);
       const selected = useSelectionStore.getState().selectedElement;
       expect(selected?.type).toBe('Station');
       expect(selected?.id).toBe(scene.symbols[stationIndex].meta?.ownerRef);
@@ -155,8 +171,8 @@ describe('SldCanvasV3Workspace — okablowanie danych (F8a)', () => {
       const source = scene.symbols.find((s) => s.symbolId === 'gridSource');
       expect(source, 'glif sieci zewnętrznej widoczny na KAŻDYM LOD (§13.1)').toBeTruthy();
       const { container } = render(<SldCanvasV3Workspace width={800} height={600} />);
-      const sourceGroup = container.querySelector(`[data-testid="${source!.meta!.testId}"]`);
-      expect(sourceGroup).toBeTruthy();
+      const sourceGroup = uchwytTrafienia(container, source!.meta!.testId!);
+      expect(sourceGroup, 'symbol sieci zewnętrznej ma uchwyt trafienia').toBeTruthy();
       fireEvent.click(sourceGroup!);
       const selected = useSelectionStore.getState().selectedElement;
       expect(selected?.type).toBe('Source');

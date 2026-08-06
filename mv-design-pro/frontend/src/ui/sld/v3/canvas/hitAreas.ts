@@ -740,11 +740,18 @@ export function sondaSiatkowaTrafien(
     readonly krok?: number;
     readonly maksProbekNaObiekt?: number;
     readonly maksChybienWRaporcie?: number;
+    /** Próg rozmiaru celu [px ekranu]. Domyślnie `MIN_HIT_SCREEN_PX` (pomiar
+     *  „czy kod dotrzymuje własnej obietnicy"). Skrypt ODBIORU podaje tu próg
+     *  KARTY jako liczbę — bramka nie może mierzyć się stałą, którą pilnuje:
+     *  obniżenie `MIN_HIT_SCREEN_PX` obniżyłoby wtedy i cel, i miarę, więc
+     *  iniekcja regresji przechodziłaby na zielono (sprawdzone: przechodziła). */
+    readonly minEkranPx?: number;
   },
 ): SondaTrafienWynik {
   const krok = opcje.krok ?? SONDA_KROK_SIATKI;
   const maks = opcje.maksProbekNaObiekt ?? SONDA_MAKS_PROBEK_NA_OBIEKT;
   const maksChybien = opcje.maksChybienWRaporcie ?? 12;
+  const minEkranPx = opcje.minEkranPx ?? MIN_HIT_SCREEN_PX;
   const trafiane = opcje.trafiane ?? oczekiwane;
   const indeksOczekiwan = new IndeksKubelkowy(64, oczekiwane, (a) => a.obrys);
   const indeksObrysow = new IndeksKubelkowy(64, trafiane, (a) => a.obrys);
@@ -768,7 +775,7 @@ export function sondaSiatkowaTrafien(
     const wDrzewie = wgTestId.get(area.testId);
     const ekranPx = wDrzewie ? hitAreaScreenSize(wDrzewie, opcje.scale) : 0;
     // Tolerancja 1e-9: `24/scale*scale` bywa 23,999999999999996 w IEEE 754.
-    if (ekranPx + 1e-9 < MIN_HIT_SCREEN_PX) {
+    if (ekranPx + 1e-9 < minEkranPx) {
       ponizejMinimum.push({ testId: area.testId, ekranPx });
       if (stat) stat.ponizejMinimum += 1;
     }

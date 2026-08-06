@@ -1896,6 +1896,17 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
   ];
   /** Próg odbioru karty S9-4: ≥ 95 % klików nad elementem zaznacza TEN element. */
   const PROG_SKUTECZNOSCI = 0.95;
+  /** Minimalny obszar trafienia [px EKRANU] — kryterium KARTY, zapisane tu
+   *  LICZBĄ, świadomie NIE importowane z `hitAreas.ts`. Bramka mierząca się
+   *  stałą, której pilnuje, nie pilnuje niczego: obniżenie `MIN_HIT_SCREEN_PX`
+   *  obniżyłoby jednocześnie cel i miarę (sprawdzone iniekcją 24 → 4: przy
+   *  imporcie stałej bramka przechodziła na zielono). */
+  const PROG_MIN_PX_EKRANU = 24;
+  check(
+    `hit_size_probe (S9-4): stała renderu MIN_HIT_SCREEN_PX nie schodzi poniżej progu karty (${PROG_MIN_PX_EKRANU} px)`,
+    MIN_HIT_SCREEN_PX >= PROG_MIN_PX_EKRANU,
+    `MIN_HIT_SCREEN_PX=${MIN_HIT_SCREEN_PX}`,
+  );
   const orientedRefs = orientedSegmentRefs(enm);
 
   for (const lod of LODS) {
@@ -1957,7 +1968,7 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
         scale,
       });
       const zDrzewa = hitAreasFromDom(svg);
-      const wynik = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: zDrzewa });
+      const wynik = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: zDrzewa, minEkranPx: PROG_MIN_PX_EKRANU });
       const etykieta = `LOD ${lod} · zoom ${widok.nazwa} (skala ${scale.toFixed(4)})`;
 
       // (a) Kolejność warstw uchwytów — bez niej rozszerzenie kradnie klik obrysowi.
@@ -1978,7 +1989,7 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
 
       // (c) Minimum ekranowe na KAŻDYM obiekcie.
       check(
-        `hit_size_probe (S9-4) ${etykieta}: każdy obiekt ma obszar trafienia ≥ ${MIN_HIT_SCREEN_PX} px ekranu`,
+        `hit_size_probe (S9-4) ${etykieta}: każdy obiekt ma obszar trafienia ≥ ${PROG_MIN_PX_EKRANU} px ekranu`,
         wynik.ponizejMinimum.length === 0,
         wynik.ponizejMinimum.length === 0
           ? `obiektów=${oczekiwane.length}`
@@ -2007,7 +2018,7 @@ line('=== hit_grid_probe (S9-4): trafienie i tożsamość zaznaczenia ===');
       //     stan sprzed karty S9-4 (napis rysowany, ale nieklikalny).
       if (widok.nazwa === 'mały') {
         const bezEtykiet = zDrzewa.filter((a) => a.klasa !== 'etykieta');
-        const wynikBez = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: bezEtykiet });
+        const wynikBez = sondaSiatkowaTrafien(oczekiwane, { scale, trafiane: bezEtykiet, minEkranPx: PROG_MIN_PX_EKRANU });
         check(
           `hit_grid_probe (test negatywny — dowód, że wyrocznia gryzie) LOD ${lod}: uchwyty etykiet usunięte z drzewa MUSZĄ zbić skuteczność poniżej progu`,
           wynikBez.skutecznosc < PROG_SKUTECZNOSCI,
