@@ -7633,6 +7633,63 @@ def _find_substation(enm: dict[str, Any], substation_ref: str) -> dict[str, Any]
     return None
 
 
+def _szyny_stron_gpz(enm: dict[str, Any], sub: dict[str, Any]) -> tuple[set[str], set[str]]:
+    """Szyny stacji GPZ o UDOWODNIONEJ stronie: (WN, SN).
+
+    Dowód pochodzi z RELACJI modelu, nie z progu napięciowego:
+      * strona WN — `hv_bus_ref` transformatorów tej stacji oraz zadeklarowane
+        `meta.gpz_hv_bus_refs`;
+      * strona SN — `lv_bus_ref` tych transformatorów oraz `bus_ref` istniejących
+        sekcji SN (`gpz_sections`).
+    Szyna nienależąca do żadnego z tych zbiorów NIE ma dowodu strony (np. nowa
+    szyna dokładana przez edytor) — wołający nie wolno wtedy niczego domniemywać.
+    """
+    transformer_refs = set(sub.get("transformer_refs") or [])
+    wn: set[str] = {
+        ref for ref in (sub.get("meta", {}) or {}).get("gpz_hv_bus_refs", []) or [] if ref
+    }
+    sn: set[str] = {
+        section.get("bus_ref")
+        for section in (sub.get("gpz_sections") or [])
+        if section.get("bus_ref")
+    }
+    for transformer in enm.get("transformers", []):
+        if transformer.get("ref_id") not in transformer_refs:
+            continue
+        if transformer.get("hv_bus_ref"):
+            wn.add(transformer["hv_bus_ref"])
+        if transformer.get("lv_bus_ref"):
+            sn.add(transformer["lv_bus_ref"])
+    return wn, sn
+
+
+def _blad_strony_sekcji_gpz(
+    enm: dict[str, Any], sub: dict[str, Any], side: str, bus_ref: str
+) -> dict[str, Any] | None:
+    """Odmowa, gdy sekcja przypisuje szynę do UDOWODNIONEJ przeciwnej strony.
+
+    KARTA WN-WYNIK (klasa „wielkość jednego poziomu napięcia na szynie innego").
+    Sekcja HV wskazująca szynę SN była dotąd przyjmowana w ciszy, a schemat
+    opisywał wtedy szynę WN napięciem szyny SN (kompozycja bierze napięcie
+    etykiety z `gpz_hv_sections[0].bus_ref` — pomiar: „Szyna WN · 15 kV" na
+    szynie 110 kV). Blokujemy WYŁĄCZNIE przypadek udowodniony relacjami modelu
+    (patrz `_szyny_stron_gpz`); szyna bez dowodu strony przechodzi jak dotąd —
+    reguła ma łapać sprzeczność, nie zgadywać za projektanta.
+    """
+    wn, sn = _szyny_stron_gpz(enm, sub)
+    if side == "hv" and bus_ref in sn:
+        return _error_response(
+            f"Szyna '{bus_ref}' jest szyną SN tej stacji — nie może być sekcją WN.",
+            "gpz_section.add.bus_side_mismatch",
+        )
+    if side == "lv" and bus_ref in wn:
+        return _error_response(
+            f"Szyna '{bus_ref}' jest szyną WN tej stacji — nie może być sekcją SN.",
+            "gpz_section.add.bus_side_mismatch",
+        )
+    return None
+
+
 def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
     """Dodaje GPZ sekcję (LV lub HV) do istniejącej stacji typu 'gpz'.
 
@@ -7680,6 +7737,10 @@ def add_gpz_section(enm: dict[str, Any], payload: dict[str, Any]) -> dict[str, A
         return _error_response(
             f"Szyna '{bus_ref}' nie istnieje.", "gpz_section.add.bus_ref_missing"
         )
+
+    strona_niezgodna = _blad_strony_sekcji_gpz(enm, sub, side, bus_ref)
+    if strona_niezgodna is not None:
+        return strona_niezgodna
 
     existing = list(sub.get(sections_field) or [])
     if any(s.get("section_id") == section_id for s in existing):

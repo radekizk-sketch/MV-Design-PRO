@@ -134,6 +134,95 @@ def test_add_gpz_section_rejects_invalid_bus_ref() -> None:
     assert response.get("error_code") == "gpz_section.add.bus_ref_missing"
 
 
+def _gpz_z_transformatorem() -> dict[str, Any]:
+    """GPZ z UDOWODNIONYMI stronami szyn (relacja transformatora WN/SN).
+
+    `b110` = `hv_bus_ref`, `b15` = `lv_bus_ref` — dowód strony pochodzi z modelu,
+    nie z progu napięciowego.
+    """
+    enm = _gpz_with_one_section()
+    enm["transformers"] = [
+        {
+            "ref_id": "TR-1",
+            "name": "TR1",
+            "tags": [],
+            "meta": {},
+            "hv_bus_ref": "b110",
+            "lv_bus_ref": "b15",
+            "sn_mva": 25,
+            "uhv_kv": 110,
+            "ulv_kv": 15,
+            "uk_percent": 12,
+            "pk_kw": 120,
+        }
+    ]
+    enm["substations"][0]["transformer_refs"] = ["TR-1"]
+    enm["substations"][0]["meta"] = {"gpz_hv_bus_refs": ["b110"]}
+    return enm
+
+
+# ILOCZYN CECH (karta WN-WYNIK): {strona hv, strona lv} × {szyna udowodniona WN,
+# szyna udowodniona SN, szyna bez dowodu strony}. Sekcja przypisująca szynę do
+# udowodnionej PRZECIWNEJ strony była dotąd przyjmowana w ciszy, a schemat
+# opisywał wtedy szynę WN napięciem szyny SN („Szyna WN · 15 kV" na szynie
+# 110 kV — pomiar na sieci z żywego backendu).
+
+
+def test_add_gpz_section_hv_odrzuca_szyne_sn_stacji() -> None:
+    enm = _gpz_z_transformatorem()
+    response = add_gpz_section(
+        enm,
+        {"substation_ref": "GPZ-1", "side": "hv", "section_id": "HV-Z", "bus_ref": "b15"},
+    )
+    assert response.get("error_code") == "gpz_section.add.bus_side_mismatch"
+    # Odmowa NIE zostawia śladu: brak migawki w odpowiedzi i model wejściowy
+    # nietknięty (operacja pracuje na kopii dopiero po przejściu bramek).
+    assert response["snapshot"] is None
+    assert enm["substations"][0].get("gpz_hv_sections") in (None, [])
+
+
+def test_add_gpz_section_lv_odrzuca_szyne_wn_stacji() -> None:
+    enm = _gpz_z_transformatorem()
+    response = add_gpz_section(
+        enm,
+        {"substation_ref": "GPZ-1", "side": "lv", "section_id": "SEC-Z", "bus_ref": "b110"},
+    )
+    assert response.get("error_code") == "gpz_section.add.bus_side_mismatch"
+    assert response["snapshot"] is None
+    assert len(enm["substations"][0]["gpz_sections"]) == 1
+
+
+def test_add_gpz_section_hv_przyjmuje_szyne_wn_stacji() -> None:
+    enm = _gpz_z_transformatorem()
+    response = add_gpz_section(
+        enm,
+        {"substation_ref": "GPZ-1", "side": "hv", "section_id": "HV-A", "bus_ref": "b110"},
+    )
+    assert response.get("error") is None
+    assert response["snapshot"]["substations"][0]["gpz_hv_sections"][0]["bus_ref"] == "b110"
+
+
+def test_add_gpz_section_lv_przyjmuje_szyne_sn_stacji() -> None:
+    enm = _gpz_z_transformatorem()
+    response = add_gpz_section(
+        enm,
+        {"substation_ref": "GPZ-1", "side": "lv", "section_id": "SEC-B", "bus_ref": "b15-2"},
+    )
+    # `b15-2` nie ma dowodu strony (nie jest zaczepem transformatora ani sekcją)
+    # — reguła łapie SPRZECZNOŚĆ, nie zgaduje za projektanta.
+    assert response.get("error") is None
+    assert len(response["snapshot"]["substations"][0]["gpz_sections"]) == 2
+
+
+def test_add_gpz_section_hv_przyjmuje_szyne_bez_dowodu_strony() -> None:
+    enm = _gpz_z_transformatorem()
+    response = add_gpz_section(
+        enm,
+        {"substation_ref": "GPZ-1", "side": "hv", "section_id": "HV-B", "bus_ref": "b15-2"},
+    )
+    assert response.get("error") is None
+
+
 def test_add_gpz_section_rejects_non_gpz_station() -> None:
     enm = _gpz_with_one_section()
     enm["substations"][0]["station_type"] = "mv_lv"
