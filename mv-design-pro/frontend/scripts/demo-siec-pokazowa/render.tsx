@@ -9,10 +9,16 @@
  *  - `po`    — stan po karcie: klienci wiszą na ODGAŁĘZIENIACH od punktów ZKSN,
  *    magistrala biegnie wyłącznie przez stacje OSD.
  *
- * UCZCIWA UWAGA NA ZRZUCIE (`po`): scena v3 nie zna jeszcze punktów
- * odgałęzienia jako początku lateralu (etap 3 kontraktu — dług nazwany
- * w rejestrze), więc stacje klientów nie są jeszcze rysowane. Zrzut pokazuje
- * TO, CO JEST — magistralę bez klienta w torze tranzytu — i wprost nazywa lukę.
+ * ODG-RYSUNEK (etap 3 kontraktu, WDROŻONY): scena rysuje już punkty odgałęźne
+ * (ZKSN / słup rozgałęźny) i całe ciągi za nimi, więc wariant `po` pokazuje
+ * KOMPLETNĄ sieć. Stopka zrzutu podaje POMIAR pokrycia wprost ze sceny (stacje
+ * narysowane, punkty odgałęźne, ciągi pominięte) — zrzut nie zapewnia, tylko
+ * melduje liczby.
+ *
+ * Zrzuty powstają dla DWÓCH poziomów szczegółu (L0 przegląd i L2 stacje
+ * i aparatura) w OBU motywach — kotwica L0/L2 jest wspólna (kanon „jedna
+ * kotwica"), więc para zrzutów jest też dowodem, że punkt odgałęźny nie
+ * przemeblowuje rysunku przy zoomie.
  *
  * Uruchomienie (cwd: mv-design-pro/frontend; modele z `seed.py --enm <plik>`):
  *   POMIAR_ODG_PRZED=<plik> POMIAR_ODG_PO=<plik> CANON_OUT=<dir> \
@@ -65,22 +71,40 @@ const MOTYWY = [
   { klucz: 'jasny', mode: 'light_technical' as const },
 ];
 
-const WIDTH = 1800;
-const HEIGHT = 1000;
+/** Kadr DOPASOWANY do arkusza sceny (margines + limity) — zrzut ma być czytelny
+ *  w skali ~1:1, a nie zmniejszony tak, że symbol punktu odgałęźnego (16 px
+ *  świata) schodzi poniżej progu rozpoznawalności. */
+function kadr(bbox: { readonly width: number; readonly height: number }) {
+  const margines = 80;
+  return {
+    width: Math.min(2400, Math.max(1200, Math.ceil(bbox.width) + 2 * margines)),
+    height: Math.min(3600, Math.max(800, Math.ceil(bbox.height) + 2 * margines)),
+  };
+}
 const FOOTER = 78;
-const LOD: SceneLod = 2;
+/** L0 = przegląd sieci, L2 = stacje i aparatura (kanon „jedna kotwica"). */
+const LODY: readonly SceneLod[] = [0, 2];
+/** Przedrostek nazw plików; `pomiar-odg` zostaje dla porównania „przed/po"
+ *  etapu 2, `odg-rysunek` to odbiór etapu 3 (rysowanie punktów odgałęźnych). */
+const PREFIKS = process.env.POMIAR_ODG_PREFIKS ?? 'odg-rysunek';
 
 for (const wariant of WARIANTY) {
   const enm = wczytaj(wariant.plik);
+  for (const LOD of LODY) {
   const scene = buildSceneV3(enm, LOD);
   const pominiete = scene.meta.stopNotes.filter((n) => n.includes('ciąg pominięty')).length;
+  const punkty = (enm.branch_points ?? []).length;
   const wiersz1 =
     `${SCENE_LOD_LABELS_PL[LOD]} (L${LOD}) · ${wariant.opis}` +
-    ` · stacji w ciągu głównym=${scene.meta.mainTrunkStationIds.length}`;
+    ` · stacji w ciągu głównym=${scene.meta.mainTrunkStationIds.length}` +
+    ` · stacji narysowanych=${scene.meta.drawnStationIds.length}`;
   const wiersz2 =
     pominiete > 0
-      ? `LUKA RYSUNKU (etap 3 kontraktu): ${pominiete} odgałęzień z punktu ZKSN pominięte — stacje klientów nie są jeszcze rysowane`
-      : 'Wszystkie odgałęzienia sieci narysowane';
+      ? `LUKA RYSUNKU: ${pominiete} odgałęzień pominiętych — stacje za punktem odgałęźnym nie są rysowane`
+      : `Punkty odgałęźne narysowane: ${scene.meta.drawnBranchPointRefs.length} z ${punkty} w modelu` +
+        ` · odgałęzienia narysowane: ${scene.meta.lateralRunIds.length} · ciągi pominięte: 0`;
+
+  const { width: WIDTH, height: HEIGHT } = kadr(scene.bbox);
 
   for (const motyw of MOTYWY) {
     useThemeModeStore.setState({ mode: motyw.mode });
@@ -105,8 +129,9 @@ for (const wariant of WARIANTY) {
       `<text x="16" y="${HEIGHT + 56}" font-family="system-ui,sans-serif" font-size="15" ` +
       `fill="${paleta.baseStroke}">${wiersz2}</text>` +
       `</svg>`;
-    const nazwa = `pomiar-odg-${wariant.klucz}-${motyw.klucz}.svg`;
+    const nazwa = `${PREFIKS}-${wariant.klucz}-l${LOD}-${motyw.klucz}.svg`;
     writeFileSync(resolve(OUT, nazwa), svg, 'utf8');
     console.log('svg', nazwa);
+  }
   }
 }

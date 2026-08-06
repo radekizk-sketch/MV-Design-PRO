@@ -91,14 +91,36 @@ Reguły twarde:
   Stacja KOŃCOWA (`append_station_on_endpoint`) bramy nie potrzebuje — nie ma
   czego tranzytować za rozdzielnicą klienta.
 
-- Etap 3 (DO ZLECENIA — luka zmierzona przy etapie 2): scena SLD v3
-  (`frontend/src/ui/sld/v3/scene/buildScene.ts`) NIE czyta `branch_points`,
-  a `resolveBranchOrigin` przyjmuje jako początek odgałęzienia wyłącznie
-  STACJĘ ciągu głównego z polem odgałęźnym. Odgałęzienie wychodzące z punktu
-  ZKSN/słupa jest więc pomijane (scena zgłasza to w `stopNotes`) i stacja
-  klienta nie trafia na rysunek. Dług SPRZED tej karty (dotyczy każdej sieci
-  z punktem odgałęzienia), ujawniony przez nią. Pin luki:
-  `frontend/src/ui/sld/v3/scene/__tests__/buildScene.pomiarOdgalezienie.test.ts`.
+- Etap 3 (karta ODG-RYSUNEK, WDROŻONY): scena SLD v3 RYSUJE punkty odgałęźne
+  (`branch_points`) na torze magistrali i całe ciągi za nimi — stacja klienta
+  przyłączona odgałęzieniem trafia na rysunek.
+
+  | Element rysunku | Skąd pochodzi (zero fabrykacji) |
+  |---|---|
+  | Położenie punktu na torze | człon ciągu, którego `toTerminal.busRef` == `BranchPointSN.bus_ref`; tor jest w tym punkcie ROZCINANY, więc punkt jest stykiem końców dwóch członów, a nie glifem na przewodzie |
+  | Kanał zejścia odgałęzienia | szczelina kolumnowa węzła POPRZEDZAJĄCEGO punkt na ciągu — ta sama formuła co dla lateralu z pola odgałęźnego stacji (jeden allocator) |
+  | Symbol | `BranchPointSN.branch_point_type`: `zksn` → złącze kablowe SN, `branch_pole` → słup rozgałęźny (osobne glify, rozróżnialne kształtem) |
+  | Etykieta | `BranchPointSN.name` (L1/L2; na L0 obowiązuje polityka przeglądu — same kody stacji) |
+  | Trafialność | warstwa trafień S9-4, własny rodzaj obiektu „punkt odgałęźny" |
+
+  Wyrocznia pokrycia (`branchPointCoverageGaps`, `scene/buildScene.ts`): dla
+  KAŻDEGO `branch_point` w modelu (a) punkt ma symbol na scenie i (b) KAŻDA
+  stacja stojąca za nim jest w `meta.drawnStationIds`. Sam licznik stacji
+  (`meta.stationCount`) tego nie łapał — mówił „ile", nie „które", więc scena z
+  pominiętą stacją klienta wyglądała na kompletną.
+
+  POZA zakresem etapu (świadomie, `docs/v12xx/REJESTR_KONFLIKTOW.md` wiersz
+  `ODG-RYSUNEK`): punkt odgałęźny, którego węzłem poprzedzającym jest GPZ
+  (leżący na przęśle GPZ → pierwsza stacja) — kanał musiałby biec pasem dzielonym
+  z rynną łącznika wierszy arkusza i ramą strefy GPZ, co jest osobną decyzją
+  geometryczną. Scena zgłasza taki punkt imiennym `stopNote` i wykazuje jako lukę
+  pokrycia — jest mierzalny, nie przemilczany.
+
+  Sieć pokazowa etapu (`frontend/scripts/demo-siec-pokazowa/`): magistrala OSD z
+  trzema stacjami dystrybucyjnymi przelotowymi (630/400/1250 kVA) + odcinek
+  napowietrzny, dwaj klienci SN w odgałęzieniach — po jednym za ZKSN (odcinek
+  kablowy) i za słupem rozgałęźnym (odcinek napowietrzny). Zrzuty odbioru:
+  `docs/sld/audyt-2026-08/odg-rysunek-po-{l0,l2}-{ciemny,jasny}.png`.
 
 ## 5. Rejestr zmian
 
@@ -107,3 +129,7 @@ Reguły twarde:
 - 2026-08-06: etap 2 (POMIAR-ODGAŁĘZIENIE) — droga odgałęzienia dla klasy B,
   jeden słownik ról pól SN w operacjach domenowych, kolejność pól z danych;
   nazwany etap 3 (rysunek odgałęzień z punktów ZKSN/słupa).
+- 2026-08-06: etap 3 (ODG-RYSUNEK) — scena SLD v3 rysuje punkty odgałęźne i
+  ciągi za nimi; punkt odgałęźny jest pełnoprawnym węzłem wiersza (symbol z
+  rodzaju modelu, etykieta z danych, obszar trafienia, tor rozcinany w punkcie),
+  wyrocznia pokrycia porównuje model z rysunkiem po TOŻSAMOŚCI, nie po liczniku.
