@@ -176,10 +176,20 @@ test.describe('S9-5 — operacje budowy ciągu SN dostępne wyłącznie z kanwy'
   });
 });
 
-/** Zapis kreatora ŹRÓDŁA — jeden przycisk główny ramy kreatora. */
+/**
+ * Zapis kreatora ŹRÓDŁA. Kreator dobiera aparat pól liniowych GPZ z katalogu
+ * pobieranego z backendu — dopóki katalog nie dojdzie, pole jest puste i zapis
+ * (słusznie) odmawia. Czekamy więc na REALNĄ gotowość pola, zamiast klikać
+ * w kółko: ślepe ponawianie zapisu maskowałoby defekt „kreator nigdy nie jest
+ * gotowy".
+ */
 async function zapiszZrodlo(page: Page): Promise<void> {
   const kreator = page.getByTestId('mvd-kreator-zrodlo');
   await expect(kreator).toBeVisible({ timeout: 20000 });
+  await page.getByRole('button', { name: 'Sekcje i pola', exact: false }).first().click();
+  const aparat = page.getByTestId('mvd-kreator-zrodlo-aparat-katalog');
+  await expect(aparat).toBeVisible({ timeout: 60000 });
+  await expect.poll(async () => (await aparat.inputValue()).trim(), { timeout: 60000 }).not.toBe('');
   await page.getByTestId('mvd-kreator-zrodlo-zapisz').click();
   await expect(kreator).toBeHidden({ timeout: 60000 });
 }
