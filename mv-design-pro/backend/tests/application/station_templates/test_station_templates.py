@@ -231,13 +231,54 @@ def test_pole_pomiarowe_przed_polem_tr_w_kazdym_szablonie() -> None:
 
 
 def test_keep_tr_obniniejsza_liczba_pol_nie_wycina_pola_tr() -> None:
-    """Para do reguły keep-TR w `_resolve_sn_bay_roles` (V12K-330): skoro pomiar
-    stoi PRZED TR, obcięcie liczby pól nie może wyciąć pola transformatorowego —
-    wypada ostatnia rola nie-TR."""
+    """Para do reguły keep-TR w `_resolve_sn_bay_roles` (V12K-330/333): skoro
+    pomiar stoi PRZED TR, obcięcie liczby pól nie może wyciąć pola
+    transformatorowego — wypada ostatnia rola nie-TR."""
     from application.station_templates.apply import _resolve_sn_bay_roles
 
     template = get_template("tpl_sn_nn_1000kva")
     assert template is not None
-    assert _resolve_sn_bay_roles(template, 4) == ["IN", "OUT", "MEASUREMENT", "TR"]
-    assert _resolve_sn_bay_roles(template, 3) == ["IN", "OUT", "TR"]
+    assert _resolve_sn_bay_roles(template, 4) == ["IN", "MEASUREMENT", "TR", "OUT"]
+    assert _resolve_sn_bay_roles(template, 3) == ["IN", "MEASUREMENT", "TR"]
     assert _resolve_sn_bay_roles(template, 2) == ["IN", "TR"]
+
+
+def test_pomiar_rozliczeniowy_nie_lezy_w_torze_tranzytu() -> None:
+    """Kontrakt `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md` §3 (V12K-333,
+    korekta właściciela: pomiar mierzy CAŁY i TYLKO pobór klienta — klienci
+    wiszą w odgałęzieniu od toru; standard Enei: przekładniki pola
+    pomiarowego 5/5–15/5 A to prądy przyłącza, nie magistrali).
+
+    KLASA, nie instancja — dla KAŻDEGO szablonu z polem POMIAROWYM:
+    - klasa B (stacja abonencka): przed pomiarem WYŁĄCZNIE pole dopływowe
+      (IN) — zero pary tranzytowej w rozdzielnicy klienta;
+    - klasa C (złącze kablowe ZK-SN): przed pomiarem pętla OSD (IN, OUT) —
+      pomiar jest polem odpływowym gałęzi klienta;
+    - w obu: żadne pole TR przed pomiarem (część kliencka ZA pomiarem).
+    """
+    from application.station_templates import TemplateCategory
+
+    zbadane = 0
+    for template in list_templates():
+        role = [r.role for r in template.schema.sn_bay_roles]
+        if "MEASUREMENT" not in role:
+            continue
+        zbadane += 1
+        przed = role[: role.index("MEASUREMENT")]
+        assert "TR" not in przed, (
+            f"Szablon '{template.id}': pole TR przed pomiarem ({role}) — część "
+            "kliencka musi leżeć ZA układem pomiarowym."
+        )
+        if template.category == TemplateCategory.ZKSN_WNETRZOWA:
+            assert przed in (["IN"], ["IN", "OUT"]), (
+                f"Złącze '{template.id}': przed pomiarem dopuszczalna wyłącznie "
+                f"pętla OSD (IN[, OUT]), jest {przed}."
+            )
+        else:
+            assert all(r == "IN" for r in przed), (
+                f"Szablon '{template.id}' (klasa B — stacja abonencka): przed "
+                f"pomiarem wyłącznie pole dopływowe, jest {przed} — para "
+                "tranzytowa w rozdzielnicy klienta oznacza pomiar w torze "
+                "tranzytu magistrali (zakaz kontraktu §1)."
+            )
+    assert zbadane >= 7, f"Test ma objąć wszystkie rodziny z pomiarem (objęte: {zbadane})"

@@ -128,19 +128,20 @@ TYPOWE_SN_NN_TEMPLATES = (
         tr_options=TR_OPTIONS_MEDIUM,
         default_feeders=4,
         default_bays=4,
-        # Nazwa obiecuje POMIARY — rola MEASUREMENT zadeklarowana JAWNIE
-        # (dawniej _base_bay_roles [IN,OUT,TR] + dopełnienie OUT dawało
-        # czwarte pole LINIOWE zamiast pomiarowego: szablon-fantom,
-        # rejestr V12K-329). KOLEJNOŚĆ = standard układów pomiarowych OSD
-        # (dyrektywa właściciela 2026-08-06, V12K-330): pole pomiarowe
-        # PIERWSZE od kierunku zasilania — za polami liniowymi tranzytu,
-        # PRZED polem transformatorowym. Pole TR chroni przed wypadnięciem
-        # reguła keep-TR w `_resolve_sn_bay_roles`.
+        # Nazwa obiecuje POMIARY ⇒ to stacja ABONENCKA (klasa B kontraktu
+        # `docs/domain/POMIAR_ROZLICZENIOWY_SN_V1.md`, V12K-333): pomiar
+        # rozliczeniowy mierzy CAŁY i TYLKO pobór klienta, więc rozdzielnica
+        # klienta NIE prowadzi tranzytu magistrali OSD — zestaw ról BEZ pary
+        # tranzytowej: dopływ → pomiar → TR → rezerwa odpływowa. (Historia:
+        # V12K-329 fantom bez pomiaru; V12K-330 pomiar przed TR; V12K-333
+        # usunięty tranzyt z rozdzielnicy klienta po korekcie właściciela —
+        # standard Enei: przekładniki pola pomiarowego 5/5–15/5 A to prądy
+        # przyłącza klienta, nie magistrali.) Pole TR chroni reguła keep-TR.
         bay_roles=(
-            BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
-            BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT"),
+            BayRoleSpec(role="IN", label_pl="Pole liniowe dopływowe"),
             BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (VT)"),
             BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
+            BayRoleSpec(role="OUT", label_pl="Pole odpływowe rezerwowe"),
         ),
     ),
     _typowa(
@@ -158,14 +159,14 @@ TYPOWE_SN_NN_TEMPLATES = (
         tr_options=TR_OPTIONS_MEDIUM,
         default_feeders=6,
         default_bays=5,
-        # Jak wyżej (V12K-329 + V12K-330): nazwa obiecuje VT — MEASUREMENT
-        # jawnie, pomiar PRZED polem TR (standard układów pomiarowych OSD).
+        # Jak wyżej (V12K-333, klasa B): stacja abonencka bez tranzytu OSD —
+        # dopływ → pomiar → TR → dwie rezerwy odpływowe.
         bay_roles=(
-            BayRoleSpec(role="IN", label_pl="Pole liniowe IN"),
-            BayRoleSpec(role="OUT", label_pl="Pole liniowe OUT"),
+            BayRoleSpec(role="IN", label_pl="Pole liniowe dopływowe"),
             BayRoleSpec(role="MEASUREMENT", label_pl="Pole pomiarowe (VT)"),
             BayRoleSpec(role="TR", label_pl="Pole transformatorowe"),
-            BayRoleSpec(role="OUT", label_pl="Pole liniowe rezerwowe"),
+            BayRoleSpec(role="OUT", label_pl="Pole odpływowe rezerwowe"),
+            BayRoleSpec(role="OUT", label_pl="Pole odpływowe rezerwowe 2"),
         ),
     ),
     _typowa(
