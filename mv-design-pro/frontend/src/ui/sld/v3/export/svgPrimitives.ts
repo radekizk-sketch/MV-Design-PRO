@@ -390,18 +390,36 @@ function collect(el: Element, parent: InheritedState, out: ExportPrimitive[]): v
     case 'svg': {
       // Arkusz v3 zagnieżdża `<svg>` (`sheet/Frame.tsx` renderuje własny
       // korzeń wewnątrz kanwy). Tor eksportu traktuje go jak grupę — WOLNO
-      // tak WYŁĄCZNIE przy odwzorowaniu tożsamościowym; skalujący `viewBox`
-      // zmieniłby układ współrzędnych dzieci i po cichu rozjechał geometrię.
+      // tak przy odwzorowaniu TOŻSAMOŚCIOWYM LUB czystej TRANSLACJI
+      // (viewBox „minX minY w h" o wymiarach RÓWNYCH rozmiarowi viewportu —
+      // ramka arkusza S9-7/8 przesuwa początek układu na margines formatu,
+      // nie skaluje). Translacja jest odwzorowana przesunięciem tx/ty
+      // dziedziczonym przez dzieci. SKALUJĄCY viewBox (wymiary różne od
+      // viewportu) nadal jest twardym błędem — po cichu rozjechałby
+      // geometrię DXF/PDF.
       const vb = (el.getAttribute('viewBox') ?? '').trim();
       const w = num(el.getAttribute('width'), state.viewportWidth);
       const h = num(el.getAttribute('height'), state.viewportHeight);
-      if (vb !== '' && vb.replace(/[\s,]+/g, ' ') !== `0 0 ${w} ${h}`) {
-        throw new Error(
-          `Eksport schematu: zagnieżdżony <svg> ma skalujący viewBox „${vb}" przy rozmiarze ${w}×${h} — ` +
-            'tor DXF/PDF nie odwzorowuje skalowania układu współrzędnych.',
-        );
+      let tx = state.tx + num(el.getAttribute('x'), 0);
+      let ty = state.ty + num(el.getAttribute('y'), 0);
+      if (vb !== '') {
+        const parts = vb.replace(/[\s,]+/g, ' ').split(' ').map(Number);
+        const [minX, minY, vbW, vbH] = parts;
+        const czysta_translacja =
+          parts.length === 4
+          && parts.every(Number.isFinite)
+          && Math.abs(vbW - w) < 1e-6
+          && Math.abs(vbH - h) < 1e-6;
+        if (!czysta_translacja) {
+          throw new Error(
+            `Eksport schematu: zagnieżdżony <svg> ma skalujący viewBox „${vb}" przy rozmiarze ${w}×${h} — ` +
+              'tor DXF/PDF nie odwzorowuje skalowania układu współrzędnych.',
+          );
+        }
+        tx -= minX;
+        ty -= minY;
       }
-      const viewportState: InheritedState = { ...state, viewportWidth: w, viewportHeight: h };
+      const viewportState: InheritedState = { ...state, tx, ty, viewportWidth: w, viewportHeight: h };
       for (const child of Array.from(el.children)) collect(child, viewportState, out);
       return;
     }

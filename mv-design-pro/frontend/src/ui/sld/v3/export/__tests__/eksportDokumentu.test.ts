@@ -533,3 +533,42 @@ describe('S9-6 · CIM (IEC 61970/61968) z realnego modelu', () => {
     expect(cimObjectCount(buildCimInput(pusty))).toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// V12K-331 (interakcja S9-6 × S9-7/8): zagnieżdżony <svg> ramki arkusza niesie
+// viewBox o PRZESUNIĘTYM początku (margines formatu, np. „-298 -298 8940 6237"
+// przy rozmiarze 8940×6237) — to czysta translacja, nie skalowanie. Konwerter
+// DXF/PDF musi ją odwzorować przesunięciem współrzędnych; twardy błąd zostaje
+// WYŁĄCZNIE dla realnego skalowania (wymiary viewBoxu ≠ rozmiar viewportu),
+// bo to rozjechałoby geometrię po cichu. Obie strony przypięte testem
+// (deklaracja bez testu = fałszywa pewność).
+// ---------------------------------------------------------------------------
+import { svgMarkupToDrawing } from '../svgPrimitives';
+
+describe('zagnieżdżony <svg> — translacja odwzorowana, skalowanie odrzucone (V12K-331)', () => {
+  it('viewBox o przesuniętym początku (skala 1:1) przesuwa współrzędne dzieci', () => {
+    const markup =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">'
+      + '<svg width="100" height="100" viewBox="-30 -20 100 100">'
+      + '<line x1="0" y1="0" x2="10" y2="0" stroke="#000" stroke-width="1"/>'
+      + '</svg></svg>';
+    const drawing = svgMarkupToDrawing(markup);
+    const linia = drawing.primitives.find((p) => p.kind === 'polyline');
+    expect(linia).toBeDefined();
+    if (linia?.kind === 'polyline') {
+      // Punkt (0,0) w układzie viewBoxu „-30 -20 …" leży 30 px w prawo i
+      // 20 px w dół od początku viewportu.
+      expect(linia.points[0]).toEqual({ x: 30, y: 20 });
+      expect(linia.points[1]).toEqual({ x: 40, y: 20 });
+    }
+  });
+
+  it('viewBox SKALUJĄCY (wymiary ≠ rozmiar viewportu) pozostaje twardym błędem', () => {
+    const markup =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">'
+      + '<svg width="100" height="100" viewBox="0 0 50 50">'
+      + '<line x1="0" y1="0" x2="10" y2="0" stroke="#000" stroke-width="1"/>'
+      + '</svg></svg>';
+    expect(() => svgMarkupToDrawing(markup)).toThrow(/skalujący viewBox/);
+  });
+});
