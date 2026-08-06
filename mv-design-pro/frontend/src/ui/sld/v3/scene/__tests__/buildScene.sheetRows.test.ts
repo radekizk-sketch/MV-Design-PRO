@@ -233,9 +233,25 @@ describe('S9-1 — determinizm i brak regresji niezmienników', () => {
     }
   });
 
-  it('DŁUGI CIĄG: zero-defekt (ortogonalność, kolizje etykiet, przecięcia poddrzew, niejednoznaczność) na każdym LOD', () => {
+  it('DŁUGI CIĄG: zero-defekt (skrzyżowania, ortogonalność, kolizje etykiet, przecięcia poddrzew, niejednoznaczność) na każdym LOD', () => {
     for (const lod of LODS) {
       const m = layoutMetricsReport(buildSceneV3(dlugiCiag, lod));
+      // PRZYPIĘCIE DEKLARACJI z decyzji §2: „bieg powrotny jest z konstrukcji
+      // wolny od skrzyżowań". Bez tej asercji zdanie byłoby obietnicą bez
+      // testu — a przy 4 złamaniach arkusza łącznik przecina najwięcej
+      // potencjalnych torów ze wszystkich tras sceny.
+      expect(m.crossingCount, `LOD ${lod} skrzyżowania`).toBe(0);
+      expect(m.nonOrthogonalSegmentCount, `LOD ${lod} ortogonalność`).toBe(0);
+      expect(m.labelCollisionCount, `LOD ${lod} kolizje etykiet`).toBe(0);
+      expect(m.subtreeIntersectionCount, `LOD ${lod} przecięcia poddrzew`).toBe(0);
+      expect(m.ambiguousConnectionCount, `LOD ${lod} niejednoznaczność`).toBe(0);
+    }
+  });
+
+  it('SIEĆ REFERENCYJNA: zero-defekt na każdym LOD (ten sam zestaw miar, druga klasa topologii)', () => {
+    for (const lod of LODS) {
+      const m = layoutMetricsReport(buildSceneV3(siecReferencyjna, lod));
+      expect(m.crossingCount, `LOD ${lod} skrzyżowania`).toBe(0);
       expect(m.nonOrthogonalSegmentCount, `LOD ${lod} ortogonalność`).toBe(0);
       expect(m.labelCollisionCount, `LOD ${lod} kolizje etykiet`).toBe(0);
       expect(m.subtreeIntersectionCount, `LOD ${lod} przecięcia poddrzew`).toBe(0);

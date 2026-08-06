@@ -26,6 +26,7 @@
  * liczba wierszy.
  */
 
+import { GRID } from '../core/grid';
 import { snapUp } from './measure';
 
 /** Docelowa proporcja arkusza: A3 poziomo (420 / 297 = 1,4141…).
@@ -55,7 +56,7 @@ export const SHEET_MAX_ASPECT = 2;
  * przed miejscem zmiany są bit-identyczne; przelanie następuje dopiero przy
  * świadomej zmianie formatu (przekroczeniu kwantu) i jest wtedy uczciwe.
  */
-export const SHEET_WIDTH_QUANTUM = 1024;
+export const SHEET_WIDTH_QUANTUM = 128 * GRID;
 
 /** Zasięg odgałęzienia zaczepionego w stacji ciągu — wejście planera. */
 export interface SheetLateralExtent {
