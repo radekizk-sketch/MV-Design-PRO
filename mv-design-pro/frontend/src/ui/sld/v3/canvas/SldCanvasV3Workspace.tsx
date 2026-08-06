@@ -2307,13 +2307,6 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     [derDrag, rawOverlayPayload, selectElement, sldData, snapshot],
   );
 
-  // R3 (wym. 6): AKTYWACJA etykiety wynikowej — klik w blok liczbowy prowadzony
-  // TĄ SAMĄ ścieżką co klik w element (`handleElementClick`: selekcja +
-  // istniejący panel wyników `SldDetailDrawer`). Klasa etykiety
-  // (`ResultLabelKind`) mapuje 1:1 na `elementKind` sceny — zero nowego panelu,
-  // zero nowej ścieżki danych (reuse). Deep-link do White Box/proof: brak
-  // działającej ścieżki z v3 kanwy (kanwa czyta payload wynikowy, nie ślad
-  // proof) — JAWNY DŁUG R3 (rejestr braków), NIE atrapa.
   /**
    * Karta S9-4 (audyt §3.2, P-6 „klik w tło zaznacza obiekt"): klik w pusty
    * arkusz CZYŚCI zaznaczenie. Ta sama para operacji, co wyjście klawiszem
@@ -2329,6 +2322,13 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     updateUrlWithSelection(null);
   }, []);
 
+  // R3 (wym. 6): AKTYWACJA etykiety wynikowej — klik w blok liczbowy prowadzony
+  // TĄ SAMĄ ścieżką co klik w element (`handleElementClick`: selekcja +
+  // istniejący panel wyników `SldDetailDrawer`). Klasa etykiety
+  // (`ResultLabelKind`) mapuje 1:1 na `elementKind` sceny — zero nowego panelu,
+  // zero nowej ścieżki danych (reuse). Deep-link do White Box/proof: brak
+  // działającej ścieżki z v3 kanwy (kanwa czyta payload wynikowy, nie ślad
+  // proof) — JAWNY DŁUG R3 (rejestr braków), NIE atrapa.
   const handleResultLabelActivate = useCallback(
     (ownerRef: string, kind: ResultLabelKind) => {
       const elementKind: PreviewElementKind =
