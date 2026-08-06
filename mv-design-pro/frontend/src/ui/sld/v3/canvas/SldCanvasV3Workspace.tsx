@@ -1995,6 +1995,11 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
     const scene = activeLodScene;
     if (!svgEl || !scene) return null;
     const clone = svgEl.cloneNode(true) as SVGSVGElement;
+    // Karta S9-4: warstwa TRAFIEŃ (`sld-v3-trafienia`) jest wyłącznie
+    // powierzchnią zdarzeń ekranu — przezroczyste kształty bez treści
+    // rysunkowej. Do dokumentu nie należy: usuwana z klonu, żeby plik SVG
+    // pozostał rysunkiem (i nie urósł o kilka tysięcy niewidocznych węzłów).
+    clone.querySelectorAll('[data-testid="sld-v3-trafienia"]').forEach((node) => node.remove());
     applyContentFitFrame(clone, scene);
     // S9-6: dokument nie animuje — węzły SMIL (`<animate>` crossfade LOD,
     // karta S8) są cechą KANWY, na arkuszu dawałyby plik, który po otwarciu
@@ -2309,6 +2314,21 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
   // zero nowej ścieżki danych (reuse). Deep-link do White Box/proof: brak
   // działającej ścieżki z v3 kanwy (kanwa czyta payload wynikowy, nie ślad
   // proof) — JAWNY DŁUG R3 (rejestr braków), NIE atrapa.
+  /**
+   * Karta S9-4 (audyt §3.2, P-6 „klik w tło zaznacza obiekt"): klik w pusty
+   * arkusz CZYŚCI zaznaczenie. Ta sama para operacji, co wyjście klawiszem
+   * Escape wyżej (`clearSelection` + `updateUrlWithSelection(null)`) — inaczej
+   * synchronizacja adresu natychmiast przywróciłaby selekcję z hasha.
+   * Szuflada szczegółów ma własne wyjście (przycisk/Escape) i NIE jest tu
+   * zamykana: klik w tło to porzucenie WSKAZANIA, nie zamknięcie panelu.
+   */
+  const handleBackgroundClick = useCallback(() => {
+    const store = useSelectionStore.getState();
+    if (store.selectedElements.length === 0) return;
+    store.clearSelection();
+    updateUrlWithSelection(null);
+  }, []);
+
   const handleResultLabelActivate = useCallback(
     (ownerRef: string, kind: ResultLabelKind) => {
       const elementKind: PreviewElementKind =
@@ -2493,6 +2513,7 @@ export function SldCanvasV3Workspace(props: SldCanvasV3WorkspaceProps): JSX.Elem
           lodOverride={lodOverride}
           layerVisibility={layerVisibility}
           onResultLabelActivate={handleResultLabelActivate}
+          onBackgroundClick={handleBackgroundClick}
           onCameraChange={handleCameraChange}
           fitSignal={fitSignal}
           fitTarget={fitTarget}
