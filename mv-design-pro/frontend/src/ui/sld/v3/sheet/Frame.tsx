@@ -271,7 +271,15 @@ export function SheetLegend(props: {
         return (
           <g key={entry.id} data-testid={`sld-sheet-legend-item-${entry.id}`} data-parity-key={`legend-item-${entry.id}`}>
             {entry.kind === 'note' ? null : Glyph ? (
-              <Glyph x={4} y={glyphY} />
+              // S9-6 (znalezisko uboczne, Zero-Debt): glif legendy MUSI dostać
+              // tusz z PALETY. Bez tego `glyphs.tsx` spadał na stałą modułu
+              // (`V3_STROKE_BASE` = tusz palety CIEMNEJ, `#E8EEF4`), więc w
+              // motywie jasnym — i w KAŻDYM arkuszu eksportowanym z tego
+              // motywu — glify legendy wychodziły prawie białe na bieli
+              // (pomiar: 61 wystąpień w pliku SVG fixtury). Próbki linii
+              // (`LegendLineSample`) i tekst brały paletę od początku, więc
+              // rozjeżdżał się WYŁĄCZNIE glif — klasyczny „ciche zero".
+              <Glyph x={4} y={glyphY} stroke={palette.baseStroke} />
             ) : (
               <LegendLineSample id={entry.id} centerY={centerY} />
             )}

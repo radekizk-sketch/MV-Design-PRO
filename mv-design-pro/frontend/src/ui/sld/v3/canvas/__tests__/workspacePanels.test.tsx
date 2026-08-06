@@ -366,7 +366,11 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     expect(screen.queryByTestId('sld-v3-legend-panel')).toBeNull();
   });
 
-  it('opcja eksportu „Dołącz legendę" domyślnie WYŁĄCZONA — eksport SVG bez legendy (zgodność wsteczna)', () => {
+  // S9-6 (audyt E-4): wartość domyślna ODWRÓCONA — rysunek techniczny wychodzi
+  // z legendą, a projektant, który jej nie chce, odznacza pole. Intencja
+  // testów sprzed karty zachowana (opcja steruje TYLKO plikiem, nigdy kanwą),
+  // zamieniona jest wyłącznie strona domyślna.
+  it('opcja eksportu „Dołącz legendę" domyślnie WŁĄCZONA ⇒ plik SVG niesie grupę legendy z etykietą obecnego symbolu (np. transformator)', () => {
     const createObjectUrlSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     const RealBlob = globalThis.Blob;
@@ -376,17 +380,21 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     render(<SldCanvasV3Workspace width={800} height={600} lodOverride={2} />);
     rozwinZwinieteNarzedzia();
     const checkbox = screen.getByTestId('sld-v3-export-include-legend') as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
+    expect(checkbox.checked).toBe(true);
 
     fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
     expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
     const svgStr = String(blobCtorSpy.mock.calls[0][0][0]);
-    expect(svgStr).not.toContain('sld-sheet-legend');
+    expect(svgStr).toContain('sld-sheet-legend');
+    expect(svgStr).toContain('Transformator SN/nN');
+    // Kanwa EKRANOWA (nie eksportowany string) zostaje BEZ legendy — opcja
+    // eksportu nie włącza legendy na żywym widoku.
+    expect(document.querySelector('[data-testid="sld-sheet-legend"]')).toBeNull();
 
     vi.unstubAllGlobals();
   });
 
-  it('opcja eksportu „Dołącz legendę" zaznaczona ⇒ plik SVG niesie grupę legendy z etykietą obecnego symbolu (np. transformator)', () => {
+  it('odznaczenie opcji „Dołącz legendę" ⇒ plik SVG bez grupy legendy', () => {
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {});
     const RealBlob = globalThis.Blob;
@@ -399,11 +407,9 @@ describe('SldCanvasV3Workspace — K12: legenda symboli na żądanie', () => {
     fireEvent.click(screen.getByTestId('sld-v3-export-svg'));
 
     const svgStr = String(blobCtorSpy.mock.calls[0][0][0]);
-    expect(svgStr).toContain('sld-sheet-legend');
-    expect(svgStr).toContain('Transformator SN/nN');
-    // Kanwa EKRANOWA (nie eksportowany string) zostaje BEZ legendy — opcja
-    // eksportu nie włącza legendy na żywym widoku.
-    expect(document.querySelector('[data-testid="sld-sheet-legend"]')).toBeNull();
+    expect(svgStr).not.toContain('sld-sheet-legend');
+    // Tabliczka rysunkowa NIE jest opcjonalna — zostaje niezależnie od legendy.
+    expect(svgStr).toContain('sld-sheet-title-block');
 
     vi.unstubAllGlobals();
   });
